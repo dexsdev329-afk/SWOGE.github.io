@@ -272,14 +272,6 @@ footer{margin-top:44px;font-family:'Space Mono',monospace;font-size:10px;color:v
     <div class="icard" id="icard"></div>
   </div>
 
-  <div class="ekg" aria-hidden="true"></div>
-  <div class="mom" id="mom">
-    <h2 style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin:0 0 4px;font-weight:500">Momentum — what's happening now</h2>
-    <p class="cap" id="momCap" style="color:var(--dim);font-size:12px;margin:0"></p>
-    <div class="mgrid" id="momGrid"></div>
-    <div class="mnote" id="momNote"></div>
-  </div>
-
   <div class="track" id="track">
     <h2 style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin:0 0 4px;font-weight:500">Trend — since your previous scans</h2>
     <p class="cap" style="color:var(--dim);font-size:12px;margin:0 0 12px">Every scan is saved locally. The base strengthens if believer share rises scan after scan.</p>
@@ -311,9 +303,9 @@ footer{margin-top:44px;font-family:'Space Mono',monospace;font-size:10px;color:v
 
   <div class="method" id="method">
     <h3>How believer and serpent are calculated</h3>
-    <p><b>Believer</b> — a wallet that still holds tokens and whose history shows <b>no outflow</b>. It bought or received, and never sent anything back. Diamond paws.</p>
-    <p><b>Serpent</b> — a wallet that <b>sent tokens to the liquidity pool</b> (a sale) after having received some. Severity depends on how much it sold versus what it received.</p>
-    <p><b>Neutral</b> — moved tokens to another wallet without going through the pool (transfer, gift, distribution). Neither a clear sale nor pure accumulation.</p>
+    <p><b>Believer</b> — a wallet that <b>still holds tokens</b> and has held for <b>more than 2 days</b>. It stuck around through time, even if it sold a little along the way. Conviction is measured by staying, not by never touching the sell button.</p>
+    <p><b>Serpent</b> — a wallet that <b>sold and no longer holds</b>, or one that sold while <b>arriving less than 2 days ago</b>. A quick in-and-out, not a believer.</p>
+    <p><b>Neutral</b> — holds a bag but arrived too recently to count as a believer yet, or moved tokens between wallets without selling to the pool.</p>
     <p>This is an automatic on-chain read: it sees flows, not intentions. A “serpent” may have simply rebalanced, a “believer” may just be inactive. Read it as a signal, not a verdict.</p>
   </div>
 
@@ -382,7 +374,7 @@ async function scan(){
   if(!m) return setState("Paste a valid 0x… contract address", true);
   const token = m[0].toLowerCase();
   $("#run").disabled = true;
-  ["#tokenhead","#health","#verdict","#stats","#inspect","#mom","#track","#secConc","#secHolders","#method"].forEach(id=>$(id).style.display="none");
+  ["#tokenhead","#health","#verdict","#stats","#inspect","#track","#secConc","#secHolders","#method"].forEach(id=>$(id).style.display="none");
   $("#icard").style.display="none";
 
   try{
@@ -480,12 +472,21 @@ async function scan(){
       const f = flow[a] || {in:0n,out:0n};
       const isContract = !!h.address?.is_contract;
       const name = h.address?.name || h.address?.ens_domain_name || null;
+      // âge de détention (jours depuis le premier flux entrant)
+      const days = f.firstIn ? Math.floor((Date.now()-f.firstIn)/86400000) : null;
+      const holdsNow = bal > 0n;
+      const oldEnough = days != null && days >= 2;   // tient depuis +2 jours
       let cls;
       if(DEAD.has(a)) cls = "burn";                 // burn explicite
       else if(poolSet.has(a)) cls = "pool";         // pool DEX principal
       else if(infraSet.has(a)) cls = "infra";       // contrat à comportement d'infrastructure
-      else if(f.out === 0n) cls = "b";              // jamais rien envoyé → believer (EOA ou smart-wallet)
-      else cls = "s";                               // a envoyé → vente présumée
+      // believer = détient encore ET tient depuis +2 jours (même s'il a vendu un peu)
+      else if(holdsNow && (oldEnough || f.out === 0n)) cls = "b";
+      // serpent = a vendu et soit ne détient plus, soit trop récent pour croire
+      else if(f.out > 0n && (!holdsNow || !oldEnough)) cls = "s";
+      // reste : détient mais récent et n'a rien vendu → neutre (pas encore believer)
+      else if(holdsNow) cls = "n";
+      else cls = "s";                               // ne détient rien et a bougé → sorti
       if(cls==="b"){ believers++; balB+=bal; }
       else if(cls==="s"){ serpents++; balS+=bal; }
       else if(cls==="pool"){ pools++; balPoolReal+=bal; }
@@ -494,7 +495,6 @@ async function scan(){
       else { neutrals++; balN+=bal; }
       let sold = 0;
       if(f.in > 0n) sold = Number(f.out * 1000n / (f.in>0n?f.in:1n)) / 10;
-      const days = f.firstIn ? Math.floor((Date.now()-f.firstIn)/86400000) : null;
       return {addr:a, bal, cls, isContract, name, in:f.in, out:f.out, sold, days, firstIn:f.firstIn, dec, sym};
     });
 
@@ -513,7 +513,7 @@ async function scan(){
       }
       return {buy, sell, nBuy, nSell};
     };
-    const mom24 = win(24), mom48 = win(48);
+    const mom24 = win(24);
     const hasTs = transfers.some(t => t.timestamp);
 
     /* 7. verdict — deux lectures : par nombre de wallets ET par poids en supply */
@@ -532,7 +532,6 @@ async function scan(){
     renderPlain(info.name||sym, sym, realHolders, pctB, pctS, believers, serpents, rows, supply, dec, supplyShares);
     renderVerdict(pctB, pctS, pctN, believers, serpents, neutrals, supplyShares);
     renderStats(realHolders, pctB, serpents, holders.length, transfers.length, supplyShares);
-    renderMomentum(mom24, mom48, dec, sym, hasTs);
     // concentration top10 pour le score
     const top10r = rows.filter(r=>r.cls!=="pool" && r.cls!=="burn" && r.cls!=="infra").slice(0,10);
     let sum10=0n; for(const r of top10r) sum10+=r.bal;
@@ -756,36 +755,6 @@ function renderHealth(sh, mom24, pct10, hasTs){
   $("#health").style.display = "block";
 }
 
-/* ── momentum : achats vs ventes récents ── */
-function renderMomentum(m24, m48, dec, sym, hasTs){
-  if(!hasTs){
-    $("#momCap").textContent = "The API returns no timestamps on these transfers — momentum unavailable for this token.";
-    $("#momGrid").innerHTML = ""; $("#momNote").textContent = "";
-    $("#mom").style.display = "block"; return;
-  }
-  const card = (m, label) => {
-    const buy = Number(m.buy), sell = Number(m.sell), tot = buy+sell;
-    const pb = tot>0 ? buy/tot*100 : 50, ps = 100-pb;
-    const net = tot>0 ? (buy-sell)/tot*100 : 0;
-    const netTxt = net>0 ? `+${net.toFixed(0)}% buying` : net<0 ? `${net.toFixed(0)}% selling` : "balanced";
-    return `<div class="mcard">
-      <div class="lbl">${label}</div>
-      <div class="val" style="color:${net>0?'var(--believer)':net<0?'var(--serpent)':'var(--paper)'}">${netTxt}</div>
-      <div class="mbar"><div class="buy" style="width:${pb}%"></div><div class="sell" style="width:${ps}%"></div></div>
-      <div class="mnote">${m.nBuy} buys · ${m.nSell} sells to pool</div>
-    </div>`;
-  };
-  $("#momCap").textContent = "Volume traded with the liquidity pool. Out of pool = buy, into pool = sell.";
-  $("#momGrid").innerHTML = card(m24, "last 24 hours") + card(m48, "last 48 hours");
-  const net24 = (Number(m24.buy)+Number(m24.sell))>0 ? (Number(m24.buy)-Number(m24.sell))/(Number(m24.buy)+Number(m24.sell)) : 0;
-  $("#momNote").innerHTML = net24 > 0.15
-    ? "Net accumulation over 24h — the kind of window where pushing marketing lands hardest."
-    : net24 < -0.15
-    ? "Net distribution over 24h — careful, bringing attention now mostly feeds exits."
-    : "Balanced flow — no strong buy or sell signal.";
-  $("#mom").style.display = "block";
-}
-
 /* ── suivi dans le temps : snapshots locaux ── */
 const SNAP_KEY = t => `holderscan_hist_${t.toLowerCase()}`;
 function loadSnaps(t){ try{ return JSON.parse(localStorage.getItem(SNAP_KEY(t))||"[]"); }catch{ return []; } }
@@ -888,19 +857,29 @@ async function inspectWallet(){
     // un smart-wallet ordinaire reste un vrai holder.
     const isInfra = POOLSET.has(a) || INFRASET.has(a);
 
-    // classification (mêmes règles que le scan : un contrat = infrastructure, jamais believer/serpent)
+    // classification (mêmes règles que le scan)
+    const daysHeldNow = firstTs ? Math.floor((Date.now()-firstTs)/86400000) : null;
+    const oldEnough = daysHeldNow != null && daysHeldNow >= 2;
     let cls, verdict, badge, line;
     if(DEAD.has(a)){ cls="p"; verdict="Burn address"; badge="burn"; line="A burn address. Tokens sent here are permanently removed from supply."; }
     else if(POOLSET.has(a)){ cls="p"; verdict="Liquidity pool"; badge="liquidity"; line="The liquidity pool, not a holder. Its moves are the market's buys and sells, not a personal position."; }
     else if(isInfra){ cls="p"; verdict="Contract"; badge=cName?cName.slice(0,22):"infrastructure"; line=`This is an infrastructure contract${cName?` (${cName})`:""} — a router, manager or aggregator, not a retail holder. It's not a believer or a serpent.`; }
+    // believer = détient encore ET tient depuis +2 jours (même s'il a vendu un peu)
+    else if(held>0n && (oldEnough || nSell===0)){
+      cls="b"; verdict="Believer"; badge = nSell>0 ? `held ${daysHeldNow}d` : "never sold";
+      line = nSell>0
+        ? `Bought ${nBuy} time${nBuy!==1?"s":""}, sold ${nSell}, but has held for ${daysHeldNow} days and still holds a bag. A believer through time.`
+        : `Bought ${nBuy||nInOther} time${(nBuy||nInOther)!==1?"s":""}, never sold${daysHeldNow!=null?`, holding for ${daysHeldNow} day${daysHeldNow!==1?"s":""}`:""}. Diamond paws.`;
+    }
+    // serpent = a vendu et soit ne détient plus, soit trop récent
     else if(nSell>0){
       cls="s"; verdict="Serpent"; badge=`${nSell} sell${nSell>1?"s":""}`;
       line = held>0n
-        ? `Bought ${nBuy} time${nBuy!==1?"s":""}, sold ${nSell} time${nSell>1?"s":""}. Still holds a bag.`
+        ? `Bought ${nBuy} time${nBuy!==1?"s":""}, sold ${nSell} — and only arrived ${daysHeldNow!=null?`${daysHeldNow} day${daysHeldNow!==1?"s":""} ago`:"recently"}. Too soon to call it conviction.`
         : `Bought ${nBuy} time${nBuy!==1?"s":""}, sold ${nSell} time${nSell>1?"s":""}, and fully exited.`;
     }
     else if(totalOut>0n){ cls="n"; verdict="Neutral"; badge="transferred"; line=`Moved tokens ${nOutOther} time${nOutOther!==1?"s":""} without touching the pool — transfers, not sales.`; }
-    else if(held>0n || totalIn>0n){ cls="b"; verdict="Believer"; badge="never sold"; line=`Bought or received ${nBuy||nInOther} time${(nBuy||nInOther)!==1?"s":""}, never sold. Diamond paws.`; }
+    else if(held>0n){ cls="n"; verdict="Neutral"; badge="too recent"; line=`Holds a bag but only arrived ${daysHeldNow!=null?`${daysHeldNow} day${daysHeldNow!==1?"s":""} ago`:"recently"} — not yet old enough to count as a believer.`; }
     else { cls="x"; verdict="No position"; badge="empty"; line="No balance and no history on this token (or outside the analyzed window)."; }
 
     const pctSupply = SUPPLY>0n && held>0n ? Number(held*1000000n/SUPPLY)/10000 : 0;

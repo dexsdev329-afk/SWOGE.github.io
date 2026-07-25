@@ -328,7 +328,7 @@ const DEAD = new Set([
 ].map(x=>x.toLowerCase()));
 const $ = s => document.querySelector(s);
 let ALL_ROWS = [], SUPPLY = 0n, DEC = 18, SYM = "TOKEN", FILTER = "all", SHOWN = 25;
-let FLOW = {}, POOLSET = new Set(), TOKEN_ADDR = "";
+let FLOW = {}, POOLSET = new Set(), INFRASET = new Set(), TOKEN_ADDR = "";
 
 const short = a => a.slice(0,8) + "…" + a.slice(-6);
 function fmtBig(v, dec, prec=2){
@@ -456,11 +456,22 @@ async function scan(){
       }
       if(top) poolSet.add(top.a);
     }
+    // infrastructure = contrat qui SE COMPORTE comme tel : forte participation aux
+    // transferts (routeur, manager, agrégateur). Un contrat ordinaire — smart-wallet,
+    // compte AA — qui achète/garde/vend comme un particulier reste un vrai holder.
+    const infraSet = new Set();
+    for(const h of holders){
+      const a = (h.address?.hash||"").toLowerCase();
+      if(DEAD.has(a) || poolSet.has(a)) continue;
+      if(!h.address?.is_contract) continue;
+      const share = (partCount[a]||0) / totalTransfers;
+      // seuil élevé : seul un contrat très actif dans le flux est de l'infra
+      if(share >= 0.06) infraSet.add(a);
+    }
 
     /* 6. classer chaque détenteur.
-       Règle clé : un holder retail est une adresse NORMALE (EOA), pas un contrat.
-       Tout contrat = infrastructure (pool, routeur, manager, locker, treasury, CEX)
-       → jamais compté comme believer/serpent. Ça élimine les faux positifs. */
+       Un holder retail peut être un EOA OU un smart-wallet (contrat) ordinaire.
+       On n'exclut que : burn, le pool, et les contrats à comportement d'infra. */
     let believers=0, serpents=0, neutrals=0, pools=0, burns=0, infra=0;
     let balB=0n, balS=0n, balN=0n, balBurn=0n, balPoolReal=0n, balInfra=0n;
     const rows = holders.map(h => {
@@ -472,9 +483,9 @@ async function scan(){
       let cls;
       if(DEAD.has(a)) cls = "burn";                 // burn explicite
       else if(poolSet.has(a)) cls = "pool";         // pool DEX principal
-      else if(isContract) cls = "infra";            // tout autre contrat = infrastructure
-      else if(f.out === 0n) cls = "b";              // EOA jamais rien envoyé → believer
-      else cls = "s";                               // EOA qui a envoyé → vente présumée
+      else if(infraSet.has(a)) cls = "infra";       // contrat à comportement d'infrastructure
+      else if(f.out === 0n) cls = "b";              // jamais rien envoyé → believer (EOA ou smart-wallet)
+      else cls = "s";                               // a envoyé → vente présumée
       if(cls==="b"){ believers++; balB+=bal; }
       else if(cls==="s"){ serpents++; balS+=bal; }
       else if(cls==="pool"){ pools++; balPoolReal+=bal; }
@@ -531,7 +542,7 @@ async function scan(){
     renderTracking(token);
     renderConcentration(rows, supply, dec, sym, poolSet);
     ALL_ROWS = rows; SUPPLY = supply; DEC = dec; SYM = sym; FILTER = "all"; SHOWN = 25;
-    FLOW = flow; POOLSET = poolSet; TOKEN_ADDR = token;
+    FLOW = flow; POOLSET = poolSet; INFRASET = infraSet; TOKEN_ADDR = token;
     $("#filters").style.display = "flex";
     $("#inspect").style.display = "block";
     applyFilter();
@@ -873,12 +884,15 @@ async function inspectWallet(){
     }
     const net = totalIn - totalOut;          // position nette en tokens
     const held = bal;
+    // un contrat n'est "infra" que s'il a été détecté comme tel au scan (pool/infra).
+    // un smart-wallet ordinaire reste un vrai holder.
+    const isInfra = POOLSET.has(a) || INFRASET.has(a);
 
     // classification (mêmes règles que le scan : un contrat = infrastructure, jamais believer/serpent)
     let cls, verdict, badge, line;
     if(DEAD.has(a)){ cls="p"; verdict="Burn address"; badge="burn"; line="A burn address. Tokens sent here are permanently removed from supply."; }
     else if(POOLSET.has(a)){ cls="p"; verdict="Liquidity pool"; badge="liquidity"; line="The liquidity pool, not a holder. Its moves are the market's buys and sells, not a personal position."; }
-    else if(isContract){ cls="p"; verdict="Contract"; badge=cName?cName.slice(0,22):"infrastructure"; line=`This is a contract${cName?` (${cName})`:""}, not a retail holder — likely a router, pool manager, locker, treasury or exchange. It's not a believer or a serpent.`; }
+    else if(isInfra){ cls="p"; verdict="Contract"; badge=cName?cName.slice(0,22):"infrastructure"; line=`This is an infrastructure contract${cName?` (${cName})`:""} — a router, manager or aggregator, not a retail holder. It's not a believer or a serpent.`; }
     else if(nSell>0){
       cls="s"; verdict="Serpent"; badge=`${nSell} sell${nSell>1?"s":""}`;
       line = held>0n

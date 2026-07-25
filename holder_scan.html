@@ -832,7 +832,7 @@ async function inspectWallet(){
   card.innerHTML=`<div class="iline"><span class="spin"></span> reading wallet…</div>`;
 
   try{
-    // current token balance for this wallet (direct read)
+    // current token balance (direct read)
     let bal = 0n;
     try{
       const info = await api(`/addresses/${a}/token-balances`);
@@ -840,60 +840,69 @@ async function inspectWallet(){
       if(hit) bal = BigInt(hit.value||"0");
     }catch(e){}
 
-    // flow: from in-memory scan first, otherwise a targeted request
-    let f = FLOW[a];
-    if(!f){
-      f = {in:0n, out:0n};
-      try{
-        const tr = await fetchPaged(`/addresses/${a}/token-transfers?token=${TOKEN_ADDR}`, 10);
-        for(const t of tr){
-          const from=(t.from?.hash||"").toLowerCase(), to=(t.to?.hash||"").toLowerCase();
-          let v=0n; try{ v=BigInt(t.total?.value||t.value||"0"); }catch{}
-          if(from===a) f.out+=v; if(to===a) f.in+=v;
-        }
-      }catch(e){}
-    }
-
-    // specifically to/from the pool
-    let soldToPool=0n, boughtFromPool=0n;
-    try{
-      const tr = await fetchPaged(`/addresses/${a}/token-transfers?token=${TOKEN_ADDR}`, 10);
-      for(const t of tr){
-        const from=(t.from?.hash||"").toLowerCase(), to=(t.to?.hash||"").toLowerCase();
-        let v=0n; try{ v=BigInt(t.total?.value||t.value||"0"); }catch{}
-        if(from===a && POOLSET.has(to)) soldToPool+=v;
-        if(to===a && POOLSET.has(from)) boughtFromPool+=v;
+    // lire TOUT l'historique une seule fois et compter chaque opération
+    const tr = await fetchPaged(`/addresses/${a}/token-transfers?token=${TOKEN_ADDR}`, 15);
+    let totalIn=0n, totalOut=0n;            // tous flux entrants / sortants
+    let boughtPool=0n, soldPool=0n;         // spécifiquement via le pool
+    let nBuy=0, nSell=0, nInOther=0, nOutOther=0;
+    let firstTs=null, lastTs=null;
+    for(const t of tr){
+      const from=(t.from?.hash||"").toLowerCase(), to=(t.to?.hash||"").toLowerCase();
+      let v=0n; try{ v=BigInt(t.total?.value||t.value||"0"); }catch{}
+      const ts = Date.parse(t.timestamp||0)||null;
+      if(ts){ if(!firstTs||ts<firstTs) firstTs=ts; if(!lastTs||ts>lastTs) lastTs=ts; }
+      if(to===a){                            // entrée
+        totalIn+=v;
+        if(POOLSET.has(from)){ boughtPool+=v; nBuy++; } else nInOther++;
       }
-    }catch(e){}
-
-    // classification
-    let cls, verdict, badge, line;
-    if(DEAD.has(a)){ cls="p"; verdict="Burn address"; badge="burn"; line="This is a burn address. Tokens sent here are permanently removed from supply."; }
-    else if(POOLSET.has(a)){ cls="p"; verdict="Liquidity pool"; badge="liquidity"; line="This address is a liquidity pool, not a holder. Its moves are neither personal buys nor sells."; }
-    else if(f.out === 0n && bal > 0n){ cls="b"; verdict="Believer"; badge="holding"; line="Received or bought, still holds, and never sent a single token. Diamond paws on this one."; }
-    else if(soldToPool > 0n){
-      cls="s"; verdict="Serpent"; badge="has sold";
-      const soldPct = f.in>0n ? Number(soldToPool*1000n/f.in)/10 : 0;
-      line=`Sold tokens to the pool${soldPct>0?` — about ${soldPct.toFixed(0)}% of what it received`:""}. ${bal>0n?"Still holds part of it.":"Fully exited its position."}`;
+      if(from===a){                          // sortie
+        totalOut+=v;
+        if(POOLSET.has(to)){ soldPool+=v; nSell++; } else nOutOther++;
+      }
     }
-    else if(f.out > 0n){ cls="n"; verdict="Neutral"; badge="transferred"; line="Sent tokens to another wallet without going through the pool — a move or distribution, not a clear sale."; }
-    else if(bal === 0n){ cls="x"; verdict="No position"; badge="empty"; line="This wallet holds none of this token and has no history on it (or outside the analyzed window)."; }
-    else { cls="b"; verdict="Believer"; badge="holding"; line="Holds the token with no recorded outflow."; }
+    const net = totalIn - totalOut;          // position nette en tokens
+    const netPool = boughtPool - soldPool;   // profit/perte en tokens via le pool
+    const held = bal;
 
-    const pct = SUPPLY>0n && bal>0n ? Number(bal*1000000n/SUPPLY)/10000 : 0;
+    // classification (mêmes règles que le scan)
+    let cls, verdict, badge, line;
+    if(DEAD.has(a)){ cls="p"; verdict="Burn address"; badge="burn"; line="A burn address. Tokens sent here are permanently removed from supply."; }
+    else if(POOLSET.has(a)){ cls="p"; verdict="Liquidity pool"; badge="liquidity"; line="A liquidity pool, not a holder. Its moves are neither personal buys nor sells."; }
+    else if(nSell>0){
+      cls="s"; verdict="Serpent"; badge=`${nSell} sell${nSell>1?"s":""}`;
+      const soldPct = boughtPool>0n ? Number(soldPool*1000n/boughtPool)/10 : (totalIn>0n?Number(soldPool*1000n/totalIn)/10:0);
+      line = held>0n
+        ? `Bought ${nBuy} time${nBuy!==1?"s":""}, sold ${nSell} time${nSell>1?"s":""} — about ${soldPct.toFixed(0)}% of what it bought. Still holds a bag.`
+        : `Bought ${nBuy} time${nBuy!==1?"s":""}, sold ${nSell} time${nSell>1?"s":""} and fully exited.`;
+    }
+    else if(totalOut>0n){ cls="n"; verdict="Neutral"; badge="transferred"; line=`Moved tokens ${nOutOther} time${nOutOther!==1?"s":""} without touching the pool — transfers or distribution, not sales.`; }
+    else if(held>0n || totalIn>0n){ cls="b"; verdict="Believer"; badge=nBuy>0?`${nBuy} buy${nBuy>1?"s":""}, 0 sells`:"holding"; line=`Bought/received ${nBuy||"—"} time${nBuy!==1?"s":""}, never sold a single token. Diamond paws.`; }
+    else { cls="x"; verdict="No position"; badge="empty"; line="No balance and no history on this token (or outside the analyzed window)."; }
+
+    const pctSupply = SUPPLY>0n && held>0n ? Number(held*1000000n/SUPPLY)/10000 : 0;
+    const daysHeld = firstTs ? Math.floor((Date.now()-firstTs)/86400000) : null;
+
+    // libellé net (profit/perte en tokens)
+    const netPos = net >= 0n;
+    const netLabel = netPos ? "net accumulated" : "net distributed";
+    const netColor = netPos ? "var(--believer)" : "var(--serpent)";
+
     card.className="icard "+cls;
     card.innerHTML =
       `<div class="iverdict">${verdict}<span class="badge">${badge}</span></div>`
     + `<div class="iline">${line}</div>`
     + `<div class="igrid">`
-    + `<div class="icell"><div class="k">holds</div><div class="v">${fmtBig(bal.toString(),DEC)} ${SYM}</div></div>`
-    + `<div class="icell"><div class="k">share of supply</div><div class="v">${pct.toFixed(3)}%</div></div>`
-    + `<div class="icell"><div class="k">total received</div><div class="v">${fmtBig(f.in.toString(),DEC)}</div></div>`
-    + `<div class="icell"><div class="k">total sent out</div><div class="v" style="color:${f.out>0n?'var(--serpent)':'var(--dim)'}">${fmtBig(f.out.toString(),DEC)}</div></div>`
-    + `<div class="icell"><div class="k">sold to pool</div><div class="v" style="color:${soldToPool>0n?'var(--serpent)':'var(--dim)'}">${fmtBig(soldToPool.toString(),DEC)}</div></div>`
-    + `<div class="icell"><div class="k">bought from pool</div><div class="v" style="color:${boughtFromPool>0n?'var(--believer)':'var(--dim)'}">${fmtBig(boughtFromPool.toString(),DEC)}</div></div>`
+    + `<div class="icell"><div class="k">holds now</div><div class="v">${fmtBig(held.toString(),DEC)} ${SYM}</div></div>`
+    + `<div class="icell"><div class="k">share of supply</div><div class="v">${pctSupply.toFixed(3)}%</div></div>`
+    + `<div class="icell"><div class="k">buys (from pool)</div><div class="v" style="color:var(--believer)">${nBuy} · ${fmtBig(boughtPool.toString(),DEC)}</div></div>`
+    + `<div class="icell"><div class="k">sells (to pool)</div><div class="v" style="color:var(--serpent)">${nSell} · ${fmtBig(soldPool.toString(),DEC)}</div></div>`
+    + `<div class="icell"><div class="k">net via pool</div><div class="v" style="color:${netPool>=0n?'var(--believer)':'var(--serpent)'}">${netPool>=0n?"+":"−"}${fmtBig((netPool<0n?-netPool:netPool).toString(),DEC)}</div></div>`
+    + `<div class="icell"><div class="k">${netLabel}</div><div class="v" style="color:${netColor}">${netPos?"+":"−"}${fmtBig((netPos?net:-net).toString(),DEC)}</div></div>`
+    + (nInOther||nOutOther ? `<div class="icell"><div class="k">non-pool moves</div><div class="v">${nInOther} in · ${nOutOther} out</div></div>` : "")
+    + (daysHeld!=null ? `<div class="icell"><div class="k">first seen</div><div class="v">${daysHeld}d ago</div></div>` : "")
     + `</div>`
-    + `<div class="ilink"><a href="https://robinhoodchain.blockscout.com/address/${a}?tab=token_transfers" target="_blank" rel="noopener">view all its transfers on the explorer ↗</a></div>`;
+    + `<div class="note" style="margin-top:12px">Amounts are token quantities from on-chain transfers. Profit in ETH/USD isn't shown — the transfer log records how many tokens moved, not the price paid at each swap.</div>`
+    + `<div class="ilink"><a href="https://robinhoodchain.blockscout.com/address/${a}?tab=token_transfers" target="_blank" rel="noopener">view all ${tr.length} transfers on the explorer ↗</a></div>`;
   }catch(e){
     card.className="icard x";
     card.innerHTML=`<div class="iverdict">Failed</div><div class="iline">${String(e.message||e).slice(0,140)}</div>`;

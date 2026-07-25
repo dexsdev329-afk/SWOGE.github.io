@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <meta charset="utf-8">
@@ -44,7 +45,17 @@ nav{position:sticky;top:0;z-index:50;background:rgba(11,9,6,.85);backdrop-filter
 .navlinks a:hover{color:var(--gold)}
 .navbuy{font-family:'Anton',sans-serif;font-size:14px;letter-spacing:.04em;background:var(--gold);color:var(--void);padding:9px 18px;border-radius:3px;text-decoration:none;border:2px solid var(--gold);transition:transform .1s;text-transform:uppercase}
 .navbuy:hover{transform:scale(1.04)}
-@media(max-width:720px){.navlinks a:not(.navbuy){display:none}}
+@media(max-width:720px){
+  .navlinks a[href^="#"]{display:none}
+  .navlinks{gap:10px}
+  .navlinks a{font-size:11px}
+  .navbuy{padding:8px 13px;font-size:12px}
+  .brand{font-size:19px}
+  .brand img{width:34px;height:34px}
+}
+@media(max-width:380px){
+  .navlinks a[title="Twitter / X"],.navlinks a[title="Telegram"]{display:none}
+}
 
 .hero{position:relative;padding:52px 0 36px}
 .herogrid{display:grid;grid-template-columns:1.02fr .98fr;gap:26px;align-items:center}

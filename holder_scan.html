@@ -200,11 +200,11 @@ footer{margin-top:44px;font-family:'Space Mono',monospace;font-size:10px;color:v
 
 <div class="wrap">
   <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px;flex-wrap:wrap">
-    <a href="swoge_site.html" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--cream);font-family:'Anton',sans-serif;font-size:20px;text-transform:uppercase;letter-spacing:.02em">
+    <a href="./" style="display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--cream);font-family:'Anton',sans-serif;font-size:20px;text-transform:uppercase;letter-spacing:.02em">
       <img src="https://i.ibb.co/Lq2F5KD/Chat-GPT-Image-25-juil-2026-20-30-15.png" alt="SWOGE" style="width:36px;height:36px;border-radius:50%;border:2px solid var(--gold);object-fit:cover;object-position:center 28%">
       $<span style="color:var(--gold)">SWOGE</span>
     </a>
-    <a href="swoge_site.html" style="font-family:'Space Mono',monospace;font-size:12px;color:var(--dim);text-decoration:none">← back to site</a>
+    <a href="./" style="font-family:'Space Mono',monospace;font-size:12px;color:var(--dim);text-decoration:none">← back to site</a>
   </div>
   <div class="top">
     <div class="kick">Robinhood Chain · on-chain analysis</div>
@@ -856,6 +856,8 @@ async function inspectWallet(){
 $("#inspBtn").addEventListener("click", inspectWallet);
 $("#inspAddr").addEventListener("keydown", e => { if(e.key==="Enter") inspectWallet(); });
 
-// lancement auto sur l'adresse pré-remplie
-scan();
+// pas de scan auto : l'utilisateur peut changer l'adresse avant de lancer
+setState("Adresse pré-remplie sur $SWOGE. Change-la pour un autre token, puis clique Scanner.");
+$("#addr").focus();
+$("#addr").select();
 </script>

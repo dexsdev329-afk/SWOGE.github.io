@@ -1,0 +1,822 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Holder Scan · Robinhood Chain</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --void:#0A0E14; --panel:#111823; --panel2:#161F2C; --line:#1F2C3D;
+  --paper:#EAF0F6; --dim:#728299; --believer:#5FD1A0; --serpent:#E8785C; --neutral:#C7A15E; --pool:#5B8DD9; --r:2px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--void);color:var(--paper);font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:14px;line-height:1.55}
+.wrap{max-width:1080px;margin:0 auto;padding:32px 20px 90px}
+.mono{font-family:'IBM Plex Mono',ui-monospace,Menlo,monospace}
+
+/* header */
+.top{border-bottom:1px solid var(--line);padding-bottom:20px;margin-bottom:24px}
+.kick{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--dim)}
+h1{font-family:'Fraunces',serif;font-weight:600;font-size:34px;letter-spacing:-.01em;margin:6px 0 0}
+h1 em{font-style:italic;color:var(--believer)}
+.sub{color:var(--dim);font-size:13px;margin-top:6px;max-width:560px}
+
+/* input */
+.bar{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
+.bar input{flex:1;min-width:260px;background:var(--panel);color:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:11px 13px;font-family:'IBM Plex Mono',monospace;font-size:12.5px}
+.bar input:focus{outline:2px solid var(--believer);outline-offset:1px}
+button{font-family:'IBM Plex Mono',monospace;font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;background:var(--believer);color:#06140D;border:0;border-radius:var(--r);padding:11px 20px;cursor:pointer;font-weight:600}
+button:hover{filter:brightness(1.08)}
+button:disabled{opacity:.5;cursor:not-allowed}
+button.ghost{background:transparent;color:var(--dim);border:1px solid var(--line)}
+button.ghost:hover{color:var(--paper);border-color:var(--believer);filter:none}
+
+.state{margin-top:14px;font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--dim);min-height:16px}
+.state.err{color:var(--serpent)}
+.spin{display:inline-block;width:9px;height:9px;border:1.5px solid var(--line);border-top-color:var(--believer);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-1px;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* token id */
+.tokenhead{display:none;align-items:baseline;gap:14px;flex-wrap:wrap;margin-top:26px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.tokenhead .nm{font-family:'Fraunces',serif;font-size:22px;font-weight:600}
+.tokenhead .sy{font-family:'IBM Plex Mono',monospace;color:var(--believer);font-size:13px}
+.tokenhead .ct{font-family:'IBM Plex Mono',monospace;color:var(--dim);font-size:11px;word-break:break-all}
+
+/* verdict band — the signature element */
+.health{display:none;margin-top:24px;border-radius:var(--r);padding:18px 20px;border:1px solid var(--line)}
+.health.green{background:rgba(95,209,160,.08);border-color:rgba(95,209,160,.4);border-left:4px solid var(--believer)}
+.health.orange{background:rgba(199,161,94,.08);border-color:rgba(199,161,94,.4);border-left:4px solid var(--neutral)}
+.health.red{background:rgba(232,120,92,.08);border-color:rgba(232,120,92,.4);border-left:4px solid var(--serpent)}
+.health .grade{font-family:'Fraunces',serif;font-size:22px;font-weight:600;display:flex;align-items:center;gap:12px}
+.health .grade .badge{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;padding:4px 10px;border-radius:20px;font-weight:600}
+.health.green .badge{background:var(--believer);color:#06140D}
+.health.orange .badge{background:var(--neutral);color:#160F03}
+.health.red .badge{background:var(--serpent);color:#180806}
+.health .line{font-size:13.5px;color:var(--paper);margin-top:10px;line-height:1.6}
+.health .factors{display:flex;gap:18px;flex-wrap:wrap;margin-top:12px;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim)}
+.health .factors b{color:var(--paper)}
+.health .factors .ok{color:var(--believer)} .health .factors .bad{color:var(--serpent)} .health .factors .mid{color:var(--neutral)}
+.verdict{display:none;margin-top:26px}
+.vlabel{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-bottom:7px}
+.vlabelsub{text-transform:none;letter-spacing:0;color:var(--believer)}
+.vbar{height:46px;border-radius:var(--r);overflow:hidden;display:flex;border:1px solid var(--line)}
+.vseg{display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;color:#06140D;transition:flex-basis .6s cubic-bezier(.2,.7,.2,1);min-width:0;overflow:hidden;white-space:nowrap}
+.vseg.b{background:var(--believer)}
+.vseg.s{background:var(--serpent);color:#180806}
+.vseg.n{background:var(--neutral);color:#160F03}
+.vlegend{display:flex;gap:22px;flex-wrap:wrap;margin-top:12px;font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--dim)}
+.vlegend b{color:var(--paper);font-weight:600}
+.dotb{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:0}
+
+/* stat strip */
+.stats{display:none;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin-top:22px}
+@media(max-width:640px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat{background:var(--panel);padding:15px 16px}
+.stat .n{font-family:'IBM Plex Mono',monospace;font-size:23px;font-weight:600;letter-spacing:-.02em}
+.stat .k{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-top:3px}
+.stat .n.b{color:var(--believer)} .stat .n.s{color:var(--serpent)}
+
+/* concentration */
+.section{display:none;margin-top:34px}
+.section h2{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin:0 0 4px;font-weight:500}
+.section .cap{color:var(--dim);font-size:12px;margin:0 0 16px}
+
+/* holder rows */
+.holder{display:grid;grid-template-columns:26px 1fr auto;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
+.rank{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim);text-align:right}
+.hmain{min-width:0}
+.haddr{font-family:'IBM Plex Mono',monospace;font-size:12.5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.haddr a{color:var(--paper);text-decoration:none;border-bottom:1px solid transparent}
+.haddr a:hover{border-bottom-color:var(--believer)}
+.chip{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.08em;text-transform:uppercase;padding:2px 6px;border-radius:2px;white-space:nowrap}
+.chip.b{background:rgba(95,209,160,.14);color:var(--believer)}
+.chip.s{background:rgba(232,120,92,.14);color:var(--serpent)}
+.chip.n{background:rgba(199,161,94,.14);color:var(--neutral)}
+.chip.p{background:rgba(91,141,217,.16);color:var(--pool)}
+.htrack{height:5px;background:var(--panel2);border-radius:3px;margin-top:6px;overflow:hidden}
+.hfill{height:100%;border-radius:3px}
+.hpct{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;text-align:right;white-space:nowrap}
+.hbal{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--dim);text-align:right;margin-top:2px}
+.flow{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim);margin-top:3px}
+.flow .out{color:var(--serpent)} .flow .in{color:var(--believer)}
+
+.note{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--dim);line-height:1.7;margin-top:10px}
+.plain{display:none;margin-top:22px;background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--believer);border-radius:var(--r);padding:15px 18px}
+.plain p{margin:0;font-size:14px;line-height:1.65}
+.plain b{color:var(--believer)} .plain .warn{color:var(--serpent)}
+.filters{display:none;gap:8px;flex-wrap:wrap;margin-top:26px;align-items:center}
+.filters .lbl{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-right:2px}
+.fbtn{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.04em;text-transform:none;background:var(--panel);color:var(--dim);border:1px solid var(--line);border-radius:20px;padding:6px 13px;cursor:pointer;font-weight:500}
+.fbtn:hover{color:var(--paper);filter:none;border-color:var(--dim)}
+.fbtn.on{background:var(--believer);color:#06140D;border-color:var(--believer);font-weight:600}
+.fbtn.on.s{background:var(--serpent);color:#180806;border-color:var(--serpent)}
+.fbtn.on.n{background:var(--neutral);color:#160F03;border-color:var(--neutral)}
+.fbtn.on.p{background:var(--pool);color:#04101F;border-color:var(--pool)}
+.srch{flex:1;min-width:160px;background:var(--panel);color:var(--paper);border:1px solid var(--line);border-radius:20px;padding:6px 13px;font-family:'IBM Plex Mono',monospace;font-size:11px}
+.srch:focus{outline:1px solid var(--believer)}
+.copybar{display:none;gap:8px;flex-wrap:wrap;align-items:center;margin-top:14px}
+.copybar button{background:transparent;color:var(--believer);border:1px solid rgba(95,209,160,.4);border-radius:var(--r);padding:8px 14px;font-family:'IBM Plex Mono',monospace;font-size:10.5px}
+.copybar button:hover{background:rgba(95,209,160,.1);filter:none}
+.copybar .hint{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--dim)}
+.age{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--neutral);white-space:nowrap}
+.more{margin-top:16px;text-align:center}
+.more button{background:transparent;color:var(--dim);border:1px solid var(--line);border-radius:var(--r);padding:10px 22px}
+.more button:hover{color:var(--paper);border-color:var(--believer)}
+.count{font-family:'IBM Plex Mono',monospace;font-size:10.5px;color:var(--dim);text-align:center;margin-top:8px}
+.inspect{display:none;margin-top:34px}
+.ibar{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.ibar input{flex:1;min-width:220px;background:var(--panel);color:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;font-family:'IBM Plex Mono',monospace;font-size:12px}
+.ibar input:focus{outline:2px solid var(--believer);outline-offset:1px}
+.icard{display:none;margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px 20px}
+.icard.b{border-left:4px solid var(--believer)} .icard.s{border-left:4px solid var(--serpent)}
+.icard.n{border-left:4px solid var(--neutral)} .icard.p{border-left:4px solid var(--pool)} .icard.x{border-left:4px solid var(--line)}
+.iverdict{font-family:'Fraunces',serif;font-size:24px;font-weight:600;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.iverdict .badge{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;padding:4px 11px;border-radius:20px;font-weight:600}
+.icard.b .badge{background:var(--believer);color:#06140D} .icard.s .badge{background:var(--serpent);color:#180806}
+.icard.n .badge{background:var(--neutral);color:#160F03} .icard.p .badge{background:var(--pool);color:#04101F}
+.icard.x .badge{background:var(--line);color:var(--paper)}
+.iline{font-size:13.5px;color:var(--paper);margin-top:10px;line-height:1.6}
+.igrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-top:16px}
+.icell{background:var(--void);border:1px solid var(--line);border-radius:var(--r);padding:11px 13px}
+.icell .k{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.icell .v{font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600;margin-top:3px;word-break:break-all}
+.ilink{font-family:'IBM Plex Mono',monospace;font-size:11px;margin-top:14px}
+.ilink a{color:var(--believer);text-decoration:none;border-bottom:1px solid rgba(95,209,160,.35)}
+.mom{display:none;margin-top:34px}
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+@media(max-width:640px){.mgrid{grid-template-columns:1fr}}
+.mcard{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:15px 16px}
+.mcard .lbl{font-family:'IBM Plex Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.mcard .val{font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:600;margin-top:4px}
+.mbar{height:8px;border-radius:4px;overflow:hidden;display:flex;margin-top:10px;background:var(--panel2)}
+.mbar .buy{background:var(--believer)} .mbar .sell{background:var(--serpent)}
+.mnote{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--dim);margin-top:10px;line-height:1.6}
+.track{display:none;margin-top:34px}
+.trow{display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-family:'IBM Plex Mono',monospace;font-size:12px}
+.trow .d{color:var(--dim)}
+.trow .delta{text-align:right;font-weight:600}
+.trow .delta.up{color:var(--believer)} .trow .delta.down{color:var(--serpent)} .trow .delta.flat{color:var(--dim)}
+.tempty{font-family:'IBM Plex Mono',monospace;font-size:11.5px;color:var(--dim);margin-top:10px;line-height:1.7}
+.method{display:none;margin-top:40px;border-top:1px solid var(--line);padding-top:16px}
+.method h3{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin:0 0 8px}
+.method p{color:var(--dim);font-size:12px;margin:0 0 8px;max-width:640px}
+.method b{color:var(--paper)}
+footer{margin-top:44px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--dim);line-height:1.8;border-top:1px solid var(--line);padding-top:14px}
+</style>
+
+<div class="wrap">
+  <div class="top">
+    <div class="kick">Robinhood Chain · analyse on-chain</div>
+    <h1>Holder <em>Scan</em></h1>
+    <p class="sub">Qui tient le graphe, qui a jamais vendu, qui a mordu. Lecture directe des détenteurs et de l'historique de transferts via Blockscout.</p>
+    <div class="bar">
+      <input id="addr" value="0x8a166Fb41Cd659a0a43396272FF73973Ce29F817" placeholder="Adresse du contrat token 0x…" spellcheck="false">
+      <button id="run">Scanner</button>
+    </div>
+    <div class="state" id="state"></div>
+  </div>
+
+  <div class="tokenhead" id="tokenhead">
+    <span class="nm" id="tName">—</span>
+    <span class="sy" id="tSym"></span>
+    <span class="ct" id="tCt"></span>
+  </div>
+
+  <div class="health" id="health"></div>
+
+  <div class="verdict" id="verdict">
+    <div class="vlabel">Répartition par nombre de wallets</div>
+    <div class="vbar" id="vbar"></div>
+    <div class="vlabel" style="margin-top:16px">Répartition par poids en supply <span class="vlabelsub">— ce qui compte vraiment pour le graphe</span></div>
+    <div class="vbar" id="vbar2"></div>
+    <div class="vlegend" id="vlegend"></div>
+  </div>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="section" id="secConc">
+    <h2>Concentration — qui tient le graphe</h2>
+    <p class="cap" id="concCap"></p>
+    <div id="concList"></div>
+    <div class="note" id="concNote"></div>
+  </div>
+
+  <div class="plain" id="plain"></div>
+
+  <div class="inspect" id="inspect">
+    <h2 style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin:0 0 4px;font-weight:500">Analyser un wallet</h2>
+    <p class="cap" style="color:var(--dim);font-size:12px;margin:0">Colle une adresse pour savoir, sur ce token, si elle tient ou si elle a vendu.</p>
+    <div class="ibar">
+      <input id="inspAddr" placeholder="0x… l'adresse à vérifier" spellcheck="false">
+      <button id="inspBtn">Vérifier</button>
+    </div>
+    <div class="icard" id="icard"></div>
+  </div>
+
+  <div class="mom" id="mom">
+    <h2 style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin:0 0 4px;font-weight:500">Momentum — ce qui se passe maintenant</h2>
+    <p class="cap" id="momCap" style="color:var(--dim);font-size:12px;margin:0"></p>
+    <div class="mgrid" id="momGrid"></div>
+    <div class="mnote" id="momNote"></div>
+  </div>
+
+  <div class="track" id="track">
+    <h2 style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin:0 0 4px;font-weight:500">Évolution — depuis tes scans précédents</h2>
+    <p class="cap" style="color:var(--dim);font-size:12px;margin:0 0 12px">Chaque scan est enregistré localement. La base se renforce si la part believers monte scan après scan.</p>
+    <div id="trackList"></div>
+    <div class="tempty" id="trackEmpty"></div>
+  </div>
+
+  <div class="section" id="secHolders">
+    <h2>Tous les détenteurs</h2>
+    <p class="cap">Chaque wallet classé selon son historique. Filtre par type ou cherche une adresse.</p>
+    <div class="filters" id="filters">
+      <span class="lbl">Montrer</span>
+      <button class="fbtn on" data-f="all">tous</button>
+      <button class="fbtn" data-f="b">believers</button>
+      <button class="fbtn" data-f="s">serpents</button>
+      <button class="fbtn" data-f="n">neutres</button>
+      <button class="fbtn" data-f="pool">liquidité</button>
+      <input class="srch" id="srch" placeholder="chercher 0x…" spellcheck="false">
+    </div>
+    <div class="copybar" id="copybar">
+      <button id="copyList">Copier la liste filtrée</button>
+      <button id="copyCsv">Copier en CSV (adresse + %)</button>
+      <span class="hint" id="copyHint"></span>
+    </div>
+    <div id="holderList"></div>
+    <div class="more" id="moreWrap"><button id="moreBtn">Voir plus</button></div>
+    <div class="count" id="hCount"></div>
+  </div>
+
+  <div class="method" id="method">
+    <h3>Comment believer et serpent sont calculés</h3>
+    <p><b>Believer</b> — un wallet qui détient encore des tokens et dont l'historique ne montre <b>aucune sortie</b>. Il a acheté ou reçu, et n'a jamais rien renvoyé. Diamant.</p>
+    <p><b>Serpent</b> — un wallet qui a <b>envoyé des tokens vers le pool de liquidité</b> (une vente) alors qu'il en avait reçu. Le degré dépend de la part vendue par rapport à ce qu'il a reçu.</p>
+    <p><b>Neutre</b> — a transféré des tokens vers un autre wallet sans passer par le pool (déplacement, don, distribution). Ni vente franche ni pure accumulation.</p>
+    <p>C'est une lecture on-chain automatique : elle voit les flux, pas les intentions. Un « serpent » peut avoir simplement rééquilibré, un « believer » peut n'être qu'inactif. À lire comme un signal, pas un verdict.</p>
+  </div>
+
+  <footer id="foot"></footer>
+</div>
+
+<script>
+const API = "https://robinhoodchain.blockscout.com/api/v2";
+const DEAD = new Set([
+  "0x0000000000000000000000000000000000000000",
+  "0x000000000000000000000000000000000000dead"
+].map(x=>x.toLowerCase()));
+const $ = s => document.querySelector(s);
+let ALL_ROWS = [], SUPPLY = 0n, DEC = 18, SYM = "TOKEN", FILTER = "all", SHOWN = 25;
+let FLOW = {}, POOLSET = new Set(), TOKEN_ADDR = "";
+
+const short = a => a.slice(0,8) + "…" + a.slice(-6);
+function fmtBig(v, dec, prec=2){
+  let n; try{ n = BigInt(v); }catch{ return "0"; }
+  const base = 10n ** BigInt(dec);
+  const whole = n / base;
+  const w = whole.toString();
+  // format compact : K / M / B
+  const num = Number(whole);
+  if(num >= 1e9) return (num/1e9).toFixed(prec)+"B";
+  if(num >= 1e6) return (num/1e6).toFixed(prec)+"M";
+  if(num >= 1e3) return (num/1e3).toFixed(prec)+"K";
+  const frac = (n % base).toString().padStart(dec,"0").slice(0,prec);
+  return `${w}.${frac}`;
+}
+
+async function api(path){
+  const r = await fetch(API + path, {headers:{accept:"application/json"}});
+  if(!r.ok) throw new Error(`HTTP ${r.status} sur ${path}`);
+  return r.json();
+}
+
+function setState(msg, err=false, spin=false){
+  const el = $("#state");
+  el.className = "state" + (err?" err":"");
+  el.innerHTML = (spin?'<span class="spin"></span>':"") + msg;
+}
+
+/* pagination générique Blockscout v2 */
+async function fetchPaged(path, maxPages, onBatch){
+  let params = null, page = 0, all = [];
+  while(page < maxPages){
+    const q = params ? "?" + new URLSearchParams(params).toString() : "";
+    const data = await api(path + q);
+    const items = data.items || [];
+    all.push(...items);
+    if(onBatch) onBatch(all.length, page+1);
+    if(!data.next_page_params) break;
+    params = data.next_page_params;
+    page++;
+  }
+  return all;
+}
+
+$("#run").onclick = scan;
+$("#addr").addEventListener("keydown", e => { if(e.key === "Enter") scan(); });
+
+async function scan(){
+  const raw = $("#addr").value.trim();
+  const m = raw.match(/0x[0-9a-fA-F]{40}/);
+  if(!m) return setState("Colle une adresse de contrat 0x… valide", true);
+  const token = m[0].toLowerCase();
+  $("#run").disabled = true;
+  ["#tokenhead","#health","#verdict","#stats","#inspect","#mom","#track","#secConc","#secHolders","#method"].forEach(id=>$(id).style.display="none");
+  $("#icard").style.display="none";
+
+  try{
+    /* 1. métadonnées du token */
+    setState("lecture du token…", false, true);
+    let info;
+    try{ info = await api(`/tokens/${token}`); }
+    catch(e){ throw new Error("Token introuvable sur Robinhood Chain — vérifie l'adresse du contrat (pas celle du pool)"); }
+    const dec = parseInt(info.decimals || "18");
+    const sym = info.symbol || "TOKEN";
+    const supply = BigInt(info.total_supply || "0");
+    $("#tName").textContent = info.name || "Token inconnu";
+    $("#tSym").textContent = "$" + sym;
+    $("#tCt").textContent = token;
+    $("#tokenhead").style.display = "flex";
+
+    /* 2. détenteurs (jusqu'à 10 pages = 500) */
+    setState("lecture des détenteurs…", false, true);
+    const holders = await fetchPaged(`/tokens/${token}/holders`, 10,
+      n => setState(`détenteurs lus : ${n}…`, false, true));
+
+    /* 3. historique des transferts pour classer (jusqu'à 40 pages = 2000) */
+    setState("lecture de l'historique des transferts…", false, true);
+    const transfers = await fetchPaged(`/tokens/${token}/transfers`, 40,
+      n => setState(`transferts analysés : ${n}…`, false, true));
+
+    /* 4. flux par adresse : in / out, et out spécifiquement vers un pool */
+    // on identifie les pools comme les adresses qui reçoivent ET renvoient beaucoup,
+    // approché ici par : toute adresse marquée contrat dans les holders, + heuristique
+    const flow = {};   // addr -> {in, out, firstIn(ms), lastOut(ms)}
+    const touch = a => { const k=a.toLowerCase(); if(!flow[k]) flow[k]={in:0n,out:0n,firstIn:null,lastOut:null}; return flow[k]; };
+    for(const t of transfers){
+      const from = (t.from?.hash||"").toLowerCase();
+      const to   = (t.to?.hash||"").toLowerCase();
+      let val = 0n; try{ val = BigInt(t.total?.value || t.value || "0"); }catch{}
+      const ts = Date.parse(t.timestamp || 0) || null;
+      if(from){ const f=touch(from); f.out += val; if(ts && (!f.lastOut || ts>f.lastOut)) f.lastOut=ts; }
+      if(to){ const f=touch(to); f.in += val; if(ts && (!f.firstIn || ts<f.firstIn)) f.firstIn=ts; }
+    }
+
+    /* 5. repérer le(s) pool(s) : grosses adresses contrat qui brassent dans les deux sens */
+    const poolSet = new Set();
+    for(const h of holders){
+      const a = (h.address?.hash||"").toLowerCase();
+      if(h.address?.is_contract && flow[a] && flow[a].in > 0n && flow[a].out > 0n){
+        // un pool reçoit et renvoie de gros volumes : ratio équilibré
+        poolSet.add(a);
+      }
+    }
+
+    /* 6. classer chaque détenteur */
+    let believers=0, serpents=0, neutrals=0, pools=0;
+    let balB=0n, balS=0n, balN=0n;
+    const rows = holders.map(h => {
+      const a = (h.address?.hash||"").toLowerCase();
+      const bal = BigInt(h.value||"0");
+      const f = flow[a] || {in:0n,out:0n};
+      let cls;
+      if(poolSet.has(a)) cls = "pool";
+      else if(DEAD.has(a)) cls = "pool";           // burn = hors classement believer/serpent
+      else if(f.out === 0n) cls = "b";             // jamais rien envoyé
+      else {
+        // a envoyé : est-ce vers un pool (vente) ?
+        cls = "s";                                  // sortie = vente présumée
+      }
+      if(cls==="b"){ believers++; balB+=bal; }
+      else if(cls==="s"){ serpents++; balS+=bal; }
+      else if(cls==="pool"){ pools++; }
+      else { neutrals++; balN+=bal; }
+      // intensité serpent = part vendue / reçue
+      let sold = 0;
+      if(f.in > 0n) sold = Number(f.out * 1000n / (f.in>0n?f.in:1n)) / 10;
+      const days = f.firstIn ? Math.floor((Date.now()-f.firstIn)/86400000) : null;
+      return {addr:a, bal, cls, isContract:h.address?.is_contract, in:f.in, out:f.out, sold, days, firstIn:f.firstIn, dec, sym};
+    });
+
+    /* 6b. momentum : flux vers/depuis le pool sur 24h et 48h (via timestamps) */
+    const now = Date.now();
+    const win = (hrs) => {
+      const since = now - hrs*3600*1000;
+      let buy=0n, sell=0n, nBuy=0, nSell=0;
+      for(const t of transfers){
+        const ts = Date.parse(t.timestamp || t.block?.timestamp || 0);
+        if(!ts || ts < since) continue;
+        const from=(t.from?.hash||"").toLowerCase(), to=(t.to?.hash||"").toLowerCase();
+        let v=0n; try{ v=BigInt(t.total?.value||t.value||"0"); }catch{}
+        if(poolSet.has(from)){ buy+=v; nBuy++; }        // sort du pool = achat
+        else if(poolSet.has(to)){ sell+=v; nSell++; }   // entre au pool = vente
+      }
+      return {buy, sell, nBuy, nSell};
+    };
+    const mom24 = win(24), mom48 = win(48);
+    const hasTs = transfers.some(t => t.timestamp);
+
+    /* 7. verdict — deux lectures : par nombre de wallets ET par poids en supply */
+    const realHolders = believers + serpents + neutrals;
+    // parts en nombre de wallets
+    const pctB = realHolders ? Math.round(believers/realHolders*100) : 0;
+    const pctS = realHolders ? Math.round(serpents/realHolders*100) : 0;
+    const pctN = Math.max(0, 100 - pctB - pctS);
+    // parts en supply (exactes, BigInt → basis points)
+    let balP = 0n;
+    for(const r of rows) if(poolSet.has(r.addr) || DEAD.has(r.addr)) balP += r.bal;
+    const bp = (part) => supply>0n ? Number(part * 1000000n / supply) / 10000 : 0;  // % à 4 décimales
+    const supB = bp(balB), supS = bp(balS), supN = bp(balN), supPool = bp(balP);
+    const supHeld = supB + supS + supN;   // hors pool/burn
+    const supplyShares = {balB, balS, balN, balP, supB, supS, supN, supPool, supHeld};
+
+    renderPlain(info.name||sym, sym, realHolders, pctB, pctS, believers, serpents, rows, supply, dec, supplyShares);
+    renderVerdict(pctB, pctS, pctN, believers, serpents, neutrals, supplyShares);
+    renderStats(realHolders, pctB, serpents, holders.length, transfers.length, supplyShares);
+    renderMomentum(mom24, mom48, dec, sym, hasTs);
+    // concentration top10 pour le score
+    const top10r = rows.filter(r=>r.cls!=="pool").slice(0,10);
+    let sum10=0n; for(const r of top10r) sum10+=r.bal;
+    const pct10 = supply>0n ? Number(sum10*10000n/supply)/100 : 0;
+    renderHealth(supplyShares, mom24, pct10, hasTs);
+    saveSnapshot(token, {at:now, supB:supplyShares.supB, supS:supplyShares.supS, supPool:supplyShares.supPool, believers, serpents, holders:realHolders});
+    renderTracking(token);
+    renderConcentration(rows, supply, dec, sym, poolSet);
+    ALL_ROWS = rows; SUPPLY = supply; DEC = dec; SYM = sym; FILTER = "all"; SHOWN = 25;
+    FLOW = flow; POOLSET = poolSet; TOKEN_ADDR = token;
+    $("#filters").style.display = "flex";
+    $("#inspect").style.display = "block";
+    applyFilter();
+
+    $("#method").style.display = "block";
+    $("#foot").innerHTML = `Données : Blockscout Robinhood Chain · ${holders.length} détenteurs · ${transfers.length} transferts analysés · lecture ${new Date().toLocaleString()}.<br>Classement believer/serpent = heuristique de flux, pas un jugement. Vérifie toujours sur l'explorer avant d'en tirer une décision.`;
+    setState(`fait · ${realHolders} détenteurs classés, ${transfers.length} transferts`);
+  }catch(e){
+    const msg = String(e.message || e);
+    if(msg.includes("Failed to fetch") || msg.includes("NetworkError")){
+      setState("Le navigateur bloque l'accès à l'API (CORS ou fichier local). Ouvre la page via http://localhost — ex : python -m http.server 8000 dans le dossier — puis réessaie.", true);
+    } else {
+      setState("Échec · " + msg, true);
+    }
+  }finally{
+    $("#run").disabled = false;
+  }
+}
+
+function renderPlain(name, sym, total, pctB, pctS, nb, ns, rows, supply, dec, sh){
+  const verdict = sh.supB >= sh.supS*2 ? `<b>solidement tenu</b> : les believers pèsent bien plus lourd que les vendeurs`
+                : sh.supS >= sh.supB ? `<span class="warn">fragile</span> : les vendeurs pèsent autant ou plus que les believers en circulation`
+                : `partagé`;
+  $("#plain").innerHTML = `<p>Sur <b>${total}</b> détenteurs réels de $${sym} : les <b>believers</b> tiennent <b>${sh.supB.toFixed(2)}%</b> du supply total, les <b class="warn" style="color:var(--serpent)">serpents</b> en tiennent <b style="color:var(--serpent)">${sh.supS.toFixed(2)}%</b>, et <b style="color:var(--pool)">${sh.supPool.toFixed(2)}%</b> dorment dans le pool de liquidité ou sont brûlés. `
+    + `En circulation réelle (hors pool), c'est ${verdict}.</p>`;
+  $("#plain").style.display = "block";
+}
+
+function renderVerdict(pctB, pctS, pctN, nb, ns, nn, sh){
+  // barre 1 : répartition par NOMBRE de wallets
+  $("#vbar").innerHTML =
+    `<div class="vseg b" style="flex-basis:${pctB}%">${pctB>=8?pctB+"%":""}</div>`
+  + `<div class="vseg s" style="flex-basis:${pctS}%">${pctS>=8?pctS+"%":""}</div>`
+  + `<div class="vseg n" style="flex-basis:${pctN}%">${pctN>=8?pctN+"%":""}</div>`;
+  // barre 2 : répartition par POIDS en supply (hors pool) — normalisée sur le circulant
+  const circ = sh.supHeld || 1;
+  const wB = sh.supB/circ*100, wS = sh.supS/circ*100, wN = sh.supN/circ*100;
+  $("#vbar2").innerHTML =
+    `<div class="vseg b" style="flex-basis:${wB}%">${wB>=8?wB.toFixed(0)+"%":""}</div>`
+  + `<div class="vseg s" style="flex-basis:${wS}%">${wS>=8?wS.toFixed(0)+"%":""}</div>`
+  + `<div class="vseg n" style="flex-basis:${wN}%">${wN>=8?wN.toFixed(0)+"%":""}</div>`;
+  $("#vlegend").innerHTML =
+    `<span><span class="dotb" style="background:var(--believer)"></span><b>${nb}</b> believers · <b>${sh.supB.toFixed(2)}%</b> du supply</span>`
+  + `<span><span class="dotb" style="background:var(--serpent)"></span><b>${ns}</b> serpents · <b>${sh.supS.toFixed(2)}%</b> du supply</span>`
+  + `<span><span class="dotb" style="background:var(--neutral)"></span><b>${nn}</b> neutres · <b>${sh.supN.toFixed(2)}%</b></span>`
+  + `<span><span class="dotb" style="background:var(--pool)"></span>pool / burn · <b>${sh.supPool.toFixed(2)}%</b></span>`;
+  $("#verdict").style.display = "block";
+}
+
+function renderStats(realHolders, pctB, serpents, totalHolders, totalTransfers, sh){
+  $("#stats").innerHTML = [
+    [`${sh.supB.toFixed(1)}%`, "supply believers", "b"],
+    [`${sh.supS.toFixed(1)}%`, "supply serpents", "s"],
+    [`${sh.supPool.toFixed(1)}%`, "dans le pool / burn", ""],
+    [`${sh.supHeld.toFixed(1)}%`, "en mains réelles", ""]
+  ].map(([n,k,c])=>`<div class="stat"><div class="n ${c}">${n}</div><div class="k">${k}</div></div>`).join("");
+  $("#stats").style.display = "grid";
+}
+
+function renderConcentration(rows, supply, dec, sym, poolSet){
+  // top détenteurs hors pool/burn, part du supply
+  const real = rows.filter(r => r.cls !== "pool");
+  const top10 = real.slice(0,10);
+  let sum10 = 0n; for(const r of top10) sum10 += r.bal;
+  const pct10 = supply>0n ? Number(sum10*10000n/supply)/100 : 0;
+  const poolBal = rows.filter(r=>poolSet.has(r.addr)).reduce((s,r)=>s+r.bal,0n);
+  const pctPool = supply>0n ? Number(poolBal*10000n/supply)/100 : 0;
+
+  $("#concCap").innerHTML = `Les 10 plus gros portefeuilles (hors liquidité) tiennent <b style="color:var(--paper)">${pct10.toFixed(1)}%</b> du supply. `
+    + (pctPool>0 ? `Le pool de liquidité en détient ${pctPool.toFixed(1)}%.` : "");
+  $("#concList").innerHTML = top10.map((r,i)=>{
+    const pct = supply>0n ? Number(r.bal*100000n/supply)/1000 : 0;
+    const w = Math.min(100, pct * (100/(Number(top10[0]? (supply>0n?Number(top10[0].bal*100000n/supply)/1000:1):1)||1)));
+    const col = r.cls==="b"?"var(--believer)":r.cls==="s"?"var(--serpent)":"var(--neutral)";
+    return `<div class="holder">
+      <div class="rank">${i+1}</div>
+      <div class="hmain">
+        <div class="haddr"><a href="https://robinhoodchain.blockscout.com/address/${r.addr}" target="_blank" rel="noopener">${short(r.addr)}</a>${chip(r.cls)}</div>
+        <div class="htrack"><div class="hfill" style="width:${w}%;background:${col}"></div></div>
+      </div>
+      <div><div class="hpct">${pct.toFixed(2)}%</div><div class="hbal">${fmtBig(r.bal.toString(),dec)} ${sym}</div></div>
+    </div>`;
+  }).join("");
+  $("#concNote").innerHTML = pct10 > 50
+    ? `⚠ Forte concentration : les 10 premiers dépassent la moitié du supply. Un seul de ces wallets qui vend pèse lourd sur le graphe.`
+    : `Concentration modérée sur les 10 premiers.`;
+  $("#secConc").style.display = "block";
+}
+
+function chip(cls){
+  if(cls==="b") return `<span class="chip b">believer</span>`;
+  if(cls==="s") return `<span class="chip s">serpent</span>`;
+  if(cls==="pool") return `<span class="chip p">liquidité / burn</span>`;
+  return `<span class="chip n">neutre</span>`;
+}
+
+function filteredRows(){
+  const q = ($("#srch")?.value||"").trim().toLowerCase();
+  return ALL_ROWS.filter(r => {
+    if(FILTER !== "all" && r.cls !== FILTER) return false;
+    if(q && !r.addr.includes(q)) return false;
+    return true;
+  });
+}
+function ageTxt(days){
+  if(days==null) return "";
+  if(days===0) return "tient depuis aujourd'hui";
+  if(days===1) return "tient depuis 1 jour";
+  return `tient depuis ${days} jours`;
+}
+function applyFilter(){
+  const rows = filteredRows();
+  const slice = rows.slice(0, SHOWN);
+  $("#holderList").innerHTML = slice.map((r,i)=>{
+    const pct = SUPPLY>0n ? Number(r.bal*100000n/SUPPLY)/1000 : 0;
+    const age = (r.cls==="b" && r.days!=null) ? `<span class="age">${ageTxt(r.days)}</span>` : "";
+    const flowTxt = (r.cls==="pool") ? "" :
+      `<div class="flow">reçu <span class="in">${fmtBig(r.in.toString(),DEC)}</span> · sorti <span class="out">${fmtBig(r.out.toString(),DEC)}</span>`
+      + (r.cls==="s" && r.sold>0 ? ` · <span class="out">${r.sold.toFixed(0)}% revendu</span>` : "")
+      + (r.cls!=="s" && r.days!=null ? ` · <span class="age">${ageTxt(r.days)}</span>` : "") + `</div>`;
+    return `<div class="holder">
+      <div class="rank">${i+1}</div>
+      <div class="hmain">
+        <div class="haddr"><a href="https://robinhoodchain.blockscout.com/address/${r.addr}" target="_blank" rel="noopener">${short(r.addr)}</a>${chip(r.cls)}${r.isContract?'<span class="chip n">contrat</span>':''}${age}</div>
+        ${flowTxt}
+      </div>
+      <div><div class="hpct">${pct.toFixed(2)}%</div><div class="hbal">${fmtBig(r.bal.toString(),DEC)} ${SYM}</div></div>
+    </div>`;
+  }).join("");
+  const remaining = rows.length - slice.length;
+  $("#moreWrap").style.display = remaining > 0 ? "block" : "none";
+  $("#moreBtn").textContent = `Voir plus (${remaining} restants)`;
+  $("#hCount").textContent = `${slice.length} affichés sur ${rows.length}` + (FILTER!=="all"?` · filtre : ${FILTER}`:"") + ` · ${ALL_ROWS.length} au total`;
+  $("#copybar").style.display = rows.length ? "flex" : "none";
+  $("#copyHint").textContent = `copie les ${rows.length} wallets ${FILTER==="all"?"":"« "+FILTER+" »"} filtrés`;
+  $("#secHolders").style.display = "block";
+}
+$("#moreBtn")?.addEventListener("click", () => { SHOWN += 50; applyFilter(); });
+
+function copyText(txt, label){
+  navigator.clipboard.writeText(txt).then(()=>{
+    $("#copyHint").textContent = label;
+    setTimeout(()=>applyFilter(), 1600);
+  }).catch(()=>{ $("#copyHint").textContent = "copie refusée par le navigateur"; });
+}
+$("#copyList")?.addEventListener("click", () => {
+  const rows = filteredRows();
+  const lines = rows.map(r => {
+    const pct = SUPPLY>0n ? Number(r.bal*1000000n/SUPPLY)/10000 : 0;
+    const age = r.days!=null ? ` — ${ageTxt(r.days)}` : "";
+    return `${r.addr}  ${pct.toFixed(3)}%${age}`;
+  });
+  copyText(lines.join("\n"), `${rows.length} wallets copiés (adresse + % + ancienneté)`);
+});
+$("#copyCsv")?.addEventListener("click", () => {
+  const rows = filteredRows();
+  const head = "address,category,percent_supply,days_holding,received,sent";
+  const lines = rows.map(r => {
+    const pct = SUPPLY>0n ? Number(r.bal*1000000n/SUPPLY)/10000 : 0;
+    const cat = r.cls==="b"?"believer":r.cls==="s"?"serpent":r.cls==="n"?"neutral":"pool";
+    return `${r.addr},${cat},${pct.toFixed(4)},${r.days??""},${fmtBig(r.in.toString(),DEC)},${fmtBig(r.out.toString(),DEC)}`;
+  });
+  copyText([head,...lines].join("\n"), `${rows.length} wallets copiés en CSV`);
+});
+document.addEventListener("click", e => {
+  const f = e.target.closest("[data-f]");
+  if(!f) return;
+  FILTER = f.dataset.f; SHOWN = 25;
+  document.querySelectorAll(".fbtn").forEach(b=>b.className="fbtn");
+  f.className = "fbtn on" + (FILTER==="s"?" s":FILTER==="n"?" n":FILTER==="pool"?" p":"");
+  applyFilter();
+});
+document.addEventListener("input", e => {
+  if(e.target.id === "srch"){ SHOWN = 25; applyFilter(); }
+});
+
+/* ── score de santé : combine mains stables, momentum, concentration ── */
+function renderHealth(sh, mom24, pct10, hasTs){
+  const circ = sh.supHeld || 1;
+  const believerWeight = sh.supB / circ * 100;   // % du circulant tenu par des believers
+  // momentum net : achats vs ventes en volume, 24h
+  const buy = Number(mom24.buy), sell = Number(mom24.sell);
+  const flowNet = (buy+sell) > 0 ? (buy - sell)/(buy + sell) : 0;   // -1..+1
+
+  // trois facteurs, chacun ok/mid/bad
+  const fHold = believerWeight >= 55 ? 2 : believerWeight >= 35 ? 1 : 0;
+  const fMom  = !hasTs ? 1 : flowNet > 0.15 ? 2 : flowNet > -0.15 ? 1 : 0;
+  const fConc = pct10 < 40 ? 2 : pct10 < 60 ? 1 : 0;
+  const score = fHold + fMom + fConc;   // 0..6
+
+  let grade, badge, cls, line;
+  if(score >= 5){ grade="Base solide"; badge="feu vert"; cls="green";
+    line="La majorité du circulant est tenue par des mains qui n'ont pas vendu, le flux récent penche à l'achat et la concentration reste gérable. C'est un contexte favorable pour pousser de l'attention."; }
+  else if(score >= 3){ grade="Base correcte, prudence"; badge="feu orange"; cls="orange";
+    line="La base tient sur certains points mais pas tous. Lancer une campagne peut marcher, mais un des facteurs ci-dessous est fragile — attends de le voir se renforcer, ou dimensionne petit."; }
+  else{ grade="Base fragile"; badge="feu rouge"; cls="red";
+    line="Trop de supply déjà entre des mains qui vendent, ou flux et concentration défavorables. Amener de l'attention maintenant risque de nourrir des sorties plutôt que d'installer une base."; }
+
+  const fac = (v,label,detail) => `<span><b class="${v===2?'ok':v===1?'mid':'bad'}">${v===2?'✓':v===1?'~':'✕'}</b> ${label} — <b>${detail}</b></span>`;
+  $("#health").className = "health " + cls;
+  $("#health").innerHTML =
+    `<div class="grade">${grade}<span class="badge">${badge}</span></div>`
+  + `<div class="line">${line}</div>`
+  + `<div class="factors">`
+  + fac(fHold, "mains stables", `${believerWeight.toFixed(0)}% du circulant`)
+  + fac(fMom, "flux 24h", hasTs ? (flowNet>0?`+${(flowNet*100).toFixed(0)}% net acheteur`:`${(flowNet*100).toFixed(0)}% net vendeur`) : "horodatage indispo")
+  + fac(fConc, "concentration top-10", `${pct10.toFixed(0)}% du supply`)
+  + `</div>`;
+  $("#health").style.display = "block";
+}
+
+/* ── momentum : achats vs ventes récents ── */
+function renderMomentum(m24, m48, dec, sym, hasTs){
+  if(!hasTs){
+    $("#momCap").textContent = "L'API ne renvoie pas d'horodatage sur ces transferts — momentum indisponible pour ce token.";
+    $("#momGrid").innerHTML = ""; $("#momNote").textContent = "";
+    $("#mom").style.display = "block"; return;
+  }
+  const card = (m, label) => {
+    const buy = Number(m.buy), sell = Number(m.sell), tot = buy+sell;
+    const pb = tot>0 ? buy/tot*100 : 50, ps = 100-pb;
+    const net = tot>0 ? (buy-sell)/tot*100 : 0;
+    const netTxt = net>0 ? `+${net.toFixed(0)}% acheteur` : net<0 ? `${net.toFixed(0)}% vendeur` : "équilibré";
+    return `<div class="mcard">
+      <div class="lbl">${label}</div>
+      <div class="val" style="color:${net>0?'var(--believer)':net<0?'var(--serpent)':'var(--paper)'}">${netTxt}</div>
+      <div class="mbar"><div class="buy" style="width:${pb}%"></div><div class="sell" style="width:${ps}%"></div></div>
+      <div class="mnote">${m.nBuy} achats · ${m.nSell} ventes vers le pool</div>
+    </div>`;
+  };
+  $("#momCap").textContent = "Volume échangé avec le pool de liquidité. Sortie du pool = achat, entrée au pool = vente.";
+  $("#momGrid").innerHTML = card(m24, "24 dernières heures") + card(m48, "48 dernières heures");
+  const net24 = (Number(m24.buy)+Number(m24.sell))>0 ? (Number(m24.buy)-Number(m24.sell))/(Number(m24.buy)+Number(m24.sell)) : 0;
+  $("#momNote").innerHTML = net24 > 0.15
+    ? "Accumulation nette sur 24h — c'est le type de fenêtre où pousser la comm porte le plus."
+    : net24 < -0.15
+    ? "Distribution nette sur 24h — attention, amener de l'attention maintenant nourrit surtout des sorties."
+    : "Flux équilibré — ni signal fort d'achat ni de vente.";
+  $("#mom").style.display = "block";
+}
+
+/* ── suivi dans le temps : snapshots locaux ── */
+const SNAP_KEY = t => `holderscan_hist_${t.toLowerCase()}`;
+function loadSnaps(t){ try{ return JSON.parse(localStorage.getItem(SNAP_KEY(t))||"[]"); }catch{ return []; } }
+function saveSnapshot(t, snap){
+  try{
+    const hist = loadSnaps(t);
+    // un snapshot par heure max, pour ne pas polluer
+    const last = hist[hist.length-1];
+    if(last && snap.at - last.at < 3600*1000){ hist[hist.length-1] = snap; }
+    else hist.push(snap);
+    localStorage.setItem(SNAP_KEY(t), JSON.stringify(hist.slice(-30)));
+  }catch{}
+}
+function renderTracking(t){
+  const hist = loadSnaps(t);
+  if(hist.length < 2){
+    $("#trackEmpty").textContent = hist.length===1
+      ? "Premier scan enregistré. Reviens dans quelques heures ou quelques jours : l'évolution des believers apparaîtra ici."
+      : "Le suivi a besoin du stockage local. Si rien ne s'enregistre, ouvre la page via http://localhost.";
+    $("#trackList").innerHTML = "";
+    $("#track").style.display = "block"; return;
+  }
+  const fmtD = ts => new Date(ts).toLocaleString([], {day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
+  const rows = hist.slice().reverse().map((s,idx,arr) => {
+    const prev = arr[idx+1];
+    let delta="", cls="flat";
+    if(prev){
+      const d = s.supB - prev.supB;
+      cls = d > 0.2 ? "up" : d < -0.2 ? "down" : "flat";
+      delta = (d>=0?"+":"") + d.toFixed(2) + "% believers";
+    } else delta = "point de départ";
+    return `<div class="trow">
+      <span class="d">${fmtD(s.at)}</span>
+      <span>believers <b style="color:var(--paper)">${s.supB.toFixed(2)}%</b> · serpents ${s.supS.toFixed(2)}% · ${s.holders} détenteurs</span>
+      <span class="delta ${cls}">${delta}</span>
+    </div>`;
+  }).join("");
+  $("#trackList").innerHTML = rows;
+  const first = hist[0], last = hist[hist.length-1];
+  const trend = last.supB - first.supB;
+  $("#trackEmpty").innerHTML = trend > 0.5
+    ? `<span style="color:var(--believer)">Depuis ton premier scan, la part believers a gagné ${trend.toFixed(2)}% du supply — la base se renforce.</span>`
+    : trend < -0.5
+    ? `<span style="color:var(--serpent)">Depuis ton premier scan, la part believers a perdu ${Math.abs(trend).toFixed(2)}% — la base s'effrite.</span>`
+    : "Base stable entre tes scans — ni renforcement ni érosion nette.";
+  $("#track").style.display = "block";
+}
+
+/* ── inspecteur d'un wallet unique ── */
+async function inspectWallet(){
+  const card = $("#icard");
+  const raw = $("#inspAddr").value.trim();
+  const m = raw.match(/0x[0-9a-fA-F]{40}/);
+  if(!m){ card.className="icard x"; card.style.display="block"; card.innerHTML=`<div class="iverdict">Adresse invalide</div><div class="iline">Colle une adresse 0x… complète.</div>`; return; }
+  if(!TOKEN_ADDR){ card.className="icard x"; card.style.display="block"; card.innerHTML=`<div class="iline">Lance d'abord un scan de token.</div>`; return; }
+  const a = m[0].toLowerCase();
+  card.className="icard x"; card.style.display="block";
+  card.innerHTML=`<div class="iline"><span class="spin"></span> lecture du wallet…</div>`;
+
+  try{
+    // solde actuel du token pour ce wallet (lecture directe)
+    let bal = 0n;
+    try{
+      const info = await api(`/addresses/${a}/token-balances`);
+      const hit = (Array.isArray(info)?info:[]).find(x => (x.token?.address||x.token?.address_hash||"").toLowerCase() === TOKEN_ADDR);
+      if(hit) bal = BigInt(hit.value||"0");
+    }catch(e){}
+
+    // flux : d'abord depuis le scan en mémoire, sinon requête ciblée
+    let f = FLOW[a];
+    if(!f){
+      f = {in:0n, out:0n};
+      try{
+        const tr = await fetchPaged(`/addresses/${a}/token-transfers?token=${TOKEN_ADDR}`, 10);
+        for(const t of tr){
+          const from=(t.from?.hash||"").toLowerCase(), to=(t.to?.hash||"").toLowerCase();
+          let v=0n; try{ v=BigInt(t.total?.value||t.value||"0"); }catch{}
+          if(from===a) f.out+=v; if(to===a) f.in+=v;
+        }
+      }catch(e){}
+    }
+
+    // vers/depuis le pool spécifiquement
+    let soldToPool=0n, boughtFromPool=0n;
+    try{
+      const tr = await fetchPaged(`/addresses/${a}/token-transfers?token=${TOKEN_ADDR}`, 10);
+      for(const t of tr){
+        const from=(t.from?.hash||"").toLowerCase(), to=(t.to?.hash||"").toLowerCase();
+        let v=0n; try{ v=BigInt(t.total?.value||t.value||"0"); }catch{}
+        if(from===a && POOLSET.has(to)) soldToPool+=v;
+        if(to===a && POOLSET.has(from)) boughtFromPool+=v;
+      }
+    }catch(e){}
+
+    // classification
+    let cls, verdict, badge, line;
+    if(POOLSET.has(a)){ cls="p"; verdict="Pool de liquidité"; badge="liquidité"; line="Cette adresse est un pool de liquidité, pas un détenteur. Ses mouvements ne sont ni des achats ni des ventes personnels."; }
+    else if(f.out === 0n && bal > 0n){ cls="b"; verdict="Believer"; badge="tient"; line="A reçu ou acheté, détient encore, et n'a jamais envoyé un seul token. Diamant sur ce token."; }
+    else if(soldToPool > 0n){
+      cls="s"; verdict="Serpent"; badge="a vendu";
+      const soldPct = f.in>0n ? Number(soldToPool*1000n/f.in)/10 : 0;
+      line=`A vendu des tokens au pool${soldPct>0?` — environ ${soldPct.toFixed(0)}% de ce qu'il avait reçu`:""}. ${bal>0n?"Il en détient encore une partie.":"Il a soldé sa position."}`;
+    }
+    else if(f.out > 0n){ cls="n"; verdict="Neutre"; badge="a transféré"; line="A envoyé des tokens vers un autre wallet sans passer par le pool — déplacement ou distribution, pas une vente franche."; }
+    else if(bal === 0n){ cls="x"; verdict="Aucune position"; badge="vide"; line="Ce wallet ne détient pas ce token et n'a pas d'historique dessus (ou hors de la fenêtre analysée)."; }
+    else { cls="b"; verdict="Believer"; badge="tient"; line="Détient le token sans sortie enregistrée."; }
+
+    const pct = SUPPLY>0n && bal>0n ? Number(bal*1000000n/SUPPLY)/10000 : 0;
+    card.className="icard "+cls;
+    card.innerHTML =
+      `<div class="iverdict">${verdict}<span class="badge">${badge}</span></div>`
+    + `<div class="iline">${line}</div>`
+    + `<div class="igrid">`
+    + `<div class="icell"><div class="k">détient</div><div class="v">${fmtBig(bal.toString(),DEC)} ${SYM}</div></div>`
+    + `<div class="icell"><div class="k">part du supply</div><div class="v">${pct.toFixed(3)}%</div></div>`
+    + `<div class="icell"><div class="k">total reçu</div><div class="v">${fmtBig(f.in.toString(),DEC)}</div></div>`
+    + `<div class="icell"><div class="k">total sorti</div><div class="v" style="color:${f.out>0n?'var(--serpent)':'var(--dim)'}">${fmtBig(f.out.toString(),DEC)}</div></div>`
+    + `<div class="icell"><div class="k">vendu au pool</div><div class="v" style="color:${soldToPool>0n?'var(--serpent)':'var(--dim)'}">${fmtBig(soldToPool.toString(),DEC)}</div></div>`
+    + `<div class="icell"><div class="k">acheté au pool</div><div class="v" style="color:${boughtFromPool>0n?'var(--believer)':'var(--dim)'}">${fmtBig(boughtFromPool.toString(),DEC)}</div></div>`
+    + `</div>`
+    + `<div class="ilink"><a href="https://robinhoodchain.blockscout.com/address/${a}?tab=token_transfers" target="_blank" rel="noopener">voir tous ses transferts sur l'explorer ↗</a></div>`;
+  }catch(e){
+    card.className="icard x";
+    card.innerHTML=`<div class="iverdict">Échec</div><div class="iline">${String(e.message||e).slice(0,140)}</div>`;
+  }
+}
+$("#inspBtn").addEventListener("click", inspectWallet);
+$("#inspAddr").addEventListener("keydown", e => { if(e.key==="Enter") inspectWallet(); });
+
+// lancement auto sur l'adresse pré-remplie
+scan();
+</script>

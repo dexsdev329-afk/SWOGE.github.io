@@ -296,7 +296,7 @@ footer{margin-top:44px;font-family:'Space Mono',monospace;font-size:10px;color:v
       <button class="fbtn" data-f="b">believers</button>
       <button class="fbtn" data-f="s">serpents</button>
       <button class="fbtn" data-f="n">neutral</button>
-      <button class="fbtn" data-f="pool">liquidity</button>
+      <button class="fbtn" data-f="infra">contracts</button>
       <input class="srch" id="srch" placeholder="search 0x…" spellcheck="false">
     </div>
     <div class="copybar" id="copybar">
@@ -435,54 +435,56 @@ async function scan(){
       if(to)   partCount[to]   = (partCount[to]||0) + 1;
     }
     const totalTransfers = transfers.length || 1;
+    // le pool principal = le(s) contrat(s) qui participe(nt) au plus de transferts
     const poolSet = new Set();
     for(const h of holders){
       const a = (h.address?.hash||"").toLowerCase();
-      if(DEAD.has(a)) continue;                    // burn traité à part
+      if(DEAD.has(a)) continue;
       const share = (partCount[a]||0) / totalTransfers;
       const f = flow[a];
-      // pool = contrat, présent dans ≥12% des transferts, avec flux des DEUX côtés
-      // (un pool fait circuler : il reçoit ET renvoie en continu)
       const balanced = f && f.in > 0n && f.out > 0n
         && Number(f.in < f.out ? f.in : f.out) / Number(f.in > f.out ? f.in : f.out) >= 0.15;
-      if(h.address?.is_contract && share >= 0.12 && balanced){
-        poolSet.add(a);
-      }
+      if(h.address?.is_contract && share >= 0.12 && balanced) poolSet.add(a);
     }
-    // filet : si aucun pool trouvé mais qu'un contrat domine nettement les transferts, le prendre
     if(poolSet.size === 0){
       let top=null;
       for(const h of holders){
         const a=(h.address?.hash||"").toLowerCase();
         if(DEAD.has(a) || !h.address?.is_contract) continue;
         const share=(partCount[a]||0)/totalTransfers;
-        if(share >= 0.20 && (!top || share > top.share)) top={a,share};
+        if(share >= 0.15 && (!top || share > top.share)) top={a,share};
       }
       if(top) poolSet.add(top.a);
     }
 
-    /* 6. classer chaque détenteur */
-    let believers=0, serpents=0, neutrals=0, pools=0, burns=0;
-    let balB=0n, balS=0n, balN=0n, balBurn=0n, balPoolReal=0n;
+    /* 6. classer chaque détenteur.
+       Règle clé : un holder retail est une adresse NORMALE (EOA), pas un contrat.
+       Tout contrat = infrastructure (pool, routeur, manager, locker, treasury, CEX)
+       → jamais compté comme believer/serpent. Ça élimine les faux positifs. */
+    let believers=0, serpents=0, neutrals=0, pools=0, burns=0, infra=0;
+    let balB=0n, balS=0n, balN=0n, balBurn=0n, balPoolReal=0n, balInfra=0n;
     const rows = holders.map(h => {
       const a = (h.address?.hash||"").toLowerCase();
       const bal = BigInt(h.value||"0");
       const f = flow[a] || {in:0n,out:0n};
+      const isContract = !!h.address?.is_contract;
+      const name = h.address?.name || h.address?.ens_domain_name || null;
       let cls;
-      if(DEAD.has(a)) cls = "burn";                // adresse de burn explicite
-      else if(poolSet.has(a)) cls = "pool";        // pool DEX identifié
-      else if(f.out === 0n) cls = "b";             // jamais rien envoyé → believer
-      else cls = "s";                              // a envoyé → vente présumée
+      if(DEAD.has(a)) cls = "burn";                 // burn explicite
+      else if(poolSet.has(a)) cls = "pool";         // pool DEX principal
+      else if(isContract) cls = "infra";            // tout autre contrat = infrastructure
+      else if(f.out === 0n) cls = "b";              // EOA jamais rien envoyé → believer
+      else cls = "s";                               // EOA qui a envoyé → vente présumée
       if(cls==="b"){ believers++; balB+=bal; }
       else if(cls==="s"){ serpents++; balS+=bal; }
       else if(cls==="pool"){ pools++; balPoolReal+=bal; }
       else if(cls==="burn"){ burns++; balBurn+=bal; }
+      else if(cls==="infra"){ infra++; balInfra+=bal; }
       else { neutrals++; balN+=bal; }
-      // intensité serpent = part vendue / reçue
       let sold = 0;
       if(f.in > 0n) sold = Number(f.out * 1000n / (f.in>0n?f.in:1n)) / 10;
       const days = f.firstIn ? Math.floor((Date.now()-f.firstIn)/86400000) : null;
-      return {addr:a, bal, cls, isContract:h.address?.is_contract, in:f.in, out:f.out, sold, days, firstIn:f.firstIn, dec, sym};
+      return {addr:a, bal, cls, isContract, name, in:f.in, out:f.out, sold, days, firstIn:f.firstIn, dec, sym};
     });
 
     /* 6b. momentum : flux vers/depuis le pool sur 24h et 48h (via timestamps) */
@@ -510,7 +512,7 @@ async function scan(){
     const pctS = realHolders ? Math.round(serpents/realHolders*100) : 0;
     const pctN = Math.max(0, 100 - pctB - pctS);
     // parts en supply (exactes, BigInt → basis points)
-    const balP = balPoolReal + balBurn;   // pool DEX + burn = supply hors mains actives
+    const balP = balPoolReal + balBurn + balInfra;   // pool + burn + contrats infra = hors mains retail actives
     const bp = (part) => supply>0n ? Number(part * 1000000n / supply) / 10000 : 0;  // % à 4 décimales
     const supB = bp(balB), supS = bp(balS), supN = bp(balN), supPool = bp(balP);
     const supHeld = supB + supS + supN;   // hors pool/burn
@@ -521,7 +523,7 @@ async function scan(){
     renderStats(realHolders, pctB, serpents, holders.length, transfers.length, supplyShares);
     renderMomentum(mom24, mom48, dec, sym, hasTs);
     // concentration top10 pour le score
-    const top10r = rows.filter(r=>r.cls!=="pool" && r.cls!=="burn").slice(0,10);
+    const top10r = rows.filter(r=>r.cls!=="pool" && r.cls!=="burn" && r.cls!=="infra").slice(0,10);
     let sum10=0n; for(const r of top10r) sum10+=r.bal;
     const pct10 = supply>0n ? Number(sum10*10000n/supply)/100 : 0;
     renderHealth(supplyShares, mom24, pct10, hasTs);
@@ -591,7 +593,7 @@ function renderStats(realHolders, pctB, serpents, totalHolders, totalTransfers, 
 
 function renderConcentration(rows, supply, dec, sym, poolSet){
   // top holders excluding pool/burn, share of supply
-  const real = rows.filter(r => r.cls !== "pool" && r.cls !== "burn");
+  const real = rows.filter(r => r.cls !== "pool" && r.cls !== "burn" && r.cls !== "infra");
   const top10 = real.slice(0,10);
   let sum10 = 0n; for(const r of top10) sum10 += r.bal;
   const pct10 = supply>0n ? Number(sum10*10000n/supply)/100 : 0;
@@ -624,13 +626,15 @@ function chip(cls){
   if(cls==="s") return `<span class="chip s">serpent</span>`;
   if(cls==="pool") return `<span class="chip p">liquidity</span>`;
   if(cls==="burn") return `<span class="chip p">burn</span>`;
+  if(cls==="infra") return `<span class="chip p">contract</span>`;
   return `<span class="chip n">neutral</span>`;
 }
 
 function filteredRows(){
   const q = ($("#srch")?.value||"").trim().toLowerCase();
   return ALL_ROWS.filter(r => {
-    if(FILTER !== "all" && r.cls !== FILTER) return false;
+    if(FILTER === "infra"){ if(r.cls!=="infra" && r.cls!=="pool" && r.cls!=="burn") return false; }
+    else if(FILTER !== "all" && r.cls !== FILTER) return false;
     if(q && !r.addr.includes(q)) return false;
     return true;
   });
@@ -647,13 +651,13 @@ function applyFilter(){
   $("#holderList").innerHTML = slice.map((r,i)=>{
     const pct = SUPPLY>0n ? Number(r.bal*100000n/SUPPLY)/1000 : 0;
     const age = (r.cls==="b" && r.days!=null) ? `<span class="age">${ageTxt(r.days)}</span>` : "";
-    const flowTxt = (r.cls==="pool"||r.cls==="burn") ? "" :
+    const flowTxt = (r.cls==="pool"||r.cls==="burn"||r.cls==="infra") ? "" :
       `<div class="flow">in <span class="in">${fmtBig(r.in.toString(),DEC)}</span> · out <span class="out">${fmtBig(r.out.toString(),DEC)}</span>`
       + (r.days!=null ? ` · <span class="age">${ageTxt(r.days)}</span>` : "") + `</div>`;
     return `<div class="holder">
       <div class="rank">${i+1}</div>
       <div class="hmain">
-        <div class="haddr"><a href="https://robinhoodchain.blockscout.com/address/${r.addr}" target="_blank" rel="noopener">${short(r.addr)}</a>${chip(r.cls)}${r.isContract?'<span class="chip n">contract</span>':''}${age}</div>
+        <div class="haddr"><a href="https://robinhoodchain.blockscout.com/address/${r.addr}" target="_blank" rel="noopener">${short(r.addr)}</a>${chip(r.cls)}${r.name?`<span class="chip n">${r.name.slice(0,20)}</span>`:(r.isContract&&r.cls!=="pool"&&r.cls!=="infra"?'<span class="chip n">contract</span>':'')}${age}</div>
         ${flowTxt}
       </div>
       <div><div class="hpct">${pct.toFixed(2)}%</div><div class="hbal">${fmtBig(r.bal.toString(),DEC)} ${SYM}</div></div>
@@ -831,6 +835,14 @@ async function inspectWallet(){
   card.innerHTML=`<div class="iline"><span class="spin"></span> reading wallet…</div>`;
 
   try{
+    // est-ce un contrat ? (infrastructure, pas un holder retail)
+    let isContract=false, cName=null;
+    try{
+      const info = await api(`/addresses/${a}`);
+      isContract = !!info.is_contract;
+      cName = info.name || info.ens_domain_name || null;
+    }catch(e){}
+
     // current token balance (direct read)
     let bal = 0n;
     try{
@@ -862,10 +874,11 @@ async function inspectWallet(){
     const net = totalIn - totalOut;          // position nette en tokens
     const held = bal;
 
-    // classification (mêmes règles que le scan)
+    // classification (mêmes règles que le scan : un contrat = infrastructure, jamais believer/serpent)
     let cls, verdict, badge, line;
     if(DEAD.has(a)){ cls="p"; verdict="Burn address"; badge="burn"; line="A burn address. Tokens sent here are permanently removed from supply."; }
-    else if(POOLSET.has(a)){ cls="p"; verdict="Liquidity pool"; badge="liquidity"; line="A liquidity pool, not a holder. Its moves are neither personal buys nor sells."; }
+    else if(POOLSET.has(a)){ cls="p"; verdict="Liquidity pool"; badge="liquidity"; line="The liquidity pool, not a holder. Its moves are the market's buys and sells, not a personal position."; }
+    else if(isContract){ cls="p"; verdict="Contract"; badge=cName?cName.slice(0,22):"infrastructure"; line=`This is a contract${cName?` (${cName})`:""}, not a retail holder — likely a router, pool manager, locker, treasury or exchange. It's not a believer or a serpent.`; }
     else if(nSell>0){
       cls="s"; verdict="Serpent"; badge=`${nSell} sell${nSell>1?"s":""}`;
       line = held>0n

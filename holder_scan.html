@@ -648,13 +648,12 @@ function applyFilter(){
     const pct = SUPPLY>0n ? Number(r.bal*100000n/SUPPLY)/1000 : 0;
     const age = (r.cls==="b" && r.days!=null) ? `<span class="age">${ageTxt(r.days)}</span>` : "";
     const flowTxt = (r.cls==="pool"||r.cls==="burn") ? "" :
-      `<div class="flow">received <span class="in">${fmtBig(r.in.toString(),DEC)}</span> · sent <span class="out">${fmtBig(r.out.toString(),DEC)}</span>`
-      + (r.cls==="s" && r.sold>0 ? ` · <span class="out">${r.sold.toFixed(0)}% sold</span>` : "")
-      + (r.cls!=="s" && r.days!=null ? ` · <span class="age">${ageTxt(r.days)}</span>` : "") + `</div>`;
+      `<div class="flow">in <span class="in">${fmtBig(r.in.toString(),DEC)}</span> · out <span class="out">${fmtBig(r.out.toString(),DEC)}</span>`
+      + (r.days!=null ? ` · <span class="age">${ageTxt(r.days)}</span>` : "") + `</div>`;
     return `<div class="holder">
       <div class="rank">${i+1}</div>
       <div class="hmain">
-        <div class="haddr"><a href="https://robinhoodchain.blockscout.com/address/${r.addr}" target="_blank" rel="noopener">${short(r.addr)}</a>${chip(r.cls)}${r.isContract?'<span class="chip n">contrat</span>':''}${age}</div>
+        <div class="haddr"><a href="https://robinhoodchain.blockscout.com/address/${r.addr}" target="_blank" rel="noopener">${short(r.addr)}</a>${chip(r.cls)}${r.isContract?'<span class="chip n">contract</span>':''}${age}</div>
         ${flowTxt}
       </div>
       <div><div class="hpct">${pct.toFixed(2)}%</div><div class="hbal">${fmtBig(r.bal.toString(),DEC)} ${SYM}</div></div>
@@ -861,7 +860,6 @@ async function inspectWallet(){
       }
     }
     const net = totalIn - totalOut;          // position nette en tokens
-    const netPool = boughtPool - soldPool;   // profit/perte en tokens via le pool
     const held = bal;
 
     // classification (mêmes règles que le scan)
@@ -870,23 +868,18 @@ async function inspectWallet(){
     else if(POOLSET.has(a)){ cls="p"; verdict="Liquidity pool"; badge="liquidity"; line="A liquidity pool, not a holder. Its moves are neither personal buys nor sells."; }
     else if(nSell>0){
       cls="s"; verdict="Serpent"; badge=`${nSell} sell${nSell>1?"s":""}`;
-      const soldPct = boughtPool>0n ? Number(soldPool*1000n/boughtPool)/10 : (totalIn>0n?Number(soldPool*1000n/totalIn)/10:0);
       line = held>0n
-        ? `Bought ${nBuy} time${nBuy!==1?"s":""}, sold ${nSell} time${nSell>1?"s":""} — about ${soldPct.toFixed(0)}% of what it bought. Still holds a bag.`
-        : `Bought ${nBuy} time${nBuy!==1?"s":""}, sold ${nSell} time${nSell>1?"s":""} and fully exited.`;
+        ? `Bought ${nBuy} time${nBuy!==1?"s":""}, sold ${nSell} time${nSell>1?"s":""}. Still holds a bag.`
+        : `Bought ${nBuy} time${nBuy!==1?"s":""}, sold ${nSell} time${nSell>1?"s":""}, and fully exited.`;
     }
-    else if(totalOut>0n){ cls="n"; verdict="Neutral"; badge="transferred"; line=`Moved tokens ${nOutOther} time${nOutOther!==1?"s":""} without touching the pool — transfers or distribution, not sales.`; }
-    else if(held>0n || totalIn>0n){ cls="b"; verdict="Believer"; badge=nBuy>0?`${nBuy} buy${nBuy>1?"s":""}, 0 sells`:"holding"; line=`Bought/received ${nBuy||"—"} time${nBuy!==1?"s":""}, never sold a single token. Diamond paws.`; }
+    else if(totalOut>0n){ cls="n"; verdict="Neutral"; badge="transferred"; line=`Moved tokens ${nOutOther} time${nOutOther!==1?"s":""} without touching the pool — transfers, not sales.`; }
+    else if(held>0n || totalIn>0n){ cls="b"; verdict="Believer"; badge="never sold"; line=`Bought or received ${nBuy||nInOther} time${(nBuy||nInOther)!==1?"s":""}, never sold. Diamond paws.`; }
     else { cls="x"; verdict="No position"; badge="empty"; line="No balance and no history on this token (or outside the analyzed window)."; }
 
     const pctSupply = SUPPLY>0n && held>0n ? Number(held*1000000n/SUPPLY)/10000 : 0;
     const daysHeld = firstTs ? Math.floor((Date.now()-firstTs)/86400000) : null;
 
-    // libellé net (profit/perte en tokens)
-    const netPos = net >= 0n;
-    const netLabel = netPos ? "net accumulated" : "net distributed";
-    const netColor = netPos ? "var(--believer)" : "var(--serpent)";
-
+    // seulement les faits clairs : ce qu'il détient, combien d'achats/ventes, position nette
     card.className="icard "+cls;
     card.innerHTML =
       `<div class="iverdict">${verdict}<span class="badge">${badge}</span></div>`
@@ -894,14 +887,12 @@ async function inspectWallet(){
     + `<div class="igrid">`
     + `<div class="icell"><div class="k">holds now</div><div class="v">${fmtBig(held.toString(),DEC)} ${SYM}</div></div>`
     + `<div class="icell"><div class="k">share of supply</div><div class="v">${pctSupply.toFixed(3)}%</div></div>`
-    + `<div class="icell"><div class="k">buys (from pool)</div><div class="v" style="color:var(--believer)">${nBuy} · ${fmtBig(boughtPool.toString(),DEC)}</div></div>`
-    + `<div class="icell"><div class="k">sells (to pool)</div><div class="v" style="color:var(--serpent)">${nSell} · ${fmtBig(soldPool.toString(),DEC)}</div></div>`
-    + `<div class="icell"><div class="k">net via pool</div><div class="v" style="color:${netPool>=0n?'var(--believer)':'var(--serpent)'}">${netPool>=0n?"+":"−"}${fmtBig((netPool<0n?-netPool:netPool).toString(),DEC)}</div></div>`
-    + `<div class="icell"><div class="k">${netLabel}</div><div class="v" style="color:${netColor}">${netPos?"+":"−"}${fmtBig((netPos?net:-net).toString(),DEC)}</div></div>`
-    + (nInOther||nOutOther ? `<div class="icell"><div class="k">non-pool moves</div><div class="v">${nInOther} in · ${nOutOther} out</div></div>` : "")
-    + (daysHeld!=null ? `<div class="icell"><div class="k">first seen</div><div class="v">${daysHeld}d ago</div></div>` : "")
+    + `<div class="icell"><div class="k">bought</div><div class="v" style="color:var(--believer)">${nBuy}× · ${fmtBig(boughtPool.toString(),DEC)}</div></div>`
+    + `<div class="icell"><div class="k">sold</div><div class="v" style="color:var(--serpent)">${nSell}× · ${fmtBig(soldPool.toString(),DEC)}</div></div>`
+    + (daysHeld!=null ? `<div class="icell"><div class="k">holding for</div><div class="v">${daysHeld} day${daysHeld!==1?"s":""}</div></div>` : "")
+    + (nInOther||nOutOther ? `<div class="icell"><div class="k">non-pool transfers</div><div class="v">${nInOther+nOutOther}</div></div>` : "")
     + `</div>`
-    + `<div class="note" style="margin-top:12px">Amounts are token quantities from on-chain transfers. Profit in ETH/USD isn't shown — the transfer log records how many tokens moved, not the price paid at each swap.</div>`
+    + `<div class="note" style="margin-top:12px">"Bought" and "sold" count swaps with the pool. Amounts are token quantities — profit in ETH/USD isn't shown, since the transfer log records how many tokens moved, not the price at each swap.</div>`
     + `<div class="ilink"><a href="https://robinhoodchain.blockscout.com/address/${a}?tab=token_transfers" target="_blank" rel="noopener">view all ${tr.length} transfers on the explorer ↗</a></div>`;
   }catch(e){
     card.className="icard x";

@@ -148,13 +148,7 @@ footer{margin-top:34px;border-top:1px solid var(--line);padding-top:14px;font-fa
           <div class="field">
             <label for="net">Chain</label>
             <select id="net">
-              <option value="sepolia">Ethereum Sepolia</option>
-              <option value="holesky">Ethereum Holesky</option>
-              <option value="baseSepolia">Base Sepolia</option>
-              <option value="arbSepolia">Arbitrum Sepolia</option>
-              <option value="opSepolia">Optimism Sepolia</option>
-              <option value="rhTestnet">Robinhood Chain Testnet — 46630</option>
-              <option value="rhMainnet">Robinhood Chain MAINNET — 4663</option>
+              <option value="rhMainnet" selected>Robinhood Chain — 4663</option>
             </select>
           </div>
           <div class="links" id="faucets"></div>
@@ -177,7 +171,7 @@ footer{margin-top:34px;border-top:1px solid var(--line);padding-top:14px;font-fa
         <div class="pad">
           <div class="field">
             <label for="imp">Private key, mnemonic or address</label>
-            <input id="imp" placeholder="0x… / douze mots / 0xadresse">
+            <input id="imp" placeholder="0x… / twelve words / 0xaddress">
           </div>
           <button class="full" id="add">Add to bench</button>
         </div>
@@ -317,12 +311,6 @@ footer{margin-top:34px;border-top:1px solid var(--line);padding-top:14px;font-fa
 <script>
 /* ───────────── réseaux ───────────── */
 const NETS = {
-  sepolia:{name:"Sepolia",sym:"SepoliaETH",rpc:["https://ethereum-sepolia-rpc.publicnode.com","https://1rpc.io/sepolia","https://rpc.sepolia.org"],scan:"https://sepolia.etherscan.io/address/",faucets:[["Google Cloud faucet","https://cloud.google.com/application/web3/faucet/ethereum/sepolia"],["Alchemy","https://www.alchemy.com/faucets/ethereum-sepolia"]]},
-  holesky:{name:"Holesky",sym:"HoleskyETH",rpc:["https://ethereum-holesky-rpc.publicnode.com","https://1rpc.io/holesky"],scan:"https://holesky.etherscan.io/address/",faucets:[["Google Cloud faucet","https://cloud.google.com/application/web3/faucet/ethereum/holesky"]]},
-  baseSepolia:{name:"Base Sepolia",sym:"ETH",rpc:["https://sepolia.base.org","https://base-sepolia-rpc.publicnode.com"],scan:"https://sepolia.basescan.org/address/",faucets:[["Alchemy","https://www.alchemy.com/faucets/base-sepolia"]]},
-  arbSepolia:{name:"Arbitrum Sepolia",sym:"ETH",rpc:["https://sepolia-rollup.arbitrum.io/rpc","https://arbitrum-sepolia-rpc.publicnode.com"],scan:"https://sepolia.arbiscan.io/address/",faucets:[["Alchemy","https://www.alchemy.com/faucets/arbitrum-sepolia"]]},
-  opSepolia:{name:"Optimism Sepolia",sym:"ETH",rpc:["https://sepolia.optimism.io","https://optimism-sepolia-rpc.publicnode.com"],scan:"https://sepolia-optimism.etherscan.io/address/",faucets:[["Alchemy","https://www.alchemy.com/faucets/optimism-sepolia"]]},
-  rhTestnet:{name:"Robinhood Chain Testnet",sym:"ETH",chainId:46630,rpc:["https://rpc.testnet.chain.robinhood.com"],scan:"https://explorer.testnet.chain.robinhood.com/address/",faucets:[["Docs Robinhood Chain","https://docs.robinhood.com/chain/connecting"]]},
   rhMainnet:{name:"Robinhood Chain",sym:"ETH",chainId:4663,live:true,rpc:["https://rpc.mainnet.chain.robinhood.com"],scan:"https://robinhoodchain.blockscout.com/address/",
     faucets:[["Blockscout","https://robinhoodchain.blockscout.com"],["Uniswap deployments","https://developers.uniswap.org/docs/protocols/v3/deployments/v3-robinhood-chain-deployments"]],
     // published by Uniswap for chain 4663 — re-verify on the explorer before any large amount
@@ -332,12 +320,12 @@ const NETS = {
          v2router:"0x89e5db8b5aa49aa85ac63f691524311aeb649eba",
          v2factory:"0x8bceaa40b9acdfaedf85adf4ff01f5ad6517937f"},
     quotes:["0x5fc5360d0400a0fd4f2af552add042d716f1d168"],
-    defaultToken:"0x2Dc0fb72d9284228046CC95910eEAaBeBfe48456"}
+    defaultToken:"0x8a166Fb41Cd659a0a43396272FF73973Ce29F817"}
 };
 const FEE_TIERS = [100, 500, 3000, 10000];
 const ADDRESS_THIS = "0x0000000000000000000000000000000000000002";
 
-let net = "sepolia";
+let net = "rhMainnet";
 let wallets = [];   // {address, pk, mnemonic, watch, revealed, balRaw, nonce, tokRaw, pct, busy, status}
 let dex = null;     // {router, quoter, factory, weth}
 let token = null;   // {addr, symbol, decimals, pool, fee}
@@ -463,8 +451,8 @@ function render(){
             <span>tx <b>${w.nonce ?? "—"}</b></span>
             ${tk}
             <a href="${n.scan}${w.address}" target="_blank" rel="noopener">explorer ↗</a>
-            <button class="mini ghost" data-copy="${w.address}">copier l'adresse</button>
-            <button class="mini ghost" data-del="${i}" style="color:var(--danger);border-color:rgba(226,99,94,.4)">supprimer</button>
+            <button class="mini ghost" data-copy="${w.address}">copy address</button>
+            <button class="mini ghost" data-del="${i}" style="color:var(--danger);border-color:rgba(226,99,94,.4)">remove</button>
           </div>
         </div>
         <div class="bal">
@@ -479,7 +467,7 @@ function render(){
              <span class="tag">private key</span>
              <span class="keyval ${w.revealed?"":"hidden"}">${w.pk}</span>
              <button class="mini" data-toggle="${i}">${w.revealed?"hide":"show"}</button>
-             <button class="mini" data-copy="${w.pk}">copier</button>
+             <button class="mini" data-copy="${w.pk}">copy</button>
            </div>`}
       ${tradeBar(w,i)}
     </div>`;
@@ -501,7 +489,7 @@ function sweepRow(w,i){
   return `<div class="keyline" style="background:rgba(111,209,196,.05);flex-wrap:wrap">
       <span class="tag" style="color:var(--signal);border-color:rgba(111,209,196,.4)">consolidate</span>
       <select class="mini" data-destsel="${i}" style="flex:1;min-width:150px;padding:4px 8px">
-        <option value="" ${chosen==null||chosen===""?"selected":""}>choisir destination…</option>
+        <option value="" ${chosen==null||chosen===""?"selected":""}>choose destination…</option>
         ${opts}
         <option value="ext" ${extSel}>external address…</option>
       </select>
@@ -671,7 +659,7 @@ $("#loadtok").onclick = async () => {
   if(!input){ token = null; wallets.forEach(w=>w.tokRaw=null); info.textContent=""; render(); return; }
   if(!dex) return toast("Verify the Uniswap contracts first");
   const m = input.match(/0x[0-9a-fA-F]{40}/);
-  if(!m) return toast("Aucune adresse 0x… dans ce texte");
+  if(!m) return toast("No 0x… address in this text");
   info.className = "note"; info.innerHTML = '<span class="spin"></span>';
   const isWeth = a => a.toLowerCase() === dex.weth.toLowerCase();
   const show = t => {

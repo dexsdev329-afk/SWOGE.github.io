@@ -117,6 +117,11 @@ button.sell:hover{background:rgba(226,99,94,.22)}
 @keyframes sp{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 footer{margin-top:34px;border-top:1px solid var(--line);padding-top:14px;font-family:'Space Mono',monospace;font-size:10.5px;color:var(--dim);line-height:1.8}
+.quicktok{display:flex;gap:10px;margin-bottom:8px;flex-wrap:wrap}
+.quicktok input{flex:1;min-width:0;background:var(--panel);color:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;font-family:'Space Mono',monospace;font-size:13px}
+.quicktok input:focus{outline:2px solid var(--gold);outline-offset:1px}
+.quicktok button{white-space:nowrap}
+@media(max-width:560px){.quicktok{flex-direction:column} .quicktok button{width:100%}}
 </style>
 
 <div class="wrap">
@@ -194,7 +199,7 @@ footer{margin-top:34px;border-top:1px solid var(--line);padding-top:14px;font-fa
       </div>
 
       <div class="panel">
-        <h2>Contrats Uniswap</h2>
+        <h2>Uniswap contracts</h2>
         <div class="pad">
           <div class="field">
             <label for="router">v3 · SwapRouter02</label>
@@ -225,7 +230,7 @@ footer{margin-top:34px;border-top:1px solid var(--line);padding-top:14px;font-fa
         <h2>Token</h2>
         <div class="pad">
           <div class="field">
-            <label for="tok">Token, pool, ou URL DexScreener</label>
+            <label for="tok">Token, pool, or DexScreener URL</label>
             <input id="tok" placeholder="0x… ou dexscreener.com/…">
           </div>
           <button class="full" id="loadtok">Load token</button>
@@ -280,6 +285,12 @@ footer{margin-top:34px;border-top:1px solid var(--line);padding-top:14px;font-fa
     </div>
 
     <div>
+      <div class="quicktok">
+        <input id="tokQuick" placeholder="Token, pool, or DexScreener URL — 0x… / dexscreener.com/…" spellcheck="false">
+        <button class="primary" id="loadTokQuick">Load token</button>
+      </div>
+      <div class="note" id="tokQuickInfo" style="margin:0 0 14px"></div>
+
       <div class="totals">
         <div class="tot"><div class="v" id="tCount">0</div><div class="k">wallets to bench</div></div>
         <div class="tot"><div class="v" id="tBal">0.000000</div><div class="k" id="tSym">total balance</div></div>
@@ -1161,6 +1172,7 @@ function applyNet(){
   $("#v2router").value  = n.dex?.v2router  || "";
   $("#v2factory").value = n.dex?.v2factory || "";
   $("#tok").value     = n.defaultToken || "";
+  if($("#tokQuick")) $("#tokQuick").value = n.defaultToken || "";
 }
 $("#net").onchange = e => {
   net = e.target.value;
@@ -1257,5 +1269,39 @@ if(prefs){
   if(prefs.slip)    $("#slip").value    = prefs.slip;
   if(prefs.reserve) $("#reserve").value = prefs.reserve;
 }
+// quick-bar token en haut = miroir du panneau token complet
+$("#loadTokQuick").onclick = async () => {
+  const v = $("#tokQuick").value.trim();
+  if(v) $("#tok").value = v;
+  $("#tokQuickInfo").innerHTML = '<span class="spin"></span> loading…';
+  try{
+    await $("#loadtok").onclick();
+    // recopier le résultat du panneau vers la quick-bar
+    $("#tokQuickInfo").className = $("#tokinfo").className;
+    $("#tokQuickInfo").innerHTML = $("#tokinfo").innerHTML;
+  }catch(e){
+    $("#tokQuickInfo").className = "note";
+    $("#tokQuickInfo").textContent = "Failed to load token";
+  }
+};
+$("#tokQuick").addEventListener("keydown", e => { if(e.key==="Enter") $("#loadTokQuick").click(); });
+
 render(); vaultInfo();
+
+// auto-chargement : les contrats Uniswap de Robinhood Chain sont connus,
+// on les vérifie puis on charge le token par défaut, sans clic manuel
+window.addEventListener("load", async () => {
+  if($("#router").value.trim() && $("#quoter").value.trim()){
+    try{ await $("#loaddex").onclick(); }catch(e){}
+    // loaddex enchaîne déjà loadtok si un token est présent
+    if($("#tok").value.trim() && !token){
+      try{ await $("#loadtok").onclick(); }catch(e){}
+    }
+    // refléter l'état du token dans la quick-bar
+    if($("#tokinfo").innerHTML){
+      $("#tokQuickInfo").className = $("#tokinfo").className;
+      $("#tokQuickInfo").innerHTML = $("#tokinfo").innerHTML;
+    }
+  }
+});
 </script>

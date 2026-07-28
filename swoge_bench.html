@@ -97,7 +97,12 @@ button:disabled{opacity:.45;cursor:not-allowed}
 .slide input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:var(--signal);border:2px solid var(--panel);cursor:pointer}
 .pct{font-family:'Space Mono',monospace;font-size:12px;min-width:38px;text-align:right;color:var(--signal)}
 .presets{display:flex;gap:4px} .presets button{padding:3px 7px;font-size:10px}
-.acts{display:flex;gap:6px}
+.acts{display:flex;gap:6px;align-items:center}
+.autochk{display:inline-flex;align-items:center;gap:5px;font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim);border:1px solid var(--line);border-radius:var(--r);padding:6px 9px;cursor:pointer;user-select:none;white-space:nowrap;transition:color .12s,border-color .12s}
+.autochk:hover{border-color:var(--gold);color:var(--paper)}
+.autochk.on{border-color:var(--gold);color:var(--gold)}
+.autochk input{width:auto;margin:0;accent-color:var(--gold);cursor:pointer}
+.autochk input:disabled{cursor:not-allowed}
 button.buy{background:rgba(111,209,196,.14);border-color:rgba(111,209,196,.5);color:var(--signal)}
 button.buy:hover{background:rgba(111,209,196,.24)}
 button.sell{background:rgba(226,99,94,.12);border-color:rgba(226,99,94,.5);color:var(--danger)}
@@ -123,6 +128,15 @@ footer{margin-top:34px;border-top:1px solid var(--line);padding-top:14px;font-fa
 .quicktok input:focus{outline:2px solid var(--gold);outline-offset:1px}
 .quicktok button{white-space:nowrap}
 @media(max-width:560px){.quicktok{flex-direction:column} .quicktok button{width:100%}}
+/* Simple / Advanced mode */
+.modetog{display:inline-flex;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;align-self:center}
+.modetog .mt{font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;background:transparent;color:var(--dim);border:0;border-radius:0;padding:7px 13px;cursor:pointer;transition:background .12s,color .12s}
+.modetog .mt:hover{color:var(--paper);background:#241a0d}
+.modetog .mt.on{background:var(--gold);color:var(--ink)}
+.simplehint{display:none;font-family:'Space Mono',monospace;font-size:12px;color:var(--paper);background:rgba(230,165,55,.08);border:1px solid rgba(230,165,55,.35);border-radius:var(--r);padding:12px 14px;margin-bottom:14px;line-height:1.6}
+.simplehint b{color:var(--gold)}
+body.simple .adv{display:none}
+body.simple .simplehint{display:block}
 </style>
 
 <div class="wrap">
@@ -140,6 +154,10 @@ footer{margin-top:34px;border-top:1px solid var(--line);padding-top:14px;font-fa
     <div>
       <div class="eyebrow" id="eyebrow">EVM</div>
       <h1>Wallet <span>Bench</span></h1>
+    </div>
+    <div class="modetog" id="modetog" role="group" aria-label="Interface mode">
+      <button class="mt on" data-mode="simple">Simple</button>
+      <button class="mt" data-mode="advanced">Advanced</button>
     </div>
     <div class="rpcstat"><span class="dot" id="dot"></span><span id="rpcinfo">RPC not reached</span></div>
   </div>
@@ -172,7 +190,7 @@ footer{margin-top:34px;border-top:1px solid var(--line);padding-top:14px;font-fa
         </div>
       </div>
 
-      <div class="panel">
+      <div class="panel adv">
         <h2>Add</h2>
         <div class="pad">
           <div class="field">
@@ -183,7 +201,7 @@ footer{margin-top:34px;border-top:1px solid var(--line);padding-top:14px;font-fa
         </div>
       </div>
 
-      <div class="panel">
+      <div class="panel adv">
         <h2>Encrypted vault</h2>
         <div class="pad">
           <div class="field">
@@ -199,7 +217,7 @@ footer{margin-top:34px;border-top:1px solid var(--line);padding-top:14px;font-fa
         </div>
       </div>
 
-      <div class="panel">
+      <div class="panel adv">
         <h2>Uniswap contracts</h2>
         <div class="pad">
           <div class="field">
@@ -227,7 +245,7 @@ footer{margin-top:34px;border-top:1px solid var(--line);padding-top:14px;font-fa
         </div>
       </div>
 
-      <div class="panel">
+      <div class="panel adv">
         <h2>Token</h2>
         <div class="pad">
           <div class="field">
@@ -239,7 +257,7 @@ footer{margin-top:34px;border-top:1px solid var(--line);padding-top:14px;font-fa
         </div>
       </div>
 
-      <div class="panel">
+      <div class="panel adv">
         <h2>Execution</h2>
         <div class="pad">
           <div class="two">
@@ -256,15 +274,11 @@ footer{margin-top:34px;border-top:1px solid var(--line);padding-top:14px;font-fa
             <input type="checkbox" id="split" style="width:auto;margin:0" checked>
             <span>Split orders</span>
           </label>
-          <label style="display:flex;align-items:center;gap:8px;margin:12px 0 0;cursor:pointer">
-            <input type="checkbox" id="autoloop" style="width:auto;margin:0">
-            <span>Auto loop (buy → sell all → repeat)</span>
-          </label>
-          <div class="note">When on, clicking <b>Buy</b> keeps cycling: it buys the slider %, then dumps 100% of the token, then buys again — until you press <b>Stop loop</b>. Slippage, split and the Interval pause below all apply. Every cycle is real, irreversible transactions.</div>
           <div class="field" style="margin:12px 0 0">
-            <label for="maxcycles">Max cycles (0 = ∞)</label>
+            <label for="maxcycles">Auto-loop max cycles (0 = ∞)</label>
             <input id="maxcycles" type="number" min="0" max="9999" value="0">
           </div>
+          <div class="note">Toggle <b>Auto</b> on a wallet's row, then hit <b>Buy</b>: it cycles buy → sell 100% → buy… until you press <b>Stop loop</b> or this limit is reached. Split, slippage and the Interval pause all apply. Every cycle is real, irreversible transactions.</div>
           <label style="display:flex;align-items:center;gap:8px;margin:12px 0 0;cursor:pointer">
             <input type="checkbox" id="skipConfirm" style="width:auto;margin:0">
             <span>Skip confirmation (current session)</span>
@@ -284,7 +298,7 @@ footer{margin-top:34px;border-top:1px solid var(--line);padding-top:14px;font-fa
         </div>
       </div>
 
-      <div class="panel">
+      <div class="panel adv">
         <h2>Export</h2>
         <div class="pad btnrow">
           <button id="expjson">JSON</button>
@@ -295,11 +309,14 @@ footer{margin-top:34px;border-top:1px solid var(--line);padding-top:14px;font-fa
     </div>
 
     <div>
-      <div class="quicktok">
+      <div class="simplehint" id="simplehint">
+        <b>New here?</b> $SWOGE is already loaded. Just: <b>①</b> Generate a wallet → <b>②</b> send it some ETH → <b>③</b> set your % and hit <b>Buy</b>. Switch to <b>Advanced</b> (top right) for slippage, contracts and split orders.
+      </div>
+      <div class="quicktok adv">
         <input id="tokQuick" placeholder="Token, pool, or DexScreener URL — 0x… / dexscreener.com/…" spellcheck="false">
         <button class="primary" id="loadTokQuick">Load token</button>
       </div>
-      <div class="note" id="tokQuickInfo" style="margin:0 0 14px"></div>
+      <div class="note adv" id="tokQuickInfo" style="margin:0 0 14px"></div>
 
       <div class="totals">
         <div class="tot"><div class="v" id="tCount">0</div><div class="k">wallets to bench</div></div>
@@ -523,7 +540,7 @@ function sweepRow(w,i){
 function tradeBar(w,i){
   if(w.watch) return "";
   const splitOn = $("#split").checked;
-  const loopOn = $("#autoloop") ? $("#autoloop").checked : false;
+  const loopOn = !!w.auto;
   const why = !NETS[net].dex ? "This network has no Uniswap contracts configured — switch to Robinhood Chain"
             : !dex           ? "Click « Verify contracts » in the Uniswap v3 panel"
             : !token         ? "Load a token to enable orders"
@@ -541,7 +558,8 @@ function tradeBar(w,i){
           ? `<button class="sell" data-stoploop="${i}">Stop loop ⟳${w.loop.cycle}</button>`
           : w.plan?.running
           ? `<button class="sell" data-stop="${i}">Stop ${w.plan.done}/${w.plan.slices}</button>`
-          : `<button class="buy" data-buy="${i}" ${off}>Buy${loopOn?" ⟳":(splitOn?` ×${splitN()}`:"")}</button>
+          : `<label class="autochk ${loopOn?"on":""}" title="Auto loop: buy → sell all → repeat"><input type="checkbox" data-auto="${i}" ${loopOn?"checked":""} ${off}>Auto</label>
+             <button class="buy" data-buy="${i}" ${off}>Buy${loopOn?" ⟳":(splitOn?` ×${splitN()}`:"")}</button>
              <button class="sell" data-sell="${i}" ${off}>Sell${splitOn?` ×${splitN()}`:""}</button>
              <button class="sell" data-sellall="${i}" ${off} title="Sell 100% in one transaction">Dump all</button>`}
       </div>
@@ -1328,30 +1346,43 @@ document.addEventListener("click", e => {
     if(amt.lte(0)) return toast(`Aucun ${token?token.symbol:"token"} sur ce wallet`);
     return trade(i, "sell", {amount: amt});
   }
+  const au = e.target.closest("[data-auto]");
+  if(au){ const i = +au.dataset.auto; wallets[i].auto = au.checked; render(); return; }
   const go = (i, side) => $("#split").checked ? runPlan(i, side) : trade(i, side);
   const b = e.target.closest("[data-buy]");
-  if(b){ const i = +b.dataset.buy; return ($("#autoloop") && $("#autoloop").checked) ? runLoop(i) : go(i, "buy"); }
+  if(b){ const i = +b.dataset.buy; return wallets[i].auto ? runLoop(i) : go(i, "buy"); }
   const s = e.target.closest("[data-sell]"); if(s) return go(+s.dataset.sell, "sell");
 });
 
 /* ───────── préférences persistées (non sensibles) ───────── */
 const PREFS_KEY = "wallet_bench_prefs_v1";
+let uiMode = "simple";
 function savePrefs(){
   try{ localStorage.setItem(PREFS_KEY, JSON.stringify({
-    net, tok:$("#tok").value.trim(), slip:$("#slip").value, reserve:$("#reserve").value
+    net, tok:$("#tok").value.trim(), slip:$("#slip").value, reserve:$("#reserve").value, mode:uiMode
   })); }catch(e){}
 }
+function applyMode(m){
+  uiMode = (m === "advanced") ? "advanced" : "simple";
+  document.body.classList.toggle("simple", uiMode === "simple");
+  document.querySelectorAll("#modetog .mt").forEach(b =>
+    b.classList.toggle("on", b.dataset.mode === uiMode));
+  savePrefs();
+}
+document.querySelectorAll("#modetog .mt").forEach(b =>
+  b.addEventListener("click", () => applyMode(b.dataset.mode)));
 function loadPrefs(){
   try{ return JSON.parse(localStorage.getItem(PREFS_KEY) || "null"); }catch(e){ return null; }
 }
 ["#tok","#slip","#reserve"].forEach(id => $(id).addEventListener("change", savePrefs));
-["#split","#slices","#autoloop"].forEach(id => $(id).addEventListener("change", render));
+["#split","#slices"].forEach(id => $(id).addEventListener("change", render));
 
 
 /* ───────────── démarrage ───────────── */
 const prefs = loadPrefs();
 if(prefs?.net && NETS[prefs.net]) net = prefs.net;
 $("#net").value = net;
+applyMode(prefs?.mode || "simple");
 applyNet();
 if(prefs){
   if(prefs.tok)     $("#tok").value     = prefs.tok;

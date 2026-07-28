@@ -1,4 +1,5 @@
 
+
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>$SWOGE — Wallet Bench</title>
@@ -255,6 +256,15 @@ footer{margin-top:34px;border-top:1px solid var(--line);padding-top:14px;font-fa
             <input type="checkbox" id="split" style="width:auto;margin:0" checked>
             <span>Split orders</span>
           </label>
+          <label style="display:flex;align-items:center;gap:8px;margin:12px 0 0;cursor:pointer">
+            <input type="checkbox" id="autoloop" style="width:auto;margin:0">
+            <span>Auto loop (buy → sell all → repeat)</span>
+          </label>
+          <div class="note">When on, clicking <b>Buy</b> keeps cycling: it buys the slider %, then dumps 100% of the token, then buys again — until you press <b>Stop loop</b>. Slippage, split and the Interval pause below all apply. Every cycle is real, irreversible transactions.</div>
+          <div class="field" style="margin:12px 0 0">
+            <label for="maxcycles">Max cycles (0 = ∞)</label>
+            <input id="maxcycles" type="number" min="0" max="9999" value="0">
+          </div>
           <label style="display:flex;align-items:center;gap:8px;margin:12px 0 0;cursor:pointer">
             <input type="checkbox" id="skipConfirm" style="width:auto;margin:0">
             <span>Skip confirmation (current session)</span>
@@ -513,6 +523,7 @@ function sweepRow(w,i){
 function tradeBar(w,i){
   if(w.watch) return "";
   const splitOn = $("#split").checked;
+  const loopOn = $("#autoloop") ? $("#autoloop").checked : false;
   const why = !NETS[net].dex ? "This network has no Uniswap contracts configured — switch to Robinhood Chain"
             : !dex           ? "Click « Verify contracts » in the Uniswap v3 panel"
             : !token         ? "Load a token to enable orders"
@@ -526,9 +537,11 @@ function tradeBar(w,i){
         <div class="presets">${[10,20,50,100].map(p=>`<button data-preset="${i}:${p}" ${why?"disabled":""}>${p}</button>`).join("")}</div>
       </div>
       <div class="acts">
-        ${w.plan?.running
+        ${w.loop?.running
+          ? `<button class="sell" data-stoploop="${i}">Stop loop ⟳${w.loop.cycle}</button>`
+          : w.plan?.running
           ? `<button class="sell" data-stop="${i}">Stop ${w.plan.done}/${w.plan.slices}</button>`
-          : `<button class="buy" data-buy="${i}" ${off}>Buy${splitOn?` ×${splitN()}`:""}</button>
+          : `<button class="buy" data-buy="${i}" ${off}>Buy${loopOn?" ⟳":(splitOn?` ×${splitN()}`:"")}</button>
              <button class="sell" data-sell="${i}" ${off}>Sell${splitOn?` ×${splitN()}`:""}</button>
              <button class="sell" data-sellall="${i}" ${off} title="Sell 100% in one transaction">Dump all</button>`}
       </div>
@@ -994,9 +1007,10 @@ function sleepUntil(ms, cancelled, onTick){
   });
 }
 
-async function runPlan(i, side){
+async function runPlan(i, side, loopCtx){
   const w = wallets[i];
-  if(w.plan?.running || w.busy) return;
+  if(w.plan?.running || w.busy) return false;
+  const isLoop = !!loopCtx;
   const slices   = Math.max(2,  Math.min(20,   parseInt($("#slices").value)   || 4));
   const interval = Math.max(5, Math.min(3600, parseInt($("#interval").value) || 10));
 
@@ -1010,39 +1024,105 @@ async function runPlan(i, side){
   } else {
     total = ethers.BigNumber.from(w.tokRaw || "0x0").mul(w.pct).div(100);
   }
-  if(total.lte(0)) return toast("Nothing to execute at this percentage");
+  if(total.lte(0)){ toast("Nothing to execute at this percentage"); return false; }
   const per = total.div(slices);
-  if(per.lte(0)) return toast("Slices too small — reduce their count");
+  if(per.lte(0)){ toast("Slices too small — reduce their count"); return false; }
 
   const unit = side === "buy" ? "ETH" : token.symbol;
   const fmtT = side === "buy" ? ethers.utils.formatEther(total) : ethers.utils.formatUnits(total, token.decimals);
   const fmtP = side === "buy" ? ethers.utils.formatEther(per)   : ethers.utils.formatUnits(per, token.decimals);
   const dur  = Math.round((slices - 1) * interval / 60);
-  if(NETS[net].live && !confirm(
+  // en mode boucle, la confirmation a déjà été donnée une fois au lancement
+  if(NETS[net].live && !isLoop && !confirm(
       `${NETS[net].name} — live network.\n\n`
     + `${side === "buy" ? "BUY" : "SELL"} split, wallet ${i+1}\n`
     + `Total budget: ${fmtT} ${unit}\n`
     + `${slices} slices of ${fmtP} ${unit}\n`
     + `Une toutes les ${interval} s — environ ${dur} min\n\n`
-    + `Each slice is a real transaction. Confirm?`)) return;
+    + `Each slice is a real transaction. Confirm?`)) return false;
 
   w.plan = {running:true, side, slices, done:0, cancel:false};
+  // dans la boucle, un Stop loop doit aussi interrompre le plan en cours
+  const cancelled = () => w.plan.cancel || (isLoop && loopCtx.cancel);
   render();
+  let ok = true;
   for(let k = 0; k < slices; k++){
-    if(w.plan.cancel) break;
+    if(cancelled()){ ok = false; break; }
     w.plan.done = k + 1;
     setStatus(i, `tranche ${k+1}/${slices} · ${fmtP} ${unit}`);
-    const ok = await trade(i, side, {amount: per, noConfirm: true});
+    ok = await trade(i, side, {amount: per, noConfirm: true});
     if(!ok){ setStatus(i, `plan stopped at slice ${k+1}/${slices} — the transaction didn't go through`); break; }
-    if(k < slices - 1 && !w.plan.cancel){
-      await sleepUntil(interval * 1000, () => w.plan.cancel,
+    if(k < slices - 1 && !cancelled()){
+      await sleepUntil(interval * 1000, cancelled,
         left => setStatus(i, `tranche ${k+1}/${slices} faite · prochaine dans ${left} s`));
     }
   }
-  const stopped = w.plan.cancel;
+  const stopped = cancelled();
   w.plan.running = false;
-  setStatus(i, stopped ? `plan halted after ${w.plan.done - 1}/${slices} slices`
-                       : `plan terminé · ${w.plan.done}/${slices} tranches`);
+  // en boucle, on laisse runLoop gérer le statut/rendu global
+  if(!isLoop){
+    setStatus(i, stopped ? `plan halted after ${w.plan.done - 1}/${slices} slices`
+                         : `plan terminé · ${w.plan.done}/${slices} tranches`);
+    render();
+  }
+  return ok && !stopped;
+}
+
+/* ───────── boucle automatique : achat → dump 100% → achat → …
+   Un seul « confirm » au lancement (réseau live). Un budget lu à chaque
+   cycle sur le solde courant. S'arrête sur Stop, sur échec, ou au nombre
+   de cycles maximum. Chaque étape est une transaction réelle.            */
+async function runLoop(i){
+  const w = wallets[i];
+  if(w.loop?.running || w.plan?.running || w.busy) return;
+  if(!token || !dex) return toast("Load a token first");
+  if(!w.pct) return toast("Set a percentage first");
+  const useSplit = $("#split").checked;
+  const pause    = Math.max(0, Math.min(3600, parseInt($("#interval").value) || 10));
+  const maxC     = Math.max(0, Math.min(9999, parseInt($("#maxcycles").value) || 0));
+
+  if(NETS[net].live && wantConfirm() && !confirm(
+      `${NETS[net].name} — live network.\n\n`
+    + `AUTO LOOP · wallet ${i+1} · ${token.symbol}\n`
+    + `Repeats: BUY ${w.pct}%${useSplit?` (split ×${splitN()})`:""} → SELL 100% → …\n`
+    + (maxC ? `Stops after ${maxC} cycle(s).` : `Runs until you press « Stop loop ».`)
+    + `\nPause between cycles: ${pause}s.\n\n`
+    + `Every step is a real, irreversible transaction. Confirm?`)) return;
+
+  w.loop = {running:true, cycle:0, cancel:false};
+  render();
+  while(!w.loop.cancel){
+    if(maxC && w.loop.cycle >= maxC) break;
+    const c = ++w.loop.cycle;
+
+    /* 1. ACHAT (fractionné si « Split orders » est coché) */
+    setStatus(i, `loop ${c} · buying ${w.pct}%…`);
+    const bought = useSplit ? await runPlan(i, "buy", w.loop)
+                            : await trade(i, "buy", {noConfirm:true});
+    if(w.loop.cancel) break;
+    if(!bought){ setStatus(i, `loop stopped · buy #${c} failed`); break; }
+    await refreshOne(i);
+    if(w.loop.cancel) break;
+
+    /* 2. VENTE de 100% du token accumulé, en une transaction */
+    const amt = ethers.BigNumber.from(w.tokRaw || "0x0");
+    if(amt.lte(0)){ setStatus(i, `loop stopped · nothing to sell after buy #${c}`); break; }
+    setStatus(i, `loop ${c} · selling all ${token.symbol}…`);
+    const sold = await trade(i, "sell", {amount: amt, noConfirm:true});
+    if(!sold){ setStatus(i, `loop stopped · sell #${c} failed`); break; }
+    await refreshOne(i);
+
+    /* 3. pause avant le cycle suivant */
+    if(!w.loop.cancel && pause > 0 && !(maxC && w.loop.cycle >= maxC)){
+      await sleepUntil(pause * 1000, () => w.loop.cancel,
+        left => setStatus(i, `loop ${c} done · next cycle in ${left}s`));
+    }
+  }
+  const stopped = w.loop.cancel;
+  const done = w.loop.cycle;
+  w.loop.running = false;
+  setStatus(i, stopped ? `loop halted after ${done} cycle(s)`
+                       : `loop finished · ${done} cycle(s)`);
   render();
 }
 
@@ -1229,6 +1309,14 @@ document.addEventListener("click", e => {
     wallets.splice(i,1); render(); autoSave(); toast("Wallet removed");
     return;
   }
+  const sl = e.target.closest("[data-stoploop]");
+  if(sl){
+    const i = +sl.dataset.stoploop, w = wallets[i];
+    if(w.loop) w.loop.cancel = true;
+    if(w.plan) w.plan.cancel = true;   // interrompt aussi un plan d'achat en cours
+    toast("Stopping the loop after the current step");
+    return;
+  }
   const st = e.target.closest("[data-stop]");
   if(st){ const i = +st.dataset.stop; if(wallets[i].plan) wallets[i].plan.cancel = true; toast("Stopping after the current slice"); return; }
   const sw = e.target.closest("[data-sweep]");
@@ -1241,7 +1329,8 @@ document.addEventListener("click", e => {
     return trade(i, "sell", {amount: amt});
   }
   const go = (i, side) => $("#split").checked ? runPlan(i, side) : trade(i, side);
-  const b = e.target.closest("[data-buy]");  if(b) return go(+b.dataset.buy, "buy");
+  const b = e.target.closest("[data-buy]");
+  if(b){ const i = +b.dataset.buy; return ($("#autoloop") && $("#autoloop").checked) ? runLoop(i) : go(i, "buy"); }
   const s = e.target.closest("[data-sell]"); if(s) return go(+s.dataset.sell, "sell");
 });
 
@@ -1256,7 +1345,7 @@ function loadPrefs(){
   try{ return JSON.parse(localStorage.getItem(PREFS_KEY) || "null"); }catch(e){ return null; }
 }
 ["#tok","#slip","#reserve"].forEach(id => $(id).addEventListener("change", savePrefs));
-["#split","#slices"].forEach(id => $(id).addEventListener("change", render));
+["#split","#slices","#autoloop"].forEach(id => $(id).addEventListener("change", render));
 
 
 /* ───────────── démarrage ───────────── */

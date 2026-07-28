@@ -137,6 +137,8 @@ footer{margin-top:34px;border-top:1px solid var(--line);padding-top:14px;font-fa
 .simplehint b{color:var(--gold)}
 body.simple .adv{display:none}
 body.simple .simplehint{display:block}
+.ringpanel{border-color:rgba(230,165,55,.4);box-shadow:0 0 0 1px rgba(230,165,55,.12)}
+.ringpanel h2{color:var(--gold)}
 </style>
 
 <div class="wrap">
@@ -176,6 +178,28 @@ body.simple .simplehint{display:block}
             </select>
           </div>
           <div class="links" id="faucets"></div>
+        </div>
+      </div>
+
+      <div class="panel ringpanel">
+        <h2>🔁 Auto Volume Ring</h2>
+        <div class="pad">
+          <div class="note">Chains your wallets in a ring: wallet buys 98% (5×) → sends everything to the next → it sells → sends on → next buys… looping until <b>Stop</b> or the ETH runs out. Every hop is real on-chain volume (real gas &amp; slippage).</div>
+          <label style="display:block;font-size:11px;color:var(--dim);margin:14px 0 6px;text-transform:uppercase;letter-spacing:.06em">① Create ring wallets</label>
+          <div class="btnrow">
+            <button data-ringmake="5">5 wallets</button>
+            <button data-ringmake="10">10</button>
+            <button data-ringmake="20">20</button>
+          </div>
+          <div class="field" style="margin:14px 0 0">
+            <label for="ringTok">② Target contract</label>
+            <input id="ringTok" placeholder="0x… token to trade" spellcheck="false">
+          </div>
+          <div class="btnrow" style="margin-top:14px">
+            <button class="primary" id="ringPlay">▶ Play</button>
+            <button class="sell" id="ringStopBtn">⏹ Stop</button>
+          </div>
+          <div class="note" id="ringStatus" style="margin-top:10px">Create wallets, fund <b>wallet #1</b> with ETH, set the target, then press Play. Play asks to back up the private keys first.</div>
         </div>
       </div>
 
@@ -906,26 +930,31 @@ async function trade(i, side, opts = {}){
 }
 
 /* ───────── consolidation : balayage d'un wallet vers un autre ───────── */
-async function sweep(i){
+async function sweep(i, opts = {}){
   const w = wallets[i];
   if(w.watch) return toast("Watch-only wallet");
   if(w.busy) return;
 
-  // destination lue depuis le menu de la ligne
+  // destination : explicite (ring) sinon lue depuis le menu de la ligne
   let to, destLabel;
-  const sel = w.destSel;
-  if(sel === "ext"){
-    const m = (w.destAddr||"").match(/0x[0-9a-fA-F]{40}/);
-    if(!m) return toast("Paste a valid external address");
-    try{ to = ethers.utils.getAddress(m[0]); }catch(e){ return toast("Invalid external address"); }
-    destLabel = to.slice(0,10) + "…" + to.slice(-6);
-  } else if(sel != null && sel !== ""){
-    const dest = wallets[+sel];
-    if(!dest) return toast("Destination not found");
-    to = dest.address;
-    destLabel = "wallet " + (+sel+1);
+  if(opts.toAddr){
+    try{ to = ethers.utils.getAddress(opts.toAddr); }catch(e){ return toast("Invalid destination address"); }
+    destLabel = opts.destLabel || (to.slice(0,10) + "…" + to.slice(-6));
   } else {
-    return toast("Choose a destination from the menu");
+    const sel = w.destSel;
+    if(sel === "ext"){
+      const m = (w.destAddr||"").match(/0x[0-9a-fA-F]{40}/);
+      if(!m) return toast("Paste a valid external address");
+      try{ to = ethers.utils.getAddress(m[0]); }catch(e){ return toast("Invalid external address"); }
+      destLabel = to.slice(0,10) + "…" + to.slice(-6);
+    } else if(sel != null && sel !== ""){
+      const dest = wallets[+sel];
+      if(!dest) return toast("Destination not found");
+      to = dest.address;
+      destLabel = "wallet " + (+sel+1);
+    } else {
+      return toast("Choose a destination from the menu");
+    }
   }
   if(to.toLowerCase() === w.address.toLowerCase()) return toast("Source and destination are the same");
   const parts = [];
@@ -933,15 +962,15 @@ async function sweep(i){
     parts.push(`${fmtUnits(w.tokRaw, token.decimals, 4)} ${token.symbol}`);
   const ethBal = BigInt(w.balRaw || "0x0");
   if(ethBal > 0n) parts.push(`~${fmtUnits(w.balRaw,18,6)} ETH (moins le gas)`);
-  if(!parts.length) return toast("This wallet is already empty");
-  if(NETS[net].live && wantConfirm() && !confirm(
+  if(!parts.length){ if(opts.noConfirm) return true; return toast("This wallet is already empty"); }
+  if(NETS[net].live && !opts.noConfirm && wantConfirm() && !confirm(
       `${NETS[net].name} — live network.\n\n`
     + `Vider le wallet ${i+1} vers ${destLabel}\n`
     + `${to}\n\n`
     + parts.map(x=>"• "+x).join("\n")
     + `\n\nToken first, then ETH. Irreversible. Confirm?`)) return;
 
-  w.busy = true;
+  w.busy = true; let swept = false;
   try{
     const p = provider();
     const signer = new ethers.Wallet(w.pk, p);
@@ -999,6 +1028,7 @@ async function sweep(i){
       }
     }
     setStatus(i, `consolidated to ${destLabel}`);
+    swept = true;
   }catch(e){
     setStatus(i, "consolidation failed · " + String(e.reason || e.message || e).slice(0,150));
   }finally{
@@ -1008,7 +1038,13 @@ async function sweep(i){
       const di = +w.destSel;
       if(di >= 0 && di < wallets.length) await refreshOne(di);
     }
+    // ring : rafraîchir aussi la destination explicite
+    if(opts.toAddr){
+      const di = wallets.findIndex(x => x.address.toLowerCase() === to.toLowerCase());
+      if(di >= 0) await refreshOne(di);
+    }
   }
+  return swept;
 }
 
 /* ───────── exécution fractionnée ─────────
@@ -1025,22 +1061,28 @@ function sleepUntil(ms, cancelled, onTick){
   });
 }
 
-async function runPlan(i, side, loopCtx){
+async function runPlan(i, side, opts){
   const w = wallets[i];
   if(w.plan?.running || w.busy) return false;
+  // opts rétro-compatible : soit l'objet loop {cancel}, soit une config {loop, silent, slices, pct, cancelFn}
+  const cfg = opts || {};
+  const loopCtx = cfg.cancel !== undefined ? cfg : cfg.loop;   // l'ancien appel passait w.loop directement
   const isLoop = !!loopCtx;
-  const slices   = Math.max(2,  Math.min(20,   parseInt($("#slices").value)   || 4));
+  const silent = isLoop || !!cfg.silent;
+  const cancelFn = () => (w.plan && w.plan.cancel) || (loopCtx && loopCtx.cancel) || (cfg.cancelFn && cfg.cancelFn());
+  const slices   = Math.max(2,  Math.min(20,   parseInt(cfg.slices)   || parseInt($("#slices").value)   || 4));
   const interval = Math.max(5, Math.min(3600, parseInt($("#interval").value) || 10));
+  const usePct = (cfg.pct != null) ? cfg.pct : w.pct;
 
   // budget calculé une seule fois, au lancement
   let total;
   if(side === "buy"){
     const bal = ethers.BigNumber.from(w.balRaw || "0x0");
     const reserve = ethers.utils.parseEther(($("#reserve").value || "0.0005").replace(",","."));
-    total = bal.mul(w.pct).div(100);
+    total = bal.mul(usePct).div(100);
     if(bal.sub(total).lt(reserve)) total = bal.sub(reserve);
   } else {
-    total = ethers.BigNumber.from(w.tokRaw || "0x0").mul(w.pct).div(100);
+    total = ethers.BigNumber.from(w.tokRaw || "0x0").mul(usePct).div(100);
   }
   if(total.lte(0)){ toast("Nothing to execute at this percentage"); return false; }
   const per = total.div(slices);
@@ -1050,8 +1092,8 @@ async function runPlan(i, side, loopCtx){
   const fmtT = side === "buy" ? ethers.utils.formatEther(total) : ethers.utils.formatUnits(total, token.decimals);
   const fmtP = side === "buy" ? ethers.utils.formatEther(per)   : ethers.utils.formatUnits(per, token.decimals);
   const dur  = Math.round((slices - 1) * interval / 60);
-  // en mode boucle, la confirmation a déjà été donnée une fois au lancement
-  if(NETS[net].live && !isLoop && !confirm(
+  // en mode boucle/ring, la confirmation a déjà été donnée une fois au lancement
+  if(NETS[net].live && !silent && !confirm(
       `${NETS[net].name} — live network.\n\n`
     + `${side === "buy" ? "BUY" : "SELL"} split, wallet ${i+1}\n`
     + `Total budget: ${fmtT} ${unit}\n`
@@ -1060,8 +1102,8 @@ async function runPlan(i, side, loopCtx){
     + `Each slice is a real transaction. Confirm?`)) return false;
 
   w.plan = {running:true, side, slices, done:0, cancel:false};
-  // dans la boucle, un Stop loop doit aussi interrompre le plan en cours
-  const cancelled = () => w.plan.cancel || (isLoop && loopCtx.cancel);
+  // un Stop loop / Stop ring doit aussi interrompre le plan en cours
+  const cancelled = () => cancelFn();
   render();
   let ok = true;
   for(let k = 0; k < slices; k++){
@@ -1077,8 +1119,8 @@ async function runPlan(i, side, loopCtx){
   }
   const stopped = cancelled();
   w.plan.running = false;
-  // en boucle, on laisse runLoop gérer le statut/rendu global
-  if(!isLoop){
+  // en boucle/ring, on laisse l'appelant gérer le statut/rendu global
+  if(!silent){
     setStatus(i, stopped ? `plan halted after ${w.plan.done - 1}/${slices} slices`
                          : `plan terminé · ${w.plan.done}/${slices} tranches`);
     render();
@@ -1142,6 +1184,138 @@ async function runLoop(i){
   setStatus(i, stopped ? `loop halted after ${done} cycle(s)`
                        : `loop finished · ${done} cycle(s)`);
   render();
+}
+
+/* ───────── Auto Volume Ring ─────────
+   Enchaîne les wallets en anneau : wallet 1 achète (98% en 5×) → transfère
+   tout au suivant → celui-ci vend → transfère → le suivant achète… en boucle
+   jusqu'à Stop ou épuisement de l'ETH. Chaque saut est une transaction réelle
+   (gas + slippage), donc l'ETH s'épuise avec le temps.                       */
+let ring = null;
+function ringSay(msg){ const el = $("#ringStatus"); if(el) el.innerHTML = msg; }
+
+function ringExportKeys(){
+  if(!wallets.length) return;
+  const rows = [["index","address","private_key","mnemonic"]].concat(
+    wallets.map((w,i)=>[i+1, w.address, w.pk||"", w.mnemonic||""]));
+  download(`ring_keys_${net}_${Date.now()}.csv`, rows.map(r=>r.join(",")).join("\n"), "text/csv");
+  toast("Private keys downloaded");
+}
+
+function ringMakeWallets(n){
+  if(typeof ethers === "undefined") return toast("ethers.js n'a pas pu se charger");
+  if(ring?.running) return toast("Stop the ring first");
+  if(wallets.length && !confirm(`Replace the current ${wallets.length} wallet(s) with ${n} fresh ring wallets?\n\nExport any keys you still need first.`)) return;
+  wallets = [];
+  for(let k=0;k<n;k++){
+    const w = ethers.Wallet.createRandom();
+    wallets.push({address:w.address, pk:w.privateKey, mnemonic:w.mnemonic?.phrase, watch:false, revealed:false, balRaw:null, nonce:null, tokRaw:null, pct:98, busy:false, status:""});
+  }
+  render(); autoSave(); refresh();
+  ringSay(`${n} wallets ready → fund <b>wallet #1</b> with ETH, set the target contract, then press ▶ Play.`);
+  toast(`${n} ring wallets created`);
+}
+
+async function ringStart(){
+  if(ring?.running) return;
+  if(typeof ethers === "undefined") return toast("ethers.js n'a pas pu se charger");
+  if(wallets.length < 2) return toast("Create ring wallets first (5 / 10 / 20)");
+  if(wallets.some(w => w.watch)) return toast("Ring needs hot wallets only — remove watch-only ones");
+
+  // cible : contrat à trader
+  const input = ($("#ringTok").value || $("#tok").value || "").trim();
+  const m = input.match(/0x[0-9a-fA-F]{40}/);
+  if(!m) return toast("Enter the target contract address");
+  $("#tok").value = m[0];
+
+  // sauvegarde des clés — demandée explicitement avant de lancer
+  if(confirm("Download a backup of the private keys before starting?\n\nThey live only in this tab. Close it without a backup and they are gone for good.")){
+    ringExportKeys();
+  }
+
+  // confirmation unique + avertissement (réseau live)
+  const n = wallets.length;
+  if(NETS[net].live && !confirm(
+      `${NETS[net].name} — LIVE network.\n\n`
+    + `AUTO VOLUME RING · ${n} wallets\n`
+    + `Loop: a wallet buys 98% (in 5 slices) → sends everything to the next → it sells → sends on → the next buys… repeating until you press Stop or the ETH runs out.\n\n`
+    + `Every hop is a real, irreversible transaction paying gas + slippage, so the ETH steadily drains.\n`
+    + `Manufacturing trading volume can be considered market manipulation and may break local laws or platform rules — only run this where you are authorised to.\n\n`
+    + `Fund wallet #1 with ETH first. Start the ring?`)) return;
+
+  // charger contrats + token cible
+  ringSay('<span class="spin"></span> loading contracts + token…');
+  try{
+    if(!dex && $("#router").value.trim()) await $("#loaddex").onclick();
+    await $("#loadtok").onclick();
+  }catch(e){}
+  if(!token || !dex){ ringSay("Could not load the target token — check the address and the Uniswap contracts (Advanced mode)."); return; }
+
+  ring = {running:true, cancel:false, step:0, hops:0};
+  render();
+  await runRing();
+}
+
+async function runRing(){
+  const gasFloor = BigInt(ethers.utils.parseEther(($("#reserve").value || "0.0005").replace(",",".")).toString());
+  const pause = Math.max(3, Math.min(3600, parseInt($("#interval").value) || 10));
+  let idx = 0;
+
+  while(!ring.cancel){
+    const n = wallets.length;
+    if(n < 2){ ringSay("ring needs at least 2 wallets."); break; }
+    const w = wallets[idx];
+    const nextIdx = (idx + 1) % n;
+    const next = wallets[nextIdx];
+    const side = ring.step % 2 === 0 ? "buy" : "sell";
+
+    await refreshOne(idx);
+    if(ring.cancel) break;
+
+    if(side === "buy"){
+      const bal = BigInt(w.balRaw || "0x0");
+      if(bal <= gasFloor){
+        ringSay(`ring stopped · wallet ${idx+1} is out of ETH after ${ring.hops} hop(s).`);
+        break;
+      }
+      ringSay(`hop ${ring.hops+1} · wallet ${idx+1} buying 98% in 5×…`);
+      const ok = await runPlan(idx, "buy", {silent:true, slices:5, pct:98, cancelFn:()=>ring.cancel});
+      if(ring.cancel) break;
+      if(!ok){ ringSay(`ring stopped · buy failed on wallet ${idx+1}.`); break; }
+    } else {
+      const amt = ethers.BigNumber.from(w.tokRaw || "0x0");
+      if(amt.gt(0)){
+        ringSay(`hop ${ring.hops+1} · wallet ${idx+1} selling all…`);
+        const sold = await trade(idx, "sell", {amount: amt, noConfirm:true});
+        if(ring.cancel) break;
+        if(!sold){ ringSay(`ring stopped · sell failed on wallet ${idx+1}.`); break; }
+      }
+    }
+    if(ring.cancel) break;
+
+    // transférer tout (token + ETH) au wallet suivant
+    ringSay(`hop ${ring.hops+1} · moving funds → wallet ${nextIdx+1}…`);
+    await sweep(idx, {toAddr: next.address, destLabel: "wallet " + (nextIdx+1), noConfirm:true});
+    if(ring.cancel) break;
+
+    ring.hops++; ring.step++;
+    idx = nextIdx;
+
+    if(!ring.cancel){
+      await sleepUntil(pause * 1000, () => ring.cancel,
+        left => ringSay(`hop ${ring.hops} done · next in ${left}s`));
+    }
+  }
+  const stopped = ring.cancel;
+  const hops = ring.hops;
+  ring.running = false;
+  ringSay(stopped ? `ring stopped after ${hops} hop(s).` : `ring ended after ${hops} hop(s).`);
+  render();
+}
+
+function ringStop(){
+  if(ring) ring.cancel = true;
+  ringSay("stopping the ring after the current step…");
 }
 
 /* ───────── coffre chiffré : PBKDF2-SHA256 → AES-GCM ─────────
@@ -1271,6 +1445,7 @@ function applyNet(){
   $("#v2factory").value = n.dex?.v2factory || "";
   $("#tok").value     = n.defaultToken || "";
   if($("#tokQuick")) $("#tokQuick").value = n.defaultToken || "";
+  if($("#ringTok"))  $("#ringTok").value  = n.defaultToken || "";
 }
 $("#net").onchange = e => {
   net = e.target.value;
@@ -1306,6 +1481,8 @@ document.addEventListener("click", e => {
   if(c){ navigator.clipboard.writeText(c.dataset.copy).then(()=>toast("Copied")); return; }
   const t = e.target.closest("[data-toggle]");
   if(t){ const i = +t.dataset.toggle; wallets[i].revealed = !wallets[i].revealed; render(); return; }
+  const rm = e.target.closest("[data-ringmake]");
+  if(rm){ ringMakeWallets(Math.max(2, Math.min(50, parseInt(rm.dataset.ringmake)||5))); return; }
   const pr = e.target.closest("[data-preset]");
   if(pr){
     const [i,p] = pr.dataset.preset.split(":").map(Number);
@@ -1374,6 +1551,8 @@ document.querySelectorAll("#modetog .mt").forEach(b =>
 function loadPrefs(){
   try{ return JSON.parse(localStorage.getItem(PREFS_KEY) || "null"); }catch(e){ return null; }
 }
+$("#ringPlay").onclick = ringStart;
+$("#ringStopBtn").onclick = ringStop;
 ["#tok","#slip","#reserve"].forEach(id => $(id).addEventListener("change", savePrefs));
 ["#split","#slices"].forEach(id => $(id).addEventListener("change", render));
 

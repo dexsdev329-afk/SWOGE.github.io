@@ -831,7 +831,7 @@ async function trade(i, side, opts = {}){
     const p = provider();
     const signer = new ethers.Wallet(w.pk, p);
     // nonce lu frais, tag "pending" : évite la collision au 2e ordre consécutif
-    const nonce = await p.getTransactionCount(w.address, "pending");
+    let nonce = await p.getTransactionCount(w.address, "pending");
     const bps = Math.round(Math.min(50, Math.max(0.1, parseFloat($("#slip").value) || 5)) * 100);
     const deadline = Math.floor(Date.now()/1000) + 600;
     const tokenIn  = side === "buy" ? dex.weth   : token.addr;
@@ -871,12 +871,14 @@ async function trade(i, side, opts = {}){
                                   : ethers.utils.formatEther(minOut) + " ETH";
     setStatus(i, `${fmtIn} → min ${fmtOut}`);
 
-    /* approbation si on vend */
+    /* approbation si on vend — pinnée sur `nonce`, puis on avance le nonce
+       pour que le swap n'entre pas en collision avec l'approve            */
     if(side === "sell"){
       const erc = new ethers.Contract(token.addr, ERC20_ABI, signer);
       if((await erc.allowance(w.address, stack.router)).lt(amountIn)){
         setStatus(i,"approving token…");
-        await (await erc.approve(stack.router, ethers.constants.MaxUint256)).wait();
+        await (await erc.approve(stack.router, ethers.constants.MaxUint256, {nonce})).wait();
+        nonce++;   // l'approve a consommé ce nonce ; le swap prend le suivant
       }
     }
 

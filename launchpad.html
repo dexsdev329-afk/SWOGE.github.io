@@ -176,6 +176,10 @@ input:focus,select:focus{border-color:var(--gold)}
         </div>
         <div class="note" id="tvAddr" style="margin-top:4px"></div>
         <div id="tvSocials"></div>
+        <label style="margin-top:12px">Bonding curve — market cap vs progress</label>
+        <canvas id="tvChart" width="760" height="220" style="width:100%;height:auto;border:1px solid var(--line);border-radius:10px;background:var(--void);display:block"></canvas>
+        <div class="kv" style="margin-top:8px"><span class="k">Current market cap</span><span class="v" id="tvMcap">—</span></div>
+        <div class="kv"><span class="k">Price / token</span><span class="v" id="tvPrice">—</span></div>
         <label style="margin-top:12px">Progress to graduation</label>
         <div class="prog"><span id="tvBar"></span></div>
         <div class="note" id="tvProg"></div>
@@ -385,6 +389,39 @@ async function openTrade(addr){
   curToken=addr;
   await refreshTrade();
 }
+function drawCurve(soldHuman){
+  var cv=$("#tvChart"); if(!cv) return; var x=cv.getContext("2d");
+  var W=cv.width, H=cv.height, padL=54, padB=26, padT=14, padR=12;
+  var plotW=W-padL-padR, plotH=H-padT-padB;
+  var CURVE=8e8;                                  // tokens sold at graduation
+  var mcapAt=function(s){ return 1e18/Math.pow(1e9-s,2); }; // ETH
+  var yMin=mcapAt(0), yMax=mcapAt(CURVE);         // 1 → 25 ETH
+  var sx=function(s){ return padL + (s/CURVE)*plotW; };
+  var sy=function(m){ return padT + plotH - ((m-yMin)/(yMax-yMin))*plotH; };
+  x.clearRect(0,0,W,H);
+  // grid + y labels (mcap)
+  x.strokeStyle="rgba(160,138,99,.18)"; x.fillStyle="#A08a63"; x.font="10px 'Space Mono',monospace"; x.lineWidth=1;
+  for(var i=0;i<=4;i++){
+    var m=yMin+(yMax-yMin)*i/4, yy=sy(m);
+    x.beginPath(); x.moveTo(padL,yy); x.lineTo(W-padR,yy); x.stroke();
+    x.fillText(m.toFixed(0)+"E", 6, yy+3);
+  }
+  // x labels (%)
+  for(var j=0;j<=4;j++){ var xx=padL+plotW*j/4; x.fillText((j*25)+"%", xx-8, H-8); }
+  // curve
+  x.strokeStyle="#E6A537"; x.lineWidth=2.4; x.beginPath();
+  for(var k=0;k<=100;k++){ var s=CURVE*k/100; var px=sx(s), py=sy(mcapAt(s)); if(k===0)x.moveTo(px,py); else x.lineTo(px,py); }
+  x.stroke();
+  // fill under
+  x.lineTo(sx(CURVE),sy(yMin)); x.lineTo(sx(0),sy(yMin)); x.closePath();
+  x.fillStyle="rgba(230,165,55,.08)"; x.fill();
+  // current position marker
+  var s0=Math.min(soldHuman,CURVE), mx=sx(s0), my=sy(mcapAt(s0));
+  x.strokeStyle="rgba(111,209,196,.5)"; x.setLineDash([4,4]); x.lineWidth=1;
+  x.beginPath(); x.moveTo(mx,padT); x.lineTo(mx,padT+plotH); x.stroke(); x.setLineDash([]);
+  x.beginPath(); x.arc(mx,my,5,0,Math.PI*2); x.fillStyle="#6FD1C4"; x.fill();
+  x.strokeStyle="#0B0906"; x.lineWidth=2; x.stroke();
+}
 async function refreshTrade(){
   var fun=readFun();
   var t=new ethers.Contract(curToken, TOKEN_ABI, provider||rpcProvider());
@@ -396,6 +433,13 @@ async function refreshTrade(){
   var pct=Math.min(100, c.tokensSold.mul(10000).div(CURVE_SUPPLY).toNumber()/100);
   $("#tvBar").style.width=(c.graduated?100:pct)+"%";
   $("#tvProg").textContent=c.graduated?"Graduated — now trading on Uniswap.":(pct.toFixed(2)+"% of the curve sold");
+  // bonding-curve chart + live price/mcap
+  var soldHuman=+ethers.utils.formatEther(c.tokensSold);
+  drawCurve(soldHuman);
+  var mcap=1e18/Math.pow(1e9-soldHuman,2);          // = price * total supply, in ETH
+  var price=mcap/1e9;                                // ETH per token
+  $("#tvMcap").textContent=mcap.toFixed(4)+" ETH  (virtual)";
+  $("#tvPrice").textContent=price.toExponential(3)+" ETH";
   $("#tvBadge").textContent=c.graduated?"graduated ✓":"on curve"; $("#tvBadge").className="badge"+(c.graduated?" grad":"");
   $("#tvTradePanel").style.opacity=c.graduated?".5":"1";
   // balance + rewards

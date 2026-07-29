@@ -52,6 +52,8 @@ input:focus,select:focus{border-color:var(--gold)}
 .socials{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
 .socials a{font-family:'Space Mono',monospace;font-size:11px;padding:5px 10px;border:1px solid var(--line);border-radius:999px;color:var(--fur)}
 .socials a:hover{border-color:var(--gold);color:var(--gold)}
+.tlogo{width:40px;height:40px;border-radius:9px;object-fit:cover;border:1px solid var(--line);flex:0 0 auto;background:var(--void)}
+.tlogo.big{width:52px;height:52px;border-radius:11px}
 .note{font-family:'Space Mono',monospace;font-size:12px;color:var(--dim);line-height:1.6;margin-top:8px;word-break:break-word}
 .note.ok{color:var(--signal)}.note.err{color:var(--danger)}
 .hidden{display:none}
@@ -171,7 +173,7 @@ input:focus,select:focus{border-color:var(--gold)}
     <div id="tradeView" class="hidden">
       <div class="panel">
         <div class="card top" style="border:0;padding:0;background:none;cursor:default">
-          <div><div class="nm" id="tvName">—</div><div class="sy" id="tvSym"></div></div>
+          <div style="display:flex;align-items:center;gap:12px"><span id="tvLogo"></span><div><div class="nm" id="tvName">—</div><div class="sy" id="tvSym"></div></div></div>
           <span class="badge" id="tvBadge">on curve</span>
         </div>
         <div class="note" id="tvAddr" style="margin-top:4px"></div>
@@ -317,6 +319,21 @@ $("#createBtn").onclick=async function(){
   finally{ btn.disabled=false; btn.innerHTML="🚀 Launch on the curve"; }
 };
 
+/* ---------- token logos (off-chain, from logos.json in the repo) ---------- */
+var logoMap = {};
+(function seedLogos(){ var w=window.SWOGE_LOGOS; if(w){ for(var k in w) logoMap[k.toLowerCase()]=w[k]; } })();
+function loadLogos(){
+  return fetch("logos.json?"+Date.now()).then(function(r){ return r.ok?r.json():{}; }).then(function(j){
+    for(var k in j){ if(k.indexOf("0x")===0) logoMap[k.toLowerCase()]=j[k]; }
+  }).catch(function(){});
+}
+function logoFor(addr){ return logoMap[(addr||"").toLowerCase()] || ""; }
+function logoImg(addr, cls){
+  var u=logoFor(addr); if(!u) return "";
+  return '<img class="tlogo'+(cls?" "+cls:"")+'" src="'+esc(u)+'" alt="" onerror="this.style.display=\'none\'">';
+}
+loadLogos();
+
 /* ---------- explore / list ---------- */
 var allCache=[], metaMap={};
 async function loadMetaAll(fun){
@@ -365,7 +382,7 @@ function renderList(){
   rows.forEach(function(r){
     var pct=Math.min(100, r.sold.mul(10000).div(CURVE_SUPPLY).toNumber()/100);
     var d=document.createElement("div"); d.className="card";
-    d.innerHTML='<div class="top"><div><span class="nm">'+esc(r.name||"?")+'</span> <span class="sy">$'+esc(r.sym||"?")+'</span></div>'
+    d.innerHTML='<div class="top"><div style="display:flex;align-items:center;gap:10px">'+logoImg(r.addr)+'<div><span class="nm">'+esc(r.name||"?")+'</span> <span class="sy">$'+esc(r.sym||"?")+'</span></div></div>'
       +'<span class="badge '+(r.graduated?"grad":"")+'">'+(r.graduated?"graduated ✓":pct.toFixed(1)+"% to grad")+'</span></div>'
       +'<div class="prog"><span style="width:'+(r.graduated?100:pct)+'%"></span></div>'
       +'<div class="meta">'+r.addr+'</div>'+socialsHTML(r.social);
@@ -428,6 +445,7 @@ async function refreshTrade(){
   var name="",sym=""; try{ name=await t.name(); sym=await t.symbol(); }catch(e){}
   var c=await fun.curves(curToken);
   $("#tvName").textContent=name||"?"; $("#tvSym").textContent="$"+(sym||"?");
+  $("#tvLogo").innerHTML=logoImg(curToken,"big");
   $("#tvAddr").innerHTML='<a href="'+CHAIN.scan+'/address/'+curToken+'" target="_blank">'+curToken+' ↗</a>';
   fetchMeta(fun, curToken).then(function(m){ $("#tvSocials").innerHTML=socialsHTML(m); });
   var pct=Math.min(100, c.tokensSold.mul(10000).div(CURVE_SUPPLY).toNumber()/100);

@@ -93,6 +93,26 @@ input:focus,select:focus{border-color:var(--gold)}
 .sortseg button{font-family:'Space Mono',monospace;font-size:11px;padding:7px 11px;background:transparent;color:var(--dim);border:0;cursor:pointer;white-space:nowrap}
 .sortseg button.on{background:var(--gold);color:var(--ink)}
 .count{font-family:'Space Mono',monospace;font-size:11px;color:var(--dim);background:var(--void);border:1px solid var(--line);border-radius:999px;padding:3px 10px;margin-left:8px;vertical-align:middle}
+/* ---- Trending ---- */
+.totvol{font-family:'Space Mono',monospace;font-size:12px;color:var(--cream);background:linear-gradient(135deg,rgba(255,107,53,.14),rgba(230,165,55,.08));border:1px solid rgba(255,107,53,.4);border-radius:999px;padding:6px 13px;white-space:nowrap}
+.totvol b{color:#FF6B35;font-weight:700}
+.trend-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+@media(max-width:420px){.trend-grid{grid-template-columns:repeat(2,1fr);gap:10px}}
+.trend-card{position:relative;background:linear-gradient(160deg,var(--void2),var(--void));border:1px solid var(--line);border-radius:16px;padding:10px;cursor:pointer;overflow:hidden;transition:transform .28s cubic-bezier(.2,.85,.25,1),box-shadow .28s,border-color .28s}
+.trend-card::before{content:"";position:absolute;inset:0;border-radius:16px;padding:1px;background:linear-gradient(140deg,rgba(255,107,53,.75),transparent 42%,transparent 58%,rgba(230,165,55,.55));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;opacity:0;transition:opacity .28s;pointer-events:none}
+.trend-card::after{content:"";position:absolute;top:0;left:-130%;width:65%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.14),transparent);transform:skewX(-18deg);pointer-events:none}
+.trend-card:hover{transform:translateY(-6px) scale(1.025);box-shadow:0 18px 40px rgba(255,107,53,.2),0 6px 16px rgba(0,0,0,.45);border-color:transparent}
+.trend-card:hover::before{opacity:1}
+.trend-card:hover::after{animation:trendShine .75s ease}
+@keyframes trendShine{to{left:135%}}
+.trend-card .thumbwrap{transition:transform .3s ease}
+.trend-card:hover .thumbwrap{transform:scale(1.05)}
+.trend-card .trank{position:absolute;top:12px;left:12px;z-index:3;font:700 12px 'Space Mono',monospace;background:rgba(11,9,6,.82);border:1px solid var(--line);border-radius:8px;padding:2px 7px;color:#FF6B35;transition:.28s}
+.trend-card:hover .trank{background:#FF6B35;color:#0B0906;border-color:#FF6B35;box-shadow:0 0 14px rgba(255,107,53,.65)}
+.trend-card .tnm{font-family:'Anton',sans-serif;font-size:15px;margin-top:8px;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trend-card .tsy{font-family:'Space Mono',monospace;font-size:11px;color:var(--gold);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trend-card .tvol{font-family:'Space Mono',monospace;font-size:14px;font-weight:700;color:#FF6B35;margin-top:5px}
+.trend-card .tvol small{color:var(--dim);font-weight:400;font-size:10px}
 .card .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .card .nm{font-family:'Anton',sans-serif;font-size:18px}
 .card .sy{font-family:'Space Mono',monospace;font-size:12px;color:var(--gold)}
@@ -136,7 +156,7 @@ input:focus,select:focus{border-color:var(--gold)}
     <button class="tab on" data-tab="create">＋ Create</button>
     <button class="tab" data-tab="explore">🔎 Explore</button>
     <button class="tab" data-tab="trade">📈 Trade</button>
-    <button class="tab" data-tab="mine">👤 My tokens</button>
+    <button class="tab" data-tab="mine">👤 Portfolio</button>
   </div>
 
   <!-- ============ CREATE ============ -->
@@ -171,10 +191,18 @@ input:focus,select:focus{border-color:var(--gold)}
 
   <!-- ============ EXPLORE ============ -->
   <section id="tab-explore" class="hidden">
+    <div class="panel" id="trendingPanel" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+        <h2 style="margin:0">🔥 Trending <span class="count">by 24h volume</span></h2>
+        <div class="totvol" id="trendTotVol"></div>
+      </div>
+      <div id="trendingStrip" class="trend-grid"></div>
+    </div>
     <div class="panel">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
         <h2 style="margin:0">Explore <span class="count" id="listInfo"></span></h2>
         <div class="sortseg" id="sortSeg">
+          <button data-sort="vol">🔥 Trending</button>
           <button data-sort="new" class="on">Newest</button>
           <button data-sort="mc">Market cap</button>
           <button data-sort="old">Oldest</button>
@@ -251,7 +279,7 @@ input:focus,select:focus{border-color:var(--gold)}
   <!-- ============ MY TOKENS ============ -->
   <section id="tab-mine" class="hidden">
     <div class="panel">
-      <h2>My tokens &amp; fees</h2>
+      <h2>Portfolio — holdings, launches &amp; burns</h2>
       <div class="btnrow" style="margin-bottom:10px">
         <button class="btn" id="mineReload">↻ Reload</button>
         <span class="note" id="mineInfo" style="margin:0;align-self:center"></span>
@@ -297,6 +325,9 @@ var POOL_ABI=[
 ];
 var PM = "0x73991a25C818Bf1f1128dEAaB1492D45638DE0D3";   // NonfungiblePositionManager
 var PM_ABI=["function collect((uint256 tokenId,address recipient,uint128 amount0Max,uint128 amount1Max)) payable returns (uint256 amount0,uint256 amount1)"];
+var SWOGE_TOKEN="0x8a166Fb41Cd659a0a43396272FF73973Ce29F817";           // $SWOGE (for the burns section)
+var DEAD="0x000000000000000000000000000000000000dEaD";
+var TRANSFER_TOPIC="0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
 
 var $=function(s){return document.querySelector(s);};
 var toastEl=$("#toast");
@@ -598,6 +629,58 @@ async function loadMarketCaps(rows){
   var ws=[]; for(var w=0;w<CONC;w++) ws.push(worker());
   await Promise.all(ws);
 }
+/* ---------- 🔥 trending: 24h volume per pool (one getLogs across all pools) ---------- */
+var SWAP_TOPIC="0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67";
+async function loadVolumes(rows){
+  try{
+    var prov=provider||rpcProvider();
+    var tip=await prov.getBlockNumber();
+    var span=Math.min(tip-1, 5000);
+    var b1=await prov.getBlock(tip), b0=await prov.getBlock(tip-span);
+    var dt=(b1.timestamp-b0.timestamp)/span || 2;
+    var blocks24h=Math.min(tip, Math.floor(86400/Math.max(0.2,dt)));
+    var pools=rows.filter(function(r){return r.pool;}).map(function(r){return r.pool;});
+    if(!pools.length) return;
+    var byPool={}; rows.forEach(function(r){ if(r.pool) byPool[r.pool.toLowerCase()]=r; r.vol24=0; });
+    var wethLow=WETH.toLowerCase();
+    // raw eth_getLogs — ethers' getLogs wrapper rejects an address array
+    var logs=await prov.send("eth_getLogs",[{address:pools, topics:[SWAP_TOPIC],
+      fromBlock:ethers.utils.hexValue(Math.max(0,tip-blocks24h)), toBlock:ethers.utils.hexValue(tip)}]);
+    logs.forEach(function(l){
+      var r=byPool[l.address.toLowerCase()]; if(!r) return;
+      try{
+        var a0=ethers.BigNumber.from("0x"+l.data.slice(2,66)).fromTwos(256);
+        var a1=ethers.BigNumber.from("0x"+l.data.slice(66,130)).fromTwos(256);
+        var t0w = wethLow < r.addr.toLowerCase();
+        var wdelta = t0w ? a0 : a1;                      // WETH side delta
+        r.vol24 += Math.abs(+ethers.utils.formatEther(wdelta));
+      }catch(e){}
+    });
+    renderTrending(); if(sortMode==="vol") renderList();
+  }catch(e){ /* volume is optional */ }
+}
+function renderTrending(){
+  var panel=$("#trendingPanel"), strip=$("#trendingStrip"); if(!strip) return;
+  var withVol=allCache.filter(function(r){ return (r.vol24||0)>0; });
+  var top=withVol.slice().sort(function(a,b){ return (b.vol24||0)-(a.vol24||0); }).slice(0,6);
+  if(!top.length){ panel.style.display="none"; return; }
+  panel.style.display="block"; strip.innerHTML="";
+  var tot=withVol.reduce(function(s,r){ return s+(r.vol24||0); },0);
+  var totEl=$("#trendTotVol");
+  if(totEl) totEl.innerHTML='📊 Total 24h volume · <b>'+(exploreEu?fmtUsd(tot*exploreEu):tot.toFixed(3)+" ETH")+'</b>';
+  top.forEach(function(r,i){
+    var d=document.createElement("div"); d.className="trend-card"; d.setAttribute("data-addr",r.addr);
+    var volTxt = exploreEu ? fmtUsd(r.vol24*exploreEu) : r.vol24.toFixed(3)+" ETH";
+    var rank = i===0?"🥇":i===1?"🥈":i===2?"🥉":"#"+(i+1);
+    d.innerHTML='<div class="trank">'+rank+'</div>'
+      +thumbHTML(r.addr,r.sym)
+      +'<div class="tnm">'+esc(r.name||"?")+'</div>'
+      +'<div class="tsy">$'+esc(r.sym||"?")+'</div>'
+      +'<div class="tvol">'+volTxt+' <small>24h vol</small></div>';
+    d.onclick=function(){ openTrade(r.addr); };
+    strip.appendChild(d);
+  });
+}
 async function loadList(){
   if(!CONTRACT_ADDRESS){ $("#list").innerHTML='<div class="note">Set the contract address in this file first.</div>'; return; }
   $("#listInfo").innerHTML='<span class="spin"></span>';
@@ -624,6 +707,7 @@ async function loadList(){
     allCache=rows; renderList();                       // show the grid immediately
     $("#listInfo").textContent=created.length+" launched";
     loadMarketCaps(rows);                              // fill market caps in the background
+    loadVolumes(rows);                                 // 🔥 trending: 24h volumes in the background
   }catch(e){ $("#listInfo").textContent="error"; $("#list").innerHTML='<div class="note err">Could not load: '+esc(String(e.message||e).slice(0,80))+'</div>'; }
 }
 function thumbHTML(addr, sym){
@@ -638,6 +722,7 @@ function renderList(){
   var rows=allCache.filter(function(r){ return !q || r.name.toLowerCase().includes(q)||r.sym.toLowerCase().includes(q)||r.addr.toLowerCase().includes(q); });
   if(sortMode==="old") rows=rows.slice().sort(function(a,b){ return a.idx-b.idx; });
   else if(sortMode==="mc") rows=rows.slice().sort(function(a,b){ return (b.mcEth||0)-(a.mcEth||0); });
+  else if(sortMode==="vol") rows=rows.slice().sort(function(a,b){ return (b.vol24||0)-(a.vol24||0); });
   // "new" = default (already newest-first)
   if(!rows.length){ host.innerHTML='<div class="note">No token matches.</div>'; return; }
   rows.forEach(function(r){
@@ -677,82 +762,119 @@ async function previewFees(lpTokenId){
     return { a0:r.amount0, a1:r.amount1 };
   }catch(e){ return null; }
 }
+// run async tasks with limited concurrency
+async function runPool(items, conc, fn){
+  var i=0; async function w(){ while(i<items.length){ var k=i++; await fn(items[k], k); } }
+  var ws=[]; for(var c=0;c<conc;c++) ws.push(w()); await Promise.all(ws);
+}
 async function loadMine(){
   var host=$("#mineList");
-  if(!account){ host.innerHTML='<div class="note">Connect your wallet to see the tokens you launched and claim your fees.</div>'; $("#mineInfo").textContent=""; return; }
+  if(!account){ host.innerHTML='<div class="note">Connect your wallet to see your holdings, launches & burns.</div>'; $("#mineInfo").textContent=""; return; }
   $("#mineInfo").innerHTML='<span class="spin"></span> loading…'; host.innerHTML="";
   try{
-    var fun=readFun();
+    var fun=readFun(), prov=provider||rpcProvider();
     await loadMetaAll(fun);
-    var evs=await fun.queryFilter(fun.filters.Created(null, account));  // creator is indexed
-    if(!evs.length){ host.innerHTML='<div class="note">You haven\'t launched any token yet. Go to <b>Create</b> ⚡</div>'; $("#mineInfo").textContent="0 token"; return; }
-    var eu=await getEthUsd();
-    // newest first, de-dup
-    var seen={}, toks=[];
-    evs.reverse().forEach(function(e){ var a=e.args.token.toLowerCase(); if(!seen[a]){ seen[a]=1; toks.push(e.args.token); } });
-    $("#mineInfo").textContent=toks.length+" token(s)";
-    // ---- pass 1: gather each token's data + claimable, compute the total ----
-    var rows=[], totalYours=0;
-    for(var i=0;i<toks.length;i++){
-      var addr=toks[i];
-      var t=new ethers.Contract(addr, TOKEN_ABI, provider||rpcProvider());
-      var name="",sym=""; try{ name=await t.name(); sym=await t.symbol(); }catch(e){}
-      var inst=await fun.instant(addr);
-      var yours=0;
-      if(inst.exists){
-        var pf=await previewFees(inst.lpTokenId);
-        if(pf){ var wethAmt=(WETH.toLowerCase()<addr.toLowerCase())?pf.a0:pf.a1; yours=+ethers.utils.formatEther(wethAmt)*0.7; }
-      }
-      totalYours+=yours;
-      rows.push({addr:addr,name:name,sym:sym,pool:(inst.exists?inst.pool:null),yours:yours});
-    }
-    // ---- header: total claimable + Claim-all ----
-    var totalTxt = eu ? (fmtUsd(totalYours*eu)+"  ·  "+totalYours.toFixed(6)+" ETH") : (totalYours.toFixed(6)+" ETH");
-    var header='<div class="panel" style="margin:0 0 12px;background:var(--void)">'
-      +'<div class="kv" style="border:0"><span class="k">Total claimable (your 70%)</span><span class="v" style="font-size:15px;color:var(--signal)">'+totalTxt+'</span></div>'
-      +'<button class="btn primary full" id="claimAllBtn" style="margin-top:8px"'+(totalYours<=1e-9?' disabled':'')+'>💰 Claim all my fees</button>'
-      +'<div class="note" id="claimAllNote" style="margin-top:4px">One wallet confirmation per token that has fees.</div></div>';
-    // ---- cards ----
-    var cards="";
-    rows.forEach(function(r){
-      var claimHtml = r.yours>0
-        ? '<div class="kv"><span class="k">Claimable fees (your 70%)</span><span class="v">'+(eu?fmtUsd(r.yours*eu):r.yours.toFixed(6)+" ETH")+(eu?"  ·  "+r.yours.toFixed(6)+" ETH":"")+'</span></div>'
-        : '';
-      var dexUrl = r.pool ? ("https://dexscreener.com/robinhood/"+r.pool) : ("https://dexscreener.com/search?q="+r.addr);
-      cards+='<div class="card" style="cursor:default"><div class="top"><div style="display:flex;align-items:center;gap:10px">'+logoImg(r.addr)+'<div><span class="nm">'+esc(r.name||"?")+'</span> <span class="sy">$'+esc(r.sym||"?")+'</span></div></div><span style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end"><span class="badge grad">⚡ yours</span>'+lockChip()+'</span></div>'
-        +'<div class="meta" style="display:flex;align-items:center;gap:8px"><span style="word-break:break-all">'+r.addr+'</span>'+copyBtn(r.addr)+'</div>'
-        +claimHtml
-        +'<div class="btnrow" style="margin-top:10px">'
-        +'<button class="btn" data-open="'+r.addr+'">📈 Open</button>'
-        +'<a class="btn" href="'+dexUrl+'" target="_blank">📊 DexScreener</a>'
-        +'<button class="btn primary" data-collect="'+r.addr+'">💰 Collect</button>'
-        +'</div><div class="note" data-cnote="'+r.addr+'" style="margin-top:6px"></div></div>';
+    var eu=await getEthUsd(), meLow=account.toLowerCase();
+    var res=await Promise.all([ fun.queryFilter(fun.filters.Created()), fun.queryFilter(fun.filters.LaunchedInstant()) ]);
+    var allCreated=res[0], launched=res[1];
+    var poolMap={}; launched.forEach(function(e){ poolMap[e.args.token.toLowerCase()]=e.args.pool; });
+    var info={};
+    allCreated.forEach(function(e){ var tk=e.args.token.toLowerCase(); info[tk]={addr:e.args.token,name:e.args.name,sym:e.args.symbol,pool:poolMap[tk]||null,creator:e.args.creator}; });
+    var tokens=[]; for(var k in info) tokens.push(info[k]);
+
+    /* ===== 1) HOLDINGS ===== */
+    var held=[];
+    await runPool(tokens, 8, async function(tk){
+      try{
+        var t=new ethers.Contract(tk.addr, TOKEN_ABI, prov);
+        var bal=await t.balanceOf(account);
+        if(bal && !bal.isZero()){ tk.bal=+ethers.utils.formatEther(bal); held.push(tk); }
+      }catch(e){}
     });
-    host.innerHTML=header+cards;
-    // ---- Claim all: one collectFees tx per token that has fees ----
-    $("#claimAllBtn").onclick=async function(){
+    // value each holding via pool price
+    await runPool(held, 8, async function(tk){
+      try{ if(tk.pool){ var mc=await mcOfToken(tk.pool, tk.addr); tk.valEth = mc!=null ? tk.bal*(mc/1e9) : null; } }catch(e){}
+    });
+    held.sort(function(a,b){ return (b.valEth||0)-(a.valEth||0); });
+    var holdVal=held.reduce(function(s,t){ return s+(t.valEth||0); },0);
+    var holdHtml='<div class="panel" style="margin:0 0 12px;background:var(--void)"><h2 style="margin:0 0 10px">💼 Your holdings <span class="count">'+held.length+'</span></h2>';
+    if(!held.length){ holdHtml+='<div class="note">You don\'t hold any launchpad token yet.</div>'; }
+    else{
+      holdHtml+='<div class="kv" style="border:0"><span class="k">Total value</span><span class="v" style="color:var(--signal)">'+(eu?fmtUsd(holdVal*eu):holdVal.toFixed(4)+" ETH")+'</span></div>';
+      held.forEach(function(t){
+        var dexUrl=t.pool?("https://dexscreener.com/robinhood/"+t.pool):("https://dexscreener.com/search?q="+t.addr);
+        holdHtml+='<div class="card" style="cursor:pointer;margin-top:8px" data-open="'+t.addr+'"><div class="top"><div style="display:flex;align-items:center;gap:10px">'+logoImg(t.addr)+'<div><span class="nm">'+esc(t.name||"?")+'</span> <span class="sy">$'+esc(t.sym||"?")+'</span></div></div>'
+          +'<span class="v" style="text-align:right;font-family:\'Space Mono\',monospace;font-size:12px">'+fmtNum(t.bal)+' '+esc(t.sym||"")+'<br><span style="color:var(--signal)">'+(t.valEth!=null?(eu?fmtUsd(t.valEth*eu):t.valEth.toFixed(5)+" ETH"):"")+'</span></span></div>'
+          +'<div class="btnrow" style="margin-top:8px"><a class="btn dexlink" href="'+dexUrl+'" target="_blank" style="padding:5px 10px;font-size:12px">📊 DexScreener</a></div></div>';
+      });
+    }
+    holdHtml+='</div>';
+
+    /* ===== 2) TOKENS YOU CREATED (+ fees) ===== */
+    var mine=tokens.filter(function(t){ return t.creator.toLowerCase()===meLow; });
+    var madeRows=[], totalYours=0;
+    await runPool(mine, 6, async function(t){
+      var yours=0;
+      try{ var inst=await fun.instant(t.addr); if(inst.exists){ var pf=await previewFees(inst.lpTokenId); if(pf){ var wethAmt=(WETH.toLowerCase()<t.addr.toLowerCase())?pf.a0:pf.a1; yours=+ethers.utils.formatEther(wethAmt)*0.7; } } }catch(e){}
+      t.yours=yours; totalYours+=yours; madeRows.push(t);
+    });
+    var totalTxt = eu ? (fmtUsd(totalYours*eu)+"  ·  "+totalYours.toFixed(6)+" ETH") : (totalYours.toFixed(6)+" ETH");
+    var madeHtml='<div class="panel" style="margin:0 0 12px;background:var(--void)"><h2 style="margin:0 0 10px">⚡ Tokens you created <span class="count">'+madeRows.length+'</span></h2>';
+    if(!madeRows.length){ madeHtml+='<div class="note">You haven\'t launched any token yet. Go to <b>Create</b> ⚡</div>'; }
+    else{
+      madeHtml+='<div class="kv" style="border:0"><span class="k">Total claimable (your 70%)</span><span class="v" style="color:var(--signal)">'+totalTxt+'</span></div>'
+        +'<button class="btn primary full" id="claimAllBtn" style="margin:8px 0"'+(totalYours<=1e-9?' disabled':'')+'>💰 Claim all my fees</button>'
+        +'<div class="note" id="claimAllNote" style="margin-top:0">One wallet confirmation per token that has fees.</div>';
+      madeRows.forEach(function(r){
+        var claimHtml = r.yours>0 ? '<div class="kv"><span class="k">Claimable (70%)</span><span class="v">'+(eu?fmtUsd(r.yours*eu):r.yours.toFixed(6)+" ETH")+'</span></div>' : '';
+        var dexUrl = r.pool ? ("https://dexscreener.com/robinhood/"+r.pool) : ("https://dexscreener.com/search?q="+r.addr);
+        madeHtml+='<div class="card" style="cursor:default;margin-top:8px"><div class="top"><div style="display:flex;align-items:center;gap:10px">'+logoImg(r.addr)+'<div><span class="nm">'+esc(r.name||"?")+'</span> <span class="sy">$'+esc(r.sym||"?")+'</span></div></div>'+lockChip()+'</div>'
+          +claimHtml
+          +'<div class="btnrow" style="margin-top:8px"><button class="btn" data-open="'+r.addr+'" style="padding:5px 10px;font-size:12px">📈 Open</button>'
+          +'<a class="btn dexlink" href="'+dexUrl+'" target="_blank" style="padding:5px 10px;font-size:12px">📊 Dex</a>'
+          +'<button class="btn primary" data-collect="'+r.addr+'" style="padding:5px 10px;font-size:12px">💰 Collect</button></div>'
+          +'<div class="note" data-cnote="'+r.addr+'" style="margin-top:6px"></div></div>';
+      });
+    }
+    madeHtml+='</div>';
+
+    /* ===== 3) YOUR $SWOGE BURNS ===== */
+    var burnHtml='<div class="panel" style="margin:0;background:var(--void)"><h2 style="margin:0 0 10px">🔥 Your $SWOGE burns</h2>';
+    try{
+      var padMe="0x"+account.slice(2).toLowerCase().padStart(64,"0"), padDead="0x"+DEAD.slice(2).toLowerCase().padStart(64,"0");
+      var blogs=await prov.getLogs({address:SWOGE_TOKEN, topics:[TRANSFER_TOPIC, padMe, padDead], fromBlock:0, toBlock:"latest"});
+      var totalBurn=blogs.reduce(function(s,l){ return s+(+ethers.utils.formatEther(ethers.BigNumber.from(l.data))); },0);
+      burnHtml+='<div class="kv" style="border:0"><span class="k">You burned</span><span class="v" style="color:#FF6B35;font-size:15px">'+fmtNum(totalBurn)+' SWOGE</span></div>'
+        +'<div class="note">'+blogs.length+' burn'+(blogs.length===1?"":"s")+' · <a href="burn.html">Burn more 🔥</a></div>';
+    }catch(e){ burnHtml+='<div class="note">Could not load burns. <a href="burn.html">Burn page 🔥</a></div>'; }
+    burnHtml+='</div>';
+
+    $("#mineInfo").textContent="";
+    host.innerHTML=holdHtml+madeHtml+burnHtml;
+
+    // wire buttons
+    host.querySelectorAll("[data-open]").forEach(function(b){ b.onclick=function(ev){ ev.stopPropagation(); openTrade(b.getAttribute("data-open")); }; });
+    host.querySelectorAll(".card[data-open]").forEach(function(c){ c.onclick=function(){ openTrade(c.getAttribute("data-open")); }; });
+    host.querySelectorAll(".dexlink").forEach(function(a){ a.onclick=function(ev){ ev.stopPropagation(); }; });
+    var cab=$("#claimAllBtn");
+    if(cab) cab.onclick=async function(){
       if(!signer){ openWalletPicker(); return; }
-      var list=rows.filter(function(r){ return r.yours>1e-9; });
+      var list=madeRows.filter(function(r){ return r.yours>1e-9; });
       if(!list.length){ toast("Nothing to claim"); return; }
-      var note=$("#claimAllNote"), btn=$("#claimAllBtn"); btn.disabled=true; var done=0;
+      var note=$("#claimAllNote"); cab.disabled=true; var done=0;
       for(var i=0;i<list.length;i++){
         note.className="note"; note.textContent="Claiming "+(i+1)+"/"+list.length+" — confirm in your wallet…";
-        try{ var tx=await writeFun().collectFees(list[i].addr); await tx.wait(); done++; }
-        catch(e){ /* skipped/failed → continue to the next */ }
+        try{ var tx=await writeFun().collectFees(list[i].addr); await tx.wait(); done++; }catch(e){}
       }
       note.className="note ok"; note.textContent="Claimed "+done+"/"+list.length+" 💰"; loadMine();
     };
-    // wire per-card buttons
-    host.querySelectorAll("[data-open]").forEach(function(b){ b.onclick=function(){ openTrade(b.getAttribute("data-open")); }; });
     host.querySelectorAll("[data-collect]").forEach(function(b){
-      b.onclick=async function(){
+      b.onclick=async function(ev){
+        ev.stopPropagation();
         if(!signer){ openWalletPicker(); return; }
-        var addr=b.getAttribute("data-collect");
-        var note=host.querySelector('[data-cnote="'+addr+'"]');
+        var addr=b.getAttribute("data-collect"), note=host.querySelector('[data-cnote="'+addr+'"]');
         note.className="note"; note.textContent="Collecting…"; b.disabled=true;
-        try{
-          var tx=await writeFun().collectFees(addr);
-          note.innerHTML='Collecting… <a href="'+CHAIN.scan+'/tx/'+tx.hash+'" target="_blank">↗</a>'; await tx.wait();
+        try{ var tx=await writeFun().collectFees(addr); note.innerHTML='Collecting… <a href="'+CHAIN.scan+'/tx/'+tx.hash+'" target="_blank">↗</a>'; await tx.wait();
           note.className="note ok"; note.textContent="Fees sent — 70% to you 💰"; loadMine();
         }catch(e){ note.className="note err"; note.textContent="Failed · "+String(e.reason||e.message||e).slice(0,120); }
         finally{ b.disabled=false; }

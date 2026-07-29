@@ -3,8 +3,8 @@
 <html lang="en">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>$SWOGE FUN — bonding-curve launchpad</title>
-<meta name="description" content="Launch a token on a bonding curve on Robinhood Chain. No liquidity needed. 1% to SWOGE, creator fee to your wallet or your holders.">
+<title>$SWOGE FUN — Instant DexScreener launchpad</title>
+<meta name="description" content="Launch a token straight onto a Uniswap v3 pool on Robinhood Chain — visible on DexScreener instantly. No liquidity needed. 1% trade fee: 70% creator / 30% SWOGE.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -118,48 +118,11 @@ input:focus,select:focus{border-color:var(--gold)}
   <!-- ============ CREATE ============ -->
   <section id="tab-create">
     <div class="panel">
-      <h2>Launch a token</h2>
-      <div class="field">
-        <label>Launch mode</label>
-        <div class="seg" id="launchMode">
-          <button data-lmode="0" class="on">📈 Fair Curve</button>
-          <button data-lmode="1">⚡ Instant DexScreener</button>
-        </div>
-        <div class="note" id="modeInfo"></div>
-      </div>
+      <h2>Launch a token ⚡</h2>
+      <div class="note" id="modeInfo" style="margin-bottom:12px"></div>
       <div class="two">
         <div class="field"><label>Name</label><input id="cName" placeholder="Swoge Inu" maxlength="40"></div>
         <div class="field"><label>Symbol</label><input id="cSym" placeholder="SWINU" maxlength="12"></div>
-      </div>
-      <div id="curveOnly">
-      <div class="two">
-        <div class="field">
-          <label>Max wallet (% of supply, 0 = none)</label>
-          <input id="cMaxWallet" inputmode="decimal" value="0">
-        </div>
-        <div class="field">
-          <label>Creator fee % (0–20)</label>
-          <input id="cFee" inputmode="decimal" value="1">
-          <div class="presets" id="feePresets" style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
-            <button type="button" data-fee="0">0%</button>
-            <button type="button" data-fee="1">1%</button>
-            <button type="button" data-fee="2">2%</button>
-            <button type="button" data-fee="5">5%</button>
-            <button type="button" data-fee="10">10%</button>
-          </div>
-        </div>
-      </div>
-      <div class="field">
-        <label>Where does the creator fee go?</label>
-        <div class="seg" id="feeMode">
-          <button data-mode="0" class="on">Dev wallet</button>
-          <button data-mode="1">Holders (reflection)</button>
-        </div>
-      </div>
-      <div class="field" id="devWalletField">
-        <label>Dev wallet (receives the creator fee)</label>
-        <input id="cDev" placeholder="0x… (leave empty = you)">
-      </div>
       </div>
       <div class="field">
         <label>Logo (optional — image URL)</label>
@@ -172,7 +135,7 @@ input:focus,select:focus{border-color:var(--gold)}
         <input id="cWeb" placeholder="Website — https://…">
       </div>
       <div class="note" id="feeSummary"></div>
-      <button class="btn primary full" id="createBtn" style="margin-top:8px" disabled>🚀 Launch on the curve</button>
+      <button class="btn primary full" id="createBtn" style="margin-top:8px" disabled>⚡ Launch on Uniswap</button>
       <div class="note" id="createNote">Connect a wallet first.</div>
     </div>
   </section>
@@ -221,7 +184,7 @@ input:focus,select:focus{border-color:var(--gold)}
       </div>
 
       <div class="panel" id="tvTradePanel">
-        <h2>Trade on the curve</h2>
+        <h2>Trade</h2>
         <div class="two">
           <div>
             <div class="field"><label>Buy — ETH to spend</label><input id="buyEth" inputmode="decimal" placeholder="0.1"></div>
@@ -248,7 +211,7 @@ input:focus,select:focus{border-color:var(--gold)}
     </div>
   </section>
 
-  <div class="foot">$SWOGE FUN · 1% to SWOGE on every trade · <a href="index.html">swoleeswoge.dog</a></div>
+  <div class="foot">$SWOGE FUN · Instant Uniswap launches · 30% of the 1% fee to SWOGE · <a href="index.html">swoleeswoge.dog</a></div>
 </div>
 
 <div class="wpick" id="wpick"><div class="box"><h3>Choose your wallet</h3><div id="wpickList"></div><div class="cancel" id="wpickCancel">Cancel</div></div></div>
@@ -371,7 +334,7 @@ async function connectWalletConnect(){
       projectId: WC_PROJECT_ID,
       chains:[CHAIN.id], optionalChains:[CHAIN.id],
       showQrModal:true, rpcMap:rpcMap,
-      metadata:{ name:"SWOGE Fun", description:"Bonding-curve launchpad on Robinhood Chain",
+      metadata:{ name:"SWOGE Fun", description:"Instant DexScreener launchpad on Robinhood Chain",
                  url:location.origin||"https://swoleeswoge.dog", icons:["https://swoleeswoge.dog/favicon.ico"] }
     });
     await wc.enable();          // opens the QR / deep-link modal
@@ -392,68 +355,34 @@ document.querySelectorAll(".tab").forEach(function(t){
   };
 });
 
-/* ---------- create ---------- */
-var feeMode=0, launchMode=0;   // launchMode: 0 = Fair Curve, 1 = Instant DexScreener
-document.querySelectorAll("#launchMode button").forEach(function(b){
-  b.onclick=function(){
-    document.querySelectorAll("#launchMode button").forEach(function(x){x.classList.remove("on");});
-    b.classList.add("on"); launchMode=+b.dataset.lmode;
-    $("#curveOnly").style.display = launchMode===0 ? "block" : "none";
-    $("#createBtn").innerHTML = launchMode===0 ? "🚀 Launch on the curve" : "⚡ Launch on Uniswap";
-    updateFeeSummary();
-  };
-});
+/* ---------- create (Instant DexScreener only) ---------- */
 function updateFeeSummary(){
-  if(launchMode===1){
-    $("#modeInfo").innerHTML="Real Uniswap pool from second one — <b>visible on DexScreener immediately</b>. No liquidity needed. Anti-snipe: max 5% per wallet for the first 2 blocks.";
-    $("#feeSummary").innerHTML="Uniswap trade fee 1%: <b>70% → you</b> · <b>30% → SWOGE</b>. Collect anytime on the Trade page.";
-    return;
-  }
-  $("#modeInfo").innerHTML="Bonding curve (pump.fun style). Graduates to Uniswap at 800M sold. Appears on DexScreener after graduation.";
-  var cf=parseFloat(($("#cFee").value||"").replace(",","."))||0;
-  $("#feeSummary").innerHTML = "Every trade: <b>1% → SWOGE</b> + <b>"+cf+"% → "+(feeMode===0?"your dev wallet":"your holders")+"</b> = "+(1+cf).toFixed(2)+"% total.";
+  $("#modeInfo").innerHTML="A real Uniswap pool is created at launch — <b>visible on DexScreener immediately</b>. No liquidity to provide. Anti-snipe: max 5% per wallet for the first 2 blocks.";
+  $("#feeSummary").innerHTML="Uniswap trade fee 1%: <b>70% → you (creator)</b> · <b>30% → SWOGE</b>. Collect anytime on the Trade page.";
 }
-document.querySelectorAll("#feeMode button").forEach(function(b){
-  b.onclick=function(){
-    document.querySelectorAll("#feeMode button").forEach(function(x){x.classList.remove("on");});
-    b.classList.add("on"); feeMode=+b.dataset.mode;
-    $("#devWalletField").style.display = feeMode===0 ? "block" : "none";
-    updateFeeSummary();
-  };
-});
-$("#cFee").addEventListener("input",updateFeeSummary); updateFeeSummary();
-document.querySelectorAll("#feePresets button").forEach(function(b){
-  b.onclick=function(){ $("#cFee").value=b.dataset.fee; updateFeeSummary(); };
-});
+updateFeeSummary();
 
 $("#createBtn").onclick=async function(){
   if(!signer){ openWalletPicker(); return; }
   var name=$("#cName").value.trim(), sym=$("#cSym").value.trim();
   if(!name||!sym) return toast("Name and symbol required");
-  var maxW=Math.round((parseFloat(amtStr("#cMaxWallet"))||0)*100);   // % → bps
-  var feeBps=Math.round((parseFloat(amtStr("#cFee"))||0)*100);
-  if(feeBps>2000) return toast("Creator fee max is 20%");
-  if(maxW!==0 && maxW<10) return toast("Max wallet must be 0 or ≥ 0.1%");
-  var dev=$("#cDev").value.trim()||ethers.constants.AddressZero;
-  if(dev!==ethers.constants.AddressZero){ try{ dev=ethers.utils.getAddress(dev); }catch(e){ return toast("Bad dev wallet address"); } }
   var btn=$("#createBtn"), note=$("#createNote");
   btn.disabled=true; btn.innerHTML='<span class="spin"></span> launching…'; note.className="note"; note.textContent="Confirm in your wallet…";
   try{
     var tg=$("#cTg").value.trim(), tw=$("#cTw").value.trim(), web=$("#cWeb").value.trim(), lg=$("#cLogo").value.trim();
-    var inst = launchMode===1;
     var tx=await writeFun().createToken({
-      name:name, symbol:sym, mode:launchMode,
-      maxWalletBps: inst?0:maxW, feeMode: inst?0:feeMode, devWallet: inst?ethers.constants.AddressZero:dev,
-      creatorFeeBps: inst?0:feeBps, telegram:tg, twitter:tw, website:web, logo:lg
-    }, inst?{gasLimit:9000000}:{});
+      name:name, symbol:sym, mode:1,                       // Instant DexScreener only
+      maxWalletBps:0, feeMode:0, devWallet:ethers.constants.AddressZero,
+      creatorFeeBps:0, telegram:tg, twitter:tw, website:web, logo:lg
+    }, {gasLimit:9000000});
     note.innerHTML='Sent · waiting… <a href="'+CHAIN.scan+'/tx/'+tx.hash+'" target="_blank">↗</a>';
     var rc=await tx.wait();
     var ev=rc.events&&rc.events.find(function(e){return e.event==="Created";});
     var addr=ev?ev.args.token:null;
-    note.className="note ok"; note.innerHTML="🎉 Launched! "+(addr?('<a href="'+CHAIN.scan+'/address/'+addr+'" target="_blank">'+addr+' ↗</a>'):"");
+    note.className="note ok"; note.innerHTML="🎉 Launched on Uniswap! "+(addr?('<a href="'+CHAIN.scan+'/address/'+addr+'" target="_blank">'+addr+' ↗</a>'):"");
     toast("Token launched 🚀");
   }catch(e){ note.className="note err"; note.textContent="Failed · "+String(e.reason||e.data&&e.data.message||e.message||e).slice(0,150); }
-  finally{ btn.disabled=false; btn.innerHTML=launchMode===0?"🚀 Launch on the curve":"⚡ Launch on Uniswap"; }
+  finally{ btn.disabled=false; btn.innerHTML="⚡ Launch on Uniswap"; }
 };
 
 /* ---------- token logos (off-chain, from logos.json in the repo) ---------- */
@@ -881,7 +810,7 @@ async function quoteBuy(){
   }catch(e){ $("#buyQuote").textContent=""; }
 }
 // live comma → dot on all number fields (mobile FR keyboards type a comma)
-["#buyEth","#sellTok","#cFee","#cMaxWallet"].forEach(function(id){
+["#buyEth","#sellTok"].forEach(function(id){
   var el=$(id); if(!el) return;
   el.addEventListener("input",function(){ if(this.value.indexOf(",")>-1){ var p=this.selectionStart; this.value=this.value.replace(/,/g,"."); try{this.setSelectionRange(p,p);}catch(e){} } });
 });

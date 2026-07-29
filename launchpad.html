@@ -606,34 +606,58 @@ async function loadMine(){
     var seen={}, toks=[];
     evs.reverse().forEach(function(e){ var a=e.args.token.toLowerCase(); if(!seen[a]){ seen[a]=1; toks.push(e.args.token); } });
     $("#mineInfo").textContent=toks.length+" token(s)";
+    // ---- pass 1: gather each token's data + claimable, compute the total ----
+    var rows=[], totalYours=0;
     for(var i=0;i<toks.length;i++){
       var addr=toks[i];
       var t=new ethers.Contract(addr, TOKEN_ABI, provider||rpcProvider());
       var name="",sym=""; try{ name=await t.name(); sym=await t.symbol(); }catch(e){}
       var inst=await fun.instant(addr);
-      var dexUrl = inst.exists ? ("https://dexscreener.com/robinhood/"+inst.pool) : ("https://dexscreener.com/search?q="+addr);
-      var claimHtml="";
+      var yours=0;
       if(inst.exists){
         var pf=await previewFees(inst.lpTokenId);
-        if(pf){
-          var wethAmt = (WETH.toLowerCase() < addr.toLowerCase()) ? pf.a0 : pf.a1;  // WETH is token0 when its addr is smaller
-          var eth=+ethers.utils.formatEther(wethAmt);
-          var yours=eth*0.7;
-          claimHtml='<div class="kv"><span class="k">Claimable fees (your 70%)</span><span class="v">'+(eu?fmtUsd(yours*eu):yours.toFixed(6)+" ETH")+(eu?"  ·  "+yours.toFixed(6)+" ETH":"")+'</span></div>';
-        }
+        if(pf){ var wethAmt=(WETH.toLowerCase()<addr.toLowerCase())?pf.a0:pf.a1; yours=+ethers.utils.formatEther(wethAmt)*0.7; }
       }
-      var d=document.createElement("div"); d.className="card"; d.style.cursor="default";
-      d.innerHTML='<div class="top"><div style="display:flex;align-items:center;gap:10px">'+logoImg(addr)+'<div><span class="nm">'+esc(name||"?")+'</span> <span class="sy">$'+esc(sym||"?")+'</span></div></div><span class="badge grad">⚡ yours</span></div>'
-        +'<div class="meta" style="display:flex;align-items:center;gap:8px"><span style="word-break:break-all">'+addr+'</span>'+copyBtn(addr)+'</div>'
+      totalYours+=yours;
+      rows.push({addr:addr,name:name,sym:sym,pool:(inst.exists?inst.pool:null),yours:yours});
+    }
+    // ---- header: total claimable + Claim-all ----
+    var totalTxt = eu ? (fmtUsd(totalYours*eu)+"  ·  "+totalYours.toFixed(6)+" ETH") : (totalYours.toFixed(6)+" ETH");
+    var header='<div class="panel" style="margin:0 0 12px;background:var(--void)">'
+      +'<div class="kv" style="border:0"><span class="k">Total claimable (your 70%)</span><span class="v" style="font-size:15px;color:var(--signal)">'+totalTxt+'</span></div>'
+      +'<button class="btn primary full" id="claimAllBtn" style="margin-top:8px"'+(totalYours<=1e-9?' disabled':'')+'>💰 Claim all my fees</button>'
+      +'<div class="note" id="claimAllNote" style="margin-top:4px">One wallet confirmation per token that has fees.</div></div>';
+    // ---- cards ----
+    var cards="";
+    rows.forEach(function(r){
+      var claimHtml = r.yours>0
+        ? '<div class="kv"><span class="k">Claimable fees (your 70%)</span><span class="v">'+(eu?fmtUsd(r.yours*eu):r.yours.toFixed(6)+" ETH")+(eu?"  ·  "+r.yours.toFixed(6)+" ETH":"")+'</span></div>'
+        : '';
+      var dexUrl = r.pool ? ("https://dexscreener.com/robinhood/"+r.pool) : ("https://dexscreener.com/search?q="+r.addr);
+      cards+='<div class="card" style="cursor:default"><div class="top"><div style="display:flex;align-items:center;gap:10px">'+logoImg(r.addr)+'<div><span class="nm">'+esc(r.name||"?")+'</span> <span class="sy">$'+esc(r.sym||"?")+'</span></div></div><span class="badge grad">⚡ yours</span></div>'
+        +'<div class="meta" style="display:flex;align-items:center;gap:8px"><span style="word-break:break-all">'+r.addr+'</span>'+copyBtn(r.addr)+'</div>'
         +claimHtml
         +'<div class="btnrow" style="margin-top:10px">'
-        +'<button class="btn" data-open="'+addr+'">📈 Open</button>'
+        +'<button class="btn" data-open="'+r.addr+'">📈 Open</button>'
         +'<a class="btn" href="'+dexUrl+'" target="_blank">📊 DexScreener</a>'
-        +'<button class="btn primary" data-collect="'+addr+'">💰 Collect fees</button>'
-        +'</div><div class="note" data-cnote="'+addr+'" style="margin-top:6px"></div>';
-      host.appendChild(d);
-    }
-    // wire buttons
+        +'<button class="btn primary" data-collect="'+r.addr+'">💰 Collect</button>'
+        +'</div><div class="note" data-cnote="'+r.addr+'" style="margin-top:6px"></div></div>';
+    });
+    host.innerHTML=header+cards;
+    // ---- Claim all: one collectFees tx per token that has fees ----
+    $("#claimAllBtn").onclick=async function(){
+      if(!signer){ openWalletPicker(); return; }
+      var list=rows.filter(function(r){ return r.yours>1e-9; });
+      if(!list.length){ toast("Nothing to claim"); return; }
+      var note=$("#claimAllNote"), btn=$("#claimAllBtn"); btn.disabled=true; var done=0;
+      for(var i=0;i<list.length;i++){
+        note.className="note"; note.textContent="Claiming "+(i+1)+"/"+list.length+" — confirm in your wallet…";
+        try{ var tx=await writeFun().collectFees(list[i].addr); await tx.wait(); done++; }
+        catch(e){ /* skipped/failed → continue to the next */ }
+      }
+      note.className="note ok"; note.textContent="Claimed "+done+"/"+list.length+" 💰"; loadMine();
+    };
+    // wire per-card buttons
     host.querySelectorAll("[data-open]").forEach(function(b){ b.onclick=function(){ openTrade(b.getAttribute("data-open")); }; });
     host.querySelectorAll("[data-collect]").forEach(function(b){
       b.onclick=async function(){

@@ -113,6 +113,7 @@ input:focus,select:focus{border-color:var(--gold)}
     <button class="tab on" data-tab="create">＋ Create</button>
     <button class="tab" data-tab="explore">🔎 Explore</button>
     <button class="tab" data-tab="trade">📈 Trade</button>
+    <button class="tab" data-tab="mine">👤 My tokens</button>
   </div>
 
   <!-- ============ CREATE ============ -->
@@ -216,6 +217,18 @@ input:focus,select:focus{border-color:var(--gold)}
     </div>
   </section>
 
+  <!-- ============ MY TOKENS ============ -->
+  <section id="tab-mine" class="hidden">
+    <div class="panel">
+      <h2>My tokens &amp; fees</h2>
+      <div class="btnrow" style="margin-bottom:10px">
+        <button class="btn" id="mineReload">↻ Reload</button>
+        <span class="note" id="mineInfo" style="margin:0;align-self:center"></span>
+      </div>
+      <div id="mineList"></div>
+    </div>
+  </section>
+
   <div class="foot">$SWOGE FUN · Instant Uniswap launches · 30% of the 1% fee to SWOGE · <a href="index.html">swoleeswoge.dog</a></div>
 </div>
 
@@ -251,6 +264,8 @@ var POOL_ABI=[
  "function token0() view returns (address)",
  "event Swap(address indexed sender,address indexed recipient,int256 amount0,int256 amount1,uint160 sqrtPriceX96,uint128 liquidity,int24 tick)"
 ];
+var PM = "0x73991a25C818Bf1f1128dEAaB1492D45638DE0D3";   // NonfungiblePositionManager
+var PM_ABI=["function collect((uint256 tokenId,address recipient,uint128 amount0Max,uint128 amount1Max)) payable returns (uint256 amount0,uint256 amount1)"];
 
 var $=function(s){return document.querySelector(s);};
 var toastEl=$("#toast");
@@ -260,7 +275,7 @@ $("#logo").src="data:image/svg+xml;base64,"+btoa('<svg xmlns="http://www.w3.org/
 if(CONTRACT_ADDRESS) $("#cfgWarn").classList.add("hidden");
 
 /* ---------- wallet ---------- */
-var provider=null, signer=null, account=null;
+var provider=null, signer=null, account=null, rawEth=null;
 function rpcProvider(){ return new ethers.providers.StaticJsonRpcProvider(CHAIN.rpc, CHAIN.id); }
 function readFun(){ return new ethers.Contract(CONTRACT_ADDRESS, FUN_ABI, provider || rpcProvider()); }
 function writeFun(){ return new ethers.Contract(CONTRACT_ADDRESS, FUN_ABI, signer); }
@@ -285,18 +300,22 @@ async function connectWith(eth){
     provider=new ethers.providers.Web3Provider(eth,"any");
     signer=provider.getSigner();
     account=await signer.getAddress();
+    rawEth=eth;
     $("#walletBtn").textContent=account.slice(0,6)+"…"+account.slice(-4);
     $("#createBtn").disabled=!CONTRACT_ADDRESS;
     $("#createNote").textContent=CONTRACT_ADDRESS?"Ready.":"Contract address not set in this file.";
     if(curToken) refreshTrade();                 // stay on Trade, just refresh
+    if(!$("#tab-mine").classList.contains("hidden")) loadMine();
     // soft account/chain handlers — no page reload (keeps you on the current tab)
     if(!eth.__swogeHooked){
       eth.__swogeHooked=true;
       eth.on&&eth.on("accountsChanged",function(accs){
-        if(!accs||!accs.length){ account=null; signer=null; $("#walletBtn").textContent="Connect wallet"; $("#createBtn").disabled=true; return; }
+        if(!accs||!accs.length){ account=null; signer=null; $("#walletBtn").textContent="Connect wallet"; $("#createBtn").disabled=true; if(!$("#tab-mine").classList.contains("hidden")) loadMine(); return; }
         account=accs[0]; try{ signer=provider.getSigner(); }catch(e){}
         $("#walletBtn").textContent=account.slice(0,6)+"…"+account.slice(-4);
+        $("#createBtn").disabled=!CONTRACT_ADDRESS;
         if(curToken) refreshTrade();
+        if(!$("#tab-mine").classList.contains("hidden")) loadMine();
       });
       eth.on&&eth.on("chainChanged",function(){
         try{ provider=new ethers.providers.Web3Provider(eth,"any"); signer=provider.getSigner(); }catch(e){}
@@ -305,9 +324,33 @@ async function connectWith(eth){
     }
   }catch(e){ toast(String(e.message||e).slice(0,90)); }
 }
+async function disconnect(){
+  try{ if(rawEth && typeof rawEth.disconnect==="function") await rawEth.disconnect(); }catch(e){}
+  account=null; signer=null; provider=null; rawEth=null;
+  $("#walletBtn").textContent="Connect wallet";
+  $("#createBtn").disabled=true;
+  if(curToken) refreshTrade();
+  if(!$("#tab-mine").classList.contains("hidden")) loadMine();
+  toast("Wallet disconnected");
+}
 function openWalletPicker(){
-  if(account) return;
   var host=$("#wpickList"); host.innerHTML="";
+  if(account){
+    // already connected → show account actions (copy / disconnect)
+    var info=document.createElement("div"); info.className="note"; info.style.marginTop="0";
+    info.innerHTML="Connected<br><b style='color:var(--cream);word-break:break-all'>"+account+"</b>";
+    host.appendChild(info);
+    var cp=document.createElement("div"); cp.className="wrow"; cp.style.marginTop="10px";
+    cp.innerHTML='<span class="wdot"></span><span>📋 Copy address</span>';
+    cp.setAttribute("data-copy",account);
+    host.appendChild(cp);
+    var dc=document.createElement("div"); dc.className="wrow";
+    dc.innerHTML='<span class="wdot" style="background:var(--danger)"></span><span>🔌 Disconnect</span>';
+    dc.onclick=function(){ $("#wpick").classList.remove("show"); disconnect(); };
+    host.appendChild(dc);
+    $("#wpick").classList.add("show");
+    return;
+  }
   // installed injected wallets (Rabby, MetaMask, Uniswap…)
   wallets6963.forEach(function(d){
     var row=document.createElement("div"); row.className="wrow";
@@ -355,10 +398,12 @@ document.querySelectorAll(".tab").forEach(function(t){
   t.onclick=function(){
     document.querySelectorAll(".tab").forEach(function(x){x.classList.remove("on");});
     t.classList.add("on");
-    ["create","explore","trade"].forEach(function(n){ $("#tab-"+n).classList.toggle("hidden", n!==t.dataset.tab); });
+    ["create","explore","trade","mine"].forEach(function(n){ $("#tab-"+n).classList.toggle("hidden", n!==t.dataset.tab); });
     if(t.dataset.tab==="explore") loadList();
+    if(t.dataset.tab==="mine") loadMine();
   };
 });
+$("#mineReload").onclick=loadMine;
 
 /* ---------- create (Instant DexScreener only) ---------- */
 /* pick an image from the device → resize to a small icon → data-URI stored on-chain */
@@ -533,6 +578,79 @@ function renderList(){
 }
 $("#search").addEventListener("input",renderList);
 $("#reload").onclick=loadList;
+
+/* ---------- my tokens & fees ---------- */
+var MAXU128 = ethers.BigNumber.from("0xffffffffffffffffffffffffffffffff");
+// simulate the LP fee collection to preview claimable ETH (creator's 70% share)
+async function previewFees(lpTokenId){
+  try{
+    var pm=new ethers.Contract(PM, PM_ABI, provider||rpcProvider());
+    var r=await pm.callStatic.collect(
+      { tokenId:lpTokenId, recipient:CONTRACT_ADDRESS, amount0Max:MAXU128, amount1Max:MAXU128 },
+      { from:CONTRACT_ADDRESS }        // the launchpad owns the position
+    );
+    return { a0:r.amount0, a1:r.amount1 };
+  }catch(e){ return null; }
+}
+async function loadMine(){
+  var host=$("#mineList");
+  if(!account){ host.innerHTML='<div class="note">Connect your wallet to see the tokens you launched and claim your fees.</div>'; $("#mineInfo").textContent=""; return; }
+  $("#mineInfo").innerHTML='<span class="spin"></span> loading…'; host.innerHTML="";
+  try{
+    var fun=readFun();
+    await loadMetaAll(fun);
+    var evs=await fun.queryFilter(fun.filters.Created(null, account));  // creator is indexed
+    if(!evs.length){ host.innerHTML='<div class="note">You haven\'t launched any token yet. Go to <b>Create</b> ⚡</div>'; $("#mineInfo").textContent="0 token"; return; }
+    var eu=await getEthUsd();
+    // newest first, de-dup
+    var seen={}, toks=[];
+    evs.reverse().forEach(function(e){ var a=e.args.token.toLowerCase(); if(!seen[a]){ seen[a]=1; toks.push(e.args.token); } });
+    $("#mineInfo").textContent=toks.length+" token(s)";
+    for(var i=0;i<toks.length;i++){
+      var addr=toks[i];
+      var t=new ethers.Contract(addr, TOKEN_ABI, provider||rpcProvider());
+      var name="",sym=""; try{ name=await t.name(); sym=await t.symbol(); }catch(e){}
+      var inst=await fun.instant(addr);
+      var dexUrl = inst.exists ? ("https://dexscreener.com/robinhood/"+inst.pool) : ("https://dexscreener.com/search?q="+addr);
+      var claimHtml="";
+      if(inst.exists){
+        var pf=await previewFees(inst.lpTokenId);
+        if(pf){
+          var wethAmt = (WETH.toLowerCase() < addr.toLowerCase()) ? pf.a0 : pf.a1;  // WETH is token0 when its addr is smaller
+          var eth=+ethers.utils.formatEther(wethAmt);
+          var yours=eth*0.7;
+          claimHtml='<div class="kv"><span class="k">Claimable fees (your 70%)</span><span class="v">'+(eu?fmtUsd(yours*eu):yours.toFixed(6)+" ETH")+(eu?"  ·  "+yours.toFixed(6)+" ETH":"")+'</span></div>';
+        }
+      }
+      var d=document.createElement("div"); d.className="card"; d.style.cursor="default";
+      d.innerHTML='<div class="top"><div style="display:flex;align-items:center;gap:10px">'+logoImg(addr)+'<div><span class="nm">'+esc(name||"?")+'</span> <span class="sy">$'+esc(sym||"?")+'</span></div></div><span class="badge grad">⚡ yours</span></div>'
+        +'<div class="meta" style="display:flex;align-items:center;gap:8px"><span style="word-break:break-all">'+addr+'</span>'+copyBtn(addr)+'</div>'
+        +claimHtml
+        +'<div class="btnrow" style="margin-top:10px">'
+        +'<button class="btn" data-open="'+addr+'">📈 Open</button>'
+        +'<a class="btn" href="'+dexUrl+'" target="_blank">📊 DexScreener</a>'
+        +'<button class="btn primary" data-collect="'+addr+'">💰 Collect fees</button>'
+        +'</div><div class="note" data-cnote="'+addr+'" style="margin-top:6px"></div>';
+      host.appendChild(d);
+    }
+    // wire buttons
+    host.querySelectorAll("[data-open]").forEach(function(b){ b.onclick=function(){ openTrade(b.getAttribute("data-open")); }; });
+    host.querySelectorAll("[data-collect]").forEach(function(b){
+      b.onclick=async function(){
+        if(!signer){ openWalletPicker(); return; }
+        var addr=b.getAttribute("data-collect");
+        var note=host.querySelector('[data-cnote="'+addr+'"]');
+        note.className="note"; note.textContent="Collecting…"; b.disabled=true;
+        try{
+          var tx=await writeFun().collectFees(addr);
+          note.innerHTML='Collecting… <a href="'+CHAIN.scan+'/tx/'+tx.hash+'" target="_blank">↗</a>'; await tx.wait();
+          note.className="note ok"; note.textContent="Fees sent — 70% to you 💰"; loadMine();
+        }catch(e){ note.className="note err"; note.textContent="Failed · "+String(e.reason||e.message||e).slice(0,120); }
+        finally{ b.disabled=false; }
+      };
+    });
+  }catch(e){ host.innerHTML='<div class="note err">Could not load: '+esc(String(e.message||e).slice(0,80))+'</div>'; $("#mineInfo").textContent=""; }
+}
 function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];}); }
 /* ---------- copy to clipboard ---------- */
 function copyText(txt){
@@ -810,7 +928,7 @@ async function refreshTrade(){
     /* ---- instant token: live Uniswap pool ---- */
     $("#tvGradWrap").style.display="none";
     $("#tvInstantRow").style.display="flex";
-    $("#tvDexBtn").href="https://dexscreener.com/search?q="+curToken;
+    $("#tvDexBtn").href = curPool ? ("https://dexscreener.com/robinhood/"+curPool) : ("https://dexscreener.com/search?q="+curToken);
     $("#tvBadge").textContent="⚡ live on Uniswap"; $("#tvBadge").className="badge grad";
     $("#tvTradePanel").style.opacity="1";
     $("#tvRewardRow").style.display="none"; $("#claimBtn").style.display="none";

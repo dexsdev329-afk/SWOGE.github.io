@@ -12,6 +12,16 @@
 <script src="https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.13.3/dist/index.umd.js"></script>
 <style>
 :root{--cream:#F7EEDA;--dim:#A08a63;--fur:#EAD2A0;--gold:#E6A537;--goldlite:#F2C25A;--line:#2E2213;--void:#0B0906;--void2:#15100A;--signal:#6FD1C4;--danger:#E2635E;--ink:#1a1206}
+/* ---- Light theme (Pons-style clean white) ---- */
+body.light{--cream:#1A160D;--dim:#8A8270;--fur:#4A4436;--gold:#D9902A;--goldlite:#E6A537;--line:#E7E2D6;--void:#FFFFFF;--void2:#FAF8F2;--signal:#0E9E8E;--danger:#DC4B45;--ink:#FFFFFF;background:radial-gradient(circle at 22% 8%,rgba(217,144,42,.10),transparent 42%),radial-gradient(circle at 88% 92%,rgba(217,144,42,.05),transparent 45%),var(--void)}
+body.light .panel{box-shadow:0 8px 26px rgba(120,110,80,.10)}
+body.light .thumb.ph{background:linear-gradient(135deg,#F3EEE1,#E7DFCB)}
+body.light .tcard:hover{box-shadow:0 10px 24px rgba(120,110,80,.16)}
+body.light .tcard .tgrad,body.light .tcard .tdex,body.light .trend-card .trank{background:rgba(255,255,255,.9)}
+body.light .trend-card{background:linear-gradient(160deg,#FFFFFF,var(--void2))}
+body.light .trend-card:hover{box-shadow:0 16px 34px rgba(255,107,53,.16),0 6px 16px rgba(120,110,80,.14)}
+body.light .trend-card::after{background:linear-gradient(100deg,transparent,rgba(0,0,0,.05),transparent)}
+body.light .heroBanner,body.light #heroBanner{box-shadow:0 10px 28px rgba(120,110,80,.14)}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{background:var(--void);color:var(--cream);font-family:'Archivo',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
 body{min-height:100vh;background:radial-gradient(circle at 22% 8%,rgba(230,165,55,.14),transparent 42%),radial-gradient(circle at 88% 92%,rgba(230,165,55,.08),transparent 45%),var(--void)}
@@ -96,8 +106,8 @@ input:focus,select:focus{border-color:var(--gold)}
 /* ---- Trending ---- */
 .totvol{font-family:'Space Mono',monospace;font-size:12px;color:var(--cream);background:linear-gradient(135deg,rgba(255,107,53,.14),rgba(230,165,55,.08));border:1px solid rgba(255,107,53,.4);border-radius:999px;padding:6px 13px;white-space:nowrap}
 .totvol b{color:#FF6B35;font-weight:700}
-.trend-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
-@media(max-width:420px){.trend-grid{grid-template-columns:repeat(2,1fr);gap:10px}}
+.trend-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+@media(max-width:640px){.trend-grid{grid-template-columns:repeat(2,1fr);gap:10px}}
 .trend-card{position:relative;background:linear-gradient(160deg,var(--void2),var(--void));border:1px solid var(--line);border-radius:16px;padding:10px;cursor:pointer;overflow:hidden;transition:transform .28s cubic-bezier(.2,.85,.25,1),box-shadow .28s,border-color .28s}
 .trend-card::before{content:"";position:absolute;inset:0;border-radius:16px;padding:1px;background:linear-gradient(140deg,rgba(255,107,53,.75),transparent 42%,transparent 58%,rgba(230,165,55,.55));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;opacity:0;transition:opacity .28s;pointer-events:none}
 .trend-card::after{content:"";position:absolute;top:0;left:-130%;width:65%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.14),transparent);transform:skewX(-18deg);pointer-events:none}
@@ -129,7 +139,7 @@ input:focus,select:focus{border-color:var(--gold)}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .foot{margin-top:24px;text-align:center;font-family:'Space Mono',monospace;font-size:11px;color:var(--dim)}
 </style>
-
+<body class="light">
 <div class="wrap">
   <header>
     <div class="brand">
@@ -142,6 +152,7 @@ input:focus,select:focus{border-color:var(--gold)}
     <nav>
       <a href="index.html">← Home</a>
       <a href="burn.html">🔥 Burn</a>
+      <button class="walletbtn" id="themeBtn" title="Light / Dark">🌙 Dark</button>
       <button class="walletbtn" id="walletBtn">Connect wallet</button>
     </nav>
   </header>
@@ -463,6 +474,14 @@ async function connectWalletConnect(){
 }
 $("#walletBtn").onclick=openWalletPicker;
 $("#wpickCancel").onclick=function(){ $("#wpick").classList.remove("show"); };
+// ---- Light / Dark theme toggle (persisted) ----
+function applyTheme(light){
+  document.body.classList.toggle("light",light);
+  var b=$("#themeBtn"); if(b) b.textContent=light?"🌙 Dark":"☀️ Light";
+  try{ localStorage.setItem("swogeTheme",light?"light":"dark"); }catch(e){}
+}
+$("#themeBtn").onclick=function(){ applyTheme(!document.body.classList.contains("light")); };
+(function(){ var t; try{ t=localStorage.getItem("swogeTheme"); }catch(e){} applyTheme(t!=="dark"); })();
 $("#wpick").onclick=function(e){ if(e.target===$("#wpick")) $("#wpick").classList.remove("show"); };
 
 /* ---------- tabs ---------- */
@@ -662,7 +681,7 @@ async function loadVolumes(rows){
 function renderTrending(){
   var panel=$("#trendingPanel"), strip=$("#trendingStrip"); if(!strip) return;
   var withVol=allCache.filter(function(r){ return (r.vol24||0)>0; });
-  var top=withVol.slice().sort(function(a,b){ return (b.vol24||0)-(a.vol24||0); }).slice(0,6);
+  var top=withVol.slice().sort(function(a,b){ return (b.vol24||0)-(a.vol24||0); }).slice(0,8);
   if(!top.length){ panel.style.display="none"; return; }
   panel.style.display="block"; strip.innerHTML="";
   var tot=withVol.reduce(function(s,r){ return s+(r.vol24||0); },0);
@@ -671,9 +690,7 @@ function renderTrending(){
   top.forEach(function(r,i){
     var d=document.createElement("div"); d.className="trend-card"; d.setAttribute("data-addr",r.addr);
     var volTxt = exploreEu ? fmtUsd(r.vol24*exploreEu) : r.vol24.toFixed(3)+" ETH";
-    var rank = i===0?"🥇":i===1?"🥈":i===2?"🥉":"#"+(i+1);
-    d.innerHTML='<div class="trank">'+rank+'</div>'
-      +thumbHTML(r.addr,r.sym)
+    d.innerHTML=thumbHTML(r.addr,r.sym)
       +'<div class="tnm">'+esc(r.name||"?")+'</div>'
       +'<div class="tsy">$'+esc(r.sym||"?")+'</div>'
       +'<div class="tvol">'+volTxt+' <small>24h vol</small></div>';

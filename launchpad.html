@@ -54,6 +54,17 @@ input:focus,select:focus{border-color:var(--gold)}
 .socials a:hover{border-color:var(--gold);color:var(--gold)}
 .tlogo{width:40px;height:40px;border-radius:9px;object-fit:cover;border:1px solid var(--line);flex:0 0 auto;background:var(--void)}
 .tlogo.big{width:52px;height:52px;border-radius:11px}
+.wpick{position:fixed;inset:0;background:rgba(0,0,0,.62);display:none;align-items:center;justify-content:center;z-index:70;padding:16px}
+.wpick.show{display:flex}
+.wpick .box{background:var(--void2);border:1px solid var(--line);border-radius:16px;padding:18px;width:min(360px,92vw);box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.wpick h3{font-family:'Anton',sans-serif;font-size:20px;margin-bottom:14px}
+.wpick .wrow{display:flex;align-items:center;gap:12px;padding:12px 13px;border:1px solid var(--line);border-radius:11px;margin-bottom:8px;cursor:pointer;background:var(--void);transition:.12s}
+.wpick .wrow:hover{border-color:var(--gold)}
+.wpick .wrow img{width:28px;height:28px;border-radius:7px}
+.wpick .wrow .wdot{width:28px;height:28px;border-radius:7px;background:var(--gold);display:inline-block}
+.wpick .wrow span{font-family:'Archivo',sans-serif;font-weight:700;font-size:14px}
+.wpick .cancel{text-align:center;color:var(--dim);font-family:'Space Mono',monospace;font-size:12px;cursor:pointer;padding:8px;margin-top:4px}
+.wpick .cancel:hover{color:var(--gold)}
 .note{font-family:'Space Mono',monospace;font-size:12px;color:var(--dim);line-height:1.6;margin-top:8px;word-break:break-word}
 .note.ok{color:var(--signal)}.note.err{color:var(--danger)}
 .hidden{display:none}
@@ -212,6 +223,7 @@ input:focus,select:focus{border-color:var(--gold)}
   <div class="foot">$SWOGE FUN · 1% to SWOGE on every trade · <a href="index.html">swoleeswoge.dog</a></div>
 </div>
 
+<div class="wpick" id="wpick"><div class="box"><h3>Choose your wallet</h3><div id="wpickList"></div><div class="cancel" id="wpickCancel">Cancel</div></div></div>
 <div class="toast" id="toast"></div>
 
 <!--CONFIG-->
@@ -240,10 +252,16 @@ function rpcProvider(){ return new ethers.providers.StaticJsonRpcProvider(CHAIN.
 function readFun(){ return new ethers.Contract(CONTRACT_ADDRESS, FUN_ABI, provider || rpcProvider()); }
 function writeFun(){ return new ethers.Contract(CONTRACT_ADDRESS, FUN_ABI, signer); }
 
-$("#walletBtn").onclick=async function(){
-  if(account){ return; }
-  var eth=window.ethereum;
-  if(!eth){ toast("MetaMask not found"); return; }
+/* ---- multi-wallet discovery (EIP-6963): MetaMask, Rabby, Uniswap, … ---- */
+var wallets6963=[];
+window.addEventListener("eip6963:announceProvider", function(e){
+  var d=e.detail;
+  if(d&&d.info&&d.provider&&!wallets6963.some(function(w){return w.info.uuid===d.info.uuid;})) wallets6963.push(d);
+});
+try{ window.dispatchEvent(new Event("eip6963:requestProvider")); }catch(e){}
+
+async function connectWith(eth){
+  if(!eth){ toast("No wallet"); return; }
   try{
     await eth.request({method:"eth_requestAccounts"});
     var cid=await eth.request({method:"eth_chainId"});
@@ -257,10 +275,43 @@ $("#walletBtn").onclick=async function(){
     $("#walletBtn").textContent=account.slice(0,6)+"…"+account.slice(-4);
     $("#createBtn").disabled=!CONTRACT_ADDRESS;
     $("#createNote").textContent=CONTRACT_ADDRESS?"Ready.":"Contract address not set in this file.";
-    eth.on&&eth.on("accountsChanged",function(){location.reload();});
-    eth.on&&eth.on("chainChanged",function(){location.reload();});
-  }catch(e){ toast(String(e.message||e).slice(0,80)); }
-};
+    if(curToken) refreshTrade();                 // stay on Trade, just refresh
+    // soft account/chain handlers — no page reload (keeps you on the current tab)
+    if(!eth.__swogeHooked){
+      eth.__swogeHooked=true;
+      eth.on&&eth.on("accountsChanged",function(accs){
+        if(!accs||!accs.length){ account=null; signer=null; $("#walletBtn").textContent="Connect wallet"; $("#createBtn").disabled=true; return; }
+        account=accs[0]; try{ signer=provider.getSigner(); }catch(e){}
+        $("#walletBtn").textContent=account.slice(0,6)+"…"+account.slice(-4);
+        if(curToken) refreshTrade();
+      });
+      eth.on&&eth.on("chainChanged",function(){
+        try{ provider=new ethers.providers.Web3Provider(eth,"any"); signer=provider.getSigner(); }catch(e){}
+        if(curToken) refreshTrade();
+      });
+    }
+  }catch(e){ toast(String(e.message||e).slice(0,90)); }
+}
+function openWalletPicker(){
+  if(account) return;
+  var list=wallets6963.slice();
+  if(list.length===0){
+    if(window.ethereum) return connectWith(window.ethereum);
+    return toast("No wallet detected. On mobile, open this page inside your wallet's browser (MetaMask / Rabby / Uniswap).");
+  }
+  if(list.length===1) return connectWith(list[0].provider);
+  var host=$("#wpickList"); host.innerHTML="";
+  list.forEach(function(d){
+    var row=document.createElement("div"); row.className="wrow";
+    row.innerHTML=(d.info.icon?'<img src="'+esc(d.info.icon)+'" alt="">':'<span class="wdot"></span>')+'<span>'+esc(d.info.name||"Wallet")+'</span>';
+    row.onclick=function(){ $("#wpick").classList.remove("show"); connectWith(d.provider); };
+    host.appendChild(row);
+  });
+  $("#wpick").classList.add("show");
+}
+$("#walletBtn").onclick=openWalletPicker;
+$("#wpickCancel").onclick=function(){ $("#wpick").classList.remove("show"); };
+$("#wpick").onclick=function(e){ if(e.target===$("#wpick")) $("#wpick").classList.remove("show"); };
 
 /* ---------- tabs ---------- */
 document.querySelectorAll(".tab").forEach(function(t){
@@ -292,7 +343,7 @@ document.querySelectorAll("#feePresets button").forEach(function(b){
 });
 
 $("#createBtn").onclick=async function(){
-  if(!signer) return toast("Connect a wallet");
+  if(!signer){ openWalletPicker(); return; }
   var name=$("#cName").value.trim(), sym=$("#cSym").value.trim();
   if(!name||!sym) return toast("Name and symbol required");
   var maxW=Math.round((parseFloat($("#cMaxWallet").value)||0)*100);   // % → bps
@@ -482,7 +533,7 @@ async function quoteSell(){
   try{ var q=await readFun().quoteSell(curToken, ethers.utils.parseEther(String(v))); $("#sellQuote").textContent="≈ "+(+ethers.utils.formatEther(q.ethOut)).toFixed(6)+" ETH (fee "+(+ethers.utils.formatEther(q.fee)).toFixed(6)+")"; }catch(e){ $("#sellQuote").textContent=""; }
 }
 $("#buyBtn").onclick=async function(){
-  if(!signer) return toast("Connect a wallet");
+  if(!signer){ openWalletPicker(); return; }
   var v=parseFloat($("#buyEth").value); if(!v) return toast("Enter an ETH amount");
   var note=$("#tradeNote"); note.className="note"; note.textContent="Confirm in your wallet…";
   try{
@@ -495,7 +546,7 @@ $("#buyBtn").onclick=async function(){
   }catch(e){ note.className="note err"; note.textContent="Failed · "+String(e.reason||e.message||e).slice(0,140); }
 };
 $("#sellBtn").onclick=async function(){
-  if(!signer) return toast("Connect a wallet");
+  if(!signer){ openWalletPicker(); return; }
   var v=parseFloat($("#sellTok").value); if(!v) return toast("Enter a token amount");
   var note=$("#tradeNote"); note.className="note";
   try{
@@ -512,7 +563,7 @@ $("#sellBtn").onclick=async function(){
   }catch(e){ note.className="note err"; note.textContent="Failed · "+String(e.reason||e.message||e).slice(0,140); }
 };
 $("#claimBtn").onclick=async function(){
-  if(!signer) return toast("Connect a wallet");
+  if(!signer){ openWalletPicker(); return; }
   var note=$("#tradeNote"); note.className="note"; note.textContent="Claiming…";
   try{ var tx=await writeFun().claimRewards(curToken); await tx.wait(); note.className="note ok"; note.textContent="Rewards claimed 💰"; refreshTrade(); }
   catch(e){ note.className="note err"; note.textContent="Failed · "+String(e.reason||e.message||e).slice(0,120); }

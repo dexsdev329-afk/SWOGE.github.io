@@ -105,6 +105,8 @@ input:focus,select:focus{border-color:var(--gold)}
     </nav>
   </header>
 
+  <img id="heroBanner" alt="SWOGE FUN — instant launches" style="display:none;width:100%;border-radius:16px;border:1px solid var(--line);margin-bottom:16px;object-fit:cover;box-shadow:0 14px 36px rgba(0,0,0,.4)">
+
   <div class="warn hidden" id="cfgWarn">
     <b>Not configured yet.</b> Paste the SwogeFun V2 address in <code>CONTRACT_ADDRESS</code>.
   </div>
@@ -179,7 +181,10 @@ input:focus,select:focus{border-color:var(--gold)}
         </div>
         <label style="margin-top:12px">Price chart — market cap</label>
         <div id="tfBar" style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0"></div>
-        <canvas id="tvChart" width="760" height="220" style="width:100%;height:auto;border:1px solid var(--line);border-radius:10px;background:var(--void);display:block"></canvas>
+        <div style="position:relative">
+          <canvas id="tvChart" width="760" height="220" style="width:100%;height:auto;border:1px solid var(--line);border-radius:10px;background:var(--void);display:block"></canvas>
+          <img id="tvEmpty" alt="" style="display:none;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:200px;max-width:62%;opacity:.92;pointer-events:none">
+        </div>
         <div class="kv" style="margin-top:8px"><span class="k">Market cap</span><span class="v" id="tvMcap">—</span></div>
         <div class="kv"><span class="k">Price / token</span><span class="v" id="tvPrice">—</span></div>
         <div id="tvGradWrap">
@@ -270,7 +275,17 @@ var PM_ABI=["function collect((uint256 tokenId,address recipient,uint128 amount0
 var $=function(s){return document.querySelector(s);};
 var toastEl=$("#toast");
 function toast(m){toastEl.textContent=m;toastEl.classList.add("show");clearTimeout(toast._t);toast._t=setTimeout(function(){toastEl.classList.remove("show");},1900);}
-$("#logo").src="data:image/svg+xml;base64,"+btoa('<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44"><rect width="44" height="44" rx="11" fill="#E6A537"/><text x="22" y="30" font-size="21" text-anchor="middle" font-family="Arial" font-weight="bold" fill="#1a1206">S</text></svg>');
+/* ---- brand graphics: your uploaded images, with safe fallbacks ---- */
+var SWOGE_LOGO="data:image/webp;base64,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";
+var _svgS="data:image/svg+xml;base64,"+btoa('<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44"><rect width="44" height="44" rx="11" fill="#E6A537"/><text x="22" y="30" font-size="21" text-anchor="middle" font-family="Arial" font-weight="bold" fill="#1a1206">S</text></svg>');
+// header logo: try swoge-icon.png → embedded mascot → S
+(function(){ var l=$("#logo"); if(!l) return; l.onerror=function(){ this.onerror=function(){ this.onerror=null; this.src=_svgS; }; this.src=SWOGE_LOGO; }; l.src="swoge-icon.png"; })();
+// favicon: swoge-icon.png if present, else the embedded mascot
+(function(){ var link=document.querySelector("link[rel=icon]"); if(!link){ link=document.createElement("link"); link.rel="icon"; document.head.appendChild(link);} var probe=new Image(); probe.onload=function(){ link.href="swoge-icon.png"; }; probe.onerror=function(){ link.href=SWOGE_LOGO; }; probe.src="swoge-icon.png"; })();
+// hero banner: show swoge-hero.png only if it exists
+(function(){ var h=$("#heroBanner"); if(!h) return; h.onload=function(){ h.style.display="block"; }; h.onerror=function(){ h.style.display="none"; }; h.src="swoge-hero.png"; })();
+// empty-chart mascot: preload swoge-empty.png (shown by renderChart when no trades)
+var EMPTY_IMG_OK=false; (function(){ var e=$("#tvEmpty"); if(!e) return; e.onload=function(){ EMPTY_IMG_OK=true; }; e.onerror=function(){ EMPTY_IMG_OK=false; }; e.src="swoge-empty.png"; })();
 
 if(CONTRACT_ADDRESS) $("#cfgWarn").classList.add("hidden");
 
@@ -833,9 +848,12 @@ function drawCandles(candles, ethUsd){
   var plotW=W-padL-padR, plotH=H-padT-padB;
   x.clearRect(0,0,W,H); x.font="10px 'Space Mono',monospace"; x.textAlign="left";
   if(!candles.length){
-    x.fillStyle="#A08a63"; x.textAlign="center";
-    x.fillText("No trades yet — be the first to buy 🚀", W/2, H/2);
-    x.textAlign="left"; return;
+    if(!EMPTY_IMG_OK){                       // no mascot image → keep the text
+      x.fillStyle="#A08a63"; x.textAlign="center";
+      x.fillText("No trades yet — be the first to buy 🚀", W/2, H/2);
+      x.textAlign="left";
+    }
+    return;                                   // the mascot <img> overlay handles the empty look
   }
   var N=Math.min(candles.length,90), view=candles.slice(-N);
   var lo=Infinity,hi=-Infinity;
@@ -863,7 +881,11 @@ function drawCandles(candles, ethUsd){
   }
 }
 
-function renderChart(){ drawCandles(buildCandles(candleState.trades, candleState.tf), candleState.ethUsd); }
+function renderChart(){
+  var candles=buildCandles(candleState.trades, candleState.tf);
+  var e=$("#tvEmpty"); if(e) e.style.display=(!candles.length && EMPTY_IMG_OK)?"block":"none";
+  drawCandles(candles, candleState.ethUsd);
+}
 
 async function loadAndRenderChart(token, eu){
   var my=++chartReq, tr=[];

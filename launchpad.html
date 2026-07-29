@@ -190,9 +190,10 @@ input:focus,select:focus{border-color:var(--gold)}
         </div>
         <div class="note" id="tvAddr" style="margin-top:4px"></div>
         <div id="tvSocials"></div>
-        <label style="margin-top:12px">Bonding curve — market cap vs progress</label>
+        <label style="margin-top:12px">Price chart — market cap</label>
+        <div id="tfBar" style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0"></div>
         <canvas id="tvChart" width="760" height="220" style="width:100%;height:auto;border:1px solid var(--line);border-radius:10px;background:var(--void);display:block"></canvas>
-        <div class="kv" style="margin-top:8px"><span class="k">Current market cap</span><span class="v" id="tvMcap">—</span></div>
+        <div class="kv" style="margin-top:8px"><span class="k">Market cap</span><span class="v" id="tvMcap">—</span></div>
         <div class="kv"><span class="k">Price / token</span><span class="v" id="tvPrice">—</span></div>
         <label style="margin-top:12px">Progress to graduation</label>
         <div class="prog"><span id="tvBar"></span></div>
@@ -204,11 +205,12 @@ input:focus,select:focus{border-color:var(--gold)}
         <div class="two">
           <div>
             <div class="field"><label>Buy — ETH to spend</label><input id="buyEth" inputmode="decimal" placeholder="0.1"></div>
-            <div class="note" id="buyQuote"></div>
+            <div id="buyPcts" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"></div>
+            <div class="note" id="buyQuote" style="margin-top:6px"></div>
             <button class="btn buy full" id="buyBtn" style="margin-top:8px">Buy</button>
           </div>
           <div>
-            <div class="field"><label>Sell — tokens to sell</label><input id="sellTok" inputmode="decimal" placeholder="0"></div>
+            <div class="field"><label>Sell — tokens to sell <a href="#" id="sellMaxLink" style="float:right;font-size:12px;text-decoration:none">Max</a></label><input id="sellTok" inputmode="decimal" placeholder="0"></div>
             <div class="note" id="sellQuote"></div>
             <button class="btn sell full" id="sellBtn" style="margin-top:8px">Sell</button>
           </div>
@@ -217,6 +219,11 @@ input:focus,select:focus{border-color:var(--gold)}
         <div class="kv"><span class="k">Your balance</span><span class="v" id="tvBal">—</span></div>
         <div class="kv" id="tvRewardRow" style="display:none"><span class="k">Your holder rewards</span><span class="v" id="tvReward">—</span></div>
         <button class="btn full" id="claimBtn" style="margin-top:10px;display:none">💰 Claim my holder rewards</button>
+      </div>
+
+      <div class="panel" id="tvHistPanel">
+        <h2>Recent trades</h2>
+        <div id="tvTrades" style="overflow:auto;max-height:340px">—</div>
       </div>
     </div>
   </section>
@@ -474,6 +481,8 @@ function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp
 
 /* ---------- trade ---------- */
 var curToken=null;
+var curBalWei=null;   // exact wallet balance of curToken (BigNumber), for "sell all"
+var sellUseMax=false; // true when the Sell field was filled by the Max button
 $("#loadTrade").onclick=function(){ var a=$("#tradeAddr").value.trim(); if(a) openTrade(a); };
 function switchTab(name){ document.querySelector('.tab[data-tab="'+name+'"]').click(); }
 async function openTrade(addr){
@@ -483,39 +492,190 @@ async function openTrade(addr){
   curToken=addr;
   await refreshTrade();
 }
-function drawCurve(soldHuman){
-  var cv=$("#tvChart"); if(!cv) return; var x=cv.getContext("2d");
-  var W=cv.width, H=cv.height, padL=54, padB=26, padT=14, padR=12;
-  var plotW=W-padL-padR, plotH=H-padT-padB;
-  var CURVE=8e8;                                  // tokens sold at graduation
-  var mcapAt=function(s){ return 1e18/Math.pow(1e9-s,2); }; // ETH
-  var yMin=mcapAt(0), yMax=mcapAt(CURVE);         // 1 → 25 ETH
-  var sx=function(s){ return padL + (s/CURVE)*plotW; };
-  var sy=function(m){ return padT + plotH - ((m-yMin)/(yMax-yMin))*plotH; };
-  x.clearRect(0,0,W,H);
-  // grid + y labels (mcap)
-  x.strokeStyle="rgba(160,138,99,.18)"; x.fillStyle="#A08a63"; x.font="10px 'Space Mono',monospace"; x.lineWidth=1;
-  for(var i=0;i<=4;i++){
-    var m=yMin+(yMax-yMin)*i/4, yy=sy(m);
-    x.beginPath(); x.moveTo(padL,yy); x.lineTo(W-padR,yy); x.stroke();
-    x.fillText(m.toFixed(0)+"E", 6, yy+3);
-  }
-  // x labels (%)
-  for(var j=0;j<=4;j++){ var xx=padL+plotW*j/4; x.fillText((j*25)+"%", xx-8, H-8); }
-  // curve
-  x.strokeStyle="#E6A537"; x.lineWidth=2.4; x.beginPath();
-  for(var k=0;k<=100;k++){ var s=CURVE*k/100; var px=sx(s), py=sy(mcapAt(s)); if(k===0)x.moveTo(px,py); else x.lineTo(px,py); }
-  x.stroke();
-  // fill under
-  x.lineTo(sx(CURVE),sy(yMin)); x.lineTo(sx(0),sy(yMin)); x.closePath();
-  x.fillStyle="rgba(230,165,55,.08)"; x.fill();
-  // current position marker
-  var s0=Math.min(soldHuman,CURVE), mx=sx(s0), my=sy(mcapAt(s0));
-  x.strokeStyle="rgba(111,209,196,.5)"; x.setLineDash([4,4]); x.lineWidth=1;
-  x.beginPath(); x.moveTo(mx,padT); x.lineTo(mx,padT+plotH); x.stroke(); x.setLineDash([]);
-  x.beginPath(); x.arc(mx,my,5,0,Math.PI*2); x.fillStyle="#6FD1C4"; x.fill();
-  x.strokeStyle="#0B0906"; x.lineWidth=2; x.stroke();
+/* ---------- price chart (candlesticks from on-chain trades) ---------- */
+var TF_LIST=[["1m",60],["5m",300],["15m",900],["1h",3600],["4h",14400],["24h",86400]];
+var candleState={token:null,trades:[],tf:3600,ethUsd:null};
+var chartReq=0, ethUsdCache=null;
+var mcapAt=function(s){ return 1e18/Math.pow(1e9-s,2); }; // ETH, s in whole tokens
+
+function fmtUsd(n){
+  if(!isFinite(n)) return "—";
+  if(n>=1e9) return "$"+(n/1e9).toFixed(2)+"B";
+  if(n>=1e6) return "$"+(n/1e6).toFixed(2)+"M";
+  if(n>=1e3) return "$"+(n/1e3).toFixed(1)+"K";
+  return "$"+(n>=1?n.toFixed(2):n.toFixed(4));
 }
+function fmtPrice(p){ if(!isFinite(p)) return "—"; if(p>=1) return "$"+p.toFixed(3); if(p>=0.0001) return "$"+p.toFixed(6); return "$"+p.toExponential(2); }
+
+async function getEthUsd(){
+  if(ethUsdCache) return ethUsdCache;
+  try{
+    var r=await fetch("https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd",{cache:"no-store"});
+    var j=await r.json(); if(j&&j.ethereum&&j.ethereum.usd){ ethUsdCache=j.ethereum.usd; return ethUsdCache; }
+  }catch(e){}
+  try{
+    var r2=await fetch("https://coins.llama.fi/prices/current/coingecko:ethereum");
+    var j2=await r2.json(); var c=j2&&j2.coins&&j2.coins["coingecko:ethereum"];
+    if(c&&c.price){ ethUsdCache=c.price; return ethUsdCache; }
+  }catch(e){}
+  return null;
+}
+
+async function fetchTrades(token){
+  var fun=readFun();
+  var res=await Promise.all([
+    fun.queryFilter(fun.filters.Buy(token),0,"latest"),
+    fun.queryFilter(fun.filters.Sell(token),0,"latest")
+  ]);
+  var evs=[];
+  res[0].forEach(function(l){ evs.push({bn:l.blockNumber,li:l.logIndex,tx:l.transactionHash,who:l.args.buyer,type:"buy",tokens:+ethers.utils.formatEther(l.args.tokensOut),eth:+ethers.utils.formatEther(l.args.ethIn)}); });
+  res[1].forEach(function(l){ evs.push({bn:l.blockNumber,li:l.logIndex,tx:l.transactionHash,who:l.args.seller,type:"sell",tokens:+ethers.utils.formatEther(l.args.tokensIn),eth:+ethers.utils.formatEther(l.args.ethOut)}); });
+  if(!evs.length) return [];
+  evs.sort(function(a,b){ return a.bn-b.bn || a.li-b.li; });
+  var prov=provider||rpcProvider();
+  var uniq={}; evs.forEach(function(e){ uniq[e.bn]=1; });
+  var bns=Object.keys(uniq);
+  var stamps=await Promise.all(bns.map(function(b){ return prov.getBlock(parseInt(b)).then(function(bl){return {b:b,t:bl?bl.timestamp:0};},function(){return {b:b,t:0};}); }));
+  var tmap={}; stamps.forEach(function(s){ tmap[s.b]=s.t; });
+  var sold=0;
+  evs.forEach(function(e){
+    if(e.type==="buy") sold+=e.tokens; else sold-=e.tokens;
+    if(sold<0) sold=0;
+    e.mcap=mcapAt(sold);       // ETH
+    e.ts=tmap[e.bn]||0;
+  });
+  return evs;
+}
+
+function buildCandles(trades, tf){
+  if(!trades||!trades.length) return [];
+  var buckets={}, order=[];
+  trades.forEach(function(t){
+    if(!t.ts) return;
+    var k=Math.floor(t.ts/tf)*tf;
+    if(!buckets[k]){ buckets[k]={t:k,o:t.mcap,h:t.mcap,l:t.mcap,c:t.mcap,v:0}; order.push(k); }
+    var b=buckets[k]; if(t.mcap>b.h)b.h=t.mcap; if(t.mcap<b.l)b.l=t.mcap; b.c=t.mcap; b.v+=t.eth;
+  });
+  order.sort(function(a,b){return a-b;});
+  var out=[];
+  for(var i=0;i<order.length;i++){
+    if(i>0){
+      var gap=Math.round((order[i]-order[i-1])/tf), pc=buckets[order[i-1]].c;
+      for(var g=1;g<gap && out.length<400;g++){ out.push({t:order[i-1]+g*tf,o:pc,h:pc,l:pc,c:pc,v:0,flat:true}); }
+    }
+    out.push(buckets[order[i]]);
+  }
+  return out;
+}
+
+function drawCandles(candles, ethUsd){
+  var cv=$("#tvChart"); if(!cv) return; var x=cv.getContext("2d");
+  var W=cv.width,H=cv.height, padL=64,padR=14,padT=14,padB=20;
+  var plotW=W-padL-padR, plotH=H-padT-padB;
+  x.clearRect(0,0,W,H); x.font="10px 'Space Mono',monospace"; x.textAlign="left";
+  if(!candles.length){
+    x.fillStyle="#A08a63"; x.textAlign="center";
+    x.fillText("No trades yet — be the first to buy 🚀", W/2, H/2);
+    x.textAlign="left"; return;
+  }
+  var N=Math.min(candles.length,90), view=candles.slice(-N);
+  var lo=Infinity,hi=-Infinity;
+  view.forEach(function(c){ if(c.l<lo)lo=c.l; if(c.h>hi)hi=c.h; });
+  if(!(hi>lo)){ hi=lo*1.05||1; lo=lo*0.95; }
+  var rng=hi-lo; lo-=rng*0.08; hi+=rng*0.08;
+  var mul=ethUsd||1;
+  var sy=function(v){ return padT+plotH-((v-lo)/(hi-lo))*plotH; };
+  // grid + y labels (mcap)
+  x.strokeStyle="rgba(160,138,99,.16)"; x.fillStyle="#A08a63"; x.lineWidth=1;
+  for(var i=0;i<=4;i++){
+    var v=lo+(hi-lo)*i/4, yy=sy(v);
+    x.beginPath(); x.moveTo(padL,yy); x.lineTo(W-padR,yy); x.stroke();
+    x.fillText(ethUsd? fmtUsd(v*mul) : (v.toFixed(3)+"E"), 4, yy+3);
+  }
+  // candles
+  var slot=plotW/N, bw=Math.max(2,Math.min(14,slot*0.62));
+  for(var k=0;k<view.length;k++){
+    var c=view[k], cx=padL+slot*k+slot/2, up=c.c>=c.o, col=up?"#3fb96b":"#e5544b";
+    if(c.flat){ x.fillStyle="#6b5f4a"; x.fillRect(cx-bw/2, sy(c.c)-0.5, bw, 1); continue; }
+    x.strokeStyle=col; x.fillStyle=col; x.lineWidth=1;
+    x.beginPath(); x.moveTo(cx+.5,sy(c.h)); x.lineTo(cx+.5,sy(c.l)); x.stroke();
+    var yo=sy(c.o), yc=sy(c.c), top=Math.min(yo,yc), hgt=Math.max(1,Math.abs(yc-yo));
+    x.fillRect(cx-bw/2, top, bw, hgt);
+  }
+}
+
+function renderChart(){ drawCandles(buildCandles(candleState.trades, candleState.tf), candleState.ethUsd); }
+
+async function loadAndRenderChart(token, eu){
+  var my=++chartReq, tr=[];
+  try{ tr=await fetchTrades(token); }catch(e){ tr=[]; }
+  if(my!==chartReq) return;                 // a newer request superseded this one
+  candleState.token=token; candleState.trades=tr; candleState.ethUsd=eu;
+  renderChart(); renderTrades();
+}
+
+// ---- recent-trades history (pump.fun style) ----
+function relTime(s){ if(s<0)s=0; if(s<60)return s+"s"; if(s<3600)return Math.floor(s/60)+"m"; if(s<86400)return Math.floor(s/3600)+"h"; return Math.floor(s/86400)+"d"; }
+function fmtNum(n){ if(n>=1e9)return (n/1e9).toFixed(2)+"B"; if(n>=1e6)return (n/1e6).toFixed(2)+"M"; if(n>=1e3)return (n/1e3).toFixed(1)+"K"; return n.toFixed(n<1?4:0); }
+function renderTrades(){
+  var el=$("#tvTrades"); if(!el) return;
+  var tr=(candleState.trades||[]).slice().reverse();
+  if(!tr.length){ el.innerHTML='<span style="color:#A08a63">No trades yet — be the first 🚀</span>'; return; }
+  var eu=candleState.ethUsd, now=Math.floor(Date.now()/1000);
+  var me=account?account.toLowerCase():"";
+  var rows=tr.slice(0,50).map(function(e){
+    var col=e.type==="buy"?"#3fb96b":"#e5544b";
+    var ethStr=eu?("$"+(e.eth*eu).toFixed(2)):(e.eth.toFixed(5));
+    var who=e.who?(e.who.slice(0,6)+"…"+e.who.slice(-4)):"";
+    var mine=e.who&&e.who.toLowerCase()===me;
+    return '<tr'+(mine?' style="background:rgba(230,165,55,.10)"':'')+'>'+
+      '<td style="padding:5px 6px;color:'+col+';font-weight:700;text-transform:uppercase">'+e.type+'</td>'+
+      '<td style="padding:5px 6px">'+ethStr+'</td>'+
+      '<td style="padding:5px 6px">'+fmtNum(e.tokens)+'</td>'+
+      '<td style="padding:5px 6px"><a href="'+CHAIN.scan+'/address/'+e.who+'" target="_blank" style="color:#A08a63;text-decoration:none">'+who+(mine?' (you)':'')+'</a></td>'+
+      '<td style="padding:5px 6px;color:#A08a63">'+relTime(now-(e.ts||now))+'</td>'+
+      '<td style="padding:5px 6px"><a href="'+CHAIN.scan+'/tx/'+e.tx+'" target="_blank" style="text-decoration:none">↗</a></td>'+
+    '</tr>';
+  }).join("");
+  el.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:12px">'+
+    '<thead><tr style="color:#A08a63;text-align:left;position:sticky;top:0;background:var(--panel,#120d08)">'+
+    '<th style="padding:5px 6px">Type</th><th style="padding:5px 6px">'+(eu?"$":"ETH")+'</th><th style="padding:5px 6px">Tokens</th><th style="padding:5px 6px">Wallet</th><th style="padding:5px 6px">Time</th><th></th></tr></thead>'+
+    '<tbody>'+rows+'</tbody></table>';
+}
+
+// ---- quick-buy chips: 10/20/50/90 % of your ETH balance ----
+var BUY_PCTS=[10,20,50,90];
+function buildBuyPcts(){
+  var bar=$("#buyPcts"); if(!bar) return; bar.innerHTML="";
+  BUY_PCTS.forEach(function(p){
+    var b=document.createElement("button");
+    b.textContent=p+"%";
+    b.style.cssText="padding:4px 10px;border-radius:7px;border:1px solid var(--line);background:transparent;color:#A08a63;font:600 12px 'Space Mono',monospace;cursor:pointer";
+    b.onclick=async function(){
+      if(!account){ openWalletPicker(); return; }
+      try{
+        var bal=await (provider||rpcProvider()).getBalance(account);
+        var s=(+ethers.utils.formatEther(bal.mul(p).div(100))).toFixed(6).replace(/0+$/,"").replace(/\.$/,"");
+        $("#buyEth").value=s||"0"; quoteBuy();
+      }catch(e){ toast("Couldn't read your ETH balance"); }
+    };
+    bar.appendChild(b);
+  });
+}
+buildBuyPcts();
+
+function buildTfBar(){
+  var bar=$("#tfBar"); if(!bar) return; bar.innerHTML="";
+  TF_LIST.forEach(function(p){
+    var on=candleState.tf===p[1];
+    var b=document.createElement("button");
+    b.textContent=p[0];
+    b.style.cssText="padding:4px 10px;border-radius:7px;border:1px solid var(--line);background:"+(on?"#E6A537":"transparent")+";color:"+(on?"#1a1206":"#A08a63")+";font:600 12px 'Space Mono',monospace;cursor:pointer";
+    b.onclick=function(){ candleState.tf=p[1]; buildTfBar(); renderChart(); };
+    bar.appendChild(b);
+  });
+}
+buildTfBar();
 async function refreshTrade(){
   var fun=readFun();
   var t=new ethers.Contract(curToken, TOKEN_ABI, provider||rpcProvider());
@@ -528,18 +688,20 @@ async function refreshTrade(){
   var pct=Math.min(100, c.tokensSold.mul(10000).div(CURVE_SUPPLY).toNumber()/100);
   $("#tvBar").style.width=(c.graduated?100:pct)+"%";
   $("#tvProg").textContent=c.graduated?"Graduated — now trading on Uniswap.":(pct.toFixed(2)+"% of the curve sold");
-  // bonding-curve chart + live price/mcap
+  // candlestick chart + live price/mcap (in USD when ETH price is available)
   var soldHuman=+ethers.utils.formatEther(c.tokensSold);
-  drawCurve(soldHuman);
   var mcap=1e18/Math.pow(1e9-soldHuman,2);          // = price * total supply, in ETH
   var price=mcap/1e9;                                // ETH per token
-  $("#tvMcap").textContent=mcap.toFixed(4)+" ETH  (virtual)";
-  $("#tvPrice").textContent=price.toExponential(3)+" ETH";
+  var eu=await getEthUsd();
+  $("#tvMcap").textContent = eu ? (fmtUsd(mcap*eu)+"  ·  "+mcap.toFixed(3)+" ETH") : (mcap.toFixed(4)+" ETH");
+  $("#tvPrice").textContent = eu ? (fmtPrice(price*eu)+"  ·  "+price.toExponential(2)+" ETH") : (price.toExponential(3)+" ETH");
+  loadAndRenderChart(curToken, eu);
   $("#tvBadge").textContent=c.graduated?"graduated ✓":"on curve"; $("#tvBadge").className="badge"+(c.graduated?" grad":"");
   $("#tvTradePanel").style.opacity=c.graduated?".5":"1";
   // balance + rewards
   if(account){
     var bal=await t.balanceOf(account);
+    curBalWei=bal;
     $("#tvBal").textContent=(+ethers.utils.formatEther(bal)).toLocaleString("en-US")+" "+(sym||"");
     var isHolders = c.feeMode===1;
     $("#tvRewardRow").style.display=isHolders?"flex":"none";
@@ -560,7 +722,15 @@ async function quoteBuy(){
   var el=$(id); if(!el) return;
   el.addEventListener("input",function(){ if(this.value.indexOf(",")>-1){ var p=this.selectionStart; this.value=this.value.replace(/,/g,"."); try{this.setSelectionRange(p,p);}catch(e){} } });
 });
-$("#sellTok").addEventListener("input",function(){ clearTimeout(quoteT); quoteT=setTimeout(quoteSell,250); });
+$("#sellTok").addEventListener("input",function(){ sellUseMax=false; clearTimeout(quoteT); quoteT=setTimeout(quoteSell,250); });
+$("#sellMaxLink").addEventListener("click",function(e){
+  e.preventDefault();
+  if(!account){ openWalletPicker(); return; }
+  if(!curBalWei||curBalWei.isZero()){ toast("No tokens to sell"); return; }
+  sellUseMax=true;                                  // sell the EXACT on-chain balance
+  $("#sellTok").value=ethers.utils.formatEther(curBalWei);  // just for display
+  quoteSell();
+});
 async function quoteSell(){
   var raw=amtStr("#sellTok"); if(!parseFloat(raw)||!curToken){ $("#sellQuote").textContent=""; return; }
   try{ var q=await readFun().quoteSell(curToken, ethers.utils.parseEther(raw)); $("#sellQuote").textContent="≈ "+(+ethers.utils.formatEther(q.ethOut)).toFixed(6)+" ETH (fee "+(+ethers.utils.formatEther(q.fee)).toFixed(6)+")"; }catch(e){ $("#sellQuote").textContent=""; }
@@ -583,8 +753,12 @@ $("#sellBtn").onclick=async function(){
   var raw=amtStr("#sellTok"); if(!parseFloat(raw)) return toast("Enter a token amount");
   var note=$("#tradeNote"); note.className="note";
   try{
-    var amt=ethers.utils.parseEther(raw);
+    var amt = sellUseMax && curBalWei ? curBalWei : ethers.utils.parseEther(raw);
     var t=new ethers.Contract(curToken,TOKEN_ABI,signer);
+    // never try to sell more than the wallet holds (prevents "revert: balance")
+    var onchainBal=await t.balanceOf(account);
+    if(amt.gt(onchainBal)) amt=onchainBal;
+    if(amt.isZero()) return toast("No tokens to sell");
     var allowance=await t.allowance(account,CONTRACT_ADDRESS);
     if(allowance.lt(amt)){ note.textContent="Approving…"; await (await t.approve(CONTRACT_ADDRESS,ethers.constants.MaxUint256)).wait(); }
     var q=await readFun().quoteSell(curToken,amt);
@@ -592,7 +766,7 @@ $("#sellBtn").onclick=async function(){
     note.textContent="Confirm the sell…";
     var tx=await writeFun().sell(curToken,amt,minEth);
     note.innerHTML='Selling… <a href="'+CHAIN.scan+'/tx/'+tx.hash+'" target="_blank">↗</a>'; await tx.wait();
-    note.className="note ok"; note.textContent="Sold ✅"; $("#sellTok").value=""; $("#sellQuote").textContent=""; refreshTrade();
+    note.className="note ok"; note.textContent="Sold ✅"; sellUseMax=false; $("#sellTok").value=""; $("#sellQuote").textContent=""; refreshTrade();
   }catch(e){ note.className="note err"; note.textContent="Failed · "+String(e.reason||e.message||e).slice(0,140); }
 };
 $("#claimBtn").onclick=async function(){

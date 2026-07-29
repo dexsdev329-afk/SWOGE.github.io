@@ -579,30 +579,50 @@ function mcOfToken(pool, addr){
     return price*1e9;
   },function(){ return null; });
 }
+function mcText(r){
+  if(r.mcEth!=null) return (exploreEu?fmtUsd(r.mcEth*exploreEu):r.mcEth.toFixed(3)+" ETH")+" <small>MC</small>";
+  return r.mode===0 ? "on curve" : "<small class='mcpend'>…</small>";
+}
+// fetch market caps in the background with limited concurrency, update cards in place
+async function loadMarketCaps(rows){
+  var pending=rows.filter(function(r){ return r.pool; }), i=0, CONC=8;
+  async function worker(){
+    while(i<pending.length){
+      var r=pending[i++];
+      try{ r.mcEth=await mcOfToken(r.pool, r.addr); }catch(e){}
+      var el=document.querySelector('.tcard[data-addr="'+r.addr+'"] .tmc');
+      if(el) el.innerHTML=mcText(r);
+    }
+  }
+  var ws=[]; for(var w=0;w<CONC;w++) ws.push(worker());
+  await Promise.all(ws);
+}
 async function loadList(){
   if(!CONTRACT_ADDRESS){ $("#list").innerHTML='<div class="note">Set the contract address in this file first.</div>'; return; }
   $("#listInfo").innerHTML='<span class="spin"></span>';
   try{
     var fun=readFun();
-    exploreEu=await getEthUsd();
-    await loadMetaAll(fun);
-    var n=(await fun.tokenCount()).toNumber();
-    var out=[];
-    for(var i=n-1;i>=0 && i>=n-60;i--){   // newest first, cap 60
-      var addr=await fun.allTokens(i);
-      var mode=await fun.modeOf(addr);
-      var c = mode===0 ? await fun.curves(addr) : null;
-      var pool=null, mcEth=null;
-      if(mode===1){ try{ pool=(await fun.instant(addr)).pool; mcEth=await mcOfToken(pool,addr); }catch(e){} }
-      var t=new ethers.Contract(addr, TOKEN_ABI, provider||rpcProvider());
-      var name="", sym="";
-      try{ name=await t.name(); sym=await t.symbol(); }catch(e){}
-      out.push({addr:addr,mode:mode,name:name,sym:sym,pool:pool,mcEth:mcEth,idx:i,
-                sold:c?c.tokensSold:ethers.constants.Zero,
-                graduated:c?c.graduated:false,
-                social:metaMap[addr.toLowerCase()]||{}});
+    getEthUsd().then(function(eu){ exploreEu=eu; if(!$("#tab-explore").classList.contains("hidden")) renderList(); });
+    // 3 fast log queries instead of ~6 calls per token
+    var res=await Promise.all([
+      fun.queryFilter(fun.filters.Created()),
+      fun.queryFilter(fun.filters.LaunchedInstant()),
+      fun.queryFilter(fun.filters.Meta())
+    ]);
+    var created=res[0], launched=res[1], metaEvs=res[2];
+    var poolMap={}; launched.forEach(function(e){ poolMap[e.args.token.toLowerCase()]=e.args.pool; });
+    metaEvs.forEach(function(e){ metaMap[e.args.token.toLowerCase()]={tg:e.args.telegram,tw:e.args.twitter,web:e.args.website,logo:e.args.logo}; });
+    var rows=[], seen={};
+    for(var i=created.length-1;i>=0 && rows.length<60;i--){   // newest first, cap 60
+      var a=created[i].args, addr=a.token, tk=addr.toLowerCase();
+      if(seen[tk]) continue; seen[tk]=1;
+      rows.push({addr:addr, mode: poolMap[tk]?1:0, name:a.name, sym:a.symbol,
+                 pool: poolMap[tk]||null, mcEth:null, idx:i,
+                 social:metaMap[tk]||{}});
     }
-    allCache=out; renderList(); $("#listInfo").textContent=n+" launched";
+    allCache=rows; renderList();                       // show the grid immediately
+    $("#listInfo").textContent=created.length+" launched";
+    loadMarketCaps(rows);                              // fill market caps in the background
   }catch(e){ $("#listInfo").textContent="error"; $("#list").innerHTML='<div class="note err">Could not load: '+esc(String(e.message||e).slice(0,80))+'</div>'; }
 }
 function thumbHTML(addr, sym){
@@ -620,11 +640,9 @@ function renderList(){
   // "new" = default (already newest-first)
   if(!rows.length){ host.innerHTML='<div class="note">No token matches.</div>'; return; }
   rows.forEach(function(r){
-    var d=document.createElement("div"); d.className="tcard";
+    var d=document.createElement("div"); d.className="tcard"; d.setAttribute("data-addr", r.addr);
     var dexUrl = r.pool ? ("https://dexscreener.com/robinhood/"+r.pool) : ("https://dexscreener.com/search?q="+r.addr);
-    var mcTxt = (r.mcEth!=null)
-      ? (exploreEu ? fmtUsd(r.mcEth*exploreEu) : r.mcEth.toFixed(3)+" ETH")+" <small>MC</small>"
-      : (r.mode===0 ? "on curve" : "<small>—</small>");
+    var mcTxt = mcText(r);
     d.innerHTML=thumbHTML(r.addr, r.sym)
       +'<a class="tdex dexlink" href="'+dexUrl+'" target="_blank" title="DexScreener">📊</a>'
       +'<div class="tnm">'+esc(r.name||"?")+'</div>'

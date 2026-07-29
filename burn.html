@@ -11,6 +11,9 @@
 <script src="https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.13.3/dist/index.umd.js"></script>
 <style>
 :root{--cream:#F7EEDA;--dim:#A08a63;--fur:#EAD2A0;--gold:#E6A537;--goldlite:#F2C25A;--line:#2E2213;--void:#0B0906;--void2:#15100A;--signal:#6FD1C4;--danger:#E2635E;--fire:#FF6B35;--ink:#1a1206}
+/* ---- Light theme (clean white) ---- */
+body.light{--cream:#1A160D;--dim:#8A8270;--fur:#4A4436;--gold:#D9902A;--goldlite:#E6A537;--line:#E7E2D6;--void:#FFFFFF;--void2:#FAF8F2;--signal:#0E9E8E;--danger:#DC4B45;background:radial-gradient(circle at 50% 0%,rgba(255,107,53,.12),transparent 45%),radial-gradient(circle at 85% 90%,rgba(217,144,42,.05),transparent 45%),var(--void)}
+body.light .panel{box-shadow:0 8px 26px rgba(120,110,80,.10)}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{background:var(--void);color:var(--cream);font-family:'Archivo',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
 body{min-height:100vh;background:radial-gradient(circle at 50% 0%,rgba(255,107,53,.16),transparent 45%),radial-gradient(circle at 85% 90%,rgba(230,165,55,.08),transparent 45%),var(--void)}
@@ -60,7 +63,7 @@ input:focus{border-color:var(--fire)}
 .foot{margin-top:24px;text-align:center;font-family:'Space Mono',monospace;font-size:11px;color:var(--dim)}
 .hint{font-size:12px;color:var(--dim);line-height:1.6;font-family:'Space Mono',monospace}
 </style>
-
+<body class="light">
 <div class="wrap">
   <header>
     <div class="brand">
@@ -72,6 +75,7 @@ input:focus{border-color:var(--fire)}
     </div>
     <nav>
       <a href="launchpad.html">← Launchpad</a>
+      <button class="walletbtn" id="themeBtn" title="Light / Dark">🌙 Dark</button>
       <button class="walletbtn" id="walletBtn">Connect wallet</button>
     </nav>
   </header>
@@ -182,6 +186,10 @@ async function connectWalletConnect(){
 async function disconnect(){ try{ if(rawEth&&rawEth.disconnect) await rawEth.disconnect(); }catch(e){} account=null;signer=null;provider=null;rawEth=null;$("#walletBtn").textContent="Connect wallet";$("#burnBtn").disabled=true;$("#myBal").textContent="connect wallet";$("#willBurn").textContent="—";toast("Disconnected"); }
 $("#walletBtn").onclick=openWalletPicker;
 $("#wpickCancel").onclick=function(){ $("#wpick").classList.remove("show"); };
+// ---- Light / Dark theme toggle (persisted, shared with launchpad) ----
+function applyTheme(light){ document.body.classList.toggle("light",light); var b=$("#themeBtn"); if(b) b.textContent=light?"🌙 Dark":"☀️ Light"; try{ localStorage.setItem("swogeTheme",light?"light":"dark"); }catch(e){} }
+$("#themeBtn").onclick=function(){ applyTheme(!document.body.classList.contains("light")); };
+(function(){ var t; try{ t=localStorage.getItem("swogeTheme"); }catch(e){} applyTheme(t!=="dark"); })();
 $("#wpick").onclick=function(e){ if(e.target===$("#wpick")) $("#wpick").classList.remove("show"); };
 
 /* ---- data ---- */

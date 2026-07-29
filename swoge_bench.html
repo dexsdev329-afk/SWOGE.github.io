@@ -15,6 +15,15 @@
   --paper:#F7EEDA; --dim:#A08a63; --signal:#E6A537; --alert:#F2C25A; --danger:#D6452F; --r:3px;
   --gold:#E6A537; --cream:#F7EEDA;
 }
+/* ---- Light theme (clean white) ---- */
+body.light{
+  --ink:#FFFFFF; --panel:#FAF8F2; --panel-2:#F1ECE0; --line:#E7E2D6;
+  --paper:#1A160D; --dim:#8A8270; --signal:#BE7B1A; --alert:#B9781F;
+  --danger:#C63A28; --gold:#C8791A; --cream:#1A160D;
+}
+body.light button:hover,body.light .modetog .mt:hover{background:#EFE7D6}
+body.light button.primary,body.light .modetog .mt.on{color:#FFFFFF}
+body.light .warn.live{color:#B3311F}
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
 body{
@@ -140,7 +149,7 @@ body.simple .simplehint{display:block}
 .ringpanel{border-color:rgba(230,165,55,.4);box-shadow:0 0 0 1px rgba(230,165,55,.12)}
 .ringpanel h2{color:var(--gold)}
 </style>
-
+<body class="light">
 <div class="wrap">
   <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px;flex-wrap:wrap">
     <a href="https://dexsdev329-afk.github.io/SWOGE.github.io/" style="display:flex;align-items:center;gap:11px;text-decoration:none;color:var(--cream);font-family:'Anton',sans-serif;font-size:22px;text-transform:uppercase;letter-spacing:.02em">
@@ -150,6 +159,7 @@ body.simple .simplehint{display:block}
     <div style="display:flex;gap:16px;align-items:center">
       <a href="holder_scan.html" style="font-family:'Space Mono',monospace;font-size:12px;color:var(--dim);text-decoration:none">Scanner →</a>
       <a href="https://dexsdev329-afk.github.io/SWOGE.github.io/" style="font-family:'Space Mono',monospace;font-size:12px;color:var(--dim);text-decoration:none">← back to site</a>
+      <button id="themeBtn" class="mini" title="Light / Dark" style="font-family:'Space Mono',monospace">🌙 Dark</button>
     </div>
   </div>
   <div class="masthead">
@@ -1550,6 +1560,14 @@ function applyMode(m){
 }
 document.querySelectorAll("#modetog .mt").forEach(b =>
   b.addEventListener("click", () => applyMode(b.dataset.mode)));
+/* ---- Light / Dark theme toggle (persisted, shared with launchpad) ---- */
+function applyTheme(light){
+  document.body.classList.toggle("light", light);
+  const b = $("#themeBtn"); if(b) b.textContent = light ? "🌙 Dark" : "☀️ Light";
+  try{ localStorage.setItem("swogeTheme", light ? "light" : "dark"); }catch(e){}
+}
+$("#themeBtn").addEventListener("click", () => applyTheme(!document.body.classList.contains("light")));
+(function(){ let t; try{ t = localStorage.getItem("swogeTheme"); }catch(e){} applyTheme(t !== "dark"); })();
 function loadPrefs(){
   try{ return JSON.parse(localStorage.getItem(PREFS_KEY) || "null"); }catch(e){ return null; }
 }

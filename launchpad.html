@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.13.3/dist/index.umd.js"></script>
 <style>
 :root{--cream:#F7EEDA;--dim:#A08a63;--fur:#EAD2A0;--gold:#E6A537;--goldlite:#F2C25A;--line:#2E2213;--void:#0B0906;--void2:#15100A;--signal:#6FD1C4;--danger:#E2635E;--ink:#1a1206}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -236,6 +237,7 @@ if(typeof ethers==="undefined"){ alert("ethers.js could not load. Reload."); ret
 // ⚙️  After deploying SwogeFun.sol, paste its address here:
 var CONTRACT_ADDRESS = window.SWOGEFUN_ADDRESS || "0xD6864D6d8Dc45BDd3A5aD179E2418Eb99692C7C5";
 var CHAIN = { id:4663, hex:"0x1237", name:"Robinhood Chain", rpc:"https://rpc.mainnet.chain.robinhood.com", scan:"https://robinhoodchain.blockscout.com", sym:"ETH" };
+var WC_PROJECT_ID = "7553b1651dfa1fce5eaff2405d5f230c";  // WalletConnect (reown.com) — free
 var FUN_ABI = window.SWOGEFUN_ABI, TOKEN_ABI = window.SWOGETOKEN_ABI;
 var CURVE_SUPPLY = ethers.utils.parseEther("800000000");
 
@@ -294,20 +296,44 @@ async function connectWith(eth){
 }
 function openWalletPicker(){
   if(account) return;
-  var list=wallets6963.slice();
-  if(list.length===0){
-    if(window.ethereum) return connectWith(window.ethereum);
-    return toast("No wallet detected. On mobile, open this page inside your wallet's browser (MetaMask / Rabby / Uniswap).");
-  }
-  if(list.length===1) return connectWith(list[0].provider);
   var host=$("#wpickList"); host.innerHTML="";
-  list.forEach(function(d){
+  // installed injected wallets (Rabby, MetaMask, Uniswap…)
+  wallets6963.forEach(function(d){
     var row=document.createElement("div"); row.className="wrow";
     row.innerHTML=(d.info.icon?'<img src="'+esc(d.info.icon)+'" alt="">':'<span class="wdot"></span>')+'<span>'+esc(d.info.name||"Wallet")+'</span>';
     row.onclick=function(){ $("#wpick").classList.remove("show"); connectWith(d.provider); };
     host.appendChild(row);
   });
+  if(wallets6963.length===0 && window.ethereum){
+    var b=document.createElement("div"); b.className="wrow";
+    b.innerHTML='<span class="wdot"></span><span>Browser wallet</span>';
+    b.onclick=function(){ $("#wpick").classList.remove("show"); connectWith(window.ethereum); };
+    host.appendChild(b);
+  }
+  // WalletConnect — always available (mobile / QR)
+  var wc=document.createElement("div"); wc.className="wrow";
+  wc.innerHTML='<span class="wdot" style="background:#3396FF"></span><span>WalletConnect · mobile / QR</span>';
+  wc.onclick=function(){ $("#wpick").classList.remove("show"); connectWalletConnect(); };
+  host.appendChild(wc);
   $("#wpick").classList.add("show");
+}
+
+async function connectWalletConnect(){
+  var EP = window.EthereumProvider || window.WalletConnectEthereumProvider ||
+           (window["@walletconnect/ethereum-provider"] && window["@walletconnect/ethereum-provider"].EthereumProvider);
+  if(!EP || !EP.init){ toast("WalletConnect couldn't load — check your connection and try again."); return; }
+  try{
+    var rpcMap={}; rpcMap[CHAIN.id]=CHAIN.rpc;
+    var wc=await EP.init({
+      projectId: WC_PROJECT_ID,
+      chains:[CHAIN.id], optionalChains:[CHAIN.id],
+      showQrModal:true, rpcMap:rpcMap,
+      metadata:{ name:"SWOGE Fun", description:"Bonding-curve launchpad on Robinhood Chain",
+                 url:location.origin||"https://swoleeswoge.dog", icons:["https://swoleeswoge.dog/favicon.ico"] }
+    });
+    await wc.enable();          // opens the QR / deep-link modal
+    await connectWith(wc);
+  }catch(e){ toast("WalletConnect: "+String(e.message||e).slice(0,90)); }
 }
 $("#walletBtn").onclick=openWalletPicker;
 $("#wpickCancel").onclick=function(){ $("#wpick").classList.remove("show"); };
@@ -334,7 +360,7 @@ document.querySelectorAll("#feeMode button").forEach(function(b){
   };
 });
 function updateFeeSummary(){
-  var cf=parseFloat($("#cFee").value)||0;
+  var cf=parseFloat(($("#cFee").value||"").replace(",","."))||0;
   $("#feeSummary").innerHTML = "Every trade: <b>1% → SWOGE</b> + <b>"+cf+"% → "+(feeMode===0?"your dev wallet":"your holders")+"</b> = "+(1+cf).toFixed(2)+"% total.";
 }
 $("#cFee").addEventListener("input",updateFeeSummary); updateFeeSummary();
@@ -346,8 +372,8 @@ $("#createBtn").onclick=async function(){
   if(!signer){ openWalletPicker(); return; }
   var name=$("#cName").value.trim(), sym=$("#cSym").value.trim();
   if(!name||!sym) return toast("Name and symbol required");
-  var maxW=Math.round((parseFloat($("#cMaxWallet").value)||0)*100);   // % → bps
-  var feeBps=Math.round((parseFloat($("#cFee").value)||0)*100);
+  var maxW=Math.round((parseFloat(amtStr("#cMaxWallet"))||0)*100);   // % → bps
+  var feeBps=Math.round((parseFloat(amtStr("#cFee"))||0)*100);
   if(feeBps>2000) return toast("Creator fee max is 20%");
   if(maxW!==0 && maxW<10) return toast("Max wallet must be 0 or ≥ 0.1%");
   var dev=$("#cDev").value.trim()||ethers.constants.AddressZero;
@@ -521,23 +547,30 @@ async function refreshTrade(){
     if(isHolders){ var pend=await fun.pendingRewards(curToken,account); $("#tvReward").textContent=(+ethers.utils.formatEther(pend)).toFixed(6)+" ETH"; }
   } else { $("#tvBal").textContent="connect wallet"; }
 }
+// mobile-safe amount: accept comma decimals, return a clean "." string
+function amtStr(id){ return ($(id).value||"").trim().replace(/\s/g,"").replace(/,/g,"."); }
 var quoteT=null;
 $("#buyEth").addEventListener("input",function(){ clearTimeout(quoteT); quoteT=setTimeout(quoteBuy,250); });
 async function quoteBuy(){
-  var v=parseFloat($("#buyEth").value); if(!v||!curToken){ $("#buyQuote").textContent=""; return; }
-  try{ var q=await readFun().quoteBuy(curToken, ethers.utils.parseEther(String(v))); $("#buyQuote").textContent="≈ "+(+ethers.utils.formatEther(q.tokensOut)).toLocaleString("en-US")+" tokens (fee "+(+ethers.utils.formatEther(q.fee)).toFixed(6)+" ETH)"; }catch(e){ $("#buyQuote").textContent=""; }
+  var raw=amtStr("#buyEth"); if(!parseFloat(raw)||!curToken){ $("#buyQuote").textContent=""; return; }
+  try{ var q=await readFun().quoteBuy(curToken, ethers.utils.parseEther(raw)); $("#buyQuote").textContent="≈ "+(+ethers.utils.formatEther(q.tokensOut)).toLocaleString("en-US")+" tokens (fee "+(+ethers.utils.formatEther(q.fee)).toFixed(6)+" ETH)"; }catch(e){ $("#buyQuote").textContent=""; }
 }
+// live comma → dot on all number fields (mobile FR keyboards type a comma)
+["#buyEth","#sellTok","#cFee","#cMaxWallet"].forEach(function(id){
+  var el=$(id); if(!el) return;
+  el.addEventListener("input",function(){ if(this.value.indexOf(",")>-1){ var p=this.selectionStart; this.value=this.value.replace(/,/g,"."); try{this.setSelectionRange(p,p);}catch(e){} } });
+});
 $("#sellTok").addEventListener("input",function(){ clearTimeout(quoteT); quoteT=setTimeout(quoteSell,250); });
 async function quoteSell(){
-  var v=parseFloat($("#sellTok").value); if(!v||!curToken){ $("#sellQuote").textContent=""; return; }
-  try{ var q=await readFun().quoteSell(curToken, ethers.utils.parseEther(String(v))); $("#sellQuote").textContent="≈ "+(+ethers.utils.formatEther(q.ethOut)).toFixed(6)+" ETH (fee "+(+ethers.utils.formatEther(q.fee)).toFixed(6)+")"; }catch(e){ $("#sellQuote").textContent=""; }
+  var raw=amtStr("#sellTok"); if(!parseFloat(raw)||!curToken){ $("#sellQuote").textContent=""; return; }
+  try{ var q=await readFun().quoteSell(curToken, ethers.utils.parseEther(raw)); $("#sellQuote").textContent="≈ "+(+ethers.utils.formatEther(q.ethOut)).toFixed(6)+" ETH (fee "+(+ethers.utils.formatEther(q.fee)).toFixed(6)+")"; }catch(e){ $("#sellQuote").textContent=""; }
 }
 $("#buyBtn").onclick=async function(){
   if(!signer){ openWalletPicker(); return; }
-  var v=parseFloat($("#buyEth").value); if(!v) return toast("Enter an ETH amount");
+  var raw=amtStr("#buyEth"); if(!parseFloat(raw)) return toast("Enter an ETH amount");
   var note=$("#tradeNote"); note.className="note"; note.textContent="Confirm in your wallet…";
   try{
-    var wei=ethers.utils.parseEther(String(v));
+    var wei=ethers.utils.parseEther(raw);
     var q=await readFun().quoteBuy(curToken,wei);
     var minOut=q.tokensOut.mul(97).div(100); // 3% slippage
     var tx=await writeFun().buy(curToken,minOut,{value:wei});
@@ -547,10 +580,10 @@ $("#buyBtn").onclick=async function(){
 };
 $("#sellBtn").onclick=async function(){
   if(!signer){ openWalletPicker(); return; }
-  var v=parseFloat($("#sellTok").value); if(!v) return toast("Enter a token amount");
+  var raw=amtStr("#sellTok"); if(!parseFloat(raw)) return toast("Enter a token amount");
   var note=$("#tradeNote"); note.className="note";
   try{
-    var amt=ethers.utils.parseEther(String(v));
+    var amt=ethers.utils.parseEther(raw);
     var t=new ethers.Contract(curToken,TOKEN_ABI,signer);
     var allowance=await t.allowance(account,CONTRACT_ADDRESS);
     if(allowance.lt(amt)){ note.textContent="Approving…"; await (await t.approve(CONTRACT_ADDRESS,ethers.constants.MaxUint256)).wait(); }

@@ -538,7 +538,7 @@ function renderList(){
     }
     d.innerHTML='<div class="top"><div style="display:flex;align-items:center;gap:10px">'+logoImg(r.addr)+'<div><span class="nm">'+esc(r.name||"?")+'</span> <span class="sy">$'+esc(r.sym||"?")+'</span></div></div>'
       +badge+'</div>'+prog
-      +'<div class="meta">'+r.addr+'</div>'+socialsHTML(r.social);
+      +'<div class="meta" style="display:flex;align-items:center;gap:8px"><span style="word-break:break-all">'+r.addr+'</span>'+copyBtn(r.addr)+'</div>'+socialsHTML(r.social);
     d.querySelectorAll(".socials a").forEach(function(a){ a.onclick=function(ev){ ev.stopPropagation(); }; });
     d.onclick=function(){ openTrade(r.addr); };
     host.appendChild(d);
@@ -547,6 +547,26 @@ function renderList(){
 $("#search").addEventListener("input",renderList);
 $("#reload").onclick=loadList;
 function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];}); }
+/* ---------- copy to clipboard ---------- */
+function copyText(txt){
+  if(navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(txt);
+  return new Promise(function(res,rej){
+    try{ var ta=document.createElement("textarea"); ta.value=txt; ta.style.position="fixed"; ta.style.opacity="0";
+      document.body.appendChild(ta); ta.focus(); ta.select(); document.execCommand("copy"); document.body.removeChild(ta); res(); }
+    catch(e){ rej(e); }
+  });
+}
+// delegated (capture phase, so it fires before an Explore card's own onclick)
+document.addEventListener("click",function(e){
+  var el=e.target.closest ? e.target.closest("[data-copy]") : null;
+  if(!el) return;
+  e.preventDefault(); e.stopPropagation();
+  copyText(el.getAttribute("data-copy")).then(function(){ toast("Address copied ✓"); },function(){ toast("Copy failed"); });
+}, true);
+function copyBtn(addr){
+  return '<button class="btn" data-copy="'+esc(addr)+'" title="Copy contract address" '+
+         'style="padding:5px 9px;font-size:12px;line-height:1">📋 Copy</button>';
+}
 
 /* ---------- trade ---------- */
 var curToken=null;
@@ -792,7 +812,9 @@ async function refreshTrade(){
   var name="",sym=""; try{ name=await t.name(); sym=await t.symbol(); }catch(e){}
   $("#tvName").textContent=name||"?"; $("#tvSym").textContent="$"+(sym||"?");
   $("#tvLogo").innerHTML=logoImg(curToken,"big");
-  $("#tvAddr").innerHTML='<a href="'+CHAIN.scan+'/address/'+curToken+'" target="_blank">'+curToken+' ↗</a>';
+  $("#tvAddr").innerHTML='<span style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+    +'<a href="'+CHAIN.scan+'/address/'+curToken+'" target="_blank" style="word-break:break-all">'+curToken+' ↗</a>'
+    +copyBtn(curToken)+'</span>';
   fetchMeta(fun, curToken).then(function(m){ $("#tvSocials").innerHTML=socialsHTML(m); $("#tvLogo").innerHTML=logoImg(curToken,"big"); });
   var eu=await getEthUsd();
   var mcap, price;

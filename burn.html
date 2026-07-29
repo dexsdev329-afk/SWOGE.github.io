@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>🔥 Burn $SWOGE</title>
+<meta name="description" content="Burn your $SWOGE forever on Robinhood Chain. Sends tokens to a dead address, reducing supply.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.13.3/dist/index.umd.js"></script>
+<style>
+:root{--cream:#F7EEDA;--dim:#A08a63;--fur:#EAD2A0;--gold:#E6A537;--goldlite:#F2C25A;--line:#2E2213;--void:#0B0906;--void2:#15100A;--signal:#6FD1C4;--danger:#E2635E;--fire:#FF6B35;--ink:#1a1206}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--void);color:var(--cream);font-family:'Archivo',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+body{min-height:100vh;background:radial-gradient(circle at 50% 0%,rgba(255,107,53,.16),transparent 45%),radial-gradient(circle at 85% 90%,rgba(230,165,55,.08),transparent 45%),var(--void)}
+a{color:var(--gold);text-decoration:none}
+.wrap{max-width:560px;margin:0 auto;padding:22px 16px 90px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.brand{display:flex;align-items:center;gap:11px}
+.brand .logo{width:44px;height:44px;border-radius:11px;border:1px solid var(--line)}
+.brand h1{font-family:'Anton',sans-serif;font-size:clamp(22px,5vw,32px);line-height:.95}
+.brand h1 span{color:var(--fire)}
+.brand .sub{font-family:'Space Mono',monospace;font-size:11px;color:var(--dim);letter-spacing:2px;text-transform:uppercase}
+nav{display:flex;gap:8px;flex-wrap:wrap}
+nav a,.walletbtn{font-family:'Space Mono',monospace;font-size:12px;padding:8px 12px;border:1px solid var(--line);border-radius:999px;color:var(--fur);cursor:pointer;background:transparent}
+nav a:hover,.walletbtn:hover{border-color:var(--gold);color:var(--gold)}
+.panel{background:var(--void2);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:16px;box-shadow:0 14px 36px rgba(0,0,0,.4)}
+.panel h2{font-family:'Space Mono',monospace;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:14px}
+label{display:block;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--dim);margin:0 0 6px}
+input{width:100%;font-family:'Archivo',sans-serif;font-weight:600;font-size:15px;padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:var(--void);color:var(--cream);outline:none}
+input:focus{border-color:var(--fire)}
+.field{margin-bottom:13px}
+.kv{display:flex;justify-content:space-between;gap:10px;font-family:'Space Mono',monospace;font-size:13px;padding:8px 0;border-bottom:1px solid var(--line)}
+.kv .k{color:var(--dim)}.kv .v{color:var(--cream);text-align:right;word-break:break-all}
+.big{font-family:'Anton',sans-serif;font-size:clamp(26px,7vw,40px);color:var(--fire);line-height:1}
+.pcts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.pcts button{font-family:'Space Mono',monospace;font-size:12px;padding:7px 12px;border:1px solid var(--line);background:var(--void);color:var(--fur);border-radius:8px;cursor:pointer}
+.pcts button:hover,.pcts button.on{border-color:var(--fire);color:var(--fire)}
+.btn{font-family:'Archivo',sans-serif;font-weight:800;font-size:15px;padding:14px 15px;border-radius:11px;border:1px solid var(--line);background:var(--void2);color:var(--cream);cursor:pointer;transition:.15s;width:100%;display:inline-flex;align-items:center;gap:7px;justify-content:center}
+.btn.fire{background:linear-gradient(90deg,var(--fire),var(--gold));color:#1a1206;border-color:var(--fire)}
+.btn.fire:hover{filter:brightness(1.08)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.note{font-family:'Space Mono',monospace;font-size:12px;color:var(--dim);line-height:1.6;margin-top:10px;word-break:break-word}
+.note.ok{color:var(--signal)}.note.err{color:var(--danger)}
+.prog{height:12px;border-radius:99px;background:var(--void);border:1px solid var(--line);overflow:hidden;margin:8px 0}
+.prog>span{display:block;height:100%;background:linear-gradient(90deg,var(--fire),var(--gold));width:0}
+.wpick{position:fixed;inset:0;background:rgba(0,0,0,.62);display:none;align-items:center;justify-content:center;z-index:70;padding:16px}
+.wpick.show{display:flex}
+.wpick .box{background:var(--void2);border:1px solid var(--line);border-radius:16px;padding:18px;width:min(360px,92vw)}
+.wpick h3{font-family:'Anton',sans-serif;font-size:20px;margin-bottom:14px}
+.wpick .wrow{display:flex;align-items:center;gap:12px;padding:12px 13px;border:1px solid var(--line);border-radius:11px;margin-bottom:8px;cursor:pointer;background:var(--void)}
+.wpick .wrow:hover{border-color:var(--gold)}
+.wpick .wrow img{width:28px;height:28px;border-radius:7px}
+.wpick .wrow .wdot{width:28px;height:28px;border-radius:7px;background:var(--gold);display:inline-block}
+.wpick .wrow span{font-family:'Archivo';font-weight:700;font-size:14px}
+.wpick .cancel{text-align:center;color:var(--dim);font-family:'Space Mono',monospace;font-size:12px;cursor:pointer;padding:8px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:var(--fire);color:#1a1206;font-family:'Archivo';font-weight:800;padding:12px 20px;border-radius:12px;opacity:0;pointer-events:none;transition:.25s;z-index:60}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.foot{margin-top:24px;text-align:center;font-family:'Space Mono',monospace;font-size:11px;color:var(--dim)}
+.hint{font-size:12px;color:var(--dim);line-height:1.6;font-family:'Space Mono',monospace}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <img class="logo" id="logo" alt="SWOGE">
+      <div>
+        <h1>🔥 <span>Burn</span> $SWOGE</h1>
+        <div class="sub">Send to the void · Robinhood Chain</div>
+      </div>
+    </div>
+    <nav>
+      <a href="index.html">← Home</a>
+      <button class="walletbtn" id="walletBtn">Connect wallet</button>
+    </nav>
+  </header>
+
+  <div class="panel">
+    <h2>Total burned forever 🔥</h2>
+    <div class="big" id="totalBurned">—</div>
+    <div class="prog"><span id="burnBar"></span></div>
+    <div class="note" id="burnPct">— of supply</div>
+  </div>
+
+  <div class="panel">
+    <h2>Burn your $SWOGE</h2>
+    <div class="kv"><span class="k">Your balance</span><span class="v" id="myBal">connect wallet</span></div>
+    <div class="field" style="margin-top:12px">
+      <label>How much to burn (% of your balance)</label>
+      <input id="pct" inputmode="decimal" placeholder="e.g. 50" value="">
+      <div class="pcts" id="pcts">
+        <button data-p="10">10%</button>
+        <button data-p="25">25%</button>
+        <button data-p="50">50%</button>
+        <button data-p="100">100%</button>
+      </div>
+    </div>
+    <div class="kv"><span class="k">You will burn</span><span class="v" id="willBurn">—</span></div>
+    <button class="btn fire" id="burnBtn" style="margin-top:14px" disabled>🔥 Burn forever</button>
+    <div class="note" id="note"></div>
+    <div class="hint" style="margin-top:12px">Burning sends your $SWOGE to a dead address (<code>0x…dEaD</code>) that no one controls. It's <b>permanent and irreversible</b> — it reduces the circulating supply forever.</div>
+  </div>
+
+  <div class="foot">$SWOGE · Swole Doge 🐶 · <a href="index.html">swoleeswoge.dog</a></div>
+</div>
+
+<div class="wpick" id="wpick"><div class="box"><h3>Choose your wallet</h3><div id="wpickList"></div><div class="cancel" id="wpickCancel">Cancel</div></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+if(typeof ethers==="undefined"){ alert("ethers.js could not load. Reload."); return; }
+var SWOGE = "0x8a166Fb41Cd659a0a43396272FF73973Ce29F817";     // $SWOGE token
+var DEAD  = "0x000000000000000000000000000000000000dEaD";     // burn address
+var CHAIN = { id:4663, hex:"0x1237", name:"Robinhood Chain", rpc:"https://rpc.mainnet.chain.robinhood.com", scan:"https://robinhoodchain.blockscout.com", sym:"ETH" };
+var WC_PROJECT_ID = "7553b1651dfa1fce5eaff2405d5f230c";
+var ERC20 = ["function balanceOf(address) view returns (uint256)","function totalSupply() view returns (uint256)","function transfer(address,uint256) returns (bool)","function decimals() view returns (uint8)","function symbol() view returns (string)"];
+
+var $=function(s){return document.querySelector(s);};
+var toastEl=$("#toast");
+function toast(m){toastEl.textContent=m;toastEl.classList.add("show");clearTimeout(toast._t);toast._t=setTimeout(function(){toastEl.classList.remove("show");},1900);}
+$("#logo").src="data:image/svg+xml;base64,"+btoa('<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44"><rect width="44" height="44" rx="11" fill="#FF6B35"/><text x="22" y="31" font-size="22" text-anchor="middle" font-family="Arial">🔥</text></svg>');
+
+var provider=null, signer=null, account=null, rawEth=null, myBalWei=null, decimals=18;
+function rpcProvider(){ return new ethers.providers.StaticJsonRpcProvider(CHAIN.rpc, CHAIN.id); }
+function token(rw){ return new ethers.Contract(SWOGE, ERC20, rw||provider||rpcProvider()); }
+function fmt(x){ return (+ethers.utils.formatUnits(x, decimals)); }
+function human(n){ if(n>=1e9)return (n/1e9).toFixed(2)+"B"; if(n>=1e6)return (n/1e6).toFixed(2)+"M"; if(n>=1e3)return (n/1e3).toFixed(1)+"K"; return n.toLocaleString("en-US",{maximumFractionDigits:2}); }
+
+/* ---- wallet discovery (EIP-6963) ---- */
+var wallets6963=[];
+window.addEventListener("eip6963:announceProvider",function(e){ var d=e.detail; if(d&&d.info&&d.provider&&!wallets6963.some(function(w){return w.info.uuid===d.info.uuid;})) wallets6963.push(d); });
+try{ window.dispatchEvent(new Event("eip6963:requestProvider")); }catch(e){}
+
+async function connectWith(eth){
+  if(!eth){ toast("No wallet"); return; }
+  try{
+    await eth.request({method:"eth_requestAccounts"});
+    var cid=await eth.request({method:"eth_chainId"});
+    if(cid!==CHAIN.hex){
+      try{ await eth.request({method:"wallet_switchEthereumChain",params:[{chainId:CHAIN.hex}]}); }
+      catch(sw){ if(sw&&sw.code===4902){ await eth.request({method:"wallet_addEthereumChain",params:[{chainId:CHAIN.hex,chainName:CHAIN.name,nativeCurrency:{name:"Ether",symbol:CHAIN.sym,decimals:18},rpcUrls:[CHAIN.rpc],blockExplorerUrls:[CHAIN.scan]}]}); } else throw sw; }
+    }
+    provider=new ethers.providers.Web3Provider(eth,"any"); signer=provider.getSigner(); account=await signer.getAddress(); rawEth=eth;
+    $("#walletBtn").textContent=account.slice(0,6)+"…"+account.slice(-4);
+    refreshBalance();
+    if(!eth.__hooked){ eth.__hooked=true;
+      eth.on&&eth.on("accountsChanged",function(a){ if(!a||!a.length){ account=null;signer=null;$("#walletBtn").textContent="Connect wallet";$("#burnBtn").disabled=true;$("#myBal").textContent="connect wallet"; return;} account=a[0];try{signer=provider.getSigner();}catch(e){}$("#walletBtn").textContent=account.slice(0,6)+"…"+account.slice(-4);refreshBalance(); });
+      eth.on&&eth.on("chainChanged",function(){ try{provider=new ethers.providers.Web3Provider(eth,"any");signer=provider.getSigner();}catch(e){} refreshBalance(); });
+    }
+  }catch(e){ toast(String(e.message||e).slice(0,90)); }
+}
+function openWalletPicker(){
+  var host=$("#wpickList"); host.innerHTML="";
+  if(account){
+    var info=document.createElement("div"); info.className="note"; info.style.marginTop="0"; info.innerHTML="Connected<br><b style='color:var(--cream);word-break:break-all'>"+account+"</b>"; host.appendChild(info);
+    var dc=document.createElement("div"); dc.className="wrow"; dc.style.marginTop="10px"; dc.innerHTML='<span class="wdot" style="background:var(--danger)"></span><span>🔌 Disconnect</span>';
+    dc.onclick=function(){ $("#wpick").classList.remove("show"); disconnect(); }; host.appendChild(dc);
+    $("#wpick").classList.add("show"); return;
+  }
+  wallets6963.forEach(function(d){ var row=document.createElement("div"); row.className="wrow"; row.innerHTML=(d.info.icon?'<img src="'+d.info.icon+'">':'<span class="wdot"></span>')+'<span>'+(d.info.name||"Wallet")+'</span>'; row.onclick=function(){ $("#wpick").classList.remove("show"); connectWith(d.provider); }; host.appendChild(row); });
+  if(!wallets6963.length && window.ethereum){ var b=document.createElement("div"); b.className="wrow"; b.innerHTML='<span class="wdot"></span><span>Browser wallet</span>'; b.onclick=function(){ $("#wpick").classList.remove("show"); connectWith(window.ethereum); }; host.appendChild(b); }
+  var wc=document.createElement("div"); wc.className="wrow"; wc.innerHTML='<span class="wdot" style="background:#3396FF"></span><span>WalletConnect · mobile / QR</span>'; wc.onclick=function(){ $("#wpick").classList.remove("show"); connectWalletConnect(); }; host.appendChild(wc);
+  $("#wpick").classList.add("show");
+}
+async function connectWalletConnect(){
+  var EP=window.EthereumProvider||(window["@walletconnect/ethereum-provider"]&&window["@walletconnect/ethereum-provider"].EthereumProvider);
+  if(!EP||!EP.init){ toast("WalletConnect couldn't load"); return; }
+  try{ var rpcMap={}; rpcMap[CHAIN.id]=CHAIN.rpc;
+    var wc=await EP.init({projectId:WC_PROJECT_ID,chains:[CHAIN.id],optionalChains:[CHAIN.id],showQrModal:true,rpcMap:rpcMap,metadata:{name:"Burn SWOGE",description:"Burn $SWOGE",url:location.origin||"https://swoleeswoge.dog",icons:["https://swoleeswoge.dog/favicon.ico"]}});
+    await wc.enable(); await connectWith(wc);
+  }catch(e){ toast("WalletConnect: "+String(e.message||e).slice(0,80)); }
+}
+async function disconnect(){ try{ if(rawEth&&rawEth.disconnect) await rawEth.disconnect(); }catch(e){} account=null;signer=null;provider=null;rawEth=null;$("#walletBtn").textContent="Connect wallet";$("#burnBtn").disabled=true;$("#myBal").textContent="connect wallet";$("#willBurn").textContent="—";toast("Disconnected"); }
+$("#walletBtn").onclick=openWalletPicker;
+$("#wpickCancel").onclick=function(){ $("#wpick").classList.remove("show"); };
+$("#wpick").onclick=function(e){ if(e.target===$("#wpick")) $("#wpick").classList.remove("show"); };
+
+/* ---- data ---- */
+async function refreshTotal(){
+  try{
+    var t=token(); var dec=await t.decimals(); decimals=dec;
+    var sup=await t.totalSupply(); var dead=await t.balanceOf(DEAD);
+    var burned=fmt(dead), total=fmt(sup);
+    $("#totalBurned").textContent=human(burned)+" SWOGE";
+    var pct=total?(burned/total*100):0;
+    $("#burnBar").style.width=Math.min(100,pct)+"%";
+    $("#burnPct").textContent=pct.toFixed(4)+"% of supply burned";
+  }catch(e){ $("#totalBurned").textContent="—"; }
+}
+async function refreshBalance(){
+  if(!account){ return; }
+  try{ myBalWei=await token().balanceOf(account); $("#myBal").textContent=human(fmt(myBalWei))+" SWOGE"; $("#burnBtn").disabled=false; updateWillBurn(); }
+  catch(e){ $("#myBal").textContent="—"; }
+}
+function pctVal(){ return Math.max(0, Math.min(100, parseFloat(($("#pct").value||"").replace(",","."))||0)); }
+function updateWillBurn(){
+  if(!myBalWei){ $("#willBurn").textContent="—"; return; }
+  var p=pctVal(); var amt=myBalWei.mul(Math.round(p*100)).div(10000);
+  $("#willBurn").textContent=human(fmt(amt))+" SWOGE ("+p+"%)";
+}
+$("#pct").addEventListener("input",function(){ if(this.value.indexOf(",")>-1) this.value=this.value.replace(/,/g,"."); document.querySelectorAll("#pcts button").forEach(function(b){b.classList.remove("on");}); updateWillBurn(); });
+document.querySelectorAll("#pcts button").forEach(function(b){ b.onclick=function(){ $("#pct").value=b.dataset.p; document.querySelectorAll("#pcts button").forEach(function(x){x.classList.remove("on");}); b.classList.add("on"); updateWillBurn(); }; });
+
+$("#burnBtn").onclick=async function(){
+  if(!signer){ openWalletPicker(); return; }
+  if(!myBalWei||myBalWei.isZero()){ return toast("No SWOGE to burn"); }
+  var p=pctVal(); if(p<=0){ return toast("Enter a % to burn"); }
+  var amt = p>=100 ? myBalWei : myBalWei.mul(Math.round(p*100)).div(10000);
+  if(amt.gt(myBalWei)) amt=myBalWei;
+  if(amt.isZero()){ return toast("Amount too small"); }
+  var note=$("#note"), btn=$("#burnBtn"); btn.disabled=true; note.className="note"; note.textContent="Confirm the burn in your wallet…";
+  try{
+    var tx=await token(signer).transfer(DEAD, amt);
+    note.innerHTML='Burning… <a href="'+CHAIN.scan+'/tx/'+tx.hash+'" target="_blank">↗</a>'; await tx.wait();
+    note.className="note ok"; note.innerHTML='🔥 Burned '+human(fmt(amt))+' SWOGE forever! <a href="'+CHAIN.scan+'/tx/'+tx.hash+'" target="_blank">view tx ↗</a>';
+    toast("Burned 🔥"); $("#pct").value=""; refreshBalance(); refreshTotal();
+  }catch(e){ note.className="note err"; note.textContent="Failed · "+String(e.reason||e.message||e).slice(0,140); }
+  finally{ btn.disabled=false; }
+};
+
+refreshTotal();
+setInterval(refreshTotal, 30000);
+})();
+</script>
+</html>

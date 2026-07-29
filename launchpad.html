@@ -96,7 +96,7 @@ input:focus,select:focus{border-color:var(--gold)}
       <img class="logo" id="logo" alt="SWOGE">
       <div>
         <h1><span>$SWOGE</span> FUN</h1>
-        <div class="sub">Bonding-curve launchpad · Robinhood Chain</div>
+        <div class="sub">Launchpad · Curve or Instant · Robinhood Chain</div>
       </div>
     </div>
     <nav>
@@ -105,8 +105,8 @@ input:focus,select:focus{border-color:var(--gold)}
     </nav>
   </header>
 
-  <div class="warn" id="cfgWarn">
-    <b>Not configured yet.</b> The SwogeFun contract isn't deployed. Once you deploy <code>SwogeFun.sol</code> on Robinhood Chain, paste its address in <code>CONTRACT_ADDRESS</code> at the top of this file. Until then, Explore/Trade will be empty.
+  <div class="warn hidden" id="cfgWarn">
+    <b>Not configured yet.</b> Paste the SwogeFun V2 address in <code>CONTRACT_ADDRESS</code>.
   </div>
 
   <div class="tabs">
@@ -119,10 +119,19 @@ input:focus,select:focus{border-color:var(--gold)}
   <section id="tab-create">
     <div class="panel">
       <h2>Launch a token</h2>
+      <div class="field">
+        <label>Launch mode</label>
+        <div class="seg" id="launchMode">
+          <button data-lmode="0" class="on">📈 Fair Curve</button>
+          <button data-lmode="1">⚡ Instant DexScreener</button>
+        </div>
+        <div class="note" id="modeInfo"></div>
+      </div>
       <div class="two">
         <div class="field"><label>Name</label><input id="cName" placeholder="Swoge Inu" maxlength="40"></div>
         <div class="field"><label>Symbol</label><input id="cSym" placeholder="SWINU" maxlength="12"></div>
       </div>
+      <div id="curveOnly">
       <div class="two">
         <div class="field">
           <label>Max wallet (% of supply, 0 = none)</label>
@@ -150,6 +159,11 @@ input:focus,select:focus{border-color:var(--gold)}
       <div class="field" id="devWalletField">
         <label>Dev wallet (receives the creator fee)</label>
         <input id="cDev" placeholder="0x… (leave empty = you)">
+      </div>
+      </div>
+      <div class="field">
+        <label>Logo (optional — image URL)</label>
+        <input id="cLogo" placeholder="https://…/logo.png">
       </div>
       <div class="field">
         <label>Links (optional)</label>
@@ -190,14 +204,20 @@ input:focus,select:focus{border-color:var(--gold)}
         </div>
         <div class="note" id="tvAddr" style="margin-top:4px"></div>
         <div id="tvSocials"></div>
+        <div class="btnrow" id="tvInstantRow" style="display:none;margin-top:10px">
+          <a class="btn" id="tvDexBtn" target="_blank" rel="noopener">📊 DexScreener</a>
+          <button class="btn" id="tvCollectBtn">💰 Collect fees (70% creator / 30% SWOGE)</button>
+        </div>
         <label style="margin-top:12px">Price chart — market cap</label>
         <div id="tfBar" style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0"></div>
         <canvas id="tvChart" width="760" height="220" style="width:100%;height:auto;border:1px solid var(--line);border-radius:10px;background:var(--void);display:block"></canvas>
         <div class="kv" style="margin-top:8px"><span class="k">Market cap</span><span class="v" id="tvMcap">—</span></div>
         <div class="kv"><span class="k">Price / token</span><span class="v" id="tvPrice">—</span></div>
+        <div id="tvGradWrap">
         <label style="margin-top:12px">Progress to graduation</label>
         <div class="prog"><span id="tvBar"></span></div>
         <div class="note" id="tvProg"></div>
+        </div>
       </div>
 
       <div class="panel" id="tvTradePanel">
@@ -235,18 +255,34 @@ input:focus,select:focus{border-color:var(--gold)}
 <div class="toast" id="toast"></div>
 
 <!--CONFIG-->
-<script>window.SWOGEFUN_ABI=[{"inputs": [{"internalType": "address", "name": "_positionManager", "type": "address"}, {"internalType": "address", "name": "_weth", "type": "address"}], "stateMutability": "nonpayable", "type": "constructor"}, {"anonymous": false, "inputs": [{"indexed": true, "internalType": "address", "name": "token", "type": "address"}, {"indexed": true, "internalType": "address", "name": "buyer", "type": "address"}, {"indexed": false, "internalType": "uint256", "name": "ethIn", "type": "uint256"}, {"indexed": false, "internalType": "uint256", "name": "tokensOut", "type": "uint256"}, {"indexed": false, "internalType": "uint256", "name": "protocolFee", "type": "uint256"}, {"indexed": false, "internalType": "uint256", "name": "creatorFee", "type": "uint256"}], "name": "Buy", "type": "event"}, {"anonymous": false, "inputs": [{"indexed": true, "internalType": "address", "name": "token", "type": "address"}, {"indexed": true, "internalType": "address", "name": "holder", "type": "address"}, {"indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256"}], "name": "Claimed", "type": "event"}, {"anonymous": false, "inputs": [{"indexed": true, "internalType": "address", "name": "token", "type": "address"}, {"indexed": true, "internalType": "address", "name": "creator", "type": "address"}, {"indexed": false, "internalType": "string", "name": "name", "type": "string"}, {"indexed": false, "internalType": "string", "name": "symbol", "type": "string"}, {"indexed": false, "internalType": "uint8", "name": "feeMode", "type": "uint8"}, {"indexed": false, "internalType": "address", "name": "devWallet", "type": "address"}, {"indexed": false, "internalType": "uint16", "name": "creatorFeeBps", "type": "uint16"}, {"indexed": false, "internalType": "uint16", "name": "maxWalletBps", "type": "uint16"}], "name": "Created", "type": "event"}, {"anonymous": false, "inputs": [{"indexed": true, "internalType": "address", "name": "token", "type": "address"}, {"indexed": false, "internalType": "uint256", "name": "ethToLp", "type": "uint256"}, {"indexed": false, "internalType": "uint256", "name": "tokensToLp", "type": "uint256"}, {"indexed": false, "internalType": "address", "name": "pool", "type": "address"}], "name": "Graduated", "type": "event"}, {"anonymous": false, "inputs": [{"indexed": true, "internalType": "address", "name": "token", "type": "address"}, {"indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256"}], "name": "HolderRewards", "type": "event"}, {"anonymous": false, "inputs": [{"indexed": true, "internalType": "address", "name": "token", "type": "address"}, {"indexed": false, "internalType": "string", "name": "telegram", "type": "string"}, {"indexed": false, "internalType": "string", "name": "twitter", "type": "string"}, {"indexed": false, "internalType": "string", "name": "website", "type": "string"}], "name": "Meta", "type": "event"}, {"anonymous": false, "inputs": [{"indexed": true, "internalType": "address", "name": "token", "type": "address"}, {"indexed": true, "internalType": "address", "name": "seller", "type": "address"}, {"indexed": false, "internalType": "uint256", "name": "tokensIn", "type": "uint256"}, {"indexed": false, "internalType": "uint256", "name": "ethOut", "type": "uint256"}, {"indexed": false, "internalType": "uint256", "name": "protocolFee", "type": "uint256"}, {"indexed": false, "internalType": "uint256", "name": "creatorFee", "type": "uint256"}], "name": "Sell", "type": "event"}, {"inputs": [], "name": "CURVE_SUPPLY", "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"}, {"inputs": [], "name": "DEAD", "outputs": [{"internalType": "address", "name": "", "type": "address"}], "stateMutability": "view", "type": "function"}, {"inputs": [], "name": "FEE_DEV", "outputs": [{"internalType": "uint8", "name": "", "type": "uint8"}], "stateMutability": "view", "type": "function"}, {"inputs": [], "name": "FEE_HOLDERS", "outputs": [{"internalType": "uint8", "name": "", "type": "uint8"}], "stateMutability": "view", "type": "function"}, {"inputs": [], "name": "LP_SUPPLY", "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"}, {"inputs": [], "name": "MAX_CREATOR_FEE_BPS", "outputs": [{"internalType": "uint16", "name": "", "type": "uint16"}], "stateMutability": "view", "type": "function"}, {"inputs": [], "name": "POOL_FEE", "outputs": [{"internalType": "uint24", "name": "", "type": "uint24"}], "stateMutability": "view", "type": "function"}, {"inputs": [], "name": "PROTOCOL_FEE_BPS", "outputs": [{"internalType": "uint16", "name": "", "type": "uint16"}], "stateMutability": "view", "type": "function"}, {"inputs": [], "name": "TICK_LOWER", "outputs": [{"internalType": "int24", "name": "", "type": "int24"}], "stateMutability": "view", "type": "function"}, {"inputs": [], "name": "TICK_UPPER", "outputs": [{"internalType": "int24", "name": "", "type": "int24"}], "stateMutability": "view", "type": "function"}, {"inputs": [], "name": "TOTAL_SUPPLY", "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"}, {"inputs": [], "name": "VETH_INIT", "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"}, {"inputs": [], "name": "VTOK_INIT", "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"}, {"inputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "name": "allTokens", "outputs": [{"internalType": "address", "name": "", "type": "address"}], "stateMutability": "view", "type": "function"}, {"inputs": [{"internalType": "address", "name": "token", "type": "address"}, {"internalType": "uint256", "name": "minTokensOut", "type": "uint256"}], "name": "buy", "outputs": [], "stateMutability": "payable", "type": "function"}, {"inputs": [{"internalType": "address", "name": "token", "type": "address"}], "name": "claimRewards", "outputs": [], "stateMutability": "nonpayable", "type": "function"}, {"inputs": [{"components": [{"internalType": "string", "name": "name", "type": "string"}, {"internalType": "string", "name": "symbol", "type": "string"}, {"internalType": "uint16", "name": "maxWalletBps", "type": "uint16"}, {"internalType": "uint8", "name": "feeMode", "type": "uint8"}, {"internalType": "address", "name": "devWallet", "type": "address"}, {"internalType": "uint16", "name": "creatorFeeBps", "type": "uint16"}, {"internalType": "string", "name": "telegram", "type": "string"}, {"internalType": "string", "name": "twitter", "type": "string"}, {"internalType": "string", "name": "website", "type": "string"}], "internalType": "struct SwogeFun.LaunchParams", "name": "p", "type": "tuple"}], "name": "createToken", "outputs": [{"internalType": "address", "name": "t", "type": "address"}], "stateMutability": "payable", "type": "function"}, {"inputs": [], "name": "creationFee", "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"}, {"inputs": [{"internalType": "address", "name": "", "type": "address"}], "name": "curves", "outputs": [{"internalType": "address", "name": "token", "type": "address"}, {"internalType": "address", "name": "creator", "type": "address"}, {"internalType": "address", "name": "devWallet", "type": "address"}, {"internalType": "uint8", "name": "feeMode", "type": "uint8"}, {"internalType": "uint16", "name": "creatorFeeBps", "type": "uint16"}, {"internalType": "uint16", "name": "maxWalletBps", "type": "uint16"}, {"internalType": "uint256", "name": "vEth", "type": "uint256"}, {"internalType": "uint256", "name": "tokensSold", "type": "uint256"}, {"internalType": "bool", "name": "graduated", "type": "bool"}, {"internalType": "bool", "name": "exists", "type": "bool"}], "stateMutability": "view", "type": "function"}, {"inputs": [{"internalType": "address", "name": "", "type": "address"}], "name": "magPerShare", "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"}, {"inputs": [{"internalType": "address", "name": "from", "type": "address"}, {"internalType": "address", "name": "to", "type": "address"}, {"internalType": "uint256", "name": "value", "type": "uint256"}], "name": "onMove", "outputs": [], "stateMutability": "nonpayable", "type": "function"}, {"inputs": [], "name": "owner", "outputs": [{"internalType": "address", "name": "", "type": "address"}], "stateMutability": "view", "type": "function"}, {"inputs": [{"internalType": "address", "name": "token", "type": "address"}, {"internalType": "address", "name": "holder", "type": "address"}], "name": "pendingRewards", "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"}, {"inputs": [], "name": "positionManager", "outputs": [{"internalType": "address", "name": "", "type": "address"}], "stateMutability": "view", "type": "function"}, {"inputs": [{"internalType": "address", "name": "token", "type": "address"}, {"internalType": "uint256", "name": "ethIn", "type": "uint256"}], "name": "quoteBuy", "outputs": [{"internalType": "uint256", "name": "tokensOut", "type": "uint256"}, {"internalType": "uint256", "name": "fee", "type": "uint256"}], "stateMutability": "view", "type": "function"}, {"inputs": [{"internalType": "address", "name": "token", "type": "address"}, {"internalType": "uint256", "name": "tokensIn", "type": "uint256"}], "name": "quoteSell", "outputs": [{"internalType": "uint256", "name": "ethOut", "type": "uint256"}, {"internalType": "uint256", "name": "fee", "type": "uint256"}], "stateMutability": "view", "type": "function"}, {"inputs": [{"internalType": "address", "name": "token", "type": "address"}, {"internalType": "uint256", "name": "tokensIn", "type": "uint256"}, {"internalType": "uint256", "name": "minEthOut", "type": "uint256"}], "name": "sell", "outputs": [], "stateMutability": "nonpayable", "type": "function"}, {"inputs": [{"internalType": "uint256", "name": "f", "type": "uint256"}], "name": "setCreationFee", "outputs": [], "stateMutability": "nonpayable", "type": "function"}, {"inputs": [{"internalType": "address", "name": "r", "type": "address"}], "name": "setSwogeTreasury", "outputs": [], "stateMutability": "nonpayable", "type": "function"}, {"inputs": [], "name": "swogeTreasury", "outputs": [{"internalType": "address", "name": "", "type": "address"}], "stateMutability": "view", "type": "function"}, {"inputs": [], "name": "tokenCount", "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"}, {"inputs": [{"internalType": "address", "name": "n", "type": "address"}], "name": "transferOwnership", "outputs": [], "stateMutability": "nonpayable", "type": "function"}, {"inputs": [], "name": "weth", "outputs": [{"internalType": "address", "name": "", "type": "address"}], "stateMutability": "view", "type": "function"}, {"inputs": [{"internalType": "address", "name": "", "type": "address"}, {"internalType": "address", "name": "", "type": "address"}], "name": "withdrawn", "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"}, {"stateMutability": "payable", "type": "receive"}];window.SWOGETOKEN_ABI=[{"inputs": [{"internalType": "string", "name": "_name", "type": "string"}, {"internalType": "string", "name": "_symbol", "type": "string"}, {"internalType": "uint256", "name": "_supply", "type": "uint256"}], "stateMutability": "nonpayable", "type": "constructor"}, {"anonymous": false, "inputs": [{"indexed": true, "internalType": "address", "name": "owner", "type": "address"}, {"indexed": true, "internalType": "address", "name": "spender", "type": "address"}, {"indexed": false, "internalType": "uint256", "name": "value", "type": "uint256"}], "name": "Approval", "type": "event"}, {"anonymous": false, "inputs": [{"indexed": true, "internalType": "address", "name": "from", "type": "address"}, {"indexed": true, "internalType": "address", "name": "to", "type": "address"}, {"indexed": false, "internalType": "uint256", "name": "value", "type": "uint256"}], "name": "Transfer", "type": "event"}, {"inputs": [{"internalType": "address", "name": "", "type": "address"}, {"internalType": "address", "name": "", "type": "address"}], "name": "allowance", "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"}, {"inputs": [{"internalType": "address", "name": "s", "type": "address"}, {"internalType": "uint256", "name": "v", "type": "uint256"}], "name": "approve", "outputs": [{"internalType": "bool", "name": "", "type": "bool"}], "stateMutability": "nonpayable", "type": "function"}, {"inputs": [{"internalType": "address", "name": "", "type": "address"}], "name": "balanceOf", "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"}, {"inputs": [], "name": "decimals", "outputs": [{"internalType": "uint8", "name": "", "type": "uint8"}], "stateMutability": "view", "type": "function"}, {"inputs": [], "name": "fun", "outputs": [{"internalType": "address", "name": "", "type": "address"}], "stateMutability": "view", "type": "function"}, {"inputs": [], "name": "name", "outputs": [{"internalType": "string", "name": "", "type": "string"}], "stateMutability": "view", "type": "function"}, {"inputs": [], "name": "symbol", "outputs": [{"internalType": "string", "name": "", "type": "string"}], "stateMutability": "view", "type": "function"}, {"inputs": [], "name": "totalSupply", "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"}, {"inputs": [{"internalType": "address", "name": "to", "type": "address"}, {"internalType": "uint256", "name": "v", "type": "uint256"}], "name": "transfer", "outputs": [{"internalType": "bool", "name": "", "type": "bool"}], "stateMutability": "nonpayable", "type": "function"}, {"inputs": [{"internalType": "address", "name": "f", "type": "address"}, {"internalType": "address", "name": "to", "type": "address"}, {"internalType": "uint256", "name": "v", "type": "uint256"}], "name": "transferFrom", "outputs": [{"internalType": "bool", "name": "", "type": "bool"}], "stateMutability": "nonpayable", "type": "function"}];</script>
+<script>window.SWOGEFUN_ABI=[{"inputs":[{"internalType":"address","name":"_positionManager","type":"address"},{"internalType":"address","name":"_weth","type":"address"}],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"token","type":"address"},{"indexed":true,"internalType":"address","name":"buyer","type":"address"},{"indexed":false,"internalType":"uint256","name":"ethIn","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"tokensOut","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"protocolFee","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"creatorFee","type":"uint256"}],"name":"Buy","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"token","type":"address"},{"indexed":true,"internalType":"address","name":"holder","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"Claimed","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"token","type":"address"},{"indexed":true,"internalType":"address","name":"creator","type":"address"},{"indexed":false,"internalType":"string","name":"name","type":"string"},{"indexed":false,"internalType":"string","name":"symbol","type":"string"},{"indexed":false,"internalType":"uint8","name":"feeMode","type":"uint8"},{"indexed":false,"internalType":"address","name":"devWallet","type":"address"},{"indexed":false,"internalType":"uint16","name":"creatorFeeBps","type":"uint16"},{"indexed":false,"internalType":"uint16","name":"maxWalletBps","type":"uint16"}],"name":"Created","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"token","type":"address"},{"indexed":false,"internalType":"uint256","name":"ethToCreator","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"ethToSwoge","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"tokToCreator","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"tokToSwoge","type":"uint256"}],"name":"FeesCollected","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"token","type":"address"},{"indexed":false,"internalType":"uint256","name":"ethToLp","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"tokensToLp","type":"uint256"},{"indexed":false,"internalType":"address","name":"pool","type":"address"}],"name":"Graduated","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"token","type":"address"},{"indexed":false,"internalType":"uint256","name":"amount","type":"uint256"}],"name":"HolderRewards","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"token","type":"address"},{"indexed":true,"internalType":"address","name":"creator","type":"address"},{"indexed":false,"internalType":"address","name":"pool","type":"address"},{"indexed":false,"internalType":"uint256","name":"lpTokenId","type":"uint256"}],"name":"LaunchedInstant","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"token","type":"address"},{"indexed":false,"internalType":"string","name":"telegram","type":"string"},{"indexed":false,"internalType":"string","name":"twitter","type":"string"},{"indexed":false,"internalType":"string","name":"website","type":"string"},{"indexed":false,"internalType":"string","name":"logo","type":"string"}],"name":"Meta","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"token","type":"address"},{"indexed":true,"internalType":"address","name":"seller","type":"address"},{"indexed":false,"internalType":"uint256","name":"tokensIn","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"ethOut","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"protocolFee","type":"uint256"},{"indexed":false,"internalType":"uint256","name":"creatorFee","type":"uint256"}],"name":"Sell","type":"event"},{"inputs":[],"name":"CURVE_SUPPLY","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"DEAD","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"FEE_DEV","outputs":[{"internalType":"uint8","name":"","type":"uint8"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"FEE_HOLDERS","outputs":[{"internalType":"uint8","name":"","type":"uint8"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"INSTANT_CREATOR_SHARE_BPS","outputs":[{"internalType":"uint16","name":"","type":"uint16"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"I_TICK_START","outputs":[{"internalType":"int24","name":"","type":"int24"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"I_TICK_TOP","outputs":[{"internalType":"int24","name":"","type":"int24"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"LP_SUPPLY","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"MAX_CREATOR_FEE_BPS","outputs":[{"internalType":"uint16","name":"","type":"uint16"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"MODE_CURVE","outputs":[{"internalType":"uint8","name":"","type":"uint8"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"MODE_INSTANT","outputs":[{"internalType":"uint8","name":"","type":"uint8"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"POOL_FEE","outputs":[{"internalType":"uint24","name":"","type":"uint24"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"PROTOCOL_FEE_BPS","outputs":[{"internalType":"uint16","name":"","type":"uint16"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"TICK_LOWER","outputs":[{"internalType":"int24","name":"","type":"int24"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"TICK_UPPER","outputs":[{"internalType":"int24","name":"","type":"int24"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"TOTAL_SUPPLY","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"VETH_INIT","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"VTOK_INIT","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"uint256","name":"","type":"uint256"}],"name":"allTokens","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"token","type":"address"},{"internalType":"uint256","name":"minTokensOut","type":"uint256"}],"name":"buy","outputs":[],"stateMutability":"payable","type":"function"},{"inputs":[{"internalType":"address","name":"token","type":"address"}],"name":"claimRewards","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"token","type":"address"}],"name":"collectFees","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"components":[{"internalType":"string","name":"name","type":"string"},{"internalType":"string","name":"symbol","type":"string"},{"internalType":"uint8","name":"mode","type":"uint8"},{"internalType":"uint16","name":"maxWalletBps","type":"uint16"},{"internalType":"uint8","name":"feeMode","type":"uint8"},{"internalType":"address","name":"devWallet","type":"address"},{"internalType":"uint16","name":"creatorFeeBps","type":"uint16"},{"internalType":"string","name":"telegram","type":"string"},{"internalType":"string","name":"twitter","type":"string"},{"internalType":"string","name":"website","type":"string"},{"internalType":"string","name":"logo","type":"string"}],"internalType":"struct SwogeFunV2.LaunchParams","name":"p","type":"tuple"}],"name":"createToken","outputs":[{"internalType":"address","name":"t","type":"address"}],"stateMutability":"payable","type":"function"},{"inputs":[],"name":"creationFee","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"curves","outputs":[{"internalType":"address","name":"token","type":"address"},{"internalType":"address","name":"creator","type":"address"},{"internalType":"address","name":"devWallet","type":"address"},{"internalType":"uint8","name":"feeMode","type":"uint8"},{"internalType":"uint16","name":"creatorFeeBps","type":"uint16"},{"internalType":"uint16","name":"maxWalletBps","type":"uint16"},{"internalType":"uint256","name":"vEth","type":"uint256"},{"internalType":"uint256","name":"tokensSold","type":"uint256"},{"internalType":"bool","name":"graduated","type":"bool"},{"internalType":"bool","name":"exists","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"instant","outputs":[{"internalType":"address","name":"token","type":"address"},{"internalType":"address","name":"creator","type":"address"},{"internalType":"address","name":"pool","type":"address"},{"internalType":"uint256","name":"lpTokenId","type":"uint256"},{"internalType":"bool","name":"exists","type":"bool"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"magPerShare","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"modeOf","outputs":[{"internalType":"uint8","name":"","type":"uint8"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"from","type":"address"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"value","type":"uint256"}],"name":"onMove","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"owner","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"token","type":"address"},{"internalType":"address","name":"holder","type":"address"}],"name":"pendingRewards","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"positionManager","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"token","type":"address"},{"internalType":"uint256","name":"ethIn","type":"uint256"}],"name":"quoteBuy","outputs":[{"internalType":"uint256","name":"tokensOut","type":"uint256"},{"internalType":"uint256","name":"fee","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"token","type":"address"},{"internalType":"uint256","name":"tokensIn","type":"uint256"}],"name":"quoteSell","outputs":[{"internalType":"uint256","name":"ethOut","type":"uint256"},{"internalType":"uint256","name":"fee","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"token","type":"address"},{"internalType":"uint256","name":"tokensIn","type":"uint256"},{"internalType":"uint256","name":"minEthOut","type":"uint256"}],"name":"sell","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"uint256","name":"f","type":"uint256"}],"name":"setCreationFee","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"r","type":"address"}],"name":"setSwogeTreasury","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"swogeTreasury","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"tokenCount","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"n","type":"address"}],"name":"transferOwnership","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"weth","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"},{"internalType":"address","name":"","type":"address"}],"name":"withdrawn","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"stateMutability":"payable","type":"receive"}];window.SWOGETOKEN_ABI=[{"inputs":[{"internalType":"string","name":"_name","type":"string"},{"internalType":"string","name":"_symbol","type":"string"},{"internalType":"uint256","name":"_supply","type":"uint256"}],"stateMutability":"nonpayable","type":"constructor"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"owner","type":"address"},{"indexed":true,"internalType":"address","name":"spender","type":"address"},{"indexed":false,"internalType":"uint256","name":"value","type":"uint256"}],"name":"Approval","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"internalType":"address","name":"from","type":"address"},{"indexed":true,"internalType":"address","name":"to","type":"address"},{"indexed":false,"internalType":"uint256","name":"value","type":"uint256"}],"name":"Transfer","type":"event"},{"inputs":[],"name":"SNIPE_BLOCKS","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"SNIPE_MAX_BPS","outputs":[{"internalType":"uint16","name":"","type":"uint16"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"},{"internalType":"address","name":"","type":"address"}],"name":"allowance","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"s","type":"address"},{"internalType":"uint256","name":"v","type":"uint256"}],"name":"approve","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"","type":"address"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"decimals","outputs":[{"internalType":"uint8","name":"","type":"uint8"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"fun","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"launchBlock","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"name","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"pool","outputs":[{"internalType":"address","name":"","type":"address"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"p","type":"address"}],"name":"setPool","outputs":[],"stateMutability":"nonpayable","type":"function"},{"inputs":[],"name":"symbol","outputs":[{"internalType":"string","name":"","type":"string"}],"stateMutability":"view","type":"function"},{"inputs":[],"name":"totalSupply","outputs":[{"internalType":"uint256","name":"","type":"uint256"}],"stateMutability":"view","type":"function"},{"inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"v","type":"uint256"}],"name":"transfer","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},{"inputs":[{"internalType":"address","name":"f","type":"address"},{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"v","type":"uint256"}],"name":"transferFrom","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"}];</script>
 <script>
 (function(){
 "use strict";
 if(typeof ethers==="undefined"){ alert("ethers.js could not load. Reload."); return; }
 
-// ⚙️  After deploying SwogeFun.sol, paste its address here:
-var CONTRACT_ADDRESS = window.SWOGEFUN_ADDRESS || "0xD6864D6d8Dc45BDd3A5aD179E2418Eb99692C7C5";
+// ⚙️  SwogeFun V2 (dual-mode launchpad) on Robinhood Chain:
+var CONTRACT_ADDRESS = window.SWOGEFUN_ADDRESS || "0x4De26D120A4fF2d7c1875E6C7D611262b9cA426d";
 var CHAIN = { id:4663, hex:"0x1237", name:"Robinhood Chain", rpc:"https://rpc.mainnet.chain.robinhood.com", scan:"https://robinhoodchain.blockscout.com", sym:"ETH" };
 var WC_PROJECT_ID = "7553b1651dfa1fce5eaff2405d5f230c";  // WalletConnect (reown.com) — free
 var FUN_ABI = window.SWOGEFUN_ABI, TOKEN_ABI = window.SWOGETOKEN_ABI;
 var CURVE_SUPPLY = ethers.utils.parseEther("800000000");
+/* Uniswap v3 infra (Instant-mode tokens trade here) */
+var WETH   = "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73";
+var ROUTER = "0xcaf681a66d020601342297493863e78c959e5cb2";   // SwapRouter02
+var QUOTER = "0x33e885ed0ec9bf04ecfb19341582aadcb4c8a9e7";   // QuoterV2
+var POOL_FEE = 10000;                                        // 1% tier
+var ROUTER_ABI=[
+ "function exactInputSingle((address tokenIn,address tokenOut,uint24 fee,address recipient,uint256 amountIn,uint256 amountOutMinimum,uint160 sqrtPriceLimitX96)) payable returns (uint256)",
+ "function multicall(bytes[] data) payable returns (bytes[] results)",
+ "function unwrapWETH9(uint256 amountMinimum, address recipient) payable"
+];
+var QUOTER_ABI=["function quoteExactInputSingle((address tokenIn,address tokenOut,uint256 amountIn,uint24 fee,uint160 sqrtPriceLimitX96)) returns (uint256 amountOut,uint160,uint32,uint256)"];
+var POOL_ABI=[
+ "function slot0() view returns (uint160 sqrtPriceX96,int24 tick,uint16,uint16,uint16,uint8,bool)",
+ "function token0() view returns (address)",
+ "event Swap(address indexed sender,address indexed recipient,int256 amount0,int256 amount1,uint160 sqrtPriceX96,uint128 liquidity,int24 tick)"
+];
 
 var $=function(s){return document.querySelector(s);};
 var toastEl=$("#toast");
@@ -357,7 +393,26 @@ document.querySelectorAll(".tab").forEach(function(t){
 });
 
 /* ---------- create ---------- */
-var feeMode=0;
+var feeMode=0, launchMode=0;   // launchMode: 0 = Fair Curve, 1 = Instant DexScreener
+document.querySelectorAll("#launchMode button").forEach(function(b){
+  b.onclick=function(){
+    document.querySelectorAll("#launchMode button").forEach(function(x){x.classList.remove("on");});
+    b.classList.add("on"); launchMode=+b.dataset.lmode;
+    $("#curveOnly").style.display = launchMode===0 ? "block" : "none";
+    $("#createBtn").innerHTML = launchMode===0 ? "🚀 Launch on the curve" : "⚡ Launch on Uniswap";
+    updateFeeSummary();
+  };
+});
+function updateFeeSummary(){
+  if(launchMode===1){
+    $("#modeInfo").innerHTML="Real Uniswap pool from second one — <b>visible on DexScreener immediately</b>. No liquidity needed. Anti-snipe: max 5% per wallet for the first 2 blocks.";
+    $("#feeSummary").innerHTML="Uniswap trade fee 1%: <b>70% → you</b> · <b>30% → SWOGE</b>. Collect anytime on the Trade page.";
+    return;
+  }
+  $("#modeInfo").innerHTML="Bonding curve (pump.fun style). Graduates to Uniswap at 800M sold. Appears on DexScreener after graduation.";
+  var cf=parseFloat(($("#cFee").value||"").replace(",","."))||0;
+  $("#feeSummary").innerHTML = "Every trade: <b>1% → SWOGE</b> + <b>"+cf+"% → "+(feeMode===0?"your dev wallet":"your holders")+"</b> = "+(1+cf).toFixed(2)+"% total.";
+}
 document.querySelectorAll("#feeMode button").forEach(function(b){
   b.onclick=function(){
     document.querySelectorAll("#feeMode button").forEach(function(x){x.classList.remove("on");});
@@ -366,10 +421,6 @@ document.querySelectorAll("#feeMode button").forEach(function(b){
     updateFeeSummary();
   };
 });
-function updateFeeSummary(){
-  var cf=parseFloat(($("#cFee").value||"").replace(",","."))||0;
-  $("#feeSummary").innerHTML = "Every trade: <b>1% → SWOGE</b> + <b>"+cf+"% → "+(feeMode===0?"your dev wallet":"your holders")+"</b> = "+(1+cf).toFixed(2)+"% total.";
-}
 $("#cFee").addEventListener("input",updateFeeSummary); updateFeeSummary();
 document.querySelectorAll("#feePresets button").forEach(function(b){
   b.onclick=function(){ $("#cFee").value=b.dataset.fee; updateFeeSummary(); };
@@ -388,11 +439,13 @@ $("#createBtn").onclick=async function(){
   var btn=$("#createBtn"), note=$("#createNote");
   btn.disabled=true; btn.innerHTML='<span class="spin"></span> launching…'; note.className="note"; note.textContent="Confirm in your wallet…";
   try{
-    var tg=$("#cTg").value.trim(), tw=$("#cTw").value.trim(), web=$("#cWeb").value.trim();
+    var tg=$("#cTg").value.trim(), tw=$("#cTw").value.trim(), web=$("#cWeb").value.trim(), lg=$("#cLogo").value.trim();
+    var inst = launchMode===1;
     var tx=await writeFun().createToken({
-      name:name, symbol:sym, maxWalletBps:maxW, feeMode:feeMode, devWallet:dev,
-      creatorFeeBps:feeBps, telegram:tg, twitter:tw, website:web
-    });
+      name:name, symbol:sym, mode:launchMode,
+      maxWalletBps: inst?0:maxW, feeMode: inst?0:feeMode, devWallet: inst?ethers.constants.AddressZero:dev,
+      creatorFeeBps: inst?0:feeBps, telegram:tg, twitter:tw, website:web, logo:lg
+    }, inst?{gasLimit:9000000}:{});
     note.innerHTML='Sent · waiting… <a href="'+CHAIN.scan+'/tx/'+tx.hash+'" target="_blank">↗</a>';
     var rc=await tx.wait();
     var ev=rc.events&&rc.events.find(function(e){return e.event==="Created";});
@@ -400,7 +453,7 @@ $("#createBtn").onclick=async function(){
     note.className="note ok"; note.innerHTML="🎉 Launched! "+(addr?('<a href="'+CHAIN.scan+'/address/'+addr+'" target="_blank">'+addr+' ↗</a>'):"");
     toast("Token launched 🚀");
   }catch(e){ note.className="note err"; note.textContent="Failed · "+String(e.reason||e.data&&e.data.message||e.message||e).slice(0,150); }
-  finally{ btn.disabled=false; btn.innerHTML="🚀 Launch on the curve"; }
+  finally{ btn.disabled=false; btn.innerHTML=launchMode===0?"🚀 Launch on the curve":"⚡ Launch on Uniswap"; }
 };
 
 /* ---------- token logos (off-chain, from logos.json in the repo) ---------- */
@@ -411,7 +464,12 @@ function loadLogos(){
     for(var k in j){ if(k.indexOf("0x")===0) logoMap[k.toLowerCase()]=j[k]; }
   }).catch(function(){});
 }
-function logoFor(addr){ return logoMap[(addr||"").toLowerCase()] || ""; }
+function logoFor(addr){
+  var k=(addr||"").toLowerCase();
+  var m=metaMap[k];                       // on-chain logo (Meta event) wins
+  if(m && m.logo) return m.logo;
+  return logoMap[k] || "";                // logos.json fallback
+}
 function logoImg(addr, cls){
   var u=logoFor(addr); if(!u) return "";
   return '<img class="tlogo'+(cls?" "+cls:"")+'" src="'+esc(u)+'" alt="" onerror="this.style.display=\'none\'">';
@@ -422,13 +480,13 @@ loadLogos();
 var allCache=[], metaMap={};
 async function loadMetaAll(fun){
   try{ var evs=await fun.queryFilter(fun.filters.Meta());
-    evs.forEach(function(e){ metaMap[e.args.token.toLowerCase()]={tg:e.args.telegram,tw:e.args.twitter,web:e.args.website}; });
+    evs.forEach(function(e){ metaMap[e.args.token.toLowerCase()]={tg:e.args.telegram,tw:e.args.twitter,web:e.args.website,logo:e.args.logo}; });
   }catch(e){}
 }
 async function fetchMeta(fun,addr){
   var key=addr.toLowerCase();
   if(metaMap[key]) return metaMap[key];
-  try{ var evs=await fun.queryFilter(fun.filters.Meta(addr)); if(evs.length){ var a=evs[evs.length-1].args; metaMap[key]={tg:a.telegram,tw:a.twitter,web:a.website}; } }catch(e){}
+  try{ var evs=await fun.queryFilter(fun.filters.Meta(addr)); if(evs.length){ var a=evs[evs.length-1].args; metaMap[key]={tg:a.telegram,tw:a.twitter,web:a.website,logo:a.logo}; } }catch(e){}
   return metaMap[key]||{};
 }
 function socialsHTML(m){
@@ -449,11 +507,15 @@ async function loadList(){
     var out=[];
     for(var i=n-1;i>=0 && i>=n-60;i--){   // newest first, cap 60
       var addr=await fun.allTokens(i);
-      var c=await fun.curves(addr);
+      var mode=await fun.modeOf(addr);    // 0 curve · 1 instant
+      var c = mode===0 ? await fun.curves(addr) : null;
       var t=new ethers.Contract(addr, TOKEN_ABI, provider||rpcProvider());
       var name="", sym="";
       try{ name=await t.name(); sym=await t.symbol(); }catch(e){}
-      out.push({addr:addr,name:name,sym:sym,sold:c.tokensSold,graduated:c.graduated,social:metaMap[addr.toLowerCase()]||{}});
+      out.push({addr:addr,mode:mode,name:name,sym:sym,
+                sold:c?c.tokensSold:ethers.constants.Zero,
+                graduated:c?c.graduated:false,
+                social:metaMap[addr.toLowerCase()]||{}});
     }
     allCache=out; renderList(); $("#listInfo").textContent=n+" token(s)";
   }catch(e){ $("#listInfo").textContent="Could not load: "+String(e.message||e).slice(0,60); }
@@ -464,11 +526,18 @@ function renderList(){
   var rows=allCache.filter(function(r){ return !q || r.name.toLowerCase().includes(q)||r.sym.toLowerCase().includes(q)||r.addr.toLowerCase().includes(q); });
   if(!rows.length){ host.innerHTML='<div class="note">No token matches.</div>'; return; }
   rows.forEach(function(r){
-    var pct=Math.min(100, r.sold.mul(10000).div(CURVE_SUPPLY).toNumber()/100);
     var d=document.createElement("div"); d.className="card";
+    var badge, prog;
+    if(r.mode===1){
+      badge='<span class="badge grad">⚡ live on Uniswap</span>';
+      prog='';
+    }else{
+      var pct=Math.min(100, r.sold.mul(10000).div(CURVE_SUPPLY).toNumber()/100);
+      badge='<span class="badge '+(r.graduated?"grad":"")+'">'+(r.graduated?"graduated ✓":pct.toFixed(1)+"% to grad")+'</span>';
+      prog='<div class="prog"><span style="width:'+(r.graduated?100:pct)+'%"></span></div>';
+    }
     d.innerHTML='<div class="top"><div style="display:flex;align-items:center;gap:10px">'+logoImg(r.addr)+'<div><span class="nm">'+esc(r.name||"?")+'</span> <span class="sy">$'+esc(r.sym||"?")+'</span></div></div>'
-      +'<span class="badge '+(r.graduated?"grad":"")+'">'+(r.graduated?"graduated ✓":pct.toFixed(1)+"% to grad")+'</span></div>'
-      +'<div class="prog"><span style="width:'+(r.graduated?100:pct)+'%"></span></div>'
+      +badge+'</div>'+prog
       +'<div class="meta">'+r.addr+'</div>'+socialsHTML(r.social);
     d.querySelectorAll(".socials a").forEach(function(a){ a.onclick=function(ev){ ev.stopPropagation(); }; });
     d.onclick=function(){ openTrade(r.addr); };
@@ -481,15 +550,30 @@ function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp
 
 /* ---------- trade ---------- */
 var curToken=null;
+var curMode=0;        // 0 = fair curve · 1 = instant (Uniswap)
+var curPool=null;     // Uniswap v3 pool (instant tokens)
+var curT0IsWeth=false;
 var curBalWei=null;   // exact wallet balance of curToken (BigNumber), for "sell all"
 var sellUseMax=false; // true when the Sell field was filled by the Max button
 $("#loadTrade").onclick=function(){ var a=$("#tradeAddr").value.trim(); if(a) openTrade(a); };
 function switchTab(name){ document.querySelector('.tab[data-tab="'+name+'"]').click(); }
+function poolC(){ return new ethers.Contract(curPool, POOL_ABI, provider||rpcProvider()); }
+function quoterC(){ return new ethers.Contract(QUOTER, QUOTER_ABI, provider||rpcProvider()); }
+function routerC(){ return new ethers.Contract(ROUTER, ROUTER_ABI, signer); }
 async function openTrade(addr){
   try{ addr=ethers.utils.getAddress(addr); }catch(e){ return toast("Bad address"); }
   switchTab("trade");
   $("#tradeEmpty").classList.add("hidden"); $("#tradeView").classList.remove("hidden");
-  curToken=addr;
+  curToken=addr; curPool=null;
+  try{
+    var fun=readFun();
+    curMode=await fun.modeOf(addr);
+    if(curMode===1){
+      var inst=await fun.instant(addr);
+      curPool=inst.pool;
+      curT0IsWeth = WETH.toLowerCase() < addr.toLowerCase();
+    }
+  }catch(e){ curMode=0; }
   await refreshTrade();
 }
 /* ---------- price chart (candlesticks from on-chain trades) ---------- */
@@ -544,6 +628,32 @@ async function fetchTrades(token){
     e.mcap=mcapAt(sold);       // ETH
     e.ts=tmap[e.bn]||0;
   });
+  return evs;
+}
+
+// instant tokens: rebuild trades from the Uniswap pool's Swap events
+async function fetchTradesInstant(){
+  if(!curPool) return [];
+  var pc=poolC();
+  var logs=await pc.queryFilter(pc.filters.Swap(),0,"latest");
+  if(!logs.length) return [];
+  var evs=logs.map(function(l){
+    var aW=curT0IsWeth?l.args.amount0:l.args.amount1;
+    var aT=curT0IsWeth?l.args.amount1:l.args.amount0;
+    var sp=+l.args.sqrtPriceX96.toString()/Math.pow(2,96);
+    var price=curT0IsWeth? 1/(sp*sp) : sp*sp;        // weth per token
+    return {bn:l.blockNumber,li:l.logIndex,tx:l.transactionHash,who:l.args.recipient,
+      type:aW.gt(0)?"buy":"sell",
+      eth:Math.abs(+ethers.utils.formatEther(aW)),
+      tokens:Math.abs(+ethers.utils.formatEther(aT)),
+      mcap:price*1e9};                                // FDV in ETH (1B supply)
+  });
+  evs.sort(function(a,b){ return a.bn-b.bn || a.li-b.li; });
+  var prov=provider||rpcProvider();
+  var uniq={}; evs.forEach(function(e){ uniq[e.bn]=1; });
+  var stamps=await Promise.all(Object.keys(uniq).map(function(b){ return prov.getBlock(parseInt(b)).then(function(bl){return {b:b,t:bl?bl.timestamp:0};},function(){return {b:b,t:0};}); }));
+  var tmap={}; stamps.forEach(function(s){ tmap[s.b]=s.t; });
+  evs.forEach(function(e){ e.ts=tmap[e.bn]||0; });
   return evs;
 }
 
@@ -608,7 +718,7 @@ function renderChart(){ drawCandles(buildCandles(candleState.trades, candleState
 
 async function loadAndRenderChart(token, eu){
   var my=++chartReq, tr=[];
-  try{ tr=await fetchTrades(token); }catch(e){ tr=[]; }
+  try{ tr = curMode===1 ? await fetchTradesInstant() : await fetchTrades(token); }catch(e){ tr=[]; }
   if(my!==chartReq) return;                 // a newer request superseded this one
   candleState.token=token; candleState.trades=tr; candleState.ethUsd=eu;
   renderChart(); renderTrades();
@@ -680,33 +790,56 @@ async function refreshTrade(){
   var fun=readFun();
   var t=new ethers.Contract(curToken, TOKEN_ABI, provider||rpcProvider());
   var name="",sym=""; try{ name=await t.name(); sym=await t.symbol(); }catch(e){}
-  var c=await fun.curves(curToken);
   $("#tvName").textContent=name||"?"; $("#tvSym").textContent="$"+(sym||"?");
   $("#tvLogo").innerHTML=logoImg(curToken,"big");
   $("#tvAddr").innerHTML='<a href="'+CHAIN.scan+'/address/'+curToken+'" target="_blank">'+curToken+' ↗</a>';
-  fetchMeta(fun, curToken).then(function(m){ $("#tvSocials").innerHTML=socialsHTML(m); });
-  var pct=Math.min(100, c.tokensSold.mul(10000).div(CURVE_SUPPLY).toNumber()/100);
-  $("#tvBar").style.width=(c.graduated?100:pct)+"%";
-  $("#tvProg").textContent=c.graduated?"Graduated — now trading on Uniswap.":(pct.toFixed(2)+"% of the curve sold");
-  // candlestick chart + live price/mcap (in USD when ETH price is available)
-  var soldHuman=+ethers.utils.formatEther(c.tokensSold);
-  var mcap=1e18/Math.pow(1e9-soldHuman,2);          // = price * total supply, in ETH
-  var price=mcap/1e9;                                // ETH per token
+  fetchMeta(fun, curToken).then(function(m){ $("#tvSocials").innerHTML=socialsHTML(m); $("#tvLogo").innerHTML=logoImg(curToken,"big"); });
   var eu=await getEthUsd();
+  var mcap, price;
+
+  if(curMode===1){
+    /* ---- instant token: live Uniswap pool ---- */
+    $("#tvGradWrap").style.display="none";
+    $("#tvInstantRow").style.display="flex";
+    $("#tvDexBtn").href="https://dexscreener.com/search?q="+curToken;
+    $("#tvBadge").textContent="⚡ live on Uniswap"; $("#tvBadge").className="badge grad";
+    $("#tvTradePanel").style.opacity="1";
+    $("#tvRewardRow").style.display="none"; $("#claimBtn").style.display="none";
+    try{
+      var s0=await poolC().slot0();
+      var sp=+s0.sqrtPriceX96.toString()/Math.pow(2,96);
+      price = curT0IsWeth ? 1/(sp*sp) : sp*sp;    // weth per token
+      mcap  = price*1e9;
+    }catch(e){ price=0; mcap=0; }
+  }else{
+    /* ---- curve token ---- */
+    var c=await fun.curves(curToken);
+    $("#tvGradWrap").style.display="block";
+    $("#tvInstantRow").style.display="none";
+    var pct=Math.min(100, c.tokensSold.mul(10000).div(CURVE_SUPPLY).toNumber()/100);
+    $("#tvBar").style.width=(c.graduated?100:pct)+"%";
+    $("#tvProg").textContent=c.graduated?"Graduated — now trading on Uniswap.":(pct.toFixed(2)+"% of the curve sold");
+    var soldHuman=+ethers.utils.formatEther(c.tokensSold);
+    mcap=1e18/Math.pow(1e9-soldHuman,2);          // = price * total supply, in ETH
+    price=mcap/1e9;                               // ETH per token
+    $("#tvBadge").textContent=c.graduated?"graduated ✓":"on curve"; $("#tvBadge").className="badge"+(c.graduated?" grad":"");
+    $("#tvTradePanel").style.opacity=c.graduated?".5":"1";
+    if(account){
+      var isHolders = c.feeMode===1;
+      $("#tvRewardRow").style.display=isHolders?"flex":"none";
+      $("#claimBtn").style.display=isHolders?"block":"none";
+      if(isHolders){ var pend=await fun.pendingRewards(curToken,account); $("#tvReward").textContent=(+ethers.utils.formatEther(pend)).toFixed(6)+" ETH"; }
+    }
+  }
+
   $("#tvMcap").textContent = eu ? (fmtUsd(mcap*eu)+"  ·  "+mcap.toFixed(3)+" ETH") : (mcap.toFixed(4)+" ETH");
   $("#tvPrice").textContent = eu ? (fmtPrice(price*eu)+"  ·  "+price.toExponential(2)+" ETH") : (price.toExponential(3)+" ETH");
   loadAndRenderChart(curToken, eu);
-  $("#tvBadge").textContent=c.graduated?"graduated ✓":"on curve"; $("#tvBadge").className="badge"+(c.graduated?" grad":"");
-  $("#tvTradePanel").style.opacity=c.graduated?".5":"1";
-  // balance + rewards
+
   if(account){
     var bal=await t.balanceOf(account);
     curBalWei=bal;
     $("#tvBal").textContent=(+ethers.utils.formatEther(bal)).toLocaleString("en-US")+" "+(sym||"");
-    var isHolders = c.feeMode===1;
-    $("#tvRewardRow").style.display=isHolders?"flex":"none";
-    $("#claimBtn").style.display=isHolders?"block":"none";
-    if(isHolders){ var pend=await fun.pendingRewards(curToken,account); $("#tvReward").textContent=(+ethers.utils.formatEther(pend)).toFixed(6)+" ETH"; }
   } else { $("#tvBal").textContent="connect wallet"; }
 }
 // mobile-safe amount: accept comma decimals, return a clean "." string
@@ -715,7 +848,15 @@ var quoteT=null;
 $("#buyEth").addEventListener("input",function(){ clearTimeout(quoteT); quoteT=setTimeout(quoteBuy,250); });
 async function quoteBuy(){
   var raw=amtStr("#buyEth"); if(!parseFloat(raw)||!curToken){ $("#buyQuote").textContent=""; return; }
-  try{ var q=await readFun().quoteBuy(curToken, ethers.utils.parseEther(raw)); $("#buyQuote").textContent="≈ "+(+ethers.utils.formatEther(q.tokensOut)).toLocaleString("en-US")+" tokens (fee "+(+ethers.utils.formatEther(q.fee)).toFixed(6)+" ETH)"; }catch(e){ $("#buyQuote").textContent=""; }
+  try{
+    if(curMode===1){
+      var qi=await quoterC().callStatic.quoteExactInputSingle({tokenIn:WETH,tokenOut:curToken,amountIn:ethers.utils.parseEther(raw),fee:POOL_FEE,sqrtPriceLimitX96:0});
+      $("#buyQuote").textContent="≈ "+(+ethers.utils.formatEther(qi.amountOut)).toLocaleString("en-US")+" tokens (Uniswap, 1% fee incl.)";
+    }else{
+      var q=await readFun().quoteBuy(curToken, ethers.utils.parseEther(raw));
+      $("#buyQuote").textContent="≈ "+(+ethers.utils.formatEther(q.tokensOut)).toLocaleString("en-US")+" tokens (fee "+(+ethers.utils.formatEther(q.fee)).toFixed(6)+" ETH)";
+    }
+  }catch(e){ $("#buyQuote").textContent=""; }
 }
 // live comma → dot on all number fields (mobile FR keyboards type a comma)
 ["#buyEth","#sellTok","#cFee","#cMaxWallet"].forEach(function(id){
@@ -733,7 +874,16 @@ $("#sellMaxLink").addEventListener("click",function(e){
 });
 async function quoteSell(){
   var raw=amtStr("#sellTok"); if(!parseFloat(raw)||!curToken){ $("#sellQuote").textContent=""; return; }
-  try{ var q=await readFun().quoteSell(curToken, ethers.utils.parseEther(raw)); $("#sellQuote").textContent="≈ "+(+ethers.utils.formatEther(q.ethOut)).toFixed(6)+" ETH (fee "+(+ethers.utils.formatEther(q.fee)).toFixed(6)+")"; }catch(e){ $("#sellQuote").textContent=""; }
+  try{
+    var amt = sellUseMax&&curBalWei ? curBalWei : ethers.utils.parseEther(raw);
+    if(curMode===1){
+      var qi=await quoterC().callStatic.quoteExactInputSingle({tokenIn:curToken,tokenOut:WETH,amountIn:amt,fee:POOL_FEE,sqrtPriceLimitX96:0});
+      $("#sellQuote").textContent="≈ "+(+ethers.utils.formatEther(qi.amountOut)).toFixed(6)+" ETH (Uniswap, 1% fee incl.)";
+    }else{
+      var q=await readFun().quoteSell(curToken, amt);
+      $("#sellQuote").textContent="≈ "+(+ethers.utils.formatEther(q.ethOut)).toFixed(6)+" ETH (fee "+(+ethers.utils.formatEther(q.fee)).toFixed(6)+")";
+    }
+  }catch(e){ $("#sellQuote").textContent=""; }
 }
 $("#buyBtn").onclick=async function(){
   if(!signer){ openWalletPicker(); return; }
@@ -741,9 +891,19 @@ $("#buyBtn").onclick=async function(){
   var note=$("#tradeNote"); note.className="note"; note.textContent="Confirm in your wallet…";
   try{
     var wei=ethers.utils.parseEther(raw);
-    var q=await readFun().quoteBuy(curToken,wei);
-    var minOut=q.tokensOut.mul(97).div(100); // 3% slippage
-    var tx=await writeFun().buy(curToken,minOut,{value:wei});
+    var tx;
+    if(curMode===1){
+      // Uniswap: pay with raw ETH, router wraps it
+      var qi=await quoterC().callStatic.quoteExactInputSingle({tokenIn:WETH,tokenOut:curToken,amountIn:wei,fee:POOL_FEE,sqrtPriceLimitX96:0});
+      var minO=qi.amountOut.mul(97).div(100);   // 3% slippage
+      tx=await routerC().exactInputSingle(
+        {tokenIn:WETH,tokenOut:curToken,fee:POOL_FEE,recipient:account,amountIn:wei,amountOutMinimum:minO,sqrtPriceLimitX96:0},
+        {value:wei});
+    }else{
+      var q=await readFun().quoteBuy(curToken,wei);
+      var minOut=q.tokensOut.mul(97).div(100); // 3% slippage
+      tx=await writeFun().buy(curToken,minOut,{value:wei});
+    }
     note.innerHTML='Buying… <a href="'+CHAIN.scan+'/tx/'+tx.hash+'" target="_blank">↗</a>'; await tx.wait();
     note.className="note ok"; note.textContent="Bought ✅"; $("#buyEth").value=""; $("#buyQuote").textContent=""; refreshTrade();
   }catch(e){ note.className="note err"; note.textContent="Failed · "+String(e.reason||e.message||e).slice(0,140); }
@@ -759,14 +919,36 @@ $("#sellBtn").onclick=async function(){
     var onchainBal=await t.balanceOf(account);
     if(amt.gt(onchainBal)) amt=onchainBal;
     if(amt.isZero()) return toast("No tokens to sell");
-    var allowance=await t.allowance(account,CONTRACT_ADDRESS);
-    if(allowance.lt(amt)){ note.textContent="Approving…"; await (await t.approve(CONTRACT_ADDRESS,ethers.constants.MaxUint256)).wait(); }
-    var q=await readFun().quoteSell(curToken,amt);
-    var minEth=q.ethOut.mul(97).div(100);
-    note.textContent="Confirm the sell…";
-    var tx=await writeFun().sell(curToken,amt,minEth);
+    var spender = curMode===1 ? ROUTER : CONTRACT_ADDRESS;
+    var allowance=await t.allowance(account,spender);
+    if(allowance.lt(amt)){ note.textContent="Approving…"; await (await t.approve(spender,ethers.constants.MaxUint256)).wait(); }
+    var tx;
+    if(curMode===1){
+      // Uniswap: swap token→WETH to the router, then unwrap to native ETH in one tx
+      var qi=await quoterC().callStatic.quoteExactInputSingle({tokenIn:curToken,tokenOut:WETH,amountIn:amt,fee:POOL_FEE,sqrtPriceLimitX96:0});
+      var minE=qi.amountOut.mul(97).div(100);
+      var rt=routerC(), ri=rt.interface;
+      var c1=ri.encodeFunctionData("exactInputSingle",[{tokenIn:curToken,tokenOut:WETH,fee:POOL_FEE,recipient:"0x0000000000000000000000000000000000000002",amountIn:amt,amountOutMinimum:minE,sqrtPriceLimitX96:0}]);
+      var c2=ri.encodeFunctionData("unwrapWETH9",[minE,account]);
+      note.textContent="Confirm the sell…";
+      tx=await rt.multicall([c1,c2]);
+    }else{
+      var q=await readFun().quoteSell(curToken,amt);
+      var minEth=q.ethOut.mul(97).div(100);
+      note.textContent="Confirm the sell…";
+      tx=await writeFun().sell(curToken,amt,minEth);
+    }
     note.innerHTML='Selling… <a href="'+CHAIN.scan+'/tx/'+tx.hash+'" target="_blank">↗</a>'; await tx.wait();
     note.className="note ok"; note.textContent="Sold ✅"; sellUseMax=false; $("#sellTok").value=""; $("#sellQuote").textContent=""; refreshTrade();
+  }catch(e){ note.className="note err"; note.textContent="Failed · "+String(e.reason||e.message||e).slice(0,140); }
+};
+$("#tvCollectBtn").onclick=async function(){
+  if(!signer){ openWalletPicker(); return; }
+  var note=$("#tradeNote"); note.className="note"; note.textContent="Collecting pool fees…";
+  try{
+    var tx=await writeFun().collectFees(curToken);
+    note.innerHTML='Collecting… <a href="'+CHAIN.scan+'/tx/'+tx.hash+'" target="_blank">↗</a>'; await tx.wait();
+    note.className="note ok"; note.textContent="Fees collected — 70% creator / 30% SWOGE 💰";
   }catch(e){ note.className="note err"; note.textContent="Failed · "+String(e.reason||e.message||e).slice(0,140); }
 };
 $("#claimBtn").onclick=async function(){

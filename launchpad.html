@@ -125,8 +125,13 @@ input:focus,select:focus{border-color:var(--gold)}
         <div class="field"><label>Symbol</label><input id="cSym" placeholder="SWINU" maxlength="12"></div>
       </div>
       <div class="field">
-        <label>Logo (optional — image URL)</label>
-        <input id="cLogo" placeholder="https://…/logo.png">
+        <label>Logo (optional)</label>
+        <input type="file" id="cLogoFile" accept="image/*">
+        <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+          <img id="cLogoPreview" style="display:none;width:48px;height:48px;border-radius:10px;object-fit:cover;border:1px solid var(--line)">
+          <span class="note" id="cLogoNote" style="margin:0">Upload from your PC / phone — resized &amp; stored on-chain automatically.</span>
+        </div>
+        <input id="cLogo" placeholder="…or paste an image URL (https://…)" style="margin-top:8px">
       </div>
       <div class="field">
         <label>Links (optional)</label>
@@ -356,6 +361,58 @@ document.querySelectorAll(".tab").forEach(function(t){
 });
 
 /* ---------- create (Instant DexScreener only) ---------- */
+/* pick an image from the device → resize to a small icon → data-URI stored on-chain */
+var uploadedLogo="";
+function processLogoFile(file){
+  return new Promise(function(resolve,reject){
+    if(!file) return reject("no file");
+    if(!/^image\//.test(file.type||"")) return reject("not an image");
+    var fr=new FileReader();
+    fr.onerror=function(){ reject("read error"); };
+    fr.onload=function(){
+      var img=new Image();
+      img.onerror=function(){ reject("bad image"); };
+      img.onload=function(){
+        var MAX=96, CAP=8000;            // ~96px icon, keep the data-URI under ~8 KB
+        var s=Math.min(1, MAX/Math.max(img.width,img.height));
+        var cw=Math.max(1,Math.round(img.width*s)), ch=Math.max(1,Math.round(img.height*s));
+        function render(w,h){ var cv=document.createElement("canvas"); cv.width=w; cv.height=h; cv.getContext("2d").drawImage(img,0,0,w,h); return cv; }
+        var cv=render(cw,ch), best="";
+        for(var pass=0; pass<3; pass++){
+          var types=["image/webp","image/jpeg"];
+          for(var ti=0; ti<types.length; ti++){
+            for(var q=0.82; q>=0.4; q-=0.1){
+              var uri=cv.toDataURL(types[ti], q);
+              if(uri.indexOf("data:image")!==0) continue;   // type unsupported → skip
+              if(!best || uri.length<best.length) best=uri;
+              if(uri.length<=CAP) return resolve(best);
+            }
+          }
+          cw=Math.round(cw*0.75); ch=Math.round(ch*0.75);   // still too big → shrink & retry
+          if(cw<24||ch<24) break;
+          cv=render(cw,ch);
+        }
+        resolve(best);
+      };
+      img.src=fr.result;
+    };
+    fr.readAsDataURL(file);
+  });
+}
+var _logoFileEl=$("#cLogoFile");
+if(_logoFileEl) _logoFileEl.addEventListener("change",function(){
+  var f=this.files&&this.files[0]; if(!f){ return; }
+  $("#cLogoNote").textContent="Processing image…";
+  processLogoFile(f).then(function(uri){
+    uploadedLogo=uri;
+    $("#cLogoPreview").src=uri; $("#cLogoPreview").style.display="block";
+    $("#cLogo").value="";       // uploaded image takes priority over the URL field
+    $("#cLogoNote").textContent="Logo ready · "+(uri.length/1024).toFixed(1)+" KB (stored on-chain).";
+  }).catch(function(){ uploadedLogo=""; $("#cLogoNote").textContent="Couldn't read that image — try a PNG/JPG."; });
+});
+// typing a URL clears the uploaded file
+if($("#cLogo")) $("#cLogo").addEventListener("input",function(){ if(this.value.trim()){ uploadedLogo=""; $("#cLogoPreview").style.display="none"; } });
+
 function updateFeeSummary(){
   $("#modeInfo").innerHTML="A real Uniswap pool is created at launch — <b>visible on DexScreener immediately</b>. No liquidity to provide. Anti-snipe: max 5% per wallet for the first 2 blocks.";
   $("#feeSummary").innerHTML="Uniswap trade fee 1%: <b>70% → you (creator)</b> · <b>30% → SWOGE</b>. Collect anytime on the Trade page.";
@@ -369,7 +426,8 @@ $("#createBtn").onclick=async function(){
   var btn=$("#createBtn"), note=$("#createNote");
   btn.disabled=true; btn.innerHTML='<span class="spin"></span> launching…'; note.className="note"; note.textContent="Confirm in your wallet…";
   try{
-    var tg=$("#cTg").value.trim(), tw=$("#cTw").value.trim(), web=$("#cWeb").value.trim(), lg=$("#cLogo").value.trim();
+    var tg=$("#cTg").value.trim(), tw=$("#cTw").value.trim(), web=$("#cWeb").value.trim();
+    var lg = uploadedLogo || $("#cLogo").value.trim();     // uploaded file wins, else pasted URL
     var tx=await writeFun().createToken({
       name:name, symbol:sym, mode:1,                       // Instant DexScreener only
       maxWalletBps:0, feeMode:0, devWallet:ethers.constants.AddressZero,

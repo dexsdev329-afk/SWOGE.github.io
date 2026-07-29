@@ -1,0 +1,460 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>$SWOGE FUN — bonding-curve launchpad</title>
+<meta name="description" content="Launch a token on a bonding curve on Robinhood Chain. No liquidity needed. 1% to SWOGE, creator fee to your wallet or your holders.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+<style>
+:root{--cream:#F7EEDA;--dim:#A08a63;--fur:#EAD2A0;--gold:#E6A537;--goldlite:#F2C25A;--line:#2E2213;--void:#0B0906;--void2:#15100A;--signal:#6FD1C4;--danger:#E2635E;--ink:#1a1206}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--void);color:var(--cream);font-family:'Archivo',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+body{min-height:100vh;background:radial-gradient(circle at 22% 8%,rgba(230,165,55,.14),transparent 42%),radial-gradient(circle at 88% 92%,rgba(230,165,55,.08),transparent 45%),var(--void)}
+a{color:var(--gold);text-decoration:none}
+.wrap{max-width:820px;margin:0 auto;padding:22px 16px 90px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.brand{display:flex;align-items:center;gap:11px}
+.brand .logo{width:44px;height:44px;border-radius:11px;border:1px solid var(--line)}
+.brand h1{font-family:'Anton',sans-serif;font-size:clamp(22px,4vw,34px);line-height:.95}
+.brand h1 span{color:var(--gold)}
+.brand .sub{font-family:'Space Mono',monospace;font-size:11px;color:var(--dim);letter-spacing:2px;text-transform:uppercase}
+nav{display:flex;gap:8px;flex-wrap:wrap}
+nav a,.walletbtn{font-family:'Space Mono',monospace;font-size:12px;padding:8px 12px;border:1px solid var(--line);border-radius:999px;color:var(--fur);cursor:pointer;background:transparent}
+nav a:hover,.walletbtn:hover{border-color:var(--gold);color:var(--gold)}
+.tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.tab{font-family:'Space Mono',monospace;font-size:12px;letter-spacing:.06em;text-transform:uppercase;padding:10px 16px;border:1px solid var(--line);border-radius:11px;background:var(--void2);color:var(--dim);cursor:pointer}
+.tab.on{background:var(--gold);color:var(--ink);border-color:var(--gold)}
+.panel{background:var(--void2);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:16px;box-shadow:0 14px 36px rgba(0,0,0,.4)}
+.panel h2{font-family:'Space Mono',monospace;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:14px}
+label{display:block;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--dim);margin:0 0 6px}
+input,select{width:100%;font-family:'Archivo',sans-serif;font-weight:600;font-size:15px;padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:var(--void);color:var(--cream);outline:none}
+input:focus,select:focus{border-color:var(--gold)}
+.field{margin-bottom:13px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:560px){.two{grid-template-columns:1fr}}
+.btn{font-family:'Archivo',sans-serif;font-weight:800;font-size:14px;padding:12px 15px;border-radius:11px;border:1px solid var(--line);background:var(--void2);color:var(--cream);cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:7px;justify-content:center}
+.btn:hover{border-color:var(--gold);color:var(--gold)}
+.btn.primary{background:var(--gold);color:var(--ink);border-color:var(--gold)}
+.btn.primary:hover{background:var(--goldlite)}
+.btn.buy{background:rgba(111,209,196,.14);border-color:rgba(111,209,196,.5);color:var(--signal)}
+.btn.sell{background:rgba(226,99,94,.12);border-color:rgba(226,99,94,.5);color:var(--danger)}
+.btn.full{width:100%}.btn:disabled{opacity:.45;cursor:not-allowed}
+.btnrow{display:flex;gap:10px;flex-wrap:wrap}
+.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{flex:1;font-family:'Space Mono',monospace;font-size:12px;padding:10px;background:transparent;color:var(--dim);border:0;cursor:pointer}
+.seg button.on{background:var(--gold);color:var(--ink)}
+.presets button{font-family:'Space Mono',monospace;font-size:11px;padding:5px 10px;border:1px solid var(--line);background:var(--void);color:var(--fur);border-radius:8px;cursor:pointer}
+.presets button:hover{border-color:var(--gold);color:var(--gold)}
+.socials{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.socials a{font-family:'Space Mono',monospace;font-size:11px;padding:5px 10px;border:1px solid var(--line);border-radius:999px;color:var(--fur)}
+.socials a:hover{border-color:var(--gold);color:var(--gold)}
+.note{font-family:'Space Mono',monospace;font-size:12px;color:var(--dim);line-height:1.6;margin-top:8px;word-break:break-word}
+.note.ok{color:var(--signal)}.note.err{color:var(--danger)}
+.hidden{display:none}
+.prog{height:12px;border-radius:99px;background:var(--void);border:1px solid var(--line);overflow:hidden;margin:8px 0}
+.prog>span{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--goldlite));width:0}
+.card{background:var(--void);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:10px;cursor:pointer;transition:.15s}
+.card:hover{border-color:var(--gold)}
+.card .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.card .nm{font-family:'Anton',sans-serif;font-size:18px}
+.card .sy{font-family:'Space Mono',monospace;font-size:12px;color:var(--gold)}
+.card .meta{font-family:'Space Mono',monospace;font-size:11px;color:var(--dim);word-break:break-all;margin-top:4px}
+.badge{font-family:'Space Mono',monospace;font-size:10px;padding:3px 8px;border-radius:999px;border:1px solid var(--line);color:var(--fur)}
+.badge.grad{color:var(--signal);border-color:rgba(111,209,196,.5)}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid rgba(230,165,55,.3);border-top-color:var(--gold);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.kv{display:flex;justify-content:space-between;gap:10px;font-family:'Space Mono',monospace;font-size:12px;padding:6px 0;border-bottom:1px solid var(--line)}
+.kv .k{color:var(--dim)}.kv .v{color:var(--cream);text-align:right;word-break:break-all}
+.warn{border:1px solid rgba(226,99,94,.5);background:rgba(226,99,94,.08);border-radius:12px;padding:11px 13px;font-size:12.5px;line-height:1.5;margin-bottom:16px}
+.warn b{color:var(--danger)}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:var(--gold);color:var(--ink);font-family:'Archivo';font-weight:800;padding:12px 20px;border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:.25s;z-index:60}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.foot{margin-top:24px;text-align:center;font-family:'Space Mono',monospace;font-size:11px;color:var(--dim)}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <img class="logo" id="logo" alt="SWOGE">
+      <div>
+        <h1><span>$SWOGE</span> FUN</h1>
+        <div class="sub">Bonding-curve launchpad · Robinhood Chain</div>
+      </div>
+    </div>
+    <nav>
+      <a href="index.html">← Home</a>
+      <button class="walletbtn" id="walletBtn">Connect wallet</button>
+    </nav>
+  </header>
+
+  <div class="warn" id="cfgWarn">
+    <b>Not configured yet.</b> The SwogeFun contract isn't deployed. Once you deploy <code>SwogeFun.sol</code> on Robinhood Chain, paste its address in <code>CONTRACT_ADDRESS</code> at the top of this file. Until then, Explore/Trade will be empty.
+  </div>
+
+  <div class="tabs">
+    <button class="tab on" data-tab="create">＋ Create</button>
+    <button class="tab" data-tab="explore">🔎 Explore</button>
+    <button class="tab" data-tab="trade">📈 Trade</button>
+  </div>
+
+  <!-- ============ CREATE ============ -->
+  <section id="tab-create">
+    <div class="panel">
+      <h2>Launch a token</h2>
+      <div class="two">
+        <div class="field"><label>Name</label><input id="cName" placeholder="Swoge Inu" maxlength="40"></div>
+        <div class="field"><label>Symbol</label><input id="cSym" placeholder="SWINU" maxlength="12"></div>
+      </div>
+      <div class="two">
+        <div class="field">
+          <label>Max wallet (% of supply, 0 = none)</label>
+          <input id="cMaxWallet" inputmode="decimal" value="0">
+        </div>
+        <div class="field">
+          <label>Creator fee % (0–20)</label>
+          <input id="cFee" inputmode="decimal" value="1">
+          <div class="presets" id="feePresets" style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">
+            <button type="button" data-fee="0">0%</button>
+            <button type="button" data-fee="1">1%</button>
+            <button type="button" data-fee="2">2%</button>
+            <button type="button" data-fee="5">5%</button>
+            <button type="button" data-fee="10">10%</button>
+          </div>
+        </div>
+      </div>
+      <div class="field">
+        <label>Where does the creator fee go?</label>
+        <div class="seg" id="feeMode">
+          <button data-mode="0" class="on">Dev wallet</button>
+          <button data-mode="1">Holders (reflection)</button>
+        </div>
+      </div>
+      <div class="field" id="devWalletField">
+        <label>Dev wallet (receives the creator fee)</label>
+        <input id="cDev" placeholder="0x… (leave empty = you)">
+      </div>
+      <div class="field">
+        <label>Links (optional)</label>
+        <input id="cTg" placeholder="Telegram — https://t.me/…" style="margin-bottom:8px">
+        <input id="cTw" placeholder="Twitter / X — https://x.com/…" style="margin-bottom:8px">
+        <input id="cWeb" placeholder="Website — https://…">
+      </div>
+      <div class="note" id="feeSummary"></div>
+      <button class="btn primary full" id="createBtn" style="margin-top:8px" disabled>🚀 Launch on the curve</button>
+      <div class="note" id="createNote">Connect a wallet first.</div>
+    </div>
+  </section>
+
+  <!-- ============ EXPLORE ============ -->
+  <section id="tab-explore" class="hidden">
+    <div class="panel">
+      <h2>All tokens</h2>
+      <div class="field"><input id="search" placeholder="Search by name, symbol or address…"></div>
+      <div class="btnrow" style="margin-bottom:10px">
+        <button class="btn" id="reload">↻ Reload</button>
+        <span class="note" id="listInfo" style="margin:0;align-self:center"></span>
+      </div>
+      <div id="list"></div>
+    </div>
+  </section>
+
+  <!-- ============ TRADE ============ -->
+  <section id="tab-trade" class="hidden">
+    <div class="panel" id="tradeEmpty"><div class="note">Pick a token in <b>Explore</b>, or paste an address below.</div>
+      <div class="field" style="margin-top:10px"><input id="tradeAddr" placeholder="0x… token address"></div>
+      <button class="btn" id="loadTrade">Load token</button>
+    </div>
+    <div id="tradeView" class="hidden">
+      <div class="panel">
+        <div class="card top" style="border:0;padding:0;background:none;cursor:default">
+          <div><div class="nm" id="tvName">—</div><div class="sy" id="tvSym"></div></div>
+          <span class="badge" id="tvBadge">on curve</span>
+        </div>
+        <div class="note" id="tvAddr" style="margin-top:4px"></div>
+        <div id="tvSocials"></div>
+        <label style="margin-top:12px">Progress to graduation</label>
+        <div class="prog"><span id="tvBar"></span></div>
+        <div class="note" id="tvProg"></div>
+      </div>
+
+      <div class="panel" id="tvTradePanel">
+        <h2>Trade on the curve</h2>
+        <div class="two">
+          <div>
+            <div class="field"><label>Buy — ETH to spend</label><input id="buyEth" inputmode="decimal" placeholder="0.1"></div>
+            <div class="note" id="buyQuote"></div>
+            <button class="btn buy full" id="buyBtn" style="margin-top:8px">Buy</button>
+          </div>
+          <div>
+            <div class="field"><label>Sell — tokens to sell</label><input id="sellTok" inputmode="decimal" placeholder="0"></div>
+            <div class="note" id="sellQuote"></div>
+            <button class="btn sell full" id="sellBtn" style="margin-top:8px">Sell</button>
+          </div>
+        </div>
+        <div class="note" id="tradeNote" style="margin-top:10px"></div>
+        <div class="kv"><span class="k">Your balance</span><span class="v" id="tvBal">—</span></div>
+        <div class="kv" id="tvRewardRow" style="display:none"><span class="k">Your holder rewards</span><span class="v" id="tvReward">—</span></div>
+        <button class="btn full" id="claimBtn" style="margin-top:10px;display:none">💰 Claim my holder rewards</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="foot">$SWOGE FUN · 1% to SWOGE on every trade · <a href="index.html">swoleeswoge.dog</a></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!--CONFIG-->
+<script>window.SWOGEFUN_ABI=[{"inputs": [{"internalType": "address", "name": "_positionManager", "type": "address"}, {"internalType": "address", "name": "_weth", "type": "address"}], "stateMutability": "nonpayable", "type": "constructor"}, {"anonymous": false, "inputs": [{"indexed": true, "internalType": "address", "name": "token", "type": "address"}, {"indexed": true, "internalType": "address", "name": "buyer", "type": "address"}, {"indexed": false, "internalType": "uint256", "name": "ethIn", "type": "uint256"}, {"indexed": false, "internalType": "uint256", "name": "tokensOut", "type": "uint256"}, {"indexed": false, "internalType": "uint256", "name": "protocolFee", "type": "uint256"}, {"indexed": false, "internalType": "uint256", "name": "creatorFee", "type": "uint256"}], "name": "Buy", "type": "event"}, {"anonymous": false, "inputs": [{"indexed": true, "internalType": "address", "name": "token", "type": "address"}, {"indexed": true, "internalType": "address", "name": "holder", "type": "address"}, {"indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256"}], "name": "Claimed", "type": "event"}, {"anonymous": false, "inputs": [{"indexed": true, "internalType": "address", "name": "token", "type": "address"}, {"indexed": true, "internalType": "address", "name": "creator", "type": "address"}, {"indexed": false, "internalType": "string", "name": "name", "type": "string"}, {"indexed": false, "internalType": "string", "name": "symbol", "type": "string"}, {"indexed": false, "internalType": "uint8", "name": "feeMode", "type": "uint8"}, {"indexed": false, "internalType": "address", "name": "devWallet", "type": "address"}, {"indexed": false, "internalType": "uint16", "name": "creatorFeeBps", "type": "uint16"}, {"indexed": false, "internalType": "uint16", "name": "maxWalletBps", "type": "uint16"}], "name": "Created", "type": "event"}, {"anonymous": false, "inputs": [{"indexed": true, "internalType": "address", "name": "token", "type": "address"}, {"indexed": false, "internalType": "uint256", "name": "ethToLp", "type": "uint256"}, {"indexed": false, "internalType": "uint256", "name": "tokensToLp", "type": "uint256"}, {"indexed": false, "internalType": "address", "name": "pool", "type": "address"}], "name": "Graduated", "type": "event"}, {"anonymous": false, "inputs": [{"indexed": true, "internalType": "address", "name": "token", "type": "address"}, {"indexed": false, "internalType": "uint256", "name": "amount", "type": "uint256"}], "name": "HolderRewards", "type": "event"}, {"anonymous": false, "inputs": [{"indexed": true, "internalType": "address", "name": "token", "type": "address"}, {"indexed": false, "internalType": "string", "name": "telegram", "type": "string"}, {"indexed": false, "internalType": "string", "name": "twitter", "type": "string"}, {"indexed": false, "internalType": "string", "name": "website", "type": "string"}], "name": "Meta", "type": "event"}, {"anonymous": false, "inputs": [{"indexed": true, "internalType": "address", "name": "token", "type": "address"}, {"indexed": true, "internalType": "address", "name": "seller", "type": "address"}, {"indexed": false, "internalType": "uint256", "name": "tokensIn", "type": "uint256"}, {"indexed": false, "internalType": "uint256", "name": "ethOut", "type": "uint256"}, {"indexed": false, "internalType": "uint256", "name": "protocolFee", "type": "uint256"}, {"indexed": false, "internalType": "uint256", "name": "creatorFee", "type": "uint256"}], "name": "Sell", "type": "event"}, {"inputs": [], "name": "CURVE_SUPPLY", "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"}, {"inputs": [], "name": "DEAD", "outputs": [{"internalType": "address", "name": "", "type": "address"}], "stateMutability": "view", "type": "function"}, {"inputs": [], "name": "FEE_DEV", "outputs": [{"internalType": "uint8", "name": "", "type": "uint8"}], "stateMutability": "view", "type": "function"}, {"inputs": [], "name": "FEE_HOLDERS", "outputs": [{"internalType": "uint8", "name": "", "type": "uint8"}], "stateMutability": "view", "type": "function"}, {"inputs": [], "name": "LP_SUPPLY", "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"}, {"inputs": [], "name": "MAX_CREATOR_FEE_BPS", "outputs": [{"internalType": "uint16", "name": "", "type": "uint16"}], "stateMutability": "view", "type": "function"}, {"inputs": [], "name": "POOL_FEE", "outputs": [{"internalType": "uint24", "name": "", "type": "uint24"}], "stateMutability": "view", "type": "function"}, {"inputs": [], "name": "PROTOCOL_FEE_BPS", "outputs": [{"internalType": "uint16", "name": "", "type": "uint16"}], "stateMutability": "view", "type": "function"}, {"inputs": [], "name": "TICK_LOWER", "outputs": [{"internalType": "int24", "name": "", "type": "int24"}], "stateMutability": "view", "type": "function"}, {"inputs": [], "name": "TICK_UPPER", "outputs": [{"internalType": "int24", "name": "", "type": "int24"}], "stateMutability": "view", "type": "function"}, {"inputs": [], "name": "TOTAL_SUPPLY", "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"}, {"inputs": [], "name": "VETH_INIT", "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"}, {"inputs": [], "name": "VTOK_INIT", "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"}, {"inputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "name": "allTokens", "outputs": [{"internalType": "address", "name": "", "type": "address"}], "stateMutability": "view", "type": "function"}, {"inputs": [{"internalType": "address", "name": "token", "type": "address"}, {"internalType": "uint256", "name": "minTokensOut", "type": "uint256"}], "name": "buy", "outputs": [], "stateMutability": "payable", "type": "function"}, {"inputs": [{"internalType": "address", "name": "token", "type": "address"}], "name": "claimRewards", "outputs": [], "stateMutability": "nonpayable", "type": "function"}, {"inputs": [{"components": [{"internalType": "string", "name": "name", "type": "string"}, {"internalType": "string", "name": "symbol", "type": "string"}, {"internalType": "uint16", "name": "maxWalletBps", "type": "uint16"}, {"internalType": "uint8", "name": "feeMode", "type": "uint8"}, {"internalType": "address", "name": "devWallet", "type": "address"}, {"internalType": "uint16", "name": "creatorFeeBps", "type": "uint16"}, {"internalType": "string", "name": "telegram", "type": "string"}, {"internalType": "string", "name": "twitter", "type": "string"}, {"internalType": "string", "name": "website", "type": "string"}], "internalType": "struct SwogeFun.LaunchParams", "name": "p", "type": "tuple"}], "name": "createToken", "outputs": [{"internalType": "address", "name": "t", "type": "address"}], "stateMutability": "payable", "type": "function"}, {"inputs": [], "name": "creationFee", "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"}, {"inputs": [{"internalType": "address", "name": "", "type": "address"}], "name": "curves", "outputs": [{"internalType": "address", "name": "token", "type": "address"}, {"internalType": "address", "name": "creator", "type": "address"}, {"internalType": "address", "name": "devWallet", "type": "address"}, {"internalType": "uint8", "name": "feeMode", "type": "uint8"}, {"internalType": "uint16", "name": "creatorFeeBps", "type": "uint16"}, {"internalType": "uint16", "name": "maxWalletBps", "type": "uint16"}, {"internalType": "uint256", "name": "vEth", "type": "uint256"}, {"internalType": "uint256", "name": "tokensSold", "type": "uint256"}, {"internalType": "bool", "name": "graduated", "type": "bool"}, {"internalType": "bool", "name": "exists", "type": "bool"}], "stateMutability": "view", "type": "function"}, {"inputs": [{"internalType": "address", "name": "", "type": "address"}], "name": "magPerShare", "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"}, {"inputs": [{"internalType": "address", "name": "from", "type": "address"}, {"internalType": "address", "name": "to", "type": "address"}, {"internalType": "uint256", "name": "value", "type": "uint256"}], "name": "onMove", "outputs": [], "stateMutability": "nonpayable", "type": "function"}, {"inputs": [], "name": "owner", "outputs": [{"internalType": "address", "name": "", "type": "address"}], "stateMutability": "view", "type": "function"}, {"inputs": [{"internalType": "address", "name": "token", "type": "address"}, {"internalType": "address", "name": "holder", "type": "address"}], "name": "pendingRewards", "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"}, {"inputs": [], "name": "positionManager", "outputs": [{"internalType": "address", "name": "", "type": "address"}], "stateMutability": "view", "type": "function"}, {"inputs": [{"internalType": "address", "name": "token", "type": "address"}, {"internalType": "uint256", "name": "ethIn", "type": "uint256"}], "name": "quoteBuy", "outputs": [{"internalType": "uint256", "name": "tokensOut", "type": "uint256"}, {"internalType": "uint256", "name": "fee", "type": "uint256"}], "stateMutability": "view", "type": "function"}, {"inputs": [{"internalType": "address", "name": "token", "type": "address"}, {"internalType": "uint256", "name": "tokensIn", "type": "uint256"}], "name": "quoteSell", "outputs": [{"internalType": "uint256", "name": "ethOut", "type": "uint256"}, {"internalType": "uint256", "name": "fee", "type": "uint256"}], "stateMutability": "view", "type": "function"}, {"inputs": [{"internalType": "address", "name": "token", "type": "address"}, {"internalType": "uint256", "name": "tokensIn", "type": "uint256"}, {"internalType": "uint256", "name": "minEthOut", "type": "uint256"}], "name": "sell", "outputs": [], "stateMutability": "nonpayable", "type": "function"}, {"inputs": [{"internalType": "uint256", "name": "f", "type": "uint256"}], "name": "setCreationFee", "outputs": [], "stateMutability": "nonpayable", "type": "function"}, {"inputs": [{"internalType": "address", "name": "r", "type": "address"}], "name": "setSwogeTreasury", "outputs": [], "stateMutability": "nonpayable", "type": "function"}, {"inputs": [], "name": "swogeTreasury", "outputs": [{"internalType": "address", "name": "", "type": "address"}], "stateMutability": "view", "type": "function"}, {"inputs": [], "name": "tokenCount", "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"}, {"inputs": [{"internalType": "address", "name": "n", "type": "address"}], "name": "transferOwnership", "outputs": [], "stateMutability": "nonpayable", "type": "function"}, {"inputs": [], "name": "weth", "outputs": [{"internalType": "address", "name": "", "type": "address"}], "stateMutability": "view", "type": "function"}, {"inputs": [{"internalType": "address", "name": "", "type": "address"}, {"internalType": "address", "name": "", "type": "address"}], "name": "withdrawn", "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"}, {"stateMutability": "payable", "type": "receive"}];window.SWOGETOKEN_ABI=[{"inputs": [{"internalType": "string", "name": "_name", "type": "string"}, {"internalType": "string", "name": "_symbol", "type": "string"}, {"internalType": "uint256", "name": "_supply", "type": "uint256"}], "stateMutability": "nonpayable", "type": "constructor"}, {"anonymous": false, "inputs": [{"indexed": true, "internalType": "address", "name": "owner", "type": "address"}, {"indexed": true, "internalType": "address", "name": "spender", "type": "address"}, {"indexed": false, "internalType": "uint256", "name": "value", "type": "uint256"}], "name": "Approval", "type": "event"}, {"anonymous": false, "inputs": [{"indexed": true, "internalType": "address", "name": "from", "type": "address"}, {"indexed": true, "internalType": "address", "name": "to", "type": "address"}, {"indexed": false, "internalType": "uint256", "name": "value", "type": "uint256"}], "name": "Transfer", "type": "event"}, {"inputs": [{"internalType": "address", "name": "", "type": "address"}, {"internalType": "address", "name": "", "type": "address"}], "name": "allowance", "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"}, {"inputs": [{"internalType": "address", "name": "s", "type": "address"}, {"internalType": "uint256", "name": "v", "type": "uint256"}], "name": "approve", "outputs": [{"internalType": "bool", "name": "", "type": "bool"}], "stateMutability": "nonpayable", "type": "function"}, {"inputs": [{"internalType": "address", "name": "", "type": "address"}], "name": "balanceOf", "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"}, {"inputs": [], "name": "decimals", "outputs": [{"internalType": "uint8", "name": "", "type": "uint8"}], "stateMutability": "view", "type": "function"}, {"inputs": [], "name": "fun", "outputs": [{"internalType": "address", "name": "", "type": "address"}], "stateMutability": "view", "type": "function"}, {"inputs": [], "name": "name", "outputs": [{"internalType": "string", "name": "", "type": "string"}], "stateMutability": "view", "type": "function"}, {"inputs": [], "name": "symbol", "outputs": [{"internalType": "string", "name": "", "type": "string"}], "stateMutability": "view", "type": "function"}, {"inputs": [], "name": "totalSupply", "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}], "stateMutability": "view", "type": "function"}, {"inputs": [{"internalType": "address", "name": "to", "type": "address"}, {"internalType": "uint256", "name": "v", "type": "uint256"}], "name": "transfer", "outputs": [{"internalType": "bool", "name": "", "type": "bool"}], "stateMutability": "nonpayable", "type": "function"}, {"inputs": [{"internalType": "address", "name": "f", "type": "address"}, {"internalType": "address", "name": "to", "type": "address"}, {"internalType": "uint256", "name": "v", "type": "uint256"}], "name": "transferFrom", "outputs": [{"internalType": "bool", "name": "", "type": "bool"}], "stateMutability": "nonpayable", "type": "function"}];</script>
+<script>
+(function(){
+"use strict";
+if(typeof ethers==="undefined"){ alert("ethers.js could not load. Reload."); return; }
+
+// ⚙️  After deploying SwogeFun.sol, paste its address here:
+var CONTRACT_ADDRESS = window.SWOGEFUN_ADDRESS || "0xD6864D6d8Dc45BDd3A5aD179E2418Eb99692C7C5";
+var CHAIN = { id:4663, hex:"0x1237", name:"Robinhood Chain", rpc:"https://rpc.mainnet.chain.robinhood.com", scan:"https://robinhoodchain.blockscout.com", sym:"ETH" };
+var FUN_ABI = window.SWOGEFUN_ABI, TOKEN_ABI = window.SWOGETOKEN_ABI;
+var CURVE_SUPPLY = ethers.utils.parseEther("800000000");
+
+var $=function(s){return document.querySelector(s);};
+var toastEl=$("#toast");
+function toast(m){toastEl.textContent=m;toastEl.classList.add("show");clearTimeout(toast._t);toast._t=setTimeout(function(){toastEl.classList.remove("show");},1900);}
+$("#logo").src="data:image/svg+xml;base64,"+btoa('<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44"><rect width="44" height="44" rx="11" fill="#E6A537"/><text x="22" y="30" font-size="21" text-anchor="middle" font-family="Arial" font-weight="bold" fill="#1a1206">S</text></svg>');
+
+if(CONTRACT_ADDRESS) $("#cfgWarn").classList.add("hidden");
+
+/* ---------- wallet ---------- */
+var provider=null, signer=null, account=null;
+function rpcProvider(){ return new ethers.providers.StaticJsonRpcProvider(CHAIN.rpc, CHAIN.id); }
+function readFun(){ return new ethers.Contract(CONTRACT_ADDRESS, FUN_ABI, provider || rpcProvider()); }
+function writeFun(){ return new ethers.Contract(CONTRACT_ADDRESS, FUN_ABI, signer); }
+
+$("#walletBtn").onclick=async function(){
+  if(account){ return; }
+  var eth=window.ethereum;
+  if(!eth){ toast("MetaMask not found"); return; }
+  try{
+    await eth.request({method:"eth_requestAccounts"});
+    var cid=await eth.request({method:"eth_chainId"});
+    if(cid!==CHAIN.hex){
+      try{ await eth.request({method:"wallet_switchEthereumChain",params:[{chainId:CHAIN.hex}]}); }
+      catch(sw){ if(sw&&sw.code===4902){ await eth.request({method:"wallet_addEthereumChain",params:[{chainId:CHAIN.hex,chainName:CHAIN.name,nativeCurrency:{name:"Ether",symbol:CHAIN.sym,decimals:18},rpcUrls:[CHAIN.rpc],blockExplorerUrls:[CHAIN.scan]}]}); } else throw sw; }
+    }
+    provider=new ethers.providers.Web3Provider(eth,"any");
+    signer=provider.getSigner();
+    account=await signer.getAddress();
+    $("#walletBtn").textContent=account.slice(0,6)+"…"+account.slice(-4);
+    $("#createBtn").disabled=!CONTRACT_ADDRESS;
+    $("#createNote").textContent=CONTRACT_ADDRESS?"Ready.":"Contract address not set in this file.";
+    eth.on&&eth.on("accountsChanged",function(){location.reload();});
+    eth.on&&eth.on("chainChanged",function(){location.reload();});
+  }catch(e){ toast(String(e.message||e).slice(0,80)); }
+};
+
+/* ---------- tabs ---------- */
+document.querySelectorAll(".tab").forEach(function(t){
+  t.onclick=function(){
+    document.querySelectorAll(".tab").forEach(function(x){x.classList.remove("on");});
+    t.classList.add("on");
+    ["create","explore","trade"].forEach(function(n){ $("#tab-"+n).classList.toggle("hidden", n!==t.dataset.tab); });
+    if(t.dataset.tab==="explore") loadList();
+  };
+});
+
+/* ---------- create ---------- */
+var feeMode=0;
+document.querySelectorAll("#feeMode button").forEach(function(b){
+  b.onclick=function(){
+    document.querySelectorAll("#feeMode button").forEach(function(x){x.classList.remove("on");});
+    b.classList.add("on"); feeMode=+b.dataset.mode;
+    $("#devWalletField").style.display = feeMode===0 ? "block" : "none";
+    updateFeeSummary();
+  };
+});
+function updateFeeSummary(){
+  var cf=parseFloat($("#cFee").value)||0;
+  $("#feeSummary").innerHTML = "Every trade: <b>1% → SWOGE</b> + <b>"+cf+"% → "+(feeMode===0?"your dev wallet":"your holders")+"</b> = "+(1+cf).toFixed(2)+"% total.";
+}
+$("#cFee").addEventListener("input",updateFeeSummary); updateFeeSummary();
+document.querySelectorAll("#feePresets button").forEach(function(b){
+  b.onclick=function(){ $("#cFee").value=b.dataset.fee; updateFeeSummary(); };
+});
+
+$("#createBtn").onclick=async function(){
+  if(!signer) return toast("Connect a wallet");
+  var name=$("#cName").value.trim(), sym=$("#cSym").value.trim();
+  if(!name||!sym) return toast("Name and symbol required");
+  var maxW=Math.round((parseFloat($("#cMaxWallet").value)||0)*100);   // % → bps
+  var feeBps=Math.round((parseFloat($("#cFee").value)||0)*100);
+  if(feeBps>2000) return toast("Creator fee max is 20%");
+  if(maxW!==0 && maxW<10) return toast("Max wallet must be 0 or ≥ 0.1%");
+  var dev=$("#cDev").value.trim()||ethers.constants.AddressZero;
+  if(dev!==ethers.constants.AddressZero){ try{ dev=ethers.utils.getAddress(dev); }catch(e){ return toast("Bad dev wallet address"); } }
+  var btn=$("#createBtn"), note=$("#createNote");
+  btn.disabled=true; btn.innerHTML='<span class="spin"></span> launching…'; note.className="note"; note.textContent="Confirm in your wallet…";
+  try{
+    var tg=$("#cTg").value.trim(), tw=$("#cTw").value.trim(), web=$("#cWeb").value.trim();
+    var tx=await writeFun().createToken({
+      name:name, symbol:sym, maxWalletBps:maxW, feeMode:feeMode, devWallet:dev,
+      creatorFeeBps:feeBps, telegram:tg, twitter:tw, website:web
+    });
+    note.innerHTML='Sent · waiting… <a href="'+CHAIN.scan+'/tx/'+tx.hash+'" target="_blank">↗</a>';
+    var rc=await tx.wait();
+    var ev=rc.events&&rc.events.find(function(e){return e.event==="Created";});
+    var addr=ev?ev.args.token:null;
+    note.className="note ok"; note.innerHTML="🎉 Launched! "+(addr?('<a href="'+CHAIN.scan+'/address/'+addr+'" target="_blank">'+addr+' ↗</a>'):"");
+    toast("Token launched 🚀");
+  }catch(e){ note.className="note err"; note.textContent="Failed · "+String(e.reason||e.data&&e.data.message||e.message||e).slice(0,150); }
+  finally{ btn.disabled=false; btn.innerHTML="🚀 Launch on the curve"; }
+};
+
+/* ---------- explore / list ---------- */
+var allCache=[], metaMap={};
+async function loadMetaAll(fun){
+  try{ var evs=await fun.queryFilter(fun.filters.Meta());
+    evs.forEach(function(e){ metaMap[e.args.token.toLowerCase()]={tg:e.args.telegram,tw:e.args.twitter,web:e.args.website}; });
+  }catch(e){}
+}
+async function fetchMeta(fun,addr){
+  var key=addr.toLowerCase();
+  if(metaMap[key]) return metaMap[key];
+  try{ var evs=await fun.queryFilter(fun.filters.Meta(addr)); if(evs.length){ var a=evs[evs.length-1].args; metaMap[key]={tg:a.telegram,tw:a.twitter,web:a.website}; } }catch(e){}
+  return metaMap[key]||{};
+}
+function socialsHTML(m){
+  if(!m) return "";
+  var out="";
+  if(m.tg)  out+='<a href="'+esc(m.tg)+'" target="_blank" rel="noopener">Telegram ↗</a>';
+  if(m.tw)  out+='<a href="'+esc(m.tw)+'" target="_blank" rel="noopener">Twitter ↗</a>';
+  if(m.web) out+='<a href="'+esc(m.web)+'" target="_blank" rel="noopener">Website ↗</a>';
+  return out ? '<div class="socials">'+out+'</div>' : "";
+}
+async function loadList(){
+  if(!CONTRACT_ADDRESS){ $("#list").innerHTML='<div class="note">Set the contract address in this file first.</div>'; return; }
+  $("#listInfo").innerHTML='<span class="spin"></span> loading…';
+  try{
+    var fun=readFun();
+    await loadMetaAll(fun);
+    var n=(await fun.tokenCount()).toNumber();
+    var out=[];
+    for(var i=n-1;i>=0 && i>=n-60;i--){   // newest first, cap 60
+      var addr=await fun.allTokens(i);
+      var c=await fun.curves(addr);
+      var t=new ethers.Contract(addr, TOKEN_ABI, provider||rpcProvider());
+      var name="", sym="";
+      try{ name=await t.name(); sym=await t.symbol(); }catch(e){}
+      out.push({addr:addr,name:name,sym:sym,sold:c.tokensSold,graduated:c.graduated,social:metaMap[addr.toLowerCase()]||{}});
+    }
+    allCache=out; renderList(); $("#listInfo").textContent=n+" token(s)";
+  }catch(e){ $("#listInfo").textContent="Could not load: "+String(e.message||e).slice(0,60); }
+}
+function renderList(){
+  var q=($("#search").value||"").toLowerCase();
+  var host=$("#list"); host.innerHTML="";
+  var rows=allCache.filter(function(r){ return !q || r.name.toLowerCase().includes(q)||r.sym.toLowerCase().includes(q)||r.addr.toLowerCase().includes(q); });
+  if(!rows.length){ host.innerHTML='<div class="note">No token matches.</div>'; return; }
+  rows.forEach(function(r){
+    var pct=Math.min(100, r.sold.mul(10000).div(CURVE_SUPPLY).toNumber()/100);
+    var d=document.createElement("div"); d.className="card";
+    d.innerHTML='<div class="top"><div><span class="nm">'+esc(r.name||"?")+'</span> <span class="sy">$'+esc(r.sym||"?")+'</span></div>'
+      +'<span class="badge '+(r.graduated?"grad":"")+'">'+(r.graduated?"graduated ✓":pct.toFixed(1)+"% to grad")+'</span></div>'
+      +'<div class="prog"><span style="width:'+(r.graduated?100:pct)+'%"></span></div>'
+      +'<div class="meta">'+r.addr+'</div>'+socialsHTML(r.social);
+    d.querySelectorAll(".socials a").forEach(function(a){ a.onclick=function(ev){ ev.stopPropagation(); }; });
+    d.onclick=function(){ openTrade(r.addr); };
+    host.appendChild(d);
+  });
+}
+$("#search").addEventListener("input",renderList);
+$("#reload").onclick=loadList;
+function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];}); }
+
+/* ---------- trade ---------- */
+var curToken=null;
+$("#loadTrade").onclick=function(){ var a=$("#tradeAddr").value.trim(); if(a) openTrade(a); };
+function switchTab(name){ document.querySelector('.tab[data-tab="'+name+'"]').click(); }
+async function openTrade(addr){
+  try{ addr=ethers.utils.getAddress(addr); }catch(e){ return toast("Bad address"); }
+  switchTab("trade");
+  $("#tradeEmpty").classList.add("hidden"); $("#tradeView").classList.remove("hidden");
+  curToken=addr;
+  await refreshTrade();
+}
+async function refreshTrade(){
+  var fun=readFun();
+  var t=new ethers.Contract(curToken, TOKEN_ABI, provider||rpcProvider());
+  var name="",sym=""; try{ name=await t.name(); sym=await t.symbol(); }catch(e){}
+  var c=await fun.curves(curToken);
+  $("#tvName").textContent=name||"?"; $("#tvSym").textContent="$"+(sym||"?");
+  $("#tvAddr").innerHTML='<a href="'+CHAIN.scan+'/address/'+curToken+'" target="_blank">'+curToken+' ↗</a>';
+  fetchMeta(fun, curToken).then(function(m){ $("#tvSocials").innerHTML=socialsHTML(m); });
+  var pct=Math.min(100, c.tokensSold.mul(10000).div(CURVE_SUPPLY).toNumber()/100);
+  $("#tvBar").style.width=(c.graduated?100:pct)+"%";
+  $("#tvProg").textContent=c.graduated?"Graduated — now trading on Uniswap.":(pct.toFixed(2)+"% of the curve sold");
+  $("#tvBadge").textContent=c.graduated?"graduated ✓":"on curve"; $("#tvBadge").className="badge"+(c.graduated?" grad":"");
+  $("#tvTradePanel").style.opacity=c.graduated?".5":"1";
+  // balance + rewards
+  if(account){
+    var bal=await t.balanceOf(account);
+    $("#tvBal").textContent=(+ethers.utils.formatEther(bal)).toLocaleString("en-US")+" "+(sym||"");
+    var isHolders = c.feeMode===1;
+    $("#tvRewardRow").style.display=isHolders?"flex":"none";
+    $("#claimBtn").style.display=isHolders?"block":"none";
+    if(isHolders){ var pend=await fun.pendingRewards(curToken,account); $("#tvReward").textContent=(+ethers.utils.formatEther(pend)).toFixed(6)+" ETH"; }
+  } else { $("#tvBal").textContent="connect wallet"; }
+}
+var quoteT=null;
+$("#buyEth").addEventListener("input",function(){ clearTimeout(quoteT); quoteT=setTimeout(quoteBuy,250); });
+async function quoteBuy(){
+  var v=parseFloat($("#buyEth").value); if(!v||!curToken){ $("#buyQuote").textContent=""; return; }
+  try{ var q=await readFun().quoteBuy(curToken, ethers.utils.parseEther(String(v))); $("#buyQuote").textContent="≈ "+(+ethers.utils.formatEther(q.tokensOut)).toLocaleString("en-US")+" tokens (fee "+(+ethers.utils.formatEther(q.fee)).toFixed(6)+" ETH)"; }catch(e){ $("#buyQuote").textContent=""; }
+}
+$("#sellTok").addEventListener("input",function(){ clearTimeout(quoteT); quoteT=setTimeout(quoteSell,250); });
+async function quoteSell(){
+  var v=parseFloat($("#sellTok").value); if(!v||!curToken){ $("#sellQuote").textContent=""; return; }
+  try{ var q=await readFun().quoteSell(curToken, ethers.utils.parseEther(String(v))); $("#sellQuote").textContent="≈ "+(+ethers.utils.formatEther(q.ethOut)).toFixed(6)+" ETH (fee "+(+ethers.utils.formatEther(q.fee)).toFixed(6)+")"; }catch(e){ $("#sellQuote").textContent=""; }
+}
+$("#buyBtn").onclick=async function(){
+  if(!signer) return toast("Connect a wallet");
+  var v=parseFloat($("#buyEth").value); if(!v) return toast("Enter an ETH amount");
+  var note=$("#tradeNote"); note.className="note"; note.textContent="Confirm in your wallet…";
+  try{
+    var wei=ethers.utils.parseEther(String(v));
+    var q=await readFun().quoteBuy(curToken,wei);
+    var minOut=q.tokensOut.mul(97).div(100); // 3% slippage
+    var tx=await writeFun().buy(curToken,minOut,{value:wei});
+    note.innerHTML='Buying… <a href="'+CHAIN.scan+'/tx/'+tx.hash+'" target="_blank">↗</a>'; await tx.wait();
+    note.className="note ok"; note.textContent="Bought ✅"; $("#buyEth").value=""; $("#buyQuote").textContent=""; refreshTrade();
+  }catch(e){ note.className="note err"; note.textContent="Failed · "+String(e.reason||e.message||e).slice(0,140); }
+};
+$("#sellBtn").onclick=async function(){
+  if(!signer) return toast("Connect a wallet");
+  var v=parseFloat($("#sellTok").value); if(!v) return toast("Enter a token amount");
+  var note=$("#tradeNote"); note.className="note";
+  try{
+    var amt=ethers.utils.parseEther(String(v));
+    var t=new ethers.Contract(curToken,TOKEN_ABI,signer);
+    var allowance=await t.allowance(account,CONTRACT_ADDRESS);
+    if(allowance.lt(amt)){ note.textContent="Approving…"; await (await t.approve(CONTRACT_ADDRESS,ethers.constants.MaxUint256)).wait(); }
+    var q=await readFun().quoteSell(curToken,amt);
+    var minEth=q.ethOut.mul(97).div(100);
+    note.textContent="Confirm the sell…";
+    var tx=await writeFun().sell(curToken,amt,minEth);
+    note.innerHTML='Selling… <a href="'+CHAIN.scan+'/tx/'+tx.hash+'" target="_blank">↗</a>'; await tx.wait();
+    note.className="note ok"; note.textContent="Sold ✅"; $("#sellTok").value=""; $("#sellQuote").textContent=""; refreshTrade();
+  }catch(e){ note.className="note err"; note.textContent="Failed · "+String(e.reason||e.message||e).slice(0,140); }
+};
+$("#claimBtn").onclick=async function(){
+  if(!signer) return toast("Connect a wallet");
+  var note=$("#tradeNote"); note.className="note"; note.textContent="Claiming…";
+  try{ var tx=await writeFun().claimRewards(curToken); await tx.wait(); note.className="note ok"; note.textContent="Rewards claimed 💰"; refreshTrade(); }
+  catch(e){ note.className="note err"; note.textContent="Failed · "+String(e.reason||e.message||e).slice(0,120); }
+};
+})();
+</script>
+</html>

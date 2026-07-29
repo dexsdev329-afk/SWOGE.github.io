@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <meta charset="utf-8">
@@ -70,7 +71,7 @@ input:focus{border-color:var(--fire)}
       </div>
     </div>
     <nav>
-      <a href="index.html">← Home</a>
+      <a href="launchpad.html">← Launchpad</a>
       <button class="walletbtn" id="walletBtn">Connect wallet</button>
     </nav>
   </header>
@@ -120,7 +121,13 @@ var ERC20 = ["function balanceOf(address) view returns (uint256)","function tota
 var $=function(s){return document.querySelector(s);};
 var toastEl=$("#toast");
 function toast(m){toastEl.textContent=m;toastEl.classList.add("show");clearTimeout(toast._t);toast._t=setTimeout(function(){toastEl.classList.remove("show");},1900);}
-$("#logo").src="data:image/svg+xml;base64,"+btoa('<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44"><rect width="44" height="44" rx="11" fill="#FF6B35"/><text x="22" y="31" font-size="22" text-anchor="middle" font-family="Arial">🔥</text></svg>');
+// logo: try the uploaded icon, else a plain SVG (no emoji — btoa can't encode emoji)
+(function(){
+  var l=$("#logo");
+  var svg="data:image/svg+xml;base64,"+btoa('<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FF6B35"/><stop offset="1" stop-color="#E6A537"/></linearGradient></defs><rect width="44" height="44" rx="11" fill="url(#g)"/><text x="22" y="31" font-size="22" text-anchor="middle" font-family="Arial" font-weight="bold" fill="#1a1206">S</text></svg>');
+  l.onerror=function(){ this.onerror=null; this.src=svg; };
+  l.src="swoge-icon.png";
+})();
 
 var provider=null, signer=null, account=null, rawEth=null, myBalWei=null, decimals=18;
 function rpcProvider(){ return new ethers.providers.StaticJsonRpcProvider(CHAIN.rpc, CHAIN.id); }

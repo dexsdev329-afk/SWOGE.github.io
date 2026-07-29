@@ -73,6 +73,26 @@ input:focus,select:focus{border-color:var(--gold)}
 .prog>span{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--goldlite));width:0}
 .card{background:var(--void);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:10px;cursor:pointer;transition:.15s}
 .card:hover{border-color:var(--gold)}
+/* explore grid (pro card layout) */
+.tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+@media(max-width:420px){.tgrid{grid-template-columns:repeat(2,1fr);gap:10px}}
+.tcard{background:var(--void);border:1px solid var(--line);border-radius:14px;padding:9px;cursor:pointer;transition:.15s;position:relative}
+.tcard:hover{border-color:var(--gold);transform:translateY(-2px);box-shadow:0 10px 24px rgba(0,0,0,.35)}
+.thumbwrap{position:relative;width:100%;aspect-ratio:1;border-radius:11px;overflow:hidden;border:1px solid var(--line)}
+.thumb{width:100%;height:100%}
+.thumb.ph{display:flex;align-items:center;justify-content:center;font-family:'Anton',sans-serif;font-size:34px;color:var(--gold);background:linear-gradient(135deg,#1c1409,#2E2213)}
+.thumb.ov{position:absolute;inset:0;object-fit:cover}
+.tcard .tnm{font-family:'Anton',sans-serif;font-size:16px;margin-top:8px;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tcard .tsy{font-family:'Space Mono',monospace;font-size:11px;color:var(--gold);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tcard .tmc{font-family:'Space Mono',monospace;font-size:13px;font-weight:700;color:var(--signal);margin-top:5px}
+.tcard .tmc small{color:var(--dim);font-weight:400;font-size:10px}
+.tcard .tgrad{position:absolute;top:13px;left:13px;font-family:'Space Mono',monospace;font-size:9px;padding:2px 6px;border-radius:6px;background:rgba(11,9,6,.75);color:var(--signal);border:1px solid rgba(111,209,196,.4)}
+.tcard .tdex{position:absolute;top:13px;right:13px;width:26px;height:26px;border-radius:8px;background:rgba(11,9,6,.8);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:13px}
+.tcard .tdex:hover{border-color:var(--gold)}
+.sortseg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.sortseg button{font-family:'Space Mono',monospace;font-size:11px;padding:7px 11px;background:transparent;color:var(--dim);border:0;cursor:pointer;white-space:nowrap}
+.sortseg button.on{background:var(--gold);color:var(--ink)}
+.count{font-family:'Space Mono',monospace;font-size:11px;color:var(--dim);background:var(--void);border:1px solid var(--line);border-radius:999px;padding:3px 10px;margin-left:8px;vertical-align:middle}
 .card .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .card .nm{font-family:'Anton',sans-serif;font-size:18px}
 .card .sy{font-family:'Space Mono',monospace;font-size:12px;color:var(--gold)}
@@ -151,13 +171,17 @@ input:focus,select:focus{border-color:var(--gold)}
   <!-- ============ EXPLORE ============ -->
   <section id="tab-explore" class="hidden">
     <div class="panel">
-      <h2>All tokens</h2>
-      <div class="field"><input id="search" placeholder="Search by name, symbol or address…"></div>
-      <div class="btnrow" style="margin-bottom:10px">
-        <button class="btn" id="reload">↻ Reload</button>
-        <span class="note" id="listInfo" style="margin:0;align-self:center"></span>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+        <h2 style="margin:0">Explore <span class="count" id="listInfo"></span></h2>
+        <div class="sortseg" id="sortSeg">
+          <button data-sort="new" class="on">Newest</button>
+          <button data-sort="mc">Market cap</button>
+          <button data-sort="old">Oldest</button>
+        </div>
       </div>
-      <div id="list"></div>
+      <div class="field" style="margin-bottom:10px"><input id="search" placeholder="🔎 Search name, symbol or address…"></div>
+      <div class="btnrow" style="margin-bottom:12px"><button class="btn" id="reload">↻ Reload</button></div>
+      <div id="list" class="tgrid"></div>
     </div>
   </section>
 
@@ -545,59 +569,79 @@ function socialsHTML(m){
   if(m.web) out+='<a href="'+esc(m.web)+'" target="_blank" rel="noopener">Website ↗</a>';
   return out ? '<div class="socials">'+out+'</div>' : "";
 }
+var exploreEu=null, sortMode="new";
+function mcOfToken(pool, addr){
+  // instant token market cap (ETH): price * 1e9 from the pool's slot0
+  return (new ethers.Contract(pool, POOL_ABI, provider||rpcProvider())).slot0().then(function(s0){
+    var sp=+s0.sqrtPriceX96.toString()/Math.pow(2,96);
+    var t0w = WETH.toLowerCase() < addr.toLowerCase();
+    var price = t0w ? 1/(sp*sp) : sp*sp;
+    return price*1e9;
+  },function(){ return null; });
+}
 async function loadList(){
   if(!CONTRACT_ADDRESS){ $("#list").innerHTML='<div class="note">Set the contract address in this file first.</div>'; return; }
-  $("#listInfo").innerHTML='<span class="spin"></span> loading…';
+  $("#listInfo").innerHTML='<span class="spin"></span>';
   try{
     var fun=readFun();
+    exploreEu=await getEthUsd();
     await loadMetaAll(fun);
     var n=(await fun.tokenCount()).toNumber();
     var out=[];
     for(var i=n-1;i>=0 && i>=n-60;i--){   // newest first, cap 60
       var addr=await fun.allTokens(i);
-      var mode=await fun.modeOf(addr);    // 0 curve · 1 instant
+      var mode=await fun.modeOf(addr);
       var c = mode===0 ? await fun.curves(addr) : null;
-      var pool = null; if(mode===1){ try{ pool=(await fun.instant(addr)).pool; }catch(e){} }
+      var pool=null, mcEth=null;
+      if(mode===1){ try{ pool=(await fun.instant(addr)).pool; mcEth=await mcOfToken(pool,addr); }catch(e){} }
       var t=new ethers.Contract(addr, TOKEN_ABI, provider||rpcProvider());
       var name="", sym="";
       try{ name=await t.name(); sym=await t.symbol(); }catch(e){}
-      out.push({addr:addr,mode:mode,name:name,sym:sym,pool:pool,
+      out.push({addr:addr,mode:mode,name:name,sym:sym,pool:pool,mcEth:mcEth,idx:i,
                 sold:c?c.tokensSold:ethers.constants.Zero,
                 graduated:c?c.graduated:false,
                 social:metaMap[addr.toLowerCase()]||{}});
     }
-    allCache=out; renderList(); $("#listInfo").textContent=n+" token(s)";
-  }catch(e){ $("#listInfo").textContent="Could not load: "+String(e.message||e).slice(0,60); }
+    allCache=out; renderList(); $("#listInfo").textContent=n+" launched";
+  }catch(e){ $("#listInfo").textContent="error"; $("#list").innerHTML='<div class="note err">Could not load: '+esc(String(e.message||e).slice(0,80))+'</div>'; }
+}
+function thumbHTML(addr, sym){
+  var u=logoFor(addr);
+  var ph='<div class="thumb ph">'+esc((sym||"?").slice(0,3).toUpperCase())+'</div>';
+  if(!u) return '<div class="thumbwrap">'+ph+'</div>';
+  return '<div class="thumbwrap">'+ph+'<img class="thumb ov" src="'+esc(u)+'" alt="" onerror="this.style.display=\'none\'"></div>';
 }
 function renderList(){
   var q=($("#search").value||"").toLowerCase();
   var host=$("#list"); host.innerHTML="";
   var rows=allCache.filter(function(r){ return !q || r.name.toLowerCase().includes(q)||r.sym.toLowerCase().includes(q)||r.addr.toLowerCase().includes(q); });
+  if(sortMode==="old") rows=rows.slice().sort(function(a,b){ return a.idx-b.idx; });
+  else if(sortMode==="mc") rows=rows.slice().sort(function(a,b){ return (b.mcEth||0)-(a.mcEth||0); });
+  // "new" = default (already newest-first)
   if(!rows.length){ host.innerHTML='<div class="note">No token matches.</div>'; return; }
   rows.forEach(function(r){
-    var d=document.createElement("div"); d.className="card";
-    var badge, prog;
-    if(r.mode===1){
-      badge='<span class="badge grad">⚡ live on Uniswap</span> '+lockChip();
-      prog='';
-    }else{
-      var pct=Math.min(100, r.sold.mul(10000).div(CURVE_SUPPLY).toNumber()/100);
-      badge='<span class="badge '+(r.graduated?"grad":"")+'">'+(r.graduated?"graduated ✓":pct.toFixed(1)+"% to grad")+'</span>';
-      prog='<div class="prog"><span style="width:'+(r.graduated?100:pct)+'%"></span></div>';
-    }
+    var d=document.createElement("div"); d.className="tcard";
     var dexUrl = r.pool ? ("https://dexscreener.com/robinhood/"+r.pool) : ("https://dexscreener.com/search?q="+r.addr);
-    d.innerHTML='<div class="top"><div style="display:flex;align-items:center;gap:10px">'+logoImg(r.addr)+'<div><span class="nm">'+esc(r.name||"?")+'</span> <span class="sy">$'+esc(r.sym||"?")+'</span></div></div>'
-      +badge+'</div>'+prog
-      +'<div class="meta" style="display:flex;align-items:center;gap:8px"><span style="word-break:break-all">'+r.addr+'</span>'+copyBtn(r.addr)+'</div>'
-      +'<div class="btnrow" style="margin-top:8px"><button class="btn" data-openx="'+r.addr+'" style="padding:5px 10px;font-size:12px">📈 Trade</button>'
-      +'<a class="btn dexlink" href="'+dexUrl+'" target="_blank" style="padding:5px 10px;font-size:12px">📊 DexScreener</a></div>'
-      +socialsHTML(r.social);
-    d.querySelectorAll(".socials a, .dexlink").forEach(function(a){ a.onclick=function(ev){ ev.stopPropagation(); }; });
-    d.querySelectorAll("[data-openx]").forEach(function(b){ b.onclick=function(ev){ ev.stopPropagation(); openTrade(b.getAttribute("data-openx")); }; });
+    var mcTxt = (r.mcEth!=null)
+      ? (exploreEu ? fmtUsd(r.mcEth*exploreEu) : r.mcEth.toFixed(3)+" ETH")+" <small>MC</small>"
+      : (r.mode===0 ? "on curve" : "<small>—</small>");
+    d.innerHTML=thumbHTML(r.addr, r.sym)
+      +'<a class="tdex dexlink" href="'+dexUrl+'" target="_blank" title="DexScreener">📊</a>'
+      +'<div class="tnm">'+esc(r.name||"?")+'</div>'
+      +'<div class="tsy">$'+esc(r.sym||"?")+'</div>'
+      +'<div class="tmc">'+mcTxt+'</div>'
+      +'<div style="display:flex;align-items:center;gap:5px;margin-top:5px;font-family:\'Space Mono\',monospace;font-size:10px;color:var(--dim)"><span>'+shortAddr(r.addr)+'</span>'+copyMini(r.addr)+'</div>';
+    d.querySelectorAll(".dexlink").forEach(function(a){ a.onclick=function(ev){ ev.stopPropagation(); }; });
     d.onclick=function(){ openTrade(r.addr); };
     host.appendChild(d);
   });
 }
+document.querySelectorAll("#sortSeg button").forEach(function(b){
+  b.onclick=function(){
+    document.querySelectorAll("#sortSeg button").forEach(function(x){x.classList.remove("on");});
+    b.classList.add("on"); sortMode=b.dataset.sort; renderList();
+  };
+});
 $("#search").addEventListener("input",renderList);
 $("#reload").onclick=loadList;
 
@@ -719,6 +763,10 @@ document.addEventListener("click",function(e){
 function copyBtn(addr){
   return '<button class="btn" data-copy="'+esc(addr)+'" title="Copy contract address" '+
          'style="padding:5px 9px;font-size:12px;line-height:1">📋 Copy</button>';
+}
+function shortAddr(a){ return a.slice(0,6)+"…"+a.slice(-4); }
+function copyMini(addr){
+  return '<span data-copy="'+esc(addr)+'" title="Copy contract" style="cursor:pointer;font-size:11px">📋</span>';
 }
 
 /* ---------- trade ---------- */

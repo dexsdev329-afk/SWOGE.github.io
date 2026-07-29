@@ -174,6 +174,7 @@ input:focus,select:focus{border-color:var(--gold)}
           <span class="badge" id="tvBadge">on curve</span>
         </div>
         <div class="note" id="tvAddr" style="margin-top:4px"></div>
+        <div id="tvLock" style="margin-top:6px"></div>
         <div id="tvSocials"></div>
         <div class="btnrow" id="tvInstantRow" style="display:none;margin-top:10px">
           <a class="btn" id="tvDexBtn" target="_blank" rel="noopener">📊 DexScreener</a>
@@ -556,10 +557,11 @@ async function loadList(){
       var addr=await fun.allTokens(i);
       var mode=await fun.modeOf(addr);    // 0 curve · 1 instant
       var c = mode===0 ? await fun.curves(addr) : null;
+      var pool = null; if(mode===1){ try{ pool=(await fun.instant(addr)).pool; }catch(e){} }
       var t=new ethers.Contract(addr, TOKEN_ABI, provider||rpcProvider());
       var name="", sym="";
       try{ name=await t.name(); sym=await t.symbol(); }catch(e){}
-      out.push({addr:addr,mode:mode,name:name,sym:sym,
+      out.push({addr:addr,mode:mode,name:name,sym:sym,pool:pool,
                 sold:c?c.tokensSold:ethers.constants.Zero,
                 graduated:c?c.graduated:false,
                 social:metaMap[addr.toLowerCase()]||{}});
@@ -576,17 +578,22 @@ function renderList(){
     var d=document.createElement("div"); d.className="card";
     var badge, prog;
     if(r.mode===1){
-      badge='<span class="badge grad">⚡ live on Uniswap</span>';
+      badge='<span class="badge grad">⚡ live on Uniswap</span> '+lockChip();
       prog='';
     }else{
       var pct=Math.min(100, r.sold.mul(10000).div(CURVE_SUPPLY).toNumber()/100);
       badge='<span class="badge '+(r.graduated?"grad":"")+'">'+(r.graduated?"graduated ✓":pct.toFixed(1)+"% to grad")+'</span>';
       prog='<div class="prog"><span style="width:'+(r.graduated?100:pct)+'%"></span></div>';
     }
+    var dexUrl = r.pool ? ("https://dexscreener.com/robinhood/"+r.pool) : ("https://dexscreener.com/search?q="+r.addr);
     d.innerHTML='<div class="top"><div style="display:flex;align-items:center;gap:10px">'+logoImg(r.addr)+'<div><span class="nm">'+esc(r.name||"?")+'</span> <span class="sy">$'+esc(r.sym||"?")+'</span></div></div>'
       +badge+'</div>'+prog
-      +'<div class="meta" style="display:flex;align-items:center;gap:8px"><span style="word-break:break-all">'+r.addr+'</span>'+copyBtn(r.addr)+'</div>'+socialsHTML(r.social);
-    d.querySelectorAll(".socials a").forEach(function(a){ a.onclick=function(ev){ ev.stopPropagation(); }; });
+      +'<div class="meta" style="display:flex;align-items:center;gap:8px"><span style="word-break:break-all">'+r.addr+'</span>'+copyBtn(r.addr)+'</div>'
+      +'<div class="btnrow" style="margin-top:8px"><button class="btn" data-openx="'+r.addr+'" style="padding:5px 10px;font-size:12px">📈 Trade</button>'
+      +'<a class="btn dexlink" href="'+dexUrl+'" target="_blank" style="padding:5px 10px;font-size:12px">📊 DexScreener</a></div>'
+      +socialsHTML(r.social);
+    d.querySelectorAll(".socials a, .dexlink").forEach(function(a){ a.onclick=function(ev){ ev.stopPropagation(); }; });
+    d.querySelectorAll("[data-openx]").forEach(function(b){ b.onclick=function(ev){ ev.stopPropagation(); openTrade(b.getAttribute("data-openx")); }; });
     d.onclick=function(){ openTrade(r.addr); };
     host.appendChild(d);
   });
@@ -649,7 +656,7 @@ async function loadMine(){
         ? '<div class="kv"><span class="k">Claimable fees (your 70%)</span><span class="v">'+(eu?fmtUsd(r.yours*eu):r.yours.toFixed(6)+" ETH")+(eu?"  ·  "+r.yours.toFixed(6)+" ETH":"")+'</span></div>'
         : '';
       var dexUrl = r.pool ? ("https://dexscreener.com/robinhood/"+r.pool) : ("https://dexscreener.com/search?q="+r.addr);
-      cards+='<div class="card" style="cursor:default"><div class="top"><div style="display:flex;align-items:center;gap:10px">'+logoImg(r.addr)+'<div><span class="nm">'+esc(r.name||"?")+'</span> <span class="sy">$'+esc(r.sym||"?")+'</span></div></div><span class="badge grad">⚡ yours</span></div>'
+      cards+='<div class="card" style="cursor:default"><div class="top"><div style="display:flex;align-items:center;gap:10px">'+logoImg(r.addr)+'<div><span class="nm">'+esc(r.name||"?")+'</span> <span class="sy">$'+esc(r.sym||"?")+'</span></div></div><span style="display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end"><span class="badge grad">⚡ yours</span>'+lockChip()+'</span></div>'
         +'<div class="meta" style="display:flex;align-items:center;gap:8px"><span style="word-break:break-all">'+r.addr+'</span>'+copyBtn(r.addr)+'</div>'
         +claimHtml
         +'<div class="btnrow" style="margin-top:10px">'
@@ -691,6 +698,8 @@ async function loadMine(){
   }catch(e){ host.innerHTML='<div class="note err">Could not load: '+esc(String(e.message||e).slice(0,80))+'</div>'; $("#mineInfo").textContent=""; }
 }
 function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];}); }
+// every Instant token's liquidity is held by the launchpad with no withdraw path → locked forever
+function lockChip(){ return '<span class="badge" style="border-color:rgba(111,209,196,.5);color:var(--signal)">🔒 LP Locked</span>'; }
 /* ---------- copy to clipboard ---------- */
 function copyText(txt){
   if(navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(txt);
@@ -976,6 +985,7 @@ async function refreshTrade(){
     $("#tvInstantRow").style.display="flex";
     $("#tvDexBtn").href = curPool ? ("https://dexscreener.com/robinhood/"+curPool) : ("https://dexscreener.com/search?q="+curToken);
     $("#tvBadge").textContent="⚡ live on Uniswap"; $("#tvBadge").className="badge grad";
+    $("#tvLock").innerHTML=lockChip()+' <span class="note" style="margin:0">Liquidity locked in the launchpad — non-ruggable.</span>';
     $("#tvTradePanel").style.opacity="1";
     $("#tvRewardRow").style.display="none"; $("#claimBtn").style.display="none";
     try{
@@ -989,6 +999,7 @@ async function refreshTrade(){
     var c=await fun.curves(curToken);
     $("#tvGradWrap").style.display="block";
     $("#tvInstantRow").style.display="none";
+    $("#tvLock").innerHTML="";
     var pct=Math.min(100, c.tokensSold.mul(10000).div(CURVE_SUPPLY).toNumber()/100);
     $("#tvBar").style.width=(c.graduated?100:pct)+"%";
     $("#tvProg").textContent=c.graduated?"Graduated — now trading on Uniswap.":(pct.toFixed(2)+"% of the curve sold");

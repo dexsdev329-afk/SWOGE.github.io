@@ -122,7 +122,7 @@ function setStatus(m){$("#status").textContent=m;}
 
 /* ============================ 3D SCENE ============================ */
 // Mirrors the server table: width(X)=11, depth(Z)=18, floor top y=0, front edge z=+8.
-var TW=11, TD=18;
+var TW=11, TD=13;
 var scene,camera,renderer,pusherMesh;
 var coinMeshes=new Map();   // id -> { mesh, tx:{x,y,z,qx,qy,qz,qw} target }
 var coinGeo, faceMat, sideMat;
@@ -130,7 +130,7 @@ var coinGeo, faceMat, sideMat;
 function initScene(){
   scene=new THREE.Scene();
   camera=new THREE.PerspectiveCamera(52, innerWidth/innerHeight, 0.1, 200);
-  camera.position.set(0, 9.5, 17.5); camera.lookAt(0, 0, 1);
+  camera.position.set(0, 8.5, 13.5); camera.lookAt(0, 0, -0.5);
   renderer=new THREE.WebGLRenderer({canvas:$("#c"),antialias:true});
   renderer.setPixelRatio(Math.min(devicePixelRatio,2));
   renderer.setSize(innerWidth,innerHeight);
@@ -154,7 +154,7 @@ function initScene(){
   var right=new THREE.Mesh(new THREE.BoxGeometry(1,8,TD),wallMat); right.position.set(TW/2,3,0); scene.add(right);
   // pusher (gold)
   var pmat=new THREE.MeshStandardMaterial({color:0xE6A537,metalness:0.9,roughness:0.3,emissive:0x5a3d0a,emissiveIntensity:0.35});
-  pusherMesh=new THREE.Mesh(new THREE.BoxGeometry(TW,5,3),pmat); pusherMesh.position.set(0,0.2,-TD/2+1.5); scene.add(pusherMesh);
+  pusherMesh=new THREE.Mesh(new THREE.BoxGeometry(TW,5,4),pmat); pusherMesh.position.set(0,0.2,-TD/2+2); scene.add(pusherMesh);
 
   // coin resources
   coinGeo=new THREE.CylinderGeometry(0.7,0.7,0.35,20);

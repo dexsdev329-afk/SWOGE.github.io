@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🎰 SWOGE Pusher LIVE — shared table</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;overflow:hidden;background:#0B0906;font-family:'Space Mono','Courier New',monospace;color:#F7EEDA}
+  #c{position:fixed;inset:0;display:block}
+  .hud{position:fixed;z-index:10;pointer-events:none}
+  .hud .btn,.hud button,.hud .chip{pointer-events:auto}
+  /* top bar */
+  #top{top:0;left:0;right:0;display:flex;align-items:center;gap:8px;padding:10px 12px;flex-wrap:wrap;
+    background:linear-gradient(180deg,rgba(11,9,6,.85),transparent)}
+  .chip{font-size:12px;padding:8px 12px;border-radius:999px;border:1px solid rgba(230,165,55,.4);
+    background:rgba(21,16,10,.85);color:#F7EEDA;white-space:nowrap}
+  .chip b{color:#E6A537}
+  .btn{font-size:12px;padding:9px 14px;border:none;border-radius:999px;cursor:pointer;font-family:inherit;
+    background:linear-gradient(135deg,#FFB84D,#E6A537);color:#0B0906;font-weight:700}
+  .btn.ghost{background:rgba(21,16,10,.85);color:#F7EEDA;border:1px solid rgba(230,165,55,.4)}
+  .btn:disabled{opacity:.5}
+  #spacer{flex:1}
+  /* bottom ticker */
+  #ticker{bottom:0;left:0;right:0;height:30px;overflow:hidden;background:rgba(0,0,0,.7);border-top:1px solid rgba(230,165,55,.3)}
+  #tickrow{display:flex;gap:36px;white-space:nowrap;padding:6px 0;font-size:12px;color:#fff;animation:scroll 28s linear infinite}
+  @keyframes scroll{from{transform:translateX(100vw)}to{transform:translateX(-100%)}}
+  /* status / toast */
+  #status{left:50%;top:52px;transform:translateX(-50%);font-size:12px;color:#E6A537;background:rgba(11,9,6,.8);
+    padding:6px 12px;border-radius:999px;border:1px solid rgba(230,165,55,.3)}
+  #toast{left:50%;bottom:44px;transform:translateX(-50%) translateY(20px);background:#E6A537;color:#0B0906;
+    font-weight:700;padding:11px 18px;border-radius:12px;opacity:0;transition:.25s;font-size:13px;max-width:88vw;text-align:center}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  /* win popup */
+  #win{left:50%;top:42%;transform:translate(-50%,-50%) scale(.6);opacity:0;transition:.25s;text-align:center;font-family:'Anton',sans-serif}
+  #win.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+  #win .v{font-size:56px;color:#FF6B35;text-shadow:0 0 20px rgba(255,107,53,.7)}
+  /* modal */
+  #modal{inset:0;background:rgba(4,6,10,.65);display:none;align-items:center;justify-content:center;padding:16px;z-index:20}
+  #modal.show{display:flex}
+  .box{pointer-events:auto;background:linear-gradient(180deg,#15100A,#0B0906);border:1px solid rgba(230,165,55,.4);
+    border-radius:16px;padding:18px;width:min(360px,94vw)}
+  .box h3{font-family:'Anton',sans-serif;font-size:20px;margin-bottom:12px;color:#E6A537}
+  .box label{font-size:11px;color:#A08a63;text-transform:uppercase;letter-spacing:1px;display:block;margin:10px 0 5px}
+  .box input{width:100%;padding:11px;border-radius:10px;border:1px solid rgba(230,165,55,.4);background:#0B0906;color:#F7EEDA;font-family:inherit;font-size:15px}
+  .box .row{display:flex;gap:8px;margin-top:14px}
+  .box .note{font-size:11px;color:#A08a63;margin-top:10px;line-height:1.5}
+  #tapHint{left:50%;bottom:44px;transform:translateX(-50%);font-size:12px;color:#A08a63;opacity:.9}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="top" class="hud">
+  <span class="chip">Balance <b id="bal">—</b> $SWOGE</span>
+  <span class="chip" id="playersChip">👥 <b id="players">0</b></span>
+  <div id="spacer"></div>
+  <button class="btn ghost" id="depositBtn" style="display:none">Deposit</button>
+  <button class="btn ghost" id="withdrawBtn" style="display:none">Withdraw</button>
+  <button class="btn" id="connectBtn">Connect wallet</button>
+</div>
+
+<div id="status" class="hud">connecting…</div>
+<div id="tapHint" class="hud">tap anywhere to drop a coin</div>
+<div id="win" class="hud"><div class="v" id="winv">+0</div></div>
+<div id="ticker" class="hud"><div id="tickrow"></div></div>
+<div id="toast" class="hud"></div>
+
+<div id="modal" class="hud">
+  <div class="box" id="depBox">
+    <h3>💰 Deposit $SWOGE</h3>
+    <label>Amount to deposit</label>
+    <input id="depAmt" inputmode="decimal" placeholder="e.g. 100" value="100">
+    <div class="row">
+      <button class="btn" id="depGo" style="flex:1">Deposit</button>
+      <button class="btn ghost" id="depCancel">Close</button>
+    </div>
+    <div class="note">You approve + send $SWOGE to the game vault. Credits appear on the server automatically.</div>
+  </div>
+  <div class="box" id="wdBox" style="display:none">
+    <h3>🏧 Withdraw winnings</h3>
+    <label>Amount to withdraw (min <span id="minW">50</span>)</label>
+    <input id="wdAmt" inputmode="decimal" placeholder="e.g. 50">
+    <div class="row">
+      <button class="btn" id="wdGo" style="flex:1">Withdraw</button>
+      <button class="btn ghost" id="wdCancel">Close</button>
+    </div>
+    <div class="note">The server signs a voucher and the vault pays you automatically on-chain.</div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ============================ CONFIG ============================ */
+// The Railway server URL (WebSocket). Set it here after deploying, or pass
+// ?server=wss://your-url in the address bar to override.
+var SERVER_URL = "wss://web-production-220a3.up.railway.app";
+(function(){ var q=new URLSearchParams(location.search).get("server"); if(q) SERVER_URL=q; })();
+
+var CHAIN = { id:4663, hex:"0x1237", name:"Robinhood Chain",
+  rpc:"https://rpc.mainnet.chain.robinhood.com", scan:"https://robinhoodchain.blockscout.com", sym:"ETH" };
+var TOKEN = "0x8a166Fb41Cd659a0a43396272FF73973Ce29F817"; // $SWOGE (updated from server hello)
+var VAULT = "";                                            // updated from server hello
+var MIN_WITHDRAW = "50";
+
+var ERC20_ABI = [
+  "function approve(address,uint256) returns (bool)",
+  "function allowance(address,address) view returns (uint256)",
+  "function balanceOf(address) view returns (uint256)",
+  "function decimals() view returns (uint8)"
+];
+var VAULT_ABI = [
+  "function deposit(uint256)",
+  "function withdraw(uint256 cumulative,uint256 deadline,uint8 v,bytes32 r,bytes32 s)"
+];
+
+var $=function(s){return document.querySelector(s);};
+function toast(m){var t=$("#toast");t.textContent=m;t.classList.add("show");clearTimeout(toast._t);toast._t=setTimeout(function(){t.classList.remove("show");},2600);}
+function setStatus(m){$("#status").textContent=m;}
+
+/* ============================ 3D SCENE ============================ */
+// Mirrors the server table: width(X)=11, depth(Z)=18, floor top y=0, front edge z=+8.
+var TW=11, TD=18;
+var scene,camera,renderer,pusherMesh;
+var coinMeshes=new Map();   // id -> { mesh, tx:{x,y,z,qx,qy,qz,qw} target }
+var coinGeo, faceMat, sideMat;
+
+function initScene(){
+  scene=new THREE.Scene();
+  camera=new THREE.PerspectiveCamera(52, innerWidth/innerHeight, 0.1, 200);
+  camera.position.set(0, 9.5, 17.5); camera.lookAt(0, 0, 1);
+  renderer=new THREE.WebGLRenderer({canvas:$("#c"),antialias:true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  renderer.setSize(innerWidth,innerHeight);
+  if("outputEncoding" in renderer) renderer.outputEncoding=THREE.sRGBEncoding;
+
+  scene.add(new THREE.AmbientLight(0xffffff,0.85));
+  var d=new THREE.DirectionalLight(0xffffff,0.7); d.position.set(6,14,10); scene.add(d);
+
+  var L=new THREE.TextureLoader(), sRGB=("sRGBEncoding" in THREE)?THREE.sRGBEncoding:undefined;
+  // background
+  L.load("swoge-bg.png",function(t){ if(sRGB)t.encoding=sRGB; scene.background=t; }, undefined, function(){ scene.background=new THREE.Color(0x0B0906); });
+  // floor
+  var floorMat=new THREE.MeshStandardMaterial({color:0xE6A537,metalness:0,roughness:0.8});
+  L.load("swoge-ground.png",function(t){ t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(2.5,2.5); if(sRGB)t.encoding=sRGB; floorMat.map=t; floorMat.color.set(0xffffff); floorMat.needsUpdate=true; });
+  var floor=new THREE.Mesh(new THREE.BoxGeometry(TW,1,TD),floorMat); floor.position.y=-0.5; scene.add(floor);
+  // walls (back + sides), textured
+  var wallMat=new THREE.MeshStandardMaterial({color:0x2a2333,metalness:0,roughness:0.9});
+  L.load("swoge-wall.png",function(t){ t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(3,1); if(sRGB)t.encoding=sRGB; wallMat.map=t; wallMat.color.set(0xffffff); wallMat.needsUpdate=true; });
+  var back=new THREE.Mesh(new THREE.BoxGeometry(TW,8,1),wallMat); back.position.set(0,3,-TD/2); scene.add(back);
+  var left=new THREE.Mesh(new THREE.BoxGeometry(1,8,TD),wallMat); left.position.set(-TW/2,3,0); scene.add(left);
+  var right=new THREE.Mesh(new THREE.BoxGeometry(1,8,TD),wallMat); right.position.set(TW/2,3,0); scene.add(right);
+  // pusher (gold)
+  var pmat=new THREE.MeshStandardMaterial({color:0xE6A537,metalness:0.9,roughness:0.3,emissive:0x5a3d0a,emissiveIntensity:0.35});
+  pusherMesh=new THREE.Mesh(new THREE.BoxGeometry(TW,5,9),pmat); pusherMesh.position.set(0,0.2,-TD/2+4); scene.add(pusherMesh);
+
+  // coin resources
+  coinGeo=new THREE.CylinderGeometry(0.7,0.7,0.35,20);
+  sideMat=new THREE.MeshStandardMaterial({color:0xE6A537,metalness:0.85,roughness:0.35});
+  faceMat=new THREE.MeshBasicMaterial({color:0xE6A537});
+  L.load("swoge-coin-face.png",function(t){ if(sRGB)t.encoding=sRGB; faceMat.map=t; faceMat.color.set(0xffffff); faceMat.needsUpdate=true; });
+
+  addEventListener("resize",function(){ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); });
+  animate();
+}
+
+function makeCoin(){
+  var m=new THREE.Mesh(coinGeo,[sideMat,faceMat,faceMat]);
+  scene.add(m); return m;
+}
+
+var lastPusherZ=-TD/2+4;
+function applyState(st){
+  // pusher
+  lastPusherZ=st.pusherZ;
+  var alive=new Set();
+  for(var i=0;i<st.coins.length;i++){
+    var a=st.coins[i]; var id=a[0]; alive.add(id);
+    var c=coinMeshes.get(id);
+    if(!c){ c={mesh:makeCoin(),t:{}}; c.mesh.position.set(a[1],a[2],a[3]); coinMeshes.set(id,c); }
+    c.t={x:a[1],y:a[2],z:a[3],qx:a[4],qy:a[5],qz:a[6],qw:a[7]};
+  }
+  // remove coins no longer present
+  for(var id2 of coinMeshes.keys()){ if(!alive.has(id2)){ var cc=coinMeshes.get(id2); scene.remove(cc.mesh); coinMeshes.delete(id2); } }
+}
+
+function animate(){
+  requestAnimationFrame(animate);
+  // smooth pusher
+  pusherMesh.position.z += (lastPusherZ-pusherMesh.position.z)*0.3;
+  // interpolate coins toward server target
+  for(var c of coinMeshes.values()){
+    if(!c.t) continue;
+    var p=c.mesh.position; p.x+=(c.t.x-p.x)*0.35; p.y+=(c.t.y-p.y)*0.35; p.z+=(c.t.z-p.z)*0.35;
+    if(c.t.qw!==undefined){ var q=c.mesh.quaternion; q.set(q.x+(c.t.qx-q.x)*0.35,q.y+(c.t.qy-q.y)*0.35,q.z+(c.t.qz-q.z)*0.35,q.w+(c.t.qw-q.w)*0.35); q.normalize(); }
+  }
+  renderer.render(scene,camera);
+}
+
+/* ============================ WEBSOCKET ============================ */
+var ws=null, loginNonce=null, authed=false, myAddr=null, reconnectT=1000;
+function wsConnect(){
+  if(SERVER_URL.indexOf("YOUR-RAILWAY-URL")>=0){ setStatus("⚠️ set the server URL (see file / ?server=)"); return; }
+  setStatus("connecting…");
+  try{ ws=new WebSocket(SERVER_URL); }catch(e){ setStatus("bad server URL"); return; }
+  ws.onopen=function(){ reconnectT=1000; setStatus("connected — connect your wallet"); };
+  ws.onmessage=function(ev){ var m; try{m=JSON.parse(ev.data);}catch(e){return;} onServer(m); };
+  ws.onclose=function(){ setStatus("disconnected — retrying…"); authed=false; setTimeout(wsConnect,reconnectT); reconnectT=Math.min(reconnectT*2,15000); };
+  ws.onerror=function(){ try{ws.close();}catch(e){} };
+}
+function wsSend(o){ if(ws&&ws.readyState===1) ws.send(JSON.stringify(o)); }
+
+function onServer(m){
+  if(m.type==="hello"){
+    loginNonce=m.loginNonce; VAULT=m.vault||VAULT; TOKEN=m.token||TOKEN; MIN_WITHDRAW=m.minWithdraw||MIN_WITHDRAW;
+    $("#minW").textContent=MIN_WITHDRAW;
+    if(myAddr) doLogin(); // reconnected while wallet already connected
+  }
+  else if(m.type==="state"){ applyState(m); }
+  else if(m.type==="auth"){ authed=true; myAddr=m.address; setStatus("playing as "+m.address.slice(0,6)+"…"+m.address.slice(-4)); setBalance(m.balance); showPlayUI(); }
+  else if(m.type==="balance"||m.type==="deposit"){ setBalance(m.balance); if(m.type==="deposit") toast("💰 Deposit credited"); }
+  else if(m.type==="win"){ setBalance(m.balance); showWin(m.value); }
+  else if(m.type==="ticker"){ addTicker(m.name,m.value); }
+  else if(m.type==="need_deposit"){ setBalance(m.balance); toast("Not enough $SWOGE — deposit to play"); openModal("dep"); }
+  else if(m.type==="voucher"){ submitWithdraw(m.voucher); }
+  else if(m.type==="error"){ toast(m.error); }
+}
+
+function setBalance(b){ var n=parseFloat(b||"0"); $("#bal").textContent=(n>=1000?(n/1000).toFixed(1)+"k":n.toFixed(2)); }
+function showPlayUI(){ $("#depositBtn").style.display=""; $("#withdrawBtn").style.display=""; $("#connectBtn").textContent=myAddr.slice(0,6)+"…"+myAddr.slice(-4); }
+function showWin(v){ if(!v) return; $("#winv").textContent="+"+v+" $SWOGE"; var w=$("#win"); w.classList.add("show"); clearTimeout(showWin._t); showWin._t=setTimeout(function(){w.classList.remove("show");},1400); }
+var tickHtml=[];
+function addTicker(name,value){ tickHtml.push('🏆 '+esc(name)+' won '+value+' $SWOGE'); if(tickHtml.length>18)tickHtml.shift(); $("#tickrow").innerHTML=tickHtml.map(function(x){return '<span>'+x+'</span>';}).join(''); }
+function esc(s){ return String(s).replace(/[<>&]/g,function(c){return {"<":"&lt;",">":"&gt;","&":"&amp;"}[c];}); }
+
+/* ============================ WALLET ============================ */
+var provider=null, signer=null, rawEth=null;
+function pickEth(){ return window.ethereum || null; }
+async function connectWallet(){
+  var eth=pickEth();
+  if(!eth){ toast("No wallet found (install MetaMask / use in-wallet browser)"); return; }
+  try{
+    await eth.request({method:"eth_requestAccounts"});
+    var cid=await eth.request({method:"eth_chainId"});
+    if(cid!==CHAIN.hex){
+      try{ await eth.request({method:"wallet_switchEthereumChain",params:[{chainId:CHAIN.hex}]}); }
+      catch(sw){ if(sw&&sw.code===4902){ await eth.request({method:"wallet_addEthereumChain",params:[{chainId:CHAIN.hex,chainName:CHAIN.name,nativeCurrency:{name:"Ether",symbol:CHAIN.sym,decimals:18},rpcUrls:[CHAIN.rpc],blockExplorerUrls:[CHAIN.scan]}]}); } }
+    }
+    rawEth=eth; provider=new ethers.providers.Web3Provider(eth,"any"); signer=provider.getSigner();
+    myAddr=(await signer.getAddress());
+    await doLogin();
+  }catch(e){ toast(String(e.message||e).slice(0,90)); }
+}
+async function doLogin(){
+  if(!signer||loginNonce==null) return;
+  try{
+    var msg="SWOGE Pusher login\nnonce: "+loginNonce;
+    var sig=await signer.signMessage(msg);
+    wsSend({type:"login",message:msg,signature:sig,name:myAddr.slice(0,6)});
+  }catch(e){ toast("login cancelled"); }
+}
+
+/* ---- deposit ---- */
+async function doDeposit(){
+  if(!signer){ toast("connect wallet first"); return; }
+  if(!VAULT){ toast("server has no vault set"); return; }
+  var amtStr=($("#depAmt").value||"").replace(",",".").trim();
+  var amt; try{ amt=ethers.utils.parseUnits(amtStr,18); }catch(e){ return toast("bad amount"); }
+  if(amt.lte(0)) return toast("enter an amount");
+  try{
+    var token=new ethers.Contract(TOKEN,ERC20_ABI,signer);
+    var vault=new ethers.Contract(VAULT,VAULT_ABI,signer);
+    var allow=await token.allowance(myAddr,VAULT);
+    if(allow.lt(amt)){ toast("approve $SWOGE…"); var ta=await token.approve(VAULT,ethers.constants.MaxUint256); await ta.wait(); }
+    toast("depositing…"); var tx=await vault.deposit(amt); await tx.wait();
+    toast("✅ deposited — credits incoming"); closeModal();
+  }catch(e){ toast("deposit: "+String(e.reason||e.message||e).slice(0,80)); }
+}
+/* ---- withdraw ---- */
+function requestWithdraw(){
+  var amtStr=($("#wdAmt").value||"").replace(",",".").trim();
+  if(!amtStr||parseFloat(amtStr)<parseFloat(MIN_WITHDRAW)) return toast("min "+MIN_WITHDRAW+" $SWOGE");
+  wsSend({type:"withdraw",amount:amtStr}); toast("requesting voucher…");
+}
+async function submitWithdraw(v){
+  if(!signer){ toast("connect wallet"); return; }
+  try{
+    var vault=new ethers.Contract(v.vault||VAULT,VAULT_ABI,signer);
+    toast("confirm withdrawal…");
+    var tx=await vault.withdraw(v.cumulative,v.deadline,v.v,v.r,v.s); await tx.wait();
+    toast("✅ paid out to your wallet"); closeModal();
+  }catch(e){ toast("withdraw: "+String(e.reason||e.message||e).slice(0,80)); }
+}
+
+/* ============================ UI WIRING ============================ */
+function openModal(which){ $("#modal").classList.add("show"); $("#depBox").style.display=which==="dep"?"":"none"; $("#wdBox").style.display=which==="wd"?"":"none"; }
+function closeModal(){ $("#modal").classList.remove("show"); }
+$("#connectBtn").onclick=connectWallet;
+$("#depositBtn").onclick=function(){ openModal("dep"); };
+$("#withdrawBtn").onclick=function(){ openModal("wd"); };
+$("#depGo").onclick=doDeposit; $("#depCancel").onclick=closeModal;
+$("#wdGo").onclick=requestWithdraw; $("#wdCancel").onclick=closeModal;
+
+/* tap anywhere (except UI) = drop */
+(function(){
+  var sx=0,sy=0,moved=false,st=0;
+  function isUI(t){ return t&&t.closest&&t.closest("button,input,.box,#top,#modal"); }
+  addEventListener("pointerdown",function(e){ sx=e.clientX;sy=e.clientY;moved=false;st=Date.now(); },true);
+  addEventListener("pointermove",function(e){ if(Math.abs(e.clientX-sx)>12||Math.abs(e.clientY-sy)>12)moved=true; },true);
+  addEventListener("pointerup",function(e){
+    if(moved||Date.now()-st>700||isUI(e.target)) return;
+    if(!authed){ toast("connect your wallet to play"); return; }
+    wsSend({type:"drop"});
+  },true);
+})();
+
+/* players count from /health-ish: we approximate via ticker activity; show connected state */
+setInterval(function(){ /* placeholder for future presence updates */ },5000);
+
+/* ============================ BOOT ============================ */
+initScene();
+wsConnect();
+</script>
+</body>
+</html>

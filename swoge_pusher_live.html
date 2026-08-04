@@ -154,7 +154,7 @@ function initScene(){
   var right=new THREE.Mesh(new THREE.BoxGeometry(1,8,TD),wallMat); right.position.set(TW/2,3,0); scene.add(right);
   // pusher (gold)
   var pmat=new THREE.MeshStandardMaterial({color:0xE6A537,metalness:0.9,roughness:0.3,emissive:0x5a3d0a,emissiveIntensity:0.35});
-  pusherMesh=new THREE.Mesh(new THREE.BoxGeometry(TW,5,9),pmat); pusherMesh.position.set(0,0.2,-TD/2+4); scene.add(pusherMesh);
+  pusherMesh=new THREE.Mesh(new THREE.BoxGeometry(TW,5,3),pmat); pusherMesh.position.set(0,0.2,-TD/2+1.5); scene.add(pusherMesh);
 
   // coin resources
   coinGeo=new THREE.CylinderGeometry(0.7,0.7,0.35,20);

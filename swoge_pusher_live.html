@@ -171,30 +171,38 @@ function makeCoin(){
   scene.add(m); return m;
 }
 
-var lastPusherZ=-TD/2+4;
+// ---- entity interpolation ----
+// Each server snapshot is played back smoothly: we interpolate every coin from
+// its PREVIOUS server position to its CURRENT one over the measured interval,
+// so 20–30 snapshots/sec render buttery at 60 fps.
+var snapLastT=0, snapInterval=50;
+var pusherPrevZ=-TD/2+4, pusherCurZ=-TD/2+4;
 function applyState(st){
-  // pusher
-  lastPusherZ=st.pusherZ;
+  var now=(performance&&performance.now)?performance.now():Date.now();
+  snapInterval = snapLastT ? Math.min(250,Math.max(20, now-snapLastT)) : 50;
+  snapLastT = now;
+  pusherPrevZ = pusherCurZ; pusherCurZ = st.pusherZ;
   var alive=new Set();
   for(var i=0;i<st.coins.length;i++){
     var a=st.coins[i]; var id=a[0]; alive.add(id);
+    var t={x:a[1],y:a[2],z:a[3],qx:a[4],qy:a[5],qz:a[6],qw:a[7]};
     var c=coinMeshes.get(id);
-    if(!c){ c={mesh:makeCoin(),t:{}}; c.mesh.position.set(a[1],a[2],a[3]); coinMeshes.set(id,c); }
-    c.t={x:a[1],y:a[2],z:a[3],qx:a[4],qy:a[5],qz:a[6],qw:a[7]};
+    if(!c){ c={mesh:makeCoin(),prev:t,cur:t}; c.mesh.position.set(t.x,t.y,t.z); coinMeshes.set(id,c); }
+    else { c.prev=c.cur; c.cur=t; }
   }
-  // remove coins no longer present
   for(var id2 of coinMeshes.keys()){ if(!alive.has(id2)){ var cc=coinMeshes.get(id2); scene.remove(cc.mesh); coinMeshes.delete(id2); } }
 }
 
 function animate(){
   requestAnimationFrame(animate);
-  // smooth pusher
-  pusherMesh.position.z += (lastPusherZ-pusherMesh.position.z)*0.3;
-  // interpolate coins toward server target
+  var now=(performance&&performance.now)?performance.now():Date.now();
+  var t=snapLastT?(now-snapLastT)/snapInterval:1; if(t<0)t=0; if(t>1)t=1;
+  pusherMesh.position.z = pusherPrevZ+(pusherCurZ-pusherPrevZ)*t;
   for(var c of coinMeshes.values()){
-    if(!c.t) continue;
-    var p=c.mesh.position; p.x+=(c.t.x-p.x)*0.35; p.y+=(c.t.y-p.y)*0.35; p.z+=(c.t.z-p.z)*0.35;
-    if(c.t.qw!==undefined){ var q=c.mesh.quaternion; q.set(q.x+(c.t.qx-q.x)*0.35,q.y+(c.t.qy-q.y)*0.35,q.z+(c.t.qz-q.z)*0.35,q.w+(c.t.qw-q.w)*0.35); q.normalize(); }
+    var A=c.prev, B=c.cur, p=c.mesh.position;
+    p.x=A.x+(B.x-A.x)*t; p.y=A.y+(B.y-A.y)*t; p.z=A.z+(B.z-A.z)*t;
+    var q=c.mesh.quaternion;
+    q.set(A.qx+(B.qx-A.qx)*t, A.qy+(B.qy-A.qy)*t, A.qz+(B.qz-A.qz)*t, A.qw+(B.qw-A.qw)*t); q.normalize();
   }
   renderer.render(scene,camera);
 }

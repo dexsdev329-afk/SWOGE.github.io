@@ -200,8 +200,10 @@
   <div class="box" id="whBox" style="display:none">
     <h3>📱 Connect on mobile</h3>
     <div class="note" style="margin-bottom:12px">Mobile browsers (Safari/Chrome) can't see wallet apps directly. Open the game <b>inside your wallet's browser</b>:</div>
-    <div class="row"><button class="btn" id="whMM" style="flex:1">Open in MetaMask →</button></div>
-    <div class="note" style="margin:12px 0">Rabby / Phantom / other: open the app → <b>Browser</b> (or Discover) tab → paste this link:</div>
+    <div class="row" style="margin-bottom:8px"><button class="btn" id="whMM" style="flex:1">🦊 Open in MetaMask →</button></div>
+    <div class="row" style="margin-bottom:8px"><button class="btn" id="whRabby" style="flex:1">🐰 Open in Rabby →</button></div>
+    <div class="row" style="margin-bottom:8px"><button class="btn" id="whPh" style="flex:1">👻 Open in Phantom →</button></div>
+    <div class="note" style="margin:12px 0 6px">Or paste this link in your wallet's browser:</div>
     <div class="note"><b id="whUrl" style="color:#E6A537;word-break:break-all"></b></div>
     <div class="row" style="margin-top:12px"><button class="btn ghost" id="whCopy" style="flex:1">Copy link</button><button class="btn ghost" id="whCancel">Close</button></div>
   </div>
@@ -549,6 +551,8 @@ $("#withdrawBtn").onclick=function(){ openModal("wd"); };
 $("#depGo").onclick=doDeposit; $("#depCancel").onclick=closeModal;
 $("#wdGo").onclick=requestWithdraw; $("#wdCancel").onclick=closeModal;
 $("#whMM").onclick=function(){ location.href="https://metamask.app.link/dapp/"+location.host+location.pathname+location.search; };
+$("#whPh").onclick=function(){ location.href="https://phantom.app/ul/browse/"+encodeURIComponent(location.href)+"?ref="+encodeURIComponent(location.origin); };
+$("#whRabby").onclick=function(){ try{ navigator.clipboard.writeText(location.href); }catch(e){} toast("Link copied — open Rabby → Dapps and paste it"); };
 $("#whCopy").onclick=function(){ try{ navigator.clipboard.writeText(location.href); toast("Link copied — paste it in your wallet's browser"); }catch(e){ toast(location.href); } };
 $("#whCancel").onclick=closeModal;
 $("#jackpot").onclick=function(){ $("#lb").classList.toggle("show"); };

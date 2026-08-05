@@ -195,6 +195,14 @@
     </div>
     <div class="note">The server signs a voucher and the vault pays you automatically on-chain.</div>
   </div>
+  <div class="box" id="whBox" style="display:none">
+    <h3>📱 Connect on mobile</h3>
+    <div class="note" style="margin-bottom:12px">Mobile browsers (Safari/Chrome) can't see wallet apps directly. Open the game <b>inside your wallet's browser</b>:</div>
+    <div class="row"><button class="btn" id="whMM" style="flex:1">Open in MetaMask →</button></div>
+    <div class="note" style="margin:12px 0">Rabby / Phantom / other: open the app → <b>Browser</b> (or Discover) tab → paste this link:</div>
+    <div class="note"><b id="whUrl" style="color:#E6A537;word-break:break-all"></b></div>
+    <div class="row" style="margin-top:12px"><button class="btn ghost" id="whCopy" style="flex:1">Copy link</button><button class="btn ghost" id="whCancel">Close</button></div>
+  </div>
 </div>
 
 <script>
@@ -450,9 +458,16 @@ function esc(s){ return String(s).replace(/[<>&]/g,function(c){return {"<":"&lt;
 /* ============================ WALLET ============================ */
 var provider=null, signer=null, rawEth=null;
 function pickEth(){ return window.ethereum || null; }
+function isMobile(){ return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent); }
 async function connectWallet(){
   var eth=pickEth();
-  if(!eth){ toast("No wallet found (install MetaMask / use in-wallet browser)"); return; }
+  if(!eth){
+    // Mobile Safari/Chrome have no wallet extension — guide the user to open the
+    // game inside their wallet app's browser (where window.ethereum exists).
+    if(isMobile()){ $("#whUrl").textContent=location.host+location.pathname; openModal("wallet"); }
+    else { toast("No wallet found — install MetaMask or Rabby"); }
+    return;
+  }
   try{
     await eth.request({method:"eth_requestAccounts"});
     var cid=await eth.request({method:"eth_chainId"});
@@ -507,13 +522,16 @@ async function submitWithdraw(v){
 }
 
 /* ============================ UI WIRING ============================ */
-function openModal(which){ $("#modal").classList.add("show"); $("#depBox").style.display=which==="dep"?"":"none"; $("#wdBox").style.display=which==="wd"?"":"none"; }
+function openModal(which){ $("#modal").classList.add("show"); $("#depBox").style.display=which==="dep"?"":"none"; $("#wdBox").style.display=which==="wd"?"":"none"; $("#whBox").style.display=which==="wallet"?"":"none"; }
 function closeModal(){ $("#modal").classList.remove("show"); }
 $("#connectBtn").onclick=connectWallet;
 $("#depositBtn").onclick=function(){ openModal("dep"); };
 $("#withdrawBtn").onclick=function(){ openModal("wd"); };
 $("#depGo").onclick=doDeposit; $("#depCancel").onclick=closeModal;
 $("#wdGo").onclick=requestWithdraw; $("#wdCancel").onclick=closeModal;
+$("#whMM").onclick=function(){ location.href="https://metamask.app.link/dapp/"+location.host+location.pathname+location.search; };
+$("#whCopy").onclick=function(){ try{ navigator.clipboard.writeText(location.href); toast("Link copied — paste it in your wallet's browser"); }catch(e){ toast(location.href); } };
+$("#whCancel").onclick=closeModal;
 $("#jackpot").onclick=function(){ $("#lb").classList.toggle("show"); };
 $("#lbClose").onclick=function(){ $("#lb").classList.remove("show"); };
 $("#questBtn").onclick=function(){ $("#quests").classList.toggle("show"); };

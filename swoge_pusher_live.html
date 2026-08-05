@@ -139,12 +139,14 @@
   <div class="stbox">
     <div class="strow"><span>Staked</span><b id="stStaked">0</b></div>
     <div class="strow"><span>Pending yield</span><b id="stPending" class="grn">0</b></div>
+    <div class="strow"><span>Unlockable now</span><b id="stUnlocked">0</b></div>
   </div>
+  <div class="sub" id="stLock" style="margin-bottom:12px"></div>
   <button class="qclaim on" id="stClaim">CLAIM YIELD</button>
-  <input id="stAmt" type="number" inputmode="decimal" placeholder="amount of $SWOGE" />
+  <input id="stAmt" type="number" inputmode="decimal" placeholder="amount to stake" />
   <div class="strow2">
     <button class="btn" id="stStake">Stake</button>
-    <button class="btn ghost" id="stUnstake">Unstake</button>
+    <button class="btn ghost" id="stUnstake">Unstake all</button>
   </div>
 </div>
 <div id="jackpot" class="hud pulse" title="See today's top winners">🏆 JACKPOT <b id="jpv">—</b> $SWOGE</div>
@@ -372,6 +374,7 @@ function onServer(m){
   else if(m.type==="questClaimed"){ setBalance(m.balance); renderQuests(m.quests); toast("🎯 Quest reward +"+m.reward+" $SWOGE!"); }
   else if(m.type==="stakeInfo"){ setStakeInfo(m); }
   else if(m.type==="stakeClaimed"){ toast("💰 Yield claimed +"+fmtYield(parseFloat(m.reward))+" $SWOGE!"); }
+  else if(m.type==="stakeUnstaked"){ var pen=parseFloat(m.penalty)||0; toast("Unstaked "+fmtBig(parseFloat(m.returned))+" $SWOGE"+(pen>0?" (−"+fmtBig(pen)+" penalty)":"")+(parseFloat(m.yield)>0?" +"+fmtYield(parseFloat(m.yield))+" yield":"")); }
   else if(m.type==="jackpot"){ setBalance(m.balance); showJackpot(m.amount,true); } // YOU won the pot
   else if(m.type==="jackpotWin"){ if(m.jackpot!=null) setJackpot(m.jackpot); addTicker("🏆 JACKPOT — "+m.name, m.amount); if(m.name!==(myAddr&&myAddr.slice(0,6))) toast("🏆 "+m.name+" won the JACKPOT: "+fmtBig(m.amount)+" $SWOGE!"); }
   else if(m.type==="voucher"){ submitWithdraw(m.voucher); }
@@ -395,15 +398,20 @@ function showJackpot(amount){
   showJackpot._t=setTimeout(function(){ w.classList.remove("show","jp"); }, 4200);
   toast("🏆 YOU WON THE JACKPOT — "+fmtBig(amount)+" $SWOGE!");
 }
-/* staking — yield ticks live client-side, resynced from the server */
-var stStaked=0, stPending=0, stAprBps=5000, stSyncMs=0;
+/* staking — locked positions (100% APR, early exit = penalty); yield ticks live */
+var stStaked=0, stPending=0, stAprBps=10000, stSyncMs=0, stLocked=0, stUnlocked=0, stNextUnlock=null, stPenaltyBps=5000, stLockDays=365;
 function setStakeInfo(m){
   if(m.staked!=null) stStaked=parseFloat(m.staked);
   if(m.pending!=null) stPending=parseFloat(m.pending);
   if(m.aprBps!=null) stAprBps=m.aprBps;
+  if(m.locked!=null) stLocked=parseFloat(m.locked);
+  if(m.unlocked!=null) stUnlocked=parseFloat(m.unlocked);
+  if(m.penaltyBps!=null) stPenaltyBps=m.penaltyBps;
+  if(m.lockDays!=null) stLockDays=m.lockDays;
+  if("nextUnlock" in m) stNextUnlock=m.nextUnlock;
   if(m.balance!=null) setBalance(m.balance);
   stSyncMs=(performance&&performance.now)?performance.now():Date.now();
-  $("#stApr").textContent=(stAprBps/100)+"% APR · earn yield every second";
+  $("#stApr").textContent=(stAprBps/100)+"% APR · locked "+stLockDays+" days · yield every second";
   renderStake();
 }
 function livePending(){
@@ -415,10 +423,21 @@ function fmtYield(n){ return n>=1000?fmtBig(n):(n>=1?n.toFixed(3):n.toFixed(6));
 function renderStake(){
   $("#stStaked").textContent=fmtBig(stStaked);
   $("#stPending").textContent=fmtYield(livePending());
+  $("#stUnlocked").textContent=fmtBig(stUnlocked);
+  var el=$("#stLock");
+  if(stLocked>0){ var when=stNextUnlock?new Date(stNextUnlock).toLocaleDateString():"—";
+    el.innerHTML="🔒 "+fmtBig(stLocked)+" locked until "+when+" — unstaking now forfeits "+(stPenaltyBps/100)+"% of the locked part."; el.style.color="#FF8A5B"; }
+  else if(stStaked>0){ el.textContent="✅ All unlocked — unstake with no penalty."; el.style.color="#7CFF9B"; }
+  else { el.textContent=""; }
 }
 setInterval(function(){ if($("#stake").classList.contains("show")) $("#stPending").textContent=fmtYield(livePending()); },250);
-function doStake(){ var v=($("#stAmt").value||"").replace(",",".").trim(); if(!(parseFloat(v)>0))return toast("enter an amount"); wsSend({type:"stake",amount:v}); }
-function doUnstake(){ var v=($("#stAmt").value||"").replace(",",".").trim(); if(!(parseFloat(v)>0))return toast("enter an amount"); wsSend({type:"unstake",amount:v}); }
+function doStake(){ var v=($("#stAmt").value||"").replace(",",".").trim(); if(!(parseFloat(v)>0))return toast("enter an amount");
+  if(!confirm("Stake "+v+" $SWOGE at "+(stAprBps/100)+"% APR?\nIt locks for "+stLockDays+" days — unstaking before that loses "+(stPenaltyBps/100)+"% of it.")) return;
+  wsSend({type:"stake",amount:v}); $("#stAmt").value=""; }
+function doUnstake(){
+  if(!(stStaked>0)) return toast("nothing staked");
+  if(stLocked>0 && !confirm("⚠️ "+fmtBig(stLocked)+" is still locked. Unstaking now loses "+(stPenaltyBps/100)+"% of the locked part. Continue?")) return;
+  wsSend({type:"unstake"}); }
 function doClaimStake(){ wsSend({type:"claimStake"}); }
 
 /* daily quests */

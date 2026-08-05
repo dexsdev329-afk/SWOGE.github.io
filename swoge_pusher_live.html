@@ -11,7 +11,7 @@
   html,body{height:100%;overflow:hidden;background:#0B0906;font-family:'Space Mono','Courier New',monospace;color:#F7EEDA}
   #c{position:fixed;inset:0;display:block}
   .hud{position:fixed;z-index:10;pointer-events:none}
-  .hud .btn,.hud button,.hud .chip,#jackpot,#lb{pointer-events:auto}
+  .hud .btn,.hud button,.hud .chip,#jackpot,#lb,#quests,#stake{pointer-events:auto}
   /* top bar */
   #top{top:0;left:0;right:0;display:flex;align-items:center;gap:8px;padding:10px 12px;flex-wrap:wrap;
     background:linear-gradient(180deg,rgba(11,9,6,.85),transparent)}
@@ -64,6 +64,43 @@
   .lbrow .r{color:#E6A537;font-weight:700}
   .lbrow .v{color:#7CFF9B;font-weight:700}
   .lbempty{color:#8a7f6a;font-size:12px;padding:6px 10px}
+  /* daily quests panel (slides from the left) */
+  #quests{top:0;left:0;bottom:0;width:min(86vw,330px);transform:translateX(-105%);transition:.25s;
+    background:rgba(11,9,6,.96);border-right:1px solid rgba(230,165,55,.35);padding:58px 14px 14px;overflow:auto}
+  #quests.show{transform:translateX(0)}
+  #quests h3{font-size:13px;color:#E6A537;margin-bottom:4px;letter-spacing:1px}
+  #quests .sub{font-size:11px;color:#8a7f6a;margin-bottom:12px}
+  #qClose{position:absolute;top:12px;right:12px}
+  .quest{background:rgba(255,255,255,.04);border-radius:10px;padding:11px;margin-bottom:10px}
+  .quest .qh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:13px;margin-bottom:8px}
+  .quest .qh .qr{color:#FFD76B;font-weight:700;white-space:nowrap}
+  .qbar{height:8px;border-radius:6px;background:rgba(255,255,255,.1);overflow:hidden;margin-bottom:9px}
+  .qbar>i{display:block;height:100%;width:0;background:linear-gradient(90deg,#FFB84D,#E6A537);transition:width .3s}
+  .qclaim{width:100%;font-size:12px;font-weight:700;padding:9px;border-radius:8px;border:none;font-family:inherit}
+  .qclaim.on{background:linear-gradient(135deg,#7CFF9B,#39d16a);color:#062a12;cursor:pointer}
+  .qclaim.off{background:rgba(255,255,255,.07);color:#8a7f6a;cursor:default}
+  .qclaim.done{background:rgba(124,255,155,.14);color:#7CFF9B;cursor:default}
+  /* claimable dot on the 🎯 button */
+  #questBtn{position:relative}
+  #questDot{position:absolute;top:4px;right:4px;width:9px;height:9px;border-radius:50%;background:#7CFF9B;
+    box-shadow:0 0 8px #7CFF9B;display:none}
+  #questDot.on{display:block}
+  /* staking panel (slides from the right) */
+  #stake{top:0;right:0;bottom:0;width:min(86vw,330px);transform:translateX(105%);transition:.25s;
+    background:rgba(11,9,6,.96);border-left:1px solid rgba(230,165,55,.35);padding:58px 16px 16px;overflow:auto}
+  #stake.show{transform:translateX(0)}
+  #stake h3{font-size:13px;color:#E6A537;margin-bottom:4px;letter-spacing:1px}
+  #stake .sub{font-size:11px;color:#8a7f6a;margin-bottom:14px}
+  #stClose{position:absolute;top:12px;left:12px}
+  .stbox{background:rgba(255,255,255,.04);border-radius:10px;padding:12px;margin-bottom:12px}
+  .strow{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;padding:5px 0}
+  .strow b{font-size:15px;color:#F7EEDA}
+  .strow b.grn{color:#7CFF9B}
+  #stClaim{margin-bottom:14px}
+  #stAmt{width:100%;padding:11px;border-radius:10px;border:1px solid rgba(230,165,55,.4);
+    background:rgba(21,16,10,.9);color:#F7EEDA;font-family:inherit;font-size:14px;margin-bottom:9px}
+  .strow2{display:flex;gap:8px}
+  .strow2 .btn{flex:1}
   /* win popup */
   #win{left:50%;top:42%;transform:translate(-50%,-50%) scale(.6);opacity:0;transition:.25s;text-align:center;font-family:'Anton',sans-serif}
   #win.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
@@ -91,9 +128,32 @@
   <div id="spacer"></div>
   <button class="btn ghost" id="depositBtn" style="display:none">Deposit</button>
   <button class="btn ghost" id="withdrawBtn" style="display:none">Withdraw</button>
+  <button class="btn ghost" id="questBtn" style="display:none" title="Daily quests">🎯<span id="questDot"></span></button>
+  <button class="btn ghost" id="stakeBtn" style="display:none" title="Stake $SWOGE">💰</button>
   <button class="btn" id="connectBtn">Connect wallet</button>
 </div>
+<div id="stake" class="hud">
+  <button class="btn ghost" id="stClose">✕</button>
+  <h3>💰 STAKE $SWOGE</h3>
+  <div class="sub" id="stApr">Earn yield every second</div>
+  <div class="stbox">
+    <div class="strow"><span>Staked</span><b id="stStaked">0</b></div>
+    <div class="strow"><span>Pending yield</span><b id="stPending" class="grn">0</b></div>
+  </div>
+  <button class="qclaim on" id="stClaim">CLAIM YIELD</button>
+  <input id="stAmt" type="number" inputmode="decimal" placeholder="amount of $SWOGE" />
+  <div class="strow2">
+    <button class="btn" id="stStake">Stake</button>
+    <button class="btn ghost" id="stUnstake">Unstake</button>
+  </div>
+</div>
 <div id="jackpot" class="hud pulse" title="See today's top winners">🏆 JACKPOT <b id="jpv">—</b> $SWOGE</div>
+<div id="quests" class="hud">
+  <button class="btn ghost" id="qClose">✕</button>
+  <h3>🎯 DAILY QUESTS</h3>
+  <div class="sub">Resets every day · rewards paid in $SWOGE</div>
+  <div id="questrows"></div>
+</div>
 <div id="lb" class="hud">
   <button class="btn ghost" id="lbClose">✕</button>
   <h3>🏆 TOP WINNERS TODAY</h3>
@@ -293,13 +353,17 @@ function onServer(m){
     if(myAddr) doLogin(); // reconnected while wallet already connected
   }
   else if(m.type==="state"){ applyState(m); }
-  else if(m.type==="auth"){ authed=true; myAddr=m.address; setStatus("playing as "+m.address.slice(0,6)+"…"+m.address.slice(-4)); setBalance(m.balance); showPlayUI(); }
+  else if(m.type==="auth"){ authed=true; myAddr=m.address; setStatus("playing as "+m.address.slice(0,6)+"…"+m.address.slice(-4)); setBalance(m.balance); showPlayUI(); if(m.quests) renderQuests(m.quests); if(m.stake) setStakeInfo(m.stake); }
   else if(m.type==="balance"||m.type==="deposit"){ setBalance(m.balance); if(m.type==="deposit") toast("💰 Deposit credited"); }
   else if(m.type==="win"){ setBalance(m.balance); showWin(m.value); }
   else if(m.type==="ticker"){ addTicker(m.name,m.value); }
   else if(m.type==="need_deposit"){ setBalance(m.balance); pendingDrops=0; updateQueueUI(); toast("Not enough $SWOGE — deposit to play"); openModal("dep"); }
   else if(m.type==="table_full"){ qHoldUntil=Date.now()+220; pendingDrops++; updateQueueUI(); } // backpressure: put the coin back, retry when there's room
   else if(m.type==="meta"){ setJackpot(m.jackpot); renderLeaderboard(m.leaderboard); }
+  else if(m.type==="quests"){ renderQuests(m.quests); }
+  else if(m.type==="questClaimed"){ setBalance(m.balance); renderQuests(m.quests); toast("🎯 Quest reward +"+m.reward+" $SWOGE!"); }
+  else if(m.type==="stakeInfo"){ setStakeInfo(m); }
+  else if(m.type==="stakeClaimed"){ toast("💰 Yield claimed +"+fmtYield(parseFloat(m.reward))+" $SWOGE!"); }
   else if(m.type==="jackpot"){ setBalance(m.balance); showJackpot(m.amount,true); } // YOU won the pot
   else if(m.type==="jackpotWin"){ if(m.jackpot!=null) setJackpot(m.jackpot); addTicker("🏆 JACKPOT — "+m.name, m.amount); if(m.name!==(myAddr&&myAddr.slice(0,6))) toast("🏆 "+m.name+" won the JACKPOT: "+fmtBig(m.amount)+" $SWOGE!"); }
   else if(m.type==="voucher"){ submitWithdraw(m.voucher); }
@@ -323,6 +387,52 @@ function showJackpot(amount){
   showJackpot._t=setTimeout(function(){ w.classList.remove("show","jp"); }, 4200);
   toast("🏆 YOU WON THE JACKPOT — "+fmtBig(amount)+" $SWOGE!");
 }
+/* staking — yield ticks live client-side, resynced from the server */
+var stStaked=0, stPending=0, stAprBps=5000, stSyncMs=0;
+function setStakeInfo(m){
+  if(m.staked!=null) stStaked=parseFloat(m.staked);
+  if(m.pending!=null) stPending=parseFloat(m.pending);
+  if(m.aprBps!=null) stAprBps=m.aprBps;
+  if(m.balance!=null) setBalance(m.balance);
+  stSyncMs=(performance&&performance.now)?performance.now():Date.now();
+  $("#stApr").textContent=(stAprBps/100)+"% APR · earn yield every second";
+  renderStake();
+}
+function livePending(){
+  var now=(performance&&performance.now)?performance.now():Date.now();
+  var elapsedSec=(now-stSyncMs)/1000;
+  return stPending + stStaked*(stAprBps/10000)*(elapsedSec/31536000);
+}
+function fmtYield(n){ return n>=1000?fmtBig(n):(n>=1?n.toFixed(3):n.toFixed(6)); }
+function renderStake(){
+  $("#stStaked").textContent=fmtBig(stStaked);
+  $("#stPending").textContent=fmtYield(livePending());
+}
+setInterval(function(){ if($("#stake").classList.contains("show")) $("#stPending").textContent=fmtYield(livePending()); },250);
+function doStake(){ var v=($("#stAmt").value||"").replace(",",".").trim(); if(!(parseFloat(v)>0))return toast("enter an amount"); wsSend({type:"stake",amount:v}); }
+function doUnstake(){ var v=($("#stAmt").value||"").replace(",",".").trim(); if(!(parseFloat(v)>0))return toast("enter an amount"); wsSend({type:"unstake",amount:v}); }
+function doClaimStake(){ wsSend({type:"claimStake"}); }
+
+/* daily quests */
+function renderQuests(list){
+  var box=$("#questrows"); if(!box||!list) return;
+  var anyClaimable=false, h=[];
+  for(var i=0;i<list.length;i++){
+    var q=list[i], pct=q.target>0?Math.min(100,Math.round(q.progress/q.target*100)):100;
+    var btn, cls;
+    if(q.claimed){ btn="Claimed ✓"; cls="done"; }
+    else if(q.locked){ btn="Deposit to unlock"; cls="off"; }
+    else if(q.claimable){ btn="CLAIM +"+q.reward+" $SWOGE"; cls="on"; anyClaimable=true; }
+    else { btn=(q.metric==="free"?"Come back tomorrow":q.progress+" / "+q.target); cls="off"; }
+    h.push('<div class="quest"><div class="qh"><span>'+esc(q.label)+'</span><span class="qr">+'+q.reward+'</span></div>'+
+      '<div class="qbar"><i style="width:'+pct+'%"></i></div>'+
+      '<button class="qclaim '+cls+'" '+(cls==="on"?'data-q="'+q.id+'"':'disabled')+'>'+btn+'</button></div>');
+  }
+  box.innerHTML=h.join("");
+  $("#questDot").classList.toggle("on",anyClaimable);
+  var bs=box.querySelectorAll('.qclaim[data-q]');
+  for(var j=0;j<bs.length;j++){ bs[j].onclick=function(){ wsSend({type:"claimQuest",id:this.getAttribute("data-q")}); }; }
+}
 /* daily leaderboard */
 function renderLeaderboard(list){
   var box=$("#lbrows"); if(!box) return;
@@ -331,7 +441,7 @@ function renderLeaderboard(list){
   for(var i=0;i<list.length;i++){ h.push('<div class="lbrow"><span class="r">#'+(i+1)+' '+esc(list[i].name)+'</span><span class="v">+'+fmtBig(list[i].net)+'</span></div>'); }
   box.innerHTML=h.join("");
 }
-function showPlayUI(){ $("#depositBtn").style.display=""; $("#withdrawBtn").style.display=""; $("#qbar").style.display=""; $("#connectBtn").textContent=myAddr.slice(0,6)+"…"+myAddr.slice(-4); }
+function showPlayUI(){ $("#depositBtn").style.display=""; $("#withdrawBtn").style.display=""; $("#questBtn").style.display=""; $("#stakeBtn").style.display=""; $("#qbar").style.display=""; $("#connectBtn").textContent=myAddr.slice(0,6)+"…"+myAddr.slice(-4); }
 function showWin(v){ if(!v) return; $("#winv").textContent="+"+v+" $SWOGE"; var w=$("#win"); w.classList.add("show"); clearTimeout(showWin._t); showWin._t=setTimeout(function(){w.classList.remove("show");},1400); }
 var tickHtml=[];
 function addTicker(name,value){ tickHtml.push('🏆 '+esc(name)+' won '+value+' $SWOGE'); if(tickHtml.length>18)tickHtml.shift(); $("#tickrow").innerHTML=tickHtml.map(function(x){return '<span>'+x+'</span>';}).join(''); }
@@ -406,6 +516,11 @@ $("#depGo").onclick=doDeposit; $("#depCancel").onclick=closeModal;
 $("#wdGo").onclick=requestWithdraw; $("#wdCancel").onclick=closeModal;
 $("#jackpot").onclick=function(){ $("#lb").classList.toggle("show"); };
 $("#lbClose").onclick=function(){ $("#lb").classList.remove("show"); };
+$("#questBtn").onclick=function(){ $("#quests").classList.toggle("show"); };
+$("#qClose").onclick=function(){ $("#quests").classList.remove("show"); };
+$("#stakeBtn").onclick=function(){ $("#stake").classList.toggle("show"); renderStake(); };
+$("#stClose").onclick=function(){ $("#stake").classList.remove("show"); };
+$("#stStake").onclick=doStake; $("#stUnstake").onclick=doUnstake; $("#stClaim").onclick=doClaimStake;
 
 /* ============================ COIN QUEUE ============================ */
 /* Quick-add buttons stack up drops; a drain loop releases them one by one so
@@ -441,7 +556,7 @@ setInterval(drainTick,55); // ~18 coins/sec, throttled by the table's capacity
 /* tap anywhere (except UI) = queue one coin */
 (function(){
   var sx=0,sy=0,moved=false,st=0;
-  function isUI(t){ return t&&t.closest&&t.closest("button,input,.box,#top,#modal,#qbar,#ticker,#jackpot,#lb"); }
+  function isUI(t){ return t&&t.closest&&t.closest("button,input,.box,#top,#modal,#qbar,#ticker,#jackpot,#lb,#quests,#stake"); }
   addEventListener("pointerdown",function(e){ sx=e.clientX;sy=e.clientY;moved=false;st=Date.now(); },true);
   addEventListener("pointermove",function(e){ if(Math.abs(e.clientX-sx)>12||Math.abs(e.clientY-sy)>12)moved=true; },true);
   addEventListener("pointerup",function(e){

@@ -306,7 +306,14 @@ function onServer(m){
   else if(m.type==="error"){ toast(m.error); }
 }
 
-function setBalance(b){ var n=parseFloat(b||"0"); $("#bal").textContent=(n>=1000?(n/1000).toFixed(1)+"k":n.toFixed(2)); }
+var myBalanceNum=0;
+function setBalance(b){
+  myBalanceNum=parseFloat(b||"0");
+  $("#bal").textContent=(myBalanceNum>=1000?(myBalanceNum/1000).toFixed(1)+"k":myBalanceNum.toFixed(2));
+  // keep the coin queue honest: you can never have more queued than you can pay for
+  var maxQ=Math.floor(myBalanceNum);
+  if(typeof pendingDrops!=="undefined" && pendingDrops>maxQ){ pendingDrops=maxQ<0?0:maxQ; updateQueueUI(); }
+}
 function fmtBig(v){ var n=parseFloat(v||"0"); if(n>=1e6)return (n/1e6).toFixed(n%1e6?2:0)+"M"; if(n>=1e3)return (n/1e3).toFixed(n%1e3?1:0)+"k"; return String(Math.round(n)); }
 /* progressive jackpot banner */
 function setJackpot(v){ var el=$("#jackpot"); if(v==null){ el.style.display="none"; return; } $("#jpv").textContent=fmtBig(v); el.style.display="flex"; }
@@ -408,12 +415,20 @@ $("#lbClose").onclick=function(){ $("#lb").classList.remove("show"); };
 var pendingDrops=0, qHoldUntil=0;
 function fmtQ(n){ return n>=1e6?(n/1e6).toFixed(n%1e6?1:0)+"M":(n>=1000?(n/1000).toFixed(n%1000?1:0)+"k":String(n)); }
 function updateQueueUI(){ if(pendingDrops<0)pendingDrops=0; $("#qnum").textContent=fmtQ(pendingDrops); $("#qbar").classList.toggle("busy",pendingDrops>0); }
-function queueDrops(n){ if(!authed){ toast("connect your wallet to play"); return; } pendingDrops+=n; updateQueueUI(); drainTick(); }
+function queueDrops(n){
+  if(!authed){ toast("connect your wallet to play"); return; }
+  var maxQ=Math.floor(myBalanceNum);                 // never queue more than you can pay for
+  if(maxQ<1){ toast("Not enough $SWOGE — deposit to play"); openModal("dep"); return; }
+  var want=pendingDrops+n;
+  if(want>maxQ){ want=maxQ; toast("Max "+fmtBig(maxQ)+" — that's your balance"); }
+  pendingDrops=want; updateQueueUI(); drainTick();
+}
 function clearQueue(){ pendingDrops=0; updateQueueUI(); }
 function drainTick(){
   if(!authed||pendingDrops<=0) return;
   if(Date.now()<qHoldUntil) return;
   if(!ws||ws.readyState!==1) return;
+  if(myBalanceNum<1){ pendingDrops=0; updateQueueUI(); return; } // broke → stop cleanly
   wsSend({type:"drop"}); pendingDrops--; updateQueueUI();
 }
 setInterval(drainTick,55); // ~18 coins/sec, throttled by the table's capacity

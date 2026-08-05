@@ -11,7 +11,7 @@
   html,body{height:100%;overflow:hidden;background:#0B0906;font-family:'Space Mono','Courier New',monospace;color:#F7EEDA}
   #c{position:fixed;inset:0;display:block}
   .hud{position:fixed;z-index:10;pointer-events:none}
-  .hud .btn,.hud button,.hud .chip{pointer-events:auto}
+  .hud .btn,.hud button,.hud .chip,#jackpot,#lb{pointer-events:auto}
   /* top bar */
   #top{top:0;left:0;right:0;display:flex;align-items:center;gap:8px;padding:10px 12px;flex-wrap:wrap;
     background:linear-gradient(180deg,rgba(11,9,6,.85),transparent)}
@@ -45,10 +45,30 @@
   .qchip b{color:#E6A537}
   .qclear{font-family:inherit;font-size:12px;padding:8px 10px;border-radius:10px;cursor:pointer;
     background:rgba(255,107,53,.18);color:#FF8A5B;border:1px solid rgba(255,107,53,.4)}
+  /* progressive jackpot banner */
+  #jackpot{top:92px;left:50%;transform:translateX(-50%);display:none;align-items:center;gap:7px;cursor:pointer;
+    padding:8px 16px;border-radius:999px;font-weight:800;font-size:14px;color:#0B0906;
+    background:linear-gradient(135deg,#FFD76B,#E6A537);box-shadow:0 4px 18px rgba(230,165,55,.5);
+    border:1px solid #FFE9A8;white-space:nowrap}
+  #jackpot b{font-size:15px}
+  #jackpot.pulse{animation:jp 1.4s ease-in-out infinite}
+  @keyframes jp{0%,100%{transform:translateX(-50%) scale(1)}50%{transform:translateX(-50%) scale(1.045)}}
+  /* daily leaderboard panel */
+  #lb{top:0;right:0;bottom:0;width:min(80vw,300px);transform:translateX(105%);transition:.25s;
+    background:rgba(11,9,6,.95);border-left:1px solid rgba(230,165,55,.35);padding:58px 14px 14px;overflow:auto}
+  #lb.show{transform:translateX(0)}
+  #lb h3{font-size:13px;color:#E6A537;margin-bottom:10px;letter-spacing:1px}
+  #lbClose{position:absolute;top:12px;right:12px}
+  .lbrow{display:flex;justify-content:space-between;gap:8px;padding:8px 10px;border-radius:8px;
+    margin-bottom:6px;background:rgba(255,255,255,.04);font-size:13px}
+  .lbrow .r{color:#E6A537;font-weight:700}
+  .lbrow .v{color:#7CFF9B;font-weight:700}
+  .lbempty{color:#8a7f6a;font-size:12px;padding:6px 10px}
   /* win popup */
   #win{left:50%;top:42%;transform:translate(-50%,-50%) scale(.6);opacity:0;transition:.25s;text-align:center;font-family:'Anton',sans-serif}
   #win.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
   #win .v{font-size:56px;color:#FF6B35;text-shadow:0 0 20px rgba(255,107,53,.7)}
+  #win.jp .v{font-size:34px;color:#FFD76B;text-shadow:0 0 24px rgba(255,215,107,.9)}
   /* modal */
   #modal{inset:0;background:rgba(4,6,10,.65);display:none;align-items:center;justify-content:center;padding:16px;z-index:20}
   #modal.show{display:flex}
@@ -72,6 +92,12 @@
   <button class="btn ghost" id="depositBtn" style="display:none">Deposit</button>
   <button class="btn ghost" id="withdrawBtn" style="display:none">Withdraw</button>
   <button class="btn" id="connectBtn">Connect wallet</button>
+</div>
+<div id="jackpot" class="hud pulse" title="See today's top winners">🏆 JACKPOT <b id="jpv">—</b> $SWOGE</div>
+<div id="lb" class="hud">
+  <button class="btn ghost" id="lbClose">✕</button>
+  <h3>🏆 TOP WINNERS TODAY</h3>
+  <div id="lbrows"></div>
 </div>
 
 <div id="status" class="hud">connecting…</div>
@@ -262,6 +288,8 @@ function onServer(m){
   if(m.type==="hello"){
     loginNonce=m.loginNonce; VAULT=m.vault||VAULT; TOKEN=m.token||TOKEN; MIN_WITHDRAW=m.minWithdraw||MIN_WITHDRAW;
     $("#minW").textContent=MIN_WITHDRAW;
+    if(m.jackpot!=null) setJackpot(m.jackpot);
+    if(m.leaderboard) renderLeaderboard(m.leaderboard);
     if(myAddr) doLogin(); // reconnected while wallet already connected
   }
   else if(m.type==="state"){ applyState(m); }
@@ -271,11 +299,31 @@ function onServer(m){
   else if(m.type==="ticker"){ addTicker(m.name,m.value); }
   else if(m.type==="need_deposit"){ setBalance(m.balance); pendingDrops=0; updateQueueUI(); toast("Not enough $SWOGE — deposit to play"); openModal("dep"); }
   else if(m.type==="table_full"){ qHoldUntil=Date.now()+220; pendingDrops++; updateQueueUI(); } // backpressure: put the coin back, retry when there's room
+  else if(m.type==="meta"){ setJackpot(m.jackpot); renderLeaderboard(m.leaderboard); }
+  else if(m.type==="jackpot"){ setBalance(m.balance); showJackpot(m.amount,true); } // YOU won the pot
+  else if(m.type==="jackpotWin"){ if(m.jackpot!=null) setJackpot(m.jackpot); addTicker("🏆 JACKPOT — "+m.name, m.amount); if(m.name!==(myAddr&&myAddr.slice(0,6))) toast("🏆 "+m.name+" won the JACKPOT: "+fmtBig(m.amount)+" $SWOGE!"); }
   else if(m.type==="voucher"){ submitWithdraw(m.voucher); }
   else if(m.type==="error"){ toast(m.error); }
 }
 
 function setBalance(b){ var n=parseFloat(b||"0"); $("#bal").textContent=(n>=1000?(n/1000).toFixed(1)+"k":n.toFixed(2)); }
+function fmtBig(v){ var n=parseFloat(v||"0"); if(n>=1e6)return (n/1e6).toFixed(n%1e6?2:0)+"M"; if(n>=1e3)return (n/1e3).toFixed(n%1e3?1:0)+"k"; return String(Math.round(n)); }
+/* progressive jackpot banner */
+function setJackpot(v){ var el=$("#jackpot"); if(v==null){ el.style.display="none"; return; } $("#jpv").textContent=fmtBig(v); el.style.display="flex"; }
+function showJackpot(amount){
+  $("#winv").textContent="🏆 JACKPOT  +"+fmtBig(amount);
+  var w=$("#win"); w.classList.add("show","jp"); clearTimeout(showJackpot._t);
+  showJackpot._t=setTimeout(function(){ w.classList.remove("show","jp"); }, 4200);
+  toast("🏆 YOU WON THE JACKPOT — "+fmtBig(amount)+" $SWOGE!");
+}
+/* daily leaderboard */
+function renderLeaderboard(list){
+  var box=$("#lbrows"); if(!box) return;
+  if(!list||!list.length){ box.innerHTML='<div class="lbempty">No winners yet today — be the first!</div>'; return; }
+  var h=[];
+  for(var i=0;i<list.length;i++){ h.push('<div class="lbrow"><span class="r">#'+(i+1)+' '+esc(list[i].name)+'</span><span class="v">+'+fmtBig(list[i].net)+'</span></div>'); }
+  box.innerHTML=h.join("");
+}
 function showPlayUI(){ $("#depositBtn").style.display=""; $("#withdrawBtn").style.display=""; $("#qbar").style.display=""; $("#connectBtn").textContent=myAddr.slice(0,6)+"…"+myAddr.slice(-4); }
 function showWin(v){ if(!v) return; $("#winv").textContent="+"+v+" $SWOGE"; var w=$("#win"); w.classList.add("show"); clearTimeout(showWin._t); showWin._t=setTimeout(function(){w.classList.remove("show");},1400); }
 var tickHtml=[];
@@ -349,6 +397,8 @@ $("#depositBtn").onclick=function(){ openModal("dep"); };
 $("#withdrawBtn").onclick=function(){ openModal("wd"); };
 $("#depGo").onclick=doDeposit; $("#depCancel").onclick=closeModal;
 $("#wdGo").onclick=requestWithdraw; $("#wdCancel").onclick=closeModal;
+$("#jackpot").onclick=function(){ $("#lb").classList.toggle("show"); };
+$("#lbClose").onclick=function(){ $("#lb").classList.remove("show"); };
 
 /* ============================ COIN QUEUE ============================ */
 /* Quick-add buttons stack up drops; a drain loop releases them one by one so
@@ -376,7 +426,7 @@ setInterval(drainTick,55); // ~18 coins/sec, throttled by the table's capacity
 /* tap anywhere (except UI) = queue one coin */
 (function(){
   var sx=0,sy=0,moved=false,st=0;
-  function isUI(t){ return t&&t.closest&&t.closest("button,input,.box,#top,#modal,#qbar,#ticker"); }
+  function isUI(t){ return t&&t.closest&&t.closest("button,input,.box,#top,#modal,#qbar,#ticker,#jackpot,#lb"); }
   addEventListener("pointerdown",function(e){ sx=e.clientX;sy=e.clientY;moved=false;st=Date.now(); },true);
   addEventListener("pointermove",function(e){ if(Math.abs(e.clientX-sx)>12||Math.abs(e.clientY-sy)>12)moved=true; },true);
   addEventListener("pointerup",function(e){

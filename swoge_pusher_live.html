@@ -11,7 +11,7 @@
   html,body{height:100%;overflow:hidden;background:#0B0906;font-family:'Space Mono','Courier New',monospace;color:#F7EEDA}
   #c{position:fixed;inset:0;display:block}
   .hud{position:fixed;z-index:10;pointer-events:none}
-  .hud .btn,.hud button,.hud .chip,#jackpot,#lb,#quests,#stake{pointer-events:auto}
+  .hud .btn,.hud button,.hud .chip,#jackpot,#lb,#quests,#stake,#addr{pointer-events:auto}
   /* top bar */
   #top{top:0;left:0;right:0;display:flex;align-items:center;gap:8px;padding:10px 12px;flex-wrap:wrap;
     background:linear-gradient(180deg,rgba(11,9,6,.85),transparent)}
@@ -32,7 +32,7 @@
     padding:6px 12px;border-radius:999px;border:1px solid rgba(230,165,55,.3)}
   /* connected-address chip, bottom-left (out of the way of the top buttons) */
   #addr{right:10px;bottom:96px;display:none;font-size:11px;color:#c9bfa8;background:rgba(11,9,6,.8);
-    padding:6px 10px;border-radius:999px;border:1px solid rgba(230,165,55,.3);white-space:nowrap}
+    padding:6px 10px;border-radius:999px;border:1px solid rgba(230,165,55,.3);white-space:nowrap;cursor:pointer}
   #toast{left:50%;bottom:44px;transform:translateX(-50%) translateY(20px);background:#E6A537;color:#0B0906;
     font-weight:700;padding:11px 18px;border-radius:12px;opacity:0;transition:.25s;font-size:13px;max-width:88vw;text-align:center}
   #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -220,6 +220,18 @@
       <div class="row"><button class="btn" id="emVerify" style="flex:1">Verify &amp; create wallet</button></div>
     </div>
     <div class="note" id="emMsg" style="margin-top:10px">A wallet is created for you automatically — no app needed.</div>
+  </div>
+  <div class="box" id="accountBox" style="display:none">
+    <h3>👤 My account</h3>
+    <label>Your wallet address</label>
+    <div class="row"><input id="acAddr" readonly style="flex:1"><button class="btn ghost" id="acCopy">Copy</button></div>
+    <a id="acExplorer" class="btn ghost" target="_blank" rel="noopener" style="display:block;text-decoration:none;text-align:center;margin-top:8px">View on explorer ↗</a>
+    <div class="stbox" style="margin-top:12px">
+      <div class="strow"><span>$SWOGE in wallet</span><b id="acSwoge">…</b></div>
+      <div class="strow"><span>ETH (gas)</span><b id="acEth">…</b></div>
+    </div>
+    <div class="row" style="margin-top:12px"><button class="btn" id="acDeposit" style="flex:1">Deposit to game →</button><button class="btn ghost" id="acClose">Close</button></div>
+    <div class="note" style="margin-top:8px">Send $SWOGE + a little ETH to this address, then Deposit to play.</div>
   </div>
 </div>
 
@@ -584,7 +596,25 @@ async function submitWithdraw(v){
 }
 
 /* ============================ UI WIRING ============================ */
-function openModal(which){ $("#modal").classList.add("show"); $("#depBox").style.display=which==="dep"?"":"none"; $("#wdBox").style.display=which==="wd"?"":"none"; $("#whBox").style.display=which==="wallet"?"":"none"; $("#emailBox").style.display=which==="email"?"":"none"; syncJackpot(); }
+function openModal(which){ $("#modal").classList.add("show"); $("#depBox").style.display=which==="dep"?"":"none"; $("#wdBox").style.display=which==="wd"?"":"none"; $("#whBox").style.display=which==="wallet"?"":"none"; $("#emailBox").style.display=which==="email"?"":"none"; $("#accountBox").style.display=which==="account"?"":"none"; syncJackpot(); }
+
+/* ---- My account panel (wallet address, explorer, on-chain balances, deposit) ---- */
+function openAccount(){
+  if(!myAddr){ toast("connect first"); return; }
+  $("#acAddr").value=myAddr;
+  $("#acExplorer").href=CHAIN.scan+"/address/"+myAddr;
+  $("#acSwoge").textContent="…"; $("#acEth").textContent="…";
+  openModal("account");
+  loadWalletBalances();
+}
+async function loadWalletBalances(){
+  if(!provider||!myAddr) return;
+  try{ var eth=await provider.getBalance(myAddr); $("#acEth").textContent=(+ethers.utils.formatEther(eth)).toFixed(5); }
+  catch(e){ $("#acEth").textContent="—"; }
+  try{ var t=new ethers.Contract(TOKEN,ERC20_ABI,provider); var b=await t.balanceOf(myAddr); $("#acSwoge").textContent=fmtBig(+ethers.utils.formatUnits(b,18)); }
+  catch(e){ $("#acSwoge").textContent="—"; }
+}
+function copyAddr(){ var t=myAddr||""; try{ navigator.clipboard.writeText(t); toast("Address copied"); }catch(e){ var i=$("#acAddr"); i.focus(); i.select(); try{document.execCommand("copy");}catch(_){}; toast("Address copied"); } }
 function closeModal(){ $("#modal").classList.remove("show"); syncJackpot(); }
 $("#connectBtn").onclick=connectWallet;
 $("#depositBtn").onclick=function(){ openModal("dep"); };
@@ -597,6 +627,10 @@ $("#whCancel").onclick=closeModal;
 $("#emailBtn").onclick=openEmailLogin;
 $("#whEmail").onclick=openEmailLogin;
 $("#emCancel").onclick=closeModal;
+$("#addr").onclick=openAccount;
+$("#acCopy").onclick=copyAddr;
+$("#acClose").onclick=closeModal;
+$("#acDeposit").onclick=function(){ openModal("dep"); };
 $("#emSend").onclick=async function(){
   var e=($("#emEmail").value||"").trim(); if(!/.+@.+\..+/.test(e)) return toast("enter a valid email");
   privyEmail=e; $("#emSend").disabled=true; $("#emMsg").textContent="Sending code…";
@@ -656,7 +690,7 @@ setInterval(drainTick,55); // ~18 coins/sec, throttled by the table's capacity
 /* tap anywhere (except UI) = queue one coin */
 (function(){
   var sx=0,sy=0,moved=false,st=0;
-  function isUI(t){ return t&&t.closest&&t.closest("button,input,.box,#top,#modal,#qbar,#ticker,#jackpot,#lb,#quests,#stake"); }
+  function isUI(t){ return t&&t.closest&&t.closest("button,input,.box,#top,#modal,#qbar,#ticker,#jackpot,#lb,#quests,#stake,#addr"); }
   addEventListener("pointerdown",function(e){ sx=e.clientX;sy=e.clientY;moved=false;st=Date.now(); },true);
   addEventListener("pointermove",function(e){ if(Math.abs(e.clientX-sx)>12||Math.abs(e.clientY-sy)>12)moved=true; },true);
   addEventListener("pointerup",function(e){

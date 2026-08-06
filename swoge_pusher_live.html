@@ -133,6 +133,7 @@
   <button class="btn ghost" id="withdrawBtn" style="display:none">Withdraw</button>
   <button class="btn ghost" id="questBtn" style="display:none" title="Daily quests">🎯<span id="questDot"></span></button>
   <button class="btn ghost" id="stakeBtn" style="display:none" title="Stake $SWOGE">💰</button>
+  <button class="btn ghost" id="emailBtn" title="Sign in with email">✉️</button>
   <button class="btn" id="connectBtn">Connect wallet</button>
 </div>
 <div id="stake" class="hud">
@@ -204,10 +205,21 @@
   <div class="box" id="whBox" style="display:none">
     <h3>📱 Connect on mobile</h3>
     <div class="note" style="margin-bottom:12px">Mobile browsers (Safari/Chrome) can't see wallet apps directly. Open the game <b>inside your wallet's browser</b>:</div>
-    <div class="row"><button class="btn" id="whMM" style="flex:1">🦊 Open in MetaMask →</button></div>
-    <div class="note" style="margin:12px 0 6px">Other wallets (Rabby, etc.): open the app → <b>Dapps / Browser</b> tab → paste this link:</div>
+    <div class="row" style="margin-bottom:10px"><button class="btn" id="whMM" style="flex:1">🦊 Open in MetaMask →</button></div>
+    <div class="row" style="margin-bottom:10px"><button class="btn" id="whEmail" style="flex:1;background:linear-gradient(135deg,#8ea2ff,#5b6ee6);color:#fff">✉️ Sign in with email (no app)</button></div>
+    <div class="note" style="margin:6px 0 6px">Other wallets (Rabby, etc.): open the app → <b>Dapps / Browser</b> tab → paste this link:</div>
     <div class="note"><b id="whUrl" style="color:#E6A537;word-break:break-all"></b></div>
     <div class="row" style="margin-top:12px"><button class="btn ghost" id="whCopy" style="flex:1">Copy link</button><button class="btn ghost" id="whCancel">Close</button></div>
+  </div>
+  <div class="box" id="emailBox" style="display:none">
+    <h3>✉️ Sign in with email</h3>
+    <input id="emEmail" type="email" inputmode="email" placeholder="your@email.com">
+    <div class="row"><button class="btn" id="emSend" style="flex:1">Send code</button><button class="btn ghost" id="emCancel">Close</button></div>
+    <div id="emCodeWrap" style="display:none;margin-top:10px">
+      <input id="emCode" inputmode="numeric" placeholder="6-digit code">
+      <div class="row"><button class="btn" id="emVerify" style="flex:1">Verify &amp; create wallet</button></div>
+    </div>
+    <div class="note" id="emMsg" style="margin-top:10px">A wallet is created for you automatically — no app needed.</div>
   </div>
 </div>
 
@@ -478,7 +490,7 @@ function renderLeaderboard(list){
 function showPlayUI(){ $("#depositBtn").style.display=""; $("#withdrawBtn").style.display=""; $("#questBtn").style.display=""; $("#stakeBtn").style.display=""; $("#qbar").style.display="";
   // once connected, drop the big address button from the top bar (it overlapped
   // the buttons on mobile) and show a small address chip at the bottom-left
-  $("#connectBtn").style.display="none"; $("#addr").textContent="🔗 "+myAddr.slice(0,6)+"…"+myAddr.slice(-4); $("#addr").style.display="inline-block"; }
+  $("#connectBtn").style.display="none"; var eb=$("#emailBtn"); if(eb)eb.style.display="none"; $("#addr").textContent="🔗 "+myAddr.slice(0,6)+"…"+myAddr.slice(-4); $("#addr").style.display="inline-block"; }
 function showWin(v){ if(!v) return; $("#winv").textContent="+"+v+" $SWOGE"; var w=$("#win"); w.classList.add("show"); clearTimeout(showWin._t); showWin._t=setTimeout(function(){w.classList.remove("show");},1400); }
 var tickHtml=[];
 function addTicker(name,value){ tickHtml.push('🏆 '+esc(name)+' won '+value+' $SWOGE'); if(tickHtml.length>18)tickHtml.shift(); $("#tickrow").innerHTML=tickHtml.map(function(x){return '<span>'+x+'</span>';}).join(''); }
@@ -491,10 +503,9 @@ function isMobile(){ return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.us
 async function connectWallet(){
   var eth=pickEth();
   if(!eth){
-    // Mobile Safari/Chrome have no wallet extension — guide the user to open the
-    // game inside their wallet app's browser (where window.ethereum exists).
-    if(isMobile()){ $("#whUrl").textContent=location.host+location.pathname; openModal("wallet"); }
-    else { toast("No wallet found — install MetaMask or Rabby"); }
+    // No browser wallet (mobile Safari/Chrome, or desktop without an extension):
+    // offer 'open in MetaMask' + 'sign in with email' from the helper modal.
+    $("#whUrl").textContent=location.host+location.pathname; openModal("wallet");
     return;
   }
   try{
@@ -504,10 +515,32 @@ async function connectWallet(){
       try{ await eth.request({method:"wallet_switchEthereumChain",params:[{chainId:CHAIN.hex}]}); }
       catch(sw){ if(sw&&sw.code===4902){ await eth.request({method:"wallet_addEthereumChain",params:[{chainId:CHAIN.hex,chainName:CHAIN.name,nativeCurrency:{name:"Ether",symbol:CHAIN.sym,decimals:18},rpcUrls:[CHAIN.rpc],blockExplorerUrls:[CHAIN.scan]}]}); } }
     }
-    rawEth=eth; provider=new ethers.providers.Web3Provider(eth,"any"); signer=provider.getSigner();
-    myAddr=(await signer.getAddress());
-    await doLogin();
+    await onWalletReady(eth);
   }catch(e){ toast(String(e.message||e).slice(0,90)); }
+}
+// Shared once we have an EIP-1193 provider (browser wallet OR Privy email wallet).
+async function onWalletReady(eth, addr){
+  rawEth=eth; provider=new ethers.providers.Web3Provider(eth,"any"); signer=provider.getSigner();
+  myAddr=addr||(await signer.getAddress());
+  await doLogin();
+}
+
+/* ---- email login (Privy embedded wallet, no wallet app needed) ---- */
+var PRIVY_APP_ID="cmsga0yzp00a50biaf9vlzzd2";
+var privyLoaded=false, privyEmail="";
+function loadPrivy(){ return new Promise(function(res,rej){
+  if(privyLoaded) return res();
+  var s=document.createElement("script"); s.src="privy-swoge.js";
+  s.onload=function(){ privyLoaded=true; try{ SwogePrivy.init(PRIVY_APP_ID); }catch(e){} res(); };
+  s.onerror=function(){ rej(new Error("load failed")); };
+  document.head.appendChild(s);
+}); }
+async function openEmailLogin(){
+  closeModal();
+  try{ await loadPrivy(); }catch(e){ toast("Couldn't load email login"); return; }
+  $("#emCodeWrap").style.display="none"; $("#emCode").value="";
+  $("#emMsg").textContent="A wallet is created for you automatically — no app needed.";
+  openModal("email");
 }
 async function doLogin(){
   if(!signer||loginNonce==null) return;
@@ -551,7 +584,7 @@ async function submitWithdraw(v){
 }
 
 /* ============================ UI WIRING ============================ */
-function openModal(which){ $("#modal").classList.add("show"); $("#depBox").style.display=which==="dep"?"":"none"; $("#wdBox").style.display=which==="wd"?"":"none"; $("#whBox").style.display=which==="wallet"?"":"none"; syncJackpot(); }
+function openModal(which){ $("#modal").classList.add("show"); $("#depBox").style.display=which==="dep"?"":"none"; $("#wdBox").style.display=which==="wd"?"":"none"; $("#whBox").style.display=which==="wallet"?"":"none"; $("#emailBox").style.display=which==="email"?"":"none"; syncJackpot(); }
 function closeModal(){ $("#modal").classList.remove("show"); syncJackpot(); }
 $("#connectBtn").onclick=connectWallet;
 $("#depositBtn").onclick=function(){ openModal("dep"); };
@@ -561,6 +594,26 @@ $("#wdGo").onclick=requestWithdraw; $("#wdCancel").onclick=closeModal;
 $("#whMM").onclick=function(){ location.href="https://metamask.app.link/dapp/"+location.host+location.pathname+location.search; };
 $("#whCopy").onclick=function(){ try{ navigator.clipboard.writeText(location.href); toast("Link copied — paste it in your wallet's browser"); }catch(e){ toast(location.href); } };
 $("#whCancel").onclick=closeModal;
+$("#emailBtn").onclick=openEmailLogin;
+$("#whEmail").onclick=openEmailLogin;
+$("#emCancel").onclick=closeModal;
+$("#emSend").onclick=async function(){
+  var e=($("#emEmail").value||"").trim(); if(!/.+@.+\..+/.test(e)) return toast("enter a valid email");
+  privyEmail=e; $("#emSend").disabled=true; $("#emMsg").textContent="Sending code…";
+  try{ await SwogePrivy.sendCode(e); $("#emCodeWrap").style.display=""; $("#emMsg").textContent="Code sent to "+e+" — check your inbox (and spam)."; }
+  catch(err){ $("#emMsg").textContent="Error: "+String(err.message||err).slice(0,120); }
+  $("#emSend").disabled=false;
+};
+$("#emVerify").onclick=async function(){
+  var c=($("#emCode").value||"").trim(); if(!c) return toast("enter the code");
+  $("#emVerify").disabled=true; $("#emMsg").textContent="Verifying + creating your wallet…";
+  try{
+    await SwogePrivy.verifyCode(privyEmail,c);
+    closeModal();
+    await onWalletReady(SwogePrivy.getProvider(), SwogePrivy.getAddress());
+  }catch(err){ $("#emMsg").textContent="Error: "+String(err.message||err).slice(0,140); }
+  $("#emVerify").disabled=false;
+};
 $("#jackpot").onclick=function(){ $("#lb").classList.toggle("show"); syncJackpot(); };
 $("#lbClose").onclick=function(){ $("#lb").classList.remove("show"); syncJackpot(); };
 $("#questBtn").onclick=function(){ $("#quests").classList.toggle("show"); syncJackpot(); };

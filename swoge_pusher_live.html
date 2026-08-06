@@ -231,6 +231,7 @@
       <div class="strow"><span>ETH (gas)</span><b id="acEth">…</b></div>
     </div>
     <div class="row" style="margin-top:12px"><button class="btn" id="acDeposit" style="flex:1">Deposit to game →</button><button class="btn ghost" id="acClose">Close</button></div>
+    <div class="row" style="margin-top:8px"><button class="btn ghost" id="acLogout" style="flex:1;color:#FF8A5B;border-color:rgba(255,107,53,.4)">Disconnect</button></div>
     <div class="note" style="margin-top:8px">Send $SWOGE + a little ETH to this address, then Deposit to play.</div>
   </div>
 </div>
@@ -262,7 +263,7 @@ var VAULT_ABI = [
 
 var $=function(s){return document.querySelector(s);};
 function toast(m){var t=$("#toast");t.textContent=m;t.classList.add("show");clearTimeout(toast._t);toast._t=setTimeout(function(){t.classList.remove("show");},2600);}
-function setStatus(m){$("#status").textContent=m;}
+function setStatus(m){ var s=$("#status"); s.textContent=m||""; s.style.display=m?"":"none"; }
 
 /* ============================ 3D SCENE ============================ */
 // Mirrors the server table: width(X)=11, depth(Z)=18, floor top y=0, front edge z=+8.
@@ -375,7 +376,7 @@ function wsConnect(){
   if(SERVER_URL.indexOf("YOUR-RAILWAY-URL")>=0){ setStatus("⚠️ set the server URL (see file / ?server=)"); return; }
   setStatus("connecting…");
   try{ ws=new WebSocket(SERVER_URL); }catch(e){ setStatus("bad server URL"); return; }
-  ws.onopen=function(){ reconnectT=1000; setStatus("connected — connect your wallet"); };
+  ws.onopen=function(){ reconnectT=1000; setStatus(""); }; // stay clean; the Connect/Email buttons already guide the user
   ws.onmessage=function(ev){ var m; try{m=JSON.parse(ev.data);}catch(e){return;} onServer(m); };
   ws.onclose=function(){ setStatus("disconnected — retrying…"); authed=false; setTimeout(wsConnect,reconnectT); reconnectT=Math.min(reconnectT*2,15000); };
   ws.onerror=function(){ try{ws.close();}catch(e){} };
@@ -615,6 +616,17 @@ async function loadWalletBalances(){
   catch(e){ $("#acSwoge").textContent="—"; }
 }
 function copyAddr(){ var t=myAddr||""; try{ navigator.clipboard.writeText(t); toast("Address copied"); }catch(e){ var i=$("#acAddr"); i.focus(); i.select(); try{document.execCommand("copy");}catch(_){}; toast("Address copied"); } }
+async function doLogout(){
+  try{ if(window.SwogePrivy && SwogePrivy.isLoggedIn && SwogePrivy.isLoggedIn()) await SwogePrivy.logout(); }catch(e){}
+  authed=false; myAddr=null; provider=null; signer=null; rawEth=null;
+  // reset the HUD back to the logged-out state
+  $("#addr").style.display="none";
+  $("#connectBtn").style.display=""; $("#connectBtn").textContent="Connect wallet";
+  var eb=$("#emailBtn"); if(eb) eb.style.display="";
+  $("#depositBtn").style.display="none"; $("#withdrawBtn").style.display="none"; $("#questBtn").style.display="none"; $("#stakeBtn").style.display="none"; $("#qbar").style.display="none";
+  ["#stake","#quests","#lb"].forEach(function(s){ $(s).classList.remove("show"); });
+  setBalance("0"); closeModal(); syncJackpot(); toast("Disconnected");
+}
 function closeModal(){ $("#modal").classList.remove("show"); syncJackpot(); }
 $("#connectBtn").onclick=connectWallet;
 $("#depositBtn").onclick=function(){ openModal("dep"); };
@@ -631,6 +643,7 @@ $("#addr").onclick=openAccount;
 $("#acCopy").onclick=copyAddr;
 $("#acClose").onclick=closeModal;
 $("#acDeposit").onclick=function(){ openModal("dep"); };
+$("#acLogout").onclick=doLogout;
 $("#emSend").onclick=async function(){
   var e=($("#emEmail").value||"").trim(); if(!/.+@.+\..+/.test(e)) return toast("enter a valid email");
   privyEmail=e; $("#emSend").disabled=true; $("#emMsg").textContent="Sending code…";

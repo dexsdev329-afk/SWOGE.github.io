@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>SWOGE Games — play with $SWOGE</title>
+<meta name="description" content="The SWOGE arcade. Play real-money games with $SWOGE on Robinhood Chain. Coin Pusher is live — more games coming soon.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --gold:#E6A537; --gold2:#FFB84D; --ink:#0B0906; --ink2:#15100A;
+    --text:#F7EEDA; --muted:#A08a63; --line:rgba(230,165,55,.28);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{background:var(--ink);color:var(--text);font-family:'Space Mono','Courier New',monospace}
+  body{min-height:100vh;overflow-x:hidden}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 18px}
+
+  /* ambient gold glow background */
+  body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+    background:
+      radial-gradient(60vw 60vw at 78% -10%,rgba(230,165,55,.16),transparent 60%),
+      radial-gradient(50vw 50vw at 8% 8%,rgba(255,184,77,.10),transparent 55%),
+      linear-gradient(180deg,#0d0a07,#0B0906 60%);}
+  main,nav{position:relative;z-index:1}
+
+  /* nav */
+  nav{display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid var(--line);
+    background:rgba(11,9,6,.7);backdrop-filter:blur(8px);position:sticky;top:0;z-index:5}
+  .brand{font-family:'Anton',sans-serif;font-size:20px;letter-spacing:1px;color:var(--gold)}
+  .brand span{color:var(--text)}
+  nav .sp{flex:1}
+  .nlink{font-size:13px;color:var(--muted);padding:8px 10px;border-radius:999px}
+  .nlink:hover{color:var(--text)}
+  .buy{font-size:13px;font-weight:700;color:var(--ink);background:linear-gradient(135deg,var(--gold2),var(--gold));
+    padding:9px 15px;border-radius:999px}
+
+  /* hero */
+  .hero{text-align:center;padding:52px 18px 26px}
+  .pill{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--gold);
+    border:1px solid var(--line);border-radius:999px;padding:6px 13px;margin-bottom:18px}
+  .pill .dot{width:8px;height:8px;border-radius:50%;background:#7CFF9B;box-shadow:0 0 10px #7CFF9B}
+  .hero h1{font-family:'Anton',sans-serif;font-size:clamp(38px,9vw,72px);line-height:.98;letter-spacing:1px}
+  .hero h1 .g{color:var(--gold)}
+  .hero p{max-width:620px;margin:16px auto 0;color:#cdbf9f;font-size:15px;line-height:1.6}
+
+  /* section title */
+  .sec{padding:22px 0 6px}
+  .sec h2{font-family:'Archivo',sans-serif;font-size:14px;letter-spacing:2px;text-transform:uppercase;
+    color:var(--muted);display:flex;align-items:center;gap:10px}
+  .sec h2::after{content:"";flex:1;height:1px;background:var(--line)}
+
+  /* game grid */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px;padding:14px 0 40px}
+  .card{position:relative;border:1px solid var(--line);border-radius:18px;overflow:hidden;
+    background:linear-gradient(180deg,var(--ink2),#0c0a07);display:flex;flex-direction:column;
+    transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
+  .card.live:hover{transform:translateY(-4px);border-color:rgba(230,165,55,.6);
+    box-shadow:0 14px 40px rgba(0,0,0,.5),0 0 0 1px rgba(230,165,55,.15)}
+  .thumb{aspect-ratio:16/10;display:flex;align-items:center;justify-content:center;font-size:74px;
+    background:radial-gradient(120% 120% at 50% 0%,rgba(230,165,55,.22),transparent 62%),#100c08;
+    border-bottom:1px solid var(--line);position:relative}
+  .badge{position:absolute;top:12px;right:12px;font-size:11px;font-weight:700;letter-spacing:1px;
+    padding:5px 10px;border-radius:999px;text-transform:uppercase}
+  .badge.on{background:linear-gradient(135deg,#7CFF9B,#39d16a);color:#062a12}
+  .badge.soon{background:rgba(255,255,255,.08);color:var(--muted);border:1px solid rgba(255,255,255,.12)}
+  .body{padding:16px 16px 18px;display:flex;flex-direction:column;gap:8px;flex:1}
+  .body h3{font-family:'Archivo',sans-serif;font-size:19px;font-weight:800;color:var(--text)}
+  .body p{font-size:13px;color:var(--muted);line-height:1.55;flex:1}
+  .tags{display:flex;flex-wrap:wrap;gap:6px}
+  .tag{font-size:11px;color:#cdbf9f;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);
+    padding:4px 9px;border-radius:999px}
+  .play{margin-top:6px;text-align:center;font-weight:700;font-size:14px;padding:12px;border-radius:12px;
+    background:linear-gradient(135deg,var(--gold2),var(--gold));color:var(--ink)}
+  .play.dis{background:rgba(255,255,255,.06);color:var(--muted);cursor:default}
+  .card.soon{opacity:.72}
+
+  /* footer */
+  footer{border-top:1px solid var(--line);padding:26px 18px 40px;text-align:center;color:var(--muted);font-size:12px}
+  footer a{color:var(--gold)}
+  .back{display:inline-block;margin-top:10px;font-size:13px;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="brand" href="index.html">$SWOGE <span>ARCADE</span></a>
+  <span class="sp"></span>
+  <a class="nlink" href="index.html">Home</a>
+  <a class="buy" href="https://dexscreener.com/robinhood/0x2dc0fb72d9284228046cc95910eeaabebfe48456" target="_blank" rel="noopener">Buy $SWOGE</a>
+</nav>
+
+<main>
+  <section class="hero">
+    <span class="pill"><span class="dot"></span>Robinhood Chain · real $SWOGE</span>
+    <h1>THE <span class="g">SWOGE</span> ARCADE</h1>
+    <p>Play real-money games with your $SWOGE. Provably fair, on-chain deposits and withdrawals. Coin Pusher is live now — more games are on the way.</p>
+  </section>
+
+  <div class="wrap">
+    <div class="sec"><h2>Play now</h2></div>
+    <div class="grid">
+
+      <!-- LIVE: Coin Pusher -->
+      <a class="card live" href="swoge_pusher_live.html">
+        <div class="thumb">🪙<span class="badge on">Live</span></div>
+        <div class="body">
+          <h3>Coin Pusher</h3>
+          <p>The classic arcade pusher, on-chain. Drop $SWOGE coins, push the pile over the edge and cash out your winnings. Shared table, live jackpot, daily quests and staking.</p>
+          <div class="tags"><span class="tag">Multiplayer</span><span class="tag">Jackpot</span><span class="tag">Provably fair</span></div>
+          <span class="play">▶ Play now</span>
+        </div>
+      </a>
+
+    </div>
+
+    <div class="sec"><h2>Coming soon</h2></div>
+    <div class="grid">
+
+      <div class="card soon">
+        <div class="thumb">🎯<span class="badge soon">Soon</span></div>
+        <div class="body">
+          <h3>Plinko</h3>
+          <p>Drop a $SWOGE chip and watch it bounce down the pegs into a multiplier slot. High risk, high reward.</p>
+          <div class="tags"><span class="tag">Multipliers</span><span class="tag">Fast</span></div>
+          <span class="play dis">Coming soon</span>
+        </div>
+      </div>
+
+      <div class="card soon">
+        <div class="thumb">🎰<span class="badge soon">Soon</span></div>
+        <div class="body">
+          <h3>Swoge Spin</h3>
+          <p>Spin the reels for $SWOGE. Line up the swole doge for the top jackpot payout.</p>
+          <div class="tags"><span class="tag">Slots</span><span class="tag">Jackpot</span></div>
+          <span class="play dis">Coming soon</span>
+        </div>
+      </div>
+
+      <div class="card soon">
+        <div class="thumb">🚀<span class="badge soon">Soon</span></div>
+        <div class="body">
+          <h3>Crash</h3>
+          <p>Watch the multiplier climb and cash out before it crashes. Nerves of steel, gains of gold.</p>
+          <div class="tags"><span class="tag">Live</span><span class="tag">Skill + luck</span></div>
+          <span class="play dis">Coming soon</span>
+        </div>
+      </div>
+
+      <div class="card soon">
+        <div class="thumb">🎲<span class="badge soon">Soon</span></div>
+        <div class="body">
+          <h3>Dice</h3>
+          <p>Pick your odds, roll the dice, double your $SWOGE. The simplest bet in the arcade.</p>
+          <div class="tags"><span class="tag">Instant</span><span class="tag">Custom odds</span></div>
+          <span class="play dis">Coming soon</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <footer>
+    More games are being built — check back soon. 💪<br>
+    <a href="index.html" class="back">← Back to swoleeswoge.dog</a>
+  </footer>
+</main>
+
+</body>
+</html>

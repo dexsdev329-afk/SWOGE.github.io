@@ -84,7 +84,7 @@
   .qclaim.off{background:rgba(255,255,255,.07);color:#8a7f6a;cursor:default}
   .qclaim.done{background:rgba(124,255,155,.14);color:#7CFF9B;cursor:default}
   /* claimable dot on the 🎯 button */
-  #questBtn{position:relative}
+  #menuBtn{position:relative}
   #questDot{position:absolute;top:4px;right:4px;width:9px;height:9px;border-radius:50%;background:#7CFF9B;
     box-shadow:0 0 8px #7CFF9B;display:none}
   #questDot.on{display:block}
@@ -131,8 +131,9 @@
   <div id="spacer"></div>
   <button class="btn ghost" id="depositBtn" style="display:none">Deposit</button>
   <button class="btn ghost" id="withdrawBtn" style="display:none">Withdraw</button>
-  <button class="btn ghost" id="questBtn" style="display:none" title="Daily quests">🎯<span id="questDot"></span></button>
+  <button class="btn ghost" id="questBtn" style="display:none" title="Daily quests">🎯</button>
   <button class="btn ghost" id="stakeBtn" style="display:none" title="Stake $SWOGE">💰</button>
+  <button class="btn ghost" id="menuBtn" style="display:none">☰ Menu<span id="questDot"></span></button>
   <button class="btn ghost" id="emailBtn" title="Sign in with email">✉️ Email</button>
   <button class="btn" id="connectBtn">Connect wallet</button>
 </div>
@@ -182,8 +183,18 @@
 </div>
 
 <div id="modal" class="hud">
+  <div class="box" id="menuBox" style="display:none">
+    <h3>☰ Menu</h3>
+    <button class="btn" id="mnWallet" style="width:100%;margin-bottom:8px">👛 My Wallet</button>
+    <button class="btn" id="mnStake" style="width:100%;margin-bottom:8px">🔒 Staking</button>
+    <button class="btn" id="mnDeposit" style="width:100%;margin-bottom:8px">💰 Deposit</button>
+    <button class="btn" id="mnWithdraw" style="width:100%;margin-bottom:8px">🏧 Withdraw</button>
+    <button class="btn ghost" id="mnQuests" style="width:100%;margin-bottom:8px">🎯 Daily Quests</button>
+    <button class="btn ghost" id="mnClose" style="width:100%">Close</button>
+  </div>
   <div class="box" id="depBox">
     <h3>💰 Deposit $SWOGE</h3>
+    <div class="note" style="margin-bottom:10px">In your wallet: <b id="depSwoge" style="color:#E6A537">…</b> $SWOGE · <b id="depEth" style="color:#E6A537">…</b> ETH</div>
     <label>Amount to deposit</label>
     <input id="depAmt" inputmode="decimal" placeholder="e.g. 100" value="100">
     <div class="row">
@@ -194,6 +205,7 @@
   </div>
   <div class="box" id="wdBox" style="display:none">
     <h3>🏧 Withdraw winnings</h3>
+    <div class="note" style="margin-bottom:10px">Game balance: <b id="wdBal" style="color:#E6A537">…</b> $SWOGE</div>
     <label>Amount to withdraw (min <span id="minW">50</span>)</label>
     <input id="wdAmt" inputmode="decimal" placeholder="e.g. 50">
     <div class="row">
@@ -222,7 +234,7 @@
     <div class="note" id="emMsg" style="margin-top:10px">A wallet is created for you automatically — no app needed.</div>
   </div>
   <div class="box" id="accountBox" style="display:none">
-    <h3>👤 My account</h3>
+    <h3>👛 My Wallet</h3>
     <label>Your wallet address</label>
     <div class="row"><input id="acAddr" readonly style="flex:1"><button class="btn ghost" id="acCopy">Copy</button></div>
     <a id="acExplorer" class="btn ghost" target="_blank" rel="noopener" style="display:block;text-decoration:none;text-align:center;margin-top:8px">View on explorer ↗</a>
@@ -230,9 +242,22 @@
       <div class="strow"><span>$SWOGE in wallet</span><b id="acSwoge">…</b></div>
       <div class="strow"><span>ETH (gas)</span><b id="acEth">…</b></div>
     </div>
-    <div class="row" style="margin-top:12px"><button class="btn" id="acDeposit" style="flex:1">Deposit to game →</button><button class="btn ghost" id="acClose">Close</button></div>
-    <div class="row" style="margin-top:8px"><button class="btn ghost" id="acLogout" style="flex:1;color:#FF8A5B;border-color:rgba(255,107,53,.4)">Disconnect</button></div>
-    <div class="note" style="margin-top:8px">Send $SWOGE + a little ETH to this address, then Deposit to play.</div>
+    <div class="row" style="margin-top:12px"><button class="btn" id="acDeposit" style="flex:1">Deposit to game →</button></div>
+
+    <div style="margin-top:14px;border-top:1px solid rgba(230,165,55,.2);padding-top:12px">
+      <label>Send to another address</label>
+      <input id="sendTo" placeholder="0x recipient address…">
+      <div class="row" style="margin-top:8px">
+        <input id="sendAmt" type="number" inputmode="decimal" placeholder="amount" style="flex:1">
+        <select id="sendTok" style="padding:11px;border-radius:10px;background:rgba(21,16,10,.9);color:#F7EEDA;border:1px solid rgba(230,165,55,.4);font-family:inherit">
+          <option value="swoge">$SWOGE</option><option value="eth">ETH (RH)</option>
+        </select>
+      </div>
+      <div class="row" style="margin-top:8px"><button class="btn" id="sendGo" style="flex:1">Send →</button></div>
+      <div class="note" id="sendMsg"></div>
+    </div>
+
+    <div class="row" style="margin-top:12px"><button class="btn ghost" id="acLogout" style="flex:1;color:#FF8A5B;border-color:rgba(255,107,53,.4)">Disconnect</button><button class="btn ghost" id="acClose">Close</button></div>
   </div>
 </div>
 
@@ -254,6 +279,7 @@ var ERC20_ABI = [
   "function approve(address,uint256) returns (bool)",
   "function allowance(address,address) view returns (uint256)",
   "function balanceOf(address) view returns (uint256)",
+  "function transfer(address,uint256) returns (bool)",
   "function decimals() view returns (uint8)"
 ];
 var VAULT_ABI = [
@@ -500,10 +526,10 @@ function renderLeaderboard(list){
   for(var i=0;i<list.length;i++){ h.push('<div class="lbrow"><span class="r">#'+(i+1)+' '+esc(list[i].name)+'</span><span class="v">+'+fmtBig(list[i].net)+'</span></div>'); }
   box.innerHTML=h.join("");
 }
-function showPlayUI(){ $("#depositBtn").style.display=""; $("#withdrawBtn").style.display=""; $("#questBtn").style.display=""; $("#stakeBtn").style.display=""; $("#qbar").style.display="";
-  // once connected, drop the big address button from the top bar (it overlapped
-  // the buttons on mobile) and show a small address chip at the bottom-left
-  $("#connectBtn").style.display="none"; var eb=$("#emailBtn"); if(eb)eb.style.display="none"; $("#addr").textContent="🔗 "+myAddr.slice(0,6)+"…"+myAddr.slice(-4); $("#addr").style.display="inline-block"; }
+function showPlayUI(){ $("#menuBtn").style.display=""; $("#qbar").style.display="";
+  // one ☰ Menu button replaces the scattered top-bar buttons; connect/email go away
+  $("#connectBtn").style.display="none"; var eb=$("#emailBtn"); if(eb)eb.style.display="none";
+  $("#addr").textContent="🔗 "+myAddr.slice(0,6)+"…"+myAddr.slice(-4); $("#addr").style.display="inline-block"; }
 function showWin(v){ if(!v) return; $("#winv").textContent="+"+v+" $SWOGE"; var w=$("#win"); w.classList.add("show"); clearTimeout(showWin._t); showWin._t=setTimeout(function(){w.classList.remove("show");},1400); }
 var tickHtml=[];
 function addTicker(name,value){ tickHtml.push('🏆 '+esc(name)+' won '+value+' $SWOGE'); if(tickHtml.length>18)tickHtml.shift(); $("#tickrow").innerHTML=tickHtml.map(function(x){return '<span>'+x+'</span>';}).join(''); }
@@ -597,7 +623,10 @@ async function submitWithdraw(v){
 }
 
 /* ============================ UI WIRING ============================ */
-function openModal(which){ $("#modal").classList.add("show"); $("#depBox").style.display=which==="dep"?"":"none"; $("#wdBox").style.display=which==="wd"?"":"none"; $("#whBox").style.display=which==="wallet"?"":"none"; $("#emailBox").style.display=which==="email"?"":"none"; $("#accountBox").style.display=which==="account"?"":"none"; syncJackpot(); }
+function openModal(which){ $("#modal").classList.add("show"); $("#menuBox").style.display=which==="menu"?"":"none"; $("#depBox").style.display=which==="dep"?"":"none"; $("#wdBox").style.display=which==="wd"?"":"none"; $("#whBox").style.display=which==="wallet"?"":"none"; $("#emailBox").style.display=which==="email"?"":"none"; $("#accountBox").style.display=which==="account"?"":"none";
+  if(which==="dep") loadWalletBalances();
+  if(which==="wd") $("#wdBal").textContent=fmtBig(myBalanceNum||0);
+  syncJackpot(); }
 
 /* ---- My account panel (wallet address, explorer, on-chain balances, deposit) ---- */
 function openAccount(){
@@ -610,10 +639,26 @@ function openAccount(){
 }
 async function loadWalletBalances(){
   if(!provider||!myAddr) return;
-  try{ var eth=await provider.getBalance(myAddr); $("#acEth").textContent=(+ethers.utils.formatEther(eth)).toFixed(5); }
-  catch(e){ $("#acEth").textContent="—"; }
-  try{ var t=new ethers.Contract(TOKEN,ERC20_ABI,provider); var b=await t.balanceOf(myAddr); $("#acSwoge").textContent=fmtBig(+ethers.utils.formatUnits(b,18)); }
-  catch(e){ $("#acSwoge").textContent="—"; }
+  var ethS="—", swS="—";
+  try{ var eth=await provider.getBalance(myAddr); ethS=(+ethers.utils.formatEther(eth)).toFixed(5); }catch(e){}
+  try{ var t=new ethers.Contract(TOKEN,ERC20_ABI,provider); var b=await t.balanceOf(myAddr); swS=fmtBig(+ethers.utils.formatUnits(b,18)); }catch(e){}
+  ["#acEth","#depEth"].forEach(function(id){ var el=$(id); if(el) el.textContent=ethS; });
+  ["#acSwoge","#depSwoge"].forEach(function(id){ var el=$(id); if(el) el.textContent=swS; });
+}
+function sendMsg(t,c){ var e=$("#sendMsg"); e.textContent=t; e.style.color=c==="warn"?"#FF8A5B":c==="ok"?"#7CFF9B":"#8a7f6a"; }
+async function doSend(){
+  if(!signer){ toast("connect first"); return; }
+  var to=($("#sendTo").value||"").trim(); if(!/^0x[0-9a-fA-F]{40}$/.test(to)) return sendMsg("Enter a valid 0x address","warn");
+  var v=($("#sendAmt").value||"").replace(",",".").trim(); if(!(parseFloat(v)>0)) return sendMsg("Enter an amount","warn");
+  var tok=$("#sendTok").value;
+  try{
+    sendMsg("Confirm in your wallet…");
+    var tx;
+    if(tok==="eth"){ tx=await signer.sendTransaction({to:to,value:ethers.utils.parseEther(v)}); }
+    else { var c=new ethers.Contract(TOKEN,ERC20_ABI,signer); tx=await c.transfer(to,ethers.utils.parseUnits(v,18)); }
+    sendMsg("Sending…"); await tx.wait(); sendMsg("✅ Sent "+v+" "+(tok==="eth"?"ETH":"$SWOGE"),"ok");
+    $("#sendAmt").value=""; $("#sendTo").value=""; loadWalletBalances();
+  }catch(e){ sendMsg("Failed: "+String(e.reason||e.message||e).slice(0,110),"warn"); }
 }
 function copyAddr(){ var t=myAddr||""; try{ navigator.clipboard.writeText(t); toast("Address copied"); }catch(e){ var i=$("#acAddr"); i.focus(); i.select(); try{document.execCommand("copy");}catch(_){}; toast("Address copied"); } }
 async function doLogout(){
@@ -623,7 +668,7 @@ async function doLogout(){
   $("#addr").style.display="none";
   $("#connectBtn").style.display=""; $("#connectBtn").textContent="Connect wallet";
   var eb=$("#emailBtn"); if(eb) eb.style.display="";
-  $("#depositBtn").style.display="none"; $("#withdrawBtn").style.display="none"; $("#questBtn").style.display="none"; $("#stakeBtn").style.display="none"; $("#qbar").style.display="none";
+  $("#menuBtn").style.display="none"; $("#qbar").style.display="none";
   ["#stake","#quests","#lb"].forEach(function(s){ $(s).classList.remove("show"); });
   setBalance("0"); closeModal(); syncJackpot(); toast("Disconnected");
 }
@@ -644,6 +689,15 @@ $("#acCopy").onclick=copyAddr;
 $("#acClose").onclick=closeModal;
 $("#acDeposit").onclick=function(){ openModal("dep"); };
 $("#acLogout").onclick=doLogout;
+$("#sendGo").onclick=doSend;
+/* ☰ menu */
+$("#menuBtn").onclick=function(){ openModal("menu"); };
+$("#mnClose").onclick=closeModal;
+$("#mnWallet").onclick=openAccount;
+$("#mnDeposit").onclick=function(){ openModal("dep"); };
+$("#mnWithdraw").onclick=function(){ openModal("wd"); };
+$("#mnStake").onclick=function(){ closeModal(); $("#stake").classList.add("show"); renderStake(); syncJackpot(); };
+$("#mnQuests").onclick=function(){ closeModal(); $("#quests").classList.add("show"); syncJackpot(); };
 $("#emSend").onclick=async function(){
   var e=($("#emEmail").value||"").trim(); if(!/.+@.+\..+/.test(e)) return toast("enter a valid email");
   privyEmail=e; $("#emSend").disabled=true; $("#emMsg").textContent="Sending code…";

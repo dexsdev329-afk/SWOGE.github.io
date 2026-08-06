@@ -193,6 +193,7 @@
     <button class="btn ghost" id="mnBridge" style="width:100%;margin-bottom:8px">🌉 Bridge ETH → Robinhood</button>
     <button class="btn ghost" id="mnSwap" style="width:100%;margin-bottom:8px">💱 Buy / Sell $SWOGE</button>
     <button class="btn ghost" id="mnQuests" style="width:100%;margin-bottom:8px">🎯 Daily Quests</button>
+    <button class="btn ghost" id="mnSound" style="width:100%;margin-bottom:8px">🔊 Sound: ON</button>
     <button class="btn ghost" id="mnClose" style="width:100%">Close</button>
   </div>
   <div class="box" id="depBox">
@@ -425,16 +426,16 @@ function onServer(m){
   }
   else if(m.type==="state"){ applyState(m); }
   else if(m.type==="auth"){ authed=true; myAddr=m.address; setStatus(""); $("#status").style.display="none"; setBalance(m.balance); showPlayUI(); if(m.quests) renderQuests(m.quests); if(m.stake) setStakeInfo(m.stake); }
-  else if(m.type==="balance"||m.type==="deposit"){ setBalance(m.balance); if(m.type==="deposit") toast("💰 Deposit credited"); }
-  else if(m.type==="win"){ setBalance(m.balance); showWin(m.value); }
+  else if(m.type==="balance"||m.type==="deposit"){ setBalance(m.balance); if(m.type==="deposit"){ toast("💰 Deposit credited"); SFX.ding(); } }
+  else if(m.type==="win"){ setBalance(m.balance); showWin(m.value); SFX.win(m.value); }
   else if(m.type==="ticker"){ addTicker(m.name,m.value); }
   else if(m.type==="need_deposit"){ setBalance(m.balance); pendingDrops=0; updateQueueUI(); toast("Not enough $SWOGE — deposit to play"); openModal("dep"); }
   else if(m.type==="table_full"){ qHoldUntil=Date.now()+220; pendingDrops++; updateQueueUI(); } // backpressure: put the coin back, retry when there's room
   else if(m.type==="meta"){ setJackpot(m.jackpot); renderLeaderboard(m.leaderboard); }
   else if(m.type==="quests"){ renderQuests(m.quests); }
-  else if(m.type==="questClaimed"){ setBalance(m.balance); renderQuests(m.quests); toast("🎯 Quest reward +"+m.reward+" $SWOGE!"); }
+  else if(m.type==="questClaimed"){ setBalance(m.balance); renderQuests(m.quests); toast("🎯 Quest reward +"+m.reward+" $SWOGE!"); SFX.ding(); }
   else if(m.type==="stakeInfo"){ setStakeInfo(m); }
-  else if(m.type==="stakeClaimed"){ toast("💰 Yield claimed +"+fmtYield(parseFloat(m.reward))+" $SWOGE!"); }
+  else if(m.type==="stakeClaimed"){ toast("💰 Yield claimed +"+fmtYield(parseFloat(m.reward))+" $SWOGE!"); SFX.ding(); }
   else if(m.type==="stakeUnstaked"){ var pen=parseFloat(m.penalty)||0; toast("Unstaked "+fmtBig(parseFloat(m.returned))+" $SWOGE"+(pen>0?" (−"+fmtBig(pen)+" penalty)":"")+(parseFloat(m.yield)>0?" +"+fmtYield(parseFloat(m.yield))+" yield":"")); }
   else if(m.type==="jackpot"){ setBalance(m.balance); showJackpot(m.amount,true); } // YOU won the pot
   else if(m.type==="jackpotWin"){ if(m.jackpot!=null) setJackpot(m.jackpot); addTicker("🏆 JACKPOT — "+m.name, m.amount); if(m.name!==(myAddr&&myAddr.slice(0,6))) toast("🏆 "+m.name+" won the JACKPOT: "+fmtBig(m.amount)+" $SWOGE!"); }
@@ -451,6 +452,67 @@ function setBalance(b){
   if(typeof pendingDrops!=="undefined" && pendingDrops>maxQ){ pendingDrops=maxQ<0?0:maxQ; updateQueueUI(); }
 }
 function fmtBig(v){ var n=parseFloat(v||"0"); if(n>=1e6)return (n/1e6).toFixed(n%1e6?2:0)+"M"; if(n>=1e3)return (n/1e3).toFixed(n%1e3?1:0)+"k"; return String(Math.round(n)); }
+
+/* ---- sound + haptics engine (synthesized, no external files) ----
+   Wins/drops/jackpot get audio + vibration for feel. Muteable, remembered in
+   localStorage. AudioContext is unlocked on the first user gesture (mobile). */
+var SFX=(function(){
+  var ctx=null, master=null, muted=false;
+  try{ muted=localStorage.getItem("swogeMute")==="1"; }catch(e){}
+  function ensure(){
+    if(muted) return null;
+    if(!ctx){
+      try{
+        var AC=window.AudioContext||window.webkitAudioContext; if(!AC) return null;
+        ctx=new AC(); master=ctx.createGain(); master.gain.value=0.5; master.connect(ctx.destination);
+      }catch(e){ ctx=null; return null; }
+    }
+    if(ctx.state==="suspended"){ try{ctx.resume();}catch(e){} }
+    return ctx;
+  }
+  // one clean tone
+  function tone(freq,start,dur,type,vol){
+    if(!ensure()) return;
+    var t0=ctx.currentTime+start;
+    var o=ctx.createOscillator(), g=ctx.createGain();
+    o.type=type||"triangle"; o.frequency.setValueAtTime(freq,t0);
+    g.gain.setValueAtTime(0.0001,t0);
+    g.gain.exponentialRampToValueAtTime(vol||0.25,t0+0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001,t0+dur);
+    o.connect(g); g.connect(master); o.start(t0); o.stop(t0+dur+0.02);
+  }
+  function vibe(pat){ if(muted) return; try{ if(navigator.vibrate) navigator.vibrate(pat); }catch(e){} }
+  var C=261.63,E=329.63,G=392.0,A=440,Cx=523.25,Ex=659.25,Gx=783.99,Cxx=1046.5;
+  return {
+    isMuted:function(){ return muted; },
+    toggle:function(){ muted=!muted; try{localStorage.setItem("swogeMute",muted?"1":"0");}catch(e){} if(!muted) ensure(); return muted; },
+    unlock:function(){ ensure(); },
+    // a coin being thrown — very light tick
+    drop:function(){ tone(760+Math.random()*120,0,0.06,"square",0.06); },
+    // a win — arpeggio that scales up with the payout, plus a haptic pulse
+    win:function(v){
+      v=parseFloat(v)||0;
+      if(v>=1000){ [Cx,Ex,Gx,Cxx,Gx,Cxx].forEach(function(f,i){tone(f,i*0.08,0.5,"triangle",0.3);}); vibe([40,40,80]); }
+      else if(v>=100){ [G,Cx,Ex,Gx].forEach(function(f,i){tone(f,i*0.07,0.4,"triangle",0.28);}); vibe([30,30,60]); }
+      else if(v>=25){ [E,G,Cx].forEach(function(f,i){tone(f,i*0.06,0.32,"triangle",0.26);}); vibe([25,25,45]); }
+      else if(v>=5){ [C,G,Cx].forEach(function(f,i){tone(f,i*0.05,0.26,"triangle",0.24);}); vibe(35); }
+      else { tone(Cx,0,0.16,"triangle",0.2); tone(Gx,0.05,0.16,"triangle",0.16); vibe(20); }
+    },
+    // jackpot — big triumphant fanfare + long buzz pattern
+    jackpot:function(){
+      var seq=[C,E,G,Cx,E,G,Cx,Ex,G,Cx,Ex,Gx,Cxx];
+      seq.forEach(function(f,i){ tone(f,i*0.1,0.6,"sawtooth",0.22); tone(f*2,i*0.1,0.6,"triangle",0.12); });
+      tone(Cxx,seq.length*0.1,1.4,"triangle",0.3); tone(Cx,seq.length*0.1,1.4,"sawtooth",0.2);
+      vibe([80,50,80,50,200]);
+    },
+    // deposit / reward credited — friendly two-note ding
+    ding:function(){ tone(G,0,0.18,"triangle",0.22); tone(Cx,0.09,0.28,"triangle",0.22); vibe(30); }
+  };
+})();
+// unlock audio on the first interaction (mobile autoplay policy)
+(function(){ function u(){ SFX.unlock(); window.removeEventListener("pointerdown",u); window.removeEventListener("keydown",u); }
+  window.addEventListener("pointerdown",u); window.addEventListener("keydown",u); })();
+
 /* progressive jackpot banner */
 var jackpotVal=null;
 function overlayOpen(){ return $("#modal").classList.contains("show")||$("#stake").classList.contains("show")||$("#quests").classList.contains("show")||$("#lb").classList.contains("show"); }
@@ -461,6 +523,7 @@ function showJackpot(amount){
   var w=$("#win"); w.classList.add("show","jp"); clearTimeout(showJackpot._t);
   showJackpot._t=setTimeout(function(){ w.classList.remove("show","jp"); }, 4200);
   toast("🏆 YOU WON THE JACKPOT — "+fmtBig(amount)+" $SWOGE!");
+  SFX.jackpot();
 }
 /* staking — locked positions (100% APR, early exit = penalty); yield ticks live */
 var stStaked=0, stPending=0, stAprBps=10000, stSyncMs=0, stLocked=0, stUnlocked=0, stNextUnlock=null, stPenaltyBps=5000, stLockDays=365;
@@ -706,6 +769,9 @@ $("#mnStake").onclick=function(){ closeModal(); $("#stake").classList.add("show"
 $("#mnQuests").onclick=function(){ closeModal(); $("#quests").classList.add("show"); syncJackpot(); };
 $("#mnBridge").onclick=function(){ window.open(BRIDGE_URL,"_blank","noopener"); };
 $("#mnSwap").onclick=function(){ window.open(SWAP_URL,"_blank","noopener"); };
+function refreshSoundBtn(){ $("#mnSound").textContent=SFX.isMuted()?"🔇 Sound: OFF":"🔊 Sound: ON"; }
+$("#mnSound").onclick=function(){ var m=SFX.toggle(); refreshSoundBtn(); if(!m) SFX.ding(); toast(m?"🔇 Sound off":"🔊 Sound on"); };
+refreshSoundBtn();
 $("#emSend").onclick=async function(){
   var e=($("#emEmail").value||"").trim(); if(!/.+@.+\..+/.test(e)) return toast("enter a valid email");
   privyEmail=e; $("#emSend").disabled=true; $("#emMsg").textContent="Sending code…";
@@ -753,7 +819,7 @@ function drainTick(){
   if(Date.now()<qHoldUntil) return;
   if(!ws||ws.readyState!==1) return;
   if(myBalanceNum<1){ pendingDrops=0; updateQueueUI(); return; } // broke → stop cleanly
-  wsSend({type:"drop"}); pendingDrops--; updateQueueUI();
+  wsSend({type:"drop"}); pendingDrops--; updateQueueUI(); SFX.drop();
 }
 setInterval(drainTick,55); // ~18 coins/sec, throttled by the table's capacity
 (function(){

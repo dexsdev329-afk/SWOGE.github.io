@@ -193,6 +193,7 @@
     <button class="btn ghost" id="mnBridge" style="width:100%;margin-bottom:8px">🌉 Bridge ETH → Robinhood</button>
     <button class="btn ghost" id="mnSwap" style="width:100%;margin-bottom:8px">💱 Buy / Sell $SWOGE</button>
     <button class="btn ghost" id="mnQuests" style="width:100%;margin-bottom:8px">🎯 Daily Quests</button>
+    <button class="btn ghost" id="mnGames" style="width:100%;margin-bottom:8px">🎮 Other Games</button>
     <button class="btn ghost" id="mnSound" style="width:100%;margin-bottom:8px">🔊 Sound: ON</button>
     <button class="btn ghost" id="mnClose" style="width:100%">Close</button>
   </div>
@@ -769,6 +770,7 @@ $("#mnStake").onclick=function(){ closeModal(); $("#stake").classList.add("show"
 $("#mnQuests").onclick=function(){ closeModal(); $("#quests").classList.add("show"); syncJackpot(); };
 $("#mnBridge").onclick=function(){ window.open(BRIDGE_URL,"_blank","noopener"); };
 $("#mnSwap").onclick=function(){ window.open(SWAP_URL,"_blank","noopener"); };
+$("#mnGames").onclick=function(){ window.location.href="games.html"; };
 function refreshSoundBtn(){ $("#mnSound").textContent=SFX.isMuted()?"🔇 Sound: OFF":"🔊 Sound: ON"; }
 $("#mnSound").onclick=function(){ var m=SFX.toggle(); refreshSoundBtn(); if(!m) SFX.ding(); toast(m?"🔇 Sound off":"🔊 Sound on"); };
 refreshSoundBtn();

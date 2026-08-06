@@ -189,6 +189,8 @@
     <button class="btn" id="mnStake" style="width:100%;margin-bottom:8px">🔒 Staking</button>
     <button class="btn" id="mnDeposit" style="width:100%;margin-bottom:8px">💰 Deposit</button>
     <button class="btn" id="mnWithdraw" style="width:100%;margin-bottom:8px">🏧 Withdraw</button>
+    <button class="btn ghost" id="mnBridge" style="width:100%;margin-bottom:8px">🌉 Bridge ETH → Robinhood</button>
+    <button class="btn ghost" id="mnSwap" style="width:100%;margin-bottom:8px">💱 Buy / Sell $SWOGE</button>
     <button class="btn ghost" id="mnQuests" style="width:100%;margin-bottom:8px">🎯 Daily Quests</button>
     <button class="btn ghost" id="mnClose" style="width:100%">Close</button>
   </div>
@@ -269,6 +271,9 @@
 var SERVER_URL = "wss://web-production-220a3.up.railway.app";
 (function(){ var q=new URLSearchParams(location.search).get("server"); if(q) SERVER_URL=q; })();
 
+// Official canonical bridge (Arbitrum portal). Swap = your SWOGE buy/sell page.
+var BRIDGE_URL = "https://portal.arbitrum.io/bridge?destinationChain=robinhood-chain&sourceChain=ethereum";
+var SWAP_URL = "https://swoleeswoge.dog"; // ← set this to your $SWOGE buy/sell page
 var CHAIN = { id:4663, hex:"0x1237", name:"Robinhood Chain",
   rpc:"https://rpc.mainnet.chain.robinhood.com", scan:"https://robinhoodchain.blockscout.com", sym:"ETH" };
 var TOKEN = "0x8a166Fb41Cd659a0a43396272FF73973Ce29F817"; // $SWOGE (updated from server hello)
@@ -698,6 +703,8 @@ $("#mnDeposit").onclick=function(){ openModal("dep"); };
 $("#mnWithdraw").onclick=function(){ openModal("wd"); };
 $("#mnStake").onclick=function(){ closeModal(); $("#stake").classList.add("show"); renderStake(); syncJackpot(); };
 $("#mnQuests").onclick=function(){ closeModal(); $("#quests").classList.add("show"); syncJackpot(); };
+$("#mnBridge").onclick=function(){ window.open(BRIDGE_URL,"_blank","noopener"); };
+$("#mnSwap").onclick=function(){ window.open(SWAP_URL,"_blank","noopener"); };
 $("#emSend").onclick=async function(){
   var e=($("#emEmail").value||"").trim(); if(!/.+@.+\..+/.test(e)) return toast("enter a valid email");
   privyEmail=e; $("#emSend").disabled=true; $("#emMsg").textContent="Sending code…";

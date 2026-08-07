@@ -131,10 +131,10 @@
       <h3>➕ Stake $SWOGE</h3>
       <input id="stAmt" type="number" inputmode="decimal" placeholder="amount to stake">
       <div class="pcts">
-        <button class="pct" data-pct="10">10%</button>
-        <button class="pct" data-pct="20">20%</button>
-        <button class="pct" data-pct="50">50%</button>
-        <button class="pct" data-pct="100">MAX</button>
+        <button class="pct spct" data-pct="10">10%</button>
+        <button class="pct spct" data-pct="20">20%</button>
+        <button class="pct spct" data-pct="50">50%</button>
+        <button class="pct spct" data-pct="100">MAX</button>
       </div>
       <button class="btn" id="stStake">Stake now</button>
       <div class="row mt">
@@ -148,6 +148,12 @@
         <div class="inner">
           <p class="note">In your wallet: <b id="depSwoge">…</b> $SWOGE · <b id="depEth">…</b> ETH</p>
           <input id="depAmt" type="number" inputmode="decimal" placeholder="amount to deposit" class="mt">
+          <div class="pcts">
+            <button class="pct dpct" data-pct="10">10%</button>
+            <button class="pct dpct" data-pct="20">20%</button>
+            <button class="pct dpct" data-pct="50">50%</button>
+            <button class="pct dpct" data-pct="100">MAX</button>
+          </div>
           <button class="btn mt" id="depGo">Deposit to game →</button>
           <p class="note">Approve once, then deposit. Credited to your in-game balance for staking &amp; the games.</p>
         </div>
@@ -300,28 +306,41 @@
   function doUnstake(){ if(!(stStaked>0))return toast("nothing staked"); if(stLocked>0&&!confirm("⚠️ "+fmtBig(stLocked)+" still locked. Unstaking now loses "+(stPenaltyBps/100)+"%. Continue?"))return; send({type:"unstake"}); }
   function doClaim(){ if(!(livePending()>0))return toast("no yield yet"); send({type:"claimStake"}); }
 
-  function clearPct(){ [].forEach.call(document.querySelectorAll(".pct"),function(b){ b.classList.remove("on"); }); }
-  [].forEach.call(document.querySelectorAll(".pct"),function(b){
+  // stake % buttons — fraction of the in-game balance
+  function clearPct(){ [].forEach.call(document.querySelectorAll(".spct"),function(b){ b.classList.remove("on"); }); }
+  [].forEach.call(document.querySelectorAll(".spct"),function(b){
     b.addEventListener("click",function(){
       if(!authed){ toast("connect first"); return; }
       if(balance<=0){ toast("no $SWOGE to stake — deposit first"); return; }
       clearPct(); b.classList.add("on");
       var pct=parseInt(b.getAttribute("data-pct"))||0;
-      var amt=balance*pct/100;
-      // round down to a clean value so we never exceed the balance
-      amt=Math.floor(amt*10000)/10000;
+      var amt=Math.floor(balance*pct/100*10000)/10000;   // round down so we never exceed the balance
       $("stAmt").value=String(amt);
     });
   });
   $("stAmt").addEventListener("input",clearPct);
 
   // ---- deposit (to fund staking) ----
+  var walletSwoge=0;   // raw $SWOGE in the connected wallet (for the deposit % buttons)
   async function loadWalletBalances(){
     if(!provider||!myAddr) return; var e="—", sw="—";
     try{ var b=await provider.getBalance(myAddr); e=(+ethers.utils.formatEther(b)).toFixed(5); }catch(x){}
-    try{ var t=new ethers.Contract(TOKEN,ERC20_ABI,provider), bb=await t.balanceOf(myAddr); sw=fmtBig(+ethers.utils.formatUnits(bb,18)); }catch(x){}
+    try{ var t=new ethers.Contract(TOKEN,ERC20_ABI,provider), bb=await t.balanceOf(myAddr); walletSwoge=+ethers.utils.formatUnits(bb,18); sw=fmtBig(walletSwoge); }catch(x){}
     var de=$("depEth"), ds=$("depSwoge"); if(de)de.textContent=e; if(ds)ds.textContent=sw;
   }
+  // deposit % buttons — fraction of the wallet $SWOGE balance
+  function clearDpct(){ [].forEach.call(document.querySelectorAll(".dpct"),function(b){ b.classList.remove("on"); }); }
+  [].forEach.call(document.querySelectorAll(".dpct"),function(b){
+    b.addEventListener("click",function(){
+      if(!signer){ toast("connect a wallet to deposit"); return; }
+      if(!(walletSwoge>0)){ toast("no $SWOGE in your wallet — buy some first"); return; }
+      clearDpct(); b.classList.add("on");
+      var pct=parseInt(b.getAttribute("data-pct"))||0;
+      var amt=Math.floor(walletSwoge*pct/100*10000)/10000;   // round down to stay within balance
+      $("depAmt").value=String(amt);
+    });
+  });
+  $("depAmt").addEventListener("input",clearDpct);
   async function doDeposit(){
     if(!signer){ toast("connect a wallet to deposit"); return; }
     if(!VAULT){ toast("server has no vault set"); return; }
@@ -332,7 +351,7 @@
       var token=new ethers.Contract(TOKEN,ERC20_ABI,signer), vault=new ethers.Contract(VAULT,VAULT_ABI,signer);
       var allow=await token.allowance(myAddr,VAULT);
       if(allow.lt(amt)){ toast("approve $SWOGE…"); var ta=await token.approve(VAULT,ethers.constants.MaxUint256); await ta.wait(); }
-      toast("depositing…"); var tx=await vault.deposit(amt); await tx.wait(); toast("✅ deposited — credits incoming"); $("depAmt").value="";
+      toast("depositing…"); var tx=await vault.deposit(amt); await tx.wait(); toast("✅ deposited — credits incoming"); $("depAmt").value=""; clearDpct(); loadWalletBalances();
     }catch(e){ toast("deposit: "+String(e.reason||e.message||e).slice(0,80)); }
   }
 

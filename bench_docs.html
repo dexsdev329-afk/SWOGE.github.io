@@ -19,10 +19,20 @@
       --ink:#F7EEDA; --bg:#FBF5E6; --panel:#FFFDF6; --line:rgba(180,120,20,.28);
       --paper:#23190C; --dim:#8A7550; --gold:#B4790F; --gold2:#C8791A;
     }
+    body:not([data-theme="dark"]){
+      background:
+        linear-gradient(rgba(251,245,230,.88),rgba(251,245,230,.93)),
+        url('https://i.ibb.co/qLYY2yhb/Chat-GPT-Image-7-ao-t-2026-12-23-23.png') center top/cover no-repeat fixed !important;
+    }
   }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
   html{background:var(--ink)}
-  body{background:var(--bg);color:var(--paper);font-family:'Space Mono','Courier New',monospace;line-height:1.7;min-height:100vh}
+  body{
+    background:
+      linear-gradient(rgba(11,9,6,.86),rgba(11,9,6,.93)),
+      url('https://i.ibb.co/qLYY2yhb/Chat-GPT-Image-7-ao-t-2026-12-23-23.png') center top/cover no-repeat fixed;
+    background-color:var(--bg);
+    color:var(--paper);font-family:'Space Mono','Courier New',monospace;line-height:1.7;min-height:100vh}
   a{color:var(--gold);text-decoration:none}
   a:hover{text-decoration:underline}
   .wrap{max-width:840px;margin:0 auto;padding:0 20px}

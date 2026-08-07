@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SWOGE Spin — Volcano</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -184,6 +185,9 @@
   #auto-btn { font-family:'Orbitron',sans-serif; font-weight:900; font-size:1.8vh; letter-spacing:1px; color:#fff; cursor:pointer;
     background:rgba(0,0,0,.4); border:2px solid var(--gold); border-radius:12px; padding:1.3vh 2.4vw; transition:.12s; }
   #auto-btn.on { background:var(--gold); color:#3a2400; }
+  #turbo-btn { font-family:'Orbitron',sans-serif; font-weight:900; font-size:1.8vh; letter-spacing:1px; color:#fff; cursor:pointer;
+    background:rgba(0,0,0,.4); border:2px solid #6BB8FF; border-radius:12px; padding:1.3vh 2vw; transition:.12s; }
+  #turbo-btn.on { background:#6BB8FF; color:#04223a; border-color:#6BB8FF; }
   /* ===== HUD compte (barre haute droite) ===== */
   #hud { position:fixed; top:1.2vh; right:1.2vw; z-index:200; display:flex; align-items:center; gap:.7vw; font-family:'Orbitron',sans-serif; }
   #bal-chip { display:flex; align-items:center; gap:6px; background:rgba(0,0,0,.5); border:1px solid rgba(255,213,74,.4); border-radius:999px; padding:.9vh 1.4vh; font-size:1.7vh; color:#fff; }
@@ -284,6 +288,7 @@
     </div>
     <button id="spin-btn">SPIN 🌋</button>
     <button id="auto-btn">AUTO</button>
+    <button id="turbo-btn">⚡ TURBO</button>
   </div>
 </div>
 
@@ -596,8 +601,8 @@ async function animateSpin(outcome){
     overlays.push({ov,strip,step});
   }
   const anticip = (vcol(outcome.grid,0)+vcol(outcome.grid,1))>=2;
-  await sleep(20);
-  const base=800, stagger=320, ANTICIP=1700;
+  await zzz(20);
+  const base=800*TF, stagger=320*TF, ANTICIP=1700*TF;
   const durs=[base, base+stagger, anticip ? base+stagger+ANTICIP : base+2*stagger];
   overlays.forEach((o,idx)=>{ o.strip.style.transition=`transform ${durs[idx]}ms cubic-bezier(.1,.55,.15,1)`;
     o.strip.classList.add('mblur');
@@ -605,7 +610,7 @@ async function animateSpin(outcome){
     requestAnimationFrame(()=>{ o.strip.style.transform=`translateY(${-(K*o.step)}px)`; }); });
   reelSpinStart();
   if (anticip){ setTimeout(()=>{ overlays[2].ov.classList.add('anticip'); playAnticipMp3(); }, base+stagger+120); }
-  await sleep(durs[2] + 170);
+  await zzz(durs[2] + 170);
   reelSpinStop(); stopAnticipMp3(); overlays[2].ov.classList.remove('anticip');
   for(let i=0;i<9;i++) cells[i].innerHTML = teaserOr(i, outcome, winSet);
   overlays.forEach(o=>o.ov.remove());
@@ -614,17 +619,17 @@ async function animateSpin(outcome){
   if (outcome.bonus){
     vIdx.forEach(i=>cells[i].classList.add('trigger'));
     bonusFlash(); sndJP(); setTimeout(sndWin,160); setTimeout(sndBonus,320); showBonusBanner();
-    await sleep(2650);
+    await zzz(2650);
     cells.forEach(c=>c.classList.remove('trigger'));
   } else if (vIdx.length>=1){
     vIdx.forEach(i=>cells[i].classList.add('trigger'));
     playNearMp3();
-    await sleep(vIdx.length>=2 ? 950 : 700);
+    await zzz(vIdx.length>=2 ? 950 : 700);
     cells.forEach(c=>c.classList.remove('trigger'));
   }
   if (outcome.lineWins.length){
     winSet.forEach(i=>cells[i].classList.add('win'));
-    $('last-win').textContent = fmtNum(dv(outcome.baseWin)); sndWin(); await sleep(700);
+    $('last-win').textContent = fmtNum(dv(outcome.baseWin)); sndWin(); await zzz(700);
     cells.forEach(c=>c.classList.remove('win'));
   }
 }
@@ -659,7 +664,7 @@ async function animateBonus(bonus){
   playBonusMp3();
   sndBonus();
   clearCells(); $('machine').classList.add('bonus'); $('btotal').textContent=''; $('respins').textContent=lives(RESPINS);
-  await sleep(600);
+  await zzz(600);
   for (let si=0; si<bonus.steps.length; si++){
     const step = bonus.steps[si];
     for (const pl of step.placed){ cells[pl.idx].innerHTML = coinHTML(pl.coin); cells[pl.idx].classList.add('has-coin');
@@ -667,17 +672,17 @@ async function animateBonus(bonus){
       else if(pl.coin.type==='MULT'){ playZapMp3(); cells[pl.idx].classList.add('zap'); setTimeout(()=>cells[pl.idx].classList.remove('zap'),520); }
       else if(pl.coin.type==='JP'){ sndJP(); flashLadder(pl.coin.jp); }
       else sndCoin();
-      await sleep(pl.coin.type==='MULT'?300:(pl.coin.mystery?320:160)); }
+      await zzz(pl.coin.type==='MULT'?300:(pl.coin.mystery?320:160)); }
     $('respins').textContent = lives(step.respins);
-    if (!step.reset && !step.moon){ playLifeMp3(); $('respins-box').style.color='#ff6b6b'; await sleep(260); $('respins-box').style.color=''; }
-    else { if (step.reset && si>0 && step.placed.length){ playGainMp3(); $('respins-box').style.color='#5be86a'; await sleep(60); $('respins-box').style.color=''; } await sleep(220); }
+    if (!step.reset && !step.moon){ playLifeMp3(); $('respins-box').style.color='#ff6b6b'; await zzz(260); $('respins-box').style.color=''; }
+    else { if (step.reset && si>0 && step.placed.length){ playGainMp3(); $('respins-box').style.color='#5be86a'; await zzz(60); $('respins-box').style.color=''; } await zzz(220); }
   }
-  const target=dv(bonus.total), start=Date.now(), dur=1000;
+  const target=dv(bonus.total), start=Date.now(), dur=1000*TF;
   await new Promise(res=>{ (function up(){ const k=Math.min(1,(Date.now()-start)/dur); $('btotal').textContent=`+${fmtNum(target*k)} ⭐`; if(k<1) requestAnimationFrame(up); else res(); })(); });
   $('last-win').textContent = fmtNum(target); sndJP();
   const hadBigJp = bonus.cells.some(c => c && c.type==='JP' && (c.jp==='GRAND' || c.jp==='OG'));
   const lvl = winLevel(bonus.total, hadBigJp);   // seuils sur la valeur de BASE (indépendante de la mise)
-  if (lvl){ showWinBanner(lvl); sndBonus(); await sleep(2500); } else { await sleep(1300); }
+  if (lvl){ showWinBanner(lvl); sndBonus(); await zzz(2500); } else { await zzz(1300); }
   $('machine').classList.remove('bonus'); clearCells();
   renderGrid(Array.from({length:9},()=>pick(SYM_W)));
 }
@@ -699,28 +704,29 @@ function flyCoin(fromEl, delay){
   const c=document.createElement('img'); c.className='fly-coin'; c.src=U('swoge.png');   // TOUJOURS la pièce SWOGE (jamais un teaser jackpot)
   c.style.width=fr.width+'px'; c.style.height=fr.height+'px'; c.style.left=(sx-fr.width/2)+'px'; c.style.top=(sy-fr.height/2)+'px';
   document.body.appendChild(c);
-  requestAnimationFrame(()=>{ c.style.transition='transform .55s cubic-bezier(.55,.06,.3,1), opacity .55s ease-in';
-    c.style.transitionDelay=delay+'ms';
+  requestAnimationFrame(()=>{ var fd=(.55*TF); c.style.transition='transform '+fd+'s cubic-bezier(.55,.06,.3,1), opacity '+fd+'s ease-in';
+    c.style.transitionDelay=(delay*TF)+'ms';
     c.style.transform=`translate(${ex-sx}px, ${ey-sy}px) scale(.14) rotate(720deg)`; c.style.opacity='.15'; });
-  setTimeout(()=>{ try{sndCoin();}catch(e){} c.remove(); }, delay+590);
+  setTimeout(()=>{ try{sndCoin();}catch(e){} c.remove(); }, (delay+590)*TF);
 }
 async function collectSwoge(grid){
   const idx=[]; grid.forEach((sy,i)=>{ if(sy==='SWOGE') idx.push(i); });
   if(!idx.length){ return; }
   idx.forEach((i,k)=> flyCoin(cells[i], k*95));
   setMeterUI();
-  await sleep(idx.length*95 + 620);
+  await zzz(idx.length*95*TF + 620);
 }
 async function animateEruption(){
   const vm=$('vmeter'); if(vm) vm.classList.add('erupting');
   try{ sndBonus(); }catch(e){} playShowerMp3();
-  await sleep(1550);
+  await zzz(1550);
   if(vm) vm.classList.remove('erupting'); setMeterUI();
 }
 setMeterUI();
 
 /* ===================== JEU (démo, sans wallet) ===================== */
-let busy=false, auto=false;
+let busy=false, auto=false, turbo=false, TF=1;
+function zzz(ms){ return sleep(ms*TF); }
 async function doSpin(){
   if (busy) return; busy=true; $('spin-btn').disabled=true;
   try {
@@ -778,6 +784,7 @@ updateBetUI();
 
 $('spin-btn').addEventListener('click', ()=>{ ac(); doSpin(); });
 $('auto-btn').addEventListener('click', function(){ auto=!auto; this.classList.toggle('on',auto); this.textContent=auto?'AUTO ⏸':'AUTO'; if(auto && !busy){ ac(); doSpin(); } });
+$('turbo-btn').addEventListener('click', function(){ turbo=!turbo; TF=turbo?0.35:1; this.classList.toggle('on',turbo); });
 $('buy-bonus').addEventListener('click', ()=>{ ac(); forceBonus(); });
 addEventListener('keydown', e=>{ if(e.code==='Space'){ e.preventDefault(); if(!busy){ ac(); doSpin(); } }
   else if(e.code==='ArrowUp'||e.code==='ArrowRight'){ if(!busy&&betIdx<BET_LEVELS.length-1){ betIdx++; updateBetUI(); } }
@@ -911,6 +918,15 @@ $('emSend').onclick=async function(){ var e=($('emEmail').value||'').trim(); if(
   try{ await SwogePrivy.sendCode(e); $('emCodeWrap').style.display=''; $('emMsg').textContent='Code sent to '+e+' — check inbox & spam.'; }catch(err){ $('emMsg').textContent='Error: '+String(err.message||err).slice(0,120); } this.disabled=false; };
 $('emVerify').onclick=async function(){ var c=($('emCode').value||'').trim(); if(!c)return gtoast('enter the code'); this.disabled=true; $('emMsg').textContent='Verifying…';
   try{ await SwogePrivy.verifyCode(privyEmail,c); try{ localStorage.setItem('swogeAuth','email'); }catch(_){} closePanel(); await onWalletReady(SwogePrivy.getProvider(), SwogePrivy.getAddress()); }catch(err){ $('emMsg').textContent='Error: '+String(err.message||err).slice(0,140); } this.disabled=false; };
+
+/* ---- Telegram Mini App : plein écran + login email uniquement (pas de wallet navigateur dans Telegram) ---- */
+(function(){ var tg = window.Telegram && window.Telegram.WebApp;
+  if(!tg) return;
+  try{ tg.ready(); tg.expand(); if(tg.setHeaderColor) tg.setHeaderColor('#170a33'); if(tg.setBackgroundColor) tg.setBackgroundColor('#170a33'); }catch(e){}
+  // Dans Telegram, window.ethereum n'existe pas → on cache "Connect" et on garde l'email.
+  var cb=$('connectBtn'); if(cb) cb.style.display='none';
+  var eb=$('emailBtn'); if(eb) eb.textContent='✉️ Se connecter';
+})();
 
 connect();
 autoReconnect();

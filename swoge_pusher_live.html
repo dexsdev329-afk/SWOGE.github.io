@@ -84,6 +84,14 @@
   .qclaim.on{background:linear-gradient(135deg,#7CFF9B,#39d16a);color:#062a12;cursor:pointer}
   .qclaim.off{background:rgba(255,255,255,.07);color:#8a7f6a;cursor:default}
   .qclaim.done{background:rgba(124,255,155,.14);color:#7CFF9B;cursor:default}
+  /* dropdown menu (matches SWOGE Smash / Blackjack) */
+  .pmenu{position:fixed;top:56px;right:14px;z-index:30;min-width:214px;display:none;flex-direction:column;
+    background:rgba(11,9,6,.97);border:1px solid rgba(230,165,55,.28);border-radius:14px;padding:6px;
+    box-shadow:0 16px 40px rgba(0,0,0,.6);backdrop-filter:blur(8px);pointer-events:auto}
+  .pmenu.open{display:flex}
+  .pmenu a{font-size:14px;color:#F7EEDA;padding:11px 13px;border-radius:9px;cursor:pointer;transition:.12s;text-decoration:none}
+  .pmenu a:hover{background:rgba(230,165,55,.12);color:#E6A537}
+  .pmenu .msep{height:1px;background:rgba(230,165,55,.2);margin:5px 8px}
   /* claimable dot on the 🎯 button */
   #menuBtn{position:relative}
   #questDot{position:absolute;top:4px;right:4px;width:9px;height:9px;border-radius:50%;background:#7CFF9B;
@@ -183,18 +191,23 @@
   <button class="qclear" id="qclear" title="clear queue">✕</button>
 </div>
 
+<!-- dropdown menu (like SWOGE Smash / Blackjack) -->
+<div class="pmenu" id="pmenu">
+  <a id="mnWallet">👛 My Wallet</a>
+  <a id="mnStake">🔒 Staking</a>
+  <a id="mnDeposit">💰 Deposit</a>
+  <a id="mnWithdraw">🏧 Withdraw</a>
+  <a id="mnQuests">🎯 Daily Quests</a>
+  <div class="msep"></div>
+  <a id="mnGames">🎮 Other games</a>
+  <a href="swoge_staking.html">🔒 Staking page</a>
+  <a href="index.html">🏠 Home</a>
+  <div class="msep"></div>
+  <a id="mnSound">🔊 Sound: ON</a>
+  <a id="mnClose">✕ Close</a>
+</div>
+
 <div id="modal" class="hud">
-  <div class="box" id="menuBox" style="display:none">
-    <h3>☰ Menu</h3>
-    <button class="btn" id="mnWallet" style="width:100%;margin-bottom:8px">👛 My Wallet</button>
-    <button class="btn" id="mnStake" style="width:100%;margin-bottom:8px">🔒 Staking</button>
-    <button class="btn" id="mnDeposit" style="width:100%;margin-bottom:8px">💰 Deposit</button>
-    <button class="btn" id="mnWithdraw" style="width:100%;margin-bottom:8px">🏧 Withdraw</button>
-    <button class="btn ghost" id="mnQuests" style="width:100%;margin-bottom:8px">🎯 Daily Quests</button>
-    <button class="btn ghost" id="mnGames" style="width:100%;margin-bottom:8px">🎮 Other Games</button>
-    <button class="btn ghost" id="mnSound" style="width:100%;margin-bottom:8px">🔊 Sound: ON</button>
-    <button class="btn ghost" id="mnClose" style="width:100%">Close</button>
-  </div>
   <div class="box" id="depBox">
     <h3>💰 Deposit $SWOGE</h3>
     <div class="note" style="margin-bottom:10px">In your wallet: <b id="depSwoge" style="color:#E6A537">…</b> $SWOGE · <b id="depEth" style="color:#E6A537">…</b> ETH</div>
@@ -731,7 +744,7 @@ async function submitWithdraw(v){
 }
 
 /* ============================ UI WIRING ============================ */
-function openModal(which){ $("#modal").classList.add("show"); $("#menuBox").style.display=which==="menu"?"":"none"; $("#depBox").style.display=which==="dep"?"":"none"; $("#wdBox").style.display=which==="wd"?"":"none"; $("#whBox").style.display=which==="wallet"?"":"none"; $("#emailBox").style.display=which==="email"?"":"none"; $("#accountBox").style.display=which==="account"?"":"none";
+function openModal(which){ $("#modal").classList.add("show"); $("#depBox").style.display=which==="dep"?"":"none"; $("#wdBox").style.display=which==="wd"?"":"none"; $("#whBox").style.display=which==="wallet"?"":"none"; $("#emailBox").style.display=which==="email"?"":"none"; $("#accountBox").style.display=which==="account"?"":"none";
   if(which==="dep") loadWalletBalances();
   if(which==="wd") $("#wdBal").textContent=fmtBig(myBalanceNum||0);
   syncJackpot(); }
@@ -785,7 +798,7 @@ async function doLogout(){
   $("#addr").style.display="none";
   $("#connectBtn").style.display=""; $("#connectBtn").textContent="Connect wallet";
   var eb=$("#emailBtn"); if(eb) eb.style.display="";
-  $("#menuBtn").style.display="none"; $("#qbar").style.display="none";
+  $("#menuBtn").style.display="none"; $("#qbar").style.display="none"; $("#pmenu").classList.remove("open");
   ["#stake","#quests","#lb"].forEach(function(s){ $(s).classList.remove("show"); });
   setBalance("0"); closeModal(); syncJackpot(); toast("Disconnected");
 }
@@ -807,9 +820,11 @@ $("#acClose").onclick=closeModal;
 $("#acDeposit").onclick=function(){ openModal("dep"); };
 $("#acLogout").onclick=doLogout;
 $("#sendGo").onclick=doSend;
-/* ☰ menu */
-$("#menuBtn").onclick=function(){ openModal("menu"); };
-$("#mnClose").onclick=closeModal;
+/* ☰ dropdown menu (like Smash / Blackjack) */
+$("#menuBtn").onclick=function(e){ e.stopPropagation(); $("#pmenu").classList.toggle("open"); };
+document.addEventListener("click",function(e){ var p=$("#pmenu"); if(p&&p.classList.contains("open")&&!p.contains(e.target)&&e.target!==$("#menuBtn")) p.classList.remove("open"); });
+$("#pmenu").addEventListener("click",function(){ $("#pmenu").classList.remove("open"); });
+$("#mnClose").onclick=function(){ $("#pmenu").classList.remove("open"); };
 $("#mnWallet").onclick=openAccount;
 $("#mnDeposit").onclick=function(){ openModal("dep"); };
 $("#mnWithdraw").onclick=function(){ openModal("wd"); };

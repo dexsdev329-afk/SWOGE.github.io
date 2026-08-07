@@ -25,24 +25,47 @@
   /* ===== VOLCAN + LOGO (gauche) ===== */
   #left { position: fixed; left: 1.5vw; top: 50%; transform: translateY(-50%); width: 22vw; max-width: 300px; text-align: center; z-index: 5; }
   #logo-img { width: 100%; display: block;  filter: drop-shadow(0 6px 18px rgba(255,90,0,.4)); }
-  /* ===== VOLCAN DE COLLECTE (jauge, collée à gauche de la grille) ===== */
-  #vmeter { position: absolute; top: 50%; right: 100%; margin-right: .6vw; transform: translateY(-50%);
-    height: 78%; aspect-ratio: 427 / 640; z-index: 6;
+  /* ===== VOLCAN DE COLLECTE : gros, au CENTRE-HAUT, jauge de lave JAUNE visible ===== */
+  #vmeter { position: absolute; top: .5vh; left: 50%; transform: translateX(-50%);
+    height: 23vh; aspect-ratio: 427 / 640; z-index: 7;
     background: url('https://i.ibb.co/sd0mK3Rq/Chat-GPT-Image-7-ao-t-2026-21-11-53.png') center / contain no-repeat;
-    filter: drop-shadow(0 6px 16px rgba(255,90,0,.45)); }
-  /* masque sombre sur la partie VIDE (haut du tube) : hauteur pilotee par JS */
-  #vmeter-empty { position: absolute; left: 43%; width: 15%; top: 10%; height: 75%;
-    background: linear-gradient(to bottom, rgba(5,2,1,.97), rgba(7,3,1,.92) 65%, rgba(40,12,2,.82));
-    border-bottom: 2px solid rgba(255,200,90,.95); box-shadow: 0 3px 10px 1px rgba(255,150,0,.75);
+    filter: drop-shadow(0 6px 16px rgba(255,90,0,.5)); }
+  /* LAVE JAUNE qui monte (hauteur pilotée par JS) */
+  #vmeter-lava { position: absolute; left: 42%; width: 16%; bottom: 17%; height: 0;
+    background: linear-gradient(to top, #ff4d00, #ff8a00 35%, #ffc400 70%, #ffe680 90%, #fff3ad);
+    box-shadow: 0 0 16px 4px rgba(255,180,0,.95), inset 0 0 8px rgba(255,110,0,.85);
+    border-radius: 4px 4px 0 0; transition: height .45s cubic-bezier(.4,0,.2,1);
+    animation: lavaBubble 1.2s ease-in-out infinite; pointer-events: none; }
+  @keyframes lavaBubble { 0%,100%{ filter: brightness(1); } 50%{ filter: brightness(1.25); } }
+  /* masque sombre au-dessus de la lave (partie VIDE) */
+  #vmeter-empty { position: absolute; left: 42%; width: 16%; top: 8%; height: 75%;
+    background: linear-gradient(to bottom, rgba(5,2,1,.96), rgba(24,8,2,.82));
     transition: height .45s cubic-bezier(.4,0,.2,1); pointer-events: none; }
   #vmeter-erupt { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; opacity: 0; pointer-events: none; }
-  #vmeter-count { position: absolute; bottom: 3%; left: 50%; transform: translateX(-50%); font-size: 1.5vh; font-weight: 900;
-    color: #ffd54a; text-shadow: 0 2px 3px #000, 0 0 7px #000; white-space: nowrap; letter-spacing: .5px; }
+  /* badge "PRÊT !" quand le volcan est presque plein */
+  #vmeter-ready { position: absolute; bottom: 1%; left: 50%; transform: translateX(-50%);
+    font-family:'Orbitron',sans-serif; font-weight: 900; font-size: 1.5vh; letter-spacing: 1px; color: #fff;
+    background: linear-gradient(180deg,#ff8a00,#c40000); padding: .3vh 1.3vh; border-radius: 999px;
+    box-shadow: 0 0 12px rgba(255,120,0,.9); white-space: nowrap; opacity: 0; transition: opacity .25s; }
+  /* état CHAUFFE (presque plein) : lueur + badge PRÊT */
+  #vmeter.hot { animation: vHot .55s ease-in-out infinite; }
+  #vmeter.hot #vmeter-ready { opacity: 1; }
+  @keyframes vHot { 0%,100%{ filter: drop-shadow(0 6px 16px rgba(255,90,0,.5)) brightness(1); }
+    50%{ filter: drop-shadow(0 0 24px rgba(255,150,0,1)) brightness(1.28); } }
+  /* ÉRUPTION */
   #vmeter.erupting #vmeter-empty { opacity: 0; transition: opacity .2s; }
+  #vmeter.erupting #vmeter-lava { height: 75% !important; }
   #vmeter.erupting #vmeter-erupt { opacity: 1; animation: vErupt 1.6s ease-out; }
-  #vmeter.erupting { animation: vShake .4s linear 2; }
-  @keyframes vErupt { 0%{ transform: scale(1); filter: brightness(1); } 25%{ transform: scale(1.12); filter: brightness(1.5) drop-shadow(0 0 20px #ff8a00); } 100%{ transform: scale(1); filter: brightness(1.1); } }
-  @keyframes vShake { 0%,100%{ transform: translateX(0); } 20%{ transform: translateX(-4px); } 40%{ transform: translateX(4px); } 60%{ transform: translateX(-3px); } 80%{ transform: translateX(3px); } }
+  #vmeter.erupting { animation: vHotBig .5s ease-in-out 3; }
+  @keyframes vErupt { 0%{ transform: scale(1); } 25%{ transform: scale(1.14); filter: brightness(1.6) drop-shadow(0 0 22px #ff8a00); } 100%{ transform: scale(1); filter: brightness(1.1); } }
+  @keyframes vHotBig { 0%,100%{ filter: brightness(1.1); } 50%{ filter: brightness(1.55) drop-shadow(0 0 28px #ffb400); } }
+  /* Flash rouge plein écran + secousse à l'éruption */
+  #erupt-flash { position: fixed; inset: 0; z-index: 7000; pointer-events: none; opacity: 0;
+    background: radial-gradient(circle at 50% 38%, rgba(255,90,0,.6), rgba(180,0,0,.4) 45%, rgba(60,0,0,.18) 75%, transparent); }
+  #erupt-flash.on { animation: eruptFlash 1.4s ease-out; }
+  @keyframes eruptFlash { 0%{ opacity: 0; } 12%{ opacity: 1; } 100%{ opacity: 0; } }
+  #scene.shake { animation: screenShake .5s cubic-bezier(.36,.07,.19,.97) 2; }
+  @keyframes screenShake { 0%,100%{ transform: translate(0,0); } 10%{ transform: translate(-5px,3px); } 30%{ transform: translate(5px,-4px); } 50%{ transform: translate(-4px,4px); } 70%{ transform: translate(4px,-3px); } 90%{ transform: translate(-3px,2px); } }
   .fly-coin { position: fixed; z-index: 8000; pointer-events: none; transform-origin: center; will-change: transform, opacity; object-fit: contain;
     filter: brightness(1.3) saturate(1.08) drop-shadow(0 0 9px rgba(255,205,90,.8)); }
   #buy-bonus { position: relative; width: 92%; margin: 1vh auto 0; aspect-ratio: 1638 / 562;
@@ -276,16 +299,17 @@
     .jp-plaque:nth-child(n+3) { grid-column:span 2; }                          /* 3 en bas */
     .jp-plaque span { font-size:3.4vw; top:56%; }
 
+    /* Volcan de collecte : GROS, au centre, au-dessus des rouleaux */
+    #vmeter { position:static; order:2; height:17vh; margin:.2vh auto 0;
+              transform:none; left:auto; top:auto; right:auto; }
+    #vmeter-ready { font-size:1.4vh; }
+
     /* Machine au centre, AGRANDIE sur mobile (cartes plus grosses) */
-    #machine { position:static; transform:none; order:2; width:90vw; max-width:90vw; margin-top:.6vh; }
+    #machine { position:static; transform:none; order:3; width:90vw; max-width:90vw; margin-top:.4vh; }
     #grid { max-width:100%; grid-template-columns:repeat(3,minmax(0,1fr)); }
     .cell { min-width:0; font-size:8vh; }
     /* cadre de feu recadré pour coller a la grille (evite qu'il deborde en haut/bas) */
     #fire-frame { width:108%; }
-    /* jauge volcan : badge dans le coin haut-gauche, DANS la grille (pas hors ecran) */
-    #vmeter { position:absolute; top:-1vh; left:1vw; right:auto; margin:0;
-              height:14vh; transform:none; z-index:9; }
-    #vmeter-count { font-size:1.2vh; }
 
     /* #left est maintenant DANS la barre du bas : ACHETER LE BONUS petit, a cote du SPIN */
     #left { position:static; transform:none; width:auto; max-width:none;
@@ -310,6 +334,24 @@
     #turbo-btn { flex:1 1 40vw; }
     #auto-btn,#turbo-btn { font-size:1.9vh; padding:1.2vh 3vw; }
   }
+
+  /* ===== PC / WEB (large, paysage) : HUD dans la colonne de droite, son en bas, volcan à gauche ===== */
+  @media (min-width:821px) and (orientation:landscape) {
+    /* solde + Connect + Email + Menu : colonne verticale à droite (gouttière vide, aucun chevauchement) */
+    #hud { top:50%; bottom:auto; right:2vw; transform:translateY(-50%);
+           flex-direction:column; align-items:flex-end; gap:1.4vh; }
+    #bal-chip { font-size:1.7vh; padding:1vh 1.6vh; }
+    #connectBtn,#emailBtn { font-size:1.5vh; padding:1.2vh 2vh; }
+    #menuBtn { width:5.2vh; height:5.2vh; font-size:2.4vh; }
+    /* menu déroulant à gauche de la colonne HUD */
+    .pmenu { top:50%; bottom:auto; right:12vw; transform:translateY(-50%); }
+    /* bouton son en bas à gauche */
+    #music-btn { top:auto; bottom:2.4vh; left:2vw; width:5.2vh; height:5.2vh; font-size:2.4vh; }
+    /* volcan de collecte à gauche des rouleaux */
+    #vmeter { top:44%; left:5vw; transform:translateY(-50%); height:40vh; }
+    /* logo + ACHETER LE BONUS regroupés en bas à gauche, sous le volcan */
+    #left { top:auto; bottom:12vh; left:2vw; transform:none; width:15vw; z-index:6; }
+  }
 </style>
 </head>
 <body>
@@ -319,11 +361,15 @@
 
   <div id="ladder"></div>
 
+  <!-- VOLCAN DE COLLECTE : gros, au centre-haut, jauge de lave jaune visible -->
+  <div id="vmeter">
+    <div id="vmeter-lava"></div>
+    <div id="vmeter-empty"></div>
+    <img id="vmeter-erupt" src="https://i.ibb.co/YBzFsMNn/Chat-GPT-Image-7-ao-t-2026-21-09-41.png" alt="">
+    <div id="vmeter-ready">PRÊT&nbsp;!</div>
+  </div>
+
   <div id="machine">
-    <div id="vmeter">
-      <div id="vmeter-empty"></div>
-      <img id="vmeter-erupt" src="https://i.ibb.co/YBzFsMNn/Chat-GPT-Image-7-ao-t-2026-21-09-41.png" alt="">
-    </div>
     <div id="fire-frame"></div>
     <div id="grid"></div>
     <div id="coin-burst"></div>
@@ -353,6 +399,9 @@
     <button id="turbo-btn">⚡ TURBO</button>
   </div>
 </div>
+
+<!-- flash rouge plein écran (éruption) -->
+<div id="erupt-flash"></div>
 
 <!-- bouton musique (coin haut gauche) -->
 <button id="music-btn" title="Musique">🔊</button>
@@ -770,10 +819,11 @@ async function animateBonus(bonus){
 
 /* ===================== VOLCAN DE COLLECTE ===================== */
 function setMeterUI(){
-  const e=$('vmeter-empty'), c=$('vmeter-count'); if(!e) return;
+  const e=$('vmeter-empty'), lava=$('vmeter-lava'), vm=$('vmeter'); if(!e) return;
   const f=Math.max(0,Math.min(1, collectMeter/COLLECT_CAP));
-  e.style.height = ((1-f)*75) + '%';
-  if(c) c.textContent = Math.floor(collectMeter) + ' / ' + COLLECT_CAP;
+  e.style.height = ((1-f)*75) + '%';          // masque du vide (au-dessus)
+  if(lava) lava.style.height = (f*75) + '%';   // lave JAUNE qui monte
+  if(vm) vm.classList.toggle('hot', f>=0.8 && f<1);   // volcan qui chauffe quand c'est presque plein
 }
 function flyCoin(fromEl, delay){
   const vm=$('vmeter'); if(!vm||!fromEl) return;
@@ -799,10 +849,16 @@ async function collectSwoge(grid){
   await zzz(idx.length*95*TF + 620);
 }
 async function animateEruption(){
-  const vm=$('vmeter'); if(vm) vm.classList.add('erupting');
+  const vm=$('vmeter'), sc=$('scene'), fl=$('erupt-flash');
+  if(vm){ vm.classList.remove('hot'); vm.classList.add('erupting'); }
+  if(sc){ sc.classList.remove('shake'); void sc.offsetWidth; sc.classList.add('shake'); }   // secousse écran
+  if(fl){ fl.classList.remove('on'); void fl.offsetWidth; fl.classList.add('on'); }          // flash rouge
   try{ sndBonus(); }catch(e){} playShowerMp3();
   await zzz(1550);
-  if(vm) vm.classList.remove('erupting'); setMeterUI();
+  if(vm) vm.classList.remove('erupting');
+  if(sc) sc.classList.remove('shake');
+  if(fl) fl.classList.remove('on');
+  setMeterUI();
 }
 setMeterUI();
 

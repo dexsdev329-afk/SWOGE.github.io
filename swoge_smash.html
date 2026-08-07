@@ -353,6 +353,7 @@
         catch(sw){ if(sw&&sw.code===4902){ await eth.request({method:"wallet_addEthereumChain",params:[{chainId:CHAIN.hex,chainName:CHAIN.name,nativeCurrency:{name:"Ether",symbol:CHAIN.sym,decimals:18},rpcUrls:[CHAIN.rpc],blockExplorerUrls:[CHAIN.scan]}]}); } }
       }
       await onWalletReady(eth);
+      try{ localStorage.setItem("swogeAuth","wallet"); }catch(e){}
     }catch(e){ toast(String(e.message||e).slice(0,90)); }
   }
   // shared for browser wallet OR Privy email wallet
@@ -410,7 +411,7 @@
   $("emVerify").addEventListener("click",async function(){
     var c=($("emCode").value||"").trim(); if(!c) return toast("enter the code");
     this.disabled=true; $("emMsg").textContent="Verifying + creating your wallet…";
-    try{ await SwogePrivy.verifyCode(privyEmail,c); closePanel(); await onWalletReady(SwogePrivy.getProvider(), SwogePrivy.getAddress()); }
+    try{ await SwogePrivy.verifyCode(privyEmail,c); try{ localStorage.setItem("swogeAuth","email"); }catch(_){} closePanel(); await onWalletReady(SwogePrivy.getProvider(), SwogePrivy.getAddress()); }
     catch(err){ $("emMsg").textContent="Error: "+String(err.message||err).slice(0,140); }
     this.disabled=false;
   });
@@ -543,6 +544,7 @@
   $("acCopy").onclick=function(){ try{ navigator.clipboard.writeText(myAddr||""); toast("Address copied"); }catch(e){} };
   // ---- disconnect / logout ----
   async function doLogout(){
+    try{ localStorage.removeItem("swogeAuth"); }catch(e){}
     try{ if(window.SwogePrivy&&SwogePrivy.isLoggedIn&&SwogePrivy.isLoggedIn()) await SwogePrivy.logout(); }catch(e){}
     try{ if(ws){ ws.onclose=null; ws.close(); } }catch(e){}
     authed=false; signer=null; provider=null; myAddr="";
@@ -562,7 +564,33 @@
   // unlock audio on the first user gesture (mobile browsers require it)
   ["click","keydown","touchstart"].forEach(function(ev){ window.addEventListener(ev,function once(){ SFX.unlock(); window.removeEventListener(ev,once); }); });
 
+  // ---- silent cross-page reconnect: keep the session when switching games ----
+  async function autoReconnect(){
+    var method; try{ method=localStorage.getItem("swogeAuth"); }catch(e){}
+    if(!method) return;
+    try{
+      if(method==="wallet"){
+        var eth=window.ethereum; if(!eth) return;
+        var accs=await eth.request({method:"eth_accounts"});   // no popup — only already-authorized accounts
+        if(!accs||!accs.length) return;
+        provider=new ethers.providers.Web3Provider(eth,"any"); signer=provider.getSigner();
+        myAddr=accs[0].toLowerCase();
+        if(ws&&ws.readyState===1) doLogin();                   // else ws.onopen logs in once connected
+      } else if(method==="email"){
+        await loadPrivy();
+        var addr=null;
+        if(SwogePrivy.restore) addr=await SwogePrivy.restore();
+        else if(SwogePrivy.isLoggedIn&&SwogePrivy.isLoggedIn()) addr=SwogePrivy.getAddress();
+        if(!addr) return;
+        provider=new ethers.providers.Web3Provider(SwogePrivy.getProvider(),"any"); signer=provider.getSigner();
+        myAddr=String(addr).toLowerCase();
+        if(ws&&ws.readyState===1) doLogin();
+      }
+    }catch(e){}
+  }
+
   connect();
+  autoReconnect();
 })();
 </script>
 

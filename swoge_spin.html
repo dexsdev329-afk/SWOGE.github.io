@@ -23,7 +23,7 @@
   @keyframes jpHot { to { filter: drop-shadow(0 0 18px #fff) brightness(1.28); transform: scale(1.05); } }
 
   /* ===== VOLCAN + LOGO (gauche) ===== */
-  #left { position: absolute; left: 1.5vw; top: 50%; transform: translateY(-50%); width: 22vw; max-width: 300px; text-align: center; z-index: 5; }
+  #left { position: fixed; left: 1.5vw; top: 50%; transform: translateY(-50%); width: 22vw; max-width: 300px; text-align: center; z-index: 5; }
   #logo-img { width: 100%; display: block;  filter: drop-shadow(0 6px 18px rgba(255,90,0,.4)); }
   /* ===== VOLCAN DE COLLECTE (jauge, collée à gauche de la grille) ===== */
   #vmeter { position: absolute; top: 50%; right: 100%; margin-right: .6vw; transform: translateY(-50%);
@@ -266,38 +266,49 @@
     #connectBtn,#emailBtn { font-size:11px; padding:6px 9px; border-radius:10px; }
     #menuBtn { width:34px; height:34px; font-size:18px; border-radius:10px; }
 
-    /* Echelle de jackpots : ligne compacte sous le HUD */
-    #ladder { position:static; transform:none; order:1; width:100vw; gap:2px; padding:0 3px; }
-    .jp-plaque { max-width:19.4vw; }
-    .jp-plaque span { font-size:2.5vw; top:56%; }
+    /* Echelle de jackpots : descendue sous le HUD, disposee 2 en haut / 3 en bas
+       (grille 6 colonnes : les 2 gros jackpots en haut, les 3 autres en bas) */
+    #ladder { position:static; transform:none; order:1; width:96vw; padding:0;
+              display:grid; grid-template-columns:repeat(6,1fr); gap:1.4vw 1.4vw;
+              align-items:center; justify-items:stretch; }
+    .jp-plaque { max-width:none; width:100%; flex:none; margin:0; }
+    .jp-plaque:nth-child(1), .jp-plaque:nth-child(2) { grid-column:span 3; }   /* 2 en haut */
+    .jp-plaque:nth-child(n+3) { grid-column:span 2; }                          /* 3 en bas */
+    .jp-plaque span { font-size:3.4vw; top:56%; }
 
-    /* Machine au centre, plus large sur mobile */
-    #machine { position:static; transform:none; order:2; width:86vw; max-width:94vw; margin-top:.4vh; }
+    /* Machine au centre, AGRANDIE sur mobile (cartes plus grosses) */
+    #machine { position:static; transform:none; order:2; width:90vw; max-width:90vw; margin-top:.6vh; }
     #grid { max-width:100%; grid-template-columns:repeat(3,minmax(0,1fr)); }
-    .cell { min-width:0; font-size:7vh; }
-    /* jauge volcan : petit badge dans le coin haut-gauche de la grille */
-    #vmeter { position:absolute; top:-2vh; left:-1vw; right:auto; margin:0;
-              height:15vh; transform:none; }
+    .cell { min-width:0; font-size:8vh; }
+    /* cadre de feu recadré pour coller a la grille (evite qu'il deborde en haut/bas) */
+    #fire-frame { width:108%; }
+    /* jauge volcan : badge dans le coin haut-gauche, DANS la grille (pas hors ecran) */
+    #vmeter { position:absolute; top:-1vh; left:1vw; right:auto; margin:0;
+              height:14vh; transform:none; z-index:9; }
     #vmeter-count { font-size:1.2vh; }
 
-    /* Logo cache, bouton "acheter le bonus" en barre compacte */
-    #left { position:static; transform:none; order:3; width:66vw; max-width:none;
-            left:auto; top:auto; }
+    /* #left est maintenant DANS la barre du bas : ACHETER LE BONUS petit, a cote du SPIN */
+    #left { position:static; transform:none; width:auto; max-width:none;
+            left:auto; top:auto; margin:0; }
     #logo-img { display:none; }
     #left > span { display:none !important; }   /* masque aussi le fallback emoji du logo si l'image echoue (style inline) */
     #buy-bonus { width:100%; margin:0; }
-    #buy-bonus span { font-size:1.9vh; }
+    #buy-bonus span { font-size:1.5vh; }
 
-    /* Barre du bas : passe a la ligne, TURBO plus coupe */
+    /* Barre du bas : 3 lignes -> [gain + mise] / [bonus + SPIN] / [auto + turbo] */
     #bottom { position:static; transform:none; order:4; width:96vw; bottom:auto;
-              gap:1.6vh 3vw; flex-wrap:wrap; justify-content:center; }
+              gap:1.3vh 2.5vw; flex-wrap:wrap; justify-content:center; align-items:center; }
+    .stat { flex:1 1 38vw; }
     .stat .n { font-size:2.4vh; }
-    #bet-ctrl { gap:2vw; }
-    #bet-dn,#bet-up { width:6vh; height:6vh; font-size:2.4vh; }
-    .bet-val { min-width:16vw; }
-    .bet-val .n { font-size:3vh; }
-    #spin-btn { flex:1 1 100%; max-width:82vw; margin:0 auto; font-size:2.7vh; padding:1.6vh 7vw; }
-    #auto-btn,#turbo-btn { font-size:1.9vh; padding:1.3vh 5vw; }
+    #bet-ctrl { flex:1 1 42vw; justify-content:center; gap:2vw; }
+    #bet-dn,#bet-up { width:5.4vh; height:5.4vh; font-size:2.2vh; }
+    .bet-val { min-width:12vw; }
+    .bet-val .n { font-size:2.8vh; }
+    #left { flex:0 0 40vw; }                                   /* bonus plus petit */
+    #spin-btn { flex:1 1 46vw; max-width:none; margin:0; font-size:2.5vh; padding:1.7vh 3vw; }
+    #auto-btn { flex:1 1 40vw; }
+    #turbo-btn { flex:1 1 40vw; }
+    #auto-btn,#turbo-btn { font-size:1.9vh; padding:1.2vh 3vw; }
   }
 </style>
 </head>
@@ -307,11 +318,6 @@
   <div id="bg-layer" style="display:block;background-image:url('https://i.ibb.co/hvCW4Wz/bg.png');opacity:.6;"></div>
 
   <div id="ladder"></div>
-
-  <div id="left">
-    <img id="logo-img" data-em="🌋" src="https://i.ibb.co/Kc1GxLzY/logo.png" alt="SWOGE VOLCANO">
-    <div id="buy-bonus"><span>ACHETER<br>LE BONUS</span></div>
-  </div>
 
   <div id="machine">
     <div id="vmeter">
@@ -337,6 +343,10 @@
       <button id="bet-dn" title="Mise -">◀</button>
       <div class="bet-val"><div class="l">MISE</div><div class="n" id="bet-amt">10</div></div>
       <button id="bet-up" title="Mise +">▶</button>
+    </div>
+    <div id="left">
+      <img id="logo-img" data-em="🌋" src="https://i.ibb.co/Kc1GxLzY/logo.png" alt="SWOGE VOLCANO">
+      <div id="buy-bonus"><span>ACHETER<br>LE BONUS</span></div>
     </div>
     <button id="spin-btn">SPIN 🌋</button>
     <button id="auto-btn">AUTO</button>
@@ -608,7 +618,7 @@ function toggleBgm(){ bgmOn=!bgmOn; if(!bgm) startBgm(); else if(bgmOn) bgm.play
 ['pointerdown','click','touchstart','keydown'].forEach(ev=>
   document.addEventListener(ev, function once(){ startBgm(); ['pointerdown','click','touchstart','keydown'].forEach(e=>document.removeEventListener(e, once)); }, {once:false}));
 let coinVolSnd=null;
-function playCoinVolcanoMp3(){ try{ if(!coinVolSnd){ coinVolSnd=new Audio(S('coin-volcano.mp3')); coinVolSnd.volume=0.7; } const s=coinVolSnd.cloneNode(); s.volume=0.7; s.play().catch(()=>{}); }catch(e){} }
+function playCoinVolcanoMp3(){ try{ if(!coinVolSnd){ coinVolSnd=new Audio(S('coin-volcano.mp3')); coinVolSnd.volume=0.7; } const s=coinVolSnd.cloneNode(); s.volume=0.7; s.playbackRate=1.6; s.play().catch(()=>{}); }catch(e){} }
 let showerSnd=null;
 function playShowerMp3(){ try{ if(!showerSnd){ showerSnd=new Audio(S('coin-shower.mp3')); showerSnd.volume=0.8; } showerSnd.currentTime=0; showerSnd.play().catch(()=>{}); }catch(e){} }
 let mystSnd=null;
@@ -778,7 +788,8 @@ function flyCoin(fromEl, delay){
   requestAnimationFrame(()=>{ var fd=(.55*TF); c.style.transition='transform '+fd+'s cubic-bezier(.55,.06,.3,1), opacity '+fd+'s ease-in';
     c.style.transitionDelay=(delay*TF)+'ms';
     c.style.transform=`translate(${ex-sx}px, ${ey-sy}px) scale(.14) rotate(720deg)`; c.style.opacity='.15'; });
-  setTimeout(()=>{ try{sndCoin();}catch(e){} try{playCoinVolcanoMp3();}catch(e){} c.remove(); }, (delay+590)*TF);
+  setTimeout(()=>{ try{playCoinVolcanoMp3();}catch(e){} }, Math.max(0, delay*TF));   // son au DÉPART de la pièce (synchro, plus réactif)
+  setTimeout(()=>{ try{sndCoin();}catch(e){} c.remove(); }, (delay+590)*TF);          // petit "clink" à l'arrivée
 }
 async function collectSwoge(grid){
   const idx=[]; grid.forEach((sy,i)=>{ if(sy==='SWOGE') idx.push(i); });

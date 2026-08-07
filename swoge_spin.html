@@ -32,22 +32,7 @@
     background-image: url('https://files.catbox.moe/45jrr8.png');   /* idle par défaut */
     background-repeat: no-repeat; background-size: 800% 800%; background-position: 0 0;
     filter: drop-shadow(0 6px 16px rgba(255,90,0,.5)); }
-  /* barre de progression de collecte (on voit quand ça va exploser) */
-  #vmeter-bar { position: absolute; left: 10%; right: 10%; bottom: -2%; height: 5%;
-    background: rgba(0,0,0,.55); border: 1px solid rgba(255,180,60,.6); border-radius: 999px; overflow: hidden;
-    box-shadow: 0 0 8px rgba(0,0,0,.5); }
-  #vmeter-bar i { display: block; height: 100%; width: 0;
-    background: linear-gradient(90deg,#ff5a00,#ffb400 60%,#ffe680);
-    box-shadow: 0 0 10px rgba(255,180,0,.95); transition: width .4s cubic-bezier(.4,0,.2,1); }
-  /* badge "PRÊT !" quand c'est presque plein */
-  #vmeter-ready { position: absolute; top: 0; left: 50%; transform: translate(-50%,-110%);
-    font-family:'Orbitron',sans-serif; font-weight: 900; font-size: 1.5vh; letter-spacing: 1px; color: #fff;
-    background: linear-gradient(180deg,#ff8a00,#c40000); padding: .3vh 1.3vh; border-radius: 999px;
-    box-shadow: 0 0 12px rgba(255,120,0,.9); white-space: nowrap; opacity: 0; transition: opacity .25s; }
-  #vmeter.hot #vmeter-ready { opacity: 1; }
-  #vmeter.hot #vmeter-sprite { animation: vHot .55s ease-in-out infinite; }
-  @keyframes vHot { 0%,100%{ filter: drop-shadow(0 6px 16px rgba(255,90,0,.5)) brightness(1); }
-    50%{ filter: drop-shadow(0 0 24px rgba(255,150,0,1)) brightness(1.28); } }
+  /* pas de barre, pas d'indicateur : le bonus reste une SURPRISE */
   /* Flash rouge plein écran + secousse à l'éruption */
   #erupt-flash { position: fixed; inset: 0; z-index: 7000; pointer-events: none; opacity: 0;
     background: radial-gradient(circle at 50% 38%, rgba(255,90,0,.6), rgba(180,0,0,.4) 45%, rgba(60,0,0,.18) 75%, transparent); }
@@ -55,6 +40,25 @@
   @keyframes eruptFlash { 0%{ opacity: 0; } 12%{ opacity: 1; } 100%{ opacity: 0; } }
   #scene.shake { animation: screenShake .5s cubic-bezier(.36,.07,.19,.97) 2; }
   @keyframes screenShake { 0%,100%{ transform: translate(0,0); } 10%{ transform: translate(-5px,3px); } 30%{ transform: translate(5px,-4px); } 50%{ transform: translate(-4px,4px); } 70%{ transform: translate(4px,-3px); } 90%{ transform: translate(-3px,2px); } }
+  /* ===== BIG WIN plein écran (SIZZLING) ===== */
+  #bigwin { position: fixed; inset: 0; z-index: 8500; display: none; flex-direction: column;
+    align-items: center; justify-content: center; pointer-events: none;
+    background: radial-gradient(circle at 50% 44%, rgba(70,14,0,.74), rgba(16,2,0,.92) 72%); }
+  #bigwin.show { display: flex; animation: bwIn .3s ease; }
+  @keyframes bwIn { from{ opacity: 0; } to{ opacity: 1; } }
+  #bigwin-title { font-family:'Orbitron',sans-serif; font-weight: 900; font-size: 7vh; letter-spacing: 3px;
+    background: linear-gradient(180deg,#fff2a8,#ffc400 50%,#ff5a00); -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 3px 10px rgba(0,0,0,.6)) drop-shadow(0 0 18px rgba(255,150,0,.5));
+    animation: bwPulse .55s ease-in-out infinite alternate; }
+  @keyframes bwPulse { to { transform: scale(1.07); } }
+  #bigwin-amt { font-family:'Orbitron',sans-serif; font-weight: 900; font-size: 12vh; color: #fff;
+    text-shadow: 0 0 34px #ff8a00, 0 4px 8px #000; margin-top: 1vh; line-height: 1; }
+  #bigwin-sub { font-family:'Orbitron',sans-serif; font-weight: 900; font-size: 2.6vh; letter-spacing: 3px;
+    color: var(--gold); text-shadow: 0 2px 6px #000; margin-top: 1vh; }
+  #bigwin-rain { position: absolute; inset: 0; overflow: hidden; }
+  .rain-coin { position: absolute; top: -12vh; object-fit: contain; will-change: transform;
+    filter: brightness(1.25) drop-shadow(0 0 8px rgba(255,205,90,.8)); }
+  @keyframes rainFall { to { transform: translateY(125vh) rotate(720deg); } }
   .fly-coin { position: fixed; z-index: 8000; pointer-events: none; transform-origin: center; will-change: transform, opacity; object-fit: contain;
     filter: brightness(1.3) saturate(1.08) drop-shadow(0 0 9px rgba(255,205,90,.8)); }
   #buy-bonus { position: relative; width: 92%; margin: 1vh auto 0; aspect-ratio: 1638 / 562;
@@ -172,6 +176,7 @@
   @keyframes fireFlicker { from { opacity: .82; transform: scale(1) rotate(0deg); } to { opacity: 1; transform: scale(1.06) rotate(2.5deg); } }
   .clipc { clip-path: circle(35% at 50% 50%); }
   .coin.imgcoin .cv { position: absolute; bottom: 8%; left: 50%; transform: translateX(-50%); font-size: 4vh; color: #fff; font-weight: 900; text-shadow: 0 2px 3px #000, 0 0 8px #000, 0 0 3px #000; z-index: 2; }
+  .cv { display: none !important; }   /* pas d'écriture de valeur sous les symboles (MINOR, etc.) */
   .cell.has-coin { overflow: visible; z-index: 37; }
 
   /* overlay bonus (HOLD & PUSH) */
@@ -289,9 +294,12 @@
     .jp-plaque span { font-size:3.4vw; top:56%; }
 
     /* SWOGE collecteur : GROS, au centre, au-dessus des rouleaux (relative = contexte pour le sprite) */
-    #vmeter { position:relative; order:2; height:17vh; margin:1.6vh auto .2vh;
+    #vmeter { position:relative; order:2; height:17vh; margin:.4vh auto .2vh;
               transform:none; left:auto; top:auto; right:auto; }
-    #vmeter-ready { font-size:1.4vh; }
+    /* big win : polices adaptées mobile */
+    #bigwin-title { font-size:5.4vh; letter-spacing:2px; }
+    #bigwin-amt { font-size:9vh; }
+    #bigwin-sub { font-size:2.2vh; }
 
     /* Machine au centre, AGRANDIE sur mobile (cartes plus grosses) */
     #machine { position:static; transform:none; order:3; width:90vw; max-width:90vw; margin-top:.4vh; }
@@ -358,8 +366,6 @@
   <!-- SWOGE COLLECTEUR : perso animé (sprite 8x8) au centre-haut -->
   <div id="vmeter">
     <div id="vmeter-sprite"></div>
-    <div id="vmeter-bar"><i></i></div>
-    <div id="vmeter-ready">PRÊT&nbsp;!</div>
   </div>
 
   <div id="machine">
@@ -395,6 +401,14 @@
 
 <!-- flash rouge plein écran (éruption) -->
 <div id="erupt-flash"></div>
+
+<!-- BIG WIN plein écran (SIZZLING) : compteur qui grimpe + pluie de pièces -->
+<div id="bigwin">
+  <div id="bigwin-rain"></div>
+  <div id="bigwin-title">🔥 SIZZLING 🔥</div>
+  <div id="bigwin-amt">0</div>
+  <div id="bigwin-sub">$SWOGE</div>
+</div>
 
 <!-- bouton musique (coin haut gauche) -->
 <button id="music-btn" title="Musique">🔊</button>
@@ -783,6 +797,34 @@ let bonusSnd=null, lifeSnd=null, gainSnd=null;
 function playBonusMp3(){ try{ if(!bonusSnd){ bonusSnd=new Audio(S('bonus.mp3')); bonusSnd.volume=0.75; } bonusSnd.currentTime=0; bonusSnd.play().catch(()=>{}); }catch(e){} }
 function playLifeMp3(){ try{ if(!lifeSnd){ lifeSnd=new Audio(S('life-lost.mp3')); lifeSnd.volume=0.8; } lifeSnd.currentTime=0; lifeSnd.play().catch(()=>{}); }catch(e){} }
 function playGainMp3(){ try{ if(!gainSnd){ gainSnd=new Audio(S('life-gain.mp3')); gainSnd.volume=0.8; } gainSnd.currentTime=0; gainSnd.play().catch(()=>{}); }catch(e){} }
+
+/* ===================== BIG WIN (SIZZLING) ===================== */
+function coinRain(n){
+  const box=$('bigwin-rain'); if(!box) return;
+  for(let i=0;i<n;i++){
+    const c=document.createElement('img'); c.className='rain-coin'; c.src=U('swoge.png'); c.dataset.em='🪙';
+    const sz=(4.5+Math.random()*5.5);
+    c.style.left=(Math.random()*94)+'%'; c.style.width=sz+'vh'; c.style.height=sz+'vh';
+    const dur=(1.5+Math.random()*1.7);
+    c.style.animation='rainFall '+dur+'s linear '+(Math.random()*0.9).toFixed(2)+'s forwards';
+    box.appendChild(c);
+    setTimeout(()=>c.remove(), (dur+1.1)*1000);
+  }
+}
+async function bigWin(amount, label){
+  const ov=$('bigwin'), amt=$('bigwin-amt'), tt=$('bigwin-title'); if(!ov) return;
+  if(tt&&label) tt.textContent=label;
+  setSpriteState('bonus', 6000);
+  ov.classList.add('show');
+  coinRain(30); try{ playShowerMp3(); }catch(e){}
+  const start=Date.now(), dur=2000*TF; if(amt) amt.textContent='0';
+  await new Promise(res=>{ (function up(){ const k=Math.min(1,(Date.now()-start)/dur);
+    if(amt) amt.textContent=fmtNum(Math.floor(amount*k)); if(k<1) requestAnimationFrame(up); else res(); })(); });
+  if(amt) amt.textContent=fmtNum(amount);
+  try{ sndJP(); }catch(e){} coinRain(20);
+  await zzz(1500);
+  ov.classList.remove('show');
+}
 async function animateBonus(bonus){
   playBonusMp3();
   sndBonus();
@@ -806,19 +848,17 @@ async function animateBonus(bonus){
   $('last-win').textContent = fmtNum(target); sndJP();
   const hadBigJp = bonus.cells.some(c => c && c.type==='JP' && (c.jp==='GRAND' || c.jp==='OG'));
   const lvl = winLevel(bonus.total, hadBigJp);   // seuils sur la valeur de BASE (indépendante de la mise)
-  if (lvl){ showWinBanner(lvl); sndBonus(); await zzz(2500); } else { await zzz(1300); }
+  if (lvl==='jackpot' || lvl==='mega'){
+    await bigWin(target, lvl==='jackpot' ? '💥 MEGA SIZZLING 💥' : '🔥 SIZZLING 🔥');   // gros gain = plein écran
+  } else if (lvl){ showWinBanner(lvl); sndBonus(); await zzz(2500); }
+  else { await zzz(1300); }
   $('machine').classList.remove('bonus'); clearCells();
   setSpriteState('idle');   // retour au repos à la fin du bonus
   renderGrid(Array.from({length:9},()=>pick(SYM_W)));
 }
 
 /* ===================== VOLCAN DE COLLECTE ===================== */
-function setMeterUI(){
-  const bar=document.querySelector('#vmeter-bar i'), vm=$('vmeter');
-  const f=Math.max(0,Math.min(1, collectMeter/COLLECT_CAP));
-  if(bar) bar.style.width = (f*100) + '%';             // barre de progression
-  if(vm) vm.classList.toggle('hot', f>=0.8 && f<1);    // SWOGE qui chauffe quand c'est presque plein
-}
+function setMeterUI(){ /* pas d'indicateur : le bonus est une surprise (le compteur reste interne) */ }
 /* ===== SWOGE collecteur animé (sprite sheets 8x8 = 64 frames) ===== */
 const SPRITE = {
   idle:  'https://files.catbox.moe/45jrr8.png',   // au repos (pas de pièce)

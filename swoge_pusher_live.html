@@ -190,8 +190,6 @@
     <button class="btn" id="mnStake" style="width:100%;margin-bottom:8px">🔒 Staking</button>
     <button class="btn" id="mnDeposit" style="width:100%;margin-bottom:8px">💰 Deposit</button>
     <button class="btn" id="mnWithdraw" style="width:100%;margin-bottom:8px">🏧 Withdraw</button>
-    <button class="btn ghost" id="mnBridge" style="width:100%;margin-bottom:8px">🌉 Bridge ETH → Robinhood</button>
-    <button class="btn ghost" id="mnSwap" style="width:100%;margin-bottom:8px">💱 Buy / Sell $SWOGE</button>
     <button class="btn ghost" id="mnQuests" style="width:100%;margin-bottom:8px">🎯 Daily Quests</button>
     <button class="btn ghost" id="mnGames" style="width:100%;margin-bottom:8px">🎮 Other Games</button>
     <button class="btn ghost" id="mnSound" style="width:100%;margin-bottom:8px">🔊 Sound: ON</button>
@@ -202,6 +200,12 @@
     <div class="note" style="margin-bottom:10px">In your wallet: <b id="depSwoge" style="color:#E6A537">…</b> $SWOGE · <b id="depEth" style="color:#E6A537">…</b> ETH</div>
     <label>Amount to deposit</label>
     <input id="depAmt" inputmode="decimal" placeholder="e.g. 100" value="100">
+    <div class="row" style="gap:6px;margin-bottom:8px">
+      <button class="btn ghost depct" data-pct="10" style="flex:1;padding:9px 0">10%</button>
+      <button class="btn ghost depct" data-pct="20" style="flex:1;padding:9px 0">20%</button>
+      <button class="btn ghost depct" data-pct="50" style="flex:1;padding:9px 0">50%</button>
+      <button class="btn ghost depct" data-pct="100" style="flex:1;padding:9px 0">MAX</button>
+    </div>
     <div class="row">
       <button class="btn" id="depGo" style="flex:1">Deposit</button>
       <button class="btn ghost" id="depCancel">Close</button>
@@ -658,6 +662,7 @@ async function connectWallet(){
       catch(sw){ if(sw&&sw.code===4902){ await eth.request({method:"wallet_addEthereumChain",params:[{chainId:CHAIN.hex,chainName:CHAIN.name,nativeCurrency:{name:"Ether",symbol:CHAIN.sym,decimals:18},rpcUrls:[CHAIN.rpc],blockExplorerUrls:[CHAIN.scan]}]}); } }
     }
     await onWalletReady(eth);
+    try{ localStorage.setItem("swogeAuth","wallet"); }catch(e){}
   }catch(e){ toast(String(e.message||e).slice(0,90)); }
 }
 // Shared once we have an EIP-1193 provider (browser wallet OR Privy email wallet).
@@ -740,14 +745,22 @@ function openAccount(){
   openModal("account");
   loadWalletBalances();
 }
+var walletSwoge=0;   // raw $SWOGE in the connected wallet (for the deposit % buttons)
 async function loadWalletBalances(){
   if(!provider||!myAddr) return;
   var ethS="—", swS="—";
   try{ var eth=await provider.getBalance(myAddr); ethS=(+ethers.utils.formatEther(eth)).toFixed(5); }catch(e){}
-  try{ var t=new ethers.Contract(TOKEN,ERC20_ABI,provider); var b=await t.balanceOf(myAddr); swS=fmtBig(+ethers.utils.formatUnits(b,18)); }catch(e){}
+  try{ var t=new ethers.Contract(TOKEN,ERC20_ABI,provider); var b=await t.balanceOf(myAddr); walletSwoge=+ethers.utils.formatUnits(b,18); swS=fmtBig(walletSwoge); }catch(e){}
   ["#acEth","#depEth"].forEach(function(id){ var el=$(id); if(el) el.textContent=ethS; });
   ["#acSwoge","#depSwoge"].forEach(function(id){ var el=$(id); if(el) el.textContent=swS; });
 }
+[].forEach.call(document.querySelectorAll(".depct"),function(b){
+  b.addEventListener("click",function(){
+    if(!(walletSwoge>0)){ toast("no $SWOGE in your wallet"); return; }
+    var pct=parseInt(b.getAttribute("data-pct"))||0;
+    $("#depAmt").value=String(Math.floor(walletSwoge*pct/100*10000)/10000);
+  });
+});
 function sendMsg(t,c){ var e=$("#sendMsg"); e.textContent=t; e.style.color=c==="warn"?"#FF8A5B":c==="ok"?"#7CFF9B":"#8a7f6a"; }
 async function doSend(){
   if(!signer){ toast("connect first"); return; }
@@ -765,6 +778,7 @@ async function doSend(){
 }
 function copyAddr(){ var t=myAddr||""; try{ navigator.clipboard.writeText(t); toast("Address copied"); }catch(e){ var i=$("#acAddr"); i.focus(); i.select(); try{document.execCommand("copy");}catch(_){}; toast("Address copied"); } }
 async function doLogout(){
+  try{ localStorage.removeItem("swogeAuth"); }catch(e){}
   try{ if(window.SwogePrivy && SwogePrivy.isLoggedIn && SwogePrivy.isLoggedIn()) await SwogePrivy.logout(); }catch(e){}
   authed=false; myAddr=null; provider=null; signer=null; rawEth=null;
   // reset the HUD back to the logged-out state
@@ -801,8 +815,6 @@ $("#mnDeposit").onclick=function(){ openModal("dep"); };
 $("#mnWithdraw").onclick=function(){ openModal("wd"); };
 $("#mnStake").onclick=function(){ closeModal(); $("#stake").classList.add("show"); renderStake(); syncJackpot(); };
 $("#mnQuests").onclick=function(){ closeModal(); $("#quests").classList.add("show"); syncJackpot(); };
-$("#mnBridge").onclick=function(){ window.open(BRIDGE_URL,"_blank","noopener"); };
-$("#mnSwap").onclick=function(){ window.open(SWAP_URL,"_blank","noopener"); };
 $("#mnGames").onclick=function(){ window.location.href="games.html"; };
 function refreshSoundBtn(){ $("#mnSound").textContent=SFX.isMuted()?"🔇 Sound: OFF":"🔊 Sound: ON"; }
 $("#mnSound").onclick=function(){ var m=SFX.toggle(); refreshSoundBtn(); if(!m) SFX.ding(); toast(m?"🔇 Sound off":"🔊 Sound on"); };
@@ -819,6 +831,7 @@ $("#emVerify").onclick=async function(){
   $("#emVerify").disabled=true; $("#emMsg").textContent="Verifying + creating your wallet…";
   try{
     await SwogePrivy.verifyCode(privyEmail,c);
+    try{ localStorage.setItem("swogeAuth","email"); }catch(_){}
     closeModal();
     await onWalletReady(SwogePrivy.getProvider(), SwogePrivy.getAddress());
   }catch(err){ $("#emMsg").textContent="Error: "+String(err.message||err).slice(0,140); }
@@ -880,8 +893,33 @@ setInterval(drainTick,55); // ~18 coins/sec, throttled by the table's capacity
 setInterval(function(){ /* placeholder for future presence updates */ },5000);
 
 /* ============================ BOOT ============================ */
+// Silent cross-page reconnect: keep the session when switching between games.
+async function autoReconnect(){
+  var method; try{ method=localStorage.getItem("swogeAuth"); }catch(e){}
+  if(!method) return;
+  try{
+    if(method==="wallet"){
+      var eth=window.ethereum; if(!eth) return;
+      var accs=await eth.request({method:"eth_accounts"});   // no popup — only already-authorized accounts
+      if(!accs||!accs.length) return;
+      rawEth=eth; provider=new ethers.providers.Web3Provider(eth,"any"); signer=provider.getSigner();
+      myAddr=accs[0];
+      if(loginNonce!=null) doLogin();                        // else the hello handler logs in
+    } else if(method==="email"){
+      await loadPrivy();
+      var addr=null;
+      if(SwogePrivy.restore) addr=await SwogePrivy.restore();
+      else if(SwogePrivy.isLoggedIn&&SwogePrivy.isLoggedIn()) addr=SwogePrivy.getAddress();
+      if(!addr) return;
+      rawEth=SwogePrivy.getProvider(); provider=new ethers.providers.Web3Provider(rawEth,"any"); signer=provider.getSigner();
+      myAddr=addr;
+      if(loginNonce!=null) doLogin();
+    }
+  }catch(e){}
+}
 initScene();
 wsConnect();
+autoReconnect();
 </script>
 </body>
 </html>

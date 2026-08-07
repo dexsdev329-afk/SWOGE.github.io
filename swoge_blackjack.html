@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>SWOGE Blackjack — play with $SWOGE</title>
+<meta name="description" content="SWOGE Blackjack. Beat the dealer with $SWOGE. Blackjack pays 3:2, max bet 10,000. Provably fair, same balance as the Pusher.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --gold:#E6A537; --gold2:#FFB84D; --ink:#0B0906; --ink2:#15100A;
+    --text:#F7EEDA; --muted:#A08a63; --line:rgba(230,165,55,.28);
+    --green:#7CFF9B; --red:#FF6B6B;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{background:var(--ink);color:var(--text);font-family:'Space Mono','Courier New',monospace}
+  body{min-height:100vh;overflow-x:hidden}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:680px;margin:0 auto;padding:0 16px}
+  /* coin-rain table background */
+  body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+    background:linear-gradient(180deg,rgba(11,9,6,.72),rgba(11,9,6,.88)),
+      url('https://i.ibb.co/N2rHq8T4/C1-A15-E2-D-F7-F6-452-D-9145-F966-CEF9-BF35.png') center/cover fixed;}
+  main,nav{position:relative;z-index:1}
+
+  nav{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);
+    background:rgba(11,9,6,.72);backdrop-filter:blur(8px);position:sticky;top:0;z-index:5}
+  .brand{font-family:'Anton',sans-serif;font-size:20px;letter-spacing:1px;color:var(--gold)}
+  .brand span{color:var(--text)}
+  nav .sp{flex:1}
+  .chip{font-size:13px;color:var(--text);border:1px solid var(--line);border-radius:999px;padding:8px 13px;background:rgba(0,0,0,.3)}
+  .chip b{color:var(--gold)}
+  .menubtn{font-size:18px;line-height:1;color:var(--text);background:rgba(0,0,0,.3);border:1px solid var(--line);border-radius:12px;width:40px;height:40px;cursor:pointer}
+  .menubtn:hover{color:var(--gold);border-color:rgba(230,165,55,.6)}
+  .menu{position:absolute;top:60px;right:12px;z-index:20;min-width:210px;display:none;flex-direction:column;
+    background:rgba(11,9,6,.98);border:1px solid var(--line);border-radius:14px;padding:6px;box-shadow:0 16px 40px rgba(0,0,0,.6);backdrop-filter:blur(8px)}
+  .menu.open{display:flex}
+  .menu a{font-size:14px;color:var(--text);padding:11px 13px;border-radius:9px}
+  .menu a:hover{background:rgba(230,165,55,.12);color:var(--gold)}
+  .menu .msep{height:1px;background:var(--line);margin:5px 8px}
+
+  .hero{text-align:center;padding:18px 16px 2px}
+  .hero h1{font-family:'Anton',sans-serif;font-size:clamp(26px,6vw,42px);line-height:1;letter-spacing:1px}
+  .hero h1 .g{color:var(--gold)}
+  .hero p{max-width:520px;margin:8px auto 0;color:#cdbf9f;font-size:12.5px;line-height:1.55}
+
+  .felt{margin:12px 0;border:1px solid var(--line);border-radius:20px;background:rgba(6,4,2,.55);
+    padding:16px 14px;box-shadow:inset 0 0 60px rgba(0,0,0,.5)}
+  .side{margin-bottom:14px}
+  .side:last-child{margin-bottom:0}
+  .side .lbl{font-family:'Archivo',sans-serif;font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);
+    display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .side .lbl .val{margin-left:auto;font-family:'Anton',sans-serif;font-size:20px;color:var(--gold);letter-spacing:0}
+  .side .lbl .val.bust{color:var(--red)} .side .lbl .val.bj{color:var(--green)}
+  .cards{display:flex;gap:8px;flex-wrap:wrap;min-height:112px;align-items:center}
+  .card{width:80px;height:112px;border-radius:10px;overflow:hidden;border:1px solid rgba(230,165,55,.5);
+    background:#0c0a07;box-shadow:0 6px 16px rgba(0,0,0,.5);flex-shrink:0;animation:deal .28s ease}
+  .card img{width:100%;height:100%;object-fit:cover;display:block}
+  @keyframes deal{from{opacity:0;transform:translateY(-14px) rotate(-6deg) scale(.9)}to{opacity:1;transform:none}}
+  .card.back{background:
+      repeating-linear-gradient(45deg,rgba(230,165,55,.16) 0 6px,transparent 6px 12px),
+      radial-gradient(circle at 50% 40%,rgba(255,184,77,.22),transparent 60%),
+      linear-gradient(180deg,#1a1206,#0c0a07);
+    display:flex;align-items:center;justify-content:center;font-size:34px;color:rgba(255,184,77,.7)}
+
+  .result{text-align:center;min-height:30px;font-family:'Anton',sans-serif;font-size:24px;letter-spacing:1px;margin:6px 0 2px}
+  .result.win{color:var(--green)} .result.lose{color:var(--red)} .result.push{color:var(--gold)}
+
+  /* controls */
+  .controls{display:flex;flex-direction:column;align-items:center;gap:12px;padding:6px 0 8px}
+  .betrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:center}
+  .betin{width:130px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:rgba(0,0,0,.4);
+    color:var(--text);font-family:'Space Mono';font-size:16px;text-align:center}
+  .chipbtn{font-family:inherit;font-size:12px;font-weight:700;color:var(--text);background:rgba(0,0,0,.35);
+    border:1px solid var(--line);border-radius:999px;padding:9px 13px;cursor:pointer}
+  .chipbtn:hover{border-color:rgba(230,165,55,.7);color:var(--gold)}
+  .chipbtn.max{color:var(--ink);background:linear-gradient(135deg,var(--gold2),var(--gold));border:none}
+
+  .act{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+  .btn{font-family:'Archivo',sans-serif;font-weight:800;font-size:16px;letter-spacing:.5px;color:var(--ink);
+    background:linear-gradient(135deg,var(--gold2),var(--gold));border:none;cursor:pointer;padding:14px 30px;border-radius:14px;
+    box-shadow:0 8px 24px rgba(230,165,55,.3)}
+  .btn:hover{filter:brightness(1.05)} .btn:active{transform:translateY(2px)}
+  .btn:disabled{background:rgba(255,255,255,.08);color:var(--muted);cursor:default;box-shadow:none}
+  .btn.sec{background:rgba(255,255,255,.08);color:var(--text)}
+  .btn.sec:hover{background:rgba(255,255,255,.14);color:var(--gold)}
+
+  .connectbtn{font-family:'Archivo',sans-serif;font-weight:800;font-size:16px;color:var(--ink);
+    background:linear-gradient(135deg,var(--gold2),var(--gold));border:none;cursor:pointer;padding:14px 34px;border-radius:14px}
+
+  .fair{font-size:11px;color:var(--muted);text-align:center;padding:2px 0 6px;word-break:break-all}
+  .fair b{color:#cdbf9f}
+  footer{border-top:1px solid var(--line);padding:20px 16px 40px;text-align:center;color:var(--muted);font-size:12px}
+  footer a{color:var(--gold)}
+  .statusdot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;background:#555;vertical-align:middle}
+  .statusdot.on{background:var(--green);box-shadow:0 0 8px var(--green)}
+  .statusdot.off{background:var(--red);box-shadow:0 0 8px var(--red)}
+  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:50;background:rgba(11,9,6,.96);
+    border:1px solid var(--line);color:var(--text);font-size:13px;padding:11px 18px;border-radius:12px;opacity:0;transition:opacity .25s;pointer-events:none}
+  .toast.show{opacity:1}
+  @media(max-width:480px){ .card{width:66px;height:92px} .cards{min-height:92px} }
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="brand" href="index.html">$SWOGE <span>BLACKJACK</span></a>
+  <span class="sp"></span>
+  <span class="chip"><span class="statusdot off" id="dot"></span><b id="bal">—</b> $SWOGE</span>
+  <button class="menubtn" id="menuBtn" aria-label="Menu">☰</button>
+  <div class="menu" id="menu">
+    <a href="swoge_pusher_live.html#wallet">👛 My Wallet</a>
+    <a href="swoge_pusher_live.html#staking">🔒 Staking</a>
+    <a href="swoge_pusher_live.html#deposit">💰 Deposit</a>
+    <a href="swoge_pusher_live.html#withdraw">🏧 Withdraw</a>
+    <a href="swoge_pusher_live.html#quests">🎯 Daily Quests</a>
+    <div class="msep"></div>
+    <a href="games.html">🎮 Other games</a>
+    <a href="index.html">🏠 Home</a>
+    <div class="msep"></div>
+    <a href="#" id="soundItem">🔊 Sound: on</a>
+  </div>
+</nav>
+
+<main>
+  <section class="hero">
+    <h1>SWOGE <span class="g">BLACKJACK</span></h1>
+    <p>Beat the dealer with $SWOGE. Blackjack pays <b style="color:#cdbf9f">3:2</b>, dealer stands on 17, max bet <b style="color:#cdbf9f">10,000</b>. Provably fair — same balance as the Pusher.</p>
+  </section>
+
+  <div class="wrap">
+    <div class="felt">
+      <div class="side">
+        <div class="lbl">Dealer <span class="val" id="dealerVal"></span></div>
+        <div class="cards" id="dealerCards"></div>
+      </div>
+      <div class="result" id="result"></div>
+      <div class="side">
+        <div class="lbl">You <span class="val" id="playerVal"></span></div>
+        <div class="cards" id="playerCards"></div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <!-- connect -->
+      <button class="connectbtn" id="connectBtn">Connect wallet</button>
+
+      <!-- bet UI -->
+      <div id="betUI" style="display:none">
+        <div class="betrow">
+          <button class="chipbtn" data-add="10">+10</button>
+          <button class="chipbtn" data-add="100">+100</button>
+          <button class="chipbtn" data-add="1000">+1k</button>
+          <input class="betin" id="betin" type="number" min="1" max="10000" value="10">
+          <button class="chipbtn max" id="maxBtn">MAX 10k</button>
+        </div>
+        <div class="act" style="margin-top:12px">
+          <button class="btn" id="dealBtn">🃏 Deal</button>
+        </div>
+      </div>
+
+      <!-- play UI -->
+      <div id="playUI" style="display:none">
+        <div class="act">
+          <button class="btn" id="hitBtn">Hit</button>
+          <button class="btn" id="standBtn">Stand</button>
+          <button class="btn sec" id="doubleBtn">Double</button>
+        </div>
+      </div>
+
+      <!-- new hand -->
+      <div id="doneUI" style="display:none">
+        <button class="btn" id="newBtn">🃏 New hand</button>
+      </div>
+    </div>
+
+    <div class="fair" id="fair"></div>
+  </div>
+
+  <footer><a href="games.html">← Back to the SWOGE Arcade</a></footer>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+  var SERVER_URL="wss://web-production-220a3.up.railway.app";
+  (function(){ var q=new URLSearchParams(location.search).get("server"); if(q) SERVER_URL=q; })();
+
+  // rank index 0=A,1..8=2..9,9=10,10=J,11=Q,12=K → custom SWOGE card art
+  var ART=[
+    "https://i.ibb.co/tTCyxPrS/Chat-GPT-Image-7-ao-t-2026-02-48-12.png", // A
+    "https://i.ibb.co/GQ6kNC0C/Chat-GPT-Image-7-ao-t-2026-03-02-01.png", // 2
+    "https://i.ibb.co/TBYkfjNk/Chat-GPT-Image-7-ao-t-2026-02-58-22.png", // 3
+    "https://i.ibb.co/zWJ4PY9w/Chat-GPT-Image-7-ao-t-2026-02-57-47.png", // 4
+    "https://i.ibb.co/999Zq8Wh/Chat-GPT-Image-7-ao-t-2026-02-56-50.png", // 5
+    "https://i.ibb.co/mVC7KsqH/7-ao-t-2026-02-56-05.png",                // 6
+    "https://i.ibb.co/FLsGzysk/Chat-GPT-Image-7-ao-t-2026-02-55-11.png", // 7
+    "https://i.ibb.co/sv7Gb1bh/Chat-GPT-Image-7-ao-t-2026-02-54-11.png", // 8
+    "https://i.ibb.co/ZKssKvZ/Chat-GPT-Image-7-ao-t-2026-02-53-15.png",  // 9
+    "https://i.ibb.co/CsBhdg2s/Chat-GPT-Image-7-ao-t-2026-02-52-29.png", // 10
+    "https://i.ibb.co/Zzw6tVZP/Chat-GPT-Image-7-ao-t-2026-02-51-39.png", // J
+    "https://i.ibb.co/BHwNS7mk/Chat-GPT-Image-7-ao-t-2026-02-50-17.png", // Q
+    "https://i.ibb.co/ym6qY4NB/Chat-GPT-Image-7-ao-t-2026-02-49-10.png"  // K
+  ];
+  var RANKNAME=["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
+
+  var $=function(s){return document.getElementById(s);};
+  var dot=$("dot"), balEl=$("bal"), result=$("result"), fairEl=$("fair"),
+      dealerCards=$("dealerCards"), playerCards=$("playerCards"), dealerVal=$("dealerVal"), playerVal=$("playerVal"),
+      connectBtn=$("connectBtn"), betUI=$("betUI"), playUI=$("playUI"), doneUI=$("doneUI"),
+      betin=$("betin"), hitBtn=$("hitBtn"), standBtn=$("standBtn"), doubleBtn=$("doubleBtn");
+
+  var ws=null, authed=false, myAddr=null, loginNonce=null, balance=0, busy=false;
+
+  function toast(t){ var e=$("toast"); e.textContent=t; e.classList.add("show"); clearTimeout(e._t); e._t=setTimeout(function(){e.classList.remove("show");},2200); }
+  function fmtBal(b){ b=parseFloat(b||0); return b>=1000?(b/1000).toFixed(1)+"k":b.toFixed(2); }
+  function setBalance(b){ balance=parseFloat(b||0); balEl.textContent=fmtBal(balance); }
+  function setDot(on){ dot.className="statusdot "+(on?"on":"off"); }
+  function showFair(f){ if(f&&f.serverSeedHash) fairEl.innerHTML="Provably fair · seed hash <b>"+String(f.serverSeedHash).slice(0,16)+"…</b> · nonce <b>"+f.nonce+"</b>"; }
+
+  // ---- sound ----
+  var SFX=(function(){
+    var ctx=null, muted=false; try{ muted=localStorage.getItem("swogeBjMute")==="1"; }catch(e){}
+    function ac(){ if(!ctx){ try{ ctx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return null; } } if(ctx&&ctx.state==="suspended") ctx.resume(); return ctx; }
+    function tone(f,d,type,vol,when){ var c=ac(); if(!c||muted) return; var o=c.createOscillator(),g=c.createGain(); o.type=type||"sine"; o.frequency.value=f; var t=c.currentTime+(when||0); g.gain.setValueAtTime(vol||0.15,t); g.gain.exponentialRampToValueAtTime(0.0008,t+d); o.connect(g); g.connect(c.destination); o.start(t); o.stop(t+d); }
+    return {
+      unlock:function(){ ac(); },
+      deal:function(){ tone(320,0.06,"square",0.12); tone(180,0.08,"sine",0.08,0.02); },
+      win:function(big){ [523,659,784,big?1047:880].forEach(function(f,i){ tone(f,0.15,"triangle",0.15,i*0.07); }); },
+      lose:function(){ tone(200,0.12,"sine",0.08); tone(150,0.16,"sine",0.07,0.08); },
+      push:function(){ tone(440,0.12,"triangle",0.1); },
+      toggle:function(){ muted=!muted; try{ localStorage.setItem("swogeBjMute",muted?"1":"0"); }catch(e){} if(!muted) ac(); return muted; },
+      isMuted:function(){ return muted; }
+    };
+  })();
+
+  // ---- rendering ----
+  function cardEl(rank){
+    var d=document.createElement("div"); d.className="card";
+    var im=document.createElement("img"); im.src=ART[rank]||ART[0]; im.alt=RANKNAME[rank]||"?";
+    im.onerror=function(){ d.classList.add("back"); d.textContent=RANKNAME[rank]||"?"; };
+    d.appendChild(im); return d;
+  }
+  function backEl(){ var d=document.createElement("div"); d.className="card back"; d.textContent="🐕"; return d; }
+
+  function renderHand(el, cards, appendBack){
+    el.innerHTML="";
+    for(var i=0;i<cards.length;i++) el.appendChild(cardEl(cards[i]));
+    if(appendBack) el.appendChild(backEl());
+  }
+
+  function render(st){
+    // dealer
+    renderHand(dealerCards, st.dealer.cards, st.dealer.hidden);
+    dealerVal.textContent = st.dealer.hidden ? "" : st.dealer.value;
+    dealerVal.className = "val" + (st.dealer.value>21?" bust":"");
+    // player
+    renderHand(playerCards, st.player.cards, false);
+    playerVal.textContent = st.player.value;
+    playerVal.className = "val" + (st.player.value>21?" bust":(st.player.value===21&&st.player.cards.length===2?" bj":""));
+    setBalance(st.balance);
+    if(st.fairness) showFair(st.fairness);
+
+    if(st.stage==="player"){
+      betUI.style.display="none"; doneUI.style.display="none"; playUI.style.display="";
+      doubleBtn.style.display = st.canDouble ? "" : "none";
+      result.textContent=""; result.className="result";
+      busy=false;
+    } else { // done
+      playUI.style.display="none"; betUI.style.display="none"; doneUI.style.display="";
+      showResult(st);
+      busy=false;
+    }
+  }
+
+  function showResult(st){
+    var r=st.result, txt="", cls="result";
+    if(r==="blackjack"){ txt="♠ BLACKJACK! +"+st.payout+" $SWOGE"; cls+=" win"; SFX.win(true); }
+    else if(r==="win"){ txt="You win! +"+st.payout+" $SWOGE"; cls+=" win"; SFX.win(false); }
+    else if(r==="push"){ txt="Push — bet returned"; cls+=" push"; SFX.push(); }
+    else if(r==="bust"){ txt="Bust! −"+(st.doubled?st.bet*2:st.bet)+" $SWOGE"; cls+=" lose"; SFX.lose(); }
+    else if(r==="dealer_blackjack"){ txt="Dealer blackjack — you lose"; cls+=" lose"; SFX.lose(); }
+    else if(r==="lose"){ txt="Dealer wins − "+(st.doubled?st.bet*2:st.bet)+" $SWOGE"; cls+=" lose"; SFX.lose(); }
+    result.textContent=txt; result.className=cls;
+  }
+
+  function idleUI(){ betUI.style.display=""; playUI.style.display="none"; doneUI.style.display="none"; }
+
+  // ---- ws ----
+  function connect(){
+    try{ ws=new WebSocket(SERVER_URL); }catch(e){ setDot(false); return; }
+    ws.onopen=function(){ setDot(true); if(myAddr) doLogin(); };
+    ws.onclose=function(){ setDot(false); authed=false; setTimeout(connect,3000); };
+    ws.onerror=function(){ setDot(false); };
+    ws.onmessage=function(ev){
+      var m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
+      if(m.type==="state") return;
+      if(m.type==="hello"){ loginNonce=m.loginNonce; showFair({serverSeedHash:m.serverSeedHash,nonce:0}); }
+      else if(m.type==="auth"){ authed=true; myAddr=m.address; setBalance(m.balance); showPlay(); if(m.fairness) showFair(m.fairness); if(m.bj) render(m.bj); else idleUI(); }
+      else if(m.type==="balance"||m.type==="deposit"){ setBalance(m.balance); if(m.type==="deposit") toast("💰 Deposit credited"); }
+      else if(m.type==="bj"){ render(m.state); }
+      else if(m.type==="need_deposit"){ setBalance(m.balance); busy=false; toast("Not enough $SWOGE — deposit in the Pusher"); }
+      else if(m.type==="error"){ busy=false; toast(m.error||"error"); }
+    };
+  }
+  function send(o){ if(ws&&ws.readyState===1) ws.send(JSON.stringify(o)); }
+
+  // ---- wallet ----
+  async function doConnect(){
+    var eth=window.ethereum;
+    if(!eth){ toast("Open in your wallet's browser, or use the Pusher to create a wallet"); location.href="swoge_pusher_live.html"; return; }
+    try{ var a=await eth.request({method:"eth_requestAccounts"}); myAddr=(a&&a[0]||"").toLowerCase(); if(!myAddr) return; window._eth=eth; if(ws&&ws.readyState===1) doLogin(); else connect(); }
+    catch(e){ toast("connection cancelled"); }
+  }
+  async function doLogin(){
+    if(!myAddr||loginNonce==null) return;
+    var msg="SWOGE Pusher login\nnonce: "+loginNonce;
+    try{ var sig=await window._eth.request({method:"personal_sign",params:[msg,myAddr]}); send({type:"login",message:msg,signature:sig}); }
+    catch(e){ toast("signature refused"); }
+  }
+  function showPlay(){ connectBtn.style.display="none"; }
+
+  // ---- actions ----
+  function getBet(){ var v=Math.floor(Number(betin.value)||0); if(v<1)v=1; if(v>10000)v=10000; betin.value=v; return v; }
+  function deal(){ if(!authed||busy) return; var b=getBet(); if(balance<b){ toast("Not enough $SWOGE"); return; } busy=true; SFX.deal(); send({type:"bj_bet",amount:b}); }
+  $("dealBtn").addEventListener("click",deal);
+  $("newBtn").addEventListener("click",function(){ result.textContent=""; result.className="result"; idleUI(); });
+  hitBtn.addEventListener("click",function(){ if(busy)return; busy=true; SFX.deal(); send({type:"bj_hit"}); });
+  standBtn.addEventListener("click",function(){ if(busy)return; busy=true; send({type:"bj_stand"}); });
+  doubleBtn.addEventListener("click",function(){ if(busy)return; if(balance<getBet()){ toast("Not enough to double"); return;} busy=true; SFX.deal(); send({type:"bj_double"}); });
+
+  // bet chips
+  [].forEach.call(document.querySelectorAll("[data-add]"),function(b){ b.addEventListener("click",function(){ betin.value=Math.min(10000,getBet()+parseInt(b.getAttribute("data-add"),10)); }); });
+  $("maxBtn").addEventListener("click",function(){ betin.value=10000; });
+  connectBtn.addEventListener("click",doConnect);
+
+  // ---- menu ----
+  var menuBtn=$("menuBtn"), menu=$("menu"), soundItem=$("soundItem");
+  menuBtn.addEventListener("click",function(e){ e.stopPropagation(); menu.classList.toggle("open"); });
+  document.addEventListener("click",function(e){ if(!menu.contains(e.target)&&e.target!==menuBtn) menu.classList.remove("open"); });
+  function refreshSound(){ soundItem.textContent=SFX.isMuted()?"🔇 Sound: off":"🔊 Sound: on"; }
+  refreshSound();
+  soundItem.addEventListener("click",function(e){ e.preventDefault(); SFX.toggle(); refreshSound(); });
+  ["click","keydown","touchstart"].forEach(function(ev){ window.addEventListener(ev,function once(){ SFX.unlock(); window.removeEventListener(ev,once); }); });
+
+  connect();
+})();
+</script>
+
+</body>
+</html>

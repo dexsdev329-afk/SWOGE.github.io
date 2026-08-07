@@ -1,5 +1,4 @@
 
-
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>$SWOGE — Wallet Bench</title>
@@ -31,7 +30,15 @@ body{
   font-family:'Archivo',system-ui,sans-serif;font-size:14px;line-height:1.5;
 }
 body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
-  background:radial-gradient(circle at 22% 8%,rgba(230,165,55,.12),transparent 42%),radial-gradient(circle at 82% 82%,rgba(242,194,90,.06),transparent 46%)}
+  background:
+    radial-gradient(circle at 22% 8%,rgba(230,165,55,.12),transparent 42%),
+    radial-gradient(circle at 82% 82%,rgba(242,194,90,.06),transparent 46%),
+    linear-gradient(rgba(11,9,6,.74),rgba(11,9,6,.86)),
+    url('https://i.ibb.co/qLYY2yhb/Chat-GPT-Image-7-ao-t-2026-12-23-23.png') center center/cover no-repeat fixed;}
+body.light::before{
+  background:
+    linear-gradient(rgba(255,255,255,.80),rgba(255,255,255,.88)),
+    url('https://i.ibb.co/qLYY2yhb/Chat-GPT-Image-7-ao-t-2026-12-23-23.png') center center/cover no-repeat fixed;}
 .wrap{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:28px 20px 80px}
 .mono{font-family:'Space Mono',monospace}
 .eyebrow{font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}

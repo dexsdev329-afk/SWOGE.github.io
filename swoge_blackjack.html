@@ -171,6 +171,7 @@
     <div class="controls">
       <!-- connect -->
       <button class="connectbtn" id="connectBtn">Connect wallet</button>
+      <button class="connectbtn" id="emailBtn" style="margin-top:8px;background:rgba(255,255,255,.08);color:var(--text)">✉️ Sign in with email</button>
 
       <!-- bet UI -->
       <div id="betUI" style="display:none">
@@ -251,6 +252,18 @@
     <div class="note">Complete them by playing — smashes and blackjack hands count too.</div>
     <div id="questrows"></div>
     <div class="row" style="margin-top:10px"><button class="btn sec" data-close style="flex:1">Close</button></div>
+  </div>
+  <div class="box" id="box-email">
+    <h3>✉️ Sign in with email</h3>
+    <div class="note" id="emMsg">A wallet is created for you automatically — no app needed.</div>
+    <label>Email</label>
+    <input id="emEmail" type="email" inputmode="email" placeholder="your@email.com">
+    <div class="row" style="margin-top:8px"><button class="btn" id="emSend" style="flex:1">Send code</button><button class="btn sec" data-close>Close</button></div>
+    <div id="emCodeWrap" style="display:none;margin-top:10px">
+      <label>6-digit code</label>
+      <input id="emCode" inputmode="numeric" placeholder="123456">
+      <div class="row" style="margin-top:8px"><button class="btn" id="emVerify" style="flex:1">Verify &amp; create wallet</button></div>
+    </div>
   </div>
 </div>
 
@@ -404,17 +417,35 @@
         try{ await eth.request({method:"wallet_switchEthereumChain",params:[{chainId:CHAIN.hex}]}); }
         catch(sw){ if(sw&&sw.code===4902){ await eth.request({method:"wallet_addEthereumChain",params:[{chainId:CHAIN.hex,chainName:CHAIN.name,nativeCurrency:{name:"Ether",symbol:CHAIN.sym,decimals:18},rpcUrls:[CHAIN.rpc],blockExplorerUrls:[CHAIN.scan]}]}); } }
       }
-      provider=new ethers.providers.Web3Provider(eth,"any"); signer=provider.getSigner();
-      myAddr=(await signer.getAddress()).toLowerCase();
-      if(ws&&ws.readyState===1) doLogin(); else connect();
+      await onWalletReady(eth);
     }catch(e){ toast(String(e.message||e).slice(0,90)); }
+  }
+  async function onWalletReady(eth, addr){
+    provider=new ethers.providers.Web3Provider(eth,"any"); signer=provider.getSigner();
+    myAddr=(addr||(await signer.getAddress())).toLowerCase();
+    if(ws&&ws.readyState===1) doLogin(); else connect();
   }
   async function doLogin(){
     if(!signer||loginNonce==null) return;
     try{ var msg="SWOGE Pusher login\nnonce: "+loginNonce; var sig=await signer.signMessage(msg); send({type:"login",message:msg,signature:sig,name:myAddr.slice(0,6)}); }
     catch(e){ toast("login cancelled"); }
   }
-  function showPlay(){ connectBtn.style.display="none"; }
+  // ---- email login (Privy embedded wallet) ----
+  var PRIVY_APP_ID="cmsga0yzp00a50biaf9vlzzd2", privyLoaded=false, privyEmail="";
+  function loadPrivy(){ return new Promise(function(res,rej){
+    if(privyLoaded) return res();
+    var s=document.createElement("script"); s.src="privy-swoge.js";
+    s.onload=function(){ privyLoaded=true; try{ SwogePrivy.init(PRIVY_APP_ID); }catch(e){} res(); };
+    s.onerror=function(){ rej(new Error("load failed")); };
+    document.head.appendChild(s);
+  }); }
+  async function openEmailLogin(){
+    try{ await loadPrivy(); }catch(e){ toast("Couldn't load email login"); return; }
+    $("emCodeWrap").style.display="none"; $("emCode").value="";
+    $("emMsg").textContent="A wallet is created for you automatically — no app needed.";
+    showBox("email");
+  }
+  function showPlay(){ connectBtn.style.display="none"; var eb=$("emailBtn"); if(eb)eb.style.display="none"; }
 
   // ---- actions ----
   function getBet(){ var v=Math.floor(Number(betin.value)||0); if(v<1)v=1; if(v>10000)v=10000; betin.value=v; return v; }
@@ -429,14 +460,29 @@
   [].forEach.call(document.querySelectorAll("[data-add]"),function(b){ b.addEventListener("click",function(){ betin.value=Math.min(10000,getBet()+parseInt(b.getAttribute("data-add"),10)); }); });
   $("maxBtn").addEventListener("click",function(){ betin.value=10000; });
   connectBtn.addEventListener("click",doConnect);
+  (function(){ var b=$("emailBtn"); if(b) b.addEventListener("click",openEmailLogin); })();
+  $("emSend").addEventListener("click",async function(){
+    var e=($("emEmail").value||"").trim(); if(!/.+@.+\..+/.test(e)) return toast("enter a valid email");
+    privyEmail=e; this.disabled=true; $("emMsg").textContent="Sending code…";
+    try{ await SwogePrivy.sendCode(e); $("emCodeWrap").style.display=""; $("emMsg").textContent="Code sent to "+e+" — check your inbox (and spam)."; }
+    catch(err){ $("emMsg").textContent="Error: "+String(err.message||err).slice(0,120); }
+    this.disabled=false;
+  });
+  $("emVerify").addEventListener("click",async function(){
+    var c=($("emCode").value||"").trim(); if(!c) return toast("enter the code");
+    this.disabled=true; $("emMsg").textContent="Verifying + creating your wallet…";
+    try{ await SwogePrivy.verifyCode(privyEmail,c); closePanel(); await onWalletReady(SwogePrivy.getProvider(), SwogePrivy.getAddress()); }
+    catch(err){ $("emMsg").textContent="Error: "+String(err.message||err).slice(0,140); }
+    this.disabled=false;
+  });
 
   // ============ account pop-ups (deposit / withdraw / wallet / staking / quests) ============
   function esc(s){ return String(s==null?"":s).replace(/[<>&]/g,function(c){return{"<":"&lt;",">":"&gt;","&":"&amp;"}[c];}); }
-  var ovl=$("ovl"), PANELS=["dep","wd","wallet","stake","quests"];
+  var ovl=$("ovl"), PANELS=["dep","wd","wallet","stake","quests","email"];
+  function showBox(name){ ovl.classList.add("show"); PANELS.forEach(function(b){ var el=$("box-"+b); if(el) el.classList.toggle("show", b===name); }); }
   function openPanel(name){
     if(!authed){ toast("connect your wallet first"); doConnect(); return; }
-    ovl.classList.add("show");
-    PANELS.forEach(function(b){ var el=$("box-"+b); if(el) el.classList.toggle("show", b===name); });
+    showBox(name);
     if(name==="dep") loadWalletBalances();
     else if(name==="wd"){ $("wdBal").textContent=fmtBig(balance); $("wdMin").textContent=MIN_WITHDRAW; }
     else if(name==="wallet") openAccount();

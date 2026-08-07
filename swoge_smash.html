@@ -229,6 +229,7 @@
     <div class="strow"><span>ETH (gas)</span><b id="acEth">…</b></div>
     <div class="row" style="margin-top:12px"><button class="btn" id="acDeposit" style="flex:1">Deposit to game →</button></div>
     <div class="row" style="margin-top:8px"><a id="acExplorer" href="#" target="_blank" rel="noopener" class="btn sec" style="flex:1;text-align:center">Explorer ↗</a><button class="btn sec" data-close>Close</button></div>
+    <div class="row" style="margin-top:8px"><button class="btn sec" id="acLogout" style="flex:1;color:#D6452F;border-color:rgba(214,69,47,.4)">🔌 Disconnect wallet</button></div>
   </div>
   <div class="box" id="box-stake">
     <h3>🔒 Stake $SWOGE</h3>
@@ -540,6 +541,15 @@
   $("depGo").onclick=doDeposit; $("wdGo").onclick=requestWithdraw; $("stStake").onclick=doStake; $("stUnstake").onclick=doUnstake; $("stClaim").onclick=doClaimStake;
   $("acDeposit").onclick=function(){ openPanel("dep"); };
   $("acCopy").onclick=function(){ try{ navigator.clipboard.writeText(myAddr||""); toast("Address copied"); }catch(e){} };
+  // ---- disconnect / logout ----
+  async function doLogout(){
+    try{ if(window.SwogePrivy&&SwogePrivy.isLoggedIn&&SwogePrivy.isLoggedIn()) await SwogePrivy.logout(); }catch(e){}
+    try{ if(ws){ ws.onclose=null; ws.close(); } }catch(e){}
+    authed=false; signer=null; provider=null; myAddr="";
+    toast("Wallet disconnected");
+    setTimeout(function(){ location.reload(); },300);
+  }
+  (function(){ var b=$("acLogout"); if(b) b.onclick=doLogout; })();
 
   // ---- menu ----
   var menuBtn=$("menuBtn"), menu=$("menu"), soundItem=$("soundItem");

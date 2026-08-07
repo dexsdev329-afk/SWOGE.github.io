@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>SWOGE Staking — earn yield on $SWOGE</title>
+<meta name="description" content="Stake $SWOGE and earn yield every second. Simple one-tap staking — 10 / 20 / 50 / 100% of your balance.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+<style>
+  :root{
+    --ink:#0B0906; --bg:#100C08; --panel:#15100A; --panel2:#1C1509; --line:rgba(230,165,55,.24);
+    --paper:#F7EEDA; --dim:#A08a63; --gold:#E6A537; --gold2:#FFB84D;
+    --green:#7CFF9B; --red:#F2685E; --r:12px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html{background:var(--ink)}
+  body{
+    background:
+      linear-gradient(rgba(11,9,6,.80),rgba(11,9,6,.90)),
+      url('https://i.ibb.co/qLYY2yhb/Chat-GPT-Image-7-ao-t-2026-12-23-23.png') center center/cover no-repeat fixed;
+    background-color:var(--bg);
+    color:var(--paper);font-family:'Space Mono','Courier New',monospace;line-height:1.6;min-height:100vh}
+  a{color:var(--gold);text-decoration:none}
+
+  nav{display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid var(--line);
+    background:rgba(11,9,6,.72);backdrop-filter:blur(8px);position:sticky;top:0;z-index:5}
+  .brand{font-family:'Anton',sans-serif;font-size:19px;letter-spacing:1px;color:var(--gold)}
+  .brand span{color:var(--paper)}
+  nav .sp{flex:1}
+  .nlink{font-size:12px;color:var(--dim);padding:7px 10px}
+  .nlink:hover{color:var(--paper)}
+  .statusdot{width:8px;height:8px;border-radius:50%;background:#555;display:inline-block;margin-left:4px}
+  .statusdot.on{background:var(--green);box-shadow:0 0 8px var(--green)}
+  .statusdot.off{background:var(--red)}
+
+  .wrap{max-width:480px;margin:0 auto;padding:34px 18px 60px}
+  .hero{text-align:center;margin-bottom:20px}
+  .hero h1{font-family:'Anton',sans-serif;font-size:clamp(32px,9vw,46px);letter-spacing:1px}
+  .hero h1 span{color:var(--gold)}
+  .hero p{color:var(--dim);font-size:13px;margin-top:6px}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:20px;margin-top:16px}
+  .card h3{font-family:'Anton',sans-serif;font-size:16px;letter-spacing:.5px;color:var(--paper);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+
+  .stat{display:flex;justify-content:space-between;align-items:baseline;padding:9px 0;border-bottom:1px solid var(--line)}
+  .stat:last-child{border-bottom:0}
+  .stat .k{font-size:12px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
+  .stat .v{font-family:'Anton',sans-serif;font-size:20px}
+  .stat .v.big{font-size:26px;color:var(--gold)}
+  .stat .v.green{color:var(--green)}
+
+  .lockinfo{font-size:11.5px;color:var(--dim);margin-top:10px;line-height:1.5}
+
+  input{width:100%;padding:13px 14px;border-radius:10px;border:1px solid var(--line);background:rgba(0,0,0,.3);
+    color:var(--paper);font-family:inherit;font-size:16px;text-align:center}
+  input:focus{outline:2px solid var(--gold);outline-offset:1px}
+
+  .pcts{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0}
+  .pct{padding:12px 0;border-radius:10px;border:1px solid var(--line);background:var(--panel2);color:var(--paper);
+    font-family:'Space Mono',monospace;font-weight:700;font-size:14px;cursor:pointer;transition:all .12s}
+  .pct:hover{border-color:var(--gold);color:var(--gold)}
+  .pct.on{background:var(--gold);color:var(--ink);border-color:var(--gold)}
+
+  button.btn{width:100%;padding:14px;border-radius:10px;border:1px solid var(--gold);background:var(--gold);color:var(--ink);
+    font-family:'Anton',sans-serif;font-size:16px;letter-spacing:.04em;cursor:pointer;transition:filter .12s}
+  button.btn:hover{filter:brightness(1.08)}
+  button.btn:disabled{opacity:.5;cursor:not-allowed;filter:none}
+  button.btn.sec{background:transparent;color:var(--paper);border-color:var(--line)}
+  button.btn.sec:hover{border-color:var(--gold);color:var(--gold)}
+  button.btn.danger{background:transparent;color:var(--red);border-color:rgba(242,104,94,.4)}
+  .row{display:flex;gap:8px}
+  .row>*{flex:1}
+  .mt{margin-top:10px}
+
+  .connectbox{text-align:center}
+  .connectbox .btn{margin-top:10px}
+  .muted{font-size:12px;color:var(--dim);margin-top:12px;text-align:center}
+  .muted a{color:var(--gold)}
+  #loggedin{display:none}
+  details{margin-top:14px;border:1px solid var(--line);border-radius:10px;background:var(--panel2)}
+  summary{cursor:pointer;padding:12px 14px;font-size:13px;color:var(--paper);list-style:none}
+  summary::-webkit-details-marker{display:none}
+  summary::before{content:"＋ ";color:var(--gold)}
+  details[open] summary::before{content:"－ "}
+  details .inner{padding:0 14px 14px}
+  .note{font-size:11.5px;color:var(--dim);margin-top:8px}
+
+  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);opacity:0;pointer-events:none;
+    background:var(--panel);border:1px solid var(--gold);color:var(--paper);padding:11px 18px;border-radius:999px;
+    font-size:13px;transition:all .22s;z-index:50;max-width:90vw;text-align:center}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="brand" href="index.html">$SWOGE <span>STAKING</span></a>
+  <span class="sp"></span>
+  <a class="nlink" href="games.html">Games</a>
+  <a class="nlink" href="swoge_pusher_live.html">Pusher</a>
+  <span class="statusdot off" id="dot"></span>
+</nav>
+
+<div class="wrap">
+  <div class="hero">
+    <h1>Stake <span>$SWOGE</span></h1>
+    <p id="aprline">Earn yield every second · locked staking</p>
+  </div>
+
+  <!-- logged-out -->
+  <div class="card connectbox" id="connectbox">
+    <h3 style="justify-content:center">🔒 Connect to stake</h3>
+    <p class="muted" style="margin-top:0">Same account & balance as the arcade. Sign in with your wallet or your email.</p>
+    <button class="btn" id="connectBtn">Connect wallet</button>
+    <button class="btn sec mt" id="emailBtn">✉️ Sign in with email</button>
+  </div>
+
+  <!-- logged-in -->
+  <div id="loggedin">
+    <div class="card">
+      <div class="stat"><span class="k">Available to stake</span><span class="v big" id="bal">0</span></div>
+      <div class="stat"><span class="k">Currently staked</span><span class="v" id="stStaked">0</span></div>
+      <div class="stat"><span class="k">Pending yield</span><span class="v green" id="stPending">0</span></div>
+      <div class="lockinfo" id="stLock"></div>
+    </div>
+
+    <div class="card">
+      <h3>➕ Stake $SWOGE</h3>
+      <input id="stAmt" type="number" inputmode="decimal" placeholder="amount to stake">
+      <div class="pcts">
+        <button class="pct" data-pct="10">10%</button>
+        <button class="pct" data-pct="20">20%</button>
+        <button class="pct" data-pct="50">50%</button>
+        <button class="pct" data-pct="100">MAX</button>
+      </div>
+      <button class="btn" id="stStake">Stake now</button>
+      <div class="row mt">
+        <button class="btn sec" id="stClaim">Claim yield</button>
+        <button class="btn sec" id="stUnstake">Unstake all</button>
+      </div>
+      <p class="note" id="needbal" style="display:none">You have no $SWOGE in-game yet — deposit below to start staking.</p>
+
+      <details id="depDetails">
+        <summary>Deposit $SWOGE to stake</summary>
+        <div class="inner">
+          <p class="note">In your wallet: <b id="depSwoge">…</b> $SWOGE · <b id="depEth">…</b> ETH</p>
+          <input id="depAmt" type="number" inputmode="decimal" placeholder="amount to deposit" class="mt">
+          <button class="btn mt" id="depGo">Deposit to game →</button>
+          <p class="note">Approve once, then deposit. Credited to your in-game balance for staking &amp; the games.</p>
+        </div>
+      </details>
+    </div>
+
+    <button class="btn danger mt" id="logoutBtn">🔌 Disconnect wallet</button>
+    <p class="muted"><span id="acShort"></span> · <a id="acExplorer" href="#" target="_blank" rel="noopener">Explorer ↗</a></p>
+  </div>
+
+  <p class="muted">Play with your $SWOGE: <a href="games.html">SWOGE Arcade →</a></p>
+</div>
+
+<!-- email login modal -->
+<div class="toast" id="toast"></div>
+<div id="emOvl" style="position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:40;padding:18px">
+  <div class="card" style="max-width:360px;width:100%">
+    <h3>✉️ Sign in with email</h3>
+    <p class="note" id="emMsg">A wallet is created for you automatically — no app needed.</p>
+    <input id="emEmail" type="email" inputmode="email" placeholder="your@email.com" class="mt">
+    <button class="btn mt" id="emSend">Send code</button>
+    <div id="emCodeWrap" style="display:none">
+      <input id="emCode" inputmode="numeric" placeholder="6-digit code" class="mt">
+      <button class="btn mt" id="emVerify">Verify &amp; create wallet</button>
+    </div>
+    <button class="btn sec mt" id="emClose">Cancel</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var SERVER_URL = "wss://web-production-220a3.up.railway.app";
+  (function(){ var q=new URLSearchParams(location.search).get("server"); if(q) SERVER_URL=q; })();
+
+  var CHAIN={ id:4663, hex:"0x1237", name:"Robinhood Chain", rpc:"https://rpc.mainnet.chain.robinhood.com", scan:"https://robinhoodchain.blockscout.com", sym:"ETH" };
+  var TOKEN="0x8a166Fb41Cd659a0a43396272FF73973Ce29F817", VAULT="", MIN_WITHDRAW="50";
+  var ERC20_ABI=["function approve(address,uint256) returns (bool)","function allowance(address,address) view returns (uint256)","function balanceOf(address) view returns (uint256)"];
+  var VAULT_ABI=["function deposit(uint256)"];
+  var $=function(s){return document.getElementById(s);};
+  var provider=null, signer=null, ws=null, authed=false, myAddr=null, loginNonce=null, balance=0;
+
+  function toast(t){ var e=$("toast"); e.textContent=t; e.classList.add("show"); clearTimeout(e._t); e._t=setTimeout(function(){e.classList.remove("show");},2400); }
+  function fmtBig(n){ n=parseFloat(n||0); if(n>=1e9)return (n/1e9).toFixed(2)+"B"; if(n>=1e6)return (n/1e6).toFixed(2)+"M"; if(n>=1e3)return (n/1e3).toFixed(2)+"k"; return (Math.round(n*100)/100).toString(); }
+  function fmtYield(n){ n=parseFloat(n||0); if(n>=1000)return fmtBig(n); return n.toFixed(4); }
+  function setDot(on){ $("dot").className="statusdot "+(on?"on":"off"); }
+  function setBalance(b){ balance=parseFloat(b||0); $("bal").textContent=fmtBig(balance); $("needbal").style.display=(authed&&balance<=0)?"":"none"; }
+
+  function send(o){ if(ws&&ws.readyState===1) ws.send(JSON.stringify(o)); }
+
+  // ---- WebSocket ----
+  function connect(){
+    try{ ws=new WebSocket(SERVER_URL); }catch(e){ setDot(false); return; }
+    ws.onopen=function(){ setDot(true); if(myAddr) doLogin(); };
+    ws.onclose=function(){ setDot(false); authed=false; setTimeout(connect,3000); };
+    ws.onerror=function(){ setDot(false); };
+    ws.onmessage=function(ev){
+      var m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
+      if(m.type==="state") return;
+      if(m.type==="hello"){ loginNonce=m.loginNonce; if(m.vault)VAULT=m.vault; if(m.token)TOKEN=m.token; if(m.minWithdraw)MIN_WITHDRAW=m.minWithdraw; }
+      else if(m.type==="auth"){ authed=true; myAddr=m.address; onAuthed(); setBalance(m.balance); if(m.stake) setStakeInfo(m.stake); send({type:"stakeInfo"}); }
+      else if(m.type==="balance"||m.type==="deposit"){ setBalance(m.balance); if(m.type==="deposit") toast("💰 Deposit credited"); }
+      else if(m.type==="stakeInfo"){ setStakeInfo(m); }
+      else if(m.type==="stakeClaimed"){ toast("🌾 Claimed "+fmtYield(m.reward)+" $SWOGE"); }
+      else if(m.type==="stakeUnstaked"){ setStakeInfo(m); toast("Unstaked "+fmtBig(m.returned)+" $SWOGE"+(parseFloat(m.penalty)>0?" (−"+fmtBig(m.penalty)+" penalty)":"")); }
+      else if(m.type==="error"){ toast(m.error||"error"); }
+    };
+  }
+
+  function onAuthed(){
+    $("connectbox").style.display="none";
+    $("loggedin").style.display="block";
+    $("acShort").textContent=myAddr.slice(0,6)+"…"+myAddr.slice(-4);
+    $("acExplorer").href=CHAIN.scan+"/address/"+myAddr;
+    loadWalletBalances();
+  }
+
+  // ---- wallet connect ----
+  async function doConnect(){
+    var eth=window.ethereum;
+    if(!eth){ toast("No wallet found — use email sign-in below"); return; }
+    try{
+      await eth.request({method:"eth_requestAccounts"});
+      var cid=await eth.request({method:"eth_chainId"});
+      if(cid!==CHAIN.hex){
+        try{ await eth.request({method:"wallet_switchEthereumChain",params:[{chainId:CHAIN.hex}]}); }
+        catch(sw){ if(sw&&sw.code===4902){ await eth.request({method:"wallet_addEthereumChain",params:[{chainId:CHAIN.hex,chainName:CHAIN.name,nativeCurrency:{name:"Ether",symbol:CHAIN.sym,decimals:18},rpcUrls:[CHAIN.rpc],blockExplorerUrls:[CHAIN.scan]}]}); } }
+      }
+      await onWalletReady(eth);
+      try{ localStorage.setItem("swogeAuth","wallet"); }catch(e){}
+    }catch(e){ toast(String(e.message||e).slice(0,90)); }
+  }
+  async function onWalletReady(eth, addr){
+    provider=new ethers.providers.Web3Provider(eth,"any"); signer=provider.getSigner();
+    myAddr=(addr||(await signer.getAddress())).toLowerCase();
+    if(ws&&ws.readyState===1) doLogin(); else connect();
+  }
+  async function doLogin(){
+    if(!signer||loginNonce==null) return;
+    try{ var msg="SWOGE Pusher login\nnonce: "+loginNonce; var sig=await signer.signMessage(msg); send({type:"login",message:msg,signature:sig,name:myAddr.slice(0,6)}); }
+    catch(e){ toast("login cancelled"); }
+  }
+
+  // ---- email login (Privy) ----
+  var PRIVY_APP_ID="cmsga0yzp00a50biaf9vlzzd2", privyLoaded=false, privyEmail="";
+  function loadPrivy(){ return new Promise(function(res,rej){
+    if(privyLoaded) return res();
+    var s=document.createElement("script"); s.src="privy-swoge.js";
+    s.onload=function(){ privyLoaded=true; try{ SwogePrivy.init(PRIVY_APP_ID); }catch(e){} res(); };
+    s.onerror=function(){ rej(new Error("load failed")); };
+    document.head.appendChild(s);
+  }); }
+  async function openEmailLogin(){
+    try{ await loadPrivy(); }catch(e){ toast("Couldn't load email login"); return; }
+    $("emCodeWrap").style.display="none"; $("emCode").value="";
+    $("emMsg").textContent="A wallet is created for you automatically — no app needed.";
+    $("emOvl").style.display="flex";
+  }
+  function closeEmail(){ $("emOvl").style.display="none"; }
+
+  // ---- staking ----
+  var stStaked=0,stPending=0,stAprBps=10000,stSyncMs=0,stLocked=0,stUnlocked=0,stNextUnlock=null,stPenaltyBps=5000,stLockDays=365;
+  function setStakeInfo(m){
+    if(m.staked!=null)stStaked=parseFloat(m.staked); if(m.pending!=null)stPending=parseFloat(m.pending); if(m.aprBps!=null)stAprBps=m.aprBps;
+    if(m.locked!=null)stLocked=parseFloat(m.locked); if(m.unlocked!=null)stUnlocked=parseFloat(m.unlocked);
+    if(m.penaltyBps!=null)stPenaltyBps=m.penaltyBps; if(m.lockDays!=null)stLockDays=m.lockDays; if(m.nextUnlock!=null)stNextUnlock=m.nextUnlock;
+    if(m.balance!=null)setBalance(m.balance);
+    stSyncMs=Date.now();
+    $("aprline").textContent=(stAprBps/100)+"% APR · locked "+stLockDays+" days · yield every second";
+    renderStake();
+  }
+  function livePending(){ var el=(Date.now()-stSyncMs)/1000; return stPending+stStaked*(stAprBps/10000)*(el/31536000); }
+  function renderStake(){
+    $("stStaked").textContent=fmtBig(stStaked);
+    $("stPending").textContent=fmtYield(livePending());
+    var el=$("stLock");
+    if(stLocked>0){ var w=stNextUnlock?new Date(stNextUnlock).toLocaleDateString():"—"; el.innerHTML="🔒 "+fmtBig(stLocked)+" locked until "+w+" — early unstake forfeits "+(stPenaltyBps/100)+"% of the locked part."; el.style.color="var(--red)"; }
+    else if(stStaked>0){ el.textContent="✅ All unlocked — unstake with no penalty."; el.style.color="var(--green)"; }
+    else{ el.textContent=""; }
+  }
+  setInterval(function(){ if(authed&&stStaked>0) $("stPending").textContent=fmtYield(livePending()); },250);
+
+  function doStake(){
+    var v=($("stAmt").value||"").replace(",",".").trim();
+    if(!(parseFloat(v)>0)) return toast("enter an amount or tap a %");
+    if(parseFloat(v)>balance+1e-9) return toast("not enough in-game $SWOGE");
+    if(!confirm("Stake "+v+" $SWOGE at "+(stAprBps/100)+"% APR?\nLocks "+stLockDays+" days; early unstake loses "+(stPenaltyBps/100)+"%.")) return;
+    send({type:"stake",amount:v}); $("stAmt").value=""; clearPct(); toast("staking…");
+  }
+  function doUnstake(){ if(!(stStaked>0))return toast("nothing staked"); if(stLocked>0&&!confirm("⚠️ "+fmtBig(stLocked)+" still locked. Unstaking now loses "+(stPenaltyBps/100)+"%. Continue?"))return; send({type:"unstake"}); }
+  function doClaim(){ if(!(livePending()>0))return toast("no yield yet"); send({type:"claimStake"}); }
+
+  function clearPct(){ [].forEach.call(document.querySelectorAll(".pct"),function(b){ b.classList.remove("on"); }); }
+  [].forEach.call(document.querySelectorAll(".pct"),function(b){
+    b.addEventListener("click",function(){
+      if(!authed){ toast("connect first"); return; }
+      if(balance<=0){ toast("no $SWOGE to stake — deposit first"); return; }
+      clearPct(); b.classList.add("on");
+      var pct=parseInt(b.getAttribute("data-pct"))||0;
+      var amt=balance*pct/100;
+      // round down to a clean value so we never exceed the balance
+      amt=Math.floor(amt*10000)/10000;
+      $("stAmt").value=String(amt);
+    });
+  });
+  $("stAmt").addEventListener("input",clearPct);
+
+  // ---- deposit (to fund staking) ----
+  async function loadWalletBalances(){
+    if(!provider||!myAddr) return; var e="—", sw="—";
+    try{ var b=await provider.getBalance(myAddr); e=(+ethers.utils.formatEther(b)).toFixed(5); }catch(x){}
+    try{ var t=new ethers.Contract(TOKEN,ERC20_ABI,provider), bb=await t.balanceOf(myAddr); sw=fmtBig(+ethers.utils.formatUnits(bb,18)); }catch(x){}
+    var de=$("depEth"), ds=$("depSwoge"); if(de)de.textContent=e; if(ds)ds.textContent=sw;
+  }
+  async function doDeposit(){
+    if(!signer){ toast("connect a wallet to deposit"); return; }
+    if(!VAULT){ toast("server has no vault set"); return; }
+    var s=($("depAmt").value||"").replace(",",".").trim(), amt;
+    try{ amt=ethers.utils.parseUnits(s,18); }catch(e){ return toast("bad amount"); }
+    if(amt.lte(0)) return toast("enter an amount");
+    try{
+      var token=new ethers.Contract(TOKEN,ERC20_ABI,signer), vault=new ethers.Contract(VAULT,VAULT_ABI,signer);
+      var allow=await token.allowance(myAddr,VAULT);
+      if(allow.lt(amt)){ toast("approve $SWOGE…"); var ta=await token.approve(VAULT,ethers.constants.MaxUint256); await ta.wait(); }
+      toast("depositing…"); var tx=await vault.deposit(amt); await tx.wait(); toast("✅ deposited — credits incoming"); $("depAmt").value="";
+    }catch(e){ toast("deposit: "+String(e.reason||e.message||e).slice(0,80)); }
+  }
+
+  // ---- logout ----
+  async function doLogout(){
+    try{ localStorage.removeItem("swogeAuth"); }catch(e){}
+    try{ if(window.SwogePrivy&&SwogePrivy.isLoggedIn&&SwogePrivy.isLoggedIn()) await SwogePrivy.logout(); }catch(e){}
+    try{ if(ws){ ws.onclose=null; ws.close(); } }catch(e){}
+    authed=false; signer=null; provider=null; myAddr=null;
+    toast("Wallet disconnected");
+    setTimeout(function(){ location.reload(); },300);
+  }
+
+  // ---- silent cross-page reconnect ----
+  async function autoReconnect(){
+    var method; try{ method=localStorage.getItem("swogeAuth"); }catch(e){}
+    if(!method) return;
+    try{
+      if(method==="wallet"){
+        var eth=window.ethereum; if(!eth) return;
+        var accs=await eth.request({method:"eth_accounts"});
+        if(!accs||!accs.length) return;
+        provider=new ethers.providers.Web3Provider(eth,"any"); signer=provider.getSigner();
+        myAddr=accs[0].toLowerCase();
+        if(ws&&ws.readyState===1) doLogin();
+      } else if(method==="email"){
+        await loadPrivy();
+        var addr=null;
+        if(SwogePrivy.restore) addr=await SwogePrivy.restore();
+        else if(SwogePrivy.isLoggedIn&&SwogePrivy.isLoggedIn()) addr=SwogePrivy.getAddress();
+        if(!addr) return;
+        provider=new ethers.providers.Web3Provider(SwogePrivy.getProvider(),"any"); signer=provider.getSigner();
+        myAddr=String(addr).toLowerCase();
+        if(ws&&ws.readyState===1) doLogin();
+      }
+    }catch(e){}
+  }
+
+  // ---- wiring ----
+  $("connectBtn").onclick=doConnect;
+  $("emailBtn").onclick=openEmailLogin;
+  $("emClose").onclick=closeEmail;
+  $("emOvl").addEventListener("click",function(e){ if(e.target===$("emOvl")) closeEmail(); });
+  $("emSend").onclick=async function(){
+    var e=($("emEmail").value||"").trim(); if(!/.+@.+\..+/.test(e)) return toast("enter a valid email");
+    privyEmail=e; this.disabled=true; $("emMsg").textContent="Sending code…";
+    try{ await SwogePrivy.sendCode(e); $("emCodeWrap").style.display=""; $("emMsg").textContent="Code sent to "+e+" — check inbox & spam."; }
+    catch(err){ $("emMsg").textContent="Error: "+String(err.message||err).slice(0,120); }
+    this.disabled=false;
+  };
+  $("emVerify").onclick=async function(){
+    var c=($("emCode").value||"").trim(); if(!c) return toast("enter the code");
+    this.disabled=true; $("emMsg").textContent="Verifying + creating your wallet…";
+    try{ await SwogePrivy.verifyCode(privyEmail,c); try{ localStorage.setItem("swogeAuth","email"); }catch(_){} closeEmail(); await onWalletReady(SwogePrivy.getProvider(), SwogePrivy.getAddress()); }
+    catch(err){ $("emMsg").textContent="Error: "+String(err.message||err).slice(0,140); }
+    this.disabled=false;
+  };
+  $("stStake").onclick=doStake;
+  $("stUnstake").onclick=doUnstake;
+  $("stClaim").onclick=doClaim;
+  $("depGo").onclick=doDeposit;
+  $("logoutBtn").onclick=doLogout;
+
+  connect();
+  autoReconnect();
+})();
+</script>
+</body>
+</html>

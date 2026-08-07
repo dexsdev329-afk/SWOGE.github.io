@@ -14,15 +14,13 @@
     --text:#F7EEDA; --muted:#A08a63; --line:rgba(230,165,55,.28);
   }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-  html,body{background:var(--ink);color:var(--text);font-family:'Space Mono','Courier New',monospace}
+  html,body{color:var(--text);font-family:'Space Mono','Courier New',monospace}
+  html{background:#0B0906}
+  body{background:url('https://i.ibb.co/yB6Pn55b/Chat-GPT-Image-7-ao-t-2026-04-07-09.png') center/cover fixed;background-color:#0B0906}
   body{min-height:100vh;overflow-x:hidden}
   a{color:inherit;text-decoration:none}
   .wrap{max-width:1080px;margin:0 auto;padding:0 18px}
 
-  /* ambient gold glow background */
-  #bgvid{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;z-index:-2;pointer-events:none;background:#0B0906}
-  body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
-    background:linear-gradient(180deg,rgba(11,9,6,.35),rgba(11,9,6,.6));}
   main,nav{position:relative;z-index:1}
 
   /* nav */
@@ -84,7 +82,6 @@
 </style>
 </head>
 <body>
-<video id="bgvid" src="https://files.catbox.moe/h6kt99.mp4" autoplay loop muted playsinline></video>
 
 <nav>
   <a class="brand" href="index.html">$SWOGE <span>ARCADE</span></a>
@@ -94,13 +91,7 @@
 </nav>
 
 <main>
-  <section class="hero">
-    <span class="pill"><span class="dot"></span>Robinhood Chain · real $SWOGE</span>
-    <h1>THE <span class="g">SWOGE</span> ARCADE</h1>
-    <p>Play real-money games with your $SWOGE. Provably fair, on-chain deposits and withdrawals. Coin Pusher is live now — more games are on the way.</p>
-  </section>
-
-  <div class="wrap">
+  <div class="wrap" style="padding-top:22px">
     <div class="sec"><h2>Play now</h2></div>
     <div class="grid">
 
@@ -139,44 +130,9 @@
 
     </div>
 
-    <div class="sec"><h2>Coming soon</h2></div>
-    <div class="grid">
-
-      <div class="card soon">
-        <div class="thumb">🎯<span class="badge soon">Soon</span></div>
-        <div class="body">
-          <h3>Plinko</h3>
-          <p>Drop a $SWOGE chip and watch it bounce down the pegs into a multiplier slot. High risk, high reward.</p>
-          <div class="tags"><span class="tag">Multipliers</span><span class="tag">Fast</span></div>
-          <span class="play dis">Coming soon</span>
-        </div>
-      </div>
-
-      <div class="card soon">
-        <div class="thumb">🚀<span class="badge soon">Soon</span></div>
-        <div class="body">
-          <h3>Crash</h3>
-          <p>Watch the multiplier climb and cash out before it crashes. Nerves of steel, gains of gold.</p>
-          <div class="tags"><span class="tag">Live</span><span class="tag">Skill + luck</span></div>
-          <span class="play dis">Coming soon</span>
-        </div>
-      </div>
-
-      <div class="card soon">
-        <div class="thumb">🎲<span class="badge soon">Soon</span></div>
-        <div class="body">
-          <h3>Dice</h3>
-          <p>Pick your odds, roll the dice, double your $SWOGE. The simplest bet in the arcade.</p>
-          <div class="tags"><span class="tag">Instant</span><span class="tag">Custom odds</span></div>
-          <span class="play dis">Coming soon</span>
-        </div>
-      </div>
-
-    </div>
   </div>
 
   <footer>
-    More games are being built — check back soon. 💪<br>
     <a href="index.html" class="back">← Back to swoleeswoge.dog</a>
   </footer>
 </main>

@@ -190,6 +190,11 @@ body.simple .simplehint{display:block}
         <button id="ocGen">Generate master wallet</button>
         <label style="font-size:11px;color:var(--dim)">Hidden wallets <input id="ocN" type="number" min="2" max="100" value="100" style="width:66px;margin-left:6px"></label>
       </div>
+      <label style="display:block;font-size:11px;color:var(--dim);margin:16px 0 6px;text-transform:uppercase;letter-spacing:.06em">Token to pump — $SWOGE by default · paste another Robinhood-Chain contract to run volume on a different coin</label>
+      <div class="btnrow" style="gap:8px;align-items:center">
+        <input id="ocTok" placeholder="0x… token contract" style="flex:1;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.25);color:var(--fg);font-family:inherit">
+        <button id="ocTokReset" title="Reset to $SWOGE">↺ SWOGE</button>
+      </div>
       <div class="btnrow" style="margin-top:12px;gap:10px">
         <button id="ocPlay" class="buy" style="flex:1;font-weight:700">▶ PLAY</button>
         <button id="ocStop" class="sell" style="flex:1;font-weight:700" disabled>■ STOP</button>
@@ -1406,12 +1411,19 @@ async function turboPlay(){
   const N = Math.max(2, Math.min(100, parseInt($("#ocN").value) || 100));
   if(NETS[net].live && !confirm(
       `${NETS[net].name} — LIVE network.\n\n⚡ One-Click Volume · ${N} hidden wallets\n`
-    + `They buy $SWOGE and cycle the funds around to make real volume. Every hop pays real gas + slippage, so the ETH steadily drains. Press STOP anytime — everything comes back to your master wallet.\n\n`
+    + `They buy the selected token and cycle the funds around to make real volume. Every hop pays real gas + slippage, so the ETH steadily drains. Press STOP anytime — everything comes back to your master wallet.\n\n`
     + `Manufacturing trading volume can be market manipulation and may break laws or platform rules — only run where authorised.\n\nStart?`)) return;
 
-  turboSay('<span class="spin"></span> loading $SWOGE + DEX contracts…');
+  // Which token to pump? $SWOGE by default, or whatever contract the streamer pasted.
+  const wantTok = (($("#ocTok")?.value || "").trim()) || NETS[net].defaultToken || "";
+  if(wantTok){
+    $("#tok").value = wantTok;
+    const m = wantTok.match(/0x[0-9a-fA-F]{40}/);
+    if(token && m && token.addr && token.addr.toLowerCase() !== m[0].toLowerCase()){ token = null; wallets.forEach(w=>w.tokRaw=null); }
+  }
+  turboSay('<span class="spin"></span> loading token + DEX contracts…');
   try{ if(!dex && $("#loaddex")) await $("#loaddex").onclick(); if(!token && $("#loadtok")) await $("#loadtok").onclick(); }catch(e){}
-  if(!dex || !token){ turboSay("Couldn't load $SWOGE / DEX — open Advanced mode and hit « Verify contracts »."); return; }
+  if(!dex || !token){ turboSay("Couldn't load the token / DEX — check the contract address is a valid Robinhood-Chain pair."); return; }
 
   const subs = [];
   for(let k=0;k<N;k++){
@@ -1534,6 +1546,20 @@ async function turboSendExternal(){
   };
   if(play) play.onclick = turboPlay;
   if(stop) stop.onclick = turboStop;
+  // Token picker: paste any Robinhood-Chain contract, or reset to $SWOGE.
+  const otok = $("#ocTok"), oreset = $("#ocTokReset");
+  if(otok) otok.addEventListener("change", () => {
+    const v = (otok.value || "").trim();
+    $("#tok").value = v;
+    token = null; wallets.forEach(w=>w.tokRaw=null);
+    turboSay(v ? "Token set — press ▶ PLAY to load it." : "Token cleared — defaulting to $SWOGE on PLAY.");
+  });
+  if(oreset) oreset.onclick = () => {
+    if(otok) otok.value = NETS[net].defaultToken || "";
+    $("#tok").value = NETS[net].defaultToken || "";
+    token = null; wallets.forEach(w=>w.tokRaw=null);
+    turboSay("Reset to $SWOGE.");
+  };
   renderMaster();
 })();
 
@@ -1665,6 +1691,7 @@ function applyNet(){
   $("#tok").value     = n.defaultToken || "";
   if($("#tokQuick")) $("#tokQuick").value = n.defaultToken || "";
   if($("#ringTok"))  $("#ringTok").value  = n.defaultToken || "";
+  if($("#ocTok"))    $("#ocTok").value    = n.defaultToken || "";
 }
 $("#net").onchange = e => {
   net = e.target.value;

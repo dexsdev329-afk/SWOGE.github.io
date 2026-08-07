@@ -13,7 +13,10 @@
   body { font-family: 'Orbitron', system-ui, sans-serif; overflow: hidden; height: 100vh; width: 100vw; color: #fff;
     background: radial-gradient(circle at 50% 30%, #7a3bd6 0%, #4a1f95 38%, #2a1160 68%, #170a33 100%); }
   #scene { position: fixed; inset: 0; overflow: hidden; }
-  #bg-layer { position:absolute; inset:0; background-size:cover; background-position:center; opacity:.5; display:none; }
+  /* fond vidéo en boucle, couvre tout l'écran, derrière le jeu */
+  #bg-video { position: fixed; inset: 0; width: 100vw; height: 100vh; object-fit: cover;
+    z-index: -2; opacity: .5; pointer-events: none; }
+  #bg-layer { position:absolute; inset:0; background-size:cover; background-position:center; z-index:-1; display:none; }
 
   /* ===== ÉCHELLE DE JACKPOTS (haut) ===== */
   #ladder { position: absolute; top: 1vh; left: 50%; transform: translateX(-50%); display: flex; gap: .4vw; z-index: 5; width: 98vw; justify-content: center; }
@@ -205,6 +208,7 @@
   #turbo-btn { font-family:'Orbitron',sans-serif; font-weight:900; font-size:1.8vh; letter-spacing:1px; color:#fff; cursor:pointer;
     background:rgba(0,0,0,.4); border:2px solid #6BB8FF; border-radius:12px; padding:1.3vh 2vw; transition:.12s; }
   #turbo-btn.on { background:#6BB8FF; color:#04223a; border-color:#6BB8FF; }
+  #turbo-btn.t3 { background:#ff6a3d; color:#2a0e00; border-color:#ff6a3d; box-shadow:0 0 12px rgba(255,120,0,.75); }
   /* ===== HUD compte (barre haute droite) ===== */
   #hud { position:fixed; top:1.2vh; right:1.2vw; z-index:200; display:flex; align-items:center; gap:.7vw; font-family:'Orbitron',sans-serif; }
   #bal-chip { display:flex; align-items:center; gap:6px; background:rgba(0,0,0,.5); border:1px solid rgba(255,213,74,.4); border-radius:999px; padding:.9vh 1.4vh; font-size:1.7vh; color:#fff; }
@@ -293,9 +297,9 @@
     .jp-plaque:nth-child(n+3) { grid-column:span 2; }                          /* 3 en bas */
     .jp-plaque span { font-size:3.4vw; top:56%; }
 
-    /* SWOGE collecteur : GROS, au centre, au-dessus des rouleaux (relative = contexte pour le sprite) */
-    #vmeter { position:relative; order:2; height:17vh; margin:.4vh auto .2vh;
-              transform:none; left:auto; top:auto; right:auto; }
+    /* SWOGE collecteur : GROS, au centre, au-dessus des rouleaux (largeur explicite sinon le flex l'écrase) */
+    #vmeter { position:relative; order:2; width:17vh; height:17vh; flex:0 0 auto; margin:.4vh auto .2vh;
+              transform:none; left:auto; top:auto; right:auto; aspect-ratio:auto; }
     /* big win : polices adaptées mobile */
     #bigwin-title { font-size:5.4vh; letter-spacing:2px; }
     #bigwin-amt { font-size:9vh; }
@@ -343,9 +347,10 @@
     .pmenu { top:50%; bottom:auto; right:12vw; transform:translateY(-50%); }
     /* bouton son en bas à gauche */
     #music-btn { top:auto; bottom:2.4vh; left:2vw; width:5.2vh; height:5.2vh; font-size:2.4vh; }
-    /* SWOGE collecteur : centré verticalement dans la gouttière gauche */
-    #vmeter { top:50%; left:4vw; transform:translateY(-50%); height:34vh; }
-    #vmeter-ready { font-size:1.7vh; }
+    /* SWOGE collecteur : EN HAUT au centre (comme le volcan), sous l'échelle */
+    #vmeter { top:7vh; left:50%; transform:translateX(-50%); height:18vh; }
+    /* grille descendue d'un poil pour laisser la place au SWOGE en haut */
+    #machine { top:58%; width:min(58vh,56vw); }
     /* logo caché ; ACHETER LE BONUS remis DANS la barre du bas (plus de bloc encombré à gauche) */
     #left { position:static; transform:none; top:auto; bottom:auto; left:auto; right:auto;
             width:auto; max-width:none; margin:0; z-index:5; }
@@ -358,8 +363,11 @@
 </head>
 <body>
 
+<!-- fond vidéo en boucle (repris de SWOGE Smash) -->
+<video id="bg-video" src="https://files.catbox.moe/quzfzs.mp4" autoplay loop muted playsinline preload="auto"></video>
+
 <div id="scene">
-  <div id="bg-layer" style="display:block;background-image:url('https://i.ibb.co/hvCW4Wz/bg.png');opacity:.6;"></div>
+  <div id="bg-layer" style="display:block;background:linear-gradient(rgba(12,5,28,.5),rgba(12,5,28,.72));opacity:1;"></div>
 
   <div id="ladder"></div>
 
@@ -981,7 +989,14 @@ updateBetUI();
 
 $('spin-btn').addEventListener('click', ()=>{ ac(); doSpin(); });
 $('auto-btn').addEventListener('click', function(){ auto=!auto; this.classList.toggle('on',auto); this.textContent=auto?'AUTO ⏸':'AUTO'; if(auto && !busy){ ac(); doSpin(); } });
-$('turbo-btn').addEventListener('click', function(){ turbo=!turbo; TF=turbo?0.35:1; this.classList.toggle('on',turbo); });
+/* TURBO à 3 niveaux : normal -> rapide -> très rapide (3 appuis) */
+let turboLvl=0; const TURBO_TF=[1, 0.6, 0.35]; const TURBO_LBL=['⚡ TURBO','⚡⚡ TURBO','⚡⚡⚡ TURBO'];
+$('turbo-btn').addEventListener('click', function(){
+  turboLvl=(turboLvl+1)%3; TF=TURBO_TF[turboLvl]; turbo=turboLvl>0;
+  this.classList.toggle('on', turbo);
+  this.classList.toggle('t3', turboLvl===2);
+  this.innerHTML=TURBO_LBL[turboLvl];
+});
 $('music-btn').addEventListener('click', function(){ const on=toggleBgm(); this.textContent=on?'🔊':'🔇'; this.classList.toggle('off',!on); });
 $('buy-bonus').addEventListener('click', ()=>{ ac(); forceBonus(); });
 addEventListener('keydown', e=>{ if(e.code==='Space'){ e.preventDefault(); if(!busy){ ac(); doSpin(); } }

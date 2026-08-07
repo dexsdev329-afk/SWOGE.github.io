@@ -234,6 +234,18 @@
     <div class="strow"><span>$SWOGE in wallet</span><b id="acSwoge">…</b></div>
     <div class="strow"><span>ETH (gas)</span><b id="acEth">…</b></div>
     <div class="row" style="margin-top:12px"><button class="btn" id="acDeposit" style="flex:1">Deposit to game →</button></div>
+    <div style="margin-top:14px;border-top:1px solid rgba(230,165,55,.2);padding-top:12px">
+      <label>Send to another address</label>
+      <input id="sendTo" placeholder="0x recipient address…">
+      <div class="row" style="margin-top:8px">
+        <input id="sendAmt" type="number" inputmode="decimal" placeholder="amount" style="flex:1">
+        <select id="sendTok" style="padding:11px;border-radius:8px;background:rgba(21,16,10,.95);color:#F7EEDA;border:1px solid rgba(230,165,55,.4);font-family:inherit">
+          <option value="swoge">$SWOGE</option><option value="eth">ETH (RH)</option>
+        </select>
+      </div>
+      <div class="row" style="margin-top:8px"><button class="btn" id="sendGo" style="flex:1">Send →</button></div>
+      <div class="note" id="sendMsg"></div>
+    </div>
     <div class="row" style="margin-top:8px"><a id="acExplorer" href="#" target="_blank" rel="noopener" class="btn sec" style="flex:1;text-align:center">Explorer ↗</a><button class="btn sec" data-close>Close</button></div>
     <div class="row" style="margin-top:8px"><button class="btn sec" id="acLogout" style="flex:1;color:#D6452F;border-color:rgba(214,69,47,.4)">🔌 Disconnect wallet</button></div>
   </div>
@@ -557,6 +569,23 @@
   $("depGo").onclick=doDeposit; $("wdGo").onclick=requestWithdraw; $("stStake").onclick=doStake; $("stUnstake").onclick=doUnstake; $("stClaim").onclick=doClaimStake;
   $("acDeposit").onclick=function(){ openPanel("dep"); };
   $("acCopy").onclick=function(){ try{ navigator.clipboard.writeText(myAddr||""); toast("Address copied"); }catch(e){} };
+  // ---- send $SWOGE / ETH to another address ----
+  function sendMsg(t,c){ var e=$("sendMsg"); if(!e)return; e.textContent=t; e.style.color=c==="warn"?"#F2685E":c==="ok"?"#7CFF9B":"var(--dim)"; }
+  async function doSend(){
+    if(!signer){ toast("connect first"); return; }
+    var to=($("sendTo").value||"").trim(); if(!/^0x[0-9a-fA-F]{40}$/.test(to)) return sendMsg("Enter a valid 0x address","warn");
+    var v=($("sendAmt").value||"").replace(",",".").trim(); if(!(parseFloat(v)>0)) return sendMsg("Enter an amount","warn");
+    var tok=$("sendTok").value;
+    try{
+      sendMsg("Confirm in your wallet…");
+      var tx;
+      if(tok==="eth"){ tx=await signer.sendTransaction({to:to,value:ethers.utils.parseEther(v)}); }
+      else { var c=new ethers.Contract(TOKEN,ERC20_ABI,signer); tx=await c.transfer(to,ethers.utils.parseUnits(v,18)); }
+      sendMsg("Sending…"); await tx.wait(); sendMsg("✅ Sent "+v+" "+(tok==="eth"?"ETH":"$SWOGE"),"ok");
+      $("sendAmt").value=""; $("sendTo").value=""; loadWalletBalances();
+    }catch(e){ sendMsg("Failed: "+String(e.reason||e.message||e).slice(0,110),"warn"); }
+  }
+  (function(){ var b=$("sendGo"); if(b) b.onclick=doSend; })();
   // ---- disconnect / logout ----
   async function doLogout(){
     try{ localStorage.removeItem("swogeAuth"); }catch(e){}

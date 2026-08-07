@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <style>
   :root{
     --gold:#E6A537; --gold2:#FFB84D; --ink:#0B0906; --ink2:#15100A;
@@ -116,6 +117,32 @@
   footer{border-top:1px solid var(--line);padding:22px 18px 40px;text-align:center;color:var(--muted);font-size:12px}
   footer a{color:var(--gold)}
 
+  /* account pop-ups */
+  .ovl{position:fixed;inset:0;z-index:60;background:rgba(4,6,10,.72);display:none;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(3px)}
+  .ovl.show{display:flex}
+  .box{display:none;width:min(420px,94vw);max-height:88vh;overflow-y:auto;
+    background:linear-gradient(rgba(11,9,6,.95),rgba(11,9,6,.98));border:1px solid rgba(230,165,55,.45);
+    border-radius:18px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+  .box.show{display:block}
+  .box h3{font-family:'Anton',sans-serif;font-size:22px;color:var(--gold);margin-bottom:12px;letter-spacing:.5px}
+  .box label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;display:block;margin:8px 0 5px}
+  .box .note{font-size:12px;color:var(--muted);line-height:1.5}
+  .box .note b{color:var(--gold)}
+  .box input{width:100%;padding:11px;border-radius:10px;border:1px solid var(--line);background:#0B0906;color:var(--text);font-family:inherit;font-size:15px}
+  .box .row{display:flex;gap:8px;align-items:center}
+  .box .btn{padding:12px 18px;font-size:15px}
+  .strow{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;padding:6px 0;color:var(--muted)}
+  .strow b{font-size:15px;color:var(--text)}
+  .quest{border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px;background:rgba(0,0,0,.25)}
+  .quest .qh{display:flex;justify-content:space-between;font-size:13px;color:var(--text);margin-bottom:6px}
+  .quest .qh .qr{color:var(--gold);font-weight:700}
+  .quest .qbar{height:6px;background:rgba(255,255,255,.1);border-radius:6px;overflow:hidden;margin-bottom:8px}
+  .quest .qbar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold2),var(--gold))}
+  .qclaim{width:100%;font-size:12px;font-weight:700;padding:9px;border-radius:8px;border:none;font-family:inherit}
+  .qclaim.on{background:linear-gradient(135deg,var(--green),#39d16a);color:#062a12;cursor:pointer}
+  .qclaim.off{background:rgba(255,255,255,.07);color:var(--muted);cursor:default}
+  .qclaim.done{background:rgba(124,255,155,.14);color:var(--green);cursor:default}
+
   .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:50;
     background:rgba(11,9,6,.95);border:1px solid var(--line);color:var(--text);font-size:13px;
     padding:11px 18px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.5);opacity:0;transition:opacity .25s;pointer-events:none}
@@ -134,11 +161,11 @@
   <span class="chip"><span class="statusdot off" id="dot"></span><b id="bal">—</b> $SWOGE</span>
   <button class="menubtn" id="menuBtn" aria-label="Menu">☰</button>
   <div class="menu" id="menu">
-    <a href="swoge_pusher_live.html#wallet">👛 My Wallet</a>
-    <a href="swoge_pusher_live.html#staking">🔒 Staking</a>
-    <a href="swoge_pusher_live.html#deposit">💰 Deposit</a>
-    <a href="swoge_pusher_live.html#withdraw">🏧 Withdraw</a>
-    <a href="swoge_pusher_live.html#quests">🎯 Daily Quests</a>
+    <a href="#" data-panel="wallet">👛 My Wallet</a>
+    <a href="#" data-panel="stake">🔒 Staking</a>
+    <a href="#" data-panel="dep">💰 Deposit</a>
+    <a href="#" data-panel="wd">🏧 Withdraw</a>
+    <a href="#" data-panel="quests">🎯 Daily Quests</a>
     <div class="msep"></div>
     <a href="games.html">🎮 Other games</a>
     <a href="swoge_pusher_live.html">🎡 Pusher</a>
@@ -177,6 +204,53 @@
   </footer>
 </main>
 
+<!-- account pop-ups (same shared balance as the Pusher) -->
+<div class="ovl" id="ovl">
+  <div class="box" id="box-dep">
+    <h3>💰 Deposit $SWOGE</h3>
+    <div class="note">In your wallet: <b id="depSwoge">…</b> $SWOGE · <b id="depEth">…</b> ETH</div>
+    <label>Amount</label>
+    <input id="depAmt" inputmode="decimal" placeholder="e.g. 100" value="100">
+    <div class="row"><button class="btn" id="depGo" style="flex:1">Deposit</button><button class="btn sec" data-close>Close</button></div>
+    <div class="note" style="margin-top:10px">You approve + send $SWOGE to the game vault. Credits appear automatically.</div>
+  </div>
+  <div class="box" id="box-wd">
+    <h3>🏧 Withdraw</h3>
+    <div class="note">Game balance: <b id="wdBal">…</b> $SWOGE · min <b id="wdMin">50</b></div>
+    <label>Amount</label>
+    <input id="wdAmt" inputmode="decimal" placeholder="e.g. 50">
+    <div class="row"><button class="btn" id="wdGo" style="flex:1">Withdraw</button><button class="btn sec" data-close>Close</button></div>
+    <div class="note" style="margin-top:10px">Paid straight to your wallet via a signed voucher.</div>
+  </div>
+  <div class="box" id="box-wallet">
+    <h3>👛 My Wallet</h3>
+    <label>Your address</label>
+    <div class="row"><input id="acAddr" readonly style="flex:1"><button class="btn sec" id="acCopy">Copy</button></div>
+    <div class="strow"><span>$SWOGE in wallet</span><b id="acSwoge">…</b></div>
+    <div class="strow"><span>ETH (gas)</span><b id="acEth">…</b></div>
+    <div class="row" style="margin-top:12px"><button class="btn" id="acDeposit" style="flex:1">Deposit to game →</button></div>
+    <div class="row" style="margin-top:8px"><a id="acExplorer" href="#" target="_blank" rel="noopener" class="btn sec" style="flex:1;text-align:center">Explorer ↗</a><button class="btn sec" data-close>Close</button></div>
+  </div>
+  <div class="box" id="box-stake">
+    <h3>🔒 Stake $SWOGE</h3>
+    <div class="note" id="stApr">100% APR · yield every second</div>
+    <div class="strow"><span>Staked</span><b id="stStaked">0</b></div>
+    <div class="strow"><span>Pending yield</span><b id="stPending" style="color:var(--green)">0</b></div>
+    <div class="strow"><span>Unlocked</span><b id="stUnlocked">0</b></div>
+    <div class="note" id="stLock" style="margin-top:6px"></div>
+    <button class="btn" id="stClaim" style="width:100%;margin:10px 0">Claim yield</button>
+    <input id="stAmt" type="number" inputmode="decimal" placeholder="amount to stake">
+    <div class="row"><button class="btn" id="stStake" style="flex:1">Stake</button><button class="btn sec" id="stUnstake">Unstake all</button></div>
+    <div class="row" style="margin-top:8px"><button class="btn sec" data-close style="flex:1">Close</button></div>
+  </div>
+  <div class="box" id="box-quests">
+    <h3>🎯 Daily Quests</h3>
+    <div class="note">Complete them by playing — smashes and blackjack hands count too.</div>
+    <div id="questrows"></div>
+    <div class="row" style="margin-top:10px"><button class="btn sec" data-close style="flex:1">Close</button></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -185,6 +259,15 @@
   // Same server as the Pusher → same account, same balance. Override with ?server=
   var SERVER_URL = "wss://web-production-220a3.up.railway.app";
   (function(){ var q=new URLSearchParams(location.search).get("server"); if(q) SERVER_URL=q; })();
+
+  // chain / vault (vault + token + min arrive in the server 'hello')
+  var CHAIN={ id:4663, hex:"0x1237", name:"Robinhood Chain", rpc:"https://rpc.mainnet.chain.robinhood.com", scan:"https://robinhoodchain.blockscout.com", sym:"ETH" };
+  var TOKEN="0x8a166Fb41Cd659a0a43396272FF73973Ce29F817", VAULT="", MIN_WITHDRAW="50";
+  var ERC20_ABI=["function approve(address,uint256) returns (bool)","function allowance(address,address) view returns (uint256)","function balanceOf(address) view returns (uint256)","function transfer(address,uint256) returns (bool)"];
+  var VAULT_ABI=["function deposit(uint256)","function withdraw(uint256 cumulative,uint256 deadline,uint8 v,bytes32 r,bytes32 s)"];
+  var provider=null, signer=null;
+  function fmtBig(n){ n=parseFloat(n||0); if(n>=1e9)return (n/1e9).toFixed(2)+"B"; if(n>=1e6)return (n/1e6).toFixed(2)+"M"; if(n>=1e3)return (n/1e3).toFixed(2)+"k"; return (Math.round(n*100)/100).toString(); }
+  function esc(s){ return String(s==null?"":s).replace(/[<>&]/g,function(c){return{"<":"&lt;",">":"&gt;","&":"&amp;"}[c];}); }
 
   var $=function(s){return document.getElementById(s);};
   var gem=$("gem"), result=$("result"), feed=$("feed"), balEl=$("bal"), dot=$("dot"),
@@ -230,36 +313,42 @@
     ws.onmessage=function(ev){
       var m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
       if(m.type==="state") return;                     // pusher table — ignore here
-      if(m.type==="hello"){ loginNonce=m.loginNonce; showFair(m.serverSeedHash,0); }
-      else if(m.type==="auth"){ authed=true; myAddr=m.address; result.textContent="Smash the gem!"; setBalance(m.balance); showPlay(); if(m.fairness) showFair(m.fairness.serverSeedHash,m.fairness.nonce); }
+      if(m.type==="hello"){ loginNonce=m.loginNonce; if(m.vault)VAULT=m.vault; if(m.token)TOKEN=m.token; if(m.minWithdraw)MIN_WITHDRAW=m.minWithdraw; showFair(m.serverSeedHash,0); }
+      else if(m.type==="auth"){ authed=true; myAddr=m.address; result.textContent="Smash the gem!"; setBalance(m.balance); showPlay(); if(m.fairness) showFair(m.fairness.serverSeedHash,m.fairness.nonce); if(m.stake) setStakeInfo(m.stake); if(m.quests) renderQuests(m.quests); }
       else if(m.type==="balance"||m.type==="deposit"){ setBalance(m.balance); if(m.type==="deposit") toast("💰 Deposit credited"); }
       else if(m.type==="spinResult"){ onSpin(m); }
       else if(m.type==="need_deposit"){ setBalance(m.balance); inflight=0; updateSmash(); toast("Not enough $SWOGE — deposit in the Pusher"); }
       else if(m.type==="error"){ inflight=Math.max(0,inflight-1); toast(m.error||"error"); updateSmash(); }
+      else if(m.type==="voucher"){ setBalance(m.balance); submitWithdraw(m.voucher); }
+      else if(m.type==="stakeInfo"){ setStakeInfo(m); }
+      else if(m.type==="stakeUnstaked"){ setStakeInfo(m); toast("Unstaked "+fmtBig(m.returned)+" $SWOGE"+(parseFloat(m.penalty)>0?" (−"+fmtBig(m.penalty)+" penalty)":"")); }
+      else if(m.type==="quests"){ renderQuests(m.quests); }
+      else if(m.type==="questClaimed"){ setBalance(m.balance); renderQuests(m.quests); toast("🎯 Quest +"+m.reward+" $SWOGE!"); }
     };
   }
 
   function send(o){ if(ws&&ws.readyState===1) ws.send(JSON.stringify(o)); }
 
-  // ---- wallet login (injected provider; email users deposit via the Pusher) ----
+  // ---- wallet (ethers signer → enables login + on-chain deposit/withdraw) ----
   async function doConnect(){
     var eth=window.ethereum;
     if(!eth){ toast("Open in your wallet's browser, or use the Pusher to create a wallet"); location.href="swoge_pusher_live.html"; return; }
     try{
-      var accs=await eth.request({method:"eth_requestAccounts"});
-      myAddr=(accs&&accs[0]||"").toLowerCase();
-      if(!myAddr){ toast("no account"); return; }
-      window._eth=eth;
+      await eth.request({method:"eth_requestAccounts"});
+      var cid=await eth.request({method:"eth_chainId"});
+      if(cid!==CHAIN.hex){
+        try{ await eth.request({method:"wallet_switchEthereumChain",params:[{chainId:CHAIN.hex}]}); }
+        catch(sw){ if(sw&&sw.code===4902){ await eth.request({method:"wallet_addEthereumChain",params:[{chainId:CHAIN.hex,chainName:CHAIN.name,nativeCurrency:{name:"Ether",symbol:CHAIN.sym,decimals:18},rpcUrls:[CHAIN.rpc],blockExplorerUrls:[CHAIN.scan]}]}); } }
+      }
+      provider=new ethers.providers.Web3Provider(eth,"any"); signer=provider.getSigner();
+      myAddr=(await signer.getAddress()).toLowerCase();
       if(ws&&ws.readyState===1) doLogin(); else connect();
-    }catch(e){ toast("connection cancelled"); }
+    }catch(e){ toast(String(e.message||e).slice(0,90)); }
   }
   async function doLogin(){
-    if(!myAddr||loginNonce==null) return;
-    var msg="SWOGE Pusher login\nnonce: "+loginNonce;
-    try{
-      var sig=await window._eth.request({method:"personal_sign",params:[msg,myAddr]});
-      send({type:"login",message:msg,signature:sig});
-    }catch(e){ toast("signature refused"); }
+    if(!signer||loginNonce==null) return;
+    try{ var msg="SWOGE Pusher login\nnonce: "+loginNonce; var sig=await signer.signMessage(msg); send({type:"login",message:msg,signature:sig,name:myAddr.slice(0,6)}); }
+    catch(e){ toast("login cancelled"); }
   }
 
   function showPlay(){ connectBtn.style.display="none"; smashBtn.style.display=""; costline.style.display=""; updateSmash(); }
@@ -320,10 +409,97 @@
     if(++feedCount>40){ feed.removeChild(feed.lastChild); feedCount--; }
   }
 
+  // ============ account pop-ups (deposit / withdraw / wallet / staking / quests) ============
+  var ovl=$("ovl");
+  var PANELS=["dep","wd","wallet","stake","quests"];
+  function openPanel(name){
+    if(!authed){ toast("connect your wallet first"); doConnect(); return; }
+    ovl.classList.add("show");
+    PANELS.forEach(function(b){ var el=$("box-"+b); if(el) el.classList.toggle("show", b===name); });
+    if(name==="dep") loadWalletBalances();
+    else if(name==="wd"){ $("wdBal").textContent=fmtBig(balance); $("wdMin").textContent=MIN_WITHDRAW; }
+    else if(name==="wallet") openAccount();
+    else if(name==="stake"){ send({type:"stakeInfo"}); renderStake(); }
+    else if(name==="quests") send({type:"quests"});
+  }
+  function closePanel(){ ovl.classList.remove("show"); PANELS.forEach(function(b){ var el=$("box-"+b); if(el) el.classList.remove("show"); }); }
+  ovl.addEventListener("click",function(e){ if(e.target===ovl) closePanel(); });
+  [].forEach.call(document.querySelectorAll("[data-close]"),function(b){ b.addEventListener("click",closePanel); });
+  function needSigner(){ if(!signer){ toast("connect wallet first"); return false; } return true; }
+
+  async function doDeposit(){
+    if(!needSigner()) return; if(!VAULT){ toast("server has no vault set"); return; }
+    var s=($("depAmt").value||"").replace(",",".").trim(), amt;
+    try{ amt=ethers.utils.parseUnits(s,18); }catch(e){ return toast("bad amount"); }
+    if(amt.lte(0)) return toast("enter an amount");
+    try{
+      var token=new ethers.Contract(TOKEN,ERC20_ABI,signer), vault=new ethers.Contract(VAULT,VAULT_ABI,signer);
+      var allow=await token.allowance(myAddr,VAULT);
+      if(allow.lt(amt)){ toast("approve $SWOGE…"); var ta=await token.approve(VAULT,ethers.constants.MaxUint256); await ta.wait(); }
+      toast("depositing…"); var tx=await vault.deposit(amt); await tx.wait(); toast("✅ deposited — credits incoming"); closePanel();
+    }catch(e){ toast("deposit: "+String(e.reason||e.message||e).slice(0,80)); }
+  }
+  function requestWithdraw(){
+    var s=($("wdAmt").value||"").replace(",",".").trim();
+    if(!s||parseFloat(s)<parseFloat(MIN_WITHDRAW)) return toast("min "+MIN_WITHDRAW+" $SWOGE");
+    send({type:"withdraw",amount:s}); toast("requesting voucher…");
+  }
+  async function submitWithdraw(v){
+    if(!needSigner()) return;
+    try{ var vault=new ethers.Contract(v.vault||VAULT,VAULT_ABI,signer); toast("confirm withdrawal…"); var tx=await vault.withdraw(v.cumulative,v.deadline,v.v,v.r,v.s); await tx.wait(); toast("✅ paid out to your wallet"); closePanel(); }
+    catch(e){ toast("withdraw: "+String(e.reason||e.message||e).slice(0,80)); }
+  }
+  function openAccount(){
+    if(!myAddr){ toast("connect first"); return; }
+    $("acAddr").value=myAddr; $("acExplorer").href=CHAIN.scan+"/address/"+myAddr; $("acSwoge").textContent="…"; $("acEth").textContent="…"; loadWalletBalances();
+  }
+  async function loadWalletBalances(){
+    if(!provider||!myAddr) return; var e="—", sw="—";
+    try{ var b=await provider.getBalance(myAddr); e=(+ethers.utils.formatEther(b)).toFixed(5); }catch(x){}
+    try{ var t=new ethers.Contract(TOKEN,ERC20_ABI,provider), bb=await t.balanceOf(myAddr); sw=fmtBig(+ethers.utils.formatUnits(bb,18)); }catch(x){}
+    ["acEth","depEth"].forEach(function(id){ var el=$(id); if(el) el.textContent=e; });
+    ["acSwoge","depSwoge"].forEach(function(id){ var el=$(id); if(el) el.textContent=sw; });
+  }
+  // staking
+  var stStaked=0,stPending=0,stAprBps=10000,stSyncMs=0,stLocked=0,stUnlocked=0,stNextUnlock=null,stPenaltyBps=5000,stLockDays=365;
+  function setStakeInfo(m){
+    if(m.staked!=null)stStaked=parseFloat(m.staked); if(m.pending!=null)stPending=parseFloat(m.pending); if(m.aprBps!=null)stAprBps=m.aprBps;
+    if(m.locked!=null)stLocked=parseFloat(m.locked); if(m.unlocked!=null)stUnlocked=parseFloat(m.unlocked); if(m.penaltyBps!=null)stPenaltyBps=m.penaltyBps;
+    if(m.lockDays!=null)stLockDays=m.lockDays; if("nextUnlock" in m)stNextUnlock=m.nextUnlock; if(m.balance!=null)setBalance(m.balance);
+    stSyncMs=Date.now(); var ap=$("stApr"); if(ap) ap.textContent=(stAprBps/100)+"% APR · locked "+stLockDays+" days · yield every second"; renderStake();
+  }
+  function livePending(){ var el=(Date.now()-stSyncMs)/1000; return stPending+stStaked*(stAprBps/10000)*(el/31536000); }
+  function fmtYield(n){ return n>=1000?fmtBig(n):(n>=1?n.toFixed(3):n.toFixed(6)); }
+  function renderStake(){
+    if(!$("stStaked")) return;
+    $("stStaked").textContent=fmtBig(stStaked); $("stPending").textContent=fmtYield(livePending()); $("stUnlocked").textContent=fmtBig(stUnlocked);
+    var el=$("stLock");
+    if(stLocked>0){ var w=stNextUnlock?new Date(stNextUnlock).toLocaleDateString():"—"; el.innerHTML="🔒 "+fmtBig(stLocked)+" locked until "+w+" — early unstake forfeits "+(stPenaltyBps/100)+"% of the locked part."; el.style.color="var(--red)"; }
+    else if(stStaked>0){ el.textContent="✅ All unlocked — unstake with no penalty."; el.style.color="var(--green)"; }
+    else el.textContent="";
+  }
+  setInterval(function(){ if(ovl.classList.contains("show")&&$("box-stake").classList.contains("show")) $("stPending").textContent=fmtYield(livePending()); },250);
+  function doStake(){ var v=($("stAmt").value||"").replace(",",".").trim(); if(!(parseFloat(v)>0))return toast("enter an amount"); if(!confirm("Stake "+v+" $SWOGE at "+(stAprBps/100)+"% APR?\nLocks "+stLockDays+" days; early unstake loses "+(stPenaltyBps/100)+"%.")) return; send({type:"stake",amount:v}); $("stAmt").value=""; }
+  function doUnstake(){ if(!(stStaked>0))return toast("nothing staked"); if(stLocked>0&&!confirm("⚠️ "+fmtBig(stLocked)+" still locked. Unstaking now loses "+(stPenaltyBps/100)+"%. Continue?"))return; send({type:"unstake"}); }
+  function doClaimStake(){ send({type:"claimStake"}); }
+  // quests
+  function renderQuests(list){
+    var box=$("questrows"); if(!box||!list) return; var h=[];
+    for(var i=0;i<list.length;i++){ var q=list[i], pct=q.target>0?Math.min(100,Math.round(q.progress/q.target*100)):100, btn,cls;
+      if(q.claimed){btn="Claimed ✓";cls="done";} else if(q.locked){btn="Deposit to unlock";cls="off";} else if(q.claimable){btn="CLAIM +"+q.reward+" $SWOGE";cls="on";} else {btn=(q.metric==="free"?"Come back tomorrow":q.progress+" / "+q.target);cls="off";}
+      h.push('<div class="quest"><div class="qh"><span>'+esc(q.label)+'</span><span class="qr">+'+q.reward+'</span></div><div class="qbar"><i style="width:'+pct+'%"></i></div><button class="qclaim '+cls+'" '+(cls==="on"?'data-q="'+esc(q.id)+'"':'disabled')+'>'+btn+'</button></div>');
+    }
+    box.innerHTML=h.join(""); var bs=box.querySelectorAll(".qclaim[data-q]"); for(var j=0;j<bs.length;j++) bs[j].onclick=function(){ send({type:"claimQuest",id:this.getAttribute("data-q")}); };
+  }
+  $("depGo").onclick=doDeposit; $("wdGo").onclick=requestWithdraw; $("stStake").onclick=doStake; $("stUnstake").onclick=doUnstake; $("stClaim").onclick=doClaimStake;
+  $("acDeposit").onclick=function(){ openPanel("dep"); };
+  $("acCopy").onclick=function(){ try{ navigator.clipboard.writeText(myAddr||""); toast("Address copied"); }catch(e){} };
+
   // ---- menu ----
   var menuBtn=$("menuBtn"), menu=$("menu"), soundItem=$("soundItem");
   menuBtn.addEventListener("click",function(e){ e.stopPropagation(); menu.classList.toggle("open"); });
   document.addEventListener("click",function(e){ if(!menu.contains(e.target)&&e.target!==menuBtn) menu.classList.remove("open"); });
+  menu.addEventListener("click",function(e){ var a=e.target.closest("a[data-panel]"); if(!a) return; e.preventDefault(); menu.classList.remove("open"); openPanel(a.getAttribute("data-panel")); });
   function refreshSoundLabel(){ soundItem.textContent = SFX.isMuted()?"🔇 Sound: off":"🔊 Sound: on"; }
   refreshSoundLabel();
   soundItem.addEventListener("click",function(e){ e.preventDefault(); SFX.toggle(); refreshSoundLabel(); });

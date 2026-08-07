@@ -115,7 +115,7 @@
   <div class="hero">
     <div class="eyebrow">Wallet Bench · Documentation</div>
     <h1>One-Click <span>Volume</span></h1>
-    <p>Generate a wallet, fund it once, press PLAY. The Bench spins up hidden wallets that buy $SWOGE and pass funds around to create real on-chain volume — then sweeps everything back with STOP.</p>
+    <p>Generate a wallet, fund it once, press PLAY. The Bench spins up hidden wallets that buy a token and pass funds around to create real on-chain volume — then sweeps everything back with STOP. <b>$SWOGE is loaded by default</b>, but you can point it at any Robinhood-Chain coin.</p>
   </div>
 
   <div class="callout danger">
@@ -130,6 +130,7 @@
       <li><a href="#need">What you need</a></li>
       <li><a href="#start">Step-by-step</a></li>
       <li><a href="#keys">The CSV of private keys</a></li>
+      <li><a href="#token">Run volume on another token</a></li>
       <li><a href="#cashout">Cash out to an external wallet</a></li>
       <li><a href="#network">Network &amp; contracts</a></li>
       <li><a href="#safety">Safety &amp; troubleshooting</a></li>
@@ -144,7 +145,7 @@
     <ul>
       <li>You hold <b>one visible master wallet</b>. That's the only wallet you fund and the only one you cash out from.</li>
       <li>When you press <b>PLAY</b>, the Bench creates <b>N hidden wallets</b> (default 100) in the background.</li>
-      <li>The first hidden wallet buys <b>$SWOGE</b> with ~98% of its ETH, split into <b>5 slices</b> (so it looks like several natural trades).</li>
+      <li>The first hidden wallet buys the <b>selected token</b> (<b>$SWOGE</b> by default, or any Robinhood-Chain coin you paste in) with ~98% of its ETH, split into <b>5 slices</b> (so it looks like several natural trades).</li>
       <li>It then <b>transfers everything</b> (ETH + tokens) to the next hidden wallet, which <b>sells</b>, then passes on to the next, which <b>buys</b>… and so on around the ring.</li>
       <li>Every hop is a <b>real on-chain buy or sell on Uniswap</b> — real trading volume on the $SWOGE chart.</li>
       <li>The loop runs quietly in the background until you press <b>STOP</b> or the ETH is spent on gas.</li>
@@ -193,6 +194,10 @@
         Leave <b>Hidden wallets</b> at <code>100</code>, or lower it (min 2). More wallets = more distinct addresses in the ring.
       </li>
       <li>
+        <b>Choose the token (optional)</b>
+        <b>Token to pump</b> is pre-filled with <b>$SWOGE</b>. To run volume on a different Robinhood-Chain coin, paste its contract address there. Press <kbd>↺ SWOGE</kbd> anytime to switch back. See §5.
+      </li>
+      <li>
         <b>Press PLAY</b>
         Hit <kbd>▶ PLAY</kbd>. The Bench (a) generates the hidden wallets, (b) <b>downloads a CSV of their private keys</b> automatically, and (c) starts the ring in the background. The status line shows what's happening live.
       </li>
@@ -237,8 +242,28 @@
   </section>
 
   <!-- 5 -->
+  <section id="token">
+    <h2><span class="num">5</span> Run volume on another token</h2>
+    <p>$SWOGE is loaded by default — but the Bench works on <b>any token that trades on Robinhood Chain</b>. In the One-Click panel:</p>
+    <ol>
+      <li>Find the <b>Token to pump</b> field (just under “Hidden wallets”). It's pre-filled with the $SWOGE contract.</li>
+      <li>Paste the <b>contract address</b> of the coin you want (a token address, or a Uniswap pool/pair address on chain 4663).</li>
+      <li>Press <kbd>▶ PLAY</kbd> — the Bench loads that token's pool and runs the exact same ring on it.</li>
+      <li>Press <kbd>↺ SWOGE</kbd> next to the field at any time to snap the address back to $SWOGE.</li>
+    </ol>
+    <div class="callout">
+      <span class="h">Requirements for the token</span>
+      It must have a live <b>Uniswap pool paired with WETH</b> on Robinhood Chain (that's how the wallets buy in ETH). If it's only paired with another token, buying in ETH isn't possible and PLAY will report it. Always paste a contract you've verified on the explorer.
+    </div>
+    <div class="callout danger">
+      <span class="h">Same risks apply</span>
+      Running volume on any coin uses <b>real funds and irreversible trades</b>. Thin-liquidity tokens can move hard on each hop (high slippage) — test tiny first, and only pump tokens you're authorised to.
+    </div>
+  </section>
+
+  <!-- 6 -->
   <section id="cashout">
-    <h2><span class="num">5</span> Cash out to an external wallet</h2>
+    <h2><span class="num">6</span> Cash out to an external wallet</h2>
     <p>When you're finished and everything is back on the master wallet:</p>
     <ol>
       <li>In the <b>Cash out</b> row, paste your external address (must be a valid <code>0x…</code> 40-hex address).</li>
@@ -251,9 +276,9 @@
     </div>
   </section>
 
-  <!-- 6 -->
+  <!-- 7 -->
   <section id="network">
-    <h2><span class="num">6</span> Network &amp; contracts</h2>
+    <h2><span class="num">7</span> Network &amp; contracts</h2>
     <div class="tw"><table>
       <tr><th>Setting</th><th>Value</th></tr>
       <tr><td>Network</td><td><b>Robinhood Chain</b> — mainnet</td></tr>
@@ -272,9 +297,9 @@
     <p class="callout">Robinhood Chain is an Orbit rollup, so the real transaction cost includes an L1 data fee — the Bench adds a margin when sweeping so a sweep doesn't fail for being a few wei short.</p>
   </section>
 
-  <!-- 7 -->
+  <!-- 8 -->
   <section id="safety">
-    <h2><span class="num">7</span> Safety &amp; troubleshooting</h2>
+    <h2><span class="num">8</span> Safety &amp; troubleshooting</h2>
     <div class="tw"><table>
       <tr><th>Symptom</th><th>What to do</th></tr>
       <tr><td>RPC not reached / no balance</td><td>Check your connection; the network is fixed to Robinhood Chain. Refresh and re-open the master wallet.</td></tr>
@@ -289,9 +314,9 @@
     </div>
   </section>
 
-  <!-- 8 -->
+  <!-- 9 -->
   <section id="faq" class="faq">
-    <h2><span class="num">8</span> FAQ</h2>
+    <h2><span class="num">9</span> FAQ</h2>
 
     <details>
       <summary>Do I need to fund all 100 wallets?</summary>
@@ -304,6 +329,10 @@
     <details>
       <summary>Can I change the number of hidden wallets?</summary>
       <div class="a">Yes — set <b>Hidden wallets</b> before pressing PLAY (min 2, max 100).</div>
+    </details>
+    <details>
+      <summary>Can I pump a coin other than $SWOGE?</summary>
+      <div class="a">Yes. Paste any Robinhood-Chain token contract into <b>Token to pump</b> before pressing PLAY. It needs a live Uniswap pool paired with WETH so the wallets can buy in ETH. Press <b>↺ SWOGE</b> to switch back to the default.</div>
     </details>
     <details>
       <summary>What happens to my money if I press STOP?</summary>

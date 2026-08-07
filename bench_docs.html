@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>$SWOGE — Wallet Bench Documentation</title>
+<meta name="description" content="How to use the SWOGE Wallet Bench — the one-click volume tool. Step-by-step guide, CSV keys, cash-out and safety.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0B0906; --bg:#100C08; --panel:#15100A; --line:rgba(230,165,55,.24);
+    --paper:#F7EEDA; --dim:#A08a63; --gold:#E6A537; --gold2:#FFB84D;
+    --danger:#D6452F; --ok:#7CFF9B; --r:6px;
+  }
+  @media (prefers-color-scheme: light){
+    :root:not([data-theme="dark"]){
+      --ink:#F7EEDA; --bg:#FBF5E6; --panel:#FFFDF6; --line:rgba(180,120,20,.28);
+      --paper:#23190C; --dim:#8A7550; --gold:#B4790F; --gold2:#C8791A;
+    }
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html{background:var(--ink)}
+  body{background:var(--bg);color:var(--paper);font-family:'Space Mono','Courier New',monospace;line-height:1.7;min-height:100vh}
+  a{color:var(--gold);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .wrap{max-width:840px;margin:0 auto;padding:0 20px}
+
+  /* top bar */
+  .top{display:flex;align-items:center;gap:14px;padding:16px 20px;border-bottom:1px solid var(--line);
+    position:sticky;top:0;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(8px);z-index:10}
+  .top .brand{font-family:'Anton',sans-serif;font-size:19px;letter-spacing:1px;color:var(--paper)}
+  .top .brand span{color:var(--gold)}
+  .top .sp{flex:1}
+  .top a.btn{font-size:12px;color:var(--gold);border:1px solid var(--gold);border-radius:var(--r);padding:7px 13px}
+  .top a.btn.solid{background:var(--gold);color:var(--ink);border-color:var(--gold);font-weight:700}
+
+  /* hero */
+  .hero{text-align:center;padding:56px 20px 24px}
+  .hero .eyebrow{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--dim)}
+  .hero h1{font-family:'Anton',sans-serif;font-size:clamp(34px,8vw,60px);line-height:1;letter-spacing:1px;margin:12px 0}
+  .hero h1 span{color:var(--gold)}
+  .hero p{max-width:600px;margin:8px auto 0;color:var(--dim);font-size:14px}
+
+  /* toc */
+  .toc{border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;margin:26px 0;background:var(--panel)}
+  .toc h4{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin-bottom:10px}
+  .toc ol{margin:0;padding-left:20px}
+  .toc li{margin:5px 0;font-size:13.5px}
+
+  /* sections */
+  section{margin:40px 0;scroll-margin-top:80px}
+  h2{font-family:'Anton',sans-serif;font-size:24px;letter-spacing:.5px;color:var(--paper);margin-bottom:6px;
+    padding-bottom:8px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px}
+  h2 .num{font-size:14px;color:var(--ink);background:var(--gold);border-radius:999px;width:30px;height:30px;
+    display:inline-flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-weight:700;flex:none}
+  h3{font-size:15px;color:var(--gold);margin:22px 0 6px}
+  p{margin:10px 0;font-size:14px}
+  ul,ol{margin:10px 0 10px 22px}
+  li{margin:6px 0;font-size:14px}
+  b{color:var(--paper)}
+  code{font-family:'Space Mono',monospace;font-size:12.5px;background:color-mix(in srgb,var(--gold) 14%,transparent);
+    color:var(--gold);padding:2px 6px;border-radius:4px;word-break:break-all}
+  kbd{font-family:'Space Mono',monospace;font-size:12px;background:var(--panel);border:1px solid var(--line);
+    border-bottom-width:2px;border-radius:5px;padding:2px 8px;color:var(--paper);font-weight:700}
+
+  .card{border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;margin:16px 0;background:var(--panel)}
+  .steps{counter-reset:step;list-style:none;margin-left:0;padding:0}
+  .steps>li{position:relative;padding:14px 0 14px 52px;border-bottom:1px solid var(--line)}
+  .steps>li:last-child{border-bottom:0}
+  .steps>li::before{counter-increment:step;content:counter(step);position:absolute;left:0;top:12px;
+    width:34px;height:34px;border-radius:999px;background:var(--gold);color:var(--ink);
+    display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px}
+  .steps>li b{display:block;font-size:15px;color:var(--paper);margin-bottom:2px}
+
+  .callout{border-left:3px solid var(--gold);border-radius:var(--r);padding:12px 16px;margin:16px 0;
+    background:color-mix(in srgb,var(--gold) 10%,transparent);font-size:13.5px}
+  .callout.danger{border-left-color:var(--danger);background:color-mix(in srgb,var(--danger) 12%,transparent)}
+  .callout.danger b{color:var(--danger)}
+  .callout .h{font-weight:700;color:var(--paper);display:block;margin-bottom:4px}
+
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13px}
+  .tw{overflow-x:auto}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--dim);font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:400}
+  td b{color:var(--gold)}
+
+  .faq details{border:1px solid var(--line);border-radius:var(--r);margin:10px 0;background:var(--panel)}
+  .faq summary{cursor:pointer;padding:14px 16px;font-weight:700;font-size:14px;color:var(--paper);list-style:none}
+  .faq summary::-webkit-details-marker{display:none}
+  .faq summary::before{content:"＋";color:var(--gold);margin-right:10px;font-weight:700}
+  .faq details[open] summary::before{content:"－"}
+  .faq details[open] summary{border-bottom:1px solid var(--line)}
+  .faq .a{padding:14px 16px;font-size:13.5px;color:var(--dim)}
+  .faq .a b{color:var(--paper)}
+
+  .cta{text-align:center;margin:44px 0 20px}
+  .cta a{display:inline-block;background:var(--gold);color:var(--ink);font-weight:700;font-size:15px;
+    padding:14px 28px;border-radius:var(--r);font-family:'Anton',sans-serif;letter-spacing:.05em}
+
+  footer{border-top:1px solid var(--line);padding:26px 20px 44px;text-align:center;color:var(--dim);font-size:12px;margin-top:40px}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <span class="brand">$<span>SWOGE</span> · Bench Docs</span>
+  <span class="sp"></span>
+  <a class="btn solid" href="swoge_bench.html">← Back to Bench</a>
+</div>
+
+<div class="wrap">
+
+  <div class="hero">
+    <div class="eyebrow">Wallet Bench · Documentation</div>
+    <h1>One-Click <span>Volume</span></h1>
+    <p>Generate a wallet, fund it once, press PLAY. The Bench spins up hidden wallets that buy $SWOGE and pass funds around to create real on-chain volume — then sweeps everything back with STOP.</p>
+  </div>
+
+  <div class="callout danger">
+    <span class="h">⚠️ Read this first</span>
+    The Bench sends <b>real, irreversible transactions</b> on <b>Robinhood Chain (mainnet)</b> with real ETH gas and real slippage. Always test with a <b>tiny amount first</b>. Manufacturing trading volume can violate exchange/platform rules and local laws — only run it where you are authorised, and never with money you can't lose.
+  </div>
+
+  <div class="toc">
+    <h4>On this page</h4>
+    <ol>
+      <li><a href="#how">How it works (the ring)</a></li>
+      <li><a href="#need">What you need</a></li>
+      <li><a href="#start">Step-by-step</a></li>
+      <li><a href="#keys">The CSV of private keys</a></li>
+      <li><a href="#cashout">Cash out to an external wallet</a></li>
+      <li><a href="#network">Network &amp; contracts</a></li>
+      <li><a href="#safety">Safety &amp; troubleshooting</a></li>
+      <li><a href="#faq">FAQ</a></li>
+    </ol>
+  </div>
+
+  <!-- 1 -->
+  <section id="how">
+    <h2><span class="num">1</span> How it works — the ring</h2>
+    <p>The One-Click Volume mode automates the whole “volume ring” for you:</p>
+    <ul>
+      <li>You hold <b>one visible master wallet</b>. That's the only wallet you fund and the only one you cash out from.</li>
+      <li>When you press <b>PLAY</b>, the Bench creates <b>N hidden wallets</b> (default 100) in the background.</li>
+      <li>The first hidden wallet buys <b>$SWOGE</b> with ~98% of its ETH, split into <b>5 slices</b> (so it looks like several natural trades).</li>
+      <li>It then <b>transfers everything</b> (ETH + tokens) to the next hidden wallet, which <b>sells</b>, then passes on to the next, which <b>buys</b>… and so on around the ring.</li>
+      <li>Every hop is a <b>real on-chain buy or sell on Uniswap</b> — real trading volume on the $SWOGE chart.</li>
+      <li>The loop runs quietly in the background until you press <b>STOP</b> or the ETH is spent on gas.</li>
+      <li><b>STOP</b> sweeps every hidden wallet — ETH <em>and</em> $SWOGE tokens — back to your master wallet.</li>
+    </ul>
+    <div class="callout">
+      <span class="h">In one line</span>
+      Fund the master → PLAY (hidden wallets buy ×5 and pass the bag around) → STOP (everything comes home to the master).
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section id="need">
+    <h2><span class="num">2</span> What you need</h2>
+    <div class="tw"><table>
+      <tr><th>Item</th><th>Details</th></tr>
+      <tr><td><b>A browser</b></td><td>The Bench is a single HTML page — nothing to install. Open <code>swoge_bench.html</code>.</td></tr>
+      <tr><td><b>Robinhood-Chain ETH</b></td><td>The gas + trading fuel. Sent to the <b>master wallet address</b> the Bench generates. Start small.</td></tr>
+      <tr><td><b>A place to keep the CSV</b></td><td>PLAY downloads a CSV of all hidden-wallet private keys. Keep it safe — it's your only recovery if a page closes mid-run.</td></tr>
+      <tr><td><b>An external wallet (optional)</b></td><td>Where you cash out at the end (MetaMask, Rabby, an exchange deposit address, etc.).</td></tr>
+    </table></div>
+    <div class="callout">
+      <span class="h">💡 How much ETH?</span>
+      Each hop costs gas + a little slippage. More ETH = more hops = more volume before it drains. Do one small test run first, watch how fast it burns, then size your real run from that.
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section id="start">
+    <h2><span class="num">3</span> Step-by-step</h2>
+    <ol class="steps">
+      <li>
+        <b>Open the Bench</b>
+        Go to the <a href="swoge_bench.html">Wallet Bench</a>. You'll see one panel: <b>⚡ One-Click Volume</b>. $SWOGE and the Robinhood-Chain network are already loaded for you.
+      </li>
+      <li>
+        <b>Generate the master wallet</b>
+        Press <kbd>Generate master wallet</kbd>. A fresh wallet address appears. This is the only wallet you'll fund and the only one you cash out from. Tap the address to copy it.
+      </li>
+      <li>
+        <b>Send it ETH</b>
+        From your own wallet or exchange, send <b>Robinhood-Chain ETH</b> to that master address. Wait for the balance on the Bench to update.
+      </li>
+      <li>
+        <b>Set the number of hidden wallets</b>
+        Leave <b>Hidden wallets</b> at <code>100</code>, or lower it (min 2). More wallets = more distinct addresses in the ring.
+      </li>
+      <li>
+        <b>Press PLAY</b>
+        Hit <kbd>▶ PLAY</kbd>. The Bench (a) generates the hidden wallets, (b) <b>downloads a CSV of their private keys</b> automatically, and (c) starts the ring in the background. The status line shows what's happening live.
+      </li>
+      <li>
+        <b>Let it run</b>
+        Keep the tab open. Volume builds hop by hop. You can watch the status line and the chart on Dexscreener.
+      </li>
+      <li>
+        <b>Press STOP when done</b>
+        Hit <kbd>■ STOP</kbd>. The Bench sweeps all ETH and $SWOGE from every hidden wallet back to your master wallet.
+      </li>
+      <li>
+        <b>Cash out</b>
+        Paste your external address in <b>Cash out</b> and press <kbd>Send →</kbd> to move the master wallet's funds off the Bench. (See §5.)
+      </li>
+    </ol>
+    <div class="callout danger">
+      <span class="h">Don't close the tab mid-run</span>
+      The ring runs in your browser. If you close the tab before STOP, the loop halts where it is — funds sit in the hidden wallets. That's exactly what the CSV is for: import those keys to recover the funds. So <b>keep the CSV</b>.
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section id="keys">
+    <h2><span class="num">4</span> The CSV of private keys</h2>
+    <p>The moment you press <b>PLAY</b>, your browser downloads a CSV file containing every hidden wallet:</p>
+    <div class="tw"><table>
+      <tr><th>index</th><th>address</th><th>privateKey</th></tr>
+      <tr><td>0</td><td>0xabc…</td><td>0x…</td></tr>
+      <tr><td>1</td><td>0xdef…</td><td>0x…</td></tr>
+      <tr><td>…</td><td>…</td><td>…</td></tr>
+    </table></div>
+    <h3>Why it matters</h3>
+    <ul>
+      <li>It's your <b>only backup</b> of the hidden wallets. If the tab closes, crashes, or STOP fails to sweep one wallet, you can import its private key into any EVM wallet and pull the funds manually.</li>
+      <li>The keys are <b>never uploaded anywhere</b> — the file is generated in your browser and saved to your machine.</li>
+    </ul>
+    <div class="callout danger">
+      <span class="h">Treat the CSV like cash</span>
+      Anyone with these private keys can drain those wallets. Store it offline, don't email it, delete it once the run is fully swept back to the master.
+    </div>
+  </section>
+
+  <!-- 5 -->
+  <section id="cashout">
+    <h2><span class="num">5</span> Cash out to an external wallet</h2>
+    <p>When you're finished and everything is back on the master wallet:</p>
+    <ol>
+      <li>In the <b>Cash out</b> row, paste your external address (must be a valid <code>0x…</code> 40-hex address).</li>
+      <li>Press <kbd>Send →</kbd>.</li>
+      <li>The Bench sends the master wallet's <b>$SWOGE tokens first, then the ETH</b> (keeping just enough to pay gas) to your address.</li>
+    </ol>
+    <div class="callout">
+      <span class="h">Order of operations</span>
+      Always press <b>STOP</b> first (to gather funds onto the master), <em>then</em> cash out. Cashing out only moves what's currently on the master wallet.
+    </div>
+  </section>
+
+  <!-- 6 -->
+  <section id="network">
+    <h2><span class="num">6</span> Network &amp; contracts</h2>
+    <div class="tw"><table>
+      <tr><th>Setting</th><th>Value</th></tr>
+      <tr><td>Network</td><td><b>Robinhood Chain</b> — mainnet</td></tr>
+      <tr><td>Chain ID</td><td><code>4663</code> (hex <code>0x1237</code>)</td></tr>
+      <tr><td>RPC</td><td><code>https://rpc.mainnet.chain.robinhood.com</code></td></tr>
+      <tr><td>Gas token</td><td><b>ETH</b></td></tr>
+      <tr><td>$SWOGE token</td><td><code>0x8a166Fb41Cd659a0a43396272FF73973Ce29F817</code></td></tr>
+      <tr><td>DEX</td><td>Uniswap on chain 4663</td></tr>
+      <tr><td>Explorer</td><td><a href="https://robinhoodchain.blockscout.com/" target="_blank" rel="noopener">robinhoodchain.blockscout.com</a></td></tr>
+    </table></div>
+    <h3>Ring defaults</h3>
+    <ul>
+      <li>Buy size: <b>98%</b> of the wallet's ETH, split into <b>5 slices</b>.</li>
+      <li>Slippage: <b>5%</b> · Gas reserve kept: <b>0.0005 ETH</b> · Pause between slices: <b>10 s</b>.</li>
+    </ul>
+    <p class="callout">Robinhood Chain is an Orbit rollup, so the real transaction cost includes an L1 data fee — the Bench adds a margin when sweeping so a sweep doesn't fail for being a few wei short.</p>
+  </section>
+
+  <!-- 7 -->
+  <section id="safety">
+    <h2><span class="num">7</span> Safety &amp; troubleshooting</h2>
+    <div class="tw"><table>
+      <tr><th>Symptom</th><th>What to do</th></tr>
+      <tr><td>RPC not reached / no balance</td><td>Check your connection; the network is fixed to Robinhood Chain. Refresh and re-open the master wallet.</td></tr>
+      <tr><td>PLAY does nothing</td><td>The master wallet needs ETH first. Confirm the balance shows on the Bench before PLAY.</td></tr>
+      <tr><td>A hop failed / “transaction didn't go through”</td><td>Usually not enough ETH for gas on that wallet. Press STOP to sweep back, top up the master, run again.</td></tr>
+      <tr><td>Tab closed mid-run</td><td>Re-open the Bench; funds are in the hidden wallets. Import their keys from the CSV to recover, or re-run and STOP.</td></tr>
+      <tr><td>STOP left tokens somewhere</td><td>Import that wallet's private key (from the CSV) into MetaMask/Rabby and send manually.</td></tr>
+    </table></div>
+    <div class="callout danger">
+      <span class="h">Legal / compliance</span>
+      Creating artificial trading volume (“wash trading”) is prohibited on many venues and illegal in some jurisdictions. This tool is provided for testing and educational use on infrastructure you control. You are responsible for how you use it.
+    </div>
+  </section>
+
+  <!-- 8 -->
+  <section id="faq" class="faq">
+    <h2><span class="num">8</span> FAQ</h2>
+
+    <details>
+      <summary>Do I need to fund all 100 wallets?</summary>
+      <div class="a">No. You fund <b>only the master wallet</b>. The Bench moves funds from the master into the ring and back automatically.</div>
+    </details>
+    <details>
+      <summary>Where are the private keys stored?</summary>
+      <div class="a">Generated in your browser and written to the CSV on your machine. They are <b>never sent to a server</b>. Keep the CSV safe.</div>
+    </details>
+    <details>
+      <summary>Can I change the number of hidden wallets?</summary>
+      <div class="a">Yes — set <b>Hidden wallets</b> before pressing PLAY (min 2, max 100).</div>
+    </details>
+    <details>
+      <summary>What happens to my money if I press STOP?</summary>
+      <div class="a">Every hidden wallet is swept — both ETH and $SWOGE tokens — back to your <b>master wallet</b>. Then use Cash out to move it off the Bench.</div>
+    </details>
+    <details>
+      <summary>Why 98% and 5 slices?</summary>
+      <div class="a">Leaving ~2% covers gas so the wallet can still transfer. Splitting the buy into 5 smaller trades makes the volume look more organic than one big order.</div>
+    </details>
+    <details>
+      <summary>Is this reversible?</summary>
+      <div class="a"><b>No.</b> On-chain trades and transfers are final. Test with a tiny amount first.</div>
+    </details>
+  </section>
+
+  <div class="cta">
+    <a href="swoge_bench.html">Open the Wallet Bench →</a>
+  </div>
+
+  <footer>
+    $SWOGE · Wallet Bench documentation · Real funds, real chain — use responsibly.<br>
+    <a href="swoge_bench.html">Bench</a> · <a href="games.html">Games</a> · <a href="https://dexsdev329-afk.github.io/SWOGE.github.io/">Home</a>
+  </footer>
+
+</div>
+</body>
+</html>

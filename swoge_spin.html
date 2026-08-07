@@ -247,6 +247,58 @@
   .bet-val .l { font-size:1.4vh; color:#cbb6ff; letter-spacing:1px; }
   .bet-val .n { font-size:2.6vh; font-weight:900; color:var(--gold); }
   #buy-bonus span { line-height:1.15; }
+  #music-btn { position:fixed; top:1.2vh; left:1.2vw; z-index:200; width:5vh; height:5vh; font-size:2.2vh;
+    line-height:1; cursor:pointer; color:#fff; background:rgba(0,0,0,.5); border:1px solid rgba(255,213,74,.4);
+    border-radius:12px; }
+  #music-btn:hover { border-color:var(--gold); }
+  #music-btn.off { opacity:.55; }
+
+  /* ===== MOBILE / PORTRAIT (Telegram tel.) ===== */
+  @media (max-width: 820px), (orientation: portrait) {
+    /* on empile tout verticalement au lieu du placement absolu paysage */
+    #scene { overflow-y:auto; overflow-x:hidden; display:flex; flex-direction:column;
+             align-items:center; padding:8.6vh 0 3vh; gap:1.3vh; }
+    #bg-layer { position:fixed; }
+
+    /* HUD compact en haut a droite, une seule ligne */
+    #hud { top:.7vh; right:.7vh; gap:5px; }
+    #bal-chip { font-size:12px; padding:5px 9px; }
+    #connectBtn,#emailBtn { font-size:11px; padding:6px 9px; border-radius:10px; }
+    #menuBtn { width:34px; height:34px; font-size:18px; border-radius:10px; }
+
+    /* Echelle de jackpots : ligne compacte sous le HUD */
+    #ladder { position:static; transform:none; order:1; width:100vw; gap:2px; padding:0 3px; }
+    .jp-plaque { max-width:19.4vw; }
+    .jp-plaque span { font-size:2.5vw; top:56%; }
+
+    /* Machine au centre, plus large sur mobile */
+    #machine { position:static; transform:none; order:2; width:86vw; max-width:94vw; margin-top:.4vh; }
+    #grid { max-width:100%; grid-template-columns:repeat(3,minmax(0,1fr)); }
+    .cell { min-width:0; font-size:7vh; }
+    /* jauge volcan : petit badge dans le coin haut-gauche de la grille */
+    #vmeter { position:absolute; top:-2vh; left:-1vw; right:auto; margin:0;
+              height:15vh; transform:none; }
+    #vmeter-count { font-size:1.2vh; }
+
+    /* Logo cache, bouton "acheter le bonus" en barre compacte */
+    #left { position:static; transform:none; order:3; width:66vw; max-width:none;
+            left:auto; top:auto; }
+    #logo-img { display:none; }
+    #left > span { display:none !important; }   /* masque aussi le fallback emoji du logo si l'image echoue (style inline) */
+    #buy-bonus { width:100%; margin:0; }
+    #buy-bonus span { font-size:1.9vh; }
+
+    /* Barre du bas : passe a la ligne, TURBO plus coupe */
+    #bottom { position:static; transform:none; order:4; width:96vw; bottom:auto;
+              gap:1.6vh 3vw; flex-wrap:wrap; justify-content:center; }
+    .stat .n { font-size:2.4vh; }
+    #bet-ctrl { gap:2vw; }
+    #bet-dn,#bet-up { width:6vh; height:6vh; font-size:2.4vh; }
+    .bet-val { min-width:16vw; }
+    .bet-val .n { font-size:3vh; }
+    #spin-btn { flex:1 1 100%; max-width:82vw; margin:0 auto; font-size:2.7vh; padding:1.6vh 7vw; }
+    #auto-btn,#turbo-btn { font-size:1.9vh; padding:1.3vh 5vw; }
+  }
 </style>
 </head>
 <body>
@@ -291,6 +343,9 @@
     <button id="turbo-btn">⚡ TURBO</button>
   </div>
 </div>
+
+<!-- bouton musique (coin haut gauche) -->
+<button id="music-btn" title="Musique">🔊</button>
 
 <!-- ===== HUD compte (même solde/menu que les autres jeux) ===== -->
 <div id="hud">
@@ -429,6 +484,8 @@ const SND = {
   'bonus.mp3':'https://files.catbox.moe/ee5827.mp3',
   'life-lost.mp3':'https://files.catbox.moe/o1cbci.mp3',
   'life-gain.mp3':'https://files.catbox.moe/dkfsfi.mp3',
+  'bg-music.mp3':'https://files.catbox.moe/vmwcqn.mp3',
+  'coin-volcano.mp3':'https://files.catbox.moe/9tsyjy.mp3',   // son quand une piece SWOGE part dans le volcan
   // 'mult-zap.mp3': (pas encore fourni)
 };
 const S = f => SND[f] || (A + f);
@@ -538,6 +595,20 @@ function winLevel(total, hadBigJp){
   if (total>=60)  return 'big';
   return null;
 }
+/* ===== Musique de fond (boucle) ===== */
+let bgm=null, bgmOn=true;
+function startBgm(){
+  try{
+    if(!bgm){ bgm=new Audio(S('bg-music.mp3')); bgm.loop=true; bgm.volume=0.35; }
+    if(bgmOn) bgm.play().catch(()=>{});
+  }catch(e){}
+}
+function toggleBgm(){ bgmOn=!bgmOn; if(!bgm) startBgm(); else if(bgmOn) bgm.play().catch(()=>{}); else bgm.pause(); return bgmOn; }
+/* l'autoplay audio est bloque tant que l'utilisateur n'a pas interagi : on demarre au 1er tap */
+['pointerdown','click','touchstart','keydown'].forEach(ev=>
+  document.addEventListener(ev, function once(){ startBgm(); ['pointerdown','click','touchstart','keydown'].forEach(e=>document.removeEventListener(e, once)); }, {once:false}));
+let coinVolSnd=null;
+function playCoinVolcanoMp3(){ try{ if(!coinVolSnd){ coinVolSnd=new Audio(S('coin-volcano.mp3')); coinVolSnd.volume=0.7; } const s=coinVolSnd.cloneNode(); s.volume=0.7; s.play().catch(()=>{}); }catch(e){} }
 let showerSnd=null;
 function playShowerMp3(){ try{ if(!showerSnd){ showerSnd=new Audio(S('coin-shower.mp3')); showerSnd.volume=0.8; } showerSnd.currentTime=0; showerSnd.play().catch(()=>{}); }catch(e){} }
 let mystSnd=null;
@@ -707,7 +778,7 @@ function flyCoin(fromEl, delay){
   requestAnimationFrame(()=>{ var fd=(.55*TF); c.style.transition='transform '+fd+'s cubic-bezier(.55,.06,.3,1), opacity '+fd+'s ease-in';
     c.style.transitionDelay=(delay*TF)+'ms';
     c.style.transform=`translate(${ex-sx}px, ${ey-sy}px) scale(.14) rotate(720deg)`; c.style.opacity='.15'; });
-  setTimeout(()=>{ try{sndCoin();}catch(e){} c.remove(); }, (delay+590)*TF);
+  setTimeout(()=>{ try{sndCoin();}catch(e){} try{playCoinVolcanoMp3();}catch(e){} c.remove(); }, (delay+590)*TF);
 }
 async function collectSwoge(grid){
   const idx=[]; grid.forEach((sy,i)=>{ if(sy==='SWOGE') idx.push(i); });
@@ -785,6 +856,7 @@ updateBetUI();
 $('spin-btn').addEventListener('click', ()=>{ ac(); doSpin(); });
 $('auto-btn').addEventListener('click', function(){ auto=!auto; this.classList.toggle('on',auto); this.textContent=auto?'AUTO ⏸':'AUTO'; if(auto && !busy){ ac(); doSpin(); } });
 $('turbo-btn').addEventListener('click', function(){ turbo=!turbo; TF=turbo?0.35:1; this.classList.toggle('on',turbo); });
+$('music-btn').addEventListener('click', function(){ const on=toggleBgm(); this.textContent=on?'🔊':'🔇'; this.classList.toggle('off',!on); });
 $('buy-bonus').addEventListener('click', ()=>{ ac(); forceBonus(); });
 addEventListener('keydown', e=>{ if(e.code==='Space'){ e.preventDefault(); if(!busy){ ac(); doSpin(); } }
   else if(e.code==='ArrowUp'||e.code==='ArrowRight'){ if(!busy&&betIdx<BET_LEVELS.length-1){ betIdx++; updateBetUI(); } }

@@ -44,6 +44,7 @@
   .menu.open{display:flex}
   .menu a{font-size:14px;color:var(--text);padding:11px 13px;border-radius:9px;transition:.12s}
   .menu a:hover{background:rgba(230,165,55,.12);color:var(--gold)}
+  .menu .msep{height:1px;background:var(--line);margin:5px 8px}
 
   .hero{text-align:center;padding:26px 18px 4px}
   .hero h1{font-family:'Anton',sans-serif;font-size:clamp(30px,7vw,52px);line-height:1;letter-spacing:1px}
@@ -133,10 +134,17 @@
   <span class="chip"><span class="statusdot off" id="dot"></span><b id="bal">—</b> $SWOGE</span>
   <button class="menubtn" id="menuBtn" aria-label="Menu">☰</button>
   <div class="menu" id="menu">
-    <a href="games.html">🎮 Game selector</a>
-    <a href="swoge_pusher_live.html">🪙 Deposit / Cash-out</a>
+    <a href="swoge_pusher_live.html#wallet">👛 My Wallet</a>
+    <a href="swoge_pusher_live.html#staking">🔒 Staking</a>
+    <a href="swoge_pusher_live.html#deposit">💰 Deposit</a>
+    <a href="swoge_pusher_live.html#withdraw">🏧 Withdraw</a>
+    <a href="swoge_pusher_live.html#quests">🎯 Daily Quests</a>
+    <div class="msep"></div>
+    <a href="games.html">🎮 Other games</a>
     <a href="swoge_pusher_live.html">🎡 Pusher</a>
     <a href="index.html">🏠 Home</a>
+    <div class="msep"></div>
+    <a href="#" id="soundItem">🔊 Sound: on</a>
   </div>
 </nav>
 
@@ -155,7 +163,7 @@
     <div class="cta">
       <button class="connectbtn" id="connectBtn">Connect wallet</button>
       <button class="smash" id="smashBtn" style="display:none" disabled>💥 SMASH · 1 $SWOGE</button>
-      <div class="costline" id="costline" style="display:none">RTP 50% · 1 smash costs <b>1 $SWOGE</b></div>
+      <div class="costline" id="costline" style="display:none">1 smash costs <b>1 $SWOGE</b></div>
     </div>
 
     <div class="fair" id="fair"></div>
@@ -195,6 +203,23 @@
     smashBtn.disabled=!can;
     smashBtn.textContent = balance>=1 ? "💥 SMASH · 1 $SWOGE" : "Need $SWOGE — deposit in the Pusher";
   }
+
+  // ---- sound (WebAudio, no external files) ----
+  var SFX=(function(){
+    var ctx=null, muted=false;
+    try{ muted=localStorage.getItem("swogeSmashMute")==="1"; }catch(e){}
+    function ac(){ if(!ctx){ try{ ctx=new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return null; } } if(ctx&&ctx.state==="suspended") ctx.resume(); return ctx; }
+    function tone(f,dur,type,vol,when){ var c=ac(); if(!c||muted) return; var o=c.createOscillator(),g=c.createGain(); o.type=type||"sine"; o.frequency.value=f; var t=c.currentTime+(when||0); g.gain.setValueAtTime(vol||0.2,t); g.gain.exponentialRampToValueAtTime(0.0008,t+dur); o.connect(g); g.connect(c.destination); o.start(t); o.stop(t+dur); }
+    function noise(dur,vol){ var c=ac(); if(!c||muted) return; var n=Math.floor(c.sampleRate*dur), buf=c.createBuffer(1,n,c.sampleRate), d=buf.getChannelData(0); for(var i=0;i<n;i++) d[i]=(Math.random()*2-1)*Math.pow(1-i/n,2.2); var s=c.createBufferSource(); s.buffer=buf; var g=c.createGain(); g.gain.value=vol||0.15; var f=c.createBiquadFilter(); f.type="highpass"; f.frequency.value=1100; s.connect(f); f.connect(g); g.connect(c.destination); s.start(); }
+    return {
+      unlock:function(){ ac(); },
+      hit:function(){ noise(0.12,0.20); tone(160,0.12,"square",0.16); tone(85,0.17,"sine",0.13); },
+      win:function(m){ var big=m>=50; var notes=[523,659,784, big?1047:880]; notes.forEach(function(f,i){ tone(f,0.16,"triangle",0.16,i*0.07); }); if(big){ tone(1319,0.35,"sine",0.13,0.28); tone(1568,0.4,"sine",0.10,0.36); } },
+      lose:function(){ tone(150,0.1,"sine",0.07); },
+      toggle:function(){ muted=!muted; try{ localStorage.setItem("swogeSmashMute",muted?"1":"0"); }catch(e){} if(!muted) ac(); return muted; },
+      isMuted:function(){ return muted; }
+    };
+  })();
 
   // ---- WebSocket ----
   function connect(){
@@ -244,6 +269,7 @@
   function smash(){
     if(!authed||balance<1||inflight>=3) return;
     inflight++;
+    SFX.hit();
     gem.classList.remove("win","big");
     gem.classList.remove("hit"); void gem.offsetWidth; gem.classList.add("hit");
     send({type:"spin"});
@@ -260,6 +286,7 @@
     if(m.fairness) showFair(m.fairness.serverSeedHash,m.fairness.nonce);
     var mult=Number(m.mult)||0, pay=Number(m.payout)||0;
     var big=mult>=50, win=mult>0;
+    if(win) SFX.win(mult); else SFX.lose();
 
     // gem flash + floating multiplier
     gem.classList.remove("win","big");
@@ -294,9 +321,14 @@
   }
 
   // ---- menu ----
-  var menuBtn=$("menuBtn"), menu=$("menu");
+  var menuBtn=$("menuBtn"), menu=$("menu"), soundItem=$("soundItem");
   menuBtn.addEventListener("click",function(e){ e.stopPropagation(); menu.classList.toggle("open"); });
   document.addEventListener("click",function(e){ if(!menu.contains(e.target)&&e.target!==menuBtn) menu.classList.remove("open"); });
+  function refreshSoundLabel(){ soundItem.textContent = SFX.isMuted()?"🔇 Sound: off":"🔊 Sound: on"; }
+  refreshSoundLabel();
+  soundItem.addEventListener("click",function(e){ e.preventDefault(); SFX.toggle(); refreshSoundLabel(); });
+  // unlock audio on the first user gesture (mobile browsers require it)
+  ["click","keydown","touchstart"].forEach(function(ev){ window.addEventListener(ev,function once(){ SFX.unlock(); window.removeEventListener(ev,once); }); });
 
   connect();
 })();

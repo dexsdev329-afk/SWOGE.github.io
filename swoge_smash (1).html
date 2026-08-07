@@ -1,0 +1,306 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>SWOGE Smash — smash for $SWOGE</title>
+<meta name="description" content="Smash the SWOGE gem. 1 smash = 1 $SWOGE. Provably fair, up to 250×. Same balance as the Pusher.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --gold:#E6A537; --gold2:#FFB84D; --ink:#0B0906; --ink2:#15100A;
+    --text:#F7EEDA; --muted:#A08a63; --line:rgba(230,165,55,.28);
+    --green:#7CFF9B; --red:#FF6B6B; --blue:#6BB8FF;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{background:var(--ink);color:var(--text);font-family:'Space Mono','Courier New',monospace}
+  body{min-height:100vh;overflow-x:hidden}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:680px;margin:0 auto;padding:0 18px}
+  body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+    background:
+      radial-gradient(60vw 60vw at 78% -10%,rgba(230,165,55,.16),transparent 60%),
+      radial-gradient(50vw 50vw at 8% 8%,rgba(255,184,77,.10),transparent 55%),
+      linear-gradient(180deg,#0d0a07,#0B0906 60%);}
+  main,nav{position:relative;z-index:1}
+
+  nav{display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--line);
+    background:rgba(11,9,6,.7);backdrop-filter:blur(8px);position:sticky;top:0;z-index:5}
+  .brand{font-family:'Anton',sans-serif;font-size:20px;letter-spacing:1px;color:var(--gold)}
+  .brand span{color:var(--text)}
+  nav .sp{flex:1}
+  .nlink{font-size:13px;color:var(--muted);padding:8px 10px;border-radius:999px}
+  .nlink:hover{color:var(--text)}
+  .chip{font-size:13px;color:var(--text);border:1px solid var(--line);border-radius:999px;padding:8px 13px;background:rgba(0,0,0,.25)}
+  .chip b{color:var(--gold)}
+  .menubtn{font-size:18px;line-height:1;color:var(--text);background:rgba(0,0,0,.25);border:1px solid var(--line);
+    border-radius:12px;width:40px;height:40px;cursor:pointer;transition:.15s}
+  .menubtn:hover{color:var(--gold);border-color:rgba(230,165,55,.6)}
+  .menu{position:absolute;top:60px;right:14px;z-index:20;min-width:210px;display:none;flex-direction:column;
+    background:rgba(11,9,6,.97);border:1px solid var(--line);border-radius:14px;padding:6px;
+    box-shadow:0 16px 40px rgba(0,0,0,.6);backdrop-filter:blur(8px)}
+  .menu.open{display:flex}
+  .menu a{font-size:14px;color:var(--text);padding:11px 13px;border-radius:9px;transition:.12s}
+  .menu a:hover{background:rgba(230,165,55,.12);color:var(--gold)}
+
+  .hero{text-align:center;padding:26px 18px 4px}
+  .hero h1{font-family:'Anton',sans-serif;font-size:clamp(30px,7vw,52px);line-height:1;letter-spacing:1px}
+  .hero h1 .g{color:var(--gold)}
+  .hero p{max-width:520px;margin:10px auto 0;color:#cdbf9f;font-size:13px;line-height:1.6}
+
+  /* gem stage */
+  .stage{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    min-height:320px;padding:20px 0 6px;user-select:none}
+  .gem{width:170px;height:170px;cursor:pointer;position:relative;transition:transform .12s ease;
+    filter:drop-shadow(0 0 34px rgba(230,165,55,.65));display:flex;align-items:center;justify-content:center;font-size:120px;
+    animation:bob 3s ease-in-out infinite}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+  .gem:active{transform:scale(.94)}
+  .gem.hit{animation:smash .3s ease-out}
+  @keyframes smash{0%{transform:scale(1) rotate(0)}25%{transform:scale(.86) rotate(-7deg)}55%{transform:scale(1.08) rotate(5deg)}100%{transform:scale(1) rotate(0)}}
+  .gem.win{filter:drop-shadow(0 0 50px rgba(124,255,155,.9))}
+  .gem.big{filter:drop-shadow(0 0 70px rgba(255,215,0,1))}
+
+  .float{position:absolute;font-family:'Anton',sans-serif;pointer-events:none;z-index:6;
+    font-size:40px;opacity:0;animation:floatUp 1s ease-out forwards}
+  .float.win{color:var(--green)} .float.lose{color:var(--muted)} .float.big{color:var(--gold2);font-size:56px}
+  @keyframes floatUp{0%{opacity:0;transform:translateY(10px) scale(.6)}20%{opacity:1;transform:translateY(-6px) scale(1.1)}100%{opacity:0;transform:translateY(-60px) scale(.9)}}
+
+  .result{min-height:26px;font-family:'Archivo',sans-serif;font-weight:800;font-size:16px;text-align:center;margin-top:4px}
+  .result .m{color:var(--gold)}
+
+  /* smash button */
+  .cta{display:flex;flex-direction:column;align-items:center;gap:10px;padding:8px 0 18px}
+  .smash{font-family:'Archivo',sans-serif;font-weight:800;font-size:19px;letter-spacing:.5px;
+    color:var(--ink);background:linear-gradient(135deg,var(--gold2),var(--gold));border:none;cursor:pointer;
+    padding:16px 44px;border-radius:16px;box-shadow:0 10px 30px rgba(230,165,55,.35);transition:transform .1s ease,filter .2s}
+  .smash:hover{filter:brightness(1.05)} .smash:active{transform:translateY(2px)}
+  .smash:disabled{background:rgba(255,255,255,.08);color:var(--muted);cursor:default;box-shadow:none}
+  .costline{font-size:12px;color:var(--muted)}
+  .costline b{color:var(--gold)}
+
+  .connectbtn{font-family:'Archivo',sans-serif;font-weight:800;font-size:16px;color:var(--ink);
+    background:linear-gradient(135deg,var(--gold2),var(--gold));border:none;cursor:pointer;padding:14px 34px;border-radius:14px}
+
+  /* payout table */
+  .odds{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;padding:6px 0 4px}
+  .odds .o{font-size:11px;color:#cdbf9f;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);padding:4px 9px;border-radius:999px}
+  .odds .o b{color:var(--gold)}
+
+  /* recent feed */
+  .sec{padding:16px 0 6px}
+  .sec h2{font-family:'Archivo',sans-serif;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);
+    display:flex;align-items:center;gap:10px}
+  .sec h2::after{content:"";flex:1;height:1px;background:var(--line)}
+  .feed{display:flex;flex-direction:column;gap:7px;padding:8px 0 30px}
+  .row{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:12px;padding:9px 13px;
+    background:linear-gradient(180deg,var(--ink2),#0c0a07);animation:slidein .25s ease}
+  @keyframes slidein{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+  .row .mult{font-family:'Anton',sans-serif;font-size:18px;min-width:52px}
+  .row .mult.win{color:var(--green)} .row .mult.lose{color:var(--muted)} .row .mult.big{color:var(--gold2)}
+  .row .txt{flex:1;font-size:12px;color:#cdbf9f}
+  .row .pay{font-size:12px;font-weight:700}
+  .row .pay.win{color:var(--green)} .row .pay.lose{color:var(--muted)}
+  .feed .empty{text-align:center;color:var(--muted);font-size:12px;padding:24px}
+
+  .fair{font-size:11px;color:var(--muted);text-align:center;padding:2px 0 8px;line-height:1.6;word-break:break-all}
+  .fair b{color:#cdbf9f}
+
+  .note{border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:6px 0 22px;background:rgba(0,0,0,.22);font-size:12px;color:var(--muted);line-height:1.6}
+  .note b{color:#cdbf9f}
+  .note a{color:var(--gold)}
+
+  footer{border-top:1px solid var(--line);padding:22px 18px 40px;text-align:center;color:var(--muted);font-size:12px}
+  footer a{color:var(--gold)}
+
+  .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);z-index:50;
+    background:rgba(11,9,6,.95);border:1px solid var(--line);color:var(--text);font-size:13px;
+    padding:11px 18px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.5);opacity:0;transition:opacity .25s;pointer-events:none}
+  .toast.show{opacity:1}
+
+  .statusdot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;background:#555;vertical-align:middle}
+  .statusdot.on{background:var(--green);box-shadow:0 0 8px var(--green)}
+  .statusdot.off{background:var(--red);box-shadow:0 0 8px var(--red)}
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="brand" href="index.html">$SWOGE <span>SMASH</span></a>
+  <span class="sp"></span>
+  <span class="chip"><span class="statusdot off" id="dot"></span><b id="bal">—</b> $SWOGE</span>
+  <button class="menubtn" id="menuBtn" aria-label="Menu">☰</button>
+  <div class="menu" id="menu">
+    <a href="games.html">🎮 Game selector</a>
+    <a href="swoge_pusher_live.html">🪙 Deposit / Cash-out</a>
+    <a href="swoge_pusher_live.html">🎡 Pusher</a>
+    <a href="index.html">🏠 Home</a>
+  </div>
+</nav>
+
+<main>
+  <section class="hero">
+    <h1>SWOGE <span class="g">SMASH</span></h1>
+    <p>Smash the gem. <b style="color:#cdbf9f">1 smash = 1 $SWOGE.</b> Provably fair, up to <b style="color:#cdbf9f">250×</b>. Same balance as the Pusher — deposit once, play both.</p>
+  </section>
+
+  <div class="wrap">
+    <div class="stage">
+      <div class="gem" id="gem">💎</div>
+      <div class="result" id="result">Connect your wallet to play</div>
+    </div>
+
+    <div class="cta">
+      <button class="connectbtn" id="connectBtn">Connect wallet</button>
+      <button class="smash" id="smashBtn" style="display:none" disabled>💥 SMASH · 1 $SWOGE</button>
+      <div class="costline" id="costline" style="display:none">RTP 50% · 1 smash costs <b>1 $SWOGE</b></div>
+    </div>
+
+    <div class="fair" id="fair"></div>
+
+    <div class="sec"><h2>Recent smashes</h2></div>
+    <div class="feed" id="feed"><div class="empty">Your smashes show up here…</div></div>
+  </div>
+
+  <footer>
+    <a href="games.html">← Back to the SWOGE Arcade</a>
+  </footer>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+  // Same server as the Pusher → same account, same balance. Override with ?server=
+  var SERVER_URL = "wss://web-production-220a3.up.railway.app";
+  (function(){ var q=new URLSearchParams(location.search).get("server"); if(q) SERVER_URL=q; })();
+
+  var $=function(s){return document.getElementById(s);};
+  var gem=$("gem"), result=$("result"), feed=$("feed"), balEl=$("bal"), dot=$("dot"),
+      connectBtn=$("connectBtn"), smashBtn=$("smashBtn"), costline=$("costline"), fairEl=$("fair");
+
+  var ws=null, authed=false, myAddr=null, loginNonce=null, balance=0, inflight=0, feedCount=0;
+  var LABEL={0:"smash — nothing"};
+
+  function toast(t){ var e=$("toast"); e.textContent=t; e.classList.add("show"); clearTimeout(e._t); e._t=setTimeout(function(){e.classList.remove("show");},2200); }
+  function fmtBal(b){ b=parseFloat(b||0); return b>=1000?(b/1000).toFixed(1)+"k":b.toFixed(2); }
+  function setBalance(b){ balance=parseFloat(b||0); balEl.textContent=fmtBal(balance); updateSmash(); }
+  function setDot(on){ dot.className="statusdot "+(on?"on":"off"); }
+  function updateSmash(){
+    if(!authed){ return; }
+    var can=balance>=1 && inflight<3;
+    smashBtn.disabled=!can;
+    smashBtn.textContent = balance>=1 ? "💥 SMASH · 1 $SWOGE" : "Need $SWOGE — deposit in the Pusher";
+  }
+
+  // ---- WebSocket ----
+  function connect(){
+    try{ ws=new WebSocket(SERVER_URL); }catch(e){ setDot(false); return; }
+    ws.onopen=function(){ setDot(true); if(myAddr) doLogin(); };
+    ws.onclose=function(){ setDot(false); authed=false; setTimeout(connect,3000); };
+    ws.onerror=function(){ setDot(false); };
+    ws.onmessage=function(ev){
+      var m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
+      if(m.type==="state") return;                     // pusher table — ignore here
+      if(m.type==="hello"){ loginNonce=m.loginNonce; showFair(m.serverSeedHash,0); }
+      else if(m.type==="auth"){ authed=true; myAddr=m.address; result.textContent="Smash the gem!"; setBalance(m.balance); showPlay(); if(m.fairness) showFair(m.fairness.serverSeedHash,m.fairness.nonce); }
+      else if(m.type==="balance"||m.type==="deposit"){ setBalance(m.balance); if(m.type==="deposit") toast("💰 Deposit credited"); }
+      else if(m.type==="spinResult"){ onSpin(m); }
+      else if(m.type==="need_deposit"){ setBalance(m.balance); inflight=0; updateSmash(); toast("Not enough $SWOGE — deposit in the Pusher"); }
+      else if(m.type==="error"){ inflight=Math.max(0,inflight-1); toast(m.error||"error"); updateSmash(); }
+    };
+  }
+
+  function send(o){ if(ws&&ws.readyState===1) ws.send(JSON.stringify(o)); }
+
+  // ---- wallet login (injected provider; email users deposit via the Pusher) ----
+  async function doConnect(){
+    var eth=window.ethereum;
+    if(!eth){ toast("Open in your wallet's browser, or use the Pusher to create a wallet"); location.href="swoge_pusher_live.html"; return; }
+    try{
+      var accs=await eth.request({method:"eth_requestAccounts"});
+      myAddr=(accs&&accs[0]||"").toLowerCase();
+      if(!myAddr){ toast("no account"); return; }
+      window._eth=eth;
+      if(ws&&ws.readyState===1) doLogin(); else connect();
+    }catch(e){ toast("connection cancelled"); }
+  }
+  async function doLogin(){
+    if(!myAddr||loginNonce==null) return;
+    var msg="SWOGE Pusher login\nnonce: "+loginNonce;
+    try{
+      var sig=await window._eth.request({method:"personal_sign",params:[msg,myAddr]});
+      send({type:"login",message:msg,signature:sig});
+    }catch(e){ toast("signature refused"); }
+  }
+
+  function showPlay(){ connectBtn.style.display="none"; smashBtn.style.display=""; costline.style.display=""; updateSmash(); }
+  function showFair(hash,nonce){ if(!hash) return; fairEl.innerHTML="Provably fair · serverSeed hash <b>"+String(hash).slice(0,16)+"…</b> · nonce <b>"+nonce+"</b>"; }
+
+  // ---- smashing ----
+  function smash(){
+    if(!authed||balance<1||inflight>=3) return;
+    inflight++;
+    gem.classList.remove("win","big");
+    gem.classList.remove("hit"); void gem.offsetWidth; gem.classList.add("hit");
+    send({type:"spin"});
+    updateSmash();
+  }
+  gem.addEventListener("click",smash);
+  smashBtn.addEventListener("click",smash);
+  connectBtn.addEventListener("click",doConnect);
+  window.addEventListener("keydown",function(e){ if(e.code==="Space"&&authed){ e.preventDefault(); smash(); } });
+
+  function onSpin(m){
+    inflight=Math.max(0,inflight-1);
+    setBalance(m.balance);
+    if(m.fairness) showFair(m.fairness.serverSeedHash,m.fairness.nonce);
+    var mult=Number(m.mult)||0, pay=Number(m.payout)||0;
+    var big=mult>=50, win=mult>0;
+
+    // gem flash + floating multiplier
+    gem.classList.remove("win","big");
+    if(win) gem.classList.add(big?"big":"win");
+    var fl=document.createElement("div");
+    fl.className="float "+(big?"big":win?"win":"lose");
+    fl.textContent = win ? mult+"×" : "✕";
+    gem.parentNode.appendChild(fl);
+    setTimeout(function(){ if(fl.parentNode) fl.parentNode.removeChild(fl); },1000);
+
+    result.innerHTML = win
+      ? 'Smash! <span class="m">'+mult+'×</span> → +'+pay+' $SWOGE'
+      : 'Nothing this time — smash again!';
+
+    if(big) toast("🎉 "+mult+"× — +"+pay+" $SWOGE!");
+
+    addRow(mult,pay);
+    updateSmash();
+  }
+
+  function addRow(mult,pay){
+    var empty=feed.querySelector(".empty"); if(empty) empty.remove();
+    var win=mult>0, big=mult>=50;
+    var row=document.createElement("div"); row.className="row";
+    var cls = big?"big":win?"win":"lose";
+    row.innerHTML =
+      '<div class="mult '+cls+'">'+(win?mult+"×":"✕")+'</div>'+
+      '<div class="txt">'+(win?"Smashed a "+mult+"× shard":"Gem held — no reward")+'</div>'+
+      '<div class="pay '+(win?"win":"lose")+'">'+(win?"+"+pay:"—")+'</div>';
+    feed.insertBefore(row,feed.firstChild);
+    if(++feedCount>40){ feed.removeChild(feed.lastChild); feedCount--; }
+  }
+
+  // ---- menu ----
+  var menuBtn=$("menuBtn"), menu=$("menu");
+  menuBtn.addEventListener("click",function(e){ e.stopPropagation(); menu.classList.toggle("open"); });
+  document.addEventListener("click",function(e){ if(!menu.contains(e.target)&&e.target!==menuBtn) menu.classList.remove("open"); });
+
+  connect();
+})();
+</script>
+
+</body>
+</html>

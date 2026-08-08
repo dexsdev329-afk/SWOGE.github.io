@@ -1233,8 +1233,14 @@ function doUnstake(){ if(!(stStaked>0))return gtoast('nothing staked'); if(stLoc
 function doClaim(){ send({type:'claimStake'}); }
 
 function renderQuests(list){ var box=$('questrows'); if(!box||!list) return; var h=[];
-  list.forEach(function(q){ var pct=Math.min(100,Math.round(100*(q.progress||0)/(q.goal||1))); var st=q.claimed?'done':((q.progress||0)>=q.goal?'on':'off');
-    h.push('<div class="quest"><div class="qh"><span>'+esc(q.label||q.id)+'</span><span class="qr">+'+q.reward+'</span></div><div class="qbar"><i style="width:'+pct+'%"></i></div><button class="qclaim '+st+'" data-q="'+esc(q.id)+'" '+(st==='on'?'':'disabled')+'>'+(q.claimed?'✓ Claimed':((q.progress||0)>=q.goal?'Claim +'+q.reward:(q.progress||0)+' / '+q.goal))+'</button></div>'); });
+  list.forEach(function(q){
+    var goal=(q.target!=null?q.target:(q.goal!=null?q.goal:0)), prog=q.progress||0;
+    var done=(q.done!=null?q.done:(goal>0?prog>=goal:true));
+    var claimable=(q.claimable!=null?q.claimable:(done&&!q.claimed&&!q.locked));
+    var pct=goal>0?Math.min(100,Math.round(100*prog/goal)):(done?100:0);
+    var st=q.claimed?'done':(claimable?'on':'off');
+    var label=q.claimed?'✓ Claimed':(claimable?'Claim +'+q.reward:(q.locked?'🔒 Deposit to unlock':(goal>0?prog+' / '+goal:'Play to unlock')));
+    h.push('<div class="quest"><div class="qh"><span>'+esc(q.label||q.id)+'</span><span class="qr">+'+q.reward+'</span></div><div class="qbar"><i style="width:'+pct+'%"></i></div><button class="qclaim '+st+'" data-q="'+esc(q.id)+'" '+(st==='on'?'':'disabled')+'>'+label+'</button></div>'); });
   box.innerHTML=h.join(''); box.querySelectorAll('.qclaim.on').forEach(function(b){ b.addEventListener('click',function(){ send({type:'claimQuest',id:b.getAttribute('data-q')}); }); }); }
 
 /* ---- Welcome bonus + 7-day streak + rewarded video (Adsgram) ---- */

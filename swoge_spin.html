@@ -510,10 +510,10 @@
     #connectBtn,#emailBtn { font-size:1.6vh; padding:1.2vh 2.2vh; display:inline-block !important; }
     #connectBtn { box-shadow:0 0 14px rgba(255,213,74,.5); }
     /* bouton menu : coin BAS-DROIT, a droite de TURBO */
-    #menuBtn { position:fixed; top:auto; bottom:6vh; right:auto; left:calc(50vw + min(27vh,26vw) + 1.5vh + 155px); transform:none; width:6vh; height:6vh; font-size:2.8vh; z-index:230; }
+    #menuBtn { position:fixed; top:auto; bottom:13vh; right:2vw; left:auto; transform:none; width:6.4vh; height:6.4vh; font-size:3vh; z-index:230; background:rgba(0,0,0,.6); border:2px solid rgba(255,213,74,.7); }
     /* menu déroulant collé à droite du jeu */
     /* menu deroulant : colle a la bordure DROITE du jeu, plus grand */
-    .pmenu { left:calc(50vw + min(27vh,26vw) + 1.5vh); right:auto; top:auto; bottom:13vh; transform:none; min-width:360px; border-width:26px; border-image-width:26px; padding:22px 18px !important; }
+    .pmenu { right:2vw; left:auto; top:auto; bottom:21vh; transform:none; min-width:340px; border-width:26px; border-image-width:26px; padding:22px 18px !important; }
     .pmenu a.mi { height:60px; }
     /* Daily Quests : cadre BEAUCOUP plus grand sur PC */
     #box-quests { width:min(760px,60vw); max-width:none; max-height:94vh; border-width:52px; border-image-width:52px; }
@@ -531,8 +531,10 @@
     #buy-bonus span { font-size:1.5vh; }
     /* les 4 boutons à la MÊME taille sur PC aussi (leur texte est masqué → largeur explicite) */
     #bottom { align-items:center; }
-    #buy-bonus, #spin-btn, #auto-btn, #turbo-btn { width:21vh; height:8.4vh; padding:0; margin:0 .3vh; background-size:contain !important; background-repeat:no-repeat; background-position:center; aspect-ratio:auto; }
-    #buy-bonus span { bottom:16%; }
+    #buy-bonus, #spin-btn, #auto-btn, #turbo-btn { width:22vh; padding:0; margin:0; }
+    /* prix EN DESSOUS du bouton Buy Bonus (plus par-dessus) */
+    #buy-bonus { overflow:visible; }
+    #buy-bonus span { top:calc(100% + 3px); bottom:auto; font-size:1.6vh; }
     #bet-dn, #bet-up { width:6.5vh; height:6.5vh; }
   }
 </style>
@@ -598,7 +600,7 @@
 <button id="music-btn" title="Musique">🔊</button>
 
 <!-- ===== HUD compte (même solde/menu que les autres jeux) ===== -->
-<div id="verTag" style="position:fixed;bottom:3px;left:5px;font-size:10px;font-family:monospace;color:rgba(255,213,74,.6);z-index:99999;pointer-events:none">BUILD 17</div>
+<div id="verTag" style="position:fixed;bottom:3px;left:5px;font-size:10px;font-family:monospace;color:rgba(255,213,74,.6);z-index:99999;pointer-events:none">BUILD 18</div>
 <div id="hud">
   <span id="bal-chip"><span class="statusdot" id="dot"></span><b id="bal">—</b> $SWOGE</span>
   <button id="connectBtn">🔗 Wallet</button>

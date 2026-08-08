@@ -273,20 +273,16 @@
     border:1px solid rgba(255,213,74,.4); color:#fff; font-family:system-ui; font-size:13px; padding:11px 18px; border-radius:12px; opacity:0; transition:opacity .25s; pointer-events:none; }
   #g-toast.show { opacity:1; }
   #bet-ctrl { display:flex; align-items:center; gap:1.4vw; }
-  /* flèches de mise : boutons ronds dorés, triangle dessiné en CSS (net, pas d'emoji bleu) */
-  #bet-dn, #bet-up { position:relative; font-size:0; color:transparent; cursor:pointer;
-    width:5.2vh; height:5.2vh; border-radius:50%;
-    background:radial-gradient(circle at 50% 32%, #fff2b0, #f7b500 58%, #b5730a);
-    border:.25vh solid rgba(255,225,140,.95);
-    box-shadow:inset 0 .2vh .3vh rgba(255,255,255,.7), inset 0 -.3vh .5vh rgba(140,80,0,.5), 0 .3vh .6vh rgba(0,0,0,.45);
+  /* flèches de mise : image fournie (les 2 flèches dans un seul PNG) → position gauche/droite */
+  #bet-dn, #bet-up { font-size:0; color:transparent; cursor:pointer; border:none; background-color:transparent;
+    width:6vh; height:6vh; flex:0 0 auto;
+    background-image:url('https://i.ibb.co/Q36Q5m0p/Chat-GPT-Image-8-ao-t-2026-08-34-30-removebg-preview.png');
+    background-repeat:no-repeat; background-size:200% auto; background-position-y:center;
     transition:filter .1s, transform .07s; }
-  #bet-dn::before, #bet-up::before { content:''; position:absolute; top:50%; left:50%;
-    width:0; height:0; border-top:1.05vh solid transparent; border-bottom:1.05vh solid transparent;
-    filter:drop-shadow(0 .15vh .1vh rgba(255,240,190,.5)); }
-  #bet-dn::before { transform:translate(-62%,-50%); border-right:1.35vh solid #4a2c00; }   /* ◀ */
-  #bet-up::before { transform:translate(-38%,-50%); border-left:1.35vh solid #4a2c00; }    /* ▶ */
-  #bet-dn:hover,#bet-up:hover { filter:brightness(1.08); }
-  #bet-dn:active,#bet-up:active { transform:translateY(.2vh) scale(.95); filter:brightness(.94); }
+  #bet-dn { background-position-x:0%; }      /* moitié gauche = ◀ */
+  #bet-up { background-position-x:100%; }    /* moitié droite = ▶ */
+  #bet-dn:hover,#bet-up:hover { filter:brightness(1.1); }
+  #bet-dn:active,#bet-up:active { transform:scale(.93); }
   .bet-val { text-align:center; min-width:8vw; }
   .bet-val .l { font-size:1.4vh; color:#cbb6ff; letter-spacing:1px; }
   .bet-val .n { font-size:2.6vh; font-weight:900; color:var(--gold); }

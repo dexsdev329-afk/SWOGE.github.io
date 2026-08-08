@@ -154,6 +154,12 @@
   .reel-strip.mblur { filter: blur(1.6px); }
   .reel-cell { display: flex; align-items: center; justify-content: center; }
   .reel-cell img { width: 142%; height: 142%; object-fit: contain; filter: brightness(1.32) contrast(1.06) saturate(1.08) drop-shadow(0 1px 3px rgba(0,0,0,.4)); }
+  /* bonus : la pièce tombe avec un rebond quand elle se pose */
+  .cell.drop .coin { animation: coinDrop .4s cubic-bezier(.2,1.5,.4,1); }
+  @keyframes coinDrop { 0%{ transform: translateY(-55%) scale(.6); opacity:.4; } 55%{ transform: translateY(6%) scale(1.08); opacity:1; } 100%{ transform: translateY(0) scale(1); } }
+  /* bonus : vie perdue bien visible */
+  #respins-box.lost { animation: lifeLost .55s ease; }
+  @keyframes lifeLost { 0%,100%{ transform: translateX(-50%) scale(1); } 25%{ transform: translateX(-50%) scale(1.22); } 50%{ transform: translateX(-52%) scale(1.1); } 75%{ transform: translateX(-48%) scale(1.15); } }
   .cell .teaser { position: relative; opacity: 1; }
   .cell .teaser img { filter: brightness(1.5) saturate(1.14) drop-shadow(0 0 13px rgba(255,235,150,.6)) drop-shadow(0 1px 3px rgba(0,0,0,.45)); }
   .cell .teaser .cv { position: absolute; bottom: 5%; left: 50%; transform: translateX(-50%); font-size: 2.4vh; color: #fff; font-weight: 900; text-shadow: 0 2px 3px #000, 0 0 6px #000; }
@@ -497,6 +503,10 @@
     <div class="note2" id="stLock" style="margin-top:6px"></div>
     <button class="abtn" id="stClaim" style="width:100%;margin:10px 0">Claim yield</button>
     <input id="stAmt" type="number" inputmode="decimal" placeholder="amount to stake">
+    <div class="pcts">
+      <button class="pct spct" data-pct="10">10%</button><button class="pct spct" data-pct="20">20%</button>
+      <button class="pct spct" data-pct="50">50%</button><button class="pct spct" data-pct="100">MAX</button>
+    </div>
     <div class="brow"><button class="abtn" id="stStake">Stake</button><button class="abtn sec" id="stUnstake">Unstake all</button></div>
     <div class="brow"><button class="abtn sec" data-close style="flex:1">Close</button></div>
   </div>
@@ -848,23 +858,65 @@ async function bigWin(amount, label){
   await zzz(1500);
   ov.classList.remove('show');
 }
+/* Rouleaux du BONUS : les cases vides tournent (on voit les pièces défiler dans les colonnes)
+   puis se posent sur les nouvelles pièces (ou rien) — la partie la plus soignée du jeu. */
+async function bonusReelSpin(step){
+  const grid=$('grid'), gr=grid.getBoundingClientRect();
+  const placedMap={}; (step.placed||[]).forEach(p=>placedMap[p.idx]=p.coin);
+  const empties=[]; for(let i=0;i<9;i++){ if(!cells[i].classList.contains('has-coin')) empties.push(i); }
+  if(!empties.length) return;
+  reelSpinStart();
+  const K=13, ovs=[];
+  empties.forEach(i=>{
+    const cr=cells[i].getBoundingClientRect(), cellH=cr.height;
+    const ov=document.createElement('div'); ov.className='reel-ov';
+    ov.style.left=(cr.left-gr.left)+'px'; ov.style.top=(cr.top-gr.top)+'px'; ov.style.width=cr.width+'px'; ov.style.height=cellH+'px';
+    const strip=document.createElement('div'); strip.className='reel-strip mblur';
+    let html=''; for(let k=0;k<K;k++) html+=`<div class="reel-cell" style="height:${cellH}px">${symHTML(pick(SYM_W))}</div>`;
+    html+=`<div class="reel-cell" style="height:${cellH}px">${placedMap[i]?coinHTML(placedMap[i]):''}</div>`;
+    strip.innerHTML=html; ov.appendChild(strip); grid.appendChild(ov);
+    ovs.push({ov,strip,i,cellH});
+  });
+  let maxDur=0;
+  ovs.forEach(o=>{ const col=o.i%3, dur=(720+col*220)*TF; maxDur=Math.max(maxDur,dur);
+    o.strip.style.transition=`transform ${dur}ms cubic-bezier(.12,.6,.16,1)`;
+    setTimeout(()=>o.strip.classList.remove('mblur'), Math.max(180,dur-280));
+    requestAnimationFrame(()=>{ o.strip.style.transform=`translateY(${-(K*o.cellH)}px)`; });
+  });
+  await sleep(maxDur+200);
+  reelSpinStop();
+  (step.placed||[]).forEach(p=>{
+    cells[p.idx].innerHTML=coinHTML(p.coin); cells[p.idx].classList.add('has-coin','drop');
+    setTimeout(()=>cells[p.idx].classList.remove('drop'),430);
+    if(p.coin.mystery){ playMysteryMp3(); flashLadder(p.coin.jp); }
+    else if(p.coin.type==='MULT'){ playZapMp3(); cells[p.idx].classList.add('zap'); setTimeout(()=>cells[p.idx].classList.remove('zap'),520); }
+    else if(p.coin.type==='JP'){ sndJP(); flashLadder(p.coin.jp); }
+    else sndCoin();
+  });
+  ovs.forEach(o=>o.ov.remove());
+}
 async function animateBonus(bonus){
   playBonusMp3();
   sndBonus();
-  setSpriteState('bonus', 60000);   // SWOGE reste en mode bonus pendant tout le bonus
+  setSpriteState('bonus', 120000);   // SWOGE reste en mode bonus pendant tout le bonus
   clearCells(); $('machine').classList.add('bonus'); $('btotal').textContent=''; $('respins').textContent=lives(RESPINS);
-  await zzz(600);
+  await zzz(800);
   for (let si=0; si<bonus.steps.length; si++){
     const step = bonus.steps[si];
-    for (const pl of step.placed){ cells[pl.idx].innerHTML = coinHTML(pl.coin); cells[pl.idx].classList.add('has-coin');
-      if(pl.coin.mystery){ playMysteryMp3(); flashLadder(pl.coin.jp); }
-      else if(pl.coin.type==='MULT'){ playZapMp3(); cells[pl.idx].classList.add('zap'); setTimeout(()=>cells[pl.idx].classList.remove('zap'),520); }
-      else if(pl.coin.type==='JP'){ sndJP(); flashLadder(pl.coin.jp); }
-      else sndCoin();
-      await zzz(pl.coin.type==='MULT'?300:(pl.coin.mystery?320:160)); }
+    await bonusReelSpin(step);                     // les rouleaux tournent, les pièces tombent
     $('respins').textContent = lives(step.respins);
-    if (!step.reset && !step.moon){ playLifeMp3(); $('respins-box').style.color='#ff6b6b'; await zzz(260); $('respins-box').style.color=''; }
-    else { if (step.reset && si>0 && step.placed.length){ playGainMp3(); $('respins-box').style.color='#5be86a'; await zzz(60); $('respins-box').style.color=''; } await zzz(220); }
+    if (!step.reset && !step.moon){
+      // VIE PERDUE : bien visible (secousse + flash rouge + pause plus longue)
+      playLifeMp3();
+      const rb=$('respins-box'), sc=$('scene');
+      if(rb){ rb.classList.remove('lost'); void rb.offsetWidth; rb.classList.add('lost'); rb.style.color='#ff5b5b'; }
+      if(sc){ sc.classList.remove('shake'); void sc.offsetWidth; sc.classList.add('shake'); }
+      await zzz(800);
+      if(rb){ rb.classList.remove('lost'); rb.style.color=''; } if(sc) sc.classList.remove('shake');
+    } else {
+      if (step.reset && si>0 && step.placed.length){ playGainMp3(); $('respins-box').style.color='#5be86a'; await zzz(450); $('respins-box').style.color=''; }
+      else await zzz(350);
+    }
   }
   const target=dv(bonus.total), start=Date.now(), dur=1000*TF;
   await new Promise(res=>{ (function up(){ const k=Math.min(1,(Date.now()-start)/dur); $('btotal').textContent=`+${fmtNum(target*k)} ⭐`; if(k<1) requestAnimationFrame(up); else res(); })(); });
@@ -1158,6 +1210,8 @@ $('stStake').onclick=doStake; $('stUnstake').onclick=doUnstake; $('stClaim').onc
 $('acCopy').onclick=function(){ try{ navigator.clipboard.writeText(myAddr||''); gtoast('Address copied'); }catch(e){} };
 $('acLogout').onclick=doLogout;
 [].forEach.call(document.querySelectorAll('.dpct'),function(b){ b.addEventListener('click',function(){ if(!(walletSwoge>0))return gtoast('no $SWOGE in wallet'); var pct=parseInt(b.getAttribute('data-pct'))||0; $('depAmt').value=String(Math.floor(walletSwoge*pct/100*10000)/10000); }); });
+/* boutons 10/20/50/100% pour staker facilement (% du solde du jeu) */
+[].forEach.call(document.querySelectorAll('.spct'),function(b){ b.addEventListener('click',function(){ if(!(balance>0))return gtoast('no $SWOGE balance'); var pct=parseInt(b.getAttribute('data-pct'))||0; $('stAmt').value=String(Math.floor(balance*pct/100*10000)/10000); }); });
 $('emSend').onclick=async function(){ var e=($('emEmail').value||'').trim(); if(!/.+@.+\..+/.test(e))return gtoast('enter a valid email'); privyEmail=e; this.disabled=true; $('emMsg').textContent='Sending code…';
   try{ await SwogePrivy.sendCode(e); $('emCodeWrap').style.display=''; $('emMsg').textContent='Code sent to '+e+' — check inbox & spam.'; }catch(err){ $('emMsg').textContent='Error: '+String(err.message||err).slice(0,120); } this.disabled=false; };
 $('emVerify').onclick=async function(){ var c=($('emCode').value||'').trim(); if(!c)return gtoast('enter the code'); this.disabled=true; $('emMsg').textContent='Verifying…';

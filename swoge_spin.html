@@ -63,7 +63,7 @@
   @keyframes rainFall { to { transform: translateY(125vh) rotate(720deg); } }
   .fly-coin { position: fixed; z-index: 8000; pointer-events: none; transform-origin: center; will-change: transform, opacity; object-fit: contain;
     filter: brightness(1.3) saturate(1.08) drop-shadow(0 0 9px rgba(255,205,90,.8)); }
-  #buy-bonus { position: relative; width: 92%; margin: 1vh auto 0; aspect-ratio: 640 / 360;
+  #buy-bonus { position: relative; width: 92%; margin: 1vh auto 0; aspect-ratio: 64 / 27;
     background: url('https://i.ibb.co/C3MPB5v1/Chat-GPT-Image-8-ao-t-2026-08-29-57-removebg-preview.png') center / 100% 100% no-repeat; cursor: pointer; }
   /* le texte "BUY BONUS" est dans l'image → on n'affiche que le COÛT, en bas */
   #buy-bonus span { position: absolute; bottom: 4%; left: 50%; transform: translateX(-50%); color: #fff; font-weight: 900;
@@ -202,14 +202,14 @@
   /* SPIN : image fournie (texte "SPIN" intégré) → on masque le texte HTML */
   #spin-btn { color:transparent; text-indent:-9999px; overflow:hidden; cursor:pointer;
     background:url('https://i.ibb.co/5WYX8SF6/Chat-GPT-Image-8-ao-t-2026-08-28-33-removebg-preview.png') center/100% 100% no-repeat;
-    border:none; padding:0; box-shadow:none; aspect-ratio:64/25;
+    border:none; padding:0; box-shadow:none; aspect-ratio:64/27;
     transition:transform .08s, filter .1s; }
   #spin-btn:hover { filter:brightness(1.08); }
   #spin-btn:active { transform:translateY(3px) scale(.99); }
   #spin-btn:disabled { filter:grayscale(.4) brightness(.85); cursor:default; }
   /* AUTO / TURBO : images fournies (texte intégré) → on masque le texte HTML, la lueur indique l'état */
   #auto-btn, #turbo-btn { color:transparent; cursor:pointer; border:none; padding:0; box-shadow:none;
-    background-color:transparent; background-position:center; background-repeat:no-repeat; background-size:100% 100%; aspect-ratio:64/25;
+    background-color:transparent; background-position:center; background-repeat:no-repeat; background-size:132% auto; aspect-ratio:64/27;
     transition:filter .12s, transform .08s; text-indent:-9999px; overflow:hidden; }
   #auto-btn { background-image:url('https://i.ibb.co/cK6vKGVp/D17-BBD9-D-DBFB-45-DA-863-D-F693-CE0882-AA.png'); }
   #turbo-btn { background-image:url('https://i.ibb.co/4nn7q3Q6/58-FE1-FD5-DE5-C-44-E4-BB9-E-ED3-C4-F899-E9-C.png'); }
@@ -348,11 +348,8 @@
     .bet-val { min-width:11vw; }
     .bet-val .l { font-size:1.05vh; }
     .bet-val .n { font-size:2.1vh; }
-    #left { flex:0 0 38vw; }                                   /* bonus plus petit */
-    #spin-btn { flex:0 0 46vw; max-width:none; margin:0; font-size:2.7vh; padding:0 3vw; }
-    #auto-btn { flex:0 0 42vw; }
-    #turbo-btn { flex:0 0 42vw; }
-    #auto-btn,#turbo-btn { padding:0; aspect-ratio:64/19; }   /* plus plates pour tenir dans la barre */
+    /* les 4 boutons (BONUS / SPIN / AUTO / TURBO) à la MÊME taille = grille 2x2 */
+    #left, #spin-btn, #auto-btn, #turbo-btn { flex:0 0 44vw; max-width:none; margin:0; padding:0; }
   }
 
   /* ===== PC / WEB (large, paysage) : SWOGE à gauche, HUD à droite, bonus dans la barre du bas ===== */
@@ -374,12 +371,10 @@
             width:auto; max-width:none; margin:0; z-index:5; }
     #logo-img { display:none; }
     #left > span { display:none !important; }
-    #buy-bonus { width:13vw; margin:0; }
     #buy-bonus span { font-size:1.5vh; }
-    /* tailles explicites des boutons sur PC (leur texte est masqué → sinon ils s'écrasent) */
-    #spin-btn { width:26vh; padding:0; font-size:3vh; }
-    #auto-btn, #turbo-btn { width:21vh; }
-    #bet-dn, #bet-up { width:6vh; height:6vh; }
+    /* les 4 boutons à la MÊME taille sur PC aussi (leur texte est masqué → largeur explicite) */
+    #buy-bonus, #spin-btn, #auto-btn, #turbo-btn { width:22vh; padding:0; margin:0; }
+    #bet-dn, #bet-up { width:6.5vh; height:6.5vh; }
   }
 </style>
 </head>

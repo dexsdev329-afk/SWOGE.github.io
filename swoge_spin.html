@@ -872,19 +872,27 @@ async function bigWin(amount, label){
 }
 /* Rouleaux du BONUS : les cases vides tournent (on voit les pièces défiler dans les colonnes)
    puis se posent sur les nouvelles pièces (ou rien) — la partie la plus soignée du jeu. */
+/* pièce aléatoire pour le défilé (on voit passer les MINI/MINOR/MAJOR, x2/x3, mystery) */
+function randBonusCoin(){
+  const r=Math.random();
+  if(r<0.42) return {type:'VALUE', value:[2,4,6,10,16,20][(Math.random()*6)|0]};
+  if(r<0.62) return {type:'MULT', mult:[2,3,5][(Math.random()*3)|0]};
+  if(r<0.72) return {type:'JP', mystery:true, jp:'MINOR'};
+  return {type:'JP', jp:['MINI','MINOR','MAJOR','GRAND'][(Math.random()*4)|0]};
+}
 async function bonusReelSpin(step){
   const grid=$('grid'), gr=grid.getBoundingClientRect();
   const placedMap={}; (step.placed||[]).forEach(p=>placedMap[p.idx]=p.coin);
   const empties=[]; for(let i=0;i<9;i++){ if(!cells[i].classList.contains('has-coin')) empties.push(i); }
   if(!empties.length) return;
   reelSpinStart();
-  const K=13, ovs=[];
+  const K=16, ovs=[];
   empties.forEach(i=>{
     const cr=cells[i].getBoundingClientRect(), cellH=cr.height;
     const ov=document.createElement('div'); ov.className='reel-ov';
     ov.style.left=(cr.left-gr.left)+'px'; ov.style.top=(cr.top-gr.top)+'px'; ov.style.width=cr.width+'px'; ov.style.height=cellH+'px';
     const strip=document.createElement('div'); strip.className='reel-strip mblur';
-    let html=''; for(let k=0;k<K;k++) html+=`<div class="reel-cell" style="height:${cellH}px">${symHTML(pick(SYM_W))}</div>`;
+    let html=''; for(let k=0;k<K;k++) html+=`<div class="reel-cell" style="height:${cellH}px">${coinHTML(randBonusCoin())}</div>`;
     html+=`<div class="reel-cell" style="height:${cellH}px">${placedMap[i]?coinHTML(placedMap[i]):''}</div>`;
     strip.innerHTML=html; ov.appendChild(strip); grid.appendChild(ov);
     ovs.push({ov,strip,i,cellH});
@@ -893,15 +901,15 @@ async function bonusReelSpin(step){
   ovs.forEach(o=>{
     const col=o.i%3, coin=placedMap[o.i];
     const big = coin && (coin.mystery || coin.type==='JP');   // MAJOR/GRAND/OG/mystery = gros lot
-    let dur=(1050+col*380)*TF;                                 // beaucoup plus lent + suspense entre colonnes
-    if(big) dur += 1100*TF;                                    // un gros lot ralentit encore plus (on y croit)
+    let dur=(1500+col*520)*TF;                                 // encore plus lent : on voit les pièces défiler
+    if(big) dur += 1400*TF;                                    // un gros lot ralentit encore plus (on y croit)
     maxDur=Math.max(maxDur,dur);
-    o.strip.style.transition=`transform ${dur}ms cubic-bezier(.16,.64,.08,1)`;
-    setTimeout(()=>o.strip.classList.remove('mblur'), Math.max(220,dur-420));
-    if(big){ setTimeout(()=>{ o.ov.classList.add('anticip'); playAnticipMp3(); }, Math.max(400,dur-1050)); }  // anticipation dorée
+    o.strip.style.transition=`transform ${dur}ms cubic-bezier(.08,.72,.06,1)`;   // forte décélération = on lit les symboles à l'arrivée
+    setTimeout(()=>o.strip.classList.remove('mblur'), Math.max(260,dur-800));    // net plus tôt → on voit passer les symboles
+    if(big){ setTimeout(()=>{ o.ov.classList.add('anticip'); playAnticipMp3(); }, Math.max(500,dur-1250)); }  // anticipation dorée
     requestAnimationFrame(()=>{ o.strip.style.transform=`translateY(${-(K*o.cellH)}px)`; });
   });
-  await sleep(maxDur+280);
+  await sleep(maxDur+320);
   reelSpinStop(); stopAnticipMp3();
   ovs.forEach(o=>o.ov.classList.remove('anticip'));
   (step.placed||[]).forEach(p=>{
@@ -979,11 +987,10 @@ function positionSwoge(){
   vm.style.width=w+'px'; vm.style.height=w+'px';
   vm.style.left=(r.left + r.width/2 - w/2)+'px';
   vm.style.top=(r.top - w*of)+'px';
-  // VIES du bonus : sur le torse du SWOGE, au premier plan
+  // VIES du bonus : en BAS du rectangle de jeu, par-dessus la grille (premier plan)
   const lv=$('respins-box');
-  if(lv){ const charTop=r.top - w*of;
-    lv.style.left=(r.left + r.width/2)+'px';
-    lv.style.top=(charTop + w*0.30)+'px'; }
+  if(lv){ lv.style.left=(r.left + r.width/2)+'px';
+    lv.style.top=(r.bottom - (lv.offsetHeight||34) - 6)+'px'; }
 }
 window.addEventListener('resize', positionSwoge);
 window.addEventListener('scroll', positionSwoge, true);

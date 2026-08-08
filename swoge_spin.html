@@ -89,6 +89,10 @@
     font-size: 10vh; overflow: hidden;
     background: url('https://i.ibb.co/tTJXJkQF/cell-bg.png') center / 100% 100% no-repeat;
     box-shadow: inset 0 0 16px rgba(0,0,0,.5); }
+  /* les 3 cases de la LIGNE du milieu (horizontale) : fond rouge/or, PLUS GROSSES (débordent dans les gaps) */
+  .cell:nth-child(4), .cell:nth-child(5), .cell:nth-child(6) {
+    background-image: url('https://i.ibb.co/b5H4tPpg/Chat-GPT-Image-8-ao-t-2026-09-56-44-removebg-preview.png');
+    background-size: 112% 112%; transform: scale(1.12); z-index: 5; }
   .cell img { width: 142%; height: 142%; object-fit: contain; position: relative; z-index: 36; filter: brightness(1.32) contrast(1.06) saturate(1.08) drop-shadow(0 1px 3px rgba(0,0,0,.4)); }
   .cell.win { border-color: var(--gold); animation: cellWin .5s ease infinite alternate; }
   @keyframes cellWin { to { box-shadow: inset 0 0 26px rgba(255,213,74,.7); } }

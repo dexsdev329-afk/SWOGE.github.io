@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+<script src="https://sad.adsgram.ai/js/sad.min.js" async></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   :root { --gold:#ffd54a; }
@@ -285,6 +286,21 @@
   .qclaim.on { background:linear-gradient(135deg,#7CFF9B,#39d16a); color:#062a12; cursor:pointer; }
   .qclaim.off { background:rgba(255,255,255,.07); color:#a99; cursor:default; }
   .qclaim.done { background:rgba(124,255,155,.14); color:#7CFF9B; cursor:default; }
+  /* welcome / streak / rewarded-ad cards */
+  .bcard { border:1px solid rgba(124,77,255,.4); border-radius:12px; padding:11px 12px; margin-bottom:10px; background:rgba(124,77,255,.07); }
+  .bcard .bh { display:flex; justify-content:space-between; align-items:center; font-size:13px; font-weight:700; margin-bottom:5px; }
+  .bcard .bh .qr { color:var(--gold); }
+  .bcard .note2 { margin:0 0 8px; }
+  .bcard .abtn { width:100%; }
+  #adCard { background:linear-gradient(135deg,rgba(242,169,0,.16),rgba(124,77,255,.08)); border-color:rgba(242,169,0,.5); }
+  .streakrow { display:flex; gap:4px; margin:6px 0 9px; }
+  .streakrow .sday { flex:1; text-align:center; border-radius:8px; padding:6px 1px; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.09); color:#cdbf9f; }
+  .streakrow .sday .d { display:block; font-size:9px; opacity:.75; }
+  .streakrow .sday .v { display:block; font-size:12px; font-weight:800; color:#fff; }
+  .streakrow .sday.done { background:linear-gradient(135deg,#7CFF9B,#39d16a); color:#062a12; border-color:transparent; }
+  .streakrow .sday.done .v, .streakrow .sday.done .d { color:#062a12; opacity:1; }
+  .streakrow .sday.today { border-color:var(--gold); box-shadow:0 0 0 1px var(--gold) inset; }
+  .abtn:disabled { opacity:.5; cursor:default; }
   #g-toast { position:fixed; left:50%; bottom:9vh; transform:translateX(-50%); z-index:400; background:rgba(20,10,40,.97);
     border:1px solid rgba(255,213,74,.4); color:#fff; font-family:system-ui; font-size:13px; padding:11px 18px; border-radius:12px; opacity:0; transition:opacity .25s; pointer-events:none; }
   #g-toast.show { opacity:1; }
@@ -524,6 +540,24 @@
   </div>
   <div class="box" id="box-quests">
     <h3>🎯 Daily Quests</h3>
+    <!-- Rewarded video (Adsgram) -->
+    <div class="bcard" id="adCard">
+      <div class="bh"><span>📺 Watch an ad</span><span class="qr" id="adReward">+10</span></div>
+      <div class="note2" id="adNote">Earn $SWOGE by watching a short video.</div>
+      <button class="abtn" id="adWatch">📺 Watch an ad</button>
+    </div>
+    <!-- Welcome bonus -->
+    <div class="bcard" id="welcomeCard" style="display:none">
+      <div class="bh"><span>🎁 Welcome bonus</span><span class="qr" id="wcReward">+5</span></div>
+      <div class="note2" id="wcNote">Play your starter bonus to unlock the reward.</div>
+      <button class="abtn" id="wcClaim" disabled>Play your bonus</button>
+    </div>
+    <!-- 7-day login streak -->
+    <div class="bcard" id="streakCard">
+      <div class="bh"><span>🔥 Daily login streak</span></div>
+      <div class="streakrow" id="streakDays"></div>
+      <button class="abtn" id="stkClaim" disabled>Claim</button>
+    </div>
     <div class="note2">Complete them by playing — spins count too.</div>
     <div id="questrows"></div>
     <div class="brow"><button class="abtn sec" data-close style="flex:1">Close</button></div>
@@ -1125,6 +1159,8 @@ let TOKEN="0x8a166Fb41Cd659a0a43396272FF73973Ce29F817", VAULT="", MIN_WITHDRAW="
 const ERC20_ABI=["function approve(address,uint256) returns (bool)","function allowance(address,address) view returns (uint256)","function balanceOf(address) view returns (uint256)"];
 const VAULT_ABI=["function deposit(uint256)","function withdraw(uint256 cumulative,uint256 deadline,uint8 v,bytes32 r,bytes32 s)"];
 let provider=null, signer=null, ws=null, authed=false, myAddr=null, loginNonce=null, balance=0, walletSwoge=0, pendingVolcano=null;
+/* Telegram user id — needed so the Adsgram reward postback can find this account */
+var TG_ID=null; try{ var _tg=window.Telegram&&window.Telegram.WebApp; if(_tg&&_tg.initDataUnsafe&&_tg.initDataUnsafe.user) TG_ID=_tg.initDataUnsafe.user.id; }catch(e){}
 
 function gtoast(t){ var e=$('g-toast'); e.textContent=t; e.classList.add('show'); clearTimeout(e._t); e._t=setTimeout(()=>e.classList.remove('show'),2400); }
 function fmtBig(n){ n=parseFloat(n||0); if(n>=1e9)return (n/1e9).toFixed(2)+"B"; if(n>=1e6)return (n/1e6).toFixed(2)+"M"; if(n>=1e3)return (n/1e3).toFixed(2)+"K"; return (Math.round(n*100)/100).toString(); }
@@ -1146,7 +1182,7 @@ function connect(){
   ws.onmessage=function(ev){ var m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
     if(m.type==='state') return;
     if(m.type==='hello'){ loginNonce=m.loginNonce; if(m.vault)VAULT=m.vault; if(m.token)TOKEN=m.token; if(m.minWithdraw)MIN_WITHDRAW=m.minWithdraw; }
-    else if(m.type==='auth'){ authed=true; myAddr=m.address; onAuthed(); setBalance(m.balance); if(m.stake) setStakeInfo(m.stake); if(m.quests) renderQuests(m.quests); if(m.volcano&&m.volcano.meter!=null){ collectMeter=m.volcano.meter; setMeterUI(); } }
+    else if(m.type==='auth'){ authed=true; myAddr=m.address; onAuthed(); setBalance(m.balance); if(m.stake) setStakeInfo(m.stake); if(m.quests) renderQuests(m.quests); if(m.bonus) renderBonus(m.bonus); if(m.welcomeGranted>0) gtoast('🎁 Welcome! +'+m.welcomeGranted+' $SWOGE to try'); if(m.volcano&&m.volcano.meter!=null){ collectMeter=m.volcano.meter; setMeterUI(); } }
     else if(m.type==='balance'||m.type==='deposit'){ setBalance(m.balance); if(m.type==='deposit') gtoast('💰 Deposit credited'); }
     else if(m.type==='volcanoResult'){ if(pendingVolcano){ var pv=pendingVolcano; pendingVolcano=null; pv.res(m); } }
     else if(m.type==='need_deposit'){ setBalance(m.balance); if(pendingVolcano){ var p2=pendingVolcano; pendingVolcano=null; p2.rej({needDeposit:true}); } }
@@ -1157,6 +1193,10 @@ function connect(){
     else if(m.type==='stakeClaimed'){ gtoast('🌾 Claimed '+m.reward+' $SWOGE'); }
     else if(m.type==='quests'){ renderQuests(m.quests); }
     else if(m.type==='questClaimed'){ setBalance(m.balance); renderQuests(m.quests); gtoast('🎯 Quest +'+m.reward+' $SWOGE!'); }
+    else if(m.type==='bonus'){ renderBonus(m.bonus); }
+    else if(m.type==='welcomeClaimed'){ setBalance(m.balance); renderBonus(m.bonus); gtoast('🎁 +'+m.reward+' $SWOGE!'); }
+    else if(m.type==='streakClaimed'){ setBalance(m.balance); renderBonus(m.bonus); gtoast('🔥 Day '+m.day+' : +'+m.reward+' $SWOGE!'); }
+    else if(m.type==='adReward'){ setBalance(m.balance); if(m.bonus) renderBonus(m.bonus); gtoast('📺 +'+m.reward+' $SWOGE !'); }
   };
 }
 function onAuthed(){ $('connectBtn').style.display='none'; $('emailBtn').style.display='none'; $('menuBtn').style.display=''; }
@@ -1173,7 +1213,7 @@ async function doConnect(){
   }catch(e){ gtoast(String(e.message||e).slice(0,90)); }
 }
 async function onWalletReady(eth, addr){ provider=new ethers.providers.Web3Provider(eth,'any'); signer=provider.getSigner(); myAddr=(addr||(await signer.getAddress())).toLowerCase(); if(ws&&ws.readyState===1) doLogin(); else connect(); }
-async function doLogin(){ if(!signer||loginNonce==null) return; try{ var msg='SWOGE Pusher login\nnonce: '+loginNonce; var sig=await signer.signMessage(msg); send({type:'login',message:msg,signature:sig,name:myAddr.slice(0,6)}); }catch(e){ gtoast('login cancelled'); } }
+async function doLogin(){ if(!signer||loginNonce==null) return; try{ var msg='SWOGE Pusher login\nnonce: '+loginNonce; var sig=await signer.signMessage(msg); send({type:'login',message:msg,signature:sig,name:myAddr.slice(0,6),tgId:TG_ID}); }catch(e){ gtoast('login cancelled'); } }
 var PRIVY_APP_ID='cmsga0yzp00a50biaf9vlzzd2', privyLoaded=false, privyEmail='';
 function loadPrivy(){ return new Promise(function(res,rej){ if(privyLoaded) return res();
   var s=document.createElement('script'); s.src='privy-swoge.js'; s.onload=function(){ privyLoaded=true; try{ SwogePrivy.init(PRIVY_APP_ID); }catch(e){} res(); }; s.onerror=function(){ rej(new Error('load failed')); }; document.head.appendChild(s); }); }
@@ -1197,6 +1237,55 @@ function renderQuests(list){ var box=$('questrows'); if(!box||!list) return; var
     h.push('<div class="quest"><div class="qh"><span>'+esc(q.label||q.id)+'</span><span class="qr">+'+q.reward+'</span></div><div class="qbar"><i style="width:'+pct+'%"></i></div><button class="qclaim '+st+'" data-q="'+esc(q.id)+'" '+(st==='on'?'':'disabled')+'>'+(q.claimed?'✓ Claimed':((q.progress||0)>=q.goal?'Claim +'+q.reward:(q.progress||0)+' / '+q.goal))+'</button></div>'); });
   box.innerHTML=h.join(''); box.querySelectorAll('.qclaim.on').forEach(function(b){ b.addEventListener('click',function(){ send({type:'claimQuest',id:b.getAttribute('data-q')}); }); }); }
 
+/* ---- Welcome bonus + 7-day streak + rewarded video (Adsgram) ---- */
+var bonusData=null, AdController=null;
+function initAdsgram(blockId){ try{ if(window.Adsgram&&!AdController&&blockId){ AdController=window.Adsgram.init({ blockId:String(blockId) }); } }catch(e){} }
+function watchAd(){
+  if(!TG_ID){ gtoast('Open the game inside Telegram to watch ads'); return; }
+  if(!AdController){ // SDK may still be loading — try once more
+    if(bonusData&&bonusData.ad&&bonusData.ad.blockId) initAdsgram(bonusData.ad.blockId);
+    if(!AdController){ gtoast('Ad not ready yet — try again'); return; }
+  }
+  var b=$('adWatch'); if(b){ b.disabled=true; b.textContent='Loading ad…'; }
+  AdController.show().then(function(){ gtoast('✅ Ad finished — reward incoming'); })
+    .catch(function(){ gtoast('Ad skipped or unavailable'); })
+    .finally(function(){ send({type:'bonusState'}); });
+}
+function renderBonus(b){ if(!b) return; bonusData=b;
+  // rewarded video
+  if(b.ad){ var ar=$('adReward'); if(ar) ar.textContent='+'+b.ad.reward;
+    var an=$('adNote'), aw=$('adWatch');
+    if(b.ad.left<=0){ if(an) an.textContent='Daily limit reached ('+b.ad.dailyCap+'/'+b.ad.dailyCap+'). Come back tomorrow!'; if(aw){ aw.disabled=true; aw.textContent='Back tomorrow'; } }
+    else if(b.ad.cooldown>0){ if(aw){ aw.disabled=true; aw.textContent='Wait '+b.ad.cooldown+'s'; } if(an) an.textContent=b.ad.left+' ad(s) left today.'; }
+    else { if(aw){ aw.disabled=false; aw.textContent='📺 Watch an ad (+'+b.ad.reward+')'; } if(an) an.textContent=b.ad.left+' ad(s) left today.'; }
+    if(b.ad.blockId) initAdsgram(b.ad.blockId);
+  }
+  // welcome bonus
+  if(b.welcome){ var wc=$('welcomeCard');
+    if(b.welcome.claimed){ if(wc) wc.style.display='none'; }
+    else if(wc){ wc.style.display='';
+      var wr=$('wcReward'); if(wr) wr.textContent='+'+b.welcome.reward;
+      var wb=$('wcClaim'), wn=$('wcNote');
+      if(b.welcome.claimable){ wb.disabled=false; wb.textContent='Claim +'+b.welcome.reward; if(wn) wn.textContent='Nice! Grab your reward.'; }
+      else { wb.disabled=true; wb.textContent='Play your bonus'; if(wn) wn.textContent='You got '+b.welcome.amount+' $SWOGE — play them to unlock +'+b.welcome.reward+'.'; }
+    }
+  }
+  // 7-day streak
+  if(b.streak){ var row=$('streakDays');
+    if(row){ var rw=b.streak.rewards||[], hh='';
+      for(var i=0;i<rw.length;i++){ var dn=i+1, cls='sday';
+        if(b.streak.claimedToday){ if(dn<=b.streak.day) cls+=' done'; }
+        else { if(dn<b.streak.day) cls+=' done'; else if(dn===b.streak.day) cls+=' today'; }
+        hh+='<div class="'+cls+'"><span class="d">D'+dn+'</span><span class="v">'+rw[i]+'</span></div>';
+      }
+      row.innerHTML=hh;
+    }
+    var sb=$('stkClaim');
+    if(sb){ if(b.streak.claimable){ sb.disabled=false; sb.textContent='Claim day '+b.streak.day+' (+'+b.streak.todayReward+')'; }
+      else { sb.disabled=true; sb.textContent='✓ Claimed today'; } }
+  }
+}
+
 async function loadWalletBalances(){ if(!provider||!myAddr) return; var e='—', sw='—';
   try{ var b=await provider.getBalance(myAddr); e=(+ethers.utils.formatEther(b)).toFixed(5); }catch(x){}
   try{ var t=new ethers.Contract(TOKEN,ERC20_ABI,provider), bb=await t.balanceOf(myAddr); walletSwoge=+ethers.utils.formatUnits(bb,18); sw=fmtBig(walletSwoge); }catch(x){}
@@ -1215,7 +1304,7 @@ function showBox(name){ $('ovl').classList.add('show'); PANELS.forEach(function(
 function closePanel(){ $('ovl').classList.remove('show'); PANELS.forEach(function(b){ var el=$('box-'+b); if(el) el.classList.remove('show'); }); }
 function needAuth(){ if(!authed){ $('pmenu').classList.remove('open'); gtoast('connect your wallet first'); doConnect(); return false; } return true; }
 function openPanel(name){ if(!authed){ gtoast('connect your wallet first'); doConnect(); return; } showBox(name);
-  if(name==='dep') loadWalletBalances(); else if(name==='wd'){ $('wdBal').textContent=fmtBig(balance); $('wdMin').textContent=MIN_WITHDRAW; } else if(name==='wallet') openAccount(); else if(name==='stake'){ send({type:'stakeInfo'}); renderStake(); } else if(name==='quests') send({type:'quests'}); }
+  if(name==='dep') loadWalletBalances(); else if(name==='wd'){ $('wdBal').textContent=fmtBig(balance); $('wdMin').textContent=MIN_WITHDRAW; } else if(name==='wallet') openAccount(); else if(name==='stake'){ send({type:'stakeInfo'}); renderStake(); } else if(name==='quests'){ send({type:'quests'}); send({type:'bonusState'}); } }
 $('ovl').addEventListener('click',function(e){ if(e.target===$('ovl')) closePanel(); });
 [].forEach.call(document.querySelectorAll('[data-close]'),function(b){ b.addEventListener('click',closePanel); });
 
@@ -1234,6 +1323,9 @@ $('mnStake').onclick=function(){ if(needAuth()) openPanel('stake'); };
 $('mnDeposit').onclick=function(){ if(needAuth()) openPanel('dep'); };
 $('mnWithdraw').onclick=function(){ if(needAuth()) openPanel('wd'); };
 $('mnQuests').onclick=function(){ if(needAuth()) openPanel('quests'); };
+$('adWatch').onclick=watchAd;
+$('wcClaim').onclick=function(){ send({type:'claimWelcome'}); };
+$('stkClaim').onclick=function(){ send({type:'claimStreak'}); };
 $('mnLogout').onclick=doLogout;
 $('depGo').onclick=doDeposit; $('acDeposit').onclick=function(){ openPanel('dep'); };
 $('wdGo').onclick=requestWithdraw;

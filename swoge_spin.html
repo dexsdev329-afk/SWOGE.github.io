@@ -28,9 +28,8 @@
   /* ===== VOLCAN + LOGO (gauche) ===== */
   #left { position: fixed; left: 1.5vw; top: 50%; transform: translateY(-50%); width: 22vw; max-width: 300px; text-align: center; z-index: 5; }
   #logo-img { width: 100%; display: block;  filter: drop-shadow(0 6px 18px rgba(255,90,0,.4)); }
-  /* ===== SWOGE COLLECTEUR (perso animé, sprite 8x8) : DEVANT la grille, posé sur le haut ===== */
-  #vmeter { position: absolute; left: 50%; transform: translateX(-50%); bottom: 84%;
-    width: 52%; aspect-ratio: 1 / 1; z-index: 9; pointer-events: none; }
+  /* ===== SWOGE COLLECTEUR (perso animé, sprite 8x8) : PREMIER PLAN, placé par JS au-dessus de la grille ===== */
+  #vmeter { position: fixed; z-index: 150; width: 0; height: 0; pointer-events: none; }
   #vmeter-sprite { position: absolute; inset: 0;
     background-image: url('https://files.catbox.moe/45jrr8.png');   /* idle par défaut */
     background-repeat: no-repeat; background-size: 800% 800%; background-position: 0 0;
@@ -298,8 +297,7 @@
     .jp-plaque:nth-child(n+3) { grid-column:span 2; }                          /* 3 en bas */
     .jp-plaque span { font-size:3.4vw; top:56%; }
 
-    /* SWOGE collecteur : devant la grille, posé sur le bord haut */
-    #vmeter { width:58%; bottom:85%; }
+    /* SWOGE collecteur : placé par JS (premier plan) */
     /* big win : polices adaptées mobile */
     #bigwin-title { font-size:5.4vh; letter-spacing:2px; }
     #bigwin-amt { font-size:9vh; }
@@ -346,10 +344,9 @@
     .pmenu { top:50%; bottom:auto; right:12vw; transform:translateY(-50%); }
     /* bouton son en bas à gauche */
     #music-btn { top:auto; bottom:2.4vh; left:2vw; width:5.2vh; height:5.2vh; font-size:2.4vh; }
-    /* SWOGE collecteur : devant la grille, posé sur le bord haut (grand sur PC) */
-    #vmeter { width:64%; bottom:82%; }
-    /* grille descendue d'un poil pour laisser la tête du SWOGE dépasser en haut */
-    #machine { top:56%; width:min(58vh,56vw); }
+    /* SWOGE collecteur : placé par JS (premier plan) */
+    /* grille descendue pour laisser la place au SWOGE au-dessus */
+    #machine { top:60%; width:min(54vh,52vw); }
     /* logo caché ; ACHETER LE BONUS remis DANS la barre du bas (plus de bloc encombré à gauche) */
     #left { position:static; transform:none; top:auto; bottom:auto; left:auto; right:auto;
             width:auto; max-width:none; margin:0; z-index:5; }
@@ -371,8 +368,6 @@
   <div id="ladder"></div>
 
   <div id="machine">
-    <!-- SWOGE COLLECTEUR : perso animé (sprite 8x8), assis sur le haut de la grille -->
-    <div id="vmeter"><div id="vmeter-sprite"></div></div>
     <div id="fire-frame"></div>
     <div id="grid"></div>
     <div id="coin-burst"></div>
@@ -385,6 +380,9 @@
       <div id="btotal"></div>
     </div>
   </div>
+
+  <!-- SWOGE COLLECTEUR : perso animé, PREMIER PLAN (positionné par JS au-dessus de la grille) -->
+  <div id="vmeter"><div id="vmeter-sprite"></div></div>
 
   <div id="bottom">
     <div class="stat"><div class="l">DERNIER GAIN</div><div class="n" id="last-win">0</div></div>
@@ -878,6 +876,21 @@ function setSpriteState(name, lockMs){
   if(name===spriteState) return;
   spriteState=name; el.style.backgroundImage="url('"+SPRITE[name]+"')";
 }
+/* place le SWOGE au-dessus de la grille (premier plan), aligné dynamiquement */
+function positionSwoge(){
+  const vm=$('vmeter'), m=$('machine'); if(!vm||!m) return;
+  const r=m.getBoundingClientRect(); if(!r.width) return;
+  const desktop = window.innerWidth>820 && window.innerWidth>window.innerHeight;
+  const wf = desktop ? 0.5 : 0.62;            // perso un peu plus compact sur PC
+  const of = desktop ? 0.58 : 0.80;           // et moins haut (tête sous l'échelle)
+  const w=r.width*wf;
+  vm.style.width=w+'px'; vm.style.height=w+'px';
+  vm.style.left=(r.left + r.width/2 - w/2)+'px';
+  vm.style.top=(r.top - w*of)+'px';
+}
+window.addEventListener('resize', positionSwoge);
+window.addEventListener('scroll', positionSwoge, true);
+[80,300,700,1400,2500].forEach(function(t){ setTimeout(positionSwoge,t); });
 function tickSprite(){
   const el=$('vmeter-sprite'); if(!el) return;
   if(spriteState!=='idle' && Date.now()>=spriteLock){ spriteState='idle'; el.style.backgroundImage="url('"+SPRITE.idle+"')"; }
@@ -885,6 +898,7 @@ function tickSprite(){
   const col=spriteFrame%8, row=(spriteFrame/8)|0;
   el.style.backgroundPositionX=(col/7*100)+'%';
   el.style.backgroundPositionY=(row/7*100)+'%';
+  if((spriteFrame % 12)===0) positionSwoge();   // ré-aligne périodiquement (résiste aux changements de layout)
 }
 setInterval(tickSprite, 42);   // ~24 images/s
 function flyCoin(fromEl, delay){

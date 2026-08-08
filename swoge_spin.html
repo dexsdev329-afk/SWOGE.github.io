@@ -469,12 +469,24 @@
       border-radius:0; border-width:34px 24px 40px 24px; border-image-width:34px 24px 40px 24px;
     }
     #box-dep .pscroll, #box-wd .pscroll, #box-wallet .pscroll, #box-stake .pscroll {
-      max-height:calc(100dvh - 74px); padding:18px 24px 28px;
+      max-height:calc(100dvh - 74px); padding:18px 34px 28px;
     }
+    /* --- textes plus petits sur mobile pour ne pas toucher les bords --- */
+    #box-dep .note2, #box-wd .note2, #box-wallet .note2, #box-stake .note2 { font-size:12px; }
+    #box-dep .strow, #box-wd .strow, #box-wallet .strow, #box-stake .strow { font-size:12px; }
+    #box-dep label, #box-wd label, #box-wallet label, #box-stake label { font-size:10px; }
+    #box-dep input, #box-wd input, #box-wallet input, #box-stake input { font-size:14px; }
+    #box-wallet .strow, #box-dep .strow, #box-wd .strow { padding-left:2px; padding-right:2px; }
     #box-quests .qscroll { max-height:calc(100dvh - 78px); padding:20px 22px 24px; }
-    /* --- Menu deroulant colle bien a DROITE sur mobile --- */
-    .pmenu { top:6.5vh; right:2px; left:auto; bottom:auto; transform:none; min-width:0; width:min(66vw,300px); }
-    .pmenu a.mi { width:96%; height:46px; }
+    /* --- Menu deroulant plus etroit, colle a DROITE sur mobile --- */
+    .pmenu { top:6.5vh; right:2px; left:auto; bottom:auto; transform:none; min-width:0; width:min(56vw,250px); }
+    .pmenu a.mi { width:96%; height:44px; }
+    /* --- Boutons d'action plus petits, empiles, avec espace (mobile) --- */
+    #box-dep .brow, #box-wd .brow, #box-stake .brow { flex-direction:column; align-items:center; gap:12px; margin-top:14px; }
+    #box-dep .abtn.aimg, #box-wd .abtn.aimg, #box-stake .abtn.aimg,
+    #box-dep .abtn.closeimg, #box-wd .abtn.closeimg, #box-stake .abtn.closeimg { width:76%; flex:0 0 auto; }
+    #stClaim { width:76% !important; margin:12px auto !important; display:block; }
+    #box-dep .pcts, #box-stake .pcts { max-width:94%; margin-left:auto; margin-right:auto; }
   }
 
   /* ===== PC / WEB (large, paysage) : SWOGE à gauche, HUD à droite, bonus dans la barre du bas ===== */

@@ -295,11 +295,12 @@
   #box-dep .pscroll::-webkit-scrollbar, #box-wd .pscroll::-webkit-scrollbar, #box-wallet .pscroll::-webkit-scrollbar, #box-stake .pscroll::-webkit-scrollbar { width:0; height:0; display:none; }
   /* Plaques-titres image */
   .ptitle { width:62%; min-width:190px; max-width:280px; height:auto; background:center/100% 100% no-repeat; margin:4px auto 10px; filter:drop-shadow(0 2px 6px rgba(0,0,0,.5)); }
-  #stClaim { display:block; width:76% !important; max-width:270px; margin:10px auto !important; }
-  /* Boutons d'action : block, centres, 76% (PC + mobile) — pas de debordement/chevauchement */
-  #box-dep .brow, #box-wd .brow, #box-stake .brow { display:block; margin-top:12px; }
+  /* Boutons d'action : inline-block centre via text-align (robuste iOS), plus petits, pas de chevauchement */
+  #box-dep .pscroll, #box-wd .pscroll, #box-stake .pscroll { text-align:center; }
+  #box-dep .brow, #box-wd .brow, #box-stake .brow { display:block; text-align:center; margin-top:10px; }
   #box-dep .abtn.aimg, #box-wd .abtn.aimg, #box-stake .abtn.aimg,
-  #box-dep .abtn.closeimg, #box-wd .abtn.closeimg, #box-stake .abtn.closeimg { display:block; width:76%; max-width:270px; margin:10px auto !important; }
+  #box-dep .abtn.closeimg, #box-wd .abtn.closeimg, #box-stake .abtn.closeimg,
+  #stClaim { display:inline-block; width:76% !important; max-width:220px !important; margin:8px auto !important; vertical-align:top; float:none; }
   /* Inputs : contraints + centres pour ne pas toucher/deborder le cadre */
   #box-dep input, #box-wd input, #box-wallet input, #box-stake input { display:block; max-width:280px; margin-left:auto; margin-right:auto; }
   /* Stats (strow) centrees partout (au lieu d'etre etalees jusqu'aux bords) */
@@ -463,7 +464,7 @@
     #buy-bonus span { font-size:1.15vh; width:88%; white-space:normal; text-align:center; line-height:1.05; }
 
     /* Barre du bas : 3 lignes -> [gain + mise] / [bonus + SPIN] / [auto + turbo] */
-    #bottom { position:static; transform:none; order:4; width:96vw; bottom:auto;
+    #bottom { position:static; transform:none; order:4; width:96vw; bottom:auto; margin-top:2.4vh;
               gap:.5vh 2.5vw; flex-wrap:wrap; justify-content:center; align-items:center; }
     .stat { flex:1 1 34vw; }
     .stat .l { font-size:1.05vh; }
@@ -494,10 +495,7 @@
     .pmenu { top:6.5vh; right:2px; left:auto; bottom:auto; transform:none; min-width:0; width:min(56vw,250px); }
     .pmenu a.mi { width:96%; height:44px; }
     /* --- Boutons d'action plus petits, empiles, centres (block = fiable iOS/WebKit) --- */
-    #box-dep .brow, #box-wd .brow, #box-stake .brow { display:block; margin-top:14px; }
-    #box-dep .abtn.aimg, #box-wd .abtn.aimg, #box-stake .abtn.aimg { display:block; width:76%; max-width:280px; margin:12px auto !important; flex:none; }
-    #box-dep .abtn.closeimg, #box-wd .abtn.closeimg, #box-stake .abtn.closeimg { display:block; width:76%; max-width:280px; margin:12px auto !important; flex:none; }
-    #stClaim { display:block; width:76% !important; max-width:280px; margin:12px auto !important; }
+    /* (boutons geres par les regles de base : inline-block centre, max 220px) */
     #box-dep .pcts, #box-stake .pcts { max-width:94%; margin-left:auto; margin-right:auto; }
   }
 
@@ -597,6 +595,7 @@
 <button id="music-btn" title="Musique">🔊</button>
 
 <!-- ===== HUD compte (même solde/menu que les autres jeux) ===== -->
+<div id="verTag" style="position:fixed;bottom:3px;left:5px;font-size:10px;font-family:monospace;color:rgba(255,213,74,.6);z-index:99999;pointer-events:none">BUILD 15</div>
 <div id="hud">
   <span id="bal-chip"><span class="statusdot" id="dot"></span><b id="bal">—</b> $SWOGE</span>
   <button id="connectBtn">Connect</button>

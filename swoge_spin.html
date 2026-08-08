@@ -200,7 +200,13 @@
   #machine.bonus #bonus-ui { display: block; }
   #machine.bonus #grid { border-color: #ff6ec7; box-shadow: 0 0 60px rgba(255,110,199,.6), inset 0 0 30px rgba(0,0,0,.5); }
   #bonus-title { display: none; }
-  #respins-box { position: absolute; top: -5.6vh; left: 50%; transform: translateX(-50%); font-size: 2vh; color:#fff; background: rgba(0,0,0,.55); padding:.6vh 1.8vh; border-radius: 20px; border:1px solid rgba(255,255,255,.3); white-space: nowrap; }
+  /* VIES : premier plan (z-index au-dessus du SWOGE), placé par JS ; caché hors bonus */
+  #respins-box { position: fixed; z-index: 200; transform: translateX(-50%); display: none;
+    font-family:'Orbitron',sans-serif; font-weight:900; font-size: 2.1vh; letter-spacing:1px; color:#fff;
+    background: linear-gradient(180deg, rgba(30,6,10,.92), rgba(60,10,14,.92));
+    padding:.5vh 1.8vh; border-radius: 999px; border:1.5px solid rgba(255,120,80,.8);
+    box-shadow: 0 4px 14px rgba(0,0,0,.6), 0 0 14px rgba(255,90,40,.5); white-space: nowrap; }
+  #machine.bonus ~ #respins-box, body.bonusing #respins-box { display: block; }
   #respins { font-size: 2.4vh; letter-spacing: 1px; }
   #btotal { position: absolute; bottom: -6vh; left: 50%; transform: translateX(-50%); font-size: 3.4vh; font-weight: 900; color: var(--gold); text-shadow: 0 0 18px #ff8a00; white-space: nowrap; }
 
@@ -407,13 +413,15 @@
     <div id="win-banner"></div>
     <div id="bonus-ui">
       <div id="bonus-title">🔥 HOLD &amp; PUSH 🔥</div>
-      <div id="respins-box">VIES <span id="respins">❤️❤️❤️</span></div>
       <div id="btotal"></div>
     </div>
   </div>
 
   <!-- SWOGE COLLECTEUR : perso animé, PREMIER PLAN (positionné par JS au-dessus de la grille) -->
   <div id="vmeter"><div id="vmeter-sprite"></div></div>
+
+  <!-- VIES du bonus : au PREMIER PLAN, devant le SWOGE (positionné par JS) -->
+  <div id="respins-box">VIES <span id="respins">❤️❤️❤️</span></div>
 
   <div id="bottom">
     <div class="stat"><div class="l">DERNIER GAIN</div><div class="n" id="last-win">0</div></div>
@@ -882,13 +890,20 @@ async function bonusReelSpin(step){
     ovs.push({ov,strip,i,cellH});
   });
   let maxDur=0;
-  ovs.forEach(o=>{ const col=o.i%3, dur=(720+col*220)*TF; maxDur=Math.max(maxDur,dur);
-    o.strip.style.transition=`transform ${dur}ms cubic-bezier(.12,.6,.16,1)`;
-    setTimeout(()=>o.strip.classList.remove('mblur'), Math.max(180,dur-280));
+  ovs.forEach(o=>{
+    const col=o.i%3, coin=placedMap[o.i];
+    const big = coin && (coin.mystery || coin.type==='JP');   // MAJOR/GRAND/OG/mystery = gros lot
+    let dur=(1050+col*380)*TF;                                 // beaucoup plus lent + suspense entre colonnes
+    if(big) dur += 1100*TF;                                    // un gros lot ralentit encore plus (on y croit)
+    maxDur=Math.max(maxDur,dur);
+    o.strip.style.transition=`transform ${dur}ms cubic-bezier(.16,.64,.08,1)`;
+    setTimeout(()=>o.strip.classList.remove('mblur'), Math.max(220,dur-420));
+    if(big){ setTimeout(()=>{ o.ov.classList.add('anticip'); playAnticipMp3(); }, Math.max(400,dur-1050)); }  // anticipation dorée
     requestAnimationFrame(()=>{ o.strip.style.transform=`translateY(${-(K*o.cellH)}px)`; });
   });
-  await sleep(maxDur+200);
-  reelSpinStop();
+  await sleep(maxDur+280);
+  reelSpinStop(); stopAnticipMp3();
+  ovs.forEach(o=>o.ov.classList.remove('anticip'));
   (step.placed||[]).forEach(p=>{
     cells[p.idx].innerHTML=coinHTML(p.coin); cells[p.idx].classList.add('has-coin','drop');
     setTimeout(()=>cells[p.idx].classList.remove('drop'),430);
@@ -964,6 +979,11 @@ function positionSwoge(){
   vm.style.width=w+'px'; vm.style.height=w+'px';
   vm.style.left=(r.left + r.width/2 - w/2)+'px';
   vm.style.top=(r.top - w*of)+'px';
+  // VIES du bonus : sur le torse du SWOGE, au premier plan
+  const lv=$('respins-box');
+  if(lv){ const charTop=r.top - w*of;
+    lv.style.left=(r.left + r.width/2)+'px';
+    lv.style.top=(charTop + w*0.30)+'px'; }
 }
 window.addEventListener('resize', positionSwoge);
 window.addEventListener('scroll', positionSwoge, true);

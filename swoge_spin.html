@@ -63,10 +63,13 @@
   @keyframes rainFall { to { transform: translateY(125vh) rotate(720deg); } }
   .fly-coin { position: fixed; z-index: 8000; pointer-events: none; transform-origin: center; will-change: transform, opacity; object-fit: contain;
     filter: brightness(1.3) saturate(1.08) drop-shadow(0 0 9px rgba(255,205,90,.8)); }
-  #buy-bonus { position: relative; width: 92%; margin: 1vh auto 0; aspect-ratio: 1638 / 562;
-    background: url('https://i.ibb.co/1Jf6TVXm/buy-bonus.png') center / 100% 100% no-repeat; cursor: pointer; }
-  #buy-bonus span { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); color: #fff; font-weight: 900;
-    font-size: 1.7vh; line-height: 1.1; letter-spacing: .5px; text-shadow: 0 2px 3px #000, 0 0 7px #000; }
+  #buy-bonus { position: relative; width: 92%; margin: 1vh auto 0; aspect-ratio: 640 / 360;
+    background: url('https://i.ibb.co/C3MPB5v1/Chat-GPT-Image-8-ao-t-2026-08-29-57-removebg-preview.png') center / 100% 100% no-repeat; cursor: pointer; }
+  /* le texte "BUY BONUS" est dans l'image → on n'affiche que le COÛT, en bas */
+  #buy-bonus span { position: absolute; bottom: 4%; left: 50%; transform: translateX(-50%); color: #fff; font-weight: 900;
+    font-size: 1.5vh; line-height: 1; letter-spacing: .5px; white-space: nowrap;
+    background: rgba(0,0,0,.55); padding: .2vh 1vh; border-radius: 999px;
+    text-shadow: 0 1px 2px #000; }
   #buy-bonus:hover { filter: brightness(1.1); }
 
   /* ===== MACHINE (centre, GRANDE) ===== */
@@ -196,11 +199,10 @@
   .stat { text-align: center; }
   .stat .l { font-size: 1.4vh; color: #cbb6ff; letter-spacing: 1px; }
   .stat .n { font-size: 2.8vh; font-weight: 900; color: #fff; }
-  #spin-btn { display:flex; align-items:center; justify-content:center;
-    font-family:'Orbitron',sans-serif; font-weight:900; font-size:2.9vh; letter-spacing:2px; color:#4a2c00; cursor:pointer;
-    background:url('https://i.ibb.co/RTb2QHFF/9-DA9-DE17-8299-4598-88-B0-F96-C6240-B624.png') center/100% 100% no-repeat;
-    border:none; padding:0 4vw; box-shadow:none; aspect-ratio:64/25; white-space:nowrap;
-    text-shadow:0 1px 1px rgba(255,240,190,.5), 0 2px 3px rgba(0,0,0,.35);
+  /* SPIN : image fournie (texte "SPIN" intégré) → on masque le texte HTML */
+  #spin-btn { color:transparent; text-indent:-9999px; overflow:hidden; cursor:pointer;
+    background:url('https://i.ibb.co/5WYX8SF6/Chat-GPT-Image-8-ao-t-2026-08-28-33-removebg-preview.png') center/100% 100% no-repeat;
+    border:none; padding:0; box-shadow:none; aspect-ratio:64/25;
     transition:transform .08s, filter .1s; }
   #spin-btn:hover { filter:brightness(1.08); }
   #spin-btn:active { transform:translateY(3px) scale(.99); }
@@ -378,6 +380,10 @@
     #left > span { display:none !important; }
     #buy-bonus { width:13vw; margin:0; }
     #buy-bonus span { font-size:1.5vh; }
+    /* tailles explicites des boutons sur PC (leur texte est masqué → sinon ils s'écrasent) */
+    #spin-btn { width:26vh; padding:0; font-size:3vh; }
+    #auto-btn, #turbo-btn { width:21vh; }
+    #bet-dn, #bet-up { width:6vh; height:6vh; }
   }
 </style>
 </head>
@@ -1015,7 +1021,7 @@ function updateBetUI(){
   BET = BET_LEVELS[betIdx];
   $('bet-amt').textContent = fmtNum(BET);
   renderLadderValues();
-  const bb=$('buy-bonus').querySelector('span'); if(bb) bb.innerHTML = 'ACHETER LE BONUS<br>'+fmtNum(BET*BONUS_COST_MULT)+' 🪙';
+  const bb=$('buy-bonus').querySelector('span'); if(bb) bb.innerHTML = fmtNum(BET*BONUS_COST_MULT)+' 🪙';   /* le texte BUY BONUS est dans l'image, on n'affiche que le coût */
 }
 $('bet-dn').addEventListener('click', ()=>{ if(busy) return; if(betIdx>0){ betIdx--; updateBetUI(); } });
 $('bet-up').addEventListener('click', ()=>{ if(busy) return; if(betIdx<BET_LEVELS.length-1){ betIdx++; updateBetUI(); } });

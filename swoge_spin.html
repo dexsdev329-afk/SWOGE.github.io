@@ -295,7 +295,15 @@
   #box-dep .pscroll::-webkit-scrollbar, #box-wd .pscroll::-webkit-scrollbar, #box-wallet .pscroll::-webkit-scrollbar, #box-stake .pscroll::-webkit-scrollbar { width:0; height:0; display:none; }
   /* Plaques-titres image */
   .ptitle { width:62%; min-width:190px; max-width:280px; height:auto; background:center/100% 100% no-repeat; margin:4px auto 10px; filter:drop-shadow(0 2px 6px rgba(0,0,0,.5)); }
-  #stClaim { max-width:78% !important; margin:8px auto !important; display:block; }
+  #stClaim { display:block; width:76% !important; max-width:270px; margin:10px auto !important; }
+  /* Boutons d'action : block, centres, 76% (PC + mobile) — pas de debordement/chevauchement */
+  #box-dep .brow, #box-wd .brow, #box-stake .brow { display:block; margin-top:12px; }
+  #box-dep .abtn.aimg, #box-wd .abtn.aimg, #box-stake .abtn.aimg,
+  #box-dep .abtn.closeimg, #box-wd .abtn.closeimg, #box-stake .abtn.closeimg { display:block; width:76%; max-width:270px; margin:10px auto !important; }
+  /* Inputs : contraints + centres pour ne pas toucher/deborder le cadre */
+  #box-dep input, #box-wd input, #box-wallet input, #box-stake input { display:block; max-width:280px; margin-left:auto; margin-right:auto; }
+  /* Stats (strow) centrees partout (au lieu d'etre etalees jusqu'aux bords) */
+  #box-dep .strow, #box-wd .strow, #box-wallet .strow, #box-stake .strow { justify-content:center; gap:14px; }
   .ptitle.pt-deposit { aspect-ratio:440/186; }
   .ptitle.pt-withdraw { aspect-ratio:440/191; }
   .ptitle.pt-stake { aspect-ratio:440/138; }

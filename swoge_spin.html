@@ -436,11 +436,15 @@
     #hud { top:50%; bottom:auto; right:2vw; transform:translateY(-50%);
            flex-direction:column; align-items:flex-end; gap:1.4vh; }
     /* PC : solde en HAUT à droite (sous la plaque 100★) ; bouton menu en BAS à droite (près de TURBO) */
-    #bal-chip { position:fixed; top:12vh; right:2vw; transform:none; font-size:2vh; padding:1.1vh 1.8vh; }
+    /* solde : coin HAUT-DROIT du carré de jeu (centré), au premier plan */
+    #bal-chip { position:fixed; left:auto; top:calc(60vh - min(27vh,26vw) - 3vh); right:calc(50vw - min(27vh,26vw) - 1vh); transform:none; font-size:2vh; padding:1vh 1.6vh; z-index:230; }
     #connectBtn,#emailBtn { font-size:1.5vh; padding:1.2vh 2vh; }
-    #menuBtn { position:fixed; bottom:2.6vh; right:2vw; transform:none; width:6vh; height:6vh; font-size:2.7vh; }
+    /* bouton menu : coin BAS-DROIT, a droite de TURBO */
+    #menuBtn { position:fixed; top:auto; bottom:2vh; right:1vw; transform:none; width:5.6vh; height:5.6vh; font-size:2.6vh; z-index:230; }
     /* menu déroulant collé à droite du jeu */
-    .pmenu { top:50%; bottom:auto; right:.6vw; transform:translateY(-50%); }
+    /* menu deroulant : colle a la bordure DROITE du jeu, plus grand */
+    .pmenu { left:calc(50vw + min(27vh,26vw) + 1.5vh); right:auto; top:60%; bottom:auto; transform:translateY(-50%); min-width:360px; border-width:26px; border-image-width:26px; padding:22px 18px !important; }
+    .pmenu a.mi { height:60px; }
     /* Daily Quests : cadre BEAUCOUP plus grand sur PC */
     #box-quests { width:min(760px,60vw); max-width:none; max-height:94vh; border-width:52px; border-image-width:52px; }
     #box-quests .qscroll { max-height:calc(94vh - 160px); padding:30px 60px 22px; }

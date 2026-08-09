@@ -676,7 +676,7 @@
 <button id="music-btn" title="Musique">🔊</button>
 
 <!-- ===== HUD compte (même solde/menu que les autres jeux) ===== -->
-<div id="verTag" style="position:fixed;bottom:3px;left:5px;font-size:10px;font-family:monospace;color:rgba(255,213,74,.6);z-index:99999;pointer-events:none">BUILD 34</div>
+<div id="verTag" style="position:fixed;bottom:3px;left:5px;font-size:10px;font-family:monospace;color:rgba(255,213,74,.6);z-index:99999;pointer-events:none">BUILD 35</div>
 <div id="hud">
   <span id="bal-chip"><span class="statusdot" id="dot"></span><b id="bal">—</b> $SWOGE</span>
   <button id="connectBtn">🔗 Wallet</button>
@@ -1504,12 +1504,15 @@ function serverBuyBonus(bet){ return new Promise((res,rej)=>{ if(!(ws&&ws.readyS
 
 function connect(){
   try{ ws=new WebSocket(SERVER_URL); }catch(e){ setDot(false); return; }
-  ws.onopen=function(){ setDot(true); if(myAddr) doLogin(); };
+  ws.onopen=function(){ setDot(true); loginNonce=null; };   /* login declenche par 'hello' */
   ws.onclose=function(){ setDot(false); authed=false; setTimeout(connect,3000); };
   ws.onerror=function(){ setDot(false); };
   ws.onmessage=function(ev){ var m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
     if(m.type==='state') return;
-    if(m.type==='hello'){ loginNonce=m.loginNonce; if(m.vault)VAULT=m.vault; if(m.token)TOKEN=m.token; if(m.minWithdraw)MIN_WITHDRAW=m.minWithdraw; }
+    if(m.type==='hello'){ loginNonce=m.loginNonce; if(m.vault)VAULT=m.vault; if(m.token)TOKEN=m.token; if(m.minWithdraw)MIN_WITHDRAW=m.minWithdraw;
+      /* le nonce n'existe QU'ICI : c'est le seul endroit ou l'on peut relancer la
+         session sauvegardee. ws.onopen se declenche avant ce message. */
+      if(myAddr) doLogin(); }
     else if(m.type==='auth'){ authed=true; myAddr=m.address; onAuthed(); setBalance(m.balance); if(m.stake) setStakeInfo(m.stake); if(m.quests) renderQuests(m.quests); if(m.bonus) renderBonus(m.bonus); if(m.welcomeGranted>0) gtoast('🎁 Welcome! +'+m.welcomeGranted+' $SWOGE to try'); if(m.volcano&&m.volcano.meter!=null){ collectMeter=m.volcano.meter; setMeterUI(); } }
     else if(m.type==='balance'||m.type==='deposit'){ setBalance(m.balance); if(m.type==='deposit') gtoast('💰 Deposit credited'); }
     else if(m.type==='volcanoResult'){ if(pendingVolcano){ var pv=pendingVolcano; pendingVolcano=null; pv.res(m); } }

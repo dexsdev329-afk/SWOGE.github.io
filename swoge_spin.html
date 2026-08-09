@@ -506,7 +506,7 @@
            flex-direction:column; align-items:flex-end; gap:1.4vh; }
     /* PC : solde en HAUT à droite (sous la plaque 100★) ; bouton menu en BAS à droite (près de TURBO) */
     /* solde : coin HAUT-DROIT du carré de jeu (centré), au premier plan */
-    #bal-chip { position:fixed; left:auto; top:calc(60vh - min(27vh,26vw) - 3vh); right:calc(50vw - min(27vh,26vw) - 1vh); transform:none; font-size:2vh; padding:1vh 1.6vh; z-index:230; }
+    #bal-chip { position:fixed; left:auto; top:calc(60vh - min(27vh,26vw) + 3vh); right:calc(50vw - min(27vh,26vw) + 1vh); transform:none; font-size:1.9vh; padding:.9vh 1.5vh; z-index:230; }
     #connectBtn,#emailBtn { font-size:1.6vh; padding:1.2vh 2.2vh; display:inline-block !important; }
     #connectBtn { box-shadow:0 0 14px rgba(255,213,74,.5); }
     /* bouton menu : coin BAS-DROIT, a droite de TURBO */
@@ -601,11 +601,11 @@
 <button id="music-btn" title="Musique">🔊</button>
 
 <!-- ===== HUD compte (même solde/menu que les autres jeux) ===== -->
-<div id="verTag" style="position:fixed;bottom:3px;left:5px;font-size:10px;font-family:monospace;color:rgba(255,213,74,.6);z-index:99999;pointer-events:none">BUILD 22</div>
+<div id="verTag" style="position:fixed;bottom:3px;left:5px;font-size:10px;font-family:monospace;color:rgba(255,213,74,.6);z-index:99999;pointer-events:none">BUILD 24</div>
 <div id="hud">
   <span id="bal-chip"><span class="statusdot" id="dot"></span><b id="bal">—</b> $SWOGE</span>
   <button id="connectBtn">🔗 Wallet</button>
-  <button id="emailBtn">✉️ Email</button>
+  <button id="emailBtn">✉️ Sign in</button>
   <button id="menuBtn">☰</button>
 </div>
 <div class="pmenu" id="pmenu">
@@ -1567,7 +1567,7 @@ $('emVerify').onclick=async function(){ var c=($('emCode').value||'').trim(); if
   try{ tg.ready(); tg.expand(); if(tg.setHeaderColor) tg.setHeaderColor('#170a33'); if(tg.setBackgroundColor) tg.setBackgroundColor('#170a33'); }catch(e){}
   // Dans Telegram, window.ethereum n'existe pas → on cache "Connect" et on garde l'email.
   var cb=$('connectBtn'); if(cb) cb.style.display='none';
-  var eb=$('emailBtn'); if(eb) eb.textContent='✉️ Se connecter';
+  var eb=$('emailBtn'); if(eb) eb.textContent='✉️ Sign in';
 })();
 
 connect();

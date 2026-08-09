@@ -297,10 +297,10 @@
   .ptitle { width:62%; min-width:190px; max-width:280px; height:auto; background:center/100% 100% no-repeat; margin:4px auto 10px; filter:drop-shadow(0 2px 6px rgba(0,0,0,.5)); }
   /* Boutons d'action : inline-block centre via text-align (robuste iOS), plus petits, pas de chevauchement */
   #box-dep .pscroll, #box-wd .pscroll, #box-stake .pscroll { text-align:center; }
-  #box-dep .brow, #box-wd .brow, #box-stake .brow { display:block; text-align:center; margin-top:10px; }
-  #box-dep .abtn.aimg, #box-wd .abtn.aimg, #box-stake .abtn.aimg,
-  #box-dep .abtn.closeimg, #box-wd .abtn.closeimg, #box-stake .abtn.closeimg,
-  #stClaim { display:inline-block; width:76% !important; max-width:220px !important; margin:8px auto !important; vertical-align:top; float:none; }
+  #box-dep .brow, #box-wd .brow, #box-stake .brow { display:block !important; text-align:center !important; margin-top:10px; }
+  /* FIX: aspect-ratio:auto + hauteur explicite = largeur enfin bornee (le conflit venait de aspect-ratio + .box .abtn{flex:1}) */
+  #box-dep .abtn.aimg, #box-wd .abtn.aimg, #box-stake .abtn.aimg, #stClaim { display:block !important; width:232px !important; max-width:86% !important; height:62px !important; aspect-ratio:auto !important; min-width:0 !important; margin:9px auto !important; float:none !important; flex:none !important; }
+  #box-dep .abtn.closeimg, #box-wd .abtn.closeimg, #box-stake .abtn.closeimg { display:block !important; width:232px !important; max-width:86% !important; height:47px !important; aspect-ratio:auto !important; min-width:0 !important; margin:9px auto !important; float:none !important; flex:none !important; }
   /* Inputs : contraints + centres pour ne pas toucher/deborder le cadre */
   #box-dep input, #box-wd input, #box-wallet input, #box-stake input { display:block; max-width:280px; margin-left:auto; margin-right:auto; }
   /* Stats (strow) centrees partout (au lieu d'etre etalees jusqu'aux bords) */
@@ -510,10 +510,11 @@
     #connectBtn,#emailBtn { font-size:1.6vh; padding:1.2vh 2.2vh; display:inline-block !important; }
     #connectBtn { box-shadow:0 0 14px rgba(255,213,74,.5); }
     /* bouton menu : coin BAS-DROIT, a droite de TURBO */
-    #menuBtn { position:fixed; top:auto; bottom:13vh; right:2vw; left:auto; transform:none; width:6.4vh; height:6.4vh; font-size:3vh; z-index:230; background:rgba(0,0,0,.6); border:2px solid rgba(255,213,74,.7); }
+    #menuBtn { position:fixed; top:calc(60vh - min(27vh,26vw) - 1vh); bottom:auto; right:auto; left:calc(50vw + min(27vh,26vw) + 1.5vh + 145px); transform:none; width:6vh; height:6vh; font-size:2.8vh; z-index:240; background:rgba(0,0,0,.6); border:2px solid rgba(255,213,74,.7); }
     /* menu déroulant collé à droite du jeu */
     /* menu deroulant : colle a la bordure DROITE du jeu, plus grand */
-    .pmenu { right:2vw; left:auto; top:auto; bottom:21vh; transform:none; min-width:340px; border-width:26px; border-image-width:26px; padding:22px 18px !important; }
+    .pmenu { left:calc(50vw + min(27vh,26vw) + 1.5vh); right:auto; top:calc(60vh - min(27vh,26vw) + 4.5vh); bottom:auto; transform:none; min-width:300px; border-width:24px; border-image-width:24px; padding:16px 14px !important; }
+    .pmenu a.mi { height:46px; }
     .pmenu a.mi { height:60px; }
     /* Daily Quests : cadre BEAUCOUP plus grand sur PC */
     #box-quests { width:min(760px,60vw); max-width:none; max-height:94vh; border-width:52px; border-image-width:52px; }
@@ -600,7 +601,7 @@
 <button id="music-btn" title="Musique">🔊</button>
 
 <!-- ===== HUD compte (même solde/menu que les autres jeux) ===== -->
-<div id="verTag" style="position:fixed;bottom:3px;left:5px;font-size:10px;font-family:monospace;color:rgba(255,213,74,.6);z-index:99999;pointer-events:none">BUILD 18</div>
+<div id="verTag" style="position:fixed;bottom:3px;left:5px;font-size:10px;font-family:monospace;color:rgba(255,213,74,.6);z-index:99999;pointer-events:none">BUILD 19</div>
 <div id="hud">
   <span id="bal-chip"><span class="statusdot" id="dot"></span><b id="bal">—</b> $SWOGE</span>
   <button id="connectBtn">🔗 Wallet</button>

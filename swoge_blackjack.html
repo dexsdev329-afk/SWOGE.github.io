@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="en">
 <head>
@@ -773,13 +772,15 @@
   // ---- ws ----
   function connect(){
     try{ ws=new WebSocket(SERVER_URL); }catch(e){ setDot(false); return; }
-    ws.onopen=function(){ setDot(true); if(myAddr) doLogin(); };
+    ws.onopen=function(){ setDot(true); loginNonce=null; };   /* login declenche par 'hello' */
     ws.onclose=function(){ setDot(false); authed=false; setTimeout(connect,3000); };
     ws.onerror=function(){ setDot(false); };
     ws.onmessage=function(ev){
       var m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
       if(m.type==="state") return;
-      if(m.type==="hello"){ loginNonce=m.loginNonce; if(m.vault)VAULT=m.vault; if(m.token)TOKEN=m.token; if(m.minWithdraw)MIN_WITHDRAW=m.minWithdraw; showFair({serverSeedHash:m.serverSeedHash,nonce:0}); }
+      if(m.type==="hello"){ loginNonce=m.loginNonce; if(m.vault)VAULT=m.vault; if(m.token)TOKEN=m.token; if(m.minWithdraw)MIN_WITHDRAW=m.minWithdraw; showFair({serverSeedHash:m.serverSeedHash,nonce:0});
+        /* le nonce n'arrive qu'ici : on relance la session sauvegardee maintenant */
+        if(myAddr) doLogin(); }
       else if(m.type==="auth"){ authed=true; myAddr=m.address; setBalance(m.balance); showPlay(); if(m.fairness) showFair(m.fairness); if(m.bj) render(m.bj); else idleUI(); if(m.stake) setStakeInfo(m.stake); if(m.quests) renderQuests(m.quests); if(m.bonus) renderBonus(m.bonus); if(m.welcomeGranted>0) toast("🎁 Welcome! +"+m.welcomeGranted+" $SWOGE to try"); }
       else if(m.type==="balance"||m.type==="deposit"){ setBalance(m.balance); if(m.type==="deposit") toast("💰 Deposit credited"); }
       else if(m.type==="bj"){ render(m.state); }

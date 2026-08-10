@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html lang="en">
 <head>
@@ -504,7 +505,9 @@
   // ---- wallet (ethers signer → enables login + on-chain deposit/withdraw) ----
   async function doConnect(){
     var eth=window.ethereum;
-    if(!eth){ toast("Open in your wallet's browser, or use the Pusher to create a wallet"); location.href="swoge_pusher_live.html"; return; }
+    if(!eth){ /* pas de wallet injecte (Telegram) : connexion e-mail sur place,
+                    pas de redirection vers un autre jeu */
+                 openEmailLogin(); return; }
     try{
       await eth.request({method:"eth_requestAccounts"});
       var cid=await eth.request({method:"eth_chainId"});
@@ -538,10 +541,13 @@
     document.head.appendChild(s);
   }); }
   async function openEmailLogin(){
-    try{ await loadPrivy(); }catch(e){ toast("Couldn't load email login"); return; }
+    /* le panneau s'ouvre AVANT le chargement du SDK : un reseau lent ne doit pas
+       laisser le joueur sans aucun moyen de se connecter */
     $("emCodeWrap").style.display="none"; $("emCode").value="";
     $("emMsg").textContent="A wallet is created for you automatically — no app needed.";
     showBox("email");
+    try{ await loadPrivy(); }
+    catch(e){ $("emMsg").textContent="Couldn't load email sign-in — check your connection and reopen this panel."; }
   }
 
   function showPlay(){ connectBtn.style.display="none"; var eb=$("emailBtn"); if(eb)eb.style.display="none"; smashBtn.style.display=""; costline.style.display=""; updateSmash(); }

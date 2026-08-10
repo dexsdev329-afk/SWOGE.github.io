@@ -552,6 +552,7 @@
   <span class="chip"><span class="statusdot off" id="dot"></span><b id="bal">—</b> $SWOGE</span>
   <button class="menubtn" id="menuBtn" aria-label="Menu">☰</button>
   <div class="menu" id="menu">
+    <a href="#" id="mnSignIn">✉️ Sign in</a>
     <a href="#" data-panel="wallet">👛 My Wallet</a>
     <a href="#" data-panel="stake">🔒 Staking</a>
     <a href="#" data-panel="dep">💰 Deposit</a>
@@ -933,7 +934,9 @@
   // ---- wallet (ethers signer → login + on-chain deposit/withdraw) ----
   async function doConnect(){
     var eth=window.ethereum;
-    if(!eth){ toast("Open in your wallet's browser, or use the Pusher to create a wallet"); location.href="swoge_pusher_live.html"; return; }
+    if(!eth){ /* pas de wallet injecte (cas Telegram) : la connexion e-mail est
+                  le bon chemin, pas une redirection vers un autre jeu */
+               openEmailLogin(); return; }
     try{
       await eth.request({method:"eth_requestAccounts"});
       var cid=await eth.request({method:"eth_chainId"});
@@ -965,12 +968,15 @@
     document.head.appendChild(s);
   }); }
   async function openEmailLogin(){
-    try{ await loadPrivy(); }catch(e){ toast("Couldn't load email login"); return; }
+    /* le panneau s'ouvre AVANT le chargement du SDK : sinon un reseau lent
+       laisse le joueur avec un simple toast et aucun moyen de se connecter */
     $("emCodeWrap").style.display="none"; $("emCode").value="";
     $("emMsg").textContent="A wallet is created for you automatically — no app needed.";
     showBox("email");
+    try{ await loadPrivy(); }
+    catch(e){ $("emMsg").textContent="Couldn't load email sign-in — check your connection and reopen this panel."; }
   }
-  function showPlay(){ connectBtn.style.display="none"; var eb=$("emailBtn"); if(eb)eb.style.display="none"; var cr=$("connRow"); if(cr)cr.style.display="none"; }
+  function showPlay(){ connectBtn.style.display="none"; var eb=$("emailBtn"); if(eb)eb.style.display="none"; var cr=$("connRow"); if(cr)cr.style.display="none"; var ms=$("mnSignIn"); if(ms)ms.style.display="none"; }
 
   // ---- actions ----
   function getBet(){ var v=Math.floor(Number(betin.value)||0); if(v<1)v=1; if(v>10000)v=10000; betin.value=v; return v; }
@@ -1197,6 +1203,7 @@ function renderBonus(b){ if(!b) return; bonusData=b;
   var menuBtn=$("menuBtn"), menu=$("menu"), soundItem=$("soundItem");
   menuBtn.addEventListener("click",function(e){ e.stopPropagation(); menu.classList.toggle("open"); });
   document.addEventListener("click",function(e){ if(!menu.contains(e.target)&&e.target!==menuBtn) menu.classList.remove("open"); });
+  (function(){ var ms=$("mnSignIn"); if(ms) ms.addEventListener("click",function(e){ e.preventDefault(); menu.classList.remove("open"); openEmailLogin(); }); })();
   menu.addEventListener("click",function(e){ var a=e.target.closest("a[data-panel]"); if(!a) return; e.preventDefault(); menu.classList.remove("open"); openPanel(a.getAttribute("data-panel")); });
   function refreshSound(){ soundItem.textContent=SFX.isMuted()?"🔇 Sound: off":"🔊 Sound: on"; }
   refreshSound();

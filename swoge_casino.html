@@ -378,6 +378,37 @@
 .ca-mini{ font:inherit; font-size:12.5px; font-weight:700; padding:7px 12px; border-radius:9px;
   cursor:pointer; color:var(--dim); background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); }
 
+/* le gain, en clair, sous le bandeau */
+.ca-net{ display:none; text-align:center; margin:6px auto 0; }
+.ca-net.on{ display:block; }
+.ca-net b{ display:block; font-size:clamp(20px,5.4vw,32px); font-weight:900; line-height:1.05;
+  text-shadow:0 2px 5px rgba(0,0,0,.95); }
+.ca-net.gain b{ color:#7CFF9B; }
+.ca-net.perte b{ color:#F2685E; }
+.ca-net.nul b{ color:#E7C97A; }
+.ca-net i{ display:block; font-style:normal; font-size:clamp(10px,2.4vw,12.5px);
+  color:var(--dim); margin-top:2px; line-height:1.35; }
+
+/* historique des mains */
+.ca-hist{ margin:12px auto 0; max-width:520px; }
+.ca-hist h4{ margin:0 0 5px; font-size:12px; letter-spacing:1.2px; text-transform:uppercase; color:#E7C97A; }
+.ca-hist table{ width:100%; border-collapse:collapse; font-size:12px; }
+.ca-hist th{ text-align:left; font-weight:700; color:var(--dim); padding:3px 0;
+  border-bottom:1px solid rgba(230,165,55,.22); font-size:11px; }
+.ca-hist th:last-child, .ca-hist td:last-child{ text-align:right; }
+.ca-hist td{ padding:3px 0; border-bottom:1px solid rgba(255,255,255,.05); color:var(--dim); }
+.ca-hist td.g{ color:#7CFF9B; font-weight:800; }
+.ca-hist td.p{ color:#F2685E; font-weight:800; }
+.ca-hist td.n{ color:#E7C97A; font-weight:800; }
+.ca-hist .vide{ color:var(--dim); font-size:12px; padding:6px 0; }
+
+@media (min-width:1180px){
+  /* sur grand ecran l'historique se met a droite du tapis, pas dessous */
+  .cawrap{ max-width:1240px; overflow:visible; }
+  .ca-main{ display:grid; grid-template-columns:1fr 300px; gap:20px; align-items:start; }
+  .ca-hist{ margin:0; max-width:none; }
+}
+
 /* table des gains */
 .ca-pay{ margin:10px auto 0; max-width:520px; font-size:12px; color:var(--dim); }
 .ca-pay h4{ margin:0 0 4px; font-size:12px; letter-spacing:1.2px; text-transform:uppercase; color:#E7C97A; }
@@ -688,6 +719,8 @@
       <button data-g="three">Three Card</button>
     </div>
 
+    <div class="ca-main">
+     <div>
     <div class="ca-felt" id="caFelt">
       <div class="ca-dealer" id="caDealerAv"></div>
       <div class="ca-who dealer">Dealer</div>
@@ -698,6 +731,7 @@
     </div>
 
     <div class="ca-banner" id="caBanner"></div>
+    <div class="ca-net" id="caNet"><b></b><i></i></div>
 
     <div class="ca-target" id="caTarget">
       <button data-t="ante" class="on">Ante</button>
@@ -711,6 +745,11 @@
     <div class="ca-foot">
       <button class="ca-mini" id="caRebet">&#8635; Rebet</button>
       <a class="ca-mini" href="swoge_poker.html" style="text-decoration:none">&#8617; All tables</a>
+    </div>
+
+     </div>
+
+     <div class="ca-hist" id="caHist"></div>
     </div>
 
     <div class="ca-pay" id="caPay"></div>
@@ -991,7 +1030,7 @@
       if(fini && st.dealer && st.dealer.length) caFill($("caDealer"), st.dealer, 0);
       else caFill($("caDealer"), [], CA.game==="holdem"?2:3);
     }
-    caSpots(); caRail(); caActs(); caBanner(); caPay();
+    caSpots(); caRail(); caActs(); caBanner(); caNet(); caHist(); caPay();
   }
 
   function caActs(){
@@ -1023,7 +1062,51 @@
     else if(r.outcome==="fold"){ art=CAA.bnDealerWins; txt=r.payout>0?"Side bet +"+caFmt(r.payout):"Folded"; }
     else { art=CAA.bnDealerWins; txt=r.dealerHand||""; }
     b.className="ca-banner on"; b.style.backgroundImage="url("+JSON.stringify(art)+")";
-    b.innerHTML='<span>'+esc(txt)+'</span>';
+    b.innerHTML="";
+  }
+
+  /* Le montant gagne s'ecrivait sous le bandeau, par-dessus les boutons :
+     illisible. Il a sa propre ligne, en grand et colore. */
+  function caNet(){
+    var box=$("caNet"), st=CA.state;
+    if(!st || st.stage!=="done" || !st.result){ box.className="ca-net"; return; }
+    var r=st.result, net=r.net!=null?r.net:(r.payout-(r.staked||0));
+    box.className="ca-net on "+(net>0?"gain":net<0?"perte":"nul");
+    box.firstChild.textContent=(net>0?"+":"")+caFmt(net)+" $SWOGE";
+    var d=["staked "+caFmt(r.staked||0), "returned "+caFmt(r.payout)];
+    if(r.fee>0) d.push("house fee "+caFmt(r.fee));
+    if(r.playerHand) d.push("you: "+r.playerHand);
+    if(r.dealerHand) d.push("dealer: "+r.dealerHand);
+    box.lastChild.textContent=d.join(" \u00b7 ");
+  }
+
+  /* Historique : ce qu'on cherche quand on se demande si on gagne sur la duree.
+     En memoire de page uniquement, remis a zero au rechargement. */
+  var CA_HIST=[];
+  var CA_LABEL={ win:"Win", lose:"Dealer wins", push:"Push",
+                 dealer_not_qualified:"Not qualified", fold:"Folded" };
+  function caHist(){
+    var box=$("caHist");
+    if(!CA_HIST.length){ box.innerHTML='<h4>History</h4><div class="vide">No hands yet.</div>'; return; }
+    var total=CA_HIST.reduce(function(s,h){ return s+h.net; },0);
+    var tc = total>0?"#7CFF9B":total<0?"#F2685E":"#E7C97A";
+    box.innerHTML='<h4>History</h4><table>'+
+      '<tr><th>Game</th><th>Bet</th><th>Result</th><th>Net</th></tr>'+
+      CA_HIST.slice(0,14).map(function(h){
+        return '<tr><td>'+(h.game==="holdem"?"Hold&rsquo;em":"Three")+'</td>'+
+          '<td>'+caFmt(h.staked)+'</td><td>'+esc(h.label)+'</td>'+
+          '<td class="'+(h.net>0?"g":h.net<0?"p":"n")+'">'+(h.net>0?"+":"")+caFmt(h.net)+'</td></tr>';
+      }).join("")+
+      '<tr><th>'+CA_HIST.length+' hands</th><th></th><th></th>'+
+      '<th style="color:'+tc+'">'+(total>0?"+":"")+caFmt(total)+'</th></tr></table>';
+  }
+  function caPush(st){
+    var r=st.result; if(!r) return;
+    CA_HIST.unshift({ game:st.game, staked:r.staked||0,
+                      net:(r.net!=null?r.net:r.payout-(r.staked||0)),
+                      label:CA_LABEL[r.outcome]||r.outcome });
+    if(CA_HIST.length>60) CA_HIST.pop();
+    caHist();
   }
 
   function caEclat(){
@@ -1080,6 +1163,7 @@
         if(m.state){ CA.game=m.state.game; CA.last={ante:m.state.ante, side:m.state.side}; }
         caRender();
         if(m.state && m.state.stage==="done" && avant==="decide" && m.state.result){
+          caPush(m.state);
           var o=m.state.result.outcome;
           if(o==="win"||o==="dealer_not_qualified"){ caEclat(); if(SFX.win) SFX.win(); }
           else if(o!=="push" && SFX.lose) SFX.lose();

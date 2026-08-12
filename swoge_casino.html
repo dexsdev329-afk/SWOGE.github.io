@@ -328,13 +328,21 @@
 .ca-spots{ position:absolute; left:0; right:0; bottom:3%; display:flex;
   justify-content:space-evenly; align-items:flex-end; }
 .ca-spot{ text-align:center; width:26%; }
-.ca-spot .disc{ width:56%; aspect-ratio:1; margin:0 auto 2px; border-radius:50%;
-  border:2px solid rgba(230,165,55,.5); display:flex; align-items:center; justify-content:center;
-  font-size:clamp(9px,2.4vw,14px); font-weight:900; color:#FFD97A; background:rgba(0,0,0,.35);
-  text-shadow:0 1px 3px rgba(0,0,0,.9); }
-.ca-spot.on .disc{ border-color:#F2C14E; box-shadow:0 0 10px rgba(242,193,78,.55); }
-.ca-spot .nm{ font-size:clamp(7px,1.8vw,11px); font-weight:800; letter-spacing:.8px;
-  text-transform:uppercase; color:#E7C97A; opacity:.8; }
+/* La case de mise : un anneau vide tant qu'on n'a rien pose, puis une VRAIE
+   pile de jetons, comme sur une table. Chaque jeton est empile en decalant
+   vers le haut, le plus gros dessous. */
+.ca-spot .disc{ position:relative; width:58%; aspect-ratio:1; margin:0 auto 1px;
+  border-radius:50%; border:2px dashed rgba(230,165,55,.35); background:rgba(0,0,0,.28); }
+.ca-spot.on .disc{ border-color:transparent; background:none; }
+.ca-spot .disc .ch{ position:absolute; left:0; width:100%; aspect-ratio:1;
+  background-repeat:no-repeat; background-position:center; background-size:100% 100%;
+  filter:drop-shadow(0 2px 3px rgba(0,0,0,.7)); animation:caChip .22s ease both; }
+@keyframes caChip{ from{ transform:translateY(-14px) scale(.8); opacity:0; } to{ opacity:1; } }
+.ca-spot .tot{ position:absolute; left:-25%; right:-25%; bottom:-24%; text-align:center;
+  font-size:clamp(9px,2.4vw,14px); font-weight:900; color:#FFD97A;
+  text-shadow:0 1px 3px rgba(0,0,0,.95), 0 0 8px rgba(0,0,0,.85); }
+.ca-spot .nm{ margin-top:14%; font-size:clamp(7px,1.8vw,11px); font-weight:800;
+  letter-spacing:.8px; text-transform:uppercase; color:#E7C97A; opacity:.8; }
 
 /* bandeau de resultat */
 .ca-banner{ min-height:1px; margin:8px auto 0; text-align:center; position:relative; }
@@ -402,10 +410,19 @@
 .ca-hist td.n{ color:#E7C97A; font-weight:800; }
 .ca-hist .vide{ color:var(--dim); font-size:12px; padding:6px 0; }
 
+/* colonne d'equilibrage : masquee tant qu'on n'est pas en trois colonnes.
+   Cette regle doit venir AVANT la media query, sinon elle l'ecrase et le
+   tapis retombe dans la premiere colonne. */
+.ca-main > .ca-vide{ display:none; }
+
 @media (min-width:1180px){
-  /* sur grand ecran l'historique se met a droite du tapis, pas dessous */
-  .cawrap{ max-width:1240px; overflow:visible; }
-  .ca-main{ display:grid; grid-template-columns:1fr 300px; gap:20px; align-items:start; }
+  /* L'historique se met a droite du tapis. Une colonne vide de meme largeur a
+     gauche garde le tapis parfaitement CENTRE : sans elle, l'historique le
+     pousserait vers la gauche. */
+  .cawrap{ max-width:1320px; overflow:visible; }
+  .ca-main{ display:grid; grid-template-columns:300px minmax(0,1fr) 300px;
+    gap:20px; align-items:start; }
+  .ca-main > .ca-vide{ display:block; }
   .ca-hist{ margin:0; max-width:none; }
 }
 
@@ -720,6 +737,7 @@
     </div>
 
     <div class="ca-main">
+     <div class="ca-vide" aria-hidden="true"></div>
      <div>
     <div class="ca-felt" id="caFelt">
       <div class="ca-dealer" id="caDealerAv"></div>
@@ -1004,14 +1022,40 @@
     });
   }
 
+  /* Une mise se decompose en vrais jetons, du plus gros au plus petit, comme
+     on les poserait sur le tapis. On plafonne la pile a 6 pour qu'elle reste
+     lisible : le total est ecrit dessous de toute facon. */
+  function caPile(montant){
+    if(!(montant>0)) return "";
+    var reste=montant, pile=[];
+    for(var i=CA_CHIPS.length-1;i>=0 && pile.length<9;i--){
+      var v=CA_CHIPS[i][1];
+      while(reste>=v && pile.length<9){ pile.push(CA_CHIPS[i][0]); reste-=v; }
+    }
+    if(!pile.length) pile.push(CA_CHIPS[0][0]);
+    var vus=pile.slice(0,6);
+    return vus.map(function(k,n){
+      /* SURTOUT PAS JSON.stringify ici : ses guillemets doubles fermeraient
+         l'attribut style="" en plein milieu et l'image serait perdue. Une
+         data URI ne contient jamais d'apostrophe, donc on encadre avec ça. */
+      return "<div class='ch' style=\"bottom:"+(n*11)+"%;z-index:"+n+
+             ";animation-delay:"+(n*0.04).toFixed(2)+"s"+
+             ";background-image:url('"+CAA[k]+"')\"></div>";
+    }).join("")+'<div class="tot">'+caFmt(montant)+'</div>';
+  }
+
   function caSpots(){
     var box=$("caSpots"), st=CA.state;
     var side=CA.game==="holdem"?"AA Bonus":"Pair Plus";
     var ante = st ? st.ante : CA.ante, sd = st ? st.side : CA.side;
+    // Au Hold'em suivre engage 2x l'Ante, au Three Card 1x : la case Call
+    // montre ce qui part vraiment quand on suit.
+    var suivi = (st && st.stage==="done" && st.result && st.result.outcome!=="fold")
+      ? ante*(CA.game==="holdem"?2:1) : 0;
     box.innerHTML=
-      '<div class="ca-spot'+(sd>0?" on":"")+'"><div class="disc">'+(sd>0?caFmt(sd):"")+'</div><div class="nm">'+side+'</div></div>'+
-      '<div class="ca-spot'+(ante>0?" on":"")+'"><div class="disc">'+(ante>0?caFmt(ante):"")+'</div><div class="nm">Ante</div></div>'+
-      '<div class="ca-spot"><div class="disc"></div><div class="nm">'+(CA.game==="holdem"?"Call":"Play")+'</div></div>';
+      '<div class="ca-spot'+(sd>0?" on":"")+'"><div class="disc">'+caPile(sd)+'</div><div class="nm">'+side+'</div></div>'+
+      '<div class="ca-spot'+(ante>0?" on":"")+'"><div class="disc">'+caPile(ante)+'</div><div class="nm">Ante</div></div>'+
+      '<div class="ca-spot'+(suivi>0?" on":"")+'"><div class="disc">'+caPile(suivi)+'</div><div class="nm">'+(CA.game==="holdem"?"Call":"Play")+'</div></div>';
   }
 
   function caRender(){

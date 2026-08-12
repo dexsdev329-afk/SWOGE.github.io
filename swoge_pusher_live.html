@@ -599,14 +599,15 @@ function wsSend(o){ if(ws&&ws.readyState===1) ws.send(JSON.stringify(o)); }
 
 function onServer(m){
   if(m.type==="hello"){
-    loginNonce=m.loginNonce; VAULT=m.vault||VAULT; TOKEN=m.token||TOKEN; MIN_WITHDRAW=m.minWithdraw||MIN_WITHDRAW;
+    loginNonce=m.loginNonce; /* Le jeton de session evite de resigner : on le presente des que le nonce est connu. Le serveur repond soit par 'auth' — connecte, sans SDK ni signature — soit par 'resumeFailed'. */ (function(){ var j=null; try{ j=localStorage.getItem("swogeSession"); }catch(e){} if(j) send({type:"resume", token:j, tgId:(typeof TG_ID!=="undefined"?TG_ID:null)}); })(); VAULT=m.vault||VAULT; TOKEN=m.token||TOKEN; MIN_WITHDRAW=m.minWithdraw||MIN_WITHDRAW;
     $("#minW").textContent=MIN_WITHDRAW;
     if(m.jackpot!=null) setJackpot(m.jackpot);
     if(m.leaderboard) renderLeaderboard(m.leaderboard);
     if(myAddr) doLogin(); // reconnected while wallet already connected
   }
   else if(m.type==="state"){ applyState(m); }
-  else if(m.type==="auth"){ authed=true; myAddr=m.address; setStatus(""); $("#status").style.display="none"; setBalance(m.balance); showPlayUI(); if(m.quests) renderQuests(m.quests); if(m.stake) setStakeInfo(m.stake); }
+  if(m.type==="resumeFailed"){ /* jeton perime ou revoque : on l oublie et on repart du chemin long */ try{ localStorage.removeItem("swogeSession"); }catch(e){} if(typeof autoReconnect==="function") autoReconnect(); else if(myAddr) doLogin(); return; }
+      else if(m.type==="auth"){ authed=true; myAddr=m.address; if(m.session){ try{ localStorage.setItem("swogeSession",m.session); }catch(e){} } setStatus(""); $("#status").style.display="none"; setBalance(m.balance); showPlayUI(); if(m.quests) renderQuests(m.quests); if(m.stake) setStakeInfo(m.stake); }
   else if(m.type==="balance"||m.type==="deposit"){ setBalance(m.balance); if(m.type==="deposit"){ toast("💰 Deposit credited"); SFX.ding(); } }
   else if(m.type==="win"){ setBalance(m.balance); showWin(m.value); SFX.win(m.value); }
   else if(m.type==="ticker"){ addTicker(m.name,m.value); }
@@ -937,7 +938,7 @@ async function doSend(){
 }
 function copyAddr(){ var t=myAddr||""; try{ navigator.clipboard.writeText(t); toast("Address copied"); }catch(e){ var i=$("#acAddr"); i.focus(); i.select(); try{document.execCommand("copy");}catch(_){}; toast("Address copied"); } }
 async function doLogout(){
-  try{ localStorage.removeItem("swogeAuth"); }catch(e){}
+  try{ localStorage.removeItem("swogeAuth"); try{ localStorage.removeItem("swogeSession"); }catch(e){} }catch(e){}
   try{ if(window.SwogePrivy && SwogePrivy.isLoggedIn && SwogePrivy.isLoggedIn()) await SwogePrivy.logout(); }catch(e){}
   authed=false; myAddr=null; provider=null; signer=null; rawEth=null;
   // reset the HUD back to the logged-out state

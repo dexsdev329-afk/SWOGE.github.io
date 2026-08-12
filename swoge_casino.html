@@ -470,6 +470,53 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
 .ca-mini{ font:inherit; font-size:12.5px; font-weight:700; padding:7px 12px; border-radius:9px;
   cursor:pointer; color:var(--dim); background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); }
 
+/* ---------------------------- Hi-Lo ---------------------------- */
+.hl-titre{ text-align:center; font-family:'Anton',sans-serif;
+  font-size:clamp(28px,8vw,46px); letter-spacing:3px; margin:2px auto 8px;
+  color:transparent; background:linear-gradient(180deg,#FFE9A8,#E6A537 60%,#B87914);
+  -webkit-background-clip:text; background-clip:text;
+  text-shadow:0 3px 8px rgba(0,0,0,.6); }
+.hl{ max-width:560px; margin:6px auto 0; text-align:center; }
+.hl[hidden]{ display:none; }
+.hl-carte{ width:min(46%,190px); aspect-ratio:5/7; margin:6px auto 10px;
+  border-radius:12px; overflow:hidden; position:relative;
+  box-shadow:0 10px 26px rgba(0,0,0,.7), 0 0 0 2px rgba(230,165,55,.5); }
+.hl-carte img{ width:100%; height:100%; display:block; object-fit:cover;
+  animation:caDeal .3s ease both; }
+.hl-carte.vide{ background:linear-gradient(150deg,#6a2fb0,#2b1150);
+  border:1px solid rgba(230,165,55,.5); }
+/* Le multiplicateur est l'information que le joueur fixe entre deux clics :
+   il est le plus gros element de l'ecran. */
+.hl-multi{ font-weight:900; font-size:clamp(26px,8vw,46px); line-height:1;
+  color:#FFD97A; text-shadow:0 2px 6px rgba(0,0,0,.95); }
+.hl-multi small{ display:block; font-size:clamp(11px,2.8vw,14px); font-weight:700;
+  color:#CDBF9F; margin-top:3px; }
+.hl-boutons{ display:flex; gap:10px; justify-content:center; margin:12px auto 0;
+  max-width:420px; }
+.hl-b{ flex:1 1 0; font:inherit; font-weight:900; font-size:clamp(13px,3.4vw,17px);
+  padding:12px 6px; border-radius:12px; cursor:pointer; color:#0d1a08;
+  border:1px solid rgba(230,165,55,.6); transition:transform .08s, filter .12s; }
+.hl-b b{ display:block; letter-spacing:.6px; }
+.hl-b i{ display:block; font-style:normal; font-size:clamp(11px,2.8vw,14px);
+  font-weight:800; opacity:.78; margin-top:2px; }
+.hl-b.haut{ background:linear-gradient(180deg,#9CF5A8,#3FBF63); }
+.hl-b.bas{ background:linear-gradient(180deg,#FFB48F,#E0603A); color:#26100a; }
+.hl-b:active{ transform:translateY(2px) scale(.985); }
+.hl-b[disabled]{ opacity:.32; cursor:not-allowed; filter:grayscale(.5); }
+.hl-cash{ display:block; width:min(100%,300px); margin:10px auto 0; font:inherit;
+  font-weight:900; font-size:clamp(13px,3.4vw,16px); padding:12px; border-radius:12px;
+  cursor:pointer; color:#22130a; border:1px solid rgba(230,165,55,.7);
+  background:linear-gradient(180deg,#F2C14E,#C98A1E); }
+.hl-cash[disabled]{ opacity:.32; cursor:not-allowed; }
+.hl-note{ font-size:clamp(11px,2.7vw,13px); color:var(--dim); margin-top:9px; line-height:1.45; }
+/* la suite des cartes deja passees : on voit d'ou on vient */
+.hl-suite{ display:flex; gap:4px; justify-content:center; flex-wrap:wrap; margin-top:10px; min-height:1px; }
+.hl-suite .c{ width:clamp(22px,5.5vw,34px); aspect-ratio:5/7; border-radius:4px;
+  overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,.6); opacity:.75; }
+.hl-suite .c img{ width:100%; height:100%; display:block; object-fit:cover; }
+.hl-suite .c.rate{ box-shadow:0 0 0 2px #F2685E, 0 2px 6px rgba(0,0,0,.6); opacity:1; }
+.hl-suite .c.eg{ opacity:.4; }
+
 /* le gain, en clair, sous le bandeau */
 /* Le detail (mise, retour, commission) est deja dans l'historique : sous la
    table il ne faisait qu'allonger la page. Il ne reste que le montant. */
@@ -837,9 +884,11 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
   <div class="wrap cawrap">
     <div class="ca-title" id="caTitle" aria-label="SWOGE Casino"></div>
 
+    <div class="hl-titre" id="hlTitre" style="display:none">HI-LO</div>
     <div class="ca-pick" id="caPick">
       <button data-g="holdem" class="on">Casino Hold&rsquo;em</button>
       <button data-g="three">Three Card</button>
+      <button data-g="hilo">Hi-Lo</button>
       <button class="ca-info" id="caInfo" aria-label="Rules and paytables">&#9432;</button>
     </div>
 
@@ -856,6 +905,20 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
         <div class="ca-banner" id="caBanner"></div>
         <div class="ca-net" id="caNet"><b></b><i></i></div>
       </div>
+    </div>
+
+    <!-- Hi-Lo : il n'a ni cases de mise ni croupier, mais il partage le rail
+         de jetons et les boutons d'action, donc il vit dans la meme colonne. -->
+    <div class="hl" id="caHilo" hidden>
+      <div class="hl-carte" id="hlCarte"></div>
+      <div class="hl-multi" id="hlMulti"></div>
+      <div class="hl-boutons">
+        <button class="hl-b haut" id="hlUp"><b>HIGHER</b><i></i></button>
+        <button class="hl-b bas" id="hlDown"><b>LOWER</b><i></i></button>
+      </div>
+      <button class="hl-cash" id="hlCash">Cash out</button>
+      <div class="hl-note" id="hlNote"></div>
+      <div class="hl-suite" id="hlSuite"></div>
     </div>
 
     <div class="ca-rail" id="caRail"></div>
@@ -1295,9 +1358,69 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
       '<div class="ca-spot'+(suivi>0?" on":"")+'"><div class="disc">'+caPile(suivi)+'</div><div class="nm">'+(CA.game==="holdem"?"Call":"Play")+'</div></div>';
   }
 
+  /* ------------------------------ Hi-Lo ------------------------------ */
+  var HL={ etat:null, hist:[], edgeBps:300 };
+  function hlCarte(c){
+    if(c==null || c<0) return '<div class="hl-carte vide"></div>';
+    var r=c%13, s=(c/13)|0, set=ART[caArtIdx(r)]||ART[0];
+    return '<img src="'+(set[s]||set[0])+'" alt="">';
+  }
+  function hlPetite(c, cls){
+    var r=c%13, s=(c/13)|0, set=ART[caArtIdx(r)]||ART[0];
+    return '<div class="c '+(cls||'')+'"><img src="'+(set[s]||set[0])+'" alt=""></div>';
+  }
+  function hlRender(){
+    var e=HL.etat, aJour=$("caHilo");
+    aJour.hidden = CA.game!=="hilo";
+    if(CA.game!=="hilo") return;
+    var carte=$("hlCarte"), multi=$("hlMulti"), up=$("hlUp"), down=$("hlDown"),
+        cash=$("hlCash"), note=$("hlNote");
+
+    if(!e || e.fini){
+      carte.innerHTML = e ? hlCarte(e.carte) : '<div class="hl-carte vide"></div>';
+      multi.innerHTML = e && e.perdu ? '<span style="color:#F2685E">Lost</span><small>Place a bet and deal to play again</small>'
+        : e && e.encaisse ? '+'+caFmt(e.gain)+'<small>cashed out</small>'
+        : '&mdash;<small>Pick a chip, tap the spot, then Deal</small>';
+      up.disabled=down.disabled=cash.disabled=true;
+      up.querySelector("i").textContent=""; down.querySelector("i").textContent="";
+      note.textContent="Guess whether the next card is higher or lower. Same rank replays the step — no win, no loss.";
+      hlSuite();
+      return;
+    }
+    carte.innerHTML=hlCarte(e.carte);
+    multi.innerHTML=e.multi.toFixed(2)+'&times;<small>'+caFmt(e.gain)+' $SWOGE if you stop now</small>';
+    up.disabled=!e.peutMonter; down.disabled=!e.peutDescendre; cash.disabled=false;
+    up.querySelector("i").textContent   = e.peutMonter   ? '&times;'.replace('&times;','x')+e.multHigher.toFixed(2) : '—';
+    down.querySelector("i").textContent = e.peutDescendre ? 'x'+e.multLower.toFixed(2) : '—';
+    note.textContent="Step "+e.pas+" · stake "+caFmt(e.mise)+" $SWOGE";
+    hlSuite();
+  }
+  /* La suite des cartes deja tombees : sans elle on oublie d'ou on vient, et
+     les egalites passent inapercues. */
+  function hlSuite(){
+    var box=$("hlSuite"), h=HL.hist||[];
+    box.innerHTML=h.map(function(x){ return hlPetite(x.c, x.cls); }).join("");
+  }
+  function hlNote(st){
+    if(!st) return;
+    var d=st.dernier;
+    if(d){
+      (d.egalites||[]).forEach(function(c){ (HL.hist=HL.hist||[]).push({c:c, cls:'eg'}); });
+      (HL.hist=HL.hist||[]).push({ c:d.carte, cls:d.gagne?'':'rate' });
+      if(HL.hist.length>18) HL.hist=HL.hist.slice(-18);
+      if(d.gagne){ if(SFX.card) SFX.card(); }
+      else { if(SFX.card) SFX.card(); if(SFX.lose) SFX.lose(); }
+    }
+    if(st.encaisse){ caEclat(); if(SFX.win) SFX.win(); }
+  }
+
   function caRender(){
     var st=CA.state;
     $("caTitle").style.backgroundImage="url("+JSON.stringify(CA.game==="holdem"?CAA.titleHoldem:CAA.titleThree)+")";
+    /* Pas encore de bandeau peint pour le Hi-Lo : plutot que d'afficher celui
+       de Three Card, on met un titre en toutes lettres. */
+    $("caTitle").style.display = CA.game==="hilo" ? "none" : "";
+    $("hlTitre").style.display = CA.game==="hilo" ? "" : "none";
     var felt=$("caFelt");
     felt.dataset.g=CA.game;                    // porte les reperes du tapis
     felt.style.backgroundImage="url("+JSON.stringify(CA.game==="holdem"?CAA.feltHoldem:CAA.feltThree)+")";
@@ -1318,7 +1441,12 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
       if(fini && st.dealer && st.dealer.length) caFill($("caDealer"), st.dealer, 0, nCartes);
       else caFill($("caDealer"), [], nCartes, nCartes);
     }
-    caSpots(); caRail(); caActs(); caBanner(); caNet(); caHist(); caPay();
+    caSpots(); caRail(); caActs(); caBanner(); caNet(); caHist(); caPay(); hlRender();
+    /* Hi-Lo n'a ni tapis a cases ni croupier : seul le TAPIS disparait, le rail
+       de jetons et les boutons restent, ils lui servent aussi. */
+    var hl = CA.game==="hilo";
+    $("caFelt").style.display = hl ? "none" : "";
+    $("caHint").style.display = hl ? "none" : "";
   }
 
   function caActs(){
@@ -1337,6 +1465,8 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
       db.disabled = caBaseDouble()<=0;
       var d=bt(CAA.bDeal,"deal","Deal");
       d.disabled = !authed || CA.ante<CA_MIN;
+      // en Hi-Lo la partie en cours interdit d'en relancer une
+      if(CA.game==="hilo" && HL.etat && !HL.etat.fini) d.disabled=true;
     } else {
       bt(CAA.bFold,"fold","Fold");
       if(CA.game==="holdem") bt(CAA.bCall,"call","Call");
@@ -1390,7 +1520,7 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
     var total=CA_HIST.reduce(function(s,h){ return s+h.net; },0);
     var tc = total>0?"#7CFF9B":total<0?"#F2685E":"#E7C97A";
     var lignes=CA_HIST.slice(0,CA_HIST_MAX).map(function(h){
-      return '<tr><td>'+(h.game==="holdem"?"Hold&rsquo;em":"Three")+'</td>'+
+      return '<tr><td>'+(h.game==="holdem"?"Hold&rsquo;em":h.game==="hilo"?"Hi-Lo":"Three")+'</td>'+
         '<td>'+caFmt(h.staked)+'</td><td>'+esc(h.label)+'</td>'+
         '<td class="'+(h.net>0?"g":h.net<0?"p":"n")+'">'+(h.net>0?"+":"")+caFmt(h.net)+'</td></tr>';
     });
@@ -1403,6 +1533,17 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
       '<tr><th>'+CA_HIST.length+' hand'+(CA_HIST.length===1?"":"s")+'</th><th></th><th></th>'+
       '<th style="color:'+tc+'">'+(total>0?"+":"")+caFmt(total)+'</th></tr></table>';
   }
+  /* Le Hi-Lo alimente le meme historique que les deux tables : c'est le meme
+     porte-monnaie, on veut voir la somme de tout. */
+  function caPushHilo(st){
+    if(!st || (!st.perdu && !st.encaisse)) return;
+    var net = st.encaisse ? (st.gain - st.mise) : -st.mise;
+    CA_HIST.unshift({ game:"hilo", staked:st.mise, net:net,
+                      label: st.encaisse ? ("Cashed "+st.multi.toFixed(2)+"x") : "Busted" });
+    if(CA_HIST.length>60) CA_HIST.pop();
+    caHist();
+  }
+
   function caPush(st){
     var r=st.result; if(!r) return;
     CA_HIST.unshift({ game:st.game, staked:r.staked||0,
@@ -1474,6 +1615,8 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
         /* le nonce n'arrive qu'ici : on relance la session sauvegardee maintenant */
         if(myAddr) doLogin(); }
       else if(m.type==="auth"){ authed=true; myAddr=m.address; setBalance(m.balance); showPlay(); if(m.fairness) showFair(m.fairness); if(m.casinoPay){ CA_PAY=m.casinoPay; CA_MIN=m.casinoMin||CA_MIN; CA_MAX=m.casinoMax||CA_MAX; }
+        if(m.hiloEdgeBps!=null) HL.edgeBps=m.hiloEdgeBps;
+        if(m.hilo){ HL.etat=m.hilo; if(!m.hilo.fini){ CA.game="hilo"; CA.ante=m.hilo.mise; } }
         /* Le serveur renvoie la derniere table jouee. Elle ne doit PAS ecraser
            le jeu demande dans l'URL : le hall du poker ouvrait Three Card et
            on retombait sur Hold'em. Elle ne l'emporte que si une main est
@@ -1500,6 +1643,18 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
           if(o==="win"||o==="dealer_not_qualified"){ caEclat(); if(SFX.win) SFX.win(); }
           else if(o!=="push" && SFX.lose) SFX.lose();
         }
+      }
+      else if(m.type==="hilo"){
+        if(m.balance!=null) setBalance(m.balance);
+        if(m.fairness) showFair(m.fairness);
+        HL.etat=m.state;
+        if(m.state){
+          CA.game="hilo";
+          if(!m.state.fini) CA.ante=m.state.mise;      // la mise est engagee
+          hlNote(m.state);
+          if(m.state.fini) caPushHilo(m.state);
+        }
+        caRender();
       }
       else if(m.type==="need_deposit"){ setBalance(m.balance); busy=false; toast("Not enough $SWOGE — deposit in the Pusher"); }
       else if(m.type==="error"){ busy=false; toast(m.error||"error"); }
@@ -1584,8 +1739,19 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
   $("caRail").addEventListener("click", function(e){
     var b=e.target.closest("button[data-v]"); if(!b) return;
     CA.chip=Number(b.dataset.v);
-    caRail();
+    if(CA.game==="hilo") hlMiser(CA.chip);   // pas de case ou poser en Hi-Lo
+    else caRail();
   });
+
+  /* En Hi-Lo il n'y a pas de case ou poser : le jeton clique s'ajoute
+     directement a la mise. */
+  function hlMiser(v){
+    if(HL.etat && !HL.etat.fini) return;
+    var m=(CA.ante||0)+v;
+    if(m>CA_MAX) return toast("Table maximum: "+caFmt(CA_MAX)+" $SWOGE");
+    if(m>balance) return toast("Not enough $SWOGE");
+    CA.ante=m; if(SFX.chip) SFX.chip(); caRender();
+  }
 
   function caPoser(quoi){
     if(CA.state && CA.state.stage==="decide") return;
@@ -1640,6 +1806,14 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
       if(CA.ante<CA_MIN) return toast("Minimum bet: "+caFmt(CA_MIN)+" $SWOGE");
       // Suivre coute 2x l'Ante au Hold'em : on previent AVANT de distribuer
       // plutot que de laisser le joueur decouvrir son flop sans pouvoir payer.
+      if(CA.game==="hilo"){
+        if(CA.ante<CA_MIN) return toast("Minimum bet: "+caFmt(CA_MIN)+" $SWOGE");
+        if(balance<CA.ante) return toast("Not enough $SWOGE");
+        HL.hist=[];
+        if(SFX.shuffle) SFX.shuffle();
+        send({type:"hiloStart", bet:CA.ante});
+        return;
+      }
       var requis = CA.ante*(CA.game==="holdem"?3:2)+CA.side;
       if(balance<requis) return toast("You need "+caFmt(requis)+" $SWOGE to see this hand through");
       if(SFX.shuffle) SFX.shuffle();
@@ -1655,6 +1829,17 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
       send({type:"casinoDecide", play:a==="call"});
     }
   });
+
+  $("hlUp").addEventListener("click", function(){ hlPas("higher"); });
+  $("hlDown").addEventListener("click", function(){ hlPas("lower"); });
+  $("hlCash").addEventListener("click", function(){
+    if(!HL.etat || HL.etat.fini) return;
+    send({type:"hiloCashOut"});
+  });
+  function hlPas(sens){
+    if(!HL.etat || HL.etat.fini) return;
+    send({type:"hiloStep", dir:sens});
+  }
 
   function caRebet(){
     if(!CA.last) return toast("No previous bet");

@@ -275,8 +275,9 @@
     ws.onmessage=function(ev){
       var m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
       if(m.type==="state") return;
-      if(m.type==="hello"){ loginNonce=m.loginNonce; if(m.vault)VAULT=m.vault; if(m.token)TOKEN=m.token; if(m.minWithdraw)MIN_WITHDRAW=m.minWithdraw; }
-      else if(m.type==="auth"){ authed=true; myAddr=m.address; onAuthed(); setBalance(m.balance); if(m.stake) setStakeInfo(m.stake); send({type:"stakeInfo"}); }
+      if(m.type==="hello"){ loginNonce=m.loginNonce; /* Le jeton de session evite de resigner : on le presente des que le nonce est connu. Le serveur repond soit par 'auth' — connecte, sans SDK ni signature — soit par 'resumeFailed'. */ (function(){ var j=null; try{ j=localStorage.getItem("swogeSession"); }catch(e){} if(j) send({type:"resume", token:j, tgId:(typeof TG_ID!=="undefined"?TG_ID:null)}); })(); if(m.vault)VAULT=m.vault; if(m.token)TOKEN=m.token; if(m.minWithdraw)MIN_WITHDRAW=m.minWithdraw; }
+      if(m.type==="resumeFailed"){ /* jeton perime ou revoque : on l oublie et on repart du chemin long */ try{ localStorage.removeItem("swogeSession"); }catch(e){} if(typeof autoReconnect==="function") autoReconnect(); else if(myAddr) doLogin(); return; }
+      else if(m.type==="auth"){ authed=true; myAddr=m.address; if(m.session){ try{ localStorage.setItem("swogeSession",m.session); }catch(e){} } onAuthed(); setBalance(m.balance); if(m.stake) setStakeInfo(m.stake); send({type:"stakeInfo"}); }
       else if(m.type==="balance"||m.type==="deposit"){ setBalance(m.balance); if(m.type==="deposit") toast("💰 Deposit credited"); }
       else if(m.type==="stakeInfo"){ setStakeInfo(m); }
       else if(m.type==="stakeClaimed"){ toast("🌾 Claimed "+fmtYield(m.reward)+" $SWOGE"); }
@@ -419,7 +420,7 @@
 
   // ---- logout ----
   async function doLogout(){
-    try{ localStorage.removeItem("swogeAuth"); }catch(e){}
+    try{ localStorage.removeItem("swogeAuth"); try{ localStorage.removeItem("swogeSession"); }catch(e){} }catch(e){}
     try{ if(window.SwogePrivy&&SwogePrivy.isLoggedIn&&SwogePrivy.isLoggedIn()) await SwogePrivy.logout(); }catch(e){}
     try{ if(ws){ ws.onclose=null; ws.close(); } }catch(e){}
     authed=false; signer=null; provider=null; myAddr=null;

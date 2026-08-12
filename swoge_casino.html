@@ -307,7 +307,21 @@
   justify-content:center; }
 .ca-row.dealer{ top:6%; }
 .ca-row.board{ top:39%; }
-.ca-row.mine{ bottom:24%; }
+/* Le tapis n'a pas d'emplacement prevu pour la main du joueur : posee dessus,
+   elle chevauchait les cartes communes et plus rien n'etait lisible. Elle a
+   donc sa propre rangee SOUS le tapis, en plus grand. */
+.ca-mine-out{ display:flex; gap:clamp(4px,1.4vw,10px); justify-content:center;
+  align-items:flex-end; margin:9px auto 0; }
+.ca-mine-out .lbl{ align-self:center; font-size:clamp(8px,2vw,12px); font-weight:800;
+  letter-spacing:1.6px; text-transform:uppercase; color:#E7C97A; opacity:.75;
+  margin-right:4px; }
+.ca-mine-out .card{ width:clamp(46px,12vw,86px); aspect-ratio:5/7; border-radius:8px;
+  overflow:hidden; box-shadow:0 6px 14px rgba(0,0,0,.65), 0 0 0 2px rgba(230,165,55,.45);
+  animation:caDeal .3s ease both; }
+.ca-mine-out .card:nth-child(3){ animation-delay:.07s; }
+.ca-mine-out .card:nth-child(4){ animation-delay:.14s; }
+.ca-mine-out .card img{ width:100%; height:100%; display:block; object-fit:cover; }
+.ca-mine-out:empty{ display:none; }
 .ca-row .card{ width:clamp(34px,9vw,72px); aspect-ratio:5/7; border-radius:7px; overflow:hidden;
   box-shadow:0 5px 12px rgba(0,0,0,.6); animation:caDeal .3s ease both; }
 .ca-row .card:nth-child(2){ animation-delay:.07s; }
@@ -324,14 +338,19 @@
 .ca-dealer{ position:absolute; left:3%; top:4%; width:13%; aspect-ratio:1;
   background-repeat:no-repeat; background-position:center; background-size:100% 100%; }
 
-/* mises posees sur le tapis */
-.ca-spots{ position:absolute; left:0; right:0; bottom:3%; display:flex;
-  justify-content:space-evenly; align-items:flex-end; }
-.ca-spot{ text-align:center; width:26%; }
+/* Mises posees sur le tapis. Les trois cases sont placees UNE PAR UNE sur les
+   ronds dessines dans l'image, releves dessus : un space-evenly les mettait a
+   16/50/83 %, decalees par rapport au decor. */
+.ca-spots{ position:absolute; inset:0; }
+.ca-spot{ position:absolute; top:70%; transform:translate(-50%,-50%);
+  width:19%; text-align:center; }
+.ca-spot:nth-child(1){ left:26%; }
+.ca-spot:nth-child(2){ left:50%; }
+.ca-spot:nth-child(3){ left:74%; }
 /* La case de mise : un anneau vide tant qu'on n'a rien pose, puis une VRAIE
    pile de jetons, comme sur une table. Chaque jeton est empile en decalant
    vers le haut, le plus gros dessous. */
-.ca-spot .disc{ position:relative; width:58%; aspect-ratio:1; margin:0 auto 1px;
+.ca-spot .disc{ position:relative; width:41%; aspect-ratio:1; margin:0 auto 1px;
   border-radius:50%; border:2px dashed rgba(230,165,55,.35); background:rgba(0,0,0,.28); }
 .ca-spot.on .disc{ border-color:transparent; background:none; }
 .ca-spot .disc .ch{ position:absolute; left:0; width:100%; aspect-ratio:1;
@@ -341,8 +360,8 @@
 .ca-spot .tot{ position:absolute; left:-25%; right:-25%; bottom:-24%; text-align:center;
   font-size:clamp(9px,2.4vw,14px); font-weight:900; color:#FFD97A;
   text-shadow:0 1px 3px rgba(0,0,0,.95), 0 0 8px rgba(0,0,0,.85); }
-.ca-spot .nm{ margin-top:14%; font-size:clamp(7px,1.8vw,11px); font-weight:800;
-  letter-spacing:.8px; text-transform:uppercase; color:#E7C97A; opacity:.8; }
+/* le nom est deja imprime sur le tapis : on ne le redouble pas */
+.ca-spot .nm{ display:none; }
 
 /* bandeau de resultat */
 .ca-banner{ min-height:1px; margin:8px auto 0; text-align:center; position:relative; }
@@ -426,8 +445,16 @@
   .ca-hist{ margin:0; max-width:none; }
 }
 
-/* table des gains */
-.ca-pay{ margin:10px auto 0; max-width:520px; font-size:12px; color:var(--dim); }
+.ca-pick .ca-info{ flex:0 0 auto; max-width:none; width:42px; padding:9px 0;
+  font-size:17px; line-height:1; }
+
+/* Regles et baremes : caches par defaut, ouverts par le bouton Info. Toujours
+   remplis avec les chiffres envoyes par le serveur, jamais une copie. */
+.ca-pay{ margin:12px auto 0; max-width:560px; font-size:12px; color:var(--dim);
+  background:linear-gradient(180deg,rgba(28,14,42,.92),rgba(12,6,20,.95));
+  border:1px solid rgba(230,165,55,.3); border-radius:14px; padding:14px 16px; }
+.ca-pay[hidden]{ display:none; }
+.ca-pay .fair{ margin-top:10px; padding-top:9px; border-top:1px solid rgba(255,255,255,.08); }
 .ca-pay h4{ margin:0 0 4px; font-size:12px; letter-spacing:1.2px; text-transform:uppercase; color:#E7C97A; }
 .ca-pay table{ width:100%; border-collapse:collapse; }
 .ca-pay td{ padding:2px 0; }
@@ -723,9 +750,6 @@
 <main>
   <section class="hero">
     <h1>SWOGE <span class="g">CASINO</span></h1>
-    <p>Two games against the house. Casino Hold'em: two cards each, five
-       community cards, beat the dealer. Three Card: three cards, fast.
-       Provably fair, same balance as the Pusher.</p>
   </section>
 
   <div class="wrap cawrap">
@@ -734,6 +758,7 @@
     <div class="ca-pick" id="caPick">
       <button data-g="holdem" class="on">Casino Hold&rsquo;em</button>
       <button data-g="three">Three Card</button>
+      <button class="ca-info" id="caInfo" aria-label="Rules and paytables">&#9432;</button>
     </div>
 
     <div class="ca-main">
@@ -744,9 +769,9 @@
       <div class="ca-who dealer">Dealer</div>
       <div class="ca-row dealer" id="caDealer"></div>
       <div class="ca-row board" id="caBoard"></div>
-      <div class="ca-row mine" id="caMine"></div>
       <div class="ca-spots" id="caSpots"></div>
     </div>
+    <div class="ca-mine-out" id="caMine"></div>
 
     <div class="ca-banner" id="caBanner"></div>
     <div class="ca-net" id="caNet"><b></b><i></i></div>
@@ -770,8 +795,12 @@
      <div class="ca-hist" id="caHist"></div>
     </div>
 
-    <div class="ca-pay" id="caPay"></div>
-    <div class="fair" id="fair"></div>
+    <!-- Regles, baremes et equite prouvable : tout derriere le bouton Info,
+         pour que l'ecran de jeu ne serve qu'a jouer. -->
+    <div class="ca-pay" id="caPay" hidden>
+      <div class="ca-payin"></div>
+      <div class="fair" id="fair"></div>
+    </div>
   </div>
 
 
@@ -1063,13 +1092,20 @@
     $("caTitle").style.backgroundImage="url("+JSON.stringify(CA.game==="holdem"?CAA.titleHoldem:CAA.titleThree)+")";
     $("caFelt").style.backgroundImage="url("+JSON.stringify(CA.game==="holdem"?CAA.feltHoldem:CAA.feltThree)+")";
     $("caDealerAv").style.backgroundImage="url("+JSON.stringify(CAA.dealer)+")";
-    [].forEach.call($("caPick").children, function(b){ b.className = b.dataset.g===CA.game?"on":""; });
+    [].forEach.call($("caPick").children, function(b){
+      if(!b.dataset.g) return;                 // le bouton Info n'est pas un jeu
+      b.className = b.dataset.g===CA.game?"on":"";
+    });
 
     if(!st){
       caFill($("caDealer"),[],0); caFill($("caBoard"),[],0); caFill($("caMine"),[],0);
     } else {
       var fini = st.stage==="done" && st.result;
       caFill($("caMine"), st.player, 0);
+      if(st.player && st.player.length){
+        var lb=document.createElement("div"); lb.className="lbl"; lb.textContent="Your hand";
+        $("caMine").insertBefore(lb, $("caMine").firstChild);
+      }
       caFill($("caBoard"), st.board, 0);
       if(fini && st.dealer && st.dealer.length) caFill($("caDealer"), st.dealer, 0);
       else caFill($("caDealer"), [], CA.game==="holdem"?2:3);
@@ -1165,7 +1201,7 @@
      serveur, envoyes a la connexion : jamais deux listes qui divergent. */
   var CA_PAY=null;
   function caPay(){
-    var box=$("caPay"); if(!CA_PAY){ box.innerHTML=""; return; }
+    var box=$("caPay").querySelector(".ca-payin"); if(!CA_PAY){ box.innerHTML=""; return; }
     function tbl(titre, lignes){
       return '<div><h4>'+titre+'</h4><table>'+lignes.map(function(l){
         return '<tr><td>'+esc(l.label)+'</td><td>'+l.x+':1</td></tr>'; }).join("")+'</table></div>';
@@ -1276,6 +1312,12 @@
   function showPlay(){ connectBtn.style.display="none"; var eb=$("emailBtn"); if(eb)eb.style.display="none"; var cr=$("connRow"); if(cr)cr.style.display="none"; var ms=$("mnSignIn"); if(ms)ms.style.display="none"; }
 
   // ---- actions (SWOGE Casino) ----
+  $("caInfo").addEventListener("click", function(){
+    var box=$("caPay");
+    box.hidden=!box.hidden;
+    if(!box.hidden) box.scrollIntoView({ behavior:"smooth", block:"nearest" });
+  });
+
   $("caPick").addEventListener("click", function(e){
     var b=e.target.closest("button[data-g]"); if(!b) return;
     if(CA.state && CA.state.stage==="decide") return toast("Finish the hand first");

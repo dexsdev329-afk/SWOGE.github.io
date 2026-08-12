@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -1511,11 +1512,12 @@ function connect(){
   ws.onerror=function(){ setDot(false); };
   ws.onmessage=function(ev){ var m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
     if(m.type==='state') return;
-    if(m.type==='hello'){ loginNonce=m.loginNonce; if(m.vault)VAULT=m.vault; if(m.token)TOKEN=m.token; if(m.minWithdraw)MIN_WITHDRAW=m.minWithdraw;
+    if(m.type==='hello'){ loginNonce=m.loginNonce; /* Le jeton de session evite de resigner : on le presente des que le nonce est connu. Le serveur repond soit par 'auth' — connecte, sans SDK ni signature — soit par 'resumeFailed'. */ (function(){ var j=null; try{ j=localStorage.getItem("swogeSession"); }catch(e){} if(j) send({type:"resume", token:j, tgId:(typeof TG_ID!=="undefined"?TG_ID:null)}); })(); if(m.vault)VAULT=m.vault; if(m.token)TOKEN=m.token; if(m.minWithdraw)MIN_WITHDRAW=m.minWithdraw;
       /* le nonce n'existe QU'ICI : c'est le seul endroit ou l'on peut relancer la
          session sauvegardee. ws.onopen se declenche avant ce message. */
       if(myAddr) doLogin(); }
-    else if(m.type==='auth'){ authed=true; myAddr=m.address; onAuthed(); setBalance(m.balance); if(m.stake) setStakeInfo(m.stake); if(m.quests) renderQuests(m.quests); if(m.bonus) renderBonus(m.bonus); if(m.welcomeGranted>0) gtoast('🎁 Welcome! +'+m.welcomeGranted+' $SWOGE to try'); if(m.volcano&&m.volcano.meter!=null){ collectMeter=m.volcano.meter; setMeterUI(); } }
+    if(m.type==="resumeFailed"){ /* jeton perime ou revoque : on l oublie et on repart du chemin long */ try{ localStorage.removeItem("swogeSession"); }catch(e){} if(typeof autoReconnect==="function") autoReconnect(); else if(myAddr) doLogin(); return; }
+      else if(m.type==='auth'){ authed=true; myAddr=m.address; if(m.session){ try{ localStorage.setItem("swogeSession",m.session); }catch(e){} } onAuthed(); setBalance(m.balance); if(m.stake) setStakeInfo(m.stake); if(m.quests) renderQuests(m.quests); if(m.bonus) renderBonus(m.bonus); if(m.welcomeGranted>0) gtoast('🎁 Welcome! +'+m.welcomeGranted+' $SWOGE to try'); if(m.volcano&&m.volcano.meter!=null){ collectMeter=m.volcano.meter; setMeterUI(); } }
     else if(m.type==='balance'||m.type==='deposit'){ setBalance(m.balance); if(m.type==='deposit') gtoast('💰 Deposit credited'); }
     else if(m.type==='volcanoResult'){ if(pendingVolcano){ var pv=pendingVolcano; pendingVolcano=null; pv.res(m); } }
     else if(m.type==='need_deposit'){ setBalance(m.balance); if(pendingVolcano){ var p2=pendingVolcano; pendingVolcano=null; p2.rej({needDeposit:true}); } }
@@ -1652,7 +1654,7 @@ function openPanel(name){ if(!authed){ gtoast('connect your wallet first'); doCo
 $('ovl').addEventListener('click',function(e){ if(e.target===$('ovl')) closePanel(); });
 [].forEach.call(document.querySelectorAll('[data-close]'),function(b){ b.addEventListener('click',closePanel); });
 
-async function doLogout(){ try{ localStorage.removeItem('swogeAuth'); }catch(e){} try{ if(window.SwogePrivy&&SwogePrivy.isLoggedIn&&SwogePrivy.isLoggedIn()) await SwogePrivy.logout(); }catch(e){} try{ if(ws){ ws.onclose=null; ws.close(); } }catch(e){} authed=false; signer=null; provider=null; myAddr=null; gtoast('Disconnected'); setTimeout(()=>location.reload(),300); }
+async function doLogout(){ try{ localStorage.removeItem('swogeAuth'); try{ localStorage.removeItem("swogeSession"); }catch(e){} }catch(e){} try{ if(window.SwogePrivy&&SwogePrivy.isLoggedIn&&SwogePrivy.isLoggedIn()) await SwogePrivy.logout(); }catch(e){} try{ if(ws){ ws.onclose=null; ws.close(); } }catch(e){} authed=false; signer=null; provider=null; myAddr=null; gtoast('Disconnected'); setTimeout(()=>location.reload(),300); }
 async function autoReconnect(){ var method; try{ method=localStorage.getItem('swogeAuth'); }catch(e){} if(!method) return;
   try{ if(method==='wallet'){ var eth=window.ethereum; if(!eth) return; var accs=await eth.request({method:'eth_accounts'}); if(!accs||!accs.length) return; provider=new ethers.providers.Web3Provider(eth,'any'); signer=provider.getSigner(); myAddr=accs[0].toLowerCase(); if(ws&&ws.readyState===1) doLogin(); }
     else if(method==='email'){ await loadPrivy(); var addr=null; if(SwogePrivy.restore) addr=await SwogePrivy.restore(); else if(SwogePrivy.isLoggedIn&&SwogePrivy.isLoggedIn()) addr=SwogePrivy.getAddress(); if(!addr) return; provider=new ethers.providers.Web3Provider(SwogePrivy.getProvider(),'any'); signer=provider.getSigner(); myAddr=String(addr).toLowerCase(); if(ws&&ws.readyState===1) doLogin(); } }catch(e){} }

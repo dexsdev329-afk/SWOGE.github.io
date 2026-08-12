@@ -819,6 +819,7 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
     <a href="index.html">🏠 Home</a>
     <div class="msep"></div>
     <a href="#" id="soundItem">🔊 Sound: on</a>
+    <a href="#" id="musicItem">🎵 Music: 1</a>
   </div>
 </nav>
 
@@ -1895,10 +1896,30 @@ function renderBonus(b){ if(!b) return; bonusData=b;
   function refreshSound(){ soundItem.textContent=SFX.isMuted()?"🔇 Sound: off":"🔊 Sound: on"; }
   refreshSound();
   soundItem.addEventListener("click",function(e){ e.preventDefault(); SFX.toggle(); refreshSound(); bgmSync(); });
-  // ---- musique de fond (meme piste que SWOGE Spin) ----
-  var bgm=null;
-  function bgmStart(){ try{ if(!bgm){ bgm=new Audio("https://files.catbox.moe/vmwcqn.mp3"); bgm.loop=true; bgm.volume=0.35; } if(!SFX.isMuted()) bgm.play().catch(function(){}); }catch(e){} }
+  /* ---- musique de fond : deux pistes, on bascule de l'une a l'autre ----
+     Elles restent en flux distant (28 et 85 Mo) : les embarquer comme les
+     bruitages ferait exploser le poids de chaque page. */
+  var BGM=["https://files.catbox.moe/9lrj4x.mp3",
+           "https://files.catbox.moe/oel5ah.mp3"];
+  var bgm=null, bgmI=0;
+  try{ var v=parseInt(localStorage.getItem("swogeBgm"),10); if(v>=0&&v<BGM.length) bgmI=v; }catch(e){}
+  function bgmStart(){ try{
+      if(!bgm){ bgm=new Audio(BGM[bgmI]); bgm.loop=true; bgm.volume=0.35; bgm.preload="none"; }
+      if(!SFX.isMuted()) bgm.play().catch(function(){});
+    }catch(e){} }
   function bgmSync(){ try{ if(!bgm){ bgmStart(); return; } if(SFX.isMuted()) bgm.pause(); else bgm.play().catch(function(){}); }catch(e){} }
+  function bgmSuivant(){
+    bgmI=(bgmI+1)%BGM.length;
+    try{ localStorage.setItem("swogeBgm",String(bgmI)); }catch(e){}
+    /* On repart d'un element neuf : changer .src en cours de lecture laisse
+       parfois l'ancien flux en tampon sur mobile. */
+    try{ if(bgm){ bgm.pause(); bgm.src=""; } }catch(e){}
+    bgm=null; bgmStart(); majMusique();
+  }
+  function majMusique(){ var b=document.getElementById("musicItem"); if(b) b.textContent="🎵 Music: "+(bgmI+1); }
+  (function(){ var b=document.getElementById("musicItem");
+    if(b) b.addEventListener("click",function(e){ e.preventDefault(); bgmSuivant(); });
+    majMusique(); })();
   ["click","keydown","touchstart"].forEach(function(ev){ window.addEventListener(ev,function once(){ SFX.unlock(); bgmStart(); window.removeEventListener(ev,once); }); });
 
   // ---- silent cross-page reconnect: keep the session when switching games ----

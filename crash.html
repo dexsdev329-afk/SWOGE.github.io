@@ -1290,6 +1290,89 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
              crH - ((m-1)/(crYMax-1))*crH*CR_BOUT_Y - crH*0.06 ];
   }
 
+
+  /* ---------------------------------------------------------------- le fond
+   * Un ciel profond, peint au chargement dans un canevas de cote, puis
+   * simplement recopie a chaque image avec un decalage.
+   *
+   * Deux raisons de le DESSINER plutot que de charger une image :
+   *   — il defile pendant le vol, ce qui donne la vitesse. Une image fixe
+   *     derriere une fusee qui monte, c'est une fusee qui fait du sur-place.
+   *   — il ne pese rien. La page est deja a 4,7 Mo.
+   *
+   * Froid et sombre, exclusivement : la courbe et la fusee sont or et orange,
+   * un fond chaud les avalerait et on ne verrait plus la trajectoire.
+   */
+  var crCiel=null, crCielW=0, crCielH=0;
+  var CR_DEFILE=0.014;          // pixels par milliseconde, soit 14 px/s
+
+  /* Un generateur a graine fixe : le ciel doit etre le MEME a chaque
+     reconstruction (redimensionnement, rotation de l'ecran). Avec Math.random
+     les etoiles sautaient d'un coin a l'autre au moindre changement de taille. */
+  function crAlea(graine){
+    var e=graine>>>0;
+    return function(){ e=(e*1664525+1013904223)>>>0; return e/4294967296; };
+  }
+
+  function crCiel_(){
+    if(!crCv) return null;
+    var W=crW, H=crH;
+    if(crCiel && crCielW===W && crCielH===H) return crCiel;
+    // trois largeurs de champ : de quoi defiler une manche entiere sans
+    // jamais revenir au debut, donc sans motif qui se repete a l'oeil
+    var c=document.createElement("canvas");
+    c.width=Math.max(1,W*3); c.height=Math.max(1,H);
+    var x=c.getContext("2d"), al=crAlea(20260812);
+
+    var f=x.createLinearGradient(0,0,0,H);
+    f.addColorStop(0,"#070a16"); f.addColorStop(.55,"#04060f"); f.addColorStop(1,"#02030a");
+    x.fillStyle=f; x.fillRect(0,0,c.width,H);
+
+    // les nebuleuses : larges, tres pales, jamais chaudes
+    var teintes=["rgba(86,64,168,",  "rgba(40,88,150,", "rgba(38,120,128,", "rgba(70,46,120,"];
+    for(var n=0;n<7;n++){
+      var cx=al()*c.width, cy=al()*H, r=H*(0.5+al()*1.1);
+      var g=x.createRadialGradient(cx,cy,0,cx,cy,r);
+      g.addColorStop(0, teintes[n%teintes.length]+(0.16+al()*0.12)+")");
+      g.addColorStop(1, teintes[n%teintes.length]+"0)");
+      x.fillStyle=g; x.fillRect(cx-r,cy-r,r*2,r*2);
+    }
+
+    // les etoiles : une majorite de poussiere, quelques unes qui accrochent
+    var n2=Math.round(c.width*H/1100);
+    for(var i=0;i<n2;i++){
+      var sx=al()*c.width, sy=al()*H, gros=al();
+      var r2=gros>0.985 ? 1.5+al()*1.1 : 0.35+al()*0.75;
+      var a=gros>0.985 ? 0.85+al()*0.15 : 0.18+al()*0.5;
+      var t=al();
+      x.fillStyle = t>0.88 ? "rgba(190,210,255,"+a+")"
+                  : t>0.76 ? "rgba(255,238,205,"+a+")"
+                           : "rgba(255,255,255,"+a+")";
+      x.beginPath(); x.arc(sx,sy,r2,0,6.2832); x.fill();
+      if(gros>0.985){            // un halo sur les plus grosses seulement
+        var h=x.createRadialGradient(sx,sy,0,sx,sy,r2*4);
+        h.addColorStop(0,"rgba(200,220,255,"+(a*0.34)+")");
+        h.addColorStop(1,"rgba(200,220,255,0)");
+        x.fillStyle=h; x.beginPath(); x.arc(sx,sy,r2*4,0,6.2832); x.fill();
+      }
+    }
+    crCiel=c; crCielW=W; crCielH=H;
+    return c;
+  }
+
+  /** Recopie le ciel, decale du temps ecoule. */
+  function crPeintFond(ms){
+    var c=crCiel_(); if(!c) return;
+    // on borne le decalage : une manche qui monterait au plafond durerait deux
+    // minutes et demie, et sans borne on sortirait du canevas
+    var dx=Math.min(ms*CR_DEFILE, crW*2 - 1);
+    crCtx.drawImage(c, -dx, 0);
+    // un assombrissement sur les bords, pour que la dorure ne soit pas mangee
+    var v=crCtx.createRadialGradient(crW*0.5,crH*0.5,crH*0.25,crW*0.5,crH*0.5,crW*0.72);
+    v.addColorStop(0,"rgba(0,0,0,0)"); v.addColorStop(1,"rgba(0,0,0,0.5)");
+    crCtx.fillStyle=v; crCtx.fillRect(0,0,crW,crH);
+  }
+
   function crTaille(){
     if(!crCv) return;
     var r=crCv.getBoundingClientRect();
@@ -1309,6 +1392,7 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
     crTaille();
     var W=crW, H=crH;
     crCtx.clearRect(0,0,W,H);
+    crPeintFond(ms);
 
     crXMax=Math.max(ms, 7000);              // au moins 7 s d'axe, sinon ca tremble au depart
     crYMax=Math.max(multi, 2);              // au moins jusqu'a 2x
@@ -1489,6 +1573,9 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
       var reste=Math.max(0, CR.resteA-Date.now());
       crEtat("next round in "+(reste/1000).toFixed(1)+"s");
       crPlaque("1.00×", null);
+      /* On repeint le ciel meme a l'arret : sans ca le canevas efface laisse
+         reapparaitre la lave du cadre entre deux manches. */
+      if(crCtx){ crTaille(); crCtx.clearRect(0,0,crW,crH); crPeintFond(0); }
     }
   }
 
@@ -1519,7 +1606,7 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
   function crAttente(){
     CR.phase="attente"; CR.moi=null; CR.joueurs=[]; CR.point=null;
     var f=$("crFusee"); if(f) f.classList.add("off");
-    if(crCtx) crCtx.clearRect(0,0,crW,crH);
+    if(crCtx){ crCtx.clearRect(0,0,crW,crH); crPeintFond(0); }
     crPlaque("1.00×",null);
     crRender();
   }
@@ -1609,7 +1696,7 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
     var b=$("crBet"); if(b&&b.firstElementChild) b.firstElementChild.src=CRA.miser;
     var o=$("crOut"); if(o&&o.firstElementChild) o.firstElementChild.src=CRA.retirer;
     crCv=$("crCanvas");
-    if(crCv){ crCtx=crCv.getContext("2d"); crTaille(); }
+    if(crCv){ crCtx=crCv.getContext("2d"); crTaille(); crPeintFond(0); }
     crRender();
     requestAnimationFrame(crBoucle);
   })();

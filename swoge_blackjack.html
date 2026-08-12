@@ -305,6 +305,37 @@
 .bj-spot .lbl2{ position:absolute; left:-30%; right:-30%; top:100%; margin-top:3px;
   font-size:clamp(8px,2vw,11px); letter-spacing:1.4px; text-transform:uppercase;
   color:#E7C97A; opacity:.7; }
+
+/* ---- reglage du son : deux boutons en bas a gauche ----
+   Le menu ne portait qu'un interrupteur tout-ou-rien pour l'ensemble, et il
+   fallait l'ouvrir pour le trouver. Ici la musique et les bruitages ont chacun
+   leur bouton et leur curseur, a portee de pouce pendant la partie.
+   z-index sous les fenetres modales (60 et plus) : un reglage de son ne doit
+   jamais passer devant une boite de dialogue. */
+.snd{ position:fixed; left:10px; bottom:10px; z-index:55;
+  bottom:calc(10px + env(safe-area-inset-bottom));
+  display:flex; flex-direction:column; gap:8px; align-items:flex-start; }
+.snd .row{ display:flex; align-items:center; gap:8px; }
+.snd .b{ flex:0 0 auto; width:42px; height:42px; padding:0; border-radius:50%; cursor:pointer;
+  border:1px solid rgba(230,165,55,.55); color:#F2C14E; font-size:18px; line-height:1;
+  background:linear-gradient(180deg,rgba(42,25,10,.94),rgba(14,8,3,.96));
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 3px 10px rgba(0,0,0,.6); transition:transform .1s, opacity .12s; }
+.snd .b:active{ transform:scale(.92); }
+/* Legerement transparent au repos : le socle est fixe et passe forcement
+   devant du contenu quand on defile. Il redevient franc des qu'on le vise. */
+.snd .b{ opacity:.74; }
+.snd .row:hover .b, .snd .row.open .b, .snd .b:focus-visible{ opacity:1; }
+.snd .row.off .b{ color:#8A7A5E; border-color:rgba(230,165,55,.25); }
+/* le curseur n'apparait qu'a la demande : deux pastilles au repos */
+.snd .p{ display:none; align-items:center; gap:9px; padding:7px 13px 7px 11px; border-radius:999px;
+  background:linear-gradient(180deg,rgba(36,21,8,.96),rgba(12,7,2,.97));
+  border:1px solid rgba(230,165,55,.4); box-shadow:0 3px 10px rgba(0,0,0,.6); }
+.snd .row.open .p{ display:flex; }
+.snd input[type=range]{ width:clamp(88px,26vw,130px); height:22px; accent-color:#E6A537;
+  background:transparent; cursor:pointer; }
+.snd .v{ font-size:11px; font-weight:800; color:#E8C88A; width:32px; text-align:right;
+  font-variant-numeric:tabular-nums; }
 </style>
 </head>
 <body>
@@ -835,6 +866,11 @@
   var SFX=(function(){
     var ctx=null, muted=false, bufs={}, brut={}, secours={};
     try{ muted=localStorage.getItem("swogeBjMute")==="1"; }catch(e){}
+    /* Volume general des bruitages, reglable et retenu d'une visite a l'autre.
+       Il MULTIPLIE le volume propre a chaque son : le melange reste plus
+       discret que la carte, seul le niveau d'ensemble bouge. */
+    var master=0.85;
+    try{ var mv=parseFloat(localStorage.getItem("swogeSfxVol")); if(mv>=0&&mv<=1) master=mv; }catch(e){}
 
     function b64(uri){
       var s=atob(uri.split(",")[1]), n=s.length, a=new Uint8Array(n);
@@ -883,13 +919,13 @@
       return k;
     }
     function joue(base, vol, variation){
-      if(muted) return;
+      if(muted||master<=0) return;
       var c=ac(); if(!c) return;
       var nom=prise(base), b=bufs[nom];
       if(!b){ // pas encore decode : on retombe sur une balise audio
         try{
           var el=secours[nom]||(secours[nom]=new Audio(SFX_PACK[nom]));
-          el.currentTime=0; el.volume=vol==null?0.6:vol; el.play().catch(function(){});
+          el.currentTime=0; el.volume=Math.min(1,(vol==null?0.6:vol)*master); el.play().catch(function(){});
         }catch(e){}
         return;
       }
@@ -897,15 +933,18 @@
       var s=c.createBufferSource(), g=c.createGain();
       s.buffer=b;
       s.playbackRate.value=1+(Math.random()*2-1)*v;      // jamais deux fois pareil
-      g.gain.value=(vol==null?0.6:vol)*(1-v/2+Math.random()*v);
+      g.gain.value=(vol==null?0.6:vol)*master*(1-v/2+Math.random()*v);
       s.connect(g); g.connect(c.destination); s.start(0);
     }
     function tone(f,d,type,vol,when){
-      var c=ac(); if(!c||muted) return;
+      /* master a zero doit sortir AVANT le calcul : exponentialRamp refuse une
+         valeur de depart nulle et laisserait une note bloquee. */
+      if(muted||master<=0) return;
+      var c=ac(); if(!c) return;
       var o=c.createOscillator(),g=c.createGain();
       o.type=type||"sine"; o.frequency.value=f;
       var t=c.currentTime+(when||0);
-      g.gain.setValueAtTime(vol||0.15,t); g.gain.exponentialRampToValueAtTime(0.0008,t+d);
+      g.gain.setValueAtTime((vol||0.15)*master,t); g.gain.exponentialRampToValueAtTime(0.0008,t+d);
       o.connect(g); g.connect(c.destination); o.start(t); o.stop(t+d);
     }
     return {
@@ -926,8 +965,27 @@
       win:function(big){ [523,659,784,big?1047:880].forEach(function(f,i){ tone(f,0.15,"triangle",0.15,i*0.07); }); },
       lose:function(){ tone(200,0.12,"sine",0.08); tone(150,0.16,"sine",0.07,0.08); },
       push:function(){ tone(440,0.12,"triangle",0.1); },
-      toggle:function(){ muted=!muted; try{ localStorage.setItem("swogeBjMute",muted?"1":"0"); }catch(e){} if(!muted) ac(); return muted; },
-      isMuted:function(){ return muted; }
+      toggle:function(){
+        muted=!muted;
+        /* Rallumer alors que le curseur est a zero ne ferait aucun bruit :
+           on remonte a un niveau audible, sinon l'interrupteur ment. */
+        if(!muted && master<=0) master=0.6;
+        try{ localStorage.setItem("swogeBjMute",muted?"1":"0");
+             localStorage.setItem("swogeSfxVol",String(master)); }catch(e){}
+        if(!muted) ac();
+        return muted; },
+      isMuted:function(){ return muted; },
+      /* Curseur des bruitages. Zero vaut silence : les deux commandes doivent
+         dire la meme chose, sinon on baisse le curseur et le menu affiche
+         encore "Sound: on". */
+      setVolume:function(v){
+        master=Math.max(0,Math.min(1,Number(v)||0));
+        muted = master<=0;
+        try{ localStorage.setItem("swogeSfxVol",String(master));
+             localStorage.setItem("swogeBjMute",muted?"1":"0"); }catch(e){}
+        if(!muted) ac();
+        return master; },
+      volume:function(){ return muted?0:master; }
     };
   })();
   /* Point d'entree de diagnostic : tout le script tourne dans une fermeture,
@@ -965,6 +1023,59 @@
     disc.innerHTML=html;
     if(montant>avant) SFX.chips(); else if(montant<avant) SFX.sweep();
   }
+
+
+  /* ---- les deux curseurs de volume ----
+     Un clic sur la pastille ouvre son curseur et referme l'autre : deux
+     curseurs ouverts en meme temps couvriraient le bas du tapis. */
+  /* On attend la fin du document : le socle est pose avant </body>, donc APRES
+     ce script. Le chercher tout de suite ne renverrait rien. Attendre laisse
+     aussi le bloc de la musique s'executer, d'ou viennent bgmVol et
+     bgmVolume — declares plus bas dans le meme script. */
+  document.addEventListener("DOMContentLoaded", function(){
+    var dock=document.getElementById("sndDock"); if(!dock) return;
+    var lignes={};
+    [].forEach.call(dock.querySelectorAll(".row"), function(r){ lignes[r.dataset.k]=r; });
+
+    function lire(k){ return k==="bgm" ? bgmVol : SFX.volume(); }
+    function ecrire(k,v){ return k==="bgm" ? bgmVolume(v) : SFX.setVolume(v); }
+
+    function maj(k){
+      var r=lignes[k], v=lire(k);
+      r.querySelector("input").value=Math.round(v*100);
+      r.querySelector(".v").textContent=Math.round(v*100)+"%";
+      r.classList.toggle("off", v<=0);
+      /* La musique garde toujours sa note : ♪ contre ♫ ne se distingue pas a
+         cette taille, c'est l'extinction de la pastille qui dit l'etat.
+         Les bruitages gardent 🔊/🔇, une paire que tout le monde lit. */
+      var b=r.querySelector(".b");
+      if(k==="sfx") b.innerHTML = v>0 ? "\uD83D\uDD0A" : "\uD83D\uDD07";
+    }
+    function majTout(){ maj("bgm"); maj("sfx"); }
+    window.SWOGE_MAJ_SON=majTout;      // le menu s'en sert quand il bascule le son
+
+    Object.keys(lignes).forEach(function(k){
+      var r=lignes[k];
+      r.querySelector(".b").addEventListener("click", function(){
+        var ouvert=r.classList.contains("open");
+        [].forEach.call(dock.querySelectorAll(".row"), function(x){ x.classList.remove("open"); });
+        if(!ouvert){ r.classList.add("open"); SFX.unlock(); }
+      });
+      var i=r.querySelector("input");
+      i.addEventListener("input", function(){
+        ecrire(k, Number(i.value)/100);
+        majTout();
+        if(k==="sfx" && Number(i.value)>0) SFX.chip();   // on entend ce qu'on regle
+      });
+    });
+    /* Un clic ailleurs referme : sur telephone, un curseur reste ouvert mange
+       le coin du tapis. */
+    document.addEventListener("click", function(e){
+      if(!dock.contains(e.target))
+        [].forEach.call(dock.querySelectorAll(".row"), function(x){ x.classList.remove("open"); });
+    });
+    majTout();
+  });
 
   // ---- rendering ----
   /* Le serveur ne distribue que des rangs : l'enseigne est decorative. On la
@@ -1348,19 +1459,34 @@ function renderBonus(b){ if(!b) return; bonusData=b;
   menu.addEventListener("click",function(e){ var a=e.target.closest("a[data-panel]"); if(!a) return; e.preventDefault(); menu.classList.remove("open"); openPanel(a.getAttribute("data-panel")); });
   function refreshSound(){ soundItem.textContent=SFX.isMuted()?"🔇 Sound: off":"🔊 Sound: on"; }
   refreshSound();
-  soundItem.addEventListener("click",function(e){ e.preventDefault(); SFX.toggle(); refreshSound(); bgmSync(); });
+  soundItem.addEventListener("click",function(e){ e.preventDefault(); SFX.toggle(); refreshSound(); if(window.SWOGE_MAJ_SON) window.SWOGE_MAJ_SON(); });
   /* ---- musique de fond : deux pistes, on bascule de l'une a l'autre ----
      Elles restent en flux distant (28 et 85 Mo) : les embarquer comme les
      bruitages ferait exploser le poids de chaque page. */
   var BGM=["https://files.catbox.moe/9lrj4x.mp3",
            "https://files.catbox.moe/oel5ah.mp3"];
-  var bgm=null, bgmI=0;
+  var bgm=null, bgmI=0, bgmVol=0.35;
   try{ var v=parseInt(localStorage.getItem("swogeBgm"),10); if(v>=0&&v<BGM.length) bgmI=v; }catch(e){}
+  try{ var mv=parseFloat(localStorage.getItem("swogeBgmVol")); if(mv>=0&&mv<=1) bgmVol=mv; }catch(e){}
   function bgmStart(){ try{
-      if(!bgm){ bgm=new Audio(BGM[bgmI]); bgm.loop=true; bgm.volume=0.35; bgm.preload="none"; }
-      if(!SFX.isMuted()) bgm.play().catch(function(){});
+      if(bgmVol<=0) return;                    // a zero, on ne charge meme pas le flux
+      if(!bgm){ bgm=new Audio(BGM[bgmI]); bgm.loop=true; bgm.preload="none"; }
+      bgm.volume=bgmVol;
+      bgm.play().catch(function(){});
     }catch(e){} }
-  function bgmSync(){ try{ if(!bgm){ bgmStart(); return; } if(SFX.isMuted()) bgm.pause(); else bgm.play().catch(function(){}); }catch(e){} }
+  /* La musique ne suit plus l'interrupteur des bruitages : elle a son propre
+     reglage. Couper les cartes pour ecouter la piste est une envie legitime. */
+  function bgmSync(){ try{
+      if(bgmVol<=0){ if(bgm) bgm.pause(); return; }
+      if(!bgm){ bgmStart(); return; }
+      bgm.volume=bgmVol; bgm.play().catch(function(){});
+    }catch(e){} }
+  function bgmVolume(v){
+    bgmVol=Math.max(0,Math.min(1,Number(v)||0));
+    try{ localStorage.setItem("swogeBgmVol",String(bgmVol)); }catch(e){}
+    bgmSync();
+    return bgmVol;
+  }
   function bgmSuivant(){
     bgmI=(bgmI+1)%BGM.length;
     try{ localStorage.setItem("swogeBgm",String(bgmI)); }catch(e){}
@@ -1405,5 +1531,16 @@ function renderBonus(b){ if(!b) return; bonusData=b;
 })();
 </script>
 
+
+<div class="snd" id="sndDock">
+  <div class="row" data-k="bgm">
+    <button class="b" type="button" aria-label="Music volume">&#127925;</button>
+    <div class="p"><input type="range" min="0" max="100" step="5" aria-label="Music volume"><span class="v"></span></div>
+  </div>
+  <div class="row" data-k="sfx">
+    <button class="b" type="button" aria-label="Sound effects volume">&#128266;</button>
+    <div class="p"><input type="range" min="0" max="100" step="5" aria-label="Sound effects volume"><span class="v"></span></div>
+  </div>
+</div>
 </body>
 </html>

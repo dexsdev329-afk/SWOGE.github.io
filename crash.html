@@ -474,20 +474,38 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
 /* ---- la table : qui a mise, qui est sorti ----
    C'est le vrai sel du jeu, donc ca ne se cache pas dans un onglet. */
 .cr-table{ max-width:540px; margin:16px auto 0; }
-.cr-panneau{ position:relative; }
-.cr-panneau>img{ display:block; width:100%; height:auto; }
-.cr-liste{ position:absolute; left:11%; top:11%; right:11%; bottom:9%;
-  overflow-y:auto; overflow-x:hidden; font-size:12px; }
+/* La table est dessinee, pas peinte.
+   Le panneau d'orfevrerie fourni a une ouverture de 29 % de sa largeur : une
+   ligne « nom + multiplicateur + gain » n'y tient pas, et l'etirer ferait
+   baver la dorure. Une bordure CSS reprend la meme palette, s'adapte au nombre
+   de joueurs, et reste lisible a huit lignes comme a une. */
+.cr-panneau{ position:relative; padding:8px 6px; border-radius:12px;
+  border:1px solid rgba(231,201,122,.42);
+  background:linear-gradient(180deg, rgba(30,18,6,.92), rgba(12,10,7,.92));
+  box-shadow:inset 0 1px 0 rgba(255,230,150,.18), 0 4px 14px rgba(0,0,0,.55); }
+.cr-liste{ max-height:230px; overflow-y:auto; overflow-x:hidden; font-size:12px; }
 .cr-liste .l{ display:flex; align-items:center; gap:6px; padding:3px 4px;
   border-bottom:1px solid rgba(231,201,122,.12); }
 .cr-liste .l .n{ flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis;
   white-space:nowrap; color:#cdbf9f; }
-.cr-liste .l .m{ font-family:'Orbitron',sans-serif; font-weight:800; color:#E7C97A; }
+.cr-liste .l .m{ font-family:'Orbitron',sans-serif; font-weight:800; color:#E7C97A;
+  white-space:nowrap; display:flex; gap:6px; align-items:baseline; }
+.cr-liste .l .m i{ font-style:normal; font-size:11px; color:#cdbf9f; }
+.cr-liste .l.sorti .m i{ color:#7CFF9B; }
+.cr-liste .l.perdu .m i{ color:#F2685E; }
+/* le flash : une seconde d'or, le temps que l'oeil accroche */
+.cr-liste .l.flash{ animation:crFlash 1s ease-out; }
+@keyframes crFlash{
+  0%{ background:rgba(124,255,155,.42); }
+  100%{ background:transparent; } }
 .cr-liste .l.sorti .m{ color:#7CFF9B; }
 .cr-liste .l.perdu{ opacity:.4; }
 .cr-liste .l.perdu .m{ color:#F2685E; }
 .cr-liste .l.moi{ background:rgba(255,214,120,.09); border-radius:5px; }
 .cr-liste .vide{ text-align:center; color:#7a6437; padding:14px 0; font-size:12px; }
+.cr-tete{ text-align:center; font-size:12px; color:#cdbf9f; margin-bottom:6px; }
+.cr-tete b{ color:#ffe680; font-family:'Orbitron',sans-serif; }
+.cr-tete .ok{ color:#7CFF9B; font-weight:800; }
 .cr-titrelist{ text-align:center; font-size:11px; letter-spacing:1.3px;
   text-transform:uppercase; color:#C9A24A; font-weight:800; margin-bottom:5px; }
 
@@ -822,7 +840,8 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
 
     <div class="cr-table">
       <div class="cr-titrelist">This round</div>
-      <div class="cr-panneau"><img alt="">
+      <div class="cr-tete" id="crTete">waiting for bets</div>
+      <div class="cr-panneau">
         <div class="cr-liste" id="crListe"><div class="vide">no bets yet</div></div>
       </div>
     </div>
@@ -1381,20 +1400,54 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
     if(x) x.hidden = !(CR.mise>0 && !CR.moi);
   }
 
+  /**
+   * La table de la manche : qui a mise, qui est sorti, a combien.
+   *
+   * C'est le coeur social du jeu — voir quelqu'un encaisser a 1.8x pendant
+   * qu'on tient, c'est ce qui fait tenir ou lacher. Elle se met donc a jour a
+   * chaque evenement, pas a chaque manche.
+   *
+   * L'ordre : les sortis en haut, du plus gros multiplicateur au plus petit,
+   * puis les encore-en-vol par grosse mise. Trier par mise seule enterrerait le
+   * joueur qui vient de sortir a 40x sous trois grosses mises endormies.
+   */
   function crListe(){
-    var box=$("crListe"); if(!box) return;
-    if(!CR.joueurs.length){ box.innerHTML='<div class="vide">no bets yet</div>'; return; }
-    // les sortis d'abord, du plus gros multiplicateur au plus petit
+    var box=$("crListe"), tete=$("crTete");
+    if(!box) return;
+    var n=CR.joueurs.length, total=0, sortis=0, gagne=0;
+    for(var i=0;i<n;i++){
+      total+=CR.joueurs[i].mise||0;
+      if(CR.joueurs[i].multi){ sortis++; gagne+=(CR.joueurs[i].payout||0)-(CR.joueurs[i].mise||0); }
+    }
+    if(tete) tete.innerHTML = n
+      ? '<b>'+n+'</b> player'+(n===1?'':'s')+' · <b>'+crFmt(total)+'</b> $SWOGE in'+
+        (sortis? ' · <span class="ok">'+sortis+' out</span>' : '')
+      : 'waiting for bets';
+
+    if(!n){ box.innerHTML='<div class="vide">no bets yet</div>'; return; }
     var l=CR.joueurs.slice().sort(function(a,b){
-      return (b.multi||0)-(a.multi||0) || (b.mise||0)-(a.mise||0); });
+      if((b.multi||0)!==(a.multi||0)) return (b.multi||0)-(a.multi||0);
+      return (b.mise||0)-(a.mise||0);
+    });
     box.innerHTML=l.map(function(j){
-      var moi = myAddr && j.addr && j.addr.toLowerCase()===String(myAddr).toLowerCase();
+      var moi = myAddr && j.addr && String(j.addr).toLowerCase()===String(myAddr).toLowerCase();
       var cls = j.multi ? "sorti" : (CR.phase==="apres" ? "perdu" : "");
-      var droite = j.multi ? j.multi.toFixed(2)+"&times; · +"+crFmt(j.payout-j.mise)
-                 : (CR.phase==="apres" ? "&minus;"+crFmt(j.mise) : crFmt(j.mise));
-      return '<div class="l '+cls+(moi?" moi":"")+'"><span class="n">'+
-             esc(j.name||crCourt(j.addr))+'</span><span class="m">'+droite+'</span></div>';
+      var droite = j.multi
+        ? '<b>'+j.multi.toFixed(2)+'&times;</b> <i>+'+crFmt(j.payout-j.mise)+'</i>'
+        : (CR.phase==="apres" ? '<i>&minus;'+crFmt(j.mise)+'</i>' : '<i>'+crFmt(j.mise)+'</i>');
+      return '<div class="l '+cls+(moi?" moi":"")+'" data-a="'+esc(j.addr||"")+'">'+
+             '<span class="n">'+esc(j.name||crCourt(j.addr))+'</span>'+
+             '<span class="m">'+droite+'</span></div>';
     }).join("");
+  }
+
+  /* Un encaissement doit se VOIR passer : la ligne s'allume une seconde. Sans
+     ca, la table change sans que l'oeil accroche, et le jeu perd ce qui le rend
+     collectif. */
+  function crFlash(addr){
+    var l=document.querySelector('#crListe .l[data-a="'+String(addr).replace(/"/g,'')+'"]');
+    if(!l) return;
+    l.classList.remove("flash"); void l.offsetWidth; l.classList.add("flash");
   }
 
   function crBoutons(){
@@ -1555,7 +1608,6 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
     var p=$("crPlaque"); if(p&&p.firstElementChild) p.firstElementChild.src=CRA.plaque;
     var b=$("crBet"); if(b&&b.firstElementChild) b.firstElementChild.src=CRA.miser;
     var o=$("crOut"); if(o&&o.firstElementChild) o.firstElementChild.src=CRA.retirer;
-    var pan=document.querySelector(".cr-panneau>img"); if(pan) pan.src=CRA.panneau;
     crCv=$("crCanvas");
     if(crCv){ crCtx=crCv.getContext("2d"); crTaille(); }
     crRender();
@@ -1623,7 +1675,7 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
           try{ SFX.joue("ramasse",.95); }catch(e){}
           toast((m.auto?"Auto cash out ":"Cashed out ")+m.multi.toFixed(2)+"× · +"+crFmt(m.net)+" $SWOGE");
         }
-        crListe(); crBoutons();
+        crListe(); crFlash(m.addr); crBoutons();
       }
       else if(m.type==="crashFin"){
         CR.maillon=m.maillon||null;

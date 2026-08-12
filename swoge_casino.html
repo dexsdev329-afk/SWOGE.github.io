@@ -1217,6 +1217,23 @@
     }
   }
 
+  /* Fin de main : on laisse 5 secondes pour lire le resultat, puis la table se
+     vide — cartes, jetons poses, bandeau. La mise precedente reste en memoire
+     pour que le bouton Rebet la repose d'un clic. Le minuteur est annule si le
+     joueur relance une main avant la fin du delai. */
+  var CA_TIMER=null;
+  function caNettoyerPlusTard(){
+    clearTimeout(CA_TIMER);
+    CA_TIMER=setTimeout(function(){
+      CA_TIMER=null;
+      if(CA.state && CA.state.stage!=="done") return;   // une main a redemarre
+      CA.state=null; CA.ante=0; CA.side=0;
+      caRender();
+    }, CA_CLEAN_MS);
+  }
+  function caAnnulerNettoyage(){ clearTimeout(CA_TIMER); CA_TIMER=null; }
+  var CA_CLEAN_MS=5000;
+
   function idleUI(){}
 
   // ---- ws ----
@@ -1244,6 +1261,7 @@
         caRender();
         if(m.state && m.state.stage==="done" && avant==="decide" && m.state.result){
           caPush(m.state);
+          caNettoyerPlusTard();
           var o=m.state.result.outcome;
           if(o==="win"||o==="dealer_not_qualified"){ caEclat(); if(SFX.win) SFX.win(); }
           else if(o!=="push" && SFX.lose) SFX.lose();
@@ -1321,6 +1339,7 @@
   $("caPick").addEventListener("click", function(e){
     var b=e.target.closest("button[data-g]"); if(!b) return;
     if(CA.state && CA.state.stage==="decide") return toast("Finish the hand first");
+    caAnnulerNettoyage();
     CA.game=b.dataset.g; CA.state=null; CA.side=0; caRender();
   });
 
@@ -1357,6 +1376,7 @@
       var requis = CA.ante*(CA.game==="holdem"?3:2)+CA.side;
       if(balance<requis) return toast("You need "+caFmt(requis)+" $SWOGE to see this hand through");
       if(SFX.shuffle) SFX.shuffle();
+      caAnnulerNettoyage();
       send({type:"casinoDeal", game:CA.game, ante:CA.ante, side:CA.side});
       return;
     }
@@ -1369,6 +1389,7 @@
 
   $("caRebet").addEventListener("click", function(){
     if(!CA.last) return toast("No previous bet");
+    caAnnulerNettoyage();
     CA.ante=CA.last.ante; CA.side=CA.last.side; CA.state=null; caRender();
   });
 

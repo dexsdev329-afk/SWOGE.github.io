@@ -334,7 +334,7 @@
 .pk-felt{ position:relative; width:100%; aspect-ratio:900/546; margin:2px auto 0;
   background:center/100% 100% no-repeat; }
 .pk-center{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%);
-  display:flex; flex-direction:column-reverse; align-items:center; gap:5px; width:52%; }
+  display:flex; flex-direction:column-reverse; align-items:center; gap:6px; width:72%; }
 .pk-pot{ display:none; }
 .pk-pot.on{ display:block; position:relative; width:min(72%,168px); aspect-ratio:400/122;
   background:center/100% 100% no-repeat; }
@@ -344,8 +344,8 @@
   font-weight:900; font-size:clamp(13px,3.2vw,22px); color:#FFD97A; letter-spacing:.5px;
   text-shadow:0 2px 4px rgba(0,0,0,.95), 0 0 12px rgba(0,0,0,.85); }
 .pk-board{ display:flex; gap:clamp(2px,.9vw,6px); justify-content:center; min-height:1px; }
-.pk-board .card{ width:clamp(28px,7.4vw,58px); aspect-ratio:5/7; border-radius:7px; overflow:hidden;
-  box-shadow:0 4px 10px rgba(0,0,0,.5); animation:pkFlip .28s ease both; }
+.pk-board .card{ width:clamp(40px,10vw,80px); aspect-ratio:5/7; border-radius:8px; overflow:hidden;
+  box-shadow:0 5px 13px rgba(0,0,0,.6); animation:pkFlip .28s ease both; }
 .pk-board .card img{ width:100%; height:100%; display:block; object-fit:cover; }
 @keyframes pkFlip{ from{ transform:rotateY(70deg) translateY(-8px); opacity:0; } to{ transform:none; opacity:1; } }
 .pk-wait{ display:none; font-size:clamp(11px,2.6vw,15px); font-weight:700; color:#F5D98A;
@@ -358,7 +358,7 @@
    previsualisation de la table. */
 .pk-seat{ position:absolute; width:31%; transform:translate(-50%,-50%); transition:opacity .2s; }
 .pk-seat .plate{ position:relative; aspect-ratio:420/114; display:flex; flex-direction:column;
-  justify-content:center; padding-left:33%; padding-right:5%; text-align:left;
+  justify-content:center; padding-left:38%; padding-right:6%; text-align:left;
   background-repeat:no-repeat; background-position:center; background-size:100% 100%; }
 .pk-seat .av{ position:absolute; left:0; top:50%; transform:translateY(-50%);
   width:31%; aspect-ratio:1; border-radius:50%; background:center/cover no-repeat;
@@ -387,10 +387,15 @@
 .pk-seat .mk{ position:absolute; right:-6%; top:-30%; width:22%; aspect-ratio:1;
   background-repeat:no-repeat; background-position:center; background-size:100% 100%; display:none; }
 .pk-seat .mk.on{ display:block; }
-.pk-seat .bet{ position:absolute; left:50%; transform:translateX(-50%); bottom:-46%;
-  font-size:clamp(7px,1.6vw,11px); font-weight:900; color:#22130a;
-  background:linear-gradient(180deg,#F2C14E,#C98A1E); border-radius:999px; padding:0 7px;
-  white-space:nowrap; display:none; box-shadow:0 2px 5px rgba(0,0,0,.5); }
+ /* La mise engagee se posait sous la plaque, invisible. Elle remonte VERS LE
+    CENTRE du tapis, comme des jetons pousses devant soi, avec un fond opaque
+    pour se detacher du decor. */
+.pk-seat .bet{ position:absolute; left:50%; transform:translateX(-50%); top:-62%;
+  font-size:clamp(9px,2.1vw,14px); font-weight:900; color:#FFD97A;
+  background:rgba(6,3,10,.88); border:1px solid rgba(230,165,55,.75);
+  border-radius:999px; padding:1px 10px; white-space:nowrap; display:none; z-index:4;
+  box-shadow:0 3px 9px rgba(0,0,0,.75), inset 0 0 8px rgba(242,193,78,.25);
+  text-shadow:0 1px 2px rgba(0,0,0,.9); }
 .pk-seat .bet.on{ display:block; }
 .pk-seat .tmr{ position:absolute; left:6%; right:6%; bottom:-14%; height:3px; border-radius:3px;
   background:rgba(0,0,0,.6); overflow:hidden; display:none; }
@@ -494,7 +499,19 @@
 .pk-amt{ flex:1; min-width:0; background:rgba(0,0,0,.4); color:#fff; font:inherit; font-weight:800; font-size:14px;
   text-align:center; border:1px solid rgba(230,165,55,.35); border-radius:9px; padding:7px 4px; }
 
-.pk-foot{ display:flex; gap:7px; justify-content:center; margin:10px 0 2px; flex-wrap:wrap; }
+/* Menu de table : un seul bouton flottant en bas a droite, le reste s'ouvre
+   au-dessus. Les quatre boutons tenaient une bande entiere sous le jeu. */
+.pk-foot{ position:fixed; right:14px; bottom:14px; z-index:40; }
+.pk-fab{ width:52px; height:52px; border-radius:50%; font-size:21px; line-height:1; cursor:pointer;
+  color:#22130a; background:linear-gradient(180deg,#F2C14E,#C98A1E);
+  border:1px solid rgba(230,165,55,.7); box-shadow:0 6px 18px rgba(0,0,0,.6); }
+.pk-fab:active{ transform:translateY(2px); }
+.pk-pop{ display:none; position:absolute; right:0; bottom:60px; flex-direction:column; gap:6px;
+  padding:9px; border-radius:14px; min-width:186px;
+  background:linear-gradient(180deg,rgba(28,14,42,.97),rgba(10,5,18,.98));
+  border:1px solid rgba(230,165,55,.4); box-shadow:0 12px 30px rgba(0,0,0,.7); }
+.pk-pop.open{ display:flex; }
+.pk-pop .pk-mini{ width:100%; text-align:left; }
 .pk-mini{ font:inherit; font-size:12.5px; font-weight:700; padding:7px 12px; border-radius:9px; cursor:pointer;
   color:var(--dim); background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); }
 .pk-mini.on{ color:#22130a; background:linear-gradient(180deg,#F2C14E,#C98A1E); border-color:rgba(230,165,55,.6); }
@@ -837,11 +854,16 @@
         </div>
       </div>
 
-      <div class="pk-foot">
-        <button class="pk-mini" id="pkTables">🎲 Other tables</button>
-        <button class="pk-mini" id="pkSitOut">⏸︎ Sit out</button>
-        <button class="pk-mini" id="pkRebuy">➕ Add chips</button>
-        <button class="pk-mini" id="pkLeave">↩︎ Leave table</button>
+      <!-- Les quatre actions de table tenaient une bande entiere sous le jeu.
+           Elles passent dans un menu flottant en bas a droite. -->
+      <div class="pk-foot" id="pkFoot">
+        <button class="pk-fab" id="pkFab" aria-label="Table menu">&#9776;</button>
+        <div class="pk-pop" id="pkPop">
+          <button class="pk-mini" id="pkTables">&#127922; Other tables</button>
+          <button class="pk-mini" id="pkSitOut">&#9208;&#65038; Sit out</button>
+          <button class="pk-mini" id="pkRebuy">&#10133; Add chips</button>
+          <button class="pk-mini" id="pkLeave">&#8617;&#65038; Leave table</button>
+        </div>
       </div>
     </div>
 
@@ -1282,8 +1304,22 @@
 
   /* Les valeurs des jetons suivent la grosse blinde : les six memes images
      servent du 5/10 au 12,5k/25k, avec la valeur ecrite par-dessus. */
-  var PK_CHIPS=[PKA.chipRed,PKA.chipBlue,PKA.chipGreen,PKA.chipPurple,PKA.chipBlack,PKA.chipGold];
-  function pkValeurs(bb){ return [bb/2, bb, bb*2, bb*5, bb*10, bb*25].map(function(v){ return Math.round(v); }); }
+  /* Jetons a valeur imprimee : bien plus lisibles que les vierges surchargees
+     de texte dessine. Valeurs FIXES, chaque table n'affichant que la tranche
+     utile autour de sa grosse blinde. */
+  var PK_VALS=[[5,"c5"],[25,"c25"],[100,"c100"],[500,"c500"],[1000,"c1k"],
+               [5000,"c5k"],[25000,"c25k"],[100000,"c100k"],[500000,"c500k"]];
+  var PK_CHIPS=PK_VALS.map(function(v){ return PKA[v[1]]; });
+  function pkValeurs(bb){
+    return PK_VALS.map(function(v,i){ return [Math.abs(Math.log(v[0]/bb)), i]; })
+      .sort(function(a,b){ return a[0]-b[0]; }).slice(0,6)
+      .map(function(x){ return x[1]; }).sort(function(a,b){ return a-b; })
+      .map(function(i){ return PK_VALS[i][0]; });
+  }
+  function pkIndexJeton(v){
+    for(var i=0;i<PK_VALS.length;i++) if(PK_VALS[i][0]===v) return i;
+    return 0;
+  }
 
   function pkRail(snap){
     var me=snap.seats[snap.mySeat];
@@ -1298,9 +1334,9 @@
       var rail=$("pkRail"); rail.innerHTML="";
       vals.forEach(function(v,i){
         var b=document.createElement("button");
-        b.style.backgroundImage="url("+JSON.stringify(PK_CHIPS[i])+")";
+        b.style.backgroundImage="url("+JSON.stringify(PK_CHIPS[pkIndexJeton(v)])+")";
         b.dataset.add=v; b.setAttribute("aria-label","Add "+pkFmt(v));
-        b.innerHTML='<span>'+pkFmt(v)+'</span>';
+        b.innerHTML="";                        // la valeur est deja sur le jeton
         rail.appendChild(b);
       });
     }
@@ -1318,7 +1354,7 @@
     var v=(seatIndex-(snap.mySeat>=0?snap.mySeat:0)+6)%6, slot=PK_SLOTS[v];
     var d=document.createElement("div");
     d.className="pk-fly";
-    d.style.backgroundImage="url("+JSON.stringify(PK_CHIPS[teinte%6])+")";
+    d.style.backgroundImage="url("+JSON.stringify(PK_CHIPS[teinte%PK_CHIPS.length])+")";
     d.style.left=slot[0]+"%"; d.style.top=slot[1]+"%";
     d.style.transform="translate(-50%,-50%) scale(.7)";
     felt.appendChild(d);
@@ -1591,6 +1627,16 @@
     if(v==null) return;
     v=Math.floor(Number(v)||0); if(!(v>0)) return;
     send({type:"pokerRebuy", amount:v});
+  });
+
+  /* Le menu se ferme des qu'on choisit une action ou qu'on clique ailleurs :
+     laisse ouvert, il masquerait le tapis. */
+  $("pkFab").addEventListener("click", function(e){
+    e.stopPropagation(); $("pkPop").classList.toggle("open");
+  });
+  $("pkPop").addEventListener("click", function(){ $("pkPop").classList.remove("open"); });
+  document.addEventListener("click", function(e){
+    if(!$("pkFoot").contains(e.target)) $("pkPop").classList.remove("open");
   });
 
   $("pkTables").addEventListener("click", function(){ send({type:"pokerLobby"}); pkShowLobby(true); });

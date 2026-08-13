@@ -40,6 +40,87 @@
   var profBtn = null, profBoite = null, profOnglet = 'r', profItems = [], profFin = null,
       profEncore = false, profCharge = false, profResume = null, profOuvert = false;
 
+  /* ---------------------------------------------------------------------
+   * LES PAGES SANS PORTEFEUILLE
+   *
+   * games.html est un catalogue : pas de socket, pas de session, pas de solde.
+   * Le joueur y arrive pourtant avec un compte — le meme, puisque c'est le
+   * meme site — et n'a aucune raison de ne pas y voir son solde, son
+   * rendement et son profil.
+   *
+   * On ne recopie pas la coquille d'une page de jeu : elle pese six cents
+   * kilo-octets et refait toute la connexion. On ouvre juste une socket et on
+   * presente le JETON DE SESSION deja range dans le navigateur par les pages
+   * de jeu. Pas de signature, pas de portefeuille a rouvrir : si le joueur
+   * s'est connecte ailleurs sur le site, il est connecte ici.
+   *
+   * Sans jeton, on n'affiche rien du tout plutot qu'un solde a zero qui
+   * ferait croire a un compte vide.
+   */
+  function adresseServeur() {
+    try {
+      var q = new URLSearchParams(location.search).get('server');
+      if (q) return q;
+    } catch (e) {}
+    return 'wss://web-production-220a3.up.railway.app';
+  }
+  function jetonRange() {
+    try { return localStorage.getItem('swogeSession'); } catch (e) { return null; }
+  }
+  function connecteSeul() {
+    if (document.getElementById('bal')) return;      // la page a deja sa socket
+    var jeton = jetonRange();
+    if (!jeton) return;                              // jamais connecte ici : on se tait
+    var w;
+    try { w = new window.WebSocket(adresseServeur()); } catch (e) { return; }
+    w.addEventListener('message', function (ev) {
+      var m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+      if (m.type === 'hello') { try { w.send(JSON.stringify({ type: 'resume', token: jeton })); } catch (e) {} }
+      else if (m.type === 'auth') { etat.socket = w; poseSolde(m.balance); }
+      else if (m.type === 'balance' || m.type === 'stakeInfo') {
+        if (m.balance != null) poseSolde(m.balance);
+      }
+      else if (m.type === 'resumeFailed') {
+        try { localStorage.removeItem('swogeSession'); } catch (e) {}
+        try { w.close(); } catch (e) {}
+      }
+    });
+    w.addEventListener('close', function () { setTimeout(connecteSeul, 5000); });
+  }
+
+  /* La pastille du solde, fabriquee ici parce que la page n'en a pas. Elle
+     porte l'identifiant `bal` : tout le reste du module s'accroche a lui, et
+     deux facons de trouver le solde finiraient par diverger. */
+  var soldeSeul = null;
+  function poseSolde(v) {
+    if (!soldeSeul) {
+      var barre = document.querySelector('nav');
+      if (!barre) return;
+      var css = document.createElement('style');
+      css.textContent =
+        '.swbal{display:inline-flex;align-items:center;gap:7px;vertical-align:middle;' +
+        'padding:7px 13px;border-radius:999px;font-family:inherit;font-size:13px;' +
+        'font-weight:800;color:#FFD97A;white-space:nowrap;' +
+        'background:linear-gradient(180deg,rgba(46,26,10,.92),rgba(20,10,4,.96));' +
+        'border:1px solid rgba(230,165,55,.45);}' +
+        '.swbal .pt{width:8px;height:8px;border-radius:50%;background:#16D97F;' +
+        'box-shadow:0 0 8px #16D97F;}' +
+        '.swbal em{font-style:normal;font-size:10px;color:#C9A24A;letter-spacing:.8px;}' +
+        '@media (max-width:520px){.swbal{font-size:11px;padding:5px 10px;}}';
+      document.head.appendChild(css);
+      soldeSeul = document.createElement('span');
+      soldeSeul.className = 'swbal';
+      soldeSeul.innerHTML = '<span class="pt"></span><b id="bal">—</b><em>$SWOGE</em>';
+      var avant = barre.querySelector('.menubtn, .buy') || null;
+      if (avant) barre.insertBefore(soldeSeul, avant); else barre.appendChild(soldeSeul);
+    }
+    var n = parseFloat(v || 0);
+    soldeSeul.querySelector('#bal').textContent =
+      n >= 1e9 ? (n / 1e9).toFixed(2) + 'B' : n >= 1e6 ? (n / 1e6).toFixed(2) + 'M'
+      : n >= 1000 ? (n / 1000).toFixed(1) + 'k' : n.toFixed(2);
+    rend(); rendGens(); profBtnVisible(true);
+  }
+
   // ------------------------------------------------------------ le reseau
   /* On enveloppe le constructeur sans le remplacer : `new` renvoie l'objet
      rendu, donc la page recoit une VRAIE WebSocket native. Rien ne change
@@ -840,6 +921,12 @@
   }
 
   // Dix fois par seconde : le dernier chiffre coule sans que ca coute rien.
+  /* On tente la connexion autonome apres le chargement : la barre doit exister
+     pour y poser la pastille. */
+  if (document.readyState === 'loading')
+    document.addEventListener('DOMContentLoaded', connecteSeul);
+  else connecteSeul();
+
   setInterval(rend, 100);
   if (document.readyState === 'loading')
     document.addEventListener('DOMContentLoaded', function () { rend(); });

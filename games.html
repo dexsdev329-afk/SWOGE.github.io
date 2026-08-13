@@ -179,6 +179,19 @@
 .gmenu a:hover{ background:rgba(255,197,61,.12); color:#fff; }
 .gmenu .msep{ height:1px; margin:6px 4px; background:rgba(230,165,55,.28); }
 
+/* ---- la barre passe a la ligne sur telephone ----
+   Elle porte maintenant cinq choses : la marque, le solde, deux liens et le
+   menu. A 390 px elle depassait de 127 px. Le SEPARATEUR prend toute la
+   largeur, ce qui pousse tout le reste sur une seconde ligne — et il prend
+   `1 1 100%` et non `1 0 100%` : le zero du milieu est le facteur de
+   retrecissement, et a zero l'element refuse de se comprimer, ce qui fait
+   deborder au lieu de replier. */
+@media (max-width:640px){
+  nav{ flex-wrap:wrap; row-gap:9px; gap:9px; padding:11px 13px; }
+  nav .sp{ flex:1 1 100%; height:0; margin:0; }
+  .gmenu{ top:auto; }
+}
+
 /* ---- sous-rubriques des jeux ----
    Les titres sont des PLAQUES PEINTES : le mot est dans le dessin, le <h3> ne
    sert plus qu'a le laisser lisible aux lecteurs d'ecran et aux moteurs. D'ou
@@ -268,6 +281,7 @@
   nav { gap:5px; padding-left:8px; padding-right:8px; }
 }
 </style>
+<script src="stakebubble.js"></script>
 </head>
 <body>
 

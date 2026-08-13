@@ -313,7 +313,12 @@ footer .big{font-family:'Anton',sans-serif;font-size:clamp(40px,9vw,90px);color:
   transition:transform .1s, filter .12s; }
 .socials a:hover{ transform:translateY(-3px); filter:brightness(1.15); }
 .socials a:active{ transform:translateY(1px) scale(.96); }
-.socials a svg{ width:24px; height:24px; fill:#EAF2FF; filter:drop-shadow(0 1px 2px rgba(0,0,0,.8)); }
+/* Centrage EXPLICITE, pas deduit. Le place-items:center de la grille posait
+   les quatre logos 3 px trop a droite — mesure, identique sur les quatre. On
+   ne discute pas avec la grille : on pose le logo au centre exact du bouton. */
+.socials a svg{ position:absolute; left:50%; top:50%;
+  transform:translate(-50%,-50%);
+  width:24px; height:24px; fill:#EAF2FF; filter:drop-shadow(0 1px 2px rgba(0,0,0,.8)); }
 .socials a span{ position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
 
 /* ---- fonds de section ----

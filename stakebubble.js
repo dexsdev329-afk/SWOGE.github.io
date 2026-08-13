@@ -511,7 +511,8 @@
    */
   var JEUX = { plinko:'Plinko', crash:'Crash', bj:'Blackjack', spin:'SWOGE Spin',
                smash:'Smash', mines:'Mines', hilo:'Hi-Lo', holdem:"Casino Hold'em",
-               three:'Three Card', p4:'Connect 4', pusher:'Coin Pusher' };
+               three:'Three Card', p4:'Connect 4', pusher:'Coin Pusher',
+               mp:'Tic-Tac-Toe', dm:'Checkers' };
   var ONGLETS = [['r','Rounds'],['dep','Deposits'],['wd','Withdrawals'],
                  ['st','Staking'],['tr','Transfers'],['am','Friends'],['in','Invite'],
                  ['lb','Ranking']];

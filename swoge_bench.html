@@ -132,6 +132,36 @@ button.sell:hover{background:rgba(226,99,94,.22)}
 .links{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 .links a{font-family:'Space Mono',monospace;font-size:11px;color:var(--signal);text-decoration:none;border-bottom:1px solid rgba(111,209,196,.35)}
 .note{font-family:'Space Mono',monospace;font-size:10.5px;color:var(--dim);margin-top:9px;line-height:1.6}
+/* ---- le portefeuille maitre ----
+   C'est l'adresse ou l'utilisateur ENVOIE SON ARGENT. Elle etait ecrite en
+   10,5 px gris, au milieu d'une phrase, comme une note de bas de page : la
+   chose la plus importante de la page etait la moins lisible. Elle a
+   maintenant son propre bloc, et l'adresse s'y lit d'un coup d'oeil. */
+.mw{margin-top:10px;border-radius:12px;overflow:hidden;
+  border:1px solid rgba(232,163,61,.45);background:rgba(232,163,61,.06)}
+.mw-h{display:flex;align-items:center;gap:8px;padding:9px 13px;
+  background:rgba(232,163,61,.12);border-bottom:1px solid rgba(232,163,61,.28)}
+.mw-h b{font-size:11.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--signal)}
+.mw-h span{flex:1;font-size:11px;color:var(--dim)}
+.mw-addr{display:flex;align-items:center;gap:10px;padding:12px 13px;flex-wrap:wrap}
+.mw-addr code{flex:1 1 260px;min-width:0;font-family:'Space Mono',monospace;
+  font-size:clamp(13px,2.6vw,16.5px);font-weight:700;line-height:1.45;
+  letter-spacing:.4px;color:var(--fg);word-break:break-all;user-select:all}
+.mw-bal{display:flex;align-items:baseline;gap:9px;flex-wrap:wrap;
+  padding:10px 13px;border-top:1px solid rgba(232,163,61,.22)}
+.mw-bal i{font-style:normal;font-size:10.5px;letter-spacing:1.3px;
+  text-transform:uppercase;color:var(--dim)}
+.mw-bal b{font-size:clamp(15px,3.4vw,20px);color:var(--signal);
+  font-variant-numeric:tabular-nums}
+.mw-bal .mini{margin-left:auto}
+/* Le lien vers l'explorateur porte les memes classes que les boutons, mais
+   les regles de la page ne visent que `button` : il ressortait en bleu
+   souligne au milieu de deux boutons gris. */
+.mw-addr a.mini{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--paper);text-decoration:none;
+  border:1px solid var(--line);border-radius:8px;padding:4px 8px;line-height:1.5;
+  background:transparent;white-space:nowrap}
+.mw-addr a.mini:hover{border-color:var(--signal);color:var(--signal)}
 .note.ok{color:var(--signal)}
 
 .toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,14px);background:var(--panel-2);border:1px solid var(--signal);color:var(--paper);font-family:'Space Mono',monospace;font-size:11.5px;padding:9px 16px;border-radius:var(--r);opacity:0;pointer-events:none;transition:.18s;z-index:9;max-width:80vw;text-align:center}
@@ -1469,10 +1499,14 @@ function renderMaster(){
   const w = wallets[mi];
   const bal = w.balRaw != null ? fmtUnits(w.balRaw,18,6) : "—";
   el.innerHTML =
-      `<div class="note ok" style="word-break:break-all;line-height:1.7"><b>Master wallet</b> — send Robinhood-Chain ETH here:<br>`
-    + `<span style="color:var(--fg)">${w.address}</span> <button class="mini ghost" data-copy="${w.address}">copy</button><br>`
-    + `Balance: <b>${bal} ${NETS[net].sym}</b> <button class="mini" id="ocRefresh">refresh</button> `
-    + `<a href="${NETS[net].scan}${w.address}" target="_blank" rel="noopener">explorer ↗</a></div>`
+      `<div class="mw">`
+    + `<div class="mw-h"><b>Master wallet</b><span>send Robinhood-Chain ETH to this address</span></div>`
+    + `<div class="mw-addr"><code>${w.address}</code>`
+    + `<button class="mini" data-copy="${w.address}">copy</button>`
+    + `<a class="mini ghost" href="${NETS[net].scan}${w.address}" target="_blank" rel="noopener">explorer ↗</a></div>`
+    + `<div class="mw-bal"><i>balance</i><b>${bal} ${NETS[net].sym}</b>`
+    + `<button class="mini" id="ocRefresh">refresh</button></div>`
+    + `</div>`
     + `<div class="keyline" style="margin-top:8px"><span class="tag">private key</span>`
     + `<span class="keyval ${w.revealed?"":"hidden"}">${w.pk}</span>`
     + `<button class="mini" id="ocShow">${w.revealed?"hide":"show"}</button>`

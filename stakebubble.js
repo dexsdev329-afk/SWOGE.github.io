@@ -74,7 +74,23 @@
        connecte : la page annonce le monde present des la premiere seconde,
        ce qui est justement le moment ou l'information sert. */
     if (m.type === 'history') { etat.socket = ev.target; poseHistorique(m); }
+    if (m.type === 'profile') {
+      etat.socket = ev.target;
+      if (m.avatars) VISAGES = m.avatars;
+      if (m.profile) MOI = m.profile;
+      if (m.friends) AMIS = m.friends;
+      profEnTete(); if (profOnglet === 'am') profRend();
+    }
+    if (m.type === 'friends') { AMIS = m.friends || []; if (profOnglet === 'am') profRend(); }
+    if (m.type === 'transferSent' || m.type === 'transferGot') {
+      /* Un virement change le solde ET l'historique : on redemande la page
+         courante plutot que de deviner ou inserer la ligne. */
+      if (profOuvert) profVa(profOnglet);
+      if (etat.socket && etat.socket.readyState === 1)
+        etat.socket.send('{"type":"profile"}');
+    }
     if (m.type === 'auth') { etat.socket = ev.target; profBtnVisible(true); }
+    if (m.type === 'hello' && m.explorer) EXPLORATEUR = String(m.explorer).replace(/\/+$/, '');
     if (m.type === 'hello' && m.joueurs) gens = m.joueurs;
     else if (m.type === 'joueurs') gens = m;
     if (gens) rendGens();
@@ -328,7 +344,10 @@
   var JEUX = { plinko:'Plinko', crash:'Crash', bj:'Blackjack', spin:'SWOGE Spin',
                smash:'Smash', mines:'Mines', hilo:'Hi-Lo', holdem:"Casino Hold'em",
                three:'Three Card', p4:'Connect 4', pusher:'Coin Pusher' };
-  var ONGLETS = [['r','Rounds'],['dep','Deposits'],['wd','Withdrawals'],['st','Staking']];
+  var ONGLETS = [['r','Rounds'],['dep','Deposits'],['wd','Withdrawals'],
+                 ['st','Staking'],['tr','Transfers'],['am','Friends']];
+  var VISAGES = [], MOI = { name: null, visage: null, address: null }, AMIS = [];
+  var EXPLORATEUR = 'https://robinhoodchain.blockscout.com';
 
   function nb(v, d) {
     var n = Number(v || 0);
@@ -400,6 +419,61 @@
       'cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:800;color:#EAF2FF;' +
       'background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);}' +
       '.swp-more[disabled]{opacity:.5;cursor:default;}' +
+      /* Six onglets ne tiennent pas sur une ligne de telephone : ils se
+         replient au lieu de sortir de la boite. */
+      '.swp-t{flex-wrap:wrap;}' +
+      '.swp-t button{flex:1 1 88px;}' +
+      /* l en-tete : le visage, le nom, et de quoi les changer */
+      '.swp-me{display:flex;align-items:center;gap:11px;padding:11px 13px;' +
+      'border-bottom:1px solid rgba(255,197,61,.18);background:rgba(255,255,255,.03);}' +
+      '.swp-av{flex:0 0 auto;width:40px;height:40px;border-radius:50%;cursor:pointer;' +
+      'display:flex;align-items:center;justify-content:center;font-size:21px;' +
+      'background:linear-gradient(180deg,rgba(46,26,10,.95),rgba(20,10,4,.98));' +
+      'border:1px solid rgba(230,165,55,.5);}' +
+      '.swp-me .nm{flex:1;min-width:0;}' +
+      '.swp-me .nm b{display:block;font-size:14.5px;font-weight:800;color:#EAF2FF;' +
+      'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}' +
+      '.swp-me .nm span{display:block;font-size:10.5px;color:#8DA0C4;margin-top:2px;' +
+      'font-family:monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}' +
+      '.swp-ed{flex:0 0 auto;padding:7px 11px;border-radius:9px;cursor:pointer;' +
+      'font-family:inherit;font-size:11.5px;font-weight:800;color:#07101F;' +
+      'background:linear-gradient(180deg,#FFE08A,#FFC53D);border:0;}' +
+      '.swp-form{padding:11px 13px;border-bottom:1px solid rgba(255,197,61,.18);' +
+      'background:rgba(0,0,0,.25);}' +
+      '.swp-form.off{display:none;}' +
+      '.swp-avs{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:9px;}' +
+      '.swp-avs button{width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:16px;' +
+      'background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);}' +
+      '.swp-avs button.on{background:rgba(255,197,61,.28);border-color:#FFC53D;}' +
+      '.swp-in{display:flex;gap:7px;flex-wrap:wrap;}' +
+      '.swp-in input{flex:1 1 150px;min-width:0;padding:9px 11px;border-radius:9px;' +
+      'font-family:inherit;font-size:13px;color:#EAF2FF;background:rgba(0,0,0,.4);' +
+      'border:1px solid rgba(255,255,255,.16);}' +
+      '.swp-in button{flex:0 0 auto;padding:9px 14px;border-radius:9px;cursor:pointer;' +
+      'font-family:inherit;font-size:12.5px;font-weight:800;color:#07101F;' +
+      'background:linear-gradient(180deg,#FFE08A,#FFC53D);border:0;}' +
+      '.swp-msg{margin-top:8px;font-size:11.5px;line-height:1.5;color:#8DA0C4;}' +
+      '.swp-msg.ko{color:#F2685E;} .swp-msg.ok{color:#7CFF9B;}' +
+      '.swp-r .av{flex:0 0 auto;width:30px;height:30px;border-radius:50%;display:flex;' +
+      'align-items:center;justify-content:center;font-size:15px;' +
+      'background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);}' +
+      '.swp-r .mini{flex:0 0 auto;padding:6px 10px;border-radius:8px;cursor:pointer;' +
+      'font-family:inherit;font-size:11.5px;font-weight:800;color:#07101F;' +
+      'background:linear-gradient(180deg,#FFE08A,#FFC53D);border:0;}' +
+      '.swp-r .mini.gh{color:#EAF2FF;background:rgba(255,255,255,.08);' +
+      'border:1px solid rgba(255,255,255,.16);}' +
+      '.swp-fair{font-size:10px;color:#6E80A4;margin-top:3px;font-family:monospace;' +
+      'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}' +
+      /* les mois : un bandeau qu'on replie */
+      '.swp-mo{display:flex;align-items:center;gap:9px;width:100%;margin:10px 0 6px;' +
+      'padding:8px 11px;border-radius:9px;cursor:pointer;font-family:inherit;' +
+      'font-size:12px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;' +
+      'color:#FFD97A;background:rgba(255,197,61,.10);' +
+      'border:1px solid rgba(255,197,61,.28);}' +
+      '.swp-mo:first-child{margin-top:0;}' +
+      '.swp-mo i{font-style:normal;font-weight:600;letter-spacing:.3px;text-transform:none;' +
+      'color:#8DA0C4;font-size:11px;margin-left:auto;}' +
+      '.swp-mo .ch{color:#8DA0C4;font-size:10px;}' +
       '@media (max-width:520px){.swpb{width:30px;height:30px;font-size:13px;margin-left:5px;}' +
       '.swp-h b{font-size:12px;}}' +
       'html.swtight .swpb{width:28px;height:28px;font-size:12px;margin-left:4px;}' +
@@ -427,6 +501,19 @@
       '<div class="swp">' +
         '<div class="swp-h"><b>Your profile</b><span class="swp-sub"></span>' +
         '<button class="swp-x" type="button">&times;</button></div>' +
+        '<div class="swp-me">' +
+          '<div class="swp-av"></div>' +
+          '<div class="nm"><b></b><span></span></div>' +
+          '<button class="swp-ed" type="button">Edit</button>' +
+        '</div>' +
+        '<div class="swp-form off">' +
+          '<div class="swp-avs"></div>' +
+          '<div class="swp-in">' +
+            '<input class="swp-nom" maxlength="18" placeholder="Your name, 3 to 18 characters">' +
+            '<button class="swp-save" type="button">Save</button>' +
+          '</div>' +
+          '<div class="swp-msg"></div>' +
+        '</div>' +
         '<div class="swp-t"></div>' +
         '<div class="swp-l"></div>' +
       '</div>';
@@ -435,6 +522,19 @@
       if (e.target === profBoite || e.target.classList.contains('swp-x')) profFerme();
     });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') profFerme(); });
+
+    var ed = profBoite.querySelector('.swp-ed');
+    var form = profBoite.querySelector('.swp-form');
+    ed.addEventListener('click', function () {
+      var ouvert = !form.classList.contains('off');
+      form.classList.toggle('off', ouvert);
+      ed.textContent = ouvert ? 'Edit' : 'Close';
+      if (!ouvert) { profBoite.querySelector('.swp-nom').value = MOI.name || ''; profVisages(); }
+    });
+    profBoite.querySelector('.swp-save').addEventListener('click', enregistre);
+    profBoite.querySelector('.swp-nom').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') enregistre();
+    });
 
     var t = profBoite.querySelector('.swp-t');
     ONGLETS.forEach(function (o) {
@@ -446,12 +546,27 @@
     return true;
   }
 
-  function profBtnVisible(v) { if (profMonte()) { profBtn.style.display = v ? '' : 'none'; ajusteBientot(); } }
+  function profBtnVisible(v) {
+    if (!profMonte()) return;
+    profBtn.style.display = v ? '' : 'none';
+    ajusteBientot();
+    /* Le nom, le visage et la liste des visages ne viennent PAS avec
+       l'authentification : on les demande des qu'on sait a qui on parle,
+       sinon le panneau s'ouvre sur un formulaire vide. */
+    if (v && etat.socket && etat.socket.readyState === 1) {
+      try { etat.socket.send('{"type":"profile"}'); } catch (e) {}
+    }
+  }
 
   function profOuvre() {
     if (!profMonte()) return;
     profOuvert = true;
     profBoite.classList.add('on');
+    profEnTete();
+    // on rafraichit le profil a chaque ouverture : il a pu changer ailleurs
+    if (etat.socket && etat.socket.readyState === 1) {
+      try { etat.socket.send('{"type":"profile"}'); } catch (e) {}
+    }
     profVa(profOnglet);
   }
   function profFerme() { profOuvert = false; if (profBoite) profBoite.classList.remove('on'); }
@@ -466,6 +581,10 @@
   }
 
   function profDemande() {
+    if (profOnglet === 'am') {
+      if (etat.socket && etat.socket.readyState === 1) etat.socket.send('{"type":"profile"}');
+      return;
+    }
     if (profCharge) return;
     if (!etat.socket || etat.socket.readyState !== 1) { profRend(); return; }
     profCharge = true;
@@ -498,10 +617,22 @@
     if (e.from || e.to || e.tx) d.title = [e.from && 'from ' + e.from, e.to && 'to ' + e.to,
                                             e.tx && 'tx ' + e.tx].filter(Boolean).join('\n');
     if (e.k === 'dep') {
+      /* Le hash devient un LIEN vers l'explorateur : c'est la seule chose qui
+         permette a un joueur d'aller verifier son depot par lui-meme, et un
+         hash qu'on ne peut pas cliquer ne sert qu'a etre recopie a la main. */
+      var lien = (e.tx && /^0x[0-9a-fA-F]{64}$/.test(e.tx))
+        ? ' · <a href="' + EXPLORATEUR + '/tx/' + e.tx + '" target="_blank" rel="noopener" ' +
+          'style="color:#7CFF9B">view on the explorer ↗</a>' : '';
       d.innerHTML = '<div class="w"><b>Deposit</b><span>' + quand(e.t) +
-                    (e.from ? ' · from ' + court(e.from) : '') +
-                    (e.tx && /^0x/.test(e.tx) ? ' · tx ' + court(e.tx) : '') + '</span></div>' +
+                    (e.from ? ' · from ' + court(e.from) : '') + lien + '</span></div>' +
                     '<div class="v"><b class="g">+' + nb(e.m) + '</b><span>$SWOGE</span></div>';
+    } else if (e.k === 'tr') {
+      var sortant = e.sens === 'out';
+      d.innerHTML = '<div class="w"><b>' + (sortant ? 'Sent to a friend' : 'Received') + '</b>' +
+                    '<span>' + quand(e.t) + ' · ' + (sortant ? 'to ' : 'from ') + court(e.autre) +
+                    '</span></div>' +
+                    '<div class="v"><b class="' + (sortant ? 'p' : 'g') + '">' +
+                    (sortant ? '−' : '+') + nb(e.m) + '</b><span>$SWOGE</span></div>';
     } else if (e.k === 'wd') {
       d.innerHTML = '<div class="w"><b>Withdrawal</b><span>' + quand(e.t) +
                     (e.to ? ' · to ' + court(e.to) : '') + '</span></div>' +
@@ -521,16 +652,127 @@
     } else {
       var net = (Number(e.p) || 0) - (Number(e.m) || 0);
       var cl = net > 0 ? 'g' : net < 0 ? 'p' : 'n';
+      /* De quoi refaire le calcul : l'empreinte de la graine du serveur, la
+         graine du joueur, et les numeros utilises par CETTE manche. */
+      var fair = e.sh ? '<div class="swp-fair">seed ' + court(e.sh) +
+                        (e.cs ? ' · client ' + court(e.cs) : '') +
+                        (e.n0 != null ? ' · nonce ' + e.n0 + (e.n1 > e.n0 + 1 ? '–' + (e.n1 - 1) : '') : '') +
+                        '</div>' : '';
       d.innerHTML = '<div class="w"><b>' + (JEUX[e.g] || e.g || 'Round') + '</b>' +
-                    '<span>' + quand(e.t) + ' · stake ' + nb(e.m) + '</span></div>' +
+                    '<span>' + quand(e.t) + ' · stake ' + nb(e.m) + '</span>' + fair + '</div>' +
                     '<div class="v"><b class="' + cl + '">' + (net > 0 ? '+' : '') + nb(net) + '</b>' +
                     '<span>returned ' + nb(e.p) + '</span></div>';
     }
     return d;
   }
 
+  // ---------------------------------------------- le profil, le formulaire
+  var visageChoisi = null;
+  function profEnTete() {
+    if (!profBoite) return;
+    profBoite.querySelector('.swp-av').textContent = MOI.visage || '👤';
+    profBoite.querySelector('.swp-me .nm b').textContent = MOI.name || 'no name yet';
+    profBoite.querySelector('.swp-me .nm span').textContent = MOI.address || '';
+    if (MOI.address) profBoite.querySelector('.swp-me .nm span').title = MOI.address;
+  }
+  function profVisages() {
+    var box = profBoite.querySelector('.swp-avs');
+    if (visageChoisi === null) visageChoisi = MOI.visage;
+    box.innerHTML = '';
+    VISAGES.forEach(function (v) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.textContent = v;
+      b.classList.toggle('on', v === visageChoisi);
+      b.addEventListener('click', function () { visageChoisi = v; profVisages(); });
+      box.appendChild(b);
+    });
+  }
+  function dit(t, cl) {
+    var m = profBoite.querySelector('.swp-msg');
+    m.className = 'swp-msg' + (cl ? ' ' + cl : '');
+    m.textContent = t || '';
+  }
+  function enregistre() {
+    if (!etat.socket || etat.socket.readyState !== 1) return dit('Not connected.', 'ko');
+    var nom = (profBoite.querySelector('.swp-nom').value || '').trim();
+    var q = { type: 'setProfile' };
+    if (nom && nom !== MOI.name) q.name = nom;
+    if (visageChoisi && visageChoisi !== MOI.visage) q.avatar = visageChoisi;
+    if (q.name === undefined && q.avatar === undefined) return dit('Nothing changed.');
+    dit('Saving…');
+    try { etat.socket.send(JSON.stringify(q)); } catch (e) { dit('Not connected.', 'ko'); }
+    /* La reponse arrive par le meme canal que les erreurs : on laisse
+       poseProfil et le message d'erreur du serveur parler. */
+    setTimeout(function () {
+      if (MOI.name === nom || (q.name === undefined && MOI.visage === visageChoisi))
+        dit('Saved — other players see it now.', 'ok');
+    }, 900);
+  }
+
+  // ------------------------------------------------------------ les amis
+  function ligneAmi(a) {
+    var d = document.createElement('div');
+    d.className = 'swp-r';
+    d.innerHTML = '<div class="av">' + (a.visage || '👤') + '</div>' +
+      '<div class="w"><b>' + ech(a.name || court(a.address)) + '</b>' +
+      '<span>' + court(a.address) + (a.connu ? '' : ' · never played here') + '</span></div>';
+    d.title = a.address;
+    var envoyer = document.createElement('button');
+    envoyer.className = 'mini'; envoyer.type = 'button'; envoyer.textContent = 'Send';
+    envoyer.addEventListener('click', function (e) { e.stopPropagation(); demandeEnvoi(a); });
+    var oter = document.createElement('button');
+    oter.className = 'mini gh'; oter.type = 'button'; oter.textContent = '✕';
+    oter.title = 'Remove from friends';
+    oter.addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (etat.socket && etat.socket.readyState === 1)
+        etat.socket.send(JSON.stringify({ type: 'friendRemove', address: a.address }));
+    });
+    d.appendChild(envoyer); d.appendChild(oter);
+    return d;
+  }
+  function demandeEnvoi(a) {
+    var v = window.prompt('How much $SWOGE do you want to send to ' + (a.name || court(a.address)) + '?', '');
+    if (v === null) return;
+    v = String(v).replace(',', '.').trim();
+    if (!(parseFloat(v) > 0)) return;
+    if (etat.socket && etat.socket.readyState === 1)
+      etat.socket.send(JSON.stringify({ type: 'transfer', address: a.address, amount: v }));
+  }
+  function ech(t) {
+    return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+  function rendAmis() {
+    var l = profBoite.querySelector('.swp-l');
+    l.innerHTML = '';
+    var form = document.createElement('div');
+    form.className = 'swp-in';
+    form.style.marginBottom = '10px';
+    form.innerHTML = '<input class="swp-ami" placeholder="0x… address of a friend">' +
+                     '<button type="button">Add</button>';
+    form.querySelector('button').addEventListener('click', function () {
+      var a = (form.querySelector('.swp-ami').value || '').trim();
+      if (!a) return;
+      if (etat.socket && etat.socket.readyState === 1)
+        etat.socket.send(JSON.stringify({ type: 'friendAdd', address: a }));
+      form.querySelector('.swp-ami').value = '';
+    });
+    l.appendChild(form);
+    if (!AMIS.length) {
+      var v = document.createElement('div');
+      v.className = 'swp-v';
+      v.innerHTML = 'No friends yet.<br>Add someone by address and send them $SWOGE in one tap.';
+      l.appendChild(v);
+      return;
+    }
+    AMIS.forEach(function (a) { l.appendChild(ligneAmi(a)); });
+  }
+
   function profRend() {
     if (!profBoite) return;
+    if (profOnglet === 'am') { profEnTete(); return rendAmis(); }
     var l = profBoite.querySelector('.swp-l');
     var sous = profBoite.querySelector('.swp-sub');
     if (profResume) {
@@ -549,7 +791,44 @@
       l.appendChild(v);
       return;
     }
-    profItems.forEach(function (e) { l.appendChild(ligne(e)); });
+    /* Regroupe par MOIS. Les evenements arrivent du plus recent au plus
+       ancien, donc il suffit de poser un bandeau quand le mois change : rien
+       a trier, rien a recompter, et ca marche aussi bien sur une page que sur
+       dix. Chaque mois se replie — un joueur qui cherche aout n'a pas a
+       derouler septembre. */
+    var moisCourant = null, corps = null;
+    profItems.forEach(function (e) {
+      var d = new Date(Number(e.t) || 0);
+      var cle = d.getFullYear() + '-' + d.getMonth();
+      if (cle !== moisCourant) {
+        moisCourant = cle;
+        var titre = d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+        var n = profItems.filter(function (x) {
+          var y = new Date(Number(x.t) || 0);
+          return y.getFullYear() + '-' + y.getMonth() === cle;
+        }).length;
+        var tete = document.createElement('button');
+        tete.className = 'swp-mo'; tete.type = 'button';
+        tete.innerHTML = '<span class="ch">▾</span>' + titre +
+                         '<i>' + n + ' event' + (n === 1 ? '' : 's') + '</i>';
+        corps = document.createElement('div');
+        (function (t2, c2) {
+          t2.addEventListener('click', function () {
+            var ferme = c2.style.display === 'none';
+            c2.style.display = ferme ? '' : 'none';
+            t2.querySelector('.ch').textContent = ferme ? '▾' : '▸';
+          });
+        })(tete, corps);
+        /* Le mois en cours est ouvert, les precedents replies : on arrive sur
+           ce qu'on vient de faire, pas sur six mois a derouler. */
+        if (l.querySelector('.swp-mo')) {
+          corps.style.display = 'none';
+          tete.querySelector('.ch').textContent = '▸';
+        }
+        l.appendChild(tete); l.appendChild(corps);
+      }
+      corps.appendChild(ligne(e));
+    });
     if (profEncore) {
       var b = document.createElement('button');
       b.className = 'swp-more'; b.type = 'button';

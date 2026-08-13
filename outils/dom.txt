@@ -1,0 +1,61 @@
+  <div class="wrap c4wrap">
+    <h1 class="c4-titre">CONNECT <span>4</span></h1>
+    <p class="c4-sous">Head to head, real $SWOGE. Both players put up the same stake &mdash;
+      <b>the winner takes the pot</b>, minus a <b id="c4Rake">5%</b> house fee.</p>
+
+    <!-- ============ le vestibule : creer une table, ou en rejoindre une ============ -->
+    <div class="c4-grid2" id="c4Lobby">
+
+      <div class="c4-panel">
+        <div class="c4-lb">Your stake</div>
+        <div class="c4-stakes" id="c4Stakes"></div>
+        <button class="c4-btn" id="c4Create">Create a match</button>
+        <div class="c4-note">Your stake leaves your balance the moment you open the table,
+          and comes straight back if nobody sits down.</div>
+      </div>
+
+      <div class="c4-panel">
+        <div class="c4-lb">Open matches <i id="c4Count"></i></div>
+        <div class="c4-tables" id="c4Tables">
+          <div class="c4-vide">Nobody is waiting right now.<br>Open a table and the bot will call it out.</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ============ les demandes de revanche : nominatives ============ -->
+    <div class="c4-panel c4-revanche" id="c4InvitesBox" hidden>
+      <div class="c4-lb">Rematch requests</div>
+      <div class="c4-tables" id="c4Invites"></div>
+    </div>
+
+    <!-- ============ la partie ============ -->
+    <div id="c4Jeu" hidden>
+      <div class="c4-hud">
+        <div class="c4-joueur j1" id="c4J1"><div class="nm"><span class="pion"></span><em id="c4N1">&mdash;</em></div><div class="sub" id="c4S1">red</div></div>
+        <div class="c4-pot"><b id="c4Pot">0</b><span>pot</span><i id="c4Chrono"></i></div>
+        <div class="c4-joueur j2" id="c4J2"><div class="nm"><span class="pion"></span><em id="c4N2">&mdash;</em></div><div class="sub" id="c4S2">blue</div></div>
+      </div>
+
+      <div class="c4-plateau" id="c4Plateau">
+        <div class="c4-cols" id="c4Cols"></div>
+        <div class="c4-grille" id="c4Grille"></div>
+      </div>
+
+      <div class="c4-msg" id="c4Msg"></div>
+      <div class="c4-sousmsg" id="c4Sous"></div>
+      <div class="c4-actions" id="c4Actions"></div>
+
+      <div class="c4-panel c4-revanche" id="c4RevBox" hidden>
+        <div class="c4-lb">Ask for a rematch</div>
+        <div class="c4-stakes" id="c4RevStakes"></div>
+        <button class="c4-btn ghost" id="c4RevSend">Send the challenge</button>
+        <div class="c4-note">Your stake is put up now. If they don&rsquo;t answer within
+          90 seconds you get it all back.</div>
+      </div>
+    </div>
+
+    <div class="c4-hist" id="c4Hist"></div>
+    <div class="fair" id="fair" hidden></div>
+  </div>
+

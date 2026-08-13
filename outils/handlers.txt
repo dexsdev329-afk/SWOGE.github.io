@@ -1,0 +1,23 @@
+      else if(m.type==="p4Match"){
+        if(m.balance!=null) setBalance(m.balance);
+        /* `match` peut valoir null : c'est la reponse a p4State quand on n'a
+           aucune partie en cours. On repasse alors au vestibule. */
+        if(m.match) c4Match(m.match);
+        else { C4.match=null; C4.dernier=-1; c4Render(); }
+        if(m.reglement && m.reglement.rake>0 && C4.match && C4.match.phase==="finie"
+           && C4.match.gagnant && C4.match.gagnant===c4MonJeton())
+          toast("🏆 +"+c4Fmt(m.reglement.gain)+" $SWOGE — pot "+c4Fmt(m.reglement.pot)+
+                " minus "+c4Fmt(m.reglement.rake)+" fee");
+      }
+      else if(m.type==="p4Lobby"){ C4.tables=m.tables||[]; if(!C4.match||C4.match.phase==="finie") c4PeintTables(); }
+      else if(m.type==="p4Invites"){
+        var avant=C4.invites.length;
+        C4.invites=m.invites||[];
+        c4PeintInvites();
+        if(C4.invites.length>avant)
+          toast("⚔️ Rematch challenge — "+c4Fmt(C4.invites[C4.invites.length-1].mise)+" $SWOGE");
+      }
+      else if(m.type==="p4Expire"){
+        if(m.balance!=null) setBalance(m.balance);
+        toast("Nobody joined — your stake is back");
+      }

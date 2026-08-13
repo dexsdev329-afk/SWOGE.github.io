@@ -1,0 +1,407 @@
+  /* ======================= SWOGE Connect 4 =======================
+   *
+   * Un contre un pour de l'argent. Trois choses valent d'etre dites ici,
+   * parce qu'elles expliquent la forme du code :
+   *
+   *  1. LE NAVIGATEUR NE DECIDE RIEN. Il n'y a pas de grille locale qu'on
+   *     modifierait en cliquant : on envoie la colonne, le serveur repond avec
+   *     la grille entiere, et on la peint. Deux joueurs, deux ecrans, une seule
+   *     verite — celle qui tient l'argent.
+   *
+   *  2. LA RANGEE 0 DU SERVEUR EST CELLE DU BAS. L'affichage inverse donc
+   *     l'ordre des rangees, une seule fois, a la construction de la grille.
+   *     Melanger les deux conventions ailleurs ferait tomber les jetons vers
+   *     le haut, ce qui se voit — ou allumerait la mauvaise ligne gagnante,
+   *     ce qui ne se voit pas.
+   *
+   *  3. LE CHRONOMETRE EST LOCAL, L'ECHEANCE EST DISTANTE. Le serveur envoie
+   *     ce qui RESTE, pas une heure : deux horloges qui ne sont pas d'accord
+   *     n'ont alors rien a reconcilier.
+   */
+  var C4_MISES=[10,100,1000,10000,100000,1000000,10000000];
+  var C4={ mise:100, match:null, tables:[], invites:[], hist:[],
+           revMise:100, finA:0, dernier:-1, rakeBps:500, busy:false };
+
+  function c4Fmt(n){ n=Number(n||0);
+    /* Le signe est mis de cote puis remis : sans ca, -1000 ne passait aucun
+       des seuils et s'ecrivait « -1000 » a cote d'une mise « 1k ». */
+    var s=n<0?"-":"", v=Math.abs(n);
+    /* On coupe les zeros de queue, pas seulement « .00 » : 1 900 000 sortait
+       « 1.90M » a cote d'un bouton marque « 1M ». */
+    var net=function(x,d){ return x.toFixed(d).replace(/\.?0+$/,""); };
+    if(v>=1e6) return s+net(v/1e6,2)+"M";
+    if(v>=1e3) return s+net(v/1e3,1)+"k";
+    return s+String(v); }
+  /* L'etiquette du bouton. Le million manquait : 1000000 s'ecrivait « 1000K »,
+     ce qui est juste mais illisible sur un bouton de 46 pixels. */
+  function c4Court(n){ n=Number(n||0);
+    if(n>=1e6) return (n/1e6)+"M";
+    if(n>=1e3) return (n/1e3)+"K";
+    return String(n); }
+  /* Un nom lisible : le serveur renvoie ce que le joueur a choisi, mais un
+     joueur qui n'a rien choisi porte le debut de son adresse. */
+  function c4Nom(nom, addr){
+    if(nom && String(nom).trim()) return String(nom).slice(0,18);
+    return addr ? String(addr).slice(0,6)+"…"+String(addr).slice(-4) : "player";
+  }
+  function c4Moi(){ return (myAddr||"").toLowerCase(); }
+  function c4MonJeton(){
+    var m=C4.match; if(!m||!m.joueurs) return 0;
+    var a=c4Moi();
+    if(m.joueurs[0] && String(m.joueurs[0]).toLowerCase()===a) return 1;
+    if(m.joueurs[1] && String(m.joueurs[1]).toLowerCase()===a) return 2;
+    return 0;
+  }
+
+  // ---------------------------------------------------------- les mises
+  function c4PeintMises(el, choisie, prefixe){
+    var h="";
+    for(var i=0;i<C4_MISES.length;i++){
+      var v=C4_MISES[i], off = v>balance && !authed ? "" : (v>balance ? " disabled" : "");
+      h+='<button type="button" data-'+prefixe+'="'+v+'"'+(v===choisie?' class="on"':'')+off+'>'+c4Court(v)+'</button>';
+    }
+    el.innerHTML=h;
+  }
+
+  // ------------------------------------------------- le vestibule public
+  function c4PeintTables(){
+    var box=$("c4Tables"), n=C4.tables.length, moi=c4Moi();
+    $("c4Count").textContent = n ? "· "+n+" waiting" : "";
+    if(!n){
+      box.innerHTML='<div class="c4-vide">Nobody is waiting right now.<br>'+
+                    'Open a table and the bot will call it out.</div>';
+      return;
+    }
+    var h="";
+    for(var i=0;i<n;i++){
+      var t=C4.tables[i], mienne = String(t.createur||"").toLowerCase()===moi;
+      h+='<div class="c4-table'+(mienne?' mine':'')+'">'+
+           '<div class="who"><b>'+c4Ech(c4Nom(t.nom,t.createur))+'</b>'+
+             '<span>'+(mienne?"your table · waiting":"waiting for an opponent")+'</span></div>'+
+           '<div class="bet"><b>'+c4Fmt(t.mise)+'</b><span>$SWOGE</span></div>'+
+           (mienne
+             ? '<button class="c4-btn ghost small" data-annule="'+t.id+'">Withdraw</button>'
+             : '<button class="c4-btn small" data-rejoint="'+t.id+'">Join</button>')+
+         '</div>';
+    }
+    box.innerHTML=h;
+  }
+  function c4Ech(s){ return String(s).replace(/[&<>"]/g,function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
+
+  // ------------------------------------------------- les revanches recues
+  function c4PeintInvites(){
+    var box=$("c4Invites"), n=C4.invites.length;
+    $("c4InvitesBox").hidden = !n;
+    if(!n){ box.innerHTML=""; return; }
+    var h="";
+    for(var i=0;i<n;i++){
+      var v=C4.invites[i], s=Math.max(0,Math.round((v.reste||0)/1000));
+      h+='<div class="c4-table c4-invite">'+
+           '<div class="who"><b>'+c4Ech(c4Nom(v.nom,v.de))+' wants a rematch</b>'+
+             '<span>expires in '+s+'s</span></div>'+
+           '<div class="bet"><b>'+c4Fmt(v.mise)+'</b><span>$SWOGE</span></div>'+
+           '<button class="c4-btn small" data-rejoint="'+v.id+'">Accept</button>'+
+         '</div>';
+    }
+    box.innerHTML=h;
+  }
+
+  // ------------------------------------------------------- le plateau
+  /* Construit une fois pour toutes : 42 trous, ranges du haut vers le bas a
+     l'ecran, mais etiquetes avec l'indice du serveur (rangee 0 en bas). */
+  function c4Construit(){
+    var g=$("c4Grille"), c=$("c4Cols"), h="", f="", col, r;
+    for(col=0;col<7;col++)
+      f+='<button class="c4-fleche" type="button" data-col="'+col+'" aria-label="Column '+(col+1)+'"></button>';
+    for(r=5;r>=0;r--)
+      for(col=0;col<7;col++)
+        h+='<div class="c4-case" data-i="'+(r*7+col)+'" data-col="'+col+'"></div>';
+    c.innerHTML=f; g.innerHTML=h;
+  }
+
+  function c4PeintPlateau(){
+    var m=C4.match, gr=(m&&m.grille)||[], cases=$("c4Grille").children, i, el, v;
+    var ligne=(m&&m.ligne)||[];
+    for(i=0;i<cases.length;i++){
+      el=cases[i];
+      var idx=Number(el.dataset.i);
+      v=gr[idx]||0;
+      var pion=el.firstChild;
+      if(!v){ if(pion) el.innerHTML=""; el.removeAttribute("data-plein"); el.classList.remove("gagne"); continue; }
+      if(!pion){
+        pion=document.createElement("div");
+        pion.className="pion p"+v+(idx===C4.dernier?" tombe":"");
+        el.appendChild(pion);
+      } else if(pion.className.indexOf("p"+v)<0){
+        pion.className="pion p"+v;
+      }
+      el.setAttribute("data-plein","1");
+      el.classList.toggle("gagne", ligne.indexOf(idx)>=0);
+    }
+    // les fleches : seulement sur les colonnes ou l'on peut encore jouer,
+    // et seulement quand c'est notre tour
+    var aMoi = m && m.phase==="en_cours" && c4MonJeton()===m.tour;
+    var fl=$("c4Cols").children;
+    for(i=0;i<fl.length;i++){
+      var libre = aMoi && c4Creux(gr,i)>=0;
+      fl[i].classList.toggle("libre", !!libre);
+      fl[i].disabled = !libre;
+    }
+    $("c4Plateau").classList.toggle("fini", !(m&&m.phase==="en_cours"));
+    $("c4Plateau").classList.toggle("attend", !!(m&&m.phase==="attente"));
+  }
+  /* La premiere rangee libre d'une colonne — la meme regle que le serveur,
+     mais ici elle ne sert qu'a savoir ou poser la fleche. */
+  function c4Creux(grille, col){
+    for(var r=0;r<6;r++) if(!grille[r*7+col]) return r;
+    return -1;
+  }
+
+  // ---------------------------------------------------------- le bandeau
+  function c4PeintHud(){
+    var m=C4.match; if(!m) return;
+    var noms=m.noms||[], mien=c4MonJeton();
+    $("c4N1").textContent=c4Nom(noms[0], m.joueurs&&m.joueurs[0]);
+    $("c4N2").textContent = m.joueurs&&m.joueurs[1]
+      ? c4Nom(noms[1], m.joueurs[1]) : "waiting…";
+    $("c4J1").classList.toggle("moi", mien===1);
+    $("c4J2").classList.toggle("moi", mien===2);
+    var enCours = m.phase==="en_cours";
+    $("c4J1").classList.toggle("actif", enCours && m.tour===1);
+    $("c4J2").classList.toggle("actif", enCours && m.tour===2);
+    $("c4S1").textContent = m.phase==="finie" && m.gagnant===1 ? "winner" : "red";
+    $("c4S2").textContent = m.phase==="finie" && m.gagnant===2 ? "winner" : "blue";
+    /* Tant que personne n'est en face, il n'y a pas de pot : il y a une mise.
+       C'est vrai a l'ouverture de la table, et ca reste vrai quand on la
+       retire — annoncer un pot pour une partie qui n'a jamais eu lieu ferait
+       croire a une perte de la moitie. */
+    var seul = !(m.joueurs && m.joueurs[1]);
+    var pot = m.mise*2, net = pot - Math.floor(pot*(C4.rakeBps||500)/10000);
+    $("c4Pot").textContent = c4Fmt(seul ? m.mise : pot);
+    $("c4Pot").parentNode.querySelector("span").textContent =
+      seul ? "your stake" : "pot · "+c4Fmt(net)+" to win";
+  }
+
+  // ------------------------------------------------------ le chronometre
+  /* Le serveur envoie ce qui RESTE ; on en fait une echeance locale. Rien a
+     reconcilier entre deux horloges qui ne sont pas d'accord. */
+  function c4Chrono(){
+    var m=C4.match, el=$("c4Chrono");
+    if(!m || m.phase!=="en_cours"){ el.textContent=""; el.classList.remove("urgent"); return; }
+    var s=Math.max(0,Math.ceil((C4.finA-Date.now())/1000));
+    el.textContent=s+"s";
+    el.classList.toggle("urgent", s<=10);
+  }
+  setInterval(c4Chrono, 250);
+  setInterval(function(){                       // le compte a rebours des invitations
+    if(!C4.invites.length) return;
+    for(var i=0;i<C4.invites.length;i++) C4.invites[i].reste=Math.max(0,(C4.invites[i].reste||0)-1000);
+    C4.invites=C4.invites.filter(function(v){ return v.reste>0; });
+    c4PeintInvites();
+  }, 1000);
+
+  // ------------------------------------------------------- l'ecran entier
+  function c4Render(){
+    var m=C4.match;
+    /* Un seul ecran a la fois. Le vestibule s'efface des qu'une partie est a
+       l'ecran — Y COMPRIS quand elle est finie : le resultat et la liste des
+       tables ouvertes affiches ensemble donnaient deux pages superposees. On
+       revient au vestibule par le bouton, pas par la fin de la manche. */
+    $("c4Lobby").hidden = !!m;
+    $("c4Jeu").hidden = !m;
+    if(!m) c4PeintTables();
+    c4PeintMises($("c4Stakes"), C4.mise, "mise");
+    c4PeintInvites();
+    c4PeintHist();
+    if(!m) return;
+    c4PeintHud(); c4PeintPlateau(); c4Chrono(); c4PeintFin();
+  }
+
+  function c4PeintFin(){
+    var m=C4.match, msg=$("c4Msg"), sous=$("c4Sous"), act=$("c4Actions");
+    if(m.phase==="attente"){
+      msg.className="c4-msg n"; msg.textContent="Waiting for an opponent…";
+      sous.textContent="Your table is listed for everyone. Withdraw it and you get your "+
+                       c4Fmt(m.mise)+" $SWOGE straight back.";
+      act.innerHTML='<button class="c4-btn ghost small" data-annule="'+m.id+'">Withdraw the table</button>';
+      $("c4RevBox").hidden=true;
+      return;
+    }
+    if(m.phase==="en_cours"){
+      var mien=c4MonJeton();
+      msg.className="c4-msg n";
+      msg.textContent = mien===m.tour ? "Your turn — drop a disc" : "Their turn…";
+      sous.textContent = "Miss your "+Math.round((m.coupMs||45000)/1000)+" seconds and the match is theirs.";
+      act.innerHTML='<button class="c4-btn danger small" data-abandon="'+m.id+'">Resign</button>';
+      $("c4RevBox").hidden=true;
+      return;
+    }
+    // finie
+    var mien2=c4MonJeton(), gagne = m.gagnant && m.gagnant===mien2;
+    var pot=m.mise*2, net=pot-Math.floor(pot*(C4.rakeBps||500)/10000);
+    if(m.raison==="expiree" || m.raison==="retiree"){
+      msg.className="c4-msg n";
+      msg.textContent = m.raison==="retiree" ? "Table withdrawn" : "Nobody sat down";
+      sous.textContent = "Your "+c4Fmt(m.mise)+" $SWOGE is back in your balance.";
+      act.innerHTML='<button class="c4-btn small" data-retour="1">Back to the lobby</button>';
+      $("c4RevBox").hidden=true;
+      return;
+    }
+    if(!m.gagnant){
+      msg.className="c4-msg n"; msg.textContent="Draw — board full";
+      sous.textContent="Nobody won, so nobody pays: both stakes are back.";
+    } else if(gagne){
+      msg.className="c4-msg g"; msg.textContent="You win "+c4Fmt(net)+" $SWOGE";
+      sous.textContent = c4Raison(m.raison, true)+" · pot "+c4Fmt(pot)+
+                         " minus "+((C4.rakeBps||500)/100)+"% house fee";
+    } else {
+      msg.className="c4-msg p"; msg.textContent="You lost "+c4Fmt(m.mise)+" $SWOGE";
+      sous.textContent = c4Raison(m.raison, false);
+    }
+    act.innerHTML='<button class="c4-btn small" data-retour="1">Back to the lobby</button>';
+    // la revanche : seulement contre un adversaire qui a reellement joue
+    var peutRelancer = m.joueurs && m.joueurs[0] && m.joueurs[1];
+    $("c4RevBox").hidden = !peutRelancer;
+    if(peutRelancer){
+      C4.revMise = m.mise;
+      c4PeintMises($("c4RevStakes"), C4.revMise, "rev");
+    }
+  }
+  function c4Raison(r, gagne){
+    if(r==="aligne")  return gagne ? "Four in a row" : "They lined up four";
+    if(r==="abandon") return gagne ? "They resigned" : "You resigned";
+    if(r==="temps")   return gagne ? "They ran out of time" : "You ran out of time";
+    return "";
+  }
+
+  // ------------------------------------------------------------ l'historique
+  function c4PeintHist(){
+    var box=$("c4Hist"), n=C4.hist.length;
+    if(!n){ box.innerHTML=""; return; }
+    var h='<h4>Your last matches</h4><table><tr><th>Opponent</th><th>Stake</th><th>Result</th></tr>';
+    for(var i=0;i<Math.min(n,12);i++){
+      var e=C4.hist[i];
+      h+='<tr><td>'+c4Ech(e.contre)+'</td><td>'+c4Fmt(e.mise)+'</td><td class="'+
+         (e.net>0?"g":e.net<0?"p":"")+'">'+(e.net>0?"+":"")+c4Fmt(e.net)+'</td></tr>';
+    }
+    box.innerHTML=h+'</table>';
+  }
+  function c4Note(m){
+    var mien=c4MonJeton(); if(!mien) return;
+    if(m.raison==="expiree"||m.raison==="retiree") return;
+    var pot=m.mise*2, net=pot-Math.floor(pot*(C4.rakeBps||500)/10000);
+    var autre=(m.noms||[])[mien===1?1:0], autreA=(m.joueurs||[])[mien===1?1:0];
+    C4.hist.unshift({ contre:c4Nom(autre,autreA), mise:m.mise,
+      net: !m.gagnant ? 0 : (m.gagnant===mien ? net-m.mise : -m.mise) });
+    if(C4.hist.length>40) C4.hist.pop();
+  }
+
+  // --------------------------------------------------------- ce qui arrive
+  function c4Match(m){
+    var avant=C4.match;
+    /* On ne remplace pas une partie en cours par une autre : le serveur peut
+       pousser l'etat d'une table qu'on vient de retirer alors qu'on est deja
+       assis ailleurs. */
+    if(avant && avant.id!==m.id && avant.phase==="en_cours" && m.phase!=="en_cours") return;
+    // quelle case vient d'etre remplie ? pour ne faire tomber QUE celle-la
+    C4.dernier=-1;
+    if(avant && avant.id===m.id && avant.grille && m.grille)
+      for(var i=0;i<42;i++) if(!avant.grille[i] && m.grille[i]){ C4.dernier=i; break; }
+    if(m.rakeBps) C4.rakeBps=m.rakeBps;
+    var neuve = !avant || avant.id!==m.id || avant.phase!==m.phase;
+    C4.match=m;
+    C4.finA = Date.now() + (m.reste||0);
+    if(C4.dernier>=0){ try{ if(SFX.chip) SFX.chip(); }catch(e){} }
+    if(m.phase==="finie" && (!avant || avant.phase!=="finie")){
+      c4Note(m);
+      var mien=c4MonJeton();
+      try{ if(m.gagnant && m.gagnant===mien){ if(SFX.win) SFX.win(); }
+           else if(m.gagnant){ if(SFX.lose) SFX.lose(); } }catch(e){}
+    }
+    if(neuve && m.phase==="en_cours") send({type:"p4Lobby"});
+    c4Render();
+  }
+
+  function c4Rejoint(id){
+    if(!authed){ toast("Sign in to play"); return openEmailLogin(); }
+    if(C4.busy) return; C4.busy=true; setTimeout(function(){ C4.busy=false; }, 700);
+    send({type:"p4Join", id:id});
+  }
+
+  // ------------------------------------------------------------ les clics
+  /* Tout par DELEGATION : les tables, les invitations et les jetons sont
+     redessines a chaque etat, et un ecouteur pose sur un bouton disparaitrait
+     avec lui. */
+  c4Construit();
+
+  $("c4Stakes").addEventListener("click", function(e){
+    var b=e.target.closest("button[data-mise]"); if(!b||b.disabled) return;
+    C4.mise=Number(b.dataset.mise);
+    try{ if(SFX.chip) SFX.chip(); }catch(err){}
+    c4PeintMises($("c4Stakes"), C4.mise, "mise");
+  });
+  $("c4RevStakes").addEventListener("click", function(e){
+    var b=e.target.closest("button[data-rev]"); if(!b||b.disabled) return;
+    C4.revMise=Number(b.dataset.rev);
+    try{ if(SFX.chip) SFX.chip(); }catch(err){}
+    c4PeintMises($("c4RevStakes"), C4.revMise, "rev");
+  });
+  $("c4Create").addEventListener("click", function(){
+    if(!authed){ toast("Sign in to play"); return openEmailLogin(); }
+    if(balance<C4.mise) return toast("Not enough $SWOGE — you need "+c4Fmt(C4.mise));
+    if(C4.busy) return; C4.busy=true; setTimeout(function(){ C4.busy=false; }, 700);
+    try{ if(SFX.chips) SFX.chips(); }catch(e){}
+    send({type:"p4Create", bet:C4.mise});
+  });
+  $("c4RevSend").addEventListener("click", function(){
+    var m=C4.match; if(!m) return;
+    if(balance<C4.revMise) return toast("Not enough $SWOGE — you need "+c4Fmt(C4.revMise));
+    if(C4.busy) return; C4.busy=true; setTimeout(function(){ C4.busy=false; }, 700);
+    send({type:"p4Rematch", id:m.id, bet:C4.revMise});
+  });
+
+  document.addEventListener("click", function(e){
+    var b=e.target.closest("[data-rejoint],[data-annule],[data-abandon],[data-retour]");
+    if(!b) return;
+    if(b.dataset.rejoint) return c4Rejoint(b.dataset.rejoint);
+    if(b.dataset.annule)  return send({type:"p4Cancel", id:b.dataset.annule});
+    if(b.dataset.abandon){
+      if(!confirm("Resign this match? Your opponent takes the pot.")) return;
+      return send({type:"p4Resign", id:b.dataset.abandon});
+    }
+    if(b.dataset.retour){ C4.match=null; C4.dernier=-1; send({type:"p4Lobby"}); c4Render(); }
+  });
+
+  /* Jouer : la fleche au-dessus de la colonne, ou la colonne elle-meme. On
+     n'ecrit rien dans la grille — le serveur repond avec la sienne. */
+  function c4Joue(col){
+    var m=C4.match;
+    if(!m || m.phase!=="en_cours") return;
+    if(c4MonJeton()!==m.tour) return toast("Not your turn");
+    if(c4Creux(m.grille||[], col)<0) return toast("That column is full");
+    send({type:"p4Play", id:m.id, col:col});
+  }
+  $("c4Cols").addEventListener("click", function(e){
+    var b=e.target.closest("button[data-col]"); if(!b||b.disabled) return;
+    c4Joue(Number(b.dataset.col));
+  });
+  $("c4Grille").addEventListener("click", function(e){
+    var c=e.target.closest(".c4-case"); if(!c) return;
+    c4Joue(Number(c.dataset.col));
+  });
+  /* Le survol allume la colonne entiere : sur un plateau de 42 trous, viser
+     une case pour designer une colonne n'est pas evident au premier coup. */
+  $("c4Grille").addEventListener("mouseover", function(e){
+    var c=e.target.closest(".c4-case"); c4Survol(c?Number(c.dataset.col):-1);
+  });
+  $("c4Grille").addEventListener("mouseleave", function(){ c4Survol(-1); });
+  function c4Survol(col){
+    var m=C4.match, aMoi = m && m.phase==="en_cours" && c4MonJeton()===m.tour;
+    var cases=$("c4Grille").children;
+    for(var i=0;i<cases.length;i++)
+      cases[i].classList.toggle("survol",
+        aMoi && col>=0 && Number(cases[i].dataset.col)===col && !cases[i].hasAttribute("data-plein"));
+  }
+
+  c4Render();

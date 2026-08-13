@@ -1,5 +1,7 @@
 /*
- * SWOGE — la bulle de staking : le rendement qui monte, a cote du solde.
+ * SWOGE — les deux pastilles posees a cote du solde, sur toutes les pages :
+ *   • le rendement du staking, qui monte, et qu'un clic encaisse ;
+ *   • le nombre de joueurs en ligne, et le nombre de comptes en tout.
  *
  * Pourquoi un fichier a part plutot que le meme code colle dans onze pages :
  * les onze pages ont des coquilles differentes (le Pusher, le Spin, le Poker
@@ -33,6 +35,7 @@
   var MS_AN = 31536000000;                  // 365 jours — la constante du serveur
   var etat = { mise: 0, acquis: 0, tauxBps: 0, t0: 0, socket: null, prete: false };
   var bulle = null, chiffre = null, occupe = false;
+  var pastille = null, gens = null;
 
   // ------------------------------------------------------------ le reseau
   /* On enveloppe le constructeur sans le remplacer : `new` renvoie l'objet
@@ -64,6 +67,12 @@
     else if (m.type === 'stakeUnstaked') { etat.socket = ev.target; demande(); }
     else if (m.type === 'stakeClaimed') { occupe = false; eclat(); }
     else if (m.type === 'error' && occupe) { occupe = false; }
+    /* Le compte arrive avec le « hello », donc AVANT que le joueur se
+       connecte : la page annonce le monde present des la premiere seconde,
+       ce qui est justement le moment ou l'information sert. */
+    if (m.type === 'hello' && m.joueurs) gens = m.joueurs;
+    else if (m.type === 'joueurs') gens = m;
+    if (gens) rendGens();
   }
 
   function pose(s) {
@@ -152,6 +161,47 @@
     bulle.addEventListener('click', reclame);
     ancre.parentElement.insertBefore(bulle, ancre.nextSibling);
     return true;
+  }
+
+  /* Le compte de joueurs : posé APRÈS la bulle de staking, donc toujours dans
+     le meme ordre, quelle que soit celle qui apparait la premiere. */
+  function monteGens() {
+    if (pastille) return true;
+    if (!monte()) return false;              // meme point d'ancrage que la bulle
+    var css = document.createElement('style');
+    css.textContent =
+      '.swppl{display:inline-flex;align-items:center;gap:6px;vertical-align:middle;' +
+      'margin-left:8px;padding:5px 11px;border-radius:999px;' +
+      'font-family:inherit;font-size:12px;font-weight:700;line-height:1;color:#EAF2FF;' +
+      'background:linear-gradient(180deg,rgba(46,123,255,.22),rgba(10,16,32,.75));' +
+      'border:1px solid rgba(46,123,255,.5);white-space:nowrap;' +
+      'box-shadow:inset 0 1px 0 rgba(255,255,255,.12);}' +
+      '.swppl .swdot{width:7px;height:7px;border-radius:50%;background:#16D97F;' +
+      'box-shadow:0 0 7px #16D97F;animation:swbat 2.2s ease-in-out infinite;}' +
+      '@keyframes swbat{50%{opacity:.35}}' +
+      '.swppl b{font-variant-numeric:tabular-nums;}' +
+      '.swppl i{font-style:normal;opacity:.62;font-weight:600;}' +
+      '@media (max-width:520px){.swppl{font-size:10.5px;padding:3px 8px;margin-left:5px;gap:5px;}}' +
+      '@media (max-width:400px){.swppl i{display:none;}.swppl{padding:3px 7px;}}';
+    document.head.appendChild(css);
+    pastille = document.createElement('span');
+    pastille.className = 'swppl';
+    pastille.style.display = 'none';
+    pastille.innerHTML = '<span class="swdot"></span><b>0</b><i>online</i>';
+    bulle.parentElement.insertBefore(pastille, bulle.nextSibling);
+    return true;
+  }
+
+  function rendGens() {
+    if (!gens || !monteGens()) return;
+    pastille.style.display = '';
+    pastille.querySelector('b').textContent = Number(gens.enLigne || 0).toLocaleString('en-US');
+    var t = Number(gens.total || 0);
+    pastille.title = gens.enLigne + ' player' + (gens.enLigne === 1 ? '' : 's') +
+                     ' online right now · ' + t.toLocaleString('en-US') + ' accounts in total';
+    /* Le total ne bouge presque jamais : il tient dans l'infobulle et dans le
+       texte discret a cote, pas dans un second gros chiffre. */
+    pastille.querySelector('i').textContent = 'online · ' + t.toLocaleString('en-US');
   }
 
   function rend() {

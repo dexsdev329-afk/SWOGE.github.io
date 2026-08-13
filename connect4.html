@@ -1029,7 +1029,7 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
   var TG_ID=null; try{ var _tg=window.Telegram&&window.Telegram.WebApp; if(_tg&&_tg.initDataUnsafe&&_tg.initDataUnsafe.user) TG_ID=_tg.initDataUnsafe.user.id; }catch(e){}
 
   function toast(t){ var e=$("toast"); e.textContent=t; e.classList.add("show"); clearTimeout(e._t); e._t=setTimeout(function(){e.classList.remove("show");},2200); }
-  function fmtBal(b){ b=parseFloat(b||0); return b>=1000?(b/1000).toFixed(1)+"k":b.toFixed(2); }
+  function fmtBal(b){ b=parseFloat(b||0); return b>=1e9?(b/1e9).toFixed(2)+"B":b>=1e6?(b/1e6).toFixed(2)+"M":b>=1000?(b/1000).toFixed(1)+"k":b.toFixed(2); }
   function setBalance(b){ balance=parseFloat(b||0); balEl.textContent=fmtBal(balance); }
   function setDot(on){ dot.className="statusdot "+(on?"on":"off"); }
   function showFair(f){ if(f&&f.serverSeedHash) fairEl.innerHTML="Provably fair · seed hash <b>"+String(f.serverSeedHash).slice(0,16)+"…</b> · nonce <b>"+f.nonce+"</b>"; }
@@ -1278,7 +1278,7 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
    *     ce qui RESTE, pas une heure : deux horloges qui ne sont pas d'accord
    *     n'ont alors rien a reconcilier.
    */
-  var C4_MISES=[10,100,1000,10000,100000];
+  var C4_MISES=[10,100,1000,10000,100000,1000000,10000000];
   var C4={ mise:100, match:null, tables:[], invites:[], hist:[],
            revMise:100, finA:0, dernier:-1, rakeBps:500, busy:false };
 
@@ -1286,11 +1286,18 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
     /* Le signe est mis de cote puis remis : sans ca, -1000 ne passait aucun
        des seuils et s'ecrivait « -1000 » a cote d'une mise « 1k ». */
     var s=n<0?"-":"", v=Math.abs(n);
-    if(v>=1e6) return s+(v/1e6).toFixed(v%1e6?2:0).replace(/\.00$/,"")+"M";
-    if(v>=1e3) return s+(v/1e3).toFixed(v%1e3?1:0).replace(/\.0$/,"")+"k";
+    /* On coupe les zeros de queue, pas seulement « .00 » : 1 900 000 sortait
+       « 1.90M » a cote d'un bouton marque « 1M ». */
+    var net=function(x,d){ return x.toFixed(d).replace(/\.?0+$/,""); };
+    if(v>=1e6) return s+net(v/1e6,2)+"M";
+    if(v>=1e3) return s+net(v/1e3,1)+"k";
     return s+String(v); }
+  /* L'etiquette du bouton. Le million manquait : 1000000 s'ecrivait « 1000K »,
+     ce qui est juste mais illisible sur un bouton de 46 pixels. */
   function c4Court(n){ n=Number(n||0);
-    return n>=1e3 ? (n/1e3)+"K" : String(n); }
+    if(n>=1e6) return (n/1e6)+"M";
+    if(n>=1e3) return (n/1e3)+"K";
+    return String(n); }
   /* Un nom lisible : le serveur renvoie ce que le joueur a choisi, mais un
      joueur qui n'a rien choisi porte le debut de son adresse. */
   function c4Nom(nom, addr){

@@ -575,7 +575,7 @@ body { background:url('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
   var LABEL={0:"smash — nothing"};
 
   function toast(t){ var e=$("toast"); e.textContent=t; e.classList.add("show"); clearTimeout(e._t); e._t=setTimeout(function(){e.classList.remove("show");},2200); }
-  function fmtBal(b){ b=parseFloat(b||0); return b>=1000?(b/1000).toFixed(1)+"k":b.toFixed(2); }
+  function fmtBal(b){ b=parseFloat(b||0); return b>=1e9?(b/1e9).toFixed(2)+"B":b>=1e6?(b/1e6).toFixed(2)+"M":b>=1000?(b/1000).toFixed(1)+"k":b.toFixed(2); }
   function setBalance(b){ balance=parseFloat(b||0); balEl.textContent=fmtBal(balance); updateSmash(); }
   function setDot(on){ dot.className="statusdot "+(on?"on":"off"); }
   var SMASH_MIN=1, SMASH_MAX=1000;

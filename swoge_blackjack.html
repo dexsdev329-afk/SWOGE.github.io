@@ -849,7 +849,7 @@
   var TG_ID=null; try{ var _tg=window.Telegram&&window.Telegram.WebApp; if(_tg&&_tg.initDataUnsafe&&_tg.initDataUnsafe.user) TG_ID=_tg.initDataUnsafe.user.id; }catch(e){}
 
   function toast(t){ var e=$("toast"); e.textContent=t; e.classList.add("show"); clearTimeout(e._t); e._t=setTimeout(function(){e.classList.remove("show");},2200); }
-  function fmtBal(b){ b=parseFloat(b||0); return b>=1000?(b/1000).toFixed(1)+"k":b.toFixed(2); }
+  function fmtBal(b){ b=parseFloat(b||0); return b>=1e9?(b/1e9).toFixed(2)+"B":b>=1e6?(b/1e6).toFixed(2)+"M":b>=1000?(b/1000).toFixed(1)+"k":b.toFixed(2); }
   function setBalance(b){ balance=parseFloat(b||0); balEl.textContent=fmtBal(balance); }
   function setDot(on){ dot.className="statusdot "+(on?"on":"off"); }
   function showFair(f){ if(f&&f.serverSeedHash) fairEl.innerHTML="Provably fair · seed hash <b>"+String(f.serverSeedHash).slice(0,16)+"…</b> · nonce <b>"+f.nonce+"</b>"; }

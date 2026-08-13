@@ -149,7 +149,16 @@
          le chiffre suffit. */
       '@media (max-width:520px){.swstk{font-size:10.5px;padding:3px 8px;margin-left:5px;gap:4px;}' +
       '.swstk .swi{font-size:10px;}}' +
-      '@media (max-width:400px){.swstk .swi{display:none;}.swstk{gap:0;padding:3px 7px;}}';
+      '@media (max-width:400px){.swstk .swi{display:none;}.swstk{gap:0;padding:3px 7px;}}' +
+      /* Les deux crans de repli, appliques par la mesure et non par un seuil
+         devine : onze barres differentes n'ont pas la meme place, et une
+         valeur en pixels choisie a la main serait fausse pour au moins l'une
+         d'elles. */
+      'html.swtight .swstk .swi,html.swtight .swppl i{display:none!important;}' +
+      'html.swtight .swstk,html.swtight .swppl{font-size:10px!important;' +
+      'padding:3px 6px!important;margin-left:4px!important;gap:4px!important;}' +
+      'html.swnoppl .swppl{display:none!important;}' +
+      'html.swnostk .swstk{display:none!important;}';
     document.head.appendChild(css);
 
     bulle = document.createElement('button');
@@ -160,6 +169,7 @@
     chiffre = bulle.querySelector('b');
     bulle.addEventListener('click', reclame);
     ancre.parentElement.insertBefore(bulle, ancre.nextSibling);
+    ajusteBientot();
     return true;
   }
 
@@ -189,12 +199,28 @@
     pastille.style.display = 'none';
     pastille.innerHTML = '<span class="swdot"></span><b>0</b><i>online</i>';
     bulle.parentElement.insertBefore(pastille, bulle.nextSibling);
+    ajusteBientot();
     return true;
+  }
+
+  var derniereLargeur = '';
+  /* On rejuge la place quand ce qui est ECRIT change de taille : une pastille
+     qui passe de « 9 » a « 10 », un compteur qui gagne un chiffre entier. Ne
+     le faire qu'au montage laissait la barre deborder des la premiere dizaine
+     — et laissait surtout le repli inactif tant que la pastille n'etait pas
+     encore visible. */
+  function veille() {
+    var t = (bulle && bulle.style.display !== 'none' ? chiffre.textContent : '')
+          + '|' + (pastille && pastille.style.display !== 'none' ? pastille.textContent : '');
+    if (t.length !== derniereLargeur.length) { derniereLargeur = t; ajusteBientot(); }
+    else derniereLargeur = t;
   }
 
   function rendGens() {
     if (!gens || !monteGens()) return;
+    var avant = pastille.style.display;
     pastille.style.display = '';
+    if (avant === 'none') ajusteBientot();
     pastille.querySelector('b').textContent = Number(gens.enLigne || 0).toLocaleString('en-US');
     var t = Number(gens.total || 0);
     pastille.title = gens.enLigne + ' player' + (gens.enLigne === 1 ? '' : 's') +
@@ -202,15 +228,23 @@
     /* Le total ne bouge presque jamais : il tient dans l'infobulle et dans le
        texte discret a cote, pas dans un second gros chiffre. */
     pastille.querySelector('i').textContent = 'online · ' + t.toLocaleString('en-US');
+    veille();
   }
 
   function rend() {
     if (!monte()) return;
     /* Rien en jeu : pas de bulle. Un compteur fige a zero n'apprend rien. */
-    if (!etat.prete || etat.mise <= 0) { bulle.style.display = 'none'; return; }
+    var avant = bulle.style.display;
+    if (!etat.prete || etat.mise <= 0) {
+      bulle.style.display = 'none';
+      if (avant !== 'none') ajusteBientot();
+      return;
+    }
     bulle.style.display = '';
+    if (avant === 'none') ajusteBientot();
     chiffre.textContent = texte();
     var v = courant();
+    veille();
     bulle.title = occupe ? 'Claiming…'
       : v > 0 ? 'Yield earned on your ' + Math.round(etat.mise).toLocaleString('en-US') +
                 ' staked $SWOGE — tap to claim it now'
@@ -237,6 +271,42 @@
     catch (e) { occupe = false; }
     setTimeout(function () { occupe = false; }, 6000);   // filet, si rien ne revient
   }
+
+  /* ---- tenir dans la barre ----
+   * Les deux pastilles ajoutent une centaine de pixels a une barre qui n'en
+   * avait pas forcement. On ne devine pas un seuil : on MESURE le debordement
+   * que l'on cause soi-meme — on cache tout, on note la largeur de la page
+   * sans nous, on remet, et on compare. Une page qui debordait deja n'est pas
+   * mise sur notre compte, et une barre qu'on ne connait pas encore sera
+   * traitee correctement le jour ou elle existera.
+   */
+  var basePage = null;
+  function tropLarge() { return document.documentElement.scrollWidth - window.innerWidth; }
+  function ajuste() {
+    if (!bulle) return;
+    var r = document.documentElement;
+    r.classList.remove('swtight', 'swnoppl', 'swnostk');
+    // la largeur de la page sans nous, mesuree a chaque fois : la barre peut
+    // avoir change pour ses propres raisons
+    var vb = bulle.style.display, vp = pastille ? pastille.style.display : null;
+    bulle.style.display = 'none'; if (pastille) pastille.style.display = 'none';
+    basePage = tropLarge();
+    bulle.style.display = vb; if (pastille) pastille.style.display = vp;
+    if (tropLarge() <= basePage + 1) return;          // on ne gene pas
+    r.classList.add('swtight');                       // premier cran : on resserre
+    if (tropLarge() <= basePage + 1) return;
+    r.classList.add('swnoppl');                       // second : le compte s'efface
+    if (tropLarge() <= basePage + 1) return;
+    /* Troisieme cran. Sur une barre de 320 px, marque + solde + menu occupent
+       deja toute la place : il n'y a rien a gagner a insister. On s'efface
+       plutot que de pousser la page hors de l'ecran — le rendement reste
+       reclamable sur la page de staking. */
+    r.classList.add('swnostk');
+  }
+  var ajusteT = null;
+  function ajusteBientot() { clearTimeout(ajusteT); ajusteT = setTimeout(ajuste, 120); }
+  window.addEventListener('resize', ajusteBientot);
+  window.addEventListener('orientationchange', ajusteBientot);
 
   // Dix fois par seconde : le dernier chiffre coule sans que ca coute rien.
   setInterval(rend, 100);

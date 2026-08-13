@@ -158,6 +158,7 @@
     if (m.type === 'profile') {
       etat.socket = ev.target;
       if (m.avatars) VISAGES = m.avatars;
+      if (m.uploaded) { versionPhoto++; dit('Photo saved — other players see it now.', 'ok'); }
       if (m.profile) MOI = m.profile;
       if (m.friends) AMIS = m.friends;
       profEnTete(); if (profOnglet === 'am') profRend();
@@ -533,6 +534,12 @@
       '.swp-in button{flex:0 0 auto;padding:9px 14px;border-radius:9px;cursor:pointer;' +
       'font-family:inherit;font-size:12.5px;font-weight:800;color:#07101F;' +
       'background:linear-gradient(180deg,#FFE08A,#FFC53D);border:0;}' +
+      '.swp-up{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:9px;}' +
+      '.swp-up button{flex:1 1 auto;padding:9px 12px;border-radius:9px;cursor:pointer;' +
+      'font-family:inherit;font-size:12px;font-weight:800;color:#EAF2FF;' +
+      'background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);}' +
+      '.swp-up button:hover{border-color:#FFC53D;}' +
+      '.swp-up .swp-drop{flex:0 0 auto;}' +
       '.swp-msg{margin-top:8px;font-size:11.5px;line-height:1.5;color:#8DA0C4;}' +
       '.swp-msg.ko{color:#F2685E;} .swp-msg.ok{color:#7CFF9B;}' +
       '.swp-r .av{flex:0 0 auto;width:30px;height:30px;border-radius:50%;display:flex;' +
@@ -589,6 +596,11 @@
         '</div>' +
         '<div class="swp-form off">' +
           '<div class="swp-avs"></div>' +
+          '<div class="swp-up">' +
+            '<input type="file" accept="image/jpeg,image/png,image/webp" hidden>' +
+            '<button class="swp-pick" type="button">📷 Use a photo from my phone</button>' +
+            '<button class="swp-drop" type="button">Remove photo</button>' +
+          '</div>' +
           '<div class="swp-in">' +
             '<input class="swp-nom" maxlength="18" placeholder="Your name, 3 to 18 characters">' +
             '<button class="swp-save" type="button">Save</button>' +
@@ -613,6 +625,62 @@
       if (!ouvert) { profBoite.querySelector('.swp-nom').value = MOI.name || ''; profVisages(); }
     });
     profBoite.querySelector('.swp-save').addEventListener('click', enregistre);
+
+    /* ---- la photo venue du telephone ----
+     * Elle est REDIMENSIONNEE DANS LE NAVIGATEUR avant d'etre envoyee. Une
+     * photo de telephone pese trois a huit megaoctets ; la faire monter pour
+     * l'afficher en trente-quatre pixels serait absurde, couteux pour le
+     * joueur en donnees mobiles, et le serveur n'a pas de bibliotheque
+     * d'images pour la reduire lui-meme. Un carre de 256 px en JPEG pese
+     * quelques kilo-octets et suffit largement.
+     *
+     * On recadre au CENTRE plutot que de deformer : une photo de portrait
+     * ecrasee en carre ne ressemble a personne.
+     */
+    var champ = profBoite.querySelector('.swp-up input[type=file]');
+    profBoite.querySelector('.swp-pick').addEventListener('click', function () { champ.click(); });
+    profBoite.querySelector('.swp-drop').addEventListener('click', function () {
+      if (etat.socket && etat.socket.readyState === 1) {
+        etat.socket.send('{"type":"avatarRemove"}');
+        dit('Photo removed.', 'ok');
+      }
+    });
+    champ.addEventListener('change', function () {
+      var f = champ.files && champ.files[0];
+      champ.value = '';
+      if (!f) return;
+      if (!/^image\//.test(f.type)) return dit('That file is not an image.', 'ko');
+      dit('Preparing your photo…');
+      var lecteur = new FileReader();
+      lecteur.onerror = function () { dit('Could not read that file.', 'ko'); };
+      lecteur.onload = function () {
+        var img = new Image();
+        img.onerror = function () { dit('That image could not be opened.', 'ko'); };
+        img.onload = function () {
+          try {
+            var N = 256;
+            var c = document.createElement('canvas');
+            c.width = N; c.height = N;
+            var g = c.getContext('2d');
+            // recadrage centre : on prend le plus grand carre de la photo
+            var cote = Math.min(img.width, img.height);
+            g.drawImage(img, (img.width - cote) / 2, (img.height - cote) / 2, cote, cote, 0, 0, N, N);
+            var data = c.toDataURL('image/jpeg', 0.82);
+            /* On verifie le poids ICI aussi : le serveur refusera de toute
+               facon, mais autant ne pas faire monter ce qu'on sait trop gros.
+               Si le premier essai depasse, on baisse la qualite une fois. */
+            if (data.length > 40000) data = c.toDataURL('image/jpeg', 0.6);
+            if (data.length > 44000) return dit('That photo is too heavy even after resizing.', 'ko');
+            if (!etat.socket || etat.socket.readyState !== 1) return dit('Not connected.', 'ko');
+            etat.socket.send(JSON.stringify({ type: 'avatarUpload', data: data }));
+            versionPhoto++;
+            dit('Uploading…');
+          } catch (e) { dit('Could not prepare that photo.', 'ko'); }
+        };
+        img.src = lecteur.result;
+      };
+      lecteur.readAsDataURL(f);
+    });
     profBoite.querySelector('.swp-nom').addEventListener('keydown', function (e) {
       if (e.key === 'Enter') enregistre();
     });
@@ -749,9 +817,30 @@
 
   // ---------------------------------------------- le profil, le formulaire
   var visageChoisi = null;
+  /* L'image se demande a une ADRESSE, pas dans le message : le navigateur la
+     met alors en cache au lieu de la recevoir a chaque manche. Le parametre
+     `v` change a chaque enregistrement pour que le cache ne serve pas
+     l'ancienne. */
+  function urlPhoto(addr) {
+    var base = adresseServeur().replace(/^ws/, 'http').replace(/\/+$/, '');
+    return base + '/avatar/' + String(addr).toLowerCase() + '?v=' + versionPhoto;
+  }
+  var versionPhoto = 1;
+  function peintVisage(el, p) {
+    if (p && p.photo) {
+      el.style.backgroundImage = 'url("' + urlPhoto(p.address) + '")';
+      el.style.backgroundSize = 'cover';
+      el.style.backgroundPosition = 'center';
+      el.textContent = '';
+    } else {
+      el.style.backgroundImage = '';
+      el.textContent = (p && p.visage) || '👤';
+    }
+  }
+
   function profEnTete() {
     if (!profBoite) return;
-    profBoite.querySelector('.swp-av').textContent = MOI.visage || '👤';
+    peintVisage(profBoite.querySelector('.swp-av'), MOI);
     profBoite.querySelector('.swp-me .nm b').textContent = MOI.name || 'no name yet';
     profBoite.querySelector('.swp-me .nm span').textContent = MOI.address || '';
     if (MOI.address) profBoite.querySelector('.swp-me .nm span').title = MOI.address;
@@ -794,9 +883,10 @@
   function ligneAmi(a) {
     var d = document.createElement('div');
     d.className = 'swp-r';
-    d.innerHTML = '<div class="av">' + (a.visage || '👤') + '</div>' +
+    d.innerHTML = '<div class="av"></div>' +
       '<div class="w"><b>' + ech(a.name || court(a.address)) + '</b>' +
       '<span>' + court(a.address) + (a.connu ? '' : ' · never played here') + '</span></div>';
+    peintVisage(d.querySelector('.av'), a);
     d.title = a.address;
     var envoyer = document.createElement('button');
     envoyer.className = 'mini'; envoyer.type = 'button'; envoyer.textContent = 'Send';

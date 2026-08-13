@@ -162,9 +162,23 @@
       if (m.uploaded) { versionPhoto++; dit('Photo saved — other players see it now.', 'ok'); }
       if (m.profile) MOI = m.profile;
       if (m.friends) AMIS = m.friends;
-      if (m.pending !== undefined) { EN_ATTENTE = m.pending; pastilleAmis(); }
-      profEnTete(); if (profOnglet === 'am') profRend();
+      if (m.pending !== undefined) EN_ATTENTE = m.pending;
+      if (m.unread !== undefined) NON_LUS = m.unread;
+      if (m.stats) STATS = m.stats;
+      pastilleAmis();
+      profEnTete(); if (profOnglet === 'am' || profOnglet === 'in') profRend();
     }
+    if (m.type === 'unread') { NON_LUS = m.unread || 0; pastilleAmis(); }
+    if (m.type === 'referral' || m.type === 'referralClaimed') {
+      PARRAIN = m;
+      if (m.type === 'referralClaimed') { toast('✅ Claimed ' + nb(m.montant) + ' $SWOGE from your invites', 'ok'); rafraichitSolde(); }
+      if (m.nouveau) toast('🎉 ' + m.nouveau + ' joined with your invite link', 'ok');
+      /* Le lien accroche : on efface le code garde de cote, sinon on
+         retenterait a chaque page pour rien. */
+      if (m.parrain) { try { localStorage.removeItem('swogeRef'); } catch (e) {} }
+      if (profOnglet === 'in') profRend();
+    }
+    if (m.type === 'leaderboard') { CLASSEMENT = m; if (profOnglet === 'lb') profRend(); }
     if (m.type === 'friends') {
       AMIS = m.friends || { amis: [], recues: [], envoyees: [] };
       EN_ATTENTE = m.pending || 0;
@@ -182,8 +196,12 @@
       if (m.type === 'transferSent')
         toast('✅ Sent ' + nb(m.montant) + ' $SWOGE to ' +
               (m.nomDest || court(m.vers)), 'ok');
-      else
+      else {
         toast('💰 ' + (m.fromName || court(m.from)) + ' sent you ' + nb(m.amount) + ' $SWOGE', 'ok');
+        if (m.unread !== undefined) NON_LUS = m.unread;
+        else NON_LUS++;
+        pastilleAmis();
+      }
       rafraichitSolde();
       /* Un virement change le solde ET l'historique : on redemande la page
          courante plutot que de deviner ou inserer la ligne. */
@@ -191,7 +209,7 @@
       if (etat.socket && etat.socket.readyState === 1)
         etat.socket.send('{"type":"profile"}');
     }
-    if (m.type === 'auth') { etat.socket = ev.target; profBtnVisible(true); }
+    if (m.type === 'auth') { etat.socket = ev.target; profBtnVisible(true); accrocheParrain(); }
     if (m.type === 'hello' && m.explorer) EXPLORATEUR = String(m.explorer).replace(/\/+$/, '');
     if (m.type === 'hello' && m.joueurs) gens = m.joueurs;
     else if (m.type === 'joueurs') gens = m;
@@ -495,9 +513,11 @@
                smash:'Smash', mines:'Mines', hilo:'Hi-Lo', holdem:"Casino Hold'em",
                three:'Three Card', p4:'Connect 4', pusher:'Coin Pusher' };
   var ONGLETS = [['r','Rounds'],['dep','Deposits'],['wd','Withdrawals'],
-                 ['st','Staking'],['tr','Transfers'],['am','Friends']];
+                 ['st','Staking'],['tr','Transfers'],['am','Friends'],['in','Invite'],
+                 ['lb','Ranking']];
   var VISAGES = [], MOI = { name: null, visage: null, address: null };
   var AMIS = { amis: [], recues: [], envoyees: [] }, EN_ATTENTE = 0, RECHERCHE = [];
+  var NON_LUS = 0, PARRAIN = null, STATS = null, CLASSEMENT = null;
   var EXPLORATEUR = 'https://robinhoodchain.blockscout.com';
 
   function nb(v, d) {
@@ -534,6 +554,9 @@
       'background:linear-gradient(180deg,rgba(46,26,10,.95),rgba(20,10,4,.98));' +
       'border:1px solid rgba(230,165,55,.5);}' +
       '.swpb:hover{border-color:#FFC53D;color:#fff;}' +
+      /* Quand il a une medaille ou une photo, le bouton EST son visage. */
+      '.swpb.img{background-size:cover;background-position:center;background-repeat:no-repeat;' +
+      'background-color:rgba(10,6,2,.9);}' +
       '.swpov{position:fixed;inset:0;z-index:99999;display:none;align-items:center;' +
       'justify-content:center;padding:16px;background:rgba(3,6,12,.82);' +
       '-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);}' +
@@ -548,8 +571,10 @@
       '.swp-h span{flex:1;font-size:11px;color:#8DA0C4;}' +
       '.swp-x{width:30px;height:30px;border-radius:9px;cursor:pointer;font-size:15px;' +
       'color:#EAF2FF;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);}' +
-      '.swp-t{display:flex;gap:6px;padding:10px 13px 0;}' +
-      '.swp-t button{flex:1;padding:8px 6px;border-radius:9px 9px 0 0;cursor:pointer;' +
+      '.swp-t{display:grid;gap:6px;padding:10px 13px 0;' +
+      'grid-template-columns:repeat(auto-fit,minmax(106px,1fr));}' +
+      '.swp-t button{padding:8px 6px;border-radius:9px 9px 0 0;cursor:pointer;' +
+      'min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;' +
       'font-family:inherit;font-size:12px;font-weight:800;letter-spacing:.5px;' +
       'color:#8DA0C4;background:rgba(255,255,255,.05);border:1px solid transparent;' +
       'border-bottom:0;}' +
@@ -577,8 +602,8 @@
       '.swp-more[disabled]{opacity:.5;cursor:default;}' +
       /* Six onglets ne tiennent pas sur une ligne de telephone : ils se
          replient au lieu de sortir de la boite. */
-      '.swp-t{flex-wrap:wrap;}' +
-      '.swp-t button{flex:1 1 88px;}' +
+      '.swp-t{grid-template-columns:repeat(auto-fit,minmax(88px,1fr));}' +
+      '.swp-t button{font-size:11px;letter-spacing:.2px;padding:8px 4px;}' +
       /* l en-tete : le visage, le nom, et de quoi les changer */
       '.swp-me{display:flex;align-items:center;gap:11px;padding:11px 13px;' +
       'border-bottom:1px solid rgba(255,197,61,.18);background:rgba(255,255,255,.03);}' +
@@ -632,6 +657,28 @@
       'background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);}' +
       '.swp-up button:hover{border-color:#FFC53D;}' +
       '.swp-up .swp-drop{flex:0 0 auto;}' +
+      /* Le parrainage et les chiffres. Une grille qui se replie toute seule :
+         deux colonnes sur telephone, quatre sur un ecran large. */
+      '.swp-ex{font-size:11.5px;line-height:1.6;color:#A9BBD8;margin-bottom:9px;' +
+      'padding:9px 11px;border-radius:10px;background:rgba(255,197,61,.07);' +
+      'border:1px solid rgba(255,197,61,.20);}' +
+      '.swp-ex b{color:#FFD97A;}' +
+      '.swp-lien{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;}' +
+      '.swp-st{margin-bottom:10px;padding:10px 11px;border-radius:12px;' +
+      'background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.09);}' +
+      '.swp-st-h{font-size:10.5px;letter-spacing:.6px;text-transform:uppercase;' +
+      'color:#8DA0C4;margin-bottom:9px;}' +
+      '.swp-st-g{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));}' +
+      '.swp-st-g>div{min-width:0;}' +
+      '.swp-st-g span{display:block;font-size:10px;color:#8DA0C4;margin-bottom:2px;}' +
+      '.swp-st-g b{display:block;font-size:13.5px;font-weight:800;color:#EAF2FF;' +
+      'font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;}' +
+      '.swp-st-g b.g{color:#7CFF9B;} .swp-st-g b.p{color:#F2685E;}' +
+      '.swp-st-f{margin-top:9px;padding-top:8px;font-size:10.5px;color:#8DA0C4;' +
+      'border-top:1px solid rgba(255,255,255,.07);}' +
+      '.swp-r .rg{flex:0 0 auto;min-width:30px;font-size:12px;font-weight:800;color:#C9A24A;' +
+      'text-align:center;font-variant-numeric:tabular-nums;}' +
+      '.swp-r.moi{border-color:rgba(255,197,61,.55);background:rgba(255,197,61,.09);}' +
       '.swp-msg{margin-top:8px;font-size:11.5px;line-height:1.5;color:#8DA0C4;}' +
       '.swp-msg.ko{color:#F2685E;} .swp-msg.ok{color:#7CFF9B;}' +
       '.swp-r .av{flex:0 0 auto;width:30px;height:30px;border-radius:50%;display:flex;' +
@@ -799,6 +846,220 @@
     }
   }
 
+  /* ---------------------------------------------------------- parrainage
+   *
+   * Le code arrive dans l'adresse — swoleeswoge.dog/?ref=LeCostaud — et le
+   * joueur n'est pas encore connecte a ce moment-la : on le met de cote, et
+   * on l'accroche a la premiere authentification, quelle que soit la page ou
+   * elle a lieu. Il n'y a donc rien a modifier dans les douze pages.
+   */
+  (function ramasseCode() {
+    try {
+      var c = new URLSearchParams(location.search).get('ref');
+      if (c && String(c).trim()) localStorage.setItem('swogeRef', String(c).trim().slice(0, 32));
+    } catch (e) {}
+  })();
+  function accrocheParrain() {
+    if (!etat.socket || etat.socket.readyState !== 1) return;
+    var c = null;
+    try { c = localStorage.getItem('swogeRef'); } catch (e) {}
+    try { etat.socket.send(JSON.stringify(c ? { type: 'referral', bind: c } : { type: 'referral' })); }
+    catch (e) {}
+  }
+  function lienInvitation() {
+    var base = location.origin + location.pathname.replace(/[^/]*$/, '');
+    return base + '?ref=' + encodeURIComponent((PARRAIN && PARRAIN.code) || '');
+  }
+  function rendInvite() {
+    var l = profBoite.querySelector('.swp-l');
+    l.innerHTML = '';
+    if (!PARRAIN) {
+      var att = document.createElement('div');
+      att.className = 'swp-v'; att.textContent = 'Loading…';
+      l.appendChild(att);
+      if (etat.socket && etat.socket.readyState === 1) etat.socket.send('{"type":"referral"}');
+      return;
+    }
+    var P = PARRAIN;
+
+    // ---- ce que ca rapporte, dit en une phrase
+    var expl = document.createElement('div');
+    expl.className = 'swp-ex';
+    expl.innerHTML = 'Invite your friends and earn <b>' + P.part + '%</b> of what they lose to the ' +
+      'house — for life. In 1v1 games you earn on the rake instead. They get <b>' +
+      nb(P.bienvenue, 0) + ' $SWOGE</b> on their first deposit.';
+    l.appendChild(expl);
+
+    // ---- le lien, et le bouton qui le copie
+    var boite = document.createElement('div');
+    boite.className = 'swp-in';
+    boite.innerHTML = '<input class="swp-lien" readonly><button type="button">Copy</button>';
+    var champ = boite.querySelector('.swp-lien');
+    champ.value = lienInvitation();
+    champ.addEventListener('focus', function () { champ.select(); });
+    boite.querySelector('button').addEventListener('click', function () {
+      var b = boite.querySelector('button');
+      champ.select();
+      try { navigator.clipboard.writeText(champ.value); } catch (e) { try { document.execCommand('copy'); } catch (e2) {} }
+      b.textContent = 'Copied ✓';
+      setTimeout(function () { b.textContent = 'Copy'; }, 1400);
+    });
+    l.appendChild(boite);
+
+    // ---- ce qui est du, et le bouton qui l encaisse
+    var du = parseFloat(P.du || 0);
+    var gains = document.createElement('div');
+    gains.className = 'swp-r';
+    gains.innerHTML = '<div class="w"><b>' + nb(du) + ' $SWOGE</b>' +
+                      '<span class="su">ready to claim · ' + nb(P.total) + ' earned in total</span></div>';
+    var bt = document.createElement('button');
+    bt.className = 'mini'; bt.type = 'button'; bt.textContent = 'Claim';
+    bt.disabled = !(du > 0);
+    bt.addEventListener('click', function () {
+      if (etat.socket && etat.socket.readyState === 1) etat.socket.send('{"type":"referralClaim"}');
+    });
+    gains.appendChild(bt);
+    l.appendChild(gains);
+
+    // ---- qui on a fait venir
+    var t = document.createElement('div');
+    t.className = 'swp-mo'; t.style.cursor = 'default';
+    t.innerHTML = 'Friends you brought in<i>' + P.filleuls.length + '</i>';
+    l.appendChild(t);
+    if (!P.filleuls.length) {
+      var v = document.createElement('div');
+      v.className = 'swp-v';
+      v.innerHTML = 'Nobody yet.<br>Share your link — you earn on every round they play, for good.';
+      l.appendChild(v);
+    } else P.filleuls.forEach(function (f) {
+      var d = document.createElement('div');
+      d.className = 'swp-r';
+      d.innerHTML = corpsAmi(f, f.depose ? '' : 'has not deposited yet — you earn nothing until then') +
+        '<div class="v"><b class="g">' + nb(f.rapporte) + '</b><span>earned</span></div>';
+      peintVisage(d.querySelector('.av'), f);
+      copiable(d);
+      l.appendChild(d);
+    });
+
+    if (P.parrain) {
+      var q = document.createElement('div');
+      q.className = 'swp-ex';
+      q.style.marginTop = '10px';
+      q.textContent = 'You were invited by ' + (P.parrain.name || court(P.parrain.address)) + '.';
+      l.appendChild(q);
+    }
+  }
+
+  /* -------------------------------------------------------- le classement
+   *
+   * Au VOLUME MISE du mois, et pas au gain : classer sur les gains, c'est
+   * classer sur la chance — le meme joueur y monte et descend sans rien
+   * changer a sa facon de jouer. Le volume ne depend que de ce qu'on a fait.
+   */
+  function ligneRang(r, moi) {
+    var d = document.createElement('div');
+    d.className = 'swp-r' + (moi ? ' moi' : '');
+    var med = r.rang === 1 ? '🥇' : r.rang === 2 ? '🥈' : r.rang === 3 ? '🥉' : '#' + r.rang;
+    d.innerHTML = '<span class="rg">' + med + '</span><div class="av"></div>' +
+      '<div class="w"><b>' + ech(r.name || court(r.address)) + (moi ? ' — you' : '') + '</b></div>' +
+      '<div class="v"><b>' + nb(r.mise, 0) + '</b><span>$SWOGE played</span></div>';
+    peintVisage(d.querySelector('.av'), r);
+    return d;
+  }
+  function rendClassement() {
+    var l = profBoite.querySelector('.swp-l');
+    l.innerHTML = '';
+    if (!CLASSEMENT) {
+      var a = document.createElement('div');
+      a.className = 'swp-v'; a.textContent = 'Loading…';
+      l.appendChild(a);
+      if (etat.socket && etat.socket.readyState === 1) etat.socket.send('{"type":"leaderboard"}');
+      return;
+    }
+    var C = CLASSEMENT;
+    var mois = C.mois ? new Date(C.mois + '-02').toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }) : '';
+    var t = document.createElement('div');
+    t.className = 'swp-mo'; t.style.cursor = 'default';
+    t.innerHTML = mois + '<i>' + nb(C.joueurs, 0) + ' player' + (C.joueurs === 1 ? '' : 's') + '</i>';
+    l.appendChild(t);
+
+    var e = document.createElement('div');
+    e.className = 'swp-ex';
+    e.innerHTML = 'Ranked on <b>volume played this month</b>, not on winnings — luck moves winnings, ' +
+                  'volume is what you actually did. It resets when the month does.';
+    l.appendChild(e);
+
+    if (!C.top.length) {
+      var v = document.createElement('div');
+      v.className = 'swp-v';
+      v.innerHTML = 'Nobody has played yet this month.<br>Play one round and you are first.';
+      l.appendChild(v);
+      return;
+    }
+    var moi = MOI && MOI.address ? String(MOI.address).toLowerCase() : null;
+    C.top.forEach(function (r) { l.appendChild(ligneRang(r, moi && r.address === moi)); });
+
+    /* Celui qui n'est pas dans les cinquante premiers doit quand meme se
+       trouver : un classement ou l'on ne se voit pas ne sert a personne. */
+    if (C.moi && C.moi.rang > C.top.length) {
+      var s2 = document.createElement('div');
+      s2.className = 'swp-mo'; s2.style.cursor = 'default';
+      s2.innerHTML = 'Your place<i>of ' + nb(C.joueurs, 0) + '</i>';
+      l.appendChild(s2);
+      l.appendChild(ligneRang(C.moi, true));
+    } else if (!C.moi) {
+      var r0 = document.createElement('div');
+      r0.className = 'swp-v';
+      r0.innerHTML = 'You have not played yet this month.';
+      l.appendChild(r0);
+    }
+  }
+
+  /* ------------------------------------------------------ les statistiques
+   * Tout vient de ce qui est deja compte ailleurs. Une statistique avec sa
+   * propre source finirait par contredire l'historique affiche juste en
+   * dessous — et c'est l'historique qu'on croit. */
+  function blocStats() {
+    if (!STATS) return null;
+    var s = STATS;
+    var cases = [
+      ['Total wagered', nb(s.mise, 0) + ' $SWOGE'],
+      ['Rounds played', nb(s.manches, 0)],
+      ['All-time result', (s.net >= 0 ? '+' : '') + nb(s.net, 0) + ' $SWOGE', s.net >= 0 ? 'g' : 'p'],
+      ['Biggest win', s.record ? '+' + nb(s.record.g, 0) + ' $SWOGE' : '—',
+        s.record ? 'g' : ''],
+      ['Best multiplier', s.record && s.record.x ? s.record.x + '×' : '—'],
+      ['Best day', s.meilleurJour ? '+' + nb(s.meilleurJour.net, 0) : '—', s.meilleurJour ? 'g' : ''],
+      ['Staking claimed', nb(s.stakeReclame, 0)],
+      ['Friends invited', nb(s.filleuls, 0) + (Number(s.parrainGagne) > 0 ? ' · ' + nb(s.parrainGagne, 0) + ' earned' : '')],
+    ];
+    var box = document.createElement('div');
+    box.className = 'swp-st';
+    var haut = document.createElement('div');
+    haut.className = 'swp-st-h';
+    haut.textContent = s.depuis
+      ? 'Member since ' + new Date(s.depuis).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+      : 'Your numbers';
+    box.appendChild(haut);
+    var g = document.createElement('div');
+    g.className = 'swp-st-g';
+    cases.forEach(function (c) {
+      var d = document.createElement('div');
+      d.innerHTML = '<span>' + c[0] + '</span><b class="' + (c[2] || '') + '">' + ech(c[1]) + '</b>';
+      g.appendChild(d);
+    });
+    box.appendChild(g);
+    if (s.favoris && s.favoris.length) {
+      var f = document.createElement('div');
+      f.className = 'swp-st-f';
+      f.textContent = 'Most played: ' + s.favoris.map(function (x) {
+        return (JEUX[x.jeu] || x.jeu) + ' (' + nb(x.n, 0) + ')';
+      }).join(' · ');
+      box.appendChild(f);
+    }
+    return box;
+  }
+
   function profOuvre() {
     if (!profMonte()) return;
     profOuvert = true;
@@ -814,6 +1075,17 @@
 
   function profVa(k) {
     profOnglet = k; profItems = []; profFin = null; profEncore = false;
+    /* Ouvrir l'onglet des envois, c'est les avoir vus : la pastille tombe. */
+    if (k === 'in' && etat.socket && etat.socket.readyState === 1) {
+      try { etat.socket.send('{"type":"referral"}'); } catch (e) {}
+    }
+    if (k === 'lb' && etat.socket && etat.socket.readyState === 1) {
+      try { etat.socket.send('{"type":"leaderboard"}'); } catch (e) {}
+    }
+    if (k === 'tr' && NON_LUS && etat.socket && etat.socket.readyState === 1) {
+      NON_LUS = 0; pastilleAmis();
+      try { etat.socket.send('{"type":"seenTransfers"}'); } catch (e) {}
+    }
     [].forEach.call(profBoite.querySelectorAll('.swp-t button'), function (b) {
       b.classList.toggle('on', b.dataset.k === k);
     });
@@ -941,8 +1213,27 @@
     }
   }
 
+  /* Le bouton de la barre porte SA medaille ou SA photo, pas une silhouette.
+     C'est la seule chose de lui qu'il voit sur chaque page, et c'est ce qui
+     donne envie d'en choisir une. */
+  function peintBouton() {
+    if (!profBtn) return;
+    var pastille = profBtn.querySelector('.swpn');
+    if (MOI && (MOI.photo || estBadge(MOI.visage))) {
+      profBtn.textContent = '';
+      profBtn.classList.add('img');
+      profBtn.style.backgroundImage = 'url("' +
+        (MOI.photo ? urlPhoto(MOI.address) : urlBadge(MOI.visage)) + '")';
+    } else {
+      profBtn.classList.remove('img');
+      profBtn.style.backgroundImage = '';
+      profBtn.textContent = (MOI && MOI.visage) || '👤';
+    }
+    if (pastille) profBtn.appendChild(pastille);
+  }
   function profEnTete() {
     if (!profBoite) return;
+    peintBouton();
     peintVisage(profBoite.querySelector('.swp-av'), MOI);
     profBoite.querySelector('.swp-me .nm b').textContent = MOI.name || 'no name yet';
     profBoite.querySelector('.swp-me .nm span').textContent = MOI.address || '';
@@ -1048,15 +1339,19 @@
   function pastilleAmis() {
     if (!profBtn) return;
     var p = profBtn.querySelector('.swpn');
-    if (!EN_ATTENTE) { if (p) p.remove(); return; }
+    var total = (EN_ATTENTE || 0) + (NON_LUS || 0);
+    if (!total) { if (p) p.remove(); profBtn.title = 'Your profile'; return; }
     if (!p) {
       p = document.createElement('span');
       p.className = 'swpn';
       profBtn.style.position = 'relative';
       profBtn.appendChild(p);
     }
-    p.textContent = EN_ATTENTE > 9 ? '9+' : String(EN_ATTENTE);
-    profBtn.title = EN_ATTENTE + ' friend request' + (EN_ATTENTE === 1 ? '' : 's') + ' waiting';
+    p.textContent = total > 9 ? '9+' : String(total);
+    var t = [];
+    if (EN_ATTENTE) t.push(EN_ATTENTE + ' friend request' + (EN_ATTENTE === 1 ? '' : 's') + ' waiting');
+    if (NON_LUS) t.push(NON_LUS + ' $SWOGE transfer' + (NON_LUS === 1 ? '' : 's') + ' received');
+    profBtn.title = t.join(' · ');
   }
   function toast(t, cl) {
     var e = document.createElement('div');
@@ -1206,6 +1501,8 @@
   function profRend() {
     if (!profBoite) return;
     if (profOnglet === 'am') { profEnTete(); return rendAmis(); }
+    if (profOnglet === 'in') { profEnTete(); return rendInvite(); }
+    if (profOnglet === 'lb') { profEnTete(); return rendClassement(); }
     var l = profBoite.querySelector('.swp-l');
     var sous = profBoite.querySelector('.swp-sub');
     if (profResume) {
@@ -1214,6 +1511,7 @@
           { day: '2-digit', month: 'short', year: 'numeric' }) : '');
     }
     l.innerHTML = '';
+    if (profOnglet === 'r') { var st = blocStats(); if (st) l.appendChild(st); }
     if (!profItems.length) {
       var v = document.createElement('div');
       v.className = 'swp-v';

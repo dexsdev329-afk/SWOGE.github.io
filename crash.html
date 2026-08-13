@@ -1537,11 +1537,13 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
       crPlaque(m.toFixed(2)+"×", CR.moi&&CR.moi.multi?"gagne":null);
       var bout=crDessine(ms,m);
       crFusee(bout,ms);
+      crSonSuit(m);
       if(CR.moi && !CR.moi.multi) crEtat("cash out to keep "+crFmt(Math.floor(CR.moi.mise*m))+" $SWOGE");
       else crEtat("");
     } else if(CR.phase==="attente"){
       var reste=Math.max(0, CR.resteA-Date.now());
       crEtat("next round in "+(reste/1000).toFixed(1)+"s");
+      crSonTic(reste);
       crPlaque("1.00×", null);
       /* On repeint le ciel meme a l'arret : sans ca le canevas efface laisse
          reapparaitre la lave du cadre entre deux manches. */
@@ -1551,6 +1553,7 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
 
   function crVol(depuis){
     CR.phase="vol"; CR.t0=Date.now()-(depuis||0); CR.point=null;
+    crSonDepart();
     var b=$("crBoom"); if(b) b.classList.remove("go");
     crEtat(""); crRender();
   }
@@ -1570,10 +1573,11 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
        va dans la ligne d'etat, qui prend toute la largeur. */
     crPlaque(point.toFixed(2)+"×","crashe");
     crEtat("CRASHED", true);
-    try{ SFX.joue("pousse",.9); }catch(e){}
+    crSonBoum();
   }
 
   function crAttente(){
+    crSonStop();
     CR.phase="attente"; CR.moi=null; CR.joueurs=[]; CR.point=null;
     var f=$("crFusee"); if(f) f.classList.add("off");
     if(crCtx){ crCtx.clearRect(0,0,crW,crH); crPeintFond(0); }
@@ -1606,6 +1610,148 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
       if(c.phase==="apres"&&c.point) crCrash(c.point); else crAttente();
     }
     crRender();
+  }
+
+
+  /* ------------------------------------------------------------------- son
+   * La poussee est SYNTHETISEE, pas jouee depuis un echantillon, parce qu'elle
+   * doit monter avec le multiplicateur. Un fichier audio a une hauteur fixe :
+   * il accompagnerait le vol sans jamais dire ou on en est. La, le grave et le
+   * filtre montent avec la courbe — l'oreille sait qu'on est haut avant que
+   * l'oeil ait lu le chiffre, et c'est ca qui serre le ventre.
+   *
+   * Trois couches : un souffle filtre (la combustion), une dent de scie grave
+   * (le moteur), et un souffle blanc bref au crash (l'explosion).
+   */
+  var crAudio=null, crBruit=null;
+
+  /* Le volume passe par l'API publique : `muted` et `master` sont prives au
+     module audio, et les lire directement levait « muted is not defined » a
+     chaque image — le son ne demarrait jamais. volume() rend deja zero quand
+     le son est coupe, donc un seul test suffit. */
+  function crVol_(){ try{ return SFX.volume(); }catch(e){ return 0; } }
+
+  /* Notre PROPRE contexte audio. `ac()` et `muted` appartiennent au module de
+     sons de la page et ne sont pas dans notre portee — s'y accrocher a leve
+     « muted is not defined » puis « ac is not defined », et le son n'a jamais
+     demarre. Un contexte a nous ne depend de rien d'autre que du navigateur.
+     Il ne se cree qu'au premier geste : les navigateurs refusent le son avant. */
+  var crCtx_=null;
+  function crCtxAudio(){
+    if(!crCtx_){
+      try{ crCtx_=new (window.AudioContext||window.webkitAudioContext)(); }
+      catch(e){ return null; }
+    }
+    if(crCtx_.state==="suspended"){ try{ crCtx_.resume(); }catch(e){} }
+    return crCtx_.state==="running" ? crCtx_ : null;
+  }
+  /* Un geste, n'importe lequel, debloque le son pour toute la session. */
+  ["pointerdown","keydown","touchstart"].forEach(function(e){
+    document.addEventListener(e, function(){ crCtxAudio(); }, {once:false, passive:true});
+  });
+
+  /** Un souffle blanc d'une seconde, fabrique une fois et reutilise. */
+  function crBruitBuf(c){
+    if(crBruit) return crBruit;
+    var n=c.sampleRate, b=c.createBuffer(1,n,c.sampleRate), d=b.getChannelData(0);
+    for(var i=0;i<n;i++) d[i]=Math.random()*2-1;
+    crBruit=b; return b;
+  }
+
+  function crSonDepart(){
+    var vol=crVol_(); if(vol<=0) return;
+    var c=crCtxAudio(); if(!c) return;   // pas de geste utilisateur : on ne force rien
+    crSonStop();
+    var sortie=c.createGain(); sortie.gain.value=0;
+    sortie.connect(c.destination);
+
+    var souffle=c.createBufferSource();
+    souffle.buffer=crBruitBuf(c); souffle.loop=true;
+    var passe=c.createBiquadFilter();
+    passe.type="bandpass"; passe.frequency.value=420; passe.Q.value=0.7;
+    souffle.connect(passe); passe.connect(sortie);
+
+    var moteur=c.createOscillator(); moteur.type="sawtooth"; moteur.frequency.value=52;
+    var gm=c.createGain(); gm.gain.value=0.16;
+    moteur.connect(gm); gm.connect(sortie);
+
+    souffle.start(); moteur.start();
+    sortie.gain.setTargetAtTime(0.10*vol, c.currentTime, 0.25);
+    crAudio={c:c, sortie:sortie, souffle:souffle, moteur:moteur, passe:passe};
+  }
+
+  /** Suit la courbe : plus on monte, plus ca pousse et plus c'est aigu. */
+  function crSonSuit(multi){
+    if(!crAudio) return;
+    var c=crAudio.c, t=c.currentTime;
+    var k=Math.min(Math.log(Math.max(multi,1))/Math.log(30), 1);   // 1x..30x -> 0..1
+    crAudio.passe.frequency.setTargetAtTime(420+2100*k, t, 0.12);
+    crAudio.moteur.frequency.setTargetAtTime(52+150*k, t, 0.12);
+    crAudio.sortie.gain.setTargetAtTime((0.10+0.16*k)*crVol_(), t, 0.12);
+  }
+
+  function crSonStop(){
+    if(!crAudio) return;
+    var a=crAudio; crAudio=null;
+    try{
+      a.sortie.gain.cancelScheduledValues(a.c.currentTime);
+      a.sortie.gain.setTargetAtTime(0, a.c.currentTime, 0.03);
+      // on arrete les sources 200 ms plus tard : les couper net ferait un clac
+      setTimeout(function(){ try{ a.souffle.stop(); a.moteur.stop();
+                                  a.sortie.disconnect(); }catch(e){} }, 200);
+    }catch(e){}
+  }
+
+  /** L'explosion : un souffle qui claque puis retombe, avec un coup de grave. */
+  function crSonBoum(){
+    crSonStop();
+    var vol=crVol_(); if(vol<=0) return;
+    var c=crCtxAudio(); if(!c) return;
+    var t=c.currentTime;
+    var s=c.createBufferSource(); s.buffer=crBruitBuf(c);
+    var f=c.createBiquadFilter(); f.type="lowpass";
+    f.frequency.setValueAtTime(3200,t); f.frequency.exponentialRampToValueAtTime(180,t+0.55);
+    var g=c.createGain();
+    g.gain.setValueAtTime(0.55*vol,t); g.gain.exponentialRampToValueAtTime(0.001,t+0.7);
+    s.connect(f); f.connect(g); g.connect(c.destination);
+    s.start(t); s.stop(t+0.75);
+    // le coup de grave, qui donne le poids
+    var o=c.createOscillator(); o.type="sine";
+    o.frequency.setValueAtTime(140,t); o.frequency.exponentialRampToValueAtTime(34,t+0.45);
+    var go=c.createGain();
+    go.gain.setValueAtTime(0.42*vol,t); go.gain.exponentialRampToValueAtTime(0.001,t+0.5);
+    o.connect(go); go.connect(c.destination);
+    o.start(t); o.stop(t+0.55);
+  }
+
+  /** Une note courte. Notre equivalent local de tone(), qui est prive lui aussi. */
+  function crBip(f, d, type, vol, retard){
+    var v=crVol_(); if(v<=0) return;
+    var c=crCtxAudio(); if(!c) return;
+    var t=c.currentTime+(retard||0);
+    var o=c.createOscillator(), g=c.createGain();
+    o.type=type||"sine"; o.frequency.setValueAtTime(f,t);
+    g.gain.setValueAtTime(0.0001,t);
+    g.gain.exponentialRampToValueAtTime(Math.max(0.0002,vol*v), t+0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t+d);
+    o.connect(g); g.connect(c.destination);
+    o.start(t); o.stop(t+d+0.02);
+  }
+
+  /** Le tic du decompte, sur les trois dernieres secondes. */
+  var crDernierTic=-1;
+  function crSonTic(reste){
+    var s=Math.ceil(reste/1000);
+    if(s===crDernierTic || s>3 || s<1) { if(s>3) crDernierTic=-1; return; }
+    crDernierTic=s;
+    crBip(s===1?880:560, 0.07, "square", 0.16);
+  }
+
+  /** Un petit carillon montant quand on encaisse. */
+  function crSonRetrait(multi){
+    var vol=crVol_(); if(vol<=0) return;
+    var base=440+Math.min(multi,10)*40;
+    crBip(base,0.09,"triangle",0.22,0); crBip(base*1.5,0.12,"triangle",0.18,0.07);
   }
 
   // ------------------------------------------------------------ les gestes
@@ -1737,6 +1883,7 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
           if(m.balance!=null) setBalance(m.balance);
           CR.moi={mise:m.mise,auto:m.auto,multi:m.multi,payout:m.payout};
           try{ SFX.joue("ramasse",.95); }catch(e){}
+          crSonRetrait(m.multi);
           toast((m.auto?"Auto cash out ":"Cashed out ")+m.multi.toFixed(2)+"× · +"+crFmt(m.net)+" $SWOGE");
         }
         crListe(); crFlash(m.addr); crBoutons();

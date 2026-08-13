@@ -67,7 +67,14 @@ nav{position:sticky;top:0;z-index:50;background:rgba(7,11,20,.86);backdrop-filte
      liens sur une bande qui defile a l'horizontale, tous accessibles. */
   .navin{flex-wrap:wrap; row-gap:8px; padding:9px 14px}
   .brand{flex:0 0 auto}
-  .navlinks{flex:1 0 100%; order:3; overflow-x:auto; overflow-y:hidden;
+  /* flex:1 1 100%, pas 1 0 100%. Le chiffre du milieu est le facteur de
+     RETRECISSEMENT : a zero, l'element refuse de descendre sous la taille de
+     son contenu, donc la barre s'elargissait a 856 px pour loger ses huit
+     onglets — sur un telephone de 390. La page devenait deux fois plus large
+     que l'ecran, on pouvait la faire glisser sur le cote, et tout paraissait
+     dezoome. Avec 1, la boite reprend la largeur de l'ecran et c'est son
+     overflow-x:auto qui fait defiler les onglets A L'INTERIEUR. */
+  .navlinks{flex:1 1 100%; order:3; overflow-x:auto; overflow-y:hidden;
             scrollbar-width:none; -webkit-overflow-scrolling:touch;
             padding-bottom:2px}
   .navlinks::-webkit-scrollbar{display:none}
@@ -404,6 +411,23 @@ footer{ background-image:linear-gradient(rgba(7,11,20,.50), rgba(7,11,20,.88)), 
    on y arrive par un lien d'ancre. On reserve sa hauteur. */
 section[id], footer{ scroll-margin-top:96px; }
 @media(max-width:720px){ section[id], footer{ scroll-margin-top:112px } }
+
+/* La rangee d'onglets defile bien dans sa boite, mais la barre laissait quand
+   meme filer le debordement vers la page : sur un telephone de 390 px, le
+   document en faisait 856. On pouvait le faire glisser sur le cote, et tout
+   paraissait dezoome.
+   `clip` plutot que `hidden` : hidden fabrique un conteneur de defilement, ce
+   qui aurait desactive le position:sticky de la barre elle-meme. */
+nav{ overflow-x:clip; }
+/* PAS de clip sur <html> : il change la facon dont le sticky se rattache au
+   viewport et decolle la barre. Couper au niveau de la barre suffit. */
+
+/* Sur telephone la plaque mangeait la bande entiere et le doge disparaissait
+   derriere. On lui laisse la place de courir. */
+@media(max-width:720px){
+  .gymband .plaque2{ width:min(82%,330px); }
+  .gympiste{ --h:170px }
+}
 </style>
 
 <nav>

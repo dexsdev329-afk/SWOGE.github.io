@@ -297,9 +297,9 @@
         'border:1px solid rgba(255,197,61,.28);';
       (champ.parentElement || champ).appendChild(note);
     }
-    note.innerHTML = '<b>' + f.taux + '% fee</b> on this withdrawal — you have not played ' +
-      'through your deposit yet. Wager <b>' + nb(f.resteAMiser, 0) + ' $SWOGE</b> more and ' +
-      'withdrawals are free, for good.';
+    note.innerHTML = '🔥 <b>' + f.taux + '% of every withdrawal is burned</b> — it is not a fee ' +
+      'the house keeps, it leaves circulation for good and makes every $SWOGE scarcer. ' +
+      'Minimum withdrawal ' + nb(f.mini, 0) + ' $SWOGE.';
   }
 
   document.addEventListener('visibilitychange', function () {

@@ -164,7 +164,7 @@
       if (m.friends) AMIS = m.friends;
       if (m.pending !== undefined) EN_ATTENTE = m.pending;
       if (m.unread !== undefined) NON_LUS = m.unread;
-      if (m.stats) STATS = m.stats;
+      if (m.stats) { STATS = m.stats; noteFrais(); }
       pastilleAmis();
       profEnTete(); if (profOnglet === 'am' || profOnglet === 'in') profRend();
     }
@@ -273,6 +273,35 @@
     }
     rafraichitSolde();
   }
+  /* ------------------------------------------- le frais de retrait, annonce
+   *
+   * Le frais ne tombe que sur l'argent qui n'a pas ete joue. Un joueur qui le
+   * decouvre APRES avoir valide se sent pris ; annonce sous le champ, avec le
+   * chiffre qui l'annule, il se comprend et se choisit.
+   *
+   * La note se pose sur la page quelle qu'elle soit : les douze fenetres de
+   * retrait partagent le meme champ `#wdAmt`, il n'y a donc rien a modifier
+   * dans chacune.
+   */
+  function noteFrais() {
+    var champ = document.getElementById('wdAmt');
+    if (!champ || !STATS || !STATS.frais) return;
+    var f = STATS.frais;
+    var note = document.getElementById('swfrais');
+    if (!f.du) { if (note) note.remove(); return; }
+    if (!note) {
+      note = document.createElement('div');
+      note.id = 'swfrais';
+      note.style.cssText = 'margin-top:7px;padding:8px 10px;border-radius:9px;font-size:11.5px;' +
+        'line-height:1.5;color:#FFD97A;background:rgba(255,197,61,.08);' +
+        'border:1px solid rgba(255,197,61,.28);';
+      (champ.parentElement || champ).appendChild(note);
+    }
+    note.innerHTML = '<b>' + f.taux + '% fee</b> on this withdrawal — you have not played ' +
+      'through your deposit yet. Wager <b>' + nb(f.resteAMiser, 0) + ' $SWOGE</b> more and ' +
+      'withdrawals are free, for good.';
+  }
+
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState === 'visible') rafraichitSolde();
   });

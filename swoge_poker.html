@@ -9,6 +9,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<!-- La bulle de staking. Chargee tot et SANS defer : elle enveloppe WebSocket
+     pour ecouter ce qui passe deja, et doit donc etre en place avant que la page
+     n ouvre sa connexion. -->
+<script src="stakebubble.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <script src="https://sad.adsgram.ai/js/sad.min.js" async></script>
 <style>

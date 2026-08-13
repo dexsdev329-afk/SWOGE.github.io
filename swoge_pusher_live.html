@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>🎰 SWOGE Pusher LIVE — shared table</title>
+<!-- La bulle de staking. Chargee tot et SANS defer : elle enveloppe WebSocket
+     pour ecouter ce qui passe deja, et doit donc etre en place avant que la page
+     n ouvre sa connexion. -->
+<script src="stakebubble.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <style>
@@ -600,14 +604,19 @@ function wsSend(o){ if(ws&&ws.readyState===1) ws.send(JSON.stringify(o)); }
 function onServer(m){
   if(m.type==="hello"){
     loginNonce=m.loginNonce; /* Le jeton de session evite de resigner : on le presente des que le nonce est connu. Le serveur repond soit par 'auth' — connecte, sans SDK ni signature — soit par 'resumeFailed'. */ (function(){ var j=null; try{ j=localStorage.getItem("swogeSession"); }catch(e){} if(j) send({type:"resume", token:j, tgId:(typeof TG_ID!=="undefined"?TG_ID:null)}); })(); VAULT=m.vault||VAULT; TOKEN=m.token||TOKEN; MIN_WITHDRAW=m.minWithdraw||MIN_WITHDRAW;
-    $("#minW").textContent=MIN_WITHDRAW;
+    /* Cette page n'a pas de #minW — elle a herite la ligne de swoge_pusher.html,
+       qui en a un. L'exception coupait la SUITE du traitement de « hello » :
+       le jackpot, le classement, et surtout le doLogin() de la derniere ligne,
+       celui qui reconnecte tout seul quand le portefeuille est deja la. D'ou
+       une demande de reconnexion a chaque coupure de socket. */
+    var mw=$("#minW"); if(mw) mw.textContent=MIN_WITHDRAW;
     if(m.jackpot!=null) setJackpot(m.jackpot);
     if(m.leaderboard) renderLeaderboard(m.leaderboard);
     if(myAddr) doLogin(); // reconnected while wallet already connected
   }
   else if(m.type==="state"){ applyState(m); }
   if(m.type==="resumeFailed"){ /* jeton perime ou revoque : on l oublie et on repart du chemin long */ try{ localStorage.removeItem("swogeSession"); }catch(e){} if(typeof autoReconnect==="function") autoReconnect(); else if(myAddr) doLogin(); return; }
-      else if(m.type==="auth"){ authed=true; myAddr=m.address; if(m.session){ try{ localStorage.setItem("swogeSession",m.session); }catch(e){} } setStatus(""); $("#status").style.display="none"; setBalance(m.balance); showPlayUI(); if(m.quests) renderQuests(m.quests); if(m.stake) setStakeInfo(m.stake); }
+      else if(m.type==="auth"){ authed=true; myAddr=m.address; setTimeout(ouvreParFragment,300); if(m.session){ try{ localStorage.setItem("swogeSession",m.session); }catch(e){} } setStatus(""); $("#status").style.display="none"; setBalance(m.balance); showPlayUI(); if(m.quests) renderQuests(m.quests); if(m.stake) setStakeInfo(m.stake); }
   else if(m.type==="balance"||m.type==="deposit"){ setBalance(m.balance); if(m.type==="deposit"){ toast("💰 Deposit credited"); SFX.ding(); } }
   else if(m.type==="win"){ setBalance(m.balance); showWin(m.value); SFX.win(m.value); }
   else if(m.type==="ticker"){ addTicker(m.name,m.value); }
@@ -982,6 +991,19 @@ $("#mnWithdraw").onclick=function(){ if(menuNeedAuth()) openModal("wd"); };
 $("#mnStake").onclick=function(){ if(!menuNeedAuth())return; closeModal(); $("#stake").classList.add("show"); renderStake(); syncJackpot(); };
 $("#mnQuests").onclick=function(){ if(!menuNeedAuth())return; closeModal(); $("#quests").classList.add("show"); syncJackpot(); };
 $("#mnGames").onclick=function(){ window.location.href="games.html"; };
+/* Ouverture par l'adresse : games.html n'a pas de portefeuille a lui, ses
+   entrees de menu pointent donc ici avec un fragment. On rejoue le clic du
+   menu plutot que d'appeler les fonctions en double — un seul chemin, donc un
+   seul comportement a maintenir. Le fragment est efface aussitot : sans ca,
+   un rechargement rouvrirait le panneau sans qu'on l'ait demande. */
+var FRAGMENTS={ wallet:"mnWallet", stake:"mnStake", dep:"mnDeposit", deposit:"mnDeposit",
+                wd:"mnWithdraw", withdraw:"mnWithdraw", quests:"mnQuests" };
+function ouvreParFragment(){
+  var id=FRAGMENTS[(location.hash||"").replace("#","").toLowerCase()];
+  if(!id) return;
+  try{ history.replaceState(null,"",location.pathname+location.search); }catch(e){}
+  var el=$("#"+id); if(el) el.click();
+}
 function refreshSoundBtn(){ $("#mnSound").textContent=SFX.isMuted()?"🔇 Sound: OFF":"🔊 Sound: ON"; }
 $("#mnSound").onclick=function(){ var m=SFX.toggle(); refreshSoundBtn(); if(!m) SFX.ding(); toast(m?"🔇 Sound off":"🔊 Sound on"); };
 refreshSoundBtn();

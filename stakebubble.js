@@ -920,7 +920,7 @@
     l.appendChild(boite);
 
     // ---- ce qui est du, et le bouton qui l encaisse
-    var du = parseFloat(P.du || 0);
+    var du = parseFloat(P.du || 0), att = parseFloat(P.attente || 0);
     var gains = document.createElement('div');
     gains.className = 'swp-r';
     gains.innerHTML = '<div class="w"><b>' + nb(du) + ' $SWOGE</b>' +
@@ -933,6 +933,26 @@
     });
     gains.appendChild(bt);
     l.appendChild(gains);
+
+    /* Ce qui mûrit encore. Une somme « en attente » sans date fait croire a un
+       blocage ; avec la date et la raison, elle se comprend en une seconde. */
+    if (att > 0) {
+      var mur = document.createElement('div');
+      mur.className = 'swp-r';
+      mur.style.opacity = '.8';
+      mur.innerHTML = '<div class="w"><b>' + nb(att) + ' $SWOGE</b>' +
+        '<span class="su">maturing — first part unlocks ' +
+        (P.attenteLe ? new Date(P.attenteLe).toLocaleDateString('en-GB',
+          { day: '2-digit', month: 'short' }) : 'soon') + '</span></div>';
+      l.appendChild(mur);
+      var pq = document.createElement('div');
+      pq.className = 'swp-ex';
+      pq.style.marginTop = '0';
+      pq.innerHTML = 'Earnings sit for <b>' + nb(P.delaiJours, 0) + ' days</b> before you can ' +
+        'claim them: if your friend wins their losses back in that time, the pending amount ' +
+        'goes down with it. Once matured, it is yours for good.';
+      l.appendChild(pq);
+    }
 
     // ---- qui on a fait venir
     var t = document.createElement('div');

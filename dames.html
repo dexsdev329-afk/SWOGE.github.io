@@ -538,14 +538,17 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
 .dm-case{ position:relative; display:flex; align-items:center; justify-content:center; }
 .dm-case.claire{ background:#3A2A18; }
 .dm-case.sombre{ background:#12100C; cursor:pointer; }
-.dm-case .pc{ width:74%; height:74%; border-radius:50%; position:relative;
-  box-shadow:0 3px 0 rgba(0,0,0,.55), inset 0 2px 3px rgba(255,255,255,.28);
+.dm-case .pc{ width:80%; height:80%; position:relative;
+  background-size:contain; background-repeat:no-repeat; background-position:center;
+  filter:drop-shadow(0 2px 3px rgba(0,0,0,.65));
   animation:dmPose .16s ease-out; }
-.dm-case .pc.j1{ background:radial-gradient(120% 120% at 32% 26%,#FFF0C8,#E9A73A 55%,#8A5A12); }
-.dm-case .pc.j2{ background:radial-gradient(120% 120% at 32% 26%,#8FB6FF,#2E5FD0 55%,#12285E); }
-.dm-case .pc.dame::after{ content:"★"; position:absolute; inset:0;
-  display:flex; align-items:center; justify-content:center;
-  font-size:min(3.4vw,20px); color:rgba(0,0,0,.55); }
+.dm-case .pc.j1{ background-image:url("media/dame-or.webp"); }
+.dm-case .pc.j2{ background-image:url("media/dame-bleu.webp"); }
+/* La dame porte sa couronne : sans marque, une piece promue est indiscernable
+   d'un pion, et le joueur oublie qu'elle recule. */
+.dm-case .pc.dame::after{ content:"♛"; position:absolute; left:0; right:0; top:-14%;
+  text-align:center; font-size:min(4vw,22px); line-height:1;
+  color:#FFE9A8; text-shadow:0 0 6px rgba(0,0,0,.9),0 0 12px rgba(255,197,61,.8); }
 /* Les cases jouables sont ALLUMEES par le serveur : le navigateur ne connait
    aucune regle, il eclaire ce qu'on lui donne. C'est ce qui rend impossible
    de jouer un coup illegal depuis un client modifie. */

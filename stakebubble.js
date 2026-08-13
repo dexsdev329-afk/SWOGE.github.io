@@ -141,6 +141,7 @@
 
   function surMessage(ev) {
     var m;
+    dernierRecu = Date.now();
     try { m = JSON.parse(ev.data); } catch (e) { return; }
     if (!m || !m.type) return;
     /* La charge d'authentification porte l'etat du staking sous `stake` ; le
@@ -161,10 +162,29 @@
       if (m.uploaded) { versionPhoto++; dit('Photo saved — other players see it now.', 'ok'); }
       if (m.profile) MOI = m.profile;
       if (m.friends) AMIS = m.friends;
+      if (m.pending !== undefined) { EN_ATTENTE = m.pending; pastilleAmis(); }
       profEnTete(); if (profOnglet === 'am') profRend();
     }
-    if (m.type === 'friends') { AMIS = m.friends || []; if (profOnglet === 'am') profRend(); }
+    if (m.type === 'friends') {
+      AMIS = m.friends || { amis: [], recues: [], envoyees: [] };
+      EN_ATTENTE = m.pending || 0;
+      pastilleAmis();
+      if (m.nouvelle) toastAmi(m.nouvelle + ' wants to be your friend');
+      if (profOnglet === 'am') profRend();
+    }
+    if (m.type === 'friendSearch') { RECHERCHE = m.results || []; if (profOnglet === 'am') rendRecherche(); }
     if (m.type === 'transferSent' || m.type === 'transferGot') {
+      /* Un envoi d'argent sans accuse de reception, c'est une inquietude : le
+         joueur ne sait pas si c'est parti, et il recommence. On le dit donc
+         tout de suite, avec le MONTANT et le DESTINATAIRE — les deux choses
+         qu'il veut relire — puis on redemande le solde, parce que la page
+         possede son propre affichage et ne lit pas ce message-ci. */
+      if (m.type === 'transferSent')
+        toast('✅ Sent ' + nb(m.montant) + ' $SWOGE to ' +
+              (m.nomDest || court(m.vers)), 'ok');
+      else
+        toast('💰 ' + (m.fromName || court(m.from)) + ' sent you ' + nb(m.amount) + ' $SWOGE', 'ok');
+      rafraichitSolde();
       /* Un virement change le solde ET l'historique : on redemande la page
          courante plutot que de deviner ou inserer la ligne. */
       if (profOuvert) profVa(profOnglet);
@@ -193,6 +213,54 @@
     try { if (etat.socket && etat.socket.readyState === 1) etat.socket.send('{"type":"stakeInfo"}'); }
     catch (e) {}
   }
+
+  /* ------------------------------------------------ le solde qui ne suit pas
+   *
+   * « Parfois il faut recharger la page pour que le solde se mette a jour. »
+   * Deux causes, et il faut les deux reponses :
+   *
+   *  1. le depot arrive quand l'onglet est en arriere-plan, ou juste apres un
+   *     changement de page : le message est parti vers une socket qui n'est
+   *     plus celle qu'on regarde. On redemande donc le solde au retour de
+   *     l'onglet — le serveur repond `balance`, que CHAQUE page sait deja
+   *     lire, donc rien a changer dans les onze pages ;
+   *
+   *  2. la socket est morte sans le dire. Le navigateur la croit ouverte, la
+   *     page n'essaie donc jamais de se reconnecter, et plus rien n'arrive :
+   *     ni depot, ni gain, ni solde. Recharger « repare », d'ou la plainte.
+   *     On surveille l'arrivee des messages : au-dela d'une minute de silence
+   *     alors qu'on vient de parler, on FERME — la page se reconnecte toute
+   *     seule et l'authentification rapporte le solde a jour.
+   */
+  var dernierRecu = 0, dernierAppel = 0;
+  function rafraichitSolde() {
+    try {
+      if (etat.socket && etat.socket.readyState === 1) {
+        dernierAppel = Date.now();
+        etat.socket.send('{"type":"balance"}');
+      }
+    } catch (e) {}
+  }
+  function veilleSolde() {
+    if (!etat.socket || etat.socket.readyState !== 1) return;
+    /* Onglet en arriere-plan : on ne parle pas, et surtout on ne coupe rien —
+       une partie de Crash ou de Connect 4 continue derriere. Le controle
+       reprend au retour de l'onglet. */
+    if (document.visibilityState === 'hidden') return;
+    var t = Date.now();
+    if (dernierAppel && t - dernierRecu > 60000 && t - dernierAppel > 20000) {
+      try { etat.socket.close(); } catch (e) {}   // la page se reconnecte seule
+      etat.socket = null;
+      return;
+    }
+    rafraichitSolde();
+  }
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') rafraichitSolde();
+  });
+  window.addEventListener('focus', rafraichitSolde);
+  window.addEventListener('online', rafraichitSolde);
+  setInterval(veilleSolde, 20000);
 
   // ---------------------------------------------------------- le compteur
   /* La meme formule que le serveur : montant x taux x temps ecoule / an. */
@@ -428,7 +496,8 @@
                three:'Three Card', p4:'Connect 4', pusher:'Coin Pusher' };
   var ONGLETS = [['r','Rounds'],['dep','Deposits'],['wd','Withdrawals'],
                  ['st','Staking'],['tr','Transfers'],['am','Friends']];
-  var VISAGES = [], MOI = { name: null, visage: null, address: null }, AMIS = [];
+  var VISAGES = [], MOI = { name: null, visage: null, address: null };
+  var AMIS = { amis: [], recues: [], envoyees: [] }, EN_ATTENTE = 0, RECHERCHE = [];
   var EXPLORATEUR = 'https://robinhoodchain.blockscout.com';
 
   function nb(v, d) {
@@ -492,6 +561,11 @@
       '.swp-r .w{flex:1;min-width:0;}' +
       '.swp-r .w b{display:block;font-size:13px;font-weight:800;color:#EAF2FF;}' +
       '.swp-r .w span{display:block;font-size:10.5px;color:#8DA0C4;margin-top:2px;}' +
+      /* L adresse en entier : c est elle qu on relit avant d envoyer. */
+      '.swp-r .w span.ad{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;' +
+      'font-size:9.5px;letter-spacing:.15px;color:#7E92B6;word-break:break-all;cursor:pointer;}' +
+      '.swp-r .w span.ad:hover{color:#FFC53D;}' +
+      '.swp-r .w span.su{color:#8DA0C4;font-size:10.5px;}' +
       '.swp-r .v{flex:0 0 auto;text-align:right;font-variant-numeric:tabular-nums;}' +
       '.swp-r .v b{display:block;font-size:13.5px;font-weight:800;}' +
       '.swp-r .v span{font-size:10px;color:#8DA0C4;}' +
@@ -527,6 +601,13 @@
       '.swp-avs button{width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:16px;' +
       'background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);}' +
       '.swp-avs button.on{background:rgba(255,197,61,.28);border-color:#FFC53D;}' +
+      /* Les medailles sont dessinees : plus grandes que les frimousses, et
+         posees en tete de liste, ce sont elles qu on choisit. */
+      '.swp-avs button.bg{width:46px;height:46px;background-size:contain;' +
+      'background-repeat:no-repeat;background-position:center;background-color:transparent;' +
+      'border-color:rgba(255,255,255,.10);}' +
+      '.swp-avs button.bg.on{background-color:rgba(255,197,61,.20);border-color:#FFC53D;' +
+      'box-shadow:0 0 0 2px rgba(255,197,61,.35);}' +
       '.swp-in{display:flex;gap:7px;flex-wrap:wrap;}' +
       '.swp-in input{flex:1 1 150px;min-width:0;padding:9px 11px;border-radius:9px;' +
       'font-family:inherit;font-size:13px;color:#EAF2FF;background:rgba(0,0,0,.4);' +
@@ -534,6 +615,17 @@
       '.swp-in button{flex:0 0 auto;padding:9px 14px;border-radius:9px;cursor:pointer;' +
       'font-family:inherit;font-size:12.5px;font-weight:800;color:#07101F;' +
       'background:linear-gradient(180deg,#FFE08A,#FFC53D);border:0;}' +
+      '.swpn{position:absolute;top:-4px;right:-4px;min-width:17px;height:17px;padding:0 4px;' +
+      'border-radius:999px;display:flex;align-items:center;justify-content:center;' +
+      'font-size:10px;font-weight:900;color:#07101F;background:#16D97F;' +
+      'box-shadow:0 0 0 2px rgba(7,16,31,.9);}' +
+      '.swtoast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,20px);z-index:100000;' +
+      'padding:11px 16px;border-radius:999px;font-family:inherit;font-size:13px;font-weight:700;' +
+      'color:#07101F;background:linear-gradient(180deg,#8CFFC0,#16D97F);opacity:0;' +
+      'transition:opacity .25s,transform .25s;box-shadow:0 8px 24px rgba(0,0,0,.5);}' +
+      '.swtoast.go{opacity:1;transform:translate(-50%,0);}' +
+      '.swp-res:not(:empty){margin-bottom:9px;padding-bottom:7px;' +
+      'border-bottom:1px solid rgba(255,255,255,.09);}' +
       '.swp-up{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:9px;}' +
       '.swp-up button{flex:1 1 auto;padding:9px 12px;border-radius:9px;cursor:pointer;' +
       'font-family:inherit;font-size:12px;font-weight:800;color:#EAF2FF;' +
@@ -826,10 +918,21 @@
     return base + '/avatar/' + String(addr).toLowerCase() + '?v=' + versionPhoto;
   }
   var versionPhoto = 1;
+  /* Une frimousse, une medaille peinte ou une photo. Le serveur ne connait
+     que le CODE de la medaille (« b3 ») ; l'image vit ici, avec le reste du
+     site — on peut la redessiner sans toucher au serveur. */
+  function estBadge(v) { return /^b[0-9]{1,2}$/.test(String(v || '')); }
+  function urlBadge(v) { return 'media/badge-' + String(v).slice(1) + '.webp'; }
   function peintVisage(el, p) {
     if (p && p.photo) {
       el.style.backgroundImage = 'url("' + urlPhoto(p.address) + '")';
       el.style.backgroundSize = 'cover';
+      el.style.backgroundPosition = 'center';
+      el.textContent = '';
+    } else if (p && estBadge(p.visage)) {
+      el.style.backgroundImage = 'url("' + urlBadge(p.visage) + '")';
+      el.style.backgroundSize = 'contain';
+      el.style.backgroundRepeat = 'no-repeat';
       el.style.backgroundPosition = 'center';
       el.textContent = '';
     } else {
@@ -851,7 +954,12 @@
     box.innerHTML = '';
     VISAGES.forEach(function (v) {
       var b = document.createElement('button');
-      b.type = 'button'; b.textContent = v;
+      b.type = 'button';
+      if (estBadge(v)) {
+        b.className = 'bg';
+        b.style.backgroundImage = 'url("' + urlBadge(v) + '")';
+        b.title = 'Badge ' + String(v).slice(1);
+      } else b.textContent = v;
       b.classList.toggle('on', v === visageChoisi);
       b.addEventListener('click', function () { visageChoisi = v; profVisages(); });
       box.appendChild(b);
@@ -880,14 +988,33 @@
   }
 
   // ------------------------------------------------------------ les amis
+  /* Un ami, c'est un NOM et un PORTEFEUILLE. Le nom, chacun le choisit et
+     peut le changer ; l'adresse, non — c'est elle qu'on relit avant
+     d'envoyer de l'argent, et deux joueurs peuvent tres bien se ressembler
+     de nom. Elle est donc ecrite EN ENTIER, et un clic la copie. */
+  function corpsAmi(a, suffixe) {
+    return '<div class="av"></div><div class="w"><b>' + ech(a.name || court(a.address)) + '</b>' +
+      '<span class="ad" title="Click to copy">' + ech(a.address || '') + '</span>' +
+      (suffixe ? '<span class="su">' + ech(suffixe) + '</span>' : '') + '</div>';
+  }
+  function copiable(d) {
+    var s = d.querySelector('.ad');
+    if (!s) return d;
+    s.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var v = s.textContent;
+      try { navigator.clipboard.writeText(v); } catch (err) {}
+      s.textContent = 'copied ✓';
+      setTimeout(function () { s.textContent = v; }, 1100);
+    });
+    return d;
+  }
   function ligneAmi(a) {
     var d = document.createElement('div');
     d.className = 'swp-r';
-    d.innerHTML = '<div class="av"></div>' +
-      '<div class="w"><b>' + ech(a.name || court(a.address)) + '</b>' +
-      '<span>' + court(a.address) + (a.connu ? '' : ' · never played here') + '</span></div>';
+    d.innerHTML = corpsAmi(a, a.connu ? '' : 'never played here');
     peintVisage(d.querySelector('.av'), a);
-    d.title = a.address;
+    copiable(d);
     var envoyer = document.createElement('button');
     envoyer.className = 'mini'; envoyer.type = 'button'; envoyer.textContent = 'Send';
     envoyer.addEventListener('click', function (e) { e.stopPropagation(); demandeEnvoi(a); });
@@ -915,30 +1042,165 @@
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
     });
   }
+  /* La pastille « +1 » sur le bouton du profil. Une demande qui n'a pas de
+     marque visible n'existe pas : le joueur n'ouvre pas un panneau pour
+     verifier s'il s'y est passe quelque chose. */
+  function pastilleAmis() {
+    if (!profBtn) return;
+    var p = profBtn.querySelector('.swpn');
+    if (!EN_ATTENTE) { if (p) p.remove(); return; }
+    if (!p) {
+      p = document.createElement('span');
+      p.className = 'swpn';
+      profBtn.style.position = 'relative';
+      profBtn.appendChild(p);
+    }
+    p.textContent = EN_ATTENTE > 9 ? '9+' : String(EN_ATTENTE);
+    profBtn.title = EN_ATTENTE + ' friend request' + (EN_ATTENTE === 1 ? '' : 's') + ' waiting';
+  }
+  function toast(t, cl) {
+    var e = document.createElement('div');
+    e.className = 'swtoast' + (cl ? ' ' + cl : '');
+    e.textContent = t;
+    /* Deux messages au meme endroit n'en font qu'un de lisible : on empile. */
+    var deja = document.querySelectorAll('.swtoast').length;
+    if (deja) e.style.bottom = (26 + deja * 48) + 'px';
+    document.body.appendChild(e);
+    setTimeout(function () { e.classList.add('go'); }, 30);
+    setTimeout(function () { try { e.remove(); } catch (err) {} }, 5200);
+  }
+  function toastAmi(t) { toast('👋 ' + t); }
+
+  // -------------------------------------------------- la recherche par nom
+  var chercheT = null;
+  function rendRecherche() {
+    var box = profBoite && profBoite.querySelector('.swp-res');
+    if (!box) return;
+    box.innerHTML = '';
+    if (!RECHERCHE.length) return;
+    RECHERCHE.forEach(function (r) {
+      var d = document.createElement('div');
+      d.className = 'swp-r';
+      d.innerHTML = corpsAmi(r, '');
+      peintVisage(d.querySelector('.av'), r);
+      copiable(d);
+      var b = document.createElement('button');
+      b.className = 'mini'; b.type = 'button'; b.textContent = 'Add';
+      b.addEventListener('click', function () {
+        if (etat.socket && etat.socket.readyState === 1)
+          etat.socket.send(JSON.stringify({ type: 'friendRequest', address: r.address }));
+        b.disabled = true; b.textContent = 'Sent';
+      });
+      d.appendChild(b);
+      box.appendChild(d);
+    });
+  }
+
   function rendAmis() {
     var l = profBoite.querySelector('.swp-l');
     l.innerHTML = '';
+
+    /* On cherche par NOM autant que par adresse : personne ne retient une
+       adresse, et c'est justement pour ca que les joueurs se donnent des
+       noms. La recherche part apres une petite pause de frappe — sinon on
+       envoie une demande par lettre tapee. */
     var form = document.createElement('div');
     form.className = 'swp-in';
-    form.style.marginBottom = '10px';
-    form.innerHTML = '<input class="swp-ami" placeholder="0x… address of a friend">' +
+    form.style.marginBottom = '8px';
+    form.innerHTML = '<input class="swp-ami" placeholder="Search a name, or paste a 0x… address">' +
                      '<button type="button">Add</button>';
-    form.querySelector('button').addEventListener('click', function () {
-      var a = (form.querySelector('.swp-ami').value || '').trim();
+    var champ = form.querySelector('.swp-ami');
+    function envoie() {
+      var a = (champ.value || '').trim();
       if (!a) return;
       if (etat.socket && etat.socket.readyState === 1)
-        etat.socket.send(JSON.stringify({ type: 'friendAdd', address: a }));
-      form.querySelector('.swp-ami').value = '';
+        etat.socket.send(JSON.stringify({ type: 'friendRequest', address: a }));
+      champ.value = ''; RECHERCHE = []; rendRecherche();
+    }
+    form.querySelector('button').addEventListener('click', envoie);
+    champ.addEventListener('keydown', function (e) { if (e.key === 'Enter') envoie(); });
+    champ.addEventListener('input', function () {
+      clearTimeout(chercheT);
+      var q = (champ.value || '').trim();
+      if (q.length < 2 || /^0x/i.test(q)) { RECHERCHE = []; return rendRecherche(); }
+      chercheT = setTimeout(function () {
+        if (etat.socket && etat.socket.readyState === 1)
+          etat.socket.send(JSON.stringify({ type: 'friendSearch', q: q }));
+      }, 260);
     });
     l.appendChild(form);
-    if (!AMIS.length) {
+
+    var res = document.createElement('div');
+    res.className = 'swp-res';
+    l.appendChild(res);
+    rendRecherche();
+
+    // les demandes RECUES en premier : c'est ce qui attend une reponse
+    if ((AMIS.recues || []).length) {
+      var t = document.createElement('div');
+      t.className = 'swp-mo';
+      t.style.cursor = 'default';
+      t.innerHTML = 'Friend requests<i>' + AMIS.recues.length + ' waiting</i>';
+      l.appendChild(t);
+      AMIS.recues.forEach(function (a) { l.appendChild(ligneDemande(a)); });
+    }
+
+    if ((AMIS.amis || []).length) {
+      var t2 = document.createElement('div');
+      t2.className = 'swp-mo';
+      t2.style.cursor = 'default';
+      t2.innerHTML = 'Friends<i>' + AMIS.amis.length + '</i>';
+      l.appendChild(t2);
+      AMIS.amis.forEach(function (a) { l.appendChild(ligneAmi(a)); });
+    }
+
+    if ((AMIS.envoyees || []).length) {
+      var t3 = document.createElement('div');
+      t3.className = 'swp-mo';
+      t3.style.cursor = 'default';
+      t3.innerHTML = 'Sent, waiting for an answer<i>' + AMIS.envoyees.length + '</i>';
+      l.appendChild(t3);
+      AMIS.envoyees.forEach(function (a) {
+        var d = document.createElement('div');
+        d.className = 'swp-r';
+        d.innerHTML = corpsAmi(a, 'waiting for an answer');
+        peintVisage(d.querySelector('.av'), a);
+        copiable(d);
+        l.appendChild(d);
+      });
+    }
+
+    if (!(AMIS.amis || []).length && !(AMIS.recues || []).length && !(AMIS.envoyees || []).length) {
       var v = document.createElement('div');
       v.className = 'swp-v';
-      v.innerHTML = 'No friends yet.<br>Add someone by address and send them $SWOGE in one tap.';
+      v.innerHTML = 'No friends yet.<br>Search a name above, send a request, and once they accept ' +
+                    'you can send them $SWOGE in one tap.';
       l.appendChild(v);
-      return;
     }
-    AMIS.forEach(function (a) { l.appendChild(ligneAmi(a)); });
+  }
+
+  function ligneDemande(a) {
+    var d = document.createElement('div');
+    d.className = 'swp-r c4-invite';
+    d.style.borderColor = 'rgba(22,217,127,.45)';
+    d.innerHTML = corpsAmi(a, 'wants to be your friend');
+    peintVisage(d.querySelector('.av'), a);
+    copiable(d);
+    var oui = document.createElement('button');
+    oui.className = 'mini'; oui.type = 'button'; oui.textContent = 'Accept';
+    oui.addEventListener('click', function () {
+      if (etat.socket && etat.socket.readyState === 1)
+        etat.socket.send(JSON.stringify({ type: 'friendAccept', address: a.address }));
+    });
+    var non = document.createElement('button');
+    non.className = 'mini gh'; non.type = 'button'; non.textContent = '✕';
+    non.title = 'Decline';
+    non.addEventListener('click', function () {
+      if (etat.socket && etat.socket.readyState === 1)
+        etat.socket.send(JSON.stringify({ type: 'friendDecline', address: a.address }));
+    });
+    d.appendChild(oui); d.appendChild(non);
+    return d;
   }
 
   function profRend() {

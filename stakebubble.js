@@ -888,8 +888,20 @@
     expl.className = 'swp-ex';
     expl.innerHTML = 'Invite your friends and earn <b>' + P.part + '%</b> of what they lose to the ' +
       'house — for life. In 1v1 games you earn on the rake instead. They get <b>' +
-      nb(P.bienvenue, 0) + ' $SWOGE</b> on their first deposit.';
+      nb(P.bienvenue, 0) + ' $SWOGE</b> once they deposit <b>' + nb(P.depotMini, 0) + ' $SWOGE</b> or more.';
     l.appendChild(expl);
+
+    /* Le cadeau recu et pas encore debloque. Un montant retenu sans
+       explication fait ecrire au support ; avec la raison et le chiffre qui
+       reste, le joueur joue. */
+    if (parseFloat(P.bloque || 0) > 0) {
+      var bl = document.createElement('div');
+      bl.className = 'swp-ex';
+      bl.style.borderColor = 'rgba(255,197,61,.45)';
+      bl.innerHTML = '🔒 <b>' + nb(P.bloque) + ' $SWOGE</b> of welcome gift is still locked. ' +
+        'It unlocks as you play — the rest of your balance withdraws normally.';
+      l.appendChild(bl);
+    }
 
     // ---- le lien, et le bouton qui le copie
     var boite = document.createElement('div');

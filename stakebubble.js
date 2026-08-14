@@ -710,6 +710,9 @@
       '.swcad::after{content:"";position:absolute;left:-24%;top:-24%;width:148%;height:148%;' +
       'background:var(--cadre) center/contain no-repeat;pointer-events:none;z-index:2;}' +
       '.av.swcad{margin:0 5px;border-color:transparent;}' +
+      /* Le bouton de la barre : le cadre deborde de 24 % de chaque cote, il
+         faut donc lui rendre cette place, sinon il mord sur ses voisins. */
+      '.swpb.swcad{margin-left:15px;margin-right:7px;border-color:transparent;box-shadow:none;}' +
       '.swp-av.swcad{margin:0 7px;border-color:transparent;}' +
       /* Le mur de la salle derriere les blocs du profil : le meme que la page
          d accueil, assombri pour que le texte reste lisible. */
@@ -748,7 +751,9 @@
       '.swp-in button{flex:0 0 auto;padding:9px 14px;border-radius:9px;cursor:pointer;' +
       'font-family:inherit;font-size:12.5px;font-weight:800;color:#07101F;' +
       'background:linear-gradient(180deg,#FFE08A,#FFC53D);border:0;}' +
-      '.swpn{position:absolute;top:-4px;right:-4px;min-width:17px;height:17px;padding:0 4px;' +
+      /* z-index 3 : le cadre du palier se peint en 2, et la pastille doit
+         rester lisible par-dessus — c'est elle qui appelle le clic. */
+      '.swpn{position:absolute;top:-4px;right:-4px;min-width:17px;height:17px;padding:0 4px;z-index:3;' +
       'border-radius:999px;display:flex;align-items:center;justify-content:center;' +
       'font-size:10px;font-weight:900;color:#07101F;background:#16D97F;' +
       'box-shadow:0 0 0 2px rgba(7,16,31,.9);}' +
@@ -1444,9 +1449,15 @@
       profBtn.style.backgroundImage = '';
       profBtn.textContent = (MOI && MOI.visage) || '👤';
     }
-    /* L'anneau du palier autour de la photo. C'est la seule chose de son
-       niveau qu'un joueur voit en permanence, sur les douze pages. */
-    if (NIVEAU && NIVEAU.niveau > 0) {
+    /* LE CADRE DU PALIER autour de la photo. C'est la seule chose de son
+       niveau qu'un joueur voit en permanence, sur les douze pages — et c'est
+       donc la qu'il compte le plus.
+       MOI porte le palier ; s'il n'est pas encore arrive, NIVEAU l'a. */
+    poseCadre(profBtn, (MOI && MOI.niveau !== undefined) ? MOI
+      : (NIVEAU ? { niveau: NIVEAU.niveau, palierNo: NIVEAU.palierNo } : null));
+    /* Sans cadre — donc avant la premiere mise — on garde l'anneau de couleur :
+       un bouton totalement nu n'apprend rien. */
+    if (!profBtn.classList.contains('swcad') && NIVEAU && NIVEAU.niveau > 0) {
       profBtn.style.borderColor = couleurPalier(NIVEAU.palier);
       profBtn.style.boxShadow = '0 0 0 1px ' + couleurPalier(NIVEAU.palier) + '66';
     }

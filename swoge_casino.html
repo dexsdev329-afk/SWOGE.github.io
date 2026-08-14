@@ -2149,10 +2149,17 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
     if(caLong){ caLong=false; return; }        // l'appui long a deja agi
     caPoser(sp.dataset.spot);
   });
-  /* La croix du Hi-Lo vit hors du tapis : elle a son propre ecouteur. */
-  $("caHilo").addEventListener("click", function(e){
-    var x=e.target.closest("[data-x]"); if(!x) return;
-    caVider(x.dataset.x); if(SFX.sweep) SFX.sweep();
+  /* Les croix qui vivent HORS DU TAPIS ont leur propre ecouteur — le Hi-Lo
+     et les Mines ont chacun leur ligne de mise, en dehors des cases.
+     Celle des Mines n'etait reliee a rien : le bouton s'affichait, se
+     survolait, et ne faisait rien. On ne pouvait donc plus changer sa mise
+     sans recharger la page. */
+  ["caHilo","caMines"].forEach(function(id){
+    var b=$(id); if(!b) return;
+    b.addEventListener("click", function(e){
+      var x=e.target.closest("[data-x]"); if(!x) return;
+      caVider(x.dataset.x); if(SFX.sweep) SFX.sweep();
+    });
   });
 
   $("caSpots").addEventListener("contextmenu", function(e){

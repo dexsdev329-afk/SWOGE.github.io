@@ -40,7 +40,7 @@
   var SOCKET_PUBLIC = null;
   var bulle = null, chiffre = null, occupe = false;
   var pastille = null, gens = null;
-  var profBtn = null, profBoite = null, profOnglet = 'r', profItems = [], profFin = null,
+  var profBtn = null, profBoite = null, profOnglet = 'ap', profItems = [], profFin = null,
       profEncore = false, profCharge = false, profResume = null, profOuvert = false;
 
   /* ---------------------------------------------------------------------
@@ -786,6 +786,7 @@
      autre sujet, le classement un troisieme. Trois familles a gauche, et le
      joueur sait ou chercher avant de lire les libelles. */
   var FAMILLES = [
+    ['You', [['ap', 'Overview']]],
     ['History', [['r', 'Rounds'], ['dep', 'Deposits'], ['wd', 'Withdraw'],
                  ['st', 'Staking'], ['tr', 'Transfers']]],
     ['People',  [['am', 'Friends'], ['in', 'Invite']]],
@@ -1222,6 +1223,32 @@
       '.swp-r .v span{font-size:10px;color:#8DA0C4;}' +
       '.swp-r .g{color:#7CFF9B;} .swp-r .p{color:#F2685E;} .swp-r .n{color:#E7C97A;}' +
       '.swp-v{text-align:center;color:#8DA0C4;font-size:12.5px;padding:30px 10px;line-height:1.7;}' +
+      /* L'apercu : des cartes, pas un tableau. Un tableau se lit de gauche a
+         droite ; une grille de cartes se balaie, et c'est ce qu'on fait devant
+         son propre profil. */
+      '.swap-g{display:grid;gap:7px;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));' +
+      'margin-bottom:12px;}' +
+      '.swap-c{padding:10px 11px;border-radius:11px;background:rgba(255,255,255,.05);' +
+      'border:1px solid rgba(255,255,255,.10);}' +
+      '.swap-c span{display:block;font-size:10px;letter-spacing:.7px;text-transform:uppercase;' +
+      'color:#7E8FAC;}' +
+      '.swap-c b{display:block;margin-top:3px;font-size:16px;font-weight:900;color:#EAF2FF;' +
+      'font-variant-numeric:tabular-nums;}' +
+      '.swap-c i{display:block;margin-top:2px;font-style:normal;font-size:10.5px;color:#8DA0C4;}' +
+      '.swap-t{margin:12px 0 6px;font-size:10px;letter-spacing:1px;text-transform:uppercase;' +
+      'color:#7E8FAC;}' +
+      '.swap-f{display:flex;flex-wrap:wrap;gap:6px;}' +
+      '.swap-f span{padding:7px 10px;border-radius:10px;font-size:11.5px;font-weight:700;' +
+      'color:#EAF2FF;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.10);}' +
+      '.swap-f span i{margin-left:6px;font-style:normal;font-weight:600;color:#8DA0C4;}' +
+      /* Les pastilles de filtre : assez petites pour ne pas voler la vedette a
+         la liste qu'elles trient. */
+      '.swap-fl{display:flex;flex-wrap:wrap;gap:5px;margin:2px 0 10px;}' +
+      '.swap-fl button{padding:5px 9px;border-radius:999px;cursor:pointer;font-family:inherit;' +
+      'font-size:10.5px;font-weight:700;color:#8DA0C4;background:rgba(255,255,255,.05);' +
+      'border:1px solid rgba(255,255,255,.10);}' +
+      '.swap-fl button.on{color:#07101F;background:linear-gradient(180deg,#FFE08A,#FFC53D);' +
+      'border-color:transparent;}' +
       '.swp-more{display:block;width:100%;margin-top:6px;padding:10px;border-radius:10px;' +
       'cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:800;color:#EAF2FF;' +
       'background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);}' +
@@ -1268,7 +1295,10 @@
          d accueil, assombri pour que le texte reste lisible. */
       '.swp-me,.swnv{background-image:linear-gradient(rgba(9,13,24,.72),rgba(9,13,24,.86)),' +
       'url(media/fond-gym.webp);background-size:auto,cover;background-position:center;}' +
-      '.swp-av{flex:0 0 auto;width:40px;height:40px;border-radius:50%;cursor:pointer;' +
+      /* 56 px et non 40 : le cadre de palier est ce qu'on remarque en premier
+         chez les autres joueurs — c'est la seule chose du profil qui se voie
+         d'un coup d'oeil et qui se merite. A 40 px il etait un detail. */
+      '.swp-av{flex:0 0 auto;width:56px;height:56px;border-radius:50%;cursor:pointer;' +
       'display:flex;align-items:center;justify-content:center;font-size:21px;' +
       'background:linear-gradient(180deg,rgba(46,26,10,.95),rgba(20,10,4,.98));' +
       'border:1px solid rgba(230,165,55,.5);}' +
@@ -1760,7 +1790,10 @@
   /* Le niveau, avec la marche suivante. Sans le « encore X », un niveau est
      un chiffre mort. */
   function blocNiveau() {
-    if (!NIVEAU || !NIVEAU.niveau) return null;
+    /* On montre la barre MEME a zero. Le joueur qui vient d'arriver est
+       precisement celui a qui elle sert : cachee, il ne sait pas qu'il y a
+       cent niveaux a gravir ni ce qui les fait monter. */
+    if (!NIVEAU) return null;
     var c = couleurPalier(NIVEAU.palier);
     var d = document.createElement('div');
     d.className = 'swnv';
@@ -1770,6 +1803,110 @@
       '<div class="r">' + (NIVEAU.max
         ? 'Maximum level. Almost nobody gets here.'
         : nb(NIVEAU.restant, 0) + ' $SWOGE more to reach level ' + (NIVEAU.niveau + 1)) + '</div>';
+    return d;
+  }
+
+  /* ======================= L'APERCU =======================
+   *
+   * Le profil s'ouvrait sur la liste des manches — un journal, alors que la
+   * premiere question d'un joueur qui ouvre son profil est « qui suis-je
+   * ici ». Pire : la page PUBLIQUE `/j/<nom>` montrait deja le niveau, le
+   * volume, le meilleur gain, les jeux favoris, les duels et les rivaux. Son
+   * propre profil en montrait moins que celui que voient les inconnus.
+   *
+   * On demande donc la MEME chose que la page publique, a la meme adresse. Une
+   * seule construction, une seule verite : si les deux divergent un jour, ce
+   * sera parce qu'on l'aura voulu. */
+  var APERCU = null, apercuCharge = false;
+  var filtreJeu = null;
+
+  function demandeApercu() {
+    var a = MOI.address;
+    if (!a || apercuCharge) return;
+    apercuCharge = true;
+    fetch(base() + '/api/j/' + a).then(function (r) { return r.json(); })
+      .then(function (j) { if (!j.error) { APERCU = j; if (profOnglet === 'ap') profRend(); } })
+      .catch(function () {});
+  }
+  function base() {
+    return adresseServeur().replace(/^ws/, 'http').replace(/\/+$/, '');
+  }
+
+  function carte(titre, valeur, note) {
+    return '<div class="swap-c"><span>' + titre + '</span><b>' + valeur + '</b>' +
+           (note ? '<i>' + note + '</i>' : '') + '</div>';
+  }
+
+  function rendApercu() {
+    var l = profBoite.querySelector('.swp-l');
+    l.innerHTML = '';
+    var bn = blocNiveau(); if (bn) l.appendChild(bn);
+    if (!APERCU) {
+      demandeApercu();
+      var v = document.createElement('div');
+      v.className = 'swp-v';
+      v.textContent = 'Loading…';
+      l.appendChild(v);
+      return;
+    }
+    var A = APERCU, h = '';
+    h += '<div class="swap-g">' +
+      carte('Wagered', nb(A.volume || 0, 0), 'all time') +
+      carte('Rounds', nb(A.manches || 0, 0), null) +
+      (A.record ? carte('Best win', nb(A.record.gain || 0, 0),
+                        (A.record.multi ? A.record.multi + '× · ' : '') +
+                        (JEUX[A.record.jeu] || A.record.jeu || '')) : '') +
+      (A.duels && A.duels.joues
+        ? carte('Duels', A.duels.gagnes + ' / ' + A.duels.joues,
+                Math.round(A.duels.gagnes / A.duels.joues * 100) + '% won') : '') +
+      carte('Friends', nb(A.amis || 0, 0), null) +
+      (A.depuis ? carte('Member since',
+        new Date(A.depuis).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }), null) : '') +
+      '</div>';
+
+    if (A.favoris && A.favoris.length) {
+      h += '<div class="swap-t">Most played</div><div class="swap-f">';
+      A.favoris.forEach(function (f) {
+        h += '<span>' + (JEUX[f.jeu] || f.jeu) + '<i>' + nb(f.n, 0) + '</i></span>';
+      });
+      h += '</div>';
+    }
+    if (A.duels && A.duels.rivaux && A.duels.rivaux.length) {
+      h += '<div class="swap-t">Rivals</div><div class="swap-f">';
+      A.duels.rivaux.forEach(function (r) {
+        h += '<span>' + (r.nom || String(r.adresse || '').slice(0, 6)) +
+             '<i>' + r.v + 'W · ' + r.d + 'L</i></span>';
+      });
+      h += '</div>';
+    }
+    var d = document.createElement('div');
+    d.innerHTML = h;
+    l.appendChild(d);
+  }
+
+  /* Les pastilles de jeu au-dessus des manches. On ne les invente pas : on
+     prend les jeux PRESENTS dans ce qui est charge, donc aucune pastille ne
+     rend jamais une liste vide au premier clic. */
+  function blocFiltre() {
+    var vus = {};
+    profItems.forEach(function (e) { var j = e.j || e.jeu; if (j) vus[j] = (vus[j] || 0) + 1; });
+    var cles = Object.keys(vus);
+    if (cles.length < 2) return null;
+    cles.sort(function (a, b) { return vus[b] - vus[a]; });
+    var d = document.createElement('div');
+    d.className = 'swap-fl';
+    var h = '<button type="button" data-j="" class="' + (filtreJeu ? '' : 'on') + '">All</button>';
+    cles.forEach(function (j) {
+      h += '<button type="button" data-j="' + j + '" class="' + (filtreJeu === j ? 'on' : '') + '">' +
+           (JEUX[j] || j) + '</button>';
+    });
+    d.innerHTML = h;
+    d.addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('button[data-j]') : null;
+      if (!b) return;
+      filtreJeu = b.getAttribute('data-j') || null;
+      profRend();
+    });
     return d;
   }
 
@@ -1851,6 +1988,15 @@
   }
 
   function profDemande() {
+    /* L'apercu ne lit aucune manche : il demande le niveau — que le serveur
+       envoie sur `stats` — et le reste par la meme adresse que la page
+       publique. Sans cette demande, un joueur qui ouvre son profil sur
+       l'apercu voyait ses cartes sans sa barre de niveau, parce que rien ne
+       l'avait reclamee. */
+    if (profOnglet === 'ap') {
+      demandeApercu();
+      return;
+    }
     if (profOnglet === 'am') {
       if (etat.socket && etat.socket.readyState === 1) etat.socket.send('{"type":"profile"}');
       return;
@@ -2386,6 +2532,7 @@
 
   function profRend() {
     if (!profBoite) return;
+    if (profOnglet === 'ap') { profEnTete(); return rendApercu(); }
     if (profOnglet === 'am') { profEnTete(); return rendAmis(); }
     if (profOnglet === 'in') { profEnTete(); return rendInvite(); }
     if (profOnglet === 'lb') { profEnTete(); return rendClassement(); }
@@ -2397,8 +2544,11 @@
           { day: '2-digit', month: 'short', year: 'numeric' }) : '');
     }
     l.innerHTML = '';
-    if (profOnglet === 'r') { var bn = blocNiveau(); if (bn) l.appendChild(bn);
-                              var st = blocStats(); if (st) l.appendChild(st); }
+    if (profOnglet === 'r') {
+      var bn = blocNiveau(); if (bn) l.appendChild(bn);
+      var st = blocStats(); if (st) l.appendChild(st);
+      var fj = blocFiltre(); if (fj) l.appendChild(fj);
+    }
     if (!profItems.length) {
       var v = document.createElement('div');
       v.className = 'swp-v';
@@ -2415,13 +2565,27 @@
        dix. Chaque mois se replie — un joueur qui cherche aout n'a pas a
        derouler septembre. */
     var moisCourant = null, corps = null;
-    profItems.forEach(function (e) {
+    /* Le filtre par jeu ne touche pas a ce qui est CHARGE — seulement a ce qui
+       est montre. Recharger depuis le serveur a chaque pastille ferait un
+       aller-retour pour un tri qu'on peut faire ici, et ferait clignoter la
+       liste a chaque clic. */
+    var montres = (profOnglet === 'r' && filtreJeu)
+      ? profItems.filter(function (e) { return (e.j || e.jeu) === filtreJeu; })
+      : profItems;
+    if (profOnglet === 'r' && filtreJeu && !montres.length) {
+      var vide = document.createElement('div');
+      vide.className = 'swp-v';
+      vide.textContent = 'No ' + (JEUX[filtreJeu] || filtreJeu) + ' round on this page.';
+      l.appendChild(vide);
+      return;
+    }
+    montres.forEach(function (e) {
       var d = new Date(Number(e.t) || 0);
       var cle = d.getFullYear() + '-' + d.getMonth();
       if (cle !== moisCourant) {
         moisCourant = cle;
         var titre = d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
-        var n = profItems.filter(function (x) {
+        var n = montres.filter(function (x) {
           var y = new Date(Number(x.t) || 0);
           return y.getFullYear() + '-' + y.getMonth() === cle;
         }).length;

@@ -943,6 +943,13 @@
       /* l en-tete : le visage, le nom, et de quoi les changer */
       '.swp-me{display:flex;align-items:center;gap:11px;padding:11px 13px;' +
       'border-bottom:1px solid rgba(255,197,61,.18);background:rgba(255,255,255,.03);}' +
+      /* L'adresse partageable. Elle passe a la ligne sous le nom : la mettre
+         a cote comprimerait un nom long, qui est justement ce qu'on partage. */
+      '.swp-me{flex-wrap:wrap;}' +
+      '.swpart{flex:1 0 100%;margin-top:9px;padding:8px 10px;border-radius:9px;cursor:pointer;' +
+      'font-family:inherit;font-size:11.5px;font-weight:800;color:#FFD97A;' +
+      'background:rgba(255,197,61,.10);border:1px solid rgba(255,197,61,.34);}' +
+      '.swpart:hover{background:rgba(255,197,61,.18);}' +
       /* ---- LE CADRE DE PALIER ----
          Il se pose SANS toucher au balisage : un ::after par-dessus la photo,
          un peu plus grand qu'elle. Le trou du cadre fait 56 % de l'image, donc
@@ -1741,6 +1748,48 @@
       ech(MOI.name || 'no name yet') + pastilleNiveau(NIVEAU || MOI);
     profBoite.querySelector('.swp-me .nm span').textContent = MOI.address || '';
     if (MOI.address) profBoite.querySelector('.swp-me .nm span').title = MOI.address;
+    poseLienProfil();
+  }
+
+  /* ---------------------------------------------- l'adresse qu'on partage
+   *
+   * Une page publique que son proprietaire ne sait pas trouver ne se partage
+   * pas. Le bouton n'apparait donc qu'a partir du moment ou il y a quelque
+   * chose a partager : un NOM choisi. Tant que le joueur s'appelle « 0xab12 »,
+   * l'adresse ne lui appartient pas vraiment et ne dit rien de lui.
+   */
+  function lienProfil() {
+    if (!MOI || !MOI.name || !MOI.nomChoisi) return null;
+    var base = adresseServeur().replace(/^ws/, 'http').replace(/\/+$/, '');
+    return base + '/j/' + encodeURIComponent(MOI.name);
+  }
+  function poseLienProfil() {
+    if (!profBoite) return;
+    var hote = profBoite.querySelector('.swp-me');
+    if (!hote) return;
+    var b = hote.querySelector('.swpart');
+    var url = lienProfil();
+    if (!url) { if (b) b.remove(); return; }
+    if (!b) {
+      b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'swpart';
+      b.title = 'Copy your public profile link';
+      hote.appendChild(b);
+      b.addEventListener('click', function () {
+        var u = lienProfil();
+        if (!u) return;
+        /* On ouvre AUSSI la page : copier sans rien montrer laisse le doute
+           sur ce qu'on vient de mettre dans le presse-papiers. */
+        try {
+          navigator.clipboard.writeText(u).then(function () {
+            b.textContent = '✓ Link copied';
+            setTimeout(function () { b.textContent = '🔗 Share my profile'; }, 1800);
+          }, function () { window.open(u, '_blank'); });
+        } catch (e) { window.open(u, '_blank'); }
+      });
+    }
+    if (b.textContent.indexOf('copied') < 0) b.textContent = '🔗 Share my profile';
   }
   function profVisages() {
     var box = profBoite.querySelector('.swp-avs');

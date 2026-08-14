@@ -189,9 +189,15 @@
       '.swb-x{margin-top:10px;padding-top:9px;border-top:1px solid rgba(230,165,55,.22);}' +
       '.swb-x p{margin:0 0 6px;font-size:11px;line-height:1.45;color:#B9B2A2;}' +
       '.swb-x div{display:flex;gap:5px;flex-wrap:wrap;}' +
-      '.swb-x button{flex:1 1 30%;min-width:0;padding:5px 3px;font-size:11px;font-weight:700;' +
+      /* DEUX par ligne, pas trois. A trois, sur un telephone de 390 pixels, la
+         tuile fait 74 pixels : l'icone en prend 20 et « Ethereum » se termine
+         en points de suspension. Un nom coupe est pire qu'un symbole. */
+      '.swb-x button{flex:1 1 46%;min-width:0;display:flex;align-items:center;' +
+      'justify-content:center;gap:5px;padding:6px 4px;font-size:11px;font-weight:700;' +
       'border-radius:8px;border:1px solid rgba(160,160,190,.32);background:rgba(0,0,0,.28);' +
-      'color:#CFCADF;cursor:pointer;}' +
+      'color:#CFCADF;cursor:pointer;text-transform:none;letter-spacing:normal;}' +
+      '.swb-x button img{width:15px;height:15px;flex:none;display:block;}' +
+      '.swb-x button span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}' +
       '.swb-x button:hover{background:rgba(160,160,190,.16);}' +
       /* `.swb .swb-c` et pas `.swb-c` : les pages habillent leurs etiquettes
          par `.box label{...}` — majuscules, lettres espacees, centrees — et
@@ -208,6 +214,16 @@
       '.swb .swb-ct{flex:1;text-align:left;text-transform:none;letter-spacing:normal;' +
       'font-size:11.5px;font-weight:500;line-height:1.35;color:#C9C2B2;}';
     document.head.appendChild(css);
+  }
+
+  /* Un bouton de provenance : sa marque, puis son nom. L'image est decorative
+     — le nom est ecrit a cote — donc `alt` reste vide : un lecteur d'ecran qui
+     annonce « image Solana Solana » est moins clair que « Solana ». */
+  function bouton6(cle, nom) {
+    var i = ICONES[cle];
+    return '<button data-de="' + cle + '">' +
+           (i ? '<img src="' + i + '" alt="" width="15" height="15">' : '') +
+           '<span>' + nom + '</span></button>';
   }
 
   function poseBloc() {
@@ -240,12 +256,9 @@
           '<p>No ETH on Robinhood Chain? Bring it from another chain — arrives in ' +
           'seconds, straight to your address.</p>' +
           '<div>' +
-            '<button data-de="sol">◎ Solana</button>' +
-            '<button data-de="eth">Ξ Ethereum</button>' +
-            '<button data-de="base">🔵 Base</button>' +
-            '<button data-de="tron">₮ USDT&nbsp;(TRON)</button>' +
-            '<button data-de="btc">₿ Bitcoin</button>' +
-            '<button data-de="autre">Other chain</button>' +
+            bouton6('sol', 'Solana') + bouton6('eth', 'Ethereum') +
+            bouton6('base', 'Base') + bouton6('tron', 'USDT · TRON') +
+            bouton6('btc', 'Bitcoin') + bouton6('autre', 'Other chain') +
           '</div>' +
         '</div>' +
       '</div>';
@@ -593,6 +606,31 @@
     obs.observe(document.documentElement, { childList: true, subtree: true });
     setTimeout(function () { obs.disconnect(); }, 20000);
   }
+
+
+  /* ====================== LES MARQUES DES CHAINES ======================
+   *
+   * Elles sont EN DUR dans le fichier, en base64, et pas chargees depuis un
+   * hebergeur d'images. Trois raisons : aucune requete de plus a l'ouverture
+   * du panneau, aucun carre casse le jour ou l'hebergeur bouge, et rien qui
+   * dise a un tiers quelles pages du site sont regardees.
+   *
+   * Elles viennent des icones de Relay, redimensionnees a 36 pixels — deux
+   * fois la taille d'affichage, pour les ecrans fins. Le bitcoin arrivait en
+   * carre orange alors que sa marque est un disque : il est decoupe. Base est
+   * dessine plutot que recopie — les deux jeux d'icones publics consultes n'en
+   * servent qu'une tuile bleue aplatie sur fond blanc, et un fond blanc au
+   * milieu d'un panneau sombre se voit.
+   *
+   * Six kilo-octets en tout. C'est le prix d'une seule des images du site.
+   */
+  var ICONES = {
+    sol: 'data:image/webp;base64,UklGRqgDAABXRUJQVlA4WAoAAAAQAAAAIwAAIwAAQUxQSA8BAAABgFtr25vmVRwAtyrRJoSSJdyRWYDObV7DlT2DK9NROYcFyOkPX/FL4vv+CSKCkds2jiBr+55SHgGPhEKKerlGltdzPvUMQIzBVmnDRtGiIEmwtO8U1JYsE9J230CCoZONoUMbCbp0EvyhnTGmJKIo3r6+vtl8fc5bTiCRkJaqGoUi4hheCADg+u6Bz/39VQ0RgBnJeL1wiR5pp/gciwmSZzoRH1VIKM+sBhRyVHz29FJI+kQy/gGESC7H4wmX8XjULRbIC5GwE6LSOKaJBGeM1vxT0plfb872gWRMi0qm5ERdJE4jmFhNQyRo7K1mT6xzgBidHVmSMEQMLEgJ/lBbdw1koiWUZ542mZ+t6A8AAFZQOCByAgAAcA4AnQEqJAAkAD49GolDIiGhFxwGZCADxLYATplCOBvJ/yl/Cv5BKg/YvwBk0dSv1PflrejeZH9XP2A97fTAPQA8r72Qf3E/bH2lTABM6/sFqABOAqXuynrr8kHOpV6Af/ssPORXpjpVoYNOO9/Z5abmeq7zKW5CikzDIAD+r3TwZnmkdZ5p+M8nBRWnB9EJNc0VqWyrta8UV4kL7lpwi9IUVv/wanVLH143dhevZy93li109wb//kVomfVDbM5jnx7WX2Ue+Tcl/jfkCdSG25eQitKMu+yGQifLkqbuvewoaj6mmdLwCBaioPSFA2PRp0mm2eB3xpp64wBJDY2MhY97lNYa6pc/c7ke37ca1tCowf2mnAf/5ZyRMfScv6Su8gdBlv6iHUHcX0wySIj+GS4m3zDf/jF+Q6rr0hs+YsJATPGKP5Ffl5i82XsStgOj99P1uX1W6+VfClq8kZTzIxRIo6CwMlz89z/EC6P/hTg2TZRbLIEoUdkweA9SnvPE4xskQuJrOJL1DnYH8ilcIYfkOBmU3OI/fHJnVFHrEf7Y/xsD1xzSnJMM1ISwhDbfpH4Icojm1DTclGtXDZU9TuD4fWMBIhkEKr5ndjf5QlQNng3DnSDIhBVBVr3Hrji5hnE2+7SWc0CLTgt2D4HlBKbCI1E/xb09qxh5WbwDhO7sfAf+B8Yz6pbZ+ubudLNb+Kjc1fES2hFmad7kocl0onhPZT0UIjmzjSJ1kxZ98X7dZdcUeSwe+tZL2/upARrN83o5uQSwlQX4ae5T2VpvB6v/+aIt6WMuPcLiO/R/rRYGLUwxb/z02TEumJzoqbgAAAA=',
+    eth: 'data:image/webp;base64,UklGRhgEAABXRUJQVlA4WAoAAAAQAAAAIwAAIwAAQUxQSB4BAAABgFxbe+Lmk2SuwOMeqI7Q2tCG42IcFxFYM2eJxjLCieb/gvLoryAiGLhtpChdPMY8Av/iALT627NHkcfZdr/551KWxDjkuwfvDOTtsJeHM0EssHFD0qfyi6Se5M0GYIO1PCS9l1Aj3pPDMmyg1i7pUy5N6nlZg/1XkzE/mCkfHCd/inHl69+atVyXnQEcRr81exnBwWGFn4zIJ1fgTGEsaQypTIoGHXpGxbMDcyKxyJGpfzA6740BfSyegz0N9haUWITzRyrkUTQQHXQmc5VNVA60O9Bgs6HxDdTNcfy3dGzQVvkmi5PYb3tcMDr/SPy/tgWn9c/Cohrz71dDgsjukAQ23kUVWBWnLXVjb/8t6Mb9bsiNYcc2Q45tBR0LVlA4INQCAAAQEACdASokACQAPj0YiUMiIaEXHAZkIAPEtgBOnKCorvf+dfjxzzXMMQZ4byx/oulXtoPMB+wH8A623kq9Zh6AH7K+ml+x3wb/tP6RFzJrn1tL/6PlT+mf937gX6p/731gOog/W4kgR3QpqLAWCn4GsnuG8G4w+9IAFeTXDZyFi53ZdAtpHNCDAAD54li31U3rpMmQCvxeYPiaszSjj9O5vnP+0r8RLkrGtju770Q6dwCX1JV97JxMdIl7k07A7lPE8MfLSGhgT+ucziea0vRF2zTwDXgGvqF3ExWyN+8D4VLumlW8hUZRZzvTtl+oPnFtlJycA5+pS90m4bRp/pTbSSRh3s+7Xj/kincqRD+/Cu/aPcIPWOBeL/P83LqZeg9Uvam0eWh70oN1oHvSLDej9K6Mk/5HrajRjIfLOuahSbm7zUKpm2f74SgMnfRszP/+85eCnaKCipyDrode7i6Ve1zbS2JG99mpQtYYpY4/zNI/6c28lbjP5wegrwczTE8xqZoUyPsYPlQxbgNcOTNVjXyCFvICkwX2F5MHkUQOIlj7edJBPRA8/QKzX/wHJzUWJp1BhKEpGqL48DJcrqNPaXPeSQHxMlhI+y/oVvb2lSLd9wBmWfETJ2TVYfo98APow3aeMWt6l/UEPEziRwuF8jh8DDcj+Iqz1j/rMVpTmOVEAv+v3wis2FS/T9i96VnFKIvLATcRvToFUrmX3GXSHMcfwju1xYR57vNwW015fL0ObkmcuOjFnwMiNFcN/+0eSAJz2+P4AR0iKPp5H+tbjX4C2iLcfTPcPye6tkXZd61t4mabG3oJlX0F/Dl2WTmhoNiGiM9/ESEKrGT7vpvk28P44GfOdn/1k1ow3dZ2Y7IBtN6so3YTz1yP8yWT5Lqf7DXb5dD1p1sfoq0YTDqeQLK+dkE5XlfB3f3+ycwXbStf9mVdp9Mxv/jjpLwpYn7EsgAA',
+    base: 'data:image/webp;base64,UklGRk4BAABXRUJQVlA4WAoAAAAQAAAAIwAAIwAAQUxQSHIAAAABcBxJkqP07rmiPLxzQuDCmYWwQsuJbjTMPHlFhIG0bRYu4RWBlNH08zP1A57nfYOcntet5bDukFOBSTL+Opo0oUCrM+XAs1qUB6NcaIdyJpOTabYivSNXVwW46u/sGnIxPxvz+zENiWlRTNNi2hjSWABWUDggtgAAAFAFAJ0BKiQAJAA+PRyMRCIhoROcBSQgA8SygGVw4BeeGKB4gARnXrFnRfOPOYDSWF4kAAD+9fR8hfPBTOn/fr09jfb0+uYLhzf/z2j/z2j/z2j/z2j/+xndD/ozf+jN/WXNZ3pB57rClGNFL6p4hpieHfYS+prX+HEA1Rxij70BkZZgUv78z8ugilrIPXoTuHJDYE8UYY+BnDZiqZY1JuEnP3BfF9knLOIuawQTiQSKGKfqMgAA',
+    tron: 'data:image/webp;base64,UklGRu4DAABXRUJQVlA4WAoAAAAQAAAAIwAAIwAAQUxQSJkCAAABoLRtmyHJHtAbFTm2bdu2bXtmZdu2tcTa9s62rWNbVRHxvYPIzL5ORDBw20jRdPZo4GjaRyAKOkAEAo00IZEAdMXu4+fPH9+jov78HGkwDdTb8lToQZ5tqQfEXlQKdY6SpDWfYEnyaB0oFZ0GLE1RjAtvnBGapQqJyJXtBMUyBlZ4MnuEK5XtClPCWEiKV7KFgkqr00xa6yT+QoqnlfZcYwlT9OG8TCcS9iXQn5NUdWvk1z3nn3xvoiNe0NrqKgEkcJJG/ikCnSlz6aYDZ2zdf+nFT/+R4peehIZGLXE0XKdU8ZENimeBh2J1ltAKSSe1oANso6HjuwyBXkX++9OLywe2Lc4OzKIR0nArAhW8pCMtO2Sdhs6/0cMGLF+IOZ/d8WWgUMGRpJGjOHgG5Z/wv/84HdPI0ZhN71IFoActSeG/uSvzeoEMJ8jZWEWSwzE35WjZA5hA4+04DXf4VQNsX4yht3fP71utVAYcpTWcAMz3zfIRpgj/GwwfBToVx4h/nRjOjzA61sr1jyVr5B6xZP/9H3gxU3tHoWcTQma4E0doXb4+/Iwbqtqf4shPJ6EUL/mXjO3IXzHb/Jvkq9zFvqEjvRS/kR8enHjHp9jFJH8un/Vx6JldBXj/LmQXsELO4hxNshku+K/u+CJQAbaGAhRbohh345VjfxygIRmaAX+WQs+xEs/XqN84BTu85w3PEjROht+Y7zF1XB5uwLzPK2Im/dm2EvJWuUv1OYlRNMKo2Y7hiJH9QB3dTmw0R0JcO+W78M9CCdT8U1x4nVJaxXLWcCrKfkMXzdl47lu5VuAJbZj7J7LFCASW+Bryzwu6CA0BErFadMRvkozWorRo2uYITXvqaVpatbFC9/Hz5o3rHquN/4vGAgBWUDggLgEAABAKAJ0BKiQAJAA+PRaIQyIhIRqqrqggA8S1AFVKvH9V/EDspDG/CDhMu4n66YYD7M94W6TvmA/VX9AN9m62b0APK6/wHuM/sZ+zPuDf1ACJGlxfaEvDXx4AAP71hwEP4xo75gyyjrpOsx/393AL/P6uA02T7+1LPtSfdtRo8TpCd6syXyHffYugI1s4T2No+Wv6xKqohb0QtvMDq4lFFzJ4JaycD4mMMDSKCx/y3uNy7j6/9/IXLflzAaSlDFUpOmOTbKmNkKopyM4+fLX9/+TYXi9/8Uv6GEVNrb5bXGUQx/9Ohv/t4OI3/IP5Ytqt/ut5Pg93ZtkFaI+LXIfyHY61L+vClqfBSZ+8IswEug3+hk3fJ/odDZXvkPdLw7ppw//p69f7EH+jGAnIAAAA',
+    btc: 'data:image/webp;base64,UklGRkYEAABXRUJQVlA4WAoAAAAQAAAAIwAAIwAAQUxQSPIAAAABgF3btqpmX0G+oQsrQ5ISrBDoAwqBAuLuX0gbcTn37OiTM1JARDBw27aRlbS3Z+JH4A8BQHc4Xd6r3i+nw+6vR8nBBcTtnRdm8LKzHRFcpjywfkdSkpKkJiF5tw74zKyPSRFlBipCjuvwGdk4oSTmkoQnjT/hXfOS7yzEOy+bzv+6WvX0J4vGaTU4IGDyk8VjgoCIHj9Ygg/2EH1lrqmMks4rHhsUlkK4ARxoWekBWm8szVtrRCkr4WhmodmKWlbK1SMNeOS/wWbF5hCbC9n8O5sasKklm5q0qW2bHjHpNZueNel9Ew8x8SITTzP0RhOPBVZQOCAuAwAAkBIAnQEqJAAkAD49GotEIiGhE5UkIAPEtgBOmVn5T8W/Dr8luhr3IMs+qT9F9unvA5i3pAeYD9Tv9B/mfYg/pPsR9AD9ZusA9A39S/SZ/ar4HP2e/cn2hf/y8sL3qBAuzWsDGKs9v0l+tnwD8yB7Ff6ZlBQK27vZTS3K0MdCCe34d0tYzQBMkmeD28flheDSO3zvDk7K2VENIX6aAAD+7V+cdCSsLrn3iuGhMi9WKNpa146C76c7+rid868UgSEimy/n/BXGH+xfTTbwTWrbungfy28f/3Vt/OEl75bQ6ytD95+c0Vv6Dalw0bQ9f/+uaGp0v/z5yAoqqYB3gSYo/zp8w6D7ZbI53P1S6yhUNnnKX2wfRPz639ydE+qwG5XIpCrqeH+XXw/xUJKn1RgjUoPlcUvZ+WbBDxD8f4XGnzen/z6MwT0NhO85kYYG1VLNPrGohP65Hzfn1E4kjr/8UH+CIZ6TWBf/vGv/xt430ky/a4rokNE8BhXDjqsjcjNCiG9sHaxM3fhww5Xs6lDHdar+ujsXpAOwpVA+OdKbBqSEfo+DFrqOx4vL9p+9UV2eJa1IxOUhia5l2kP4MFfr/VVqGkCJEPJKOwyRTKtR42sp2QmGWb335tmyn/uCXc75n+d+Xqi0Jwn0iVnT2TZ7iCgk0FWg+G8vBGZsvtx0dnRxN7B9dOd/pb1vmip42cSI/0iZP5NR3D9cD9zpG/Mc+4T6J8t/QZ8PA68z505AgXaKXe1F+SfNn0i/tXkI6db9L5pPNXbNuuR2vy5RPePpPs8pLRsUMD62ct9gKHBNVXC8s8Efa62VLjDtzcrb0U1Nz8+FV5e3UzgFyXOa1F5T0JGn2yR75O/NT5gv4DeVxYJPvIyswczahfQ9iSffCM4kzFbt2de21n/2OUx1Fa7fewoBJAMt/8u51ws+djrGVdrnb31+qVbatTNwpde5tn08u/lJEuvxeQ0DSJe9VF1/PFpBNEFI4bVqDtfg7K/6KcutPUtJ6wG043PWDD/3ZoVSZMQmn8JC/g9MXymyWxjvujzFXh2qKTb5Jljy+hAU5IFtX/yww0Jm2+C36fAAAA=='
+  };
 
   if (document.readyState === 'loading')
     document.addEventListener('DOMContentLoaded', amorce);

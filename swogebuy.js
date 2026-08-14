@@ -298,7 +298,7 @@
       '<div class="swb-b" id="swbCorps">' +
         '<div class="swb-d" id="swbDev">' +
           onglet('swoge', '$SWOGE', '…') +
-          onglet('eth', 'ETH', '…') +
+          onglet('eth', 'ETH · RH', '…') +
         '</div>' +
         '<div class="swb-r"><input id="swbAmt" inputmode="decimal" placeholder="0">' +
         '<b id="swbUnite">$SWOGE</b></div>' +
@@ -311,7 +311,7 @@
         '<div class="swb-q" id="swbCote">Pick an amount.</div>' +
         '<button class="swb-go" id="swbGo">Deposit and play</button>' +
         '<div class="swb-x" id="swbAilleurs">' +
-          '<p>Nothing on Robinhood Chain yet? Bring funds from another chain — ' +
+          '<p>No <b>ETH on Robinhood Chain</b> yet? Bring funds from another chain — ' +
           'arrives in seconds, straight to your address.</p>' +
           '<div>' +
             bouton6('sol', 'Solana') + bouton6('eth', 'Ethereum') +
@@ -380,7 +380,11 @@
     var bs = $('swbDev').querySelectorAll('button[data-dev]');
     for (var i = 0; i < bs.length; i++)
       bs[i].classList.toggle('on', bs[i].getAttribute('data-dev') === devise);
-    $('swbUnite').textContent = devise === 'eth' ? 'ETH' : '$SWOGE';
+    /* « ETH » tout court est ambigu et l'ambiguite coute cher ici : l'onglet
+       parle de l'ETH DEJA SUR Robinhood Chain, la tuile « Ethereum » plus bas
+       parle de l'ETH du reseau principal. Deux choses differentes, le meme mot.
+       On nomme donc la chaine partout ou le mot apparait. */
+    $('swbUnite').textContent = devise === 'eth' ? 'ETH (RH)' : '$SWOGE';
     champ.value = '';
     rafraichitCote();
   }
@@ -435,7 +439,7 @@
   function montreTaux() {
     reserves().then(function (r) {
       var t = $('swbTaux');
-      if (t) t.textContent = '1 ETH ≈ ' + fmtBig(prixMilieu(r));
+      if (t) t.textContent = '1 ETH (RH) ≈ ' + fmtBig(prixMilieu(r));
     }).catch(function () {});
   }
 
@@ -508,7 +512,8 @@
     cote(montant).then(function (c) {
       derniereCote = c;
       var mini = c.sortie.mul(10000 - TOLERANCE_BPS).div(10000);
-      var txt = 'Buys ≈ <b>' + fmtBig(c.sortieN) + ' $SWOGE</b> and deposits it — ' +
+      var txt = 'Spends your <b>ETH on Robinhood Chain</b> to buy ≈ <b>' +
+                fmtBig(c.sortieN) + ' $SWOGE</b> and deposits it — ' +
                 'at least ' + fmtBig(parseFloat(ethers.utils.formatUnits(mini, 18))) +
                 ' after slippage.<br>Price impact <b>' + c.impact.toFixed(2) + '%</b>.';
       /* L'avertissement n'est pas decoratif : au-dela de quelques centiemes
@@ -603,7 +608,9 @@
      que c'est lui qui s'y prend mal. */
   var DEPUIS = {
     sol:   { chaine: 792703809, jeton: '11111111111111111111111111111111', unite: 'SOL' },
-    eth:   { chaine: 1,         jeton: NATIF, unite: 'ETH' },
+    /* Ici « ETH » designe celui du RESEAU PRINCIPAL, pas celui de Robinhood
+       Chain : c'est ce qu'on envoie, pas ce qu'on recoit. */
+    eth:   { chaine: 1,         jeton: NATIF, unite: 'ETH (mainnet)' },
   };
 
   var pontCle = null;
@@ -676,7 +683,7 @@
   }
 
   function montreAdresse(r) {
-    var recu = r.recoit ? ' You get ≈ <b>' + trim(String(r.recoit), 6) + ' ETH</b>' +
+    var recu = r.recoit ? ' You get ≈ <b>' + trim(String(r.recoit), 6) + ' ETH on Robinhood Chain</b>' +
                           (r.secondes ? ', usually in ' + r.secondes + 's.' : '.') : '';
     $('swbPontDit').innerHTML =
       'Send <b>' + r.envoie + ' ' + r.symbole + '</b> to this address — from your wallet or ' +
@@ -763,8 +770,8 @@
             choisitDevise('eth', true);     // sans effacer l'annonce qu'on vient de poser
             var utile = b.sub(gaz);
             if (utile.gt(0)) champ.value = trim(ethers.utils.formatEther(utile), 6);
-            annonce = '✅ ' + trim(ethers.utils.formatEther(arrive), 6) + ' ETH just landed — ' +
-                      'the amount is filled in.';
+            annonce = '✅ ' + trim(ethers.utils.formatEther(arrive), 6) +
+                      ' ETH just landed on Robinhood Chain — the amount is filled in.';
             rafraichitCote();
           });
         }).catch(function () {});

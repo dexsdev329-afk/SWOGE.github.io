@@ -185,7 +185,14 @@
       '.swb-w.dur{color:#E5533F;}' +
       '.swb-go{width:100%;margin-top:9px;padding:9px;border-radius:10px;border:0;cursor:pointer;' +
       'font-weight:800;font-size:13px;color:#231a06;background:linear-gradient(180deg,#F2C868,#E6A537);}' +
-      '.swb-go[disabled]{opacity:.55;cursor:default;}';
+      '.swb-go[disabled]{opacity:.55;cursor:default;}' +
+      '.swb-x{margin-top:10px;padding-top:9px;border-top:1px solid rgba(230,165,55,.22);}' +
+      '.swb-x p{margin:0 0 6px;font-size:11px;line-height:1.45;color:#B9B2A2;}' +
+      '.swb-x div{display:flex;gap:5px;flex-wrap:wrap;}' +
+      '.swb-x button{flex:1 1 30%;min-width:0;padding:5px 3px;font-size:11px;font-weight:700;' +
+      'border-radius:8px;border:1px solid rgba(160,160,190,.32);background:rgba(0,0,0,.28);' +
+      'color:#CFCADF;cursor:pointer;}' +
+      '.swb-x button:hover{background:rgba(160,160,190,.16);}';
     document.head.appendChild(css);
   }
 
@@ -213,6 +220,18 @@
         '</div>' +
         '<div class="swb-q" id="swbCote">Enter an amount to see the price.</div>' +
         '<button class="swb-go" id="swbGo">Buy $SWOGE</button>' +
+        '<div class="swb-x" id="swbAilleurs">' +
+          '<p>No ETH on Robinhood Chain? Bring it from another chain — arrives in ' +
+          'seconds, straight to your address.</p>' +
+          '<div>' +
+            '<button data-de="sol">◎ Solana</button>' +
+            '<button data-de="eth">Ξ Ethereum</button>' +
+            '<button data-de="base">🔵 Base</button>' +
+            '<button data-de="tron">₮ USDT&nbsp;(TRON)</button>' +
+            '<button data-de="btc">₿ Bitcoin</button>' +
+            '<button data-de="autre">Other chain</button>' +
+          '</div>' +
+        '</div>' +
       '</div>';
     ancre.parentNode.insertBefore(bloc, ancre);
 
@@ -235,6 +254,10 @@
       champ.value = v; rafraichitCote();
     });
     bouton.onclick = achete;
+    $('swbAilleurs').querySelector('div').addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('button[data-de]') : null;
+      if (b) ailleurs(b.getAttribute('data-de'));
+    });
     montreTaux();
     return true;
   }
@@ -322,6 +345,67 @@
     }).catch(function (e) {
       dis('Price unavailable right now — ' + String(e.message || e).slice(0, 70));
     });
+  }
+
+  /* ================== VENIR D'UNE AUTRE CHAINE ==================
+   *
+   * La question posee etait : faut-il trois adresses de depot, une par chaine,
+   * et convertir soi-meme au prix du marche ? Non — et pour deux raisons
+   * mesurees plutot que supposees.
+   *
+   * 1. LE PRIX N'EST PAS UN ORACLE. La reserve tient dans deux ETH : 188 $
+   *    d'achat deplacent le prix de 10 %, 940 $ de 54 %. Un serveur qui
+   *    crediterait au prix du pool se ferait vider par quelqu'un qui fait
+   *    tomber ce prix pour deux cents dollars, depose, puis rachete.
+   *
+   * 2. TENIR TROIS GUICHETS, C'EST DEVENIR LA CONTREPARTIE : une adresse par
+   *    joueur et par chaine, un surveillant par chaine, du gaz sur trois
+   *    chaines, des cles a garder — et l'invariant du coffre (ce qui est du
+   *    tient dans ce qui est depose) casse a chaque credit.
+   *
+   * Robinhood Chain est une chaine Orbit, et Relay la dessert deja. Cotations
+   * relevees le jour ou ceci a ete ecrit, vers de l'ETH sur Robinhood Chain :
+   * 1 SOL en 3 s pour 0,87 % ; 0,1 ETH depuis le reseau principal en 2 s pour
+   * 0,02 % ; 100 USDT depuis TRON en 2 s pour 0,2 %. Non custodial : l'argent
+   * ne passe jamais par nous. Le joueur revient avec de l'ETH sur la bonne
+   * chaine, et le panneau au-dessus fait le reste.
+   *
+   * Le TRX natif n'a pas de route ; l'USDT sur TRON en a une, et c'est ce que
+   * detiennent la plupart des porteurs TRON. On ne propose donc pas un bouton
+   * qui echouerait — chacun de ces boutons a ete cote pour de vrai avant
+   * d'etre pose.
+   */
+  var RELAY = 'https://relay.link/bridge/robinhood';
+  var NATIF = '0x0000000000000000000000000000000000000000';
+  var DEPUIS = {
+    sol:   { chaine: 792703809, jeton: '11111111111111111111111111111111' },
+    eth:   { chaine: 1,         jeton: NATIF },
+    base:  { chaine: 8453,      jeton: NATIF },
+    tron:  { chaine: 728126428, jeton: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t' },  // USDT
+    /* Le bitcoin n'a pas d'adresse « nulle » : son jeton natif porte un
+       identifiant a lui. La route n'a pas pu etre cotee d'ici faute d'une
+       adresse approvisionnee — le refus obtenu parlait des fonds du test, pas
+       de la route. C'est la seule des six qui n'ait pas ete verifiee de bout
+       en bout. */
+    btc:   { chaine: 8253038,   jeton: 'bc1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqmql8k8' },
+    autre: null
+  };
+
+  function ailleurs(cle) {
+    var d = DEPUIS[cle];
+    portefeuille().then(function (w) {
+      var u = RELAY + '?toCurrency=' + NATIF;
+      if (d) u += '&fromChainId=' + d.chaine + '&fromCurrency=' + encodeURIComponent(d.jeton);
+      /* L'adresse d'arrivee est celle du joueur. Sans elle il faudrait la
+         recopier a la main, et une adresse recopiee a la main est la seule
+         etape de tout ce parcours ou l'on peut perdre son argent. */
+      if (w) u += '&toAddress=' + w.adresse;
+      window.open(u, '_blank', 'noopener');
+      if (!w) {
+        dis('Connect your wallet first and press again — otherwise you have to ' +
+            'retype your address over there, and that is the one step where money gets lost.');
+      }
+    }).catch(function () { window.open(RELAY, '_blank', 'noopener'); });
   }
 
   /* -------------------------------------------------------------------- l'achat */

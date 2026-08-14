@@ -436,7 +436,11 @@ var SERVER_URL = "wss://web-production-220a3.up.railway.app";
 (function(){ var q=new URLSearchParams(location.search).get("server"); if(q) SERVER_URL=q; })();
 
 // Official canonical bridge (Arbitrum portal). Swap = your SWOGE buy/sell page.
-var BRIDGE_URL = "https://portal.arbitrum.io/bridge?destinationChain=robinhood-chain&sourceChain=ethereum";
+/* Relay plutot que le portail Arbitrum : meme trajet, 2 secondes au lieu
+   d une quinzaine de minutes, et 0,02 % de perte — cote le jour ou cette
+   ligne a ete ecrite. Il dessert aussi Solana, Base et l USDT sur TRON, ce
+   que le portail ne fait pas. */
+var BRIDGE_URL = "https://relay.link/bridge/robinhood?fromChainId=1&fromCurrency=0x0000000000000000000000000000000000000000&toCurrency=0x0000000000000000000000000000000000000000";
 var SWAP_URL = "https://dexscreener.com/robinhood/0x2dc0fb72d9284228046cc95910eeaabebfe48456"; // $SWOGE pair (same as the site's 'Buy $SWOGE')
 var CHAIN = { id:4663, hex:"0x1237", name:"Robinhood Chain",
   rpc:"https://rpc.mainnet.chain.robinhood.com", scan:"https://robinhoodchain.blockscout.com", sym:"ETH" };

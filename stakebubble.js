@@ -609,9 +609,18 @@
                smash:'Smash', mines:'Mines', hilo:'Hi-Lo', holdem:"Casino Hold'em",
                three:'Three Card', p4:'Connect 4', pusher:'Coin Pusher',
                mp:'Tic-Tac-Toe', dm:'Checkers' };
-  var ONGLETS = [['r','Rounds'],['dep','Deposits'],['wd','Withdrawals'],
-                 ['st','Staking'],['tr','Transfers'],['am','Friends'],['in','Invite'],
-                 ['lb','Ranking']];
+  /* Huit onglets sur une ligne, c'etait huit choses de meme rang — alors
+     qu'un depot, un retrait, un transfert et une manche racontent tous la
+     meme chose : ce qui s'est PASSE. Les amis et les invitations sont un
+     autre sujet, le classement un troisieme. Trois familles a gauche, et le
+     joueur sait ou chercher avant de lire les libelles. */
+  var FAMILLES = [
+    ['History', [['r', 'Rounds'], ['dep', 'Deposits'], ['wd', 'Withdrawals'],
+                 ['st', 'Staking'], ['tr', 'Transfers']]],
+    ['People',  [['am', 'Friends'], ['in', 'Invite']]],
+    ['Standing', [['lb', 'Ranking']]],
+  ];
+  var ONGLETS = FAMILLES.reduce(function (t, f) { return t.concat(f[1]); }, []);
   var VISAGES = [], MOI = { name: null, visage: null, address: null };
   var AMIS = { amis: [], recues: [], envoyees: [] }, EN_ATTENTE = 0, RECHERCHE = [];
   var NON_LUS = 0, PARRAIN = null, STATS = null, CLASSEMENT = null, NIVEAU = null;
@@ -979,13 +988,22 @@
       '.swp-h span{flex:1;font-size:11px;color:#8DA0C4;}' +
       '.swp-x{width:30px;height:30px;border-radius:9px;cursor:pointer;font-size:15px;' +
       'color:#EAF2FF;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);}' +
-      '.swp-t{display:grid;gap:6px;padding:10px 13px 0;' +
-      'grid-template-columns:repeat(auto-fit,minmax(106px,1fr));}' +
-      '.swp-t button{padding:8px 6px;border-radius:9px 9px 0 0;cursor:pointer;' +
-      'min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;' +
-      'font-family:inherit;font-size:12px;font-weight:800;letter-spacing:.5px;' +
-      'color:#8DA0C4;background:rgba(255,255,255,.05);border:1px solid transparent;' +
-      'border-bottom:0;}' +
+      /* Le corps : le rail des familles a gauche, la liste a droite. */
+      '.swp-body{flex:1;display:flex;min-height:0;overflow:hidden;}' +
+      /* 124 px et pas 108 : « Withdrawals » se terminait en points de
+         suspension, et un libelle coupe dans un rail de navigation est le seul
+         endroit ou l on ne peut pas deviner ce qui manque. */
+      '.swp-t{flex:0 0 124px;display:flex;flex-direction:column;gap:2px;' +
+      'padding:10px 8px 12px;overflow-y:auto;' +
+      'border-right:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.02);}' +
+      '.swp-t .swp-g{margin:9px 0 3px;padding:0 6px;font-size:9.5px;font-weight:800;' +
+      'letter-spacing:1.1px;text-transform:uppercase;color:#6C7C99;}' +
+      '.swp-t .swp-g:first-child{margin-top:0;}' +
+      '.swp-t button{width:100%;text-align:left;padding:7px 8px;border-radius:8px;' +
+      'cursor:pointer;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;' +
+      'font-family:inherit;font-size:11.5px;font-weight:700;letter-spacing:.2px;' +
+      'color:#8DA0C4;background:transparent;border:1px solid transparent;}' +
+      '.swp-t button:hover{background:rgba(255,255,255,.06);color:#EAF2FF;}' +
       '.swp-t button.on{color:#07101F;background:linear-gradient(180deg,#FFE08A,#FFC53D);}' +
       '.swp-l{flex:1;overflow-y:auto;padding:10px 13px 14px;min-height:180px;}' +
       '.swp-r{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:10px;' +
@@ -1037,10 +1055,20 @@
       'cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:800;color:#EAF2FF;' +
       'background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);}' +
       '.swp-more[disabled]{opacity:.5;cursor:default;}' +
-      /* Six onglets ne tiennent pas sur une ligne de telephone : ils se
-         replient au lieu de sortir de la boite. */
-      '.swp-t{grid-template-columns:repeat(auto-fit,minmax(88px,1fr));}' +
-      '.swp-t button{font-size:11px;letter-spacing:.2px;padding:8px 4px;}' +
+      /* Sous 430 px, un rail de 108 px prend le quart de la largeur pour huit
+         mots. Les familles repassent en rangee au-dessus de la liste : meme
+         regroupement, en travers plutot qu'en hauteur. Et c'est bien une
+         requete de media — pose dans la feuille courante, ce bloc ecraserait
+         le rail sur TOUS les ecrans, puisqu'il vient apres lui. */
+      '@media (max-width:430px){' +
+        '.swp-body{flex-direction:column;}' +
+        '.swp-t{flex:none;flex-direction:row;flex-wrap:wrap;align-items:center;gap:4px;' +
+        'padding:9px 10px;border-right:0;border-bottom:1px solid rgba(255,255,255,.10);}' +
+        '.swp-t .swp-g{width:100%;margin:5px 0 1px;}' +
+        '.swp-t .swp-g:first-child{margin-top:0;}' +
+        '.swp-t button{width:auto;flex:0 1 auto;font-size:11px;padding:6px 10px;' +
+        'background:rgba(255,255,255,.05);}' +
+      '}' +
       /* l en-tete : le visage, le nom, et de quoi les changer */
       '.swp-me{display:flex;align-items:center;gap:11px;padding:11px 13px;' +
       'border-bottom:1px solid rgba(255,197,61,.18);background:rgba(255,255,255,.03);}' +
@@ -1218,8 +1246,7 @@
           '</div>' +
           '<div class="swp-msg"></div>' +
         '</div>' +
-        '<div class="swp-t"></div>' +
-        '<div class="swp-l"></div>' +
+        '<div class="swp-body"><div class="swp-t"></div><div class="swp-l"></div></div>' +
       '</div>';
     document.body.appendChild(profBoite);
     profBoite.addEventListener('click', function (e) {
@@ -1297,11 +1324,16 @@
     });
 
     var t = profBoite.querySelector('.swp-t');
-    ONGLETS.forEach(function (o) {
-      var b = document.createElement('button');
-      b.type = 'button'; b.textContent = o[1]; b.dataset.k = o[0];
-      b.addEventListener('click', function () { profVa(o[0]); });
-      t.appendChild(b);
+    FAMILLES.forEach(function (f) {
+      var g = document.createElement('div');
+      g.className = 'swp-g'; g.textContent = f[0];
+      t.appendChild(g);
+      f[1].forEach(function (o) {
+        var b = document.createElement('button');
+        b.type = 'button'; b.textContent = o[1]; b.dataset.k = o[0];
+        b.addEventListener('click', function () { profVa(o[0]); });
+        t.appendChild(b);
+      });
     });
     return true;
   }

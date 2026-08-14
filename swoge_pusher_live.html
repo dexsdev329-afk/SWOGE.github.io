@@ -793,7 +793,13 @@ function renderLeaderboard(list){
 }
 function showPlayUI(){ $("#menuBtn").style.display=""; $("#qbar").style.display="";
   // one ☰ Menu button replaces the scattered top-bar buttons; connect/email go away
-  $("#connectBtn").style.display="none"; var eb=$("#emailBtn"); if(eb)eb.style.display="none";
+  /* Avec PRIORITE. Une regle de la feuille porte `display:inline-block !important`
+     pour ces deux boutons en paysage : un style en ligne sans priorite perd
+     contre elle, et « Connect wallet » restait affiche a cote du solde d un
+     joueur deja connecte — sur grand ecran seulement, ce qui explique qu on ne
+     le voie pas sur telephone. */
+  $("#connectBtn").style.setProperty("display","none","important");
+  var eb=$("#emailBtn"); if(eb) eb.style.setProperty("display","none","important");
   $("#addr").textContent="🔗 "+myAddr.slice(0,6)+"…"+myAddr.slice(-4); $("#addr").style.display="inline-block";
   // Deep-link: SWOGE Smash's menu opens the right panel here (same balance).
   if(!showPlayUI._hashDone){ showPlayUI._hashDone=true; setTimeout(function(){
@@ -957,8 +963,8 @@ async function doLogout(){
   authed=false; myAddr=null; provider=null; signer=null; rawEth=null;
   // reset the HUD back to the logged-out state
   $("#addr").style.display="none";
-  $("#connectBtn").style.display=""; $("#connectBtn").textContent="Connect wallet";
-  var eb=$("#emailBtn"); if(eb) eb.style.display="";
+  $("#connectBtn").style.removeProperty("display"); $("#connectBtn").textContent="Connect wallet";
+  var eb=$("#emailBtn"); if(eb) eb.style.removeProperty("display");
   $("#qbar").style.display="none"; $("#pmenu").classList.remove("open");
   ["#stake","#quests","#lb"].forEach(function(s){ $(s).classList.remove("show"); });
   setBalance("0"); closeModal(); syncJackpot(); toast("Disconnected");

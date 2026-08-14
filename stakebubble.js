@@ -179,6 +179,8 @@
       if (profOnglet === 'in') profRend();
     }
     if (m.type === 'leaderboard') { CLASSEMENT = m; if (profOnglet === 'lb') profRend(); }
+    if (m.type === 'duelsTous') { DUELS = m.tables || []; rendDuels(); }
+    if (m.type === 'hello' && m.duels) { DUELS = m.duels; rendDuels(); }
     if (m.type === 'friends') {
       AMIS = m.friends || { amis: [], recues: [], envoyees: [] };
       EN_ATTENTE = m.pending || 0;
@@ -209,7 +211,10 @@
       if (etat.socket && etat.socket.readyState === 1)
         etat.socket.send('{"type":"profile"}');
     }
-    if (m.type === 'auth') { etat.socket = ev.target; profBtnVisible(true); accrocheParrain(); }
+    if (m.type === 'auth') {
+      etat.socket = ev.target; profBtnVisible(true); accrocheParrain();
+      duelsAutoRejoint();
+    }
     if (m.type === 'hello' && m.explorer) EXPLORATEUR = String(m.explorer).replace(/\/+$/, '');
     if (m.type === 'hello' && m.joueurs) gens = m.joueurs;
     else if (m.type === 'joueurs') gens = m;
@@ -548,6 +553,11 @@
   var VISAGES = [], MOI = { name: null, visage: null, address: null };
   var AMIS = { amis: [], recues: [], envoyees: [] }, EN_ATTENTE = 0, RECHERCHE = [];
   var NON_LUS = 0, PARRAIN = null, STATS = null, CLASSEMENT = null;
+  /* Les tables 1v1 qui attendent un adversaire, tous jeux confondus. */
+  var DUELS = [], duelsBtn = null, duelsPan = null, duelsOuvert = false;
+  var JEU_NOM = { p4: 'Connect 4', mp: 'Tic-Tac-Toe', dm: 'Checkers' };
+  var JEU_PAGE = { p4: 'connect4.html', mp: 'morpion.html', dm: 'dames.html' };
+  var JEU_SIGNE = { p4: '●', mp: '✕', dm: '◆' };
   var EXPLORATEUR = 'https://robinhoodchain.blockscout.com';
 
   function nb(v, d) {
@@ -1632,12 +1642,187 @@
     }
   }
 
+
+  /* ==================================================================
+   * LES DUELS QUI ATTENDENT — la bulle en bas a droite
+   *
+   * Une table ouverte au morpion n'est vue par personne tant que quelqu'un
+   * n'ouvre pas la page du morpion. Un joueur qui attend un adversaire ne le
+   * trouve donc pas, ferme la table, et ne recommence pas. Cette bulle est la
+   * pour ca : elle est sur les douze pages, elle porte le NOMBRE de tables qui
+   * attendent, et un clic ouvre le panneau — d'ou l'on rejoint directement.
+   *
+   * Le panneau vient de la GAUCHE alors que le bouton est a droite : la main
+   * qui clique ne recouvre pas ce qu'elle vient d'ouvrir.
+   * ================================================================== */
+  function duelsStyle() {
+    if (document.getElementById('swduels-css')) return;
+    var c = document.createElement('style');
+    c.id = 'swduels-css';
+    c.textContent =
+      '.swdb{position:fixed;right:16px;bottom:16px;z-index:99998;width:56px;height:56px;' +
+      'border-radius:50%;cursor:pointer;border:1px solid rgba(230,165,55,.55);' +
+      'background:linear-gradient(180deg,rgba(46,26,10,.96),rgba(20,10,4,.98));' +
+      'color:#FFD97A;font-family:inherit;font-size:17px;font-weight:900;letter-spacing:.5px;' +
+      'line-height:1;display:flex;align-items:center;' +
+      'justify-content:center;box-shadow:0 8px 24px rgba(0,0,0,.55);' +
+      'transition:transform .15s,border-color .15s;}' +
+      '.swdb:hover{transform:translateY(-2px);border-color:#FFC53D;}' +
+      '.swdb .swdn{position:absolute;top:-3px;right:-3px;min-width:20px;height:20px;padding:0 5px;' +
+      'border-radius:999px;display:flex;align-items:center;justify-content:center;' +
+      'font-family:inherit;font-size:11px;font-weight:900;color:#07101F;background:#16D97F;' +
+      'box-shadow:0 0 0 2px rgba(7,16,31,.9);animation:swdPop .3s ease-out;}' +
+      '@keyframes swdPop{from{transform:scale(.3);}to{transform:scale(1);}}' +
+      '.swdp{position:fixed;left:0;top:0;bottom:0;z-index:99999;width:min(340px,86vw);' +
+      'transform:translateX(-102%);transition:transform .22s ease-out;' +
+      'background:linear-gradient(180deg,rgba(12,16,26,.99),rgba(6,9,16,.99));' +
+      'border-right:1px solid rgba(230,165,55,.35);box-shadow:14px 0 40px rgba(0,0,0,.6);' +
+      'display:flex;flex-direction:column;font-family:inherit;}' +
+      '.swdp.on{transform:translateX(0);}' +
+      '.swdp h4{margin:0;padding:15px 46px 11px 14px;font-size:12px;letter-spacing:1px;' +
+      'text-transform:uppercase;color:#FFD97A;display:flex;align-items:center;gap:8px;}' +
+      '.swdp h4 i{margin-left:auto;font-style:normal;font-size:11px;color:#8DA0C4;}' +
+      '.swdp .x{position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:8px;' +
+      'cursor:pointer;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);' +
+      'color:#EAF2FF;font-size:15px;line-height:1;}' +
+      '.swdl{flex:1;overflow-y:auto;padding:0 12px 14px;}' +
+      '.swdt{display:flex;align-items:center;gap:10px;padding:10px;margin-bottom:8px;' +
+      'border-radius:11px;background:rgba(255,255,255,.045);' +
+      'border:1px solid rgba(255,255,255,.10);}' +
+      '.swdt .ic{flex:0 0 auto;width:34px;height:34px;border-radius:9px;display:flex;' +
+      'align-items:center;justify-content:center;font-size:16px;' +
+      'background:rgba(255,197,61,.12);border:1px solid rgba(255,197,61,.28);}' +
+      '.swdt .w{flex:1;min-width:0;}' +
+      '.swdt .w b{display:block;font-size:12.5px;font-weight:800;color:#EAF2FF;' +
+      'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}' +
+      '.swdt .w span{display:block;font-size:10.5px;color:#8DA0C4;margin-top:2px;}' +
+      '.swdt button{flex:0 0 auto;padding:7px 12px;border-radius:9px;cursor:pointer;' +
+      'font-family:inherit;font-size:12px;font-weight:800;color:#07101F;border:0;' +
+      'background:linear-gradient(180deg,#FFE08A,#FFC53D);}' +
+      '.swdt.mienne{border-color:rgba(255,197,61,.45);background:rgba(255,197,61,.07);}' +
+      '.swdt.mienne button{background:rgba(255,255,255,.10);color:#8DA0C4;cursor:default;}' +
+      '.swdv{padding:22px 14px;text-align:center;font-size:12px;line-height:1.7;color:#8DA0C4;}' +
+      '.swdp .pied{padding:11px 14px;border-top:1px solid rgba(255,255,255,.08);' +
+      'font-size:11px;line-height:1.6;color:#8DA0C4;}' +
+      '.swdp .pied a{color:#FFD97A;text-decoration:none;}' +
+      '@media (max-width:520px){.swdb{width:48px;height:48px;font-size:20px;right:12px;bottom:12px;}}';
+    document.head.appendChild(c);
+  }
+
+  function duelsMonte() {
+    if (duelsBtn) return true;
+    if (!document.body) return false;
+    duelsStyle();
+    duelsBtn = document.createElement('button');
+    duelsBtn.className = 'swdb';
+    duelsBtn.type = 'button';
+    duelsBtn.title = 'Open 1v1 matches';
+    duelsBtn.innerHTML = 'VS';
+    duelsBtn.style.display = 'none';
+    duelsBtn.addEventListener('click', function () { duelsBascule(); });
+    document.body.appendChild(duelsBtn);
+
+    duelsPan = document.createElement('div');
+    duelsPan.className = 'swdp';
+    duelsPan.innerHTML = '<h4>1v1 matches<i></i></h4>' +
+      '<button class="x" type="button">&times;</button>' +
+      '<div class="swdl"></div>' +
+      '<div class="pied">Anyone can open a table from a game page. ' +
+      'Your stake comes straight back if nobody sits down.</div>';
+    duelsPan.querySelector('.x').addEventListener('click', function () { duelsBascule(false); });
+    document.body.appendChild(duelsPan);
+    return true;
+  }
+
+  function duelsBascule(v) {
+    if (!duelsMonte()) return;
+    duelsOuvert = v === undefined ? !duelsOuvert : !!v;
+    duelsPan.classList.toggle('on', duelsOuvert);
+    if (duelsOuvert && etat.socket && etat.socket.readyState === 1) {
+      try { etat.socket.send('{"type":"duelsTous"}'); } catch (e) {}
+    }
+  }
+
+  /* Rejoindre depuis n'importe quelle page : on va sur celle du jeu avec
+     l'identifiant de la table, et c'est la que la demande part. Aucune des
+     douze pages n'a besoin de savoir que ce panneau existe. */
+  function duelsRejoint(t) {
+    var page = JEU_PAGE[t.jeu] || JEU_PAGE.p4;
+    var ici = location.pathname.split('/').pop();
+    if (ici === page) { envoieRejoint(t); duelsBascule(false); return; }
+    var q = new URLSearchParams(location.search);
+    q.set('join', t.id);
+    location.href = page + '?' + q.toString();
+  }
+  function envoieRejoint(t) {
+    if (!etat.socket || etat.socket.readyState !== 1) return;
+    try {
+      etat.socket.send(JSON.stringify(
+        (t.jeu || 'p4') === 'p4' ? { type: 'p4Join', id: t.id } : { type: 'duelJoin', id: t.id }));
+    } catch (e) {}
+  }
+  /* On arrive avec ?join= : la page vient de s'authentifier, on s'assied. Le
+     jeu se peint tout seul — sa propre page ecoute deja l'arrivee d'une
+     partie, il n'y a donc rien a lui apprendre. */
+  function duelsAutoRejoint() {
+    var id = null;
+    try { id = new URLSearchParams(location.search).get('join'); } catch (e) {}
+    if (!id) return;
+    try {
+      var u = new URL(location.href);
+      u.searchParams.delete('join');
+      history.replaceState(null, '', u.pathname + (u.search || '') + u.hash);
+    } catch (e) {}
+    var t = DUELS.filter(function (x) { return x.id === id; })[0];
+    envoieRejoint(t || { id: id, jeu: id.slice(0, 2) });
+  }
+
+  function rendDuels() {
+    if (!duelsMonte()) return;
+    var moi = MOI && MOI.address ? String(MOI.address).toLowerCase() : null;
+    var libres = DUELS.filter(function (t) { return !moi || String(t.createur).toLowerCase() !== moi; });
+    duelsBtn.style.display = DUELS.length ? 'flex' : 'none';
+
+    var p = duelsBtn.querySelector('.swdn');
+    if (libres.length) {
+      if (!p) { p = document.createElement('span'); p.className = 'swdn'; duelsBtn.appendChild(p); }
+      p.textContent = libres.length > 9 ? '9+' : String(libres.length);
+      duelsBtn.title = libres.length + ' player' + (libres.length === 1 ? '' : 's') + ' waiting for an opponent';
+    } else if (p) { p.remove(); duelsBtn.title = 'Open 1v1 matches'; }
+
+    duelsPan.querySelector('h4 i').textContent = DUELS.length ? DUELS.length + ' open' : '';
+    var l = duelsPan.querySelector('.swdl');
+    l.innerHTML = '';
+    if (!DUELS.length) {
+      var v = document.createElement('div');
+      v.className = 'swdv';
+      v.innerHTML = 'Nobody is waiting right now.<br>Open a table and it shows up here, ' +
+                    'on every page of the site.';
+      l.appendChild(v);
+      return;
+    }
+    DUELS.forEach(function (t) {
+      var mienne = moi && String(t.createur).toLowerCase() === moi;
+      var d = document.createElement('div');
+      d.className = 'swdt' + (mienne ? ' mienne' : '');
+      d.innerHTML = '<div class="ic">' + (JEU_SIGNE[t.jeu] || '⚔️') + '</div>' +
+        '<div class="w"><b>' + ech(t.nom || court(t.createur)) + '</b>' +
+        '<span>' + (JEU_NOM[t.jeu] || t.jeu) + ' · ' + nb(t.mise, 0) + ' $SWOGE</span></div>';
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = mienne ? 'Yours' : 'Join';
+      if (!mienne) b.addEventListener('click', function () { duelsRejoint(t); });
+      d.appendChild(b);
+      l.appendChild(d);
+    });
+  }
+
   // Dix fois par seconde : le dernier chiffre coule sans que ca coute rien.
   /* On tente la connexion autonome apres le chargement : la barre doit exister
      pour y poser la pastille. */
   if (document.readyState === 'loading')
-    document.addEventListener('DOMContentLoaded', connecteSeul);
-  else connecteSeul();
+    document.addEventListener('DOMContentLoaded', function () { connecteSeul(); rendDuels(); });
+  else { connecteSeul(); rendDuels(); }
 
   setInterval(rend, 100);
   if (document.readyState === 'loading')

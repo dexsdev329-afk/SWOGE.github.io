@@ -284,7 +284,14 @@
       else if(m.type==="auth"){ authed=true; myAddr=m.address; if(m.session){ try{ localStorage.setItem("swogeSession",m.session); }catch(e){} } onAuthed(); setBalance(m.balance); if(m.stake) setStakeInfo(m.stake); send({type:"stakeInfo"}); }
       else if(m.type==="balance"||m.type==="deposit"){ setBalance(m.balance); if(m.type==="deposit") toast("💰 Deposit credited"); }
       else if(m.type==="stakeInfo"){ setStakeInfo(m); }
-      else if(m.type==="stakePool"){ stCap=m.capacite; renderCap(); }
+      else if(m.type==="stakePool"){
+        /* Cette diffusion-la est PUBLIQUE : elle ne porte pas la position du
+           joueur, et remplacer tout l'objet effacerait la place qui lui
+           reste — affichee juste en dessous. On fusionne. */
+        var perso={};
+        if(stCap){ if(stCap.dejaJoueur!==undefined)perso.dejaJoueur=stCap.dejaJoueur;
+                   if(stCap.libreJoueur!==undefined)perso.libreJoueur=stCap.libreJoueur; }
+        stCap=Object.assign({},m.capacite,perso); renderCap(); }
       else if(m.type==="stakeClaimed"){ toast("🌾 Claimed "+fmtYield(m.reward)+" $SWOGE"); }
       else if(m.type==="stakeUnstaked"){ setStakeInfo(m); toast("Unstaked "+fmtBig(m.returned)+" $SWOGE"+(parseFloat(m.penalty)>0?" (−"+fmtBig(m.penalty)+" penalty)":"")); }
       else if(m.type==="error"){ toast(m.error||"error"); }
@@ -381,7 +388,21 @@
       ' $SWOGE staked across every player. The cap is '+stCap.partOffre+'% of total supply. '+
       (stCap.plein
         ? '<b style="color:var(--red)">Full — room frees up as soon as someone unstakes.</b>'
-        : '<b style="color:#EAF2FF">'+fmtBig(stCap.libre)+' $SWOGE of room left.</b>')+'</div>';
+        : '<b style="color:#EAF2FF">'+fmtBig(stCap.libre)+' $SWOGE of room left.</b>')+'</div>'+
+      /* Le plafond par portefeuille se dit ICI, avant que le joueur tape un
+         montant. Le decouvrir apres la saisie se lit comme une panne, pas
+         comme une regle — et c'est deja la raison pour laquelle la salle est
+         affichee juste au-dessus. */
+      (stCap.plafondJoueur==null?'':
+        '<div style="margin-top:9px;padding-top:9px;border-top:1px solid rgba(255,255,255,.10);color:#8DA0C4">'+
+        '<b style="color:#EAF2FF">Per wallet: '+fmtBig(stCap.plafondJoueur)+' $SWOGE max</b>'+
+        ' ('+stCap.partSalle+'% of the pool) — so the yield reaches many players instead of one.'+
+        (stCap.libreJoueur==null?'':
+          (stCap.libreJoueur>0
+            ? '<br><b style="color:#EAF2FF">You can still stake '+fmtBig(stCap.libreJoueur)+' $SWOGE.</b>'
+            : '<br><b style="color:#FFC53D">You are at your wallet cap. What you already staked stays '+
+              'exactly as it is — you just cannot add to it.</b>'))+
+        '</div>');
   }
   function livePending(){ var el=(Date.now()-stSyncMs)/1000; return stPending+stStaked*(stAprBps/10000)*(el/31536000); }
   function renderStake(){

@@ -165,6 +165,7 @@
       if (m.pending !== undefined) EN_ATTENTE = m.pending;
       if (m.unread !== undefined) NON_LUS = m.unread;
       if (m.stats) { STATS = m.stats; noteFrais(); }
+      if (m.niveau) NIVEAU = m.niveau;
       pastilleAmis();
       profEnTete(); if (profOnglet === 'am' || profOnglet === 'in') profRend();
     }
@@ -211,8 +212,16 @@
       if (etat.socket && etat.socket.readyState === 1)
         etat.socket.send('{"type":"profile"}');
     }
+    if (m.type === 'levelUp') {
+      NIVEAU = m.profil;
+      toast((m.nouveauPalier ? '🏆 ' : '⬆️ ') + 'Level ' + m.niveau +
+            (m.nouveauPalier ? ' — welcome to ' + m.palier + '!' : ''), 'ok');
+      peintBouton();
+      if (profOuvert) profRend();
+    }
     if (m.type === 'auth') {
       etat.socket = ev.target; profBtnVisible(true); accrocheParrain();
+      if (m.niveau) { NIVEAU = m.niveau; peintBouton(); }
       duelsAutoRejoint();
     }
     if (m.type === 'hello' && m.explorer) EXPLORATEUR = String(m.explorer).replace(/\/+$/, '');
@@ -552,7 +561,20 @@
                  ['lb','Ranking']];
   var VISAGES = [], MOI = { name: null, visage: null, address: null };
   var AMIS = { amis: [], recues: [], envoyees: [] }, EN_ATTENTE = 0, RECHERCHE = [];
-  var NON_LUS = 0, PARRAIN = null, STATS = null, CLASSEMENT = null;
+  var NON_LUS = 0, PARRAIN = null, STATS = null, CLASSEMENT = null, NIVEAU = null;
+  /* Les dix paliers. La couleur fait tout le travail : « Diamond » se
+     reconnait a l'oeil bien avant qu'on lise « niveau 47 ». */
+  var PALIERS = { Bronze:'#C08457', Silver:'#C8D2DE', Gold:'#FFC53D', Platinum:'#9FE7F5',
+                  Diamond:'#5BE3D8', Master:'#B48CFF', Champion:'#5BE38A',
+                  Legend:'#FF9A3D', Mythic:'#E36BFF', SWOLE:'#FFE08A' };
+  function couleurPalier(p) { return PALIERS[p] || '#8DA0C4'; }
+  /* La pastille de niveau, telle qu'elle apparait partout : a cote d'un nom,
+     dans une liste d'amis, au vestibule d'un duel. */
+  function pastilleNiveau(p) {
+    if (!p || !p.niveau) return '';
+    return '<span class="swlv" style="color:' + couleurPalier(p.palier) + ';border-color:' +
+           couleurPalier(p.palier) + '55">' + p.niveau + '</span>';
+  }
   /* Les tables 1v1 qui attendent un adversaire, tous jeux confondus. */
   var DUELS = [], duelsBtn = null, duelsPan = null, duelsOuvert = false;
   var JEU_NOM = { p4: 'Connect 4', mp: 'Tic-Tac-Toe', dm: 'Checkers' };
@@ -631,6 +653,20 @@
       'font-size:9.5px;letter-spacing:.15px;color:#7E92B6;word-break:break-all;cursor:pointer;}' +
       '.swp-r .w span.ad:hover{color:#FFC53D;}' +
       '.swp-r .w span.su{color:#8DA0C4;font-size:10.5px;}' +
+      '.swlv{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:999px;' +
+      'font-size:10px;font-weight:900;line-height:1.5;vertical-align:middle;' +
+      'border:1px solid;background:rgba(255,255,255,.05);}' +
+      /* La barre de progression : un niveau sans la marche suivante ne donne
+         envie de rien. */
+      '.swnv{margin-bottom:10px;padding:10px 12px;border-radius:12px;' +
+      'background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.10);}' +
+      '.swnv .h{display:flex;align-items:baseline;gap:8px;font-size:12.5px;font-weight:800;' +
+      'color:#EAF2FF;}' +
+      '.swnv .h i{margin-left:auto;font-style:normal;font-size:10.5px;color:#8DA0C4;}' +
+      '.swnv .b{height:7px;border-radius:999px;margin-top:8px;overflow:hidden;' +
+      'background:rgba(0,0,0,.45);}' +
+      '.swnv .b>i{display:block;height:100%;border-radius:999px;transition:width .4s;}' +
+      '.swnv .r{margin-top:6px;font-size:10.5px;color:#8DA0C4;}' +
       '.swp-r .v{flex:0 0 auto;text-align:right;font-variant-numeric:tabular-nums;}' +
       '.swp-r .v b{display:block;font-size:13.5px;font-weight:800;}' +
       '.swp-r .v span{font-size:10px;color:#8DA0C4;}' +
@@ -1037,7 +1073,7 @@
     var gagne = ((CLASSEMENT && CLASSEMENT.prix && CLASSEMENT.prix.gagnants) || [])
       .filter(function (g) { return g.rang === r.rang; })[0];
     d.innerHTML = '<span class="rg">' + med + '</span><div class="av"></div>' +
-      '<div class="w"><b>' + ech(r.name || court(r.address)) + (moi ? ' — you' : '') + '</b>' +
+      '<div class="w"><b>' + ech(r.name || court(r.address)) + pastilleNiveau(r) + (moi ? ' — you' : '') + '</b>' +
       (gagne && gagne.prix > 0 ? '<span class="su">🏆 ' + nb(gagne.prix, 0) + ' $SWOGE if the month ended now</span>' : '') +
       '</div>' +
       '<div class="v"><b>' + nb(r.mise, 0) + '</b><span>$SWOGE played</span></div>';
@@ -1103,6 +1139,22 @@
    * Tout vient de ce qui est deja compte ailleurs. Une statistique avec sa
    * propre source finirait par contredire l'historique affiche juste en
    * dessous — et c'est l'historique qu'on croit. */
+  /* Le niveau, avec la marche suivante. Sans le « encore X », un niveau est
+     un chiffre mort. */
+  function blocNiveau() {
+    if (!NIVEAU || !NIVEAU.niveau) return null;
+    var c = couleurPalier(NIVEAU.palier);
+    var d = document.createElement('div');
+    d.className = 'swnv';
+    d.innerHTML = '<div class="h"><span style="color:' + c + '">' + NIVEAU.palier +
+      '</span> · Level <b>' + NIVEAU.niveau + '</b><i>' + nb(NIVEAU.volume, 0) + ' $SWOGE wagered</i></div>' +
+      '<div class="b"><i style="width:' + NIVEAU.progression + '%;background:' + c + '"></i></div>' +
+      '<div class="r">' + (NIVEAU.max
+        ? 'Maximum level. Almost nobody gets here.'
+        : nb(NIVEAU.restant, 0) + ' $SWOGE more to reach level ' + (NIVEAU.niveau + 1)) + '</div>';
+    return d;
+  }
+
   function blocStats() {
     if (!STATS) return null;
     var s = STATS;
@@ -1313,13 +1365,42 @@
       profBtn.style.backgroundImage = '';
       profBtn.textContent = (MOI && MOI.visage) || '👤';
     }
+    /* L'anneau du palier autour de la photo. C'est la seule chose de son
+       niveau qu'un joueur voit en permanence, sur les douze pages. */
+    if (NIVEAU && NIVEAU.niveau > 0) {
+      profBtn.style.borderColor = couleurPalier(NIVEAU.palier);
+      profBtn.style.boxShadow = '0 0 0 1px ' + couleurPalier(NIVEAU.palier) + '66';
+    }
+    titreBouton();
     if (pastille) profBtn.appendChild(pastille);
+  }
+  /* UN SEUL endroit qui ecrit l'infobulle du bouton. Deux fonctions
+     l'ecrivaient chacune de leur cote : celle des amis passait apres et
+     effacait le niveau a chaque fois qu'il n'y avait aucune notification —
+     c'est-a-dire presque toujours. */
+  function titreBouton() {
+    if (!profBtn) return;
+    var t = [];
+    if (EN_ATTENTE) t.push(EN_ATTENTE + ' friend request' + (EN_ATTENTE === 1 ? '' : 's') + ' waiting');
+    if (NON_LUS) t.push(NON_LUS + ' $SWOGE transfer' + (NON_LUS === 1 ? '' : 's') + ' received');
+    if (NIVEAU && NIVEAU.niveau > 0) t.push('Level ' + NIVEAU.niveau + ' · ' + NIVEAU.palier);
+    profBtn.title = t.length ? t.join(' · ') : 'Your profile';
   }
   function profEnTete() {
     if (!profBoite) return;
     peintBouton();
-    peintVisage(profBoite.querySelector('.swp-av'), MOI);
-    profBoite.querySelector('.swp-me .nm b').textContent = MOI.name || 'no name yet';
+    /* Le meme anneau de palier autour de la grande photo. Il n'est sur le
+       petit bouton que d'un cheveu ; c'est ici qu'on le regarde. */
+    var av = profBoite.querySelector('.swp-av');
+    peintVisage(av, MOI);
+    if (av && NIVEAU && NIVEAU.niveau > 0) {
+      var c = couleurPalier(NIVEAU.palier);
+      av.style.borderColor = c;
+      av.style.boxShadow = '0 0 0 2px ' + c + '44';
+      av.title = 'Level ' + NIVEAU.niveau + ' · ' + NIVEAU.palier;
+    }
+    profBoite.querySelector('.swp-me .nm b').innerHTML =
+      ech(MOI.name || 'no name yet') + pastilleNiveau(NIVEAU || MOI);
     profBoite.querySelector('.swp-me .nm span').textContent = MOI.address || '';
     if (MOI.address) profBoite.querySelector('.swp-me .nm span').title = MOI.address;
   }
@@ -1368,7 +1449,8 @@
      d'envoyer de l'argent, et deux joueurs peuvent tres bien se ressembler
      de nom. Elle est donc ecrite EN ENTIER, et un clic la copie. */
   function corpsAmi(a, suffixe) {
-    return '<div class="av"></div><div class="w"><b>' + ech(a.name || court(a.address)) + '</b>' +
+    return '<div class="av"></div><div class="w"><b>' + ech(a.name || court(a.address)) +
+      pastilleNiveau(a) + '</b>' +
       '<span class="ad" title="Click to copy">' + ech(a.address || '') + '</span>' +
       (suffixe ? '<span class="su">' + ech(suffixe) + '</span>' : '') + '</div>';
   }
@@ -1424,7 +1506,7 @@
     if (!profBtn) return;
     var p = profBtn.querySelector('.swpn');
     var total = (EN_ATTENTE || 0) + (NON_LUS || 0);
-    if (!total) { if (p) p.remove(); profBtn.title = 'Your profile'; return; }
+    if (!total) { if (p) p.remove(); titreBouton(); return; }
     if (!p) {
       p = document.createElement('span');
       p.className = 'swpn';
@@ -1432,10 +1514,7 @@
       profBtn.appendChild(p);
     }
     p.textContent = total > 9 ? '9+' : String(total);
-    var t = [];
-    if (EN_ATTENTE) t.push(EN_ATTENTE + ' friend request' + (EN_ATTENTE === 1 ? '' : 's') + ' waiting');
-    if (NON_LUS) t.push(NON_LUS + ' $SWOGE transfer' + (NON_LUS === 1 ? '' : 's') + ' received');
-    profBtn.title = t.join(' · ');
+    titreBouton();
   }
   function toast(t, cl) {
     var e = document.createElement('div');
@@ -1595,7 +1674,8 @@
           { day: '2-digit', month: 'short', year: 'numeric' }) : '');
     }
     l.innerHTML = '';
-    if (profOnglet === 'r') { var st = blocStats(); if (st) l.appendChild(st); }
+    if (profOnglet === 'r') { var bn = blocNiveau(); if (bn) l.appendChild(bn);
+                              var st = blocStats(); if (st) l.appendChild(st); }
     if (!profItems.length) {
       var v = document.createElement('div');
       v.className = 'swp-v';
@@ -1818,8 +1898,10 @@
       var mienne = moi && String(t.createur).toLowerCase() === moi;
       var d = document.createElement('div');
       d.className = 'swdt' + (mienne ? ' mienne' : '');
+      /* Le niveau de l'adversaire, ici, n'est pas decoratif : on ne s'assied
+         pas de la meme facon face a un niveau 8 et face a un niveau 62. */
       d.innerHTML = '<div class="ic">' + (JEU_SIGNE[t.jeu] || '⚔️') + '</div>' +
-        '<div class="w"><b>' + ech(t.nom || court(t.createur)) + '</b>' +
+        '<div class="w"><b>' + ech(t.nom || court(t.createur)) + pastilleNiveau(t) + '</b>' +
         '<span>' + (JEU_NOM[t.jeu] || t.jeu) + ' · ' + nb(t.mise, 0) + ' $SWOGE</span></div>';
       var b = document.createElement('button');
       b.type = 'button';

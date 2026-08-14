@@ -553,7 +553,12 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
   padding:12px; margin-bottom:8px; border-radius:13px;
   border:1px solid rgba(255,255,255,.10); background:rgba(255,255,255,.035); }
 .sb-eq{ display:flex; flex-direction:column; gap:3px; min-width:0; }
-.sb-eq span{ font-size:.95rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.sb-eq span{ display:flex; align-items:center; gap:7px; font-size:.95rem;
+  overflow:hidden; white-space:nowrap; }
+/* Le drapeau garde une largeur FIXE : sans elle, les noms ne s'alignent pas
+   d'une ligne a l'autre, et une colonne de noms decales se lit mal. */
+.sb-eq .dr{ flex:none; width:1.25em; font-style:normal; font-size:1.05em; line-height:1; }
+.sb-eq span > :last-child{ overflow:hidden; text-overflow:ellipsis; }
 .sb-h{ font-size:.82rem; opacity:.6; font-variant-numeric:tabular-nums; }
 .sb-cotes{ grid-column:1/-1; display:grid; grid-template-columns:repeat(3,1fr); gap:7px; }
 .sb-cotes.n2{ grid-template-columns:repeat(2,1fr); }
@@ -1417,6 +1422,14 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
     var d=new Date(t);
     return d.toLocaleDateString([], {weekday:"short", day:"numeric", month:"short"});
   }
+  /* Le drapeau, fabrique a partir du code ISO : deux lettres deviennent deux
+     symboles indicateurs regionaux, et le systeme les rend en drapeau. Aucune
+     image a telecharger, et rien a maintenir quand un pays s'ajoute.
+     Un code absent rend une chaine vide — le nom reste lisible tout seul. */
+  function sbDrapeau(c){
+    if(!c || !/^[A-Z]{2}$/.test(c)) return "";
+    return String.fromCodePoint(0x1F1E6+c.charCodeAt(0)-65, 0x1F1E6+c.charCodeAt(1)-65);
+  }
   function sbEchappe(x){
     return String(x==null?"":x).replace(/[&<>"']/g, function(c){
       return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; });
@@ -1463,8 +1476,9 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
          qui refuse sans prevenir se lit comme une panne. */
       var serre = m.place < SB.max*3;
       h+='<div class="sb-m">'
-       + '<div class="sb-eq"><span>'+sbEchappe(m.domicile)+'</span>'
-       + '<span>'+sbEchappe(m.exterieur)+'</span></div>'
+       + '<div class="sb-eq">'
+       + '<span><i class="dr">'+sbDrapeau(m.paysDomicile)+'</i>'+sbEchappe(m.domicile)+'</span>'
+       + '<span><i class="dr">'+sbDrapeau(m.paysExterieur)+'</i>'+sbEchappe(m.exterieur)+'</span></div>'
        + '<div class="sb-h">'+sbHeure(m.debut)+'</div>'
        + '<div class="sb-cotes n'+(m.issues||["1","N","2"]).length+'">'
        + (m.issues||["1","N","2"]).map(function(c){ return sbBouton(m,c); }).join("")
@@ -1540,7 +1554,8 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
     var h="", i;
     for(i=0;i<SB.panier.length;i++){
       var j=SB.panier[i], m=sbTrouve(j.match); if(!m) continue;
-      h+='<div class="sb-j"><span>'+sbEchappe(m.domicile)+' &ndash; '+sbEchappe(m.exterieur)+'</span>'
+      h+='<div class="sb-j"><span>'+sbDrapeau(m.paysDomicile)+sbEchappe(m.domicile)
+       + ' &ndash; '+sbDrapeau(m.paysExterieur)+sbEchappe(m.exterieur)+'</span>'
        + '<b>'+SB_NOM[j.choix]+' @ '+Number(m.cotes[j.choix]).toFixed(2)+'</b>'
        + '<button type="button" data-ote="'+sbEchappe(j.match)+'" aria-label="remove">&times;</button></div>';
     }

@@ -284,6 +284,7 @@
       else if(m.type==="auth"){ authed=true; myAddr=m.address; if(m.session){ try{ localStorage.setItem("swogeSession",m.session); }catch(e){} } onAuthed(); setBalance(m.balance); if(m.stake) setStakeInfo(m.stake); send({type:"stakeInfo"}); }
       else if(m.type==="balance"||m.type==="deposit"){ setBalance(m.balance); if(m.type==="deposit") toast("💰 Deposit credited"); }
       else if(m.type==="stakeInfo"){ setStakeInfo(m); }
+      else if(m.type==="stakePool"){ stCap=m.capacite; renderCap(); }
       else if(m.type==="stakeClaimed"){ toast("🌾 Claimed "+fmtYield(m.reward)+" $SWOGE"); }
       else if(m.type==="stakeUnstaked"){ setStakeInfo(m); toast("Unstaked "+fmtBig(m.returned)+" $SWOGE"+(parseFloat(m.penalty)>0?" (−"+fmtBig(m.penalty)+" penalty)":"")); }
       else if(m.type==="error"){ toast(m.error||"error"); }
@@ -348,9 +349,39 @@
     if(m.locked!=null)stLocked=parseFloat(m.locked); if(m.unlocked!=null)stUnlocked=parseFloat(m.unlocked);
     if(m.penaltyBps!=null)stPenaltyBps=m.penaltyBps; if(m.lockDays!=null)stLockDays=m.lockDays; if(m.nextUnlock!=null)stNextUnlock=m.nextUnlock;
     if(m.balance!=null)setBalance(m.balance);
+    if(m.capacite!==undefined)stCap=m.capacite;
     stSyncMs=Date.now();
     $("aprline").textContent=(stAprBps/100)+"% APR · locked "+stLockDays+" days · yield every second";
+    renderCap();
     renderStake();
+  }
+  /* La salle, vue de l'exterieur — AVANT que le joueur tape un montant.
+     Un refus qui arrive apres la saisie se lit comme une panne ; le meme
+     refus annonce d'avance se lit comme une regle. */
+  var stCap=null;
+  function renderCap(){
+    var el=$("stCap");
+    if(!el){
+      var a=$("aprline"); if(!a) return;
+      el=document.createElement("div"); el.id="stCap";
+      el.style.cssText="margin:12px auto 0;max-width:520px;padding:10px 13px;border-radius:12px;"+
+        "font-size:12px;line-height:1.55;text-align:left;background:rgba(255,255,255,.05);"+
+        "border:1px solid rgba(255,255,255,.12);";
+      a.parentNode.insertBefore(el,a.nextSibling);
+    }
+    if(!stCap||stCap.plafond==null){ el.style.display="none"; return; }
+    el.style.display="block";
+    var c=stCap.plein?"var(--red)":stCap.taux>=90?"#FFC53D":"var(--green)";
+    el.innerHTML='<div style="display:flex;gap:8px;align-items:baseline">'+
+      '<b style="color:#EAF2FF;letter-spacing:.4px">STAKING POOL</b>'+
+      '<span style="margin-left:auto;color:'+c+';font-weight:800">'+stCap.taux+'% full</span></div>'+
+      '<div style="height:7px;border-radius:999px;margin:8px 0;overflow:hidden;background:rgba(0,0,0,.45)">'+
+      '<i style="display:block;height:100%;border-radius:999px;width:'+Math.min(100,stCap.taux)+'%;background:'+c+'"></i></div>'+
+      '<div style="color:#8DA0C4">'+fmtBig(stCap.occupe)+' / '+fmtBig(stCap.plafond)+
+      ' $SWOGE staked across every player. The cap is '+stCap.partOffre+'% of total supply. '+
+      (stCap.plein
+        ? '<b style="color:var(--red)">Full — room frees up as soon as someone unstakes.</b>'
+        : '<b style="color:#EAF2FF">'+fmtBig(stCap.libre)+' $SWOGE of room left.</b>')+'</div>';
   }
   function livePending(){ var el=(Date.now()-stSyncMs)/1000; return stPending+stStaked*(stAprBps/10000)*(el/31536000); }
   function renderStake(){
@@ -367,6 +398,12 @@
     var v=($("stAmt").value||"").replace(",",".").trim();
     if(!(parseFloat(v)>0)) return toast("enter an amount or tap a %");
     if(parseFloat(v)>balance+1e-9) return toast("not enough in-game $SWOGE");
+    /* On le dit AVANT la fenetre de confirmation : accepter puis refuser est
+       la pire des deux. */
+    if(stCap&&stCap.plafond!=null){
+      if(stCap.plein) return toast("staking pool is full — wait for someone to unstake");
+      if(parseFloat(v)>stCap.libre+1e-9) return toast("only "+fmtBig(stCap.libre)+" $SWOGE of room left in the pool");
+    }
     if(!confirm("Stake "+v+" $SWOGE at "+(stAprBps/100)+"% APR?\nLocks "+stLockDays+" days; early unstake loses "+(stPenaltyBps/100)+"%.")) return;
     send({type:"stake",amount:v}); $("stAmt").value=""; clearPct(); toast("staking…");
   }

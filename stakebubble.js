@@ -656,6 +656,12 @@
       '.swlv{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:999px;' +
       'font-size:10px;font-weight:900;line-height:1.5;vertical-align:middle;' +
       'border:1px solid;background:rgba(255,255,255,.05);}' +
+      /* La regle des lignes, « .swp-r .w span{display:block} », est PLUS
+         SPECIFIQUE que « .swlv » : la pastille s etirait sur toute la largeur
+         de la ligne et ressemblait a un champ de saisie vide. Il faut donc
+         redire ici, a specificite egale, ce qu elle est. */
+      '.swp-r .w span.swlv,.swp-r .w b span.swlv{display:inline-block;width:auto;' +
+      'margin-top:0;font-size:10px;}' +
       /* La barre de progression : un niveau sans la marche suivante ne donne
          envie de rien. */
       '.swnv{margin-bottom:10px;padding:10px 12px;border-radius:12px;' +
@@ -667,6 +673,15 @@
       'background:rgba(0,0,0,.45);}' +
       '.swnv .b>i{display:block;height:100%;border-radius:999px;transition:width .4s;}' +
       '.swnv .r{margin-top:6px;font-size:10.5px;color:#8DA0C4;}' +
+      /* L echelle des dix paliers de parrainage : dix pastilles qui se
+         replient, celle du joueur allumee. */
+      '.swech{display:flex;flex-wrap:wrap;gap:4px;margin-top:9px;}' +
+      '.swech span{flex:1 1 auto;min-width:52px;text-align:center;padding:5px 3px;' +
+      'border-radius:8px;font-size:9px;color:#8DA0C4;line-height:1.5;' +
+      'background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.09);}' +
+      '.swech span b{display:block;font-size:12px;font-weight:900;color:#EAF2FF;}' +
+      '.swech span.on{background:rgba(255,255,255,.07);}' +
+      '.swech span.on b{color:inherit;}' +
       '.swp-r .v{flex:0 0 auto;text-align:right;font-variant-numeric:tabular-nums;}' +
       '.swp-r .v b{display:block;font-size:13.5px;font-weight:800;}' +
       '.swp-r .v span{font-size:10px;color:#8DA0C4;}' +
@@ -683,6 +698,21 @@
       /* l en-tete : le visage, le nom, et de quoi les changer */
       '.swp-me{display:flex;align-items:center;gap:11px;padding:11px 13px;' +
       'border-bottom:1px solid rgba(255,197,61,.18);background:rgba(255,255,255,.03);}' +
+      /* ---- LE CADRE DE PALIER ----
+         Il se pose SANS toucher au balisage : un ::after par-dessus la photo,
+         un peu plus grand qu'elle. Le trou du cadre fait 56 % de l'image, donc
+         a 148 % il mord sur les 18 % exterieurs de la photo — c'est ce que
+         fait un vrai cadre, et c'est ce qui empeche le lisere de flotter.
+         La marge laterale rend au voisin la place que le cadre lui prend. */
+      '.swcad{position:relative;overflow:visible;}' +
+      '.swcad::after{content:"";position:absolute;left:-24%;top:-24%;width:148%;height:148%;' +
+      'background:var(--cadre) center/contain no-repeat;pointer-events:none;z-index:2;}' +
+      '.av.swcad{margin:0 5px;border-color:transparent;}' +
+      '.swp-av.swcad{margin:0 7px;border-color:transparent;}' +
+      /* Le mur de la salle derriere les blocs du profil : le meme que la page
+         d accueil, assombri pour que le texte reste lisible. */
+      '.swp-me,.swnv{background-image:linear-gradient(rgba(9,13,24,.72),rgba(9,13,24,.86)),' +
+      'url(media/fond-gym.webp);background-size:auto,cover;background-position:center;}' +
       '.swp-av{flex:0 0 auto;width:40px;height:40px;border-radius:50%;cursor:pointer;' +
       'display:flex;align-items:center;justify-content:center;font-size:21px;' +
       'background:linear-gradient(180deg,rgba(46,26,10,.95),rgba(20,10,4,.98));' +
@@ -965,6 +995,25 @@
       'house — for life. In 1v1 games you earn on the rake instead. They get <b>' +
       nb(P.bienvenue, 0) + ' $SWOGE</b> once they deposit <b>' + nb(P.depotMini, 0) + ' $SWOGE</b> or more.';
     l.appendChild(expl);
+
+    /* L'echelle des paliers. C'est le seul avantage chiffre des niveaux, donc
+       c'est le seul endroit ou l'on peut montrer, noir sur blanc, ce que jouer
+       rapporte plus tard — et voir SA ligne surlignee vaut mieux qu'une
+       promesse. */
+    if (P.partPalier && P.partPalier.length) {
+      var ech = document.createElement('div');
+      ech.className = 'swnv';
+      var ici = (NIVEAU && NIVEAU.palierNo) || 1;
+      ech.innerHTML = '<div class="h">Your share grows with your level' +
+        '<i>up to ' + P.partMax + '% at SWOLE</i></div>' +
+        '<div class="swech">' + P.partPalier.map(function (x, i) {
+          var moi = (i + 1) === ici;
+          return '<span class="' + (moi ? 'on' : '') + '" style="' +
+            (moi ? 'border-color:' + couleurPalier(x.palier) + ';color:' + couleurPalier(x.palier) : '') +
+            '" title="' + x.palier + '"><b>' + x.part + '%</b>' + x.palier + '</span>';
+        }).join('') + '</div>';
+      l.appendChild(ech);
+    }
 
     /* Le cadeau recu et pas encore debloque. Un montant retenu sans
        explication fait ecrire au support ; avec la raison et le chiffre qui
@@ -1331,7 +1380,24 @@
      site — on peut la redessiner sans toucher au serveur. */
   function estBadge(v) { return /^b[0-9]{1,2}$/.test(String(v || '')); }
   function urlBadge(v) { return 'media/badge-' + String(v).slice(1) + '.webp'; }
+  /* Le cadre du palier, s'il y en a un. Le numero vient du profil public, donc
+     il arrive tout seul chez les amis, aux duels et au classement — aucun de
+     ces endroits n'a a savoir ce qu'est un palier. */
+  function urlCadre(n) {
+    var i = Number(n) || 0;
+    return (i >= 1 && i <= 10) ? 'media/cadre-' + i + '.webp' : null;
+  }
+  function poseCadre(el, p) {
+    if (!el) return;
+    /* Le cadre se GAGNE : celui qui n'a jamais mise n'en a pas. Il apparait a
+       la premiere manche, et c'est ce qui en fait autre chose qu'une
+       decoration livree avec le compte. */
+    var u = (p && p.niveau > 0) ? urlCadre(p.palierNo) : null;
+    if (u) { el.style.setProperty('--cadre', 'url("' + u + '")'); el.classList.add('swcad'); }
+    else { el.classList.remove('swcad'); el.style.removeProperty('--cadre'); }
+  }
   function peintVisage(el, p) {
+    poseCadre(el, p);
     if (p && p.photo) {
       el.style.backgroundImage = 'url("' + urlPhoto(p.address) + '")';
       el.style.backgroundSize = 'cover';
@@ -1392,7 +1458,12 @@
     /* Le meme anneau de palier autour de la grande photo. Il n'est sur le
        petit bouton que d'un cheveu ; c'est ici qu'on le regarde. */
     var av = profBoite.querySelector('.swp-av');
-    peintVisage(av, MOI);
+    /* MOI vient du serveur avec son palier ; si la page n'a que NIVEAU sous la
+       main (elle arrive parfois avant le profil), on le lui prete. */
+    peintVisage(av, (MOI && MOI.niveau !== undefined) ? MOI
+      : (NIVEAU ? { photo: MOI && MOI.photo, address: MOI && MOI.address,
+                    visage: MOI && MOI.visage,
+                    niveau: NIVEAU.niveau, palierNo: NIVEAU.palierNo } : MOI));
     if (av && NIVEAU && NIVEAU.niveau > 0) {
       var c = couleurPalier(NIVEAU.palier);
       av.style.borderColor = c;

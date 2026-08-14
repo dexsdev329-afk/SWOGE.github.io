@@ -786,7 +786,7 @@
      autre sujet, le classement un troisieme. Trois familles a gauche, et le
      joueur sait ou chercher avant de lire les libelles. */
   var FAMILLES = [
-    ['History', [['r', 'Rounds'], ['dep', 'Deposits'], ['wd', 'Withdrawals'],
+    ['History', [['r', 'Rounds'], ['dep', 'Deposits'], ['wd', 'Withdraw'],
                  ['st', 'Staking'], ['tr', 'Transfers']]],
     ['People',  [['am', 'Friends'], ['in', 'Invite']]],
     ['Standing', [['lb', 'Ranking']]],
@@ -1226,19 +1226,19 @@
       'cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:800;color:#EAF2FF;' +
       'background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);}' +
       '.swp-more[disabled]{opacity:.5;cursor:default;}' +
-      /* Sous 430 px, un rail de 108 px prend le quart de la largeur pour huit
-         mots. Les familles repassent en rangee au-dessus de la liste : meme
-         regroupement, en travers plutot qu'en hauteur. Et c'est bien une
-         requete de media — pose dans la feuille courante, ce bloc ecraserait
-         le rail sur TOUS les ecrans, puisqu'il vient apres lui. */
+      /* Sur telephone le rail RESTE A GAUCHE — c'est ce qui a ete demande, et
+         c'est aussi ce qui se lit le mieux : trois familles en colonne se
+         balaient de haut en bas, alors qu'une rangee qui se replie melange les
+         entrees de familles differentes sur la meme ligne.
+       *
+         Il rentre de 124 a 96 px et le texte de 11,5 a 10,5 : « Withdrawals »,
+         le plus long des huit, tient encore en entier. La liste garde donc
+         presque 290 px sur un ecran de 390. */
       '@media (max-width:430px){' +
-        '.swp-body{flex-direction:column;}' +
-        '.swp-t{flex:none;flex-direction:row;flex-wrap:wrap;align-items:center;gap:4px;' +
-        'padding:9px 10px;border-right:0;border-bottom:1px solid rgba(255,255,255,.10);}' +
-        '.swp-t .swp-g{width:100%;margin:5px 0 1px;}' +
-        '.swp-t .swp-g:first-child{margin-top:0;}' +
-        '.swp-t button{width:auto;flex:0 1 auto;font-size:11px;padding:6px 10px;' +
-        'background:rgba(255,255,255,.05);}' +
+        '.swp-t{flex:0 0 96px;padding:9px 6px 12px;}' +
+        '.swp-t button{font-size:10.5px;padding:6px 6px;letter-spacing:0;}' +
+        '.swp-t .swp-g{font-size:9px;letter-spacing:.9px;padding:0 4px;}' +
+        '.swp-l{padding:10px 10px 14px;}' +
       '}' +
       /* l en-tete : le visage, le nom, et de quoi les changer */
       '.swp-me{display:flex;align-items:center;gap:11px;padding:11px 13px;' +

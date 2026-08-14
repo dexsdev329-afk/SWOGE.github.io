@@ -184,6 +184,16 @@
       '.swb-w{font-size:11.5px;line-height:1.45;margin-top:5px;color:#E8913F;}' +
       '.swb-w.dur{color:#E5533F;}' +
       '.swb-ok{font-size:11.5px;line-height:1.45;margin-bottom:5px;color:#7BD88F;font-weight:700;}' +
+      '.swb-pont{margin-top:8px;}' +
+      '.swb-pont .swb-q{min-height:0;margin-top:7px;}' +
+      '.swb-adr{margin-top:7px;padding:8px 9px;border-radius:9px;border:1px dashed rgba(160,160,190,.45);' +
+      'background:rgba(0,0,0,.34);font-size:11px;line-height:1.5;color:#E7E3F2;word-break:break-all;' +
+      'font-family:ui-monospace,SFMono-Regular,Menlo,monospace;}' +
+      '.swb-cop{margin-top:6px;width:100%;padding:7px;border-radius:9px;cursor:pointer;' +
+      'font-size:11.5px;font-weight:700;border:1px solid rgba(160,160,190,.35);' +
+      'background:rgba(0,0,0,.28);color:#CFCADF;}' +
+      '.swb-ret{display:inline-block;margin-top:8px;font-size:11px;color:#9E97B5;cursor:pointer;' +
+      'text-decoration:underline;}' +
       '.swb-go{width:100%;margin-top:9px;padding:9px;border-radius:10px;border:0;cursor:pointer;' +
       'font-weight:800;font-size:13px;color:#231a06;background:linear-gradient(180deg,#F2C868,#E6A537);}' +
       '.swb-go[disabled]{opacity:.55;cursor:default;}' +
@@ -308,6 +318,13 @@
             bouton6('base', 'Base') + bouton6('tron', 'USDT · TRON') +
             bouton6('btc', 'Bitcoin') + bouton6('autre', 'Other chain') +
           '</div>' +
+          '<div class="swb-pont" id="swbPont" style="display:none">' +
+            '<div class="swb-r"><input id="swbPontAmt" inputmode="decimal" placeholder="0">' +
+            '<b id="swbPontUnite">SOL</b></div>' +
+            '<button class="swb-cop" id="swbPontGo">Get the address to send to</button>' +
+            '<div class="swb-q" id="swbPontDit"></div>' +
+            '<span class="swb-ret" id="swbPontRetour">← other chains</span>' +
+          '</div>' +
         '</div>' +
       '</div>';
     ancre.parentNode.insertBefore(bloc, ancre);
@@ -334,6 +351,9 @@
       var b = e.target.closest ? e.target.closest('button[data-de]') : null;
       if (b) ailleurs(b.getAttribute('data-de'));
     });
+    $('swbPontGo').onclick = demandeAdresse;
+    $('swbPontRetour').onclick = fermePont;
+    demandeProvenances();
     choisitDevise('swoge');
     montreTaux();
     lisSoldes();
@@ -510,52 +530,73 @@
     });
   }
 
+  /* ---------------------------------------------------------- LE SERVEUR
+   *
+   * Meme convention que stakebubble.js : l'adresse du serveur peut etre
+   * remplacee par `?server=` pour une recette, sinon c'est la production. */
+  function adresseServeur() {
+    try {
+      var q = new URLSearchParams(location.search).get('server');
+      if (q) return q;
+    } catch (e) {}
+    return 'wss://web-production-220a3.up.railway.app';
+  }
+  function base() { return adresseServeur().replace(/^ws/, 'http').replace(/\/+$/, ''); }
+
+  /* Le serveur a-t-il la cle Relay ? On le demande AVANT de proposer quoi que
+     ce soit : sans elle on peut encore envoyer le joueur sur relay.link, ce qui
+     marche, mais ce n'est pas la meme promesse et le bouton ne doit pas mentir
+     sur ce qui va se passer. */
+  var pontActif = false, bornes = {};
+  function demandeProvenances() {
+    fetch(base() + '/relay/depuis').then(function (r) { return r.json(); }).then(function (j) {
+      pontActif = !!j.actif;
+      (j.provenances || []).forEach(function (p) { bornes[p.cle] = p; });
+      var t = $('swbAilleurs');
+      if (t) t.querySelector('p').textContent = pontActif
+        ? 'Nothing on Robinhood Chain yet? Send from another chain — no wallet to connect, '
+          + 'works straight from an exchange withdrawal.'
+        : 'Nothing on Robinhood Chain yet? Bring funds from another chain — arrives in '
+          + 'seconds, straight to your address.';
+    }).catch(function () {});
+  }
+
   /* ================== VENIR D'UNE AUTRE CHAINE ==================
    *
-   * La question posee etait : faut-il trois adresses de depot, une par chaine,
-   * et convertir soi-meme au prix du marche ? Non — et pour deux raisons
-   * mesurees plutot que supposees.
+   * Deux chemins, et le second n'existe que si le serveur porte la cle.
    *
-   * 1. LE PRIX N'EST PAS UN ORACLE. La reserve tient dans deux ETH : 188 $
-   *    d'achat deplacent le prix de 10 %, 940 $ de 54 %. Un serveur qui
-   *    crediterait au prix du pool se ferait vider par quelqu'un qui fait
-   *    tomber ce prix pour deux cents dollars, depose, puis rachete.
+   *   • SANS CLE : on ouvre relay.link, prerempli avec l'adresse du joueur. Ca
+   *     marche, mais ca le fait sortir du site.
+   *   • AVEC CLE : Relay rend une ADRESSE DE DEPOT. Le joueur y envoie ses SOL
+   *     depuis son portefeuille OU depuis son compte d'echange — rien a
+   *     connecter, rien a signer — et l'ETH arrive a son adresse ici. C'est le
+   *     seul chemin qui serve aussi ceux qui gardent tout sur un echange.
    *
-   * 2. TENIR TROIS GUICHETS, C'EST DEVENIR LA CONTREPARTIE : une adresse par
-   *    joueur et par chaine, un surveillant par chaine, du gaz sur trois
-   *    chaines, des cles a garder — et l'invariant du coffre (ce qui est du
-   *    tient dans ce qui est depose) casse a chaque credit.
-   *
-   * Robinhood Chain est une chaine Orbit, et Relay la dessert deja. Cotations
-   * relevees le jour ou ceci a ete ecrit, vers de l'ETH sur Robinhood Chain :
-   * 1 SOL en 3 s pour 0,87 % ; 0,1 ETH depuis le reseau principal en 2 s pour
-   * 0,02 % ; 100 USDT depuis TRON en 2 s pour 0,2 %. Non custodial : l'argent
-   * ne passe jamais par nous. Le joueur revient avec de l'ETH sur la bonne
-   * chaine, et le panneau au-dessus fait le reste.
-   *
-   * Le TRX natif n'a pas de route ; l'USDT sur TRON en a une, et c'est ce que
-   * detiennent la plupart des porteurs TRON. On ne propose donc pas un bouton
-   * qui echouerait — chacun de ces boutons a ete cote pour de vrai avant
-   * d'etre pose.
+   * Dans les deux cas l'argent ne passe jamais par nous.
    */
   var RELAY = 'https://relay.link/bridge/robinhood';
   var NATIF = '0x0000000000000000000000000000000000000000';
   var DEPUIS = {
-    sol:   { chaine: 792703809, jeton: '11111111111111111111111111111111' },
-    eth:   { chaine: 1,         jeton: NATIF },
-    base:  { chaine: 8453,      jeton: NATIF },
-    tron:  { chaine: 728126428, jeton: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t' },  // USDT
+    sol:   { chaine: 792703809, jeton: '11111111111111111111111111111111', unite: 'SOL' },
+    eth:   { chaine: 1,         jeton: NATIF, unite: 'ETH' },
+    base:  { chaine: 8453,      jeton: NATIF, unite: 'ETH' },
+    tron:  { chaine: 728126428, jeton: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t', unite: 'USDT' },
     /* Le bitcoin n'a pas d'adresse « nulle » : son jeton natif porte un
        identifiant a lui. La route n'a pas pu etre cotee d'ici faute d'une
        adresse approvisionnee — le refus obtenu parlait des fonds du test, pas
        de la route. C'est la seule des six qui n'ait pas ete verifiee de bout
        en bout. */
-    btc:   { chaine: 8253038,   jeton: 'bc1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqmql8k8' },
+    btc:   { chaine: 8253038,   jeton: 'bc1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqmql8k8', unite: 'BTC' },
     autre: null
   };
 
+  var pontCle = null;
+
   function ailleurs(cle) {
     var d = DEPUIS[cle];
+    /* « Other chain » n'a pas de route a nous : il n'y a rien a lui demander,
+       on ouvre le choix complet chez Relay. */
+    if (pontActif && d) return ouvrePont(cle);
     portefeuille().then(function (w) {
       var u = RELAY + '?toCurrency=' + NATIF;
       if (d) u += '&fromChainId=' + d.chaine + '&fromCurrency=' + encodeURIComponent(d.jeton);
@@ -563,9 +604,6 @@
          recopier a la main, et une adresse recopiee a la main est la seule
          etape de tout ce parcours ou l'on peut perdre son argent. */
       if (w) u += '&toAddress=' + w.adresse;
-      /* Le guet est arme AVANT d'ouvrir l'onglet : son point de depart est le
-         solde d'avant le depart. Arme apres, il note un solde qui a pu deja
-         bouger — et il attendrait alors une arrivee qui a deja eu lieu. */
       if (w) guette(w.adresse);
       window.open(u, '_blank', 'noopener');
       if (!w) {
@@ -573,6 +611,99 @@
             'retype your address over there, and that is the one step where money gets lost.');
       }
     }).catch(function () { window.open(RELAY, '_blank', 'noopener'); });
+  }
+
+  function ouvrePont(cle) {
+    pontCle = cle;
+    var b = bornes[cle] || {};
+    $('swbPontUnite').textContent = DEPUIS[cle].unite;
+    $('swbPontAmt').value = '';
+    $('swbPontAmt').placeholder = b.min != null ? String(b.min) : '0';
+    $('swbPontDit').innerHTML = b.min != null
+      ? 'Between ' + b.min + ' and ' + b.max + ' ' + b.symbole + '.' : '';
+    $('swbAilleurs').querySelector('div').style.display = 'none';
+    $('swbAilleurs').querySelector('p').style.display = 'none';
+    $('swbPont').style.display = '';
+    $('swbPontAmt').focus();
+  }
+
+  function fermePont() {
+    pontCle = null;
+    $('swbPont').style.display = 'none';
+    $('swbAilleurs').querySelector('div').style.display = '';
+    $('swbAilleurs').querySelector('p').style.display = '';
+  }
+
+  var suivi = null;
+  function demandeAdresse() {
+    if (!pontCle) return;
+    var m = ($('swbPontAmt').value || '').replace(',', '.').trim();
+    if (!m) { $('swbPontDit').textContent = 'Enter how much you will send.'; return; }
+    var go = $('swbPontGo');
+    go.disabled = true;
+    $('swbPontDit').textContent = 'Getting an address…';
+    portefeuille().then(function (w) {
+      if (!w) throw new Error('Connect your wallet first — the address has to be yours.');
+      /* Le guet est arme AVANT : le pont peut livrer en trois secondes, plus
+         vite que le joueur ne revient sur l'onglet. */
+      guette(w.adresse);
+      return fetch(base() + '/relay/depot?de=' + encodeURIComponent(pontCle) +
+                   '&vers=' + w.adresse + '&montant=' + encodeURIComponent(m))
+        .then(function (r) { return r.json().then(function (j) { return { code: r.status, j: j }; }); })
+        .then(function (x) {
+          if (x.code !== 200) throw new Error(x.j && x.j.error ? x.j.error : 'not available');
+          montreAdresse(x.j);
+        });
+    }).catch(function (e) {
+      $('swbPontDit').textContent = String(e.message || e).slice(0, 160);
+    }).then(function () { go.disabled = false; });
+  }
+
+  function montreAdresse(r) {
+    var recu = r.recoit ? ' You get ≈ <b>' + trim(String(r.recoit), 6) + ' ETH</b>' +
+                          (r.secondes ? ', usually in ' + r.secondes + 's.' : '.') : '';
+    $('swbPontDit').innerHTML =
+      'Send <b>' + r.envoie + ' ' + r.symbole + '</b> to this address — from your wallet or ' +
+      'straight from an exchange withdrawal.' + recu +
+      '<div class="swb-adr" id="swbAdr">' + r.adresse + '</div>' +
+      '<button class="swb-cop" id="swbCop">Copy the address</button>' +
+      '<div class="swb-q" id="swbEtat">Waiting for your transfer…</div>';
+    $('swbCop').onclick = function () {
+      var t = r.adresse;
+      var fini = function () { $('swbCop').textContent = 'Copied ✓'; };
+      if (navigator.clipboard && navigator.clipboard.writeText)
+        navigator.clipboard.writeText(t).then(fini).catch(function () {});
+      else {
+        var z = document.createElement('textarea');
+        z.value = t; document.body.appendChild(z); z.select();
+        try { document.execCommand('copy'); fini(); } catch (e) {}
+        document.body.removeChild(z);
+      }
+    };
+    if (r.id) suitEnvoi(r.id);
+  }
+
+  /* On regarde ou en est l'envoi. Sans ca, le joueur a une adresse et aucune
+     idee de ce qui se passe apres — et c'est le moment ou il a le plus besoin
+     qu'on lui parle, puisque son argent est en vol. */
+  function suitEnvoi(id) {
+    if (suivi) clearInterval(suivi);
+    var limite = Date.now() + 30 * 60000;
+    suivi = setInterval(function () {
+      if (Date.now() > limite) { clearInterval(suivi); suivi = null; return; }
+      fetch(base() + '/relay/etat?id=' + encodeURIComponent(id))
+        .then(function (r) { return r.json(); })
+        .then(function (j) {
+          var e = $('swbEtat');
+          if (!e) { clearInterval(suivi); suivi = null; return; }
+          if (j.fini) {
+            clearInterval(suivi); suivi = null;
+            e.innerHTML = '✅ Sent through — your ETH is on its way to your address.';
+          } else if (j.statut && j.statut !== 'unknown' && j.statut !== 'waiting') {
+            e.textContent = 'Status: ' + j.statut;
+          }
+        }).catch(function () {});
+    }, 5000);
   }
 
   /* ---------------------------- L'ARRIVEE

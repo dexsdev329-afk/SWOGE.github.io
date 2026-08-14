@@ -556,6 +556,16 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
 .sb-eq span{ font-size:.95rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .sb-h{ font-size:.82rem; opacity:.6; font-variant-numeric:tabular-nums; }
 .sb-cotes{ grid-column:1/-1; display:grid; grid-template-columns:repeat(3,1fr); gap:7px; }
+.sb-cotes.n2{ grid-template-columns:repeat(2,1fr); }
+.sb-cotes button.pris{ border-color:rgba(120,230,160,.75); background:rgba(90,220,140,.18); }
+.sb-jambes{ display:flex; flex-direction:column; gap:6px; margin:0 0 12px; }
+.sb-j{ display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:10px;
+  background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.10); }
+.sb-j span{ flex:1; min-width:0; font-size:.8rem; overflow:hidden;
+  text-overflow:ellipsis; white-space:nowrap; }
+.sb-j b{ font-size:.8rem; white-space:nowrap; }
+.sb-j button{ width:26px; height:26px; flex:none; border:0; border-radius:7px; cursor:pointer;
+  background:rgba(255,255,255,.08); color:inherit; font-size:1.1rem; line-height:1; }
 .sb-cotes button{ display:flex; flex-direction:column; align-items:center; gap:2px;
   min-height:52px; padding:7px 4px; border-radius:10px; cursor:pointer; font:inherit;
   border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.05); color:inherit; }
@@ -945,6 +955,7 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
       <div class="sb-bul">
         <button class="sb-x" id="sbFerme" aria-label="close">&times;</button>
         <div class="sb-bt" id="sbBt">&mdash;</div>
+        <div class="sb-jambes" id="sbJambes"></div>
         <div class="sb-bc" id="sbBc">&mdash;</div>
         <label class="sb-lb" for="sbMise">Stake ($SWOGE)</label>
         <input class="sb-mise" id="sbMise" type="number" inputmode="numeric" min="0" step="100" value="1000">
@@ -1378,9 +1389,17 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
    * part et ce qui revient — un pari qu'on decouvre apres coup n'est pas un
    * pari, c'est une surprise.
    */
+  /* LE BULLETIN EST UNE LISTE. Une seule selection = un simple ; plusieurs =
+     un combine, ou les cotes se multiplient et ou UNE SEULE fausse fait tout
+     tomber. C'est ecrit en toutes lettres au-dessus du bouton : un joueur qui
+     l'apprend en perdant a raison de se sentir floue. */
   var SB={ sports:[], matchs:[], mien:[], min:100, max:100000,
-           sport:"foot", choisi:null, busy:false };
+           jambesMax:8, gainMax:5000000,
+           sport:"foot", panier:[], busy:false };
+  /* Au tennis il n'y a pas de « domicile » : ce sont deux joueurs sur un
+   terrain neutre. On nomme donc par la position affichee. */
   var SB_NOM={ "1":"Home", "N":"Draw", "2":"Away" };
+  var SB_NOM2={ "1":"Player 1", "2":"Player 2" };
 
   function sbFmt(n){ n=Number(n||0);
     var s=n<0?"-":"", v=Math.abs(n);
@@ -1447,8 +1466,8 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
        + '<div class="sb-eq"><span>'+sbEchappe(m.domicile)+'</span>'
        + '<span>'+sbEchappe(m.exterieur)+'</span></div>'
        + '<div class="sb-h">'+sbHeure(m.debut)+'</div>'
-       + '<div class="sb-cotes">'
-       + sbBouton(m,"1")+sbBouton(m,"N")+sbBouton(m,"2")
+       + '<div class="sb-cotes n'+(m.issues||["1","N","2"]).length+'">'
+       + (m.issues||["1","N","2"]).map(function(c){ return sbBouton(m,c); }).join("")
        + '</div>'
        + (serre?'<div class="sb-plein">'+sbFmt(m.place)+' of exposure left</div>':'')
        + '</div>';
@@ -1456,8 +1475,12 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
     z.innerHTML=h;
   }
   function sbBouton(m,c){
-    return '<button type="button" data-m="'+sbEchappe(m.id)+'" data-c="'+c+'">'
-         + '<span>'+SB_NOM[c]+'</span><b>'+Number(m.cotes[c]).toFixed(2)+'</b></button>';
+    var pris=false, i;
+    for(i=0;i<SB.panier.length;i++)
+      if(SB.panier[i].match===m.id && SB.panier[i].choix===c) pris=true;
+    return '<button type="button" data-m="'+sbEchappe(m.id)+'" data-c="'+c+'"'
+         + (pris?' class="pris"':'')+'>'
+         + '<span>'+((m.issues||[]).length===2?SB_NOM2[c]:SB_NOM[c])+'</span><b>'+Number(m.cotes[c]).toFixed(2)+'</b></button>';
   }
 
   function sbPeintMien(){
@@ -1477,36 +1500,78 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
   }
 
   // ---------------------------------------------------------- le bulletin
-  function sbOuvre(matchId, choix){
-    var m=null, i;
-    for(i=0;i<SB.matchs.length;i++) if(SB.matchs[i].id===matchId) m=SB.matchs[i];
-    if(!m) return;
-    if(!authed) return toast("Connect your wallet first");
-    SB.choisi={ match:m, choix:choix };
-    $("sbBt").innerHTML=sbEchappe(m.domicile)+' <i>vs</i> '+sbEchappe(m.exterieur);
-    $("sbBc").innerHTML=SB_NOM[choix]+' @ <b>'+Number(m.cotes[choix]).toFixed(2)+'</b>';
-    $("sbNote").textContent="Odds are locked in when you place the bet. "
-      + "Nothing changes them afterwards.";
-    sbRecalc();
-    $("sbOvl").hidden=false;
+  function sbTrouve(id){
+    for(var i=0;i<SB.matchs.length;i++) if(SB.matchs[i].id===id) return SB.matchs[i];
+    return null;
   }
-  function sbFerme(){ $("sbOvl").hidden=true; SB.choisi=null; }
+  function sbCote(){
+    var c=1, i;
+    for(i=0;i<SB.panier.length;i++){
+      var m=sbTrouve(SB.panier[i].match); if(!m) return 0;
+      c*=Number(m.cotes[SB.panier[i].choix]);
+    }
+    return SB.panier.length ? Math.floor(c*1e4)/1e4 : 0;
+  }
+  /* Cliquer une cote AJOUTE au bulletin ; recliquer la meme la retire. Une
+     seconde selection sur un match deja au bulletin REMPLACE la premiere : le
+     serveur refuse deux jambes sur un match, et lui renvoyer une erreur pour
+     un geste evident serait le punir de sa logique. */
+  function sbOuvre(matchId, choix){
+    var m=sbTrouve(matchId); if(!m) return;
+    if(!authed) return toast("Connect your wallet first");
+    var i, deja=-1;
+    for(i=0;i<SB.panier.length;i++) if(SB.panier[i].match===matchId) deja=i;
+    if(deja>=0){
+      if(SB.panier[deja].choix===choix){ SB.panier.splice(deja,1); }
+      else SB.panier[deja].choix=choix;
+    } else {
+      if(SB.panier.length>=SB.jambesMax) return toast("At most "+SB.jambesMax+" selections");
+      SB.panier.push({ match:matchId, choix:choix });
+    }
+    if(!SB.panier.length){ sbFerme(); sbRend(); return; }
+    sbPeintBulletin();
+    $("sbOvl").hidden=false;
+    sbRend();
+  }
+  function sbFerme(){ $("sbOvl").hidden=true; }
+  function sbVide(){ SB.panier=[]; sbFerme(); sbRend(); }
+
+  function sbPeintBulletin(){
+    var h="", i;
+    for(i=0;i<SB.panier.length;i++){
+      var j=SB.panier[i], m=sbTrouve(j.match); if(!m) continue;
+      h+='<div class="sb-j"><span>'+sbEchappe(m.domicile)+' &ndash; '+sbEchappe(m.exterieur)+'</span>'
+       + '<b>'+SB_NOM[j.choix]+' @ '+Number(m.cotes[j.choix]).toFixed(2)+'</b>'
+       + '<button type="button" data-ote="'+sbEchappe(j.match)+'" aria-label="remove">&times;</button></div>';
+    }
+    $("sbJambes").innerHTML=h;
+    var n=SB.panier.length;
+    $("sbBt").textContent = n>1 ? ("Accumulator · "+n+" selections") : "Single bet";
+    $("sbBc").innerHTML = n>1
+      ? 'Combined odds <b>'+sbCote().toFixed(2)+'</b> &mdash; <b>every</b> selection has to win'
+      : 'Odds <b>'+sbCote().toFixed(2)+'</b>';
+    $("sbNote").textContent = n>1
+      ? "One wrong and the whole bet is lost. Odds are locked in when you place it."
+      : "Odds are locked in when you place the bet. Nothing changes them afterwards.";
+    sbRecalc();
+  }
   function sbRecalc(){
-    var c=SB.choisi; if(!c) return;
+    if(!SB.panier.length) return;
     var v=Math.floor(Number($("sbMise").value)||0);
-    var r=v>0 ? v*Number(c.match.cotes[c.choix]) : 0;
-    $("sbRetour").textContent = r>0 ? sbFmt(Math.floor(r))+" $SWOGE" : "—";
-    var trop = v>SB.max, peu = v<SB.min;
-    $("sbGo").disabled = trop || peu || SB.busy;
+    var r=v>0 ? Math.floor(v*sbCote()) : 0;
+    $("sbRetour").textContent = r>0 ? sbFmt(r)+" $SWOGE" : "—";
+    var trop=v>SB.max, peu=v<SB.min, gros=r>SB.gainMax;
+    $("sbGo").disabled = trop || peu || gros || SB.busy;
     $("sbGo").textContent = trop ? ("Max "+sbFmt(SB.max))
-                          : peu ? ("Min "+sbFmt(SB.min)) : "Place bet";
+                          : peu ? ("Min "+sbFmt(SB.min))
+                          : gros ? ("Max return "+sbFmt(SB.gainMax)) : "Place bet";
   }
   function sbEnvoie(){
-    var c=SB.choisi; if(!c || SB.busy) return;
+    if(!SB.panier.length || SB.busy) return;
     var v=Math.floor(Number($("sbMise").value)||0);
     if(v<SB.min || v>SB.max) return;
     SB.busy=true; sbRecalc();
-    send({type:"parie", match:c.match.id, choix:c.choix, mise:v});
+    send({type:"parie", selections:SB.panier.slice(), mise:v});
   }
 
   /* La banniere suit l'onglet. Elle est decorative : `alt` reste vide, et
@@ -1529,6 +1594,11 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
       sbOuvre(b.getAttribute("data-m"), b.getAttribute("data-c"));
     });
     $("sbFerme").addEventListener("click", sbFerme);
+    $("sbJambes").addEventListener("click", function(e){
+      var b=e.target.closest("button[data-ote]"); if(!b) return;
+      sbOuvre(b.getAttribute("data-ote"),
+              (SB.panier.filter(function(j){return j.match===b.getAttribute("data-ote");})[0]||{}).choix);
+    });
     $("sbOvl").addEventListener("click", function(e){ if(e.target===$("sbOvl")) sbFerme(); });
     $("sbMise").addEventListener("input", sbRecalc);
     $("sbGo").addEventListener("click", sbEnvoie);
@@ -1560,6 +1630,7 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
       else if(m.type==="parisListe"){
         SB.sports=m.sports||[]; SB.matchs=m.matchs||[]; SB.mien=m.mesParis||[];
         if(m.min!=null)SB.min=m.min; if(m.max!=null)SB.max=m.max;
+        if(m.jambesMax)SB.jambesMax=m.jambesMax; if(m.gainMax)SB.gainMax=m.gainMax;
         var a=SB.sports.filter(function(x){return x.actif;});
         if(a.length && !a.some(function(x){return x.cle===SB.sport;})) SB.sport=a[0].cle;
         sbRend();
@@ -1567,7 +1638,7 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
       else if(m.type==="pariPose"){
         if(m.balance!=null) setBalance(m.balance);
         SB.matchs=m.matchs||SB.matchs; SB.mien=m.mesParis||SB.mien;
-        SB.busy=false; sbFerme(); sbRend();
+        SB.busy=false; SB.panier=[]; sbFerme(); sbRend();
         toast("✅ Bet placed · returns "+sbFmt(m.pari.rapport)+" $SWOGE");
       }
       else if(m.type==="need_deposit"){ setBalance(m.balance); busy=false; toast("Not enough $SWOGE — deposit in the Pusher"); }

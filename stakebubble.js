@@ -1718,9 +1718,11 @@
     duelsBtn.type = 'button';
     duelsBtn.title = 'Open 1v1 matches';
     duelsBtn.innerHTML = 'VS';
-    duelsBtn.style.display = 'none';
     duelsBtn.addEventListener('click', function () { duelsBascule(); });
     document.body.appendChild(duelsBtn);
+    /* Elle reste visible meme quand personne n'attend. Une bulle qui
+       n'apparait qu'en cas de table ouverte, personne ne sait qu'elle
+       existe — et personne n'ouvre donc de table. */
 
     duelsPan = document.createElement('div');
     duelsPan.className = 'swdp';
@@ -1781,7 +1783,6 @@
     if (!duelsMonte()) return;
     var moi = MOI && MOI.address ? String(MOI.address).toLowerCase() : null;
     var libres = DUELS.filter(function (t) { return !moi || String(t.createur).toLowerCase() !== moi; });
-    duelsBtn.style.display = DUELS.length ? 'flex' : 'none';
 
     var p = duelsBtn.querySelector('.swdn');
     if (libres.length) {

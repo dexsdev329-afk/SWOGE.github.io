@@ -212,6 +212,9 @@
       if (profOnglet === 'in') profRend();
     }
     if (m.type === 'leaderboard') { CLASSEMENT = m; if (profOnglet === 'lb') profRend(); }
+    /* Les missions du jour arrivent avec les quetes, sur trois messages
+       differents selon la page. On les garde ici, et on decore ensuite. */
+    if (m.quests) { MISSIONS = m.quests; surveilleMissions(); }
     /* Le « hello » prouve que cette socket-la parle a notre serveur : sur une
        page de jeu ouverte par un visiteur, c'est la seule qu'on ait, et c'est
        par elle qu'il pourra regarder. */
@@ -613,6 +616,71 @@
     return '<span class="swlv" style="color:' + couleurPalier(p.palier) + ';border-color:' +
            couleurPalier(p.palier) + '55">' + p.niveau + '</span>';
   }
+  /* ====================== LES MISSIONS DU JOUR ======================
+   *
+   * Le serveur nomme un jeu et dit ou il se trouve. Encore faut-il pouvoir y
+   * ALLER : une mission qui dit « misez sur Mines » sans emmener nulle part
+   * demande au joueur de retrouver la page tout seul, et il ne le fait pas.
+   *
+   * Le lien se pose ICI plutot que dans les douze panneaux de quetes : ils
+   * existent en trois versions differentes selon la page, et il n'y a aucune
+   * raison d'ecrire trois fois la meme chose — ni de toucher a douze pages qui
+   * marchent. On accroche la liste rendue par la page, quelle qu'elle soit.
+   */
+  var MISSIONS = [], missionsObs = null;
+  function surveilleMissions() {
+    var box = document.getElementById('questrows');
+    if (!box) return;
+    poseMissions();
+    if (missionsObs) return;
+    /* La page redessine sa liste a chaque message : on redecore apres elle,
+       sans avoir a savoir quand elle le fait. */
+    try {
+      missionsObs = new MutationObserver(function () { poseMissions(); });
+      missionsObs.observe(box, { childList: true });
+    } catch (e) {}
+  }
+  function poseMissions() {
+    var box = document.getElementById('questrows');
+    if (!box || !MISSIONS.length) return;
+    var ici = location.pathname.split('/').pop();
+    var lignes = box.querySelectorAll('.quest');
+    for (var i = 0; i < lignes.length; i++) {
+      var ligne = lignes[i];
+      if (ligne.querySelector('.swgo')) continue;
+      /* On retrouve la mission par son intitule : c'est la seule chose que
+         les trois versions du panneau ecrivent toutes de la meme facon. */
+      var titre = ligne.querySelector('.qh span') || ligne.querySelector('.qh');
+      var texte = titre ? titre.textContent.trim() : '';
+      var q = null;
+      for (var j = 0; j < MISSIONS.length; j++)
+        if (MISSIONS[j].page && String(MISSIONS[j].label).trim() === texte) { q = MISSIONS[j]; break; }
+      /* Rien a proposer si elle est faite, si elle est verrouillee, ou si on
+         est deja sur la page du jeu : le lien n'aurait nulle part ou mener. */
+      if (!q || q.done || q.claimed || q.locked) continue;
+      if (q.page.split('?')[0] === ici) continue;
+      var a = document.createElement('a');
+      a.className = 'swgo';
+      a.href = q.page;
+      a.textContent = '▶ Play ' + q.nom;
+      ligne.appendChild(a);
+    }
+  }
+  function cssMissions() {
+    if (document.getElementById('swgo-css')) return;
+    var c = document.createElement('style');
+    c.id = 'swgo-css';
+    c.textContent =
+      '.swgo{display:block;margin-top:7px;padding:7px 10px;border-radius:9px;text-align:center;' +
+      'font-family:inherit;font-size:11.5px;font-weight:800;text-decoration:none;color:#07101F;' +
+      'background:linear-gradient(180deg,#FFE08A,#FFC53D);}' +
+      '.swgo:hover{filter:brightness(1.06);}';
+    document.head.appendChild(c);
+  }
+  if (document.readyState === 'loading')
+    document.addEventListener('DOMContentLoaded', cssMissions);
+  else cssMissions();
+
   /* Les tables 1v1 qui attendent un adversaire, tous jeux confondus. */
   var DUELS = [], duelsBtn = null, duelsPan = null, duelsOuvert = false;
   var EN_COURS = [], REGARDE = null, REGARDE_FINI = false;  // ce qui se joue, et ce qu on regarde

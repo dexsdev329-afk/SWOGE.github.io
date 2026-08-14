@@ -603,7 +603,7 @@ function wsSend(o){ if(ws&&ws.readyState===1) ws.send(JSON.stringify(o)); }
 
 function onServer(m){
   if(m.type==="hello"){
-    loginNonce=m.loginNonce; /* Le jeton de session evite de resigner : on le presente des que le nonce est connu. Le serveur repond soit par 'auth' — connecte, sans SDK ni signature — soit par 'resumeFailed'. */ (function(){ var j=null; try{ j=localStorage.getItem("swogeSession"); }catch(e){} if(j) send({type:"resume", token:j, tgId:(typeof TG_ID!=="undefined"?TG_ID:null)}); })(); VAULT=m.vault||VAULT; TOKEN=m.token||TOKEN; MIN_WITHDRAW=m.minWithdraw||MIN_WITHDRAW;
+    loginNonce=m.loginNonce; /* Le jeton de session evite de resigner : on le presente des que le nonce est connu. Le serveur repond soit par 'auth' — connecte, sans SDK ni signature — soit par 'resumeFailed'. */ (function(){ var j=null; try{ j=localStorage.getItem("swogeSession"); }catch(e){} if(j) wsSend({type:"resume", token:j, tgId:(typeof TG_ID!=="undefined"?TG_ID:null)}); })(); VAULT=m.vault||VAULT; TOKEN=m.token||TOKEN; MIN_WITHDRAW=m.minWithdraw||MIN_WITHDRAW;
     /* Cette page n'a pas de #minW — elle a herite la ligne de swoge_pusher.html,
        qui en a un. L'exception coupait la SUITE du traitement de « hello » :
        le jackpot, le classement, et surtout le doLogin() de la derniere ligne,

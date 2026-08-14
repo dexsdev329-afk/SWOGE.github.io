@@ -884,7 +884,7 @@ Confusing them is the first source of misunderstanding and support tickets.
   <thead><tr><th>Balance</th><th>What it is</th><th>Playable</th><th>Withdrawable</th></tr></thead>
   <tbody>
     <tr><td><strong>Available</strong></td><td>What is committed nowhere</td><td>Yes</td><td>Yes, above the minimum</td></tr>
-    <tr><td><strong>Staked</strong></td><td>Locked principal, per position, each with its own date</td><td>No</td><td>No, unless exiting early with a 50&nbsp;% penalty</td></tr>
+    <tr><td><strong>Staked</strong></td><td>Principal placed in the vault, per position</td><td>No</td><td>Yes — unstake at any time, in full, then withdraw</td></tr>
     <tr><td><strong>Accruing yield</strong></td><td>Accumulates by the second, not yet claimed</td><td>No</td><td>No — it must be claimed first</td></tr>
     <tr><td><strong>Referral matured / pending</strong></td><td>Earnings mature for 7 days before they can be claimed</td><td>No</td><td>No until claimed</td></tr>
     <tr><td><strong>Locked gift</strong></td><td>The welcome gift, until the house has earned it back</td><td>Yes</td><td>No</td></tr>
@@ -1016,7 +1016,7 @@ play each other.
     <tr><td>Token creation</td><td class="n">0</td><td>—</td><td>—</td><td><span class="chip ok">Confirmed</span> — free today, configurable</td></tr>
     <tr><td>Token creator fee</td><td class="n">≤ 20 %</td><td>Their token's volume</td><td>Creator or holders, depending on the chosen mode</td><td><span class="chip ok">Confirmed</span></td></tr>
     <tr><td>Transfer between friends</td><td class="n">0</td><td>—</td><td>—</td><td><span class="chip ok">Confirmed</span> — minimum 10,000</td></tr>
-    <tr><td>Staking fee</td><td class="n">0</td><td>—</td><td>—</td><td><span class="chip ok">Confirmed</span> — early-exit penalty aside</td></tr>
+    <tr><td>Staking fee</td><td class="n">0</td><td>—</td><td>—</td><td><span class="chip ok">Confirmed</span> — nothing on entry, nothing on exit</td></tr>
     <tr><td>Marketplace</td><td class="n">—</td><td>—</td><td>—</td><td><span class="chip def">Undecided</span></td></tr>
     <tr><td>Tournaments</td><td class="n">—</td><td>—</td><td>—</td><td><span class="chip def">Undecided</span></td></tr>
   </tbody>
@@ -1052,8 +1052,8 @@ investor will raise immediately. See <a href="#en-s26">section 26</a>.
 <h3>Live parameters</h3>
 <div class="grid3">
   <div class="stat"><span>Annual rate</span><b>100 %</b><i>current parameter, changeable — not a commitment</i></div>
-  <div class="stat"><span>Lock</span><b>365 days</b><i>per position, each with its own date</i></div>
-  <div class="stat"><span>Early exit</span><b>−50 %</b><i>of the still-locked principal</i></div>
+  <div class="stat"><span>Lock</span><b>none</b><i>unstake at any time</i></div>
+  <div class="stat"><span>Exit</span><b>free</b><i>the whole principal returns, plus accrued yield</i></div>
   <div class="stat"><span>Global cap</span><b>20 %</b><i>of supply — 200,000,000 across every player</i></div>
   <div class="stat"><span>Minimum</span><b>none</b><i>any amount can be staked</i></div>
   <div class="stat"><span>Yield</span><b>by the second</b><i>claimable at any time, without waiting for the unlock</i></div>
@@ -1126,11 +1126,9 @@ aligned to what revenue can carry.
    ├──▶ <b>CLAIM</b> ──▶ available balance ──▶ play, re-stake, or withdraw
    │
    ▼
-<b>UNLOCK AT 365 DAYS</b>
+<b>EXIT — WHENEVER YOU WANT</b>
    │
-   ├── before term ──▶ <b>UNSTAKE</b>: 50 % of the locked principal stays with the house
-   │
-   └── after term ───▶ <b>UNSTAKE</b>: everything returns, plus accrued yield
+   └──▶ <b>UNSTAKE</b>: the whole principal returns, plus accrued yield
 </pre></div>
 <p>
 The cap check happens <strong>before</strong> the balance is debited. A refusal placed
@@ -1200,11 +1198,10 @@ overstates real scarcity.
 <div class="wrap"><table>
   <thead><tr><th>Mechanism</th><th>Type</th><th>Reversible</th><th>State</th></tr></thead>
   <tbody>
-    <tr><td>Staking lock, 365 days</td><td>Sink</td><td>Yes, at term</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Staking</td><td>Sink while it lasts</td><td>Yes, at any time</td><td><span class="chip ok">Confirmed</span> — held voluntarily, not locked</td></tr>
     <tr><td>Bets in play</td><td>Circulation</td><td>—</td><td>Neither sink nor burn: 97&nbsp;% of a bet returns to players</td></tr>
     <tr><td>Jackpot reserve</td><td>Sink</td><td>Yes, when it drops</td><td><span class="chip ok">Confirmed</span></td></tr>
-    <tr><td>Early-exit penalty</td><td>Sink</td><td>Stays with the house</td><td><span class="chip ok">Confirmed</span></td></tr>
-    <tr><td>Withdrawal fee</td><td><strong>Burn</strong></td><td>No</td><td><span class="chip ok">Confirmed</span></td></tr>
+        <tr><td>Withdrawal fee</td><td><strong>Burn</strong></td><td>No</td><td><span class="chip ok">Confirmed</span></td></tr>
     <tr><td>Paid cosmetics: frames, avatars, name colours</td><td>Sink or burn depending on destination</td><td>—</td><td><span class="chip pro">Proposed</span> — ten tier frames already exist, earned by level; selling them would be a clean sink</td></tr>
     <tr><td>Tournament entry</td><td>Circulation + partial sink</td><td>—</td><td><span class="chip def">Undecided</span></td></tr>
     <tr><td>Priority launchpad access for stakers</td><td>Sink</td><td>Yes</td><td><span class="chip pro">Proposed</span> — ties staking directly to a utility rather than a yield</td></tr>
@@ -1640,8 +1637,7 @@ published.
     <tr><td>House edge</td><td>3&nbsp;% of every bet against the house</td><td><span class="chip ok">Active</span></td></tr>
     <tr><td>1v1 and poker rake</td><td>5&nbsp;% of the pot</td><td><span class="chip ok">Active</span></td></tr>
     <tr><td>Launchpad protocol fee</td><td>1&nbsp;% of every buy and sell on launched tokens</td><td><span class="chip ok">Active</span></td></tr>
-    <tr><td>Early-exit penalties</td><td>50&nbsp;% of the still-locked principal</td><td><span class="chip ok">Active</span></td></tr>
-    <tr><td>Rewarded ads</td><td>Advertiser revenue, shared with the player</td><td><span class="chip ok">Active</span></td></tr>
+        <tr><td>Rewarded ads</td><td>Advertiser revenue, shared with the player</td><td><span class="chip ok">Active</span></td></tr>
     <tr><td>Token creation fee</td><td>Configurable, currently zero</td><td><span class="chip ok">Available</span></td></tr>
     <tr><td>Cosmetics</td><td>—</td><td><span class="chip pro">Proposed</span></td></tr>
     <tr><td>Tournament fees</td><td>—</td><td><span class="chip def">Undecided</span></td></tr>
@@ -2028,10 +2024,10 @@ settled.
 <div class="flow"><pre>
 <b>PLAYER</b> → room gauge shown → amount
        → cap check <i>before any debit</i>
-       → <b>POSITION</b> (principal + start + unlock at 365 d)
+       → <b>POSITION</b> (principal + start)
        → yield by the second
        → <b>CLAIM</b> → available balance
-       → <b>UNSTAKE</b>: everything if matured, half the principal if early
+       → <b>UNSTAKE</b>: everything, at any time
 </pre></div>
 
 <h3>A round of play</h3>
@@ -2792,7 +2788,7 @@ support.
   <thead><tr><th>Solde</th><th>Ce que c'est</th><th>Jouable</th><th>Retirable</th></tr></thead>
   <tbody>
     <tr><td><strong>Disponible</strong></td><td>Ce qui n'est engagé nulle part</td><td>Oui</td><td>Oui, au-dessus du minimum</td></tr>
-    <tr><td><strong>En staking</strong></td><td>Principal verrouillé, par position, chacune avec sa date</td><td>Non</td><td>Non, sauf sortie anticipée avec pénalité de 50 %</td></tr>
+    <tr><td><strong>En staking</strong></td><td>Principal placé dans le coffre, par position</td><td>Non</td><td>Oui — on sort quand on veut, en entier, puis on retire</td></tr>
     <tr><td><strong>Rendement en cours</strong></td><td>Accumulé à la seconde, non encore réclamé</td><td>Non</td><td>Non — il faut le réclamer d'abord</td></tr>
     <tr><td><strong>Parrainage mûr / en attente</strong></td><td>Les gains mûrissent 7 jours avant d'être réclamables</td><td>Non</td><td>Non tant qu'il n'est pas réclamé</td></tr>
     <tr><td><strong>Cadeau bloqué</strong></td><td>Le cadeau de bienvenue tant que la maison ne l'a pas gagné</td><td>Oui</td><td>Non</td></tr>
@@ -2965,15 +2961,15 @@ immédiatement. Voir <a href="#fr-s26">section 26</a>.
 <h3>Paramètres en production</h3>
 <div class="grid3">
   <div class="stat"><span>Taux annuel</span><b>100 %</b><i>paramètre actuel, modifiable — ce n'est pas un engagement</i></div>
-  <div class="stat"><span>Verrou</span><b>365 jours</b><i>par position, chacune avec sa propre date</i></div>
-  <div class="stat"><span>Sortie anticipée</span><b>−50 %</b><i>du principal encore verrouillé</i></div>
+  <div class="stat"><span>Verrou</span><b>aucun</b><i>on sort à tout moment</i></div>
+  <div class="stat"><span>Sortie</span><b>libre</b><i>tout le principal revient, plus le rendement couru</i></div>
   <div class="stat"><span>Plafond global</span><b>20 %</b><i>de l'offre, soit 200 000 000, tous joueurs confondus</i></div>
   <div class="stat"><span>Minimum</span><b>aucun</b><i>toute somme peut être mise</i></div>
-  <div class="stat"><span>Rendement</span><b>à la seconde</b><i>réclamable à tout moment, sans attendre le déverrouillage</i></div>
+  <div class="stat"><span>Rendement</span><b>à la seconde</b><i>réclamable à tout moment, sans rien attendre</i></div>
 </div>
 <p>
-Le rendement court dès la première seconde et se réclame quand on veut, même verrouillé.
-Seul le <em class="q">principal</em> est bloqué.
+Le rendement court dès la première seconde et se réclame quand on veut. Le
+<em class="q">principal</em> n'est bloqué à aucun moment : il ressort en entier, le jour où on le demande.
 <span class="chip ok">Confirmé</span>
 </p>
 
@@ -3032,7 +3028,7 @@ que le revenu peut porter.
    ├── plein ────────▶ refus, avec le chiffre exact qui reste
    │
    ▼
-<b>POSITION OUVERTE</b>  <i>principal + date d'ouverture + date de déverrouillage</i>
+<b>POSITION OUVERTE</b>  <i>principal + date d'ouverture</i>
    │
    ▼
 <b>RENDEMENT À LA SECONDE</b>
@@ -3040,11 +3036,9 @@ que le revenu peut porter.
    ├──▶ <b>CLAIM</b> ──▶ solde disponible ──▶ rejouer, remettre en staking, ou retirer
    │
    ▼
-<b>DÉVERROUILLAGE À 365 JOURS</b>
+<b>SORTIE — QUAND ON VEUT</b>
    │
-   ├── avant terme ──▶ <b>UNSTAKE</b> : 50 % du principal verrouillé restent à la maison
-   │
-   └── après terme ──▶ <b>UNSTAKE</b> : tout revient, plus le rendement accumulé
+   └──▶ <b>UNSTAKE</b> : tout le principal revient, plus le rendement accumulé
 </pre></div>
 <p>
 Le contrôle du plafond passe <strong>avant</strong> le débit du solde. Un refus placé
@@ -3115,10 +3109,9 @@ deux surestime la rareté réelle.
 <div class="wrap"><table>
   <thead><tr><th>Mécanisme</th><th>Type</th><th>Réversible</th><th>État</th></tr></thead>
   <tbody>
-    <tr><td>Verrou de staking, 365 jours</td><td>Sink</td><td>Oui, à l'échéance</td><td><span class="chip ok">Confirmé</span></td></tr>
+    <tr><td>Staking</td><td>Sink tant qu'il dure</td><td>Oui, à tout moment</td><td><span class="chip ok">Confirmé</span> — tenu volontairement, pas verrouillé</td></tr>
     <tr><td>Mises en jeu</td><td>Circulation</td><td>—</td><td>Ni sink ni burn : la mise revient au joueur à 97 %</td></tr>
     <tr><td>Réserve du jackpot</td><td>Sink</td><td>Oui, quand il tombe</td><td><span class="chip ok">Confirmé</span></td></tr>
-    <tr><td>Pénalité de sortie anticipée</td><td>Sink</td><td>Reste à la maison</td><td><span class="chip ok">Confirmé</span></td></tr>
     <tr><td>Frais de retrait</td><td><strong>Burn</strong></td><td>Non</td><td><span class="chip ok">Confirmé</span></td></tr>
     <tr><td>Cosmétiques payants : cadres, avatars, couleurs de nom</td><td>Sink ou burn selon la destination</td><td>—</td><td><span class="chip pro">Proposé</span> — dix cadres de palier existent déjà, gagnés au niveau ; les vendre serait un sink net</td></tr>
     <tr><td>Inscription aux tournois</td><td>Circulation + sink partiel</td><td>—</td><td><span class="chip def">À définir</span></td></tr>
@@ -3555,8 +3548,8 @@ qu'une répartition imparfaite mais publiée.
 </table></div>
 <p>
 <strong>Évolution de l'offre en circulation :</strong> l'offre totale est fixe et ne peut
-que baisser. Deux forces la réduisent : le burn, définitif, et le verrou de staking,
-temporaire. Une courbe projetée n'aurait de sens qu'après publication de la table
+que baisser. Deux forces la réduisent : le burn, définitif, et le staking,
+temporaire — ce qui y est tenu l'est volontairement, et peut ressortir à tout moment. Une courbe projetée n'aurait de sens qu'après publication de la table
 d'allocation et du calendrier de déblocage.
 <span class="chip def">À définir</span>
 </p>
@@ -3570,7 +3563,6 @@ d'allocation et du calendrier de déblocage.
     <tr><td>Avantage de la maison</td><td>3 % de chaque mise contre la banque</td><td><span class="chip ok">Actif</span></td></tr>
     <tr><td>Rake 1v1 et poker</td><td>5 % du pot</td><td><span class="chip ok">Actif</span></td></tr>
     <tr><td>Protocole launchpad</td><td>1 % de chaque achat et vente sur les jetons lancés</td><td><span class="chip ok">Actif</span></td></tr>
-    <tr><td>Pénalités de sortie anticipée</td><td>50 % du principal encore verrouillé</td><td><span class="chip ok">Actif</span></td></tr>
     <tr><td>Publicité récompensée</td><td>Revenu annonceur, partagé avec le joueur</td><td><span class="chip ok">Actif</span></td></tr>
     <tr><td>Frais de création de jeton</td><td>Paramétrable, actuellement nul</td><td><span class="chip ok">Disponible</span></td></tr>
     <tr><td>Cosmétiques</td><td>—</td><td><span class="chip pro">Proposé</span></td></tr>
@@ -3972,10 +3964,10 @@ juridiction visée. Aucun n'est tranché.
 <div class="flow"><pre>
 <b>JOUEUR</b> → jauge de la salle affichée → montant
        → contrôle du plafond <i>avant tout débit</i>
-       → <b>POSITION</b> (principal + date d'ouverture + déverrouillage à 365 j)
+       → <b>POSITION</b> (principal + date d'ouverture)
        → rendement à la seconde
        → <b>CLAIM</b> → solde disponible
-       → <b>UNSTAKE</b> : tout si échu, moitié du principal si anticipé
+       → <b>UNSTAKE</b> : tout, à tout moment
 </pre></div>
 
 <h3>Manche de jeu</h3>

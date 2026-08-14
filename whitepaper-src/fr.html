@@ -823,7 +823,7 @@ support.
   <thead><tr><th>Solde</th><th>Ce que c'est</th><th>Jouable</th><th>Retirable</th></tr></thead>
   <tbody>
     <tr><td><strong>Disponible</strong></td><td>Ce qui n'est engagé nulle part</td><td>Oui</td><td>Oui, au-dessus du minimum</td></tr>
-    <tr><td><strong>En staking</strong></td><td>Principal verrouillé, par position, chacune avec sa date</td><td>Non</td><td>Non, sauf sortie anticipée avec pénalité de 50 %</td></tr>
+    <tr><td><strong>En staking</strong></td><td>Principal placé dans le coffre, par position</td><td>Non</td><td>Oui — on sort quand on veut, en entier, puis on retire</td></tr>
     <tr><td><strong>Rendement en cours</strong></td><td>Accumulé à la seconde, non encore réclamé</td><td>Non</td><td>Non — il faut le réclamer d'abord</td></tr>
     <tr><td><strong>Parrainage mûr / en attente</strong></td><td>Les gains mûrissent 7 jours avant d'être réclamables</td><td>Non</td><td>Non tant qu'il n'est pas réclamé</td></tr>
     <tr><td><strong>Cadeau bloqué</strong></td><td>Le cadeau de bienvenue tant que la maison ne l'a pas gagné</td><td>Oui</td><td>Non</td></tr>
@@ -996,15 +996,15 @@ immédiatement. Voir <a href="#s26">section 26</a>.
 <h3>Paramètres en production</h3>
 <div class="grid3">
   <div class="stat"><span>Taux annuel</span><b>100 %</b><i>paramètre actuel, modifiable — ce n'est pas un engagement</i></div>
-  <div class="stat"><span>Verrou</span><b>365 jours</b><i>par position, chacune avec sa propre date</i></div>
-  <div class="stat"><span>Sortie anticipée</span><b>−50 %</b><i>du principal encore verrouillé</i></div>
+  <div class="stat"><span>Verrou</span><b>aucun</b><i>on sort à tout moment</i></div>
+  <div class="stat"><span>Sortie</span><b>libre</b><i>tout le principal revient, plus le rendement couru</i></div>
   <div class="stat"><span>Plafond global</span><b>20 %</b><i>de l'offre, soit 200 000 000, tous joueurs confondus</i></div>
   <div class="stat"><span>Minimum</span><b>aucun</b><i>toute somme peut être mise</i></div>
-  <div class="stat"><span>Rendement</span><b>à la seconde</b><i>réclamable à tout moment, sans attendre le déverrouillage</i></div>
+  <div class="stat"><span>Rendement</span><b>à la seconde</b><i>réclamable à tout moment, sans rien attendre</i></div>
 </div>
 <p>
-Le rendement court dès la première seconde et se réclame quand on veut, même verrouillé.
-Seul le <em class="q">principal</em> est bloqué.
+Le rendement court dès la première seconde et se réclame quand on veut. Le
+<em class="q">principal</em> n'est bloqué à aucun moment : il ressort en entier, le jour où on le demande.
 <span class="chip ok">Confirmé</span>
 </p>
 
@@ -1063,7 +1063,7 @@ que le revenu peut porter.
    ├── plein ────────▶ refus, avec le chiffre exact qui reste
    │
    ▼
-<b>POSITION OUVERTE</b>  <i>principal + date d'ouverture + date de déverrouillage</i>
+<b>POSITION OUVERTE</b>  <i>principal + date d'ouverture</i>
    │
    ▼
 <b>RENDEMENT À LA SECONDE</b>
@@ -1071,11 +1071,9 @@ que le revenu peut porter.
    ├──▶ <b>CLAIM</b> ──▶ solde disponible ──▶ rejouer, remettre en staking, ou retirer
    │
    ▼
-<b>DÉVERROUILLAGE À 365 JOURS</b>
+<b>SORTIE — QUAND ON VEUT</b>
    │
-   ├── avant terme ──▶ <b>UNSTAKE</b> : 50 % du principal verrouillé restent à la maison
-   │
-   └── après terme ──▶ <b>UNSTAKE</b> : tout revient, plus le rendement accumulé
+   └──▶ <b>UNSTAKE</b> : tout le principal revient, plus le rendement accumulé
 </pre></div>
 <p>
 Le contrôle du plafond passe <strong>avant</strong> le débit du solde. Un refus placé
@@ -1146,10 +1144,9 @@ deux surestime la rareté réelle.
 <div class="wrap"><table>
   <thead><tr><th>Mécanisme</th><th>Type</th><th>Réversible</th><th>État</th></tr></thead>
   <tbody>
-    <tr><td>Verrou de staking, 365 jours</td><td>Sink</td><td>Oui, à l'échéance</td><td><span class="chip ok">Confirmé</span></td></tr>
+    <tr><td>Staking</td><td>Sink tant qu'il dure</td><td>Oui, à tout moment</td><td><span class="chip ok">Confirmé</span> — tenu volontairement, pas verrouillé</td></tr>
     <tr><td>Mises en jeu</td><td>Circulation</td><td>—</td><td>Ni sink ni burn : la mise revient au joueur à 97 %</td></tr>
     <tr><td>Réserve du jackpot</td><td>Sink</td><td>Oui, quand il tombe</td><td><span class="chip ok">Confirmé</span></td></tr>
-    <tr><td>Pénalité de sortie anticipée</td><td>Sink</td><td>Reste à la maison</td><td><span class="chip ok">Confirmé</span></td></tr>
     <tr><td>Frais de retrait</td><td><strong>Burn</strong></td><td>Non</td><td><span class="chip ok">Confirmé</span></td></tr>
     <tr><td>Cosmétiques payants : cadres, avatars, couleurs de nom</td><td>Sink ou burn selon la destination</td><td>—</td><td><span class="chip pro">Proposé</span> — dix cadres de palier existent déjà, gagnés au niveau ; les vendre serait un sink net</td></tr>
     <tr><td>Inscription aux tournois</td><td>Circulation + sink partiel</td><td>—</td><td><span class="chip def">À définir</span></td></tr>
@@ -1586,8 +1583,8 @@ qu'une répartition imparfaite mais publiée.
 </table></div>
 <p>
 <strong>Évolution de l'offre en circulation :</strong> l'offre totale est fixe et ne peut
-que baisser. Deux forces la réduisent : le burn, définitif, et le verrou de staking,
-temporaire. Une courbe projetée n'aurait de sens qu'après publication de la table
+que baisser. Deux forces la réduisent : le burn, définitif, et le staking,
+temporaire — ce qui y est tenu l'est volontairement, et peut ressortir à tout moment. Une courbe projetée n'aurait de sens qu'après publication de la table
 d'allocation et du calendrier de déblocage.
 <span class="chip def">À définir</span>
 </p>
@@ -1601,7 +1598,6 @@ d'allocation et du calendrier de déblocage.
     <tr><td>Avantage de la maison</td><td>3 % de chaque mise contre la banque</td><td><span class="chip ok">Actif</span></td></tr>
     <tr><td>Rake 1v1 et poker</td><td>5 % du pot</td><td><span class="chip ok">Actif</span></td></tr>
     <tr><td>Protocole launchpad</td><td>1 % de chaque achat et vente sur les jetons lancés</td><td><span class="chip ok">Actif</span></td></tr>
-    <tr><td>Pénalités de sortie anticipée</td><td>50 % du principal encore verrouillé</td><td><span class="chip ok">Actif</span></td></tr>
     <tr><td>Publicité récompensée</td><td>Revenu annonceur, partagé avec le joueur</td><td><span class="chip ok">Actif</span></td></tr>
     <tr><td>Frais de création de jeton</td><td>Paramétrable, actuellement nul</td><td><span class="chip ok">Disponible</span></td></tr>
     <tr><td>Cosmétiques</td><td>—</td><td><span class="chip pro">Proposé</span></td></tr>
@@ -2003,10 +1999,10 @@ juridiction visée. Aucun n'est tranché.
 <div class="flow"><pre>
 <b>JOUEUR</b> → jauge de la salle affichée → montant
        → contrôle du plafond <i>avant tout débit</i>
-       → <b>POSITION</b> (principal + date d'ouverture + déverrouillage à 365 j)
+       → <b>POSITION</b> (principal + date d'ouverture)
        → rendement à la seconde
        → <b>CLAIM</b> → solde disponible
-       → <b>UNSTAKE</b> : tout si échu, moitié du principal si anticipé
+       → <b>UNSTAKE</b> : tout, à tout moment
 </pre></div>
 
 <h3>Manche de jeu</h3>

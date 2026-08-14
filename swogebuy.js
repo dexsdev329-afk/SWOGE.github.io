@@ -192,7 +192,21 @@
       '.swb-x button{flex:1 1 30%;min-width:0;padding:5px 3px;font-size:11px;font-weight:700;' +
       'border-radius:8px;border:1px solid rgba(160,160,190,.32);background:rgba(0,0,0,.28);' +
       'color:#CFCADF;cursor:pointer;}' +
-      '.swb-x button:hover{background:rgba(160,160,190,.16);}';
+      '.swb-x button:hover{background:rgba(160,160,190,.16);}' +
+      /* `.swb .swb-c` et pas `.swb-c` : les pages habillent leurs etiquettes
+         par `.box label{...}` — majuscules, lettres espacees, centrees — et
+         une regle a deux crans bat une regle a un cran. Sans ce poids, la case
+         se retrouvait seule sur sa ligne, au milieu, en capitales. */
+      '.swb label.swb-c{display:flex;align-items:center;gap:7px;margin:8px 0 0;padding:0;' +
+      'font-size:11.5px;font-weight:500;line-height:1.35;color:#C9C2B2;cursor:pointer;' +
+      'user-select:none;text-transform:none;letter-spacing:normal;text-align:left;}' +
+      '.swb label.swb-c input{width:14px;height:14px;flex:none;margin:0;padding:0;cursor:pointer;}' +
+      /* Le texte va dans un <span> a lui. Les pages habillent leurs etiquettes
+         par `#box-dep label{...}` — un identifiant, qu'aucune combinaison de
+         classes ne rattrape. Un span a l'interieur n'est vise par personne, et
+         c'est la seule facon d'en sortir sans surenchere de `!important`. */
+      '.swb .swb-ct{flex:1;text-align:left;text-transform:none;letter-spacing:normal;' +
+      'font-size:11.5px;font-weight:500;line-height:1.35;color:#C9C2B2;}';
     document.head.appendChild(css);
   }
 
@@ -219,6 +233,8 @@
           '<button data-eth="max">MAX</button>' +
         '</div>' +
         '<div class="swb-q" id="swbCote">Enter an amount to see the price.</div>' +
+        '<label class="swb-c"><input type="checkbox" id="swbAuto" checked>' +
+        '<span class="swb-ct">and send it straight into the game</span></label>' +
         '<button class="swb-go" id="swbGo">Buy $SWOGE</button>' +
         '<div class="swb-x" id="swbAilleurs">' +
           '<p>No ETH on Robinhood Chain? Bring it from another chain — arrives in ' +
@@ -404,8 +420,46 @@
       if (!w) {
         dis('Connect your wallet first and press again — otherwise you have to ' +
             'retype your address over there, and that is the one step where money gets lost.');
+        return;
       }
+      guette(w.adresse);
     }).catch(function () { window.open(RELAY, '_blank', 'noopener'); });
+  }
+
+  /* ---------------------------- L'ARRIVEE
+   *
+   * Le pont met trois secondes, mais le joueur, lui, revient sur cet onglet
+   * sans savoir si c'est arrive. Sans rien, il rafraichit la page, retape un
+   * montant, se demande. On regarde donc son solde a sa place : des que l'ETH
+   * tombe, le panneau le dit et remplit le champ tout seul.
+   *
+   * On ne guette QU'APRES un clic sur une provenance — pas en permanence.
+   * Interroger la chaine toutes les six secondes pour tout le monde, tout le
+   * temps, serait du trafic pour rien. */
+  var guet = null;
+  function guette(addr) {
+    if (guet) clearInterval(guet.minuterie);
+    lecteur().getBalance(addr).then(function (depart) {
+      var fin = Date.now() + 20 * 60000;      // vingt minutes, puis on lache
+      guet = { minuterie: setInterval(function () {
+        if (Date.now() > fin) { clearInterval(guet.minuterie); guet = null; return; }
+        lecteur().getBalance(addr).then(function (b) {
+          if (b.lte(depart)) return;
+          clearInterval(guet.minuterie); guet = null;
+          var arrive = b.sub(depart);
+          rafraichitSoldes(addr);
+          reserveGaz().then(function (gaz) {
+            var utile = b.sub(gaz);
+            if (utile.gt(0)) champ.value = trim(ethers.utils.formatEther(utile), 6);
+            dis('✅ <b>' + trim(ethers.utils.formatEther(arrive), 6) + ' ETH</b> just landed. ' +
+                'The amount is filled in — press Buy.');
+            /* Le panneau peut avoir ete referme entre-temps : on le rouvre,
+               sinon l'annonce s'affiche derriere un rideau. */
+            if (corps) corps.classList.remove('plie');
+          });
+        }).catch(function () {});
+      }, 6000) };
+    }).catch(function () {});
   }
 
   /* -------------------------------------------------------------------- l'achat */
@@ -472,9 +526,28 @@
               'Check the explorer before trying again.');
           return;
         }
+        remplitDepot(recu);
+        /* ---- ET ON ENCHAINE.
+         *
+         * Acheter puis deposer, c'etaient deux ecrans et deux decisions pour
+         * un seul geste : « je veux jouer avec ». Le panneau remplit le champ
+         * puis actionne le bouton de depot DE LA PAGE — pas une copie de sa
+         * logique. Le coffre, son ABI, le signataire, l'approbation : tout ca
+         * appartient a la page, qui le fait bien, et une deuxieme
+         * implementation serait une deuxieme facon de se tromper d'adresse.
+         *
+         * La case est cochee d'avance, mais elle est VISIBLE et elle se
+         * decoche : on ne declenche pas une depense que le joueur n'a pas vue
+         * venir. */
+        var auto = $('swbAuto');
+        if (auto && auto.checked && $('depGo')) {
+          dis('✅ Bought <b>' + fmtBig(recuN) + ' $SWOGE</b> — sending it into the game now. ' +
+              'Your wallet will ask once or twice more.');
+          setTimeout(function () { try { $('depGo').click(); } catch (e) {} }, 350);
+          return;
+        }
         dis('✅ Bought <b>' + fmtBig(recuN) + ' $SWOGE</b> — the deposit amount below is ' +
             'filled in. Press Deposit to play with it.');
-        remplitDepot(recu);
       });
     }).catch(function (e) {
       var m = String(e && (e.reason || (e.data && e.data.message) || e.message) || e);

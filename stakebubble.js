@@ -1032,8 +1032,14 @@
     var d = document.createElement('div');
     d.className = 'swp-r' + (moi ? ' moi' : '');
     var med = r.rang === 1 ? '🥇' : r.rang === 2 ? '🥈' : r.rang === 3 ? '🥉' : '#' + r.rang;
+    /* Le prix qui revient a cette place, s'il y en a un. Un classement sans
+       enjeu se regarde une fois ; avec le montant en face, on y revient. */
+    var gagne = ((CLASSEMENT && CLASSEMENT.prix && CLASSEMENT.prix.gagnants) || [])
+      .filter(function (g) { return g.rang === r.rang; })[0];
     d.innerHTML = '<span class="rg">' + med + '</span><div class="av"></div>' +
-      '<div class="w"><b>' + ech(r.name || court(r.address)) + (moi ? ' — you' : '') + '</b></div>' +
+      '<div class="w"><b>' + ech(r.name || court(r.address)) + (moi ? ' — you' : '') + '</b>' +
+      (gagne && gagne.prix > 0 ? '<span class="su">🏆 ' + nb(gagne.prix, 0) + ' $SWOGE if the month ended now</span>' : '') +
+      '</div>' +
       '<div class="v"><b>' + nb(r.mise, 0) + '</b><span>$SWOGE played</span></div>';
     peintVisage(d.querySelector('.av'), r);
     return d;
@@ -1057,8 +1063,14 @@
 
     var e = document.createElement('div');
     e.className = 'swp-ex';
+    var pr = C.prix || {};
     e.innerHTML = 'Ranked on <b>volume played this month</b>, not on winnings — luck moves winnings, ' +
-                  'volume is what you actually did. It resets when the month does.';
+      'volume is what you actually did. It resets when the month does.' +
+      (pr.cagnotte > 0
+        ? '<br><br>🏆 <b>' + nb(pr.cagnotte, 0) + ' $SWOGE</b> in the pot right now — ' +
+          pr.part + '% of everything the house makes this month, shared between the top ' +
+          (pr.gagnants || []).length + ' when it ends. It grows with every round played.'
+        : '');
     l.appendChild(e);
 
     if (!C.top.length) {

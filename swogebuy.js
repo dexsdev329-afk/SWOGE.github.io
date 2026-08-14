@@ -315,8 +315,7 @@
           'arrives in seconds, straight to your address.</p>' +
           '<div>' +
             bouton6('sol', 'Solana') + bouton6('eth', 'Ethereum') +
-            bouton6('base', 'Base') + bouton6('tron', 'USDT · TRON') +
-            bouton6('autre', 'Other chain') +
+            bouton6('base', 'Base') +
           '</div>' +
           '<div class="swb-pont" id="swbPont" style="display:none">' +
             '<div class="swb-r"><input id="swbPontAmt" inputmode="decimal" placeholder="0">' +
@@ -357,6 +356,13 @@
     choisitDevise('swoge');
     montreTaux();
     lisSoldes();
+    /* Le guet tourne DES L'OUVERTURE, pas seulement apres un clic sur une
+       provenance. Le joueur peut avoir demande son adresse de depot hier, ou
+       s'etre fait envoyer de l'ETH par un ami, ou avoir recharge la page
+       pendant que le pont livrait : dans tous ces cas son ETH arrive sans que
+       personne ne regarde, et il se retrouve devant un panneau qui n'a rien
+       remarque. */
+    portefeuille().then(function (w) { if (w) guette(w.adresse); }).catch(function () {});
     return true;
   }
 
@@ -576,17 +582,24 @@
    */
   var RELAY = 'https://relay.link/bridge/robinhood';
   var NATIF = '0x0000000000000000000000000000000000000000';
-  /* Le bitcoin a ete retire : aucune route vers Robinhood Chain, a aucun
-     montant — quatre tailles essayees, toutes refusees par « no routes found ».
-     Un bouton qui echoue toujours est pire que pas de bouton, le joueur croit
-     que c'est lui qui s'y prend mal. « Other chain » reste : Relay en dessert
-     soixante autres, et il ouvre le choix complet. */
+  /* TROIS PROVENANCES, ET RIEN D'AUTRE. Chacune a rendu une vraie adresse de
+     depot sur la production ; les trois qui manquaient ont ete retirees parce
+     qu'elles ne le pouvaient pas :
+   *
+       • le bitcoin : aucune route, a aucun montant ;
+       • le TRON : le repere de repli n'est pas accepte pour sa machine
+         virtuelle, et on n'a pas d'adresse TRON du joueur a mettre a la place ;
+       • « Other chain » : il ouvrait le choix complet chez Relay, donc aussi
+         les soixante chaines dont on ne sait pas si elles aboutissent. Envoyer
+         quelqu'un choisir une provenance qui echouera ensuite est pire que ne
+         pas la proposer.
+   *
+     Un bouton qui echoue toujours est pire que pas de bouton : le joueur croit
+     que c'est lui qui s'y prend mal. */
   var DEPUIS = {
     sol:   { chaine: 792703809, jeton: '11111111111111111111111111111111', unite: 'SOL' },
     eth:   { chaine: 1,         jeton: NATIF, unite: 'ETH' },
     base:  { chaine: 8453,      jeton: NATIF, unite: 'ETH' },
-    tron:  { chaine: 728126428, jeton: 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t', unite: 'USDT' },
-    autre: null
   };
 
   var pontCle = null;
@@ -724,13 +737,19 @@
        sienne — l'annonce se perdait, silencieusement. */
     if (guet !== null) { clearInterval(guet); guet = null; }
     lecteur().getBalance(addr).then(function (depart) {
-      var limite = Date.now() + 20 * 60000;        // vingt minutes, puis on lache
+      /* Deux heures. Le guet ne coute qu'une lecture de solde toutes les six
+         secondes, et un joueur qui laisse l'onglet ouvert pendant qu'il retire
+         depuis un echange revient bien apres vingt minutes. */
+      var limite = Date.now() + 120 * 60000;
       var id = setInterval(function () {
         if (Date.now() > limite) { clearInterval(id); if (guet === id) guet = null; return; }
         lecteur().getBalance(addr).then(function (b) {
           if (b.lte(depart)) return;
-          clearInterval(id); if (guet === id) guet = null;
           var arrive = b.sub(depart);
+          /* On NE S'ARRETE PAS : le pont peut livrer en deux fois, et un joueur
+             qui recharge sa poche deux fois de suite doit le voir deux fois.
+             On repart simplement du nouveau solde. */
+          depart = b;
           rafraichitSoldes(addr);
           reserveGaz().then(function (gaz) {
             /* C'est de l'ETH qui arrive : on bascule sur l'onglet ETH avant de
@@ -928,7 +947,6 @@
     sol: 'data:image/webp;base64,UklGRtgDAABXRUJQVlA4WAoAAAAQAAAAIwAAIwAAQUxQSA8BAAABgFtr25vmVRwAtyrRJoSSJdyRWYDObV7DlT2DK9NROYcFyOkPX/FL4vv+CSKCkds2jiBr+55SHgGPhEKKerlGltdzPvUMQIzBVmnDRtGiIEmwtO8U1JYsE9J230CCoZONoUMbCbp0EvyhnTGmJKIo3r6+vtl8fc5bTiCRkJaqGoUi4hheCADg+u6Bz/39VQ0RgBnJeL1wiR5pp/gciwmSZzoRH1VIKM+sBhRyVHz29FJI+kQy/gGESC7H4wmX8XjULRbIC5GwE6LSOKaJBGeM1vxT0plfb872gWRMi0qm5ERdJE4jmFhNQyRo7K1mT6xzgBidHVmSMEQMLEgJ/lBbdw1koiWUZ542mZ+t6A8AAFZQOCCiAgAAMA8AnQEqJAAkAD4xFodCoiELjgMyEAGCWwAnTKEcDeHfkd+IHyCVX+W/fz8eMuubg9R/476DP1n+Yn9Wf2K97X+5dQB0i3oAeV5+3fwe/tb6SLRAqfT0pqAH65Eyprs4gvqjAZjuyHXQeNFsdJxDgjhmbj6dvVbjhV9aWwoETU+gAAD+w97FpzO96hrpStx7tD+Azqa56bxK/VDHoQbR3UQ3iISaC1sQLMRwq/+TaLXnc6YjoZ5QriqcwmOzjlkP/yr2Tn8H0PhZ4ev1x3G99iASrFS8pHvDdH3d9BNiswzepaixyRyQcqIhVGwJmKjvdJ0MgnYlnsMAJ4CZ+U3PuXzUlsc6m0DZb7TN7AJ4bvinSf0tiEEcTker/8GdeDCwNse7wOqvw1mEC7RvJajsXtR8pKK2I30iIh4jSXZ9m7Z46bjy72OF2h1s8hi//xi/Ic5X4qf8xSe+JBroQX+RX5qM3j0c55x1QZ2egwX1NVg0thCM3yxQApGJgs75xfzq0nxkJrgQvAZhDhwTipr3aL/tFvidK0WHodk1IMIvXVNlKDYFizv1FDF7ETXrDr3ad5omtCrt2OkV0QAxJ+L0Nfv3mv+0/9aq+HxxZtH9eddUdQoGbHQrWJj5kcvCdacNlDDIUofJsT+7+FEODBuULUlV/csMgTWEnHlFT1A+DJPegZPEomcm2HWbIzjMmR93gZPo9ravugY1NnWDVuW6LPb3GOuZ5FVpZW8ChJZQX2ObYK+7RkpGlly5ay10S4cR/+tP78pLadeZvzfBc3kaMBNRAA7YYwKaFRh4LrJW0iZYhcaHqBPcZGtNNuMa+ChVUAj8l9QIC0v/PkDfnneZqky8P/7eZZzLYY3wv2CoRCaN/gttWmb/+R4kCfttklnAAAA=',
     eth: 'data:image/webp;base64,UklGRkIEAABXRUJQVlA4WAoAAAAQAAAAIwAAIwAAQUxQSB4BAAABgFxbe+Lmk2SuwOMeqI7Q2tCG42IcFxFYM2eJxjLCieb/gvLoryAiGLhtpChdPMY8Av/iALT627NHkcfZdr/551KWxDjkuwfvDOTtsJeHM0EssHFD0qfyi6Se5M0GYIO1PCS9l1Aj3pPDMmyg1i7pUy5N6nlZg/1XkzE/mCkfHCd/inHl69+atVyXnQEcRr81exnBwWGFn4zIJ1fgTGEsaQypTIoGHXpGxbMDcyKxyJGpfzA6740BfSyegz0N9haUWITzRyrkUTQQHXQmc5VNVA60O9Bgs6HxDdTNcfy3dGzQVvkmi5PYb3tcMDr/SPy/tgWn9c/Cohrz71dDgsjukAQ23kUVWBWnLXVjb/8t6Mb9bsiNYcc2Q45tBR0LVlA4IP4CAAAwEgCdASokACQAPjEUh0KiIQuOAzIQAYJbACdOUF+AcQpEPon4k/kz03vL0LJ7jyr/pumBtoPMB+sf9A9VX1O+TB1gHoQfsZ6Yf7K/B3+2Po+//95T/wGZSx082L/53lQ+lf9n7gX6p/7j1meod/UAkgnRhE0M38vV9IMMYhLPfpdmUAkiKe5MUmRvXJ2KaxMfOAKlBAHd6V/gAPnqh6btdhs297EyTOYT/hRX8PRzNJCbWijRHE95An43eLvio1UHSSn4TWuYD5XYiPiyg/rfirTVcN8ueOhwXa6rYW+1Eb0jcZ0/8hZHlgvLBfn6hIuA5CjslmOFk7uOR1aldF02+MK0HDPIrpNumL75ygTetKP6qbx8j+16Uvn5+9K3219x85gRJNLfxjFfWxBt7lRcR7lZSmQ+h8cUU+/Y46VfKvRD5wZyRJAXv2DquizMCdhMT414TzquMDP1qfTqfPHcJ/mziHtetiysusqIK5N/8FACEJzUSXc/8ZS4bFNWGCGMMMIEOz40tBoN2unvUsmOHfmbLnMqGwjTm/bOMGFG360xNc6lbxrA6FX/RWEIf+dt8mixS1jDZDC4eXZ5ibWU5zCLKtK1n9IP9hANX8QFmKL1jGUANxanyUZ8ZfzQnFF0pxlhnz7tKBb0bNayC0rNUOCmT43cNVO7Tu8rOsngkqXCrzSiSlHTZjEKsOQoCrYEhpPyshjs6735QI8y0B/9Fbmkk+//XxOcIf/3lp7onsQXW2Xpe0XFyyCwChvHSw7afXmiSLtkAyHsXj4oC/E4Su0Uo1H0fh+698RHGuyI2eb3ywagw3jv91/VDXq7E64ffMXmvz2L1X9NDGPyhgPjifSZDk2u6xkSfebzEY6DKP2a3KKEwGJZGWLKTt145Qo8CiL/iREknt6HXGyPMi1jz7TdWtdiEGbs5jEw1XD1yQ200dH2G5QSz2x/9Dgd6FshxYeON9wZ8j6Q5p2sA47kgAgvg7vDSRtk1WnnJJ68pRnL/9w0bk+3GvrtgAAA',
     base: 'data:image/webp;base64,UklGRugAAABXRUJQVlA4WAoAAAAQAAAAIwAAIwAAQUxQSH0AAAABcBzbrtM8UCMMVVABtvuMFcRi4o6hBEn/OdvS0quIUNq2AdPBSpsjAAFm86PxB9txPnvZQtBuGPCmhUDQDXQvv6m4c+ggVTNSGbBybKr68Gwsh7qnMWhjvy5xlfWVJarCqzPBzr+hPaU5X8v5bM73cxiSw6IcpuWwMYWxAABWUDggRAAAAJADAJ0BKiQAJAA+MRiLRCIhoRHEACADBLOAOwB+AAAc1HqlBAAA/v1jx///wsz+DMfwsz/4WZ//8KtwxDKzhIIAAAAA',
-    tron: 'data:image/webp;base64,UklGRv4DAABXRUJQVlA4WAoAAAAQAAAAIwAAIwAAQUxQSJkCAAABoLRtmyHJHtAbFTm2bdu2bXtmZdu2tcTa9s62rWNbVRHxvYPIzL5ORDBw20jRdPZo4GjaRyAKOkAEAo00IZEAdMXu4+fPH9+jov78HGkwDdTb8lToQZ5tqQfEXlQKdY6SpDWfYEnyaB0oFZ0GLE1RjAtvnBGapQqJyJXtBMUyBlZ4MnuEK5XtClPCWEiKV7KFgkqr00xa6yT+QoqnlfZcYwlT9OG8TCcS9iXQn5NUdWvk1z3nn3xvoiNe0NrqKgEkcJJG/ikCnSlz6aYDZ2zdf+nFT/+R4peehIZGLXE0XKdU8ZENimeBh2J1ltAKSSe1oANso6HjuwyBXkX++9OLywe2Lc4OzKIR0nArAhW8pCMtO2Sdhs6/0cMGLF+IOZ/d8WWgUMGRpJGjOHgG5Z/wv/84HdPI0ZhN71IFoActSeG/uSvzeoEMJ8jZWEWSwzE35WjZA5hA4+04DXf4VQNsX4yht3fP71utVAYcpTWcAMz3zfIRpgj/GwwfBToVx4h/nRjOjzA61sr1jyVr5B6xZP/9H3gxU3tHoWcTQma4E0doXb4+/Iwbqtqf4shPJ6EUL/mXjO3IXzHb/Jvkq9zFvqEjvRS/kR8enHjHp9jFJH8un/Vx6JldBXj/LmQXsELO4hxNshku+K/u+CJQAbaGAhRbohh345VjfxygIRmaAX+WQs+xEs/XqN84BTu85w3PEjROht+Y7zF1XB5uwLzPK2Im/dm2EvJWuUv1OYlRNMKo2Y7hiJH9QB3dTmw0R0JcO+W78M9CCdT8U1x4nVJaxXLWcCrKfkMXzdl47lu5VuAJbZj7J7LFCASW+Bryzwu6CA0BErFadMRvkozWorRo2uYITXvqaVpatbFC9/Hz5o3rHquN/4vGAgBWUDggPgEAADALAJ0BKiQAJAA+MRKHQqIhDVVXVBABglqAKS5eP6r+IHV2eI5f+HP6k8a53E/XT+jZhhrt+JPYA8Rj7AO0B5gP1V/QDfZutV9AD9VfSQ9hr9rPUN/kYER9f8PjIzhCApKYAP73iUZkgmRNh0fnLxTimr5jT+/Juz4XH/uGzEvGMUWfzG7Bco5HBt6HdEO5gylVfRPKTqV1L/6tohueyoIf/50M4vKxdjyKYErLz13zBvDZAwkPuK3DMk26M5z2hFM9rWSDVjgmCgXuhmD1H4rkFpFLNdvUdcKo2Qurj9h6mBixwV/uKxS0vMjb5vpnf/WoancNJTDN26WWUBK0fo3lUL8KRX8cUWR3gImM7XIxCPWVDwMfCPw6JmC2FIXD8Uu/oOVSTBKQe6kmvzZcHNwRLx6/3Dn+SVrAAAAAAA=='
   };
 
   if (document.readyState === 'loading')

@@ -101,7 +101,7 @@
   function connecteSeul() {
     if (document.getElementById('bal')) return;      // la page a deja sa socket
     var jeton = jetonRange();
-    if (!jeton) return ecouteAnonyme();              // jamais connecte : il regarde
+    if (!jeton) { poseConnexion(); return ecouteAnonyme(); }   // jamais connecte
     var w;
     try { w = new window.WebSocket(adresseServeur()); } catch (e) { return; }
     w.addEventListener('message', function (ev) {
@@ -117,6 +117,177 @@
       }
     });
     w.addEventListener('close', function () { setTimeout(connecteSeul, 5000); });
+  }
+
+  /* ===================== SE CONNECTER DEPUIS UNE PAGE SANS FORMULAIRE
+   *
+   * Le catalogue et l'accueil n'ont pas de socket a eux, donc pas de bouton de
+   * connexion : on n'y voyait ni « Connect wallet » ni l'entree par e-mail. Un
+   * joueur qui arrive par la — c'est la page d'entree du site — n'avait
+   * AUCUNE facon de se connecter sans deviner qu'il faut d'abord ouvrir un
+   * jeu. Le bouton est donc pose ici, une fois, pour toutes les pages qui n'en
+   * ont pas.
+   *
+   * Il ne recopie pas le formulaire des pages de jeu : il fait le strict
+   * necessaire — signer le nonce, echanger une session, la ranger — et
+   * recharge. La page se retrouve alors dans l'etat d'un retour de joueur
+   * connu, chemin deja parcouru mille fois.
+   */
+  var PRIVY_APP_ID = 'cmsga0yzp00a50biaf9vlzzd2';
+  var conBoite = null;
+
+  function styleConnexion() {
+    if (document.getElementById('swcon-css')) return;
+    var c = document.createElement('style');
+    c.id = 'swcon-css';
+    c.textContent =
+      '.swcon{display:inline-flex;align-items:center;gap:6px;vertical-align:middle;' +
+      'margin-left:8px;padding:7px 13px;border-radius:999px;cursor:pointer;' +
+      'font-family:inherit;font-size:12px;font-weight:800;color:#231a06;' +
+      'border:0;background:linear-gradient(180deg,#F2C868,#E6A537);}' +
+      '.swcon-ov{position:fixed;inset:0;z-index:9999;display:none;align-items:center;' +
+      'justify-content:center;padding:16px;background:rgba(4,6,12,.72);}' +
+      '.swcon-ov.on{display:flex;}' +
+      '.swcon-b{width:min(360px,100%);border-radius:16px;padding:18px;' +
+      'background:#0E1422;border:1px solid rgba(255,197,61,.28);color:#EAF2FF;' +
+      'font-family:inherit;box-shadow:0 24px 60px rgba(0,0,0,.6);}' +
+      '.swcon-b h4{margin:0 0 4px;font-size:15px;}' +
+      '.swcon-b p{margin:0 0 14px;font-size:11.5px;line-height:1.5;color:#8DA0C4;}' +
+      '.swcon-b button{width:100%;margin-top:8px;padding:11px;border-radius:11px;' +
+      'cursor:pointer;font-family:inherit;font-size:13px;font-weight:800;border:0;}' +
+      '.swcon-b .w{color:#231a06;background:linear-gradient(180deg,#F2C868,#E6A537);}' +
+      '.swcon-b .e{color:#EAF2FF;background:rgba(255,255,255,.08);' +
+      'border:1px solid rgba(255,255,255,.16);}' +
+      '.swcon-b input{width:100%;margin-top:8px;padding:11px;border-radius:11px;' +
+      'font-family:inherit;font-size:13px;color:#EAF2FF;background:rgba(0,0,0,.35);' +
+      'border:1px solid rgba(255,255,255,.16);}' +
+      '.swcon-b .m{margin-top:10px;font-size:11.5px;line-height:1.45;color:#F2C868;}' +
+      '.swcon-b .x{margin-top:12px;background:transparent;color:#8DA0C4;font-weight:600;' +
+      'font-size:11.5px;}';
+    document.head.appendChild(c);
+  }
+
+  function poseConnexion() {
+    if (document.querySelector('.swcon') || document.getElementById('bal')) return;
+    var barre = document.querySelector('nav');
+    if (!barre) return;
+    styleConnexion();
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'swcon'; b.textContent = '🔑 Sign in';
+    b.onclick = ouvreConnexion;
+    barre.appendChild(b);
+  }
+
+  function dialogue() {
+    if (conBoite) return conBoite;
+    conBoite = document.createElement('div');
+    conBoite.className = 'swcon-ov';
+    conBoite.innerHTML =
+      '<div class="swcon-b">' +
+        '<h4>Sign in</h4>' +
+        '<p>Your balance, your level and your friends follow you across every game.</p>' +
+        '<button class="w" data-a="w">Connect wallet</button>' +
+        '<button class="e" data-a="e">✉️ Continue with email</button>' +
+        '<div class="mail" style="display:none">' +
+          '<input class="em" type="email" inputmode="email" placeholder="you@example.com">' +
+          '<button class="e" data-a="send">Send me a code</button>' +
+          '<input class="cd" inputmode="numeric" placeholder="6-digit code" style="display:none">' +
+          '<button class="e cdb" data-a="check" style="display:none">Sign in</button>' +
+        '</div>' +
+        '<div class="m"></div>' +
+        '<button class="x" data-a="x">Cancel</button>' +
+      '</div>';
+    document.body.appendChild(conBoite);
+    conBoite.addEventListener('click', function (e) {
+      if (e.target === conBoite) return fermeConnexion();
+      var a = e.target.getAttribute && e.target.getAttribute('data-a');
+      if (a === 'x') return fermeConnexion();
+      if (a === 'w') return parPortefeuille();
+      if (a === 'e') { conBoite.querySelector('.mail').style.display = ''; conBoite.querySelector('.em').focus(); }
+      if (a === 'send') return envoieCode();
+      if (a === 'check') return verifieCode();
+    });
+    return conBoite;
+  }
+  function ouvreConnexion() { dialogue().classList.add('on'); }
+  function fermeConnexion() { if (conBoite) conBoite.classList.remove('on'); }
+  function conDit(t) { if (conBoite) conBoite.querySelector('.m').textContent = t; }
+
+  /* Le nonce, la signature, la session. Le serveur n'a pas d'autre porte : la
+     meme que celle des pages de jeu, exactement le meme message signe. */
+  function ouvreSession(signe, adresse) {
+    conDit('Opening your session…');
+    var w;
+    try { w = new window.WebSocket(adresseServeur()); } catch (e) { return conDit('Cannot reach the server.'); }
+    var fait = false;
+    w.addEventListener('message', function (ev) {
+      var m; try { m = JSON.parse(ev.data); } catch (e) { return; }
+      if (m.type === 'hello') {
+        var texte = 'SWOGE Pusher login\nnonce: ' + m.loginNonce;
+        signe(texte).then(function (sig) {
+          w.send(JSON.stringify({ type: 'login', message: texte, signature: sig,
+                                  name: String(adresse).slice(0, 6) }));
+        }).catch(function (e) { conDit(String(e && e.message || e).slice(0, 90)); try { w.close(); } catch (x) {} });
+      } else if (m.session) {
+        fait = true;
+        try { localStorage.setItem('swogeSession', m.session); } catch (e) {}
+        try { localStorage.setItem('swogeAuth', signe.mode || 'wallet'); } catch (e) {}
+        conDit('Signed in. Reloading…');
+        setTimeout(function () { location.reload(); }, 400);
+      } else if (m.type === 'error') { conDit(String(m.error).slice(0, 110)); }
+    });
+    w.addEventListener('close', function () { if (!fait) conDit('Connection closed before signing in.'); });
+  }
+
+  function parPortefeuille() {
+    var eth = window.ethereum;
+    if (!eth) return conDit('No wallet found in this browser — use the email option.');
+    conDit('Check your wallet…');
+    eth.request({ method: 'eth_requestAccounts' }).then(function (cs) {
+      var a = cs && cs[0];
+      if (!a) throw new Error('no account');
+      var f = function (texte) {
+        return eth.request({ method: 'personal_sign', params: [texte, a] });
+      };
+      f.mode = 'wallet';
+      ouvreSession(f, a);
+    }).catch(function (e) { conDit(String(e && e.message || e).slice(0, 100)); });
+  }
+
+  function chargePrivy() {
+    if (window.SwogePrivy) return Promise.resolve();
+    return new Promise(function (res, rej) {
+      var s = document.createElement('script');
+      s.src = 'privy-swoge.js';
+      s.onload = function () { try { SwogePrivy.init(PRIVY_APP_ID); } catch (e) {} res(); };
+      s.onerror = function () { rej(new Error('cannot load the email sign-in')); };
+      document.head.appendChild(s);
+    });
+  }
+
+  function envoieCode() {
+    var e = (conBoite.querySelector('.em').value || '').trim();
+    if (!/.+@.+\..+/.test(e)) return conDit('Enter a valid email address.');
+    conDit('Sending a code…');
+    chargePrivy().then(function () { return SwogePrivy.sendCode(e); }).then(function () {
+      conBoite.querySelector('.cd').style.display = '';
+      conBoite.querySelector('.cdb').style.display = '';
+      conBoite.querySelector('.cd').focus();
+      conDit('Code sent — check your inbox.');
+    }).catch(function (x) { conDit(String(x && x.message || x).slice(0, 100)); });
+  }
+
+  function verifieCode() {
+    var e = (conBoite.querySelector('.em').value || '').trim();
+    var c = (conBoite.querySelector('.cd').value || '').trim();
+    if (!c) return conDit('Enter the code you received.');
+    conDit('Checking…');
+    SwogePrivy.verifyCode(e, c).then(function (adresse) {
+      var p = SwogePrivy.getProvider();
+      var f = function (texte) { return p.request({ method: 'personal_sign', params: [texte, adresse] }); };
+      f.mode = 'email';
+      ouvreSession(f, adresse);
+    }).catch(function (x) { conDit(String(x && x.message || x).slice(0, 100)); });
   }
 
   /* La pastille du solde, fabriquee ici parce que la page n'en a pas. Elle

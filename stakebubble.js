@@ -35,6 +35,9 @@
 
   var MS_AN = 31536000000;                  // 365 jours — la constante du serveur
   var etat = { mise: 0, acquis: 0, tauxBps: 0, t0: 0, socket: null, prete: false };
+  /* La socket du VISITEUR : elle ne s'identifie jamais et ne sert qu'a
+     regarder. Tenue a l'ecart de `etat.socket`, qui est celle de l'argent. */
+  var SOCKET_PUBLIC = null;
   var bulle = null, chiffre = null, occupe = false;
   var pastille = null, gens = null;
   var profBtn = null, profBoite = null, profOnglet = 'r', profItems = [], profFin = null,
@@ -67,10 +70,38 @@
   function jetonRange() {
     try { return localStorage.getItem('swogeSession'); } catch (e) { return null; }
   }
+  /* Le visiteur qui n'a jamais rien branche.
+   *
+   * Sans jeton on ne peut rien AFFICHER de personnel — mais ce qui se joue
+   * sur le site est public, et c'est justement a lui qu'il faut le montrer :
+   * une page qui ne dit rien parait morte, et il repart. On ouvre donc une
+   * socket qui ECOUTE sans jamais s'identifier. Elle est tenue a part de
+   * `etat.socket` : celle-la sert a l'argent, et rien de ce qui touche a
+   * l'argent ne doit pouvoir partir d'un socket anonyme.
+   */
+  function ecouteAnonyme() {
+    if (SOCKET_PUBLIC && SOCKET_PUBLIC.readyState <= 1) return;
+    var w;
+    try { w = new window.WebSocket(adresseServeur()); } catch (e) { return; }
+    SOCKET_PUBLIC = w;
+    w.addEventListener('message', surMessage);
+    w.addEventListener('close', function () {
+      if (SOCKET_PUBLIC === w) SOCKET_PUBLIC = null;
+      setTimeout(function () { if (!jetonRange()) ecouteAnonyme(); }, 5000);
+    });
+  }
+  /* Le socket par lequel on parle des DUELS : celui du joueur s'il en a un,
+     sinon celui du visiteur. Regarder ne demande pas de compte. */
+  function sockDuel() {
+    if (etat.socket && etat.socket.readyState === 1) return etat.socket;
+    if (SOCKET_PUBLIC && SOCKET_PUBLIC.readyState === 1) return SOCKET_PUBLIC;
+    return null;
+  }
+
   function connecteSeul() {
     if (document.getElementById('bal')) return;      // la page a deja sa socket
     var jeton = jetonRange();
-    if (!jeton) return;                              // jamais connecte ici : on se tait
+    if (!jeton) return ecouteAnonyme();              // jamais connecte : il regarde
     var w;
     try { w = new window.WebSocket(adresseServeur()); } catch (e) { return; }
     w.addEventListener('message', function (ev) {
@@ -181,8 +212,13 @@
       if (profOnglet === 'in') profRend();
     }
     if (m.type === 'leaderboard') { CLASSEMENT = m; if (profOnglet === 'lb') profRend(); }
-    if (m.type === 'duelsTous') { DUELS = m.tables || []; rendDuels(); }
-    if (m.type === 'hello' && m.duels) { DUELS = m.duels; rendDuels(); }
+    /* Le « hello » prouve que cette socket-la parle a notre serveur : sur une
+       page de jeu ouverte par un visiteur, c'est la seule qu'on ait, et c'est
+       par elle qu'il pourra regarder. */
+    if (m.type === 'hello' && (!SOCKET_PUBLIC || SOCKET_PUBLIC.readyState > 1)) SOCKET_PUBLIC = ev.target;
+    if (m.type === 'duelsTous') { DUELS = m.tables || []; EN_COURS = m.enCours || []; rendDuels(); }
+    if (m.type === 'hello' && m.duels) { DUELS = m.duels; EN_COURS = m.duelsEnCours || []; rendDuels(); }
+    if (m.type === 'duelWatch') { REGARDE = m.match || null; REGARDE_FINI = !!m.fini; rendRegarde(); }
     if (m.type === 'friends') {
       AMIS = m.friends || { amis: [], recues: [], envoyees: [] };
       EN_ATTENTE = m.pending || 0;
@@ -579,6 +615,7 @@
   }
   /* Les tables 1v1 qui attendent un adversaire, tous jeux confondus. */
   var DUELS = [], duelsBtn = null, duelsPan = null, duelsOuvert = false;
+  var EN_COURS = [], REGARDE = null, REGARDE_FINI = false;  // ce qui se joue, et ce qu on regarde
   var JEU_NOM = { p4: 'Connect 4', mp: 'Tic-Tac-Toe', dm: 'Checkers' };
   var JEU_PAGE = { p4: 'connect4.html', mp: 'morpion.html', dm: 'dames.html' };
   var JEU_SIGNE = { p4: '●', mp: '✕', dm: '◆' };
@@ -1915,11 +1952,41 @@
       '.swdt .w b{display:block;font-size:12.5px;font-weight:800;color:#EAF2FF;' +
       'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}' +
       '.swdt .w span{display:block;font-size:10.5px;color:#8DA0C4;margin-top:2px;}' +
+      /* Meme piege que dans les lignes du profil : « .swdt .w span » l emporte
+         sur « .swlv », et la pastille de niveau tombait a la ligne toute seule
+         sous le nom. On redit donc ici, a specificite egale, ce qu elle est. */
+      '.swdt .w span.swlv,.swdt .w b span.swlv{display:inline-block;width:auto;' +
+      'margin-top:0;font-size:10px;}' +
       '.swdt button{flex:0 0 auto;padding:7px 12px;border-radius:9px;cursor:pointer;' +
       'font-family:inherit;font-size:12px;font-weight:800;color:#07101F;border:0;' +
       'background:linear-gradient(180deg,#FFE08A,#FFC53D);}' +
       '.swdt.mienne{border-color:rgba(255,197,61,.45);background:rgba(255,197,61,.07);}' +
       '.swdt.mienne button{background:rgba(255,255,255,.10);color:#8DA0C4;cursor:default;}' +
+      '.swdt button.gh{background:linear-gradient(180deg,#8FD3FF,#3FA9F5);}' +
+      /* Le titre de section : les parties en cours ne sont pas des defis a
+         relever, il ne faut pas melanger les deux listes. */
+      '.swdh{margin:14px 0 8px;font-size:10.5px;letter-spacing:1.1px;font-weight:800;' +
+      'text-transform:uppercase;color:#8DA0C4;}' +
+      /* Le plateau du spectateur. */
+      '.swdw{margin:0 0 12px;border-radius:12px;overflow:hidden;' +
+      'background:rgba(63,169,245,.07);border:1px solid rgba(63,169,245,.34);}' +
+      '.swdw .hd{display:flex;align-items:center;gap:8px;padding:9px 10px;' +
+      'border-bottom:1px solid rgba(255,255,255,.08);}' +
+      '.swdw .hd b{flex:1;min-width:0;font-size:12px;font-weight:800;color:#EAF2FF;' +
+      'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}' +
+      '.swdw .hd .x{position:static;width:24px;height:24px;font-size:13px;flex:0 0 auto;}' +
+      '.swdw .gr{display:grid;gap:3px;padding:8px;}' +
+      '.swdw .c{display:block;width:100%;aspect-ratio:1/1;border-radius:50%;' +
+      'background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);}' +
+      '.swdw .gr.jmp .c{border-radius:5px;}' +
+      '.swdw .c.sq{background:rgba(0,0,0,.34);}' +
+      '.swdw .c.p1{background:linear-gradient(180deg,#FFE08A,#FFC53D);border-color:#FFC53D;}' +
+      '.swdw .c.p2{background:linear-gradient(180deg,#8FD3FF,#3FA9F5);border-color:#3FA9F5;}' +
+      '.swdw .c.dame{box-shadow:inset 0 0 0 3px rgba(7,16,31,.55);}' +
+      '.swdw .c.win{box-shadow:0 0 0 2px #7CE3A0;}' +
+      '.swdw .st{padding:8px 10px;border-top:1px solid rgba(255,255,255,.08);' +
+      'font-size:11px;font-weight:700;color:#8DA0C4;}' +
+      '.swdw .st.fin{color:#7CE3A0;}' +
       '.swdv{padding:22px 14px;text-align:center;font-size:12px;line-height:1.7;color:#8DA0C4;}' +
       '.swdp .pied{padding:11px 14px;border-top:1px solid rgba(255,255,255,.08);' +
       'font-size:11px;line-height:1.6;color:#8DA0C4;}' +
@@ -1959,9 +2026,8 @@
     if (!duelsMonte()) return;
     duelsOuvert = v === undefined ? !duelsOuvert : !!v;
     duelsPan.classList.toggle('on', duelsOuvert);
-    if (duelsOuvert && etat.socket && etat.socket.readyState === 1) {
-      try { etat.socket.send('{"type":"duelsTous"}'); } catch (e) {}
-    }
+    var s = duelsOuvert && sockDuel();
+    if (s) { try { s.send('{"type":"duelsTous"}'); } catch (e) {} }
   }
 
   /* Rejoindre depuis n'importe quelle page : on va sur celle du jeu avec
@@ -2009,11 +2075,16 @@
       p.textContent = libres.length > 9 ? '9+' : String(libres.length);
       duelsBtn.title = libres.length + ' player' + (libres.length === 1 ? '' : 's') + ' waiting for an opponent';
     } else if (p) { p.remove(); duelsBtn.title = 'Open 1v1 matches'; }
+    if (!libres.length && EN_COURS.length)
+      duelsBtn.title = EN_COURS.length + ' match' + (EN_COURS.length === 1 ? '' : 'es') + ' being played';
 
     duelsPan.querySelector('h4 i').textContent = DUELS.length ? DUELS.length + ' open' : '';
     var l = duelsPan.querySelector('.swdl');
     l.innerHTML = '';
-    if (!DUELS.length) {
+    /* Personne n'attend n'est pas la meme chose que rien ne se passe : le mot
+       « vide » ne se met que si RIEN ne se joue non plus, sinon on annoncerait
+       un site mort au-dessus d'une partie en cours. */
+    if (!DUELS.length && !EN_COURS.length) {
       var v = document.createElement('div');
       v.className = 'swdv';
       v.innerHTML = 'Nobody is waiting right now.<br>Open a table and it shows up here, ' +
@@ -2037,6 +2108,99 @@
       d.appendChild(b);
       l.appendChild(d);
     });
+    rendEnCours(l);
+    /* La liste vient d'etre reconstruite : si on regardait une partie, le
+       plateau est parti avec le reste, il faut le remettre. Sans ca il
+       disparaitrait au premier rafraichissement du vestibule. */
+    if (REGARDE) rendRegarde();
+  }
+
+  /* ------------------------------------------------- regarder une partie
+   * Un vestibule qui ne montre que l'ATTENTE parait mort a quatre heures du
+   * matin, alors qu'une partie peut tres bien etre en train de se jouer. Les
+   * parties en cours se listent donc juste en dessous, et se regardent.
+   *
+   * Le plateau se dessine ICI, dans la bulle partagee par les douze pages, et
+   * non dans chaque page de jeu : une seule implementation, disponible partout,
+   * et aucune chirurgie sur des pages de jeu qui fonctionnent.
+   */
+  var COTE_JEU = { p4: 7, mp: 3, dm: 8 };
+  function rendEnCours(l) {
+    if (!EN_COURS.length) return;
+    var t = document.createElement('div');
+    t.className = 'swdh';
+    t.textContent = EN_COURS.length + ' match' + (EN_COURS.length === 1 ? '' : 'es') + ' being played';
+    l.appendChild(t);
+    EN_COURS.forEach(function (m) {
+      var j = m.joueurs || [];
+      var d = document.createElement('div');
+      d.className = 'swdt';
+      d.innerHTML = '<div class="ic">' + (JEU_SIGNE[m.jeu] || '⚔️') + '</div>' +
+        '<div class="w"><b>' + ech((j[0] && j[0].nom) || '?') + pastilleNiveau(j[0] || {}) +
+        ' <i>vs</i> ' + ech((j[1] && j[1].nom) || '?') + pastilleNiveau(j[1] || {}) + '</b>' +
+        '<span>' + (JEU_NOM[m.jeu] || m.jeu) + ' · ' + nb(m.mise * 2, 0) + ' $SWOGE in the pot</span></div>';
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'gh';
+      b.textContent = 'Watch';
+      b.addEventListener('click', function () { regarde(m.id); });
+      d.appendChild(b);
+      l.appendChild(d);
+    });
+  }
+
+  function regarde(id) {
+    var s = sockDuel();
+    if (!s) return;
+    try { s.send(JSON.stringify({ type: 'duelWatch', id: id })); } catch (e) {}
+  }
+  function cesseRegarder() {
+    REGARDE = null; REGARDE_FINI = false;
+    var b = duelsPan && duelsPan.querySelector('.swdw');
+    if (b) b.remove();
+    var s = sockDuel();
+    if (s) { try { s.send('{"type":"duelUnwatch"}'); } catch (e) {} }
+  }
+
+  /* Le plateau, en lecture seule. Les trois jeux partagent la meme forme
+     d'etat — une grille a plat, un tour, un gagnant — donc un seul dessin les
+     couvre tous les trois. Le cote vient de la TABLE, pas de la racine carree
+     du nombre de cases : le Connect 4 fait 7 x 6, et sept colonnes deduites
+     d'une racine carree en donneraient six. */
+  function rendRegarde() {
+    if (!duelsMonte() || !REGARDE) return;
+    var fini = REGARDE_FINI;
+    var m = REGARDE;
+    var cote = COTE_JEU[m.jeu] || Math.round(Math.sqrt((m.grille || []).length)) || 3;
+    var boite = duelsPan.querySelector('.swdw');
+    if (!boite) {
+      boite = document.createElement('div');
+      boite.className = 'swdw';
+      duelsPan.querySelector('.swdl').insertBefore(boite, duelsPan.querySelector('.swdl').firstChild);
+    }
+    var n = m.noms || [];
+    var qui = m.gagnant ? (m.gagnant === 3 ? 'Draw' : ech(n[m.gagnant - 1] || '?') + ' wins')
+                        : ech(n[(m.tour || 1) - 1] || '?') + ' to play';
+    boite.innerHTML =
+      '<div class="hd"><b>' + ech(n[0] || '?') + ' vs ' + ech(n[1] || '?') + '</b>' +
+      '<button type="button" class="x">✕</button></div>' +
+      '<div class="gr j' + ech(m.jeu || '') + '" style="grid-template-columns:repeat(' + cote + ',1fr)"></div>' +
+      '<div class="st' + (m.gagnant ? ' fin' : '') + '">' + qui +
+      ' · ' + nb((m.mise || 0) * 2, 0) + ' $SWOGE' + (fini ? ' · finished' : '') + '</div>';
+    var gr = boite.querySelector('.gr');
+    (m.grille || []).forEach(function (v, i) {
+      var c = document.createElement('i');
+      /* Aux dames une dame vaut 3 ou 4, un pion 1 ou 2 : on ramene au
+         proprietaire et on marque la dame d'un point. */
+      var proprio = (v === 3 || v === 1) ? 1 : (v === 4 || v === 2) ? 2 : 0;
+      /* Aux dames une case sur deux est sombre : sans ce damier on ne lit plus
+         la diagonale sur laquelle les pions avancent. */
+      var noire = m.jeu === 'dm' && ((Math.floor(i / cote) + (i % cote)) % 2 === 1);
+      c.className = 'c' + (proprio ? ' p' + proprio : '') + ((v === 3 || v === 4) ? ' dame' : '') +
+                    (noire ? ' sq' : '') +
+                    ((m.ligne || []).indexOf(i) >= 0 ? ' win' : '');
+      gr.appendChild(c);
+    });
+    boite.querySelector('.x').addEventListener('click', cesseRegarder);
   }
 
   // Dix fois par seconde : le dernier chiffre coule sans que ca coute rien.

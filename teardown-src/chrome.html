@@ -1,0 +1,1435 @@
+<title>The SWOGE Teardown</title>
+<style>
+/* ============================================================
+   SWOGE — product teardown.
+   Same palette family as the white paper so the two read as a
+   set, but a different structural device: this one is scored
+   and ranked, not referenced. Light default, dark on system,
+   dark forced — every colour is a token.
+   ============================================================ */
+:root{
+  --ground:#F7F5F0;
+  --surface:#FFFFFF;
+  --surface-2:#EFECE4;
+  --line:#DCD6C8;
+  --line-soft:#E8E3D8;
+  --ink:#141922;
+  --ink-2:#3A4356;
+  --muted:#6B7488;
+  --gold:#9A6B00;
+  --gold-ink:#7A5400;
+  --gold-wash:#F5EAC9;
+  --green:#1F7A4C;
+  --green-wash:#DFF0E5;
+  --amber:#8A5A00;
+  --amber-wash:#F6EAD2;
+  --slate:#5A6478;
+  --slate-wash:#E6E7EB;
+  --red:#A8322A;
+  --red-wash:#F7E4E1;
+  --shadow:0 1px 2px rgba(20,25,34,.06),0 8px 24px rgba(20,25,34,.05);
+  --mono:ui-monospace,"SFMono-Regular","SF Mono","Cascadia Mono","Roboto Mono",Menlo,Consolas,monospace;
+  --serif:Charter,"Bitstream Charter","Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#080C16; --surface:#111726; --surface-2:#0D1320;
+    --line:#232C42; --line-soft:#1A2233;
+    --ink:#E8EEF9; --ink-2:#C3CEE2; --muted:#8494B4;
+    --gold:#FFC53D; --gold-ink:#FFD97A; --gold-wash:#2A2312;
+    --green:#6EE7A0; --green-wash:#0F2A1D;
+    --amber:#F2B33D; --amber-wash:#2B2211;
+    --slate:#9AA8C4; --slate-wash:#1A2233;
+    --red:#F2685E; --red-wash:#2C1512;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#080C16; --surface:#111726; --surface-2:#0D1320;
+  --line:#232C42; --line-soft:#1A2233;
+  --ink:#E8EEF9; --ink-2:#C3CEE2; --muted:#8494B4;
+  --gold:#FFC53D; --gold-ink:#FFD97A; --gold-wash:#2A2312;
+  --green:#6EE7A0; --green-wash:#0F2A1D;
+  --amber:#F2B33D; --amber-wash:#2B2211;
+  --slate:#9AA8C4; --slate-wash:#1A2233;
+  --red:#F2685E; --red-wash:#2C1512;
+  --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);
+  font-family:var(--serif);font-size:17px;line-height:1.62;-webkit-font-smoothing:antialiased}
+::selection{background:var(--gold);color:var(--ground)}
+:focus-visible{outline:2px solid var(--gold);outline-offset:3px;border-radius:3px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+.shell{max-width:1180px;margin:0 auto;padding:0 22px}
+@media (min-width:1060px){
+  .shell{display:grid;grid-template-columns:210px minmax(0,1fr);gap:52px;padding:0 32px}
+}
+main{min-width:0;padding-bottom:110px}
+nav.toc{display:none}
+@media (min-width:1060px){
+  nav.toc{display:block;position:sticky;top:0;align-self:start;max-height:100vh;
+    overflow-y:auto;padding:34px 0 46px;font-family:var(--mono);font-size:11.5px;line-height:1.5}
+  nav.toc h4{margin:20px 0 6px;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--gold);font-weight:700}
+  nav.toc h4:first-child{margin-top:0}
+  nav.toc a{display:block;padding:2.5px 0 2.5px 9px;margin-left:-11px;color:var(--muted);
+    text-decoration:none;border-left:2px solid transparent}
+  nav.toc a:hover{color:var(--ink);border-left-color:var(--line)}
+  nav.toc a b{color:var(--slate);font-weight:400;margin-right:6px}
+}
+
+header.top{padding:64px 0 40px;border-bottom:1px solid var(--line)}
+.kicker{font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--gold);margin:0 0 20px;font-weight:700}
+h1{font-family:var(--mono);font-weight:700;font-size:clamp(30px,5.4vw,50px);line-height:1.08;
+  letter-spacing:-.02em;margin:0 0 18px;text-wrap:balance}
+h1 em{font-style:normal;color:var(--gold)}
+.standfirst{font-size:19px;line-height:1.58;color:var(--ink-2);max-width:64ch;margin:0 0 26px}
+
+.part{margin:76px 0 0;padding-top:26px;border-top:2px solid var(--gold);font-family:var(--mono);
+  font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);font-weight:700}
+section{scroll-margin-top:22px;padding-top:34px}
+h2{font-family:var(--mono);font-size:22px;font-weight:700;line-height:1.25;letter-spacing:-.01em;
+  margin:0 0 6px;text-wrap:balance;display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+h2 .num{color:var(--muted);font-weight:400;font-size:15px;flex:0 0 auto}
+h3{font-family:var(--mono);font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--gold-ink);margin:34px 0 10px}
+h4{font-family:var(--mono);font-size:13.5px;font-weight:700;margin:24px 0 6px;color:var(--ink)}
+p{margin:0 0 15px;max-width:70ch}
+a{color:var(--gold-ink)}
+strong{font-weight:700;color:var(--ink)}
+em.q{font-style:italic;color:var(--ink-2)}
+ul,ol{margin:0 0 16px;padding-left:22px;max-width:70ch}
+li{margin:0 0 7px}
+li::marker{color:var(--muted)}
+hr{border:0;border-top:1px solid var(--line);margin:38px 0}
+
+.note{margin:20px 0;padding:16px 18px;border-left:3px solid var(--gold);background:var(--surface);
+  border-radius:0 6px 6px 0;font-size:15.5px;color:var(--ink-2)}
+.note strong{color:var(--ink)}
+.note.kill{border-left-color:var(--red)}
+.note.win{border-left-color:var(--green)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:20px 22px;
+  margin:20px 0;box-shadow:var(--shadow)}
+.card>h4:first-child,.card>h3:first-child{margin-top:0}
+
+.wrap{overflow-x:auto;margin:20px 0;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:14px}
+th,td{padding:9px 13px;text-align:left;border-bottom:1px solid var(--line-soft);vertical-align:top}
+th{font-family:var(--mono);font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--gold);
+  font-weight:700;background:var(--surface-2);white-space:nowrap}
+tbody tr:last-child td{border-bottom:0}
+td.n,th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+code{font-family:var(--mono);font-size:.87em;background:var(--surface-2);padding:1px 5px;border-radius:3px;
+  border:1px solid var(--line-soft);word-break:break-all}
+
+/* ---- score meters: the number is the point, so it leads ---- */
+.scores{display:grid;gap:2px;margin:22px 0;border:1px solid var(--line);border-radius:8px;
+  overflow:hidden;background:var(--line-soft)}
+.score{display:grid;grid-template-columns:1fr;gap:4px;padding:13px 16px;background:var(--surface)}
+@media (min-width:720px){.score{grid-template-columns:168px 62px 128px minmax(0,1fr);align-items:center;gap:14px}}
+.score .lab{font-family:var(--mono);font-size:11.5px;font-weight:700;letter-spacing:.04em;color:var(--ink)}
+.score .val{font-family:var(--mono);font-size:19px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1}
+.score .val i{font-style:normal;font-size:11px;color:var(--muted);font-weight:400}
+.score .bar{height:6px;border-radius:999px;background:var(--surface-2);overflow:hidden;
+  border:1px solid var(--line-soft)}
+.score .bar span{display:block;height:100%;border-radius:999px}
+.score .why{font-size:14px;color:var(--ink-2);line-height:1.5}
+.s-hi .val{color:var(--green)}   .s-hi .bar span{background:var(--green)}
+.s-mid .val{color:var(--amber)}  .s-mid .bar span{background:var(--amber)}
+.s-lo .val{color:var(--red)}     .s-lo .bar span{background:var(--red)}
+
+/* ---- idea cards ---- */
+.ideas{display:grid;gap:14px;margin:20px 0}
+@media (min-width:820px){.ideas{grid-template-columns:1fr 1fr}}
+.idea{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px 18px;
+  box-shadow:var(--shadow);display:flex;flex-direction:column;gap:9px}
+.idea .hd{display:flex;gap:9px;align-items:baseline}
+.idea .no{font-family:var(--mono);font-size:11px;color:var(--muted);flex:0 0 auto;
+  font-variant-numeric:tabular-nums}
+.idea .nm{font-family:var(--mono);font-size:13.5px;font-weight:700;color:var(--ink);line-height:1.3}
+.idea p{margin:0;font-size:14.5px;line-height:1.52;color:var(--ink-2);max-width:none}
+.idea .meta{display:flex;flex-wrap:wrap;gap:5px;margin-top:auto;padding-top:4px}
+.tag{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  padding:2.5px 6px;border-radius:3px;border:1px solid var(--line);color:var(--muted);
+  background:var(--surface-2);white-space:nowrap}
+.tag b{font-weight:700;color:var(--ink-2)}
+.tag.p-s{color:var(--ground);background:var(--gold);border-color:var(--gold)}
+.tag.p-a{color:var(--gold);border-color:var(--gold);background:var(--gold-wash)}
+.tag.hi{color:var(--green);border-color:var(--green);background:var(--green-wash)}
+.tag.lo{color:var(--slate);background:var(--slate-wash);border-color:var(--slate)}
+.tag.kill{color:var(--red);border-color:var(--red);background:var(--red-wash)}
+
+.flow{overflow-x:auto;margin:20px 0;padding:18px 20px;background:var(--surface-2);
+  border:1px solid var(--line);border-radius:8px}
+.flow pre{margin:0;font-family:var(--mono);font-size:12px;line-height:1.6;color:var(--ink-2);white-space:pre}
+.flow pre b{color:var(--gold);font-weight:700}
+.flow pre i{color:var(--muted);font-style:normal}
+
+footer{margin-top:80px;padding:30px 0 0;border-top:1px solid var(--line);
+  font-family:var(--mono);font-size:11.5px;color:var(--muted);line-height:1.8}
+</style>
+
+<div class="shell">
+<nav class="toc" aria-label="Contents">
+  <h4>Verdict</h4>
+  <a href="#scores"><b>01</b>Scorecard</a>
+  <a href="#three"><b>02</b>Three real problems</a>
+  <h4>Ideas</h4>
+  <a href="#ideas"><b>03</b>The 52 ideas</a>
+  <h4>Systems</h4>
+  <a href="#gameplay"><b>04</b>Gameplay</a>
+  <a href="#progress"><b>05</b>Progression</a>
+  <a href="#retention"><b>06</b>Retention</a>
+  <a href="#social"><b>07</b>Social</a>
+  <a href="#comp"><b>08</b>Competitive</a>
+  <h4>Economy</h4>
+  <a href="#token"><b>09</b>Token utility</a>
+  <a href="#sinks"><b>10</b>Sinks</a>
+  <a href="#staking2"><b>11</b>Staking 2.0</a>
+  <a href="#burn2"><b>12</b>Burn 2.0</a>
+  <a href="#launch2"><b>13</b>Launchpad 2.0</a>
+  <a href="#market"><b>14</b>Marketplace</a>
+  <a href="#pass"><b>15</b>Battle pass</a>
+  <a href="#clans"><b>16</b>Clans</a>
+  <h4>Growth</h4>
+  <a href="#referral"><b>17</b>Referrals</a>
+  <a href="#creators"><b>18</b>Creators</a>
+  <a href="#ai"><b>19</b>AI</a>
+  <a href="#platforms"><b>20</b>Platforms</a>
+  <a href="#viral"><b>21</b>Viral loop</a>
+  <a href="#revenue"><b>22</b>Revenue</a>
+  <h4>Stress</h4>
+  <a href="#sustain"><b>23</b>Stress tests</a>
+  <a href="#whale"><b>24</b>Anti-whale</a>
+  <a href="#attack"><b>25</b>Attack surface</a>
+  <h4>Decide</h4>
+  <a href="#donot"><b>26</b>Do not build</a>
+  <a href="#order"><b>27</b>Order of work</a>
+  <a href="#matrix"><b>28</b>Priority matrix</a>
+  <a href="#v2"><b>29</b>SWOGE V2</a>
+  <a href="#v3"><b>30</b>SWOGE V3</a>
+  <a href="#vision"><b>31</b>Vision</a>
+  <a href="#top25"><b>32</b>The 25 changes</a>
+</nav>
+
+<main>
+
+<header class="top">
+  <p class="kicker">Product teardown · 14 August 2026 · companion to the white paper</p>
+  <h1>What I would<br><em>change about SWOGE</em></h1>
+  <p class="standfirst">
+    An adversarial read of the whole project, wearing seven hats at once. What is genuinely
+    good, what is quietly broken, what to build, and — the part most reviews skip — what to
+    refuse to build.
+  </p>
+  <div class="note">
+    <strong>The one-line verdict.</strong> SWOGE has built two good businesses that do not
+    speak to each other, and is subsidising a third that is not a business at all. Connect
+    the casino to the launchpad, convert the staking yield into access, and give the duels a
+    ranking — and the project stops being a well-made casino and starts being an ecosystem.
+    Everything else in this document is detail.
+  </div>
+</header>
+
+<p class="part">Verdict</p>
+
+<section id="scores">
+<h2><span class="num">01</span> The scorecard</h2>
+<p>
+Eighteen dimensions, scored against what a serious Web3 gaming platform should look like —
+not against other meme coins, which would be a flattering and useless comparison.
+</p>
+
+<div class="scores">
+  <div class="score s-hi"><span class="lab">Concept</span><span class="val">8<i>/10</i></span>
+    <span class="bar"><span style="width:80%"></span></span>
+    <span class="why">Provably fair casino plus a deployed launchpad on a chain with no competition. The fairness claim is real and checkable, which almost nobody else can say. Loses points only because "casino" is a harder story to sell than "game".</span></div>
+
+  <div class="score s-mid"><span class="lab">Branding</span><span class="val">7<i>/10</i></span>
+    <span class="bar"><span style="width:70%"></span></span>
+    <span class="why">The gym-doge identity is consistent and distinctive: gold plates, dark navy, monospace, the leg-day wall. Rare in a sector of purple gradients. Weak point: the brand says nothing about <em class="q">fairness</em>, which is the actual differentiator.</span></div>
+
+  <div class="score s-mid"><span class="lab">Gaming</span><span class="val">5<i>/10</i></span>
+    <span class="bar"><span style="width:50%"></span></span>
+    <span class="why">Thirteen titles is impressive output, but nine of them are the same experience at hour 1 and hour 1000. There is no skill expression, no mastery, no reason to get better. The four duel games are the only real games — and they are the ones with no ranking.</span></div>
+
+  <div class="score s-lo"><span class="lab">Token utility</span><span class="val">4<i>/10</i></span>
+    <span class="bar"><span style="width:40%"></span></span>
+    <span class="why">$SWOGE is a betting chip and a staking asset. That is two utilities, one of which is a subsidy. The launchpad — the project's best asset — uses $SWOGE for <strong>nothing at all</strong>. That is the single largest gap in the project.</span></div>
+
+  <div class="score s-mid"><span class="lab">Tokenomics</span><span class="val">6<i>/10</i></span>
+    <span class="bar"><span style="width:60%"></span></span>
+    <span class="why">Fixed supply, no mint function, real revenue, continuous burn. Structurally better than most. Held back by an undocumented allocation of 893 million tokens, which is the first thing any counterparty asks about.</span></div>
+
+  <div class="score s-lo"><span class="lab">Staking</span><span class="val">4<i>/10</i></span>
+    <span class="bar"><span style="width:40%"></span></span>
+    <span class="why">100&nbsp;% APR paid from a team allocation is not a product, it is customer acquisition cost with a twelve-month tail. The 20&nbsp;% cap and the runway counter are good engineering around a weak design. It buys deposits, not loyalty.</span></div>
+
+  <div class="score s-hi"><span class="lab">Rewards</span><span class="val">8<i>/10</i></span>
+    <span class="bar"><span style="width:80%"></span></span>
+    <span class="why">Expressing every meaningful reward as a <em class="q">share of measured revenue</em> is genuinely excellent design. It cannot overpay, it contracts with activity, and it required real discipline. This is the strongest idea in the project.</span></div>
+
+  <div class="score s-mid"><span class="lab">Burn</span><span class="val">6<i>/10</i></span>
+    <span class="bar"><span style="width:60%"></span></span>
+    <span class="why">Real, continuous, verifiable, announced with the transaction. But it fires on <strong>withdrawal</strong> — the token gets scarcer when people leave. Scarcity should track health, not churn.</span></div>
+
+  <div class="score s-lo"><span class="lab">Liquidity</span><span class="val">3<i>/10</i></span>
+    <span class="bar"><span style="width:30%"></span></span>
+    <span class="why">One Uniswap v3 pool, undocumented depth, no market-making mandate, no listing. A player who wins big cannot exit at a sane price, and that fact will spread faster than any marketing.</span></div>
+
+  <div class="score s-lo"><span class="lab">Competitive gaming</span><span class="val">3<i>/10</i></span>
+    <span class="bar"><span style="width:30%"></span></span>
+    <span class="why">Four head-to-head games with no ELO, no matchmaking, no divisions, no tournaments, no seasons. A beginner's first duel is against whoever is waiting — possibly a solver. Nothing here says "come back and climb".</span></div>
+
+  <div class="score s-mid"><span class="lab">Retention</span><span class="val">5<i>/10</i></span>
+    <span class="bar"><span style="width:50%"></span></span>
+    <span class="why">Quests, streaks, 100 levels and a monthly leaderboard are decent bones. But a 30-day cycle means 29 days where the ranking does not feel live, and the level curve is so steep past 30 that progress becomes invisible.</span></div>
+
+  <div class="score s-lo"><span class="lab">Social</span><span class="val">4<i>/10</i></span>
+    <span class="bar"><span style="width:40%"></span></span>
+    <span class="why">Friends, transfers and a duels bubble are a good start. There is no chat, no clans, no shareable profile, no spectating, no replays. Players cannot see each other, so no rivalry can form.</span></div>
+
+  <div class="score s-hi"><span class="lab">Launchpad</span><span class="val">7<i>/10</i></span>
+    <span class="bar"><span style="width:70%"></span></span>
+    <span class="why">Deployed, used, dual-mode, with fee redistribution to holders written into the contract — which is rare and genuinely good. Scores 7 and not 9 only because $SWOGE plays no part in it and there is no curation track.</span></div>
+
+  <div class="score s-hi"><span class="lab">Revenue model</span><span class="val">7<i>/10</i></span>
+    <span class="bar"><span style="width:70%"></span></span>
+    <span class="why">Three live, real, measured revenue sources, booked monthly. That is more than most tokens in this sector have ever had. The gap is diversity: all three are transaction fees on the same small user base.</span></div>
+
+  <div class="score s-mid"><span class="lab">Security</span><span class="val">5<i>/10</i></span>
+    <span class="bar"><span style="width:50%"></span></span>
+    <span class="why">The engineering discipline is well above average — fund-conservation tests, atomic persistence, refusal to boot on a corrupt state, measured rate limiting. And yet: no external audit, single-signature control, custodial balances. Excellent craft on an unaudited foundation.</span></div>
+
+  <div class="score s-lo"><span class="lab">Scalability</span><span class="val">3<i>/10</i></span>
+    <span class="bar"><span style="width:30%"></span></span>
+    <span class="why">One Node process, a JSON state file rewritten in full, no failover, no read replica. Measured: 20,000 empty records already blocked the loop for a second per save. This breaks well before it gets popular.</span></div>
+
+  <div class="score s-lo"><span class="lab">Community</span><span class="val">4<i>/10</i></span>
+    <span class="bar"><span style="width:40%"></span></span>
+    <span class="why">One Telegram channel with automated announcements, and lifetime referrals. No Discord, no clans, no creator programme, no reason for anyone to build an identity inside SWOGE rather than around it.</span></div>
+
+  <div class="score s-mid"><span class="lab">Sustainability</span><span class="val">6<i>/10</i></span>
+    <span class="bar"><span style="width:60%"></span></span>
+    <span class="why">Revenue-indexed rewards make most of the economy self-correcting, and the fixed supply removes inflation risk entirely. One hole spoils it: a fixed staking rate that does not contract when activity does.</span></div>
+</div>
+
+<p>
+<strong>Weighted average: 5.3 / 10.</strong> That number is not an insult — it is the score of a
+project that has shipped far more product than it has shipped <em class="q">system</em>. The
+engineering is better than the design; the design is better than the strategy.
+</p>
+</section>
+
+<section id="three">
+<h2><span class="num">02</span> Three problems that matter more than the other forty</h2>
+<p>
+Most reviews produce a flat list. These three are structural: fix them and half the list below
+becomes unnecessary or easy.
+</p>
+
+<div class="card">
+<h3>Problem 1 · Two businesses that never meet</h3>
+<p>
+SWOGE runs a casino and a launchpad. The launchpad has 23 tokens on it and takes 1&nbsp;% of
+every trade. The casino has thirteen games and a 3&nbsp;% edge. <strong>Neither one gives the
+other a single user, and $SWOGE is not required for anything in the launchpad.</strong>
+</p>
+<p>
+Somebody launching a memecoin on SwogeFun today needs zero $SWOGE, learns nothing about the
+games, and has no reason to come back. Somebody grinding Plinko gets nothing from the fact
+that a launchpad exists. Two audiences, one brand, no bridge.
+</p>
+<p>
+This is the highest-value fix available and it costs less than a new game:
+<strong>staked $SWOGE buys launchpad allocation</strong>, and <strong>gaming volume earns
+launch credits</strong>. Suddenly playing has a purpose beyond playing, staking has a purpose
+beyond yield, and the launchpad has a reason to prefer SWOGE over the next fair-launch clone.
+</p>
+</div>
+
+<div class="card">
+<h3>Problem 2 · The staking yield is a cost pretending to be a feature</h3>
+<p>
+100&nbsp;% APR funded by a team allocation is a marketing budget with a twelve-month payment
+schedule. It buys deposits from people optimising for yield, who are structurally the least
+likely to become players. When the allocation runs down, the rate must fall, and every holder
+who arrived for the rate leaves at once.
+</p>
+<p>
+The fix is not to cut the rate — that is a headline nobody wants. The fix is to
+<strong>change what staking is for</strong>. Make it the gate to launchpad allocation,
+tournament seeding, reduced rake and cosmetic tiers, and let the yield float with revenue. The
+same tokens get locked, for a better reason, at a cost that cannot exceed what the platform
+earned.
+</p>
+</div>
+
+<div class="card">
+<h3>Problem 3 · The only real games have no ladder</h3>
+<p>
+Nine of the thirteen titles are chance against the house: identical on day one and day
+five hundred. The four duel games are the only place where a human beats another human, and
+they have no ELO, no divisions, no seasons, no matchmaking, and no protection against a
+solver.
+</p>
+<p>
+Everything a competitive platform needs already exists in the data — every result is journaled
+and provable — and none of it is exposed. <strong>The cheapest large win in this project is
+turning the four duel games into a real ladder.</strong> It needs no new game, no new
+contract, and no new art.
+</p>
+</div>
+</section>
+
+<p class="part">Ideas</p>
+
+<section id="ideas">
+<h2><span class="num">03</span> Fifty-two concrete ideas</h2>
+<p>
+Each one is specific to SWOGE as it exists. Tags read:
+<span class="tag">Dev <b>Low</b></span> complexity ·
+<span class="tag p-s">S</span> priority ·
+<span class="tag">Rev <b>High</b></span> revenue ·
+<span class="tag">Ret <b>High</b></span> retention.
+</p>
+
+<h3>A · Bridging the casino and the launchpad</h3>
+<div class="ideas">
+
+<div class="idea"><div class="hd"><span class="no">01</span><span class="nm">Staking tiers → launchpad allocation</span></div>
+<p>Five tiers by staked amount and lock length. Each tier gets a guaranteed allocation slot on curated launches. Staking stops being a yield product and becomes a queue ticket. <strong>The single highest-leverage change in the document.</strong> It converts a cost centre into a demand driver, and gives a real answer to "why hold $SWOGE".</p>
+<div class="meta"><span class="tag">Dev <b>Medium</b></span><span class="tag p-s">S</span><span class="tag hi">Rev <b>High</b></span><span class="tag hi">Ret <b>High</b></span></div></div>
+
+<div class="idea"><div class="hd"><span class="no">02</span><span class="nm">Launch fee payable in $SWOGE</span></div>
+<p>Creation is free today. Make it optional-paid: pay in the native asset, or pay 30&nbsp;% less in $SWOGE — which is then burned. Creators are the one audience with a hard reason to buy, and it prices the launchpad without closing it.</p>
+<div class="meta"><span class="tag">Dev <b>Low</b></span><span class="tag p-s">S</span><span class="tag hi">Rev <b>High</b></span><span class="tag lo">Ret <b>Low</b></span></div></div>
+
+<div class="idea"><div class="hd"><span class="no">03</span><span class="nm">Launch credits earned by playing</span></div>
+<p>Wagered volume accrues non-transferable launch credits that grant allocation on curated sales. Playing now feeds the launchpad, and the launchpad feeds the games. Non-transferable is the point: credits cannot be farmed and sold.</p>
+<div class="meta"><span class="tag">Dev <b>Medium</b></span><span class="tag p-a">A</span><span class="tag">Rev <b>Medium</b></span><span class="tag hi">Ret <b>High</b></span></div></div>
+
+<div class="idea"><div class="hd"><span class="no">04</span><span class="nm">The Verified track</span></div>
+<p>Keep permissionless launching, add a second door: a reviewed listing with a distinct badge, a published checklist, disclosed team wallets and enforced vesting. Charged for. Permissionless attracts volume; verified attracts money.</p>
+<div class="meta"><span class="tag">Dev <b>Medium</b></span><span class="tag p-a">A</span><span class="tag hi">Rev <b>High</b></span><span class="tag">Ret <b>Medium</b></span></div></div>
+
+<div class="idea"><div class="hd"><span class="no">05</span><span class="nm">Launchpad fees partly burned</span></div>
+<p>Route a fixed share of the 1&nbsp;% protocol fee into the burn pile. Every token launched then makes $SWOGE scarcer, which is a far healthier burn trigger than someone withdrawing and leaving.</p>
+<div class="meta"><span class="tag">Dev <b>Low</b></span><span class="tag p-a">A</span><span class="tag lo">Rev <b>Low</b></span><span class="tag lo">Ret <b>Low</b></span></div></div>
+
+<div class="idea"><div class="hd"><span class="no">06</span><span class="nm">Project dashboards</span></div>
+<p>Every launched token gets a page: holders, concentration, fees earned, liquidity, burn. The holder scanner already computes all of it. It gives creators a reason to send their community to SWOGE rather than to a generic chart site.</p>
+<div class="meta"><span class="tag">Dev <b>Low</b></span><span class="tag p-a">A</span><span class="tag">Rev <b>Medium</b></span><span class="tag">Ret <b>Medium</b></span></div></div>
+</div>
+
+<h3>B · Turning the duels into a ladder</h3>
+<div class="ideas">
+
+<div class="idea"><div class="hd"><span class="no">07</span><span class="nm">ELO per duel game</span></div>
+<p>A rating per player per game, from the results already journaled. It is a hundred lines of code against data that exists. Without it there is no matchmaking, no divisions, no seasons and no cheat signal — every other competitive feature depends on this one.</p>
+<div class="meta"><span class="tag">Dev <b>Low</b></span><span class="tag p-s">S</span><span class="tag lo">Rev <b>Low</b></span><span class="tag hi">Ret <b>High</b></span></div></div>
+
+<div class="idea"><div class="hd"><span class="no">08</span><span class="nm">Divisions with promotion and relegation</span></div>
+<p>Ten divisions reusing the existing tier names and frames. Weekly promotion, weekly relegation. The threat of dropping a division brings people back on the last day far more reliably than a reward for climbing.</p>
+<div class="meta"><span class="tag">Dev <b>Medium</b></span><span class="tag p-s">S</span><span class="tag lo">Rev <b>Low</b></span><span class="tag hi">Ret <b>High</b></span></div></div>
+
+<div class="idea"><div class="hd"><span class="no">09</span><span class="nm">Matchmaking by rating</span></div>
+<p>One queue per game with a rating window that widens over time. Today a beginner's first duel is against whoever happens to be waiting — which may be the best player on the platform. That single experience loses more users than any bug.</p>
+<div class="meta"><span class="tag">Dev <b>Medium</b></span><span class="tag p-s">S</span><span class="tag lo">Rev <b>Low</b></span><span class="tag hi">Ret <b>High</b></span></div></div>
+
+<div class="idea"><div class="hd"><span class="no">10</span><span class="nm">Deterministic replays</span></div>
+<p>Every round is <code>HMAC(seed, client:nonce)</code> and every input is journaled, so any round can be replayed exactly from data already stored. Replays are simultaneously a fairness proof, an anti-cheat tool and the most shareable asset the platform could have. <strong>Nearly free, and nobody else can copy it without provable fairness.</strong></p>
+<div class="meta"><span class="tag">Dev <b>Medium</b></span><span class="tag p-s">S</span><span class="tag lo">Rev <b>Low</b></span><span class="tag hi">Ret <b>High</b></span></div></div>
+
+<div class="idea"><div class="hd"><span class="no">11</span><span class="nm">Live spectating</span></div>
+<p>Watch any public duel in progress from the duels bubble. Spectators cost nothing, make the platform look busy at any hour, and turn a two-player moment into an audience event.</p>
+<div class="meta"><span class="tag">Dev <b>Medium</b></span><span class="tag p-a">A</span><span class="tag lo">Rev <b>Low</b></span><span class="tag">Ret <b>Medium</b></span></div></div>
+
+<div class="idea"><div class="hd"><span class="no">12</span><span class="nm">Best-of-three duels</span></div>
+<p>Single games of Connect 4 are decided by who moves first. Best-of-three with alternating first move turns luck into skill and triples session length for the same matchmaking cost.</p>
+<div class="meta"><span class="tag">Dev <b>Low</b></span><span class="tag p-a">A</span><span class="tag">Rev <b>Medium</b></span><span class="tag hi">Ret <b>High</b></span></div></div>
+
+<div class="idea"><div class="hd"><span class="no">13</span><span class="nm">Rivalries</span></div>
+<p>Detect any pair that has played five or more times, name it, keep the head-to-head record on both profiles, and notify on a new challenge. Rivalry is the cheapest retention mechanic ever invented and it needs no new content.</p>
+<div class="meta"><span class="tag">Dev <b>Low</b></span><span class="tag p-a">A</span><span class="tag lo">Rev <b>Low</b></span><span class="tag hi">Ret <b>High</b></span></div></div>
+
+<div class="idea"><div class="hd"><span class="no">14</span><span class="nm">Duel tournaments</span></div>
+<p>Scheduled brackets, entry fee, pool minus a protocol share. Daily small, weekly large. This is the natural home for tournament revenue and the natural top of the competitive ladder.</p>
+<div class="meta"><span class="tag">Dev <b>High</b></span><span class="tag p-a">A</span><span class="tag hi">Rev <b>High</b></span><span class="tag hi">Ret <b>High</b></span></div></div>
+
+<div class="idea"><div class="hd"><span class="no">15</span><span class="nm">Solver detection on high-stake duels</span></div>
+<p>Perfect play in Connect 4 and checkers is computable, so a server-side solver can score how often a player matches the optimal move. Consistent perfection above a stake threshold is flagged for human review. Without this, the ladder becomes a bot farm the moment it is worth farming.</p>
+<div class="meta"><span class="tag">Dev <b>Medium</b></span><span class="tag p-s">S</span><span class="tag lo">Rev <b>Low</b></span><span class="tag">Ret <b>Medium</b></span></div></div>
+
+<div class="idea"><div class="hd"><span class="no">16</span><span class="nm">Move timers with escalation</span></div>
+<p>Shorten thinking time as a match progresses. Humans adapt; naive solvers and remote-assisted players do not. A cheap integrity signal that also makes matches shorter and more watchable.</p>
+<div class="meta"><span class="tag">Dev <b>Low</b></span><span class="tag">B</span><span class="tag lo">Rev <b>Low</b></span><span class="tag">Ret <b>Medium</b></span></div></div>
+</div>
+
+<h3>C · Retention</h3>
+<div class="ideas">
+
+<div class="idea"><div class="hd"><span class="no">17</span><span class="nm">Weekly leaderboard</span></div>
+<p>Run the existing monthly engine on a seven-day cycle with a smaller pool, and keep the monthly one as the grand prize. A month is too long for a ranking to feel alive; a week gives 52 endings a year instead of 12.</p>
+<div class="meta"><span class="tag">Dev <b>Low</b></span><span class="tag p-s">S</span><span class="tag">Rev <b>Medium</b></span><span class="tag hi">Ret <b>High</b></span></div></div>
+
+<div class="idea"><div class="hd"><span class="no">18</span><span class="nm">Seasons</span></div>
+<p>Six-week seasons that reset divisions, hand out permanent title badges, and give the calendar a shape. Everything episodic — passes, tournaments, cosmetics, rivalry records — hangs off this one structure.</p>
+<div class="meta"><span class="tag">Dev <b>Medium</b></span><span class="tag p-a">A</span><span class="tag">Rev <b>Medium</b></span><span class="tag hi">Ret <b>High</b></span></div></div>
+
+<div class="idea"><div class="hd"><span class="no">19</span><span class="nm">Season pass, free and premium</span></div>
+<p>A free track everyone progresses through and a premium track bought with $SWOGE. Cosmetics, frames, titles and entry tickets only — <strong>never a betting edge, never a rate advantage</strong>. It is the cleanest recurring token sink in gaming and it does not touch fairness.</p>
+<div class="meta"><span class="tag">Dev <b>High</b></span><span class="tag p-a">A</span><span class="tag hi">Rev <b>High</b></span><span class="tag hi">Ret <b>High</b></span></div></div>
+
+<div class="idea"><div class="hd"><span class="no">20</span><span class="nm">Per-game daily missions</span></div>
+<p>Today's quests are global. Make them per-game and rotating, so they push players toward titles they have never opened. Free distribution for the whole catalogue, no new content required.</p>
+<div class="meta"><span class="tag">Dev <b>Low</b></span><span class="tag p-a">A</span><span class="tag lo">Rev <b>Low</b></span><span class="tag hi">Ret <b>High</b></span></div></div>
+
+<div class="idea"><div class="hd"><span class="no">21</span><span class="nm">Achievements with permanent display</span></div>
+<p>A hundred one-off feats — a ×1000 Plinko, a ten-win streak, a duel won from a losing position — shown permanently on the profile. Achievements are the cheapest content there is: they make existing games mean something new.</p>
+<div class="meta"><span class="tag">Dev <b>Medium</b></span><span class="tag p-a">A</span><span class="tag lo">Rev <b>Low</b></span><span class="tag hi">Ret <b>High</b></span></div></div>
+
+<div class="idea"><div class="hd"><span class="no">22</span><span class="nm">Streak insurance</span></div>
+<p>One missed day forgiven per season, or bought back with $SWOGE. Losing a 30-day streak to a flight is the moment people quit for good — and buying it back is a sink someone genuinely wants to pay.</p>
+<div class="meta"><span class="tag">Dev <b>Low</b></span><span class="tag p-a">A</span><span class="tag">Rev <b>Medium</b></span><span class="tag hi">Ret <b>High</b></span></div></div>
+
+<div class="idea"><div class="hd"><span class="no">23</span><span class="nm">Session recap card</span></div>
+<p>At the end of a session: rounds played, best multiplier, net result, level progress — as an image built for sharing. It closes the loop on the session and produces marketing material for free.</p>
+<div class="meta"><span class="tag">Dev <b>Low</b></span><span class="tag p-a">A</span><span class="tag lo">Rev <b>Low</b></span><span class="tag">Ret <b>Medium</b></span></div></div>
+
+<div class="idea"><div class="hd"><span class="no">24</span><span class="nm">Win-back offer</span></div>
+<p>A player inactive for fourteen days gets one notification with a concrete, expiring reason to return — a free tournament ticket, not a vague "we miss you". Measured against a control group or not shipped at all.</p>
+<div class="meta"><span class="tag">Dev <b>Low</b></span><span class="tag">B</span><span class="tag">Rev <b>Medium</b></span><span class="tag">Ret <b>Medium</b></span></div></div>
+
+<div class="idea"><div class="hd"><span class="no">25</span><span class="nm">Flatten the level curve past 30</span></div>
+<p>The curve is <code>50 × n^3.5</code>: level 100 takes 500 million in volume, and by level 40 a session moves the bar imperceptibly. Add sub-levels or per-tier milestones so progress stays visible for the 99&nbsp;% who will never see level 60.</p>
+<div class="meta"><span class="tag">Dev <b>Low</b></span><span class="tag p-a">A</span><span class="tag lo">Rev <b>Low</b></span><span class="tag">Ret <b>Medium</b></span></div></div>
+</div>
+
+<h3>D · Social</h3>
+<div class="ideas">
+
+<div class="idea"><div class="hd"><span class="no">26</span><span class="nm">Public profile pages</span></div>
+<p>A shareable URL per player: frame, level, record, achievements, best wins, rivalries. Today a player's identity is trapped inside a modal. A profile that can be linked is the atom every social feature is built from.</p>
+<div class="meta"><span class="tag">Dev <b>Medium</b></span><span class="tag p-s">S</span><span class="tag lo">Rev <b>Low</b></span><span class="tag hi">Ret <b>High</b></span></div></div>
+
+<div class="idea"><div class="hd"><span class="no">27</span><span class="nm">Clans</span></div>
+<p>Create for a $SWOGE fee, up to 50 members, with a shared treasury, a clan level fed by member volume, and a clan leaderboard. Clans convert individual retention into social obligation, which is a far stronger force.</p>
+<div class="meta"><span class="tag">Dev <b>High</b></span><span class="tag p-a">A</span><span class="tag">Rev <b>Medium</b></span><span class="tag hi">Ret <b>High</b></span></div></div>
+
+<div class="idea"><div class="hd"><span class="no">28</span><span class="nm">Clan wars</span></div>
+<p>Weekly clan-versus-clan brackets in the duel games, scored on aggregate results. It gives a clan something to <em class="q">do</em> — a clan with no fixture is just a list of names.</p>
+<div class="meta"><span class="tag">Dev <b>High</b></span><span class="tag">B</span><span class="tag">Rev <b>Medium</b></span><span class="tag hi">Ret <b>High</b></span></div></div>
+
+<div class="idea"><div class="hd"><span class="no">29</span><span class="nm">Table chat with canned lines</span></div>
+<p>Not free text — a fixed set of phrases and emotes. Zero moderation cost, no abuse surface, and it makes a duel feel like it is against a person. Free-text chat would need a moderation team the project does not have.</p>
+<div class="meta"><span class="tag">Dev <b>Low</b></span><span class="tag p-a">A</span><span class="tag lo">Rev <b>Low</b></span><span class="tag">Ret <b>Medium</b></span></div></div>
+
+<div class="idea"><div class="hd"><span class="no">30</span><span class="nm">Challenge links</span></div>
+<p>Generate a URL that opens a private table with your stake preloaded. Paste it in any chat. It is the referral link and the duel invite in one object, and it converts far better than either alone.</p>
+<div class="meta"><span class="tag">Dev <b>Low</b></span><span class="tag p-s">S</span><span class="tag">Rev <b>Medium</b></span><span class="tag hi">Ret <b>High</b></span></div></div>
+
+<div class="idea"><div class="hd"><span class="no">31</span><span class="nm">Follow a player</span></div>
+<p>Get notified when someone you follow starts a duel or hits a big win. It builds the audience layer that makes creators and spectating worth anything.</p>
+<div class="meta"><span class="tag">Dev <b>Medium</b></span><span class="tag">B</span><span class="tag lo">Rev <b>Low</b></span><span class="tag">Ret <b>Medium</b></span></div></div>
+</div>
+
+<h3>E · Token demand and sinks</h3>
+<div class="ideas">
+
+<div class="idea"><div class="hd"><span class="no">32</span><span class="nm">Cosmetics store</span></div>
+<p>Frames beyond the tier set, name colours, table skins, win animations. Bought with $SWOGE, partly burned. The most honest sink there is: the player pays for something they wanted and nothing is promised in return.</p>
+<div class="meta"><span class="tag">Dev <b>Medium</b></span><span class="tag p-a">A</span><span class="tag hi">Rev <b>High</b></span><span class="tag">Ret <b>Medium</b></span></div></div>
+
+<div class="idea"><div class="hd"><span class="no">33</span><span class="nm">Unique name reservation</span></div>
+<p>Names are first-come today. Make globally unique names cost $SWOGE, burned. Identity is worth paying for, it costs nothing to serve, and it cannot affect fairness.</p>
+<div class="meta"><span class="tag">Dev <b>Low</b></span><span class="tag p-a">A</span><span class="tag">Rev <b>Medium</b></span><span class="tag lo">Ret <b>Low</b></span></div></div>
+
+<div class="idea"><div class="hd"><span class="no">34</span><span class="nm">Tournament entry in $SWOGE</span></div>
+<p>Entries flow into the pool with a protocol share taken off the top. Recurring, scales with engagement, and every unit of it is demand from someone who wants to play rather than speculate.</p>
+<div class="meta"><span class="tag">Dev <b>Medium</b></span><span class="tag p-a">A</span><span class="tag hi">Rev <b>High</b></span><span class="tag hi">Ret <b>High</b></span></div></div>
+
+<div class="idea"><div class="hd"><span class="no">35</span><span class="nm">Clan creation and upgrades</span></div>
+<p>Creating a clan costs; raising its member cap, banner and perks costs more. Paid by a group rather than an individual, which makes larger amounts palatable.</p>
+<div class="meta"><span class="tag">Dev <b>Low</b></span><span class="tag">B</span><span class="tag">Rev <b>Medium</b></span><span class="tag">Ret <b>Medium</b></span></div></div>
+
+<div class="idea"><div class="hd"><span class="no">36</span><span class="nm">Rake reduction by staking tier</span></div>
+<p>5&nbsp;% duel rake drops to 4&nbsp;% and 3&nbsp;% at higher tiers. It costs revenue only on volume that exists, it is impossible to farm, and it rewards exactly the behaviour worth rewarding.</p>
+<div class="meta"><span class="tag">Dev <b>Low</b></span><span class="tag p-a">A</span><span class="tag lo">Rev <b>Low</b></span><span class="tag hi">Ret <b>High</b></span></div></div>
+</div>
+
+<h3>F · Economy hardening</h3>
+<div class="ideas">
+
+<div class="idea"><div class="hd"><span class="no">37</span><span class="nm">Revenue-indexed staking rate</span></div>
+<p>Replace the fixed 100&nbsp;% with a floor plus a variable share of monthly revenue. Publish both numbers every month. The yield can then never exceed what the platform earned, which is the same rule that already governs every other reward.</p>
+<div class="meta"><span class="tag">Dev <b>Medium</b></span><span class="tag p-s">S</span><span class="tag hi">Rev <b>High</b></span><span class="tag lo">Ret <b>Low</b></span></div></div>
+
+<div class="idea"><div class="hd"><span class="no">38</span><span class="nm">Per-wallet staking cap</span></div>
+<p>A global 20&nbsp;% cap still lets one holder take all of it. Cap each wallet at a share of the pool so the subsidy reaches many players rather than one fund.</p>
+<div class="meta"><span class="tag">Dev <b>Low</b></span><span class="tag p-a">A</span><span class="tag">Rev <b>Medium</b></span><span class="tag lo">Ret <b>Low</b></span></div></div>
+
+<div class="idea"><div class="hd"><span class="no">39</span><span class="nm">Published treasury ranges</span></div>
+<p>Not exact percentages that will be broken — ranges, with a monthly report against them. It costs nothing, removes the "discretionary treasury" objection, and is the cheapest credibility available.</p>
+<div class="meta"><span class="tag">Dev <b>Low</b></span><span class="tag p-s">S</span><span class="tag lo">Rev <b>Low</b></span><span class="tag lo">Ret <b>Low</b></span></div></div>
+
+<div class="idea"><div class="hd"><span class="no">40</span><span class="nm">Public solvency page</span></div>
+<p>The admin dashboard already computes vault contents, amount owed, surplus and runway. Publish the safe subset. A custodial platform that shows its own solvency in public is doing something almost nobody does.</p>
+<div class="meta"><span class="tag">Dev <b>Low</b></span><span class="tag p-a">A</span><span class="tag lo">Rev <b>Low</b></span><span class="tag">Ret <b>Medium</b></span></div></div>
+</div>
+
+<h3>G · Growth</h3>
+<div class="ideas">
+
+<div class="idea"><div class="hd"><span class="no">41</span><span class="nm">Telegram mini app</span></div>
+<p>The community already lives in Telegram and the notification bot is already there. A mini app removes the wallet-install step entirely for the most winnable audience. <strong>The highest-return growth channel available.</strong></p>
+<div class="meta"><span class="tag">Dev <b>High</b></span><span class="tag p-s">S</span><span class="tag hi">Rev <b>High</b></span><span class="tag hi">Ret <b>High</b></span></div></div>
+
+<div class="idea"><div class="hd"><span class="no">42</span><span class="nm">Built-in swap</span></div>
+<p>Buying $SWOGE currently means leaving for a DEX and coming back — the most expensive step in the funnel. The Uniswap plumbing is already in the launchpad code; this is interface work, not integration work.</p>
+<div class="meta"><span class="tag">Dev <b>Medium</b></span><span class="tag p-s">S</span><span class="tag hi">Rev <b>High</b></span><span class="tag">Ret <b>Medium</b></span></div></div>
+
+<div class="idea"><div class="hd"><span class="no">43</span><span class="nm">Read the funnel you already have</span></div>
+<p>Pages, wallets connected, depositors and first bets are already measured daily. Nobody has acted on them. One afternoon reading that data will beat a month of guessing at features. <strong>Free, and first.</strong></p>
+<div class="meta"><span class="tag">Dev <b>Low</b></span><span class="tag p-s">S</span><span class="tag hi">Rev <b>High</b></span><span class="tag hi">Ret <b>High</b></span></div></div>
+
+<div class="idea"><div class="hd"><span class="no">44</span><span class="nm">Creator codes with dashboards</span></div>
+<p>Referrals with a vanity code, a public leaderboard of creators, and a dashboard showing what the code earned. Creators promote what they can measure; today they cannot measure anything.</p>
+<div class="meta"><span class="tag">Dev <b>Low</b></span><span class="tag p-a">A</span><span class="tag hi">Rev <b>High</b></span><span class="tag">Ret <b>Medium</b></span></div></div>
+
+<div class="idea"><div class="hd"><span class="no">45</span><span class="nm">Creator-hosted tournaments</span></div>
+<p>Let a creator schedule a bracket, set the entry, and take a published share of the pool. They bring the audience and the prize; SWOGE provides the rails and takes a cut. Acquisition that pays for itself.</p>
+<div class="meta"><span class="tag">Dev <b>Medium</b></span><span class="tag p-a">A</span><span class="tag hi">Rev <b>High</b></span><span class="tag">Ret <b>Medium</b></span></div></div>
+
+<div class="idea"><div class="hd"><span class="no">46</span><span class="nm">Big wins auto-post with a verify link</span></div>
+<p>The bot already announces wins. Attach the seed, the nonce and a link that recomputes the result in the browser. It is a marketing post and a fairness proof in the same message — nobody else can post that.</p>
+<div class="meta"><span class="tag">Dev <b>Low</b></span><span class="tag p-a">A</span><span class="tag">Rev <b>Medium</b></span><span class="tag">Ret <b>Medium</b></span></div></div>
+
+<div class="idea"><div class="hd"><span class="no">47</span><span class="nm">Ambient live activity</span></div>
+<p>A quiet ticker of real recent wins, seed-verifiable, on the home page. An empty-looking platform converts terribly, and this is truthful proof of life rather than decoration.</p>
+<div class="meta"><span class="tag">Dev <b>Low</b></span><span class="tag">B</span><span class="tag lo">Rev <b>Low</b></span><span class="tag">Ret <b>Medium</b></span></div></div>
+</div>
+
+<h3>H · Infrastructure</h3>
+<div class="ideas">
+
+<div class="idea"><div class="hd"><span class="no">48</span><span class="nm">External audit of both fund-holding contracts</span></div>
+<p>The vault and the launchpad hold third-party money and have never been reviewed. Not a feature — a precondition. Everything else on this list is worth zero the day one of them is drained.</p>
+<div class="meta"><span class="tag">Dev <b>Low</b></span><span class="tag p-s">S</span><span class="tag lo">Rev <b>Low</b></span><span class="tag lo">Ret <b>Low</b></span></div></div>
+
+<div class="idea"><div class="hd"><span class="no">49</span><span class="nm">Multisig on vault and launchpad</span></div>
+<p>One key currently authorises every withdrawal. A 2-of-3 changes the category of the risk from "one mistake ends the project" to "one mistake is survivable". A weekend of work.</p>
+<div class="meta"><span class="tag">Dev <b>Low</b></span><span class="tag p-s">S</span><span class="tag lo">Rev <b>Low</b></span><span class="tag lo">Ret <b>Low</b></span></div></div>
+
+<div class="idea"><div class="hd"><span class="no">50</span><span class="nm">Move state out of a JSON file</span></div>
+<p>The whole state is serialised and rewritten periodically on one process. It already stalls measurably at 20,000 records. Move balances and journals to a real database before growth forces it, not after.</p>
+<div class="meta"><span class="tag">Dev <b>High</b></span><span class="tag p-a">A</span><span class="tag lo">Rev <b>Low</b></span><span class="tag lo">Ret <b>Low</b></span></div></div>
+
+<div class="idea"><div class="hd"><span class="no">51</span><span class="nm">Monitoring and paging</span></div>
+<p>There is no alert if the server stops. Today that is discovered by a player. External uptime checks, an alert to a phone, and a documented restart path.</p>
+<div class="meta"><span class="tag">Dev <b>Low</b></span><span class="tag p-s">S</span><span class="tag lo">Rev <b>Low</b></span><span class="tag lo">Ret <b>Low</b></span></div></div>
+
+<div class="idea"><div class="hd"><span class="no">52</span><span class="nm">Cut the games nobody plays</span></div>
+<p>Thirteen titles on this traffic means most have near-zero play, and every one costs maintenance and dilutes the lobby. Measure, then remove or merge the bottom four. Deleting is a feature.</p>
+<div class="meta"><span class="tag">Dev <b>Low</b></span><span class="tag p-a">A</span><span class="tag lo">Rev <b>Low</b></span><span class="tag">Ret <b>Medium</b></span></div></div>
+</div>
+</section>
+
+<p class="part">Systems</p>
+
+<section id="gameplay">
+<h2><span class="num">04</span> Gameplay</h2>
+<p>
+The honest diagnosis: SWOGE is a casino with a gaming skin. Casino games have no progression
+curve by design — that is what makes them casino games. Everything engaging has to be built
+<em class="q">around</em> them, or inside the four duel titles.
+</p>
+<div class="wrap"><table>
+  <thead><tr><th>Mechanic</th><th>Verdict</th></tr></thead>
+  <tbody>
+    <tr><td>Ranked duels, divisions, seasons</td><td><strong>Build.</strong> The only real skill surface, and currently unranked</td></tr>
+    <tr><td>Tournaments and leagues</td><td><strong>Build.</strong> Natural top of the ladder, and a clean revenue line</td></tr>
+    <tr><td>Clans and team battles</td><td><strong>Build, after tournaments.</strong> Social obligation outperforms individual habit</td></tr>
+    <tr><td>Achievements, missions, streaks</td><td><strong>Build.</strong> New meaning for existing content, near-zero cost</td></tr>
+    <tr><td>Two or three <em class="q">skill</em> duel games</td><td><strong>Build.</strong> Backgammon, dominoes, a card game — depth beats catalogue size</td></tr>
+    <tr><td>More house games</td><td><strong>Do not.</strong> Thirteen already dilutes the lobby</td></tr>
+    <tr><td>Boss battles, PvE campaigns</td><td><strong>Do not.</strong> RPG mechanics grafted onto a casino read as incoherent, and the content cost never stops</td></tr>
+    <tr><td>Crafting and upgrades</td><td><strong>Do not.</strong> Either cosmetic — in which case call it cosmetics — or pay-to-win, which destroys the fairness story</td></tr>
+  </tbody>
+</table></div>
+</section>
+
+<section id="progress">
+<h2><span class="num">05</span> Progression</h2>
+<div class="flow"><pre>
+<b>VOLUME WAGERED</b> ──▶ <b>LEVEL 1-100</b> ──▶ <b>TIER</b> ──▶ <b>FRAME</b>      <i>permanent · exists today</i>
+       │
+       ├──▶ <b>ACHIEVEMENTS</b> ──▶ <b>TITLES</b>                      <i>permanent · to build</i>
+       │
+<b>DUEL RESULTS</b> ────▶ <b>ELO</b> ──────▶ <b>DIVISION</b> ──▶ <b>SEASON REWARD</b>  <i>resets · to build</i>
+       │
+<b>SEASON ACTIVITY</b> ─▶ <b>PASS TRACK</b> ─▶ <b>COSMETICS</b>            <i>episodic · to build</i>
+</pre></div>
+<p>
+Three axes, deliberately separate. <strong>Level</strong> never falls and measures commitment.
+<strong>ELO</strong> rises and falls and measures skill. <strong>The pass</strong> resets and
+measures presence this season. A player who is bad but loyal still climbs one of them, which
+is the point.
+</p>
+<h3>Why it cannot be bought</h3>
+<ul>
+  <li><strong>Level comes from volume, and volume costs the house edge.</strong> Buying 500
+  million in volume means paying roughly 15 million to the house. That is not a loophole, it
+  is the business model.</li>
+  <li><strong>ELO comes from beating people.</strong> Money buys stake size, not wins. Collusion
+  is the only attack, and it is detectable as a pair.</li>
+  <li><strong>Achievements are one-off feats.</strong> Some need luck, some need skill, none
+  can be purchased.</li>
+  <li><strong>The premium pass sells the track, not the tiers.</strong> You still have to play
+  through it. The moment it sells tiers directly, the whole progression system becomes
+  decorative.</li>
+</ul>
+</section>
+
+<section id="retention">
+<h2><span class="num">06</span> Retention</h2>
+<div class="wrap"><table>
+  <thead><tr><th>Mechanic</th><th>Effect on retention</th><th>State</th></tr></thead>
+  <tbody>
+    <tr><td>Daily quests</td><td>Day-1 to day-7. Cheap and effective</td><td>Exists — make them per-game</td></tr>
+    <tr><td>Login streak</td><td>Day-7 to day-30. Strongest simple mechanic there is</td><td>Exists — add insurance</td></tr>
+    <tr><td>Weekly leaderboard</td><td>Weekly rhythm. 52 endings a year instead of 12</td><td><strong>Build</strong></td></tr>
+    <tr><td>Divisions with relegation</td><td>Loss aversion beats reward. Brings people back on the last day</td><td><strong>Build</strong></td></tr>
+    <tr><td>Seasons</td><td>Six-week arc, a reason to come back after a break</td><td><strong>Build</strong></td></tr>
+    <tr><td>Season pass</td><td>A visible unfinished track is the strongest daily pull in modern gaming</td><td><strong>Build</strong></td></tr>
+    <tr><td>Rivalries</td><td>Highest per-unit-effort retention available. One record between two names</td><td><strong>Build</strong></td></tr>
+    <tr><td>Clans</td><td>Turns "I should play" into "they are waiting for me"</td><td><strong>Build later</strong></td></tr>
+    <tr><td>Achievements</td><td>Long-tail. Gives veterans something left to do</td><td><strong>Build</strong></td></tr>
+    <tr><td>Monthly leaderboard</td><td>Only the top ten feel it. Weak alone, good as a grand final</td><td>Exists</td></tr>
+  </tbody>
+</table></div>
+</section>
+
+<section id="social">
+<h2><span class="num">07</span> Social</h2>
+<p>
+The order matters and is not obvious: <strong>identity → visibility → rivalry → group</strong>.
+Building clans before profiles produces empty clans, because members have nothing to show each
+other.
+</p>
+<ol>
+  <li><strong>Shareable profile pages.</strong> The atom. Nothing social works without it.</li>
+  <li><strong>Replays and spectating.</strong> Visibility. Players must be able to see each other play.</li>
+  <li><strong>Rivalries and rematches.</strong> The first real relationship between two accounts.</li>
+  <li><strong>Clans, wars, treasury.</strong> Only now — there is finally something to belong to.</li>
+</ol>
+<p>
+On chat: <strong>fixed phrases and emotes, not free text.</strong> Free-text chat in a money
+game needs moderation, abuse handling and a legal position. Canned lines give ninety per cent
+of the feeling at none of the cost.
+</p>
+</section>
+
+<section id="comp">
+<h2><span class="num">08</span> The competitive ladder</h2>
+<div class="flow"><pre>
+<b>UNRANKED</b>  <i>10 placement duels</i>
+   │
+   ▼
+<b>DIVISION</b>  <i>Bronze → SWOLE, ten steps, weekly promotion and relegation</i>
+   │
+   ▼
+<b>SEASON</b>  <i>six weeks · permanent title badge at the end</i>
+   │
+   ▼
+<b>QUALIFIERS</b>  <i>top of each division enters free</i>
+   │
+   ▼
+<b>SEASON CHAMPIONSHIP</b>  <i>bracket · pool from entries and a protocol share</i>
+   │
+   ▼
+<b>HALL OF SWOLE</b>  <i>permanent, one line per season, never resets</i>
+</pre></div>
+<p>
+Two rules keep it honest. <strong>Rating is per game</strong> — being good at checkers says
+nothing about Connect 4. And <strong>rating is separate from stake size</strong>: a player
+climbs by winning, not by betting more, or the ladder becomes a wealth ranking with extra
+steps.
+</p>
+</section>
+
+<p class="part">Economy</p>
+
+<section id="token">
+<h2><span class="num">09</span> Token utility, challenged</h2>
+<p>
+The honest question: <em class="q">why would a player actually need $SWOGE?</em> Today the
+answer is "to bet, and to earn a yield the team is paying for". That is one real reason and
+one subsidy.
+</p>
+<div class="wrap"><table>
+  <thead><tr><th>Utility</th><th>Real or artificial</th><th>Verdict</th></tr></thead>
+  <tbody>
+    <tr><td>Betting medium</td><td><strong>Real</strong> — you cannot play without it</td><td>Keep. This is the foundation.</td></tr>
+    <tr><td>Staking yield</td><td><strong>Artificial</strong> — value comes from the team, not the product</td><td>Convert into access</td></tr>
+    <tr><td>Launchpad allocation</td><td><strong>Real</strong> — scarce thing, fairly rationed</td><td><strong>Build first</strong></td></tr>
+    <tr><td>Tournament entry</td><td><strong>Real</strong> — buys a seat in a competition</td><td>Build</td></tr>
+    <tr><td>Cosmetics</td><td><strong>Real</strong> — voluntary, no promise attached</td><td>Build</td></tr>
+    <tr><td>Rake reduction</td><td><strong>Real</strong> — measurable saving on real activity</td><td>Build</td></tr>
+    <tr><td>Season pass</td><td><strong>Real</strong> — recurring, and it does not touch fairness</td><td>Build</td></tr>
+    <tr><td>Clan creation</td><td><strong>Real</strong> — a group pays for a shared identity</td><td>Build</td></tr>
+    <tr><td>Governance</td><td><strong>Artificial</strong> at this stage — one team decides everything and everyone knows it</td><td><strong>Do not build</strong></td></tr>
+    <tr><td>Crafting and upgrades</td><td><strong>Artificial</strong> — invented complexity in a game that has none</td><td><strong>Do not build</strong></td></tr>
+    <tr><td>NFT cosmetics</td><td><strong>Artificial</strong> — the frames already work without a chain</td><td><strong>Do not build</strong></td></tr>
+  </tbody>
+</table></div>
+</section>
+
+<section id="sinks">
+<h2><span class="num">10</span> Which sinks actually work</h2>
+<p>
+A sink only works if someone <em class="q">wants</em> to spend. Sinks that tax activity make
+people play less, which is the opposite of the goal.
+</p>
+<div class="wrap"><table>
+  <thead><tr><th>Sink</th><th class="n">Quality</th><th>Why</th></tr></thead>
+  <tbody>
+    <tr><td>Season pass</td><td class="n">★★★★★</td><td>Recurring, voluntary, fairness-neutral, and the player gets something every season</td></tr>
+    <tr><td>Cosmetics</td><td class="n">★★★★★</td><td>Pure want. No promise made, no economics to break</td></tr>
+    <tr><td>Tournament entries</td><td class="n">★★★★☆</td><td>Scales with engagement, but most of it returns as prizes — a small net sink</td></tr>
+    <tr><td>Launchpad allocation via staking</td><td class="n">★★★★☆</td><td>Locks tokens for a real reason. Temporary rather than permanent</td></tr>
+    <tr><td>Clan creation and upgrades</td><td class="n">★★★☆☆</td><td>Good, but bounded by the number of clans that will ever exist</td></tr>
+    <tr><td>Name reservation</td><td class="n">★★★☆☆</td><td>Small, permanent, costs nothing to run</td></tr>
+    <tr><td>Staking lock</td><td class="n">★★☆☆☆</td><td>Currently paid for with yield. A sink you rent rather than sell</td></tr>
+    <tr><td>Marketplace fees</td><td class="n">★☆☆☆☆</td><td>Needs a market. There is nothing scarce to trade yet</td></tr>
+    <tr><td>Betting fees</td><td class="n">☆☆☆☆☆</td><td><strong>Never.</strong> Taxing play makes people play less</td></tr>
+  </tbody>
+</table></div>
+</section>
+
+<section id="staking2">
+<h2><span class="num">11</span> Staking 2.0</h2>
+<div class="wrap"><table>
+  <thead><tr><th>Tier</th><th class="n">Staked</th><th>What it opens</th></tr></thead>
+  <tbody>
+    <tr><td>Bronze</td><td class="n">≥ 10 k</td><td>Base yield · weekly leaderboard eligibility</td></tr>
+    <tr><td>Silver</td><td class="n">≥ 100 k</td><td>+ launchpad allocation, small · duel rake 4.5&nbsp;%</td></tr>
+    <tr><td>Gold</td><td class="n">≥ 500 k</td><td>+ allocation, medium · rake 4&nbsp;% · free weekly tournament entry</td></tr>
+    <tr><td>Diamond</td><td class="n">≥ 2 M</td><td>+ allocation, large · rake 3.5&nbsp;% · exclusive frame</td></tr>
+    <tr><td>SWOLE</td><td class="n">≥ 10 M</td><td>+ largest allocation · rake 3&nbsp;% · championship seed · name on the vault page</td></tr>
+  </tbody>
+</table></div>
+<h3>Where the rewards come from — stated plainly</h3>
+<ul>
+  <li><strong>Allocation</strong> costs nothing. It rations a scarce thing that already exists.</li>
+  <li><strong>Rake reduction</strong> costs revenue only on volume that happens, and never
+  more than that volume produced.</li>
+  <li><strong>Tournament entries</strong> cost a seat, not cash.</li>
+  <li><strong>Cosmetics</strong> cost art, once.</li>
+  <li><strong>The yield</strong> becomes a floor plus a share of revenue — so it cannot exceed
+  what was earned, which is already the rule everywhere else in this economy.</li>
+</ul>
+<div class="note win">
+<strong>The point of the redesign:</strong> four of the five rewards cost the protocol nothing
+and cannot run out. Today, one hundred per cent of the staking proposition is the one reward
+that can.
+</div>
+</section>
+
+<section id="burn2">
+<h2><span class="num">12</span> Burn 2.0</h2>
+<div class="wrap"><table>
+  <thead><tr><th>Model</th><th>Health</th><th>Assessment</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Fee burn on activity</strong><br>cosmetics, names, passes, launch fees</td><td>★★★★★</td><td><strong>The healthiest.</strong> Scarcity tracks engagement. Every burn corresponds to someone choosing to spend.</td></tr>
+    <tr><td><strong>Launchpad fee burn</strong></td><td>★★★★☆</td><td>Ties the second business to the token. Grows with launches rather than with churn.</td></tr>
+    <tr><td><strong>Withdrawal burn</strong> — current</td><td>★★★☆☆</td><td>Real and verifiable, but fires when people <em class="q">leave</em>. Keep it as a churn disincentive; stop treating it as the main engine.</td></tr>
+    <tr><td><strong>Tournament burn</strong></td><td>★★★☆☆</td><td>Fine, but it competes with the prize pool for the same money.</td></tr>
+    <tr><td><strong>Community burn</strong></td><td>★★☆☆☆</td><td>Good theatre, negligible volume. Keep as an event, never as a plan.</td></tr>
+    <tr><td><strong>Buyback and burn</strong></td><td>★★☆☆☆</td><td>Needs a treasury in another asset and a written policy. Without one it is a discretionary decision — the opposite of a mechanism.</td></tr>
+  </tbody>
+</table></div>
+<div class="note">
+<strong>Say this out loud, always:</strong> a burn reduces supply. It does not create value. With
+no demand facing it, a burn produces nothing. The reason to burn is credibility and a
+long-horizon supply floor, not a price move — and any communication implying otherwise is both
+false and, in several jurisdictions, a problem.
+</div>
+</section>
+
+<section id="launch2">
+<h2><span class="num">13</span> Launchpad 2.0</h2>
+<p>
+This is the most underexploited asset in the project. It works, it is used, and it is
+completely disconnected from everything else.
+</p>
+<div class="flow"><pre>
+<b>OPEN TRACK</b>  <i>permissionless, as today</i>        <b>VERIFIED TRACK</b>  <i>new</i>
+     │                                          │
+     │                                    application + fee
+     │                                          ▼
+     │                                    <b>REVIEW</b>  <i>published checklist</i>
+     │                                          │
+     │                                    <b>COMMUNITY VOTE</b>  <i>staked $SWOGE weights it</i>
+     │                                          ▼
+     │                                    <b>ALLOCATION</b>  <i>by staking tier</i>
+     │                                          │
+     ▼                                          ▼
+<b>INSTANT POOL</b>                          <b>FAIR LAUNCH</b>  <i>vesting, wallet caps</i>
+     │                                          │
+     └──────────────┬───────────────────────────┘
+                    ▼
+          <b>PROJECT DASHBOARD</b>  <i>holders, concentration, fees, liquidity</i>
+                    │
+                    ▼
+          <b>POST-LAUNCH SCORE</b>  <i>creator reputation, carried to the next launch</i>
+</pre></div>
+<h3>How SWOGE makes money from it</h3>
+<ol>
+  <li><strong>Protocol fee</strong> — 1&nbsp;% of all trading. Live.</li>
+  <li><strong>Verified listing fee</strong> — paid in $SWOGE, partly burned. New.</li>
+  <li><strong>Optional creation fee</strong> — free in native, discounted in $SWOGE. New.</li>
+  <li><strong>Promoted placement</strong> — clearly labelled as paid, never as endorsement. New.</li>
+  <li><strong>Liquidity services</strong> — locking and vesting as a paid service. New.</li>
+</ol>
+<p>
+<strong>Creator reputation is the compounding asset.</strong> A creator who launched three
+projects that still trade is worth more than a new address, and that score should follow them
+into their next launch and be visible to buyers. No competing launchpad has it because none of
+them keeps the history.
+</p>
+</section>
+
+<section id="market">
+<h2><span class="num">14</span> Marketplace — not yet</h2>
+<p>
+A marketplace requires something scarce that people want and can trade. SWOGE currently has
+frames earned by level — which must <em class="q">not</em> be tradable, or the level system
+loses its meaning immediately.
+</p>
+<div class="note kill">
+<strong>Do not build a marketplace now.</strong> It would trade nothing, need custody and
+escrow, invite wash trading, and add an attack surface for zero revenue. Revisit only if
+limited-edition cosmetics reach real volume — and even then, keep everything
+<em class="q">earned</em> non-tradable and everything <em class="q">bought</em> tradable. That
+line is what protects the progression system.
+</div>
+</section>
+
+<section id="pass">
+<h2><span class="num">15</span> The season pass</h2>
+<p>
+The single best recurring sink available, and it is fairness-neutral if one rule holds:
+<strong>the pass sells cosmetics, tickets and the track — never an edge, never a rate, never a
+multiplier.</strong>
+</p>
+<div class="wrap"><table>
+  <thead><tr><th>Track</th><th>Contents</th><th>Cost</th></tr></thead>
+  <tbody>
+    <tr><td>Free</td><td>Every fifth tier: small $SWOGE rewards, one frame, one title, quest slots</td><td>Play</td></tr>
+    <tr><td>Premium</td><td>All 50 tiers: exclusive frames, name colours, win animations, tournament tickets, streak insurance</td><td>$SWOGE, partly burned</td></tr>
+  </tbody>
+</table></div>
+<p>
+Progress comes from missions, not from wagered volume — otherwise the pass becomes a machine
+for pushing people to bet more, which is both bad product and bad ethics. Six weeks per season,
+fifty tiers, comfortably finishable by a casual player.
+</p>
+</section>
+
+<section id="clans">
+<h2><span class="num">16</span> Clans</h2>
+<div class="wrap"><table>
+  <thead><tr><th>Element</th><th>How it works</th><th>Guardrail</th></tr></thead>
+  <tbody>
+    <tr><td>Creation</td><td>Costs $SWOGE, burned. Up to 50 members</td><td>A price keeps out throwaway clans</td></tr>
+    <tr><td>Clan level</td><td>Sum of member volume, decaying weekly</td><td>Decay stops a dead clan sitting at the top forever</td></tr>
+    <tr><td>Treasury</td><td>Members contribute; the leader spends on entries and cosmetics</td><td><strong>Withdrawals require a member vote</strong> — otherwise leaders simply take it</td></tr>
+    <tr><td>Clan wars</td><td>Weekly bracket in the duel games, aggregate score</td><td>Members must have played to count, or clans farm inactive rosters</td></tr>
+    <tr><td>Rewards</td><td>Cosmetics, banners, leaderboard place, a share of a pool</td><td>Never a rate or edge advantage</td></tr>
+  </tbody>
+</table></div>
+<div class="note kill">
+<strong>The clan mistake to avoid:</strong> clan rewards paid in tokens per member turn clans
+into a farming vehicle immediately — recruit a hundred wallets, collect a hundred shares. Clan
+rewards should be <em class="q">cosmetic and positional</em>, plus a fixed pool split among a
+capped roster.
+</div>
+</section>
+
+<p class="part">Growth</p>
+
+<section id="referral">
+<h2><span class="num">17</span> Referrals — already right, and here is why</h2>
+<p>
+This is the part of SWOGE I would change least. Paying a share of the
+<em class="q">revenue an invitee actually produces</em> makes every classic attack unprofitable
+by construction rather than by detection:
+</p>
+<div class="wrap"><table>
+  <thead><tr><th>Attack</th><th>Why it fails today</th></tr></thead>
+  <tbody>
+    <tr><td>Multi-accounting</td><td>The welcome gift is locked until the house has earned it back. A hundred throwaway wallets return zero.</td></tr>
+    <tr><td>Sybil farming</td><td>Payment tracks revenue, and revenue requires losing to the house. Farming means paying the house to pay yourself a fraction.</td></tr>
+    <tr><td>Self-referral</td><td>Same arithmetic. It is a paid loop with negative expectancy.</td></tr>
+    <tr><td>Collusion in 1v1</td><td>Only 1&nbsp;% of the stake counts, not real revenue — deliberately, and correctly.</td></tr>
+    <tr><td>Wash then withdraw</td><td>Earnings mature for seven days and are clawed back if the invitee wins it back.</td></tr>
+  </tbody>
+</table></div>
+<p>
+Two additions worth making: <strong>vanity codes with a public creator leaderboard</strong>,
+and <strong>pair detection</strong> for accounts that only ever play each other. Nothing else.
+</p>
+</section>
+
+<section id="creators">
+<h2><span class="num">18</span> Creator economy</h2>
+<ol>
+  <li><strong>Vanity codes and a dashboard.</strong> Creators promote what they can measure.</li>
+  <li><strong>A public creator leaderboard.</strong> Competition between promoters is free promotion.</li>
+  <li><strong>Creator-hosted tournaments.</strong> They bring the audience and the prize, SWOGE provides the rails and takes a cut.</li>
+  <li><strong>Custom challenges.</strong> "Beat me at Connect 4 and take the pot" as a one-click link.</li>
+  <li><strong>Verified creator badge.</strong> Costs nothing, worth a great deal to them.</li>
+</ol>
+<p>
+The natural fit is obvious and worth stating: <strong>a launchpad creator and a tournament
+creator are the same person.</strong> Someone who launched a token has a community and needs a
+reason to keep it engaged. Give them a tournament for their token holders and SWOGE becomes
+the venue for every community on the chain.
+</p>
+</section>
+
+<section id="ai">
+<h2><span class="num">19</span> AI — three uses, not nine</h2>
+<div class="wrap"><table>
+  <thead><tr><th>Use</th><th>Verdict</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Collusion and solver detection</strong></td><td><strong>Yes.</strong> Pattern detection over pair histories and move quality is genuine machine-learning work with a real payoff.</td></tr>
+    <tr><td><strong>Multi-account clustering</strong></td><td><strong>Yes.</strong> Timing, funding paths and behaviour cluster well and cheaply.</td></tr>
+    <tr><td><strong>Practice opponents</strong></td><td><strong>Yes.</strong> A tuneable bot for the duel games, clearly labelled, no stake. It solves the empty-lobby problem at 4 a.m.</td></tr>
+    <tr><td>Matchmaking</td><td>No. ELO already solves this and is explainable.</td></tr>
+    <tr><td>Coaching</td><td>No. Nice, but nobody comes for it.</td></tr>
+    <tr><td>Game generation</td><td>No. The catalogue is already too large.</td></tr>
+    <tr><td>Recommendation engine</td><td>No. Thirteen games do not need one.</td></tr>
+    <tr><td>Chat moderation</td><td>No — because free-text chat should not exist.</td></tr>
+  </tbody>
+</table></div>
+<p><em class="q">Adding "AI" to the branding without any of the three above would be noise, and
+an audience that verifies HMAC signatures will notice.</em></p>
+</section>
+
+<section id="platforms">
+<h2><span class="num">20</span> Platforms, in order</h2>
+<div class="wrap"><table>
+  <thead><tr><th class="n">#</th><th>Platform</th><th>Why in this order</th></tr></thead>
+  <tbody>
+    <tr><td class="n">1</td><td><strong>Mobile web</strong></td><td>Most traffic is already on a phone, and the site is responsive. Cheapest possible win: fix the mobile funnel before anything else.</td></tr>
+    <tr><td class="n">2</td><td><strong>Telegram mini app</strong></td><td>The community lives there, the bot is already there, and it removes the wallet-install step for the most winnable audience.</td></tr>
+    <tr><td class="n">3</td><td><strong>Desktop web</strong></td><td>Where the big stakes and the poker tables live. Already works; keep it.</td></tr>
+    <tr><td class="n">4</td><td><strong>Discord</strong></td><td>Notifications and clan coordination. Not a play surface.</td></tr>
+    <tr><td class="n">5</td><td><strong>Native apps</strong></td><td>App-store rules on real-money gaming make this a legal project, not an engineering one. Much later, or never.</td></tr>
+  </tbody>
+</table></div>
+</section>
+
+<section id="viral">
+<h2><span class="num">21</span> The viral loop</h2>
+<div class="flow"><pre>
+<b>PLAY</b> ─▶ <b>WIN</b> ─▶ <b>PROOF</b> ─▶ <b>SHARE</b> ─▶ <b>CHALLENGE</b> ─▶ <b>FRIEND JOINS</b> ─▶ <b>RIVALRY</b> ─┐
+  ▲                                                                                 │
+  └─────────────────────────────────────────────────────────────────────────────────┘
+</pre></div>
+<p><strong>Ten mechanics that feed it, in order of effort-to-effect:</strong></p>
+<ol>
+  <li><strong>Challenge links</strong> — a URL that opens a private table with the stake preloaded.</li>
+  <li><strong>Verifiable win posts</strong> — the announcement carries the seed and a recompute link. Nobody else can post that.</li>
+  <li><strong>Session recap cards</strong> — built to be screenshotted.</li>
+  <li><strong>Replay clips</strong> — the moment, shareable, with proof attached.</li>
+  <li><strong>Rivalry records</strong> — "5–3 against you" is a message that writes itself.</li>
+  <li><strong>Public profiles</strong> — something to link to.</li>
+  <li><strong>Clan recruitment posts</strong> — groups recruit harder than individuals.</li>
+  <li><strong>Creator tournaments</strong> — one creator brings a hundred players at once.</li>
+  <li><strong>Referral rewards on real revenue</strong> — already live, already sound.</li>
+  <li><strong>Leaderboard screenshots at season end</strong> — a natural moment to post.</li>
+</ol>
+<p>
+The strongest is the second, and it is unique to SWOGE: <em class="q">"I hit 340× and here is
+the cryptographic proof it was not staged."</em> That is a post no other casino can write.
+</p>
+</section>
+
+<section id="revenue">
+<h2><span class="num">22</span> Revenue — fifteen candidates, five to build</h2>
+<div class="wrap"><table>
+  <thead><tr><th>Source</th><th>Who pays</th><th class="n">Potential</th><th class="n">Effort</th><th>Risk</th></tr></thead>
+  <tbody>
+    <tr><td>House edge</td><td>Players</td><td class="n">High</td><td class="n">Live</td><td>Regulatory</td></tr>
+    <tr><td>Duel and poker rake</td><td>Players</td><td class="n">Medium</td><td class="n">Live</td><td>Collusion</td></tr>
+    <tr><td>Launchpad protocol fee</td><td>Traders</td><td class="n">High</td><td class="n">Live</td><td>Volume-dependent</td></tr>
+    <tr><td>Early-exit penalties</td><td>Stakers</td><td class="n">Low</td><td class="n">Live</td><td>Reputational</td></tr>
+    <tr><td>Rewarded ads</td><td>Advertisers</td><td class="n">Low</td><td class="n">Live</td><td>None</td></tr>
+    <tr><td><strong>Season pass</strong></td><td>Engaged players</td><td class="n">High</td><td class="n">High</td><td>Low</td></tr>
+    <tr><td><strong>Cosmetics</strong></td><td>Engaged players</td><td class="n">High</td><td class="n">Medium</td><td>Low</td></tr>
+    <tr><td><strong>Tournament fees</strong></td><td>Competitive players</td><td class="n">High</td><td class="n">Medium</td><td>Disputes</td></tr>
+    <tr><td><strong>Verified listings</strong></td><td>Projects</td><td class="n">High</td><td class="n">Medium</td><td>Reputational</td></tr>
+    <tr><td><strong>Creation fee in $SWOGE</strong></td><td>Creators</td><td class="n">Medium</td><td class="n">Low</td><td>Fewer launches</td></tr>
+    <tr><td>Promoted placement</td><td>Projects</td><td class="n">Medium</td><td class="n">Low</td><td>Trust, if not labelled</td></tr>
+    <tr><td>Liquidity lock service</td><td>Projects</td><td class="n">Medium</td><td class="n">Medium</td><td>Custody</td></tr>
+    <tr><td>Clan creation</td><td>Groups</td><td class="n">Low</td><td class="n">Low</td><td>None</td></tr>
+    <tr><td>Name reservation</td><td>Players</td><td class="n">Low</td><td class="n">Low</td><td>None</td></tr>
+    <tr><td>White-label gaming rails</td><td>Other teams</td><td class="n">High</td><td class="n">High</td><td>Support burden</td></tr>
+  </tbody>
+</table></div>
+<div class="note win">
+<strong>The five to build:</strong> season pass, cosmetics, tournament fees, verified listings,
+and creation fees in $SWOGE. Together they add three properties the current model lacks — they
+are <em class="q">recurring</em>, they are <em class="q">not</em> a tax on playing, they create
+real token demand, and two of them are paid by <strong>projects rather than players</strong>,
+which diversifies away from a single small user base.
+</div>
+</section>
+
+<p class="part">Stress</p>
+
+<section id="sustain">
+<h2><span class="num">23</span> Four stress tests</h2>
+
+<div class="card">
+<h4>The token falls 80&nbsp;%</h4>
+<p>
+<strong>The casino keeps working, and this is a genuine structural strength.</strong> Every
+mechanic is denominated in tokens: the edge is a percentage, bets are in tokens, the vault
+holds tokens, the debt is in tokens. Nothing breaks mechanically.
+</p>
+<p>
+What does break is <em class="q">perception</em>. Rewards look smaller in fiat, the 10,000
+minimum withdrawal becomes trivial in value, and holders who arrived for the yield leave. The
+mitigation is that revenue-indexed rewards shrink and grow with the same unit, so ratios hold.
+<strong>Resilience: high.</strong>
+</p>
+</div>
+
+<div class="card">
+<h4>The token rises 10×</h4>
+<p>
+<strong>This is the more dangerous direction, and it is the one nobody plans for.</strong> The
+staking liability is 200 million tokens at cap — at 10× that is a fiat obligation ten times
+larger against a vault that did not grow. Minimum bets price out small players. The 10,000
+withdrawal minimum becomes a real barrier. A whale can suddenly buy the entire staking cap.
+</p>
+<p>
+Mitigations: bet limits expressed in a fiat-equivalent band, a per-wallet staking cap, and a
+revenue-indexed rate so the liability scales with income rather than with price.
+<strong>Resilience: medium. Needs work.</strong>
+</p>
+</div>
+
+<div class="card">
+<h4>Players ×100</h4>
+<p>
+<strong>This is where it breaks first, and it is not close.</strong> One Node process, a JSON
+state file serialised in full, no failover, no read replica. Measured today: 20,000 empty
+records already stall the loop for a second per save. At 100× the current user base the save
+loop alone consumes the process.
+</p>
+<p>
+Mitigations, in order: move balances and journals to a real database; split the game loop from
+the API; add a read replica for leaderboards and profiles; put a queue in front of settlement.
+<strong>Resilience: low. Fix before marketing, not after.</strong>
+</p>
+</div>
+
+<div class="card">
+<h4>90&nbsp;% of users withdraw at once</h4>
+<p>
+The vault holds 99.8&nbsp;million tokens against what is owed. If owed exceeds the vault, the
+platform is insolvent and withdrawals fail — the classic run on a custodial model. The
+dashboard tracks the ratio continuously and alerts below a 10&nbsp;% margin, which is better
+than most, but tracking is not the same as surviving.
+</p>
+<p>
+Mitigations: a written reserve policy with a floor; a public solvency page so the ratio is
+never a surprise; and — the real answer — reducing the staking liability so the surplus is
+structurally large. <strong>Resilience: medium, entirely dependent on the staking fix.</strong>
+</p>
+</div>
+</section>
+
+<section id="whale">
+<h2><span class="num">24</span> Anti-whale, without banning whales</h2>
+<div class="wrap"><table>
+  <thead><tr><th>Area</th><th>Problem</th><th>Fix</th></tr></thead>
+  <tbody>
+    <tr><td>Leaderboard</td><td>Volume ranking is a wealth ranking; the biggest wallet always wins</td><td>Add a parallel <strong>skill</strong> ladder on ELO, and split the pool between them</td></tr>
+    <tr><td>Staking</td><td>One holder can take the entire 20&nbsp;% cap</td><td>Per-wallet cap as a share of the pool</td></tr>
+    <tr><td>Launchpad</td><td>Linear allocation means the largest holder takes everything</td><td>Square-root allocation curves — more stake still wins, but with diminishing returns</td></tr>
+    <tr><td>Tournaments</td><td>Stake-based entry excludes small players</td><td>Tiered brackets by buy-in, so everyone has a bracket</td></tr>
+    <tr><td>Duels</td><td>A big wallet grinds small players down by attrition</td><td>ELO matchmaking, which pairs by skill and not by balance</td></tr>
+    <tr><td>Prize distribution</td><td>30&nbsp;% to first place concentrates hard</td><td>Flatten the curve, and add "top 100" bands so more people feel included</td></tr>
+  </tbody>
+</table></div>
+<p>
+The principle throughout: <strong>let capital buy scale, never advantage.</strong> A whale
+should be able to bet more and stake more. They should not be able to buy a better rating, a
+better draw, or a better paytable.
+</p>
+</section>
+
+<section id="attack">
+<h2><span class="num">25</span> The attack surface</h2>
+<div class="wrap"><table>
+  <thead><tr><th>Attack</th><th>Impact</th><th>Detection</th><th>Mitigation</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Vault key compromise</strong></td><td>Total loss</td><td>Unexpected voucher signatures</td><td><strong>Multisig.</strong> The only real answer. Highest priority in the project.</td></tr>
+    <tr><td><strong>Contract exploit</strong></td><td>Loss of funds</td><td>Balance monitoring</td><td><strong>External audit</strong>, bug bounty, pause switch</td></tr>
+    <tr><td>Duel solvers</td><td>Honest players leave</td><td>Move-optimality scoring</td><td>Detection above a stake threshold, human review, graduated restriction</td></tr>
+    <tr><td>Collusion in duels</td><td>Distorted ladder and leaderboard</td><td>Pair frequency and win asymmetry</td><td>Pair caps, ELO gains decaying on repeat opponents</td></tr>
+    <tr><td>Sybil for rewards</td><td>Drained bonus budget</td><td>Funding-path clustering</td><td>Already strong: the gift is locked until the house earns it back</td></tr>
+    <tr><td>Match fixing in tournaments</td><td>Broken competition</td><td>Anomalous forfeits</td><td>Randomised brackets, replay review of finals</td></tr>
+    <tr><td>Reward farming</td><td>Budget leak</td><td>Reward-to-revenue ratio per account</td><td>All rewards indexed on revenue. Already correct.</td></tr>
+    <tr><td>Wash trading the token</td><td>Reputational, legal</td><td>On-chain analysis by anyone</td><td>Never do it. A project that publishes seeds cannot lie about volume.</td></tr>
+    <tr><td>Launchpad sniping</td><td>Unfair launches</td><td>First-block buy sizes</td><td>Anti-snipe exists. Add allocation caps on the verified track.</td></tr>
+    <tr><td>Message flooding</td><td>Denial of service</td><td>Per-socket counters</td><td>Token bucket. Measured under attack. Solved.</td></tr>
+    <tr><td>Voucher replay</td><td>None</td><td>—</td><td>Cumulative design makes it harmless. Solved.</td></tr>
+    <tr><td>Server loss</td><td>Full outage</td><td>Nothing today</td><td><strong>Monitoring and alerting.</strong> Currently a player finds out first.</td></tr>
+  </tbody>
+</table></div>
+</section>
+
+<p class="part">Decide</p>
+
+<section id="donot">
+<h2><span class="num">26</span> Do not build</h2>
+<p>The most useful section in any review, and usually the shortest.</p>
+<div class="wrap"><table>
+  <thead><tr><th>Do not build</th><th>Why</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Governance / DAO</strong></td><td>One team decides everything and everyone can see it. A vote that cannot change an outcome is theatre, and it converts holders into disappointed voters.</td></tr>
+    <tr><td><strong>NFT cosmetics</strong></td><td>The frames already work. Tokenising adds gas, contracts and attack surface to buy resale nobody asked for — and resale of <em class="q">earned</em> items destroys the level system.</td></tr>
+    <tr><td><strong>A marketplace, now</strong></td><td>Nothing scarce exists to trade. It would be an empty storefront with custody risk.</td></tr>
+    <tr><td><strong>Crafting, upgrades, RPG layers</strong></td><td>Invented complexity on a casino. Either cosmetic — then call it cosmetics — or pay-to-win, which kills the fairness story.</td></tr>
+    <tr><td><strong>More house games</strong></td><td>Thirteen already dilutes the lobby. Cut four before adding one.</td></tr>
+    <tr><td><strong>Free-text chat</strong></td><td>Needs moderation, abuse handling and a legal position. Canned lines give most of the value at none of the cost.</td></tr>
+    <tr><td><strong>Free-to-play duels that count for the leaderboard</strong></td><td>Costless farming of a paid ranking. If free duels exist, they must be unranked and unrewarded.</td></tr>
+    <tr><td><strong>Raising the staking APR</strong></td><td>Every point makes the liability worse and attracts more yield tourists. The rate is already the weakest part of the economy.</td></tr>
+    <tr><td><strong>Multi-chain deployment</strong></td><td>Being <em class="q">the</em> gaming platform on one new chain beats being the fourteenth on five. Splitting liquidity now would be self-harm.</td></tr>
+    <tr><td><strong>Buying volume, in any form</strong></td><td>Detectable, illegal in most places, and terminal for a project whose entire pitch is verifiability.</td></tr>
+    <tr><td><strong>Loot boxes</strong></td><td>Gambling regulation on top of gambling regulation. Sell the cosmetic directly.</td></tr>
+    <tr><td><strong>A native mobile app, now</strong></td><td>App-store rules on real-money gaming make this a legal project, not an engineering one.</td></tr>
+  </tbody>
+</table></div>
+</section>
+
+<section id="order">
+<h2><span class="num">27</span> Order of work</h2>
+<div class="card">
+<h3>Must have — before any growth spending</h3>
+<p>Spending on marketing before these is spending on a bigger blast radius.</p>
+<ol>
+  <li>External audit of the vault and launchpad</li>
+  <li>Multisig on both</li>
+  <li>Monitoring and alerting</li>
+  <li>Published allocation table and vesting</li>
+  <li>Revenue-indexed staking rate, or a cap aligned with revenue</li>
+  <li>Minimum age and a jurisdiction position</li>
+  <li>Written suspension and appeal procedure</li>
+</ol>
+</div>
+<div class="card">
+<h3>Should have — the next quarter</h3>
+<ol>
+  <li>ELO, divisions and matchmaking on the duels</li>
+  <li>Weekly leaderboard</li>
+  <li>Public profile pages</li>
+  <li>Challenge links</li>
+  <li>Staking tiers → launchpad allocation</li>
+  <li>Built-in swap</li>
+  <li>Read the conversion funnel and act on it</li>
+  <li>Solver detection on high-stake duels</li>
+</ol>
+</div>
+<div class="card">
+<h3>Nice to have — once the above works</h3>
+<ol>
+  <li>Seasons and the season pass</li>
+  <li>Tournaments</li>
+  <li>Replays and spectating</li>
+  <li>Cosmetics store</li>
+  <li>Achievements</li>
+  <li>Telegram mini app</li>
+  <li>Verified launchpad track</li>
+</ol>
+</div>
+<div class="card">
+<h3>Future — the vision, not the plan</h3>
+<ol>
+  <li>Clans and clan wars</li>
+  <li>Creator tournaments</li>
+  <li>Season championships and a hall of fame</li>
+  <li>White-label gaming rails for other teams</li>
+  <li>On-chain staking</li>
+</ol>
+</div>
+</section>
+
+<section id="matrix">
+<h2><span class="num">28</span> Priority matrix</h2>
+<div class="wrap"><table>
+  <thead><tr><th>Feature</th><th class="n">User value</th><th class="n">Revenue</th><th class="n">Retention</th><th class="n">Cost</th><th class="n">Priority</th></tr></thead>
+  <tbody>
+    <tr><td>Audit + multisig</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">Low</td><td class="n"><strong>S</strong></td></tr>
+    <tr><td>Monitoring</td><td class="n">Med</td><td class="n">Low</td><td class="n">Med</td><td class="n">Low</td><td class="n"><strong>S</strong></td></tr>
+    <tr><td>Read the funnel</td><td class="n">—</td><td class="n">High</td><td class="n">High</td><td class="n">Low</td><td class="n"><strong>S</strong></td></tr>
+    <tr><td>ELO + divisions</td><td class="n">High</td><td class="n">Low</td><td class="n">High</td><td class="n">Low</td><td class="n"><strong>S</strong></td></tr>
+    <tr><td>Matchmaking</td><td class="n">High</td><td class="n">Low</td><td class="n">High</td><td class="n">Med</td><td class="n"><strong>S</strong></td></tr>
+    <tr><td>Staking → allocation</td><td class="n">High</td><td class="n">High</td><td class="n">High</td><td class="n">Med</td><td class="n"><strong>S</strong></td></tr>
+    <tr><td>Weekly leaderboard</td><td class="n">Med</td><td class="n">Med</td><td class="n">High</td><td class="n">Low</td><td class="n"><strong>S</strong></td></tr>
+    <tr><td>Challenge links</td><td class="n">High</td><td class="n">Med</td><td class="n">High</td><td class="n">Low</td><td class="n"><strong>S</strong></td></tr>
+    <tr><td>Profile pages</td><td class="n">High</td><td class="n">Low</td><td class="n">High</td><td class="n">Med</td><td class="n"><strong>S</strong></td></tr>
+    <tr><td>Built-in swap</td><td class="n">High</td><td class="n">High</td><td class="n">Med</td><td class="n">Med</td><td class="n"><strong>S</strong></td></tr>
+    <tr><td>Revenue-indexed staking</td><td class="n">Low</td><td class="n">High</td><td class="n">Low</td><td class="n">Med</td><td class="n"><strong>S</strong></td></tr>
+    <tr><td>Solver detection</td><td class="n">High</td><td class="n">Low</td><td class="n">Med</td><td class="n">Med</td><td class="n"><strong>S</strong></td></tr>
+    <tr><td>Replays</td><td class="n">High</td><td class="n">Low</td><td class="n">High</td><td class="n">Med</td><td class="n">A</td></tr>
+    <tr><td>Season pass</td><td class="n">High</td><td class="n">High</td><td class="n">High</td><td class="n">High</td><td class="n">A</td></tr>
+    <tr><td>Tournaments</td><td class="n">High</td><td class="n">High</td><td class="n">High</td><td class="n">High</td><td class="n">A</td></tr>
+    <tr><td>Cosmetics store</td><td class="n">Med</td><td class="n">High</td><td class="n">Med</td><td class="n">Med</td><td class="n">A</td></tr>
+    <tr><td>Achievements</td><td class="n">Med</td><td class="n">Low</td><td class="n">High</td><td class="n">Med</td><td class="n">A</td></tr>
+    <tr><td>Telegram mini app</td><td class="n">High</td><td class="n">High</td><td class="n">High</td><td class="n">High</td><td class="n">A</td></tr>
+    <tr><td>Verified track</td><td class="n">Med</td><td class="n">High</td><td class="n">Med</td><td class="n">Med</td><td class="n">A</td></tr>
+    <tr><td>Creator codes</td><td class="n">Med</td><td class="n">High</td><td class="n">Med</td><td class="n">Low</td><td class="n">A</td></tr>
+    <tr><td>Database migration</td><td class="n">—</td><td class="n">—</td><td class="n">—</td><td class="n">High</td><td class="n">A</td></tr>
+    <tr><td>Rivalries</td><td class="n">Med</td><td class="n">Low</td><td class="n">High</td><td class="n">Low</td><td class="n">A</td></tr>
+    <tr><td>Clans</td><td class="n">Med</td><td class="n">Med</td><td class="n">High</td><td class="n">High</td><td class="n">B</td></tr>
+    <tr><td>Spectating</td><td class="n">Med</td><td class="n">Low</td><td class="n">Med</td><td class="n">Med</td><td class="n">B</td></tr>
+    <tr><td>Creator tournaments</td><td class="n">Med</td><td class="n">High</td><td class="n">Med</td><td class="n">Med</td><td class="n">B</td></tr>
+    <tr><td>Marketplace</td><td class="n">Low</td><td class="n">Low</td><td class="n">Low</td><td class="n">High</td><td class="n">C</td></tr>
+    <tr><td>Governance</td><td class="n">Low</td><td class="n">—</td><td class="n">Low</td><td class="n">Med</td><td class="n">C</td></tr>
+    <tr><td>NFTs</td><td class="n">Low</td><td class="n">Low</td><td class="n">Low</td><td class="n">High</td><td class="n">C</td></tr>
+  </tbody>
+</table></div>
+</section>
+
+<section id="v2">
+<h2><span class="num">29</span> SWOGE V2 — the competitive platform</h2>
+<p>One theme: <strong>stop being a casino with a leaderboard and become a competitive platform
+with a casino attached.</strong></p>
+<div class="wrap"><table>
+  <thead><tr><th>Area</th><th>What ships</th></tr></thead>
+  <tbody>
+    <tr><td>Competition</td><td>ELO per game, ten divisions, promotion and relegation, matchmaking queues, six-week seasons, weekly leaderboard alongside the monthly</td></tr>
+    <tr><td>Identity</td><td>Shareable profile pages, achievements, permanent titles, rivalry records, tier frames</td></tr>
+    <tr><td>Token</td><td>Staking tiers granting launchpad allocation and rake reduction, revenue-indexed yield, cosmetics store, name reservation</td></tr>
+    <tr><td>Launchpad</td><td>Verified track, project dashboards, creator reputation, allocation by tier, creation fee payable in $SWOGE</td></tr>
+    <tr><td>Growth</td><td>Built-in swap, challenge links, creator codes with dashboards, verifiable win posts</td></tr>
+    <tr><td>Foundations</td><td>Audit, multisig, monitoring, database migration, published allocation and treasury ranges</td></tr>
+    <tr><td>Removed</td><td>The four least-played games, the fixed staking rate, the idea of a marketplace</td></tr>
+  </tbody>
+</table></div>
+</section>
+
+<section id="v3">
+<h2><span class="num">30</span> SWOGE V3 — the chain's gaming layer</h2>
+<p>One theme: <strong>stop being a destination and become infrastructure.</strong></p>
+<div class="wrap"><table>
+  <thead><tr><th>Area</th><th>What it becomes</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Gaming rails as a product</strong></td><td>The fairness engine, vault, balances, duels, matchmaking and leaderboards offered to other teams. They build the game; SWOGE handles fairness, money and competition, and takes a share. This is the largest business in the document.</td></tr>
+    <tr><td>Seasons and championships</td><td>A calendar with qualifiers, finals, a permanent hall of fame, and prize pools funded by entries and the protocol</td></tr>
+    <tr><td>Clans as institutions</td><td>Treasuries, wars, recruitment, sponsorship by launched projects</td></tr>
+    <tr><td>Creator layer</td><td>Anyone can host a tournament for their community. The launchpad creator and the tournament host are the same person.</td></tr>
+    <tr><td>On-chain staking</td><td>Removes the custody risk from the one product where it is least justified</td></tr>
+    <tr><td>Cross-project competition</td><td>Tokens launched on SwogeFun get tournaments for their holders. Every launch becomes an event on the platform.</td></tr>
+    <tr><td>Public data layer</td><td>A read-only API over rounds, ratings and fairness proofs, so third parties can build stat sites and rankings on top</td></tr>
+  </tbody>
+</table></div>
+</section>
+
+<section id="vision">
+<h2><span class="num">31</span> If it works perfectly, in three to five years</h2>
+<div class="card">
+<p><strong>The platform.</strong> The place people go to compete on Robinhood Chain. A web app,
+a Telegram mini app, one account, one balance.</p>
+<p><strong>The games.</strong> A tight catalogue: six or seven house games kept because they are
+played, and five duel games with real ladders. Quality over count.</p>
+<p><strong>The token.</strong> Needed to play, to enter tournaments, to buy the pass and
+cosmetics, and to hold a launchpad allocation. Its yield floats with revenue and nobody thinks
+of it as a yield product any more.</p>
+<p><strong>The community.</strong> Clans with histories, rivalries with records, creators who
+host their own events, and a hall of fame that goes back years.</p>
+<p><strong>The economy.</strong> Five recurring revenue lines, two of them paid by projects
+rather than players. Rewards indexed on revenue, a supply that only falls, and a solvency page
+anyone can read.</p>
+<p><strong>The launchpad.</strong> The default place to launch on the chain, because it comes
+with an audience, a tournament, a dashboard and a reputation that follows the creator.</p>
+<p><strong>The infrastructure.</strong> Other teams' games running on SWOGE rails, paying for
+fairness, settlement and competition they did not have to build.</p>
+</div>
+<div class="note win">
+<strong>The positioning, in one sentence:</strong><br>
+SWOGE is where you go to compete for real money on Robinhood Chain, and the only place that can
+prove every result — because it publishes the seed.
+</div>
+</section>
+
+<section id="top25">
+<h2><span class="num">32</span> The 25 things I would change</h2>
+<div class="wrap"><table>
+  <thead><tr><th class="n">#</th><th>Change</th><th>Why</th><th>Impact</th><th class="n">Pri.</th></tr></thead>
+  <tbody>
+    <tr><td class="n">1</td><td>Audit both fund-holding contracts</td><td>Two contracts hold other people's money, unreviewed</td><td>Removes existential risk</td><td class="n">S</td></tr>
+    <tr><td class="n">2</td><td>Multisig on vault and launchpad</td><td>One key authorises every withdrawal</td><td>One mistake stops being terminal</td><td class="n">S</td></tr>
+    <tr><td class="n">3</td><td>Staked $SWOGE buys launchpad allocation</td><td>The two businesses have never met</td><td><strong>The biggest single win available</strong></td><td class="n">S</td></tr>
+    <tr><td class="n">4</td><td>Revenue-index the staking yield</td><td>The only reward that cannot contract</td><td>Closes the last economic hole</td><td class="n">S</td></tr>
+    <tr><td class="n">5</td><td>ELO on all four duel games</td><td>The only skill games have no ladder</td><td>Unlocks every competitive feature</td><td class="n">S</td></tr>
+    <tr><td class="n">6</td><td>Matchmaking by rating</td><td>A beginner's first duel may be against the best player alive</td><td>Fixes the worst first-session experience</td><td class="n">S</td></tr>
+    <tr><td class="n">7</td><td>Divisions with weekly relegation</td><td>Loss aversion beats reward</td><td>Weekly return reason</td><td class="n">S</td></tr>
+    <tr><td class="n">8</td><td>Weekly leaderboard</td><td>A month is too long to feel live</td><td>52 endings a year instead of 12</td><td class="n">S</td></tr>
+    <tr><td class="n">9</td><td>Read the conversion funnel</td><td>The data is already collected and unused</td><td>Free, and it beats guessing</td><td class="n">S</td></tr>
+    <tr><td class="n">10</td><td>Monitoring and alerting</td><td>Downtime is currently found by a player</td><td>Basic operational hygiene</td><td class="n">S</td></tr>
+    <tr><td class="n">11</td><td>Publish the allocation table</td><td>893 million undocumented</td><td>Unblocks partners and investors</td><td class="n">S</td></tr>
+    <tr><td class="n">12</td><td>Built-in swap</td><td>Buying means leaving the site</td><td>Removes the costliest funnel step</td><td class="n">S</td></tr>
+    <tr><td class="n">13</td><td>Public profile pages</td><td>Identity is trapped in a modal</td><td>The atom every social feature needs</td><td class="n">S</td></tr>
+    <tr><td class="n">14</td><td>Challenge links</td><td>No way to invite someone to a specific match</td><td>The strongest viral primitive</td><td class="n">S</td></tr>
+    <tr><td class="n">15</td><td>Solver detection on high-stake duels</td><td>A ranked ladder without it becomes a bot farm</td><td>Protects the whole competitive layer</td><td class="n">S</td></tr>
+    <tr><td class="n">16</td><td>Replays from the fairness data</td><td>Everything needed is already stored</td><td>Proof, anti-cheat and shareable content in one</td><td class="n">A</td></tr>
+    <tr><td class="n">17</td><td>Season pass, cosmetic-only</td><td>No recurring sink exists</td><td>Best recurring revenue with zero fairness cost</td><td class="n">A</td></tr>
+    <tr><td class="n">18</td><td>Tournaments</td><td>No top to the ladder</td><td>Revenue plus the reason to climb</td><td class="n">A</td></tr>
+    <tr><td class="n">19</td><td>Verified launchpad track</td><td>Permissionless attracts volume, not money</td><td>New revenue paid by projects</td><td class="n">A</td></tr>
+    <tr><td class="n">20</td><td>Telegram mini app</td><td>The community already lives there</td><td>Highest-return growth channel</td><td class="n">A</td></tr>
+    <tr><td class="n">21</td><td>Cut the four least-played games</td><td>Thirteen dilutes the lobby and costs maintenance</td><td>Deleting is a feature</td><td class="n">A</td></tr>
+    <tr><td class="n">22</td><td>Move state out of a JSON file</td><td>It already stalls at 20,000 records</td><td>Removes the growth ceiling</td><td class="n">A</td></tr>
+    <tr><td class="n">23</td><td>Per-wallet staking cap</td><td>One holder can take the whole pool</td><td>Spreads the subsidy across players</td><td class="n">A</td></tr>
+    <tr><td class="n">24</td><td>Creator codes with dashboards</td><td>Creators promote what they can measure</td><td>Cheapest acquisition available</td><td class="n">A</td></tr>
+    <tr><td class="n">25</td><td>Flatten the level curve past 30</td><td>Progress becomes invisible for almost everyone</td><td>Keeps the 99&nbsp;% moving</td><td class="n">A</td></tr>
+  </tbody>
+</table></div>
+
+<div class="note">
+<strong>The last word, and the honest one.</strong> SWOGE is a better-built product than its
+score suggests and a worse-designed <em class="q">system</em> than its build quality deserves.
+The engineering discipline here — conservation tests, atomic persistence, published fairness
+formulas, refusing to boot on a corrupt state — is well above what this sector produces. That
+discipline has been spent almost entirely on making a casino correct, and almost not at all on
+making a platform cohere.
+<br><br>
+The three fixes at the top of this document need no new game, no new contract and no new art.
+They connect what already exists. That is why they come first.
+</div>
+</section>
+
+<footer>
+  <p>
+    SWOGE — product teardown · 14 August 2026 · companion to the Swole Doge Protocol white paper<br>
+    Written from the deployed code and on-chain state, not from the marketing.
+  </p>
+  <p>
+    Scores are judgements, not measurements. Figures cited are those verified in the white
+    paper. Nothing here is investment advice, and no yield, price or outcome is promised.
+  </p>
+</footer>
+
+</main>
+</div>

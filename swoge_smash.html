@@ -12,9 +12,9 @@
 <!-- La bulle de staking. Chargee tot et SANS defer : elle enveloppe WebSocket
      pour ecouter ce qui passe deja, et doit donc etre en place avant que la page
      n ouvre sa connexion. -->
-<script src="stakebubble.js?v=20260814c"></script>
+<script src="stakebubble.js?v=20260814d"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
-<script src="swogebuy.js?v=20260814c"></script>
+<script src="swogebuy.js?v=20260814d"></script>
 <style>
   :root{
     --gold:#E6A537; --gold2:#FFB84D; --ink:#0B0906; --ink2:#15100A;
@@ -476,7 +476,7 @@ body { background:url('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
   <div class="box" id="box-dep">
     <div class="pscroll">
     <div class="ptitle pt-deposit"></div>
-    <div class="note2">In your wallet: <b id="depSwoge">…</b> $SWOGE · <b id="depEth">…</b> ETH</div>
+    <div class="note2">In your wallet: <b id="depSwoge">…</b> $SWOGE · <b id="depEth">…</b> ETH (RH)</div>
     <label>Amount</label>
     <input id="depAmt" inputmode="decimal" placeholder="e.g. 100" value="100">
     <div class="pcts">
@@ -507,7 +507,7 @@ body { background:url('data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAA
     <input id="acAddr" readonly style="width:100%">
     <button class="abtn wbtn wb-copy" id="acCopy" style="margin-top:8px">Copy</button>
     <div class="strow"><span>$SWOGE in wallet</span><b id="acSwoge">…</b></div>
-    <div class="strow"><span>ETH (gas)</span><b id="acEth">…</b></div>
+    <div class="strow"><span>ETH (RH) — gas</span><b id="acEth">…</b></div>
     <button class="abtn wbtn wb-deposit" id="acDeposit" style="margin-top:8px">Deposit</button>
     <a id="acExplorer" href="#" target="_blank" rel="noopener" class="abtn wbtn wb-explorer" style="display:block;margin-top:8px;text-decoration:none">Explorer</a>
     <button class="abtn wbtn wb-disconnect" id="acLogout" style="margin-top:8px">Disconnect</button>

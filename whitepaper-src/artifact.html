@@ -1,61 +1,80 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>$SWOGE — White Paper</title>
-<meta name="description" content="How SWOGE works end to end: user journey, economy, games, staking, burn, launchpad, risks. Every item marked confirmed, proposed or undecided.">
-<meta property="og:title" content="$SWOGE — White Paper">
-<meta property="og:description" content="The full product and economic documentation of the SWOGE gaming platform on Robinhood Chain.">
-<meta property="og:image" content="media/og.jpg">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<title>Swole Doge Protocol</title>
 <style>
+/* ============================================================
+   SWOGE — white paper
+   Palette reprise du produit : fond bleu nuit, or, gris-bleus.
+   Trois etats de theme : clair par defaut, sombre au systeme,
+   sombre force. Chaque couleur est un token, jamais une valeur
+   posee dans un bloc de media.
+   ============================================================ */
 :root{
-  --ground:#070B14;
-  --surface:#101726;
-  --surface-2:#0C1220;
-  --line:rgba(255,197,61,.24);
-  --line-soft:rgba(255,197,61,.12);
-  --ink:#EAF2FF;
+  --ground:#F7F5F0;
+  --surface:#FFFFFF;
+  --surface-2:#EFECE4;
+  --line:#DCD6C8;
+  --line-soft:#E8E3D8;
+  --ink:#141922;
+  --ink-2:#3A4356;
+  --muted:#6B7488;
+  --gold:#9A6B00;
+  --gold-ink:#7A5400;
+  --gold-wash:#F5EAC9;
+  --green:#1F7A4C;
+  --green-wash:#DFF0E5;
+  --amber:#8A5A00;
+  --amber-wash:#F6EAD2;
+  --slate:#5A6478;
+  --slate-wash:#E6E7EB;
+  --red:#A8322A;
+  --shadow:0 1px 2px rgba(20,25,34,.06),0 8px 24px rgba(20,25,34,.05);
+
+  --mono:ui-monospace,"SFMono-Regular","SF Mono","Cascadia Mono","Roboto Mono",Menlo,Consolas,monospace;
+  --serif:Charter,"Bitstream Charter","Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#080C16;
+    --surface:#111726;
+    --surface-2:#0D1320;
+    --line:#232C42;
+    --line-soft:#1A2233;
+    --ink:#E8EEF9;
+    --ink-2:#C3CEE2;
+    --muted:#8494B4;
+    --gold:#FFC53D;
+    --gold-ink:#FFD97A;
+    --gold-wash:#2A2312;
+    --green:#6EE7A0;
+    --green-wash:#0F2A1D;
+    --amber:#F2B33D;
+    --amber-wash:#2B2211;
+    --slate:#9AA8C4;
+    --slate-wash:#1A2233;
+    --red:#F2685E;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#080C16;
+  --surface:#111726;
+  --surface-2:#0D1320;
+  --line:#232C42;
+  --line-soft:#1A2233;
+  --ink:#E8EEF9;
   --ink-2:#C3CEE2;
-  --muted:#8DA0C4;
+  --muted:#8494B4;
   --gold:#FFC53D;
   --gold-ink:#FFD97A;
   --gold-wash:#2A2312;
-  --green:#7CFF9B;
+  --green:#6EE7A0;
   --green-wash:#0F2A1D;
-  --amber:#FFB84D;
+  --amber:#F2B33D;
   --amber-wash:#2B2211;
   --slate:#9AA8C4;
-  --slate-wash:#161E2E;
+  --slate-wash:#1A2233;
   --red:#F2685E;
   --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.35);
-  --mono:'Space Mono',ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;
-  --serif:Charter,'Bitstream Charter','Iowan Old Style',Palatino,Georgia,'Times New Roman',serif;
 }
-/* ---- barre du site ---- */
-.sitenav{
-  display:flex;align-items:center;gap:14px;padding:14px 18px;
-  border-bottom:1px solid var(--line);background:rgba(7,11,20,.92);
-  position:sticky;top:0;z-index:50;backdrop-filter:blur(8px);
-  font-family:var(--mono);font-size:12.5px;
-}
-.sitenav .brand{
-  font-family:'Anton',var(--mono);font-size:19px;letter-spacing:.5px;
-  color:var(--gold);text-decoration:none;
-}
-.sitenav .brand span{color:var(--ink)}
-.sitenav .sp{flex:1}
-.sitenav a.nlink{color:var(--muted);text-decoration:none;padding:6px 9px;border-radius:8px}
-.sitenav a.nlink:hover{color:var(--ink);background:rgba(255,197,61,.10)}
-.sitenav a.buy{
-  color:#07101F;background:linear-gradient(180deg,#FFE08A,#FFC53D);
-  text-decoration:none;font-weight:700;padding:7px 13px;border-radius:9px;
-}
-@media (max-width:640px){.sitenav a.nlink{display:none}}
-
 
 *{box-sizing:border-box}
 body{
@@ -233,9 +252,6 @@ footer{
   font-family:var(--mono);font-size:11.5px;color:var(--muted);line-height:1.8;
 }
 
-/* ---- ajustements propres a la page du site ---- */
-@media (min-width:1040px){nav.toc{top:60px;max-height:calc(100vh - 60px)}}
-
 /* ---- la bascule de langue ----
    Sans attribut (script en echec, ou avant qu'il tourne) on est en anglais :
    la regle « pas de fr » couvre les deux cas d'un coup. */
@@ -252,29 +268,16 @@ footer{
 .langbtn button:hover{color:var(--ink)}
 .langbtn button.on{color:var(--ground);background:var(--gold)}
 
-.sitenav .langbtn{margin-left:4px}
-.sitenav .langbtn button{padding:6px 10px;font-size:11px}
-@media (max-width:640px){.sitenav .langbtn{margin-left:auto}}
+/* le commutateur, pose en haut a droite du document */
+.langtop{display:flex;justify-content:flex-end;padding:18px 22px 0;max-width:1180px;margin:0 auto}
+@media (min-width:1040px){.langtop{padding:18px 32px 0}}
 </style>
-</head>
-<body>
 <script>
 (function(){try{var l=localStorage.getItem("swogeWpLang");
 document.documentElement.setAttribute("data-lang",(l==="fr"||l==="en")?l:"en");}
 catch(e){document.documentElement.setAttribute("data-lang","en");}})();
 </script>
-<div class="sitenav">
-  <a class="brand" href="index.html">$SWOGE <span>WHITE PAPER</span></a>
-  <span class="sp"></span>
-  <a class="nlink" href="index.html">Home</a>
-  <a class="nlink" href="games.html">Games</a>
-  <a class="nlink" href="swoge_staking.html">Stake</a>
-  <a class="nlink" href="launchpad.html">Launchpad</a>
-  <div class="langbtn" role="group" aria-label="Language"><button type="button" data-set="en" aria-pressed="true">EN</button><button type="button" data-set="fr" aria-pressed="false">FR</button></div>
-  <a class="buy" href="https://dexscreener.com/robinhood/0x2dc0fb72d9284228046cc95910eeaabebfe48456" target="_blank" rel="noopener">Buy $SWOGE</a>
-</div>
-
-
+<div class="langtop"><div class="langbtn" role="group" aria-label="Language"><button type="button" data-set="en" aria-pressed="true">EN</button><button type="button" data-set="fr" aria-pressed="false">FR</button></div></div>
 <div class="shell">
 <nav class="toc" data-l="en" aria-label="Contents">
   <h4>I · The project</h4>
@@ -4260,5 +4263,3 @@ est temporel, et il se referme.</p>
   });
 })();
 </script>
-</body>
-</html>

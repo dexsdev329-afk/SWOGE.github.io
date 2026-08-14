@@ -1,0 +1,1950 @@
+<nav class="toc" data-l="en" aria-label="Contents">
+  <h4>I · The project</h4>
+  <a href="#s1"><b>01</b>Introduction</a>
+  <a href="#s2"><b>02</b>Ecosystem</a>
+  <h4>II · The journey</h4>
+  <a href="#s3"><b>03</b>End-to-end journey</a>
+  <a href="#s4"><b>04</b>Wallet</a>
+  <a href="#s5"><b>05</b>Deposit</a>
+  <a href="#s6"><b>06</b>Withdraw</a>
+  <a href="#s7"><b>07</b>Buy $SWOGE</a>
+  <a href="#s8"><b>08</b>Gaming wallet</a>
+  <h4>III · Games</h4>
+  <a href="#s9"><b>09</b>The games</a>
+  <a href="#s10"><b>10</b>1v1 economy</a>
+  <a href="#s11"><b>11</b>Fees</a>
+  <h4>IV · Staking &amp; burn</h4>
+  <a href="#s12"><b>12</b>Staking</a>
+  <a href="#s13"><b>13</b>Staking flow</a>
+  <a href="#s14"><b>14</b>Burn</a>
+  <a href="#s15"><b>15</b>Token sinks</a>
+  <a href="#s16"><b>16</b>Rewards</a>
+  <h4>V · Launchpad</h4>
+  <a href="#s17"><b>17</b>Launchpad</a>
+  <a href="#s18"><b>18</b>Launchpad security</a>
+  <h4>VI · Market</h4>
+  <a href="#s19"><b>19</b>Volume &amp; liquidity</a>
+  <a href="#s20"><b>20</b>Bots</a>
+  <h4>VII · Integrity</h4>
+  <a href="#s21"><b>21</b>Anti-cheat</a>
+  <a href="#s22"><b>22</b>Leaderboard</a>
+  <a href="#s23"><b>23</b>Tournaments</a>
+  <a href="#s24"><b>24</b>Digital items</a>
+  <h4>VIII · Economy</h4>
+  <a href="#s25"><b>25</b>Community</a>
+  <a href="#s26"><b>26</b>Treasury</a>
+  <a href="#s27"><b>27</b>Tokenomics</a>
+  <a href="#s28"><b>28</b>Revenue model</a>
+  <a href="#s29"><b>29</b>Economic flywheel</a>
+  <a href="#s30"><b>30</b>Transparency</a>
+  <h4>IX · Technical</h4>
+  <a href="#s31"><b>31</b>Security</a>
+  <a href="#s32"><b>32</b>Contracts</a>
+  <a href="#s33"><b>33</b>On-chain / off-chain</a>
+  <a href="#s34"><b>34</b>Data</a>
+  <h4>X · What's next</h4>
+  <a href="#s35"><b>35</b>Roadmap</a>
+  <a href="#s36"><b>36</b>Long term</a>
+  <a href="#s37"><b>37</b>Risks</a>
+  <a href="#s38"><b>38</b>Compliance</a>
+  <h4>XI · Appendices</h4>
+  <a href="#s39"><b>39</b>Every flow</a>
+  <a href="#s40"><b>40</b>Critical audit</a>
+  <a href="#resume">One-page summary</a>
+</nav>
+
+<main data-l="en">
+
+<header class="top">
+  <p class="kicker">White paper · v1.0 · 14 August 2026</p>
+  <h1>Swole Doge<br><em>Protocol</em></h1>
+  <p class="standfirst">
+    A Web3 gaming platform live on Robinhood Chain: thirteen provably fair games, a
+    deployed launchpad, staking, referrals and levels, and a token that leaves
+    circulation on every withdrawal. This document describes how it actually works,
+    end to end.
+  </p>
+  <div class="meta">
+    <span>Token <b>SWOGE (Swole Doge)</b></span>
+    <span>Chain <b>Robinhood Chain · 4663</b></span>
+    <span>Supply <b>1,000,000,000</b></span>
+    <span>Decimals <b>18</b></span>
+  </div>
+
+  <div class="legend">
+    <div><span class="chip ok">Confirmed</span>
+      <span>Verified in the deployed code or read directly from the chain. The figure
+      given is the figure in production on 14 August 2026.</span></div>
+    <div><span class="chip pro">Proposed</span>
+      <span>A reasoned model, not implemented. It is a recommendation, not a feature.
+      It commits a decision, not a date.</span></div>
+    <div><span class="chip def">Undecided</span>
+      <span>Not settled. Every occurrence states which decision has to be made, by whom,
+      and what depends on it.</span></div>
+  </div>
+
+  <div class="note">
+    <strong>This document promises no yield.</strong> The rates quoted are current,
+    changeable configuration parameters, not commitments. Nothing here is investment
+    advice, and acquiring $SWOGE carries a risk of total loss.
+  </div>
+</header>
+
+<p class="part">Part I · The project</p>
+
+<section id="s1">
+<h2><span class="num">01</span> Introduction</h2>
+
+<h3>The problem</h3>
+<p>
+An online casino asks you to trust it on the only thing that matters: the draw. The
+player sees a result and nothing else. They can neither recompute it nor prove it was
+not picked after the fact. Nearly every gaming platform, including the ones that call
+themselves on-chain, simply asserts its own honesty.
+</p>
+<p>
+The second problem is economic. Most gaming tokens have no real source of revenue: they
+fund rewards by inflating the token itself. The loop holds while new buyers arrive, and
+stops when they don't.
+</p>
+
+<h3>How SWOGE answers</h3>
+<p>SWOGE treats these as two separate problems, and answers both in ways that can be checked.</p>
+<ul>
+  <li><strong>On the draw.</strong> Every round is produced by
+  <code>HMAC-SHA256(server_seed, client_seed:nonce)</code>. The hash of the server seed
+  is published <em class="q">before</em>; the seed itself is revealed
+  <em class="q">after</em>. Every line of your history carries its seed, its client seed
+  and its nonce: you recompute the result yourself.
+  <span class="chip ok">Confirmed</span></li>
+  <li><strong>On the economy.</strong> The protocol earns a 3&nbsp;% mathematical edge on
+  games against the house and a 5&nbsp;% rake on player-versus-player duels. That revenue
+  is measured, booked month by month, and it is what funds the rewards — all of which are
+  expressed as a <em class="q">share of revenue</em>, never as a fixed amount.
+  <span class="chip ok">Confirmed</span></li>
+</ul>
+
+<h3>What separates SWOGE from a meme coin</h3>
+<p>
+A meme coin is a line in an ERC-20 contract and a community. SWOGE is an application that
+produces revenue every day, whose token is the unit of account, the betting medium, the
+staking asset and the object of the burn.
+</p>
+<div class="wrap"><table>
+  <thead><tr><th>Dimension</th><th>Typical meme coin</th><th>SWOGE today</th></tr></thead>
+  <tbody>
+    <tr><td>Utility</td><td>Speculation</td><td>Betting, staking, launchpad, referrals</td></tr>
+    <tr><td>Revenue</td><td>None</td><td>House edge + rake + launchpad fees</td></tr>
+    <tr><td>Rewards</td><td>Emission</td><td>Share of measured revenue</td></tr>
+    <tr><td>Supply reduction</td><td>One-off burns</td><td>1&nbsp;% of every withdrawal, continuously</td></tr>
+    <tr><td>Verifiability</td><td>The contract</td><td>The contract <em class="q">and</em> every round played</td></tr>
+  </tbody>
+</table></div>
+
+<h3>Vision</h3>
+<p>
+To be the gaming layer of Robinhood Chain: where the chain's playful activity
+concentrates, and the infrastructure other teams launch their own tokens and games on.
+</p>
+<p>
+The chain is new. On a new chain, the first service that genuinely works becomes the
+default reference — not on merit, but because there is nothing else to point at. That
+window is short and does not reopen.
+</p>
+</section>
+
+<section id="s2">
+<h2><span class="num">02</span> The ecosystem</h2>
+<p>
+Seven components, five of them live. The arrows show where value moves, not just where
+you click.
+</p>
+
+<div class="flow"><pre>
+                        <b>$SWOGE</b>  <i>ERC-20 · 1,000,000,000 · Robinhood Chain</i>
+                           │
+        ┌──────────────────┼──────────────────┐
+        │                  │                  │
+    <b>MARKET</b>             <b>VAULT</b>            <b>LAUNCHPAD</b>
+   <i>Uniswap v3</i>       <i>deposit contract</i>    <i>SwogeFun V2</i>
+        │                  │                  │
+        │                  ▼                  │
+        │          <b>GAMING BALANCE</b>              │
+        │            <i>off-chain ledger</i>           │
+        │                  │                  │
+        │      ┌───────────┼───────────┐      │
+        │      ▼           ▼           ▼      │
+        │   <b>GAMES</b>     <b>DUELS</b>     <b>STAKING</b>    │
+        │  <i>13 titles</i>  <i>1v1 · rake</i>   <i>locked</i>   │
+        │      │           │           │      │
+        │      └─────┬─────┘           │      │
+        │            ▼                 │      │
+        │        <b>REVENUE</b>  <i>3 % / 5 %</i>      │      │
+        │            │                 │      │
+        │   ┌────────┼────────┐        │      │
+        │   ▼        ▼        ▼        ▼      ▼
+        │ <b>LEADERBOARD REFERRALS LEVELS</b>   <b>TREASURY</b>
+        │   │        │        │        │      │
+        └───┴────────┴────────┴────────┘      │
+                     │                        │
+                     ▼                        │
+                 <b>WITHDRAW</b>  ─── 1 % ────▶ <b>BURN</b> ◀┘
+                     │                    <i>0x…dEaD</i>
+                     ▼
+                <b>PLAYER'S WALLET</b>
+</pre></div>
+
+<div class="wrap"><table>
+  <thead><tr><th>Component</th><th>Role</th><th>State</th></tr></thead>
+  <tbody>
+    <tr><td><strong>$SWOGE</strong></td><td>Unit of account, bets, staking, fees</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td><strong>Vault</strong></td><td>Contract that receives deposits and pays withdrawals against a signed voucher</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td><strong>Gaming balance</strong></td><td>Off-chain ledger backed by the vault — makes rounds instant and gas-free</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td><strong>Games</strong></td><td>13 titles, 3&nbsp;% house edge</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td><strong>1v1 duels</strong></td><td>Player against player, 5&nbsp;% rake</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td><strong>Staking</strong></td><td>Rewarded lock-up, capped at 20&nbsp;% of supply</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td><strong>Launchpad</strong></td><td>Token creation, bonding curve or instant Uniswap pool</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td><strong>Burn</strong></td><td>1&nbsp;% of every withdrawal, sent to the dead address</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td><strong>Tournaments</strong></td><td>Bracket competition, prize pool</td><td><span class="chip def">Undecided</span></td></tr>
+    <tr><td><strong>Marketplace</strong></td><td>Trading cosmetic items</td><td><span class="chip def">Undecided</span></td></tr>
+  </tbody>
+</table></div>
+</section>
+
+<p class="part">Part II · The user journey</p>
+
+<section id="s3">
+<h2><span class="num">03</span> The journey, end to end</h2>
+<p>
+Eighteen steps, from landing on the site to leaving the ecosystem. For each: what the
+player sees, what actually happens, the fees, and where mistakes are possible.
+</p>
+
+<div class="card">
+<h4>1 — Landing</h4>
+<p>
+<strong>What they see:</strong> the site, the games, and a Connect button. No sign-up, no
+password, no email.<br>
+<strong>What happens:</strong> nothing server-side. The page opens a WebSocket and
+receives the public configuration: the current server-seed hash, the vault address, the
+token address, the chain id, the live jackpot, and the 1v1 tables waiting for an opponent.<br>
+<strong>Fees:</strong> none. <strong>Risk:</strong> none.
+<span class="chip ok">Confirmed</span>
+</p>
+</div>
+
+<div class="card">
+<h4>2 — Connecting the wallet</h4>
+<p>
+<strong>What they see:</strong> their wallet asks them to sign a readable message:
+<code>SWOGE Pusher login / nonce: …</code>.<br>
+<strong>What happens:</strong> the server sent a random nonce when the session opened.
+The signature proves possession of the private key without ever exposing it, and the
+nonce makes an old signature useless. No transaction is broadcast: signing costs nothing
+and authorises no movement of funds.<br>
+<strong>Fees:</strong> none — this is not a transaction.<br>
+<strong>Risk:</strong> the main hazard in Web3 is signing a <em class="q">spending
+approval</em> dressed up as a login. Here the message is plain text and contains no
+approval. Players should always read it.
+<span class="chip ok">Confirmed</span>
+</p>
+</div>
+
+<div class="card">
+<h4>3 — Session</h4>
+<p>
+<strong>What they see:</strong> they switch games, close the tab, come back tomorrow —
+and never re-sign.<br>
+<strong>What happens:</strong> the server issues a signed session token, valid 30 days,
+stored locally. It is signed with a server secret: changing that secret revokes every
+session at once.<br>
+<strong>Risk:</strong> the token grants access to the gaming balance from the device that
+holds it. It grants no access to the wallet, and a withdrawal always requires a fresh
+signature.
+<span class="chip ok">Confirmed</span>
+</p>
+</div>
+
+<div class="card">
+<h4>4 to 6 — Deposit, confirmation, credit</h4>
+<p>Covered in detail in <a href="#s5">section 05</a>.</p>
+</div>
+
+<div class="card">
+<h4>7 — Buying $SWOGE</h4>
+<p>Covered in detail in <a href="#s7">section 07</a>.</p>
+</div>
+
+<div class="card">
+<h4>8 — Gaming balance available</h4>
+<p>
+<strong>What they see:</strong> their balance, identical across all thirteen game pages,
+updated to the second.<br>
+<strong>What happens:</strong> the balance lives in a server ledger backed by the vault.
+Every movement is written to an append-only journal for that player, readable in their
+profile: every round, every deposit, every withdrawal, every referral payout, each with
+its seed and nonce.<br>
+<strong>Why off-chain:</strong> a Plinko drop would cost gas and take seconds on-chain.
+Off-chain it is instant and free. The trade-off is explicit and covered in
+<a href="#s33">section 33</a>.
+<span class="chip ok">Confirmed</span>
+</p>
+</div>
+
+<div class="card">
+<h4>9 to 10 — Play, win</h4>
+<p>
+<strong>What they see:</strong> the result, immediately, with its line in their history.<br>
+<strong>What happens:</strong> the nonce is incremented <em class="q">before</em> the
+draw, then <code>HMAC-SHA256(server_seed, client_seed:nonce)</code> produces the result.
+The balance is debited before the draw and credited after. The total owed to players is
+checked after every operation: it must match to the token.<br>
+<strong>Fees:</strong> the house edge is built into the paytable; there is no separate
+commission.
+<span class="chip ok">Confirmed</span>
+</p>
+</div>
+
+<div class="card">
+<h4>11 to 13 — Staking, yield, claim</h4>
+<p>Covered in detail in <a href="#s12">section 12</a>.</p>
+</div>
+
+<div class="card">
+<h4>14 — Burn</h4>
+<p>
+Players burn nothing themselves in the normal flow: the burn is taken from the
+withdrawal. A separate page exists for voluntary burns. Covered in
+<a href="#s14">section 14</a>.
+</p>
+</div>
+
+<div class="card">
+<h4>15 to 17 — Withdraw</h4>
+<p>Covered in detail in <a href="#s6">section 06</a>.</p>
+</div>
+
+<div class="card">
+<h4>18 — Leaving</h4>
+<p>
+<strong>What they see:</strong> their tokens in their wallet, free.<br>
+<strong>What happens:</strong> nothing holds them. Their history, level, friends and
+revealed seeds stay available if they return. An account that never did anything is not
+kept (see <a href="#s34">section 34</a>).
+<span class="chip ok">Confirmed</span>
+</p>
+</div>
+</section>
+
+<section id="s4">
+<h2><span class="num">04</span> The wallet</h2>
+
+<h3>The architecture, and what it implies</h3>
+<p>
+SWOGE combines <strong>an external, non-custodial wallet</strong> for identity and token
+ownership with <strong>a platform-held gaming balance</strong> for executing rounds.
+</p>
+<div class="note risk">
+<strong>To state plainly, including to a partner or a regulator:</strong> between deposit
+and withdrawal, the tokens sit in a contract controlled by the team, and the gaming
+balance is a row in a server database. This is a <em class="q">custodial</em> model. A
+player cannot withdraw unless the server signs a voucher. Any presentation implying
+otherwise would be false.
+<span class="chip ok">Confirmed</span>
+</div>
+<p>
+What this model buys: instant, gas-free rounds with game state complex enough for poker,
+multi-card blackjack and turn-based duels — impossible to hold on-chain at that cost.
+What it demands in exchange: the safeguards described in <a href="#s31">section 31</a>,
+and honesty about what it is.
+</p>
+
+<div class="wrap"><table>
+  <thead><tr><th>Architecture</th><th>What it gives</th><th>What it costs</th><th>At SWOGE</th></tr></thead>
+  <tbody>
+    <tr><td><strong>A · Fully non-custodial</strong><br>everything on-chain</td>
+      <td>No trust required</td>
+      <td>Gas per round, latency, complex games impossible</td>
+      <td>Not chosen</td></tr>
+    <tr><td><strong>B · Embedded wallet</strong><br>keys held by the platform</td>
+      <td>Zero friction to enter</td>
+      <td>Key-custody liability, heavy regulatory exposure</td>
+      <td>Not chosen</td></tr>
+    <tr><td><strong>C · Connected external wallet</strong></td>
+      <td>Player keeps their keys, identity proved by signature</td>
+      <td>Requires an installed wallet</td>
+      <td><span class="chip ok">Live</span></td></tr>
+    <tr><td><strong>D · Separate gaming balance</strong></td>
+      <td>Instant, gas-free rounds</td>
+      <td>Custodial between deposit and withdrawal</td>
+      <td><span class="chip ok">Live</span></td></tr>
+  </tbody>
+</table></div>
+
+<h3>What the player sees in their profile</h3>
+<div class="wrap"><table>
+  <thead><tr><th>Item</th><th>Detail</th><th>State</th></tr></thead>
+  <tbody>
+    <tr><td>Balance</td><td>Continuously refreshed, and forced on tab return and network reconnect</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Round history</td><td>Paginated by timestamp, with seed, client seed and nonce on every line</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Deposits</td><td>Amount, transaction, timestamp</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Withdrawals</td><td>Gross, fee, net, transaction</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Staking</td><td>Principal, locked part, unlocked part, accruing yield, unlock date</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Transfers</td><td>Sends and receipts between friends, with an unread badge</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Friends</td><td>Chosen name, full copyable address, picture, level</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Referrals</td><td>Link, invitees, matured and pending earnings</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Leaderboard</td><td>Monthly volume, every player</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>2FA</td><td>Second factor on withdrawal</td><td><span class="chip def">Undecided</span> — the wallet signature already plays that role; an extra factor only matters alongside an address allow-list</td></tr>
+    <tr><td>Recovery</td><td>Not applicable: the platform never holds keys. Losing your wallet means losing access — as everywhere in Web3.</td><td><span class="chip ok">Confirmed</span></td></tr>
+  </tbody>
+</table></div>
+</section>
+
+<section id="s5">
+<h2><span class="num">05</span> How to deposit</h2>
+
+<div class="flow"><pre>
+<b>PLAYER</b> ─▶ Connect ─▶ Deposit ─▶ amount ─▶ <i>sign the transaction</i>
+                                                  │
+                                                  ▼
+                                        <b>VAULT CONTRACT</b>
+                                        <i>Deposit(player, amount, …) event</i>
+                                                  │
+                             <i>the server watches the chain continuously</i>
+                                                  │
+                                                  ▼
+                                     <b>GAMING BALANCE CREDITED</b>
+                                     <i>+ journal entry, + notification</i>
+</pre></div>
+
+<h3>Step by step</h3>
+<ol>
+  <li><strong>Open Deposit.</strong> The player is already connected; the page knows the
+  vault address, received when the session opened.</li>
+  <li><strong>Token and network are fixed.</strong> $SWOGE on Robinhood Chain (4663), and
+  nothing else. The page checks the wallet's chain and offers to switch. That removes the
+  single biggest cause of lost funds in Web3: the wrong network.
+  <span class="chip ok">Confirmed</span></li>
+  <li><strong>Approve, then deposit.</strong> As with any ERC-20, two transactions on the
+  first deposit: approve the contract, then deposit.</li>
+  <li><strong>Confirmation.</strong> The server listens for the <code>Deposit</code> event.
+  Every transaction is de-duplicated: the same hash can never credit twice.
+  <span class="chip ok">Confirmed</span></li>
+  <li><strong>Credit.</strong> The balance is credited and state written to disk
+  <em class="q">immediately</em>, not at the next periodic save — a deposit is the one
+  event you cannot afford to lose in a restart.
+  <span class="chip ok">Confirmed</span></li>
+  <li><strong>History.</strong> The line appears under Deposits with a link to the
+  transaction, and a notification goes out on the Telegram channel.</li>
+</ol>
+
+<h3>What can go wrong, and what prevents it</h3>
+<div class="wrap"><table>
+  <thead><tr><th>Mistake</th><th>Consequence</th><th>Protection</th></tr></thead>
+  <tbody>
+    <tr><td>Wrong network</td><td>Funds lost or stranded</td><td>The page forces chain 4663 before offering the deposit <span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Wrong token</td><td>Not credited</td><td>The contract only accepts $SWOGE; the event only fires for it <span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Sending straight to the contract address instead of calling deposit</td><td>Not credited automatically</td><td><span class="chip def">Undecided</span> — decide on a manual recovery procedure and who runs it</td></tr>
+    <tr><td>Server down during the deposit</td><td>Delayed credit</td><td>The server resumes scanning from the last processed block and catches up <span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Deposit credited then unaccounted for</td><td>Dispute</td><td>An audit tool compares the player's journal to their balance, says where the money went, and allows repair. Repair entries are tagged and excluded from the calculation, so no money is created in a loop. <span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Missing memo / tag</td><td>Not applicable</td><td>An EVM chain uses no memo; the deposit is identified by the sending address</td></tr>
+  </tbody>
+</table></div>
+</section>
+
+<section id="s6">
+<h2><span class="num">06</span> How to withdraw</h2>
+
+<h3>The mechanism: a signed, cumulative voucher</h3>
+<p>
+This is the most important piece of the financial architecture, and it is worth
+understanding. The contract exposes:
+</p>
+<div class="flow"><pre>withdraw(uint256 <b>cumulative</b>, uint256 <b>deadline</b>, uint8 v, bytes32 r, bytes32 s)</pre></div>
+<p>
+The server does not sign <em class="q">"pay 5,000"</em>. It signs <em class="q">"this
+player is entitled to have withdrawn 42,000 in total, ever"</em>. The contract remembers
+what it has already paid and sends the difference. Three properties follow:
+</p>
+<ul>
+  <li><strong>A replayed voucher pays nothing.</strong> It states a cumulative already
+  reached, so the difference is zero. Replay is harmless by construction, not by
+  maintaining a list of spent vouchers.</li>
+  <li><strong>A lost voucher is not a problem.</strong> The player asks for another; the
+  new one states the same cumulative or more.</li>
+  <li><strong>The deadline bounds the window.</strong> A voucher expires after an hour.
+  <span class="chip ok">Confirmed</span></li>
+</ul>
+
+<div class="flow"><pre>
+<b>PLAYER</b> ─▶ Withdraw ─▶ amount
+                       │
+                       ▼
+           <i>server checks: minimum, balance, fee</i>
+                       │
+                       ▼
+   <b>GROSS DEBITED</b>   ·   <b>CUMULATIVE AUTHORISED += NET</b>
+                       │                        │
+                       │                        ▼
+                       │              <b>SIGNED VOUCHER</b> <i>(1 h)</i>
+                       │                        │
+                       ▼                        ▼
+                <b>1 % FEE → TO BURN</b>        <i>player signs the transaction</i>
+                       │                        │
+                       ▼                        ▼
+                 <b>DEAD ADDRESS</b>            <b>PLAYER'S WALLET</b>
+</pre></div>
+
+<h3>Live parameters</h3>
+<div class="grid3">
+  <div class="stat"><span>Minimum</span><b>10,000</b><i>$SWOGE — drops to 5,000 at level 20 and 2,000 at level 40</i></div>
+  <div class="stat"><span>Platform fee</span><b>1.00 %</b><i>flat, taken from the gross, burned in full</i></div>
+  <div class="stat"><span>Voucher validity</span><b>1 hour</b><i>after that, request a new one</i></div>
+</div>
+<p>
+The player also pays chain gas for their withdrawal transaction, as with any on-chain
+operation. That gas does not go to SWOGE.
+<span class="chip ok">Confirmed</span>
+</p>
+
+<h3>What does not exist yet</h3>
+<div class="wrap"><table>
+  <thead><tr><th>Item</th><th>Decision to make</th></tr></thead>
+  <tbody>
+    <tr><td>Cooldown after a large win <span class="chip def">Undecided</span></td><td>A delay reduces the risk of a bug being drained before it is found, but degrades the experience. Choose: no delay, or a delay above a threshold.</td></tr>
+    <tr><td>Address allow-list <span class="chip def">Undecided</span></td><td>Useful if an account is compromised; moot while withdrawal requires the owning wallet's signature.</td></tr>
+    <tr><td>Daily cap <span class="chip def">Undecided</span></td><td>To weigh against the promise "your balance is yours". A cap is a real restriction and must be announced, not discovered.</td></tr>
+    <tr><td>Withdrawal pause <span class="chip ok">Confirmed</span></td><td>Already exists on the contract, owner-operated. To be used only in an incident, and announced publicly when it is.</td></tr>
+  </tbody>
+</table></div>
+</section>
+
+<section id="s7">
+<h2><span class="num">07</span> Buying $SWOGE</h2>
+<div class="flow"><pre>
+ETH <i>(native gas on Robinhood Chain)</i>
+ │
+ ▼
+<b>UNISWAP V3</b> <i>on Robinhood Chain</i>
+ │
+ ▼
+<b>$SWOGE</b> ─▶ wallet ─▶ deposit ─▶ <b>GAMING BALANCE</b>
+</pre></div>
+<div class="wrap"><table>
+  <thead><tr><th>Route</th><th>Detail</th><th>State</th></tr></thead>
+  <tbody>
+    <tr><td>DEX</td><td>Uniswap v3 on Robinhood Chain, paired against the native asset</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Game rewards</td><td>Winnings, daily quests, login streak, rewarded ads</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Referral</td><td>500 $SWOGE to the invitee after a deposit of at least 10,000</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Monthly leaderboard</td><td>A share of the month's revenue to the top ten</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Swap built into the site</td><td>Would save the player a trip to a DEX</td><td><span class="chip pro">Proposed</span> — the Uniswap plumbing is already used by the launchpad; the work is interface</td></tr>
+    <tr><td>Centralised exchange listing</td><td>—</td><td><span class="chip def">Undecided</span> — depends on a listing decision and a liquidity budget</td></tr>
+  </tbody>
+</table></div>
+</section>
+
+<section id="s8">
+<h2><span class="num">08</span> The gaming wallet</h2>
+<p>
+A player does not hold one number but four, and they do not behave the same way.
+Confusing them is the first source of misunderstanding and support tickets.
+</p>
+<div class="wrap"><table>
+  <thead><tr><th>Balance</th><th>What it is</th><th>Playable</th><th>Withdrawable</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Available</strong></td><td>What is committed nowhere</td><td>Yes</td><td>Yes, above the minimum</td></tr>
+    <tr><td><strong>Staked</strong></td><td>Locked principal, per position, each with its own date</td><td>No</td><td>No, unless exiting early with a 50&nbsp;% penalty</td></tr>
+    <tr><td><strong>Accruing yield</strong></td><td>Accumulates by the second, not yet claimed</td><td>No</td><td>No — it must be claimed first</td></tr>
+    <tr><td><strong>Referral matured / pending</strong></td><td>Earnings mature for 7 days before they can be claimed</td><td>No</td><td>No until claimed</td></tr>
+    <tr><td><strong>Locked gift</strong></td><td>The welcome gift, until the house has earned it back</td><td>Yes</td><td>No</td></tr>
+  </tbody>
+</table></div>
+<p>
+The sum of these five, across all players, plus the jackpot reserve, is what the protocol
+owes. That figure is compared to the vault's actual contents continuously (see
+<a href="#s26">section 26</a>).
+<span class="chip ok">Confirmed</span>
+</p>
+</section>
+
+<p class="part">Part III · The games and their economy</p>
+
+<section id="s9">
+<h2><span class="num">09</span> The games</h2>
+<p>
+Thirteen titles live, in two economically distinct families: against the house, and
+between players.
+</p>
+<div class="wrap"><table>
+  <thead><tr><th>Game</th><th>Family</th><th class="n">Edge / rake</th><th>Note</th></tr></thead>
+  <tbody>
+    <tr><td>Plinko</td><td>House</td><td class="n">3.00 %</td><td>12 rows, three risk levels</td></tr>
+    <tr><td>Mines</td><td>House</td><td class="n">3.00 %</td><td>1, 3, 5, 10 or 24 bombs</td></tr>
+    <tr><td>Hi-Lo</td><td>House</td><td class="n">3.00 %</td><td>A run, cashable at any point</td></tr>
+    <tr><td>Crash</td><td>House</td><td class="n">3.00 %</td><td>Pre-committed chain of rounds, ×10,000 cap</td></tr>
+    <tr><td>Blackjack</td><td>House</td><td class="n">rules</td><td>The edge comes from the table rules, not a deduction</td></tr>
+    <tr><td>Three Card</td><td>House</td><td class="n">on wins</td><td>13.5&nbsp;% taken from winnings</td></tr>
+    <tr><td>Coin Pusher</td><td>House</td><td class="n">paytable</td><td>Deterministic physics, progressive jackpot</td></tr>
+    <tr><td>Coin Pusher Live</td><td>House</td><td class="n">paytable</td><td>Shared real-time table</td></tr>
+    <tr><td>Smash</td><td>House</td><td class="n">paytable</td><td>Bets from 1 to 1,000</td></tr>
+    <tr><td>Spin</td><td>House</td><td class="n">paytable</td><td>Prize wheel</td></tr>
+    <tr><td>Texas Hold'em</td><td>Players</td><td class="n">5.00 %</td><td>Three tables: 5/10, 250/500, 12,500/25,000</td></tr>
+    <tr><td>Connect 4</td><td>Duel</td><td class="n">5.00 %</td><td>Bets from 10 to 10,000,000</td></tr>
+    <tr><td>Checkers</td><td>Duel</td><td class="n">5.00 %</td><td>Same money path</td></tr>
+    <tr><td>Tic-Tac-Toe</td><td>Duel</td><td class="n">5.00 %</td><td>Same money path</td></tr>
+  </tbody>
+</table></div>
+
+<h3>Finding an opponent</h3>
+<p>
+A bubble in the bottom-right corner of <em class="q">every</em> page opens the list of
+open 1v1 tables, with a badge showing how many players are waiting. It stays visible even
+when nobody is waiting — a feature that disappears when empty is never discovered.
+<span class="chip ok">Confirmed</span>
+</p>
+<div class="wrap"><table>
+  <thead><tr><th>Item</th><th>State</th></tr></thead>
+  <tbody>
+    <tr><td>Public table, joinable by anyone</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Private match between friends</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Instant rematch</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Profile visible at the table: name, picture, frame and level</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Matchmaking by level or rank</td><td><span class="chip pro">Proposed</span> — the level already travels with the public profile; matchmaking only needs a queue per bracket</td></tr>
+    <tr><td>Free, no-stake matches</td><td><span class="chip def">Undecided</span> — good for learning, but they produce no revenue and open the door to leaderboard farming. Decide whether the leaderboard counts them.</td></tr>
+  </tbody>
+</table></div>
+
+<h3>Provable fairness</h3>
+<p>
+The server seed rotates every 168 hours, and the old one is <strong>revealed</strong> at
+that moment. The last 104 seeds are kept — two years of verifiable history. Rotation is
+refused while a round is in flight: rotating mid-blackjack-hand would make it
+unverifiable, which is the exact opposite of the point.
+</p>
+<p>
+The exact formulas, including each game's own suffix, are published on the public
+<code>/fairness</code> endpoint.
+<span class="chip ok">Confirmed</span>
+</p>
+</section>
+
+<section id="s10">
+<h2><span class="num">10</span> The 1v1 economy</h2>
+<p>
+Five possible models. C is what runs today; the others are described because they will
+come up in product discussions.
+</p>
+<div class="flow"><pre>
+<b>PLAYER A</b>              <b>PLAYER B</b>
+    │  stakes 10,000      │  stakes 10,000
+    └──────────┬──────────┘
+               ▼
+        <b>POT · 20,000</b>
+               │
+               ▼
+             <b>GAME</b>
+               │
+    ┌──────────┴──────────┐
+    ▼                     ▼
+<b>5 % RAKE</b>              <b>WINNER</b>
+<i>1,000 → house</i>        <i>19,000</i>
+</pre></div>
+<div class="wrap"><table>
+  <thead><tr><th>Model</th><th>Flow</th><th>Revenue</th><th>Risk</th><th>State</th></tr></thead>
+  <tbody>
+    <tr><td><strong>A · Free</strong></td><td>No tokens enter</td><td>None</td><td>Costless leaderboard farming</td><td><span class="chip def">Undecided</span></td></tr>
+    <tr><td><strong>B · Fixed entry fee</strong></td><td>Entry → house, separate prize pool</td><td>Predictable</td><td>Reads as a toll</td><td><span class="chip pro">Proposed</span></td></tr>
+    <tr><td><strong>C · Winner takes the pot</strong></td><td>Stakes → pot → winner</td><td>Via the rake</td><td>Collusion between two accounts</td><td><span class="chip ok">Live</span></td></tr>
+    <tr><td><strong>D · Rake on the pot</strong></td><td>5&nbsp;% taken before payout</td><td>Proportional to volume</td><td>None specific</td><td><span class="chip ok">Live</span></td></tr>
+    <tr><td><strong>E · Tournament pool</strong></td><td>N entries → one pool → distribution</td><td>Entry fees</td><td>Requires dispute arbitration</td><td><span class="chip def">Undecided</span></td></tr>
+  </tbody>
+</table></div>
+<div class="note risk">
+<strong>Collusion is the risk specific to model C.</strong> Two complicit accounts can
+move value between themselves by losing on purpose — they pay the 5&nbsp;% rake every
+time, which makes it a losing operation, but they manufacture <em class="q">volume</em>.
+That is why referrals count only a small share of the stake in 1v1 (1&nbsp;%) rather than
+real revenue, and why a volume leaderboard must watch pairs of accounts that only ever
+play each other.
+<span class="chip ok">Confirmed</span> for the referral countermeasure ·
+<span class="chip def">Undecided</span> for pair detection.
+</div>
+</section>
+
+<section id="s11">
+<h2><span class="num">11</span> Fees</h2>
+<div class="wrap"><table>
+  <thead><tr><th>Fee</th><th class="n">Rate</th><th>Base</th><th>Destination</th><th>State</th></tr></thead>
+  <tbody>
+    <tr><td>House edge</td><td class="n">3.00 %</td><td>Every bet against the house</td><td>Revenue</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>1v1 and poker rake</td><td class="n">5.00 %</td><td>The pot</td><td>Revenue</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Three Card deduction</td><td class="n">13.50 %</td><td>Winnings</td><td>Revenue</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Jackpot rake</td><td class="n">3.00 %</td><td>Coin Pusher bets</td><td>Progressive pool, returned to players</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td><strong>Withdrawal fee</strong></td><td class="n">1.00 %</td><td>The gross withdrawn</td><td><strong>Burned in full</strong></td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Launchpad protocol fee</td><td class="n">1.00 %</td><td>Every buy and sell on the curve</td><td>SWOGE treasury</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Token creation</td><td class="n">0</td><td>—</td><td>—</td><td><span class="chip ok">Confirmed</span> — free today, configurable</td></tr>
+    <tr><td>Token creator fee</td><td class="n">≤ 20 %</td><td>Their token's volume</td><td>Creator or holders, depending on the chosen mode</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Transfer between friends</td><td class="n">0</td><td>—</td><td>—</td><td><span class="chip ok">Confirmed</span> — minimum 10,000</td></tr>
+    <tr><td>Staking fee</td><td class="n">0</td><td>—</td><td>—</td><td><span class="chip ok">Confirmed</span> — early-exit penalty aside</td></tr>
+    <tr><td>Marketplace</td><td class="n">—</td><td>—</td><td>—</td><td><span class="chip def">Undecided</span></td></tr>
+    <tr><td>Tournaments</td><td class="n">—</td><td>—</td><td>—</td><td><span class="chip def">Undecided</span></td></tr>
+  </tbody>
+</table></div>
+
+<h3>Where the money goes</h3>
+<div class="flow"><pre>
+<b>MONTHLY REVENUE</b>  <i>= bets − returns + rake</i>
+      │
+      ├── <b>1 %</b> ─────────▶ <b>LEADERBOARD POOL</b>  <i>to the top 10 by volume</i>       <span class="chip ok">Confirmed</span>
+      ├── <b>10 to 20 %</b> ──▶ <b>REFERRALS</b>  <i>of the revenue each invitee produces</i>  <span class="chip ok">Confirmed</span>
+      └── <b>the rest</b> ────▶ <b>TREASURY</b>
+                               │
+                               ├── staking yield
+                               ├── development
+                               ├── liquidity
+                               └── marketing            <span class="chip def">split UNDECIDED</span>
+
+<b>WITHDRAWAL FEES</b> ──── <b>100 %</b> ───▶ <b>BURN</b>   <i>0x…dEaD, public transaction</i>   <span class="chip ok">Confirmed</span>
+</pre></div>
+<div class="note def">
+<strong>Decision to make:</strong> how treasury revenue splits between yield, development,
+liquidity and marketing is not formalised. Until it is, it is discretionary — a point an
+investor will raise immediately. See <a href="#s26">section 26</a>.
+</div>
+</section>
+
+<p class="part">Part IV · Staking, burn and sinks</p>
+
+<section id="s12">
+<h2><span class="num">12</span> Staking</h2>
+
+<h3>Live parameters</h3>
+<div class="grid3">
+  <div class="stat"><span>Annual rate</span><b>100 %</b><i>current parameter, changeable — not a commitment</i></div>
+  <div class="stat"><span>Lock</span><b>365 days</b><i>per position, each with its own date</i></div>
+  <div class="stat"><span>Early exit</span><b>−50 %</b><i>of the still-locked principal</i></div>
+  <div class="stat"><span>Global cap</span><b>20 %</b><i>of supply — 200,000,000 across every player</i></div>
+  <div class="stat"><span>Minimum</span><b>none</b><i>any amount can be staked</i></div>
+  <div class="stat"><span>Yield</span><b>by the second</b><i>claimable at any time, without waiting for the unlock</i></div>
+</div>
+<p>
+Yield accrues from the first second and can be claimed whenever, even while locked. Only
+the <em class="q">principal</em> is held.
+<span class="chip ok">Confirmed</span>
+</p>
+
+<h3>Why a global cap</h3>
+<p>
+At 100&nbsp;% a year, every token staked commits the protocol to returning two within a
+year. That debt is invisible on the day it is taken on: it shows up twelve months later.
+Without a cap, a single large holder can commit the vault to an amount nobody would
+discover until it came due.
+</p>
+<p>
+The cap puts a known bound on it: at most 20&nbsp;% of supply staked, therefore at most
+20&nbsp;% of supply in yield over the year. It is not a closed door but a full room — space
+frees up as soon as someone leaves, and the gauge is shown on the page
+<em class="q">before</em> the player types an amount.
+<span class="chip ok">Confirmed</span>
+</p>
+
+<h3>Where the yield comes from — four models</h3>
+<div class="wrap"><table>
+  <thead><tr><th>Model</th><th>Source</th><th>Sustainability</th><th>Limit</th></tr></thead>
+  <tbody>
+    <tr><td><strong>A · Revenue-backed</strong></td><td>A share of real revenue</td><td><strong>Total</strong> — a slow month pays little, an empty month pays nothing</td><td>The rate becomes variable, so harder to advertise</td></tr>
+    <tr><td><strong>B · Ecosystem budget</strong></td><td>A dedicated allocation, finite</td><td>Good, while the budget lasts</td><td>The end date has to be announced</td></tr>
+    <tr><td><strong>C · Emission</strong></td><td>Newly minted tokens</td><td><strong>None</strong> — dilutes every holder</td><td>Impossible here: supply is fixed</td></tr>
+    <tr><td><strong>D · Hybrid</strong></td><td>A budgeted floor plus a variable part backed by revenue</td><td>Good</td><td>Harder to explain</td></tr>
+  </tbody>
+</table></div>
+
+<div class="note risk">
+<strong>What SWOGE does today, without hedging.</strong> The live model is
+<strong>B</strong>: a fixed 100&nbsp;% rate funded by a team allocation. The vault holds
+<strong>99,826,711 $SWOGE</strong>, roughly 10&nbsp;% of supply, put there by the team —
+verifiable on-chain at
+<code>0x5593c8141303D14999Df7aa03dd3d3a6d4335fAb</code>.
+<br><br>
+That budget is not infinite, and protocol revenue does not cover the advertised rate at
+scale. The admin dashboard continuously computes the daily cost of staking, the daily
+revenue, and how many days the surplus still covers. <strong>The recommended target model
+is D</strong>: a budgeted floor plus a variable part backed by real revenue, with a cap
+aligned to what revenue can carry.
+<span class="chip ok">Confirmed</span> for the current state ·
+<span class="chip pro">Proposed</span> for the target.
+</div>
+</section>
+
+<section id="s13">
+<h2><span class="num">13</span> The staking flow</h2>
+<div class="flow"><pre>
+<b>PLAYER</b>
+   │  types an amount · sees the room gauge BEFORE confirming
+   ▼
+<b>CAP CHECK</b>  <i>before any debit</i>
+   │
+   ├── full ─────────▶ refused, with the exact amount of room left
+   │
+   ▼
+<b>POSITION OPENED</b>  <i>principal + start date + unlock date</i>
+   │
+   ▼
+<b>YIELD BY THE SECOND</b>
+   │
+   ├──▶ <b>CLAIM</b> ──▶ available balance ──▶ play, re-stake, or withdraw
+   │
+   ▼
+<b>UNLOCK AT 365 DAYS</b>
+   │
+   ├── before term ──▶ <b>UNSTAKE</b>: 50 % of the locked principal stays with the house
+   │
+   └── after term ───▶ <b>UNSTAKE</b>: everything returns, plus accrued yield
+</pre></div>
+<p>
+The cap check happens <strong>before</strong> the balance is debited. A refusal placed
+after the debit would leave the player with neither their tokens nor their stake — the
+kind of hole you only find through a complaint.
+<span class="chip ok">Confirmed</span>
+</p>
+</section>
+
+<section id="s14">
+<h2><span class="num">14</span> The burn</h2>
+<div class="grid2">
+  <div class="stat"><span>Already burned, verified on-chain</span><b>6,827,534</b><i>$SWOGE at <code>0x…dEaD</code> — 0.68 % of supply</i></div>
+  <div class="stat"><span>Continuous source</span><b>1 % of every withdrawal</b><i>taken from the gross, never reinjected</i></div>
+</div>
+
+<h3>The path, end to end</h3>
+<div class="flow"><pre>
+<b>WITHDRAWAL</b>  <i>100,000 gross</i>
+   │
+   ├──▶ 99,000 authorised to the player
+   │
+   └──▶ <b>1,000 TO THE BURN PILE</b>
+             │  <i>the amount stays in the vault, counted separately</i>
+             ▼
+      <b>BURN TRANSACTION</b>  <i>vault → 0x…dEaD, in a single transaction</i>
+             │
+             ▼
+      <b>PUBLIC ANNOUNCEMENT</b>  <i>Telegram channel, with the transaction link</i>
+             │
+             ▼
+      <b>VERIFICATION</b>  <i>anyone reads the dead address balance</i>
+</pre></div>
+<p>
+The burn goes <strong>from the vault straight to the dead address</strong>, in one
+transaction. Routing it through the owner's wallet would make it two, and leave a moment
+where the tokens belong to them — which is no longer quite a burn.
+<span class="chip ok">Confirmed</span>
+</p>
+
+<h3>Burn sources</h3>
+<div class="wrap"><table>
+  <thead><tr><th>Source</th><th>State</th></tr></thead>
+  <tbody>
+    <tr><td>Withdrawal fee, 1&nbsp;%, in full</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Voluntary community burns, with a dedicated page and a burners' leaderboard</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>A share of launchpad fees</td><td><span class="chip pro">Proposed</span> — the protocol earns 1&nbsp;% of the volume of every launched token; routing part of it to the burn ties launchpad activity to $SWOGE scarcity</td></tr>
+    <tr><td>A share of game fees</td><td><span class="chip pro">Proposed</span> — to weigh against funding the staking yield, which draws on the same source</td></tr>
+    <tr><td>Buyback and burn</td><td><span class="chip def">Undecided</span> — requires a treasury in another asset and a written policy; otherwise it is a case-by-case decision, which is the opposite of a mechanism</td></tr>
+  </tbody>
+</table></div>
+<div class="note">
+<strong>A burn does not create value.</strong> It reduces supply. The effect on price
+depends entirely on the demand facing it, and reduced supply with no demand produces
+nothing. Any communication presenting a burn as a mechanical price increase would be
+misleading.
+</div>
+</section>
+
+<section id="s15">
+<h2><span class="num">15</span> Token sinks</h2>
+<p>
+A <strong>sink</strong> removes tokens from useful circulation without destroying them;
+they can come back. A <strong>burn</strong> destroys them for good. Conflating the two
+overstates real scarcity.
+</p>
+<div class="wrap"><table>
+  <thead><tr><th>Mechanism</th><th>Type</th><th>Reversible</th><th>State</th></tr></thead>
+  <tbody>
+    <tr><td>Staking lock, 365 days</td><td>Sink</td><td>Yes, at term</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Bets in play</td><td>Circulation</td><td>—</td><td>Neither sink nor burn: 97&nbsp;% of a bet returns to players</td></tr>
+    <tr><td>Jackpot reserve</td><td>Sink</td><td>Yes, when it drops</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Early-exit penalty</td><td>Sink</td><td>Stays with the house</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Withdrawal fee</td><td><strong>Burn</strong></td><td>No</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Paid cosmetics: frames, avatars, name colours</td><td>Sink or burn depending on destination</td><td>—</td><td><span class="chip pro">Proposed</span> — ten tier frames already exist, earned by level; selling them would be a clean sink</td></tr>
+    <tr><td>Tournament entry</td><td>Circulation + partial sink</td><td>—</td><td><span class="chip def">Undecided</span></td></tr>
+    <tr><td>Priority launchpad access for stakers</td><td>Sink</td><td>Yes</td><td><span class="chip pro">Proposed</span> — ties staking directly to a utility rather than a yield</td></tr>
+  </tbody>
+</table></div>
+</section>
+
+<section id="s16">
+<h2><span class="num">16</span> Rewards</h2>
+<div class="wrap"><table>
+  <thead><tr><th>Reward</th><th>Funding</th><th>Sustainable?</th><th>State</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Monthly leaderboard</strong><br>1&nbsp;% of the month's revenue to the top ten by volume, split 30 / 20 / 13 / 10 / 8 / 6 / 5 / 4 / 2.5 / 1.5</td>
+      <td>Share of real revenue</td><td><strong>Yes, by construction</strong> — an empty month pays nothing</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td><strong>Referrals</strong><br>10&nbsp;% of the revenue produced by your invitee, up to 20&nbsp;% at the top tier; 1&nbsp;% of the stake in 1v1</td>
+      <td>Share of real revenue</td><td><strong>Yes</strong> — can never cost more than the invitee brought in</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td><strong>Welcome gift</strong><br>500 $SWOGE to the invitee after a 10,000 deposit</td>
+      <td>Acquisition budget</td><td>Yes — locked until the house has earned it back, which makes farming a losing move</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td><strong>Daily quests and login streak</strong><br>small amounts, rising over 7 days</td>
+      <td>Marketing budget</td><td>Yes, small and capped</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td><strong>Rewarded ads</strong><br>10 $SWOGE, up to 5 times a day</td>
+      <td>Advertising revenue</td><td>Yes — funded by the advertiser</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td><strong>Levels</strong><br>100 levels earned on volume wagered</td>
+      <td>No direct cost</td><td><strong>Yes</strong> — the perks are conveniences (lower withdrawal minimum, unlocked picture) and a larger referral share, never an amount</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Seasonal rewards</td><td>—</td><td>—</td><td><span class="chip def">Undecided</span></td></tr>
+    <tr><td>Tournament pools</td><td>—</td><td>—</td><td><span class="chip def">Undecided</span></td></tr>
+  </tbody>
+</table></div>
+<div class="note">
+<strong>The rule that makes the whole thing sustainable:</strong> every meaningful reward
+is expressed as a <em class="q">share of measured revenue</em>, never as a fixed amount.
+The protocol therefore cannot hand out money it has not earned. The only exceptions are
+small, capped, budgeted acquisition amounts — and the staking yield, which is today the
+one item funded by an allocation rather than by revenue.
+</div>
+</section>
+
+<p class="part">Part V · The launchpad</p>
+
+<section id="s17">
+<h2><span class="num">17</span> The launchpad — SwogeFun V2</h2>
+<p>
+Contract <code>0x4De26D120A4fF2d7c1875E6C7D611262b9cA426d</code>, deployed on Robinhood
+Chain. <strong>23 tokens launched to date.</strong>
+<span class="chip ok">Confirmed</span>
+</p>
+
+<h3>Two launch modes</h3>
+<div class="grid2">
+  <div class="card">
+    <h4>Curve mode</h4>
+    <p>
+    The token sells on a bonding curve. Buyers enter progressively, the price rises with
+    sales, and when the curve is exhausted the token <strong>graduates</strong>: the
+    accumulated liquidity is deposited into a Uniswap v3 pool and the token trades freely.
+    </p>
+    <p>800,000,000 on the curve · 200,000,000 for liquidity · 1,000,000,000 total.</p>
+  </div>
+  <div class="card">
+    <h4>Instant mode</h4>
+    <p>
+    The token is created and its Uniswap v3 pool opened in the same transaction. No curve
+    phase, no graduation to wait for — it is tradable and visible on aggregators
+    immediately.
+    </p>
+    <p>The creator receives 70&nbsp;% of the creator share; the rest feeds the protocol.</p>
+  </div>
+</div>
+
+<h3>Contract parameters, read from the chain</h3>
+<div class="wrap"><table>
+  <thead><tr><th>Parameter</th><th class="n">Value</th><th>Effect</th></tr></thead>
+  <tbody>
+    <tr><td>Creation fee</td><td class="n">0</td><td>Launching is free today; the parameter is owner-configurable</td></tr>
+    <tr><td>Protocol fee</td><td class="n">1.00 %</td><td>On every buy and sell, to the SWOGE treasury</td></tr>
+    <tr><td>Maximum creator fee</td><td class="n">20.00 %</td><td>A ceiling; the creator picks their rate at launch</td></tr>
+    <tr><td>Creator share, instant mode</td><td class="n">70.00 %</td><td>Of the creator fee stream</td></tr>
+    <tr><td>Uniswap pool fee</td><td class="n">1.00 %</td><td>Fee tier of the v3 pool created</td></tr>
+    <tr><td>Supply per launched token</td><td class="n">1,000,000,000</td><td>Fixed, not mintable after creation</td></tr>
+    <tr><td>Max wallet</td><td class="n">configurable</td><td>In basis points, chosen by the creator — 0 = no cap</td></tr>
+    <tr><td>Fee destination</td><td class="n">two modes</td><td>To the dev wallet, or <strong>redistributed to holders</strong> of the token</td></tr>
+  </tbody>
+</table></div>
+
+<h3>What is unusual about this launchpad</h3>
+<p>
+Holder redistribution is implemented in the contract: each holder accrues a share of
+trading fees proportional to their holding and claims it whenever they want. This rarely
+exists at the launchpad level rather than inside each individual token.
+<span class="chip ok">Confirmed</span>
+</p>
+
+<div class="flow"><pre>
+<b>CREATOR</b>
+   │  name · symbol · mode · max wallet · fee destination
+   │  + Telegram / X / website / logo
+   ▼
+<b>createToken()</b>  <i>one transaction</i>
+   │
+   ├── CURVE mode ──▶ curve sale ──▶ <b>GRADUATION</b> ──▶ Uniswap v3 pool
+   │
+   └── INSTANT mode ──▶ <b>UNISWAP V3 POOL IMMEDIATELY</b>
+                                 │
+                                 ▼
+                     <b>FREE TRADING</b> · aggregators · scanners
+                                 │
+                    ┌────────────┴────────────┐
+                    ▼                         ▼
+          <b>1 % → SWOGE TREASURY</b>     <b>creator fee → dev or holders</b>
+</pre></div>
+
+<h3>What is missing for a curated launchpad</h3>
+<div class="wrap"><table>
+  <thead><tr><th>Item</th><th>State</th><th>Decision to make</th></tr></thead>
+  <tbody>
+    <tr><td>Permissionless launching</td><td><span class="chip ok">Confirmed</span></td><td>Anyone can launch. That is a choice: maximum openness against no filter.</td></tr>
+    <tr><td>Application, review, approval</td><td><span class="chip def">Undecided</span></td><td>Add a <em class="q">verified</em> track alongside the open one, with a distinct badge. Decide who judges, on what criteria, and whether refusals are explained publicly.</td></tr>
+    <tr><td>Whitelist, allocation, public sale</td><td><span class="chip def">Undecided</span></td><td>Requires an extra sale mode. Decide whether staked $SWOGE grants priority allocation.</td></tr>
+    <tr><td>Vesting for the launched project's team</td><td><span class="chip def">Undecided</span></td><td>Nothing today obliges a creator to lock their share. It is the first question an informed investor asks.</td></tr>
+    <tr><td>Refunds if a target is not reached</td><td><span class="chip def">Undecided</span></td><td>Only meaningful with a target-based sale.</td></tr>
+    <tr><td>$SWOGE utility inside the launchpad</td><td><span class="chip pro">Proposed</span></td><td>Three options: creation fees payable in $SWOGE, priority allocation for stakers, a share of protocol fees burned. The second is the strongest: it gives staking a utility that is not a yield.</td></tr>
+  </tbody>
+</table></div>
+</section>
+
+<section id="s18">
+<h2><span class="num">18</span> Launchpad security</h2>
+<div class="wrap"><table>
+  <thead><tr><th>Protection</th><th>Detail</th><th>State</th></tr></thead>
+  <tbody>
+    <tr><td>Standard token contract</td><td>Every launched token uses the same verifiable contract, with no mint function after creation</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Anti-snipe</td><td>The token contract carries a buy limit for the first blocks after launch</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Max wallet</td><td>Creator-configurable, in basis points of supply</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Liquidity deposited by the contract</td><td>In curve mode, graduation liquidity is deposited by the contract, not the creator</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Liquidity position held</td><td>The contract holds the Uniswap v3 position</td><td><span class="chip ok">Confirmed</span> — the policy for withdrawing that position is <span class="chip def">undecided</span> and must be written publicly</td></tr>
+    <tr><td>Project team wallet disclosure</td><td>—</td><td><span class="chip def">Undecided</span></td></tr>
+    <tr><td>Contract review</td><td>—</td><td><span class="chip def">Undecided</span> — moot while every token uses the standard contract; becomes necessary if custom contracts are accepted</td></tr>
+    <tr><td>Displayed risk score</td><td>Holder concentration, age, liquidity, creator behaviour</td><td><span class="chip pro">Proposed</span> — a concentration scanner already exists on the site and supplies the data</td></tr>
+    <tr><td>Community reporting</td><td>—</td><td><span class="chip def">Undecided</span></td></tr>
+  </tbody>
+</table></div>
+<div class="note risk">
+<strong>No platform can guarantee that a project launched on it is safe.</strong> A
+permissionless launchpad distributes tooling, not recommendations. That sentence belongs
+visibly on the launchpad page, not only in a document.
+<span class="chip def">Undecided</span> — check that it is there.
+</div>
+</section>
+
+<p class="part">Part VI · Market and automation</p>
+
+<section id="s19">
+<h2><span class="num">19</span> Volume and liquidity</h2>
+<div class="wrap"><table>
+  <thead><tr><th>Concept</th><th>What it is</th><th>What it is not</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Organic volume</strong></td><td>Different people buying and selling for their own reasons</td><td>Not the sum of transactions; two accounts passing tokens back and forth produce volume and no information</td></tr>
+    <tr><td><strong>Liquidity</strong></td><td>What is actually deposited in the pools</td><td>Not volume: a pool can see a lot pass through with little depth</td></tr>
+    <tr><td><strong>Depth</strong></td><td>How much you can buy or sell before moving the price by x&nbsp;%</td><td>The only number that tells you what a position is worth on the way out</td></tr>
+    <tr><td><strong>Gaming activity</strong></td><td>Volume wagered on the platform</td><td><strong>Unrelated to the token's trading volume.</strong> Conflating them in communication would be misleading.</td></tr>
+    <tr><td><strong>Active players</strong></td><td>Distinct addresses that play</td><td>Not holders, not visitors</td></tr>
+  </tbody>
+</table></div>
+<div class="note risk">
+<strong>Wash trading is out of scope.</strong> Manufacturing volume through transactions
+between controlled accounts is market manipulation, illegal in most jurisdictions,
+detectable by on-chain analysis, and destructive for a project whose main argument is
+verifiability. A project that publishes its seeds and its formulas cannot lie about its
+volume.
+</div>
+<h3>The legitimate levers</h3>
+<div class="wrap"><table>
+  <thead><tr><th>Lever</th><th>What it produces</th><th>State</th></tr></thead>
+  <tbody>
+    <tr><td>The product itself</td><td>A player who wants to play has to buy $SWOGE. That is the most solid source of demand, because it does not depend on the market.</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Launchpad activity</td><td>Every launched token brings users to the chain and into the ecosystem</td><td><span class="chip ok">Confirmed</span> — 23 tokens</td></tr>
+    <tr><td>Professional market making</td><td>Tightens the spread and improves depth, without creating artificial volume</td><td><span class="chip def">Undecided</span> — decide whether there is a mandate, with whom, and publish it</td></tr>
+    <tr><td>Liquidity incentives</td><td>Paying liquidity providers</td><td><span class="chip pro">Proposed</span> — expensive, to be funded explicitly</td></tr>
+    <tr><td>Trading competitions</td><td>Rewards real volume over a period</td><td><span class="chip pro">Proposed</span> — careful: rewarding volume also rewards pointless round-trips. Better to reward holding or playing.</td></tr>
+    <tr><td>Monthly gaming leaderboard</td><td>Rewards volume <em class="q">played</em>, every unit of which has paid the house edge — volume that funds what it distributes</td><td><span class="chip ok">Confirmed</span></td></tr>
+  </tbody>
+</table></div>
+</section>
+
+<section id="s20">
+<h2><span class="num">20</span> Bots and automation</h2>
+
+<h3>Infrastructure bots</h3>
+<div class="wrap"><table>
+  <thead><tr><th>Bot</th><th>Role</th><th>State</th></tr></thead>
+  <tbody>
+    <tr><td>Telegram notifications</td><td>Deposits, big wins, stakes, new players, burns with transaction links</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Chain watcher</td><td>Listens for deposits continuously, resumes from the last processed block after a restart</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Off-machine backup</td><td>Daily compressed archive to a private channel, after checking the channel is not public</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Seed rotation</td><td>Checks every ten minutes whether the weekly rotation is due, and waits for no round to be in flight</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Monthly prize payout</td><td>Pays the previous month's pool exactly once, with a double-payment guard</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Empty-account purge</td><td>Drops records that never did anything, protecting connected players</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Community moderation</td><td>—</td><td><span class="chip def">Undecided</span></td></tr>
+  </tbody>
+</table></div>
+
+<h3>Trading bots</h3>
+<p>
+A bot trading on Uniswap is no different from a human trading on Uniswap: the pool does
+not know who is calling. There is nothing to permit or forbid, and claiming otherwise
+would be false. What is true: the damaging strategies are sandwiching and launch sniping,
+and the launchpad already carries a buy limit for the first blocks.
+<span class="chip ok">Confirmed</span>
+</p>
+
+<h3>Game bots — not allowed</h3>
+<p>
+A program playing on the player's behalf against the <em class="q">house</em> gains
+nothing: the result is drawn by HMAC and depends on no reflex. It is simply rate-limited
+like everyone else.
+</p>
+<p>
+In player-versus-player games it is the opposite: a Connect 4 or checkers solver beats a
+human almost every time. That is the only place where automation genuinely takes
+something from someone, and therefore the only place where detection matters. See
+<a href="#s21">section 21</a>.
+<span class="chip def">Undecided</span> — detection is not implemented.
+</p>
+
+<h3>Rate limiting</h3>
+<p>
+Every connection gets a token bucket: 20 messages per second, a burst of 40, and the
+connection closes past 400 refused messages. Measured: 498,200 hostile messages sent, 39
+served, socket closed, and another player served in 50 milliseconds during the attack.
+<span class="chip ok">Confirmed</span>
+</p>
+</section>
+
+<p class="part">Part VII · Game integrity</p>
+
+<section id="s21">
+<h2><span class="num">21</span> Anti-cheat</h2>
+<div class="wrap"><table>
+  <thead><tr><th>Threat</th><th>Where it bites</th><th>Countermeasure state</th></tr></thead>
+  <tbody>
+    <tr><td>Automated solver</td><td>1v1 duels only</td><td><span class="chip def">Undecided</span> — the most serious gap on the integrity side</td></tr>
+    <tr><td>Collusion between two accounts</td><td>Duels, poker</td><td>Partial: referrals count only 1&nbsp;% of the stake in 1v1, which makes the loop a losing one. Pair detection remains <span class="chip def">undecided</span>.</td></tr>
+    <tr><td>Multi-accounting</td><td>Welcome gift, leaderboard</td><td>The gift is locked until the house has earned it back: a hundred throwaway accounts return zero. <span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Mass empty accounts</td><td>Server load</td><td>Records with no activity are not written to disk. Measured: 20,000 empty records weighed 10.7 MB and blocked for a second on every save. <span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Result manipulation</td><td>Every game</td><td>Impossible without breaking HMAC-SHA256 or publishing a seed that does not match its hash — which the first player who checks would catch. <span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Withdrawal voucher replay</td><td>Vault</td><td>Harmless by construction: the voucher is cumulative. <span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Message flooding</td><td>Server</td><td>Per-connection token bucket. <span class="chip ok">Confirmed</span></td></tr>
+  </tbody>
+</table></div>
+<div class="flow"><pre>
+<b>DETECTION</b> ─▶ <b>FLAG</b> ─▶ <b>HUMAN REVIEW</b> ─▶ <b>RESTRICTION</b> ─▶ <b>APPEAL</b> ─▶ <b>RESOLUTION</b>
+  <i>automatic</i>    <i>queue</i>     <i>no automation</i>    <i>graduated</i>     <i>deadline</i>   <i>explained</i>
+</pre></div>
+<div class="note def">
+<strong>A decision to make, and a structural one:</strong> a restriction touches a
+person's money. It has to be written down in advance who decides, on what evidence, what
+appeal exists, and within what deadline. A procedure improvised on the first case will be
+unfair and will look it. This is writing work, not development, and it can be done now.
+</div>
+</section>
+
+<section id="s22">
+<h2><span class="num">22</span> The leaderboard</h2>
+<div class="wrap"><table>
+  <thead><tr><th>Ranking</th><th>Basis</th><th>State</th></tr></thead>
+  <tbody>
+    <tr><td>Monthly, all players</td><td>Volume wagered over the calendar month</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Levels, permanent</td><td>Lifetime volume wagered, 100 levels, 10 tiers</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Weekly</td><td>—</td><td><span class="chip pro">Proposed</span> — a short cycle creates an appointment; the monthly engine already exists</td></tr>
+    <tr><td>Per game</td><td>—</td><td><span class="chip pro">Proposed</span></td></tr>
+    <tr><td>ELO / MMR on duels</td><td>—</td><td><span class="chip def">Undecided</span> — needed if level-based matchmaking is adopted</td></tr>
+  </tbody>
+</table></div>
+<p>
+<strong>Why volume and not winnings:</strong> a winnings leaderboard rises and falls with
+luck, without anyone changing how they play. Volume is measurable, never goes down, and
+every unit of it has paid the house edge — so farming the leaderboard funds the very pool
+you are trying to win.
+<span class="chip ok">Confirmed</span>
+</p>
+</section>
+
+<section id="s23">
+<h2><span class="num">23</span> Tournaments</h2>
+<p><span class="chip def">Entirely undecided.</span> Nothing is implemented. What follows
+is a proposal, to validate before any development.</p>
+<div class="flow"><pre>
+<b>ENTRY</b> <i>(fee)</i> ─▶ <b>PRIZE POOL</b> ─▶ <b>BRACKET</b> ─▶ <b>ROUNDS</b> ─▶ <b>FINAL</b> ─▶ <b>PAYOUT</b>
+                    │                                                   │
+                    └──── protocol share ───────────────────────────────┘
+</pre></div>
+<div class="wrap"><table>
+  <thead><tr><th>Format</th><th>Cadence</th><th>What it brings</th></tr></thead>
+  <tbody>
+    <tr><td>Daily, small entry</td><td>Every day at a fixed hour</td><td>An appointment, therefore retention</td></tr>
+    <tr><td>Weekly</td><td>Weekends</td><td>A visible pool, a reason to share</td></tr>
+    <tr><td>Monthly</td><td>End of month</td><td>Dovetails with the existing leaderboard</td></tr>
+    <tr><td>Seasonal</td><td>Quarterly</td><td>A long story, frames and titles to win</td></tr>
+  </tbody>
+</table></div>
+<p><strong>Decisions first:</strong> do entry fees go entirely to the pool or partly to the
+protocol; what happens when a player abandons mid-bracket; who arbitrates a dispute; do
+tournaments count towards the monthly leaderboard.</p>
+</section>
+
+<section id="s24">
+<h2><span class="num">24</span> Digital items</h2>
+<div class="wrap"><table>
+  <thead><tr><th>Item</th><th>How it is obtained</th><th>State</th></tr></thead>
+  <tbody>
+    <tr><td>7 profile badges</td><td>Free choice</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Personal picture</td><td>After a deposit, or at level 5</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>10 tier frames</td><td>Earned by level, from engraved bronze to a crowned frame</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Titles and name colours</td><td>—</td><td><span class="chip pro">Proposed</span></td></tr>
+    <tr><td>Limited-time cosmetics</td><td>Events</td><td><span class="chip pro">Proposed</span> — the most honest sink: the player pays for something they wanted, and nothing is promised in return</td></tr>
+    <tr><td>NFTs</td><td>—</td><td><span class="chip def">Undecided</span></td></tr>
+  </tbody>
+</table></div>
+<div class="note">
+<strong>On NFTs.</strong> Frames and badges work today without a chain, and nothing
+requires tokenising them. Tokenisation buys exactly two real things: resale between
+players, and use outside the platform. If neither is wanted, an NFT adds cost, gas and
+attack surface for nothing.
+</div>
+</section>
+
+<p class="part">Part VIII · Community, treasury, tokenomics</p>
+
+<section id="s25">
+<h2><span class="num">25</span> Community</h2>
+<div class="flow"><pre>
+<b>PLAY</b> ─▶ <b>COMPETE</b> ─▶ <b>WIN</b> ─▶ <b>SHARE</b> ─▶ <b>INVITE</b> ─▶ <b>NEW PLAYERS</b> ─┐
+   ▲                                                                       │
+   └───────────────────────────────────────────────────────────────────────┘
+</pre></div>
+<p>
+The loop is not a figure of speech: every arrow maps to something that exists. You play,
+you find an opponent through the duels bubble, you win, the win is announced on the
+Telegram channel, your referral link pays for life, and your invitee arrives with a gift.
+</p>
+<div class="wrap"><table>
+  <thead><tr><th>Channel / mechanism</th><th>State</th></tr></thead>
+  <tbody>
+    <tr><td>Telegram channel with automatic announcements</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Lifetime referrals, with a personal link and invitee tracking</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Friends, direct transfers, private duels</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>X, Discord</td><td><span class="chip def">Undecided</span></td></tr>
+    <tr><td>Ambassadors, creators, clans</td><td><span class="chip def">Undecided</span></td></tr>
+    <tr><td>Community tournaments</td><td><span class="chip def">Undecided</span> — see <a href="#s23">section 23</a></td></tr>
+  </tbody>
+</table></div>
+</section>
+
+<section id="s26">
+<h2><span class="num">26</span> Treasury</h2>
+<h3>What exists and is measured</h3>
+<div class="grid3">
+  <div class="stat"><span>In the vault, on-chain</span><b>99,826,711</b><i>$SWOGE on 14 August 2026 — player deposits + team allocation</i></div>
+  <div class="stat"><span>Owed to players</span><b>computed continuously</b><i>balances + staked + yield + jackpot</i></div>
+  <div class="stat"><span>Available surplus</span><b>vault − owed</b><i>the only amount withdrawable without touching player funds</i></div>
+</div>
+<p>
+The admin dashboard compares these three continuously, warns when the margin drops below
+10&nbsp;%, and turns red when the vault no longer covers what is owed. It also computes the
+<strong>daily cost of staking</strong>, the <strong>daily revenue</strong>, and
+<strong>how many days</strong> the surplus still covers at the current rate.
+<span class="chip ok">Confirmed</span>
+</p>
+
+<h3>What is not formalised</h3>
+<div class="wrap"><table>
+  <thead><tr><th>Topic</th><th>Decision to make</th></tr></thead>
+  <tbody>
+    <tr><td>Revenue split <span class="chip def">Undecided</span></td><td>What share to staking yield, development, marketing, liquidity, reserve. Publishing ranges beats publishing exact figures that are never honoured.</td></tr>
+    <tr><td>Emergency reserve <span class="chip def">Undecided</span></td><td>How many months of yield and withdrawals the vault must cover at all times, and what happens below that line.</td></tr>
+    <tr><td>Multisignature <span class="chip def">Undecided</span></td><td>Today, control of the vault and the launchpad is <strong>single-signature</strong>. It is the first remark any serious auditor or partner will make. A 2-of-3 multisig is quick to set up and changes the nature of the risk.</td></tr>
+    <tr><td>Published addresses <span class="chip pro">Proposed</span></td><td>Publishing the treasury, vault and launchpad addresses in the documentation lets anyone verify. The vault and launchpad are already public in practice.</td></tr>
+    <tr><td>Public dashboard <span class="chip pro">Proposed</span></td><td>A read-only public view of the non-sensitive numbers: circulating supply, total burned, total staked, cap utilisation.</td></tr>
+  </tbody>
+</table></div>
+</section>
+
+<section id="s27">
+<h2><span class="num">27</span> Tokenomics</h2>
+<div class="wrap"><table>
+  <thead><tr><th>Item</th><th class="n">Value</th><th>Source</th></tr></thead>
+  <tbody>
+    <tr><td>Name</td><td class="n">Swole Doge</td><td>Contract</td></tr>
+    <tr><td>Symbol</td><td class="n">SWOGE</td><td>Contract</td></tr>
+    <tr><td>Address</td><td class="n"><code>0x8a166Fb41Cd659a0a43396272FF73973Ce29F817</code></td><td>Robinhood Chain</td></tr>
+    <tr><td>Decimals</td><td class="n">18</td><td>Contract</td></tr>
+    <tr><td>Total supply</td><td class="n">1,000,000,000</td><td>Contract · fixed</td></tr>
+    <tr><td>Mintable</td><td class="n">no</td><td>No mint function</td></tr>
+    <tr><td>Already burned</td><td class="n">6,827,534</td><td>Balance of <code>0x…dEaD</code> · 0.68 % of supply</td></tr>
+    <tr><td>In the gaming vault</td><td class="n">99,826,711</td><td>Vault contract balance · ~10 %</td></tr>
+  </tbody>
+</table></div>
+
+<h3>Supply allocation</h3>
+<div class="note def">
+<strong>The full allocation table is <span class="chip def">undecided</span>, and it is
+the project's most visible documentation gap.</strong> Two figures are publicly
+verifiable — 6,827,534 burned and 99,826,711 in the vault — but where the remaining 893
+million sits is not documented. An investor or partner will ask this first, and the
+absence of an answer will weigh more heavily than an imperfect but published split.
+</div>
+<div class="wrap"><table>
+  <thead><tr><th>Bucket</th><th class="n">Share</th><th>Vesting</th><th>State</th></tr></thead>
+  <tbody>
+    <tr><td>Liquidity</td><td class="n">—</td><td>—</td><td><span class="chip def">Undecided</span></td></tr>
+    <tr><td>Team</td><td class="n">—</td><td>—</td><td><span class="chip def">Undecided</span> — the most scrutinised bucket; with no published cliff or vesting it is assumed unlocked</td></tr>
+    <tr><td>Treasury</td><td class="n">—</td><td>—</td><td><span class="chip def">Undecided</span></td></tr>
+    <tr><td>Gaming vault and staking</td><td class="n">≈ 10 %</td><td>Not applicable</td><td><span class="chip ok">Verifiable</span> — 99,826,711 in the vault contract</td></tr>
+    <tr><td>Marketing</td><td class="n">—</td><td>—</td><td><span class="chip def">Undecided</span></td></tr>
+    <tr><td>Ecosystem and partnerships</td><td class="n">—</td><td>—</td><td><span class="chip def">Undecided</span></td></tr>
+    <tr><td>Burned</td><td class="n">0.68 %</td><td>Permanent</td><td><span class="chip ok">Verifiable</span> — rising with every withdrawal</td></tr>
+  </tbody>
+</table></div>
+<p>
+<strong>Circulating supply over time:</strong> total supply is fixed and can only fall.
+Two forces reduce it: the burn, permanently, and the staking lock, temporarily. A
+projected curve would only be meaningful once the allocation table and unlock schedule are
+published.
+<span class="chip def">Undecided</span>
+</p>
+</section>
+
+<section id="s28">
+<h2><span class="num">28</span> Revenue model</h2>
+<div class="wrap"><table>
+  <thead><tr><th>Source</th><th>Mechanism</th><th>State</th></tr></thead>
+  <tbody>
+    <tr><td>House edge</td><td>3&nbsp;% of every bet against the house</td><td><span class="chip ok">Active</span></td></tr>
+    <tr><td>1v1 and poker rake</td><td>5&nbsp;% of the pot</td><td><span class="chip ok">Active</span></td></tr>
+    <tr><td>Launchpad protocol fee</td><td>1&nbsp;% of every buy and sell on launched tokens</td><td><span class="chip ok">Active</span></td></tr>
+    <tr><td>Early-exit penalties</td><td>50&nbsp;% of the still-locked principal</td><td><span class="chip ok">Active</span></td></tr>
+    <tr><td>Rewarded ads</td><td>Advertiser revenue, shared with the player</td><td><span class="chip ok">Active</span></td></tr>
+    <tr><td>Token creation fee</td><td>Configurable, currently zero</td><td><span class="chip ok">Available</span></td></tr>
+    <tr><td>Cosmetics</td><td>—</td><td><span class="chip pro">Proposed</span></td></tr>
+    <tr><td>Tournament fees</td><td>—</td><td><span class="chip def">Undecided</span></td></tr>
+    <tr><td>Marketplace</td><td>—</td><td><span class="chip def">Undecided</span></td></tr>
+    <tr><td>Partnerships, sponsorship</td><td>—</td><td><span class="chip def">Undecided</span></td></tr>
+  </tbody>
+</table></div>
+<p>
+Revenue is booked month by month, line by line: bets, returns, net revenue, staking paid,
+bonuses, referrals, jackpots, deposits, withdrawals, burned. This is not an estimate: it
+is accounting kept at the single choke point every round passes through.
+<span class="chip ok">Confirmed</span>
+</p>
+</section>
+
+<section id="s29">
+<h2><span class="num">29</span> The economic flywheel</h2>
+<div class="flow"><pre>
+                     <b>NEW PLAYERS</b>
+                          │
+                          ▼
+                   <b>BUY $SWOGE</b>  <i>real demand, not speculative</i>
+                          │
+                          ▼
+                      <b>DEPOSIT</b>
+                          │
+                          ▼
+                   <b>VOLUME PLAYED</b>
+                          │
+              ┌───────────┼───────────┐
+              ▼           ▼           ▼
+       <b>3/5 % REVENUE</b>  <b>LEVELS</b>   <b>BURN ON WITHDRAWAL</b>
+              │           │              │
+    ┌─────────┼─────────┐ │              ▼
+    ▼         ▼         ▼ │       <b>SUPPLY REDUCED</b>
+<b>LEADERBOARD REFERRALS TREASURY</b>          │
+    │         │         │                 │
+    │         │         ▼                 │
+    │         │    <b>DEVELOPMENT</b>            │
+    │         │         │                 │
+    │         │         ▼                 │
+    │         │     <b>NEW GAMES</b>              │
+    │         │         │                 │
+    └─────────┴─────────┴─────────────────┘
+                        │
+                        ▼
+                <b>MORE PLAYERS</b>  ──▶ <i>the loop repeats</i>
+</pre></div>
+<p>Three properties separate this loop from the usual diagram.</p>
+<ul>
+  <li><strong>It does not depend on the market.</strong> A player who wants to play buys
+  $SWOGE whether the price rises or falls. That is usage demand.</li>
+  <li><strong>It funds itself.</strong> The rewards distributed are shares of revenue
+  already earned, not tokens created.</li>
+  <li><strong>It contracts cleanly.</strong> If activity falls, rewards fall with it and
+  nothing breaks. A fixed-emission model keeps distributing while revenue collapses.</li>
+</ul>
+<div class="note risk">
+<strong>The one link that breaks this rule is the fixed staking rate.</strong> It is the
+only item that does not contract when activity does. The 20&nbsp;% cap bounds the risk;
+aligning it with what revenue can carry would remove it. See <a href="#s12">section 12</a>.
+</div>
+</section>
+
+<section id="s30">
+<h2><span class="num">30</span> Transparency</h2>
+<p>What is <em class="q">already</em> public and verifiable by anyone, without asking:</p>
+<div class="wrap"><table>
+  <thead><tr><th>Data</th><th>Where</th><th>State</th></tr></thead>
+  <tbody>
+    <tr><td>Total supply, transfers, holders</td><td>Robinhood Chain explorer</td><td><span class="chip ok">Public</span></td></tr>
+    <tr><td>Total burned</td><td>Balance of <code>0x…dEaD</code></td><td><span class="chip ok">Public</span></td></tr>
+    <tr><td>Vault contents</td><td>Vault contract balance</td><td><span class="chip ok">Public</span></td></tr>
+    <tr><td>Current seed hash, revealed seeds, exact formulas</td><td><code>/fairness</code> endpoint</td><td><span class="chip ok">Public</span></td></tr>
+    <tr><td>Launched tokens, launchpad fees, liquidity positions</td><td>SwogeFun V2 contract</td><td><span class="chip ok">Public</span></td></tr>
+    <tr><td>Every round played, with its seed and nonce</td><td>Player profile</td><td><span class="chip ok">Public to the player</span></td></tr>
+  </tbody>
+</table></div>
+<p>What a public dashboard could add:</p>
+<ul>
+  <li>Circulating supply, excluding the vault and known addresses <span class="chip pro">Proposed</span></li>
+  <li>Total staked and cap utilisation <span class="chip pro">Proposed</span></li>
+  <li>Rounds played, active players, rewards distributed <span class="chip pro">Proposed</span></li>
+  <li>Protocol revenue by month <span class="chip pro">Proposed</span> — decide the level of detail published</li>
+</ul>
+<p><em class="q">No activity figure is claimed in this document beyond those read from the
+chain or from the code.</em></p>
+</section>
+
+<p class="part">Part IX · Technical</p>
+
+<section id="s31">
+<h2><span class="num">31</span> Security</h2>
+<div class="wrap"><table>
+  <thead><tr><th>Area</th><th>What is in place</th><th>State</th></tr></thead>
+  <tbody>
+    <tr><td>Withdrawals</td><td>Cumulative signed voucher, expiring in an hour, replay harmless by construction</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>State persistence</td><td>Write to a temp file, fsync, then atomic rename; rolling backup; refusal to write an empty state over a populated one</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Startup</td><td>A present-but-unreadable file makes the server <strong>refuse to start</strong> rather than start empty — a server that will not boot can be fixed, erased balances cannot</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Off-machine backup</td><td>Daily compressed archive to a private channel, refused if the channel turns out to be public</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Restore</td><td>Import that looks first, keeps the current state in a dated file, refuses an empty or damaged archive, and disconnects everyone</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Admin access</td><td>Constant-time key comparison, lockout after 10 attempts, and fully closed if no key is configured</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Rate limiting</td><td>Per-connection token bucket</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Fund conservation</td><td>After every operation, balances plus authorisations plus fees must equal the previous total, to the token — verified by tests</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Third-party contract audit</td><td>—</td><td><span class="chip def">Undecided</span> — <strong>the most serious gap.</strong> Two contracts hold user funds.</td></tr>
+    <tr><td>Multisignature</td><td>—</td><td><span class="chip def">Undecided</span> — see <a href="#s26">section 26</a></td></tr>
+    <tr><td>Bug bounty</td><td>—</td><td><span class="chip pro">Proposed</span> — cheap and strongly credibility-building</td></tr>
+    <tr><td>Written incident procedure</td><td>—</td><td><span class="chip def">Undecided</span> — who decides to suspend, who communicates, within what deadline</td></tr>
+  </tbody>
+</table></div>
+</section>
+
+<section id="s32">
+<h2><span class="num">32</span> The contracts</h2>
+<div class="wrap"><table>
+  <thead><tr><th>Contract</th><th>Role</th><th>Main risk</th><th>State</th></tr></thead>
+  <tbody>
+    <tr><td><strong>$SWOGE token</strong><br><code>0x8a166F…F817</code></td>
+      <td>ERC-20, fixed supply</td>
+      <td>Low: no mint function</td>
+      <td><span class="chip ok">Deployed</span></td></tr>
+    <tr><td><strong>Gaming vault</strong><br><code>0x5593c8…5fAb</code></td>
+      <td>Receives deposits, pays against a signed voucher, tracks cumulative withdrawn per address</td>
+      <td><strong>High</strong>: holds player funds. The signing key is the single point of failure</td>
+      <td><span class="chip ok">Deployed</span> · audit <span class="chip def">undecided</span></td></tr>
+    <tr><td><strong>SwogeFun V2</strong><br><code>0x4De26D…a426d</code></td>
+      <td>Token creation, curve, graduation, Uniswap pool, fees, holder rewards</td>
+      <td><strong>High</strong>: holds graduation liquidity and positions</td>
+      <td><span class="chip ok">Deployed</span> · audit <span class="chip def">undecided</span></td></tr>
+    <tr><td><strong>Launched tokens</strong></td>
+      <td>Standard ERC-20 with anti-snipe and max wallet</td>
+      <td>Moderate: identical contract for all, so one flaw touches all</td>
+      <td><span class="chip ok">Deployed</span></td></tr>
+    <tr><td>Staking contract</td>
+      <td>Not applicable today: staking is held off-chain, backed by the vault</td>
+      <td>Staking inherits the vault's custody risk</td>
+      <td><span class="chip def">Undecided</span> — on-chain staking would remove that risk, at the cost of gas</td></tr>
+    <tr><td>Tournament contract</td><td>—</td><td>—</td><td><span class="chip def">Undecided</span></td></tr>
+  </tbody>
+</table></div>
+</section>
+
+<section id="s33">
+<h2><span class="num">33</span> On-chain and off-chain</h2>
+<div class="wrap"><table>
+  <thead><tr><th>Operation</th><th>Where</th><th>Why</th></tr></thead>
+  <tbody>
+    <tr><td>Holding and transferring the token</td><td><strong>Chain</strong></td><td>That is ownership</td></tr>
+    <tr><td>Deposit</td><td><strong>Chain</strong></td><td>Must be provable</td></tr>
+    <tr><td>Withdrawal</td><td><strong>Chain</strong></td><td>Same, with a signed authorisation</td></tr>
+    <tr><td>Burn</td><td><strong>Chain</strong></td><td>An unverifiable burn is worth nothing</td></tr>
+    <tr><td>Launchpad</td><td><strong>Chain</strong></td><td>Third-party funds</td></tr>
+    <tr><td>Game rounds</td><td>Off-chain</td><td>Cost and latency prohibitive on-chain</td></tr>
+    <tr><td>Gaming balance</td><td>Off-chain</td><td>Follows from the line above</td></tr>
+    <tr><td>Staking</td><td>Off-chain</td><td>Follows the gaming balance</td></tr>
+    <tr><td>Profiles, friends, leaderboard</td><td>Off-chain</td><td>No direct financial value</td></tr>
+  </tbody>
+</table></div>
+<h3>Why a round cannot be on-chain</h3>
+<p>
+A Plinko drop needs a random draw and immediate settlement. On-chain that means one
+transaction per ball, gas each time, several seconds of waiting, and a randomness oracle.
+The cost would exceed the bet for small amounts — which is to say for most rounds.
+</p>
+<p>
+Provable fairness is the <strong>answer</strong> to that trade-off. It does not make the
+round on-chain, but it makes it <em class="q">checkable afterwards</em>: you can prove a
+result was determined before the player played, and was not chosen after. That is the best
+available in an off-chain architecture, and considerably more than most platforms offer.
+<span class="chip ok">Confirmed</span>
+</p>
+</section>
+
+<section id="s34">
+<h2><span class="num">34</span> Data and analytics</h2>
+<div class="wrap"><table>
+  <thead><tr><th>Data</th><th>Use</th><th>State</th></tr></thead>
+  <tbody>
+    <tr><td>Conversion funnel: pages opened, wallets connected, depositors, first bets</td><td>Knowing <em class="q">where it jams</em> — traffic, wallet friction, or the first deposit</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Monthly books: bets, returns, revenue, costs, result</td><td>Economic steering</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Volume per player, per game</td><td>Leaderboard, levels</td><td><span class="chip ok">Confirmed</span></td></tr>
+    <tr><td>Retention, cohorts</td><td>—</td><td><span class="chip def">Undecided</span></td></tr>
+  </tbody>
+</table></div>
+<h3>Privacy</h3>
+<p>
+The platform collects no name, no email, no identity document. The identifier is a public
+address, which the player already chose to make public by using it on a chain. Display
+name and picture are optional and supplied by the player.
+</p>
+<p>
+Two existing measures follow the same line: the addresses seen during the day for funnel
+counting are <strong>never written to disk</strong>, and records that never did anything
+are not kept. What does not exist cannot leak.
+<span class="chip ok">Confirmed</span>
+</p>
+</section>
+
+<p class="part">Part X · Roadmap, risks, compliance</p>
+
+<section id="s35">
+<h2><span class="num">35</span> Roadmap</h2>
+<p>By phase, without dates. An invented date in a white paper becomes a missed promise six
+months later.</p>
+<div class="wrap"><table>
+  <thead><tr><th>Phase</th><th>Content</th><th>State</th></tr></thead>
+  <tbody>
+    <tr><td><strong>1 · Brand and foundations</strong></td><td>Token deployed, site, community, channel</td><td><span class="chip ok">Done</span></td></tr>
+    <tr><td><strong>2 · Token and liquidity</strong></td><td>Uniswap v3 pool, holder scanner</td><td><span class="chip ok">Done</span></td></tr>
+    <tr><td><strong>3 · Vault and gaming balance</strong></td><td>Deposits, withdrawals on signed vouchers, burn on withdrawal</td><td><span class="chip ok">Done</span></td></tr>
+    <tr><td><strong>4 · First games</strong></td><td>13 titles, provable fairness published</td><td><span class="chip ok">Done</span></td></tr>
+    <tr><td><strong>5 · Competition</strong></td><td>1v1 duels, poker, monthly leaderboard, 100 levels, referrals</td><td><span class="chip ok">Done</span></td></tr>
+    <tr><td><strong>6 · Staking</strong></td><td>Lock-up, yield, global cap, public gauge</td><td><span class="chip ok">Done</span></td></tr>
+    <tr><td><strong>7 · Launchpad</strong></td><td>SwogeFun V2, two modes, 23 tokens launched</td><td><span class="chip ok">Done</span></td></tr>
+    <tr><td><strong>8 · Consolidation</strong></td><td>External audit, multisig, published allocation table, incident procedure</td><td><span class="chip def">To do</span> — <strong>highest priority</strong></td></tr>
+    <tr><td><strong>9 · Organised competition</strong></td><td>Tournaments, level-based matchmaking, weekly leaderboard</td><td><span class="chip pro">Proposed</span></td></tr>
+    <tr><td><strong>10 · Token economy</strong></td><td>Staking utility in the launchpad, cosmetics, sinks</td><td><span class="chip pro">Proposed</span></td></tr>
+    <tr><td><strong>11 · Expansion</strong></td><td>New games, mobile, partnerships</td><td><span class="chip def">Undecided</span></td></tr>
+  </tbody>
+</table></div>
+<div class="note">
+<strong>What this table really says:</strong> phases 1 to 7 of a standard Web3 roadmap are
+already shipped and live. What is missing is not product — it is
+<em class="q">governance</em>: audit, multisig, published allocation, written procedures.
+It is also the cheapest work available and the one that unlocks the most credibility.
+</div>
+</section>
+
+<section id="s36">
+<h2><span class="num">36</span> Long term</h2>
+<div class="flow"><pre>
+<b>$SWOGE</b>  <i>the unit of account</i>
+   │
+   ▼
+<b>THE VAULT</b>  <i>the way in and the way out</i>
+   │
+   ▼
+<b>THE GAMES</b>  <i>usage demand — what makes people buy the token</i>
+   │
+   ▼
+<b>COMPETITION</b>  <i>what brings them back: levels, leaderboard, duels</i>
+   │
+   ▼
+<b>TOURNAMENTS</b>  <i>what creates an appointment</i>
+   │
+   ▼
+<b>STAKING</b>  <i>what removes supply — more so if it opens access</i>
+   │
+   ▼
+<b>THE LAUNCHPAD</b>  <i>what brings other teams and their communities</i>
+   │
+   ▼
+<b>THE NETWORK</b>  <i>other games built on the same infrastructure</i>
+</pre></div>
+<p>
+Each floor reinforces the one below rather than replacing it. The launchpad brings
+communities who discover the games; the games produce the revenue that funds development;
+levels and the leaderboard bring back those who came; staking removes supply as usage
+demand grows.
+</p>
+<p>
+The most interesting prospect is the last one: <strong>opening the gaming infrastructure
+to other teams</strong>. The provable-fairness engine, the vault, the balances, the duels
+and the leaderboard are all generic. A team launching a game on Robinhood Chain would not
+have to rebuild them.
+<span class="chip pro">Proposed</span>
+</p>
+</section>
+
+<section id="s37">
+<h2><span class="num">37</span> Risk analysis</h2>
+<div class="wrap"><table>
+  <thead><tr><th>Risk</th><th>Impact</th><th>Mitigation</th><th>Residual</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Vault signing key compromised</strong></td>
+      <td><strong>Total loss of player funds</strong></td>
+      <td>Key kept out of the repository, never in a browser</td>
+      <td><strong>High</strong> — single-signature. Multisig is the highest-return measure available.</td></tr>
+    <tr><td>Flaw in the vault or launchpad contract</td>
+      <td>Loss of funds</td><td>Simple contracts, small surface</td>
+      <td><strong>High</strong> — no external audit</td></tr>
+    <tr><td>Staking yield unsustainable</td>
+      <td>Vault drained, withdrawals impossible</td>
+      <td>20&nbsp;% cap, 10&nbsp;% of supply put in the vault, runway counter on the dashboard</td>
+      <td><strong>Medium</strong> — a fixed rate does not contract with activity</td></tr>
+    <tr><td>Central server failure</td>
+      <td>Platform unavailable, no games possible</td>
+      <td>Atomic state, rolling backup, daily off-machine archive, tested restore</td>
+      <td><strong>Medium</strong> — one server, no automatic failover</td></tr>
+    <tr><td>Insufficient liquidity</td>
+      <td>A holder cannot exit without collapsing the price</td>
+      <td>Uniswap v3 pool</td>
+      <td><strong>Medium</strong> — depth undocumented, no market-making mandate</td></tr>
+    <tr><td>Solvers on duels</td>
+      <td>Honest players lose and leave</td>
+      <td>None today</td>
+      <td><strong>Medium</strong> — grows with the size of the stakes</td></tr>
+    <tr><td>Regulatory reclassification as gambling</td>
+      <td>Geographic blocking, licensing obligations</td>
+      <td>No published analysis</td>
+      <td><strong>High and unquantified</strong> — see <a href="#s38">section 38</a></td></tr>
+    <tr><td>Centralisation</td>
+      <td>Unilateral decisions, dependence on one person</td>
+      <td>On-chain verifiability of what matters</td>
+      <td><strong>High</strong> — accepted at this stage, must decrease</td></tr>
+    <tr><td>Token inflation</td><td>Dilution</td><td>Fixed supply, no mint function</td><td><strong>None</strong></td></tr>
+    <tr><td>Round manipulation</td><td>Total loss of trust</td><td>Hash published before, seed revealed after, formulas public</td><td><strong>Low</strong></td></tr>
+    <tr><td>Player-side security: phishing, malicious signatures</td>
+      <td>Loss of the player's funds</td>
+      <td>Login message in plain text, with no spending approval</td>
+      <td><strong>Medium</strong> — inherent to Web3; addressed through education</td></tr>
+  </tbody>
+</table></div>
+</section>
+
+<section id="s38">
+<h2><span class="num">38</span> Compliance</h2>
+<div class="note risk">
+<strong>This document is not legal advice and cannot stand in for it.</strong> What follows
+lists topics to be examined by qualified counsel in each target jurisdiction. None is
+settled.
+</div>
+<div class="wrap"><table>
+  <thead><tr><th>Topic</th><th>Why it arises</th><th>State</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Classification of the activity</strong></td>
+      <td>Games with stakes and random outcomes fall, in many jurisdictions, under gambling law with mandatory licensing. It is the heaviest question, and it conditions everything else.</td>
+      <td><span class="chip def">Undecided</span></td></tr>
+    <tr><td>Token classification</td>
+      <td>Yield-bearing staking may, under local tests, move the token towards a financial instrument</td>
+      <td><span class="chip def">Undecided</span></td></tr>
+    <tr><td>Geographic restrictions</td>
+      <td>Some jurisdictions prohibit access without a local licence</td>
+      <td><span class="chip def">Undecided</span></td></tr>
+    <tr><td>Minimum age</td>
+      <td>Universally required for this kind of activity</td>
+      <td><span class="chip def">Undecided</span> — a self-declaration is the minimum measure, and it is trivial to add</td></tr>
+    <tr><td>KYC / anti-money-laundering</td>
+      <td>Generally becomes mandatory above certain withdrawal thresholds</td>
+      <td><span class="chip def">Undecided</span> — decide the thresholds before reaching them, not after</td></tr>
+    <tr><td>Responsible gaming</td>
+      <td>Self-exclusion, voluntary limits, information</td>
+      <td><span class="chip def">Undecided</span> — <span class="chip pro">recommended regardless of any obligation</span></td></tr>
+    <tr><td>Data protection</td>
+      <td>Little data collected, which simplifies matters considerably</td>
+      <td><span class="chip def">Undecided</span></td></tr>
+    <tr><td>Taxation</td>
+      <td>Treatment of winnings, staking rewards and burns</td>
+      <td><span class="chip def">Undecided</span></td></tr>
+    <tr><td>Launchpad</td>
+      <td>Facilitating third-party token issuance can create intermediary liability</td>
+      <td><span class="chip def">Undecided</span></td></tr>
+  </tbody>
+</table></div>
+</section>
+
+<p class="part">Part XI · Appendices</p>
+
+<section id="s39">
+<h2><span class="num">39</span> Every flow</h2>
+
+<h3>Deposit</h3>
+<div class="flow"><pre>
+<b>PLAYER</b> → connect wallet → sign the message (free)
+       → Deposit → ERC-20 approval → deposit transaction
+       → <b>VAULT CONTRACT</b> → Deposit event
+       → server watcher → de-duplicated by transaction hash
+       → <b>CREDIT</b> + immediate disk write + journal + notification
+       → <b>GAMING BALANCE AVAILABLE</b>
+</pre></div>
+
+<h3>Withdraw</h3>
+<div class="flow"><pre>
+<b>PLAYER</b> → Withdraw → amount
+       → minimum check (10,000, lowered by level)
+       → <b>GROSS DEBITED</b> · <b>CUMULATIVE += NET</b> · <b>1 % FEE → BURN PILE</b>
+       → <b>SIGNED VOUCHER</b> (cumulative, valid 1 h)
+       → player signs the transaction
+       → <b>CONTRACT</b>: pays (cumulative − already paid)
+       → <b>PLAYER'S WALLET</b>
+</pre></div>
+
+<h3>Staking</h3>
+<div class="flow"><pre>
+<b>PLAYER</b> → room gauge shown → amount
+       → cap check <i>before any debit</i>
+       → <b>POSITION</b> (principal + start + unlock at 365 d)
+       → yield by the second
+       → <b>CLAIM</b> → available balance
+       → <b>UNSTAKE</b>: everything if matured, half the principal if early
+</pre></div>
+
+<h3>A round of play</h3>
+<div class="flow"><pre>
+<b>PLAYER</b> → game → bet
+       → bet debited → nonce incremented
+       → <b>HMAC-SHA256(server_seed, client_seed:nonce)</b>
+       → result → return credited
+       → <b>JOURNAL</b>: bet, return, seed, client seed, nonce
+       → conservation check: the total owed must match to the token
+</pre></div>
+
+<h3>A 1v1 duel</h3>
+<div class="flow"><pre>
+<b>A</b> opens a table (stake M) → visible in the duels bubble
+<b>B</b> joins (stake M) → <b>POT = 2M</b> → game
+       → winner: <b>2M − 5 %</b> · draw: each gets their stake back
+       → rake → revenue → leaderboard, referrals, treasury
+</pre></div>
+
+<h3>Burn</h3>
+<div class="flow"><pre>
+<b>WITHDRAWALS</b> → 1 % of each → <b>BURN PILE</b> (counted apart, stays in the vault)
+       → single transaction: <b>VAULT → 0x…dEaD</b>
+       → public announcement with the link
+       → <b>VERIFICATION</b>: anyone reads the dead address balance
+</pre></div>
+
+<h3>Launchpad</h3>
+<div class="flow"><pre>
+<b>CREATOR</b> → createToken(name, symbol, mode, max wallet, fees, links)
+       → CURVE mode: sale → <b>GRADUATION</b> → Uniswap v3 pool
+       → INSTANT mode: <b>POOL IMMEDIATELY</b>
+       → free trading · 1 % to the protocol · creator fee to dev or holders
+</pre></div>
+
+<h3>The complete flywheel</h3>
+<div class="flow"><pre>
+<b>BUY</b> → <b>DEPOSIT</b> → <b>PLAY</b> → <b>COMPETE</b> → <b>LEVEL UP</b>
+    → <b>WIN</b> → <b>STAKE</b> or <b>WITHDRAW</b>
+                                    │
+                                    ▼
+                              <b>1 % BURNED</b>
+    ▲                               │
+    │           <b>REVENUE</b> → leaderboard · referrals · treasury
+    │              │
+    └── <b>NEW PLAYERS</b> ◀── development ◀── new games ◀──┘
+</pre></div>
+</section>
+
+<section id="s40">
+<h2><span class="num">40</span> Critical audit</h2>
+<p>Nine readings of the same project. Each keeps only what concerns it.</p>
+
+<div class="card">
+<h4>CTO</h4>
+<p><strong>Strong:</strong> provable fairness genuinely implemented and published;
+hardened persistence with atomic writes and a refusal to boot on an unreadable state; a
+dense test suite including fund-conservation tests; backup and restore tested end to end.<br>
+<strong>Weak:</strong> a single server, no failover. <strong>Missing:</strong> external
+monitoring, downtime alerting, an incident procedure.<br>
+<strong>Attackable:</strong> "what happens if the server burns down?"<br>
+<strong>Before launch:</strong> monitoring, and a restore rehearsed for real.</p>
+</div>
+
+<div class="card">
+<h4>Game designer</h4>
+<p><strong>Strong:</strong> thirteen games, duels, a 100-level progression, a funded
+monthly leaderboard. The retention loop genuinely exists.<br>
+<strong>Weak:</strong> no recurring appointment — monthly is a long cycle.<br>
+<strong>Missing:</strong> tournaments, level-based matchmaking, seasons.<br>
+<strong>What breaks it:</strong> solvers on duels; a player who loses ten straight to a
+program does not come back.<br>
+<strong>Before launch:</strong> a weekly cycle, and minimal detection on high-stake duels.</p>
+</div>
+
+<div class="card">
+<h4>Tokenomics expert</h4>
+<p><strong>Strong:</strong> fixed supply, rewards expressed as a share of real revenue, a
+continuous burn tied to a real action. Clearly above the sector average.<br>
+<strong>Weak:</strong> the fixed 100&nbsp;% staking rate is the only item that does not
+contract with activity.<br>
+<strong>Missing:</strong> the allocation table.<br>
+<strong>Attackable:</strong> "who holds the 893 million that are not documented?" — the
+first question, and the only one with no answer today.<br>
+<strong>Before launch:</strong> publish the allocation and vesting, imperfect or not.</p>
+</div>
+
+<div class="card">
+<h4>Blockchain architect</h4>
+<p><strong>Strong:</strong> the cumulative voucher is the right call — it makes replay
+harmless by construction rather than by maintaining a list. The on-chain / off-chain split
+is justified and owned.<br>
+<strong>Weak:</strong> off-chain staking inherits the custody risk.<br>
+<strong>Missing:</strong> multisig.<br>
+<strong>Attackable:</strong> "one key controls every withdrawal."<br>
+<strong>Before launch:</strong> multisig on the vault and the launchpad.</p>
+</div>
+
+<div class="card">
+<h4>Security engineer</h4>
+<p><strong>Strong:</strong> rate limiting measured under attack; dashboard closed by
+default; constant-time key comparison; refusal to write an empty state over a populated
+one.<br>
+<strong>Weak:</strong> no external audit on two contracts holding funds.<br>
+<strong>Missing:</strong> bug bounty, monitoring, incident plan.<br>
+<strong>What breaks it:</strong> a flaw in the vault. Everything else is repairable.<br>
+<strong>Before launch:</strong> the audit. The highest-return spend on the project.</p>
+</div>
+
+<div class="card">
+<h4>Web3 product manager</h4>
+<p><strong>Strong:</strong> the journey is short — connect, deposit, play. The off-chain
+balance removes gas friction, the number-one cause of drop-off.<br>
+<strong>Weak:</strong> you already need $SWOGE and the ability to use a DEX.<br>
+<strong>Missing:</strong> a built-in swap; the Uniswap plumbing is already there.<br>
+<strong>Attackable:</strong> "how many people drop off before the first deposit?" — the
+conversion funnel already answers that, which is rare.<br>
+<strong>Before launch:</strong> the built-in swap.</p>
+</div>
+
+<div class="card">
+<h4>Economist</h4>
+<p><strong>Strong:</strong> a real, measured revenue source, independent of the market.
+That is what almost every gaming token lacks.<br>
+<strong>Weak:</strong> current revenue does not cover the staking yield at the permitted
+cap.<br>
+<strong>Missing:</strong> published split ranges.<br>
+<strong>What breaks it:</strong> a prolonged drop in activity while staking keeps running.<br>
+<strong>Before launch:</strong> align the staking cap with what revenue can carry, or move
+to a partly variable rate.</p>
+</div>
+
+<div class="card">
+<h4>Compliance specialist</h4>
+<p><strong>Strong:</strong> little personal data collected, which simplifies matters
+considerably.<br>
+<strong>Weak:</strong> nothing settled on the classification of the activity.<br>
+<strong>Missing:</strong> minimum age, geographic restrictions, responsible-gaming tools,
+KYC thresholds.<br>
+<strong>What breaks it:</strong> a regulator's decision in a jurisdiction where many users
+sit.<br>
+<strong>Before launch:</strong> legal opinions in the two or three main jurisdictions, and
+a minimum age, which costs a checkbox.</p>
+</div>
+
+<div class="card">
+<h4>Investor</h4>
+<p><strong>Strong:</strong> the product exists and runs. On a new chain, with a launchpad
+already used by 23 projects. This is not a promise.<br>
+<strong>Weak:</strong> everything rests on one person and one key.<br>
+<strong>Missing:</strong> allocation, audit, multisig — the three things I look at before
+anything else.<br>
+<strong>Attackable:</strong> "what stops me losing everything tomorrow morning?"<br>
+<strong>Before launch:</strong> the three above. They change nothing about the product and
+everything about the thesis.</p>
+</div>
+
+<h3>The twenty decisions to settle</h3>
+<div class="wrap"><table>
+  <thead><tr><th class="n">#</th><th>Decision</th><th>Why it comes first</th></tr></thead>
+  <tbody>
+    <tr><td class="n">1</td><td>External audit of the vault and the launchpad</td><td>Two contracts hold third-party funds with no outside review</td></tr>
+    <tr><td class="n">2</td><td>Multisig on the vault and the launchpad</td><td>Removes the most severe single point of failure</td></tr>
+    <tr><td class="n">3</td><td>Publish the allocation table and vesting</td><td>893 million undocumented; the first question any partner asks</td></tr>
+    <tr><td class="n">4</td><td>Align the staking cap with revenue, or make the rate variable</td><td>The only item that does not contract with activity</td></tr>
+    <tr><td class="n">5</td><td>Legal opinion on the classification of the activity</td><td>Conditions the entire model</td></tr>
+    <tr><td class="n">6</td><td>Minimum age and geographic restrictions</td><td>Near-zero cost, high exposure without</td></tr>
+    <tr><td class="n">7</td><td>Written suspension, sanction and appeal procedure</td><td>Improvised on the first case, it will be unfair</td></tr>
+    <tr><td class="n">8</td><td>Monitoring and downtime alerting</td><td>One server, no failover</td></tr>
+    <tr><td class="n">9</td><td>Solver detection on high-stake duels</td><td>The only place cheating genuinely takes from someone</td></tr>
+    <tr><td class="n">10</td><td>Collusion detection between account pairs</td><td>Distorts the leaderboard and levels</td></tr>
+    <tr><td class="n">11</td><td>Public revenue-split ranges</td><td>Makes the treasury legible without constraining it</td></tr>
+    <tr><td class="n">12</td><td>Emergency reserve: how many months, and what happens below</td><td>Solvency is planned, not observed</td></tr>
+    <tr><td class="n">13</td><td>Swap built into the site</td><td>Removes the last friction before the first deposit</td></tr>
+    <tr><td class="n">14</td><td>A weekly competition cycle</td><td>Monthly is too long to build a habit</td></tr>
+    <tr><td class="n">15</td><td>$SWOGE utility in the launchpad</td><td>Gives staking a reason to exist that is not a yield</td></tr>
+    <tr><td class="n">16</td><td>Tournament format and dispute arbitration</td><td>To write before building, not after</td></tr>
+    <tr><td class="n">17</td><td>Policy for withdrawing launchpad liquidity positions</td><td>Unwritten today; it is what a launched project wants to know</td></tr>
+    <tr><td class="n">18</td><td>A "verified project" track alongside open launching</td><td>Differentiates without closing</td></tr>
+    <tr><td class="n">19</td><td>Public read-only dashboard</td><td>Turns verifiability into a visible argument</td></tr>
+    <tr><td class="n">20</td><td>Responsible-gaming tools</td><td>To do regardless of any legal obligation</td></tr>
+  </tbody>
+</table></div>
+</section>
+
+<section id="resume">
+<h2>One-page summary</h2>
+<div class="card">
+<h4>What SWOGE is</h4>
+<p>A Web3 gaming platform live on Robinhood Chain, whose token $SWOGE (Swole Doge, fixed
+supply of 1,000,000,000) is the betting unit, the staking asset and the object of a
+continuous burn.</p>
+
+<h4>What runs today</h4>
+<p>Thirteen provably fair games, four of them player-versus-player. An on-chain vault with
+deposits and withdrawals against a cumulative signed voucher. A capped staking system. One
+hundred levels earned on volume wagered. A monthly leaderboard funded by a share of
+revenue. Lifetime referrals. A deployed launchpad, SwogeFun V2, with 23 tokens already
+launched.</p>
+
+<h4>How it makes money</h4>
+<p>A 3&nbsp;% mathematical edge on games against the house, a 5&nbsp;% rake on duels, and
+1&nbsp;% of every trade on tokens launched through the launchpad. That revenue is booked
+month by month, and it funds the rewards — all expressed as a share of real revenue, never
+as a fixed amount.</p>
+
+<h4>What leaves circulation</h4>
+<p>1&nbsp;% of every withdrawal is burned permanently. <strong>6,827,534 $SWOGE</strong>
+have already left circulation, verifiable on-chain. Supply is fixed and can only fall.</p>
+
+<h4>What is verifiable without trust</h4>
+<p>Every round is produced by <code>HMAC-SHA256</code>. The seed hash is published before,
+the seed revealed after, the exact formulas are public. Vault contents, total burned and
+launchpad activity are read straight from the chain.</p>
+
+<h4>What to know before investing or partnering</h4>
+<p>The model is <strong>custodial</strong> between deposit and withdrawal. The contracts
+have <strong>not been audited</strong> by a third party. Control is
+<strong>single-signature</strong>. The <strong>allocation table is not published</strong>.
+The <strong>regulatory classification</strong> of the activity has not been examined. The
+staking yield is today funded by a team allocation, not by revenue.</p>
+
+<h4>The position</h4>
+<p>Robinhood Chain is new. SWOGE is the first gaming service on it that genuinely works,
+and its launchpad is already in use. The advantage is not technological: it is temporal,
+and it is closing.</p>
+</div>
+</section>
+
+<footer>
+  <p>
+    SWOGE — Swole Doge Protocol · White paper v1.0 · 14 August 2026<br>
+    Token <code>0x8a166Fb41Cd659a0a43396272FF73973Ce29F817</code> ·
+    Vault <code>0x5593c8141303D14999Df7aa03dd3d3a6d4335fAb</code> ·
+    Launchpad <code>0x4De26D120A4fF2d7c1875E6C7D611262b9cA426d</code><br>
+    Robinhood Chain · id 4663 · explorer robinhoodchain.blockscout.com
+  </p>
+  <p>
+    Figures marked "confirmed" were read from the deployed code or directly from the chain
+    on 14 August 2026. Economic parameters are changeable and are not commitments. This
+    document promises no yield, and is neither investment advice nor legal advice.
+    Acquiring $SWOGE carries a risk of total loss.
+  </p>
+</footer>
+
+</main>

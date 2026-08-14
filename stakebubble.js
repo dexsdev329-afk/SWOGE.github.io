@@ -227,7 +227,7 @@
       /* Une nouvelle partie, c'est un nouveau quota : sans cette remise a
          zero, la revanche s'ouvrirait sur « no more this match ». */
       if (!MA_PARTIE || !m.match || MA_PARTIE.id !== m.match.id) PHRASE_RESTE = null;
-      MA_PARTIE = m.match || null; poseBarre();
+      MA_PARTIE = m.match || null; poseBarre(); poseHudDuel(m.match);
     }
     if (m.type === 'duelDit') montrePhrase(m);
     if (m.type === 'duelMute') { MUET = !!m.on; poseBarre(); }
@@ -629,6 +629,107 @@
     return '<span class="swlv" style="color:' + couleurPalier(p.palier) + ';border-color:' +
            couleurPalier(p.palier) + '55">' + p.niveau + '</span>';
   }
+  /* ============== LE VISAGE ET LE NIVEAU, PENDANT LA PARTIE ==============
+   *
+   * La table ne montrait que deux noms. On jouait donc contre une chaine de
+   * caracteres — alors que la photo et le niveau existent, sont deja publics,
+   * et s'affichent partout ailleurs : au vestibule, chez les amis, au
+   * classement, sur la page publique. Les cacher au seul endroit ou l'on est
+   * reellement face a quelqu'un etait le pire endroit possible.
+   *
+   * Comme la barre de phrases, c'est pose ICI : les trois pages de duel ont
+   * le meme squelette (`c4J1`, `c4J2`), et la page ne reecrit que le TEXTE du
+   * nom — ce qu'on ajoute a cote survit donc a ses redessins.
+   */
+  function poseHudDuel(match) {
+    var hote1 = document.getElementById('c4J1');
+    if (!hote1) return;                       // on n'est pas sur une page de duel
+    var profils = (match && match.profils) || [];
+    for (var i = 0; i < 2; i++) {
+      var hote = document.getElementById(i === 0 ? 'c4J1' : 'c4J2');
+      if (!hote) continue;
+      var p = profils[i];
+      var av = hote.querySelector('.swhav');
+      /* Personne en face : pas de visage a montrer, et surtout pas celui
+         d'avant — la table doit dire qu'elle attend. */
+      if (!p) { if (av) av.remove(); var v0 = hote.querySelector('.swhlv'); if (v0) v0.remove(); continue; }
+
+      /* Dans la RANGEE que la page a deja — `.nm` est un flex avec son pion et
+         son nom. Poser le visage a cote plutot que par-dessus evite de se
+         battre avec une mise en page qui marche. */
+      var nm = hote.querySelector('.nm') || hote;
+      if (!av) {
+        av = document.createElement('span');
+        av.className = 'swhav';
+        nm.insertBefore(av, nm.firstChild);
+      }
+      var img = p.photo ? urlPhoto(p.address) : urlBadge(p.visage || 'b1');
+      if (av.getAttribute('data-src') !== img) {
+        av.setAttribute('data-src', img);
+        av.style.backgroundImage = 'url("' + img + '")';
+      }
+      /* Le cadre du palier, par-dessus : c'est la meme regle qu'ailleurs, un
+         cadre seulement a partir du niveau 1. */
+      av.className = 'swhav' + (p.niveau > 0 ? ' swcad' : '');
+      if (p.niveau > 0) av.style.setProperty('--cadre', 'url("' + urlCadre(p.palierNo) + '")');
+
+      /* Le niveau va SOUS le nom, pas a cote. Sur un telephone, le bloc d'un
+         joueur fait une centaine de pixels : visage, pastille et nom sur la
+         meme ligne, et c'est le nom qui disparait — or le nom est ce qu'on
+         est venu lire. La page reecrit le texte de `.sub` a chaque rendu, on
+         pose donc la pastille dans le bloc lui-meme, qu'elle ne touche pas. */
+      var lv = hote.querySelector('.swhlv');
+      if (!lv) {
+        lv = document.createElement('span');
+        lv.className = 'swhlv';
+        hote.appendChild(lv);
+      }
+      lv.textContent = 'LVL ' + p.niveau;
+      lv.title = 'Level ' + p.niveau + ' · ' + p.palier;
+      lv.style.color = couleurPalier(p.palier);
+      lv.style.borderColor = couleurPalier(p.palier) + '66';
+    }
+  }
+  function cssHudDuel() {
+    if (document.getElementById('swhud-css')) return;
+    var c = document.createElement('style');
+    c.id = 'swhud-css';
+    c.textContent =
+      '.swhav{flex:0 0 auto;display:inline-block;width:26px;height:26px;border-radius:50%;' +
+      'background-size:cover;background-position:center;vertical-align:middle;' +
+      'background-color:rgba(255,255,255,.07);position:relative;}' +
+      /* Le visage REMPLACE la pastille de couleur : elle disait qui etait
+         rouge et qui etait bleu, le cadre de palier le dit mieux, et sur un
+         telephone les deux ensemble ne laissaient plus de place au nom. La
+         couleur revient en anneau, donc rien n'est perdu. */
+      '.c4-joueur .nm .swhav ~ .pion{display:none;}' +
+      '.c4-joueur.j1 .swhav{box-shadow:0 0 0 2px #FF4655;}' +
+      '.c4-joueur.j2 .swhav{box-shadow:0 0 0 2px #2E7BFF;}' +
+      '.swhav.swcad::after{content:"";position:absolute;left:-24%;top:-24%;width:148%;height:148%;' +
+      'background:var(--cadre) center/contain no-repeat;pointer-events:none;}' +
+      '.swhlv{display:inline-block;margin-top:3px;padding:1px 7px;border-radius:999px;' +
+      'font-family:inherit;font-size:9.5px;font-weight:900;letter-spacing:.5px;' +
+      'border:1px solid;background:rgba(255,255,255,.05);white-space:nowrap;}' +
+      /* On ne touche PAS a la disposition du bloc joueur : la page l'a deja
+         reglee, et la refaire ici deplacait le X sur la meme ligne que le nom
+         en recouvrant celui-ci. */
+      /* Sur un telephone, le bloc d'un joueur fait une centaine de pixels. Le
+         visage y prend la place du NOM, et le nom est ce qu'on est venu lire.
+         On le ramene donc a la taille de la pastille qu'il remplace, et on
+         retire le cadre — le palier reste lisible a la couleur de la
+         pastille de niveau juste en dessous. Mesure : sans ca, « betaiikr »
+         se coupait a « beta… ». */
+      '@media (max-width:520px){' +
+      '.swhav{width:18px;height:18px}' +
+      '.swhav.swcad::after{display:none}' +
+      '.c4-joueur .nm{gap:5px}' +
+      '.swhlv{font-size:9px;padding:0 5px}}';
+    document.head.appendChild(c);
+  }
+  if (document.readyState === 'loading')
+    document.addEventListener('DOMContentLoaded', cssHudDuel);
+  else cssHudDuel();
+
   /* ================= PARLER A LA TABLE, EN PHRASES TOUTES FAITES =========
    *
    * Douze phrases, pas une de plus, et aucune facon d'en ecrire une treizieme :

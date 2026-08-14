@@ -219,6 +219,19 @@
        page de jeu ouverte par un visiteur, c'est la seule qu'on ait, et c'est
        par elle qu'il pourra regarder. */
     if (m.type === 'hello' && (!SOCKET_PUBLIC || SOCKET_PUBLIC.readyState > 1)) SOCKET_PUBLIC = ev.target;
+    /* La liste des phrases vient du serveur : c'est lui qui les accepte, il
+       n'y a donc qu'une seule liste et elle ne peut pas diverger. */
+    if (m.type === 'hello' && m.phrases) { PHRASES = m.phrases; PHRASE_MAX = m.phraseMax || 0; poseBarre(); }
+    if (m.type === 'auth' && m.address) { MON_ADRESSE = String(m.address).toLowerCase(); poseBarre(); }
+    if (m.type === 'duelMatch' || m.type === 'p4Match') {
+      /* Une nouvelle partie, c'est un nouveau quota : sans cette remise a
+         zero, la revanche s'ouvrirait sur « no more this match ». */
+      if (!MA_PARTIE || !m.match || MA_PARTIE.id !== m.match.id) PHRASE_RESTE = null;
+      MA_PARTIE = m.match || null; poseBarre();
+    }
+    if (m.type === 'duelDit') montrePhrase(m);
+    if (m.type === 'duelMute') { MUET = !!m.on; poseBarre(); }
+    if (m.type === 'duelSayLeft') { PHRASE_RESTE = m.reste; poseBarre(); }
     if (m.type === 'duelsTous') { DUELS = m.tables || []; EN_COURS = m.enCours || []; rendDuels(); }
     if (m.type === 'hello' && m.duels) { DUELS = m.duels; EN_COURS = m.duelsEnCours || []; rendDuels(); }
     if (m.type === 'duelWatch') { REGARDE = m.match || null; REGARDE_FINI = !!m.fini; rendRegarde(); }
@@ -616,6 +629,131 @@
     return '<span class="swlv" style="color:' + couleurPalier(p.palier) + ';border-color:' +
            couleurPalier(p.palier) + '55">' + p.niveau + '</span>';
   }
+  /* ================= PARLER A LA TABLE, EN PHRASES TOUTES FAITES =========
+   *
+   * Douze phrases, pas une de plus, et aucune facon d'en ecrire une treizieme :
+   * ce qui part d'ici est un identifiant, jamais un texte. Le texte libre
+   * demanderait une equipe de moderation que le projet n'a pas — et il suffit
+   * d'un message pour qu'une table devienne un endroit ou l'on ne revient pas.
+   *
+   * La barre se pose ICI, dans le module partage, parce que les trois pages de
+   * duel ont exactement le meme squelette (`c4Jeu`, `c4J1`, `c4J2`) : une
+   * implementation, trois jeux, et aucune chirurgie sur des pages qui marchent.
+   */
+  var PHRASES = [], PHRASE_MAX = 0, PHRASE_RESTE = null;
+  var MON_ADRESSE = null, MA_PARTIE = null, MUET = false;
+
+  function maPlace() {
+    if (!MA_PARTIE || !MON_ADRESSE) return 0;
+    var j = MA_PARTIE.joueurs || [];
+    for (var i = 0; i < j.length; i++)
+      if (j[i] && String(j[i]).toLowerCase() === MON_ADRESSE) return i + 1;
+    return 0;
+  }
+  function dire(id) {
+    var s = sockDuel();
+    if (!s || !MA_PARTIE) return;
+    try { s.send(JSON.stringify({ type: 'duelSay', id: MA_PARTIE.id, phrase: id })); } catch (e) {}
+  }
+  function basculeMuet() {
+    var s = sockDuel();
+    if (s) { try { s.send(JSON.stringify({ type: 'duelMute', on: !MUET })); } catch (e) {} }
+  }
+
+  /* La barre n'existe que pendant SA partie. Un spectateur entend la table,
+     mais n'y parle pas : il n'a rien mise, et lui ouvrir la parole rouvrirait
+     a tout le monde la surface qu'on vient de fermer. */
+  function poseBarre() {
+    var jeu = document.getElementById('c4Jeu');
+    if (!jeu) return;
+    var barre = document.getElementById('swdire');
+    var actif = PHRASES.length && MA_PARTIE && MA_PARTIE.phase === 'en_cours' && maPlace() > 0;
+    if (!actif) { if (barre) barre.remove(); return; }
+    if (!barre) {
+      barre = document.createElement('div');
+      barre.id = 'swdire';
+      barre.className = 'swdire';
+      jeu.appendChild(barre);
+    }
+    var h = '';
+    for (var i = 0; i < PHRASES.length; i++)
+      h += '<button type="button" data-p="' + ech(PHRASES[i][0]) + '" title="' +
+           ech(PHRASES[i][2]) + '">' + ech(PHRASES[i][1]) + '</button>';
+    h += '<button type="button" class="mu" data-mute="1" title="' +
+         (MUET ? 'Turn the table back on' : 'Mute the table') + '">' + (MUET ? '🔇' : '🔊') + '</button>';
+    /* Le plafond qui approche se dit AVANT de tomber : un bouton qui cesse
+       soudain de repondre se lit comme une panne. */
+    if (PHRASE_RESTE !== null && PHRASE_RESTE <= 3)
+      h += '<i class="rst">' + (PHRASE_RESTE > 0 ? PHRASE_RESTE + ' left' : 'no more this match') + '</i>';
+    if (barre.innerHTML === h) return;          // rien n a change : on ne redessine pas
+    barre.innerHTML = h;
+    var b = barre.querySelectorAll('button');
+    for (var k = 0; k < b.length; k++)
+      b[k].addEventListener('click', (function (el) {
+        return function () {
+          if (el.getAttribute('data-mute')) return basculeMuet();
+          dire(el.getAttribute('data-p'));
+        };
+      })(b[k]));
+  }
+
+  /* La phrase s'affiche AU-DESSUS de celui qui l'a dite, et disparait seule.
+     Elle ne s'empile pas : la derniere remplace la precedente, sinon deux
+     joueurs bavards couvriraient le plateau. */
+  function montrePhrase(m) {
+    var hote = document.getElementById(m.joueur === 2 ? 'c4J2' : 'c4J1');
+    /* Quand on REGARDE, il n'y a pas de HUD de partie : la phrase se pose
+       alors sur le plateau du spectateur. */
+    if (!hote && REGARDE && REGARDE.id === m.match) hote = duelsPan && duelsPan.querySelector('.swdw .hd');
+    if (!hote) return;
+    var v = hote.querySelector('.swdit');
+    if (v) v.remove();
+    var d = document.createElement('span');
+    d.className = 'swdit';
+    d.innerHTML = '<b>' + ech(m.emote || '') + '</b> ' + ech(m.texte || '');
+    hote.appendChild(d);
+    setTimeout(function () { if (d.parentNode) d.remove(); }, 4200);
+  }
+
+  function cssDire() {
+    if (document.getElementById('swdire-css')) return;
+    var c = document.createElement('style');
+    c.id = 'swdire-css';
+    c.textContent =
+      '.swdire{display:flex;flex-wrap:wrap;justify-content:center;gap:5px;margin:10px auto 0;' +
+      'max-width:560px;}' +
+      '.swdire button{width:36px;height:34px;border-radius:9px;cursor:pointer;font-size:16px;' +
+      'line-height:1;padding:0;font-family:inherit;color:#EAF2FF;' +
+      'background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);}' +
+      '.swdire button:hover{background:rgba(255,197,61,.16);border-color:rgba(255,197,61,.45);}' +
+      '.swdire button:active{transform:translateY(1px);}' +
+      '.swdire button.mu{margin-left:8px;font-size:14px;}' +
+      '.swdire .rst{align-self:center;margin-left:8px;font-style:normal;font-size:10.5px;' +
+      'font-weight:800;letter-spacing:.4px;color:#F2A65E;}' +
+      /* La bulle : posee en absolu au-dessus du joueur, donc le bloc qui la
+         porte doit devenir un repere — sans quoi elle irait se placer par
+         rapport a la page entiere. */
+      '#c4J1,#c4J2,.swdw .hd{position:relative;}' +
+      '.swdit{position:absolute;left:50%;bottom:100%;transform:translateX(-50%);' +
+      'margin-bottom:7px;padding:6px 11px;border-radius:11px;white-space:nowrap;' +
+      'font-family:inherit;font-size:12px;font-weight:700;color:#07101F;z-index:9;' +
+      'background:linear-gradient(180deg,#FFE08A,#FFC53D);box-shadow:0 6px 18px rgba(0,0,0,.45);' +
+      'animation:swditIn .18s ease-out;}' +
+      '.swdit b{font-size:14px;}' +
+      '@keyframes swditIn{from{opacity:0;transform:translateX(-50%) translateY(5px);}' +
+      'to{opacity:1;transform:translateX(-50%) translateY(0);}}' +
+      /* Chez le spectateur, le plateau est une boite a debordement masque :
+         une bulle posee AU-DESSUS de son entete serait coupee net. Elle
+         descend donc a l interieur, sur le plateau. */
+      '.swdw .hd .swdit{bottom:auto;top:100%;margin:6px 0 0;max-width:92%;' +
+      'white-space:normal;text-align:center;}' +
+      '@media (max-width:520px){.swdire button{width:32px;height:31px;font-size:15px;}}';
+    document.head.appendChild(c);
+  }
+  if (document.readyState === 'loading')
+    document.addEventListener('DOMContentLoaded', cssDire);
+  else cssDire();
+
   /* ====================== LES MISSIONS DU JOUR ======================
    *
    * Le serveur nomme un jeu et dit ou il se trouve. Encore faut-il pouvoir y

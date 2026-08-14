@@ -161,6 +161,7 @@
       if (m.avatars) VISAGES = m.avatars;
       if (m.uploaded) { versionPhoto++; dit('Photo saved — other players see it now.', 'ok'); }
       if (m.profile) MOI = m.profile;
+      if (m.prixNom) { PRIX_NOM = m.prixNom; posePrixNom(); }
       if (m.friends) AMIS = m.friends;
       if (m.pending !== undefined) EN_ATTENTE = m.pending;
       if (m.unread !== undefined) NON_LUS = m.unread;
@@ -562,6 +563,7 @@
   var VISAGES = [], MOI = { name: null, visage: null, address: null };
   var AMIS = { amis: [], recues: [], envoyees: [] }, EN_ATTENTE = 0, RECHERCHE = [];
   var NON_LUS = 0, PARRAIN = null, STATS = null, CLASSEMENT = null, NIVEAU = null;
+  var PRIX_NOM = null;                    // { prix, du, brule, solde }
   /* Les dix paliers. La couleur fait tout le travail : « Diamond » se
      reconnait a l'oeil bien avant qu'on lise « niveau 47 ». */
   var PALIERS = { Bronze:'#C08457', Silver:'#C8D2DE', Gold:'#FFC53D', Platinum:'#9FE7F5',
@@ -785,6 +787,11 @@
       '.swp-r .rg{flex:0 0 auto;min-width:30px;font-size:12px;font-weight:800;color:#C9A24A;' +
       'text-align:center;font-variant-numeric:tabular-nums;}' +
       '.swp-r.moi{border-color:rgba(255,197,61,.55);background:rgba(255,197,61,.09);}' +
+      /* Le prix d un nom, annonce AVANT la saisie. Un prix decouvert au
+         moment du refus se lit comme une panne. */
+      '.swp-prix{margin:7px 0 2px;font-size:11.5px;line-height:1.5;color:#8DA0C4;}' +
+      '.swp-prix b{color:#FFC53D;}' +
+      '.swp-prix.ko b{color:#F2685E;}' +
       '.swp-msg{margin-top:8px;font-size:11.5px;line-height:1.5;color:#8DA0C4;}' +
       '.swp-msg.ko{color:#F2685E;} .swp-msg.ok{color:#7CFF9B;}' +
       '.swp-r .av{flex:0 0 auto;width:30px;height:30px;border-radius:50%;display:flex;' +
@@ -849,6 +856,9 @@
           '<div class="swp-in">' +
             '<input class="swp-nom" maxlength="18" placeholder="Your name, 3 to 18 characters">' +
             '<button class="swp-save" type="button">Save</button>' +
+          '</div>' +
+          '<div class="swp-prix"></div>' +
+          '<div class="swp-in">' +
           '</div>' +
           '<div class="swp-msg"></div>' +
         '</div>' +
@@ -1250,6 +1260,9 @@
     profOuvert = true;
     profBoite.classList.add('on');
     profEnTete();
+    /* Le prix a pu arriver AVANT que le panneau existe : il n'y avait alors
+       aucun endroit ou l'ecrire. On le repose a l'ouverture. */
+    posePrixNom();
     // on rafraichit le profil a chaque ouverture : il a pu changer ailleurs
     if (etat.socket && etat.socket.readyState === 1) {
       try { etat.socket.send('{"type":"profile"}'); } catch (e) {}
@@ -1497,11 +1510,43 @@
     m.className = 'swp-msg' + (cl ? ' ' + cl : '');
     m.textContent = t || '';
   }
+  /* Le prix du nom, ecrit dans le formulaire AVANT que le joueur tape quoi que
+     ce soit. Decouvrir un prix au moment du refus se lit comme une panne ;
+     annonce d'avance, il se lit comme une regle. */
+  function posePrixNom() {
+    if (!profBoite) return;
+    var e = profBoite.querySelector('.swp-prix');
+    if (!e) return;
+    if (!PRIX_NOM || !PRIX_NOM.du) {
+      e.className = 'swp-prix';
+      e.innerHTML = PRIX_NOM && PRIX_NOM.prix
+        ? 'Your name is yours — changing it again is free.'
+        : '';
+      return;
+    }
+    var assez = !(PRIX_NOM.solde < PRIX_NOM.du);
+    e.className = 'swp-prix' + (assez ? '' : ' ko');
+    e.innerHTML = 'A unique name costs <b>' + nb(PRIX_NOM.du, 0) + ' $SWOGE</b>, ' +
+      'paid once and <b>burned</b> — nobody else can ever take it.' +
+      (assez ? '' : ' You have ' + nb(PRIX_NOM.solde, 0) + '.');
+  }
+
   function enregistre() {
     if (!etat.socket || etat.socket.readyState !== 1) return dit('Not connected.', 'ko');
     var nom = (profBoite.querySelector('.swp-nom').value || '').trim();
     var q = { type: 'setProfile' };
     if (nom && nom !== MOI.name) q.name = nom;
+    /* On demande confirmation UNE FOIS, et seulement quand ca coute vraiment.
+       Un joueur qui change sa photo ne doit pas voir de fenetre parlant
+       d'argent. */
+    if (q.name !== undefined && PRIX_NOM && PRIX_NOM.du) {
+      if (PRIX_NOM.solde < PRIX_NOM.du)
+        return dit('You need ' + nb(PRIX_NOM.du, 0) + ' $SWOGE to claim a unique name — you have ' +
+                   nb(PRIX_NOM.solde, 0) + '.', 'ko');
+      if (!window.confirm('Claim "' + nom + '" for ' + nb(PRIX_NOM.du, 0) + ' $SWOGE?\n\n' +
+                          'Paid once. The tokens are burned, not collected.\n' +
+                          'After this, changing your name again is free.')) return;
+    }
     if (visageChoisi && visageChoisi !== MOI.visage) q.avatar = visageChoisi;
     if (q.name === undefined && q.avatar === undefined) return dit('Nothing changed.');
     dit('Saving…');

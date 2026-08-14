@@ -72,8 +72,8 @@
   var GAZ_RESERVE_MIN = '0.00005';
 
   var lecteurCache = null, paireCache = null, minuterie = null;
-  var champ = null, sortie = null, avis = null, bouton = null, entete = null, corps = null;
-  var derniereCote = null;   // { entree, sortie, impact }
+  var champ = null, sortie = null, bouton = null, corps = null;
+  var derniereCote = null;   // la cotation affichee, quand on paie en ETH
 
   function $(id) { return document.getElementById(id); }
 
@@ -183,6 +183,7 @@
       '.swb-q b{color:#F2C868;}' +
       '.swb-w{font-size:11.5px;line-height:1.45;margin-top:5px;color:#E8913F;}' +
       '.swb-w.dur{color:#E5533F;}' +
+      '.swb-ok{font-size:11.5px;line-height:1.45;margin-bottom:5px;color:#7BD88F;font-weight:700;}' +
       '.swb-go{width:100%;margin-top:9px;padding:9px;border-radius:10px;border:0;cursor:pointer;' +
       'font-weight:800;font-size:13px;color:#231a06;background:linear-gradient(180deg,#F2C868,#E6A537);}' +
       '.swb-go[disabled]{opacity:.55;cursor:default;}' +
@@ -212,7 +213,20 @@
          classes ne rattrape. Un span a l'interieur n'est vise par personne, et
          c'est la seule facon d'en sortir sans surenchere de `!important`. */
       '.swb .swb-ct{flex:1;text-align:left;text-transform:none;letter-spacing:normal;' +
-      'font-size:11.5px;font-weight:500;line-height:1.35;color:#C9C2B2;}';
+      'font-size:11.5px;font-weight:500;line-height:1.35;color:#C9C2B2;}' +
+      /* Le choix de la devise : deux onglets, pas un menu deroulant. Il y a
+         DEUX possibilites — les montrer toutes les deux coute une ligne et
+         evite un clic pour decouvrir ce qu'il y a dedans. */
+      '.swb-d{display:flex;gap:6px;margin-bottom:9px;}' +
+      '.swb-d button{flex:1;min-width:0;display:flex;align-items:center;justify-content:center;' +
+      'gap:6px;padding:8px 6px;border-radius:10px;cursor:pointer;font-size:12px;font-weight:800;' +
+      'text-transform:none;letter-spacing:normal;border:1px solid rgba(230,165,55,.30);' +
+      'background:rgba(0,0,0,.30);color:#B6AF9E;}' +
+      '.swb-d button.on{border-color:#E6A537;color:#231a06;' +
+      'background:linear-gradient(180deg,#F2C868,#E6A537);}' +
+      '.swb-d button i{display:block;font-style:normal;font-size:10px;font-weight:600;opacity:.75;}' +
+      '.swb-d button u{display:block;text-decoration:none;}' +
+      '';
     document.head.appendChild(css);
   }
 
@@ -226,12 +240,43 @@
            '<span>' + nom + '</span></button>';
   }
 
+  /* Les elements du formulaire d'origine qu'on remplace : le champ, son
+     etiquette, la rangee de pourcentages et le bouton. Ils restent dans la
+     page — le code de depot les lit — mais ils ne s'affichent plus.
+   *
+     ON ECRIT LE STYLE SUR L'ELEMENT, pas une classe. Une classe a un cran de
+     specificite ; les pages portent des regles comme
+     `#box-dep .abtn.aimg{display:block !important}`, qui en ont trois et un
+     `!important` par-dessus. Mesure faite : avec une classe, le vieux bouton
+     « DEPOSIT » restait affiche sous le nouveau. Un style pose sur l'element
+     avec la priorite passe devant n'importe quelle feuille, et c'est le seul
+     moyen qui ne demande pas de connaitre les treize pages par coeur. */
+  function efface(el) {
+    if (el) try { el.style.setProperty('display', 'none', 'important'); } catch (e) {}
+  }
+
+  function cacheAncien() {
+    var champDep = $('depAmt');
+    if (!champDep) return;
+    var av = champDep.previousElementSibling;
+    if (av && av.tagName === 'LABEL') efface(av);
+    efface(champDep);
+    var pct = champDep.parentNode.querySelector('.pcts, .dpct');
+    if (pct) efface(pct.classList.contains('pcts') ? pct : pct.parentNode);
+    /* Le bouton d'origine partage parfois sa rangee avec « Close » : on ne
+       cache que lui, sinon on emporte la sortie du panneau avec. */
+    efface($('depGo'));
+  }
+
+  function onglet(cle, nom, note) {
+    var i = cle === 'eth' ? null : null;
+    return '<button data-dev="' + cle + '"><span><u>' + nom + '</u>' +
+           '<i id="swbSolde-' + cle + '">' + note + '</i></span></button>';
+  }
+
   function poseBloc() {
     var ancre = $('depAmt');
     if (!ancre || $('swbAmt')) return false;
-    /* La boite de depot commence par une etiquette « Amount ». On se glisse
-       AVANT elle : acheter vient avant deposer, et l'ecran doit le dire dans
-       cet ordre. */
     var avant = ancre.previousElementSibling;
     if (avant && avant.tagName === 'LABEL') ancre = avant;
 
@@ -239,22 +284,25 @@
     var bloc = document.createElement('div');
     bloc.className = 'swb';
     bloc.innerHTML =
-      '<div class="swb-h" id="swbTete">🪙 Buy $SWOGE<span id="swbTaux">…</span></div>' +
-      '<div class="swb-b plie" id="swbCorps">' +
-        '<div class="swb-r"><input id="swbAmt" inputmode="decimal" placeholder="0.01"><b>ETH</b></div>' +
-        '<div class="swb-p">' +
-          '<button data-eth="0.005">0.005</button>' +
-          '<button data-eth="0.01">0.01</button>' +
-          '<button data-eth="0.05">0.05</button>' +
-          '<button data-eth="max">MAX</button>' +
+      '<div class="swb-h">💰 Top up<span id="swbTaux">…</span></div>' +
+      '<div class="swb-b" id="swbCorps">' +
+        '<div class="swb-d" id="swbDev">' +
+          onglet('swoge', '$SWOGE', '…') +
+          onglet('eth', 'ETH', '…') +
         '</div>' +
-        '<div class="swb-q" id="swbCote">Enter an amount to see the price.</div>' +
-        '<label class="swb-c"><input type="checkbox" id="swbAuto" checked>' +
-        '<span class="swb-ct">and send it straight into the game</span></label>' +
-        '<button class="swb-go" id="swbGo">Buy $SWOGE</button>' +
+        '<div class="swb-r"><input id="swbAmt" inputmode="decimal" placeholder="0">' +
+        '<b id="swbUnite">$SWOGE</b></div>' +
+        '<div class="swb-p">' +
+          '<button data-pc="10">10%</button>' +
+          '<button data-pc="25">25%</button>' +
+          '<button data-pc="50">50%</button>' +
+          '<button data-pc="100">MAX</button>' +
+        '</div>' +
+        '<div class="swb-q" id="swbCote">Pick an amount.</div>' +
+        '<button class="swb-go" id="swbGo">Deposit and play</button>' +
         '<div class="swb-x" id="swbAilleurs">' +
-          '<p>No ETH on Robinhood Chain? Bring it from another chain — arrives in ' +
-          'seconds, straight to your address.</p>' +
+          '<p>Nothing on Robinhood Chain yet? Bring funds from another chain — ' +
+          'arrives in seconds, straight to your address.</p>' +
           '<div>' +
             bouton6('sol', 'Solana') + bouton6('eth', 'Ethereum') +
             bouton6('base', 'Base') + bouton6('tron', 'USDT · TRON') +
@@ -263,32 +311,97 @@
         '</div>' +
       '</div>';
     ancre.parentNode.insertBefore(bloc, ancre);
+    cacheAncien();
 
-    entete = $('swbTete'); corps = $('swbCorps'); champ = $('swbAmt');
+    corps = $('swbCorps'); champ = $('swbAmt');
     sortie = $('swbCote');  bouton = $('swbGo');
 
-    entete.onclick = function () {
-      corps.classList.toggle('plie');
-      if (!corps.classList.contains('plie')) champ.focus();
-    };
     champ.addEventListener('input', function () {
+      annonce = null;                       // il a repris la main
       clearTimeout(minuterie);
       minuterie = setTimeout(rafraichitCote, 320);
     });
-    bloc.querySelector('.swb-p').addEventListener('click', function (e) {
-      var b = e.target.closest ? e.target.closest('button[data-eth]') : null;
-      if (!b) return;
-      var v = b.getAttribute('data-eth');
-      if (v === 'max') return remplitMax();
-      champ.value = v; rafraichitCote();
+    $('swbDev').addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('button[data-dev]') : null;
+      if (b) choisitDevise(b.getAttribute('data-dev'));
     });
-    bouton.onclick = achete;
+    bloc.querySelector('.swb-p').addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('button[data-pc]') : null;
+      if (b) partDuSolde(parseInt(b.getAttribute('data-pc'), 10));
+    });
+    bouton.onclick = envoie;
     $('swbAilleurs').querySelector('div').addEventListener('click', function (e) {
       var b = e.target.closest ? e.target.closest('button[data-de]') : null;
       if (b) ailleurs(b.getAttribute('data-de'));
     });
+    choisitDevise('swoge');
     montreTaux();
+    lisSoldes();
     return true;
+  }
+
+  /* ------------------------------------------------------- la devise choisie
+   *
+   * Deux facons d'alimenter son compte, et une seule difference entre elles :
+   * l'ETH passe par un echange avant d'entrer. Le reste du chemin est le meme,
+   * donc l'ecran est le meme et le bouton dit la meme chose. */
+  var devise = 'swoge';
+  var soldes = { swoge: null, eth: null };
+
+  function choisitDevise(d, garde) {
+    if (!garde) annonce = null;
+    devise = (d === 'eth') ? 'eth' : 'swoge';
+    var bs = $('swbDev').querySelectorAll('button[data-dev]');
+    for (var i = 0; i < bs.length; i++)
+      bs[i].classList.toggle('on', bs[i].getAttribute('data-dev') === devise);
+    $('swbUnite').textContent = devise === 'eth' ? 'ETH' : '$SWOGE';
+    champ.value = '';
+    rafraichitCote();
+  }
+
+  /* Les deux soldes du PORTEFEUILLE. Ils s'affichent sous chaque onglet :
+     sans eux, le joueur choisit une devise pour decouvrir ensuite qu'il n'en a
+     pas, et repart en arriere. */
+  function lisSoldes() {
+    portefeuille().then(function (w) {
+      if (!w) { montreSoldes(); return; }
+      return Promise.all([
+        lecteur().getBalance(w.adresse),
+        new ethers.Contract(SWOGE, ERC20_ABI, lecteur()).balanceOf(w.adresse)
+      ]).then(function (x) {
+        soldes.eth = x[0]; soldes.swoge = x[1];
+        montreSoldes();
+        rafraichitSoldes(w.adresse);
+      });
+    }).catch(function () {});
+  }
+
+  function montreSoldes() {
+    var a = $('swbSolde-swoge'), b = $('swbSolde-eth');
+    if (a) a.textContent = soldes.swoge === null ? 'connect'
+      : fmtBig(parseFloat(ethers.utils.formatUnits(soldes.swoge, 18))) + ' in wallet';
+    if (b) b.textContent = soldes.eth === null ? 'connect'
+      : trim(ethers.utils.formatEther(soldes.eth), 4) + ' in wallet';
+  }
+
+  /* Une part du solde. Pour l'ETH on retire d'abord la reserve de gaz : « 100 %
+     du solde » qui ne laisse pas de quoi payer le depot n'est pas 100 % utile. */
+  function partDuSolde(pc) {
+    lisSoldes();
+    var dispo = devise === 'eth' ? soldes.eth : soldes.swoge;
+    if (dispo === null) { dis('Connect your wallet first.'); return; }
+    if (devise === 'eth') {
+      reserveGaz().then(function (gaz) {
+        var utile = dispo.sub(gaz);
+        if (utile.lte(0)) { dis('Not enough ETH once the gas reserve is set aside.'); return; }
+        champ.value = trim(ethers.utils.formatEther(utile.mul(pc).div(100)), 6);
+        rafraichitCote();
+      });
+      return;
+    }
+    if (dispo.lte(0)) { dis('No $SWOGE in your wallet — switch to ETH, or bring funds from another chain.'); return; }
+    champ.value = trim(ethers.utils.formatUnits(dispo.mul(pc).div(100), 18), 6);
+    rafraichitCote();
   }
 
   /* Le taux dans l'en-tete : il donne une raison d'ouvrir le panneau sans
@@ -308,67 +421,88 @@
     }).catch(function () { return ethers.utils.parseEther(GAZ_RESERVE_MIN); });
   }
 
-  function remplitMax() {
-    portefeuille().then(function (w) {
-      if (!w) { dis('Connect your wallet first.'); return; }
-      return Promise.all([lecteur().getBalance(w.adresse), reserveGaz()]).then(function (x) {
-        var reste = x[0].sub(x[1]);
-        if (reste.lte(0)) { dis('Not enough ETH once the gas reserve is set aside.'); return; }
-        champ.value = trim(ethers.utils.formatEther(reste), 6);
-        rafraichitCote();
-      });
-    }).catch(function () {});
-  }
-
   /* Tronquer, jamais arrondir : un arrondi vers le haut redemande plus que ce
-     qu'on a et la transaction echoue au dernier moment. */
+     qu'on a et la transaction echoue au dernier moment. Et on enleve les zeros
+     de queue : « 1000.0 » dans un champ de saisie donne l'impression qu'on a
+     touche au chiffre. */
   function trim(s, n) {
     var i = s.indexOf('.');
-    return i < 0 ? s : s.slice(0, i + 1 + n).replace(/\.$/, '');
+    if (i >= 0) s = s.slice(0, i + 1 + n);
+    if (s.indexOf('.') >= 0) s = s.replace(/0+$/, '').replace(/\.$/, '');
+    return s;
   }
 
-  function dis(html) { if (sortie) sortie.innerHTML = html; }
+  /* L'annonce d'arrivee doit survivre a la cotation qui la suit.
+   *
+   * Mesure : le guet ecrivait « 0,15 ETH just landed », puis appelait la
+   * cotation, qui ecrivait « Checking the pool… » dans le meme tour de boucle.
+   * L'annonce n'existait donc pendant AUCUNE image a l'ecran — le joueur ne
+   * voyait jamais que son argent etait arrive, ce qui est precisement la seule
+   * chose que ce guet existe pour dire. Elle est donc rangee a part et
+   * reaffichee en tete, jusqu'au prochain geste du joueur. */
+  var annonce = null;
+
+  function dis(html) {
+    if (!sortie) return;
+    sortie.innerHTML = (annonce ? '<div class="swb-ok">' + annonce + '</div>' : '') + html;
+  }
 
   function lit() {
     var s = (champ.value || '').replace(',', '.').trim();
     if (!s) return null;
     try {
-      var w = ethers.utils.parseEther(s);
+      var w = ethers.utils.parseUnits(s, 18);      // les deux ont 18 decimales
       return w.lte(0) ? null : w;
     } catch (e) { return null; }
   }
 
+  /* Ce qui va se passer, ecrit avant que ca se passe.
+   *
+   * En $SWOGE il n'y a rien a calculer : le montant entre tel quel. En ETH il
+   * y a un echange, donc un prix, donc un ecart — et cet ecart, c'est le
+   * joueur qui le paie. On l'affiche AVANT le clic, pas dans le recu. */
   function rafraichitCote() {
     var montant = lit();
     derniereCote = null;
-    if (!montant) { dis('Enter an amount to see the price.'); return; }
+    if (!montant) { dis('Pick an amount.'); return; }
+
+    if (devise === 'swoge') {
+      var n = parseFloat(ethers.utils.formatUnits(montant, 18));
+      var txt = 'Deposits <b>' + fmtBig(n) + ' $SWOGE</b> into your game balance. ' +
+                'Nothing is swapped, nothing is lost on the way.';
+      if (soldes.swoge && montant.gt(soldes.swoge))
+        txt += '<div class="swb-w">That is more than the ' +
+               fmtBig(parseFloat(ethers.utils.formatUnits(soldes.swoge, 18))) +
+               ' $SWOGE in your wallet.</div>';
+      dis(txt);
+      return;
+    }
+
     dis('Checking the pool…');
     cote(montant).then(function (c) {
       derniereCote = c;
       var mini = c.sortie.mul(10000 - TOLERANCE_BPS).div(10000);
-      var txt = 'You get ≈ <b>' + fmtBig(c.sortieN) + ' $SWOGE</b>' +
-                '<br>Price impact <b>' + c.impact.toFixed(2) + '%</b> · at least ' +
-                fmtBig(parseFloat(ethers.utils.formatUnits(mini, 18))) + ' after slippage';
+      var txt = 'Buys ≈ <b>' + fmtBig(c.sortieN) + ' $SWOGE</b> and deposits it — ' +
+                'at least ' + fmtBig(parseFloat(ethers.utils.formatUnits(mini, 18))) +
+                ' after slippage.<br>Price impact <b>' + c.impact.toFixed(2) + '%</b>.';
       /* L'avertissement n'est pas decoratif : au-dela de quelques centiemes
-         d'ETH le joueur paie l'ecart, pas la maison. Autant qu'il le sache
-         avant de signer.
+         d'ETH le joueur paie l'ecart, pas la maison.
        *
          Et le conseil doit etre VRAI. « Coupez l'ordre en morceaux » est le
          reflexe, et il est faux : sur une courbe x·y=k, cinq achats de 0,1
          ETH a la suite rendent 60 545 896 jetons la ou un seul achat de 0,5
          en rend 60 558 816 — moins 0,02 %, parce que les frais se cumulent et
          que la reserve ne se remplit pas entre deux clics. Ce qui aide, c'est
-         le TEMPS : d'autres echanges et l'arbitrage ramenent le prix entre
-         deux jours, pas entre deux secondes. */
+         le TEMPS. */
       if (c.impact >= 12) {
         txt += '<div class="swb-w dur">Thin pool — this order alone moves the price by ' +
                c.impact.toFixed(1) + '%, and that cost is yours. Splitting it into back-to-back ' +
-               'buys changes nothing: the pool does not refill in between. Buy less, or spread ' +
-               'your buys over days.</div>';
+               'buys changes nothing: the pool does not refill in between. Deposit less, or ' +
+               'spread it over days.</div>';
       } else if (c.impact >= 4) {
         txt += '<div class="swb-w">Sizeable order for this pool: ' + c.impact.toFixed(1) +
-               '% goes to the curve, not to the game. A smaller buy today and another one later ' +
-               'costs you less.</div>';
+               '% goes to the curve, not to the game. A smaller top-up today and another one ' +
+               'later costs you less.</div>';
       }
       dis(txt);
     }).catch(function (e) {
@@ -429,13 +563,15 @@
          recopier a la main, et une adresse recopiee a la main est la seule
          etape de tout ce parcours ou l'on peut perdre son argent. */
       if (w) u += '&toAddress=' + w.adresse;
+      /* Le guet est arme AVANT d'ouvrir l'onglet : son point de depart est le
+         solde d'avant le depart. Arme apres, il note un solde qui a pu deja
+         bouger — et il attendrait alors une arrivee qui a deja eu lieu. */
+      if (w) guette(w.adresse);
       window.open(u, '_blank', 'noopener');
       if (!w) {
         dis('Connect your wallet first and press again — otherwise you have to ' +
             'retype your address over there, and that is the one step where money gets lost.');
-        return;
       }
-      guette(w.adresse);
     }).catch(function () { window.open(RELAY, '_blank', 'noopener'); });
   }
 
@@ -451,34 +587,72 @@
    * temps, serait du trafic pour rien. */
   var guet = null;
   function guette(addr) {
-    if (guet) clearInterval(guet.minuterie);
+    /* On garde l'IDENTIFIANT de la minuterie, pas un objet reassignable.
+       Mesure faite en cliquant les six provenances a la suite : six guets se
+       lancent, chacun ecrase la reference du precedent, et celui qui finit par
+       voir l'ETH arriver essaie d'arreter une minuterie qui n'est plus la
+       sienne — l'annonce se perdait, silencieusement. */
+    if (guet !== null) { clearInterval(guet); guet = null; }
     lecteur().getBalance(addr).then(function (depart) {
-      var fin = Date.now() + 20 * 60000;      // vingt minutes, puis on lache
-      guet = { minuterie: setInterval(function () {
-        if (Date.now() > fin) { clearInterval(guet.minuterie); guet = null; return; }
+      var limite = Date.now() + 20 * 60000;        // vingt minutes, puis on lache
+      var id = setInterval(function () {
+        if (Date.now() > limite) { clearInterval(id); if (guet === id) guet = null; return; }
         lecteur().getBalance(addr).then(function (b) {
           if (b.lte(depart)) return;
-          clearInterval(guet.minuterie); guet = null;
+          clearInterval(id); if (guet === id) guet = null;
           var arrive = b.sub(depart);
           rafraichitSoldes(addr);
           reserveGaz().then(function (gaz) {
+            /* C'est de l'ETH qui arrive : on bascule sur l'onglet ETH avant de
+               remplir, sinon le montant se retrouve dans un champ libelle
+               $SWOGE et le joueur croit deposer des jetons. */
+            lisSoldes();
+            choisitDevise('eth', true);     // sans effacer l'annonce qu'on vient de poser
             var utile = b.sub(gaz);
             if (utile.gt(0)) champ.value = trim(ethers.utils.formatEther(utile), 6);
-            dis('✅ <b>' + trim(ethers.utils.formatEther(arrive), 6) + ' ETH</b> just landed. ' +
-                'The amount is filled in — press Buy.');
-            /* Le panneau peut avoir ete referme entre-temps : on le rouvre,
-               sinon l'annonce s'affiche derriere un rideau. */
-            if (corps) corps.classList.remove('plie');
+            annonce = '✅ ' + trim(ethers.utils.formatEther(arrive), 6) + ' ETH just landed — ' +
+                      'the amount is filled in.';
+            rafraichitCote();
           });
         }).catch(function () {});
-      }, 6000) };
+      }, 6000);
+      guet = id;
     }).catch(function () {});
   }
 
-  /* -------------------------------------------------------------------- l'achat */
-  function achete() {
+  /* ------------------------------------------------------------- LE BOUTON
+   *
+   * Un seul, et il fait tout le chemin jusqu'au bout : en $SWOGE il depose, en
+   * ETH il achete PUIS il depose. Le joueur n'a pas a savoir qu'il y a deux
+   * chemins — il a dit combien et avec quoi, ca suffit.
+   *
+   * Le depot lui-meme reste celui de la PAGE : on remplit son champ et on
+   * actionne son bouton. Le coffre, son ABI, le signataire et l'approbation
+   * lui appartiennent ; une deuxieme implementation serait une deuxieme facon
+   * de se tromper d'adresse. */
+  function envoie() {
     var montant = lit();
-    if (!montant) { dis('Enter an amount first.'); return; }
+    if (!montant) { dis('Pick an amount first.'); return; }
+    if (devise === 'swoge') return deposeJetons(montant);
+    return acheteEtDepose(montant);
+  }
+
+  /* Le $SWOGE est deja le bon jeton : il n'y a rien a echanger. */
+  function deposeJetons(montant) {
+    var d = $('depAmt'), go = $('depGo');
+    if (!d || !go) { dis('This page has no deposit form.'); return; }
+    if (soldes.swoge !== null && montant.gt(soldes.swoge)) {
+      dis('That is more than the $SWOGE in your wallet.');
+      return;
+    }
+    d.value = trim(ethers.utils.formatUnits(montant, 18), 6);
+    try { d.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) {}
+    dis('Sending <b>' + fmtBig(parseFloat(ethers.utils.formatUnits(montant, 18))) +
+        ' $SWOGE</b> into the game. Your wallet will ask once or twice.');
+    setTimeout(function () { try { go.click(); } catch (e) {} }, 250);
+  }
+
+  function acheteEtDepose(montant) {
     bouton.disabled = true;
     portefeuille().then(function (w) {
       if (!w) throw new Error('Connect your wallet first — the button at the top of the page.');
@@ -540,27 +714,17 @@
           return;
         }
         remplitDepot(recu);
-        /* ---- ET ON ENCHAINE.
-         *
-         * Acheter puis deposer, c'etaient deux ecrans et deux decisions pour
-         * un seul geste : « je veux jouer avec ». Le panneau remplit le champ
-         * puis actionne le bouton de depot DE LA PAGE — pas une copie de sa
-         * logique. Le coffre, son ABI, le signataire, l'approbation : tout ca
-         * appartient a la page, qui le fait bien, et une deuxieme
-         * implementation serait une deuxieme facon de se tromper d'adresse.
-         *
-         * La case est cochee d'avance, mais elle est VISIBLE et elle se
-         * decoche : on ne declenche pas une depense que le joueur n'a pas vue
-         * venir. */
-        var auto = $('swbAuto');
-        if (auto && auto.checked && $('depGo')) {
+        /* Et on enchaine, sans rien demander de plus : le joueur a appuye sur
+           « Deposit and play », pas sur « Buy ». S'arreter ici pour lui
+           montrer un deuxieme bouton serait revenir a ce qu'on vient de
+           supprimer. */
+        if ($('depGo')) {
           dis('✅ Bought <b>' + fmtBig(recuN) + ' $SWOGE</b> — sending it into the game now. ' +
               'Your wallet will ask once or twice more.');
           setTimeout(function () { try { $('depGo').click(); } catch (e) {} }, 350);
           return;
         }
-        dis('✅ Bought <b>' + fmtBig(recuN) + ' $SWOGE</b> — the deposit amount below is ' +
-            'filled in. Press Deposit to play with it.');
+        dis('✅ Bought <b>' + fmtBig(recuN) + ' $SWOGE</b>.');
       });
     }).catch(function (e) {
       var m = String(e && (e.reason || (e.data && e.data.message) || e.message) || e);

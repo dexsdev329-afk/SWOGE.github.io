@@ -1157,18 +1157,17 @@
   });
 
   // ---- rendering ----
-  /* Le serveur ne distribue que des rangs : l'enseigne est decorative. On la
-     derive d'un sel par main pour qu'une carte garde la MEME enseigne a chaque
-     re-rendu (renderHand reconstruit toute la main a chaque message). */
-  var SUITN=4, suitSalt=1;
-  function newSuitSalt(){ suitSalt=(suitSalt*1103515245 + 12345) >>> 0; }
-  function suitFor(where, idx, rank){
-    /* melange entier : deterministe (donc stable pendant la main) mais sans
-       motif visible, contrairement a un simple modulo qui defile ♥♦♣♠ */
-    var h = (suitSalt ^ (idx*40503) ^ ((rank|0)*97) ^ (where==="d"?0x9E37:0x85EB)) >>> 0;
-    h = (h ^ (h >>> 13)) >>> 0; h = (h * 1274126177) >>> 0; h = (h ^ (h >>> 16)) >>> 0;
-    return h % SUITN;
-  }
+  /* ---- L ENSEIGNE VIENT DU SERVEUR ----
+     Elle etait tiree ICI, dans le navigateur, a partir d un sel local : les
+     piques affiches n existaient nulle part sur le serveur, et un joueur qui
+     verifiait son equite ne pouvait pas reconstituer la main telle qu il
+     l avait vue. Le serveur envoie desormais une carte de 0 a 51.
+     Les mains commencees AVANT le changement portent des valeurs 0..12 :
+     elles se lisent comme des cartes d enseigne 0. Faux, mais jouable — on ne
+     casse pas une main en cours pour une enseigne. */
+  function rangDe(c){ c=Number(c)||0; return ((c%13)+13)%13; }
+  function enseigneDe(c){ c=Number(c)||0; return Math.floor((((c%52)+52)%52)/13); }
+
   function cardEl(rank, suit){
     var d=document.createElement("div"); d.className="card";
     var set=ART[rank]||ART[0], src=(set&&set[suit])||(set&&set[0])||ART[0][0];
@@ -1180,7 +1179,7 @@
 
   function renderHand(el, cards, appendBack, where){
     el.innerHTML="";
-    for(var i=0;i<cards.length;i++) el.appendChild(cardEl(cards[i], suitFor(where||"d", i, cards[i])));
+    for(var i=0;i<cards.length;i++) el.appendChild(cardEl(rangDe(cards[i]), enseigneDe(cards[i])));
     if(appendBack) el.appendChild(backEl());
   }
 
@@ -1322,7 +1321,7 @@
   }
   function getBet(){ var v=Math.floor(Number(betin.value)||0); if(v<BJ_MIN)v=BJ_MIN; if(v>BJ_MAX)v=BJ_MAX; betin.value=v; bjPile(v); return v; }
   function deal(){ if(!authed||busy) return; var b=getBet(); if(balance<b){ toast("Not enough $SWOGE"); return; } busy=true;
-    resetCardCount(); newSuitSalt(); playShuffle(); send({type:"bj_bet",amount:b}); }
+    resetCardCount(); playShuffle(); send({type:"bj_bet",amount:b}); }
   /* melange du sabot : son + cartes qui defilent sur le tapis avant la donne */
   function playShuffle(){
     SFX.shuffle();

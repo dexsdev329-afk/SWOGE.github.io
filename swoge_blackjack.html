@@ -368,24 +368,37 @@
   align-items:center; gap:2px; margin:0 !important; padding:0 !important;
   background:none !important; border:0 !important; min-height:0 !important;
 }
-.felt.felt > .side.dealer{ top:25% !important; bottom:auto !important; }
-.felt.felt > .side.player{ top:60.5% !important; bottom:auto !important; }
+.felt.felt > .side.dealer{ top:15.5% !important; bottom:auto !important; }
+.felt.felt > .side.player{ top:57% !important; bottom:auto !important; }
+/* LE COMPTEUR DE MAIN. Le tapis ecrit deja DEALER et PLAYER, donc le libelle
+   disparait — mais la VALEUR doit rester, et bien visible : c'est le seul
+   chiffre qu'on regarde en jouant, et il etait noye dans le decor dore. On le
+   pose sur une pastille sombre, au-dessus de chaque main. */
 .felt.felt > .side .lbl{
-  font-size:.62rem; letter-spacing:.16em; text-transform:uppercase;
-  opacity:0; height:0; margin:0;      /* le tapis ecrit deja DEALER et PLAYER */
+  font-size:0; letter-spacing:0; margin:0 0 3px; height:auto; opacity:1;
+  min-height:1.5em; display:flex; align-items:center; justify-content:center;
 }
 .felt.felt > .side .lbl .val{
-  opacity:1; height:auto; font-size:.8rem; letter-spacing:0;
+  font-size:1.05rem; line-height:1; letter-spacing:0;
 }
 .felt.felt > .side .cards{ display:flex; justify-content:center; gap:4px; min-height:0; }
-.felt.felt > .side .cards > *{ width:min(52px, 11.5%); height:auto; }
+.felt.felt > .side .cards > *{ width:min(76px, 17%); height:auto; }
 /* La valeur de la main, lisible sans se confondre avec le decor dore. */
 .felt.felt .val{
-  display:inline-block; min-width:1.6em; padding:1px 6px; border-radius:8px;
-  background:rgba(0,0,0,.62); color:#ffd479; font-weight:700;
-  font-variant-numeric:tabular-nums;
+  display:inline-block; min-width:2.1em; padding:3px 10px; border-radius:11px;
+  background:rgba(4,8,16,.86); color:#ffd479; font-weight:800;
+  font-variant-numeric:tabular-nums; border:1px solid rgba(255,212,121,.45);
+  box-shadow:0 2px 10px rgba(0,0,0,.55);
 }
-.felt.felt > .bj-spot{ position:absolute !important; left:50% !important; top:70% !important; transform:translateX(-50%) !important; margin:0 !important; }
+.felt.felt .val:empty{ display:none; }
+/* Le jeton de mise couvrait la main du joueur : il occupait le centre du
+   tapis a pleine taille. Il descend sur son emplacement dessine et rapetisse
+   — c'est un rappel de mise, pas le sujet de l'ecran. */
+.felt.felt > .bj-spot{
+  position:absolute !important; left:50% !important; top:76% !important;
+  transform:translateX(-50%) scale(.62) !important; transform-origin:top center;
+  margin:0 !important; pointer-events:none;
+}
 /* Les paris annexes : dessines sur le tapis, pas encore branches. */
 .bj-annexe{
   position:absolute; top:29%; width:15%; height:33%;

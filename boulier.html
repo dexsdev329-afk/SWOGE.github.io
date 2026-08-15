@@ -612,6 +612,85 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
    quand on se demande si le jeu est honnete. */
 .bo-boxb .fair{ margin-top:14px; text-align:center; }
 
+/* ================= TELEPHONE : TOUT TIENT SUR UN ECRAN =================
+ *
+ * La cage faisait 390 px de large pour 452 de haut : a elle seule, plus de la
+ * moitie d'un ecran de telephone. Il fallait defiler pour voir la salle, les
+ * boules sorties, la quantite et le bouton — c'est-a-dire tout ce qui sert
+ * pendant les dix secondes d'inscription.
+ *
+ * Elle passe a 240 px. Les boules y sont plus petites, mais on les LIT quand
+ * meme parce que la boule qui vient de sortir est presentee en grand au-dessus
+ * du tube : c'est celle-la qu'on regarde, pas les quatre-vingt-dix du tas.
+ *
+ * Et les deux panneaux verts passent COTE A COTE. Empiles, ils repoussaient le
+ * bouton hors de l'ecran ; l'un dit qui est la, l'autre ou j'en suis, et on les
+ * consulte du meme coup d'oeil.
+ */
+@media (max-width: 640px), (orientation: portrait){
+  .bo-col{ width:100%; flex:1 1 100%; max-width:none; }
+  .bo-cage{ width:min(48%,180px); margin:0 auto; }
+  /* Les trente boules gardent TOUTE la largeur : elles ne sont plus dans la
+     colonne de la cage mais sous elle, et deux chiffres dans un rond de 20 px
+     ne se lisent pas. */
+  .bo-sorties{ width:100%; max-width:none; }
+
+  .bo-cote{ flex-direction:row; gap:8px; max-width:none; width:100%; }
+  .bo-salle, .bo-best{ flex:1 1 0; min-width:0; }
+  .bo-salle .bx, .bo-best .bx{ padding:9px 9px 10px; height:100%; }
+  .bo-salle .hd b{ font-size:18px; }
+  .bo-salle .jr{ padding:4px 6px; font-size:11px; gap:5px; }
+  .bo-salle .jr i{ display:none; }        /* la mise saute : le gain compte plus */
+  .bo-salle .jl{ gap:2px; }
+  .bo-best .sc b{ font-size:24px; }
+  .bo-best .nums{ grid-template-columns:repeat(5,1fr); gap:3px; }
+  .bo-best .nums span{ min-height:26px; font-size:11px; border-radius:7px; }
+  .bo-best .rest{ gap:3px; margin-top:7px; }
+  .bo-best .rest i{ padding:2px 6px; font-size:10px; }
+  .bo-phase{ margin-bottom:8px; padding:7px 12px; }
+  .bo-pot{ padding:9px 14px 10px; margin-bottom:9px; }
+  .bo-titre h2{ font-size:clamp(22px,6.5vw,32px); }
+  .bo-titre p{ font-size:10px; letter-spacing:1.6px; }
+  .bo-lb{ margin:11px 0 6px; }
+  .bo-qte button{ min-width:48px; padding:9px 11px; font-size:13px; }
+  .bo-jouer{ padding:13px 0; font-size:17px; }
+}
+
+/* ---- LA BARRE D'ACHAT NE QUITTE PLUS L'ECRAN ----
+ *
+ * Mesure faite : sur un telephone de 844 px de haut, la page en demande 1196.
+ * Meme cage reduite, panneaux cote a cote et boules resserrees, il en manque
+ * trois cents — et ce qui tombait hors champ etait precisement ce qui sert
+ * pendant les dix secondes : la quantite et le bouton.
+ *
+ * On peut tout retrecir jusqu'a l'illisible, ou admettre que la page est plus
+ * longue qu'un ecran et garder A PORTEE ce qui est urgent. C'est la deuxieme
+ * solution : le titre, la cagnotte, la cage et les panneaux defilent ; la
+ * quantite et le bouton restent colles en bas. Dix secondes suffisent alors
+ * pour entrer, quel que soit l'endroit ou l'on regardait.
+ */
+@media (max-width: 640px), (orientation: portrait){
+  /* Trente boules en QUINZE colonnes : deux rangees au lieu de trois, et un
+     rond de 23 px porte encore deux chiffres a 9 px. */
+  .bo-sorties{ grid-template-columns:repeat(15,1fr); gap:3px; }
+  .bo-sorties i{ font-size:9px; }
+  .bo-titre p{ display:none; }
+  .bo-pot .v{ font-size:clamp(26px,8.5vw,40px); }
+  .bo-pot .sub{ font-size:10px; }
+
+  .bo-achat{ position:sticky; bottom:0; z-index:6; margin:12px -10px 0;
+    padding:8px 10px calc(8px + env(safe-area-inset-bottom));
+    background:linear-gradient(180deg, rgba(7,17,13,.86), rgba(7,17,13,.98) 40%);
+    border-top:1px solid rgba(230,165,55,.22);
+    -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); }
+  .bo-achat .bo-lb{ display:none; }
+  .bo-achat .bo-mise{ margin:7px 0 0; font-size:11.5px; }
+  .bo-achat .bo-jouer{ margin-top:8px; padding:12px 0; font-size:16px; }
+  .bo-achat .bo-note{ min-height:0; margin-top:5px; }
+  /* Le resultat, lui, reste dans le flux : il arrive une fois la manche finie,
+     et une banniere collee au bouton se ferait toucher par accident. */
+}
+
 /* fin du bloc Boulier */
 .pl-hist h4{ margin:0 0 4px; font-size:12px; letter-spacing:1.2px;
 .pl-hist h4{ margin:0 0 4px; font-size:12px; letter-spacing:1.2px;
@@ -951,12 +1030,15 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
       </div>
     </div>
 
-    <div class="bo-lb">How many grids?</div>
-    <div class="bo-qte" id="boQte"></div>
-    <div class="bo-mise" id="boMise"></div>
-    <button class="bo-jouer" id="boJouer">SPIN THE CAGE</button>
-    <div class="bo-note" id="boNote"></div>
     <div class="bo-gain" id="boGain"></div>
+
+    <div class="bo-achat">
+      <div class="bo-lb">How many grids?</div>
+      <div class="bo-qte" id="boQte"></div>
+      <div class="bo-mise" id="boMise"></div>
+      <button class="bo-jouer" id="boJouer">SPIN THE CAGE</button>
+      <div class="bo-note" id="boNote"></div>
+    </div>
   </div>
 
   <div class="bo-ovl" id="boOvl">

@@ -2262,9 +2262,21 @@ function renderBonus(b){ if(!b) return; bonusData=b;
        poser, pas des illustrations : a 62 px la cible reste largement au-dessus
        des 44 px recommandes, et on gagne vingt pixels de haut plus l'air
        autour. */
-    .sbet{ width:clamp(52px,16vw,72px); }
-    .sidebets{ gap:clamp(8px,3vw,14px); margin:0 0 8px; }
-    .sbet .sbp{ font-size:9px; }
+    .sbet{ width:clamp(44px,13vw,60px); }
+    .sidebets{ gap:clamp(8px,3vw,14px); margin:0 0 6px; }
+    /* Le bareme ecrit sous chaque jeton — « 6 · 12 · 25 : 1 » — sort de la
+       table de gains du serveur et se retrouve EN ENTIER dans le panneau des
+       regles. Sous le jeton, a neuf pixels, il ne se lit pas ; il ne fait
+       qu'occuper une ligne sous chacun des deux. */
+    .sbet .sbp{ display:none; }
+    /* Jetons de mise et bouton Deal : un cran de moins. La cible reste au-dessus
+       des 44 px recommandes — c'est la seule limite qui compte. */
+    .chipbtn{ width:46px!important; height:46px!important; }
+    .betrow{ gap:6px; }
+    .betin{ height:44px; font-size:15px; }
+    #dealBtn, #newBtn{ height:44px!important; }
+    #hitBtn, #standBtn, #doubleBtn{ height:44px!important; }
+    .act{ gap:8px; }
 
     /* ---- LA LIGNE D'EQUITE SE REPLIE, ELLE NE DISPARAIT PAS ----
        « Provably fair · seed hash 44b29dfb… · nonce 1419 » prend trois lignes

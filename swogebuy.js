@@ -158,6 +158,68 @@
     return Promise.resolve(null);
   }
 
+  /* ---- LA BARRE ET LES TITRES, SUR TELEPHONE ----
+   *
+   * Quatre choses occupaient le haut de chaque page pour dire ou l'on est,
+   * alors qu'une seule suffit :
+   *
+   *   • le nom du jeu dans la barre — il est ecrit en grand juste dessous ;
+   *   • le titre de la page lui-meme, souvent une image de cent pixels ;
+   *   • le mot « $SWOGE » a cote du solde — la pastille est doree, elle est
+   *     seule, et celle d'a cote commence par un dollar ;
+   *   • quinze pixels de rembourrage vertical dans la barre.
+   *
+   * Ensemble, une centaine de pixels sur un ecran qui en a 844.
+   *
+   * ---- pourquoi ce style-la est pose TOUT DE SUITE ----
+   *
+   * Il vivait avec celui de la pastille en dollars, donc derriere le meme
+   * garde-fou : « pas d'ethers, pas de portefeuille, on s'arrete ». Le jour ou
+   * le CDN d'ethers repond lentement — ou pas du tout — la page gardait son
+   * titre, sa barre epaisse et son mot en trop. Une mise en page ne doit
+   * dependre d'aucune bibliotheque de portefeuille.
+   */
+  (function chromeMobile() {
+    var css = document.createElement('style');
+    css.id = 'swb-mob';
+    css.textContent =
+      '@media (max-width:640px){' +
+        'nav .brand>span{display:none;}' +
+        'nav{padding-top:8px!important;padding-bottom:8px!important;}' +
+        '.swlbl{display:none;}' +
+        '.hero h1,.hero p{display:none!important;}' +
+        '.hero{padding:0!important;}' +
+      '}';
+    (document.head || document.documentElement).appendChild(css);
+  })();
+
+  /* Le mot « $SWOGE » colle au solde est un NOEUD DE TEXTE nu : aucune regle de
+     style ne peut l'atteindre. On l'enveloppe des que la pastille existe — et
+     l'envelopper plutot que l'effacer le rend a la rotation de l'ecran sans
+     avoir a le reconstruire. Pose ici aussi, hors du garde-fou d'ethers. */
+  function poseLabel() {
+    var bal = document.getElementById('bal');
+    if (!bal) return false;
+    var a = (bal.closest && bal.closest('.chip, .stat, .balance, .bal, .solde')) || bal.parentElement;
+    if (!a || a.querySelector('.swlbl')) return !!a;
+    for (var k = a.childNodes.length - 1; k >= 0; k--) {
+      var nd = a.childNodes[k];
+      if (nd.nodeType === 3 && /\$?SWOGE/i.test(nd.nodeValue || '')) {
+        var lbl = document.createElement('span');
+        lbl.className = 'swlbl';
+        lbl.textContent = nd.nodeValue;
+        a.replaceChild(lbl, nd);
+      }
+    }
+    return true;
+  }
+  (function attendLabel() {
+    if (poseLabel()) return;
+    var obs = new MutationObserver(function () { if (poseLabel()) obs.disconnect(); });
+    obs.observe(document.documentElement, { childList: true, subtree: true });
+    setTimeout(function () { obs.disconnect(); }, 20000);
+  })();
+
   /* ------------------------------------------- ce que le solde vaut en dollars
    *
    * La barre affiche « 412.5k $SWOGE ». Personne ne sait ce que ca pese : le
@@ -235,10 +297,20 @@
       'background:rgba(18,44,32,.72);border:1px solid rgba(124,255,155,.28);}' +
       '.swusd.on{display:inline-flex;}' +
       '@media (max-width:520px){.swusd{font-size:10.5px;padding:3px 8px;margin-left:5px;}}' +
-      /* Les deux crans de repli de la barre valent pour elle aussi : quand la
-         place manque, le solde en jetons passe avant sa conversion. */
-      'html.swtight .swusd{display:none!important;}';
+      /* ---- ELLE NE S'EFFACE PLUS QUAND LA PLACE MANQUE ----
+         Premiere version : au premier cran de repli, la pastille disparaissait
+         « parce que le solde en jetons passe avant sa conversion ». Sauf que le
+         cran se declenchait sur toutes les pages de jeu, donc elle ne
+         s'affichait jamais sur telephone — c'est-a-dire la ou l'on en a le plus
+         besoin, faute de place pour lire quoi que ce soit d'autre.
+         Ce qui saute a la place, c'est LE NOM DU JEU dans la barre. Il est
+         ecrit en grand deux lignes plus bas, sur la page elle-meme, et il
+         occupait la moitie de la largeur pour redire ou l'on est. */
+      'html.swtight .swusd{font-size:10px!important;padding:3px 6px!important;' +
+      'margin-left:4px!important;}' +
+      '';
     document.head.appendChild(css);
+    poseLabel();
     pastilleUsd = document.createElement('span');
     pastilleUsd.className = 'swusd';
     pastilleUsd.title = 'Roughly what your balance is worth, at the pool price';

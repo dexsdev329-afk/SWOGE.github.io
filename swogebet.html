@@ -755,7 +755,12 @@ body.sb-dock main{ padding-bottom:150px; }
      (rogné par overflow) sans déborder, et le cadre reste plus grand que les cartes. */
   /* Cadre FIXE (fond border-box) + zone de scroll interne : le contenu scrolle
      À L'INTÉRIEUR et disparaît DERRIÈRE le cadre (clippé), rendu pro. */
-  #box-quests { max-height:88vh; overflow:hidden; background-color:#17092e; background-clip:padding-box; border:30px solid transparent; border-image:url('img/icone_bet.png') 62 fill / 30px stretch; border-radius:0; background:none; padding:0; }
+  /* Le cadre etait une border-image faite avec l'icone de l'application : le
+     panneau des quetes etait donc entoure de chiens jaunes etires. Un panneau
+     ordinaire, du meme bois que le bulletin de SWOGE Bet. */
+  #box-quests { max-height:88vh; overflow:hidden; padding:0; border-radius:18px;
+    background:#101a2c; border:1px solid rgba(255,255,255,.16);
+    box-shadow:0 18px 50px rgba(0,0,0,.6); }
 #box-quests .qscroll { max-height:calc(88vh - 96px); overflow-y:auto; padding:26px 30px 14px; scrollbar-width:none; -ms-overflow-style:none; }
 #box-quests .qscroll::-webkit-scrollbar { width:0; height:0; display:none; }
 .quest { border:1px solid rgba(124,77,255,.4); border-radius:12px; padding:10px 12px; margin-bottom:8px; }
@@ -764,9 +769,12 @@ body.sb-dock main{ padding-bottom:150px; }
 .quest .qbar { height:6px; background:rgba(255,255,255,.1); border-radius:6px; overflow:hidden; margin-bottom:8px; }
 .quest .qbar i { display:block; height:100%; background:linear-gradient(90deg,#ffe680,#f2a900); }
 .qclaim { width:100%; font-size:12px; font-weight:700; padding:9px; border-radius:8px; border:none; font-family:inherit; }
-.qclaim.on { background:transparent url('img/icone_bet.png') center/contain no-repeat; height:44px; color:transparent; text-indent:-9999px; overflow:hidden; white-space:nowrap; cursor:pointer; box-shadow:none; border:none; }
+.qclaim.on { height:40px; cursor:pointer; color:#04121f; font-weight:800;
+  background:linear-gradient(180deg,#7CFF9B,#22B45E); border:none; }
+.qclaim.on:hover { filter:brightness(1.08); }
 .qclaim.off { background:rgba(255,255,255,.06); color:#c9b98f; cursor:default; border:1px solid rgba(124,77,255,.4); }
-.qclaim.done { background:transparent url('img/icone_bet.png') center/contain no-repeat; height:44px; color:transparent; text-indent:-9999px; overflow:hidden; white-space:nowrap; cursor:default; border:none; box-shadow:none; }
+.qclaim.done { height:40px; cursor:default; color:#8EF0B4;
+  background:rgba(90,220,140,.12); border:1px solid rgba(120,230,160,.4); }
 /* welcome / streak / rewarded-ad cards */
   .bcard { border:14px solid transparent; border-image:url('https://i.ibb.co/qY4GHp7p/Chat-GPT-Image-8-ao-t-2026-19-06-44.png') 70 fill / 14px stretch; padding:2px 6px 5px; margin:0 0 10px; background:none; }
 .bcard .tbanner { width:100%; height:36px; background-position:center; background-repeat:no-repeat; background-size:contain; margin-top:6px; margin-bottom:3px; filter:drop-shadow(0 2px 6px rgba(0,0,0,.5)); }
@@ -776,41 +784,53 @@ body.sb-dock main{ padding-bottom:150px; }
 .bcard .bbody { flex:1; min-width:0; }
 .bcard .bh { display:none; }
 .bcard .bh .qr { color:#3a2400; background:linear-gradient(135deg,#ffe680,#f2a900); padding:2px 10px; border-radius:999px; font-size:12px; font-weight:800; box-shadow:0 2px 6px rgba(242,169,0,.4); }
-.tb-watch { background-image:url('img/icone_bet.png'); }
-.tb-welcome { background-image:url('img/icone_bet.png'); }
-.tb-streak { background-image:url('img/icone_bet.png'); }
-.abtn.imgbtn.claim1{background-image:url('img/icone_bet.png')}
-.abtn.imgbtn.claim2{background-image:url('img/icone_bet.png')}
-.abtn.imgbtn.claim3{background-image:url('img/icone_bet.png')}
-.abtn.imgbtn.claim5{background-image:url('img/icone_bet.png')}
-.abtn.imgbtn.claim7{background-image:url('img/icone_bet.png')}
-.abtn.imgbtn.claim10{background-image:url('img/icone_bet.png')}
-.abtn.imgbtn.claim15{background-image:url('img/icone_bet.png')}
+/* Les trois bandeaux n'avaient pas d'image propre : ils portaient tous
+   l'icone de l'application. Trois fois le meme dessin au-dessus de trois
+   cartes differentes ne dit rien — on les retire, le titre de la carte suffit. */
+.bcard .tbanner { display:none; }
+/* Les boutons « CLAIM +N » gravés n'existent pas pour cette page : les sept
+   classes pointaient sur l'icone de l'application, texte en transparent
+   par-dessus. CLAIM_AMTS est vide cote script, donc ces etats retombent sur
+   un bouton texte — lisible, et qui annonce le bon montant. */
 .bcard .note2 { margin:0; font-size:11px; }
 .bcard .abtn { width:100%; }
 .bcard .abtn.imgbtn:disabled { opacity:1; filter:none; }
-#box-quests .quest .qbar { background:url('img/icone_bet.png') center/100% 100% no-repeat; height:22px; border-radius:0; overflow:visible; position:relative; }
-#box-quests .quest .qbar i { position:absolute; left:7.5%; top:34%; height:32%; border-radius:6px; background:linear-gradient(90deg,#ffe680,#f2a900); box-shadow:0 0 8px rgba(255,213,74,.7); }
-.streakrow { display:flex; gap:3px; margin:8px 0 4px; background:url('img/icone_bet.png') center/100% 100% no-repeat; padding:13px 12px; }
-.streakrow .sday { flex:1; aspect-ratio:1/1; background:center/contain no-repeat; position:relative; opacity:.5; filter:grayscale(.35) brightness(.82); }
-.streakrow .sday.day1{background-image:url('img/icone_bet.png')}
-.streakrow .sday.day2{background-image:url('img/icone_bet.png')}
-.streakrow .sday.day3{background-image:url('img/icone_bet.png')}
-.streakrow .sday.day4{background-image:url('img/icone_bet.png')}
-.streakrow .sday.day5{background-image:url('img/icone_bet.png')}
-.streakrow .sday.day6{background-image:url('img/icone_bet.png')}
-.streakrow .sday.day7{background-image:url('img/icone_bet.png')}
-.streakrow .sday.done { opacity:1; filter:none; }
-.streakrow .sday.today { opacity:1; animation:sdayPulse 1s ease-in-out infinite alternate; }
+/* La barre etait une image d'icone etiree, avec le remplissage pose a des
+   coordonnees calculees pour un cadre qui n'etait pas celui-la. */
+#box-quests .quest .qbar { position:relative; height:8px; border-radius:999px; overflow:hidden;
+  background:rgba(0,0,0,.45); border:1px solid rgba(255,255,255,.12); }
+#box-quests .quest .qbar i { position:absolute; left:0; top:0; bottom:0; border-radius:999px;
+  background:linear-gradient(90deg,#22B45E,#7CFF9B); box-shadow:0 0 8px rgba(124,255,155,.6); }
+/* Sept fois la meme icone sur fond de la meme icone : on ne pouvait pas dire
+   quel jour on etait. Sept pastilles numerotees, celle du jour marquee. */
+.streakrow { display:flex; gap:5px; margin:10px 0 6px; justify-content:center; }
+.streakrow .sday { flex:1 1 0; max-width:52px; aspect-ratio:1/1; border-radius:10px; position:relative;
+  display:flex; align-items:center; justify-content:center;
+  font-size:13px; font-weight:800; color:#c9d6c9;
+  background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.13); }
+.streakrow .sday.done { color:#04121f; border-color:transparent;
+  background:linear-gradient(180deg,#7CFF9B,#22B45E); }
+.streakrow .sday.today { color:#7CFF9B; border-color:#7CFF9B;
+  animation:sdayPulse 1s ease-in-out infinite alternate; }
 #box-quests .note2 { text-align:center; }
 #box-quests .quest .qh span { width:100%; text-align:center; }
-@keyframes sdayPulse { from { filter:brightness(1.05) drop-shadow(0 0 3px #ffd54a); } to { filter:brightness(1.28) drop-shadow(0 0 11px #ffd54a); } }
-#box-quests .qtitle { width:210px; height:46px; margin:2px auto 12px; background:url('img/icone_bet.png') center/contain no-repeat; filter:drop-shadow(0 2px 6px rgba(0,0,0,.6)); }
+@keyframes sdayPulse { from { box-shadow:0 0 0 rgba(124,255,155,0); } to { box-shadow:0 0 12px rgba(124,255,155,.75); } }
+#box-quests .qtitle { margin:2px auto 12px; text-align:center; font-size:1.05rem;
+  font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:#EAF6EE; }
 /* Boutons Daily Quests en image (fix background-size !important) */
-  #adWatch, #wcClaim, #stkClaim { display:block !important; width:min(240px,90%) !important; max-width:90% !important; height:74px !important; margin:8px auto 2px !important; aspect-ratio:auto !important; background-color:transparent !important; background-repeat:no-repeat !important; background-position:center !important; background-size:100% 100% !important; color:transparent !important; text-indent:-9999px; overflow:hidden; white-space:nowrap; border:none !important; box-shadow:none !important; padding:0 !important; }
-#adWatch { background-image:url('img/icone_bet.png') !important; }
-#wcClaim { background-image:url('img/icone_bet.png') !important; }
-#stkClaim { background-image:url('img/icone_bet.png') !important; }
+  /* LE TRAITEMENT « BOUTON EN IMAGE » NE VAUT QUE S'IL Y A UNE IMAGE. Il etait
+     accroche aux trois identifiants sans condition : le texte passait en
+     transparent et le fond etait force sur l'icone de l'application, quel que
+     soit l'etat du bouton. Un etat sans image devenait donc un rectangle vide.
+     Il est desormais accroche a .imgbtn, que le script ne pose que lorsqu'une
+     planche existe (wimg, pimg, cimg). */
+  #adWatch, #wcClaim, #stkClaim { display:block !important; width:min(240px,90%) !important;
+    max-width:90% !important; margin:8px auto 2px !important; }
+  #adWatch.imgbtn, #wcClaim.imgbtn, #stkClaim.imgbtn { height:74px !important; aspect-ratio:auto !important;
+    background-color:transparent !important; background-repeat:no-repeat !important;
+    background-position:center !important; background-size:100% 100% !important;
+    color:transparent !important; text-indent:-9999px; overflow:hidden; white-space:nowrap;
+    border:none !important; box-shadow:none !important; padding:0 !important; }
 @media (max-width: 820px), (orientation: portrait) {
   #box-quests .qscroll { max-height:calc(100dvh - 78px); padding:20px 22px 24px; }
 }
@@ -838,26 +858,10 @@ body.sb-dock main{ padding-bottom:150px; }
 }
 </style>
 <style>
-/* ---- Melange des cartes avant la donne ---- */
-.shufflefx { position:absolute; inset:0; display:none; pointer-events:none; z-index:4; }
-.shufflefx.on { display:block; }
-.shufflefx i { position:absolute; left:50%; top:50%; width:58px; height:81px; margin:-40px 0 0 -29px;
-                border-radius:7px; border:1px solid rgba(230,165,55,.55); background:#120c06;
-                background-size:100% 100% !important; background-repeat:no-repeat !important;
-                box-shadow:0 6px 16px rgba(0,0,0,.55); opacity:0;
-                background-image:url('img/icone_bet.png'); }
-.shufflefx.on i { animation:riffle .62s ease-in-out both; }
-.shufflefx.on i:nth-child(1){ animation-delay:0s }
-.shufflefx.on i:nth-child(2){ animation-delay:.07s }
-.shufflefx.on i:nth-child(3){ animation-delay:.14s }
-.shufflefx.on i:nth-child(4){ animation-delay:.21s }
-.shufflefx.on i:nth-child(5){ animation-delay:.28s }
-@keyframes riffle {
-  0%   { opacity:0; transform:translate(-62px,0) rotate(-16deg) }
-  35%  { opacity:1; transform:translate(-24px,-9px) rotate(-7deg) }
-  65%  { opacity:1; transform:translate(26px,-9px) rotate(7deg) }
-  100% { opacity:0; transform:translate(64px,0) rotate(16deg) }
-}
+/* Le melange des cartes du blackjack vivait ici, herite de la copie : SWOGE Bet
+   n'a ni sabot ni #shuffleFx dans son balisage. Les cinq cartes du riffle
+   portaient d'ailleurs l'icone de l'application au lieu d'un dos de carte.
+   Code mort, et une reference de moins a purger. */
 /* Les cartes sont dimensionnees pour que la hauteur du tapis reste proche du
    ratio de l'image de table (1.5) : ainsi rien n'est rogne ET rien n'est etire.
    min-height = hauteur d'une carte, pour que la table vide garde la meme forme. */
@@ -975,16 +979,18 @@ body.sb-dock main{ padding-bottom:150px; }
 }
 </style>
 <style>
-/* ---- Titre et bouton menu en image ---- */
-.hero h1, .menubtn {
+/* ---- Titre en image, bouton menu en bouton ----
+   Le ☰ etait remplace par l'icone de l'application : un chien jaune en haut a
+   droite d'une page verte, qu'on ne lisait pas comme un menu. Il reprend son
+   glyphe et le cadre discret du reste de la barre. */
+.hero h1 {
   background-color:transparent !important; background-repeat:no-repeat !important;
   background-position:center !important; background-size:100% 100% !important;
   color:transparent !important; text-indent:-9999px; overflow:hidden; white-space:nowrap;
   border:none !important; box-shadow:none !important; padding:0 !important;
+  display:none;
 }
-.hero h1 { display:none; }
-.menubtn { flex:0 0 auto; width:44px; height:44px; aspect-ratio:1/1; border-radius:0;
-           background-image:url('img/icone_bet.png'); }
+.menubtn { flex:0 0 auto; width:44px; height:44px; aspect-ratio:1/1; }
 @media (max-width: 820px), (orientation: portrait) {
   .hero h1 { width:min(250px,80%); }
   .menubtn { width:38px; height:38px; }
@@ -1967,7 +1973,11 @@ body.sb-dock main{ padding-bottom:150px; }
 var bonusData=null, AdController=null;
 /* bascule un bouton entre image (texte gravé) et bouton texte CSS */
 var IMG_CLASSES=['wimg','pimg','cimg','claim1','claim2','claim3','claim5','claim7','claim10','claim15'];
-var CLAIM_AMTS=[1,2,3,5,7,10,15];   // montants pour lesquels on a une image CLAIM +N
+/* Les planches « CLAIM +N » gravees n'existent pas pour cette page. La liste
+   vide fait retomber claimCls sur null, donc setBtnImg retire .imgbtn et le
+   bouton redevient un bouton texte — qui annonce le bon montant. Le jour ou
+   les images arrivent, on remet les montants ici et rien d'autre ne bouge. */
+var CLAIM_AMTS=[];
 function setBtnImg(el, cls){ if(!el) return; IMG_CLASSES.forEach(function(c){ el.classList.remove(c); }); if(cls){ el.classList.add('imgbtn', cls); } else { el.classList.remove('imgbtn'); } }
 function claimCls(amt){ return CLAIM_AMTS.indexOf(amt)>=0 ? 'claim'+amt : null; }   // image si dispo, sinon bouton texte
 function initAdsgram(blockId){ try{ if(window.Adsgram&&!AdController&&blockId){ AdController=window.Adsgram.init({ blockId:String(blockId) }); } }catch(e){} }
@@ -2007,7 +2017,9 @@ function renderBonus(b){ if(!b) return; bonusData=b;
       for(var i=0;i<rw.length;i++){ var dn=i+1, cls='sday';
         if(b.streak.claimedToday){ if(dn<=b.streak.day) cls+=' done'; }
         else { if(dn<b.streak.day) cls+=' done'; else if(dn===b.streak.day) cls+=' today'; }
-        hh+='<div class="'+cls+' day'+dn+'"></div>';
+        /* Le numero du jour est ECRIT. Les sept cases portaient la meme icone
+           et rien d'autre : on ne pouvait pas dire ou on en etait. */
+        hh+='<div class="'+cls+' day'+dn+'">'+dn+'</div>';
       }
       row.innerHTML=hh;
     }

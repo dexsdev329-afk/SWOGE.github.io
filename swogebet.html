@@ -1709,11 +1709,19 @@ body.sb-dock main{ padding-bottom:150px; }
       var lignes="";
       for(k=0;k<jbs.length;k++){
         var j=jbs[k], m=sbTrouve(j.match);
-        var aff = m ? (sbDrapeau(m.paysDomicile)+sbEchappe(m.domicile)+" &ndash; "+sbDrapeau(m.paysExterieur)+sbEchappe(m.exterieur))
-                    : (sbEchappe(p.domicile)+" &ndash; "+sbEchappe(p.exterieur));
-        var deux = m && (m.issues||[]).length===2;
+        /* Le calendrier ne porte que les matchs OUVERTS : des qu'un match est
+           joue, sbTrouve ne le rend plus. On retombe donc sur la jambe
+           elle-meme, que le serveur envoie avec le nom de SON match — et non
+           sur p.domicile, qui n'est que la premiere rencontre du bulletin et
+           recopiait donc le meme match sur toutes les lignes d'un combine. */
+        var dom = m ? m.domicile : (j.domicile || p.domicile);
+        var ext = m ? m.exterieur : (j.exterieur || p.exterieur);
+        var aff = m ? (sbDrapeau(m.paysDomicile)+sbEchappe(dom)+" &ndash; "+sbDrapeau(m.paysExterieur)+sbEchappe(ext))
+                    : (sbEchappe(dom)+" &ndash; "+sbEchappe(ext));
+        var issues = m ? (m.issues||[]) : (j.issues||[]);
+        var deux = issues.length===2;
         var nom = (deux?SB_NOM2:SB_NOM)[j.choix] || j.choix;
-        var quand = sbHeure(m ? m.debut : p.debut);
+        var quand = sbHeure(m ? m.debut : (j.debut || p.debut));
         lignes += '<div class="sb-pj">'+aff+' &middot; <b>'+nom+'</b> @ '+Number(j.cote||p.cote).toFixed(2)
                 + (quand?' <span>&middot; '+quand+'</span>':'')+'</div>';
       }
@@ -1935,7 +1943,13 @@ body.sb-dock main{ padding-bottom:150px; }
         if(myAddr) doLogin(); }
       if(m.type==="resumeFailed"){ /* jeton perime ou revoque : on l oublie et on repart du chemin long */ try{ localStorage.removeItem("swogeSession"); }catch(e){} if(typeof autoReconnect==="function") autoReconnect(); else if(myAddr) doLogin(); return; }
       else if(m.type==="auth"){ authed=true; myAddr=m.address; sbDemande(); if(m.session){ try{ localStorage.setItem("swogeSession",m.session); }catch(e){} } setBalance(m.balance); showPlay(); if(m.fairness) showFair(m.fairness);
-        send({type:"duelState"}); send({type:"duelLobby", jeu:JEU}); send({type:"duelInvites", jeu:JEU});
+        /* Il y avait ici trois demandes de duel recopiees d'une page de jeu :
+           `send({type:"duelLobby", jeu:JEU})`. Or SWOGE Bet n'a pas de duel et
+           ne definit pas JEU — la ligne levait donc une ReferenceError A CHAQUE
+           connexion, en plein milieu du traitement de `auth`. Tout ce qui
+           suivait ne s'executait plus : le staking, les quetes, le bonus et le
+           message de bienvenue. Rien ne le disait, la page avait juste l'air
+           incomplete. */
         sbDemande(); if(m.stake) setStakeInfo(m.stake); if(m.quests) renderQuests(m.quests); if(m.bonus) renderBonus(m.bonus); if(m.welcomeGranted>0) toast("🎁 Welcome! +"+m.welcomeGranted+" $SWOGE to try"); }
       else if(m.type==="balance"||m.type==="deposit"){ setBalance(m.balance); if(m.type==="deposit") toast("💰 Deposit credited"); }
       else if(m.type==="parisListe"){

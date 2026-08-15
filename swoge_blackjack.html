@@ -497,6 +497,73 @@
   .sbet .sbp{ font-size:.55rem; }
 }
 
+/* ---- LE DOUBLE-TAP NE ZOOME PLUS ----
+ * Sur telephone, deux appuis rapproches sur un bouton — tirer, tirer — sont lus
+ * comme un double-tap et la page grossit. On jouait donc une main sur deux a
+ * moitie sortie de l'ecran, et il fallait pincer pour revenir. `manipulation`
+ * supprime CE geste-la, et lui seul : le pincement pour zoomer reste, ce qui
+ * n'aurait pas ete le cas avec un `user-scalable=no` dans le viewport.
+ * Les 300 ms d'attente avant que le clic parte disparaissent avec, en prime.
+ */
+html{ -webkit-text-size-adjust:100%; }
+button, input, a, .card, .felt, .sbet, .chipbtn, .btn{ touch-action:manipulation; }
+
+/* ---- LA CROIX QUI RAMASSE LES JETONS ----
+ * Poser une mise se fait en un appui, la defaire demandait de selectionner le
+ * champ et d'effacer au clavier. La croix balaie le tapis : la mise revient au
+ * minimum et les deux annexes tombent a zero, d'un geste. Elle ne s'affiche que
+ * quand il y a quelque chose a ramasser — un bouton qui ne fait rien apprend a
+ * ne plus le regarder.
+ * Elle est POSEE SUR LE TAPIS, a cote de la case de mise : c'est la que sont
+ * les jetons, et c'est de la qu'on les enleve.
+ */
+.bj-clear{
+  /* Alignee sur la case de mise, qui vit a top:76% et rapetisse de 38 % : on
+     se cale sur SON centre, pas sur le bas du tapis — sinon la croix descend
+     sous les jetons des que le tapis change de hauteur. */
+  position:absolute; left:50%; top:78%; z-index:4;
+  transform:translateX(calc(-50% + clamp(40px,6vw,52px)));
+  width:clamp(26px,7vw,32px); height:clamp(26px,7vw,32px); padding:0;
+  border-radius:50%; cursor:pointer; line-height:1;
+  font-size:clamp(13px,3.4vw,16px); font-weight:700;
+  color:#FFD97A; background:rgba(6,4,2,.82);
+  border:1px solid rgba(255,212,121,.55);
+  box-shadow:0 2px 10px rgba(0,0,0,.6);
+  display:none; align-items:center; justify-content:center;
+}
+.bj-clear.on{ display:flex; }
+.bj-clear:hover{ color:#fff; border-color:#FFC53D; background:rgba(40,10,6,.9); }
+.bj-clear:active{ transform:translateX(calc(-50% + clamp(40px,6vw,52px))) scale(.9); }
+
+/* ================= LE TELEPHONE =================
+ * Un tapis en 3:2 ne fait que 239 px de haut sur un ecran de 390 : les cartes
+ * y tenaient sur 28 px de large — la valeur etait lisible, la carte non. Elles
+ * doublent, et le croupier remonte d'autant pour que les deux mains ne se
+ * chevauchent pas. Le debordement du joueur devant le bord de la table est
+ * assume depuis le debut, on s'en sert.
+ */
+@media (max-width:820px), (orientation:portrait) {
+  .felt.felt > .side{ width:88% !important; }
+  /* Les deux mains se touchent des qu'elles grossissent : le croupier remonte,
+     le joueur descend, et les hauteurs sont calculees pour que la pastille de
+     valeur de l'un ne tombe pas sur les cartes de l'autre. */
+  .felt.felt > .side.dealer{ top:8% !important; }
+  .felt.felt > .side.player{ top:56% !important; }
+  .felt.felt > .side .cards{ gap:4px; }
+  .felt.felt > .side .cards > *{ width:clamp(44px,14.5vw,76px) !important; }
+  .wrap{ padding-bottom:44px; }
+
+  /* LA LIGNE DE MISE TIENT SUR UNE LIGNE. Quatre jetons de 56 px plus un champ
+     de 130 font 386 px : le MAX passait a la ligne suivante, seul, et on le
+     prenait pour un bouton d'autre chose. Les jetons descendent a 44 et le
+     champ a 88 — 288 px au total, ca rentre meme sur un 360.
+     Le champ GARDE ses 16 px de police : en dessous, iOS zoome tout seul des
+     qu'on le selectionne, et on retombe sur le probleme qu'on vient de regler. */
+  .betrow{ flex-wrap:nowrap; gap:6px; }
+  .chipbtn{ width:44px !important; height:44px !important; }
+  .betin{ width:88px; padding:11px 6px; font-size:16px; }
+}
+
 </style>
 </head>
 <body>
@@ -801,6 +868,8 @@
       </div>
       
       <div class="bj-spot" id="bjSpot"><div class="disc"></div><div class="lbl2">Your bet</div></div>
+      <!-- ramasse les jetons : mise au minimum, annexes a zero -->
+      <button type="button" class="bj-clear" id="clearBet" aria-label="Clear the chips">&times;</button>
 
       <!-- Les cases annexes dessinees sur le tapis. Decor : elles MONTRENT la
            mise et son sort, elles ne la prennent pas. Le reglage est sur les
@@ -1380,6 +1449,7 @@
       if(t) t.classList.toggle("on", SIDE[c]>0);
     });
     peintTapisMises();
+    majCroix();
   }
 
   /* ---- les cases dessinees sur le tapis ----
@@ -1475,6 +1545,9 @@
       if(annexeGagnee && st.result!=="win" && st.result!=="blackjack") SFX.win(false);
       busy=false;
     }
+    /* Une main est en cours : il n'y a plus de jetons a ramasser, ils sont
+       engages. La croix disparait tant que la donne n'est pas finie. */
+    majCroix();
   }
 
   function showResult(st){
@@ -1490,7 +1563,14 @@
 
   function idleUI(){ betUI.style.display=""; playUI.style.display="none"; doneUI.style.display="none";
     insUI.style.display="none"; sideRes.innerHTML=""; majSide();
-    bjPile(0); resetCardCount(); bjPile(getBet()); }
+    /* LE TAPIS SE VIDE AVANT LA MISE SUIVANTE. Les cartes de la main
+       precedente restaient posees pendant qu'on remisait : elles couvraient la
+       case de mise, ses jetons et la croix qui sert justement a les ramasser.
+       Une table reelle est ramassee avant qu'on remise, celle-ci aussi. */
+    dealerCards.innerHTML=""; playerCards.innerHTML="";
+    dealerVal.textContent=""; playerVal.textContent="";
+    dealerVal.className="val"; playerVal.className="val";
+    bjPile(0); resetCardCount(); bjPile(getBet()); majCroix(); }
 
   // ---- ws ----
   function connect(){
@@ -1589,7 +1669,29 @@
     majSide();
     getBet();
   }
-  function getBet(){ var v=Math.floor(Number(betin.value)||0); if(v<BJ_MIN)v=BJ_MIN; if(v>BJ_MAX)v=BJ_MAX; betin.value=v; bjPile(v); return v; }
+  function getBet(){ var v=Math.floor(Number(betin.value)||0); if(v<BJ_MIN)v=BJ_MIN; if(v>BJ_MAX)v=BJ_MAX; betin.value=v; bjPile(v); majCroix(); return v; }
+  /* Le MAX du joueur n'est pas le MAX de la table. Le bouton posait 10 000
+     meme avec 300 au solde : la donne partait, le serveur refusait, et il
+     fallait retaper le chiffre a la main pour jouer ce qu'on avait vraiment.
+     Il pose desormais le plus petit des deux — et les annexes deja posees
+     sont retranchees, sinon le total depasserait encore le solde. */
+  function maxJouable(){
+    var libre=Math.floor(balance)-SIDE.pp-SIDE.tp;
+    return Math.max(BJ_MIN, Math.min(BJ_MAX, libre));
+  }
+  /* La croix ne s'affiche que s'il y a des jetons a ramasser. */
+  function majCroix(){
+    var c=$("clearBet"); if(!c) return;
+    var pose=(Math.floor(Number(betin.value)||0)>BJ_MIN) || SIDE.pp>0 || SIDE.tp>0;
+    c.classList.toggle("on", pose && betUI.style.display!=="none");
+  }
+  function videMise(){
+    SIDE.pp=0; SIDE.tp=0;
+    betin.value=BJ_MIN;
+    majSide();            /* repeint les tuiles ET les cases du tapis */
+    getBet();             /* repose la pile et rappelle majCroix */
+    SFX.sweep();
+  }
   function deal(){ if(!authed||busy) return; var b=getBet();
     /* La main ET les annexes partent ensemble : c'est le total qu'il faut
        avoir, pas seulement la main. Le serveur refuse deja l'ensemble, mais
@@ -1607,7 +1709,7 @@
     fx.classList.remove("on"); void fx.offsetWidth; fx.classList.add("on");
     clearTimeout(fx._t); fx._t=setTimeout(function(){ fx.classList.remove("on"); }, 950);
   }
-  betin.addEventListener("input",function(){ bjPile(Math.floor(Number(betin.value)||0)); });
+  betin.addEventListener("input",function(){ bjPile(Math.floor(Number(betin.value)||0)); majCroix(); });
   $("dealBtn").addEventListener("click",deal);
   $("newBtn").addEventListener("click",function(){ result.textContent=""; result.className="result"; resetCardCount(); idleUI(); });
 
@@ -1637,7 +1739,8 @@
 
   // bet chips
   [].forEach.call(document.querySelectorAll("[data-add]"),function(b){ b.addEventListener("click",function(){ betin.value=Math.min(BJ_MAX,getBet()+parseInt(b.getAttribute("data-add"),10)); getBet(); }); });
-  $("maxBtn").addEventListener("click",function(){ betin.value=BJ_MAX; getBet(); });
+  $("maxBtn").addEventListener("click",function(){ betin.value=maxJouable(); getBet(); });
+  $("clearBet").addEventListener("click",videMise);
   connectBtn.addEventListener("click",doConnect);
   (function(){ var b=$("emailBtn"); if(b) b.addEventListener("click",openEmailLogin); })();
   $("emSend").addEventListener("click",async function(){

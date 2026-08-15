@@ -158,6 +158,120 @@
     return Promise.resolve(null);
   }
 
+  /* ------------------------------------------- ce que le solde vaut en dollars
+   *
+   * La barre affiche « 412.5k $SWOGE ». Personne ne sait ce que ca pese : le
+   * jeton n'a pas de cours de reference dans la tete des gens, et c'est le
+   * seul montant du site qu'on regarde a chaque instant. Une pastille de plus,
+   * a cote, donne la somme en dollars.
+   *
+   * ---- d'ou vient le prix ----
+   *
+   * De deux sources qu'on a deja, multipliees :
+   *
+   *   • combien de $SWOGE vaut un ETH — la reserve de la paire, lue sur la
+   *     chaine par `reserves()`, celle-la meme qui sert a coter un achat ;
+   *   • combien vaut un ETH en dollars — une cotation Relay d'un ETH, la meme
+   *     route que le pont de depot.
+   *
+   * Aucune des deux n'est un oracle de prix, et c'est assume : ce qu'on affiche
+   * est ce que le joueur obtiendrait REELLEMENT en vendant sur cette paire-la,
+   * ce qui est plus honnete qu'un cours de place ou personne ne peut echanger.
+   * D'ou le « ≈ ».
+   *
+   * ---- ce qui se passe quand ca echoue ----
+   *
+   * Rien. Pas de cle Relay, pas de portefeuille, reserve vide, RPC muet : la
+   * pastille ne s'affiche pas. Elle ne doit jamais empecher de lire son solde.
+   */
+  var TAUX = null, tauxQuand = 0, pastilleUsd = null;
+  var TAUX_TTL = 5 * 60 * 1000;        // le cours d'un jeton ne change pas a la seconde
+
+  function dollarsParSwoge() {
+    if (TAUX !== null && Date.now() - tauxQuand < TAUX_TTL) return Promise.resolve(TAUX);
+    return Promise.all([
+      reserves(),
+      portefeuille().then(function (w) {
+        if (!w) return null;
+        return fetch(base() + '/relay/prix?de=eth&vers=' + w.adresse + '&montant=1')
+          .then(function (r) { return r.ok ? r.json() : null; });
+      }).catch(function () { return null; }),
+    ]).then(function (x) {
+      var r = x[0], j = x[1];
+      if (!r || !j || j.dollarsEnvoi == null) return null;
+      var swogeParEth = prixMilieu(r);                 // $SWOGE pour 1 ETH
+      var dollarsParEth = parseFloat(j.dollarsEnvoi);  // $ pour 1 ETH
+      if (!(swogeParEth > 0) || !(dollarsParEth > 0)) return null;
+      TAUX = dollarsParEth / swogeParEth;
+      tauxQuand = Date.now();
+      return TAUX;
+    }).catch(function () { return null; });
+  }
+
+  function sommeUsd(v) {
+    if (!(v >= 0)) return '';
+    if (v >= 1000) return '$' + (v / 1000).toFixed(1) + 'k';
+    if (v >= 1) return '$' + v.toFixed(2);
+    if (v > 0) return '$' + v.toFixed(4);
+    return '$0';
+  }
+
+  /* Le solde est ecrit par la page dans #bal, a chaque manche. On l'observe au
+     lieu de s'accrocher a chaque jeu : il y a seize facons de gagner des
+     jetons sur ce site, et une seule case ou le total finit par s'ecrire. */
+  function poseUsd() {
+    var bal = $('bal');
+    if (!bal || pastilleUsd) return;
+    var ancre = (bal.closest && bal.closest('.chip, .stat, .balance, .bal, .solde')) || bal.parentElement;
+    if (!ancre || !ancre.parentElement) return;
+    var css = document.createElement('style');
+    css.textContent =
+      '.swusd{display:none;align-items:center;vertical-align:middle;margin-left:8px;' +
+      'padding:5px 11px;border-radius:999px;font-family:inherit;font-size:12.5px;' +
+      'font-weight:800;line-height:1;white-space:nowrap;color:#BFE9CF;' +
+      'background:rgba(18,44,32,.72);border:1px solid rgba(124,255,155,.28);}' +
+      '.swusd.on{display:inline-flex;}' +
+      '@media (max-width:520px){.swusd{font-size:10.5px;padding:3px 8px;margin-left:5px;}}' +
+      /* Les deux crans de repli de la barre valent pour elle aussi : quand la
+         place manque, le solde en jetons passe avant sa conversion. */
+      'html.swtight .swusd{display:none!important;}';
+    document.head.appendChild(css);
+    pastilleUsd = document.createElement('span');
+    pastilleUsd.className = 'swusd';
+    pastilleUsd.title = 'Roughly what your balance is worth, at the pool price';
+    ancre.parentElement.insertBefore(pastilleUsd, ancre.nextSibling);
+    var obs = new MutationObserver(majUsd);
+    obs.observe(bal, { childList: true, characterData: true, subtree: true });
+    majUsd();
+  }
+
+  /* « 412.5k » ne se relit pas : on defait le suffixe pour retrouver le nombre.
+     C'est le prix a payer pour lire un affichage plutot qu'une variable — et il
+     est moindre que celui de brancher seize jeux. */
+  function litSolde() {
+    var bal = $('bal');
+    var t = (bal && bal.textContent || '').trim().replace(/[\s,]/g, '');
+    var m = /^(-?[\d.]+)([kKmMbB])?$/.exec(t);
+    if (!m) return null;
+    var n = parseFloat(m[1]);
+    if (!isFinite(n)) return null;
+    var mult = { k: 1e3, m: 1e6, b: 1e9 }[(m[2] || '').toLowerCase()] || 1;
+    return n * mult;
+  }
+
+  function majUsd() {
+    if (!pastilleUsd) return;
+    var n = litSolde();
+    if (n === null) { pastilleUsd.classList.remove('on'); return; }
+    dollarsParSwoge().then(function (t) {
+      if (t === null) { pastilleUsd.classList.remove('on'); return; }
+      var s = sommeUsd(n * t);
+      if (!s) { pastilleUsd.classList.remove('on'); return; }
+      pastilleUsd.textContent = '\u2248 ' + s;
+      pastilleUsd.classList.add('on');
+    });
+  }
+
   /* ------------------------------------------------------------------- l'ecran */
   function styles() {
     if ($('swb-css')) return;
@@ -691,8 +805,15 @@
     ditPrix('<span class="sep">…</span>');
     var jeton = ++prixJeton;
     minuteriePrix = setTimeout(function () {
-      fetch(base() + '/relay/prix?de=' + encodeURIComponent(pontCle) +
-            '&montant=' + encodeURIComponent(m))
+      /* L'ADRESSE DU JOUEUR PART AVEC LA DEMANDE. Le chiffrage est une cotation
+         de la meme route que le depot, et Relay valide le destinataire contre
+         la chaine d'arrivee : sans elle, le serveur devait inventer une adresse
+         — et celle qu'il inventait n'etait valide que pour Ethereum. Depuis
+         Solana la ligne restait vide, sans que rien ne le dise. */
+      portefeuille().then(function (w) {
+        if (!w) { if (jeton === prixJeton) ditPrix(''); return; }
+        return fetch(base() + '/relay/prix?de=' + encodeURIComponent(pontCle) +
+            '&vers=' + w.adresse + '&montant=' + encodeURIComponent(m))
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (j) {
           /* Une reponse arrivee APRES qu'on a retape n'a plus rien a dire : le
@@ -704,8 +825,8 @@
           if (j.recoit != null) g.push('you get ≈ <b>' + trim(String(j.recoit), 6) + ' ETH</b>' +
                                        (j.dollars != null ? ' (' + dollars(j.dollars) + ')' : ''));
           ditPrix(g.join('<span class="sep">·</span>'));
-        })
-        .catch(function () { if (jeton === prixJeton) ditPrix(''); });
+        });
+      }).catch(function () { if (jeton === prixJeton) ditPrix(''); });
     }, 500);
   }
   /* Deux decimales au-dessus d'un dollar, quatre en dessous : « $0.00 » pour
@@ -998,8 +1119,9 @@
    * tard, et se retire des qu'il a pose le panneau. */
   function amorce() {
     if (typeof ethers === 'undefined') return;      // page sans portefeuille
+    poseUsd();
     if (poseBloc()) return;
-    var obs = new MutationObserver(function () { if (poseBloc()) obs.disconnect(); });
+    var obs = new MutationObserver(function () { if (poseBloc()) { poseUsd(); obs.disconnect(); } });
     obs.observe(document.documentElement, { childList: true, subtree: true });
     setTimeout(function () { obs.disconnect(); }, 20000);
   }

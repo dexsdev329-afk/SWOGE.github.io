@@ -35,6 +35,31 @@ canvas{ touch-action:none; }
 </style>
 
 <title>SWOGE Blackjack — play with $SWOGE</title>
+<script>
+/* ---- QUELLE TABLE ----
+ *
+ * Deux tables, une seule page. Le choix vient de `?table=` et il est pose
+ * AVANT le premier rendu — un script en fin de page laisserait apparaitre le
+ * tapis par defaut puis le remplacerait, et ce clignotement se voit.
+ *
+ * Une table inconnue retombe sur « noire » plutot que d'afficher une table
+ * sans tapis : une adresse recopiee de travers ne doit pas casser le jeu.
+ */
+(function(){
+  var TABLES = {
+    noire:  { tapis:'img/bj_table.webp',    ratio:'640/480', nom:'Black Table' },
+    or:     { tapis:'img/bj_table_or.webp', ratio:'640/427', nom:'Gold Table'  }
+  };
+  var q = null;
+  try { q = new URLSearchParams(location.search).get('table'); } catch(e) {}
+  var t = TABLES[q] || TABLES.noire;
+  var r = document.documentElement;
+  r.style.setProperty('--bj-tapis', 'url("' + t.tapis + '")');
+  r.style.setProperty('--bj-ratio', t.ratio);
+  r.setAttribute('data-table', TABLES[q] ? q : 'noire');
+  window.BJ_TABLE = t;
+})();
+</script>
 <meta name="description" content="SWOGE Blackjack. Beat the dealer with $SWOGE. Blackjack pays 3:2, max bet 10,000. Provably fair, same balance as the Pusher.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -385,12 +410,21 @@ canvas{ touch-action:none; }
   position:relative;
   width:min(680px, 100%);
   margin:0 auto;
-  aspect-ratio:640/427;
+  /* ---- DEUX TABLES ----
+   * Le tapis et son rapport de forme viennent de variables posees sur <html>
+   * par `?table=`. C'est UNE page qui sert deux tables, et non deux pages :
+   * ce fichier fait 5,3 Mo, le dupliquer en ferait 10,6 et surtout imposerait
+   * de corriger chaque defaut DEUX fois. Ce fichier a deja montre ce que ca
+   * coute — deux regles `.sbv` a deux endroits, dont la derniere gagnait en
+   * silence et rendait le montant invisible.
+   * Les deux tables restent deux entrees du catalogue et deux adresses
+   * distinctes : de l'exterieur, ce sont bien deux tables. */
+  aspect-ratio:var(--bj-ratio, 640/480);
   /* !important assume : ce fichier porte HUIT blocs <style> et plusieurs
      regles .felt qui se disputent le fond. Doubler la classe suffisait pour
      le ratio, pas pour le fond ni pour la position des mains — plutot que de
      chasser la regle gagnante a chaque retouche, on tranche ici. */
-  background:url("img/bj_table.webp") center/contain no-repeat !important;
+  background:var(--bj-tapis, url("img/bj_table.webp")) center/contain no-repeat !important;
   /* Le fond vert d'origine disparait : l'image a le sien, et deux tapis
      superposes se voient sur les bords transparents. */
   border:0; box-shadow:none;

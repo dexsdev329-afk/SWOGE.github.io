@@ -1162,14 +1162,50 @@
       'background:linear-gradient(180deg,rgba(46,26,10,.95),rgba(20,10,4,.98));' +
       'border:1px solid rgba(230,165,55,.5);}' +
       '.swpb:hover{border-color:#FFC53D;color:#fff;}' +
+      /* En tete de barre il n'a personne a sa gauche : la marge qui le
+         decollait de la pastille de solde le decollerait du bord.
+       *
+         `flex:0 0 auto` n'est pas decoratif. La barre est en flex et le
+         bouton n'avait aucune consigne de retrait : coince entre le bord
+         et un titre de jeu long, il se faisait ecraser a 18 px — la
+         poignee du tiroir, en tete de barre, devenait un point. Sa largeur
+         est desormais un plancher.
+         Et il ne se resserre plus avec les deux crans de repli : ceux-ci
+         existent pour degager de la place A DROITE, ou se pressent le
+         solde, le staking, le compte de joueurs et le menu. Il n'est plus
+         de ce cote-la. */
+      '.swpb.gauche{flex:0 0 auto;margin-left:0;margin-right:10px;}' +
+      '@media (max-width:520px){.swpb.gauche{width:32px;height:32px;font-size:14px;' +
+      'margin-left:0;margin-right:7px;}}' +
+      'html.swtight .swpb.gauche,html.swnoppl .swpb.gauche{width:32px;height:32px;' +
+      'font-size:14px;margin-left:0;margin-right:7px;}' +
       /* Quand il a une medaille ou une photo, le bouton EST son visage. */
       '.swpb.img{background-size:cover;background-position:center;background-repeat:no-repeat;' +
       'background-color:rgba(10,6,2,.9);}' +
-      '.swpov{position:fixed;inset:0;z-index:99999;display:none;align-items:center;' +
-      'justify-content:center;padding:16px;background:rgba(3,6,12,.82);' +
-      '-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);}' +
-      '.swpov.on{display:flex;}' +
-      '.swp{width:min(680px,100%);max-height:86vh;display:flex;flex-direction:column;' +
+      /* ---- LE PANNEAU EST UN TIROIR, PAS UNE BOITE FLOTTANTE ----
+         Une boite centree avec un rail de 124 px a gauche laissait 230 px
+         de liste sur un telephone de 390 : le tiers de l'ecran servait a
+         naviguer et la moitie de ce qui restait etait du vide autour de la
+         boite. Un tiroir ancre a gauche prend toute la hauteur, ne perd
+         rien en marges, et la page reste visible a cote de lui — on ne
+         quitte pas le jeu pour regarder son compte.
+         Il faut `visibility` et non `display:none` : une transformation ne
+         s'anime pas depuis un element qui vient d'apparaitre, le tiroir
+         serait deja en place a la premiere image. */
+      '.swpov{position:fixed;inset:0;z-index:99999;display:block;' +
+      'background:rgba(3,6,12,.72);opacity:0;visibility:hidden;' +
+      '-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);' +
+      'transition:opacity .22s ease,visibility .22s;}' +
+      '.swpov.on{opacity:1;visibility:visible;}' +
+      /* `top:0;bottom:0` et non `height:100%` : le tiroir porte une
+         bordure, et sur les coquilles ou la remise a zero du navigateur
+         n'a pas impose box-sizing:border-box a tout, les deux pixels
+         s'ajoutaient a la hauteur — le coin bas du tiroir sortait de
+         l'ecran. Ancre en haut ET en bas, il fait la hauteur qu'on lui
+         demande quel que soit le modele de boite. */
+      '.swp{position:absolute;left:0;top:0;bottom:0;' +
+      'width:min(90vw,400px);display:flex;flex-direction:column;' +
+      'transform:translateX(-102%);transition:transform .26s cubic-bezier(.22,.61,.36,1);' +
       /* ---- LA POLICE DU PANNEAU ----
          Il heritait de la page. Sur SWOGE Spin, c'est Orbitron : une display
          geometrique carree dessinee pour des titres de quarante pixels. A dix,
@@ -1177,12 +1213,15 @@
          illisible, avec un W qui partait en bouillie. Les DONNEES prennent donc
          la police du systeme, dessinee pour etre lue petit. Le titre garde
          celle de la page : lui est assez gros pour la porter. */
-      'border-radius:16px;overflow:hidden;color:#EAF2FF;' +
+      'border-radius:0 18px 18px 0;overflow:hidden;color:#EAF2FF;' +
       'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,' +
       '"Helvetica Neue",Arial,sans-serif;' +
       'background:linear-gradient(180deg,#141C30,#080C16);' +
-      'border:1px solid rgba(255,197,61,.4);box-shadow:0 24px 60px rgba(0,0,0,.7);}' +
-      '.swp-h{display:flex;align-items:center;gap:10px;padding:13px 15px;' +
+      'border:1px solid rgba(255,197,61,.4);border-left:0;' +
+      'box-shadow:18px 0 60px rgba(0,0,0,.72);}' +
+      '.swpov.on .swp{transform:none;}' +
+      '@media (min-width:900px){.swp{width:min(46vw,440px);}}' +
+      '.swp-h{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:12px 15px;' +
       'border-bottom:1px solid rgba(255,197,61,.26);background:rgba(255,197,61,.08);}' +
       /* ---- L ECHELLE ----
          Le panneau portait HUIT tailles, de 9,5 a 13,5 px : la plus GROSSE
@@ -1195,24 +1234,49 @@
       '.swp-h span{flex:1;font-size:12.5px;color:#8DA0C4;}' +
       '.swp-x{width:30px;height:30px;border-radius:9px;cursor:pointer;font-size:15px;' +
       'color:#EAF2FF;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);}' +
-      /* Le corps : le rail des familles a gauche, la liste a droite. */
+      /* ---- LE CORPS : DEUX VUES, PAS DEUX COLONNES ----
+         Dans un tiroir de 400 px, un rail lateral coute 124 px a la liste
+         pour afficher onze mots. On empile donc : le tiroir s'ouvre sur le
+         SOMMAIRE — toute la largeur, une rangee par section — et une
+         section touchee remplace le sommaire par sa liste, avec un retour
+         en haut. C'est le geste de n'importe quelle application de compte,
+         et la liste recupere les 124 px. */
       '.swp-body{flex:1;display:flex;min-height:0;overflow:hidden;}' +
-      /* 124 px et pas 108 : « Withdrawals » se terminait en points de
-         suspension, et un libelle coupe dans un rail de navigation est le seul
-         endroit ou l on ne peut pas deviner ce qui manque. */
-      '.swp-t{flex:0 0 124px;display:flex;flex-direction:column;gap:2px;' +
-      'padding:10px 8px 12px;overflow-y:auto;' +
-      'border-right:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.02);}' +
-      '.swp-t .swp-g{margin:11px 0 4px;padding:0 6px;font-size:11px;font-weight:700;' +
-      'letter-spacing:1.1px;text-transform:uppercase;color:#6C7C99;}' +
-      '.swp-t .swp-g:first-child{margin-top:0;}' +
-      '.swp-t button{width:100%;text-align:left;padding:7px 8px;border-radius:8px;' +
-      'cursor:pointer;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;' +
-      'font-family:inherit;font-size:12.5px;font-weight:600;letter-spacing:.1px;' +
-      'color:#8DA0C4;background:transparent;border:1px solid transparent;}' +
-      '.swp-t button:hover{background:rgba(255,255,255,.06);color:#EAF2FF;}' +
-      '.swp-t button.on{color:#07101F;background:linear-gradient(180deg,#FFE08A,#FFC53D);}' +
-      '.swp-l{flex:1;overflow-y:auto;padding:10px 13px 14px;min-height:180px;}' +
+      '.swp-t{flex:1;display:flex;flex-direction:column;gap:3px;' +
+      'padding:8px 10px 18px;overflow-y:auto;background:transparent;}' +
+      '.swp-t .swp-g{margin:13px 0 4px;padding:0 6px;font-size:10.5px;font-weight:700;' +
+      'letter-spacing:1.3px;text-transform:uppercase;color:#6C7C99;}' +
+      '.swp-t .swp-g:first-child{margin-top:2px;}' +
+      /* 46 px de haut : c'est la cible tactile confortable, et c'est aussi
+         ce qui donne au sommaire l'air d'un menu plutot que d'une liste de
+         cases a cocher serrees. */
+      '.swp-t button{display:flex;align-items:center;width:100%;min-height:46px;' +
+      'text-align:left;padding:0 12px;border-radius:11px;cursor:pointer;min-width:0;' +
+      'font-family:inherit;font-size:14px;font-weight:600;letter-spacing:.1px;' +
+      'color:#C6D3EA;background:rgba(255,255,255,.03);border:1px solid transparent;}' +
+      '.swp-t button::after{content:"\\203A";margin-left:auto;padding-left:10px;' +
+      'font-size:17px;line-height:1;color:#5C6C88;}' +
+      '.swp-t button:hover{background:rgba(255,255,255,.08);color:#EAF2FF;}' +
+      /* La derniere section ouverte se signale par un lisere, pas par un
+         aplat dore : sur toute la largeur, l'aplat se lit comme un bouton
+         d'action a presser, et il y en avait un par ouverture du tiroir. */
+      '.swp-t button.on{color:#FFD97A;background:rgba(255,197,61,.10);' +
+      'border-color:rgba(255,197,61,.34);}' +
+      '.swp-t button.on::after{color:#FFD97A;}' +
+      '.swp-l{display:none;flex:1;overflow-y:auto;padding:8px 12px 18px;min-height:180px;}' +
+      '.swp.detail .swp-t{display:none;}' +
+      '.swp.detail .swp-l{display:block;}' +
+      /* La barre de retour : elle ne sert que dans la vue detail, donc
+         elle n'existe que la. Un bouton retour toujours visible sur le
+         sommaire ferait croire qu'il y a un cran au-dessus. */
+      '.swp-back{display:none;align-items:center;gap:9px;padding:9px 12px;' +
+      'border-bottom:1px solid rgba(255,255,255,.09);background:rgba(255,255,255,.02);}' +
+      '.swp.detail .swp-back{display:flex;}' +
+      '.swp-back .swp-bk{width:30px;height:30px;flex:0 0 30px;border-radius:9px;cursor:pointer;' +
+      'font-size:17px;line-height:1;color:#EAF2FF;font-family:inherit;' +
+      'background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);}' +
+      '.swp-back .swp-bk:hover{color:#FFD97A;border-color:rgba(255,197,61,.5);}' +
+      '.swp-back b{font-size:14px;font-weight:700;letter-spacing:.2px;color:#EAF2FF;}' +
       '.swp-r{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:10px;' +
       'margin-bottom:6px;background:rgba(255,255,255,.04);' +
       'border:1px solid rgba(255,255,255,.07);}' +
@@ -1288,23 +1352,16 @@
       'cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:800;color:#EAF2FF;' +
       'background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);}' +
       '.swp-more[disabled]{opacity:.5;cursor:default;}' +
-      /* Sur telephone le rail RESTE A GAUCHE — c'est ce qui a ete demande, et
-         c'est aussi ce qui se lit le mieux : trois familles en colonne se
-         balaient de haut en bas, alors qu'une rangee qui se replie melange les
-         entrees de familles differentes sur la meme ligne. Elles sont CINQ
-         depuis les paris.
-       *
-         Il rentre de 124 a 104 px : « Settled bets », le plus long des onze,
-         tient encore en entier a 11,5 px. La liste garde donc pres de 280 px
-         sur un ecran de 390. */
+      /* Sur telephone les rangees du sommaire perdent un demi-point et un
+         peu de hauteur : onze rangees de 46 px demandent un coup de pouce
+         pour tenir sous l'en-tete sans qu'on ait a faire defiler des la
+         premiere seconde. */
       '@media (max-width:430px){' +
-        '.swp-t{flex:0 0 104px;padding:9px 6px 12px;}' +
-        '.swp-t button{font-size:11.5px;padding:7px 6px;letter-spacing:0;}' +
-        '.swp-t .swp-g{font-size:10px;letter-spacing:.8px;padding:0 4px;}' +
-        '.swp-l{padding:10px 10px 14px;}' +
+        '.swp-t button{font-size:13.5px;min-height:44px;}' +
+        '.swp-l{padding:8px 10px 18px;}' +
       '}' +
       /* l en-tete : le visage, le nom, et de quoi les changer */
-      '.swp-me{display:flex;align-items:center;gap:11px;padding:11px 13px;' +
+      '.swp-me{flex:0 0 auto;display:flex;align-items:center;gap:11px;padding:12px 13px;' +
       'border-bottom:1px solid rgba(255,197,61,.18);background:rgba(255,255,255,.03);}' +
       /* L'adresse partageable. Elle passe a la ligne sous le nom : la mettre
          a cote comprimerait un nom long, qui est justement ce qu'on partage. */
@@ -1339,14 +1396,27 @@
       'background:linear-gradient(180deg,rgba(46,26,10,.95),rgba(20,10,4,.98));' +
       'border:1px solid rgba(230,165,55,.5);}' +
       '.swp-me .nm{flex:1;min-width:0;}' +
-      '.swp-me .nm b{display:block;font-size:14.5px;font-weight:800;color:#EAF2FF;' +
-      'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}' +
-      '.swp-me .nm span{display:block;font-size:10.5px;color:#8DA0C4;margin-top:2px;' +
+      '.swp-me .nm b{display:block;font-size:17px;font-weight:700;color:#F2F6FF;' +
+      'letter-spacing:.1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}' +
+      '.swp-me .nm > span{display:block;font-size:11.5px;color:#8DA0C4;margin-top:3px;' +
       'font-family:monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}' +
-      '.swp-ed{flex:0 0 auto;padding:7px 11px;border-radius:9px;cursor:pointer;' +
-      'font-family:inherit;font-size:11.5px;font-weight:800;color:#07101F;' +
-      'background:linear-gradient(180deg,#FFE08A,#FFC53D);border:0;}' +
-      '.swp-form{padding:11px 13px;border-bottom:1px solid rgba(255,197,61,.18);' +
+      /* Le bouton d'edition devient un CHEVRON. En haut d'un tiroir, un
+         bouton dore intitule « Edit » attire l'oeil avant le nom et avant
+         le sommaire, alors qu'on change son nom une fois dans sa vie. Le
+         chevron dit la meme chose et laisse la vedette au reste. */
+      '.swp-ed{flex:0 0 auto;width:32px;height:32px;padding:0;border-radius:50%;' +
+      'cursor:pointer;font-family:inherit;font-size:17px;line-height:1;color:#8DA0C4;' +
+      'background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.13);}' +
+      '.swp-ed:hover{color:#FFD97A;border-color:rgba(255,197,61,.5);}' +
+      '.swp-ed.on{color:#07101F;background:linear-gradient(180deg,#FFE08A,#FFC53D);' +
+      'border-color:transparent;}' +
+      /* Le formulaire vit maintenant dans un tiroir a hauteur FIXE, la ou
+         la boite d'avant s'etirait a 86 vh. Ouvert en paysage sur un
+         telephone, ses vingt frimousses plus le champ du nom depassaient
+         la hauteur restante et poussaient le sommaire hors du tiroir. Il
+         defile chez lui. */
+      '.swp-form{flex:0 0 auto;max-height:46vh;overflow-y:auto;' +
+      'padding:11px 13px;border-bottom:1px solid rgba(255,197,61,.18);' +
       'background:rgba(0,0,0,.25);}' +
       '.swp-form.off{display:none;}' +
       '.swp-avs{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:9px;}' +
@@ -1483,8 +1553,39 @@
     profBtn.textContent = '👤';
     profBtn.style.display = 'none';
     profBtn.addEventListener('click', profOuvre);
-    var apres = pastille || bulle;
-    apres.parentElement.insertBefore(profBtn, apres.nextSibling);
+    /* ---- LE BOUTON EST A GAUCHE ----
+       Il vivait a droite, colle au solde et au menu, dans le coin le plus
+       encombre de la barre : sur telephone il partageait 150 px avec la
+       pastille de solde, la bulle de staking, le compte de joueurs et le
+       hamburger. Le tiroir s'ouvre depuis la gauche ; sa poignee doit etre
+       du meme cote, sinon on appuie a droite pour voir arriver quelque
+       chose de gauche.
+       On se pose EN TETE DE LA BARRE quand il y en a une. Sinon — une
+       coquille sans <nav> — on retombe a cote du solde, la ou il a
+       toujours ete : mieux vaut le mauvais cote que pas de bouton. */
+    var bal2 = document.getElementById('bal');
+    /* LA BARRE DU SOLDE, pas la premiere <nav> de la page. Le sommaire du
+       livre blanc et la rangee de liens du launchpad sont aussi des <nav> :
+       s'y poser mettrait un bouton de compte en tete d'une table des
+       matieres. On remonte donc depuis le solde — s'il n'est pas dans une
+       barre (page de staking), il n'y a pas de tete de barre ou aller. */
+    var barre = (bal2 && bal2.closest) ? bal2.closest('nav') : null;
+    /* Certaines coquilles enveloppent le contenu de la barre dans un bloc
+       centre. S'y poser DEDANS : au-dessus, le bouton sortirait de la rangee
+       alignee et se collerait au bord de l'ecran. */
+    if (barre) {
+      var dedans = null;
+      try { dedans = barre.querySelector(':scope > .navin, :scope > .nav-in, :scope > .inner'); }
+      catch (e) {}
+      if (dedans && dedans.contains(bal2)) barre = dedans;
+    }
+    if (barre && barre.firstElementChild) {
+      profBtn.classList.add('gauche');
+      barre.insertBefore(profBtn, barre.firstElementChild);
+    } else {
+      var apres = pastille || bulle;
+      apres.parentElement.insertBefore(profBtn, apres.nextSibling);
+    }
 
     profBoite = document.createElement('div');
     profBoite.className = 'swpov';
@@ -1495,7 +1596,7 @@
         '<div class="swp-me">' +
           '<div class="swp-av"></div>' +
           '<div class="nm"><b></b><span></span></div>' +
-          '<button class="swp-ed" type="button">Edit</button>' +
+          '<button class="swp-ed" type="button" title="Edit your name and picture">&rsaquo;</button>' +
         '</div>' +
         '<div class="swp-form off">' +
           '<div class="swp-avs"></div>' +
@@ -1513,6 +1614,8 @@
           '</div>' +
           '<div class="swp-msg"></div>' +
         '</div>' +
+        '<div class="swp-back"><button class="swp-bk" type="button">&lsaquo;</button>' +
+          '<b></b></div>' +
         '<div class="swp-body"><div class="swp-t"></div><div class="swp-l"></div></div>' +
       '</div>';
     document.body.appendChild(profBoite);
@@ -1529,6 +1632,10 @@
         setTimeout(function () { pid.textContent = t; pid.classList.remove('ok'); }, 1000);
         return;
       }
+      /* Le retour ne ferme PAS le tiroir : il remonte au sommaire. Fermer
+         sur le retour obligerait a rouvrir pour changer de section, ce qui
+         est exactement ce qu'on vient de demander a l'utilisateur de faire. */
+      if (e.target.closest && e.target.closest('.swp-bk')) { profVue(null); return; }
       if (e.target === profBoite || e.target.classList.contains('swp-x')) profFerme();
     });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') profFerme(); });
@@ -1538,7 +1645,12 @@
     ed.addEventListener('click', function () {
       var ouvert = !form.classList.contains('off');
       form.classList.toggle('off', ouvert);
-      ed.textContent = ouvert ? 'Edit' : 'Close';
+      /* Le chevron pointe vers le bas quand le formulaire est ouvert : c'est
+         le seul indice qu'on a de l'etat, le libelle « Edit / Close » ayant
+         disparu avec le bouton. */
+      ed.innerHTML = ouvert ? '&rsaquo;' : '&#9662;';
+      ed.classList.toggle('on', !ouvert);
+      ed.title = ouvert ? 'Edit your name and picture' : 'Close';
       if (!ouvert) { profBoite.querySelector('.swp-nom').value = MOI.name || ''; profVisages(); }
     });
     profBoite.querySelector('.swp-save').addEventListener('click', enregistre);
@@ -2029,10 +2141,33 @@
     return box;
   }
 
+  /* Passe de la vue sommaire a la vue detail, et retour. Le titre de la
+     barre de retour reprend le libelle EXACT de la rangee touchee : un
+     titre reecrit a la main finit par ne plus dire la meme chose que le
+     sommaire, et on ne sait plus ou on est. */
+  function profVue(k) {
+    if (!profBoite) return;
+    var boite = profBoite.querySelector('.swp');
+    var titre = profBoite.querySelector('.swp-back b');
+    if (!k) { boite.classList.remove('detail'); return; }
+    var nom = '';
+    for (var i = 0; i < ONGLETS.length; i++) if (ONGLETS[i][0] === k) nom = ONGLETS[i][1];
+    titre.textContent = nom;
+    boite.classList.add('detail');
+    /* Chaque section repart du haut. Sans ca, on ouvrait « Deposits » deja
+       defile a la hauteur ou l'on avait laisse « Rounds ». */
+    profBoite.querySelector('.swp-l').scrollTop = 0;
+  }
+
   function profOuvre() {
     if (!profMonte()) return;
     profOuvert = true;
     profBoite.classList.add('on');
+    /* LE TIROIR S'OUVRE SUR LE SOMMAIRE, jamais sur la derniere section
+       consultee. C'est un tiroir de navigation : on l'ouvre pour choisir. Y
+       retrouver « Settled bets » parce qu'on l'avait regarde la veille donne
+       l'impression d'avoir appuye sur autre chose. */
+    profVue(null);
     profEnTete();
     /* Le prix a pu arriver AVANT que le panneau existe : il n'y avait alors
        aucun endroit ou l'ecrire. On le repose a l'ouverture. */
@@ -2041,9 +2176,22 @@
     if (etat.socket && etat.socket.readyState === 1) {
       try { etat.socket.send('{"type":"profile"}'); } catch (e) {}
     }
-    profVa(profOnglet);
+    /* On marque la derniere section sans y aller : la rangee reste reperable
+       dans le sommaire, et rien n'est demande au serveur tant qu'on n'a pas
+       choisi. */
+    [].forEach.call(profBoite.querySelectorAll('.swp-t button'), function (b) {
+      b.classList.toggle('on', b.dataset.k === profOnglet);
+    });
   }
-  function profFerme() { profOuvert = false; if (profBoite) profBoite.classList.remove('on'); }
+  function profFerme() {
+    profOuvert = false;
+    if (!profBoite) return;
+    profBoite.classList.remove('on');
+    /* On revient au sommaire APRES la fermeture, pas pendant : le faire tout
+       de suite montrerait le sommaire pendant les 260 ms ou le tiroir glisse
+       encore vers la gauche. */
+    setTimeout(function () { if (!profOuvert) profVue(null); }, 280);
+  }
 
   function profVa(k) {
     profOnglet = k; profItems = []; profFin = null; profEncore = false;
@@ -2061,6 +2209,7 @@
     [].forEach.call(profBoite.querySelectorAll('.swp-t button'), function (b) {
       b.classList.toggle('on', b.dataset.k === k);
     });
+    profVue(k);
     profRend();
     profDemande();
   }
@@ -2309,8 +2458,15 @@
     }
     profBoite.querySelector('.swp-me .nm b').innerHTML =
       ech(MOI.name || 'no name yet') + pastilleNiveau(NIVEAU || MOI);
-    profBoite.querySelector('.swp-me .nm span').textContent = MOI.address || '';
-    if (MOI.address) profBoite.querySelector('.swp-me .nm span').title = MOI.address;
+    /* « .nm span » PRENAIT LA PASTILLE DE NIVEAU. Le combinateur est un
+       descendant, et la pastille — un <span class="swlv"> pose a l'interieur
+       du <b> par la ligne du dessus — arrive avant l'adresse dans l'ordre du
+       document. On ecrivait donc l'adresse par-dessus le palier : le joueur
+       ne voyait jamais son niveau, et son adresse s'affichait dans une
+       gelule doree qui n'etait pas faite pour elle. Enfant DIRECT. */
+    var adr = profBoite.querySelector('.swp-me .nm > span');
+    adr.textContent = MOI.address || '';
+    if (MOI.address) adr.title = MOI.address;
     poseLienProfil();
   }
 

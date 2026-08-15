@@ -1227,6 +1227,18 @@
       'border:1px solid rgba(255,197,61,.4);border-left:0;' +
       'box-shadow:18px 0 60px rgba(0,0,0,.72);}' +
       '.swpov.on .swp{transform:none;}' +
+      /* ---- AUCUNE BARRE DE DEFILEMENT DANS LE TIROIR ----
+         Trois zones defilent : le sommaire, la liste d'une section, et le
+         formulaire d'edition. Chacune posait sa barre grise le long du
+         bord droit du tiroir, a quelques pixels du bord arrondi — trois
+         traits qui apparaissent et disparaissent selon la section ouverte.
+         On defile au doigt et a la molette ; la barre ne servait qu'a
+         signaler qu'il y a une suite, ce que la rangee coupee en bas dit
+         deja. */
+      '.swp .swp-t,.swp .swp-l,.swp .swp-form{scrollbar-width:none;' +
+      '-ms-overflow-style:none;}' +
+      '.swp .swp-t::-webkit-scrollbar,.swp .swp-l::-webkit-scrollbar,' +
+      '.swp .swp-form::-webkit-scrollbar{width:0;height:0;display:none;}' +
       '@media (min-width:900px){.swp{width:min(46vw,440px);}}' +
       '.swp-h{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:12px 15px;' +
       'border-bottom:1px solid rgba(255,197,61,.26);background:rgba(255,197,61,.08);}' +
@@ -1752,11 +1764,16 @@
        montre plus. Le bouton ☰ reste, et ouvre le tiroir : deux poignees, un
        seul panneau. */
     if (miroirs.length) {
+      /* Le menu deroulant ET son bouton disparaissent. Deux poignees pour un
+         seul panneau, une a chaque bout de la barre, obligeaient a se demander
+         laquelle ouvre quoi — et la reponse etait « la meme chose ». Il ne
+         reste que celle de gauche, du cote d'ou le tiroir arrive.
+         Le <div id="menu"> reste dans la page, masque : c'est LUI qui porte
+         les gestionnaires que les rangees du tiroir appellent. Le supprimer
+         emporterait le portefeuille, le depot et le son avec lui. */
       var css2 = document.createElement('style');
-      css2.textContent = '#menu{display:none!important;}';
+      css2.textContent = '#menu{display:none!important;}#menuBtn{display:none!important;}';
       document.head.appendChild(css2);
-      var mb = document.getElementById('menuBtn');
-      if (mb) mb.addEventListener('click', function () { profOuvre(); });
     }
     return true;
   }

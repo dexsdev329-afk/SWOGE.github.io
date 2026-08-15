@@ -582,19 +582,90 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
 .sb-cotes button b{ font-size:1.06rem; font-variant-numeric:tabular-nums; }
 .sb-cotes button:hover{ background:rgba(120,180,255,.16); border-color:rgba(120,180,255,.5); }
 .sb-plein{ grid-column:1/-1; font-size:.72rem; opacity:.55; }
-/* Le bulletin : plein ecran sur telephone, parce qu'on y engage de l'argent
-   et qu'un panneau qu'on ferme par megarde n'est pas acceptable. */
-.sb-ovl{ position:fixed; inset:0; z-index:70; display:flex; align-items:center;
-  justify-content:center; padding:16px; background:rgba(3,8,18,.72); backdrop-filter:blur(4px); }
+/* ---- LE BULLETIN EST UN PANNEAU ANCRE, PLUS UNE MODALE ----
+ *
+ * Il etait plein ecran, avec un fond opaque : construire un combine revenait a
+ * ouvrir le bulletin, le fermer pour retrouver le tableau, cliquer une cote,
+ * le rouvrir. On ne voyait jamais ensemble ce qu'on choisissait et ce qu'on
+ * etait en train de batir — c'est exactement ce qu'un bulletin doit montrer.
+ *
+ * Il se pose maintenant en bas a droite, par-dessus la page mais SANS la
+ * masquer, et il a deux tailles : REPLIE, une barre qui rappelle le nombre de
+ * jambes et la cote, et DEPLIE, le bulletin entier. Le tableau reste visible
+ * dans les deux cas.
+ *
+ * Sur telephone il occupe la largeur (une colonne de 360 px n'y tient pas) et
+ * plafonne sa hauteur pour laisser voir la liste au-dessus : replie, il ne
+ * mange que sa barre.
+ *
+ * Z-INDEX 45 : au-dessus de la page et du bandeau colle (5), en dessous du
+ * toast (50) et des fenetres de compte (300). Un panneau permanent qui
+ * masquerait les messages d'erreur serait pire que la modale.
+ */
+/* bottom:84px et pas 16 : la bulle des duels (stakebubble.js) occupe deja le
+   coin bas-droit, en z-index 99998. Un bulletin pose dessous mettrait le
+   bouton « Place bet » sous un bouton qui passe devant lui. */
+.sb-ovl{ position:fixed; right:16px; bottom:84px; left:auto; top:auto; z-index:45;
+  width:min(370px, calc(100vw - 32px)); display:block; }
 .sb-ovl[hidden]{ display:none; }
-.sb-bul{ position:relative; width:min(400px,100%); border-radius:18px; padding:22px 18px 18px;
-  background:#101a2c; border:1px solid rgba(255,255,255,.14); }
-.sb-x{ position:absolute; top:8px; right:10px; width:36px; height:36px; border:0; cursor:pointer;
-  background:none; color:inherit; font-size:1.6rem; line-height:1; opacity:.6; }
-.sb-bt{ font-size:1.02rem; font-weight:600; margin-bottom:4px; padding-right:28px; }
+/* Le panneau ne depasse jamais l'ecran : l'en-tete tient, le corps defile. Un
+   combine de dix jambes poussait sinon le bouton « Place bet » sous le bord
+   inferieur, et il n'y avait plus aucun moyen de valider. */
+.sb-bul{ position:relative; border-radius:16px;
+  background:#101a2c; border:1px solid rgba(255,255,255,.16);
+  box-shadow:0 14px 44px rgba(0,0,0,.55); overflow:hidden;
+  display:flex; flex-direction:column; max-height:min(78vh, calc(100vh - 32px)); }
+/* L'en-tete EST le bouton de repli : c'est la plus grande cible du panneau et
+   la seule qu'on cherche quand on veut le pousser de cote. */
+.sb-tete{ flex:none; display:flex; align-items:center; gap:10px; width:100%;
+  padding:11px 44px 11px 14px;                 /* place pour le × pose par-dessus */
+  border:0; background:rgba(255,255,255,.04); color:inherit; font:inherit;
+  text-align:left; cursor:pointer; }
+.sb-tete:hover{ background:rgba(255,255,255,.08); }
+.sb-tete .sb-tt{ flex:1; min-width:0; }
+.sb-bt{ display:block; font-size:.95rem; font-weight:600;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .sb-bt i{ font-style:normal; opacity:.45; font-weight:400; }
-.sb-bc{ font-size:.88rem; opacity:.75; margin-bottom:16px; }
+.sb-bc{ display:block; font-size:.8rem; opacity:.75; margin-top:2px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .sb-bc b{ opacity:1; }
+/* Le chevron dit dans quel sens ca va : vers le bas quand le panneau est
+   ouvert (« je peux le refermer »), vers le haut quand il est replie. */
+.sb-chev{ flex:none; width:26px; text-align:center; font-size:.9rem; opacity:.6;
+  transition:transform .18s ease; }
+.sb-ovl.replie .sb-chev{ transform:rotate(180deg); }
+.sb-corps{ flex:1 1 auto; overflow:auto; padding:14px;
+  border-top:1px solid rgba(255,255,255,.10); }
+.sb-ovl.replie .sb-corps{ display:none; }
+/* Le × vide le bulletin. Il ne le FERME pas : un bulletin qu'on cache en
+   gardant ses selections est un piege — on revient dessus dix minutes plus
+   tard sans se souvenir de ce qu'il porte. Pour le pousser de cote, il y a le
+   repli, et le repli laisse la barre visible. */
+.sb-x{ position:absolute; top:12px; right:10px; z-index:2;
+  width:28px; height:28px; border:0; border-radius:8px; cursor:pointer;
+  background:rgba(255,255,255,.07); color:inherit; font-size:1rem; line-height:1; opacity:.65; }
+.sb-x:hover{ opacity:1; background:rgba(255,110,110,.22); }
+/* LA PLACE QUE LE PANNEAU PREND. Les cotes cliquables sont a DROITE de chaque
+   ligne de match : un panneau ancre a droite tomberait pile dessus, et on
+   aurait remplace une modale qui cache le tableau par un panneau qui cache les
+   boutons. Des qu'il y a la largeur pour les deux (760 de tableau + 370 de
+   bulletin), la page se decale a gauche et les deux tiennent cote a cote. En
+   dessous, le panneau recouvre — et c'est a ca que sert le repli. */
+body.sb-dock main{ padding-bottom:150px; }
+@media (min-width:1180px){
+  body.sb-dock main{ padding-right:400px; padding-bottom:24px; }
+}
+/* SUR TELEPHONE, LE BAS DE L'ECRAN EST DEJA MEUBLE : les deux pastilles de son
+   en bas a gauche (42 px de large, 102 px de haut cumules) et la bulle des
+   duels en bas a droite (48 px). Toutes deux passent DEVANT le bulletin. Il se
+   pose donc a leur droite et au-dessus de la bulle — sinon le libelle du
+   combine se lit a moitie sous un bouton de volume. */
+@media (max-width:700px){
+  .sb-ovl{ left:62px; right:8px; bottom:70px; width:auto; }
+  .sb-bul{ max-height:min(66vh, calc(100vh - 96px)); }
+  .sb-bt{ font-size:.88rem; }
+  .sb-bc{ font-size:.74rem; }
+}
 .sb-lb{ display:block; font-size:.72rem; letter-spacing:.1em; text-transform:uppercase;
   opacity:.55; margin-bottom:6px; }
 .sb-mise{ width:100%; min-height:48px; padding:10px 12px; border-radius:11px; font:inherit;
@@ -652,22 +723,30 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
 </style>
 </head>
 <body>
-<!-- L ECRAN DE CHARGEMENT PORTAIT LE LOGO DU BLACKJACK. La page est nee
-     d une copie : son preloader affichait la banniere et le fond de l autre
-     jeu, donc SWOGE Bet s ouvrait sous un titre qui n etait pas le sien
-     pendant une seconde entiere — le temps ou l on regarde justement l ecran.
-     Il porte maintenant ses propres images. -->
+<!-- L ECRAN DE CHARGEMENT PORTE LA CARTE VERTE DE SWOGE BET.
+     Il portait d abord le logo du blackjack (la page est nee d une copie),
+     puis trois fois de suite l icone jaune de l application : un titre, un
+     cadre de barre et un texte, tous pointes sur le meme fichier faute d avoir
+     les trois images. On voyait donc le meme chien empile trois fois, en
+     jaune, sur une carte verte — et la barre de chargement se remplissait a
+     l interieur d un cadre qui n en etait pas un, donc invisible.
+     L ILLUSTRATION EST LE TITRE. Elle dit deja SWOGE BET en grand : il ne
+     reste qu une barre a poser dessous. Elle est montree ENTIERE, jamais
+     recadree — une carte en 3:2 recadree sur un telephone ne laisse voir
+     qu une bande au milieu, et le logo tombe justement hors de cette bande.
+     Le meme fichier sert deux fois : flou et assombri en fond pleine page pour
+     que l ecran ne soit pas un rectangle pose sur du noir, net au centre pour
+     qu on lise le titre. Aucune image de plus a charger. -->
 <div id="preloader"><style>
-#preloader{position:fixed;inset:0;z-index:100000;background:#0c0518 url('img/bet_carte.webp') center/cover no-repeat;display:flex;align-items:flex-end;justify-content:center;padding-bottom:20vh;transition:opacity .6s ease;font-family:'Orbitron',system-ui,sans-serif}
-@media (orientation:landscape){#preloader{background-image:url('img/bet_carte.webp');align-items:center;padding-bottom:0}}
+#preloader{position:fixed;inset:0;z-index:100000;background:#04120b;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;transition:opacity .6s ease;font-family:'Orbitron',system-ui,sans-serif}
+#preloader::before{content:"";position:absolute;inset:-6%;background:url('img/bet_carte.webp') center/cover no-repeat;filter:blur(26px) brightness(.40) saturate(1.15)}
 #preloader.done{opacity:0;pointer-events:none}
-#preloader .pl-box{text-align:center}
-#preloader .pl-title{width:min(76vw,370px);aspect-ratio:1.5;background:center/contain no-repeat;margin:0 auto 14px;filter:drop-shadow(0 3px 8px rgba(0,0,0,.6))}
-#preloader .pl-bar{position:relative;width:min(82vw,360px);aspect-ratio:1.533;background:url('img/icone_bet.png') center/100% 100% no-repeat;margin:0 auto}
-#preloader .pl-bar .fill{position:absolute;top:40%;left:14.5%;width:62.3%;height:19%;border-radius:999px;overflow:hidden}
-#preloader .pl-bar .fill i{display:block;height:100%;width:26%;border-radius:999px;background:linear-gradient(90deg,#f2a900,#ffe680);box-shadow:0 0 12px #ffd54a;animation:plload 1.1s ease-in-out infinite}
-@keyframes plload{0%{margin-left:-26%}100%{margin-left:100%}}
-#preloader .pl-txt{width:min(46vw,180px);aspect-ratio:1.732;background:url('img/icone_bet.png') center/contain no-repeat;margin:6px auto 0}
+#preloader .pl-art{position:relative;width:min(92vw,700px);aspect-ratio:640/427;background:url('img/bet_carte.webp') center/contain no-repeat;filter:drop-shadow(0 10px 34px rgba(0,0,0,.75))}
+#preloader .pl-box{position:relative;width:min(82vw,360px);text-align:center}
+#preloader .pl-bar{position:relative;height:10px;border-radius:999px;overflow:hidden;background:rgba(0,0,0,.6);border:1px solid rgba(60,255,140,.45);box-shadow:0 0 18px rgba(34,224,90,.30)}
+#preloader .pl-bar i{position:absolute;top:0;bottom:0;width:34%;border-radius:999px;background:linear-gradient(90deg,rgba(13,122,53,0),#3BFF86,rgba(13,122,53,0));box-shadow:0 0 14px #3BFF86;animation:plload 1.15s ease-in-out infinite}
+@keyframes plload{0%{left:-34%}100%{left:100%}}
+#preloader .pl-txt{margin-top:11px;font-size:12px;letter-spacing:.26em;text-transform:uppercase;color:#8EF0B4;text-shadow:0 1px 6px rgba(0,0,0,.95)}
 </style>
 <style>
 /* ---- Daily Quests theme (ported from Spin) ---- */
@@ -910,7 +989,7 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
   .hero h1 { width:min(250px,80%); }
   .menubtn { width:38px; height:38px; }
 }
-</style><div class="pl-box"><div class="pl-title" style="background-image:url('img/icone_bet.png')"></div><div class="pl-bar"><span class="fill"><i></i></span></div><div class="pl-txt"></div></div></div>
+</style><div class="pl-art"></div><div class="pl-box"><div class="pl-bar"><i></i></div><div class="pl-txt">Loading</div></div></div>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 
 
@@ -962,20 +1041,28 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
       </div>
     </div>
 
-    <!-- Le bulletin. Il s'ouvre sur une cote cliquee et ne se valide qu'apres
-         avoir montre EXACTEMENT ce qui part et ce qui revient. -->
+    <!-- Le bulletin. Ancre en bas a droite, PAR-DESSUS la page et jamais
+         devant : on choisit une cote et on voit le combine grandir dans le
+         meme ecran. L'en-tete replie le panneau, le × le vide. -->
     <div class="sb-ovl" id="sbOvl" hidden>
       <div class="sb-bul">
-        <button class="sb-x" id="sbFerme" aria-label="close">&times;</button>
-        <div class="sb-bt" id="sbBt">&mdash;</div>
-        <div class="sb-jambes" id="sbJambes"></div>
-        <div class="sb-bc" id="sbBc">&mdash;</div>
-        <label class="sb-lb" for="sbMise">Stake ($SWOGE)</label>
-        <input class="sb-mise" id="sbMise" type="number" inputmode="numeric" min="0" step="100" value="1000">
-        <div class="sb-rapide" id="sbRapide"></div>
-        <div class="sb-retour"><span>Returns</span><b id="sbRetour">&mdash;</b></div>
-        <button class="sb-go" id="sbGo">Place bet</button>
-        <p class="sb-note" id="sbNote"></p>
+        <button type="button" class="sb-tete" id="sbTete" aria-expanded="true" aria-controls="sbCorps">
+          <span class="sb-tt">
+            <span class="sb-bt" id="sbBt">&mdash;</span>
+            <span class="sb-bc" id="sbBc">&mdash;</span>
+          </span>
+          <span class="sb-chev" aria-hidden="true">&#9662;</span>
+        </button>
+        <button class="sb-x" id="sbVideBt" aria-label="clear the slip">&times;</button>
+        <div class="sb-corps" id="sbCorps">
+          <div class="sb-jambes" id="sbJambes"></div>
+          <label class="sb-lb" for="sbMise">Stake ($SWOGE)</label>
+          <input class="sb-mise" id="sbMise" type="number" inputmode="numeric" min="0" step="100" value="1000">
+          <div class="sb-rapide" id="sbRapide"></div>
+          <div class="sb-retour"><span>Returns</span><b id="sbRetour">&mdash;</b></div>
+          <button class="sb-go" id="sbGo">Place bet</button>
+          <p class="sb-note" id="sbNote"></p>
+        </div>
       </div>
     </div>
 
@@ -1408,7 +1495,11 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
      l'apprend en perdant a raison de se sentir floue. */
   var SB={ sports:[], matchs:[], mien:[], min:100, max:100000,
            jambesMax:8, gainMax:5000000,
-           sport:"foot", panier:[], busy:false };
+           sport:"foot", panier:[], busy:false,
+           /* replie : le bulletin ancre n'a plus qu'a se pousser de cote, il ne
+              se ferme plus. L'etat vit ici et pas dans le DOM — la classe CSS
+              est posee par sbMontre, qui est le seul a decider. */
+           replie:false };
   /* Au tennis il n'y a pas de « domicile » : ce sont deux joueurs sur un
    terrain neutre. On nomme donc par la position affichee. */
   var SB_NOM={ "1":"Home", "N":"Draw", "2":"Away" };
@@ -1552,11 +1643,36 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
     }
     if(!SB.panier.length){ sbFerme(); sbRend(); return; }
     sbPeintBulletin();
-    $("sbOvl").hidden=false;
+    /* Ajouter une jambe DEPLIE le bulletin. Le joueur vient de faire un geste
+       sur le tableau : il veut voir ce qu'il vient de construire, meme s'il
+       avait replie le panneau il y a deux clics. */
+    SB.replie=false;
+    sbMontre();
     sbRend();
   }
-  function sbFerme(){ $("sbOvl").hidden=true; }
-  function sbVide(){ SB.panier=[]; sbFerme(); sbRend(); }
+  /* ---- LE PANNEAU ANCRE ----
+   *
+   * Trois etats et un seul endroit qui les applique. Il n'y a plus de
+   * « ferme avec des selections dedans » : un bulletin cache qui porte encore
+   * de l'argent est un piege, on le retrouve dix minutes plus tard sans
+   * savoir ce qu'il contient.
+   *
+   *   panier vide  -> le panneau n'existe pas
+   *   replie       -> la barre seule : combien de jambes, quelle cote
+   *   deplie       -> le bulletin entier
+   */
+  function sbMontre(){
+    var o=$("sbOvl"), vide=!SB.panier.length;
+    o.hidden=vide;
+    o.classList.toggle("replie", !vide && !!SB.replie);
+    $("sbTete").setAttribute("aria-expanded", (!vide && !SB.replie) ? "true" : "false");
+    /* La page se reserve la place du panneau : sans ca « Your bets » finit
+       dessous et on croit la liste coupee. */
+    document.body.classList.toggle("sb-dock", !vide);
+  }
+  function sbBascule(){ SB.replie=!SB.replie; sbMontre(); }
+  function sbFerme(){ sbMontre(); }
+  function sbVide(){ SB.panier=[]; SB.replie=false; sbMontre(); sbRend(); }
 
   function sbPeintBulletin(){
     var h="", i;
@@ -1569,20 +1685,32 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
     }
     $("sbJambes").innerHTML=h;
     var n=SB.panier.length;
-    $("sbBt").textContent = n>1 ? ("Accumulator · "+n+" selections") : "Single bet";
-    $("sbBc").innerHTML = n>1
-      ? 'Combined odds <b>'+sbCote().toFixed(2)+'</b> &mdash; <b>every</b> selection has to win'
-      : 'Odds <b>'+sbCote().toFixed(2)+'</b>';
     $("sbNote").textContent = n>1
       ? "One wrong and the whole bet is lost. Odds are locked in when you place it."
       : "Odds are locked in when you place the bet. Nothing changes them afterwards.";
     sbRecalc();
+  }
+  /* La barre du haut est ce qu'on voit quand le bulletin est replie : elle doit
+     donc porter TOUT ce qui se decide — combien de jambes, quelle cote, et ce
+     que la mise en cours rapporte. Sans le retour, replier reviendrait a
+     cacher le seul chiffre qu'on regarde. */
+  function sbPeintTete(){
+    var n=SB.panier.length; if(!n) return;
+    $("sbBt").textContent = n>1 ? ("Accumulator · "+n+" selections") : "Single bet";
+    var v=Math.floor(Number($("sbMise").value)||0);
+    var r=v>0 ? Math.floor(v*sbCote()) : 0;
+    /* « Odds » et pas « Combined odds » : la barre repliee fait 320 px sur un
+       telephone, et c'est le RETOUR qui doit y tenir. Le mot complet est dans
+       le corps du bulletin, juste en dessous. */
+    $("sbBc").innerHTML = 'Odds <b>'+sbCote().toFixed(2)+'</b>'
+      + (r>0 ? ' &middot; '+sbFmt(v)+' &rarr; <b>'+sbFmt(r)+'</b>' : '');
   }
   function sbRecalc(){
     if(!SB.panier.length) return;
     var v=Math.floor(Number($("sbMise").value)||0);
     var r=v>0 ? Math.floor(v*sbCote()) : 0;
     $("sbRetour").textContent = r>0 ? sbFmt(r)+" $SWOGE" : "—";
+    sbPeintTete();
     var trop=v>SB.max, peu=v<SB.min, gros=r>SB.gainMax;
     $("sbGo").disabled = trop || peu || gros || SB.busy;
     $("sbGo").textContent = trop ? ("Max "+sbFmt(SB.max))
@@ -1616,13 +1744,13 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
       var b=e.target.closest("button[data-m]"); if(!b) return;
       sbOuvre(b.getAttribute("data-m"), b.getAttribute("data-c"));
     });
-    $("sbFerme").addEventListener("click", sbFerme);
+    $("sbTete").addEventListener("click", sbBascule);
+    $("sbVideBt").addEventListener("click", function(e){ e.stopPropagation(); sbVide(); });
     $("sbJambes").addEventListener("click", function(e){
       var b=e.target.closest("button[data-ote]"); if(!b) return;
       sbOuvre(b.getAttribute("data-ote"),
               (SB.panier.filter(function(j){return j.match===b.getAttribute("data-ote");})[0]||{}).choix);
     });
-    $("sbOvl").addEventListener("click", function(e){ if(e.target===$("sbOvl")) sbFerme(); });
     $("sbMise").addEventListener("input", sbRecalc);
     $("sbGo").addEventListener("click", sbEnvoie);
     var r=$("sbRapide"), h="", v=[1000,5000,25000,100000], i;
@@ -1656,6 +1784,10 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
         if(m.jambesMax)SB.jambesMax=m.jambesMax; if(m.gainMax)SB.gainMax=m.gainMax;
         var a=SB.sports.filter(function(x){return x.actif;});
         if(a.length && !a.some(function(x){return x.cle===SB.sport;})) SB.sport=a[0].cle;
+        /* Le bulletin est maintenant TOUJOURS a l'ecran : ses cotes doivent
+           donc suivre la liste. Dans la modale d'avant on ne le voyait que le
+           temps de valider, une cote perimee ne se voyait jamais. */
+        if(SB.panier.length) sbPeintBulletin();
         sbRend();
       }
       else if(m.type==="pariPose"){

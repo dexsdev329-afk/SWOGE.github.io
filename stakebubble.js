@@ -1418,6 +1418,10 @@
       '.swp-me .nm{flex:1;min-width:0;}' +
       '.swp-me .nm b{display:block;font-size:17px;font-weight:700;color:#F2F6FF;' +
       'letter-spacing:.1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}' +
+      '.swp-adr{cursor:pointer;-webkit-user-select:all;user-select:all;' +
+      'border-bottom:1px dashed #46557d;padding-bottom:1px;}' +
+      '.swp-adr:hover{color:#CFE0FF;border-bottom-color:#7d92cc;}' +
+      '.swp-adr-ok{color:#7BE3A0!important;border-bottom-color:#7BE3A0!important;}' +
       '.swp-me .nm > span{display:block;font-size:11.5px;color:#8DA0C4;margin-top:3px;' +
       'font-family:monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}' +
       /* Le bouton d'edition devient un CHEVRON. En haut d'un tiroir, un
@@ -1562,9 +1566,31 @@
     document.head.appendChild(css);
   }
 
+  /* La barre du haut d'une page qui n'affiche PAS de solde.
+     On prend la premiere <nav> du document — sur les coquilles concernees
+     c'est la barre de titre, et elles n'ont pas d'autre <nav>. Le garde-fou
+     du sommaire (livre blanc, launchpad) ne s'applique pas : ces pages-la ne
+     chargent pas ce fichier. */
+  function barreSansSolde() {
+    return document.querySelector('nav') || null;
+  }
+
+  /* ---- LE BOUTON DE PROFIL NE DEPEND PLUS DE LA BULLE DE STAKING ----
+   *
+   * `monte()` construit la bulle de staking, et pour ca il lui faut la
+   * pastille du solde (`#bal`) : sans elle il rend `false`. Le bouton de
+   * profil s'arretait donc la aussi — et le HALL DES JEUX, qui n'affiche
+   * aucun solde, n'avait pas de bouton de profil du tout. La page ou l'on
+   * passe le plus de temps a choisir, sans acces a son compte.
+   *
+   * Les deux sont maintenant independants : la bulle se monte si elle peut,
+   * le bouton se pose de toute facon — dans la barre du solde quand elle
+   * existe, dans la barre du haut sinon.
+   */
   function profMonte() {
     if (profBtn) return true;
-    if (!monte()) return false;
+    var avecBulle = monte();
+    if (!avecBulle && !barreSansSolde()) return false;   // vraiment aucune ancre
     profStyle();
     profBtn = document.createElement('button');
     profBtn.className = 'swpb';
@@ -1590,6 +1616,7 @@
        matieres. On remonte donc depuis le solde — s'il n'est pas dans une
        barre (page de staking), il n'y a pas de tete de barre ou aller. */
     var barre = (bal2 && bal2.closest) ? bal2.closest('nav') : null;
+    if (!barre) barre = barreSansSolde();
     /* Certaines coquilles enveloppent le contenu de la barre dans un bloc
        centre. S'y poser DEDANS : au-dessus, le bouton sortirait de la rangee
        alignee et se collerait au bord de l'ecran. */
@@ -1603,7 +1630,11 @@
       profBtn.classList.add('gauche');
       barre.insertBefore(profBtn, barre.firstElementChild);
     } else {
+      /* Pas de barre : on se range a cote de la bulle de staking. Elle
+         n'existe que si `monte()` a reussi — sinon il n'y a plus d'ancre du
+         tout, et poser le bouton dans le vide le rendrait invisible. */
       var apres = pastille || bulle;
+      if (!apres || !apres.parentElement) { profBtn = null; return false; }
       apres.parentElement.insertBefore(profBtn, apres.nextSibling);
     }
 
@@ -1815,6 +1846,36 @@
    *
    * Sans separateurs, les paquets se devinent au CONTENU : ce qui mene ailleurs,
    * ce qui regle quelque chose, et le compte pour tout le reste. */
+  /* ---- LES PAGES QUI N'ONT AUCUN MENU A REFLETER ----
+   *
+   * Quatre pages portent le tiroir sans porter de menu : le hall des jeux, le
+   * staking, la roue et le Coin Pusher en direct. Le tiroir n'y trouvait donc
+   * rien a refleter et s'ouvrait SANS le groupe « Go to » — pas de retour au
+   * hall, pas de retour a l'accueil. Sur le hall des jeux, la page ou l'on est
+   * le plus susceptible de vouloir aller ailleurs, c'etait le comble.
+   *
+   * On fabrique donc les deux entrees minimales. Elles sont ecrites ici et pas
+   * dans les quatre pages pour la meme raison que tout le reste de ce fichier :
+   * une correction, un endroit. Et on saute celle de la page courante — une
+   * ligne « Other games » sur le hall des jeux ne mene nulle part.
+   */
+  var AILLEURS = [
+    ['games.html', '\uD83C\uDFAE Other games'],
+    ['index.html', '\uD83C\uDFE0 Home'],
+  ];
+  function SECOURS_AILLEURS() {
+    var ici = (location.pathname.split('/').pop() || 'index.html').toLowerCase() || 'index.html';
+    var out = [];
+    for (var i = 0; i < AILLEURS.length; i++) {
+      if (AILLEURS[i][0] === ici) continue;
+      var a = document.createElement('a');
+      a.href = AILLEURS[i][0];
+      a.textContent = AILLEURS[i][1];
+      out.push(a);
+    }
+    return out;
+  }
+
   function miroirPaquets() {
     var menu = document.getElementById('menu');
     if (menu) {
@@ -1826,7 +1887,10 @@
       return paquets.filter(function (p) { return p.length; });
     }
     var boite = document.getElementById('menuBox');
-    if (!boite) return [];
+    /* Position 1, pas 0 : l'appelant lit paquets[1] pour « Go to » et
+       paquets[0] pour « Account ». Un tableau a un seul element ferait donc
+       apparaitre « Other games » sous le titre « Account ». */
+    if (!boite) return [[], SECOURS_AILLEURS()];
     var ailleurs = [], compte = [], reglages = [];
     [].forEach.call(boite.querySelectorAll('button'), function (el) {
       /* La fermeture n'a pas de sens dans un tiroir : il a son propre retour. */
@@ -2743,7 +2807,74 @@
     var adr = profBoite.querySelector('.swp-me .nm > span');
     adr.textContent = MOI.address || '';
     if (MOI.address) adr.title = MOI.address;
+    poseCopieAdresse(adr);
     poseLienProfil();
+  }
+
+  /* ------------------------------------------------- COPIER SON ADRESSE
+   *
+   * L'adresse etait affichee, tronquee, et rien de plus : impossible de la
+   * copier. Sur un telephone c'est pire qu'inutile — la selection de texte ne
+   * prend pas dans un panneau qui defile, et l'adresse est justement ce qu'on
+   * doit donner a un ami pour recevoir un virement, ou coller dans un
+   * explorateur de chaine.
+   *
+   * On la rend donc CLIQUABLE, avec la confirmation dessus. Deux facons de
+   * copier plutot qu'une : `navigator.clipboard` quand le navigateur le
+   * permet, et la vieille zone de texte cachee sinon. La deuxieme n'est pas de
+   * la superstition — `clipboard` exige un contexte securise, et la page
+   * s'ouvre dans le navigateur interne de Telegram, ou ce n'est pas toujours
+   * le cas.
+   */
+  function copie(texte) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      try { return navigator.clipboard.writeText(texte).then(function () { return true; },
+                                                             function () { return vieilleCopie(texte); }); }
+      catch (e) { /* on retombe plus bas */ }
+    }
+    return Promise.resolve(vieilleCopie(texte));
+  }
+  function vieilleCopie(texte) {
+    try {
+      var z = document.createElement('textarea');
+      z.value = texte;
+      z.setAttribute('readonly', '');
+      /* Hors de l'ecran, mais PAS `display:none` : un element cache n'est pas
+         selectionnable, et la copie echouerait sans rien dire. */
+      z.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0';
+      document.body.appendChild(z);
+      z.select(); z.setSelectionRange(0, texte.length);
+      var ok = document.execCommand('copy');
+      document.body.removeChild(z);
+      return ok;
+    } catch (e) { return false; }
+  }
+
+  function poseCopieAdresse(adr) {
+    if (!adr || !MOI.address || adr.dataset.copiable) return;
+    adr.dataset.copiable = '1';
+    adr.classList.add('swp-adr');
+    adr.setAttribute('role', 'button');
+    adr.setAttribute('tabindex', '0');
+    adr.title = 'Tap to copy — ' + MOI.address;
+    function fait(e) {
+      if (e) { e.preventDefault(); e.stopPropagation(); }
+      var plein = MOI.address;
+      if (!plein) return;
+      Promise.resolve(copie(plein)).then(function (ok) {
+        var avant = adr.textContent;
+        adr.textContent = ok ? '\u2713 copied' : plein;
+        adr.classList.toggle('swp-adr-ok', !!ok);
+        setTimeout(function () {
+          adr.textContent = avant;
+          adr.classList.remove('swp-adr-ok');
+        }, 1400);
+      });
+    }
+    adr.addEventListener('click', fait);
+    adr.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') fait(e);
+    });
   }
 
   /* ---------------------------------------------- l'adresse qu'on partage

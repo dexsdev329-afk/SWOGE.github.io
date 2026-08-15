@@ -42,6 +42,10 @@ canvas{ touch-action:none; }
      pour ecouter ce qui passe deja, et doit donc etre en place avant que la page
      n ouvre sa connexion. -->
 <script src="stakebubble.js?v=20260814e"></script>
+<!-- Le mode entrainement. Charge AVANT le script du jeu : il remplace le
+     constructeur WebSocket pour retenir la socket, et une page qui aurait deja
+     ouvert la sienne ne serait plus joignable. -->
+<script src="entrainement.js?v=20260815a"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <script src="swogebuy.js?v=20260814e"></script>
 <script src="https://sad.adsgram.ai/js/sad.min.js" async></script>

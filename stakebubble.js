@@ -2627,18 +2627,6 @@
       var st = blocStats(); if (st) l.appendChild(st);
       var fj = blocFiltre(); if (fj) l.appendChild(fj);
     }
-    if (!profItems.length) {
-      var v = document.createElement('div');
-      v.className = 'swp-v';
-      var estPari = profOnglet === 'bo' || profOnglet === 'bs';
-      v.innerHTML = profCharge ? 'Loading…'
-        : !(etat.socket && etat.socket.readyState === 1) ? 'Sign in to see your history.'
-        : profOnglet === 'bo' ? 'No bet running.<br>Pick a match on SWOGE Bet.'
-        : estPari ? 'No settled bet yet.<br>Everything you place lands here once the match is over.'
-        : 'Nothing here yet.<br>Everything you play is kept — for good.';
-      l.appendChild(v);
-      return;
-    }
     /* Regroupe par MOIS. Les evenements arrivent du plus recent au plus
        ancien, donc il suffit de poser un bandeau quand le mois change : rien
        a trier, rien a recompter, et ca marche aussi bien sur une page que sur
@@ -2653,11 +2641,32 @@
     var montres = (profOnglet === 'r' && filtreJeu)
       ? profItems.filter(function (e) { return (e.j || e.jeu) === filtreJeu; })
       : profItems;
-    if (profOnglet === 'r' && filtreJeu && !montres.length) {
-      var vide = document.createElement('div');
-      vide.className = 'swp-v';
-      vide.textContent = 'No ' + (JEUX[filtreJeu] || filtreJeu) + ' round on this page.';
-      l.appendChild(vide);
+    /* Les deux onglets de paris ne montrent QUE des paris, et chacun ne montre
+       que le sien. Le serveur filtre deja — mais un serveur d'une version
+       precedente ne connait pas ces `kind` : il tombe alors sur « aucun
+       filtre » et rend le journal ENTIER. « Open bets » se remplissait de
+       manches de blackjack et de rendements encaisses. Une page mise a jour
+       avant le serveur, ou un onglet laisse ouvert pendant un deploiement,
+       suffit a produire ca. On refiltre donc ici : c'est peu cher, et ca ne
+       peut plus mentir.
+       Ce filtre passe AVANT le message « rien ici » — sinon un journal plein
+       de manches, filtre a zero pari, dessinerait des bandeaux de mois vides. */
+    if (profOnglet === 'bo' || profOnglet === 'bs') {
+      var veutRegle = profOnglet === 'bs';
+      montres = montres.filter(function (e) {
+        return e.k === 'pa' && e.jambes && !!e.regle === veutRegle;
+      });
+    }
+    if (!montres.length) {
+      var v = document.createElement('div');
+      v.className = 'swp-v';
+      v.innerHTML = profCharge ? 'Loading…'
+        : !(etat.socket && etat.socket.readyState === 1) ? 'Sign in to see your history.'
+        : profOnglet === 'bo' ? 'No bet running.<br>Pick a match on SWOGE Bet.'
+        : profOnglet === 'bs' ? 'No settled bet yet.<br>Everything you place lands here once the match is over.'
+        : (profOnglet === 'r' && filtreJeu) ? 'No ' + (JEUX[filtreJeu] || filtreJeu) + ' round on this page.'
+        : 'Nothing here yet.<br>Everything you play is kept — for good.';
+      l.appendChild(v);
       return;
     }
     montres.forEach(function (e) {

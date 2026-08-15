@@ -506,6 +506,31 @@ canvas{ touch-action:none; }
   box-shadow:0 2px 7px rgba(0,0,0,.6);
 }
 .sbet .sbv.zero{ display:none; }   /* zero ne se montre pas : c'est du bruit */
+/* ---- LA CROIX, SUR LE JETON ----
+ * Pour retirer une mise annexe il fallait taper jusqu'au plafond puis une
+ * fois de plus pour repasser a zero — cinq appuis pour defaire un appui, et
+ * rien a l'ecran ne le disait. La croix du tapis existait bien, mais elle
+ * est a 78 % de hauteur, loin des jetons, et elle vide TOUT d'un coup :
+ * la main et les deux annexes. Ce n'est pas ce qu'on veut quand on se ravise
+ * sur un seul pari.
+ * Une croix par jeton, donc, qui n'apparait que s'il y a quelque chose a
+ * retirer. Elle deborde du cercle pour ne pas manger le dessin, et sa zone
+ * de contact est portee a 30 px par un ::after invisible — le glyphe fait
+ * 18 px, ce qui se rate au pouce. */
+.sbet .sbx{
+  position:absolute; top:-3px; right:-2px; width:22px; height:22px;
+  display:none; align-items:center; justify-content:center;
+  border-radius:50%; cursor:pointer;
+  font-size:15px; font-weight:700; line-height:1;
+  color:#FFE3E0; background:linear-gradient(180deg,#C7443C,#8E2C25);
+  border:1.5px solid rgba(255,225,220,.55);
+  box-shadow:0 2px 6px rgba(0,0,0,.65);
+}
+.sbet.on .sbx{ display:flex; }
+.sbet .sbx::after{ content:""; position:absolute; inset:-8px; }
+.sbet .sbx:hover{ filter:brightness(1.2); }
+/* Une fois la main donnee, le pari est parti : la croix n'a plus de sens. */
+.sbet.gagne .sbx, .sbet.perdu .sbx, .sbet.att .sbx{ display:none; }
 .sbet .sbp{ font-size:.6rem; letter-spacing:.05em; opacity:.55;
   white-space:nowrap; }
 /* Les deux regles de l'ancien design vivaient ICI, apres celles du nouveau.
@@ -941,11 +966,15 @@ button, input, a, .card, .felt, .sbet, .chipbtn, .btn{ touch-action:manipulation
           <button type="button" class="sbet" data-side="pp" aria-label="Perfect Pairs side bet">
             <img src="img/bj_pp.webp" alt="" width="256" height="256" loading="lazy">
             <b class="sbv zero" id="ppVal">0</b>
+            <span class="sbx" data-clear="pp" role="button" tabindex="0"
+                  aria-label="Clear the Perfect Pairs stake">&times;</span>
             <span class="sbp" id="ppPay">—</span>
           </button>
           <button type="button" class="sbet" data-side="tp" aria-label="21 plus 3 side bet">
             <img src="img/bj_213.webp" alt="" width="256" height="256" loading="lazy">
             <b class="sbv zero" id="tpVal">0</b>
+            <span class="sbx" data-clear="tp" role="button" tabindex="0"
+                  aria-label="Clear the 21+3 stake">&times;</span>
             <span class="sbp" id="tpPay">—</span>
           </button>
         </div>
@@ -1482,8 +1511,7 @@ button, input, a, .card, .felt, .sbet, .chipbtn, .btn{ touch-action:manipulation
     $("sideNote").style.display = dispo ? "" : "none";
     if(!dispo){ SIDE.pp=0; SIDE.tp=0; peintTapisMises(); return; }
     $("ppPay").textContent=tablePP(); $("tpPay").textContent=tableTP();
-    $("sideNote").textContent="Tap to raise · tap again at "+fmtCourt(BJ_SIDE_MAX)
-                             +" to clear · settled on the deal";
+    $("sideNote").textContent="Tap a chip to raise · × to clear it · settled on the deal";
     ["pp","tp"].forEach(function(c){
       var b=$(c+"Val"), t=sideUI.querySelector('[data-side="'+c+'"]');
       b.textContent = SIDE[c]>0 ? fmtCourt(SIDE[c]) : "0";
@@ -1765,8 +1793,22 @@ button, input, a, .card, .felt, .sbet, .chipbtn, .btn{ touch-action:manipulation
 
   // ---- les paris annexes ----
   sideUI.addEventListener("click",function(e){
-    var b=e.target.closest("[data-side]"); if(!b||busy) return;
+    if(busy) return;
+    /* La croix passe AVANT le jeton : elle est dedans, donc sans ce test le
+       clic remonterait au bouton et MONTERAIT la mise au lieu de l'effacer —
+       exactement le contraire de ce qu'on vient de demander. */
+    var x=e.target.closest("[data-clear]");
+    if(x){ e.stopPropagation(); SIDE[x.getAttribute("data-clear")]=0; majSide(); SFX.sweep(); return; }
+    var b=e.target.closest("[data-side]"); if(!b) return;
     sideMonte(b.getAttribute("data-side"));
+  });
+  /* Au clavier, une croix n'est pas un bouton tant qu'Entree et Espace ne
+     l'actionnent pas : `role="button"` le promet, ceci le tient. */
+  sideUI.addEventListener("keydown",function(e){
+    if(e.key!=="Enter" && e.key!==" ") return;
+    var x=e.target.closest("[data-clear]"); if(!x||busy) return;
+    e.preventDefault(); e.stopPropagation();
+    SIDE[x.getAttribute("data-clear")]=0; majSide(); SFX.sweep();
   });
   /* L'assurance. Refuser est une reponse : elle part au serveur comme une
      mise de zero, et c'est elle qui debloque la main. */

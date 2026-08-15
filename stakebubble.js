@@ -786,6 +786,14 @@
      d'issues du match. */
   var ISSUE = { '1': 'Home', 'N': 'Draw', '2': 'Away' };
   var ISSUE_2 = { '1': 'Player 1', '2': 'Player 2' };
+  /* Le libelle depend du SPORT, pas du nombre d'issues : la NFL, la NBA et le
+     cricket n'en ont que deux eux aussi, mais leurs deux cotes sont des
+     EQUIPES. Seul le tennis oppose deux personnes. */
+  var DUEL = { tennis: 1 };
+  function nomIssue(sport, issues, choix) {
+    var duel = DUEL[sport] && (issues || []).length === 2;
+    return (duel ? ISSUE_2 : ISSUE)[choix] || choix;
+  }
   /* Huit onglets sur une ligne, c'etait huit choses de meme rang — alors
      qu'un depot, un retrait, un transfert et une manche racontent tous la
      meme chose : ce qui s'est PASSE. Les amis et les invitations sont un
@@ -2131,8 +2139,7 @@
               : [{ match: e.match, choix: e.choix, cote: e.cote,
                    domicile: e.domicile, exterieur: e.exterieur }];
       var det = jbs.map(function (j) {
-        var deux = (j.issues || []).length === 2;
-        var nom = (deux ? ISSUE_2 : ISSUE)[j.choix] || j.choix;
+        var nom = nomIssue(j.sport || e.sport, j.issues, j.choix);
         return '<div class="swp-pj">' + ech(j.domicile || '?') + ' – ' + ech(j.exterieur || '?') +
                ' · <b>' + ech(nom) + '</b> @ ' + Number(j.cote || 1).toFixed(2) + '</div>';
       }).join('');

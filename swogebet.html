@@ -580,7 +580,21 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
 .sb-sports button.on{ border-color:rgba(120,180,255,.6); background:rgba(90,150,255,.14); }
 .sb-sports button:disabled{ opacity:.42; cursor:default; }
 .sb-vide{ padding:34px 12px; text-align:center; opacity:.6; font-size:.9rem; }
-.sb-groupe{ display:flex; align-items:baseline; gap:9px; margin:16px 2px 8px; }
+/* Le bandeau de journee. Il porte le poids visuel : c'est la coupure qu'on
+   cherche en balayant la liste, la competition n'est qu'un sous-titre. Il
+   COLLE en haut pendant qu'on fait defiler — sur un telephone, une liste de
+   trente rencontres fait perdre de vue quel jour on regarde. */
+.sb-jour{ position:sticky; top:0; z-index:6; display:flex; align-items:baseline; gap:9px;
+  margin:18px 0 9px; padding:8px 11px; border-radius:11px;
+  background:linear-gradient(180deg,rgba(24,16,8,.97),rgba(14,9,4,.97));
+  border:1px solid rgba(255,197,61,.30);
+  box-shadow:0 6px 16px rgba(0,0,0,.45); }
+.sb-jour b{ font-size:.92rem; color:#FFD97A; letter-spacing:.02em; }
+.sb-jour span{ font-size:.76rem; opacity:.6; }
+.sb-jour i{ margin-left:auto; font-style:normal; font-size:.72rem; opacity:.65;
+  padding:1px 8px; border-radius:999px; background:rgba(255,255,255,.08); }
+.sb-jour:first-child{ margin-top:2px; }
+.sb-groupe{ display:flex; align-items:baseline; gap:9px; margin:12px 2px 8px; }
 .sb-groupe b{ font-size:.94rem; }
 .sb-groupe span{ font-size:.76rem; opacity:.55; letter-spacing:.03em; }
 .sb-m{ display:grid; grid-template-columns:1fr auto; gap:8px 12px; align-items:center;
@@ -1589,6 +1603,16 @@ body.sb-dock main{ padding-bottom:150px; }
    terrain neutre. On nomme donc par la position affichee. */
   var SB_NOM={ "1":"Home", "N":"Draw", "2":"Away" };
   var SB_NOM2={ "1":"Player 1", "2":"Player 2" };
+  /* Le libelle depend du SPORT, pas du nombre d'issues. La NFL et le cricket
+     n'ont que deux issues eux aussi, mais leurs deux cotes sont des EQUIPES :
+     afficher « Player 1 » sur un match des Chiefs fait douter de ce sur quoi
+     on parie, au moment precis ou l'on mise. Seul le tennis oppose deux
+     personnes. */
+  var SB_DUEL={ tennis:1 };
+  function sbNomIssue(m,c){
+    var duel = m && SB_DUEL[m.sport] && (m.issues||[]).length===2;
+    return (duel?SB_NOM2:SB_NOM)[c] || c;
+  }
 
   function sbFmt(n){ n=Number(n||0);
     var s=n<0?"-":"", v=Math.abs(n);
@@ -1598,13 +1622,41 @@ body.sb-dock main{ padding-bottom:150px; }
     if(v>=1e3) return coupe(v/1e3,"k");
     return s+String(Math.round(v));
   }
-  function sbHeure(t){
-    var d=new Date(t);
-    return d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
+  /* L'heure seule, pour la LISTE. Les rencontres y sont rangees sous un
+     bandeau de journee : repeter « Sun 16 Aug » sur chaque ligne redit ce que
+     le bandeau vient de dire, et allonge une colonne deja etroite.
+     Attention : il existait ici une premiere fonction `sbHeure` que la
+     seconde, plus bas, ECRASAIT en silence — c'est cette seconde-la qui
+     s'appliquait partout. Celle-ci porte donc un nom distinct. */
+  function sbHeureCourte(t){
+    var d=new Date(t); if(isNaN(d)) return "";
+    return String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
   }
   function sbJour(t){
     var d=new Date(t);
     return d.toLocaleDateString([], {weekday:"short", day:"numeric", month:"short"});
+  }
+  /* Le bandeau de journee, en clair et en anglais — « Saturday 16 August ».
+     Les deux premiers jours se nomment : « Today » et « Tomorrow » se
+     reperent d'un coup d'oeil la ou une date demande de la lire et de la
+     comparer a celle du jour. C'est ce que font les bookmakers, et pour
+     cette raison-la. La langue est forcee : le reste de la page est en
+     anglais, et un bandeau en francais au milieu ferait accident. */
+  var SB_JOURS=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  var SB_MOIS=["January","February","March","April","May","June","July",
+               "August","September","October","November","December"];
+  function sbCleJour(t){
+    var d=new Date(t);
+    return d.getFullYear()+"-"+d.getMonth()+"-"+d.getDate();
+  }
+  function sbBandeauJour(t){
+    var d=new Date(t), a=new Date();
+    var j=function(x){ return new Date(x.getFullYear(),x.getMonth(),x.getDate()).getTime(); };
+    var ecart=Math.round((j(d)-j(a))/86400000);
+    var date=SB_JOURS[d.getDay()]+" "+d.getDate()+" "+SB_MOIS[d.getMonth()];
+    if(ecart===0) return { titre:"Today", detail:date };
+    if(ecart===1) return { titre:"Tomorrow", detail:date };
+    return { titre:date, detail:"" };
   }
   /* Le drapeau, fabrique a partir du code ISO : deux lettres deviennent deux
      symboles indicateurs regionaux, et le systeme les rend en drapeau. Aucune
@@ -1643,18 +1695,45 @@ body.sb-dock main{ padding-bottom:150px; }
   function sbPeintListe(){
     var z=$("sbListe"), h="", i, groupe=null;
     var l=SB.matchs.filter(function(m){ return m.sport===SB.sport; });
-    l.sort(function(a,b){ return a.debut-b.debut; });
+    /* Par JOUR, puis par competition, puis par heure. Sans le tri par
+       competition a l'interieur d'une journee, deux rencontres de Liga se
+       retrouvent separees par une de Ligue 1 et le bandeau de competition
+       reapparait trois fois. */
+    l.sort(function(a,b){
+      var ja=sbCleJour(a.debut), jb=sbCleJour(b.debut);
+      if(ja!==jb) return a.debut-b.debut;
+      if(a.competition!==b.competition) return a.competition<b.competition?-1:1;
+      return a.debut-b.debut;
+    });
     $("sbVide").hidden = l.length>0;
     if(!l.length){
       $("sbVide").textContent = "Nothing on the board for this sport yet.";
       z.innerHTML=""; return;
     }
+    /* Deux niveaux de regroupement, et dans cet ordre : LA JOURNEE d'abord,
+       la competition ensuite. Tout etait auparavant dans une seule colonne
+       coupee par « competition + jour » : avec une seule competition, ca ne
+       coupait rien du tout, et vingt rencontres de trois jours differents se
+       suivaient sans separation visible. On ne choisit pas d'abord une
+       competition, on choisit d'abord QUAND on veut regarder — c'est comme
+       ca que les bookmakers rangent, et c'est comme ca qu'on cherche. */
+    var jour=null;
     for(i=0;i<l.length;i++){
-      var m=l[i], cle=m.competition+"|"+sbJour(m.debut);
+      var m=l[i], cj=sbCleJour(m.debut);
+      if(cj!==jour){
+        jour=cj; groupe=null;
+        var b=sbBandeauJour(m.debut);
+        var n=0, q;
+        for(q=0;q<l.length;q++) if(sbCleJour(l[q].debut)===cj) n++;
+        h+='<div class="sb-jour"><b>'+sbEchappe(b.titre)+'</b>'
+         + (b.detail?'<span>'+sbEchappe(b.detail)+'</span>':'')
+         + '<i>'+n+'</i></div>';
+      }
+      var cle=m.competition;
       if(cle!==groupe){
         groupe=cle;
         h+='<div class="sb-groupe"><b>'+sbEchappe(m.competition)+'</b>'
-         + '<span>'+sbEchappe(m.pays)+' &middot; '+sbJour(m.debut)+'</span></div>';
+         + (m.pays?'<span>'+sbEchappe(m.pays)+'</span>':'')+'</div>';
       }
       /* La place restante est affichee quand elle devient serree : un bouton
          qui refuse sans prevenir se lit comme une panne. */
@@ -1663,7 +1742,7 @@ body.sb-dock main{ padding-bottom:150px; }
        + '<div class="sb-eq">'
        + '<span><i class="dr">'+sbDrapeau(m.paysDomicile)+'</i>'+sbEchappe(m.domicile)+'</span>'
        + '<span><i class="dr">'+sbDrapeau(m.paysExterieur)+'</i>'+sbEchappe(m.exterieur)+'</span></div>'
-       + '<div class="sb-h">'+sbHeure(m.debut)+'</div>'
+       + '<div class="sb-h">'+sbHeureCourte(m.debut)+'</div>'
        + '<div class="sb-cotes n'+(m.issues||["1","N","2"]).length+'">'
        + (m.issues||["1","N","2"]).map(function(c){ return sbBouton(m,c); }).join("")
        + '</div>'
@@ -1678,7 +1757,7 @@ body.sb-dock main{ padding-bottom:150px; }
       if(SB.panier[i].match===m.id && SB.panier[i].choix===c) pris=true;
     return '<button type="button" data-m="'+sbEchappe(m.id)+'" data-c="'+c+'"'
          + (pris?' class="pris"':'')+'>'
-         + '<span>'+((m.issues||[]).length===2?SB_NOM2[c]:SB_NOM[c])+'</span><b>'+Number(m.cotes[c]).toFixed(2)+'</b></button>';
+         + '<span>'+sbNomIssue(m,c)+'</span><b>'+Number(m.cotes[c]).toFixed(2)+'</b></button>';
   }
 
   /* L'heure du coup d'envoi, courte. Un pari en cours ne se lit pas sans
@@ -1727,8 +1806,7 @@ body.sb-dock main{ padding-bottom:150px; }
         var aff = m ? (sbDrapeau(m.paysDomicile)+sbEchappe(dom)+" &ndash; "+sbDrapeau(m.paysExterieur)+sbEchappe(ext))
                     : (sbEchappe(dom)+" &ndash; "+sbEchappe(ext));
         var issues = m ? (m.issues||[]) : (j.issues||[]);
-        var deux = issues.length===2;
-        var nom = (deux?SB_NOM2:SB_NOM)[j.choix] || j.choix;
+        var nom = sbNomIssue(m||{sport:p.sport,issues:issues}, j.choix);
         var quand = sbHeure(m ? m.debut : (j.debut || p.debut));
         lignes += '<div class="sb-pj">'+aff+' &middot; <b>'+nom+'</b> @ '+Number(j.cote||p.cote).toFixed(2)
                 + (quand?' <span>&middot; '+quand+'</span>':'')+'</div>';
@@ -1858,7 +1936,9 @@ body.sb-dock main{ padding-bottom:150px; }
       var j=SB.panier[i], m=sbTrouve(j.match); if(!m) continue;
       h+='<div class="sb-j"><span>'+sbDrapeau(m.paysDomicile)+sbEchappe(m.domicile)
        + ' &ndash; '+sbDrapeau(m.paysExterieur)+sbEchappe(m.exterieur)+'</span>'
-       + '<b>'+SB_NOM[j.choix]+' @ '+Number(m.cotes[j.choix]).toFixed(2)+'</b>'
+       /* Le bulletin affichait SB_NOM sans condition : une selection de tennis
+          s'y lisait « Home ». C'est le dernier endroit ou ca trainait. */
+       + '<b>'+sbNomIssue(m,j.choix)+' @ '+Number(m.cotes[j.choix]).toFixed(2)+'</b>'
        + '<button type="button" data-ote="'+sbEchappe(j.match)+'" aria-label="remove">&times;</button></div>';
     }
     $("sbJambes").innerHTML=h;

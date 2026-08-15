@@ -1782,7 +1782,12 @@
          les gestionnaires que les rangees du tiroir appellent. Le supprimer
          emporterait le portefeuille, le depot et le son avec lui. */
       var css2 = document.createElement('style');
-      css2.textContent = '#menu{display:none!important;}#menuBtn{display:none!important;}';
+      css2.textContent = '#menu{display:none!important;}#menuBtn{display:none!important;}' +
+        /* La modale du Coin Pusher : on cache la LISTE, pas la modale entiere —
+           elle sert aussi de cadre au depot et au retrait, qui continuent de
+           s'ouvrir par leur propre chemin quand on n'est pas passe par le
+           tiroir. */
+        '#menuBox{display:none!important;}';
       document.head.appendChild(css2);
     }
     return true;
@@ -1798,15 +1803,40 @@
    * le tiroir qui aurait tort.
    */
   var miroirs = [];
+  /* DEUX FORMES DE MENU, une par famille de coquille.
+   *
+   * Les quatorze pages de jeu portent un <div id="menu"> de liens, decoupe en
+   * paquets par des separateurs. Les deux pages du Coin Pusher, elles, ont une
+   * modale a elles — un <div id="menuBox"> de BOUTONS, sans separateur. Elles
+   * n'avaient donc rien a refleter : leur tiroir de profil s'ouvrait sans
+   * portefeuille, sans depot et sans « Other games », et le vieux menu restait
+   * en place a cote. Deux menus sur la meme page, ce qu'on venait justement de
+   * supprimer partout ailleurs.
+   *
+   * Sans separateurs, les paquets se devinent au CONTENU : ce qui mene ailleurs,
+   * ce qui regle quelque chose, et le compte pour tout le reste. */
   function miroirPaquets() {
     var menu = document.getElementById('menu');
-    if (!menu) return [];
-    var paquets = [[]];
-    [].forEach.call(menu.children, function (el) {
-      if (el.classList && el.classList.contains('msep')) { paquets.push([]); return; }
-      if (el.tagName === 'A') paquets[paquets.length - 1].push(el);
+    if (menu) {
+      var paquets = [[]];
+      [].forEach.call(menu.children, function (el) {
+        if (el.classList && el.classList.contains('msep')) { paquets.push([]); return; }
+        if (el.tagName === 'A') paquets[paquets.length - 1].push(el);
+      });
+      return paquets.filter(function (p) { return p.length; });
+    }
+    var boite = document.getElementById('menuBox');
+    if (!boite) return [];
+    var ailleurs = [], compte = [], reglages = [];
+    [].forEach.call(boite.querySelectorAll('button'), function (el) {
+      /* La fermeture n'a pas de sens dans un tiroir : il a son propre retour. */
+      if (el.id === 'mnClose') return;
+      var t = (el.textContent || '') + ' ' + (el.id || '');
+      if (/games|home|arcade/i.test(t)) ailleurs.push(el);
+      else if (/sound|music|son|musique/i.test(t)) reglages.push(el);
+      else compte.push(el);
     });
-    return paquets.filter(function (p) { return p.length; });
+    return [compte, ailleurs, reglages].filter(function (p) { return p.length; });
   }
   function miroirGroupe(t, titre, liste) {
     if (!liste || !liste.length) return;
@@ -1908,17 +1938,36 @@
        mais elle peut aussi refuser (pas connecte) en n'ouvrant rien du tout.
        On regarde ce qui est reellement ouvert plutot que de le supposer. */
     setTimeout(function () {
-      var ovl = document.getElementById('ovl');
-      var boite = ovl && ovl.querySelector('.box.show');
+      /* DEUX ENVELOPPES, DEUX FACONS D'OUVRIR. Les pages de jeu posent une
+         classe `show` sur la boite ; le Coin Pusher ecrit `style.display` en
+         ligne. On cherche donc la boite VISIBLE, quelle que soit la maniere
+         dont elle a ete rendue visible — c'est le seul critere qui vaut pour
+         les deux. */
+      var enveloppe = null, boite = null;
+      ['ovl', 'modal'].forEach(function (id) {
+        if (boite) return;
+        var e = document.getElementById(id);
+        if (!e) return;
+        var cands = e.querySelectorAll('.box');
+        for (var i = 0; i < cands.length; i++) {
+          var c = cands[i];
+          if (c.id === 'menuBox') continue;          // la liste, pas un panneau
+          if (getComputedStyle(c).display !== 'none') { boite = c; enveloppe = e; break; }
+        }
+      });
       if (!boite) return;                    // la page a refuse : on ne bouge pas
       rendPanneau();
       styleEmprunt();
-      PANNEAU = { el: boite, parent: boite.parentNode, suivant: boite.nextSibling };
+      /* On retient AUSSI le style en ligne : le Coin Pusher s'en sert pour
+         montrer et cacher ses panneaux, et le lui rendre vide le laisserait
+         affiche pour toujours derriere son voile. */
+      PANNEAU = { el: boite, parent: boite.parentNode, suivant: boite.nextSibling,
+                  display: boite.style.display, enveloppe: enveloppe };
       var l = profBoite.querySelector('.swp-l');
       l.id = 'swpHote';
       l.innerHTML = '';
       l.appendChild(boite);
-      ovl.classList.remove('show');
+      enveloppe.classList.remove('show');
       profVue('__hote', titre);
     }, 0);
   }
@@ -1931,6 +1980,7 @@
     if (!PANNEAU) return;
     var p = PANNEAU; PANNEAU = null;
     p.el.classList.remove('show');
+    p.el.style.display = p.display || 'none';
     if (p.parent) p.parent.insertBefore(p.el, p.suivant || null);
   }
 

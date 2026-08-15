@@ -691,6 +691,41 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
      et une banniere collee au bouton se ferait toucher par accident. */
 }
 
+/* ---- LA BARRE D'ACHAT TIENT SUR UNE LIGNE ----
+ *
+ * Elle prenait quatre rangees : un intitule, les quantites, la mise, le bouton
+ * pleine largeur. Le bouton passe A COTE du « 50 » — il n'a pas besoin de la
+ * largeur de l'ecran, il a besoin d'etre atteignable — et son libelle se
+ * raccourcit a « JOIN ». La phase et le decompte sont deja ecrits en haut, en
+ * grand : le bouton n'a pas a les repeter.
+ */
+@media (max-width: 640px), (orientation: portrait){
+  /* Le titre part : la barre du haut dit deja « $SWOGE ». Il ne reste que le
+     bouton d'information, cale a droite. */
+  .bo-titre h2{ display:none; }
+  .bo-titre{ min-height:34px; margin:0 0 6px; }
+  .bo-info{ top:0; }
+
+  .bo-pot{ padding:6px 12px 7px; margin-bottom:8px; border-radius:13px; }
+  .bo-pot .lb{ font-size:9px; letter-spacing:2px; }
+  .bo-pot .v{ font-size:clamp(22px,7vw,32px); margin:1px 0 0; }
+  .bo-pot .v small{ font-size:.3em; }
+  .bo-pot .sub{ display:none; }
+
+  .bo-achat{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; }
+  .bo-qte{ flex:1 1 auto; gap:4px; margin:0; max-width:none; }
+  .bo-qte button{ flex:1 1 0; min-width:0; padding:10px 0; font-size:13px; border-radius:10px; }
+  /* `min-width` et non la seule marge interieure : la largeur d'un bouton qui
+     se dimensionne sur son texte depend de la POLICE, et Anton peut ne pas etre
+     arrivee. Mesure faite avec la police de repli : 42 px, sous la cible
+     tactile de 44. Un plancher regle les deux cas. */
+  .bo-jouer{ flex:0 0 auto; width:auto; min-width:86px; margin:0; padding:12px 14px; font-size:15px;
+    letter-spacing:1.4px; border-radius:12px; box-shadow:0 4px 0 #6F4A11, 0 6px 14px rgba(0,0,0,.5); }
+  .bo-jouer:active{ box-shadow:0 2px 0 #6F4A11, 0 4px 10px rgba(0,0,0,.5); }
+  .bo-mise{ flex:1 1 100%; order:3; margin:2px 0 0; text-align:center; font-size:11px; }
+  .bo-note{ flex:1 1 100%; order:4; margin:0; }
+}
+
 /* fin du bloc Boulier */
 .pl-hist h4{ margin:0 0 4px; font-size:12px; letter-spacing:1.2px;
 .pl-hist h4{ margin:0 0 4px; font-size:12px; letter-spacing:1.2px;
@@ -1524,19 +1559,27 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
      jamais sur l'echeance absolue du serveur : l'horloge du navigateur peut
      retarder de dix secondes, et le joueur verrait alors « 0s » pendant toute
      la fenetre d'inscription. */
+  /* Le bouton est passe A COTE des quantites sur telephone : il n'a plus la
+     largeur de l'ecran, il a celle d'un mot. « JOIN THIS DRAW » y tenait sur
+     deux lignes et repoussait tout ; « JOIN » dit la meme chose. Le decompte
+     et la phase sont deja ecrits en haut, en grand. */
+  function boEtroit(){
+    try { return window.matchMedia('(max-width:640px)').matches; } catch(e){ return false; }
+  }
   function boRendPhase(){
     var z=$("boPhase"), b=$("boJouer"), r=Math.max(0, Math.round(BO.reste/1000));
-    var etat="";
+    var etat="", court=boEtroit();
     if(BO.phase==="attente"){
       etat='<span class="k">Buy in</span><b class="cd'+(r<=3?" chaud":"")+'">'+r+'s</b>';
-      b.textContent = BO.mienNb ? "ADD "+BO.n+" MORE" : "JOIN THIS DRAW";
+      b.textContent = BO.mienNb ? (court ? "+"+BO.n : "ADD "+BO.n+" MORE")
+                                : (court ? "JOIN" : "JOIN THIS DRAW");
     } else if(BO.phase==="tirage"){
       etat='<span class="k">Drawing</span><b>'+BO.vues.length+'/'+BO.tirees+'</b>';
-      b.textContent = "DRAW IN PROGRESS";
+      b.textContent = court ? "DRAWING" : "DRAW IN PROGRESS";
     } else if(BO.phase==="apres"){
       etat='<span class="k">Next draw</span><b>'+r+'s</b>';
-      b.textContent = "NEXT DRAW IN "+r+"S";
-    } else { etat='<span class="k">Connecting…</span>'; b.textContent="JOIN THIS DRAW"; }
+      b.textContent = court ? r+"s" : "NEXT DRAW IN "+r+"S";
+    } else { etat='<span class="k">Connecting…</span>'; b.textContent=court?"JOIN":"JOIN THIS DRAW"; }
     z.innerHTML = etat + '<i>#'+BO.manche+'</i>';
     b.disabled = !boOuvert() || !authed || balance<boMise();
   }

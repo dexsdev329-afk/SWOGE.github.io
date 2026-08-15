@@ -1741,6 +1741,14 @@
        (autres jeux, accueil, son, musique) descend sous les sections du profil,
        la ou on va rarement. */
     var paquets = miroirPaquets();
+    /* ---- ALLER AILLEURS PASSE EN PREMIER ----
+       Le deuxieme paquet du menu — autres jeux, accueil — est de la
+       NAVIGATION, pas du compte : c'est la seule rangee du tiroir qui fait
+       quitter la page ou l'on est. Rangee sous les cinq sections du profil,
+       elle demandait de defiler tout un panneau de compte pour changer de jeu,
+       ce qui est pourtant ce qu'on vient chercher le plus souvent. Elle est
+       donc tout en haut, avant le portefeuille. */
+    miroirGroupe(t, 'Go to', paquets[1]);
     miroirGroupe(t, 'Account', paquets[0]);
     FAMILLES.forEach(function (f) {
       var g = document.createElement('div');
@@ -1753,9 +1761,11 @@
         t.appendChild(b);
       });
     });
-    var RESTE = ['Elsewhere', 'Settings', 'More'];
-    for (var q = 1; q < paquets.length; q++)
-      miroirGroupe(t, RESTE[q - 1] || 'More', paquets[q]);
+    /* Le premier paquet est monte en tete, le deuxieme est deja pose : on
+       reprend au troisieme (le son et la musique), qui reste en bas. */
+    var RESTE = ['Settings', 'More', 'More'];
+    for (var q = 2; q < paquets.length; q++)
+      miroirGroupe(t, RESTE[q - 2] || 'More', paquets[q]);
 
     /* ---- LE MENU DEROULANT NE S'AFFICHE PLUS ----
        Ses entrees sont dans le tiroir ; deux listes identiques a deux endroits

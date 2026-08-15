@@ -666,6 +666,14 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
 .sb-ovl.replie .sb-chev{ transform:rotate(180deg); }
 .sb-corps{ flex:1 1 auto; overflow:auto; padding:14px;
   border-top:1px solid rgba(255,255,255,.10); }
+.sb-onglets{ display:flex; gap:6px; margin:-2px 0 12px; }
+.sb-onglets button{ flex:1; min-height:34px; border-radius:9px; cursor:pointer; font:inherit;
+  font-size:.78rem; font-weight:600; color:#9fb0c9;
+  background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.12); }
+.sb-onglets button.on{ color:#04121f; border-color:transparent;
+  background:linear-gradient(180deg,#7CC4FF,#3D8DDD); }
+.sb-onglets i{ font-style:normal; opacity:.7; font-size:.72rem; }
+.sb-onglets button.on i{ opacity:.75; }
 .sb-ovl.replie .sb-corps{ display:none; }
 /* Le × vide le bulletin. Il ne le FERME pas : un bulletin qu'on cache en
    gardant ses selections est un piege — on revient dessus dix minutes plus
@@ -715,16 +723,31 @@ body.sb-dock main{ padding-bottom:150px; }
   background:linear-gradient(180deg,#7cc4ff,#3d8ddd); }
 .sb-go:disabled{ opacity:.45; cursor:default; filter:grayscale(.5); }
 .sb-note{ margin:10px 0 0; font-size:.74rem; opacity:.55; line-height:1.45; }
-/* Mes paris */
-.sb-mien{ margin-top:26px; }
-.sb-p{ padding:10px 12px; margin-bottom:7px; border-radius:11px;
+/* ---- MES PARIS, dans le panneau ancre ----
+   Un ticket par pari. L'en-tete porte le type et l'etat, le corps porte CHAQUE
+   jambe — l'ancienne version n'affichait que la premiere, donc un combine de
+   trois se lisait comme un simple et on ne savait plus sur quoi on avait mise. */
+.sb-p{ padding:10px 11px; margin-bottom:8px; border-radius:11px;
   border:1px solid rgba(255,255,255,.10); background:rgba(255,255,255,.035); }
-.sb-pq{ font-size:.9rem; }
-.sb-pd{ font-size:.78rem; opacity:.7; margin-top:2px; }
-.sb-pe{ font-size:.7rem; letter-spacing:.1em; text-transform:uppercase; margin-top:5px; opacity:.6; }
+.sb-ph{ display:flex; align-items:baseline; gap:8px; margin-bottom:6px; }
+.sb-ph b{ font-size:.82rem; }
+.sb-ph .sb-pe{ margin-left:auto; font-size:.64rem; letter-spacing:.1em;
+  text-transform:uppercase; padding:2px 7px; border-radius:999px;
+  background:rgba(255,255,255,.08); }
+.sb-pj{ font-size:.76rem; line-height:1.45; opacity:.85; }
+.sb-pj span{ opacity:.55; }
+.sb-pf{ display:flex; justify-content:space-between; align-items:baseline;
+  margin-top:7px; padding-top:7px; border-top:1px solid rgba(255,255,255,.09);
+  font-size:.78rem; }
+.sb-pf b{ font-variant-numeric:tabular-nums; }
 .sb-p.gagne{ border-color:rgba(120,230,160,.5); background:rgba(90,220,140,.10); }
-.sb-p.perdu{ border-color:rgba(255,110,110,.35); }
-.sb-p.attente{ border-color:rgba(255,200,90,.35); }
+.sb-p.gagne .sb-pe{ background:rgba(120,230,160,.22); color:#BFFFD0; }
+.sb-p.perdu{ border-color:rgba(255,110,110,.30); opacity:.72; }
+.sb-p.perdu .sb-pe{ background:rgba(255,110,110,.20); color:#FFC0BC; }
+.sb-p.attente .sb-pe{ background:rgba(255,200,90,.20); color:#FFDF9B; }
+.sb-p.rendu .sb-pe{ background:rgba(255,255,255,.12); }
+.sb-mienListe:empty::after{ content:"No bets yet. Pick an odd to open a slip.";
+  display:block; text-align:center; font-size:.78rem; opacity:.5; padding:18px 6px; }
 @media (max-width:430px){ .sb-m{ padding:10px; } .sb-eq span{ font-size:.9rem; } }
 
 /* ------------------------------------------------- le plateau du morpion */
@@ -1071,10 +1094,10 @@ body.sb-dock main{ padding-bottom:150px; }
       <div class="sb-vide" id="sbVide" hidden></div>
       <div class="sb-liste" id="sbListe"></div>
 
-      <div class="sb-mien" id="sbMienBox" hidden>
-        <div class="sb-lb">Your bets</div>
-        <div class="sb-mienListe" id="sbMien"></div>
-      </div>
+      <!-- « Your bets » vivait ICI, tout en bas, sous la liste des matchs : on
+           posait un pari et il fallait faire defiler huit affiches pour le
+           retrouver. Il a demenage dans le panneau ancre, qui lui est toujours
+           a l ecran. -->
     </div>
 
     <!-- Le bulletin. Ancre en bas a droite, PAR-DESSUS la page et jamais
@@ -1091,6 +1114,16 @@ body.sb-dock main{ padding-bottom:150px; }
         </button>
         <button class="sb-x" id="sbVideBt" aria-label="clear the slip">&times;</button>
         <div class="sb-corps" id="sbCorps">
+          <!-- DEUX ONGLETS DANS LE MEME PANNEAU. On construit un pari a gauche,
+               on le suit a droite. Apres validation on bascule tout seul sur
+               « My bets » : le bulletin qu on vient d envoyer reapparait la ou
+               on l a construit, au lieu de disparaitre sans laisser d adresse. -->
+          <div class="sb-onglets" id="sbOnglets" role="tablist">
+            <button type="button" class="on" data-vue="slip" role="tab">Bet slip</button>
+            <button type="button" data-vue="mine" role="tab">My bets <i id="sbNbMien"></i></button>
+          </div>
+
+          <div id="sbVueSlip">
           <div class="sb-jambes" id="sbJambes"></div>
           <label class="sb-lb" for="sbMise">Stake ($SWOGE)</label>
           <input class="sb-mise" id="sbMise" type="number" inputmode="numeric" min="0" step="100" value="1000">
@@ -1098,6 +1131,11 @@ body.sb-dock main{ padding-bottom:150px; }
           <div class="sb-retour"><span>Returns</span><b id="sbRetour">&mdash;</b></div>
           <button class="sb-go" id="sbGo">Place bet</button>
           <p class="sb-note" id="sbNote"></p>
+          </div>
+
+          <div id="sbVueMine" hidden>
+            <div class="sb-mienListe" id="sbMien"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -1535,7 +1573,10 @@ body.sb-dock main{ padding-bottom:150px; }
            /* replie : le bulletin ancre n'a plus qu'a se pousser de cote, il ne
               se ferme plus. L'etat vit ici et pas dans le DOM — la classe CSS
               est posee par sbMontre, qui est le seul a decider. */
-           replie:false };
+           replie:false,
+           /* vue : 'slip' pour construire, 'mine' pour suivre. Le panneau est
+              le meme, seul son corps change. */
+           vue:'slip' };
   /* Au tennis il n'y a pas de « domicile » : ce sont deux joueurs sur un
    terrain neutre. On nomme donc par la position affichee. */
   var SB_NOM={ "1":"Home", "N":"Draw", "2":"Away" };
@@ -1632,20 +1673,76 @@ body.sb-dock main{ padding-bottom:150px; }
          + '<span>'+((m.issues||[]).length===2?SB_NOM2[c]:SB_NOM[c])+'</span><b>'+Number(m.cotes[c]).toFixed(2)+'</b></button>';
   }
 
+  /* L'heure du coup d'envoi, courte. Un pari en cours ne se lit pas sans
+     savoir quand le match se joue. */
+  function sbHeure(iso){
+    var d=new Date(iso); if(isNaN(d)) return "";
+    var au=new Date(), meme = d.getFullYear()===au.getFullYear() && d.getMonth()===au.getMonth() && d.getDate()===au.getDate();
+    var hh=String(d.getHours()).padStart(2,"0"), mm=String(d.getMinutes()).padStart(2,"0");
+    var J=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"], M=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    return meme ? hh+":"+mm : J[d.getDay()]+" "+d.getDate()+" "+M[d.getMonth()]+" "+hh+":"+mm;
+  }
+
+  /* ---- MES PARIS ----
+   * L'ancienne version n'affichait QUE LA PREMIERE JAMBE : elle lisait p.match
+   * et p.choix, les champs de compatibilite laisses pour les pages d'avant le
+   * combine. Un combine de trois se lisait donc comme un simple, sur un seul
+   * match — on ne savait plus sur quoi on avait mise.
+   * Elle ignorait aussi SB_NOM2 : un pari de tennis s'affichait « Home » alors
+   * qu'il n'y a pas de domicile sur un court neutre.
+   */
   function sbPeintMien(){
-    var z=$("sbMien"), h="", i;
-    $("sbMienBox").hidden = !(SB.mien && SB.mien.length);
-    for(i=0;i<(SB.mien||[]).length;i++){
-      var p=SB.mien[i];
-      var etat = !p.regle ? "en cours" : (p.gagne===null?"refunded":(p.gagne?"won":"lost"));
+    var z=$("sbMien"), h="", i, k, ouverts=0;
+    var liste=(SB.mien||[]).slice();
+    /* Les paris EN COURS d'abord : c'est ce qu'on vient voir. L'historique
+       suit, du plus recent au plus ancien. */
+    liste.sort(function(x,y){ return (x.regle?1:0)-(y.regle?1:0) || (y.t||0)-(x.t||0); });
+
+    for(i=0;i<liste.length;i++){
+      var p=liste[i];
+      var etat = !p.regle ? "running" : (p.gagne===null?"refunded":(p.gagne?"won":"lost"));
       var cls  = !p.regle ? "attente" : (p.gagne===null?"rendu":(p.gagne?"gagne":"perdu"));
+      if(!p.regle) ouverts++;
+
+      /* jambes : le combine les porte, le simple retombe sur ses deux champs */
+      var jbs = (p.jambes && p.jambes.length) ? p.jambes : [{match:p.match, choix:p.choix, cote:p.cote}];
+      var lignes="";
+      for(k=0;k<jbs.length;k++){
+        var j=jbs[k], m=sbTrouve(j.match);
+        var aff = m ? (sbDrapeau(m.paysDomicile)+sbEchappe(m.domicile)+" &ndash; "+sbDrapeau(m.paysExterieur)+sbEchappe(m.exterieur))
+                    : (sbEchappe(p.domicile)+" &ndash; "+sbEchappe(p.exterieur));
+        var deux = m && (m.issues||[]).length===2;
+        var nom = (deux?SB_NOM2:SB_NOM)[j.choix] || j.choix;
+        var quand = sbHeure(m ? m.debut : p.debut);
+        lignes += '<div class="sb-pj">'+aff+' &middot; <b>'+nom+'</b> @ '+Number(j.cote||p.cote).toFixed(2)
+                + (quand?' <span>&middot; '+quand+'</span>':'')+'</div>';
+      }
+
+      var titre = jbs.length>1 ? (jbs.length+"-fold @ "+Number(p.cote).toFixed(2))
+                               : ("Single @ "+Number(p.cote).toFixed(2));
       h+='<div class="sb-p '+cls+'">'
-       + '<div class="sb-pq">'+sbEchappe(p.domicile)+' &ndash; '+sbEchappe(p.exterieur)+'</div>'
-       + '<div class="sb-pd">'+SB_NOM[p.choix]+' @ '+Number(p.cote).toFixed(2)
-       + ' &middot; '+sbFmt(p.mise)+' &rarr; <b>'+sbFmt(p.rapport)+'</b></div>'
-       + '<div class="sb-pe">'+etat+'</div></div>';
+       + '<div class="sb-ph"><b>'+titre+'</b><span class="sb-pe">'+etat+'</span></div>'
+       + lignes
+       + '<div class="sb-pf"><span>'+sbFmt(p.mise)+' $SWOGE</span>'
+       + '<span>'+(p.regle&&p.gagne ? 'won <b>'+sbFmt(p.rapport)+'</b>'
+                  : p.regle&&p.gagne===null ? 'refunded <b>'+sbFmt(p.mise)+'</b>'
+                  : p.regle ? 'lost'
+                  : 'returns <b>'+sbFmt(p.rapport)+'</b>')+'</span></div>'
+       + '</div>';
     }
     z.innerHTML=h;
+    var c=$("sbNbMien"); if(c) c.textContent = ouverts ? "("+ouverts+")" : "";
+    sbMontre();
+  }
+
+  /* Le panneau porte deux vues. Une seule est visible a la fois. */
+  function sbVue(quoi){
+    SB.vue = quoi;
+    $("sbVueSlip").hidden = quoi!=="slip";
+    $("sbVueMine").hidden = quoi!=="mine";
+    var b=$("sbOnglets").querySelectorAll("button"), i;
+    for(i=0;i<b.length;i++) b[i].classList.toggle("on", b[i].getAttribute("data-vue")===quoi);
+    sbPeintTete();
   }
 
   // ---------------------------------------------------------- le bulletin
@@ -1683,6 +1780,7 @@ body.sb-dock main{ padding-bottom:150px; }
        sur le tableau : il veut voir ce qu'il vient de construire, meme s'il
        avait replie le panneau il y a deux clics. */
     SB.replie=false;
+    sbVue('slip');
     sbMontre();
     sbRend();
   }
@@ -1698,7 +1796,15 @@ body.sb-dock main{ padding-bottom:150px; }
    *   deplie       -> le bulletin entier
    */
   function sbMontre(){
-    var o=$("sbOvl"), vide=!SB.panier.length;
+    var o=$("sbOvl");
+    /* LE PANNEAU NE DISPARAIT PLUS DES QUE LE BULLETIN EST VIDE. Un pari pose
+       vide le bulletin ; si le panneau partait avec, le joueur perdrait de vue
+       ce qu'il vient d'engager a la seconde ou il l'engage. Il reste tant
+       qu'il y a quelque chose a montrer — un bulletin en construction, ou un
+       pari en cours. */
+    var ouverts=(SB.mien||[]).some(function(x){ return !x.regle; });
+    var vide = !SB.panier.length && !ouverts;
+    if(!SB.panier.length && ouverts && SB.vue==='slip') sbVue('mine');
     o.hidden=vide;
     o.classList.toggle("replie", !vide && !!SB.replie);
     $("sbTete").setAttribute("aria-expanded", (!vide && !SB.replie) ? "true" : "false");
@@ -1731,7 +1837,20 @@ body.sb-dock main{ padding-bottom:150px; }
      que la mise en cours rapporte. Sans le retour, replier reviendrait a
      cacher le seul chiffre qu'on regarde. */
   function sbPeintTete(){
-    var n=SB.panier.length; if(!n) return;
+    var n=SB.panier.length;
+    if(SB.vue==='mine' || !n){
+      /* En vue « mes paris », la barre repliee doit parler DES PARIS, pas d'un
+         bulletin vide. C'est elle qu'on lit quand le panneau est pousse de
+         cote. */
+      var ouv=(SB.mien||[]).filter(function(x){ return !x.regle; });
+      var eng=0, ret=0, i;
+      for(i=0;i<ouv.length;i++){ eng+=ouv[i].mise; ret+=ouv[i].rapport; }
+      $("sbBt").textContent = ouv.length ? (ouv.length+" bet"+(ouv.length>1?"s":"")+" running")
+                                         : "My bets";
+      $("sbBc").innerHTML = ouv.length ? (sbFmt(eng)+' staked &middot; returns <b>'+sbFmt(ret)+'</b>')
+                                       : 'Nothing running';
+      if(!n) return;
+    }
     $("sbBt").textContent = n>1 ? ("Accumulator · "+n+" selections") : "Single bet";
     var v=Math.floor(Number($("sbMise").value)||0);
     var r=v>0 ? Math.floor(v*sbCote()) : 0;
@@ -1781,6 +1900,11 @@ body.sb-dock main{ padding-bottom:150px; }
       sbOuvre(b.getAttribute("data-m"), b.getAttribute("data-c"));
     });
     $("sbTete").addEventListener("click", sbBascule);
+    $("sbOnglets").addEventListener("click", function(e){
+      var b=e.target.closest("button[data-vue]"); if(!b) return;
+      e.stopPropagation();
+      SB.replie=false; sbVue(b.getAttribute("data-vue")); sbMontre();
+    });
     $("sbVideBt").addEventListener("click", function(e){ e.stopPropagation(); sbVide(); });
     $("sbJambes").addEventListener("click", function(e){
       var b=e.target.closest("button[data-ote]"); if(!b) return;
@@ -1829,7 +1953,10 @@ body.sb-dock main{ padding-bottom:150px; }
       else if(m.type==="pariPose"){
         if(m.balance!=null) setBalance(m.balance);
         SB.matchs=m.matchs||SB.matchs; SB.mien=m.mesParis||SB.mien;
-        SB.busy=false; SB.panier=[]; sbFerme(); sbRend();
+        /* Le pari est parti : le bulletin se vide, et le panneau bascule sur
+           « My bets ». Le ticket qu'on vient d'envoyer reapparait la ou on
+           l'a construit, au lieu de disparaitre sans laisser d'adresse. */
+        SB.busy=false; SB.panier=[]; SB.replie=false; sbVue('mine'); sbRend(); sbMontre();
         toast("✅ Bet placed · returns "+sbFmt(m.pari.rapport)+" $SWOGE");
       }
       else if(m.type==="need_deposit"){ setBalance(m.balance); busy=false; toast("Not enough $SWOGE — deposit in the Pusher"); }

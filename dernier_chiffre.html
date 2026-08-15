@@ -2006,10 +2006,28 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
     $("acAddr").value=myAddr; $("acExplorer").href=CHAIN.scan+"/address/"+myAddr; $("acSwoge").textContent="…"; $("acEth").textContent="…"; loadWalletBalances();
   }
   var walletSwoge=0;   // raw $SWOGE in the connected wallet (for the deposit % buttons)
+  /* ---- LIRE UN SOLDE NE DEMANDE PAS DE PORTEFEUILLE ----
+     `loadWalletBalances` sortait des que `provider` etait nul, et n'y revenait
+     jamais : les deux lignes restaient sur « … » pour toujours. Sur un compte
+     ouvert par e-mail, le portefeuille est fabrique par Privy et n'arrive
+     qu'apres la restauration de session — donc quiconque ouvrait « My Wallet »
+     ou « Deposit » avant la fin de cette restauration ne voyait plus jamais
+     ses soldes. Rien ne relancait la lecture.
+     Or un solde est PUBLIC : le lire ne demande ni signature, ni portefeuille,
+     ni permission. On retombe donc sur un lecteur RPC en lecture seule, qui
+     marche pour tout le monde — compte e-mail, portefeuille connecte, ou
+     simple visiteur dans le navigateur de Telegram. */
+  var _lecteur=null;
+  function lecteurChaine(){
+    if(provider) return provider;
+    if(_lecteur) return _lecteur;
+    try{ _lecteur=new ethers.providers.JsonRpcProvider(CHAIN.rpc); }catch(e){ _lecteur=null; }
+    return _lecteur;
+  }
   async function loadWalletBalances(){
-    if(!provider||!myAddr) return; var e="—", sw="—";
-    try{ var b=await provider.getBalance(myAddr); e=(+ethers.utils.formatEther(b)).toFixed(5); }catch(x){}
-    try{ var t=new ethers.Contract(TOKEN,ERC20_ABI,provider), bb=await t.balanceOf(myAddr); walletSwoge=+ethers.utils.formatUnits(bb,18); sw=fmtBig(walletSwoge); }catch(x){}
+    var lec=lecteurChaine(); if(!lec||!myAddr) return; var e="—", sw="—";
+    try{ var b=await lec.getBalance(myAddr); e=(+ethers.utils.formatEther(b)).toFixed(5); }catch(x){}
+    try{ var t=new ethers.Contract(TOKEN,ERC20_ABI,lec), bb=await t.balanceOf(myAddr); walletSwoge=+ethers.utils.formatUnits(bb,18); sw=fmtBig(walletSwoge); }catch(x){}
     ["acEth","depEth"].forEach(function(id){ var el=$(id); if(el) el.textContent=e; });
     ["acSwoge","depSwoge"].forEach(function(id){ var el=$(id); if(el) el.textContent=sw; });
   }

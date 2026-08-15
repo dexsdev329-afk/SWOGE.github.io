@@ -780,11 +780,29 @@ function openAccount(){
   openModal("account");
   loadWalletBalances();
 }
+  /* ---- LIRE UN SOLDE NE DEMANDE PAS DE PORTEFEUILLE ----
+     `loadWalletBalances` sortait des que `provider` etait nul, et n'y revenait
+     jamais : les deux lignes restaient sur « … » pour toujours. Sur un compte
+     ouvert par e-mail, le portefeuille est fabrique par Privy et n'arrive
+     qu'apres la restauration de session — donc quiconque ouvrait « My Wallet »
+     ou « Deposit » avant la fin de cette restauration ne voyait plus jamais
+     ses soldes. Rien ne relancait la lecture.
+     Or un solde est PUBLIC : le lire ne demande ni signature, ni portefeuille,
+     ni permission. On retombe donc sur un lecteur RPC en lecture seule, qui
+     marche pour tout le monde — compte e-mail, portefeuille connecte, ou
+     simple visiteur dans le navigateur de Telegram. */
+  var _lecteur=null;
+  function lecteurChaine(){
+    if(provider) return provider;
+    if(_lecteur) return _lecteur;
+    try{ _lecteur=new ethers.providers.JsonRpcProvider(CHAIN.rpc); }catch(e){ _lecteur=null; }
+    return _lecteur;
+  }
 async function loadWalletBalances(){
-  if(!provider||!myAddr) return;
+  var lec=lecteurChaine(); if(!lec||!myAddr) return;
   var ethS="—", swS="—";
-  try{ var eth=await provider.getBalance(myAddr); ethS=(+ethers.utils.formatEther(eth)).toFixed(5); }catch(e){}
-  try{ var t=new ethers.Contract(TOKEN,ERC20_ABI,provider); var b=await t.balanceOf(myAddr); swS=fmtBig(+ethers.utils.formatUnits(b,18)); }catch(e){}
+  try{ var eth=await lec.getBalance(myAddr); ethS=(+ethers.utils.formatEther(eth)).toFixed(5); }catch(e){}
+  try{ var t=new ethers.Contract(TOKEN,ERC20_ABI,lec); var b=await t.balanceOf(myAddr); swS=fmtBig(+ethers.utils.formatUnits(b,18)); }catch(e){}
   ["#acEth","#depEth"].forEach(function(id){ var el=$(id); if(el) el.textContent=ethS; });
   ["#acSwoge","#depSwoge"].forEach(function(id){ var el=$(id); if(el) el.textContent=swS; });
 }

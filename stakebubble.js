@@ -1419,6 +1419,14 @@
       'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}' +
       /* Les jambes d'un pari. Un filet a gauche les rattache visiblement au
          titre : sans lui, un combine de quatre se lit comme quatre paris. */
+      /* La reference du pari. Monospace : on la recopie, on la compare
+         caractere par caractere, et une police proportionnelle confond le
+         1 et le l. */
+      '.swp-r .w span .swp-pid{display:inline;font-family:ui-monospace,SFMono-Regular,' +
+      'Menlo,Consolas,monospace;font-size:11px;color:#9FB0CE;cursor:pointer;' +
+      'border-bottom:1px dotted rgba(159,176,206,.45);}' +
+      '.swp-r .w span .swp-pid:hover{color:#FFC53D;border-bottom-color:#FFC53D;}' +
+      '.swp-r .w span .swp-pid.ok{color:#7CFF9B;border-bottom-color:#7CFF9B;}' +
       '.swp-pj{font-size:12px;color:#B9C8E4;margin-top:4px;padding-left:9px;' +
       'border-left:2px solid rgba(255,197,61,.35);line-height:1.45;}' +
       /* « .swp-r .w b » met les <b> en BLOC : sans ce selecteur plus
@@ -1501,6 +1509,18 @@
       '</div>';
     document.body.appendChild(profBoite);
     profBoite.addEventListener('click', function (e) {
+      /* La reference d'un pari se copie d'un geste. Un joueur qui doit la
+         recopier a la main sur un telephone en recopie une sur deux, et une
+         reference fausse ne se cherche pas — elle envoie chercher un pari
+         qui n'existe pas. */
+      var pid = e.target.closest && e.target.closest('.swp-pid');
+      if (pid) {
+        var t = pid.textContent;
+        try { navigator.clipboard.writeText(t); } catch (x) {}
+        pid.textContent = 'copied ✓'; pid.classList.add('ok');
+        setTimeout(function () { pid.textContent = t; pid.classList.remove('ok'); }, 1000);
+        return;
+      }
       if (e.target === profBoite || e.target.classList.contains('swp-x')) profFerme();
     });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') profFerme(); });
@@ -2127,7 +2147,16 @@
                     (jbs.length > 1 ? jbs.length + '-fold' : 'Single') +
                     ' @ ' + Number(e.cote || 1).toFixed(2) +
                     ' <span class="swp-pe ' + teinte + '">' + etat + '</span></b>' +
-                    '<span>' + quand(e.t) + ' · stake ' + nb(e.mise) + '</span>' + det + '</div>' +
+                    '<span>' + quand(e.t) + ' · stake ' + nb(e.mise) +
+                    /* L'identifiant du pari, en clair et copiable. C'est ce
+                       qu'un joueur donne quand il ecrit « mon pari n'a pas
+                       ete paye » : sans lui, retrouver de quel pari on parle
+                       demande de croiser une heure et un montant, et deux
+                       paris poses dans la meme minute ne se distinguent
+                       plus. Le meme identifiant apparait au panneau
+                       d'administration, ou il se cherche. */
+                    (e.id ? ' · <span class="swp-pid" title="Bet reference — tap to copy">' +
+                            ech(e.id) + '</span>' : '') + '</span>' + det + '</div>' +
                     '<div class="v"><b class="' + teinte + '">' + somme + '</b>' +
                     '<span>' + pied + '</span></div>';
     } else if (e.k === 'st') {

@@ -735,6 +735,14 @@ body.sb-dock main{ padding-bottom:150px; }
   text-transform:uppercase; padding:2px 7px; border-radius:999px;
   background:rgba(255,255,255,.08); }
 .sb-pj{ font-size:.76rem; line-height:1.45; opacity:.85; }
+/* La reference du pari. Monospace : on la recopie et on la compare
+   caractere par caractere, et une police proportionnelle confond 1 et l. */
+.sb-pid{ font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:.66rem; letter-spacing:.02em; color:#9FB0CE; cursor:pointer;
+  margin:2px 0 5px; display:inline-block;
+  border-bottom:1px dotted rgba(159,176,206,.45); }
+.sb-pid:hover{ color:#FFC53D; border-bottom-color:#FFC53D; }
+.sb-pid.ok{ color:#7CFF9B; border-bottom-color:#7CFF9B; }
 .sb-pj span{ opacity:.55; }
 .sb-pf{ display:flex; justify-content:space-between; align-items:baseline;
   margin-top:7px; padding-top:7px; border-top:1px solid rgba(255,255,255,.09);
@@ -1728,8 +1736,15 @@ body.sb-dock main{ padding-bottom:150px; }
 
       var titre = jbs.length>1 ? (jbs.length+"-fold @ "+Number(p.cote).toFixed(2))
                                : ("Single @ "+Number(p.cote).toFixed(2));
+      /* La reference du pari, en clair. C'est elle qu'un joueur donne quand
+         quelque chose ne va pas, et c'est elle qu'on cherche au panneau
+         d'administration. Sans elle, retrouver un pari demande de croiser
+         une heure et un montant — et deux paris poses dans la meme minute
+         ne se distinguent plus. */
       h+='<div class="sb-p '+cls+'">'
        + '<div class="sb-ph"><b>'+titre+'</b><span class="sb-pe">'+etat+'</span></div>'
+       + (p.id ? '<div class="sb-pid" data-id="'+sbEchappe(p.id)+'" title="Bet reference — tap to copy">'
+                 +sbEchappe(p.id)+'</div>' : '')
        + lignes
        + '<div class="sb-pf"><span>'+sbFmt(p.mise)+' $SWOGE</span>'
        + '<span>'+(p.regle&&p.gagne ? 'won <b>'+sbFmt(p.rapport)+'</b>'
@@ -1739,6 +1754,19 @@ body.sb-dock main{ padding-bottom:150px; }
        + '</div>';
     }
     z.innerHTML=h;
+    /* L'ecouteur est pose UNE fois sur le conteneur, pas sur chaque
+       reference : la liste se redessine a chaque rafraichissement, et des
+       ecouteurs poses sur les elements s'accumuleraient a chaque passage. */
+    if(!z.dataset.copie){
+      z.dataset.copie="1";
+      z.addEventListener("click",function(ev){
+        var e=ev.target.closest && ev.target.closest(".sb-pid"); if(!e) return;
+        var t=e.getAttribute("data-id")||e.textContent;
+        try{ navigator.clipboard.writeText(t); }catch(x){}
+        e.textContent="copied ✓"; e.classList.add("ok");
+        setTimeout(function(){ e.textContent=t; e.classList.remove("ok"); },1000);
+      });
+    }
     var c=$("sbNbMien"); if(c) c.textContent = ouverts ? "("+ouverts+")" : "";
     sbMontre();
   }

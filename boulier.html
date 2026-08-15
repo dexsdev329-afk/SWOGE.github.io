@@ -726,6 +726,63 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
   .bo-note{ flex:1 1 100%; order:4; margin:0; }
 }
 
+/* ---- ON RECUPERE LA HAUTEUR D'UN ECRAN ----
+ *
+ * Mesure avant : 929 px de page pour 844 px d'ecran. Ce qui depassait n'etait
+ * pas du contenu, c'etait du vide — une cage de 206 px dont la moitie servait a
+ * empiler des boules qu'on ne lit pas, et deux panneaux de 176 px aux marges
+ * dessinees pour un ecran d'ordinateur.
+ *
+ * Les boules au repos sont parties (voir cage.part) : la cage n'a donc plus
+ * besoin d'etre grande, elle ne contient plus rien entre deux tirages et son
+ * role se reduit a montrer d'ou sortent les numeros pendant les dix secondes du
+ * tirage. On la descend a 120 px de large.
+ */
+@media (max-width: 640px), (orientation: portrait){
+  .bo-cage{ width:min(34%,120px); }
+
+  /* La cagnotte : c'est le chiffre qu'on vient voir, il garde sa taille. Ce
+     sont ses marges qui partent. */
+  .bo-pot{ padding:4px 12px 5px; margin-bottom:6px; border-radius:11px; }
+  .bo-pot .lb{ font-size:8.5px; letter-spacing:1.8px; }
+  .bo-pot .v{ margin:0; }
+
+  .bo-phase{ margin-bottom:6px; padding:5px 11px; border-radius:11px; }
+  .bo-phase .k{ font-size:9px; letter-spacing:1.6px; }
+  .bo-phase i{ font-size:10px; }
+
+  /* Les deux panneaux verts. Ils se lisent d'un coup d'oeil — un nombre de
+     joueurs, un meilleur score — et n'avaient pas besoin de trois lignes de
+     marge autour. */
+  .bo-salle .bx, .bo-best .bx{ padding:7px 8px 8px; border-radius:12px; }
+  .bo-salle .hd .lb, .bo-best .lb{ font-size:9px; letter-spacing:1.5px; }
+  .bo-salle .hd b{ font-size:16px; }
+  .bo-salle .tot{ font-size:10.5px; margin:2px 0 5px; }
+  .bo-salle .vide{ padding:7px 4px; font-size:11px; }
+  .bo-salle .jr{ padding:3px 5px; font-size:10.5px; }
+  .bo-best .sc{ margin:2px 0 6px; }
+  .bo-best .sc b{ font-size:21px; }
+  .bo-best .sc i{ font-size:11px; }
+  .bo-best .nums{ gap:2.5px; }
+  .bo-best .nums span{ min-height:22px; font-size:10px; border-radius:6px; }
+  .bo-best .rest{ margin-top:5px; }
+
+  /* ---- LE PLACEHOLDER IMPOSAIT SA HAUTEUR AUX DEUX PANNEAUX ----
+     Mesure : « Pick how many grids and join… » occupait 155 px a lui seul, et
+     comme les deux boites sont cote a cote avec `height:100%`, il tirait AUSSI
+     le panneau des joueurs a 172 px. Le texte le plus long de la page etait
+     donc celui qu'on ne lit qu'une fois, avant sa premiere partie. */
+  .bo-best .vide, .bo-salle .vide{ padding:9px 6px; font-size:11px; line-height:1.4; }
+
+  /* La cage fait 120 px : « Tap the cage to speed up » y est plus large qu'elle,
+     se replie sur deux lignes et se pose SUR les boules pendant le tirage. Le
+     geste reste actif — c'est l'etiquette qui part, pas la fonction. */
+  .bo-cage .hint{ display:none; }
+
+  .bo-sorties{ gap:2.5px; }
+  .bo-titre{ min-height:26px; margin:0 0 4px; }
+}
+
 /* fin du bloc Boulier */
 .pl-hist h4{ margin:0 0 4px; font-size:12px; letter-spacing:1.2px;
 .pl-hist h4{ margin:0 0 4px; font-size:12px; letter-spacing:1.2px;
@@ -1559,27 +1616,34 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
      jamais sur l'echeance absolue du serveur : l'horloge du navigateur peut
      retarder de dix secondes, et le joueur verrait alors « 0s » pendant toute
      la fenetre d'inscription. */
-  /* Le bouton est passe A COTE des quantites sur telephone : il n'a plus la
-     largeur de l'ecran, il a celle d'un mot. « JOIN THIS DRAW » y tenait sur
-     deux lignes et repoussait tout ; « JOIN » dit la meme chose. Le decompte
-     et la phase sont deja ecrits en haut, en grand. */
+  /* ---- LE BOUTON N'A PAS LA PLACE D'UNE PHRASE ----
+     Depuis que le bouton s'est range A COTE du « 50 », il ne dispose plus de
+     la largeur de l'ecran mais d'environ quatre-vingt-dix pixels. « JOIN THIS
+     DRAW » y deborde — mesure faite sur un ecran de 390 px : le libelle sort du
+     cadre par la droite. On abrege donc, et seulement la ou c'est necessaire :
+     sur un ecran large le bouton reprend toute sa phrase, qui se lit mieux.
+     Rien a brancher sur le redimensionnement : `boRendPhase` est rappele a
+     chaque battement du decompte, donc la mesure se refait toute seule. */
   function boEtroit(){
-    try { return window.matchMedia('(max-width:640px)').matches; } catch(e){ return false; }
+    try{ return window.matchMedia("(max-width:640px),(orientation:portrait)").matches; }
+    catch(e){ return window.innerWidth <= 640; }
   }
+
   function boRendPhase(){
     var z=$("boPhase"), b=$("boJouer"), r=Math.max(0, Math.round(BO.reste/1000));
-    var etat="", court=boEtroit();
+    var etat="";
     if(BO.phase==="attente"){
       etat='<span class="k">Buy in</span><b class="cd'+(r<=3?" chaud":"")+'">'+r+'s</b>';
-      b.textContent = BO.mienNb ? (court ? "+"+BO.n : "ADD "+BO.n+" MORE")
-                                : (court ? "JOIN" : "JOIN THIS DRAW");
+      b.textContent = BO.mienNb ? (boEtroit() ? "+"+BO.n : "ADD "+BO.n+" MORE")
+                                : (boEtroit() ? "JOIN" : "JOIN THIS DRAW");
     } else if(BO.phase==="tirage"){
       etat='<span class="k">Drawing</span><b>'+BO.vues.length+'/'+BO.tirees+'</b>';
-      b.textContent = court ? "DRAWING" : "DRAW IN PROGRESS";
+      b.textContent = boEtroit() ? "DRAWING" : "DRAW IN PROGRESS";
     } else if(BO.phase==="apres"){
       etat='<span class="k">Next draw</span><b>'+r+'s</b>';
-      b.textContent = court ? r+"s" : "NEXT DRAW IN "+r+"S";
-    } else { etat='<span class="k">Connecting…</span>'; b.textContent=court?"JOIN":"JOIN THIS DRAW"; }
+      b.textContent = boEtroit() ? "NEXT" : "NEXT DRAW IN "+r+"S";
+    } else { etat='<span class="k">Connecting…</span>';
+             b.textContent = boEtroit() ? "JOIN" : "JOIN THIS DRAW"; }
     z.innerHTML = etat + '<i>#'+BO.manche+'</i>';
     b.disabled = !boOuvert() || !authed || balance<boMise();
   }
@@ -1778,7 +1842,16 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
     function taille(){
       var r=cv.getBoundingClientRect();
       dpr=Math.min(2, window.devicePixelRatio||1);
-      W=Math.max(200, r.width); H=Math.max(200, r.height);
+      /* ---- PAS DE PLANCHER A 200 PX ----
+         Il forcait un espace de dessin de 200x200 quelle que soit la taille
+         reelle de la boite. Tant que la cage faisait plus de 200 px, ca ne se
+         voyait pas ; a 120 px de large pour 139 de haut, la feuille de style
+         ecrase ce carre de 200 en un rectangle plus haut que large — la cage
+         devient une ellipse et le tas de boules glisse hors du cadre par la
+         gauche. L'espace de dessin doit avoir LES PROPORTIONS DE LA BOITE ; le
+         plancher ne sert qu'a survivre a une mesure prise avant la mise en
+         page. */
+      W=Math.max(80, r.width); H=Math.max(80, r.height);
       cv.width=Math.round(W*dpr); cv.height=Math.round(H*dpr);
       ctx.setTransform(dpr,0,0,dpr,0,0);
       R = W*0.435;
@@ -1937,10 +2010,25 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
       ctx.beginPath(); ctx.arc(cx,cy,R,0,6.2832); ctx.fillStyle=g; ctx.fill();
     }
 
+    var nues=true;   // la cage s'ouvre nue
+
     function peint(){
       ctx.clearRect(0,0,W,H);
       tube(); cage();
-      for(var i=0;i<balles.length;i++) boule(balles[i].x, balles[i].y, balles[i].n, br, false);
+      /* ---- LA CAGE EST NUE HORS TIRAGE ----
+         Elle montrait ses 90 boules en permanence, tassees au fond. Elles
+         n'apprenaient rien : le joueur sait deja combien de numeros il a sur
+         ses grilles, et le tas ne disait ni la phase, ni la cagnotte, ni son
+         achat. Il coutait en revanche la moitie de la hauteur de la cage — sur
+         un telephone, la place ou tiennent le panneau des joueurs et le bouton
+         d'achat.
+         On ne les DESSINE donc plus qu'au moment ou elles servent : pendant le
+         tirage, ou elles montrent d'ou sort chaque numero. On ne touche pas au
+         tableau `balles` lui-meme — le vider casserait `lache()`, qui y cherche
+         la boule a faire sortir et, ne la trouvant pas, annoncerait les trente
+         numeros d'un coup sans les animer. Un drapeau d'affichage, pas une
+         modification de l'etat. */
+      if(!nues) for(var i=0;i<balles.length;i++) boule(balles[i].x, balles[i].y, balles[i].n, br, false);
       verre();
       if(enVol) boule(enVol.x, enVol.y, enVol.n, br*(1+enVol.t*0.5), true);
       else if(montre!=null) boule(cx, tubeY+br*1.3, montre, br*1.5, true);
@@ -1992,6 +2080,16 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
     }
 
     return {
+      /* ---- LA CAGE S'OUVRE VIDE ----
+         Elle affichait ses 90 boules en permanence, tassees au fond. Elles ne
+         disaient rien : le joueur sait deja combien de numeros il a sur ses
+         grilles, et le tas n'apprenait ni la phase, ni la cagnotte, ni son
+         achat. Il coutait en revanche la moitie de la hauteur de la cage — sur
+         un telephone, la place ou tiennent le panneau des joueurs et le bouton
+         d'achat.
+         Les boules n'apparaissent donc plus QUE pendant le tirage, ou elles
+         servent a quelque chose : montrer d'ou sort chaque numero. `joue()`
+         les repose, `repos()` les efface. */
       init:function(){ taille(); pose();
         window.addEventListener("resize", function(){ var v=balles.map(function(b){return b.n;});
           taille(); pose();
@@ -2007,15 +2105,15 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
            encore la page : la mesure prise a l'analyse du script peut etre
            celle d'un element qui n'a pas encore sa taille finale. */
         taille();
-        pose(); brasse=0; cible=1; montre=null;
+        pose(); brasse=0; cible=1; montre=null; nues=false;
         file=liste.slice(); sortie=surBoule; finCb=fin;
         dernier=performance.now()+900;   // le temps que la cage prenne son tour
       },
-      repos:function(){ file=[]; enVol=null; montre=null; finCb=null; cible=0; },
+      repos:function(){ file=[]; enVol=null; montre=null; finCb=null; cible=0; nues=true; },
       reste:function(){ return file.length + (enVol?1:0); },
       /* Laisse les boules deja sorties dehors et arrete de brasser : la cage
          redescend au calme sans que le tirage disparaisse de l'ecran. */
-      calme:function(){ cible=0; }
+      calme:function(){ cible=0; nues=true; }
     };
   })();
 

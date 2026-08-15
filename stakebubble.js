@@ -1813,8 +1813,10 @@
       if (el.id === 'soundItem' || el.id === 'musicItem') b.classList.add('tog');
       b.textContent = (el.textContent || '').trim();
       b.addEventListener('click', function () {
-        /* On ferme AVANT de transmettre : openPanel() pose une fenetre
-           par-dessus, et le tiroir reste dessous la cacherait a moitie. */
+        /* Portefeuille, staking, depot, retrait, quetes s'ouvrent DANS le
+           tiroir. Le reste — autres jeux, accueil, son, musique — n'a pas de
+           panneau : on transmet le clic et on s'efface. */
+        if (el.getAttribute('data-panel')) return emprunte(el, (b.textContent || '').trim());
         profFerme();
         try { el.click(); } catch (e) {}
       });
@@ -1822,6 +1824,106 @@
       miroirs.push([b, el]);
     });
   }
+  /* ------------------------------------ les panneaux de compte, DANS le tiroir
+   *
+   * Depot, retrait, staking, portefeuille et quetes vivaient dans une fenetre
+   * modale a eux, avec leur cadre dore, leur titre en image et leur propre
+   * bouton de fermeture. Ouvrir son compte demandait donc de fermer le tiroir
+   * pour ouvrir autre chose — deux panneaux de compte, deux presentations, deux
+   * facons d'en sortir.
+   *
+   * ---- on EMPRUNTE la boite, on ne la reecrit pas ----
+   *
+   * Le formulaire de depot, ses pourcentages, son bouton et la centaine de
+   * lignes qui les font marcher sont dans la page, une copie par coquille. Les
+   * refaire ici voudrait dire les tenir a jour a seize endroits. On DEPLACE
+   * donc le noeud existant dans le tiroir : deplacer un element ne detache
+   * aucun de ses gestionnaires, et le formulaire continue de marcher parce que
+   * c'est LE MEME formulaire.
+   *
+   * Et on laisse la page l'ouvrir elle-meme d'abord : openPanel() recharge le
+   * solde du portefeuille, demande les quetes, recalcule le staking. On
+   * transmet le clic, la page fait son travail, et on transplante ensuite.
+   */
+  var PANNEAU = null, styleHote = false;
+
+  /* ---- LA BOITE EMPRUNTEE PERD SON HABIT ----
+   *
+   * Elle est dessinee pour flotter au milieu de l'ecran : cadre dore en
+   * border-image, largeur fixe, hauteur bornee a 88 vh, titre en image et
+   * bouton de fermeture. Dans le tiroir tout ca fait double emploi — il y a
+   * deja un cadre, une hauteur et un retour. On ne garde que le contenu.
+   *
+   * ---- pourquoi un IDENTIFIANT sur l'hote, et pas seulement une classe ----
+   *
+   * Premiere tentative : « .swp-l .box [data-close] { display:none !important } ».
+   * Sans effet. Les coquilles habillent leurs panneaux par IDENTIFIANT —
+   * « #box-dep .abtn { … !important } » — et un identifiant l'emporte sur
+   * n'importe quel nombre de classes, quel que soit l'ordre des feuilles.
+   * L'important n'y change rien : il ne departage que des specificites egales.
+   * Le bouton « Close » restait donc affiche, en grand, sous un formulaire qui
+   * a deja son retour en haut.
+   * La liste du tiroir porte donc un identifiant a elle, et les regles pesent
+   * un identifiant plus deux classes — au-dessus de tout ce que les pages
+   * ecrivent. La feuille est posee en fin de body par-dessus le marche, pour
+   * les egalites qui resteraient.
+   */
+  function styleEmprunt() {
+    if (styleHote) return;
+    styleHote = true;
+    var css = document.createElement('style');
+    css.textContent =
+      '#swpHote .box{position:static!important;display:block!important;' +
+      'width:auto!important;max-width:none!important;max-height:none!important;' +
+      'margin:0!important;padding:0!important;border:0!important;' +
+      'border-image:none!important;border-radius:0!important;' +
+      'background:none!important;box-shadow:none!important;}' +
+      '#swpHote .box .pscroll,#swpHote .box .qscroll{max-height:none!important;' +
+      'overflow:visible!important;padding:0!important;}' +
+      /* Le titre en image et la fermeture : la barre de retour dit deja ou
+         l'on est et comment en sortir. */
+      '#swpHote .box .ptitle,#swpHote .box .qtitle,#swpHote .box .wtitle-plate{display:none!important;}' +
+      '#swpHote .box [data-close],#swpHote .box .closeimg{display:none!important;}' +
+      /* Une rangee qui ne contenait que la fermeture n'a plus rien a montrer :
+         sans ca elle laisse sa marge, et le formulaire finit sur un blanc. */
+      '#swpHote .box .brow:has(> [data-close]:only-child){display:none!important;}' +
+      '#swpHote .box input,#swpHote .box select,#swpHote .box textarea{max-width:100%;}';
+    (document.body || document.documentElement).appendChild(css);
+  }
+
+  function emprunte(el, titre) {
+    if (!profBoite) return;
+    try { el.click(); } catch (e) { return; }
+    /* Au tour SUIVANT : openPanel() pose la classe `show` de facon synchrone,
+       mais elle peut aussi refuser (pas connecte) en n'ouvrant rien du tout.
+       On regarde ce qui est reellement ouvert plutot que de le supposer. */
+    setTimeout(function () {
+      var ovl = document.getElementById('ovl');
+      var boite = ovl && ovl.querySelector('.box.show');
+      if (!boite) return;                    // la page a refuse : on ne bouge pas
+      rendPanneau();
+      styleEmprunt();
+      PANNEAU = { el: boite, parent: boite.parentNode, suivant: boite.nextSibling };
+      var l = profBoite.querySelector('.swp-l');
+      l.id = 'swpHote';
+      l.innerHTML = '';
+      l.appendChild(boite);
+      ovl.classList.remove('show');
+      profVue('__hote', titre);
+    }, 0);
+  }
+
+  /* Remet la boite exactement d'ou elle vient — meme parent, meme voisin. La
+     reposer a la fin de #ovl marcherait aussi, mais l'ordre des panneaux dans
+     le balisage est celui dans lequel une coquille les a ecrits, et rien ne dit
+     qu'aucune ne s'en sert. */
+  function rendPanneau() {
+    if (!PANNEAU) return;
+    var p = PANNEAU; PANNEAU = null;
+    p.el.classList.remove('show');
+    if (p.parent) p.parent.insertBefore(p.el, p.suivant || null);
+  }
+
   /* Les libelles bougent — « Sound: on » devient « Sound: off », « Sign in »
      disparait une fois connecte. On resynchronise a l'ouverture du tiroir :
      c'est le seul instant ou ca se voit. */
@@ -2252,13 +2354,18 @@
      barre de retour reprend le libelle EXACT de la rangee touchee : un
      titre reecrit a la main finit par ne plus dire la meme chose que le
      sommaire, et on ne sait plus ou on est. */
-  function profVue(k) {
+  function profVue(k, libelle) {
     if (!profBoite) return;
     var boite = profBoite.querySelector('.swp');
     var titre = profBoite.querySelector('.swp-back b');
+    /* Toute sortie de la vue detail rend d'abord la boite empruntee a la page.
+       Sans ca, changer de section pendant qu'un panneau de compte est affiche
+       le detruirait avec le reste du contenu — et la page ne le retrouverait
+       jamais, avec ses champs et ses gestionnaires. */
+    if (k !== '__hote') rendPanneau();
     if (!k) { boite.classList.remove('detail'); return; }
-    var nom = '';
-    for (var i = 0; i < ONGLETS.length; i++) if (ONGLETS[i][0] === k) nom = ONGLETS[i][1];
+    var nom = libelle || '';
+    if (!nom) for (var i = 0; i < ONGLETS.length; i++) if (ONGLETS[i][0] === k) nom = ONGLETS[i][1];
     titre.textContent = nom;
     boite.classList.add('detail');
     /* Chaque section repart du haut. Sans ca, on ouvrait « Deposits » deja
@@ -2294,6 +2401,7 @@
   function profFerme() {
     profOuvert = false;
     if (!profBoite) return;
+    rendPanneau();
     profBoite.classList.remove('on');
     /* On revient au sommaire APRES la fermeture, pas pendant : le faire tout
        de suite montrerait le sommaire pendant les 260 ms ou le tiroir glisse

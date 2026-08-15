@@ -780,6 +780,12 @@
                smash:'Smash', mines:'Mines', hilo:'Hi-Lo', holdem:"Casino Hold'em",
                three:'Three Card', p4:'Connect 4', pusher:'Coin Pusher',
                mp:'Tic-Tac-Toe', dm:'Checkers' };
+  /* Un duel n'a pas de match nul : la meme case « N » n'existe pas, et
+     « Home / Away » ne veut rien dire quand les deux joueurs sont assis a la
+     meme table. D'ou deux tables de libelles, choisies sur le NOMBRE
+     d'issues du match. */
+  var ISSUE = { '1': 'Home', 'N': 'Draw', '2': 'Away' };
+  var ISSUE_2 = { '1': 'Player 1', '2': 'Player 2' };
   /* Huit onglets sur une ligne, c'etait huit choses de meme rang — alors
      qu'un depot, un retrait, un transfert et une manche racontent tous la
      meme chose : ce qui s'est PASSE. Les amis et les invitations sont un
@@ -789,6 +795,11 @@
     ['You', [['ap', 'Overview']]],
     ['History', [['r', 'Rounds'], ['dep', 'Deposits'], ['wd', 'Withdraw'],
                  ['st', 'Staking'], ['tr', 'Transfers']]],
+    /* Un pari pose disparaissait de la vue des qu'on quittait SWOGE Bet : on
+       ne savait plus ce qu'on avait en cours, ni depuis quand. Les deux
+       onglets separent ce qui est ENCORE EN JEU de ce qui est solde — ce ne
+       sont pas les memes questions, et les melanger noie la premiere. */
+    ['Bets', [['bo', 'Open bets'], ['bs', 'Settled bets']]],
     ['People',  [['am', 'Friends'], ['in', 'Invite']]],
     ['Standing', [['lb', 'Ranking']]],
   ];
@@ -1151,13 +1162,29 @@
       '-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);}' +
       '.swpov.on{display:flex;}' +
       '.swp{width:min(680px,100%);max-height:86vh;display:flex;flex-direction:column;' +
-      'border-radius:16px;overflow:hidden;font-family:inherit;color:#EAF2FF;' +
+      /* ---- LA POLICE DU PANNEAU ----
+         Il heritait de la page. Sur SWOGE Spin, c'est Orbitron : une display
+         geometrique carree dessinee pour des titres de quarante pixels. A dix,
+         ses contreformes se referment — c'est ce qui rendait « $SWOGE »
+         illisible, avec un W qui partait en bouillie. Les DONNEES prennent donc
+         la police du systeme, dessinee pour etre lue petit. Le titre garde
+         celle de la page : lui est assez gros pour la porter. */
+      'border-radius:16px;overflow:hidden;color:#EAF2FF;' +
+      'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,' +
+      '"Helvetica Neue",Arial,sans-serif;' +
       'background:linear-gradient(180deg,#141C30,#080C16);' +
       'border:1px solid rgba(255,197,61,.4);box-shadow:0 24px 60px rgba(0,0,0,.7);}' +
       '.swp-h{display:flex;align-items:center;gap:10px;padding:13px 15px;' +
       'border-bottom:1px solid rgba(255,197,61,.26);background:rgba(255,197,61,.08);}' +
-      '.swp-h b{font-size:13.5px;letter-spacing:1.4px;text-transform:uppercase;color:#FFD97A;}' +
-      '.swp-h span{flex:1;font-size:11px;color:#8DA0C4;}' +
+      /* ---- L ECHELLE ----
+         Le panneau portait HUIT tailles, de 9,5 a 13,5 px : la plus GROSSE
+         faisait 13,5. Chez n'importe quelle application de compte, 13 px c'est
+         la legende, pas le libelle. Quatre tailles remplacent les huit —
+         16 / 14 / 12,5 / 11 — et la graisse cesse d'etre a 800 partout : quand
+         tout est gras, rien ne ressort. */
+      '.swp-h b{font-size:15px;letter-spacing:1.2px;text-transform:uppercase;color:#FFD97A;' +
+      'font-family:inherit;}' +
+      '.swp-h span{flex:1;font-size:12.5px;color:#8DA0C4;}' +
       '.swp-x{width:30px;height:30px;border-radius:9px;cursor:pointer;font-size:15px;' +
       'color:#EAF2FF;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);}' +
       /* Le corps : le rail des familles a gauche, la liste a droite. */
@@ -1168,12 +1195,12 @@
       '.swp-t{flex:0 0 124px;display:flex;flex-direction:column;gap:2px;' +
       'padding:10px 8px 12px;overflow-y:auto;' +
       'border-right:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.02);}' +
-      '.swp-t .swp-g{margin:9px 0 3px;padding:0 6px;font-size:9.5px;font-weight:800;' +
+      '.swp-t .swp-g{margin:11px 0 4px;padding:0 6px;font-size:11px;font-weight:700;' +
       'letter-spacing:1.1px;text-transform:uppercase;color:#6C7C99;}' +
       '.swp-t .swp-g:first-child{margin-top:0;}' +
       '.swp-t button{width:100%;text-align:left;padding:7px 8px;border-radius:8px;' +
       'cursor:pointer;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;' +
-      'font-family:inherit;font-size:11.5px;font-weight:700;letter-spacing:.2px;' +
+      'font-family:inherit;font-size:12.5px;font-weight:600;letter-spacing:.1px;' +
       'color:#8DA0C4;background:transparent;border:1px solid transparent;}' +
       '.swp-t button:hover{background:rgba(255,255,255,.06);color:#EAF2FF;}' +
       '.swp-t button.on{color:#07101F;background:linear-gradient(180deg,#FFE08A,#FFC53D);}' +
@@ -1182,13 +1209,13 @@
       'margin-bottom:6px;background:rgba(255,255,255,.04);' +
       'border:1px solid rgba(255,255,255,.07);}' +
       '.swp-r .w{flex:1;min-width:0;}' +
-      '.swp-r .w b{display:block;font-size:13px;font-weight:800;color:#EAF2FF;}' +
-      '.swp-r .w span{display:block;font-size:10.5px;color:#8DA0C4;margin-top:2px;}' +
+      '.swp-r .w b{display:block;font-size:14px;font-weight:600;color:#EAF2FF;}' +
+      '.swp-r .w span{display:block;font-size:12px;color:#8DA0C4;margin-top:3px;}' +
       /* L adresse en entier : c est elle qu on relit avant d envoyer. */
       '.swp-r .w span.ad{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;' +
-      'font-size:9.5px;letter-spacing:.15px;color:#7E92B6;word-break:break-all;cursor:pointer;}' +
+      'font-size:11px;letter-spacing:.15px;color:#7E92B6;word-break:break-all;cursor:pointer;}' +
       '.swp-r .w span.ad:hover{color:#FFC53D;}' +
-      '.swp-r .w span.su{color:#8DA0C4;font-size:10.5px;}' +
+      '.swp-r .w span.su{color:#8DA0C4;font-size:12px;}' +
       '.swlv{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:999px;' +
       'font-size:10px;font-weight:900;line-height:1.5;vertical-align:middle;' +
       'border:1px solid;background:rgba(255,255,255,.05);}' +
@@ -1219,10 +1246,10 @@
       '.swech span.on{background:rgba(255,255,255,.07);}' +
       '.swech span.on b{color:inherit;}' +
       '.swp-r .v{flex:0 0 auto;text-align:right;font-variant-numeric:tabular-nums;}' +
-      '.swp-r .v b{display:block;font-size:13.5px;font-weight:800;}' +
-      '.swp-r .v span{font-size:10px;color:#8DA0C4;}' +
+      '.swp-r .v b{display:block;font-size:16px;font-weight:700;}' +
+      '.swp-r .v span{font-size:11px;color:#8DA0C4;}' +
       '.swp-r .g{color:#7CFF9B;} .swp-r .p{color:#F2685E;} .swp-r .n{color:#E7C97A;}' +
-      '.swp-v{text-align:center;color:#8DA0C4;font-size:12.5px;padding:30px 10px;line-height:1.7;}' +
+      '.swp-v{text-align:center;color:#8DA0C4;font-size:13.5px;padding:30px 10px;line-height:1.7;}' +
       /* L'apercu : des cartes, pas un tableau. Un tableau se lit de gauche a
          droite ; une grille de cartes se balaie, et c'est ce qu'on fait devant
          son propre profil. */
@@ -1256,15 +1283,16 @@
       /* Sur telephone le rail RESTE A GAUCHE — c'est ce qui a ete demande, et
          c'est aussi ce qui se lit le mieux : trois familles en colonne se
          balaient de haut en bas, alors qu'une rangee qui se replie melange les
-         entrees de familles differentes sur la meme ligne.
+         entrees de familles differentes sur la meme ligne. Elles sont CINQ
+         depuis les paris.
        *
-         Il rentre de 124 a 96 px et le texte de 11,5 a 10,5 : « Withdrawals »,
-         le plus long des huit, tient encore en entier. La liste garde donc
-         presque 290 px sur un ecran de 390. */
+         Il rentre de 124 a 104 px : « Settled bets », le plus long des onze,
+         tient encore en entier a 11,5 px. La liste garde donc pres de 280 px
+         sur un ecran de 390. */
       '@media (max-width:430px){' +
-        '.swp-t{flex:0 0 96px;padding:9px 6px 12px;}' +
-        '.swp-t button{font-size:10.5px;padding:6px 6px;letter-spacing:0;}' +
-        '.swp-t .swp-g{font-size:9px;letter-spacing:.9px;padding:0 4px;}' +
+        '.swp-t{flex:0 0 104px;padding:9px 6px 12px;}' +
+        '.swp-t button{font-size:11.5px;padding:7px 6px;letter-spacing:0;}' +
+        '.swp-t .swp-g{font-size:10px;letter-spacing:.8px;padding:0 4px;}' +
         '.swp-l{padding:10px 10px 14px;}' +
       '}' +
       /* l en-tete : le visage, le nom, et de quoi les changer */
@@ -1389,6 +1417,28 @@
       'border:1px solid rgba(255,255,255,.16);}' +
       '.swp-fair{font-size:10px;color:#6E80A4;margin-top:3px;font-family:monospace;' +
       'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}' +
+      /* Les jambes d'un pari. Un filet a gauche les rattache visiblement au
+         titre : sans lui, un combine de quatre se lit comme quatre paris. */
+      '.swp-pj{font-size:12px;color:#B9C8E4;margin-top:4px;padding-left:9px;' +
+      'border-left:2px solid rgba(255,197,61,.35);line-height:1.45;}' +
+      /* « .swp-r .w b » met les <b> en BLOC : sans ce selecteur plus
+         specifique, le choix et sa cote partaient chacun a la ligne et une
+         jambe tenait sur trois lignes. */
+      '.swp-r .w .swp-pj b{display:inline;font-size:12px;font-weight:700;color:#EAF2FF;}' +
+      /* Comme « .swlv », cette pastille vit DANS un <b> que la regle des
+         lignes voudrait mettre en bloc pleine largeur. */
+      '.swp-r .w b .swp-pe{display:inline-block;width:auto;margin-left:7px;' +
+      'padding:1px 7px;border-radius:999px;font-size:10.5px;font-weight:700;' +
+      'letter-spacing:.4px;text-transform:uppercase;vertical-align:1px;' +
+      'background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);}' +
+      /* La couleur doit etre REPOSEE ici : « .swp-r .w span » est plus
+         specifique que « .swp-r .g » et la repeignait en gris. */
+      '.swp-r .w b .swp-pe.g{color:#7CFF9B;background:rgba(124,255,155,.12);' +
+      'border-color:rgba(124,255,155,.32);}' +
+      '.swp-r .w b .swp-pe.p{color:#F2685E;background:rgba(242,104,94,.12);' +
+      'border-color:rgba(242,104,94,.32);}' +
+      '.swp-r .w b .swp-pe.n{color:#E7C97A;background:rgba(231,201,122,.12);' +
+      'border-color:rgba(231,201,122,.32);}' +
       /* les mois : un bandeau qu'on replie */
       '.swp-mo{display:flex;align-items:center;gap:9px;width:100%;margin:10px 0 6px;' +
       'padding:8px 11px;border-radius:9px;cursor:pointer;font-family:inherit;' +
@@ -2053,6 +2103,33 @@
       d.innerHTML = '<div class="w"><b>Withdrawal</b><span>' + quand(e.t) +
                     (e.to ? ' · to ' + court(e.to) : '') + '</span></div>' +
                     '<div class="v"><b class="p">−' + nb(e.m) + '</b><span>$SWOGE</span></div>';
+    } else if (e.k === 'pa') {
+      /* Un combine porte ses jambes ; un simple pose avant les combines n'a
+         que ses deux champs. On retombe dessus plutot que d'afficher un
+         pari vide. */
+      var jbs = (e.jambes && e.jambes.length) ? e.jambes
+              : [{ match: e.match, choix: e.choix, cote: e.cote,
+                   domicile: e.domicile, exterieur: e.exterieur }];
+      var det = jbs.map(function (j) {
+        var deux = (j.issues || []).length === 2;
+        var nom = (deux ? ISSUE_2 : ISSUE)[j.choix] || j.choix;
+        return '<div class="swp-pj">' + ech(j.domicile || '?') + ' – ' + ech(j.exterieur || '?') +
+               ' · <b>' + ech(nom) + '</b> @ ' + Number(j.cote || 1).toFixed(2) + '</div>';
+      }).join('');
+      /* `gagne` vaut null sur un pari rembourse : un match annule rend la
+         mise, ce n'est ni une perte ni un gain. Le test doit donc porter sur
+         null AVANT de porter sur vrai/faux. */
+      var etat = !e.regle ? 'Running' : e.gagne === null ? 'Refunded' : e.gagne ? 'Won' : 'Lost';
+      var teinte = !e.regle ? 'n' : e.gagne === null ? 'n' : e.gagne ? 'g' : 'p';
+      var somme = !e.regle ? nb(e.rapport) : e.gagne === null ? nb(e.mise) : e.gagne ? nb(e.rapport) : '−' + nb(e.mise);
+      var pied = !e.regle ? 'to return' : e.gagne === null ? 'refunded' : e.gagne ? 'returned' : 'stake lost';
+      d.innerHTML = '<div class="w"><b>' +
+                    (jbs.length > 1 ? jbs.length + '-fold' : 'Single') +
+                    ' @ ' + Number(e.cote || 1).toFixed(2) +
+                    ' <span class="swp-pe ' + teinte + '">' + etat + '</span></b>' +
+                    '<span>' + quand(e.t) + ' · stake ' + nb(e.mise) + '</span>' + det + '</div>' +
+                    '<div class="v"><b class="' + teinte + '">' + somme + '</b>' +
+                    '<span>' + pied + '</span></div>';
     } else if (e.k === 'st') {
       var quoi = e.s === 'stake' ? 'Staked' : e.s === 'claim' ? 'Yield claimed' : 'Unstaked';
       var signe = e.s === 'stake' ? '−' : '+';
@@ -2539,7 +2616,8 @@
     var l = profBoite.querySelector('.swp-l');
     var sous = profBoite.querySelector('.swp-sub');
     if (profResume) {
-      sous.textContent = nb(profResume.lignes, 0) + ' event' + (profResume.lignes === 1 ? '' : 's') +
+      var mot = profResume.mot || 'event';
+      sous.textContent = nb(profResume.lignes, 0) + ' ' + mot + (profResume.lignes === 1 ? '' : 's') +
         (profResume.depuis ? ' since ' + new Date(profResume.depuis).toLocaleDateString('en-US',
           { day: '2-digit', month: 'short', year: 'numeric' }) : '');
     }
@@ -2552,10 +2630,12 @@
     if (!profItems.length) {
       var v = document.createElement('div');
       v.className = 'swp-v';
+      var estPari = profOnglet === 'bo' || profOnglet === 'bs';
       v.innerHTML = profCharge ? 'Loading…'
-        : (etat.socket && etat.socket.readyState === 1
-            ? 'Nothing here yet.<br>Everything you play is kept — for good.'
-            : 'Sign in to see your history.');
+        : !(etat.socket && etat.socket.readyState === 1) ? 'Sign in to see your history.'
+        : profOnglet === 'bo' ? 'No bet running.<br>Pick a match on SWOGE Bet.'
+        : estPari ? 'No settled bet yet.<br>Everything you place lands here once the match is over.'
+        : 'Nothing here yet.<br>Everything you play is kept — for good.';
       l.appendChild(v);
       return;
     }
@@ -2565,6 +2645,7 @@
        dix. Chaque mois se replie — un joueur qui cherche aout n'a pas a
        derouler septembre. */
     var moisCourant = null, corps = null;
+    var motItem = (profOnglet === 'bo' || profOnglet === 'bs') ? 'bet' : 'event';
     /* Le filtre par jeu ne touche pas a ce qui est CHARGE — seulement a ce qui
        est montre. Recharger depuis le serveur a chaque pastille ferait un
        aller-retour pour un tri qu'on peut faire ici, et ferait clignoter la
@@ -2592,7 +2673,7 @@
         var tete = document.createElement('button');
         tete.className = 'swp-mo'; tete.type = 'button';
         tete.innerHTML = '<span class="ch">▾</span>' + titre +
-                         '<i>' + n + ' event' + (n === 1 ? '' : 's') + '</i>';
+                         '<i>' + n + ' ' + motItem + (n === 1 ? '' : 's') + '</i>';
         corps = document.createElement('div');
         (function (t2, c2) {
           t2.addEventListener('click', function () {

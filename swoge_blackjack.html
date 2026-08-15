@@ -2159,5 +2159,122 @@ function renderBonus(b){ if(!b) return; bonusData=b;
     <div class="p"><input type="range" min="0" max="100" step="5" aria-label="Sound effects volume"><span class="v"></span></div>
   </div>
 </div>
+<!-- ============================ LA TABLE NE BOUGE PLUS ============================
+ *
+ * Filme sur telephone, le defaut se voit tout de suite : d'un etat de la main a
+ * l'autre, TOUT ce qui est sous le tapis change de hauteur, et comme on est
+ * defile a mi-page, le contenu passe sous le pouce. Mesure sur un ecran de 390 :
+ *
+ *     zone des commandes    276 / 124 / 177 / 64 px  ->  212 px d'amplitude
+ *     ligne d'equite         746 / 594 / 647 / 607   ->  152 px de deplacement
+ *     banniere de resultat   0 -> 69 px, juste avant qu'on vise « New hand »
+ *
+ * Deux causes, deux corrections.
+ *
+ * 1. LES JETONS DISPARAISSAIENT PENDANT LA MAIN. #betUI — paris annexes, rangee
+ *    de jetons, bouton Deal — etait masque des la donne, et la rangee d'action
+ *    remontait de 180 px d'un coup. Il reste donc affiche, eteint : on voit ce
+ *    qu'on a mise pendant qu'on joue, comme sur une vraie table, et Hit se pose
+ *    exactement ou etait Deal. Seule la rangee du bouton change.
+ *
+ *    `display:block !important` parce que la page pose `display:none` EN LIGNE :
+ *    une regle ordinaire ne peut pas la battre. C'est le seul endroit du fichier
+ *    ou !important est necessaire, et il l'est vraiment.
+ *
+ * 2. LA BANNIERE DE RESULTAT n'existait que gagnee. Sa place est desormais
+ *    reservee en permanence : elle apparait sans rien pousser, au moment precis
+ *    ou le doigt vise le bouton suivant.
+ *
+ * L'assurance garde l'ancien comportement : elle remplace les jetons au lieu de
+ * s'ajouter. Elle est rare, et son panneau pose une question a laquelle il faut
+ * repondre — le reste peut s'effacer le temps de le lire.
+ * ============================================================================== -->
+<style>
+  /* 1. les jetons restent en place toute la main */
+  #betUI{ display:block !important; }
+  body.bj-ins #betUI{ display:none !important; }
+  /* eteints des que la donne est partie : on les LIT, on n'y touche plus */
+  body.bj-jeu #betUI .sidebets, body.bj-jeu #betUI .betrow,
+  body.bj-fin #betUI .sidebets, body.bj-fin #betUI .betrow{
+    pointer-events:none; opacity:.42; filter:grayscale(.35); }
+  /* la rangee du bouton Deal, elle, s'efface : c'est la seule qui change */
+  body.bj-jeu #betUI .act, body.bj-fin #betUI .act{ display:none; }
+  /* et la croix qui vide la mise n'a plus rien a vider */
+  body.bj-jeu .bj-clear, body.bj-fin .bj-clear{ display:none !important; }
+
+  /* 2. la banniere de resultat a sa place, gagnee ou non */
+  .result{ min-height:30px; }
+  .result:empty{ display:block; padding:4px 14px; margin:0 auto 6px;
+                 background-color:transparent; }
+  @media (max-width: 820px), (orientation: portrait){
+    .result{ min-height:24px; }
+  }
+  /* Reservee A LA HAUTEUR DE LA BANNIERE des qu'une main est finie : le variant
+     illustre fait 69 px, le texte simple 30. On ne reserve les 69 qu'au moment
+     ou l'un ou l'autre peut arriver, sinon la page porte 40 px de vide du debut
+     a la fin d'une partie qu'on n'a pas encore jouee. */
+  /* Reservee EN PERMANENCE, et a la hauteur du variant illustre. La reserver
+     seulement une fois la main finie ne servait a rien : c'est justement a cet
+     instant-la que le doigt vise le bouton suivant, et c'est donc a cet
+     instant-la qu'il ne faut rien deplacer. */
+  .result, .result:empty{ min-height:96px; }
+  @media (max-width: 820px), (orientation: portrait){
+    .result, .result:empty{ min-height:69px; }
+  }
+
+  /* 3. HIT / STAND / DOUBLE SUR UNE SEULE RANGEE
+     Trois boutons de 150 px plus deux ecarts demandent 470 px pour une rangee
+     qui en mesure 358 : « Double » passait a la ligne et la zone des commandes
+     gagnait 60 px pour ce seul etat. Ils se partagent la largeur, et les trois
+     mots restent lisibles — c'est la meme image, simplement moins large. */
+  @media (max-width: 820px), (orientation: portrait){
+    /* `width:100%` n'est pas decoratif. .controls est une colonne flex avec
+       align-items:center : ses enfants se dimensionnent sur LEUR CONTENU. Les
+       boutons avaient jusqu'ici une largeur fixe de 150 px, qui donnait sa
+       largeur a la rangee ; passes en `flex:1 1 0`, leur base vaut zero, la
+       rangee s'est repliee sur ses deux ecarts — 12 px — et les trois boutons
+       ont ete rendus a 0 px de large. Visibles, en place, invisibles. */
+    /* La largeur se pose sur LES DEUX : #playUI est lui aussi un enfant
+       direct de la colonne centree, donc lui aussi dimensionne sur son
+       contenu. Ne la donner qu'a la rangee la faisait valoir 100 % de
+       douze pixels. */
+    #playUI{ width:100%; }
+    #playUI .act{ flex-wrap:nowrap; gap:6px; width:100%; }
+    #playUI .act .btn{ flex:1 1 0; min-width:0; width:auto !important; }
+  }
+
+  /* 4. LA ZONE DES COMMANDES A UNE HAUTEUR PLANCHER
+     Meme avec les jetons conserves et la rangee ramenee sur une ligne, il reste
+     l'assurance, qui remplace tout par sa question. Sans plancher, la ligne
+     d'equite et le pied de page remontaient de 118 px le temps d'y repondre.
+     Les valeurs sont MESUREES sur la page, pas devinees : 279 px sur ecran
+     large, 276 sur telephone. */
+  .controls{ min-height:279px; }
+  @media (max-width: 820px), (orientation: portrait){
+    .controls{ min-height:276px; }
+  }
+</style>
+<script>
+/* Le phase de la main, en une classe sur <body>. La page bascule ses blocs par
+   `style.display` en ligne, sans jamais nommer l'etat : on le deduit donc de ce
+   qui est visible, et un observateur suffit — il n'y a rien a modifier dans les
+   quinze endroits qui font la bascule. */
+(function(){
+  var b=document.body, ids=["playUI","doneUI","insUI"];
+  function vu(id){ var e=document.getElementById(id); return e && e.style.display!=="none"; }
+  function maj(){
+    var ins=vu("insUI"), jeu=vu("playUI"), fin=vu("doneUI");
+    b.classList.toggle("bj-ins", !!ins);
+    b.classList.toggle("bj-jeu", !ins && !!jeu);
+    b.classList.toggle("bj-fin", !ins && !jeu && !!fin);
+  }
+  var obs=new MutationObserver(maj);
+  for(var i=0;i<ids.length;i++){
+    var e=document.getElementById(ids[i]);
+    if(e) obs.observe(e, { attributes:true, attributeFilter:["style"] });
+  }
+  maj();
+})();
+</script>
 </body>
 </html>

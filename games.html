@@ -192,27 +192,11 @@ canvas{ touch-action:none; }
 </style>
 <style>
 /* ---- le menu commun ----
-   games.html n'a pas de portefeuille : ses entrees pointent vers le Coin
-   Pusher avec un fragment, et c'est lui qui ouvre le panneau. Le menu est
-   donc fait de VRAIS liens — il fonctionne meme si le script ne part pas. */
-.menubtn{ flex:0 0 auto; width:40px; height:40px; padding:0; cursor:pointer;
-  font-size:19px; line-height:1; color:var(--gold); border-radius:11px;
-  background:linear-gradient(180deg,rgba(46,26,10,.9),rgba(20,10,4,.95));
-  border:1px solid rgba(230,165,55,.42); }
-.gmenu{ position:absolute; right:14px; top:60px; z-index:20; display:none;
-  min-width:212px; padding:7px; border-radius:14px;
-  background:linear-gradient(180deg,rgba(24,16,8,.98),rgba(12,8,4,.99));
-  border:1px solid rgba(230,165,55,.4);
-  box-shadow:0 18px 40px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,214,130,.16); }
-.gmenu.open{ display:block; }
-.gmenu a{ display:block; padding:10px 12px; border-radius:9px;
-  font-size:13.5px; color:#F0E2C0; }
-.gmenu a:hover{ background:rgba(255,197,61,.12); color:#fff; }
-.gmenu .msep{ height:1px; margin:6px 4px; background:rgba(230,165,55,.28); }
+   games.html n'a pas de portefeuille : chaque jeu porte le sien. */
 
 /* ---- la barre passe a la ligne sur telephone ----
-   Elle porte maintenant cinq choses : la marque, le solde, deux liens et le
-   menu. A 390 px elle depassait de 127 px. Le SEPARATEUR prend toute la
+   Elle porte la marque, le solde, deux liens et le profil. A 390 px elle
+   depassait de 127 px. Le SEPARATEUR prend toute la
    largeur, ce qui pousse tout le reste sur une seconde ligne — et il prend
    `1 1 100%` et non `1 0 100%` : le zero du milieu est le facteur de
    retrecissement, et a zero l'element refuse de se comprimer, ce qui fait
@@ -220,7 +204,6 @@ canvas{ touch-action:none; }
 @media (max-width:640px){
   nav{ flex-wrap:wrap; row-gap:9px; gap:9px; padding:11px 13px; }
   nav .sp{ flex:1 1 100%; height:0; margin:0; }
-  .gmenu{ top:auto; }
 }
 
 /* ---- sous-rubriques des jeux ----
@@ -324,20 +307,12 @@ canvas{ touch-action:none; }
   <a class="nlink" href="index.html">Home</a>
   <a class="nlink" href="swoge_staking.html">🔒 Stake</a>
   <a class="buy" href="https://dexscreener.com/robinhood/0x2dc0fb72d9284228046cc95910eeaabebfe48456" target="_blank" rel="noopener">Buy $SWOGE</a>
-  <button class="menubtn" id="menuBtn" aria-label="Menu" aria-expanded="false">&#9776;</button>
-  <!-- Ce menu proposait « My Wallet », « Deposit », « Withdraw » et « Daily
-       Quests » — quatre entrees qui ne faisaient rien ici : elles emmenaient au
-       Coin Pusher, une page de six cents kilo-octets, pour y ouvrir un panneau.
-       Depuis que chaque jeu porte le sien, le detour n avait plus de raison
-       d etre, et un menu qui deplace au lieu d agir apprend au joueur a s en
-       mefier. Ne restent que les entrees qui vont quelque part. -->
-  <!-- « Staking » et « Home » sont partis d ici : la barre de gauche porte
-       deja STAKE et HOME, et un menu qui repete les boutons d a cote donne
-       deux chemins pour la meme chose — le lecteur croit qu ils different.
-       Ne reste que ce qui n existe nulle part ailleurs. -->
-  <div class="gmenu" id="gmenu">
-    <a href="https://dexscreener.com/robinhood/0x2dc0fb72d9284228046cc95910eeaabebfe48456" target="_blank" rel="noopener">&#128200; Chart</a>
-  </div>
+  <!-- Il y avait ici un bouton « menu » qui n ouvrait plus qu UNE entree,
+       « Chart » — et qui pointait vers la MEME adresse que le bouton
+       « Buy $SWOGE » juste a cote. Un menu deroulant pour un lien deja
+       present est du bruit : il ajoute un geste, un etat ouvert/ferme et une
+       zone qui recouvre la page, pour ne rien apporter. La barre porte deja
+       Home, Stake, Buy et le profil, sur telephone comme sur ordinateur. -->
 </nav>
 
 <main>
@@ -744,22 +719,5 @@ canvas{ touch-action:none; }
 </main>
 
 <!-- les vignettes sont des images fixes : plus de videos, plus de chien de garde -->
-<script>
-/* Ouverture/fermeture du menu. Dix lignes, sans dependance : la page reste
-   utilisable si elles ne s'executent pas, puisque ce sont de vrais liens. */
-(function(){
-  var b=document.getElementById('menuBtn'), m=document.getElementById('gmenu');
-  if(!b||!m) return;
-  b.addEventListener('click', function(e){
-    e.stopPropagation();
-    var ouvert=m.classList.toggle('open');
-    b.setAttribute('aria-expanded', ouvert?'true':'false');
-  });
-  document.addEventListener('click', function(e){
-    if(!m.contains(e.target) && e.target!==b){ m.classList.remove('open'); b.setAttribute('aria-expanded','false'); }
-  });
-  document.addEventListener('keydown', function(e){ if(e.key==='Escape') m.classList.remove('open'); });
-})();
-</script>
 </body>
 </html>

@@ -399,20 +399,102 @@
   transform:translateX(-50%) scale(.62) !important; transform-origin:top center;
   margin:0 !important; pointer-events:none;
 }
-/* Les paris annexes : dessines sur le tapis, pas encore branches. */
-.bj-annexe{
-  position:absolute; top:29%; width:15%; height:33%;
-  display:flex; flex-direction:column; justify-content:space-around; align-items:center;
-  font-size:.44rem; letter-spacing:.02em; text-align:center; color:#ffd479;
-  opacity:.0; pointer-events:none;
+/* ---- LES PARIS ANNEXES SUR LE TAPIS ----
+ *
+ * Le tapis DESSINE deja trois ovales vides de chaque cote, en face des
+ * pastilles « Perfect Pairs », « 21+3 » et « Insurance ». Ce sont les cases de
+ * mise : on ne redessine rien, on se POSE dessus, aux pourcentages releves sur
+ * l'image (640x427). Les deux colonnes sont peintes a l'identique — le tapis
+ * imprime les memes trois libelles deux fois, une seule case allumee ferait
+ * croire a un decor casse.
+ *
+ * ELLES NE PRENNENT PAS LE CLIC. Sur telephone un ovale fait vingt pixels de
+ * large : une cible de mise a cette taille se touche de travers, et de travers
+ * veut dire de l'argent engage par erreur. Le reglage se fait sur les tuiles
+ * sous la table, ces cases-la ne font que MONTRER — comme le jeton de mise
+ * principal juste a cote, qui suit deja cette regle.
+ */
+.bj-annexe{ position:absolute; inset:0; pointer-events:none; z-index:3; }
+.bj-annexe .bja-sp{
+  position:absolute; width:6.2%; height:6.8%; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-weight:900; font-size:clamp(7px,1.55vw,12px); line-height:1;
+  color:#FFD97A; text-shadow:0 1px 3px rgba(0,0,0,.95);
+  opacity:0; transition:opacity .18s ease;
 }
-.bj-annexe.g{ left:9.5%; } .bj-annexe.d{ right:9.5%; }
-.bj-annexe em{
-  position:absolute; bottom:-14%; font-style:normal; font-size:.5rem;
-  letter-spacing:.14em; text-transform:uppercase; opacity:.75;
+.bj-annexe .bja-sp.on{
+  opacity:1; background:rgba(6,4,2,.55);
+  box-shadow:0 0 0 2px rgba(255,212,121,.85), 0 0 13px rgba(255,212,121,.4);
 }
+.bj-annexe .bja-sp.gagne{ color:#BFFFD0;
+  box-shadow:0 0 0 2px #7CFF9B, 0 0 18px rgba(124,255,155,.6); }
+.bj-annexe .bja-sp.perdu{ opacity:.6; color:#FFC0BC;
+  box-shadow:0 0 0 2px rgba(255,110,110,.5); }
+/* L'assurance en attente de reponse : elle bat, parce que c'est au joueur de
+   jouer et que rien d'autre sur le tapis ne le dit. */
+.bj-annexe .bja-sp.att{ animation:bjaAtt .9s ease-in-out infinite alternate; }
+@keyframes bjaAtt{
+  from{ box-shadow:0 0 0 2px rgba(255,212,121,.55), 0 0 6px rgba(255,212,121,.25); }
+  to  { box-shadow:0 0 0 3px rgba(255,212,121,1),   0 0 20px rgba(255,212,121,.7); }
+}
+/* Les six positions sont RELEVEES sur l'image, pas estimees a l'oeil : les
+   deux colonnes ne sont pas exactement symetriques (le bord de la table
+   s'incurve) et un ovale rate de trois pixels se voit tout de suite. */
+.bj-annexe [data-side="pp"] { top:34.0%; }
+.bj-annexe [data-side="tp"] { top:42.6%; }
+.bj-annexe [data-side="ins"]{ top:51.3%; }
+.bj-annexe.g [data-side="pp"] { left:9.7%; }
+.bj-annexe.g [data-side="tp"] { left:8.6%; }
+.bj-annexe.g [data-side="ins"]{ left:8.7%; }
+.bj-annexe.d [data-side="pp"] { right:10.1%; }
+.bj-annexe.d [data-side="tp"] { right:9.2%;  }
+.bj-annexe.d [data-side="ins"]{ right:9.0%;  }
+
+/* ---- Les tuiles de reglage, sous la table ----
+   Une tuile = un pari. Un appui monte d'un cran, un appui au dernier cran
+   remet a zero : c'est le geste du jeton qu'on empile puis qu'on ramasse, et
+   il tient sur une seule cible large. */
+.sidebets{ display:flex; gap:8px; margin:0 0 10px; }
+.sbet{
+  flex:1; min-height:56px; padding:6px 8px; border-radius:12px; cursor:pointer;
+  font:inherit; color:inherit; text-align:center;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px;
+  border:1px solid rgba(230,165,55,.32); background:rgba(255,255,255,.04);
+  transition:border-color .15s, background .15s, transform .1s;
+}
+.sbet:hover{ border-color:#FFC53D; background:rgba(230,165,55,.10); }
+.sbet:active{ transform:translateY(1px); }
+.sbet.on{ border-color:#FFD97A; background:rgba(230,165,55,.16);
+          box-shadow:0 0 12px rgba(255,212,121,.28) inset; }
+.sbet .sbn{ font-size:.74rem; font-weight:700; letter-spacing:.02em; }
+.sbet .sbp{ font-size:.6rem; letter-spacing:.06em; opacity:.55; }
+.sbet .sbv{ font-size:1rem; font-weight:900; color:#FFD97A; font-variant-numeric:tabular-nums; }
+.sbet .sbv.zero{ color:inherit; opacity:.35; }
+.sidenote{ font-size:.66rem; opacity:.5; margin:-4px 0 10px; }
+
+/* ---- Ce que les annexes ont donne, en toutes lettres ----
+   Les pastilles du tapis sont marquees aria-hidden : c'est un decor. La
+   verite lisible — et lue a voix haute — est ici. */
+.sideres{ display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin:0 auto 8px; }
+.sideres:empty{ display:none; }
+.sideres span{ font-size:.72rem; padding:3px 9px; border-radius:9px;
+  background:rgba(6,3,10,.62); border:1px solid rgba(255,255,255,.12); }
+.sideres span.gagne{ color:#7CFF9B; border-color:rgba(124,255,155,.45); }
+.sideres span.perdu{ color:#F2A5A0; border-color:rgba(255,110,110,.3); opacity:.85; }
+
+/* ---- L'assurance ---- */
+.insq{ font-size:.9rem; margin:0 0 8px; }
+.insq b{ color:#FFD97A; }
+.insnote{ font-size:.68rem; opacity:.55; margin:8px 0 0; }
+.insmax{ min-height:44px; padding:0 14px; border-radius:11px; cursor:pointer;
+  font:inherit; font-size:.82rem; font-weight:700; white-space:nowrap;
+  color:#1a1206; background:linear-gradient(135deg,#FFD97A,#E6A537); border:0; }
+.insmax:hover{ filter:brightness(1.08); }
+
 @media (max-width:430px){
   .felt > .side .cards{ gap:3px; }
+  .sbet .sbn{ font-size:.68rem; }
+  .sbet .sbp{ font-size:.55rem; }
 }
 
 </style>
@@ -720,17 +802,18 @@
       
       <div class="bj-spot" id="bjSpot"><div class="disc"></div><div class="lbl2">Your bet</div></div>
 
-      <!-- Les paris annexes SONT SUR LE TAPIS, mais le moteur ne les connait
-           pas encore : ils sont donc marques inactifs plutot que cliquables.
-           Un rond qui accepte un clic et ne fait rien est pire que pas de
-           rond du tout. -->
+      <!-- Les cases annexes dessinees sur le tapis. Decor : elles MONTRENT la
+           mise et son sort, elles ne la prennent pas. Le reglage est sur les
+           tuiles sous la table, ou la cible est assez large pour le pouce. -->
       <div class="bj-annexe g" aria-hidden="true">
-        <span>Perfect Pairs</span><span>21+3</span><span>Insurance</span>
-        <em>soon</em>
+        <div class="bja-sp" data-side="pp"></div>
+        <div class="bja-sp" data-side="tp"></div>
+        <div class="bja-sp" data-side="ins"></div>
       </div>
       <div class="bj-annexe d" aria-hidden="true">
-        <span>Perfect Pairs</span><span>21+3</span><span>Insurance</span>
-        <em>soon</em>
+        <div class="bja-sp" data-side="pp"></div>
+        <div class="bja-sp" data-side="tp"></div>
+        <div class="bja-sp" data-side="ins"></div>
       </div>
 
       <div class="side player">
@@ -741,8 +824,28 @@
 
     <div class="controls">
 
+      <!-- ce que les annexes ont donne, en clair -->
+      <div class="sideres" id="sideRes" role="status" aria-live="polite"></div>
+
       <!-- bet UI -->
       <div id="betUI" style="display:none">
+        <!-- Les deux paris d'avant-donne. Ils n'existent que si le serveur les
+             annonce : une table de gain ecrite en dur dans la page finirait
+             par mentir le jour ou elle change ailleurs. -->
+        <div class="sidebets" id="sideUI" style="display:none">
+          <button type="button" class="sbet" data-side="pp">
+            <span class="sbn">Perfect Pairs</span>
+            <span class="sbp" id="ppPay">—</span>
+            <b class="sbv zero" id="ppVal">0</b>
+          </button>
+          <button type="button" class="sbet" data-side="tp">
+            <span class="sbn">21+3</span>
+            <span class="sbp" id="tpPay">—</span>
+            <b class="sbv zero" id="tpVal">0</b>
+          </button>
+        </div>
+        <div class="sidenote" id="sideNote" style="display:none"></div>
+
         <div class="betrow">
           <button class="chipbtn" data-add="10">+10</button>
           <button class="chipbtn" data-add="100">+100</button>
@@ -753,6 +856,23 @@
         <div class="act" style="margin-top:12px">
           <button class="btn" id="dealBtn">🃏 Deal</button>
         </div>
+      </div>
+
+      <!-- assurance : proposee quand le croupier montre un As, avant qu il
+           regarde sa carte cachee -->
+      <div id="insUI" style="display:none">
+        <div class="insq">The dealer shows an <b>Ace</b>. Insurance pays <b>2:1</b>.</div>
+        <div class="betrow">
+          <input class="betin" id="insin" type="number" min="0" value="0">
+          <!-- PAS un .chipbtn : cette classe est repeinte en image de jeton et
+               met son texte en transparent, le montant serait invisible. -->
+          <button type="button" class="insmax" id="insMax">MAX <span id="insMaxV">0</span></button>
+        </div>
+        <div class="act" style="margin-top:12px">
+          <button class="btn" id="insYes">🛡️ Insure</button>
+          <button class="btn sec" id="insNo">No thanks</button>
+        </div>
+        <p class="insnote">It wins only if the dealer&rsquo;s hidden card is worth ten.</p>
       </div>
 
       <!-- play UI -->
@@ -934,7 +1054,8 @@
   var dot=$("dot"), balEl=$("bal"), result=$("result"), fairEl=$("fair"),
       dealerCards=$("dealerCards"), playerCards=$("playerCards"), dealerVal=$("dealerVal"), playerVal=$("playerVal"),
       connectBtn=$("connectBtn"), betUI=$("betUI"), playUI=$("playUI"), doneUI=$("doneUI"),
-      betin=$("betin"), hitBtn=$("hitBtn"), standBtn=$("standBtn"), doubleBtn=$("doubleBtn");
+      betin=$("betin"), hitBtn=$("hitBtn"), standBtn=$("standBtn"), doubleBtn=$("doubleBtn"),
+      insUI=$("insUI"), insin=$("insin"), sideUI=$("sideUI"), sideRes=$("sideRes");
 
   var ws=null, authed=false, myAddr=null, loginNonce=null, balance=0, busy=false;
   /* Telegram user id — pour le postback de récompense Adsgram */
@@ -1196,6 +1317,114 @@
     if(appendBack) el.appendChild(backEl());
   }
 
+  /* ====================================================================
+   * LES TROIS PARIS ANNEXES
+   *
+   * Rien n'est decide ici. Le plafond, les tables de gain et le sort de
+   * chaque pari viennent du serveur : la page ne fait que poser des mises,
+   * les montrer, et lire ce qu'on lui renvoie. Une table de gain ecrite en
+   * dur dans le HTML finirait par afficher 25:1 le jour ou le serveur paie
+   * autre chose, et personne ne s'en apercevrait avant un joueur.
+   * ==================================================================== */
+  var SIDE={pp:0,tp:0};                 // les deux mises d'avant-donne
+  var BJ_SIDE_MAX=0;                    // 0 = le serveur ne les propose pas
+  var BJ_PAY=null;
+  var SIDE_NOM={pp:"Perfect Pairs", tp:"21+3", ins:"Insurance"};
+  var SIDE_RANG={
+    parfaite:"perfect pair", couleur:"coloured pair", mixte:"mixed pair",
+    brelanServi:"suited trips", quinteFlush:"straight flush", brelan:"three of a kind",
+    quinte:"straight", payee:"dealer had blackjack"
+  };
+  /* « couleur » ne veut pas dire la meme chose aux deux paris : une paire de
+     la meme couleur d'un cote, trois cartes de la meme enseigne de l'autre.
+     Le serveur envoie le meme mot, la page le traduit selon le pari. */
+  function nomRang(cle, rang){
+    if(!rang) return null;
+    if(cle==="tp" && rang==="couleur") return "flush";
+    return SIDE_RANG[rang] || rang;
+  }
+  function fmtCourt(n){ n=Math.round(Number(n)||0);
+    return n>=1000 ? (n/1000).toFixed(n>=10000?0:1).replace(/\.0$/,"")+"k" : String(n); }
+
+  /* L'echelle des mises annexes se DEDUIT du plafond : le serveur peut le
+     changer sans que la page ait un cran de trop ou de moins. */
+  function sideEchelle(){
+    var base=[5,10,25,50,100,250,500,1000,2500,5000,10000,25000], out=[], i;
+    for(i=0;i<base.length;i++) if(base[i]<BJ_SIDE_MAX) out.push(base[i]);
+    if(BJ_SIDE_MAX>0) out.push(BJ_SIDE_MAX);
+    return out;
+  }
+  /* Un appui monte d'un cran. Au dernier cran, il ramasse tout : c'est le
+     geste du jeton qu'on empile puis qu'on retire, sur une seule cible. */
+  function sideMonte(cle){
+    var e=sideEchelle(); if(!e.length) return;
+    var v=SIDE[cle]||0, i;
+    for(i=0;i<e.length;i++) if(e[i]>v){ SIDE[cle]=e[i]; majSide(); return; }
+    SIDE[cle]=0; majSide();
+  }
+  function tablePP(){ var p=BJ_PAY&&BJ_PAY.pp; return p ? p.mixte+" · "+p.couleur+" · "+p.parfaite+" : 1" : ""; }
+  function tableTP(){ var p=BJ_PAY&&BJ_PAY.tp; return p ? p.couleur+" → "+p.brelanServi+" : 1" : ""; }
+
+  function majSide(){
+    var dispo=BJ_SIDE_MAX>0 && !!BJ_PAY;
+    sideUI.style.display = dispo ? "" : "none";
+    $("sideNote").style.display = dispo ? "" : "none";
+    if(!dispo){ SIDE.pp=0; SIDE.tp=0; peintTapisMises(); return; }
+    $("ppPay").textContent=tablePP(); $("tpPay").textContent=tableTP();
+    $("sideNote").textContent="Tap to raise · tap again at "+fmtCourt(BJ_SIDE_MAX)
+                             +" to clear · settled on the deal";
+    ["pp","tp"].forEach(function(c){
+      var b=$(c+"Val"), t=sideUI.querySelector('[data-side="'+c+'"]');
+      b.textContent = SIDE[c]>0 ? fmtCourt(SIDE[c]) : "0";
+      b.className = "sbv"+(SIDE[c]>0?"":" zero");
+      if(t) t.classList.toggle("on", SIDE[c]>0);
+    });
+    peintTapisMises();
+  }
+
+  /* ---- les cases dessinees sur le tapis ----
+     Elles sont peintes des deux cotes : le tapis imprime les memes libelles a
+     gauche et a droite, une seule colonne allumee ressemblerait a un bug. */
+  function peintSpot(cle, txt, cls){
+    var els=document.querySelectorAll('.bj-annexe [data-side="'+cle+'"]'), i;
+    for(i=0;i<els.length;i++){
+      els[i].className="bja-sp"+(txt||cls==="att"?" on":"")+(cls?" "+cls:"");
+      els[i].textContent=txt||"";
+    }
+  }
+  /** Avant la donne : les cases montrent ce qui est pose. */
+  function peintTapisMises(){
+    peintSpot("pp", SIDE.pp>0?fmtCourt(SIDE.pp):"", "");
+    peintSpot("tp", SIDE.tp>0?fmtCourt(SIDE.tp):"", "");
+    peintSpot("ins", "", "");
+  }
+  /** Apres la donne : elles montrent le sort de chaque pari. */
+  function peintTapisEtat(st){
+    var a=st.annexes||{}, cle;
+    for(cle in SIDE_NOM){
+      var x=a[cle]||{mise:0};
+      if(cle==="ins" && st.stage==="insurance"){ peintSpot("ins","?","att"); continue; }
+      if(!(x.mise>0)){ peintSpot(cle,"",""); continue; }
+      if(x.rang) peintSpot(cle, "+"+fmtCourt(x.gain), "gagne");
+      else peintSpot(cle, fmtCourt(x.mise), "perdu");
+    }
+  }
+  /** Et en toutes lettres, sous la table — les cases du tapis sont un decor. */
+  function ecritAnnexes(st){
+    var a=st.annexes||{}, h="", cle, gagne=false;
+    for(cle in SIDE_NOM){
+      var x=a[cle]||{mise:0}; if(!(x.mise>0)) continue;
+      if(cle==="ins" && st.stage==="insurance") continue;
+      var nom=nomRang(cle, x.rang);
+      h += x.rang
+        ? '<span class="gagne">'+SIDE_NOM[cle]+" · "+nom+" +"+x.gain+"</span>"
+        : '<span class="perdu">'+SIDE_NOM[cle]+" −"+x.mise+"</span>";
+      if(x.rang) gagne=true;
+    }
+    sideRes.innerHTML=h;
+    return gagne;
+  }
+
   var prevDealerN=0, prevPlayerN=0;
   function resetCardCount(){ prevDealerN=0; prevPlayerN=0; }
   function render(st){
@@ -1217,14 +1446,33 @@
     setBalance(st.balance);
     if(st.fairness) showFair(st.fairness);
 
-    if(st.stage==="player"){
-      betUI.style.display="none"; doneUI.style.display="none"; playUI.style.display="";
+    /* Les annexes sont reglees DES LA DONNE : leur sort s'affiche donc des le
+       premier etat recu, sans attendre la fin de la main. */
+    peintTapisEtat(st);
+    var annexeGagnee=ecritAnnexes(st);
+
+    if(st.stage==="insurance"){
+      /* Le croupier montre un As et n'a pas encore regarde dessous. Tant que
+         le joueur n'a pas repondu, il n'y a ni tirage ni fin de main. */
+      betUI.style.display="none"; doneUI.style.display="none"; playUI.style.display="none";
+      insUI.style.display="";
+      var mx=Math.max(0, Math.floor(Number(st.insuranceMax)||0));
+      insin.max=mx; insin.value=mx; $("insMaxV").textContent=fmtCourt(mx);
+      result.textContent=""; result.className="result";
+      busy=false;
+    } else if(st.stage==="player"){
+      betUI.style.display="none"; doneUI.style.display="none"; insUI.style.display="none";
+      playUI.style.display="";
       doubleBtn.style.display = st.canDouble ? "" : "none";
       result.textContent=""; result.className="result";
       busy=false;
     } else { // done
-      playUI.style.display="none"; betUI.style.display="none"; doneUI.style.display="";
+      playUI.style.display="none"; betUI.style.display="none"; insUI.style.display="none";
+      doneUI.style.display="";
       showResult(st);
+      /* La main peut etre perdue et l'annexe gagnee : sans ca on entendrait le
+         son de la defaite sur une paire parfaite a 25:1. */
+      if(annexeGagnee && st.result!=="win" && st.result!=="blackjack") SFX.win(false);
       busy=false;
     }
   }
@@ -1241,6 +1489,7 @@
   }
 
   function idleUI(){ betUI.style.display=""; playUI.style.display="none"; doneUI.style.display="none";
+    insUI.style.display="none"; sideRes.innerHTML=""; majSide();
     bjPile(0); resetCardCount(); bjPile(getBet()); }
 
   // ---- ws ----
@@ -1330,11 +1579,27 @@
     if(m.bjMin!=null) BJ_MIN=Number(m.bjMin)||1;
     if(m.bjMax!=null) BJ_MAX=Number(m.bjMax)||BJ_MAX;
     if(betin){ betin.min=BJ_MIN; betin.max=BJ_MAX; }
+    /* Le plafond annexe et les tables de gain arrivent par le meme chemin. Un
+       serveur qui ne les annonce pas n'a pas les paris annexes : les tuiles
+       restent cachees plutot que de proposer une mise qui sera refusee. */
+    if(m.bjSideMax!=null) BJ_SIDE_MAX=Math.max(0, Math.floor(Number(m.bjSideMax)||0));
+    if(m.bjPay) BJ_PAY=m.bjPay;
+    if(SIDE.pp>BJ_SIDE_MAX) SIDE.pp=BJ_SIDE_MAX;
+    if(SIDE.tp>BJ_SIDE_MAX) SIDE.tp=BJ_SIDE_MAX;
+    majSide();
     getBet();
   }
   function getBet(){ var v=Math.floor(Number(betin.value)||0); if(v<BJ_MIN)v=BJ_MIN; if(v>BJ_MAX)v=BJ_MAX; betin.value=v; bjPile(v); return v; }
-  function deal(){ if(!authed||busy) return; var b=getBet(); if(balance<b){ toast("Not enough $SWOGE"); return; } busy=true;
-    resetCardCount(); playShuffle(); send({type:"bj_bet",amount:b}); }
+  function deal(){ if(!authed||busy) return; var b=getBet();
+    /* La main ET les annexes partent ensemble : c'est le total qu'il faut
+       avoir, pas seulement la main. Le serveur refuse deja l'ensemble, mais
+       lui envoyer une donne qu'il rejettera ferait clignoter le tapis pour
+       rien. */
+    var total=b+SIDE.pp+SIDE.tp;
+    if(balance<total){ toast("Not enough $SWOGE"); return; }
+    busy=true; sideRes.innerHTML="";
+    resetCardCount(); playShuffle();
+    send({type:"bj_bet",amount:b,annexes:{pp:SIDE.pp,tp:SIDE.tp}}); }
   /* melange du sabot : son + cartes qui defilent sur le tapis avant la donne */
   function playShuffle(){
     SFX.shuffle();
@@ -1345,6 +1610,27 @@
   betin.addEventListener("input",function(){ bjPile(Math.floor(Number(betin.value)||0)); });
   $("dealBtn").addEventListener("click",deal);
   $("newBtn").addEventListener("click",function(){ result.textContent=""; result.className="result"; resetCardCount(); idleUI(); });
+
+  // ---- les paris annexes ----
+  sideUI.addEventListener("click",function(e){
+    var b=e.target.closest("[data-side]"); if(!b||busy) return;
+    sideMonte(b.getAttribute("data-side"));
+  });
+  /* L'assurance. Refuser est une reponse : elle part au serveur comme une
+     mise de zero, et c'est elle qui debloque la main. */
+  function repondAssurance(v){
+    if(busy) return;
+    /* On borne ICI aussi : le champ a bien un max, mais on peut y taper ce
+       qu'on veut. Le serveur refuserait — et le joueur verrait une erreur
+       rouge pour un chiffre que la page pouvait ramener toute seule. */
+    var mx=Math.max(0, Math.floor(Number(insin.max)||0));
+    var m=Math.max(0, Math.min(mx, Math.floor(Number(v)||0)));
+    busy=true;
+    send({type:"bj_insure", amount:m});
+  }
+  $("insYes").addEventListener("click",function(){ SFX.chips(); repondAssurance(insin.value); });
+  $("insNo").addEventListener("click",function(){ repondAssurance(0); });
+  $("insMax").addEventListener("click",function(){ insin.value=insin.max||0; });
   hitBtn.addEventListener("click",function(){ if(busy)return; busy=true; SFX.deal(); send({type:"bj_hit"}); });
   standBtn.addEventListener("click",function(){ if(busy)return; busy=true; send({type:"bj_stand"}); });
   doubleBtn.addEventListener("click",function(){ if(busy)return; if(balance<getBet()){ toast("Not enough to double"); return;} busy=true; SFX.deal(); send({type:"bj_double"}); });

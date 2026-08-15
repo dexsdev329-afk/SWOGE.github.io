@@ -801,8 +801,15 @@
      joueur sait ou chercher avant de lire les libelles. */
   var FAMILLES = [
     ['You', [['ap', 'Overview']]],
-    ['History', [['r', 'Rounds'], ['dep', 'Deposits'], ['wd', 'Withdraw'],
-                 ['st', 'Staking'], ['tr', 'Transfers']]],
+    /* « Withdraw » et « Staking » tout court ne peuvent plus rester : le
+       tiroir porte aussi les entrees du menu de la page, ou les memes mots
+       designent l'ACTION — retirer, miser au staking. Deux rangees du meme
+       nom a six lignes d'ecart, l'une qui ouvre un formulaire et l'autre
+       une liste, on en essaie une sur deux. Le pluriel et le mot
+       « history » les separent, et la place est la depuis que le rail a
+       laisse sa largeur a la liste. */
+    ['History', [['r', 'Rounds'], ['dep', 'Deposits'], ['wd', 'Withdrawals'],
+                 ['st', 'Staking history'], ['tr', 'Transfers']]],
     /* Un pari pose disparaissait de la vue des qu'on quittait SWOGE Bet : on
        ne savait plus ce qu'on avait en cours, ni depuis quand. Les deux
        onglets separent ce qui est ENCORE EN JEU de ce qui est solde — ce ne
@@ -1263,6 +1270,7 @@
       '.swp-t button.on{color:#FFD97A;background:rgba(255,197,61,.10);' +
       'border-color:rgba(255,197,61,.34);}' +
       '.swp-t button.on::after{color:#FFD97A;}' +
+      '.swp-t button.swp-mir.tog::after{content:"";padding:0;}' +
       '.swp-l{display:none;flex:1;overflow-y:auto;padding:8px 12px 18px;min-height:180px;}' +
       '.swp.detail .swp-t{display:none;}' +
       '.swp.detail .swp-l{display:block;}' +
@@ -1715,6 +1723,13 @@
     });
 
     var t = profBoite.querySelector('.swp-t');
+    /* Les entrees du menu de la page, decoupees en paquets par ses separateurs.
+       Le PREMIER paquet — portefeuille, depot, retrait, quetes — monte en tete
+       du tiroir : ce sont les gestes pour lesquels on ouvre un menu. Le reste
+       (autres jeux, accueil, son, musique) descend sous les sections du profil,
+       la ou on va rarement. */
+    var paquets = miroirPaquets();
+    miroirGroupe(t, 'Account', paquets[0]);
     FAMILLES.forEach(function (f) {
       var g = document.createElement('div');
       g.className = 'swp-g'; g.textContent = f[0];
@@ -1726,7 +1741,82 @@
         t.appendChild(b);
       });
     });
+    var RESTE = ['Elsewhere', 'Settings', 'More'];
+    for (var q = 1; q < paquets.length; q++)
+      miroirGroupe(t, RESTE[q - 1] || 'More', paquets[q]);
+
+    /* ---- LE MENU DEROULANT NE S'AFFICHE PLUS ----
+       Ses entrees sont dans le tiroir ; deux listes identiques a deux endroits
+       divergent des la premiere modification. On le LAISSE dans la page —
+       c'est lui qui porte les gestionnaires, un par coquille — mais on ne le
+       montre plus. Le bouton ☰ reste, et ouvre le tiroir : deux poignees, un
+       seul panneau. */
+    if (miroirs.length) {
+      var css2 = document.createElement('style');
+      css2.textContent = '#menu{display:none!important;}';
+      document.head.appendChild(css2);
+      var mb = document.getElementById('menuBtn');
+      if (mb) mb.addEventListener('click', function () { profOuvre(); });
+    }
     return true;
+  }
+
+  /* ------------------------------------------------- le menu de la page
+   *
+   * On MIROITE, on ne reecrit pas. Chaque rangee garde un lien vers l'entree
+   * d'origine et lui transmet le clic : c'est le gestionnaire de la page qui
+   * travaille, quel qu'il soit. Reimplanter openPanel(), la bascule du son et
+   * le changement de piste ici voudrait dire les tenir a jour dans ce fichier
+   * ET dans les quinze coquilles — et le jour ou l'une d'elles change, c'est
+   * le tiroir qui aurait tort.
+   */
+  var miroirs = [];
+  function miroirPaquets() {
+    var menu = document.getElementById('menu');
+    if (!menu) return [];
+    var paquets = [[]];
+    [].forEach.call(menu.children, function (el) {
+      if (el.classList && el.classList.contains('msep')) { paquets.push([]); return; }
+      if (el.tagName === 'A') paquets[paquets.length - 1].push(el);
+    });
+    return paquets.filter(function (p) { return p.length; });
+  }
+  function miroirGroupe(t, titre, liste) {
+    if (!liste || !liste.length) return;
+    var g = document.createElement('div');
+    g.className = 'swp-g'; g.textContent = titre;
+    t.appendChild(g);
+    liste.forEach(function (el) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'swp-mir';
+      /* Le son et la musique sont des INTERRUPTEURS, pas des destinations :
+         leur libelle porte deja la valeur (« Sound: on »), et un chevron a
+         cote promettrait une page qui n'existe pas. */
+      if (el.id === 'soundItem' || el.id === 'musicItem') b.classList.add('tog');
+      b.textContent = (el.textContent || '').trim();
+      b.addEventListener('click', function () {
+        /* On ferme AVANT de transmettre : openPanel() pose une fenetre
+           par-dessus, et le tiroir reste dessous la cacherait a moitie. */
+        profFerme();
+        try { el.click(); } catch (e) {}
+      });
+      t.appendChild(b);
+      miroirs.push([b, el]);
+    });
+  }
+  /* Les libelles bougent — « Sound: on » devient « Sound: off », « Sign in »
+     disparait une fois connecte. On resynchronise a l'ouverture du tiroir :
+     c'est le seul instant ou ca se voit. */
+  function miroirSync() {
+    for (var i = 0; i < miroirs.length; i++) {
+      var b = miroirs[i][0], el = miroirs[i][1];
+      b.textContent = (el.textContent || '').trim();
+      /* Le style EN LIGNE, et lui seul : « #menu{display:none} » cache tout le
+         menu, donc le style calcule dirait « cache » pour chaque entree. La
+         page, elle, cache « Sign in » en posant el.style.display. */
+      b.style.display = (el.style.display === 'none') ? 'none' : '';
+    }
   }
 
   function profBtnVisible(v) {
@@ -2168,6 +2258,7 @@
        retrouver « Settled bets » parce qu'on l'avait regarde la veille donne
        l'impression d'avoir appuye sur autre chose. */
     profVue(null);
+    miroirSync();
     profEnTete();
     /* Le prix a pu arriver AVANT que le panneau existe : il n'y avait alors
        aucun endroit ou l'ecrire. On le repose a l'ouverture. */

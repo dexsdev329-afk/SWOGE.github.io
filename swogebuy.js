@@ -185,6 +185,10 @@
       '.swb-w.dur{color:#E5533F;}' +
       '.swb-ok{font-size:11.5px;line-height:1.45;margin-bottom:5px;color:#7BD88F;font-weight:700;}' +
       '.swb-pont{margin-top:8px;}' +
+      '.swb-usd{min-height:15px;margin:5px 2px 0;font-size:12px;font-weight:700;' +
+      'letter-spacing:.2px;color:#8DA0C4;}' +
+      '.swb-usd b{color:#FFD97A;font-weight:800;}' +
+      '.swb-usd .sep{opacity:.5;margin:0 6px;}' +
       '.swb-pont .swb-q{min-height:0;margin-top:7px;}' +
       '.swb-adr{margin-top:7px;padding:8px 9px;border-radius:9px;border:1px dashed rgba(160,160,190,.45);' +
       'background:rgba(0,0,0,.34);font-size:11px;line-height:1.5;color:#E7E3F2;word-break:break-all;' +
@@ -320,6 +324,11 @@
           '<div class="swb-pont" id="swbPont" style="display:none">' +
             '<div class="swb-r"><input id="swbPontAmt" inputmode="decimal" placeholder="0">' +
             '<b id="swbPontUnite">SOL</b></div>' +
+            /* La valeur en dollars a sa PROPRE ligne. La ligne d'etat en
+               dessous est reecrite a chaque etape — « Getting an address… »,
+               puis l'adresse et le suivi — et le chiffre y aurait disparu
+               au moment ou l'on confirme le montant. */
+            '<div class="swb-usd" id="swbPontUsd"></div>' +
             '<button class="swb-cop" id="swbPontGo">Get the address to send to</button>' +
             '<div class="swb-q" id="swbPontDit"></div>' +
             '<span class="swb-ret" id="swbPontRetour">← other chains</span>' +
@@ -351,6 +360,7 @@
       if (b) ailleurs(b.getAttribute('data-de'));
     });
     $('swbPontGo').onclick = demandeAdresse;
+    $('swbPontAmt').addEventListener('input', chiffre);
     $('swbPontRetour').onclick = fermePont;
     demandeProvenances();
     choisitDevise('swoge');
@@ -646,12 +656,69 @@
       ? 'Between ' + b.min + ' and ' + b.max + ' ' + b.symbole + '.' : '';
     $('swbAilleurs').querySelector('div').style.display = 'none';
     $('swbAilleurs').querySelector('p').style.display = 'none';
+    ditPrix('');
     $('swbPont').style.display = '';
     $('swbPontAmt').focus();
   }
 
+  /* ------------------------------------------- ce que vaut ce qu'on tape
+   *
+   * « 0,05 » ne dit rien. Le joueur saisit un nombre de SOL ou d'ETH et
+   * n'avait aucun moyen de savoir s'il venait d'engager dix dollars ou mille
+   * — c'est le seul champ de tout le site ou l'on tape une somme sans voir
+   * ce qu'elle pese.
+   *
+   * Le chiffrage est AMORTI : on attend 500 ms sans frappe avant de demander.
+   * Sans ca, « 0.05 » ferait quatre appels a Relay, dont trois pour des
+   * montants que personne n'a voulu envoyer.
+   *
+   * Et il ne bloque RIEN. Si le serveur n'a pas de cle, si Relay ne repond
+   * pas, si le montant est hors bornes : la ligne reste vide et le bouton
+   * fonctionne comme avant. C'est un confort, pas une etape.
+   */
+  var minuteriePrix = null, prixJeton = 0;
+  function ditPrix(html) { var e = $('swbPontUsd'); if (e) e.innerHTML = html || ''; }
+  function chiffre() {
+    clearTimeout(minuteriePrix);
+    if (!pontCle) return ditPrix('');
+    var m = ($('swbPontAmt').value || '').replace(',', '.').trim();
+    if (!m || !/^\d*\.?\d*$/.test(m) || parseFloat(m) > 0 === false) return ditPrix('');
+    var b = bornes[pontCle] || {};
+    var n = parseFloat(m);
+    /* Hors bornes, on ne demande rien : Relay refuserait, et la ligne dirait
+       « erreur » la ou le message d'aide dit deja quoi faire. */
+    if (b.min != null && (n < b.min || n > b.max)) return ditPrix('');
+    ditPrix('<span class="sep">…</span>');
+    var jeton = ++prixJeton;
+    minuteriePrix = setTimeout(function () {
+      fetch(base() + '/relay/prix?de=' + encodeURIComponent(pontCle) +
+            '&montant=' + encodeURIComponent(m))
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (j) {
+          /* Une reponse arrivee APRES qu'on a retape n'a plus rien a dire : le
+             jeton garantit que c'est bien la derniere demande qui s'affiche,
+             et pas la plus lente. */
+          if (jeton !== prixJeton || !j) return ditPrix('');
+          var g = [];
+          if (j.dollarsEnvoi != null) g.push('≈ <b>' + dollars(j.dollarsEnvoi) + '</b>');
+          if (j.recoit != null) g.push('you get ≈ <b>' + trim(String(j.recoit), 6) + ' ETH</b>' +
+                                       (j.dollars != null ? ' (' + dollars(j.dollars) + ')' : ''));
+          ditPrix(g.join('<span class="sep">·</span>'));
+        })
+        .catch(function () { if (jeton === prixJeton) ditPrix(''); });
+    }, 500);
+  }
+  /* Deux decimales au-dessus d'un dollar, quatre en dessous : « $0.00 » pour
+     un envoi de test ferait croire que rien n'arrive. */
+  function dollars(v) {
+    var n = parseFloat(v);
+    if (!isFinite(n)) return '';
+    return '$' + (n >= 1 ? n.toFixed(2) : n.toFixed(4)).replace(/\B(?=(\d{3})+(?!\d))/, ',');
+  }
+
   function fermePont() {
     pontCle = null;
+    clearTimeout(minuteriePrix); prixJeton++; ditPrix('');
     $('swbPont').style.display = 'none';
     $('swbAilleurs').querySelector('div').style.display = '';
     $('swbAilleurs').querySelector('p').style.display = '';
@@ -684,7 +751,13 @@
 
   function montreAdresse(r) {
     var recu = r.recoit ? ' You get ≈ <b>' + trim(String(r.recoit), 6) + ' ETH on Robinhood Chain</b>' +
+                          (r.dollars != null ? ' (' + dollars(r.dollars) + ')' : '') +
                           (r.secondes ? ', usually in ' + r.secondes + 's.' : '.') : '';
+    /* Le chiffrage du montant envoye reste affiche au-dessus de l'adresse.
+       C'est l'instant ou l'on copie une adresse pour y envoyer de l'argent :
+       c'est le pire moment pour retirer de l'ecran ce que la somme vaut. */
+    if (r.dollarsEnvoi != null)
+      ditPrix('≈ <b>' + dollars(r.dollarsEnvoi) + '</b>');
     $('swbPontDit').innerHTML =
       'Send <b>' + r.envoie + ' ' + r.symbole + '</b> to this address — from your wallet or ' +
       'straight from an exchange withdrawal.' + recu +

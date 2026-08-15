@@ -191,11 +191,14 @@
     if (TAUX !== null && Date.now() - tauxQuand < TAUX_TTL) return Promise.resolve(TAUX);
     return Promise.all([
       reserves(),
-      portefeuille().then(function (w) {
-        if (!w) return null;
-        return fetch(base() + '/relay/prix?de=eth&vers=' + w.adresse + '&montant=1')
-          .then(function (r) { return r.ok ? r.json() : null; });
-      }).catch(function () { return null; }),
+      /* AUCUN PORTEFEUILLE REQUIS. Chiffrer un ETH en dollars ne verse rien a
+         personne : le serveur se sert de l'adresse nulle, valide sur la chaine
+         d'arrivee. L'exiger privait de la pastille tous ceux qui jouent dans le
+         webview Telegram ou se connectent par e-mail — c'est-a-dire la plupart —
+         sans que rien ne le dise, puisqu'un chiffrage rate n'affiche rien. */
+      fetch(base() + '/relay/prix?de=eth&montant=1')
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .catch(function () { return null; }),
     ]).then(function (x) {
       var r = x[0], j = x[1];
       if (!r || !j || j.dollarsEnvoi == null) return null;
@@ -810,10 +813,13 @@
          la chaine d'arrivee : sans elle, le serveur devait inventer une adresse
          — et celle qu'il inventait n'etait valide que pour Ethereum. Depuis
          Solana la ligne restait vide, sans que rien ne le dise. */
-      portefeuille().then(function (w) {
-        if (!w) { if (jeton === prixJeton) ditPrix(''); return; }
+      /* L'adresse part QUAND ON L'A — c'est la route reelle, donc le chiffre le
+         plus juste. Quand on ne l'a pas, on chiffre quand meme : le serveur
+         retombe sur l'adresse nulle, et un joueur sans portefeuille connecte
+         doit pouvoir savoir ce que vaut son montant AVANT de se connecter. */
+      portefeuille().catch(function () { return null; }).then(function (w) {
         return fetch(base() + '/relay/prix?de=' + encodeURIComponent(pontCle) +
-            '&vers=' + w.adresse + '&montant=' + encodeURIComponent(m))
+            (w ? '&vers=' + w.adresse : '') + '&montant=' + encodeURIComponent(m))
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (j) {
           /* Une reponse arrivee APRES qu'on a retape n'a plus rien a dire : le

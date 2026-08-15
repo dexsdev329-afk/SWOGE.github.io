@@ -2243,15 +2243,62 @@ function renderBonus(b){ if(!b) return; bonusData=b;
     #playUI .act .btn{ flex:1 1 0; min-width:0; width:auto !important; }
   }
 
+  /* ---- FAIRE TENIR LA MAIN SUR UN ECRAN DE TELEPHONE ----
+     Quatre elements coutaient ensemble pres de deux cents pixels sans rien
+     apporter au moment ou l'on joue. */
+
+  @media (max-width: 820px), (orientation: portrait){
+    /* Le titre en image fait 104 px de haut et redit ce que la barre du haut
+       affiche deja en toutes lettres, deux centimetres au-dessus. */
+    .hero h1{ display:none; }
+    .hero{ padding:0; }
+
+    /* L'aide des jetons s'apprend en une manche : « poser un jeton, la croix
+       pour vider ». La laisser en permanence, c'est expliquer la porte a
+       quelqu'un qui l'a deja ouverte. */
+    .sidenote{ display:none !important; }
+
+    /* Les deux paris annexes passent de 82 a 62 px. Ce sont des JETONS a
+       poser, pas des illustrations : a 62 px la cible reste largement au-dessus
+       des 44 px recommandes, et on gagne vingt pixels de haut plus l'air
+       autour. */
+    .sbet{ width:clamp(52px,16vw,72px); }
+    .sidebets{ gap:clamp(8px,3vw,14px); margin:0 0 8px; }
+    .sbet .sbp{ font-size:9px; }
+
+    /* ---- LA LIGNE D'EQUITE SE REPLIE, ELLE NE DISPARAIT PAS ----
+       « Provably fair · seed hash 44b29dfb… · nonce 1419 » prend trois lignes
+       sur un telephone parce qu'elle casse au milieu de l'empreinte. Elle en
+       prend UNE, coupee, et se deplie au doigt.
+       La supprimer aurait ete le geste facile et le mauvais : c'est la seule
+       chose de la page qui permet a un joueur de verifier que la maison n'a
+       pas choisi ses cartes. Une preuve qu'on cache est une preuve qu'on
+       retire. */
+    .fair{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+           word-break:normal; font-size:9.5px; padding:0 8px 4px; opacity:.5;
+           cursor:pointer; }
+    .fair.ouvert{ white-space:normal; overflow:visible; word-break:break-all;
+                  opacity:1; font-size:10.5px; }
+  }
+
   /* 4. LA ZONE DES COMMANDES A UNE HAUTEUR PLANCHER
      Meme avec les jetons conserves et la rangee ramenee sur une ligne, il reste
      l'assurance, qui remplace tout par sa question. Sans plancher, la ligne
      d'equite et le pied de page remontaient de 118 px le temps d'y repondre.
-     Les valeurs sont MESUREES sur la page, pas devinees : 279 px sur ecran
-     large, 276 sur telephone. */
+     Les valeurs sont MESUREES sur la page, pas devinees, et RECALEES apres
+     l'amincissement de la vue telephone : les paris annexes plus petits et
+     l'aide en moins ont fait tomber le plus grand etat de 276 a 222 px sur
+     telephone. Un plancher laisse a 276 gardait cinquante pixels de vide sous
+     le bouton, mesures nulle part et visibles partout.
+   *
+     MESURER LE BON ETAT. Une premiere reprise a donne 177 : la sonde changeait
+     `display` et lisait la hauteur dans la foulee, sans laisser l'observateur
+     poser la classe de phase sur <body> — elle mesurait donc une zone ou les
+     jetons etaient caches alors qu'ils restent affiches. Les vrais chiffres se
+     lisent en faisant vraiment changer d'etat, et en attendant. */
   .controls{ min-height:279px; }
   @media (max-width: 820px), (orientation: portrait){
-    .controls{ min-height:276px; }
+    .controls{ min-height:222px; }
   }
 </style>
 <script>
@@ -2259,6 +2306,12 @@ function renderBonus(b){ if(!b) return; bonusData=b;
    `style.display` en ligne, sans jamais nommer l'etat : on le deduit donc de ce
    qui est visible, et un observateur suffit — il n'y a rien a modifier dans les
    quinze endroits qui font la bascule. */
+/* La ligne d'equite repliee se deplie au doigt. Un seul ecouteur, pose une
+   fois : le contenu de la ligne, lui, est reecrit a chaque manche. */
+(function(){
+  var f=document.getElementById("fair");
+  if(f) f.addEventListener("click", function(){ f.classList.toggle("ouvert"); });
+})();
 (function(){
   var b=document.body, ids=["playUI","doneUI","insUI"];
   function vu(id){ var e=document.getElementById(id); return e && e.style.display!=="none"; }

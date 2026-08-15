@@ -444,67 +444,77 @@ canvas{ touch-action:none; }
  * sous la table, ces cases-la ne font que MONTRER — comme le jeton de mise
  * principal juste a cote, qui suit deja cette regle.
  */
-.bj-annexe{ position:absolute; inset:0; pointer-events:none; z-index:3; }
-.bj-annexe .bja-sp{
-  position:absolute; width:6.2%; height:6.8%; border-radius:50%;
-  display:flex; align-items:center; justify-content:center;
-  font-weight:900; font-size:clamp(7px,1.55vw,12px); line-height:1;
-  color:#FFD97A; text-shadow:0 1px 3px rgba(0,0,0,.95);
-  opacity:0; transition:opacity .18s ease;
-}
-.bj-annexe .bja-sp.on{
-  opacity:1; background:rgba(6,4,2,.55);
-  box-shadow:0 0 0 2px rgba(255,212,121,.85), 0 0 13px rgba(255,212,121,.4);
-}
-.bj-annexe .bja-sp.gagne{ color:#BFFFD0;
-  box-shadow:0 0 0 2px #7CFF9B, 0 0 18px rgba(124,255,155,.6); }
-.bj-annexe .bja-sp.perdu{ opacity:.6; color:#FFC0BC;
-  box-shadow:0 0 0 2px rgba(255,110,110,.5); }
-/* L'assurance en attente de reponse : elle bat, parce que c'est au joueur de
-   jouer et que rien d'autre sur le tapis ne le dit. */
-.bj-annexe .bja-sp.att{ animation:bjaAtt .9s ease-in-out infinite alternate; }
-@keyframes bjaAtt{
-  from{ box-shadow:0 0 0 2px rgba(255,212,121,.55), 0 0 6px rgba(255,212,121,.25); }
-  to  { box-shadow:0 0 0 3px rgba(255,212,121,1),   0 0 20px rgba(255,212,121,.7); }
-}
-/* Les six positions sont RELEVEES sur l'image, pas estimees a l'oeil : les
-   deux colonnes ne sont pas exactement symetriques (le bord de la table
-   s'incurve) et un ovale rate de trois pixels se voit tout de suite. */
-.bj-annexe [data-side="pp"] { top:34.0%; }
-.bj-annexe [data-side="tp"] { top:42.6%; }
-.bj-annexe [data-side="ins"]{ top:51.3%; }
-.bj-annexe.g [data-side="pp"] { left:9.7%; }
-.bj-annexe.g [data-side="tp"] { left:8.6%; }
-.bj-annexe.g [data-side="ins"]{ left:8.7%; }
-.bj-annexe.d [data-side="pp"] { right:10.1%; }
-.bj-annexe.d [data-side="tp"] { right:9.2%;  }
-.bj-annexe.d [data-side="ins"]{ right:9.0%;  }
+.bj-annexe{ display:none; }   /* plus de pastilles calees sur l'image */
 
-/* ---- Les tuiles de reglage, sous la table ----
-   Une tuile = un pari. Un appui monte d'un cran, un appui au dernier cran
-   remet a zero : c'est le geste du jeton qu'on empile puis qu'on ramasse, et
-   il tient sur une seule cible large. */
-.sidebets{ display:flex; gap:8px; margin:0 0 10px; }
+/* ---- LES JETONS DE PARI ANNEXE ----
+ *
+ * Avant : deux tuiles rectangulaires sous la table, et SIX pastilles calees
+ * sur l'image du tapis a des pourcentages releves a la main. Deux endroits
+ * pour une seule information, dont un qui se decalait a chaque changement de
+ * largeur — parce qu'il visait des ovales PEINTS dans l'image.
+ *
+ * Maintenant : un jeton rond par pari, qui porte tout — le dessin dit lequel
+ * c'est, le nombre dit ce qui est pose, la couleur dit ce que ca a donne.
+ * Rien n'est cale sur l'image : le tapis est vide, les jetons vivent dessous
+ * et se dimensionnent tout seuls.
+ *
+ * La taille vient de `clamp()` et non d'un pourcentage : un jeton doit rester
+ * touchable au pouce sur un ecran de 360 px, et ne pas devenir une soucoupe
+ * sur un ecran large. 66 px au plus petit — au-dessus des 44 px recommandes,
+ * parce qu'ici un appui de travers engage de l'argent.
+ */
+.sidebets{ display:flex; gap:clamp(10px,4vw,20px); margin:0 0 12px;
+  justify-content:center; align-items:flex-start; }
 .sbet{
-  flex:1; min-height:56px; padding:6px 8px; border-radius:12px; cursor:pointer;
-  font:inherit; color:inherit; text-align:center;
-  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px;
-  border:1px solid rgba(230,165,55,.32); background:rgba(255,255,255,.04);
-  transition:border-color .15s, background .15s, transform .1s;
+  position:relative; flex:0 0 auto; padding:0; cursor:pointer;
+  width:clamp(66px,21vw,96px); background:none; border:0;
+  font:inherit; color:inherit;
+  display:flex; flex-direction:column; align-items:center; gap:4px;
+  transition:transform .1s ease, filter .15s ease;
 }
-.sbet:hover{ border-color:#FFC53D; background:rgba(230,165,55,.10); }
-.sbet:active{ transform:translateY(1px); }
-.sbet.on{ border-color:#FFD97A; background:rgba(230,165,55,.16);
-          box-shadow:0 0 12px rgba(255,212,121,.28) inset; }
-.sbet .sbn{ font-size:.74rem; font-weight:700; letter-spacing:.02em; }
-.sbet .sbp{ font-size:.6rem; letter-spacing:.06em; opacity:.55; }
-.sbet .sbv{ font-size:1rem; font-weight:900; color:#FFD97A; font-variant-numeric:tabular-nums; }
-.sbet .sbv.zero{ color:inherit; opacity:.35; }
+.sbet img{ display:block; width:100%; height:auto; border-radius:50%;
+  filter:grayscale(.55) brightness(.62);
+  transition:filter .18s ease, box-shadow .18s ease; }
+.sbet:hover img{ filter:grayscale(.15) brightness(.85); }
+.sbet:active{ transform:translateY(2px); }
+/* Pose : le jeton s'allume. C'est le seul etat qui compte avant la donne. */
+.sbet.on img{ filter:none;
+  box-shadow:0 0 0 2px rgba(255,212,121,.9), 0 0 18px rgba(255,212,121,.45); }
+.sbet.gagne img{ filter:none;
+  box-shadow:0 0 0 3px #7CFF9B, 0 0 22px rgba(124,255,155,.65); }
+.sbet.perdu img{ filter:grayscale(.8) brightness(.45); box-shadow:none; }
+/* L'assurance en attente bat : c'est au joueur de jouer, et rien d'autre a
+   l'ecran ne le dit. */
+.sbet.att img{ animation:sbetAtt .9s ease-in-out infinite alternate; }
+@keyframes sbetAtt{
+  from{ box-shadow:0 0 0 2px rgba(255,212,121,.55); filter:brightness(.8); }
+  to  { box-shadow:0 0 0 3px rgba(255,212,121,1), 0 0 22px rgba(255,212,121,.7);
+        filter:none; }
+}
+/* Le montant, sur le jeton. Il se lit par-dessus le dessin, donc il porte son
+   propre fond : un chiffre clair sur une couronne doree ne se lit pas. */
+.sbet .sbv{
+  position:absolute; left:50%; transform:translateX(-50%);
+  top:calc(clamp(66px,21vw,96px) * .60);
+  min-width:2.1em; padding:2px 7px; border-radius:999px;
+  font-size:clamp(11px,3vw,13px); font-weight:900; line-height:1.25;
+  color:#0A0704; background:linear-gradient(180deg,#FFE08A,#FFC53D);
+  box-shadow:0 2px 7px rgba(0,0,0,.6);
+}
+.sbet .sbv.zero{ display:none; }   /* zero ne se montre pas : c'est du bruit */
+.sbet .sbp{ font-size:.6rem; letter-spacing:.05em; opacity:.55;
+  white-space:nowrap; }
+/* Les deux regles de l'ancien design vivaient ICI, apres celles du nouveau.
+   A specificite egale, la DERNIERE gagne : la pastille du montant restait
+   donc du texte dore de 16 px, sans fond, pose sur une couronne doree — donc
+   illisible. Elles sont supprimees ; le style de la pastille est plus haut,
+   au meme endroit que le reste du jeton. */
 .sidenote{ font-size:.66rem; opacity:.5; margin:-4px 0 10px; }
 
 /* ---- Ce que les annexes ont donne, en toutes lettres ----
-   Les pastilles du tapis sont marquees aria-hidden : c'est un decor. La
-   verite lisible — et lue a voix haute — est ici. */
+   Le jeton dit deja gagne ou perdu par sa couleur. Ici c'est ecrit, et lu a
+   voix haute par un lecteur d'ecran : une couleur seule n'est pas une
+   information pour tout le monde. */
 .sideres{ display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin:0 auto 8px; }
 .sideres:empty{ display:none; }
 .sideres span{ font-size:.72rem; padding:3px 9px; border-radius:9px;
@@ -901,19 +911,11 @@ button, input, a, .card, .felt, .sbet, .chipbtn, .btn{ touch-action:manipulation
       <!-- ramasse les jetons : mise au minimum, annexes a zero -->
       <button type="button" class="bj-clear" id="clearBet" aria-label="Clear the chips">&times;</button>
 
-      <!-- Les cases annexes dessinees sur le tapis. Decor : elles MONTRENT la
-           mise et son sort, elles ne la prennent pas. Le reglage est sur les
-           tuiles sous la table, ou la cible est assez large pour le pouce. -->
-      <div class="bj-annexe g" aria-hidden="true">
-        <div class="bja-sp" data-side="pp"></div>
-        <div class="bja-sp" data-side="tp"></div>
-        <div class="bja-sp" data-side="ins"></div>
-      </div>
-      <div class="bj-annexe d" aria-hidden="true">
-        <div class="bja-sp" data-side="pp"></div>
-        <div class="bja-sp" data-side="tp"></div>
-        <div class="bja-sp" data-side="ins"></div>
-      </div>
+      <!-- Il y avait ici SIX pastilles calees sur l'image du tapis, a des
+           pourcentages releves a la main — top:34.0%, left:9.7% — parce que
+           les ovales etaient PEINTS dessus. Le nouveau tapis est vide : rien
+           a viser, donc rien a caler. Les jetons ronds sous la table portent
+           desormais la mise ET son sort, a une taille qui se touche. -->
 
       <div class="side player">
         <div class="lbl">You <span class="val" id="playerVal"></span></div>
@@ -932,15 +934,15 @@ button, input, a, .card, .felt, .sbet, .chipbtn, .btn{ touch-action:manipulation
              annonce : une table de gain ecrite en dur dans la page finirait
              par mentir le jour ou elle change ailleurs. -->
         <div class="sidebets" id="sideUI" style="display:none">
-          <button type="button" class="sbet" data-side="pp">
-            <span class="sbn">Perfect Pairs</span>
-            <span class="sbp" id="ppPay">—</span>
+          <button type="button" class="sbet" data-side="pp" aria-label="Perfect Pairs side bet">
+            <img src="img/bj_pp.webp" alt="" width="256" height="256" loading="lazy">
             <b class="sbv zero" id="ppVal">0</b>
+            <span class="sbp" id="ppPay">—</span>
           </button>
-          <button type="button" class="sbet" data-side="tp">
-            <span class="sbn">21+3</span>
-            <span class="sbp" id="tpPay">—</span>
+          <button type="button" class="sbet" data-side="tp" aria-label="21 plus 3 side bet">
+            <img src="img/bj_213.webp" alt="" width="256" height="256" loading="lazy">
             <b class="sbv zero" id="tpVal">0</b>
+            <span class="sbp" id="tpPay">—</span>
           </button>
         </div>
         <div class="sidenote" id="sideNote" style="display:none"></div>
@@ -1486,11 +1488,19 @@ button, input, a, .card, .felt, .sbet, .chipbtn, .btn{ touch-action:manipulation
      Elles sont peintes des deux cotes : le tapis imprime les memes libelles a
      gauche et a droite, une seule colonne allumee ressemblerait a un bug. */
   function peintSpot(cle, txt, cls){
-    var els=document.querySelectorAll('.bj-annexe [data-side="'+cle+'"]'), i;
+    /* Le sort d'un pari se montre SUR SON JETON, plus sur des pastilles calees
+       a des pourcentages releves sur l'image du tapis. Une seule cible, un
+       seul endroit a regarder — et rien qui se decale quand la largeur change.
+       Le montant garde sa pastille `.sbv` : elle est deja peinte par
+       `majSideUI`, on ne touche qu'a l'etat. */
+    var els=document.querySelectorAll('.sidebets [data-side="'+cle+'"]'), i;
     for(i=0;i<els.length;i++){
-      els[i].className="bja-sp"+(txt||cls==="att"?" on":"")+(cls?" "+cls:"");
-      els[i].textContent=txt||"";
+      els[i].className="sbet"+(txt||cls==="att"?" on":"")+(cls?" "+cls:"");
     }
+    /* Ce que le pari a RAPPORTE s'ecrit a la place du libelle de gain : le
+       joueur veut lire « +250 », pas « 6/12/25:1 », a la seconde ou ca tombe. */
+    var p=document.getElementById(cle+"Pay");
+    if(p && cls){ p.textContent = txt || (cls==="perdu" ? "lost" : ""); }
   }
   /** Avant la donne : les cases montrent ce qui est pose. */
   function peintTapisMises(){

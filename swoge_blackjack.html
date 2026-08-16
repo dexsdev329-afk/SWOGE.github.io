@@ -782,6 +782,37 @@ button, input, a, .card, .felt, .sbet, .chipbtn, .btn{ touch-action:manipulation
   /* colle la connexion en haut a droite, hors du plateau */
   .connrow { position:absolute; top:64px; right:18px; z-index:6;
              flex-direction:column; align-items:flex-end; padding:0; gap:9px; }
+
+  /* ---- SUR PC, LA TABLE PREND LA PLACE ----
+   *
+   * Le tapis etait borne a 680 px de large — la mesure d'un telephone tenu a
+   * l'horizontale — sur des ecrans qui en offrent trois fois plus. Les cartes
+   * y faisaient 76 px : on jouait en plissant les yeux devant une table
+   * minuscule au milieu d'un ecran vide.
+   *
+   * On le dimensionne par sa HAUTEUR, pas par sa largeur : c'est elle qui
+   * manque sur un ecran d'ordinateur, et le rapport de forme fait le reste.
+   * Le tapis remplit donc l'ecran sans jamais le depasser, quelle que soit la
+   * table — la noire est en 640/480, la doree en 640/427.
+   */
+  .hero p { display:none; }
+  .felt.felt { height:min(70vh,640px); width:auto; max-width:92vw; }
+  /* ---- LES CARTES ----
+   * Elles etaient bornees a 17 % de leur rangee, PLAFOND COMPRIS : sur un
+   * tapis deux fois plus grand elles gardaient donc la meme taille — le
+   * pourcentage mordait bien avant le plafond, et lever le plafond seul
+   * n'aurait rien change. C'est la PART qu'on releve.
+   *
+   * Et on leur rend le droit de se serrer. `.card` porte `flex-shrink:0` :
+   * sans le defaire, une main de cinq cartes a 26 % deborderait de la table au
+   * lieu de se tasser. A deux cartes elles sont grandes, a cinq elles rentrent
+   * — c'est la rangee qui arbitre, pas une valeur choisie a la main. */
+  .felt.felt > .side .cards > * { width:min(112px,26%); flex-shrink:1; min-width:0; }
+  /* Les pastilles annexes — Perfect Pairs, 21+3, Insurance — etaient calibrees
+     au doigt : 96 px sur un ecran ou l'on vise a la souris. Elles reprennent
+     la taille d'un jeton, et rendent leur hauteur a la table. */
+  .sbet { width:clamp(48px,4.6vw,62px); }
+  .sidebets { gap:14px; margin-bottom:8px; }
 }
 </style>
 <style>
@@ -1639,7 +1670,13 @@ button, input, a, .card, .felt, .sbet, .chipbtn, .btn{ touch-action:manipulation
     if(added>0) for(var k=0;k<added;k++) setTimeout(function(){ SFX.card(); }, k*170);
     // dealer
     renderHand(dealerCards, st.dealer.cards, st.dealer.hidden, "d");
-    dealerVal.textContent = st.dealer.hidden ? "" : st.dealer.value;
+    /* LE COMPTE DU CROUPIER S'AFFICHE DES LA PREMIERE CARTE.
+       Il ne montrait rien tant que la carte de trou etait cachee : on voyait un
+       roi sans savoir qu'on affrontait 10, et il fallait recompter soi-meme a
+       chaque main. Rien n'est revele — le serveur envoie deja, quand la main
+       est cachee, la valeur de la SEULE carte visible (`_bjVal([b.dc[0]])`) :
+       c'est le client qui refusait de l'ecrire. */
+    dealerVal.textContent = st.dealer.value;
     dealerVal.className = "val" + (st.dealer.value>21?" bust":"");
     // player
     renderHand(playerCards, st.player.cards, false, "p");

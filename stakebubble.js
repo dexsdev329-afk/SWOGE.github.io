@@ -1335,6 +1335,11 @@
       'border-color:rgba(255,197,61,.34);}' +
       '.swp-t button.on::after{color:#FFD97A;}' +
       '.swp-t button.swp-mir.tog::after{content:"";padding:0;}' +
+      /* La rangee en attente : meme forme que les autres pour qu'elle tienne
+         dans la colonne, mais eteinte, sans chevron et sans curseur — rien
+         n'invite a appuyer. */
+      '.swp-t .swp-att{opacity:.42;cursor:default;font-style:italic;}' +
+      '.swp-t .swp-att::after{content:"";padding:0;}' +
       '.swp-l{display:none;flex:1;overflow-y:auto;padding:8px 12px 18px;min-height:180px;}' +
       '.swp.detail .swp-t{display:none;}' +
       '.swp.detail .swp-l{display:block;}' +
@@ -1833,6 +1838,25 @@
        donc tout en haut, avant le portefeuille. */
     miroirGroupe(t, 'Go to', paquets[1]);
     miroirGroupe(t, 'Account', paquets[0]);
+    /* ---- LA BOUTIQUE, ANNONCEE AVANT D'EXISTER ----
+     *
+     * Vide pour l'instant, et elle le DIT. Une section qui s'ouvre sur rien
+     * fait douter du reste du tiroir ; une section qui annonce sa date se lit
+     * comme une promesse. Elle n'est donc pas cliquable — un bouton mort qui
+     * ne reagit pas est pire qu'un libelle qui explique.
+     *
+     * Elle est posee ICI, entre le compte et les sections du profil : c'est la
+     * place qu'elle gardera quand elle aura son contenu, et on evitera d'avoir
+     * a la deplacer le jour ou elle ouvre. */
+    (function boutique() {
+      var g = document.createElement('div');
+      g.className = 'swp-g'; g.textContent = 'Shop';
+      t.appendChild(g);
+      var b = document.createElement('div');
+      b.className = 'swp-mir swp-att';
+      b.textContent = '\uD83D\uDED2 Available soon';
+      t.appendChild(b);
+    })();
     FAMILLES.forEach(function (f) {
       var g = document.createElement('div');
       g.className = 'swp-g'; g.textContent = f[0];

@@ -2036,8 +2036,118 @@
       /* Une rangee qui ne contenait que la fermeture n'a plus rien a montrer :
          sans ca elle laisse sa marge, et le formulaire finit sur un blanc. */
       '#swpHote .box .brow:has(> [data-close]:only-child){display:none!important;}' +
-      '#swpHote .box input,#swpHote .box select,#swpHote .box textarea{max-width:100%;}';
+      '#swpHote .box input,#swpHote .box select,#swpHote .box textarea{max-width:100%;}' +
+      habitPortefeuille();
     (document.body || document.documentElement).appendChild(css);
+  }
+
+  /* ====================== LE PORTEFEUILLE, DANS LE TIROIR ======================
+   *
+   * « My Wallet » arrivait ici avec l'habit de sa fenetre : quatre plaques
+   * peintes de 90 px — COPY, DEPOSIT, EXPLORER, DISCONNECT — empilees dans un
+   * tiroir qui est par ailleurs entierement en CSS, sobre, bleu nuit et or.
+   * Trois choses n'allaient pas, et aucune n'est une affaire de gout :
+   *
+   *  1. LES DEUX SOLDES — ce qu'on vient lire — etaient deux lignes de texte
+   *     de 13 px coincees ENTRE deux plaques. La reponse a la question posee
+   *     etait la plus petite chose du panneau ;
+   *  2. L'ADRESSE etait coupee au bord d'un champ trop etroit. Une adresse a
+   *     moitie lisible ne sert a rien : c'est tout ou rien, on la relit en
+   *     entier avant d'y envoyer de l'argent. Le tiroir sait deja faire —
+   *     c'est ce que fait `.swp-r .w span.ad` pour les amis ;
+   *  3. DISCONNECT, en rouge vif sur 90 px, etait l'element le plus fort de
+   *     l'ecran. Le geste le plus rare et le plus regrettable criait plus fort
+   *     que « Deposit ».
+   *
+   * On ne touche pas au balisage : la boite appartient a la page, elle y
+   * retourne intacte quand on quitte la section, avec ses gestionnaires. Tout
+   * se joue en CSS, sur `#swpHote` — donc UNIQUEMENT dans le tiroir. Ouvert
+   * autrement (le Coin Pusher garde son propre chemin), le panneau reste
+   * exactement ce qu'il etait.
+   *
+   * L'ordre de lecture est refait avec `order` plutot qu'en deplacant des
+   * noeuds : le solde d'abord, l'adresse ensuite, les gestes en dernier —
+   * du plus consulte au plus rare.
+   */
+  function habitPortefeuille() {
+    var OR = '#FFD97A', ENCRE = '#231a06';
+    return (
+      /* La pile devient une colonne flex : c'est ce qui rend `order` possible. */
+      '#swpHote #box-wallet .pscroll{display:flex;flex-direction:column;}' +
+
+      /* ---- 1. LES SOLDES ---- */
+      /* Le tronc commun des deux lignes : une carte, pas une ligne de texte. */
+      '#swpHote #box-wallet .strow{display:flex!important;align-items:center;' +
+      'justify-content:space-between!important;gap:10px!important;' +
+      'padding:11px 13px!important;margin:0 0 7px!important;border-radius:12px;' +
+      'font-size:11.5px!important;letter-spacing:.2px;color:#8DA0C4!important;' +
+      'background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.09);}' +
+      '#swpHote #box-wallet .strow b{font-size:14px!important;font-weight:800;' +
+      'color:#EAF2FF!important;font-variant-numeric:tabular-nums;}' +
+      /* Le $SWOGE porte l'or et le grand chiffre : c'est LUI qu'on est venu
+         voir, et c'est lui qui decide si on peut deposer. On le designe par
+         l'identifiant qu'il contient — `:first-of-type` viserait la plaque de
+         titre, qui est un div elle aussi. */
+      '#swpHote #box-wallet .strow:has(#acSwoge){order:0;padding:14px!important;' +
+      'background:rgba(255,197,61,.07);border-color:rgba(255,197,61,.20);}' +
+      '#swpHote #box-wallet .strow:has(#acSwoge) b{font-size:22px!important;color:' + OR + '!important;}' +
+      /* Le gaz est une CONDITION, pas un avoir : on le garde lisible et petit.
+         Il ne devient interessant que le jour ou il manque. */
+      '#swpHote #box-wallet .strow:has(#acEth){order:1;}' +
+
+      /* ---- 2. L'ADRESSE, EN ENTIER ---- */
+      '#swpHote #box-wallet label{order:2;margin:15px 0 6px!important;' +
+      'font-size:10.5px!important;letter-spacing:1px;color:#8DA0C4!important;}' +
+      /* Un champ ne sait pas passer a la ligne : c'est la TAILLE qui doit
+         rentrer les 42 caracteres. En chasse fixe leur largeur est previsible —
+         environ 0,6 em par caractere — et le tiroir fait 92 vw tant qu'il n'a
+         pas atteint ses 400 px. D'ou le plafond en vw : l'adresse tient en
+         entier a 320 px comme a 430, sans jamais depasser 11,5 px la ou la
+         place ne manque plus. */
+      '#swpHote #box-wallet #acAddr{order:3;width:100%;box-sizing:border-box;' +
+      'font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace!important;' +
+      'font-size:min(11.5px,2.8vw)!important;letter-spacing:.2px;' +
+      'text-align:center;padding:12px 8px!important;border-radius:11px!important;' +
+      'color:#C6D3EA!important;background:rgba(0,0,0,.30)!important;' +
+      'border:1px solid rgba(255,255,255,.10)!important;}' +
+
+      /* ---- 3. LES GESTES ---- */
+      /* On defait la plaque peinte : plus d'image, plus de proportion imposee,
+         plus de texte pousse hors du cadre a -9999 px. Le libelle est dans le
+         balisage depuis toujours — il redevient simplement visible. */
+      '#swpHote #box-wallet .abtn.wbtn{display:block;width:100%;box-sizing:border-box;' +
+      'aspect-ratio:auto!important;min-height:0!important;height:auto!important;' +
+      'padding:12px!important;margin:0 0 8px!important;border-radius:11px!important;' +
+      'cursor:pointer;font-family:inherit;font-size:13px!important;font-weight:800;' +
+      'letter-spacing:.2px;text-align:center;text-indent:0!important;' +
+      'overflow:visible!important;white-space:normal!important;text-decoration:none;' +
+      'background-image:none!important;background-color:transparent!important;' +
+      'color:#EAF2FF!important;border:1px solid rgba(255,255,255,.14)!important;' +
+      'box-shadow:none!important;}' +
+      /* Copier suit l'adresse et lui appartient : discret, et or parce qu'il
+         agit sur ce qui est juste au-dessus. */
+      '#swpHote #box-wallet #acCopy{order:4;margin-top:7px!important;padding:9px!important;' +
+      'font-size:12px!important;color:' + OR + '!important;' +
+      'background:rgba(255,197,61,.10)!important;' +
+      'border-color:rgba(255,197,61,.34)!important;}' +
+      '#swpHote #box-wallet #acCopy:hover{background:rgba(255,197,61,.18)!important;}' +
+      /* Deposer est LE geste du panneau — le seul qui fasse entrer de l'argent
+         dans le jeu. Un seul aplat plein sur l'ecran, et c'est celui-la. */
+      '#swpHote #box-wallet #acDeposit{order:5;margin-top:14px!important;padding:13px!important;' +
+      'font-size:13.5px!important;color:' + ENCRE + '!important;' +
+      'background:linear-gradient(180deg,#F2C868,#E6A537)!important;' +
+      'border-color:transparent!important;}' +
+      '#swpHote #box-wallet #acExplorer{order:6;background:rgba(255,255,255,.05)!important;' +
+      'color:#C6D3EA!important;}' +
+      '#swpHote #box-wallet #acExplorer::after{content:" \\2197";color:#8DA0C4;}' +
+      /* Se deconnecter reste possible, et cesse d'etre le plus visible : bord
+         rouge sur fond vide, en bas, apres un trait. On ne le cache pas — on le
+         met a sa place, celle d'un geste rare. */
+      '#swpHote #box-wallet #acLogout{order:7;margin-top:16px!important;padding:10px!important;' +
+      'font-size:11.5px!important;font-weight:700!important;color:#F2685E!important;' +
+      'border-color:rgba(242,104,94,.28)!important;}' +
+      '#swpHote #box-wallet #acLogout:hover{background:rgba(242,104,94,.10)!important;}'
+    );
   }
 
   function emprunte(el, titre) {

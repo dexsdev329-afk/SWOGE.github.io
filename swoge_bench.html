@@ -23,6 +23,33 @@
  * recommandes — et c'est le seul chemin vers le depot, le retrait et le compte.
  * ========================================================= */
 html{ -webkit-text-size-adjust:100%; }
+
+/* ---- ON RELEVE LE NOIR, PARTOUT ----
+ *
+ * Les tables etaient presque entierement noires : 80 % des pixels du casino
+ * sous le seuil du visible, 96 % au Coin Pusher, contre 58 % au hall. A cote
+ * du hall, chaque jeu paraissait eteint.
+ *
+ * Le calque est en `screen`, pas en voile blanc, et la difference est tout :
+ *
+ *   screen(a, g) = 255 - (255 - a)(255 - g) / 255
+ *
+ * Le NOIR monte a la valeur du calque, le BLANC ne bouge pas d'un cran. Les
+ * plaques peintes, les jetons et les cartes gardent donc exactement leur
+ * eclat — seuls les creux se remplissent. Un voile blanc a 5 %, lui, aurait
+ * laiteuse les cartes en meme temps.
+ *
+ * `filter: brightness()` est ecarte pour deux raisons : il MULTIPLIE, donc le
+ * noir reste noir — or c'est justement le noir qu'on veut relever — et un
+ * filtre fait de son element le repere de tout descendant en position fixe,
+ * ce qui nous a deja coute un cadre de palier de deux cents pixels sur le Spin.
+ *
+ * `pointer-events:none` : le calque couvre tout l'ecran, il ne doit rien
+ * intercepter. Verifie par un vrai clic sur la bulle de profil, avec et sans.
+ *
+ * Une seule valeur a regler ici, et elle vaut pour les vingt-six pages. */
+html::after{ content:""; position:fixed; inset:0; pointer-events:none;
+  z-index:2147483000; background:#12121a; mix-blend-mode:screen; }
 button, a, input, select, textarea, label, summary,
 [role="button"], [onclick],
 .card, .chipbtn, .btn, .tile, .sbet, .qclaim, .abtn, .pct, .chip, .sday{

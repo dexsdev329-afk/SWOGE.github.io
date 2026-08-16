@@ -525,7 +525,7 @@
       b.textContent = 'Copied ✓';
       setTimeout(function () { b.textContent = 'Copy'; }, 1400);
     });
-    $('swcWDep').addEventListener('click', function () { ouvre('dep'); });
+    $('swcWDep').addEventListener('click', function () { vaVers('dep', /Deposit/i); });
     $('swcWOut').addEventListener('click', deconnecte);
     $('swcDGo').addEventListener('click', depose);
     $('swcWdGo').addEventListener('click', demandeRetrait);
@@ -569,6 +569,30 @@
     if (nom === 'quests') { demande('quests'); demande('bonusState'); }
     poseTout();
   }
+  /* ---- ALLER D'UN PANNEAU A L'AUTRE ----
+   *
+   * « Deposit » depuis le portefeuille ne doit PAS passer par notre propre
+   * ouverture. Quand le panneau est affiche, il n'est plus chez nous : le
+   * tiroir l'a DEPLACE chez lui. Rallumer le voile posait donc une fenetre au
+   * milieu de la page, par-dessus le tiroir — deux presentations du meme
+   * compte a l'ecran en meme temps, et un retour qui ne ramene pas ou l'on
+   * croit.
+   *
+   * On appuie donc sur la RANGEE du tiroir, exactement comme le ferait le
+   * joueur : elle rend la boite empruntee, emprunte la suivante, et met a jour
+   * la barre de retour. Hors du tiroir — s'il n'a pas ete monte, faute de
+   * connexion — on ouvre nous-memes, comme avant.
+   */
+  function vaVers(nom, motif) {
+    if (document.querySelector('.swpov.on')) {
+      var rs = document.querySelectorAll('.swp-t button');
+      for (var i = 0; i < rs.length; i++) {
+        if (motif.test(rs[i].textContent || '')) { rs[i].click(); return; }
+      }
+    }
+    ouvre(nom);
+  }
+
   function ferme() {
     var o = $('ovl');
     if (!o) return;

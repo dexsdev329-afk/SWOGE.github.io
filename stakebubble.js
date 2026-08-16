@@ -2200,32 +2200,48 @@
    */
   function habitPortefeuille() {
     var OR = '#FFD97A', ENCRE = '#231a06';
+    /* ---- CES REGLES NE VISENT QUE LE PANNEAU DES PAGES DE JEU ----
+     *
+     * Le hall porte maintenant SES panneaux de compte (swogecompte.js), et ils
+     * s'appellent `#box-wallet` eux aussi — c'est la convention que le tiroir
+     * cherche pour emprunter une boite. Sans distinction, l'habit taille pour
+     * l'un habillait l'autre : le `order:2` prevu pour glisser l'etiquette
+     * « Your address » entre les soldes et le champ la renvoyait EN DERNIER
+     * dans un panneau qui n'a pas les memes elements — l'etiquette se
+     * retrouvait sous « Disconnect », toute seule.
+     *
+     * On reconnait donc le panneau des pages de jeu a ce qu'il contient :
+     * `#acAddr`, le champ d'adresse qu'elles ont toutes et que le hall n'a pas.
+     * Un panneau qui ne l'a pas garde son propre habit, deja ecrit dans la
+     * langue du tiroir.
+     */
+    var W = '#swpHote #box-wallet:has(#acAddr)';
     return (
       /* La pile devient une colonne flex : c'est ce qui rend `order` possible. */
-      '#swpHote #box-wallet .pscroll{display:flex;flex-direction:column;}' +
+      W + ' .pscroll{display:flex;flex-direction:column;}' +
 
       /* ---- 1. LES SOLDES ---- */
       /* Le tronc commun des deux lignes : une carte, pas une ligne de texte. */
-      '#swpHote #box-wallet .strow{display:flex!important;align-items:center;' +
+      W + ' .strow{display:flex!important;align-items:center;' +
       'justify-content:space-between!important;gap:10px!important;' +
       'padding:11px 13px!important;margin:0 0 7px!important;border-radius:12px;' +
       'font-size:11.5px!important;letter-spacing:.2px;color:#8DA0C4!important;' +
       'background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.09);}' +
-      '#swpHote #box-wallet .strow b{font-size:14px!important;font-weight:800;' +
+      W + ' .strow b{font-size:14px!important;font-weight:800;' +
       'color:#EAF2FF!important;font-variant-numeric:tabular-nums;}' +
       /* Le $SWOGE porte l'or et le grand chiffre : c'est LUI qu'on est venu
          voir, et c'est lui qui decide si on peut deposer. On le designe par
          l'identifiant qu'il contient — `:first-of-type` viserait la plaque de
          titre, qui est un div elle aussi. */
-      '#swpHote #box-wallet .strow:has(#acSwoge){order:0;padding:14px!important;' +
+      W + ' .strow:has(#acSwoge){order:0;padding:14px!important;' +
       'background:rgba(255,197,61,.07);border-color:rgba(255,197,61,.20);}' +
-      '#swpHote #box-wallet .strow:has(#acSwoge) b{font-size:22px!important;color:' + OR + '!important;}' +
+      W + ' .strow:has(#acSwoge) b{font-size:22px!important;color:' + OR + '!important;}' +
       /* Le gaz est une CONDITION, pas un avoir : on le garde lisible et petit.
          Il ne devient interessant que le jour ou il manque. */
-      '#swpHote #box-wallet .strow:has(#acEth){order:1;}' +
+      W + ' .strow:has(#acEth){order:1;}' +
 
       /* ---- 2. L'ADRESSE, EN ENTIER ---- */
-      '#swpHote #box-wallet label{order:2;margin:15px 0 6px!important;' +
+      W + ' label{order:2;margin:15px 0 6px!important;' +
       'font-size:10.5px!important;letter-spacing:1px;color:#8DA0C4!important;}' +
       /* Un champ ne sait pas passer a la ligne : c'est la TAILLE qui doit
          rentrer les 42 caracteres. En chasse fixe leur largeur est previsible —
@@ -2233,7 +2249,7 @@
          pas atteint ses 400 px. D'ou le plafond en vw : l'adresse tient en
          entier a 320 px comme a 430, sans jamais depasser 11,5 px la ou la
          place ne manque plus. */
-      '#swpHote #box-wallet #acAddr{order:3;width:100%;box-sizing:border-box;' +
+      W + ' #acAddr{order:3;width:100%;box-sizing:border-box;' +
       'font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace!important;' +
       'font-size:min(11.5px,2.8vw)!important;letter-spacing:.2px;' +
       'text-align:center;padding:12px 8px!important;border-radius:11px!important;' +
@@ -2244,7 +2260,7 @@
       /* On defait la plaque peinte : plus d'image, plus de proportion imposee,
          plus de texte pousse hors du cadre a -9999 px. Le libelle est dans le
          balisage depuis toujours — il redevient simplement visible. */
-      '#swpHote #box-wallet .abtn.wbtn{display:block;width:100%;box-sizing:border-box;' +
+      W + ' .abtn.wbtn{display:block;width:100%;box-sizing:border-box;' +
       'aspect-ratio:auto!important;min-height:0!important;height:auto!important;' +
       'padding:12px!important;margin:0 0 8px!important;border-radius:11px!important;' +
       'cursor:pointer;font-family:inherit;font-size:13px!important;font-weight:800;' +
@@ -2255,27 +2271,27 @@
       'box-shadow:none!important;}' +
       /* Copier suit l'adresse et lui appartient : discret, et or parce qu'il
          agit sur ce qui est juste au-dessus. */
-      '#swpHote #box-wallet #acCopy{order:4;margin-top:7px!important;padding:9px!important;' +
+      W + ' #acCopy{order:4;margin-top:7px!important;padding:9px!important;' +
       'font-size:12px!important;color:' + OR + '!important;' +
       'background:rgba(255,197,61,.10)!important;' +
       'border-color:rgba(255,197,61,.34)!important;}' +
-      '#swpHote #box-wallet #acCopy:hover{background:rgba(255,197,61,.18)!important;}' +
+      W + ' #acCopy:hover{background:rgba(255,197,61,.18)!important;}' +
       /* Deposer est LE geste du panneau — le seul qui fasse entrer de l'argent
          dans le jeu. Un seul aplat plein sur l'ecran, et c'est celui-la. */
-      '#swpHote #box-wallet #acDeposit{order:5;margin-top:14px!important;padding:13px!important;' +
+      W + ' #acDeposit{order:5;margin-top:14px!important;padding:13px!important;' +
       'font-size:13.5px!important;color:' + ENCRE + '!important;' +
       'background:linear-gradient(180deg,#F2C868,#E6A537)!important;' +
       'border-color:transparent!important;}' +
-      '#swpHote #box-wallet #acExplorer{order:6;background:rgba(255,255,255,.05)!important;' +
+      W + ' #acExplorer{order:6;background:rgba(255,255,255,.05)!important;' +
       'color:#C6D3EA!important;}' +
-      '#swpHote #box-wallet #acExplorer::after{content:" \\2197";color:#8DA0C4;}' +
+      W + ' #acExplorer::after{content:" \\2197";color:#8DA0C4;}' +
       /* Se deconnecter reste possible, et cesse d'etre le plus visible : bord
          rouge sur fond vide, en bas, apres un trait. On ne le cache pas — on le
          met a sa place, celle d'un geste rare. */
-      '#swpHote #box-wallet #acLogout{order:7;margin-top:16px!important;padding:10px!important;' +
+      W + ' #acLogout{order:7;margin-top:16px!important;padding:10px!important;' +
       'font-size:11.5px!important;font-weight:700!important;color:#F2685E!important;' +
       'border-color:rgba(242,104,94,.28)!important;}' +
-      '#swpHote #box-wallet #acLogout:hover{background:rgba(242,104,94,.10)!important;}'
+      W + ' #acLogout:hover{background:rgba(242,104,94,.10)!important;}'
     );
   }
 

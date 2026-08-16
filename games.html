@@ -307,14 +307,17 @@ canvas{ touch-action:none; }
   background:linear-gradient(180deg,rgba(6,4,2,0),rgba(6,4,2,.88) 62%); }
 @media (max-width:460px){ .r-nom{ font-size:.72rem; padding:14px 8px 6px; } }
 
-/* ---- QUAND LE DESSIN PORTE DEJA LE NOM ----
-   Les vignettes d'origine sont des scenes muettes : le site imprime le nom
-   par-dessus, en bas a gauche. Les nouvelles portent leur titre PEINT, comme
-   le font les autres casinos — plus gros, mieux place, et lisible a la taille
-   d'une tuile. Sur celles-la le nom du site ferait doublon : on le retire, et
-   avec lui le voile sombre qui lui servait de fond. La classe se pose vignette
-   par vignette, a mesure que chaque dessin arrive. */
-.r-carte.titre .r-nom{ display:none; }
+/* ---- LE DESSIN PORTE LE NOM, LE SITE SE TAIT ----
+   Le site imprimait le nom du jeu par-dessus chaque vignette, en bas a gauche.
+   C'etait juste tant que les dessins etaient des scenes muettes. Ils portent
+   tous leur titre PEINT maintenant — plus gros, mieux place, lisible a la
+   taille d'une tuile — et les vingt-six affichaient donc leur nom deux fois.
+   La regle s'inverse : on se tait par defaut, et la classe `nomme` fait
+   revenir le nom pour une vignette muette, le jour ou il en arrivera une.
+   Le nom reste dans `title` et dans l'`alt` de l'image : rien n'est perdu
+   pour qui lit la page autrement qu'a l'oeil. */
+.r-nom{ display:none; }
+.r-carte.nomme .r-nom{ display:block; }
 
 /* Les chevrons, pour la souris. Un balayage n'existe pas au clavier ni a la
    souris : sans eux, sur un ordinateur, la moitie des jeux reste invisible. */
@@ -505,15 +508,15 @@ canvas{ touch-action:none; }
         <button class="r-fleche g" type="button" aria-label="Scroll Against the house left">&#10094;</button>
         <button class="r-fleche d" type="button" aria-label="Scroll Against the house right">&#10095;</button>
       <div class="r-piste" role="list" aria-label="Against the house">
-        <a class="r-carte titre" role="listitem" href="swoge_blackjack.html" title="SWOGE Blackjack"><img src="img/card_bj.webp?v=2" alt="SWOGE Blackjack" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">SWOGE Blackjack</span></a>
-        <a class="r-carte titre" role="listitem" href="swoge_blackjack.html?table=or" title="Blackjack · Gold Table"><img src="img/card_bj_or.webp?v=2" alt="Blackjack Gold Table" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Blackjack · Gold</span></a>
-        <a class="r-carte titre" role="listitem" href="swoge_spin.html" title="SWOGE Spin"><img src="img/card_sp.webp?v=2" alt="SWOGE Spin" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">SWOGE Spin</span></a>
-        <a class="r-carte titre" role="listitem" href="swoge_casino.html?game=holdem" title="Casino Hold'em"><img src="img/card_ho.webp?v=2" alt="Casino Hold'em" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Casino Hold&rsquo;em</span></a>
-        <a class="r-carte titre" role="listitem" href="swoge_casino.html?game=three" title="Three Card"><img src="img/card_tc.webp?v=2" alt="Three Card" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Three Card</span></a>
-        <a class="r-carte titre" role="listitem" href="swoge_casino.html?game=mines" title="Mines"><img src="img/card_mn.webp?v=2" alt="Mines" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Mines</span></a>
-        <a class="r-carte titre" role="listitem" href="swoge_casino.html?game=hilo" title="Hi-Lo"><img src="img/card_hl.webp?v=2" alt="Hi-Lo" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Hi-Lo</span></a>
-        <a class="r-carte titre" role="listitem" href="plinko.html" title="Plinko"><img src="img/card_pl.webp?v=2" alt="Plinko" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Plinko</span></a>
-        <a class="r-carte titre" role="listitem" href="swoge_smash.html" title="SWOGE Smash"><img src="img/card_sm.webp?v=2" alt="SWOGE Smash" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">SWOGE Smash</span></a>
+        <a class="r-carte" role="listitem" href="swoge_blackjack.html" title="SWOGE Blackjack"><img src="img/card_bj.webp?v=2" alt="SWOGE Blackjack" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">SWOGE Blackjack</span></a>
+        <a class="r-carte" role="listitem" href="swoge_blackjack.html?table=or" title="Blackjack · Gold Table"><img src="img/card_bj_or.webp?v=2" alt="Blackjack Gold Table" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Blackjack · Gold</span></a>
+        <a class="r-carte" role="listitem" href="swoge_spin.html" title="SWOGE Spin"><img src="img/card_sp.webp?v=2" alt="SWOGE Spin" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">SWOGE Spin</span></a>
+        <a class="r-carte" role="listitem" href="swoge_casino.html?game=holdem" title="Casino Hold'em"><img src="img/card_ho.webp?v=2" alt="Casino Hold'em" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Casino Hold&rsquo;em</span></a>
+        <a class="r-carte" role="listitem" href="swoge_casino.html?game=three" title="Three Card"><img src="img/card_tc.webp?v=2" alt="Three Card" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Three Card</span></a>
+        <a class="r-carte" role="listitem" href="swoge_casino.html?game=mines" title="Mines"><img src="img/card_mn.webp?v=2" alt="Mines" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Mines</span></a>
+        <a class="r-carte" role="listitem" href="swoge_casino.html?game=hilo" title="Hi-Lo"><img src="img/card_hl.webp?v=2" alt="Hi-Lo" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Hi-Lo</span></a>
+        <a class="r-carte" role="listitem" href="plinko.html" title="Plinko"><img src="img/card_pl.webp?v=2" alt="Plinko" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Plinko</span></a>
+        <a class="r-carte" role="listitem" href="swoge_smash.html" title="SWOGE Smash"><img src="img/card_sm.webp?v=2" alt="SWOGE Smash" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">SWOGE Smash</span></a>
       </div>
       </div>
     </section>
@@ -529,7 +532,7 @@ canvas{ touch-action:none; }
         <button class="r-fleche g" type="button" aria-label="Scroll Against other players left">&#10094;</button>
         <button class="r-fleche d" type="button" aria-label="Scroll Against other players right">&#10095;</button>
       <div class="r-piste" role="list" aria-label="Against other players">
-        <a class="r-carte titre" role="listitem" href="boulier.html" title="Boulier"><img src="img/card_bo.webp?v=2" alt="Boulier" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Boulier</span></a>
+        <a class="r-carte" role="listitem" href="boulier.html" title="Boulier"><img src="img/card_bo.webp?v=2" alt="Boulier" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Boulier</span></a>
         <a class="r-carte" role="listitem" href="swoge_poker.html" title="SWOGE Poker"><img src="img/card_pk.webp" alt="SWOGE Poker" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">SWOGE Poker</span></a>
         <a class="r-carte" role="listitem" href="swoge_pusher_live.html" title="Coin Pusher"><img src="img/card_cp.webp" alt="Coin Pusher" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Coin Pusher</span></a>
         <a class="r-carte" role="listitem" href="crash.html" title="Crash"><img src="img/card_cr.webp" alt="Crash" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Crash</span></a>
@@ -585,12 +588,12 @@ canvas{ touch-action:none; }
         <button class="r-fleche g" type="button" aria-label="Scroll Utility left">&#10094;</button>
         <button class="r-fleche d" type="button" aria-label="Scroll Utility right">&#10095;</button>
       <div class="r-piste" role="list" aria-label="Utility">
-        <a class="r-carte" role="listitem" href="swoge_staking.html" title="Staking"><img src="img/card_st.webp" alt="Staking" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Staking</span></a>
-        <a class="r-carte" role="listitem" href="swoge_bench.html" title="Wallet Bench"><img src="img/card_wb.webp" alt="Wallet Bench" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Wallet Bench</span></a>
-        <a class="r-carte" role="listitem" href="launchpad.html" title="Launchpad"><img src="img/card_lp.webp" alt="Launchpad" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Launchpad</span></a>
-        <a class="r-carte" role="listitem" href="burn.html" title="Burn"><img src="media/nav-burn.webp" alt="Burn" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Burn</span></a>
-        <a class="r-carte" role="listitem" href="holder_scan.html" title="Holder Scanner"><img src="media/nav-scanner.webp" alt="Holder Scanner" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Holder Scanner</span></a>
-        <a class="r-carte" role="listitem" href="whitepaper.html" title="White Paper"><img src="media/nav-whitepaper.webp" alt="White Paper" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">White Paper</span></a>
+        <a class="r-carte" role="listitem" href="swoge_staking.html" title="Staking"><img src="img/card_st.webp?v=2" alt="Staking" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Staking</span></a>
+        <a class="r-carte" role="listitem" href="swoge_bench.html" title="Wallet Bench"><img src="img/card_wb.webp?v=2" alt="Wallet Bench" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Wallet Bench</span></a>
+        <a class="r-carte" role="listitem" href="launchpad.html" title="Launchpad"><img src="img/card_lp.webp?v=2" alt="Launchpad" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Launchpad</span></a>
+        <a class="r-carte" role="listitem" href="burn.html" title="Burn"><img src="img/card_bn.webp?v=2" alt="Burn" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Burn</span></a>
+        <a class="r-carte" role="listitem" href="holder_scan.html" title="Holder Scanner"><img src="img/card_hs.webp?v=2" alt="Holder Scanner" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Holder Scanner</span></a>
+        <a class="r-carte" role="listitem" href="whitepaper.html" title="White Paper"><img src="img/card_wp.webp?v=2" alt="White Paper" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">White Paper</span></a>
       </div>
       </div>
     </section>

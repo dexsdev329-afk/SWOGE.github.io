@@ -593,6 +593,95 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
 .c4-hist td:last-child, .c4-hist th:last-child{ text-align:right; }
 .c4-hist .g{ color:#7CFF9B; font-weight:800; }
 .c4-hist .p{ color:#F2685E; font-weight:800; }
+
+/* ================== L'HABILLAGE PEINT ==================
+ *
+ * Le Connect 4 etait le seul jeu entierement dessine en CSS : un degrade bleu,
+ * quarante-deux trous en `radial-gradient`, des fleches en `clip-path`. Net,
+ * mais pauvre a cote du blackjack et du casino, qui ont des plaques peintes
+ * partout. Les images arrivent ; ce bloc les branche, et lui seul — rien
+ * au-dessus n'est touche, de sorte qu'effacer ce bloc rend le jeu d'avant.
+ *
+ * ---- pourquoi le cadre est DECOUPE EN NEUF ----
+ *
+ * L'image du cadre fait 640x512, soit 1,25 pour 1. Le plateau, lui, est
+ * pratiquement carre : sept colonnes et six rangees de ronds, plus la rangee
+ * des fleches. Etirer l'image dans cette boite allongerait les quatre coins
+ * ornes d'un quart de leur hauteur, et ca se verrait.
+ *
+ * `border-image` decoupe l'image en neuf : les coins gardent leur forme
+ * exacte, seuls les bords et le champ central s'etirent — et le champ est une
+ * texture de pierre, personne ne voit qu'elle s'allonge.
+ *
+ * Les epaisseurs sont mesurees sur l'image, en pour-cent de sa LARGEUR :
+ * haut 73/640, droite 54/640, bas 67/640, gauche 52/640. Elles sont posees en
+ * `cqw` — un pour cent de la largeur du plateau — sinon elles resteraient en
+ * pixels et le cadre se disloquerait sur telephone.
+ */
+.c4-plateau{ container-type:inline-size;
+  background:none; border:0;
+  box-shadow:0 16px 34px rgba(0,0,0,.55);
+  padding:12.4% 9.1% 11.5%; }
+.c4-plateau::before{ content:""; position:absolute; inset:0; z-index:0;
+  border-style:solid;
+  border-width:11.4cqw 8.44cqw 10.47cqw 8.13cqw;
+  border-image-source:url('img/c4_plateau.webp');
+  border-image-slice:73 54 67 52 fill;
+  border-image-repeat:stretch;
+  pointer-events:none; }
+/* Les trous et les fleches passent DEVANT le cadre : sans cela le champ
+   central du `border-image` les recouvrirait. */
+.c4-cols, .c4-grille{ position:relative; z-index:1; }
+
+/* ---- les jetons ----
+   Les deux pieces portent deja leur relief, leur brillance et leur ombre :
+   les ombres internes du CSS s'ajouteraient a celles du dessin et le
+   saliraient. Le halo de la ligne gagnante, lui, reste — il est pose par
+   l'animation, qui ecrase cette regle au bon moment. */
+.c4-case .pion{ box-shadow:none; }
+.c4-case .pion.p1{ background:url('img/c4_pion_r.webp') center/contain no-repeat; }
+.c4-case .pion.p2{ background:url('img/c4_pion_b.webp') center/contain no-repeat; }
+
+/* ---- le titre ---- */
+.c4-titre{ width:min(90%,400px); aspect-ratio:640/240; margin:0 auto;
+  background:url('img/c4_titre.webp') center/contain no-repeat;
+  text-indent:-200vw; overflow:hidden; white-space:nowrap; }
+
+/* ---- la fleche de colonne ---- */
+.c4-fleche::before{ width:58%; aspect-ratio:616/640;
+  background:url('img/c4_fleche.webp') center/contain no-repeat;
+  clip-path:none; filter:drop-shadow(0 2px 5px rgba(0,0,0,.6)); }
+
+/* ---- le jeton de mise ---- */
+.c4-stakes button{ background-image:url('img/c4_mise.webp'); }
+
+/* ---- les plaques d'action ----
+   Le mot est DANS l'image : le texte du bouton reste dans la page pour les
+   lecteurs d'ecran, on le pousse simplement hors du cadre. */
+#c4Create, #c4RevSend, .c4-btn[data-abandon], .c4-btn[data-retour]{
+  background:none; box-shadow:none; border:0; padding:0;
+  color:transparent; text-indent:-200vw; overflow:hidden; white-space:nowrap;
+  background-repeat:no-repeat; background-position:center;
+  background-size:100% 100%; height:auto; }
+#c4Create, #c4RevSend{ width:min(100%,320px); aspect-ratio:639/213; }
+#c4Create{ background-image:url('img/c4_p_creer.webp'); }
+#c4RevSend{ background-image:url('img/c4_p_defi.webp'); }
+.c4-btn[data-abandon]{ width:min(100%,190px); aspect-ratio:640/229;
+  background-image:url('img/c4_p_abandon.webp'); }
+.c4-btn[data-retour]{ width:min(100%,210px); aspect-ratio:639/213;
+  background-image:url('img/c4_p_retour.webp'); }
+/* « Ask for a rematch » est un intitule, pas un bouton : la plaque le
+   remplace tel quel. */
+.c4-revanche > .c4-lb{ width:min(78%,240px); aspect-ratio:639/244; margin:0 auto 8px;
+  background:url('img/c4_p_revanche.webp') center/contain no-repeat;
+  text-indent:-200vw; overflow:hidden; white-space:nowrap; display:block; }
+
+/* ---- le fond de la page ---- */
+body{ background:url('img/c4_fond.webp') center center/cover no-repeat fixed;
+      background-color:#0A1128; }
+@media (orientation:landscape){
+  body{ background-image:url('img/c4_fond_large.webp'); }
+}
 </style>
 </head>
 <body>

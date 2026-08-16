@@ -475,6 +475,11 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
   font-size:clamp(20px,6vw,34px); margin:8px 0 0; min-height:1.1em; line-height:1.1; }
 
 /* ---- historique : meme forme que sur les tables ---- */
+/* L'historique derriere un bouton : cinq lignes vides, un en-tete et un total
+   sous le plateau, et il ne dit rien tant qu'on n'a pas joue. Sur grand ecran
+   la place ne manque pas — le bouton n'existe que sur telephone. */
+.pl-histbtn{ display:none; }
+
 .pl-hist{ max-width:520px; margin:14px auto 0; font-size:12px; color:var(--dim); }
 .pl-hist table{ width:100%; border-collapse:collapse; }
 .pl-hist th, .pl-hist td{ padding:3px 6px; text-align:left; }
@@ -583,6 +588,21 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
   .hero { padding:8px 14px 0; }
   .hero p { display:none; }
   .hero h1 { font-size:clamp(20px,5.2vw,30px); }
+
+  /* ---- SUR TELEPHONE, LE PLATEAU AVANT TOUT ----
+   * Le titre peint (132 px), le mode d'emploi reaffiche entre chaque bille et
+   * un bouton « Drop » de trois cents pixels poussaient le plateau — la seule
+   * chose qu'on regarde — vers le bas de l'ecran. */
+  .pl-titre{ display:none; }
+  .pl-note.mode-emploi{ display:none; }
+  .pl-drop{ width:min(62%,200px); margin:10px auto 0; }
+  .pl-histbtn{ display:block; width:100%; max-width:520px; margin:12px auto 0;
+    padding:10px; border-radius:11px; cursor:pointer; font:inherit;
+    font-weight:800; font-size:12px; letter-spacing:1.2px; text-transform:uppercase;
+    color:#E7C97A; background:rgba(255,255,255,.05);
+    border:1px solid rgba(230,165,55,.28); }
+  .pl-hist{ display:none; }
+  .pl-hist.on{ display:block; margin-top:8px; }
 }
 @media (min-width:821px) and (orientation:landscape) {
   /* colle la connexion en haut a droite, hors du plateau */
@@ -812,6 +832,7 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
     <button class="pl-drop" id="plDrop" aria-label="Drop"><img alt="Drop"></button>
     <div class="pl-note" id="plNote"></div>
 
+    <button class="pl-histbtn" id="plHistBtn" type="button" aria-expanded="false">History</button>
     <div class="pl-hist" id="plHist"></div>
     <div class="fair" id="fair"></div>
   </div>
@@ -1321,12 +1342,22 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
       '<th style="color:'+tc+'">'+(total>0?"+":"")+plFmt(total)+'</th></tr></table>';
   }
 
+  document.getElementById("plHistBtn").addEventListener("click", function(){
+    var ouvert=$("plHist").classList.toggle("on");
+    this.setAttribute("aria-expanded", ouvert?"true":"false");
+    this.textContent = ouvert ? "History \u25B4" : "History";
+  });
+
   function plRender(){
     $("plTitre").src=PLA.titre;
     $("plCadre").src=PLA.cadre;
     $("plDrop").querySelector("img").src=PLA.drop;
     plPicots(); plGodets(); plReglages(); plRail(); plMise(); plHist();
     $("plDrop").disabled = !authed || PL.anime || PL.mise<PL_MIN;
+    /* Mode d'emploi ou etat de partie : la feuille se sert de la marque pour
+       n'effacer que le premier sur telephone. « The ball is falling… » reste,
+       c'est la seule chose qui dise que la manche est en cours. */
+    $("plNote").classList.toggle("mode-emploi", !PL.anime);
     $("plNote").textContent = PL.anime ? "The ball is falling\u2026"
       : "Pick a chip, choose your board, then drop. More rows and more risk mean bigger edges \u2014 and a colder middle.";
   }

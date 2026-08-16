@@ -437,7 +437,15 @@ canvas{ touch-action:none; }
   .sec h1.marque .brand { width:min(196px,60%); }
 }
 </style>
+<!-- Le hall porte desormais son compte : portefeuille, depot, retrait,
+     staking. Les panneaux et leurs gestes vivent dans swogecompte.js, une
+     seule fois pour toutes les pages qui n en ont pas — voir l en-tete du
+     fichier. `ethers` est la bibliotheque de chaine dont le depot et le
+     retrait ont besoin ; elle ne sert qu au moment d envoyer une
+     transaction, jamais pour afficher un solde. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <script src="stakebubble.js?v=20260814e"></script>
+<script src="swogecompte.js?v=20260816a"></script>
 </head>
 <body>
 

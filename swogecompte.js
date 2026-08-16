@@ -1,0 +1,648 @@
+/*
+ * SWOGE — LE COMPTE SUR UNE PAGE QUI N'EN A PAS.
+ *
+ * Le hall des jeux est la page d'entree du site : c'est la qu'on arrive, et
+ * c'est de la qu'on veut deposer. Il ne portait pourtant aucun panneau de
+ * compte — ni portefeuille, ni depot, ni retrait, ni staking — parce que ces
+ * panneaux sont ecrits DANS chacune des quinze pages de jeu. Le tiroir du
+ * profil n'avait donc rien a y refleter, et ses cinq rangees « Account »
+ * partaient ouvrir la page du Coin Pusher.
+ *
+ * ---- pourquoi un SEIZIEME exemplaire n'etait pas la reponse ----
+ *
+ * Recopier le bloc d'une page de jeu aurait ajoute une seizieme version du
+ * chemin de l'argent, a tenir a jour en face des quinze autres. C'est
+ * exactement ce que stakebubble.js et swogebuy.js s'interdisent, et sur la
+ * partie ou une divergence coute le plus cher : un montant, une adresse de
+ * coffre, un minimum de retrait qui ne suivraient pas.
+ *
+ * Ce fichier est donc la version PARTAGEE, ecrite une fois. Il ne s'installe
+ * que sur une page qui n'a rien — la premiere ligne verifie qu'aucun panneau
+ * n'existe deja et sort sinon. Les quinze pages de jeu ne le voient jamais,
+ * meme si on l'y ajoutait par erreur.
+ *
+ * ---- ce qu'il fait, et ce qu'il ne fait pas ----
+ *
+ * Il fait les quatre gestes du portefeuille : LIRE son adresse et ses soldes,
+ * DEPOSER dans le solde de jeu, RETIRER vers le portefeuille, MISER au staking.
+ *
+ * Il ne fait pas les quetes du jour. Elles sont une autre affaire — series de
+ * sept jours, bonus de bienvenue, videos recompensees — et leur panneau est
+ * une page a lui seul. La rangee « Daily Quests » continue donc de mener au
+ * Coin Pusher, qui les porte en entier.
+ *
+ * ---- comment il parle au serveur ----
+ *
+ * Il n'ouvre PAS de seconde socket. stakebubble.js en tient deja une, ouverte
+ * avec le jeton de session range par les pages de jeu, et il enveloppe le
+ * constructeur WebSocket pour ecouter tout ce qui passe. On reprend le meme
+ * procede : on enveloppe a notre tour — les enveloppes s'empilent sans se
+ * gener — et on retient la socket qui a repondu « auth ». Une socket de plus
+ * par page voudrait dire deux authentifications, deux soldes a garder
+ * d'accord, et le doute sur celle qui recevra le bon d'un retrait.
+ *
+ * ---- l'habit ----
+ *
+ * Les panneaux sont en CSS, pas en images peintes : ils s'ouvrent DANS le
+ * tiroir du profil, qui est lui-meme en CSS. Ils portent `class="box"` et un
+ * `.pscroll`, les deux marques que stakebubble.js cherche pour emprunter une
+ * boite et lui retirer son cadre.
+ */
+(function () {
+  'use strict';
+  if (window.__swogeCompte) return;
+  window.__swogeCompte = true;
+
+  /* La page a-t-elle deja ses panneaux ? Les pages de jeu portent `#box-dep`,
+     le Coin Pusher `#accountBox`. Dans les deux cas on s'efface : leur code
+     est le maitre, et deux formulaires de depot sur une page seraient pires
+     que pas de formulaire du tout. */
+  function dejaEquipee() {
+    return !!(document.getElementById('box-dep') || document.getElementById('accountBox'));
+  }
+  if (dejaEquipee()) return;
+
+  var CHAIN = { id: 4663, hex: '0x1237', name: 'Robinhood Chain',
+                rpc: 'https://rpc.mainnet.chain.robinhood.com',
+                scan: 'https://robinhoodchain.blockscout.com', sym: 'ETH' };
+  var TOKEN = '0x8a166Fb41Cd659a0a43396272FF73973Ce29F817';
+  var ERC20_ABI = [
+    'function approve(address,uint256) returns (bool)',
+    'function allowance(address,address) view returns (uint256)',
+    'function balanceOf(address) view returns (uint256)'
+  ];
+  var VAULT_ABI = [
+    'function deposit(uint256)',
+    'function withdraw(uint256 cumulative,uint256 deadline,uint8 v,bytes32 r,bytes32 s)'
+  ];
+
+  /* Ce que le serveur nous apprend au « hello » et a l'« auth ». Rien de tout
+     cela n'est ecrit en dur : l'adresse du coffre et le minimum de retrait
+     changent sans qu'on republie quinze pages. */
+  var VAULT = '', MIN_WD = 50, ADR = null, SOLDE = 0, SOCK = null;
+  var ST = { staked: 0, pending: 0, aprBps: 10000, locked: 0, unlocked: 0,
+             nextUnlock: null, penaltyBps: 5000, lockDays: 365, t0: 0 };
+  var PORTE = { swoge: null, eth: null };
+
+  function $(id) { return document.getElementById(id); }
+  function nb(n, d) {
+    n = Number(n) || 0;
+    if (n >= 1e9) return (n / 1e9).toFixed(2) + 'B';
+    if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+    if (n >= 1000) return (n / 1000).toFixed(2) + 'k';
+    return n.toFixed(d === undefined ? 2 : d);
+  }
+
+  // ------------------------------------------------------------- le message
+  /* Un mot au joueur, en bas de l'ecran. Court volontairement : il double
+     toujours quelque chose de visible ailleurs — un solde qui bouge, un
+     panneau qui se ferme — et sert surtout a dire qu'une transaction est
+     partie, ce qui n'a aucun autre signe a l'ecran. */
+  var boiteMsg = null, minuterieMsg = 0;
+  function dit(t, cl) {
+    if (!boiteMsg) {
+      boiteMsg = document.createElement('div');
+      boiteMsg.className = 'swc-msg';
+      (document.body || document.documentElement).appendChild(boiteMsg);
+    }
+    boiteMsg.className = 'swc-msg on' + (cl ? ' ' + cl : '');
+    boiteMsg.textContent = t;
+    clearTimeout(minuterieMsg);
+    minuterieMsg = setTimeout(function () { boiteMsg.className = 'swc-msg'; }, 4200);
+  }
+
+  // -------------------------------------------------------------- le reseau
+  /* On enveloppe le constructeur comme le fait stakebubble.js. Les enveloppes
+     s'empilent : la sienne appelle la native, la notre appelle la sienne, et
+     chacune accroche son ecouteur. `new` rend l'objet retourne, donc la page
+     recoit toujours une vraie WebSocket. */
+  try {
+    var Native = window.WebSocket;
+    if (Native) {
+      var Enveloppe = function (url, protos) {
+        var s = arguments.length > 1 ? new Native(url, protos) : new Native(url);
+        try { s.addEventListener('message', surMessage); } catch (e) {}
+        return s;
+      };
+      Enveloppe.prototype = Native.prototype;
+      ['CONNECTING', 'OPEN', 'CLOSING', 'CLOSED'].forEach(function (k, i) { Enveloppe[k] = i; });
+      window.WebSocket = Enveloppe;
+    }
+  } catch (e) { /* jamais au detriment de la page */ }
+
+  function surMessage(ev) {
+    var m;
+    try { m = JSON.parse(ev.data); } catch (e) { return; }
+    if (!m || !m.type) return;
+    if (m.type === 'hello') {
+      if (m.vault) VAULT = m.vault;
+      if (m.minWithdraw != null) MIN_WD = Number(m.minWithdraw) || MIN_WD;
+    }
+    if (m.type === 'auth') {
+      /* La socket qui a repondu « auth » est celle par laquelle on parlera :
+         c'est la seule qui soit authentifiee. */
+      SOCK = ev.target;
+      ADR = String(m.address || '').toLowerCase() || null;
+      if (m.vault) VAULT = m.vault;
+      if (m.balance != null) SOLDE = parseFloat(m.balance) || 0;
+      if (m.stake) poseStake(m.stake);
+      poseTout();
+    }
+    if (m.type === 'balance' || m.type === 'deposit') {
+      if (m.balance != null) SOLDE = parseFloat(m.balance) || 0;
+      poseTout();
+      if (m.type === 'deposit') dit('💰 Deposit credited — ' + nb(SOLDE) + ' $SWOGE', 'ok');
+    }
+    if (m.type === 'stakeInfo' || m.type === 'stakeUnstaked') {
+      poseStake(m);
+      if (m.balance != null) SOLDE = parseFloat(m.balance) || 0;
+      poseTout();
+      if (m.type === 'stakeUnstaked') dit('Unstaked ' + nb(m.returned) + ' $SWOGE', 'ok');
+    }
+    if (m.type === 'stakeClaimed') { dit('Yield claimed', 'ok'); demande('stakeInfo'); }
+    /* Le bon de retrait : le serveur signe, la chaine paie. C'est la seule
+       reponse qui demande une transaction en retour. */
+    if (m.type === 'voucher') {
+      if (m.balance != null) { SOLDE = parseFloat(m.balance) || 0; poseTout(); }
+      envoieRetrait(m.voucher || m);
+    }
+    if (m.type === 'error') dit(String(m.error || 'error').slice(0, 90), 'ko');
+  }
+
+  function poseStake(s) {
+    if (!s) return;
+    if (s.staked != null) ST.staked = parseFloat(s.staked) || 0;
+    if (s.pending != null) ST.pending = parseFloat(s.pending) || 0;
+    if (s.aprBps != null) ST.aprBps = Number(s.aprBps) || 0;
+    if (s.locked != null) ST.locked = parseFloat(s.locked) || 0;
+    if (s.unlocked != null) ST.unlocked = parseFloat(s.unlocked) || 0;
+    if (s.penaltyBps != null) ST.penaltyBps = Number(s.penaltyBps);
+    if (s.lockDays != null) ST.lockDays = Number(s.lockDays);
+    if ('nextUnlock' in s) ST.nextUnlock = s.nextUnlock;
+    ST.t0 = Date.now();
+  }
+  /* Le rendement coule entre deux reponses du serveur, avec la meme formule
+     que lui : montant x taux x temps ecoule / an. Sans ca le chiffre reste
+     fige et donne l'impression que le staking ne rapporte rien. */
+  function acquisCourant() {
+    if (!ST.staked || !ST.aprBps || !ST.t0) return ST.pending;
+    return ST.pending + ST.staked * (ST.aprBps / 10000) *
+           ((Date.now() - ST.t0) / 31536000000);
+  }
+
+  function demande(type, extra) {
+    if (!SOCK || SOCK.readyState !== 1) return false;
+    var q = extra || {}; q.type = type;
+    try { SOCK.send(JSON.stringify(q)); return true; } catch (e) { return false; }
+  }
+
+  // ------------------------------------------------------- le portefeuille
+  /* On ne demande jamais l'ouverture d'un portefeuille pour AFFICHER quelque
+     chose : un solde est public, il se lit par un lecteur RPC. On ne reclame
+     une signature qu'au moment d'envoyer une transaction. C'est la meme regle
+     que dans swogebuy.js, et c'est ce qui permet au panneau de s'ouvrir sans
+     rien demander a personne. */
+  var _lecteur = null;
+  function lecteur() {
+    if (typeof ethers === 'undefined') return null;
+    if (!_lecteur) {
+      try { _lecteur = new ethers.providers.JsonRpcProvider(CHAIN.rpc); }
+      catch (e) { _lecteur = null; }
+    }
+    return _lecteur;
+  }
+  /* Le portefeuille avec lequel le joueur s'est DEJA connecte. `swogeAuth` dit
+     lequel : Privy pour une entree par e-mail, l'extension sinon. */
+  function portefeuille() {
+    var mode = '';
+    try { mode = localStorage.getItem('swogeAuth') || ''; } catch (e) {}
+    if (mode === 'email' && window.SwogePrivy && SwogePrivy.getAddress && SwogePrivy.getAddress()) {
+      return Promise.resolve({ eip1193: SwogePrivy.getProvider(), adresse: SwogePrivy.getAddress() });
+    }
+    if (window.ethereum) {
+      return window.ethereum.request({ method: 'eth_accounts' }).then(function (cs) {
+        if (!cs || !cs.length) return null;
+        return { eip1193: window.ethereum, adresse: cs[0] };
+      }).catch(function () { return null; });
+    }
+    return Promise.resolve(null);
+  }
+  /* Le signataire, sur la bonne chaine. On propose le changement de reseau
+     plutot que de refuser : un joueur qui a MetaMask sur Ethereum ne sait pas
+     forcement qu'il existe une chaine Robinhood. */
+  function signataire() {
+    return portefeuille().then(function (w) {
+      if (!w) throw new Error('Sign in first');
+      if (typeof ethers === 'undefined') throw new Error('Chain library not loaded — reload the page');
+      var fp = new ethers.providers.Web3Provider(w.eip1193, 'any');
+      return fp.getNetwork().then(function (n) {
+        if (n.chainId === CHAIN.id) return null;
+        if (!w.eip1193.request) throw new Error('Wrong network — switch to ' + CHAIN.name);
+        return w.eip1193.request({
+          method: 'wallet_switchEthereumChain', params: [{ chainId: CHAIN.hex }]
+        }).catch(function (sw) {
+          if (sw && sw.code === 4902) {
+            return w.eip1193.request({
+              method: 'wallet_addEthereumChain',
+              params: [{ chainId: CHAIN.hex, chainName: CHAIN.name,
+                         nativeCurrency: { name: CHAIN.sym, symbol: CHAIN.sym, decimals: 18 },
+                         rpcUrls: [CHAIN.rpc], blockExplorerUrls: [CHAIN.scan] }]
+            });
+          }
+          throw sw;
+        });
+      }).then(function () {
+        return { signer: new ethers.providers.Web3Provider(w.eip1193, 'any').getSigner(),
+                 adresse: w.adresse };
+      });
+    });
+  }
+
+  function litSoldesChaine() {
+    var lec = lecteur();
+    if (!lec || !ADR) return;
+    try {
+      lec.getBalance(ADR).then(function (b) {
+        PORTE.eth = Number(ethers.utils.formatEther(b));
+        poseTout();
+      }).catch(function () {});
+      new ethers.Contract(TOKEN, ERC20_ABI, lec).balanceOf(ADR).then(function (b) {
+        PORTE.swoge = Number(ethers.utils.formatUnits(b, 18));
+        poseTout();
+      }).catch(function () {});
+    } catch (e) {}
+  }
+
+  // ----------------------------------------------------------- les panneaux
+  var PANNEAUX = ['wallet', 'dep', 'wd', 'stake'];
+  var monte = false;
+
+  function style() {
+    if ($('swc-css')) return;
+    var c = document.createElement('style');
+    c.id = 'swc-css';
+    c.textContent =
+      /* Le voile et les boites. Ce sont les memes marques que sur les pages de
+         jeu — #ovl, .box, .show — parce que c'est ce que stakebubble.js cherche
+         pour emprunter une boite et l'ouvrir dans le tiroir. */
+      '#ovl{position:fixed;inset:0;z-index:9998;display:none;align-items:center;' +
+      'justify-content:center;padding:16px;background:rgba(4,6,12,.74);}' +
+      '#ovl.show{display:flex;}' +
+      '#ovl .box{display:none;width:min(420px,100%);max-height:88vh;overflow:auto;' +
+      'padding:16px;border-radius:16px;background:#0E1422;color:#EAF2FF;' +
+      'border:1px solid rgba(255,197,61,.28);box-shadow:0 24px 60px rgba(0,0,0,.6);}' +
+      '#ovl .box.show{display:block;}' +
+      '.swc h4{margin:0 0 10px;font-size:14px;letter-spacing:.4px;color:#FFD97A;}' +
+      /* Dans le tiroir, la barre de retour porte deja le nom de la section :
+         le titre du panneau le repetait mot pour mot, deux lignes plus bas.
+         C'est la meme raison qui fait disparaitre les titres peints des
+         pages de jeu quand leur boite est empruntee. */
+      '#swpHote .swc h4{display:none!important;}' +
+      '.swc label{display:block;margin:12px 0 5px;font-size:10.5px;letter-spacing:1px;' +
+      'text-transform:uppercase;color:#8DA0C4;}' +
+      '.swc input{width:100%;box-sizing:border-box;padding:11px;border-radius:11px;' +
+      'font-family:inherit;font-size:15px;text-align:center;color:#EAF2FF;' +
+      'background:rgba(0,0,0,.30);border:1px solid rgba(255,255,255,.12);}' +
+      /* Les cartes de solde : meme forme que celles du portefeuille dans le
+         tiroir, pour qu'on reconnaisse la meme chose au meme endroit. */
+      '.swc-c{display:flex;align-items:center;justify-content:space-between;gap:10px;' +
+      'padding:11px 13px;margin:0 0 7px;border-radius:12px;font-size:11.5px;color:#8DA0C4;' +
+      'background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.09);}' +
+      '.swc-c b{font-size:14px;font-weight:800;color:#EAF2FF;font-variant-numeric:tabular-nums;}' +
+      '.swc-c.or{padding:14px;background:rgba(255,197,61,.07);border-color:rgba(255,197,61,.20);}' +
+      '.swc-c.or b{font-size:22px;color:#FFD97A;}' +
+      '.swc-adr{width:100%;box-sizing:border-box;padding:12px 8px;border-radius:11px;' +
+      'text-align:center;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;' +
+      'font-size:min(11.5px,2.8vw);color:#C6D3EA;background:rgba(0,0,0,.30);' +
+      'border:1px solid rgba(255,255,255,.10);}' +
+      '.swc-b{display:block;width:100%;box-sizing:border-box;margin:8px 0 0;padding:12px;' +
+      'border-radius:11px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:800;' +
+      'text-align:center;text-decoration:none;color:#EAF2FF;' +
+      'background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.14);}' +
+      '.swc-b.p{margin-top:14px;padding:13px;color:#231a06;border-color:transparent;' +
+      'background:linear-gradient(180deg,#F2C868,#E6A537);}' +
+      '.swc-b.g{color:#FFD97A;background:rgba(255,197,61,.10);border-color:rgba(255,197,61,.34);}' +
+      '.swc-b.d{margin-top:16px;padding:10px;font-size:11.5px;font-weight:700;color:#F2685E;' +
+      'background:transparent;border-color:rgba(242,104,94,.28);}' +
+      '.swc-b[disabled]{opacity:.45;cursor:default;}' +
+      '.swc-pc{display:flex;gap:6px;margin-top:8px;}' +
+      '.swc-pc button{flex:1 1 0;min-width:0;padding:8px 2px;border-radius:9px;cursor:pointer;' +
+      'font-family:inherit;font-size:11.5px;font-weight:700;color:#FFD97A;' +
+      'background:rgba(255,197,61,.10);border:1px solid rgba(255,197,61,.30);}' +
+      '.swc-n{margin-top:9px;font-size:11.5px;line-height:1.5;color:#8DA0C4;text-align:left;}' +
+      '.swc-n b{color:#FFC53D;}' +
+      /* Le message. Au-dessus du tiroir (9999) : il commente souvent ce qui
+         vient d'y etre fait. */
+      '.swc-msg{position:fixed;left:50%;bottom:18px;z-index:10001;transform:translate(-50%,14px);' +
+      'max-width:min(420px,92vw);padding:11px 15px;border-radius:12px;opacity:0;' +
+      'pointer-events:none;transition:opacity .18s,transform .18s;' +
+      'font-family:inherit;font-size:12.5px;font-weight:700;color:#EAF2FF;' +
+      'background:rgba(14,20,34,.97);border:1px solid rgba(255,255,255,.16);' +
+      'box-shadow:0 14px 34px rgba(0,0,0,.55);}' +
+      '.swc-msg.on{opacity:1;transform:translate(-50%,0);}' +
+      '.swc-msg.ok{border-color:rgba(124,255,155,.45);}' +
+      '.swc-msg.ko{border-color:rgba(242,104,94,.5);}';
+    document.head.appendChild(c);
+  }
+
+  /* Le menu que le tiroir REFLETE. Il n'est jamais montre : stakebubble.js le
+     masque des qu'il l'a copie. C'est une declaration, pas une interface —
+     l'endroit ou l'on dit quelles rangees existent et ce qu'elles ouvrent. */
+  function poseMenu() {
+    if ($('menu')) return;
+    var m = document.createElement('div');
+    m.className = 'menu'; m.id = 'menu';
+    m.style.display = 'none';
+    var ici = (location.pathname.split('/').pop() || '').toLowerCase();
+    m.innerHTML =
+      '<a href="#" data-panel="wallet">👛 My Wallet</a>' +
+      '<a href="#" data-panel="stake">🔒 Staking</a>' +
+      '<a href="#" data-panel="dep">💰 Deposit</a>' +
+      '<a href="#" data-panel="wd">🏧 Withdraw</a>' +
+      /* Les quetes ne sont pas dans ce fichier : leur panneau est une page a
+         lui seul. La rangee mene donc la ou il existe en entier. */
+      '<a href="swoge_pusher.html#quests">🎯 Daily Quests</a>' +
+      '<div class="msep"></div>' +
+      (ici === 'games.html' ? '' : '<a href="games.html">🎮 Other games</a>') +
+      '<a href="index.html">🏠 Home</a>';
+    (document.body || document.documentElement).appendChild(m);
+    m.addEventListener('click', function (e) {
+      var a = e.target.closest ? e.target.closest('a[data-panel]') : null;
+      if (!a) return;
+      e.preventDefault();
+      ouvre(a.getAttribute('data-panel'));
+    });
+  }
+
+  function poseBoites() {
+    if ($('ovl')) return;
+    var o = document.createElement('div');
+    o.className = 'ovl'; o.id = 'ovl';
+    o.innerHTML =
+      '<div class="box swc" id="box-wallet"><div class="pscroll">' +
+        '<h4>👛 My Wallet</h4>' +
+        '<div class="swc-c or"><span>$SWOGE in wallet</span><b id="swcWSwoge">…</b></div>' +
+        '<div class="swc-c"><span>ETH (RH) — gas</span><b id="swcWEth">…</b></div>' +
+        '<label>Your address</label>' +
+        '<div class="swc-adr" id="swcWAdr">…</div>' +
+        '<button class="swc-b g" id="swcWCopy" type="button">Copy</button>' +
+        '<button class="swc-b p" id="swcWDep" type="button">Deposit</button>' +
+        '<a class="swc-b" id="swcWScan" target="_blank" rel="noopener">Explorer ↗</a>' +
+        '<button class="swc-b d" id="swcWOut" type="button">Disconnect</button>' +
+        '<button class="swc-b" data-close type="button">Close</button>' +
+      '</div></div>' +
+
+      '<div class="box swc" id="box-dep"><div class="pscroll">' +
+        '<h4>💰 Deposit</h4>' +
+        '<div class="swc-c or"><span>$SWOGE in wallet</span><b id="swcDSwoge">…</b></div>' +
+        '<div class="swc-c"><span>ETH (RH) — gas</span><b id="swcDEth">…</b></div>' +
+        '<div class="swc-n">Depositing moves $SWOGE <b>from your own wallet</b> into your ' +
+          'game balance. You need both at your address: $SWOGE to play with, and a few ' +
+          'cents of ETH (RH) to pay for the transfer.</div>' +
+        '<label>Amount</label>' +
+        '<input id="swcDAmt" inputmode="decimal" placeholder="e.g. 100">' +
+        '<div class="swc-pc" data-pc="d">' +
+          '<button type="button" data-p="10">10%</button>' +
+          '<button type="button" data-p="25">25%</button>' +
+          '<button type="button" data-p="50">50%</button>' +
+          '<button type="button" data-p="100">MAX</button>' +
+        '</div>' +
+        '<button class="swc-b p" id="swcDGo" type="button">Deposit and play</button>' +
+        '<button class="swc-b" data-close type="button">Close</button>' +
+      '</div></div>' +
+
+      '<div class="box swc" id="box-wd"><div class="pscroll">' +
+        '<h4>🏧 Withdraw</h4>' +
+        '<div class="swc-c or"><span>Game balance</span><b id="swcWdBal">…</b></div>' +
+        '<label>Amount</label>' +
+        '<input id="wdAmt" inputmode="decimal" placeholder="e.g. 100">' +
+        '<div class="swc-pc" data-pc="w">' +
+          '<button type="button" data-p="10">10%</button>' +
+          '<button type="button" data-p="25">25%</button>' +
+          '<button type="button" data-p="50">50%</button>' +
+          '<button type="button" data-p="100">MAX</button>' +
+        '</div>' +
+        '<div class="swc-n" id="swcWdNote"></div>' +
+        '<button class="swc-b p" id="swcWdGo" type="button">Withdraw</button>' +
+        '<button class="swc-b" data-close type="button">Close</button>' +
+      '</div></div>' +
+
+      '<div class="box swc" id="box-stake"><div class="pscroll">' +
+        '<h4>🔒 Staking</h4>' +
+        '<div class="swc-c or"><span>Staked</span><b id="swcSStaked">…</b></div>' +
+        '<div class="swc-c"><span>Pending yield</span><b id="swcSPending">…</b></div>' +
+        '<div class="swc-c"><span>Unlocked</span><b id="swcSUnlocked">…</b></div>' +
+        '<div class="swc-n" id="swcSNote"></div>' +
+        '<label>Amount to stake</label>' +
+        '<input id="swcSAmt" inputmode="decimal" placeholder="e.g. 1000">' +
+        '<button class="swc-b p" id="swcSGo" type="button">Stake</button>' +
+        '<button class="swc-b g" id="swcSClaim" type="button">Claim yield</button>' +
+        '<button class="swc-b d" id="swcSOut" type="button">Unstake everything</button>' +
+        '<button class="swc-b" data-close type="button">Close</button>' +
+      '</div></div>';
+    (document.body || document.documentElement).appendChild(o);
+
+    /* Le voile ne recoit qu'un seul geste : le clic a cote, qui ferme. */
+    o.addEventListener('click', function (e) { if (e.target === o) ferme(); });
+
+    /* Tout le reste est delegue A CHAQUE BOITE, pas au voile.
+     *
+     * Ce n'est pas un detail de style : le tiroir du profil DEPLACE la boite
+     * hors du voile pour l'ouvrir chez lui. Un gestionnaire pose sur le voile
+     * ne voit alors plus rien passer — les boutons de pourcentage etaient
+     * dessines, cliquables, et ne remplissaient rien. Une boite, elle, emmene
+     * ses ecouteurs avec elle : deplacer un noeud n'en detache aucun. */
+    [].forEach.call(o.querySelectorAll('.box'), function (boite) {
+      boite.addEventListener('click', function (e) {
+        if (!e.target.closest) return;
+        if (e.target.closest('[data-close]')) return ferme();
+        var pc = e.target.closest('.swc-pc button');
+        if (pc) pourcent(pc.parentNode.getAttribute('data-pc'), Number(pc.dataset.p));
+      });
+    });
+
+    $('swcWCopy').addEventListener('click', function () {
+      if (!ADR) return;
+      var b = this;
+      /* `writeText` rend une PROMESSE : un `try` ne rattrape pas son echec, et
+         un navigateur qui refuse le presse-papiers — c'est le cas hors d'un
+         geste juge sur, ou dans un onglet sans permission — laissait un rejet
+         non traite dans la console. On attrape des deux cotes. */
+      try { var q = navigator.clipboard.writeText(ADR); if (q && q.catch) q.catch(function () {}); }
+      catch (e) {}
+      b.textContent = 'Copied ✓';
+      setTimeout(function () { b.textContent = 'Copy'; }, 1400);
+    });
+    $('swcWDep').addEventListener('click', function () { ouvre('dep'); });
+    $('swcWOut').addEventListener('click', deconnecte);
+    $('swcDGo').addEventListener('click', depose);
+    $('swcWdGo').addEventListener('click', demandeRetrait);
+    $('swcSGo').addEventListener('click', mise);
+    $('swcSClaim').addEventListener('click', function () { demande('claimStake'); });
+    $('swcSOut').addEventListener('click', retireMise);
+  }
+
+  function pourcent(quoi, p) {
+    var base = quoi === 'd' ? (PORTE.swoge || 0) : SOLDE;
+    if (!(base > 0)) return dit(quoi === 'd' ? 'No $SWOGE in your wallet' : 'No game balance', 'ko');
+    var v = Math.floor(base * p / 100 * 10000) / 10000;
+    $(quoi === 'd' ? 'swcDAmt' : 'wdAmt').value = String(v);
+  }
+
+  function ouvre(nom) {
+    poseBoites();
+    if (!ADR) { dit('Sign in first — the button in the top bar', 'ko'); return; }
+    $('ovl').classList.add('show');
+    PANNEAUX.forEach(function (b) {
+      var el = $('box-' + b);
+      if (!el) return;
+      /* On efface le style EN LIGNE avant de poser la classe. Quand le tiroir
+         rend une boite qu'il avait empruntee, il lui repose le display qu'elle
+         avait — c'est-a-dire `none`, puisqu'elle etait fermee. Un style en
+         ligne l'emporte sur n'importe quelle feuille : sans cet effacement, un
+         panneau ouvert une premiere fois ne se rouvrirait jamais. */
+      el.style.removeProperty('display');
+      el.classList.toggle('show', b === nom);
+    });
+    if (nom === 'wallet' || nom === 'dep') litSoldesChaine();
+    if (nom === 'stake') demande('stakeInfo');
+    poseTout();
+  }
+  function ferme() {
+    var o = $('ovl');
+    if (!o) return;
+    o.classList.remove('show');
+    PANNEAUX.forEach(function (b) { var el = $('box-' + b); if (el) el.classList.remove('show'); });
+  }
+
+  function poseTout() {
+    if (!$('ovl')) return;
+    var pose = function (id, v) { var e = $(id); if (e) e.textContent = v; };
+    var sw = PORTE.swoge == null ? '…' : nb(PORTE.swoge);
+    var et = PORTE.eth == null ? '…' : PORTE.eth.toFixed(5);
+    pose('swcWSwoge', sw); pose('swcDSwoge', sw);
+    pose('swcWEth', et);   pose('swcDEth', et);
+    pose('swcWAdr', ADR || '…');
+    pose('swcWdBal', nb(SOLDE));
+    var scan = $('swcWScan');
+    if (scan && ADR) scan.href = CHAIN.scan + '/address/' + ADR;
+    pose('swcSStaked', nb(ST.staked));
+    pose('swcSPending', nb(acquisCourant(), 4));
+    pose('swcSUnlocked', nb(ST.unlocked));
+    var n = $('swcSNote');
+    if (n) {
+      n.innerHTML = '<b>' + (ST.aprBps / 100) + '% APR</b> · locked ' + ST.lockDays +
+        ' days · yield every second.' +
+        (ST.locked > 0
+          ? ' <b>' + nb(ST.locked) + '</b> still locked — unstaking now forfeits ' +
+            (ST.penaltyBps / 100) + '% of it.'
+          : ST.staked > 0 ? ' All unlocked — unstake with no penalty.' : '');
+    }
+    var w = $('swcWdNote');
+    if (w) w.innerHTML = 'Minimum <b>' + MIN_WD + ' $SWOGE</b>. Paid straight to your ' +
+      'wallet: the server signs a voucher, your wallet confirms the transfer.';
+  }
+  /* Le rendement coule : on repeint la seule ligne qui bouge, et seulement
+     quand le panneau du staking est ouvert. */
+  setInterval(function () {
+    var b = $('box-stake');
+    if (b && b.classList.contains('show')) {
+      var e = $('swcSPending');
+      if (e) e.textContent = nb(acquisCourant(), 4);
+    }
+  }, 250);
+
+  // -------------------------------------------------------------- les gestes
+  function depose() {
+    var s = ($('swcDAmt').value || '').replace(',', '.').trim();
+    if (!(parseFloat(s) > 0)) return dit('Enter an amount', 'ko');
+    if (!VAULT) return dit('The server has no vault set — try again in a moment', 'ko');
+    var bouton = $('swcDGo');
+    bouton.disabled = true;
+    signataire().then(function (w) {
+      var montant = ethers.utils.parseUnits(s, 18);
+      var jeton = new ethers.Contract(TOKEN, ERC20_ABI, w.signer);
+      var coffre = new ethers.Contract(VAULT, VAULT_ABI, w.signer);
+      /* L'autorisation est demandee UNE FOIS, pour un montant illimite : la
+         redemander a chaque depot ferait payer deux transactions au lieu
+         d'une, a chaque fois. */
+      return jeton.allowance(w.adresse, VAULT).then(function (a) {
+        if (!a.lt(montant)) return null;
+        dit('Approve $SWOGE in your wallet…');
+        return jeton.approve(VAULT, ethers.constants.MaxUint256)
+          .then(function (t) { return t.wait(); });
+      }).then(function () {
+        dit('Depositing…');
+        return coffre.deposit(montant);
+      }).then(function (t) { return t.wait(); });
+    }).then(function () {
+      dit('✅ Deposited — your balance updates in a moment', 'ok');
+      $('swcDAmt').value = '';
+      ferme();
+      litSoldesChaine();
+      demande('balance');
+    }).catch(function (e) {
+      dit('Deposit: ' + String((e && (e.reason || e.message)) || e).slice(0, 90), 'ko');
+    }).then(function () { bouton.disabled = false; });
+  }
+
+  function demandeRetrait() {
+    var s = ($('wdAmt').value || '').replace(',', '.').trim();
+    if (!(parseFloat(s) >= MIN_WD)) return dit('Minimum ' + MIN_WD + ' $SWOGE', 'ko');
+    if (parseFloat(s) > SOLDE) return dit('More than your balance', 'ko');
+    if (!demande('withdraw', { amount: s })) return dit('Not connected — try again in a few seconds', 'ko');
+    dit('Requesting a voucher…');
+  }
+  /* Le retrait se termine SUR LA CHAINE : le serveur signe un bon, et c'est le
+     joueur qui l'encaisse depuis son propre portefeuille. */
+  function envoieRetrait(v) {
+    if (!v) return;
+    signataire().then(function (w) {
+      var coffre = new ethers.Contract(v.vault || VAULT, VAULT_ABI, w.signer);
+      dit('Confirm the withdrawal in your wallet…');
+      return coffre.withdraw(v.cumulative, v.deadline, v.v, v.r, v.s)
+        .then(function (t) { return t.wait(); });
+    }).then(function () {
+      dit('✅ Paid to your wallet', 'ok');
+      ferme(); litSoldesChaine();
+    }).catch(function (e) {
+      dit('Withdraw: ' + String((e && (e.reason || e.message)) || e).slice(0, 90), 'ko');
+    });
+  }
+
+  function mise() {
+    var v = ($('swcSAmt').value || '').replace(',', '.').trim();
+    if (!(parseFloat(v) > 0)) return dit('Enter an amount', 'ko');
+    if (parseFloat(v) > SOLDE) return dit('More than your balance', 'ko');
+    if (!window.confirm('Stake ' + v + ' $SWOGE at ' + (ST.aprBps / 100) + '% APR?\n\n' +
+        'Locked ' + ST.lockDays + ' days. Unstaking early forfeits ' +
+        (ST.penaltyBps / 100) + '% of what is still locked.')) return;
+    if (!demande('stake', { amount: v })) return dit('Not connected', 'ko');
+    $('swcSAmt').value = '';
+  }
+  function retireMise() {
+    if (!(ST.staked > 0)) return dit('Nothing staked', 'ko');
+    if (ST.locked > 0 && !window.confirm('⚠️ ' + nb(ST.locked) +
+        ' $SWOGE is still locked. Unstaking now forfeits ' +
+        (ST.penaltyBps / 100) + '% of it. Continue?')) return;
+    demande('unstake');
+  }
+
+  function deconnecte() {
+    if (!window.confirm('Sign out of this device?')) return;
+    try { localStorage.removeItem('swogeSession'); } catch (e) {}
+    try { localStorage.removeItem('swogeAuth'); } catch (e) {}
+    location.reload();
+  }
+
+  // ------------------------------------------------------------- l'amorce
+  function amorce() {
+    if (monte) return;
+    if (dejaEquipee()) return;     // une page a pu se garnir entre-temps
+    monte = true;
+    style(); poseMenu(); poseBoites();
+  }
+  if (document.readyState === 'loading')
+    document.addEventListener('DOMContentLoaded', amorce);
+  else amorce();
+})();

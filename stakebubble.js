@@ -1862,6 +1862,9 @@
   var AILLEURS = [
     ['games.html', '\uD83C\uDFAE Other games'],
     ['index.html', '\uD83C\uDFE0 Home'],
+    ['swoge_staking.html', '\uD83D\uDD12 Staking'],
+    ['https://dexscreener.com/robinhood/0x2dc0fb72d9284228046cc95910eeaabebfe48456',
+     '\uD83E\uDE99 Buy $SWOGE'],
   ];
   function SECOURS_AILLEURS() {
     var ici = (location.pathname.split('/').pop() || 'index.html').toLowerCase() || 'index.html';
@@ -1871,6 +1874,12 @@
       var a = document.createElement('a');
       a.href = AILLEURS[i][0];
       a.textContent = AILLEURS[i][1];
+      /* Un lien qui sort du site s'ouvre a cote : la page de cotation n'est pas
+         une page de nous, et y envoyer le joueur en pleine partie lui ferait
+         perdre sa table. */
+      if (a.href.indexOf('http') === 0 && a.href.indexOf(location.host) < 0) {
+        a.target = '_blank'; a.rel = 'noopener';
+      }
       out.push(a);
     }
     return out;

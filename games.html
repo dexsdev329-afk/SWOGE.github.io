@@ -391,8 +391,11 @@ canvas{ touch-action:none; }
   <a class="brand" href="index.html">$SWOGE <span>ARCADE</span></a>
   <span class="sp"></span>
   <a class="nlink" href="index.html">Home</a>
-  <a class="nlink" href="swoge_staking.html">🔒 Stake</a>
-  <a class="buy" href="https://dexscreener.com/robinhood/0x2dc0fb72d9284228046cc95910eeaabebfe48456" target="_blank" rel="noopener">Buy $SWOGE</a>
+  <!-- « Stake » et « Buy $SWOGE » ne sont plus ici : ils prenaient toute la
+       largeur de la barre sur telephone pour deux liens qu'on suit rarement, et
+       qui vivent maintenant dans le tiroir du profil, sous « Go to ». Voir
+       stakebubble.js — c'est lui qui les pose, sur cette page comme sur les
+       autres pages sans menu. -->
   <!-- Il y avait ici un bouton « menu » qui n ouvrait plus qu UNE entree,
        « Chart » — et qui pointait vers la MEME adresse que le bouton
        « Buy $SWOGE » juste a cote. Un menu deroulant pour un lien deja

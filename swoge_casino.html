@@ -583,13 +583,16 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
 .hl-mise .ca-x{ right:-6px; top:50%; bottom:auto; margin-top:-13px; }
 .hl{ max-width:560px; margin:6px auto 0; text-align:center; }
 .hl[hidden]{ display:none; }
+/* Pas de liset dore autour de la carte. Le cadre se voyait surtout quand il
+   n'y avait rien a encadrer : la place vide portait sa propre carte violette,
+   plus etroite que le cadre, et l'or courait derriere elle comme une seconde
+   bordure. Les cartes sont deja detourees et ombrees, elles se detachent
+   toutes seules du tapis. */
 .hl-carte{ width:min(46%,190px); aspect-ratio:5/7; margin:6px auto 10px;
   border-radius:12px; overflow:hidden; position:relative;
-  box-shadow:0 10px 26px rgba(0,0,0,.7), 0 0 0 2px rgba(230,165,55,.5); }
+  box-shadow:0 10px 26px rgba(0,0,0,.7); }
 .hl-carte img{ width:100%; height:100%; display:block; object-fit:cover;
   animation:caDeal .3s ease both; }
-.hl-carte.vide{ background:linear-gradient(150deg,#6a2fb0,#2b1150);
-  border:1px solid rgba(230,165,55,.5); }
 /* Le multiplicateur est l'information que le joueur fixe entre deux clics :
    il est le plus gros element de l'ecran. */
 .hl-multi{ font-weight:900; font-size:clamp(26px,8vw,46px); line-height:1;
@@ -1754,10 +1757,22 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
 
   /* ------------------------------ Hi-Lo ------------------------------ */
   var HL={ etat:null, hist:[], edgeBps:300 };
+  /* Avant la premiere donne, la place de la carte montre un AS : une vraie
+     carte du jeu, celle qui dit le mieux de quoi il s'agit. Elle remplace le
+     rectangle violet qui se glissait DANS le cadre — deux cartes emboitees,
+     l'une peinte, l'autre vide. */
   function hlCarte(c){
-    if(c==null || c<0) return '<div class="hl-carte vide"></div>';
-    var r=c%13, s=(c/13)|0, set=ART[caArtIdx(r)]||ART[0];
+    var set = (c==null || c<0) ? ART[0] : (ART[caArtIdx(c%13)]||ART[0]);
+    var s   = (c==null || c<0) ? 0 : (c/13)|0;
     return '<img src="'+(set[s]||set[0])+'" alt="">';
+  }
+  /* On ne repeint que ce qui change : reaffecter la meme image relance
+     l'animation de donne a chaque rendu, et recopie son base64 pour rien. */
+  function hlPose(c){
+    var carte=$("hlCarte"), cle=(c==null||c<0) ? "pres" : String(c);
+    if(carte.dataset.c===cle) return;
+    carte.dataset.c=cle;
+    carte.innerHTML=hlCarte(c);
   }
   function hlPetite(c, cls){
     var r=c%13, s=(c/13)|0, set=ART[caArtIdx(r)]||ART[0];
@@ -1767,7 +1782,7 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
     var e=HL.etat, aJour=$("caHilo");
     aJour.hidden = CA.game!=="hilo";
     if(CA.game!=="hilo") return;
-    var carte=$("hlCarte"), multi=$("hlMulti"), up=$("hlUp"), down=$("hlDown"),
+    var multi=$("hlMulti"), up=$("hlUp"), down=$("hlDown"),
         cash=$("hlCash"), note=$("hlNote");
     // les plaques une seule fois : reaffecter la meme URL a chaque rendu ne
     // change rien a l'affichage mais recopie 60 ko de base64 pour rien
@@ -1787,7 +1802,7 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
         '<button class="ca-x" data-x="ante" aria-label="Clear this bet">&times;</button>';
 
     if(!e || e.fini){
-      carte.innerHTML = e ? hlCarte(e.carte) : '<div class="hl-carte vide"></div>';
+      hlPose(e ? e.carte : null);
       multi.innerHTML = e && e.perdu ? '<span style="color:#F2685E">Lost</span><small>Place a bet and deal to play again</small>'
         : e && e.encaisse ? '+'+caFmt(e.gain)+'<small>cashed out</small>'
         : '&mdash;<small>Tap a chip to build your stake, then Deal</small>';
@@ -1802,7 +1817,7 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
       hlSuite();
       return;
     }
-    carte.innerHTML=hlCarte(e.carte);
+    hlPose(e.carte);
     note.classList.remove("mode-emploi");
     multi.innerHTML=e.multi.toFixed(2)+'&times;<small>'+caFmt(e.gain)+' $SWOGE if you stop now</small>';
     up.disabled=!e.peutMonter; down.disabled=!e.peutDescendre; cash.disabled=false;

@@ -229,6 +229,10 @@ canvas{ touch-action:none; }
     <button class="btn ghost" id="mnSwap" style="width:100%;margin-bottom:8px">💱 Buy / Sell $SWOGE</button>
     <button class="btn ghost" id="mnQuests" style="width:100%;margin-bottom:8px">🎯 Daily Quests</button>
     <button class="btn ghost" id="mnGames" style="width:100%;margin-bottom:8px">🎮 Other Games</button>
+    <!-- « Home » manquait ici, et seulement ici : le groupe « Go to » du
+         tiroir n'y proposait donc pas le retour a l'accueil, alors que toutes
+         les autres coquilles l'offrent. -->
+    <button class="btn ghost" id="mnHome" style="width:100%;margin-bottom:8px">🏠 Home</button>
     <button class="btn ghost" id="mnSound" style="width:100%;margin-bottom:8px">🔊 Sound: ON</button>
     <button class="btn ghost" id="mnClose" style="width:100%">Close</button>
   </div>
@@ -863,6 +867,7 @@ $("#mnQuests").onclick=function(){ closeModal(); $("#quests").classList.add("sho
 $("#mnBridge").onclick=function(){ window.open(BRIDGE_URL,"_blank","noopener"); };
 $("#mnSwap").onclick=function(){ window.open(SWAP_URL,"_blank","noopener"); };
 $("#mnGames").onclick=function(){ window.location.href="games.html"; };
+$("#mnHome").onclick=function(){ window.location.href="index.html"; };
 function refreshSoundBtn(){ $("#mnSound").textContent=SFX.isMuted()?"🔇 Sound: OFF":"🔊 Sound: ON"; }
 $("#mnSound").onclick=function(){ var m=SFX.toggle(); refreshSoundBtn(); if(!m) SFX.ding(); toast(m?"🔇 Sound off":"🔊 Sound on"); };
 refreshSoundBtn();

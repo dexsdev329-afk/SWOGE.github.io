@@ -2013,7 +2013,13 @@
       if (el.id === 'mnClose') return;
       var t = (el.textContent || '') + ' ' + (el.id || '') + ' ' +
               (el.className || '') + ' ' + (el.getAttribute('href') || '');
-      if (/games|home|arcade|stakepage|staking page/i.test(t)) ailleurs.push(el);
+      /* « Bridge » et « Buy / Sell » quittent le site : ils ouvrent un autre
+         domaine dans un nouvel onglet. Ranges sous « Account », ils se lisaient
+         comme un geste sur son compte a cote du depot et du retrait — alors
+         qu'ils font exactement l'inverse, ils emmenent ailleurs. Le Coin Pusher
+         est la seule coquille qui les porte ; c'est aussi la seule dont le
+         groupe « Account » ne ressemblait pas aux autres. */
+      if (/games|home|arcade|stakepage|staking page|bridge|buy ?\/ ?sell/i.test(t)) ailleurs.push(el);
       else if (/sound|music|son|musique/i.test(t)) reglages.push(el);
       else compte.push(el);
     });

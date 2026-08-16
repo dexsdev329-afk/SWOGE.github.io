@@ -184,6 +184,16 @@
     css.id = 'swb-mob';
     css.textContent =
       '@media (max-width:640px){' +
+        /* ---- LA MARQUE PART ENTIEREMENT ----
+           On n'en cachait que le nom du jeu (« BLACKJACK »), en gardant
+           « $SWOGE ». Mais la barre est la ligne la plus disputee de l'ecran :
+           elle porte le visage, le solde, sa valeur en dollars, le staking et
+           le compte de joueurs. Le seul element qui n'y apprend rien est
+           justement celui qui dit ou l'on est deja — on le sait, on vient de
+           cliquer dessus.
+           Le lien vers l'accueil qu'il portait n'est pas perdu : le tiroir du
+           profil a « Home » sous « Go to », sur toutes les pages. */
+        'nav .brand{display:none!important;}' +
         'nav .brand>span{display:none;}' +
         'nav{padding-top:8px!important;padding-bottom:8px!important;}' +
         '.swlbl{display:none;}' +

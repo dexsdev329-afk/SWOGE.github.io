@@ -623,8 +623,24 @@ function initScene(){
   var d=new THREE.DirectionalLight(0xffffff,0.7); d.position.set(6,14,10); scene.add(d);
 
   var L=new THREE.TextureLoader(), sRGB=("sRGBEncoding" in THREE)?THREE.sRGBEncoding:undefined;
-  // background
-  L.load("img/7721f8963c63.jpg",function(t){ if(sRGB)t.encoding=sRGB; scene.background=t; }, undefined, function(){ scene.background=new THREE.Color(0x0B0906); });
+  /* ---- LE FOND : LE TEMPLE, PAS LA SALLE DE SPORT ----
+   *
+   * L'ancien fond etait un Shiba de gym, or vif d'un bord a l'autre. Deux
+   * defauts derriere une machine a pousser : il est CLAIR partout, donc les
+   * pieces dorees s'y perdent, et il est charge en plein milieu, la ou se
+   * trouve justement le plateau.
+   *
+   * Le temple a le centre sombre et calme, tout son detail sur les bords, et
+   * l'idole Shiba au fond : c'est le meme decor que le Connect 4, donc les
+   * deux jeux se repondent. On choisit l'orientation au chargement — le
+   * portrait sur telephone, le paysage sur grand ecran — parce qu'un fond
+   * vertical etire en 16/9 fait une bouillie.
+   *
+   * Le repli en couleur unie reste : si la texture manque, la scene reste
+   * jouable au lieu de s'ouvrir sur du blanc. */
+  var fond = "img/c4_fond.webp";
+  try { if (matchMedia("(orientation:landscape)").matches) fond = "img/c4_fond_large.webp"; } catch(e){}
+  L.load(fond,function(t){ if(sRGB)t.encoding=sRGB; scene.background=t; }, undefined, function(){ scene.background=new THREE.Color(0x0B0906); });
   // floor
   var floorMat=new THREE.MeshStandardMaterial({color:0xC98A2A,metalness:0,roughness:0.85,emissive:0x3a2508,emissiveIntensity:0.35});
   L.load("img/dce2ad565577.jpg",function(t){ t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(2.5,2.5); if(sRGB)t.encoding=sRGB; floorMat.map=t; floorMat.color.set(0xffffff); floorMat.needsUpdate=true; });

@@ -327,9 +327,90 @@ canvas{ touch-action:none; }
   #pmenu #mnGames { background-image:url('img/9e6be8200ef8.png') !important; }
   #pmenu a[href="swoge_staking.html"] { background-image:url('img/42f973c95a72.png') !important; }
   #pmenu a[href="index.html"] { background-image:url('img/9cbf3c83512f.png') !important; }
+
+  /* ================== LA TABLETTE ET LA PIERRE ==================
+   *
+   * Repris du Coin Pusher « Temple des Gemmes » : le jeu vit DANS une
+   * tablette, et les panneaux sont des dalles de pierre a cerclage dore.
+   *
+   * ---- ce qu'on N'A PAS repris, et pourquoi ----
+   *
+   * La-bas, la tablette est un conteneur de 1200x760 ramene a l'ecran par un
+   * `transform: scale()`. Deux raisons de ne pas faire ca ici :
+   *
+   *   • un `transform` fait de son element le REPERE de tout descendant en
+   *     position fixe. Le tiroir de profil, la bulle, le solde — tout ce que
+   *     stakebubble.js pose — sont fixes. Ca nous a deja coute un cadre de
+   *     palier de deux cents pixels sur le Spin ; on ne recommence pas.
+   *   • une taille figee puis mise a l'echelle rend le jeu FLOU sur telephone,
+   *     et c'est justement la qu'on y joue.
+   *
+   * On garde donc l'APPARENCE — biseau sombre, coins arrondis, liseré interne,
+   * vignette — et on la pose en SURCOUCHE decorative. Aucun element ne bouge,
+   * rien n'est mis a l'echelle, et `pointer-events:none` garantit qu'elle
+   * n'intercepte pas un seul geste.
+   *
+   * Le biseau reste MINCE sur telephone : on a passe la journee a recuperer
+   * des pixels en haut des pages, ce serait absurde d'en rendre douze.
+   */
+  #tablette{ position:fixed; inset:0; z-index:9000; pointer-events:none;
+    border:7px solid #0B0A16; border-radius:20px;
+    box-shadow:
+      inset 0 0 0 1px rgba(230,165,55,.30),      /* le liseré dore du cadre */
+      inset 0 0 0 3px rgba(20,16,34,.95),
+      inset 0 0 70px rgba(4,3,10,.55),           /* la vitre s'assombrit aux bords */
+      0 0 0 2px #000; }
+  @media (min-width:900px){
+    #tablette{ border-width:14px; border-radius:32px;
+      box-shadow:
+        inset 0 0 0 1px rgba(230,165,55,.34),
+        inset 0 0 0 4px rgba(20,16,34,.95),
+        inset 0 0 110px rgba(4,3,10,.6),
+        0 0 0 2px #000; }
+  }
+
+  /* ---- les dalles ----
+     La recette du Temple : des striures horizontales par-dessus un degrade
+     vertical, un bord sombre epais, et un anneau dore a l'interieur. La
+     palette, elle, est la NOTRE — or sur indigo, comme le cadre du Connect 4
+     pose ce matin — et non le violet-gris de l'original : deux thematiques de
+     pierre differentes sur le meme site se verraient. */
+  #quests, #stake, #lb, .box{
+    background:
+      /* les joints horizontaux : c'est eux qui font les assises */
+      repeating-linear-gradient(0deg,
+        rgba(0,0,0,.34) 0 2px, rgba(255,228,160,.05) 2px 3px, transparent 3px 26px),
+      /* les joints verticaux : sans eux on lit des lignes, pas des blocs. Ils
+         tombent tous a la meme abscisse — un degrade repete ne sait pas
+         decaler une assise sur deux, et le faire demanderait une image. A
+         cette echelle, sous du texte, ca ne se remarque pas. */
+      repeating-linear-gradient(90deg,
+        rgba(0,0,0,.26) 0 2px, transparent 2px 74px),
+      linear-gradient(180deg,#2E2848 0%,#1E1A34 55%,#131120 100%) !important;
+    background-size:auto, auto, auto !important;
+    box-shadow: inset 0 0 0 2px rgba(230,165,55,.42),
+                inset 0 3px 16px rgba(0,0,0,.6),
+                0 10px 30px rgba(0,0,0,.6); }
+  #quests{ border-right:3px solid #14101F; }
+  #stake, #lb{ border-left:3px solid #14101F; }
+  .box{ border:3px solid #14101F !important; border-radius:14px; }
+
+  /* ---- le linteau de chaque dalle ----
+     Un bandeau grave, comme au-dessus d'une porte de temple. On ne le fait pas
+     deborder jusqu'aux bords du panneau : les trois n'ont pas la meme marge
+     interieure, et un debordement calcule pour l'un decalerait les autres. */
+  #quests h3, #stake h3, #lb h3, .box h3{
+    display:block; padding:8px 11px; margin-bottom:12px; border-radius:8px;
+    background:linear-gradient(180deg,#5A4A2A,#3A2F18);
+    border:1px solid #14101F;
+    box-shadow:inset 0 1px 0 rgba(255,228,160,.25), 0 2px 8px rgba(0,0,0,.5);
+    color:#FFE4A0 !important; text-shadow:0 1px 0 #000;
+    text-transform:uppercase; letter-spacing:1.4px; }
 </style>
 </head>
 <body>
+<!-- Le cadre de la tablette : purement decoratif, il n intercepte rien. -->
+<div id="tablette" aria-hidden="true"></div>
 <canvas id="c"></canvas>
 
 <div id="top" class="hud">

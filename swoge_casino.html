@@ -738,6 +738,67 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
 .ca-pick .ca-info{ flex:0 0 auto; max-width:none; width:42px; padding:9px 0;
   font-size:17px; line-height:1; }
 
+/* ---- LES QUATRE JEUX TIENNENT SUR UNE LIGNE ----
+   « Casino Hold'em » repliait son libelle en deux, ce qui donnait a toute la
+   rangee deux hauteurs de texte pour un seul mot trop long. On interdit le
+   retour a la ligne et on laisse la taille s'ajuster a la place disponible. */
+.ca-pick button{ white-space:nowrap; min-width:0;
+  padding:9px 6px; font-size:clamp(11px,2.6vw,13.5px); }
+
+/* ---- SUR TELEPHONE, DEUX FLECHES REMPLACENT LA RANGEE ----
+ *
+ * Les quatre boutons prenaient une bande pleine largeur en haut de l'ecran
+ * pour un choix qu'on fait une fois en arrivant. Les fleches font le meme
+ * travail sur le bord du tapis, sans rien couter en hauteur — et le bandeau
+ * du jeu, juste au-dessus, dit deja lequel on regarde. Le catalogue
+ * (games.html) reste l'autre chemin, celui ou l'on choisit vraiment.
+ *
+ * Discretes : a 55 % d'opacite sur un fond a peine pose. Ce sont des bords de
+ * table, pas des boutons d'action — il y en a deja quatre en bas de l'ecran.
+ */
+.ca-col{ position:relative; container-type:inline-size; }
+.ca-nav{ display:none; position:absolute; z-index:6;
+  width:30px; height:54px; padding:0; border-radius:9px; cursor:pointer;
+  font:inherit; font-size:22px; line-height:1; color:rgba(231,201,122,.55);
+  background:rgba(6,4,2,.42); border:1px solid rgba(230,165,55,.20); }
+/* A MI-HAUTEUR DU TAPIS, pas de la colonne. Un `top:50%` se mesure sur la
+   hauteur du parent — laquelle porte aussi le rail de jetons, les actions et
+   le pied : les fleches tombaient sous le tapis. Le tapis, lui, a un rapport
+   fixe de 1000/700, donc sa mi-hauteur vaut 35 % de sa LARGEUR. `cqw` mesure
+   exactement ca. Le pourcentage reste en secours pour les navigateurs qui ne
+   connaissent pas les requetes de conteneur. */
+.ca-nav{ top:38%; }
+.ca-nav{ top:35cqw; }
+.ca-nav:hover{ color:#E7C97A; border-color:rgba(230,165,55,.45); }
+.ca-nav.prev{ left:-3px; }
+.ca-nav.next{ right:-3px; }
+
+/* ---- L'HISTORIQUE PASSE DERRIERE UN BOUTON, SUR TELEPHONE ----
+   Cinq lignes vides plus un en-tete plus un total : l'historique occupe une
+   pleine page sous le tapis, et il est vide tant qu'on n'a pas joue. Sur
+   grand ecran il est en colonne a cote, ou il ne gene personne : le bouton
+   n'existe donc que sur telephone. */
+.ca-histbtn{ display:none; }
+
+@media (max-width:820px), (orientation:portrait){
+  .ca-pick button[data-g]{ display:none; }
+  /* Il ne reste que le bouton d'information, et une rangee entiere pour lui
+     seul couterait cinquante pixels a l'ecran de jeu — exactement ce qu'on
+     vient de gagner. Il monte donc dans le coin haut droit, par-dessus la
+     bande du titre, qui est centree et laisse ses deux bords libres. */
+  .ca-pick{ position:absolute; top:2px; right:10px; z-index:7;
+    margin:0; justify-content:flex-end; }
+  .ca-pick .ca-info{ width:34px; padding:6px 0; font-size:15px; opacity:.72; }
+  .ca-nav{ display:block; }
+  .ca-histbtn{ display:block; width:100%; max-width:640px; margin:12px auto 0;
+    padding:10px; border-radius:11px; cursor:pointer; font:inherit;
+    font-weight:800; font-size:12px; letter-spacing:1.2px; text-transform:uppercase;
+    color:#E7C97A; background:rgba(255,255,255,.05);
+    border:1px solid rgba(230,165,55,.28); }
+  .ca-hist{ display:none; }
+  .ca-hist.on{ display:block; margin-top:8px; }
+}
+
 /* Regles et baremes : caches par defaut, ouverts par le bouton Info. Toujours
    remplis avec les chiffres envoyes par le serveur, jamais une copie. */
 .ca-pay{ margin:12px auto 0; max-width:560px; font-size:12px; color:var(--dim);
@@ -1056,7 +1117,12 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
 
     <div class="ca-main">
      <div class="ca-vide" aria-hidden="true"></div>
-     <div>
+     <div class="ca-col">
+    <!-- Les deux fleches de changement de jeu. Elles vivent dans la COLONNE et
+         non dans le tapis : le Hi-Lo et le Mines n'ont pas de tapis, il est
+         masque chez eux, et les fleches disparaitraient avec lui. -->
+    <button class="ca-nav prev" type="button" aria-label="Previous game">&#8249;</button>
+    <button class="ca-nav next" type="button" aria-label="Next game">&#8250;</button>
     <div class="ca-felt" id="caFelt">
       <div class="ca-dealer" id="caDealerAv"></div>
       <div class="ca-row dealer" id="caDealer"></div>
@@ -1095,7 +1161,9 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
     </div>
 
     <div class="ca-rail" id="caRail"></div>
-    <div class="ca-hint" id="caHint">Pick a chip, then tap a betting spot. Tap the red &times; to take it back.</div>
+    <!-- « Pick a chip, then tap a betting spot » disait a chaque partie ce
+         qu'on apprend a la premiere, sur deux lignes pleine largeur au milieu
+         de l'ecran de jeu. -->
 
     <div class="ca-acts" id="caActs"></div>
 
@@ -1105,6 +1173,7 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
 
      </div>
 
+     <button class="ca-histbtn" id="caHistBtn" type="button" aria-expanded="false">History</button>
      <div class="ca-hist" id="caHist"></div>
     </div>
 
@@ -1724,7 +1793,6 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
        disparait, le rail de jetons et les boutons leur servent aussi. */
     var sansTapis = CA.game==="hilo" || CA.game==="mines";
     $("caFelt").style.display = sansTapis ? "none" : "";
-    $("caHint").style.display = sansTapis ? "none" : "";
   }
 
   function caActs(){
@@ -2102,6 +2170,28 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
   });
 
   $("caAll").src=CAA.bAllTables;
+
+  /* Les deux fleches REJOUENT le clic du bouton correspondant. La bascule de
+     jeu, la garde « Finish the hand first » et le nettoyage de la table vivent
+     deja dans le gestionnaire ci-dessous ; les recopier ici en ferait une
+     seconde version a tenir a jour, et c'est celle-ci qui aurait tort le jour
+     ou l'autre changerait. */
+  [].forEach.call(document.querySelectorAll(".ca-nav"), function(fl){
+    fl.addEventListener("click", function(){
+      var jeux=[].slice.call($("caPick").querySelectorAll("button[data-g]"));
+      if(!jeux.length) return;
+      var i=0;
+      for(var k=0;k<jeux.length;k++) if(jeux[k].dataset.g===CA.game){ i=k; break; }
+      var pas = fl.classList.contains("next") ? 1 : -1;
+      jeux[(i+pas+jeux.length)%jeux.length].click();
+    });
+  });
+
+  $("caHistBtn").addEventListener("click", function(){
+    var ouvert=$("caHist").classList.toggle("on");
+    this.setAttribute("aria-expanded", ouvert?"true":"false");
+    this.textContent = ouvert ? "History \u25B4" : "History";
+  });
 
   $("caPick").addEventListener("click", function(e){
     var b=e.target.closest("button[data-g]"); if(!b) return;

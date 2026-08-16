@@ -594,14 +594,32 @@ canvas{ touch-action:none; }
 
   /* ===== PC / WEB (large, paysage) : SWOGE à gauche, HUD à droite, bonus dans la barre du bas ===== */
   @media (min-width:821px) and (orientation:landscape) {
-    /* solde + Connect + Email + Menu : colonne verticale à droite (gouttière vide) */
-    #hud { top:50%; bottom:auto; right:2vw; transform:translateY(-50%);
-           flex-direction:column; align-items:flex-end; gap:1.4vh; }
-    /* PC : solde en HAUT à droite (sous la plaque 100★) ; bouton menu en BAS à droite (près de TURBO) */
-    /* solde : coin HAUT-DROIT du carré de jeu (centré), au premier plan */
-    #bal-chip { position:fixed; left:auto; top:calc(60vh - min(27vh,26vw) + 3vh); right:calc(50vw - min(27vh,26vw) + 1vh); transform:none; font-size:1.9vh; padding:.9vh 1.5vh; z-index:230; }
-    #connectBtn,#emailBtn { font-size:1.6vh; padding:1.2vh 2.2vh; display:inline-block !important; }
+    /* ---- UNE BARRE EN HAUT, COMME PARTOUT AILLEURS ----
+     *
+     * Le HUD partait en colonne verticale au milieu du bord droit, et le solde
+     * s'en detachait pour aller se coller au coin du carre de jeu. Deux
+     * emplacements inventes pour cette page seule : sur les quinze autres, le
+     * solde et le compte de joueurs sont en haut, dans une rangee. On rend donc
+     * a la roue la disposition commune — c'est aussi ce qui laisse la colonne
+     * de droite entierement au jeu.
+     *
+     * Le `transform` disparait avec la colonne, et c'est une bonne chose : il
+     * faisait du HUD le repere de tout descendant en position fixe, ce qui
+     * avait deja coute un cadre de palier de deux cents pixels. */
+    #hud { top:1.4vh; bottom:auto; right:1.4vw; transform:none;
+           flex-direction:row; align-items:center; gap:.8vw; }
+    /* Le solde reprend sa place DANS la rangee, avec le reste. */
+    #bal-chip { position:static; transform:none; font-size:1.7vh; padding:.7vh 1.3vh; }
+    /* Pas de `display` ici : un bouton est deja en ligne par nature, et le
+     * `!important` d'autrefois passait par-dessus le `display:none` que pose
+     * la page une fois le joueur reconnu — d'ou « Wallet » et « Sign in »
+     * toujours affiches sur PC alors qu'ils disparaissaient bien au telephone. */
+    #connectBtn,#emailBtn { font-size:1.6vh; padding:1.2vh 2.2vh; }
     #connectBtn { box-shadow:0 0 14px rgba(255,213,74,.5); }
+    /* L'echelle de jackpots descend d'une lanceur : elle occupait exactement
+     * la bande que la barre vient de reprendre, et la derniere plaque passait
+     * sous le solde. Elle garde sa taille, elle change juste de rangee. */
+    #ladder { top:7.4vh; }
     /* bouton menu : coin BAS-DROIT, a droite de TURBO */
     #menuBtn { position:static; width:6vh; height:6vh; font-size:2.8vh; background:rgba(0,0,0,.65); border:2px solid var(--gold); box-shadow:0 0 16px rgba(255,213,74,.6); }
     /* menu déroulant collé à droite du jeu */
@@ -619,7 +637,10 @@ canvas{ touch-action:none; }
        de la colonne. Le `position:static` du profil est indispensable ici :
        le HUD porte un `transform`, ce qui en ferait le repere d'un enfant
        fixe et enverrait le bouton au milieu de l'ecran. */
-    #music-btn { position:fixed; top:auto; bottom:2.4vh; left:2vw; width:5.2vh; height:5.2vh; font-size:2.4vh; }
+    /* Le son reste dans la rangee, comme au telephone : un reglage qu'on touche
+       une fois par partie n'a pas besoin d'un coin a lui. */
+    #music-btn { position:static; top:auto; bottom:auto; left:auto;
+                 width:4.4vh; height:4.4vh; font-size:2.1vh; }
     /* ---- LE PROFIL RESTE EN HAUT A GAUCHE, SUR PC AUSSI ----
      * Il y descendait au bout de la colonne de droite, avec le solde et le
      * menu : la seule page du site ou la poignee du compte n'est pas au meme

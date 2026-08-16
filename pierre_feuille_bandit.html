@@ -668,6 +668,53 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
    ou il n'y a rien. */
 body{ background:url('img/pf_fond_large.webp') center center/cover no-repeat fixed;
       background-color:#0A1128; }
+
+/* ---- LA SCENE DU DUEL ---- */
+.pf-duel{ display:flex; align-items:center; justify-content:center; gap:clamp(10px,4vw,26px);
+  height:0; opacity:0; overflow:hidden; transition:height .2s, opacity .2s; }
+.pf-duel.on{ height:clamp(78px,23vw,112px); opacity:1; }
+.pf-duel span{ display:block; width:clamp(64px,20vw,100px); aspect-ratio:1;
+  background:center/contain no-repeat; filter:drop-shadow(0 4px 9px rgba(0,0,0,.65)); }
+.pf-duel .vs{ font-family:'Anton',sans-serif; font-size:clamp(13px,3.6vw,18px);
+  letter-spacing:2px; color:#C9A24A; opacity:0; }
+.pf-duel.on .vs{ animation:pfVs .5s ease .58s both; }
+@keyframes pfVs{ from{ opacity:0; transform:scale(.5) } to{ opacity:1; transform:none } }
+
+/* Les deux pattes entrent de leur cote et se comptent TROIS FOIS — c est le
+   rituel, et c est lui qui fait durer l attente juste ce qu il faut. */
+.pf-duel.on .moi{ animation:pfEntreG .6s cubic-bezier(.3,1.4,.5,1) both; }
+.pf-duel.on .adv{ animation:pfEntreD .6s cubic-bezier(.3,1.4,.5,1) both; }
+@keyframes pfEntreG{
+  0%{ transform:translateX(-120%) rotate(-24deg); opacity:0 }
+  25%{ transform:translateX(0) rotate(-16deg); opacity:1 }
+  45%{ transform:translateX(0) rotate(2deg) }
+  65%{ transform:translateX(0) rotate(-14deg) }
+  85%{ transform:translateX(0) rotate(2deg) }
+  100%{ transform:none } }
+@keyframes pfEntreD{
+  0%{ transform:translateX(120%) rotate(24deg); opacity:0 }
+  25%{ transform:translateX(0) rotate(16deg); opacity:1 }
+  45%{ transform:translateX(0) rotate(-2deg) }
+  65%{ transform:translateX(0) rotate(14deg) }
+  85%{ transform:translateX(0) rotate(-2deg) }
+  100%{ transform:none } }
+
+/* L issue, posee 620 ms plus tard : le vainqueur avance et s allume, le perdu
+   recule et s eteint. Sur une egalite les deux reculent, personne ne gagne. */
+.pf-duel.g .moi, .pf-duel.p .adv{ animation:pfGagne .55s ease both; }
+.pf-duel.g .adv, .pf-duel.p .moi{ animation:pfPerd .55s ease both; }
+.pf-duel.n .moi, .pf-duel.n .adv{ animation:pfNul .45s ease both; }
+@keyframes pfGagne{ 0%{ transform:none } 35%{ transform:scale(1.22) }
+  100%{ transform:scale(1.12); filter:drop-shadow(0 0 14px rgba(255,197,61,.9)) } }
+@keyframes pfPerd{ 0%{ transform:none }
+  100%{ transform:scale(.82) translateY(6px); opacity:.4; filter:grayscale(.7) } }
+@keyframes pfNul{ 0%{ transform:none } 100%{ transform:scale(.9); opacity:.72 } }
+
+@media (prefers-reduced-motion:reduce){
+  .pf-duel.on .moi, .pf-duel.on .adv, .pf-duel.on .vs,
+  .pf-duel.g .moi, .pf-duel.g .adv, .pf-duel.p .moi, .pf-duel.p .adv,
+  .pf-duel.n .moi, .pf-duel.n .adv{ animation-duration:.01ms; }
+}
 /* ------------------------------------------------- Pierre-Feuille-Bandit */
 .pf-zone{ display:flex; flex-direction:column; align-items:center; gap:12px;
   padding:18px 14px; min-height:280px; justify-content:center; }
@@ -1090,6 +1137,12 @@ body{ background:url('img/pf_fond_large.webp') center center/cover no-repeat fix
         <div class="pf-zone" id="c4Grille">
           <div class="pf-score"><b id="pfP1">0</b><span id="pfManche">Round 1 of 7</span><b id="pfP2">0</b></div>
           <div class="pf-hist" id="pfHist"></div>
+          <!-- La scene du duel. Vide et repliee tant qu une manche ne s est pas
+               resolue : elle ne prend de la place qu au moment ou elle raconte
+               quelque chose. -->
+          <div class="pf-duel" id="pfDuel" aria-hidden="true">
+            <span class="moi"></span><b class="vs">VS</b><span class="adv"></span>
+          </div>
           <div class="pf-etat" id="pfEtat">Pick your move</div>
           <div class="pf-coups" id="pfCoups">
             <button type="button" data-c="p"><i>&#9994;</i><em>Rock</em></button>
@@ -1690,6 +1743,38 @@ body{ background:url('img/pf_fond_large.webp') center center/cover no-repeat fix
     }
     $("pfHist").innerHTML=h;
 
+    /* ---- LA REVELATION ----
+     * Le choc des deux mains EST le jeu, et il n etait raconte que par une
+     * ligne de texte. On rejoue la manche des qu une colonne s ajoute a
+     * l historique — jamais sur celles deja la, sinon rouvrir la page
+     * rejouerait toute la partie. */
+    if(hist.length < pfVu) pfVu = hist.length;          // autre table : on repart
+    else if(pfVu >= 0 && hist.length > pfVu) pfDuel(hist[hist.length-1], mien);
+    pfVu = hist.length;
+
+
+  /* La scene du duel : les deux pattes entrent, se comptent trois fois comme
+     on le fait a la main, puis se figent. Le vainqueur pulse, le perdu recule
+     et s eteint. Tout est en CSS ; le script ne fait que poser deux images et
+     une classe. */
+  var PF_IMG = { p:"img/pf_rock.webp", f:"img/pf_paper.webp", c:"img/pf_scissors.webp" };
+  var pfVu = -1, pfMinuteur = 0;
+  function pfDuel(t, mien){
+    var d=document.getElementById("pfDuel"); if(!d||!t) return;
+    var a=d.querySelector(".moi"), b=d.querySelector(".adv");
+    var ci=t[mien===2?2:1], ca=t[mien===2?1:2];
+    if(!PF_IMG[ci]||!PF_IMG[ca]) return;
+    a.style.backgroundImage="url('"+PF_IMG[ci]+"')";
+    b.style.backgroundImage="url('"+PF_IMG[ca]+"')";
+    var issue = t.vainqueur ? (t.vainqueur===mien ? "g" : "p") : "n";
+    clearTimeout(pfMinuteur);
+    d.className="pf-duel";
+    void d.offsetWidth;                     // force la reprise de l animation
+    d.classList.add("on");
+    /* L issue n arrive qu APRES le compte a trois : la donner tout de suite
+       revelerait le resultat avant le geste, et le geste ne servirait plus. */
+    pfMinuteur=setTimeout(function(){ d.classList.add(issue); }, 620);
+  }
     var relance = enCours && (m.etape==="relance" || m.etape==="suivre");
     var choisir = enCours && m.etape==="coups" && mien>0 && !jaiJoue;
     $("pfCoups").classList.toggle("off", !choisir);

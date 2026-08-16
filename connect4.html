@@ -671,10 +671,45 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
 .c4-btn[data-retour]{ width:min(100%,210px); aspect-ratio:639/213;
   background-image:url('img/c4_p_retour.webp'); }
 /* « Ask for a rematch » est un intitule, pas un bouton : la plaque le
-   remplace tel quel. */
-.c4-revanche > .c4-lb{ width:min(78%,240px); aspect-ratio:639/244; margin:0 auto 8px;
+   remplace tel quel.
+   ELLE NE VISE QUE #c4RevBox. Deux blocs portent la classe `c4-revanche` —
+   celui-ci et la liste des demandes recues, dont l'intitule est « Rematch
+   requests ». Un selecteur sur la classe collait donc la plaque REMATCH sur
+   un titre qui veut dire autre chose. */
+#c4RevBox > .c4-lb{ width:min(78%,240px); aspect-ratio:639/244; margin:0 auto 8px;
   background:url('img/c4_p_revanche.webp') center/contain no-repeat;
   text-indent:-200vw; overflow:hidden; white-space:nowrap; display:block; }
+
+/* ---- LE PLATEAU PLUS GRAND ----
+   Il plafonnait a 520 px et vivait dans un panneau qui lui reprenait 14 px de
+   chaque cote : sur un telephone de 390, la grille tombait a 303 px pour sept
+   colonnes, soit des jetons de 36 px. On rend les deux.
+   Les marges interieures du cadre descendent aussi a la mesure exacte du
+   dessin — 8,4 % sur les cotes, 11,6 en haut, 10,7 en bas — au lieu du peu de
+   marge de securite que j'avais pris. */
+.c4-plateau{ width:min(100%,620px); padding:11.6% 8.4% 10.7%; }
+@media (max-width:760px){
+  /* ---- SUR TELEPHONE, ON REPREND TOUT CE QU'ON PEUT ----
+   *
+   * Mesure de depart sur un ecran de 390 : plateau 370, cadre 31 px de chaque
+   * cote, grille 308, cases de 40 px, jeton visible 36. C'est trop peu pour
+   * lire un Shiba.
+   *
+   * Trois prises, dans l'ordre de ce qu'elles rapportent :
+   *
+   *   • le cadre passe de 8,4 % a 6 % sur les cotes. C'est tout l'interet du
+   *     decoupage en neuf : seuls les bords s'etirent, les coins ornes gardent
+   *     leur forme, ils sont juste plus petits ;
+   *   • le plateau sort des 10 px de marge de la page ;
+   *   • l'ecart entre les trous se resserre, et le jeton remplit mieux le sien
+   *     — 3 % de retrait au lieu de 5,5. C'est LA que se gagne le plus : le
+   *     dessin visible passe de 36 a 43 px, un cinquieme de plus. */
+  #c4Jeu > .c4-plateau{ width:auto; margin-left:-10px; margin-right:-10px; }
+  .c4-plateau{ padding:9.4% 6% 8.6%; }
+  .c4-plateau::before{ border-width:8.2cqw 6cqw 7.5cqw 5.8cqw; }
+  .c4-cols, .c4-grille{ gap:1.1%; }
+  .c4-case .pion{ inset:3%; }
+}
 
 /* ---- le fond de la page ---- */
 body{ background:url('img/c4_fond.webp') center center/cover no-repeat fixed;

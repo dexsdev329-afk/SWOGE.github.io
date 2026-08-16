@@ -455,6 +455,14 @@ canvas{ touch-action:none; }
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <script src="stakebubble.js?v=20260814e"></script>
 <script src="swogecompte.js?v=20260816a"></script>
+<!-- La pastille qui chiffre le solde en dollars vit dans swogebuy.js, et
+     elle s accroche a `#bal` — donc au badge que stakebubble.js pose ici.
+     Le hall etait la seule page a afficher un solde SANS sa valeur : on
+     lisait « 5.0k » sans savoir si c est beaucoup. Le reste du fichier ne
+     s active pas ici : son panneau d achat cherche `#depAmt`, que le hall
+     n a pas, et sa regle mobile ne vise que `nav .brand` et `.hero`, qui
+     n existent plus sur cette page. -->
+<script src="swogebuy.js"></script>
 </head>
 <body>
 

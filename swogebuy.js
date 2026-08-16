@@ -1288,8 +1288,24 @@
   function amorce() {
     if (typeof ethers === 'undefined') return;      // page sans portefeuille
     poseUsd();
-    if (poseBloc()) return;
-    var obs = new MutationObserver(function () { if (poseBloc()) { poseUsd(); obs.disconnect(); } });
+    if (poseBloc() && pastilleUsd) return;
+    /* DEUX CHOSES A RATTRAPER, ET PAS AU MEME MOMENT.
+     *
+     * Sur les quinze pages de jeu, le champ de depot et la pastille de solde
+     * existent tous les deux des le chargement : une seule tentative suffisait.
+     * Sur le hall, ni l'un ni l'autre — il n'y a pas de champ de depot du tout,
+     * et la pastille de solde est posee par stakebubble.js APRES
+     * l'authentification. Or la valeur en dollars n'etait reessayee qu'apres
+     * une reussite du panneau d'achat : elle n'arrivait donc jamais, et le hall
+     * etait la seule page a afficher un solde sans dire ce qu'il vaut.
+     *
+     * On suit donc les deux separement, et on ne s'arrete que lorsque les deux
+     * sont poses — ou au bout de vingt secondes, comme avant. */
+    var obs = new MutationObserver(function () {
+      if (!pastilleUsd) poseUsd();
+      if (poseBloc()) poseUsd();
+      if (pastilleUsd && $('swbAmt')) obs.disconnect();
+    });
     obs.observe(document.documentElement, { childList: true, subtree: true });
     setTimeout(function () { obs.disconnect(); }, 20000);
   }

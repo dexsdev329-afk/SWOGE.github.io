@@ -337,7 +337,15 @@
         '.swbal .pt{width:8px;height:8px;border-radius:50%;background:#16D97F;' +
         'box-shadow:0 0 8px #16D97F;}' +
         '.swbal em{font-style:normal;font-size:10px;color:#C9A24A;letter-spacing:.8px;}' +
-        '@media (max-width:520px){.swbal{font-size:11px;padding:5px 10px;}}';
+        '@media (max-width:520px){.swbal{font-size:11px;padding:5px 10px;}}' +
+        /* Le mot « $SWOGE » colle au solde s'efface sur telephone, comme sur les
+           pages de jeu — swogebuy.js y fait la meme chose depuis longtemps, mais
+           par un selecteur qui ne peut pas atteindre ce badge-ci : il cherche un
+           noeud de TEXTE nu, et celui-la est dans un <em>. Le hall etait donc la
+           seule barre a le garder. La pastille doree est seule de sa couleur, et
+           celle d'a cote commence par un dollar : le mot n'apprend rien, et il
+           prend la place de la valeur en dollars. */
+        '@media (max-width:640px){.swbal em{display:none;}}';
       document.head.appendChild(css);
       soldeSeul = document.createElement('span');
       soldeSeul.className = 'swbal';

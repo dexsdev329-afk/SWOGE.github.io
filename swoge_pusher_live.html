@@ -677,8 +677,25 @@ function initScene(){
     var tex=new THREE.CanvasTexture(cv);
     if("sRGBEncoding" in THREE) tex.encoding=THREE.sRGBEncoding;
     plaqueTopMat=new THREE.MeshBasicMaterial({map:tex});
+    /* ---- LE DESSUS DE LA PLAQUE ----
+     *
+     * Ce qui precede — un degrade dore et une etoile tracee a la main — n'est
+     * plus qu'un REPLI. Il reste parce qu'il est immediat : la plaque a sa
+     * face des la premiere image, avant meme que la texture soit arrivee, et
+     * si elle n'arrive jamais le jeu reste jouable.
+     *
+     * L'image est vue A PLAT, du dessus, bord a bord. C'est impose par la
+     * geometrie : BoxGeometry(1.35, 0.34, 0.92) etire la texture sur toute la
+     * face superieure, donc une marge transparente ferait un liseré vide sur
+     * tout le pourtour. Le rapport de l'image, 1,50, contre 1,47 pour la face
+     * — trois pour cent d'ecart, invisible a la taille ou une plaque se voit. */
+    L.load("img/cp_plaque_dessus.webp",function(t){
+      if(sRGB)t.encoding=sRGB; plaqueTopMat.map=t; plaqueTopMat.needsUpdate=true; });
   })();
-  L.load("img/26d5ae42a3e6.png",function(t){ if(sRGB)t.encoding=sRGB; faceMat.map=t; faceMat.color.set(0xffffff); faceMat.needsUpdate=true; });
+  /* La face de la piece ronde. Vue a plat elle aussi : le couvercle du
+     cylindre est un disque, et la UV y projette le centre de l'image — ce qui
+     deborde du cercle tombe hors de la piece. */
+  L.load("img/cp_face.webp",function(t){ if(sRGB)t.encoding=sRGB; faceMat.map=t; faceMat.color.set(0xffffff); faceMat.needsUpdate=true; });
 
   addEventListener("resize",function(){ renderer.setSize(innerWidth,innerHeight); fitCamera(); });
   animate();

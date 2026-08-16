@@ -654,6 +654,14 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
   .hero { padding:8px 14px 0; }
   .hero p { display:none; }
   .hero h1 { font-size:clamp(20px,5.2vw,30px); }
+
+  /* ---- SUR TELEPHONE, LA COURBE AVANT LE RESTE ----
+   * Le titre peint (116 px) et un bouton de mise large de 320 px poussaient la
+   * courbe — la seule chose qu'on surveille pendant une manche — vers le bas.
+   * Le bouton reste le geste principal de la page : il ne devient pas discret,
+   * juste proportionne. */
+  .cr-titre{ display:none; }
+  .cr-btn{ width:min(66%,215px); }
 }
 @media (min-width:821px) and (orientation:landscape) {
   /* colle la connexion en haut a droite, hors du plateau */

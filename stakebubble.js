@@ -1963,31 +1963,59 @@
     return out;
   }
 
+  /* Trie une liste d'entrees SANS separateur : ce qui mene ailleurs, ce qui
+     regle quelque chose, et le compte pour tout le reste. On regarde le texte,
+     l'identifiant, les classes ET la cible du lien : sur la roue, les libelles
+     sont des images et le mot utile n'est parfois que dans la classe
+     (« mi-stakepage ») ou dans le href. */
+  function trieParContenu(liste) {
+    var ailleurs = [], compte = [], reglages = [];
+    liste.forEach(function (el) {
+      /* La fermeture n'a pas de sens dans un tiroir : il a son propre retour. */
+      if (el.id === 'mnClose') return;
+      var t = (el.textContent || '') + ' ' + (el.id || '') + ' ' +
+              (el.className || '') + ' ' + (el.getAttribute('href') || '');
+      if (/games|home|arcade|stakepage|staking page/i.test(t)) ailleurs.push(el);
+      else if (/sound|music|son|musique/i.test(t)) reglages.push(el);
+      else compte.push(el);
+    });
+    /* On ne compacte PAS : l'appelant lit paquets[0] pour « Account » et
+       paquets[1] pour « Go to ». Retirer un groupe vide decalerait les
+       suivants, et les reglages se retrouveraient titres « Go to ». Un groupe
+       vide ne coute rien — miroirGroupe s'arrete dessus. */
+    return [compte, ailleurs, reglages];
+  }
+
   function miroirPaquets() {
-    var menu = document.getElementById('menu');
+    /* TROIS FORMES DE MENU, pas deux.
+     *
+     * Les pages de jeu portent un <div id="menu"> de liens decoupe par des
+     * separateurs ; le Coin Pusher un <div id="menuBox"> de boutons sans
+     * separateur. La roue et le Coin Pusher en direct, eux, portent un
+     * <div id="pmenu"> — que ce fichier ne connaissait pas. Leur tiroir
+     * s'ouvrait donc sans AUCUNE rangee de compte : ni portefeuille, ni depot,
+     * ni retrait, ni quetes, alors que la page a tout ce qu'il faut derriere.
+     */
+    var menu = document.getElementById('menu') || document.getElementById('pmenu');
     if (menu) {
       var paquets = [[]];
       [].forEach.call(menu.children, function (el) {
         if (el.classList && el.classList.contains('msep')) { paquets.push([]); return; }
-        if (el.tagName === 'A') paquets[paquets.length - 1].push(el);
+        if (el.tagName === 'A' && el.id !== 'mnClose') paquets[paquets.length - 1].push(el);
       });
-      return paquets.filter(function (p) { return p.length; });
+      paquets = paquets.filter(function (p) { return p.length; });
+      if (paquets.length > 1) return paquets;
+      /* Un menu sans separateur ne dit rien de ses groupes : tout tomberait
+         sous « Account », « Home » et « Other games » compris. On retombe donc
+         sur le tri par contenu, celui du Coin Pusher. */
+      if (paquets.length === 1) return trieParContenu(paquets[0]);
     }
     var boite = document.getElementById('menuBox');
     /* Position 1, pas 0 : l'appelant lit paquets[1] pour « Go to » et
        paquets[0] pour « Account ». Un tableau a un seul element ferait donc
        apparaitre « Other games » sous le titre « Account ». */
     if (!boite) return [[], SECOURS_AILLEURS()];
-    var ailleurs = [], compte = [], reglages = [];
-    [].forEach.call(boite.querySelectorAll('button'), function (el) {
-      /* La fermeture n'a pas de sens dans un tiroir : il a son propre retour. */
-      if (el.id === 'mnClose') return;
-      var t = (el.textContent || '') + ' ' + (el.id || '');
-      if (/games|home|arcade/i.test(t)) ailleurs.push(el);
-      else if (/sound|music|son|musique/i.test(t)) reglages.push(el);
-      else compte.push(el);
-    });
-    return [compte, ailleurs, reglages].filter(function (p) { return p.length; });
+    return trieParContenu([].slice.call(boite.querySelectorAll('button')));
   }
   function miroirGroupe(t, titre, liste) {
     if (!liste || !liste.length) return;
@@ -2007,7 +2035,14 @@
         /* Portefeuille, staking, depot, retrait, quetes s'ouvrent DANS le
            tiroir. Le reste — autres jeux, accueil, son, musique — n'a pas de
            panneau : on transmet le clic et on s'efface. */
-        if (el.getAttribute('data-panel')) return emprunte(el, (b.textContent || '').trim());
+        /* Les pages de jeu marquent leurs panneaux d'un `data-panel`. La roue
+           et le Coin Pusher en direct n'en ont pas : leurs entrees se
+           reconnaissent a l'identifiant que les deux coquilles partagent. Sans
+           cette seconde reconnaissance, le portefeuille et le depot y
+           ouvriraient encore une fenetre par-dessus le tiroir, alors qu'ils
+           s'ouvrent DEDANS partout ailleurs. */
+        if (el.getAttribute('data-panel') || /^mn(Wallet|Stake|Deposit|Withdraw|Quests)$/.test(el.id || ''))
+          return emprunte(el, (b.textContent || '').trim());
         profFerme();
         try { el.click(); } catch (e) {}
       });

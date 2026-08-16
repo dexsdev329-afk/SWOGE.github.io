@@ -307,6 +307,15 @@ canvas{ touch-action:none; }
   background:linear-gradient(180deg,rgba(6,4,2,0),rgba(6,4,2,.88) 62%); }
 @media (max-width:460px){ .r-nom{ font-size:.72rem; padding:14px 8px 6px; } }
 
+/* ---- QUAND LE DESSIN PORTE DEJA LE NOM ----
+   Les vignettes d'origine sont des scenes muettes : le site imprime le nom
+   par-dessus, en bas a gauche. Les nouvelles portent leur titre PEINT, comme
+   le font les autres casinos — plus gros, mieux place, et lisible a la taille
+   d'une tuile. Sur celles-la le nom du site ferait doublon : on le retire, et
+   avec lui le voile sombre qui lui servait de fond. La classe se pose vignette
+   par vignette, a mesure que chaque dessin arrive. */
+.r-carte.titre .r-nom{ display:none; }
+
 /* Les chevrons, pour la souris. Un balayage n'existe pas au clavier ni a la
    souris : sans eux, sur un ordinateur, la moitie des jeux reste invisible. */
 .r-fleche{ position:absolute; top:50%; transform:translateY(-50%); z-index:3;
@@ -512,7 +521,7 @@ canvas{ touch-action:none; }
         <button class="r-fleche g" type="button" aria-label="Scroll Against other players left">&#10094;</button>
         <button class="r-fleche d" type="button" aria-label="Scroll Against other players right">&#10095;</button>
       <div class="r-piste" role="list" aria-label="Against other players">
-        <a class="r-carte" role="listitem" href="boulier.html" title="Boulier"><img src="img/card_bo.webp" alt="Boulier" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Boulier</span></a>
+        <a class="r-carte titre" role="listitem" href="boulier.html" title="Boulier"><img src="img/card_bo.webp?v=2" alt="Boulier" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Boulier</span></a>
         <a class="r-carte" role="listitem" href="swoge_poker.html" title="SWOGE Poker"><img src="img/card_pk.webp" alt="SWOGE Poker" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">SWOGE Poker</span></a>
         <a class="r-carte" role="listitem" href="swoge_pusher_live.html" title="Coin Pusher"><img src="img/card_cp.webp" alt="Coin Pusher" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Coin Pusher</span></a>
         <a class="r-carte" role="listitem" href="crash.html" title="Crash"><img src="img/card_cr.webp" alt="Crash" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Crash</span></a>

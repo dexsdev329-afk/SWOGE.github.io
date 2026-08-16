@@ -23,13 +23,16 @@
  *
  * ---- ce qu'il fait, et ce qu'il ne fait pas ----
  *
- * Il fait les quatre gestes du portefeuille : LIRE son adresse et ses soldes,
- * DEPOSER dans le solde de jeu, RETIRER vers le portefeuille, MISER au staking.
+ * Il fait les cinq gestes du compte : LIRE son adresse et ses soldes, DEPOSER
+ * dans le solde de jeu, RETIRER vers le portefeuille, MISER au staking, et
+ * RECLAMER ses quetes du jour — les trois quetes, le bonus de bienvenue et la
+ * serie de sept jours.
  *
- * Il ne fait pas les quetes du jour. Elles sont une autre affaire — series de
- * sept jours, bonus de bienvenue, videos recompensees — et leur panneau est
- * une page a lui seul. La rangee « Daily Quests » continue donc de mener au
- * Coin Pusher, qui les porte en entier.
+ * Une seule chose manque, et volontairement : la video recompensee. Elle
+ * demande le SDK d'une regie publicitaire tierce, charge dans la page, avec
+ * son identifiant de bloc. Charger une regie sur le hall pour un bouton
+ * secondaire d'un panneau secondaire n'en vaut pas le prix ; elle reste sur
+ * les pages de jeu, ou elle est deja installee.
  *
  * ---- comment il parle au serveur ----
  *
@@ -160,6 +163,19 @@
       if (m.type === 'stakeUnstaked') dit('Unstaked ' + nb(m.returned) + ' $SWOGE', 'ok');
     }
     if (m.type === 'stakeClaimed') { dit('Yield claimed', 'ok'); demande('stakeInfo'); }
+    if (m.type === 'quests') { QUETES = m.quests || QUETES; poseQuetes(); }
+    if (m.type === 'bonus') { BONUS = m.bonus || BONUS; poseQuetes(); }
+    if (m.type === 'questClaimed' || m.type === 'welcomeClaimed' || m.type === 'streakClaimed') {
+      if (m.balance != null) { SOLDE = parseFloat(m.balance) || 0; poseTout(); }
+      if (m.quests) QUETES = m.quests;
+      if (m.bonus) BONUS = m.bonus;
+      poseQuetes();
+      dit((m.type === 'questClaimed' ? '🎯 Quest' : m.type === 'welcomeClaimed' ? '🎁 Welcome' : '🔥 Day ' + m.day) +
+          ' +' + (m.reward != null ? m.reward : '') + ' $SWOGE', 'ok');
+      /* Le solde n'arrive pas toujours avec l'accuse : on le redemande plutot
+         que de le deviner. */
+      if (m.balance == null) demande('balance');
+    }
     /* Le bon de retrait : le serveur signe, la chaine paie. C'est la seule
        reponse qui demande une transaction en retour. */
     if (m.type === 'voucher') {
@@ -274,7 +290,8 @@
   }
 
   // ----------------------------------------------------------- les panneaux
-  var PANNEAUX = ['wallet', 'dep', 'wd', 'stake'];
+  var PANNEAUX = ['wallet', 'dep', 'wd', 'stake', 'quests'];
+  var QUETES = null, BONUS = null;
   var monte = false;
 
   function style() {
@@ -330,6 +347,27 @@
       'font-family:inherit;font-size:11.5px;font-weight:700;color:#FFD97A;' +
       'background:rgba(255,197,61,.10);border:1px solid rgba(255,197,61,.30);}' +
       '.swc-n{margin-top:9px;font-size:11.5px;line-height:1.5;color:#8DA0C4;text-align:left;}' +
+      /* Les quetes : une carte par quete, une barre, un bouton. */
+      '.swc-wc{margin:0 0 10px;padding:11px 12px;border-radius:12px;text-align:left;' +
+      'background:rgba(255,197,61,.07);border:1px solid rgba(255,197,61,.20);}' +
+      '.swc-wc-t{font-size:12px;font-weight:800;color:#FFD97A;}' +
+      '.swc-days{display:flex;gap:5px;margin:9px 0 2px;}' +
+      '.swc-d{flex:1 1 0;min-width:0;padding:6px 2px;border-radius:9px;text-align:center;' +
+      'background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);}' +
+      '.swc-d span{display:block;font-size:9.5px;color:#8DA0C4;}' +
+      '.swc-d b{display:block;font-size:10.5px;color:#C6D3EA;}' +
+      '.swc-d.ok{background:rgba(124,255,155,.10);border-color:rgba(124,255,155,.32);}' +
+      '.swc-d.ok b{color:#7CFF9B;}' +
+      '.swc-d.now{background:rgba(255,197,61,.14);border-color:rgba(255,197,61,.45);}' +
+      '.swc-d.now b{color:#FFD97A;}' +
+      '.swc-q{margin:0 0 8px;padding:11px 12px;border-radius:12px;text-align:left;' +
+      'background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.09);}' +
+      '.swc-q-h{font-size:12.5px;font-weight:700;color:#EAF2FF;}' +
+      '.swc-q-b{height:6px;margin:8px 0 2px;border-radius:99px;overflow:hidden;' +
+      'background:rgba(255,255,255,.08);}' +
+      '.swc-q-b i{display:block;height:100%;border-radius:99px;' +
+      'background:linear-gradient(90deg,#E6A537,#F2C868);}' +
+      '.swc-q .swc-b{margin-top:8px;padding:9px;font-size:12px;}' +
       '.swc-n b{color:#FFC53D;}' +
       /* Le message. Au-dessus du tiroir (9999) : il commente souvent ce qui
          vient d'y etre fait. */
@@ -359,9 +397,7 @@
       '<a href="#" data-panel="stake">🔒 Staking</a>' +
       '<a href="#" data-panel="dep">💰 Deposit</a>' +
       '<a href="#" data-panel="wd">🏧 Withdraw</a>' +
-      /* Les quetes ne sont pas dans ce fichier : leur panneau est une page a
-         lui seul. La rangee mene donc la ou il existe en entier. */
-      '<a href="swoge_pusher.html#quests">🎯 Daily Quests</a>' +
+      '<a href="#" data-panel="quests">🎯 Daily Quests</a>' +
       '<div class="msep"></div>' +
       (ici === 'games.html' ? '' : '<a href="games.html">🎮 Other games</a>') +
       '<a href="index.html">🏠 Home</a>';
@@ -427,6 +463,22 @@
         '<button class="swc-b" data-close type="button">Close</button>' +
       '</div></div>' +
 
+      '<div class="box swc" id="box-quests"><div class="pscroll">' +
+        '<h4>🎯 Daily Quests</h4>' +
+        '<div id="swcWc" class="swc-wc" style="display:none">' +
+          '<div class="swc-wc-t">🎁 Welcome bonus</div>' +
+          '<div class="swc-n" id="swcWcNote"></div>' +
+          '<button class="swc-b p" id="swcWcGo" type="button">Claim</button>' +
+        '</div>' +
+        '<div id="swcStk" class="swc-wc" style="display:none">' +
+          '<div class="swc-wc-t">🔥 Daily streak</div>' +
+          '<div class="swc-days" id="swcDays"></div>' +
+          '<button class="swc-b g" id="swcStkGo" type="button">Claim today</button>' +
+        '</div>' +
+        '<div id="swcQrows"></div>' +
+        '<button class="swc-b" data-close type="button">Close</button>' +
+      '</div></div>' +
+
       '<div class="box swc" id="box-stake"><div class="pscroll">' +
         '<h4>🔒 Staking</h4>' +
         '<div class="swc-c or"><span>Staked</span><b id="swcSStaked">…</b></div>' +
@@ -480,6 +532,14 @@
     $('swcSGo').addEventListener('click', mise);
     $('swcSClaim').addEventListener('click', function () { demande('claimStake'); });
     $('swcSOut').addEventListener('click', retireMise);
+    $('swcWcGo').addEventListener('click', function () { demande('claimWelcome'); });
+    $('swcStkGo').addEventListener('click', function () { demande('claimStreak'); });
+    /* Les rangees de quetes sont refaites a chaque reponse : on delegue a leur
+       conteneur plutot que d'accrocher un ecouteur par bouton a chaque fois. */
+    $('swcQrows').addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('button[data-q]') : null;
+      if (b && !b.disabled) demande('claimQuest', { id: b.getAttribute('data-q') });
+    });
   }
 
   function pourcent(quoi, p) {
@@ -506,6 +566,7 @@
     });
     if (nom === 'wallet' || nom === 'dep') litSoldesChaine();
     if (nom === 'stake') demande('stakeInfo');
+    if (nom === 'quests') { demande('quests'); demande('bonusState'); }
     poseTout();
   }
   function ferme() {
@@ -542,6 +603,82 @@
     if (w) w.innerHTML = 'Minimum <b>' + MIN_WD + ' $SWOGE</b>. Paid straight to your ' +
       'wallet: the server signs a voucher, your wallet confirms the transfer.';
   }
+  /* Les quetes du jour. Trois blocs qui viennent du serveur et n'ont aucune
+     regle ici : ce qui est reclamable, ce qui est verrouille et ce que ca
+     rapporte sont decides la-bas. On ne fait que peindre. */
+  function poseQuetes() {
+    if (!$('box-quests')) return;
+    var b = BONUS || {};
+
+    var wc = $('swcWc');
+    if (wc) {
+      var w = b.welcome;
+      if (!w || w.claimed) wc.style.display = 'none';
+      else {
+        wc.style.display = '';
+        $('swcWcNote').innerHTML = w.claimable
+          ? 'Your welcome reward is ready: <b>+' + w.reward + ' $SWOGE</b>.'
+          : 'You got <b>' + w.amount + ' $SWOGE</b> to try the games — play them to ' +
+            'unlock <b>+' + w.reward + '</b>.';
+        var g = $('swcWcGo');
+        g.disabled = !w.claimable;
+        g.textContent = w.claimable ? 'Claim +' + w.reward : 'Play your bonus first';
+      }
+    }
+
+    var stk = $('swcStk');
+    if (stk) {
+      var s2 = b.streak;
+      if (!s2) stk.style.display = 'none';
+      else {
+        stk.style.display = '';
+        var rw = s2.rewards || [], h = '';
+        for (var i = 0; i < rw.length; i++) {
+          var jour = i + 1, cl = 'swc-d';
+          if (s2.claimedToday) { if (jour <= s2.day) cl += ' ok'; }
+          else if (jour < s2.day) cl += ' ok';
+          else if (jour === s2.day) cl += ' now';
+          h += '<div class="' + cl + '"><span>' + jour + '</span><b>+' + rw[i] + '</b></div>';
+        }
+        $('swcDays').innerHTML = h;
+        var sg = $('swcStkGo');
+        sg.disabled = !s2.claimable;
+        sg.textContent = s2.claimable
+          ? 'Claim day ' + s2.day + ' (+' + s2.todayReward + ')'
+          : '✓ Claimed today';
+      }
+    }
+
+    var box = $('swcQrows');
+    if (!box) return;
+    if (!QUETES || !QUETES.length) {
+      box.innerHTML = '<div class="swc-n">No quest today — come back tomorrow.</div>';
+      return;
+    }
+    box.innerHTML = QUETES.map(function (q) {
+      var but = (q.target != null ? q.target : (q.goal != null ? q.goal : 0));
+      var fait = q.progress || 0;
+      var termine = (q.done != null) ? q.done : (but > 0 ? fait >= but : true);
+      var prenable = (q.claimable != null) ? q.claimable : (termine && !q.claimed && !q.locked);
+      var pct = but > 0 ? Math.min(100, Math.round(100 * fait / but)) : (termine ? 100 : 0);
+      var libelle = q.claimed ? '✓ Claimed'
+        : prenable ? 'Claim +' + q.reward
+        : q.locked ? '🔒 Deposit to unlock'
+        : but > 0 ? fait + ' / ' + but : 'Play to unlock';
+      return '<div class="swc-q">' +
+        '<div class="swc-q-h">' + ech(q.label || q.id) + '</div>' +
+        '<div class="swc-q-b"><i style="width:' + pct + '%"></i></div>' +
+        '<button class="swc-b' + (prenable ? ' g' : '') + '" data-q="' + ech(q.id) + '"' +
+        (prenable ? '' : ' disabled') + '>' + ech(libelle) + '</button>' +
+        '</div>';
+    }).join('');
+  }
+  function ech(t) {
+    return String(t == null ? '' : t).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+
   /* Le rendement coule : on repeint la seule ligne qui bouge, et seulement
      quand le panneau du staking est ouvert. */
   setInterval(function () {

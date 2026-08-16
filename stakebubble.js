@@ -3013,7 +3013,28 @@
        la premiere manche, et c'est ce qui en fait autre chose qu'une
        decoration livree avec le compte. */
     var u = (p && p.niveau > 0) ? urlCadre(p.palierNo) : null;
-    if (u) { el.style.setProperty('--cadre', 'url("' + u + '")'); el.classList.add('swcad'); }
+    if (u) {
+      el.style.setProperty('--cadre', 'url("' + u + '")');
+      el.classList.add('swcad');
+      /* ---- LE CADRE A BESOIN D'UN REPERE, ET LA FEUILLE NE SUFFIT PAS ----
+       *
+       * Il est dessine par un `::after` en `position:absolute`, donc mesure sur
+       * le premier ancetre POSITIONNE. `.swcad` pose bien `position:relative`,
+       * mais une page peut la defaire : la roue rangeait le bouton de profil
+       * dans une colonne en `position:static`, et le cadre allait alors se
+       * mesurer sur le HUD tout entier — un anneau dore de deux cents pixels
+       * autour du solde et du bouton de connexion, a cote d'un avatar qui, lui,
+       * n'en avait plus.
+       *
+       * On regarde donc ce qui est REELLEMENT calcule, pas ce que la feuille
+       * demande, et on ne corrige que le cas casse : un `fixed` ou un
+       * `absolute` voulu par la page est laisse tel quel — les deux font aussi
+       * bien l'affaire comme repere. */
+      try {
+        if (window.getComputedStyle(el).position === 'static')
+          el.style.setProperty('position', 'relative', 'important');
+      } catch (e) {}
+    }
     else { el.classList.remove('swcad'); el.style.removeProperty('--cadre'); }
   }
   function peintVisage(el, p) {

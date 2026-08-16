@@ -370,6 +370,31 @@
       '.swb-h span{margin-left:auto;font-size:11px;font-weight:600;opacity:.8;white-space:nowrap;}' +
       '.swb-b{padding:0 11px 11px;}' +
       '.swb-b.plie{display:none;}' +
+      '.swb-h .swb-chev{margin-left:7px;font-style:normal;font-size:11px;opacity:.7;' +
+      'transition:transform .15s;}' +
+      '.swb-h[aria-expanded="true"] .swb-chev{transform:rotate(180deg);}' +
+      /* Le mode d'emploi du depot. Sobre : c'est un texte qu'on lit une fois,
+         pas un panneau qu'on regarde a chaque partie. */
+      /* A GAUCHE, explicitement. Les panneaux de compte sont centres, ce qui
+         convient a une ligne de solde mais decroche les puces de leur texte
+         et hache un paragraphe de quatre lignes en autant de largeurs
+         differentes. Un mode d'emploi se lit en colonne. */
+      '.swb-dep{margin:0 0 11px;text-align:left;font-size:11.5px;line-height:1.5;color:#C9C2B2;}' +
+      '.swb-dep p{margin:0 0 7px;}' +
+      '.swb-dep b{color:#F2C868;}' +
+      '.swb-dep ul{margin:0 0 8px;padding-left:17px;}' +
+      '.swb-dep li{margin-bottom:4px;}' +
+      '.swb-dep .swb-vide{margin:8px 0 0;color:#9E97B5;}' +
+      /* L'adresse, en entier et copiable : c'est LA chose a recopier pour que
+         le depot ait quelque chose a deposer. */
+      '.swb-adr2{display:flex;align-items:center;gap:7px;margin:8px 0 0;' +
+      'padding:8px 9px;border-radius:9px;background:rgba(0,0,0,.30);' +
+      'border:1px solid rgba(230,165,55,.22);}' +
+      '.swb-adr2 span{flex:1;min-width:0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;' +
+      'font-size:10.5px;line-height:1.4;color:#D8D2C4;word-break:break-all;}' +
+      '.swb-adr2 button{flex:0 0 auto;padding:6px 10px;border-radius:8px;cursor:pointer;' +
+      'font-family:inherit;font-size:11px;font-weight:800;color:#F2C868;' +
+      'background:rgba(230,165,55,.12);border:1px solid rgba(230,165,55,.38);}' +
       '.swb-r{display:flex;gap:6px;align-items:center;margin-bottom:7px;}' +
       '.swb-r input{flex:1;min-width:0;}' +
       '.swb-r b{font-size:12px;color:#E6A537;}' +
@@ -453,32 +478,58 @@
            '<span>' + nom + '</span></button>';
   }
 
-  /* Les elements du formulaire d'origine qu'on remplace : le champ, son
-     etiquette, la rangee de pourcentages et le bouton. Ils restent dans la
-     page — le code de depot les lit — mais ils ne s'affichent plus.
-   *
-     ON ECRIT LE STYLE SUR L'ELEMENT, pas une classe. Une classe a un cran de
-     specificite ; les pages portent des regles comme
-     `#box-dep .abtn.aimg{display:block !important}`, qui en ont trois et un
-     `!important` par-dessus. Mesure faite : avec une classe, le vieux bouton
-     « DEPOSIT » restait affiche sous le nouveau. Un style pose sur l'element
-     avec la priorite passe devant n'importe quelle feuille, et c'est le seul
-     moyen qui ne demande pas de connaitre les treize pages par coeur. */
-  function efface(el) {
-    if (el) try { el.style.setProperty('display', 'none', 'important'); } catch (e) {}
-  }
 
-  function cacheAncien() {
+  /* ---- « DEPOSER » ET « ACHETER » NE SONT PAS LE MEME GESTE ----
+   *
+   * Ce bloc cachait le formulaire de depot de la page — champ, pourcentages
+   * et bouton — et prenait toute la place sous le titre « Deposit ». Le
+   * panneau s'appelait donc « Deposit » et ne proposait qu'une chose :
+   * ACHETER. Un joueur qui avait deja ses jetons a son adresse n'avait plus
+   * aucun moyen de les faire entrer dans son solde, et celui qui n'en avait
+   * pas ne comprenait pas pourquoi on lui demandait un montant.
+   *
+   * Les deux gestes reprennent donc chacun leur place, dans l'ordre ou on les
+   * fait : DEPOSER en haut, avec ce qu'il faut avoir pour que ca marche ;
+   * ACHETER en dessous, replie, pour le jour ou l'adresse est vide.
+   */
+  function expliqueDepot() {
     var champDep = $('depAmt');
-    if (!champDep) return;
+    if (!champDep || $('swbDepNote')) return;
     var av = champDep.previousElementSibling;
-    if (av && av.tagName === 'LABEL') efface(av);
-    efface(champDep);
-    var pct = champDep.parentNode.querySelector('.pcts, .dpct');
-    if (pct) efface(pct.classList.contains('pcts') ? pct : pct.parentNode);
-    /* Le bouton d'origine partage parfois sa rangee avec « Close » : on ne
-       cache que lui, sinon on emporte la sortie du panneau avec. */
-    efface($('depGo'));
+    var tete = (av && av.tagName === 'LABEL') ? av : champDep;
+    var note = document.createElement('div');
+    note.id = 'swbDepNote';
+    note.className = 'swb-dep';
+    note.innerHTML =
+      '<p>Depositing moves $SWOGE <b>from your own wallet</b> into your game ' +
+      'balance. Two things have to be at your address first:</p>' +
+      '<ul>' +
+        '<li><b>$SWOGE</b> — what you play with.</li>' +
+        '<li><b>ETH (RH)</b> — the gas that pays for the transfer. A few ' +
+        'cents is enough, but without it nothing can move.</li>' +
+      '</ul>' +
+      '<div class="swb-adr2"><span id="swbMonAdr">your address…</span>' +
+      '<button type="button" id="swbCopAdr">Copy</button></div>' +
+      '<p class="swb-vide">Nothing there yet? Open <b>Buy $SWOGE or ETH (RH)</b> ' +
+      'just below — it puts both straight at that address.</p>';
+    tete.parentNode.insertBefore(note, tete);
+
+    /* L'adresse est celle avec laquelle le joueur s'est deja connecte : on ne
+       demande l'ouverture d'aucun portefeuille pour l'afficher. */
+    portefeuille().then(function (w) {
+      var e = $('swbMonAdr');
+      if (!e) return;
+      e.textContent = (w && w.adresse) ? w.adresse : 'sign in to see your address';
+      if (w && w.adresse) e.dataset.a = w.adresse;
+    }).catch(function () {});
+
+    $('swbCopAdr').addEventListener('click', function () {
+      var b = this, a = ($('swbMonAdr').dataset || {}).a;
+      if (!a) return;
+      try { navigator.clipboard.writeText(a); } catch (e) {}
+      b.textContent = 'Copied \u2713';
+      setTimeout(function () { b.textContent = 'Copy'; }, 1400);
+    });
   }
 
   function onglet(cle, nom, note) {
@@ -497,8 +548,10 @@
     var bloc = document.createElement('div');
     bloc.className = 'swb';
     bloc.innerHTML =
-      '<div class="swb-h">💰 Top up<span id="swbTaux">…</span></div>' +
-      '<div class="swb-b" id="swbCorps">' +
+      '<div class="swb-h" id="swbTete" role="button" tabindex="0" aria-expanded="false">' +
+        '\uD83E\uDE99 Buy $SWOGE or ETH (RH)<span id="swbTaux">…</span>' +
+        '<em class="swb-chev">\u25BE</em></div>' +
+      '<div class="swb-b plie" id="swbCorps">' +
         '<div class="swb-d" id="swbDev">' +
           onglet('swoge', '$SWOGE', '…') +
           onglet('eth', 'ETH · RH', '…') +
@@ -534,8 +587,27 @@
           '</div>' +
         '</div>' +
       '</div>';
-    ancre.parentNode.insertBefore(bloc, ancre);
-    cacheAncien();
+    /* APRES le formulaire de depot, pas avant : on achete parce qu'on n'a pas
+       de quoi deposer, donc l'achat est la reponse a un manque constate juste
+       au-dessus — pas la premiere chose qu'on lit sous le titre « Deposit ».
+       On vise la rangee du bouton de depot ; a defaut, la fin du panneau. */
+    expliqueDepot();
+    var apres = ($('depGo') && $('depGo').closest) ? $('depGo').closest('.brow') : null;
+    if (apres && apres.parentNode) apres.parentNode.insertBefore(bloc, apres.nextSibling);
+    else ancre.parentNode.insertBefore(bloc, ancre);
+
+    /* Le pliage. L'entete portait deja `cursor:pointer` et la classe `plie`
+       existait dans la feuille, mais rien ne les reliait : le bloc etait
+       toujours ouvert. */
+    var tete = $('swbTete');
+    var bascule = function () {
+      var plie = $('swbCorps').classList.toggle('plie');
+      tete.setAttribute('aria-expanded', plie ? 'false' : 'true');
+    };
+    tete.addEventListener('click', bascule);
+    tete.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); bascule(); }
+    });
 
     corps = $('swbCorps'); champ = $('swbAmt');
     sortie = $('swbCote');  bouton = $('swbGo');
@@ -562,7 +634,15 @@
     $('swbPontAmt').addEventListener('input', chiffre);
     $('swbPontRetour').onclick = fermePont;
     demandeProvenances();
-    choisitDevise('swoge');
+    /* La section s'ouvre sur ETH, pas sur $SWOGE.
+       L'onglet $SWOGE ne fait qu'une chose : remplir le champ du depot juste
+       au-dessus et appuyer sur son bouton. Tant que ce formulaire etait cache,
+       c'etait le seul chemin ; maintenant qu'il est revenu a sa place, ouvrir
+       « Buy » sur ce meme geste proposerait deux fois la meme chose sur un
+       ecran, dont une sous un titre qui annonce autre chose. On ouvre donc sur
+       le geste que la section promet — acheter — et l'onglet $SWOGE reste la
+       en raccourci pour qui le connait. */
+    choisitDevise('eth');
     montreTaux();
     lisSoldes();
     /* Le guet tourne DES L'OUVERTURE, pas seulement apres un clic sur une

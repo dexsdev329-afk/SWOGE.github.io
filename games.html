@@ -319,6 +319,27 @@ canvas{ touch-action:none; }
 .r-nom{ display:none; }
 .r-carte.nomme .r-nom{ display:block; }
 
+/* ---- LA DOCUMENTATION SE PLIE ----
+   Neuf fiches sous le catalogue, c'est un ecran de telephone entier pour des
+   textes qu'on lit une fois. Elles partent, et la plaque devient la poignee :
+   le bouton l'englobe, donc appuyer sur le titre ou sur le signe revient au
+   meme — deux cibles pour un seul geste, et aucune plus petite que le doigt. */
+.sec-doc{ display:flex; justify-content:center; }
+.doc-tog{ display:inline-flex; align-items:center; gap:10px; padding:4px 6px;
+  background:none; border:0; cursor:pointer; font:inherit; }
+/* La plaque prend une largeur A ELLE. La regle d'origine la mesure en
+   pourcentage du parent — ce parent est maintenant un bouton qui se
+   dimensionne sur son contenu : chacun attendait l'autre, et la plaque
+   s'ecrasait a quelques pixels. On la mesure donc sur l'ECRAN. */
+.doc-tog .plate{ margin:0; width:min(150px,40vw) !important; }
+.doc-pm{ width:26px; height:26px; flex:0 0 26px; display:flex; align-items:center;
+  justify-content:center; border-radius:8px; font-size:17px; font-weight:800;
+  line-height:1; color:var(--gold); background:rgba(255,197,61,.10);
+  border:1px solid rgba(255,197,61,.34); }
+.doc-tog:hover .doc-pm{ background:rgba(255,197,61,.20); }
+.grid.docs{ display:none; }
+.grid.docs.on{ display:grid; }
+
 /* Les chevrons, pour la souris. Un balayage n'existe pas au clavier ni a la
    souris : sans eux, sur un ordinateur, la moitie des jeux reste invisible. */
 .r-fleche{ position:absolute; top:50%; transform:translateY(-50%); z-index:3;
@@ -598,8 +619,16 @@ canvas{ touch-action:none; }
       </div>
     </section>
 
-<div class="sec"><h2 class="plate pl-doc">Documentation</h2></div>
-    <div class="grid docs">
+<!-- La documentation est PLIEE par defaut. Neuf fiches, meme reduites, font
+     un ecran de telephone entier sous le catalogue — et on ne les ouvre qu'une
+     fois, la premiere. Le bouton porte la plaque avec lui : on appuie sur le
+     titre ou sur le signe, c'est la meme poignee. -->
+<div class="sec sec-doc">
+      <button class="doc-tog" id="docTog" type="button" aria-expanded="false" aria-controls="docs">
+        <h2 class="plate pl-doc">Documentation</h2><span class="doc-pm" aria-hidden="true">+</span>
+      </button>
+    </div>
+    <div class="grid docs" id="docs">
 
       <details class="card doc">
         <summary>✉️ Sign in with an email</summary>
@@ -723,6 +752,18 @@ canvas{ touch-action:none; }
   </div>
 
 <script>
+/* La documentation, pliee par defaut. Quatre lignes : le signe dit dans quel
+   sens ca va, et `aria-expanded` le dit a qui n'y voit pas. */
+(function(){
+  var b = document.getElementById('docTog'), d = document.getElementById('docs');
+  if (!b || !d) return;
+  b.addEventListener('click', function(){
+    var ouvert = d.classList.toggle('on');
+    b.setAttribute('aria-expanded', ouvert ? 'true' : 'false');
+    b.querySelector('.doc-pm').textContent = ouvert ? '\u2212' : '+';
+  });
+})();
+
 /* Les chevrons. Dix-huit lignes, sans dependance : sans elles la page reste
    entierement utilisable — les pistes defilent au doigt, a la molette et au
    clavier, ce sont de vraies boites defilantes. */

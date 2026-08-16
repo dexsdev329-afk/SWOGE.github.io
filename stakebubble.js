@@ -421,6 +421,14 @@
       PARRAIN = m;
       if (m.type === 'referralClaimed') { toast('✅ Claimed ' + nb(m.montant) + ' $SWOGE from your invites', 'ok'); rafraichitSolde(); }
       if (m.nouveau) toast('🎉 ' + m.nouveau + ' joined with your invite link', 'ok');
+      /* ---- LE SEUL RAPPEL QU'INVITER PAIE ----
+       *
+       * Le lien accroche se fetait deja, mais c'est le seul evenement qui se
+       * voyait : ensuite les gains murissaient en silence, et l'onglet
+       * « Invite » se consultait une fois puis s'oubliait. Le serveur previent
+       * maintenant au PREMIER gain de la journee d'un filleul — pas a chaque
+       * manche, sinon un joueur actif noierait tout le reste. */
+      if (m.rapporte) toast('🤝 ' + m.rapporte + ' is earning you a share', 'ok');
       /* Le lien accroche : on efface le code garde de cote, sinon on
          retenterait a chaque page pour rien. */
       if (m.parrain) { try { localStorage.removeItem('swogeRef'); } catch (e) {} }

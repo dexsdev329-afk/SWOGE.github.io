@@ -98,12 +98,33 @@
     return null;
   }
 
+  /* Est-ce que la PAGE possede sa propre socket ? On tranche UNE SEULE FOIS,
+   * au premier passage, et on s'en tient a cette reponse.
+   *
+   * Relire `#bal` a chaque reconnexion etait un piege qui se refermait tout
+   * seul : le badge de solde que `poseSolde` ajoute porte lui-meme cet
+   * identifiant. Des la premiere authentification, une page sans socket a elle
+   * — le hall des jeux, l'accueil — se mettait donc a ressembler a une page de
+   * jeu, et la reconnexion s'arretait la. La socket tombait (mise en veille de
+   * l'onglet, coupure de reseau, ou la veille du solde qui la ferme elle-meme
+   * quand elle est muette), plus rien ne la relevait : le solde gelait, et le
+   * profil repondait « Not connected. » a chaque enregistrement jusqu'a ce que
+   * le joueur pense a recharger la page.
+   */
+  var pageSocketPropre = null;
+  var socketSeul = null;
   function connecteSeul() {
-    if (document.getElementById('bal')) return;      // la page a deja sa socket
+    if (pageSocketPropre === null) pageSocketPropre = !!document.getElementById('bal');
+    if (pageSocketPropre) return;                    // la page a deja sa socket
+    /* Une seule socket autonome a la fois : deux reconnexions declenchees
+       ensemble (la fermeture et le retour d'onglet) en ouvriraient deux, et la
+       plus ancienne finirait par effacer `etat.socket` en se fermant. */
+    if (socketSeul && socketSeul.readyState <= 1) return;
     var jeton = jetonRange();
     if (!jeton) { poseConnexion(); return ecouteAnonyme(); }   // jamais connecte
     var w;
     try { w = new window.WebSocket(adresseServeur()); } catch (e) { return; }
+    socketSeul = w;
     w.addEventListener('message', function (ev) {
       var m; try { m = JSON.parse(ev.data); } catch (e) { return; }
       if (m.type === 'hello') { try { w.send(JSON.stringify({ type: 'resume', token: jeton })); } catch (e) {} }
@@ -116,7 +137,15 @@
         try { w.close(); } catch (e) {}
       }
     });
-    w.addEventListener('close', function () { setTimeout(connecteSeul, 5000); });
+    w.addEventListener('close', function () {
+      if (socketSeul === w) socketSeul = null;
+      /* Une socket fermee ne doit plus passer pour vivante. `etat.socket` est
+         celle par laquelle partent un virement et un nom paye : un envoi sur
+         une socket morte est perdu sans un mot, et le formulaire croit avoir
+         enregistre. */
+      if (etat.socket === w) etat.socket = null;
+      setTimeout(connecteSeul, 3000);
+    });
   }
 
   /* ===================== SE CONNECTER DEPUIS UNE PAGE SANS FORMULAIRE
@@ -364,6 +393,13 @@
       if (m.uploaded) { versionPhoto++; dit('Photo saved — other players see it now.', 'ok'); }
       if (m.profile) MOI = m.profile;
       if (m.prixNom) { PRIX_NOM = m.prixNom; posePrixNom(); }
+      /* Un nom unique retire 1000 $SWOGE du solde, sur-le-champ. Le serveur
+         renvoie le solde a jour avec la reponse, mais chaque page lit le sien
+         sur un message `balance` a elle : on le REDEMANDE plutot que
+         d'apprendre a douze pages a lire ce champ-ci. Sans ca, le joueur voit
+         son ancien solde jusqu'a la manche suivante et croit n'avoir rien
+         paye. */
+      if (m.balance != null) rafraichitSolde();
       if (m.friends) AMIS = m.friends;
       if (m.pending !== undefined) EN_ATTENTE = m.pending;
       if (m.unread !== undefined) NON_LUS = m.unread;
@@ -2514,7 +2550,7 @@
     // on rafraichit le profil a chaque ouverture : il a pu changer ailleurs
     if (etat.socket && etat.socket.readyState === 1) {
       try { etat.socket.send('{"type":"profile"}'); } catch (e) {}
-    }
+    } else connecteSeul();   // socket tombee : on la releve pendant qu'il lit
     /* On marque la derniere section sans y aller : la rangee reste reperable
        dans le sommaire, et rien n'est demande au serveur tant qu'on n'a pas
        choisi. */
@@ -2961,7 +2997,14 @@
   }
 
   function enregistre() {
-    if (!etat.socket || etat.socket.readyState !== 1) return dit('Not connected.', 'ko');
+    /* « Not connected. » tout court etait un mur : le joueur EST connecte, il
+       vient de lire son solde dans le meme panneau. C'est la socket qui est
+       tombee pendant qu'il tapait. On la releve tout de suite, et on lui dit
+       quoi faire — attendre quelques secondes, pas recharger la page. */
+    if (!etat.socket || etat.socket.readyState !== 1) {
+      connecteSeul();
+      return dit('Connection lost — reconnecting. Try again in a few seconds.', 'ko');
+    }
     var nom = (profBoite.querySelector('.swp-nom').value || '').trim();
     var q = { type: 'setProfile' };
     if (nom && nom !== MOI.name) q.name = nom;
@@ -2979,7 +3022,8 @@
     if (visageChoisi && visageChoisi !== MOI.visage) q.avatar = visageChoisi;
     if (q.name === undefined && q.avatar === undefined) return dit('Nothing changed.');
     dit('Saving…');
-    try { etat.socket.send(JSON.stringify(q)); } catch (e) { dit('Not connected.', 'ko'); }
+    try { etat.socket.send(JSON.stringify(q)); }
+    catch (e) { connecteSeul(); return dit('Connection lost — reconnecting. Try again in a few seconds.', 'ko'); }
     /* La reponse arrive par le meme canal que les erreurs : on laisse
        poseProfil et le message d'erreur du serveur parler. */
     setTimeout(function () {

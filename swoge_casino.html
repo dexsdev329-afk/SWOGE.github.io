@@ -780,8 +780,67 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
    n'existe donc que sur telephone. */
 .ca-histbtn{ display:none; }
 
+/* Le nom du jeu en texte : il ne sert que la ou le bandeau peint s'efface. */
+.ca-nom{ display:none; }
+
+/* La barre commune des quatre boutons. Le pied « All tables » y entre au
+   demarrage ; ici on ne fait que la mettre en rangee. */
+.ca-barre{ display:flex; gap:8px; align-items:center; justify-content:center;
+  flex-wrap:wrap; }
+.ca-barre .ca-foot{ margin:0; }
+
 @media (max-width:820px), (orientation:portrait){
   .ca-pick button[data-g]{ display:none; }
+
+  /* ---- CE QUI N'EST PAS LE JEU S'EFFACE ----
+   *
+   * Quatre choses se partageaient la hauteur avant la premiere carte, et
+   * aucune ne sert a jouer :
+   *
+   *  • LE BANDEAU PEINT du jeu, cent trente pixels d'image pour dire un nom.
+   *    Le nom reste, en une ligne de texte au-dessus du tapis ;
+   *  • LE MODE D'EMPLOI (« Turn over tiles without hitting a mine… »), affiche
+   *    a chaque main entre deux parties. Seule cette phrase-la part : le meme
+   *    element porte l'etat en cours de main — « Tile 3 of 22 · stake 100 » —
+   *    et celui-la reste ;
+   *  • LES QUATRE BOUTONS sur deux rangees. Ils passent sur une seule, et se
+   *    partagent la largeur au lieu d'imposer la leur ;
+   *  • CASH OUT, large de trois cents pixels au milieu de l'ecran.
+   */
+  .ca-title{ display:none; }
+  .ca-nom{ display:block; margin:0 0 7px; text-align:center;
+    font-size:13px; font-weight:800; letter-spacing:1.4px; text-transform:uppercase;
+    color:#E7C97A; }
+  /* Le Mines ecrivait deja son nom au-dessus de ses pastilles de bombes. Avec
+     le nom de table juste au-dessus, on le lisait deux fois de suite. */
+  .mn-lbl{ display:none; }
+  .hl-note.mode-emploi{ display:none; }
+
+  /* Sans tapis, les fleches remontent sur la ligne du nom : sur les bords
+     elles couvriraient une case de la grille, et une case de Mines qui se
+     retourne par erreur coute la mise. Le nom leur laisse la place au milieu. */
+  /* Elles ENCADRENT LE NOM, elles ne vont pas aux bords. Aux bords, elles
+     tombaient pile sous le bouton d'information qui occupe le coin haut droit
+     depuis qu'il a quitte sa rangee : la fleche droite etait dessinee mais
+     ne recevait plus le clic. Serrees autour du nom, elles sont loin du coin
+     et le geste se lit tout seul — « precedent, MINES, suivant ». */
+  .ca-col.sans-tapis .ca-nav{ top:-5px; height:25px; width:25px; font-size:16px;
+    border-radius:8px; }
+  .ca-col.sans-tapis .ca-nav.prev{ left:calc(50% - 92px); right:auto; }
+  .ca-col.sans-tapis .ca-nav.next{ left:auto; right:calc(50% - 92px); }
+
+  /* Les images cessent d'imposer leur largeur : chaque bouton prend un quart
+     de la barre et l'image suit. C'est ce qui les fait tenir sur une ligne a
+     320 px comme a 430, sans hauteur choisie a la main. */
+  .ca-barre{ flex-wrap:nowrap; gap:5px; margin-top:8px; }
+  .ca-barre .ca-acts{ flex:3 1 0; min-width:0; gap:5px; }
+  .ca-barre .ca-foot{ flex:1 1 0; min-width:0; }
+  .ca-acts button{ flex:1 1 0; min-width:0; height:auto; }
+  .ca-acts button img{ width:100%; height:auto; }
+  .ca-foot .ca-plate{ display:block; width:100%; }
+  .ca-foot .ca-plate img{ width:100%; height:auto; display:block; }
+
+  .hl-cash{ width:min(64%,210px); margin:12px auto 0; }
   /* Il ne reste que le bouton d'information, et une rangee entiere pour lui
      seul couterait cinquante pixels a l'ecran de jeu — exactement ce qu'on
      vient de gagner. Il monte donc dans le coin haut droit, par-dessus la
@@ -1123,6 +1182,12 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
          masque chez eux, et les fleches disparaitraient avec lui. -->
     <button class="ca-nav prev" type="button" aria-label="Previous game">&#8249;</button>
     <button class="ca-nav next" type="button" aria-label="Next game">&#8250;</button>
+    <!-- Le nom du jeu, en texte. Il ne s'affiche que la ou le bandeau peint
+         s'efface — sur telephone — et il tient sur une ligne au lieu de cent
+         trente pixels. Sans lui, l'ecran n'aurait plus rien pour dire a quelle
+         table on est : le bandeau parti et la rangee des quatre jeux repliee
+         derriere les fleches, on naviguerait a l'aveugle. -->
+    <div class="ca-nom" id="caNom"></div>
     <div class="ca-felt" id="caFelt">
       <div class="ca-dealer" id="caDealerAv"></div>
       <div class="ca-row dealer" id="caDealer"></div>
@@ -1728,11 +1793,17 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
         : '&mdash;<small>Tap a chip to build your stake, then Deal</small>';
       up.disabled=down.disabled=cash.disabled=true;
       up.querySelector("i").textContent=""; down.querySelector("i").textContent="";
+      /* Mode d'emploi, pas etat de partie : la feuille s'en sert pour
+         l'effacer sur telephone, ou la place manque et ou la regle a deja ete
+         lue. Le meme element porte l'etat en cours de main — « Tile 3 of 22,
+         stake 100 » — et celui-la reste, toujours et partout. */
+      note.classList.add("mode-emploi");
       note.textContent="Guess whether the next card is higher or lower. Same rank replays the step — no win, no loss.";
       hlSuite();
       return;
     }
     carte.innerHTML=hlCarte(e.carte);
+    note.classList.remove("mode-emploi");
     multi.innerHTML=e.multi.toFixed(2)+'&times;<small>'+caFmt(e.gain)+' $SWOGE if you stop now</small>';
     up.disabled=!e.peutMonter; down.disabled=!e.peutDescendre; cash.disabled=false;
     up.querySelector("i").textContent   = e.peutMonter   ? '&times;'.replace('&times;','x')+e.multHigher.toFixed(2) : '—';
@@ -1766,6 +1837,8 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
     var bandeau={holdem:CAA.titleHoldem, three:CAA.titleThree, hilo:CAA.titleHilo, mines:CAA.mnTitre};
     $("caTitle").src = bandeau[CA.game] || CAA.titleHoldem;
     $("caTitle").dataset.g = CA.game;
+    var NOMS={holdem:"Casino Hold\u2019em", three:"Three Card", hilo:"Hi-Lo", mines:"Mines"};
+    $("caNom").textContent = NOMS[CA.game] || "";
     var felt=$("caFelt");
     felt.dataset.g=CA.game;                    // porte les reperes du tapis
     felt.style.backgroundImage="url("+JSON.stringify(CA.game==="holdem"?CAA.feltHoldem:CAA.feltThree)+")";
@@ -1793,6 +1866,11 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
        disparait, le rail de jetons et les boutons leur servent aussi. */
     var sansTapis = CA.game==="hilo" || CA.game==="mines";
     $("caFelt").style.display = sansTapis ? "none" : "";
+    /* Le Hi-Lo et le Mines n'ont pas de tapis : leur grille occupe toute la
+       largeur, et les fleches posees sur les bords tomberaient SUR les cases.
+       La colonne le dit a la feuille, qui les remonte sur la ligne du nom. */
+    var col = $("caFelt").parentNode;
+    if (col && col.classList) col.classList.toggle("sans-tapis", sansTapis);
   }
 
   function caActs(){
@@ -1920,6 +1998,7 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
 
     mnGrille();
     $("mnCash").disabled = !(enCours && e.ouvertes.length) && !(e && e.complet && !e.encaisse);
+    $("mnNote").classList.toggle("mode-emploi", !enCours);
     $("mnNote").textContent = enCours
       ? "Tile "+e.ouvertes.length+" of "+(25-e.nbMines)+" \u00b7 stake "+caFmt(e.mise)+" $SWOGE \u00b7 max "+e.maximum.toFixed(2)+"\u00d7"
       : "Turn over tiles without hitting a mine. Cash out whenever you like \u2014 the more tiles, the higher the multiplier.";
@@ -2170,6 +2249,21 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
   });
 
   $("caAll").src=CAA.bAllTables;
+
+  /* ---- LES QUATRE BOUTONS SUR UNE LIGNE ----
+     « All tables » vivait dans son propre pied, donc sur une seconde rangee
+     sous Rebet / Double / Deal : deux bandes pour quatre boutons. On les reunit
+     dans une barre commune — UNE FOIS, au demarrage. La barre est un parent, pas
+     un contenu : `caActs()` continue de vider et remplir `#caActs` a chaque
+     rendu sans jamais la toucher. */
+  (function barreUnique(){
+    var actes=$("caActs"), pied=document.querySelector(".ca-foot");
+    if(!actes||!pied||!actes.parentNode) return;
+    var barre=document.createElement("div");
+    barre.className="ca-barre";
+    actes.parentNode.insertBefore(barre, actes);
+    barre.appendChild(actes); barre.appendChild(pied);
+  })();
 
   /* Les deux fleches REJOUENT le clic du bouton correspondant. La bascule de
      jeu, la garde « Finish the hand first » et le nettoyage de la table vivent

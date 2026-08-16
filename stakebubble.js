@@ -1857,7 +1857,40 @@
         '#menuBox{display:none!important;}';
       document.head.appendChild(css2);
     }
+    cacheRetourHall();
     return true;
+  }
+
+  /* ---- LE « BACK TO THE SWOGE ARCADE » DU PIED DE PAGE, SUR TELEPHONE ----
+   *
+   * Les quatorze pages de jeu finissent par un pied de page qui ne contient
+   * qu'une chose : un lien vers le hall. Sur telephone il coute une bande
+   * pleine largeur en bas de chaque partie, pour dire ce que « Other games »
+   * dit deja dans le tiroir — a portee de pouce, sans defiler jusqu'en bas.
+   *
+   * ---- pourquoi la regle est POSEE ICI, et pas au chargement ----
+   *
+   * Parce qu'elle depend de son remplacant. `profMonte()` n'aboutit que
+   * lorsque le tiroir existe vraiment, c'est-a-dire pour un joueur reconnu.
+   * Un visiteur qui n'a rien branche n'a pas de bouton de profil : chez lui ce
+   * lien EST le seul chemin de retour, et le cacher l'enfermerait dans la
+   * page. On ne retire donc la porte qu'une fois l'autre ouverte.
+   *
+   * Sur grand ecran il ne coute rien et il reste : la place n'y manque pas, et
+   * un pied de page qui ramene au sommaire est ce qu'on y attend.
+   */
+  var styleRetour = false;
+  function cacheRetourHall() {
+    if (styleRetour) return;
+    styleRetour = true;
+    var css = document.createElement('style');
+    /* `:only-child` est la prudence : le jour ou une page ajoute autre chose
+       dans son pied — des mentions, un lien de contact — le pied reste, et
+       seul le cas qu'on vise ici disparait. */
+    css.textContent =
+      '@media (max-width:640px){' +
+      'footer:has(> a[href="games.html"]:only-child){display:none!important;}}';
+    document.head.appendChild(css);
   }
 
   /* ------------------------------------------------- le menu de la page
@@ -1895,12 +1928,21 @@
    * une correction, un endroit. Et on saute celle de la page courante — une
    * ligne « Other games » sur le hall des jeux ne mene nulle part.
    */
+  /* \u00AB Staking \u00BB et \u00AB Buy $SWOGE \u00BB ne sont plus de ce groupe.
+   *
+   * \u00AB Go to \u00BB est la seule rangee du tiroir qui fasse QUITTER la page ou l'on
+   * joue. A quatre entrees, les deux qu'on suit vraiment \u2014 retourner au hall,
+   * rentrer a l'accueil \u2014 se lisaient au milieu de deux autres qu'on ne suit
+   * presque jamais, dont une qui sort carrement du site.
+   *
+   * Aucune des deux n'est perdue : le hall des jeux porte une vignette
+   * \u00AB Staking \u00BB dans son catalogue, au meme rang que les jeux, et la cotation
+   * est sur l'accueil. Elles sont a un geste de plus, ce qui est le bon prix
+   * pour ce qu'on ouvre une fois par semaine.
+   */
   var AILLEURS = [
     ['games.html', '\uD83C\uDFAE Other games'],
     ['index.html', '\uD83C\uDFE0 Home'],
-    ['swoge_staking.html', '\uD83D\uDD12 Staking'],
-    ['https://dexscreener.com/robinhood/0x2dc0fb72d9284228046cc95910eeaabebfe48456',
-     '\uD83E\uDE99 Buy $SWOGE'],
   ];
   function SECOURS_AILLEURS() {
     var ici = (location.pathname.split('/').pop() || 'index.html').toLowerCase() || 'index.html';

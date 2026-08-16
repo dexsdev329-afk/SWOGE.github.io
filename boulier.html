@@ -779,7 +779,14 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
      geste reste actif — c'est l'etiquette qui part, pas la fonction. */
   .bo-cage .hint{ display:none; }
 
-  .bo-sorties{ gap:2.5px; }
+  /* ---- LA RANGEE DES NUMEROS TIRES PART ----
+     Trente ronds sur deux rangees, 47 px, pour une information qui est deja
+     ailleurs : le panneau « meilleure grille » allume ses numeros touches en
+     direct, boule par boule, pendant que la cage montre d'ou chacune sort. On
+     lisait donc la meme manche a trois endroits sur un ecran qui n'en a pas la
+     place. Elle reste sur grand ecran, ou la place existe. */
+  .bo-sorties{ display:none; }
+
   .bo-titre{ min-height:26px; margin:0 0 4px; }
 }
 

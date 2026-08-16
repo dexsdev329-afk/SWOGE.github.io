@@ -457,6 +457,28 @@ canvas{ touch-action:none; }
   #music-btn:hover { border-color:var(--gold); }
   #music-btn.off { opacity:.55; }
 
+  /* ---- LE PROFIL PREND LE COIN, LE SON REJOINT LA RANGEE ----
+   *
+   * Le son occupait le coin haut gauche — le point le plus atteignable du
+   * pouce sur un telephone — pour un reglage qu'on touche une fois par
+   * partie, au plus. Le profil, lui, etait au bout de la rangee de droite :
+   * c'est pourtant lui qu'on ouvre pour son solde, son portefeuille, ses
+   * depots et le retour au hall. Les deux echangent leur place.
+   *
+   * Le son passe DANS la rangee (il en est maintenant le dernier element,
+   * dans le balisage), donc il perd sa position fixe ; le profil la prend.
+   */
+  #music-btn { position:static; top:auto; left:auto; flex:0 0 auto; }
+  /* Le `!important` n'est pas de la paresse : stakebubble.js pose SA feuille a
+     l'execution, donc APRES celle-ci. A specificite egale — `.swcad` porte un
+     `position:relative` — c'est la derniere posee qui gagne, et le bouton
+     restait a droite. La page doit donc parler plus fort pour reprendre la
+     main sur un bouton qu'elle n'a pas ecrit.
+     La taille reprend celle qu'avait le son : le coin garde son poids. */
+  .swpb { position:fixed !important; top:1.2vh !important; left:1.2vw !important;
+          z-index:201 !important; margin:0 !important;
+          width:5vh !important; height:5vh !important; font-size:2.2vh !important; }
+
   /* ===== MOBILE / PORTRAIT (Telegram tel.) ===== */
   @media (max-width: 820px), (orientation: portrait) {
     /* on empile tout verticalement au lieu du placement absolu paysage */
@@ -569,7 +591,16 @@ canvas{ touch-action:none; }
     #box-quests { width:min(760px,60vw); max-width:none; max-height:94vh; border-width:52px; border-image-width:52px; }
     #box-quests .qscroll { max-height:calc(94vh - 160px); padding:30px 60px 22px; }
     /* bouton son en bas à gauche */
-    #music-btn { top:auto; bottom:2.4vh; left:2vw; width:5.2vh; height:5.2vh; font-size:2.4vh; }
+    /* Sur grand ecran il n'y a rien a echanger : le son est deja loin de la
+       rangee, et le HUD est une colonne verticale a droite. Chacun reprend
+       donc sa place d'origine — le son fixe en bas a gauche, le profil au fil
+       de la colonne. Le `position:static` du profil est indispensable ici :
+       le HUD porte un `transform`, ce qui en ferait le repere d'un enfant
+       fixe et enverrait le bouton au milieu de l'ecran. */
+    #music-btn { position:fixed; top:auto; bottom:2.4vh; left:2vw; width:5.2vh; height:5.2vh; font-size:2.4vh; }
+    .swpb { position:static !important; top:auto !important; left:auto !important;
+            margin-left:8px !important; width:34px !important; height:34px !important;
+            font-size:15px !important; }
     /* SWOGE collecteur : placé par JS (premier plan) */
     /* grille descendue pour laisser la place au SWOGE au-dessus */
     #machine { top:60%; width:min(54vh,52vw); }
@@ -710,8 +741,9 @@ canvas{ touch-action:none; }
   <div id="bigwin-sub">$SWOGE</div>
 </div>
 
-<!-- bouton musique (coin haut gauche) -->
-<button id="music-btn" title="Musique">🔊</button>
+<!-- Le bouton son a quitte le coin haut gauche : il a rejoint la rangee du
+     HUD, tout a droite, a la place qu'occupait le profil. Voir plus bas, dans
+     le HUD, et la regle « le profil prend le coin » dans la feuille. -->
 
 <!-- ===== HUD compte (même solde/menu que les autres jeux) ===== -->
 <div id="verTag" style="position:fixed;bottom:3px;left:5px;font-size:10px;font-family:monospace;color:rgba(255,213,74,.6);z-index:99999;pointer-events:none">BUILD 36</div>
@@ -720,6 +752,7 @@ canvas{ touch-action:none; }
   <button id="connectBtn">🔗 Wallet</button>
   <button id="emailBtn">✉️ Sign in</button>
   <button id="menuBtn">☰</button>
+  <button id="music-btn" title="Musique">🔊</button>
 </div>
 <div class="pmenu" id="pmenu">
   <a id="mnWallet" class="mi mi-wallet">My Wallet</a>

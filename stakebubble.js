@@ -1944,6 +1944,44 @@
     ['games.html', '\uD83C\uDFAE Other games'],
     ['index.html', '\uD83C\uDFE0 Home'],
   ];
+  /* ---- LE COMPTE, SUR UNE PAGE QUI N'EN A PAS ----
+   *
+   * Le hall des jeux et la page de staking ne portent AUCUN panneau de compte :
+   * ni portefeuille, ni depot, ni retrait, ni quetes, et pas meme la
+   * bibliotheque de chaine qui les ferait marcher. Leur tiroir s'ouvrait donc
+   * sans groupe « Account » — sur le hall, c'est-a-dire la page d'entree du
+   * site, la ou l'on arrive avec l'intention de deposer.
+   *
+   * On ne REFAIT pas ces panneaux ici. Un formulaire de depot ecrit dans ce
+   * fichier serait une seconde version du chemin de l'argent, a tenir a jour
+   * en face de quinze autres — exactement ce que tout le reste de ce fichier
+   * s'interdit.
+   *
+   * On utilise la porte qui existe deja : le Coin Pusher ouvre le bon panneau
+   * d'apres l'adresse (#wallet, #deposit, #withdraw, #staking, #quests). C'est
+   * la plus legere des pages qui ont tout, et le solde y est le meme
+   * qu'ailleurs. Les cinq rangees mènent donc la-bas, panneau ouvert.
+   */
+  var COMPTE_AILLEURS = [
+    ['swoge_pusher.html#wallet',   '👛 My Wallet'],
+    ['swoge_pusher.html#staking',  '🔒 Staking'],
+    ['swoge_pusher.html#deposit',  '💰 Deposit'],
+    ['swoge_pusher.html#withdraw', '🏧 Withdraw'],
+    ['swoge_pusher.html#quests',   '🎯 Daily Quests'],
+  ];
+  function SECOURS_COMPTE() {
+    var ici = (location.pathname.split('/').pop() || 'index.html').toLowerCase() || 'index.html';
+    if (ici === 'swoge_pusher.html') return [];      // il a les siens, en propre
+    var out = [];
+    for (var i = 0; i < COMPTE_AILLEURS.length; i++) {
+      var a = document.createElement('a');
+      a.href = COMPTE_AILLEURS[i][0];
+      a.textContent = COMPTE_AILLEURS[i][1];
+      out.push(a);
+    }
+    return out;
+  }
+
   function SECOURS_AILLEURS() {
     var ici = (location.pathname.split('/').pop() || 'index.html').toLowerCase() || 'index.html';
     var out = [];
@@ -2014,7 +2052,7 @@
     /* Position 1, pas 0 : l'appelant lit paquets[1] pour « Go to » et
        paquets[0] pour « Account ». Un tableau a un seul element ferait donc
        apparaitre « Other games » sous le titre « Account ». */
-    if (!boite) return [[], SECOURS_AILLEURS()];
+    if (!boite) return [SECOURS_COMPTE(), SECOURS_AILLEURS()];
     return trieParContenu([].slice.call(boite.querySelectorAll('button')));
   }
   function miroirGroupe(t, titre, liste) {

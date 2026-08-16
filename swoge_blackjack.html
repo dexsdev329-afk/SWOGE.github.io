@@ -129,6 +129,19 @@ canvas{ touch-action:none; }
     display:flex;align-items:center;justify-content:center;font-size:34px;color:rgba(255,184,77,.7)}
 
   .result{text-align:center;min-height:30px;font-family:'Anton',sans-serif;font-size:24px;letter-spacing:1px;margin:6px 0 2px}
+  /* ---- LE RESULTAT NE COUTE PLUS UNE LIGNE ----
+     Les deux rangees du tapis sont en `position:absolute` : les poser en flux
+     n'aurait pas marche, le bandeau se serait glisse tout en haut du tapis,
+     par-dessus le total du croupier. Il est donc positionne lui aussi, sur la
+     COUTURE entre les deux mains — la bande vide que le tapis laisse deja
+     entre les cartes du croupier et celles du joueur.
+     Etant absolu, il ne prend aucune hauteur : la page gagne les 38 px qu'il
+     occupait au-dessus du tapis (30 de hauteur reservee, 8 de marges), et il
+     se lit la ou l'oeil est pose quand la main se termine. */
+  .felt > .result{position:absolute; left:6%; right:6%; top:52%;
+    transform:translateY(-50%); margin:0; min-height:0; z-index:4;
+    font-size:20px; pointer-events:none;
+    text-shadow:0 2px 10px rgba(0,0,0,.95), 0 0 22px rgba(0,0,0,.8)}
   .result.win{color:var(--green)} .result.lose{color:var(--red)} .result.push{color:var(--gold)}
 
   /* controls */
@@ -962,7 +975,6 @@ button, input, a, .card, .felt, .sbet, .chipbtn, .btn{ touch-action:manipulation
   </section>
 
   <div class="wrap">
-    <div class="result" id="result"></div>
     <div class="felt">
       <div class="shufflefx" id="shuffleFx" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
       <div class="side dealer">
@@ -979,6 +991,14 @@ button, input, a, .card, .felt, .sbet, .chipbtn, .btn{ touch-action:manipulation
            les ovales etaient PEINTS dessus. Le nouveau tapis est vide : rien
            a viser, donc rien a caler. Les jetons ronds sous la table portent
            desormais la mise ET son sort, a une taille qui se touche. -->
+
+      <!-- LE RESULTAT EST ENTRE LES DEUX MAINS.
+           Il etait au-dessus du tapis, ou il coutait sa hauteur PLUS ses
+           marges a une page qui n'en a pas de trop sur telephone. Entre les
+           cartes du croupier et celles du joueur, il occupe l'espace vide qui
+           separait deja les deux rangees — et il se lit la ou l'oeil est
+           pose quand la main se termine, au lieu de tout en haut. -->
+      <div class="result" id="result"></div>
 
       <div class="side player">
         <div class="lbl">You <span class="val" id="playerVal"></span></div>
@@ -2226,6 +2246,7 @@ function renderBonus(b){ if(!b) return; bonusData=b;
                  background-color:transparent; }
   @media (max-width: 820px), (orientation: portrait){
     .result{ min-height:24px; }
+    .felt > .result{ top:51%; font-size:16px; }
   }
   /* Reservee A LA HAUTEUR DE LA BANNIERE des qu'une main est finie : le variant
      illustre fait 69 px, le texte simple 30. On ne reserve les 69 qu'au moment

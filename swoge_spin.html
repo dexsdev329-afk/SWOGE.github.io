@@ -39,6 +39,28 @@ canvas{ touch-action:none; }
 <!-- La bulle de staking. Chargee tot et SANS defer : elle enveloppe WebSocket
      pour ecouter ce qui passe deja, et doit donc etre en place avant que la page
      n ouvre sa connexion. -->
+<script>
+/* ---- LE BOUTON DE PROFIL SORT DU HUD ----
+ * stakebubble.js le pose la ou il trouve le solde — ici, dans le HUD. Or ce
+ * HUD porte un `transform` sur grand ecran, et un `transform` fait de son
+ * element le REPERE de tout descendant en `position:fixed` : le bouton, cale
+ * sur le coin de l'ecran, se retrouvait cale sur le coin du HUD. On le
+ * transplante donc dans le corps de la page des qu'il apparait. Deplacer un
+ * noeud ne detache aucun de ses ecouteurs : le tiroir continue de s'ouvrir.
+ */
+(function(){
+  function sors(){
+    var b = document.querySelector('.swpb');
+    if (!b || b.parentNode === document.body) return false;
+    document.body.appendChild(b);
+    return true;
+  }
+  if (sors()) return;
+  var obs = new MutationObserver(function(){ if (sors()) obs.disconnect(); });
+  obs.observe(document.documentElement, { childList:true, subtree:true });
+  setTimeout(function(){ obs.disconnect(); }, 30000);
+})();
+</script>
 <script src="stakebubble.js?v=20260814e"></script>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
@@ -598,9 +620,17 @@ canvas{ touch-action:none; }
        le HUD porte un `transform`, ce qui en ferait le repere d'un enfant
        fixe et enverrait le bouton au milieu de l'ecran. */
     #music-btn { position:fixed; top:auto; bottom:2.4vh; left:2vw; width:5.2vh; height:5.2vh; font-size:2.4vh; }
-    .swpb { position:static !important; top:auto !important; left:auto !important;
-            margin-left:8px !important; width:34px !important; height:34px !important;
-            font-size:15px !important; }
+    /* ---- LE PROFIL RESTE EN HAUT A GAUCHE, SUR PC AUSSI ----
+     * Il y descendait au bout de la colonne de droite, avec le solde et le
+     * menu : la seule page du site ou la poignee du compte n'est pas au meme
+     * endroit que sur les quinze autres. On la remet dans le coin — un peu plus
+     * grande qu'au telephone, la place ne manquant pas.
+     * `position:fixed` ne suffit pas seul : le HUD porte un `transform`, ce qui
+     * en ferait le repere du bouton et l'enverrait au milieu de l'ecran. Un
+     * petit script le sort donc du HUD des qu'il apparait — voir plus bas. */
+    .swpb { position:fixed !important; top:1.4vh !important; left:1.4vw !important;
+            margin:0 !important; width:6vh !important; height:6vh !important;
+            font-size:2.6vh !important; z-index:201 !important; }
     /* SWOGE collecteur : placé par JS (premier plan) */
     /* grille descendue pour laisser la place au SWOGE au-dessus */
     #machine { top:60%; width:min(54vh,52vw); }

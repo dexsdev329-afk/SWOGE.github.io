@@ -435,6 +435,14 @@
       if (profOnglet === 'in') profRend();
     }
     if (m.type === 'leaderboard') { CLASSEMENT = m; if (profOnglet === 'lb') profRend(); }
+    /* La boutique. Le serveur repond toujours l'etat COMPLET — catalogue et
+       inventaire —, et y ajoute `gagne` quand la reponse suit une ouverture.
+       La page n'a donc rien a recoller elle-meme. */
+    if (m.type === 'shop') {
+      if (m.error) { toast(m.error, 'bad'); }
+      BOUTIQUE = m;
+      if (profOnglet === 'sh') profRend();
+    }
     /* Les missions du jour arrivent avec les quetes, sur trois messages
        differents selon la page. On les garde ici, et on decore ensuite. */
     if (m.quests) { MISSIONS = m.quests; surveilleMissions(); }
@@ -875,6 +883,7 @@
   var AMIS = { amis: [], recues: [], envoyees: [] }, EN_ATTENTE = 0, RECHERCHE = [];
   var NON_LUS = 0, PARRAIN = null, STATS = null, CLASSEMENT = null, NIVEAU = null;
   var PRIX_NOM = null;                    // { prix, du, brule, solde }
+  var BOUTIQUE = null;                    // { catalogue, inventaire, gagne? }
   /* Les dix paliers. La couleur fait tout le travail : « Diamond » se
      reconnait a l'oeil bien avant qu'on lise « niveau 47 ». */
   var PALIERS = { Bronze:'#C08457', Silver:'#C8D2DE', Gold:'#FFC53D', Platinum:'#9FE7F5',
@@ -1340,6 +1349,36 @@
          n'invite a appuyer. */
       '.swp-t .swp-att{opacity:.42;cursor:default;font-style:italic;}' +
       '.swp-t .swp-att::after{content:"";padding:0;}' +
+      /* ---- LA BOUTIQUE ----
+         Les coffres en rangee, l'inventaire en grille. La rarete est portee
+         par la COULEUR de la bordure et rien d'autre : un objet se reconnait
+         de loin a sa teinte, sans lire une etiquette. */
+      '.swb-c{display:grid;gap:9px;margin:2px 0 14px;}' +
+      '.swb-cof{display:flex;align-items:center;gap:11px;text-align:left;width:100%;' +
+        'padding:10px 12px;border-radius:13px;cursor:pointer;' +
+        'background:linear-gradient(180deg,rgba(24,34,62,.95),rgba(10,15,30,.96));' +
+        'border:1px solid rgba(255,197,61,.28);color:#E8EEFA;font:inherit;}' +
+      '.swb-cof:disabled{opacity:.42;cursor:not-allowed;}' +
+      '.swb-cof .n{font-weight:800;font-size:13.5px;}' +
+      '.swb-cof .p{margin-left:auto;color:#FFD97A;font-weight:800;white-space:nowrap;}' +
+      '.swb-cof .o{display:block;font-size:10.5px;color:#8DA0C4;margin-top:2px;}' +
+      '.swb-ch{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:10.5px;margin:-8px 2px 14px;}' +
+      '.swb-ch span{color:#8DA0C4;}' +
+      '.swb-ch b{font-weight:800;}' +
+      '.swb-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:8px;}' +
+      '.swb-o{position:relative;aspect-ratio:1/1;border-radius:12px;overflow:hidden;' +
+        'background:radial-gradient(120% 120% at 30% 20%,rgba(255,255,255,.07),rgba(0,0,0,.5));' +
+        'border:1px solid;display:flex;align-items:flex-end;justify-content:center;' +
+        'padding:5px;font-size:9.5px;line-height:1.15;text-align:center;}' +
+      '.swb-o img{position:absolute;inset:9%;width:82%;height:82%;object-fit:contain;}' +
+      '.swb-o .q{position:absolute;top:4px;right:5px;font-weight:800;font-size:10px;' +
+        'background:rgba(0,0,0,.6);border-radius:6px;padding:1px 4px;}' +
+      '.swb-o .t{position:relative;z-index:1;text-shadow:0 1px 3px #000,0 0 6px #000;}' +
+      '.swb-vide{color:#8DA0C4;font-size:12px;text-align:center;padding:16px 8px;line-height:1.55;}' +
+      '.swb-gain{margin:2px 0 12px;padding:11px 12px;border-radius:13px;border:1px solid;' +
+        'display:flex;align-items:center;gap:11px;}' +
+      '.swb-gain .l{font-size:11px;color:#8DA0C4;}' +
+      '.swb-gain .n{font-weight:800;font-size:14px;}' +
       '.swp-l{display:none;flex:1;overflow-y:auto;padding:8px 12px 18px;min-height:180px;}' +
       '.swp.detail .swp-t{display:none;}' +
       '.swp.detail .swp-l{display:block;}' +
@@ -1529,6 +1568,11 @@
       'color:#07101F;background:linear-gradient(180deg,#8CFFC0,#16D97F);opacity:0;' +
       'transition:opacity .25s,transform .25s;box-shadow:0 8px 24px rgba(0,0,0,.5);}' +
       '.swtoast.go{opacity:1;transform:translate(-50%,0);}' +
+      /* UN REFUS NE DOIT PAS ETRE VERT. La classe `bad` etait deja passee par
+         deux appels — un solde insuffisant, une erreur du serveur — mais elle
+         n'avait aucun style : le message s'affichait dans le meme vert que
+         « Sent 5 000 $SWOGE », et se lisait comme une reussite. */
+      '.swtoast.bad{background:linear-gradient(180deg,#FF9B92,#E8483C);color:#2A0704;}' +
       '.swp-res:not(:empty){margin-bottom:9px;padding-bottom:7px;' +
       'border-bottom:1px solid rgba(255,255,255,.09);}' +
       '.swp-up{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:9px;}' +
@@ -1852,9 +1896,10 @@
       var g = document.createElement('div');
       g.className = 'swp-g'; g.textContent = 'Shop';
       t.appendChild(g);
-      var b = document.createElement('div');
-      b.className = 'swp-mir swp-att';
-      b.textContent = '\uD83D\uDED2 Available soon';
+      var b = document.createElement('button');
+      b.type = 'button'; b.dataset.k = 'sh';
+      b.textContent = '\uD83D\uDED2 Chests & items';
+      b.addEventListener('click', function () { profVa('sh'); });
       t.appendChild(b);
     })();
     FAMILLES.forEach(function (f) {
@@ -2583,6 +2628,142 @@
     peintVisage(d.querySelector('.av'), r);
     return d;
   }
+  /*
+   * LA BOUTIQUE.
+   *
+   * Trois coffres en haut, l'inventaire en dessous. Rien d'autre — c'est un
+   * ecran de tiroir, pas une page.
+   *
+   * ---- ce qui est affiche, et pourquoi ----
+   *
+   * Les CHANCES sont ecrites sous chaque coffre, en clair, avant l'achat. Un
+   * coffre ne rend rien de monnayable : la seule chose qu'on achete, c'est la
+   * probabilite annoncee. La cacher, c'est vendre une promesse invisible —
+   * et c'est aussi ce que la reglementation de plusieurs pays impose
+   * d'afficher. Autant que ce soit vrai partout.
+   *
+   * ---- les dessins qui n'existent pas encore ----
+   *
+   * Chaque objet porte son nom EN TEXTE, et l'image se pose par-dessus quand
+   * elle existe. Un objet dont le dessin n'est pas encore fait reste donc
+   * lisible et jouable, au lieu d'afficher une icone cassee. Le fichier
+   * attendu est `img/shop/<clef>.webp`, la clef etant celle du catalogue.
+   */
+  function rendBoutique() {
+    var l = profBoite.querySelector('.swp-l');
+    l.innerHTML = '';
+    if (!BOUTIQUE || !BOUTIQUE.catalogue) {
+      var att = document.createElement('div');
+      att.className = 'swp-v'; att.textContent = 'Loading…';
+      l.appendChild(att);
+      if (etat.socket && etat.socket.readyState === 1) etat.socket.send('{"type":"shop"}');
+      return;
+    }
+    var C = BOUTIQUE.catalogue, inv = BOUTIQUE.inventaire || {};
+    var teinte = {};
+    C.raretes.forEach(function (r) { teinte[r.cle] = r.couleur; });
+    var nomRarete = {};
+    C.raretes.forEach(function (r) { nomRarete[r.cle] = r.nom; });
+
+    // ---- ce qu'on vient d'ouvrir
+    if (BOUTIQUE.gagne) {
+      var g = BOUTIQUE.gagne, gd = document.createElement('div');
+      gd.className = 'swb-gain';
+      gd.style.borderColor = teinte[g.rarete] || '#8DA0C4';
+      gd.innerHTML = '<div class="swb-o" style="border-color:' + (teinte[g.rarete] || '#8DA0C4') +
+        ';width:56px;flex:0 0 56px;aspect-ratio:1/1;">' + vignette(g.item, true) + '</div>' +
+        '<div><div class="l" style="color:' + (teinte[g.rarete] || '#8DA0C4') + '">' +
+        ech(nomRarete[g.rarete] || g.rarete) + '</div>' +
+        '<div class="n">' + ech(g.item.nom) + '</div>' +
+        (g.quantite > 1 ? '<div class="l">You now own ' + g.quantite + '</div>' : '') + '</div>';
+      l.appendChild(gd);
+    }
+
+    // ---- les coffres
+    var solde = Number(BOUTIQUE.balance || etat.balance || 0);
+    var boite = document.createElement('div');
+    boite.className = 'swb-c';
+    C.coffres.forEach(function (c) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'swb-cof';
+      b.disabled = !(solde >= c.prix);
+      b.innerHTML = '<span><span class="n">' + ech(c.nom) + '</span>' +
+        /* Chaque couple « chance + rarete » est insecable : sans cela la
+           ligne cassait entre « 2.8% » et « Epic », et on lisait un chiffre
+           qui ne se rapportait a rien. */
+        '<span class="o">' + c.chances.map(function (x) {
+          return '<span style="white-space:nowrap"><b style="color:' + x.couleur + '">' +
+                 pc(x.pourcent) + '%</b> ' + ech(x.nom) + '</span>';
+        }).join(' · ') + '</span></span>' +
+        '<span class="p">' + nb(c.prix, 0) + ' $SWOGE</span>';
+      b.addEventListener('click', function () {
+        if (b.disabled) return;
+        b.disabled = true;
+        if (etat.socket && etat.socket.readyState === 1)
+          etat.socket.send(JSON.stringify({ type: 'shopOpen', chest: c.cle }));
+      });
+      boite.appendChild(b);
+    });
+    l.appendChild(boite);
+
+    // ---- l'inventaire
+    var ttl = document.createElement('div');
+    ttl.className = 'swp-g';
+    var combien = 0, sortes = 0;
+    C.items.forEach(function (o) { var q = inv[o.id] || 0; if (q) { sortes++; combien += q; } });
+    ttl.textContent = 'Your items — ' + sortes + ' of ' + C.items.length +
+      (combien > sortes ? ' (' + combien + ' owned)' : '');
+    l.appendChild(ttl);
+
+    if (!sortes) {
+      var v = document.createElement('div');
+      v.className = 'swb-vide';
+      v.textContent = 'No item yet. Open a chest above — every item you pull is yours to keep.';
+      l.appendChild(v);
+      return;
+    }
+    /* Trie par rarete DECROISSANTE : ce qu'on a de plus beau en premier, sinon
+       la grille s'ouvre sur dix communs et la piece rare est en bas. */
+    var rang = {};
+    C.raretes.forEach(function (r, i) { rang[r.cle] = i; });
+    var mien = C.items.filter(function (o) { return inv[o.id]; })
+      .sort(function (a, b) { return (rang[b.rarete] - rang[a.rarete]) || (a.id - b.id); });
+
+    var gr = document.createElement('div');
+    gr.className = 'swb-g';
+    mien.forEach(function (o) {
+      var d = document.createElement('div');
+      d.className = 'swb-o';
+      d.style.borderColor = teinte[o.rarete] || '#8DA0C4';
+      d.title = o.nom + ' — ' + (nomRarete[o.rarete] || o.rarete);
+      d.innerHTML = vignette(o) +
+        (inv[o.id] > 1 ? '<span class="q" style="color:' + (teinte[o.rarete] || '#8DA0C4') +
+                         '">x' + inv[o.id] + '</span>' : '');
+      gr.appendChild(d);
+    });
+    l.appendChild(gr);
+  }
+
+  /* Le nom, toujours ; le dessin par-dessus, s'il existe. L'image se retire
+     elle-meme si le fichier manque, ce qui laisse le nom seul plutot qu'une
+     icone cassee — c'est ce qui permet d'ouvrir la boutique avant que les
+     trente dessins soient faits.
+     `muet` sert a la banniere du gain, qui ecrit deja le nom a cote : sans
+     lui il apparaissait deux fois, l'un sous l'autre. */
+  function vignette(o, muet) {
+    return (muet ? '' : '<span class="t">' + ech(o.nom) + '</span>') +
+      '<img alt="" src="img/shop/' + encodeURIComponent(o.cle) + '.webp" ' +
+      'onerror="this.remove()">';
+  }
+
+  /* Une chance s'ecrit court : 76 %, 2,8 %, 0,19 %, 0,01 %. `toFixed` fixe
+     rendrait « 76.00 % » a cote de « 0.01 % ». */
+  function pc(x) {
+    if (x >= 10) return String(Math.round(x));
+    if (x >= 1) return String(Math.round(x * 10) / 10);
+    return String(Math.round(x * 100) / 100);
+  }
+
   function rendClassement() {
     var l = profBoite.querySelector('.swp-l');
     l.innerHTML = '';
@@ -2822,6 +3003,10 @@
     if (!k) { boite.classList.remove('detail'); return; }
     var nom = libelle || '';
     if (!nom) for (var i = 0; i < ONGLETS.length; i++) if (ONGLETS[i][0] === k) nom = ONGLETS[i][1];
+    /* La boutique ne vient pas des FAMILLES — elle a sa propre entree, entre
+       le compte et les sections — donc elle n'est pas dans ONGLETS et son
+       titre se pose ici. */
+    if (!nom && k === 'sh') nom = 'Shop';
     titre.textContent = nom;
     boite.classList.add('detail');
     /* Chaque section repart du haut. Sans ca, on ouvrait « Deposits » deja
@@ -2873,6 +3058,15 @@
     }
     if (k === 'lb' && etat.socket && etat.socket.readyState === 1) {
       try { etat.socket.send('{"type":"leaderboard"}'); } catch (e) {}
+    }
+    /* On redemande a chaque ouverture, et on efface l'objet gagne : la
+       banniere « vous avez obtenu… » appartient a l'ouverture qui vient
+       d'avoir lieu, pas a la visite suivante. */
+    if (k === 'sh') {
+      if (BOUTIQUE) BOUTIQUE = { catalogue: BOUTIQUE.catalogue, inventaire: BOUTIQUE.inventaire };
+      if (etat.socket && etat.socket.readyState === 1) {
+        try { etat.socket.send('{"type":"shop"}'); } catch (e) {}
+      }
     }
     if (k === 'tr' && NON_LUS && etat.socket && etat.socket.readyState === 1) {
       NON_LUS = 0; pastilleAmis();
@@ -3573,6 +3767,7 @@
     if (profOnglet === 'am') { profEnTete(); return rendAmis(); }
     if (profOnglet === 'in') { profEnTete(); return rendInvite(); }
     if (profOnglet === 'lb') { profEnTete(); return rendClassement(); }
+    if (profOnglet === 'sh') { profEnTete(); return rendBoutique(); }
     var l = profBoite.querySelector('.swp-l');
     var sous = profBoite.querySelector('.swp-sub');
     if (profResume) {

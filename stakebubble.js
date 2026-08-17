@@ -1375,6 +1375,14 @@
         'background:linear-gradient(180deg,rgba(24,34,62,.95),rgba(10,15,30,.96));' +
         'border:1px solid rgba(255,197,61,.28);color:#E8EEFA;font:inherit;}' +
       '.swb-cof:disabled{opacity:.42;cursor:not-allowed;}' +
+      /* LE COFFRE SUR LE BOUTON. Un prix et cinq pourcentages ne donnent pas
+         envie d'appuyer ; un coffre, si. Il se retire tout seul si le dessin
+         manque, et le bouton retombe alors sur sa mise en page d'origine. */
+      '.swb-cof .cf{flex:0 0 auto;width:52px;height:52px;object-fit:contain;' +
+        'margin:-4px 0 -4px -2px;filter:drop-shadow(0 3px 7px rgba(0,0,0,.5));}' +
+      '.swb-gain .cf.ouv{flex:0 0 auto;width:46px;height:46px;object-fit:contain;' +
+        'margin-right:-3px;filter:drop-shadow(0 0 10px rgba(255,200,90,.35));}' +
+      '@media (min-width:900px){.swb-cof .cf{width:64px;height:64px;}}' +
       '.swb-cof .n{font-weight:800;font-size:13.5px;}' +
       '.swb-cof .p{margin-left:auto;color:#FFD97A;font-weight:800;white-space:nowrap;}' +
       '.swb-cof .o{display:block;font-size:10.5px;color:#8DA0C4;margin-top:2px;}' +
@@ -2712,8 +2720,11 @@
       gd.style.borderColor = teinte[g.rarete] || '#8DA0C4';
       gd.innerHTML = '<div class="swb-o" style="border-color:' + (teinte[g.rarete] || '#8DA0C4') +
         ';width:56px;flex:0 0 56px;aspect-ratio:1/1;">' + vignette(g.item, true) + '</div>' +
+        (g.coffre ? '<img class="cf ouv" alt="" src="img/shop/coffre_' +
+           encodeURIComponent(g.coffre) + '_ouvert.webp" onerror="this.remove()">' : '') +
         '<div><div class="l" style="color:' + (teinte[g.rarete] || '#8DA0C4') + '">' +
-        ech(nomRarete[g.rarete] || g.rarete) + '</div>' +
+        ech(nomRarete[g.rarete] || g.rarete) +
+        (g.coffreNom ? ' \u00b7 ' + ech(g.coffreNom) : '') + '</div>' +
         '<div class="n">' + ech(g.item.nom) + '</div>' +
         (g.item.pouvoir ? '<div class="l pv">' + ech(g.item.pouvoir) + '</div>' : '') +
         (g.emis && g.plafond
@@ -2730,7 +2741,9 @@
       var b = document.createElement('button');
       b.type = 'button'; b.className = 'swb-cof';
       b.disabled = !(solde >= c.prix);
-      b.innerHTML = '<span><span class="n">' + ech(c.nom) + '</span>' +
+      b.innerHTML = '<img class="cf" alt="" src="img/shop/coffre_' +
+        encodeURIComponent(c.cle) + '.webp" onerror="this.remove()">' +
+        '<span><span class="n">' + ech(c.nom) + '</span>' +
         /* Chaque couple « chance + rarete » est insecable : sans cela la
            ligne cassait entre « 2.8% » et « Epic », et on lisait un chiffre
            qui ne se rapportait a rien. */

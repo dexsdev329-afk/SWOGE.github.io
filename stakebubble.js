@@ -439,8 +439,12 @@
        inventaire —, et y ajoute `gagne` quand la reponse suit une ouverture.
        La page n'a donc rien a recoller elle-meme. */
     if (m.type === 'shop') {
-      if (m.error) { toast(m.error, 'bad'); }
+      if (m.error) { toast(m.error, 'bad'); sceneFerme(); }
       BOUTIQUE = m;
+      if (m.gagne && m.catalogue) {
+        var rr = (m.catalogue.raretes || []).filter(function (x) { return x.cle === m.gagne.rarete; })[0];
+        sceneRevele(m.gagne, rr && rr.couleur, rr && rr.nom);
+      }
       if (profOnglet === 'sh') profRend();
     }
     /* Les missions du jour arrivent avec les quetes, sur trois messages
@@ -1413,6 +1417,64 @@
       '.swb-course.gagne{border-color:#7CFF9B;' +
         'background:linear-gradient(180deg,rgba(12,46,26,.94),rgba(4,16,10,.96));}' +
       '.swb-course.gagne .t{color:#7CFF9B;}' +
+      /* ---- LA SCENE D'OUVERTURE ----
+         Elle est au-dessus du tiroir ET du voile de la page : c'est le seul
+         moment ou plus rien d'autre ne compte. */
+      /* Le voile monte a .96 avec un flou : a .88 les panneaux du tiroir
+         restaient lisibles derriere et se battaient avec le nom du fruit —
+         on lisait « 45% Common » a travers « Miracle Fruit ». Le flou fait
+         le reste du travail sans rendre l'ecran opaque. */
+      '.swb-scene{position:fixed;inset:0;z-index:2147483100;display:flex;' +
+        'flex-direction:column;align-items:center;justify-content:center;' +
+        'background:rgba(3,5,12,.96);-webkit-backdrop-filter:blur(7px);' +
+        'backdrop-filter:blur(7px);opacity:0;pointer-events:none;' +
+        'transition:opacity .25s;--teinte:#8DA0C4;' +
+        /* La scene est posee sur le body, elle heritait donc de la police de
+           la PAGE — Space Mono sur les tables, Orbitron sur la roue. Un nom
+           de fruit en machine a ecrire n'a pas l'air d'une recompense. */
+        'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,' +
+        '"Helvetica Neue",Arial,sans-serif;}' +
+      '.swb-scene.on{opacity:1;pointer-events:auto;}' +
+      /* Le halo prend la couleur de la rarete AVANT que le nom s ecrive. */
+      '.swb-scene .halo{position:absolute;width:min(86vw,520px);aspect-ratio:1;' +
+        'border-radius:50%;background:radial-gradient(circle,var(--teinte),transparent 62%);' +
+        'opacity:0;transition:opacity .5s;filter:blur(28px);}' +
+      '.swb-scene.ouvert .halo{opacity:.5;animation:swbPulse 2.4s ease-out infinite;}' +
+      '@keyframes swbPulse{0%,100%{transform:scale(1);}50%{transform:scale(1.12);}}' +
+      '.swb-scene .boite{position:relative;width:min(72vw,340px);aspect-ratio:1;' +
+        'display:flex;align-items:center;justify-content:center;}' +
+      '.swb-scene .cof{width:100%;height:100%;object-fit:contain;' +
+        'filter:drop-shadow(0 14px 30px rgba(0,0,0,.7));}' +
+      /* Le tremblement dit « il se passe quelque chose » pendant l attente
+         reseau. Il s arrete net a l ouverture — un coffre ouvert qui tremble
+         encore se lirait comme un defaut. */
+      '.swb-scene.on:not(.ouvert) .cof{animation:swbTremble .42s ease-in-out infinite;}' +
+      '@keyframes swbTremble{0%,100%{transform:translate3d(0,0,0) rotate(0);}' +
+        '25%{transform:translate3d(-4px,1px,0) rotate(-1.6deg);}' +
+        '75%{transform:translate3d(4px,-1px,0) rotate(1.6deg);}}' +
+      '.swb-scene.ouvert .cof{animation:swbBond .5s cubic-bezier(.2,1.6,.4,1);}' +
+      '@keyframes swbBond{0%{transform:scale(.86);}60%{transform:scale(1.08);}100%{transform:scale(1);}}' +
+      /* Le fruit SORT du coffre : il part petit, au centre, et monte. */
+      '.swb-scene .fr{position:absolute;width:52%;height:52%;object-fit:contain;' +
+        'opacity:0;transform:translateY(6%) scale(.3);}' +
+      '.swb-scene.ouvert .fr{animation:swbSort .85s .18s cubic-bezier(.16,1,.3,1) forwards;' +
+        'filter:drop-shadow(0 0 22px var(--teinte));}' +
+      '@keyframes swbSort{0%{opacity:0;transform:translateY(6%) scale(.3);}' +
+        '55%{opacity:1;}100%{opacity:1;transform:translateY(-26%) scale(1);}}' +
+      '.swb-scene .txt{text-align:center;margin-top:-4px;padding:0 18px;max-width:520px;' +
+        'opacity:0;transform:translateY(8px);transition:opacity .4s .55s,transform .4s .55s;}' +
+      '.swb-scene.ouvert .txt{opacity:1;transform:none;}' +
+      '.swb-scene .rar{font-size:12px;letter-spacing:2.4px;text-transform:uppercase;' +
+        'font-weight:800;color:var(--teinte);}' +
+      '.swb-scene .nom{font-size:26px;font-weight:800;margin:3px 0 5px;color:#F2F7FF;}' +
+      '.swb-scene .num{font-size:13px;font-weight:800;color:#E7C97A;letter-spacing:.6px;}' +
+      '.swb-scene .pv{font-size:12.5px;font-style:italic;color:#8DA0C4;margin-top:7px;line-height:1.5;}' +
+      '.swb-scene .tap{position:absolute;bottom:34px;font-size:11px;letter-spacing:1.6px;' +
+        'text-transform:uppercase;color:#5C6B85;opacity:0;transition:opacity .4s 1s;}' +
+      '.swb-scene.ouvert .tap{opacity:1;}' +
+      /* Un joueur qui a demande moins d animations n en recoit pas. */
+      '@media (prefers-reduced-motion:reduce){.swb-scene *{animation:none!important;' +
+        'transition:none!important;}.swb-scene .fr{opacity:1;transform:translateY(-26%) scale(1);}}' +
       '.swb-r{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;}' +
       /* La case MANQUANTE garde la couleur de sa rarete, en pointille et
          eteinte : c'est elle qui dit ce qu'on cherche. Une case grise
@@ -2812,6 +2874,7 @@
            le bruit, et c'est precisement ce qui fait qu'une interface parait
            molle. Le coffre s'ouvre quand on appuie. */
         joueCoffre(c.cle);
+        sceneOuvre(c.cle);
         if (etat.socket && etat.socket.readyState === 1)
           etat.socket.send(JSON.stringify({ type: 'shopOpen', chest: c.cle }));
       });
@@ -3093,6 +3156,97 @@
     if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
     joueCoffre('clic');
   }, true);
+
+  /*
+   * ================== L'OUVERTURE, AU CENTRE DE L'ECRAN ==================
+   *
+   * Sans ca, le coffre OUVERT n'existait qu'en vignette de quarante-six
+   * pixels dans une banniere — deux dessins sur six ne servaient a rien.
+   *
+   * ---- l'attente est REELLE, elle n'est pas jouee ----
+   *
+   * La scene s'ouvre au CLIC, avec le coffre ferme qui tremble. Elle ne
+   * s'ouvre pas quand le serveur repond : entre les deux il y a un
+   * aller-retour reseau, et c'est precisement cette attente-la qu'on met en
+   * scene. Aucune temporisation n'est ajoutee pour faire durer.
+   *
+   * Une seule borne, dans l'autre sens : un plancher de 900 ms. Sur une
+   * connexion rapide la reponse arrive en cinquante millisecondes, et le
+   * coffre s'ouvrirait avant d'avoir eu l'air ferme — on verrait un
+   * clignotement, pas une ouverture. Le plancher ne RALENTIT rien, il
+   * garantit que l'image ferme a ete vue.
+   *
+   * ---- la rarete se lit avant le nom ----
+   *
+   * La lueur derriere le coffre prend la couleur de la rarete au moment de
+   * l'ouverture. Le joueur sait qu'il a un legendaire a la couleur, une
+   * demi-seconde avant que le mot s'affiche — et c'est la demi-seconde qui
+   * fait le jeu.
+   */
+  var scene = null, sceneT0 = 0, sceneAttente = null;
+
+  function sceneMonte() {
+    if (scene) return scene;
+    scene = document.createElement('div');
+    scene.className = 'swb-scene';
+    scene.innerHTML =
+      '<div class="halo"></div>' +
+      '<div class="boite">' +
+        '<img class="cof" alt="">' +
+        '<img class="fr" alt="">' +
+      '</div>' +
+      '<div class="txt"><div class="rar"></div><div class="nom"></div>' +
+        '<div class="num"></div><div class="pv"></div></div>' +
+      '<div class="tap">tap to close</div>';
+    /* Un clic n'importe ou ferme. Personne ne cherche un bouton de
+       fermeture sur un ecran qui dure deux secondes. */
+    scene.addEventListener('click', sceneFerme);
+    document.body.appendChild(scene);
+    return scene;
+  }
+  function sceneFerme() {
+    if (!scene) return;
+    scene.classList.remove('on', 'ouvert');
+    clearTimeout(sceneAttente); sceneAttente = null;
+    setTimeout(function () { if (scene && !scene.classList.contains('on')) scene.style.display = 'none'; }, 260);
+  }
+  /** Au clic : le coffre ferme, qui tremble. */
+  function sceneOuvre(cle) {
+    var e = sceneMonte();
+    e.style.display = '';
+    e.classList.remove('ouvert');
+    e.querySelector('.cof').src = 'img/shop/coffre_' + encodeURIComponent(cle) + '.webp';
+    e.querySelector('.fr').removeAttribute('src');
+    e.querySelector('.rar').textContent = '';
+    e.querySelector('.nom').textContent = '';
+    e.querySelector('.num').textContent = '';
+    e.querySelector('.pv').textContent = '';
+    e.style.setProperty('--teinte', '#8DA0C4');
+    /* Le reflow force l'animation a repartir quand on rouvre aussitot. */
+    void e.offsetWidth;
+    e.classList.add('on');
+    sceneT0 = Date.now();
+  }
+  /** A la reponse : le couvercle s'ouvre et le fruit sort. */
+  function sceneRevele(g, teinte, nomRarete) {
+    if (!scene || !scene.classList.contains('on')) return;
+    var reste = Math.max(0, 900 - (Date.now() - sceneT0));
+    clearTimeout(sceneAttente);
+    sceneAttente = setTimeout(function () {
+      if (!scene || !scene.classList.contains('on')) return;
+      scene.style.setProperty('--teinte', teinte || '#8DA0C4');
+      scene.querySelector('.cof').src =
+        'img/shop/coffre_' + encodeURIComponent(g.coffre) + '_ouvert.webp';
+      scene.querySelector('.fr').src =
+        'img/shop/' + encodeURIComponent(g.item.cle) + '.webp';
+      scene.querySelector('.rar').textContent = nomRarete || '';
+      scene.querySelector('.nom').textContent = g.item.nom;
+      scene.querySelector('.num').textContent =
+        (g.emis && g.plafond) ? '#' + nb(g.emis, 0) + ' of ' + nb(g.plafond, 0) : '';
+      scene.querySelector('.pv').textContent = g.item.pouvoir || '';
+      scene.classList.add('ouvert');
+    }, reste);
+  }
 
   /* La synthese, seule. Sortie separee pour que le repli puisse l'appeler. */
   function sonSynthese(cle, vol) {

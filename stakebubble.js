@@ -1300,7 +1300,23 @@
       '-ms-overflow-style:none;}' +
       '.swp .swp-t::-webkit-scrollbar,.swp .swp-l::-webkit-scrollbar,' +
       '.swp .swp-form::-webkit-scrollbar{width:0;height:0;display:none;}' +
-      '@media (min-width:900px){.swp{width:min(46vw,440px);}}' +
+      /* ---- LE TIROIR S'ELARGIT SUR GRAND ECRAN ----
+       *
+       * Il plafonnait a 440 px : quarante de plus que sur telephone, pour un
+       * ecran trois fois plus large. Tout le monde lisait la version
+       * telephone, y compris sur un 27 pouces, et la planche de collection y
+       * tenait des cases de 78 px alors qu'il y avait la place pour le double.
+       *
+       * Deux paliers plutot qu'un seul saut : a 900 px on a la place d'un
+       * vrai panneau, a 1280 celle d'un panneau confortable. Le `vw` garde la
+       * main sur les fenetres etroites — un navigateur a 950 px de large ne
+       * doit pas se faire manger les deux tiers par un tiroir. */
+      '@media (min-width:900px){.swp{width:min(58vw,600px);}}' +
+      '@media (min-width:1280px){.swp{width:min(46vw,760px);}}' +
+      /* Le nom de l'objet suit la case : a 9,5 px sur une vignette de 123, il
+         se lisait comme une note de bas de page sous un poster. */
+      '@media (min-width:900px){.swb-o{font-size:11px;padding:6px 6px 3px;}' +
+        '.swb-r{gap:7px;}}' +
       '.swp-h{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:12px 15px;' +
       'border-bottom:1px solid rgba(255,197,61,.26);background:rgba(255,197,61,.08);}' +
       /* ---- L ECHELLE ----

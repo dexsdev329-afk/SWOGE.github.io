@@ -1495,8 +1495,19 @@
       '@keyframes swbFlotte{0%,100%{margin-top:0;}50%{margin-top:-10px;}}' +
       /* L'eclair au moment ou le couvercle cede. */
       '.swb-cl{margin:2px 0 6px;}' +
-      '.swb-cl .r{display:flex;align-items:center;gap:9px;padding:6px 9px;border-radius:9px;' +
-        'font-size:12.5px;}' +
+      '.swb-cl .r{padding:6px 9px 7px;border-radius:9px;font-size:12.5px;}' +
+      '.swb-cl .r .h{display:flex;align-items:center;gap:9px;}' +
+      /* LA RANGEE DE TRENTE. Une grille de trente colonnes egales : elle
+         occupe toute la largeur quelle que soit la taille du tiroir, et les
+         cases restent alignees d'une ligne a l'autre — c'est cet alignement
+         qui permet de comparer deux joueurs d'un regard. */
+      '.swb-cl .bar{display:grid;grid-template-columns:repeat(30,1fr);gap:1px;' +
+        'margin:5px 0 0 33px;}' +
+      '.swb-cl .bar span{position:relative;aspect-ratio:1;border-radius:3px;' +
+        'background:rgba(255,255,255,.05);}' +
+      '.swb-cl .bar span.a{background:rgba(0,0,0,.35);' +
+        'box-shadow:inset 0 0 0 1px var(--t),0 0 5px -1px var(--t);}' +
+      '.swb-cl .bar img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;}' +
       '.swb-cl .r:nth-child(odd){background:rgba(255,255,255,.035);}' +
       '.swb-cl .r.moi{background:rgba(255,197,61,.13);' +
         'box-shadow:inset 0 0 0 1px rgba(255,197,61,.32);}' +
@@ -3051,26 +3062,53 @@
       tb.innerHTML = CL.top.map(function (x) {
         var moi = CL.moi && x.rang === CL.moi.rang && x.sortes === CL.moi.sortes;
         if (moi) dedans = true;
-        return ligneCl(x, moi, teinte);
+        return ligneCl(x, moi, teinte, null, C);
       }).join('') +
         /* Si le joueur n'est pas dans le haut, sa ligne est ajoutee a part.
            Un classement ou l'on ne se trouve pas ne sert a rien. */
         (CL.moi && !dedans
-          ? '<div class="sep"></div>' + ligneCl(CL.moi, true, teinte, 'You')
+          ? '<div class="sep"></div>' + ligneCl(CL.moi, true, teinte, 'You', C)
           : '');
       l.appendChild(tb);
     }
   }
 
-  /* Une ligne du classement. `nom` force le libelle — la ligne du joueur
-     hors du haut n'a pas de nom a afficher, elle a « You ». */
-  function ligneCl(x, moi, teinte, nom) {
+  /*
+   * Une ligne du classement, avec SA RANGEE DE TRENTE FRUITS.
+   *
+   * Les fruits possedes sont allumes, les manquants restent eteints et gris.
+   * Un nombre — « 26/30 » — dit la meme chose, mais on ne voit pas d'un coup
+   * d'oeil QUI a les mythiques ni ou sont les trous. La rangee, si : elle se
+   * lit comme un code-barres, et celle du premier brille plus que les autres
+   * sans qu'on ait a comparer deux chiffres.
+   *
+   * Chaque fruit garde sa couleur de rarete en halo : une case rouge allumee
+   * au milieu d'une rangee terne se repere avant qu'on ait lu le nom.
+   *
+   * `nom` force le libelle — la ligne du joueur hors du haut n'a pas de nom a
+   * afficher, elle a « You ».
+   */
+  function ligneCl(x, moi, teinte, nom, C) {
+    var strip = '';
+    if (x.avoir && C && C.items) {
+      strip = '<div class="bar">' + C.items.map(function (o, i) {
+        var a = x.avoir.charAt(i) === '1';
+        return '<span class="' + (a ? 'a' : '') + '"' +
+          (a ? ' style="--t:' + (teinte[o.rarete] || '#8DA0C4') + '"' : '') +
+          ' title="' + ech(o.nom) + '">' +
+          (a ? '<img alt="" src="img/shop/' + encodeURIComponent(o.cle) +
+               '.webp" loading="lazy" onerror="this.remove()">' : '') +
+          '</span>';
+      }).join('') + '</div>';
+    }
     return '<div class="r' + (moi ? ' moi' : '') + '">' +
-      '<span class="rg">' + (x.rang <= 3 ? ['\uD83E\uDD47','\uD83E\uDD48','\uD83E\uDD49'][x.rang - 1] : x.rang) + '</span>' +
-      '<span class="nm">' + ech(nom || x.nom) + '</span>' +
-      (x.pleines ? '<span class="fp">' + x.pleines + '\u00d7 5/5</span>' : '') +
-      '<span class="sc" style="color:' + (teinte[x.meilleure] || '#8DA0C4') + '">' +
-        x.sortes + '<i>/30</i></span></div>';
+      '<div class="h">' +
+        '<span class="rg">' + (x.rang <= 3 ? ['\uD83E\uDD47','\uD83E\uDD48','\uD83E\uDD49'][x.rang - 1] : x.rang) + '</span>' +
+        '<span class="nm">' + ech(nom || x.nom) + '</span>' +
+        (x.pleines ? '<span class="fp">' + x.pleines + '\u00d7 5/5</span>' : '') +
+        '<span class="sc" style="color:' + (teinte[x.meilleure] || '#8DA0C4') + '">' +
+          x.sortes + '<i>/30</i></span>' +
+      '</div>' + strip + '</div>';
   }
 
   /* Le nom, toujours ; le dessin par-dessus, s'il existe. L'image se retire

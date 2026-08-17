@@ -1494,6 +1494,19 @@
         'swbFlotte 3.4s 1.5s ease-in-out infinite;}' +
       '@keyframes swbFlotte{0%,100%{margin-top:0;}50%{margin-top:-10px;}}' +
       /* L'eclair au moment ou le couvercle cede. */
+      '.swb-cl{margin:2px 0 6px;}' +
+      '.swb-cl .r{display:flex;align-items:center;gap:9px;padding:6px 9px;border-radius:9px;' +
+        'font-size:12.5px;}' +
+      '.swb-cl .r:nth-child(odd){background:rgba(255,255,255,.035);}' +
+      '.swb-cl .r.moi{background:rgba(255,197,61,.13);' +
+        'box-shadow:inset 0 0 0 1px rgba(255,197,61,.32);}' +
+      '.swb-cl .rg{flex:0 0 24px;text-align:center;font-weight:800;color:#8DA0C4;}' +
+      '.swb-cl .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}' +
+      '.swb-cl .fp{flex:0 0 auto;font-size:10px;font-weight:800;color:#7CFF9B;' +
+        'background:rgba(124,255,155,.12);padding:2px 6px;border-radius:6px;}' +
+      '.swb-cl .sc{flex:0 0 auto;font-weight:800;}' +
+      '.swb-cl .sc i{font-style:normal;font-weight:600;color:#5C6B85;font-size:10.5px;}' +
+      '.swb-cl .sep{height:1px;background:rgba(255,255,255,.1);margin:5px 9px;}' +
       '.swb-scene .halo::after{content:"";position:absolute;inset:0;border-radius:50%;' +
         'background:radial-gradient(circle,#fff,transparent 45%);opacity:0;}' +
       '.swb-scene.ouvert .halo::after{animation:swbEclair .55s ease-out forwards;}' +
@@ -3013,6 +3026,51 @@
       });
       l.appendChild(r);
     });
+
+    /* ---- OU SONT LES AUTRES ----
+     *
+     * Pose EN DERNIER, et c'est l'ordre de lecture qui le decide : la course
+     * dit pourquoi jouer, les coffres comment, la planche ou j'en suis, et le
+     * classement ou j'en suis PAR RAPPORT AUX AUTRES. Le mettre plus haut
+     * ferait comparer avant d'avoir regarde sa propre collection.
+     *
+     * Le rang se joue sur les fruits DIFFERENTS, pas sur la quantite : sinon
+     * celui qui ouvre le plus de coffres de bois gagne, alors que la
+     * collection se termine en trouvant ce qu'on n'a pas.
+     */
+    var CL = BOUTIQUE.classement;
+    if (CL && CL.top && CL.top.length) {
+      var ct = document.createElement('div');
+      ct.className = 'swp-g';
+      ct.textContent = 'Collectors — ' + CL.total + ' playing';
+      l.appendChild(ct);
+
+      var tb = document.createElement('div');
+      tb.className = 'swb-cl';
+      var dedans = false;
+      tb.innerHTML = CL.top.map(function (x) {
+        var moi = CL.moi && x.rang === CL.moi.rang && x.sortes === CL.moi.sortes;
+        if (moi) dedans = true;
+        return ligneCl(x, moi, teinte);
+      }).join('') +
+        /* Si le joueur n'est pas dans le haut, sa ligne est ajoutee a part.
+           Un classement ou l'on ne se trouve pas ne sert a rien. */
+        (CL.moi && !dedans
+          ? '<div class="sep"></div>' + ligneCl(CL.moi, true, teinte, 'You')
+          : '');
+      l.appendChild(tb);
+    }
+  }
+
+  /* Une ligne du classement. `nom` force le libelle — la ligne du joueur
+     hors du haut n'a pas de nom a afficher, elle a « You ». */
+  function ligneCl(x, moi, teinte, nom) {
+    return '<div class="r' + (moi ? ' moi' : '') + '">' +
+      '<span class="rg">' + (x.rang <= 3 ? ['\uD83E\uDD47','\uD83E\uDD48','\uD83E\uDD49'][x.rang - 1] : x.rang) + '</span>' +
+      '<span class="nm">' + ech(nom || x.nom) + '</span>' +
+      (x.pleines ? '<span class="fp">' + x.pleines + '\u00d7 5/5</span>' : '') +
+      '<span class="sc" style="color:' + (teinte[x.meilleure] || '#8DA0C4') + '">' +
+        x.sortes + '<i>/30</i></span></div>';
   }
 
   /* Le nom, toujours ; le dessin par-dessus, s'il existe. L'image se retire

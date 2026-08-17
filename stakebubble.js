@@ -445,7 +445,7 @@
         var rr = (m.catalogue.raretes || []).filter(function (x) { return x.cle === m.gagne.rarete; })[0];
         sceneRevele(m.gagne, rr && rr.couleur, rr && rr.nom);
       }
-      if (profOnglet === 'sh') profRend();
+      if (profOnglet === 'sh' || profOnglet === 'cl') profRend();
     }
     /* Les missions du jour arrivent avec les quetes, sur trois messages
        differents selon la page. On les garde ici, et on decore ensuite. */
@@ -1518,6 +1518,14 @@
       '.swb-cl .sc{flex:0 0 auto;font-weight:800;}' +
       '.swb-cl .sc i{font-style:normal;font-weight:600;color:#5C6B85;font-size:10.5px;}' +
       '.swb-cl .sep{height:1px;background:rgba(255,255,255,.1);margin:5px 9px;}' +
+      /* Le renvoi vers la boutique, au bas du classement. Discret — c'est une
+         sortie, pas un appel : le bouton d'achat est dans l'autre section et
+         il n'y a rien a gagner a en poser un faux ici. */
+      '.swb-vers{display:block;width:100%;margin:14px 0 4px;padding:11px;' +
+        'border-radius:12px;border:1px solid rgba(255,255,255,.14);' +
+        'background:rgba(255,255,255,.05);color:#C9D6EE;font:inherit;font-weight:700;' +
+        'font-size:12.5px;cursor:pointer;transition:background .15s,border-color .15s;}' +
+      '.swb-vers:hover{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.26);}' +
       '.swb-scene .halo::after{content:"";position:absolute;inset:0;border-radius:50%;' +
         'background:radial-gradient(circle,#fff,transparent 45%);opacity:0;}' +
       '.swb-scene.ouvert .halo::after{animation:swbEclair .55s ease-out forwards;}' +
@@ -2089,6 +2097,14 @@
       b.textContent = '\uD83D\uDED2 Chests & items';
       b.addEventListener('click', function () { profVa('sh'); });
       t.appendChild(b);
+      /* Le classement, JUSTE EN DESSOUS et dans le meme groupe. Les deux
+         lisent la meme reponse du serveur et parlent de la meme collection :
+         les separer par un titre de groupe suggererait deux sujets. */
+      var c = document.createElement('button');
+      c.type = 'button'; c.dataset.k = 'cl';
+      c.textContent = '\uD83C\uDFC5 Fruit ranking';
+      c.addEventListener('click', function () { profVa('cl'); });
+      t.appendChild(c);
     })();
     FAMILLES.forEach(function (f) {
       var g = document.createElement('div');
@@ -3038,39 +3054,84 @@
       l.appendChild(r);
     });
 
-    /* ---- OU SONT LES AUTRES ----
-     *
-     * Pose EN DERNIER, et c'est l'ordre de lecture qui le decide : la course
-     * dit pourquoi jouer, les coffres comment, la planche ou j'en suis, et le
-     * classement ou j'en suis PAR RAPPORT AUX AUTRES. Le mettre plus haut
-     * ferait comparer avant d'avoir regarde sa propre collection.
-     *
-     * Le rang se joue sur les fruits DIFFERENTS, pas sur la quantite : sinon
-     * celui qui ouvre le plus de coffres de bois gagne, alors que la
-     * collection se termine en trouvant ce qu'on n'a pas.
-     */
-    var CL = BOUTIQUE.classement;
-    if (CL && CL.top && CL.top.length) {
-      var ct = document.createElement('div');
-      ct.className = 'swp-g';
-      ct.textContent = 'Collectors — ' + CL.total + ' playing';
-      l.appendChild(ct);
+  }
 
-      var tb = document.createElement('div');
-      tb.className = 'swb-cl';
-      var dedans = false;
-      tb.innerHTML = CL.top.map(function (x) {
-        var moi = CL.moi && x.rang === CL.moi.rang && x.sortes === CL.moi.sortes;
-        if (moi) dedans = true;
-        return ligneCl(x, moi, teinte, null, C);
-      }).join('') +
-        /* Si le joueur n'est pas dans le haut, sa ligne est ajoutee a part.
-           Un classement ou l'on ne se trouve pas ne sert a rien. */
-        (CL.moi && !dedans
-          ? '<div class="sep"></div>' + ligneCl(CL.moi, true, teinte, 'You', C)
-          : '');
-      l.appendChild(tb);
+  /* ---- OU SONT LES AUTRES : SA PROPRE SECTION ----
+   *
+   * Il vivait au bas de la boutique, apres la course, les trois coffres et la
+   * planche de collection. L'ordre de lecture le justifiait — on se compare
+   * apres avoir regarde sa propre collection — mais il exigeait de faire
+   * defiler quatre blocs pour arriver au cinquieme, et sur un telephone
+   * personne ne va chercher si loin ce qu'il ne sait pas etre la. La question
+   * « je le trouve ou ? » a tranche : une section qu'il faut expliquer n'est
+   * pas au bon endroit.
+   *
+   * Il a donc son entree, JUSTE SOUS la boutique. Le raisonnement d'ordre
+   * tient toujours, il est simplement porte par la liste des sections au lieu
+   * du defilement : on lit « Chests & items » avant « Collectors » parce que
+   * l'un est ecrit au-dessus de l'autre.
+   *
+   * Le rang se joue sur les fruits DIFFERENTS, pas sur la quantite : sinon
+   * celui qui ouvre le plus de coffres de bois gagne, alors que la collection
+   * se termine en trouvant ce qu'on n'a pas.
+   */
+  function rendClassementFruits() {
+    var l = profBoite.querySelector('.swp-l');
+    l.innerHTML = '';
+    /* Les deux sections lisent la MEME reponse du serveur — `boutiqueEtat`
+       porte le catalogue et le classement ensemble. Rien a demander de plus,
+       et rien qui puisse diverger entre les deux vues. */
+    if (!BOUTIQUE || !BOUTIQUE.catalogue) {
+      var att = document.createElement('div');
+      att.className = 'swp-v'; att.textContent = 'Loading…';
+      l.appendChild(att);
+      if (etat.socket && etat.socket.readyState === 1) etat.socket.send('{"type":"shop"}');
+      return;
     }
+    var C = BOUTIQUE.catalogue;
+    var teinte = {};
+    C.raretes.forEach(function (r) { teinte[r.cle] = r.couleur; });
+
+    var CL = BOUTIQUE.classement;
+    if (!CL || !CL.top || !CL.top.length) {
+      /* Personne n'a encore ouvert de coffre. On le DIT, avec le geste qui
+         change ca — un panneau vide sans explication se lit comme une panne,
+         et ici c'est une place a prendre. */
+      var v = document.createElement('div');
+      v.className = 'swp-v';
+      v.textContent = 'No collector yet. Open a chest and you are first on this board.';
+      l.appendChild(v);
+      return;
+    }
+
+    var ct = document.createElement('div');
+    ct.className = 'swp-g';
+    ct.textContent = 'Collectors — ' + CL.total + ' playing';
+    l.appendChild(ct);
+
+    var tb = document.createElement('div');
+    tb.className = 'swb-cl';
+    var dedans = false;
+    tb.innerHTML = CL.top.map(function (x) {
+      var moi = CL.moi && x.rang === CL.moi.rang && x.sortes === CL.moi.sortes;
+      if (moi) dedans = true;
+      return ligneCl(x, moi, teinte, null, C);
+    }).join('') +
+      /* Si le joueur n'est pas dans le haut, sa ligne est ajoutee a part.
+         Un classement ou l'on ne se trouve pas ne sert a rien. */
+      (CL.moi && !dedans
+        ? '<div class="sep"></div>' + ligneCl(CL.moi, true, teinte, 'You', C)
+        : '');
+    l.appendChild(tb);
+
+    /* La sortie : on regarde ou en sont les autres, l'envie qui suit est
+       d'ouvrir un coffre. La section d'a cote est a un clic, mais elle est
+       AU-DESSUS dans la liste — donc invisible depuis le bas de celle-ci. */
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'swb-vers';
+    b.textContent = '🛒 Open a chest';
+    b.addEventListener('click', function () { profVa('sh'); });
+    l.appendChild(b);
   }
 
   /*
@@ -3705,6 +3766,7 @@
        le compte et les sections — donc elle n'est pas dans ONGLETS et son
        titre se pose ici. */
     if (!nom && k === 'sh') nom = 'Shop';
+    if (!nom && k === 'cl') nom = 'Fruit ranking';
     titre.textContent = nom;
     boite.classList.add('detail');
     /* Chaque section repart du haut. Sans ca, on ouvrait « Deposits » deja
@@ -3760,7 +3822,12 @@
     /* On redemande a chaque ouverture, et on efface l'objet gagne : la
        banniere « vous avez obtenu… » appartient a l'ouverture qui vient
        d'avoir lieu, pas a la visite suivante. */
-    if (k === 'sh') {
+    if (k === 'sh' || k === 'cl') {
+      /* On efface l'objet gagne : la banniere « vous avez obtenu… »
+         appartient a l'ouverture qui vient d'avoir lieu, pas a la visite
+         suivante. Le classement demande la MEME chose — une seule reponse du
+         serveur porte le catalogue et le classement — donc les deux sections
+         se rafraichissent l'une l'autre au lieu de se contredire. */
       if (BOUTIQUE) BOUTIQUE = { catalogue: BOUTIQUE.catalogue, inventaire: BOUTIQUE.inventaire };
       if (etat.socket && etat.socket.readyState === 1) {
         try { etat.socket.send('{"type":"shop"}'); } catch (e) {}
@@ -3792,6 +3859,12 @@
       if (etat.socket && etat.socket.readyState === 1) etat.socket.send('{"type":"profile"}');
       return;
     }
+    /* La boutique et le classement ne lisent AUCUN journal : ils se servent
+       de `shop`, deja demande par profVa. Sans cette sortie, ouvrir la
+       boutique envoyait quand meme une demande d'historique de genre inconnu
+       — que le serveur honore en relisant tout le journal du joueur pour
+       rendre vingt-cinq lignes que personne n'affiche. */
+    if (profOnglet === 'sh' || profOnglet === 'cl') return;
     if (profCharge) return;
     if (!etat.socket || etat.socket.readyState !== 1) { profRend(); return; }
     profCharge = true;
@@ -4466,6 +4539,7 @@
     if (profOnglet === 'in') { profEnTete(); return rendInvite(); }
     if (profOnglet === 'lb') { profEnTete(); return rendClassement(); }
     if (profOnglet === 'sh') { profEnTete(); return rendBoutique(); }
+    if (profOnglet === 'cl') { profEnTete(); return rendClassementFruits(); }
     var l = profBoite.querySelector('.swp-l');
     var sous = profBoite.querySelector('.swp-sub');
     if (profResume) {

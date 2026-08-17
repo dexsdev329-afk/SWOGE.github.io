@@ -1441,8 +1441,11 @@
         'opacity:0;transition:opacity .5s;filter:blur(28px);}' +
       '.swb-scene.ouvert .halo{opacity:.5;animation:swbPulse 2.4s ease-out infinite;}' +
       '@keyframes swbPulse{0%,100%{transform:scale(1);}50%{transform:scale(1.12);}}' +
-      '.swb-scene .boite{position:relative;width:min(72vw,340px);aspect-ratio:1;' +
+      '.swb-scene .boite{position:relative;width:min(74vw,360px);aspect-ratio:1;' +
         'display:flex;align-items:center;justify-content:center;}' +
+      /* Le fruit finit PLUS HAUT et PLUS GRAND que la boite : sans marge, il
+         serait rogne en haut sur un ecran court. */
+      '.swb-scene .boite{margin-top:6vh;}' +
       '.swb-scene .cof{width:100%;height:100%;object-fit:contain;' +
         'filter:drop-shadow(0 14px 30px rgba(0,0,0,.7));}' +
       /* Le tremblement dit « il se passe quelque chose » pendant l attente
@@ -1452,15 +1455,50 @@
       '@keyframes swbTremble{0%,100%{transform:translate3d(0,0,0) rotate(0);}' +
         '25%{transform:translate3d(-4px,1px,0) rotate(-1.6deg);}' +
         '75%{transform:translate3d(4px,-1px,0) rotate(1.6deg);}}' +
-      '.swb-scene.ouvert .cof{animation:swbBond .5s cubic-bezier(.2,1.6,.4,1);}' +
-      '@keyframes swbBond{0%{transform:scale(.86);}60%{transform:scale(1.08);}100%{transform:scale(1);}}' +
-      /* Le fruit SORT du coffre : il part petit, au centre, et monte. */
-      '.swb-scene .fr{position:absolute;width:52%;height:52%;object-fit:contain;' +
-        'opacity:0;transform:translateY(6%) scale(.3);}' +
-      '.swb-scene.ouvert .fr{animation:swbSort .85s .18s cubic-bezier(.16,1,.3,1) forwards;' +
-        'filter:drop-shadow(0 0 22px var(--teinte));}' +
-      '@keyframes swbSort{0%{opacity:0;transform:translateY(6%) scale(.3);}' +
-        '55%{opacity:1;}100%{opacity:1;transform:translateY(-26%) scale(1);}}' +
+      /* ---- LE COFFRE S'EFFACE DEVANT LE FRUIT ----
+         Il rebondit a l'ouverture, puis RECULE : il retrecit un peu et
+         s'assombrit pendant que le fruit monte. Sans ce retrait, deux objets
+         de meme taille se disputent le centre et l'oeil ne sait pas lequel
+         regarder — c'est ce qui rendait le fruit minuscule alors qu'il ne
+         l'etait pas. */
+      '.swb-scene.ouvert .cof{animation:swbBond 1.5s cubic-bezier(.2,1.6,.4,1) forwards;}' +
+      '@keyframes swbBond{0%{transform:scale(.86);filter:brightness(1);}' +
+        '18%{transform:scale(1.08);}' +
+        '34%{transform:scale(1);filter:brightness(1.25);}' +
+        '100%{transform:scale(.84) translateY(9%);filter:brightness(.62);}}' +
+      /* ---- LE FRUIT SORT, ET IL GRANDIT SANS S'ARRETER ----
+       *
+       * Il partait a 30 % pour finir a 100 % d'une boite qui n'en faisait que
+       * la moitie : a l'arrivee il etait plus petit que le coffre, ce qui se
+       * lisait comme une deception. Il part maintenant de tout au fond —
+       * 12 %, enfonce dans le coffre — et finit PLUS GRAND que lui.
+       *
+       * La montee est en deux temps et c'est ce qui la rend satisfaisante :
+       * une sortie franche jusqu'aux trois quarts, puis un dernier quart
+       * lent qui laisse le temps de regarder. Une courbe uniforme donne un
+       * mouvement de machine. */
+      '.swb-scene .fr{position:absolute;width:100%;height:100%;object-fit:contain;' +
+        'opacity:0;transform:translateY(16%) scale(.12);will-change:transform,opacity;}' +
+      '.swb-scene.ouvert .fr{animation:swbSort 1.35s .1s cubic-bezier(.12,.72,.18,1) forwards;}' +
+      '@keyframes swbSort{' +
+        '0%{opacity:0;transform:translateY(16%) scale(.12);' +
+          'filter:drop-shadow(0 0 0 var(--teinte));}' +
+        '14%{opacity:1;}' +
+        '62%{transform:translateY(-16%) scale(.78);' +
+          'filter:drop-shadow(0 0 26px var(--teinte));}' +
+        '100%{opacity:1;transform:translateY(-30%) scale(1.06);' +
+          'filter:drop-shadow(0 0 34px var(--teinte));}}' +
+      /* Une fois pose, il respire. Un objet parfaitement immobile a l'air
+         d'une image ; celui-la a l'air de flotter. */
+      '.swb-scene.ouvert .fr{animation:swbSort 1.35s .1s cubic-bezier(.12,.72,.18,1) forwards,' +
+        'swbFlotte 3.4s 1.5s ease-in-out infinite;}' +
+      '@keyframes swbFlotte{0%,100%{margin-top:0;}50%{margin-top:-10px;}}' +
+      /* L'eclair au moment ou le couvercle cede. */
+      '.swb-scene .halo::after{content:"";position:absolute;inset:0;border-radius:50%;' +
+        'background:radial-gradient(circle,#fff,transparent 45%);opacity:0;}' +
+      '.swb-scene.ouvert .halo::after{animation:swbEclair .55s ease-out forwards;}' +
+      '@keyframes swbEclair{0%{opacity:0;transform:scale(.2);}' +
+        '22%{opacity:.85;}100%{opacity:0;transform:scale(1.5);}}' +
       '.swb-scene .txt{text-align:center;margin-top:-4px;padding:0 18px;max-width:520px;' +
         'opacity:0;transform:translateY(8px);transition:opacity .4s .55s,transform .4s .55s;}' +
       '.swb-scene.ouvert .txt{opacity:1;transform:none;}' +
@@ -1474,7 +1512,8 @@
       '.swb-scene.ouvert .tap{opacity:1;}' +
       /* Un joueur qui a demande moins d animations n en recoit pas. */
       '@media (prefers-reduced-motion:reduce){.swb-scene *{animation:none!important;' +
-        'transition:none!important;}.swb-scene .fr{opacity:1;transform:translateY(-26%) scale(1);}}' +
+        'transition:none!important;}.swb-scene .fr{opacity:1;' +
+        'transform:translateY(-30%) scale(1.06);}}' +
       '.swb-r{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;}' +
       /* La case MANQUANTE garde la couleur de sa rarete, en pointille et
          eteinte : c'est elle qui dit ce qu'on cherche. Une case grise

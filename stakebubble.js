@@ -1369,6 +1369,8 @@
       '.swb-fam b{font-size:12px;letter-spacing:.6px;text-transform:uppercase;color:#E7C97A;}' +
       '.swb-fam i{font-style:normal;font-size:11px;color:#8DA0C4;margin-left:auto;}' +
       '.swb-fam.plein i{color:#7CFF9B;font-weight:800;}' +
+      '.swb-mention{font-size:10.5px;color:#8DA0C4;line-height:1.5;margin:-2px 2px 4px;font-style:italic;}' +
+      '.swb-gain .pv{font-style:italic;margin-top:2px;line-height:1.35;}' +
       '.swb-r{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;}' +
       /* La case MANQUANTE garde la couleur de sa rarete, en pointille et
          eteinte : c'est elle qui dit ce qu'on cherche. Une case grise
@@ -2684,6 +2686,7 @@
         '<div><div class="l" style="color:' + (teinte[g.rarete] || '#8DA0C4') + '">' +
         ech(nomRarete[g.rarete] || g.rarete) + '</div>' +
         '<div class="n">' + ech(g.item.nom) + '</div>' +
+        (g.item.pouvoir ? '<div class="l pv">' + ech(g.item.pouvoir) + '</div>' : '') +
         (g.quantite > 1 ? '<div class="l">You now own ' + g.quantite + '</div>' : '') + '</div>';
       l.appendChild(gd);
     }
@@ -2734,6 +2737,17 @@
       (combien > sortes ? ' (' + combien + ' owned)' : '');
     l.appendChild(ttl);
 
+    /* CE QUE LES FRUITS NE FONT PAS, ecrit avant la collection et pas apres.
+       Ils portent des phrases de pouvoir — « une traction sur les chances »,
+       « le tout etait ecrit ». Sur un site ou l'on joue de l'argent, laisser
+       croire qu'un objet achete modifie les chances serait une affirmation
+       fausse sur un produit de jeu, et le fait qu'elle soit sous-entendue
+       plutot qu'ecrite n'y change rien. */
+    var mn = document.createElement('div');
+    mn.className = 'swb-mention';
+    mn.textContent = 'Powers are flavour. No fruit changes the odds, the payouts or anything else in a game.';
+    l.appendChild(mn);
+
     if (!sortes) {
       var v = document.createElement('div');
       v.className = 'swb-vide';
@@ -2752,7 +2766,7 @@
 
       var tete = document.createElement('div');
       tete.className = 'swb-fam' + (eus === lot.length ? ' plein' : '');
-      tete.innerHTML = '<b>' + ech(f.nom) + '</b>' +
+      tete.innerHTML = '<b style="color:' + (f.couleur || '#E7C97A') + '">' + ech(f.nom) + '</b>' +
         '<i>' + eus + '/' + lot.length + (eus === lot.length ? ' \u2713' : '') + '</i>';
       l.appendChild(tete);
 
@@ -2763,7 +2777,8 @@
         var q = o ? (inv[o.id] || 0) : 0;
         d.className = 'swb-o' + (q ? '' : ' vide');
         d.style.borderColor = teinte[C.raretes[i].cle] || '#8DA0C4';
-        d.title = (o ? o.nom : '') + ' \u2014 ' + C.raretes[i].nom + (q ? '' : ' (missing)');
+        d.title = (o ? o.nom : '') + ' \u2014 ' + C.raretes[i].nom +
+                  (q ? (o.pouvoir ? '\n' + o.pouvoir : '') : ' (missing)');
         d.innerHTML = o
           ? (q ? vignette(o) : '<span class="t">' + ech(C.raretes[i].nom) + '</span>')
           : '';

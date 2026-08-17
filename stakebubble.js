@@ -2898,6 +2898,27 @@
    * la boutique.
    */
   var sonCtx = null, sonFichier = {};
+  /*
+   * ---- COMBIEN DE TEMPS ON LAISSE JOUER CHAQUE SON ----
+   *
+   * Les fichiers fournis sont bien plus longs que ce qu'un geste d'interface
+   * supporte. Mesure de l'enveloppe, par tranches de cinquante millisecondes :
+   *
+   *   clic    3,07 s de fichier, mais l'energie tient dans les 150 premieres
+   *           millisecondes — le reste est du silence encode ;
+   *   bois    1,28 s, du son jusqu'a 0,50 ;
+   *   or     10,77 s, du son jusqu'a 7,75. C'est « opening AND item catch » :
+   *           l'ouverture PUIS la fanfare de l'objet. On garde l'ouverture ;
+   *   mythe   4,46 s, du son jusqu'a 3,70.
+   *
+   * On coupe A LA LECTURE, pas au fichier. Recouper un mp3 demanderait de le
+   * reencoder — perte de qualite, poids en plus, et une longueur qu'on ne
+   * peut plus regler sans repasser par un outil. Ici c'est un nombre.
+   *
+   * Ce qui se passe sans ces bornes : dix coffres ouverts a la suite font dix
+   * fanfares de sept secondes qui se recouvrent.
+   */
+  var SON_DUREE = { clic: 200, bois: 700, or: 2600, mythe: 3100 };
   function sonVolume() {
     var v = parseFloat(localStorage.getItem('swogeSfxVol'));
     return isNaN(v) ? 0.7 : Math.max(0, Math.min(1, v));
@@ -2958,6 +2979,13 @@
         sonNote(ctx, out, t + i * 0.075, f * 2, 0.06, 0.35, 'sine');
       });
     },
+    /* CLIC — un declic sec et tres court. Sert de repli si le fichier manque :
+       sans lui, `sonSynthese` retomberait sur le coffre de bois et chaque
+       bouton du site ferait le bruit d'un couvercle. */
+    clic: function (ctx, out, t) {
+      sonSouffle(ctx, out, t, 2600, 3, 0.14, 0.022);
+      sonNote(ctx, out, t, 1400, 0.07, 0.02, 'square');
+    },
     /* MYTHE — le dong. Un gong n'est pas une note : ses partiels ne sont PAS
        des multiples entiers de la fondamentale (2,76 et 5,40 ici), et c'est
        exactement ce qui fait la difference entre une cloche et un orgue. */
@@ -2985,6 +3013,34 @@
       sonNote(ctx, out, t + 0.28, 110, 0.07, 2.0, 'sine');
     },
   };
+
+  /*
+   * ---- LE CLIC, SUR TOUT LE SITE ----
+   *
+   * Un seul ecouteur, sur le document, en phase de CAPTURE. Poser un
+   * gestionnaire sur chaque bouton demanderait de repasser sur les vingt-six
+   * pages et d'y penser a chaque bouton ajoute ensuite ; la delegation le
+   * fait une fois pour toutes, y compris pour les boutons crees plus tard.
+   *
+   * La capture plutot que la remontee : un bouton qui appelle
+   * `stopPropagation` — il y en a — ne doit pas avaler son propre clic.
+   *
+   * Ce qui NE sonne pas, et c'est deliberé :
+   *   • les coffres, qui ont deja leur son a eux. Deux sons pour un geste se
+   *     lisent comme un defaut ;
+   *   • les champs de saisie et les listes deroulantes, ou le clic sert a
+   *     placer un curseur, pas a declencher quelque chose ;
+   *   • un element desactive, qui ne fait rien.
+   */
+  var CLIQUABLE = 'button, a, [role="button"], .swp-mir, .swp-t button, summary';
+  document.addEventListener('click', function (e) {
+    var el = e.target && e.target.closest && e.target.closest(CLIQUABLE);
+    if (!el) return;
+    if (el.disabled) return;
+    if (el.closest('.swb-cof')) return;              // le coffre a son propre son
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+    joueCoffre('clic');
+  }, true);
 
   /* La synthese, seule. Sortie separee pour que le repli puisse l'appeler. */
   function sonSynthese(cle, vol) {
@@ -3028,6 +3084,13 @@
         /* Meme un fichier valide peut etre refuse — onglet en arriere-plan,
            politique d'autoplay. On ne reste pas muet pour autant. */
         if (pr && pr.catch) pr.catch(function () { sonSynthese(cle, vol); });
+        var d = SON_DUREE[cle];
+        if (d) {
+          clearTimeout(el.__fin);
+          el.__fin = setTimeout(function () {
+            try { el.pause(); el.currentTime = 0; } catch (e) {}
+          }, d);
+        }
         return;
       } catch (e) {}
     }

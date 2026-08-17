@@ -3917,6 +3917,15 @@
       d.innerHTML = '<div class="w"><b>Withdrawal</b><span>' + quand(e.t) +
                     (e.to ? ' · to ' + court(e.to) : '') + '</span></div>' +
                     '<div class="v"><b class="p">−' + nb(e.m) + '</b><span>$SWOGE</span></div>';
+    } else if (e.k === 'ca') {
+      /* Un credit envoye depuis le panneau : dedommagement, lot, rattrapage.
+         Sans cette ligne, le solde monte sans explication — et un solde qui
+         bouge tout seul se prend pour un bug, ou pour un gain qu'on ira
+         chercher a nouveau. Le motif, quand il y en a un, tient lieu de
+         message : c'est le seul mot que le joueur recevra. */
+      d.innerHTML = '<div class="w"><b>Credited by the team</b><span>' + quand(e.t) +
+                    (e.note ? ' · ' + ech(e.note) : '') + '</span></div>' +
+                    '<div class="v"><b class="g">+' + nb(e.m) + '</b><span>$SWOGE</span></div>';
     } else if (e.k === 'pa') {
       /* Un combine porte ses jambes ; un simple pose avant les combines n'a
          que ses deux champs. On retombe dessus plutot que d'afficher un

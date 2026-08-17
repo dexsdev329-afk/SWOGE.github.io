@@ -1380,7 +1380,10 @@
       '.swb-o{position:relative;aspect-ratio:1/1;border-radius:12px;overflow:hidden;' +
         'background:radial-gradient(120% 120% at 30% 20%,rgba(255,255,255,.07),rgba(0,0,0,.5));' +
         'border:1px solid;display:flex;align-items:flex-end;justify-content:center;' +
-        'padding:5px;font-size:9.5px;line-height:1.15;text-align:center;}' +
+        /* Le nom descend de trois pixels. Cale a cinq de chaque cote il
+           flottait au milieu du bas du dessin ; pose plus bas il se lit
+           comme une legende sous l'image, ce qu'il est. */
+        'padding:5px 5px 2px;font-size:9.5px;line-height:1.15;text-align:center;}' +
       '.swb-o img{position:absolute;inset:9%;width:82%;height:82%;object-fit:contain;}' +
       '.swb-o .q{position:absolute;top:4px;right:5px;font-weight:800;font-size:10px;' +
         'background:rgba(0,0,0,.6);border-radius:6px;padding:1px 4px;}' +

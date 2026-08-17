@@ -616,6 +616,86 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
   font-weight:900; line-height:1; display:inline-flex; align-items:center; }
 .c4-joueur.j1 .pion::before{ content:"✕"; color:#FF6B5A; }
 .c4-joueur.j2 .pion::before{ content:"◯"; color:#5AC8FF; }
+
+/* =======================================================================
+ *                        LA PEINTURE DU MORPION
+ * =======================================================================
+ *
+ * Meme methode que le Connect 4 : le bloc arrive en DERNIER dans la feuille,
+ * il repeint sans rien effacer au-dessus. Si une image manque, la page
+ * retombe sur les glyphes ✕ / ◯ d'origine.
+ *
+ * Le cadre du plateau n'est PAS pose : l'image rendue est defectueuse (seule
+ * la barre du haut a ete peinte, 85 % de la surface est vide). La grille
+ * garde donc ses cases en verre tant que le dessin n'est pas refait.
+ */
+
+/* ---- les deux marques ----
+   Le signe reste dans le HTML pour les lecteurs d'ecran, on le pousse hors
+   du cadre et on peint l'image a sa place. Les deux fichiers n'ont pas la
+   meme hauteur utile : chacun garde le rapport de son dessin. */
+.mo-case .mk{ display:block; width:76%; margin:auto;
+  color:transparent!important; text-shadow:none!important;
+  text-indent:-200vw; overflow:hidden; white-space:nowrap;
+  background:center/contain no-repeat;
+  filter:drop-shadow(0 4px 10px rgba(0,0,0,.55)); }
+.mo-case .mk.p1{ aspect-ratio:640/640; background-image:url('img/mo_x.webp'); }
+.mo-case .mk.p2{ aspect-ratio:640/610; background-image:url('img/mo_o.webp'); }
+
+/* Le jeton du bandeau porte la meme marque, en petit. */
+.c4-joueur .pion::before{ content:""!important; display:block;
+  width:18px; height:18px; background:center/contain no-repeat; }
+.c4-joueur.j1 .pion::before{ background-image:url('img/mo_x.webp'); }
+.c4-joueur.j2 .pion::before{ background-image:url('img/mo_o.webp'); }
+
+/* ---- l'enseigne ----
+   Le titre etait un degrade decoupe sur le texte : on rend le fond au cadre
+   (`border-box`) avant d'y poser la plaque, sinon l'image serait elle aussi
+   decoupee sur les lettres et n'apparaitrait pas. */
+.c4-titre{ width:min(90%,400px); aspect-ratio:640/240; margin:0 auto 2px;
+  background:url('img/mo_titre.webp') center/contain no-repeat;
+  -webkit-background-clip:border-box; background-clip:border-box;
+  color:transparent; filter:none;
+  text-indent:-200vw; overflow:hidden; white-space:nowrap; }
+
+/* ---- les plaques d'action ----
+   Elles sont communes au Connect 4 : memes classes, memes intitules, meme
+   or. On les reprend telles quelles plutot que d'en refaire six. */
+#c4Create, #c4RevSend, .c4-btn[data-abandon], .c4-btn[data-retour]{
+  background:none; box-shadow:none; border:0; padding:0;
+  color:transparent; text-indent:-200vw; overflow:hidden; white-space:nowrap;
+  background-repeat:no-repeat; background-position:center;
+  background-size:100% 100%; height:auto; }
+#c4Create, #c4RevSend{ width:min(100%,320px); aspect-ratio:639/213; }
+#c4Create{ background-image:url('img/c4_p_creer.webp'); }
+#c4RevSend{ background-image:url('img/c4_p_defi.webp'); }
+.c4-btn[data-abandon]{ width:min(100%,190px); aspect-ratio:640/229;
+  background-image:url('img/c4_p_abandon.webp'); }
+.c4-btn[data-retour]{ width:min(100%,210px); aspect-ratio:639/213;
+  background-image:url('img/c4_p_retour.webp'); }
+/* Ne vise que #c4RevBox : la classe `c4-revanche` sert aussi a la liste des
+   demandes recues, dont l'intitule veut dire autre chose. */
+#c4RevBox > .c4-lb{ width:min(78%,240px); aspect-ratio:639/244; margin:0 auto 8px;
+  background:url('img/c4_p_revanche.webp') center/contain no-repeat;
+  text-indent:-200vw; overflow:hidden; white-space:nowrap; display:block; }
+
+/* ---- le jeton de mise ---- */
+.c4-stakes button{ background-image:url('img/c4_mise.webp'); }
+
+/* ---- le fond de la page ----
+   Il va sur `body`, PAS sur `html` : la feuille de base pose deja
+   `html,body{ background:var(--ink) }`, et ce aplat opaque du body recouvre
+   tout ce qu'on mettrait sur html. Le voile de `body::before`, lui, est un
+   descendant en z-index negatif : il se peint par-dessus le fond du body et
+   sous le contenu — l'ordre voulu. */
+body{ background:url('img/mo_fond_large.webp') center center/cover no-repeat fixed;
+      background-color:#0A0713; }
+/* Le voile de la page etait regle sur un fond deja sombre : a .92 il noircit
+   entierement le vestibule du temple. On l'allege juste assez pour que les
+   braseros se devinent derriere le plateau, sans toucher au contraste des
+   textes, qui vivent tous sur leurs propres panneaux opaques. */
+body::before{ background:radial-gradient(ellipse at 50% 34%,
+  rgba(6,4,2,.30), rgba(6,4,2,.80) 74%); }
 </style>
 </head>
 <body>

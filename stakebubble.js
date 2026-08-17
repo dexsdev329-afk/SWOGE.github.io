@@ -1387,6 +1387,9 @@
       '.swb-fam.plein i{color:#7CFF9B;font-weight:800;}' +
       '.swb-mention{font-size:10.5px;color:#8DA0C4;line-height:1.5;margin:-2px 2px 4px;font-style:italic;}' +
       '.swb-gain .pv{font-style:italic;margin-top:2px;line-height:1.35;}' +
+      '.swb-gain .num{font-weight:800;letter-spacing:.4px;margin-top:3px;}' +
+      '.swb-ed{font-style:normal;margin-top:-2px;}' +
+      '.swb-ed b{color:#E7C97A;}' +
       '.swb-r{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;}' +
       /* La case MANQUANTE garde la couleur de sa rarete, en pointille et
          eteinte : c'est elle qui dit ce qu'on cherche. Une case grise
@@ -2713,6 +2716,8 @@
         ech(nomRarete[g.rarete] || g.rarete) + '</div>' +
         '<div class="n">' + ech(g.item.nom) + '</div>' +
         (g.item.pouvoir ? '<div class="l pv">' + ech(g.item.pouvoir) + '</div>' : '') +
+        (g.emis && g.plafond
+           ? '<div class="l num">#' + nb(g.emis, 0) + ' of ' + nb(g.plafond, 0) + '</div>' : '') +
         (g.quantite > 1 ? '<div class="l">You now own ' + g.quantite + '</div>' : '') + '</div>';
       l.appendChild(gd);
     }
@@ -2774,6 +2779,26 @@
     mn.textContent = 'Powers are flavour. No fruit changes the odds, the payouts or anything else in a game.';
     l.appendChild(mn);
 
+    /* LA TAILLE DE L'EDITION, dite en clair. C'est la seule chose qui donne
+       un sens au mot « mythique » : sans elle, une rarete n'est qu'une
+       difficulte d'obtention, et rien ne dit combien il en existera. Le
+       nombre est calcule sur le catalogue recu, pas ecrit en dur — il suit
+       les plafonds du serveur sans qu'on ait a y repenser. */
+    var total = 0, capee = true;
+    C.items.forEach(function (o) {
+      if (!o.plafond) { capee = false; return; }
+      total += o.plafond;
+    });
+    if (capee && total) {
+      var ed = document.createElement('div');
+      ed.className = 'swb-mention swb-ed';
+      ed.innerHTML = 'Season 1 — <b>' + nb(total, 0) + '</b> fruits will ever exist. ' +
+        C.raretes.map(function (r) {
+          return '<span style="color:' + r.couleur + '">' + nb(r.plafond, 0) + ' ' + ech(r.nom) + '</span>';
+        }).join(' \u00b7 ') + ' of each.';
+      l.appendChild(ed);
+    }
+
     if (!sortes) {
       var v = document.createElement('div');
       v.className = 'swb-vide';
@@ -2803,8 +2828,10 @@
         var q = o ? (inv[o.id] || 0) : 0;
         d.className = 'swb-o' + (q ? '' : ' vide');
         d.style.borderColor = teinte[C.raretes[i].cle] || '#8DA0C4';
+        var reste = o && o.plafond ? Math.max(0, o.plafond - (o.emis || 0)) : null;
         d.title = (o ? o.nom : '') + ' \u2014 ' + C.raretes[i].nom +
-                  (q ? (o.pouvoir ? '\n' + o.pouvoir : '') : ' (missing)');
+                  (q ? (o.pouvoir ? '\n' + o.pouvoir : '') : ' (missing)') +
+                  (reste === null ? '' : '\n' + nb(reste, 0) + ' of ' + nb(o.plafond, 0) + ' left');
         d.innerHTML = o
           ? (q ? vignette(o) : '<span class="t">' + ech(C.raretes[i].nom) + '</span>')
           : '';

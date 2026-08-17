@@ -2804,10 +2804,18 @@
      `muet` sert a la banniere du gain, qui ecrit deja le nom a cote : sans
      lui il apparaissait deux fois, l'un sous l'autre. */
   function vignette(o, muet) {
-    return (muet ? '' : '<span class="t">' + ech(o.nom) + '</span>') +
+    return (muet ? '' : '<span class="t">' + ech(courtNom(o.nom)) + '</span>') +
       '<img alt="" src="img/shop/' + encodeURIComponent(o.cle) + '.webp" ' +
       'onerror="this.remove()">';
   }
+
+  /* LE MOT « FRUIT » NE SERT A RIEN DANS LA CASE. Ils le sont tous, et sur
+     une case de soixante-dix-huit pixels il fait passer « Miracle Fruit » sur
+     deux lignes, qui recouvrent alors la moitie du dessin. « Miracle » tient
+     sur une, et la ligne se pose au bas de l'image au lieu de la cacher.
+     Le nom entier reste au survol et dans la banniere du gain, ou la place
+     ne manque pas. */
+  function courtNom(n) { return String(n).replace(/\s+Fruit$/i, ''); }
 
   /* Une chance s'ecrit court : 76 %, 2,8 %, 0,19 %, 0,01 %. `toFixed` fixe
      rendrait « 76.00 % » a cote de « 0.01 % ». */

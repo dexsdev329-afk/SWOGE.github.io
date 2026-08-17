@@ -1398,6 +1398,21 @@
       '.swb-gain .num{font-weight:800;letter-spacing:.4px;margin-top:3px;}' +
       '.swb-ed{font-style:normal;margin-top:-2px;}' +
       '.swb-ed b{color:#E7C97A;}' +
+      '.swb-course{margin:2px 0 13px;padding:11px 13px;border-radius:13px;' +
+        'background:linear-gradient(180deg,rgba(46,36,10,.92),rgba(14,11,4,.95));' +
+        'border:1px solid rgba(255,197,61,.34);}' +
+      '.swb-course .t{font-size:11px;letter-spacing:1.3px;text-transform:uppercase;' +
+        'color:#FFD97A;font-weight:800;margin-bottom:7px;}' +
+      '.swb-course .l{font-size:12.5px;line-height:1.75;}' +
+      '.swb-course .l b{color:#FFE9A8;}' +
+      '.swb-course .l span{color:#8DA0C4;}' +
+      '.swb-course .l.pris{opacity:.55;}' +
+      '.swb-course .l.pris span{color:#7CFF9B;}' +
+      '.swb-course .s{font-size:10.5px;color:#8DA0C4;margin-top:6px;font-style:italic;}' +
+      '.swb-course.finie{opacity:.6;}' +
+      '.swb-course.gagne{border-color:#7CFF9B;' +
+        'background:linear-gradient(180deg,rgba(12,46,26,.94),rgba(4,16,10,.96));}' +
+      '.swb-course.gagne .t{color:#7CFF9B;}' +
       '.swb-r{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;}' +
       /* La case MANQUANTE garde la couleur de sa rarete, en pointille et
          eteinte : c'est elle qui dit ce qu'on cherche. Une case grise
@@ -2718,6 +2733,15 @@
       var g = BOUTIQUE.gagne, gd = document.createElement('div');
       gd.className = 'swb-gain';
       gd.style.borderColor = teinte[g.rarete] || '#8DA0C4';
+      if (g.ligne) {
+        var lg = document.createElement('div');
+        lg.className = 'swb-course gagne';
+        lg.innerHTML = '<div class="t">\uD83C\uDFC6 ' +
+          ['First', 'Second', 'Third'][g.ligne.rang - 1] + ' complete line</div>' +
+          '<div class="l">You finished <b>' + ech(g.ligne.familleNom) + '</b> \u2014 ' +
+          '<b>' + nb(g.ligne.prix, 0) + ' $SWOGE</b> credited</div>';
+        l.appendChild(lg);
+      }
       gd.innerHTML = '<div class="swb-o" style="border-color:' + (teinte[g.rarete] || '#8DA0C4') +
         ';width:56px;flex:0 0 56px;aspect-ratio:1/1;">' + vignette(g.item, true) + '</div>' +
         (g.coffre ? '<img class="cf ouv" alt="" src="img/shop/coffre_' +
@@ -2731,6 +2755,34 @@
            ? '<div class="l num">#' + nb(g.emis, 0) + ' of ' + nb(g.plafond, 0) + '</div>' : '') +
         (g.quantite > 1 ? '<div class="l">You now own ' + g.quantite + '</div>' : '') + '</div>';
       l.appendChild(gd);
+    }
+
+    /* ---- LA COURSE, EN HAUT ----
+     *
+     * Elle est posee AVANT les coffres, et c'est le seul endroit ou elle a du
+     * sens : c'est elle qui donne la raison d'appuyer. Sous la collection,
+     * personne ne la verrait avant d'avoir deja achete.
+     *
+     * Une place prise reste affichee avec le nom de celui qui l'a eue. Les
+     * masquer donnerait une course a trois places qui semble n'avoir jamais
+     * commence ; les montrer dit exactement ou on en est. */
+    var C0 = BOUTIQUE.course;
+    if (C0 && C0.prix && C0.prix.length) {
+      var cr = document.createElement('div');
+      cr.className = 'swb-course' + (C0.restant ? '' : ' finie');
+      var med = ['\uD83E\uDD47', '\uD83E\uDD48', '\uD83E\uDD49'];
+      cr.innerHTML = '<div class="t">' +
+        (C0.restant ? 'First three to complete a family' : 'The race is over')
+        + '</div>' +
+        C0.prix.map(function (px, i) {
+          var g = (C0.gagnants || [])[i];
+          return '<div class="l' + (g ? ' pris' : '') + '">' + med[i] +
+            ' <b>' + nb(px, 0) + '</b> $SWOGE ' +
+            (g ? '<span>\u2014 ' + ech(g.nom) + ' \u00b7 ' + ech(g.familleNom) + '</span>'
+               : '<span>\u2014 still open</span>') + '</div>';
+        }).join('') +
+        (C0.restant ? '<div class="s">Any one family, all five tiers. One prize per player.</div>' : '');
+      l.appendChild(cr);
     }
 
     // ---- les coffres

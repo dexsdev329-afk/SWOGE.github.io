@@ -625,10 +625,55 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
  * il repeint sans rien effacer au-dessus. Si une image manque, la page
  * retombe sur les glyphes ✕ / ◯ d'origine.
  *
- * Le cadre du plateau n'est PAS pose : l'image rendue est defectueuse (seule
- * la barre du haut a ete peinte, 85 % de la surface est vide). La grille
- * garde donc ses cases en verre tant que le dessin n'est pas refait.
  */
+
+/* ---- le cadre du plateau ----
+ *
+ * Decoupage en neuf, comme le Connect 4 : seuls les bords s'etirent, les
+ * quatre coins ornes gardent leur forme a toutes les tailles.
+ *
+ * Les epaisseurs sont MESUREES sur le dessin. Methode : sur dix-neuf lignes
+ * reparties dans la hauteur, on cherche le premier point ou la pierre du
+ * champ s'installe et tient cinquante pixels d'affilee, puis on garde le
+ * MINIMUM — pas la mediane.
+ *
+ * Cette distinction n'est pas un detail de methode, elle se voyait a l'ecran.
+ * Les ornements du milieu de bord plongent vers le centre : la moitie des
+ * lignes les traversent, et la mediane les compte. Elle donnait gauche 71
+ * contre droite 57 sur un cadre pourtant symetrique, et le premier rendu
+ * montrait bien plus de pierre a gauche qu'a droite. Le minimum, lui, tombe
+ * la ou le bord est nu : gauche 58, droite 57 — l'ecart disparait.
+ *
+ * Sur 640 : haut 65, droite 57, bas 75, gauche 58. Le bas EST plus epais que
+ * le haut, celui-la n'est pas un artefact — c'est le dessin.
+ *
+ * Elles sont posees en `cqw` — un pour-cent de la largeur du plateau — sinon
+ * elles resteraient en pixels et le cadre se disloquerait sur telephone.
+ */
+.c4-plateau{ container-type:inline-size; width:min(100%,560px);
+  background:none; border:0; border-radius:0;
+  box-shadow:0 16px 34px rgba(0,0,0,.55);
+  /* Les marges interieures valent l'epaisseur du cadre, PLUS deux points de
+     respiration : cale a l'exact, la case du coin touchait l'or et son halo
+     de victoire debordait sur la gemme. Deux points laissent voir un liseré
+     de pierre tout autour, ce qui pose la grille au lieu de la coincer. */
+  padding:12.2% 10.9% 13.7% 11.1%; }
+.c4-plateau::before{ content:""; position:absolute; inset:0; z-index:0;
+  border-style:solid;
+  border-width:10.16cqw 8.91cqw 11.72cqw 9.06cqw;
+  border-image-source:url('img/mo_plateau.webp');
+  border-image-slice:65 57 75 58 fill;
+  border-image-repeat:stretch;
+  pointer-events:none; }
+/* La grille passe DEVANT le cadre : sans cela le champ central du
+   `border-image` la recouvrirait. Et elle perd son plafond de 420 px —
+   c'est le plateau qui borne la largeur maintenant. */
+.mo-grille{ position:relative; z-index:1; max-width:none; }
+/* Les cases posent sur de la pierre, plus sur le fond de la page : le verre
+   sombre d'origine y faisait des trous. On garde le creux, en plus discret. */
+.mo-case{ background:radial-gradient(120% 120% at 30% 20%,
+    rgba(255,255,255,.06), rgba(0,0,0,.34));
+  border-color:rgba(255,214,130,.20); }
 
 /* ---- les deux marques ----
    Le signe reste dans le HTML pour les lecteurs d'ecran, on le pousse hors

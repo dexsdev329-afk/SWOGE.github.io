@@ -36,7 +36,7 @@
      celle des images de cartes et des reglages. */
   var JEUX = {
     connect4: 'p4', morpion: 'mp', dames: 'dm',
-    morpion_fantome: 'mf', dernier_chiffre: 'dc', pierre_feuille_bandit: 'pf',
+    morpion_fantome: 'mf', dernier_chiffre: 'dc',
   };
   var page = (location.pathname.split('/').pop() || '').replace(/\.html?$/, '');
   var JEU = JEUX[page];
@@ -44,7 +44,7 @@
 
   var NOMS = {
     p4: 'Quatre', mp: 'Croix', dm: 'Damier',
-    mf: 'Fantome', dc: 'Chiffre', pf: 'Bandit',
+    mf: 'Fantome', dc: 'Chiffre',
   };
 
   // ------------------------------------------------------- la socket

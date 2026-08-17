@@ -441,6 +441,7 @@
     if (m.type === 'shop') {
       if (m.error) { toast(m.error, 'bad'); sceneFerme(); }
       BOUTIQUE = m;
+      if (m.saison) SAISON = m.saison;      // c'est le serveur qui tranche
       if (m.gagne && m.catalogue) {
         var rr = (m.catalogue.raretes || []).filter(function (x) { return x.cle === m.gagne.rarete; })[0];
         sceneRevele(m.gagne, rr && rr.couleur, rr && rr.nom);
@@ -887,7 +888,13 @@
   var AMIS = { amis: [], recues: [], envoyees: [] }, EN_ATTENTE = 0, RECHERCHE = [];
   var NON_LUS = 0, PARRAIN = null, STATS = null, CLASSEMENT = null, NIVEAU = null;
   var PRIX_NOM = null;                    // { prix, du, brule, solde }
-  var BOUTIQUE = null;                    // { catalogue, inventaire, gagne? }
+  var BOUTIQUE = null;                    // { catalogue, inventaire, saisons, gagne? }
+  /* La saison REGARDEE. Ce n'est qu'un souhait : le serveur decide, et si elle
+     est fermee il renvoie la premiere. On reprend donc toujours le numero de
+     sa reponse plutot que de garder le notre — deux endroits qui croient
+     savoir quelle saison est affichee finiraient par ne plus etre d'accord,
+     et c'est la planche qui montrerait les mauvais objets. */
+  var SAISON = 1;
   /* Les dix paliers. La couleur fait tout le travail : « Diamond » se
      reconnait a l'oeil bien avant qu'on lise « niveau 47 ». */
   var PALIERS = { Bronze:'#C08457', Silver:'#C8D2DE', Gold:'#FFC53D', Platinum:'#9FE7F5',
@@ -1518,6 +1525,27 @@
       '.swb-cl .sc{flex:0 0 auto;font-weight:800;}' +
       '.swb-cl .sc i{font-style:normal;font-weight:600;color:#5C6B85;font-size:10.5px;}' +
       '.swb-cl .sep{height:1px;background:rgba(255,255,255,.1);margin:5px 9px;}' +
+      /* Le bandeau des saisons. Deux onglets pleine largeur : a deux, une
+         rangee qui se partage l'espace se lit mieux qu'une barre de defilement
+         horizontale — et le jour ou il y en a quatre, le `flex-wrap` les met
+         sur deux lignes au lieu d'en cacher deux. */
+      '.swb-sai{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 13px;}' +
+      '.swb-s{flex:1 1 130px;display:flex;align-items:baseline;gap:6px;' +
+        'padding:9px 11px;border-radius:11px;font:inherit;font-size:12px;cursor:pointer;' +
+        'border:1px solid rgba(255,255,255,.13);background:rgba(255,255,255,.04);' +
+        'color:#8DA0C4;transition:background .15s,border-color .15s,color .15s;}' +
+      '.swb-s b{font-size:12.5px;font-weight:800;letter-spacing:.4px;color:#C9D6EE;}' +
+      '.swb-s:hover:not(:disabled){background:rgba(255,255,255,.08);' +
+        'border-color:rgba(255,255,255,.24);}' +
+      '.swb-s.on{background:rgba(255,197,61,.13);border-color:rgba(255,197,61,.55);color:#FFE9A8;}' +
+      '.swb-s.on b{color:#FFC53D;}' +
+      /* Verrouillee : grisee, mais PAS cachee, et le curseur dit qu'il n'y a
+         rien a cliquer plutot que de laisser essayer. */
+      '.swb-s.clos{opacity:.55;cursor:not-allowed;}' +
+      '.swb-s i{font-style:normal;margin-left:auto;font-size:10px;font-weight:800;' +
+        'letter-spacing:.5px;text-transform:uppercase;white-space:nowrap;}' +
+      '.swb-s i.cl{color:#8DA0C4;}' +
+      '.swb-s i.av{color:#7CFF9B;}' +
       /* Le renvoi vers la boutique, au bas du classement. Discret — c'est une
          sortie, pas un appel : le bouton d'achat est dans l'autre section et
          il n'y a rien a gagner a en poser un faux ici. */
@@ -2860,7 +2888,8 @@
       var att = document.createElement('div');
       att.className = 'swp-v'; att.textContent = 'Loading…';
       l.appendChild(att);
-      if (etat.socket && etat.socket.readyState === 1) etat.socket.send('{"type":"shop"}');
+      if (etat.socket && etat.socket.readyState === 1)
+        etat.socket.send(JSON.stringify({ type: 'shop', season: SAISON }));
       return;
     }
     var C = BOUTIQUE.catalogue, inv = BOUTIQUE.inventaire || {};
@@ -2868,6 +2897,8 @@
     C.raretes.forEach(function (r) { teinte[r.cle] = r.couleur; });
     var nomRarete = {};
     C.raretes.forEach(function (r) { nomRarete[r.cle] = r.nom; });
+
+    rendSaisons(l);
 
     // ---- ce qu'on vient d'ouvrir
     if (BOUTIQUE.gagne) {
@@ -2886,7 +2917,7 @@
       gd.innerHTML = '<div class="swb-o" style="border-color:' + (teinte[g.rarete] || '#8DA0C4') +
         ';width:56px;flex:0 0 56px;aspect-ratio:1/1;">' + vignette(g.item, true) + '</div>' +
         (g.coffre ? '<img class="cf ouv" alt="" src="img/shop/coffre_' +
-           encodeURIComponent(g.coffre) + '_ouvert.webp" onerror="this.remove()">' : '') +
+           encodeURIComponent(g.coffreImage || g.coffre) + '_ouvert.webp" onerror="this.remove()">' : '') +
         '<div><div class="l" style="color:' + (teinte[g.rarete] || '#8DA0C4') + '">' +
         ech(nomRarete[g.rarete] || g.rarete) +
         (g.coffreNom ? ' \u00b7 ' + ech(g.coffreNom) : '') + '</div>' +
@@ -2934,8 +2965,14 @@
       var b = document.createElement('button');
       b.type = 'button'; b.className = 'swb-cof';
       b.disabled = !(solde >= c.prix);
+      /* Le DESSIN suit `image`, pas `cle`. Les caisses d'armes n'ont pas
+         encore le leur et empruntent celui des coffres a fruits ; le jour ou
+         l'art arrive, un seul mot change cote serveur et rien ici. Et c'est
+         aussi ce qui donne le SON : `image` vaut bois, or ou mythe, c'est-a-
+         dire exactement le palier. */
+      var dessin = c.image || c.cle;
       b.innerHTML = '<img class="cf" alt="" src="img/shop/coffre_' +
-        encodeURIComponent(c.cle) + '.webp" onerror="this.remove()">' +
+        encodeURIComponent(dessin) + '.webp" onerror="this.remove()">' +
         '<span><span class="n">' + ech(c.nom) + '</span>' +
         /* Chaque couple « chance + rarete » est insecable : sans cela la
            ligne cassait entre « 2.8% » et « Epic », et on lisait un chiffre
@@ -2952,8 +2989,8 @@
            retour ferait un decalage de plusieurs dixiemes entre le doigt et
            le bruit, et c'est precisement ce qui fait qu'une interface parait
            molle. Le coffre s'ouvre quand on appuie. */
-        joueCoffre(c.cle);
-        sceneOuvre(c.cle);
+        joueCoffre(dessin);
+        sceneOuvre(dessin);
         if (etat.socket && etat.socket.readyState === 1)
           etat.socket.send(JSON.stringify({ type: 'shopOpen', chest: c.cle }));
       });
@@ -3075,6 +3112,54 @@
    * celui qui ouvre le plus de coffres de bois gagne, alors que la collection
    * se termine en trouvant ce qu'on n'a pas.
    */
+  /*
+   * ===================== LE BANDEAU DES SAISONS =====================
+   *
+   * Une saison verrouillee est MONTREE, pas cachee. Cacher la saison 2
+   * jusqu'a son ouverture reviendrait a n'en parler qu'a ceux qui n'ont plus
+   * rien a y gagner : c'est justement pendant qu'elle est fermee qu'elle
+   * donne une raison de finir sa collection.
+   *
+   * D'ou le contenu de la pastille verrouillee : pas « locked », mais ce
+   * qu'il manque exactement — « 1/3 lines ». Un verrou sans compteur se lit
+   * comme une porte murée ; le meme verrou avec « il en manque deux » se lit
+   * comme un objectif.
+   *
+   * La pastille du gagnant en avance dit « early ». C'est la seule chose que
+   * les trois premiers emportent en plus des jetons, et si elle ne s'affiche
+   * nulle part elle n'existe pas.
+   */
+  function rendSaisons(l) {
+    var S = BOUTIQUE.saisons;
+    if (!S || S.length < 2) return;         // une seule saison : rien a choisir
+    var b = document.createElement('div');
+    b.className = 'swb-sai';
+    S.forEach(function (s) {
+      var t = document.createElement('button');
+      t.type = 'button';
+      t.className = 'swb-s' + (s.n === SAISON ? ' on' : '') + (s.ouverte ? '' : ' clos');
+      /* Le nom du serveur porte « Season 2 — Weapons » ; on ne garde que ce
+         qui distingue, la place est comptee sur un telephone. */
+      var court = String(s.nom).split('—').pop().trim();
+      t.innerHTML = '<b>S' + s.n + '</b> ' + ech(court) +
+        (s.ouverte
+          ? (s.avance ? '<i class="av">early</i>' : '')
+          : '<i class="cl">' + s.faites + '/' + s.sur + ' lines</i>');
+      t.title = s.ouverte
+        ? (s.avance ? 'You are in early — you finished line #' + s.rang : s.nom)
+        : 'Opens when ' + s.sur + ' players have completed a full family (' +
+          s.faites + ' so far). The first three get in as soon as their own line is done.';
+      if (s.ouverte && s.n !== SAISON) t.addEventListener('click', function () {
+        SAISON = s.n;
+        if (etat.socket && etat.socket.readyState === 1)
+          etat.socket.send(JSON.stringify({ type: 'shop', season: SAISON }));
+      });
+      t.disabled = !s.ouverte;
+      b.appendChild(t);
+    });
+    l.appendChild(b);
+  }
+
   function rendClassementFruits() {
     var l = profBoite.querySelector('.swp-l');
     l.innerHTML = '';
@@ -3085,12 +3170,18 @@
       var att = document.createElement('div');
       att.className = 'swp-v'; att.textContent = 'Loading…';
       l.appendChild(att);
-      if (etat.socket && etat.socket.readyState === 1) etat.socket.send('{"type":"shop"}');
+      if (etat.socket && etat.socket.readyState === 1)
+        etat.socket.send(JSON.stringify({ type: 'shop', season: SAISON }));
       return;
     }
     var C = BOUTIQUE.catalogue;
     var teinte = {};
     C.raretes.forEach(function (r) { teinte[r.cle] = r.couleur; });
+
+    /* Le meme bandeau qu'en boutique : le classement d'une saison n'a de sens
+       qu'en disant DE QUELLE saison il parle, et changer de saison ici doit
+       changer le classement, pas obliger a repasser par la boutique. */
+    rendSaisons(l);
 
     var CL = BOUTIQUE.classement;
     if (!CL || !CL.top || !CL.top.length) {
@@ -3432,7 +3523,7 @@
       if (!scene || !scene.classList.contains('on')) return;
       scene.style.setProperty('--teinte', teinte || '#8DA0C4');
       scene.querySelector('.cof').src =
-        'img/shop/coffre_' + encodeURIComponent(g.coffre) + '_ouvert.webp';
+        'img/shop/coffre_' + encodeURIComponent(g.coffreImage || g.coffre) + '_ouvert.webp';
       scene.querySelector('.fr').src =
         'img/shop/' + encodeURIComponent(g.item.cle) + '.webp';
       scene.querySelector('.rar').textContent = nomRarete || '';
@@ -3830,7 +3921,7 @@
          se rafraichissent l'une l'autre au lieu de se contredire. */
       if (BOUTIQUE) BOUTIQUE = { catalogue: BOUTIQUE.catalogue, inventaire: BOUTIQUE.inventaire };
       if (etat.socket && etat.socket.readyState === 1) {
-        try { etat.socket.send('{"type":"shop"}'); } catch (e) {}
+        try { etat.socket.send(JSON.stringify({ type: 'shop', season: SAISON })); } catch (e) {}
       }
     }
     if (k === 'tr' && NON_LUS && etat.socket && etat.socket.readyState === 1) {

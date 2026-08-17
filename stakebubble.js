@@ -1384,7 +1384,14 @@
       '.swb-o img{position:absolute;inset:9%;width:82%;height:82%;object-fit:contain;}' +
       '.swb-o .q{position:absolute;top:4px;right:5px;font-weight:800;font-size:10px;' +
         'background:rgba(0,0,0,.6);border-radius:6px;padding:1px 4px;}' +
-      '.swb-o .t{position:relative;z-index:1;text-shadow:0 1px 3px #000,0 0 6px #000;}' +
+      '.swb-o .t{position:relative;z-index:2;text-shadow:0 1px 3px #000,0 0 6px #000;}' +
+      /* UN VOILE SOUS LE NOM. Tant que les dessins manquaient, le nom flottait
+         sur un fond uni et se lisait tout seul. Pose sur un fruit clair, il se
+         battait avec lui : l'ombre portee suffisait a le rendre lisible, pas a
+         le rendre propre. Le degrade ne couvre que le tiers bas et n'existe
+         que sur les cases qui ont une image. */
+      '.swb-o:has(img) .t::before{content:"";position:absolute;inset:-4px -8px -6px -8px;' +
+        'z-index:-1;background:linear-gradient(to top,rgba(4,7,16,.92),rgba(4,7,16,0));}' +
       '.swb-vide{color:#8DA0C4;font-size:12px;text-align:center;padding:16px 8px;line-height:1.55;}' +
       '.swb-gain{margin:2px 0 12px;padding:11px 12px;border-radius:13px;border:1px solid;' +
         'display:flex;align-items:center;gap:11px;}' +

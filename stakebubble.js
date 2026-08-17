@@ -3719,6 +3719,19 @@
       ['Staking claimed', nb(s.stakeReclame, 0)],
       ['Friends invited', nb(s.filleuls, 0) + (Number(s.parrainGagne) > 0 ? ' · ' + nb(s.parrainGagne, 0) + ' earned' : '')],
     ];
+    /* LES PARIS NE SONT PAS DES MANCHES. « Rounds played » et « Total
+       wagered » viennent du detail par jeu, qui ne s'ecrit qu'a la FIN d'une
+       manche : un pari pose samedi et regle dimanche n'y entre pas avant, et
+       un parieur voyait donc des zeros partout. On pose ses deux chiffres
+       ici, et le detail complet vit dans ses onglets de paris. */
+    if (s.paris && s.paris.total) {
+      cases.push(['Bets placed', nb(s.paris.total, 0) +
+        (s.paris.ouverts ? ' · ' + nb(s.paris.ouverts, 0) + ' running' : '')]);
+      cases.push(['Bets won', s.paris.taux == null ? '—' : s.paris.taux + '%',
+        s.paris.taux == null ? '' : (s.paris.taux >= 50 ? 'g' : '')]);
+      cases.push(['Betting result', (s.paris.net >= 0 ? '+' : '') + nb(s.paris.net, 0) + ' $SWOGE',
+        s.paris.net >= 0 ? 'g' : 'p']);
+    }
     var box = document.createElement('div');
     box.className = 'swp-st';
     var haut = document.createElement('div');
@@ -3741,6 +3754,65 @@
       f.textContent = 'Most played: ' + s.favoris.map(function (x) {
         return (JEUX[x.jeu] || x.jeu) + ' (' + nb(x.n, 0) + ')';
       }).join(' · ');
+      box.appendChild(f);
+    }
+    return box;
+  }
+
+  /* ---- LE BILAN DES PARIS ----
+   *
+   * Il repond a la seule question qu'un parieur se pose en ouvrant ses
+   * paris : « est-ce que je m'en sors ? » — et elle n'a pas UNE reponse mais
+   * trois, qu'il ne faut pas melanger.
+   *
+   *   • LE TAUX porte sur les paris TRANCHES, remboursements exclus. Un match
+   *     annule n'est ni gagne ni perdu : le compter en defaite ferait baisser
+   *     un taux sans qu'aucun pari n'ait ete perdu.
+   *   • LE RESULTAT ne compte que les paris regles. Un pari en cours n'est ni
+   *     gagne ni perdu ; l'inscrire en perte afficherait un joueur perdant le
+   *     samedi soir, redevenu gagnant le dimanche sans avoir rien fait.
+   *   • CE QUI COURT se dit a part : la mise engagee, et ce qu'elle rendrait.
+   *
+   * Sans un seul pari tranche, le taux n'existe pas — « 0 % » serait faux, et
+   * decourageant pour rien devant un premier pari qui court encore.
+   */
+  function blocParis() {
+    var b = STATS && STATS.paris;
+    if (!b || !b.total) return null;
+    var box = document.createElement('div');
+    box.className = 'swp-st';
+    var haut = document.createElement('div');
+    haut.className = 'swp-st-h';
+    haut.textContent = 'Betting record';
+    box.appendChild(haut);
+    var cases = [
+      ['Bets placed', nb(b.total, 0)],
+      ['Win rate', b.taux == null ? '—' : b.taux + '%', b.taux == null ? '' : (b.taux >= 50 ? 'g' : '')],
+      ['Won / lost', nb(b.gagnes, 0) + ' / ' + nb(b.perdus, 0)],
+      ['Total staked', nb(b.mise, 0) + ' $SWOGE'],
+      ['Betting result', (b.net >= 0 ? '+' : '') + nb(b.net, 0) + ' $SWOGE', b.net >= 0 ? 'g' : 'p'],
+      ['Returned', nb(b.rendu, 0) + ' $SWOGE'],
+    ];
+    if (b.ouverts) cases.push(['Still running',
+      nb(b.ouverts, 0) + ' · ' + nb(b.aGagner, 0) + ' to return']);
+    if (b.rembourses) cases.push(['Refunded', nb(b.rembourses, 0)]);
+    if (b.plusGros) cases.push(['Biggest win', '+' + nb(b.plusGros.rendu, 0) + ' $SWOGE', 'g']);
+    var g = document.createElement('div');
+    g.className = 'swp-st-g';
+    cases.forEach(function (c) {
+      var d = document.createElement('div');
+      d.innerHTML = '<span>' + c[0] + '</span><b class="' + (c[2] || '') + '">' + ech(c[1]) + '</b>';
+      g.appendChild(d);
+    });
+    box.appendChild(g);
+    if (b.juges) {
+      var f = document.createElement('div');
+      f.className = 'swp-st-f';
+      /* Ce que le taux NE dit pas. Un taux flatte : on peut gagner la moitie
+         de ses paris et perdre de l'argent, parce qu'un pari a cote courte
+         rapporte moins qu'un pari a cote longue ne coute. */
+      f.textContent = 'Win rate counts settled bets only — refunds are neither won nor lost. ' +
+        'The result is what matters: you can win half your bets and still be down.';
       box.appendChild(f);
     }
     return box;
@@ -4562,6 +4634,13 @@
       var bn = blocNiveau(); if (bn) l.appendChild(bn);
       var st = blocStats(); if (st) l.appendChild(st);
       var fj = blocFiltre(); if (fj) l.appendChild(fj);
+    }
+    /* Le bilan des paris coiffe LES DEUX onglets de paris — celui des paris en
+       cours comme celui des paris regles. Le mettre sur un seul obligerait a
+       changer d'onglet pour savoir ou l'on en est, et c'est la premiere chose
+       qu'on regarde en les ouvrant. */
+    if (profOnglet === 'bo' || profOnglet === 'bs') {
+      var bp = blocParis(); if (bp) l.appendChild(bp);
     }
     /* Regroupe par MOIS. Les evenements arrivent du plus recent au plus
        ancien, donc il suffit de poser un bandeau quand le mois change : rien

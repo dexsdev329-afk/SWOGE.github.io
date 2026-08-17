@@ -2755,6 +2755,11 @@
       b.addEventListener('click', function () {
         if (b.disabled) return;
         b.disabled = true;
+        /* Le son part au CLIC, pas a la reponse du serveur. Attendre l'aller-
+           retour ferait un decalage de plusieurs dixiemes entre le doigt et
+           le bruit, et c'est precisement ce qui fait qu'une interface parait
+           molle. Le coffre s'ouvre quand on appuie. */
+        joueCoffre(c.cle);
         if (etat.socket && etat.socket.readyState === 1)
           etat.socket.send(JSON.stringify({ type: 'shopOpen', chest: c.cle }));
       });
@@ -2862,6 +2867,175 @@
      trente dessins soient faits.
      `muet` sert a la banniere du gain, qui ecrit deja le nom a cote : sans
      lui il apparaissait deux fois, l'un sous l'autre. */
+  /*
+   * LE SON DES COFFRES.
+   *
+   * ---- pourquoi il est SYNTHETISE et pas enregistre ----
+   *
+   * Les sons demandes venaient de Minecraft et de Zelda. Ce sont des oeuvres
+   * sous copyright, et les poser sur un site qui encaisse de l'argent est une
+   * exposition reelle, pas theorique — Nintendo est l'ayant droit le plus
+   * actif du secteur. On fabrique donc les memes CARACTERES au lieu de
+   * copier les enregistrements : un choc de bois sec, un carillon qui monte,
+   * un gong profond.
+   *
+   * Trois avantages qui n'ont rien a voir avec le droit, et qui suffiraient
+   * a eux seuls : zero octet a telecharger, aucun decodage a l'ouverture de
+   * la page, et un son qu'on regle en changeant un nombre au lieu de
+   * regenerer un fichier.
+   *
+   * ---- si tu veux quand meme tes fichiers ----
+   *
+   * Depose-les en `img/shop/son_<clef>.mp3` — son_bois, son_or, son_mythe.
+   * Le code les prefere automatiquement et ne synthetise que ce qui manque.
+   * Le choix reste entier, il n'est simplement pas le defaut.
+   *
+   * ---- le reglage de volume est PARTAGE ----
+   *
+   * `swogeSfxVol` est la clef que les pages de jeu utilisent deja pour leur
+   * propre son. On la relit ici plutot que d'en inventer une deuxieme : un
+   * joueur qui coupe le son au blackjack ne s'attend pas a le retrouver dans
+   * la boutique.
+   */
+  var sonCtx = null, sonFichier = {};
+  function sonVolume() {
+    var v = parseFloat(localStorage.getItem('swogeSfxVol'));
+    return isNaN(v) ? 0.7 : Math.max(0, Math.min(1, v));
+  }
+  function sonPret() {
+    if (!sonCtx) {
+      try { sonCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+      catch (e) { return null; }
+    }
+    if (sonCtx.state === 'suspended') { try { sonCtx.resume(); } catch (e) {} }
+    return sonCtx;
+  }
+
+  /* Une enveloppe percussive : attaque immediate, extinction exponentielle.
+     `setValueAtTime(0)` d'abord, sinon le premier son de la page part a plein
+     volume sans rampe et claque. */
+  function sonEnv(ctx, gain, t0, pic, duree) {
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(Math.max(0.0002, pic), t0 + 0.008);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duree);
+  }
+  function sonNote(ctx, sortie, t0, freq, pic, duree, forme) {
+    var o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = forme || 'sine'; o.frequency.setValueAtTime(freq, t0);
+    sonEnv(ctx, g, t0, pic, duree);
+    o.connect(g); g.connect(sortie); o.start(t0); o.stop(t0 + duree + 0.05);
+  }
+  /* Un souffle court, filtre : c'est ce qui fait la matiere — le bois claque,
+     il ne sonne pas. Une note pure seule ferait un jouet electronique. */
+  function sonSouffle(ctx, sortie, t0, freq, q, pic, duree) {
+    var n = ctx.createBufferSource(), b = ctx.createBuffer(1, ctx.sampleRate * 0.35, ctx.sampleRate);
+    var d = b.getChannelData(0);
+    for (var i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / d.length);
+    n.buffer = b;
+    var f = ctx.createBiquadFilter(); f.type = 'bandpass';
+    f.frequency.setValueAtTime(freq, t0); f.Q.setValueAtTime(q, t0);
+    var g = ctx.createGain(); sonEnv(ctx, g, t0, pic, duree);
+    n.connect(f); f.connect(g); g.connect(sortie); n.start(t0); n.stop(t0 + duree + 0.05);
+  }
+
+  /* Les trois coffres, un caractere chacun. */
+  var SON_COFFRE = {
+    /* BOIS — un couvercle qui claque, puis retombe. Deux chocs, pas un : un
+       seul se lit comme un bouton, deux racontent un geste. */
+    bois: function (ctx, out, t) {
+      sonSouffle(ctx, out, t, 900, 1.2, 0.35, 0.10);
+      sonNote(ctx, out, t, 110, 0.30, 0.16, 'triangle');
+      sonSouffle(ctx, out, t + 0.13, 700, 1.4, 0.18, 0.08);
+      sonNote(ctx, out, t + 0.13, 85, 0.16, 0.13, 'triangle');
+    },
+    /* OR — un carillon qui MONTE. La montee est tout : quatre notes qui
+       s'elevent se lisent comme une recompense, les memes en descendant se
+       liraient comme une perte. */
+    or: function (ctx, out, t) {
+      sonSouffle(ctx, out, t, 2400, 2, 0.10, 0.06);
+      [523.25, 659.26, 783.99, 1046.5].forEach(function (f, i) {
+        sonNote(ctx, out, t + i * 0.075, f, 0.22, 0.55 + i * 0.12, 'triangle');
+        sonNote(ctx, out, t + i * 0.075, f * 2, 0.06, 0.35, 'sine');
+      });
+    },
+    /* MYTHE — le dong. Un gong n'est pas une note : ses partiels ne sont PAS
+       des multiples entiers de la fondamentale (2,76 et 5,40 ici), et c'est
+       exactement ce qui fait la difference entre une cloche et un orgue. */
+    mythe: function (ctx, out, t) {
+      /* ---- LES NIVEAUX SONT MESURES, PAS ESTIMES ----
+       * Premiere version : crete 0,77 et RMS 0,068, contre 0,33 et 0,0098
+       * pour le bois. Sept fois l'energie du coffre de bois, soit environ
+       * dix-sept decibels — un joueur qui enchaine un bois puis un mythique
+       * au casque prend une claque. Le mythique DOIT etre le plus gros des
+       * trois, mais l'ecart se compte en decibels, pas en « plus fort ».
+       * Les quatre gains ci-dessous sont regles pour tenir vers 0,04 de RMS,
+       * soit environ douze decibels au-dessus du bois : nettement plus gros,
+       * jamais douloureux.
+       *
+       * La crete venait aussi de quatre sinus qui partent EN PHASE a t=0 et
+       * s'additionnent. Les deux graves sont donc decales de quelques
+       * millisecondes — inaudible, et ca casse la sommation. */
+      sonNote(ctx, out, t, 55, 0.20, 2.6, 'sine');
+      sonNote(ctx, out, t + 0.004, 110, 0.17, 2.4, 'sine');
+      sonNote(ctx, out, t + 0.002, 110 * 2.76, 0.09, 1.8, 'sine');
+      sonNote(ctx, out, t, 110 * 5.40, 0.045, 1.2, 'sine');
+      sonSouffle(ctx, out, t, 3000, 1, 0.08, 0.25);
+      /* Une seconde frappe tres en retrait, decalee : c'est ce qui donne
+         l'impression d'un volume enorme plutot que d'un haut-parleur. */
+      sonNote(ctx, out, t + 0.28, 110, 0.07, 2.0, 'sine');
+    },
+  };
+
+  /* La synthese, seule. Sortie separee pour que le repli puisse l'appeler. */
+  function sonSynthese(cle, vol) {
+    var ctx = sonPret(); if (!ctx) return;
+    var out = ctx.createGain(); out.gain.value = vol; out.connect(ctx.destination);
+    (SON_COFFRE[cle] || SON_COFFRE.bois)(ctx, out, ctx.currentTime + 0.01);
+  }
+
+  /*
+   * ---- POURQUOI LE FICHIER NE PEUT PAS ETRE TENTE EN PREMIER ----
+   *
+   * La premiere version faisait exactement ca : `new Audio(...)` puis `play()`
+   * et `return`. Resultat mesure : ZERO son au premier clic de chaque coffre.
+   *
+   * Un `<audio>` dont la source n'existe pas est un objet parfaitement
+   * valide — il ne devient « casse » qu'a l'evenement `error`, qui arrive
+   * APRES le clic. Le code voyait donc un objet vrai, appelait `play()`, la
+   * promesse partait en echec, le `catch` l'avalait, et la synthese n'etait
+   * jamais atteinte. Un `catch` vide sur une promesse de lecture audio, c'est
+   * une panne silencieuse par construction.
+   *
+   * On inverse : le son SORT toujours, tout de suite, par la synthese. Le
+   * fichier est sonde en parallele et ne prend la main qu'une fois qu'il a
+   * declare pouvoir jouer — donc au clic suivant, jamais a celui-ci.
+   */
+  function joueCoffre(cle) {
+    var vol = sonVolume();
+    if (!vol) return;                       // le joueur a coupe le son
+    if (sonFichier[cle] === undefined) {
+      sonFichier[cle] = null;               // rien de jouable pour l'instant
+      var a = new Audio('img/shop/son_' + encodeURIComponent(cle) + '.mp3');
+      a.preload = 'auto';
+      a.addEventListener('canplaythrough', function () { sonFichier[cle] = a; });
+      a.addEventListener('error', function () { sonFichier[cle] = null; });
+    }
+    if (sonFichier[cle]) {
+      try {
+        var el = sonFichier[cle];
+        el.currentTime = 0; el.volume = vol;
+        var pr = el.play();
+        /* Meme un fichier valide peut etre refuse — onglet en arriere-plan,
+           politique d'autoplay. On ne reste pas muet pour autant. */
+        if (pr && pr.catch) pr.catch(function () { sonSynthese(cle, vol); });
+        return;
+      } catch (e) {}
+    }
+    sonSynthese(cle, vol);
+  }
+  /* Le banc d'essai en a besoin pour mesurer ce qui sort. */
+  window.SWOGE_SON_COFFRE = SON_COFFRE;
+
   function vignette(o, muet) {
     return (muet ? '' : '<span class="t">' + ech(courtNom(o.nom)) + '</span>') +
       '<img alt="" src="img/shop/' + encodeURIComponent(o.cle) + '.webp" ' +

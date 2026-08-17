@@ -1365,7 +1365,16 @@
       '.swb-ch{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:10.5px;margin:-8px 2px 14px;}' +
       '.swb-ch span{color:#8DA0C4;}' +
       '.swb-ch b{font-weight:800;}' +
-      '.swb-g{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:8px;}' +
+      '.swb-fam{display:flex;align-items:baseline;gap:7px;margin:13px 2px 5px;}' +
+      '.swb-fam b{font-size:12px;letter-spacing:.6px;text-transform:uppercase;color:#E7C97A;}' +
+      '.swb-fam i{font-style:normal;font-size:11px;color:#8DA0C4;margin-left:auto;}' +
+      '.swb-fam.plein i{color:#7CFF9B;font-weight:800;}' +
+      '.swb-r{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;}' +
+      /* La case MANQUANTE garde la couleur de sa rarete, en pointille et
+         eteinte : c'est elle qui dit ce qu'on cherche. Une case grise
+         indifferenciee ne dirait pas s'il manque un commun ou le mythique. */
+      '.swb-o.vide{border-style:dashed;opacity:.26;}' +
+      '.swb-o.vide .t{font-size:8.5px;}' +
       '.swb-o{position:relative;aspect-ratio:1/1;border-radius:12px;overflow:hidden;' +
         'background:radial-gradient(120% 120% at 30% 20%,rgba(255,255,255,.07),rgba(0,0,0,.5));' +
         'border:1px solid;display:flex;align-items:flex-end;justify-content:center;' +
@@ -2706,42 +2715,64 @@
     });
     l.appendChild(boite);
 
-    // ---- l'inventaire
+    /* ---- LA PLANCHE DE COLLECTION ----
+     *
+     * Une rangee par famille, cinq cases du commun au mythique, et les cases
+     * MANQUANTES sont dessinees elles aussi.
+     *
+     * C'est tout le sujet. Une grille qui ne montrerait que ce qu'on possede
+     * se remplit et s'arrete ; celle-ci montre les trous, et un trou entre la
+     * Clef de laiton et la Clef de coffre se voit de loin. La case vide est ce
+     * qui fait ouvrir le coffre suivant — pas la case pleine.
+     */
+    var sortes = 0, combien = 0;
+    C.items.forEach(function (o) { var q = inv[o.id] || 0; if (q) { sortes++; combien += q; } });
+
     var ttl = document.createElement('div');
     ttl.className = 'swp-g';
-    var combien = 0, sortes = 0;
-    C.items.forEach(function (o) { var q = inv[o.id] || 0; if (q) { sortes++; combien += q; } });
-    ttl.textContent = 'Your items — ' + sortes + ' of ' + C.items.length +
+    ttl.textContent = 'Your collection — ' + sortes + ' of ' + C.items.length +
       (combien > sortes ? ' (' + combien + ' owned)' : '');
     l.appendChild(ttl);
 
     if (!sortes) {
       var v = document.createElement('div');
       v.className = 'swb-vide';
-      v.textContent = 'No item yet. Open a chest above — every item you pull is yours to keep.';
+      v.textContent = 'Nothing yet. Six families, five tiers each — ' +
+        'open a chest above and start filling the board.';
       l.appendChild(v);
-      return;
     }
-    /* Trie par rarete DECROISSANTE : ce qu'on a de plus beau en premier, sinon
-       la grille s'ouvre sur dix communs et la piece rare est en bas. */
-    var rang = {};
-    C.raretes.forEach(function (r, i) { rang[r.cle] = i; });
-    var mien = C.items.filter(function (o) { return inv[o.id]; })
-      .sort(function (a, b) { return (rang[b.rarete] - rang[a.rarete]) || (a.id - b.id); });
 
-    var gr = document.createElement('div');
-    gr.className = 'swb-g';
-    mien.forEach(function (o) {
-      var d = document.createElement('div');
-      d.className = 'swb-o';
-      d.style.borderColor = teinte[o.rarete] || '#8DA0C4';
-      d.title = o.nom + ' — ' + (nomRarete[o.rarete] || o.rarete);
-      d.innerHTML = vignette(o) +
-        (inv[o.id] > 1 ? '<span class="q" style="color:' + (teinte[o.rarete] || '#8DA0C4') +
-                         '">x' + inv[o.id] + '</span>' : '');
-      gr.appendChild(d);
+    /* L'ordre des raretes vient du serveur, du commun au mythique : la rangee
+       se lit donc de gauche a droite comme une montee. */
+    C.familles.forEach(function (f) {
+      var lot = C.raretes.map(function (r) {
+        return C.items.filter(function (o) { return o.famille === f.cle && o.rarete === r.cle; })[0];
+      });
+      var eus = lot.filter(function (o) { return o && inv[o.id]; }).length;
+
+      var tete = document.createElement('div');
+      tete.className = 'swb-fam' + (eus === lot.length ? ' plein' : '');
+      tete.innerHTML = '<b>' + ech(f.nom) + '</b>' +
+        '<i>' + eus + '/' + lot.length + (eus === lot.length ? ' \u2713' : '') + '</i>';
+      l.appendChild(tete);
+
+      var r = document.createElement('div');
+      r.className = 'swb-r';
+      lot.forEach(function (o, i) {
+        var d = document.createElement('div');
+        var q = o ? (inv[o.id] || 0) : 0;
+        d.className = 'swb-o' + (q ? '' : ' vide');
+        d.style.borderColor = teinte[C.raretes[i].cle] || '#8DA0C4';
+        d.title = (o ? o.nom : '') + ' \u2014 ' + C.raretes[i].nom + (q ? '' : ' (missing)');
+        d.innerHTML = o
+          ? (q ? vignette(o) : '<span class="t">' + ech(C.raretes[i].nom) + '</span>')
+          : '';
+        if (q > 1) d.innerHTML += '<span class="q" style="color:' +
+          (teinte[o.rarete] || '#8DA0C4') + '">x' + q + '</span>';
+        r.appendChild(d);
+      });
+      l.appendChild(r);
     });
-    l.appendChild(gr);
   }
 
   /* Le nom, toujours ; le dessin par-dessus, s'il existe. L'image se retire

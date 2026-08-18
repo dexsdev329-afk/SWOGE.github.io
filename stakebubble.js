@@ -441,6 +441,22 @@
       pastilleAmis();
       profEnTete(); if (profOnglet === 'am' || profOnglet === 'in') profRend();
     }
+    if (m.type === 'market') {
+      MARCHE = m;
+      if (m.error) toast(m.error, 'bad');
+      else if (m.fait) {
+        /* On NOMME ce qui vient de se passer. « Sold » et « Listed » ne se
+           distinguent pas d'un simple rafraichissement si rien ne le dit. */
+        if (m.fait.annule !== undefined) toast('Taken back', 'ok');
+        else if (m.fait.prix !== undefined && m.fait.vendeur) toast('Bought for ' + nb(m.fait.prix, 0) + ' $SWOGE', 'good');
+        else toast('Listed for ' + nb(m.fait.prix, 0) + ' $SWOGE', 'ok');
+        if (m.fait.ligne) toast('🏆 Family complete — ' + nb(m.fait.ligne.prix, 0) + ' $SWOGE', 'good');
+      }
+      if (m.catalogue) BOUTIQUE = Object.assign(BOUTIQUE || {}, m);
+      if (m.balance != null) rafraichitSolde();
+      if (profOnglet === 'mk') profRend();
+      else if (profOnglet === 'sh') profRend();
+    }
     if (m.type === 'unread') { NON_LUS = m.unread || 0; pastilleAmis(); }
     /* Un seul lecteur pour tous les messages qui portent ces champs. Ecrit a
        chaque endroit, il aurait fini par en oublier un — et c'est la pastille
@@ -936,6 +952,7 @@
      arrivent avec l'authentification et non sur demande : une pastille qui
      s'allume seulement quand on pense a regarder ne ramene personne. */
   var SERIE = null, ATTENTE = null, OFFERT = null;
+  var MARCHE = null, MARCHE_F = 'tout', MARCHE_Q = '';
   /* Le SOUS-ONGLET de l'historique. Le serveur ne connait pas « hi » : il
      attend un genre precis. C'est donc cette variable, et non `profOnglet`,
      qui part dans la demande et qui filtre la reponse. */
@@ -1815,6 +1832,68 @@
       '.swp-ch{display:flex;gap:7px;padding:0 13px 12px;flex-wrap:wrap;}' +
       /* Des <span>, jamais des <button> : rien ici ne se clique, et un survol
          qui reagit apprend le contraire. */
+      /* La vitrine */
+      '.swm-q{width:100%;padding:9px 12px;margin:0 0 12px;border-radius:11px;font:inherit;' +
+        'font-size:13px;border:1px solid rgba(255,255,255,.13);background:rgba(255,255,255,.04);' +
+        'color:#EAF2FF;-webkit-appearance:none;}' +
+      '.swm-q::placeholder{color:#5C6B85;}' +
+      '.swm-l{display:grid;gap:8px;margin:0 0 14px;}' +
+      '.swm-a{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:13px;' +
+        'border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.04);' +
+        'border-left:3px solid var(--t);}' +
+      '.swm-a.mien{background:rgba(255,197,61,.08);border-color:rgba(255,197,61,.3);}' +
+      '.swm-a img{width:42px;height:42px;flex:0 0 42px;object-fit:contain;}' +
+      '.swm-a .nm{flex:1;min-width:0;}' +
+      '.swm-a .nm b{display:block;font-size:13px;font-weight:800;color:#F2F6FF;' +
+        'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}' +
+      '.swm-a .nm b em{font-style:normal;color:var(--t);}' +
+      '.swm-a .nm i{display:block;font-style:normal;font-size:10px;color:#8DA0C4;margin-top:1px;}' +
+      '.swm-a .nm i.v{color:#5C6B85;}' +
+      '.swm-a .px{text-align:right;flex:0 0 auto;}' +
+      '.swm-a .px b{display:block;font-size:14px;font-weight:800;color:#FFD97A;' +
+        'font-variant-numeric:tabular-nums;}' +
+      '.swm-a .px i{font-style:normal;font-size:9px;color:#8DA0C4;letter-spacing:.06em;}' +
+      '.swm-a .act{flex:0 0 auto;padding:8px 13px;border-radius:10px;font:inherit;' +
+        'font-size:12px;font-weight:800;cursor:pointer;border:1px solid rgba(255,255,255,.18);' +
+        'background:rgba(255,255,255,.06);color:#EAF2FF;}' +
+      '.swm-a .act:hover:not(:disabled){background:rgba(255,255,255,.12);}' +
+      '.swm-a .act:disabled{opacity:.45;cursor:default;}' +
+      '.swm-a.mien .act{border-color:rgba(255,197,61,.5);color:#FFD97A;}' +
+      /* La case vendable : rien de crie, juste de quoi comprendre qu on peut
+         appuyer dessus. Un bouton sur chaque case ferait une grille de
+         boutons au lieu d une collection. */
+      '.swb-o.vendable{cursor:pointer;}' +
+      '.swb-o.vendable:hover{filter:brightness(1.15);}' +
+      /* La feuille de vente */
+      '.swv{position:fixed;inset:0;z-index:2147483200;display:flex;align-items:flex-end;' +
+        'justify-content:center;background:rgba(4,7,13,.6);opacity:0;pointer-events:none;' +
+        'transition:opacity .18s;}' +
+      '.swv.on{opacity:1;pointer-events:auto;}' +
+      '.swv-f{width:100%;max-width:460px;background:#131B2A;border:1px solid rgba(255,255,255,.12);' +
+        'border-radius:18px 18px 0 0;padding:18px 18px calc(22px + env(safe-area-inset-bottom,0px));' +
+        'display:flex;flex-direction:column;gap:8px;transform:translateY(18px);' +
+        'transition:transform .22s;position:relative;}' +
+      '.swv.on .swv-f{transform:none;}' +
+      '.swv-x{position:absolute;top:12px;right:12px;width:30px;height:30px;border-radius:9px;' +
+        'border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);' +
+        'color:#8DA0C4;font-size:17px;cursor:pointer;line-height:1;}' +
+      '.swv-t{display:flex;align-items:center;gap:11px;margin-bottom:4px;}' +
+      '.swv-t img{width:48px;height:48px;object-fit:contain;}' +
+      '.swv-t b{display:block;font-size:16px;font-weight:800;color:#F2F6FF;}' +
+      '.swv-t i{font-style:normal;font-size:11px;}' +
+      '.swv-l{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#8DA0C4;' +
+        'font-weight:700;margin-top:4px;}' +
+      '.swv-l span{color:#5C6B85;letter-spacing:0;text-transform:none;}' +
+      '.swv-f input{padding:11px 13px;border-radius:11px;font:inherit;font-size:15px;' +
+        'font-weight:700;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.25);' +
+        'color:#EAF2FF;-webkit-appearance:none;}' +
+      '.swv-net{font-size:12.5px;color:#8DA0C4;margin:2px 0 4px;}' +
+      '.swv-net b{color:#7CFF9B;font-weight:800;}' +
+      '.swv-net span{color:#5C6B85;}' +
+      '.swv-go{margin-top:4px;padding:13px;border-radius:12px;font:inherit;font-size:14px;' +
+        'font-weight:800;cursor:pointer;border:1px solid rgba(255,197,61,.6);' +
+        'background:rgba(255,197,61,.16);color:#FFD97A;}' +
+      '.swv-go:hover{background:rgba(255,197,61,.24);}' +
       '.swp-ho{display:flex;gap:5px;overflow-x:auto;margin:0 0 12px;padding-bottom:2px;' +
         '-webkit-overflow-scrolling:touch;scrollbar-width:none;}' +
       '.swp-ho::-webkit-scrollbar{display:none;}' +
@@ -2233,6 +2312,14 @@
       c.textContent = '🏅 Collection ranking';
       c.addEventListener('click', function () { profVa('cl'); });
       t.appendChild(c);
+      /* La vitrine, dans le meme groupe que les coffres : c'est la deuxieme
+         facon d'obtenir un objet, et la seule qui reste quand l'edition est
+         epuisee. La separer suggererait qu'elle parle d'autre chose. */
+      var mk = document.createElement('button');
+      mk.type = 'button'; mk.dataset.k = 'mk';
+      mk.textContent = '🏷️ Player market';
+      mk.addEventListener('click', function () { profVa('mk'); });
+      t.appendChild(mk);
     })();
     FAMILLES.forEach(function (f) {
       var g = document.createElement('div');
@@ -3336,6 +3423,17 @@
           : '';
         if (q > 1) d.innerHTML += '<span class="q" style="color:' +
           (teinte[o.rarete] || '#8DA0C4') + '">x' + q + '</span>';
+        /* ---- VENDRE DEPUIS LA PLANCHE ----
+         *
+         * Le geste part de la case, pas d'un ecran separe : c'est en regardant
+         * sa collection qu'on se dit « celui-la, j'en ai trois ». Obliger a
+         * retenir le nom du fruit puis a le retrouver dans une liste ailleurs
+         * ferait perdre l'intention entre les deux. */
+        if (q > 0) {
+          d.classList.add('vendable');
+          d.addEventListener('click', function () { ouvreVente(o, q, teinte[o.rarete]); });
+          d.title += '\n\nTap to sell';
+        }
         r.appendChild(d);
       });
       l.appendChild(r);
@@ -3362,6 +3460,205 @@
    * celui qui ouvre le plus de coffres de bois gagne, alors que la collection
    * se termine en trouvant ce qu'on n'a pas.
    */
+  /* ======================== LA VITRINE ========================
+   *
+   * ---- les trois filtres, et pourquoi ce ne sont pas ceux-la qu'on croit ----
+   *
+   * « Tout », « Il me manque », « Mes ventes ». Le deuxieme n'est pas un
+   * confort : on n'ouvre pas un marche pour racheter ce qu'on a deja, on
+   * l'ouvre pour combler un trou. C'est le filtre qui repond a la question
+   * qu'on se pose vraiment en arrivant — et c'est le serveur qui calcule
+   * `jaiDeja`, pour que la page n'ait pas a croiser deux listes.
+   *
+   * La recherche est locale : la vitrine tient entiere dans la reponse, et un
+   * aller-retour par lettre tapee ferait clignoter la liste sans rien
+   * apprendre de plus.
+   */
+  function rendMarche() {
+    var l = profBoite.querySelector('.swp-l');
+    l.innerHTML = '';
+    if (!MARCHE) {
+      var att = document.createElement('div');
+      att.className = 'swp-v'; att.textContent = 'Loading…';
+      l.appendChild(att);
+      envoie({ type: 'market', season: SAISON });
+      return;
+    }
+    rendSaisons(l);
+
+    var toutes = MARCHE.annonces || [];
+    var compte = {
+      tout: toutes.length,
+      manque: toutes.filter(function (a) { return !a.jaiDeja && !a.mien; }).length,
+      miennes: toutes.filter(function (a) { return a.mien; }).length,
+    };
+
+    // ---- les filtres
+    var f = document.createElement('div');
+    f.className = 'swp-ho';
+    [['tout', 'All'], ['manque', "I'm missing"], ['miennes', 'My listings']].forEach(function (o) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = (MARCHE_F === o[0] ? 'on' : '');
+      b.textContent = o[1] + ' (' + compte[o[0]] + ')';
+      b.addEventListener('click', function () { MARCHE_F = o[0]; rendMarche(); });
+      f.appendChild(b);
+    });
+    l.appendChild(f);
+
+    // ---- la recherche
+    var rc = document.createElement('input');
+    rc.className = 'swm-q'; rc.type = 'search';
+    rc.placeholder = 'Search an item…'; rc.value = MARCHE_Q;
+    rc.addEventListener('input', function () {
+      MARCHE_Q = rc.value;
+      /* On redessine la LISTE seulement : refaire tout le panneau reprendrait
+         le focus au champ a chaque lettre. */
+      peintAnnonces(l.querySelector('.swm-l'));
+    });
+    l.appendChild(rc);
+
+    var boite = document.createElement('div');
+    boite.className = 'swm-l';
+    l.appendChild(boite);
+    peintAnnonces(boite);
+
+    var pied = document.createElement('div');
+    pied.className = 'swb-mention';
+    pied.textContent = 'Sellers set their own prices. The platform takes ' +
+      ((MARCHE && MARCHE.frais) || 5) + '% of each sale. To sell something, tap it on your collection board.';
+    l.appendChild(pied);
+  }
+
+  function peintAnnonces(boite) {
+    if (!boite) return;
+    boite.innerHTML = '';
+    var teinte = {};
+    if (BOUTIQUE && BOUTIQUE.catalogue)
+      BOUTIQUE.catalogue.raretes.forEach(function (r) { teinte[r.cle] = r.couleur; });
+    var q = MARCHE_Q.trim().toLowerCase();
+    var l = (MARCHE.annonces || []).filter(function (a) {
+      if (MARCHE_F === 'miennes' && !a.mien) return false;
+      if (MARCHE_F === 'manque' && (a.jaiDeja || a.mien)) return false;
+      if (q && String(a.item.nom).toLowerCase().indexOf(q) < 0) return false;
+      return true;
+    });
+    if (!l.length) {
+      var v = document.createElement('div');
+      v.className = 'swp-v';
+      v.textContent = q ? 'Nothing on sale matches “' + q + '”.'
+        : MARCHE_F === 'miennes' ? 'You have nothing for sale. Tap an item on your collection board to sell it.'
+        : MARCHE_F === 'manque' ? 'Nothing on sale that you are missing right now.'
+        : 'Nothing for sale yet. Be the first.';
+      boite.appendChild(v);
+      return;
+    }
+    l.forEach(function (a) {
+      var d = document.createElement('div');
+      d.className = 'swm-a' + (a.mien ? ' mien' : '');
+      d.style.setProperty('--t', a.item.couleur || teinte[a.item.rarete] || '#8DA0C4');
+      var reste = a.item.plafond ? Math.max(0, a.item.plafond - a.item.emis) : null;
+      d.innerHTML =
+        '<img alt="" src="img/shop/' + encodeURIComponent(a.item.cle) + '.webp" onerror="this.remove()">' +
+        '<div class="nm"><b>' + ech(a.item.nom) + (a.qte > 1 ? ' <em>x' + a.qte + '</em>' : '') + '</b>' +
+        '<i>' + ech(a.item.rareteNom || a.item.rarete) +
+          (reste === null ? '' : ' · ' + nb(reste, 0) + ' left in the edition') + '</i>' +
+        '<i class="v">' + (a.mien ? 'your listing' : 'by ' + ech(a.nomVendeur)) + '</i></div>' +
+        '<div class="px"><b>' + nb(a.prix, 0) + '</b><i>$SWOGE</i></div>';
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'act';
+      /* Une seule action par ligne, et elle depend de qui regarde. Deux
+         boutons dont un toujours grise apprendraient a ne plus les lire. */
+      b.textContent = a.mien ? 'Take back' : 'Buy';
+      b.addEventListener('click', function () {
+        b.disabled = true;
+        envoie(a.mien ? { type: 'marketCancel', id: a.id, season: SAISON }
+                      : { type: 'marketBuy', id: a.id, season: SAISON });
+      });
+      d.appendChild(b);
+      boite.appendChild(d);
+    });
+  }
+
+  /* ==================== METTRE UN OBJET EN VENTE ====================
+   *
+   * Une feuille qui monte du bas, pas une modale au centre : on est peut-etre
+   * au milieu d'une partie, et une boite qui prend l'ecran entier pour une
+   * vente de trois mille jetons coupe une manche pour rien.
+   *
+   * Trois champs seulement — combien, a quel prix, et ce que ca rapporte
+   * vraiment. Le troisieme n'est pas une politesse : la commission de 5 %
+   * doit etre lue AVANT de valider, pas decouverte sur le solde apres.
+   */
+  var venteBoite = null;
+  function ouvreVente(o, possede, couleur) {
+    if (!venteBoite) {
+      venteBoite = document.createElement('div');
+      venteBoite.className = 'swv';
+      venteBoite.innerHTML =
+        '<div class="swv-f">' +
+          '<button class="swv-x" type="button" aria-label="Close">&times;</button>' +
+          '<div class="swv-t"><img alt=""><div><b></b><i></i></div></div>' +
+          '<label class="swv-l">How many <span class="swv-max"></span></label>' +
+          '<input class="swv-q" type="number" min="1" step="1" inputmode="numeric">' +
+          '<label class="swv-l">Price per item ($SWOGE)</label>' +
+          '<input class="swv-p" type="number" min="0" step="1" inputmode="numeric">' +
+          '<div class="swv-net"></div>' +
+          '<button class="swv-go" type="button">Put up for sale</button>' +
+        '</div>';
+      document.body.appendChild(venteBoite);
+      venteBoite.addEventListener('click', function (e) {
+        if (e.target === venteBoite || e.target.classList.contains('swv-x')) fermeVente();
+      });
+      venteBoite.querySelector('.swv-go').addEventListener('click', envoieVente);
+      ['.swv-q', '.swv-p'].forEach(function (sel) {
+        venteBoite.querySelector(sel).addEventListener('input', calculeNet);
+      });
+    }
+    venteBoite.dataset.item = o.id;
+    venteBoite.dataset.max = possede;
+    var im = venteBoite.querySelector('img');
+    im.src = 'img/shop/' + encodeURIComponent(o.cle) + '.webp';
+    im.onerror = function () { im.style.visibility = 'hidden'; };
+    im.style.visibility = '';
+    venteBoite.querySelector('b').textContent = o.nom;
+    var it = venteBoite.querySelector('i');
+    it.textContent = 'You own ' + possede;
+    it.style.color = couleur || '#8DA0C4';
+    venteBoite.querySelector('.swv-max').textContent = '(max ' + possede + ')';
+    var q = venteBoite.querySelector('.swv-q');
+    q.max = possede; q.value = 1;
+    venteBoite.querySelector('.swv-p').value = '';
+    calculeNet();
+    venteBoite.classList.add('on');
+    setTimeout(function () { venteBoite.querySelector('.swv-p').focus(); }, 60);
+  }
+  function fermeVente() { if (venteBoite) venteBoite.classList.remove('on'); }
+  function calculeNet() {
+    if (!venteBoite) return;
+    var q = Math.max(1, Math.min(Number(venteBoite.dataset.max) || 1,
+                                 Math.floor(Number(venteBoite.querySelector('.swv-q').value) || 1)));
+    var p = Math.floor(Number(venteBoite.querySelector('.swv-p').value) || 0);
+    var frais = (MARCHE && MARCHE.frais) || 5;
+    var net = Math.floor(p * q * (100 - frais) / 100);
+    var z = venteBoite.querySelector('.swv-net');
+    /* On affiche CE QUE LE VENDEUR TOUCHE, pas ce que l'acheteur paie. Le
+       prix affiche est deja sous ses yeux ; ce qu'il ignore, c'est le net. */
+    z.innerHTML = p > 0
+      ? 'You receive <b>' + nb(net, 0) + ' $SWOGE</b> <span>after the ' + frais + '% fee</span>'
+      : '<span>Set a price to see what you receive</span>';
+  }
+  function envoieVente() {
+    if (!venteBoite) return;
+    var id = Number(venteBoite.dataset.item);
+    var q = Math.max(1, Math.min(Number(venteBoite.dataset.max) || 1,
+                                 Math.floor(Number(venteBoite.querySelector('.swv-q').value) || 1)));
+    var p = Math.floor(Number(venteBoite.querySelector('.swv-p').value) || 0);
+    if (!(p > 0)) { toast('Set a price first', 'bad'); return; }
+    envoie({ type: 'marketSell', item: id, price: p, qty: q, season: SAISON });
+    fermeVente();
+  }
+
   /* ---- LE COFFRE DU JOUR ----
    *
    * En TETE de la boutique, avant la course et avant les coffres payants.
@@ -3416,7 +3713,11 @@
    * nulle part elle n'existe pas.
    */
   function rendSaisons(l) {
-    var S = BOUTIQUE.saisons;
+    /* `BOUTIQUE` peut ne pas exister : le marche s'ouvre sans etre passe par
+       la boutique, et cette ligne jetait alors — silencieusement, parce que
+       l'appel vient d'un gestionnaire d'evenement. Le panneau se vidait et
+       rien ne le disait. */
+    var S = BOUTIQUE && BOUTIQUE.saisons;
     if (!S || S.length < 2) return;         // une seule saison : rien a choisir
     var b = document.createElement('div');
     b.className = 'swb-sai';
@@ -4236,6 +4537,7 @@
        titre se pose ici. */
     if (!nom && k === 'sh') nom = 'Shop';
     if (!nom && k === 'cl') nom = 'Collection ranking';
+    if (!nom && k === 'mk') nom = 'Player market';
     titre.textContent = nom;
     boite.classList.add('detail');
     /* Chaque section repart du haut. Sans ca, on ouvrait « Deposits » deja
@@ -4296,6 +4598,10 @@
        l'impression d'avoir appuye sur autre chose — c'est la meme raison qui
        fait que le tiroir s'ouvre sur son sommaire. */
     if (k === 'hi') HISTO = 'r';
+    if (k === 'mk') {
+      MARCHE_F = 'tout'; MARCHE_Q = '';
+      envoie({ type: 'market', season: SAISON });
+    }
     if (k === 'sh' || k === 'cl') {
       /* On efface l'objet gagne : la banniere « vous avez obtenu… »
          appartient a l'ouverture qui vient d'avoir lieu, pas a la visite
@@ -4338,7 +4644,7 @@
        boutique envoyait quand meme une demande d'historique de genre inconnu
        — que le serveur honore en relisant tout le journal du joueur pour
        rendre vingt-cinq lignes que personne n'affiche. */
-    if (profOnglet === 'sh' || profOnglet === 'cl') return;
+    if (profOnglet === 'sh' || profOnglet === 'cl' || profOnglet === 'mk') return;
     if (profCharge) return;
     if (!etat.socket || etat.socket.readyState !== 1) { profRend(); return; }
     profCharge = true;
@@ -5310,6 +5616,7 @@
     if (profOnglet === 'lb') { profEnTete(); return rendClassement(); }
     if (profOnglet === 'sh') { profEnTete(); return rendBoutique(); }
     if (profOnglet === 'cl') { profEnTete(); return rendClassementFruits(); }
+    if (profOnglet === 'mk') { profEnTete(); return rendMarche(); }
     var l = profBoite.querySelector('.swp-l');
     var sous = profBoite.querySelector('.swp-sub');
     if (profResume) {

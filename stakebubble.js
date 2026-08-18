@@ -470,6 +470,10 @@
         ((m.catalogue || []).filter(function (s) { return s.id === m.achete; })[0] || {}).nom, 'good');
       if (m.balance != null) rafraichitSolde();
       if (profOnglet === 'sk') profRend();
+      /* La fiche en grand se repeint independamment de l'onglet du dessous —
+         un achat ou un choix de port doit y changer le bouton tout de suite,
+         et `peintDetailSkin` ne fait rien si aucune fiche n'est ouverte. */
+      peintDetailSkin();
     }
     /* ---- LE RACHAT ----
      *
@@ -1940,9 +1944,10 @@
       '.swk-g{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:4px;}' +
       '@media (min-width:360px){.swk-g{grid-template-columns:repeat(2,1fr);}}' +
       '.swk-c{display:flex;flex-direction:column;align-items:center;text-align:center;' +
-        'padding:14px 10px 12px;border-radius:14px;gap:6px;' +
+        'padding:14px 10px 12px;border-radius:14px;gap:6px;cursor:pointer;' +
         'border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.03);' +
         'border-top:3px solid var(--t);}' +
+      '.swk-c:hover{background:rgba(255,255,255,.06);}' +
       '.swk-c.actif{background:rgba(124,255,155,.06);border-color:rgba(124,255,155,.35);' +
         'border-top-color:#7CFF9B;}' +
       '.swk-c .ico{width:84px;height:84px;display:flex;align-items:center;justify-content:center;}' +
@@ -1956,20 +1961,38 @@
       '.swk-c .pw i.on{background:var(--t);}' +
       '.swk-c .pv{font-style:normal;font-size:10.5px;color:#8DA0C4;line-height:1.4;' +
         'min-height:2.7em;}' +
-      '.swk-c .bas{margin-top:4px;}' +
-      '.swk-c .tag{font-size:11px;font-weight:800;color:#7CFF9B;' +
+      '.swk-c .bas,.swk-da{margin-top:4px;}' +
+      '.swk-c .tag,.swk-da .tag{font-size:11px;font-weight:800;color:#7CFF9B;' +
         'border:1px solid rgba(124,255,155,.4);border-radius:99px;padding:4px 12px;}' +
-      '.swk-c .act{padding:8px 14px;border-radius:10px;font:inherit;font-size:12px;' +
+      '.swk-c .act,.swk-da .act{padding:8px 14px;border-radius:10px;font:inherit;font-size:12px;' +
         'font-weight:800;cursor:pointer;border:1px solid rgba(255,255,255,.18);' +
         'background:rgba(255,255,255,.06);color:#EAF2FF;}' +
-      '.swk-c .act:hover:not(:disabled){background:rgba(255,255,255,.12);}' +
-      '.swk-c .act:disabled{opacity:.45;cursor:default;}' +
+      '.swk-c .act:hover:not(:disabled),.swk-da .act:hover:not(:disabled){background:rgba(255,255,255,.12);}' +
+      '.swk-c .act:disabled,.swk-da .act:disabled{opacity:.45;cursor:default;}' +
       /* Le prix est le SEUL bouton dore du tiroir en dehors des gestes
          d argent : il doit se voir comme « ceci coute », pas comme un bouton
          d action neutre parmi d autres. */
-      '.swk-c .act.buy{border-color:rgba(255,197,61,.55);background:rgba(255,197,61,.14);' +
+      '.swk-c .act.buy,.swk-da .act.buy{border-color:rgba(255,197,61,.55);background:rgba(255,197,61,.14);' +
         'color:#FFD97A;}' +
-      '.swk-c .act.buy i{font-style:normal;font-weight:600;opacity:.85;}' +
+      '.swk-c .act.buy i,.swk-da .act.buy i{font-style:normal;font-weight:600;opacity:.85;}' +
+      /* ---- LA FICHE EN GRAND ----
+       *
+       * Meme coque que la feuille de vente (.swv, .swv-f, .swv-x) : une seule
+       * regle de comportement pour toutes les feuilles du tiroir. Ce qui
+       * change ici, c'est le contenu — une image large plutot qu'une ligne
+       * de formulaire. */
+      '.swk-v .swv-f{align-items:center;text-align:center;gap:9px;padding-top:28px;}' +
+      '.swk-hero{width:min(58vw,240px);height:min(58vw,240px);display:flex;' +
+        'align-items:center;justify-content:center;}' +
+      '.swk-hero img{max-width:100%;max-height:100%;object-fit:contain;' +
+        'filter:drop-shadow(0 10px 18px rgba(0,0,0,.45));}' +
+      '.swk-dn{font-size:19px;font-weight:800;color:#F2F6FF;}' +
+      '.swk-dp{display:flex;gap:5px;font-style:normal;justify-content:center;}' +
+      '.swk-dp i{width:8px;height:8px;border-radius:99px;background:rgba(255,255,255,.16);}' +
+      '.swk-dp i.on{background:var(--t);}' +
+      '.swk-dv{font-style:normal;font-size:13px;color:#8DA0C4;line-height:1.5;' +
+        'max-width:280px;margin:2px 0 4px;}' +
+      '.swk-da .act{padding:12px 26px;font-size:14px;}' +
       /* La case vendable : rien de crie, juste de quoi comprendre qu on peut
          appuyer dessus. Un bouton sur chaque case ferait une grille de
          boutons au lieu d une collection. */
@@ -3705,6 +3728,38 @@
   }
 
   /* ================= LES SKINS ================= */
+  /* Le bouton d'action d'un skin — achat, port, ou deja porte. Partage entre
+     la carte et la fiche en grand : les deux DOIVENT dire la meme chose au
+     meme instant, et un bouton copie-colle deux fois finit par diverger a la
+     premiere modification de l'un des deux. */
+  function boutonSkin(s, actif) {
+    if (actif) {
+      var tag = document.createElement('span');
+      tag.className = 'tag'; tag.textContent = 'Wearing';
+      return tag;
+    }
+    if (s.possede) {
+      var w = document.createElement('button');
+      w.type = 'button'; w.className = 'act';
+      w.textContent = 'Wear';
+      w.addEventListener('click', function (e) {
+        e.stopPropagation();
+        w.disabled = true;
+        envoie({ type: 'skinChoisi', id: s.id });
+      });
+      return w;
+    }
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'act buy';
+    b.innerHTML = nb(s.prix, 0) + ' <i>$SWOGE</i>';
+    b.addEventListener('click', function (e) {
+      e.stopPropagation();
+      b.disabled = true;
+      envoie({ type: 'skinBuy', id: s.id });
+    });
+    return b;
+  }
+
   function rendSkins() {
     var l = profBoite.querySelector('.swp-l');
     l.innerHTML = '';
@@ -3719,7 +3774,8 @@
     var intro = document.createElement('div');
     intro.className = 'swb-mention';
     intro.textContent = 'A skin changes how your character looks — nothing to do with seasons or chests. ' +
-      'Buy any of them, any time, for a fixed price. The one you buy becomes the one you wear.';
+      'Buy any of them, any time, for a fixed price. The one you buy becomes the one you wear. ' +
+      'Tap a character to see it up close.';
     l.appendChild(intro);
 
     var g = document.createElement('div');
@@ -3731,6 +3787,11 @@
       var d = document.createElement('div');
       d.className = 'swk-c' + (actif ? ' actif' : '');
       d.style.setProperty('--t', s.couleur || '#8DA0C4');
+      /* Toute la carte s'ouvre en grand — pas seulement l'image — parce que
+         rien sur une carte de 84 px ne dit qu'elle cache un geste distinct du
+         bouton du bas. Le bouton lui-meme coupe l'evenement (stopPropagation
+         dans boutonSkin) pour ne pas rouvrir la fiche par-dessus lui. */
+      d.addEventListener('click', function () { ouvreDetailSkin(s); });
       /* La puissance se lit en points pleins sur cinq, comme une jauge —
          plus rapide a comparer entre cinq cartes qu'un nombre qu'il faut
          relire chaque fois. */
@@ -3743,31 +3804,70 @@
         '<i class="pv">' + ech(s.pouvoir) + '</i>';
       var bas = document.createElement('div');
       bas.className = 'bas';
-      if (actif) {
-        bas.innerHTML = '<span class="tag">Wearing</span>';
-      } else if (s.possede) {
-        var w = document.createElement('button');
-        w.type = 'button'; w.className = 'act';
-        w.textContent = 'Wear';
-        w.addEventListener('click', function () {
-          w.disabled = true;
-          envoie({ type: 'skinChoisi', id: s.id });
-        });
-        bas.appendChild(w);
-      } else {
-        var b = document.createElement('button');
-        b.type = 'button'; b.className = 'act buy';
-        b.innerHTML = nb(s.prix, 0) + ' <i>$SWOGE</i>';
-        b.addEventListener('click', function () {
-          b.disabled = true;
-          envoie({ type: 'skinBuy', id: s.id });
-        });
-        bas.appendChild(b);
-      }
+      bas.appendChild(boutonSkin(s, actif));
       d.appendChild(bas);
       g.appendChild(d);
     });
   }
+
+  /* ==================== LA FICHE D'UN SKIN, EN GRAND ====================
+   *
+   * Une carte de 84 px dit qui c'est ; elle ne montre pas VRAIMENT le
+   * personnage qu'on s'apprete a payer 300 000 $SWOGE. La fiche reprend le
+   * meme gabarit que la feuille de vente — une feuille qui monte du bas, pas
+   * une modale plein ecran qui coupe une manche en cours — avec la MEME
+   * classe `.swv` : deux feuilles qui se comportent pareil n'ont besoin que
+   * d'un seul jeu de regles CSS.
+   */
+  var skinBoite = null;
+  function ouvreDetailSkin(s) {
+    if (!skinBoite) {
+      skinBoite = document.createElement('div');
+      skinBoite.className = 'swv swk-v';
+      skinBoite.innerHTML =
+        '<div class="swv-f">' +
+          '<button class="swv-x" type="button" aria-label="Close">&times;</button>' +
+          '<div class="swk-hero"><img alt=""></div>' +
+          '<b class="swk-dn"></b>' +
+          '<i class="swk-dp"></i>' +
+          '<i class="swk-dv"></i>' +
+          '<div class="swk-da"></div>' +
+        '</div>';
+      var hote = (profBoite && profBoite.querySelector('.swp')) || document.body;
+      if (hote === document.body) skinBoite.style.position = 'fixed';
+      hote.appendChild(skinBoite);
+      skinBoite.addEventListener('click', function (e) {
+        if (e.target === skinBoite || e.target.classList.contains('swv-x')) fermeDetailSkin();
+      });
+    }
+    /* La reponse a un achat rafraichit SKINS ; on relit dedans plutot que de
+       garder `s` d'un appel a l'autre, sinon la fiche ouverte continuerait
+       d'afficher « Buy » un instant apres que l'achat ait reussi. */
+    skinBoite.dataset.id = s.id;
+    peintDetailSkin();
+    skinBoite.classList.add('on');
+  }
+  function peintDetailSkin() {
+    if (!skinBoite || !skinBoite.dataset.id) return;
+    var id = skinBoite.dataset.id;
+    var s = ((SKINS && SKINS.catalogue) || []).filter(function (x) { return x.id === id; })[0];
+    if (!s) return;
+    var actif = SKINS.actif === s.id;
+    skinBoite.style.setProperty('--t', s.couleur || '#8DA0C4');
+    var im = skinBoite.querySelector('.swk-hero img');
+    im.src = 'img/skins/skin_' + encodeURIComponent(s.id) + '.webp';
+    im.onerror = function () { im.style.visibility = 'hidden'; };
+    im.style.visibility = '';
+    skinBoite.querySelector('.swk-dn').textContent = s.nom;
+    var points = '';
+    for (var i = 1; i <= 5; i++) points += '<i class="' + (i <= s.puissance ? 'on' : '') + '"></i>';
+    skinBoite.querySelector('.swk-dp').innerHTML = points;
+    skinBoite.querySelector('.swk-dv').textContent = s.pouvoir;
+    var za = skinBoite.querySelector('.swk-da');
+    za.innerHTML = '';
+    za.appendChild(boutonSkin(s, actif));
+  }
+  function fermeDetailSkin() { if (skinBoite) skinBoite.classList.remove('on'); }
 
   function peintAnnonces(boite) {
     if (!boite) return;

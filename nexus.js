@@ -282,20 +282,66 @@
   }
 
   // ------------------------------------------------------- les commandes
+  //
+  // Les fleches marchent TOUJOURS, quoi qu'on reassigne — un repli qui ne
+  // peut jamais se perdre en bricolant les reglages. Le reste (par defaut
+  // WASD + espace) se reassigne depuis la roue dentee, et se garde d'une
+  // visite a l'autre dans le navigateur.
 
   var TOUCHES = { up: false, down: false, left: false, right: false };
-  var TOUCHE_CLE = {
-    KeyW: 'up', ArrowUp: 'up', KeyS: 'down', ArrowDown: 'down',
-    KeyA: 'left', ArrowLeft: 'left', KeyD: 'right', ArrowRight: 'right',
-  };
+  var CLE_STOCKAGE = 'swogeNexusTouches';
+  var DEFAUTS = { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', jump: 'Space' };
+  var FLECHES_FIXES = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
+  var ACTIONS = [
+    { cle: 'up', nom: 'Move up' }, { cle: 'down', nom: 'Move down' },
+    { cle: 'left', nom: 'Move left' }, { cle: 'right', nom: 'Move right' },
+    { cle: 'jump', nom: 'Jump' },
+  ];
+
+  var PERSO_TOUCHES = chargeTouches();
+  var CODE_VERS_ACTION = {};
+  function reconstruitLookup() {
+    CODE_VERS_ACTION = {};
+    Object.keys(FLECHES_FIXES).forEach(function (c) { CODE_VERS_ACTION[c] = FLECHES_FIXES[c]; });
+    ACTIONS.forEach(function (a) { CODE_VERS_ACTION[PERSO_TOUCHES[a.cle]] = a.cle; });
+  }
+  function chargeTouches() {
+    var t = {};
+    try { t = JSON.parse(localStorage.getItem(CLE_STOCKAGE) || '{}') || {}; } catch (e) { t = {}; }
+    var o = {};
+    ACTIONS.forEach(function (a) { o[a.cle] = (typeof t[a.cle] === 'string' && t[a.cle]) ? t[a.cle] : DEFAUTS[a.cle]; });
+    return o;
+  }
+  function sauveTouches() {
+    try { localStorage.setItem(CLE_STOCKAGE, JSON.stringify(PERSO_TOUCHES)); } catch (e) {}
+    reconstruitLookup();
+  }
+  reconstruitLookup();
+
+  /** Un nom lisible pour un `KeyboardEvent.code` — « W », « Space », « ↑ »,
+      plutot que le nom technique que personne ne reconnait. */
+  function nomTouche(code) {
+    if (!code) return '—';
+    if (code === 'Space') return 'Space';
+    if (code === 'ArrowUp') return '↑'; if (code === 'ArrowDown') return '↓';
+    if (code === 'ArrowLeft') return '←'; if (code === 'ArrowRight') return '→';
+    if (/^Key[A-Z]$/.test(code)) return code.slice(3);
+    if (/^Digit[0-9]$/.test(code)) return code.slice(5);
+    return code;
+  }
+
   window.addEventListener('keydown', function (ev) {
-    var d = TOUCHE_CLE[ev.code];
-    if (d) { debloqueSon(); TOUCHES[d] = true; ev.preventDefault(); }
-    if (ev.code === 'Space') lanceSaut();
+    if (ecouteRebind) { captureRebind(ev); return; }
+    if (panelOuvert) return;         // les reglages sont ouverts : rien ne bouge derriere
+    var d = CODE_VERS_ACTION[ev.code];
+    if (!d) return;
+    debloqueSon(); ev.preventDefault();
+    if (d === 'jump') lanceSaut();
+    else TOUCHES[d] = true;
   });
   window.addEventListener('keyup', function (ev) {
-    var d = TOUCHE_CLE[ev.code];
-    if (d) TOUCHES[d] = false;
+    var d = CODE_VERS_ACTION[ev.code];
+    if (d && d !== 'jump') TOUCHES[d] = false;
   });
 
   function lanceSaut() {
@@ -304,6 +350,84 @@
     saut.en_cours = true; saut.chrono = 0; saut.cadre = 0;
     saut.duree = c.images / FPS_ANIM;
   }
+
+  // ------------------------------------------------------- la roue des reglages
+
+  var panelOuvert = false, ecouteRebind = null;
+  var captureRebind = function () {};   // remplacee une fois le panneau construit, plus bas
+  (function poseReglages() {
+    var bouton = document.getElementById('nxReglages');
+    var voile = document.getElementById('nxReglagesVoile');
+    if (!bouton || !voile) return;
+    var carte = voile.querySelector('.nxrp-carte');
+    var liste = voile.querySelector('.nxrp-liste');
+    var lignes = {};
+
+    ACTIONS.forEach(function (a) {
+      var l = document.createElement('div'); l.className = 'nxrp-ligne';
+      var nom = document.createElement('span'); nom.className = 'nxrp-nom'; nom.textContent = a.nom;
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'nxrp-touche';
+      b.addEventListener('click', function () { basculeEcoute(a.cle, b); });
+      l.appendChild(nom); l.appendChild(b);
+      liste.appendChild(l);
+      lignes[a.cle] = b;
+    });
+
+    function peint() {
+      ACTIONS.forEach(function (a) { lignes[a.cle].textContent = nomTouche(PERSO_TOUCHES[a.cle]); });
+    }
+    peint();
+
+    function basculeEcoute(cle, b) {
+      if (ecouteRebind === cle) { annuleEcoute(); return; }
+      annuleEcoute();
+      ecouteRebind = cle; b.textContent = 'Press a key…'; b.classList.add('attend');
+    }
+    function annuleEcoute() {
+      if (!ecouteRebind) return;
+      var av = ecouteRebind; ecouteRebind = null;
+      if (lignes[av]) lignes[av].classList.remove('attend');
+      peint();
+    }
+    /* Remplace la fonction-relais declaree plus haut : une seule liste
+       d'ecouteurs `keydown` sur `window`, pas deux qui pourraient se
+       marcher dessus selon l'ordre d'attachement. */
+    captureRebind = function (ev) {
+      var cle = ecouteRebind;
+      ev.preventDefault();
+      if (ev.code === 'Escape') { annuleEcoute(); return; }
+      /* Les fleches restent un repli fixe : les y attacher AUSSI creerait
+         une deuxieme entree pour le meme code, ambigue au moment de lire
+         quelle action elle declenche. */
+      if (FLECHES_FIXES[ev.code]) { annuleEcoute(); return; }
+      /* Deux actions ne partagent jamais la meme touche : si celle-ci
+         servait deja a une autre, elles echangent leurs touches plutot que
+         l'une n'ecrase l'autre en silence. */
+      var autre = ACTIONS.filter(function (a) { return a.cle !== cle && PERSO_TOUCHES[a.cle] === ev.code; })[0];
+      if (autre) PERSO_TOUCHES[autre.cle] = PERSO_TOUCHES[cle];
+      PERSO_TOUCHES[cle] = ev.code;
+      sauveTouches();
+      ecouteRebind = null;
+      lignes[cle].classList.remove('attend');
+      peint();
+    };
+
+    bouton.addEventListener('click', function () {
+      panelOuvert = true; voile.classList.add('on'); peint();
+      Object.keys(TOUCHES).forEach(function (k) { TOUCHES[k] = false; });  // une touche deja enfoncee ne continue pas de marcher derriere
+    });
+    function ferme() {
+      annuleEcoute();
+      panelOuvert = false; voile.classList.remove('on');
+      Object.keys(TOUCHES).forEach(function (k) { TOUCHES[k] = false; });  // rien ne reste enfonce en sortant
+    }
+    voile.querySelector('.nxrp-x').addEventListener('click', ferme);
+    voile.addEventListener('click', function (ev) { if (ev.target === voile) ferme(); });
+    voile.querySelector('.nxrp-reset').addEventListener('click', function () {
+      ACTIONS.forEach(function (a) { PERSO_TOUCHES[a.cle] = DEFAUTS[a.cle]; });
+      sauveTouches(); annuleEcoute(); peint();
+    });
+  })();
 
   /* Le pave tactile : mêmes drapeaux TOUCHES, poses au doigt plutot qu'au
      clavier. `pointerdown/up/cancel/leave` couvrent en un seul jeu

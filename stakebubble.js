@@ -451,6 +451,7 @@
         else if (m.fait.prix !== undefined && m.fait.vendeur) toast('Bought for ' + nb(m.fait.prix, 0) + ' $SWOGE', 'good');
         else toast('Listed for ' + nb(m.fait.prix, 0) + ' $SWOGE', 'ok');
         if (m.fait.ligne) toast('🏆 Family complete — ' + nb(m.fait.ligne.prix, 0) + ' $SWOGE', 'good');
+        EQUIPABLE = null;   // l'inventaire a bouge — la liste equipable est perimee
       }
       if (m.catalogue) BOUTIQUE = Object.assign(BOUTIQUE || {}, m);
       if (m.balance != null) rafraichitSolde();
@@ -481,6 +482,24 @@
          et `peintDetailSkin` ne fait rien si aucune fiche n'est ouverte. */
       peintDetailSkin();
     }
+    /* ---- LA PROGRESSION D'UN PERSONNAGE ----
+     *
+     * Meme reponse pour la lecture (a l'ouverture de la fiche) et pour un
+     * changement d'equipement — les deux rendent l'etat COMPLET du skin
+     * concerne, donc un seul lecteur suffit. */
+    if (m.type === 'personnage') {
+      PERSO_PAR_SKIN[m.skin] = m.etat || null;
+      if (m.error) toast(m.error, 'bad');
+      peintDetailSkin();
+    }
+    /* La liste de ce qu'il y a a equiper ne depend d'aucune saison parcourue
+       et ne change que quand l'inventaire change (achat, coffre) — on la
+       redemande donc aussi apres un gain de boutique, pas seulement une
+       fois. */
+    if (m.type === 'equipable') {
+      EQUIPABLE = { fruits: m.fruits || [], armes: m.armes || [] };
+      peintDetailSkin();
+    }
     /* ---- LE RACHAT ----
      *
      * Il repond avec la boutique entiere, donc on la range comme le marche le
@@ -493,6 +512,7 @@
       else if (m.fait) {
         toast('Sold back for ' + nb(m.fait.total, 0) + ' $SWOGE' +
               (m.fait.recycle ? ' · back in the chest pool' : ''), 'good');
+        EQUIPABLE = null;   // l'objet vendu a quitte l'inventaire
       }
       if (m.catalogue) BOUTIQUE = Object.assign(BOUTIQUE || {}, m);
       if (m.balance != null) rafraichitSolde();
@@ -534,6 +554,7 @@
       if (m.gagne && m.catalogue) {
         var rr = (m.catalogue.raretes || []).filter(function (x) { return x.cle === m.gagne.rarete; })[0];
         sceneRevele(m.gagne, rr && rr.couleur, rr && rr.nom);
+        EQUIPABLE = null;   // un nouvel objet vient d'entrer dans l'inventaire
       }
       if (profOnglet === 'sh' || profOnglet === 'cl') profRend();
     }
@@ -995,6 +1016,9 @@
   var SERIE = null, ATTENTE = null, OFFERT = null;
   var MARCHE = null, MARCHE_F = 'tout', MARCHE_Q = '';
   var SKINS = null;   // { catalogue, actif } — independant de SAISON
+  var PERSO_PAR_SKIN = {};                // skinId -> etat (niveau/xp/stats/equip) une fois recu
+  var EQUIPABLE = null;                   // { fruits, armes } — ce qu'il y a a equiper, toutes saisons confondues
+  var EQUIPABLE_DEMANDE = false;          // pour ne demander la liste qu'une fois par session
   /* Le SOUS-ONGLET de l'historique. Le serveur ne connait pas « hi » : il
      attend un genre precis. C'est donc cette variable, et non `profOnglet`,
      qui part dans la demande et qui filtre la reponse. */
@@ -2023,6 +2047,51 @@
         'font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,.16);' +
         'background:rgba(255,255,255,.04);color:#8DA0C4;}' +
       '.swk-face.on{border-color:var(--t);color:#F2F6FF;background:rgba(255,255,255,.08);}' +
+      /* ---- LA PROGRESSION DU PERSONNAGE ----
+       *
+       * Niveau, XP, huit stats, deux emplacements — tout tient sous la
+       * description, avant le bouton d achat/port, dans la meme feuille. */
+      '.swk-st{width:100%;max-width:320px;display:flex;flex-direction:column;gap:10px;' +
+        'margin-top:2px;}' +
+      '.swk-stload{font-style:normal;font-size:12px;color:#8DA0C4;}' +
+      '.swk-lvl{width:100%;}' +
+      '.swk-lvlt{display:flex;justify-content:space-between;align-items:baseline;' +
+        'font-size:11.5px;color:#8DA0C4;margin-bottom:4px;}' +
+      '.swk-lvlt b{font-size:13px;color:#F2F6FF;}' +
+      '.swk-xpb{height:6px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden;}' +
+      '.swk-xpb i{display:block;height:100%;border-radius:99px;background:var(--t);}' +
+      '.swk-sg{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}' +
+      '.swk-s{display:flex;flex-direction:column;align-items:center;gap:2px;' +
+        'padding:6px 2px;border-radius:8px;background:rgba(255,255,255,.04);}' +
+      '.swk-s i{font-style:normal;font-size:9.5px;font-weight:800;letter-spacing:.03em;' +
+        'color:#8DA0C4;}' +
+      '.swk-s b{font-size:13px;font-weight:800;color:#F2F6FF;}' +
+      '.swk-s b em{font-style:normal;font-size:10.5px;font-weight:800;color:#7CFF9B;}' +
+      /* Un emplacement d equipement : la puce a gauche dit ce qui est porte,
+         les boutons a droite le changent ou le retirent — la meme ligne
+         qu on lit d abord et qu on touche ensuite. */
+      '.swk-eq{width:100%;border-top:1px solid rgba(255,255,255,.08);padding-top:8px;}' +
+      '.swk-eqc{display:flex;align-items:baseline;justify-content:center;gap:6px;' +
+        'flex-wrap:wrap;font-size:12px;}' +
+      '.swk-eqc i{font-style:normal;color:#8DA0C4;}' +
+      '.swk-eqc b{color:#F2F6FF;}' +
+      '.swk-eqc b.vide{color:#8DA0C4;font-weight:600;}' +
+      '.swk-eqc em{font-style:normal;color:#7CFF9B;font-weight:800;font-size:11px;}' +
+      '.swk-eqbar{display:flex;justify-content:center;gap:8px;margin-top:6px;}' +
+      '.swk-eqoff,.swk-eqchg{padding:5px 12px;border-radius:99px;font:inherit;font-size:11px;' +
+        'font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,.16);' +
+        'background:rgba(255,255,255,.04);color:#8DA0C4;}' +
+      '.swk-eqchg:hover,.swk-eqoff:hover{background:rgba(255,255,255,.09);}' +
+      '.swk-eql{display:flex;flex-direction:column;gap:5px;margin-top:8px;' +
+        'max-height:150px;overflow-y:auto;}' +
+      '.swk-eqi{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:9px;' +
+        'font:inherit;cursor:pointer;border:1px solid rgba(255,255,255,.14);' +
+        'border-left:3px solid var(--c,#8DA0C4);background:rgba(255,255,255,.04);text-align:left;}' +
+      '.swk-eqi:hover{background:rgba(255,255,255,.09);}' +
+      '.swk-eqi.actif{background:rgba(124,255,155,.08);border-color:rgba(124,255,155,.35);}' +
+      '.swk-eqi b{font-size:12px;color:#F2F6FF;flex:1;}' +
+      '.swk-eqi i{font-style:normal;font-size:10.5px;color:#7CFF9B;font-weight:800;}' +
+      '.swk-eqi span{font-size:10px;color:#8DA0C4;}' +
       /* La case vendable : rien de crie, juste de quoi comprendre qu on peut
          appuyer dessus. Un bouton sur chaque case ferait une grille de
          boutons au lieu d une collection. */
@@ -3874,6 +3943,7 @@
           '<i class="swk-dp"></i>' +
           '<i class="swk-dv"></i>' +
           '<div class="swk-dg"></div>' +
+          '<div class="swk-st"></div>' +
           '<div class="swk-da"></div>' +
         '</div>';
       var hote = (profBoite && profBoite.querySelector('.swp')) || document.body;
@@ -3891,6 +3961,14 @@
        laisse ouvert la derniere fois — sinon un skin qu on vient d acheter
        montrerait par surprise le pixel d un AUTRE skin regarde plus tot. */
     skinBoite.dataset.face = 'normal';
+    /* Le picker d'equipement se referme aussi a chaque ouverture — sinon la
+       fiche de Pepe s'ouvrirait avec le tiroir « armes » de Landwolf encore
+       deplie. */
+    skinBoite.dataset.eqOpen = '';
+    if (s.possede) {
+      envoie({ type: 'personnage', skin: s.id });
+      if (!EQUIPABLE) envoie({ type: 'equipable' });
+    }
     peintDetailSkin();
     skinBoite.classList.add('on');
   }
@@ -3938,10 +4016,138 @@
         zg.appendChild(teaser);
       }
     }
+    /* ---- LA PROGRESSION : NIVEAU, STATS, EQUIPEMENT ----
+     *
+     * Rien de tout ca avant l'achat — un skin qu'on ne possede pas n'a pas
+     * de fiche de personnage, `personnageEtat` cote serveur rend `null`. */
+    var zst = skinBoite.querySelector('.swk-st');
+    zst.innerHTML = '';
+    if (s.possede) {
+      var etatP = PERSO_PAR_SKIN[s.id];
+      if (etatP === undefined) {
+        zst.innerHTML = '<i class="swk-stload">Loading character…</i>';
+      } else if (etatP) {
+        zst.appendChild(blocSkinNiveau(etatP));
+        zst.appendChild(blocSkinStats(etatP));
+        zst.appendChild(blocEquipement(s, 'fruit', etatP.equipFruit));
+        zst.appendChild(blocEquipement(s, 'arme', etatP.equipArme));
+      }
+    }
     var za = skinBoite.querySelector('.swk-da');
     za.innerHTML = '';
     za.appendChild(boutonSkin(s, actif));
   }
+
+  /* La barre de niveau — un seul repere : combien d'XP jusqu'au prochain
+     niveau, sous ce skin precis. Au niveau max, la barre est pleine et ne
+     dit plus "prochain niveau" puisqu'il n'y en a pas. */
+  function blocSkinNiveau(etatP) {
+    var d = document.createElement('div');
+    d.className = 'swk-lvl';
+    var plein = etatP.xpProchain
+      ? Math.max(0, Math.min(100, Math.round((etatP.xp - etatP.xpNiveau) * 100 / (etatP.xpProchain - etatP.xpNiveau))))
+      : 100;
+    d.innerHTML =
+      '<div class="swk-lvlt"><b>Level ' + etatP.niveau + '</b><span>' +
+      (etatP.xpProchain ? nb(etatP.xp, 0) + ' / ' + nb(etatP.xpProchain, 0) + ' XP' : 'MAX LEVEL') +
+      '</span></div>' +
+      '<div class="swk-xpb"><i style="width:' + plein + '%"></i></div>';
+    return d;
+  }
+
+  /* Les huit stats, dans l'ordre RotMG : les deux jauges d'abord, puis les
+     six attributs. Le nombre de base et le bonus vert de l'equipement sont
+     affiches SEPAREMENT — separement, parce que c'est la seule maniere de
+     voir a l'oeil ce qu'un objet apporte vraiment, comme sur une fiche
+     RealmEye. */
+  var ORDRE_STATS = ['hp', 'mp', 'att', 'def', 'spd', 'dex', 'vit', 'wis'];
+  var NOM_STAT = { hp: 'HP', mp: 'MP', att: 'ATT', def: 'DEF', spd: 'SPD', dex: 'DEX', vit: 'VIT', wis: 'WIS' };
+  function blocSkinStats(etatP) {
+    var d = document.createElement('div');
+    d.className = 'swk-sg';
+    d.innerHTML = ORDRE_STATS.map(function (k) {
+      var bonus = 0;
+      if (etatP.equipFruit && etatP.equipFruit.stat === k) bonus += etatP.equipFruit.bonus;
+      if (etatP.equipArme && etatP.equipArme.stat === k) bonus += etatP.equipArme.bonus;
+      var base = (etatP.stats[k] || 0) - bonus;
+      return '<div class="swk-s"><i>' + NOM_STAT[k] + '</i><b>' + nb(base, 0) +
+        (bonus > 0 ? ' <em>+' + nb(bonus, 0) + '</em>' : '') + '</b></div>';
+    }).join('');
+    return d;
+  }
+
+  /* Un emplacement d'equipement — fruit ou arme. La puce montre ce qui est
+     porte ; "Change" deplie la liste de ce qu'on possede dans CETTE
+     categorie, prise dans EQUIPABLE (qui ne depend d'aucune saison
+     parcourue). Le clic sur un candidat equipe tout de suite — pas de
+     bouton "confirmer" separe, le geste EST la confirmation. */
+  function blocEquipement(s, genre, equipe) {
+    var champ = genre === 'fruit' ? 'fruits' : 'armes';
+    var nomSlot = genre === 'fruit' ? 'Power fruit' : 'Weapon';
+    var typeMsg = genre === 'fruit' ? 'equipeFruit' : 'equipeArme';
+    var d = document.createElement('div');
+    d.className = 'swk-eq';
+    var chip = document.createElement('div');
+    chip.className = 'swk-eqc';
+    chip.innerHTML = '<i>' + nomSlot + '</i>' +
+      (equipe
+        ? '<b>' + ech(equipe.nom) + '</b><em>' + (equipe.stat ? NOM_STAT[equipe.stat] : '') + ' +' + nb(equipe.bonus, 0) + '</em>'
+        : '<b class="vide">None equipped</b>');
+    d.appendChild(chip);
+    var bar = document.createElement('div');
+    bar.className = 'swk-eqbar';
+    if (equipe) {
+      var off = document.createElement('button');
+      off.type = 'button'; off.className = 'swk-eqoff';
+      off.textContent = 'Remove';
+      off.addEventListener('click', function (e) {
+        e.stopPropagation();
+        envoie({ type: typeMsg, skin: s.id, item: null });
+      });
+      bar.appendChild(off);
+    }
+    var chg = document.createElement('button');
+    chg.type = 'button'; chg.className = 'swk-eqchg';
+    var ouvert = skinBoite.dataset.eqOpen === genre;
+    chg.textContent = ouvert ? 'Close' : 'Change';
+    chg.addEventListener('click', function (e) {
+      e.stopPropagation();
+      skinBoite.dataset.eqOpen = ouvert ? '' : genre;
+      if (!EQUIPABLE) envoie({ type: 'equipable' });
+      peintDetailSkin();
+    });
+    bar.appendChild(chg);
+    d.appendChild(bar);
+    if (ouvert) {
+      var liste = document.createElement('div');
+      liste.className = 'swk-eql';
+      var candidats = (EQUIPABLE && EQUIPABLE[champ]) || null;
+      if (!candidats) {
+        liste.innerHTML = '<i class="swk-stload">Loading…</i>';
+      } else if (!candidats.length) {
+        liste.innerHTML = '<i class="swk-teaser">' +
+          (genre === 'fruit' ? 'No power fruit owned yet — open a season 1 chest.'
+                              : 'No weapon owned yet — open a season 2 chest.') + '</i>';
+      } else {
+        candidats.forEach(function (o) {
+          var b = document.createElement('button');
+          b.type = 'button'; b.className = 'swk-eqi' + (equipe && equipe.item === o.id ? ' actif' : '');
+          b.style.setProperty('--c', o.couleur || '#8DA0C4');
+          b.innerHTML = '<b>' + ech(o.nom) + '</b><i>' + (o.stat ? NOM_STAT[o.stat] : '') + ' +' + nb(o.bonus, 0) + '</i>' +
+            (o.quantite > 1 ? '<span>x' + o.quantite + '</span>' : '');
+          b.addEventListener('click', function (e) {
+            e.stopPropagation();
+            skinBoite.dataset.eqOpen = '';
+            envoie({ type: typeMsg, skin: s.id, item: o.id });
+          });
+          liste.appendChild(b);
+        });
+      }
+      d.appendChild(liste);
+    }
+    return d;
+  }
+
   function fermeDetailSkin() { if (skinBoite) skinBoite.classList.remove('on'); }
 
   function peintAnnonces(boite) {

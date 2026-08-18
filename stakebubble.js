@@ -2852,7 +2852,20 @@
       /* Le contenu ne doit pas finir SOUS la barre. Une page qu'on ne peut pas
          faire defiler jusqu'au bout est un defaut qu'on ne remarque que sur le
          dernier element, donc trop tard. */
-      'body{padding-bottom:calc(62px + env(safe-area-inset-bottom,0px))!important;}' +
+      'body{padding-bottom:var(--swbb-h)!important;}' +
+      /* ---- LE TIROIR AUSSI PASSE SOUS LA BARRE ----
+       *
+       * La marge posee sur `body` ne protege que le flux de la page. Le tiroir
+       * est un panneau FIXE : il ne la voit pas, et sa derniere rangee finit
+       * derriere la barre meme defile a fond. Mesure avant correction :
+       * « Leaderboard » depassait de 36 px, invisible quoi qu'on fasse.
+       *
+       * Les deux conteneurs qui defilent — la liste des sections et le
+       * panneau de detail — prennent donc la meme marge, tiree de la MEME
+       * variable que la hauteur de la barre. Deux nombres ecrits a deux
+       * endroits auraient diverge au premier reglage. */
+      ':root{--swbb-h:calc(62px + env(safe-area-inset-bottom,0px));}' +
+      '.swp-t,.swp-l{padding-bottom:calc(var(--swbb-h) + 10px)!important;}' +
       '@media (min-width:900px){.swbb{justify-content:center;gap:34px;}' +
         '.swbb button{flex:0 0 96px;}}';
     document.head.appendChild(css);
@@ -2880,13 +2893,14 @@
       var b = document.createElement('button');
       b.type = 'button';
       b.className = (cour === o.k ? 'on' : '');
+      b.dataset.tap = o.k;
       b.innerHTML = svg(o.k) + '<span>' + o.t + '</span>';
       b.addEventListener('click', o.go);
       barreBas.appendChild(b);
     });
 
     var bp = document.createElement('button');
-    bp.type = 'button'; bp.className = 'swbb-prof';
+    bp.type = 'button'; bp.className = 'swbb-prof'; bp.dataset.tap = 'profil';
     bp.innerHTML = '<span class="av"></span><span>Profile</span>';
     bp.addEventListener('click', profOuvre);
     barreBas.appendChild(bp);
@@ -4714,6 +4728,89 @@
     });
     z.style.display = cases.length ? '' : 'none';
   }
+
+  /* ================== CE QUI EST REELLEMENT TOUCHE ==================
+   *
+   * L'ordre des rangees du tiroir a ete decide au jugement. Il vaut ce que
+   * vaut un jugement : on sait ou l'on aurait mis les choses, pas ou les gens
+   * vont les chercher. Ces compteurs repondent a la question a notre place.
+   *
+   * ---- ce qu'on compte, et ce qu'on ne compte pas ----
+   *
+   * Un TOTAL par bouton, pour tout le monde ensemble. Jamais qui a clique :
+   * la question est « quelle rangee sert », pas « que fait tel joueur ». Un
+   * compteur par personne repondrait a la seconde sans mieux repondre a la
+   * premiere, et il faudrait le defendre.
+   *
+   * ---- ils ne reordonnent RIEN tout seuls ----
+   *
+   * Un menu qui se reorganise sous les doigts est un menu qu'on ne peut pas
+   * apprendre : la memoire du geste bat un ordre legerement meilleur, et
+   * l'utilisateur finit par lire chaque libelle a chaque fois. Les chiffres
+   * vont au panneau d'administration ; c'est un humain qui deplace les
+   * rangees, une fois, en connaissance de cause.
+   *
+   * ---- pourquoi on tamponne au lieu d'envoyer ----
+   *
+   * Un message par clic ferait un aller-retour reseau pour une statistique.
+   * On accumule et on vide toutes les dix secondes, plus une fois quand la
+   * page passe en arriere-plan — c'est le dernier instant ou l'on peut encore
+   * parler, et celui que les compteurs perdraient sinon.
+   */
+  var TAPS = {}, tapsTimer = null;
+  function noteTap(cle) {
+    if (!cle) return;
+    TAPS[cle] = (TAPS[cle] || 0) + 1;
+    if (!tapsTimer) tapsTimer = setTimeout(videTaps, 10000);
+  }
+  function videTaps() {
+    tapsTimer = null;
+    var k = Object.keys(TAPS);
+    if (!k.length) return;
+    var lot = TAPS; TAPS = {};
+    /* Si la socket est tombee, on REND les compteurs au tampon plutot que de
+       les perdre : ils repartiront au prochain vidage. */
+    if (!etat.socket || etat.socket.readyState !== 1) {
+      k.forEach(function (c) { TAPS[c] = (TAPS[c] || 0) + lot[c]; });
+      return;
+    }
+    try { etat.socket.send(JSON.stringify({ type: 'tap', taps: lot })); }
+    catch (e) { k.forEach(function (c) { TAPS[c] = (TAPS[c] || 0) + lot[c]; }); }
+  }
+  /** La clef d'un element touche, ou rien s'il n'y a rien a compter. */
+  function clefTap(e) {
+    var b = e.closest && e.closest('.swbb button');
+    /* La clef est POSEE sur le bouton, pas devinee dans son contenu. Ma
+       premiere version lisait le dernier <span> : sur le bouton du profil
+       c'est la PASTILLE, et la barre remontait « bar:3 » — un compteur
+       different a chaque nombre de recompenses en attente. */
+    if (b) return 'bar:' + ((b.dataset && b.dataset.tap) || 'inconnu');
+    var r = e.closest && e.closest('.swp-t button');
+    if (r) {
+      /* La clef quand il y en a une, sinon le libelle reduit : les rangees du
+         menu de la page (portefeuille, depot, retrait) n'ont pas de `data-k`,
+         et ce sont justement celles dont on veut savoir si elles servent. */
+      if (r.dataset && r.dataset.k) return 'menu:' + r.dataset.k;
+      return 'menu:' + String(r.textContent || '').trim().toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30);
+    }
+    var a = e.closest && e.closest('a[href]');
+    if (a) {
+      var h = a.getAttribute('href') || '';
+      if (!/\.html/.test(h)) return null;
+      var f = h.split('/').pop();
+      var page = f.split('?')[0].replace(/\.html$/, '');
+      var jeu = (f.split('game=')[1] || '').split('&')[0];
+      return 'jeu:' + page + (jeu ? ':' + jeu : '');
+    }
+    return null;
+  }
+  document.addEventListener('click', function (ev) {
+    try { noteTap(clefTap(ev.target)); } catch (e) {}
+  }, true);
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') videTaps();
+  });
 
   /** Un envoi qui ne jette pas si la socket est tombee. */
   function envoie(o) {

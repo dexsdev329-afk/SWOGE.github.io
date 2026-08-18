@@ -48,6 +48,16 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
 #nxIndice.on{ opacity:1; }
 #nxIndice b{ color:#ffd54a; }
 
+/* ---- combien d'autres joueurs sont la ----
+ * Discret, en haut a droite : ca dit que le lieu est habite sans jamais
+ * gener la vue sur la scene elle-meme. */
+#nxQui{ position:absolute; right:max(14px, env(safe-area-inset-right));
+  top:max(14px, env(safe-area-inset-top)); z-index:20; pointer-events:none;
+  padding:7px 13px; border-radius:999px; background:rgba(10,17,40,.7);
+  border:1px solid rgba(255,255,255,.14); color:#c9d3f2;
+  font:700 12px/1.3 'Archivo',system-ui,sans-serif; opacity:0; transition:opacity .25s ease; }
+#nxQui.on{ opacity:1; }
+
 /* ---- le pave tactile, en bas a gauche ----
  * Le clavier marche deja sur ordinateur (WASD / fleches). Sur telephone il
  * n'y a rien d'autre : quatre boutons en croix, tenus au doigt. */
@@ -95,6 +105,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
 <div id="nxWrap">
   <canvas id="nxCanvas"></canvas>
   <div id="nxIndice"></div>
+  <div id="nxQui"></div>
   <div id="nxHint">WASD / arrows to move &middot; walk in to enter</div>
   <div id="nxPad" aria-hidden="true">
     <button class="u" type="button" data-dir="up" aria-label="Move up">&#9650;</button>

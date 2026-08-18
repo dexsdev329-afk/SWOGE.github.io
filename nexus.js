@@ -1,5 +1,5 @@
 /*
- * LE NEXUS, V1 SOLO.
+ * LE NEXUS, MULTIJOUEUR.
  *
  * ---- ce que c'est ----
  *
@@ -7,19 +7,28 @@
  * a la boutique, une porte qui mene au coffre du personnage, un portail qui
  * mene au hall des jeux. Le joueur s'y promene avec le skin qu'il porte
  * deja, et entre dans chaque lieu en marchant dessus — comme dans RotMG, pas
- * en cliquant un bouton.
+ * en cliquant un bouton. Les autres joueurs presents s'y promenent aussi,
+ * sous nos yeux : c'est le sens meme d'un hall — un endroit ou l'on se
+ * croise, pas une piece vide qu'on visite seul.
  *
- * V1 est SOLO : personne d'autre ne s'y affiche. La position n'est envoyee
- * a personne, et le serveur n'est interroge que pour une seule chose —
- * quel skin le joueur porte, pour dessiner le bon personnage.
+ * ---- comment la position circule ----
+ *
+ * Le client envoie sa position au clavier, quelques fois par seconde — pas a
+ * chaque trame, ca n'apporterait rien de plus au reseau. Le serveur ne fait
+ * confiance a AUCUN champ « skin » venu du client : il diffuse celui qu'il
+ * connait deja (`skinActif`), pour qu'un joueur ne puisse pas se deguiser en
+ * un personnage qu'il ne possede pas aux yeux des autres. En retour, un
+ * instantane COMPLET arrive plusieurs fois par seconde — pas des evenements
+ * d'entree/sortie a tenir a jour : qui n'y est plus n'apparait simplement
+ * plus dans l'instantane suivant.
  *
  * ---- pourquoi on espionne le constructeur WebSocket ----
  *
  * Meme raison qu'entrainement.js : la socket vit dans une variable privee de
- * stakebubble.js, et la seule fonctionnalite qu'il nous faut — savoir quel
- * skin est actif — ne justifie pas de modifier ce fichier de trois mille
- * lignes pour l'exposer. On remplace le constructeur avant que la page ne
- * s'en serve, et on ajoute un ecouteur A COTE du sien : si ce fichier ne
+ * stakebubble.js, et ce qu'il nous faut — savoir quel skin est actif, envoyer
+ * et recevoir les positions — ne justifie pas de modifier ce fichier de trois
+ * mille lignes pour l'exposer. On remplace le constructeur avant que la page
+ * ne s'en serve, et on ajoute un ecouteur A COTE du sien : si ce fichier ne
  * chargeait pas, le reste du site continuerait de fonctionner a l'identique.
  */
 (function () {
@@ -53,14 +62,25 @@
     return false;
   }
 
+  var MON_ADRESSE = null;     // la notre, pour se filtrer soi-meme des instantanes recus
+  var enLigne = false;        // connecte ET entre dans le Nexus : on peut emettre notre position
+  var chronoEnvoi = 0, ENVOI_INTERVAL = 0.12;
   var demande = false;
   function ecoute(ev) {
     var m;
     try { m = JSON.parse(ev.data); } catch (e) { return; }
-    if (m.type === 'auth' && !demande) { demande = true; envoie({ type: 'skins' }); }
-    if (m.type === 'skins' && m.actif && PERSONNAGES[m.actif] && m.actif !== PERSO) {
-      chargePersonnage(m.actif);
+    if (m.type === 'auth' && !demande) {
+      demande = true;
+      MON_ADRESSE = String(m.address || '').toLowerCase();
+      envoie({ type: 'skins' });
+      envoie({ type: 'nexusJoin' });
+      enLigne = true;
     }
+    if (m.type === 'skins' && m.actif && PERSONNAGES[m.actif] && m.actif !== PERSO) {
+      PERSO = m.actif;
+      assureCharge(PERSO);
+    }
+    if (m.type === 'nexusEtat') majJoueursDistants(m.joueurs || []);
   }
 
   // ------------------------------------------------------- les personnages
@@ -83,31 +103,35 @@
   var ANIMS = ['idle', 'run', 'jump'];
   var DIRS = ['up', 'down', 'left', 'right'];
 
-  var PERSO = null;               // skin en cours d'affichage
-  var JEU = {};                   // { anim_dir: HTMLImageElement }, du skin AFFICHE
-  var enAttente = null;           // skin en cours de prechargement
-
-  function chargePersonnage(cle) {
-    if (enAttente === cle) return;
-    enAttente = cle;
-    var jeu = {}, restant = ANIMS.length * DIRS.length, echoue = false;
+  var PERSO = 'andy';              // notre skin, avant meme la reponse du serveur
+  /* Un cache par personnage, pas un seul jeu d'images pour « le » personnage
+     affiche : le Nexus montre potentiellement les six a la fois, le notre et
+     ceux des joueurs croises. `assureCharge` demarre le chargement au premier
+     besoin et le rend telle quelle ensuite — jamais deux fois pour le meme. */
+  var SPRITES = {};                // { cle: { images: {anim_dir: Image}, pret: bool } }
+  function assureCharge(cle) {
+    var s = SPRITES[cle];
+    if (s) return s;
+    s = SPRITES[cle] = { images: {}, pret: false };
+    var restant = ANIMS.length * DIRS.length, echoue = false;
     ANIMS.forEach(function (a) {
       DIRS.forEach(function (d) {
         var img = new Image();
         img.onload = function () {
           restant--;
-          /* On ne bascule qu'une fois les DOUZE images pretes : basculer
-             image par image afficherait un personnage a moitie andy, a
-             moitie l'autre, le temps du chargement. */
-          if (restant === 0 && !echoue && enAttente === cle) { PERSO = cle; JEU = jeu; }
+          /* Toutes les DOUZE a la fois, pas une par une : sinon un
+             personnage a moitie charge se dessinerait avec un pied idle et
+             un pied qui court, le temps que le reste arrive. */
+          if (restant === 0 && !echoue) s.pret = true;
         };
         img.onerror = function () { echoue = true; };
         img.src = 'img/nexus/' + cle + '/' + a + '_' + d + '.webp';
-        jeu[a + '_' + d] = img;
+        s.images[a + '_' + d] = img;
       });
     });
+    return s;
   }
-  chargePersonnage('andy');       // un personnage par defaut, avant la reponse du serveur
+  assureCharge(PERSO);
 
   function rectangleCadre(cle, indice) {
     var c = PERSONNAGES[cle];
@@ -174,6 +198,52 @@
   var FPS_ANIM = 14;
 
   var saut = { en_cours: false, chrono: 0, cadre: 0, duree: 0 };
+
+  /** Avance le cadre d'anim d'une fiche (le joueur local ou un joueur
+      distant) — la meme horloge pour tout le monde, le personnage change
+      juste le nombre total de cadres a boucler. */
+  function avanceCadre(fiche, cle, dt) {
+    var total = PERSONNAGES[cle] ? PERSONNAGES[cle].images : 1;
+    fiche.chrono += dt;
+    if (fiche.chrono >= 1 / FPS_ANIM) {
+      fiche.chrono = 0;
+      fiche.cadre = (fiche.cadre + 1) % total;
+    }
+  }
+
+  // ------------------------------------------------------- les autres joueurs
+  //
+  // Un instantane COMPLET arrive plusieurs fois par seconde — pas un message
+  // par arrivee ou par depart. On fusionne donc a chaque fois avec ce qu'on
+  // avait deja : une fiche connue garde son cadre d'animation et sa position
+  // AFFICHEE (`rx`/`ry`), qu'on glisse ensuite vers la position RECUE
+  // (`x`/`y`) plutot que d'y sauter — sinon chaque instantane ferait un petit
+  // bond au lieu d'un mouvement continu. Une fiche absente du dernier
+  // instantane est simplement supprimee : c'est ainsi qu'un depart se voit,
+  // sans le moindre message dedie.
+  var DISTANTS = {};                 // { addr: {x,y,rx,ry,dir,anim,skin,cadre,chrono} }
+  var quiEl = document.getElementById('nxQui'), nbAffiche = -1;
+  function majJoueursDistants(liste) {
+    var vus = {};
+    liste.forEach(function (j) {
+      if (!j || !j.addr || j.addr === MON_ADRESSE) return;
+      vus[j.addr] = true;
+      var d = DISTANTS[j.addr];
+      if (!d) d = DISTANTS[j.addr] = { x: j.x, y: j.y, rx: j.x, ry: j.y, cadre: 0, chrono: 0 };
+      d.x = j.x; d.y = j.y; d.dir = j.dir; d.anim = j.anim; d.skin = j.skin;
+      assureCharge(j.skin);
+    });
+    Object.keys(DISTANTS).forEach(function (a) { if (!vus[a]) delete DISTANTS[a]; });
+
+    var nb = Object.keys(DISTANTS).length;
+    if (nb !== nbAffiche && quiEl) {
+      nbAffiche = nb;
+      if (nb > 0) {
+        quiEl.textContent = '👥 ' + nb + (nb > 1 ? ' players nearby' : ' player nearby');
+        quiEl.classList.add('on');
+      } else quiEl.classList.remove('on');
+    }
+  }
 
   // ------------------------------------------------------- les commandes
 
@@ -254,13 +324,27 @@
       if (saut.chrono >= saut.duree) saut.en_cours = false;
     }
 
-    // l'animation de marche/repos, en boucle
-    joueur.chrono += dt;
-    var total = PERSONNAGES[PERSO] ? PERSONNAGES[PERSO].images : 1;
-    if (joueur.chrono >= 1 / FPS_ANIM) {
-      joueur.chrono = 0;
-      joueur.cadre = (joueur.cadre + 1) % total;
+    // l'animation de marche/repos, en boucle — le saut a sa propre pendule plus haut
+    if (!saut.en_cours) avanceCadre(joueur, PERSO, dt);
+
+    // notre position part au serveur, au clavier — pas a chaque trame, le
+    // reseau n'en tire rien de plus
+    chronoEnvoi += dt;
+    if (chronoEnvoi >= ENVOI_INTERVAL && enLigne) {
+      chronoEnvoi = 0;
+      envoie({ type: 'nexusMove', x: Math.round(joueur.x), y: Math.round(joueur.y),
+               dir: joueur.dir, anim: joueur.anim });
     }
+
+    // les joueurs croises : leur cadre avance comme le notre, et leur
+    // position AFFICHEE glisse vers la derniere recue plutot que d'y sauter
+    Object.keys(DISTANTS).forEach(function (a) {
+      var d = DISTANTS[a];
+      avanceCadre(d, d.skin, dt);
+      var t = Math.min(1, dt * 10);
+      d.rx += (d.x - d.rx) * t;
+      d.ry += (d.y - d.ry) * t;
+    });
 
     // les lieux : proximite, entree apres un court sejour, indice affiche
     var proche = null, plusPresDist = Infinity;
@@ -312,35 +396,41 @@
       }
     }
 
-    // les lieux et le joueur, tries par leurs "pieds" : ce qui est plus bas
-    // a l'ecran se dessine par-dessus, comme dans n'importe quelle vue du
-    // dessus a la RotMG.
+    // les lieux, le joueur et les autres, tries par leurs "pieds" : ce qui
+    // est plus bas a l'ecran se dessine par-dessus, comme dans n'importe
+    // quelle vue du dessus a la RotMG.
     var pile = LIEUX.map(function (l) { return { y: l.y, dessine: function () {
       if (l.img.complete) ctx.drawImage(l.img, l.x - l.larg / 2, l.y - l.haut, l.larg, l.haut);
     } }; });
-    pile.push({ y: joueur.y, dessine: dessineJoueur });
+    pile.push({ y: joueur.y, dessine: function () {
+      var cadre = joueur.anim === 'jump' ? saut.cadre : joueur.cadre;
+      dessineAvatar(joueur.x, joueur.y, PERSO, joueur.dir, joueur.anim, cadre);
+    } });
+    Object.keys(DISTANTS).forEach(function (a) {
+      var d = DISTANTS[a];
+      pile.push({ y: d.ry, dessine: function () {
+        dessineAvatar(d.rx, d.ry, d.skin, d.dir, d.anim, d.cadre);
+      } });
+    });
     pile.sort(function (a, b) { return a.y - b.y; });
     pile.forEach(function (p) { p.dessine(); });
 
     ctx.restore();
   }
 
-  function dessineJoueur() {
-    if (!PERSO || !PERSONNAGES[PERSO]) return;
-    var anim = joueur.anim, cadre = joueur.cadre;
-    if (anim === 'jump') cadre = saut.cadre;
-    var img = JEU[anim + '_' + joueur.dir];
-    if (!img || !img.complete || !img.naturalWidth) {
+  function dessineAvatar(x, y, cle, dir, anim, cadre) {
+    var s = SPRITES[cle];
+    var img = s && s.pret && s.images[anim + '_' + dir];
+    if (!img) {
       // pas encore charge : un jeton simple a la place, pour que la scene
       // reste lisible pendant le prechargement plutot que de rester vide.
       ctx.fillStyle = '#8DA0C4';
-      ctx.beginPath(); ctx.ellipse(joueur.x, joueur.y - 40, 26, 34, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(x, y - 40, 26, 34, 0, 0, Math.PI * 2); ctx.fill();
       return;
     }
-    var rc = rectangleCadre(PERSO, cadre);
+    var rc = rectangleCadre(cle, cadre);
     var disp = 150;
-    ctx.drawImage(img, rc.sx, rc.sy, CADRE, CADRE,
-      joueur.x - disp / 2, joueur.y - disp + 20, disp, disp);
+    ctx.drawImage(img, rc.sx, rc.sy, CADRE, CADRE, x - disp / 2, y - disp + 20, disp, disp);
   }
 
   // ------------------------------------------------------- le cadrage

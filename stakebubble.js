@@ -472,7 +472,10 @@
           (acq.pixel ? ' · 🎁 pixel gift unlocked too' : ''), 'good');
       }
       if (m.balance != null) rafraichitSolde();
-      if (profOnglet === 'sk') profRend();
+      /* L'apercu montre aussi le skin porte : une reponse a ce message doit
+         donc repeindre les DEUX onglets qui en dependent, pas seulement
+         celui de la boutique. */
+      if (profOnglet === 'sk' || profOnglet === 'ap') profRend();
       /* La fiche en grand se repeint independamment de l'onglet du dessous —
          un achat ou un choix de port doit y changer le bouton tout de suite,
          et `peintDetailSkin` ne fait rien si aucune fiche n'est ouverte. */
@@ -1830,6 +1833,20 @@
       /* L'apercu : des cartes, pas un tableau. Un tableau se lit de gauche a
          droite ; une grille de cartes se balaie, et c'est ce qu'on fait devant
          son propre profil. */
+      /* Centre, large, cliquable — c est un portrait, pas une carte de plus
+         dans la grille des chiffres. Le bord suit la couleur du skin, comme
+         partout ailleurs ou un skin s affiche. */
+      '.swap-skin{display:flex;flex-direction:column;align-items:center;gap:2px;' +
+        'margin:2px 0 14px;padding:16px 10px 13px;border-radius:16px;cursor:pointer;' +
+        'border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.03);' +
+        'border-top:3px solid var(--t);}' +
+      '.swap-skin:hover{background:rgba(255,255,255,.06);}' +
+      '.swap-skin .ico{width:104px;height:104px;display:flex;align-items:center;justify-content:center;}' +
+      '.swap-skin .ico img{max-width:100%;max-height:100%;object-fit:contain;' +
+        'filter:drop-shadow(0 8px 14px rgba(0,0,0,.4));}' +
+      '.swap-skin i{font-style:normal;font-size:10px;letter-spacing:.8px;text-transform:uppercase;' +
+        'color:#7E8FAC;margin-top:4px;}' +
+      '.swap-skin b{font-size:15.5px;font-weight:800;color:#F2F6FF;}' +
       '.swap-g{display:grid;gap:7px;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));' +
       'margin-bottom:12px;}' +
       '.swap-c{padding:10px 11px;border-radius:11px;background:rgba(255,255,255,.05);' +
@@ -4801,9 +4818,34 @@
            (note ? '<i>' + note + '</i>' : '') + '</div>';
   }
 
+  /* ---- LE SKIN PORTE, AU CENTRE DE L'APERCU ----
+   *
+   * On l'a paye, on le porte — et jusqu'ici rien ne le montrait nulle part
+   * en dehors d'une etiquette « Wearing » enfouie dans l'onglet Skins. La
+   * premiere chose qu'on voit en ouvrant son profil doit pouvoir etre le
+   * personnage qu'on a choisi, pas seulement des chiffres.
+   *
+   * Clique dessus, et c'est LA MEME fiche qui s'ouvre que depuis la
+   * boutique — meme fonction, meme comportement, meme bouton fermer. Deux
+   * facons d'y arriver ne doivent pas ouvrir deux choses differentes. */
+  function blocSkinPorte() {
+    if (!SKINS || !SKINS.actif) return null;
+    var s = (SKINS.catalogue || []).filter(function (x) { return x.id === SKINS.actif; })[0];
+    if (!s) return null;
+    var d = document.createElement('div');
+    d.className = 'swap-skin';
+    d.style.setProperty('--t', s.couleur || '#8DA0C4');
+    d.innerHTML =
+      '<div class="ico"><img alt="" src="img/skins/skin_' + encodeURIComponent(s.id) + '.webp" onerror="this.remove()"></div>' +
+      '<i>Wearing</i><b>' + ech(s.nom) + '</b>';
+    d.addEventListener('click', function () { ouvreDetailSkin(s); });
+    return d;
+  }
+
   function rendApercu() {
     var l = profBoite.querySelector('.swp-l');
     l.innerHTML = '';
+    var bs = blocSkinPorte(); if (bs) l.appendChild(bs);
     var bn = blocNiveau(); if (bn) l.appendChild(bn);
     if (!APERCU) {
       demandeApercu();
@@ -5038,6 +5080,11 @@
     // on rafraichit le profil a chaque ouverture : il a pu changer ailleurs
     if (etat.socket && etat.socket.readyState === 1) {
       try { etat.socket.send('{"type":"profile"}'); } catch (e) {}
+      /* Le skin porte s'affiche des l'ouverture, au centre de l'apercu — pas
+         seulement apres une visite a l'onglet Skins. Sans cette demande ici,
+         la vignette resterait vide tant qu'on n'a pas ouvert la boutique au
+         moins une fois dans la session. */
+      try { etat.socket.send('{"type":"skins"}'); } catch (e) {}
     } else connecteSeul();   // socket tombee : on la releve pendant qu'il lit
     /* On marque la derniere section sans y aller : la rangee reste reperable
        dans le sommaire, et rien n'est demande au serveur tant qu'on n'a pas

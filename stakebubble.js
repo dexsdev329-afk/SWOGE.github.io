@@ -623,6 +623,7 @@
       etat.socket = ev.target; profBtnVisible(true); accrocheParrain();
       if (m.niveau) { NIVEAU = m.niveau; peintBouton(); }
       duelsAutoRejoint();
+      ouvreOngletDepuisURL();
     }
     if (m.type === 'hello' && m.explorer) EXPLORATEUR = String(m.explorer).replace(/\/+$/, '');
     if (m.type === 'hello' && m.joueurs) gens = m.joueurs;
@@ -6801,6 +6802,23 @@
   /* On arrive avec ?join= : la page vient de s'authentifier, on s'assied. Le
      jeu se peint tout seul — sa propre page ecoute deja l'arrivee d'une
      partie, il n'y a donc rien a lui apprendre. */
+  /* ?open=sh arrive depuis le Nexus (l'etal du marchand, la porte du vault…) :
+     un lieu du decor pointe directement sur l'onglet du tiroir qu'il
+     represente, au lieu de laisser le joueur le rechercher lui-meme. On
+     efface le parametre apres coup, comme `?join=`, pour qu'un partage ou un
+     retour arriere ne rouvre pas le tiroir tout seul. */
+  function ouvreOngletDepuisURL() {
+    var k = null;
+    try { k = new URLSearchParams(location.search).get('open'); } catch (e) {}
+    if (!k) return;
+    try {
+      var u = new URL(location.href);
+      u.searchParams.delete('open');
+      history.replaceState(null, '', u.pathname + (u.search || '') + u.hash);
+    } catch (e) {}
+    profOuvre();
+    profVa(k);
+  }
   function duelsAutoRejoint() {
     var id = null;
     try { id = new URLSearchParams(location.search).get('join'); } catch (e) {}

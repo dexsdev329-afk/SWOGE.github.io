@@ -1882,12 +1882,42 @@
       '.swb-o.vendable{cursor:pointer;}' +
       '.swb-o.vendable:hover{filter:brightness(1.15);}' +
       /* La feuille de vente */
-      '.swv{position:fixed;inset:0;z-index:2147483200;display:flex;align-items:flex-end;' +
-        'justify-content:center;background:rgba(4,7,13,.6);opacity:0;pointer-events:none;' +
-        'transition:opacity .18s;}' +
+      /* ---- LA FEUILLE DE VENTE EST DANS LE TIROIR, PAS SUR L'ECRAN ----
+       *
+       * Elle etait `position:fixed` sur toute la fenetre : bas de l'ECRAN,
+       * centree horizontalement. Sur telephone ca ne se voyait pas — le tiroir
+       * fait 90 % de la largeur. Sur un ecran large, le tiroir est un panneau
+       * de 400 px colle a gauche et la feuille s'ouvrait au MILIEU de la page,
+       * a plusieurs centaines de pixels de la case qu'on venait de toucher.
+       * On perdait le fil : l'objet qu'on vend n'est plus a cote de la question
+       * qu'on nous pose.
+       *
+       * `absolute` dans `.swp` — qui est deja positionne — la colle au bas du
+       * tiroir, a sa largeur exacte. Elle suit son ouverture et sa fermeture
+       * sans qu'on ait a synchroniser quoi que ce soit, et elle ne peut plus
+       * etre plus large que lui. */
+      '.swv{position:absolute;inset:0;z-index:40;display:flex;align-items:flex-end;' +
+        'justify-content:center;background:rgba(4,7,13,.66);opacity:0;pointer-events:none;' +
+        'transition:opacity .18s;border-radius:inherit;}' +
       '.swv.on{opacity:1;pointer-events:auto;}' +
-      '.swv-f{width:100%;max-width:460px;background:#131B2A;border:1px solid rgba(255,255,255,.12);' +
-        'border-radius:18px 18px 0 0;padding:18px 18px calc(22px + env(safe-area-inset-bottom,0px));' +
+      /* ---- LA BARRE DU BAS PASSE DEVANT ----
+       *
+       * Elle est `fixed` sur la fenetre avec un z-index enorme ; la feuille
+       * vit maintenant DANS le tiroir, donc elle passe dessous. Sans cette
+       * marge, la barre mangeait la derniere ligne de la note — celle qui
+       * explique justement pourquoi le bouton est verrouille.
+       *
+       * `--swbb-h` est la meme variable que les listes du tiroir utilisent
+       * deja. La hauteur de la barre vient de son contenu ; la recopier en dur
+       * ici aurait fait un deuxieme chiffre a tenir d'accord avec elle.
+       *
+       * `max-height` + `overflow-y` : sur un petit ecran en paysage, la
+       * feuille depasse la hauteur du tiroir. Sans plafond, le bouton de vente
+       * sortait par le haut et devenait inatteignable. */
+      '.swv-f{width:100%;background:#131B2A;border:1px solid rgba(255,255,255,.12);' +
+        'border-radius:18px 18px 0 0;' +
+        'padding:18px 18px calc(var(--swbb-h,62px) + 14px);' +
+        'max-height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;' +
         'display:flex;flex-direction:column;gap:8px;transform:translateY(18px);' +
         'transition:transform .22s;position:relative;}' +
       '.swv.on .swv-f{transform:none;}' +
@@ -3648,7 +3678,12 @@
           '<button class="swv-now" type="button"></button>' +
           '<div class="swv-note"></div>' +
         '</div>';
-      document.body.appendChild(venteBoite);
+      /* Dans le tiroir. Le repli sur `body` n'est pas decoratif : la planche
+         de collection s'ouvre aussi hors du tiroir sur certaines pages, et
+         sans lui la feuille n'aurait nulle part ou aller. */
+      var hote = (profBoite && profBoite.querySelector('.swp')) || document.body;
+      if (hote === document.body) venteBoite.style.position = 'fixed';
+      hote.appendChild(venteBoite);
       venteBoite.addEventListener('click', function (e) {
         if (e.target === venteBoite || e.target.classList.contains('swv-x')) fermeVente();
       });
@@ -3710,6 +3745,30 @@
     var dispo = u > 0;
     ou.style.display = bt.style.display = no.style.display = dispo ? '' : 'none';
     if (!dispo) return;
+
+    /* ---- LA PORTE, MONTREE AVANT LE CLIC ----
+     *
+     * Le rachat demande d'avoir joue un certain volume — c'est ce qui empeche
+     * une ferme d'adresses jetables de revendre son coffre gratuit tous les
+     * jours. Un bouton grise sans explication se lit « casse » ; avec le
+     * chiffre et ce qui reste, il se lit « pas encore », et il devient une
+     * raison de jouer au lieu d'une raison de partir.
+     *
+     * Le verrou vient du SERVEUR. Le recalculer ici donnerait un deuxieme
+     * avis sur la meme question, et le jour ou les deux different, c'est
+     * celui qui s'affiche qui a tort. */
+    var v = (BOUTIQUE && BOUTIQUE.rachat) || null;
+    if (v && !v.ouvert) {
+      bt.disabled = true;
+      bt.textContent = 'Instant sell locked';
+      var pc = Math.min(100, Math.floor(v.volume * 100 / (v.requis || 1)));
+      no.innerHTML = 'Unlocks once you have wagered <b>' + nb(v.requis, 0) + ' $SWOGE</b> ' +
+        'across the casino — you are at <b>' + nb(v.volume, 0) + '</b> (' + pc + '%), ' +
+        nb(v.reste, 0) + ' to go.<br>' +
+        'It keeps throwaway accounts from farming the free daily chest. ' +
+        'You can still put the item up for sale above.';
+      return;
+    }
     bt.disabled = false;
     bt.textContent = 'Sell instantly for ' + nb(u * q, 0) + ' $SWOGE';
     no.innerHTML = 'Paid straight away at a fixed price — no waiting for a buyer, ' +

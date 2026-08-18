@@ -897,7 +897,7 @@
      autre sujet, le classement un troisieme. Trois familles a gauche, et le
      joueur sait ou chercher avant de lire les libelles. */
   var FAMILLES = [
-    ['You', [['ap', 'Overview']]],
+    ['You', [['ap', 'Overview'], ['hi', 'History']]],
     /* « Withdraw » et « Staking » tout court ne peuvent plus rester : le
        tiroir porte aussi les entrees du menu de la page, ou les memes mots
        designent l'ACTION — retirer, miser au staking. Deux rangees du meme
@@ -905,8 +905,17 @@
        une liste, on en essaie une sur deux. Le pluriel et le mot
        « history » les separent, et la place est la depuis que le rail a
        laisse sa largeur a la liste. */
-    ['History', [['r', 'Rounds'], ['dep', 'Deposits'], ['wd', 'Withdrawals'],
-                 ['st', 'Staking history'], ['tr', 'Transfers']]],
+    /* ---- CINQ RANGEES POUR UNE ----
+     *
+     * Manches, depots, retraits, staking et transferts occupaient cinq des
+     * dix-neuf rangees du tiroir — vingt-six pour cent du menu pour la
+     * categorie qu'on consulte le moins. Ils racontent tous la meme chose :
+     * ce qui s'est PASSE. Une seule porte, et le choix se fait a l'interieur,
+     * la ou il ne coute plus une place dans la liste.
+     *
+     * Le groupe « History » disparait avec eux : un titre de groupe au-dessus
+     * d'une rangee unique qui porte le meme mot ne dit rien deux fois. */
+
     /* Un pari pose disparaissait de la vue des qu'on quittait SWOGE Bet : on
        ne savait plus ce qu'on avait en cours, ni depuis quand. Les deux
        onglets separent ce qui est ENCORE EN JEU de ce qui est solde — ce ne
@@ -927,6 +936,12 @@
      arrivent avec l'authentification et non sur demande : une pastille qui
      s'allume seulement quand on pense a regarder ne ramene personne. */
   var SERIE = null, ATTENTE = null, OFFERT = null;
+  /* Le SOUS-ONGLET de l'historique. Le serveur ne connait pas « hi » : il
+     attend un genre precis. C'est donc cette variable, et non `profOnglet`,
+     qui part dans la demande et qui filtre la reponse. */
+  var HISTO = 'r';
+  var HISTO_ONGLETS = [['r', 'Rounds'], ['dep', 'Deposits'], ['wd', 'Withdrawals'],
+                       ['st', 'Staking'], ['tr', 'Transfers']];
   var PRIX_NOM = null;                    // { prix, du, brule, solde }
   var BOUTIQUE = null;                    // { catalogue, inventaire, saisons, gagne? }
   /* La saison REGARDEE. Ce n'est qu'un souhait : le serveur decide, et si elle
@@ -1798,11 +1813,21 @@
       '.swp-adr:hover{color:#CFE0FF;border-bottom-color:#7d92cc;}' +
       '.swp-adr-ok{color:#7BE3A0!important;border-bottom-color:#7BE3A0!important;}' +
       '.swp-ch{display:flex;gap:7px;padding:0 13px 12px;flex-wrap:wrap;}' +
-      '.swp-ch button,.swp-ch span{flex:1 1 92px;display:flex;flex-direction:column;gap:1px;' +
+      /* Des <span>, jamais des <button> : rien ici ne se clique, et un survol
+         qui reagit apprend le contraire. */
+      '.swp-ho{display:flex;gap:5px;overflow-x:auto;margin:0 0 12px;padding-bottom:2px;' +
+        '-webkit-overflow-scrolling:touch;scrollbar-width:none;}' +
+      '.swp-ho::-webkit-scrollbar{display:none;}' +
+      '.swp-ho button{flex:0 0 auto;padding:7px 13px;border-radius:999px;font:inherit;' +
+        'font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;' +
+        'border:1px solid rgba(255,255,255,.13);background:rgba(255,255,255,.04);' +
+        'color:#8DA0C4;transition:background .14s,border-color .14s,color .14s;}' +
+      '.swp-ho button:hover{color:#C9D6EE;border-color:rgba(255,255,255,.26);}' +
+      '.swp-ho button.on{background:rgba(255,197,61,.14);border-color:rgba(255,197,61,.55);' +
+        'color:#FFD97A;}' +
+      '.swp-ch span{flex:1 1 92px;display:flex;flex-direction:column;gap:1px;' +
         'padding:8px 10px;border-radius:11px;border:1px solid rgba(255,255,255,.12);' +
         'background:rgba(255,255,255,.05);font:inherit;text-align:left;color:#C9D6EE;}' +
-      '.swp-ch button{cursor:pointer;transition:background .15s,border-color .15s;}' +
-      '.swp-ch button:hover{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.26);}' +
       '.swp-ch b{font-size:15px;font-weight:800;color:#F2F6FF;line-height:1.15;' +
         'font-variant-numeric:tabular-nums;}' +
       '.swp-ch i{font-style:normal;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;' +
@@ -4252,6 +4277,11 @@
     /* On redemande a chaque ouverture, et on efface l'objet gagne : la
        banniere « vous avez obtenu… » appartient a l'ouverture qui vient
        d'avoir lieu, pas a la visite suivante. */
+    /* On repart TOUJOURS sur les manches en ouvrant l'historique. Rouvrir sur
+       « Transferts » parce qu'on les avait regardes la veille donne
+       l'impression d'avoir appuye sur autre chose — c'est la meme raison qui
+       fait que le tiroir s'ouvre sur son sommaire. */
+    if (k === 'hi') HISTO = 'r';
     if (k === 'sh' || k === 'cl') {
       /* On efface l'objet gagne : la banniere « vous avez obtenu… »
          appartient a l'ouverture qui vient d'avoir lieu, pas a la visite
@@ -4303,7 +4333,7 @@
          joueur, pas un horodatage : trente manches lancees d'affilee partagent
          la meme milliseconde, et « ce qui precede cet instant » en sautait une
          a chaque page. On le renvoie tel quel, sans l'interpreter. */
-      var q = { type: 'history', kind: profOnglet, limit: 25 };
+      var q = { type: 'history', kind: (profOnglet === 'hi' ? HISTO : profOnglet), limit: 25 };
       if (profFin !== null) q.cursor = profFin;      // absent = depuis la fin
       etat.socket.send(JSON.stringify(q));
     } catch (e) { profCharge = false; }
@@ -4313,7 +4343,11 @@
   function poseHistorique(m) {
     profCharge = false;
     if (!profMonte()) return;
-    if (m.kind !== profOnglet) return;      // reponse d'un onglet qu'on a quitte
+    /* La reponse porte le GENRE demande, pas « hi ». Comparer a `profOnglet`
+       jetait toutes les reponses de l'historique fusionne — la liste restait
+       vide sans qu'aucune erreur ne le dise. */
+    var attendu = (profOnglet === 'hi') ? HISTO : profOnglet;
+    if (m.kind !== attendu) return;         // reponse d'un onglet qu'on a quitte
     profItems = profItems.concat(m.items || []);
     profEncore = !!m.more;
     if (m.cursor !== undefined && m.cursor !== null) profFin = m.cursor;
@@ -4621,17 +4655,20 @@
 
     /* 1. LE SOLDE. Il manquait, sur un site ou chaque action est une somme. */
     if (SOLDE !== null && !isNaN(SOLDE))
-      cases.push({ b: nb(SOLDE, 0), i: '$SWOGE', t: 'Your balance',
-                   clic: function () { profVa('sh'); } });
+      cases.push({ b: nb(SOLDE, 0), i: '$SWOGE', t: 'Your balance' });
 
     /* 2. LA SERIE. Le seul chiffre qui donne une raison de revenir DEMAIN. */
     if (SERIE && SERIE.day !== undefined) {
       var pret = !SERIE.claimedToday;
       cases.push({
-        b: '\uD83D\uDD25 ' + (SERIE.day || 0), i: pret ? 'claim day ' + ((SERIE.day || 0) + 1) : 'day streak',
-        t: pret ? 'Your daily reward is waiting' : 'Come back tomorrow to keep the streak',
+        b: '\uD83D\uDD25 ' + (SERIE.day || 0),
+        /* Un ETAT, pas un ordre. « claim day 7 » sur une case qu'on ne peut
+           pas toucher promet un geste qui n'existe pas ici — la serie se
+           reclame sur la table de jeu, ou le bouton est deja. */
+        i: pret ? 'reward ready' : 'day streak',
+        t: pret ? 'Your daily reward is waiting on any game table'
+                : 'Come back tomorrow to keep the streak',
         cls: pret ? 'pret' : 'feu',
-        clic: pret ? function () { envoie({ type: 'claimStreak' }); } : null,
       });
     }
 
@@ -4648,18 +4685,28 @@
         t: aPrendre ? aPrendre + ' finished quest' + (aPrendre === 1 ? '' : 's') + ' waiting for you'
                     : faites + ' of ' + MISSIONS.length + ' done today',
         cls: aPrendre ? 'pret' : '',
-        clic: function () { location.href = 'swoge_pusher.html#quests'; },
       });
     }
 
     /* 4. LA COLLECTION. Ce qui fait rouvrir un coffre. */
     if (BOUTIQUE && BOUTIQUE.classement && BOUTIQUE.classement.moi)
       cases.push({ b: BOUTIQUE.classement.moi.sortes + '/' + BOUTIQUE.classement.sur,
-                   i: 'collection', t: 'Fruits you own', clic: function () { profVa('sh'); } });
+                   i: 'collection', t: 'Fruits you own' });
 
+    /* ---- CES CASES NE SE CLIQUENT PAS ----
+     *
+     * Elles l'ont ete, et c'etait une faute. Celle des quetes faisait un
+     * `location.href` : depuis une table de jeu, elle quittait la page EN
+     * PLEINE MANCHE. Les deux autres ouvraient la boutique, ce qui n'a aucun
+     * rapport avec un solde ou une collection — un lien invente parce que la
+     * case avait l'air de devoir en avoir un.
+     *
+     * C'est un TABLEAU DE BORD : on le lit. Les gestes sont ailleurs, la ou
+     * ils ont un sens — la serie sur la table de jeu, les quetes dans leur
+     * panneau, les coffres dans la boutique. Une case qui se contente
+     * d'afficher ne peut casser aucune partie en cours. */
     cases.forEach(function (c) {
-      var e = document.createElement(c.clic ? 'button' : 'span');
-      if (c.clic) { e.type = 'button'; e.addEventListener('click', c.clic); }
+      var e = document.createElement('span');
       e.className = c.cls || '';
       e.title = c.t || '';
       e.innerHTML = '<b>' + c.b + '</b><i>' + ech(c.i) + '</i>';
@@ -5113,6 +5160,51 @@
     return d;
   }
 
+  /* ---- LES ONGLETS DE L'HISTORIQUE ----
+   *
+   * Une rangee de cinq, en tete du panneau. Ils remplacent cinq rangees du
+   * menu : le choix existe toujours, il a simplement quitte la liste ou il
+   * coutait une place a chaque fois.
+   *
+   * Le compteur du bandeau (« 42 events since… ») se vide au changement : il
+   * decrit ce qui est charge, et ce qui est charge vient de changer. Le
+   * laisser afficherait le compte des depots au-dessus des retraits.
+   */
+  function rendHistoOnglets() {
+    var b = document.createElement('div');
+    b.className = 'swp-ho';
+    HISTO_ONGLETS.forEach(function (o) {
+      var t = document.createElement('button');
+      t.type = 'button';
+      t.className = (o[0] === HISTO ? 'on' : '');
+      t.textContent = o[1];
+      t.addEventListener('click', function () {
+        if (HISTO === o[0]) return;
+        HISTO = o[0];
+        /* Le meme reglage a zero qu'un changement de section : la liste, le
+           curseur et le resume appartiennent au genre qu'on quitte. */
+        profItems = []; profFin = null; profEncore = false; profResume = null;
+        filtreJeu = null;
+        /* ---- ET LE VERROU DE CHARGEMENT ----
+         *
+         * `profDemande` refuse de partir tant qu'une demande est en vol, et ce
+         * verrou tient six secondes. Sans cette ligne, changer d'onglet dans
+         * les six secondes ne demandait RIEN : la liste du genre precedent
+         * restait affichee sous le nouveau libelle, sans erreur, sans vide,
+         * sans rien qui le signale. Mesure au banc : trois clics, une seule
+         * demande partie.
+         *
+         * On abandonne la demande en vol, pas ses degats : la reponse tardive
+         * porte son genre, et le controle de genre la jette. */
+        profCharge = false;
+        profRend();
+        profDemande();
+      });
+      b.appendChild(t);
+    });
+    return b;
+  }
+
   function profRend() {
     if (!profBoite) return;
     if (profOnglet === 'ap') { profEnTete(); return rendApercu(); }
@@ -5130,7 +5222,8 @@
           { day: '2-digit', month: 'short', year: 'numeric' }) : '');
     }
     l.innerHTML = '';
-    if (profOnglet === 'r') {
+    if (profOnglet === 'hi') l.appendChild(rendHistoOnglets());
+    if (profOnglet === 'r' || (profOnglet === 'hi' && HISTO === 'r')) {
       var bn = blocNiveau(); if (bn) l.appendChild(bn);
       var st = blocStats(); if (st) l.appendChild(st);
       var fj = blocFiltre(); if (fj) l.appendChild(fj);
@@ -5153,7 +5246,8 @@
        est montre. Recharger depuis le serveur a chaque pastille ferait un
        aller-retour pour un tri qu'on peut faire ici, et ferait clignoter la
        liste a chaque clic. */
-    var montres = (profOnglet === 'r' && filtreJeu)
+    var estManches = (profOnglet === 'r' || (profOnglet === 'hi' && HISTO === 'r'));
+    var montres = (estManches && filtreJeu)
       ? profItems.filter(function (e) { return (e.j || e.jeu) === filtreJeu; })
       : profItems;
     /* Les deux onglets de paris ne montrent QUE des paris, et chacun ne montre
@@ -5179,7 +5273,7 @@
         : !(etat.socket && etat.socket.readyState === 1) ? 'Sign in to see your history.'
         : profOnglet === 'bo' ? 'No bet running.<br>Pick a match on SWOGE Bet.'
         : profOnglet === 'bs' ? 'No settled bet yet.<br>Everything you place lands here once the match is over.'
-        : (profOnglet === 'r' && filtreJeu) ? 'No ' + (JEUX[filtreJeu] || filtreJeu) + ' round on this page.'
+        : (estManches && filtreJeu) ? 'No ' + (JEUX[filtreJeu] || filtreJeu) + ' round on this page.'
         : 'Nothing here yet.<br>Everything you play is kept — for good.';
       l.appendChild(v);
       return;

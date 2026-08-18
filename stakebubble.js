@@ -2746,8 +2746,132 @@
     }
   }
 
+  /* ==================== LA BARRE DU BAS ====================
+   *
+   * Atteindre les paris depuis une table demandait trois gestes : ouvrir le
+   * tiroir, faire defiler 1,78 ecran, toucher. Le tiroir compte dix-neuf
+   * rangees et huit titres, et tout ce qui est sous « Shop » est sous le pli.
+   *
+   * ---- pourquoi QUATRE et pas cinq ----
+   *
+   * Cinq entraine presque toujours un « More » qui devient un second menu, et
+   * on retombe exactement sur le probleme qu'on repare. Quatre tient sans
+   * fourre-tout.
+   *
+   * ---- pourquoi le portefeuille N'Y EST PAS ----
+   *
+   * Volontairement. Un depot merite un chemin delibere ; il ne doit pas etre
+   * a un geste de distance sur un site d'argent reel.
+   *
+   * ---- pourquoi des dessins et pas des emojis ----
+   *
+   * Le menu melange deja huit emojis systeme qui ne partagent ni palette ni
+   * style et changent d'apparence selon l'appareil. Ces quatre-la sont traces,
+   * monochromes, et prennent la couleur de leur etat : c'est ce qui permet a
+   * l'onglet actif de se distinguer sans ajouter un fond.
+   *
+   * ---- une seule poignee pour le tiroir ----
+   *
+   * Le bouton du haut disparait quand la barre est posee. Deux poignees pour
+   * un seul panneau, une hors de portee du pouce et l'autre sous lui,
+   * obligent a se demander laquelle ouvre quoi — et la reponse est « la meme
+   * chose ». L'avatar et son cadre de palier DEMENAGENT ici : c'est la seule
+   * chose de son niveau qu'un joueur voit en permanence, elle ne se perd pas.
+   */
+  var barreBas = null;
+  var DESSINS = {
+    jouer: '<path d="M7 8h10a5 5 0 0 1 4.9 5.9l-.6 3A3 3 0 0 1 16.6 18l-1.4-2H8.8l-1.4 2a3 3 0 0 1-4.7-1.1l-.6-3A5 5 0 0 1 7 8Z"/>' +
+           '<path d="M7.5 11v3M6 12.5h3M16 11.6h.01M17.6 13.2h.01" stroke="#0B0F17" stroke-width="1.7" stroke-linecap="round" fill="none"/>',
+    paris: '<circle cx="12" cy="12" r="8.6"/>' +
+           '<path d="m12 7.2 3.3 2.4-1.26 3.9H9.96L8.7 9.6 12 7.2Z" fill="#0B0F17"/>' +
+           '<path d="M12 3.4v3.8M4.2 9.9l3.6 2.6M19.8 9.9l-3.6 2.6M7.6 20l1.4-4.3M16.4 20 15 15.7" stroke="#0B0F17" stroke-width="1.3" fill="none"/>',
+    coffres: '<path d="M4 10.5A3.5 3.5 0 0 1 7.5 7h9A3.5 3.5 0 0 1 20 10.5V12H4v-1.5Z"/>' +
+             '<path d="M3.6 13h16.8v4.2A2.8 2.8 0 0 1 17.6 20H6.4a2.8 2.8 0 0 1-2.8-2.8V13Z"/>' +
+             '<rect x="10.6" y="10" width="2.8" height="5" rx="1.1" fill="#0B0F17"/>',
+  };
+  function svg(cle) {
+    return '<svg viewBox="0 0 24 24" width="23" height="23" fill="currentColor" aria-hidden="true">' +
+           DESSINS[cle] + '</svg>';
+  }
+  function pageCourante() {
+    var f = (location.pathname.split('/').pop() || '').toLowerCase();
+    if (f === 'games.html' || f === '' || f === 'index.html') return 'jouer';
+    if (f === 'swogebet.html') return 'paris';
+    return null;
+  }
+  function monteBarreBas() {
+    if (barreBas) return barreBas;
+    if (!document.body) return null;
+    var css = document.createElement('style');
+    css.textContent =
+      '.swbb{position:fixed;left:0;right:0;bottom:0;z-index:2147482000;display:flex;' +
+        'background:rgba(11,15,23,.94);backdrop-filter:blur(10px);' +
+        'border-top:1px solid rgba(255,255,255,.10);' +
+        /* La barre d'accueil de l'iPhone mange les vingt derniers pixels : sans
+           cette marge, le quart des touches tombe dessus et n'arrive jamais. */
+        'padding:5px 4px calc(5px + env(safe-area-inset-bottom,0px));' +
+        /* Ceinture : quelle que soit la page, la hauteur vient du contenu. */
+        'height:auto;min-height:0;max-height:none;margin:0;align-items:stretch;}' +
+      '.swbb button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;' +
+        'padding:5px 2px 3px;background:none;border:0;font:inherit;cursor:pointer;' +
+        'color:#7A89A6;position:relative;transition:color .14s;-webkit-tap-highlight-color:transparent;}' +
+      '.swbb button:hover,.swbb button:focus-visible{color:#C9D6EE;}' +
+      '.swbb button.on{color:#FFC53D;}' +
+      '.swbb span{font-size:9.5px;font-weight:700;letter-spacing:.04em;}' +
+      '.swbb .av{width:23px;height:23px;border-radius:50%;border:1px solid currentColor;' +
+        'display:flex;align-items:center;justify-content:center;font-size:13px;' +
+        'background-size:cover;background-position:center;overflow:hidden;}' +
+      /* La pastille de la barre : plus haut et plus a droite que sur le bouton
+         du haut, parce que l'icone est plus petite. */
+      '.swbb .swpn{position:absolute;top:1px;right:calc(50% - 17px);}' +
+      /* Le contenu ne doit pas finir SOUS la barre. Une page qu'on ne peut pas
+         faire defiler jusqu'au bout est un defaut qu'on ne remarque que sur le
+         dernier element, donc trop tard. */
+      'body{padding-bottom:calc(62px + env(safe-area-inset-bottom,0px))!important;}' +
+      '@media (min-width:900px){.swbb{justify-content:center;gap:34px;}' +
+        '.swbb button{flex:0 0 96px;}}';
+    document.head.appendChild(css);
+
+    /* UN DIV, PAS UN <nav>. Les dix-huit pages ont chacune leurs regles pour
+       `nav` — c'est l'element de leur barre du haut. Un <nav> pose ici en
+       heritait : la barre est sortie a 844 px de haut, c'est-a-dire toute la
+       hauteur de l'ecran, alors que ses mesures de position disaient « en bas »
+       et que rien dans mon CSS ne parlait de hauteur. Le role est porte par
+       l'attribut, ce qui donne la meme semantique sans la cascade. */
+    barreBas = document.createElement('div');
+    barreBas.className = 'swbb';
+    barreBas.setAttribute('role', 'navigation');
+    barreBas.setAttribute('aria-label', 'Main');
+    var cour = pageCourante();
+    var lot = [
+      { k: 'jouer', t: 'Play', go: function () { location.href = 'games.html'; } },
+      { k: 'paris', t: 'Bets', go: function () { location.href = 'swogebet.html'; } },
+      /* Les coffres ouvrent le tiroir DIRECTEMENT sur la boutique : c'est le
+         seul endroit du site qui produise une emotion a l'ouverture, et il
+         etait a trois gestes. */
+      { k: 'coffres', t: 'Chests', go: function () { profOuvre(); profVa('sh'); } },
+    ];
+    lot.forEach(function (o) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = (cour === o.k ? 'on' : '');
+      b.innerHTML = svg(o.k) + '<span>' + o.t + '</span>';
+      b.addEventListener('click', o.go);
+      barreBas.appendChild(b);
+    });
+
+    var bp = document.createElement('button');
+    bp.type = 'button'; bp.className = 'swbb-prof';
+    bp.innerHTML = '<span class="av"></span><span>Profile</span>';
+    bp.addEventListener('click', profOuvre);
+    barreBas.appendChild(bp);
+    document.body.appendChild(barreBas);
+    return barreBas;
+  }
+
   function profBtnVisible(v) {
     if (!profMonte()) return;
+    if (v) monteBarreBas();
     profBtn.style.display = v ? '' : 'none';
     ajusteBientot();
     /* Le nom, le visage et la liste des visages ne viennent PAS avec
@@ -4398,6 +4522,32 @@
     }
     titreBouton();
     if (pastille) profBtn.appendChild(pastille);
+    peintBarreBas();
+  }
+
+  /* L'avatar de la barre du bas, et la disparition de celui du haut.
+     Le cadre de palier demenage avec lui : c'est la seule chose de son niveau
+     qu'un joueur voit en permanence, elle ne doit pas se perdre en route. */
+  function peintBarreBas() {
+    if (!barreBas) return;
+    var b = barreBas.querySelector('.swbb-prof');
+    var av = b && b.querySelector('.av');
+    if (!av) return;
+    if (MOI && (MOI.photo || estBadge(MOI.visage))) {
+      av.textContent = '';
+      av.style.backgroundImage = 'url("' + (MOI.photo ? urlPhoto(MOI.address) : urlBadge(MOI.visage)) + '")';
+    } else {
+      av.style.backgroundImage = '';
+      av.textContent = (MOI && MOI.visage) || '\uD83D\uDC64';
+    }
+    if (NIVEAU && NIVEAU.niveau > 0) {
+      av.style.borderColor = couleurPalier(NIVEAU.palier);
+      b.title = 'Level ' + NIVEAU.niveau + ' \u00b7 ' + NIVEAU.palier;
+    }
+    /* UNE SEULE POIGNEE. Le bouton du haut s'efface des que la barre est la :
+       deux facons d'ouvrir le meme panneau, l'une hors de portee du pouce,
+       obligent a se demander laquelle ouvre quoi. */
+    if (profBtn) profBtn.style.display = 'none';
   }
   /* UN SEUL endroit qui ecrit l'infobulle du bouton. Deux fonctions
      l'ecrivaient chacune de leur cote : celle des amis passait apres et
@@ -4795,6 +4945,19 @@
        des deux plutot que de les additionner, sinon ils comptent double. */
     var recompenses = ATTENTE ? Math.max(0, ATTENTE.total - (ATTENTE.transferts ? 1 : 0)) : 0;
     var total = (EN_ATTENTE || 0) + (NON_LUS || 0) + recompenses;
+    /* La pastille suit la POIGNEE VISIBLE. Posee sur le bouton du haut alors
+       que la barre du bas l'a remplacee, elle serait allumee sur un element
+       en display:none — invisible, donc inutile, et sans que rien ne le
+       signale. */
+    var cible = barreBas && barreBas.querySelector('.swbb-prof');
+    if (cible) {
+      var q = cible.querySelector('.swpn');
+      if (!total) { if (q) q.remove(); }
+      else {
+        if (!q) { q = document.createElement('span'); q.className = 'swpn'; cible.appendChild(q); }
+        q.textContent = total > 9 ? '9+' : String(total);
+      }
+    }
     if (!total) { if (p) p.remove(); titreBouton(); return; }
     if (!p) {
       p = document.createElement('span');

@@ -515,7 +515,7 @@
     }
     /* Les missions du jour arrivent avec les quetes, sur trois messages
        differents selon la page. On les garde ici, et on decore ensuite. */
-    if (m.quests) { MISSIONS = m.quests; surveilleMissions(); if (profOuvert) peintChiffres(); }
+    if (m.quests) { MISSIONS = m.quests; surveilleMissions(); if (profOuvert) { peintChiffres(); peintNotifs(); } }
     /* Le « hello » prouve que cette socket-la parle a notre serveur : sur une
        page de jeu ouverte par un visiteur, c'est la seule qu'on ait, et c'est
        par elle qu'il pourra regarder. */
@@ -1443,6 +1443,45 @@
       '.swp-t .swp-g{margin:13px 0 4px;padding:0 6px;font-size:10.5px;font-weight:700;' +
       'letter-spacing:1.3px;text-transform:uppercase;color:#6C7C99;}' +
       '.swp-t .swp-g:first-child{margin-top:2px;}' +
+      /* ---- CE QUI ATTEND LE JOUEUR ----
+       *
+       * En TETE du tiroir, avant tout le reste. Un joueur ouvre son profil
+       * pour deux raisons : regarder un chiffre, ou s'occuper de ce qui
+       * clignote. La deuxieme est la seule qui ait une urgence, donc elle est
+       * la premiere qu'on voit.
+       *
+       * Les lignes sont plus HAUTES et plus contrastees que les rangees du
+       * menu : elles ne sont pas de la navigation, ce sont des choses a
+       * faire. Leur donner l'apparence du menu les aurait rendues invisibles
+       * au milieu de dix-huit autres rangees — ce qui est exactement le
+       * probleme qu'on repare. */
+      '.swp-nz{margin:0 0 4px;}' +
+      '.swp-n{display:flex!important;align-items:center;gap:11px;width:100%;' +
+        'min-height:56px;padding:9px 11px;margin-bottom:6px;border-radius:12px;' +
+        'border:1px solid rgba(255,197,61,.28);background:rgba(255,197,61,.07);' +
+        'color:#F2F6FF;font:inherit;text-align:left;cursor:pointer;}' +
+      '.swp-n:hover{background:rgba(255,197,61,.13);}' +
+      '.swp-n:disabled{opacity:.5;cursor:default;}' +
+      '.swp-n .ic{flex:0 0 auto;font-size:19px;line-height:1;}' +
+      '.swp-n .tx{flex:1;min-width:0;}' +
+      '.swp-n .tx b{display:block;font-size:13.5px;font-weight:700;line-height:1.3;}' +
+      '.swp-n .tx i{display:block;font-style:normal;font-size:11px;color:#9FB0CC;' +
+        'margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}' +
+      /* « Claim » est un BOUTON dans le bouton : le geste se termine ici. Le
+         chevron dit l'inverse — il emmene ailleurs. Deux gestes differents ne
+         doivent pas porter le meme signe. */
+      /* ---- LE CHEVRON DU MENU NE S'APPLIQUE PAS ICI ----
+       *
+       * `.swp-t button::after` ajoute un chevron a TOUTE rangee du sommaire.
+       * Sur ces lignes-la il en faisait deux — le sien et le notre — et sur
+       * les lignes d'action il collait un « › » derriere « Claim », ce qui
+       * promet d'aller ailleurs a un bouton qui termine le geste sur place.
+       * Trouve a la capture d'ecran, pas a la lecture. */
+      '.swp-t .swp-n::after{content:none;}' +
+      '.swp-n .fl{flex:0 0 auto;font-size:12px;font-weight:800;color:#FFC53D;}' +
+      '.swp-n:not(.agir) .fl{font-size:17px;font-weight:400;color:#6C7C99;}' +
+      '.swp-n.agir .fl{padding:5px 11px;border-radius:9px;' +
+        'border:1px solid rgba(255,197,61,.55);background:rgba(255,197,61,.16);}' +
       /* 46 px de haut : c'est la cible tactile confortable, et c'est aussi
          ce qui donne au sommaire l'air d'un menu plutot que d'une liste de
          cases a cocher serrees. */
@@ -4699,6 +4738,10 @@
     profVue(null);
     miroirSync();
     profEnTete();
+    /* Ce qui attend le joueur, tout de suite. C'est la raison pour laquelle il
+       vient d'appuyer sur la pastille : la peindre apres un aller-retour
+       serveur laisserait une seconde de tiroir sans la reponse a sa question. */
+    peintNotifs();
     /* Le prix a pu arriver AVANT que le panneau existe : il n'y avait alors
        aucun endroit ou l'ecrire. On le repose a l'ouverture. */
     posePrixNom();
@@ -5529,15 +5572,143 @@
     if (m.type === 'streakClaimed') SERIE = { day: m.day, claimedToday: true };
   }
 
+  /* ====================================================================
+   * CE QUI ATTEND LE JOUEUR
+   * ====================================================================
+   *
+   * ---- le defaut qu'on repare ----
+   *
+   * Un joueur a ecrit : « la pastille affichait 3, j'en ai trouve 2 — deux
+   * demandes d'ami — et je n'ai jamais trouve la troisieme. »
+   *
+   * Il avait raison, et le defaut n'etait pas le compte : c'etait qu'il
+   * n'existait AUCUN endroit qui dise ce que la pastille comptait. Le total
+   * additionnait six sources — demandes d'ami, transferts non lus, coffre du
+   * jour, serie, quetes finies, sans-faute — et chacune se reclamait a un
+   * endroit different du site. Un chiffre qui annonce trois choses sans dire
+   * lesquelles ne previent pas : il inquiete.
+   *
+   * ---- la regle qui empeche que ca recommence ----
+   *
+   * LA PASTILLE COMPTE LES LIGNES DE CETTE LISTE. Elle ne fait plus sa propre
+   * somme dans son coin. Tant que les deux se calculaient separement, il
+   * suffisait d'ajouter une source d'un cote et de l'oublier de l'autre pour
+   * refabriquer exactement le meme probleme — un compteur qui promet quelque
+   * chose d'introuvable.
+   *
+   * ---- une ligne par GENRE, pas par element ----
+   *
+   * Cinq quetes finies font UNE ligne qui dit cinq, pas cinq lignes. La
+   * pastille dit alors « 1 chose a faire » et non « 5 », ce qui est plus
+   * proche de la verite : c'est un seul geste. La ligne porte son propre
+   * compte, donc rien n'est cache.
+   */
+  function notifs() {
+    var l = [];
+    if (EN_ATTENTE > 0) l.push({
+      cle: 'amis', ic: '👋',
+      t: EN_ATTENTE + ' friend request' + (EN_ATTENTE === 1 ? '' : 's'),
+      d: 'Someone wants to add you',
+      go: function () { profVa('am'); },
+    });
+    /* `NON_LUS` et `ATTENTE.transferts` sont le MEME compteur vu de deux
+       cotes. Les additionner ferait compter chaque transfert deux fois — le
+       defaut que l'ancien calcul evitait deja, et qu'on garde evite ici. */
+    var tr = NON_LUS || (ATTENTE && ATTENTE.transferts) || 0;
+    if (tr > 0) l.push({
+      cle: 'tr', ic: '💸',
+      t: tr + ' transfer' + (tr === 1 ? '' : 's') + ' received',
+      d: 'Someone sent you $SWOGE',
+      go: function () { profVa('hi'); HISTO = 'tr'; profRend(); rendHistoOnglets(); },
+    });
+    if (ATTENTE && ATTENTE.coffre) l.push({
+      cle: 'coffre', ic: '🎁',
+      t: 'Your free chest is waiting',
+      d: 'One a day — it does not stack up',
+      go: function () { profVa('sh'); },
+    });
+    if (ATTENTE && ATTENTE.serie) l.push({
+      cle: 'serie', ic: '🔥',
+      t: 'Daily streak reward ready',
+      d: SERIE && SERIE.day ? 'Day ' + (SERIE.day + 1) + ' — claim it to keep the streak'
+                            : 'Claim it to keep the streak',
+      /* ---- ON RECLAME ICI, ON N'Y EMMENE PAS ----
+       *
+       * La serie se reclamait « sur n'importe quelle table de jeu ». Envoyer
+       * quelqu'un chercher un bouton a l'autre bout du site pour un geste qui
+       * tient en un message, c'est ajouter trois occasions d'abandonner. Le
+       * serveur repond `streakClaimed`, la ligne disparait toute seule. */
+      fait: function () { envoie({ type: 'claimStreak' }); },
+    });
+    var q = (ATTENTE && ATTENTE.quetes) || 0;
+    if (q > 0) l.push({
+      cle: 'quetes', ic: '✅',
+      t: q + ' finished quest' + (q === 1 ? '' : 's') + ' to claim',
+      d: 'Rewards waiting',
+      fait: function () {
+        var pris = 0;
+        (MISSIONS || []).forEach(function (x) {
+          if (x.done && !x.claimed) { envoie({ type: 'claimQuest', id: x.id }); pris++; }
+        });
+        /* La liste des quetes n'est pas forcement chargee sur cette page-ci :
+           le compte, lui, vient du serveur. On la demande alors, et la
+           reponse repeint la ligne — plutot que de ne rien faire en silence. */
+        if (!pris) { envoie({ type: 'quests' }); toast('Loading your quests…'); }
+      },
+    });
+    if (ATTENTE && ATTENTE.parfait) l.push({
+      cle: 'parfait', ic: '🏆',
+      t: 'Perfect day bonus ready',
+      d: 'Every quest done today',
+      fait: function () { envoie({ type: 'perfectDay' }); },
+    });
+    return l;
+  }
+
+  /* La liste, peinte en TETE du tiroir. Elle disparait entierement quand il
+     n'y a rien : une section « 0 notification » occupe la meilleure place de
+     l'ecran pour ne rien dire, et apprend a ne plus regarder cet endroit. */
+  function peintNotifs() {
+    var t = profBoite && profBoite.querySelector('.swp-t');
+    if (!t) return;
+    var z = t.querySelector('.swp-nz');
+    var l = notifs();
+    if (!l.length) { if (z) z.remove(); return; }
+    if (!z) {
+      z = document.createElement('div');
+      z.className = 'swp-nz';
+      t.insertBefore(z, t.firstChild);
+    }
+    z.innerHTML = '<div class="swp-g">Waiting for you</div>';
+    l.forEach(function (o) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'swp-n' + (o.fait ? ' agir' : '');
+      b.dataset.tap = 'notif:' + o.cle;
+      b.innerHTML = '<span class="ic">' + o.ic + '</span>' +
+        '<span class="tx"><b>' + ech(o.t) + '</b><i>' + ech(o.d) + '</i></span>' +
+        '<span class="fl">' + (o.fait ? 'Claim' : '›') + '</span>';
+      b.addEventListener('click', function () {
+        if (o.fait) {
+          /* On coupe le bouton tout de suite. Sans ca, deux appuis rapides
+             envoient deux reclamations, et la seconde revient en erreur —
+             « already claimed » — pour un geste qui a pourtant marche. */
+          b.disabled = true;
+          b.querySelector('.fl').textContent = '…';
+          o.fait();
+        } else { o.go(); }
+      });
+      z.appendChild(b);
+    });
+  }
+
   function pastilleAmis() {
+    peintNotifs();
     if (!profBtn) return;
     var p = profBtn.querySelector('.swpn');
-    /* LA PASTILLE COMPTE AUSSI LES RECOMPENSES. Une recompense qu'il faut
-       penser a aller chercher est une recompense que personne ne va chercher.
-       Les transferts non lus sont deja dans `attente` : on prend le plus grand
-       des deux plutot que de les additionner, sinon ils comptent double. */
-    var recompenses = ATTENTE ? Math.max(0, ATTENTE.total - (ATTENTE.transferts ? 1 : 0)) : 0;
-    var total = (EN_ATTENTE || 0) + (NON_LUS || 0) + recompenses;
+    /* LE COMPTE VIENT DE LA LISTE, et de nulle part ailleurs. C'est la seule
+       chose qui garantisse qu'on peut toujours trouver ce qu'il annonce. */
+    var total = notifs().length;
     /* La pastille suit la POIGNEE VISIBLE. Posee sur le bouton du haut alors
        que la barre du bas l'a remplacee, elle serait allumee sur un element
        en display:none — invisible, donc inutile, et sans que rien ne le

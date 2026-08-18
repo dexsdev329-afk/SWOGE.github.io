@@ -457,6 +457,20 @@
       if (profOnglet === 'mk') profRend();
       else if (profOnglet === 'sh') profRend();
     }
+    /* ---- LES SKINS ----
+     *
+     * Une seule reponse, deux raisons de la recevoir : la liste demandee a
+     * l'ouverture de l'onglet, et le resultat d'un achat. `achete` distingue
+     * les deux — sans lui, un simple rafraichissement de la liste aurait
+     * affiche un toast d'achat a chaque ouverture de l'onglet. */
+    if (m.type === 'skins') {
+      SKINS = { catalogue: m.catalogue, actif: m.actif };
+      if (m.error) toast(m.error, 'bad');
+      else if (m.achete) toast('Unlocked — you are now playing as ' +
+        ((m.catalogue || []).filter(function (s) { return s.id === m.achete; })[0] || {}).nom, 'good');
+      if (m.balance != null) rafraichitSolde();
+      if (profOnglet === 'sk') profRend();
+    }
     /* ---- LE RACHAT ----
      *
      * Il repond avec la boutique entiere, donc on la range comme le marche le
@@ -970,6 +984,7 @@
      s'allume seulement quand on pense a regarder ne ramene personne. */
   var SERIE = null, ATTENTE = null, OFFERT = null;
   var MARCHE = null, MARCHE_F = 'tout', MARCHE_Q = '';
+  var SKINS = null;   // { catalogue, actif } — independant de SAISON
   /* Le SOUS-ONGLET de l'historique. Le serveur ne connait pas « hi » : il
      attend un genre precis. C'est donc cette variable, et non `profOnglet`,
      qui part dans la demande et qui filtre la reponse. */
@@ -1915,6 +1930,46 @@
       '.swm-a .act:hover:not(:disabled){background:rgba(255,255,255,.12);}' +
       '.swm-a .act:disabled{opacity:.45;cursor:default;}' +
       '.swm-a.mien .act{border-color:rgba(255,197,61,.5);color:#FFD97A;}' +
+      /* ---- LES SKINS : UNE CARTE PAR PERSONNAGE, PAS UNE LIGNE ----
+       *
+       * Le marche est une liste parce qu'une annonce est faite de texte —
+       * nom, vendeur, prix — que du texte lit bien en ligne. Un skin est
+       * d'abord une IMAGE : cinq personnages se comparent d'un coup d'oeil
+       * sur une grille, jamais aussi vite dans une colonne qu'il faut
+       * parcourir un a un. */
+      '.swk-g{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:4px;}' +
+      '@media (min-width:360px){.swk-g{grid-template-columns:repeat(2,1fr);}}' +
+      '.swk-c{display:flex;flex-direction:column;align-items:center;text-align:center;' +
+        'padding:14px 10px 12px;border-radius:14px;gap:6px;' +
+        'border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.03);' +
+        'border-top:3px solid var(--t);}' +
+      '.swk-c.actif{background:rgba(124,255,155,.06);border-color:rgba(124,255,155,.35);' +
+        'border-top-color:#7CFF9B;}' +
+      '.swk-c .ico{width:84px;height:84px;display:flex;align-items:center;justify-content:center;}' +
+      '.swk-c .ico img{max-width:100%;max-height:100%;object-fit:contain;' +
+        'filter:drop-shadow(0 6px 10px rgba(0,0,0,.4));}' +
+      '.swk-c .nm{font-size:13.5px;font-weight:800;color:#F2F6FF;}' +
+      /* La puissance en points, pas en chiffre : cinq cartes se comparent
+         d'un regard, sans avoir a lire cinq nombres et les classer soi-meme. */
+      '.swk-c .pw{display:flex;gap:3px;font-style:normal;}' +
+      '.swk-c .pw i{width:6px;height:6px;border-radius:99px;background:rgba(255,255,255,.16);}' +
+      '.swk-c .pw i.on{background:var(--t);}' +
+      '.swk-c .pv{font-style:normal;font-size:10.5px;color:#8DA0C4;line-height:1.4;' +
+        'min-height:2.7em;}' +
+      '.swk-c .bas{margin-top:4px;}' +
+      '.swk-c .tag{font-size:11px;font-weight:800;color:#7CFF9B;' +
+        'border:1px solid rgba(124,255,155,.4);border-radius:99px;padding:4px 12px;}' +
+      '.swk-c .act{padding:8px 14px;border-radius:10px;font:inherit;font-size:12px;' +
+        'font-weight:800;cursor:pointer;border:1px solid rgba(255,255,255,.18);' +
+        'background:rgba(255,255,255,.06);color:#EAF2FF;}' +
+      '.swk-c .act:hover:not(:disabled){background:rgba(255,255,255,.12);}' +
+      '.swk-c .act:disabled{opacity:.45;cursor:default;}' +
+      /* Le prix est le SEUL bouton dore du tiroir en dehors des gestes
+         d argent : il doit se voir comme « ceci coute », pas comme un bouton
+         d action neutre parmi d autres. */
+      '.swk-c .act.buy{border-color:rgba(255,197,61,.55);background:rgba(255,197,61,.14);' +
+        'color:#FFD97A;}' +
+      '.swk-c .act.buy i{font-style:normal;font-weight:600;opacity:.85;}' +
       /* La case vendable : rien de crie, juste de quoi comprendre qu on peut
          appuyer dessus. Un bouton sur chaque case ferait une grille de
          boutons au lieu d une collection. */
@@ -2420,6 +2475,17 @@
       mk.textContent = '🏷️ Player market';
       mk.addEventListener('click', function () { profVa('mk'); });
       t.appendChild(mk);
+      /* ---- LES SKINS, DANS LE MEME GROUPE MAIS PAS LA MEME PHRASE ----
+       *
+       * « Rien a voir avec les saisons » : le libelle le dit lui-meme, pour
+       * que personne ne cherche un skin dans l'onglet Shop en pensant qu'il
+       * vient d'un coffre. Il reste dans le groupe Shop parce que c'est bien
+       * un achat — seulement un achat qui ne se tire pas. */
+      var sk = document.createElement('button');
+      sk.type = 'button'; sk.dataset.k = 'sk';
+      sk.textContent = '🎭 Character skins';
+      sk.addEventListener('click', function () { profVa('sk'); });
+      t.appendChild(sk);
     })();
     FAMILLES.forEach(function (f) {
       var g = document.createElement('div');
@@ -3638,6 +3704,71 @@
     l.appendChild(pied);
   }
 
+  /* ================= LES SKINS ================= */
+  function rendSkins() {
+    var l = profBoite.querySelector('.swp-l');
+    l.innerHTML = '';
+    if (!SKINS) {
+      var att = document.createElement('div');
+      att.className = 'swp-v'; att.textContent = 'Loading…';
+      l.appendChild(att);
+      envoie({ type: 'skins' });
+      return;
+    }
+
+    var intro = document.createElement('div');
+    intro.className = 'swb-mention';
+    intro.textContent = 'A skin changes how your character looks — nothing to do with seasons or chests. ' +
+      'Buy any of them, any time, for a fixed price. The one you buy becomes the one you wear.';
+    l.appendChild(intro);
+
+    var g = document.createElement('div');
+    g.className = 'swk-g';
+    l.appendChild(g);
+
+    (SKINS.catalogue || []).forEach(function (s) {
+      var actif = SKINS.actif === s.id;
+      var d = document.createElement('div');
+      d.className = 'swk-c' + (actif ? ' actif' : '');
+      d.style.setProperty('--t', s.couleur || '#8DA0C4');
+      /* La puissance se lit en points pleins sur cinq, comme une jauge —
+         plus rapide a comparer entre cinq cartes qu'un nombre qu'il faut
+         relire chaque fois. */
+      var points = '';
+      for (var i = 1; i <= 5; i++) points += '<i class="' + (i <= s.puissance ? 'on' : '') + '"></i>';
+      d.innerHTML =
+        '<div class="ico"><img alt="" src="img/skins/skin_' + encodeURIComponent(s.id) + '.webp" onerror="this.remove()"></div>' +
+        '<b class="nm">' + ech(s.nom) + '</b>' +
+        '<i class="pw">' + points + '</i>' +
+        '<i class="pv">' + ech(s.pouvoir) + '</i>';
+      var bas = document.createElement('div');
+      bas.className = 'bas';
+      if (actif) {
+        bas.innerHTML = '<span class="tag">Wearing</span>';
+      } else if (s.possede) {
+        var w = document.createElement('button');
+        w.type = 'button'; w.className = 'act';
+        w.textContent = 'Wear';
+        w.addEventListener('click', function () {
+          w.disabled = true;
+          envoie({ type: 'skinChoisi', id: s.id });
+        });
+        bas.appendChild(w);
+      } else {
+        var b = document.createElement('button');
+        b.type = 'button'; b.className = 'act buy';
+        b.innerHTML = nb(s.prix, 0) + ' <i>$SWOGE</i>';
+        b.addEventListener('click', function () {
+          b.disabled = true;
+          envoie({ type: 'skinBuy', id: s.id });
+        });
+        bas.appendChild(b);
+      }
+      d.appendChild(bas);
+      g.appendChild(d);
+    });
+  }
+
   function peintAnnonces(boite) {
     if (!boite) return;
     boite.innerHTML = '';
@@ -4720,6 +4851,7 @@
     if (!nom && k === 'sh') nom = 'Shop';
     if (!nom && k === 'cl') nom = 'Collection ranking';
     if (!nom && k === 'mk') nom = 'Player market';
+    if (!nom && k === 'sk') nom = 'Character skins';
     titre.textContent = nom;
     boite.classList.add('detail');
     /* Chaque section repart du haut. Sans ca, on ouvrait « Deposits » deja
@@ -4788,6 +4920,13 @@
       MARCHE_F = 'tout'; MARCHE_Q = '';
       envoie({ type: 'market', season: SAISON });
     }
+    if (k === 'sk') {
+      /* Aucun `season` dans ce message : un skin ne depend d'aucune saison,
+         c'est justement le sens de « rien a voir avec les saisons ». */
+      if (etat.socket && etat.socket.readyState === 1) {
+        try { etat.socket.send('{"type":"skins"}'); } catch (e) {}
+      }
+    }
     if (k === 'sh' || k === 'cl') {
       /* On efface l'objet gagne : la banniere « vous avez obtenu… »
          appartient a l'ouverture qui vient d'avoir lieu, pas a la visite
@@ -4830,7 +4969,7 @@
        boutique envoyait quand meme une demande d'historique de genre inconnu
        — que le serveur honore en relisant tout le journal du joueur pour
        rendre vingt-cinq lignes que personne n'affiche. */
-    if (profOnglet === 'sh' || profOnglet === 'cl' || profOnglet === 'mk') return;
+    if (profOnglet === 'sh' || profOnglet === 'cl' || profOnglet === 'mk' || profOnglet === 'sk') return;
     if (profCharge) return;
     if (!etat.socket || etat.socket.readyState !== 1) { profRend(); return; }
     profCharge = true;
@@ -5931,6 +6070,7 @@
     if (profOnglet === 'sh') { profEnTete(); return rendBoutique(); }
     if (profOnglet === 'cl') { profEnTete(); return rendClassementFruits(); }
     if (profOnglet === 'mk') { profEnTete(); return rendMarche(); }
+    if (profOnglet === 'sk') { profEnTete(); return rendSkins(); }
     var l = profBoite.querySelector('.swp-l');
     var sous = profBoite.querySelector('.swp-sub');
     if (profResume) {

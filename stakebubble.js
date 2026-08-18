@@ -497,7 +497,8 @@
        redemande donc aussi apres un gain de boutique, pas seulement une
        fois. */
     if (m.type === 'equipable') {
-      EQUIPABLE = { fruits: m.fruits || [], armes: m.armes || [] };
+      EQUIPABLE = { fruits: m.fruits || [], armes: m.armes || [],
+                    armures: m.armures || [], bagues: m.bagues || [] };
       peintDetailSkin();
     }
     /* ---- LE RACHAT ----
@@ -2047,11 +2048,14 @@
          fiche de personnage, pas une image seule suivie d une liste en
          dessous : on doit voir sur QUI l objet est pose. */
       '.swk-herorow{width:100%;display:flex;align-items:center;justify-content:center;gap:6px;}' +
-      '.swk-hero{width:min(46vw,190px);height:min(46vw,190px);display:flex;flex:0 0 auto;' +
+      '.swk-hero{width:min(42vw,170px);height:min(42vw,170px);display:flex;flex:0 0 auto;' +
         'align-items:center;justify-content:center;}' +
       '.swk-hero img{max-width:100%;max-height:100%;object-fit:contain;' +
         'filter:drop-shadow(0 10px 18px rgba(0,0,0,.45));}' +
-      '.swk-slot{position:relative;flex:0 0 auto;width:64px;height:64px;border-radius:14px;' +
+      /* Deux cases empilees de chaque cote : fruit au-dessus de l armure a
+         gauche, arme au-dessus de la bague a droite. */
+      '.swk-slotcol{display:flex;flex-direction:column;gap:10px;flex:0 0 auto;}' +
+      '.swk-slot{position:relative;flex:0 0 auto;width:58px;height:58px;border-radius:13px;' +
         'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;' +
         'padding:4px;font:inherit;cursor:pointer;border:2px solid var(--c,rgba(255,255,255,.18));' +
         'background:rgba(255,255,255,.04);color:#8DA0C4;}' +
@@ -3967,9 +3971,15 @@
         '<div class="swv-f">' +
           '<button class="swv-x" type="button" aria-label="Close">&times;</button>' +
           '<div class="swk-herorow">' +
-            '<button type="button" class="swk-slot swk-slot-l" aria-label="Power fruit"></button>' +
+            '<div class="swk-slotcol">' +
+              '<button type="button" class="swk-slot" data-genre="fruit" aria-label="Power fruit"></button>' +
+              '<button type="button" class="swk-slot" data-genre="armure" aria-label="Armor"></button>' +
+            '</div>' +
             '<div class="swk-hero"><img alt=""></div>' +
-            '<button type="button" class="swk-slot swk-slot-r" aria-label="Weapon"></button>' +
+            '<div class="swk-slotcol">' +
+              '<button type="button" class="swk-slot" data-genre="arme" aria-label="Weapon"></button>' +
+              '<button type="button" class="swk-slot" data-genre="bague" aria-label="Ring"></button>' +
+            '</div>' +
           '</div>' +
           '<b class="swk-dn"></b>' +
           '<i class="swk-dp"></i>' +
@@ -4016,12 +4026,15 @@
     im.src = 'img/skins/' + (pixel ? 'pixel/skin_' : 'skin_') + encodeURIComponent(s.id) + '.webp';
     im.onerror = function () { im.style.visibility = 'hidden'; };
     im.style.visibility = '';
-    /* Les deux cases autour du portrait : fruit a gauche, arme a droite.
-       Rien avant l'achat — un skin qu'on ne possede pas n'a pas de fiche de
-       personnage a equiper. */
+    /* Les quatre cases autour du portrait : fruit et armure a gauche (l'un
+       au-dessus de l'autre), arme et bague a droite. Rien avant l'achat —
+       un skin qu'on ne possede pas n'a pas de fiche de personnage a
+       equiper. */
     var etatPourSlots = s.possede ? PERSO_PAR_SKIN[s.id] : null;
-    peintSlot(skinBoite.querySelector('.swk-slot-l'), s, 'fruit', etatPourSlots && etatPourSlots.equipFruit);
-    peintSlot(skinBoite.querySelector('.swk-slot-r'), s, 'arme', etatPourSlots && etatPourSlots.equipArme);
+    EQUIP_SLOTS.forEach(function (cfg) {
+      var el = skinBoite.querySelector('.swk-slot[data-genre="' + cfg.genre + '"]');
+      peintSlot(el, s, cfg, etatPourSlots && etatPourSlots[cfg.etatChamp]);
+    });
     skinBoite.querySelector('.swk-dn').textContent = s.nom;
     skinBoite.querySelector('.swk-dp').innerHTML = pointsPuissance(s);
     skinBoite.querySelector('.swk-dv').textContent = s.pouvoir;
@@ -4067,8 +4080,9 @@
       } else if (etatP) {
         zst.appendChild(blocSkinNiveau(etatP));
         zst.appendChild(blocSkinStats(etatP));
-        zst.appendChild(blocPicker(s, 'fruit', etatP.equipFruit));
-        zst.appendChild(blocPicker(s, 'arme', etatP.equipArme));
+        EQUIP_SLOTS.forEach(function (cfg) {
+          zst.appendChild(blocPicker(s, cfg, etatP[cfg.etatChamp]));
+        });
       }
     }
     var za = skinBoite.querySelector('.swk-da');
@@ -4100,13 +4114,28 @@
      RealmEye. */
   var ORDRE_STATS = ['hp', 'mp', 'att', 'def', 'spd', 'dex', 'vit', 'wis'];
   var NOM_STAT = { hp: 'HP', mp: 'MP', att: 'ATT', def: 'DEF', spd: 'SPD', dex: 'DEX', vit: 'VIT', wis: 'WIS' };
+  /* Les quatre emplacements, une seule table pour les decrire — le picker,
+     les cases et le calcul des stats la lisent tous les trois, plutot que de
+     retaper quatre fois la meme correspondance genre -> champ -> message. */
+  var EQUIP_SLOTS = [
+    { genre: 'fruit', champ: 'fruits', etatChamp: 'equipFruit', typeMsg: 'equipeFruit',
+      label: 'Power fruit', vide: 'No power fruit owned yet — open a season 1 chest.' },
+    { genre: 'arme', champ: 'armes', etatChamp: 'equipArme', typeMsg: 'equipeArme',
+      label: 'Weapon', vide: 'No weapon owned yet — open a season 2 chest.' },
+    { genre: 'armure', champ: 'armures', etatChamp: 'equipArmure', typeMsg: 'equipeArmure',
+      label: 'Armor', vide: 'No armor piece owned yet — open a season 3 chest.' },
+    { genre: 'bague', champ: 'bagues', etatChamp: 'equipBague', typeMsg: 'equipeBague',
+      label: 'Ring', vide: 'No ring owned yet — open a season 4 chest.' },
+  ];
   function blocSkinStats(etatP) {
     var d = document.createElement('div');
     d.className = 'swk-sg';
     d.innerHTML = ORDRE_STATS.map(function (k) {
       var bonus = 0;
-      if (etatP.equipFruit && etatP.equipFruit.stat === k) bonus += etatP.equipFruit.bonus;
-      if (etatP.equipArme && etatP.equipArme.stat === k) bonus += etatP.equipArme.bonus;
+      EQUIP_SLOTS.forEach(function (cfg) {
+        var eq = etatP[cfg.etatChamp];
+        if (eq && eq.stat === k) bonus += eq.bonus;
+      });
       var base = (etatP.stats[k] || 0) - bonus;
       return '<div class="swk-s"><i>' + NOM_STAT[k] + '</i><b>' + nb(base, 0) +
         (bonus > 0 ? ' <em>+' + nb(bonus, 0) + '</em>' : '') + '</b></div>';
@@ -4114,29 +4143,29 @@
     return d;
   }
 
-  /* La case d'equipement, a cote du portrait — fruit a gauche, arme a
-     droite. Elle montre l'image de l'objet directement, pas juste son nom :
-     c'est CA qu'on veut voir sur le personnage. Taper la case ouvre ou
-     ferme le choix (rendu par blocPicker, juste en dessous) ; le petit rond
-     "x" au coin retire l'objet sans passer par le choix. */
-  function peintSlot(el, s, genre, equipe) {
+  /* La case d'equipement, a cote du portrait — fruit et armure a gauche,
+     arme et bague a droite. Elle montre l'image de l'objet directement, pas
+     juste son nom : c'est CA qu'on veut voir sur le personnage. Taper la
+     case ouvre ou ferme le choix (rendu par blocPicker, juste en dessous) ;
+     le petit rond "x" au coin retire l'objet sans passer par le choix. */
+  function peintSlot(el, s, cfg, equipe) {
     if (!s.possede) { el.style.display = 'none'; el.onclick = null; return; }
     el.style.display = '';
-    el.className = 'swk-slot' + (genre === 'fruit' ? ' swk-slot-l' : ' swk-slot-r') + (equipe ? '' : ' vide');
+    el.className = 'swk-slot' + (equipe ? '' : ' vide');
     el.style.setProperty('--c', equipe ? (equipe.couleur || '#8DA0C4') : 'rgba(255,255,255,.18)');
     el.innerHTML = equipe
       ? '<img alt="" src="img/shop/' + encodeURIComponent(equipe.cle) + '.webp" onerror="this.remove()">' +
         '<b>+' + nb(equipe.bonus, 0) + '</b>' +
         '<span class="rm" title="Remove">&times;</span>'
-      : '<i>+ ' + (genre === 'fruit' ? 'Fruit' : 'Weapon') + '</i>';
+      : '<i>+ ' + cfg.label + '</i>';
     el.onclick = function (e) {
       e.stopPropagation();
       if (e.target.classList.contains('rm')) {
-        envoie({ type: genre === 'fruit' ? 'equipeFruit' : 'equipeArme', skin: s.id, item: null });
+        envoie({ type: cfg.typeMsg, skin: s.id, item: null });
         return;
       }
-      var ouvert = skinBoite.dataset.eqOpen === genre;
-      skinBoite.dataset.eqOpen = ouvert ? '' : genre;
+      var ouvert = skinBoite.dataset.eqOpen === cfg.genre;
+      skinBoite.dataset.eqOpen = ouvert ? '' : cfg.genre;
       if (!EQUIPABLE) envoie({ type: 'equipable' });
       peintDetailSkin();
     };
@@ -4147,20 +4176,16 @@
      parcourue) ce qu'on possede reellement dans cette categorie — le clic
      sur un candidat equipe tout de suite, pas de bouton "confirmer" a part,
      le geste EST la confirmation. */
-  function blocPicker(s, genre, equipe) {
+  function blocPicker(s, cfg, equipe) {
     var d = document.createElement('div');
-    var ouvert = skinBoite.dataset.eqOpen === genre;
+    var ouvert = skinBoite.dataset.eqOpen === cfg.genre;
     if (!ouvert) { d.style.display = 'none'; return d; }
     d.className = 'swk-eql';
-    var champ = genre === 'fruit' ? 'fruits' : 'armes';
-    var typeMsg = genre === 'fruit' ? 'equipeFruit' : 'equipeArme';
-    var candidats = (EQUIPABLE && EQUIPABLE[champ]) || null;
+    var candidats = (EQUIPABLE && EQUIPABLE[cfg.champ]) || null;
     if (!candidats) {
       d.innerHTML = '<i class="swk-stload">Loading…</i>';
     } else if (!candidats.length) {
-      d.innerHTML = '<i class="swk-teaser">' +
-        (genre === 'fruit' ? 'No power fruit owned yet — open a season 1 chest.'
-                            : 'No weapon owned yet — open a season 2 chest.') + '</i>';
+      d.innerHTML = '<i class="swk-teaser">' + cfg.vide + '</i>';
     } else {
       candidats.forEach(function (o) {
         var b = document.createElement('button');
@@ -4172,7 +4197,7 @@
         b.addEventListener('click', function (e) {
           e.stopPropagation();
           skinBoite.dataset.eqOpen = '';
-          envoie({ type: typeMsg, skin: s.id, item: o.id });
+          envoie({ type: cfg.typeMsg, skin: s.id, item: o.id });
         });
         d.appendChild(b);
       });

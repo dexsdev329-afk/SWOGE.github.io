@@ -1459,9 +1459,14 @@
        * Deux paliers plutot qu'un seul saut : a 900 px on a la place d'un
        * vrai panneau, a 1280 celle d'un panneau confortable. Le `vw` garde la
        * main sur les fenetres etroites — un navigateur a 950 px de large ne
-       * doit pas se faire manger les deux tiers par un tiroir. */
-      '@media (min-width:900px){.swp{width:min(58vw,600px);}}' +
-      '@media (min-width:1280px){.swp{width:min(46vw,760px);}}' +
+       * doit pas se faire manger les deux tiers par un tiroir.
+       *
+       * Les deux facteurs sont choisis pour que le second palier ne soit
+       * JAMAIS plus etroit que le premier au moment du changement (a 1280 px
+       * pile) : 55 % de 1280 depasse deja le plafond de 680 du premier
+       * palier, la largeur ne peut donc que grandir en traversant le seuil. */
+      '@media (min-width:900px){.swp{width:min(62vw,680px);}}' +
+      '@media (min-width:1280px){.swp{width:min(55vw,900px);}}' +
       /* Le nom de l'objet suit la case : a 9,5 px sur une vignette de 123, il
          se lisait comme une note de bas de page sous un poster. */
       '@media (min-width:900px){.swb-o{font-size:11px;padding:6px 6px 3px;}' +
@@ -2021,15 +2026,48 @@
       '.swk-c .act.buy i,.swk-da .act.buy i{font-style:normal;font-weight:600;opacity:.85;}' +
       /* ---- LA FICHE EN GRAND ----
        *
-       * Meme coque que la feuille de vente (.swv, .swv-f, .swv-x) : une seule
-       * regle de comportement pour toutes les feuilles du tiroir. Ce qui
-       * change ici, c'est le contenu — une image large plutot qu'une ligne
-       * de formulaire. */
-      '.swk-v .swv-f{align-items:center;text-align:center;gap:9px;padding-top:28px;}' +
-      '.swk-hero{width:min(58vw,240px);height:min(58vw,240px);display:flex;' +
+       * Meme coque que la feuille de vente (.swv, .swv-f, .swv-x) — mais PAS
+       * le meme ancrage. La feuille de vente est un formulaire qu'on remplit
+       * en bas, pres du pouce. La fiche d'un personnage est un portrait :
+       * elle se regarde au CENTRE de l'ecran, meme quand on l'ouvre depuis un
+       * skin affiche tout en haut du profil — sinon le geste (taper en haut)
+       * et la reponse (une feuille qui monte du bas) se contredisent. */
+      /* `.swv.swk-v` et pas juste `.swk-v` : les deux classes sont sur le
+         MEME element (`swv swk-v`), et la regle de base `.swv{align-items:
+         flex-end}` vient plus loin dans la feuille — a specificite egale,
+         c'est elle qui gagnerait a l'usure. Le doublement de classe force
+         une specificite superieure, sans dependre de l'ordre. */
+      '.swv.swk-v{align-items:center;padding:16px;}' +
+      '.swk-v .swv-f{width:calc(100% - 0px);max-width:380px;border-radius:18px;' +
+        'align-items:center;text-align:center;gap:9px;padding-top:28px;' +
+        'transform:scale(.94);opacity:0;transition:transform .2s,opacity .2s;}' +
+      '.swk-v.on .swv-f{transform:none;opacity:1;}' +
+      /* Le portrait au centre, un emplacement d equipement de chaque cote —
+         a gauche le fruit, a droite l arme. C est la disposition d une
+         fiche de personnage, pas une image seule suivie d une liste en
+         dessous : on doit voir sur QUI l objet est pose. */
+      '.swk-herorow{width:100%;display:flex;align-items:center;justify-content:center;gap:6px;}' +
+      '.swk-hero{width:min(46vw,190px);height:min(46vw,190px);display:flex;flex:0 0 auto;' +
         'align-items:center;justify-content:center;}' +
       '.swk-hero img{max-width:100%;max-height:100%;object-fit:contain;' +
         'filter:drop-shadow(0 10px 18px rgba(0,0,0,.45));}' +
+      '.swk-slot{position:relative;flex:0 0 auto;width:64px;height:64px;border-radius:14px;' +
+        'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;' +
+        'padding:4px;font:inherit;cursor:pointer;border:2px solid var(--c,rgba(255,255,255,.18));' +
+        'background:rgba(255,255,255,.04);color:#8DA0C4;}' +
+      '.swk-slot:hover{background:rgba(255,255,255,.09);}' +
+      '.swk-slot.vide{border-style:dashed;}' +
+      '.swk-slot img{max-width:70%;max-height:56%;object-fit:contain;}' +
+      '.swk-slot b{font-style:normal;font-size:9px;font-weight:800;color:#7CFF9B;line-height:1.15;}' +
+      '.swk-slot i{font-style:normal;font-size:9.5px;line-height:1.2;}' +
+      /* Le retrait se fait depuis le badge, pas depuis le corps du bouton —
+         sinon toucher la case pour voir ce qu on pourrait mettre a la place
+         retirerait l objet au lieu d ouvrir le choix. */
+      '.swk-slot .rm{position:absolute;top:-6px;right:-6px;width:19px;height:19px;' +
+        'border-radius:99px;display:flex;align-items:center;justify-content:center;' +
+        'font-size:11px;line-height:1;border:1px solid rgba(255,255,255,.2);' +
+        'background:#1B2536;color:#8DA0C4;}' +
+      '.swk-slot .rm:hover{color:#FF7A7A;border-color:rgba(255,122,122,.4);}' +
       '.swk-dn{font-size:19px;font-weight:800;color:#F2F6FF;}' +
       '.swk-dp{display:flex;gap:5px;font-style:normal;justify-content:center;}' +
       '.swk-dp i{width:8px;height:8px;border-radius:99px;background:rgba(255,255,255,.16);}' +
@@ -2067,26 +2105,16 @@
         'color:#8DA0C4;}' +
       '.swk-s b{font-size:13px;font-weight:800;color:#F2F6FF;}' +
       '.swk-s b em{font-style:normal;font-size:10.5px;font-weight:800;color:#7CFF9B;}' +
-      /* Un emplacement d equipement : la puce a gauche dit ce qui est porte,
-         les boutons a droite le changent ou le retirent — la meme ligne
-         qu on lit d abord et qu on touche ensuite. */
-      '.swk-eq{width:100%;border-top:1px solid rgba(255,255,255,.08);padding-top:8px;}' +
-      '.swk-eqc{display:flex;align-items:baseline;justify-content:center;gap:6px;' +
-        'flex-wrap:wrap;font-size:12px;}' +
-      '.swk-eqc i{font-style:normal;color:#8DA0C4;}' +
-      '.swk-eqc b{color:#F2F6FF;}' +
-      '.swk-eqc b.vide{color:#8DA0C4;font-weight:600;}' +
-      '.swk-eqc em{font-style:normal;color:#7CFF9B;font-weight:800;font-size:11px;}' +
-      '.swk-eqbar{display:flex;justify-content:center;gap:8px;margin-top:6px;}' +
-      '.swk-eqoff,.swk-eqchg{padding:5px 12px;border-radius:99px;font:inherit;font-size:11px;' +
-        'font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,.16);' +
-        'background:rgba(255,255,255,.04);color:#8DA0C4;}' +
-      '.swk-eqchg:hover,.swk-eqoff:hover{background:rgba(255,255,255,.09);}' +
-      '.swk-eql{display:flex;flex-direction:column;gap:5px;margin-top:8px;' +
+      /* La liste de choix, sous les stats : elle n existe dans le DOM que le
+         temps ou une case est ouverte (display:none sinon), affichee juste
+         sous la grille de stats — bordee en haut pour la separer d elle. */
+      '.swk-eql{width:100%;display:flex;flex-direction:column;gap:5px;' +
+        'padding-top:8px;border-top:1px solid rgba(255,255,255,.08);' +
         'max-height:150px;overflow-y:auto;}' +
-      '.swk-eqi{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:9px;' +
+      '.swk-eqi{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:9px;' +
         'font:inherit;cursor:pointer;border:1px solid rgba(255,255,255,.14);' +
         'border-left:3px solid var(--c,#8DA0C4);background:rgba(255,255,255,.04);text-align:left;}' +
+      '.swk-eqi img{width:28px;height:28px;object-fit:contain;flex:0 0 auto;}' +
       '.swk-eqi:hover{background:rgba(255,255,255,.09);}' +
       '.swk-eqi.actif{background:rgba(124,255,155,.08);border-color:rgba(124,255,155,.35);}' +
       '.swk-eqi b{font-size:12px;color:#F2F6FF;flex:1;}' +
@@ -3938,7 +3966,11 @@
       skinBoite.innerHTML =
         '<div class="swv-f">' +
           '<button class="swv-x" type="button" aria-label="Close">&times;</button>' +
-          '<div class="swk-hero"><img alt=""></div>' +
+          '<div class="swk-herorow">' +
+            '<button type="button" class="swk-slot swk-slot-l" aria-label="Power fruit"></button>' +
+            '<div class="swk-hero"><img alt=""></div>' +
+            '<button type="button" class="swk-slot swk-slot-r" aria-label="Weapon"></button>' +
+          '</div>' +
           '<b class="swk-dn"></b>' +
           '<i class="swk-dp"></i>' +
           '<i class="swk-dv"></i>' +
@@ -3984,6 +4016,12 @@
     im.src = 'img/skins/' + (pixel ? 'pixel/skin_' : 'skin_') + encodeURIComponent(s.id) + '.webp';
     im.onerror = function () { im.style.visibility = 'hidden'; };
     im.style.visibility = '';
+    /* Les deux cases autour du portrait : fruit a gauche, arme a droite.
+       Rien avant l'achat — un skin qu'on ne possede pas n'a pas de fiche de
+       personnage a equiper. */
+    var etatPourSlots = s.possede ? PERSO_PAR_SKIN[s.id] : null;
+    peintSlot(skinBoite.querySelector('.swk-slot-l'), s, 'fruit', etatPourSlots && etatPourSlots.equipFruit);
+    peintSlot(skinBoite.querySelector('.swk-slot-r'), s, 'arme', etatPourSlots && etatPourSlots.equipArme);
     skinBoite.querySelector('.swk-dn').textContent = s.nom;
     skinBoite.querySelector('.swk-dp').innerHTML = pointsPuissance(s);
     skinBoite.querySelector('.swk-dv').textContent = s.pouvoir;
@@ -4029,8 +4067,8 @@
       } else if (etatP) {
         zst.appendChild(blocSkinNiveau(etatP));
         zst.appendChild(blocSkinStats(etatP));
-        zst.appendChild(blocEquipement(s, 'fruit', etatP.equipFruit));
-        zst.appendChild(blocEquipement(s, 'arme', etatP.equipArme));
+        zst.appendChild(blocPicker(s, 'fruit', etatP.equipFruit));
+        zst.appendChild(blocPicker(s, 'arme', etatP.equipArme));
       }
     }
     var za = skinBoite.querySelector('.swk-da');
@@ -4076,74 +4114,68 @@
     return d;
   }
 
-  /* Un emplacement d'equipement — fruit ou arme. La puce montre ce qui est
-     porte ; "Change" deplie la liste de ce qu'on possede dans CETTE
-     categorie, prise dans EQUIPABLE (qui ne depend d'aucune saison
-     parcourue). Le clic sur un candidat equipe tout de suite — pas de
-     bouton "confirmer" separe, le geste EST la confirmation. */
-  function blocEquipement(s, genre, equipe) {
-    var champ = genre === 'fruit' ? 'fruits' : 'armes';
-    var nomSlot = genre === 'fruit' ? 'Power fruit' : 'Weapon';
-    var typeMsg = genre === 'fruit' ? 'equipeFruit' : 'equipeArme';
-    var d = document.createElement('div');
-    d.className = 'swk-eq';
-    var chip = document.createElement('div');
-    chip.className = 'swk-eqc';
-    chip.innerHTML = '<i>' + nomSlot + '</i>' +
-      (equipe
-        ? '<b>' + ech(equipe.nom) + '</b><em>' + (equipe.stat ? NOM_STAT[equipe.stat] : '') + ' +' + nb(equipe.bonus, 0) + '</em>'
-        : '<b class="vide">None equipped</b>');
-    d.appendChild(chip);
-    var bar = document.createElement('div');
-    bar.className = 'swk-eqbar';
-    if (equipe) {
-      var off = document.createElement('button');
-      off.type = 'button'; off.className = 'swk-eqoff';
-      off.textContent = 'Remove';
-      off.addEventListener('click', function (e) {
-        e.stopPropagation();
-        envoie({ type: typeMsg, skin: s.id, item: null });
-      });
-      bar.appendChild(off);
-    }
-    var chg = document.createElement('button');
-    chg.type = 'button'; chg.className = 'swk-eqchg';
-    var ouvert = skinBoite.dataset.eqOpen === genre;
-    chg.textContent = ouvert ? 'Close' : 'Change';
-    chg.addEventListener('click', function (e) {
+  /* La case d'equipement, a cote du portrait — fruit a gauche, arme a
+     droite. Elle montre l'image de l'objet directement, pas juste son nom :
+     c'est CA qu'on veut voir sur le personnage. Taper la case ouvre ou
+     ferme le choix (rendu par blocPicker, juste en dessous) ; le petit rond
+     "x" au coin retire l'objet sans passer par le choix. */
+  function peintSlot(el, s, genre, equipe) {
+    if (!s.possede) { el.style.display = 'none'; el.onclick = null; return; }
+    el.style.display = '';
+    el.className = 'swk-slot' + (genre === 'fruit' ? ' swk-slot-l' : ' swk-slot-r') + (equipe ? '' : ' vide');
+    el.style.setProperty('--c', equipe ? (equipe.couleur || '#8DA0C4') : 'rgba(255,255,255,.18)');
+    el.innerHTML = equipe
+      ? '<img alt="" src="img/shop/' + encodeURIComponent(equipe.cle) + '.webp" onerror="this.remove()">' +
+        '<b>+' + nb(equipe.bonus, 0) + '</b>' +
+        '<span class="rm" title="Remove">&times;</span>'
+      : '<i>+ ' + (genre === 'fruit' ? 'Fruit' : 'Weapon') + '</i>';
+    el.onclick = function (e) {
       e.stopPropagation();
+      if (e.target.classList.contains('rm')) {
+        envoie({ type: genre === 'fruit' ? 'equipeFruit' : 'equipeArme', skin: s.id, item: null });
+        return;
+      }
+      var ouvert = skinBoite.dataset.eqOpen === genre;
       skinBoite.dataset.eqOpen = ouvert ? '' : genre;
       if (!EQUIPABLE) envoie({ type: 'equipable' });
       peintDetailSkin();
-    });
-    bar.appendChild(chg);
-    d.appendChild(bar);
-    if (ouvert) {
-      var liste = document.createElement('div');
-      liste.className = 'swk-eql';
-      var candidats = (EQUIPABLE && EQUIPABLE[champ]) || null;
-      if (!candidats) {
-        liste.innerHTML = '<i class="swk-stload">Loading…</i>';
-      } else if (!candidats.length) {
-        liste.innerHTML = '<i class="swk-teaser">' +
-          (genre === 'fruit' ? 'No power fruit owned yet — open a season 1 chest.'
-                              : 'No weapon owned yet — open a season 2 chest.') + '</i>';
-      } else {
-        candidats.forEach(function (o) {
-          var b = document.createElement('button');
-          b.type = 'button'; b.className = 'swk-eqi' + (equipe && equipe.item === o.id ? ' actif' : '');
-          b.style.setProperty('--c', o.couleur || '#8DA0C4');
-          b.innerHTML = '<b>' + ech(o.nom) + '</b><i>' + (o.stat ? NOM_STAT[o.stat] : '') + ' +' + nb(o.bonus, 0) + '</i>' +
-            (o.quantite > 1 ? '<span>x' + o.quantite + '</span>' : '');
-          b.addEventListener('click', function (e) {
-            e.stopPropagation();
-            skinBoite.dataset.eqOpen = '';
-            envoie({ type: typeMsg, skin: s.id, item: o.id });
-          });
-          liste.appendChild(b);
+    };
+  }
+
+  /* Le choix, sous les stats : uniquement quand la case correspondante vient
+     d'etre touchee. Prend dans EQUIPABLE (qui ne depend d'aucune saison
+     parcourue) ce qu'on possede reellement dans cette categorie — le clic
+     sur un candidat equipe tout de suite, pas de bouton "confirmer" a part,
+     le geste EST la confirmation. */
+  function blocPicker(s, genre, equipe) {
+    var d = document.createElement('div');
+    var ouvert = skinBoite.dataset.eqOpen === genre;
+    if (!ouvert) { d.style.display = 'none'; return d; }
+    d.className = 'swk-eql';
+    var champ = genre === 'fruit' ? 'fruits' : 'armes';
+    var typeMsg = genre === 'fruit' ? 'equipeFruit' : 'equipeArme';
+    var candidats = (EQUIPABLE && EQUIPABLE[champ]) || null;
+    if (!candidats) {
+      d.innerHTML = '<i class="swk-stload">Loading…</i>';
+    } else if (!candidats.length) {
+      d.innerHTML = '<i class="swk-teaser">' +
+        (genre === 'fruit' ? 'No power fruit owned yet — open a season 1 chest.'
+                            : 'No weapon owned yet — open a season 2 chest.') + '</i>';
+    } else {
+      candidats.forEach(function (o) {
+        var b = document.createElement('button');
+        b.type = 'button'; b.className = 'swk-eqi' + (equipe && equipe.item === o.id ? ' actif' : '');
+        b.style.setProperty('--c', o.couleur || '#8DA0C4');
+        b.innerHTML = '<img alt="" src="img/shop/' + encodeURIComponent(o.cle) + '.webp" onerror="this.remove()">' +
+          '<b>' + ech(o.nom) + '</b><i>' + (o.stat ? NOM_STAT[o.stat] : '') + ' +' + nb(o.bonus, 0) + '</i>' +
+          (o.quantite > 1 ? '<span>x' + o.quantite + '</span>' : '');
+        b.addEventListener('click', function (e) {
+          e.stopPropagation();
+          skinBoite.dataset.eqOpen = '';
+          envoie({ type: typeMsg, skin: s.id, item: o.id });
         });
-      }
-      d.appendChild(liste);
+        d.appendChild(b);
+      });
     }
     return d;
   }

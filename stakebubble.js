@@ -2023,9 +2023,15 @@
       /* Le prix est le SEUL bouton dore du tiroir en dehors des gestes
          d argent : il doit se voir comme « ceci coute », pas comme un bouton
          d action neutre parmi d autres. */
-      '.swk-c .act.buy,.swk-da .act.buy{border-color:rgba(255,197,61,.55);background:rgba(255,197,61,.14);' +
+      /* `.prix`, jamais `.buy` : ce nom-la existe deja, ailleurs sur le site,
+         pour le bouton « Buy $SWOGE » de la barre — un sprite dont le TEXTE
+         est pousse hors-ecran (`text-indent:-9999px`) et le fond force en
+         transparent par un `!important`. Les deux boutons partageaient donc
+         la meme classe sans se connaitre, et celui-ci en heritait, invisible :
+         aucun prix, aucune couleur, juste un rectangle vide. */
+      '.swk-c .act.prix,.swk-da .act.prix{border-color:rgba(255,197,61,.55);background:rgba(255,197,61,.14);' +
         'color:#FFD97A;}' +
-      '.swk-c .act.buy i,.swk-da .act.buy i{font-style:normal;font-weight:600;opacity:.85;}' +
+      '.swk-c .act.prix i,.swk-da .act.prix i{font-style:normal;font-weight:600;opacity:.85;}' +
       /* ---- LA FICHE EN GRAND ----
        *
        * Meme coque que la feuille de vente (.swv, .swv-f, .swv-x) — mais PAS
@@ -3895,7 +3901,7 @@
       return w;
     }
     var b = document.createElement('button');
-    b.type = 'button'; b.className = 'act buy';
+    b.type = 'button'; b.className = 'act prix';
     b.innerHTML = nb(s.prix, 0) + ' <i>$SWOGE</i>';
     b.addEventListener('click', function (e) {
       e.stopPropagation();

@@ -81,6 +81,21 @@
       assureCharge(PERSO);
     }
     if (m.type === 'nexusEtat') majJoueursDistants(m.joueurs || []);
+    /* Le solde suit n'importe quel message qui le porte — pas seulement
+       `auth` — exactement comme `poseSolde` le fait pour le reste du site :
+       un achat de skin ou de coffre depuis le tiroir, ouvert par-dessus le
+       Nexus, doit mettre a jour le chiffre affiche ici sans recharger la page. */
+    if (m.balance != null) majSolde(m.balance);
+  }
+
+  var soldeEl = document.getElementById('nxSolde');
+  function majSolde(v) {
+    var n = parseFloat(v || 0);
+    if (isNaN(n) || !soldeEl) return;
+    var t = n >= 1e9 ? (n / 1e9).toFixed(2) + 'B' : n >= 1e6 ? (n / 1e6).toFixed(2) + 'M'
+      : n >= 1000 ? (n / 1000).toFixed(1) + 'k' : n.toFixed(2);
+    soldeEl.innerHTML = '<b>' + t + '</b><em>$SWOGE</em>';
+    soldeEl.classList.add('on');
   }
 
   // ------------------------------------------------------- les personnages
@@ -165,7 +180,10 @@
       rayon: 110, href: 'games.html', nom: 'the game hall' },
     { cle: 'etal', src: 'img/nexus/tiles/obj_market_stall.webp',
       x: CENTRE.x - 620, y: CENTRE.y, larg: 260, haut: 244,
-      rayon: 120, href: 'games.html?open=sh', nom: 'the shop' },
+      /* Ouvre sur les coffres, mais la meme feuille porte l'onglet
+         « Character skins » juste a cote dans sa barre — le nom dit les
+         deux, pour qu'on sache que l'un mene aussi a l'autre. */
+      rayon: 120, href: 'games.html?open=sh', nom: 'the shop — chests & skins' },
     { cle: 'coffre', src: 'img/nexus/tiles/obj_vault_door.webp',
       x: CENTRE.x + 620, y: CENTRE.y, larg: 260, haut: 251,
       rayon: 120, href: 'games.html?open=ap', nom: 'your vault' },

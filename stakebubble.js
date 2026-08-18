@@ -323,6 +323,11 @@
      porte l'identifiant `bal` : tout le reste du module s'accroche a lui, et
      deux facons de trouver le solde finiraient par diverger. */
   var soldeSeul = null;
+  /* Le solde n'etait nulle part : il etait PEINT dans la barre et jamais
+     retenu. Impossible de l'afficher ailleurs sans le relire dans le DOM —
+     ce qui aurait fait dependre l'en-tete du profil du format d'affichage de
+     la barre (« 1.28M » et non 1284500). On garde donc le nombre. */
+  var SOLDE = null;
   function poseSolde(v) {
     if (!soldeSeul) {
       var barre = document.querySelector('nav');
@@ -354,6 +359,8 @@
       if (avant) barre.insertBefore(soldeSeul, avant); else barre.appendChild(soldeSeul);
     }
     var n = parseFloat(v || 0);
+    SOLDE = isNaN(n) ? SOLDE : n;
+    if (profOuvert) peintChiffres();
     soldeSeul.querySelector('#bal').textContent =
       n >= 1e9 ? (n / 1e9).toFixed(2) + 'B' : n >= 1e6 ? (n / 1e6).toFixed(2) + 'M'
       : n >= 1000 ? (n / 1000).toFixed(1) + 'k' : n.toFixed(2);
@@ -395,6 +402,23 @@
        connecte : la page annonce le monde present des la premiere seconde,
        ce qui est justement le moment ou l'information sert. */
     if (m.type === 'history') { etat.socket = ev.target; poseHistorique(m); }
+    /* ---- LU SUR TOUS LES MESSAGES, SANS LISTE ----
+     *
+     * La serie, la pastille et le coffre du jour arrivent sur `auth`, sur
+     * `bonus`, sur `shop`, sur `questClaimed`… Ma premiere version enumerait
+     * les types qui les portent : `auth` n'y etait pas, et la pastille restait
+     * eteinte a l'ouverture de la page — c'est-a-dire au seul moment ou elle
+     * sert. Une liste de types est une liste qu'on oublie de tenir a jour.
+     *
+     * `recoitAttente` ne touche que les champs PRESENTS, donc le lire partout
+     * ne coute rien et ne peut rien effacer. */
+    if (m && typeof m === 'object' &&
+        (m.attente || m.offert || (m.bonus && m.bonus.streak) || m.type === 'streakClaimed')) {
+      recoitAttente(m);
+      if (m.niveau) NIVEAU = m.niveau;
+      pastilleAmis();
+      if (profOuvert) profEnTete();
+    }
     if (m.type === 'profile') {
       etat.socket = ev.target;
       if (m.avatars) VISAGES = m.avatars;
@@ -413,10 +437,18 @@
       if (m.unread !== undefined) NON_LUS = m.unread;
       if (m.stats) { STATS = m.stats; noteFrais(); }
       if (m.niveau) NIVEAU = m.niveau;
+      recoitAttente(m);
       pastilleAmis();
       profEnTete(); if (profOnglet === 'am' || profOnglet === 'in') profRend();
     }
     if (m.type === 'unread') { NON_LUS = m.unread || 0; pastilleAmis(); }
+    /* Un seul lecteur pour tous les messages qui portent ces champs. Ecrit a
+       chaque endroit, il aurait fini par en oublier un — et c'est la pastille
+       qui serait restee allumee sur une recompense deja prise. */
+    if (m.type === 'streakClaimed') {
+      toast('🔥 Day ' + m.day + ' — ' + nb(m.reward, 0) + ' $SWOGE' +
+            (m.xp ? ' · +' + m.xp + ' XP' : ''), 'good');
+    }
     if (m.type === 'referral' || m.type === 'referralClaimed') {
       PARRAIN = m;
       if (m.type === 'referralClaimed') { toast('✅ Claimed ' + nb(m.montant) + ' $SWOGE from your invites', 'ok'); rafraichitSolde(); }
@@ -450,7 +482,7 @@
     }
     /* Les missions du jour arrivent avec les quetes, sur trois messages
        differents selon la page. On les garde ici, et on decore ensuite. */
-    if (m.quests) { MISSIONS = m.quests; surveilleMissions(); }
+    if (m.quests) { MISSIONS = m.quests; surveilleMissions(); if (profOuvert) peintChiffres(); }
     /* Le « hello » prouve que cette socket-la parle a notre serveur : sur une
        page de jeu ouverte par un visiteur, c'est la seule qu'on ait, et c'est
        par elle qu'il pourra regarder. */
@@ -881,12 +913,20 @@
        sont pas les memes questions, et les melanger noie la premiere. */
     ['Bets', [['bo', 'Open bets'], ['bs', 'Settled bets']]],
     ['People',  [['am', 'Friends'], ['in', 'Invite']]],
-    ['Standing', [['lb', 'Ranking']]],
+    /* « Ranking » tout court ne peut plus rester : la boutique en a un aussi,
+       douze rangees plus haut, et il designe la collection. Deux entrees du
+       meme nom a deux endroits, on en ouvre une sur deux — et jamais la
+       bonne du premier coup. */
+    ['Standing', [['lb', 'Leaderboard']]],
   ];
   var ONGLETS = FAMILLES.reduce(function (t, f) { return t.concat(f[1]); }, []);
   var VISAGES = [], MOI = { name: null, visage: null, address: null };
   var AMIS = { amis: [], recues: [], envoyees: [] }, EN_ATTENTE = 0, RECHERCHE = [];
   var NON_LUS = 0, PARRAIN = null, STATS = null, CLASSEMENT = null, NIVEAU = null;
+  /* La serie du jour, ce qui attend le joueur, et le coffre offert. Les trois
+     arrivent avec l'authentification et non sur demande : une pastille qui
+     s'allume seulement quand on pense a regarder ne ramene personne. */
+  var SERIE = null, ATTENTE = null, OFFERT = null;
   var PRIX_NOM = null;                    // { prix, du, brule, solde }
   var BOUTIQUE = null;                    // { catalogue, inventaire, saisons, gagne? }
   /* La saison REGARDEE. Ce n'est qu'un souhait : le serveur decide, et si elle
@@ -1380,6 +1420,20 @@
          Les coffres en rangee, l'inventaire en grille. La rarete est portee
          par la COULEUR de la bordure et rien d'autre : un objet se reconnait
          de loin a sa teinte, sans lire une etiquette. */
+      '.swb-off{display:flex;align-items:center;gap:11px;text-align:left;width:100%;' +
+        'margin:0 0 13px;padding:11px 13px;border-radius:14px;font:inherit;cursor:pointer;' +
+        'border:1px solid rgba(124,255,155,.45);background:rgba(124,255,155,.10);' +
+        'color:#DFF6E4;transition:background .15s,border-color .15s;}' +
+      '.swb-off:hover:not(:disabled){background:rgba(124,255,155,.16);border-color:rgba(124,255,155,.7);}' +
+      '.swb-off .cf{flex:0 0 auto;width:52px;height:52px;object-fit:contain;}' +
+      '.swb-off .n{display:block;font-weight:800;font-size:13.5px;color:#C8FFD6;}' +
+      '.swb-off .o{display:block;font-size:10.5px;color:#8DA0C4;margin-top:2px;}' +
+      '.swb-off .p{margin-left:auto;font-weight:800;font-size:12px;letter-spacing:.1em;color:#7CFF9B;}' +
+      /* Pris : la carte reste, elle ne disparait pas. Un panneau qui change de
+         forme selon l heure fait douter de ce qu on y a vu la veille. */
+      '.swb-off.pris{opacity:.5;cursor:default;border-color:rgba(255,255,255,.12);' +
+        'background:rgba(255,255,255,.04);}' +
+      '.swb-off.pris .n,.swb-off.pris .p{color:#8DA0C4;}' +
       '.swb-c{display:grid;gap:9px;margin:2px 0 14px;}' +
       '.swb-cof{display:flex;align-items:center;gap:11px;text-align:left;width:100%;' +
         'padding:10px 12px;border-radius:13px;cursor:pointer;' +
@@ -1647,6 +1701,7 @@
       '.swnv .b{height:7px;border-radius:999px;margin-top:8px;overflow:hidden;' +
       'background:rgba(0,0,0,.45);}' +
       '.swnv .b>i{display:block;height:100%;border-radius:999px;transition:width .4s;}' +
+      '.swnv .r .sr{color:#7CFF9B;opacity:.85;}' +
       '.swnv .r{margin-top:6px;font-size:10.5px;color:#8DA0C4;}' +
       /* L echelle des dix paliers de parrainage : dix pastilles qui se
          replient, celle du joueur allumee. */
@@ -1742,6 +1797,21 @@
       'border-bottom:1px dashed #46557d;padding-bottom:1px;}' +
       '.swp-adr:hover{color:#CFE0FF;border-bottom-color:#7d92cc;}' +
       '.swp-adr-ok{color:#7BE3A0!important;border-bottom-color:#7BE3A0!important;}' +
+      '.swp-ch{display:flex;gap:7px;padding:0 13px 12px;flex-wrap:wrap;}' +
+      '.swp-ch button,.swp-ch span{flex:1 1 92px;display:flex;flex-direction:column;gap:1px;' +
+        'padding:8px 10px;border-radius:11px;border:1px solid rgba(255,255,255,.12);' +
+        'background:rgba(255,255,255,.05);font:inherit;text-align:left;color:#C9D6EE;}' +
+      '.swp-ch button{cursor:pointer;transition:background .15s,border-color .15s;}' +
+      '.swp-ch button:hover{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.26);}' +
+      '.swp-ch b{font-size:15px;font-weight:800;color:#F2F6FF;line-height:1.15;' +
+        'font-variant-numeric:tabular-nums;}' +
+      '.swp-ch i{font-style:normal;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;' +
+        'color:#8DA0C4;font-weight:700;}' +
+      /* Le seul accent dore de l'en-tete : ce qui est A PRENDRE. Un accent
+         qui est partout n'accentue rien. */
+      '.swp-ch .pret{border-color:rgba(255,197,61,.55);background:rgba(255,197,61,.13);}' +
+      '.swp-ch .pret b{color:#FFD97A;}' +
+      '.swp-ch .feu b{color:#FF9A3D;}' +
       '.swp-me .nm > span{display:block;font-size:11.5px;color:#8DA0C4;margin-top:3px;' +
       'font-family:monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}' +
       /* Le bouton d'edition devient un CHEVRON. En haut d'un tiroir, un
@@ -1974,6 +2044,11 @@
           '<div class="nm"><b></b><span></span></div>' +
           '<button class="swp-ed" type="button" title="Edit your name and picture">&rsaquo;</button>' +
         '</div>' +
+        /* LA LIGNE DES CHIFFRES. Solde, serie, collection — les trois choses
+           qu'un joueur vient verifier, et dont AUCUNE n'etait dans l'en-tete.
+           Le solde manquait sur un site ou chaque geste est une somme ; la
+           serie existait cote serveur depuis le debut sans jamais s'afficher. */
+        '<div class="swp-ch"></div>' +
         '<div class="swp-form off">' +
           '<div class="swp-avs"></div>' +
           '<div class="swp-up">' +
@@ -2130,7 +2205,7 @@
          les separer par un titre de groupe suggererait deux sujets. */
       var c = document.createElement('button');
       c.type = 'button'; c.dataset.k = 'cl';
-      c.textContent = '\uD83C\uDFC5 Fruit ranking';
+      c.textContent = '🏅 Collection ranking';
       c.addEventListener('click', function () { profVa('cl'); });
       t.appendChild(c);
     })();
@@ -2899,6 +2974,7 @@
     C.raretes.forEach(function (r) { nomRarete[r.cle] = r.nom; });
 
     rendSaisons(l);
+    rendOffert(l);
 
     // ---- ce qu'on vient d'ouvrir
     if (BOUTIQUE.gagne) {
@@ -3123,6 +3199,42 @@
    * celui qui ouvre le plus de coffres de bois gagne, alors que la collection
    * se termine en trouvant ce qu'on n'a pas.
    */
+  /* ---- LE COFFRE DU JOUR ----
+   *
+   * En TETE de la boutique, avant la course et avant les coffres payants.
+   * L'ordre dit quelque chose : la premiere chose qu'on propose ne coute
+   * rien. Un joueur qui n'a jamais ouvert de coffre ne sait pas ce que ca
+   * fait ; celui-la le lui montre, et c'est le meme tirage, les memes
+   * plafonds, la meme animation.
+   *
+   * Quand il est deja pris, la carte RESTE — grisee, avec « demain ». La
+   * retirer donnerait un panneau qui change de forme selon l'heure, et le
+   * joueur ne saurait plus qu'il existe.
+   */
+  function rendOffert(l) {
+    if (!OFFERT || !OFFERT.coffre) return;
+    var d = document.createElement('button');
+    d.type = 'button';
+    d.className = 'swb-off' + (OFFERT.dispo ? '' : ' pris');
+    d.disabled = !OFFERT.dispo;
+    d.innerHTML =
+      '<img class="cf" alt="" src="img/shop/coffre_' + encodeURIComponent(OFFERT.image || 'bois') +
+        '.webp" onerror="this.remove()">' +
+      '<span><span class="n">' + (OFFERT.dispo ? 'Your free chest' : 'Free chest taken') + '</span>' +
+      '<span class="o">' + (OFFERT.dispo
+        ? 'One ' + ech(OFFERT.nom) + ' every day \u00b7 costs nothing'
+        : 'Come back tomorrow for another one') + '</span></span>' +
+      '<span class="p">' + (OFFERT.dispo ? 'OPEN' : '\u2713') + '</span>';
+    d.addEventListener('click', function () {
+      if (d.disabled) return;
+      d.disabled = true;
+      joueCoffre(OFFERT.image || 'bois');
+      sceneOuvre(OFFERT.image || 'bois');
+      envoie({ type: 'freeChestOpen' });
+    });
+    l.appendChild(d);
+  }
+
   /*
    * ===================== LE BANDEAU DES SAISONS =====================
    *
@@ -3694,12 +3806,32 @@
     var c = couleurPalier(NIVEAU.palier);
     var d = document.createElement('div');
     d.className = 'swnv';
+    /* ---- LA BARRE COMPTE DE L'XP, PLUS DES JETONS MISES ----
+     *
+     * Elle disait « 500 000 $SWOGE de plus pour le niveau 11 ». Une barre de
+     * progression qui n'avance qu'en misant davantage, sur un site d'argent
+     * reel, est un mecanisme d'incitation a la mise — et elle etait fausse
+     * comme promesse de jeu : revenir tous les jours ne la bougeait pas d'un
+     * pixel. Elle compte maintenant de l'XP, que cinq gestes alimentent.
+     *
+     * Le detail des sources part dans l'info-bulle plutot que dans la ligne :
+     * ce qui compte a la lecture est « combien il m'en manque », pas d'ou
+     * vient le total. */
+    var srcNom = { connexion: 'daily', quete: 'quests', collection: 'collection',
+                   famille: 'families', parrainage: 'invites' };
+    var det = [];
+    if (NIVEAU.xpVolume) det.push(nb(NIVEAU.xpVolume, 0) + ' XP from wagering');
+    Object.keys(NIVEAU.sources || {}).forEach(function (k) {
+      det.push(nb(NIVEAU.sources[k], 0) + ' XP from ' + (srcNom[k] || k));
+    });
     d.innerHTML = '<div class="h"><span style="color:' + c + '">' + NIVEAU.palier +
-      '</span> · Level <b>' + NIVEAU.niveau + '</b><i>' + nb(NIVEAU.volume, 0) + ' $SWOGE wagered</i></div>' +
+      '</span> · Level <b>' + NIVEAU.niveau + '</b><i title="' + ech(det.join('\n')) + '">' +
+      nb(NIVEAU.xp, 0) + ' XP</i></div>' +
       '<div class="b"><i style="width:' + NIVEAU.progression + '%;background:' + c + '"></i></div>' +
       '<div class="r">' + (NIVEAU.max
         ? 'Maximum level. Almost nobody gets here.'
-        : nb(NIVEAU.restant, 0) + ' $SWOGE more to reach level ' + (NIVEAU.niveau + 1)) + '</div>';
+        : nb(NIVEAU.restant, 0) + ' XP to level ' + (NIVEAU.niveau + 1) +
+          ' \u00b7 <span class="sr">play daily, finish quests, collect</span>') + '</div>';
     return d;
   }
 
@@ -3940,7 +4072,7 @@
        le compte et les sections — donc elle n'est pas dans ONGLETS et son
        titre se pose ici. */
     if (!nom && k === 'sh') nom = 'Shop';
-    if (!nom && k === 'cl') nom = 'Fruit ranking';
+    if (!nom && k === 'cl') nom = 'Collection ranking';
     titre.textContent = nom;
     boite.classList.add('detail');
     /* Chaque section repart du haut. Sans ca, on ouvrait « Deposits » deja
@@ -4276,6 +4408,12 @@
     var t = [];
     if (EN_ATTENTE) t.push(EN_ATTENTE + ' friend request' + (EN_ATTENTE === 1 ? '' : 's') + ' waiting');
     if (NON_LUS) t.push(NON_LUS + ' $SWOGE transfer' + (NON_LUS === 1 ? '' : 's') + ' received');
+    /* L'infobulle NOMME ce qui attend. Une pastille qui dit « 3 » sans dire
+       de quoi oblige a ouvrir pour savoir — ce qui est peut-etre l'effet
+       recherche, mais c'est un effet qu'on obtient une fois. */
+    if (ATTENTE && ATTENTE.coffre) t.push('Your free chest is waiting');
+    if (ATTENTE && ATTENTE.serie) t.push('Daily reward ready');
+    if (ATTENTE && ATTENTE.quetes) t.push(ATTENTE.quetes + ' quest' + (ATTENTE.quetes === 1 ? '' : 's') + ' to claim');
     if (NIVEAU && NIVEAU.niveau > 0) t.push('Level ' + NIVEAU.niveau + ' · ' + NIVEAU.palier);
     profBtn.title = t.length ? t.join(' · ') : 'Your profile';
   }
@@ -4310,6 +4448,81 @@
     if (MOI.address) adr.title = MOI.address;
     poseCopieAdresse(adr);
     poseLienProfil();
+    peintChiffres();
+  }
+
+  /* ---- LES TROIS CHIFFRES DE L'EN-TETE ----
+   *
+   * Solde, serie, collection. Le critere de tri n'a pas ete « qu'est-ce qu'on
+   * peut afficher » mais « qu'est-ce qui change assez souvent pour qu'on
+   * revienne le regarder » — c'est le seul qui trie utilement. Le volume
+   * mise, le meilleur gain et la date d'inscription ne changent pas d'une
+   * session a l'autre : ce sont des archives, elles restent dans l'apercu.
+   *
+   * La serie est CLIQUABLE quand elle est a prendre : un chiffre qui annonce
+   * une recompense sans permettre de la prendre oblige a chercher ou, et on
+   * ne cherche pas.
+   */
+  function peintChiffres() {
+    var z = profBoite && profBoite.querySelector('.swp-ch');
+    if (!z) return;
+    z.innerHTML = '';
+    var cases = [];
+
+    /* 1. LE SOLDE. Il manquait, sur un site ou chaque action est une somme. */
+    if (SOLDE !== null && !isNaN(SOLDE))
+      cases.push({ b: nb(SOLDE, 0), i: '$SWOGE', t: 'Your balance',
+                   clic: function () { profVa('sh'); } });
+
+    /* 2. LA SERIE. Le seul chiffre qui donne une raison de revenir DEMAIN. */
+    if (SERIE && SERIE.day !== undefined) {
+      var pret = !SERIE.claimedToday;
+      cases.push({
+        b: '\uD83D\uDD25 ' + (SERIE.day || 0), i: pret ? 'claim day ' + ((SERIE.day || 0) + 1) : 'day streak',
+        t: pret ? 'Your daily reward is waiting' : 'Come back tomorrow to keep the streak',
+        cls: pret ? 'pret' : 'feu',
+        clic: pret ? function () { envoie({ type: 'claimStreak' }); } : null,
+      });
+    }
+
+    /* 3. LES QUETES DU JOUR. La rangee « Daily Quests » etait une PORTE : elle
+       ne disait ni combien sont finies, ni s'il en reste une a reclamer. Une
+       recompense non reclamee restait invisible jusqu'a ce qu'on pense a
+       aller voir — c'est-a-dire jamais. */
+    if (MISSIONS && MISSIONS.length) {
+      var faites = MISSIONS.filter(function (q) { return q.done; }).length;
+      var aPrendre = MISSIONS.filter(function (q) { return q.done && !q.claimed; }).length;
+      cases.push({
+        b: aPrendre ? '\u2713 ' + aPrendre : faites + '/' + MISSIONS.length,
+        i: aPrendre ? 'to claim' : 'quests',
+        t: aPrendre ? aPrendre + ' finished quest' + (aPrendre === 1 ? '' : 's') + ' waiting for you'
+                    : faites + ' of ' + MISSIONS.length + ' done today',
+        cls: aPrendre ? 'pret' : '',
+        clic: function () { location.href = 'swoge_pusher.html#quests'; },
+      });
+    }
+
+    /* 4. LA COLLECTION. Ce qui fait rouvrir un coffre. */
+    if (BOUTIQUE && BOUTIQUE.classement && BOUTIQUE.classement.moi)
+      cases.push({ b: BOUTIQUE.classement.moi.sortes + '/' + BOUTIQUE.classement.sur,
+                   i: 'collection', t: 'Fruits you own', clic: function () { profVa('sh'); } });
+
+    cases.forEach(function (c) {
+      var e = document.createElement(c.clic ? 'button' : 'span');
+      if (c.clic) { e.type = 'button'; e.addEventListener('click', c.clic); }
+      e.className = c.cls || '';
+      e.title = c.t || '';
+      e.innerHTML = '<b>' + c.b + '</b><i>' + ech(c.i) + '</i>';
+      z.appendChild(e);
+    });
+    z.style.display = cases.length ? '' : 'none';
+  }
+
+  /** Un envoi qui ne jette pas si la socket est tombee. */
+  function envoie(o) {
+    if (etat.socket && etat.socket.readyState === 1) {
+      try { etat.socket.send(JSON.stringify(o)); } catch (e) {}
+    }
   }
 
   /* ------------------------------------------------- COPIER SON ADRESSE
@@ -4556,10 +4769,32 @@
   /* La pastille « +1 » sur le bouton du profil. Une demande qui n'a pas de
      marque visible n'existe pas : le joueur n'ouvre pas un panneau pour
      verifier s'il s'y est passe quelque chose. */
+  /* ---- CE QUI ATTEND, LU D'OU QU'IL VIENNE ----
+   *
+   * `bonus.streak` sur un message, `attente` sur un autre, `offert` sur un
+   * troisieme : le serveur les envoie avec ce qu'il a sous la main au moment
+   * ou il repond. On lit donc ce qui est present et on garde le reste — sinon
+   * un message qui ne porte que le solde effacerait la serie.
+   */
+  function recoitAttente(m) {
+    if (m.bonus && m.bonus.streak) SERIE = m.bonus.streak;
+    if (m.attente) ATTENTE = m.attente;
+    if (m.offert) OFFERT = m.offert;
+    /* `streakClaimed` ne renvoie pas l'objet `streak` complet : on avance le
+       compteur nous-memes plutot que d'attendre un aller-retour de plus, et
+       la ligne des chiffres se met a jour dans le meme geste. */
+    if (m.type === 'streakClaimed') SERIE = { day: m.day, claimedToday: true };
+  }
+
   function pastilleAmis() {
     if (!profBtn) return;
     var p = profBtn.querySelector('.swpn');
-    var total = (EN_ATTENTE || 0) + (NON_LUS || 0);
+    /* LA PASTILLE COMPTE AUSSI LES RECOMPENSES. Une recompense qu'il faut
+       penser a aller chercher est une recompense que personne ne va chercher.
+       Les transferts non lus sont deja dans `attente` : on prend le plus grand
+       des deux plutot que de les additionner, sinon ils comptent double. */
+    var recompenses = ATTENTE ? Math.max(0, ATTENTE.total - (ATTENTE.transferts ? 1 : 0)) : 0;
+    var total = (EN_ATTENTE || 0) + (NON_LUS || 0) + recompenses;
     if (!total) { if (p) p.remove(); titreBouton(); return; }
     if (!p) {
       p = document.createElement('span');

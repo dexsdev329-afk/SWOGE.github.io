@@ -457,6 +457,23 @@
       if (profOnglet === 'mk') profRend();
       else if (profOnglet === 'sh') profRend();
     }
+    /* ---- LE RACHAT ----
+     *
+     * Il repond avec la boutique entiere, donc on la range comme le marche le
+     * fait. Ce qui change, c'est le message : on annonce la SOMME et le fait
+     * que l'objet repart au coffre — c'est la seule vente du site qui remet
+     * une piece en circulation, et le joueur doit le savoir sans avoir a
+     * relire la feuille qu'il vient de fermer. */
+    if (m.type === 'buyback') {
+      if (m.error) toast(m.error, 'bad');
+      else if (m.fait) {
+        toast('Sold back for ' + nb(m.fait.total, 0) + ' $SWOGE' +
+              (m.fait.recycle ? ' · back in the chest pool' : ''), 'good');
+      }
+      if (m.catalogue) BOUTIQUE = Object.assign(BOUTIQUE || {}, m);
+      if (m.balance != null) rafraichitSolde();
+      if (profOnglet === 'sh' || profOnglet === 'mk') profRend();
+    }
     if (m.type === 'unread') { NON_LUS = m.unread || 0; pastilleAmis(); }
     /* Un seul lecteur pour tous les messages qui portent ces champs. Ecrit a
        chaque endroit, il aurait fini par en oublier un — et c'est la pastille
@@ -1894,6 +1911,20 @@
         'font-weight:800;cursor:pointer;border:1px solid rgba(255,197,61,.6);' +
         'background:rgba(255,197,61,.16);color:#FFD97A;}' +
       '.swv-go:hover{background:rgba(255,197,61,.24);}' +
+      /* Le rachat est une SECONDE action, pas une variante de la premiere :
+         un separateur, un bouton sobre, et la phrase qui dit ce qu'on perd.
+         Le mettre au meme niveau visuel que la mise en vente pousserait au
+         geste le moins bon des deux. */
+      '.swv-or{display:flex;align-items:center;gap:8px;margin:12px 0 2px;font-size:11px;' +
+        'text-transform:uppercase;letter-spacing:.08em;color:#5C6B85;}' +
+      '.swv-or:before,.swv-or:after{content:"";flex:1;height:1px;' +
+        'background:rgba(255,255,255,.1);}' +
+      '.swv-now{padding:12px;border-radius:12px;font:inherit;font-size:13.5px;' +
+        'font-weight:800;cursor:pointer;border:1px solid rgba(255,255,255,.16);' +
+        'background:rgba(255,255,255,.05);color:#EAF2FF;}' +
+      '.swv-now:hover{background:rgba(255,255,255,.09);}' +
+      '.swv-now:disabled{opacity:.45;cursor:default;}' +
+      '.swv-note{font-size:11.5px;line-height:1.5;color:#5C6B85;margin-top:7px;}' +
       '.swp-ho{display:flex;gap:5px;overflow-x:auto;margin:0 0 12px;padding-bottom:2px;' +
         '-webkit-overflow-scrolling:touch;scrollbar-width:none;}' +
       '.swp-ho::-webkit-scrollbar{display:none;}' +
@@ -3377,8 +3408,16 @@
          en dur, ils annoncaient « Season 1 — 9 600 fruits » au-dessus d'une
          planche d'armes : le seul chiffre qui donne un sens au mot
          « mythique » devenait le plus faux de la page. */
-      ed.innerHTML = 'Season ' + (C.saison || 1) + ' — <b>' + nb(total, 0) + '</b> ' +
-        sujet + 's will ever exist. ' +
+      /* ---- « A LA FOIS », PAS « EN TOUT » ----
+       *
+       * Le rachat instantane remet la piece dans le coffre : le plafond ne
+       * borne plus le nombre de tirages d'un objet sur la vie de la saison,
+       * il borne le nombre d'exemplaires QUI EXISTENT AU MEME MOMENT. Ecrire
+       * « will ever exist » au-dessus d'un registre qui redescend serait la
+       * seule phrase fausse de la planche — et celle sur laquelle repose tout
+       * le reste. */
+      ed.innerHTML = 'Season ' + (C.saison || 1) + ' — only <b>' + nb(total, 0) + '</b> ' +
+        sujet + 's exist at any one time. ' +
         C.raretes.map(function (r) {
           return '<span style="color:' + r.couleur + '">' + nb(r.plafond, 0) + ' ' + ech(r.nom) + '</span>';
         }).join(' \u00b7 ') + ' of each.';
@@ -3605,18 +3644,26 @@
           '<input class="swv-p" type="number" min="0" step="1" inputmode="numeric">' +
           '<div class="swv-net"></div>' +
           '<button class="swv-go" type="button">Put up for sale</button>' +
+          '<div class="swv-or">or</div>' +
+          '<button class="swv-now" type="button"></button>' +
+          '<div class="swv-note"></div>' +
         '</div>';
       document.body.appendChild(venteBoite);
       venteBoite.addEventListener('click', function (e) {
         if (e.target === venteBoite || e.target.classList.contains('swv-x')) fermeVente();
       });
       venteBoite.querySelector('.swv-go').addEventListener('click', envoieVente);
+      venteBoite.querySelector('.swv-now').addEventListener('click', envoieRachat);
       ['.swv-q', '.swv-p'].forEach(function (sel) {
         venteBoite.querySelector(sel).addEventListener('input', calculeNet);
       });
     }
     venteBoite.dataset.item = o.id;
     venteBoite.dataset.max = possede;
+    /* Le prix de rachat vient du CATALOGUE, jamais d'un calcul refait ici.
+       Deux endroits qui derivent le meme bareme finissent par ne plus dire le
+       meme chiffre, et c'est le joueur qui decouvre l'ecart au credit. */
+    venteBoite.dataset.rachat = o.rachat || 0;
     var im = venteBoite.querySelector('img');
     im.src = 'img/shop/' + encodeURIComponent(o.cle) + '.webp';
     im.onerror = function () { im.style.visibility = 'hidden'; };
@@ -3647,6 +3694,27 @@
     z.innerHTML = p > 0
       ? 'You receive <b>' + nb(net, 0) + ' $SWOGE</b> <span>after the ' + frais + '% fee</span>'
       : '<span>Set a price to see what you receive</span>';
+
+    /* ---- LE RACHAT INSTANTANE ----
+     *
+     * Le bouton porte le TOTAL pour la quantite choisie, pas le prix unitaire.
+     * Bouger la quantite sans voir bouger la somme laisserait croire qu'on
+     * vend une piece alors qu'on en vend cinq. */
+    var u = Number(venteBoite.dataset.rachat) || 0;
+    var bt = venteBoite.querySelector('.swv-now');
+    var no = venteBoite.querySelector('.swv-note');
+    var ou = venteBoite.querySelector('.swv-or');
+    /* Un objet sans prix de rachat — cas qui ne devrait pas exister mais qui
+       arriverait au premier bareme incomplet — cache la section au lieu de
+       proposer un bouton a zero jeton. */
+    var dispo = u > 0;
+    ou.style.display = bt.style.display = no.style.display = dispo ? '' : 'none';
+    if (!dispo) return;
+    bt.disabled = false;
+    bt.textContent = 'Sell instantly for ' + nb(u * q, 0) + ' $SWOGE';
+    no.innerHTML = 'Paid straight away at a fixed price — no waiting for a buyer, ' +
+      'and no fee. It is lower than the market: you are paying for the speed.<br>' +
+      'The item goes back into the chest pool, so someone else can pull it again.';
   }
   function envoieVente() {
     if (!venteBoite) return;
@@ -3656,6 +3724,22 @@
     var p = Math.floor(Number(venteBoite.querySelector('.swv-p').value) || 0);
     if (!(p > 0)) { toast('Set a price first', 'bad'); return; }
     envoie({ type: 'marketSell', item: id, price: p, qty: q, season: SAISON });
+    fermeVente();
+  }
+
+  /*
+   * Le rachat ne demande PAS de confirmation. Elle serait justifiee si le
+   * geste etait irreversible pour le joueur — il ne l'est pas : l'objet
+   * retourne au coffre et se retire. Ce qu'il faut a la place, c'est que la
+   * somme soit lisible sur le bouton avant le clic, et elle l'est.
+   */
+  function envoieRachat() {
+    if (!venteBoite) return;
+    var id = Number(venteBoite.dataset.item);
+    var q = Math.max(1, Math.min(Number(venteBoite.dataset.max) || 1,
+                                 Math.floor(Number(venteBoite.querySelector('.swv-q').value) || 1)));
+    venteBoite.querySelector('.swv-now').disabled = true;
+    envoie({ type: 'buyback', item: id, qty: q, season: SAISON });
     fermeVente();
   }
 

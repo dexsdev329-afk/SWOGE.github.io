@@ -3023,9 +3023,15 @@
        croire qu'un objet achete modifie les chances serait une affirmation
        fausse sur un produit de jeu, et le fait qu'elle soit sous-entendue
        plutot qu'ecrite n'y change rien. */
+    /* Le mot vient de la SAISON. « No fruit changes the odds » sous une
+       planche d'armes affaiblit la mention la plus importante de la page :
+       une phrase qui parle visiblement d'autre chose se lit comme un texte
+       oublie, et on ne lit pas les textes oublies. */
+    var sujet = C.sujet || 'item';
     var mn = document.createElement('div');
     mn.className = 'swb-mention';
-    mn.textContent = 'Powers are flavour. No fruit changes the odds, the payouts or anything else in a game.';
+    mn.textContent = 'Powers are flavour. No ' + sujet +
+      ' changes the odds, the payouts or anything else in a game.';
     l.appendChild(mn);
 
     /* LA TAILLE DE L'EDITION, dite en clair. C'est la seule chose qui donne
@@ -3041,7 +3047,12 @@
     if (capee && total) {
       var ed = document.createElement('div');
       ed.className = 'swb-mention swb-ed';
-      ed.innerHTML = 'Season 1 — <b>' + nb(total, 0) + '</b> fruits will ever exist. ' +
+      /* Le numero de saison et le mot viennent du catalogue, pas d'ici. Ecrits
+         en dur, ils annoncaient « Season 1 — 9 600 fruits » au-dessus d'une
+         planche d'armes : le seul chiffre qui donne un sens au mot
+         « mythique » devenait le plus faux de la page. */
+      ed.innerHTML = 'Season ' + (C.saison || 1) + ' — <b>' + nb(total, 0) + '</b> ' +
+        sujet + 's will ever exist. ' +
         C.raretes.map(function (r) {
           return '<span style="color:' + r.couleur + '">' + nb(r.plafond, 0) + ' ' + ech(r.nom) + '</span>';
         }).join(' \u00b7 ') + ' of each.';

@@ -466,8 +466,11 @@
     if (m.type === 'skins') {
       SKINS = { catalogue: m.catalogue, actif: m.actif };
       if (m.error) toast(m.error, 'bad');
-      else if (m.achete) toast('Unlocked — you are now playing as ' +
-        ((m.catalogue || []).filter(function (s) { return s.id === m.achete; })[0] || {}).nom, 'good');
+      else if (m.achete) {
+        var acq = (m.catalogue || []).filter(function (s) { return s.id === m.achete; })[0] || {};
+        toast('Unlocked — you are now playing as ' + acq.nom +
+          (acq.pixel ? ' · 🎁 pixel gift unlocked too' : ''), 'good');
+      }
       if (m.balance != null) rafraichitSolde();
       if (profOnglet === 'sk') profRend();
       /* La fiche en grand se repeint independamment de l'onglet du dessous —
@@ -1993,6 +1996,16 @@
       '.swk-dv{font-style:normal;font-size:13px;color:#8DA0C4;line-height:1.5;' +
         'max-width:280px;margin:2px 0 4px;}' +
       '.swk-da .act{padding:12px 26px;font-size:14px;}' +
+      /* Le cadeau pixel : une phrase avant l achat, deux petits boutons
+         apres. Meme famille visuelle que les points de puissance — discret,
+         ca n est pas l argument principal de la fiche, juste un plus. */
+      '.swk-dg{min-height:20px;display:flex;align-items:center;justify-content:center;' +
+        'gap:6px;margin-top:2px;}' +
+      '.swk-teaser{font-style:normal;font-size:11.5px;color:#8DA0C4;}' +
+      '.swk-face{padding:5px 12px;border-radius:99px;font:inherit;font-size:11px;' +
+        'font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,.16);' +
+        'background:rgba(255,255,255,.04);color:#8DA0C4;}' +
+      '.swk-face.on{border-color:var(--t);color:#F2F6FF;background:rgba(255,255,255,.08);}' +
       /* La case vendable : rien de crie, juste de quoi comprendre qu on peut
          appuyer dessus. Un bouton sur chaque case ferait une grille de
          boutons au lieu d une collection. */
@@ -3732,6 +3745,19 @@
      la carte et la fiche en grand : les deux DOIVENT dire la meme chose au
      meme instant, et un bouton copie-colle deux fois finit par diverger a la
      premiere modification de l'un des deux. */
+  /* Le nombre de points vient du catalogue, jamais d un chiffre tape en dur —
+     sinon un skin plus fort que tous les autres afficherait exactement les
+     memes points que le second, et rien ne les distinguerait. */
+  function puissanceMax() {
+    var l = (SKINS && SKINS.catalogue) || [];
+    return l.reduce(function (m, s) { return Math.max(m, s.puissance || 0); }, 1);
+  }
+  function pointsPuissance(s) {
+    var max = puissanceMax(), h = '';
+    for (var i = 1; i <= max; i++) h += '<i class="' + (i <= s.puissance ? 'on' : '') + '"></i>';
+    return h;
+  }
+
   function boutonSkin(s, actif) {
     if (actif) {
       var tag = document.createElement('span');
@@ -3795,8 +3821,7 @@
       /* La puissance se lit en points pleins sur cinq, comme une jauge —
          plus rapide a comparer entre cinq cartes qu'un nombre qu'il faut
          relire chaque fois. */
-      var points = '';
-      for (var i = 1; i <= 5; i++) points += '<i class="' + (i <= s.puissance ? 'on' : '') + '"></i>';
+      var points = pointsPuissance(s);
       d.innerHTML =
         '<div class="ico"><img alt="" src="img/skins/skin_' + encodeURIComponent(s.id) + '.webp" onerror="this.remove()"></div>' +
         '<b class="nm">' + ech(s.nom) + '</b>' +
@@ -3831,6 +3856,7 @@
           '<b class="swk-dn"></b>' +
           '<i class="swk-dp"></i>' +
           '<i class="swk-dv"></i>' +
+          '<div class="swk-dg"></div>' +
           '<div class="swk-da"></div>' +
         '</div>';
       var hote = (profBoite && profBoite.querySelector('.swp')) || document.body;
@@ -3844,6 +3870,10 @@
        garder `s` d'un appel a l'autre, sinon la fiche ouverte continuerait
        d'afficher « Buy » un instant apres que l'achat ait reussi. */
     skinBoite.dataset.id = s.id;
+    /* La fiche s'ouvre TOUJOURS sur le visage normal, jamais sur le cadeau
+       laisse ouvert la derniere fois — sinon un skin qu on vient d acheter
+       montrerait par surprise le pixel d un AUTRE skin regarde plus tot. */
+    skinBoite.dataset.face = 'normal';
     peintDetailSkin();
     skinBoite.classList.add('on');
   }
@@ -3853,16 +3883,44 @@
     var s = ((SKINS && SKINS.catalogue) || []).filter(function (x) { return x.id === id; })[0];
     if (!s) return;
     var actif = SKINS.actif === s.id;
+    var pixel = skinBoite.dataset.face === 'pixel';
     skinBoite.style.setProperty('--t', s.couleur || '#8DA0C4');
     var im = skinBoite.querySelector('.swk-hero img');
-    im.src = 'img/skins/skin_' + encodeURIComponent(s.id) + '.webp';
+    im.src = 'img/skins/' + (pixel ? 'pixel/skin_' : 'skin_') + encodeURIComponent(s.id) + '.webp';
     im.onerror = function () { im.style.visibility = 'hidden'; };
     im.style.visibility = '';
     skinBoite.querySelector('.swk-dn').textContent = s.nom;
-    var points = '';
-    for (var i = 1; i <= 5; i++) points += '<i class="' + (i <= s.puissance ? 'on' : '') + '"></i>';
-    skinBoite.querySelector('.swk-dp').innerHTML = points;
+    skinBoite.querySelector('.swk-dp').innerHTML = pointsPuissance(s);
     skinBoite.querySelector('.swk-dv').textContent = s.pouvoir;
+    /* ---- LE CADEAU PIXEL ----
+     *
+     * Avant l'achat, on l'ANNONCE — un cadeau qu on cache jusqu au bout ne
+     * fait pas vendre, il ne fait que surprendre APRES. Une fois possede, on
+     * peut le regarder : deux petits boutons echangent l'image, sans quitter
+     * la fiche. */
+    var zg = skinBoite.querySelector('.swk-dg');
+    zg.innerHTML = '';
+    if (s.pixel) {
+      if (s.possede) {
+        ['normal', 'pixel'].forEach(function (face) {
+          var b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'swk-face' + (skinBoite.dataset.face === face ? ' on' : '');
+          b.textContent = face === 'pixel' ? '🎁 Pixel gift' : 'Normal';
+          b.addEventListener('click', function (e) {
+            e.stopPropagation();
+            skinBoite.dataset.face = face;
+            peintDetailSkin();
+          });
+          zg.appendChild(b);
+        });
+      } else {
+        var teaser = document.createElement('i');
+        teaser.className = 'swk-teaser';
+        teaser.textContent = '🎁 Comes with a free pixel-art version';
+        zg.appendChild(teaser);
+      }
+    }
     var za = skinBoite.querySelector('.swk-da');
     za.innerHTML = '';
     za.appendChild(boutonSkin(s, actif));

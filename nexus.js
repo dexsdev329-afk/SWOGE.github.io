@@ -263,6 +263,24 @@
     }
   }
 
+  // ------------------------------------------------------- le bruit de pas
+  //
+  // Une seule boucle, posee et retiree selon qu'on avance ou non — pas un
+  // coup par cadre d'animation, qui aurait demande de decouper le fichier en
+  // un pas exact par cadre. `debloque()` lance puis coupe aussitot le son au
+  // tout PREMIER geste (touche ou pave) : c'est le geste qui autorise le
+  // navigateur a jouer du son sur cette page, et sans cet appel fait DANS le
+  // geste, le tout premier `play()` reel — lui, lance depuis la boucle de
+  // jeu — risquerait d'etre refuse.
+  var pas = new Audio('img/nexus/pas.mp3');
+  pas.loop = true; pas.volume = 0.45; pas.preload = 'auto';
+  var debloque = false;
+  function debloqueSon() {
+    if (debloque) return;
+    debloque = true;
+    pas.play().then(function () { pas.pause(); pas.currentTime = 0; }).catch(function () {});
+  }
+
   // ------------------------------------------------------- les commandes
 
   var TOUCHES = { up: false, down: false, left: false, right: false };
@@ -272,7 +290,7 @@
   };
   window.addEventListener('keydown', function (ev) {
     var d = TOUCHE_CLE[ev.code];
-    if (d) { TOUCHES[d] = true; ev.preventDefault(); }
+    if (d) { debloqueSon(); TOUCHES[d] = true; ev.preventDefault(); }
     if (ev.code === 'Space') lanceSaut();
   });
   window.addEventListener('keyup', function (ev) {
@@ -295,7 +313,7 @@
     if (!pave) return;
     [].forEach.call(pave.querySelectorAll('button'), function (b) {
       var d = b.dataset.dir;
-      var pose = function (ev) { TOUCHES[d] = true; b.classList.add('on'); ev.preventDefault(); };
+      var pose = function (ev) { debloqueSon(); TOUCHES[d] = true; b.classList.add('on'); ev.preventDefault(); };
       var leve = function () { TOUCHES[d] = false; b.classList.remove('on'); };
       b.addEventListener('pointerdown', pose);
       b.addEventListener('pointerup', leve);
@@ -320,6 +338,8 @@
       if (dx !== 0) joueur.dir = dx > 0 ? 'right' : 'left';
       else joueur.dir = dy > 0 ? 'down' : 'up';
     }
+    if (bouge && pas.paused) pas.play().catch(function () {});
+    else if (!bouge && !pas.paused) pas.pause();
     joueur.anim = saut.en_cours ? 'jump' : (bouge ? 'run' : 'idle');
 
     // bords du monde

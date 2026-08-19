@@ -173,9 +173,18 @@
       }
     }
     if (m.type === 'realmEtat' && SCENE === 'monde') recoitMonde(m);
+    /* ---- CE QU'ON TOUCHE ----
+     * `degat.mp3` etait le son du MONSTRE qui encaisse ; je l'avais branche
+     * sur NOS degats. Il retourne a sa place, et nos propres coups recus
+     * gardent le meme enregistrement joue BEAUCOUP plus grave — deux
+     * evenements opposes ne doivent pas se ressembler, et je n'ai pas
+     * d'autre prise de son pour le second. */
+    if (m.type === 'realmTouche' && SCENE === 'monde') {
+      joueSample('degat', { vol: 0.5, hauteur: 1.05 + Math.random() * 0.25, duree: 0.5 });
+    }
     if (m.type === 'realmCoup' && SCENE === 'monde') {
       VIE.pv = m.pv; moiMonde.pv = m.pv;
-      joueSample('degat', { vol: 0.55, hauteur: 0.95 + Math.random() * 0.2 });
+      joueSample('degat', { vol: 0.75, hauteur: 0.55, duree: 0.8 });
       secousse = 0.16;
       peintPanneau();
     }
@@ -899,7 +908,8 @@
    */
   var MONDE_C = null;          // la description recue a l'entree
   var MONSTRES_C = {};         // id -> etat interpole
-  var TIRS_C = [];             // les projectiles du serveur
+  var TIRS_C = [];             // nos projectiles, tels que le serveur les voit
+  var TIRS_M = [];             // ceux des monstres, contre nous
   var DISTANTS_M = {};         // les autres joueurs du monde
   var TUILES_M = {};           // les trois sols, charges a l'entree
   var moiMonde = { pv: 0, pvMax: 1, xp: 0 };
@@ -955,6 +965,7 @@
     Object.keys(MONSTRES_C).forEach(function (k) { if (!vus[k]) delete MONSTRES_C[k]; });
 
     TIRS_C = m.tirs || [];
+    TIRS_M = m.tirsM || [];
 
     var vusJ = {};
     (m.joueurs || []).forEach(function (o) {
@@ -1716,7 +1727,11 @@
     /* +/- 5 % d'une fois a l'autre : deux coups identiques a la milliseconde
        pres sonnent comme une machine, pas comme une arme. */
     var h = v.hauteur * (1 + (Math.random() - 0.5) * 0.1);
-    return joueSample('tir', { hauteur: h, vol: v.vol, duree: 1.35 / a.cadence });
+    /* ---- LE TIR, BAISSE DE 70 % ----
+     * Il couvrait tout le reste — les pas, l'impact, l'or qui tombe — et a
+     * quatre coups par seconde il devenait fatigant. Un bruit qu'on entend
+     * cent fois par minute doit se tenir SOUS le reste, pas devant. */
+    return joueSample('tir', { hauteur: h, vol: v.vol * 0.3, duree: 1.35 / a.cadence });
   }
 
   /** Un clic d'interface. Deux sons : le leger pour naviguer, le plein pour
@@ -1997,7 +2012,25 @@
       dessus dans une zone sure. La fonction existe pour que le jour ou les
       monstres arrivent, il n'y ait qu'une liste a lui donner. */
   function cibleLaPlusProche() {
-    return null;
+    /* Dans le Nexus il n'y a rien a viser — c'est une zone sure, et c'est
+       voulu. Dans le monde, on prend le plus proche, tout simplement : viser
+       le plus faible ou le plus dangereux demanderait au joueur de deviner
+       la regle, et il n'y en aurait aucune bonne. */
+    if (SCENE !== 'monde') return null;
+    var mieux = null, d2 = Infinity;
+    for (var k in MONSTRES_C) {
+      var e = MONSTRES_C[k];
+      var dx = e.rx - joueur.x, dy = (e.ry - 30) - joueur.y;
+      var q = dx * dx + dy * dy;
+      if (q < d2) { d2 = q; mieux = e; }
+    }
+    /* Hors de portee de l'arme, on ne vise pas : le tir partirait dans une
+       direction ou rien ne peut arriver, et le joueur croirait que la visee
+       est cassee alors qu'il est simplement trop loin. */
+    var a = ARMES[familleArme() || 'poing'] || ARMES.poing;
+    var maxi = a.portee * 1.15;
+    if (!mieux || d2 > maxi * maxi) return null;
+    return { x: mieux.rx, y: mieux.ry - 30 };
   }
 
   /** La direction du tir, en radians. Trois sources, dans cet ordre : la
@@ -2288,6 +2321,10 @@
       tireur.recharge -= dt;
       if ((tireur.presse || tireur.auto) && tireur.recharge <= 0) {
         envoie({ type: 'realmTir', a: angleDeTir(DERNIERE_CAM.x, DERNIERE_CAM.y) });
+        /* Le son part ICI et non a la reponse du serveur : le projectile
+           met un dixieme de seconde a revenir, et un tir qu'on entend apres
+           l'avoir vu partir se lit comme un decalage, pas comme un tir. */
+        joueSon(familleArme() || 'poing');
         tireur.recharge = 1 / aM.cadence;
       }
 
@@ -2671,8 +2708,13 @@
      duree ni leur portee, seulement ou ils sont. On reutilise les memes
      dessins que le Nexus — un tir de lame doit se ressembler partout. */
   function dessineTirsMonde() {
-    for (var i = 0; i < TIRS_C.length; i++) {
-      var t = TIRS_C[i];
+    /* Les DEUX listes, la notre et la leur. Elles se dessinent pareil — un
+       projectile est un projectile — mais elles restent separees parce que
+       le serveur les separe : melanger ici reintroduirait la question « a
+       qui est-ce ? » qu'on a justement supprimee la-bas. */
+    var tout = TIRS_C.concat(TIRS_M);
+    for (var i = 0; i < tout.length; i++) {
+      var t = tout[i];
       var sp = spriteTir(t.f);
       ctx.save();
       ctx.translate(t.x, t.y - DECALAGE_TIR);
@@ -2771,6 +2813,49 @@
   }
 
   function peintMini() {
+    /* ---- LA CARTE DU MONDE ----
+     * Elle montrait le NEXUS pendant qu'on se battait ailleurs — le plan de
+     * l'endroit ou l'on n'est pas. Elle montre maintenant le monde : ses
+     * trois anneaux, les ennemis en rouge, les autres joueurs en vert, et
+     * nous en blanc. C'est la seule chose qui dise « le coeur est par la »
+     * sans qu'on ait a marcher pour le decouvrir. */
+    if (SCENE === 'monde' && MONDE_C && mctx) {
+      var W = MONDE_C.monde.w, H = MONDE_C.monde.h;
+      var e = Math.min(MINI / W, MINI / H);
+      var ox = (MINI - W * e) / 2, oy = (MINI - H * e) / 2;
+      mctx.clearRect(0, 0, MINI, MINI);
+      /* Les anneaux, du plus large au plus etroit : dessines dans cet ordre,
+         chacun recouvre le precedent et on obtient les trois couronnes sans
+         calculer une seule intersection. */
+      var COUL = { terre: '#4a3a2c', neige: '#c9dcea', lave: '#8a2418' };
+      var cx = ox + MONDE_C.centre.x * e, cy = oy + MONDE_C.centre.y * e;
+      mctx.fillStyle = COUL.terre;
+      mctx.fillRect(ox, oy, W * e, H * e);
+      for (var ai = MONDE_C.anneaux.length - 1; ai >= 0; ai--) {
+        var an = MONDE_C.anneaux[ai];
+        if (!isFinite(an.jusqua)) continue;
+        mctx.fillStyle = COUL[an.biome] || '#444';
+        mctx.beginPath();
+        mctx.arc(cx, cy, an.jusqua * (W / 2) * e, 0, Math.PI * 2);
+        mctx.fill();
+      }
+      /* Les ennemis en ROUGE, les autres joueurs en VERT. On ne montre que
+         ce qu'on VOIT — le serveur ne nous envoie que les alentours, et
+         afficher toute la carte peuplee serait une carte de triche. */
+      mctx.fillStyle = '#F2685E';
+      Object.keys(MONSTRES_C).forEach(function (k) {
+        var mm = MONSTRES_C[k];
+        mctx.fillRect(ox + mm.rx * e - 1.5, oy + mm.ry * e - 1.5, 3, 3);
+      });
+      mctx.fillStyle = '#7CFF9B';
+      Object.keys(DISTANTS_M).forEach(function (k) {
+        var dd = DISTANTS_M[k];
+        mctx.fillRect(ox + dd.rx * e - 1.5, oy + dd.ry * e - 1.5, 3, 3);
+      });
+      mctx.fillStyle = '#fff';
+      mctx.fillRect(ox + joueur.x * e - 2, oy + joueur.y * e - 2, 4, 4);
+      return;
+    }
     /* Dans la salle du coffre, la mini-carte montrerait le Nexus — un plan
        de l'endroit ou l'on n'est PAS. On la remplace par son nom : c'est la
        seule chose vraie qu'on puisse y ecrire. */

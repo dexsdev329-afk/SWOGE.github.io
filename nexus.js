@@ -112,6 +112,12 @@
          achats a un endroit ou ils ne sont pas, et laissait croire qu'ils
          partaient avec le personnage. */
       SAC = m.sac || [];
+      /* Les quatre listes SONT le coffre : ce que la boutique nous a vendu.
+         Le panneau n'en montre que le sac ; la salle du coffre, elle, les
+         pose au sol. On les garde donc au lieu de les jeter. */
+      COFFRE = { fruits: m.fruits || [], armes: m.armes || [],
+                 armures: m.armures || [], bagues: m.bagues || [] };
+      if (SCENE === 'coffre') { rangeCoffre(); objetProche = undefined; }
       peintPanneau();
     }
     if (m.type === 'nexusEtat') majJoueursDistants(m.joueurs || []);
@@ -428,6 +434,97 @@
   ];
   LIEUX.forEach(function (l) { l.img = new Image(); l.img.src = l.src; l.dwell = 0; });
 
+  /* ================== L'INTERIEUR DU COFFRE ==================
+   *
+   * Le coffre etait une PORTE qui renvoyait sur games.html. C'est une salle
+   * maintenant : on y entre, on y marche, et on voit poses au sol tous les
+   * objets achetes a la boutique. C'est la difference entre une liste et un
+   * lieu — et le coffre est justement l'endroit ou l'on va « voir ses
+   * affaires », pas consulter un tableau.
+   *
+   * Les bornes sont mesurees sur le dessin, pas devinees : le dallage
+   * jouable occupe la fraction .185-.825 en largeur et .20-.84 en hauteur de
+   * l'image, le reste etant mur, etageres et tonneaux. La porte est sur le
+   * mur GAUCHE, a mi-hauteur : c'est par la qu'on ressort, comme on est
+   * entre.
+   *
+   * Rien de ce qui est ici ne se joue sur le serveur : le coffre est deja
+   * calcule et envoye (message `equipable`), la salle ne fait que le
+   * MONTRER. Un joueur qui triche sur sa position n'y gagne donc rien. */
+  var SALLE = {
+    img: null, src: 'img/nexus/tiles/room_vault.webp',
+    w: 1600, h: 1600,
+    // la zone ou l'on pose les pieds, en unites de monde
+    x0: 1600 * 0.185, x1: 1600 * 0.825,
+    y0: 1600 * 0.200, y1: 1600 * 0.840,
+    // le seuil, devant la porte du mur gauche
+    sortie: { x: 1600 * 0.20, y: 1600 * 0.485, r: 70 },
+  };
+  SALLE.img = new Image(); SALLE.img.src = SALLE.src;
+
+  /* Ou l'on se tenait dans le Nexus avant d'entrer : on ressort exactement
+     la, sinon on reapparait au centre de la carte sans savoir pourquoi. */
+  var SCENE = 'nexus';
+  var RETOUR = null;
+  var COFFRE = null;        // les quatre listes du message `equipable`
+  var OBJETS_SOL = [];      // ce qu'on voit pose, calcule a l'entree
+  var objetProche = null;
+
+  function scene() { return SCENE === 'coffre' ? SALLE : { w: MONDE.w, h: MONDE.h }; }
+
+  /* Les objets au sol, en grille. Huit par rangee : au-dela on deborde de la
+     largeur jouable, et il faudrait faire marcher le joueur pour lire une
+     ligne — ce qui n'est agreable pour personne. */
+  function rangeCoffre() {
+    var listes = COFFRE || {};
+    var tout = [];
+    ['fruits', 'armes', 'armures', 'bagues'].forEach(function (k) {
+      (listes[k] || []).forEach(function (o) { tout.push(o); });
+    });
+    var PAR_RANGEE = 8, PAS_X = 110, PAS_Y = 130;
+    var largeur = (PAR_RANGEE - 1) * PAS_X;
+    var x0 = (SALLE.x0 + SALLE.x1) / 2 - largeur / 2;
+    var lignes = Math.ceil(tout.length / PAR_RANGEE) || 1;
+    var y0 = (SALLE.y0 + SALLE.y1) / 2 - (lignes - 1) * PAS_Y / 2;
+    OBJETS_SOL = tout.map(function (o, i) {
+      var img = new Image();
+      img.src = 'img/shop/' + encodeURIComponent(o.cle) + '.webp';
+      return { o: o, img: img,
+               x: x0 + (i % PAR_RANGEE) * PAS_X,
+               y: y0 + Math.floor(i / PAR_RANGEE) * PAS_Y };
+    });
+  }
+
+  function entreCoffre() {
+    // si le coffre n'est pas encore arrive, on le redemande en entrant
+    if (!COFFRE && enLigne) envoie({ type: 'equipable' });
+    RETOUR = { x: joueur.x, y: joueur.y };
+    SCENE = 'coffre';
+    rangeCoffre();
+    // on arrive SUR le seuil, tourne vers la salle
+    joueur.x = SALLE.sortie.x + 40; joueur.y = SALLE.sortie.y;
+    joueur.dir = 'right';
+    LIEUX.forEach(function (l) { l.dwell = 0; });
+    SALLE.grace = 0.6;      // le temps de s'ecarter du seuil sans ressortir
+  }
+
+  function sortCoffre() {
+    SCENE = 'nexus';
+    objetProche = null;
+    /* Le bandeau garde son dernier texte tant que le lieu proche ne CHANGE
+       pas — sinon on ressort du coffre avec le nom d'un objet du coffre
+       affiche par-dessus le Nexus. On le vide, et on oublie le dernier lieu
+       pour que le prochain se reannonce. */
+    indiceActuel = null;
+    if (indiceEl) { indiceEl.classList.remove('on'); indiceEl.innerHTML = ''; }
+    if (RETOUR) { joueur.x = RETOUR.x; joueur.y = RETOUR.y; }
+    joueur.dir = 'down';
+    // on se pose HORS du rayon de la porte, sinon on rentre aussitot
+    var d = LIEUX.filter(function (l) { return l.cle === 'coffre'; })[0];
+    if (d) { joueur.x = d.x; joueur.y = d.y + d.rayon + 50; }
+    LIEUX.forEach(function (l) { l.dwell = 0; });
+  }
+
   /* Les couloirs de chemin, en cercles et rectangles du MONDE — pas des
      tuiles listees une par une : a chaque case visible on demande juste
      "es-tu dans un de ces cinq morceaux ?". */
@@ -693,7 +790,10 @@
   canvas.addEventListener('contextmenu', function (ev) { ev.preventDefault(); });
   canvas.addEventListener('mousedown', function (ev) {
     if (ev.button !== 0 && ev.button !== 2) return;
-    ev.preventDefault(); debloqueSon(); tireur.presse = true;
+    ev.preventDefault(); debloqueSon();
+    /* On ne tire pas dans le coffre : c'est une piece fermee, il n'y a rien
+       a viser, et les projectiles y chercheraient la fontaine du Nexus. */
+    if (SCENE !== 'coffre') tireur.presse = true;
   });
   window.addEventListener('mouseup', function (ev) {
     if (ev.button === 0 || ev.button === 2) tireur.presse = false;
@@ -967,6 +1067,51 @@
     else if (!bouge && !pas.paused) pas.pause();
     joueur.anim = saut.en_cours ? 'jump' : (bouge ? 'run' : 'idle');
 
+    /* ---- DANS LA SALLE DU COFFRE ----
+       Bornes du dallage, seuil de sortie, objet le plus proche. On sort tot :
+       ni fontaine, ni lieux, ni envoi reseau ici — le serveur ne connait pas
+       la salle, et continuer a lui envoyer notre position ferait glisser
+       notre avatar a travers le Nexus pendant qu'on est a l'interieur. */
+    if (SCENE === 'coffre') {
+      joueur.x = Math.min(Math.max(joueur.x, SALLE.x0), SALLE.x1);
+      joueur.y = Math.min(Math.max(joueur.y, SALLE.y0), SALLE.y1);
+      if (SALLE.grace > 0) SALLE.grace -= dt;
+      var sx = joueur.x - SALLE.sortie.x, sy = joueur.y - SALLE.sortie.y;
+      if (SALLE.grace <= 0 && sx * sx + sy * sy < SALLE.sortie.r * SALLE.sortie.r) {
+        sortCoffre(); return;
+      }
+      var pres = null, plusPres = 90 * 90;
+      OBJETS_SOL.forEach(function (t) {
+        var ddx = joueur.x - t.x, ddy = joueur.y - t.y, d2 = ddx * ddx + ddy * ddy;
+        if (d2 < plusPres) { plusPres = d2; pres = t; }
+      });
+      if (pres !== objetProche) {
+        objetProche = pres;
+        if (indiceEl) {
+          if (pres) {
+            indiceEl.innerHTML = '<b>' + ech(pres.o.nom) + '</b> — ' +
+              (detailBonus(pres.o) || 'no bonus');
+            indiceEl.classList.add('on');
+          } else {
+            /* « Vide » et « pas encore recu » ne sont pas la meme chose : dire
+               le premier quand c'est le second envoie le joueur acheter des
+               coffres qu'il possede deja. */
+            indiceEl.innerHTML = OBJETS_SOL.length
+              ? 'Walk over an item to read it · walk back through the door to leave'
+              : (COFFRE ? 'Your vault is empty — buy chests at the shop' : 'Opening your vault…');
+            indiceEl.classList.add('on');
+          }
+        }
+      }
+      if (!saut.en_cours) avanceCadre(joueur, PERSO, dt);
+      else {
+        saut.chrono += dt;
+        saut.cadre = Math.min(PERSONNAGES[PERSO].images - 1, Math.floor(saut.chrono * FPS_ANIM));
+        if (saut.chrono >= saut.duree) saut.en_cours = false;
+      }
+      return;
+    }
+
     // bords du monde
     joueur.x = Math.min(Math.max(joueur.x, 40), MONDE.w - 40);
     joueur.y = Math.min(Math.max(joueur.y, 40), MONDE.h - 40);
@@ -1010,17 +1155,25 @@
     });
 
     // les lieux : proximite, entree apres un court sejour, indice affiche
-    var proche = null, plusPresDist = Infinity;
+    var proche = null, plusPresDist = Infinity, entre = false;
     LIEUX.forEach(function (l) {
-      if (!l.rayon) return;
+      /* `return` dans un forEach ne sort que du tour courant. Sans ce verrou,
+         entrer dans le coffre deplacerait le joueur dans la salle, et les
+         lieux SUIVANTS seraient mesures avec ces coordonnees-la — on
+         ressortirait aussitot par une porte qu'on n'a pas prise. */
+      if (entre || !l.rayon) return;
       var ddx = joueur.x - l.x, ddy = joueur.y - (l.y - l.haut * 0.15);
       var dist = Math.sqrt(ddx * ddx + ddy * ddy);
       if (dist < l.rayon) {
         l.dwell += dt;
-        if (l.dwell > 0.45) { location.href = l.href; }
+        if (l.dwell > 0.45) {
+          if (l.cle === 'coffre') { entreCoffre(); entre = true; return; }
+          location.href = l.href;
+        }
       } else l.dwell = 0;
       if (dist < l.rayon * 1.8 && dist < plusPresDist) { plusPresDist = dist; proche = l; }
     });
+    if (entre) return;
     if (proche !== indiceActuel) {
       indiceActuel = proche;
       if (indiceEl) {
@@ -1087,8 +1240,9 @@
        milieu de ce qu'on voit. Le canvas, lui, continue de peindre toute la
        fenetre — le surplus passe derriere le panneau, ce qui evite une bande
        vide a sa gauche quand on longe le bord droit de la carte. */
-    var camX = camAxe(joueur.x, libre, MONDE.w);
-    var camY = camAxe(joueur.y, hauteurMonde, MONDE.h);
+    var lieu = scene();
+    var camX = camAxe(joueur.x, libre, lieu.w);
+    var camY = camAxe(joueur.y, hauteurMonde, lieu.h);
 
     ctx.save();
     ctx.scale(DPR, DPR);
@@ -1099,6 +1253,25 @@
     ctx.imageSmoothingEnabled = false;
     ctx.scale(zoom, zoom);
     ctx.translate(-camX, -camY);
+
+    /* ---- LA SALLE DU COFFRE ----
+       Un seul dessin, mis a l'echelle de la piece : pas de tuiles a decouper,
+       la salle EST une image. On sort tot, le Nexus ne la concerne pas. */
+    if (SCENE === 'coffre') {
+      if (SALLE.img.complete) ctx.drawImage(SALLE.img, 0, 0, SALLE.w, SALLE.h);
+      var pileC = OBJETS_SOL.map(function (t) {
+        return { y: t.y, dessine: function () { dessineObjetSol(t); } };
+      });
+      pileC.push({ y: joueur.y, dessine: function () {
+        var cadreC = joueur.anim === 'jump' ? saut.cadre : joueur.cadre;
+        dessineAvatar(joueur.x, joueur.y, PERSO, joueur.dir, joueur.anim, cadreC);
+      } });
+      pileC.sort(function (a, b) { return a.y - b.y; });
+      pileC.forEach(function (p) { p.dessine(); });
+      ctx.restore();
+      DERNIERE_CAM.x = camX; DERNIERE_CAM.y = camY; DERNIERE_CAM.z = zoom;
+      return;
+    }
 
     // le sol : seulement les tuiles qui touchent l'ecran
     var c0 = Math.max(0, Math.floor(camX / TUILE));
@@ -1144,6 +1317,39 @@
     DERNIERE_CAM.x = camX; DERNIERE_CAM.y = camY; DERNIERE_CAM.z = zoom;
   }
   var DERNIERE_CAM = { x: 0, y: 0, z: 1 };
+
+  /* Un objet pose au sol : un halo a sa couleur de rarete, puis l'icone de
+     la boutique. Le halo n'est pas un ornement — c'est le seul moyen de
+     distinguer un commun d'un mythique d'un coup d'oeil quand vingt objets
+     sont poses cote a cote. Celui sur lequel on marche s'eclaire. */
+  var TAILLE_OBJET = 72;
+  function dessineObjetSol(t) {
+    var vise = objetProche === t;
+    var c = t.o.couleur || '#8DA0C4';
+    ctx.save();
+    ctx.globalAlpha = vise ? 0.55 : 0.28;
+    ctx.fillStyle = c;
+    ctx.beginPath();
+    ctx.ellipse(t.x, t.y + 6, TAILLE_OBJET * 0.52, TAILLE_OBJET * 0.24, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    if (t.img.complete && t.img.naturalWidth) {
+      ctx.drawImage(t.img, t.x - TAILLE_OBJET / 2, t.y - TAILLE_OBJET,
+                    TAILLE_OBJET, TAILLE_OBJET);
+    }
+    /* La quantite, seulement au-dela d'un : « x1 » sur dix-neuf objets sur
+       vingt est du bruit qui cache le seul chiffre qu'on voulait lire. */
+    if (t.o.quantite > 1) {
+      ctx.save();
+      ctx.font = '700 20px system-ui, sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+      ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(0,0,0,.75)';
+      ctx.strokeText('x' + t.o.quantite, t.x, t.y + 24);
+      ctx.fillStyle = '#F2F6FF';
+      ctx.fillText('x' + t.o.quantite, t.x, t.y + 24);
+      ctx.restore();
+    }
+  }
 
   function dessineAvatar(x, y, cle, dir, anim, cadre) {
     var s = SPRITES[cle];
@@ -1203,6 +1409,20 @@
   }
 
   function peintMini() {
+    /* Dans la salle du coffre, la mini-carte montrerait le Nexus — un plan
+       de l'endroit ou l'on n'est PAS. On la remplace par son nom : c'est la
+       seule chose vraie qu'on puisse y ecrire. */
+    if (SCENE === 'coffre') {
+      var gc = mini && mini.getContext ? mini.getContext('2d') : null;
+      if (!gc) return;
+      gc.clearRect(0, 0, MINI, MINI);
+      gc.fillStyle = '#1b1710'; gc.fillRect(0, 0, MINI, MINI);
+      gc.fillStyle = '#C8A24A';
+      gc.font = '700 11px system-ui, sans-serif';
+      gc.textAlign = 'center'; gc.textBaseline = 'middle';
+      gc.fillText('VAULT', MINI / 2, MINI / 2);
+      return;
+    }
     if (!mctx) return;
     if (!fondMini) construitFondMini();
     mctx.clearRect(0, 0, MINI, MINI);

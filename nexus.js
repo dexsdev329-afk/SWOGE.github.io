@@ -942,19 +942,22 @@
      * survit. Ranger est donc le geste qui met a l'abri, et il doit demander
      * de revenir ici — sinon la mort ne couterait plus rien. */
     var sac = SAC || [];
-    html += '<div class="nxcf-grp nxcf-sac"><i>Backpack &mdash; lost if you die</i>';
+    html += '<div class="nxcf-grp nxcf-sac"><i>Backpack &mdash; ' + sac.length +
+            '/8 slots &middot; lost if you die</i>';
     if (!sac.length) {
       html += '<div class="nxcf-vide">Empty. Loot you pick up in the world lands here — ' +
               'store it in the vault to keep it for good.</div>';
     } else {
       html += '<div class="nxcf-l">' + sac.map(function (o) {
+        /* Deux exemplaires identiques sont DEUX boutons : le sac compte des
+           places, pas des lignes. */
         return '<button type="button" class="nxcf-i" data-range="' + o.id +
-          '" data-sac="' + o.id + '"' +
+          '" data-sac="' + o.id + '" data-place="' + o.place + '"' +
           ' style="--c:' + ech(o.couleur || '#8DA0C4') + '"' +
           ' title="' + ech(o.nom + ' — store in the vault') + '">' +
           '<img alt="" src="img/shop/' + encodeURIComponent(o.cle) + '.webp" onerror="this.remove()">' +
           '<span><b>' + ech(o.nom) + '</b><em>' + ech(detailBonus(o) || '—') + '</em></span>' +
-          '<u>' + (o.quantite > 1 ? 'x' + o.quantite + ' &middot; ' : '') + 'store &rarr;</u>' +
+          '<u>store &rarr;</u>' +
           '</button>';
       }).join('') + '</div>';
     }

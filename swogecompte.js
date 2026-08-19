@@ -229,11 +229,70 @@
   }
   /* Le portefeuille avec lequel le joueur s'est DEJA connecte. `swogeAuth` dit
      lequel : Privy pour une entree par e-mail, l'extension sinon. */
+  /* ---- LE PORTEFEUILLE EMAIL N'EXISTAIT PAS SUR CETTE PAGE ----
+   *
+   * Les dix-sept pages de jeu chargent `privy-swoge.js` elles-memes, depuis
+   * leur propre formulaire de connexion. games.html n'en a pas — c'est
+   * justement la raison d'etre de ce fichier — et `window.SwogePrivy` n'y
+   * existait donc jamais. Un joueur connecte PAR EMAIL qui tapait « Deposit
+   * and play » depuis le hall tombait sur « Sign in first », alors qu'il
+   * etait connecte et que son solde s'affichait a l'ecran.
+   *
+   * On charge donc le module a la demande, et UNIQUEMENT si le compte est un
+   * compte email : personne d'autre n'a de raison de tirer le SDK d'un tiers.
+   * La promesse est mise en cache — deux appels rapproches ne doivent pas
+   * injecter deux fois le meme script.
+   *
+   * L'identifiant d'application est PUBLIC (il voyage deja dans le HTML des
+   * dix-sept pages) ; ce n'est pas un secret, c'est le nom du projet cote
+   * Privy. */
+  var PRIVY_APP_ID = 'cmsga0yzp00a50biaf9vlzzd2';
+  var chargePrivy = null;
+  function assurePrivy() {
+    if (window.SwogePrivy) return Promise.resolve(window.SwogePrivy);
+    if (chargePrivy) return chargePrivy;
+    chargePrivy = new Promise(function (res, rej) {
+      var s = document.createElement('script');
+      s.src = 'privy-swoge.js';
+      s.onload = function () {
+        try { window.SwogePrivy.init(PRIVY_APP_ID); } catch (e) {}
+        res(window.SwogePrivy);
+      };
+      s.onerror = function () { chargePrivy = null; rej(new Error('privy')); };
+      (document.head || document.documentElement).appendChild(s);
+    });
+    return chargePrivy;
+  }
+
+  function portefeuilleEmail() {
+    return assurePrivy().then(function (P) {
+      if (!P) return null;
+      var suite = (P.restore) ? P.restore()
+                : Promise.resolve(P.isLoggedIn && P.isLoggedIn() ? P.getAddress() : null);
+      return Promise.resolve(suite).then(function (adr) {
+        adr = adr || (P.getAddress && P.getAddress());
+        if (!adr) return null;
+        return { eip1193: P.getProvider(), adresse: adr };
+      });
+    }).catch(function () { return null; });
+  }
+
   function portefeuille() {
     var mode = '';
     try { mode = localStorage.getItem('swogeAuth') || ''; } catch (e) {}
-    if (mode === 'email' && window.SwogePrivy && SwogePrivy.getAddress && SwogePrivy.getAddress()) {
-      return Promise.resolve({ eip1193: SwogePrivy.getProvider(), adresse: SwogePrivy.getAddress() });
+    if (mode === 'email') {
+      /* Deja pret : on ne repasse pas par le chargement. */
+      if (window.SwogePrivy && SwogePrivy.getAddress && SwogePrivy.getAddress()) {
+        return Promise.resolve({ eip1193: SwogePrivy.getProvider(), adresse: SwogePrivy.getAddress() });
+      }
+      return portefeuilleEmail().then(function (w) {
+        if (w) return w;
+        /* On ne retombe PAS sur window.ethereum : un compte email et une
+           extension installee sur la meme machine sont deux adresses
+           differentes, et deposer depuis la mauvaise enverrait les jetons
+           sur un solde qui n'est pas le sien. */
+        return null;
+      });
     }
     if (window.ethereum) {
       return window.ethereum.request({ method: 'eth_accounts' }).then(function (cs) {
@@ -248,7 +307,15 @@
      forcement qu'il existe une chaine Robinhood. */
   function signataire() {
     return portefeuille().then(function (w) {
-      if (!w) throw new Error('Sign in first');
+      /* « Sign in first » etait faux et deroutant pour quelqu'un qui voyait
+         son pseudo et son solde a l'ecran. On distingue les deux cas. */
+      if (!w) {
+        var mode = '';
+        try { mode = localStorage.getItem('swogeAuth') || ''; } catch (e) {}
+        throw new Error(mode
+          ? 'Your wallet could not be opened — reload the page and try again'
+          : 'Sign in first');
+      }
       if (typeof ethers === 'undefined') throw new Error('Chain library not loaded — reload the page');
       var fp = new ethers.providers.Web3Provider(w.eip1193, 'any');
       return fp.getNetwork().then(function (n) {
@@ -371,7 +438,13 @@
       '.swc-n b{color:#FFC53D;}' +
       /* Le message. Au-dessus du tiroir (9999) : il commente souvent ce qui
          vient d'y etre fait. */
-      '.swc-msg{position:fixed;left:50%;bottom:18px;z-index:10001;transform:translate(-50%,14px);' +
+      /* `--swbb-h` est la hauteur MESUREE de la barre du bas, publiee par
+         stakebubble.js. Sans ce decalage — et sans un z-index superieur au
+         sien — ce bandeau se peint DERRIERE elle : c'est ce qui faisait
+         qu'un depot rate ou reussi ne disait jamais rien au joueur. Le
+         repli a 0px vaut pour les pages sans barre. */
+      '.swc-msg{position:fixed;left:50%;bottom:calc(var(--swbb-h,0px) + 14px);' +
+      'z-index:2147483000;transform:translate(-50%,14px);' +
       'max-width:min(420px,92vw);padding:11px 15px;border-radius:12px;opacity:0;' +
       'pointer-events:none;transition:opacity .18s,transform .18s;' +
       'font-family:inherit;font-size:12.5px;font-weight:700;color:#EAF2FF;' +

@@ -2299,7 +2299,10 @@
       'border-radius:999px;display:flex;align-items:center;justify-content:center;' +
       'font-size:10px;font-weight:900;color:#07101F;background:#16D97F;' +
       'box-shadow:0 0 0 2px rgba(7,16,31,.9);}' +
-      '.swtoast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,20px);z-index:100000;' +
+      /* Au-dessus de la barre du bas (2147482000) ET au-dessus d'elle en
+         position : sinon le message existe mais personne ne le voit. */
+      '.swtoast{position:fixed;left:50%;bottom:calc(var(--swbb-h,0px) + 16px);' +
+      'transform:translate(-50%,20px);z-index:2147483000;' +
       'padding:11px 16px;border-radius:999px;font-family:inherit;font-size:13px;font-weight:700;' +
       'color:#07101F;background:linear-gradient(180deg,#8CFFC0,#16D97F);opacity:0;' +
       'transition:opacity .25s,transform .25s;box-shadow:0 8px 24px rgba(0,0,0,.5);}' +
@@ -3341,6 +3344,30 @@
     bp.addEventListener('click', profOuvre);
     barreBas.appendChild(bp);
     document.body.appendChild(barreBas);
+
+    /* ---- LA BARRE CACHAIT TOUS LES MESSAGES ----
+     *
+     * Elle est a `z-index:2147482000`, collee en bas. Les deux couches de
+     * messages du site — le toast d'ici (100000) et le bandeau de
+     * swogecompte.js (10001) — s'affichaient a `bottom:18-26px`, c'est-a-dire
+     * DERRIERE elle. Un joueur a signale qu'appuyer sur « Deposit and play »
+     * ne faisait rien : le message partait bien, il etait peint dessous.
+     * Ni l'erreur ni la confirmation n'arrivaient jamais a l'oeil.
+     *
+     * Sa hauteur vient du contenu et de la marge de securite de l'iPhone :
+     * on ne peut pas la coder en dur. On la MESURE et on la publie, pour que
+     * les deux couches se posent au-dessus avec une seule source de verite.
+     */
+    var poseHauteur = function () {
+      var h = Math.round(barreBas.getBoundingClientRect().height) || 0;
+      document.documentElement.style.setProperty('--swbb-h', h + 'px');
+    };
+    poseHauteur();
+    if (window.ResizeObserver) new ResizeObserver(poseHauteur).observe(barreBas);
+    window.addEventListener('resize', poseHauteur);
+    /* Les polices arrivent apres : la barre grandit d'un ou deux pixels une
+       fois qu'elles sont la, et une mesure prise trop tot resterait fausse. */
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(poseHauteur).catch(function () {});
     return barreBas;
   }
 

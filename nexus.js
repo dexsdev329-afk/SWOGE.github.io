@@ -86,6 +86,12 @@
      * tombait dans « rien n'a change » — et sa fiche n'etait jamais
      * demandee. Panneau vide, sans une erreur nulle part. */
     if (m.type === 'skins') {
+      SKINS_C = m.catalogue || SKINS_C;
+      if (m.error) shopMsg = { texte: m.error, ok: false };
+      else if (m.achete) shopMsg = { texte: '\u2728 ' + m.achete + ' is yours', ok: true };
+      if (m.balance != null && BOUTIQUE) BOUTIQUE.balance = m.balance;
+      if (shopOuvert) peintShop();
+      if (coffreOuvert) peintCoffreMenu();
       SKIN_POSSEDE = !!m.actif;
       if (m.actif && PERSONNAGES[m.actif]) {
         if (m.actif !== PERSO) { PERSO = m.actif; assureCharge(PERSO); }
@@ -173,18 +179,23 @@
       }
     }
     if (m.type === 'realmEtat' && SCENE === 'monde') recoitMonde(m);
-    /* ---- CE QU'ON TOUCHE ----
-     * `degat.mp3` etait le son du MONSTRE qui encaisse ; je l'avais branche
-     * sur NOS degats. Il retourne a sa place, et nos propres coups recus
-     * gardent le meme enregistrement joue BEAUCOUP plus grave — deux
-     * evenements opposes ne doivent pas se ressembler, et je n'ai pas
-     * d'autre prise de son pour le second. */
+    /* ---- CE QU'ON TOUCHE, ET CE QU'ON ENCAISSE ----
+     *
+     * Un monstre touche pousse le MEME cri que lorsqu'il meurt, en beaucoup
+     * plus discret et coupe court : c'est la meme creature qui souffre, et
+     * lui donner deux voix sans rapport donnerait l'impression de deux
+     * bestioles differentes. La mort se distingue par le volume et par le
+     * fait qu'elle va au bout.
+     *
+     * Nos propres degats gardent `degat.mp3`, franc et grave : ce qui nous
+     * arrive ne doit surtout pas ressembler a ce qu'on inflige. */
     if (m.type === 'realmTouche' && SCENE === 'monde') {
-      joueSample('degat', { vol: 0.5, hauteur: 1.05 + Math.random() * 0.25, duree: 0.5 });
+      joueSample(Math.random() < 0.5 ? 'mort' : 'mort2',
+                 { vol: 0.22, hauteur: 1.15 + Math.random() * 0.2, duree: 0.28 });
     }
     if (m.type === 'realmCoup' && SCENE === 'monde') {
       VIE.pv = m.pv; moiMonde.pv = m.pv;
-      joueSample('degat', { vol: 0.75, hauteur: 0.55, duree: 0.8 });
+      joueSample('degat', { vol: 0.75, hauteur: 0.8, duree: 0.8 });
       secousse = 0.16;
       peintPanneau();
     }
@@ -869,9 +880,16 @@
        cinq poignees pour une seule porte laissent croire a cinq rangements
        differents, et le jour ou ils en auront vraiment, le joueur aura pris
        l'habitude qu'ils soient interchangeables. */
-    coffres: [0.500].map(function (fx) {
-      return { x: 1600 * fx, y: 1600 * 0.842, r: 74 };
-    }),
+    /* DEUX coffres ouvrables sur les cinq du dessin, et ils ne font pas la
+       meme chose : celui du milieu porte les objets, celui de gauche les
+       personnages. Les trois autres restent du decor en attendant leur role.
+       Un coffre par usage plutot qu'un menu a onglets : on va au coffre des
+       personnages pour changer de personnage, et le chemin dit deja ce qu'on
+       vient faire. */
+    coffres: [
+      { x: 1600 * 0.500, y: 1600 * 0.842, r: 74, role: 'objets' },
+      { x: 1600 * 0.375, y: 1600 * 0.842, r: 70, role: 'skins' },
+    ],
   };
   SALLE.img = new Image(); SALLE.img.src = SALLE.src;
 
@@ -1146,6 +1164,7 @@
    * paie, et c'est exactement ce qu'il ne faut pas dupliquer.
    */
   var BOUTIQUE = null, shopSaison = 2, shopOuvert = false, shopMsg = '', shopLot = 1;
+  var SKINS_C = [];            // le catalogue des personnages
   var elShopVoile = document.getElementById('nxShopVoile');
   var elShopOng = elShopVoile ? elShopVoile.querySelector('.nxsh-ong') : null;
   var elShopCorps = elShopVoile ? elShopVoile.querySelector('.nxsh-corps') : null;
@@ -1224,15 +1243,18 @@
          les glisser dans la liste des saisons aurait fait croire a une
          cinquieme collection. */
       '<button type="button" data-s="pot"' + (shopSaison === 'pot' ? ' class="on"' : '') +
-      '>&#129514; Potions</button>';
+      '>&#129514; Potions</button>' +
+      '<button type="button" data-s="skin"' + (shopSaison === 'skin' ? ' class="on"' : '') +
+      '>&#127917; Characters</button>';
       majFleches();
       Array.prototype.forEach.call(elShopOng.querySelectorAll('button'), function (b) {
         b.addEventListener('click', function () {
           var v = b.getAttribute('data-s');
-          shopSaison = v === 'pot' ? 'pot' : Number(v);
+          shopSaison = (v === 'pot' || v === 'skin') ? v : Number(v);
           shopMsg = '';
           clic(false);
           if (shopSaison === 'pot') peintShop();
+          else if (shopSaison === 'skin') { if (enLigne) envoie({ type: 'skins' }); peintShop(); }
           else if (enLigne) envoie({ type: 'shop', season: shopSaison });
         });
       });
@@ -1271,6 +1293,39 @@
           if (b.disabled) return;
           clic(true);
           envoie({ type: 'potionAchat', cle: b.getAttribute('data-pot'), qte: shopLot || 1 });
+        });
+      });
+      return;
+    }
+
+    /* ---- LE RAYON DES PERSONNAGES ----
+       Rien a voir avec les saisons : pas de tirage, pas de plafond, pas de
+       rarete. Un catalogue fixe, un prix, et on l'a ou on ne l'a pas. Celui
+       qu'on possede deja se PORTE au lieu de s'acheter — c'est le meme
+       bouton, et c'est ce qu'on veut en tapant dessus. */
+    if (shopSaison === 'skin') {
+      var soldeS = Number(BOUTIQUE.balance || 0);
+      elShopCorps.innerHTML = (SKINS_C || []).map(function (k) {
+        var a = k.id === PERSO;
+        return '<button type="button" class="nxsh-cof" data-skin="' + ech(k.id) + '"' +
+          ' data-a="' + (k.possede ? (a ? 'porte' : 'porter') : 'acheter') + '"' +
+          (k.possede || soldeS >= k.prix ? '' : ' disabled') + (a ? ' class="nxsh-cof on"' : '') + '>' +
+          '<img alt="" src="img/skins/skin_' + encodeURIComponent(k.id) +
+          '.webp" onerror="this.remove()">' +
+          '<span><span class="n">' + ech(k.nom) + '</span><span class="o">' +
+          ech(k.pouvoir || '') + '</span></span><span class="p">' +
+          (k.possede ? (a ? 'worn' : 'wear') : Math.round(k.prix).toLocaleString('en-US') + ' $SWOGE') +
+          '</span></button>';
+      }).join('');
+      Array.prototype.forEach.call(elShopCorps.querySelectorAll('[data-skin]'), function (b) {
+        b.addEventListener('click', function () {
+          if (b.disabled) return;
+          var quoi = b.getAttribute('data-a');
+          if (quoi === 'porte') return;
+          clic(true);
+          envoie(quoi === 'acheter'
+            ? { type: 'skinBuy', id: b.getAttribute('data-skin') }
+            : { type: 'skinChoisi', id: b.getAttribute('data-skin') });
         });
       });
       return;
@@ -1342,10 +1397,13 @@
   var elCoffreVoile = document.getElementById('nxCoffreVoile');
   var elCoffreCorps = elCoffreVoile ? elCoffreVoile.querySelector('.nxcf-corps') : null;
 
-  function ouvreCoffreMenu() {
+  var coffreRole = 'objets';
+  function ouvreCoffreMenu(role) {
     if (!elCoffreVoile) return;
     coffreOuvert = true;
-    if (!COFFRE && enLigne) envoie({ type: 'equipable' });
+    coffreRole = role || 'objets';
+    if (coffreRole === 'skins') { if (enLigne) envoie({ type: 'skins' }); }
+    else if (!COFFRE && enLigne) envoie({ type: 'equipable' });
     peintCoffreMenu();
     elCoffreVoile.classList.add('on');
   }
@@ -1367,6 +1425,42 @@
 
   function peintCoffreMenu() {
     if (!elCoffreCorps) return;
+    var titre = elCoffreVoile.querySelector('.nxcf-titre');
+    var sous = elCoffreVoile.querySelector('.nxcf-sous');
+    /* ---- LE COFFRE AUX PERSONNAGES ----
+       On CHANGE de personnage, on n'en achete pas ici : la boutique est a
+       l'autre bout du Nexus et c'est sa place. Celui qu'on ne possede pas
+       s'affiche quand meme, grise — savoir ce qui existe fait partie de ce
+       qu'un coffre montre. */
+    if (coffreRole === 'skins') {
+      if (titre) titre.innerHTML = '\uD83C\uDFAD Your characters';
+      if (sous) sous.textContent = 'Tap one to play it. Buy new ones at the shop.';
+      var liste = SKINS_C || [];
+      elCoffreCorps.innerHTML = liste.length
+        ? '<div class="nxcf-l">' + liste.map(function (k) {
+            var a = k.id === PERSO;
+            return '<button type="button" class="nxcf-i' + (a ? ' actif' : '') +
+              '" data-perso="' + ech(k.id) + '"' + (k.possede ? '' : ' disabled') +
+              ' style="--c:' + ech(k.couleur || '#8DA0C4') + '"' +
+              ' title="' + ech(k.nom + ' — ' + (k.pouvoir || '')) + '">' +
+              '<img alt="" src="img/skins/skin_' + encodeURIComponent(k.id) +
+              '.webp" onerror="this.remove()">' +
+              '<span><b>' + ech(k.nom) + '</b><em>' +
+              (k.possede ? (a ? 'playing' : 'ready') : 'not owned') + '</em></span>' +
+              (a ? '<u>worn</u>' : '') + '</button>';
+          }).join('') + '</div>'
+        : '<div class="nxcf-vide">Loading your characters…</div>';
+      Array.prototype.forEach.call(elCoffreCorps.querySelectorAll('[data-perso]'), function (b) {
+        b.addEventListener('click', function () {
+          if (b.disabled || b.classList.contains('actif')) return;
+          clic(true);
+          envoie({ type: 'skinChoisi', id: b.getAttribute('data-perso') });
+        });
+      });
+      return;
+    }
+    if (titre) titre.innerHTML = '\uD83E\uDDFA Your vault';
+    if (sous) sous.textContent = 'Everything you bought from the shop. Tap an item to wear it.';
     if (!COFFRE) { elCoffreCorps.innerHTML = '<div class="nxcf-vide">Opening your vault…</div>'; return; }
     /* Un refus du serveur — « celle-la, tu la portes » — doit se lire. Sans
        ca le joueur tape le bouton et rien ne bouge, ce qui se lit comme une
@@ -2370,7 +2464,7 @@
          coffre qu'on a ferme, et on ne le rouvre qu'apres en etre parti. */
       coffreSous = surCoffre;
       if (surCoffre !== coffreFerme) coffreFerme = null;
-      if (surCoffre && !coffreOuvert && surCoffre !== coffreFerme) ouvreCoffreMenu();
+      if (surCoffre && !coffreOuvert && surCoffre !== coffreFerme) ouvreCoffreMenu(surCoffre.role);
 
       var quoi = surPortail ? 'portail' : (surCoffre ? 'coffre' : 'salle');
       if (quoi !== indiceActuel) {
@@ -2600,7 +2694,12 @@
       if (SALLE.img.complete) ctx.drawImage(SALLE.img, 0, 0, SALLE.w, SALLE.h);
       /* Un halo doux sous chaque coffre : le dessin de la piece en montre
          cinq, mais rien n'y dit qu'on peut marcher dessus. */
-      SALLE.coffres.forEach(function (cf) { halo(cf.x, cf.y, cf.r, '#FFC53D', 0.18); });
+      /* Deux couleurs pour deux usages : l'or pour les objets, le violet pour
+         les personnages. Le meme halo partout ferait croire a deux portes
+         vers la meme piece. */
+      SALLE.coffres.forEach(function (cf) {
+        halo(cf.x, cf.y, cf.r, cf.role === 'skins' ? '#C07BFF' : '#FFC53D', 0.18);
+      });
       var pileC = [{ y: SALLE.portail.y, dessine: dessinePortail }];
       pileC.push({ y: joueur.y, dessine: function () {
         var cadreC = joueur.anim === 'jump' ? saut.cadre : joueur.cadre;

@@ -104,7 +104,7 @@
     /* Notre nom vient du profil. On le demande une fois : le panneau
        l'affiche en tete, comme la fiche d'origine. */
     if (m.type === 'profile' && m.profile) { MON_NOM = m.profile.name || null; peintPanneau(); }
-    if (m.type === 'personnage' && m.etat && m.etat.skin === PERSO) { FICHE = m.etat; peintPanneau(); }
+    if (m.type === 'personnage' && m.etat && m.etat.skin === PERSO) { FICHE = m.etat; peintPanneau(); if (coffreOuvert) peintCoffreMenu(); }
     if (m.type === 'equipable') {
       /* Le SAC est ce que le serveur envoie sous `sac` — le butin ramasse —
          et RIEN d'autre. Il contenait auparavant tout ce qu'on possede
@@ -117,7 +117,7 @@
          pose au sol. On les garde donc au lieu de les jeter. */
       COFFRE = { fruits: m.fruits || [], armes: m.armes || [],
                  armures: m.armures || [], bagues: m.bagues || [] };
-      if (SCENE === 'coffre') { rangeCoffre(); objetProche = undefined; }
+      if (coffreOuvert) peintCoffreMenu();
       peintPanneau();
     }
     if (m.type === 'nexusEtat') majJoueursDistants(m.joueurs || []);
@@ -436,6 +436,15 @@
   ];
   LIEUX.forEach(function (l) { l.img = new Image(); l.img.src = l.src; l.dwell = 0; });
 
+  /* ---- LE BASSIN DE LA FONTAINE ----
+     Un CERCLE de rayon 108 centre sur le point d'ancrage ne collait pas au
+     dessin : la fontaine est large et basse, et son bassin est pose SUR
+     l'ancre, donc au-dessus d'elle. Le cercle laissait passer par les cotes —
+     la ou la pierre est — et bloquait sous le bassin, la ou il n'y a rien.
+     Une ellipse mesuree sur le dessin colle. Les tirs s'en servent aussi :
+     un pas et un projectile doivent buter sur la MEME pierre. */
+  var COL_FONT = { rx: 152, ry: 70, dy: 62 };
+
   /* ================== LA VIE, ET LE REPLI ==================
    *
    * `VIE.pv` est la SEULE source de verite sur les points de vie : la barre
@@ -528,8 +537,21 @@
     // la zone ou l'on pose les pieds, en unites de monde
     x0: 1600 * 0.185, x1: 1600 * 0.825,
     y0: 1600 * 0.200, y1: 1600 * 0.840,
-    // le seuil, devant la porte du mur gauche
-    sortie: { x: 1600 * 0.20, y: 1600 * 0.485, r: 70 },
+    /* ---- LE PORTAIL DE RETOUR ----
+     * Sortir se faisait en repassant par la porte du mur gauche. Deux
+     * problemes : on APPARAISSAIT dessus — on entrait et on ressortait dans
+     * la seconde — et une porte de decor ne se lit pas comme une sortie. Un
+     * portail, si : c'est deja par un portail qu'on quitte le Nexus. */
+    /* Devant la porte du mur gauche, et LARGE : un cercle de soixante unites
+       dans une piece qui en fait mille six cents se rate en marchant. On le
+       pose assez pres du mur pour qu'en longeant celui-ci on tombe dedans —
+       c'est le geste naturel de quelqu'un qui cherche la sortie. */
+    portail: { x: 1600 * 0.225, y: 1600 * 0.470, r: 104, larg: 104, haut: 160 },
+    /* Les cinq coffres du mur du bas, releves sur le dessin. N'importe lequel
+       ouvre le meme menu : il n'y a qu'un coffre, ce sont cinq poignees. */
+    coffres: [0.255, 0.375, 0.500, 0.625, 0.745].map(function (fx) {
+      return { x: 1600 * fx, y: 1600 * 0.842, r: 66 };
+    }),
   };
   SALLE.img = new Image(); SALLE.img.src = SALLE.src;
 
@@ -538,31 +560,81 @@
   var SCENE = 'nexus';
   var RETOUR = null;
   var COFFRE = null;        // les quatre listes du message `equipable`
-  var OBJETS_SOL = [];      // ce qu'on voit pose, calcule a l'entree
-  var objetProche = null;
+  var coffreOuvert = false;   // le menu du coffre, au centre de l'ecran
 
   function scene() { return SCENE === 'coffre' ? SALLE : { w: MONDE.w, h: MONDE.h }; }
 
-  /* Les objets au sol, en grille. Huit par rangee : au-dela on deborde de la
-     largeur jouable, et il faudrait faire marcher le joueur pour lire une
-     ligne — ce qui n'est agreable pour personne. */
-  function rangeCoffre() {
-    var listes = COFFRE || {};
-    var tout = [];
-    ['fruits', 'armes', 'armures', 'bagues'].forEach(function (k) {
-      (listes[k] || []).forEach(function (o) { tout.push(o); });
+  /* ---- LE MENU DU COFFRE ----
+   *
+   * Les objets etaient poses au sol : joli, mais il fallait marcher sur
+   * chacun pour lire son nom, et rien ne permettait de s'equiper. Ils sont
+   * maintenant dans un menu qu'un coffre de la salle ouvre — on va au coffre,
+   * on l'ouvre, on change son equipement, comme dans le jeu d'origine.
+   *
+   * Une seule table pour les quatre categories : `champ` est la cle du
+   * message `equipable`, `etat` celle de la fiche du personnage, `msg` celle
+   * qu'on renvoie pour s'equiper. Les trois ne peuvent pas se desaccorder. */
+  var CATEGORIES = [
+    { champ: 'fruits',  etat: 'equipFruit',  msg: 'equipeFruit',  titre: 'Power fruit' },
+    { champ: 'armes',   etat: 'equipArme',   msg: 'equipeArme',   titre: 'Weapon' },
+    { champ: 'armures', etat: 'equipArmure', msg: 'equipeArmure', titre: 'Armor' },
+    { champ: 'bagues',  etat: 'equipBague',  msg: 'equipeBague',  titre: 'Ring' },
+  ];
+  var elCoffreVoile = document.getElementById('nxCoffreVoile');
+  var elCoffreCorps = elCoffreVoile ? elCoffreVoile.querySelector('.nxcf-corps') : null;
+
+  function ouvreCoffreMenu() {
+    if (!elCoffreVoile) return;
+    coffreOuvert = true;
+    if (!COFFRE && enLigne) envoie({ type: 'equipable' });
+    peintCoffreMenu();
+    elCoffreVoile.classList.add('on');
+  }
+  function fermeCoffreMenu() {
+    coffreOuvert = false;
+    if (elCoffreVoile) elCoffreVoile.classList.remove('on');
+  }
+  if (elCoffreVoile) {
+    elCoffreVoile.addEventListener('click', function (e) {
+      var c = e.target.classList;
+      if (e.target === elCoffreVoile || (c && c.contains('nxcf-x'))) fermeCoffreMenu();
     });
-    var PAR_RANGEE = 8, PAS_X = 110, PAS_Y = 130;
-    var largeur = (PAR_RANGEE - 1) * PAS_X;
-    var x0 = (SALLE.x0 + SALLE.x1) / 2 - largeur / 2;
-    var lignes = Math.ceil(tout.length / PAR_RANGEE) || 1;
-    var y0 = (SALLE.y0 + SALLE.y1) / 2 - (lignes - 1) * PAS_Y / 2;
-    OBJETS_SOL = tout.map(function (o, i) {
-      var img = new Image();
-      img.src = 'img/shop/' + encodeURIComponent(o.cle) + '.webp';
-      return { o: o, img: img,
-               x: x0 + (i % PAR_RANGEE) * PAS_X,
-               y: y0 + Math.floor(i / PAR_RANGEE) * PAS_Y };
+  }
+
+  function peintCoffreMenu() {
+    if (!elCoffreCorps) return;
+    if (!COFFRE) { elCoffreCorps.innerHTML = '<div class="nxcf-vide">Opening your vault…</div>'; return; }
+    var html = '', total = 0;
+    CATEGORIES.forEach(function (cat) {
+      var liste = COFFRE[cat.champ] || [];
+      total += liste.length;
+      if (!liste.length) return;
+      var porte = FICHE && FICHE[cat.etat];
+      html += '<div class="nxcf-grp"><i>' + cat.titre + '</i><div class="nxcf-l">';
+      liste.forEach(function (o) {
+        var actif = !!(porte && porte.item === o.id);
+        html += '<button type="button" class="nxcf-i' + (actif ? ' actif' : '') +
+          '" data-msg="' + cat.msg + '" data-item="' + o.id + '"' +
+          ' style="--c:' + ech(o.couleur || '#8DA0C4') + '"' +
+          ' title="' + ech(o.nom + ' — ' + (detailBonus(o) || 'no bonus')) + '">' +
+          '<img alt="" src="img/shop/' + encodeURIComponent(o.cle) + '.webp" onerror="this.remove()">' +
+          '<span><b>' + ech(o.nom) + '</b><em>' + ech(detailBonus(o) || '—') + '</em></span>' +
+          (actif ? '<u>worn</u>' : (o.quantite > 1 ? '<u>x' + o.quantite + '</u>' : '')) +
+          '</button>';
+      });
+      html += '</div></div>';
+    });
+    elCoffreCorps.innerHTML = total ? html
+      : '<div class="nxcf-vide">Your vault is empty. Chests bought at the shop drop their items straight in here.</div>';
+    /* Un clic equipe TOUT DE SUITE : le geste EST la confirmation. Retaper la
+       piece deja portee la retire — sinon on ne pourrait jamais rien enlever,
+       et il faudrait un second bouton sur chaque ligne. */
+    Array.prototype.forEach.call(elCoffreCorps.querySelectorAll('.nxcf-i'), function (b) {
+      b.addEventListener('click', function () {
+        var deja = b.classList.contains('actif');
+        envoie({ type: b.getAttribute('data-msg'), skin: PERSO,
+                 item: deja ? null : Number(b.getAttribute('data-item')) });
+      });
     });
   }
 
@@ -571,17 +643,24 @@
     if (!COFFRE && enLigne) envoie({ type: 'equipable' });
     RETOUR = { x: joueur.x, y: joueur.y };
     SCENE = 'coffre';
-    rangeCoffre();
-    // on arrive SUR le seuil, tourne vers la salle
-    joueur.x = SALLE.sortie.x + 40; joueur.y = SALLE.sortie.y;
-    joueur.dir = 'right';
+    /* On arrive au MILIEU de la piece, pas sur la sortie. La version
+       precedente posait le joueur a quarante unites du seuil, dont le rayon
+       en fait soixante-dix : il apparaissait DEDANS et ressortait aussitot.
+       Un delai de grace masquait le probleme au lieu de le resoudre — il
+       suffisait de ne pas bouger pour etre ejecte. */
+    joueur.x = (SALLE.x0 + SALLE.x1) / 2;
+    joueur.y = (SALLE.y0 + SALLE.y1) / 2 + 70;
+    joueur.dir = 'down';
     LIEUX.forEach(function (l) { l.dwell = 0; });
-    SALLE.grace = 0.6;      // le temps de s'ecarter du seuil sans ressortir
+    /* Ceinture ET bretelles : le portail ne mord qu'apres qu'on s'en soit
+       ecarte une fois. Meme pose dessus par erreur, on ne repart pas. */
+    SALLE.portailArme = false;
+    fermeCoffreMenu();
   }
 
   function sortCoffre() {
     SCENE = 'nexus';
-    objetProche = null;
+    fermeCoffreMenu();
     /* Le bandeau garde son dernier texte tant que le lieu proche ne CHANGE
        pas — sinon on ressort du coffre avec le nom d'un objet du coffre
        affiche par-dessus le Nexus. On le vide, et on oublie le dernier lieu
@@ -1132,8 +1211,9 @@
        * comme normal. Elle a deja un rayon de collision — celui qui empeche
        * d'y entrer a pied — et le reutiliser evite d'en inventer un second
        * qui finirait par diverger du premier. */
-      var dx = t.x - f.x, dy = t.y - f.y;
-      if (dx * dx + dy * dy < f.collision * f.collision) {
+      var dx = t.x - f.x, dy = t.y - (f.y - COL_FONT.dy);
+      var tu = dx / COL_FONT.rx, tv = dy / COL_FONT.ry;
+      if (tu * tu + tv * tv < 1) {
         IMPACTS.push({ x: t.x, y: t.y, reste: DUREE_IMPACT });
         sonImpact();
         TIRS.splice(i, 1);
@@ -1324,32 +1404,33 @@
     if (SCENE === 'coffre') {
       joueur.x = Math.min(Math.max(joueur.x, SALLE.x0), SALLE.x1);
       joueur.y = Math.min(Math.max(joueur.y, SALLE.y0), SALLE.y1);
-      if (SALLE.grace > 0) SALLE.grace -= dt;
-      var sx = joueur.x - SALLE.sortie.x, sy = joueur.y - SALLE.sortie.y;
-      if (SALLE.grace <= 0 && sx * sx + sy * sy < SALLE.sortie.r * SALLE.sortie.r) {
-        sortCoffre(); return;
+      /* Le portail ne mord qu'apres qu'on s'en soit ecarte une fois : sans
+         ce verrou, apparaitre a portee suffirait a ressortir. */
+      var px = joueur.x - SALLE.portail.x, py = joueur.y - SALLE.portail.y;
+      var surPortail = px * px + py * py < SALLE.portail.r * SALLE.portail.r;
+      if (!surPortail) SALLE.portailArme = true;
+      else if (SALLE.portailArme) { sortCoffre(); return; }
+
+      /* Les coffres : on marche dessus, le menu s'ouvre. On ne le REFERME pas
+         en s'en allant — on vient peut-etre d'y changer une piece, le fermer
+         sous les doigts serait pire que de le laisser ouvert. */
+      var surCoffre = null;
+      for (var ci = 0; ci < SALLE.coffres.length; ci++) {
+        var cf = SALLE.coffres[ci];
+        var cdx = joueur.x - cf.x, cdy = joueur.y - cf.y;
+        if (cdx * cdx + cdy * cdy < cf.r * cf.r) { surCoffre = cf; break; }
       }
-      var pres = null, plusPres = 90 * 90;
-      OBJETS_SOL.forEach(function (t) {
-        var ddx = joueur.x - t.x, ddy = joueur.y - t.y, d2 = ddx * ddx + ddy * ddy;
-        if (d2 < plusPres) { plusPres = d2; pres = t; }
-      });
-      if (pres !== objetProche) {
-        objetProche = pres;
+      if (surCoffre && !coffreOuvert) ouvreCoffreMenu();
+
+      var quoi = surPortail ? 'portail' : (surCoffre ? 'coffre' : 'salle');
+      if (quoi !== indiceActuel) {
+        indiceActuel = quoi;
         if (indiceEl) {
-          if (pres) {
-            indiceEl.innerHTML = '<b>' + ech(pres.o.nom) + '</b> — ' +
-              (detailBonus(pres.o) || 'no bonus');
-            indiceEl.classList.add('on');
-          } else {
-            /* « Vide » et « pas encore recu » ne sont pas la meme chose : dire
-               le premier quand c'est le second envoie le joueur acheter des
-               coffres qu'il possede deja. */
-            indiceEl.innerHTML = OBJETS_SOL.length
-              ? 'Walk over an item to read it · walk back through the door to leave'
-              : (COFFRE ? 'Your vault is empty — buy chests at the shop' : 'Opening your vault…');
-            indiceEl.classList.add('on');
-          }
+          indiceEl.innerHTML = quoi === 'portail'
+            ? 'Step in to return to the <b>Nexus</b>'
+            : quoi === 'coffre' ? 'Your <b>vault</b> is open'
+            : 'Walk onto a chest to open your vault &middot; the portal takes you home';
+          indiceEl.classList.add('on');
         }
       }
       if (!saut.en_cours) avanceCadre(joueur, PERSO, dt);
@@ -1367,11 +1448,13 @@
 
     // la fontaine ne se traverse pas : on ressort le joueur au bord du cercle
     var f = LIEUX[0];
-    var fdx = joueur.x - f.x, fdy = joueur.y - f.y;
-    var fdist = Math.sqrt(fdx * fdx + fdy * fdy);
-    if (fdist < f.collision && fdist > 0.001) {
-      joueur.x = f.x + (fdx / fdist) * f.collision;
-      joueur.y = f.y + (fdy / fdist) * f.collision;
+    var fdx = joueur.x - f.x, fdy = joueur.y - (f.y - COL_FONT.dy);
+    var fu = fdx / COL_FONT.rx, fv = fdy / COL_FONT.ry;
+    var fdd = fu * fu + fv * fv;
+    if (fdd < 1 && fdd > 1e-6) {
+      var fk = 1 / Math.sqrt(fdd);       // de combien il faut s'ecarter
+      joueur.x = f.x + fdx * fk;
+      joueur.y = (f.y - COL_FONT.dy) + fdy * fk;
     }
 
     // le saut, en cadres, independamment du deplacement
@@ -1508,9 +1591,10 @@
        la salle EST une image. On sort tot, le Nexus ne la concerne pas. */
     if (SCENE === 'coffre') {
       if (SALLE.img.complete) ctx.drawImage(SALLE.img, 0, 0, SALLE.w, SALLE.h);
-      var pileC = OBJETS_SOL.map(function (t) {
-        return { y: t.y, dessine: function () { dessineObjetSol(t); } };
-      });
+      /* Un halo doux sous chaque coffre : le dessin de la piece en montre
+         cinq, mais rien n'y dit qu'on peut marcher dessus. */
+      SALLE.coffres.forEach(function (cf) { halo(cf.x, cf.y, cf.r, '#FFC53D', 0.18); });
+      var pileC = [{ y: SALLE.portail.y, dessine: dessinePortail }];
       pileC.push({ y: joueur.y, dessine: function () {
         var cadreC = joueur.anim === 'jump' ? saut.cadre : joueur.cadre;
         dessineAvatar(joueur.x, joueur.y, PERSO, joueur.dir, joueur.anim, cadreC);
@@ -1567,37 +1651,26 @@
   }
   var DERNIERE_CAM = { x: 0, y: 0, z: 1 };
 
-  /* Un objet pose au sol : un halo a sa couleur de rarete, puis l'icone de
-     la boutique. Le halo n'est pas un ornement — c'est le seul moyen de
-     distinguer un commun d'un mythique d'un coup d'oeil quand vingt objets
-     sont poses cote a cote. Celui sur lequel on marche s'eclaire. */
-  var TAILLE_OBJET = 72;
-  function dessineObjetSol(t) {
-    var vise = objetProche === t;
-    var c = t.o.couleur || '#8DA0C4';
+  /** Une tache lumineuse posee au sol : « ici, il se passe quelque chose »,
+      sans poser un second dessin par-dessus le decor. */
+  function halo(x, y, r, couleur, force) {
     ctx.save();
-    ctx.globalAlpha = vise ? 0.55 : 0.28;
-    ctx.fillStyle = c;
+    ctx.globalAlpha = force;
+    ctx.fillStyle = couleur;
     ctx.beginPath();
-    ctx.ellipse(t.x, t.y + 6, TAILLE_OBJET * 0.52, TAILLE_OBJET * 0.24, 0, 0, Math.PI * 2);
+    ctx.ellipse(x, y, r, r * 0.45, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
-    if (t.img.complete && t.img.naturalWidth) {
-      ctx.drawImage(t.img, t.x - TAILLE_OBJET / 2, t.y - TAILLE_OBJET,
-                    TAILLE_OBJET, TAILLE_OBJET);
-    }
-    /* La quantite, seulement au-dela d'un : « x1 » sur dix-neuf objets sur
-       vingt est du bruit qui cache le seul chiffre qu'on voulait lire. */
-    if (t.o.quantite > 1) {
-      ctx.save();
-      ctx.font = '700 20px system-ui, sans-serif';
-      ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
-      ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(0,0,0,.75)';
-      ctx.strokeText('x' + t.o.quantite, t.x, t.y + 24);
-      ctx.fillStyle = '#F2F6FF';
-      ctx.fillText('x' + t.o.quantite, t.x, t.y + 24);
-      ctx.restore();
-    }
+  }
+
+  /* Le portail du coffre : le MEME dessin que celui du Nexus, en plus petit.
+     Reutiliser l'image plutot que d'en inventer une seconde fait qu'un joueur
+     reconnait la sortie sans qu'on la lui explique. */
+  function dessinePortail() {
+    var p = SALLE.portail;
+    halo(p.x, p.y, p.r, '#8FD4FF', 0.24);
+    var img = LIEUX[1] && LIEUX[1].img;
+    if (img && img.complete) ctx.drawImage(img, p.x - p.larg / 2, p.y - p.haut, p.larg, p.haut);
   }
 
   function dessineAvatar(x, y, cle, dir, anim, cadre) {

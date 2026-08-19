@@ -74,11 +74,26 @@
       MON_ADRESSE = String(m.address || '').toLowerCase();
       envoie({ type: 'skins' });
       envoie({ type: 'nexusJoin' });
+      envoie({ type: 'profile' });
       enLigne = true;
     }
     if (m.type === 'skins' && m.actif && PERSONNAGES[m.actif] && m.actif !== PERSO) {
       PERSO = m.actif;
       assureCharge(PERSO);
+      /* Le skin porte change : sa fiche et son sac aussi. On les redemande
+         plutot que de garder ceux du precedent — les stats et l'equipement
+         appartiennent au PERSONNAGE, pas au joueur. */
+      envoie({ type: 'personnage', skin: PERSO });
+      envoie({ type: 'equipable' });
+      peintPanneau();
+    }
+    /* Notre nom vient du profil. On le demande une fois : le panneau
+       l'affiche en tete, comme la fiche d'origine. */
+    if (m.type === 'profile' && m.profile) { MON_NOM = m.profile.name || null; peintPanneau(); }
+    if (m.type === 'personnage' && m.etat && m.etat.skin === PERSO) { FICHE = m.etat; peintPanneau(); }
+    if (m.type === 'equipable') {
+      SAC = [].concat(m.fruits || [], m.armes || [], m.armures || [], m.bagues || []);
+      peintPanneau();
     }
     if (m.type === 'nexusEtat') majJoueursDistants(m.joueurs || []);
     /* Le solde suit n'importe quel message qui le porte — pas seulement
@@ -96,6 +111,134 @@
       : n >= 1000 ? (n / 1000).toFixed(1) + 'k' : n.toFixed(2);
     soldeEl.innerHTML = '<b>' + t + '</b><em>$SWOGE</em>';
     soldeEl.classList.add('on');
+  }
+
+  // ================== LE PANNEAU DU PERSONNAGE ==================
+
+  var MON_NOM = null;   // le pseudo du profil
+  var FICHE = null;     // la reponse `personnage` du skin porte
+  var SAC = [];         // tout ce qu'on possede d'equipable, toutes saisons
+
+  var elNom = document.getElementById('nxNom');
+  var elVignette = document.getElementById('nxVignette');
+  var elLvl = document.getElementById('nxLvl'), elLvlJauge = document.getElementById('nxLvlJauge');
+  var elXp = document.getElementById('nxXp');
+  var elHp = document.getElementById('nxHp'), elMp = document.getElementById('nxMp');
+  var elStats = document.getElementById('nxStats');
+  var elEquip = document.getElementById('nxEquip'), elSac = document.getElementById('nxSac');
+  var elGens = document.getElementById('nxGens');
+
+  /* Les six attributs de la grille. HP et MP n'y sont pas : ils ont leurs
+     barres au-dessus, et les repeter en chiffres ferait dire deux fois la
+     meme chose a deux endroits. L'ordre est celui de la fiche d'origine. */
+  var ATTRIBUTS = ['att', 'def', 'spd', 'dex', 'vit', 'wis'];
+  var NOM_ATTR = { att: 'ATT', def: 'DEF', spd: 'SPD', dex: 'DEX', vit: 'VIT', wis: 'WIS' };
+  /* Les quatre emplacements, dans l'ordre de l'image : arme, armure, fruit,
+     bague — ce que l'on tient, ce que l'on porte, puis les deux bijoux. */
+  var EMPLACEMENTS = ['equipArme', 'equipArmure', 'equipFruit', 'equipBague'];
+  var CASES_SAC = 8;
+
+  function ech(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
+    });
+  }
+  function court(a) { return a ? a.slice(0, 6) : '—'; }
+
+  /** La somme des bonus d'equipement qui visent UNE stat. La fiche rend deja
+      le total dans `stats`, mais pas le detail : sans ce calcul on ne pourrait
+      pas dire « 80 (+30) », seulement « 80 » — et un objet equipe ne se
+      verrait nulle part. */
+  function bonusPour(stat) {
+    if (!FICHE) return 0;
+    var t = 0;
+    EMPLACEMENTS.forEach(function (k) {
+      var e = FICHE[k];
+      if (e && e.stat === stat) t += (e.bonus || 0);
+    });
+    return t;
+  }
+
+  function peintPanneau() {
+    // ---- le nom et sa vignette
+    if (elNom) elNom.textContent = MON_NOM || court(MON_ADRESSE) || '—';
+    if (elVignette) {
+      elVignette.src = 'img/skins/skin_' + encodeURIComponent(PERSO) + '.webp';
+      elVignette.onerror = function () { elVignette.style.visibility = 'hidden'; };
+    }
+
+    // ---- les trois barres
+    if (FICHE) {
+      var plein = FICHE.xpProchain
+        ? Math.max(0, Math.min(100, Math.round(
+            (FICHE.xp - FICHE.xpNiveau) * 100 / (FICHE.xpProchain - FICHE.xpNiveau))))
+        : 100;
+      elLvl.textContent = 'Lvl ' + FICHE.niveau;
+      elLvlJauge.style.width = plein + '%';
+      elXp.textContent = FICHE.xpProchain ? plein + '%' : 'MAX';
+      /* Les barres de vie et de mana sont PLEINES, et c'est exact : rien ne
+         fait encore de degats dans le Nexus. Le jour ou un donjon en fera,
+         c'est la valeur courante qui viendra ici — la place est prete, on
+         n'invente pas un chiffre en attendant. */
+      elHp.textContent = FICHE.stats.hp;
+      elMp.textContent = FICHE.stats.mp;
+    } else {
+      elLvl.textContent = 'Lvl —'; elLvlJauge.style.width = '0%';
+      elXp.textContent = ''; elHp.textContent = ''; elMp.textContent = '';
+    }
+
+    // ---- les six attributs
+    elStats.innerHTML = ATTRIBUTS.map(function (k) {
+      if (!FICHE) return '<div class="nxp-st">' + NOM_ATTR[k] + ' - <b>—</b></div>';
+      var b = bonusPour(k);
+      return '<div class="nxp-st' + (b ? ' up' : '') + '">' + NOM_ATTR[k] +
+        ' - <b>' + FICHE.stats[k] + '</b>' + (b ? ' <u>(+' + b + ')</u>' : '') + '</div>';
+    }).join('');
+
+    // ---- les quatre cases d'equipement
+    elEquip.innerHTML = EMPLACEMENTS.map(function (k) {
+      var e = FICHE && FICHE[k];
+      if (!e) return '<div class="nxp-c vide"></div>';
+      return '<div class="nxp-c" title="' + ech(e.nom) + '">' +
+        '<img alt="" src="img/shop/' + encodeURIComponent(e.cle) + '.webp" ' +
+        'onerror="this.style.visibility=\'hidden\'">' +
+        '<b>+' + e.bonus + '</b></div>';
+    }).join('');
+
+    // ---- le sac : ce qu'on possede et qui n'est pas deja porte
+    var portes = {};
+    EMPLACEMENTS.forEach(function (k) { var e = FICHE && FICHE[k]; if (e) portes[e.item] = true; });
+    var libres = SAC.filter(function (o) { return !portes[o.id]; });
+    var cases = [];
+    for (var i = 0; i < CASES_SAC; i++) {
+      var o = libres[i];
+      cases.push(o
+        ? '<div class="nxp-c" title="' + ech(o.nom) + '">' +
+          '<img alt="" src="img/shop/' + encodeURIComponent(o.cle) + '.webp" ' +
+          'onerror="this.style.visibility=\'hidden\'">' +
+          '<b>+' + o.bonus + '</b></div>'
+        : '<div class="nxp-c vide"><u>' + (i + 1) + '</u></div>');
+    }
+    elSac.innerHTML = cases.join('');
+
+    peintGens();
+  }
+
+  /** Les joueurs a portee, en bas du panneau. Le nombre ne suffit pas : on
+      veut savoir QUI est la, c'est tout l'interet d'un lieu de rencontre. */
+  function peintGens() {
+    if (!elGens) return;
+    var l = Object.keys(DISTANTS).map(function (a) { return DISTANTS[a]; });
+    if (!l.length) {
+      elGens.innerHTML = '<i class="nxp-seul">Nobody else around.</i>';
+      return;
+    }
+    elGens.innerHTML = l.slice(0, 12).map(function (d) {
+      return '<div class="nxp-g" title="' + ech(d.nom || d.addr) + '">' +
+        '<img alt="" src="img/skins/skin_' + encodeURIComponent(d.skin) + '.webp" ' +
+        'onerror="this.style.visibility=\'hidden\'">' +
+        '<span>' + ech(d.nom || court(d.addr)) + '</span></div>';
+    }).join('');
   }
 
   // ------------------------------------------------------- les personnages
@@ -239,8 +382,8 @@
   // bond au lieu d'un mouvement continu. Une fiche absente du dernier
   // instantane est simplement supprimee : c'est ainsi qu'un depart se voit,
   // sans le moindre message dedie.
-  var DISTANTS = {};                 // { addr: {x,y,rx,ry,dir,anim,skin,cadre,chrono} }
-  var quiEl = document.getElementById('nxQui'), nbAffiche = -1;
+  var DISTANTS = {};                 // { addr: {x,y,rx,ry,dir,anim,skin,nom,cadre,chrono} }
+  var signatureGens = '';
   function majJoueursDistants(liste) {
     var vus = {};
     liste.forEach(function (j) {
@@ -248,19 +391,19 @@
       vus[j.addr] = true;
       var d = DISTANTS[j.addr];
       if (!d) d = DISTANTS[j.addr] = { x: j.x, y: j.y, rx: j.x, ry: j.y, cadre: 0, chrono: 0 };
-      d.x = j.x; d.y = j.y; d.dir = j.dir; d.anim = j.anim; d.skin = j.skin;
+      d.x = j.x; d.y = j.y; d.dir = j.dir; d.anim = j.anim; d.skin = j.skin; d.nom = j.nom;
       assureCharge(j.skin);
     });
     Object.keys(DISTANTS).forEach(function (a) { if (!vus[a]) delete DISTANTS[a]; });
 
-    var nb = Object.keys(DISTANTS).length;
-    if (nb !== nbAffiche && quiEl) {
-      nbAffiche = nb;
-      if (nb > 0) {
-        quiEl.textContent = '👥 ' + nb + (nb > 1 ? ' players nearby' : ' player nearby');
-        quiEl.classList.add('on');
-      } else quiEl.classList.remove('on');
-    }
+    /* On ne repeint la liste que si sa COMPOSITION a change. Un instantane
+       arrive sept fois par seconde ; refabriquer le HTML a chaque fois pour
+       les memes noms ferait clignoter la liste et travailler le navigateur
+       pour rien — la position, elle, se rejoue sur le canvas, pas ici. */
+    var sig = Object.keys(DISTANTS).sort().map(function (a) {
+      return a + ':' + DISTANTS[a].skin + ':' + (DISTANTS[a].nom || '');
+    }).join('|');
+    if (sig !== signatureGens) { signatureGens = sig; peintGens(); }
   }
 
   // ------------------------------------------------------- le bruit de pas
@@ -536,9 +679,29 @@
     return Math.min(Math.max(pos - vue / 2, 0), monde - vue);
   }
 
+  /* La largeur que le panneau prend sur la droite. On la LIT plutot que de la
+     recopier : elle est definie en CSS (`--nxp`) et change avec la taille de
+     l'ecran — deux chiffres a tenir d'accord finiraient par diverger, et le
+     personnage se retrouverait a moitie cache derriere le panneau sur une
+     seule des trois tailles. */
+  function largeurPanneau() {
+    var p = document.getElementById('nxPanneau');
+    if (!p) return 0;
+    var cs = getComputedStyle(p);
+    if (cs.display === 'none') return 0;
+    return p.getBoundingClientRect().width || 0;
+  }
+
   function dessine() {
     var vueW = canvas.width / DPR, vueH = canvas.height / DPR;
-    var camX = camAxe(joueur.x, vueW, MONDE.w);
+    /* On centre le joueur sur la partie VISIBLE, pas sur la fenetre : sinon
+       il marche sous le panneau, et on avance a l'aveugle vers la droite. */
+    var libre = Math.max(120, vueW - largeurPanneau());
+    /* `camAxe` cadre sur la largeur LIBRE : le joueur se retrouve donc au
+       milieu de ce qu'on voit. Le canvas, lui, continue de peindre toute la
+       fenetre — le surplus passe derriere le panneau, ce qui evite une bande
+       vide a sa gauche quand on longe le bord droit de la carte. */
+    var camX = camAxe(joueur.x, libre, MONDE.w);
     var camY = camAxe(joueur.y, vueH, MONDE.h);
 
     ctx.save();
@@ -597,6 +760,64 @@
     ctx.drawImage(img, rc.sx, rc.sy, CADRE, CADRE, x - disp / 2, y - disp + 20, disp, disp);
   }
 
+  // ------------------------------------------------------- la carte du lieu
+  //
+  // Le decor ne bouge JAMAIS : on le peint une fois pour toutes sur un canvas
+  // garde en memoire, et chaque trame ne recopie que ce fond plus les points
+  // qui, eux, se deplacent. Redessiner l'herbe soixante fois par seconde pour
+  // qu'elle ne change pas serait le plus gros travail du panneau, pour rien.
+
+  var mini = document.getElementById('nxMini');
+  var mctx = mini && mini.getContext('2d');
+  var MINI = 120;                       // cotes du canvas, en pixels
+  var fondMini = null;
+
+  function construitFondMini() {
+    var c = document.createElement('canvas');
+    c.width = MINI; c.height = MINI;
+    var g = c.getContext('2d');
+    /* La carte n'est pas carree (2560 x 1920) : on garde ses proportions et
+       on centre, plutot que de l'etirer — une carte deformee ne se
+       superpose plus a ce qu'on voit a l'ecran. */
+    var e = Math.min(MINI / MONDE.w, MINI / MONDE.h);
+    var ox = (MINI - MONDE.w * e) / 2, oy = (MINI - MONDE.h * e) / 2;
+    g.fillStyle = '#000'; g.fillRect(0, 0, MINI, MINI);
+    g.fillStyle = '#24401c'; g.fillRect(ox, oy, MONDE.w * e, MONDE.h * e);
+    // les chemins, echantillonnes a la tuile
+    g.fillStyle = '#8f8f88';
+    for (var r = 0; r < CARTE.rows; r++) {
+      for (var c2 = 0; c2 < CARTE.cols; c2++) {
+        var cx = c2 * TUILE + TUILE / 2, cy = r * TUILE + TUILE / 2;
+        if (estChemin(cx, cy)) g.fillRect(ox + c2 * TUILE * e, oy + r * TUILE * e,
+                                          Math.ceil(TUILE * e), Math.ceil(TUILE * e));
+      }
+    }
+    // les lieux, chacun de sa couleur
+    var TEINTE = { fontaine: '#3fa9f5', portail: '#c04ce0', etal: '#e0a33c', coffre: '#d8d8d8' };
+    LIEUX.forEach(function (l) {
+      g.fillStyle = TEINTE[l.cle] || '#fff';
+      var w = Math.max(3, l.larg * e * 0.6), h = Math.max(3, l.haut * e * 0.6);
+      g.fillRect(ox + l.x * e - w / 2, oy + l.y * e - h, w, h);
+    });
+    fondMini = { c: c, e: e, ox: ox, oy: oy };
+  }
+
+  function peintMini() {
+    if (!mctx) return;
+    if (!fondMini) construitFondMini();
+    mctx.clearRect(0, 0, MINI, MINI);
+    mctx.drawImage(fondMini.c, 0, 0);
+    var e = fondMini.e, ox = fondMini.ox, oy = fondMini.oy;
+    // les autres, en vert ; nous, en blanc et un cran plus gros
+    mctx.fillStyle = '#63d13f';
+    Object.keys(DISTANTS).forEach(function (a) {
+      var d = DISTANTS[a];
+      mctx.fillRect(ox + d.rx * e - 1.5, oy + d.ry * e - 1.5, 3, 3);
+    });
+    mctx.fillStyle = '#fff';
+    mctx.fillRect(ox + joueur.x * e - 2, oy + joueur.y * e - 2, 4, 4);
+  }
+
   // ------------------------------------------------------- le cadrage
 
   var DPR = Math.min(window.devicePixelRatio || 1, 2);
@@ -616,7 +837,9 @@
     dernier = t;
     maj(dt);
     dessine();
+    peintMini();
     requestAnimationFrame(boucle);
   }
   requestAnimationFrame(boucle);
+  peintPanneau();       // le panneau existe des la premiere image, meme vide
 })();

@@ -5059,6 +5059,15 @@
    * fichier est sonde en parallele et ne prend la main qu'une fois qu'il a
    * declare pouvoir jouer — donc au clic suivant, jamais a celui-ci.
    */
+  /* ---- L'OUVERTURE DE COFFRE, PRETEE AU NEXUS ----
+   *
+   * La boutique du Nexus achete les memes caisses par les memes messages ;
+   * elle doit donc montrer la meme chose. Recopier la scene la-bas en ferait
+   * une seconde version de l'unique moment du site qui produit une emotion —
+   * et deux versions divergent. On l'expose, comme le formulaire de
+   * connexion. */
+  window.swogeCoffre = { ouvre: function (cle) { joueCoffre(cle); sceneOuvre(cle); } };
+
   function joueCoffre(cle) {
     var vol = sonVolume();
     if (!vol) return;                       // le joueur a coupe le son

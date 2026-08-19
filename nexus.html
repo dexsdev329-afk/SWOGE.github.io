@@ -25,7 +25,7 @@ canvas{ touch-action:none; }
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-<script src="stakebubble.js?v=20260819e"></script>
+<script src="stakebubble.js?v=20260819k"></script>
 
 <style>
 html,body{ height:100%; margin:0; background:#0A1128; overscroll-behavior:none; }
@@ -242,23 +242,75 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
 #nxWrap.replie #nxIndice{ left:50%; }
 
 /* ---- la feuille des reglages ---- */
+/* ---- l'ecran de fin ---- */
+#nxMortVoile{ position:fixed; inset:0; z-index:200; background:rgba(6,3,5,.88);
+  display:flex; align-items:center; justify-content:center; padding:16px;
+  opacity:0; pointer-events:none; transition:opacity .35s; }
+#nxMortVoile.on{ opacity:1; pointer-events:auto; }
+.nxmt-carte{ width:100%; max-width:520px; max-height:88vh; overflow-y:auto;
+  background:#16101a; border:1px solid #3a2230; border-radius:18px;
+  padding:22px 18px 18px; text-align:center;
+  box-shadow:0 30px 80px rgba(0,0,0,.7);
+  transform:translateY(14px) scale(.98); transition:transform .35s; }
+#nxMortVoile.on .nxmt-carte{ transform:none; }
+.nxmt-titre{ display:block; font-size:30px; font-weight:900; letter-spacing:.04em;
+  color:#F2685E; text-transform:uppercase; }
+.nxmt-par{ font-size:12.5px; color:#9A8894; margin:6px 0 16px; }
+/* Les chiffres d'abord, gros : c'est ce qu'on vient chercher en mourant. */
+.nxmt-chiffres{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:14px; }
+.nxmt-chiffres > div{ padding:11px 6px; border-radius:12px;
+  background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); }
+.nxmt-chiffres i{ display:block; font-style:normal; font-size:9.5px; font-weight:800;
+  letter-spacing:.06em; text-transform:uppercase; color:#8A7A86; margin-bottom:4px; }
+.nxmt-chiffres b{ font-size:19px; font-weight:900; color:#F2F6FF; }
+.nxmt-chiffres .nxmt-or, .nxmt-chiffres .nxmt-ort{ color:#FFC53D; }
+.nxmt-perdu{ font-size:11.5px; line-height:1.6; color:#C9B8C4; text-align:left;
+  padding:11px 13px; border-radius:12px; background:rgba(242,104,94,.07);
+  border:1px solid rgba(242,104,94,.22); margin-bottom:10px; }
+.nxmt-perdu b{ color:#F5938B; }
+.nxmt-garde{ font-size:11px; line-height:1.55; color:#7BA88C; margin-bottom:16px; }
+.nxmt-skins{ display:flex; flex-wrap:wrap; gap:7px; justify-content:center; margin-bottom:14px; }
+.nxmt-skins button{ display:flex; flex-direction:column; align-items:center; gap:3px;
+  width:74px; padding:8px 4px; border-radius:12px; font:inherit; font-size:10.5px;
+  font-weight:700; cursor:pointer; color:#c9d3f2;
+  border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.035); }
+.nxmt-skins button.on{ border-color:rgba(255,197,61,.6); background:rgba(255,197,61,.12); color:#FFD97A; }
+.nxmt-skins img{ width:44px; height:44px; object-fit:contain; }
+.nxmt-go{ width:100%; padding:13px; border-radius:13px; border:0; font:inherit;
+  font-size:14px; font-weight:900; cursor:pointer; color:#2A1005;
+  background:linear-gradient(180deg,#FFD97A,#FFC53D); }
+.nxmt-go:hover{ filter:brightness(1.08); }
 /* ---- la boutique ---- */
 #nxShopVoile{ position:fixed; inset:0; z-index:96; background:rgba(4,7,13,.72);
   display:flex; align-items:center; justify-content:center; padding:16px;
   opacity:0; pointer-events:none; transition:opacity .18s; }
 #nxShopVoile.on{ opacity:1; pointer-events:auto; }
 #nxShopVoile.on .nxcf-carte{ transform:none; }
-.nxsh-carte{ max-width:620px; }
+/* Plus large : les caisses portent une image, un nom et cinq pourcentages,
+   et a 620 px le tout se tassait. */
+.nxsh-carte{ max-width:760px; padding:20px 18px 18px; }
 .nxsh-solde{ font-size:12px; color:#8DA0C4; margin:4px 0 10px; }
 .nxsh-solde b{ color:#FFC53D; }
 /* Les saisons : une barre qui defile plutot qu'une grille. Quatre tiennent
    aujourd'hui, il y en aura d'autres, et une grille qui se replie casse la
-   lecture des que la cinquieme arrive. */
-.nxsh-ong{ display:flex; gap:6px; overflow-x:auto; padding-bottom:8px;
-  border-bottom:1px solid rgba(255,255,255,.08); margin-bottom:10px; }
-.nxsh-ong button{ flex:0 0 auto; padding:7px 11px; border-radius:9px; font:inherit;
-  font-size:11.5px; font-weight:700; cursor:pointer; white-space:nowrap;
+   lecture des que la cinquieme arrive.
+   Les FLECHES remplacent la barre de defilement : une barre est laide, et sur
+   telephone elle n'existe meme pas — on ne devine pas qu'il y a quelque chose
+   a droite. Elles disparaissent quand tout tient a l'ecran. */
+.nxsh-barre{ display:flex; align-items:center; gap:4px; padding-bottom:9px;
+  border-bottom:1px solid rgba(255,255,255,.08); margin-bottom:12px; }
+.nxsh-fg, .nxsh-fd{ flex:0 0 auto; width:26px; height:30px; border-radius:8px;
+  border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.05);
+  color:#c9d3f2; font:inherit; font-size:16px; line-height:1; cursor:pointer; }
+.nxsh-fg:hover, .nxsh-fd:hover{ background:rgba(255,255,255,.12); }
+.nxsh-fg.off, .nxsh-fd.off{ opacity:.25; pointer-events:none; }
+.nxsh-ong{ flex:1; min-width:0; display:flex; gap:6px; overflow-x:auto;
+  scroll-behavior:smooth; scrollbar-width:none; -ms-overflow-style:none; }
+.nxsh-ong::-webkit-scrollbar{ display:none; }
+.nxsh-ong button{ flex:0 0 auto; padding:8px 13px; border-radius:10px; font:inherit;
+  font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap;
   border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.04); color:#c9d3f2; }
+.nxsh-ong button b{ color:#FFC53D; margin-right:3px; }
 .nxsh-ong button.on{ border-color:rgba(255,197,61,.55); background:rgba(255,197,61,.12); color:#FFD97A; }
 .nxsh-msg:not(:empty){ margin-bottom:10px; padding:9px 11px; border-radius:10px;
   font-size:11.5px; line-height:1.5; background:rgba(255,197,61,.09);
@@ -269,10 +321,10 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
   border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.035); color:#F2F6FF; }
 .nxsh-cof:hover:not(:disabled){ background:rgba(255,255,255,.08); }
 .nxsh-cof:disabled{ opacity:.45; cursor:not-allowed; }
-.nxsh-cof img{ width:42px; height:42px; object-fit:contain; flex:0 0 auto; }
-.nxsh-cof .n{ display:block; font-size:12.5px; font-weight:800; }
-.nxsh-cof .o{ display:block; font-size:10px; color:#8DA0C4; margin-top:2px; line-height:1.5; }
-.nxsh-cof .p{ flex:0 0 auto; font-size:12px; font-weight:800; color:#FFC53D; }
+.nxsh-cof img{ width:56px; height:56px; object-fit:contain; flex:0 0 auto; }
+.nxsh-cof .n{ display:block; font-size:14px; font-weight:800; }
+.nxsh-cof .o{ display:block; font-size:10.5px; color:#8DA0C4; margin-top:3px; line-height:1.6; }
+.nxsh-cof .p{ flex:0 0 auto; font-size:13px; font-weight:800; color:#FFC53D; }
 .nxsh-cof span:nth-child(2){ flex:1; min-width:0; }
 /* ---- le coffre ---- */
 /* ---- LE COFFRE N'EATEINT PAS LE PANNEAU ----
@@ -485,12 +537,37 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
 <!-- ---- LA BOUTIQUE, DANS LE JEU ----
      L'etal renvoyait sur games.html : on quittait la partie pour acheter un
      coffre, et on revenait par le menu. Il ouvre desormais un panneau ici. -->
+<!-- ---- L'ECRAN DE FIN ----
+     Mourir est definitif : on perd son equipement, son sac, son niveau. Un
+     jeu qui te renvoie au menu sans rien dire te fait croire a un bug. On
+     montre donc ce qu'on a gagne, ce qu'on a perdu, et ce qui reste. -->
+<div id="nxMortVoile">
+  <div class="nxmt-carte">
+    <b class="nxmt-titre">You died</b>
+    <div class="nxmt-par"></div>
+    <div class="nxmt-chiffres">
+      <div><i>Experience</i><b class="nxmt-xp">—</b></div>
+      <div><i>Gold earned</i><b class="nxmt-or">—</b></div>
+      <div><i>Total gold</i><b class="nxmt-ort">—</b></div>
+    </div>
+    <div class="nxmt-perdu"></div>
+    <div class="nxmt-garde">Your characters are safe, and so is everything you
+      stored in the vault. Only what you carried is gone.</div>
+    <div class="nxmt-skins"></div>
+    <button class="nxmt-go" type="button">Play again</button>
+  </div>
+</div>
+
 <div id="nxShopVoile">
   <div class="nxcf-carte nxsh-carte">
     <button class="nxcf-x" type="button" aria-label="Close">&times;</button>
     <b class="nxcf-titre">&#128722; The shop</b>
     <div class="nxsh-solde">Balance <b>—</b></div>
-    <div class="nxsh-ong"></div>
+    <div class="nxsh-barre">
+      <button class="nxsh-fg" type="button" aria-label="Previous seasons">&#8249;</button>
+      <div class="nxsh-ong"></div>
+      <button class="nxsh-fd" type="button" aria-label="Next seasons">&#8250;</button>
+    </div>
     <div class="nxsh-msg"></div>
     <div class="nxsh-corps"></div>
   </div>
@@ -532,7 +609,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
   </div>
 </div>
 
-<script src="nexus.js?v=20260819j" defer></script>
+<script src="nexus.js?v=20260819k" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

@@ -151,6 +151,8 @@
       } else shopMsg = '';
       if (shopOuvert) peintShop();
     }
+    /* La mort arrive du SERVEUR : c'est lui qui l'a constatee, jamais nous. */
+    if (m.type === 'realmMort') { joueSample('mort2', { vol: 0.9 }); montreMort(m); }
     if (m.type === 'nexusEtat') majJoueursDistants(m.joueurs || []);
     /* Le solde suit n'importe quel message qui le porte — pas seulement
        `auth` — exactement comme `poseSolde` le fait pour le reste du site :
@@ -760,6 +762,100 @@
 
   function scene() { return SCENE === 'coffre' ? SALLE : { w: MONDE.w, h: MONDE.h }; }
 
+  /* ================== L'ECRAN DE FIN ==================
+   *
+   * Mourir est definitif : l'equipement porte est detruit, le sac part, le
+   * niveau retombe a zero. Renvoyer le joueur au Nexus sans un mot lui ferait
+   * croire a une panne — il verrait ses stats changer sans explication.
+   *
+   * On montre donc les trois choses qu'il vient chercher : ce qu'il a gagne
+   * (l'experience et l'or), ce qu'il a perdu (nommement), et ce qui reste.
+   * Le troisieme point compte autant que les deux autres : perdre son
+   * equipement et croire qu'on a perdu ses personnages, ce n'est pas la meme
+   * partie.
+   *
+   * L'or, c'est la FAME du serveur. Le mot « fame » ne dit rien a qui n'a
+   * jamais joue a RotMG ; « gold » se lit tout seul. Le champ garde son nom
+   * cote serveur — renommer un protocole pour une etiquette serait payer
+   * cher une question de vocabulaire.
+   */
+  var elMortVoile = document.getElementById('nxMortVoile');
+  var skinChoisi = null;
+
+  function nbCourt(v) {
+    var n = Number(v) || 0;
+    return n >= 1e6 ? (n / 1e6).toFixed(2) + 'M'
+         : n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(Math.round(n));
+  }
+
+  function montreMort(m) {
+    if (!elMortVoile) return;
+    var q = function (c) { return elMortVoile.querySelector(c); };
+    q('.nxmt-par').textContent = m.par
+      ? 'Killed by a ' + String(m.par).replace(/^./, function (c) { return c.toUpperCase(); })
+      : 'Your run is over.';
+    q('.nxmt-xp').textContent = nbCourt(m.xp);
+    q('.nxmt-or').textContent = '+' + nbCourt(m.fameGagnee);
+    q('.nxmt-ort').textContent = nbCourt(m.fameTotale);
+
+    /* Ce qu'on a perdu, NOMMEMENT. « Vous avez perdu votre equipement » ne
+       dit pas si la piece mythique y etait ; la liste, si. */
+    var bouts = [];
+    if (m.perdus && m.perdus.length) {
+      bouts.push('Destroyed: <b>' + m.perdus.map(function (o) {
+        return ech(o.nom || 'an item'); }).join('</b>, <b>') + '</b>');
+    }
+    if (m.sacPerdu) {
+      bouts.push('Backpack: <b>' + m.sacPerdu + ' item' + (m.sacPerdu > 1 ? 's' : '') + '</b> lost');
+    }
+    q('.nxmt-perdu').innerHTML = bouts.length ? bouts.join('<br>')
+      : 'You were carrying nothing. Nothing was lost.';
+
+
+    /* Choisir avec QUI repartir. Les skins survivent toujours — c'est ce qui
+       permet de relancer tout de suite au lieu de racheter un personnage. */
+    var dispo = (m.skins && m.skins.length) ? m.skins : (PERSO ? [PERSO] : []);
+    skinChoisi = dispo.indexOf(PERSO) >= 0 ? PERSO : dispo[0] || null;
+    q('.nxmt-skins').innerHTML = dispo.map(function (id) {
+      return '<button type="button" data-skin="' + ech(id) + '"' +
+        (id === skinChoisi ? ' class="on"' : '') + '>' +
+        '<img alt="" src="img/skins/skin_' + encodeURIComponent(id) + '.webp"' +
+        ' onerror="this.style.visibility=\'hidden\'">' + ech(id) + '</button>';
+    }).join('');
+    Array.prototype.forEach.call(q('.nxmt-skins').querySelectorAll('button'), function (b) {
+      b.addEventListener('click', function () {
+        skinChoisi = b.getAttribute('data-skin');
+        Array.prototype.forEach.call(q('.nxmt-skins').querySelectorAll('button'), function (x) {
+          x.classList.toggle('on', x === b);
+        });
+        clic(false);
+      });
+    });
+    elMortVoile.classList.add('on');
+
+    /* Le sac du panneau se vide TOUT DE SUITE. Le serveur vient de nous dire
+       qu'il est perdu ; attendre le message d'inventaire pour le croire
+       laisserait le joueur voir son butin intact derriere l'ecran qui lui
+       annonce qu'il l'a perdu.
+       APRES avoir montre l'ecran, jamais avant : une erreur dans le repeint
+       du panneau ne doit pas empecher le bilan de s'afficher. C'est ce qui
+       s'est passe a mon premier essai — l'ecran restait a moitie construit,
+       sans la liste des personnages. */
+    SAC = [];
+    try { peintPanneau(); } catch (e) {}
+  }
+
+  if (elMortVoile) {
+    elMortVoile.querySelector('.nxmt-go').addEventListener('click', function () {
+      clic(true);
+      /* On change de personnage AVANT de repartir : le serveur repondra
+         `skins`, qui redemande la fiche et l'inventaire. Rien a recharger. */
+      if (skinChoisi && skinChoisi !== PERSO) envoie({ type: 'skinChoisi', id: skinChoisi });
+      else { envoie({ type: 'skins' }); envoie({ type: 'equipable' }); }
+      elMortVoile.classList.remove('on');
+    });
+  }
+
   /* ================== LA BOUTIQUE, DANS LE JEU ==================
    *
    * L'etal renvoyait sur games.html : pour acheter un coffre il fallait
@@ -798,6 +894,33 @@
     });
   }
 
+  /* Les fleches remplacent la barre de defilement : une barre est laide, et
+     sur telephone elle n'existe meme pas — on ne devine pas qu'il y a
+     quelque chose a droite. Elles s'effacent quand tout tient a l'ecran. */
+  function majFleches() {
+    if (!elShopOng) return;
+    var g = elShopVoile.querySelector('.nxsh-fg'), d = elShopVoile.querySelector('.nxsh-fd');
+    if (!g || !d) return;
+    var deborde = elShopOng.scrollWidth > elShopOng.clientWidth + 2;
+    g.style.display = deborde ? '' : 'none';
+    d.style.display = deborde ? '' : 'none';
+    g.classList.toggle('off', elShopOng.scrollLeft <= 2);
+    d.classList.toggle('off',
+      elShopOng.scrollLeft >= elShopOng.scrollWidth - elShopOng.clientWidth - 2);
+  }
+  if (elShopOng) elShopOng.addEventListener('scroll', majFleches);
+  if (elShopVoile) {
+    ['fg', 'fd'].forEach(function (c) {
+      var b = elShopVoile.querySelector('.nxsh-' + c);
+      if (!b) return;
+      b.addEventListener('click', function () {
+        elShopOng.scrollBy({ left: (c === 'fg' ? -1 : 1) * elShopOng.clientWidth * 0.7,
+                             behavior: 'smooth' });
+        clic(false);
+      });
+    });
+  }
+
   function peintShop() {
     if (!elShopCorps) return;
     if (elShopSolde) elShopSolde.textContent = SOLDE_TEXTE || '—';
@@ -809,10 +932,17 @@
 
     // ---- les saisons
     if (elShopOng) {
+      /* « Season 2 — Weapons » sur quatre onglets deborde de tous les
+         telephones. Le numero et le SUJET suffisent : on sait ce qu'on
+         ouvre, et les quatre tiennent enfin cote a cote. */
+      var SUJET = { fruit: 'Fruits', weapon: 'Weapons', armor: 'Armor', ring: 'Rings' };
       elShopOng.innerHTML = (BOUTIQUE.saisons || []).map(function (s) {
+        var court = SUJET[s.sujet] || String(s.nom).split('—').pop().trim();
         return '<button type="button" data-s="' + s.n + '"' +
-               (s.n === shopSaison ? ' class="on"' : '') + '>' + ech(s.nom) + '</button>';
+               (s.n === shopSaison ? ' class="on"' : '') +
+               '><b>S' + s.n + '</b> ' + ech(court) + '</button>';
       }).join('');
+      majFleches();
       Array.prototype.forEach.call(elShopOng.querySelectorAll('button'), function (b) {
         b.addEventListener('click', function () {
           shopSaison = Number(b.getAttribute('data-s'));
@@ -835,7 +965,8 @@
          celui des coffres a fruits tant que le leur n'existe pas, et c'est le
          serveur qui le decide — comme dans le panneau du hall. */
       var dessin = c.image || c.cle;
-      return '<button type="button" class="nxsh-cof" data-cle="' + ech(c.cle) + '"' +
+      return '<button type="button" class="nxsh-cof" data-cle="' + ech(c.cle) +
+        '" data-dessin="' + ech(dessin) + '"' +
         (solde >= c.prix ? '' : ' disabled') + '>' +
         '<img alt="" src="img/shop/coffre_' + encodeURIComponent(dessin) + '.webp" onerror="this.remove()">' +
         '<span><span class="n">' + ech(c.nom) + '</span><span class="o">' +
@@ -852,6 +983,17 @@
         b.disabled = true;
         shopMsg = { texte: 'Opening…', ok: false };
         peintShop();
+        /* L'animation part au CLIC, pas a la reponse du serveur. Attendre
+           l'aller-retour ferait un decalage de plusieurs dixiemes entre le
+           doigt et le coffre qui s'ouvre, et c'est precisement ce qui fait
+           qu'une interface parait molle. C'est la scene de stakebubble.js,
+           pas une copie : le meme achat doit montrer la meme chose ici et
+           dans le hall. */
+        try {
+          if (window.swogeCoffre && window.swogeCoffre.ouvre) {
+            window.swogeCoffre.ouvre(b.getAttribute('data-dessin') || b.getAttribute('data-cle'));
+          }
+        } catch (e) {}
         envoie({ type: 'shopOpen', chest: b.getAttribute('data-cle'), season: shopSaison });
       });
     });

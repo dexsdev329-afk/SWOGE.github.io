@@ -127,6 +127,11 @@
       COFFRE = { fruits: m.fruits || [], armes: m.armes || [],
                  armures: m.armures || [], bagues: m.bagues || [] };
       coffreErreur = m.error || '';
+      POTIONS_C = m.potions || POTIONS_C;
+      if (m.balance != null && BOUTIQUE) BOUTIQUE.balance = m.balance;
+      if (m.achat) shopMsg = { texte: '\u2728 ' + m.achat.livre + ' potion' +
+        (m.achat.livre > 1 ? 's' : '') + ' \u2014 ' + m.achat.prix + ' $SWOGE', ok: true };
+      if (shopOuvert) peintShop();
       if (coffreOuvert) peintCoffreMenu();
       peintPanneau();
     }
@@ -150,6 +155,13 @@
         if (enLigne) envoie({ type: 'equipable' });
       } else shopMsg = '';
       if (shopOuvert) peintShop();
+    }
+    if (m.type === 'potionBue') {
+      POTIONS_C = m.potions || POTIONS_C;
+      if (m.pv !== null && m.pv !== undefined) { VIE.pv = m.pv; moiMonde.pv = m.pv; }
+      joueSample('clic2', { vol: 0.55, hauteur: 1.3 });
+      flotte('+' + m.soigne + ' ' + (m.quoi === 'hp' ? 'HP' : 'MP'));
+      peintPanneau();
     }
     if (m.type === 'realmEntre') entreMonde(m);
     if (m.type === 'realmRefus') {
@@ -234,6 +246,8 @@
   var elNom = document.getElementById('nxNom');
   var elOr = document.getElementById('nxOr');
   var elRepli = document.getElementById('nxRepli');
+  var elPotions = document.getElementById('nxPotions');
+  var POTIONS_C = [];
   var elHpJauge = document.getElementById('nxHpJauge');
   var elMpJauge = document.getElementById('nxMpJauge');
   if (elRepli) elRepli.addEventListener('click', function () { clic(true); retourNexus('bouton'); });
@@ -589,6 +603,31 @@
         : '<div class="nxp-c vide"><u>' + (i + 1) + '</u></div>');
     }
     elSac.innerHTML = cases.join('');
+
+    /* ---- LES POTIONS ----
+       Deux places qui s'empilent, sous le sac. On les BOIT en tapant dessus,
+       et seulement dans le monde : ailleurs la potion serait consommee sans
+       rien soigner, et le serveur refuse — autant griser le bouton plutot
+       que de laisser le joueur decouvrir le refus. */
+    if (elPotions) {
+      elPotions.innerHTML = (POTIONS_C || []).map(function (p) {
+        var vide = !p.quantite;
+        return '<button type="button" data-pot="' + ech(p.cle) + '"' +
+          (vide || SCENE !== 'monde' ? ' disabled' : '') +
+          ' title="' + ech(p.nom + ' — restores ' + p.soigne + ' ' +
+            (p.quoi === 'hp' ? 'HP' : 'MP') +
+            (SCENE === 'monde' ? '' : ' (only out in the wild)')) + '">' +
+          '<img alt="" src="img/nexus/objets/' + encodeURIComponent(p.image) +
+          '.webp" onerror="this.remove()"><b>' + p.quantite + '</b></button>';
+      }).join('');
+      Array.prototype.forEach.call(elPotions.querySelectorAll('button'), function (b) {
+        b.addEventListener('click', function () {
+          if (b.disabled) return;
+          clic(true);
+          envoie({ type: 'potionBoit', cle: b.getAttribute('data-pot') });
+        });
+      });
+    }
 
     peintGens();
   }
@@ -1095,7 +1134,7 @@
    * Un second calcul de prix ici serait une seconde verite sur ce qu'on
    * paie, et c'est exactement ce qu'il ne faut pas dupliquer.
    */
-  var BOUTIQUE = null, shopSaison = 2, shopOuvert = false, shopMsg = '';
+  var BOUTIQUE = null, shopSaison = 2, shopOuvert = false, shopMsg = '', shopLot = 1;
   var elShopVoile = document.getElementById('nxShopVoile');
   var elShopOng = elShopVoile ? elShopVoile.querySelector('.nxsh-ong') : null;
   var elShopCorps = elShopVoile ? elShopVoile.querySelector('.nxsh-corps') : null;
@@ -1168,15 +1207,62 @@
         return '<button type="button" data-s="' + s.n + '"' +
                (s.n === shopSaison ? ' class="on"' : '') +
                '><b>S' + s.n + '</b> ' + ech(court) + '</button>';
-      }).join('');
+      }).join('') +
+      /* Les potions ne sont pas une saison : pas de tirage, pas de plafond,
+         prix fixe. Elles ont donc leur onglet a part, apres les quatre —
+         les glisser dans la liste des saisons aurait fait croire a une
+         cinquieme collection. */
+      '<button type="button" data-s="pot"' + (shopSaison === 'pot' ? ' class="on"' : '') +
+      '>&#129514; Potions</button>';
       majFleches();
       Array.prototype.forEach.call(elShopOng.querySelectorAll('button'), function (b) {
         b.addEventListener('click', function () {
-          shopSaison = Number(b.getAttribute('data-s'));
+          var v = b.getAttribute('data-s');
+          shopSaison = v === 'pot' ? 'pot' : Number(v);
           shopMsg = '';
-          if (enLigne) envoie({ type: 'shop', season: shopSaison });
+          clic(false);
+          if (shopSaison === 'pot') peintShop();
+          else if (enLigne) envoie({ type: 'shop', season: shopSaison });
         });
       });
+    }
+
+    // ---- le rayon des potions
+    if (shopSaison === 'pot') {
+      var soldeP = Number(BOUTIQUE.balance || 0);
+      elShopCorps.innerHTML = (POTIONS_C || []).map(function (p) {
+        var reste = p.max - p.quantite;
+        return '<button type="button" class="nxsh-cof" data-pot="' + ech(p.cle) + '"' +
+          (soldeP >= p.prix && reste > 0 ? '' : ' disabled') + '>' +
+          '<img alt="" src="img/nexus/objets/' + encodeURIComponent(p.image) +
+          '.webp" onerror="this.remove()">' +
+          '<span><span class="n">' + ech(p.nom) + '</span><span class="o">Restores <b>' +
+          p.soigne + '</b> ' + (p.quoi === 'hp' ? 'HP' : 'MP') +
+          ' &middot; you carry <b>' + p.quantite + '</b> of ' + p.max +
+          '</span></span><span class="p">' + p.prix + ' $SWOGE</span></button>';
+      }).join('') +
+      /* Dix par dix : personne n'achete des potions une par une, et taper
+         dix fois le meme bouton n'a jamais amuse personne. */
+      '<div class="nxsh-lots">' + [1, 10, 25].map(function (q) {
+        return '<button type="button" data-lot="' + q + '">Buy x' + q + '</button>';
+      }).join('') + '</div>';
+
+      var lot = shopLot || 1;
+      Array.prototype.forEach.call(elShopCorps.querySelectorAll('[data-lot]'), function (b) {
+        b.classList.toggle('on', Number(b.getAttribute('data-lot')) === lot);
+        b.addEventListener('click', function () {
+          shopLot = Number(b.getAttribute('data-lot'));
+          clic(false); peintShop();
+        });
+      });
+      Array.prototype.forEach.call(elShopCorps.querySelectorAll('[data-pot]'), function (b) {
+        b.addEventListener('click', function () {
+          if (b.disabled) return;
+          clic(true);
+          envoie({ type: 'potionAchat', cle: b.getAttribute('data-pot'), qte: shopLot || 1 });
+        });
+      });
+      return;
     }
 
     // ---- les caisses

@@ -160,6 +160,18 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
   overflow:hidden; flex:0 0 auto; }
 /* La jauge glisse au lieu de sauter : un coup encaisse doit SE VOIR partir,
    sinon le nombre change et l'oeil ne l'attrape pas. */
+/* ---- LES DEUX PLACES A POTIONS ----
+   Sous le sac, et visiblement A PART : elles s'empilent jusqu'a 99 alors
+   qu'une place de sac porte un objet et un seul. Les melanger ferait croire
+   que le sac empile aussi. */
+.nxp-pot{ display:grid; grid-template-columns:1fr 1fr; gap:4px; margin-top:4px; }
+.nxp-pot button{ position:relative; display:flex; align-items:center; justify-content:center;
+  gap:4px; height:34px; border-radius:6px; font:inherit; cursor:pointer;
+  border:1px solid #1c1c1c; background:#2a2a2a; color:#e6e6e6; }
+.nxp-pot button:hover:not(:disabled){ background:#353535; }
+.nxp-pot button:disabled{ opacity:.4; cursor:default; }
+.nxp-pot img{ width:22px; height:22px; object-fit:contain; }
+.nxp-pot b{ font-size:12px; font-weight:800; }
 .nxp-b i{ position:absolute; inset:0 auto 0 0; display:block;
   transition:width .18s ease-out; }
 .nxp-b span{ position:relative; z-index:1; display:block; padding:0 5px;
@@ -356,6 +368,13 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
 .nxsh-cof .o{ display:block; font-size:10.5px; color:#8DA0C4; margin-top:3px; line-height:1.6; }
 .nxsh-cof .p{ flex:0 0 auto; font-size:13px; font-weight:800; color:#FFC53D; }
 .nxsh-cof span:nth-child(2){ flex:1; min-width:0; }
+.nxsh-cof .o b{ color:#F2F6FF; }
+/* Le lot d'achat : personne n'achete des potions une par une. */
+.nxsh-lots{ display:flex; gap:6px; margin-top:10px; justify-content:center; }
+.nxsh-lots button{ padding:8px 14px; border-radius:9px; font:inherit; font-size:12px;
+  font-weight:700; cursor:pointer; color:#c9d3f2;
+  border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.04); }
+.nxsh-lots button.on{ border-color:rgba(255,197,61,.55); background:rgba(255,197,61,.12); color:#FFD97A; }
 /* ---- le coffre ---- */
 /* ---- LE COFFRE N'EATEINT PAS LE PANNEAU ----
  * Le voile couvrait TOUT l'ecran, panneau compris : on ouvrait son coffre et
@@ -570,6 +589,8 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
     <div class="nxp-stats" id="nxStats"></div>
     <div class="nxp-cases" id="nxEquip"></div>
     <div class="nxp-cases" id="nxSac"></div>
+    <!-- Les potions ont leurs propres places : elles s'empilent, le sac non. -->
+    <div class="nxp-pot" id="nxPotions"></div>
     <div class="nxp-gens" id="nxGens"></div>
   </aside>
   <div id="nxPad" aria-hidden="true">
@@ -660,7 +681,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
   </div>
 </div>
 
-<script src="nexus.js?v=20260819n" defer></script>
+<script src="nexus.js?v=20260819o" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

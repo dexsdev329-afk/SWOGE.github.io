@@ -106,7 +106,12 @@
     if (m.type === 'profile' && m.profile) { MON_NOM = m.profile.name || null; peintPanneau(); }
     if (m.type === 'personnage' && m.etat && m.etat.skin === PERSO) { FICHE = m.etat; peintPanneau(); }
     if (m.type === 'equipable') {
-      SAC = [].concat(m.fruits || [], m.armes || [], m.armures || [], m.bagues || []);
+      /* Le SAC est ce que le serveur envoie sous `sac` — le butin ramasse —
+         et RIEN d'autre. Il contenait auparavant tout ce qu'on possede
+         d'equipable, c'est-a-dire le contenu du COFFRE : ca montrait les
+         achats a un endroit ou ils ne sont pas, et laissait croire qu'ils
+         partaient avec le personnage. */
+      SAC = m.sac || [];
       peintPanneau();
     }
     if (m.type === 'nexusEtat') majJoueursDistants(m.joueurs || []);
@@ -131,7 +136,7 @@
 
   var MON_NOM = null;      // le pseudo du profil
   var FICHE = null;        // la reponse `personnage` du skin porte
-  var SAC = [];            // tout ce qu'on possede d'equipable, toutes saisons
+  var SAC = [];            // le butin ramasse dans le monde (pas le coffre)
   var SKIN_POSSEDE = true; // faux tant qu'on n'a achete aucun personnage
 
   var elNom = document.getElementById('nxNom');
@@ -153,11 +158,28 @@
     if (!b || !enveloppe) return;
     var CLE = 'swogeNexusPanneauReplie';
     try { if (localStorage.getItem(CLE) === '1') enveloppe.classList.add('replie'); } catch (e) {}
+    /* On place le bouton d'apres la largeur MESUREE du panneau, pas d'apres
+       la variable CSS : les deux different des qu'une barre de defilement
+       s'intercale, et le bouton finissait par recouvrir la premiere lettre de
+       chaque stat. Mesurer, c'est etre juste a toutes les tailles d'ecran
+       sans avoir de decalage a deviner. */
+    var ECART = 10;
+    function place() {
+      var pan = document.getElementById('nxPanneau');
+      if (!pan) return;
+      var replie = enveloppe.classList.contains('replie');
+      var l = replie ? 0 : pan.getBoundingClientRect().width;
+      b.style.right = (l + ECART) + 'px';
+    }
     b.addEventListener('click', function () {
       var replie = enveloppe.classList.toggle('replie');
       b.setAttribute('aria-label', replie ? 'Show panel' : 'Hide panel');
       try { localStorage.setItem(CLE, replie ? '1' : '0'); } catch (e) {}
+      place();
     });
+    window.addEventListener('resize', place);
+    window.addEventListener('orientationchange', place);
+    place();
     b.setAttribute('aria-label',
       enveloppe.classList.contains('replie') ? 'Show panel' : 'Hide panel');
   })();
@@ -255,13 +277,10 @@
         '<b>+' + e.bonus + '</b></div>';
     }).join('');
 
-    // ---- le sac : ce qu'on possede et qui n'est pas deja porte
-    var portes = {};
-    EMPLACEMENTS.forEach(function (k) { var e = FICHE && FICHE[k]; if (e) portes[e.item] = true; });
-    var libres = SAC.filter(function (o) { return !portes[o.id]; });
+    // ---- le sac : le butin ramasse, pas les achats
     var cases = [];
     for (var i = 0; i < CASES_SAC; i++) {
-      var o = libres[i];
+      var o = SAC[i];
       cases.push(o
         ? '<div class="nxp-c" title="' + ech(o.nom) + '">' +
           '<img alt="" src="img/shop/' + encodeURIComponent(o.cle) + '.webp" ' +
@@ -485,12 +504,14 @@
 
   var TOUCHES = { up: false, down: false, left: false, right: false };
   var CLE_STOCKAGE = 'swogeNexusTouches';
-  var DEFAUTS = { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', jump: 'Space' };
+  var DEFAUTS = { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', jump: 'Space',
+                  auto: 'KeyI' };
   var FLECHES_FIXES = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
   var ACTIONS = [
     { cle: 'up', nom: 'Move up' }, { cle: 'down', nom: 'Move down' },
     { cle: 'left', nom: 'Move left' }, { cle: 'right', nom: 'Move right' },
     { cle: 'jump', nom: 'Jump' },
+    { cle: 'auto', nom: 'Auto-fire' },
   ];
 
   var PERSO_TOUCHES = chargeTouches();
@@ -532,11 +553,12 @@
     if (!d) return;
     debloqueSon(); ev.preventDefault();
     if (d === 'jump') lanceSaut();
+    else if (d === 'auto') basculeAuto();
     else TOUCHES[d] = true;
   });
   window.addEventListener('keyup', function (ev) {
     var d = CODE_VERS_ACTION[ev.code];
-    if (d && d !== 'jump') TOUCHES[d] = false;
+    if (d && d !== 'jump' && d !== 'auto') TOUCHES[d] = false;
   });
 
   function lanceSaut() {
@@ -544,6 +566,165 @@
     var c = PERSONNAGES[PERSO];
     saut.en_cours = true; saut.chrono = 0; saut.cadre = 0;
     saut.duree = c.images / FPS_ANIM;
+  }
+
+  // ======================= LE TIR =======================
+  //
+  // ---- ce qui existe, et ce qui manque ----
+  //
+  // Le Nexus est une zone sure : on peut y tirer, rien n'y meurt. C'est aussi
+  // le cas dans le jeu d'origine, et ca rend le systeme testable des
+  // maintenant — on voit partir les projectiles, on regle la portee et la
+  // cadence, sans attendre les monstres.
+  //
+  // Ce qui manque donc VRAIMENT : les cibles. Le tir automatique vise
+  // « l'ennemi le plus proche » ; tant qu'il n'y en a aucun, il tire droit
+  // devant. Ce n'est pas un pis-aller, c'est le comportement du Nexus.
+  //
+  // ---- l'arme decide ----
+  //
+  // Portee, nombre de projectiles et cadence viennent de la FAMILLE de
+  // l'arme equipee, pas d'un reglage global : c'est ce qui fait qu'un arc et
+  // un marteau ne se jouent pas pareil. Sans arme, on tire quand meme — a
+  // mains nues, court et lent.
+
+  var ARMES = {
+    lame:    { portee: 320, tirs: 1, cadence: 3.2, vitesse: 560, teinte: '#cfe8ff' },
+    hache:   { portee: 210, tirs: 1, cadence: 1.7, vitesse: 430, teinte: '#ffb06b' },
+    lance:   { portee: 420, tirs: 1, cadence: 2.2, vitesse: 640, teinte: '#d8dee9' },
+    arc:     { portee: 460, tirs: 2, cadence: 2.6, vitesse: 700, teinte: '#9dff9d' },
+    marteau: { portee: 180, tirs: 1, cadence: 1.3, vitesse: 380, teinte: '#ffd76b' },
+    dagues:  { portee: 300, tirs: 2, cadence: 4.0, vitesse: 620, teinte: '#c9a0ff' },
+    /* Sans arme : court, lent, mais on tire — un joueur qui appuie et ne voit
+       rien partir croit que la commande est cassee, pas qu'il lui manque un
+       objet. */
+    poing:   { portee: 150, tirs: 1, cadence: 1.6, vitesse: 340, teinte: '#8DA0C4' },
+  };
+
+  function armeCourante() {
+    var e = FICHE && FICHE.equipArme;
+    var fam = e && e.cle ? String(e.cle).split('_')[0] : null;
+    return ARMES[fam] || ARMES.poing;
+  }
+
+  var TIRS = [];              // projectiles en vol
+  var viseur = { x: 0, y: 0, actif: false };   // en coordonnees ECRAN
+  var tireur = { presse: false, auto: false, recharge: 0 };
+
+  /* ---- VISER ----
+   * L'angle part du personnage vers le curseur. On garde le pointeur en
+   * coordonnees ECRAN et on le convertit au moment du tir : la camera bouge
+   * entre deux images, donc une position monde memorisee serait deja fausse. */
+  canvas.addEventListener('mousemove', function (ev) {
+    var r = canvas.getBoundingClientRect();
+    viseur.x = ev.clientX - r.left; viseur.y = ev.clientY - r.top;
+    viseur.actif = true;
+  });
+  canvas.addEventListener('mouseleave', function () { viseur.actif = false; });
+
+  /* Clic DROIT pour tirer, et on retire le menu contextuel du canvas — sinon
+     le premier tir ouvre le menu du navigateur par-dessus le jeu. */
+  canvas.addEventListener('contextmenu', function (ev) { ev.preventDefault(); });
+  canvas.addEventListener('mousedown', function (ev) {
+    if (ev.button !== 2) return;
+    ev.preventDefault(); debloqueSon(); tireur.presse = true;
+  });
+  window.addEventListener('mouseup', function (ev) {
+    if (ev.button === 2) tireur.presse = false;
+  });
+
+  /* Le tir auto se commande de DEUX endroits — la touche et le bouton des
+     reglages — et se montre a un TROISIEME, le temoin sur la scene. Une seule
+     fonction les tient d'accord : trois etats a synchroniser a la main
+     finiraient par se contredire, et le joueur verrait « OFF » pendant que ca
+     tire. L'etat se garde d'une visite a l'autre, comme le repli du panneau. */
+  var elAuto = document.getElementById('nxAuto');
+  var elAutoBtn = document.getElementById('nxAutoBtn');
+  var CLE_AUTO = 'swogeNexusAuto';
+  function peintAuto() {
+    if (elAuto) elAuto.classList.toggle('on', tireur.auto);
+    if (elAutoBtn) {
+      elAutoBtn.classList.toggle('on', tireur.auto);
+      elAutoBtn.textContent = tireur.auto ? 'ON' : 'OFF';
+      elAutoBtn.setAttribute('aria-pressed', tireur.auto ? 'true' : 'false');
+    }
+  }
+  function basculeAuto() {
+    tireur.auto = !tireur.auto;
+    try { localStorage.setItem(CLE_AUTO, tireur.auto ? '1' : '0'); } catch (e) {}
+    peintAuto();
+  }
+  try { tireur.auto = localStorage.getItem(CLE_AUTO) === '1'; } catch (e) {}
+  if (elAutoBtn) elAutoBtn.addEventListener('click', basculeAuto);
+  peintAuto();
+
+  /** L'ennemi le plus proche, en coordonnees monde — ou `null`. Il n'y en a
+      aucun aujourd'hui : les autres JOUEURS n'en sont pas, on ne se tire pas
+      dessus dans une zone sure. La fonction existe pour que le jour ou les
+      monstres arrivent, il n'y ait qu'une liste a lui donner. */
+  function cibleLaPlusProche() {
+    return null;
+  }
+
+  /** La direction du tir, en radians. Trois sources, dans cet ordre : la
+      cible automatique, le curseur, puis le regard du personnage. */
+  function angleDeTir(camX, camY) {
+    var c = tireur.auto ? cibleLaPlusProche() : null;
+    if (c) return Math.atan2(c.y - joueur.y, c.x - joueur.x);
+    if (viseur.actif) {
+      return Math.atan2((viseur.y + camY) - (joueur.y - 40), (viseur.x + camX) - joueur.x);
+    }
+    var DIR_ANGLE = { right: 0, down: Math.PI / 2, left: Math.PI, up: -Math.PI / 2 };
+    return DIR_ANGLE[joueur.dir] || 0;
+  }
+
+  function tire(angle) {
+    var a = armeCourante();
+    /* Plusieurs projectiles partent en EVENTAIL, pas superposes : deux tirs
+       exactement confondus se verraient comme un seul et le joueur ne saurait
+       pas que son arc en lance deux. */
+    var ecart = 0.13;
+    for (var i = 0; i < a.tirs; i++) {
+      var d = a.tirs === 1 ? 0 : (i - (a.tirs - 1) / 2) * ecart;
+      TIRS.push({ x: joueur.x, y: joueur.y - 40, a: angle + d,
+                  v: a.vitesse, reste: a.portee / a.vitesse, teinte: a.teinte });
+    }
+  }
+
+  function majTirs(dt, camX, camY) {
+    var a = armeCourante();
+    tireur.recharge -= dt;
+    if ((tireur.presse || tireur.auto) && tireur.recharge <= 0) {
+      tire(angleDeTir(camX, camY));
+      tireur.recharge = 1 / a.cadence;
+    }
+    for (var i = TIRS.length - 1; i >= 0; i--) {
+      var t = TIRS[i];
+      t.x += Math.cos(t.a) * t.v * dt;
+      t.y += Math.sin(t.a) * t.v * dt;
+      t.reste -= dt;
+      /* La portee EST la duree de vie : un projectile disparait apres avoir
+         parcouru la distance de son arme, pas au bord de l'ecran — sinon la
+         portee dependrait de la taille de la fenetre. */
+      if (t.reste <= 0) TIRS.splice(i, 1);
+    }
+  }
+
+  function dessineTirs() {
+    for (var i = 0; i < TIRS.length; i++) {
+      var t = TIRS[i];
+      ctx.save();
+      ctx.translate(t.x, t.y); ctx.rotate(t.a);
+      ctx.fillStyle = t.teinte;
+      ctx.shadowColor = t.teinte; ctx.shadowBlur = 8;
+      /* Une navette allongee dans le sens du vol. Les vrais dessins
+         remplaceront ce trace sans rien changer au reste — seul ce bloc
+         connait la forme d'un projectile. */
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 11, 3.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
   }
 
   // ------------------------------------------------------- la roue des reglages
@@ -797,8 +978,18 @@
     pile.sort(function (a, b) { return a.y - b.y; });
     pile.forEach(function (p) { p.dessine(); });
 
+    /* Les projectiles passent PAR-DESSUS tout le monde : ils volent, ils ne
+       marchent pas. Les trier avec les personnages les ferait disparaitre
+       derriere une fontaine a mi-course. */
+    dessineTirs();
+
     ctx.restore();
+    /* La camera de CETTE image sert a convertir le curseur en coordonnees
+       monde au tir suivant. La retenir ici evite de la recalculer, et surtout
+       d'en utiliser une autre que celle qu'on vient de peindre. */
+    DERNIERE_CAM.x = camX; DERNIERE_CAM.y = camY;
   }
+  var DERNIERE_CAM = { x: 0, y: 0 };
 
   function dessineAvatar(x, y, cle, dir, anim, cadre) {
     var s = SPRITES[cle];
@@ -891,6 +1082,7 @@
     var dt = Math.min((t - dernier) / 1000, 1 / 20);
     dernier = t;
     maj(dt);
+    majTirs(dt, DERNIERE_CAM.x, DERNIERE_CAM.y);
     dessine();
     peintMini();
     requestAnimationFrame(boucle);

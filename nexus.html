@@ -167,15 +167,24 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
  * meme endroit du regard, et il ne peut jamais se retrouver dessous. */
 #nxPanneau{ transition:transform .22s ease; }
 #nxWrap.replie #nxPanneau{ transform:translateX(100%); }
-#nxBascule{ position:absolute; right:var(--nxp); top:50%; z-index:23;
+/* Il vit SUR LA CARTE, pas sur le panneau : colle au bord, il mordait sur la
+   premiere lettre de chaque stat (« TT - 28 » au lieu de « ATT - 28 »). Un
+   ecart de 10px l'en decolle franchement, et il descend au tiers bas pour ne
+   croiser ni les barres ni la grille de stats. */
+#nxBascule{ position:absolute; right:calc(var(--nxp) + 10px); top:68%; z-index:23;
+  /* `right` est REPOSITIONNE en JS d'apres la largeur reellement rendue du
+     panneau : `--nxp` ne la donne pas exactement (une barre de defilement
+     s'intercale), et le bouton mordait de quelques pixels sur la premiere
+     lettre de chaque stat. La valeur ci-dessus n'est qu'un point de depart
+     avant la premiere mesure. */
   transform:translateY(-50%); transition:right .22s ease;
-  width:20px; height:56px; border-radius:8px 0 0 8px;
+  width:26px; height:52px; border-radius:9px;
   display:flex; align-items:center; justify-content:center; font-size:11px;
-  background:#3f3f3f; border:1px solid #222; border-right:none;
+  background:rgba(10,17,40,.82); border:1px solid rgba(255,255,255,.18);
   color:#dcdcdc; cursor:pointer; padding:0; }
 /* Replie : le bouton revient au bord, et le chevron se retourne — il montre
    toujours le sens dans lequel le panneau va partir. */
-#nxWrap.replie #nxBascule{ right:0; transform:translateY(-50%) scaleX(-1); }
+#nxWrap.replie #nxBascule{ right:10px; transform:translateY(-50%) scaleX(-1); }
 /* L'indice se recentre sur toute la largeur des que le panneau s'efface. */
 #nxWrap.replie #nxIndice{ left:50%; }
 
@@ -205,7 +214,23 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
 .nxrp-touche:hover{ background:rgba(255,255,255,.12); }
 .nxrp-touche.attend{ border-color:rgba(255,197,61,.6); color:#FFD97A;
   background:rgba(255,197,61,.1); }
+.nxrp-nom .nxrp-sous{ display:block; font-style:normal; font-size:10.5px;
+  color:#5C6B85; margin-top:2px; }
+.nxrp-bascule{ flex:0 0 auto; min-width:56px; padding:8px 12px; border-radius:10px;
+  border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.06);
+  color:#8DA0C4; font:800 12px 'Space Mono',monospace; cursor:pointer; }
+.nxrp-bascule.on{ border-color:rgba(124,255,155,.55); background:rgba(124,255,155,.12);
+  color:#7CFF9B; }
 .nxrp-note{ margin-top:12px; font-size:11.5px; line-height:1.5; color:#5C6B85; }
+
+/* Le temoin AUTO sur la scene : quand le tir part tout seul, il faut le voir
+   sans ouvrir les reglages — sinon on croit a un bug. */
+#nxAuto{ position:absolute; left:max(14px, env(safe-area-inset-left));
+  top:calc(max(14px, env(safe-area-inset-top)) + 44px); z-index:21;
+  padding:5px 11px; border-radius:999px; display:none;
+  background:rgba(12,40,20,.85); border:1px solid rgba(124,255,155,.5);
+  color:#7CFF9B; font:800 11px/1.3 'Space Mono',monospace; letter-spacing:.5px; }
+#nxAuto.on{ display:block; }
 .nxrp-reset{ margin-top:14px; width:100%; padding:11px; border-radius:12px;
   border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.04);
   color:#c9d3f2; font:700 13px 'Archivo',system-ui,sans-serif; cursor:pointer; }
@@ -258,6 +283,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
 <div id="nxWrap">
   <canvas id="nxCanvas"></canvas>
   <div id="nxSolde"></div>
+  <div id="nxAuto">⌖ AUTO-FIRE</div>
   <div id="nxIndice"></div>
   <button id="nxBascule" type="button" aria-label="Hide panel">&#9654;</button>
   <div id="nxHint">WASD / arrows to move &middot; walk in to enter</div>
@@ -289,8 +315,13 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
   <div class="nxrp-carte">
     <button class="nxrp-x" type="button" aria-label="Close">&times;</button>
     <b class="nxrp-titre">Controls</b>
+    <div class="nxrp-ligne">
+      <span class="nxrp-nom">Auto-fire<i class="nxrp-sous">keeps shooting, aims at the nearest enemy</i></span>
+      <button class="nxrp-bascule" id="nxAutoBtn" type="button" aria-pressed="false">OFF</button>
+    </div>
     <div class="nxrp-liste"></div>
-    <div class="nxrp-note">Arrow keys always move your character too, whatever you bind above.</div>
+    <div class="nxrp-note">Right-click to shoot, mouse to aim. Arrow keys always move your
+      character too, whatever you bind above.</div>
     <button class="nxrp-reset" type="button">Reset to defaults</button>
   </div>
 </div>

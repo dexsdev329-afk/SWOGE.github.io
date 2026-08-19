@@ -264,12 +264,14 @@
       elLvl.textContent = 'Lvl ' + FICHE.niveau;
       elLvlJauge.style.width = plein + '%';
       elXp.textContent = FICHE.xpProchain ? plein + '%' : 'MAX';
-      /* Les barres de vie et de mana sont PLEINES, et c'est exact : rien ne
-         fait encore de degats dans le Nexus. Le jour ou un donjon en fera,
-         c'est la valeur courante qui viendra ici — la place est prete, on
-         n'invente pas un chiffre en attendant. */
-      elHp.textContent = FICHE.stats.hp;
-      elMp.textContent = FICHE.stats.mp;
+      /* La barre lit les PV COURANTS, pas le plafond — le meme nombre que
+         le repli automatique. Deux lectures separees finiraient par
+         diverger, et on se replierait a un pourcentage que la barre ne
+         montre pas. Rien ne fait encore de degats, donc `pv` vaut `max` :
+         c'est exact, ce n'est pas un chiffre invente. */
+      poseVieMax(FICHE.stats.hp, FICHE.stats.mp);
+      elHp.textContent = VIE.pv;
+      elMp.textContent = VIE.mp;
     } else {
       elLvl.textContent = 'Lvl —'; elLvlJauge.style.width = '0%';
       elXp.textContent = ''; elHp.textContent = ''; elMp.textContent = '';
@@ -433,6 +435,75 @@
       rayon: 120, href: 'games.html?open=ap', nom: 'your vault' },
   ];
   LIEUX.forEach(function (l) { l.img = new Image(); l.img.src = l.src; l.dwell = 0; });
+
+  /* ================== LA VIE, ET LE REPLI ==================
+   *
+   * `VIE.pv` est la SEULE source de verite sur les points de vie : la barre
+   * du panneau la lit, le repli automatique la lit. Rien ne fait encore de
+   * degats, donc elle vaut toujours le plafond — mais le jour ou un donjon
+   * en fera, il n'y aura qu'un endroit a baisser et les deux suivront
+   * ensemble. C'est la difference entre une place « prete » et une place
+   * REELLE.
+   *
+   * Le plafond change quand on s'equipe : on garde alors la PROPORTION de
+   * vie, pas le nombre. Enfiler un plastron qui donne +170 PV ne doit pas
+   * soigner, et en retirer un ne doit pas tuer. */
+  var VIE = { pv: 0, max: 0, mp: 0, mpMax: 0 };
+  function poseVieMax(hp, mp) {
+    hp = hp | 0; mp = mp | 0;
+    if (VIE.max <= 0) { VIE.pv = hp; VIE.mp = mp; }
+    else {
+      if (hp !== VIE.max) VIE.pv = Math.max(1, Math.round(VIE.pv * hp / VIE.max));
+      if (mp !== VIE.mpMax && VIE.mpMax > 0) VIE.mp = Math.round(VIE.mp * mp / VIE.mpMax);
+    }
+    VIE.max = hp; VIE.mpMax = mp;
+    VIE.pv = Math.min(VIE.pv, VIE.max);
+    VIE.mp = Math.min(VIE.mp, VIE.mpMax);
+  }
+  function partVie() { return VIE.max > 0 ? VIE.pv / VIE.max : 1; }
+
+  /* ---- LE REPLI VERS LE NEXUS ----
+   *
+   * Une touche (E par defaut, reassignable) et un seuil automatique en
+   * pourcentage de vie. Le seuil ne PROTEGE PAS : entre l'instant ou les
+   * points de vie passent sous la barre et celui ou le repli s'execute, il
+   * s'ecoule au moins une image — et un coup qui enleve tout d'un seul
+   * tenant ne laisse aucune image. C'est vrai dans le jeu d'origine, et ce
+   * serait malhonnete de le cacher derriere un reglage qui a l'air d'une
+   * assurance. Le texte du panneau le dit.
+   *
+   * `franchi` retient qu'on est DEJA passe sous la barre : sans lui, le
+   * repli se redeclencherait a chaque image tant que la vie reste basse. */
+  var REPLI = { actif: false, seuil: 35, franchi: false };
+  var CLE_REPLI = 'swogeNexusRepli';
+  try {
+    var brut = JSON.parse(localStorage.getItem(CLE_REPLI) || 'null');
+    if (brut && typeof brut === 'object') {
+      REPLI.actif = !!brut.actif;
+      REPLI.seuil = Math.max(5, Math.min(95, Number(brut.seuil) || 35));
+    }
+  } catch (e) {}
+  function sauveRepli() {
+    try { localStorage.setItem(CLE_REPLI, JSON.stringify({ actif: REPLI.actif, seuil: REPLI.seuil })); } catch (e) {}
+  }
+
+  /** Rentrer au Nexus, d'ou qu'on soit. Rend `true` si on a bouge. */
+  function retourNexus(raison) {
+    if (SCENE === 'coffre') { sortCoffre(); return true; }
+    /* Depuis le Nexus lui-meme il n'y a nulle part d'ou revenir. Ce n'est
+       pas un echec : c'est la seule reponse juste tant que le monde de
+       combat n'existe pas. */
+    return false;
+  }
+
+  function verifieRepli() {
+    if (!REPLI.actif) { REPLI.franchi = false; return; }
+    var pct = partVie() * 100;
+    if (pct > REPLI.seuil + 1) { REPLI.franchi = false; return; }
+    if (REPLI.franchi) return;
+    REPLI.franchi = true;
+    retourNexus('vie');
+  }
 
   /* ================== L'INTERIEUR DU COFFRE ==================
    *
@@ -616,6 +687,141 @@
     if (debloque) return;
     debloque = true;
     pas.play().then(function () { pas.pause(); pas.currentTime = 0; }).catch(function () {});
+    contexteSon();   // meme geste, meme autorisation : le tir aussi doit sonner
+  }
+
+  /* ================== LE SON DES TIRS ==================
+   *
+   * SYNTHETISE, pas enregistre. Sept armes voudraient sept fichiers, plus un
+   * pour l'impact ; a la cadence des dagues (quatre coups par seconde) on
+   * jonglerait avec des lectures qui se chevauchent et se coupent. Web Audio
+   * fabrique chaque coup a la demande, sans un octet a telecharger, et donne
+   * a chaque coup une hauteur legerement differente — sans quoi un tir
+   * repete sonne comme une machine, pas comme une arme.
+   *
+   * Trois recettes suffisent a couvrir les sept familles :
+   *   souffle — du bruit filtre dont la bande DESCEND : une lame qui fend
+   *             l'air. Court et clair pour la dague, long et grave pour la
+   *             hache.
+   *   corde   — un oscillateur qui chute vite : la corde de l'arc.
+   *   choc    — une sinusoide grave qui s'effondre : le marteau, le poing.
+   *
+   * Le contexte n'est cree qu'au premier geste du joueur. Un AudioContext
+   * fabrique avant reste « suspended » sur tous les navigateurs recents, et
+   * on n'entendrait rien sans jamais savoir pourquoi. */
+  var AUDIO = null, BRUIT = null, SORTIE_TIR = null;
+  function contexteSon() {
+    if (AUDIO) { if (AUDIO.state === 'suspended') AUDIO.resume(); return AUDIO; }
+    var C = window.AudioContext || window.webkitAudioContext;
+    if (!C) return null;
+    try { AUDIO = new C(); } catch (e) { return null; }
+    /* UN seul tampon de bruit, fabrique une fois. En refaire un par coup
+       allouerait vingt mille echantillons quatre fois par seconde. */
+    var n = Math.floor(AUDIO.sampleRate * 0.4);
+    BRUIT = AUDIO.createBuffer(1, n, AUDIO.sampleRate);
+    var d = BRUIT.getChannelData(0);
+    for (var i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+    SORTIE_TIR = AUDIO.createGain();
+    SORTIE_TIR.gain.value = 0.30;
+    SORTIE_TIR.connect(AUDIO.destination);
+    return AUDIO;
+  }
+
+  var SONS_ARME = {
+    /* Les volumes ne sont PAS comparables d'une recette a l'autre : un
+       oscillateur sort toute son energie sur une frequence, du bruit passe
+       en bande la repartit sur des centaines. Mesure faite, une sinusoide a
+       0.50 sortait quatre fois plus fort qu'un souffle a 0.30 — la lame,
+       l'arme la plus courante, etait la plus discrete du jeu. Les souffles
+       sont donc remontes jusqu'a ce que les six familles s'entendent au meme
+       niveau, chiffres releves sur l'analyseur et non a l'estime. */
+    lame:    { recette: 'souffle', f0: 2600, f1: 700,  q: 0.9, duree: 0.16, vol: 1.30 },
+    hache:   { recette: 'souffle', f0: 1500, f1: 260,  q: 1.1, duree: 0.26, vol: 0.83, corps: 150 },
+    lance:   { recette: 'souffle', f0: 2000, f1: 520,  q: 1.2, duree: 0.20, vol: 1.78 },
+    arc:     { recette: 'corde',   f0: 520,  f1: 180,  duree: 0.18, vol: 0.58, souffle: 0.10 },
+    marteau: { recette: 'choc',    f0: 220,  f1: 60,   duree: 0.34, vol: 0.65 },
+    dagues:  { recette: 'souffle', f0: 3600, f1: 1500, q: 0.8, duree: 0.09, vol: 1.15 },
+    poing:   { recette: 'choc',    f0: 300,  f1: 110,  duree: 0.14, vol: 0.40 },
+  };
+
+  function enveloppeGain(t0, duree, vol) {
+    var g = AUDIO.createGain();
+    /* Attaque de 6 ms : instantanee a l'oreille, mais pas nulle — un saut sec
+       de zero a plein fait un « clic » parasite sur les petits haut-parleurs. */
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(Math.max(0.0002, vol), t0 + 0.006);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + duree);
+    return g;
+  }
+
+  function joueSon(nom, force) {
+    var ctx = AUDIO;
+    if (!ctx || ctx.state !== 'running') return false;
+    var r = SONS_ARME[nom] || SONS_ARME.poing;
+    var t0 = ctx.currentTime;
+    // +/- 6 % de hauteur : deux coups de suite ne sont jamais identiques
+    var h = 1 + (Math.random() - 0.5) * 0.12;
+    var vol = r.vol * (force === undefined ? 1 : force);
+    var g = enveloppeGain(t0, r.duree, vol);
+    g.connect(SORTIE_TIR);
+
+    if (r.recette === 'souffle') {
+      var src = ctx.createBufferSource(); src.buffer = BRUIT;
+      var f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = r.q;
+      f.frequency.setValueAtTime(r.f0 * h, t0);
+      f.frequency.exponentialRampToValueAtTime(r.f1 * h, t0 + r.duree);
+      src.connect(f); f.connect(g);
+      src.start(t0); src.stop(t0 + r.duree + 0.02);
+      if (r.corps) {          // le poids de la hache, sous le souffle
+        var o = ctx.createOscillator(); o.type = 'sine';
+        o.frequency.setValueAtTime(r.corps * h, t0);
+        o.frequency.exponentialRampToValueAtTime(r.corps * 0.45 * h, t0 + r.duree);
+        var gc = enveloppeGain(t0, r.duree * 0.7, vol * 0.7);
+        o.connect(gc); gc.connect(SORTIE_TIR);
+        o.start(t0); o.stop(t0 + r.duree + 0.02);
+      }
+    } else if (r.recette === 'corde') {
+      var os = ctx.createOscillator(); os.type = 'triangle';
+      os.frequency.setValueAtTime(r.f0 * h, t0);
+      os.frequency.exponentialRampToValueAtTime(r.f1 * h, t0 + r.duree);
+      os.connect(g); os.start(t0); os.stop(t0 + r.duree + 0.02);
+      if (r.souffle) {        // le sifflement de la fleche qui part
+        var sn = ctx.createBufferSource(); sn.buffer = BRUIT;
+        var fn = ctx.createBiquadFilter(); fn.type = 'bandpass';
+        fn.Q.value = 2.2; fn.frequency.setValueAtTime(3200 * h, t0);
+        fn.frequency.exponentialRampToValueAtTime(1400 * h, t0 + r.souffle);
+        var gn = enveloppeGain(t0, r.souffle, vol * 0.5);
+        sn.connect(fn); fn.connect(gn); gn.connect(SORTIE_TIR);
+        sn.start(t0); sn.stop(t0 + r.souffle + 0.02);
+      }
+    } else {                  // choc
+      var oc = ctx.createOscillator(); oc.type = 'sine';
+      oc.frequency.setValueAtTime(r.f0 * h, t0);
+      oc.frequency.exponentialRampToValueAtTime(r.f1 * h, t0 + r.duree);
+      oc.connect(g); oc.start(t0); oc.stop(t0 + r.duree + 0.02);
+      var cl = ctx.createBufferSource(); cl.buffer = BRUIT;
+      var fc = ctx.createBiquadFilter(); fc.type = 'lowpass';
+      fc.frequency.value = 900 * h;
+      var gcl = enveloppeGain(t0, 0.05, vol * 0.45);
+      cl.connect(fc); fc.connect(gcl); gcl.connect(SORTIE_TIR);
+      cl.start(t0); cl.stop(t0 + 0.07);
+    }
+    return true;
+  }
+
+  /* L'impact : le meme choc, plus court et bien plus discret. Il part a
+     chaque projectile qui s'arrete, et il y en a plus que de coups tires. */
+  function sonImpact() {
+    if (!AUDIO || AUDIO.state !== 'running') return;
+    var t0 = AUDIO.currentTime, h = 1 + (Math.random() - 0.5) * 0.3;
+    var g = enveloppeGain(t0, 0.12, 0.16);
+    g.connect(SORTIE_TIR);
+    var src = AUDIO.createBufferSource(); src.buffer = BRUIT;
+    var f = AUDIO.createBiquadFilter(); f.type = 'bandpass';
+    f.Q.value = 1.0; f.frequency.setValueAtTime(1200 * h, t0);
+    f.frequency.exponentialRampToValueAtTime(320 * h, t0 + 0.12);
+    src.connect(f); f.connect(g);
+    src.start(t0); src.stop(t0 + 0.14);
   }
 
   // ------------------------------------------------------- les commandes
@@ -628,13 +834,14 @@
   var TOUCHES = { up: false, down: false, left: false, right: false };
   var CLE_STOCKAGE = 'swogeNexusTouches';
   var DEFAUTS = { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', jump: 'Space',
-                  auto: 'KeyI' };
+                  auto: 'KeyI', nexus: 'KeyE' };
   var FLECHES_FIXES = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
   var ACTIONS = [
     { cle: 'up', nom: 'Move up' }, { cle: 'down', nom: 'Move down' },
     { cle: 'left', nom: 'Move left' }, { cle: 'right', nom: 'Move right' },
     { cle: 'jump', nom: 'Jump' },
     { cle: 'auto', nom: 'Auto-fire' },
+    { cle: 'nexus', nom: 'Return to Nexus' },
   ];
 
   var PERSO_TOUCHES = chargeTouches();
@@ -677,11 +884,12 @@
     debloqueSon(); ev.preventDefault();
     if (d === 'jump') lanceSaut();
     else if (d === 'auto') basculeAuto();
+    else if (d === 'nexus') retourNexus('key');
     else TOUCHES[d] = true;
   });
   window.addEventListener('keyup', function (ev) {
     var d = CODE_VERS_ACTION[ev.code];
-    if (d && d !== 'jump' && d !== 'auto') TOUCHES[d] = false;
+    if (d && d !== 'jump' && d !== 'auto' && d !== 'nexus') TOUCHES[d] = false;
   });
 
   function lanceSaut() {
@@ -824,6 +1032,37 @@
   if (elAutoBtn) elAutoBtn.addEventListener('click', basculeAuto);
   peintAuto();
 
+  /* ---- les commandes de l'auto-Nexus ----
+     La bascule et le curseur se peignent ensemble : le curseur grise quand
+     la bascule est sur OFF, sinon on croirait regler quelque chose d'actif. */
+  var elEscBtn = document.getElementById('nxEscBtn');
+  var elEscPct = document.getElementById('nxEscPct');
+  var elEscVal = document.getElementById('nxEscVal');
+  var elEscLigne = document.getElementById('nxEscLigne');
+  function peintRepli() {
+    if (elEscBtn) {
+      elEscBtn.classList.toggle('on', REPLI.actif);
+      elEscBtn.textContent = REPLI.actif ? 'ON' : 'OFF';
+      elEscBtn.setAttribute('aria-pressed', REPLI.actif ? 'true' : 'false');
+    }
+    if (elEscPct) elEscPct.value = String(REPLI.seuil);
+    if (elEscVal) elEscVal.textContent = REPLI.seuil + '%';
+    if (elEscLigne) elEscLigne.classList.toggle('off', !REPLI.actif);
+  }
+  if (elEscBtn) elEscBtn.addEventListener('click', function () {
+    REPLI.actif = !REPLI.actif;
+    /* On repart d'un seuil NON franchi : sinon activer l'option alors qu'on
+       est deja sous la barre ne declencherait rien. */
+    REPLI.franchi = false;
+    sauveRepli(); peintRepli();
+  });
+  if (elEscPct) elEscPct.addEventListener('input', function () {
+    REPLI.seuil = Math.max(5, Math.min(95, Number(elEscPct.value) || 35));
+    REPLI.franchi = false;
+    sauveRepli(); peintRepli();
+  });
+  peintRepli();
+
   /** L'ennemi le plus proche, en coordonnees monde — ou `null`. Il n'y en a
       aucun aujourd'hui : les autres JOUEURS n'en sont pas, on ne se tire pas
       dessus dans une zone sure. La fonction existe pour que le jour ou les
@@ -851,6 +1090,10 @@
 
   function tire(angle) {
     var a = armeCourante();
+    /* UN son par tir, pas un par projectile : l'arc et les dagues en lancent
+       deux d'un coup, et deux sons identiques a la meme milliseconde ne font
+       pas « deux fleches », ils font un son deux fois trop fort. */
+    joueSon(familleArme() || 'poing');
     /* Plusieurs projectiles partent en EVENTAIL, pas superposes : deux tirs
        exactement confondus se verraient comme un seul et le joueur ne saurait
        pas que son arc en lance deux. */
@@ -892,6 +1135,7 @@
       var dx = t.x - f.x, dy = t.y - f.y;
       if (dx * dx + dy * dy < f.collision * f.collision) {
         IMPACTS.push({ x: t.x, y: t.y, reste: DUREE_IMPACT });
+        sonImpact();
         TIRS.splice(i, 1);
         continue;
       }
@@ -1072,6 +1316,11 @@
        ni fontaine, ni lieux, ni envoi reseau ici — le serveur ne connait pas
        la salle, et continuer a lui envoyer notre position ferait glisser
        notre avatar a travers le Nexus pendant qu'on est a l'interieur. */
+    /* Le repli se verifie a CHAQUE image, dans les deux scenes : on peut
+       perdre sa vie n'importe ou, et un controle qui ne tourne que dans un
+       lieu serait une protection qui s'eteint sans prevenir. */
+    verifieRepli();
+
     if (SCENE === 'coffre') {
       joueur.x = Math.min(Math.max(joueur.x, SALLE.x0), SALLE.x1);
       joueur.y = Math.min(Math.max(joueur.y, SALLE.y0), SALLE.y1);

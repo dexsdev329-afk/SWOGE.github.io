@@ -260,6 +260,19 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
 .nxrp-bascule.on{ border-color:rgba(124,255,155,.55); background:rgba(124,255,155,.12);
   color:#7CFF9B; }
 .nxrp-note{ margin-top:12px; font-size:11.5px; line-height:1.5; color:#5C6B85; }
+/* La ligne du curseur suit la bascule qu'elle regle : grisee tant que
+   l'auto-Nexus est sur OFF, pour qu'on ne croie pas regler quelque chose
+   d'actif. */
+.nxrp-glisse{ gap:12px; padding-top:4px; }
+.nxrp-glisse.off{ opacity:.4; pointer-events:none; }
+.nxrp-glisse input[type=range]{ flex:1; min-width:0; accent-color:#7CFF9B; height:22px; }
+.nxrp-glisse b{ flex:0 0 auto; min-width:44px; text-align:right; font-size:13px;
+  font-weight:800; color:#7CFF9B; }
+/* L'avertissement n'a pas la couleur d'une note : ce n'est pas une
+   precision, c'est une limite qu'on doit lire avant de faire confiance. */
+.nxrp-garde{ margin-top:10px; padding:9px 11px; border-radius:10px;
+  background:rgba(255,197,61,.09); border:1px solid rgba(255,197,61,.28);
+  font-size:11px; line-height:1.5; color:#E8C97A; }
 
 /* Le temoin AUTO sur la scene : quand le tir part tout seul, il faut le voir
    sans ouvrir les reglages — sinon on croit a un bug. */
@@ -357,14 +370,26 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
       <span class="nxrp-nom">Auto-fire<i class="nxrp-sous">keeps shooting, aims at the nearest enemy</i></span>
       <button class="nxrp-bascule" id="nxAutoBtn" type="button" aria-pressed="false">OFF</button>
     </div>
+    <div class="nxrp-ligne">
+      <span class="nxrp-nom">Auto-Nexus<i class="nxrp-sous">warps you home when your HP falls under the mark</i></span>
+      <button class="nxrp-bascule" id="nxEscBtn" type="button" aria-pressed="false">OFF</button>
+    </div>
+    <div class="nxrp-ligne nxrp-glisse" id="nxEscLigne">
+      <input id="nxEscPct" type="range" min="5" max="95" step="5" value="35"
+             aria-label="Auto-Nexus health threshold">
+      <b id="nxEscVal">35%</b>
+    </div>
     <div class="nxrp-liste"></div>
     <div class="nxrp-note">Click to shoot, mouse to aim (right-click works too). Arrow keys always move your
       character too, whatever you bind above.</div>
+    <div class="nxrp-garde">Auto-Nexus is not a safety net. At least one frame passes between
+      your HP crossing the mark and the warp — a hit that takes everything at once, or a lag
+      spike, still kills you. Set it high if you are unsure.</div>
     <button class="nxrp-reset" type="button">Reset to defaults</button>
   </div>
 </div>
 
-<script src="nexus.js?v=20260819b" defer></script>
+<script src="nexus.js?v=20260819c" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

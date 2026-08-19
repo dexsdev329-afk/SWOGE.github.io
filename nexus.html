@@ -496,6 +496,40 @@ body.nxdrag *{ cursor:grabbing !important; }
   background:rgba(12,40,20,.85); border:1px solid rgba(124,255,155,.5);
   color:#7CFF9B; font:800 11px/1.3 'Space Mono',monospace; letter-spacing:.5px; }
 #nxAuto.on{ display:block; }
+
+/* ---- LE POUVOIR DU FRUIT ----
+ * Un bouton, pas seulement un temoin : sur telephone il n'y a pas de barre
+ * d'espace, et une attaque speciale qu'on ne peut declencher qu'au clavier
+ * n'existerait pour personne sur mobile. Il porte le nom du pouvoir, son
+ * cout en mana, et la touche — l'apprentissage se fait en le regardant, pas
+ * dans un menu d'aide.
+ *
+ * Trois etats se lisent d'un coup d'oeil : PRET (plein, il pulse), pas assez
+ * de MANA (eteint), EN RECHARGE (une jauge se remplit par-dessous). Un bouton
+ * qui aurait l'air disponible et ne repondrait pas serait pire que pas de
+ * bouton du tout. */
+#nxPow{ position:absolute; left:max(14px, env(safe-area-inset-left));
+  top:calc(max(14px, env(safe-area-inset-top)) + 82px); z-index:21;
+  display:none; align-items:center; gap:8px; overflow:hidden;
+  padding:7px 13px; border-radius:14px; cursor:pointer; user-select:none;
+  background:rgba(30,16,54,.88); border:1px solid rgba(190,140,255,.55);
+  color:#E6D2FF; font:800 11px/1.3 'Space Mono',monospace; letter-spacing:.5px;
+  -webkit-tap-highlight-color:transparent; }
+#nxPow.on{ display:flex; }
+#nxPow b{ font-weight:800; }
+#nxPow em{ font-style:normal; opacity:.62; font-size:10px; }
+#nxPow span.k{ padding:2px 6px; border-radius:6px; font-size:10px;
+  background:rgba(255,255,255,.10); }
+/* La jauge de recharge passe SOUS le texte, jamais devant : on doit continuer
+   a lire le nom du pouvoir pendant qu'elle se remplit. */
+#nxPow i{ position:absolute; left:0; bottom:0; height:3px; width:0;
+  background:#BE8CFF; transition:width .12s linear; }
+#nxPow.pret{ animation:nxPowPulse 1.9s ease-out infinite; }
+#nxPow.vide{ opacity:.5; border-color:rgba(190,140,255,.22); }
+@keyframes nxPowPulse{ 0%{ box-shadow:0 0 0 0 rgba(190,140,255,.45); }
+  70%{ box-shadow:0 0 0 12px rgba(190,140,255,0); }
+  100%{ box-shadow:0 0 0 0 rgba(190,140,255,0); } }
+@media (prefers-reduced-motion: reduce){ #nxPow.pret{ animation:none; } }
 .nxrp-reset{ margin-top:14px; width:100%; padding:11px; border-radius:12px;
   border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.04);
   color:#c9d3f2; font:700 13px 'Archivo',system-ui,sans-serif; cursor:pointer; }
@@ -567,6 +601,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
   <canvas id="nxCanvas"></canvas>
   <div id="nxSolde"></div>
   <div id="nxAuto">⌖ AUTO-FIRE</div>
+  <div id="nxPow" role="button" tabindex="0"><b id="nxPowNom">—</b><em id="nxPowCout"></em><span class="k" id="nxPowTouche">Space</span><i id="nxPowJauge"></i></div>
   <div id="nxIndice"></div>
   <button id="nxBascule" type="button" aria-label="Hide panel">&#9654;</button>
   <div id="nxHint">WASD / arrows to move &middot; walk in to enter</div>
@@ -681,7 +716,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
   </div>
 </div>
 
-<script src="nexus.js?v=20260819o" defer></script>
+<script src="nexus.js?v=20260819p" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

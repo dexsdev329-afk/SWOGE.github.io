@@ -165,6 +165,7 @@
     if (m.type === 'potionBue') {
       POTIONS_C = m.potions || POTIONS_C;
       if (m.pv !== null && m.pv !== undefined) { VIE.pv = m.pv; moiMonde.pv = m.pv; }
+      if (m.mp !== null && m.mp !== undefined) { VIE.mp = m.mp; peintPouvoir(); }
       joueSample('clic2', { vol: 0.55, hauteur: 1.3 });
       flotte('+' + m.soigne + ' ' + (m.quoi === 'hp' ? 'HP' : 'MP'));
       peintPanneau();
@@ -179,6 +180,32 @@
       }
     }
     if (m.type === 'realmEtat' && SCENE === 'monde') recoitMonde(m);
+    /* ---- LA REPONSE A LA BARRE D'ESPACE ----
+     * Elle arrive TOUJOURS, y compris sur un refus : une touche qui ne
+     * repond rien se lit comme un bug, pas comme un manque de mana. On le
+     * dit avec le meme texte flottant que le reste — au milieu de l'ecran,
+     * la ou le joueur regarde, pas dans un coin du panneau. */
+    if (m.type === 'realmPouvoir') {
+      if (m.refus === 'mana') {
+        flotte('Not enough mana');
+        joueSample('clic', { vol: 0.3, hauteur: 0.7 });
+      } else if (m.refus === 'recharge') {
+        flotte('Recharging \u2014 ' + m.reste.toFixed(1) + 's');
+      } else if (m.refus === 'aucun') {
+        flotte('No fruit equipped');
+      } else if (!m.refus) {
+        VIE.mp = m.mp;
+        POUVOIR_ETAT.recharge = m.recharge || 0;
+        if (m.cle === 'rafale') { POUVOIR_ETAT.rafale = m.duree || 0; flotte('RAPID FIRE'); }
+        if (m.cle === 'stase') flotte('STASIS \u00b7 ' + (m.figes || []).length);
+        if (m.cle === 'foudre') flotte(m.vide ? 'No target in range' : '\u26a1 ' + m.perte);
+        effetPouvoir(m);
+        joueSample(m.cle === 'stase' ? 'vault' : 'niveau',
+                   { vol: m.cle === 'foudre' ? 0.55 : 0.4, hauteur: m.cle === 'stase' ? 0.75 : 1.35,
+                     duree: 0.5 });
+        peintPanneau(); peintPouvoir();
+      }
+    }
     /* ---- CE QU'ON TOUCHE, ET CE QU'ON ENCAISSE ----
      *
      * Un monstre touche pousse le MEME cri que lorsqu'il meurt, en beaucoup
@@ -224,6 +251,7 @@
     /* La mort arrive du SERVEUR : c'est lui qui l'a constatee, jamais nous. */
     if (m.type === 'realmMort') {
       SCENE = 'nexus'; MONSTRES_C = {}; TIRS_C = []; DISTANTS_M = {};
+      POUVOIR_C = null; EFFETS_P = []; peintPouvoir();
       var pp = LIEUX[1];
       joueur.x = pp.x; joueur.y = pp.y + pp.rayon + 60;
       VIE.pv = VIE.max;
@@ -991,6 +1019,9 @@
         atlasMonstre(o.e);
       }
       e.x = o.x; e.y = o.y; e.dir = o.d; e.pv = o.pv; e.pvMax = o.pvMax;
+      /* La stase, quand le serveur la marque. Sans ce report, cinq secondes
+         de monstres immobiles se liraient comme un serveur qui a lache. */
+      e.stase = o.st || 0;
     });
     Object.keys(MONSTRES_C).forEach(function (k) { if (!vus[k]) delete MONSTRES_C[k]; });
 
@@ -1010,9 +1041,21 @@
 
     if (m.moi) {
       moiMonde.pv = m.moi.pv; moiMonde.pvMax = m.moi.pvMax; moiMonde.xp = m.moi.xp;
-      if (VIE.pv !== m.moi.pv || VIE.max !== m.moi.pvMax) {
-        VIE.pv = m.moi.pv; VIE.max = m.moi.pvMax; peintPanneau();
-      }
+      /* ---- LA VIE ET LE MANA VIENNENT DU SERVEUR, TOUJOURS ----
+       * Ils ne descendent plus seulement : ils REMONTENT tout seuls, a la
+       * vitalite et a la sagesse. Ne recopier que sur inegalite des points de
+       * vie laisserait la barre de mana figee pendant qu'elle se remplit
+       * cote serveur — et le bouton du pouvoir resterait eteint alors qu'il
+       * est pret. */
+      var bouge = (VIE.pv !== m.moi.pv || VIE.max !== m.moi.pvMax ||
+                   VIE.mp !== m.moi.mp || VIE.mpMax !== m.moi.mpMax);
+      VIE.pv = m.moi.pv; VIE.max = m.moi.pvMax;
+      if (m.moi.mp !== undefined) { VIE.mp = m.moi.mp; VIE.mpMax = m.moi.mpMax; }
+      if (bouge) peintPanneau();
+      if (m.moi.po !== undefined) POUVOIR_C = m.moi.po;
+      POUVOIR_ETAT.recharge = m.moi.poR || 0;
+      POUVOIR_ETAT.rafale = m.moi.raf || 0;
+      peintPouvoir();
       /* On ne se TELEPORTE pas sur la position du serveur a chaque message :
          elle a un dixieme de seconde de retard, et le personnage
          reculerait sans arret. On ne recale que si l'ecart est gros — c'est
@@ -1034,6 +1077,14 @@
     MONSTRES_C = {}; TIRS_C = []; DISTANTS_M = {};
     moiMonde = { pv: m.moi.pv, pvMax: m.moi.pvMax, xp: 0 };
     VIE.pv = m.moi.pv; VIE.max = m.moi.pvMax;
+    if (m.moi.mpMax !== undefined) { VIE.mp = m.moi.mp; VIE.mpMax = m.moi.mpMax; }
+    /* La table des couts arrive AVEC l'entree, jamais ecrite ici : un chiffre
+       en dur cote page finirait par ne plus etre celui que le serveur
+       preleve, et le bouton mentirait sur le prix. */
+    POUVOIRS_C = m.pouvoirs || null;
+    POUVOIR_C = m.moi.pouvoir || null;
+    POUVOIR_ETAT = { recharge: 0, rafale: 0 };
+    EFFETS_P = [];
     joueur.x = m.moi.x; joueur.y = m.moi.y; joueur.dir = 'up';
     SCENE = 'monde';
     chargeSols();
@@ -1041,7 +1092,16 @@
     LIEUX.forEach(function (l) { l.dwell = 0; });
     indiceActuel = null;
     if (indiceEl) {
-      indiceEl.innerHTML = 'You are in the <b>wild</b> &middot; press E to run home';
+      /* La ligne d'accueil du monde dit les DEUX choses qu'on ne devine pas :
+         par ou repartir, et que la barre d'espace fait quelque chose. Le nom
+         du pouvoir vient avec — « special attack » n'apprend rien, « Stasis »
+         donne envie d'essayer. */
+      var nomPo = (POUVOIRS_C && POUVOIR_C && POUVOIRS_C[POUVOIR_C])
+        ? POUVOIRS_C[POUVOIR_C].nom : null;
+      indiceEl.innerHTML = 'You are in the <b>wild</b> &middot; ' +
+        (nomPo ? '<b>' + (nomTouche(PERSO_TOUCHES.pouvoir) || 'Space') + '</b> for ' +
+                 ech(nomPo) + ' &middot; ' : '') +
+        'press E to run home';
       indiceEl.classList.add('on');
     }
     peintPanneau();
@@ -1064,6 +1124,12 @@
     /* LA FONTAINE SOIGNE. Rentrer au Nexus rend toute la vie — c'est le
        sens de la place centrale, et c'est ce qui fait qu'on ose repartir. */
     VIE.pv = VIE.max;
+    /* La fontaine rend la vie ET le mana : revenir au Nexus avec une reserve
+       vide obligerait a attendre trois minutes sur la place avant de
+       repartir, ce qui n'est pas du jeu. */
+    VIE.mp = VIE.mpMax;
+    POUVOIR_C = null; EFFETS_P = [];
+    peintPouvoir();
     joueSample('vault', { vol: 0.6, hauteur: 1.25 });
     peintPanneau();
     return true;
@@ -1883,12 +1949,19 @@
 
   var TOUCHES = { up: false, down: false, left: false, right: false };
   var CLE_STOCKAGE = 'swogeNexusTouches';
-  var DEFAUTS = { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', jump: 'Space',
+  /* ---- LA BARRE D'ESPACE CHANGE DE METIER ----
+   * Elle lancait le saut, une animation decorative du Nexus. Elle lance
+   * maintenant le POUVOIR du fruit, qui coute du mana et decide d'un combat.
+   * Le saut recule sur F : entre une figure et une attaque speciale, c'est
+   * l'attaque qui merite la touche que tout le monde trouve sans chercher. */
+  var DEFAUTS = { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD',
+                  pouvoir: 'Space', jump: 'KeyF',
                   auto: 'KeyI', nexus: 'KeyE' };
   var FLECHES_FIXES = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
   var ACTIONS = [
     { cle: 'up', nom: 'Move up' }, { cle: 'down', nom: 'Move down' },
     { cle: 'left', nom: 'Move left' }, { cle: 'right', nom: 'Move right' },
+    { cle: 'pouvoir', nom: 'Special attack' },
     { cle: 'jump', nom: 'Jump' },
     { cle: 'auto', nom: 'Auto-fire' },
     { cle: 'nexus', nom: 'Return to Nexus' },
@@ -1899,18 +1972,37 @@
   function reconstruitLookup() {
     CODE_VERS_ACTION = {};
     Object.keys(FLECHES_FIXES).forEach(function (c) { CODE_VERS_ACTION[c] = FLECHES_FIXES[c]; });
-    ACTIONS.forEach(function (a) { CODE_VERS_ACTION[PERSO_TOUCHES[a.cle]] = a.cle; });
+    ACTIONS.forEach(function (a) {
+      if (PERSO_TOUCHES[a.cle]) CODE_VERS_ACTION[PERSO_TOUCHES[a.cle]] = a.cle;
+    });
   }
   function chargeTouches() {
     var t = {};
     try { t = JSON.parse(localStorage.getItem(CLE_STOCKAGE) || '{}') || {}; } catch (e) { t = {}; }
-    var o = {};
-    ACTIONS.forEach(function (a) { o[a.cle] = (typeof t[a.cle] === 'string' && t[a.cle]) ? t[a.cle] : DEFAUTS[a.cle]; });
+    /* Un joueur qui a deja joue a « Space » enregistre pour le SAUT. Le
+       laisser tel quel donnerait deux actions sur la meme touche, et c'est
+       la derniere ecrite qui gagnerait — un joueur perdrait son pouvoir sans
+       comprendre pourquoi. On le renvoie donc au nouveau defaut du saut. */
+    if (t.jump === 'Space') t.jump = DEFAUTS.jump;
+    var o = {}, pris = {};
+    ACTIONS.forEach(function (a) {
+      var c = (typeof t[a.cle] === 'string' && t[a.cle]) ? t[a.cle] : DEFAUTS[a.cle];
+      /* Deux actions sur la meme touche : la seconde retombe sur son propre
+         defaut, et si celui-la est pris aussi elle reste sans touche plutot
+         que de voler celle d'une autre. Mieux vaut une action a rebinder
+         qu'une action qui en ecrase une autre en silence. */
+      if (pris[c]) c = pris[DEFAUTS[a.cle]] ? '' : DEFAUTS[a.cle];
+      if (c) pris[c] = a.cle;
+      o[a.cle] = c;
+    });
     return o;
   }
   function sauveTouches() {
     try { localStorage.setItem(CLE_STOCKAGE, JSON.stringify(PERSO_TOUCHES)); } catch (e) {}
     reconstruitLookup();
+    /* Le bouton du pouvoir affiche la touche : la reassigner sans le repeindre
+       laisserait « Space » ecrit sur un bouton qui repond a autre chose. */
+    if (typeof peintPouvoir === 'function') peintPouvoir();
   }
   reconstruitLookup();
 
@@ -1933,13 +2025,14 @@
     if (!d) return;
     debloqueSon(); ev.preventDefault();
     if (d === 'jump') lanceSaut();
+    else if (d === 'pouvoir') lancePouvoir();
     else if (d === 'auto') basculeAuto();
     else if (d === 'nexus') retourNexus('key');
     else TOUCHES[d] = true;
   });
   window.addEventListener('keyup', function (ev) {
     var d = CODE_VERS_ACTION[ev.code];
-    if (d && d !== 'jump' && d !== 'auto' && d !== 'nexus') TOUCHES[d] = false;
+    if (d && d !== 'jump' && d !== 'pouvoir' && d !== 'auto' && d !== 'nexus') TOUCHES[d] = false;
   });
 
   function lanceSaut() {
@@ -2056,6 +2149,153 @@
   window.addEventListener('mouseup', function (ev) {
     if (ev.button === 0 || ev.button === 2) tireur.presse = false;
   });
+
+  /* ================== LE POUVOIR DU FRUIT ==================
+   *
+   * ---- ce que le client decide, et ce qu'il ne decide pas ----
+   *
+   * Il decide QUAND on appuie. C'est tout. Quelle cible, combien de degats,
+   * combien de mana, si la recharge est passee : le serveur tranche, comme
+   * pour les tirs. Ce fichier n'a meme pas la table des couts en dur — elle
+   * arrive dans `realmEntre`. Un chiffre ecrit ici finirait par diverger de
+   * celui du serveur, et le bouton mentirait sur le prix.
+   *
+   * ---- ce qu'on montre quand meme sans attendre le serveur ----
+   *
+   * L'etat du bouton (pret / pas assez de mana / en recharge) se calcule ici,
+   * a partir du mana et de la recharge que `realmEtat` envoie dix fois par
+   * seconde. On ne veut pas d'un aller-retour pour savoir si le bouton doit
+   * s'allumer : il doit s'eteindre a la seconde ou le mana descend.
+   */
+  var POUVOIRS_C = null;          // la table des pouvoirs, envoyee a l'entree
+  var POUVOIR_C = null;           // le pouvoir du fruit porte, ou null
+  var POUVOIR_ETAT = { recharge: 0, rafale: 0 };
+  var elPow = document.getElementById('nxPow');
+  var elPowNom = document.getElementById('nxPowNom');
+  var elPowCout = document.getElementById('nxPowCout');
+  var elPowTouche = document.getElementById('nxPowTouche');
+  var elPowJauge = document.getElementById('nxPowJauge');
+
+  function peintPouvoir() {
+    if (!elPow) return;
+    var actif = SCENE === 'monde' && POUVOIR_C && POUVOIRS_C && POUVOIRS_C[POUVOIR_C];
+    elPow.classList.toggle('on', !!actif);
+    if (!actif) return;
+    var P = POUVOIRS_C[POUVOIR_C];
+    var assez = VIE.mp >= P.cout;
+    var prete = POUVOIR_ETAT.recharge <= 0;
+    elPowNom.textContent = P.nom || POUVOIR_C;
+    elPowCout.textContent = P.cout + ' MP';
+    elPowTouche.textContent = nomTouche(PERSO_TOUCHES.pouvoir) || '—';
+    elPow.classList.toggle('pret', assez && prete);
+    elPow.classList.toggle('vide', !assez || !prete);
+    /* La jauge se REMPLIT pendant la recharge plutot que de se vider : on lit
+       « ce qui reste a attendre » plus vite sur une barre qui avance. */
+    elPowJauge.style.width = prete ? '0%'
+      : Math.max(0, Math.min(100, (1 - POUVOIR_ETAT.recharge / P.recharge) * 100)) + '%';
+  }
+
+  /** Appuyer. On envoie, on ne devine rien : meme le prelevement de mana
+      attend la reponse du serveur. Afficher un mana deja depense qui
+      reviendrait ensuite serait pire qu'un dixieme de seconde d'attente. */
+  function lancePouvoir() {
+    if (SCENE !== 'monde') return;
+    if (!POUVOIR_C) {
+      flotte('No fruit equipped');
+      return;
+    }
+    if (enLigne) envoie({ type: 'realmPouvoir' });
+  }
+
+  if (elPow) {
+    elPow.addEventListener('click', function (ev) {
+      ev.preventDefault(); debloqueSon(); lancePouvoir();
+    });
+    /* Sur telephone, `click` arrive avec trois cents millisecondes de retard
+       apres le doigt. Pour une attaque, c'est visible. */
+    elPow.addEventListener('touchstart', function (ev) {
+      ev.preventDefault(); debloqueSon(); lancePouvoir();
+    }, { passive: false });
+  }
+
+  /* ---- CE QUE LE POUVOIR LAISSE A L'ECRAN ----
+   *
+   * Un pouvoir qui coute soixante mana et ne se voit pas se lit comme une
+   * touche cassee. Trois traces, une par pouvoir :
+   *   - la FOUDRE laisse un eclair brise entre nous et la cible, quelques
+   *     dixiemes de seconde ;
+   *   - la STASE laisse un cercle qui se retracte, plus un anneau autour de
+   *     chaque monstre fige (dessine ailleurs, avec le monstre) ;
+   *   - la RAFALE ne laisse rien ici : elle se voit au rythme des tirs, et
+   *     un effet permanent par-dessus quatre secondes de tir serait du
+   *     brouillard.
+   */
+  var EFFETS_P = [];
+  function effetPouvoir(m) {
+    if (m.cle === 'foudre' && !m.vide) {
+      EFFETS_P.push({ cle: 'foudre', x1: joueur.x, y1: joueur.y, x2: m.cx, y2: m.cy,
+                      vie: 0.32, max: 0.32, graine: Math.random() * 1000 });
+    } else if (m.cle === 'stase') {
+      EFFETS_P.push({ cle: 'stase', x: m.x, y: m.y, r: m.rayon, vie: 0.55, max: 0.55 });
+    }
+  }
+
+  function peintEffetsPouvoir(dt) {
+    for (var i = EFFETS_P.length - 1; i >= 0; i--) {
+      var e = EFFETS_P[i];
+      e.vie -= dt;
+      if (e.vie <= 0) { EFFETS_P.splice(i, 1); continue; }
+      var t = e.vie / e.max;
+      ctx.save();
+      if (e.cle === 'foudre') {
+        /* Un trait BRISE, pas une droite : une droite se lit comme un rayon
+           laser, et l'eclair doit se lire comme un eclair. Les cassures sont
+           tirees d'une graine fixee a la naissance de l'effet, sinon elles
+           danseraient a chaque image. */
+        var a = { x: e.x1, y: e.y1 }, b = { x: e.x2, y: e.y2 };
+        ctx.globalAlpha = Math.min(1, t * 1.6);
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        for (var passe = 0; passe < 2; passe++) {
+          ctx.strokeStyle = passe === 0 ? 'rgba(190,140,255,.55)' : '#FFFFFF';
+          ctx.lineWidth = passe === 0 ? 13 : 4;
+          ctx.beginPath();
+          ctx.moveTo(a.x, a.y);
+          var seg = 6;
+          for (var k = 1; k < seg; k++) {
+            var p = k / seg;
+            var px = a.x + (b.x - a.x) * p, py = a.y + (b.y - a.y) * p;
+            /* Le decalage perpendiculaire au trait, pseudo-aleatoire mais
+               STABLE : sin(graine + k) rend le meme nombre a chaque image. */
+            var d = Math.sin(e.graine + k * 2.7) * 22 * Math.sin(p * Math.PI);
+            var nx = -(b.y - a.y), ny = (b.x - a.x);
+            var n = Math.sqrt(nx * nx + ny * ny) || 1;
+            ctx.lineTo(px + nx / n * d, py + ny / n * d);
+          }
+          ctx.lineTo(b.x, b.y);
+          ctx.stroke();
+        }
+        /* L'impact : un halo qui s'ouvre a l'arrivee. */
+        ctx.globalAlpha = t * 0.8;
+        ctx.fillStyle = '#E6D2FF';
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, 10 + (1 - t) * 34, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (e.cle === 'stase') {
+        var c = { x: e.x, y: e.y };
+        ctx.globalAlpha = t * 0.75;
+        ctx.strokeStyle = '#9DE8FF';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        /* Le cercle se RETRACTE vers le lanceur : une onde qui s'etend
+           voudrait dire « ca part de moi et ca s'en va », alors que la stase
+           ramene tout le monde a l'arret. */
+        ctx.arc(c.x, c.y, e.r * (0.55 + t * 0.45), 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
 
   /* Le tir auto se commande de DEUX endroits — la touche et le bouton des
      reglages — et se montre a un TROISIEME, le temoin sur la scene. Une seule
@@ -2626,7 +2866,8 @@
     return p.getBoundingClientRect().width || 0;
   }
 
-  function dessine() {
+  function dessine(dt) {
+    dt = dt || 0;
     var vueW = canvas.width / DPR, vueH = canvas.height / DPR;
     var zoom = zoomCourant(vueH);
     /* On centre le joueur sur la partie VISIBLE, pas sur la fenetre : sinon
@@ -2693,6 +2934,9 @@
       pileM.forEach(function (p) { p.dessine(); });
 
       dessineTirsMonde();
+      /* Les traces des pouvoirs par-dessus tout, mais AVANT `restore` : elles
+         sont posees en coordonnees du monde comme le reste de la scene. */
+      peintEffetsPouvoir(dt);
       ctx.restore();
       DERNIERE_CAM.x = camX; DERNIERE_CAM.y = camY; DERNIERE_CAM.z = zoom;
       peintFlottants();
@@ -2795,12 +3039,61 @@
      C'est le decoupage qui l'a garanti, pas une table ici. */
   var DIRS_M = { up: 0, down: 1, left: 2, right: 3 };
   var CADRE_M = 128, TAILLE_M = 118;
+  /* Le canevas de teinte, cree UNE fois et reutilise. En creer un par
+     monstre et par image ferait naitre des dizaines de canevas par seconde,
+     que le ramasse-miettes paierait au pire moment — pendant un combat. */
+  var GEL = null;
+  function gel() {
+    if (!GEL) {
+      var el = document.createElement('canvas');
+      el.width = CADRE_M; el.height = CADRE_M;
+      GEL = { el: el, ctx: el.getContext('2d') };
+      GEL.ctx.imageSmoothingEnabled = false;
+    }
+    return GEL;
+  }
+
   function dessineMonstre(e) {
     var img = ATLAS_M[e.espece];
     if (!img || !img.complete || !img.naturalWidth) return;
     var r = DIRS_M[e.dir] === undefined ? 1 : DIRS_M[e.dir];
-    ctx.drawImage(img, e.cadre * CADRE_M, r * CADRE_M, CADRE_M, CADRE_M,
-                  e.rx - TAILLE_M / 2, e.ry - TAILLE_M + 14, TAILLE_M, TAILLE_M);
+    /* ---- UN MONSTRE FIGE SE VOIT ----
+     * Deux marques, parce qu'une seule ne suffit pas : un ANNEAU au sol dit
+     * « celui-la est pris », et le sprite vire au bleu glace. L'anneau seul se
+     * perdrait dans une melee a dix monstres ; la teinte seule passerait
+     * inapercue sur un revenant des glaces, qui est deja bleu. */
+    var fige = e.stase > 0;
+    if (fige) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(157,232,255,.85)';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.ellipse(e.rx, e.ry + 4, TAILLE_M * 0.36, TAILLE_M * 0.17, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+    var sx = e.rx - TAILLE_M / 2, sy = e.ry - TAILLE_M + 14;
+    if (fige) {
+      /* La teinte passe par un CANEVAS A PART. Teinter directement sur la
+         scene avec `source-atop` toucherait aussi le sol : a cet endroit le
+         decor est deja peint, donc « la ou il y a quelque chose » ne veut pas
+         dire « la ou il y a le monstre ». Sur un canevas vide qui ne contient
+         que le sprite, la question a la bonne reponse. */
+      var g = gel();
+      g.ctx.clearRect(0, 0, CADRE_M, CADRE_M);
+      g.ctx.globalCompositeOperation = 'source-over';
+      g.ctx.globalAlpha = 1;
+      g.ctx.drawImage(img, e.cadre * CADRE_M, r * CADRE_M, CADRE_M, CADRE_M,
+                      0, 0, CADRE_M, CADRE_M);
+      g.ctx.globalCompositeOperation = 'source-atop';
+      g.ctx.globalAlpha = 0.38;
+      g.ctx.fillStyle = '#9DE8FF';
+      g.ctx.fillRect(0, 0, CADRE_M, CADRE_M);
+      ctx.drawImage(g.el, 0, 0, CADRE_M, CADRE_M, sx, sy, TAILLE_M, TAILLE_M);
+    } else {
+      ctx.drawImage(img, e.cadre * CADRE_M, r * CADRE_M, CADRE_M, CADRE_M,
+                    sx, sy, TAILLE_M, TAILLE_M);
+    }
     barreVie(e.rx, e.ry, e.pv, e.pvMax, TAILLE_M * 0.46);
   }
 
@@ -3015,7 +3308,7 @@
     dernier = t;
     maj(dt);
     majTirs(dt, DERNIERE_CAM.x, DERNIERE_CAM.y);
-    dessine();
+    dessine(dt);
     peintMini();
     requestAnimationFrame(boucle);
   }

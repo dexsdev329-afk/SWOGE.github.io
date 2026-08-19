@@ -25,7 +25,7 @@ canvas{ touch-action:none; }
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-<script src="stakebubble.js?v=20260819k"></script>
+<script src="stakebubble.js?v=20260819n"></script>
 
 <style>
 html,body{ height:100%; margin:0; background:#0A1128; overscroll-behavior:none; }
@@ -107,6 +107,7 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
   .nxp-g img{ width:21px; height:21px; }
   .nxp-vide{ font-size:13px; }
   #nxSortie, #nxReglages{ width:32px; height:32px; font-size:16px; }
+  #nxRepli{ width:32px; height:32px; font-size:16px; }
   #nxOr{ height:32px; font-size:12.5px; }
   #nxOr b{ font-size:14px; }
 }
@@ -123,6 +124,7 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
   .nxp-g img{ width:25px; height:25px; }
   .nxp-vide{ font-size:15px; }
   #nxSortie, #nxReglages{ width:38px; height:38px; font-size:19px; }
+  #nxRepli{ width:38px; height:38px; font-size:19px; }
   #nxOr{ height:38px; font-size:14px; }
   #nxOr b{ font-size:16px; }
 }
@@ -156,7 +158,10 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
 /* les trois barres. Le libelle est DANS la barre, a gauche, comme l'original */
 .nxp-b{ position:relative; height:19px; border:1px solid #1c1c1c; background:#2a2a2a;
   overflow:hidden; flex:0 0 auto; }
-.nxp-b i{ position:absolute; inset:0 auto 0 0; display:block; }
+/* La jauge glisse au lieu de sauter : un coup encaisse doit SE VOIR partir,
+   sinon le nombre change et l'oeil ne l'attrape pas. */
+.nxp-b i{ position:absolute; inset:0 auto 0 0; display:block;
+  transition:width .18s ease-out; }
 .nxp-b span{ position:relative; z-index:1; display:block; padding:0 5px;
   font:700 11px/19px 'Archivo',system-ui,sans-serif; color:#fff;
   text-shadow:0 1px 2px rgba(0,0,0,.85); }
@@ -209,6 +214,14 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
  * C'est `margin-left:auto` sur le PREMIER des trois qui pousse le groupe a
  * droite. Le compteur passe donc devant, et les deux boutons gardent leur
  * place au bout de la ligne. */
+/* Le repli passe DEVANT l'or, et c'est lui qui porte le `margin-left:auto` :
+   les quatre elements forment un groupe cale a droite. Quand il est masque,
+   l'or reprend le role — d'ou la regle qui suit. */
+#nxRepli{ margin-left:auto; flex:0 0 auto; width:26px; height:26px;
+  box-sizing:border-box; border-radius:7px; display:flex; align-items:center;
+  justify-content:center; font-size:13px; background:#3a2f22;
+  border:1px solid #171b22; color:#FFD97A; cursor:pointer; }
+#nxRepli:hover{ background:#4a3c2b; }
 #nxOr{ margin-left:auto; flex:0 0 auto; display:flex; align-items:center; gap:4px;
   padding:0 8px; height:26px; box-sizing:border-box; border-radius:7px;
   background:#2b3340; border:1px solid #171b22; font-size:11px; color:#c9b06a;
@@ -506,20 +519,19 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
  * PROPRE visuel, et il tenait dans une vignette de 370 px au milieu d'un
  * fond qui parlait d'autre chose. Il prend tout l'ecran maintenant : c'est
  * la premiere image du jeu, elle a le droit d'occuper la place.
- * En PORTRAIT, `cover` recadrait soixante pour cent de la largeur et coupait
- * le logo en deux : le dessin est panoramique, un ecran de telephone ne
- * l'est pas. On le cale donc sur la LARGEUR, ancre en haut, et le bas reste
- * sombre — c'est la que la barre se pose. Rien n'est coupe, et ca se lit
- * comme une affiche plutot que comme un cadrage rate.
- * En paysage, `cover` va de soi : les deux formats se ressemblent. */
+ * DEUX dessins, un par orientation. Il n'y en avait qu'un, panoramique, et
+ * en portrait il fallait le caler sur la largeur pour ne pas couper le logo
+ * — l'affiche tenait alors dans le tiers haut de l'ecran. Avec un dessin
+ * fait pour le portrait, `cover` va de soi dans les deux sens : il ne rogne
+ * plus que les bords, et le logo comme les personnages sont au centre. */
 #preloader{position:fixed;inset:0;z-index:100000;background:#0c0518 url('img/card_nx.webp') center/cover no-repeat;display:flex;align-items:flex-end;justify-content:center;padding-bottom:14vh;transition:opacity .6s ease;font-family:'Orbitron',system-ui,sans-serif}
 /* Un voile sombre en bas : la barre de progression se posait sur un ciel
    clair et son remplissage devenait invisible. */
-#preloader::after{content:'';position:absolute;inset:auto 0 0;height:52%;pointer-events:none;background:linear-gradient(180deg,rgba(8,4,16,0),rgba(8,4,16,.88) 58%,rgba(8,4,16,.97))}
+#preloader::after{content:'';position:absolute;inset:auto 0 0;height:42%;pointer-events:none;background:linear-gradient(180deg,rgba(8,4,16,0),rgba(8,4,16,.72) 55%,rgba(8,4,16,.92))}
 /* La barre se pose JUSTE SOUS l'image, pas au milieu de l'ecran : l'affiche
    fait 66.7 % de la largeur en hauteur (640x427), donc 72vw laisse un doigt
    d'air et rien ne flotte dans le vide. */
-@media (orientation:portrait){#preloader{background-size:100% auto;background-position:top center;align-items:flex-start;padding-top:72vw;padding-bottom:0}}
+@media (orientation:portrait){#preloader{background-image:url('img/card_nx_tel.webp');align-items:flex-end;padding-bottom:11vh}}
 @media (orientation:landscape){#preloader{align-items:flex-end;padding-bottom:9vh}}
 #preloader.done{opacity:0;pointer-events:none}
 #preloader .pl-box{position:relative;z-index:1;text-align:center}
@@ -544,6 +556,8 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
     <canvas id="nxMini" width="120" height="120"></canvas>
     <div class="nxp-nom">
       <img alt="" id="nxVignette"><b id="nxNom">—</b>
+      <button id="nxRepli" type="button" style="display:none"
+              title="Run back to the Nexus (E)">&#127968;</button>
       <span id="nxOr" title="Gold — banked when this character dies">&#127942;<b>0</b></span>
       <a id="nxSortie" href="games.html" aria-label="Back to the game hall"
          title="Back to the game hall">&#8617;&#65039;</a>
@@ -551,8 +565,8 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
     </div>
     <i id="nxVide" class="nxp-vide"></i>
     <div class="nxp-b nxp-lvl"><i id="nxLvlJauge"></i><span id="nxLvl">Lvl 1</span><em id="nxXp"></em></div>
-    <div class="nxp-b nxp-hp"><i style="width:100%"></i><span>HP</span><em id="nxHp"></em></div>
-    <div class="nxp-b nxp-mp"><i style="width:100%"></i><span>MP</span><em id="nxMp"></em></div>
+    <div class="nxp-b nxp-hp"><i id="nxHpJauge" style="width:100%"></i><span>HP</span><em id="nxHp"></em></div>
+    <div class="nxp-b nxp-mp"><i id="nxMpJauge" style="width:100%"></i><span>MP</span><em id="nxMp"></em></div>
     <div class="nxp-stats" id="nxStats"></div>
     <div class="nxp-cases" id="nxEquip"></div>
     <div class="nxp-cases" id="nxSac"></div>
@@ -646,7 +660,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
   </div>
 </div>
 
-<script src="nexus.js?v=20260819m" defer></script>
+<script src="nexus.js?v=20260819n" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

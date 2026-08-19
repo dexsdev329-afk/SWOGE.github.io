@@ -1391,7 +1391,13 @@
                                                    second:'2-digit', hour12:false });
   }
 
+  var profStyleFait = false;
   function profStyle() {
+    /* Injecte UNE fois. Ce bloc porte aussi l'habit de la scene d'ouverture
+       de coffre, que le Nexus emprunte : sans ce garde-fou, chaque appel
+       ajouterait une feuille de style de plus a la page. */
+    if (profStyleFait) return;
+    profStyleFait = true;
     var css = document.createElement('style');
     css.textContent =
       '.swpb{display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;' +
@@ -5066,7 +5072,14 @@
    * une seconde version de l'unique moment du site qui produit une emotion —
    * et deux versions divergent. On l'expose, comme le formulaire de
    * connexion. */
-  window.swogeCoffre = { ouvre: function (cle) { joueCoffre(cle); sceneOuvre(cle); } };
+  window.swogeCoffre = { ouvre: function (cle) {
+    /* L'HABIT DE LA SCENE vit dans `profStyle`, qui n'est appele qu'en
+       construisant le tiroir du profil. Sur le Nexus ce tiroir n'est jamais
+       ouvert : la scene se montait donc sans une seule regle CSS, c'est-a-
+       dire invisible. On s'assure qu'il est pose avant de jouer. */
+    try { profStyle(); } catch (e) {}
+    joueCoffre(cle); sceneOuvre(cle);
+  } };
 
   function joueCoffre(cle) {
     var vol = sonVolume();

@@ -173,6 +173,20 @@
       joueSample(Math.random() < 0.5 ? 'mort' : 'mort2', { vol: 0.7 });
       moiMonde.xp = m.total;
       flotte('+' + m.xp + ' XP');
+      /* ---- LA BARRE MONTE TOUT DE SUITE ----
+       * Elle ne bougeait qu'a la prochaine fiche complete, c'est-a-dire au
+       * prochain changement d'equipement : on tuait dix monstres sans rien
+       * voir avancer. Le serveur envoie deja le total avec chaque mise a
+       * mort — il ne manquait que de le poser.
+       *
+       * Les BORNES du niveau (debut et fin) ne changent qu'en changeant de
+       * niveau. Tant qu'on reste dans le meme, l'XP suffit ; quand il monte,
+       * on redemande la fiche parce que les stats bougent avec. */
+      if (FICHE) {
+        FICHE.xp = m.total;
+        if (m.niveau !== FICHE.niveau) { if (enLigne) envoie({ type: 'personnage', skin: PERSO }); }
+        else peintPanneau();
+      }
       if (m.monte) { joueSample('niveau', { vol: 0.9 }); flotte('LEVEL ' + m.niveau); }
     }
     /* La mort arrive du SERVEUR : c'est lui qui l'a constatee, jamais nous. */
@@ -219,6 +233,10 @@
 
   var elNom = document.getElementById('nxNom');
   var elOr = document.getElementById('nxOr');
+  var elRepli = document.getElementById('nxRepli');
+  var elHpJauge = document.getElementById('nxHpJauge');
+  var elMpJauge = document.getElementById('nxMpJauge');
+  if (elRepli) elRepli.addEventListener('click', function () { clic(true); retourNexus('bouton'); });
   var elVignette = document.getElementById('nxVignette');
   var elLvl = document.getElementById('nxLvl'), elLvlJauge = document.getElementById('nxLvlJauge');
   var elXp = document.getElementById('nxXp');
@@ -475,6 +493,10 @@
      * vivant rapportera s'il meurt. Les confondre ferait croire qu'on possede
      * une somme qu'on peut encore perdre — c'est exactement l'inverse, elle
      * n'est versee qu'a la mort. Le second est donc ecrit en retrait. */
+    /* Le repli ne s'affiche QUE s'il y a un endroit d'ou revenir. Dans le
+       Nexus il ne ferait rien, et un bouton qui ne fait rien apprend au
+       joueur a ne plus le regarder. */
+    if (elRepli) elRepli.style.display = (SCENE === 'nexus') ? 'none' : '';
     if (elOr && FICHE) {
       var acquis = FICHE.fameCompte || 0, enCours = FICHE.fame || 0;
       elOr.innerHTML = '\uD83C\uDFC6<b>' + acquis.toLocaleString('en-US') + '</b>' +
@@ -504,6 +526,14 @@
       poseVieMax(FICHE.stats.hp, FICHE.stats.mp);
       elHp.textContent = VIE.pv;
       elMp.textContent = VIE.mp;
+      /* ---- LA JAUGE SE VIDE ----
+       * Elle etait figee a 100 % : le nombre baissait, la barre non. Dans un
+       * combat on ne lit pas un nombre, on regarde une longueur — c'est
+       * pour ca qu'on en met une. */
+      if (elHpJauge) elHpJauge.style.width =
+        (VIE.max > 0 ? Math.max(0, Math.min(100, VIE.pv * 100 / VIE.max)) : 100) + '%';
+      if (elMpJauge) elMpJauge.style.width =
+        (VIE.mpMax > 0 ? Math.max(0, Math.min(100, VIE.mp * 100 / VIE.mpMax)) : 100) + '%';
     } else {
       elLvl.textContent = 'Lvl —'; elLvlJauge.style.width = '0%';
       elXp.textContent = ''; elHp.textContent = ''; elMp.textContent = '';

@@ -627,10 +627,35 @@
     poing:   { portee: 150, tirs: 1, cadence: 1.6, vitesse: 340, teinte: '#8DA0C4' },
   };
 
-  function armeCourante() {
+  function familleArme() {
     var e = FICHE && FICHE.equipArme;
-    var fam = e && e.cle ? String(e.cle).split('_')[0] : null;
-    return ARMES[fam] || ARMES.poing;
+    return (e && e.famille) || null;
+  }
+  function armeCourante() {
+    return ARMES[familleArme()] || ARMES.poing;
+  }
+
+  /* ---- LES DESSINS DE PROJECTILES ----
+   *
+   * Une bande de quatre images par famille d'arme, chargee a la demande. Une
+   * famille sans dessin garde le trace au canvas : on peut donc les livrer
+   * une par une sans que les cinq autres cessent de tirer entre-temps.
+   *
+   * Le dessin regarde vers la DROITE, comme l'angle 0 : `ctx.rotate(angle)`
+   * l'oriente donc sans correction a appliquer. */
+  var CADRE_TIR = 96;
+  var SPRITES_TIR = {};
+  function spriteTir(fam) {
+    if (!fam) return null;
+    if (SPRITES_TIR[fam] !== undefined) return SPRITES_TIR[fam];
+    var img = new Image();
+    /* `null` des le depart, pas `img` : tant qu'elle n'est pas chargee on
+       veut le trace de secours, pas une case vide. */
+    SPRITES_TIR[fam] = null;
+    img.onload = function () { SPRITES_TIR[fam] = img; };
+    img.onerror = function () { SPRITES_TIR[fam] = null; };
+    img.src = 'img/nexus/tirs/' + fam + '.webp';
+    return null;
   }
 
   var TIRS = [];              // projectiles en vol
@@ -712,8 +737,10 @@
     var ecart = 0.13;
     for (var i = 0; i < a.tirs; i++) {
       var d = a.tirs === 1 ? 0 : (i - (a.tirs - 1) / 2) * ecart;
+      var duree = a.portee / a.vitesse;
       TIRS.push({ x: joueur.x, y: joueur.y - 40, a: angle + d,
-                  v: a.vitesse, reste: a.portee / a.vitesse, teinte: a.teinte });
+                  v: a.vitesse, reste: duree, duree: duree,
+                  teinte: a.teinte, fam: familleArme() });
     }
   }
 
@@ -739,16 +766,28 @@
   function dessineTirs() {
     for (var i = 0; i < TIRS.length; i++) {
       var t = TIRS[i];
+      var img = spriteTir(t.fam);
       ctx.save();
       ctx.translate(t.x, t.y); ctx.rotate(t.a);
-      ctx.fillStyle = t.teinte;
-      ctx.shadowColor = t.teinte; ctx.shadowBlur = 8;
-      /* Une navette allongee dans le sens du vol. Les vrais dessins
-         remplaceront ce trace sans rien changer au reste — seul ce bloc
-         connait la forme d'un projectile. */
-      ctx.beginPath();
-      ctx.ellipse(0, 0, 11, 3.5, 0, 0, Math.PI * 2);
-      ctx.fill();
+      if (img) {
+        /* Le cadre suit la VIE du projectile, pas une horloge a part : un
+           tir court traverse quand meme ses quatre images, et la
+           dissipation tombe donc toujours juste avant qu'il disparaisse. */
+        var n = Math.floor(img.width / CADRE_TIR) || 1;
+        var k = Math.min(n - 1, Math.floor((1 - t.reste / t.duree) * n));
+        var taille = 46;
+        ctx.drawImage(img, k * CADRE_TIR, 0, CADRE_TIR, CADRE_TIR,
+                      -taille / 2, -taille / 2, taille, taille);
+      } else {
+        /* Pas encore de dessin pour cette famille : une navette allongee
+           dans le sens du vol. Seul ce bloc connait la forme d'un
+           projectile — livrer une image ne touche a rien d'autre. */
+        ctx.fillStyle = t.teinte;
+        ctx.shadowColor = t.teinte; ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 11, 3.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
       ctx.restore();
     }
   }

@@ -203,7 +203,7 @@
         joueSample(m.cle === 'stase' ? 'vault' : 'niveau',
                    { vol: m.cle === 'foudre' ? 0.55 : 0.4, hauteur: m.cle === 'stase' ? 0.75 : 1.35,
                      duree: 0.5 });
-        peintPanneau(); peintPouvoir();
+        majJauges(); peintPouvoir();
       }
     }
     /* ---- CE QU'ON TOUCHE, ET CE QU'ON ENCAISSE ----
@@ -224,7 +224,7 @@
       VIE.pv = m.pv; moiMonde.pv = m.pv;
       joueSample('degat', { vol: 0.75, hauteur: 0.8, duree: 0.8 });
       secousse = 0.16;
-      peintPanneau();
+      majJauges();
     }
     if (m.type === 'realmKill') {
       /* Deux cris tires au hasard : un monstre qui meurt toujours pareil
@@ -644,10 +644,15 @@
          lacher une piece, et une case vide est justement celle ou l'on veut
          deposer. */
       if (!e) return '<div class="nxp-c vide" data-slot="' + k + '"></div>';
+      /* Le FRUIT porte le pouvoir : c'est la seule case qui a un etat de
+         recharge. Le voile est pose vide ici et rempli par `majJauges`, dix
+         fois par seconde — le reconstruire a chaque image detruirait la piece
+         qu'on est peut-etre en train de faire glisser. */
+      var cd = (k === 'equipFruit' && POUVOIR_C) ? '<i class="cd"></i>' : '';
       return '<div class="nxp-c" data-slot="' + k + '" data-item="' + e.item + '"' +
         ' title="' + ech(e.nom + ' — ' + detailBonus(e)) + '">' +
         '<img alt="" src="img/shop/' + encodeURIComponent(e.cle) + '.webp" ' +
-        'onerror="this.style.visibility=\'hidden\'">' +
+        'onerror="this.style.visibility=\'hidden\'">' + cd +
         '<b>' + pastille(e) + '</b></div>';
     }).join('');
 
@@ -689,6 +694,10 @@
       });
     }
 
+    /* Le panneau vient d'etre reconstruit : le voile de recharge du fruit est
+       neuf et vide. On lui redonne son etat, sinon un fruit en pleine
+       recharge repasserait en couleur a chaque changement de niveau. */
+    majFruit();
     peintGens();
   }
 
@@ -1047,14 +1056,20 @@
        * vie laisserait la barre de mana figee pendant qu'elle se remplit
        * cote serveur — et le bouton du pouvoir resterait eteint alors qu'il
        * est pret. */
-      var bouge = (VIE.pv !== m.moi.pv || VIE.max !== m.moi.pvMax ||
-                   VIE.mp !== m.moi.mp || VIE.mpMax !== m.moi.mpMax);
+      /* ---- ON NE REPEINT PAS TOUT DIX FOIS PAR SECONDE ----
+       * La vie et le mana remontent seuls : ils changent en permanence. Passer
+       * par `peintPanneau` a ce rythme reconstruirait le HTML de l'equipement
+       * et du sac plusieurs fois par seconde — sous le doigt de qui fait
+       * glisser une piece. Seules les jauges bougent ici. La structure ne se
+       * refait que quand elle change pour de vrai : plafond de vie modifie
+       * (un niveau, un objet), fruit different. */
+      var structure = (VIE.max !== m.moi.pvMax || VIE.mpMax !== m.moi.mpMax);
       VIE.pv = m.moi.pv; VIE.max = m.moi.pvMax;
       if (m.moi.mp !== undefined) { VIE.mp = m.moi.mp; VIE.mpMax = m.moi.mpMax; }
-      if (bouge) peintPanneau();
-      if (m.moi.po !== undefined) POUVOIR_C = m.moi.po;
+      if (m.moi.po !== undefined && m.moi.po !== POUVOIR_C) { POUVOIR_C = m.moi.po; structure = true; }
       POUVOIR_ETAT.recharge = m.moi.poR || 0;
       POUVOIR_ETAT.rafale = m.moi.raf || 0;
+      if (structure) peintPanneau(); else majJauges();
       peintPouvoir();
       /* On ne se TELEPORTE pas sur la position du serveur a chaque message :
          elle a un dixieme de seconde de retard, et le personnage
@@ -2176,6 +2191,59 @@
   var elPowTouche = document.getElementById('nxPowTouche');
   var elPowJauge = document.getElementById('nxPowJauge');
 
+  /* ================== CE QUI BOUGE EN CONTINU ==================
+   *
+   * La vie et le mana remontent tout seuls : ils changent plusieurs fois par
+   * seconde. Repeindre TOUT le panneau a ce rythme reconstruirait a chaque
+   * fois le HTML de l'equipement, du sac et des potions — c'est-a-dire
+   * detruirait sous le doigt la piece qu'on est en train de faire glisser, et
+   * ferait clignoter des images qui n'ont pas change.
+   *
+   * On separe donc : `peintPanneau` refait la structure quand elle change
+   * vraiment (un objet equipe, un niveau gagne), et cette fonction-ci ne
+   * touche qu'aux trois choses qui bougent seules — les deux jauges et le
+   * voile de recharge du fruit.
+   */
+  function majJauges() {
+    if (!FICHE) return;
+    if (elHp) elHp.textContent = VIE.pv;
+    if (elMp) elMp.textContent = VIE.mp;
+    if (elHpJauge) elHpJauge.style.width =
+      (VIE.max > 0 ? Math.max(0, Math.min(100, VIE.pv * 100 / VIE.max)) : 100) + '%';
+    if (elMpJauge) elMpJauge.style.width =
+      (VIE.mpMax > 0 ? Math.max(0, Math.min(100, VIE.mp * 100 / VIE.mpMax)) : 100) + '%';
+    majFruit();
+  }
+
+  /* Le fruit se grise pendant sa recharge et revient en couleur des qu'il est
+     pret. On ne touche qu'aux classes et a une hauteur : aucun HTML n'est
+     reconstruit, donc rien ne clignote et rien ne se detache du doigt. */
+  function majFruit() {
+    if (!elEquip) return;
+    var c = elEquip.querySelector('[data-slot="equipFruit"]');
+    if (!c) return;
+    var P = (POUVOIRS_C && POUVOIR_C) ? POUVOIRS_C[POUVOIR_C] : null;
+    /* Hors du monde de combat, le pouvoir ne se lance pas : on n'affiche donc
+       ni grisement ni liseré — un fruit grise dans le Nexus se lirait comme
+       un objet casse. */
+    if (!P || SCENE !== 'monde') {
+      c.classList.remove('froid'); c.classList.remove('chaud');
+      var v0 = c.querySelector('.cd'); if (v0) v0.style.height = '0%';
+      return;
+    }
+    var reste = POUVOIR_ETAT.recharge || 0;
+    /* « Pret » veut dire les DEUX : la recharge passee ET assez de mana. Un
+       fruit en couleur qu'on ne peut pas lancer faute de mana serait un
+       mensonge de la meme famille que le bouton grise et muet. */
+    var pret = reste <= 0 && VIE.mp >= P.cout;
+    c.classList.toggle('froid', !pret);
+    c.classList.toggle('chaud', pret);
+    var v = c.querySelector('.cd');
+    if (v) v.style.height = reste > 0
+      ? Math.max(0, Math.min(100, reste / P.recharge * 100)) + '%'
+      : '0%';
+  }
+
   function peintPouvoir() {
     if (!elPow) return;
     var actif = SCENE === 'monde' && POUVOIR_C && POUVOIRS_C && POUVOIRS_C[POUVOIR_C];
@@ -2189,6 +2257,9 @@
     elPowTouche.textContent = nomTouche(PERSO_TOUCHES.pouvoir) || '—';
     elPow.classList.toggle('pret', assez && prete);
     elPow.classList.toggle('vide', !assez || !prete);
+    /* Le fruit dit la MEME chose que le bouton, toujours : deux etats a tenir
+       d'accord a la main finiraient par se contredire. */
+    majFruit();
     /* La jauge se REMPLIT pendant la recharge plutot que de se vider : on lit
        « ce qui reste a attendre » plus vite sur une barre qui avance. */
     elPowJauge.style.width = prete ? '0%'

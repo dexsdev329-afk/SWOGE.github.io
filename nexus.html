@@ -202,6 +202,24 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
 .nxp-c b{ position:absolute; right:1px; bottom:0; font:700 9px/1 'Archivo',system-ui,sans-serif;
   color:#63d13f; text-shadow:0 1px 2px #000; }
 
+/* ---- LE FRUIT PENDANT SA RECHARGE ----
+ * Le pouvoir se lance depuis la barre d'espace, mais il APPARTIENT au fruit :
+ * c'est sur le fruit qu'on doit lire s'il est disponible. Grise pendant la
+ * recharge, en couleur des qu'il est pret — la meme information que sur le
+ * bouton, la ou le joueur regarde son equipement.
+ *
+ * Deux signes, pas un : la couleur qui part dit « pas maintenant », et le
+ * voile qui DESCEND dit combien de temps il reste. Un simple grisement
+ * laisserait le joueur reappuyer au hasard pour savoir. */
+.nxp-c.froid img{ filter:grayscale(1) brightness(.55); }
+.nxp-c .cd{ position:absolute; left:0; right:0; top:0; height:0;
+  background:linear-gradient(180deg,rgba(190,140,255,.42),rgba(190,140,255,.14));
+  border-bottom:1px solid rgba(190,140,255,.55); pointer-events:none;
+  transition:height .12s linear; }
+/* Un liseré violet quand il est PRET : le retour a la couleur seul se
+   remarque mal du coin de l'oeil pendant un combat. */
+.nxp-c.chaud{ box-shadow:inset 0 0 0 1px rgba(190,140,255,.75); }
+
 /* les joueurs a portee, deux colonnes, avec leur vignette */
 .nxp-gens{ display:grid; grid-template-columns:1fr 1fr; gap:3px 6px;
   border-top:1px solid #2b2b2b; padding-top:6px; margin-top:2px; }
@@ -716,7 +734,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
   </div>
 </div>
 
-<script src="nexus.js?v=20260819p" defer></script>
+<script src="nexus.js?v=20260819q" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

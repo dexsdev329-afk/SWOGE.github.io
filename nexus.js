@@ -224,6 +224,17 @@
       VIE.pv = m.pv; moiMonde.pv = m.pv;
       joueSample('degat', { vol: 0.75, hauteur: 0.8, duree: 0.8 });
       secousse = 0.16;
+      /* ---- LE COUP QUI CLOUE AU SOL ----
+       * Perdre le controle sans un mot se lit comme une page qui a plante,
+       * pas comme une attaque. On le NOMME, on le fait entendre plus grave
+       * que le reste, et le cercle autour des pieds dira le temps qu'il
+       * reste. */
+      if (m.paralyse > 0) {
+        PARALYSE = m.paralyse;
+        flotte('PARALYZED');
+        joueSample('vault', { vol: 0.5, hauteur: 0.55, duree: 0.7 });
+        secousse = 0.3;
+      }
       majJauges();
     }
     if (m.type === 'realmKill') {
@@ -251,7 +262,7 @@
     /* La mort arrive du SERVEUR : c'est lui qui l'a constatee, jamais nous. */
     if (m.type === 'realmMort') {
       SCENE = 'nexus'; MONSTRES_C = {}; TIRS_C = []; DISTANTS_M = {};
-      POUVOIR_C = null; EFFETS_P = []; peintPouvoir();
+      POUVOIR_C = null; EFFETS_P = []; PARALYSE = 0; peintPouvoir();
       var pp = LIEUX[1];
       joueur.x = pp.x; joueur.y = pp.y + pp.rayon + 60;
       VIE.pv = VIE.max;
@@ -408,17 +419,107 @@
     return max;
   }
 
-  /** Ce que porte la pastille du coin. Une ARME ne donne plus aucune stat —
-      « +0 » serait faux ET decourageant sur une epee mythique qui frappe a
-      120. Elle affiche donc ses DEGATS, avec une lame en prefixe pour qu'on
-      ne confonde pas les deux chiffres dans un sac ou les objets se
-      melangent. Tout le reste garde le « + » d'un bonus de stat. */
-  function pastille(e) {
-    var b = bonusEnTete(e);
-    if (b > 0) return '+' + b;
-    if (e && e.degats) return '\u2694' + e.degats[1];
-    return '+0';
+  /* La pastille du coin a ete retiree : un seul chiffre pose sur une case ne
+     pouvait pas dire « +21 DEF et +170 HP », et choisir le plus gros des deux
+     revenait a en cacher un. C'est la FICHE au survol qui porte l'information
+     maintenant, en entier. `bonusEnTete` reste : la mini-carte et le menu du
+     coffre s'en servent encore pour trier. */
+
+  /* ================== LA FICHE D'UN OBJET ==================
+   *
+   * Une case de sac fait vingt pixels de cote : elle ne peut pas dire ce que
+   * la piece apporte. La pastille essayait, avec un seul chiffre, et elle
+   * mentait des qu'un objet touchait plus d'une stat — « +21 » sur un
+   * plastron qui donne aussi 170 points de vie.
+   *
+   * Le survol ouvre donc la fiche complete. Elle vit sur `document`, en un
+   * seul exemplaire : les cases sont refaites a chaque peinture du panneau,
+   * et des ecouteurs poses sur elles disparaitraient avec.
+   */
+  var elFiche = null;
+
+  /** L'objet derriere une case, d'ou qu'elle vienne. Les trois surfaces —
+      equipement, sac, coffre — portent la meme forme de donnee, mais pas au
+      meme endroit : on les cherche la ou elles sont plutot que de recopier
+      l'objet dans le HTML. */
+  function objetDeLaCase(el) {
+    if (!el || !el.dataset) return null;
+    if (el.dataset.slot && el.dataset.item) return FICHE ? FICHE[el.dataset.slot] : null;
+    if (el.dataset.sac) {
+      /* Par la PLACE et non par l'identifiant : deux exemplaires du meme
+         objet occupent deux cases, et chercher par identifiant rendrait
+         toujours le premier — juste ici, faux le jour ou les deux
+         differeront. */
+      var pl = Number(el.dataset.place);
+      var parPlace = (SAC || []).filter(function (o) { return o.place === pl; })[0];
+      return parPlace || (SAC || []).filter(function (o) { return o.id === Number(el.dataset.sac); })[0] || null;
+    }
+    if (el.dataset.item && el.classList && el.classList.contains('nxcf-i')) {
+      var id = Number(el.dataset.item), t = null;
+      ['fruits', 'armes', 'armures', 'bagues'].forEach(function (c) {
+        if (t) return;
+        t = ((COFFRE && COFFRE[c]) || []).filter(function (o) { return o.id === id; })[0] || null;
+      });
+      return t;
+    }
+    return null;
   }
+
+  function montreFiche(o, cible) {
+    if (!o) return cacheFiche();
+    if (!elFiche) elFiche = document.getElementById('nxFiche');
+    if (!elFiche) return;
+    var lignes = '';
+    for (var k in (o.bonus || {})) {
+      if (o.bonus[k]) lignes += '<s>+' + o.bonus[k] + ' ' + k.toUpperCase() + '</s>';
+    }
+    if (o.degats) lignes += '<i>' + o.degats[0] + '\u2013' + o.degats[1] + ' damage</i>';
+    /* Une arme ne donne plus aucune stat : sans ce mot, sa fiche n'aurait
+       qu'une ligne de degats et donnerait l'impression d'etre incomplete. */
+    /* `degats` n'est pose que sur les armes : c'est donc lui, et pas la
+       saison, qui reconnait une arme — la saison n'accompagne pas toutes les
+       formes d'objet envoyees par le serveur. */
+    if (o.degats) lignes += '<em>Weapons give damage, not stats</em>';
+    else if (!lignes) lignes = '<em>No stat bonus</em>';
+    elFiche.innerHTML = '<b>' + ech(o.nom || '') + '</b>' + lignes;
+    elFiche.style.setProperty('--fc', o.couleur || '#EAF2FF');
+    elFiche.classList.add('on');
+    poseFiche(cible);
+  }
+
+  /** On l'ancre a la CASE, pas au pointeur : une fiche qui suit la souris
+      tremble sous le doigt et sort de l'ecran au bord. Le panneau est a
+      droite, donc elle s'ouvre a GAUCHE de la case ; si la place manque, elle
+      repasse a droite plutot que d'etre coupee. */
+  function poseFiche(cible) {
+    if (!elFiche || !cible) return;
+    var r = cible.getBoundingClientRect();
+    var f = elFiche.getBoundingClientRect();
+    var x = r.left - f.width - 10;
+    if (x < 8) x = Math.min(window.innerWidth - f.width - 8, r.right + 10);
+    var y = Math.min(window.innerHeight - f.height - 8, Math.max(8, r.top - 4));
+    elFiche.style.left = Math.round(x) + 'px';
+    elFiche.style.top = Math.round(y) + 'px';
+  }
+
+  function cacheFiche() {
+    if (elFiche) elFiche.classList.remove('on');
+  }
+
+  /* Le survol a la souris. Sur telephone il n'existe pas : c'est le
+     GLISSEMENT qui ouvre la fiche (voir `debutPrise`), ce qui revient au meme
+     geste — on prend la piece pour savoir ce qu'elle vaut. */
+  document.addEventListener('pointerover', function (ev) {
+    if (ev.pointerType && ev.pointerType !== 'mouse') return;
+    if (PRISE) return;
+    var el = ev.target.closest ? ev.target.closest('[data-sac],[data-slot],.nxcf-i') : null;
+    if (!el) return cacheFiche();
+    montreFiche(objetDeLaCase(el), el);
+  });
+  document.addEventListener('pointerout', function (ev) {
+    var el = ev.target.closest ? ev.target.closest('[data-sac],[data-slot],.nxcf-i') : null;
+    if (el) cacheFiche();
+  });
 
   /* ================== PRENDRE ET DEPOSER ==================
    *
@@ -511,6 +612,7 @@
   }
 
   function finPrise() {
+    cacheFiche();
     if (elFantome) { elFantome.remove(); elFantome = null; }
     PRISE = null;
     document.body.classList.remove('nxdrag');
@@ -518,6 +620,10 @@
 
   function debutPrise(ev, source) {
     PRISE = source;
+    /* Au doigt il n'y a pas de survol : prendre la piece EST le geste par
+       lequel on demande « c'est quoi ? ». On ouvre donc la fiche a ce
+       moment-la, ancree a la case d'origine. */
+    if (source.el) montreFiche(objetDeLaCase(source.el), source.el);
     document.body.classList.add('nxdrag');
     elFantome = document.createElement('img');
     elFantome.className = 'nxp-fantome';
@@ -543,11 +649,11 @@
     var img = el.querySelector('img');
     var src = img ? img.getAttribute('src') : '';
     if (el.dataset.sac) {
-      debutPrise(ev, { de: 'sac', id: Number(el.dataset.sac), src: src });
+      debutPrise(ev, { de: 'sac', id: Number(el.dataset.sac), src: src, el: el });
     } else if (el.dataset.slot && el.dataset.item) {
-      debutPrise(ev, { de: 'equip', slot: el.dataset.slot, id: Number(el.dataset.item), src: src });
+      debutPrise(ev, { de: 'equip', slot: el.dataset.slot, id: Number(el.dataset.item), src: src, el: el });
     } else if (el.dataset.item && el.classList.contains('nxcf-i')) {
-      debutPrise(ev, { de: 'coffre', id: Number(el.dataset.item), src: src });
+      debutPrise(ev, { de: 'coffre', id: Number(el.dataset.item), src: src, el: el });
     } else return;
     ev.preventDefault();
   });
@@ -649,11 +755,13 @@
          fois par seconde — le reconstruire a chaque image detruirait la piece
          qu'on est peut-etre en train de faire glisser. */
       var cd = (k === 'equipFruit' && POUVOIR_C) ? '<i class="cd"></i>' : '';
-      return '<div class="nxp-c" data-slot="' + k + '" data-item="' + e.item + '"' +
-        ' title="' + ech(e.nom + ' — ' + detailBonus(e)) + '">' +
+      /* Plus de pastille, et plus de `title` : la premiere disait UNE stat
+         sur trois sans dire laquelle, le second est l'infobulle du
+         navigateur — lente, laide, et impossible a mettre aux couleurs du
+         jeu. Le survol ouvre la vraie fiche (voir `montreFiche`). */
+      return '<div class="nxp-c" data-slot="' + k + '" data-item="' + e.item + '">' +
         '<img alt="" src="img/shop/' + encodeURIComponent(e.cle) + '.webp" ' +
-        'onerror="this.style.visibility=\'hidden\'">' + cd +
-        '<b>' + pastille(e) + '</b></div>';
+        'onerror="this.style.visibility=\'hidden\'">' + cd + '</div>';
     }).join('');
 
     // ---- le sac : le butin ramasse, pas les achats
@@ -661,10 +769,9 @@
     for (var i = 0; i < CASES_SAC; i++) {
       var o = SAC[i];
       cases.push(o
-        ? '<div class="nxp-c" data-sac="' + o.id + '" title="' + ech(o.nom + ' — ' + detailBonus(o)) + '">' +
+        ? '<div class="nxp-c" data-sac="' + o.id + '" data-place="' + o.place + '">' +
           '<img alt="" src="img/shop/' + encodeURIComponent(o.cle) + '.webp" ' +
-          'onerror="this.style.visibility=\'hidden\'">' +
-          '<b>' + pastille(o) + '</b></div>'
+          'onerror="this.style.visibility=\'hidden\'"></div>'
         : '<div class="nxp-c vide"><u>' + (i + 1) + '</u></div>');
     }
     elSac.innerHTML = cases.join('');
@@ -994,10 +1101,17 @@
     });
   }
   var ATLAS_M = {};
+  /* Le dessin d'une espece. Le nom du fichier n'est PAS toujours celui de
+     l'espece : une creature dont l'image n'existe pas encore emprunte celle
+     d'une autre, et c'est le serveur qui le dit (`sprite`, dans la table des
+     especes). Le jour ou l'image arrive, on la depose et on retire une ligne
+     de donnee cote serveur — aucun code ne change ici. */
   function atlasMonstre(espece) {
     if (ATLAS_M[espece] !== undefined) return ATLAS_M[espece];
+    var t = MONDE_C && MONDE_C.especes && MONDE_C.especes[espece];
+    var fichier = (t && t.sprite) || espece;
     var i = new Image();
-    i.src = 'img/nexus/monstres/' + encodeURIComponent(espece) + '.webp';
+    i.src = 'img/nexus/monstres/' + encodeURIComponent(fichier) + '.webp';
     ATLAS_M[espece] = i;
     return i;
   }
@@ -1069,6 +1183,10 @@
       if (m.moi.po !== undefined && m.moi.po !== POUVOIR_C) { POUVOIR_C = m.moi.po; structure = true; }
       POUVOIR_ETAT.recharge = m.moi.poR || 0;
       POUVOIR_ETAT.rafale = m.moi.raf || 0;
+      /* Le serveur fait foi sur la paralysie : la page decompte entre deux
+         messages pour que ce soit fluide, mais elle se recale sur lui a
+         chaque image recue. */
+      PARALYSE = m.moi.par || 0;
       if (structure) peintPanneau(); else majJauges();
       peintPouvoir();
       /* On ne se TELEPORTE pas sur la position du serveur a chaque message :
@@ -1099,6 +1217,7 @@
     POUVOIRS_C = m.pouvoirs || null;
     POUVOIR_C = m.moi.pouvoir || null;
     POUVOIR_ETAT = { recharge: 0, rafale: 0 };
+    PARALYSE = 0;
     EFFETS_P = [];
     joueur.x = m.moi.x; joueur.y = m.moi.y; joueur.dir = 'up';
     SCENE = 'monde';
@@ -1143,7 +1262,7 @@
        vide obligerait a attendre trois minutes sur la place avant de
        repartir, ce qui n'est pas du jeu. */
     VIE.mp = VIE.mpMax;
-    POUVOIR_C = null; EFFETS_P = [];
+    POUVOIR_C = null; EFFETS_P = []; PARALYSE = 0;
     peintPouvoir();
     joueSample('vault', { vol: 0.6, hauteur: 1.25 });
     peintPanneau();
@@ -2185,6 +2304,13 @@
   var POUVOIRS_C = null;          // la table des pouvoirs, envoyee a l'entree
   var POUVOIR_C = null;           // le pouvoir du fruit porte, ou null
   var POUVOIR_ETAT = { recharge: 0, rafale: 0 };
+  /* ---- LA PARALYSIE ----
+   * Ce qu'il en reste, en secondes, tel que le serveur nous le dit. La page
+   * n'en decide RIEN : elle cesse d'obeir aux touches parce que le serveur
+   * refuse deja le deplacement, et continuer a avancer localement ferait
+   * glisser le personnage puis le ramenerait d'un coup — le pire des deux
+   * mondes. Elle obeit tout de suite pour que ce soit franc. */
+  var PARALYSE = 0;
   var elPow = document.getElementById('nxPow');
   var elPowNom = document.getElementById('nxPowNom');
   var elPowCout = document.getElementById('nxPowCout');
@@ -2677,8 +2803,20 @@
   var indiceActuel = null;
 
   function maj(dt) {
+    if (PARALYSE > 0) PARALYSE = Math.max(0, PARALYSE - dt);
     var dx = (TOUCHES.right ? 1 : 0) - (TOUCHES.left ? 1 : 0);
     var dy = (TOUCHES.down ? 1 : 0) - (TOUCHES.up ? 1 : 0);
+    /* ---- CLOUE AU SOL ----
+     * On garde la DIRECTION du regard : se retourner n'est pas se deplacer,
+     * et un personnage fige qui tire dans le dos de ce qu'il vise serait
+     * absurde. Le tir, lui, n'est pas touche du tout — c'est toute la
+     * difference entre paralyser et etourdir, et c'est ce qui laisse une
+     * reponse au joueur au lieu de le faire regarder mourir. */
+    if (PARALYSE > 0) {
+      if (dx !== 0) joueur.dir = dx > 0 ? 'right' : 'left';
+      else if (dy !== 0) joueur.dir = dy > 0 ? 'down' : 'up';
+      dx = 0; dy = 0;
+    }
     var bouge = dx !== 0 || dy !== 0;
     if (bouge) {
       var n = Math.sqrt(dx * dx + dy * dy);
@@ -2998,6 +3136,29 @@
         } });
       });
       pileM.push({ y: joueur.y, dessine: function () {
+        /* ---- CLOUE AU SOL, ET CA SE VOIT ----
+         * Un anneau sous les pieds qui se REFERME : il dit a la fois « tu ne
+         * bouges pas » et « encore combien de temps ». Sans le second, on
+         * appuie sur les touches au hasard en croyant a un blocage du jeu.
+         * Il est dessine AVANT le personnage, au sol : par-dessus, il
+         * cacherait justement ce qu'on regarde. */
+        if (PARALYSE > 0 && MONDE_C && MONDE_C.paralysie) {
+          var part = Math.max(0, Math.min(1, PARALYSE / MONDE_C.paralysie.duree));
+          ctx.save();
+          ctx.strokeStyle = '#C07BFF';
+          ctx.lineWidth = 3;
+          ctx.globalAlpha = 0.9;
+          ctx.beginPath();
+          ctx.ellipse(joueur.x, joueur.y + 4, 34, 15, 0, -Math.PI / 2,
+                      -Math.PI / 2 + part * Math.PI * 2);
+          ctx.stroke();
+          ctx.globalAlpha = 0.16;
+          ctx.fillStyle = '#C07BFF';
+          ctx.beginPath();
+          ctx.ellipse(joueur.x, joueur.y + 4, 34, 15, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
         var cM = joueur.anim === 'jump' ? saut.cadre : joueur.cadre;
         dessineAvatar(joueur.x, joueur.y, PERSO, joueur.dir, joueur.anim, cM);
       } });
@@ -3144,6 +3305,25 @@
       ctx.restore();
     }
     var sx = e.rx - TAILLE_M / 2, sy = e.ry - TAILLE_M + 14;
+    /* ---- LA MEDUSE EMPRUNTE UN DESSIN, PAS UNE IDENTITE ----
+     * Elle porte pour l'instant l'image du revenant de glace. Deux creatures
+     * identiques a l'ecran dont une seule paralyse, c'est un piege : le
+     * joueur apprendrait « ce monstre-la paralyse parfois », ce qui est faux
+     * et impossible a jouer. On la teinte donc en violet, la couleur des
+     * effets dans ce jeu, et on lui pose une aura : elle se reconnait du
+     * premier coup d'oeil, avant meme d'avoir tire.
+     * Le jour ou son propre dessin arrive, ces lignes sautent. */
+    var empruntee = (MONDE_C && MONDE_C.especes && MONDE_C.especes[e.espece]
+                     && MONDE_C.especes[e.espece].sprite) ? true : false;
+    if (empruntee) {
+      ctx.save();
+      ctx.globalAlpha = 0.32;
+      ctx.fillStyle = '#C07BFF';
+      ctx.beginPath();
+      ctx.ellipse(e.rx, e.ry + 4, TAILLE_M * 0.34, TAILLE_M * 0.16, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
     if (fige) {
       /* La teinte passe par un CANEVAS A PART. Teinter directement sur la
          scene avec `source-atop` toucherait aussi le sol : a cet endroit le
@@ -3161,6 +3341,18 @@
       g.ctx.fillStyle = '#9DE8FF';
       g.ctx.fillRect(0, 0, CADRE_M, CADRE_M);
       ctx.drawImage(g.el, 0, 0, CADRE_M, CADRE_M, sx, sy, TAILLE_M, TAILLE_M);
+    } else if (empruntee) {
+      var g2 = gel();
+      g2.ctx.clearRect(0, 0, CADRE_M, CADRE_M);
+      g2.ctx.globalCompositeOperation = 'source-over';
+      g2.ctx.globalAlpha = 1;
+      g2.ctx.drawImage(img, e.cadre * CADRE_M, r * CADRE_M, CADRE_M, CADRE_M,
+                       0, 0, CADRE_M, CADRE_M);
+      g2.ctx.globalCompositeOperation = 'source-atop';
+      g2.ctx.globalAlpha = 0.45;
+      g2.ctx.fillStyle = '#C07BFF';
+      g2.ctx.fillRect(0, 0, CADRE_M, CADRE_M);
+      ctx.drawImage(g2.el, 0, 0, CADRE_M, CADRE_M, sx, sy, TAILLE_M, TAILLE_M);
     } else {
       ctx.drawImage(img, e.cadre * CADRE_M, r * CADRE_M, CADRE_M, CADRE_M,
                     sx, sy, TAILLE_M, TAILLE_M);

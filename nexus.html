@@ -202,6 +202,29 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
 .nxp-c b{ position:absolute; right:1px; bottom:0; font:700 9px/1 'Archivo',system-ui,sans-serif;
   color:#63d13f; text-shadow:0 1px 2px #000; }
 
+/* ---- LA FICHE D'UN OBJET, AU SURVOL ----
+ * La pastille « +15 » posee dans le coin d'une case disait UNE stat sur trois
+ * et ne disait pas laquelle. Sur une piece qui donne « +21 DEF, +170 HP »
+ * c'etait au mieux inutile, au pire trompeur. Elle disparait, et le survol
+ * ouvre la fiche complete : le nom dans la couleur de sa rarete, chaque stat
+ * sur sa ligne, et les degats pour une arme.
+ *
+ * Elle ne prend JAMAIS le pointeur (`pointer-events:none`) : elle apparait
+ * sous la souris, et une fiche qui intercepterait le clic empecherait
+ * d'attraper la piece qu'on est en train de regarder. */
+#nxFiche{ position:fixed; z-index:2147483400; display:none; pointer-events:none;
+  min-width:132px; max-width:230px; padding:9px 11px; border-radius:10px;
+  background:rgba(12,16,24,.97); border:1px solid rgba(255,255,255,.16);
+  box-shadow:0 14px 34px rgba(0,0,0,.6);
+  font:600 11.5px/1.45 'Space Mono',monospace; color:#C9D3F2; }
+#nxFiche.on{ display:block; }
+#nxFiche b{ display:block; font-size:12.5px; font-weight:800; margin-bottom:5px;
+  color:var(--fc,#EAF2FF); }
+#nxFiche s{ display:block; text-decoration:none; color:#7CFF9B; }
+#nxFiche i{ display:block; font-style:normal; color:#FFC53D; margin-top:4px; }
+#nxFiche em{ display:block; font-style:italic; color:#7b8496; margin-top:4px;
+  font-size:10.5px; }
+
 /* ---- LE FRUIT PENDANT SA RECHARGE ----
  * Le pouvoir se lance depuis la barre d'espace, mais il APPARTIENT au fruit :
  * c'est sur le fruit qu'on doit lire s'il est disponible. Grise pendant la
@@ -619,6 +642,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
   <canvas id="nxCanvas"></canvas>
   <div id="nxSolde"></div>
   <div id="nxAuto">⌖ AUTO-FIRE</div>
+  <div id="nxFiche"></div>
   <div id="nxPow" role="button" tabindex="0"><b id="nxPowNom">—</b><em id="nxPowCout"></em><span class="k" id="nxPowTouche">Space</span><i id="nxPowJauge"></i></div>
   <div id="nxIndice"></div>
   <button id="nxBascule" type="button" aria-label="Hide panel">&#9654;</button>
@@ -734,7 +758,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
   </div>
 </div>
 
-<script src="nexus.js?v=20260819q" defer></script>
+<script src="nexus.js?v=20260819s" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

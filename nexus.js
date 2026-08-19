@@ -228,18 +228,34 @@
     }
     if (m.type === 'realmCoup' && SCENE === 'monde') {
       VIE.pv = m.pv; moiMonde.pv = m.pv;
-      joueSample('degat', { vol: 0.75, hauteur: 0.8, duree: 0.8 });
-      secousse = 0.16;
-      /* ---- LE COUP QUI CLOUE AU SOL ----
+      /* ---- LA BRULURE NE COGNE PAS ----
+       * Elle enleve un point toutes les huit dixiemes de seconde. Lui donner
+       * le grondement et la secousse d'une morsure ferait trembler l'ecran en
+       * continu pendant cinq secondes, pour un dixieme du degat. Elle a sa
+       * propre voix, breve et haute, et elle ne bouscule pas la camera. */
+      if (m.quoi === 'brulure') {
+        joueSample('degat', { vol: 0.16, hauteur: 1.8, duree: 0.14 });
+      } else {
+        joueSample('degat', { vol: 0.75, hauteur: 0.8, duree: 0.8 });
+        secousse = 0.16;
+      }
+      /* ---- LE COUP QUI POSE UN ETAT ----
        * Perdre le controle sans un mot se lit comme une page qui a plante,
-       * pas comme une attaque. On le NOMME, on le fait entendre plus grave
-       * que le reste, et le cercle autour des pieds dira le temps qu'il
-       * reste. */
-      if (m.paralyse > 0) {
-        PARALYSE = m.paralyse;
+       * pas comme une attaque. On le NOMME, chacun avec sa voix, et l'anneau
+       * autour des pieds dira le temps qu'il reste. */
+      if (m.effet === 'paralyse' || m.paralyse > 0) {
+        PARALYSE = m.duree || m.paralyse;
         flotte('PARALYZED');
         joueSample('vault', { vol: 0.5, hauteur: 0.55, duree: 0.7 });
         secousse = 0.3;
+      } else if (m.effet === 'ralenti') {
+        RALENTI = m.duree || 3;
+        flotte('SLOWED');
+        joueSample('vault', { vol: 0.35, hauteur: 0.9, duree: 0.4 });
+      } else if (m.effet === 'brulure') {
+        BRULURE = m.duree || 5;
+        flotte('BURNING');
+        joueSample('degat', { vol: 0.45, hauteur: 1.4, duree: 0.5 });
       }
       majJauges();
     }
@@ -268,7 +284,8 @@
     /* La mort arrive du SERVEUR : c'est lui qui l'a constatee, jamais nous. */
     if (m.type === 'realmMort') {
       SCENE = 'nexus'; MONSTRES_C = {}; TIRS_C = []; DISTANTS_M = {}; TOMBES_C = [];
-      POUVOIR_C = null; EFFETS_P = []; PARALYSE = 0; peintPouvoir();
+      POUVOIR_C = null; EFFETS_P = []; PARALYSE = 0; RALENTI = 0; BRULURE = 0;
+      VITESSE = 260; peintPouvoir();
       var pp = LIEUX[1];
       joueur.x = pp.x; joueur.y = pp.y + pp.rayon + 60;
       VIE.pv = VIE.max;
@@ -1343,6 +1360,12 @@
          messages pour que ce soit fluide, mais elle se recale sur lui a
          chaque image recue. */
       PARALYSE = m.moi.par || 0;
+      RALENTI = m.moi.ral || 0;
+      BRULURE = m.moi.feu || 0;
+      /* La vitesse peut changer en cours de partie — un niveau gagne, une
+         piece d'armure equipee — donc on la relit a chaque image plutot que
+         de la figer a l'entree. */
+      if (m.moi.v) VITESSE = m.moi.v;
       if (structure) peintPanneau(); else majJauges();
       peintPouvoir();
       /* On ne se TELEPORTE pas sur la position du serveur a chaque message :
@@ -1371,9 +1394,11 @@
        en dur cote page finirait par ne plus etre celui que le serveur
        preleve, et le bouton mentirait sur le prix. */
     POUVOIRS_C = m.pouvoirs || null;
+    if (m.effets && m.effets.ralenti) FREIN = m.effets.ralenti.facteur;
+    if (m.moi.v) VITESSE = m.moi.v;
     POUVOIR_C = m.moi.pouvoir || null;
     POUVOIR_ETAT = { recharge: 0, rafale: 0 };
-    PARALYSE = 0;
+    PARALYSE = 0; RALENTI = 0; BRULURE = 0;
     EFFETS_P = []; COUPS = [];
     joueur.x = m.moi.x; joueur.y = m.moi.y; joueur.dir = 'up';
     SCENE = 'monde';
@@ -1423,7 +1448,8 @@
        savait pas si la fontaine avait soigne ou si l'affichage s'etait
        recale tout seul. La spirale part des pieds, la ou l'on regarde. */
     poseSoin(joueur.x, joueur.y);
-    POUVOIR_C = null; EFFETS_P = []; PARALYSE = 0;
+    POUVOIR_C = null; EFFETS_P = []; PARALYSE = 0; RALENTI = 0; BRULURE = 0;
+    VITESSE = 260;
     peintPouvoir();
     joueSample('vault', { vol: 0.6, hauteur: 1.25 });
     peintPanneau();
@@ -1982,7 +2008,20 @@
   // ------------------------------------------------------- le joueur
 
   var joueur = { x: CENTRE.x, y: CENTRE.y + 300, vx: 0, vy: 0, dir: 'down', anim: 'idle', cadre: 0, chrono: 0 };
-  var VITESSE = 260;               // px/s, en unites du monde
+  /* ---- LA VITESSE VIENT DU SERVEUR ----
+   * Elle etait la meme pour tout le monde, et la statistique de VITESSE ne
+   * servait donc a rien : elle montait avec les niveaux, se payait en
+   * equipement, et ne changeait pas d'un pixel la facon de se deplacer.
+   *
+   * Le serveur la calcule maintenant a partir de la statistique et l'envoie
+   * avec chaque image du monde. La page ne la recalcule PAS de son cote :
+   * deux formules a tenir d'accord finiraient par se contredire, et le joueur
+   * se ferait ramener en arriere sans comprendre pourquoi — c'est le serveur
+   * qui borne, c'est donc lui qui a raison.
+   *
+   * 260 reste la valeur de depart, celle du Nexus ou l'on ne combat pas et ou
+   * personne n'a besoin de savoir. */
+  var VITESSE = 260;               // unites/s, remplacee par celle du serveur
   var FPS_ANIM = 14;
 
   var saut = { en_cours: false, chrono: 0, cadre: 0, duree: 0 };
@@ -2472,6 +2511,10 @@
    * glisser le personnage puis le ramenerait d'un coup — le pire des deux
    * mondes. Elle obeit tout de suite pour que ce soit franc. */
   var PARALYSE = 0;
+  /* Le ralentissement et la brulure, tels que le serveur les annonce. `FREIN`
+     arrive avec la table des effets a l'entree du monde : le facteur n'est
+     pas ecrit ici, sinon il finirait par ne plus etre celui qu'on subit. */
+  var RALENTI = 0, BRULURE = 0, FREIN = 0.5;
   var elPow = document.getElementById('nxPow');
   var elPowNom = document.getElementById('nxPowNom');
   var elPowCout = document.getElementById('nxPowCout');
@@ -2983,6 +3026,8 @@
 
   function maj(dt) {
     if (PARALYSE > 0) PARALYSE = Math.max(0, PARALYSE - dt);
+    if (RALENTI > 0) RALENTI = Math.max(0, RALENTI - dt);
+    if (BRULURE > 0) BRULURE = Math.max(0, BRULURE - dt);
     var dx = (TOUCHES.right ? 1 : 0) - (TOUCHES.left ? 1 : 0);
     var dy = (TOUCHES.down ? 1 : 0) - (TOUCHES.up ? 1 : 0);
     /* ---- CLOUE AU SOL ----
@@ -2999,8 +3044,15 @@
     var bouge = dx !== 0 || dy !== 0;
     if (bouge) {
       var n = Math.sqrt(dx * dx + dy * dy);
-      joueur.x += (dx / n) * VITESSE * dt;
-      joueur.y += (dy / n) * VITESSE * dt;
+      /* ---- LE RALENTISSEMENT SE SENT ICI ----
+       * Le serveur BORNE, il ne deplace pas : c'est la page qui fait avancer
+       * le personnage. Un ralentissement que seul le serveur connaitrait ne
+       * se verrait donc pas — le joueur courrait normalement et se ferait
+       * ramener en arriere par a-coups, ce qui se lit comme un defaut de
+       * reseau et non comme une attaque. */
+      var vit = VITESSE * (RALENTI > 0 ? FREIN : 1);
+      joueur.x += (dx / n) * vit * dt;
+      joueur.y += (dy / n) * vit * dt;
       if (dx !== 0) joueur.dir = dx > 0 ? 'right' : 'left';
       else joueur.dir = dy > 0 ? 'down' : 'up';
     }
@@ -3330,23 +3382,35 @@
          * appuie sur les touches au hasard en croyant a un blocage du jeu.
          * Il est dessine AVANT le personnage, au sol : par-dessus, il
          * cacherait justement ce qu'on regarde. */
-        if (PARALYSE > 0 && MONDE_C && MONDE_C.paralysie) {
-          var part = Math.max(0, Math.min(1, PARALYSE / MONDE_C.paralysie.duree));
+        /* ---- LES TROIS ETATS, TROIS ANNEAUX ----
+         * Chacun se referme sur lui-meme pour dire combien de temps il reste.
+         * Sans ce second signe, on appuie sur les touches au hasard en
+         * croyant a un blocage du jeu. Trois RAYONS differents pour qu'ils se
+         * lisent meme quand ils se superposent — rien n'interdit d'etre
+         * paralyse, ralenti et en feu en meme temps. */
+        var etats = MONDE_C && MONDE_C.effets ? [
+          { reste: PARALYSE, max: MONDE_C.effets.paralyse.duree, c: '#C07BFF', r: 34 },
+          { reste: RALENTI,  max: MONDE_C.effets.ralenti.duree,  c: '#7CC8FF', r: 42 },
+          { reste: BRULURE,  max: MONDE_C.effets.brulure.duree,  c: '#FF9142', r: 26 },
+        ] : [];
+        etats.forEach(function (e) {
+          if (!(e.reste > 0)) return;
+          var part = Math.max(0, Math.min(1, e.reste / e.max));
           ctx.save();
-          ctx.strokeStyle = '#C07BFF';
+          ctx.strokeStyle = e.c;
           ctx.lineWidth = 3;
           ctx.globalAlpha = 0.9;
           ctx.beginPath();
-          ctx.ellipse(joueur.x, joueur.y + 4, 34, 15, 0, -Math.PI / 2,
+          ctx.ellipse(joueur.x, joueur.y + 4, e.r, e.r * 0.44, 0, -Math.PI / 2,
                       -Math.PI / 2 + part * Math.PI * 2);
           ctx.stroke();
-          ctx.globalAlpha = 0.16;
-          ctx.fillStyle = '#C07BFF';
+          ctx.globalAlpha = 0.14;
+          ctx.fillStyle = e.c;
           ctx.beginPath();
-          ctx.ellipse(joueur.x, joueur.y + 4, 34, 15, 0, 0, Math.PI * 2);
+          ctx.ellipse(joueur.x, joueur.y + 4, e.r, e.r * 0.44, 0, 0, Math.PI * 2);
           ctx.fill();
           ctx.restore();
-        }
+        });
         var cM = joueur.anim === 'jump' ? saut.cadre : joueur.cadre;
         dessineAvatar(joueur.x, joueur.y, PERSO, joueur.dir, joueur.anim, cM);
       } });

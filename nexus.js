@@ -222,6 +222,9 @@
     if (m.type === 'realmTouche' && SCENE === 'monde') {
       joueSample(Math.random() < 0.5 ? 'mort' : 'mort2',
                  { vol: 0.22, hauteur: 1.15 + Math.random() * 0.2, duree: 0.28 });
+      /* Le point du coup vient du serveur. Sans lui on savait qu'on avait
+         touche, jamais ou. */
+      if (m.x !== undefined && m.y !== undefined) poseCoup(m.x, m.y - DECALAGE_TIR);
     }
     if (m.type === 'realmCoup' && SCENE === 'monde') {
       VIE.pv = m.pv; moiMonde.pv = m.pv;
@@ -1118,6 +1121,48 @@
    * jamais les pieds dans le monde n'a pas a les telecharger.
    */
   var IMG_TOMBE = null, IMG_SOIN = null, IMG_RAFALE = null, IMG_STASE = null;
+  var IMG_COUP = null;
+  var COUP_CADRES = 9, COUP_DUREE = 0.26;
+  /* ---- L'ECLAT QUAND ON TOUCHE ----
+   * Tirer sur un monstre est le geste le plus frequent du jeu, et il ne
+   * produisait RIEN a l'ecran : un son, et c'est tout. On voyait le
+   * projectile disparaitre, sans savoir s'il avait porte ou s'il etait
+   * arrive au bout de sa portee.
+   *
+   * L'anneau blanc s'ouvre au point exact du contact — que le serveur envoie
+   * maintenant avec le coup — et il dure un quart de seconde : assez pour
+   * etre vu, assez peu pour qu'une cadence de quatre tirs par seconde ne
+   * transforme pas l'ecran en bouillie. */
+  var COUPS = [];
+  function poseCoup(x, y) {
+    chargeEffets();
+    COUPS.push({ x: x, y: y, vie: COUP_DUREE });
+    /* Une borne, parce qu'un arc mythique a la rafale peut poser dix eclats
+       par seconde et qu'aucun d'eux ne merite de survivre aux autres. */
+    if (COUPS.length > 40) COUPS.shift();
+  }
+  function peintCoups(dt) {
+    if (!COUPS.length) return;
+    var pret = IMG_COUP && IMG_COUP.complete && IMG_COUP.naturalWidth;
+    var cw = pret ? IMG_COUP.naturalWidth / COUP_CADRES : 0;
+    var ch = pret ? IMG_COUP.naturalHeight : 0;
+    for (var i = COUPS.length - 1; i >= 0; i--) {
+      var e = COUPS[i];
+      e.vie -= dt;
+      if (e.vie <= 0) { COUPS.splice(i, 1); continue; }
+      if (!pret) continue;
+      var c = Math.min(COUP_CADRES - 1,
+                       Math.floor((1 - e.vie / COUP_DUREE) * COUP_CADRES));
+      var T = 46;
+      ctx.save();
+      /* Il PALIT en s'ouvrant : l'anneau le plus large est aussi le plus
+         tenu, ce qui evite qu'une volee de tirs laisse neuf disques blancs
+         pleins par-dessus le monstre qu'on essaie de viser. */
+      ctx.globalAlpha = Math.max(0.15, e.vie / COUP_DUREE);
+      ctx.drawImage(IMG_COUP, c * cw, 0, cw, ch, e.x - T / 2, e.y - T / 2, T, T);
+      ctx.restore();
+    }
+  }
   var SOIN_CADRES = 6, SOIN_DUREE = 1.1;
   var RAFALE_CADRES = 4, STASE_CADRES = 3;
   function chargeEffets() {
@@ -1125,6 +1170,7 @@
     if (!IMG_SOIN) { IMG_SOIN = new Image(); IMG_SOIN.src = 'img/nexus/effets/soin.webp'; }
     if (!IMG_RAFALE) { IMG_RAFALE = new Image(); IMG_RAFALE.src = 'img/nexus/effets/rafale.webp'; }
     if (!IMG_STASE) { IMG_STASE = new Image(); IMG_STASE.src = 'img/nexus/effets/stase.webp'; }
+    if (!IMG_COUP) { IMG_COUP = new Image(); IMG_COUP.src = 'img/nexus/tirs/coup.webp'; }
   }
 
   /* ---- L'AURA DE RAFALE ----
@@ -1328,7 +1374,7 @@
     POUVOIR_C = m.moi.pouvoir || null;
     POUVOIR_ETAT = { recharge: 0, rafale: 0 };
     PARALYSE = 0;
-    EFFETS_P = [];
+    EFFETS_P = []; COUPS = [];
     joueur.x = m.moi.x; joueur.y = m.moi.y; joueur.dir = 'up';
     SCENE = 'monde';
     chargeEffets();
@@ -3308,6 +3354,7 @@
       pileM.forEach(function (p) { p.dessine(); });
 
       dessineTirsMonde();
+      peintCoups(dt);
       /* Les traces des pouvoirs par-dessus tout, mais AVANT `restore` : elles
          sont posees en coordonnees du monde comme le reste de la scene. */
       peintEffetsPouvoir(dt);

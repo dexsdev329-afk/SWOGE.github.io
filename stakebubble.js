@@ -1494,6 +1494,14 @@
          en haut. C'est le geste de n'importe quelle application de compte,
          et la liste recupere les 124 px. */
       '.swp-body{flex:1;display:flex;min-height:0;overflow:hidden;}' +
+      /* La deconnexion n'est pas une rangee comme les autres : elle se
+         detache, sans crier. Un rouge plein en ferait un bouton qu'on
+         evite de frôler, alors que c'est un geste ordinaire. */
+      '.swp-sep{height:1px;margin:14px 12px 8px;background:rgba(255,255,255,.09);}' +
+      '.swp-out{display:block;width:calc(100% - 16px);margin:0 8px 14px;padding:11px 12px;' +
+      'border-radius:10px;border:1px solid rgba(242,104,94,.28);background:rgba(242,104,94,.07);' +
+      'color:#F5938B;font:inherit;font-size:13px;font-weight:700;text-align:left;cursor:pointer;}' +
+      '.swp-out:hover{background:rgba(242,104,94,.14);color:#FFB4AC;}' +
       '.swp-t{flex:1;display:flex;flex-direction:column;gap:3px;' +
       'padding:8px 10px 18px;overflow-y:auto;background:transparent;}' +
       '.swp-t .swp-g{margin:13px 0 4px;padding:0 6px;font-size:10.5px;font-weight:700;' +
@@ -2712,6 +2720,41 @@
            tiroir. */
         '#menuBox{display:none!important;}';
       document.head.appendChild(css2);
+    }
+    /* ---- SE DECONNECTER, TOUT EN BAS ----
+     *
+     * Il n'y avait qu'un « Disconnect » enfoui dans le panneau Portefeuille,
+     * c'est-a-dire a trois gestes de la, sur une page qui n'a pas toujours ce
+     * panneau. Se deconnecter est pourtant le geste qu'on cherche quand on
+     * prete son telephone ou qu'on veut changer de compte : il doit etre la
+     * ou l'on regarde en dernier, au bas du profil, et nulle part ailleurs.
+     *
+     * On efface les DEUX cles — le jeton de session et le mode de connexion —
+     * et on ferme aussi la session du portefeuille email si elle est ouverte :
+     * n'oublier que le jeton laisserait le compte Privy actif pour le suivant
+     * qui prend l'appareil. */
+    /* On montre la sortie des qu'il y a la moindre trace de compte — un jeton
+       de session OU un mode de connexion. Se fier au seul jeton laisserait
+       sans bouton quelqu'un connecte depuis une page de jeu, c'est-a-dire
+       precisement celui qui cherche a se deconnecter. */
+    var signe = false;
+    try { signe = !!(jetonRange() || localStorage.getItem('swogeAuth')); } catch (e) { signe = !!jetonRange(); }
+    if (signe) {
+      var sep = document.createElement('div');
+      sep.className = 'swp-sep';
+      t.appendChild(sep);
+      var bq = document.createElement('button');
+      bq.type = 'button'; bq.className = 'swp-out'; bq.textContent = '🚪 Sign out';
+      bq.addEventListener('click', function () {
+        if (!window.confirm('Sign out of this device?')) return;
+        try { localStorage.removeItem('swogeSession'); } catch (e) {}
+        try { localStorage.removeItem('swogeAuth'); } catch (e) {}
+        try {
+          if (window.SwogePrivy && SwogePrivy.logout) SwogePrivy.logout();
+        } catch (e) {}
+        location.reload();
+      });
+      t.appendChild(bq);
     }
     cacheRetourHall();
     return true;

@@ -102,16 +102,29 @@
      panneau qui se ferme — et sert surtout a dire qu'une transaction est
      partie, ce qui n'a aucun autre signe a l'ecran. */
   var boiteMsg = null, minuterieMsg = 0;
-  function dit(t, cl) {
+  /* `action` = { texte, href }. Un message qui annonce un blocage sans donner
+     la sortie laisse le joueur devant une porte fermee : c'est exactement ce
+     qui s'est passe avec le depot, ou « rechargez la page » ne menait nulle
+     part. Quand il y a un geste a faire, il est DANS le message. */
+  function dit(t, cl, action) {
     if (!boiteMsg) {
       boiteMsg = document.createElement('div');
       boiteMsg.className = 'swc-msg';
       (document.body || document.documentElement).appendChild(boiteMsg);
     }
-    boiteMsg.className = 'swc-msg on' + (cl ? ' ' + cl : '');
+    boiteMsg.className = 'swc-msg on' + (cl ? ' ' + cl : '') + (action ? ' act' : '');
     boiteMsg.textContent = t;
+    if (action && action.href) {
+      var a = document.createElement('a');
+      a.href = action.href;
+      a.textContent = action.texte || 'Continue';
+      boiteMsg.appendChild(a);
+    }
     clearTimeout(minuterieMsg);
-    minuterieMsg = setTimeout(function () { boiteMsg.className = 'swc-msg'; }, 4200);
+    /* Un message qu'on doit pouvoir TOUCHER reste plus longtemps : quatre
+       secondes suffisent a lire, pas a decider puis viser. */
+    minuterieMsg = setTimeout(function () { boiteMsg.className = 'swc-msg'; },
+                              action ? 11000 : 4200);
   }
 
   // -------------------------------------------------------------- le reseau
@@ -312,9 +325,19 @@
       if (!w) {
         var mode = '';
         try { mode = localStorage.getItem('swogeAuth') || ''; } catch (e) {}
-        throw new Error(mode
-          ? 'Your wallet could not be opened — reload the page and try again'
+        /* « Rechargez la page » etait un mauvais conseil : recharger ne
+           ressuscite pas un portefeuille qui ne repond pas. Et on n'affirme
+           PAS pourquoi il ne repond pas — session expiree, module qui refuse
+           de s'ouvrir, autre chose : je ne l'ai pas etabli, et un message qui
+           donne une cause fausse fait chercher au mauvais endroit. On dit ce
+           qu'on sait, et on donne le chemin qui marche a coup sur : la page
+           qui porte le formulaire de connexion complet, ouverte directement
+           sur le depot. */
+        var err = new Error(mode
+          ? 'Your wallet did not open here — sign in again to deposit'
           : 'Sign in first');
+        err.sortie = { texte: 'Sign in and deposit →', href: 'swoge_pusher.html#deposit' };
+        throw err;
       }
       if (typeof ethers === 'undefined') throw new Error('Chain library not loaded — reload the page');
       var fp = new ethers.providers.Web3Provider(w.eip1193, 'any');
@@ -452,7 +475,13 @@
       'box-shadow:0 14px 34px rgba(0,0,0,.55);}' +
       '.swc-msg.on{opacity:1;transform:translate(-50%,0);}' +
       '.swc-msg.ok{border-color:rgba(124,255,155,.45);}' +
-      '.swc-msg.ko{border-color:rgba(242,104,94,.5);}';
+      '.swc-msg.ko{border-color:rgba(242,104,94,.5);}' +
+      /* Sans action le bandeau est traversant, pour ne jamais gener un
+         geste ; des qu'il en porte une, il faut pouvoir la toucher. */
+      '.swc-msg.act{pointer-events:auto;}' +
+      '.swc-msg a{display:block;margin-top:9px;padding:9px 12px;border-radius:9px;' +
+      'background:#FFC53D;color:#141A24;text-decoration:none;text-align:center;' +
+      'font-weight:800;font-size:12.5px;}';
     document.head.appendChild(c);
   }
 
@@ -816,7 +845,8 @@
       litSoldesChaine();
       demande('balance');
     }).catch(function (e) {
-      dit('Deposit: ' + String((e && (e.reason || e.message)) || e).slice(0, 90), 'ko');
+      dit('Deposit: ' + String((e && (e.reason || e.message)) || e).slice(0, 90), 'ko',
+          e && e.sortie);
     }).then(function () { bouton.disabled = false; });
   }
 
@@ -840,7 +870,8 @@
       dit('✅ Paid to your wallet', 'ok');
       ferme(); litSoldesChaine();
     }).catch(function (e) {
-      dit('Withdraw: ' + String((e && (e.reason || e.message)) || e).slice(0, 90), 'ko');
+      dit('Withdraw: ' + String((e && (e.reason || e.message)) || e).slice(0, 90), 'ko',
+          e && e.sortie);
     });
   }
 

@@ -679,15 +679,24 @@
   });
   canvas.addEventListener('mouseleave', function () { viseur.actif = false; });
 
-  /* Clic DROIT pour tirer, et on retire le menu contextuel du canvas — sinon
-     le premier tir ouvre le menu du navigateur par-dessus le jeu. */
+  /* ---- ON TIRE AU CLIC GAUCHE ----
+   *
+   * Le gauche est le geste par defaut : c'est celui qu'on fait sans y penser,
+   * et le seul dont un joueur est sur qu'il existe. Le droit reste accepte
+   * pour qui a pris l'habitude — les deux mettent le meme drapeau, donc
+   * relacher l'un pendant que l'autre est tenu n'arrete rien de travers.
+   * Le menu contextuel du canvas part quand meme : sans ca, le clic droit
+   * ouvrirait le menu du navigateur par-dessus le jeu.
+   *
+   * Rien d'autre ne consomme le clic gauche sur le canvas : la scene ne porte
+   * aucun bouton, ils sont tous dans le panneau HTML a cote. */
   canvas.addEventListener('contextmenu', function (ev) { ev.preventDefault(); });
   canvas.addEventListener('mousedown', function (ev) {
-    if (ev.button !== 2) return;
+    if (ev.button !== 0 && ev.button !== 2) return;
     ev.preventDefault(); debloqueSon(); tireur.presse = true;
   });
   window.addEventListener('mouseup', function (ev) {
-    if (ev.button === 2) tireur.presse = false;
+    if (ev.button === 0 || ev.button === 2) tireur.presse = false;
   });
 
   /* Le tir auto se commande de DEUX endroits — la touche et le bouton des

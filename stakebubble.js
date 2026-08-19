@@ -2146,8 +2146,12 @@
       '.swk-eqi img{width:28px;height:28px;object-fit:contain;flex:0 0 auto;}' +
       '.swk-eqi:hover{background:rgba(255,255,255,.09);}' +
       '.swk-eqi.actif{background:rgba(124,255,155,.08);border-color:rgba(124,255,155,.35);}' +
-      '.swk-eqi b{font-size:12px;color:#F2F6FF;flex:1;}' +
-      '.swk-eqi i{font-style:normal;font-size:10.5px;color:#7CFF9B;font-weight:800;}' +
+      /* le nom cede la place au detail des stats, pas l'inverse : sur un telephone
+         c'est le chiffre qu'on vient lire, le nom est deja sur l'image. */
+      '.swk-eqi b{font-size:12px;color:#F2F6FF;flex:1;min-width:0;overflow:hidden;'+
+      'text-overflow:ellipsis;white-space:nowrap;}' +
+      '.swk-eqi i{font-style:normal;font-size:10.5px;color:#7CFF9B;font-weight:800;'+
+      'flex:0 0 auto;text-align:right;}' +
       '.swk-eqi span{font-size:10px;color:#8DA0C4;}' +
       /* La case vendable : rien de crie, juste de quoi comprendre qu on peut
          appuyer dessus. Un bouton sur chaque case ferait une grille de
@@ -4152,15 +4156,53 @@
     { genre: 'bague', champ: 'bagues', etatChamp: 'equipBague', typeMsg: 'equipeBague',
       label: 'Ring', vide: 'No ring owned yet — open a season 4 chest.' },
   ];
+  /* ---- `bonus` EST UN OBJET, PLUS UN NOMBRE ----
+   *
+   * Depuis que chaque piece donne un PROFIL de stats, le serveur envoie
+   * `bonus: {att: 15, dex: 13}`. Ce panneau lisait encore un nombre : il
+   * faisait `stats[k] - bonus`, donc `nombre - objet` = NaN, affiche « 0 ».
+   * Resultat a l'ecran : quatre objets equipes, « +0 » partout, et les stats
+   * concernees tombees a zero. Les trois fonctions ci-dessous sont les
+   * memes que celles du Nexus, pour que les deux fiches racontent la meme
+   * chose du meme personnage. */
+
+  /** Ce que TOUT l'equipement apporte sur UNE stat. On somme le profil
+      complet de chaque piece, pas seulement sa stat principale — sinon le
+      +130 MP d'un casque de sagesse ne compterait nulle part. */
+  function sommeBonus(etatP, stat) {
+    var t = 0;
+    EQUIP_SLOTS.forEach(function (cfg) {
+      var eq = etatP[cfg.etatChamp];
+      if (eq && eq.bonus) t += (eq.bonus[stat] || 0);
+    });
+    return t;
+  }
+
+  /** Le detail d'une piece en une ligne — « +15 ATT, +13 DEX ». */
+  function detailBonus(o) {
+    if (!o || !o.bonus) return '';
+    var out = [];
+    for (var k in o.bonus) if (o.bonus[k]) out.push('+' + nb(o.bonus[k], 0) + ' ' + (NOM_STAT[k] || k.toUpperCase()));
+    if (o.degats) out.push(o.degats[0] + '-' + o.degats[1] + ' dmg');
+    return out.join(', ');
+  }
+
+  /** Le chiffre de la pastille : la PLUS GROSSE valeur du profil. La somme
+      n'aurait pas de sens (10 de sagesse et 130 de mana ne s'additionnent
+      pas), et la stat principale seule mentirait sur une piece dont une
+      autre stat pese plus gros. */
+  function bonusEnTete(o) {
+    if (!o || !o.bonus) return 0;
+    var max = 0;
+    for (var k in o.bonus) if (o.bonus[k] > max) max = o.bonus[k];
+    return max;
+  }
+
   function blocSkinStats(etatP) {
     var d = document.createElement('div');
     d.className = 'swk-sg';
     d.innerHTML = ORDRE_STATS.map(function (k) {
-      var bonus = 0;
-      EQUIP_SLOTS.forEach(function (cfg) {
-        var eq = etatP[cfg.etatChamp];
-        if (eq && eq.stat === k) bonus += eq.bonus;
-      });
+      var bonus = sommeBonus(etatP, k);
       var base = (etatP.stats[k] || 0) - bonus;
       return '<div class="swk-s"><i>' + NOM_STAT[k] + '</i><b>' + nb(base, 0) +
         (bonus > 0 ? ' <em>+' + nb(bonus, 0) + '</em>' : '') + '</b></div>';
@@ -4177,10 +4219,11 @@
     if (!s.possede) { el.style.display = 'none'; el.onclick = null; return; }
     el.style.display = '';
     el.className = 'swk-slot' + (equipe ? '' : ' vide');
+    el.title = equipe ? (equipe.nom + ' — ' + detailBonus(equipe)) : '';
     el.style.setProperty('--c', equipe ? (equipe.couleur || '#8DA0C4') : 'rgba(255,255,255,.18)');
     el.innerHTML = equipe
       ? '<img alt="" src="img/shop/' + encodeURIComponent(equipe.cle) + '.webp" onerror="this.remove()">' +
-        '<b>+' + nb(equipe.bonus, 0) + '</b>' +
+        '<b>+' + nb(bonusEnTete(equipe), 0) + '</b>' +
         '<span class="rm" title="Remove">&times;</span>'
       : '<i>+ ' + cfg.label + '</i>';
     el.onclick = function (e) {
@@ -4217,7 +4260,7 @@
         b.type = 'button'; b.className = 'swk-eqi' + (equipe && equipe.item === o.id ? ' actif' : '');
         b.style.setProperty('--c', o.couleur || '#8DA0C4');
         b.innerHTML = '<img alt="" src="img/shop/' + encodeURIComponent(o.cle) + '.webp" onerror="this.remove()">' +
-          '<b>' + ech(o.nom) + '</b><i>' + (o.stat ? NOM_STAT[o.stat] : '') + ' +' + nb(o.bonus, 0) + '</i>' +
+          '<b>' + ech(o.nom) + '</b><i>' + ech(detailBonus(o)) + '</i>' +
           (o.quantite > 1 ? '<span>x' + o.quantite + '</span>' : '');
         b.addEventListener('click', function (e) {
           e.stopPropagation();

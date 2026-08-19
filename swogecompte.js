@@ -106,7 +106,7 @@
      la sortie laisse le joueur devant une porte fermee : c'est exactement ce
      qui s'est passe avec le depot, ou « rechargez la page » ne menait nulle
      part. Quand il y a un geste a faire, il est DANS le message. */
-  function dit(t, cl, action) {
+  function dit(t, cl, action, garde) {
     if (!boiteMsg) {
       boiteMsg = document.createElement('div');
       boiteMsg.className = 'swc-msg';
@@ -128,8 +128,17 @@
       boiteMsg.appendChild(a);
     }
     clearTimeout(minuterieMsg);
-    /* Un message qu'on doit pouvoir TOUCHER reste plus longtemps : quatre
-       secondes suffisent a lire, pas a decider puis viser. */
+    /* ---- UN MESSAGE D'ATTENTE NE S'EFFACE PAS AVANT LA FIN DE L'ATTENTE ----
+     * « Opening your wallet… » disparaissait au bout de quatre secondes alors
+     * que l'ouverture peut en prendre douze. Le joueur voyait donc un mot,
+     * puis huit secondes de silence complet — c'est-a-dire exactement le
+     * symptome qu'on cherchait a supprimer, un peu plus tard. Un message qui
+     * decrit quelque chose EN COURS reste jusqu'a ce que le suivant le
+     * remplace.
+     *
+     * Un message qu'on doit pouvoir TOUCHER reste plus longtemps aussi :
+     * quatre secondes suffisent a lire, pas a decider puis viser. */
+    if (garde) return;
     minuterieMsg = setTimeout(function () { boiteMsg.className = 'swc-msg'; },
                               action ? 11000 : 4200);
   }
@@ -247,6 +256,88 @@
     }
     return _lecteur;
   }
+  /* ---- NOS PHRASES NE SE FONT PAS COUPER ----
+   * La troncature a 90 caracteres existe pour qu'une erreur de la chaine — un
+   * pave de JSON-RPC — ne remplisse pas l'ecran. Mais elle coupait AUSSI les
+   * messages qu'on ecrit nous-memes, et « open sw » au lieu de « open
+   * swoleeswoge.dog in Chrome or Safari » supprime justement le conseil.
+   * Nos erreurs portent une sortie (`e.sortie`) : c'est a ca qu'on les
+   * reconnait, et celles-la passent entieres. Le prefixe non plus n'a pas
+   * lieu d'etre sur une phrase deja redigee pour le joueur. */
+  function texteErreur(quoi, e) {
+    if (e && e.sortie) return String(e.message || e);
+    return quoi + ': ' + String((e && (e.reason || e.message)) || e).slice(0, 90);
+  }
+
+  /* ================== UNE PROMESSE QUI NE REPOND JAMAIS ==================
+   *
+   * Un joueur a signale que « Deposit and play » ne faisait RIEN : aucune
+   * erreur, aucune confirmation, rien. Reproduit : ce n'est pas un message
+   * peint au mauvais endroit, c'est le portefeuille qui ne repond NI oui NI
+   * non. `SwogePrivy.restore()` ouvre une iframe cachee chez Privy et attend
+   * qu'elle reponde ; quand cette iframe ne peut pas fonctionner — c'est le
+   * cas dans le navigateur interne de Telegram, qui cloisonne le stockage
+   * des tiers — la promesse ne se resout jamais et ne se rejette jamais.
+   *
+   * Or `.catch()` ne rattrape PAS une promesse qui ne finit pas. Toute la
+   * suite du depot — le message d'erreur, la reactivation du bouton — vivait
+   * derriere ce `.then()` qui n'arrivait jamais. Le bouton restait grise et
+   * muet, pour toujours.
+   *
+   * D'ou cette fonction. Elle ne repare pas le portefeuille : elle garantit
+   * qu'on finit TOUJOURS par dire quelque chose au joueur. Un echec annonce
+   * vaut infiniment mieux qu'un bouton mort.
+   */
+  function avecDelai(promesse, ms, message) {
+    return new Promise(function (res, rej) {
+      var fini = false;
+      var t = setTimeout(function () {
+        if (fini) return;
+        fini = true;
+        rej(new Error(message));
+      }, ms);
+      Promise.resolve(promesse).then(function (v) {
+        if (fini) return;
+        fini = true; clearTimeout(t); res(v);
+      }, function (e) {
+        if (fini) return;
+        fini = true; clearTimeout(t); rej(e);
+      });
+    });
+  }
+
+  /* Douze secondes. Assez pour un telephone lent sur un reseau lent — ouvrir
+     un portefeuille embarque demande un aller-retour reseau puis une poignee
+     de main avec une iframe — et assez court pour qu'un joueur n'ait pas
+     encore conclu que le bouton est casse. Ce delai ne couvre QUE l'ouverture
+     du portefeuille : jamais la transaction elle-meme, qui attend legitimement
+     que le joueur confirme et peut prendre une minute. */
+  var DELAI_PORTEFEUILLE = 12000;
+
+  /* ---- LE NAVIGATEUR INTERNE D'UNE APPLICATION ----
+   *
+   * Telegram, Facebook, Instagram : leur navigateur embarque n'est pas Chrome
+   * ni Safari, et il cloisonne — voire interdit — le stockage des sites
+   * tiers. Un portefeuille embarque, qui vit precisement dans une iframe
+   * tierce, y echoue souvent.
+   *
+   * On ne s'en sert PAS pour affirmer une cause : on ne peut pas la verifier
+   * d'ici. On s'en sert pour ajouter la piste la plus probable au message
+   * quand le portefeuille n'a pas repondu — « essaie dans ton vrai
+   * navigateur » est le conseil qui debloque le plus souvent, et il ne coute
+   * rien a suivre s'il se trouve que ce n'etait pas ca. */
+  function dansUneApp() {
+    try {
+      if (window.TelegramWebviewProxy || window.TelegramWebview) return 'Telegram';
+      var u = navigator.userAgent || '';
+      if (/Telegram/i.test(u)) return 'Telegram';
+      if (/FBAN|FBAV|FB_IAB/.test(u)) return 'Facebook';
+      if (/Instagram/i.test(u)) return 'Instagram';
+      if (/Line\//.test(u)) return 'LINE';
+    } catch (e) {}
+    return null;
+  }
+
   /* Le portefeuille avec lequel le joueur s'est DEJA connecte. `swogeAuth` dit
      lequel : Privy pour une entree par e-mail, l'extension sinon. */
   /* ---- LE PORTEFEUILLE EMAIL N'EXISTAIT PAS SUR CETTE PAGE ----
@@ -289,7 +380,8 @@
       if (!P) return null;
       var suite = (P.restore) ? P.restore()
                 : Promise.resolve(P.isLoggedIn && P.isLoggedIn() ? P.getAddress() : null);
-      return Promise.resolve(suite).then(function (adr) {
+      /* C'EST ICI que ca se bloquait. `restore()` peut ne jamais repondre. */
+      return avecDelai(suite, DELAI_PORTEFEUILLE, 'wallet-muet').then(function (adr) {
         adr = adr || (P.getAddress && P.getAddress());
         if (!adr) return null;
         return { eip1193: P.getProvider(), adresse: adr };
@@ -315,7 +407,12 @@
       });
     }
     if (window.ethereum) {
-      return window.ethereum.request({ method: 'eth_accounts' }).then(function (cs) {
+      /* Meme garde-fou pour une extension : `eth_accounts` ne demande rien au
+         joueur, donc il ne doit jamais mettre douze secondes. Une extension
+         qui ne repond pas est aussi muette qu'un portefeuille embarque, et
+         laisserait le meme bouton mort. */
+      return avecDelai(window.ethereum.request({ method: 'eth_accounts' }),
+                       DELAI_PORTEFEUILLE, 'wallet-muet').then(function (cs) {
         if (!cs || !cs.length) return null;
         return { eip1193: window.ethereum, adresse: cs[0] };
       }).catch(function () { return null; });
@@ -340,8 +437,20 @@
            qu'on sait, et on donne le chemin qui marche a coup sur : la page
            qui porte le formulaire de connexion complet, ouverte directement
            sur le depot. */
+        /* ---- ON DIT CE QU'ON SAIT, ET LA PISTE LA PLUS PROBABLE ----
+         * On sait que le portefeuille n'a pas repondu. On ne sait pas
+         * pourquoi — session perdue, iframe bloquee, autre chose — et
+         * affirmer une cause ferait chercher au mauvais endroit. Mais quand
+         * la page tourne dans le navigateur interne d'une application, la
+         * piste est assez forte pour valoir d'etre nommee : ces navigateurs
+         * cloisonnent le stockage des sites tiers, et un portefeuille
+         * embarque vit precisement dans une iframe tierce. */
+        var app = dansUneApp();
         var err = new Error(mode
-          ? 'Your wallet did not open — sign in again to deposit'
+          ? (app
+             ? 'Your wallet did not answer. ' + app + "'s built-in browser often blocks it — " +
+               'open swoleeswoge.dog in Chrome or Safari, or sign in again.'
+             : 'Your wallet did not answer — sign in again to deposit')
           : 'Sign in first');
         /* ON NE DEPLACE PLUS PERSONNE. La sortie envoyait sur le Coin Pusher :
            le joueur tapait « me reconnecter » depuis le hall et se retrouvait
@@ -847,7 +956,16 @@
     if (!(parseFloat(s) > 0)) return dit('Enter an amount', 'ko');
     if (!VAULT) return dit('The server has no vault set — try again in a moment', 'ko');
     var bouton = $('swcDGo');
+    /* ---- ON PARLE AVANT D'ATTENDRE ----
+     * Le premier signe de vie ne doit pas dependre de la reponse du
+     * portefeuille : c'est justement lui qui peut ne jamais repondre. Le
+     * joueur voit donc « Opening your wallet… » a la milliseconde ou il
+     * appuie, et le bouton porte le meme mot. Meme si tout le reste echoue,
+     * personne ne se retrouve devant un bouton qui n'a rien dit. */
+    var libelle = bouton.textContent;
     bouton.disabled = true;
+    bouton.textContent = 'Opening your wallet…';
+    dit('Opening your wallet…', '', null, true);
     signataire().then(function (w) {
       var montant = ethers.utils.parseUnits(s, 18);
       var jeton = new ethers.Contract(TOKEN, ERC20_ABI, w.signer);
@@ -857,11 +975,11 @@
          d'une, a chaque fois. */
       return jeton.allowance(w.adresse, VAULT).then(function (a) {
         if (!a.lt(montant)) return null;
-        dit('Approve $SWOGE in your wallet…');
+        dit('Approve $SWOGE in your wallet…', '', null, true);
         return jeton.approve(VAULT, ethers.constants.MaxUint256)
           .then(function (t) { return t.wait(); });
       }).then(function () {
-        dit('Depositing…');
+        dit('Depositing…', '', null, true);
         return coffre.deposit(montant);
       }).then(function (t) { return t.wait(); });
     }).then(function () {
@@ -871,9 +989,8 @@
       litSoldesChaine();
       demande('balance');
     }).catch(function (e) {
-      dit('Deposit: ' + String((e && (e.reason || e.message)) || e).slice(0, 90), 'ko',
-          e && e.sortie);
-    }).then(function () { bouton.disabled = false; });
+      dit(texteErreur('Deposit', e), 'ko', e && e.sortie);
+    }).then(function () { bouton.disabled = false; bouton.textContent = libelle; });
   }
 
   function demandeRetrait() {
@@ -887,17 +1004,17 @@
      joueur qui l'encaisse depuis son propre portefeuille. */
   function envoieRetrait(v) {
     if (!v) return;
+    dit('Opening your wallet…', '', null, true);
     signataire().then(function (w) {
       var coffre = new ethers.Contract(v.vault || VAULT, VAULT_ABI, w.signer);
-      dit('Confirm the withdrawal in your wallet…');
+      dit('Confirm the withdrawal in your wallet…', '', null, true);
       return coffre.withdraw(v.cumulative, v.deadline, v.v, v.r, v.s)
         .then(function (t) { return t.wait(); });
     }).then(function () {
       dit('✅ Paid to your wallet', 'ok');
       ferme(); litSoldesChaine();
     }).catch(function (e) {
-      dit('Withdraw: ' + String((e && (e.reason || e.message)) || e).slice(0, 90), 'ko',
-          e && e.sortie);
+      dit(texteErreur('Withdraw', e), 'ko', e && e.sortie);
     });
   }
 

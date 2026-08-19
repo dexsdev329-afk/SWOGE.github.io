@@ -1296,7 +1296,14 @@ async function autoReconnect(){
     } else if(method==="email"){
       await loadPrivy();
       var addr=null;
-      if(SwogePrivy.restore) addr=await SwogePrivy.restore();
+      /* Un `restore()` qui ne repond NI oui NI non bloquait cette reconnexion
+       pour toujours : pas d'erreur a rattraper, rien du tout. Voir le meme
+       garde-fou dans les quatorze autres pages. Douze secondes, puis on
+       abandonne proprement. */
+      if(SwogePrivy.restore) addr=await Promise.race([
+        SwogePrivy.restore(),
+        new Promise(function(r){ setTimeout(function(){ r(null); },12000); })
+      ]);
       else if(SwogePrivy.isLoggedIn&&SwogePrivy.isLoggedIn()) addr=SwogePrivy.getAddress();
       if(!addr) return;
       rawEth=SwogePrivy.getProvider(); provider=new ethers.providers.Web3Provider(rawEth,"any"); signer=provider.getSigner();

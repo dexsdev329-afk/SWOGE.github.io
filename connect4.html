@@ -2272,7 +2272,20 @@ function renderBonus(b){ if(!b) return; bonusData=b;
       } else if(method==="email"){
         await loadPrivy();
         var addr=null;
-        if(SwogePrivy.restore) addr=await SwogePrivy.restore();
+        /* ---- UN PORTEFEUILLE QUI NE REPOND NI OUI NI NON ----
+           `restore()` ouvre une iframe cachee chez Privy et attend qu'elle
+           reponde. Quand cette iframe ne peut pas fonctionner — c'est le cas
+           dans le navigateur interne de Telegram, qui cloisonne le stockage
+           des tiers — la promesse ne se resout jamais ET ne se rejette
+           jamais. Le `try/catch` autour ne rattrape rien : il n'y a pas
+           d'erreur, il n'y a rien du tout. La reconnexion restait donc en
+           suspens pour toujours, et le joueur se retrouvait connecte au jeu
+           mais sans portefeuille, sans qu'aucun message ne le dise.
+           Douze secondes, puis on abandonne proprement. */
+        if(SwogePrivy.restore) addr=await Promise.race([
+          SwogePrivy.restore(),
+          new Promise(function(r){ setTimeout(function(){ r(null); },12000); })
+        ]);
         else if(SwogePrivy.isLoggedIn&&SwogePrivy.isLoggedIn()) addr=SwogePrivy.getAddress();
         if(!addr) return;
         provider=new ethers.providers.Web3Provider(SwogePrivy.getProvider(),"any"); signer=provider.getSigner();

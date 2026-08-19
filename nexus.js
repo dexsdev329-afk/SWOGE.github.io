@@ -205,14 +205,40 @@
       le total dans `stats`, mais pas le detail : sans ce calcul on ne pourrait
       pas dire « 80 (+30) », seulement « 80 » — et un objet equipe ne se
       verrait nulle part. */
+  /* `bonus` est un OBJET {stat: valeur} : un objet touche plusieurs stats a
+     la fois. On somme donc ce que chaque piece donne sur CETTE stat, au lieu
+     de ne regarder que sa stat principale — sinon le +130 MP d'un casque
+     n'apparaitrait nulle part, alors qu'il compte dans le total. */
   function bonusPour(stat) {
     if (!FICHE) return 0;
     var t = 0;
     EMPLACEMENTS.forEach(function (k) {
       var e = FICHE[k];
-      if (e && e.stat === stat) t += (e.bonus || 0);
+      if (e && e.bonus) t += (e.bonus[stat] || 0);
     });
     return t;
+  }
+
+  /** Le detail d'un objet, en une ligne — « +14 DEX, +8 SPD ». Sert
+      d'infobulle : la case est trop petite pour tout montrer, mais rien ne
+      doit rester invisible. */
+  function detailBonus(e) {
+    if (!e || !e.bonus) return '';
+    var out = [];
+    for (var s in e.bonus) if (e.bonus[s]) out.push('+' + e.bonus[s] + ' ' + s.toUpperCase());
+    if (e.degats) out.push('dmg ' + e.degats[0] + '-' + e.degats[1]);
+    return out.join(', ');
+  }
+
+  /** La valeur montree sur la case : la PLUS GROSSE du profil. Afficher la
+      somme n'aurait pas de sens (10 points de sagesse et 130 de mana ne
+      s'ajoutent pas), et afficher la stat principale seule mentirait sur un
+      objet dont une autre stat pese davantage en chiffres. */
+  function bonusEnTete(e) {
+    if (!e || !e.bonus) return 0;
+    var max = 0;
+    for (var s in e.bonus) if (e.bonus[s] > max) max = e.bonus[s];
+    return max;
   }
 
   function peintPanneau() {
@@ -271,10 +297,10 @@
     elEquip.innerHTML = EMPLACEMENTS.map(function (k) {
       var e = FICHE && FICHE[k];
       if (!e) return '<div class="nxp-c vide"></div>';
-      return '<div class="nxp-c" title="' + ech(e.nom) + '">' +
+      return '<div class="nxp-c" title="' + ech(e.nom + ' — ' + detailBonus(e)) + '">' +
         '<img alt="" src="img/shop/' + encodeURIComponent(e.cle) + '.webp" ' +
         'onerror="this.style.visibility=\'hidden\'">' +
-        '<b>+' + e.bonus + '</b></div>';
+        '<b>+' + bonusEnTete(e) + '</b></div>';
     }).join('');
 
     // ---- le sac : le butin ramasse, pas les achats
@@ -282,10 +308,10 @@
     for (var i = 0; i < CASES_SAC; i++) {
       var o = SAC[i];
       cases.push(o
-        ? '<div class="nxp-c" title="' + ech(o.nom) + '">' +
+        ? '<div class="nxp-c" title="' + ech(o.nom + ' — ' + detailBonus(o)) + '">' +
           '<img alt="" src="img/shop/' + encodeURIComponent(o.cle) + '.webp" ' +
           'onerror="this.style.visibility=\'hidden\'">' +
-          '<b>+' + o.bonus + '</b></div>'
+          '<b>+' + bonusEnTete(o) + '</b></div>'
         : '<div class="nxp-c vide"><u>' + (i + 1) + '</u></div>');
     }
     elSac.innerHTML = cases.join('');

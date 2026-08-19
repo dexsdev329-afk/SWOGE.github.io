@@ -120,6 +120,27 @@
       if (coffreOuvert) peintCoffreMenu();
       peintPanneau();
     }
+    /* La reponse de la boutique. `gagne` n'arrive qu'apres une ouverture :
+       c'est le seul moment ou l'on a quelque chose a annoncer. */
+    if (m.type === 'shop') {
+      BOUTIQUE = m;
+      if (m.catalogue && m.catalogue.saison) shopSaison = m.catalogue.saison;
+      if (m.error) shopMsg = { texte: m.error, ok: false };
+      else if (m.gagne && m.gagne.item) {
+        /* Le nom LISIBLE de la rarete vit dans le catalogue ; l'objet ne
+           porte que sa cle (« mythique »). On traduit ici plutot que
+           d'ecrire une seconde table de correspondance. */
+        var rar = (m.catalogue && m.catalogue.raretes || [])
+          .filter(function (r) { return r.cle === m.gagne.rarete; })[0];
+        shopMsg = { texte: '\u2728 ' + (m.gagne.item.nom || 'New item') +
+                           (rar ? ' \u2014 ' + rar.nom : '') +
+                           ' \u00b7 waiting in your vault', ok: true };
+        /* Le coffre vient de changer : on le redemande, sinon le menu du
+           coffre montrerait encore l'inventaire d'avant l'achat. */
+        if (enLigne) envoie({ type: 'equipable' });
+      } else shopMsg = '';
+      if (shopOuvert) peintShop();
+    }
     if (m.type === 'nexusEtat') majJoueursDistants(m.joueurs || []);
     /* Le solde suit n'importe quel message qui le porte — pas seulement
        `auth` — exactement comme `poseSolde` le fait pour le reste du site :
@@ -129,11 +150,18 @@
   }
 
   var soldeEl = document.getElementById('nxSolde');
+  /* Le solde MIS EN FORME, garde a part : la boutique l'affiche aussi, et
+     refaire la mise en forme la-bas donnerait deux facons d'ecrire le meme
+     nombre — « 8.97M » d'un cote, « 8 973 000 » de l'autre. */
+  var SOLDE_TEXTE = '';
   function majSolde(v) {
     var n = parseFloat(v || 0);
-    if (isNaN(n) || !soldeEl) return;
+    if (isNaN(n)) return;
     var t = n >= 1e9 ? (n / 1e9).toFixed(2) + 'B' : n >= 1e6 ? (n / 1e6).toFixed(2) + 'M'
       : n >= 1000 ? (n / 1000).toFixed(1) + 'k' : n.toFixed(2);
+    SOLDE_TEXTE = t + ' $SWOGE';
+    if (shopOuvert) peintShop();
+    if (!soldeEl) return;
     soldeEl.innerHTML = '<b>' + t + '</b><em>$SWOGE</em>';
     soldeEl.classList.add('on');
   }
@@ -429,7 +457,7 @@
       /* Ouvre sur les coffres, mais la meme feuille porte l'onglet
          « Character skins » juste a cote dans sa barre — le nom dit les
          deux, pour qu'on sache que l'un mene aussi a l'autre. */
-      rayon: 120, href: 'games.html?open=sh', nom: 'the shop — chests & skins' },
+      rayon: 120, href: 'games.html?open=sh', nom: 'the shop' },
     { cle: 'coffre', src: 'img/nexus/tiles/obj_vault_door.webp',
       x: CENTRE.x + 620, y: CENTRE.y, larg: 260, haut: 251,
       rayon: 120, href: 'games.html?open=ap', nom: 'your vault' },
@@ -563,6 +591,103 @@
   var coffreOuvert = false;   // le menu du coffre, au centre de l'ecran
 
   function scene() { return SCENE === 'coffre' ? SALLE : { w: MONDE.w, h: MONDE.h }; }
+
+  /* ================== LA BOUTIQUE, DANS LE JEU ==================
+   *
+   * L'etal renvoyait sur games.html : pour acheter un coffre il fallait
+   * QUITTER la partie, puis revenir par le menu. C'etait le dernier endroit
+   * du Nexus qui faisait sortir du jeu.
+   *
+   * Rien n'est reecrit du chemin de l'argent : on parle au serveur avec les
+   * memes messages que le panneau du hall — `shop` pour lire, `shopOpen`
+   * pour ouvrir une caisse. Le prix, les chances et le solde viennent de lui.
+   * Un second calcul de prix ici serait une seconde verite sur ce qu'on
+   * paie, et c'est exactement ce qu'il ne faut pas dupliquer.
+   */
+  var BOUTIQUE = null, shopSaison = 2, shopOuvert = false, shopMsg = '';
+  var elShopVoile = document.getElementById('nxShopVoile');
+  var elShopOng = elShopVoile ? elShopVoile.querySelector('.nxsh-ong') : null;
+  var elShopCorps = elShopVoile ? elShopVoile.querySelector('.nxsh-corps') : null;
+  var elShopSolde = elShopVoile ? elShopVoile.querySelector('.nxsh-solde b') : null;
+  var elShopMsg = elShopVoile ? elShopVoile.querySelector('.nxsh-msg') : null;
+
+  function ouvreShop() {
+    if (!elShopVoile) return;
+    shopOuvert = true;
+    shopMsg = '';
+    if (enLigne) envoie({ type: 'shop', season: shopSaison });
+    peintShop();
+    elShopVoile.classList.add('on');
+  }
+  function fermeShop() {
+    shopOuvert = false;
+    if (elShopVoile) elShopVoile.classList.remove('on');
+  }
+  if (elShopVoile) {
+    elShopVoile.addEventListener('click', function (e) {
+      var c = e.target.classList;
+      if (e.target === elShopVoile || (c && c.contains('nxcf-x'))) fermeShop();
+    });
+  }
+
+  function peintShop() {
+    if (!elShopCorps) return;
+    if (elShopSolde) elShopSolde.textContent = SOLDE_TEXTE || '—';
+    if (elShopMsg) {
+      elShopMsg.textContent = shopMsg ? shopMsg.texte : '';
+      elShopMsg.className = 'nxsh-msg' + (shopMsg && shopMsg.ok ? ' ok' : '');
+    }
+    if (!BOUTIQUE) { elShopCorps.innerHTML = '<div class="nxcf-vide">Opening the shop…</div>'; return; }
+
+    // ---- les saisons
+    if (elShopOng) {
+      elShopOng.innerHTML = (BOUTIQUE.saisons || []).map(function (s) {
+        return '<button type="button" data-s="' + s.n + '"' +
+               (s.n === shopSaison ? ' class="on"' : '') + '>' + ech(s.nom) + '</button>';
+      }).join('');
+      Array.prototype.forEach.call(elShopOng.querySelectorAll('button'), function (b) {
+        b.addEventListener('click', function () {
+          shopSaison = Number(b.getAttribute('data-s'));
+          shopMsg = '';
+          if (enLigne) envoie({ type: 'shop', season: shopSaison });
+        });
+      });
+    }
+
+    // ---- les caisses
+    var C = BOUTIQUE.catalogue || {};
+    var solde = Number(BOUTIQUE.balance || 0);
+    var coffres = C.coffres || [];
+    if (!coffres.length) {
+      elShopCorps.innerHTML = '<div class="nxcf-vide">Nothing on sale in this season right now.</div>';
+      return;
+    }
+    elShopCorps.innerHTML = coffres.map(function (c) {
+      /* Le DESSIN suit `image` et non `cle` : les caisses d'armes empruntent
+         celui des coffres a fruits tant que le leur n'existe pas, et c'est le
+         serveur qui le decide — comme dans le panneau du hall. */
+      var dessin = c.image || c.cle;
+      return '<button type="button" class="nxsh-cof" data-cle="' + ech(c.cle) + '"' +
+        (solde >= c.prix ? '' : ' disabled') + '>' +
+        '<img alt="" src="img/shop/coffre_' + encodeURIComponent(dessin) + '.webp" onerror="this.remove()">' +
+        '<span><span class="n">' + ech(c.nom) + '</span><span class="o">' +
+        (c.chances || []).map(function (x) {
+          return '<span style="white-space:nowrap"><b style="color:' + ech(x.couleur) + '">' +
+                 (Math.round(x.pourcent * 10) / 10) + '%</b> ' + ech(x.nom) + '</span>';
+        }).join(' &middot; ') +
+        '</span></span><span class="p">' + Math.round(c.prix).toLocaleString('en-US') + ' $SWOGE</span>' +
+        '</button>';
+    }).join('');
+    Array.prototype.forEach.call(elShopCorps.querySelectorAll('.nxsh-cof'), function (b) {
+      b.addEventListener('click', function () {
+        if (b.disabled) return;
+        b.disabled = true;
+        shopMsg = { texte: 'Opening…', ok: false };
+        peintShop();
+        envoie({ type: 'shopOpen', chest: b.getAttribute('data-cle'), season: shopSaison });
+      });
+    });
+  }
 
   /* ---- LE MENU DU COFFRE ----
    *
@@ -1500,6 +1625,14 @@
         l.dwell += dt;
         if (l.dwell > 0.45) {
           if (l.cle === 'coffre') { entreCoffre(); entre = true; return; }
+          /* L'etal etait le dernier endroit du Nexus qui faisait SORTIR du
+             jeu pour acheter. Il ouvre son panneau sur place.
+             Le garde-fou compte : le sejour se remet a zero et RECOMMENCE a
+             s'accumuler tant qu'on reste dessus. Sans lui, la boutique se
+             rouvrait toutes les demi-secondes et chaque reouverture
+             redemandait son etat au serveur — ce qui effacait l'annonce du
+             coffre qu'on venait d'ouvrir, sous les yeux du joueur. */
+          if (l.cle === 'etal') { if (!shopOuvert) ouvreShop(); l.dwell = 0; entre = true; return; }
           location.href = l.href;
         }
       } else l.dwell = 0;

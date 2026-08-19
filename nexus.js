@@ -166,6 +166,9 @@
       POTIONS_C = m.potions || POTIONS_C;
       if (m.pv !== null && m.pv !== undefined) { VIE.pv = m.pv; moiMonde.pv = m.pv; }
       if (m.mp !== null && m.mp !== undefined) { VIE.mp = m.mp; peintPouvoir(); }
+      /* Boire est un soin : meme spirale, plus courte parce qu'on est
+         souvent en train de fuir quand on boit. */
+      poseSoin(joueur.x, joueur.y);
       joueSample('clic2', { vol: 0.55, hauteur: 1.3 });
       flotte('+' + m.soigne + ' ' + (m.quoi === 'hp' ? 'HP' : 'MP'));
       peintPanneau();
@@ -261,7 +264,7 @@
     }
     /* La mort arrive du SERVEUR : c'est lui qui l'a constatee, jamais nous. */
     if (m.type === 'realmMort') {
-      SCENE = 'nexus'; MONSTRES_C = {}; TIRS_C = []; DISTANTS_M = {};
+      SCENE = 'nexus'; MONSTRES_C = {}; TIRS_C = []; DISTANTS_M = {}; TOMBES_C = [];
       POUVOIR_C = null; EFFETS_P = []; PARALYSE = 0; peintPouvoir();
       var pp = LIEUX[1];
       joueur.x = pp.x; joueur.y = pp.y + pp.rayon + 60;
@@ -1080,7 +1083,9 @@
    * On garde une position AFFICHEE qui glisse vers la derniere recue —
    * exactement ce que fait deja le Nexus pour les autres joueurs.
    */
-  var MONDE_C = null;          // la description recue a l'entree
+  var MONDE_C = null;
+  /* Les pierres tombales visibles autour de nous. */
+  var TOMBES_C = [];          // la description recue a l'entree
   var MONSTRES_C = {};         // id -> etat interpole
   var TIRS_C = [];             // nos projectiles, tels que le serveur les voit
   var TIRS_M = [];             // ceux des monstres, contre nous
@@ -1106,6 +1111,108 @@
      d'une autre, et c'est le serveur qui le dit (`sprite`, dans la table des
      especes). Le jour ou l'image arrive, on la depose et on retire une ligne
      de donnee cote serveur — aucun code ne change ici. */
+  /* ================== LA PIERRE ET LE SOIN ==================
+   *
+   * Deux images que tu m'avais envoyees et que je n'avais jamais branchees.
+   * Elles sont chargees a la demande, comme le reste : une page qui ne met
+   * jamais les pieds dans le monde n'a pas a les telecharger.
+   */
+  var IMG_TOMBE = null, IMG_SOIN = null, IMG_RAFALE = null, IMG_STASE = null;
+  var SOIN_CADRES = 6, SOIN_DUREE = 1.1;
+  var RAFALE_CADRES = 4, STASE_CADRES = 3;
+  function chargeEffets() {
+    if (!IMG_TOMBE) { IMG_TOMBE = new Image(); IMG_TOMBE.src = 'img/nexus/effets/tombe.webp'; }
+    if (!IMG_SOIN) { IMG_SOIN = new Image(); IMG_SOIN.src = 'img/nexus/effets/soin.webp'; }
+    if (!IMG_RAFALE) { IMG_RAFALE = new Image(); IMG_RAFALE.src = 'img/nexus/effets/rafale.webp'; }
+    if (!IMG_STASE) { IMG_STASE = new Image(); IMG_STASE.src = 'img/nexus/effets/stase.webp'; }
+  }
+
+  /* ---- L'AURA DE RAFALE ----
+   * La rafale etait le seul des trois pouvoirs sans aucun signe a l'ecran :
+   * on tirait plus vite pendant quatre secondes et rien ne disait pourquoi ni
+   * jusqu'a quand. L'aura tourne autour du personnage tant qu'elle dure.
+   *
+   * Elle est dessinee SOUS lui et non par-dessus : quatre secondes de
+   * tourbillon dore devant le visage cacheraient justement ce qu'on regarde
+   * pendant qu'on tire.
+   *
+   * Elle PALIT dans la derniere demi-seconde. Sans ca, la rafale s'arreterait
+   * net et on ne saurait jamais qu'elle allait finir.
+   */
+  var RAFALE_TOUR = 0;
+  function peintRafale(dt) {
+    if (!(POUVOIR_ETAT.rafale > 0)) return;
+    if (!IMG_RAFALE || !IMG_RAFALE.complete || !IMG_RAFALE.naturalWidth) return;
+    RAFALE_TOUR += dt;
+    var cw = IMG_RAFALE.naturalWidth / RAFALE_CADRES;
+    var ch = IMG_RAFALE.naturalHeight;
+    var c = Math.floor(RAFALE_TOUR * 14) % RAFALE_CADRES;
+    var T = 104;
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, POUVOIR_ETAT.rafale / 0.5) * 0.85;
+    /* Ecrasee en hauteur : l'aura est vue du DESSUS, comme le sol. Un disque
+       parfait se lirait comme une bulle posee a la verticale. */
+    ctx.drawImage(IMG_RAFALE, c * cw, 0, cw, ch,
+                  joueur.x - T / 2, joueur.y - T * 0.34, T, T * 0.62);
+    ctx.restore();
+  }
+
+  /* Les soins en cours. Chacun est ancre a un POINT du monde et n'y bouge
+     plus : l'effet jaillit du sol, il ne suit pas celui qui s'en va. */
+  var SOINS = [];
+  function poseSoin(x, y) {
+    chargeEffets();
+    SOINS.push({ x: x, y: y, vie: SOIN_DUREE });
+  }
+
+  /** Les six images de la spirale, dans l'ordre, sur toute la duree. Elles
+      sont calees a la MEME hauteur qu'a l'origine : les trois dernieres
+      decollent du sol, et les recaler en bas collerait l'effet a terre
+      pendant qu'il s'envole. La case fait donc 96 x 192 et on la pose
+      entiere, ancree aux pieds. */
+  function peintSoins(dt) {
+    if (!SOINS.length) return;
+    var pret = IMG_SOIN && IMG_SOIN.complete && IMG_SOIN.naturalWidth;
+    var cw = pret ? IMG_SOIN.naturalWidth / SOIN_CADRES : 0;
+    var ch = pret ? IMG_SOIN.naturalHeight : 0;
+    for (var i = SOINS.length - 1; i >= 0; i--) {
+      var e = SOINS[i];
+      e.vie -= dt;
+      if (e.vie <= 0) { SOINS.splice(i, 1); continue; }
+      if (!pret) continue;
+      var avance = 1 - e.vie / SOIN_DUREE;
+      var c = Math.min(SOIN_CADRES - 1, Math.floor(avance * SOIN_CADRES));
+      /* Deux tiers de la taille d'origine : a l'echelle un, la spirale fait
+         deux fois la hauteur du personnage et on ne voit plus que ca. */
+      var L = cw * 0.66, H = ch * 0.66;
+      ctx.drawImage(IMG_SOIN, c * cw, 0, cw, ch,
+                    e.x - L / 2, e.y - H + 10, L, H);
+    }
+  }
+
+  /** Une pierre tombale, posee au sol. Le nom au-dessus : « quelqu'un est
+      mort ici » ne vaut rien, « Dodexel est mort ici » fait reculer.
+      Elle palit dans ses dernieres secondes plutot que de disparaitre d'un
+      coup — sinon on croit a un defaut d'affichage. */
+  function dessineTombe(t) {
+    if (!IMG_TOMBE || !IMG_TOMBE.complete || !IMG_TOMBE.naturalWidth) return;
+    var H = 86, L = H * (IMG_TOMBE.naturalWidth / IMG_TOMBE.naturalHeight);
+    ctx.save();
+    if (t.r < 6) ctx.globalAlpha = Math.max(0, t.r / 6);
+    ctx.drawImage(IMG_TOMBE, t.x - L / 2, t.y - H + 12, L, H);
+    if (t.nom) {
+      ctx.font = '700 12px Archivo, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(0,0,0,.8)';
+      ctx.strokeText(t.nom, t.x, t.y - H + 4);
+      ctx.fillStyle = '#C9D3F2';
+      ctx.fillText(t.nom, t.x, t.y - H + 4);
+      ctx.textAlign = 'start';
+    }
+    ctx.restore();
+  }
+
   function atlasMonstre(espece) {
     if (ATLAS_M[espece] !== undefined) return ATLAS_M[espece];
     var t = MONDE_C && MONDE_C.especes && MONDE_C.especes[espece];
@@ -1150,6 +1257,9 @@
 
     TIRS_C = m.tirs || [];
     TIRS_M = m.tirsM || [];
+    /* Les pierres viennent du serveur en entier a chaque image : elles sont
+       peu nombreuses et ne bougent pas, il n'y a rien a interpoler. */
+    TOMBES_C = m.tombes || [];
 
     var vusJ = {};
     (m.joueurs || []).forEach(function (o) {
@@ -1207,7 +1317,7 @@
 
   function entreMonde(m) {
     MONDE_C = m;
-    MONSTRES_C = {}; TIRS_C = []; DISTANTS_M = {};
+    MONSTRES_C = {}; TIRS_C = []; DISTANTS_M = {}; TOMBES_C = [];
     moiMonde = { pv: m.moi.pv, pvMax: m.moi.pvMax, xp: 0 };
     VIE.pv = m.moi.pv; VIE.max = m.moi.pvMax;
     if (m.moi.mpMax !== undefined) { VIE.mp = m.moi.mp; VIE.mpMax = m.moi.mpMax; }
@@ -1221,6 +1331,7 @@
     EFFETS_P = [];
     joueur.x = m.moi.x; joueur.y = m.moi.y; joueur.dir = 'up';
     SCENE = 'monde';
+    chargeEffets();
     chargeSols();
     fermeCoffreMenu(); fermeShop();
     LIEUX.forEach(function (l) { l.dwell = 0; });
@@ -1245,7 +1356,7 @@
     if (SCENE !== 'monde') return false;
     if (enLigne) envoie({ type: 'realmLeave' });
     SCENE = 'nexus';
-    MONSTRES_C = {}; TIRS_C = []; DISTANTS_M = {};
+    MONSTRES_C = {}; TIRS_C = []; DISTANTS_M = {}; TOMBES_C = [];
     /* On revient AU PIED DU PORTAIL, pas au centre : c'est par la qu'on est
        parti, et reapparaitre ailleurs donne l'impression d'avoir ete
        deplace. Un cran plus bas pour ne pas repartir aussitot. */
@@ -1262,6 +1373,10 @@
        vide obligerait a attendre trois minutes sur la place avant de
        repartir, ce qui n'est pas du jeu. */
     VIE.mp = VIE.mpMax;
+    /* ET CA SE VOIT. Les barres remontaient d'un coup, sans un signe : on ne
+       savait pas si la fontaine avait soigne ou si l'affichage s'etait
+       recale tout seul. La spirale part des pieds, la ou l'on regarde. */
+    poseSoin(joueur.x, joueur.y);
     POUVOIR_C = null; EFFETS_P = []; PARALYSE = 0;
     peintPouvoir();
     joueSample('vault', { vol: 0.6, hauteur: 1.25 });
@@ -2433,7 +2548,7 @@
       EFFETS_P.push({ cle: 'foudre', x1: joueur.x, y1: joueur.y, x2: m.cx, y2: m.cy,
                       vie: 0.32, max: 0.32, graine: Math.random() * 1000 });
     } else if (m.cle === 'stase') {
-      EFFETS_P.push({ cle: 'stase', x: m.x, y: m.y, r: m.rayon, vie: 0.55, max: 0.55 });
+      EFFETS_P.push({ cle: 'stase', x: m.x, y: m.y, r: m.rayon, vie: 0.8, max: 0.8 });
     }
   }
 
@@ -2479,16 +2594,34 @@
         ctx.arc(b.x, b.y, 10 + (1 - t) * 34, 0, Math.PI * 2);
         ctx.fill();
       } else if (e.cle === 'stase') {
-        var c = { x: e.x, y: e.y };
-        ctx.globalAlpha = t * 0.75;
-        ctx.strokeStyle = '#9DE8FF';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        /* Le cercle se RETRACTE vers le lanceur : une onde qui s'etend
-           voudrait dire « ca part de moi et ca s'en va », alors que la stase
-           ramene tout le monde a l'arret. */
-        ctx.arc(c.x, c.y, e.r * (0.55 + t * 0.45), 0, Math.PI * 2);
-        ctx.stroke();
+        var pret = IMG_STASE && IMG_STASE.complete && IMG_STASE.naturalWidth;
+        if (pret) {
+          /* ---- L'ANNEAU DE GIVRE ----
+           * Les trois images grandissent : c'est la CROISSANCE dessinee par
+           * l'artiste qui fait l'onde, on ne la refabrique pas en changeant
+           * l'echelle. On cale simplement la derniere sur le rayon reel du
+           * pouvoir, pour que ce qu'on voit soit ce qui gele vraiment.
+           *
+           * Ecrase de moitie en hauteur : l'anneau est au SOL, vu du dessus.
+           * Un cercle parfait se lirait comme une bulle verticale. */
+          var cw = IMG_STASE.naturalWidth / STASE_CADRES;
+          var ch = IMG_STASE.naturalHeight;
+          var av = 1 - t;                       // 0 au depart, 1 a la fin
+          var ci = Math.min(STASE_CADRES - 1, Math.floor(av * STASE_CADRES));
+          var L = e.r * 2, H = L * 0.5;
+          ctx.globalAlpha = Math.min(1, t * 2.2);
+          ctx.drawImage(IMG_STASE, ci * cw, 0, cw, ch,
+                        e.x - L / 2, e.y - H / 2, L, H);
+        } else {
+          /* Repli tant que l'image n'est pas la : mieux vaut un cercle nu
+             qu'un pouvoir de soixante-quinze mana sans aucun signe. */
+          ctx.globalAlpha = t * 0.75;
+          ctx.strokeStyle = '#9DE8FF';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.arc(e.x, e.y, e.r * (0.55 + t * 0.45), 0, Math.PI * 2);
+          ctx.stroke();
+        }
       }
       ctx.restore();
     }
@@ -3121,9 +3254,18 @@
         }
       }
 
+      /* L'aura de rafale d'abord : elle est au SOL, sous tout le monde. */
+      peintRafale(dt);
+
       /* Tout ce qui marche se trie par les PIEDS : ce qui est plus bas passe
          devant, comme dans le Nexus. */
       var pileM = [];
+      /* Les pierres se trient AVEC les vivants : un joueur qui passe derriere
+         une tombe doit passer derriere, pas devant. C'est un objet au sol
+         comme un autre, et le traiter a part le ferait flotter. */
+      TOMBES_C.forEach(function (t) {
+        pileM.push({ y: t.y, dessine: function () { dessineTombe(t); } });
+      });
       Object.keys(MONSTRES_C).forEach(function (k) {
         var e = MONSTRES_C[k];
         pileM.push({ y: e.ry, dessine: function () { dessineMonstre(e); } });
@@ -3169,6 +3311,7 @@
       /* Les traces des pouvoirs par-dessus tout, mais AVANT `restore` : elles
          sont posees en coordonnees du monde comme le reste de la scene. */
       peintEffetsPouvoir(dt);
+      peintSoins(dt);
       ctx.restore();
       DERNIERE_CAM.x = camX; DERNIERE_CAM.y = camY; DERNIERE_CAM.z = zoom;
       peintFlottants();
@@ -3236,6 +3379,9 @@
        marchent pas. Les trier avec les personnages les ferait disparaitre
        derriere une fontaine a mi-course. */
     dessineTirs();
+    /* Le soin de la fontaine se joue ICI, dans le Nexus : c'est en rentrant
+       qu'on est soigne. */
+    peintSoins(dt);
 
     ctx.restore();
     /* La camera de CETTE image sert a convertir le curseur en coordonnees

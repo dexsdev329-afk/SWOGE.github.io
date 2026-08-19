@@ -658,7 +658,13 @@
     return null;
   }
 
+  /* De combien un projectile se DESSINE au-dessus de sa position reelle.
+     Purement visuel : il part a hauteur de poitrine mais existe, pour la
+     collision, la ou le personnage se tient. */
+  var DECALAGE_TIR = 40;
   var TIRS = [];              // projectiles en vol
+  var IMPACTS = [];           // eclats en cours, au point de contact
+  var DUREE_IMPACT = 0.28;
   var viseur = { x: 0, y: 0, actif: false };   // en coordonnees ECRAN
   var tireur = { presse: false, auto: false, recharge: 0 };
 
@@ -723,7 +729,12 @@
     var c = tireur.auto ? cibleLaPlusProche() : null;
     if (c) return Math.atan2(c.y - joueur.y, c.x - joueur.x);
     if (viseur.actif) {
-      return Math.atan2((viseur.y + camY) - (joueur.y - 40), (viseur.x + camX) - joueur.x);
+      /* On vise depuis le point de DESSIN du projectile (les pieds moins le
+         decalage visuel), sinon la trajectoire ne partirait pas de la ou on
+         la voit naitre. */
+      var z = DERNIERE_CAM.z || 1;
+      var mx = viseur.x / z + camX, my = viseur.y / z + camY;
+      return Math.atan2(my - (joueur.y - DECALAGE_TIR), mx - joueur.x);
     }
     var DIR_ANGLE = { right: 0, down: Math.PI / 2, left: Math.PI, up: -Math.PI / 2 };
     return DIR_ANGLE[joueur.dir] || 0;
@@ -738,7 +749,13 @@
     for (var i = 0; i < a.tirs; i++) {
       var d = a.tirs === 1 ? 0 : (i - (a.tirs - 1) / 2) * ecart;
       var duree = a.portee / a.vitesse;
-      TIRS.push({ x: joueur.x, y: joueur.y - 40, a: angle + d,
+      /* Le projectile nait aux PIEDS du joueur, pas a hauteur de poitrine.
+         Le `-40` est un decalage de DESSIN : l'appliquer a la position du
+         monde le faisait naitre 40px plus pres de ce qu'il vise — donc
+         DEJA dans la zone de collision de la fontaine quand on est colle a
+         elle, et chaque tir explosait aux pieds du joueur. La position du
+         monde doit vivre dans le meme espace que la collision du joueur. */
+      TIRS.push({ x: joueur.x, y: joueur.y, a: angle + d,
                   v: a.vitesse, reste: duree, duree: duree,
                   teinte: a.teinte, fam: familleArme() });
     }
@@ -751,15 +768,34 @@
       tire(angleDeTir(camX, camY));
       tireur.recharge = 1 / a.cadence;
     }
+    var f = LIEUX[0];   // la fontaine : le seul obstacle solide du Nexus
     for (var i = TIRS.length - 1; i >= 0; i--) {
       var t = TIRS[i];
       t.x += Math.cos(t.a) * t.v * dt;
       t.y += Math.sin(t.a) * t.v * dt;
       t.reste -= dt;
+
+      /* ---- LA PIERRE ARRETE LE TIR ----
+       * Les projectiles traversaient la fontaine, ce qu'aucun joueur ne lit
+       * comme normal. Elle a deja un rayon de collision — celui qui empeche
+       * d'y entrer a pied — et le reutiliser evite d'en inventer un second
+       * qui finirait par diverger du premier. */
+      var dx = t.x - f.x, dy = t.y - f.y;
+      if (dx * dx + dy * dy < f.collision * f.collision) {
+        IMPACTS.push({ x: t.x, y: t.y, reste: DUREE_IMPACT });
+        TIRS.splice(i, 1);
+        continue;
+      }
+
       /* La portee EST la duree de vie : un projectile disparait apres avoir
          parcouru la distance de son arme, pas au bord de l'ecran — sinon la
-         portee dependrait de la taille de la fenetre. */
+         portee dependrait de la taille de la fenetre. Il s'eteint sans
+         eclat : il n'a rien touche. */
       if (t.reste <= 0) TIRS.splice(i, 1);
+    }
+    for (var j = IMPACTS.length - 1; j >= 0; j--) {
+      IMPACTS[j].reste -= dt;
+      if (IMPACTS[j].reste <= 0) IMPACTS.splice(j, 1);
     }
   }
 
@@ -768,7 +804,7 @@
       var t = TIRS[i];
       var img = spriteTir(t.fam);
       ctx.save();
-      ctx.translate(t.x, t.y); ctx.rotate(t.a);
+      ctx.translate(t.x, t.y - DECALAGE_TIR); ctx.rotate(t.a);
       if (img) {
         /* Le cadre suit la VIE du projectile, pas une horloge a part : un
            tir court traverse quand meme ses quatre images, et la
@@ -789,6 +825,21 @@
         ctx.fill();
       }
       ctx.restore();
+    }
+
+    /* Les eclats, apres les projectiles pour passer par-dessus. Ils ne
+       TOURNENT pas : une explosion n'a pas de sens de vol, et la faire
+       pivoter avec l'angle du tir se verrait comme un defaut. */
+    var imp = spriteTir('impact');
+    if (imp) {
+      var nb = Math.floor(imp.width / CADRE_TIR) || 1;
+      for (var k = 0; k < IMPACTS.length; k++) {
+        var e = IMPACTS[k];
+        var c = Math.min(nb - 1, Math.floor((1 - e.reste / DUREE_IMPACT) * nb));
+        var t2 = 54;
+        ctx.drawImage(imp, c * CADRE_TIR, 0, CADRE_TIR, CADRE_TIR,
+                      e.x - t2 / 2, e.y - DECALAGE_TIR - t2 / 2, t2, t2);
+      }
     }
   }
 
@@ -970,6 +1021,26 @@
     }
   }
 
+  /* ================== LE ZOOM ==================
+   *
+   * Le monde etait dessine en 1:1 : sur un grand ecran on voyait donc la
+   * carte ENTIERE, minuscule, avec du vide tout autour — et sur un petit
+   * ecran, un mouchoir de poche. La taille du personnage dependait du
+   * moniteur, ce qu'aucun jeu ne fait.
+   *
+   * On fixe desormais la HAUTEUR DE MONDE visible et on met a l'echelle
+   * pour la faire tenir. Le joueur voit toujours la meme chose, sur un
+   * telephone comme sur un ecran large — c'est la regle de RotMG, et c'est
+   * aussi la seule qui rende le jeu equitable : sinon un grand ecran verrait
+   * arriver les monstres plus tot.
+   *
+   * On ne descend jamais sous 1 : agrandir des pixels est acceptable, les
+   * reduire rend le pixel art sale. */
+  var MONDE_VISIBLE_H = 1000;    // unites de monde vues verticalement
+  function zoomCourant(vueH) {
+    return Math.max(1, Math.min(4, vueH / MONDE_VISIBLE_H));
+  }
+
   function camAxe(pos, vue, monde) {
     if (monde <= vue) return (monde - vue) / 2;
     return Math.min(Math.max(pos - vue / 2, 0), monde - vue);
@@ -995,27 +1066,36 @@
 
   function dessine() {
     var vueW = canvas.width / DPR, vueH = canvas.height / DPR;
+    var zoom = zoomCourant(vueH);
     /* On centre le joueur sur la partie VISIBLE, pas sur la fenetre : sinon
        il marche sous le panneau, et on avance a l'aveugle vers la droite. */
-    var libre = Math.max(120, vueW - largeurPanneau());
+    /* La largeur libre, convertie en unites de MONDE : c'est en monde que la
+       camera se cadre, et melanger les deux mettrait le personnage a cote du
+       centre des que le zoom change. */
+    var libre = Math.max(120, vueW - largeurPanneau()) / zoom;
+    var hauteurMonde = vueH / zoom;
     /* `camAxe` cadre sur la largeur LIBRE : le joueur se retrouve donc au
        milieu de ce qu'on voit. Le canvas, lui, continue de peindre toute la
        fenetre — le surplus passe derriere le panneau, ce qui evite une bande
        vide a sa gauche quand on longe le bord droit de la carte. */
     var camX = camAxe(joueur.x, libre, MONDE.w);
-    var camY = camAxe(joueur.y, vueH, MONDE.h);
+    var camY = camAxe(joueur.y, hauteurMonde, MONDE.h);
 
     ctx.save();
     ctx.scale(DPR, DPR);
     ctx.fillStyle = '#0A1128';
     ctx.fillRect(0, 0, vueW, vueH);
+    /* Le pixel art se met a l'echelle SANS lissage : interpole, il devient
+       flou et perd exactement ce qui fait son style. */
+    ctx.imageSmoothingEnabled = false;
+    ctx.scale(zoom, zoom);
     ctx.translate(-camX, -camY);
 
     // le sol : seulement les tuiles qui touchent l'ecran
     var c0 = Math.max(0, Math.floor(camX / TUILE));
-    var c1 = Math.min(CARTE.cols - 1, Math.ceil((camX + vueW) / TUILE));
+    var c1 = Math.min(CARTE.cols - 1, Math.ceil((camX + libre + TUILE) / TUILE));
     var r0 = Math.max(0, Math.floor(camY / TUILE));
-    var r1 = Math.min(CARTE.rows - 1, Math.ceil((camY + vueH) / TUILE));
+    var r1 = Math.min(CARTE.rows - 1, Math.ceil((camY + hauteurMonde + TUILE) / TUILE));
     for (var r = r0; r <= r1; r++) {
       for (var c = c0; c <= c1; c++) {
         var cx = c * TUILE + TUILE / 2, cy = r * TUILE + TUILE / 2;
@@ -1052,9 +1132,9 @@
     /* La camera de CETTE image sert a convertir le curseur en coordonnees
        monde au tir suivant. La retenir ici evite de la recalculer, et surtout
        d'en utiliser une autre que celle qu'on vient de peindre. */
-    DERNIERE_CAM.x = camX; DERNIERE_CAM.y = camY;
+    DERNIERE_CAM.x = camX; DERNIERE_CAM.y = camY; DERNIERE_CAM.z = zoom;
   }
-  var DERNIERE_CAM = { x: 0, y: 0 };
+  var DERNIERE_CAM = { x: 0, y: 0, z: 1 };
 
   function dessineAvatar(x, y, cle, dir, anim, cadre) {
     var s = SPRITES[cle];
@@ -1153,5 +1233,5 @@
     requestAnimationFrame(boucle);
   }
   requestAnimationFrame(boucle);
-  peintPanneau();       // le panneau existe des la premiere image, meme vide
+  peintPanneau();   // le panneau existe des la premiere image, meme vide
 })();

@@ -83,7 +83,45 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
  * NOMBRE, la liste dit QUI — et au meme endroit que le reste de ce qu'on
  * consulte, au lieu d'un troisieme coin de l'ecran.
  */
+/* La largeur du panneau suit celle de l'ecran : une bande de 236px sur un
+   moniteur large se lit comme un ruban ecrase au bord, alors que c'est la
+   fiche du personnage — ce qu'on consulte le plus apres la carte. */
 :root{ --nxp:236px; }
+@media (min-width:1500px){ :root{ --nxp:320px; } }
+@media (min-width:2200px){ :root{ --nxp:400px; } }
+
+/* ---- LA TYPOGRAPHIE SUIT LA LARGEUR ----
+ * Elargir le panneau sans grossir son texte donne une colonne large remplie
+ * de caracteres minuscules — pire que la bande etroite d'avant. Les deux
+ * vont ensemble, aux memes paliers. */
+@media (min-width:1500px){
+  .nxp-nom b{ font-size:20px; }
+  .nxp-nom img{ width:28px; height:28px; }
+  .nxp-b{ height:24px; }
+  .nxp-b span{ font-size:13.5px; line-height:24px; }
+  .nxp-b em{ font-size:12px; line-height:24px; }
+  .nxp-st{ font-size:13px; }
+  .nxp-c b{ font-size:11px; }
+  .nxp-c u{ font-size:19px; }
+  .nxp-g span{ font-size:13px; }
+  .nxp-g img{ width:21px; height:21px; }
+  .nxp-vide{ font-size:13px; }
+  #nxReglages{ width:32px; height:32px; font-size:16px; }
+}
+@media (min-width:2200px){
+  .nxp-nom b{ font-size:24px; }
+  .nxp-nom img{ width:34px; height:34px; }
+  .nxp-b{ height:29px; }
+  .nxp-b span{ font-size:16px; line-height:29px; }
+  .nxp-b em{ font-size:14px; line-height:29px; }
+  .nxp-st{ font-size:15.5px; }
+  .nxp-c b{ font-size:13px; }
+  .nxp-c u{ font-size:23px; }
+  .nxp-g span{ font-size:15px; }
+  .nxp-g img{ width:25px; height:25px; }
+  .nxp-vide{ font-size:15px; }
+  #nxReglages{ width:38px; height:38px; font-size:19px; }
+}
 @media (max-width:820px){ :root{ --nxp:170px; } }
 @media (max-width:420px){ :root{ --nxp:148px; } }
 

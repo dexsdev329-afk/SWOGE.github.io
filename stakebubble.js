@@ -1743,7 +1743,6 @@
       '.swb-s i{font-style:normal;margin-left:auto;font-size:10px;font-weight:800;' +
         'letter-spacing:.5px;text-transform:uppercase;white-space:nowrap;}' +
       '.swb-s i.cl{color:#8DA0C4;}' +
-      '.swb-s i.av{color:#7CFF9B;}' +
       /* Le renvoi vers la boutique, au bas du classement. Discret — c'est une
          sortie, pas un appel : le bouton d'achat est dans l'autre section et
          il n'y a rien a gagner a en poser un faux ici. */
@@ -1979,11 +1978,11 @@
       '.swm-a .px b{display:block;font-size:14px;font-weight:800;color:#FFD97A;' +
         'font-variant-numeric:tabular-nums;}' +
       '.swm-a .px i{font-style:normal;font-size:9px;color:#8DA0C4;letter-spacing:.06em;}' +
-      '.swm-a .act{flex:0 0 auto;padding:8px 13px;border-radius:10px;font:inherit;' +
+      '.swm-a .swact{flex:0 0 auto;padding:8px 13px;border-radius:10px;font:inherit;' +
         'font-size:12px;font-weight:800;cursor:pointer;border:1px solid rgba(255,255,255,.18);' +
         'background:rgba(255,255,255,.06);color:#EAF2FF;}' +
-      '.swm-a .act:hover:not(:disabled){background:rgba(255,255,255,.12);}' +
-      '.swm-a .act:disabled{opacity:.45;cursor:default;}' +
+      '.swm-a .swact:hover:not(:disabled){background:rgba(255,255,255,.12);}' +
+      '.swm-a .swact:disabled{opacity:.45;cursor:default;}' +
       '.swm-a.mien .act{border-color:rgba(255,197,61,.5);color:#FFD97A;}' +
       /* ---- LES SKINS : UNE CARTE PAR PERSONNAGE, PAS UNE LIGNE ----
        *
@@ -2013,25 +2012,44 @@
       '.swk-c .pv{font-style:normal;font-size:10.5px;color:#8DA0C4;line-height:1.4;' +
         'min-height:2.7em;}' +
       '.swk-c .bas,.swk-da{margin-top:4px;}' +
-      '.swk-c .tag,.swk-da .tag{font-size:11px;font-weight:800;color:#7CFF9B;' +
+      '.swk-c .swtag,.swk-da .swtag{font-size:11px;font-weight:800;color:#7CFF9B;' +
         'border:1px solid rgba(124,255,155,.4);border-radius:99px;padding:4px 12px;}' +
-      '.swk-c .act,.swk-da .act{padding:8px 14px;border-radius:10px;font:inherit;font-size:12px;' +
+      '.swk-c .swact,.swk-da .swact{padding:8px 14px;border-radius:10px;font:inherit;font-size:12px;' +
         'font-weight:800;cursor:pointer;border:1px solid rgba(255,255,255,.18);' +
         'background:rgba(255,255,255,.06);color:#EAF2FF;}' +
-      '.swk-c .act:hover:not(:disabled),.swk-da .act:hover:not(:disabled){background:rgba(255,255,255,.12);}' +
-      '.swk-c .act:disabled,.swk-da .act:disabled{opacity:.45;cursor:default;}' +
+      '.swk-c .swact:hover:not(:disabled),.swk-da .swact:hover:not(:disabled){background:rgba(255,255,255,.12);}' +
+      '.swk-c .swact:disabled,.swk-da .swact:disabled{opacity:.45;cursor:default;}' +
       /* Le prix est le SEUL bouton dore du tiroir en dehors des gestes
          d argent : il doit se voir comme « ceci coute », pas comme un bouton
          d action neutre parmi d autres. */
-      /* `.prix`, jamais `.buy` : ce nom-la existe deja, ailleurs sur le site,
-         pour le bouton « Buy $SWOGE » de la barre — un sprite dont le TEXTE
-         est pousse hors-ecran (`text-indent:-9999px`) et le fond force en
-         transparent par un `!important`. Les deux boutons partageaient donc
-         la meme classe sans se connaitre, et celui-ci en heritait, invisible :
-         aucun prix, aucune couleur, juste un rectangle vide. */
-      '.swk-c .act.prix,.swk-da .act.prix{border-color:rgba(255,197,61,.55);background:rgba(255,197,61,.14);' +
+      /* ---- POURQUOI TOUTES CES CLASSES SONT PREFIXEES `sw` ----
+       *
+       * Ce fichier pose ses elements sur les dix-neuf pages du site, et
+       * chacune a sa propre feuille de style. Une classe au nom courant y
+       * est donc un pari : le jour ou une page nomme la meme chose, elle
+       * capture nos elements sans que rien ne le signale.
+       *
+       * Ce n'est pas theorique, ca s'est produit trois fois :
+       *   - `.buy`   : le bouton « Buy $SWOGE » de la barre est un sprite
+       *                dont le texte part hors-ecran (`text-indent:-9999px`)
+       *                et le fond est force transparent en `!important`. Le
+       *                bouton d'achat de skin portait la meme classe et en
+       *                heritait : un rectangle vide. Personne ne pouvait
+       *                acheter de personnage, sans une erreur en console.
+       *   - `.act`   : douze pages posent `.act{display:flex;gap:10px}` sur
+       *                leur rangee d'actions ; nos boutons devenaient des
+       *                conteneurs flex, prix disloque en deux morceaux.
+       *   - `.tag`   : `games.html` force couleur, fond et bordure en
+       *                `!important` — ce qui BAT notre regle malgre sa
+       *                specificite superieure. Le badge « Wearing » virait
+       *                a l'or au lieu du vert qui veut dire « celui-ci ».
+       *
+       * Le prefixe n'est donc pas une convention d'ecriture, c'est le seul
+       * mecanisme d'isolation qu'on ait sans Shadow DOM. Une classe nue
+       * ajoutee ici est une panne qui attend sa page. */
+      '.swk-c .swact.swprix,.swk-da .swact.swprix{border-color:rgba(255,197,61,.55);background:rgba(255,197,61,.14);' +
         'color:#FFD97A;}' +
-      '.swk-c .act.prix i,.swk-da .act.prix i{font-style:normal;font-weight:600;opacity:.85;}' +
+      '.swk-c .swact.swprix i,.swk-da .swact.swprix i{font-style:normal;font-weight:600;opacity:.85;}' +
       /* ---- LA FICHE EN GRAND ----
        *
        * Meme coque que la feuille de vente (.swv, .swv-f, .swv-x) — mais PAS
@@ -2085,7 +2103,7 @@
       '.swk-dp i.on{background:var(--t);}' +
       '.swk-dv{font-style:normal;font-size:13px;color:#8DA0C4;line-height:1.5;' +
         'max-width:280px;margin:2px 0 4px;}' +
-      '.swk-da .act{padding:12px 26px;font-size:14px;}' +
+      '.swk-da .swact{padding:12px 26px;font-size:14px;}' +
       /* Le cadeau pixel : une phrase avant l achat, deux petits boutons
          apres. Meme famille visuelle que les points de puissance — discret,
          ca n est pas l argument principal de la fiche, juste un plus. */
@@ -3886,12 +3904,12 @@
   function boutonSkin(s, actif) {
     if (actif) {
       var tag = document.createElement('span');
-      tag.className = 'tag'; tag.textContent = 'Wearing';
+      tag.className = 'swtag'; tag.textContent = 'Wearing';
       return tag;
     }
     if (s.possede) {
       var w = document.createElement('button');
-      w.type = 'button'; w.className = 'act';
+      w.type = 'button'; w.className = 'swact';
       w.textContent = 'Wear';
       w.addEventListener('click', function (e) {
         e.stopPropagation();
@@ -3901,7 +3919,7 @@
       return w;
     }
     var b = document.createElement('button');
-    b.type = 'button'; b.className = 'act prix';
+    b.type = 'button'; b.className = 'swact swprix';
     b.innerHTML = nb(s.prix, 0) + ' <i>$SWOGE</i>';
     b.addEventListener('click', function (e) {
       e.stopPropagation();
@@ -4250,7 +4268,7 @@
         '<i class="v">' + (a.mien ? 'your listing' : 'by ' + ech(a.nomVendeur)) + '</i></div>' +
         '<div class="px"><b>' + nb(a.prix, 0) + '</b><i>$SWOGE</i></div>';
       var b = document.createElement('button');
-      b.type = 'button'; b.className = 'act';
+      b.type = 'button'; b.className = 'swact';
       /* Une seule action par ligne, et elle depend de qui regarde. Deux
          boutons dont un toujours grise apprendraient a ne plus les lire. */
       b.textContent = a.mien ? 'Take back' : 'Buy';
@@ -4456,19 +4474,22 @@
   /*
    * ===================== LE BANDEAU DES SAISONS =====================
    *
-   * Une saison verrouillee est MONTREE, pas cachee. Cacher la saison 2
-   * jusqu'a son ouverture reviendrait a n'en parler qu'a ceux qui n'ont plus
-   * rien a y gagner : c'est justement pendant qu'elle est fermee qu'elle
-   * donne une raison de finir sa collection.
+   * Les quatre saisons sont ouvertes : le bandeau sert donc a CHOISIR
+   * laquelle on regarde, plus a annoncer laquelle on peut atteindre.
    *
-   * D'ou le contenu de la pastille verrouillee : pas « locked », mais ce
-   * qu'il manque exactement — « 1/3 lines ». Un verrou sans compteur se lit
-   * comme une porte murée ; le meme verrou avec « il en manque deux » se lit
-   * comme un objectif.
+   * ---- pourquoi le rendu « fermee » reste ecrit ----
    *
-   * La pastille du gagnant en avance dit « early ». C'est la seule chose que
-   * les trois premiers emportent en plus des jetons, et si elle ne s'affiche
-   * nulle part elle n'existe pas.
+   * Il n'y a plus de verrou aujourd'hui, mais l'autorite reste le SERVEUR :
+   * cette fonction ne decide rien, elle reflete `s.ouverte`. Tant qu'elle
+   * sait afficher les deux etats, refermer une saison un jour ne demande
+   * qu'une ligne cote serveur — et surtout, une page qui ne saurait afficher
+   * que « ouvert » montrerait un onglet cliquable que le serveur refuserait
+   * ensuite, ce qui est la pire des deux erreurs.
+   *
+   * D'ou le contenu de la pastille fermee : pas « locked », mais ce qui
+   * manque exactement — « 1/3 lines ». Un verrou sans compteur se lit comme
+   * une porte murée ; le meme avec « il en manque deux » se lit comme un
+   * objectif.
    */
   function rendSaisons(l) {
     /* `BOUTIQUE` peut ne pas exister : le marche s'ouvre sans etre passe par
@@ -4486,14 +4507,16 @@
       /* Le nom du serveur porte « Season 2 — Weapons » ; on ne garde que ce
          qui distingue, la place est comptee sur un telephone. */
       var court = String(s.nom).split('—').pop().trim();
+      /* Plus de pastille « early » : le serveur ne rend plus `avance`, parce
+         qu'entrer en avance la ou tout le monde est deja entre ne distingue
+         plus personne. La course garde son rang, ailleurs, ou il veut encore
+         dire quelque chose. */
       t.innerHTML = '<b>S' + s.n + '</b> ' + ech(court) +
-        (s.ouverte
-          ? (s.avance ? '<i class="av">early</i>' : '')
-          : '<i class="cl">' + s.faites + '/' + s.sur + ' lines</i>');
+        (s.ouverte ? '' : '<i class="cl">' + s.faites + '/' + s.sur + ' lines</i>');
       t.title = s.ouverte
-        ? (s.avance ? 'You are in early — you finished line #' + s.rang : s.nom)
+        ? s.nom
         : 'Opens when ' + s.sur + ' players have completed a full family (' +
-          s.faites + ' so far). The first three get in as soon as their own line is done.';
+          s.faites + ' so far).';
       if (s.ouverte && s.n !== SAISON) t.addEventListener('click', function () {
         SAISON = s.n;
         if (etat.socket && etat.socket.readyState === 1)

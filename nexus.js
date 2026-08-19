@@ -273,7 +273,9 @@
   // geste, le tout premier `play()` reel — lui, lance depuis la boucle de
   // jeu — risquerait d'etre refuse.
   var pas = new Audio('img/nexus/pas.mp3');
-  pas.loop = true; pas.volume = 0.45; pas.preload = 'auto';
+  /* 0.135 = 0.45 baisse de 70 % : le pas doit se sentir sous le reste, pas
+     se faire entendre par-dessus. */
+  pas.loop = true; pas.volume = 0.135; pas.preload = 'auto';
   var debloque = false;
   function debloqueSon() {
     if (debloque) return;

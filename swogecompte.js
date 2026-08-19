@@ -114,9 +114,16 @@
     }
     boiteMsg.className = 'swc-msg on' + (cl ? ' ' + cl : '') + (action ? ' act' : '');
     boiteMsg.textContent = t;
-    if (action && action.href) {
-      var a = document.createElement('a');
-      a.href = action.href;
+    if (action && (action.href || action.fait)) {
+      var a = document.createElement(action.fait ? 'button' : 'a');
+      if (action.href) a.href = action.href;
+      if (action.fait) {
+        a.type = 'button';
+        a.addEventListener('click', function () {
+          boiteMsg.className = 'swc-msg';
+          action.fait();
+        });
+      }
       a.textContent = action.texte || 'Continue';
       boiteMsg.appendChild(a);
     }
@@ -334,9 +341,17 @@
            qui porte le formulaire de connexion complet, ouverte directement
            sur le depot. */
         var err = new Error(mode
-          ? 'Your wallet did not open here — sign in again to deposit'
+          ? 'Your wallet did not open — sign in again to deposit'
           : 'Sign in first');
-        err.sortie = { texte: 'Sign in and deposit →', href: 'swoge_pusher.html#deposit' };
+        /* ON NE DEPLACE PLUS PERSONNE. La sortie envoyait sur le Coin Pusher :
+           le joueur tapait « me reconnecter » depuis le hall et se retrouvait
+           dans un autre jeu, loin de ce qu'il voulait faire. Le formulaire de
+           connexion de stakebubble.js sait se rouvrir SUR PLACE, et il
+           recharge la meme page une fois signe. On l'appelle, et on ne garde
+           le lien que si ce fichier tourne seul, sans lui. */
+        err.sortie = (window.swogeConnexion && window.swogeConnexion.ouvre)
+          ? { texte: 'Sign in again →', fait: function () { window.swogeConnexion.ouvre(); } }
+          : { texte: 'Sign in and deposit →', href: 'swoge_pusher.html#deposit' };
         throw err;
       }
       if (typeof ethers === 'undefined') throw new Error('Chain library not loaded — reload the page');
@@ -479,7 +494,8 @@
       /* Sans action le bandeau est traversant, pour ne jamais gener un
          geste ; des qu'il en porte une, il faut pouvoir la toucher. */
       '.swc-msg.act{pointer-events:auto;}' +
-      '.swc-msg a{display:block;margin-top:9px;padding:9px 12px;border-radius:9px;' +
+      '.swc-msg a,.swc-msg button{display:block;width:100%;border:0;font:inherit;cursor:pointer;' +
+      'margin-top:9px;padding:9px 12px;border-radius:9px;' +
       'background:#FFC53D;color:#141A24;text-decoration:none;text-align:center;' +
       'font-weight:800;font-size:12.5px;}';
     document.head.appendChild(c);

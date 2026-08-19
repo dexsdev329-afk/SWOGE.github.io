@@ -174,7 +174,11 @@
       'margin-left:8px;padding:7px 13px;border-radius:999px;cursor:pointer;' +
       'font-family:inherit;font-size:12px;font-weight:800;color:#231a06;' +
       'border:0;background:linear-gradient(180deg,#F2C868,#E6A537);}' +
-      '.swcon-ov{position:fixed;inset:0;z-index:9999;display:none;align-items:center;' +
+      /* Au-dessus de tout ce que la page empile : le tiroir du profil
+         (99999), la barre du bas (2147482000) et le bandeau de messages
+         (2147483000). C'est le seul panneau qu'on ouvre PAR-DESSUS un
+         autre — on s'y reconnecte sans quitter ce qu'on faisait. */
+      '.swcon-ov{position:fixed;inset:0;z-index:2147483200;display:none;align-items:center;' +
       'justify-content:center;padding:16px;background:rgba(4,6,12,.72);}' +
       '.swcon-ov.on{display:flex;}' +
       '.swcon-b{width:min(360px,100%);border-radius:16px;padding:18px;' +
@@ -238,8 +242,23 @@
     });
     return conBoite;
   }
-  function ouvreConnexion() { dialogue().classList.add('on'); }
+  function ouvreConnexion() {
+    /* Le tiroir du profil se referme : le laisser ouvert mettrait un fond
+       floute entre le joueur et le formulaire qu'il doit remplir. */
+    var d = document.querySelector('.swpov.on');
+    if (d) d.classList.remove('on');
+    dialogue().classList.add('on');
+  }
   function fermeConnexion() { if (conBoite) conBoite.classList.remove('on'); }
+  /* ---- LA PORTE, OUVERTE AUX AUTRES FICHIERS ----
+   *
+   * swogecompte.js doit pouvoir proposer « reconnecte-toi » quand un depot
+   * echoue. Il envoyait pour cela sur swoge_pusher.html, ce qui deplacait le
+   * joueur : il tapait « me reconnecter » depuis le hall et se retrouvait
+   * dans un autre jeu. Le formulaire est ICI, il sait deja se reconnecter en
+   * place — on l'expose plutot que d'en ecrire un second, et surtout plutot
+   * que de faire voyager quelqu'un qui voulait juste deposer. */
+  window.swogeConnexion = { ouvre: ouvreConnexion, ferme: fermeConnexion };
   function conDit(t) { if (conBoite) conBoite.querySelector('.m').textContent = t; }
 
   /* Le nonce, la signature, la session. Le serveur n'a pas d'autre porte : la

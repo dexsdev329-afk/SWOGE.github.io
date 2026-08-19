@@ -349,8 +349,18 @@
            connexion de stakebubble.js sait se rouvrir SUR PLACE, et il
            recharge la meme page une fois signe. On l'appelle, et on ne garde
            le lien que si ce fichier tourne seul, sans lui. */
+        /* ON DECONNECTE D'ABORD. Ouvrir le formulaire par-dessus une session
+           qui ne repond plus ne changeait rien : le jeton perime restait en
+           place, la page se rechargeait avec, et on revenait au meme mur.
+           Se reconnecter commence par se DEconnecter — c'est le sens du
+           bouton, et c'est ce que le joueur croyait faire. */
         err.sortie = (window.swogeConnexion && window.swogeConnexion.ouvre)
-          ? { texte: 'Sign in again →', fait: function () { window.swogeConnexion.ouvre(); } }
+          ? { texte: 'Sign out and sign in again →', fait: function () {
+                try { localStorage.removeItem('swogeSession'); } catch (x) {}
+                try { localStorage.removeItem('swogeAuth'); } catch (x) {}
+                try { if (window.SwogePrivy && SwogePrivy.logout) SwogePrivy.logout(); } catch (x) {}
+                window.swogeConnexion.ouvre();
+              } }
           : { texte: 'Sign in and deposit →', href: 'swoge_pusher.html#deposit' };
         throw err;
       }

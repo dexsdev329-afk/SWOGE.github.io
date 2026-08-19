@@ -125,7 +125,12 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
 @media (max-width:820px){ :root{ --nxp:170px; } }
 @media (max-width:420px){ :root{ --nxp:148px; } }
 
+/* `border-box` : sans lui la largeur annoncee (--nxp) exclut les 8px de
+   marge interieure de chaque cote, le panneau mesure 253 pour 236 declares,
+   et le voile du coffre — cale sur --nxp — mordait de dix-sept pixels sur
+   lui. Une seule largeur, une seule verite. */
 #nxPanneau{ position:absolute; top:0; right:0; bottom:0; width:var(--nxp);
+  box-sizing:border-box;
   z-index:22; display:flex; flex-direction:column; gap:6px;
   padding:8px 8px calc(8px + env(safe-area-inset-bottom));
   padding-top:calc(8px + env(safe-area-inset-top));
@@ -270,9 +275,16 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
 .nxsh-cof .p{ flex:0 0 auto; font-size:12px; font-weight:800; color:#FFC53D; }
 .nxsh-cof span:nth-child(2){ flex:1; min-width:0; }
 /* ---- le coffre ---- */
-#nxCoffreVoile{ position:fixed; inset:0; z-index:95; background:rgba(4,7,13,.7);
+/* ---- LE COFFRE N'EATEINT PAS LE PANNEAU ----
+ * Le voile couvrait TOUT l'ecran, panneau compris : on ouvrait son coffre et
+ * son propre sac passait derriere un rideau gris, au moment precis ou l'on
+ * veut comparer les deux. Il s'arrete maintenant au bord du panneau — et
+ * quand celui-ci est replie, il reprend toute la largeur. */
+#nxCoffreVoile{ position:fixed; top:0; bottom:0; left:0; right:var(--nxp);
+  z-index:95; background:rgba(4,7,13,.7);
   display:flex; align-items:center; justify-content:center; padding:16px;
-  opacity:0; pointer-events:none; transition:opacity .18s; }
+  opacity:0; pointer-events:none; transition:opacity .18s,right .22s ease; }
+#nxWrap.replie ~ #nxCoffreVoile, body.nxreplie #nxCoffreVoile{ right:0; }
 #nxCoffreVoile.on{ opacity:1; pointer-events:auto; }
 .nxcf-carte{ position:relative; width:100%; max-width:560px; max-height:84vh;
   overflow-y:auto; background:#141a24; border:1px solid #2b3340; border-radius:16px;
@@ -314,6 +326,20 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
   width:19px; height:19px; border-radius:6px; font-size:11px; font-weight:800;
   background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.14); color:#c9d3f2; }
 .nxcf-sortir:hover{ background:rgba(255,255,255,.18); color:#fff; }
+/* ---- L'OBJET QU'ON TIENT ----
+ * Il suit le doigt ou la souris, sans jamais intercepter le pointeur : sinon
+ * `elementFromPoint` le trouverait LUI a chaque image et ne verrait jamais la
+ * case sur laquelle on le lache. */
+.nxp-fantome{ position:fixed; z-index:2147483100; width:44px; height:44px;
+  object-fit:contain; pointer-events:none; transform:translate(-50%,-50%);
+  filter:drop-shadow(0 6px 12px rgba(0,0,0,.6)); opacity:.92; }
+/* Pendant le geste, rien ne se selectionne ni ne defile sous les doigts. */
+body.nxdrag{ user-select:none; -webkit-user-select:none; touch-action:none; }
+body.nxdrag #nxSac, body.nxdrag #nxEquip{ outline:1px dashed rgba(255,197,61,.5);
+  outline-offset:2px; border-radius:8px; }
+/* Les cases se prennent : on le dit au curseur. */
+#nxSac .nxp-c[data-sac], #nxEquip .nxp-c[data-item], .nxcf-i{ cursor:grab; }
+body.nxdrag *{ cursor:grabbing !important; }
 #nxReglagesVoile{ position:fixed; inset:0; z-index:90; background:rgba(4,7,13,.66);
   display:flex; align-items:center; justify-content:center; padding:16px;
   opacity:0; pointer-events:none; transition:opacity .18s ease; }
@@ -506,7 +532,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
   </div>
 </div>
 
-<script src="nexus.js?v=20260819h" defer></script>
+<script src="nexus.js?v=20260819i" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

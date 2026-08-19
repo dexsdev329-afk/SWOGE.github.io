@@ -104,7 +104,16 @@
     /* Notre nom vient du profil. On le demande une fois : le panneau
        l'affiche en tete, comme la fiche d'origine. */
     if (m.type === 'profile' && m.profile) { MON_NOM = m.profile.name || null; peintPanneau(); }
-    if (m.type === 'personnage' && m.etat && m.etat.skin === PERSO) { FICHE = m.etat; peintPanneau(); if (coffreOuvert) peintCoffreMenu(); }
+    if (m.type === 'personnage' && m.etat && m.etat.skin === PERSO) {
+      /* Le niveau qui MONTE s'entend. On compare a celui d'avant plutot
+         que d'attendre un message dedie : la fiche arrive de toute facon
+         et porte deja la reponse. Le PREMIER envoi ne sonne pas — on ne
+         « monte » pas au niveau qu'on avait deja en arrivant. */
+      var avantNiv = FICHE ? FICHE.niveau : null;
+      FICHE = m.etat;
+      if (avantNiv !== null && m.etat.niveau > avantNiv) joueSample('niveau', { vol: 0.9 });
+      peintPanneau(); if (coffreOuvert) peintCoffreMenu();
+    }
     if (m.type === 'equipable') {
       /* Le SAC est ce que le serveur envoie sous `sac` — le butin ramasse —
          et RIEN d'autre. Il contenait auparavant tout ce qu'on possede
@@ -193,6 +202,13 @@
     if (!b || !enveloppe) return;
     var CLE = 'swogeNexusPanneauReplie';
     try { if (localStorage.getItem(CLE) === '1') enveloppe.classList.add('replie'); } catch (e) {}
+    /* `#nxCoffreVoile` vit HORS de `#nxWrap` : un selecteur descendant ne
+       l'atteindrait pas. On recopie donc l'etat sur le <body>, qui les
+       contient tous les deux. */
+    var suitRepli = function () {
+      document.body.classList.toggle('nxreplie', enveloppe.classList.contains('replie'));
+    };
+    suitRepli();
     /* On place le bouton d'apres la largeur MESUREE du panneau, pas d'apres
        la variable CSS : les deux different des qu'une barre de defilement
        s'intercale, et le bouton finissait par recouvrir la premiere lettre de
@@ -208,6 +224,7 @@
     }
     b.addEventListener('click', function () {
       var replie = enveloppe.classList.toggle('replie');
+      suitRepli();
       b.setAttribute('aria-label', replie ? 'Show panel' : 'Hide panel');
       try { localStorage.setItem(CLE, replie ? '1' : '0'); } catch (e) {}
       place();
@@ -276,6 +293,145 @@
     return max;
   }
 
+  /* ================== PRENDRE ET DEPOSER ==================
+   *
+   * Le menu du coffre avait des boutons « store » et une fleche. Ca marche,
+   * mais ce n'est pas le geste : on veut ATTRAPER un objet et le poser ou on
+   * le veut — dans le sac, sur un emplacement, dans le coffre.
+   *
+   * On n'utilise PAS le glisser-deposer natif du navigateur : il ne repond
+   * pas au doigt, et la moitie des joueurs sont sur telephone. On suit le
+   * POINTEUR, qui couvre les deux d'un seul code.
+   *
+   * Trois origines et trois destinations, et toutes les combinaisons ne se
+   * valent pas :
+   *   coffre  -> emplacement : on s'equipe
+   *   coffre  -> sac         : on ressort la piece (elle redevient perissable)
+   *   sac     -> coffre      : on la met a l'abri
+   *   sac     -> emplacement : il faut d'abord la ranger — deux messages,
+   *                            dans l'ordre, sur la meme socket
+   *   equipe  -> sac         : on la retire PUIS on la ressort
+   *   equipe  -> coffre      : on la retire, elle y est deja
+   */
+  var PRISE = null, elFantome = null;
+
+  function familleDuSlot(k) {
+    return { equipFruit: 'equipeFruit', equipArme: 'equipeArme',
+             equipArmure: 'equipeArmure', equipBague: 'equipeBague' }[k];
+  }
+  /** L'emplacement auquel un objet appartient, d'apres sa saison. */
+  function slotDeLObjet(id) {
+    var t = null;
+    ['fruits', 'armes', 'armures', 'bagues'].forEach(function (champ, i) {
+      if (t) return;
+      if (((COFFRE && COFFRE[champ]) || []).some(function (o) { return o.id === id; })) {
+        t = ['equipFruit', 'equipArme', 'equipArmure', 'equipBague'][i];
+      }
+    });
+    if (t) return t;
+    // pas au coffre : on cherche dans le sac, par la saison de l'objet
+    var o = (SAC || []).filter(function (x) { return x.id === id; })[0];
+    if (!o) return null;
+    return { 1: 'equipFruit', 2: 'equipArme', 3: 'equipArmure', 4: 'equipBague' }[o.saison] || null;
+  }
+
+  function ouEstLePointeur(x, y) {
+    var el = document.elementFromPoint(x, y);
+    while (el) {
+      if (el.id === 'nxSac') return { quoi: 'sac' };
+      if (el.id === 'nxEquip' || (el.dataset && el.dataset.slot)) {
+        var c = el.closest ? el.closest('[data-slot]') : null;
+        return { quoi: 'equip', slot: c ? c.dataset.slot : null };
+      }
+      if (el.id === 'nxCoffreVoile' || (el.classList && el.classList.contains('nxcf-carte'))) {
+        return { quoi: 'coffre' };
+      }
+      el = el.parentElement;
+    }
+    return null;
+  }
+
+  function lachePrise(x, y) {
+    var cible = ouEstLePointeur(x, y);
+    var p = PRISE;
+    finPrise();
+    if (!p || !cible) return;
+    var id = p.id;
+    if (cible.quoi === 'equip') {
+      /* L'objet va dans SA case, pas dans celle qu'on a visee. Viser juste
+         n'a aucun interet — un fruit ne peut aller nulle part ailleurs que
+         dans l'emplacement fruit — et le serveur refuse de toute facon un
+         fruit envoye au slot d'arme. Lacher n'importe ou sur l'equipement
+         doit donc suffire. */
+      var slot = slotDeLObjet(id) || cible.slot;
+      var msg = familleDuSlot(slot);
+      if (!msg) return;
+      /* Depuis le SAC, il faut ranger d'abord : le serveur ne s'equipe que
+         depuis le coffre. Deux messages a la suite sur la meme socket, dans
+         l'ordre — ce n'est pas un contournement, c'est la sequence reelle. */
+      if (p.de === 'sac') envoie({ type: 'rangeCoffre', item: id });
+      envoie({ type: msg, skin: PERSO, item: id });
+      clic(true);
+    } else if (cible.quoi === 'sac') {
+      if (p.de === 'sac') return;
+      if (p.de === 'equip') envoie({ type: familleDuSlot(p.slot), skin: PERSO, item: null });
+      envoie({ type: 'sortCoffre', item: id });
+      clic(true);
+    } else if (cible.quoi === 'coffre') {
+      if (p.de === 'sac') { envoie({ type: 'rangeCoffre', item: id }); clic(true); }
+      else if (p.de === 'equip') { envoie({ type: familleDuSlot(p.slot), skin: PERSO, item: null }); clic(true); }
+    }
+  }
+
+  function finPrise() {
+    if (elFantome) { elFantome.remove(); elFantome = null; }
+    PRISE = null;
+    document.body.classList.remove('nxdrag');
+  }
+
+  function debutPrise(ev, source) {
+    PRISE = source;
+    document.body.classList.add('nxdrag');
+    elFantome = document.createElement('img');
+    elFantome.className = 'nxp-fantome';
+    elFantome.src = source.src || '';
+    document.body.appendChild(elFantome);
+    bougePrise(ev.clientX, ev.clientY);
+    clic(false);
+  }
+  function bougePrise(x, y) {
+    if (elFantome) { elFantome.style.left = x + 'px'; elFantome.style.top = y + 'px'; }
+  }
+
+  /* UN seul couple d'ecouteurs sur le document, pas un par case : les cases
+     sont refaites a chaque peinture du panneau, et des ecouteurs poses sur
+     elles disparaitraient avec. */
+  document.addEventListener('pointerdown', function (ev) {
+    if (ev.button !== undefined && ev.button !== 0) return;
+    var el = ev.target.closest ? ev.target.closest('[data-sac],[data-item],[data-slot]') : null;
+    if (!el) return;
+    /* Le bouton « reprendre » du menu garde son propre geste : on ne le
+       transforme pas en poignee de glissement. */
+    if (ev.target.classList && ev.target.classList.contains('nxcf-sortir')) return;
+    var img = el.querySelector('img');
+    var src = img ? img.getAttribute('src') : '';
+    if (el.dataset.sac) {
+      debutPrise(ev, { de: 'sac', id: Number(el.dataset.sac), src: src });
+    } else if (el.dataset.slot && el.dataset.item) {
+      debutPrise(ev, { de: 'equip', slot: el.dataset.slot, id: Number(el.dataset.item), src: src });
+    } else if (el.dataset.item && el.classList.contains('nxcf-i')) {
+      debutPrise(ev, { de: 'coffre', id: Number(el.dataset.item), src: src });
+    } else return;
+    ev.preventDefault();
+  });
+  document.addEventListener('pointermove', function (ev) {
+    if (PRISE) { bougePrise(ev.clientX, ev.clientY); ev.preventDefault(); }
+  });
+  document.addEventListener('pointerup', function (ev) {
+    if (PRISE) lachePrise(ev.clientX, ev.clientY);
+  });
+  document.addEventListener('pointercancel', finPrise);
+
   function peintPanneau() {
     // ---- le nom et sa vignette
     if (elNom) elNom.textContent = MON_NOM || court(MON_ADRESSE) || '—';
@@ -333,8 +489,12 @@
     // ---- les quatre cases d'equipement
     elEquip.innerHTML = EMPLACEMENTS.map(function (k) {
       var e = FICHE && FICHE[k];
-      if (!e) return '<div class="nxp-c vide"></div>';
-      return '<div class="nxp-c" title="' + ech(e.nom + ' — ' + detailBonus(e)) + '">' +
+      /* La case porte son EMPLACEMENT meme vide : c'est ce qui permet d'y
+         lacher une piece, et une case vide est justement celle ou l'on veut
+         deposer. */
+      if (!e) return '<div class="nxp-c vide" data-slot="' + k + '"></div>';
+      return '<div class="nxp-c" data-slot="' + k + '" data-item="' + e.item + '"' +
+        ' title="' + ech(e.nom + ' — ' + detailBonus(e)) + '">' +
         '<img alt="" src="img/shop/' + encodeURIComponent(e.cle) + '.webp" ' +
         'onerror="this.style.visibility=\'hidden\'">' +
         '<b>+' + bonusEnTete(e) + '</b></div>';
@@ -345,7 +505,7 @@
     for (var i = 0; i < CASES_SAC; i++) {
       var o = SAC[i];
       cases.push(o
-        ? '<div class="nxp-c" title="' + ech(o.nom + ' — ' + detailBonus(o)) + '">' +
+        ? '<div class="nxp-c" data-sac="' + o.id + '" title="' + ech(o.nom + ' — ' + detailBonus(o)) + '">' +
           '<img alt="" src="img/shop/' + encodeURIComponent(o.cle) + '.webp" ' +
           'onerror="this.style.visibility=\'hidden\'">' +
           '<b>+' + bonusEnTete(o) + '</b></div>'
@@ -576,10 +736,15 @@
        pose assez pres du mur pour qu'en longeant celui-ci on tombe dedans —
        c'est le geste naturel de quelqu'un qui cherche la sortie. */
     portail: { x: 1600 * 0.225, y: 1600 * 0.470, r: 104, larg: 104, haut: 160 },
-    /* Les cinq coffres du mur du bas, releves sur le dessin. N'importe lequel
-       ouvre le meme menu : il n'y a qu'un coffre, ce sont cinq poignees. */
-    coffres: [0.255, 0.375, 0.500, 0.625, 0.745].map(function (fx) {
-      return { x: 1600 * fx, y: 1600 * 0.842, r: 66 };
+    /* Les cinq coffres du mur du bas, releves sur le dessin. UN SEUL est
+       ouvrable — celui du milieu, le plus facile a trouver. Les quatre autres
+       restent du decor, en attendant qu'on leur donne chacun son role.
+       Les faire tous ouvrir le meme menu etait plus simple, mais mentait :
+       cinq poignees pour une seule porte laissent croire a cinq rangements
+       differents, et le jour ou ils en auront vraiment, le joueur aura pris
+       l'habitude qu'ils soient interchangeables. */
+    coffres: [0.500].map(function (fx) {
+      return { x: 1600 * fx, y: 1600 * 0.842, r: 74 };
     }),
   };
   SALLE.img = new Image(); SALLE.img.src = SALLE.src;
@@ -783,7 +948,8 @@
               'store it in the vault to keep it for good.</div>';
     } else {
       html += '<div class="nxcf-l">' + sac.map(function (o) {
-        return '<button type="button" class="nxcf-i" data-range="' + o.id + '"' +
+        return '<button type="button" class="nxcf-i" data-range="' + o.id +
+          '" data-sac="' + o.id + '"' +
           ' style="--c:' + ech(o.couleur || '#8DA0C4') + '"' +
           ' title="' + ech(o.nom + ' — store in the vault') + '">' +
           '<img alt="" src="img/shop/' + encodeURIComponent(o.cle) + '.webp" onerror="this.remove()">' +
@@ -837,11 +1003,13 @@
        ecarte une fois. Meme pose dessus par erreur, on ne repart pas. */
     SALLE.portailArme = false;
     fermeCoffreMenu();
+    joueSample('vault', { vol: 0.85 });
   }
 
   function sortCoffre() {
     SCENE = 'nexus';
     fermeCoffreMenu();
+    joueSample('vault', { vol: 0.85 });
     /* Le bandeau garde son dernier texte tant que le lieu proche ne CHANGE
        pas — sinon on ressort du coffre avec le nom d'un objet du coffre
        affiche par-dessus le Nexus. On le vide, et on oublie le dernier lieu
@@ -982,28 +1150,128 @@
     var d = BRUIT.getChannelData(0);
     for (var i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
     SORTIE_TIR = AUDIO.createGain();
-    SORTIE_TIR.gain.value = 0.30;
+    SORTIE_TIR.gain.value = 0.55;
     SORTIE_TIR.connect(AUDIO.destination);
+    chargeSamples();
     return AUDIO;
   }
 
-  var SONS_ARME = {
-    /* Les volumes ne sont PAS comparables d'une recette a l'autre : un
-       oscillateur sort toute son energie sur une frequence, du bruit passe
-       en bande la repartit sur des centaines. Mesure faite, une sinusoide a
-       0.50 sortait quatre fois plus fort qu'un souffle a 0.30 — la lame,
-       l'arme la plus courante, etait la plus discrete du jeu. Les souffles
-       sont donc remontes jusqu'a ce que les six familles s'entendent au meme
-       niveau, chiffres releves sur l'analyseur et non a l'estime. */
-    lame:    { recette: 'souffle', f0: 2600, f1: 700,  q: 0.9, duree: 0.16, vol: 1.30 },
-    hache:   { recette: 'souffle', f0: 1500, f1: 260,  q: 1.1, duree: 0.26, vol: 0.83, corps: 150 },
-    lance:   { recette: 'souffle', f0: 2000, f1: 520,  q: 1.2, duree: 0.20, vol: 1.78 },
-    arc:     { recette: 'corde',   f0: 520,  f1: 180,  duree: 0.18, vol: 0.58, souffle: 0.10 },
-    marteau: { recette: 'choc',    f0: 220,  f1: 60,   duree: 0.34, vol: 0.65 },
-    dagues:  { recette: 'souffle', f0: 3600, f1: 1500, q: 0.8, duree: 0.09, vol: 1.15 },
-    poing:   { recette: 'choc',    f0: 300,  f1: 110,  duree: 0.14, vol: 0.40 },
+  /* ---- LES SONS ENREGISTRES ----
+   *
+   * La premiere version SYNTHETISAIT tout : trois recettes, sept armes, zero
+   * fichier a telecharger. C'etait defendable tant qu'on n'avait rien ; on a
+   * maintenant de vrais enregistrements, et un vrai son bat une imitation.
+   *
+   * Ils sont decodes UNE fois en memoire, puis rejoues depuis ce tampon. Un
+   * <audio> par coup ne tiendrait pas la cadence des dagues — quatre par
+   * seconde — parce qu'une lecture relancee se coupe elle-meme ; ici chaque
+   * coup a sa propre source et ils se superposent proprement. */
+  var SAMPLES = {};
+  var A_CHARGER = {
+    tir:   'img/nexus/tir.mp3',
+    vault: 'img/nexus/vault.mp3',
+    clic:  'img/nexus/clic_souris.mp3',
+    clic2: 'img/nexus/clic_effet.mp3',
+    /* Ces deux-la n'ont encore rien pour les declencher : aucun monstre n'est
+       dessine cote client. Ils sont charges d'avance parce que le monde de
+       combat est la prochaine chose branchee, et qu'un son qui arrive une
+       seconde apres le coup ne sert a rien. */
+    degat: 'img/nexus/degat.mp3',
+    /* DEUX cris de mort, tires au hasard. Un monstre qui meurt toujours de
+       la meme facon devient une machine au bout de dix ; deux suffisent a
+       casser la repetition sans qu'on entende la boucle. */
+    mort:  'img/nexus/mort.mp3',
+    mort2: 'img/nexus/mort2.mp3',
+    niveau: 'img/nexus/niveau.mp3',
+  };
+  function chargeSamples() {
+    if (!AUDIO) return;
+    Object.keys(A_CHARGER).forEach(function (nom) {
+      if (nom in SAMPLES) return;
+      SAMPLES[nom] = null;                    // en cours : on ne redemande pas
+      fetch(A_CHARGER[nom])
+        .then(function (r) { return r.arrayBuffer(); })
+        .then(function (b) {
+          return new Promise(function (res, rej) {
+            /* Deux formes d'API : la moderne rend une promesse, l'ancienne
+               (Safari) prend deux fonctions. On accepte les deux. */
+            var p = AUDIO.decodeAudioData(b, res, rej);
+            if (p && p.then) p.then(res, rej);
+          });
+        })
+        .then(function (buf) { SAMPLES[nom] = buf; })
+        .catch(function () { SAMPLES[nom] = null; });
+    });
+  }
+
+  /**
+   * Joue un echantillon. `hauteur` multiplie la vitesse de lecture : c'est ce
+   * qui donne au marteau une voix plus grave qu'aux dagues sans exiger sept
+   * fichiers. `duree` coupe la queue — le son de tir dure une seconde et
+   * demie, et a quatre coups par seconde on empilerait six copies qui se
+   * changeraient en bouillie.
+   */
+  function joueSample(nom, opts) {
+    var ctx = AUDIO;
+    if (!ctx || ctx.state !== 'running') return false;
+    var buf = SAMPLES[nom];
+    if (!buf) return false;
+    opts = opts || {};
+    var t0 = ctx.currentTime;
+    var src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.playbackRate.value = Math.max(0.25, Math.min(4, opts.hauteur || 1));
+    var g = ctx.createGain();
+    var vol = opts.vol === undefined ? 1 : opts.vol;
+    g.gain.setValueAtTime(vol, t0);
+    var duree = buf.duration / src.playbackRate.value;
+    if (opts.duree && opts.duree < duree) {
+      /* Une coupure NETTE claquerait. Quatre-vingts millisecondes de descente
+         s'entendent comme une fin, pas comme un couac. */
+      var fin = Math.max(0.06, opts.duree);
+      g.gain.setValueAtTime(vol, t0 + Math.max(0.01, fin - 0.08));
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + fin);
+      duree = fin;
+    }
+    src.connect(g); g.connect(SORTIE_TIR);
+    src.start(t0);
+    src.stop(t0 + duree + 0.03);
+    return true;
+  }
+
+  /* La VOIX de chaque arme : une hauteur et un volume, sur le meme
+     enregistrement. Le marteau parle grave et fort, les dagues aigu et court.
+     Chaque famille garde son caractere sans sept prises de son. */
+  var VOIX_ARME = {
+    lame:    { hauteur: 1.15, vol: 0.85 },
+    hache:   { hauteur: 0.82, vol: 1.00 },
+    lance:   { hauteur: 1.05, vol: 0.85 },
+    arc:     { hauteur: 1.30, vol: 0.75 },
+    marteau: { hauteur: 0.68, vol: 1.00 },
+    dagues:  { hauteur: 1.55, vol: 0.65 },
+    poing:   { hauteur: 1.00, vol: 0.55 },
   };
 
+  function joueSon(famille) {
+    var v = VOIX_ARME[famille] || VOIX_ARME.poing;
+    var a = ARMES[famille] || ARMES.poing;
+    /* +/- 5 % d'une fois a l'autre : deux coups identiques a la milliseconde
+       pres sonnent comme une machine, pas comme une arme. */
+    var h = v.hauteur * (1 + (Math.random() - 0.5) * 0.1);
+    return joueSample('tir', { hauteur: h, vol: v.vol, duree: 1.35 / a.cadence });
+  }
+
+  /** Un clic d'interface. Deux sons : le leger pour naviguer, le plein pour
+      un geste qui ENGAGE — acheter, s'equiper, ranger. */
+  function clic(fort) {
+    joueSample(fort ? 'clic2' : 'clic', { vol: fort ? 0.7 : 0.5, duree: 0.35 });
+  }
+
+  /* L'impact : le meme choc, plus court et bien plus discret. Il part a
+     chaque projectile qui s'arrete, et il y en a plus que de coups tires. */
+  /* Le choc sur la PIERRE reste synthetise : on n'a pas d'enregistrement pour
+     ca, et emprunter celui du monstre blesse serait faux — un projectile qui
+     s'ecrase sur une fontaine ne crie pas. */
   function enveloppeGain(t0, duree, vol) {
     var g = AUDIO.createGain();
     /* Attaque de 6 ms : instantanee a l'oreille, mais pas nulle — un saut sec
@@ -1014,63 +1282,6 @@
     return g;
   }
 
-  function joueSon(nom, force) {
-    var ctx = AUDIO;
-    if (!ctx || ctx.state !== 'running') return false;
-    var r = SONS_ARME[nom] || SONS_ARME.poing;
-    var t0 = ctx.currentTime;
-    // +/- 6 % de hauteur : deux coups de suite ne sont jamais identiques
-    var h = 1 + (Math.random() - 0.5) * 0.12;
-    var vol = r.vol * (force === undefined ? 1 : force);
-    var g = enveloppeGain(t0, r.duree, vol);
-    g.connect(SORTIE_TIR);
-
-    if (r.recette === 'souffle') {
-      var src = ctx.createBufferSource(); src.buffer = BRUIT;
-      var f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = r.q;
-      f.frequency.setValueAtTime(r.f0 * h, t0);
-      f.frequency.exponentialRampToValueAtTime(r.f1 * h, t0 + r.duree);
-      src.connect(f); f.connect(g);
-      src.start(t0); src.stop(t0 + r.duree + 0.02);
-      if (r.corps) {          // le poids de la hache, sous le souffle
-        var o = ctx.createOscillator(); o.type = 'sine';
-        o.frequency.setValueAtTime(r.corps * h, t0);
-        o.frequency.exponentialRampToValueAtTime(r.corps * 0.45 * h, t0 + r.duree);
-        var gc = enveloppeGain(t0, r.duree * 0.7, vol * 0.7);
-        o.connect(gc); gc.connect(SORTIE_TIR);
-        o.start(t0); o.stop(t0 + r.duree + 0.02);
-      }
-    } else if (r.recette === 'corde') {
-      var os = ctx.createOscillator(); os.type = 'triangle';
-      os.frequency.setValueAtTime(r.f0 * h, t0);
-      os.frequency.exponentialRampToValueAtTime(r.f1 * h, t0 + r.duree);
-      os.connect(g); os.start(t0); os.stop(t0 + r.duree + 0.02);
-      if (r.souffle) {        // le sifflement de la fleche qui part
-        var sn = ctx.createBufferSource(); sn.buffer = BRUIT;
-        var fn = ctx.createBiquadFilter(); fn.type = 'bandpass';
-        fn.Q.value = 2.2; fn.frequency.setValueAtTime(3200 * h, t0);
-        fn.frequency.exponentialRampToValueAtTime(1400 * h, t0 + r.souffle);
-        var gn = enveloppeGain(t0, r.souffle, vol * 0.5);
-        sn.connect(fn); fn.connect(gn); gn.connect(SORTIE_TIR);
-        sn.start(t0); sn.stop(t0 + r.souffle + 0.02);
-      }
-    } else {                  // choc
-      var oc = ctx.createOscillator(); oc.type = 'sine';
-      oc.frequency.setValueAtTime(r.f0 * h, t0);
-      oc.frequency.exponentialRampToValueAtTime(r.f1 * h, t0 + r.duree);
-      oc.connect(g); oc.start(t0); oc.stop(t0 + r.duree + 0.02);
-      var cl = ctx.createBufferSource(); cl.buffer = BRUIT;
-      var fc = ctx.createBiquadFilter(); fc.type = 'lowpass';
-      fc.frequency.value = 900 * h;
-      var gcl = enveloppeGain(t0, 0.05, vol * 0.45);
-      cl.connect(fc); fc.connect(gcl); gcl.connect(SORTIE_TIR);
-      cl.start(t0); cl.stop(t0 + 0.07);
-    }
-    return true;
-  }
-
-  /* L'impact : le meme choc, plus court et bien plus discret. Il part a
-     chaque projectile qui s'arrete, et il y en a plus que de coups tires. */
   function sonImpact() {
     if (!AUDIO || AUDIO.state !== 'running') return;
     var t0 = AUDIO.currentTime, h = 1 + (Math.random() - 0.5) * 0.3;

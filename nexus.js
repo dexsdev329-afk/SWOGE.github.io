@@ -186,6 +186,7 @@
   var SKIN_POSSEDE = true; // faux tant qu'on n'a achete aucun personnage
 
   var elNom = document.getElementById('nxNom');
+  var elOr = document.getElementById('nxOr');
   var elVignette = document.getElementById('nxVignette');
   var elLvl = document.getElementById('nxLvl'), elLvlJauge = document.getElementById('nxLvlJauge');
   var elXp = document.getElementById('nxXp');
@@ -437,6 +438,18 @@
   function peintPanneau() {
     // ---- le nom et sa vignette
     if (elNom) elNom.textContent = MON_NOM || court(MON_ADRESSE) || '—';
+    /* ---- L'OR ----
+     * Deux nombres, pas un : le total DEJA acquis, et ce que le personnage
+     * vivant rapportera s'il meurt. Les confondre ferait croire qu'on possede
+     * une somme qu'on peut encore perdre — c'est exactement l'inverse, elle
+     * n'est versee qu'a la mort. Le second est donc ecrit en retrait. */
+    if (elOr && FICHE) {
+      var acquis = FICHE.fameCompte || 0, enCours = FICHE.fame || 0;
+      elOr.innerHTML = '\uD83C\uDFC6<b>' + acquis.toLocaleString('en-US') + '</b>' +
+        (enCours ? '<i>+' + enCours.toLocaleString('en-US') + '</i>' : '');
+      elOr.title = 'Gold: ' + acquis.toLocaleString('en-US') + ' banked' +
+        (enCours ? ', ' + enCours.toLocaleString('en-US') + ' riding on this character' : '');
+    }
     if (elVignette) {
       elVignette.src = 'img/skins/skin_' + encodeURIComponent(PERSO) + '.webp';
       elVignette.onerror = function () { elVignette.style.visibility = 'hidden'; };

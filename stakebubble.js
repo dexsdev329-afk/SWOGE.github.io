@@ -4293,6 +4293,17 @@
     return max;
   }
 
+  /** Ce que porte la pastille de la case. Une ARME ne donne plus aucune stat
+      — « +0 » sur une epee mythique qui frappe a 120 serait faux. Elle montre
+      donc ses degats, prefixes d'une lame pour qu'on ne lise pas un bonus de
+      stat a la place. */
+  function pastille(o) {
+    var b = bonusEnTete(o);
+    if (b > 0) return '+' + nb(b, 0);
+    if (o && o.degats) return '\u2694' + o.degats[1];
+    return '+0';
+  }
+
   function blocSkinStats(etatP) {
     var d = document.createElement('div');
     d.className = 'swk-sg';
@@ -4318,7 +4329,7 @@
     el.style.setProperty('--c', equipe ? (equipe.couleur || '#8DA0C4') : 'rgba(255,255,255,.18)');
     el.innerHTML = equipe
       ? '<img alt="" src="img/shop/' + encodeURIComponent(equipe.cle) + '.webp" onerror="this.remove()">' +
-        '<b>+' + nb(bonusEnTete(equipe), 0) + '</b>' +
+        '<b>' + pastille(equipe) + '</b>' +
         '<span class="rm" title="Remove">&times;</span>'
       : '<i>+ ' + cfg.label + '</i>';
     el.onclick = function (e) {

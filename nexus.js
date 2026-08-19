@@ -380,6 +380,18 @@
     return max;
   }
 
+  /** Ce que porte la pastille du coin. Une ARME ne donne plus aucune stat —
+      « +0 » serait faux ET decourageant sur une epee mythique qui frappe a
+      120. Elle affiche donc ses DEGATS, avec une lame en prefixe pour qu'on
+      ne confonde pas les deux chiffres dans un sac ou les objets se
+      melangent. Tout le reste garde le « + » d'un bonus de stat. */
+  function pastille(e) {
+    var b = bonusEnTete(e);
+    if (b > 0) return '+' + b;
+    if (e && e.degats) return '\u2694' + e.degats[1];
+    return '+0';
+  }
+
   /* ================== PRENDRE ET DEPOSER ==================
    *
    * Le menu du coffre avait des boutons « store » et une fleche. Ca marche,
@@ -608,7 +620,7 @@
         ' title="' + ech(e.nom + ' — ' + detailBonus(e)) + '">' +
         '<img alt="" src="img/shop/' + encodeURIComponent(e.cle) + '.webp" ' +
         'onerror="this.style.visibility=\'hidden\'">' +
-        '<b>+' + bonusEnTete(e) + '</b></div>';
+        '<b>' + pastille(e) + '</b></div>';
     }).join('');
 
     // ---- le sac : le butin ramasse, pas les achats
@@ -619,7 +631,7 @@
         ? '<div class="nxp-c" data-sac="' + o.id + '" title="' + ech(o.nom + ' — ' + detailBonus(o)) + '">' +
           '<img alt="" src="img/shop/' + encodeURIComponent(o.cle) + '.webp" ' +
           'onerror="this.style.visibility=\'hidden\'">' +
-          '<b>+' + bonusEnTete(o) + '</b></div>'
+          '<b>' + pastille(o) + '</b></div>'
         : '<div class="nxp-c vide"><u>' + (i + 1) + '</u></div>');
     }
     elSac.innerHTML = cases.join('');

@@ -147,16 +147,37 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
   text-overflow:ellipsis; white-space:nowrap; }
 .nxp-seul{ grid-column:1/-1; font-size:10.5px; color:#7d7d7d; }
 
-/* ---- le bouton de reglages ----
- * A gauche, sous le solde : la droite appartient maintenant au panneau, et
- * une roue posee par-dessus s'y lirait comme un reglage DU panneau. */
-#nxReglages{ position:absolute; left:max(14px, env(safe-area-inset-left));
-  top:calc(max(14px, env(safe-area-inset-top)) + 44px); z-index:21;
-  width:38px; height:38px; border-radius:999px; display:flex;
-  align-items:center; justify-content:center; font-size:17px;
-  background:rgba(10,17,40,.78); border:1px solid rgba(255,255,255,.16);
-  color:#eaf0ff; cursor:pointer; }
-#nxReglages:hover{ background:rgba(20,28,55,.88); }
+/* ---- le bouton de reglages, au bout de la ligne du nom ----
+ * `margin-left:auto` le pousse a droite sans le sortir du flux : il reste
+ * sur la meme ligne que le nom, quelle que soit la longueur de celui-ci. */
+#nxReglages{ margin-left:auto; flex:0 0 auto; width:26px; height:26px;
+  border-radius:7px; display:flex; align-items:center; justify-content:center;
+  font-size:13px; background:#2b3340; border:1px solid #171b22;
+  color:#dcdcdc; cursor:pointer; }
+#nxReglages:hover{ background:#39424f; }
+
+/* ---- pourquoi le panneau est vide ---- */
+.nxp-vide{ font-style:normal; font-size:11px; line-height:1.45; color:#9a9a9a;
+  display:none; }
+.nxp-vide a{ color:#FFD97A; }
+
+/* ---- replier le panneau ----
+ * Sur telephone il mange plus du tiers de l'ecran. Le bouton reste COLLE a
+ * son bord : il suit le panneau quand il se retire, donc on le retrouve au
+ * meme endroit du regard, et il ne peut jamais se retrouver dessous. */
+#nxPanneau{ transition:transform .22s ease; }
+#nxWrap.replie #nxPanneau{ transform:translateX(100%); }
+#nxBascule{ position:absolute; right:var(--nxp); top:50%; z-index:23;
+  transform:translateY(-50%); transition:right .22s ease;
+  width:20px; height:56px; border-radius:8px 0 0 8px;
+  display:flex; align-items:center; justify-content:center; font-size:11px;
+  background:#3f3f3f; border:1px solid #222; border-right:none;
+  color:#dcdcdc; cursor:pointer; padding:0; }
+/* Replie : le bouton revient au bord, et le chevron se retourne — il montre
+   toujours le sens dans lequel le panneau va partir. */
+#nxWrap.replie #nxBascule{ right:0; transform:translateY(-50%) scaleX(-1); }
+/* L'indice se recentre sur toute la largeur des que le panneau s'efface. */
+#nxWrap.replie #nxIndice{ left:50%; }
 
 /* ---- la feuille des reglages ---- */
 #nxReglagesVoile{ position:fixed; inset:0; z-index:90; background:rgba(4,7,13,.66);
@@ -238,12 +259,16 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
   <canvas id="nxCanvas"></canvas>
   <div id="nxSolde"></div>
   <div id="nxIndice"></div>
-  <button id="nxReglages" type="button" aria-label="Controls">&#9881;&#65039;</button>
+  <button id="nxBascule" type="button" aria-label="Hide panel">&#9654;</button>
   <div id="nxHint">WASD / arrows to move &middot; walk in to enter</div>
 
   <aside id="nxPanneau">
     <canvas id="nxMini" width="120" height="120"></canvas>
-    <div class="nxp-nom"><img alt="" id="nxVignette"><b id="nxNom">—</b></div>
+    <div class="nxp-nom">
+      <img alt="" id="nxVignette"><b id="nxNom">—</b>
+      <button id="nxReglages" type="button" aria-label="Controls">&#9881;&#65039;</button>
+    </div>
+    <i id="nxVide" class="nxp-vide"></i>
     <div class="nxp-b nxp-lvl"><i id="nxLvlJauge"></i><span id="nxLvl">Lvl 1</span><em id="nxXp"></em></div>
     <div class="nxp-b nxp-hp"><i style="width:100%"></i><span>HP</span><em id="nxHp"></em></div>
     <div class="nxp-b nxp-mp"><i style="width:100%"></i><span>MP</span><em id="nxMp"></em></div>

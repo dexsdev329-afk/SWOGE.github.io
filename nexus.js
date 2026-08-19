@@ -77,14 +77,28 @@
       envoie({ type: 'profile' });
       enLigne = true;
     }
-    if (m.type === 'skins' && m.actif && PERSONNAGES[m.actif] && m.actif !== PERSO) {
-      PERSO = m.actif;
-      assureCharge(PERSO);
-      /* Le skin porte change : sa fiche et son sac aussi. On les redemande
-         plutot que de garder ceux du precedent — les stats et l'equipement
-         appartiennent au PERSONNAGE, pas au joueur. */
-      envoie({ type: 'personnage', skin: PERSO });
-      envoie({ type: 'equipable' });
+    /* ---- DEUX QUESTIONS DIFFERENTES, DEUX CONDITIONS ----
+     *
+     * « Faut-il changer de sprites ? » et « faut-il demander la fiche ? » ne
+     * se posent pas au meme moment. Elles etaient fondues dans un seul
+     * `m.actif !== PERSO`, et ca cassait le cas le plus courant : `PERSO`
+     * vaut « andy » par defaut, donc un joueur qui porte JUSTEMENT Andy
+     * tombait dans « rien n'a change » — et sa fiche n'etait jamais
+     * demandee. Panneau vide, sans une erreur nulle part. */
+    if (m.type === 'skins') {
+      SKIN_POSSEDE = !!m.actif;
+      if (m.actif && PERSONNAGES[m.actif]) {
+        if (m.actif !== PERSO) { PERSO = m.actif; assureCharge(PERSO); }
+        /* Demande a CHAQUE reponse `skins`, meme si le skin n'a pas bouge :
+           c'est aussi ce message qui revient apres un achat ou un changement
+           de tenue, et la fiche a pu changer sans que le skin change. */
+        envoie({ type: 'personnage', skin: PERSO });
+        envoie({ type: 'equipable' });
+      } else {
+        /* Aucun skin porte : il n'y a pas de fiche a montrer, et c'est une
+           reponse legitime — pas une panne. Le panneau le dira. */
+        FICHE = null; SAC = [];
+      }
       peintPanneau();
     }
     /* Notre nom vient du profil. On le demande une fois : le panneau
@@ -115,9 +129,10 @@
 
   // ================== LE PANNEAU DU PERSONNAGE ==================
 
-  var MON_NOM = null;   // le pseudo du profil
-  var FICHE = null;     // la reponse `personnage` du skin porte
-  var SAC = [];         // tout ce qu'on possede d'equipable, toutes saisons
+  var MON_NOM = null;      // le pseudo du profil
+  var FICHE = null;        // la reponse `personnage` du skin porte
+  var SAC = [];            // tout ce qu'on possede d'equipable, toutes saisons
+  var SKIN_POSSEDE = true; // faux tant qu'on n'a achete aucun personnage
 
   var elNom = document.getElementById('nxNom');
   var elVignette = document.getElementById('nxVignette');
@@ -127,6 +142,25 @@
   var elStats = document.getElementById('nxStats');
   var elEquip = document.getElementById('nxEquip'), elSac = document.getElementById('nxSac');
   var elGens = document.getElementById('nxGens');
+  var elVide = document.getElementById('nxVide');
+  var enveloppe = document.getElementById('nxWrap');
+
+  /* Replier le panneau. L'etat se garde d'une visite a l'autre : sur
+     telephone, quelqu'un qui l'a range ne veut pas le retrouver deplie a
+     chaque retour au Nexus. */
+  (function poseBascule() {
+    var b = document.getElementById('nxBascule');
+    if (!b || !enveloppe) return;
+    var CLE = 'swogeNexusPanneauReplie';
+    try { if (localStorage.getItem(CLE) === '1') enveloppe.classList.add('replie'); } catch (e) {}
+    b.addEventListener('click', function () {
+      var replie = enveloppe.classList.toggle('replie');
+      b.setAttribute('aria-label', replie ? 'Show panel' : 'Hide panel');
+      try { localStorage.setItem(CLE, replie ? '1' : '0'); } catch (e) {}
+    });
+    b.setAttribute('aria-label',
+      enveloppe.classList.contains('replie') ? 'Show panel' : 'Hide panel');
+  })();
 
   /* Les six attributs de la grille. HP et MP n'y sont pas : ils ont leurs
      barres au-dessus, et les repeter en chiffres ferait dire deux fois la
@@ -185,6 +219,22 @@
     } else {
       elLvl.textContent = 'Lvl —'; elLvlJauge.style.width = '0%';
       elXp.textContent = ''; elHp.textContent = ''; elMp.textContent = '';
+    }
+    /* Un panneau vide sans raison se lit comme une panne. Celui qui n'a pas
+       encore de personnage doit lire ce qui lui manque, et pouvoir y aller
+       d'un geste — c'est la seule chose a faire depuis cet ecran-la. */
+    if (elVide) {
+      /* `display:'block'` explicitement, PAS `''` : la regle de base de
+         `.nxp-vide` est `display:none`, donc effacer le style en ligne
+         rendrait la main a cette regle-la et le message resterait cache —
+         ecrit, mais invisible. */
+      if (!SKIN_POSSEDE) {
+        elVide.innerHTML = 'No character yet — <a href="games.html?open=sk">pick one</a> to get stats and gear.';
+        elVide.style.display = 'block';
+      } else if (!FICHE) {
+        elVide.textContent = 'Loading your character…';
+        elVide.style.display = 'block';
+      } else elVide.style.display = 'none';
     }
 
     // ---- les six attributs
@@ -689,6 +739,11 @@
     if (!p) return 0;
     var cs = getComputedStyle(p);
     if (cs.display === 'none') return 0;
+    /* Replie, il est toujours LA — juste pousse hors de l'ecran par un
+       `translateX`. Sa largeur mesuree reste donc la meme, et s'y fier
+       laisserait le joueur decale a gauche pour rien. On lit l'etat, pas la
+       geometrie. */
+    if (enveloppe && enveloppe.classList.contains('replie')) return 0;
     return p.getBoundingClientRect().width || 0;
   }
 

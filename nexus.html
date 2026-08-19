@@ -301,6 +301,19 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
 .nxcf-i em{ display:block; font-style:normal; font-size:10px; color:#7CFF9B; font-weight:700; }
 .nxcf-i u{ flex:0 0 auto; text-decoration:none; font-size:10px; color:#8DA0C4; }
 .nxcf-vide{ font-size:12px; color:#7A89A6; line-height:1.5; padding:10px 0; }
+.nxcf-refus{ margin-bottom:10px; padding:9px 11px; border-radius:10px; font-size:11.5px;
+  line-height:1.5; background:rgba(242,104,94,.1); border:1px solid rgba(242,104,94,.32);
+  color:#F5938B; }
+/* Le sac se detache du coffre : ce sont deux endroits differents, et l'un
+   des deux disparait a la mort. Les confondre serait le pire malentendu
+   possible sur cet ecran. */
+.nxcf-sac{ margin-top:16px; padding-top:12px; border-top:1px solid rgba(255,255,255,.09); }
+.nxcf-sac > i{ color:#E8C97A; }
+.nxcf-i u{ display:flex; align-items:center; gap:5px; }
+.nxcf-sortir{ display:inline-flex; align-items:center; justify-content:center;
+  width:19px; height:19px; border-radius:6px; font-size:11px; font-weight:800;
+  background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.14); color:#c9d3f2; }
+.nxcf-sortir:hover{ background:rgba(255,255,255,.18); color:#fff; }
 #nxReglagesVoile{ position:fixed; inset:0; z-index:90; background:rgba(4,7,13,.66);
   display:flex; align-items:center; justify-content:center; padding:16px;
   opacity:0; pointer-events:none; transition:opacity .18s ease; }
@@ -493,7 +506,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
   </div>
 </div>
 
-<script src="nexus.js?v=20260819g" defer></script>
+<script src="nexus.js?v=20260819h" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

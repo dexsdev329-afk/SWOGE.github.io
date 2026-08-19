@@ -117,6 +117,7 @@
          pose au sol. On les garde donc au lieu de les jeter. */
       COFFRE = { fruits: m.fruits || [], armes: m.armes || [],
                  armures: m.armures || [], bagues: m.bagues || [] };
+      coffreErreur = m.error || '';
       if (coffreOuvert) peintCoffreMenu();
       peintPanneau();
     }
@@ -589,6 +590,8 @@
   var RETOUR = null;
   var COFFRE = null;        // les quatre listes du message `equipable`
   var coffreOuvert = false;   // le menu du coffre, au centre de l'ecran
+  var coffreFerme = null;     // le coffre qu'on vient de refermer a la main
+  var coffreErreur = '';      // le refus du serveur, s'il y en a un
 
   function scene() { return SCENE === 'coffre' ? SALLE : { w: MONDE.w, h: MONDE.h }; }
 
@@ -715,21 +718,31 @@
     peintCoffreMenu();
     elCoffreVoile.classList.add('on');
   }
-  function fermeCoffreMenu() {
+  function fermeCoffreMenu(parLaMain) {
     coffreOuvert = false;
+    /* Fermer a la main marque CE coffre : tant qu'on ne s'en ecarte pas, il
+       ne se rouvre plus. Une fermeture automatique (on sort de la salle) ne
+       marque rien — il n'y a plus de coffre a retenir. */
+    if (parLaMain) coffreFerme = coffreSous;
     if (elCoffreVoile) elCoffreVoile.classList.remove('on');
   }
+  var coffreSous = null;      // le coffre sur lequel on se tient
   if (elCoffreVoile) {
     elCoffreVoile.addEventListener('click', function (e) {
       var c = e.target.classList;
-      if (e.target === elCoffreVoile || (c && c.contains('nxcf-x'))) fermeCoffreMenu();
+      if (e.target === elCoffreVoile || (c && c.contains('nxcf-x'))) fermeCoffreMenu(true);
     });
   }
 
   function peintCoffreMenu() {
     if (!elCoffreCorps) return;
     if (!COFFRE) { elCoffreCorps.innerHTML = '<div class="nxcf-vide">Opening your vault…</div>'; return; }
-    var html = '', total = 0;
+    /* Un refus du serveur — « celle-la, tu la portes » — doit se lire. Sans
+       ca le joueur tape le bouton et rien ne bouge, ce qui se lit comme une
+       panne plutot que comme une regle. */
+    var html = coffreErreur
+      ? '<div class="nxcf-refus">' + ech(coffreErreur) + '</div>' : '';
+    var total = 0;
     CATEGORIES.forEach(function (cat) {
       var liste = COFFRE[cat.champ] || [];
       total += liste.length;
@@ -744,21 +757,64 @@
           ' title="' + ech(o.nom + ' — ' + (detailBonus(o) || 'no bonus')) + '">' +
           '<img alt="" src="img/shop/' + encodeURIComponent(o.cle) + '.webp" onerror="this.remove()">' +
           '<span><b>' + ech(o.nom) + '</b><em>' + ech(detailBonus(o) || '—') + '</em></span>' +
-          (actif ? '<u>worn</u>' : (o.quantite > 1 ? '<u>x' + o.quantite + '</u>' : '')) +
+          (actif ? '<u>worn</u>'
+                 : '<u>' + (o.quantite > 1 ? 'x' + o.quantite : '') +
+                   '<b class="nxcf-sortir" data-sortir="' + o.id +
+                   '" title="Take it out — it will be lost if you die">&darr;</b></u>') +
           '</button>';
       });
       html += '</div></div>';
     });
+    /* ---- LE SAC, A COTE DU COFFRE ----
+     *
+     * Le sac ne se voyait que dans le panneau lateral, que le menu recouvre
+     * sur telephone : on ne pouvait donc pas savoir ce qu'on transportait au
+     * moment meme ou l'on range. Il est ici, sous le coffre, avec le geste
+     * qui va avec.
+     *
+     * C'est le SEUL endroit du jeu ou passer de l'un a l'autre est possible,
+     * et c'est voulu : le sac part avec le personnage s'il meurt, le coffre
+     * survit. Ranger est donc le geste qui met a l'abri, et il doit demander
+     * de revenir ici — sinon la mort ne couterait plus rien. */
+    var sac = SAC || [];
+    html += '<div class="nxcf-grp nxcf-sac"><i>Backpack &mdash; lost if you die</i>';
+    if (!sac.length) {
+      html += '<div class="nxcf-vide">Empty. Loot you pick up in the world lands here — ' +
+              'store it in the vault to keep it for good.</div>';
+    } else {
+      html += '<div class="nxcf-l">' + sac.map(function (o) {
+        return '<button type="button" class="nxcf-i" data-range="' + o.id + '"' +
+          ' style="--c:' + ech(o.couleur || '#8DA0C4') + '"' +
+          ' title="' + ech(o.nom + ' — store in the vault') + '">' +
+          '<img alt="" src="img/shop/' + encodeURIComponent(o.cle) + '.webp" onerror="this.remove()">' +
+          '<span><b>' + ech(o.nom) + '</b><em>' + ech(detailBonus(o) || '—') + '</em></span>' +
+          '<u>' + (o.quantite > 1 ? 'x' + o.quantite + ' &middot; ' : '') + 'store &rarr;</u>' +
+          '</button>';
+      }).join('') + '</div>';
+    }
+    html += '</div>';
+
     elCoffreCorps.innerHTML = total ? html
-      : '<div class="nxcf-vide">Your vault is empty. Chests bought at the shop drop their items straight in here.</div>';
+      : '<div class="nxcf-vide">Your vault is empty. Chests bought at the shop drop their items straight in here.</div>' + html;
     /* Un clic equipe TOUT DE SUITE : le geste EST la confirmation. Retaper la
        piece deja portee la retire — sinon on ne pourrait jamais rien enlever,
        et il faudrait un second bouton sur chaque ligne. */
     Array.prototype.forEach.call(elCoffreCorps.querySelectorAll('.nxcf-i'), function (b) {
       b.addEventListener('click', function () {
+        var range = b.getAttribute('data-range');
+        if (range) { envoie({ type: 'rangeCoffre', item: Number(range) }); return; }
         var deja = b.classList.contains('actif');
         envoie({ type: b.getAttribute('data-msg'), skin: PERSO,
                  item: deja ? null : Number(b.getAttribute('data-item')) });
+      });
+    });
+    /* Reprendre : le petit bouton du coin, sur les pieces du coffre. Il ne
+       s'affiche pas sur celle qu'on PORTE — la sortir desequiperait le
+       personnage tout seul, et le serveur la refuserait de toute facon. */
+    Array.prototype.forEach.call(elCoffreCorps.querySelectorAll('.nxcf-sortir'), function (b) {
+      b.addEventListener('click', function (e) {
+        e.stopPropagation();
+        envoie({ type: 'sortCoffre', item: Number(b.getAttribute('data-sortir')) });
       });
     });
   }
@@ -1545,7 +1601,15 @@
         var cdx = joueur.x - cf.x, cdy = joueur.y - cf.y;
         if (cdx * cdx + cdy * cdy < cf.r * cf.r) { surCoffre = cf; break; }
       }
-      if (surCoffre && !coffreOuvert) ouvreCoffreMenu();
+      /* ON NE ROUVRE PAS CE QU'ON VIENT DE FERMER. Le menu se rouvrait a
+         l'image SUIVANTE : on est toujours sur le coffre, donc la condition
+         « dessus et pas ouvert » redevenait vraie aussitot. La croix
+         marchait — elle etait annulee un seizieme de seconde plus tard, ce
+         qui se lit exactement comme un bouton mort. On retient donc le
+         coffre qu'on a ferme, et on ne le rouvre qu'apres en etre parti. */
+      coffreSous = surCoffre;
+      if (surCoffre !== coffreFerme) coffreFerme = null;
+      if (surCoffre && !coffreOuvert && surCoffre !== coffreFerme) ouvreCoffreMenu();
 
       var quoi = surPortail ? 'portail' : (surCoffre ? 'coffre' : 'salle');
       if (quoi !== indiceActuel) {

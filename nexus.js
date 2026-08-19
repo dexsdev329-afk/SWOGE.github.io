@@ -151,8 +151,40 @@
       } else shopMsg = '';
       if (shopOuvert) peintShop();
     }
+    if (m.type === 'realmEntre') entreMonde(m);
+    if (m.type === 'realmRefus') {
+      if (indiceEl) {
+        indiceEl.innerHTML = m.raison === 'no-character'
+          ? 'Buy a character first — the wild is no place without one'
+          : 'The gate refused you';
+        indiceEl.classList.add('on');
+      }
+    }
+    if (m.type === 'realmEtat' && SCENE === 'monde') recoitMonde(m);
+    if (m.type === 'realmCoup' && SCENE === 'monde') {
+      VIE.pv = m.pv; moiMonde.pv = m.pv;
+      joueSample('degat', { vol: 0.55, hauteur: 0.95 + Math.random() * 0.2 });
+      secousse = 0.16;
+      peintPanneau();
+    }
+    if (m.type === 'realmKill') {
+      /* Deux cris tires au hasard : un monstre qui meurt toujours pareil
+         devient une machine au bout de dix. */
+      joueSample(Math.random() < 0.5 ? 'mort' : 'mort2', { vol: 0.7 });
+      moiMonde.xp = m.total;
+      flotte('+' + m.xp + ' XP');
+      if (m.monte) { joueSample('niveau', { vol: 0.9 }); flotte('LEVEL ' + m.niveau); }
+    }
     /* La mort arrive du SERVEUR : c'est lui qui l'a constatee, jamais nous. */
-    if (m.type === 'realmMort') { joueSample('mort2', { vol: 0.9 }); montreMort(m); }
+    if (m.type === 'realmMort') {
+      SCENE = 'nexus'; MONSTRES_C = {}; TIRS_C = []; DISTANTS_M = {};
+      var pp = LIEUX[1];
+      joueur.x = pp.x; joueur.y = pp.y + pp.rayon + 60;
+      VIE.pv = VIE.max;
+      if (indiceEl) indiceEl.classList.remove('on');
+      joueSample('mort2', { vol: 0.9 });
+      montreMort(m);
+    }
     if (m.type === 'nexusEtat') majJoueursDistants(m.joueurs || []);
     /* Le solde suit n'importe quel message qui le porte — pas seulement
        `auth` — exactement comme `poseSolde` le fait pour le reste du site :
@@ -627,7 +659,7 @@
       x: CENTRE.x, y: CENTRE.y, larg: 340, haut: 355, collision: 108 },
     { cle: 'portail', src: 'img/nexus/tiles/obj_portal.webp',
       x: CENTRE.x, y: CENTRE.y - 470, larg: 210, haut: 324,
-      rayon: 110, href: 'games.html', nom: 'the game hall' },
+      rayon: 110, href: 'games.html', nom: 'the wild' },
     { cle: 'etal', src: 'img/nexus/tiles/obj_market_stall.webp',
       x: CENTRE.x - 620, y: CENTRE.y, larg: 260, haut: 244,
       /* Ouvre sur les coffres, mais la meme feuille porte l'onglet
@@ -703,6 +735,7 @@
   /** Rentrer au Nexus, d'ou qu'on soit. Rend `true` si on a bouge. */
   function retourNexus(raison) {
     if (SCENE === 'coffre') { sortCoffre(); return true; }
+    if (SCENE === 'monde') { quitteMonde(); return true; }
     /* Depuis le Nexus lui-meme il n'y a nulle part d'ou revenir. Ce n'est
        pas un echec : c'est la seule reponse juste tant que le monde de
        combat n'existe pas. */
@@ -773,7 +806,158 @@
   var coffreFerme = null;     // le coffre qu'on vient de refermer a la main
   var coffreErreur = '';      // le refus du serveur, s'il y en a un
 
-  function scene() { return SCENE === 'coffre' ? SALLE : { w: MONDE.w, h: MONDE.h }; }
+  function scene() {
+    if (SCENE === 'coffre') return SALLE;
+    if (SCENE === 'monde' && MONDE_C) return MONDE_C.monde;
+    return { w: MONDE.w, h: MONDE.h };
+  }
+
+  /* ================== LE MONDE DE COMBAT, COTE CLIENT ==================
+   *
+   * Le serveur simule tout : les monstres, les degats, les morts, l'XP. Ce
+   * qui suit ne fait que DESSINER ce qu'il annonce, et lui renvoyer deux
+   * choses — ou l'on est, et dans quelle direction on tire.
+   *
+   * Consequence directe : rien ici ne doit « decider ». Un monstre a les
+   * points de vie que le serveur lui donne, pas ceux qu'on a compte en
+   * regardant nos propres tirs. Si les deux divergent, c'est le serveur qui
+   * a raison, toujours.
+   *
+   * Les positions arrivent DIX fois par seconde. A soixante images, un
+   * monstre poserait donc six fois le pied au meme endroit puis sauterait.
+   * On garde une position AFFICHEE qui glisse vers la derniere recue —
+   * exactement ce que fait deja le Nexus pour les autres joueurs.
+   */
+  var MONDE_C = null;          // la description recue a l'entree
+  var MONSTRES_C = {};         // id -> etat interpole
+  var TIRS_C = [];             // les projectiles du serveur
+  var DISTANTS_M = {};         // les autres joueurs du monde
+  var TUILES_M = {};           // les trois sols, charges a l'entree
+  var moiMonde = { pv: 0, pvMax: 1, xp: 0 };
+
+  /* Les sols des trois anneaux. Charges A L'ENTREE et pas au demarrage : un
+     joueur qui ne met jamais les pieds dans le monde n'a pas a telecharger
+     trois textures de six cents kilos. */
+  var FICHIER_SOL = { terre: 'ground_dirt', neige: 'ground_snow', lave: 'ground_lava' };
+  function chargeSols() {
+    Object.keys(FICHIER_SOL).forEach(function (b) {
+      if (TUILES_M[b]) return;
+      var i = new Image();
+      i.src = 'img/nexus/tiles/' + FICHIER_SOL[b] + '.webp';
+      TUILES_M[b] = i;
+    });
+  }
+  var ATLAS_M = {};
+  function atlasMonstre(espece) {
+    if (ATLAS_M[espece] !== undefined) return ATLAS_M[espece];
+    var i = new Image();
+    i.src = 'img/nexus/monstres/' + encodeURIComponent(espece) + '.webp';
+    ATLAS_M[espece] = i;
+    return i;
+  }
+
+  /** Le biome sous un point. MEME regle que monde.js, avec les rayons que le
+      serveur nous a envoyes — on ne recopie pas les nombres, on les recoit. */
+  function biomeEn(x, y) {
+    if (!MONDE_C) return 'terre';
+    var dx = x - MONDE_C.centre.x, dy = y - MONDE_C.centre.y;
+    var r = Math.sqrt(dx * dx + dy * dy) / (MONDE_C.monde.w / 2);
+    for (var i = 0; i < MONDE_C.anneaux.length; i++) {
+      if (r <= MONDE_C.anneaux[i].jusqua) return MONDE_C.anneaux[i].biome;
+    }
+    return 'terre';
+  }
+
+  /* Ce que le serveur voit autour de nous, dix fois par seconde. On ne
+     REMPLACE pas nos monstres : on met a jour ceux qu'on connait, on ajoute
+     les nouveaux, on retire ceux qui ne sont plus la. Sans ca, chaque
+     message repartirait de zero et l'interpolation n'aurait rien a suivre. */
+  function recoitMonde(m) {
+    var vus = {};
+    (m.monstres || []).forEach(function (o) {
+      vus[o.i] = 1;
+      var e = MONSTRES_C[o.i];
+      if (!e) {
+        e = MONSTRES_C[o.i] = { espece: o.e, rx: o.x, ry: o.y, cadre: 0, chrono: 0 };
+        atlasMonstre(o.e);
+      }
+      e.x = o.x; e.y = o.y; e.dir = o.d; e.pv = o.pv; e.pvMax = o.pvMax;
+    });
+    Object.keys(MONSTRES_C).forEach(function (k) { if (!vus[k]) delete MONSTRES_C[k]; });
+
+    TIRS_C = m.tirs || [];
+
+    var vusJ = {};
+    (m.joueurs || []).forEach(function (o) {
+      vusJ[o.a] = 1;
+      var d = DISTANTS_M[o.a];
+      if (!d) d = DISTANTS_M[o.a] = { rx: o.x, ry: o.y, cadre: 0, chrono: 0 };
+      d.x = o.x; d.y = o.y; d.dir = o.dir; d.anim = o.anim;
+      d.skin = o.skin || 'andy'; d.nom = o.nom; d.pv = o.pv; d.pvMax = o.pvMax;
+      assureCharge(d.skin);
+    });
+    Object.keys(DISTANTS_M).forEach(function (k) { if (!vusJ[k]) delete DISTANTS_M[k]; });
+
+    if (m.moi) {
+      moiMonde.pv = m.moi.pv; moiMonde.pvMax = m.moi.pvMax; moiMonde.xp = m.moi.xp;
+      if (VIE.pv !== m.moi.pv || VIE.max !== m.moi.pvMax) {
+        VIE.pv = m.moi.pv; VIE.max = m.moi.pvMax; peintPanneau();
+      }
+      /* On ne se TELEPORTE pas sur la position du serveur a chaque message :
+         elle a un dixieme de seconde de retard, et le personnage
+         reculerait sans arret. On ne recale que si l'ecart est gros — c'est
+         alors que le serveur a refuse quelque chose, et il a raison. */
+      var ex = m.moi.x - joueur.x, ey = m.moi.y - joueur.y;
+      if (ex * ex + ey * ey > 220 * 220) { joueur.x = m.moi.x; joueur.y = m.moi.y; }
+    }
+  }
+
+  /* Un texte qui monte et s'efface : « +75 XP », « LEVEL 4 ». Il double une
+     information deja dans le panneau, mais au moment ou elle se produit et
+     a l'endroit ou l'on regarde. */
+  var FLOTTANTS = [];
+  function flotte(t) { FLOTTANTS.push({ t: t, vie: 1.5, max: 1.5 }); }
+  var secousse = 0;             // l'ecran tremble quand on encaisse
+
+  function entreMonde(m) {
+    MONDE_C = m;
+    MONSTRES_C = {}; TIRS_C = []; DISTANTS_M = {};
+    moiMonde = { pv: m.moi.pv, pvMax: m.moi.pvMax, xp: 0 };
+    VIE.pv = m.moi.pv; VIE.max = m.moi.pvMax;
+    joueur.x = m.moi.x; joueur.y = m.moi.y; joueur.dir = 'up';
+    SCENE = 'monde';
+    chargeSols();
+    fermeCoffreMenu(); fermeShop();
+    LIEUX.forEach(function (l) { l.dwell = 0; });
+    indiceActuel = null;
+    if (indiceEl) {
+      indiceEl.innerHTML = 'You are in the <b>wild</b> &middot; press E to run home';
+      indiceEl.classList.add('on');
+    }
+    peintPanneau();
+  }
+
+  function quitteMonde() {
+    if (SCENE !== 'monde') return false;
+    if (enLigne) envoie({ type: 'realmLeave' });
+    SCENE = 'nexus';
+    MONSTRES_C = {}; TIRS_C = []; DISTANTS_M = {};
+    /* On revient AU PIED DU PORTAIL, pas au centre : c'est par la qu'on est
+       parti, et reapparaitre ailleurs donne l'impression d'avoir ete
+       deplace. Un cran plus bas pour ne pas repartir aussitot. */
+    var p = LIEUX[1];
+    joueur.x = p.x; joueur.y = p.y + p.rayon + 60;
+    joueur.dir = 'down';
+    LIEUX.forEach(function (l) { l.dwell = 0; });
+    indiceActuel = null;
+    if (indiceEl) indiceEl.classList.remove('on');
+    /* LA FONTAINE SOIGNE. Rentrer au Nexus rend toute la vie — c'est le
+       sens de la place centrale, et c'est ce qui fait qu'on ose repartir. */
+    VIE.pv = VIE.max;
+    joueSample('vault', { vol: 0.6, hauteur: 1.25 });
+    peintPanneau();
+    return true;
+  }
 
   /* ================== L'ECRAN DE FIN ==================
    *
@@ -1951,6 +2135,61 @@
        lieu serait une protection qui s'eteint sans prevenir. */
     verifieRepli();
 
+    /* ---- DANS LE MONDE ----
+       Les bornes sont celles de la carte, la position part au serveur, et on
+       tire vers ce qu'on vise. Rien d'autre : les degats, les morts et l'XP
+       arrivent par messages, on ne les calcule pas. */
+    if (SCENE === 'monde' && MONDE_C) {
+      joueur.x = Math.min(Math.max(joueur.x, 40), MONDE_C.monde.w - 40);
+      joueur.y = Math.min(Math.max(joueur.y, 40), MONDE_C.monde.h - 40);
+
+      Object.keys(MONSTRES_C).forEach(function (k) {
+        var e = MONSTRES_C[k];
+        var t = Math.min(1, dt * 9);
+        e.rx += (e.x - e.rx) * t; e.ry += (e.y - e.ry) * t;
+        /* Le cadre avance avec la DISTANCE parcourue et non avec le temps :
+           un monstre arrete ne doit pas pedaler sur place. */
+        e.chrono += dt;
+        if (e.chrono > 0.14) { e.chrono = 0; e.cadre = (e.cadre + 1) % 4; }
+      });
+      Object.keys(DISTANTS_M).forEach(function (k) {
+        var d = DISTANTS_M[k];
+        avanceCadre(d, d.skin, dt);
+        var t = Math.min(1, dt * 10);
+        d.rx += (d.x - d.rx) * t; d.ry += (d.y - d.ry) * t;
+      });
+
+      for (var fi = FLOTTANTS.length - 1; fi >= 0; fi--) {
+        FLOTTANTS[fi].vie -= dt;
+        if (FLOTTANTS[fi].vie <= 0) FLOTTANTS.splice(fi, 1);
+      }
+      if (secousse > 0) secousse -= dt;
+
+      /* On TIRE : le serveur applique la cadence, donc envoyer a chaque image
+         ne donne pas plus de projectiles — seulement du trafic. On s'aligne
+         sur la cadence de l'arme portee. */
+      var aM = armeCourante();
+      tireur.recharge -= dt;
+      if ((tireur.presse || tireur.auto) && tireur.recharge <= 0) {
+        envoie({ type: 'realmTir', a: angleDeTir(DERNIERE_CAM.x, DERNIERE_CAM.y) });
+        tireur.recharge = 1 / aM.cadence;
+      }
+
+      chronoEnvoi += dt;
+      if (chronoEnvoi >= ENVOI_INTERVAL && enLigne) {
+        chronoEnvoi = 0;
+        envoie({ type: 'realmMove', x: Math.round(joueur.x), y: Math.round(joueur.y),
+                 dir: joueur.dir, anim: joueur.anim });
+      }
+      if (!saut.en_cours) avanceCadre(joueur, PERSO, dt);
+      else {
+        saut.chrono += dt;
+        saut.cadre = Math.min(PERSONNAGES[PERSO].images - 1, Math.floor(saut.chrono * FPS_ANIM));
+        if (saut.chrono >= saut.duree) saut.en_cours = false;
+      }
+      return;
+    }
+
     if (SCENE === 'coffre') {
       joueur.x = Math.min(Math.max(joueur.x, SALLE.x0), SALLE.x1);
       joueur.y = Math.min(Math.max(joueur.y, SALLE.y0), SALLE.y1);
@@ -2058,6 +2297,10 @@
         l.dwell += dt;
         if (l.dwell > 0.45) {
           if (l.cle === 'coffre') { entreCoffre(); entre = true; return; }
+          /* Le portail menait au hall des jeux. Il mene au MONDE : c'est ce
+             qu'un portail au milieu d'un nexus promet, et le hall a deja son
+             bouton dans l'en-tete du panneau. */
+          if (l.cle === 'portail') { if (enLigne) envoie({ type: 'realmJoin' }); l.dwell = 0; entre = true; return; }
           /* L'etal etait le dernier endroit du Nexus qui faisait SORTIR du
              jeu pour acheter. Il ouvre son panneau sur place.
              Le garde-fou compte : le sejour se remet a zero et RECOMMENCE a
@@ -2152,6 +2395,51 @@
     ctx.scale(zoom, zoom);
     ctx.translate(-camX, -camY);
 
+    /* ---- LE MONDE DE COMBAT ----
+       Le sol par anneaux, les monstres, les autres, et nos projectiles. Tout
+       vient du serveur ; on ne fait que le poser a l'ecran. */
+    if (SCENE === 'monde' && MONDE_C) {
+      var TM = MONDE_C.monde.tuile || 128;
+      var mc0 = Math.max(0, Math.floor(camX / TM));
+      var mc1 = Math.floor((camX + libre + TM) / TM);
+      var mr0 = Math.max(0, Math.floor(camY / TM));
+      var mr1 = Math.floor((camY + hauteurMonde + TM) / TM);
+      for (var mr = mr0; mr <= mr1; mr++) {
+        for (var mc = mc0; mc <= mc1; mc++) {
+          var b = biomeEn(mc * TM + TM / 2, mr * TM + TM / 2);
+          var img = TUILES_M[b];
+          if (img && img.complete) ctx.drawImage(img, mc * TM, mr * TM, TM, TM);
+        }
+      }
+
+      /* Tout ce qui marche se trie par les PIEDS : ce qui est plus bas passe
+         devant, comme dans le Nexus. */
+      var pileM = [];
+      Object.keys(MONSTRES_C).forEach(function (k) {
+        var e = MONSTRES_C[k];
+        pileM.push({ y: e.ry, dessine: function () { dessineMonstre(e); } });
+      });
+      Object.keys(DISTANTS_M).forEach(function (k) {
+        var d = DISTANTS_M[k];
+        pileM.push({ y: d.ry, dessine: function () {
+          dessineAvatar(d.rx, d.ry, d.skin, d.dir, d.anim, d.cadre);
+          barreVie(d.rx, d.ry, d.pv, d.pvMax, 44);
+        } });
+      });
+      pileM.push({ y: joueur.y, dessine: function () {
+        var cM = joueur.anim === 'jump' ? saut.cadre : joueur.cadre;
+        dessineAvatar(joueur.x, joueur.y, PERSO, joueur.dir, joueur.anim, cM);
+      } });
+      pileM.sort(function (a, b) { return a.y - b.y; });
+      pileM.forEach(function (p) { p.dessine(); });
+
+      dessineTirsMonde();
+      ctx.restore();
+      DERNIERE_CAM.x = camX; DERNIERE_CAM.y = camY; DERNIERE_CAM.z = zoom;
+      peintFlottants();
+      return;
+    }
+
     /* ---- LA SALLE DU COFFRE ----
        Un seul dessin, mis a l'echelle de la piece : pas de tuiles a decouper,
        la salle EST une image. On sort tot, le Nexus ne la concerne pas. */
@@ -2237,6 +2525,76 @@
     halo(p.x, p.y, p.r, '#8FD4FF', 0.24);
     var img = LIEUX[1] && LIEUX[1].img;
     if (img && img.complete) ctx.drawImage(img, p.x - p.larg / 2, p.y - p.haut, p.larg, p.haut);
+  }
+
+  /* Un monstre : la rangee de l'atlas EST sa direction, l'index sa marche.
+     C'est le decoupage qui l'a garanti, pas une table ici. */
+  var DIRS_M = { up: 0, down: 1, left: 2, right: 3 };
+  var CADRE_M = 128, TAILLE_M = 118;
+  function dessineMonstre(e) {
+    var img = ATLAS_M[e.espece];
+    if (!img || !img.complete || !img.naturalWidth) return;
+    var r = DIRS_M[e.dir] === undefined ? 1 : DIRS_M[e.dir];
+    ctx.drawImage(img, e.cadre * CADRE_M, r * CADRE_M, CADRE_M, CADRE_M,
+                  e.rx - TAILLE_M / 2, e.ry - TAILLE_M + 14, TAILLE_M, TAILLE_M);
+    barreVie(e.rx, e.ry, e.pv, e.pvMax, TAILLE_M * 0.46);
+  }
+
+  /* La barre de vie ne s'affiche QUE si la creature est blessee : cinquante
+     barres pleines a l'ecran cachent le decor et n'apprennent rien. */
+  function barreVie(x, y, pv, pvMax, larg) {
+    if (!pvMax || pv >= pvMax) return;
+    var h = 5, p = Math.max(0, Math.min(1, pv / pvMax));
+    var gx = x - larg / 2, gy = y + 6;
+    ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(gx - 1, gy - 1, larg + 2, h + 2);
+    ctx.fillStyle = p > 0.5 ? '#7CFF9B' : p > 0.25 ? '#FFC53D' : '#F2685E';
+    ctx.fillRect(gx, gy, larg * p, h);
+  }
+
+  /* Les projectiles du monde viennent du SERVEUR : on ne connait ni leur
+     duree ni leur portee, seulement ou ils sont. On reutilise les memes
+     dessins que le Nexus — un tir de lame doit se ressembler partout. */
+  function dessineTirsMonde() {
+    for (var i = 0; i < TIRS_C.length; i++) {
+      var t = TIRS_C[i];
+      var sp = spriteTir(t.f);
+      ctx.save();
+      ctx.translate(t.x, t.y - DECALAGE_TIR);
+      ctx.rotate(t.a);
+      if (sp && sp.complete && sp.naturalWidth) {
+        ctx.drawImage(sp, 0, 0, CADRE_TIR, CADRE_TIR,
+                      -CADRE_TIR / 2, -CADRE_TIR / 2, CADRE_TIR, CADRE_TIR);
+      } else {
+        var a = ARMES[t.f] || ARMES.poing;
+        ctx.fillStyle = a.teinte;
+        ctx.fillRect(-14, -3, 28, 6);
+      }
+      ctx.restore();
+    }
+  }
+
+  /* Les textes qui montent : en coordonnees ECRAN, pas monde. Ils parlent au
+     joueur, pas au decor — les accrocher a une position les ferait sortir du
+     cadre au premier pas. */
+  function peintFlottants() {
+    if (!FLOTTANTS.length) return;
+    ctx.save();
+    ctx.scale(DPR, DPR);
+    var vw = canvas.width / DPR, vh = canvas.height / DPR;
+    var libreF = Math.max(120, vw - largeurPanneau());
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (var i = 0; i < FLOTTANTS.length; i++) {
+      var f = FLOTTANTS[i];
+      var k = 1 - f.vie / f.max;
+      ctx.globalAlpha = Math.min(1, f.vie * 2.2);
+      ctx.font = '900 22px system-ui, sans-serif';
+      ctx.lineWidth = 5; ctx.strokeStyle = 'rgba(0,0,0,.7)';
+      var y = vh * 0.34 - k * 52 - i * 26;
+      ctx.strokeText(f.t, libreF / 2, y);
+      ctx.fillStyle = '#FFD97A';
+      ctx.fillText(f.t, libreF / 2, y);
+    }
+    ctx.restore();
   }
 
   function dessineAvatar(x, y, cle, dir, anim, cadre) {

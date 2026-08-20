@@ -100,10 +100,13 @@ process.on('unhandledRejection', (e) => {
   const portefeuille = ethers.Wallet.createRandom();
   const erreurs = [];
 
-  async function ouvre(viewport, tactile) {
+  async function ouvre(viewport, tactile, touchesGardees) {
     const p = await nav.newPage(tactile
       ? { viewport, hasTouch: true, isMobile: true, deviceScaleFactor: 2 }
       : { viewport });
+    if (touchesGardees) {
+      await p.addInitScript(`window.__touches = ${JSON.stringify(touchesGardees)};`);
+    }
     await p.addInitScript(function () {
       window.__s = [];
       const N = window.WebSocket;
@@ -136,6 +139,12 @@ process.on('unhandledRejection', (e) => {
         window.__s.push(s); return s; }
       C.prototype = N.prototype; ['CONNECTING','OPEN','CLOSING','CLOSED'].forEach((k) => { C[k] = N[k]; });
       window.WebSocket = C;
+      /* Les touches d'un joueur qui a DEJA joue, telles que son navigateur les
+         a gardees. C'est le cas qui casse en silence : une touche par defaut
+         qui change se heurte a un reglage enregistre. */
+      if (window.__touches) {
+        try { localStorage.setItem('swogeNexusTouches', JSON.stringify(window.__touches)); } catch (e) {}
+      }
 
       /* ---- LES DEUX MOUCHARDS ----
        * On veut les nombres REELLEMENT passes au canevas, pas ceux qu'on croit
@@ -839,6 +848,11 @@ process.on('unhandledRejection', (e) => {
     });
     await p.waitForTimeout(300);
 
+    /* La page doit avoir le FOCUS pour recevoir une touche. Depuis qu'il y en
+       a trois, celle du clavier n'est plus forcement celle qu'on regarde — et
+       l'essai echouait en disant « la touche Q ne boit pas », ce qui etait
+       faux : personne ne lui avait envoye de Q. */
+    await p.bringToFront();
     const avant = await p.evaluate(() => window.__s[0].__out.filter((m) => m.type === 'potionBoit').length);
     await p.keyboard.press('KeyQ');
     await p.waitForTimeout(300);
@@ -864,6 +878,59 @@ process.on('unhandledRejection', (e) => {
     await p.waitForTimeout(300);
     const apresSortie = await p.evaluate(() => window.__s[0].__out.filter((m) => m.type === 'realmLeave').length);
     ok(apresSortie === avantSortie, 'et E ne fait PAS sortir du monde');
+  }
+
+  /* ---- ET LE JOUEUR QUI A DEJA SES TOUCHES ----
+   *
+   * `E` servait a rentrer au Nexus. Il sert maintenant a boire du mana. Un
+   * joueur dont le navigateur a garde « nexus: KeyE » se retrouverait avec
+   * deux actions sur la meme touche — et c'est la derniere ecrite qui
+   * gagnerait, donc boire ferait sortir du monde.
+   *
+   * Le mecanisme qui l'evite existait deja, mais il repose sur l'ORDRE de la
+   * table d'actions : les potions passent AVANT le retour au Nexus, donc
+   * elles gardent leur touche et c'est le Nexus qui retombe sur son nouveau
+   * defaut. C'est une dependance invisible — un jour quelqu'un rangera la
+   * table par ordre alphabetique. */
+  {
+    const v = await ouvre({ width: 1280, height: 800 }, false, { nexus: 'KeyE', up: 'KeyW' });
+    await v.bringToFront();
+    await v.evaluate(() => window.__s[0].send(JSON.stringify({ type: 'realmJoin' })));
+    await v.waitForTimeout(1600);
+    await v.evaluate(() => {
+      window.__s[0].dispatchEvent(new MessageEvent('message', { data: JSON.stringify({
+        type: 'potionBue', cle: 'mana', quoi: 'mp', soigne: 100, reste: 4,
+        potions: [
+          { cle: 'vie', nom: 'Health Potion', quoi: 'hp', soigne: 100, image: 'potion_rouge', max: 99, quantite: 4 },
+          { cle: 'mana', nom: 'Magic Potion', quoi: 'mp', soigne: 100, image: 'potion_bleue', max: 99, quantite: 4 },
+        ],
+      }) }));
+    });
+    await v.waitForTimeout(300);
+
+    const av = await v.evaluate(() => ({
+      bu: window.__s[0].__out.filter((m) => m.type === 'potionBoit').length,
+      sorti: window.__s[0].__out.filter((m) => m.type === 'realmLeave').length,
+    }));
+    await v.keyboard.press('KeyE');
+    await v.waitForTimeout(350);
+    const ap = await v.evaluate(() => ({
+      bu: window.__s[0].__out.filter((m) => m.type === 'potionBoit').pop(),
+      n: window.__s[0].__out.filter((m) => m.type === 'potionBoit').length,
+      sorti: window.__s[0].__out.filter((m) => m.type === 'realmLeave').length,
+    }));
+    console.log('\n-- un joueur qui avait deja E pour le Nexus --');
+    console.log('   apres E : ' + JSON.stringify(ap.bu) + ', sorties ' + ap.sorti);
+    ok(ap.n === av.bu + 1, 'E boit bien du mana');
+    ok(ap.bu && ap.bu.cle === 'mana', 'la bonne potion');
+    ok(ap.sorti === av.sorti, 'et ne fait PAS sortir du monde');
+
+    /* Le retour au Nexus n'est pas perdu pour autant : il retombe sur R. */
+    await v.keyboard.press('KeyR');
+    await v.waitForTimeout(350);
+    const fin = await v.evaluate(() => window.__s[0].__out.filter((m) => m.type === 'realmLeave').length);
+    ok(fin === av.sorti + 1, 'et R le ramene chez lui — la touche n est pas perdue');
+    await v.close();
   }
 
   ok(erreurs.length === 0, 'aucune erreur de page' + (erreurs.length ? ' : ' + erreurs[0] : ''));

@@ -297,7 +297,8 @@
     }
     /* La mort arrive du SERVEUR : c'est lui qui l'a constatee, jamais nous. */
     if (m.type === 'realmMort') {
-      SCENE = 'nexus'; MONSTRES_C = {}; TIRS_C = []; DISTANTS_M = {}; TOMBES_C = [];
+      SCENE = 'nexus'; peintBoutonTir();
+      MONSTRES_C = {}; TIRS_C = []; DISTANTS_M = {}; TOMBES_C = [];
       POUVOIR_C = null; EFFETS_P = []; PARALYSE = 0; RALENTI = 0; BRULURE = 0;
       VITESSE = 260; peintPouvoir();
       var pp = LIEUX[1];
@@ -1452,6 +1453,7 @@
     EFFETS_P = []; COUPS = []; NIVEAUX = [];
     joueur.x = m.moi.x; joueur.y = m.moi.y; joueur.dir = 'up';
     SCENE = 'monde';
+    peintBoutonTir();
     chargeEffets();
     chargeSols();
     fermeCoffreMenu(); fermeShop();
@@ -1477,6 +1479,7 @@
     if (SCENE !== 'monde') return false;
     if (enLigne) envoie({ type: 'realmLeave' });
     SCENE = 'nexus';
+    peintBoutonTir();
     MONSTRES_C = {}; TIRS_C = []; DISTANTS_M = {}; TOMBES_C = [];
     /* On revient AU PIED DU PORTAIL, pas au centre : c'est par la qu'on est
        parti, et reapparaitre ailleurs donne l'impression d'avoir ete
@@ -2855,7 +2858,9 @@
   /** La direction du tir, en radians. Trois sources, dans cet ordre : la
       cible automatique, le curseur, puis le regard du personnage. */
   function angleDeTir(camX, camY) {
-    var c = tireur.auto ? cibleLaPlusProche() : null;
+    /* Le bouton tactile vise tout seul, que le reglage « auto-fire » soit
+       allume ou non : c'est le geste qui le demande, pas la preference. */
+    var c = (tireur.auto || VISE_AUTO) ? cibleLaPlusProche() : null;
     if (c) return Math.atan2(c.y - joueur.y, c.x - joueur.x);
     if (viseur.actif) {
       /* On vise depuis le point de DESSIN du projectile (les pieds moins le
@@ -3063,6 +3068,15 @@
     var pave = document.getElementById('nxPad');
     if (!pave) return;
     [].forEach.call(pave.querySelectorAll('button'), function (b) {
+      /* Le bouton du Nexus n'est pas une direction : il ne se TIENT pas, il
+         se tape. Le confondre avec les quatre autres ferait rentrer chez soi
+         en voulant monter. */
+      if (b.dataset.nexus) {
+        b.addEventListener('click', function (ev) {
+          ev.preventDefault(); debloqueSon(); retourNexus('pad');
+        });
+        return;
+      }
       var d = b.dataset.dir;
       var pose = function (ev) { debloqueSon(); TOUCHES[d] = true; b.classList.add('on'); ev.preventDefault(); };
       var leve = function () { TOUCHES[d] = false; b.classList.remove('on'); };
@@ -3072,6 +3086,46 @@
       b.addEventListener('pointerleave', leve);
     });
   })();
+
+  /* ================== LE BOUTON DE TIR TACTILE ==================
+   *
+   * A la souris on vise ou l'on veut ; au doigt, viser ET se deplacer en meme
+   * temps demande deux pouces et une precision qu'on n'a pas. Ce bouton fait
+   * les deux gestes d'un coup : il tire, et il VISE TOUT SEUL l'ennemi le
+   * plus proche.
+   *
+   * Il ne touche PAS au reglage `auto` des reglages : celui-la est un choix
+   * durable du joueur, celui-ci est un mode de saisie. Melanger les deux
+   * ferait qu'appuyer une fois sur le bouton changerait le comportement de la
+   * souris pour toujours.
+   */
+  var VISE_AUTO = false;
+  var elTir = document.getElementById('nxTir');
+  if (elTir) {
+    var presseTir = function (ev) {
+      ev.preventDefault(); debloqueSon();
+      if (SCENE === 'coffre') return;
+      VISE_AUTO = true; tireur.presse = true;
+      elTir.classList.add('presse');
+    };
+    var lacheTir = function () {
+      VISE_AUTO = false; tireur.presse = false;
+      elTir.classList.remove('presse');
+    };
+    elTir.addEventListener('pointerdown', presseTir);
+    elTir.addEventListener('pointerup', lacheTir);
+    elTir.addEventListener('pointercancel', lacheTir);
+    elTir.addEventListener('pointerleave', lacheTir);
+  }
+
+  /* Il ne se montre QUE dans le monde de combat, et seulement au doigt :
+     dans le Nexus il n'y a rien a viser, et a la souris il gene. */
+  function peintBoutonTir() {
+    if (!elTir) return;
+    var tactile = false;
+    try { tactile = window.matchMedia('(pointer: coarse)').matches; } catch (e) {}
+    elTir.classList.toggle('on', tactile && SCENE === 'monde');
+  }
 
   // ------------------------------------------------------- la boucle
 
@@ -3916,5 +3970,6 @@
     requestAnimationFrame(boucle);
   }
   requestAnimationFrame(boucle);
+  peintBoutonTir();
   peintPanneau();   // le panneau existe des la premiere image, meme vide
 })();

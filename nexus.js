@@ -279,7 +279,11 @@
         if (m.niveau !== FICHE.niveau) { if (enLigne) envoie({ type: 'personnage', skin: PERSO }); }
         else peintPanneau();
       }
-      if (m.monte) { joueSample('niveau', { vol: 0.9 }); flotte('LEVEL ' + m.niveau); }
+      if (m.monte) {
+        joueSample('niveau', { vol: 0.9 });
+        flotte('LEVEL ' + m.niveau);
+        poseNiveau(joueur.x, joueur.y);
+      }
     }
     /* La mort arrive du SERVEUR : c'est lui qui l'a constatee, jamais nous. */
     if (m.type === 'realmMort') {
@@ -1110,13 +1114,19 @@
   var TIRS_C = [];             // nos projectiles, tels que le serveur les voit
   var TIRS_M = [];             // ceux des monstres, contre nous
   var DISTANTS_M = {};         // les autres joueurs du monde
-  var TUILES_M = {};           // les trois sols, charges a l'entree
+  var TUILES_M = {};           // les sols des anneaux, charges a l'entree
   var moiMonde = { pv: 0, pvMax: 1, xp: 0 };
 
-  /* Les sols des trois anneaux. Charges A L'ENTREE et pas au demarrage : un
-     joueur qui ne met jamais les pieds dans le monde n'a pas a telecharger
-     trois textures de six cents kilos. */
-  var FICHIER_SOL = { terre: 'ground_dirt', neige: 'ground_snow', lave: 'ground_lava' };
+  /* Les sols des anneaux. Charges A L'ENTREE et pas au demarrage : un joueur
+     qui ne met jamais les pieds dans le monde n'a pas a telecharger cinq
+     textures de six cents kilos.
+
+     LA REGLE DE LA CARTE : on lit le danger AU SOL. Chaque anneau a son
+     propre dessin, et un anneau qui ressemblerait a son voisin serait un
+     piege — c'est pour ca qu'en ajouter demandait d'abord des textures. */
+  var FICHIER_SOL = { terre: 'ground_dirt', marais: 'ground_marais',
+                      neige: 'ground_snow', cendres: 'ground_cendres',
+                      lave: 'ground_lava' };
   function chargeSols() {
     Object.keys(FICHIER_SOL).forEach(function (b) {
       if (TUILES_M[b]) return;
@@ -1138,7 +1148,8 @@
    * jamais les pieds dans le monde n'a pas a les telecharger.
    */
   var IMG_TOMBE = null, IMG_SOIN = null, IMG_RAFALE = null, IMG_STASE = null;
-  var IMG_COUP = null;
+  var IMG_COUP = null, IMG_NIVEAU = null, IMG_PARA = null;
+  var NIVEAU_CADRES = 5, NIVEAU_DUREE = 1.3, PARA_CADRES = 4;
   var COUP_CADRES = 9, COUP_DUREE = 0.26;
   /* ---- L'ECLAT QUAND ON TOUCHE ----
    * Tirer sur un monstre est le geste le plus frequent du jeu, et il ne
@@ -1188,6 +1199,8 @@
     if (!IMG_RAFALE) { IMG_RAFALE = new Image(); IMG_RAFALE.src = 'img/nexus/effets/rafale.webp'; }
     if (!IMG_STASE) { IMG_STASE = new Image(); IMG_STASE.src = 'img/nexus/effets/stase.webp'; }
     if (!IMG_COUP) { IMG_COUP = new Image(); IMG_COUP.src = 'img/nexus/tirs/coup.webp'; }
+    if (!IMG_NIVEAU) { IMG_NIVEAU = new Image(); IMG_NIVEAU.src = 'img/nexus/effets/niveau.webp'; }
+    if (!IMG_PARA) { IMG_PARA = new Image(); IMG_PARA.src = 'img/nexus/effets/paralysie.webp'; }
   }
 
   /* ---- L'AURA DE RAFALE ----
@@ -1226,6 +1239,33 @@
   function poseSoin(x, y) {
     chargeEffets();
     SOINS.push({ x: x, y: y, vie: SOIN_DUREE });
+  }
+
+  /* ---- LA MONTEE DE NIVEAU ----
+   * Elle avait un son et un mot flottant, et rien la ou l'on regarde. Les
+   * anneaux d'or montent des pieds : c'est le seul moment du jeu ou quelque
+   * chose de BON arrive au milieu d'un combat, et il merite d'etre vu sans
+   * avoir a lire. */
+  var NIVEAUX = [];
+  function poseNiveau(x, y) {
+    chargeEffets();
+    NIVEAUX.push({ x: x, y: y, vie: NIVEAU_DUREE });
+  }
+  function peintNiveaux(dt) {
+    if (!NIVEAUX.length) return;
+    var pret = IMG_NIVEAU && IMG_NIVEAU.complete && IMG_NIVEAU.naturalWidth;
+    var cw = pret ? IMG_NIVEAU.naturalWidth / NIVEAU_CADRES : 0;
+    var ch = pret ? IMG_NIVEAU.naturalHeight : 0;
+    for (var i = NIVEAUX.length - 1; i >= 0; i--) {
+      var e = NIVEAUX[i];
+      e.vie -= dt;
+      if (e.vie <= 0) { NIVEAUX.splice(i, 1); continue; }
+      if (!pret) continue;
+      var c = Math.min(NIVEAU_CADRES - 1,
+                       Math.floor((1 - e.vie / NIVEAU_DUREE) * NIVEAU_CADRES));
+      var T = 132;
+      ctx.drawImage(IMG_NIVEAU, c * cw, 0, cw, ch, e.x - T / 2, e.y - T + 16, T, T);
+    }
   }
 
   /** Les six images de la spirale, dans l'ordre, sur toute la duree. Elles
@@ -1399,7 +1439,7 @@
     POUVOIR_C = m.moi.pouvoir || null;
     POUVOIR_ETAT = { recharge: 0, rafale: 0 };
     PARALYSE = 0; RALENTI = 0; BRULURE = 0;
-    EFFETS_P = []; COUPS = [];
+    EFFETS_P = []; COUPS = []; NIVEAUX = [];
     joueur.x = m.moi.x; joueur.y = m.moi.y; joueur.dir = 'up';
     SCENE = 'monde';
     chargeEffets();
@@ -2520,6 +2560,7 @@
   var elPowCout = document.getElementById('nxPowCout');
   var elPowTouche = document.getElementById('nxPowTouche');
   var elPowJauge = document.getElementById('nxPowJauge');
+  var elPowIco = document.getElementById('nxPowIco');
 
   /* ================== CE QUI BOUGE EN CONTINU ==================
    *
@@ -2583,6 +2624,9 @@
     var assez = VIE.mp >= P.cout;
     var prete = POUVOIR_ETAT.recharge <= 0;
     elPowNom.textContent = P.nom || POUVOIR_C;
+    /* L'icone porte la classe du pouvoir : au milieu d'un combat on ne lit
+       pas un mot, on reconnait une forme. */
+    if (elPowIco) elPowIco.className = POUVOIR_C;
     elPowCout.textContent = P.cout + ' MP';
     elPowTouche.textContent = nomTouche(PERSO_TOUCHES.pouvoir) || '—';
     elPow.classList.toggle('pret', assez && prete);
@@ -3388,6 +3432,25 @@
          * croyant a un blocage du jeu. Trois RAYONS differents pour qu'ils se
          * lisent meme quand ils se superposent — rien n'interdit d'etre
          * paralyse, ralenti et en feu en meme temps. */
+        /* La PARALYSIE a son propre dessin : des entraves de pierre qui se
+           referment. Elle garde quand meme son anneau — le dessin dit « tu es
+           pris », l'anneau dit « encore combien de temps », et les deux
+           questions se posent en meme temps. */
+        if (PARALYSE > 0 && IMG_PARA && IMG_PARA.complete && IMG_PARA.naturalWidth
+            && MONDE_C && MONDE_C.effets) {
+          var pcw = IMG_PARA.naturalWidth / PARA_CADRES;
+          var pch = IMG_PARA.naturalHeight;
+          /* Les entraves se REFERMENT : on lit les images a l'envers du temps
+             qui reste, donc de la pierre fendue vers l'etau complet. */
+          var av = 1 - PARALYSE / MONDE_C.effets.paralyse.duree;
+          var pc = Math.min(PARA_CADRES - 1, Math.floor(av * PARA_CADRES));
+          var PT = 96;
+          ctx.save();
+          ctx.globalAlpha = 0.92;
+          ctx.drawImage(IMG_PARA, pc * pcw, 0, pcw, pch,
+                        joueur.x - PT / 2, joueur.y - PT * 0.40, PT, PT * 0.58);
+          ctx.restore();
+        }
         var etats = MONDE_C && MONDE_C.effets ? [
           { reste: PARALYSE, max: MONDE_C.effets.paralyse.duree, c: '#C07BFF', r: 34 },
           { reste: RALENTI,  max: MONDE_C.effets.ralenti.duree,  c: '#7CC8FF', r: 42 },
@@ -3419,6 +3482,7 @@
 
       dessineTirsMonde();
       peintCoups(dt);
+      peintNiveaux(dt);
       /* Les traces des pouvoirs par-dessus tout, mais AVANT `restore` : elles
          sont posees en coordonnees du monde comme le reste de la scene. */
       peintEffetsPouvoir(dt);
@@ -3751,9 +3815,18 @@
       /* Les anneaux, du plus large au plus etroit : dessines dans cet ordre,
          chacun recouvre le precedent et on obtient les trois couronnes sans
          calculer une seule intersection. */
-      var COUL = { terre: '#4a3a2c', neige: '#c9dcea', lave: '#8a2418' };
+      /* Une couleur par anneau, choisie sur la teinte dominante de sa
+         texture : la mini-carte doit repondre a « ou suis-je » du meme coup
+         d'oeil que le sol sous les pieds. Le repli gris sert au jour ou le
+         serveur declarera un anneau dont la page ignore encore le nom — mieux
+         vaut une couronne terne qu'un trou noir. */
+      var COUL = { terre: '#4a3a2c', marais: '#3d4a2e', neige: '#c9dcea',
+                   cendres: '#5a5a5e', lave: '#8a2418' };
       var cx = ox + MONDE_C.centre.x * e, cy = oy + MONDE_C.centre.y * e;
-      mctx.fillStyle = COUL.terre;
+      /* Le fond porte la couleur de l'anneau EXTERIEUR, celui dont le rayon
+         est infini : il n'a pas de cercle a lui, il est tout le reste. */
+      var dehors = MONDE_C.anneaux[MONDE_C.anneaux.length - 1];
+      mctx.fillStyle = COUL[dehors && dehors.biome] || '#4a3a2c';
       mctx.fillRect(ox, oy, W * e, H * e);
       for (var ai = MONDE_C.anneaux.length - 1; ai >= 0; ai--) {
         var an = MONDE_C.anneaux[ai];

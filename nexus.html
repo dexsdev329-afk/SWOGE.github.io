@@ -558,6 +558,17 @@ body.nxdrag *{ cursor:grabbing !important; }
   -webkit-tap-highlight-color:transparent; }
 #nxPow.on{ display:flex; }
 #nxPow b{ font-weight:800; }
+/* L'icone du pouvoir. Le bouton ne disait le nom qu'en toutes lettres : au
+   milieu d'un combat on ne LIT pas, on reconnait une forme. Les trois icones
+   vivent dans une seule image, decalee par la classe — une requete au lieu de
+   trois, et aucune chance qu'il en manque une. */
+#nxPow u{ display:block; width:22px; height:22px; flex:0 0 auto;
+  text-decoration:none; background-image:url('img/nexus/ui_pouvoirs.webp');
+  background-size:66px 22px; background-repeat:no-repeat;
+  image-rendering:pixelated; }
+#nxPow u.foudre{ background-position:0 0; }
+#nxPow u.rafale{ background-position:-22px 0; }
+#nxPow u.stase{ background-position:-44px 0; }
 #nxPow em{ font-style:normal; opacity:.62; font-size:10px; }
 #nxPow span.k{ padding:2px 6px; border-radius:6px; font-size:10px;
   background:rgba(255,255,255,.10); }
@@ -643,7 +654,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
   <div id="nxSolde"></div>
   <div id="nxAuto">⌖ AUTO-FIRE</div>
   <div id="nxFiche"></div>
-  <div id="nxPow" role="button" tabindex="0"><b id="nxPowNom">—</b><em id="nxPowCout"></em><span class="k" id="nxPowTouche">Space</span><i id="nxPowJauge"></i></div>
+  <div id="nxPow" role="button" tabindex="0"><u id="nxPowIco"></u><b id="nxPowNom">—</b><em id="nxPowCout"></em><span class="k" id="nxPowTouche">Space</span><i id="nxPowJauge"></i></div>
   <div id="nxIndice"></div>
   <button id="nxBascule" type="button" aria-label="Hide panel">&#9654;</button>
   <div id="nxHint">WASD / arrows to move &middot; walk in to enter</div>
@@ -758,7 +769,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
   </div>
 </div>
 
-<script src="nexus.js?v=20260819v" defer></script>
+<script src="nexus.js?v=20260819w" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

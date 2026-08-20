@@ -1486,6 +1486,19 @@
       ctx.fill();
       ctx.restore();
     }
+    /* ---- LE QUART DE TOUR ----
+     * La planche ne porte qu'UNE orientation de chaque piece. Poser le meme
+     * angle aux quatre coins en laisse trois a l'envers, et le mur se lit
+     * alors comme un decor colle plutot que comme une piece batie. Le serveur
+     * dit combien de quarts de tour ; on ne les redevine pas ici. */
+    if (mur && o.a) {
+      ctx.save();
+      ctx.translate(o.x, o.y);
+      ctx.rotate(o.a * Math.PI / 2);
+      ctx.drawImage(img, col * cadre, 0, cadre, cadre, -T / 2, -T / 2, T, T);
+      ctx.restore();
+      return;
+    }
     ctx.drawImage(img, col * cadre, 0, cadre, cadre,
                   o.x - T / 2, o.y - T + (mur ? o.r : o.r * 0.42), T, T);
   }

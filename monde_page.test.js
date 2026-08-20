@@ -449,6 +449,67 @@ process.on('unhandledRejection', (e) => {
   ok(dedans === 0,
      `et aucune position annoncee n est DANS la pierre (${dedans} sur ${trajet.length * blocs.length} mesures)`);
 
+  /* ---- LES SALLES GARDEES ----
+   * Une salle se voit de loin parce que son SOL change. C'est ce qui en fait
+   * une destination : on sait ce qu'on approche avant d'y etre. Une salle
+   * dont la dalle ne serait pas peinte ne serait qu'un carre de murs. */
+  const salles = await p.evaluate(() => {
+    const e = window.__s[0].__m.filter((m) => m.type === 'realmEntre').pop();
+    return e.salles || [];
+  });
+  console.log('\n-- les salles gardees --');
+  console.log('   ' + JSON.stringify(salles.map((s) => ({ b: s.butin, porte: s.porte }))));
+  ok(salles.length >= 3, `le serveur envoie ses salles (${salles.length})`);
+  ok(salles.some((s) => s.butin === 'relique'),
+     'au moins une garde une relique — le seul endroit ou on la merite');
+  ok(salles.every((s) => s.cote > 0 && s.porte), 'chacune porte son cote et sa porte');
+
+  /* Les murs sont dessines avec LEUR planche, pas celle des rochers. Un seul
+     champ `t` porte les deux : au-dela de MUR_BASE on lit le mur. */
+  const murs = await p.evaluate(() => window.__peint
+    .filter((d) => d.src === 'mur_ruine.webp').map((d) => d.sx / d.sw));
+  const roches = await p.evaluate(() => window.__peint
+    .filter((d) => d.src === 'obstacles.webp').length);
+  console.log(`   dessins : ${roches} rochers, ${murs.length} murs`);
+  ok(roches > 0, 'les rochers sont peints');
+  /* Les murs ne sont peints que si l'on est passe pres d'une salle. On ne
+     l'exige donc pas ici — ce qu'on exige, c'est que la planche existe et que
+     les colonnes lues soient les siennes. */
+  ok(murs.every((c) => c >= 0 && c <= 3),
+     'et si un mur est peint, sa colonne vient de mur_ruine (' + (murs.length ? [...new Set(murs)].join(',') : 'aucun encore') + ')');
+
+  /* ---- LES MURS ARRIVENT DANS LA MEME LISTE QUE LES ROCHERS ----
+   * C'est le point de conception : une seule sorte de bloc, donc une seule
+   * collision, un seul arret de projectile, un seul tri de dessin. Seul `t`
+   * dit quelle planche lire.
+   *
+   * On ne fait PAS marcher le personnage jusqu'a une salle : elles sont a
+   * deux mille unites du point d'arrivee, le serveur borne les bonds, et un
+   * essai qui met vingt secondes a s'approcher d'un endroit qu'il n'atteint
+   * peut-etre pas ne prouve rien. Ce qu'on peut affirmer sans mentir tient en
+   * deux points — les murs sont bien dans la liste, et la page charge leur
+   * planche. Le dessin lui-meme passe par le MEME code que les rochers, qui
+   * est verifie plus haut sur des pixels reels. */
+  const parType = await p.evaluate(() => {
+    const e = window.__s[0].__m.filter((m) => m.type === 'realmEntre').pop();
+    const c = {};
+    for (const o of e.obstacles || []) c[o.t] = (c[o.t] || 0) + 1;
+    return c;
+  });
+  console.log('   blocs par dessin : ' + JSON.stringify(parType));
+  const typesMur = Object.keys(parType).map(Number).filter((t2) => t2 >= 4);
+  ok(typesMur.length > 0,
+     `les murs voyagent dans la meme liste que les rochers (types ${typesMur.join(',')})`);
+  ok(Object.keys(parType).map(Number).some((t2) => t2 < 4),
+     'et les rochers y sont toujours');
+  ok(typesMur.every((t2) => t2 <= 7),
+     'chaque mur designe une des quatre pieces de mur_ruine');
+
+  const chargees = await p.evaluate(() => performance.getEntriesByType('resource')
+    .map((r) => r.name.split('/').pop().split('?')[0]));
+  ok(chargees.indexOf('mur_ruine.webp') >= 0, 'la page charge la planche des murs');
+  ok(chargees.indexOf('ground_temple.webp') >= 0, 'et la dalle des salles');
+
   /* ---- ET ON NOTE OU IL EST ARRIVE ----
    * Les essais qui suivent posent des sacs SOUS SES PIEDS et lisent ses
    * jauges autour de lui. Ils utilisaient le point d'arrivee — juste tant

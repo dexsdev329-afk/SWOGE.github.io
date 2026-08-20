@@ -357,7 +357,7 @@
     if (m.type === 'realmMort') {
       SCENE = 'nexus'; peintBoutonTir();
       MONSTRES_C = {}; TIRS_C = []; DISTANTS_M = {}; TOMBES_C = []; SACS_C = [];
-    OBSTACLES_C = [];
+    OBSTACLES_C = []; SALLES_C = [];
     SAC_PIEDS = null; SAC_SIGNE = ''; peintButin();
       POUVOIR_C = null; EFFETS_P = []; PARALYSE = 0; RALENTI = 0; BRULURE = 0;
       VITESSE = 260; peintPouvoir();
@@ -1218,7 +1218,10 @@
      desaccord se verrait tout de suite, on marcherait dans un rocher ou l'on
      serait arrete par du vide. */
   var OBSTACLES_C = [];
-  var IMG_SACS = null, IMG_OBST = null;
+  /* Les salles gardees. Leur dalle remplace le sol de l'anneau : c'est ce qui
+     les rend visibles de loin, et donc ce qui en fait une destination. */
+  var SALLES_C = [];
+  var IMG_SACS = null, IMG_OBST = null, IMG_MUR = null, IMG_TEMPLE = null;
   /* Le sac SUR LEQUEL on se tient, et la signature de ce qu'il contient : on
      ne repeint la grille que quand l'une des deux change, sinon on
      reconstruirait huit cases dix fois par seconde sous le doigt de qui est
@@ -1317,6 +1320,8 @@
     if (!IMG_PARA) { IMG_PARA = new Image(); IMG_PARA.src = 'img/nexus/effets/paralysie.webp'; }
     if (!IMG_SACS) { IMG_SACS = new Image(); IMG_SACS.src = 'img/nexus/objets/sacs.webp'; }
     if (!IMG_OBST) { IMG_OBST = new Image(); IMG_OBST.src = 'img/nexus/tiles/obstacles.webp'; }
+    if (!IMG_MUR) { IMG_MUR = new Image(); IMG_MUR.src = 'img/nexus/tiles/mur_ruine.webp'; }
+    if (!IMG_TEMPLE) { IMG_TEMPLE = new Image(); IMG_TEMPLE.src = 'img/nexus/tiles/ground_temple.webp'; }
   }
 
   /* ---- L'AURA DE RAFALE ----
@@ -1457,19 +1462,53 @@
 
   /* Un bloc au sol. Le pied porte l'ombre : sans elle un rocher flotte, et on
      ne sait pas ou commence ce qu'on ne peut pas traverser. */
+  /* Le mur d'une salle et le rocher du dehors sont le MEME genre de bloc : ils
+     arretent la meme chose, se trient pareil, se ramassent dans la meme
+     liste. Seule la planche change, et c'est `t` qui la designe — au-dela de
+     MUR_BASE on lit le mur. Deux listes separees auraient donne deux
+     collisions a tenir d'accord. */
+  var MUR_BASE = 4;
   function dessineObstacle(o) {
-    if (!IMG_OBST || !IMG_OBST.complete || !IMG_OBST.naturalWidth) return;
-    var cadre = IMG_OBST.naturalHeight;
-    var T = o.r * 2.7;
-    ctx.save();
-    ctx.globalAlpha = 0.30;
-    ctx.fillStyle = '#000';
-    ctx.beginPath();
-    ctx.ellipse(o.x, o.y, o.r * 0.95, o.r * 0.40, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-    ctx.drawImage(IMG_OBST, (o.t || 0) * cadre, 0, cadre, cadre,
-                  o.x - T / 2, o.y - T + o.r * 0.42, T, T);
+    var mur = (o.t || 0) >= MUR_BASE;
+    var img = mur ? IMG_MUR : IMG_OBST;
+    if (!img || !img.complete || !img.naturalWidth) return;
+    var cadre = img.naturalHeight;
+    var col = mur ? (o.t - MUR_BASE) : (o.t || 0);
+    /* Un mur remplit sa tuile, un rocher deborde un peu : le premier doit
+       JOINDRE son voisin, le second doit avoir l'air pose. */
+    var T = mur ? o.r * 2 : o.r * 2.7;
+    if (!mur) {
+      ctx.save();
+      ctx.globalAlpha = 0.30;
+      ctx.fillStyle = '#000';
+      ctx.beginPath();
+      ctx.ellipse(o.x, o.y, o.r * 0.95, o.r * 0.40, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.drawImage(img, col * cadre, 0, cadre, cadre,
+                  o.x - T / 2, o.y - T + (mur ? o.r : o.r * 0.42), T, T);
+  }
+
+  /* La dalle d'une salle, posee AVANT tout le reste : c'est un sol, pas un
+     objet. Elle deborde volontairement sous les murs — un lisere du sol de
+     l'anneau qui depasserait entre la dalle et la pierre se lirait comme un
+     defaut d'affichage. */
+  function dessineSalles() {
+    if (!SALLES_C.length) return;
+    if (!IMG_TEMPLE || !IMG_TEMPLE.complete || !IMG_TEMPLE.naturalWidth) return;
+    var t = IMG_TEMPLE.naturalWidth;
+    for (var i = 0; i < SALLES_C.length; i++) {
+      var s = SALLES_C[i];
+      if (Math.abs(s.x - joueur.x) > 2200 || Math.abs(s.y - joueur.y) > 2000) continue;
+      var x0 = s.x - s.cote / 2, y0 = s.y - s.cote / 2;
+      for (var y = 0; y < s.cote; y += t) {
+        for (var x = 0; x < s.cote; x += t) {
+          var w = Math.min(t, s.cote - x), h = Math.min(t, s.cote - y);
+          ctx.drawImage(IMG_TEMPLE, 0, 0, w, h, x0 + x, y0 + y, w, h);
+        }
+      }
+    }
   }
 
   function dessineSac(s) {
@@ -1633,6 +1672,7 @@
        effacer aussitot. Le symptome etait muet — on marchait dans les rochers
        et aucun n'etait dessine. */
     OBSTACLES_C = m.obstacles || [];
+    SALLES_C = m.salles || [];
     moiMonde = { pv: m.moi.pv, pvMax: m.moi.pvMax, xp: 0 };
     VIE.pv = m.moi.pv; VIE.max = m.moi.pvMax;
     if (m.moi.mpMax !== undefined) { VIE.mp = m.moi.mp; VIE.mpMax = m.moi.mpMax; }
@@ -1676,7 +1716,7 @@
     SCENE = 'nexus';
     peintBoutonTir();
     MONSTRES_C = {}; TIRS_C = []; DISTANTS_M = {}; TOMBES_C = []; SACS_C = [];
-    OBSTACLES_C = [];
+    OBSTACLES_C = []; SALLES_C = [];
     SAC_PIEDS = null; SAC_SIGNE = ''; peintButin();
     /* On revient AU PIED DU PORTAIL, pas au centre : c'est par la qu'on est
        parti, et reapparaitre ailleurs donne l'impression d'avoir ete
@@ -3855,6 +3895,11 @@
           if (img && img.complete) ctx.drawImage(img, mc * TM, mr * TM, TM, TM);
         }
       }
+
+      /* La dalle des salles PAR-DESSUS le sol de l'anneau, et sous tout le
+         reste : c'est un sol, pas un objet. C'est elle qui rend une salle
+         visible de loin — donc qui en fait une destination. */
+      dessineSalles();
 
       /* L'aura de rafale d'abord : elle est au SOL, sous tout le monde. */
       peintRafale(dt);

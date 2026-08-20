@@ -69,6 +69,15 @@
   function ecoute(ev) {
     var m;
     try { m = JSON.parse(ev.data); } catch (e) { return; }
+    traite(m);
+  }
+  /* ---- LE MESSAGE, SEPARE DE SA LIVRAISON ----
+   * `ecoute` recoit un evenement de socket, `traite` recoit un MESSAGE. La
+   * distinction sert des qu'une reponse en porte plusieurs : l'echange
+   * d'equipement renvoie d'un coup la fiche, le coffre et le sac, et on veut
+   * les reposer par les memes chemins que d'habitude — pas en ecrire une
+   * seconde version qui, un jour, oubliera quelque chose. */
+  function traite(m) {
     if (m.type === 'auth' && !demande) {
       demande = true;
       MON_ADRESSE = String(m.address || '').toLowerCase();
@@ -130,6 +139,29 @@
       chargeTirs();
       if (avantNiv !== null && m.etat.niveau > avantNiv) joueSample('niveau', { vol: 0.9 });
       peintPanneau(); if (coffreOuvert) peintCoffreMenu();
+    }
+    /* ---- LA REPONSE DE L'ECHANGE ----
+     * Un seul message pour trois etats : ce qu'on porte, le coffre, le sac.
+     * On les repose en repassant par les MEMES chemins que les messages qui
+     * les portent d'habitude — sinon on aurait deux facons de mettre la fiche
+     * a jour, et un jour l'une des deux oublierait quelque chose. */
+    if (m.type === 'equipeDuSac') {
+      if (m.error) {
+        coffreErreur = m.error;
+        if (coffreOuvert) peintCoffreMenu();
+        peintPanneau();
+      } else {
+        if (m.etat) traite({ type: 'personnage', skin: m.skin, etat: m.etat });
+        if (m.equipable) traite(Object.assign({ type: 'equipable' }, m.equipable, { sac: m.sacJoueur }));
+        else if (m.sacJoueur) { SAC = m.sacJoueur; peintPanneau(); }
+        /* Ce qui REVIENT dans le sac se dit : sans ca, le joueur voit son
+           arme disparaitre de l'emplacement et doit deviner ou elle est
+           passee. C'est exactement la question qu'on nous a posee. */
+        if (m.rendu) {
+          var q = (SAC || []).filter(function (o) { return o.id === m.rendu; })[0];
+          flotte((q && q.nom ? q.nom : 'Your gear') + ' \u2192 backpack');
+        }
+      }
     }
     if (m.type === 'equipable') {
       /* Le SAC est ce que le serveur envoie sous `sac` — le butin ramasse —
@@ -369,7 +401,7 @@
       SCENE = 'nexus'; peintBoutonTir();
       MONSTRES_C = {}; TIRS_C = []; TIRS_M = []; DEVINES = []; DISTANTS_M = {}; TOMBES_C = []; SACS_C = [];
       ZONES_C = []; ONDES = [];
-      RECALE = null; ENVOIS.length = 0;
+      RECALE = null; ENVOIS.length = 0; CADENCE_M = 0; CADENCE_M = 0;
       OBSTACLES_C = []; SALLES_C = [];
       SAC_PIEDS = null; SAC_SIGNE = ''; peintButin();
       POUVOIR_C = null; EFFETS_P = []; PARALYSE = 0; RALENTI = 0; BRULURE = 0;
@@ -738,13 +770,14 @@
          dans l'emplacement fruit — et le serveur refuse de toute facon un
          fruit envoye au slot d'arme. Lacher n'importe ou sur l'equipement
          doit donc suffire. */
+      /* Depuis le SAC, un seul message : il porte la piece ET rend celle
+         qu'on avait dans le sac. Le glissement et le double-clic font donc
+         exactement la meme chose — deux gestes pour un resultat, pas deux
+         resultats pour un geste. */
+      if (p.de === 'sac') { porteDuSac(id); return; }
       var slot = slotDeLObjet(id) || cible.slot;
       var msg = familleDuSlot(slot);
       if (!msg) return;
-      /* Depuis le SAC, il faut ranger d'abord : le serveur ne s'equipe que
-         depuis le coffre. Deux messages a la suite sur la meme socket, dans
-         l'ordre — ce n'est pas un contournement, c'est la sequence reelle. */
-      if (p.de === 'sac') envoie({ type: 'rangeCoffre', item: id });
       envoie({ type: msg, skin: PERSO, item: id });
       clic(true);
     } else if (cible.quoi === 'sac') {
@@ -810,6 +843,32 @@
     } else return;
     ev.preventDefault();
   });
+  /* ---- DOUBLE-CLIC SUR UNE PIECE DU SAC : ON LA PORTE ----
+   *
+   * Le meme geste que sur le sac au sol, et pour la meme raison : la case est
+   * une POIGNEE, donc un clic simple ne peut pas agir — un clic legerement de
+   * travers deviendrait un equipement qu'on n'a pas demande.
+   *
+   * Un seul message. La page le faisait en deux — « range au coffre », puis
+   * « equipe » — et l'ancienne piece restait alors AU COFFRE, que le joueur
+   * ne voit pas depuis le monde de combat : il la croyait perdue. Elle revient
+   * maintenant dans le sac, a la place qu'occupait celle qu'on vient de
+   * mettre. Un pour un : le sac ne deborde jamais. */
+  function porteDuSac(id) {
+    if (!id || !PERSO) return;
+    debloqueSon();
+    envoie({ type: 'equipeDuSac', skin: PERSO, item: Number(id) });
+    clic(true);
+  }
+  if (elSac) {
+    elSac.addEventListener('dblclick', function (ev) {
+      var c = ev.target.closest ? ev.target.closest('[data-sac]') : null;
+      if (!c) return;
+      ev.preventDefault();
+      porteDuSac(c.dataset.sac);
+    });
+  }
+
   document.addEventListener('pointermove', function (ev) {
     if (PRISE) { bougePrise(ev.clientX, ev.clientY); ev.preventDefault(); }
   });
@@ -1943,6 +2002,12 @@
          piece d'armure equipee — donc on la relit a chaque image plutot que
          de la figer a l'entree. */
       if (m.moi.v) VITESSE = m.moi.v;
+      /* La cadence vient du SERVEUR, comme la vitesse. La page se limitait a
+         celle de l'arme et ignorait la dexterite et la rafale : elle
+         demandait donc moins de tirs que le serveur en acceptait. Un joueur a
+         78 de dexterite tirait au rythme d'un debutant, et « Rapid fire » ne
+         changeait rien du tout. */
+      if (m.moi.c) CADENCE_M = m.moi.c;
       if (structure) peintPanneau(); else majJauges();
       peintPouvoir();
       /* ---- SE RECALER SANS SE TELEPORTER ----
@@ -2031,6 +2096,9 @@
      a l'endroit ou l'on regarde. */
   /* La position vers laquelle on se recale doucement, ou `null`. */
   var RECALE = null;
+  /* La cadence de tir que le serveur accorde : arme x dexterite x rafale.
+     Zero tant qu'il ne l'a pas dite — on retombe alors sur celle de l'arme. */
+  var CADENCE_M = 0;
   /* Les dernieres positions ANNONCEES au serveur, la plus recente en tete.
      C'est a elles qu'on compare ce qu'il renvoie — voir plus haut. */
   var ENVOIS = [];
@@ -2054,7 +2122,7 @@
     MONDE_C = m;
     MONSTRES_C = {}; TIRS_C = []; TIRS_M = []; DEVINES = []; DISTANTS_M = {}; TOMBES_C = []; SACS_C = [];
     ZONES_C = []; ONDES = [];
-    RECALE = null; ENVOIS.length = 0;
+    RECALE = null; ENVOIS.length = 0; CADENCE_M = 0;
     SAC_PIEDS = null; SAC_SIGNE = ''; peintButin();
     /* APRES la remise a zero, jamais avant : la ligne au-dessus vide les
        listes du monde precedent, et poser les blocs plus haut revenait a les
@@ -2107,7 +2175,7 @@
     peintBoutonTir();
     MONSTRES_C = {}; TIRS_C = []; TIRS_M = []; DEVINES = []; DISTANTS_M = {}; TOMBES_C = []; SACS_C = [];
     ZONES_C = []; ONDES = [];
-    RECALE = null; ENVOIS.length = 0;
+    RECALE = null; ENVOIS.length = 0; CADENCE_M = 0;
     OBSTACLES_C = []; SALLES_C = [];
     SAC_PIEDS = null; SAC_SIGNE = ''; peintButin();
     /* On revient AU PIED DU PORTAIL, pas au centre : c'est par la qu'on est
@@ -4185,7 +4253,18 @@
       tireur.recharge -= dt;
       if ((tireur.presse || tireur.auto) && tireur.recharge <= 0) {
         var angM = angleDeTir(DERNIERE_CAM.x, DERNIERE_CAM.y);
-        envoie({ type: 'realmTir', a: angM });
+        /* ---- LA POSITION PART AVEC LE TIR ----
+         * Le serveur faisait naitre le projectile a la derniere position
+         * annoncee — vieille d'au plus 120 ms. A l'arret, c'est la meme et on
+         * touche. En COURANT, ce sont vingt-six unites de retard : le tir
+         * naissait derriere le personnage, sur l'angle vise depuis l'avant,
+         * et il passait a cote. On visait juste et on ratait.
+         * Elle rejoint la liste des annonces comme un pas : le serveur nous
+         * la renverra, et le recalage doit pouvoir la reconnaitre. */
+        var tx = Math.round(joueur.x), ty = Math.round(joueur.y);
+        envoie({ type: 'realmTir', a: angM, x: tx, y: ty });
+        ENVOIS.unshift({ x: tx, y: ty });
+        if (ENVOIS.length > 24) ENVOIS.pop();
         /* Le projectile part ICI, pas a la reponse du serveur. Meme raison
            que le son juste en dessous, en plus visible : il met un tick plus
            un aller-retour a revenir, et pendant ce cinquieme de seconde on a
@@ -4197,7 +4276,10 @@
            met un dixieme de seconde a revenir, et un tir qu'on entend apres
            l'avoir vu partir se lit comme un decalage, pas comme un tir. */
         joueSon(familleArme() || 'poing');
-        tireur.recharge = 1 / aM.cadence;
+        /* La cadence du SERVEUR, pas celle de l'arme seule : elle porte deja
+           la dexterite et la rafale. Se limiter a l'arme revenait a refuser
+           la moitie de ses propres tirs. */
+        tireur.recharge = 1 / (CADENCE_M || aM.cadence);
       }
 
       chronoEnvoi += dt;

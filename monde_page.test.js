@@ -90,6 +90,15 @@ process.on('unhandledRejection', (e) => {
     notify(){}, notifyPhoto(){}, sendDocument(){}, chatEstPublic(){return true;}, enabled(){return true;} } };
   const port = await new Promise((r) => { const s = net.createServer(); s.listen(0, () => { const q = s.address().port; s.close(() => r(q)); }); });
   process.env.PORT = String(port);
+  /* ---- ON ATTRAPE LE MOTEUR ----
+   * Pour donner une VRAIE arme au personnage. On lui en injectait une par un
+   * faux message : la page la portait, le serveur ne le savait pas, et les
+   * deux ne parlaient plus de la meme chose — la page dessinait les
+   * projectiles d'une lame pendant que le serveur tirait au poing. Un essai
+   * qui ment sur l'etat du serveur ne mesure plus le jeu. */
+  const { Game } = require(path.join(SERVEUR, 'game'));
+  let moteur = null; const _p0 = Game.prototype._p;
+  Game.prototype._p = function (a) { moteur = this; return _p0.call(this, a); };
   require(path.join(SERVEUR, 'server'));
   const ethers = require(path.join(SERVEUR, 'node_modules', 'ethers'));
   const monde = require(path.join(SERVEUR, 'monde'));
@@ -937,6 +946,35 @@ process.on('unhandledRejection', (e) => {
     console.log('   ' + JSON.stringify(jete));
     ok(apresS === avantS + 1, 'lacher une piece sur la scene la JETTE par terre');
     ok(jete && jete.item === 4242, 'et c est bien celle qu on tenait');
+
+    /* ---- DOUBLE-CLIC SUR UNE PIECE DU SAC : ON LA PORTE ----
+     * Le meme geste que sur le sac au sol, et pour la meme raison : la case
+     * est une POIGNEE, donc un clic simple ne peut pas agir — un clic
+     * legerement de travers deviendrait un equipement qu'on n'a pas demande.
+     * UN seul message : c'est le serveur qui porte la piece ET rend celle
+     * qu'on avait, dans le sac. En deux messages, l'ancienne restait au
+     * coffre — que le joueur ne voit pas depuis le monde. */
+    const avantE = await p.evaluate(() => window.__s[0].__out.filter((m) => m.type === 'equipeDuSac').length);
+    const boite = await p.evaluate(() => {
+      const c = document.querySelector('#nxSac .nxp-c[data-sac]');
+      const q = c.getBoundingClientRect();
+      return { x: q.x + q.width / 2, y: q.y + q.height / 2, id: Number(c.dataset.sac) };
+    });
+    await p.mouse.move(boite.x, boite.y);
+    await p.mouse.down(); await p.mouse.up();
+    await p.waitForTimeout(250);
+    const apresClic = await p.evaluate(() => window.__s[0].__out.filter((m) => m.type === 'equipeDuSac').length);
+    ok(apresClic === avantE, 'un clic simple n equipe rien : la case est une poignee');
+
+    await p.mouse.dblclick(boite.x, boite.y);
+    await p.waitForTimeout(300);
+    const porte = await p.evaluate(() => window.__s[0].__out.filter((m) => m.type === 'equipeDuSac').pop());
+    const apresE = await p.evaluate(() => window.__s[0].__out.filter((m) => m.type === 'equipeDuSac').length);
+    console.log('\n-- double-clic dans le sac --');
+    console.log('   ' + JSON.stringify(porte));
+    ok(apresE === avantE + 1, 'un double-clic envoie UNE demande, pas dix');
+    ok(porte && porte.item === boite.id, `et il nomme la piece touchee (${porte && porte.item})`);
+    ok(porte && porte.skin, 'avec le personnage qui la porte');
   }
 
   /* ---- AU DOIGT : LE RETOUR AU NEXUS EST A DROITE ----
@@ -1267,26 +1305,25 @@ process.on('unhandledRejection', (e) => {
        archer avait tire ou non. */
     ok(vif.ok, 'le personnage est vivant et dans le monde' + (vif.mort ? ' (il a fallu relancer apres une mort)' : ''));
     ok(!vif.voile, 'et aucun voile ne couvre la scene');
-    /* ---- ON LUI MET UNE ARME DANS LA MAIN ----
-     * Le personnage de cet essai n'en porte aucune : il tire donc au poing,
-     * qui n'a pas de planche et se dessine en trait de secours. Impossible
-     * alors de mesurer « du clic au projectile PEINT » — la mesure attrapait
-     * la bave d'un lime qui passait par la, et annoncait 12 ms quand notre
-     * propre tir en mettait deux cent soixante-dix.
-     * On rejoue donc la derniere fiche recue du serveur, avec une arme du
-     * CATALOGUE en plus. Rien d'invente : ni la fiche, ni l'arme. */
-    const arme = await p.evaluate((piece) => {
-      const s = window.__s[0];
-      const fic = s.__m.filter((x) => x.type === 'personnage' && x.etat).pop();
-      if (!fic) return null;
-      const etat = { ...fic.etat, equipArme: { id: 4243, cle: piece.cle, nom: piece.nom,
-                                               famille: piece.famille, rarete: piece.rarete } };
-      s.dispatchEvent(new MessageEvent('message', {
-        data: JSON.stringify({ ...fic, etat }) }));
-      return piece.famille;
-    }, PIECE);
-    ok(arme === PIECE.famille, `le personnage porte une ${PIECE.nom} (${arme})`);
-    await p.waitForTimeout(400);
+    /* ---- ON LUI MET UNE VRAIE ARME DANS LA MAIN ----
+     * Sans arme il tire au poing, qui n'a pas de planche et se dessine en
+     * trait de secours : impossible de mesurer « du clic au projectile
+     * PEINT ». On la lui donne DANS LE COFFRE du serveur et on l'equipe par
+     * le message normal — pas par une fiche fabriquee. Une page qui porte une
+     * arme que le serveur ignore, ce sont deux jeux differents, et la mesure
+     * ne parle plus d'aucun des deux. */
+    await p.evaluate(([piece, adr]) => 0, [PIECE, portefeuille.address]);
+    const q = moteur._p(portefeuille.address);
+    q.objets = q.objets || {};
+    q.objets[PIECE.id] = (q.objets[PIECE.id] || 0) + 1;
+    await p.evaluate((piece) => window.__s[0].send(JSON.stringify({
+      type: 'equipeArme', skin: 'andy', item: piece.id })), PIECE);
+    await p.waitForTimeout(700);
+    const arme = await p.evaluate(() => {
+      const fic = window.__s[0].__m.filter((x) => x.type === 'personnage' && x.etat).pop();
+      return (fic && fic.etat.equipArme && fic.etat.equipArme.famille) || null;
+    });
+    ok(arme === PIECE.famille, `le personnage porte vraiment une ${PIECE.nom} (${arme})`);
     await p.evaluate(() => { window.__premierTir = null; window.__clic = null;
                              window.__heuresTirs.length = 0; window.__tirs.length = 0;
                              window.__s[0].__out.length = 0; window.__sons = 0; });
@@ -1347,14 +1384,25 @@ process.on('unhandledRejection', (e) => {
     ok(tir.clic, 'le clic est bien arrive dans la page');
     ok(tir.demandes > 0, `la page a demande a tirer ${tir.demandes} fois pendant l appui`);
     ok(tir.arme === PIECE.famille, `et la page l a bien enregistree (${tir.arme || 'aucune'})`);
-    /* ---- ET IL TIRE A LA CADENCE DE SON ARME ----
-     * Deux boucles faisaient descendre la MEME recharge a chaque image : dans
-     * le monde, toute arme tirait au DOUBLE de sa cadence. Le serveur, lui,
-     * appliquait la vraie — il refusait une demande sur deux en silence, et un
-     * tir sur deux etait un fantome qui s'effacait sans rien toucher. */
-    const CAD = monde.ARMES[PIECE.famille].cadence;
-    ok(tir.cadence !== null && Math.abs(tir.cadence - CAD) < CAD * 0.15,
-       `elle tire a ${tir.cadence} coups par seconde — son arme en promet ${CAD}`);
+    /* ---- ET IL TIRE A LA CADENCE QUE LE SERVEUR ACCORDE ----
+     *
+     * Pas a celle de l'arme seule : le serveur la multiplie par la DEXTERITE
+     * et par la rafale. La page se limitait a l'arme et demandait donc moins
+     * de tirs qu'elle n'avait le droit — un joueur a 78 de dexterite tirait au
+     * rythme d'un debutant, et « Rapid fire » ne changeait rien du tout.
+     *
+     * On compare a ce que le serveur ANNONCE, pas a un chiffre recopie ici :
+     * la regle n'a qu'un seul endroit ou elle s'ecrit, et cet essai verifie
+     * que la page l'ecoute. */
+    const cadSrv = await p.evaluate(() => {
+      const e = window.__s[0].__m.filter((x) => x.type === 'realmEtat' && x.moi && x.moi.c).pop();
+      return e ? e.moi.c : null;
+    });
+    ok(cadSrv > 0, `le serveur annonce une cadence (${cadSrv})`);
+    ok(cadSrv > monde.ARMES.poing.cadence,
+       'et elle porte deja la dexterite — elle depasse celle de l arme nue');
+    ok(tir.cadence !== null && Math.abs(tir.cadence - cadSrv) < cadSrv * 0.15,
+       `la page tire a ${tir.cadence} coups par seconde, le serveur en accorde ${cadSrv}`);
     ok(tir.images > 20, `des projectiles ont ete peints (${tir.images} images)`);
     ok(tir.comparees > 10, 'assez de paires pour conclure');
     ok(tir.figees === 0,

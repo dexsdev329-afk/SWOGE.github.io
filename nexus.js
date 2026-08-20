@@ -243,6 +243,16 @@
        * Perdre le controle sans un mot se lit comme une page qui a plante,
        * pas comme une attaque. On le NOMME, chacun avec sa voix, et l'anneau
        * autour des pieds dira le temps qu'il reste. */
+      /* ---- LE MANA VOLE ----
+       * La barre bleue baissait sans un mot. C'est la seule attaque qui ne
+       * prend ni la vie ni le controle, et sans nom on croit a un defaut
+       * d'affichage plutot qu'a un coup recu. */
+      if (m.mp > 0) {
+        VIE.mp = Math.max(0, VIE.mp - m.mp);
+        flotte('\u2212' + m.mp + ' MP');
+        joueSample('clic', { vol: 0.4, hauteur: 0.6 });
+        peintPouvoir();
+      }
       if (m.effet === 'paralyse' || m.paralyse > 0) {
         PARALYSE = m.duree || m.paralyse;
         flotte('PARALYZED');

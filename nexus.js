@@ -4424,6 +4424,34 @@
         mctx.arc(cx, cy, an.jusqua * (W / 2) * e, 0, Math.PI * 2);
         mctx.fill();
       }
+      /* ---- LES SALLES, TOUJOURS VISIBLES ----
+       *
+       * Elles sont des DESTINATIONS : les cacher jusqu'a ce qu'on tombe
+       * dessus les aurait rendues introuvables, et une destination qu'on ne
+       * peut pas viser n'en est pas une. Ce n'est pas une carte de triche —
+       * les murs ne bougent pas, on les verrait de toute facon en passant a
+       * cote, et le hasard de la promenade n'a pas a decider si le jeu a une
+       * direction.
+       *
+       * Le carre porte la couleur de son BUTIN, comme le sac : blanc pour la
+       * relique, or pour le legendaire. On sait donc laquelle vaut le
+       * detour avant de traverser un anneau pour y aller. */
+      var COUL_BUTIN = { relique: '#FFFFFF', mythique: '#FF4655',
+                         legendaire: '#FFC53D', epique: '#C07BFF' };
+      SALLES_C.forEach(function (s) {
+        var c = COUL_BUTIN[s.butin] || '#FFC53D';
+        var t = Math.max(4, s.cote * e);
+        mctx.save();
+        mctx.strokeStyle = c;
+        mctx.lineWidth = 1.5;
+        mctx.globalAlpha = 0.95;
+        mctx.strokeRect(ox + (s.x - s.cote / 2) * e, oy + (s.y - s.cote / 2) * e, t, t);
+        mctx.globalAlpha = 0.20;
+        mctx.fillStyle = c;
+        mctx.fillRect(ox + (s.x - s.cote / 2) * e, oy + (s.y - s.cote / 2) * e, t, t);
+        mctx.restore();
+      });
+
       /* Les ennemis en ROUGE, les autres joueurs en VERT. On ne montre que
          ce qu'on VOIT — le serveur ne nous envoie que les alentours, et
          afficher toute la carte peuplee serait une carte de triche. */

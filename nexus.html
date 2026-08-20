@@ -164,6 +164,28 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
    Sous le sac, et visiblement A PART : elles s'empilent jusqu'a 99 alors
    qu'une place de sac porte un objet et un seul. Les melanger ferait croire
    que le sac empile aussi. */
+/* ---- LES DEUX POTIONS, AU DOIGT ----
+ * Au-dessus du pave, cote gauche : c'est la main qui marche, et boire se fait
+ * en marchant. Les poser a droite aurait demande de lacher le tir pour se
+ * soigner, ce qui est exactement le moment ou l'on ne peut pas. */
+#nxPot{ position:absolute; left:max(16px, env(safe-area-inset-left));
+  bottom:calc(max(16px, env(safe-area-inset-bottom)) + 160px);
+  z-index:24; display:none; gap:8px; }
+#nxPot.on{ display:flex; }
+#nxPot button{ position:relative; width:52px; height:52px; border-radius:14px;
+  display:flex; align-items:center; justify-content:center;
+  touch-action:manipulation; -webkit-tap-highlight-color:transparent;
+  background:rgba(20,26,50,.72); border:1px solid rgba(255,255,255,.24);
+  padding:0; }
+#nxPot button:disabled{ opacity:.35; }
+#nxPot button:active:not(:disabled){ background:rgba(90,120,220,.55); }
+#nxPot img{ width:66%; height:66%; object-fit:contain; }
+/* Le compte dans le coin : une potion qu'on croit avoir et qu'on n'a plus,
+   c'est un appui perdu au pire moment. */
+#nxPot b{ position:absolute; right:3px; bottom:1px;
+  font:800 11px/1 'Archivo',system-ui,sans-serif; color:#EAF0FF;
+  text-shadow:0 1px 3px #000; }
+
 /* ---- LE SAC AU SOL, VERSION DOIGT ----
  * Une rangee flottante, independante du panneau. Elle ne montre QUE les
  * places pleines : huit cases dont six vides prendraient la moitie de la
@@ -772,6 +794,12 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
        dessus, n'a rien a y faire. Elle sort donc, en bas de la zone de jeu,
        au-dessus des commandes. -->
   <div id="nxButinFlot" aria-live="polite"></div>
+  <!-- ---- BOIRE, AU DOIGT ----
+       Meme raison que le sac au sol : ce qui sert EN COMBAT ne peut pas vivre
+       dans le panneau, qu'on replie justement pour se battre. On mourait avec
+       des potions plein le sac. Au-dessus du pave, la ou le pouce gauche est
+       deja. -->
+  <div id="nxPot" aria-hidden="true"></div>
   <div id="nxFiche"></div>
   <div id="nxPow" role="button" tabindex="0"><u id="nxPowIco"></u><b id="nxPowNom">—</b><em id="nxPowCout"></em><span class="k" id="nxPowTouche">Space</span><i id="nxPowJauge"></i></div>
   <div id="nxIndice"></div>
@@ -897,7 +925,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
   </div>
 </div>
 
-<script src="nexus.js?v=20260820i" defer></script>
+<script src="nexus.js?v=20260820j" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

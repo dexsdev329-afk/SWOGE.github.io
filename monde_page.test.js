@@ -734,6 +734,49 @@ process.on('unhandledRejection', (e) => {
   const partie = await t.evaluate(() => document.getElementById('nxButinFlot').classList.contains('on'));
   ok(!partie, 's eloigner fait disparaitre la rangee');
 
+  /* ---- ET LES DEUX FIOLES AU DOIGT ----
+   * Meme raison que la rangee de butin : le panneau est replie pendant qu'on
+   * se bat, et c'est justement la qu'on a besoin de boire. */
+  await t.evaluate(() => {
+    window.__s[0].dispatchEvent(new MessageEvent('message', { data: JSON.stringify({
+      type: 'potionBue', cle: 'vie', quoi: 'hp', soigne: 100, reste: 2,
+      potions: [
+        { cle: 'vie', nom: 'Health Potion', quoi: 'hp', soigne: 100, image: 'potion_rouge', max: 99, quantite: 2 },
+        { cle: 'mana', nom: 'Magic Potion', quoi: 'mp', soigne: 100, image: 'potion_bleue', max: 99, quantite: 0 },
+      ],
+    }) }));
+  });
+  await t.waitForTimeout(300);
+  const fioles = await t.evaluate(() => {
+    const el = document.getElementById('nxPot');
+    const q = el.getBoundingClientRect();
+    const pad = document.getElementById('nxPad').getBoundingClientRect();
+    return {
+      on: el.classList.contains('on'), y: Math.round(q.y), h: Math.round(q.height),
+      padY: Math.round(pad.y),
+      boutons: [].map.call(el.querySelectorAll('[data-pot]'), (b) => ({
+        cle: b.dataset.pot, mort: b.disabled, n: b.querySelector('b').textContent })),
+    };
+  });
+  console.log('\n-- les fioles au doigt --');
+  console.log('   ' + JSON.stringify(fioles));
+  ok(fioles.on, 'panneau replie, les potions restent atteignables');
+  ok(fioles.boutons.length === 2, 'les deux fioles sont la');
+  ok(fioles.boutons[0].n === '2', 'avec leur compte : ' + fioles.boutons[0].n);
+  ok(fioles.boutons[1].mort, 'et celle qu on n a pas est grisee');
+  ok(fioles.y + fioles.h <= fioles.padY + 6,
+     `elles sont AU-DESSUS du pave (${fioles.y}+${fioles.h} contre ${fioles.padY})`);
+
+  const avantT = await t.evaluate(() => window.__s[0].__out.filter((m) => m.type === 'potionBoit').length);
+  await t.evaluate(() => { document.querySelector('#nxPot [data-pot="vie"]').click(); });
+  await t.waitForTimeout(300);
+  const apresT = await t.evaluate(() => window.__s[0].__out.filter((m) => m.type === 'potionBoit').length);
+  ok(apresT === avantT + 1, 'un appui boit');
+  await t.evaluate(() => { document.querySelector('#nxPot [data-pot="mana"]').click(); });
+  await t.waitForTimeout(250);
+  const apresVideT = await t.evaluate(() => window.__s[0].__out.filter((m) => m.type === 'potionBoit').length);
+  ok(apresVideT === apresT, 'et la fiole grisee ne demande rien');
+
   /* Et a la SOURIS elle n'existe pas : le panneau y est toujours ouvert, et il
      faut les deux grilles cote a cote pour glisser de l'une a l'autre. */
   const surSouris = await p.evaluate(() => {
@@ -769,6 +812,59 @@ process.on('unhandledRejection', (e) => {
   }));
   ok(!apresRentree.maison && !apresRentree.tir,
      'de retour au Nexus, ni maison ni tir ne restent allumes');
+
+  /* ---- BOIRE EN COMBAT ----
+   *
+   * Les potions ne se buvaient qu'en TAPANT le panneau. En combat on ne quitte
+   * pas son personnage des yeux pour viser un bouton de trente pixels dans un
+   * coin — et sur telephone le panneau est replie pendant qu'on se bat. On
+   * mourait avec des potions plein le sac.
+   *
+   * Trois surfaces mènent au meme geste : la touche, le panneau, et les deux
+   * fioles au doigt. Ce qu'on verifie, c'est qu'elles passent toutes par le
+   * MEME chemin — trois copies de la meme demande finiraient par ne plus
+   * verifier les memes choses, et celle qu'on oublie est toujours celle dont
+   * on se sert en mourant. */
+  {
+    /* On donne deux potions au joueur par le message que le serveur envoie
+       deja. */
+    await p.evaluate(() => {
+      window.__s[0].dispatchEvent(new MessageEvent('message', { data: JSON.stringify({
+        type: 'potionBue', cle: 'vie', quoi: 'hp', soigne: 100, reste: 3,
+        potions: [
+          { cle: 'vie', nom: 'Health Potion', quoi: 'hp', soigne: 100, image: 'potion_rouge', max: 99, quantite: 3 },
+          { cle: 'mana', nom: 'Magic Potion', quoi: 'mp', soigne: 100, image: 'potion_bleue', max: 99, quantite: 0 },
+        ],
+      }) }));
+    });
+    await p.waitForTimeout(300);
+
+    const avant = await p.evaluate(() => window.__s[0].__out.filter((m) => m.type === 'potionBoit').length);
+    await p.keyboard.press('KeyQ');
+    await p.waitForTimeout(300);
+    const bue = await p.evaluate(() => window.__s[0].__out.filter((m) => m.type === 'potionBoit').pop());
+    const apres = await p.evaluate(() => window.__s[0].__out.filter((m) => m.type === 'potionBoit').length);
+    console.log('\n-- boire en combat --');
+    console.log('   touche Q : ' + JSON.stringify(bue));
+    ok(apres === avant + 1, 'la touche Q boit une potion de vie');
+    ok(bue && bue.cle === 'vie', 'la bonne');
+
+    /* Et une potion qu'on n'a PAS ne part pas au serveur : une demande qui
+       sera refusee est une demande de trop au moment ou le reseau compte. */
+    const avantVide = await p.evaluate(() => window.__s[0].__out.filter((m) => m.type === 'potionBoit').length);
+    await p.keyboard.press('KeyE');
+    await p.waitForTimeout(300);
+    const apresVide = await p.evaluate(() => window.__s[0].__out.filter((m) => m.type === 'potionBoit').length);
+    ok(apresVide === avantVide, 'une potion qu on n a pas ne part pas au serveur');
+
+    /* Le retour au Nexus a quitte E pour R — sinon les deux se marcheraient
+       dessus, et boire ferait sortir du monde. */
+    const avantSortie = await p.evaluate(() => window.__s[0].__out.filter((m) => m.type === 'realmLeave').length);
+    await p.keyboard.press('KeyE');
+    await p.waitForTimeout(300);
+    const apresSortie = await p.evaluate(() => window.__s[0].__out.filter((m) => m.type === 'realmLeave').length);
+    ok(apresSortie === avantSortie, 'et E ne fait PAS sortir du monde');
+  }
 
   ok(erreurs.length === 0, 'aucune erreur de page' + (erreurs.length ? ' : ' + erreurs[0] : ''));
 

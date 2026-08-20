@@ -922,8 +922,7 @@
       Array.prototype.forEach.call(elPotions.querySelectorAll('button'), function (b) {
         b.addEventListener('click', function () {
           if (b.disabled) return;
-          clic(true);
-          envoie({ type: 'potionBoit', cle: b.getAttribute('data-pot') });
+          boitPotion(b.getAttribute('data-pot'));
         });
       });
     }
@@ -932,6 +931,7 @@
        neuf et vide. On lui redonne son etat, sinon un fruit en pleine
        recharge repasserait en couleur a chaque changement de niveau. */
     majFruit();
+    peintPotionsTactiles();
     peintGens();
   }
 
@@ -2591,14 +2591,26 @@
    * maintenant le POUVOIR du fruit, qui coute du mana et decide d'un combat.
    * Le saut recule sur F : entre une figure et une attaque speciale, c'est
    * l'attaque qui merite la touche que tout le monde trouve sans chercher. */
+  /* ---- ET LES POTIONS PRENNENT DEUX TOUCHES ----
+   * Elles ne se buvaient qu'en TAPANT le panneau. En combat, on ne quitte pas
+   * son personnage des yeux pour viser un bouton de trente pixels dans un
+   * coin — et sur telephone le panneau est replie pendant qu'on se bat. On
+   * mourait donc avec des potions plein le sac.
+   * Q et E sont la ou la main gauche est deja posee, au-dessus de WASD. Le
+   * retour au Nexus quitte E pour R : boire est un geste de combat, rentrer
+   * chez soi n'en est pas un, et c'est le geste de combat qui merite la
+   * touche facile. */
   var DEFAUTS = { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD',
                   pouvoir: 'Space', jump: 'KeyF',
-                  auto: 'KeyI', nexus: 'KeyE' };
+                  vie: 'KeyQ', mana: 'KeyE',
+                  auto: 'KeyI', nexus: 'KeyR' };
   var FLECHES_FIXES = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' };
   var ACTIONS = [
     { cle: 'up', nom: 'Move up' }, { cle: 'down', nom: 'Move down' },
     { cle: 'left', nom: 'Move left' }, { cle: 'right', nom: 'Move right' },
     { cle: 'pouvoir', nom: 'Special attack' },
+    { cle: 'vie', nom: 'Drink health potion' },
+    { cle: 'mana', nom: 'Drink magic potion' },
     { cle: 'jump', nom: 'Jump' },
     { cle: 'auto', nom: 'Auto-fire' },
     { cle: 'nexus', nom: 'Return to Nexus' },
@@ -2665,12 +2677,41 @@
     else if (d === 'pouvoir') lancePouvoir();
     else if (d === 'auto') basculeAuto();
     else if (d === 'nexus') retourNexus('key');
+    else if (d === 'vie' || d === 'mana') boitPotion(d === 'vie' ? 'vie' : 'mana');
     else TOUCHES[d] = true;
   });
   window.addEventListener('keyup', function (ev) {
     var d = CODE_VERS_ACTION[ev.code];
-    if (d && d !== 'jump' && d !== 'pouvoir' && d !== 'auto' && d !== 'nexus') TOUCHES[d] = false;
+    /* Les actions PONCTUELLES ne se relachent pas : elles n'ont pas d'etat
+       « appuye ». Les lister ici plutot que de tester le contraire evite
+       qu'une action ajoutee plus tard se retrouve traitee comme une
+       direction, et coince le personnage dans un mur. */
+    var PONCTUELLES = ['jump', 'pouvoir', 'auto', 'nexus', 'vie', 'mana'];
+    if (d && PONCTUELLES.indexOf(d) < 0) TOUCHES[d] = false;
   });
+
+  /* ---- BOIRE ----
+   *
+   * Un seul chemin, partout : la touche, le bouton du panneau et le bouton
+   * tactile passent tous par ici. Trois copies de la meme demande auraient
+   * fini par ne plus verifier les memes choses — et celle qu'on oublie est
+   * toujours celle qu'on utilise en mourant.
+   *
+   * Le refus est DIT. Une touche qui ne repond pas se lit comme un jeu qui a
+   * lache, pas comme un sac vide.
+   */
+  function boitPotion(cle) {
+    if (SCENE !== 'monde') { flotte('OUT IN THE WILD ONLY'); return; }
+    var p = (POTIONS_C || []).filter(function (x) { return x.cle === cle; })[0];
+    if (!p || !p.quantite) {
+      flotte('NO ' + (cle === 'vie' ? 'HEALTH' : 'MAGIC') + ' POTION');
+      joueSample('clic', { vol: 0.3 });
+      return;
+    }
+    if (!enLigne) return;
+    clic(true);
+    envoie({ type: 'potionBoit', cle: cle });
+  }
 
   function lanceSaut() {
     if (saut.en_cours) return;
@@ -3368,6 +3409,35 @@
    * par etre touche pendant qu'on recule d'un golem. Il passe a droite, au-
    * dessus du tir : cette main-la ne fait que des gestes ponctuels. */
   var elMaison = document.getElementById('nxMaison');
+  var elPotTac = document.getElementById('nxPot');
+  /* Un seul ecouteur pose une fois, pas un par bouton : les boutons sont
+     refaits a chaque changement de quantite, et des ecouteurs poses sur eux
+     disparaitraient avec. */
+  if (elPotTac) {
+    elPotTac.addEventListener('click', function (ev) {
+      var b = ev.target.closest ? ev.target.closest('[data-pot]') : null;
+      if (!b || b.disabled) return;
+      ev.preventDefault(); debloqueSon();
+      boitPotion(b.getAttribute('data-pot'));
+    });
+  }
+
+  /* Les deux fioles au doigt. Elles portent le MEME compte que le panneau —
+     une seule source — et le meme chemin pour boire. */
+  function peintPotionsTactiles() {
+    if (!elPotTac) return;
+    var tactile = false;
+    try { tactile = window.matchMedia('(pointer: coarse)').matches; } catch (e) {}
+    if (!tactile || SCENE !== 'monde') { elPotTac.classList.remove('on'); return; }
+    elPotTac.innerHTML = (POTIONS_C || []).map(function (p) {
+      return '<button type="button" data-pot="' + p.cle + '"' +
+        (p.quantite ? '' : ' disabled') +
+        ' aria-label="' + (p.nom || p.cle) + '">' +
+        '<img alt="" src="img/nexus/objets/' + encodeURIComponent(p.image) +
+        '.webp" onerror="this.remove()"><b>' + p.quantite + '</b></button>';
+    }).join('');
+    elPotTac.classList.add('on');
+  }
   if (elMaison) {
     elMaison.addEventListener('click', function (ev) {
       ev.preventDefault(); debloqueSon(); retourNexus('pad');
@@ -3383,6 +3453,7 @@
     var montre = tactile && SCENE === 'monde';
     if (elTir) elTir.classList.toggle('on', montre);
     if (elMaison) elMaison.classList.toggle('on', montre);
+    peintPotionsTactiles();
   }
 
   /* ---- RAMASSER EN MARCHANT DESSUS ----

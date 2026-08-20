@@ -3655,16 +3655,47 @@
   /* Un monstre : la rangee de l'atlas EST sa direction, l'index sa marche.
      C'est le decoupage qui l'a garanti, pas une table ici. */
   var DIRS_M = { up: 0, down: 1, left: 2, right: 3 };
-  var CADRE_M = 128, TAILLE_M = 118;
+  /* ---- LA TAILLE D'UNE CREATURE N'EST PAS UNE DEUXIEME TABLE ----
+   *
+   * Toutes etaient dessinees a 118 px, quel que soit leur rayon : un insecte
+   * et un colosse se ressemblaient de loin, et la seule facon de savoir ce
+   * qui arrivait etait de lire sa barre de vie.
+   *
+   * Le serveur connait deja le RAYON de chacune — c'est lui qui tranche les
+   * collisions et les tirs qui portent. Le dessin en decoule. Ecrire une
+   * table de tailles a cote serait la deuxieme table qui finit par ne plus
+   * dire la meme chose que la premiere, et ce desaccord-la se verrait :
+   * on tirerait a cote de ce qu'on voit.
+   *
+   * Le rapport est cale sur ce qui existait — rayon moyen des huit especes
+   * 39, et 39 x 3 rend les 118 d'avant. Rien ne bouge pour elles, les
+   * nouvelles se rangent toutes seules. */
+  var RAPPORT_M = 3.0, TAILLE_M_DEFAUT = 118;
+  function tailleDe(espece) {
+    var t = MONDE_C && MONDE_C.especes && MONDE_C.especes[espece];
+    return t && t.rayon ? t.rayon * RAPPORT_M : TAILLE_M_DEFAUT;
+  }
+  /* Le cote d'une case de l'atlas se LIT sur l'image : quatre directions,
+     quatre images de marche, donc toujours un quart de sa largeur. Le 128
+     ecrit en dur obligeait chaque nouvelle creature a se plier au format des
+     anciennes, meme quand elle est huit fois plus grosse. */
+  function cadreDe(img) { return img.naturalWidth / 4; }
   /* Le canevas de teinte, cree UNE fois et reutilise. En creer un par
      monstre et par image ferait naitre des dizaines de canevas par seconde,
      que le ramasse-miettes paierait au pire moment — pendant un combat. */
   var GEL = null;
-  function gel() {
+  function gel(cote) {
     if (!GEL) {
-      var el = document.createElement('canvas');
-      el.width = CADRE_M; el.height = CADRE_M;
-      GEL = { el: el, ctx: el.getContext('2d') };
+      GEL = { el: document.createElement('canvas'), ctx: null, cote: 0 };
+      GEL.ctx = GEL.el.getContext('2d');
+    }
+    /* On ne l'agrandit que vers le HAUT, jamais on ne le retaille au plus
+       juste : ecrire `width` vide le contexte, ce qui remettrait le lissage
+       a « oui » — donc flouterait le pixel art — a chaque changement de
+       creature dans une melee. */
+    if (cote > GEL.cote) {
+      GEL.el.width = GEL.el.height = cote;
+      GEL.cote = cote;
       GEL.ctx.imageSmoothingEnabled = false;
     }
     return GEL;
@@ -3674,6 +3705,7 @@
     var img = ATLAS_M[e.espece];
     if (!img || !img.complete || !img.naturalWidth) return;
     var r = DIRS_M[e.dir] === undefined ? 1 : DIRS_M[e.dir];
+    var C = cadreDe(img), T = tailleDe(e.espece);
     /* ---- UN MONSTRE FIGE SE VOIT ----
      * Deux marques, parce qu'une seule ne suffit pas : un ANNEAU au sol dit
      * « celui-la est pris », et le sprite vire au bleu glace. L'anneau seul se
@@ -3685,11 +3717,11 @@
       ctx.strokeStyle = 'rgba(157,232,255,.85)';
       ctx.lineWidth = 2.5;
       ctx.beginPath();
-      ctx.ellipse(e.rx, e.ry + 4, TAILLE_M * 0.36, TAILLE_M * 0.17, 0, 0, Math.PI * 2);
+      ctx.ellipse(e.rx, e.ry + 4, T * 0.36, T * 0.17, 0, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
     }
-    var sx = e.rx - TAILLE_M / 2, sy = e.ry - TAILLE_M + 14;
+    var sx = e.rx - T / 2, sy = e.ry - T + 14;
     /* ---- LA MEDUSE EMPRUNTE UN DESSIN, PAS UNE IDENTITE ----
      * Elle porte pour l'instant l'image du revenant de glace. Deux creatures
      * identiques a l'ecran dont une seule paralyse, c'est un piege : le
@@ -3705,7 +3737,7 @@
       ctx.globalAlpha = 0.32;
       ctx.fillStyle = '#C07BFF';
       ctx.beginPath();
-      ctx.ellipse(e.rx, e.ry + 4, TAILLE_M * 0.34, TAILLE_M * 0.16, 0, 0, Math.PI * 2);
+      ctx.ellipse(e.rx, e.ry + 4, T * 0.34, T * 0.16, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }
@@ -3715,34 +3747,34 @@
          decor est deja peint, donc « la ou il y a quelque chose » ne veut pas
          dire « la ou il y a le monstre ». Sur un canevas vide qui ne contient
          que le sprite, la question a la bonne reponse. */
-      var g = gel();
-      g.ctx.clearRect(0, 0, CADRE_M, CADRE_M);
+      var g = gel(C);
+      g.ctx.clearRect(0, 0, C, C);
       g.ctx.globalCompositeOperation = 'source-over';
       g.ctx.globalAlpha = 1;
-      g.ctx.drawImage(img, e.cadre * CADRE_M, r * CADRE_M, CADRE_M, CADRE_M,
-                      0, 0, CADRE_M, CADRE_M);
+      g.ctx.drawImage(img, e.cadre * C, r * C, C, C,
+                      0, 0, C, C);
       g.ctx.globalCompositeOperation = 'source-atop';
       g.ctx.globalAlpha = 0.38;
       g.ctx.fillStyle = '#9DE8FF';
-      g.ctx.fillRect(0, 0, CADRE_M, CADRE_M);
-      ctx.drawImage(g.el, 0, 0, CADRE_M, CADRE_M, sx, sy, TAILLE_M, TAILLE_M);
+      g.ctx.fillRect(0, 0, C, C);
+      ctx.drawImage(g.el, 0, 0, C, C, sx, sy, T, T);
     } else if (empruntee) {
-      var g2 = gel();
-      g2.ctx.clearRect(0, 0, CADRE_M, CADRE_M);
+      var g2 = gel(C);
+      g2.ctx.clearRect(0, 0, C, C);
       g2.ctx.globalCompositeOperation = 'source-over';
       g2.ctx.globalAlpha = 1;
-      g2.ctx.drawImage(img, e.cadre * CADRE_M, r * CADRE_M, CADRE_M, CADRE_M,
-                       0, 0, CADRE_M, CADRE_M);
+      g2.ctx.drawImage(img, e.cadre * C, r * C, C, C,
+                       0, 0, C, C);
       g2.ctx.globalCompositeOperation = 'source-atop';
       g2.ctx.globalAlpha = 0.45;
       g2.ctx.fillStyle = '#C07BFF';
-      g2.ctx.fillRect(0, 0, CADRE_M, CADRE_M);
-      ctx.drawImage(g2.el, 0, 0, CADRE_M, CADRE_M, sx, sy, TAILLE_M, TAILLE_M);
+      g2.ctx.fillRect(0, 0, C, C);
+      ctx.drawImage(g2.el, 0, 0, C, C, sx, sy, T, T);
     } else {
-      ctx.drawImage(img, e.cadre * CADRE_M, r * CADRE_M, CADRE_M, CADRE_M,
-                    sx, sy, TAILLE_M, TAILLE_M);
+      ctx.drawImage(img, e.cadre * C, r * C, C, C,
+                    sx, sy, T, T);
     }
-    barreVie(e.rx, e.ry, e.pv, e.pvMax, TAILLE_M * 0.46);
+    barreVie(e.rx, e.ry, e.pv, e.pvMax, T * 0.46);
   }
 
   /* La barre de vie ne s'affiche QUE si la creature est blessee : cinquante

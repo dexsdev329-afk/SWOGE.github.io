@@ -553,6 +553,40 @@ body.nxdrag #nxSac, body.nxdrag #nxEquip{ outline:1px dashed rgba(255,197,61,.5)
 /* Les cases se prennent : on le dit au curseur. */
 #nxSac .nxp-c[data-sac], #nxEquip .nxp-c[data-item], .nxcf-i{ cursor:grab; }
 body.nxdrag *{ cursor:grabbing !important; }
+/* ---- LE CLASSEMENT DU MONDE ----
+   Meme voile que le coffre : un joueur qui a appris a fermer l'un ferme
+   l'autre sans y penser. */
+#nxRangVoile{ position:fixed; top:0; bottom:0; left:0; right:var(--nxp);
+  display:flex; align-items:center; justify-content:center; padding:18px;
+  background:rgba(6,8,14,.82); backdrop-filter:blur(3px); z-index:52;
+  opacity:0; pointer-events:none; transition:opacity .18s ease; }
+#nxWrap.replie ~ #nxRangVoile, body.nxreplie #nxRangVoile{ right:0; }
+#nxRangVoile.on{ opacity:1; pointer-events:auto; }
+#nxRangVoile.on .nxcf-carte{ transform:none; }
+.nxrg-carte{ max-width:620px; }
+.nxrg-corps{ overflow:auto; max-height:62vh; }
+.nxrg-l{ display:flex; align-items:center; gap:8px; padding:7px 8px;
+  border-radius:8px; border:1px solid #22252e; margin-bottom:5px;
+  background:#111318; min-width:0; }
+.nxrg-l.moi{ border-color:#c9a227; background:#191509; }
+.nxrg-r{ flex:0 0 30px; text-align:center; font-weight:800; font-size:13px;
+  color:#8b95ad; }
+.nxrg-l:nth-child(1) .nxrg-r{ color:#ffd447; }
+.nxrg-l:nth-child(2) .nxrg-r{ color:#dfe6f2; }
+.nxrg-l:nth-child(3) .nxrg-r{ color:#d3945a; }
+.nxrg-v{ flex:0 0 26px; width:26px; height:26px; object-fit:contain;
+  image-rendering:pixelated; }
+.nxrg-q{ flex:1 1 auto; min-width:0; }
+.nxrg-n{ display:block; font-size:12.5px; font-weight:700; color:#E7ECF5;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.nxrg-x{ display:block; font-size:10.5px; color:#7A89A6; }
+.nxrg-t{ flex:0 0 auto; display:flex; gap:3px; }
+.nxrg-t i{ width:9px; height:9px; border-radius:2px; display:block; }
+.nxrg-g{ flex:0 0 auto; font-size:11px; font-weight:800; color:#ffd447; }
+.nxrg-vide{ font-size:12px; color:#7A89A6; padding:14px 4px; text-align:center; }
+#nxRang{ background:none; border:0; color:#9aa6bd; font-size:15px;
+  cursor:pointer; padding:0 2px; line-height:1; }
+#nxRang:hover{ color:#ffd447; }
 #nxReglagesVoile{ position:fixed; inset:0; z-index:90; background:rgba(4,7,13,.66);
   display:flex; align-items:center; justify-content:center; padding:16px;
   opacity:0; pointer-events:none; transition:opacity .18s ease; }
@@ -815,6 +849,8 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
       <span id="nxOr" title="Gold — banked when this character dies">&#127942;<b>0</b></span>
       <a id="nxSortie" href="games.html" aria-label="Back to the game hall"
          title="Back to the game hall">&#8617;&#65039;</a>
+      <button id="nxRang" type="button" aria-label="Realm ranking"
+              title="Realm ranking — the living, by XP">&#127942;&#65039;</button>
       <button id="nxReglages" type="button" aria-label="Controls">&#9881;&#65039;</button>
     </div>
     <i id="nxVide" class="nxp-vide"></i>
@@ -898,6 +934,15 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
   </div>
 </div>
 
+<div id="nxRangVoile">
+  <div class="nxcf-carte nxrg-carte">
+    <button class="nxcf-x" type="button" aria-label="Close">&times;</button>
+    <b class="nxcf-titre">&#9876;&#65039; Realm ranking</b>
+    <div class="nxcf-sous" id="nxRangSous">The living, by XP. Die and you drop off the board.</div>
+    <div class="nxrg-corps" id="nxRangCorps"></div>
+  </div>
+</div>
+
 <div id="nxReglagesVoile">
   <div class="nxrp-carte">
     <button class="nxrp-x" type="button" aria-label="Close">&times;</button>
@@ -925,7 +970,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
   </div>
 </div>
 
-<script src="nexus.js?v=20260820q" defer></script>
+<script src="nexus.js?v=20260820r" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

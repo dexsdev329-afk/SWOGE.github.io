@@ -947,6 +947,85 @@ process.on('unhandledRejection', (e) => {
     ok(apresS === avantS + 1, 'lacher une piece sur la scene la JETTE par terre');
     ok(jete && jete.item === 4242, 'et c est bien celle qu on tenait');
 
+    /* ---- LE CLASSEMENT DU MONDE ----
+     * Les personnages VIVANTS, a l'XP. On classe le PERSONNAGE et pas le
+     * compte : « tu meurs, tu perds tout » n'est vrai que si le rang tombe
+     * avec lui. Et la ligne montre ce qu'il porte — etre en haut doit faire
+     * de vous une cible, ce qu'un nom seul ne dit pas.
+     * Le personnage de cet essai vient de tuer des choses : il a de l'XP,
+     * donc il EST au tableau. C'est ce qui rend l'essai honnete — on ne
+     * verifie pas un tableau vide. */
+    /* On lui donne de l'XP par le chemin qu'emprunte une vraie mise a mort :
+       le tableau ne classe que ceux qui en ont, et un tableau vide ne prouve
+       rien. Les monstres de cet essai sont trop loin pour mourir a temps. */
+    moteur.gagneXpCombat(portefeuille.address, 'andy', 5000);
+    /* Et une arme au dos : la ligne doit montrer CE QU'IL PORTE — etre en
+       haut fait de vous une cible, ce qu'un nom seul ne dit pas. On la lui
+       donne par le chemin du serveur, pas par un faux message. */
+    const qq = moteur._p(portefeuille.address);
+    qq.objets = qq.objets || {};
+    qq.objets[PIECE.id] = (qq.objets[PIECE.id] || 0) + 1;
+    moteur.equipeArme(portefeuille.address, 'andy', PIECE.id);
+    moteur._cmCache = null;
+    await p.evaluate(() => document.getElementById('nxRang').click());
+    await p.waitForFunction(() => {
+      const c = document.getElementById('nxRangCorps');
+      return c && c.querySelectorAll('.nxrg-l').length > 0;
+    }, null, { timeout: 8000 });
+    const rang = await p.evaluate(() => {
+      const v = document.getElementById('nxRangVoile');
+      const l = [...document.querySelectorAll('#nxRangCorps .nxrg-l')];
+      return {
+        ouvert: v.classList.contains('on'),
+        vu: v.getBoundingClientRect().width > 0,
+        n: l.length,
+        moi: l.filter((x) => x.classList.contains('moi')).length,
+        premier: {
+          rang: l[0].querySelector('.nxrg-r').textContent,
+          nom: l[0].querySelector('.nxrg-n').textContent,
+          detail: l[0].querySelector('.nxrg-x').textContent,
+          tenue: l[0].querySelectorAll('.nxrg-t i').length,
+        },
+        sous: document.getElementById('nxRangSous').textContent,
+        demandes: window.__s[0].__out.filter((m) => m.type === 'leaderboardMonde').length,
+      };
+    });
+    console.log('\n-- le classement du monde --');
+    console.log('   ' + JSON.stringify(rang));
+    ok(rang.ouvert && rang.vu, 'le bouton du trophee ouvre le tableau');
+    ok(rang.demandes >= 1, 'et il le DEMANDE au serveur, il ne l invente pas');
+    ok(rang.n >= 1, `il y a au moins une ligne (${rang.n})`);
+    ok(rang.moi >= 1, 'notre propre personnage y est, marque comme le notre');
+    ok(rang.premier.rang === '1', 'la premiere ligne porte le rang 1');
+    ok(rang.premier.nom.length > 0, `avec un nom (${rang.premier.nom})`);
+    /* Le PERSONNAGE, pas le compte : la ligne nomme le skin et son niveau. */
+    ok(/Lvl \d+/.test(rang.premier.detail) && /andy|pepe|brett|claude|landwolf|ogswoge/.test(rang.premier.detail),
+       `et elle nomme le personnage, pas seulement le compte (${rang.premier.detail})`);
+    ok(/XP/.test(rang.premier.detail), 'et son XP');
+    /* Ce qu'il porte. Le personnage de cet essai a une arme equipee — elle
+       doit se voir, sinon « etre en haut fait de vous une cible » n'est
+       qu'une phrase. */
+    ok(rang.premier.tenue >= 1,
+       `sa tenue est montree (${rang.premier.tenue} piece(s))`);
+    /* La dotation se lit : un classement sans enjeu n'en est pas un. */
+    ok(/gold/i.test(rang.sous) && /20,000|20000/.test(rang.sous),
+       `la dotation hebdomadaire est annoncee (${rang.sous.replace(/\s+/g, ' ').slice(0, 90)})`);
+
+    /* Il se ferme, et il ARRETE de demander : un tableau ferme qu'on
+       redemande toutes les cinq secondes, c'est une requete par joueur pour
+       un ecran que personne ne regarde. */
+    await p.evaluate(() => document.querySelector('#nxRangVoile .nxcf-x').click());
+    await p.waitForTimeout(200);
+    const apresFerme = await p.evaluate(() => ({
+      on: document.getElementById('nxRangVoile').classList.contains('on'),
+      n: window.__s[0].__out.filter((m) => m.type === 'leaderboardMonde').length,
+    }));
+    ok(!apresFerme.on, 'la croix le ferme');
+    await p.waitForTimeout(1200);
+    const plusTard = await p.evaluate(() =>
+      window.__s[0].__out.filter((m) => m.type === 'leaderboardMonde').length);
+    ok(plusTard === apresFerme.n, 'et ferme, il ne demande plus rien');
+
     /* ---- DOUBLE-CLIC SUR UNE PIECE DU SAC : ON LA PORTE ----
      * Le meme geste que sur le sac au sol, et pour la meme raison : la case
      * est une POIGNEE, donc un clic simple ne peut pas agir — un clic

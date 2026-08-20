@@ -163,6 +163,7 @@
         }
       }
     }
+    if (m.type === 'leaderboardMonde') { RANG = m; if (rangOuvert) peintRang(); }
     if (m.type === 'equipable') {
       /* Le SAC est ce que le serveur envoie sous `sac` — le butin ramasse —
          et RIEN d'autre. Il contenait auparavant tout ce qu'on possede
@@ -2572,6 +2573,97 @@
     });
   }
 
+  /* ==================== LE CLASSEMENT DU MONDE ====================
+   *
+   * Les personnages VIVANTS, a l'XP. Le niveau plafonne a vingt, et apres ?
+   * On continuait de tuer pour du butin, et c'est tout.
+   *
+   * On classe le PERSONNAGE, pas le compte : « tu meurs, tu perds tout » n'est
+   * vrai que si le rang tombe avec lui. Et la ligne montre CE QU'IL PORTE —
+   * etre en haut doit faire de vous une cible, ce qu'un nom seul ne dit pas.
+   */
+  var elRangVoile = document.getElementById('nxRangVoile');
+  var elRangCorps = document.getElementById('nxRangCorps');
+  var elRangSous = document.getElementById('nxRangSous');
+  var RANG = null, rangOuvert = false, rangChrono = 0;
+  function ouvreRang() {
+    if (!elRangVoile) return;
+    rangOuvert = true;
+    if (enLigne) { envoie({ type: 'leaderboardMonde', n: 20 }); rangChrono = 0; }
+    peintRang();
+    elRangVoile.classList.add('on');
+  }
+  function fermeRang() {
+    rangOuvert = false;
+    if (elRangVoile) elRangVoile.classList.remove('on');
+  }
+  if (elRangVoile) {
+    elRangVoile.addEventListener('click', function (e) {
+      var c = e.target.classList;
+      if (e.target === elRangVoile || (c && c.contains('nxcf-x'))) fermeRang();
+    });
+  }
+  var elRangBtn = document.getElementById('nxRang');
+  if (elRangBtn) elRangBtn.addEventListener('click', function () {
+    if (rangOuvert) fermeRang(); else ouvreRang();
+  });
+
+  function ligneDeRang(r, mien) {
+    /* La meme vignette que le panneau : `img/skins/skin_<nom>.webp`. On la
+       fabrique plutot que de la faire voyager avec chaque ligne — vingt
+       lignes, ce serait vingt fois la meme adresse dans le message. */
+    var v = PERSONNAGES[r.skin] ? 'img/skins/skin_' + encodeURIComponent(r.skin) + '.webp' : '';
+    /* Ce qu'il porte, en quatre pastilles de couleur : de quoi lire d'un coup
+       d'oeil qu'il y a une mythique en face, sans lire quatre noms. Le detail
+       est dans l'infobulle — on la survole quand on veut savoir laquelle. */
+    var t = (r.tenue || []).map(function (o) {
+      return '<i style="background:' + (o.couleur || '#8DA0C4') + '" title="' +
+             ech(o.nom + ' — ' + o.rarete) + '"></i>';
+    }).join('');
+    return '<div class="nxrg-l' + (mien ? ' moi' : '') + '">' +
+      '<b class="nxrg-r">' + r.rang + '</b>' +
+      (v ? '<img class="nxrg-v" alt="" src="' + v + '" onerror="this.style.visibility=\'hidden\'">' : '<i class="nxrg-v"></i>') +
+      '<span class="nxrg-q">' +
+        '<b class="nxrg-n">' + ech(r.name || (r.address || '').slice(0, 10)) + '</b>' +
+        '<em class="nxrg-x">Lvl ' + r.niveau + ' &middot; ' + r.skin +
+          ' &middot; ' + (r.xp || 0).toLocaleString('en-US') + ' XP</em>' +
+      '</span>' +
+      (t ? '<span class="nxrg-t">' + t + '</span>' : '') +
+      '</div>';
+  }
+
+  function peintRang() {
+    if (!elRangCorps) return;
+    if (!RANG) {
+      elRangCorps.innerHTML = '<div class="nxrg-vide">Loading&hellip;</div>';
+      return;
+    }
+    var moi = {};
+    (RANG.moi || []).forEach(function (r) { moi[r.address + '/' + r.skin] = true; });
+    var html = (RANG.top || []).map(function (r) {
+      return ligneDeRang(r, moi[r.address + '/' + r.skin]);
+    }).join('');
+    /* Si l'on n'est PAS dans le tableau montre, sa propre ligne part quand
+       meme, en dessous : un classement ou l'on ne se trouve pas ne sert a
+       personne. */
+    var dedans = {};
+    (RANG.top || []).forEach(function (r) { dedans[r.address + '/' + r.skin] = true; });
+    var dehors = (RANG.moi || []).filter(function (r) { return !dedans[r.address + '/' + r.skin]; });
+    if (dehors.length) {
+      html += '<div class="nxrg-vide">&middot; &middot; &middot;</div>' +
+              dehors.map(function (r) { return ligneDeRang(r, true); }).join('');
+    }
+    elRangCorps.innerHTML = html ||
+      '<div class="nxrg-vide">Nobody has earned XP yet. Be the first.</div>';
+    if (elRangSous) {
+      var pr = RANG.prochain;
+      elRangSous.innerHTML = 'The living, by XP &mdash; die and you drop off the board.' +
+        (pr ? '<br><b style="color:#ffd447">&#127942; ' + pr.total.toLocaleString('en-US') +
+              ' gold</b> shared between the top ' + (RANG.parts || []).length +
+              ' every week &middot; ' + RANG.vivants + ' alive' : '');
+    }
+  }
+
   function peintCoffreMenu() {
     if (!elCoffreCorps) return;
     var titre = elCoffreVoile.querySelector('.nxcf-titre');
@@ -4154,6 +4246,15 @@
   var indiceActuel = null;
 
   function maj(dt) {
+    /* Le classement se rafraichit tant qu'il est OUVERT, et pas autrement :
+       un tableau ferme qu'on redemande toutes les cinq secondes, c'est une
+       requete par joueur et par tranche de cinq secondes pour un ecran que
+       personne ne regarde. Le serveur ne le fabrique qu'une fois par seconde,
+       mais le message, lui, part quand meme. */
+    if (rangOuvert && enLigne) {
+      rangChrono -= dt;
+      if (rangChrono <= 0) { rangChrono = 5; envoie({ type: 'leaderboardMonde', n: 20 }); }
+    }
     if (PARALYSE > 0) PARALYSE = Math.max(0, PARALYSE - dt);
     if (RALENTI > 0) RALENTI = Math.max(0, RALENTI - dt);
     if (BRULURE > 0) BRULURE = Math.max(0, BRULURE - dt);

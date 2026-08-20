@@ -1239,6 +1239,15 @@
   var IMG_ANNONCE = null, IMG_ONDE = null;
   var ANNONCE_CADRES = 4, ONDE_CADRES = 4, ONDE_DUREE = 0.55;
   var IMG_SACS = null, IMG_OBST = null, IMG_MUR = null, IMG_TEMPLE = null;
+  /* Le coffre des salles gardees : ferme, entrouvert, ouvert. */
+  var IMG_COFFRE = null, COFFRE_CADRES = 3;
+  /* Sa hauteur en unites de monde. Un peu moins qu'un personnage : il doit se
+     voir de la porte — c'est ce qu'on vient chercher — sans couvrir la piece
+     ni cacher les gardiens qui tournent autour. */
+  var COFFRE_H = 120;
+  /* Le temps que met le couvercle a s'ouvrir. Court : c'est une recompense,
+     pas une ceremonie — le sac tombe deja au meme instant. */
+  var COFFRE_OUVERTURE = 0.45;
   /* Le sac SUR LEQUEL on se tient, et la signature de ce qu'il contient : on
      ne repeint la grille que quand l'une des deux change, sinon on
      reconstruirait huit cases dix fois par seconde sous le doigt de qui est
@@ -1339,6 +1348,7 @@
     if (!IMG_OBST) { IMG_OBST = new Image(); IMG_OBST.src = 'img/nexus/tiles/obstacles.webp'; }
     if (!IMG_MUR) { IMG_MUR = new Image(); IMG_MUR.src = 'img/nexus/tiles/mur_ruine.webp'; }
     if (!IMG_TEMPLE) { IMG_TEMPLE = new Image(); IMG_TEMPLE.src = 'img/nexus/tiles/ground_temple.webp'; }
+    if (!IMG_COFFRE) { IMG_COFFRE = new Image(); IMG_COFFRE.src = 'img/nexus/tiles/obj_coffre_garde.webp'; }
     if (!IMG_ANNONCE) { IMG_ANNONCE = new Image(); IMG_ANNONCE.src = 'img/nexus/effets/annonce.webp'; }
     if (!IMG_ONDE) { IMG_ONDE = new Image(); IMG_ONDE.src = 'img/nexus/effets/onde.webp'; }
   }
@@ -1500,14 +1510,14 @@
    * On mesure la planche une fois et on cale le BAS REEL de chaque piece.
    * Rien n'est ecrit en dur : le jour ou l'on redessine les rochers, ils se
    * reposent tout seuls. */
-  var BAS_BLOCS = null;
+  var BAS_PLANCHES = {};
   /* Ou tombe ce bas, par rapport au centre de collision. L'ombre s'arrete a
      0,40 rayon ; on va juste au-dela, pour qu'AUCUN croissant d'ombre ne
      reste sous la pierre. C'est ce croissant, et lui seul, qui se lit comme
      « ca flotte ». */
   var BLOC_ASSISE = 0.50;
-  function basDesBlocs(img) {
-    if (BAS_BLOCS) return BAS_BLOCS;
+  function basDesBlocs(img, cle) {
+    if (BAS_PLANCHES[cle]) return BAS_PLANCHES[cle];
     var cadre = img.naturalHeight, n = Math.max(1, Math.round(img.naturalWidth / cadre));
     var bas = [];
     try {
@@ -1532,7 +1542,7 @@
          ce qu'on faisait avant, en moins bien — mais ca reste dessine. */
       for (var j = 0; j < n; j++) bas.push(1);
     }
-    BAS_BLOCS = bas;
+    BAS_PLANCHES[cle] = bas;
     return bas;
   }
 
@@ -1574,7 +1584,7 @@
     }
     /* Le bas REEL de la piece se pose a `BLOC_ASSISE` rayons sous le centre,
        quelle que soit la hauteur de vide que la planche lui laisse. */
-    var bas = basDesBlocs(img)[col] || 1;
+    var bas = basDesBlocs(img, 'obstacles')[col] || 1;
     ctx.drawImage(img, col * cadre, 0, cadre, cadre,
                   o.x - T / 2, o.y + o.r * BLOC_ASSISE - bas * T, T, T);
   }
@@ -1700,6 +1710,36 @@
     }
   }
 
+  /* ---- LE COFFRE D'UNE SALLE GARDEE ----
+   *
+   * Il est la AVANT le combat, ferme, au milieu de la piece. C'est lui qui
+   * fait d'une salle une destination : de la porte, on voit qu'il y a quelque
+   * chose a prendre, et on voit de loin qu'une salle a deja ete faite.
+   *
+   * Il ne bloque rien et il ne se ramasse pas. Ce qu'on prend, c'est le sac
+   * qui tombe quand le dernier gardien meurt — le coffre ne fait que dire
+   * pourquoi on est entre.
+   */
+  function dessineCoffre(s) {
+    if (!IMG_COFFRE || !IMG_COFFRE.complete || !IMG_COFFRE.naturalWidth) return;
+    var cadre = IMG_COFFRE.naturalHeight;
+    /* L'ouverture avance avec le temps, pas avec les messages : le serveur dit
+       « videe », il ne dit pas « image 2 sur 3 ». Lui demander chaque image
+       serait dix messages pour une demi-seconde d'animation. */
+    var av = Math.max(0, Math.min(1, (s.ouvre || 0) / COFFRE_OUVERTURE));
+    var col = Math.min(COFFRE_CADRES - 1, Math.floor(av * COFFRE_CADRES));
+    var T = COFFRE_H;
+    /* Ouvert, il fait de la lumiere. C'est ce qui le rend visible a travers la
+       piece une fois le combat fini — sinon on cherche le sac au sol. */
+    if (av > 0) halo(s.x, s.y - T * 0.30, T * 0.55, '#FFC53D', 0.10 + 0.22 * av);
+    /* Comme les rochers : on cale le BAS REEL, pas le bas de la case. Les
+       trois images du coffre ne s'arretent pas a la meme ligne — cale sur la
+       case, il sauterait de sept pixels en s'ouvrant. */
+    var bas = basDesBlocs(IMG_COFFRE, 'coffre')[col] || 1;
+    ctx.drawImage(IMG_COFFRE, col * cadre, 0, cadre, cadre,
+                  s.x - T / 2, s.y - bas * T, T, T);
+  }
+
   function dessineSac(s) {
     if (!IMG_SACS || !IMG_SACS.complete || !IMG_SACS.naturalWidth) return;
     var cadre = IMG_SACS.naturalHeight;          // la planche est une rangee
@@ -1803,6 +1843,31 @@
      * besoin d'un message de plus — on regarde celles qui manquent, et on
      * pose l'onde de choc a leur place. Un evenement en moins est un
      * evenement qui ne peut pas se perdre. */
+    /* ---- L'ETAT DES SALLES ----
+     * Le serveur n'envoie que « gardee » ou « videe ». La position et la
+     * taille, on les a depuis l'entree : une salle ne bouge pas. On pose donc
+     * le bit sur la salle qu'on a deja, sans la remplacer — sinon on perdrait
+     * tout le reste. Les salles hors de portee ne sont PAS dans le message :
+     * ne rien recevoir ne veut pas dire « rearmee », ca veut dire « je ne
+     * vois pas », et on garde alors ce qu'on savait. */
+    if (m.salles) {
+      for (var si = 0; si < m.salles.length; si++) {
+        var vu = m.salles[si];
+        for (var sj = 0; sj < SALLES_C.length; sj++) {
+          if (SALLES_C[sj].i !== vu.i) continue;
+          var etait = SALLES_C[sj].vide;
+          SALLES_C[sj].vide = !!vu.v;
+          /* Rearmee : le couvercle se referme d'un coup. On ne joue pas
+             l'ouverture a l'envers — une salle qu'on retrouve gardee n'est
+             pas une salle qui se referme sous nos yeux, c'est une salle
+             qu'on n'a pas vue changer. */
+          if (!vu.v) SALLES_C[sj].ouvre = 0;
+          else if (!etait && SALLES_C[sj].ouvre === undefined) SALLES_C[sj].ouvre = 0;
+          break;
+        }
+      }
+    }
+
     var avant = {};
     for (var zi = 0; zi < ZONES_C.length; zi++) avant[ZONES_C[zi].i] = ZONES_C[zi];
     ZONES_C = m.zones || [];
@@ -4007,6 +4072,16 @@
         FLOTTANTS[fi].vie -= dt;
         if (FLOTTANTS[fi].vie <= 0) FLOTTANTS.splice(fi, 1);
       }
+
+      /* Le couvercle des coffres. Il avance ICI et pas au dessin : une salle
+         qu'on quitte des yeux une seconde ne doit pas retrouver son couvercle
+         a mi-course en revenant. */
+      for (var ci = 0; ci < SALLES_C.length; ci++) {
+        var sc = SALLES_C[ci];
+        if (!sc.vide) { sc.ouvre = 0; continue; }
+        if (sc.ouvre === undefined) sc.ouvre = 0;
+        if (sc.ouvre < COFFRE_OUVERTURE) sc.ouvre = Math.min(COFFRE_OUVERTURE, sc.ouvre + dt);
+      }
       if (secousse > 0) secousse -= dt;
 
       /* On TIRE : le serveur applique la cadence, donc envoyer a chaque image
@@ -4301,6 +4376,12 @@
          se voir, sinon on ne comprend pas qu'il fait couvert. On ne pousse
          que ceux qui sont a l'ecran — deux cent quarante dessins par image
          dont deux cents hors champ seraient du travail pur. */
+      /* Le coffre se trie avec les vivants : passer DERRIERE lui doit se
+         voir, comme derriere un rocher. */
+      SALLES_C.forEach(function (sa) {
+        if (Math.abs(sa.x - joueur.x) > 1400 || Math.abs(sa.y - joueur.y) > 1100) return;
+        pileM.push({ y: sa.y, dessine: function () { dessineCoffre(sa); } });
+      });
       OBSTACLES_C.forEach(function (o) {
         /* Autour du JOUEUR, pas autour de `camX` : celui-la est le bord
            gauche du cadrage, pas son centre, et le seuil aurait rogne les

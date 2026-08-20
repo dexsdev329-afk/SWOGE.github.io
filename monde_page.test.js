@@ -1490,6 +1490,122 @@ process.on('unhandledRejection', (e) => {
     ok(apres === 0, `une seconde plus tard, plus rien n est peint (${apres})`);
   }
 
+  /* ---- LE COFFRE D'UNE SALLE GARDEE ----
+   *
+   * Il est la AVANT le combat, ferme, au milieu de la piece : c'est lui qui
+   * fait d'une salle une destination. De la porte on voit qu'il y a quelque
+   * chose a prendre ; de loin, qu'une salle a deja ete faite.
+   *
+   * Les salles sont a l'autre bout de la carte et le personnage ne peut pas
+   * s'y teleporter — le serveur le ramene. On rejoue donc SON message
+   * d'entree, celui qui porte les salles, avec la salle posee sur nos pieds.
+   * Rien d'invente : ni le message, ni la salle — seulement sa position.
+   */
+  {
+    const ou = await p.evaluate(() => {
+      const s = window.__s[0];
+      const e = s.__m.filter((m) => m.type === 'realmEntre').pop();
+      if (!e || !e.salles || !e.salles.length) return null;
+      const salles = e.salles.map((q, k) => (k === 0
+        ? { ...q, x: Math.round(e.moi.x), y: Math.round(e.moi.y) } : q));
+      s.dispatchEvent(new MessageEvent('message', {
+        data: JSON.stringify({ ...e, salles }) }));
+      return { x: Math.round(e.moi.x), y: Math.round(e.moi.y), i: salles[0].i,
+               cote: salles[0].cote, butin: salles[0].butin };
+    });
+    console.log('\n-- le coffre des salles gardees --');
+    console.log('   ' + JSON.stringify(ou));
+    ok(!!ou, 'la salle est posee sous nos pieds');
+
+    if (ou) {
+      /* FERME tant qu'un gardien vit. */
+      await p.evaluate(async () => {
+        window.__peint.length = 0; window.__sacs = []; window.__zones = [];
+        for (let k = 0; k < 20; k++) { window.__pousse(); await new Promise((f) => requestAnimationFrame(f)); }
+      });
+      await p.waitForTimeout(200);
+      const ferme = await p.evaluate(([x, y]) => {
+        const a = window.__peint.filter((d) => d.src === 'obj_coffre_garde.webp' && d.ecran);
+        const d = a[a.length - 1] || null;
+        return { n: a.length, col: d ? Math.round(d.sx / d.sw) : null,
+                 cx: d ? d.dx + d.dw / 2 : null, bas: d ? d.dy + d.dh : null,
+                 dh: d ? d.dh : null,
+                 colonnes: Array.from(new Set(a.map((o) => Math.round(o.sx / (o.sw || 1))))) };
+      }, [ou.x, ou.y]);
+      console.log('   ferme : ' + JSON.stringify(ferme));
+      ok(ferme.n > 0, `le coffre est peint (${ferme.n} dessins)`);
+      ok(ferme.colonnes.length === 1 && ferme.colonnes[0] === 0,
+         'et FERME tant que la salle est gardee : ' + ferme.colonnes.join(','));
+      ok(ferme.cx !== null && Math.abs(ferme.cx - ou.x) < 3,
+         `au milieu de la piece (a ${ferme.cx === null ? '?' : Math.round(Math.abs(ferme.cx - ou.x))} unites)`);
+
+      /* OUVERT des que la salle tombe. Le serveur ne dit que ca — « videe » —
+         et la page joue les trois images toute seule : lui demander chaque
+         image serait dix messages pour une demi-seconde. */
+      await p.evaluate(async (i) => {
+        window.__peint.length = 0;
+        const s = window.__s[0];
+        const env = () => s.dispatchEvent(new MessageEvent('message', {
+          data: JSON.stringify({ type: 'realmEtat', monstres: [], tirs: [], tirsM: [],
+                                 tombes: [], joueurs: [], sacs: [], zones: [],
+                                 salles: [{ i, v: 1 }] }) }));
+        for (let k = 0; k < 60; k++) { env(); await new Promise((f) => requestAnimationFrame(f)); }
+      }, ou.i);
+      await p.waitForTimeout(200);
+      const ouvert = await p.evaluate(() => {
+        const a = window.__peint.filter((d) => d.src === 'obj_coffre_garde.webp' && d.ecran);
+        return { n: a.length,
+                 colonnes: Array.from(new Set(a.map((o) => Math.round(o.sx / (o.sw || 1))))),
+                 fin: a.length ? Math.round(a[a.length - 1].sx / a[a.length - 1].sw) : null,
+                 bas: a.map((o) => ({ c: Math.round(o.sx / o.sw), b: o.dy + o.dh, h: o.dh })) };
+      });
+      console.log('   ouvert : ' + JSON.stringify({ n: ouvert.n, colonnes: ouvert.colonnes, fin: ouvert.fin }));
+      ok(ouvert.colonnes.length > 1,
+         'il s ouvre en plusieurs images : ' + ouvert.colonnes.join(','));
+      ok(ouvert.fin === 2, `et il RESTE ouvert (derniere image : ${ouvert.fin})`);
+
+      /* ---- ET IL NE SAUTE PAS EN S'OUVRANT ----
+       * Les trois images ne s'arretent pas a la meme ligne de leur case :
+       * 115, 122, 124 sur 128. Calees sur la case, elles poseraient le coffre
+       * a trois hauteurs — il sauterait de sept pixels au moment ou l'on
+       * regarde justement ce qu'il fait. */
+      const vide = await p.evaluate(() => new Promise((res) => {
+        const i = new Image();
+        i.onload = () => {
+          const cadre = i.naturalHeight, n = Math.round(i.naturalWidth / cadre);
+          const cv = document.createElement('canvas');
+          cv.width = cadre; cv.height = cadre;
+          const c2 = cv.getContext('2d', { willReadFrequently: true });
+          const out = [];
+          for (let k = 0; k < n; k++) {
+            c2.clearRect(0, 0, cadre, cadre);
+            c2.drawImage(i, k * cadre, 0, cadre, cadre, 0, 0, cadre, cadre);
+            const d = c2.getImageData(0, 0, cadre, cadre).data;
+            let b = 0;
+            for (let y = 0; y < cadre; y++) for (let x = 0; x < cadre; x++) {
+              if (d[(y * cadre + x) * 4 + 3] >= 40) { b = y; break; }
+            }
+            out.push((b + 1) / cadre);
+          }
+          res(out);
+        };
+        i.onerror = () => res([]);
+        i.src = 'img/nexus/tiles/obj_coffre_garde.webp';
+      }));
+      console.log('   les trois images occupent : ' +
+                  vide.map((v) => (v * 100).toFixed(1) + ' %').join(', '));
+      ok(vide.length === 3, `la planche porte trois images (${vide.length})`);
+      ok(Math.max(...vide) - Math.min(...vide) > 0.02,
+         'et elles ne s arretent pas a la meme ligne — sinon rien a corriger');
+      const pieds = ouvert.bas.map((o) => o.b - (1 - vide[o.c]) * o.h);
+      const eca = Math.max(...pieds) - Math.min(...pieds);
+      console.log(`   le bas reel varie de ${eca.toFixed(2)} unites sur les trois images`);
+      ok(eca < 1, `le coffre ne saute pas en s ouvrant (${eca.toFixed(2)} unites)`);
+      ok(Math.abs(pieds[0] - ou.y) < 2,
+         `et il repose sur le centre de la salle (a ${Math.abs(pieds[0] - ou.y).toFixed(1)} unites)`);
+    }
+  }
+
   const uniq = Array.from(new Set(manquants));
   if (uniq.length) console.log('\n   fichiers demandes et introuvables : ' + uniq.join(', '));
   ok(uniq.length === 0, `aucun fichier demande n est introuvable (${uniq.length})`);

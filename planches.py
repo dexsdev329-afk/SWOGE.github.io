@@ -156,6 +156,79 @@ def nettoie(im, part=0.04):
     return out
 
 
+def nettoie_isoles(im, part=0.03, ecart=0.08):
+    """Enleve les eclats DETACHES ET LOIN, tranches sur le voisin.
+
+    `nettoie` ne regarde que ce qui touche un bord de la case. Ca suffit quand
+    les halos se chevauchent, pas quand le detourage a d'abord efface le fond
+    autour d'eux : l'eclat du voisin flotte alors au milieu du vide, sans
+    toucher aucun bord, et il entre quand meme dans la boite englobante. Un
+    sprite mesure alors toute la largeur de sa case et se retrouve mis a
+    l'echelle deux fois trop petit.
+
+    Ce qu'on enleve est a la fois MINUSCULE (`part` de l'aire dessinee) et LOIN
+    du dessin principal (`ecart` de la diagonale). Les deux comptent : une
+    etincelle qui accompagne une epee est minuscule mais collee a elle, et le
+    pommeau detache d'une masse est loin mais gros.
+
+    « Loin » se mesure au DESSIN, pas a sa boite. Une epee posee en diagonale a
+    une boite qui remplit toute la case : tout est alors a distance zero de
+    cette boite, y compris l'eclat a l'autre coin, et la regle ne trie plus
+    rien. On propage donc depuis les pixels du dessin — c'est plus cher d'un
+    parcours, et c'est la seule mesure qui veut dire ce qu'elle dit.
+    """
+    w, h = im.size
+    px = im.load()
+    vu = bytearray(w * h)
+    amas = []
+    for y0 in range(h):
+        for x0 in range(w):
+            i0 = y0 * w + x0
+            if vu[i0] or px[x0, y0][3] <= 16:
+                continue
+            q = deque([(x0, y0)]); vu[i0] = 1; pts = []
+            while q:
+                x, y = q.popleft(); pts.append((x, y))
+                for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1),
+                               (1, 1), (1, -1), (-1, 1), (-1, -1)):
+                    nx, ny = x + dx, y + dy
+                    if 0 <= nx < w and 0 <= ny < h and not vu[ny * w + nx] \
+                       and px[nx, ny][3] > 16:
+                        vu[ny * w + nx] = 1; q.append((nx, ny))
+            amas.append(pts)
+    if len(amas) < 2:
+        return im
+    amas.sort(key=len, reverse=True)
+    total = sum(len(a) for a in amas)
+    candidats = [a for a in amas[1:] if len(a) <= total * part]
+    if not candidats:
+        return im
+    # distance au DESSIN principal, en pas de grille
+    INF = 1 << 30
+    dist = [INF] * (w * h)
+    q = deque()
+    for x, y in amas[0]:
+        dist[y * w + x] = 0
+        q.append((x, y))
+    limite = int(((w * w + h * h) ** 0.5) * ecart) + 1
+    while q:
+        x, y = q.popleft()
+        d = dist[y * w + x]
+        if d >= limite:
+            continue
+        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            nx, ny = x + dx, y + dy
+            if 0 <= nx < w and 0 <= ny < h and dist[ny * w + nx] > d + 1:
+                dist[ny * w + nx] = d + 1
+                q.append((nx, ny))
+    for pts in candidats:
+        if min(dist[y * w + x] for x, y in pts) <= limite:
+            continue
+        for x, y in pts:
+            px[x, y] = (0, 0, 0, 0)
+    return im
+
+
 def _fondClair(p, seuilClair, seuilGris):
     r, g, b = p[0], p[1], p[2]
     return min(r, g, b) >= seuilClair and (max(r, g, b) - min(r, g, b)) <= seuilGris
@@ -244,6 +317,72 @@ def detoure(source, seuilClair=190, seuilGris=22, adoucit=2):
                 if ((x > 0 and px[x - 1, y][3] == 0) or (x < w - 1 and px[x + 1, y][3] == 0)
                         or (y > 0 and px[x, y - 1][3] == 0) or (y < h - 1 and px[x, y + 1][3] == 0)):
                     if _fondClair(px[x, y], seuilClair - 25, seuilGris + 14):
+                        aEffacer.append((x, y))
+        if not aEffacer:
+            break
+        for x, y in aEffacer:
+            px[x, y] = (0, 0, 0, 0)
+    return im
+
+
+def _fondSombre(p, seuil):
+    return max(p[0], p[1], p[2]) <= seuil
+
+
+def detoure_sombre(source, seuil=26, adoucit=1):
+    """Le meme travail, sur un fond NOIR.
+
+    Le generateur rend tantot un damier clair, tantot un aplat noir, et la
+    difference ne se voit qu'a l'oeil. Jeter « tout ce qui est sombre » mange
+    les armures noires, les lames d'obsidienne et toutes les ombres portees —
+    la moitie de ce qu'on decoupe ici. On propage donc depuis les BORDS,
+    exactement comme pour le fond clair : le fond est connexe et touche le
+    cadre, une ombre enfermee sous un bras ne l'est pas.
+
+    On ne cherche PAS les poches enfermees, contrairement au fond clair : une
+    poche noire au milieu d'un dessin est une ombre, et c'est le dessin.
+    """
+    im = source if isinstance(source, Image.Image) else Image.open(source)
+    im = im.convert('RGBA')
+    w, h = im.size
+    px = im.load()
+    fond = bytearray(w * h)
+    file = deque()
+
+    def pousse(x, y):
+        i = y * w + x
+        if fond[i] or not _fondSombre(px[x, y], seuil):
+            return
+        fond[i] = 1
+        file.append((x, y))
+
+    for x in range(w):
+        pousse(x, 0); pousse(x, h - 1)
+    for y in range(h):
+        pousse(0, y); pousse(w - 1, y)
+    while file:
+        x, y = file.popleft()
+        if x > 0: pousse(x - 1, y)
+        if x < w - 1: pousse(x + 1, y)
+        if y > 0: pousse(x, y - 1)
+        if y < h - 1: pousse(x, y + 1)
+    for y in range(h):
+        for x in range(w):
+            if fond[y * w + x]:
+                px[x, y] = (0, 0, 0, 0)
+
+    """Le lisere : une couronne de pixels presque noirs, restes de la
+    compression, collee au sprite. Une passe suffit — deux mangent le trait de
+    contour, qui est justement noir sur ces dessins."""
+    for _ in range(max(0, adoucit)):
+        aEffacer = []
+        for y in range(h):
+            for x in range(w):
+                if px[x, y][3] == 0:
+                    continue
+                if ((x > 0 and px[x - 1, y][3] == 0) or (x < w - 1 and px[x + 1, y][3] == 0)
+                        or (y > 0 and px[x, y - 1][3] == 0) or (y < h - 1 and px[x, y + 1][3] == 0)):
+                    if _fondSombre(px[x, y], seuil + 12):
                         aEffacer.append((x, y))
         if not aEffacer:
             break

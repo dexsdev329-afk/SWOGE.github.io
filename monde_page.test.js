@@ -998,7 +998,10 @@ process.on('unhandledRejection', (e) => {
                    /* En HAUT a DROITE de son carre, comme demande. */
                    haut: q.y - qc.y < qc.height / 2,
                    droite: (q.x + q.width) - qc.x > qc.width / 2,
-                   fond: s.backgroundColor, vu: q.width > 0 && q.height > 0 };
+                   fond: s.backgroundColor, encre: s.color,
+                   bord: s.borderTopWidth + ' ' + s.borderTopStyle,
+                   ombre: s.textShadow,
+                   vu: q.width > 0 && q.height > 0 };
         };
         return { sac: lis(c), equip: lis(e) };
       });
@@ -1011,12 +1014,18 @@ process.on('unhandledRejection', (e) => {
       ok(og.sac && og.sac.vu, 'elle est visible');
       ok(og.sac && og.sac.haut && og.sac.droite,
          'en haut a DROITE de son carre');
-      /* Violette : c'est la couleur qui la distingue d'un bonus ou d'un
-         compte. On lit le canal bleu, qui domine dans un violet. */
-      const bleu = Number((og.sac.fond.match(/\d+/g) || [0, 0, 0])[2]);
-      const rouge = Number((og.sac.fond.match(/\d+/g) || [0, 0, 0])[0]);
-      ok(bleu > 150 && bleu > rouge,
-         `et violette (${og.sac.fond})`);
+      /* Violette, et SANS pastille : le petit rectangle de couleur posait un
+         bout de violet dans un coin, sans rapport avec le dessin qu'il
+         recouvrait. Deux lettres detachees par un contour noir se lisent sur
+         n'importe quel fond et laissent la case tranquille. */
+      const bleu = Number((og.sac.encre.match(/\d+/g) || [0, 0, 0])[2]);
+      const rouge = Number((og.sac.encre.match(/\d+/g) || [0, 0, 0])[0]);
+      ok(bleu > 150 && bleu > rouge, `l encre est violette (${og.sac.encre})`);
+      ok(/rgba\(0, 0, 0, 0\)|transparent/.test(og.sac.fond),
+         `et rien derriere : pas de pastille (${og.sac.fond})`);
+      ok(/(0px|none)/.test(og.sac.bord), `ni de cadre (${og.sac.bord})`);
+      ok(og.sac.ombre && og.sac.ombre !== 'none',
+         'un contour noir la detache de n importe quel fond');
       /* Et sur soi aussi : c'est la ou l'on regarde avant d'entrer dans la
          lave. */
       ok(og.equip && og.equip.marque, 'la piece PORTEE la montre aussi');

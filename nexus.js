@@ -163,6 +163,10 @@
         }
       }
     }
+    if (m.type === 'sacDeplace') {
+      if (m.sacJoueur) { SAC = m.sacJoueur; peintPanneau(); }
+      if (m.error) { coffreErreur = m.error; if (coffreOuvert) peintCoffreMenu(); }
+    }
     if (m.type === 'leaderboardMonde') { RANG = m; if (rangOuvert) peintRang(); }
     if (m.type === 'equipable') {
       /* Le SAC est ce que le serveur envoie sous `sac` — le butin ramasse —
@@ -730,7 +734,23 @@
   function ouEstLePointeur(x, y) {
     var el = document.elementFromPoint(x, y);
     while (el) {
-      if (el.id === 'nxSac') return { quoi: 'sac' };
+      if (el.id === 'nxSac' || (el.classList && el.classList.contains('nxp-c')
+          && el.closest && el.closest('#nxSac'))) {
+        /* LA CASE, pas seulement le sac : on peut ranger ses huit places, et
+           pour ca il faut savoir laquelle on vise. Une case VIDE compte — c'est
+           meme la ou l'on veut poser le plus souvent, et elle ne porte pas de
+           `data-place` puisqu'elle ne porte pas de piece. On lit donc son RANG
+           parmi les huit, qui est vrai des deux cotes. */
+        var cs = (el.classList && el.classList.contains('nxp-c')) ? el
+               : (el.closest ? el.closest('#nxSac .nxp-c') : null);
+        var pl = null;
+        if (cs) {
+          var toutes = [].slice.call(document.querySelectorAll('#nxSac .nxp-c'));
+          var k = toutes.indexOf(cs);
+          if (k >= 0) pl = k;
+        }
+        return { quoi: 'sac', place: pl };
+      }
       if (el.id === 'nxButin' || el.id === 'nxButinCases') return { quoi: 'butin' };
       if (el.id === 'nxEquip' || (el.dataset && el.dataset.slot)) {
         var c = el.closest ? el.closest('[data-slot]') : null;
@@ -798,7 +818,19 @@
       envoie({ type: msg, skin: PERSO, item: id });
       clic(true);
     } else if (cible.quoi === 'sac') {
-      if (p.de === 'sac') return;
+      /* ---- RANGER SON SAC ----
+       * Huit places, et le droit de les ranger. Ce n'est pas un confort : le
+       * sac se lit d'un coup d'oeil en combat, et « ma potion est toujours en
+       * bas a droite » vaut une demi-seconde a chaque fois qu'on la cherche.
+       * On ECHANGE les deux cases : un decalage bougerait tout ce qui suit, et
+       * le joueur en deplacerait une pour en retrouver six ailleurs. */
+      if (p.de === 'sac') {
+        if (cible.place === null || cible.place === undefined) return;
+        if (!(p.place >= 0) || p.place === cible.place) return;
+        envoie({ type: 'sacDeplace', de: p.place, vers: cible.place });
+        clic(true);
+        return;
+      }
       if (p.de === 'equip') envoie({ type: familleDuSlot(p.slot), skin: PERSO, item: null });
       envoie({ type: 'sortCoffre', item: id });
       clic(true);
@@ -852,7 +884,8 @@
       if (el.classList.contains('vide')) return;
       debutPrise(ev, { de: 'butin', place: Number(el.dataset.butin), src: src, el: el });
     } else if (el.dataset.sac) {
-      debutPrise(ev, { de: 'sac', id: Number(el.dataset.sac), src: src, el: el });
+      debutPrise(ev, { de: 'sac', id: Number(el.dataset.sac),
+                       place: Number(el.dataset.place), src: src, el: el });
     } else if (el.dataset.slot && el.dataset.item) {
       debutPrise(ev, { de: 'equip', slot: el.dataset.slot, id: Number(el.dataset.item), src: src, el: el });
     } else if (el.dataset.item && el.classList.contains('nxcf-i')) {

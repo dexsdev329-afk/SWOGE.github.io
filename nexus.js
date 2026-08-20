@@ -117,6 +117,17 @@
          « monte » pas au niveau qu'on avait deja en arrivant. */
       var avantNiv = FICHE ? FICHE.niveau : null;
       FICHE = m.etat;
+      /* ---- ET ON DEMANDE LA PLANCHE DE SON ARME ----
+       * `chargeTirs` tournait a l'entree dans le monde, et seulement la. Or la
+       * fiche arrive par un AUTRE message, souvent apres : au moment ou l'on
+       * prechargeait, le personnage n'avait pas encore d'arme, on demandait
+       * donc la planche du POING — qui n'existe pas — et jamais celle de la
+       * lame. Le premier tir partait alors en trait de secours pendant les
+       * trois cents millisecondes que met l'image a arriver.
+       * Mesure faite : 279 ms entre le clic et le projectile vraiment dessine,
+       * sur une machine locale ou le reseau ne coute rien. Deux appels au lieu
+       * d'un, et le meme cache derriere : ca ne coute rien de le redemander. */
+      chargeTirs();
       if (avantNiv !== null && m.etat.niveau > avantNiv) joueSample('niveau', { vol: 0.9 });
       peintPanneau(); if (coffreOuvert) peintCoffreMenu();
     }
@@ -357,9 +368,10 @@
     if (m.type === 'realmMort') {
       SCENE = 'nexus'; peintBoutonTir();
       MONSTRES_C = {}; TIRS_C = []; TIRS_M = []; DEVINES = []; DISTANTS_M = {}; TOMBES_C = []; SACS_C = [];
-    RECALE = null;
-    OBSTACLES_C = []; SALLES_C = [];
-    SAC_PIEDS = null; SAC_SIGNE = ''; peintButin();
+      ZONES_C = []; ONDES = [];
+      RECALE = null;
+      OBSTACLES_C = []; SALLES_C = [];
+      SAC_PIEDS = null; SAC_SIGNE = ''; peintButin();
       POUVOIR_C = null; EFFETS_P = []; PARALYSE = 0; RALENTI = 0; BRULURE = 0;
       VITESSE = 260; peintPouvoir();
       var pp = LIEUX[1];
@@ -1222,6 +1234,10 @@
   /* Les salles gardees. Leur dalle remplace le sol de l'anneau : c'est ce qui
      les rend visibles de loin, et donc ce qui en fait une destination. */
   var SALLES_C = [];
+  /* Les zones marquees au sol, en attente de frapper. */
+  var ZONES_C = [];
+  var IMG_ANNONCE = null, IMG_ONDE = null;
+  var ANNONCE_CADRES = 4, ONDE_CADRES = 4, ONDE_DUREE = 0.55;
   var IMG_SACS = null, IMG_OBST = null, IMG_MUR = null, IMG_TEMPLE = null;
   /* Le sac SUR LEQUEL on se tient, et la signature de ce qu'il contient : on
      ne repeint la grille que quand l'une des deux change, sinon on
@@ -1323,6 +1339,8 @@
     if (!IMG_OBST) { IMG_OBST = new Image(); IMG_OBST.src = 'img/nexus/tiles/obstacles.webp'; }
     if (!IMG_MUR) { IMG_MUR = new Image(); IMG_MUR.src = 'img/nexus/tiles/mur_ruine.webp'; }
     if (!IMG_TEMPLE) { IMG_TEMPLE = new Image(); IMG_TEMPLE.src = 'img/nexus/tiles/ground_temple.webp'; }
+    if (!IMG_ANNONCE) { IMG_ANNONCE = new Image(); IMG_ANNONCE.src = 'img/nexus/effets/annonce.webp'; }
+    if (!IMG_ONDE) { IMG_ONDE = new Image(); IMG_ONDE.src = 'img/nexus/effets/onde.webp'; }
   }
 
   /* ---- L'AURA DE RAFALE ----
@@ -1508,6 +1526,106 @@
      objet. Elle deborde volontairement sous les murs — un lisere du sol de
      l'anneau qui depasserait entre la dalle et la pierre se lirait comme un
      defaut d'affichage. */
+  /* ---- LE CERCLE QUI PREVIENT ----
+   *
+   * Il se remplit pendant que le compte a rebours descend, et il frappe quand
+   * il est plein. C'est la meme chose vue a deux moments : sans lui, une
+   * attaque qui couvre une zone entiere n'est pas difficile, elle est
+   * injuste — rien ne l'annonce, on ne peut que la subir.
+   *
+   * Il est peint AU SOL, sous tout le monde : par-dessus, il cacherait
+   * justement ce qu'on doit regarder pour en sortir. */
+  /* ---- LE CERCLE PEINT DOIT COUVRIR LA ZONE REELLE ----
+   *
+   * Le dessin ne remplit pas sa case : le cercle de la premiere image tient
+   * dans 90 % du carre, celui de la derniere en deborde de 4 %. Le poser a
+   * `2 * rayon` de large peindrait donc, pendant les trois premiers quarts de
+   * l'annonce, un cercle PLUS PETIT que la zone qui va frapper.
+   *
+   * C'est le seul defaut qu'on ne peut pas se permettre ici. Un joueur qui se
+   * tient a un cheveu du bord peint se croit dehors ; il prend le coup, et il
+   * a raison de trouver ca injuste. Un cercle trop GRAND, lui, ne coute rien :
+   * on sort d'un pas de trop.
+   *
+   * On mesure donc la planche — une fois, au premier dessin — et on garde la
+   * plus PETITE des quatre images. Toutes les autres deborderont, et aucune
+   * ne mentira. Le chiffre est lu dans le fichier et pas ecrit ici : le jour
+   * ou l'on redessine l'annonce, l'echelle suit toute seule. */
+  var ANNONCE_PLEIN = 0;
+  /* Si la mesure est impossible (canvas souille), on prend une valeur assez
+     BASSE pour que le cercle peint deborde quoi qu'il arrive. Se tromper vers
+     le grand fait sortir trop tot ; se tromper vers le petit tue. */
+  var ANNONCE_PLEIN_SECOURS = 0.85;
+  function pleinDeLAnnonce() {
+    if (ANNONCE_PLEIN) return ANNONCE_PLEIN;
+    var cw = IMG_ANNONCE.naturalWidth / ANNONCE_CADRES, ch = IMG_ANNONCE.naturalHeight;
+    var demi = Math.min(cw, ch) / 2, mini = 0;
+    try {
+      var cv = document.createElement('canvas');
+      cv.width = cw; cv.height = ch;
+      var c2 = cv.getContext('2d', { willReadFrequently: true });
+      for (var k = 0; k < ANNONCE_CADRES; k++) {
+        c2.clearRect(0, 0, cw, ch);
+        c2.drawImage(IMG_ANNONCE, k * cw, 0, cw, ch, 0, 0, cw, ch);
+        var d = c2.getImageData(0, 0, cw, ch).data, loin = 0;
+        for (var y = 0; y < ch; y++) {
+          for (var x = 0; x < cw; x++) {
+            /* Le seuil compte : un halo a alpha 1 autour du dessin ferait
+               mesurer la case entiere au lieu du cercle. */
+            if (d[(y * cw + x) * 4 + 3] < 40) continue;
+            var dx = x + 0.5 - cw / 2, dy = y + 0.5 - ch / 2;
+            var r = Math.sqrt(dx * dx + dy * dy);
+            if (r > loin) loin = r;
+          }
+        }
+        if (loin > 0 && (!mini || loin < mini)) mini = loin;
+      }
+    } catch (e) { mini = 0; }
+    ANNONCE_PLEIN = mini > 0 ? mini / demi : ANNONCE_PLEIN_SECOURS;
+    return ANNONCE_PLEIN;
+  }
+
+  function dessineZones() {
+    if (!ZONES_C.length) return;
+    if (!IMG_ANNONCE || !IMG_ANNONCE.complete || !IMG_ANNONCE.naturalWidth) return;
+    var cw = IMG_ANNONCE.naturalWidth / ANNONCE_CADRES, ch = IMG_ANNONCE.naturalHeight;
+    var plein = pleinDeLAnnonce();
+    for (var i = 0; i < ZONES_C.length; i++) {
+      var z = ZONES_C[i];
+      var av = z.d ? Math.max(0, Math.min(1, 1 - z.t / z.d)) : 1;
+      var c = Math.min(ANNONCE_CADRES - 1, Math.floor(av * ANNONCE_CADRES));
+      var T = (z.r * 2) / plein;
+      ctx.drawImage(IMG_ANNONCE, c * cw, 0, cw, ch, z.x - T / 2, z.y - T / 2, T, T);
+    }
+  }
+
+  /* Ce qui reste quand la zone a frappe. L'onde n'a que quatre images : la
+     cinquieme, un anneau blanc qui s'efface, etait du blanc translucide sur
+     un damier blanc et n'a pas survecu au detourage. On fait donc le fondu
+     ici — c'est le meme resultat, et ca ne pretend pas avoir une image qu'on
+     n'a plus. */
+  var ONDES = [];
+  function peintOndes(dt) {
+    if (!ONDES.length) return;
+    var pret = IMG_ONDE && IMG_ONDE.complete && IMG_ONDE.naturalWidth;
+    var cw = pret ? IMG_ONDE.naturalWidth / ONDE_CADRES : 0;
+    var ch = pret ? IMG_ONDE.naturalHeight : 0;
+    for (var i = ONDES.length - 1; i >= 0; i--) {
+      var o = ONDES[i];
+      o.vie -= dt;
+      if (o.vie <= 0) { ONDES.splice(i, 1); continue; }
+      if (!pret) continue;
+      var av = 1 - o.vie / ONDE_DUREE;
+      var c = Math.min(ONDE_CADRES - 1, Math.floor(av * ONDE_CADRES));
+      var T = o.r * 2.1;
+      ctx.save();
+      /* Le dernier quart s'efface : c'est la cinquieme image, faite en alpha. */
+      ctx.globalAlpha = av > 0.75 ? Math.max(0, (1 - av) * 4) : 1;
+      ctx.drawImage(IMG_ONDE, c * cw, 0, cw, ch, o.x - T / 2, o.y - T / 2, T, T);
+      ctx.restore();
+    }
+  }
+
   function dessineSalles() {
     if (!SALLES_C.length) return;
     if (!IMG_TEMPLE || !IMG_TEMPLE.complete || !IMG_TEMPLE.naturalWidth) return;
@@ -1623,6 +1741,20 @@
      * On garde donc son point de depart et l'age de ce point, et on l'avance
      * a chaque image. Le prochain etat remet le point a jour.
      */
+    /* ---- LES ZONES, ET CE QUI RESTE QUAND ELLES PARTENT ----
+     * Une zone ne disparait que pour UNE raison : elle vient de frapper. Pas
+     * besoin d'un message de plus — on regarde celles qui manquent, et on
+     * pose l'onde de choc a leur place. Un evenement en moins est un
+     * evenement qui ne peut pas se perdre. */
+    var avant = {};
+    for (var zi = 0; zi < ZONES_C.length; zi++) avant[ZONES_C[zi].i] = ZONES_C[zi];
+    ZONES_C = m.zones || [];
+    var encore = {};
+    for (var zj = 0; zj < ZONES_C.length; zj++) encore[ZONES_C[zj].i] = 1;
+    Object.keys(avant).forEach(function (k) {
+      if (!encore[k]) ONDES.push({ x: avant[k].x, y: avant[k].y, r: avant[k].r, vie: ONDE_DUREE });
+    });
+
     TIRS_C = repereTirs(TIRS_C, m.tirs || []);
     TIRS_M = repereTirs(TIRS_M, m.tirsM || []);
     /* Nos tirs devines localement s'effacent des que le serveur envoie LE
@@ -1735,6 +1867,7 @@
   function entreMonde(m) {
     MONDE_C = m;
     MONSTRES_C = {}; TIRS_C = []; TIRS_M = []; DEVINES = []; DISTANTS_M = {}; TOMBES_C = []; SACS_C = [];
+    ZONES_C = []; ONDES = [];
     RECALE = null;
     SAC_PIEDS = null; SAC_SIGNE = ''; peintButin();
     /* APRES la remise a zero, jamais avant : la ligne au-dessus vide les
@@ -1787,6 +1920,7 @@
     SCENE = 'nexus';
     peintBoutonTir();
     MONSTRES_C = {}; TIRS_C = []; TIRS_M = []; DEVINES = []; DISTANTS_M = {}; TOMBES_C = []; SACS_C = [];
+    ZONES_C = []; ONDES = [];
     RECALE = null;
     OBSTACLES_C = []; SALLES_C = [];
     SAC_PIEDS = null; SAC_SIGNE = ''; peintButin();
@@ -2850,9 +2984,21 @@
       if (t[k] && t[k].tir && t[k].tir.sprite) spriteTir(t[k].tir.sprite);
     });
   }
+  /* ---- LES FAMILLES QUI N'ONT PAS ENCORE LEUR PLANCHE ----
+   * Le poing n'est pas une arme qu'on achete : c'est ce qui reste quand on n'a
+   * plus rien — apres une mort, par exemple, ou l'equipement est detruit. Il
+   * n'a jamais eu de dessin, et le trace de secours (un trait a la teinte de
+   * l'arme) dit ce qu'il faut : quelque chose part, ca fait mal, c'est court.
+   * On l'ecrit ICI plutot que de laisser la page demander un fichier absent.
+   * Un 404 par session ne casse rien de visible — et c'est le probleme : il
+   * apprend a ignorer les 404, et le jour ou `lame.webp` disparaitra du depot
+   * personne ne le verra. Cette liste RETRECIT : le jour ou la planche du
+   * poing arrive, on retire la ligne. */
+  var SANS_PLANCHE = { poing: 1 };
   function spriteTir(fam) {
     if (!fam) return null;
     if (SPRITES_TIR[fam] !== undefined) return SPRITES_TIR[fam];
+    if (SANS_PLANCHE[fam]) { SPRITES_TIR[fam] = null; return null; }
     var img = new Image();
     /* `null` des le depart, pas `img` : tant qu'elle n'est pas chargee on
        veut le trace de secours, pas une case vide. */
@@ -4074,6 +4220,11 @@
 
       /* L'aura de rafale d'abord : elle est au SOL, sous tout le monde. */
       peintRafale(dt);
+      /* Le cercle qui previent, et l'onde qui suit : au sol eux aussi. Poses
+         par-dessus les creatures, ils cacheraient ce qu'on doit regarder pour
+         en sortir. */
+      dessineZones();
+      peintOndes(dt);
 
       /* Tout ce qui marche se trie par les PIEDS : ce qui est plus bas passe
          devant, comme dans le Nexus. */

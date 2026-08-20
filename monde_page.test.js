@@ -49,6 +49,11 @@ if (!fs.existsSync(path.join(SERVEUR, 'server.js'))) {
 let n = 0, rates = 0;
 const ok = (c, m) => { n++; if (c) console.log('  ok   ' + m); else { rates++; console.log('  RATE ' + m); } };
 
+/* Ce que la page a demande et qui n'existe pas. Un 404 ne casse rien de
+   visible — l'image reste vide, le jeu continue — et c'est bien le probleme :
+   « le projectile du joueur n'est jamais dessine » s'est lu pendant tout un
+   apres-midi comme un defaut de fluidite. */
+const manquants = [];
 function servirLeSite(racine) {
   const http = require('http');
   const T = { '.html': 'text/html', '.js': 'text/javascript', '.webp': 'image/webp',
@@ -57,7 +62,7 @@ function servirLeSite(racine) {
     const s = http.createServer((q, r) => {
       const f = path.join(racine, decodeURIComponent(q.url.split('?')[0]));
       fs.readFile(f, (e, d) => {
-        if (e) { r.writeHead(404); r.end(); return; }
+        if (e) { manquants.push(q.url.split('?')[0]); r.writeHead(404); r.end(); return; }
         r.writeHead(200, { 'content-type': T[path.extname(f)] || 'application/octet-stream' });
         r.end(d);
       });
@@ -88,6 +93,13 @@ process.on('unhandledRejection', (e) => {
   require(path.join(SERVEUR, 'server'));
   const ethers = require(path.join(SERVEUR, 'node_modules', 'ethers'));
   const monde = require(path.join(SERVEUR, 'monde'));
+  /* La piece qu'on met dans le sac du joueur vient du CATALOGUE, pas de notre
+     imagination. On avait invente une « lame_ebrechee » : la page demandait
+     alors `img/shop/lame_ebrechee.webp`, qui n'existe pas, et l'essai passait
+     quand meme — un item sans dessin ne fait pas de bruit. */
+  const boutique = require(path.join(SERVEUR, 'boutique'));
+  const PIECE = boutique.ITEMS.concat(boutique.ITEMS_DROP)
+    .find((o) => o.famille === 'lame' && o.rarete === 'commun');
   await new Promise((r) => setTimeout(r, 1200));
   const site = await servirLeSite(SITE);
   const nav = await chromium.launch({ args: ['--no-sandbox', '--disable-dev-shm-usage'] });
@@ -116,7 +128,10 @@ process.on('unhandledRejection', (e) => {
            demande a ramasser ? » ne se lit nulle part ailleurs. */
         s.__out = [];
         const env = s.send.bind(s);
-        s.send = function (d) { try { s.__out.push(JSON.parse(d)); } catch (x) {} return env(d); };
+        /* AVEC L'HEURE. « du clic au projectile peint : 857 ms » ne dit pas ou
+           sont passees les 857 ms : la page n'a-t-elle pas demande, ou n'a-t-elle
+           pas dessine ? Sans horodatage il faut relancer et deviner. */
+        s.send = function (d) { try { const o = JSON.parse(d); o.__t = performance.now(); s.__out.push(o); } catch (x) {} return env(d); };
         /* ---- L'INJECTION SE RECOLLE APRES CHAQUE ETAT REEL ----
          * Le vrai serveur envoie son etat dix fois par seconde et il n'a pas
          * nos sacs. Reinjecter au rythme d'une minuterie fait une COURSE : la
@@ -126,13 +141,20 @@ process.on('unhandledRejection', (e) => {
          * direct : `dispatchEvent` est synchrone, et notre message serait
          * traite AVANT celui qui l'a declenche. */
         s.addEventListener('message', (e) => {
-          if (window.__rejoue || !window.__sacs || !window.__sacs.length) return;
+          const rien = (!window.__sacs || !window.__sacs.length)
+                    && (!window.__zones || !window.__zones.length);
+          if (window.__rejoue || rien) return;
           let m; try { m = JSON.parse(e.data); } catch (x) { return; }
           if (m.type !== 'realmEtat') return;
           setTimeout(() => {
             window.__rejoue = true;
-            s.dispatchEvent(new MessageEvent('message', {
-              data: JSON.stringify({ ...m, sacs: window.__sacs }) }));
+            const plus = { ...m };
+            if (window.__sacs && window.__sacs.length) plus.sacs = window.__sacs;
+            /* Les zones passent par le MEME chemin que les sacs, et pour la
+               meme raison : le vrai serveur n'en a pas au moment ou l'on
+               regarde, et une minuterie a part ferait la course avec lui. */
+            if (window.__zones && window.__zones.length) plus.zones = window.__zones;
+            s.dispatchEvent(new MessageEvent('message', { data: JSON.stringify(plus) }));
             window.__rejoue = false;
           }, 0);
         });
@@ -158,20 +180,37 @@ process.on('unhandledRejection', (e) => {
          promesse etait rejetee, et le navigateur restant ouvert node ne
          rendait jamais la main. Un essai qui ne finit pas ne dit rien. */
       window.__sacs = [];
+      window.__zones = [];
       window.__pousse = function () {
         const s = window.__s[0];
         if (!s) return;
         s.dispatchEvent(new MessageEvent('message', {
           data: JSON.stringify({ type: 'realmEtat', monstres: [], tirs: [], tirsM: [],
-                                 tombes: [], joueurs: [], sacs: window.__sacs }),
+                                 tombes: [], joueurs: [], sacs: window.__sacs,
+                                 zones: window.__zones }),
         }));
       };
       window.__peint = [];
+      /* L'heure du clic, prise PAR LA PAGE. La noter depuis node avant
+         d'envoyer le clic ajoute un aller-retour au chrono ; en capture, elle
+         est prise meme si quelque chose avale l'evenement — et savoir qu'il a
+         ete avale vaut mieux que mesurer autre chose. */
+      window.__clic = null;
+      window.addEventListener('mousedown', function () {
+        if (window.__clic === null) window.__clic = performance.now();
+      }, true);
+      /* Le NUMERO D'IMAGE. Sans lui on ne peut pas dire « le cercle est peint
+         AVANT les creatures » : on ne saurait pas ou finit une image et ou
+         commence la suivante, et l'ordre lu serait celui de deux images
+         differentes. */
+      window.__image = 0;
+      (function compte() { window.__image++; requestAnimationFrame(compte); })();
       /* Les positions ou l'on peint un PROJECTILE, image par image. C'est la
          seule facon de savoir s'il avance entre deux etats du serveur ou s'il
          reste fige six images puis saute de trente-quatre unites. */
       window.__tirs = [];
       window.__premierTir = null;
+      window.__heuresTirs = [];
       let vusTirs = [];
       (function boucleTirs() {
         window.__tirs.push(vusTirs);
@@ -182,14 +221,35 @@ process.on('unhandledRejection', (e) => {
       CanvasRenderingContext2D.prototype.drawImage = function (img) {
         const s0 = (img && (img.currentSrc || img.src)) || '';
         if (/\/tirs\//.test(s0) && arguments.length === 9) {
-          vusTirs.push(Math.round(this.getTransform().e * 100) / 100);
+          /* Avec le NOM du dessin : « un projectile est fige » ne dit pas
+             LEQUEL, et le notre et ceux des monstres ne se reparent pas au
+             meme endroit. */
+          vusTirs.push(s0.split('/').pop().split('?')[0].replace('.webp', '') +
+                       '@' + (Math.round(this.getTransform().e * 100) / 100));
           if (window.__premierTir === null) window.__premierTir = performance.now();
+          /* Toutes les heures, pas seulement la premiere : les monstres tirent
+             aussi, et « le premier projectile peint » n'est pas forcement le
+             notre. On garde de quoi prendre celui qui suit NOTRE demande. */
+          window.__heuresTirs.push({ t: performance.now(), s: s0.split('/').pop().split('?')[0].replace('.webp', '') });
         }
         if (arguments.length === 9) {
           const src = (img && (img.currentSrc || img.src)) || '';
-          window.__peint.push({ src: String(src).split('/').pop().split('?')[0],
+          const bouts = String(src).split('?')[0].split('/');
+          window.__peint.push({ src: bouts[bouts.length - 1],
+                                /* Le DOSSIER : « annonce.webp » et « lime.webp » ne se
+                                   distinguent pas par leur nom, et on veut pouvoir dire
+                                   « une creature » sans les enumerer toutes. */
+                                dossier: bouts[bouts.length - 2] || '',
                                 sx: arguments[1], sy: arguments[2], sw: arguments[3], sh: arguments[4],
-                                dw: arguments[7], dh: arguments[8] });
+                                dx: arguments[5], dy: arguments[6],
+                                dw: arguments[7], dh: arguments[8], f: window.__image,
+                                /* PEINT A L'ECRAN, ou seulement dessine ? La page se sert
+                                   de canevas detaches pour teinter une creature gelee et
+                                   pour MESURER une planche : ces dessins-la ne sont vus de
+                                   personne. Les compter faisait dire a l'essai que le
+                                   cercle d'annonce prenait ses quatre images d'un coup —
+                                   c'etaient les quatre lectures de la mesure. */
+                                ecran: !!(this.canvas && this.canvas.isConnected) });
           if (window.__peint.length > 4000) window.__peint.splice(0, 2000);
         }
         return D.apply(this, arguments);
@@ -229,9 +289,46 @@ process.on('unhandledRejection', (e) => {
    * suivaient se plaignaient alors de choses qui marchent tres bien : « la
    * touche Q ne boit pas », « aucun projectile n'est peint ». Chaque bloc qui
    * a besoin du monde s'y remet donc lui-meme. */
+  /* ---- ET ON PEUT ETRE MORT ----
+   * Un personnage niveau 1 gare pendant trente secondes au milieu des limes
+   * finit par mourir : c'est le jeu qui marche, pas l'essai qui deraille.
+   * Mais un `realmJoin` envoye par-dessus le voile de mort ne fait rien du
+   * tout, et le bloc suivant mesure alors un fantome — sans se plaindre.
+   * C'est exactement ce qui est arrive : « du clic au projectile peint »
+   * mesurait les fleches des monstres, parce que le personnage etait mort et
+   * que le voile mangeait le clic. On appuie donc sur « Play again », comme
+   * un joueur, et on RETOURNE si l'on est bien entre. */
   async function rejoins(page) {
-    await page.evaluate(() => window.__s[0].send(JSON.stringify({ type: 'realmJoin' })));
-    await page.waitForTimeout(1200);
+    const entre = await page.evaluate(async () => {
+      const s = window.__s[0];
+      const avant = s.__m.filter((m) => m.type === 'realmEntre').length;
+      const refAvant = s.__m.filter((m) => m.type === 'realmRefus').length;
+      const v = document.getElementById('nxMortVoile');
+      const mort = !!(v && v.classList.contains('on'));
+      /* « Play again » ne fait PAS repartir : il ferme le voile et redemande
+         la fiche. C'est le Nexus qui ramene dans le monde, et c'est normal —
+         on choisit son personnage avant d'y retourner. L'essai fait donc les
+         deux gestes, dans l'ordre, comme un joueur. */
+      if (mort) {
+        const b = v.querySelector('.nxmt-go');
+        if (b) b.click();
+        await new Promise((r) => setTimeout(r, 900));
+      }
+      s.send(JSON.stringify({ type: 'realmJoin' }));
+      const t0 = Date.now();
+      while (Date.now() - t0 < 4000) {
+        if (s.__m.filter((m) => m.type === 'realmEntre').length > avant) return { ok: true, mort };
+        await new Promise((r) => setTimeout(r, 60));
+      }
+      const r = s.__m.filter((m) => m.type === 'realmRefus').slice(refAvant).pop();
+      return { ok: false, mort, refus: r ? r.raison : null };
+    });
+    await page.waitForTimeout(700);
+    const voile = await page.evaluate(() => {
+      const v = document.getElementById('nxMortVoile');
+      return !!(v && v.classList.contains('on'));
+    });
+    return { ...entre, voile };
   }
 
   const p = await ouvre({ width: 1280, height: 800 }, false);
@@ -450,18 +547,51 @@ process.on('unhandledRejection', (e) => {
   ok(blocs.every((o) => o.r > 0 && o.t !== undefined),
      'chacun porte son rayon et son dessin');
 
-  /* Le plus proche du point d'arrivee, et on marche droit dessus. */
-  const cible = blocs
-    .map((o) => ({ o, d: Math.hypot(o.x - moi.x, o.y - moi.y) }))
-    .sort((a2, b2) => a2.d - b2.d)[0];
-  console.log(`   le plus proche : a ${Math.round(cible.d)} unites`);
+  /* ---- ON CHOISIT UN BLOC QU'ON PEUT ATTEINDRE EN LIGNE DROITE ----
+   * On visait le plus PROCHE, et on l'approchait par les fleches — donc dans
+   * une des huit directions seulement. Un rocher a cinq cents unites en
+   * diagonale se rate d'un cheveu : on passe a cote, l'essai annonce « 94
+   * unites du bord » et se plaint d'une regle qui marche tres bien.
+   * On cherche donc le premier bloc pose SUR une des huit routes, et on prend
+   * celle-la. Ce qu'on veut prouver n'a jamais ete « le plus proche est
+   * atteignable » mais « on ne traverse pas la pierre ». */
+  const HUIT = [[1, 0, ['ArrowRight']], [-1, 0, ['ArrowLeft']],
+                [0, 1, ['ArrowDown']], [0, -1, ['ArrowUp']],
+                [0.7071, 0.7071, ['ArrowRight', 'ArrowDown']],
+                [0.7071, -0.7071, ['ArrowRight', 'ArrowUp']],
+                [-0.7071, 0.7071, ['ArrowLeft', 'ArrowDown']],
+                [-0.7071, -0.7071, ['ArrowLeft', 'ArrowUp']]];
+  /* Quatre secondes de marche a un peu plus de deux cents unites par seconde :
+     on ne vise pas plus loin que ce qu'on peut parcourir. */
+  const PORTEE = 700;
+  let cible = null;
+  for (const [dx0, dy0, tt] of HUIT) {
+    for (const o of blocs) {
+      const vx = o.x - moi.x, vy = o.y - moi.y;
+      const le = vx * dx0 + vy * dy0;                    // le long de la route
+      if (le < 80 || le > PORTEE) continue;
+      const tr = Math.abs(vx * dy0 - vy * dx0);          // de travers
+      /* Il faut le prendre de plein fouet, pas le froler : on garde une marge
+         pour la largeur du personnage. */
+      if (tr > o.r * 0.6) continue;
+      if (!cible || le < cible.d) cible = { o, d: le, touches: tt };
+    }
+  }
+  if (!cible) {
+    /* Aucune route degagee : on retombe sur le plus proche, et l'essai dira
+       lui-meme qu'il n'a pas trouve mieux. */
+    const q = blocs.map((o) => ({ o, d: Math.hypot(o.x - moi.x, o.y - moi.y) }))
+                   .sort((a2, b2) => a2.d - b2.d)[0];
+    const tt = [];
+    if (q.o.x > moi.x + 20) tt.push('ArrowRight'); else if (q.o.x < moi.x - 20) tt.push('ArrowLeft');
+    if (q.o.y > moi.y + 20) tt.push('ArrowDown'); else if (q.o.y < moi.y - 20) tt.push('ArrowUp');
+    cible = { o: q.o, d: q.d, touches: tt, faute: true };
+  }
+  console.log(`   vise : un bloc a ${Math.round(cible.d)} unites, par ${cible.touches.join('+')}` +
+              (cible.faute ? ' (aucune route degagee — repli sur le plus proche)' : ''));
 
   await p.evaluate(() => { window.__s[0].__out.length = 0; });
-  const touches = [];
-  if (cible.o.x > moi.x + 20) touches.push('ArrowRight');
-  else if (cible.o.x < moi.x - 20) touches.push('ArrowLeft');
-  if (cible.o.y > moi.y + 20) touches.push('ArrowDown');
-  else if (cible.o.y < moi.y - 20) touches.push('ArrowUp');
+  const touches = cible.touches;
   for (const t2 of touches) await p.keyboard.down(t2);
   await p.waitForTimeout(4000);
   for (const t2 of touches) await p.keyboard.up(t2);
@@ -599,17 +729,17 @@ process.on('unhandledRejection', (e) => {
    * Le sac au sol n'est pas seulement une source. Poser son epee commune et
    * prendre celle qu'on vient de trouver, sans passer par le coffre : c'est
    * pour ca que la case est une poignee et pas un bouton. */
-  await p.evaluate(async ([x, y]) => {
+  await p.evaluate(async ([x, y, piece]) => {
     /* Une piece dans le sac du joueur. D'ou elle vient ne regarde pas cet
        essai : le serveur en repond, et butin.test.js le verifie. */
     window.__s[0].dispatchEvent(new MessageEvent('message', { data: JSON.stringify({
       type: 'equipable', fruits: [], armes: [], armures: [], bagues: [],
-      sac: [{ id: 4242, cle: 'lame_ebrechee', nom: 'Chipped Blade', rarete: 'commun',
-              couleur: '#8DA0C4', saison: 2, place: 0 }],
+      sac: [{ id: 4242, cle: piece.cle, nom: piece.nom, rarete: piece.rarete,
+              couleur: '#8DA0C4', saison: piece.saison, place: 0 }],
     }) }));
     window.__sacs = [{ i: 80020, x: x, y: y, s: 'brun', r: 55, c: [{ po: 'mana' }] }];
     for (let k = 0; k < 30; k++) { window.__pousse(); await new Promise((f) => requestAnimationFrame(f)); }
-  }, [moi.x, moi.y]);
+  }, [moi.x, moi.y, PIECE]);
   await p.waitForTimeout(300);
 
   const boites = await p.evaluate(() => {
@@ -974,8 +1104,38 @@ process.on('unhandledRejection', (e) => {
    * montrent un projectile a la meme abscisse exacte, il ne bouge pas. */
   {
     await p.bringToFront();
-    await rejoins(p);
-    await p.evaluate(() => { window.__premierTir = null; window.__clic = performance.now(); window.__tirs.length = 0; });
+    const vif = await rejoins(p);
+    console.log('\n-- les projectiles --');
+    console.log('   entree : ' + JSON.stringify(vif));
+    /* SANS CE CONTROLE, TOUT LE RESTE MENT. Un personnage mort ne tire pas, le
+       voile mange le clic, et les projectiles qu'on compte sont ceux des
+       monstres. La mesure passait alors entre 3 ms et 857 ms selon qu'un
+       archer avait tire ou non. */
+    ok(vif.ok, 'le personnage est vivant et dans le monde' + (vif.mort ? ' (il a fallu relancer apres une mort)' : ''));
+    ok(!vif.voile, 'et aucun voile ne couvre la scene');
+    /* ---- ON LUI MET UNE ARME DANS LA MAIN ----
+     * Le personnage de cet essai n'en porte aucune : il tire donc au poing,
+     * qui n'a pas de planche et se dessine en trait de secours. Impossible
+     * alors de mesurer « du clic au projectile PEINT » — la mesure attrapait
+     * la bave d'un lime qui passait par la, et annoncait 12 ms quand notre
+     * propre tir en mettait deux cent soixante-dix.
+     * On rejoue donc la derniere fiche recue du serveur, avec une arme du
+     * CATALOGUE en plus. Rien d'invente : ni la fiche, ni l'arme. */
+    const arme = await p.evaluate((piece) => {
+      const s = window.__s[0];
+      const fic = s.__m.filter((x) => x.type === 'personnage' && x.etat).pop();
+      if (!fic) return null;
+      const etat = { ...fic.etat, equipArme: { id: 4243, cle: piece.cle, nom: piece.nom,
+                                               famille: piece.famille, rarete: piece.rarete } };
+      s.dispatchEvent(new MessageEvent('message', {
+        data: JSON.stringify({ ...fic, etat }) }));
+      return piece.famille;
+    }, PIECE);
+    ok(arme === PIECE.famille, `le personnage porte une ${PIECE.nom} (${arme})`);
+    await p.waitForTimeout(400);
+    await p.evaluate(() => { window.__premierTir = null; window.__clic = null;
+                             window.__heuresTirs.length = 0; window.__tirs.length = 0;
+                             window.__s[0].__out.length = 0; });
     await p.mouse.move(500, 300);
     await p.mouse.down();
     await p.waitForTimeout(2500);
@@ -983,18 +1143,57 @@ process.on('unhandledRejection', (e) => {
     await p.waitForTimeout(200);
 
     const tir = await p.evaluate(() => {
-      const t = window.__tirs.filter((v) => v.length);
+      /* `coup` n'est PAS un projectile : c'est la marque laissee au point de
+         contact, et elle reste evidemment au meme endroit d'une image a
+         l'autre. La compter faisait dire a l'essai que la moitie des tirs
+         etaient figes — un defaut annonce la ou tout marche. */
+      const t = window.__tirs.map((v) => v.filter((x) => x.split('@')[0] !== 'coup'))
+                             .filter((v) => v.length);
       let figees = 0, comparees = 0;
+      const qui = {};
       for (let i = 1; i < t.length; i++) {
         if (!t[i - 1].length || !t[i].length) continue;
         comparees++;
-        if (t[i - 1].some((x) => t[i].indexOf(x) >= 0)) figees++;
+        const memes = t[i - 1].filter((x) => t[i].indexOf(x) >= 0);
+        if (memes.length) { figees++; memes.forEach((x) => { const k = x.split('@')[0]; qui[k] = (qui[k] || 0) + 1; }); }
       }
-      return { images: t.length, comparees, figees,
-               delai: window.__premierTir === null ? null : window.__premierTir - window.__clic };
+      const dem = (window.__s[0].__out || []).filter((o) => o.type === 'realmTir');
+      /* NOTRE projectile, et pas celui d'un lime qui passait par la. On lit la
+         famille de l'arme portee dans la fiche que le serveur a envoyee : le
+         dessin d'un tir porte le nom de sa famille, c'est ce qui permet de le
+         reconnaitre. Sans ce filtre la mesure disait « 12 ms » parce qu'une
+         bave de lime avait ete peinte dans la meme image — alors que notre
+         propre tir mettait deux cent soixante-dix millisecondes a apparaitre. */
+      const fic = window.__s[0].__m.filter((x) => x.type === 'personnage' && x.etat).pop();
+      const fam = (fic && fic.etat.equipArme && fic.etat.equipArme.famille) || null;
+      const apres = (dem.length && fam)
+        ? window.__heuresTirs.filter((h) => h.s === fam && h.t >= dem[0].__t - 4) : [];
+      return { images: t.length, comparees, figees, qui,
+               clic: window.__clic !== null,
+               /* Combien de fois la page a DEMANDE a tirer pendant l'appui, et
+                  au bout de combien de temps la premiere fois. */
+               demandes: dem.length,
+               demande1: dem.length && window.__clic !== null ? Math.round(dem[0].__t - window.__clic) : null,
+               arme: fam,
+               /* La cadence REELLE, mesuree entre deux demandes. Elle dit d'un
+                  coup d'oeil quelle arme on portait — et donc si la mesure
+                  ci-dessous parle bien de ce qu'on croit. */
+               cadence: dem.length > 2
+                 ? Math.round(100000 / ((dem[dem.length - 1].__t - dem[0].__t) / (dem.length - 1))) / 100 : null,
+               delai: apres.length && window.__clic !== null ? apres[0].t - window.__clic : null };
     });
-    console.log('\n-- les projectiles --');
     console.log('   ' + JSON.stringify(tir));
+    ok(tir.clic, 'le clic est bien arrive dans la page');
+    ok(tir.demandes > 0, `la page a demande a tirer ${tir.demandes} fois pendant l appui`);
+    ok(tir.arme === PIECE.famille, `et la page l a bien enregistree (${tir.arme || 'aucune'})`);
+    /* ---- ET IL TIRE A LA CADENCE DE SON ARME ----
+     * Deux boucles faisaient descendre la MEME recharge a chaque image : dans
+     * le monde, toute arme tirait au DOUBLE de sa cadence. Le serveur, lui,
+     * appliquait la vraie — il refusait une demande sur deux en silence, et un
+     * tir sur deux etait un fantome qui s'effacait sans rien toucher. */
+    const CAD = monde.ARMES[PIECE.famille].cadence;
+    ok(tir.cadence !== null && Math.abs(tir.cadence - CAD) < CAD * 0.15,
+       `elle tire a ${tir.cadence} coups par seconde — son arme en promet ${CAD}`);
     ok(tir.images > 20, `des projectiles ont ete peints (${tir.images} images)`);
     ok(tir.comparees > 10, 'assez de paires pour conclure');
     ok(tir.figees === 0,
@@ -1009,6 +1208,190 @@ process.on('unhandledRejection', (e) => {
     ok(tir.delai !== null && tir.delai < 120,
        `du clic au projectile peint : ${tir.delai === null ? 'JAMAIS' : Math.round(tir.delai) + ' ms'}`);
   }
+
+  /* ---- LE CERCLE QUI PREVIENT ----
+   *
+   * L'attaque de zone est la seule du jeu qu'on n'esquive pas en se decalant :
+   * elle marque le sol, attend, puis frappe tout ce qui s'y trouve encore. Le
+   * cercle N'EST PAS une decoration — c'est l'attaque elle-meme, vue une
+   * seconde plus tot. Trois choses peuvent se casser en silence :
+   *
+   *   1. il n'est pas peint du tout : l'attaque devient un coup venu de nulle
+   *      part, et le joueur croit avoir affaire a un bug ;
+   *   2. il est peint PLUS PETIT que la zone reelle : pire que rien, parce
+   *      qu'un joueur qui se tient a un cheveu du bord se croit dehors, prend
+   *      le coup, et a raison de trouver ca injuste ;
+   *   3. il est peint PAR-DESSUS les creatures : il cache alors exactement ce
+   *      qu'on doit regarder pour en sortir.
+   */
+  {
+    await rejoins(p);
+    const ici = await p.evaluate(() => {
+      const e = window.__s[0].__m.filter((m) => m.type === 'realmEntre').pop();
+      return { x: e.moi.x, y: e.moi.y };
+    });
+    /* La planche se mesure DANS LA PAGE, pas ici : ce qu'on veut verifier,
+       c'est que la case lue est bien un quart de ce que le navigateur a
+       charge — pas un quart de ce que ce fichier croit savoir. */
+    const planche = await p.evaluate(() => new Promise((res) => {
+      const i = new Image();
+      i.onload = () => {
+        /* ---- ET ON MESURE LE CERCLE, PAS LA CASE ----
+         * Le dessin ne remplit pas son carre : la premiere image tient dans
+         * 90 % de la case. Un essai qui ne regarderait que la largeur passee a
+         * `drawImage` ne verrait donc RIEN si la page oubliait de compenser —
+         * il compterait la case et pas le cercle, et laisserait passer
+         * exactement le defaut qui tue.
+         * On mesure la PLUS PETITE des quatre images : c'est elle qui decide
+         * si le cercle peint couvre toujours la zone reelle. */
+        const cw = i.naturalWidth / 4, ch = i.naturalHeight;
+        const cv = document.createElement('canvas');
+        cv.width = cw; cv.height = ch;
+        const c2 = cv.getContext('2d', { willReadFrequently: true });
+        let mini = 0;
+        for (let k = 0; k < 4; k++) {
+          c2.clearRect(0, 0, cw, ch);
+          c2.drawImage(i, k * cw, 0, cw, ch, 0, 0, cw, ch);
+          const d = c2.getImageData(0, 0, cw, ch).data;
+          let loin = 0;
+          for (let y = 0; y < ch; y++) for (let x = 0; x < cw; x++) {
+            if (d[(y * cw + x) * 4 + 3] < 40) continue;
+            const r = Math.hypot(x + 0.5 - cw / 2, y + 0.5 - ch / 2);
+            if (r > loin) loin = r;
+          }
+          if (loin > 0 && (!mini || loin < mini)) mini = loin;
+        }
+        res({ w: i.naturalWidth, h: i.naturalHeight, plein: mini / (Math.min(cw, ch) / 2) });
+      };
+      i.onerror = () => res({ w: 0, h: 0, plein: 0 });
+      i.src = 'img/nexus/effets/annonce.webp';
+    }));
+
+    const RAYON = 200;
+    await p.evaluate(async ([x, y, r]) => {
+      window.__sacs = [];
+      window.__peint.length = 0;
+      window.__zones = [{ i: 90001, x, y, r, t: 1.30, d: 1.35 }];
+      for (let k = 0; k < 25; k++) { window.__pousse(); await new Promise((f) => requestAnimationFrame(f)); }
+    }, [ici.x, ici.y, RAYON]);
+    await p.waitForTimeout(300);
+
+    const tot = await p.evaluate(() => {
+      const a = window.__peint.filter((o) => o.src === 'annonce.webp' && o.ecran);
+      const d = a[a.length - 1] || null;
+      return {
+        n: a.length,
+        colonnes: Array.from(new Set(a.map((o) => Math.round(o.sx / (o.sw || 1))))),
+        sw: d && d.sw, sh: d && d.sh, dw: d && d.dw, dh: d && d.dh,
+        cx: d && (d.dx + d.dw / 2), cy: d && (d.dy + d.dh / 2),
+      };
+    });
+    console.log('\n-- le cercle qui previent --');
+    console.log('   planche : ' + JSON.stringify(planche) +
+                ' — la plus petite image occupe ' + (planche.plein * 100).toFixed(1) + ' % de sa case');
+    console.log('   ' + JSON.stringify(tot));
+    ok(tot.n > 0, `le cercle d annonce est peint (${tot.n} dessins)`);
+    ok(planche.w > 0 && tot.sw === planche.w / 4,
+       `et lu dans une case de ${tot.sw} — la planche fait ${planche.w} pour quatre images`);
+    ok(tot.sh === planche.h, 'sur toute la hauteur');
+
+    if (tot.dw) {
+      /* LE POINT QUI COMPTE. Le dessin ne remplit pas sa case : pose a
+         « deux fois le rayon » de large, le cercle peint serait plus PETIT
+         que la zone qui va frapper. Se tromper vers le grand fait sortir un
+         pas trop tot ; se tromper vers le petit tue. */
+      const peint = (tot.dw / 2) * planche.plein;
+      ok(peint >= RAYON - 0.5,
+         `le CERCLE peint atteint ${peint.toFixed(1)} unites — la zone en fait ${RAYON}`);
+      ok(peint <= RAYON * 1.35,
+         `sans la depasser au point de faire fuir pour rien (${(peint / RAYON).toFixed(2)} fois)`);
+      ok(Math.abs(tot.dw - tot.dh) < 2, 'et il est rond, pas ovale');
+      ok(Math.abs(tot.cx - ici.x) < 3 && Math.abs(tot.cy - ici.y) < 3,
+         `il est centre SUR le joueur (a ${Math.round(Math.abs(tot.cx - ici.x))} unites)`);
+    }
+
+    /* ---- IL SE REMPLIT ----
+     * Le compte a rebours se lit sur l'image choisie. S'il prenait toujours
+     * la meme, le cercle dirait « ca va frapper » sans jamais dire QUAND. */
+    await p.evaluate(async ([x, y, r]) => {
+      window.__peint.length = 0;
+      window.__zones = [{ i: 90001, x, y, r, t: 0.05, d: 1.35 }];
+      for (let k = 0; k < 25; k++) { window.__pousse(); await new Promise((f) => requestAnimationFrame(f)); }
+    }, [ici.x, ici.y, RAYON]);
+    await p.waitForTimeout(300);
+    const tard = await p.evaluate(() => {
+      const a = window.__peint.filter((o) => o.src === 'annonce.webp' && o.ecran);
+      return Array.from(new Set(a.map((o) => Math.round(o.sx / (o.sw || 1)))));
+    });
+    console.log('   colonne au debut : ' + tot.colonnes.join(',') + ' — a la fin : ' + tard.join(','));
+    ok(tot.colonnes.length && tard.length, 'les deux moments ont ete peints');
+    ok(Math.max.apply(null, tard) > Math.max.apply(null, tot.colonnes),
+       'le cercle est plus avance a la fin du compte a rebours qu au debut');
+    ok(Math.max.apply(null, tard) <= 3, 'et il ne sort jamais de la planche (quatre images)');
+
+    /* ---- IL EST AU SOL ----
+     * Peint par-dessus les creatures, il cacherait ce qu'on doit regarder
+     * pour en sortir. On compare les rangs DANS LA MEME IMAGE : comparer deux
+     * images differentes ne dirait rien. */
+    const couche = await p.evaluate(() => {
+      const par = {};
+      window.__peint.forEach((o, k) => {
+        const f = par[o.f] || (par[o.f] = { cercle: -1, creature: -1 });
+        if (!o.ecran) return;
+        if (o.src === 'annonce.webp' && f.cercle < 0) f.cercle = k;
+        if (o.dossier === 'monstres' && f.creature < 0) f.creature = k;
+      });
+      const deux = Object.keys(par).map((k) => par[k]).filter((f) => f.cercle >= 0 && f.creature >= 0);
+      return { images: deux.length, dessous: deux.filter((f) => f.cercle < f.creature).length };
+    });
+    console.log('   images ou les deux sont peints : ' + JSON.stringify(couche));
+    ok(couche.images > 0, `on a des images avec le cercle ET une creature (${couche.images})`);
+    ok(couche.dessous === couche.images,
+       `le cercle passe sous les creatures dans toutes (${couche.dessous} sur ${couche.images})`);
+
+    /* ---- ET CE QUI RESTE QUAND IL FRAPPE ----
+     * Une zone ne disparait que pour une raison : elle vient de frapper. La
+     * page n'attend donc aucun message de plus — elle regarde celle qui
+     * manque. Un evenement en moins est un evenement qui ne peut pas se
+     * perdre. */
+    await p.evaluate(async () => {
+      window.__peint.length = 0;
+      window.__zones = [];
+      /* Une seule poussee suffit a faire disparaitre la zone ; les suivantes
+         laissent l'onde vivre le temps qu'elle dure. */
+      for (let k = 0; k < 30; k++) { window.__pousse(); await new Promise((f) => requestAnimationFrame(f)); }
+    });
+    await p.waitForTimeout(300);
+    const onde = await p.evaluate(([x, y]) => {
+      const a = window.__peint.filter((o) => o.src === 'onde.webp' && o.ecran);
+      const d = a[a.length - 1] || null;
+      return { n: a.length,
+               colonnes: Array.from(new Set(a.map((o) => Math.round(o.sx / (o.sw || 1))))),
+               ecart: d ? Math.round(Math.hypot(d.dx + d.dw / 2 - x, d.dy + d.dh / 2 - y)) : null,
+               cercle: window.__peint.filter((o) => o.src === 'annonce.webp' && o.ecran).length };
+    }, [ici.x, ici.y]);
+    console.log('   onde : ' + JSON.stringify(onde));
+    ok(onde.n > 0, `l onde de choc est peinte la ou le cercle a disparu (${onde.n} dessins)`);
+    ok(onde.ecart !== null && onde.ecart < 5,
+       `et au bon endroit (a ${onde.ecart} unites du centre)`);
+    ok(onde.colonnes.length > 1,
+       'elle s anime, elle ne reste pas sur une image : ' + onde.colonnes.join(','));
+    ok(onde.cercle === 0, 'et le cercle, lui, a bien cesse d etre peint');
+
+    /* ELLE FINIT. Une onde qui resterait affichee ferait croire a une attaque
+       qui n'en finit pas — et s'accumulerait a chaque zone. */
+    await p.waitForTimeout(900);
+    const apres = await p.evaluate(async () => {
+      window.__peint.length = 0;
+      for (let k = 0; k < 20; k++) { window.__pousse(); await new Promise((f) => requestAnimationFrame(f)); }
+      return window.__peint.filter((o) => o.src === 'onde.webp' && o.ecran).length;
+    });
+    ok(apres === 0, `une seconde plus tard, plus rien n est peint (${apres})`);
+  }
+
+  const uniq = Array.from(new Set(manquants));
+  if (uniq.length) console.log('\n   fichiers demandes et introuvables : ' + uniq.join(', '));
+  ok(uniq.length === 0, `aucun fichier demande n est introuvable (${uniq.length})`);
 
   ok(erreurs.length === 0, 'aucune erreur de page' + (erreurs.length ? ' : ' + erreurs[0] : ''));
 

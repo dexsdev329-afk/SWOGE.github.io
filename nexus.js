@@ -318,6 +318,15 @@
                '  (' + m.potions + '/' + m.max + ')');
         joueSample('niveau', { vol: 0.8 });
         poseNiveau(joueur.x, joueur.y);
+      } else if (m.item) {
+        /* Une PIECE. Le sac complet revient avec la reponse : sans lui, la
+           grille de gauche resterait telle qu'elle etait jusqu'a la prochaine
+           fiche, et on aurait ramasse quelque chose qu'on ne voit nulle
+           part. */
+        if (m.sacJoueur) SAC = m.sacJoueur;
+        flotte(m.nom || 'ITEM');
+        joueSample('clic2', { vol: 0.6 });
+        peintPanneau();
       } else if (m.potion) {
         POTIONS_C = m.potions || POTIONS_C;
         flotte('+1 ' + (m.nom || 'POTION') + '  (' + m.quantite + ')');
@@ -329,6 +338,20 @@
          annonce qu'il est vide, pour ne pas laisser une fiole dessinee sur une
          place qui n'existe plus — un deuxieme clic irait dans le vide. */
       if (m.vide) { SAC_PIEDS = null; SAC_SIGNE = ''; peintButin(); }
+    }
+    /* Ce qu'on vient de POSER par terre. Le sac complet revient avec la
+       reponse pour la meme raison que ci-dessus : la case doit se vider tout
+       de suite, sinon on croit avoir rate son geste et on recommence. */
+    if (m.type === 'realmDepose') {
+      if (m.refus) {
+        flotte(m.refus === 'sac-plein' ? 'GROUND BAG FULL' : String(m.refus).toUpperCase());
+        joueSample('clic', { vol: 0.35 });
+      } else {
+        if (m.sacJoueur) SAC = m.sacJoueur;
+        flotte('DROPPED  ' + (m.nom || ''));
+        joueSample('clic2', { vol: 0.5 });
+        peintPanneau();
+      }
     }
     /* La mort arrive du SERVEUR : c'est lui qui l'a constatee, jamais nous. */
     if (m.type === 'realmMort') {
@@ -645,6 +668,7 @@
     var el = document.elementFromPoint(x, y);
     while (el) {
       if (el.id === 'nxSac') return { quoi: 'sac' };
+      if (el.id === 'nxButin' || el.id === 'nxButinCases') return { quoi: 'butin' };
       if (el.id === 'nxEquip' || (el.dataset && el.dataset.slot)) {
         var c = el.closest ? el.closest('[data-slot]') : null;
         return { quoi: 'equip', slot: c ? c.dataset.slot : null };
@@ -663,6 +687,24 @@
     finPrise();
     if (!p || !cible) return;
     var id = p.id;
+    /* ---- DEPUIS LE SAC AU SOL ----
+     * Ou qu'on lache — sac, equipement, coffre — la piece va d'abord DANS LE
+     * SAC. C'est le seul endroit ou une trouvaille peut atterrir, et vouloir
+     * s'equiper directement depuis le sol demanderait trois messages a la
+     * suite pour un geste qu'on refera de toute facon a l'arret. */
+    if (p.de === 'butin') { prendDuButin(p.place); return; }
+    /* ---- VERS LE SAC AU SOL ----
+     * L'autre moitie de l'echange. Le sol ne prend que ce qui vient du SAC :
+     * une piece portee doit d'abord etre retiree, et une piece du coffre est
+     * a l'abri — l'envoyer par terre depuis la salle du coffre serait un
+     * geste qu'on ne peut pas faire, puisqu'on n'y est pas dans le monde. */
+    if (cible.quoi === 'butin') {
+      if (p.de !== 'sac') return;
+      debloqueSon();
+      envoie({ type: 'realmDepose', item: id });
+      clic(true);
+      return;
+    }
     if (cible.quoi === 'equip') {
       /* L'objet va dans SA case, pas dans celle qu'on a visee. Viser juste
          n'a aucun interet — un fruit ne peut aller nulle part ailleurs que
@@ -719,14 +761,20 @@
      elles disparaitraient avec. */
   document.addEventListener('pointerdown', function (ev) {
     if (ev.button !== undefined && ev.button !== 0) return;
-    var el = ev.target.closest ? ev.target.closest('[data-sac],[data-item],[data-slot]') : null;
+    var el = ev.target.closest
+      ? ev.target.closest('[data-sac],[data-item],[data-slot],[data-butin]') : null;
     if (!el) return;
     /* Le bouton « reprendre » du menu garde son propre geste : on ne le
        transforme pas en poignee de glissement. */
     if (ev.target.classList && ev.target.classList.contains('nxcf-sortir')) return;
     var img = el.querySelector('img');
     var src = img ? img.getAttribute('src') : '';
-    if (el.dataset.sac) {
+    if (el.dataset.butin) {
+      /* Une case vide n'est pas une poignee : la prendre ferait glisser un
+         fantome sans image jusqu'a un lacher qui ne pourrait rien faire. */
+      if (el.classList.contains('vide')) return;
+      debutPrise(ev, { de: 'butin', place: Number(el.dataset.butin), src: src, el: el });
+    } else if (el.dataset.sac) {
       debutPrise(ev, { de: 'sac', id: Number(el.dataset.sac), src: src, el: el });
     } else if (el.dataset.slot && el.dataset.item) {
       debutPrise(ev, { de: 'equip', slot: el.dataset.slot, id: Number(el.dataset.item), src: src, el: el });
@@ -3157,15 +3205,6 @@
     var pave = document.getElementById('nxPad');
     if (!pave) return;
     [].forEach.call(pave.querySelectorAll('button'), function (b) {
-      /* Le bouton du Nexus n'est pas une direction : il ne se TIENT pas, il
-         se tape. Le confondre avec les quatre autres ferait rentrer chez soi
-         en voulant monter. */
-      if (b.dataset.nexus) {
-        b.addEventListener('click', function (ev) {
-          ev.preventDefault(); debloqueSon(); retourNexus('pad');
-        });
-        return;
-      }
       var d = b.dataset.dir;
       var pose = function (ev) { debloqueSon(); TOUCHES[d] = true; b.classList.add('on'); ev.preventDefault(); };
       var leve = function () { TOUCHES[d] = false; b.classList.remove('on'); };
@@ -3209,11 +3248,28 @@
 
   /* Il ne se montre QUE dans le monde de combat, et seulement au doigt :
      dans le Nexus il n'y a rien a viser, et a la souris il gene. */
+  /* ---- LE RETOUR AU NEXUS, A DROITE ----
+   * Il a d'abord ete pose au-dessus de la fleche du haut. C'etait une erreur :
+   * le pouce gauche tient les quatre directions en continu pendant un combat,
+   * et un bouton qui SORT du monde a un demi-centimetre de « avancer » finit
+   * par etre touche pendant qu'on recule d'un golem. Il passe a droite, au-
+   * dessus du tir : cette main-la ne fait que des gestes ponctuels. */
+  var elMaison = document.getElementById('nxMaison');
+  if (elMaison) {
+    elMaison.addEventListener('click', function (ev) {
+      ev.preventDefault(); debloqueSon(); retourNexus('pad');
+    });
+  }
+
   function peintBoutonTir() {
-    if (!elTir) return;
     var tactile = false;
     try { tactile = window.matchMedia('(pointer: coarse)').matches; } catch (e) {}
-    elTir.classList.toggle('on', tactile && SCENE === 'monde');
+    /* Les deux ensemble : ils n'ont de sens que dans le monde de combat, et
+       seulement au doigt. Les separer aurait fini par en laisser un allume
+       dans le Nexus. */
+    var montre = tactile && SCENE === 'monde';
+    if (elTir) elTir.classList.toggle('on', montre);
+    if (elMaison) elMaison.classList.toggle('on', montre);
   }
 
   /* ---- RAMASSER EN MARCHANT DESSUS ----
@@ -3279,8 +3335,16 @@
       } else if (o.po) {
         titre = o.po === 'vie' ? 'Health Potion' : 'Magic Potion';
         dedans = '<img src="' + IMG_POTION[o.po] + '" alt="">';
+      } else if (o.it) {
+        /* Une PIECE, deposee par quelqu'un ou tombee d'un monstre. Son nom et
+           sa cle d'image sont venus avec elle : la page n'a pas a les
+           retrouver dans un catalogue qu'elle ne possede peut-etre pas. */
+        titre = o.nm || 'Item';
+        dedans = '<img alt="" src="img/shop/' + encodeURIComponent(o.cl || '') +
+                 '.webp" onerror="this.style.visibility=\'hidden\'">';
       }
-      html.push('<div class="nxp-c" data-place="' + i + '" title="' + titre + '">' + dedans + '</div>');
+      html.push('<div class="nxp-c" data-butin="' + i + '" title="' + titre + '">' +
+                dedans + '</div>');
     }
     elButinCases.innerHTML = html.join('');
     elButinNom.textContent = NOM_SAC[s.s] || 'Loot';
@@ -3289,15 +3353,32 @@
     elButin.hidden = false;
   }
 
-  /* On prend en TOUCHANT la case. Le sac est nomme dans la demande, et le
-     serveur verifie qu'on est bien dessus : sans cette verification, nommer un
-     identifiant suffirait a vider un sac a l'autre bout de la carte. */
+  /* ---- DEUX GESTES POUR LE MEME RESULTAT ----
+   *
+   * Le DOUBLE-CLIC prend la piece et l'envoie dans le sac. Le clic simple
+   * faisait la meme chose et c'etait une erreur : la case est aussi une
+   * poignee de glissement, et un clic qui part legerement de travers devenait
+   * un ramassage qu'on n'avait pas demande.
+   *
+   * Le GLISSEMENT fait le meme trajet a la main, et surtout il fait l'INVERSE
+   * — poser une piece de son sac dans le sac au sol. C'est ce qui rend
+   * l'echange possible : lacher son epee commune, prendre celle qu'on vient
+   * de trouver, sans passer par le coffre.
+   *
+   * Dans les deux cas la page ne dit que « ce sac-la, cette place-la ». Le
+   * serveur verifie qu'on est bien dessus — sans quoi nommer un identifiant
+   * suffirait a vider un sac a l'autre bout de la carte. */
+  function prendDuButin(place) {
+    if (!SAC_PIEDS || !enLigne) return;
+    debloqueSon();
+    envoie({ type: 'realmRamasse', i: SAC_PIEDS.i, place: Number(place) });
+  }
   if (elButinCases) {
-    elButinCases.addEventListener('click', function (ev) {
-      var c = ev.target.closest ? ev.target.closest('.nxp-c') : null;
-      if (!c || !c.dataset.place || !SAC_PIEDS || !enLigne) return;
-      debloqueSon();
-      envoie({ type: 'realmRamasse', i: SAC_PIEDS.i, place: Number(c.dataset.place) });
+    elButinCases.addEventListener('dblclick', function (ev) {
+      var c = ev.target.closest ? ev.target.closest('[data-butin]') : null;
+      if (!c) return;
+      ev.preventDefault();
+      prendDuButin(c.dataset.butin);
     });
   }
 
@@ -3748,6 +3829,14 @@
         });
         var cM = joueur.anim === 'jump' ? saut.cadre : joueur.cadre;
         dessineAvatar(joueur.x, joueur.y, PERSO, joueur.dir, joueur.anim, cM);
+        /* ---- SA VIE ET SON MANA, SOUS SES PIEDS ----
+         * Les deux jauges vivaient dans le panneau, en haut a droite. Or on
+         * ne regarde pas le coin de l'ecran pendant un combat : on regarde
+         * son personnage. On les lisait donc APRES, en mourant.
+         * Elles sont ici pour tout le monde, souris comme doigt — sur
+         * telephone le panneau est souvent replie, et c'etait alors le seul
+         * endroit ou la vie s'affichait. */
+        barreVieMana(joueur.x, joueur.y, VIE.pv, VIE.max, VIE.mp, VIE.mpMax, 56);
       } });
       pileM.sort(function (a, b) { return a.y - b.y; });
       pileM.forEach(function (p) { p.dessine(); });
@@ -3994,6 +4083,33 @@
     ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(gx - 1, gy - 1, larg + 2, h + 2);
     ctx.fillStyle = p > 0.5 ? '#7CFF9B' : p > 0.25 ? '#FFC53D' : '#F2685E';
     ctx.fillRect(gx, gy, larg * p, h);
+  }
+
+  /* ---- LES DEUX JAUGES DU JOUEUR ----
+   *
+   * Contrairement a `barreVie`, celles-ci s'affichent TOUJOURS, meme pleines.
+   * Une barre qui n'apparait qu'une fois blessee arrive trop tard : ce qu'on
+   * veut savoir en combat, c'est ou l'on en est AVANT de decider de rester.
+   *
+   * Le mana est en dessous et plus fin : il ne tue pas. Sa jauge n'existe que
+   * si le personnage a du mana — un poing nu sans fruit n'a rien a y lire, et
+   * une jauge vide en permanence apprend a ne plus regarder. */
+  function barreVieMana(x, y, pv, pvMax, mp, mpMax, larg) {
+    if (!pvMax) return;
+    var h = 5, gx = x - larg / 2, gy = y + 8;
+    var p = Math.max(0, Math.min(1, pv / pvMax));
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(gx - 1, gy - 1, larg + 2, h + 2);
+    ctx.fillStyle = p > 0.5 ? '#7CFF9B' : p > 0.25 ? '#FFC53D' : '#F2685E';
+    ctx.fillRect(gx, gy, larg * p, h);
+    if (mpMax > 0) {
+      var q = Math.max(0, Math.min(1, mp / mpMax));
+      var my = gy + h + 2, mh = 3;
+      ctx.fillStyle = 'rgba(0,0,0,.6)'; ctx.fillRect(gx - 1, my - 1, larg + 2, mh + 2);
+      ctx.fillStyle = '#5AA9FF';
+      ctx.fillRect(gx, my, larg * q, mh);
+    }
+    ctx.restore();
   }
 
   /* Les projectiles du monde viennent du SERVEUR : on ne connait ni leur

@@ -610,8 +610,8 @@ body.nxdrag *{ cursor:grabbing !important; }
  * n'y a rien d'autre : quatre boutons en croix, tenus au doigt. */
 #nxPad{ position:absolute; left:max(16px, env(safe-area-inset-left));
   bottom:max(16px, env(safe-area-inset-bottom)); z-index:20;
-  width:150px; height:198px; display:grid;
-  grid-template-columns:1fr 1fr 1fr; grid-template-rows:44px 1fr 1fr 1fr;
+  width:150px; height:150px; display:grid;
+  grid-template-columns:1fr 1fr 1fr; grid-template-rows:1fr 1fr 1fr;
   gap:4px; touch-action:none; user-select:none; -webkit-user-select:none; }
 #nxPad button{ grid-column:2; background:rgba(20,26,50,.62);
   border:1px solid rgba(255,255,255,.22); border-radius:12px; color:#eaf0ff;
@@ -619,21 +619,33 @@ body.nxdrag *{ cursor:grabbing !important; }
   touch-action:none; }
 #nxPad button:active, #nxPad button.on{ background:rgba(90,120,220,.55);
   border-color:rgba(255,255,255,.5); }
-/* Une rangee de PLUS au-dessus de la croix : le retour au Nexus s'y pose,
-   dans la meme colonne que « haut ». Le mettre a cote aurait fait rentrer
-   chez soi en voulant aller a gauche. */
-#nxPad .u{ grid-row:2; } #nxPad .l{ grid-row:3; grid-column:1; }
-#nxPad .r{ grid-row:3; grid-column:3; } #nxPad .d{ grid-row:4; }
-/* ---- LE RETOUR AU NEXUS, JUSTE AU-DESSUS DE « HAUT » ----
- * Il n'existait qu'au clavier (E) et dans le panneau. Sur telephone, rentrer
- * demandait d'ouvrir le panneau au milieu d'un combat — c'est-a-dire au pire
- * moment. Il est pose au-dessus de la fleche du haut, la ou le pouce est
- * deja, et il est VERT : c'est le seul bouton du pave qui ne deplace pas, il
- * ne doit pas ressembler aux quatre autres. */
-#nxPad .n{ grid-row:1; grid-column:2; font-size:15px;
-  background:rgba(20,50,30,.72); border-color:rgba(124,255,155,.45);
+#nxPad .u{ grid-row:1; } #nxPad .l{ grid-row:2; grid-column:1; }
+#nxPad .r{ grid-row:2; grid-column:3; } #nxPad .d{ grid-row:3; }
+
+/* ---- LE RETOUR AU NEXUS, A DROITE ----
+ * Il a d'abord ete pose au-dessus de la fleche du haut. C'etait une erreur :
+ * le pouce gauche tient les quatre directions en continu pendant un combat,
+ * et un bouton qui SORT du monde a un demi-centimetre de « avancer » finit
+ * par etre touche pendant qu'on recule d'un golem.
+ * Il passe donc a droite, au-dessus du tir : cette main-la ne fait qu'un
+ * geste ponctuel, et rentrer chez soi en est un aussi. Il reste VERT — le
+ * seul bouton du jeu qui ne se joue pas. */
+#nxMaison{ position:absolute;
+  right:calc(var(--nxp) + max(14px, env(safe-area-inset-right)));
+  bottom:calc(max(22px, calc(env(safe-area-inset-bottom) + 6px)) + 110px);
+  z-index:24; transition:right .22s ease;
+  width:54px; height:54px; border-radius:15px; display:none;
+  align-items:center; justify-content:center; font-size:22px;
+  touch-action:none; user-select:none; -webkit-user-select:none;
+  -webkit-tap-highlight-color:transparent;
+  background:rgba(20,50,30,.72); border:1px solid rgba(124,255,155,.45);
   color:#7CFF9B; }
-#nxPad .n:active{ background:rgba(124,255,155,.35); }
+#nxMaison.on{ display:flex; }
+#nxWrap.replie #nxMaison{ right:max(16px, env(safe-area-inset-right)); }
+#nxMaison:active{ background:rgba(124,255,155,.35); border-color:#7CFF9B; }
+@media (min-width:900px) and (pointer:fine){
+  #nxMaison{ display:none !important; }   /* la touche E fait deja tout ca */
+}
 
 /* ---- LE BOUTON DE TIR, A DROITE ----
  * A la souris on vise ou l'on veut ; au doigt, viser ET se deplacer en meme
@@ -721,6 +733,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
   <div id="nxSolde"></div>
   <div id="nxAuto">⌖ AUTO-FIRE</div>
   <div id="nxTir" role="button" tabindex="0" aria-label="Fire at nearest enemy">&#9674;<i>AUTO</i></div>
+  <button id="nxMaison" type="button" aria-label="Back to Nexus">&#127968;</button>
   <div id="nxFiche"></div>
   <div id="nxPow" role="button" tabindex="0"><u id="nxPowIco"></u><b id="nxPowNom">—</b><em id="nxPowCout"></em><span class="k" id="nxPowTouche">Space</span><i id="nxPowJauge"></i></div>
   <div id="nxIndice"></div>
@@ -759,7 +772,6 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
     <div class="nxp-gens" id="nxGens"></div>
   </aside>
   <div id="nxPad" aria-hidden="true">
-    <button class="n" type="button" data-nexus="1" aria-label="Back to Nexus">&#127968;</button>
     <button class="u" type="button" data-dir="up" aria-label="Move up">&#9650;</button>
     <button class="l" type="button" data-dir="left" aria-label="Move left">&#9664;</button>
     <button class="r" type="button" data-dir="right" aria-label="Move right">&#9654;</button>
@@ -847,7 +859,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
   </div>
 </div>
 
-<script src="nexus.js?v=20260820c" defer></script>
+<script src="nexus.js?v=20260820d" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

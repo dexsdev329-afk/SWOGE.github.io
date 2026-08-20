@@ -393,6 +393,81 @@ process.on('unhandledRejection', (e) => {
   const refermee = await p.evaluate(() => document.getElementById('nxButin').hidden);
   ok(refermee === true, 's eloigner referme la grille');
 
+  /* ---- LES BLOCS ----
+   *
+   * Ils viennent du serveur une fois, a l'entree. La page ne peut pas les
+   * redeviner — elle n'a pas le meme hasard — et un desaccord se verrait tout
+   * de suite : on marcherait dans un rocher, ou l'on serait arrete par du
+   * vide.
+   *
+   * Ce qu'on verifie ici est le point qui casse en silence : la page applique
+   * la MEME regle que le serveur. Sinon le joueur avance dans la pierre puis
+   * se fait ramener en arriere par a-coups — ce qui se lit comme un defaut de
+   * reseau, pas comme un rocher. */
+  const blocs = await p.evaluate(() => {
+    const e = window.__s[0].__m.filter((m) => m.type === 'realmEntre').pop();
+    return e.obstacles || [];
+  });
+  console.log('\n-- les blocs --');
+  console.log('   recus : ' + blocs.length);
+  ok(blocs.length > 100, `le serveur envoie sa carte de blocs (${blocs.length})`);
+  ok(blocs.every((o) => o.r > 0 && o.t !== undefined),
+     'chacun porte son rayon et son dessin');
+
+  /* Le plus proche du point d'arrivee, et on marche droit dessus. */
+  const cible = blocs
+    .map((o) => ({ o, d: Math.hypot(o.x - moi.x, o.y - moi.y) }))
+    .sort((a2, b2) => a2.d - b2.d)[0];
+  console.log(`   le plus proche : a ${Math.round(cible.d)} unites`);
+
+  await p.evaluate(() => { window.__s[0].__out.length = 0; });
+  const touches = [];
+  if (cible.o.x > moi.x + 20) touches.push('ArrowRight');
+  else if (cible.o.x < moi.x - 20) touches.push('ArrowLeft');
+  if (cible.o.y > moi.y + 20) touches.push('ArrowDown');
+  else if (cible.o.y < moi.y - 20) touches.push('ArrowUp');
+  for (const t2 of touches) await p.keyboard.down(t2);
+  await p.waitForTimeout(4000);
+  for (const t2 of touches) await p.keyboard.up(t2);
+  await p.waitForTimeout(300);
+
+  const trajet = await p.evaluate(() => window.__s[0].__out
+    .filter((m) => m.type === 'realmMove').map((m) => ({ x: m.x, y: m.y })));
+  const RAYON_MOI = 22;
+  let dedans = 0, plusPres = Infinity;
+  for (const q of trajet) {
+    for (const o of blocs) {
+      const d = Math.hypot(o.x - q.x, o.y - q.y) - o.r - RAYON_MOI;
+      if (d < plusPres) plusPres = d;
+      if (d < -2) dedans++;
+    }
+  }
+  console.log(`   ${trajet.length} positions annoncees, au plus pres a ${plusPres.toFixed(1)} unites du bord`);
+  ok(trajet.length > 10, `le personnage a bien marche (${trajet.length} positions)`);
+  ok(plusPres < 90,
+     `il est arrive AU CONTACT d un bloc (${plusPres.toFixed(1)} unites du bord)`);
+  ok(dedans === 0,
+     `et aucune position annoncee n est DANS la pierre (${dedans} sur ${trajet.length * blocs.length} mesures)`);
+
+  /* ---- ET ON NOTE OU IL EST ARRIVE ----
+   * Les essais qui suivent posent des sacs SOUS SES PIEDS et lisent ses
+   * jauges autour de lui. Ils utilisaient le point d'arrivee — juste tant
+   * qu'on n'avait pas bouge. Depuis qu'on marche quatre secondes vers un
+   * rocher, ce point est a deux cents unites derriere : les sacs tombaient
+   * hors de portee et les jauges se cherchaient au mauvais endroit. */
+  if (trajet.length) { moi.x = trajet[trajet.length - 1].x; moi.y = trajet[trajet.length - 1].y; }
+
+  /* Et ils sont dessines : un bloc qu'on ne voit pas est un mur invisible. */
+  const peintBlocs = await p.evaluate(() => window.__peint
+    .filter((d) => d.src === 'obstacles.webp')
+    .map((d) => ({ col: d.sx / d.sw, sw: d.sw })));
+  ok(peintBlocs.length > 0, `les blocs sont peints (${peintBlocs.length} dessins)`);
+  ok(peintBlocs.every((d) => d.sw === 128),
+     'et lus dans une case de 128 — la planche fait 512 pour quatre');
+  const colonnes = [...new Set(peintBlocs.map((d) => d.col))];
+  ok(colonnes.every((c) => c >= 0 && c <= 3),
+     'chaque dessin vient d une des quatre colonnes : ' + colonnes.join(','));
+
   /* ---- LES DEUX JAUGES, SOUS LE PERSONNAGE ----
    * Elles vivaient dans le coin du panneau. On ne regarde pas le coin de
    * l'ecran pendant un combat : on regarde son personnage, et on lisait donc

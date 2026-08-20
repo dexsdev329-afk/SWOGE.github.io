@@ -357,6 +357,7 @@
     if (m.type === 'realmMort') {
       SCENE = 'nexus'; peintBoutonTir();
       MONSTRES_C = {}; TIRS_C = []; DISTANTS_M = {}; TOMBES_C = []; SACS_C = [];
+    OBSTACLES_C = [];
     SAC_PIEDS = null; SAC_SIGNE = ''; peintButin();
       POUVOIR_C = null; EFFETS_P = []; PARALYSE = 0; RALENTI = 0; BRULURE = 0;
       VITESSE = 260; peintPouvoir();
@@ -1212,7 +1213,12 @@
   /* Les sacs de butin au sol. Comme les tombes : le serveur les tient, la
      page les dessine, et personne ici ne decide de leur contenu. */
   var SACS_C = [];
-  var IMG_SACS = null;
+  /* Les blocs du monde. Ils viennent du SERVEUR une fois, a l'entree : la
+     page ne peut pas les redeviner — elle n'a pas le meme hasard — et un
+     desaccord se verrait tout de suite, on marcherait dans un rocher ou l'on
+     serait arrete par du vide. */
+  var OBSTACLES_C = [];
+  var IMG_SACS = null, IMG_OBST = null;
   /* Le sac SUR LEQUEL on se tient, et la signature de ce qu'il contient : on
      ne repeint la grille que quand l'une des deux change, sinon on
      reconstruirait huit cases dix fois par seconde sous le doigt de qui est
@@ -1310,6 +1316,7 @@
     if (!IMG_NIVEAU) { IMG_NIVEAU = new Image(); IMG_NIVEAU.src = 'img/nexus/effets/niveau.webp'; }
     if (!IMG_PARA) { IMG_PARA = new Image(); IMG_PARA.src = 'img/nexus/effets/paralysie.webp'; }
     if (!IMG_SACS) { IMG_SACS = new Image(); IMG_SACS.src = 'img/nexus/objets/sacs.webp'; }
+    if (!IMG_OBST) { IMG_OBST = new Image(); IMG_OBST.src = 'img/nexus/tiles/obstacles.webp'; }
   }
 
   /* ---- L'AURA DE RAFALE ----
@@ -1418,6 +1425,53 @@
    * conclut que le jeu le lui a repris. */
   var COLONNE_SAC = { brun: 0, bleu: 1, violet: 2, or: 3, rouge: 4, blanc: 5 };
   var SAC_FIN = 10;           // secondes de clignotement avant la fin
+  /* ---- LA MEME REGLE QUE LE SERVEUR, MOT POUR MOT ----
+   *
+   * Le serveur BORNE, il ne deplace pas : c'est la page qui fait avancer le
+   * personnage. Une page qui laisserait marcher dans la pierre verrait donc
+   * son joueur ramene en arriere par a-coups — ce qui se lit comme un defaut
+   * de reseau, pas comme un rocher.
+   *
+   * Le rayon (22) et le glissement sur les deux axes sont ceux de realm.js.
+   * Deux regles differentes des deux cotes donneraient exactement le
+   * tremblement qu'on cherche a eviter.
+   */
+  var RAYON_MOI = 22;
+  function blocEn(x, y, rayon) {
+    for (var i = 0; i < OBSTACLES_C.length; i++) {
+      var o = OBSTACLES_C[i];
+      var dx = o.x - x, dy = o.y - y, d = o.r + rayon;
+      if (dx * dx + dy * dy < d * d) return o;
+    }
+    return null;
+  }
+  function glisse(deX, deY, x, y) {
+    /* Etre dedans n'est pas une prison — meme regle que le serveur, sinon la
+       page refuserait un pas que le serveur accepte. */
+    if (blocEn(deX, deY, RAYON_MOI)) return { x: x, y: y };
+    if (!blocEn(x, y, RAYON_MOI)) return { x: x, y: y };
+    if (!blocEn(x, deY, RAYON_MOI)) return { x: x, y: deY };
+    if (!blocEn(deX, y, RAYON_MOI)) return { x: deX, y: y };
+    return { x: deX, y: deY };
+  }
+
+  /* Un bloc au sol. Le pied porte l'ombre : sans elle un rocher flotte, et on
+     ne sait pas ou commence ce qu'on ne peut pas traverser. */
+  function dessineObstacle(o) {
+    if (!IMG_OBST || !IMG_OBST.complete || !IMG_OBST.naturalWidth) return;
+    var cadre = IMG_OBST.naturalHeight;
+    var T = o.r * 2.7;
+    ctx.save();
+    ctx.globalAlpha = 0.30;
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.ellipse(o.x, o.y, o.r * 0.95, o.r * 0.40, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    ctx.drawImage(IMG_OBST, (o.t || 0) * cadre, 0, cadre, cadre,
+                  o.x - T / 2, o.y - T + o.r * 0.42, T, T);
+  }
+
   function dessineSac(s) {
     if (!IMG_SACS || !IMG_SACS.complete || !IMG_SACS.naturalWidth) return;
     var cadre = IMG_SACS.naturalHeight;          // la planche est une rangee
@@ -1574,6 +1628,11 @@
     MONDE_C = m;
     MONSTRES_C = {}; TIRS_C = []; DISTANTS_M = {}; TOMBES_C = []; SACS_C = [];
     SAC_PIEDS = null; SAC_SIGNE = ''; peintButin();
+    /* APRES la remise a zero, jamais avant : la ligne au-dessus vide les
+       listes du monde precedent, et poser les blocs plus haut revenait a les
+       effacer aussitot. Le symptome etait muet — on marchait dans les rochers
+       et aucun n'etait dessine. */
+    OBSTACLES_C = m.obstacles || [];
     moiMonde = { pv: m.moi.pv, pvMax: m.moi.pvMax, xp: 0 };
     VIE.pv = m.moi.pv; VIE.max = m.moi.pvMax;
     if (m.moi.mpMax !== undefined) { VIE.mp = m.moi.mp; VIE.mpMax = m.moi.mpMax; }
@@ -1617,6 +1676,7 @@
     SCENE = 'nexus';
     peintBoutonTir();
     MONSTRES_C = {}; TIRS_C = []; DISTANTS_M = {}; TOMBES_C = []; SACS_C = [];
+    OBSTACLES_C = [];
     SAC_PIEDS = null; SAC_SIGNE = ''; peintButin();
     /* On revient AU PIED DU PORTAIL, pas au centre : c'est par la qu'on est
        parti, et reapparaitre ailleurs donne l'impression d'avoir ete
@@ -3487,8 +3547,15 @@
        * ramener en arriere par a-coups, ce qui se lit comme un defaut de
        * reseau et non comme une attaque. */
       var vit = VITESSE * (RALENTI > 0 ? FREIN : 1);
+      var deX = joueur.x, deY = joueur.y;
       joueur.x += (dx / n) * vit * dt;
       joueur.y += (dy / n) * vit * dt;
+      /* Les blocs n'existent que dans le monde de combat : le Nexus a ses
+         propres murs, et sa liste est vide. */
+      if (OBSTACLES_C.length) {
+        var p = glisse(deX, deY, joueur.x, joueur.y);
+        joueur.x = p.x; joueur.y = p.y;
+      }
       if (dx !== 0) joueur.dir = dx > 0 ? 'right' : 'left';
       else joueur.dir = dy > 0 ? 'down' : 'up';
     }
@@ -3805,6 +3872,17 @@
          devant un monstre doit passer devant lui. */
       SACS_C.forEach(function (s) {
         pileM.push({ y: s.y, dessine: function () { dessineSac(s); } });
+      });
+      /* Les blocs se trient avec les vivants : passer DERRIERE un rocher doit
+         se voir, sinon on ne comprend pas qu'il fait couvert. On ne pousse
+         que ceux qui sont a l'ecran — deux cent quarante dessins par image
+         dont deux cents hors champ seraient du travail pur. */
+      OBSTACLES_C.forEach(function (o) {
+        /* Autour du JOUEUR, pas autour de `camX` : celui-la est le bord
+           gauche du cadrage, pas son centre, et le seuil aurait rogne les
+           rochers de droite sur un ecran large. */
+        if (Math.abs(o.x - joueur.x) > 1400 || Math.abs(o.y - joueur.y) > 1100) return;
+        pileM.push({ y: o.y, dessine: function () { dessineObstacle(o); } });
       });
       Object.keys(MONSTRES_C).forEach(function (k) {
         var e = MONSTRES_C[k];

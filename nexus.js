@@ -1487,6 +1487,55 @@
      MUR_BASE on lit le mur. Deux listes separees auraient donne deux
      collisions a tenir d'accord. */
   var MUR_BASE = 4;
+  /* ---- OU S'ARRETE VRAIMENT LE DESSIN D'UN BLOC ----
+   *
+   * Les rochers avaient l'air POSES SUR le sol plutot que dedans : un
+   * croissant d'ombre restait visible sous eux. La faute n'etait pas dans
+   * l'ombre, elle etait dans l'idee que le dessin remplit sa case. Il ne la
+   * remplit pas, et pas du meme montant selon la piece : le rocher moussu
+   * laisse quinze pixels de vide sous lui, l'eclat de glace deux. En calant
+   * la CASE, on calait donc quatre pieces a quatre hauteurs differentes — la
+   * premiere flottait de treize pixels, la troisieme touchait.
+   *
+   * On mesure la planche une fois et on cale le BAS REEL de chaque piece.
+   * Rien n'est ecrit en dur : le jour ou l'on redessine les rochers, ils se
+   * reposent tout seuls. */
+  var BAS_BLOCS = null;
+  /* Ou tombe ce bas, par rapport au centre de collision. L'ombre s'arrete a
+     0,40 rayon ; on va juste au-dela, pour qu'AUCUN croissant d'ombre ne
+     reste sous la pierre. C'est ce croissant, et lui seul, qui se lit comme
+     « ca flotte ». */
+  var BLOC_ASSISE = 0.50;
+  function basDesBlocs(img) {
+    if (BAS_BLOCS) return BAS_BLOCS;
+    var cadre = img.naturalHeight, n = Math.max(1, Math.round(img.naturalWidth / cadre));
+    var bas = [];
+    try {
+      var cv = document.createElement('canvas');
+      cv.width = cadre; cv.height = cadre;
+      var c2 = cv.getContext('2d', { willReadFrequently: true });
+      for (var k = 0; k < n; k++) {
+        c2.clearRect(0, 0, cadre, cadre);
+        c2.drawImage(img, k * cadre, 0, cadre, cadre, 0, 0, cadre, cadre);
+        var d = c2.getImageData(0, 0, cadre, cadre).data, b = 0;
+        for (var y = 0; y < cadre; y++) {
+          for (var x = 0; x < cadre; x++) {
+            /* Le seuil compte : un halo a alpha 1 sous le dessin ferait
+               mesurer la case entiere, c'est-a-dire ne rien mesurer. */
+            if (d[(y * cadre + x) * 4 + 3] >= 40) { b = y; break; }
+          }
+        }
+        bas.push((b + 1) / cadre);
+      }
+    } catch (e) {
+      /* Canevas souille : on retombe sur « le dessin remplit sa case ». C'est
+         ce qu'on faisait avant, en moins bien — mais ca reste dessine. */
+      for (var j = 0; j < n; j++) bas.push(1);
+    }
+    BAS_BLOCS = bas;
+    return bas;
+  }
+
   function dessineObstacle(o) {
     var mur = (o.t || 0) >= MUR_BASE;
     var img = mur ? IMG_MUR : IMG_OBST;
@@ -1518,8 +1567,16 @@
       ctx.restore();
       return;
     }
+    if (mur) {
+      ctx.drawImage(img, col * cadre, 0, cadre, cadre,
+                    o.x - T / 2, o.y - T + o.r, T, T);
+      return;
+    }
+    /* Le bas REEL de la piece se pose a `BLOC_ASSISE` rayons sous le centre,
+       quelle que soit la hauteur de vide que la planche lui laisse. */
+    var bas = basDesBlocs(img)[col] || 1;
     ctx.drawImage(img, col * cadre, 0, cadre, cadre,
-                  o.x - T / 2, o.y - T + (mur ? o.r : o.r * 0.42), T, T);
+                  o.x - T / 2, o.y + o.r * BLOC_ASSISE - bas * T, T, T);
   }
 
   /* La dalle d'une salle, posee AVANT tout le reste : c'est un sol, pas un

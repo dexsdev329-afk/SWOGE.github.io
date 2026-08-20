@@ -686,8 +686,9 @@ process.on('unhandledRejection', (e) => {
 
   /* Et ils sont dessines : un bloc qu'on ne voit pas est un mur invisible. */
   const peintBlocs = await p.evaluate(() => window.__peint
-    .filter((d) => d.src === 'obstacles.webp')
-    .map((d) => ({ col: d.sx / d.sw, sw: d.sw })));
+    .filter((d) => d.src === 'obstacles.webp' && d.ecran)
+    .map((d) => ({ col: d.sx / d.sw, sw: d.sw,
+                   cx: d.dx + d.dw / 2, bas: d.dy + d.dh, dh: d.dh })));
   ok(peintBlocs.length > 0, `les blocs sont peints (${peintBlocs.length} dessins)`);
   ok(peintBlocs.every((d) => d.sw === 128),
      'et lus dans une case de 128 — la planche fait 512 pour quatre');
@@ -695,12 +696,105 @@ process.on('unhandledRejection', (e) => {
   ok(colonnes.every((c) => c >= 0 && c <= 3),
      'chaque dessin vient d une des quatre colonnes : ' + colonnes.join(','));
 
+  /* ---- ILS SONT POSES DANS LE SOL, PAS DESSUS ----
+   *
+   * Les rochers avaient l'air de flotter : un croissant d'ombre restait
+   * visible sous eux. La faute n'etait pas dans l'ombre — c'est le dessin
+   * qu'on calait sur sa CASE, en supposant qu'il la remplit. Il ne la remplit
+   * pas, et pas du meme montant selon la piece : le rocher moussu laisse
+   * quinze pixels de vide sous lui, l'eclat de glace deux. Quatre pieces se
+   * posaient donc a quatre hauteurs, dont une treize pixels en l'air.
+   *
+   * On mesure la planche DANS LA PAGE — le vide sous chaque piece — et on
+   * verifie que le bas REEL de tous les rochers tombe au meme endroit sous
+   * leur centre de collision. Regarder le bas de la CASE ne verrait rien :
+   * c'est exactement ce qu'on calait avant. */
+  {
+    const vide = await p.evaluate(() => new Promise((res) => {
+      const i = new Image();
+      i.onload = () => {
+        const cadre = i.naturalHeight, n = Math.round(i.naturalWidth / cadre);
+        const cv = document.createElement('canvas');
+        cv.width = cadre; cv.height = cadre;
+        const c2 = cv.getContext('2d', { willReadFrequently: true });
+        const out = [];
+        for (let k = 0; k < n; k++) {
+          c2.clearRect(0, 0, cadre, cadre);
+          c2.drawImage(i, k * cadre, 0, cadre, cadre, 0, 0, cadre, cadre);
+          const d = c2.getImageData(0, 0, cadre, cadre).data;
+          let b = 0;
+          for (let y = 0; y < cadre; y++) for (let x = 0; x < cadre; x++) {
+            if (d[(y * cadre + x) * 4 + 3] >= 40) { b = y; break; }
+          }
+          out.push((b + 1) / cadre);
+        }
+        res(out);
+      };
+      i.onerror = () => res([]);
+      i.src = 'img/nexus/tiles/obstacles.webp';
+    }));
+    console.log('   le dessin occupe, de haut en bas : ' +
+                vide.map((v) => (v * 100).toFixed(1) + ' %').join(', '));
+    ok(vide.length === 4, `les quatre pieces sont mesurees (${vide.length})`);
+    ok(vide.some((v) => v < 0.97), 'et au moins une laisse du vide sous elle — sinon rien a corriger');
+
+    /* Chaque dessin est rapproche du bloc qu'il represente : c'est le seul
+       moyen d'exprimer « sous SON centre » plutot que « quelque part ». */
+    const assises = [];
+    for (const d of peintBlocs) {
+      /* Par le centre ET par la hauteur : deux rochers peuvent partager une
+         abscisse. Ne comparer que x rapprochait un dessin du bloc situe
+         quarante rayons plus haut, et l'essai annoncait alors des ecarts
+         absurdes — un faux defaut qui cache le vrai. */
+      const basReel = d.bas - (1 - vide[d.col]) * d.dh;
+      let mieux = null, ecart = Infinity;
+      for (const o of blocs) {
+        if (Math.abs(o.x - d.cx) > 1) continue;
+        const e = Math.abs(o.y - basReel);
+        if (e < ecart) { ecart = e; mieux = o; }
+      }
+      if (!mieux || ecart > mieux.r * 2) continue;
+      assises.push({ col: d.col, a: (basReel - mieux.y) / mieux.r });
+    }
+    const vals = assises.map((x) => x.a);
+    console.log('   assise mesuree : ' + (vals.length
+      ? `${Math.min(...vals).toFixed(3)} a ${Math.max(...vals).toFixed(3)} rayon` : 'aucune'));
+    ok(vals.length > 20, `${vals.length} rochers rapproches de leur bloc`);
+    if (vals.length) {
+      const mini = Math.min(...vals), maxi = Math.max(...vals);
+      ok(maxi - mini < 0.02,
+         `les quatre pieces se posent toutes a la meme hauteur (ecart ${(maxi - mini).toFixed(3)} rayon)`);
+      /* L'ombre s'arrete a 0,40 rayon sous le centre. Si le dessin s'arrete
+         AVANT, un croissant d'ombre reste dessous — et c'est ca, « ca
+         flotte ». */
+      ok(mini >= 0.40,
+         `et aucune ne laisse d ombre depasser dessous (la plus haute a ${mini.toFixed(2)} rayon)`);
+      ok(maxi <= 0.70, `sans s enfoncer non plus (la plus basse a ${maxi.toFixed(2)} rayon)`);
+    }
+  }
+
   /* ---- LES DEUX JAUGES, SOUS LE PERSONNAGE ----
    * Elles vivaient dans le coin du panneau. On ne regarde pas le coin de
    * l'ecran pendant un combat : on regarde son personnage, et on lisait donc
    * sa vie APRES, en mourant.
    * On lit les rectangles reellement peints, en coordonnees du MONDE — c'est
    * ce qui permet de dire « sous SES pieds » et pas « quelque part ». */
+  /* VIVANT, sinon il n'y a pas de jauges a lire — et tout ce qui suit se
+     plaint de choses qui marchent. Quatre secondes de marche au milieu des
+     limes suffisent a tuer un niveau 1 : c'est le jeu, pas l'essai. */
+  {
+    const v = await rejoins(p);
+    ok(v.ok, 'le personnage est vivant pour la suite' + (v.mort ? ' (relance apres une mort)' : ''));
+    /* TOUJOURS relire ou il est, pas seulement apres une mort : rentrer dans
+       le monde repose le personnage sur le bord, meme s'il y etait deja. Les
+       sacs qu'on pose « sous ses pieds » tombaient sinon la ou il etait il y
+       a quatre secondes, et ses jauges se cherchaient au meme endroit. */
+    const ou = await p.evaluate(() => {
+      const e = window.__s[0].__m.filter((m) => m.type === 'realmEntre').pop();
+      return { x: e.moi.x, y: e.moi.y };
+    });
+    moi.x = ou.x; moi.y = ou.y;
+  }
   await p.evaluate(async ([x, y]) => {
     window.__sacs = [];
     window.__barres.length = 0;
@@ -1149,12 +1243,19 @@ process.on('unhandledRejection', (e) => {
          etaient figes — un defaut annonce la ou tout marche. */
       const t = window.__tirs.map((v) => v.filter((x) => x.split('@')[0] !== 'coup'))
                              .filter((v) => v.length);
+      /* FIGE veut dire fige : la meme position sur TROIS images de suite.
+         Deux images suffisaient, et deux images se ressemblent par accident —
+         deux tirs du meme geste, tires du meme point vers le meme point,
+         repassent par les memes abscisses. Le defaut qu'on traque, lui,
+         durait six images : un projectile remplace dix fois par seconde
+         restait immobile tout un tick avant de sauter de trente-quatre
+         unites. Trois images le voient, un hasard ne les tient pas. */
       let figees = 0, comparees = 0;
       const qui = {};
-      for (let i = 1; i < t.length; i++) {
-        if (!t[i - 1].length || !t[i].length) continue;
+      for (let i = 2; i < t.length; i++) {
+        if (!t[i - 2].length || !t[i - 1].length || !t[i].length) continue;
         comparees++;
-        const memes = t[i - 1].filter((x) => t[i].indexOf(x) >= 0);
+        const memes = t[i - 2].filter((x) => t[i - 1].indexOf(x) >= 0 && t[i].indexOf(x) >= 0);
         if (memes.length) { figees++; memes.forEach((x) => { const k = x.split('@')[0]; qui[k] = (qui[k] || 0) + 1; }); }
       }
       const dem = (window.__s[0].__out || []).filter((o) => o.type === 'realmTir');
@@ -1197,7 +1298,7 @@ process.on('unhandledRejection', (e) => {
     ok(tir.images > 20, `des projectiles ont ete peints (${tir.images} images)`);
     ok(tir.comparees > 10, 'assez de paires pour conclure');
     ok(tir.figees === 0,
-       `aucun projectile ne reste fige d une image a l autre (${tir.figees} sur ${tir.comparees})`);
+       `aucun projectile ne reste fige sur trois images (${tir.figees} sur ${tir.comparees})`);
 
     /* ---- ET LE PREMIER PART TOUT DE SUITE ----
      * Il attendait l'aller-retour : un tick de cent millisecondes plus le

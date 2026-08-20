@@ -356,7 +356,8 @@
     /* La mort arrive du SERVEUR : c'est lui qui l'a constatee, jamais nous. */
     if (m.type === 'realmMort') {
       SCENE = 'nexus'; peintBoutonTir();
-      MONSTRES_C = {}; TIRS_C = []; DISTANTS_M = {}; TOMBES_C = []; SACS_C = [];
+      MONSTRES_C = {}; TIRS_C = []; TIRS_M = []; DEVINES = []; DISTANTS_M = {}; TOMBES_C = []; SACS_C = [];
+    RECALE = null;
     OBSTACLES_C = []; SALLES_C = [];
     SAC_PIEDS = null; SAC_SIGNE = ''; peintButin();
       POUVOIR_C = null; EFFETS_P = []; PARALYSE = 0; RALENTI = 0; BRULURE = 0;
@@ -1609,8 +1610,25 @@
     });
     Object.keys(MONSTRES_C).forEach(function (k) { if (!vus[k]) delete MONSTRES_C[k]; });
 
-    TIRS_C = m.tirs || [];
-    TIRS_M = m.tirsM || [];
+    /* ---- LES PROJECTILES AVANCENT ENTRE DEUX ETATS ----
+     *
+     * Ils etaient REMPLACES en bloc, dix fois par seconde, et dessines la ou
+     * ils etaient au dernier message. Un tir a 340 unites par seconde restait
+     * donc fige six images puis sautait de trente-quatre unites. Ca se lit
+     * comme du lag alors que rien ne rame — c'est meme la premiere chose qu'on
+     * voit, parce qu'un projectile est ce qui va le plus vite a l'ecran.
+     *
+     * Un projectile va TOUT DROIT a vitesse constante : connaissant son angle
+     * et sa vitesse, la page peut le placer exactement, pas approximativement.
+     * On garde donc son point de depart et l'age de ce point, et on l'avance
+     * a chaque image. Le prochain etat remet le point a jour.
+     */
+    TIRS_C = repereTirs(TIRS_C, m.tirs || []);
+    TIRS_M = repereTirs(TIRS_M, m.tirsM || []);
+    /* Nos tirs devines localement s'effacent des que le serveur envoie LE
+       SIEN : on les reconnait a l'angle, et garder les deux ferait deux
+       projectiles cote a cote separes par la latence. */
+    oublieDevines(m.tirs || []);
     /* Les pierres viennent du serveur en entier a chaque image : elles sont
        peu nombreuses et ne bougent pas, il n'y a rien a interpoler. */
     TOMBES_C = m.tombes || [];
@@ -1660,25 +1678,64 @@
       if (m.moi.v) VITESSE = m.moi.v;
       if (structure) peintPanneau(); else majJauges();
       peintPouvoir();
-      /* On ne se TELEPORTE pas sur la position du serveur a chaque message :
-         elle a un dixieme de seconde de retard, et le personnage
-         reculerait sans arret. On ne recale que si l'ecart est gros — c'est
-         alors que le serveur a refuse quelque chose, et il a raison. */
+      /* ---- SE RECALER SANS SE TELEPORTER ----
+       *
+       * La position du serveur a un dixieme de seconde de retard : s'y poser
+       * a chaque message ferait reculer le personnage sans arret. Mais
+       * l'ancienne regle sautait DUR des que l'ecart depassait 220 unites —
+       * et 220 unites de teleportation, c'est une seconde de marche qui
+       * disparait d'un coup, au milieu d'un combat.
+       *
+       * Trois zones, parce qu'un ecart n'a pas une seule cause :
+       *
+       *   moins de 40 : le retard normal du reseau. On ne touche a rien —
+       *     corriger ici ferait vibrer le personnage en permanence.
+       *   40 a 700 : on a diverge (un rocher pris d'un cote et pas de
+       *     l'autre, une gigue). On TIRE vers la verite au lieu d'y sauter :
+       *     l'ecart se resorbe en une demi-seconde et personne ne le voit.
+       *   au-dela de 700 : ce n'est plus une derive, c'est un autre endroit —
+       *     une mort, une entree, un refus net. La, sauter est la bonne
+       *     reponse : lisser sur une demi-seconde ferait glisser le
+       *     personnage a travers la carte.
+       */
       var ex = m.moi.x - joueur.x, ey = m.moi.y - joueur.y;
-      if (ex * ex + ey * ey > 220 * 220) { joueur.x = m.moi.x; joueur.y = m.moi.y; }
+      var d2 = ex * ex + ey * ey;
+      if (d2 > 700 * 700) {
+        joueur.x = m.moi.x; joueur.y = m.moi.y;
+        RECALE = null;
+      } else if (d2 > 40 * 40) {
+        RECALE = { x: m.moi.x, y: m.moi.y };
+      } else {
+        RECALE = null;
+      }
     }
   }
 
   /* Un texte qui monte et s'efface : « +75 XP », « LEVEL 4 ». Il double une
      information deja dans le panneau, mais au moment ou elle se produit et
      a l'endroit ou l'on regarde. */
+  /* La position vers laquelle on se recale doucement, ou `null`. */
+  var RECALE = null;
+  function suitLeRecalage(dt) {
+    if (!RECALE) return;
+    var ex = RECALE.x - joueur.x, ey = RECALE.y - joueur.y;
+    if (ex * ex + ey * ey < 4 * 4) { RECALE = null; return; }
+    /* Un sixieme de l'ecart par centieme de seconde : l'ecart tombe de moitie
+       en un dixieme de seconde, et il ne reste rien au bout d'une demie. Assez
+       vite pour que le serveur reste la verite, assez doux pour qu'on ne voie
+       pas le personnage bouger tout seul. */
+    var t = Math.min(1, dt * 6);
+    joueur.x += ex * t; joueur.y += ey * t;
+  }
+
   var FLOTTANTS = [];
   function flotte(t) { FLOTTANTS.push({ t: t, vie: 1.5, max: 1.5 }); }
   var secousse = 0;             // l'ecran tremble quand on encaisse
 
   function entreMonde(m) {
     MONDE_C = m;
-    MONSTRES_C = {}; TIRS_C = []; DISTANTS_M = {}; TOMBES_C = []; SACS_C = [];
+    MONSTRES_C = {}; TIRS_C = []; TIRS_M = []; DEVINES = []; DISTANTS_M = {}; TOMBES_C = []; SACS_C = [];
+    RECALE = null;
     SAC_PIEDS = null; SAC_SIGNE = ''; peintButin();
     /* APRES la remise a zero, jamais avant : la ligne au-dessus vide les
        listes du monde precedent, et poser les blocs plus haut revenait a les
@@ -1704,6 +1761,7 @@
     peintBoutonTir();
     chargeEffets();
     chargeSols();
+    chargeTirs();
     fermeCoffreMenu(); fermeShop();
     LIEUX.forEach(function (l) { l.dwell = 0; });
     indiceActuel = null;
@@ -1728,7 +1786,8 @@
     if (enLigne) envoie({ type: 'realmLeave' });
     SCENE = 'nexus';
     peintBoutonTir();
-    MONSTRES_C = {}; TIRS_C = []; DISTANTS_M = {}; TOMBES_C = []; SACS_C = [];
+    MONSTRES_C = {}; TIRS_C = []; TIRS_M = []; DEVINES = []; DISTANTS_M = {}; TOMBES_C = []; SACS_C = [];
+    RECALE = null;
     OBSTACLES_C = []; SALLES_C = [];
     SAC_PIEDS = null; SAC_SIGNE = ''; peintButin();
     /* On revient AU PIED DU PORTAIL, pas au centre : c'est par la qu'on est
@@ -2771,6 +2830,26 @@
    * l'oriente donc sans correction a appliquer. */
   var CADRE_TIR = 96;
   var SPRITES_TIR = {};
+  /* ---- LES DESSINS DE PROJECTILE, AVANT LE PREMIER TIR ----
+   *
+   * Ils se chargeaient A LA DEMANDE : le premier tir de chaque session
+   * sortait donc en rectangle de secours, et le dessin n'arrivait qu'apres.
+   * Mesure faite — plus d'un demi-seconde entre le clic et le premier
+   * projectile VRAIMENT dessine, sur une machine locale ou le reseau ne
+   * coute rien.
+   *
+   * On les demande tous a l'entree dans le monde : le notre et celui de
+   * chaque espece. Une dizaine de petites images, une fois, pendant que le
+   * joueur regarde la carte apparaitre — au lieu d'une saccade au moment
+   * precis ou une creature tire pour la premiere fois. */
+  function chargeTirs() {
+    spriteTir(familleArme() || 'poing');
+    var t = MONDE_C && MONDE_C.especes;
+    if (!t) return;
+    Object.keys(t).forEach(function (k) {
+      if (t[k] && t[k].tir && t[k].tir.sprite) spriteTir(t[k].tir.sprite);
+    });
+  }
   function spriteTir(fam) {
     if (!fam) return null;
     if (SPRITES_TIR[fam] !== undefined) return SPRITES_TIR[fam];
@@ -3733,7 +3812,15 @@
       var aM = armeCourante();
       tireur.recharge -= dt;
       if ((tireur.presse || tireur.auto) && tireur.recharge <= 0) {
-        envoie({ type: 'realmTir', a: angleDeTir(DERNIERE_CAM.x, DERNIERE_CAM.y) });
+        var angM = angleDeTir(DERNIERE_CAM.x, DERNIERE_CAM.y);
+        envoie({ type: 'realmTir', a: angM });
+        /* Le projectile part ICI, pas a la reponse du serveur. Meme raison
+           que le son juste en dessous, en plus visible : il met un tick plus
+           un aller-retour a revenir, et pendant ce cinquieme de seconde on a
+           clique sans que rien ne bouge. Celui-ci ne fait aucun degat — le
+           serveur reste seul juge de ce qui touche — il ne fait que se voir,
+           et il s'efface des que le vrai arrive. */
+        deviner(angM, joueur.x, joueur.y);
         /* Le son part ICI et non a la reponse du serveur : le projectile
            met un dixieme de seconde a revenir, et un tir qu'on entend apres
            l'avoir vu partir se lit comme un decalage, pas comme un tir. */
@@ -4367,17 +4454,94 @@
   /* Les projectiles du monde viennent du SERVEUR : on ne connait ni leur
      duree ni leur portee, seulement ou ils sont. On reutilise les memes
      dessins que le Nexus — un tir de lame doit se ressembler partout. */
+  /* Le meme projectile d'un etat a l'autre garde son AGE : sinon il repart de
+     sa position de reference a chaque message, et on retrouve le saut qu'on
+     voulait supprimer. Ceux qui ne sont plus la ont touche ou expire. */
+  function repereTirs(avant, recus) {
+    var vieux = {};
+    for (var i = 0; i < avant.length; i++) if (avant[i].i !== undefined) vieux[avant[i].i] = avant[i];
+    for (var k = 0; k < recus.length; k++) {
+      var t = recus[k], v = vieux[t.i];
+      /* L'age repart de zero : la position recue est la verite du moment ou
+         le serveur l'a ecrite. Elle a mis un aller a nous parvenir, et c'est
+         exactement ce que l'age suivant rattrapera. */
+      t.age = 0;
+      if (v) t.vu = v.vu;
+    }
+    return recus;
+  }
+
+  /* ---- NOTRE PROPRE TIR, TOUT DE SUITE ----
+   *
+   * Le tir partait au serveur et n'apparaissait qu'au retour : cent
+   * millisecondes de tick, plus l'aller-retour. On cliquait, et il ne se
+   * passait rien pendant un cinquieme de seconde — c'est la latence qu'on
+   * SENT, bien avant celle des monstres.
+   *
+   * On le dessine donc immediatement, et on l'efface des que le serveur
+   * renvoie le sien. Le serveur reste seul juge de ce qui touche : ce
+   * projectile-la ne fait aucun degat, il ne fait que se voir.
+   */
+  var DEVINES = [];
+  function deviner(a, ax, ay) {
+    var arme = armeCourante();
+    /* L'eventail comme le vrai : une arme qui lance deux fleches doit en
+       montrer deux tout de suite, sinon la deuxieme apparait un cinquieme de
+       seconde plus tard et on croit avoir rate. */
+    var ecart = 0.13;
+    for (var i = 0; i < (arme.tirs || 1); i++) {
+      var d = (arme.tirs || 1) === 1 ? 0 : (i - ((arme.tirs || 1) - 1) / 2) * ecart;
+      DEVINES.push({ x: ax, y: ay, a: a + d, v: arme.vitesse,
+                     f: familleArme() || 'poing', age: 0, devine: true });
+    }
+  }
+  function oublieDevines(recus) {
+    if (!DEVINES.length) return;
+    var miens = [];
+    for (var i = 0; i < recus.length; i++) if (recus[i].mien) miens.push(recus[i]);
+    if (!miens.length) return;
+    for (var d = DEVINES.length - 1; d >= 0; d--) {
+      for (var j = 0; j < miens.length; j++) {
+        /* Le meme angle a un centieme pres : c'est notre tir, revenu du
+           serveur. Deux tirs simultanes au meme angle sont le meme geste. */
+        var ecart = Math.abs(((miens[j].a - DEVINES[d].a + Math.PI * 3) % (Math.PI * 2)) - Math.PI);
+        if (ecart > 0.02) continue;
+        DEVINES.splice(d, 1);
+        break;
+      }
+    }
+    /* Un devine qui n'a jamais trouve son jumeau ne reste pas eternellement :
+       le serveur a pu refuser le tir (recharge, mort). */
+    for (var e = DEVINES.length - 1; e >= 0; e--) if (DEVINES[e].age > 0.5) DEVINES.splice(e, 1);
+  }
+
+  /* L'age de chaque projectile avance avec l'image, pas avec le reseau. */
+  function vieillitTirs(dt) {
+    for (var i = 0; i < TIRS_C.length; i++) TIRS_C[i].age = (TIRS_C[i].age || 0) + dt;
+    for (var j = 0; j < TIRS_M.length; j++) TIRS_M[j].age = (TIRS_M[j].age || 0) + dt;
+    for (var k = DEVINES.length - 1; k >= 0; k--) {
+      DEVINES[k].age += dt;
+      if (DEVINES[k].age > 0.6) DEVINES.splice(k, 1);
+    }
+  }
+
   function dessineTirsMonde() {
     /* Les DEUX listes, la notre et la leur. Elles se dessinent pareil — un
        projectile est un projectile — mais elles restent separees parce que
        le serveur les separe : melanger ici reintroduirait la question « a
        qui est-ce ? » qu'on a justement supprimee la-bas. */
-    var tout = TIRS_C.concat(TIRS_M);
+    var tout = TIRS_C.concat(TIRS_M).concat(DEVINES);
     for (var i = 0; i < tout.length; i++) {
       var t = tout[i];
       var sp = spriteTir(t.f);
+      /* La position EXACTE : point de reference plus ce qu'il a parcouru
+         depuis. Un projectile va tout droit a vitesse constante — il n'y a
+         rien a lisser, seulement a calculer. */
+      var age = t.age || 0, vt = t.v || 0;
+      var px = t.x + Math.cos(t.a) * vt * age;
+      var py = t.y + Math.sin(t.a) * vt * age;
       ctx.save();
-      ctx.translate(t.x, t.y - DECALAGE_TIR);
+      ctx.translate(px, py - DECALAGE_TIR);
       ctx.rotate(t.a);
       if (sp && sp.complete && sp.naturalWidth) {
         ctx.drawImage(sp, 0, 0, CADRE_TIR, CADRE_TIR,
@@ -4601,6 +4765,8 @@
     dernier = t;
     maj(dt);
     majTirs(dt, DERNIERE_CAM.x, DERNIERE_CAM.y);
+    vieillitTirs(dt);
+    suitLeRecalage(dt);
     dessine(dt);
     peintMini();
     requestAnimationFrame(boucle);

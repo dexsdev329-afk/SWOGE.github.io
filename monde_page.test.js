@@ -167,8 +167,24 @@ process.on('unhandledRejection', (e) => {
         }));
       };
       window.__peint = [];
+      /* Les positions ou l'on peint un PROJECTILE, image par image. C'est la
+         seule facon de savoir s'il avance entre deux etats du serveur ou s'il
+         reste fige six images puis saute de trente-quatre unites. */
+      window.__tirs = [];
+      window.__premierTir = null;
+      let vusTirs = [];
+      (function boucleTirs() {
+        window.__tirs.push(vusTirs);
+        vusTirs = [];
+        requestAnimationFrame(boucleTirs);
+      })();
       const D = CanvasRenderingContext2D.prototype.drawImage;
       CanvasRenderingContext2D.prototype.drawImage = function (img) {
+        const s0 = (img && (img.currentSrc || img.src)) || '';
+        if (/\/tirs\//.test(s0) && arguments.length === 9) {
+          vusTirs.push(Math.round(this.getTransform().e * 100) / 100);
+          if (window.__premierTir === null) window.__premierTir = performance.now();
+        }
         if (arguments.length === 9) {
           const src = (img && (img.currentSrc || img.src)) || '';
           window.__peint.push({ src: String(src).split('/').pop().split('?')[0],
@@ -205,6 +221,17 @@ process.on('unhandledRejection', (e) => {
     await p.waitForFunction(() => window.__s.some((s) => s.__m.some((m) => m.type === 'auth')), { timeout: 15000 });
     await p.waitForTimeout(2000);
     return p;
+  }
+
+  /* ---- LES DEUX PAGES PARTAGENT UN COMPTE ----
+   * Un joueur n'existe qu'UNE fois dans le monde, par adresse. Quand la page
+   * tactile en sort, elle en sort aussi la page souris — et les essais qui
+   * suivaient se plaignaient alors de choses qui marchent tres bien : « la
+   * touche Q ne boit pas », « aucun projectile n'est peint ». Chaque bloc qui
+   * a besoin du monde s'y remet donc lui-meme. */
+  async function rejoins(page) {
+    await page.evaluate(() => window.__s[0].send(JSON.stringify({ type: 'realmJoin' })));
+    await page.waitForTimeout(1200);
   }
 
   const p = await ouvre({ width: 1280, height: 800 }, false);
@@ -835,6 +862,8 @@ process.on('unhandledRejection', (e) => {
    * verifier les memes choses, et celle qu'on oublie est toujours celle dont
    * on se sert en mourant. */
   {
+    await p.bringToFront();
+    await rejoins(p);
     /* On donne deux potions au joueur par le message que le serveur envoie
        deja. */
     await p.evaluate(() => {
@@ -931,6 +960,54 @@ process.on('unhandledRejection', (e) => {
     const fin = await v.evaluate(() => window.__s[0].__out.filter((m) => m.type === 'realmLeave').length);
     ok(fin === av.sorti + 1, 'et R le ramene chez lui — la touche n est pas perdue');
     await v.close();
+  }
+
+  /* ---- LES PROJECTILES AVANCENT ENTRE DEUX ETATS ----
+   *
+   * Ils etaient REMPLACES en bloc dix fois par seconde et dessines la ou ils
+   * etaient au dernier message : un tir a 340 unites par seconde restait fige
+   * six images puis sautait de trente-quatre. Ca se lit comme du lag alors que
+   * rien ne rame — et c'est meme la premiere chose qu'on voit, parce qu'un
+   * projectile est ce qui va le plus vite a l'ecran.
+   *
+   * On mesure ce qui est PEINT, image par image : si deux images de suite
+   * montrent un projectile a la meme abscisse exacte, il ne bouge pas. */
+  {
+    await p.bringToFront();
+    await rejoins(p);
+    await p.evaluate(() => { window.__premierTir = null; window.__clic = performance.now(); window.__tirs.length = 0; });
+    await p.mouse.move(500, 300);
+    await p.mouse.down();
+    await p.waitForTimeout(2500);
+    await p.mouse.up();
+    await p.waitForTimeout(200);
+
+    const tir = await p.evaluate(() => {
+      const t = window.__tirs.filter((v) => v.length);
+      let figees = 0, comparees = 0;
+      for (let i = 1; i < t.length; i++) {
+        if (!t[i - 1].length || !t[i].length) continue;
+        comparees++;
+        if (t[i - 1].some((x) => t[i].indexOf(x) >= 0)) figees++;
+      }
+      return { images: t.length, comparees, figees,
+               delai: window.__premierTir === null ? null : window.__premierTir - window.__clic };
+    });
+    console.log('\n-- les projectiles --');
+    console.log('   ' + JSON.stringify(tir));
+    ok(tir.images > 20, `des projectiles ont ete peints (${tir.images} images)`);
+    ok(tir.comparees > 10, 'assez de paires pour conclure');
+    ok(tir.figees === 0,
+       `aucun projectile ne reste fige d une image a l autre (${tir.figees} sur ${tir.comparees})`);
+
+    /* ---- ET LE PREMIER PART TOUT DE SUITE ----
+     * Il attendait l'aller-retour : un tick de cent millisecondes plus le
+     * reseau. Et les dessins se chargeaient a la demande, donc les premiers
+     * tirs sortaient en rectangle de secours — mesure faite, 589 ms entre le
+     * clic et le premier projectile vraiment dessine, sur une machine locale
+     * ou le reseau ne coute rien. */
+    ok(tir.delai !== null && tir.delai < 120,
+       `du clic au projectile peint : ${tir.delai === null ? 'JAMAIS' : Math.round(tir.delai) + ' ms'}`);
   }
 
   ok(erreurs.length === 0, 'aucune erreur de page' + (erreurs.length ? ' : ' + erreurs[0] : ''));

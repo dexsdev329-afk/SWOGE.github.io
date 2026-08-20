@@ -3303,6 +3303,7 @@
    * silencieux : une potion de defense sous l'image d'une potion de vitesse.
    */
   var elButin = document.getElementById('nxButin');
+  var elFlot = document.getElementById('nxButinFlot');
   var elButinNom = document.getElementById('nxButinNom');
   var elButinCases = document.getElementById('nxButinCases');
   var COUL_SAC = { brun: '#B08050', bleu: '#5AA9FF', violet: '#C07BFF',
@@ -3312,8 +3313,60 @@
   var IMG_POTION = { vie: 'img/nexus/objets/potion_rouge.webp',
                      mana: 'img/nexus/objets/potion_bleue.webp' };
 
+  /* Ce que porte UNE place, decrit une fois pour les deux surfaces. Deux
+     rendus separes auraient fini par ne plus montrer la meme chose — et le
+     desaccord se verrait la ou on ne regarde pas. */
+  function contenuDeLaPlace(o, ordre) {
+    if (o.st) {
+      var col = ordre.indexOf(o.st);
+      if (col < 0) col = 0;
+      /* Huit images sur une bande : la position se compte en HUITIEMES de
+         deplacement, donc sur sept intervalles. */
+      var pos = (col / Math.max(1, ordre.length - 1)) * 100;
+      return { titre: '+' + (o.st === 'hp' || o.st === 'mp' ? 5 : 1) + ' ' + o.st.toUpperCase(),
+               html: '<u class="fiole" style="background-position:' + pos.toFixed(3) + '% 0"></u>' };
+    }
+    if (o.po) {
+      return { titre: o.po === 'vie' ? 'Health Potion' : 'Magic Potion',
+               html: '<img alt="" src="' + IMG_POTION[o.po] + '">' };
+    }
+    /* Une PIECE, deposee par quelqu'un ou tombee d'un monstre. Son nom et sa
+       cle d'image sont venus avec elle : la page n'a pas a les retrouver dans
+       un catalogue qu'elle ne possede peut-etre pas. */
+    return { titre: o.nm || 'Item',
+             html: '<img alt="" src="img/shop/' + encodeURIComponent(o.cl || '') +
+                   '.webp" onerror="this.style.visibility=\'hidden\'">' };
+  }
+
+  /* ---- LA RANGEE FLOTTANTE ----
+   *
+   * Le panneau se lit A L'ARRET, et sur telephone on le replie justement pour
+   * se battre. Or un sac au sol n'existe qu'une minute, pendant qu'on se fait
+   * tirer dessus : le ranger dans une surface qu'on ferme pour combattre etait
+   * l'erreur, pas le fait qu'elle soit fermee.
+   *
+   * Elle ne montre QUE les places pleines — huit cases dont six vides
+   * prendraient la moitie de la largeur d'un telephone pour ne rien dire — et
+   * un appui prend. Pas de double-appui : ici la case n'est pas une poignee,
+   * il n'y a rien vers quoi glisser.
+   */
+  function peintFlot(s, ordre) {
+    if (!elFlot) return;
+    var tactile = false;
+    try { tactile = window.matchMedia('(pointer: coarse)').matches; } catch (e) {}
+    if (!tactile || !s || !s.c.length) { elFlot.classList.remove('on'); elFlot.innerHTML = ''; return; }
+    elFlot.innerHTML = s.c.map(function (o, i) {
+      var d = contenuDeLaPlace(o, ordre);
+      return '<button type="button" class="fl" data-flot="' + i + '" title="' + d.titre + '">' +
+             d.html + '<b>' + d.titre + '</b></button>';
+    }).join('');
+    elFlot.classList.add('on');
+  }
+
   function peintButin() {
     if (!elButin) return;
+    var ordreG = (MONDE_C && MONDE_C.stats) || [];
+    peintFlot(SAC_PIEDS, ordreG);
     if (!SAC_PIEDS) { elButin.hidden = true; return; }
     var s = SAC_PIEDS;
     var couleur = COUL_SAC[s.s] || '#C9D3F2';
@@ -3323,28 +3376,9 @@
     for (var i = 0; i < cases; i++) {
       var o = s.c[i];
       if (!o) { html.push('<div class="nxp-c vide"></div>'); continue; }
-      var titre = '', dedans = '';
-      if (o.st) {
-        var col = ordre.indexOf(o.st);
-        if (col < 0) col = 0;
-        /* Huit images sur une bande : la position se compte en HUITIEMES de
-           deplacement, donc sur sept intervalles. */
-        var pos = (col / Math.max(1, ordre.length - 1)) * 100;
-        titre = '+' + (o.st === 'hp' || o.st === 'mp' ? 5 : 1) + ' ' + o.st.toUpperCase();
-        dedans = '<u class="fiole" style="background-position:' + pos.toFixed(3) + '% 0"></u>';
-      } else if (o.po) {
-        titre = o.po === 'vie' ? 'Health Potion' : 'Magic Potion';
-        dedans = '<img src="' + IMG_POTION[o.po] + '" alt="">';
-      } else if (o.it) {
-        /* Une PIECE, deposee par quelqu'un ou tombee d'un monstre. Son nom et
-           sa cle d'image sont venus avec elle : la page n'a pas a les
-           retrouver dans un catalogue qu'elle ne possede peut-etre pas. */
-        titre = o.nm || 'Item';
-        dedans = '<img alt="" src="img/shop/' + encodeURIComponent(o.cl || '') +
-                 '.webp" onerror="this.style.visibility=\'hidden\'">';
-      }
-      html.push('<div class="nxp-c" data-butin="' + i + '" title="' + titre + '">' +
-                dedans + '</div>');
+      var d = contenuDeLaPlace(o, ordre);
+      html.push('<div class="nxp-c" data-butin="' + i + '" title="' + d.titre + '">' +
+                d.html + '</div>');
     }
     elButinCases.innerHTML = html.join('');
     elButinNom.textContent = NOM_SAC[s.s] || 'Loot';
@@ -3372,6 +3406,17 @@
     if (!SAC_PIEDS || !enLigne) return;
     debloqueSon();
     envoie({ type: 'realmRamasse', i: SAC_PIEDS.i, place: Number(place) });
+  }
+  /* Un simple appui sur la rangee flottante. C'est le seul endroit du jeu ou
+     un clic simple prend quelque chose, et c'est justifie : cette case-la
+     n'est pas une poignee. */
+  if (elFlot) {
+    elFlot.addEventListener('click', function (ev) {
+      var b = ev.target.closest ? ev.target.closest('[data-flot]') : null;
+      if (!b) return;
+      ev.preventDefault();
+      prendDuButin(b.dataset.flot);
+    });
   }
   if (elButinCases) {
     elButinCases.addEventListener('dblclick', function (ev) {

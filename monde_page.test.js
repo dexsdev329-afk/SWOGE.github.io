@@ -18,7 +18,12 @@
  *    en combat on regarde son personnage, et on lisait sa vie APRES, en
  *    mourant. Sur telephone le panneau est souvent replie — c'etait alors le
  *    seul endroit ou elle s'affichait.
- * 5. AU DOIGT, LE RETOUR AU NEXUS EST A DROITE. Il a d'abord ete pose au-
+ * 5. AU DOIGT, LE SAC AU SOL SORT DU PANNEAU. Le panneau se lit A L'ARRET, et
+ *    sur telephone on le replie justement pour se battre. Un sac qui n'existe
+ *    qu'une minute, pendant qu'on se fait tirer dessus, n'a rien a y faire :
+ *    il devient une rangee flottante au-dessus des commandes, qui ne montre
+ *    que les places pleines et se prend d'un simple appui.
+ * 6. AU DOIGT, LE RETOUR AU NEXUS EST A DROITE. Il a d'abord ete pose au-
  *    dessus de la fleche du haut : le pouce gauche tient les directions en
  *    continu, et un bouton qui SORT du monde a un demi-centimetre de
  *    « avancer » finit par etre touche pendant qu'on recule d'un golem.
@@ -60,6 +65,11 @@ function servirLeSite(racine) {
     s.listen(0, '127.0.0.1', () => res({ port: s.address().port, stop: () => s.close() }));
   });
 }
+
+process.on('unhandledRejection', (e) => {
+  console.log('  RATE essai interrompu : ' + (e && e.message ? e.message : e));
+  process.exit(1);
+});
 
 (async () => {
   process.env.DATA_DIR = fs.mkdtempSync('/tmp/mtaille-');
@@ -104,6 +114,25 @@ function servirLeSite(racine) {
         s.__out = [];
         const env = s.send.bind(s);
         s.send = function (d) { try { s.__out.push(JSON.parse(d)); } catch (x) {} return env(d); };
+        /* ---- L'INJECTION SE RECOLLE APRES CHAQUE ETAT REEL ----
+         * Le vrai serveur envoie son etat dix fois par seconde et il n'a pas
+         * nos sacs. Reinjecter au rythme d'une minuterie fait une COURSE : la
+         * moitie du temps c'est son etat qui arrive en dernier, la grille se
+         * referme, et un geste lache a cet instant-la ne trouve plus rien.
+         * On se raccroche donc a son message. `setTimeout` et pas un appel
+         * direct : `dispatchEvent` est synchrone, et notre message serait
+         * traite AVANT celui qui l'a declenche. */
+        s.addEventListener('message', (e) => {
+          if (window.__rejoue || !window.__sacs || !window.__sacs.length) return;
+          let m; try { m = JSON.parse(e.data); } catch (x) { return; }
+          if (m.type !== 'realmEtat') return;
+          setTimeout(() => {
+            window.__rejoue = true;
+            s.dispatchEvent(new MessageEvent('message', {
+              data: JSON.stringify({ ...m, sacs: window.__sacs }) }));
+            window.__rejoue = false;
+          }, 0);
+        });
         window.__s.push(s); return s; }
       C.prototype = N.prototype; ['CONNECTING','OPEN','CLOSING','CLOSED'].forEach((k) => { C[k] = N[k]; });
       window.WebSocket = C;
@@ -114,6 +143,20 @@ function servirLeSite(racine) {
        * dans un atlas ; `fillRect` pour ce qui se peint a plat — les jauges.
        * On ne retient des rectangles que les couleurs des barres, sinon on
        * enregistrerait toute l'interface a soixante images par seconde. */
+      /* Nos sacs a nous, et le moyen de les reposer. Ils vivent dans
+         l'amorcage — donc sur CHAQUE page. Les avoir definis dans l'evaluate
+         de la premiere laissait la seconde sans eux : l'appel echouait, la
+         promesse etait rejetee, et le navigateur restant ouvert node ne
+         rendait jamais la main. Un essai qui ne finit pas ne dit rien. */
+      window.__sacs = [];
+      window.__pousse = function () {
+        const s = window.__s[0];
+        if (!s) return;
+        s.dispatchEvent(new MessageEvent('message', {
+          data: JSON.stringify({ type: 'realmEtat', monstres: [], tirs: [], tirsM: [],
+                                 tombes: [], joueurs: [], sacs: window.__sacs }),
+        }));
+      };
       window.__peint = [];
       const D = CanvasRenderingContext2D.prototype.drawImage;
       CanvasRenderingContext2D.prototype.drawImage = function (img) {
@@ -210,10 +253,6 @@ function servirLeSite(racine) {
       { i: 80002, x: x - r * 4, y: y - r * 4, s: 'brun', po: 'vie', r: 55 },
       { i: 80003, x: x + r * 4, y: y + r * 4, s: 'blanc', r: 55 },
     ];
-    window.__pousse = () => s.dispatchEvent(new MessageEvent('message', {
-      data: JSON.stringify({ type: 'realmEtat', monstres: [], tirs: [], tirsM: [],
-                             tombes: [], joueurs: [], sacs: window.__sacs }),
-    }));
     /* ---- L'INJECTION SE RECOLLE APRES CHAQUE ETAT REEL ----
      * Le vrai serveur envoie son etat dix fois par seconde et il n'a pas nos
      * sacs. Une reinjection au rythme d'une minuterie fait une COURSE : la
@@ -224,17 +263,6 @@ function servirLeSite(racine) {
      * repose le notre juste apres. `setTimeout` et pas un appel direct —
      * `dispatchEvent` est synchrone, et notre message serait traite AVANT
      * celui qui l'a declenche. */
-    s.addEventListener('message', (e) => {
-      if (window.__rejoue || !window.__sacs || !window.__sacs.length) return;
-      let m; try { m = JSON.parse(e.data); } catch (x) { return; }
-      if (m.type !== 'realmEtat') return;
-      setTimeout(() => {
-        window.__rejoue = true;
-        s.dispatchEvent(new MessageEvent('message', {
-          data: JSON.stringify({ ...m, sacs: window.__sacs }) }));
-        window.__rejoue = false;
-      }, 0);
-    });
     for (let k = 0; k < 40; k++) { window.__pousse(); await new Promise((f) => requestAnimationFrame(f)); }
   }, [moi.x, moi.y, moi.rayon]);
   await p.waitForTimeout(200);
@@ -502,6 +530,82 @@ function servirLeSite(racine) {
     ok(boutons.maison.y + boutons.maison.h <= boutons.tir.y,
        `et AU-DESSUS du tir (${boutons.maison.y}+${boutons.maison.h} contre ${boutons.tir.y})`);
   }
+
+  /* ---- LE SAC AU SOL, HORS DU PANNEAU ----
+   * Le cas qui comptait : panneau REPLIE — la facon normale de jouer sur
+   * telephone — et un sac sous les pieds. La grille du panneau est alors
+   * inaccessible ; la rangee flottante, elle, doit etre la. */
+  await t.evaluate(() => { document.getElementById('nxWrap').classList.add('replie'); });
+  /* SA position a lui. Le compte est le meme, mais rejoindre une seconde fois
+     fait reapparaitre ailleurs : poser le sac aux coordonnees de la premiere
+     page le laissait a des milliers d'unites, hors du rayon de ramassage — et
+     la rangee restait vide sans que rien ne soit casse. */
+  const moiT = await t.evaluate(() => {
+    const e = window.__s[0].__m.filter((m) => m.type === 'realmEntre').pop();
+    return e ? { x: e.moi.x, y: e.moi.y } : null;
+  });
+  ok(!!moiT, 'la page tactile est bien entree dans le monde');
+  await t.evaluate(async ([x, y]) => {
+    window.__sacs = [{ i: 80030, x: x, y: y, s: 'bleu', r: 55,
+                       c: [{ st: 'att' }, { po: 'vie' }] }];
+    for (let k = 0; k < 30; k++) { window.__pousse(); await new Promise((f) => requestAnimationFrame(f)); }
+  }, [moiT.x, moiT.y]);
+  await t.waitForTimeout(400);
+
+  const flot = await t.evaluate(() => {
+    const el = document.getElementById('nxButinFlot');
+    const q = el.getBoundingClientRect();
+    const pan = document.getElementById('nxPanneau');
+    const cases = [].map.call(el.querySelectorAll('[data-flot]'), (c) => ({
+      place: Number(c.dataset.flot), titre: c.getAttribute('title'),
+      vu: c.getBoundingClientRect().width > 0,
+    }));
+    return { visible: el.classList.contains('on'), y: Math.round(q.y),
+             h: Math.round(q.height), cases,
+             panneauLu: pan ? Math.round(pan.getBoundingClientRect().x) : null,
+             hauteur: window.innerHeight,
+             tir: Math.round(document.getElementById('nxTir').getBoundingClientRect().y) };
+  });
+  console.log('\n-- le sac au sol, panneau replie --');
+  console.log('   ' + JSON.stringify(flot));
+  ok(flot.visible, 'panneau replie, le sac au sol reste atteignable');
+  ok(flot.cases.length === 2, `elle ne montre que les places PLEINES (${flot.cases.length}, pas 8)`);
+  if (flot.cases.length) {
+    ok(flot.cases.every((c) => c.vu), 'et chacune est reellement visible');
+    ok(/ATT/.test(flot.cases[0].titre), 'la premiere dit ce qu elle donne : ' + flot.cases[0].titre);
+    ok(flot.y + flot.h <= flot.tir + 6,
+       `elle est AU-DESSUS des commandes (${flot.y}+${flot.h} contre ${flot.tir})`);
+  }
+
+  /* Un simple appui prend. C'est le seul endroit du jeu ou un clic simple
+     prend quelque chose : cette case-la n'est pas une poignee. */
+  const avantF = await t.evaluate(() => window.__s[0].__out.filter((m) => m.type === 'realmRamasse').length);
+  await t.evaluate(() => { document.querySelector('#nxButinFlot [data-flot="1"]').click(); });
+  await t.waitForTimeout(400);
+  const dem = await t.evaluate(() => window.__s[0].__out.filter((m) => m.type === 'realmRamasse').pop());
+  const apresF = await t.evaluate(() => window.__s[0].__out.filter((m) => m.type === 'realmRamasse').length);
+  console.log('   appui : ' + JSON.stringify(dem));
+  ok(apresF === avantF + 1, 'un simple appui prend, et une seule fois');
+  ok(dem && dem.i === 80030 && dem.place === 1, 'en nommant le sac et la place touchee');
+
+  /* Elle disparait avec le sac : une rangee qui resterait laisserait croire
+     qu'on peut encore prendre quelque chose reste vingt metres en arriere. */
+  await t.evaluate(async () => {
+    window.__sacs = [];
+    for (let k = 0; k < 20; k++) { window.__pousse(); await new Promise((f) => requestAnimationFrame(f)); }
+  });
+  await t.waitForTimeout(300);
+  const partie = await t.evaluate(() => document.getElementById('nxButinFlot').classList.contains('on'));
+  ok(!partie, 's eloigner fait disparaitre la rangee');
+
+  /* Et a la SOURIS elle n'existe pas : le panneau y est toujours ouvert, et il
+     faut les deux grilles cote a cote pour glisser de l'une a l'autre. */
+  const surSouris = await p.evaluate(() => {
+    const el = document.getElementById('nxButinFlot');
+    return { existe: !!el, allumee: el ? el.classList.contains('on') : null };
+  });
+  ok(surSouris.existe && !surSouris.allumee,
+     'a la souris la rangee flottante reste eteinte : le panneau suffit');
 
   /* Panneau replie, les deux boutons glissent au bord de l'ecran : c'est
      justement comme ca qu'on joue sur telephone. */

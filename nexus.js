@@ -295,10 +295,46 @@
         poseNiveau(joueur.x, joueur.y);
       }
     }
+    /* ---- CE QU'ON VIENT DE RAMASSER ----
+     * Le serveur a deja tout tranche : quel sac, ce qu'il contenait, et si
+     * l'on pouvait le prendre. Il ne reste ici qu'a le DIRE. Un sac qui
+     * disparait sans un mot se lit comme un sac perdu. */
+    if (m.type === 'realmRamasse') {
+      if (m.rien) { /* on s'est eloigne entre la demande et la reponse */ }
+      else if (m.refus) {
+        /* Un seul mot, parce qu'un seul geste : depuis qu'on prend en TOUCHANT
+           la case, un refus repond a une demande explicite. Il n'y a plus rien
+           a etouffer — c'est le ramassage automatique qui redemandait sans fin
+           ce qu'on ne pouvait pas prendre. */
+        flotte(m.refus === 'plein'
+          ? (m.stat ? (NOM_STAT[m.stat] || m.stat).toUpperCase() + ' AT MAX' : 'BAG FULL')
+          : String(m.refus).toUpperCase());
+        joueSample('clic', { vol: 0.35 });
+      } else if (m.stat) {
+        /* Le gain PERMANENT. Il merite le meme traitement qu'une montee de
+           niveau : c'est la seule autre chose du jeu qui change le personnage
+           pour de bon. */
+        flotte('+' + m.pas + ' ' + (NOM_STAT[m.stat] || m.stat).toUpperCase() +
+               '  (' + m.potions + '/' + m.max + ')');
+        joueSample('niveau', { vol: 0.8 });
+        poseNiveau(joueur.x, joueur.y);
+      } else if (m.potion) {
+        POTIONS_C = m.potions || POTIONS_C;
+        flotte('+1 ' + (m.nom || 'POTION') + '  (' + m.quantite + ')');
+        joueSample('clic2', { vol: 0.6 });   // pas de son de ramassage : celui de l'effet fait l'affaire
+        peintPanneau();
+      }
+      /* La grille ne s'efface pas toute seule : le prochain `realmEtat` dira
+         ce qu'il reste dans le sac. On la vide tout de suite quand le serveur
+         annonce qu'il est vide, pour ne pas laisser une fiole dessinee sur une
+         place qui n'existe plus — un deuxieme clic irait dans le vide. */
+      if (m.vide) { SAC_PIEDS = null; SAC_SIGNE = ''; peintButin(); }
+    }
     /* La mort arrive du SERVEUR : c'est lui qui l'a constatee, jamais nous. */
     if (m.type === 'realmMort') {
       SCENE = 'nexus'; peintBoutonTir();
-      MONSTRES_C = {}; TIRS_C = []; DISTANTS_M = {}; TOMBES_C = [];
+      MONSTRES_C = {}; TIRS_C = []; DISTANTS_M = {}; TOMBES_C = []; SACS_C = [];
+    SAC_PIEDS = null; SAC_SIGNE = ''; peintButin();
       POUVOIR_C = null; EFFETS_P = []; PARALYSE = 0; RALENTI = 0; BRULURE = 0;
       VITESSE = 260; peintPouvoir();
       var pp = LIEUX[1];
@@ -345,6 +381,10 @@
   var elRepli = document.getElementById('nxRepli');
   var elPotions = document.getElementById('nxPotions');
   var POTIONS_C = [];
+  /* Le nom court d'une stat, pour les mots qui flottent. « +1 att » ne se lit
+     pas au milieu d'un combat ; « +1 ATT » si. */
+  var NOM_STAT = { hp: 'hp', mp: 'mp', att: 'att', def: 'def',
+                   spd: 'spd', dex: 'dex', vit: 'vit', wis: 'wis' };
   var elHpJauge = document.getElementById('nxHpJauge');
   var elMpJauge = document.getElementById('nxMpJauge');
   if (elRepli) elRepli.addEventListener('click', function () { clic(true); retourNexus('bouton'); });
@@ -1121,6 +1161,15 @@
   var MONDE_C = null;
   /* Les pierres tombales visibles autour de nous. */
   var TOMBES_C = [];          // la description recue a l'entree
+  /* Les sacs de butin au sol. Comme les tombes : le serveur les tient, la
+     page les dessine, et personne ici ne decide de leur contenu. */
+  var SACS_C = [];
+  var IMG_SACS = null;
+  /* Le sac SUR LEQUEL on se tient, et la signature de ce qu'il contient : on
+     ne repeint la grille que quand l'une des deux change, sinon on
+     reconstruirait huit cases dix fois par seconde sous le doigt de qui est
+     en train d'en toucher une. */
+  var SAC_PIEDS = null, SAC_SIGNE = '';
   var MONSTRES_C = {};         // id -> etat interpole
   var TIRS_C = [];             // nos projectiles, tels que le serveur les voit
   var TIRS_M = [];             // ceux des monstres, contre nous
@@ -1212,6 +1261,7 @@
     if (!IMG_COUP) { IMG_COUP = new Image(); IMG_COUP.src = 'img/nexus/tirs/coup.webp'; }
     if (!IMG_NIVEAU) { IMG_NIVEAU = new Image(); IMG_NIVEAU.src = 'img/nexus/effets/niveau.webp'; }
     if (!IMG_PARA) { IMG_PARA = new Image(); IMG_PARA.src = 'img/nexus/effets/paralysie.webp'; }
+    if (!IMG_SACS) { IMG_SACS = new Image(); IMG_SACS.src = 'img/nexus/objets/sacs.webp'; }
   }
 
   /* ---- L'AURA DE RAFALE ----
@@ -1308,6 +1358,42 @@
       mort ici » ne vaut rien, « Dodexel est mort ici » fait reculer.
       Elle palit dans ses dernieres secondes plutot que de disparaitre d'un
       coup — sinon on croit a un defaut d'affichage. */
+  /* ---- UN SAC AU SOL ----
+   *
+   * Six couleurs, dans l'ordre exact de la planche : le serveur envoie le NOM
+   * du sac, pas son numero de colonne. Traduire ici plutot que la-bas garde la
+   * regle du butin lisible cote serveur (« bleu » veut dire quelque chose,
+   * « 1 » ne veut rien dire) et l'ordre du dessin lisible ici.
+   *
+   * Il CLIGNOTE sur ses dix dernieres secondes. Sans ca, un sac qu'on avait
+   * repere disparait sans prevenir pendant qu'on finit un combat, et le joueur
+   * conclut que le jeu le lui a repris. */
+  var COLONNE_SAC = { brun: 0, bleu: 1, violet: 2, or: 3, rouge: 4, blanc: 5 };
+  var SAC_FIN = 10;           // secondes de clignotement avant la fin
+  function dessineSac(s) {
+    if (!IMG_SACS || !IMG_SACS.complete || !IMG_SACS.naturalWidth) return;
+    var cadre = IMG_SACS.naturalHeight;          // la planche est une rangee
+    var col = COLONNE_SAC[s.s] === undefined ? 0 : COLONNE_SAC[s.s];
+    var T = 42;
+    ctx.save();
+    if (s.r < SAC_FIN) {
+      /* Deux clignotements par seconde, et jamais jusqu'a l'invisible : un sac
+         qu'on ne voit plus par instants est plus dur a viser qu'un sac pale. */
+      var bat = 0.45 + 0.55 * Math.abs(Math.cos(performance.now() / 1000 * Math.PI * 2));
+      ctx.globalAlpha = Math.max(0.35, bat);
+    }
+    /* Le halo dit « celui-la vaut quelque chose ». Le brun n'en a pas : c'est
+       du consommable, et un halo sur tout ne distingue plus rien. */
+    if (s.s !== 'brun') {
+      var teinte = { bleu: '#5AA9FF', violet: '#C07BFF', or: '#FFC53D',
+                     rouge: '#F2685E', blanc: '#FFFFFF' }[s.s] || '#FFFFFF';
+      halo(s.x, s.y + 4, T * 0.62, teinte, s.s === 'blanc' ? 0.34 : 0.22);
+    }
+    ctx.drawImage(IMG_SACS, col * cadre, 0, cadre, cadre,
+                  s.x - T / 2, s.y - T + 10, T, T);
+    ctx.restore();
+  }
+
   function dessineTombe(t) {
     if (!IMG_TOMBE || !IMG_TOMBE.complete || !IMG_TOMBE.naturalWidth) return;
     var H = 86, L = H * (IMG_TOMBE.naturalWidth / IMG_TOMBE.naturalHeight);
@@ -1374,6 +1460,7 @@
     /* Les pierres viennent du serveur en entier a chaque image : elles sont
        peu nombreuses et ne bougent pas, il n'y a rien a interpoler. */
     TOMBES_C = m.tombes || [];
+    SACS_C = m.sacs || [];
 
     var vusJ = {};
     (m.joueurs || []).forEach(function (o) {
@@ -1437,7 +1524,8 @@
 
   function entreMonde(m) {
     MONDE_C = m;
-    MONSTRES_C = {}; TIRS_C = []; DISTANTS_M = {}; TOMBES_C = [];
+    MONSTRES_C = {}; TIRS_C = []; DISTANTS_M = {}; TOMBES_C = []; SACS_C = [];
+    SAC_PIEDS = null; SAC_SIGNE = ''; peintButin();
     moiMonde = { pv: m.moi.pv, pvMax: m.moi.pvMax, xp: 0 };
     VIE.pv = m.moi.pv; VIE.max = m.moi.pvMax;
     if (m.moi.mpMax !== undefined) { VIE.mp = m.moi.mp; VIE.mpMax = m.moi.mpMax; }
@@ -1480,7 +1568,8 @@
     if (enLigne) envoie({ type: 'realmLeave' });
     SCENE = 'nexus';
     peintBoutonTir();
-    MONSTRES_C = {}; TIRS_C = []; DISTANTS_M = {}; TOMBES_C = [];
+    MONSTRES_C = {}; TIRS_C = []; DISTANTS_M = {}; TOMBES_C = []; SACS_C = [];
+    SAC_PIEDS = null; SAC_SIGNE = ''; peintButin();
     /* On revient AU PIED DU PORTAIL, pas au centre : c'est par la qu'on est
        parti, et reapparaitre ailleurs donne l'impression d'avoir ete
        deplace. Un cran plus bas pour ne pas repartir aussitot. */
@@ -3127,6 +3216,119 @@
     elTir.classList.toggle('on', tactile && SCENE === 'monde');
   }
 
+  /* ---- RAMASSER EN MARCHANT DESSUS ----
+   *
+   * Pas de touche a apprendre : on passe sur le sac, on le prend. Une touche
+   * de plus dans un jeu ou l'on tient deja quatre directions et le tir serait
+   * une touche qu'on oublie au moment ou l'on en a besoin — c'est-a-dire au
+   * milieu d'un combat, la ou tombent les sacs.
+   *
+   * La page ne dit QUE « je ramasse ». Elle ne nomme pas le sac : la distance
+   * et le choix se tranchent au serveur, sinon il suffirait d'une ligne dans
+   * la console pour s'attribuer un sac a l'autre bout de la carte — et les
+   * sacs sont exactement ce qu'on aurait interet a voler.
+   *
+   * Deux freins. Un delai court entre deux demandes, parce que marcher sur un
+   * sac produirait sinon dix demandes par seconde. Et un delai LONG apres un
+   * refus : quand on est plein, rester sur le sac redemanderait sans fin une
+   * chose qu'on ne peut pas prendre, et le message clignoterait sans arret.
+   */
+  /* ---- LA GRILLE DU SAC AU SOL ----
+   *
+   * Huit places, comme les siennes, mais visiblement A PART : liseré de la
+   * couleur du sac et fond plus chaud. Sans cette distinction, on croirait
+   * son propre sac passe de huit a seize places — et on partirait en laissant
+   * le butin par terre.
+   *
+   * La colonne de la fiole se DEDUIT de l'ordre des stats que le serveur a
+   * envoye : rouge = hp, bleue = mp, epee = att, bouclier = def, ailes = spd,
+   * verte = dex, coeur = vit, oeil = wis. Ecrire cet ordre ici en aurait fait
+   * un deuxieme a garder d'accord avec le premier, et le desaccord aurait ete
+   * silencieux : une potion de defense sous l'image d'une potion de vitesse.
+   */
+  var elButin = document.getElementById('nxButin');
+  var elButinNom = document.getElementById('nxButinNom');
+  var elButinCases = document.getElementById('nxButinCases');
+  var COUL_SAC = { brun: '#B08050', bleu: '#5AA9FF', violet: '#C07BFF',
+                   or: '#FFC53D', rouge: '#F2685E', blanc: '#FFFFFF' };
+  var NOM_SAC = { brun: 'Loot bag', bleu: 'Stat potion', violet: 'Rare drop',
+                  or: 'Legendary drop', rouge: 'Mythic drop', blanc: 'RELIC' };
+  var IMG_POTION = { vie: 'img/nexus/objets/potion_rouge.webp',
+                     mana: 'img/nexus/objets/potion_bleue.webp' };
+
+  function peintButin() {
+    if (!elButin) return;
+    if (!SAC_PIEDS) { elButin.hidden = true; return; }
+    var s = SAC_PIEDS;
+    var couleur = COUL_SAC[s.s] || '#C9D3F2';
+    var cases = (MONDE_C && MONDE_C.sac && MONDE_C.sac.cases) || 8;
+    var ordre = (MONDE_C && MONDE_C.stats) || [];
+    var html = [];
+    for (var i = 0; i < cases; i++) {
+      var o = s.c[i];
+      if (!o) { html.push('<div class="nxp-c vide"></div>'); continue; }
+      var titre = '', dedans = '';
+      if (o.st) {
+        var col = ordre.indexOf(o.st);
+        if (col < 0) col = 0;
+        /* Huit images sur une bande : la position se compte en HUITIEMES de
+           deplacement, donc sur sept intervalles. */
+        var pos = (col / Math.max(1, ordre.length - 1)) * 100;
+        titre = '+' + (o.st === 'hp' || o.st === 'mp' ? 5 : 1) + ' ' + o.st.toUpperCase();
+        dedans = '<u class="fiole" style="background-position:' + pos.toFixed(3) + '% 0"></u>';
+      } else if (o.po) {
+        titre = o.po === 'vie' ? 'Health Potion' : 'Magic Potion';
+        dedans = '<img src="' + IMG_POTION[o.po] + '" alt="">';
+      }
+      html.push('<div class="nxp-c" data-place="' + i + '" title="' + titre + '">' + dedans + '</div>');
+    }
+    elButinCases.innerHTML = html.join('');
+    elButinNom.textContent = NOM_SAC[s.s] || 'Loot';
+    elButinNom.style.color = couleur;
+    elButin.style.borderTop = '1px dashed ' + couleur;
+    elButin.hidden = false;
+  }
+
+  /* On prend en TOUCHANT la case. Le sac est nomme dans la demande, et le
+     serveur verifie qu'on est bien dessus : sans cette verification, nommer un
+     identifiant suffirait a vider un sac a l'autre bout de la carte. */
+  if (elButinCases) {
+    elButinCases.addEventListener('click', function (ev) {
+      var c = ev.target.closest ? ev.target.closest('.nxp-c') : null;
+      if (!c || !c.dataset.place || !SAC_PIEDS || !enLigne) return;
+      debloqueSon();
+      envoie({ type: 'realmRamasse', i: SAC_PIEDS.i, place: Number(c.dataset.place) });
+    });
+  }
+
+  function sacSousLesPieds() {
+    if (SCENE !== 'monde' || !SACS_C.length) return null;
+    var r = (MONDE_C && MONDE_C.sac && MONDE_C.sac.rayon) || 56;
+    var pres = null, d2mini = r * r;
+    for (var i = 0; i < SACS_C.length; i++) {
+      var dx = SACS_C[i].x - joueur.x, dy = SACS_C[i].y - joueur.y;
+      var d2 = dx * dx + dy * dy;
+      /* Le PLUS PROCHE : deux sacs cote a cote et c'est celui de derriere
+         qu'on ouvrirait. Meme regle que cote serveur, et c'est voulu — la
+         grille doit montrer le sac que le serveur videra. */
+      if (d2 <= d2mini) { d2mini = d2; pres = SACS_C[i]; }
+    }
+    return pres;
+  }
+
+  function regardeSacs() {
+    var s = sacSousLesPieds();
+    /* La signature : l'identite du sac ET son contenu. Sans le contenu, prendre
+       une potion dans un sac a deux places ne repeindrait pas la grille — la
+       fiole prise resterait dessinee, et un deuxieme clic irait chercher une
+       place qui n'existe plus. */
+    var signe = s ? (s.i + ':' + s.c.map(function (o) { return o.st || o.po; }).join(',')) : '';
+    if (signe === SAC_SIGNE) return;
+    SAC_SIGNE = signe;
+    SAC_PIEDS = s;
+    peintButin();
+  }
+
   // ------------------------------------------------------- la boucle
 
   var indiceEl = document.getElementById('nxIndice');
@@ -3228,6 +3430,7 @@
         envoie({ type: 'realmMove', x: Math.round(joueur.x), y: Math.round(joueur.y),
                  dir: joueur.dir, anim: joueur.anim });
       }
+      regardeSacs();
       if (!saut.en_cours) avanceCadre(joueur, PERSO, dt);
       else {
         saut.chrono += dt;
@@ -3471,6 +3674,11 @@
          comme un autre, et le traiter a part le ferait flotter. */
       TOMBES_C.forEach(function (t) {
         pileM.push({ y: t.y, dessine: function () { dessineTombe(t); } });
+      });
+      /* Les sacs se trient avec les vivants, comme les pierres : un sac pose
+         devant un monstre doit passer devant lui. */
+      SACS_C.forEach(function (s) {
+        pileM.push({ y: s.y, dessine: function () { dessineSac(s); } });
       });
       Object.keys(MONSTRES_C).forEach(function (k) {
         var e = MONSTRES_C[k];

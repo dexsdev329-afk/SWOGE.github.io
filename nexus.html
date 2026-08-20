@@ -164,6 +164,24 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
    Sous le sac, et visiblement A PART : elles s'empilent jusqu'a 99 alors
    qu'une place de sac porte un objet et un seul. Les melanger ferait croire
    que le sac empile aussi. */
+/* ---- LES PLACES DU SAC AU SOL ----
+ * Elles apparaissent sous les siennes, avec un liseré de la couleur du sac :
+ * c'est ce qui dit d'un coup d'oeil « ces huit cases-la ne sont pas a moi ».
+ * Sans cette distinction, on croirait son propre sac passe de huit a seize
+ * places, et on partirait en laissant le butin par terre. */
+.nxp-butin{ margin-top:6px; padding-top:6px;
+  border-top:1px dashed rgba(255,255,255,.16); flex:0 0 auto; }
+.nxp-butin[hidden]{ display:none; }
+.nxp-butin > i{ display:block; font:800 9px/1.4 'Archivo',system-ui,sans-serif;
+  letter-spacing:.8px; text-transform:uppercase; margin-bottom:4px; color:#C9D3F2; }
+.nxp-butin .nxp-c{ background:#3a3320; border-color:#20180a; cursor:pointer; }
+.nxp-butin .nxp-c.vide{ background:#2a2a2a; cursor:default; }
+.nxp-butin .nxp-c:not(.vide):hover{ outline:1px solid rgba(255,197,61,.7); }
+/* La fiole de stat vit dans une planche de huit : on la cadre par le fond.
+   Un <img> aurait demande huit fichiers la ou il y en a un. */
+.nxp-butin .nxp-c u.fiole{ display:block; width:78%; height:78%;
+  background-image:url('img/nexus/objets/potions_stat.webp');
+  background-repeat:no-repeat; background-size:800% 100%; image-rendering:pixelated; }
 .nxp-pot{ display:grid; grid-template-columns:1fr 1fr; gap:4px; margin-top:4px; }
 .nxp-pot button{ position:relative; display:flex; align-items:center; justify-content:center;
   gap:4px; height:34px; border-radius:6px; font:inherit; cursor:pointer;
@@ -727,6 +745,15 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
     <div class="nxp-stats" id="nxStats"></div>
     <div class="nxp-cases" id="nxEquip"></div>
     <div class="nxp-cases" id="nxSac"></div>
+    <!-- ---- LE SAC SUR LEQUEL ON MARCHE ----
+         Huit places de plus, SOUS les siennes, qui n'existent que tant qu'on
+         est dessus. Le butin n'est pas absorbe en passant : on voit ce qu'il
+         y a, on prend ce qu'on veut, on laisse le reste. Un sac a deux objets
+         dont un qu'on ne peut pas porter doit pouvoir etre vide a moitie. -->
+    <div class="nxp-butin" id="nxButin" hidden>
+      <i id="nxButinNom"></i>
+      <div class="nxp-cases" id="nxButinCases"></div>
+    </div>
     <!-- Les potions ont leurs propres places : elles s'empilent, le sac non. -->
     <div class="nxp-pot" id="nxPotions"></div>
     <div class="nxp-gens" id="nxGens"></div>
@@ -820,7 +847,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
   </div>
 </div>
 
-<script src="nexus.js?v=20260820b" defer></script>
+<script src="nexus.js?v=20260820c" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

@@ -1,0 +1,4 @@
+
+# Le cache de Python : il naît en lançant planches.py, il ne regarde personne.
+__pycache__/
+*.pyc

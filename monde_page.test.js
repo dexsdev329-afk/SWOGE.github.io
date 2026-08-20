@@ -218,7 +218,17 @@ process.on('unhandledRejection', (e) => {
          commence la suivante, et l'ordre lu serait celui de deux images
          differentes. */
       window.__image = 0;
-      (function compte() { window.__image++; requestAnimationFrame(compte); })();
+      /* Et le TEMPS de chaque image. « ca saccade dans le monde alors que le
+         Nexus est fluide » ne se corrige pas a l'oreille : il faut savoir de
+         combien, et ou. */
+      window.__dt = [];
+      (function compte(t) {
+        if (window.__tPrec !== undefined) window.__dt.push(t - window.__tPrec);
+        window.__tPrec = t;
+        if (window.__dt.length > 4000) window.__dt.splice(0, 2000);
+        window.__image++;
+        requestAnimationFrame(compte);
+      })(performance.now());
       /* Les positions ou l'on peint un PROJECTILE, image par image. C'est la
          seule facon de savoir s'il avance entre deux etats du serveur ou s'il
          reste fige six images puis saute de trente-quatre unites. */
@@ -1360,6 +1370,181 @@ process.on('unhandledRejection', (e) => {
        `du clic au projectile peint : ${tir.delai === null ? 'JAMAIS' : Math.round(tir.delai) + ' ms'}`);
   }
 
+  /* ---- LA FLUIDITE : LE MONDE CONTRE LE NEXUS ----
+   *
+   * « Dans le Nexus c'est fluide quand on marche, mais dans le monde on a
+   * l'impression que ca saccade. » On mesure donc les DEUX, sur la meme
+   * machine et a la suite : la difference est la seule chose qui compte, et
+   * elle seule survit au fait qu'un banc d'essai n'est pas un vrai ecran.
+   *
+   * Ce qu'on regarde n'est pas la moyenne — une moyenne de seize
+   * millisecondes avec une image sur vingt a cinquante se sent comme un
+   * hoquet, et se lit comme « tout va bien ». C'est la QUEUE : combien
+   * d'images depassent 33 ms, c'est-a-dire combien de fois l'ecran saute. */
+  {
+    /* ---- ON MARCHE DANS UNE DIRECTION LIBRE ----
+     * Deux cent quarante rochers sont poses sur la carte, et le personnage
+     * s'arrete net contre le premier. Une mesure de fluidite faite le nez
+     * contre une pierre compte zero pas et se lit comme « il ne recule
+     * jamais » — la plus mauvaise facon de passer. On choisit donc une route
+     * degagee, et on VERIFIE qu'il a marche. */
+    const routeLibre = async () => {
+      const ou = await p.evaluate(() => {
+        const e = window.__s[0].__m.filter((m) => m.type === 'realmEntre').pop();
+        return { x: e.moi.x, y: e.moi.y, w: e.monde.w, h: e.monde.h };
+      });
+      const HUIT = [[1, 0, ['ArrowRight']], [-1, 0, ['ArrowLeft']],
+                    [0, 1, ['ArrowDown']], [0, -1, ['ArrowUp']]];
+      let mieux = null, plusLoin = -1;
+      for (const [dx0, dy0, tt] of HUIT) {
+        /* Jusqu'ou peut-on aller tout droit ? Le bord de la carte compte
+           autant qu'un rocher : arrive dessus, on n'avance plus. */
+        let libre = dx0 > 0 ? ou.w - 80 - ou.x : dx0 < 0 ? ou.x - 80
+                  : dy0 > 0 ? ou.h - 80 - ou.y : ou.y - 80;
+        for (const o of blocs) {
+          const vx = o.x - ou.x, vy = o.y - ou.y;
+          const le = vx * dx0 + vy * dy0;
+          if (le < 0) continue;
+          const tr = Math.abs(vx * dy0 - vy * dx0);
+          if (tr > o.r + 30) continue;
+          libre = Math.min(libre, le - o.r - 30);
+        }
+        if (libre > plusLoin) { plusLoin = libre; mieux = tt; }
+      }
+      return { touches: mieux || ['ArrowRight'], libre: Math.round(plusLoin) };
+    };
+
+    const mesure = async (etiquette) => {
+      await p.evaluate(() => { window.__dt.length = 0; });
+      /* On MARCHE pendant la mesure : c'est ce que le joueur faisait. */
+      const r = await routeLibre();
+      for (const t of r.touches) await p.keyboard.down(t);
+      await p.waitForTimeout(2500);
+      for (const t of r.touches) await p.keyboard.up(t);
+      const d = await p.evaluate(() => window.__dt.slice());
+      d.sort((a, b) => a - b);
+      const q = (f) => d[Math.min(d.length - 1, Math.floor(d.length * f))] || 0;
+      return { ou: etiquette, images: d.length, median: +q(0.5).toFixed(1),
+               p95: +q(0.95).toFixed(1), p99: +q(0.99).toFixed(1),
+               sautees: d.filter((x) => x > 33).length };
+    };
+    /* D'abord le monde — on y est. Puis le Nexus, pour comparer. */
+    await p.bringToFront();
+    const monde = await mesure('monde');
+    await p.keyboard.press('KeyR');
+    await p.waitForTimeout(900);
+    const nexus = await mesure('nexus');
+    console.log('\n-- la fluidite --');
+    console.log('   monde : ' + JSON.stringify(monde));
+    console.log('   nexus : ' + JSON.stringify(nexus));
+    const partMonde = monde.images ? monde.sautees / monde.images : 1;
+    const partNexus = nexus.images ? nexus.sautees / nexus.images : 0;
+    ok(monde.images > 60 && nexus.images > 60,
+       `on a de quoi conclure (${monde.images} images dans le monde, ${nexus.images} au Nexus)`);
+    ok(partMonde < 0.05,
+       `le monde saute rarement (${(partMonde * 100).toFixed(1)} % des images au-dela de 33 ms)`);
+    ok(monde.p95 < 33,
+       `et 95 % de ses images tiennent sous 33 ms (p95 = ${monde.p95} ms)`);
+    ok(partMonde <= partNexus + 0.04,
+       `il ne saute pas plus que le Nexus (${(partMonde * 100).toFixed(1)} % contre ${(partNexus * 100).toFixed(1)} %)`);
+    await rejoins(p);
+
+    /* ---- ET LE PERSONNAGE AVANCE DROIT ----
+     * Le nombre d'images par seconde ne dit pas tout : un ecran a soixante
+     * images ou le personnage RECULE d'un pas toutes les dix se sent comme
+     * une saccade, et la moyenne ne bouge pas d'un cheveu. La cause n'est
+     * alors pas le dessin, c'est le recalage — le serveur corrige la position
+     * annoncee, et la correction se voit.
+     * On lit sa jauge de vie : elle est peinte sous ses pieds, a chaque
+     * image, en coordonnees du MONDE. C'est sa position exacte, telle qu'il
+     * la voit. */
+    await p.evaluate(() => { window.__barres.length = 0; });
+    const route = await routeLibre();
+    console.log('   route : ' + route.touches.join('+') + ', ' + route.libre + ' unites degagees');
+    for (const t of route.touches) await p.keyboard.down(t);
+    await p.waitForTimeout(2200);
+    for (const t of route.touches) await p.keyboard.up(t);
+    /* On lit l'axe de la marche : vers le haut, c'est `y` qui bouge et `x`
+       ne dit rien du tout. */
+    const brut = await p.evaluate(() => window.__barres.filter((b) => b.c === '#7cff9b').map((b) => ({ x: b.x, y: b.y })));
+    const axe = (route.touches[0] === 'ArrowUp' || route.touches[0] === 'ArrowDown') ? 'y' : 'x';
+    const marche = brut.map((b) => b[axe]);
+    /* Le SENS depend de la route choisie : marcher vers la gauche fait
+       decroitre x, et compter ca comme un recul dirait n'importe quoi. On
+       ramene donc tout dans le sens de la marche. */
+    const sens = (route.touches[0] === 'ArrowLeft' || route.touches[0] === 'ArrowUp') ? -1 : 1;
+    let recule = 0, saut = 0, avance = 0;
+    const pas = [];
+    for (let i = 1; i < marche.length; i++) {
+      const d = (marche[i] - marche[i - 1]) * sens;
+      if (Math.abs(d) < 0.001) continue;
+      pas.push(d);
+      if (d < -0.5) recule++;
+      else avance++;
+    }
+    const moy = pas.length ? pas.reduce((t, x) => t + x, 0) / pas.length : 0;
+    for (const d of pas) if (d > moy * 3 + 2) saut++;
+    console.log('   marche : ' + JSON.stringify({ images: marche.length, pas: pas.length,
+                 moyen: +moy.toFixed(2), recule, saut }));
+    ok(pas.length > 40, `le personnage a marche (${pas.length} pas mesures)`);
+    ok(recule === 0,
+       `il n a JAMAIS recule en marchant tout droit (${recule} pas en arriere sur ${pas.length})`);
+    ok(saut <= 1,
+       `et il n a pas saute en avant non plus (${saut} bonds de plus du triple du pas moyen)`);
+
+    /* ---- ET AVEC UN SERVEUR LOIN, AUSSI ----
+     *
+     * Tout ce qui precede se mesure sur un serveur local, ou l'aller-retour
+     * coute dix millisecondes. Le notre est a Railway. La page recevait alors
+     * une position vieille d'un quart de seconde et la comparait a celle
+     * d'MAINTENANT : a deux cent vingt unites par seconde, cinquante-cinq
+     * unites d'ecart, donc au-dela du seuil de quarante — le personnage etait
+     * tire en arriere a CHAQUE message pendant qu'on marchait. C'est la
+     * saccade qu'on nous a decrite, et elle est invisible en local.
+     *
+     * On la fabrique : on renvoie a la page une position qu'elle a REELLEMENT
+     * annoncee un quart de seconde plus tot. C'est exactement ce qu'un
+     * serveur lointain lui dirait, et il n'y a rien a inventer pour ca. */
+    /* Vivant, sinon il n'y a pas de jauge a lire — et « zero pas » se lirait
+       comme « il ne recule jamais ». */
+    const vif2 = await rejoins(p);
+    ok(vif2.ok, 'le personnage est vivant pour la mesure avec retard');
+    const route2 = await routeLibre();
+    await p.evaluate(() => { window.__barres.length = 0; window.__s[0].__out.length = 0; });
+    for (const t of route2.touches) await p.keyboard.down(t);
+    await p.evaluate(async () => {
+      const s = window.__s[0];
+      for (let k = 0; k < 20; k++) {
+        await new Promise((f) => setTimeout(f, 100));
+        const mouv = s.__out.filter((o) => o.type === 'realmMove');
+        const etat = s.__m.filter((x) => x.type === 'realmEtat').pop();
+        /* Celui d'il y a un quart de seconde : les envois partent toutes les
+           120 ms, donc deux crans en arriere. */
+        const vieux = mouv[mouv.length - 3];
+        if (!etat || !vieux) continue;
+        s.dispatchEvent(new MessageEvent('message', { data: JSON.stringify({
+          ...etat, moi: { ...etat.moi, x: vieux.x, y: vieux.y } }) }));
+      }
+    });
+    for (const t of route2.touches) await p.keyboard.up(t);
+    await p.waitForTimeout(200);
+    const brut2 = await p.evaluate(() => window.__barres.filter((b) => b.c === '#7cff9b').map((b) => ({ x: b.x, y: b.y })));
+    const axe2 = (route2.touches[0] === 'ArrowUp' || route2.touches[0] === 'ArrowDown') ? 'y' : 'x';
+    const loin = brut2.map((b) => b[axe2]);
+    const sens2 = (route2.touches[0] === 'ArrowLeft' || route2.touches[0] === 'ArrowUp') ? -1 : 1;
+    let reculeL = 0; const pasL = [];
+    for (let i = 1; i < loin.length; i++) {
+      const d = (loin[i] - loin[i - 1]) * sens2;
+      if (Math.abs(d) < 0.001) continue;
+      pasL.push(d);
+      if (d < -0.5) reculeL++;
+    }
+    console.log('   avec 250 ms de retard : ' + JSON.stringify({ pas: pasL.length, recule: reculeL }));
+    ok(pasL.length > 25, `il a marche aussi dans ce cas (${pasL.length} pas)`);
+    ok(reculeL === 0,
+       `un serveur en retard ne le tire pas en arriere (${reculeL} pas sur ${pasL.length})`);
+  }
+
   /* ---- RIEN NE VOLE DANS LE NEXUS QUAND ON RENTRE ----
    *
    * Deux boucles de tir existent : celle du Nexus et celle du monde. Elles se
@@ -1645,7 +1830,12 @@ process.on('unhandledRejection', (e) => {
         return { n: a.length,
                  colonnes: Array.from(new Set(a.map((o) => Math.round(o.sx / (o.sw || 1))))),
                  fin: a.length ? Math.round(a[a.length - 1].sx / a[a.length - 1].sw) : null,
-                 bas: a.map((o) => ({ c: Math.round(o.sx / o.sw), b: o.dy + o.dh, h: o.dh })) };
+                 /* Le centre part avec : quatre salles existent, et deux
+                    peuvent etre a l'ecran. Melanger les dessins de deux
+                    coffres poses a mille unites l'un de l'autre ferait dire
+                    a la mesure qu'un coffre « saute de mille unites ». */
+                 bas: a.map((o) => ({ c: Math.round(o.sx / o.sw), b: o.dy + o.dh,
+                                      h: o.dh, cx: o.dx + o.dw / 2 })) };
       });
       console.log('   ouvert : ' + JSON.stringify({ n: ouvert.n, colonnes: ouvert.colonnes, fin: ouvert.fin }));
       ok(ouvert.colonnes.length > 1,
@@ -1685,7 +1875,9 @@ process.on('unhandledRejection', (e) => {
       ok(vide.length === 3, `la planche porte trois images (${vide.length})`);
       ok(Math.max(...vide) - Math.min(...vide) > 0.02,
          'et elles ne s arretent pas a la meme ligne — sinon rien a corriger');
-      const pieds = ouvert.bas.map((o) => o.b - (1 - vide[o.c]) * o.h);
+      const pieds = ouvert.bas.filter((o) => Math.abs(o.cx - ou.x) < 3)
+                              .map((o) => o.b - (1 - vide[o.c]) * o.h);
+      ok(pieds.length > 0, `on a des dessins du coffre de CETTE salle (${pieds.length})`);
       const eca = Math.max(...pieds) - Math.min(...pieds);
       console.log(`   le bas reel varie de ${eca.toFixed(2)} unites sur les trois images`);
       ok(eca < 1, `le coffre ne saute pas en s ouvrant (${eca.toFixed(2)} unites)`);

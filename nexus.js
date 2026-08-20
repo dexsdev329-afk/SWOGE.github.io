@@ -369,7 +369,7 @@
       SCENE = 'nexus'; peintBoutonTir();
       MONSTRES_C = {}; TIRS_C = []; TIRS_M = []; DEVINES = []; DISTANTS_M = {}; TOMBES_C = []; SACS_C = [];
       ZONES_C = []; ONDES = [];
-      RECALE = null;
+      RECALE = null; ENVOIS.length = 0;
       OBSTACLES_C = []; SALLES_C = [];
       SAC_PIEDS = null; SAC_SIGNE = ''; peintButin();
       POUVOIR_C = null; EFFETS_P = []; PARALYSE = 0; RALENTI = 0; BRULURE = 0;
@@ -1965,15 +1965,63 @@
        *     reponse : lisser sur une demi-seconde ferait glisser le
        *     personnage a travers la carte.
        */
-      var ex = m.moi.x - joueur.x, ey = m.moi.y - joueur.y;
-      var d2 = ex * ex + ey * ey;
-      if (d2 > 700 * 700) {
+      /* ---- ON COMPARE A CE QU'ON A ANNONCE, PAS A OU L'ON EST ----
+       *
+       * L'ancienne regle comparait la position du serveur a la position
+       * COURANTE. Or celle du serveur a un aller-retour de retard : sur un
+       * serveur proche, deux unites d'ecart, on ne voyait rien. Sur un
+       * serveur lointain — le notre est a Railway — deux cent cinquante
+       * millisecondes de retard a deux cent vingt unites par seconde font
+       * CINQUANTE-CINQ unites, donc au-dela du seuil de quarante : le
+       * personnage etait tire en arriere en permanence, a chaque message,
+       * pendant qu'on marchait. C'est exactement la saccade decrite — et elle
+       * ne se voit jamais en local, ou le retard est de dix millisecondes.
+       *
+       * La bonne comparaison ne depend pas du retard : le serveur nous
+       * renvoie la position qu'il a ACCEPTEE, c'est-a-dire l'une de celles
+       * qu'on lui a annoncees. On cherche donc, parmi les dernieres
+       * annoncees, celle dont il est le plus proche. Ce qui reste est ce
+       * qu'il a vraiment corrige — un rocher pris d'un cote et pas de
+       * l'autre, un pas refuse — et cela, il faut le suivre.
+       *
+       * Et on l'applique en ECART, pas en position absolue : se poser sur une
+       * position vieille d'un quart de seconde, c'est perdre ce quart de
+       * seconde de marche. */
+      var d2Abs = (m.moi.x - joueur.x) * (m.moi.x - joueur.x)
+                + (m.moi.y - joueur.y) * (m.moi.y - joueur.y);
+      if (d2Abs > 700 * 700) {
+        /* Ce n'est plus une derive, c'est un autre endroit : une mort, une
+           entree, un refus net. Sauter est la bonne reponse, et l'historique
+           des annonces ne vaut plus rien. */
         joueur.x = m.moi.x; joueur.y = m.moi.y;
+        ENVOIS.length = 0;
         RECALE = null;
-      } else if (d2 > 40 * 40) {
-        RECALE = { x: m.moi.x, y: m.moi.y };
       } else {
-        RECALE = null;
+        var k = -1, d2m = Infinity;
+        for (var ei = 0; ei < ENVOIS.length; ei++) {
+          var ax2 = m.moi.x - ENVOIS[ei].x, ay2 = m.moi.y - ENVOIS[ei].y;
+          var q = ax2 * ax2 + ay2 * ay2;
+          if (q < d2m) { d2m = q; k = ei; }
+        }
+        if (k < 0) {
+          /* Rien d'annonce encore — on vient d'entrer. Le serveur fait foi. */
+          var ex0 = m.moi.x - joueur.x, ey0 = m.moi.y - joueur.y;
+          RECALE = (ex0 * ex0 + ey0 * ey0 > 40 * 40) ? { x: m.moi.x, y: m.moi.y } : null;
+        } else {
+          /* On NE JETTE PAS les annonces plus anciennes. Les messages
+             n'arrivent pas toujours dans l'ordre, et surtout : plus le
+             serveur est loin, plus celle qu'il nous renvoie est vieille. En
+             elaguant a chaque message, un etat un peu en retard ne retrouvait
+             plus sa position dans la liste, tombait sur la plus recente, et
+             l'ecart entre les deux — c'est-a-dire le RETARD, pas une
+             correction — etait applique au personnage. On garde donc les deux
+             ou trois dernieres secondes d'annonces, et il suffit que le
+             serveur en reconnaisse UNE pour qu'on sache qu'il ne corrige
+             rien. */
+          var ex = m.moi.x - ENVOIS[k].x, ey = m.moi.y - ENVOIS[k].y;
+          if (d2m > 4 * 4) RECALE = { x: joueur.x + ex, y: joueur.y + ey };
+          else RECALE = null;
+        }
       }
     }
   }
@@ -1983,6 +2031,9 @@
      a l'endroit ou l'on regarde. */
   /* La position vers laquelle on se recale doucement, ou `null`. */
   var RECALE = null;
+  /* Les dernieres positions ANNONCEES au serveur, la plus recente en tete.
+     C'est a elles qu'on compare ce qu'il renvoie — voir plus haut. */
+  var ENVOIS = [];
   function suitLeRecalage(dt) {
     if (!RECALE) return;
     var ex = RECALE.x - joueur.x, ey = RECALE.y - joueur.y;
@@ -2003,7 +2054,7 @@
     MONDE_C = m;
     MONSTRES_C = {}; TIRS_C = []; TIRS_M = []; DEVINES = []; DISTANTS_M = {}; TOMBES_C = []; SACS_C = [];
     ZONES_C = []; ONDES = [];
-    RECALE = null;
+    RECALE = null; ENVOIS.length = 0;
     SAC_PIEDS = null; SAC_SIGNE = ''; peintButin();
     /* APRES la remise a zero, jamais avant : la ligne au-dessus vide les
        listes du monde precedent, et poser les blocs plus haut revenait a les
@@ -2056,7 +2107,7 @@
     peintBoutonTir();
     MONSTRES_C = {}; TIRS_C = []; TIRS_M = []; DEVINES = []; DISTANTS_M = {}; TOMBES_C = []; SACS_C = [];
     ZONES_C = []; ONDES = [];
-    RECALE = null;
+    RECALE = null; ENVOIS.length = 0;
     OBSTACLES_C = []; SALLES_C = [];
     SAC_PIEDS = null; SAC_SIGNE = ''; peintButin();
     /* On revient AU PIED DU PORTAIL, pas au centre : c'est par la qu'on est
@@ -4152,8 +4203,13 @@
       chronoEnvoi += dt;
       if (chronoEnvoi >= ENVOI_INTERVAL && enLigne) {
         chronoEnvoi = 0;
-        envoie({ type: 'realmMove', x: Math.round(joueur.x), y: Math.round(joueur.y),
-                 dir: joueur.dir, anim: joueur.anim });
+        var ax = Math.round(joueur.x), ay = Math.round(joueur.y);
+        envoie({ type: 'realmMove', x: ax, y: ay, dir: joueur.dir, anim: joueur.anim });
+        /* On garde ce qu'on vient d'annoncer. Le serveur nous renverra CETTE
+           position-la, un aller-retour plus tard : c'est a elle qu'il faut la
+           comparer, pas a l'endroit ou l'on est arrive entre-temps. */
+        ENVOIS.unshift({ x: ax, y: ay });
+        if (ENVOIS.length > 24) ENVOIS.pop();
       }
       regardeSacs();
       if (!saut.en_cours) avanceCadre(joueur, PERSO, dt);

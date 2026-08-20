@@ -199,6 +199,20 @@ process.on('unhandledRejection', (e) => {
       window.addEventListener('mousedown', function () {
         if (window.__clic === null) window.__clic = performance.now();
       }, true);
+      /* ---- LES SONS ----
+       * Un tir fait un bruit. Deux bruits pour un tir veut dire que quelque
+       * chose tire deux fois — et si l'on n'en voit qu'un, l'autre part dans
+       * une liste que personne ne dessine. C'est le seul endroit d'ou ce
+       * defaut se voit du dehors : le projectile invisible ne laisse aucune
+       * trace ailleurs. */
+      window.__sons = 0;
+      if (window.AudioContext) {
+        const CBS = AudioContext.prototype.createBufferSource;
+        AudioContext.prototype.createBufferSource = function () {
+          window.__sons++;
+          return CBS.apply(this, arguments);
+        };
+      }
       /* Le NUMERO D'IMAGE. Sans lui on ne peut pas dire « le cercle est peint
          AVANT les creatures » : on ne saurait pas ou finit une image et ou
          commence la suivante, et l'ordre lu serait celui de deux images
@@ -877,6 +891,42 @@ process.on('unhandledRejection', (e) => {
     console.log('   ' + JSON.stringify(pris));
     ok(apresR === avantR + 1, 'glisser depuis le sac au sol le RAMASSE');
     ok(pris && pris.i === 80020, 'en nommant le sac sur lequel on se tient');
+
+    /* ---- ET ON PEUT JETER PAR TERRE, MEME SANS SAC DESSOUS ----
+     * C'etait le seul geste du jeu qu'on ne pouvait pas faire. Le sol
+     * n'existait comme cible que s'il y avait deja un sac dessous : sans sac,
+     * plus rien a viser, et on ne pouvait donc jeter quelque chose que la ou
+     * quelque chose etait deja tombe. Le serveur savait le faire depuis le
+     * debut — il cree un sac s'il n'en trouve pas. Il manquait le geste. */
+    await p.evaluate(async () => {
+      window.__sacs = [];                      // plus rien sous les pieds
+      for (let k = 0; k < 12; k++) { window.__pousse(); await new Promise((f) => requestAnimationFrame(f)); }
+    });
+    await p.waitForTimeout(250);
+    const grille = await p.evaluate(() => {
+      const b = document.getElementById('nxButin');
+      return !!(b && b.offsetParent !== null);
+    });
+    ok(!grille, 'la grille du sac au sol est bien refermee : il n y a plus rien dessous');
+
+    const avantS = await p.evaluate(() => window.__s[0].__out.filter((m) => m.type === 'realmDepose').length);
+    const source = await p.evaluate(() => {
+      const c = document.querySelector('#nxSac .nxp-c[data-sac]');
+      const q = c.getBoundingClientRect();
+      return { x: q.x + q.width / 2, y: q.y + q.height / 2 };
+    });
+    await p.mouse.move(source.x, source.y);
+    await p.mouse.down();
+    /* En plein milieu de la scene, loin du panneau : c'est le sol. */
+    await p.mouse.move(360, 300, { steps: 10 });
+    await p.mouse.up();
+    await p.waitForTimeout(400);
+    const jete = await p.evaluate(() => window.__s[0].__out.filter((m) => m.type === 'realmDepose').pop());
+    const apresS = await p.evaluate(() => window.__s[0].__out.filter((m) => m.type === 'realmDepose').length);
+    console.log('\n-- jeter par terre, sans sac dessous --');
+    console.log('   ' + JSON.stringify(jete));
+    ok(apresS === avantS + 1, 'lacher une piece sur la scene la JETTE par terre');
+    ok(jete && jete.item === 4242, 'et c est bien celle qu on tenait');
   }
 
   /* ---- AU DOIGT : LE RETOUR AU NEXUS EST A DROITE ----
@@ -1229,7 +1279,7 @@ process.on('unhandledRejection', (e) => {
     await p.waitForTimeout(400);
     await p.evaluate(() => { window.__premierTir = null; window.__clic = null;
                              window.__heuresTirs.length = 0; window.__tirs.length = 0;
-                             window.__s[0].__out.length = 0; });
+                             window.__s[0].__out.length = 0; window.__sons = 0; });
     await p.mouse.move(500, 300);
     await p.mouse.down();
     await p.waitForTimeout(2500);
@@ -1275,7 +1325,7 @@ process.on('unhandledRejection', (e) => {
                   au bout de combien de temps la premiere fois. */
                demandes: dem.length,
                demande1: dem.length && window.__clic !== null ? Math.round(dem[0].__t - window.__clic) : null,
-               arme: fam,
+               arme: fam, sons: window.__sons,
                /* La cadence REELLE, mesuree entre deux demandes. Elle dit d'un
                   coup d'oeil quelle arme on portait — et donc si la mesure
                   ci-dessous parle bien de ce qu'on croit. */
@@ -1308,6 +1358,44 @@ process.on('unhandledRejection', (e) => {
      * ou le reseau ne coute rien. */
     ok(tir.delai !== null && tir.delai < 120,
        `du clic au projectile peint : ${tir.delai === null ? 'JAMAIS' : Math.round(tir.delai) + ' ms'}`);
+  }
+
+  /* ---- RIEN NE VOLE DANS LE NEXUS QUAND ON RENTRE ----
+   *
+   * Deux boucles de tir existent : celle du Nexus et celle du monde. Elles se
+   * partageaient la meme recharge et tiraient A TOUR DE ROLE dans le monde —
+   * huit tirs chacune pour deux secondes et demie d'appui. Les huit du Nexus
+   * ne se voyaient pas : ils partent dans une liste que seule la scene du
+   * Nexus dessine. Ils faisaient leur bruit quand meme, et c'est ce qu'un
+   * joueur nous a decrit — « on entend le son des tirs mais on ne voit pas
+   * les tirs ».
+   *
+   * Ils ne disparaissaient pas non plus : ils restaient en l'air une demi-
+   * seconde. En rentrant au Nexus juste apres avoir tire, on les retrouvait
+   * donc TOUS, voletant devant la fontaine sans que personne n'ait tire ici.
+   * C'est la seule trace qu'ils laissent, et c'est celle qu'on regarde. */
+  {
+    await p.bringToFront();
+    await p.mouse.move(500, 300);
+    await p.mouse.down();
+    await p.waitForTimeout(1500);
+    /* On RENTRE en tirant encore : les projectiles fantomes vivent une demi-
+       seconde, et attendre d'avoir relache les laisserait mourir avant qu'on
+       regarde. */
+    await p.keyboard.press('KeyR');
+    await p.mouse.up();
+    await p.waitForTimeout(150);
+    const rentre = await p.evaluate(async () => {
+      window.__peint.length = 0;
+      for (let k = 0; k < 12; k++) await new Promise((f) => requestAnimationFrame(f));
+      return { tirs: window.__peint.filter((d) => /^(lame|arc|dagues|hache|lance|marteau)\.webp$/.test(d.src) && d.ecran).length,
+               scene: !!document.querySelector('#nxMondeHud, #nxSac') };
+    });
+    console.log('\n-- de retour au Nexus --');
+    console.log('   ' + JSON.stringify(rentre));
+    ok(rentre.tirs === 0,
+       `aucun projectile fantome ne nous suit du monde (${rentre.tirs} peints alors qu on ne tire pas)`);
+    await rejoins(p);
   }
 
   /* ---- LE CERCLE QUI PREVIENT ----

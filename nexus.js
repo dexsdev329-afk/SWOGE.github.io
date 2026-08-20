@@ -690,6 +690,15 @@
       if (el.id === 'nxCoffreVoile' || (el.classList && el.classList.contains('nxcf-carte'))) {
         return { quoi: 'coffre' };
       }
+      /* ---- LE SOL ----
+       * Lacher une piece SUR LA SCENE, dans le monde de combat, la pose par
+       * terre. C'etait le seul geste du jeu qu'on ne pouvait pas faire : le
+       * sol n'existait comme cible que s'il y avait deja un sac dessous, et
+       * sans sac il n'y avait plus rien a viser. On ne pouvait donc jeter
+       * quelque chose que la ou quelque chose etait deja tombe.
+       * Le serveur, lui, savait le faire depuis le debut : `depose` cree un
+       * sac s'il n'en trouve pas. Il ne manquait que le geste. */
+      if (el.tagName === 'CANVAS' && SCENE === 'monde') return { quoi: 'sol' };
       el = el.parentElement;
     }
     return null;
@@ -712,9 +721,13 @@
      * une piece portee doit d'abord etre retiree, et une piece du coffre est
      * a l'abri — l'envoyer par terre depuis la salle du coffre serait un
      * geste qu'on ne peut pas faire, puisqu'on n'y est pas dans le monde. */
-    if (cible.quoi === 'butin') {
+    if (cible.quoi === 'butin' || cible.quoi === 'sol') {
       if (p.de !== 'sac') return;
       debloqueSon();
+      /* Le MEME message dans les deux cas. Le serveur pose la piece dans le
+         sac sous les pieds s'il y en a un, et en cree un sinon : deux
+         messages pour deux facons de dire la meme chose auraient donne deux
+         regles a tenir d'accord. */
       envoie({ type: 'realmDepose', item: id });
       clic(true);
       return;
@@ -3538,12 +3551,42 @@
   }
 
   function majTirs(dt, camX, camY) {
+    /* ---- UNE SEULE BOUCLE TIRE A LA FOIS ----
+     *
+     * Il y en a deux : celle-ci, qui tire dans le NEXUS, et celle du monde de
+     * combat, dans `maj`. La boucle d'images appelait les DEUX a chaque tour,
+     * et toutes deux faisaient descendre la MEME recharge.
+     *
+     * Dans le monde elle descendait donc deux fois par image, et les deux
+     * blocs tiraient a tour de role. Mesure faite sur deux secondes et demie
+     * d'appui : huit tirs par le monde, et huit par le Nexus.
+     *
+     * Les huit du Nexus ne se voyaient PAS. Ils partent dans `TIRS`, la liste
+     * que seule la scene du Nexus dessine — mais ils faisaient leur bruit.
+     * C'est exactement ce qu'on nous a rapporte : « on entend le son des tirs
+     * mais on ne voit pas les tirs ». Ca arrivait a chaque tir, pas seulement
+     * en tir automatique, et un joueur sur deux devait croire que la moitie
+     * de ses tirs se perdait.
+     *
+     * Ils coutaient aussi leur travail a chaque image : une recherche de
+     * cible sur tous les monstres, puis un test de collision contre la
+     * fontaine — pour des projectiles que personne ne verra jamais.
+     *
+     * Le reste de la fonction continue de tourner : un tir parti juste avant
+     * de franchir le portail doit finir sa course, pas rester fige au-dessus
+     * de la fontaine jusqu'au retour. */
+    if (SCENE === 'monde') return majTirsNexus(dt);
     var a = armeCourante();
     tireur.recharge -= dt;
     if ((tireur.presse || tireur.auto) && tireur.recharge <= 0) {
       tire(angleDeTir(camX, camY));
       tireur.recharge = 1 / a.cadence;
     }
+    majTirsNexus(dt);
+  }
+
+  /* Ce qui reste en l'air dans le Nexus, quelle que soit la scene. */
+  function majTirsNexus(dt) {
     var f = LIEUX[0];   // la fontaine : le seul obstacle solide du Nexus
     for (var i = TIRS.length - 1; i >= 0; i--) {
       var t = TIRS[i];

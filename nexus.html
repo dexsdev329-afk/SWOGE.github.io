@@ -532,18 +532,31 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
 .nxcf-grp{ margin-top:12px; }
 .nxcf-grp > i{ display:block; font-style:normal; font-size:10.5px; font-weight:800;
   letter-spacing:.06em; text-transform:uppercase; color:#8DA0C4; margin-bottom:6px; }
-.nxcf-l{ display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:7px; }
-.nxcf-i{ display:flex; align-items:center; gap:8px; padding:7px 9px; border-radius:10px;
+/* ---- ON VOIT CE QU'ON POSSEDE ----
+ * Une vignette de trente pixels pour une piece qui vaut trois cents $SWOGE,
+ * ce n'etait pas une liste, c'etait un inventaire de comptable. A cinquante-
+ * six, on reconnait la piece sans lire son nom — et c'est comme ca qu'on
+ * choisit ce qu'on porte. Les cases s'elargissent en consequence : le nom
+ * doit tenir a cote, pas dessous. */
+.nxcf-l{ display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:8px; }
+.nxcf-i{ display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:10px;
   border:1px solid rgba(255,255,255,.09); background:rgba(255,255,255,.03);
   cursor:pointer; text-align:left; font:inherit; color:#F2F6FF;
   border-left:3px solid var(--c,#8DA0C4); }
 .nxcf-i:hover{ background:rgba(255,255,255,.08); }
 .nxcf-i.actif{ border-color:rgba(124,255,155,.5); background:rgba(124,255,155,.09); }
-.nxcf-i img{ width:30px; height:30px; object-fit:contain; flex:0 0 auto; }
+.nxcf-i img{ width:56px; height:56px; object-fit:contain; flex:0 0 auto; }
 .nxcf-i span{ flex:1; min-width:0; }
-.nxcf-i b{ display:block; font-size:12px; overflow:hidden; text-overflow:ellipsis;
+.nxcf-i b{ display:block; font-size:13px; overflow:hidden; text-overflow:ellipsis;
   white-space:nowrap; }
-.nxcf-i em{ display:block; font-style:normal; font-size:10px; color:#7CFF9B; font-weight:700; }
+.nxcf-i em{ display:block; font-style:normal; font-size:11px; color:#7CFF9B; font-weight:700;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+/* Les deux lettres, la aussi : c'est dans le coffre qu'on compare avant de
+   choisir ce qu'on emporte, et c'est donc la qu'on veut savoir laquelle est
+   numerotee. */
+.nxcf-og{ flex:0 0 auto; font-size:10px; font-weight:900; letter-spacing:.04em;
+  color:#C89BFF; align-self:flex-start; margin-top:1px;
+  text-shadow:0 1px 1px #000, 0 -1px 1px #000, 1px 0 1px #000, -1px 0 1px #000; }
 .nxcf-i u{ flex:0 0 auto; text-decoration:none; font-size:10px; color:#8DA0C4; }
 .nxcf-vide{ font-size:12px; color:#7A89A6; line-height:1.5; padding:10px 0; }
 .nxcf-refus{ margin-bottom:10px; padding:9px 11px; border-radius:10px; font-size:11.5px;
@@ -1003,7 +1016,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
   </div>
 </div>
 
-<script src="nexus.js?v=20260820u" defer></script>
+<script src="nexus.js?v=20260820v" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

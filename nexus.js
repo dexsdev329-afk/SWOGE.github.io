@@ -536,6 +536,22 @@
    *
    * Le drapeau vient du SERVEUR : la page ne peut pas le deviner, seul le
    * catalogue sait laquelle se vend. */
+  /* Ce qu'une piece VAUT, en un chiffre, pour la ranger. On somme ce qu'elle
+     donne plutot que de trier sur sa rarete : les deux disent la meme chose
+     dans le meme ordre, et celui-ci n'a besoin de rien d'autre que la ligne
+     qu'on tient deja. Les jauges se comptent par dix — trente points de vie
+     et trois de defense ne se totalisent pas dans la meme unite. */
+  function forceDe(o) {
+    var t = 0;
+    var b = (o && o.bonus) || {};
+    for (var k in b) if (Object.prototype.hasOwnProperty.call(b, k)) {
+      t += (k === 'hp' || k === 'mp') ? b[k] / 10 : b[k];
+    }
+    /* Une arme n'a pas de bonus : ses DEGATS sont sa fiche. */
+    if (o && o.degats) t += (o.degats[0] + o.degats[1]) / 2;
+    return t;
+  }
+
   function marqueOG(o) {
     return (o && o.og) ? '<b class="nxp-og">OG</b>' : '';
   }
@@ -613,6 +629,33 @@
   function objetDeLaCase(el) {
     if (!el || !el.dataset) return null;
     if (el.dataset.slot && el.dataset.item) return FICHE ? FICHE[el.dataset.slot] : null;
+    /* ---- UNE PIECE AU SOL SE SURVOLE COMME LES AUTRES ----
+     * C'est meme LA que la question se pose : « est-ce qu'elle vaut mieux que
+     * celle que je porte ? » On ne la posait nulle part ailleurs devant un sac
+     * ouvert, et il fallait la ramasser pour savoir — donc faire de la place,
+     * donc parfois jeter la bonne. Le serveur envoie desormais la fiche avec
+     * la piece ; on ne fait que renommer ses champs. */
+    if (el.dataset.butin !== undefined) {
+      var c = SAC_PIEDS && SAC_PIEDS.c && SAC_PIEDS.c[Number(el.dataset.butin)];
+      if (!c) return null;
+      /* Le meme ordre de colonnes que la grille : il vient du serveur, comme
+         partout ailleurs — la page ne decide pas dans quel ordre les fioles
+         sont dessinees sur leur planche. */
+      var d = contenuDeLaPlace(c, (MONDE_C && MONDE_C.stats) || []);
+      /* Une fiole de STAT donne un point pour toujours : c'est un bonus, et
+         il s'ecrit comme les autres. Le dire « sans bonus » serait faux — et
+         c'est justement la seule chose qu'on veuille savoir devant elle. */
+      if (c.st) {
+        var pts = {};
+        pts[c.st] = (c.st === 'hp' || c.st === 'mp') ? 5 : 1;
+        return { nom: 'Stat potion', bonus: pts, couleur: '#EAF2FF',
+                 note: 'Permanent — and lost when this character dies' };
+      }
+      if (c.po) return { nom: d.titre, couleur: '#EAF2FF',
+                         note: c.po === 'vie' ? 'Restores health' : 'Restores mana' };
+      return { nom: c.nm || d.titre, bonus: c.bo || null, degats: c.dg || null,
+               couleur: c.co || '#8DA0C4', og: !!c.og };
+    }
     if (el.dataset.sac) {
       /* Par la PLACE et non par l'identifiant : deux exemplaires du meme
          objet occupent deux cases, et chercher par identifiant rendrait
@@ -648,7 +691,14 @@
        saison, qui reconnait une arme — la saison n'accompagne pas toutes les
        formes d'objet envoyees par le serveur. */
     if (o.degats) lignes += '<em>Weapons give damage, not stats</em>';
+    /* `note` dit ce qu'un objet fait quand ce n'est pas un bonus — une fiole
+       qui rend de la vie n'a pas de stat a montrer, et « sans bonus » serait
+       faux plutot que vide. */
+    else if (o.note) lignes += '<em>' + ech(o.note) + '</em>';
     else if (!lignes) lignes = '<em>No stat bonus</em>';
+    /* Les numerotees le disent ici aussi : c'est la fiche qu'on lit avant de
+       decider si l'on ramasse. */
+    if (o.og) lignes += '<em style="color:#C89BFF">OG \u2014 limited series</em>';
     elFiche.innerHTML = '<b>' + ech(o.nom || '') + '</b>' + lignes;
     elFiche.style.setProperty('--fc', o.couleur || '#EAF2FF');
     elFiche.classList.add('on');
@@ -680,12 +730,12 @@
   document.addEventListener('pointerover', function (ev) {
     if (ev.pointerType && ev.pointerType !== 'mouse') return;
     if (PRISE) return;
-    var el = ev.target.closest ? ev.target.closest('[data-sac],[data-slot],.nxcf-i') : null;
+    var el = ev.target.closest ? ev.target.closest('[data-sac],[data-slot],[data-butin],.nxcf-i') : null;
     if (!el) return cacheFiche();
     montreFiche(objetDeLaCase(el), el);
   });
   document.addEventListener('pointerout', function (ev) {
-    var el = ev.target.closest ? ev.target.closest('[data-sac],[data-slot],.nxcf-i') : null;
+    var el = ev.target.closest ? ev.target.closest('[data-sac],[data-slot],[data-butin],.nxcf-i') : null;
     if (el) cacheFiche();
   });
 
@@ -2773,9 +2823,21 @@
       ? '<div class="nxcf-refus">' + ech(coffreErreur) + '</div>' : '';
     var total = 0;
     CATEGORIES.forEach(function (cat) {
-      var liste = COFFRE[cat.champ] || [];
+      var liste = (COFFRE[cat.champ] || []).slice();
       total += liste.length;
       if (!liste.length) return;
+      /* ---- LES NUMEROTEES D'ABORD ----
+       * Le coffre melange ce qu'on a paye et ce qu'on a ramasse puis range.
+       * Ce qui coute de l'argent reel se cherche en premier : le mettre en
+       * tete evite de faire defiler quinze trouvailles pour retrouver son
+       * epee. A egalite, la plus rare devant — c'est l'ordre dans lequel on
+       * regarde de toute facon. */
+      liste.sort(function (a, b) {
+        if (!!a.og !== !!b.og) return a.og ? -1 : 1;
+        var d = forceDe(b) - forceDe(a);
+        if (d) return d;
+        return String(a.nom || '').localeCompare(String(b.nom || ''));
+      });
       var porte = FICHE && FICHE[cat.etat];
       html += '<div class="nxcf-grp"><i>' + cat.titre + '</i><div class="nxcf-l">';
       liste.forEach(function (o) {
@@ -2786,6 +2848,7 @@
           ' title="' + ech(o.nom + ' — ' + (detailBonus(o) || 'no bonus')) + '">' +
           '<img alt="" src="img/shop/' + encodeURIComponent(o.cle) + '.webp" onerror="this.remove()">' +
           '<span><b>' + ech(o.nom) + '</b><em>' + ech(detailBonus(o) || '—') + '</em></span>' +
+          (o.og ? '<b class="nxcf-og">OG</b>' : '') +
           (actif ? '<u>worn</u>'
                  : '<u>' + (o.quantite > 1 ? 'x' + o.quantite : '') +
                    '<b class="nxcf-sortir" data-sortir="' + o.id +
@@ -4225,8 +4288,12 @@
       var o = s.c[i];
       if (!o) { html.push('<div class="nxp-c vide"></div>'); continue; }
       var d = contenuDeLaPlace(o, ordre);
-      html.push('<div class="nxp-c" data-butin="' + i + '" title="' + d.titre + '">' +
-                d.html + '</div>');
+      /* Plus de `title` : l'infobulle du navigateur met une seconde a venir,
+         ne dit qu'un nom, et se superposerait a la vraie fiche. Le survol
+         ouvre celle du jeu, qui porte les bonus — c'est devant un sac ouvert
+         qu'on veut savoir si la piece vaut mieux que celle qu'on porte. */
+      html.push('<div class="nxp-c" data-butin="' + i + '">' +
+                d.html + marqueOG(o.og ? { og: true } : null) + '</div>');
     }
     elButinCases.innerHTML = html.join('');
     elButinNom.textContent = NOM_SAC[s.s] || 'Loot';

@@ -490,8 +490,37 @@ process.on('unhandledRejection', (e) => {
   ok(ouverte.cases.length === 8, `elle a huit places (${ouverte.cases.length})`);
   ok(!ouverte.cases[0].vide && !ouverte.cases[1].vide, 'les deux objets du sac y sont');
   ok(ouverte.cases.slice(2).every((c) => c.vide), 'et les six autres places sont vides');
-  ok(/DEF/.test(ouverte.cases[0].titre), 'la premiere dit ce qu elle donne : ' + ouverte.cases[0].titre);
-  ok(/Health/.test(ouverte.cases[1].titre), 'la seconde aussi : ' + ouverte.cases[1].titre);
+  /* ---- LA FICHE AU SURVOL, PAS UNE INFOBULLE ----
+   * La case portait un `title` : l'infobulle du navigateur met une seconde a
+   * venir, ne dit qu'un nom, et ne peut pas montrer des bonus. C'est pourtant
+   * DEVANT UN SAC OUVERT que la question se pose — « est-ce que ca vaut mieux
+   * que ce que je porte ? » — et il fallait ramasser pour savoir, donc faire
+   * de la place, donc parfois jeter la bonne. */
+  const surviens = async (place) => {
+    const boite = await p.evaluate((k) => {
+      const c = document.querySelector('#nxButinCases .nxp-c[data-butin="' + k + '"]');
+      if (!c) return null;
+      const q = c.getBoundingClientRect();
+      return { x: q.x + q.width / 2, y: q.y + q.height / 2 };
+    }, place);
+    if (!boite) return null;
+    await p.mouse.move(boite.x - 40, boite.y - 40);
+    await p.mouse.move(boite.x, boite.y);
+    await p.waitForTimeout(200);
+    return p.evaluate(() => {
+      const f = document.getElementById('nxFiche');
+      return { on: f.classList.contains('on'), texte: f.textContent,
+               vu: f.getBoundingClientRect().width > 0 };
+    });
+  };
+  const fiche0 = await surviens(0);
+  console.log('   fiche au survol : ' + JSON.stringify(fiche0));
+  ok(fiche0 && fiche0.on && fiche0.vu, 'survoler une place du sac au sol ouvre sa fiche');
+  ok(fiche0 && /DEF/.test(fiche0.texte),
+     'la premiere dit ce qu elle donne : ' + (fiche0 && fiche0.texte));
+  const fiche1 = await surviens(1);
+  ok(fiche1 && /Health|Potion/i.test(fiche1.texte),
+     'la seconde aussi : ' + (fiche1 && fiche1.texte));
   ok(ouverte.nom === 'Legendary drop', 'et l en-tete nomme la couleur du sac');
 
   /* ---- LA BONNE FIOLE ----

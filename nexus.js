@@ -520,6 +520,22 @@
   var EMPLACEMENTS = ['equipArme', 'equipArmure', 'equipFruit', 'equipBague'];
   var CASES_SAC = 8;
 
+  /* ---- « OG » : LA PIECE EST NUMEROTEE ----
+   *
+   * Les pieces de la BOUTIQUE existent en nombre fini et se paient en $SWOGE :
+   * quarante legendaires pour toute une saison, quatre reliques. Celles qui
+   * tombent dans le monde ne coutent rien et ne se comptent pas.
+   *
+   * Rien ne les distinguait a l'oeil — memes saisons, memes raretes, memes
+   * dessins de rarete. Or c'est la seule chose qu'un joueur a besoin de savoir
+   * avant de risquer une piece dans la lave, ou elle disparait s'il meurt.
+   *
+   * Le drapeau vient du SERVEUR : la page ne peut pas le deviner, seul le
+   * catalogue sait laquelle se vend. */
+  function marqueOG(o) {
+    return (o && o.og) ? '<b class="nxp-og">OG</b>' : '';
+  }
+
   function ech(s) {
     return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) {
       return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c];
@@ -974,17 +990,31 @@
          jeu. Le survol ouvre la vraie fiche (voir `montreFiche`). */
       return '<div class="nxp-c" data-slot="' + k + '" data-item="' + e.item + '">' +
         '<img alt="" src="img/shop/' + encodeURIComponent(e.cle) + '.webp" ' +
-        'onerror="this.style.visibility=\'hidden\'">' + cd + '</div>';
+        'onerror="this.style.visibility=\'hidden\'">' + cd + marqueOG(e) + '</div>';
     }).join('');
 
     // ---- le sac : le butin ramasse, pas les achats
+    /* ---- CHAQUE PIECE A SA CASE ----
+     * On posait la liste dans l'ordre ou elle arrive. Ca revient au meme tant
+     * qu'on ne fait qu'ajouter, mais pas quand on ECHANGE : la piece rendue
+     * reprend la case de celle qu'on vient de mettre, et le serveur le dit
+     * dans `place`. L'ignorer ferait glisser tout le sac d'un cran sous les
+     * doigts du joueur, au moment precis ou il regarde ce qu'il a fait. */
+    var parPlace = [];
+    for (var i = 0; i < SAC.length; i++) {
+      var q = SAC[i];
+      var pl = (q && typeof q.place === 'number' && q.place >= 0 && q.place < CASES_SAC)
+        ? q.place : parPlace.length;
+      while (parPlace[pl]) pl++;      // deux pieces sur une case : la seconde glisse
+      if (pl < CASES_SAC) parPlace[pl] = q;
+    }
     var cases = [];
     for (var i = 0; i < CASES_SAC; i++) {
-      var o = SAC[i];
+      var o = parPlace[i];
       cases.push(o
-        ? '<div class="nxp-c" data-sac="' + o.id + '" data-place="' + o.place + '">' +
+        ? '<div class="nxp-c" data-sac="' + o.id + '" data-place="' + i + '">' +
           '<img alt="" src="img/shop/' + encodeURIComponent(o.cle) + '.webp" ' +
-          'onerror="this.style.visibility=\'hidden\'"></div>'
+          'onerror="this.style.visibility=\'hidden\'">' + marqueOG(o) + '</div>'
         : '<div class="nxp-c vide"><u>' + (i + 1) + '</u></div>');
     }
     elSac.innerHTML = cases.join('');
@@ -2660,7 +2690,7 @@
       elRangSous.innerHTML = 'The living, by XP &mdash; die and you drop off the board.' +
         (pr ? '<br><b style="color:#ffd447">&#127942; ' + pr.total.toLocaleString('en-US') +
               ' gold</b> shared between the top ' + (RANG.parts || []).length +
-              ' every week &middot; ' + RANG.vivants + ' alive' : '');
+              ' every month &middot; ' + RANG.vivants + ' alive' : '');
     }
   }
 

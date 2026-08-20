@@ -861,18 +861,30 @@ process.on('unhandledRejection', (e) => {
    * Le sac au sol n'est pas seulement une source. Poser son epee commune et
    * prendre celle qu'on vient de trouver, sans passer par le coffre : c'est
    * pour ca que la case est une poignee et pas un bouton. */
-  await p.evaluate(async ([x, y, piece]) => {
-    /* Une piece dans le sac du joueur. D'ou elle vient ne regarde pas cet
-       essai : le serveur en repond, et butin.test.js le verifie. */
-    window.__s[0].dispatchEvent(new MessageEvent('message', { data: JSON.stringify({
-      type: 'equipable', fruits: [], armes: [], armures: [], bagues: [],
-      sac: [{ id: 4242, cle: piece.cle, nom: piece.nom, rarete: piece.rarete,
-              couleur: '#8DA0C4', saison: piece.saison, place: 0 }],
-    }) }));
+  /* ---- UNE VRAIE PIECE DANS LE SAC, PAS UNE FICTION ----
+   * On la posait par un faux message `equipable`. La page la voyait, le
+   * serveur l'ignorait, et l'essai mesurait une page qui ne parle plus du
+   * meme jeu — c'est exactement ce qui a fait passer la marque « OG » pour
+   * absente alors qu'elle marchait : le faux message n'avait pas le champ.
+   * On la pose donc dans le sac du serveur et on lui demande de le dire. */
+  const sacDuJoueur = moteur._p(portefeuille.address);
+  /* Les gestes de cet essai DEPOSENT vraiment : le serveur obeit, il ne fait
+     pas semblant. Chaque bloc qui a besoin de la piece dans le sac la remet
+     donc, au lieu de supposer qu'elle a survecu au bloc precedent. */
+  const remetLaPiece = async () => {
+    sacDuJoueur.sac = {}; sacDuJoueur.sac[PIECE.id] = 1;
+    sacDuJoueur.sacCases = null;
+    await p.evaluate(() => window.__s[0].send(JSON.stringify({ type: 'equipable' })));
+    await p.waitForTimeout(450);
+  };
+  sacDuJoueur.sac = {}; sacDuJoueur.sac[PIECE.id] = 1;
+  sacDuJoueur.sacCases = null;
+  await p.evaluate(async ([x, y]) => {
+    window.__s[0].send(JSON.stringify({ type: 'equipable' }));
     window.__sacs = [{ i: 80020, x: x, y: y, s: 'brun', r: 55, c: [{ po: 'mana' }] }];
     for (let k = 0; k < 30; k++) { window.__pousse(); await new Promise((f) => requestAnimationFrame(f)); }
-  }, [moi.x, moi.y, PIECE]);
-  await p.waitForTimeout(300);
+  }, [moi.x, moi.y]);
+  await p.waitForTimeout(500);
 
   const boites = await p.evaluate(() => {
     const s = document.querySelector('#nxSac .nxp-c[data-sac]');
@@ -896,7 +908,7 @@ process.on('unhandledRejection', (e) => {
     console.log('\n-- glisser du sac vers le sol --');
     console.log('   ' + JSON.stringify(depot));
     ok(apresD === avantD + 1, 'glisser une piece sur le sac au sol la DEPOSE');
-    ok(depot && depot.item === 4242, 'et c est bien la piece qu on tenait');
+    ok(depot && depot.item === PIECE.id, `et c est bien la piece qu on tenait (${depot && depot.item})`);
 
     /* Et dans l'autre sens : glisser depuis le sac au sol vers le sien. */
     const avantR = await p.evaluate(() => window.__s[0].__out.filter((m) => m.type === 'realmRamasse').length);
@@ -922,17 +934,22 @@ process.on('unhandledRejection', (e) => {
      * plus rien a viser, et on ne pouvait donc jeter quelque chose que la ou
      * quelque chose etait deja tombe. Le serveur savait le faire depuis le
      * debut — il cree un sac s'il n'en trouve pas. Il manquait le geste. */
-    await p.evaluate(async () => {
-      window.__sacs = [];                      // plus rien sous les pieds
-      for (let k = 0; k < 12; k++) { window.__pousse(); await new Promise((f) => requestAnimationFrame(f)); }
-    });
-    await p.waitForTimeout(250);
+    /* On s'ECARTE, au lieu d'effacer les sacs de la page : les gestes qu'on
+       vient de jouer en ont VRAIMENT depose un sous nos pieds — le serveur
+       obeit, il ne fait pas semblant — et vider la liste locale ne l'aurait
+       pas fait disparaitre du monde. Un joueur, lui, fait un pas de cote. */
+    await p.evaluate(() => { window.__sacs = []; });
+    await p.keyboard.down('ArrowUp');
+    await p.waitForTimeout(700);
+    await p.keyboard.up('ArrowUp');
+    await p.waitForTimeout(400);
     const grille = await p.evaluate(() => {
       const b = document.getElementById('nxButin');
       return !!(b && b.offsetParent !== null);
     });
     ok(!grille, 'la grille du sac au sol est bien refermee : il n y a plus rien dessous');
 
+    await remetLaPiece();
     const avantS = await p.evaluate(() => window.__s[0].__out.filter((m) => m.type === 'realmDepose').length);
     const source = await p.evaluate(() => {
       const c = document.querySelector('#nxSac .nxp-c[data-sac]');
@@ -950,7 +967,61 @@ process.on('unhandledRejection', (e) => {
     console.log('\n-- jeter par terre, sans sac dessous --');
     console.log('   ' + JSON.stringify(jete));
     ok(apresS === avantS + 1, 'lacher une piece sur la scene la JETTE par terre');
-    ok(jete && jete.item === 4242, 'et c est bien celle qu on tenait');
+    ok(jete && jete.item === PIECE.id, `et c est bien celle qu on tenait (${jete && jete.item})`);
+
+    await remetLaPiece();
+    /* Et une copie PORTEE : c'est la que le joueur regarde avant d'entrer dans
+       la lave, ou ce qu'il porte disparait s'il meurt. On passe par le coffre
+       et le message d'equipement, pas par une fiche fabriquee. */
+    sacDuJoueur.objets = sacDuJoueur.objets || {};
+    sacDuJoueur.objets[PIECE.id] = (sacDuJoueur.objets[PIECE.id] || 0) + 1;
+    moteur.equipeArme(portefeuille.address, 'andy', PIECE.id);
+    await p.evaluate(() => window.__s[0].send(JSON.stringify({ type: 'personnage', skin: 'andy' })));
+    await p.waitForTimeout(450);
+
+    /* ---- « OG » : LA PIECE NUMEROTEE SE RECONNAIT ----
+     * Les pieces de la boutique existent en nombre fini et se paient en
+     * $SWOGE ; celles qui tombent dans le monde ne coutent rien. Rien ne les
+     * distinguait a l'oeil — memes saisons, memes raretes — et c'est pourtant
+     * la seule chose qu'on veut savoir avant de risquer une piece dans la
+     * lave, ou elle disparait si l'on meurt. */
+    {
+      const og = await p.evaluate(() => {
+        const c = document.querySelector('#nxSac .nxp-c[data-sac]');
+        const e = document.querySelector('#nxEquip .nxp-c[data-item]');
+        const lis = (n) => { if (!n) return null;
+          const b = n.querySelector('.nxp-og');
+          if (!b) return { marque: false };
+          const q = b.getBoundingClientRect(), qc = n.getBoundingClientRect();
+          const s = getComputedStyle(b);
+          return { marque: true, texte: b.textContent,
+                   /* En HAUT a DROITE de son carre, comme demande. */
+                   haut: q.y - qc.y < qc.height / 2,
+                   droite: (q.x + q.width) - qc.x > qc.width / 2,
+                   fond: s.backgroundColor, vu: q.width > 0 && q.height > 0 };
+        };
+        return { sac: lis(c), equip: lis(e) };
+      });
+      console.log('\n-- la marque OG --');
+      console.log('   ' + JSON.stringify(og));
+      /* La piece de cet essai vient du CATALOGUE, pas d'un butin : elle doit
+         donc porter la marque. */
+      ok(og.sac && og.sac.marque, 'une piece du catalogue porte sa marque dans le sac');
+      ok(og.sac && og.sac.texte === 'OG', `et elle dit « OG » (${og.sac && og.sac.texte})`);
+      ok(og.sac && og.sac.vu, 'elle est visible');
+      ok(og.sac && og.sac.haut && og.sac.droite,
+         'en haut a DROITE de son carre');
+      /* Violette : c'est la couleur qui la distingue d'un bonus ou d'un
+         compte. On lit le canal bleu, qui domine dans un violet. */
+      const bleu = Number((og.sac.fond.match(/\d+/g) || [0, 0, 0])[2]);
+      const rouge = Number((og.sac.fond.match(/\d+/g) || [0, 0, 0])[0]);
+      ok(bleu > 150 && bleu > rouge,
+         `et violette (${og.sac.fond})`);
+      /* Et sur soi aussi : c'est la ou l'on regarde avant d'entrer dans la
+         lave. */
+      ok(og.equip && og.equip.marque, 'la piece PORTEE la montre aussi');
+      ok(og.equip && og.equip.haut && og.equip.droite, 'au meme endroit de la case');
+    }
 
     /* ---- LE CLASSEMENT DU MONDE ----
      * Les personnages VIVANTS, a l'XP. On classe le PERSONNAGE et pas le
@@ -964,13 +1035,9 @@ process.on('unhandledRejection', (e) => {
        le tableau ne classe que ceux qui en ont, et un tableau vide ne prouve
        rien. Les monstres de cet essai sont trop loin pour mourir a temps. */
     moteur.gagneXpCombat(portefeuille.address, 'andy', 5000);
-    /* Et une arme au dos : la ligne doit montrer CE QU'IL PORTE — etre en
-       haut fait de vous une cible, ce qu'un nom seul ne dit pas. On la lui
-       donne par le chemin du serveur, pas par un faux message. */
-    const qq = moteur._p(portefeuille.address);
-    qq.objets = qq.objets || {};
-    qq.objets[PIECE.id] = (qq.objets[PIECE.id] || 0) + 1;
-    moteur.equipeArme(portefeuille.address, 'andy', PIECE.id);
+    /* L'arme est deja portee — la marque « OG » l'a mise juste avant. La
+       ligne du classement doit la montrer : etre en haut fait de vous une
+       cible, ce qu'un nom seul ne dit pas. */
     moteur._cmCache = null;
     await p.evaluate(() => document.getElementById('nxRang').click());
     await p.waitForFunction(() => {
@@ -1013,8 +1080,8 @@ process.on('unhandledRejection', (e) => {
     ok(rang.premier.tenue >= 1,
        `sa tenue est montree (${rang.premier.tenue} piece(s))`);
     /* La dotation se lit : un classement sans enjeu n'en est pas un. */
-    ok(/gold/i.test(rang.sous) && /20,000|20000/.test(rang.sous),
-       `la dotation hebdomadaire est annoncee (${rang.sous.replace(/\s+/g, ' ').slice(0, 90)})`);
+    ok(/gold/i.test(rang.sous) && /20,000|20000/.test(rang.sous) && /month/i.test(rang.sous),
+       `la dotation MENSUELLE est annoncee (${rang.sous.replace(/\s+/g, ' ').slice(0, 90)})`);
 
     /* Il se ferme, et il ARRETE de demander : un tableau ferme qu'on
        redemande toutes les cinq secondes, c'est une requete par joueur pour
@@ -2032,6 +2099,191 @@ process.on('unhandledRejection', (e) => {
       ok(Math.abs(pieds[0] - ou.y) < 2,
          `et il repose sur le centre de la salle (a ${Math.abs(pieds[0] - ou.y).toFixed(1)} unites)`);
     }
+  }
+
+  /* ================== LES DEUX COFFRES, AU DOIGT ==================
+   *
+   * « The chest is bug in phone, is the second I can't open. »
+   *
+   * La salle du coffre en porte deux : les objets au centre, les personnages
+   * juste a gauche. On y va comme un joueur — on rentre au Nexus, on marche
+   * jusqu'a la porte, on descend sur le premier, on ferme, on va sur le
+   * second. Chaque etape dit ce qu'elle voit : un essai qui ne montre que son
+   * verdict ne sert a rien le jour ou il tombe. */
+  {
+    console.log('\n-- les deux coffres, au doigt --');
+    /* On rentre au Nexus par le bouton maison, pas par une touche : c'est le
+       geste du telephone. */
+    await t.bringToFront();
+    await t.evaluate(() => document.getElementById('nxMaison').click());
+    await t.waitForTimeout(1200);
+
+    const marche = async (touche, ms) => {
+      await t.keyboard.down(touche);
+      await t.waitForTimeout(ms);
+      await t.keyboard.up(touche);
+      await t.waitForTimeout(250);
+    };
+    const vu = () => t.evaluate(() => {
+      const v = document.getElementById('nxCoffreVoile');
+      const q = v.getBoundingClientRect();
+      const titre = v.querySelector('.nxcf-titre');
+      return { on: v.classList.contains('on'),
+               larg: Math.round(q.width), haut: Math.round(q.height),
+               x: Math.round(q.x),
+               titre: titre ? titre.textContent.trim() : '' };
+    });
+
+    /* ---- SAVOIR OU L'ON EST ----
+     * « Le coffre ne s'ouvre pas » et « on n'est jamais entre dans la salle »
+     * se ressemblent, et se soignent autrement. On regarde donc ce que la
+     * page DESSINE : la salle a sa propre planche. */
+    await t.evaluate(() => {
+      const C = CanvasRenderingContext2D.prototype;
+      if (C.__espionSalle) return;
+      C.__espionSalle = true;
+      const di = C.drawImage;
+      window.__salleVue = 0;
+      C.drawImage = function (im) {
+        const u = (im && (im.currentSrc || im.src)) || '';
+        if (u.indexOf('room_vault') >= 0) window.__salleVue++;
+        return di.apply(this, arguments);
+      };
+    });
+    /* ---- LE CHEMIN, DEPUIS LA OU L'ON REVIENT ----
+     * On ne revient pas au centre : on revient LA OU L'ON ETAIT en partant,
+     * c'est-a-dire sur le portail — quatre cent soixante-dix unites au-dessus
+     * du centre. Marcher droit a droite depuis la passe donc a cette hauteur,
+     * et la porte du coffre est en bas : on l'a rate de quatre cent soixante-
+     * dix unites, et l'essai a conclu « le coffre ne s'ouvre pas ». Il faut
+     * DESCENDRE d'abord. */
+    await marche('ArrowDown', 2200);
+    await marche('ArrowRight', 3200);
+    const dansLaSalle = await vu();
+    dansLaSalle.salle = await t.evaluate(() => window.__salleVue || 0);
+    console.log('   apres la porte : ' + JSON.stringify(dansLaSalle));
+    ok(dansLaSalle.salle > 0,
+       `on est bien ENTRE dans la salle du coffre (${dansLaSalle.salle} dessins de la planche)`);
+
+    /* ---- OU EST LE JOUEUR, ET OU SONT LES COFFRES ----
+     * Les deux se dessinent dans le MEME repere : les halos par `ellipse`,
+     * le personnage par `drawImage`. On releve les deux au meme tour et on
+     * les compare — pas besoin de connaitre le zoom ni la camera, et surtout
+     * pas besoin de les recalculer, ce qui reviendrait a verifier le calcul
+     * de la page avec le meme calcul. */
+    await t.evaluate(() => {
+      const C = CanvasRenderingContext2D.prototype;
+      if (C.__espionOu) return;
+      C.__espionOu = true;
+      window.__halos = []; window.__moi = null;
+      const el = C.ellipse, di2 = C.drawImage;
+      C.ellipse = function (x, y, rx, ry) {
+        if (ry < rx * 0.6 && rx > 40) {
+          window.__halos.push({ x: Math.round(x), y: Math.round(y), r: Math.round(rx) });
+        }
+        return el.apply(this, arguments);
+      };
+      /* Le personnage se reconnait a sa SIGNATURE de dessin, pas a son
+         adresse : ses images sont des canvas prepares en memoire, qui n'ont
+         pas de `src`. Une case de 256 posee dans un carre de 150, c'est lui et
+         rien d'autre. Les chiffres viennent de `dessineAvatar`. */
+      C.drawImage = function () {
+        if (arguments.length >= 9 && arguments[3] === 256 && arguments[4] === 256
+            && arguments[7] === 150 && arguments[8] === 150) {
+          window.__moi = { x: Math.round(arguments[5] + 75),
+                           y: Math.round(arguments[6] + 130) };
+        }
+        return di2.apply(this, arguments);
+      };
+    });
+    /* On arrive au milieu ; les coffres sont en bas. On descend jusqu'au mur :
+       la salle borne le pas, et les deux coffres sont sur cette ligne-la. */
+    const ou = () => t.evaluate(() => {
+      const h = window.__halos.slice(-4); window.__halos.length = 0;
+      const c = {};
+      h.forEach((x) => { c[x.x] = x; });
+      return { moi: window.__moi, coffres: Object.values(c).filter((x) => x.r < 90) };
+    });
+    await marche('ArrowDown', 2600);
+    const bas = await ou();
+    console.log('   descendu a  : ' + JSON.stringify(bas.moi) +
+                ' — coffres a ' + JSON.stringify(bas.coffres.map((c) => c.x)));
+    ok(bas.coffres.length === 2, `la salle en montre bien DEUX (${bas.coffres.length})`);
+    /* Les coffres sont a GAUCHE de la ou l'on entre quand on arrive en
+       marchant : on entre par la droite et on continue sur sa lancee. */
+    const cibles = bas.coffres.slice().sort((a, b) => b.x - a.x);
+
+    /* On longe le mur vers la gauche, par petits pas, en notant CE QU'ON VOIT
+       a chaque fois : « ca ne s'ouvre pas » et « on n'est pas encore dessus »
+       se ressemblent trop pour qu'on devine. */
+    const ouverts = [];
+    const fait = {};
+    for (let k = 0; k < 22; k++) {
+      const q = await ou();
+      const dedans = cibles.filter((c) => q.moi
+        && Math.abs(q.moi.x - c.x) < c.r && Math.abs(q.moi.y - c.y) < c.r);
+      const c = dedans[0];
+      if (c && !fait[c.x]) {
+        const e = await vu();
+        fait[c.x] = true;
+        ouverts.push({ x: c.x, titre: e.on ? e.titre : null });
+        console.log('   sur le coffre x=' + c.x + ' : ' +
+                    (e.on ? '« ' + e.titre + ' »' : 'RIEN ne s ouvre'));
+        /* On le referme a la main, comme un joueur qui a fini. Le suivant doit
+           pouvoir s'ouvrir malgre ca — c'est tout l'enjeu. */
+        if (e.on) {
+          await t.evaluate(() => {
+            const x = document.querySelector('#nxCoffreVoile .nxcf-x');
+            if (x) x.click();
+          });
+          await t.waitForTimeout(200);
+        }
+      }
+      if (ouverts.length >= 2) break;
+      await marche('ArrowLeft', 200);
+    }
+    console.log('   bilan : ' + JSON.stringify(ouverts));
+    ok(ouverts.length >= 2, `on est passe sur les deux coffres (${ouverts.length})`);
+    ok(ouverts.every((o) => o.titre),
+       'et CHACUN des deux s ouvre — pas seulement le premier');
+    ok(ouverts.length >= 2 && ouverts[0].titre !== ouverts[1].titre,
+       `ils ouvrent deux fiches differentes (« ${(ouverts[0]||{}).titre} » et « ${(ouverts[1]||{}).titre} »)`);
+    /* ---- ET LA CROIX DOIT ETRE TOUCHABLE ----
+     * C'est elle qui permet d'ouvrir le SUIVANT : un coffre qu'on ne peut pas
+     * fermer est un coffre qui bloque tous les autres. Sur un ecran de 412 px,
+     * la fiche est poussee a gauche par le panneau lateral — et la croix, qui
+     * vit dans son coin haut-droit, part avec elle. */
+    await marche('ArrowRight', 400);
+    await marche('ArrowLeft', 400);
+    await t.waitForTimeout(400);
+    const croix = await t.evaluate(() => {
+      const v = document.getElementById('nxCoffreVoile');
+      const x = v.querySelector('.nxcf-x');
+      const c = v.querySelector('.nxcf-carte');
+      const q = x.getBoundingClientRect(), qc = c.getBoundingClientRect();
+      const centre = { x: q.x + q.width / 2, y: q.y + q.height / 2 };
+      const dessus = document.elementFromPoint(centre.x, centre.y);
+      return { on: v.classList.contains('on'),
+               ecran: window.innerWidth,
+               carte: { x: Math.round(qc.x), l: Math.round(qc.width) },
+               x: Math.round(q.x), y: Math.round(q.y),
+               l: Math.round(q.width), h: Math.round(q.height),
+               atteint: !!(dessus && (dessus === x || x.contains(dessus))),
+               quoi: dessus ? (dessus.className || dessus.tagName) : null };
+    });
+    console.log('   la croix     : ' + JSON.stringify(croix));
+    ok(croix.on, 'le coffre est bien rouvert');
+    ok(croix.x >= 0 && croix.x + croix.l <= croix.ecran,
+       `la croix est DANS l ecran (${croix.x}..${croix.x + croix.l} sur ${croix.ecran})`);
+    ok(croix.l >= 30 && croix.h >= 30,
+       `et assez grande pour un pouce (${croix.l}x${croix.h})`);
+    /* Le vrai test : le doigt tombe-t-il DESSUS ? Un bouton visible qu'un
+       autre element recouvre se lit comme un bouton mort. */
+    ok(croix.atteint,
+       `un doigt pose sur la croix la touche vraiment (il touche : ${croix.quoi})`);
+    /* Et la fiche doit occuper l'ecran, pas la moitie. */
+    ok(croix.carte.l > croix.ecran * 0.75,
+       `la fiche occupe l ecran du telephone (${croix.carte.l} sur ${croix.ecran})`);
   }
 
   const uniq = Array.from(new Set(manquants));

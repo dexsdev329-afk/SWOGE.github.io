@@ -356,6 +356,84 @@ process.on('unhandledRejection', (e) => {
   const telBas = await mesure();
   ok(telBas.y > 0, `un appui descend aussi au telephone (${Math.round(telBas.y)} px)`);
 
+  /* ================== 6. LA FICHE PASSE DEVANT LE COFFRE ==================
+   *
+   * Elle vivait dans #nxWrap, qui est en `position:fixed` — donc sa propre
+   * couche. Son z-index maximal ne valait que la-dedans, et la carte du
+   * coffre, simplement plus bas dans la page, passait devant : on survolait
+   * une piece et l'on ne voyait rien.
+   *
+   * Comparer des z-index refarait le calcul du navigateur avec le meme
+   * calcul. On REGARDE donc : on photographie le rectangle de la fiche, une
+   * fois avec elle, une fois sans. Si le coffre la recouvre, les deux photos
+   * sont identiques — c'est exactement ce que « elle est derriere » veut
+   * dire. Le decoupage reste STRICTEMENT dans la carte du coffre, sinon le
+   * decor anime derriere ferait differer les deux photos toutes seules. */
+  console.log('\n-- la fiche par-dessus le coffre --');
+  await p.setViewportSize({ width: 1280, height: 800 });
+  await p.waitForTimeout(600);
+  await rouvre();
+  await p.waitForTimeout(300);
+  /* ---- UNE PIECE QU ON PEUT VRAIMENT SURVOLER ----
+   * La premiere du coffre ne fait pas l affaire : l essai a fait defiler le
+   * corps plus haut, et elle est alors AU-DESSUS de l ecran. On survolerait
+   * un point hors de la page, la fiche ne s ouvrirait pas, et l essai
+   * accuserait la fiche d etre cassee. */
+  const surLaPiece = await p.evaluate(() => {
+    /* Le corps du coffre defile : l essai l a fait descendre plus haut, et
+       une piece peut alors se trouver SOUS l en-tete de la carte. Son
+       rectangle la dit pourtant a l ecran — c est le clipping qui la cache.
+       On ne se fie donc pas au rectangle : on demande a la page qui est au
+       PREMIER PLAN a cet endroit, ce qui est exactement ce que le pointeur
+       verra. */
+    document.querySelector('#nxCoffreVoile .nxcf-corps').scrollTop = 0;
+    const el = Array.prototype.find.call(
+      document.querySelectorAll('#nxCoffreVoile .nxcf-i'), (x) => {
+        const r = x.getBoundingClientRect();
+        if (r.width < 8 || r.height < 8) return false;
+        const cx = Math.round(r.left + r.width / 2), cy = Math.round(r.top + r.height / 2);
+        if (cx < 2 || cy < 2 || cx > innerWidth - 2 || cy > innerHeight - 2) return false;
+        const dessus = document.elementFromPoint(cx, cy);
+        return !!(dessus && (dessus === x || x.contains(dessus)));
+      });
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+  });
+  ok(!!surLaPiece, 'il y a une piece a survoler dans le coffre');
+  if (surLaPiece) {
+    await p.mouse.move(surLaPiece.x, surLaPiece.y);
+    await p.waitForTimeout(350);
+    const cadre = await p.evaluate(() => {
+      const f = document.getElementById('nxFiche');
+      const c = document.querySelector('#nxCoffreVoile .nxcf-carte');
+      if (!f || !f.classList.contains('on')) return null;
+      const a2 = f.getBoundingClientRect(), b2 = c.getBoundingClientRect();
+      /* L intersection, rognee de deux pixels : on ne veut ni le bord de la
+         fiche ni un pixel de decor. */
+      const x = Math.max(a2.left, b2.left) + 2, y = Math.max(a2.top, b2.top) + 2;
+      const x2 = Math.min(a2.right, b2.right) - 2, y2 = Math.min(a2.bottom, b2.bottom) - 2;
+      return { x: Math.round(x), y: Math.round(y),
+               width: Math.round(x2 - x), height: Math.round(y2 - y),
+               racine: f.parentElement === document.body };
+    });
+    ok(!!cadre, 'le survol ouvre la fiche');
+    if (cadre) {
+      ok(cadre.width > 8 && cadre.height > 8,
+         `et elle chevauche bien la carte du coffre (${cadre.width}x${cadre.height})`);
+      /* La cause, pas seulement le symptome : une infobulle appartient a la
+         racine. Ailleurs, elle heritera un jour d une couche et repassera
+         derriere sans que personne ne sache pourquoi. */
+      ok(cadre.racine, 'la fiche est posee a la racine de la page, hors de toute couche');
+      const avec = await p.screenshot({ clip: cadre });
+      await p.mouse.move(4, 4);                 // on la referme en sortant
+      await p.waitForTimeout(300);
+      const sans = await p.screenshot({ clip: cadre });
+      ok(!avec.equals(sans),
+         `le meme rectangle change quand la fiche s affiche (${avec.length} vs ${sans.length} octets)`);
+    }
+  }
+
   ok(erreurs.length === 0, 'aucune erreur de page' +
      (erreurs.length ? ' — ' + erreurs.slice(0, 3).join(' | ') : ''));
 

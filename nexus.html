@@ -647,13 +647,17 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
 /* ---- LE PANNEAU DE BLACKJACK ----
  * Meme carte que la boutique et le coffre : un joueur qui a appris a fermer
  * l'un ferme les trois. */
-#nxBjVoile{ position:fixed; top:0; bottom:0; left:0; right:var(--nxp);
-  z-index:95; background:rgba(4,7,13,.7);
-  display:flex; align-items:center; justify-content:center; padding:16px;
-  opacity:0; pointer-events:none; transition:opacity .18s,right .22s ease; }
-#nxWrap.replie ~ #nxBjVoile, body.nxreplie #nxBjVoile{ right:0; }
+/* ---- LA TABLE PREND TOUT L'ECRAN ----
+ * Les autres panneaux laissent le tableau de bord visible a droite : on y
+ * range des pieces, et l'on veut voir ses stats en le faisant. Une table de
+ * jeu, non — on n'y fait qu'une chose, et la reduire au tiers gauche de
+ * l'ecran donnait des cartes de la taille d'un timbre sur telephone. */
+#nxBjVoile{ position:fixed; inset:0;
+  z-index:95; background:rgba(4,7,13,.82);
+  display:flex; align-items:center; justify-content:center; padding:10px;
+  opacity:0; pointer-events:none; transition:opacity .18s; }
 #nxBjVoile.on{ opacity:1; pointer-events:auto; }
-#nxBjVoile .nxcf-carte{ max-width:620px; }
+#nxBjVoile .nxcf-carte{ max-width:640px; max-height:96vh; padding:16px 16px 18px; }
 /* ---- LE PANNEAU EST UNE TABLE, PAS UN FORMULAIRE ----
  *
  * La premiere version peignait l'etat du serveur dans des boutons gris : tout
@@ -676,8 +680,11 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
 .nxbj-main > i b{ color:#FFD97A; }
 /* Les cartes : la MEME planche que la table du casino, pas un deuxieme jeu de
    dessins. Une carte doit se reconnaitre aux deux endroits. */
-.nxbj-cartes{ display:flex; gap:6px; min-height:96px; flex-wrap:wrap; }
-.nxbj-c{ width:68px; height:96px; border-radius:7px; overflow:hidden;
+/* Les cartes grandissent avec l'ecran : a 68 px de large sur un telephone on
+   lisait la valeur, pas la carte. Le rapport reste celui de la planche. */
+.nxbj-cartes{ display:flex; gap:6px; min-height:clamp(96px,26vw,132px); flex-wrap:wrap; }
+.nxbj-c{ width:clamp(68px,18.5vw,94px); height:auto; aspect-ratio:68/96;
+  border-radius:7px; overflow:hidden;
   background:#0f1420; border:1px solid rgba(0,0,0,.55); flex:0 0 auto;
   box-shadow:0 4px 10px rgba(0,0,0,.5); }
 .nxbj-c img{ width:100%; height:100%; object-fit:contain; display:block; }
@@ -1238,7 +1245,6 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
        des potions plein le sac. Au-dessus du pave, la ou le pouce gauche est
        deja. -->
   <div id="nxPot" aria-hidden="true"></div>
-  <div id="nxFiche"></div>
   <div id="nxPow" role="button" tabindex="0"><u id="nxPowIco"></u><b id="nxPowNom">—</b><em id="nxPowCout"></em><span class="k" id="nxPowTouche">Space</span><i id="nxPowJauge"></i></div>
   <div id="nxIndice"></div>
   <button id="nxBascule" type="button" aria-label="Hide panel">&#9654;</button>
@@ -1407,7 +1413,15 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
   </div>
 </div>
 
-<script src="nexus.js?v=20260821v" defer></script>
+<!-- ---- LA FICHE D'UN OBJET, TOUT EN HAUT ----
+     Elle vivait DANS #nxWrap. Un `position:fixed` ouvre sa propre couche :
+     le z-index maximal de la fiche ne valait donc que la-dedans, et le
+     moindre panneau — le coffre, la boutique, la table — passait devant elle
+     en etant simplement plus bas dans la page. Une infobulle appartient a la
+     racine ; c'est le seul endroit d'ou elle peut couvrir tout le reste. -->
+<div id="nxFiche"></div>
+
+<script src="nexus.js?v=20260821w" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

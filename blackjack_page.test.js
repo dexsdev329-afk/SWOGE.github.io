@@ -202,19 +202,51 @@ process.on('unhandledRejection', (e) => {
   /* ================== 2. UNE MAIN, PAR LES VRAIS BOUTONS ================== */
   console.log('\n-- on joue une main --');
   const avant = Number(moteur.balanceStr(w.address));
-  await p.click('#nxBjVoile [data-mise="10"]');
+  const depart = await p.evaluate(() => {
+    const b2 = document.querySelector('#nxSolde b');
+    return b2 ? b2.textContent.trim() : null;
+  });
+  /* ---- ON MISE GROS, EXPRES ----
+   * Le compteur du haut arrondit au dixieme de millier : une mise de dix
+   * $SWOGE sur un solde de cinq mille ne change pas le texte affiche, et
+   * l essai ne pourrait pas distinguer « le compteur suit » de « le compteur
+   * est fige ». Mille et dix, en revanche, se voient. */
+  await p.click('#nxBjVoile [data-mise="1000"]');
   await p.waitForTimeout(150);
   await p.click('#nxBjVoile [data-bj="deal"]');
   await p.waitForTimeout(700);
+  /* La MISE est prelevee tout de suite, quoi qu il arrive ensuite : c est le
+     seul moment ou l on sait a l avance que le solde a change. Le verifier
+     apres la main dependrait du resultat — une egalite rend la mise, et le
+     compteur afficherait a juste titre le meme chiffre qu au depart. */
+  const apresDeal = await p.evaluate(() => {
+    const b2 = document.querySelector('#nxSolde b');
+    return b2 ? b2.textContent.trim() : null;
+  });
+  ok(apresDeal !== depart,
+     `le compteur du haut suit la mise, sans recharger (« ${depart} » -> « ${apresDeal} »)`);
   e = await vu();
   ok(!e.refus, `la mise est acceptee (${e.refus || 'aucun refus'})`);
   ok(e.images >= 3, `les cartes sont DESSINEES (${e.images} images)`);
   /* Le croupier cache sa seconde carte, et elle se dessine quand meme : sans
-     elle on croit la donne incomplete. */
-  ok(e.dos >= 1 || e.boutons.length === 0,
-     `la carte cachee du croupier est la (${e.dos} dos)`);
+     elle on croit la donne incomplete. Sauf quand il n a plus rien a cacher —
+     un blackjack naturel decouvre tout et termine la main avant qu on ait eu
+     a decider. Exiger le dos ferait echouer l essai une main sur vingt pour
+     une raison qui n a rien a voir avec ce qu il verifie. */
+  const fini = e.boutons.indexOf('deal') >= 0;
+  ok(e.dos >= 1 || fini,
+     `la carte cachee du croupier est la (${e.dos} dos${fini ? ', main deja finie' : ''})`);
+  /* ---- LA MISE EST PARTIE ----
+   * « Le solde a baisse » ne tient pas : un blackjack naturel prend la mise
+   * ET paie deux fois et demie dans le meme message, et le compte remonte
+   * avant qu on ait pu regarder. On demande donc au serveur ce qu il a
+   * engage et ce qu il a rendu, et on verifie le compte exact — vrai dans
+   * les deux cas. */
   const apresMise = Number(moteur.balanceStr(w.address));
-  ok(apresMise < avant, `la mise a ete debitee (${avant} -> ${apresMise})`);
+  const bjS = moteur._p(w.address).bj || {};
+  const attendu = avant - (bjS.doubled ? bjS.bet * 2 : bjS.bet) + (bjS.payout || 0);
+  ok(Math.abs(apresMise - attendu) < 0.001,
+     `la mise a ete debitee (${avant} - ${bjS.bet}${bjS.payout ? ' + ' + bjS.payout : ''} = ${apresMise})`);
 
   /* ================== 2 bis. LA DONNE SE VOIT ARRIVER ================== */
   console.log('\n-- la donne, carte par carte --');
@@ -247,6 +279,18 @@ process.on('unhandledRejection', (e) => {
   c = await cartes();
   ok(c.length >= 3 && c.every((x) => x.neuf),
      'un message de solde ne fait pas redecoller les cartes (rien n a ete repeint)');
+
+  /* ---- DOUBLER GARDE SA PLACE ----
+   * La plaque disparaissait des la deuxieme carte tiree. C'est la regle —
+   * mais un bouton qui s en va se lit « le jeu me l a retire ». Grise, il
+   * apprend QUAND on peut doubler. */
+  const doubleLa = await p.evaluate(() => {
+    const b2 = document.querySelector('#nxBjVoile [data-bj="double"]');
+    return b2 ? { off: b2.disabled } : null;
+  });
+  const enMain = await p.evaluate(() => !!document.querySelector('#nxBjVoile [data-bj="hit"]'));
+  ok(!enMain || !!doubleLa,
+     `la plaque Double reste a l ecran pendant la main (${doubleLa ? (doubleLa.off ? 'grisee' : 'active') : 'absente'})`);
 
   /* ---- LES PLAQUES ONT UNE TAILLE ---- */
   /* Quel bouton, cela depend de la main : un blackjack naturel du croupier la
@@ -321,6 +365,24 @@ process.on('unhandledRejection', (e) => {
   /* Le jeton AJOUTE : c est le geste de la table. Un jeton qui remplacerait la
      mise ne permettrait jamais 110. */
   ok(mise > 100, `le jeton s ajoute a la mise au lieu de la remplacer (${mise})`);
+
+  /* ---- LE SOLDE DU HAUT SUIT LA TABLE ----
+   * Il restait sur l ancien chiffre jusqu au rechargement de la page : on
+   * gagnait, le panneau l annoncait, et le compteur de l ecran disait le
+   * contraire. Entre deux chiffres qui se contredisent, le joueur croit celui
+   * qui ne bouge pas — et pense qu on lui doit de l argent. */
+  const enHaut = await p.evaluate(() => {
+    const b2 = document.querySelector('#nxSolde b');
+    return b2 ? b2.textContent.trim() : null;
+  });
+  const vrai = Number(moteur.balanceStr(w.address));
+  /* Le compteur ARRONDIT : au dixieme de millier au-dessus de mille, au
+     centieme en dessous. On compare a la precision qu il affiche, sinon on
+     lui reprocherait de savoir compter. */
+  const k = /k$/.test(enHaut || '');
+  const lu = k ? Number(enHaut.slice(0, -1)) * 1000 : Number(enHaut);
+  ok(enHaut !== null && Math.abs(lu - vrai) <= (k ? 50 : 0.01),
+     `le compteur du haut vaut le solde du compte (« ${enHaut} » pour ${vrai})`);
 
   /* ================== 3. LA CROIX TIENT ================== */
   console.log('\n-- on ferme, et on reste dessus --');

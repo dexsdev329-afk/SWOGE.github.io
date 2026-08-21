@@ -281,21 +281,23 @@ process.on('unhandledRejection', (e) => {
   console.log('\n-- au rayon --');
   await clique('.nxsh-bascule');
   e = await vu();
-  /* ---- RUPTURE DE STOCK ----
-   * La maison ne fabrique plus de potions. File vide, rayon vide — et le
-   * bouton DIT pourquoi. Un bouton grise sans phrase se lit « casse » ; avec
-   * le mot il se lit « a vous d en mettre », qui est l invitation qu on veut
-   * faire. */
-  ok(e.source.some((t) => /out of stock/i.test(t)),
-     `sans vendeur, l ecran affiche la rupture (« ${e.source.join(' | ')} »)`);
-  const grise = await p.evaluate(() => {
-    const b = document.querySelector('#nxShopVoile .nxsh-corps [data-pot="vie"]');
-    return { off: !!(b && b.disabled), vide: !!(b && b.classList.contains('vide')),
-             mot: b ? (b.querySelector('.nxsh-rupture') || {}).textContent || null : null };
-  });
-  ok(grise.off, 'et le bouton d achat est grise : il n y a rien a vendre');
-  ok(/out of stock/i.test(grise.mot || ''),
-     `avec le mot a la place du prix (« ${grise.mot} »)`);
+  /* ---- RAYON VIDE : PAS DE LIGNE DU TOUT ----
+   * Cet essai exigeait autrefois une ligne « Health Potion — out of stock ».
+   * C etait le mauvais ecran : une ligne grise affichee en permanence est un
+   * rayon qu on apprend a ne plus regarder, et le jour ou quelqu un met enfin
+   * des potions en vente, personne ne le remarque. Le rayon ne montre donc
+   * QUE ce qu on peut acheter.
+   *
+   * Ce qui ne dispense pas d expliquer : un panneau vide sans phrase se lit
+   * « boutique cassee ». La note dit d ou vient le stock, et pointe vers le
+   * seul geste qui le remplit. */
+  const rien = await p.evaluate(() =>
+    document.querySelectorAll('#nxShopVoile .nxsh-corps [data-pot],#nxShopVoile .nxsh-corps [data-fiole]').length);
+  ok(rien === 0, `sans vendeur, le rayon ne montre aucune ligne (${rien})`);
+  ok(/listed by a player/i.test(e.note || ''),
+     `mais il DIT d ou vient le stock (« ${(e.note || 'aucune note').slice(0, 60)}… »)`);
+  ok(/put yours up/i.test(e.note || ''),
+     'et invite a en mettre : un rayon vide sans geste a faire est une impasse');
   /* Un autre joueur approvisionne : la meme ligne doit changer de phrase. */
   qa.potions = { vie: 6 };
   moteur.metPotionEnVente(autre, 'vie', 6);

@@ -1758,7 +1758,16 @@
   function detailPouvoir(f) {
     var e = f && f.effet;
     if (!e) return '';
-    var tous = ' every ' + e.recharge + 's';
+    /* ---- LA RECHARGE EST LA PROGRESSION ----
+     * Le niveau achete de la FREQUENCE : soixante secondes au premier,
+     * trois au centieme. C'est donc elle qu'on ecrit en premier et en gras —
+     * les degats montent six fois, la cadence vingt. Un joueur qui ne lit que
+     * ce chiffre a compris le systeme.
+     * Arrondie a la seconde au-dela de dix : « 22.03s » donne une precision
+     * qu'aucun joueur ne peut ressentir, et fait perdre de vue le chiffre
+     * rond qui compte. */
+    var r = e.recharge >= 10 ? Math.round(e.recharge) : e.recharge.toFixed(1);
+    var tous = ' every ' + r + 's';
     if (e.pouvoir === 'mord')     return Math.round(e.degats) + ' damage' + tous;
     if (e.pouvoir === 'brule')    return Math.round(e.parSeconde) + ' burn/s for ' +
                                          e.duree + 's' + tous;
@@ -1852,6 +1861,16 @@
           '<div class="nxpw-tn">' + ech(f.nom || 'Pet') + ' <span>Lv ' + (f.niveau || 1) + '</span></div>' +
           '<div class="nxpw-pou">' + ech((f.pouvoir && f.pouvoir.nom) || '') +
             (detailPouvoir(f) ? ' <b>' + ech(detailPouvoir(f)) + '</b>' : '') + '</div>' +
+          /* Ce que le NIVEAU SUIVANT change, en toutes lettres. Un palier
+             franchi qui ne montre rien est une barre de progression, pas une
+             progression — et ici il montre la seule chose qui compte
+             vraiment : le compagnon agit plus souvent. */
+          (f.suivant ? '<div class="nxpw-suite">Next level &rarr; acts every <b>' +
+             (f.suivant.recharge >= 10 ? Math.round(f.suivant.recharge)
+                                       : f.suivant.recharge.toFixed(1)) +
+             's</b> instead of ' +
+             (f.effet.recharge >= 10 ? Math.round(f.effet.recharge)
+                                     : f.effet.recharge.toFixed(1)) + 's</div>' : '') +
           '<div class="nxpw-xp"><i style="width:' + Math.round(part * 100) + '%"></i></div>' +
           '<div class="nxpw-xpt">' + texte + '</div>' +
         '</div>' +

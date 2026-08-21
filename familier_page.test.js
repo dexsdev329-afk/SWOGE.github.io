@@ -316,23 +316,38 @@ process.on('unhandledRejection', (e) => {
     .map((e) => Number(e.getAttribute('data-plat'))));
   ok(plats.indexOf(idCommun) >= 0, `la commune est proposee au repas (${plats.join(',')})`);
   ok(plats.indexOf(idLegendaire) < 0, 'la legendaire ne l est PAS');
+  /* Le prix et le gain viennent du SERVEUR, jamais recopies ici : les deux ont
+     change quand le familier est passe de vingt a cent niveaux, et un essai
+     qui les portait en dur serait tombe sans qu une seule regle soit fausse. */
+  const regles = moteur.familiersDe(w.address).filter((f) => f.espece === 'legendaire')[0];
+  const prixAttendu = regles.prixRepas;
   const prixVu = await p.evaluate(() => (document.querySelector('#nxPetFiche .nxpw-rt') || {}).textContent || '');
-  ok(/40 gold/.test(prixVu), `le prix se lit AVANT de cliquer (${prixVu.trim()})`);
+  ok(prixVu.indexOf(prixAttendu + ' gold') >= 0,
+     `le prix se lit AVANT de cliquer (${prixVu.trim()})`);
 
   const xpAvant = moteur.familiersDe(w.address).filter((f) => f.espece === 'legendaire')[0].xp;
   const orAvant = moteur.orDe(w.address);
   await p.evaluate((id) => document.querySelector('#nxPetFiche [data-plat="' + id + '"]').click(), idCommun);
   await p.waitForTimeout(800);
   const apresRepas = moteur.familiersDe(w.address).filter((f) => f.espece === 'legendaire')[0];
-  eq(apresRepas.xp - xpAvant, 10, 'un clic sur une commune donne dix points');
-  eq(orAvant - moteur.orDe(w.address), 40, 'et coute quarante d or');
+  const gainAttendu = require(path.join(SERVEUR, 'game')).Game.reglesFamilier().xp.commun;
+  eq(apresRepas.xp - xpAvant, gainAttendu,
+     `un clic sur une commune donne ${gainAttendu} points`);
+  eq(orAvant - moteur.orDe(w.address), prixAttendu,
+     `et coute ${prixAttendu} d or`);
   eq((moteur._p(w.address).sac || {})[idCommun], 1, 'la piece a quitte le sac, une seule');
   const barre = await p.evaluate(() => {
     const i = document.querySelector('#nxPetFiche .nxpw-xp i');
     return { large: i ? i.style.width : null,
              texte: (document.querySelector('#nxPetFiche .nxpw-xpt') || {}).textContent || '' };
   });
-  ok(/10 \/ 80 XP/.test(barre.texte), `la barre montre l avance DANS le palier (${barre.texte})`);
+  /* La barre montre l avance DANS le palier courant. Les bornes viennent du
+     serveur : « 10 / 80 » etait la courbe des vingt niveaux, elle n existe
+     plus. */
+  const f2 = moteur.familiersDe(w.address).filter((f) => f.espece === 'legendaire')[0];
+  const attendu = (f2.xp - f2.xpBas) + ' / ' + (f2.xpHaut - f2.xpBas) + ' XP';
+  ok(barre.texte.indexOf(attendu) >= 0,
+     `la barre montre l avance DANS le palier (${barre.texte}, attendu ${attendu})`);
   ok(barre.large && parseFloat(barre.large) > 0, `et elle se remplit (${barre.large})`);
 
   /* Le refus se VOIT : sans or, la page ne doit pas laisser croire que ca a
@@ -353,7 +368,8 @@ process.on('unhandledRejection', (e) => {
      sous un panneau plein ecran le joueur clique, rien ne se passe, et rien ne
      dit pourquoi. */
   const dit = await p.evaluate(() => (document.querySelector('#nxPetFiche .nxpw-non') || {}).textContent || '');
-  ok(/Need 40 gold/.test(dit), `la page dit pourquoi, dans le panneau (${dit.trim()})`);
+  ok(dit.indexOf('Need ' + prixAttendu + ' gold') >= 0,
+     `la page dit pourquoi, dans le panneau (${dit.trim()})`);
   q.fame = 5000;
 
   /* On referme pour rendre la main au personnage. */
@@ -489,6 +505,22 @@ process.on('unhandledRejection', (e) => {
   const jm = mondes.map((R) => R.joueurs.get(w.address.toLowerCase()))
                    .filter(Boolean)[0];
   ok(!!jm, 'la simulation nous a bien');
+  /* ---- ON LE MONTE EN NIVEAU AVANT DE MESURER ----
+   * La recharge suit le niveau : SOIXANTE secondes au premier, trois au
+   * centieme. Au niveau un, aucune fenetre raisonnable d'essai ne verrait le
+   * moindre soin — et l'essai dirait « le familier ne soigne pas », ce qui
+   * serait faux. On le nourrit par le chemin normal du jeu, puis on rhabille :
+   * c'est ce que fait le serveur quand un repas fait monter un niveau. */
+  const q2 = moteur._p(w.address);
+  q2.familiers.legendaire.xp = 3 * 99 * 100;      // le centieme palier
+  await p.evaluate(() => window.__s[0].send(JSON.stringify({ type: 'familierSort', espece: 'legendaire' })));
+  await p.waitForTimeout(700);
+  ok(jm.famNiv >= 90, `la simulation connait son niveau (${jm.famNiv})`);
+  /* On oublie ce qui a ete dit AVANT la montee en niveau. Sans ca, le premier
+     geste retenu est un soin du niveau un — onze points — et on le compare a
+     un bond du niveau cent. L essai accusait alors la page de ne pas peindre
+     ce qu elle peignait tres bien. */
+  await p.evaluate(() => { window.__s[0].__m = window.__s[0].__m.filter((m) => m.type !== 'realmFam'); });
   jm.pv = Math.max(1, Math.round(jm.pvMax * 0.4));
   /* ---- ON GUETTE UNE REMONTEE, PAS UN ETAT FINAL ----
    * Comparer la vie avant et apres six secondes serait faux : les monstres

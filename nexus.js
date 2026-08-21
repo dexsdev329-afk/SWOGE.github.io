@@ -3283,15 +3283,24 @@
        * le remarque. On n'affiche donc la ligne QUE si elle a du stock : le
        * rayon dit ce qu'on peut acheter, pas ce qui existerait si quelqu'un
        * vendait. */
+      /* La ligne EXISTE des qu'il y a du stock, le sien compris (`total`) ;
+         c'est `stock` — ce que CE joueur peut acheter — qui commande le
+         bouton. Filtrer sur `stock` montrait un magasin vide a celui qui
+         venait d'y mettre ses potions : il ne pouvait pas verifier que son
+         annonce existait. */
       var enRayon = (POTIONS_C || []).filter(function (p) {
         var l = deM(p.cle);
-        return l && l.stock > 0;
+        return l && l.total > 0;
       });
       elShopCorps.innerHTML = bascule + enRayon.map(function (p) {
         var reste = p.max - p.quantite;
         var l = deM(p.cle);
-        return '<button type="button" class="nxsh-cof" data-pot="' + ech(p.cle) + '"' +
-          (soldeP >= p.prix && reste > 0 ? '' : ' disabled') + '>' +
+        /* Le sien n'est pas achetable : on ne se rachete pas a soi-meme. Le
+           bouton le dit, au lieu de refuser au clic. */
+        var mien = !!l && l.stock <= 0 && l.enVente > 0;
+        return '<button type="button" class="nxsh-cof' + (mien ? ' mien' : '') +
+          '" data-pot="' + ech(p.cle) + '"' +
+          (!mien && soldeP >= p.prix && reste > 0 ? '' : ' disabled') + '>' +
           '<img alt="" src="img/nexus/objets/' + encodeURIComponent(p.image) +
           '.webp" onerror="this.remove()">' +
           '<span><span class="n">' + ech(p.nom) + '</span><span class="o">Restores <b>' +
@@ -3300,8 +3309,11 @@
           /* D'ou vient ce qu'on achete. Sans cette ligne, « le stock vient des
              joueurs » est une phrase de Telegram et rien dans l'ecran ne la
              confirme. */
-          '<br><i class="nxsh-src">' + (l ? l.stock : 0) + ' in stock from players</i>' +
-          '</span></span><span class="p">' + p.prix + ' $SWOGE</span></button>';
+          '<br><i class="nxsh-src">' + (l ? l.total : 0) + ' in stock from players' +
+          (l && l.enVente ? ' \u00b7 <b>' + l.enVente + ' yours</b>' : '') + '</i>' +
+          '</span></span><span class="p">' +
+          (mien ? '<b class="nxsh-mien">Yours</b>' : p.prix + ' $SWOGE') +
+          '</span></button>';
       }).join('') +
       /* Les lots ne servent qu'aux potions de soin, et seulement s'il y en a :
          trois boutons « Buy x25 » au-dessus d'un rayon vide sont trois
@@ -3318,17 +3330,22 @@
        * a vraiment une en vente. Un rayon vide en permanence apprendrait a ne
        * plus le regarder. */
       (function () {
-        var f = lignesM.filter(function (l) { return l.stat && l.stock > 0; });
+        var f = lignesM.filter(function (l) { return l.stat && l.total > 0; });
         if (!f.length) return '';
         return '<div class="nxsh-grp">Stat potions \u2014 sold by players only</div>' +
           f.map(function (l) {
-            return '<button type="button" class="nxsh-cof" data-fiole="' + ech(l.stat) + '"' +
-              (soldeP >= l.prix ? '' : ' disabled') + '>' +
+            var sien = l.stock <= 0 && l.enVente > 0;
+            return '<button type="button" class="nxsh-cof' + (sien ? ' mien' : '') +
+              '" data-fiole="' + ech(l.stat) + '"' +
+              (!sien && soldeP >= l.prix ? '' : ' disabled') + '>' +
               '<u class="fiole" style="background-position:' + colonneFiole(l) + '% 0"></u>' +
               '<span><span class="n">+' + l.pas + ' ' + ech(String(l.stat).toUpperCase()) +
               '</span><span class="o">Permanent \u2014 and it stays if you die' +
-              ' &middot; <b>' + l.stock + '</b> in stock</span></span>' +
-              '<span class="p">' + l.prix + ' $SWOGE</span></button>';
+              ' &middot; <b>' + l.total + '</b> in stock' +
+              (l.enVente ? ' \u00b7 <b>' + l.enVente + ' yours</b>' : '') + '</span></span>' +
+              '<span class="p">' +
+              (sien ? '<b class="nxsh-mien">Yours</b>' : l.prix + ' $SWOGE') +
+              '</span></button>';
           }).join('');
       })();
 

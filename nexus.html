@@ -594,6 +594,15 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
   text-transform:uppercase; color:#F5938B; background:rgba(242,104,94,.12);
   border:1px solid rgba(242,104,94,.34); border-radius:99px; padding:3px 8px;
   white-space:nowrap; }
+/* Sa propre annonce, au rayon : on la VOIT — c'est le seul moyen de verifier
+   qu'elle existe — mais on ne se la rachete pas. Le bouton le dit au lieu de
+   refuser au clic. */
+.nxsh-cof.mien{ border-style:dashed; opacity:.9; }
+.nxsh-mien{ font-size:10px; font-weight:900; letter-spacing:.05em;
+  text-transform:uppercase; color:#E8C97A; background:rgba(232,201,122,.12);
+  border:1px solid rgba(232,201,122,.34); border-radius:99px; padding:3px 8px;
+  white-space:nowrap; }
+.nxsh-src b{ color:#E8C97A; }
 /* La hauteur d'une pile de fioles, dans la case du sac. Meme coin que la
    marque OG ne conviendrait pas — elle y est deja ; on prend le bas. */
 .nxp-pile{ position:absolute; right:2px; bottom:1px; z-index:3;
@@ -1274,7 +1283,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
   </div>
 </div>
 
-<script src="nexus.js?v=20260821p" defer></script>
+<script src="nexus.js?v=20260821q" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

@@ -2642,9 +2642,15 @@
           (k.possede || soldeS >= k.prix ? '' : ' disabled') + (a ? ' class="nxsh-cof on"' : '') + '>' +
           '<img alt="" src="img/skins/skin_' + encodeURIComponent(k.id) +
           '.webp" onerror="this.remove()">' +
-          '<span><span class="n">' + ech(k.nom) + '</span><span class="o">' +
+          '<span><span class="n">' + ech(k.nom) +
+          (k.offert ? ' <u class="nxsh-free">FREE</u>' : '') +
+          '</span><span class="o">' +
           ech(k.pouvoir || '') + '</span></span><span class="p">' +
-          (k.possede ? (a ? 'worn' : 'wear') : Math.round(k.prix).toLocaleString('en-US') + ' $SWOGE') +
+          /* « FREE » et pas « 0 $SWOGE » : un prix a zero se lit comme un prix
+             qu'on n'a pas su calculer, le mot se lit comme une promesse. */
+          (k.possede ? (a ? 'worn' : 'wear')
+                     : k.offert ? 'FREE'
+                     : Math.round(k.prix).toLocaleString('en-US') + ' $SWOGE') +
           '</span></button>';
       }).join('');
       Array.prototype.forEach.call(elShopCorps.querySelectorAll('[data-skin]'), function (b) {

@@ -575,6 +575,12 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
 #nxSac .nxp-c u.fiole{ display:block; width:78%; height:78%;
   background-image:url('img/nexus/objets/potions_stat.webp');
   background-repeat:no-repeat; background-size:800% 100%; image-rendering:pixelated; }
+/* Andy est offert : le ruban le dit sur la fiche comme sur la carte du shop.
+   Vert, comme tout ce qui est acquis dans ce jeu — la couleur repond avant
+   qu'on ait lu le mot. */
+.nxsh-free{ text-decoration:none; font-size:9px; font-weight:900; letter-spacing:.08em;
+  color:#0d1117; background:#7CFF9B; border-radius:99px; padding:1px 6px; margin-left:5px;
+  vertical-align:middle; }
 .nxcf-vide{ font-size:12px; color:#7A89A6; line-height:1.5; padding:10px 0; }
 .nxcf-refus{ margin-bottom:10px; padding:9px 11px; border-radius:10px; font-size:11.5px;
   line-height:1.5; background:rgba(242,104,94,.1); border:1px solid rgba(242,104,94,.32);
@@ -1033,7 +1039,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
   </div>
 </div>
 
-<script src="nexus.js?v=20260820x" defer></script>
+<script src="nexus.js?v=20260821a" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

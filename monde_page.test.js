@@ -1075,7 +1075,33 @@ process.on('unhandledRejection', (e) => {
       ok(og.equip && og.equip.haut && og.equip.droite, 'au meme endroit de la case');
     }
 
-    /* ---- UNE FIOLE DE STAT SE VOIT DANS LE SAC ----
+      /* ---- ANDY EST OFFERT ----
+     * Tout le monde en a un, sans avoir rien depose : il n'existe pas de
+     * version du jeu ou l'on regarde sans pouvoir jouer. Le rayon des
+     * personnages doit le DIRE — « 0 $SWOGE » se lit comme un prix qu'on n'a
+     * pas su calculer, « FREE » se lit comme une promesse. */
+    {
+      const skins = await p.evaluate(async () => {
+        const s = window.__s[0];
+        s.send(JSON.stringify({ type: 'skins' }));
+        await new Promise((f) => setTimeout(f, 400));
+        const m = s.__m.filter((x) => x.type === 'skins').pop();
+        return m ? { catalogue: m.catalogue, actif: m.actif } : null;
+      });
+      console.log('\n-- le personnage offert --');
+      const andy = skins && skins.catalogue.find((x) => x.id === 'andy');
+      console.log('   ' + JSON.stringify({ actif: skins && skins.actif, andy }));
+      ok(andy, 'le catalogue porte Andy');
+      ok(andy && andy.offert, 'et il est marque OFFERT');
+      ok(andy && andy.prix === 0, 'a zero');
+      ok(andy && andy.possede, 'et deja possede, sans rien avoir achete');
+      ok(skins && skins.actif === 'andy', 'c est lui qu on porte');
+      const autres = (skins.catalogue || []).filter((x) => !x.offert);
+      ok(autres.length === 5 && autres.every((x) => x.prix > 0),
+         `les cinq autres gardent leur prix (${autres.map((x) => x.prix).join(', ')})`);
+    }
+
+  /* ---- UNE FIOLE DE STAT SE VOIT DANS LE SAC ----
      * Elle ne se boit plus en la ramassant : elle prend une place, donc elle
      * doit se DESSINER a cette place. Une case vide au milieu du sac se lit
      * comme une place perdue, et le joueur croit avoir perdu la fiole. */

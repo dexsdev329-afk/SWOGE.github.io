@@ -2083,6 +2083,17 @@
       '.swk-c .swact.swprix,.swk-da .swact.swprix{border-color:rgba(255,197,61,.55);background:rgba(255,197,61,.14);' +
         'color:#FFD97A;}' +
       '.swk-c .swact.swprix i,.swk-da .swact.swprix i{font-style:normal;font-weight:600;opacity:.85;}' +
+      /* ---- CELUI QU'ON DONNE ----
+         Vert, comme tout ce qui est acquis dans ce jeu, et pas dore comme un
+         prix : la couleur dit deja qu'il n'y a rien a payer avant qu'on ait lu
+         le mot. Le ruban se pose sur la vignette parce que c'est elle qu'on
+         regarde en premier dans une grille de six. */
+      '.swk-c .swact.swgratuit,.swk-da .swact.swgratuit{border-color:rgba(124,255,155,.5);' +
+        'background:rgba(124,255,155,.14);color:#7CFF9B;font-weight:800;letter-spacing:.06em;}' +
+      '.swk-c{position:relative;}' +
+      '.swk-c .swk-free{position:absolute;top:8px;right:8px;text-decoration:none;' +
+        'font-size:9.5px;font-weight:900;letter-spacing:.08em;color:#0d1117;' +
+        'background:#7CFF9B;border-radius:99px;padding:2px 7px;line-height:1.4;}' +
       /* ---- LA FICHE EN GRAND ----
        *
        * Meme coque que la feuille de vente (.swv, .swv-f, .swv-x) — mais PAS
@@ -4006,6 +4017,23 @@
       tag.className = 'swtag'; tag.textContent = 'Wearing';
       return tag;
     }
+    /* ---- CELUI QU'ON DONNE ----
+     * Andy est offert : tout le monde en a un, sans avoir rien depose. Le
+     * bouton le DIT au lieu d'afficher un prix a zero — « 0 $SWOGE » se lit
+     * comme un prix qu'on n'a pas su calculer, « FREE » se lit comme une
+     * promesse. Il n'existe pas de version du jeu ou l'on regarde sans
+     * pouvoir jouer, et c'est la premiere chose qu'un visiteur doit voir. */
+    if (s.offert && !s.possede) {
+      var f = document.createElement('button');
+      f.type = 'button'; f.className = 'swact swgratuit';
+      f.textContent = 'FREE';
+      f.addEventListener('click', function (e) {
+        e.stopPropagation();
+        f.disabled = true;
+        envoie({ type: 'skinBuy', id: s.id });
+      });
+      return f;
+    }
     if (s.possede) {
       var w = document.createElement('button');
       w.type = 'button'; w.className = 'swact';
@@ -4041,7 +4069,8 @@
 
     var intro = document.createElement('div');
     intro.className = 'swb-mention';
-    intro.textContent = 'A skin changes how your character looks — nothing to do with seasons or chests. ' +
+    intro.textContent = 'Andy is free — everyone gets one, so anyone can play. ' +
+      'The others change how your character looks and what stats it starts with. ' +
       'Buy any of them, any time, for a fixed price. The one you buy becomes the one you wear. ' +
       'Tap a character to see it up close.';
     l.appendChild(intro);
@@ -4066,6 +4095,7 @@
       var points = pointsPuissance(s);
       d.innerHTML =
         '<div class="ico"><img alt="" src="img/skins/skin_' + encodeURIComponent(s.id) + '.webp" onerror="this.remove()"></div>' +
+        (s.offert ? '<u class="swk-free">FREE</u>' : '') +
         '<b class="nm">' + ech(s.nom) + '</b>' +
         '<i class="pw">' + points + '</i>' +
         '<i class="pv">' + ech(s.pouvoir) + '</i>';

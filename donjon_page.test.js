@@ -329,14 +329,26 @@ process.on('unhandledRejection', (e) => {
      'marquee comme une porte d\'ALLER, pas de retour');
 
   /* ================== 2. ELLE SE DESSINE ================== */
+  /* ---- LA PLANCHE DE LA FONDERIE, PAS LA PLANCHE COMMUNE ----
+   * Les deux donjons partageaient un dessin : on ne pouvait pas savoir, en
+   * voyant une porte s'ouvrir a l'autre bout de l'anneau, si elle menait aux
+   * machines ou aux pirates. Nommer ici le fichier ATTENDU est ce qui rend le
+   * changement verifiable : si la page retombait sur la planche commune,
+   * l'essai le dirait au lieu de peindre une porte generique en silence. */
   console.log('\n-- elle se dessine --');
   await p.evaluate(() => { window.__peint.length = 0; window.__image0 = window.__image; });
   await p.waitForTimeout(900);
   const dessin = await p.evaluate(() => {
-    const v = window.__peint.filter((o) => o.src === 'obj_portail.webp' && o.ecran);
+    const v = window.__peint.filter((o) => o.src === 'obj_portail_forge.webp' && o.ecran);
     return { fois: v.length, images: new Set(v.map((o) => o.f)).size,
              rendues: window.__image - window.__image0,
-             taille: v.length ? Math.round(v[0].dw) : 0 };
+             /* La HAUTEUR, pas la largeur. Les trois planches de porte n'ont
+                plus le meme rapport depuis que chaque donjon a la sienne : la
+                page cale la hauteur sur la zone d'entree — une porte se lit
+                debout — et rend au dessin son propre rapport. Mesurer la
+                largeur reviendrait a mesurer le rapport du dessin. */
+             taille: v.length ? Math.round(v[0].dh) : 0,
+             large: v.length ? Math.round(v[0].dw) : 0 };
   });
   ok(dessin.fois > 0, `la porte est peinte a l'ecran (${dessin.fois} fois)`);
   /* ---- A CHAQUE IMAGE, PAS « PLUS DE CINQ » ----
@@ -360,7 +372,7 @@ process.on('unhandledRejection', (e) => {
    * Une seconde apres son ouverture, elle doit donc etre sur sa DERNIERE case,
    * et y rester. */
   const suite = await p.evaluate(() => {
-    const v = window.__peint.filter((o) => o.src === 'obj_portail.webp' && o.ecran);
+    const v = window.__peint.filter((o) => o.src === 'obj_portail_forge.webp' && o.ecran);
     /* La suite des cases DANS L'ORDRE ou elles ont ete posees, une entree par
        changement : c'est la seule forme qui distingue une ouverture d'une
        boucle. Un simple decompte dirait « les cases 2 et 3 ont ete vues » sans
@@ -382,7 +394,7 @@ process.on('unhandledRejection', (e) => {
   /* ET ELLE S'Y ARRETE : la derniere case tient la grande majorite du temps,
      l'ouverture n'est qu'un dechirement. */
   const tenue = await p.evaluate(() => {
-    const v = window.__peint.filter((o) => o.src === 'obj_portail.webp' && o.ecran);
+    const v = window.__peint.filter((o) => o.src === 'obj_portail_forge.webp' && o.ecran);
     const der = v.filter((o) => Math.round(o.sx / Math.max(1, o.sw)) === 3).length;
     return { der, tout: v.length };
   });
@@ -397,7 +409,13 @@ process.on('unhandledRejection', (e) => {
     return (e && e.portail && e.portail.rayon) || 72;
   });
   ok(dessin.taille > rayon * 2,
-     `et elle est plus haute que large que sa zone d'entree (${dessin.taille} px pour un rayon de ${rayon})`);
+     `et elle se dresse au-dessus de sa zone d'entree (${dessin.taille} px de haut pour un rayon de ${rayon})`);
+  /* Et elle n'est pas ECRASEE : la largeur suit le dessin, pas la case. Une
+     porte aussi large que haute serait la preuve qu'on a cale les deux sur le
+     meme nombre — ce qui etirait la gueule de la Cave et aplatissait la
+     trappe de la Fonderie. */
+  ok(dessin.large < dessin.taille,
+     `et elle garde son rapport (${dessin.large} de large pour ${dessin.taille} de haut)`);
 
   /* ================== 3. LA FLECHE VERS UNE PORTE LOINTAINE ==================
    *

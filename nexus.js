@@ -3325,26 +3325,82 @@
    * la largeur et le bas du dessin en fraction de la case. Les ecrire a la main
    * aurait fait deux nombres a tenir d'accord avec un dessin qu'on remplacera.
    */
-  var PORTE_MESURE = null;
-  function mesurePorte() {
-    if (PORTE_MESURE) return PORTE_MESURE;
-    var repli = { large: 0.48, haute: 0.96, bas: 0.96 };
-    if (!IMG_PORTE || !IMG_PORTE.naturalWidth) return repli;
-    var c = IMG_PORTE.naturalHeight;
-    var n = Math.max(1, Math.round(IMG_PORTE.naturalWidth / c));
+  /* ---- CHAQUE DONJON SA PORTE ----
+   *
+   * Une seule planche servait aux deux : on ne pouvait pas savoir, en voyant
+   * une porte s'ouvrir a l'autre bout de l'anneau, si elle menait aux
+   * machines ou aux pirates. Or c'est LA question — les deux donjons n'ont ni
+   * les memes monstres, ni le meme butin, ni la meme difficulte, et courir
+   * deux cents unites pour le decouvrir sur place est le genre de perte de
+   * temps qu'on ne pardonne pas deux fois.
+   *
+   * La porte de RETOUR garde la planche d'origine, et c'est voulu : elle ne
+   * mene pas a un donjon, elle en sort. Lui donner l'image de la Fonderie
+   * aurait fait entrer dans le donjon des gens qui voulaient en sortir.
+   *
+   * Les images sont chargees A LA DEMANDE : un joueur qui ne verra jamais la
+   * Cave n'a aucune raison d'en telecharger la porte.
+   */
+  var PORTES_DJ = {};
+  function imagePorte(p) {
+    var cle = (p && !p.rt && p.dj) ? String(p.dj) : null;
+    if (!cle) return IMG_PORTE;
+    if (!PORTES_DJ[cle]) {
+      var i = new Image();
+      i.src = 'img/nexus/tiles/obj_portail_' + cle + '.webp';
+      /* Une cle inconnue — un donjon ajoute au serveur avant que son dessin
+         n'existe — retombe sur la planche d'origine plutot que de ne rien
+         dessiner. Une porte invisible se lit comme un monde casse. */
+      i.onerror = function () { PORTES_DJ[cle] = IMG_PORTE; };
+      PORTES_DJ[cle] = i;
+    }
+    var im = PORTES_DJ[cle];
+    return (im && im.complete && !im.naturalWidth) ? IMG_PORTE : im;
+  }
+
+  /* ---- CE QUE LA PLANCHE OCCUPE VRAIMENT DE SA CASE ----
+   *
+   * La porte est un OVALE ETROIT dans sa case : sa derniere image tient sur
+   * soixante et un pixels de large et cent vingt-trois de haut, dans une case
+   * de cent vingt-huit. Caler la CASE sur le rayon du portail donnait donc une
+   * porte moitie moins large que le cercle ou l'on entre — on marchait dedans
+   * sans avoir l'impression d'y etre.
+   *
+   * On MESURE, comme pour le cercle d'annonce et pour l'assise des rochers :
+   * une fois PAR PLANCHE, sur la derniere image (celle de la porte ouverte).
+   * Ecrire les nombres a la main aurait fait deux valeurs a tenir d'accord
+   * avec un dessin qu'on remplacera — et il y a maintenant trois dessins.
+   *
+   * ---- ET LES CASES NE SONT PLUS CARREES ----
+   *
+   * L'ancienne planche etait quatre carres. Les deux nouvelles sont quatre
+   * rectangles (160x233 et 160x213), et l'ancien calcul deduisait le nombre
+   * d'images de `largeur / hauteur` — ce qui donnait TROIS images sur une
+   * planche qui en a quatre, donc une porte coupee en biais. Le nombre
+   * d'images est une propriete de la SEQUENCE (une fente, un ovale etroit, un
+   * ovale large, la porte ouverte), pas de la geometrie du fichier.
+   */
+  var PORTE_CADRES = 4;
+  var PORTE_MESURES = {};
+  function mesurePorte(img) {
+    var repli = { large: 0.48, haute: 0.96, bas: 0.96, rapport: 1 };
+    if (!img || !img.naturalWidth) return repli;
+    var cle = img.src;
+    if (PORTE_MESURES[cle]) return PORTE_MESURES[cle];
+    var cw = Math.round(img.naturalWidth / PORTE_CADRES), ch = img.naturalHeight;
     try {
       var cv = document.createElement('canvas');
-      cv.width = c; cv.height = c;
+      cv.width = cw; cv.height = ch;
       var c2 = cv.getContext('2d', { willReadFrequently: true });
-      c2.drawImage(IMG_PORTE, (n - 1) * c, 0, c, c, 0, 0, c, c);
-      var d = c2.getImageData(0, 0, c, c).data;
-      var x0 = c, x1 = -1, y0 = c, y1 = -1;
-      for (var y = 0; y < c; y++) {
-        for (var x = 0; x < c; x++) {
+      c2.drawImage(img, (PORTE_CADRES - 1) * cw, 0, cw, ch, 0, 0, cw, ch);
+      var d = c2.getImageData(0, 0, cw, ch).data;
+      var x0 = cw, x1 = -1, y0 = ch, y1 = -1;
+      for (var y = 0; y < ch; y++) {
+        for (var x = 0; x < cw; x++) {
           /* Le seuil compte : ces planches descendent a alpha 1 autour du
              dessin, invisible a l'oeil mais assez pour faire mesurer la case
              entiere. C'est la meme lecon que dans le decoupeur. */
-          if (d[(y * c + x) * 4 + 3] < 40) continue;
+          if (d[(y * cw + x) * 4 + 3] < 40) continue;
           if (x < x0) x0 = x;
           if (x > x1) x1 = x;
           if (y < y0) y0 = y;
@@ -3352,10 +3408,10 @@
         }
       }
       if (x1 < x0 || y1 < y0) return repli;
-      PORTE_MESURE = { large: (x1 - x0 + 1) / c, haute: (y1 - y0 + 1) / c,
-                       bas: (y1 + 1) / c };
+      PORTE_MESURES[cle] = { large: (x1 - x0 + 1) / cw, haute: (y1 - y0 + 1) / ch,
+                             bas: (y1 + 1) / ch, rapport: cw / ch };
     } catch (e) { return repli; }
-    return PORTE_MESURE;
+    return PORTE_MESURES[cle];
   }
 
   function dessinePorte(p) {
@@ -3368,9 +3424,10 @@
        « d'ici, ca marche » sans ecrire un chiffre. */
     var bat = 0.82 + 0.18 * Math.sin(performance.now() / 460);
     halo(p.x, p.y + 6, R * bat, teinte, 0.30);
-    if (!IMG_PORTE || !IMG_PORTE.complete || !IMG_PORTE.naturalWidth) return;
-    var cadre = IMG_PORTE.naturalHeight;
-    var n = Math.max(1, Math.round(IMG_PORTE.naturalWidth / cadre));
+    var img0 = imagePorte(p);
+    if (!img0 || !img0.complete || !img0.naturalWidth) return;
+    var n = PORTE_CADRES;
+    var cw = Math.round(img0.naturalWidth / n), chh = img0.naturalHeight;
 
     /* ---- ELLE S'OUVRE UNE FOIS, ELLE NE CLIGNOTE PAS ----
      *
@@ -3404,7 +3461,7 @@
      * l'ecran. C'est donc la HAUTEUR qui commande, a un peu moins de trois
      * fois le rayon : une porte se lit debout, et celle-la doit se voir de
      * loin sans manger la scene. */
-    var m = mesurePorte();
+    var m = mesurePorte(img0);
     /* ---- ELLE A MAIGRI, ET ELLE EST ENTREE DANS LE SOL ----
      * A deux fois huit dixiemes du rayon d'entree elle montait a deux cents
      * unites : plus haute que la fontaine, et elle mangeait la creature qu'on
@@ -3414,8 +3471,15 @@
      * Et le bas s'enfonce : pose a six unites elle avait l'air d'un decor
      * COLLE sur l'herbe. A vingt-deux, sa base disparait dans le sol et l'on
      * croit a un trou, ce qu'un portail est cense etre. */
-    var T = (R * 2.1) / Math.max(0.05, m.haute);
-    var haut = p.y + 22 - m.bas * T;
+    /* ---- LA HAUTEUR COMMANDE, LA LARGEUR SUIT LE DESSIN ----
+     * Les trois planches n'ont pas le meme rapport (l'ancienne est carree,
+     * les deux nouvelles sont hautes). Caler la LARGEUR sur la case aurait
+     * ecrase la trappe de la Fonderie et etire la gueule de la Cave. On tient
+     * donc la hauteur — une porte se lit debout — et l'on rend au dessin son
+     * propre rapport. */
+    var TH = (R * 2.1) / Math.max(0.05, m.haute);
+    var TL = TH * (m.rapport || 1);
+    var haut = p.y + 22 - m.bas * TH;
 
     ctx.save();
     /* Elle respire une fois ouverte. Sans ca une porte ouverte est un decor
@@ -3434,8 +3498,8 @@
       var cl = 0.45 + 0.55 * Math.abs(Math.cos(performance.now() / 1000 * Math.PI * 2));
       ctx.globalAlpha = Math.max(0.35, cl);
     }
-    ctx.drawImage(IMG_PORTE, img * cadre, 0, cadre, cadre,
-                  p.x - T / 2, haut, T, T);
+    ctx.drawImage(img0, img * cw, 0, cw, chh,
+                  p.x - TL / 2, haut, TL, TH);
     ctx.restore();
   }
 

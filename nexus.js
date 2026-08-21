@@ -163,6 +163,21 @@
         }
       }
     }
+    if (m.type === 'fioleRange' || m.type === 'fioleSort' || m.type === 'fioleBoit') {
+      if (m.error) coffreErreur = m.error;
+      else coffreErreur = '';
+      if (m.fioles) FIOLES_C = m.fioles;
+      if (m.sacJoueur) SAC = m.sacJoueur;
+      if (m.etat && m.skin === PERSO) { FICHE = m.etat; }
+      if (m.type === 'fioleBoit' && !m.error) {
+        /* Le meme son que la montee de niveau : boire une fiole ajoute un
+           point pour toujours, c'est exactement ce que fait un niveau. */
+        joueSample('niveau', { vol: 0.7, hauteur: 1.25 });
+        flotte('+' + (m.pas || 1) + ' ' + String(m.stat || '').toUpperCase());
+      }
+      if (coffreOuvert) peintCoffreMenu();
+      peintPanneau();
+    }
     if (m.type === 'sacDeplace') {
       if (m.sacJoueur) { SAC = m.sacJoueur; peintPanneau(); }
       if (m.error) { coffreErreur = m.error; if (coffreOuvert) peintCoffreMenu(); }
@@ -180,6 +195,7 @@
          pose au sol. On les garde donc au lieu de les jeter. */
       COFFRE = { fruits: m.fruits || [], armes: m.armes || [],
                  armures: m.armures || [], bagues: m.bagues || [] };
+      if (m.fioles) FIOLES_C = m.fioles;
       coffreErreur = m.error || '';
       POTIONS_C = m.potions || POTIONS_C;
       if (m.balance != null && BOUTIQUE) BOUTIQUE.balance = m.balance;
@@ -354,18 +370,26 @@
            la case, un refus repond a une demande explicite. Il n'y a plus rien
            a etouffer — c'est le ramassage automatique qui redemandait sans fin
            ce qu'on ne pouvait pas prendre. */
-        flotte(m.refus === 'plein'
-          ? (m.stat ? (NOM_STAT[m.stat] || m.stat).toUpperCase() + ' AT MAX' : 'BAG FULL')
-          : String(m.refus).toUpperCase());
+        /* « AT MAX » ne peut plus concerner une fiole de stat : elle se
+           ramasse desormais meme au plafond, et se boit plus tard. Il ne
+           reste que le sac plein, et les fioles de soin a leur pile. */
+        flotte(m.refus === 'sac-plein' ? 'BAG FULL'
+             : m.refus === 'plein' ? 'AT MAX'
+             : String(m.refus).toUpperCase());
         joueSample('clic', { vol: 0.35 });
       } else if (m.stat) {
-        /* Le gain PERMANENT. Il merite le meme traitement qu'une montee de
-           niveau : c'est la seule autre chose du jeu qui change le personnage
-           pour de bon. */
-        flotte('+' + m.pas + ' ' + (NOM_STAT[m.stat] || m.stat).toUpperCase() +
-               '  (' + m.potions + '/' + m.max + ')');
-        joueSample('niveau', { vol: 0.8 });
-        poseNiveau(joueur.x, joueur.y);
+        /* ---- UNE FIOLE SE RAMASSE, ELLE NE SE BOIT PLUS ----
+         * Cette branche annoncait encore « +1 DEF (3/6) », comme au temps ou
+         * ramasser voulait dire boire — et elle ne reposait PAS le sac. La
+         * fiole prenait donc une place qui restait vide a l'ecran : le joueur
+         * la voyait disparaitre. C'est ce qu'on nous a rapporte.
+         * Elle se traite maintenant comme une piece, parce que c'en est une :
+         * elle occupe une case, et cette case doit se remplir. */
+        if (m.sacJoueur) SAC = m.sacJoueur;
+        if (m.fioles) FIOLES_C = m.fioles;
+        flotte('+1 ' + (NOM_STAT[m.stat] || m.stat).toUpperCase() + ' POTION');
+        joueSample('clic2', { vol: 0.6 });
+        peintPanneau();
       } else if (m.item) {
         /* Une PIECE. Le sac complet revient avec la reponse : sans lui, la
            grille de gauche resterait telle qu'elle etait jusqu'a la prochaine
@@ -552,6 +576,19 @@
     return t;
   }
 
+  /* La colonne d'une fiole sur sa planche, en pourcentage de fond. L'ordre
+     vient du SERVEUR — c'est lui qui dit dans quel ordre les huit fioles sont
+     dessinees — et se recopier ici les ferait deriver le jour ou une neuvieme
+     stat apparait. */
+  function colonneFiole(o) {
+    /* La colonne vient AVEC la ligne : le serveur la compte, parce que l'ordre
+       des huit stats n'existe cote page que dans le monde de combat — dans le
+       Nexus on aurait dessine huit fois la meme fiole. */
+    var col = (o && typeof o.col === 'number') ? o.col : 0;
+    var n = (o && o.cols) || 8;
+    return ((col / Math.max(1, n - 1)) * 100).toFixed(3);
+  }
+
   function marqueOG(o) {
     return (o && o.og) ? '<b class="nxp-og">OG</b>' : '';
   }
@@ -663,6 +700,10 @@
          differeront. */
       var pl = Number(el.dataset.place);
       var parPlace = (SAC || []).filter(function (o) { return o.place === pl; })[0];
+      if (parPlace && parPlace.fiole) {
+        return { nom: 'Stat potion', bonus: parPlace.bonus, couleur: parPlace.couleur,
+                 note: 'Double-click to drink \u2014 or store it in your vault' };
+      }
       return parPlace || (SAC || []).filter(function (o) { return o.id === Number(el.dataset.sac); })[0] || null;
     }
     if (el.dataset.item && el.classList && el.classList.contains('nxcf-i')) {
@@ -885,7 +926,10 @@
       envoie({ type: 'sortCoffre', item: id });
       clic(true);
     } else if (cible.quoi === 'coffre') {
-      if (p.de === 'sac') { envoie({ type: 'rangeCoffre', item: id }); clic(true); }
+      /* Une fiole se range aussi — c'est meme tout l'interet du coffre a
+         fioles : ce qu'on y met survit a la mort du personnage. */
+      if (p.de === 'sac' && p.fiole) { envoie({ type: 'fioleRange', stat: p.fiole }); clic(true); }
+      else if (p.de === 'sac') { envoie({ type: 'rangeCoffre', item: id }); clic(true); }
       else if (p.de === 'equip') { envoie({ type: familleDuSlot(p.slot), skin: PERSO, item: null }); clic(true); }
     }
   }
@@ -934,7 +978,9 @@
       if (el.classList.contains('vide')) return;
       debutPrise(ev, { de: 'butin', place: Number(el.dataset.butin), src: src, el: el });
     } else if (el.dataset.sac) {
-      debutPrise(ev, { de: 'sac', id: Number(el.dataset.sac),
+      debutPrise(ev, { de: 'sac', id: el.dataset.fiole ? 'st:' + el.dataset.fiole
+                                                       : Number(el.dataset.sac),
+                       fiole: el.dataset.fiole || null,
                        place: Number(el.dataset.place), src: src, el: el });
     } else if (el.dataset.slot && el.dataset.item) {
       debutPrise(ev, { de: 'equip', slot: el.dataset.slot, id: Number(el.dataset.item), src: src, el: el });
@@ -957,6 +1003,13 @@
   function porteDuSac(id) {
     if (!id || !PERSO) return;
     debloqueSon();
+    /* ---- UNE FIOLE SE BOIT, ELLE NE SE PORTE PAS ----
+     * Le meme geste sur la meme case, parce que c'est le meme sens : « utilise
+     * ca ». Une piece se met sur soi, une fiole se boit. Demander deux gestes
+     * differents obligerait le joueur a savoir laquelle est laquelle avant de
+     * la toucher. */
+    var st = String(id).slice(0, 3) === 'st:' ? String(id).slice(3) : null;
+    if (st) { envoie({ type: 'fioleBoit', skin: PERSO, stat: st }); clic(true); return; }
     envoie({ type: 'equipeDuSac', skin: PERSO, item: Number(id) });
     clic(true);
   }
@@ -1094,10 +1147,17 @@
     var cases = [];
     for (var i = 0; i < CASES_SAC; i++) {
       var o = parPlace[i];
+      /* Une FIOLE DE STAT n'a pas d'image de boutique : elle se lit sur la
+         planche des fioles, a la colonne de sa stat — la meme que dans le sac
+         au sol, pour qu'on reconnaisse la meme chose aux deux endroits. */
+      var img = o && o.fiole
+        ? '<u class="fiole" style="background-position:' + colonneFiole(o) + '% 0"></u>'
+        : (o ? '<img alt="" src="img/shop/' + encodeURIComponent(o.cle) + '.webp" ' +
+               'onerror="this.style.visibility=\'hidden\'">' : '');
       cases.push(o
-        ? '<div class="nxp-c" data-sac="' + o.id + '" data-place="' + i + '">' +
-          '<img alt="" src="img/shop/' + encodeURIComponent(o.cle) + '.webp" ' +
-          'onerror="this.style.visibility=\'hidden\'">' + marqueOG(o) + '</div>'
+        ? '<div class="nxp-c" data-sac="' + (o.fiole ? 'st:' + o.fiole : o.id) +
+          '" data-place="' + i + '"' + (o.fiole ? ' data-fiole="' + o.fiole + '"' : '') + '>' +
+          img + marqueOG(o) + '</div>'
         : '<div class="nxp-c vide"><u>' + (i + 1) + '</u></div>');
     }
     elSac.innerHTML = cases.join('');
@@ -1368,9 +1428,15 @@
        Un coffre par usage plutot qu'un menu a onglets : on va au coffre des
        personnages pour changer de personnage, et le chemin dit deja ce qu'on
        vient faire. */
+    /* Trois coffres, aux trois dessins du milieu de la piece. La planche en
+       montre cinq : celui de gauche et celui de droite restent decoratifs, et
+       c'est tres bien — une salle ou tout est cliquable n'a plus de decor. */
     coffres: [
       { x: 1600 * 0.500, y: 1600 * 0.842, r: 74, role: 'objets' },
       { x: 1600 * 0.375, y: 1600 * 0.842, r: 70, role: 'skins' },
+      /* LES FIOLES. Ce qu'on y range survit a la mort du personnage — c'est la
+         seule chose dans ce jeu, avec le coffre aux pieces, qui y survive. */
+      { x: 1600 * 0.617, y: 1600 * 0.842, r: 70, role: 'fioles' },
     ],
   };
   SALLE.img = new Image(); SALLE.img.src = SALLE.src;
@@ -1380,6 +1446,7 @@
   var SCENE = 'nexus';
   var RETOUR = null;
   var COFFRE = null;        // les quatre listes du message `equipable`
+  var FIOLES_C = [];        // les fioles de stat : ce qu'on a au coffre et au sac
   var coffreOuvert = false;   // le menu du coffre, au centre de l'ecran
   var coffreFerme = null;     // le coffre qu'on vient de refermer a la main
   var coffreErreur = '';      // le refus du serveur, s'il y en a un
@@ -2811,6 +2878,48 @@
           envoie({ type: 'skinChoisi', id: b.getAttribute('data-perso') });
         });
       });
+      return;
+    }
+    /* ---- LE COFFRE AUX FIOLES ----
+     * Ce qu'on y range survit a la mort du personnage. C'est la seule chose,
+     * avec le coffre aux pieces, qui y survive — et donc le seul endroit ou
+     * une potion trouvee peut attendre le personnage suivant. */
+    if (coffreRole === 'fioles') {
+      if (titre) titre.innerHTML = '\uD83E\uDDEA Stat potions';
+      if (sous) sous.textContent =
+        'Stored here, they survive your death. Carried in your backpack, they do not.';
+      var f = FIOLES_C || [];
+      var aBoire = f.filter(function (x) { return x.coffre > 0 || x.sac > 0; });
+      elCoffreCorps.innerHTML = aBoire.length
+        ? '<div class="nxcf-l">' + aBoire.map(function (x) {
+            var pas = x.pas || 1;
+            return '<div class="nxcf-i" style="--c:#EAF2FF">' +
+              '<u class="fiole" style="background-position:' +
+                colonneFiole(x) + '% 0"></u>' +
+              '<span><b>+' + pas + ' ' + ech(x.cle.toUpperCase()) + '</b>' +
+              '<em>' + x.coffre + ' stored &middot; ' + x.sac + ' carried</em></span>' +
+              (x.sac > 0 ? '<button type="button" class="nxcf-act" data-range="' + ech(x.cle) +
+                           '" title="Store it — safe from death">&uarr;</button>' : '') +
+              (x.coffre > 0 ? '<button type="button" class="nxcf-act" data-sort="' + ech(x.cle) +
+                           '" title="Take one out">&darr;</button>' : '') +
+              '<button type="button" class="nxcf-act boire" data-boit="' + ech(x.cle) +
+                '" title="Drink it — permanent, and lost when this character dies">Drink</button>' +
+              '</div>';
+          }).join('') + '</div>'
+        : '<div class="nxcf-vide">No stat potions yet. They drop in the wild — walk over a bag to pick them up.</div>';
+      Array.prototype.forEach.call(elCoffreCorps.querySelectorAll('[data-range],[data-sort],[data-boit]'), function (b) {
+        b.addEventListener('click', function (e) {
+          e.stopPropagation();
+          clic(true);
+          if (b.hasAttribute('data-range')) envoie({ type: 'fioleRange', stat: b.getAttribute('data-range') });
+          else if (b.hasAttribute('data-sort')) envoie({ type: 'fioleSort', stat: b.getAttribute('data-sort') });
+          else envoie({ type: 'fioleBoit', skin: PERSO, stat: b.getAttribute('data-boit') });
+        });
+      });
+      if (coffreErreur) {
+        elCoffreCorps.insertAdjacentHTML('afterbegin',
+          '<div class="nxcf-refus">' + ech(coffreErreur) + '</div>');
+      }
       return;
     }
     if (titre) titre.innerHTML = '\uD83E\uDDFA Your vault';

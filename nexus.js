@@ -475,6 +475,11 @@
      * Le serveur a deja tout tranche : quel sac, ce qu'il contenait, et si
      * l'on pouvait le prendre. Il ne reste ici qu'a le DIRE. Un sac qui
      * disparait sans un mot se lit comme un sac perdu. */
+    /* Les reponses du hall repassent par les MEMES chemins que celles du monde
+       de combat : deux facons de poser un sac dans la page auraient fini par
+       en oublier une. On renomme, on ne duplique pas. */
+    if (m.type === 'nexusRamasse') { traite(Object.assign({}, m, { type: 'realmRamasse' })); return; }
+    if (m.type === 'nexusDepose') { traite(Object.assign({}, m, { type: 'realmDepose' })); return; }
     if (m.type === 'realmRamasse') {
       if (m.rien) { /* on s'est eloigne entre la demande et la reponse */ }
       else if (m.refus) {
@@ -567,7 +572,15 @@
       joueSample('mort2', { vol: 0.9 });
       montreMort(m);
     }
-    if (m.type === 'nexusEtat') majJoueursDistants(m.joueurs || []);
+    if (m.type === 'nexusEtat') {
+      majJoueursDistants(m.joueurs || []);
+      /* ---- LE SOL DU HALL ----
+       * Le MEME registre que le monde de combat : `SACS_C`. Le serveur envoie
+       * exactement le meme objet des deux cotes (sacs.js), et la page n'a donc
+       * qu'une facon de lire un sac — le dessin, la grille et la detection
+       * sous les pieds servent aux deux sans une ligne de plus. */
+      if (SCENE === 'nexus') SACS_C = m.sacs || [];
+    }
     /* Le solde suit n'importe quel message qui le porte — pas seulement
        `auth` — exactement comme `poseSolde` le fait pour le reste du site :
        un achat de skin ou de coffre depuis le tiroir, ouvert par-dessus le
@@ -1000,7 +1013,9 @@
        * quelque chose que la ou quelque chose etait deja tombe.
        * Le serveur, lui, savait le faire depuis le debut : `depose` cree un
        * sac s'il n'en trouve pas. Il ne manquait que le geste. */
-      if (el.tagName === 'CANVAS' && SCENE === 'monde') return { quoi: 'sol' };
+      if (el.tagName === 'CANVAS' && (SCENE === 'monde' || SCENE === 'nexus')) {
+        return { quoi: 'sol' };
+      }
       el = el.parentElement;
     }
     return null;
@@ -1030,7 +1045,11 @@
          sac sous les pieds s'il y en a un, et en cree un sinon : deux
          messages pour deux facons de dire la meme chose auraient donne deux
          regles a tenir d'accord. */
-      envoie({ type: 'realmDepose', item: id });
+      /* Le geste est le meme ; c'est la SIMULATION qui change. Un seul nom de
+         message pour les deux aurait oblige le serveur a deviner ou se tient
+         le joueur — et deviner, sur un sol que tout le monde peut vider, est
+         exactement ce qu'il ne doit jamais faire. */
+      envoie({ type: SCENE === 'nexus' ? 'nexusDepose' : 'realmDepose', item: id });
       clic(true);
       return;
     }
@@ -5384,7 +5403,8 @@
   function prendDuButin(place) {
     if (!SAC_PIEDS || !enLigne) return;
     debloqueSon();
-    envoie({ type: 'realmRamasse', i: SAC_PIEDS.i, place: Number(place) });
+    envoie({ type: SCENE === 'nexus' ? 'nexusRamasse' : 'realmRamasse',
+             i: SAC_PIEDS.i, place: Number(place) });
   }
   /* Un simple appui sur la rangee flottante. C'est le seul endroit du jeu ou
      un clic simple prend quelque chose, et c'est justifie : cette case-la
@@ -5407,7 +5427,10 @@
   }
 
   function sacSousLesPieds() {
-    if (SCENE !== 'monde' || !SACS_C.length) return null;
+    /* Le hall a un sol lui aussi depuis qu'on peut y jeter une piece. La
+       scene « coffre » n'en a pas : c'est une piece fermee, pas un lieu de
+       rencontre. */
+    if ((SCENE !== 'monde' && SCENE !== 'nexus') || !SACS_C.length) return null;
     var r = (MONDE_C && MONDE_C.sac && MONDE_C.sac.rayon) || 56;
     var pres = null, d2mini = r * r;
     for (var i = 0; i < SACS_C.length; i++) {
@@ -5770,6 +5793,9 @@
       envoie({ type: 'nexusMove', x: Math.round(joueur.x), y: Math.round(joueur.y),
                dir: joueur.dir, anim: joueur.anim });
     }
+    /* Le hall a un sol : la grille du sac sous les pieds s'y ouvre comme dans
+       le monde de combat. Meme fonction, parce que c'est la meme question. */
+    regardeSacs();
 
     // les joueurs croises : leur cadre avance comme le notre, et leur
     // position AFFICHEE glisse vers la derniere recue plutot que d'y sauter
@@ -6164,6 +6190,12 @@
       var cadre = joueur.anim === 'jump' ? saut.cadre : joueur.cadre;
       dessineAvatar(joueur.x, joueur.y, PERSO, joueur.dir, joueur.anim, cadre);
     } });
+    /* Les sacs poses dans le hall se trient avec les vivants, comme dans le
+       monde de combat : un sac pose devant quelqu'un doit passer devant lui.
+       Meme fonction de dessin — c'est le meme sac, il doit se reconnaitre. */
+    SACS_C.forEach(function (sc) {
+      pile.push({ y: sc.y, dessine: function () { dessineSac(sc); } });
+    });
     Object.keys(DISTANTS).forEach(function (a) {
       var d = DISTANTS[a];
       pile.push({ y: d.ry, dessine: function () {

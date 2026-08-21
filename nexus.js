@@ -3265,10 +3265,26 @@
       var s = SALLES_C[i];
       if (Math.abs(s.x - joueur.x) > 2200 || Math.abs(s.y - joueur.y) > 2000) continue;
       var x0 = s.x - s.cote / 2, y0 = s.y - s.cote / 2;
-      for (var y = 0; y < s.cote; y += t) {
-        for (var x = 0; x < s.cote; x += t) {
-          var w = Math.min(t, s.cote - x), h = Math.min(t, s.cote - y);
-          ctx.drawImage(IMG_TEMPLE, 0, 0, w, h, x0 + x, y0 + y, w, h);
+      /* ---- LA DALLE EST CENTREE SUR LA SALLE ----
+       * On carrelait depuis le coin haut-gauche. La dalle fait 640, la salle
+       * 1152 : la couture tombait donc a soixante-quatre unites du centre,
+       * c'est-a-dire SOUS le coffre — la croix doree du dessin lui passait au
+       * travers, et le coffre avait l'air pose sur un joint.
+       * En partant du centre, le milieu de la salle est le milieu d'une
+       * dalle : le coffre repose sur de la pierre pleine, quelle que soit la
+       * taille de la salle et celle de la texture. */
+      var d0 = s.x - t / 2, e0 = s.y - t / 2;
+      var gx = d0 - Math.ceil((d0 - x0) / t) * t;
+      var gy = e0 - Math.ceil((e0 - y0) / t) * t;
+      for (var y = gy; y < y0 + s.cote; y += t) {
+        for (var x = gx; x < x0 + s.cote; x += t) {
+          /* On ne deborde PAS de la salle : la dalle dit ou la salle commence,
+             et une tuile qui depasse d'un cote la ferait mentir de ce cote. */
+          var sx = Math.max(0, x0 - x), sy = Math.max(0, y0 - y);
+          var w = Math.min(t - sx, x0 + s.cote - (x + sx));
+          var h = Math.min(t - sy, y0 + s.cote - (y + sy));
+          if (w <= 0 || h <= 0) continue;
+          ctx.drawImage(IMG_TEMPLE, sx, sy, w, h, x + sx, y + sy, w, h);
         }
       }
     }
@@ -3329,6 +3345,49 @@
     var av = Math.max(0, Math.min(1, (s.ouvre || 0) / COFFRE_OUVERTURE));
     var col = Math.min(COFFRE_CADRES - 1, Math.floor(av * COFFRE_CADRES));
     var T = COFFRE_H;
+    /* ---- IL A SA PLACE, ET ELLE SE VOIT ----
+     *
+     * Le coffre etait pose a meme la dalle du temple, et deux choses le
+     * faisaient flotter :
+     *
+     *  - LA DALLE PASSE DESSOUS. Sa texture porte un quadrillage dore tous les
+     *    cent soixante unites, avec une rosace a chaque croisee. Quelle que
+     *    soit la facon dont on carrele, une ligne d'or finit par traverser le
+     *    coffre — le decaler ne peut pas resoudre un motif qui se repete plus
+     *    souvent que l'objet n'est large.
+     *  - SON DESSIN PORTE SA PROPRE MOTTE DE MOUSSE, verte et claire. Sur
+     *    l'herbe elle passe ; sur la pierre noire du temple, elle se lit comme
+     *    un objet pose sur autre chose.
+     *
+     * On lui donne donc un SOCLE : un disque de pierre sombre cercle d'or, de
+     * la meme langue que le sol de la salle. Il masque le quadrillage a
+     * l'endroit precis ou il derangeait, il assoit la mousse, et surtout il
+     * DIT quelque chose — cet endroit-la est celui du coffre, c'est pour lui
+     * qu'on est entre. Une ombre portee seule aurait cache le motif sans rien
+     * ajouter.
+     */
+    ctx.save();
+    /* Le disque est CENTRE sur les pieds du coffre, pas dessous : en vue de
+       dessus un objet occupe le milieu de sa dalle. Pose plus bas, il
+       depassait par l'avant et le coffre avait l'air perche dessus. */
+    ctx.beginPath();
+    ctx.ellipse(s.x, s.y - 13, T * 0.38, T * 0.125, 0, 0, Math.PI * 2);
+    /* Sombre, mais pas noir. Un disque noir sous un coffre dore se lit comme
+       un TROU, et le coffre se met a flotter au-dessus — l'inverse exact de
+       ce qu'on cherche. */
+    ctx.fillStyle = 'rgba(12,14,20,.52)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,197,61,.45)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    /* Un second cercle, plus petit et plus pale : deux traits font une
+       moulure, un seul fait un contour. */
+    ctx.beginPath();
+    ctx.ellipse(s.x, s.y - 13, T * 0.28, T * 0.092, 0, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(255,197,61,.18)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ctx.restore();
     /* Ouvert, il fait de la lumiere. C'est ce qui le rend visible a travers la
        piece une fois le combat fini — sinon on cherche le sac au sol. */
     if (av > 0) halo(s.x, s.y - T * 0.30, T * 0.55, '#FFC53D', 0.10 + 0.22 * av);

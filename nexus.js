@@ -2883,6 +2883,30 @@
    * repere disparait sans prevenir pendant qu'on finit un combat, et le joueur
    * conclut que le jeu le lui a repris. */
   var COLONNE_SAC = { brun: 0, bleu: 1, violet: 2, or: 3, rouge: 4, blanc: 5 };
+  /* ---- UN SAC QUI A SON PROPRE DESSIN ----
+   * Les six autres sont les six cases d'une seule planche. L'oeuf a son
+   * fichier : recouper la planche a sept cases aurait demande de refaire les
+   * six autres a chaque ajout, et la planche est deja en ligne. Un sac de
+   * plus, c'est une LIGNE ici et un fichier — pas une planche a refaire.
+   * Il en a besoin : il portait le blanc, celui des reliques, et l'on
+   * traversait la carte en croyant courir apres une relique. Une trouvaille
+   * mal annoncee decoit plus qu'une trouvaille qu'on n'a pas faite. */
+  var SAC_A_PART = { oeuf: 'img/nexus/objets/sac_oeuf.webp' };
+  var IMG_SAC_A_PART = {};
+  function imageSacAPart(cle) {
+    var src = SAC_A_PART[cle];
+    if (!src) return null;
+    if (!IMG_SAC_A_PART[cle]) {
+      var i = new Image();
+      i.src = src;
+      IMG_SAC_A_PART[cle] = i;
+    }
+    var im = IMG_SAC_A_PART[cle];
+    /* Le dessin manque encore — un sac ajoute au serveur avant son image :
+       on retombe sur la planche plutot que de ne rien dessiner. Un butin
+       invisible est pire qu'un butin mal colore. */
+    return (im.complete && !im.naturalWidth) ? null : im;
+  }
   var SAC_FIN = 10;           // secondes de clignotement avant la fin
   /* ---- LA MEME REGLE QUE LE SERVEUR, MOT POUR MOT ----
    *
@@ -3323,11 +3347,28 @@
        du consommable, et un halo sur tout ne distingue plus rien. */
     if (s.s !== 'brun') {
       var teinte = { bleu: '#5AA9FF', violet: '#C07BFF', or: '#FFC53D',
-                     rouge: '#F2685E', blanc: '#FFFFFF' }[s.s] || '#FFFFFF';
-      halo(s.x, s.y + 4, T * 0.62, teinte, s.s === 'blanc' ? 0.34 : 0.22);
+                     rouge: '#F2685E', blanc: '#FFFFFF',
+                     /* Le vert de tout ce qui s'acquiert dans ce jeu. Il ne
+                        sert a aucun autre sac : c'est ce qui le rend lisible
+                        d'un coup d'oeil au milieu des cinq autres. */
+                     oeuf: '#7CFF9B' }[s.s] || '#FFFFFF';
+      halo(s.x, s.y + 4, T * 0.62, teinte,
+           (s.s === 'blanc' || s.s === 'oeuf') ? 0.34 : 0.22);
     }
-    ctx.drawImage(IMG_SACS, col * cadre, 0, cadre, cadre,
-                  s.x - T / 2, s.y - T + 10, T, T);
+    var apart = imageSacAPart(s.s);
+    if (apart) {
+      if (apart.complete && apart.naturalWidth) {
+        /* Un peu plus GRAND que les autres, et c'est voulu : c'est la chose
+           la plus rare qui tombe, elle doit se voir depuis l'autre bout de
+           l'anneau. Le rapport vient du dessin — un sac ecrase se lit comme
+           un sac casse. */
+        var TL = T * 1.18, TH = TL * (apart.naturalHeight / apart.naturalWidth);
+        ctx.drawImage(apart, s.x - TL / 2, s.y - TH + 10, TL, TH);
+      }
+    } else {
+      ctx.drawImage(IMG_SACS, col * cadre, 0, cadre, cadre,
+                    s.x - T / 2, s.y - T + 10, T, T);
+    }
     ctx.restore();
   }
 
@@ -6752,9 +6793,15 @@
   var elButinNom = document.getElementById('nxButinNom');
   var elButinCases = document.getElementById('nxButinCases');
   var COUL_SAC = { brun: '#B08050', bleu: '#5AA9FF', violet: '#C07BFF',
-                   or: '#FFC53D', rouge: '#F2685E', blanc: '#FFFFFF' };
+                   or: '#FFC53D', rouge: '#F2685E', blanc: '#FFFFFF',
+                   oeuf: '#7CFF9B' };
   var NOM_SAC = { brun: 'Loot bag', bleu: 'Stat potion', violet: 'Rare drop',
-                  or: 'Legendary drop', rouge: 'Mythic drop', blanc: 'RELIC' };
+                  or: 'Legendary drop', rouge: 'Mythic drop', blanc: 'RELIC',
+                  /* Il DIT ce que c'est. « RELIC » sur un sac d'oeuf envoyait
+                     traverser la carte pour autre chose que ce qu'on
+                     croyait — et c'est la seule facon de decevoir avec une
+                     trouvaille rare. */
+                  oeuf: 'MYTHIC EGG' };
   var IMG_POTION = { vie: 'img/nexus/objets/potion_rouge.webp',
                      mana: 'img/nexus/objets/potion_bleue.webp' };
 

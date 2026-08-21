@@ -141,8 +141,33 @@ process.on('unhandledRejection', (e) => {
     return s ? { couleur: s.s, contenu: s.c } : null;
   });
   ok(!!auSol, 'le sol porte quelque chose');
-  eq(auSol && auSol.couleur, 'blanc',
-     'dans le sac BLANC — la seule couleur pour laquelle on traverse la carte');
+  /* ---- SON PROPRE SAC ----
+   * Il portait le BLANC, celui des reliques. Le blanc disait « traverse la
+   * carte » sans dire pourquoi, et l on repartait avec un oeuf en croyant
+   * courir apres une relique — c est la seule facon de decevoir avec une
+   * trouvaille rare. Le nom du sac vient du SERVEUR, jamais recopie ici :
+   * deux endroits qui nomment le meme sac finissent par n en nommer plus le
+   * meme. */
+  const sacOeuf = require(path.join(SERVEUR, 'monde')).OEUF.sac;
+  eq(auSol && auSol.couleur, sacOeuf,
+     'dans SON sac, qu on reconnait sans le confondre avec une relique');
+  ok(sacOeuf !== 'blanc', 'et ce n est plus celui des reliques');
+  /* Et la page SAIT le nommer. Un sac que la page ne connait pas s affiche
+     « Loot » — le mot du sac le plus commun — sur la chose la plus rare du
+     jeu. C est exactement le genre d oubli qui ne casse rien et fait passer
+     a cote.
+     On marche DESSUS pour que le panneau du sol s ouvre : c est la seule
+     facon d avoir l etiquette a l ecran, et c est aussi le geste du joueur. */
+  await p.evaluate(() => window.__s[0].send(JSON.stringify({ type: 'nexusEtat' })));
+  await p.waitForTimeout(600);
+  const etiquette = await p.evaluate(() => {
+    const el = document.getElementById('nxButinNom');
+    const b = document.getElementById('nxButin');
+    return { texte: el ? el.textContent : null, ouvert: b ? !b.hidden : false };
+  });
+  ok(etiquette.ouvert, 'le panneau du sol est ouvert — on est dessus');
+  ok(/EGG/i.test(etiquette.texte || ''),
+     `et il annonce l oeuf, pas « Loot » (${etiquette.texte})`);
   eq(auSol && auSol.contenu[0] && auSol.contenu[0].oe, 'legendaire',
      'et la page recoit l espece');
   const vu = await p.evaluate(() => {

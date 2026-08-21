@@ -5416,8 +5416,14 @@
    * rejoint. C'est ce qui lui donne l'air de decider.
    */
   var IMG_FAM = {};
-  var FAM_LAISSE = 62;        // au-dela, il se met a courir
-  var FAM_ARRET = 34;         // en deca, il s'assoit
+  /* ---- IL SE TIENT A DISTANCE, PAS DANS LES JAMBES ----
+   * Trente-quatre unites, c'etait moins que la demi-largeur du personnage :
+   * le familier lui rentrait dedans, et les deux sprites se chevauchaient a
+   * chaque arret. Un compagnon doit se voir COMME un compagnon — a cote, pas
+   * dessus. Sa taille (82) donne l'echelle : il s'arrete a un peu moins d'une
+   * longueur de lui-meme, et il repart a un peu plus d'une. */
+  var FAM_LAISSE = 118;       // au-dela, il se met a courir
+  var FAM_ARRET = 70;         // en deca, il s'assoit
   var FAM_VITESSE = 300;      // un peu plus vite que le joueur : il rattrape
   var FAM_TAILLE = 82;
   var FAM_CADRES = 4;

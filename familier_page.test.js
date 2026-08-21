@@ -364,7 +364,11 @@ process.on('unhandledRejection', (e) => {
   await p.waitForTimeout(400);
   let m0 = await moi(); let v0 = await pets();
   const pres0 = (v0.legendaire && m0) ? Math.hypot(v0.legendaire.x - m0.x, v0.legendaire.y - m0.y) : 1e9;
-  ok(pres0 < 200, `il se tient pres du joueur (${Math.round(pres0)})`);
+  /* Assez pres pour etre a lui, assez loin pour ne pas lui rentrer dedans :
+     a trente-quatre unites — moins que la demi-largeur du personnage — les
+     deux sprites se chevauchaient a chaque arret. */
+  ok(pres0 < 200 && pres0 > 40,
+     `il se tient pres du joueur sans lui monter dessus (${Math.round(pres0)})`);
   /* On marche LOIN, puis on regarde : un dessin colle au personnage aurait
      la meme distance avant et apres, un compagnon qui court la rattrape. */
   await marche('ArrowLeft', 2200);
@@ -378,19 +382,47 @@ process.on('unhandledRejection', (e) => {
   /* Et il n est PAS sur le joueur : un compagnon superpose est un costume. */
   ok(pres1 > 8, `sans lui monter dessus (${Math.round(pres1)})`);
   /* ---- DEUX SEUILS, ET ON LE VOIT ----
-   * Avec un SEUL seuil, le familier repart des qu il l a franchi d un pixel :
-   * il se cale a la distance exacte de la laisse et ne la quitte jamais.
-   * Deux mesures suffisent a le dementir — apres deux courses differentes il
-   * s arrete a deux distances differentes, parce qu il court jusqu a etre
-   * revenu et non jusqu a etre a la laisse. */
-  await marche('ArrowUp', 900);
-  await p.waitForTimeout(700);
+   * Avec un SEUL seuil, le familier repart des qu'il l a franchi d un pixel :
+   * il se cale a la distance exacte de la laisse et ne la quitte jamais, en
+   * marche comme a l arret. Avec deux, il court jusqu a etre REVENU — donc il
+   * se tient plus pres quand on s arrete que quand on marche.
+   * Premiere version : « deux courses, deux ecarts differents ». Elle
+   * comparait 68 a 70 et exigeait plus de deux unites d ecart entre deux
+   * mesures qui n avaient aucune raison de differer — elle mesurait le bruit.
+   * On compare maintenant les deux etats, qui eux different par
+   * construction. */
+  /* ---- L ECART OSCILLE, ET C EST TOUTE LA PREUVE ----
+   * On marche a vitesse constante et l on echantillonne l ecart. Avec DEUX
+   * seuils il monte jusqu a la laisse, le familier part, il redescend jusqu a
+   * l arret, le familier s assoit — l ecart bat. Avec un SEUL seuil il ne peut
+   * pas battre : le familier repart des qu il a franchi le seuil d un pixel,
+   * donc l ecart reste colle a cette valeur, en marche comme a l arret.
+   * Deux tentatives ecartees avant celle-ci, et toutes deux mesuraient le
+   * hasard : « deux courses, deux ecarts differents » comparait 68 a 70, et
+   * « plus pres a l arret qu en course » dependait de l instant ou l on lache
+   * la touche — le familier pouvant s etre deja arrete a ce moment-la. */
+  const ecarts = [];
+  await p.keyboard.down('ArrowUp');
+  for (let k = 0; k < 16; k++) {
+    await p.waitForTimeout(90);
+    const mm = await moi(); const vv = await pets();
+    if (vv.legendaire && mm) {
+      ecarts.push(Math.hypot(vv.legendaire.x - mm.x, vv.legendaire.y - mm.y));
+    }
+  }
+  await p.keyboard.up('ArrowUp');
+  await p.waitForTimeout(600);
+  const bas = Math.min(...ecarts), haut = Math.max(...ecarts);
+  ok(haut - bas > 20,
+     `l ecart bat entre deux seuils pendant la marche (${Math.round(bas)} a ${Math.round(haut)})`);
   const v2 = await pets(); const m2b = await moi();
   const arret = (v2.legendaire && m2b)
     ? Math.hypot(v2.legendaire.x - m2b.x, v2.legendaire.y - m2b.y) : 1e9;
-  ok(Math.abs(arret - pres1) > 2,
-     `il ne se cale pas toujours au meme ecart (${Math.round(arret)} puis ${Math.round(pres1)})`);
-  ok(arret < 70, `et il reste dans un pas du joueur (${Math.round(arret)})`);
+  ok(arret < 130, `et il reste dans un pas du joueur (${Math.round(arret)})`);
+  /* On redescend d autant qu on est monte : la suite regarde l enclos, et
+     mesurer un compagnon en s eloignant de la cour reviendrait a verifier que
+     ce qu on ne voit pas n est pas dessine. */
+  await marche('ArrowDown', 1300);
 
   /* ================== 5. IL A QUITTE L ENCLOS ================== */
   console.log('\n-- l enclos n a plus que l autre --');

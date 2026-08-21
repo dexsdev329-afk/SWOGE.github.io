@@ -2342,21 +2342,49 @@ process.on('unhandledRejection', (e) => {
       C.__espionSalle = true;
       const di = C.drawImage;
       window.__salleVue = 0;
+      window.__porteC = null; window.__moiN = null;
       C.drawImage = function (im) {
         const u = (im && (im.currentSrc || im.src)) || '';
         if (u.indexOf('room_vault') >= 0) window.__salleVue++;
+        /* La porte du coffre, dans le MEME repere que le personnage : on n'a
+           alors ni le zoom ni la camera a refaire. */
+        if (u.indexOf('obj_vault_door') >= 0 && arguments.length >= 5) {
+          window.__porteC = { x: arguments[1] + arguments[3] / 2,
+                              y: arguments[2] + arguments[4] };
+        }
+        if (arguments.length >= 9 && arguments[3] === 256 && arguments[4] === 256
+            && arguments[7] === 150 && arguments[8] === 150) {
+          window.__moiN = { x: Math.round(arguments[5] + 75), y: Math.round(arguments[6] + 130) };
+        }
         return di.apply(this, arguments);
       };
     });
-    /* ---- LE CHEMIN, DEPUIS LA OU L'ON REVIENT ----
-     * On ne revient pas au centre : on revient LA OU L'ON ETAIT en partant,
-     * c'est-a-dire sur le portail — quatre cent soixante-dix unites au-dessus
-     * du centre. Marcher droit a droite depuis la passe donc a cette hauteur,
-     * et la porte du coffre est en bas : on l'a rate de quatre cent soixante-
-     * dix unites, et l'essai a conclu « le coffre ne s'ouvre pas ». Il faut
-     * DESCENDRE d'abord. */
-    await marche('ArrowDown', 2200);
-    await marche('ArrowRight', 3200);
+    /* ---- ON VISE LA PORTE, ON NE COMPTE PAS LES SECONDES ----
+     *
+     * Ce bloc marchait « deux secondes deux en bas, trois secondes deux a
+     * droite ». Ca suppose une vitesse, un point de retour et une place de la
+     * porte — trois choses que l'essai n'a pas a connaitre. La deuxieme porte
+     * du Nexus a decale le portail de deux cent dix unites vers la gauche, et
+     * les trois secondes deux se sont mises a tomber a cote : l'essai a
+     * conclu « le coffre ne s'ouvre pas » alors que le coffre allait tres
+     * bien.
+     *
+     * On regarde donc ou la porte est DESSINEE, on marche vers elle, et l'on
+     * s'arrete quand on y est. Le meme geste que coffre_page.test.js, et pour
+     * la meme raison. */
+    await t.waitForTimeout(400);
+    for (let k = 0; k < 40; k++) {
+      const dedans = await t.evaluate(() => window.__salleVue || 0);
+      if (dedans > 0) break;
+      const v = await t.evaluate(() => ({ moi: window.__moiN, porte: window.__porteC }));
+      if (!v.moi || !v.porte) { await marche('ArrowDown', 260); continue; }
+      const ex = v.porte.x - v.moi.x, ey = v.porte.y - v.moi.y;
+      if (Math.abs(ex) < 50 && Math.abs(ey) < 50) { await t.waitForTimeout(500); continue; }
+      /* On corrige la HAUTEUR d'abord : la fontaine est au centre du chemin,
+         et viser en diagonale reviendrait a marcher dedans. */
+      if (Math.abs(ey) > 60) await marche(ey > 0 ? 'ArrowDown' : 'ArrowUp', 300);
+      else await marche(ex > 0 ? 'ArrowRight' : 'ArrowLeft', 300);
+    }
     const dansLaSalle = await vu();
     dansLaSalle.salle = await t.evaluate(() => window.__salleVue || 0);
     console.log('   apres la porte : ' + JSON.stringify(dansLaSalle));

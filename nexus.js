@@ -591,7 +591,7 @@
       PORTAIL_PIEDS = null; PORTAIL_SIGNE = ''; peintPorte();
       POUVOIR_C = null; EFFETS_P = []; PARALYSE = 0; RALENTI = 0; BRULURE = 0;
       VITESSE = 260; peintPouvoir();
-      var pp = LIEUX[1];
+      var pp = PORTAIL_L;
       joueur.x = pp.x; joueur.y = pp.y + pp.rayon + 60;
       VIE.pv = VIE.max;
       if (indiceEl) indiceEl.classList.remove('on');
@@ -606,6 +606,12 @@
        * qu'une facon de lire un sac — le dessin, la grille et la detection
        * sous les pieds servent aux deux sans une ligne de plus. */
       if (SCENE === 'nexus') SACS_C = m.sacs || [];
+      /* ---- COMBIEN SONT DERRIERE CHAQUE PORTE ----
+       * Deux cartes, et le vrai risque n'est pas de mal choisir : c'est
+       * d'entrer dans une carte vide. Le chiffre repond a « est-ce que je vais
+       * croiser quelqu'un », qui est la seule question qu'on se pose devant
+       * deux portes identiques. */
+      if (m.portes) PORTES_C = m.portes;
     }
     /* Le solde suit n'importe quel message qui le porte — pas seulement
        `auth` — exactement comme `poseSolde` le fait pour le reste du site :
@@ -921,6 +927,18 @@
        saison, qui reconnait une arme — la saison n'accompagne pas toutes les
        formes d'objet envoyees par le serveur. */
     if (o.degats) lignes += '<em>Weapons give damage, not stats</em>';
+    /* ---- CE QUE LE FRUIT DECLENCHE ----
+     * On portait un fruit sans savoir ce qu'il faisait : ses deux lignes de
+     * bonus ne disent rien de la foudre, et la seule facon de l'apprendre
+     * etait d'aller la lancer dans un combat.
+     * La phrase vient du SERVEUR, avec ses chiffres. La page pourrait la
+     * calculer, au prix de deux tables recopiees — et une copie qui diverge
+     * ferait dire « 3x » a un fruit dont le serveur applique deux. */
+    if (o.sort) {
+      lignes += '<i class="nxfi-sort">\u26A1 ' + ech(o.sort.nom) +
+        ' \u00b7 ' + o.sort.cout + ' MP</i>' +
+        '<em>' + ech(o.sort.quoi) + ' \u00b7 ' + o.sort.recharge + 's cooldown</em>';
+    }
     /* `note` dit ce qu'un objet fait quand ce n'est pas un bonus — une fiole
        qui rend de la vie n'a pas de stat a montrer, et « sans bonus » serait
        faux plutot que vide. */
@@ -1919,9 +1937,30 @@
   var LIEUX = [
     { cle: 'fontaine', src: 'img/nexus/tiles/obj_fountain_plaza.webp',
       x: CENTRE.x, y: CENTRE.y, larg: 340, haut: 355, collision: 108 },
+    /* ---- DEUX PORTES AU NORD, ET C'EST UN CHOIX ----
+     *
+     * La porte violette etait seule au bout du chemin : on marchait dedans
+     * sans rien decider. A deux, le meme geste devient une decision — et la
+     * decision se prend AVANT d'entrer, pas une fois qu'on s'est fait tuer.
+     *
+     * Elles sont volontairement JUMELLES : meme arche, meme socle, meme
+     * angle. Seule la couleur change. Deux dessins differents auraient donne
+     * deux decors ; deux dessins identiques a la teinte pres donnent une
+     * paire, et une paire se lit comme une question.
+     *
+     * Ecartees de 420 unites — deux fois le rayon d'entree, plus la marge :
+     * on ne peut pas etre dans les deux a la fois, et l'on ne franchit pas
+     * l'une en visant l'autre. */
     { cle: 'portail', src: 'img/nexus/tiles/obj_portal.webp',
-      x: CENTRE.x, y: CENTRE.y - 470, larg: 210, haut: 324,
-      rayon: 110, href: 'games.html', nom: 'the wild' },
+      x: CENTRE.x - 210, y: CENTRE.y - 500, larg: 210, haut: 324,
+      rayon: 110, href: 'games.html', nom: 'the wild', monde: 'ouvert' },
+    { cle: 'portailPvp', src: 'img/nexus/tiles/obj_portal_pvp.webp',
+      x: CENTRE.x + 210, y: CENTRE.y - 500, larg: 210, haut: 324,
+      rayon: 110, nom: 'the Crimson Reach', monde: 'crimson' },
+    /* L'enseigne DIT ce que la couleur suggere. Une porte rouge se comprend
+       apres coup ; « you can be killed here » se comprend avant. */
+    { cle: 'enseignePvp', src: 'img/nexus/tiles/obj_portal_pvp_sign.webp',
+      x: CENTRE.x + 430, y: CENTRE.y - 430, larg: 130, haut: 190 },
     { cle: 'etal', src: 'img/nexus/tiles/obj_market_stall.webp',
       x: CENTRE.x - 620, y: CENTRE.y, larg: 260, haut: 244,
       /* Ouvre sur les coffres, mais la meme feuille porte l'onglet
@@ -1950,6 +1989,16 @@
       x: CENTRE.x - 230, y: CENTRE.y + 400, larg: 120, haut: 193 },
   ];
   LIEUX.forEach(function (l) { l.img = new Image(); l.img.src = l.src; l.dwell = 0; });
+  /* ---- ON DESIGNE UN LIEU PAR SON NOM, PAS PAR SA PLACE ----
+   * Quatre endroits lisaient `LIEUX[0]` et `LIEUX[1]` — la fontaine et le
+   * portail. Ajouter la porte rouge au milieu de la liste aurait suffi a
+   * faire renaitre les morts sur une enseigne, et rien ne l'aurait dit :
+   * l'indice existe toujours, il designe simplement autre chose. */
+  function lieu(cle) {
+    for (var i = 0; i < LIEUX.length; i++) if (LIEUX[i].cle === cle) return LIEUX[i];
+    return null;
+  }
+  var FONTAINE = lieu('fontaine'), PORTAIL_L = lieu('portail');
 
   /* ---- LE BASSIN DE LA FONTAINE ----
      Un CERCLE de rayon 108 centre sur le point d'ancrage ne collait pas au
@@ -2127,6 +2176,10 @@
   /* Les sacs de butin au sol. Comme les tombes : le serveur les tient, la
      page les dessine, et personne ici ne decide de leur contenu. */
   var SACS_C = [];
+  /* Le monde de chaque porte : { ouvert: n, crimson: n }. Vide tant que le
+     serveur n'a rien dit — on ne dessine pas « 0 inside » sur une porte dont
+     on ignore l'etat, ce serait une information fausse. */
+  var PORTES_C = null;
   /* Les blocs du monde. Ils viennent du SERVEUR une fois, a l'entree : la
      page ne peut pas les redeviner — elle n'a pas le meme hasard — et un
      desaccord se verrait tout de suite, on marcherait dans un rocher ou l'on
@@ -3371,7 +3424,7 @@
     /* On revient AU PIED DU PORTAIL, pas au centre : c'est par la qu'on est
        parti, et reapparaitre ailleurs donne l'impression d'avoir ete
        deplace. Un cran plus bas pour ne pas repartir aussitot. */
-    var p = LIEUX[1];
+    var p = PORTAIL_L;
     joueur.x = p.x; joueur.y = p.y + p.rayon + 60;
     joueur.dir = 'down';
     LIEUX.forEach(function (l) { l.dwell = 0; });
@@ -4382,6 +4435,11 @@
   var CLAIRIERE_R = 260;
   var COULOIRS = [
     { x0: CENTRE.x - 105, y0: CENTRE.y - 470, x1: CENTRE.x + 105, y1: CENTRE.y },
+    /* Le chemin du nord s'ouvre en PLACE devant les deux portes. Sans elle,
+       la porte rouge serait posee dans l'herbe a cote du chemin, et le chemin
+       continuerait de ne designer que la violette : le dallage est ce qui dit
+       « c'est ici qu'on va », et il doit donc mener aux deux. */
+    { x0: CENTRE.x - 360, y0: CENTRE.y - 590, x1: CENTRE.x + 360, y1: CENTRE.y - 380 },
     { x0: CENTRE.x - 620, y0: CENTRE.y - 105, x1: CENTRE.x, y1: CENTRE.y + 105 },
     { x0: CENTRE.x, y0: CENTRE.y - 105, x1: CENTRE.x + 620, y1: CENTRE.y + 105 },
     /* Le chemin du sud, vers la table. Sans lui, la table serait posee dans
@@ -5358,7 +5416,7 @@
 
   /* Ce qui reste en l'air dans le Nexus, quelle que soit la scene. */
   function majTirsNexus(dt) {
-    var f = LIEUX[0];   // la fontaine : le seul obstacle solide du Nexus
+    var f = FONTAINE;   // la fontaine : le seul obstacle solide du Nexus
     for (var i = TIRS.length - 1; i >= 0; i--) {
       var t = TIRS[i];
       t.x += Math.cos(t.a) * t.v * dt;
@@ -6211,7 +6269,7 @@
     joueur.y = Math.min(Math.max(joueur.y, 40), MONDE.h - 40);
 
     // la fontaine ne se traverse pas : on ressort le joueur au bord du cercle
-    var f = LIEUX[0];
+    var f = FONTAINE;
     var fdx = joueur.x - f.x, fdy = joueur.y - (f.y - COL_FONT.dy);
     var fu = fdx / COL_FONT.rx, fv = fdy / COL_FONT.ry;
     var fdd = fu * fu + fv * fv;
@@ -6270,7 +6328,16 @@
           /* Le portail menait au hall des jeux. Il mene au MONDE : c'est ce
              qu'un portail au milieu d'un nexus promet, et le hall a deja son
              bouton dans l'en-tete du panneau. */
-          if (l.cle === 'portail') { if (enLigne) envoie({ type: 'realmJoin' }); l.dwell = 0; entre = true; return; }
+          /* ---- LE LIEU PORTE SON MONDE ----
+           * Le test etait `l.cle === 'portail'`. Ajouter une porte aurait
+           * demande d'ajouter une cle ici, puis une troisieme le jour d'une
+           * troisieme carte — et la porte qu'on aurait oublie d'inscrire
+           * n'aurait rien fait, sans rien dire. C'est le LIEU qui nomme sa
+           * destination ; cette ligne-ci ne la connait pas. */
+          if (l.monde) {
+            if (enLigne) envoie({ type: 'realmJoin', monde: l.monde });
+            l.dwell = 0; entre = true; return;
+          }
           /* L'etal etait le dernier endroit du Nexus qui faisait SORTIR du
              jeu pour acheter. Il ouvre son panneau sur place.
              Le garde-fou compte : le sejour se remet a zero et RECOMMENCE a
@@ -6665,6 +6732,49 @@
     pile.sort(function (a, b) { return a.y - b.y; });
     pile.forEach(function (p) { p.dessine(); });
 
+    /* ---- COMBIEN SONT DERRIERE CHAQUE PORTE ----
+     *
+     * Deux portes identiques a la couleur pres posent une question, et le
+     * chiffre est la moitie de la reponse : on entre la ou il y a quelqu'un.
+     * A trente-neuf joueurs, une carte vide est le seul echec possible du
+     * systeme, et un horaire annonce ne le regle qu'a l'heure dite.
+     *
+     * Il se dessine APRES la pile, jamais dedans : c'est une etiquette, pas
+     * un objet du monde. La trier avec les vivants l'aurait fait passer
+     * derriere le portail qu'elle decrit. */
+    if (PORTES_C) {
+      LIEUX.forEach(function (l) {
+        if (!l.monde) return;
+        var n = PORTES_C[l.monde];
+        if (typeof n !== 'number') return;
+        var t = n === 0 ? 'empty' : n === 1 ? '1 inside' : n + ' inside';
+        var y = l.y - l.haut - 12;
+        ctx.save();
+        ctx.font = '800 13px Archivo, system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        var w = ctx.measureText(t).width + 18;
+        ctx.fillStyle = 'rgba(8,11,18,.82)';
+        ctx.strokeStyle = n > 0 ? 'rgba(124,255,155,.55)' : 'rgba(255,255,255,.18)';
+        ctx.lineWidth = 2;
+        /* Une pilule, pas un rectangle : le Nexus n'a pas un seul angle
+           droit, et un cadre carre au-dessus d'une arche se voit comme une
+           piece rapportee. */
+        var x0 = l.x - w / 2, y0 = y - 20, h = 24, r = 12;
+        ctx.beginPath();
+        ctx.moveTo(x0 + r, y0);
+        ctx.arcTo(x0 + w, y0, x0 + w, y0 + h, r);
+        ctx.arcTo(x0 + w, y0 + h, x0, y0 + h, r);
+        ctx.arcTo(x0, y0 + h, x0, y0, r);
+        ctx.arcTo(x0, y0, x0 + w, y0, r);
+        ctx.closePath();
+        ctx.fill(); ctx.stroke();
+        ctx.fillStyle = n > 0 ? '#8CFFB4' : '#8DA0C4';
+        ctx.fillText(t, l.x, y - 3);
+        ctx.textAlign = 'start';
+        ctx.restore();
+      });
+    }
+
     /* Les projectiles passent PAR-DESSUS tout le monde : ils volent, ils ne
        marchent pas. Les trier avec les personnages les ferait disparaitre
        derriere une fontaine a mi-course. */
@@ -6699,7 +6809,7 @@
   function dessinePortail() {
     var p = SALLE.portail;
     halo(p.x, p.y, p.r, '#8FD4FF', 0.24);
-    var img = LIEUX[1] && LIEUX[1].img;
+    var img = PORTAIL_L && PORTAIL_L.img;
     if (img && img.complete) ctx.drawImage(img, p.x - p.larg / 2, p.y - p.haut, p.larg, p.haut);
   }
 

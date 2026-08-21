@@ -479,6 +479,11 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
   border:1px solid rgba(242,104,94,.22); margin-bottom:10px; }
 .nxmt-perdu b{ color:#F5938B; }
 .nxmt-garde{ font-size:11px; line-height:1.55; color:#7BA88C; margin-bottom:16px; }
+/* Tomber dans la carte rouge ne coute ni fame ni personnage : les deux
+   rangees qui les annoncent n'ont rien a dire, et un compteur d'or a zero
+   au-dessus d'un « You died » ferait croire a une perte qui n'a pas eu lieu. */
+#nxMortVoile.pvp .nxmt-chiffres, #nxMortVoile.pvp .nxmt-skins{ display:none; }
+#nxMortVoile.pvp .nxmt-titre{ color:#FFD97A; }
 .nxmt-skins{ display:flex; flex-wrap:wrap; gap:7px; justify-content:center; margin-bottom:14px; }
 .nxmt-skins button{ display:flex; flex-direction:column; align-items:center; gap:3px;
   width:74px; padding:8px 4px; border-radius:12px; font:inherit; font-size:10.5px;
@@ -1437,7 +1442,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
      racine ; c'est le seul endroit d'ou elle peut couvrir tout le reste. -->
 <div id="nxFiche"></div>
 
-<script src="nexus.js?v=20260822b" defer></script>
+<script src="nexus.js?v=20260822c" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

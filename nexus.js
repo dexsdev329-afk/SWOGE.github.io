@@ -1989,7 +1989,7 @@
     /* La grange se pose SUR le bord haut de l'enclos : c'est le fond de la
        cour, et la barriere passe derriere elle. */
     { cle: 'petworld', src: 'img/nexus/tiles/obj_grange.webp',
-      x: CENTRE.x + 840, y: CENTRE.y + 322, larg: 420, haut: 334,
+      x: CENTRE.x + 832, y: CENTRE.y + 352, larg: 420, haut: 334,
       rayon: 150, nom: 'Petworld', bientot: 1 },
     { cle: 'petworldEnseigne', src: 'img/nexus/tiles/obj_petworld_sign.webp',
       x: CENTRE.x + 400, y: CENTRE.y + 700, larg: 140, haut: 209 },
@@ -3492,8 +3492,28 @@
   function montreMort(m) {
     if (!elMortVoile) return;
     var q = function (c) { return elMortVoile.querySelector(c); };
+    /* ---- TOMBER DANS LE ROUGE N'EST PAS MOURIR ----
+     * Le meme panneau, mais il ne doit pas raconter la meme chose : il n'y a
+     * ni fame encaissee, ni personnage a remplacer, et annoncer « You died »
+     * au-dessus d'un compteur d'or a zero ferait croire a une perte qui n'a
+     * pas eu lieu. Un joueur qui croit avoir perdu sa relique n'y retourne
+     * pas. */
+    elMortVoile.classList.toggle('pvp', !!m.pvp);
+    q('.nxmt-titre').textContent = m.pvp ? 'You went down' : 'You died';
+    q('.nxmt-go').textContent = m.pvp ? 'Back to the Nexus' : 'Play again';
+    var garde = q('.nxmt-garde');
+    if (garde) {
+      garde.textContent = m.pvp
+        ? 'Nothing was destroyed. Your gear, your level and your vault came home with you.'
+        : 'Your characters are safe, and so is everything you stored in the vault. Only what you carried is gone.';
+    }
+    /* ---- « Killed by a Lime » ET « Killed by Alice » ----
+     * L'article est faux des que le tueur est quelqu'un : on ne meurt pas
+     * « d'un Alice ». Le drapeau vient du serveur — la page ne devine pas a
+     * la forme du nom. */
     q('.nxmt-par').textContent = m.par
-      ? 'Killed by a ' + String(m.par).replace(/^./, function (c) { return c.toUpperCase(); })
+      ? (m.pvp ? 'Killed by ' : 'Killed by a ') +
+        String(m.par).replace(/^./, function (c) { return c.toUpperCase(); })
       : 'Your run is over.';
     q('.nxmt-xp').textContent = nbCourt(m.xp);
     q('.nxmt-or').textContent = '+' + nbCourt(m.fameGagnee);
@@ -3508,6 +3528,17 @@
     }
     if (m.sacPerdu) {
       bouts.push('Backpack: <b>' + m.sacPerdu + ' item' + (m.sacPerdu > 1 ? 's' : '') + '</b> lost');
+    }
+    /* ---- TOMBER DANS LA CARTE ROUGE N'EST PAS MOURIR ----
+     * L'ecran de mort annonce « Destroyed » et remet un personnage a choisir.
+     * Dans le rouge, rien n'est detruit : on garde son equipement, son niveau
+     * et son coffre, et l'on n'a perdu que ce qu'on avait ramasse. Le dire
+     * autrement ferait croire a une perte qui n'a pas eu lieu — et un joueur
+     * qui croit avoir perdu sa relique n'y retourne pas. */
+    if (m.pvp) {
+      bouts.length = 0;
+      bouts.push('Your <b>backpack</b> stayed where you fell &mdash; go take it back.');
+      bouts.push('<i>Your gear, your level and your vault are untouched.</i>');
     }
     q('.nxmt-perdu').innerHTML = bouts.length ? bouts.join('<br>')
       : 'You were carrying nothing. Nothing was lost.';
@@ -4512,10 +4543,20 @@
    * de la carte : on arrivait dos au vide, colle contre la borne du monde, et
    * il fallait se tortiller pour se presenter en face. Une entree doit avoir
    * un parvis, sinon elle se rate. */
+  /* ---- L'ENCLOS TIENT SUR LA GRILLE DES TUILES ----
+   *
+   * Le sol se peint par tuile de 128, en testant le CENTRE de chaque tuile :
+   * une cour dont les bords tombent au milieu d'une tuile laisse donc une
+   * bande d'herbe A L'INTERIEUR de sa barriere, du cote ou le centre est
+   * dehors. On voyait la terre commencer trente unites trop loin sur deux
+   * cotes, et la cloture flotter dans le gazon.
+   *
+   * Les quatre bornes sont donc des MULTIPLES de 128. Ce ne sont pas de jolis
+   * chiffres, ce sont les seuls qui font coincider la terre et la barriere. */
   var FERME = {
-    x0: CENTRE.x + 490, y0: CENTRE.y + 322,
-    x1: CENTRE.x + 1190, y1: CENTRE.y + 722,
-    porteX: CENTRE.x + 840, porteL: 176,
+    x0: CENTRE.x + 512, y0: CENTRE.y + 352,
+    x1: CENTRE.x + 1152, y1: CENTRE.y + 736,
+    porteX: CENTRE.x + 832, porteL: 176,
   };
   /* Les pieces, a l'echelle du monde. Les rapports viennent des dessins :
      131x129 pour la lisse horizontale, 73x170 pour la verticale. On garde
@@ -4531,6 +4572,13 @@
      trou a chaque raccord, et une barriere trouee n'arrete visiblement rien.
      C'est donc le pas qui commande, et la largeur suit le rapport. */
   var CL_RH = 131 / 129, CL_RV = 73 / 170;
+  /* ---- OU EST LE POTEAU DANS LA PIECE D'ANGLE ----
+   * Mesure sur le dessin : les colonnes pleines vont de 16 a 53 sur 143 de
+   * large, centre a 24,1 %. L'angle doit poser SON POTEAU sur le coin de la
+   * cour ; le poser au centre de la case le decalerait d'un quart de piece, et
+   * c'est exactement le decalage qu'on voyait aux quatre coins. */
+  var CL_COIN_POTEAU = 0.241;
+  var CL_RC = 143 / 150;
   Object.keys(CL).forEach(function (k) { CL[k].img = new Image(); CL[k].img.src = CL[k].src; });
   var IMG_FERME_DECOR = new Image();
   IMG_FERME_DECOR.src = 'img/nexus/tiles/ferme_decor.webp';
@@ -4581,12 +4629,29 @@
     remplitV(FERME.y0, FERME.y1, FERME.x0);
     remplitV(FERME.y0, FERME.y1, FERME.x1);
     out.push({ p: CL.porte, x: FERME.porteX, y: FERME.y1 });
-    /* Les angles par-dessus les bouts de lisse : ils portent le poteau qui
-       ferme les deux directions d'un coup. */
-    out.push({ p: CL.coin, x: FERME.x0, y: FERME.y0 });
-    out.push({ p: CL.coin, x: FERME.x1, y: FERME.y0 });
-    out.push({ p: CL.coin, x: FERME.x0, y: FERME.y1 });
-    out.push({ p: CL.coin, x: FERME.x1, y: FERME.y1 });
+
+    /* ---- LES QUATRE ANGLES, EN DERNIER ----
+     *
+     * Une piece de lisse va d'un CENTRE de poteau au suivant : une course
+     * posee bord a bord commence et finit donc sur un DEMI-poteau. C'est ce
+     * qu'on voyait aux quatre coins — des montants coupes dans la longueur,
+     * et un trou la ou la lisse rencontre le montant.
+     *
+     * L'angle est le poteau entier qui ferme les deux directions. Il vient
+     * apres tout le reste dans la liste, donc par-dessus a y egal, et son
+     * poteau se pose SUR le coin de la cour — pas au centre de sa case, qui
+     * le decalerait d'un quart de piece. */
+    var hc = (CL.h.larg > 0 ? (FERME.x1 - FERME.x0) / Math.max(1, Math.round((FERME.x1 - FERME.x0) / CL.h.larg)) : 110);
+    var coinH = (hc / CL_RH) * 1.16, coinL = coinH * CL_RC;
+    var dx = coinL * (0.5 - CL_COIN_POTEAU);
+    [[FERME.x0, FERME.y0], [FERME.x0, FERME.y1]].forEach(function (c) {
+      out.push({ p: CL.coin, x: c[0] + dx, y: c[1], larg: coinL, haut: coinH });
+    });
+    [[FERME.x1, FERME.y0], [FERME.x1, FERME.y1]].forEach(function (c) {
+      /* A droite, la meme piece RETOURNEE : son poteau est a gauche du dessin,
+         et une deuxieme planche pour la meme chose finirait par diverger. */
+      out.push({ p: CL.coin, x: c[0] - dx, y: c[1], larg: coinL, haut: coinH, mir: 1 });
+    });
     return out;
   })();
 
@@ -6978,7 +7043,12 @@
       pile.push({ y: c.y, dessine: function () {
         if (!c.p.img.complete || !c.p.img.naturalWidth) return;
         var L = c.larg || c.p.larg, H = c.haut || c.p.haut;
-        ctx.drawImage(c.p.img, c.x - L / 2, c.y - H, L, H);
+        if (!c.mir) { ctx.drawImage(c.p.img, c.x - L / 2, c.y - H, L, H); return; }
+        ctx.save();
+        ctx.translate(c.x, c.y);
+        ctx.scale(-1, 1);
+        ctx.drawImage(c.p.img, -L / 2, -H, L, H);
+        ctx.restore();
       } });
     });
     if (IMG_FERME_DECOR.complete && IMG_FERME_DECOR.naturalWidth) {

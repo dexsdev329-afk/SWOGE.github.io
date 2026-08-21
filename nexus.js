@@ -291,6 +291,14 @@
       BJ = m.state || null;
       bjErreur = '';
       if (BJ && BJ.balance != null && BOUTIQUE) BOUTIQUE.balance = BJ.balance;
+      /* ---- LE SOLDE DU HAUT SUIT LA TABLE ----
+       * Il ne bougeait pas d'une main a l'autre : `majSolde` s'accroche a
+       * `m.balance`, tout en haut du message, et la table met le sien dans
+       * `state.balance`. On gagnait quarante $SWOGE, le panneau les annoncait,
+       * et le compteur de l'ecran restait sur l'ancien chiffre jusqu'a ce
+       * qu'on recharge la page — c'est-a-dire jusqu'a ce qu'on doute d'avoir
+       * gagne. */
+      if (BJ && BJ.balance != null) majSolde(BJ.balance);
       if (bjOuvert) peintBj();
       peintPanneau();
     }
@@ -1681,7 +1689,14 @@
         html += '<div class="nxbj-act">' +
           '<button type="button" class="plaque" data-bj="hit">Hit</button>' +
           '<button type="button" class="plaque" data-bj="stand">Stand</button>' +
-          (st.canDouble ? '<button type="button" class="plaque" data-bj="double">Double</button>' : '') +
+          /* ---- DOUBLER RESTE A L'ECRAN, MEME QUAND ON NE PEUT PAS ----
+           * Il disparaissait des la deuxieme carte tiree — ce qui est la
+           * regle — mais un bouton qui S'EN VA se lit « le jeu me l'a
+           * retire », pas « pas maintenant ». Grise, la plaque garde sa
+           * place et l'on apprend QUAND on peut doubler au lieu de se
+           * demander ou elle est passee. */
+          '<button type="button" class="plaque" data-bj="double"' +
+          (st.canDouble ? '' : ' disabled') + '>Double</button>' +
           '</div>';
       }
     } else {
@@ -2276,7 +2291,7 @@
     if (!IMG_COUP) { IMG_COUP = new Image(); IMG_COUP.src = 'img/nexus/tirs/coup.webp'; }
     if (!IMG_NIVEAU) { IMG_NIVEAU = new Image(); IMG_NIVEAU.src = 'img/nexus/effets/niveau.webp'; }
     if (!IMG_PARA) { IMG_PARA = new Image(); IMG_PARA.src = 'img/nexus/effets/paralysie.webp'; }
-    if (!IMG_SACS) { IMG_SACS = new Image(); IMG_SACS.src = 'img/nexus/objets/sacs.webp'; }
+    chargeSacs();
     if (!IMG_OBST) { IMG_OBST = new Image(); IMG_OBST.src = 'img/nexus/tiles/obstacles.webp'; }
     if (!IMG_MUR) { IMG_MUR = new Image(); IMG_MUR.src = 'img/nexus/tiles/mur_ruine.webp'; }
     if (!IMG_MUR_DJ) { IMG_MUR_DJ = new Image(); IMG_MUR_DJ.src = 'img/nexus/tiles/mur_donjon.webp'; }
@@ -2765,8 +2780,23 @@
                   s.x - T / 2, s.y - bas * T, T, T);
   }
 
+  /* ---- LA PLANCHE DES SACS SE CHARGE TOUTE SEULE ----
+   *
+   * Elle arrivait avec `chargeEffets()`, appele en ENTRANT dans le monde de
+   * combat. Le hall dessine pourtant les memes sacs depuis qu'on peut y jeter
+   * une piece — et celui qui n'etait pas encore alle se battre n'avait aucune
+   * image : le serveur tenait bien le sac, la page le dessinait bien, et le
+   * dessin renoncait a la premiere ligne. On voyait le sol vide.
+   *
+   * Le dessin demande donc lui-meme sa planche. C'est le seul endroit qui
+   * sache qu'il en a besoin, et il n'y a plus de troisieme scene a penser a
+   * brancher le jour ou l'on posera des sacs ailleurs. */
+  function chargeSacs() {
+    if (!IMG_SACS) { IMG_SACS = new Image(); IMG_SACS.src = 'img/nexus/objets/sacs.webp'; }
+  }
   function dessineSac(s) {
-    if (!IMG_SACS || !IMG_SACS.complete || !IMG_SACS.naturalWidth) return;
+    chargeSacs();
+    if (!IMG_SACS.complete || !IMG_SACS.naturalWidth) return;
     var cadre = IMG_SACS.naturalHeight;          // la planche est une rangee
     var col = COLONNE_SAC[s.s] === undefined ? 0 : COLONNE_SAC[s.s];
     var T = 42;

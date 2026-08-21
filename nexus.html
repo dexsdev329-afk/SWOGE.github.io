@@ -557,6 +557,48 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
   padding:18px 16px 16px; box-shadow:0 24px 60px rgba(0,0,0,.6);
   transform:translateY(10px); transition:transform .18s; }
 #nxCoffreVoile.on .nxcf-carte{ transform:none; }
+/* ---- LE COFFRE S'ELARGIT, ET SA BARRE DISPARAIT ----
+ *
+ * A 560 px la grille tenait deux colonnes : un coffre de trente pieces se
+ * lisait sur quinze lignes, et on passait son temps a faire defiler. Au
+ * double, on en voit quatre ou cinq de front et l'inventaire tient presque
+ * d'un coup d'oeil — ce qu'un coffre est cense donner.
+ *
+ * La carte ne defile plus ELLE-MEME : c'est le corps qui defile, et l'en-tete
+ * (titre, compte, fleches) reste en place. Defiler la carte entiere faisait
+ * sortir de l'ecran le titre et le compte, c'est-a-dire exactement ce qu'on
+ * etait venu lire.
+ *
+ * La barre native est masquee mais le defilement reste ACTIF : molette, doigt
+ * et clavier continuent de marcher. Cacher la barre en coupant `overflow`
+ * aurait rendu invisible tout ce qui depasse — la moitie du coffre. */
+#nxCoffreVoile .nxcf-carte{ max-width:1120px; display:flex; flex-direction:column;
+  overflow:hidden; }
+#nxCoffreVoile .nxcf-corps{ flex:1 1 auto; min-height:0;
+  overflow-y:auto; overflow-x:hidden; padding-right:46px;
+  scrollbar-width:none; -ms-overflow-style:none; overscroll-behavior:contain; }
+#nxCoffreVoile .nxcf-corps::-webkit-scrollbar{ width:0; height:0; }
+/* Le compte, en haut a droite, a cote de la croix : il ne bouge jamais et il
+   ne depend pas du texte du titre, que chaque role du coffre reecrit. */
+.nxcf-nb{ position:absolute; top:15px; right:52px; z-index:2;
+  font-size:11px; font-weight:900; letter-spacing:.05em; text-transform:uppercase;
+  color:#7CFF9B; background:rgba(124,255,155,.11);
+  border:1px solid rgba(124,255,155,.34); border-radius:99px; padding:3px 10px; }
+.nxcf-nb[hidden]{ display:none; }
+/* Les fleches occupent leur PROPRE couloir (le `padding-right` du corps) :
+   posees par-dessus la liste, elles auraient recouvert le bouton « sortir »
+   de la piece du milieu, qui est a droite lui aussi. */
+.nxcf-fleches{ position:absolute; right:12px; top:50%; transform:translateY(-50%);
+  display:flex; flex-direction:column; gap:10px; z-index:2; }
+.nxcf-fleches[hidden]{ display:none; }
+.nxcf-fl{ width:34px; height:46px; border-radius:11px; cursor:pointer;
+  border:1px solid rgba(255,255,255,.16); background:rgba(20,26,36,.94);
+  color:#c9d3f2; font-size:12px; line-height:1; padding:0;
+  box-shadow:0 4px 14px rgba(0,0,0,.45); }
+.nxcf-fl:hover{ background:rgba(255,255,255,.14); color:#fff; }
+/* Grisee en butee plutot que retiree : une fleche qui disparait fait sauter
+   l'autre d'une demi-hauteur sous le doigt au moment ou on la vise. */
+.nxcf-fl[disabled]{ opacity:.26; cursor:default; }
 .nxcf-x{ position:absolute; top:12px; right:12px; width:30px; height:30px;
   border-radius:9px; border:1px solid #2b3340; background:#1b222d; color:#c9d3f2;
   font-size:17px; cursor:pointer; }
@@ -1074,8 +1116,19 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
   <div class="nxcf-carte">
     <button class="nxcf-x" type="button" aria-label="Close">&times;</button>
     <b class="nxcf-titre">&#129530; Your vault</b>
+    <!-- Le compte vit dans l'en-tete FIXE, pas dans le corps qui defile : on
+         ouvre son coffre pour savoir ce qu'on a, et cette reponse ne doit pas
+         etre la premiere chose qui sorte de l'ecran quand on descend. -->
+    <b class="nxcf-nb" hidden></b>
     <div class="nxcf-sous">Everything you bought from the shop. Tap an item to wear it.</div>
     <div class="nxcf-corps"></div>
+    <!-- Les deux fleches remplacent la barre de defilement. Elles vivent HORS
+         du corps qui defile — dedans, elles descendraient avec les objets et
+         il faudrait deja savoir defiler pour les atteindre. -->
+    <div class="nxcf-fleches" hidden>
+      <button type="button" class="nxcf-fl" data-fl="-1" aria-label="Scroll up">&#9650;</button>
+      <button type="button" class="nxcf-fl" data-fl="1" aria-label="Scroll down">&#9660;</button>
+    </div>
   </div>
 </div>
 
@@ -1115,7 +1168,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
   </div>
 </div>
 
-<script src="nexus.js?v=20260821g" defer></script>
+<script src="nexus.js?v=20260821h" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

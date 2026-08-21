@@ -3113,6 +3113,55 @@
   ];
   var elCoffreVoile = document.getElementById('nxCoffreVoile');
   var elCoffreCorps = elCoffreVoile ? elCoffreVoile.querySelector('.nxcf-corps') : null;
+  var elCoffreNb = elCoffreVoile ? elCoffreVoile.querySelector('.nxcf-nb') : null;
+  var elCoffreFleches = elCoffreVoile ? elCoffreVoile.querySelector('.nxcf-fleches') : null;
+
+  /* ---- LE COMPTE, EN HAUT ----
+   * Chaque role du coffre compte autre chose — des pieces, des personnages,
+   * des fioles — mais la question du joueur est toujours la meme : combien
+   * j'en ai. Un seul endroit repond, avec le mot qui va avec. */
+  function compteCoffre(n, mot) {
+    if (!elCoffreNb) return;
+    if (!n) { elCoffreNb.hidden = true; elCoffreNb.textContent = ''; return; }
+    elCoffreNb.hidden = false;
+    elCoffreNb.textContent = n + ' ' + mot + (n > 1 ? 's' : '');
+  }
+
+  /* ---- LES FLECHES A LA PLACE DE LA BARRE ----
+   *
+   * Elles ne se montrent QUE s'il y a quelque chose sous le bord. Deux
+   * fleches grises en permanence au-dessus d'un coffre de trois pieces, ce
+   * serait deux boutons qui ne font rien — le joueur apprendrait a ne plus
+   * les regarder, et elles ne serviraient plus le jour ou elles servent.
+   *
+   * La marge d'un pixel absorbe les hauteurs fractionnaires : sans elle, un
+   * corps de 400,5 px sur 400 px allumerait les fleches pour un demi-pixel. */
+  function majFlechesCoffre() {
+    if (!elCoffreCorps || !elCoffreFleches) return;
+    var trop = elCoffreCorps.scrollHeight - elCoffreCorps.clientHeight;
+    if (trop <= 1) { elCoffreFleches.hidden = true; return; }
+    elCoffreFleches.hidden = false;
+    var y = elCoffreCorps.scrollTop;
+    Array.prototype.forEach.call(elCoffreFleches.querySelectorAll('.nxcf-fl'), function (b) {
+      var vers = Number(b.getAttribute('data-fl'));
+      b.disabled = vers < 0 ? y <= 1 : y >= trop - 1;
+    });
+  }
+  if (elCoffreCorps && elCoffreFleches) {
+    elCoffreCorps.addEventListener('scroll', majFlechesCoffre);
+    window.addEventListener('resize', majFlechesCoffre);
+    Array.prototype.forEach.call(elCoffreFleches.querySelectorAll('.nxcf-fl'), function (b) {
+      b.addEventListener('click', function (e) {
+        e.stopPropagation();
+        clic(true);
+        /* Un peu moins d'une hauteur d'ecran : la derniere ligne lue reste
+           visible en haut apres le saut, sinon on ne sait plus ou on en est. */
+        var pas = Math.max(120, Math.round(elCoffreCorps.clientHeight * 0.8));
+        elCoffreCorps.scrollTop += pas * Number(b.getAttribute('data-fl'));
+        majFlechesCoffre();
+      });
+    });
+  }
 
   var coffreRole = 'objets';
   function ouvreCoffreMenu(role) {
@@ -3265,6 +3314,8 @@
           envoie({ type: 'skinChoisi', id: b.getAttribute('data-perso') });
         });
       });
+      compteCoffre(liste.filter(function (k) { return k.possede; }).length, 'character');
+      majFlechesCoffre();
       return;
     }
     /* ---- LE COFFRE AUX FIOLES ----
@@ -3307,20 +3358,33 @@
         elCoffreCorps.insertAdjacentHTML('afterbegin',
           '<div class="nxcf-refus">' + ech(coffreErreur) + '</div>');
       }
+      /* Rangees ET portees : le joueur en possede autant dans les deux cas,
+         c'est l'endroit qui change, pas le nombre. */
+      compteCoffre(aBoire.reduce(function (n, x) {
+        return n + (x.coffre || 0) + (x.sac || 0);
+      }, 0), 'potion');
+      majFlechesCoffre();
       return;
     }
     if (titre) titre.innerHTML = '\uD83E\uDDFA Your vault';
     if (sous) sous.textContent = 'Everything you bought from the shop. Tap an item to wear it.';
-    if (!COFFRE) { elCoffreCorps.innerHTML = '<div class="nxcf-vide">Opening your vault…</div>'; return; }
+    if (!COFFRE) {
+      elCoffreCorps.innerHTML = '<div class="nxcf-vide">Opening your vault…</div>';
+      compteCoffre(0); majFlechesCoffre(); return;
+    }
     /* Un refus du serveur — « celle-la, tu la portes » — doit se lire. Sans
        ca le joueur tape le bouton et rien ne bouge, ce qui se lit comme une
        panne plutot que comme une regle. */
     var html = coffreErreur
       ? '<div class="nxcf-refus">' + ech(coffreErreur) + '</div>' : '';
-    var total = 0;
+    var total = 0, exemplaires = 0;
     CATEGORIES.forEach(function (cat) {
       var liste = (COFFRE[cat.champ] || []).slice();
       total += liste.length;
+      /* Le compte affiche des OBJETS, pas des lignes : trois anneaux
+         identiques tiennent sur une ligne mais restent trois anneaux, et
+         c'est ce chiffre-la que le joueur compare a ce qu'il a achete. */
+      liste.forEach(function (o) { exemplaires += Math.max(1, Number(o.quantite) || 1); });
       if (!liste.length) return;
       /* ---- LES NUMEROTEES D'ABORD ----
        * Le coffre melange ce qu'on a paye et ce qu'on a ramasse puis range.
@@ -3388,6 +3452,8 @@
 
     elCoffreCorps.innerHTML = total ? html
       : '<div class="nxcf-vide">Your vault is empty. Chests bought at the shop drop their items straight in here.</div>' + html;
+    compteCoffre(exemplaires, 'item');
+    majFlechesCoffre();
     /* Un clic equipe TOUT DE SUITE : le geste EST la confirmation. Retaper la
        piece deja portee la retire — sinon on ne pourrait jamais rien enlever,
        et il faudrait un second bouton sur chaque ligne. */

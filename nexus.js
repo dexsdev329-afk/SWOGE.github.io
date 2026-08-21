@@ -246,6 +246,34 @@
         indiceEl.classList.add('on');
       }
     }
+    /* ---- UNE PORTE VIENT DE S'OUVRIR ----
+     * Elle arrive DEJA avec l'etat, donc on la dessinerait sans ce message. Il
+     * sert a autre chose : une porte qui apparait a cent quatre-vingt-dix
+     * unites derriere une creature qu'on regardait mourir, au milieu des eclats
+     * et des chiffres de degats, se rate. On la manque, on s'en va, et le donjon
+     * qu'on vient de meriter se referme tout seul sans qu'on ait su qu'il
+     * existait. Le message ne dit rien de plus — il dit QUAND. */
+    if (m.type === 'realmPortail') {
+      joueSample('niveau', { vol: 0.5, hauteur: 0.72 });
+      flotte(m.donjon ? 'A PORTAL OPENS' : 'THE WAY BACK OPENS');
+      if (indiceEl) {
+        indiceEl.innerHTML = m.donjon
+          ? 'A portal to the <b>' + ech(m.donjon) + '</b> opened behind it — walk in to enter'
+          : 'A way back opened behind it';
+        indiceEl.classList.add('on');
+        indiceActuel = null;   // la ligne d'ambiance reprendra la main
+      }
+    }
+    /* Un refus de porte. Il arrive toujours, comme celui du pouvoir : un bouton
+       qui ne repond rien se lit comme un defaut. */
+    if (m.type === 'realmPorteRefus') {
+      var pourquoi = { 'deja-dedans': 'You are already inside',
+                       'pas-de-portail': 'No portal under your feet',
+                       'trop-de-donjons': 'Too many dungeons open — try again shortly',
+                       'pas-dedans': 'You are not in a dungeon',
+                       'no-character': 'Buy a character first' }[m.raison];
+      flotte(pourquoi || 'The gate refused you');
+    }
     if (m.type === 'realmEtat' && SCENE === 'monde') recoitMonde(m);
     /* ---- LA REPONSE A LA BARRE D'ESPACE ----
      * Elle arrive TOUJOURS, y compris sur un refus : une touche qui ne
@@ -433,6 +461,11 @@
       RECALE = null; ENVOIS.length = 0; CADENCE_M = 0; CADENCE_M = 0;
       OBSTACLES_C = []; SALLES_C = [];
       SAC_PIEDS = null; SAC_SIGNE = ''; peintButin();
+      /* Mourir dans un donjon en fait sortir : le serveur a deja remis le
+         joueur dans le monde ouvert. Laisser `DONJON_C` pose ici aurait garde le
+         sol de pierre et le bouton « EXIT » sur l'ecran du Nexus. */
+      DONJON_C = null; TUILES_D = null; PORTAILS_C = [];
+      PORTAIL_PIEDS = null; PORTAIL_SIGNE = ''; peintPorte();
       POUVOIR_C = null; EFFETS_P = []; PARALYSE = 0; RALENTI = 0; BRULURE = 0;
       VITESSE = 260; peintPouvoir();
       var pp = LIEUX[1];
@@ -1492,6 +1525,7 @@
   var IMG_ANNONCE = null, IMG_ONDE = null;
   var ANNONCE_CADRES = 4, ONDE_CADRES = 4, ONDE_DUREE = 0.55;
   var IMG_SACS = null, IMG_OBST = null, IMG_MUR = null, IMG_TEMPLE = null;
+  var IMG_MUR_DJ = null, IMG_PORTE = null;
   /* Le coffre des salles gardees : ferme, entrouvert, ouvert. */
   var IMG_COFFRE = null, COFFRE_CADRES = 3;
   /* Sa hauteur en unites de monde. Un peu moins qu'un personnage : il doit se
@@ -1506,6 +1540,15 @@
      reconstruirait huit cases dix fois par seconde sous le doigt de qui est
      en train d'en toucher une. */
   var SAC_PIEDS = null, SAC_SIGNE = '';
+  /* Les portes ouvertes autour de nous, et celle sous nos pieds. Une liste a
+     part des sacs, comme cote serveur : un sac se RAMASSE, une porte se
+     FRANCHIT, et les melanger aurait demande a chaque ligne qui touche aux sacs
+     de se souvenir d'ecarter celle-la. */
+  var PORTAILS_C = [];
+  var PORTAIL_PIEDS = null, PORTAIL_SIGNE = '';
+  /* Le nom du donjon ou l'on se trouve, ou null dehors. Et la forme de son sol,
+     tuile par tuile. */
+  var DONJON_C = null, TUILES_D = null;
   var MONSTRES_C = {};         // id -> etat interpole
   var TIRS_C = [];             // nos projectiles, tels que le serveur les voit
   var TIRS_M = [];             // ceux des monstres, contre nous
@@ -1522,7 +1565,13 @@
      piege — c'est pour ca qu'en ajouter demandait d'abord des textures. */
   var FICHIER_SOL = { terre: 'ground_dirt', marais: 'ground_marais',
                       neige: 'ground_snow', cendres: 'ground_cendres',
-                      lave: 'ground_lava' };
+                      lave: 'ground_lava',
+                      /* Le donjon n'est pas un anneau de plus : c'est un monde
+                         a lui, qui n'envoie qu'UN anneau couvrant tout.
+                         `biomeEn` rend donc 'donjon' partout, et cette ligne
+                         suffit — pas un deuxieme mode de dessin a apprendre a
+                         la page. */
+                      donjon: 'ground_donjon' };
   function chargeSols() {
     Object.keys(FICHIER_SOL).forEach(function (b) {
       if (TUILES_M[b]) return;
@@ -1600,6 +1649,8 @@
     if (!IMG_SACS) { IMG_SACS = new Image(); IMG_SACS.src = 'img/nexus/objets/sacs.webp'; }
     if (!IMG_OBST) { IMG_OBST = new Image(); IMG_OBST.src = 'img/nexus/tiles/obstacles.webp'; }
     if (!IMG_MUR) { IMG_MUR = new Image(); IMG_MUR.src = 'img/nexus/tiles/mur_ruine.webp'; }
+    if (!IMG_MUR_DJ) { IMG_MUR_DJ = new Image(); IMG_MUR_DJ.src = 'img/nexus/tiles/mur_donjon.webp'; }
+    if (!IMG_PORTE) { IMG_PORTE = new Image(); IMG_PORTE.src = 'img/nexus/tiles/obj_portail.webp'; }
     if (!IMG_TEMPLE) { IMG_TEMPLE = new Image(); IMG_TEMPLE.src = 'img/nexus/tiles/ground_temple.webp'; }
     if (!IMG_COFFRE) { IMG_COFFRE = new Image(); IMG_COFFRE.src = 'img/nexus/tiles/obj_coffre_garde.webp'; }
     if (!IMG_ANNONCE) { IMG_ANNONCE = new Image(); IMG_ANNONCE.src = 'img/nexus/effets/annonce.webp'; }
@@ -1750,6 +1801,11 @@
      MUR_BASE on lit le mur. Deux listes separees auraient donne deux
      collisions a tenir d'accord. */
   var MUR_BASE = 4;
+  /* Et un cran plus loin, le mur de donjon. Meme raisonnement pousse d'un
+     rang : une seule liste de blocs, une seule collision, un seul tri de
+     dessin, trois planches. Deux listes separees auraient donne deux
+     collisions a tenir d'accord. */
+  var MUR_DONJON = 8;
   /* ---- OU S'ARRETE VRAIMENT LE DESSIN D'UN BLOC ----
    *
    * Les rochers avaient l'air POSES SUR le sol plutot que dedans : un
@@ -1800,11 +1856,23 @@
   }
 
   function dessineObstacle(o) {
-    var mur = (o.t || 0) >= MUR_BASE;
-    var img = mur ? IMG_MUR : IMG_OBST;
+    var t = o.t || 0;
+    /* Les bornes viennent du SERVEUR quand il les envoie : deux nombres tenus
+       d'accord de part et d'autre du reseau finissent par ne plus l'etre, et le
+       desaccord serait muet — le donjon se dessinerait avec la pierre des
+       salles gardees. Les constantes ci-dessus ne servent plus qu'a un vieux
+       message d'entree qui ne les porterait pas. */
+    var mb = (MONDE_C && MONDE_C.murs && MONDE_C.murs.base) || MUR_BASE;
+    var md = (MONDE_C && MONDE_C.murs && MONDE_C.murs.donjon) || MUR_DONJON;
+    var mur = t >= mb;
+    /* Le rang le plus HAUT d'abord : ecrit dans l'autre sens, un bloc de donjon
+       (8) serait passe par la branche du mur de ruine (>= 4) et se serait
+       dessine avec sa planche — le donjon aurait ressemble a une salle gardee,
+       et rien n'aurait plante pour le dire. */
+    var img = t >= md ? IMG_MUR_DJ : (mur ? IMG_MUR : IMG_OBST);
     if (!img || !img.complete || !img.naturalWidth) return;
     var cadre = img.naturalHeight;
-    var col = mur ? (o.t - MUR_BASE) : (o.t || 0);
+    var col = t >= md ? (t - md) : (mur ? (t - mb) : t);
     /* Un mur remplit sa tuile, un rocher deborde un peu : le premier doit
        JOINDRE son voisin, le second doit avoir l'air pose. */
     var T = mur ? o.r * 2 : o.r * 2.7;
@@ -2017,6 +2085,53 @@
     ctx.restore();
   }
 
+  /* ---- LA PORTE, ET SON TOURNOIEMENT ----
+   *
+   * Quatre images de cent vingt-huit, comme les effets : on ne code pas ce
+   * chiffre, on le mesure sur la planche (`naturalWidth / naturalHeight`). On
+   * ne garde PAS de compteur d'image par portail — l'horloge suffit, et un
+   * compteur par porte aurait demande de le creer a la naissance et de
+   * l'effacer a la fermeture, donc deux occasions de fuir.
+   *
+   * Une porte de donjon et une porte de retour se dessinent PAREIL, et c'est
+   * voulu : ce qui les distingue est ce qui est ecrit sur le bouton, pas leur
+   * apparence. Deux dessins auraient demande deux planches, et un joueur qui
+   * apprend a reconnaitre « la porte verte » finirait par entrer dans un donjon
+   * en croyant en sortir.
+   *
+   * `dessinePorte`, et pas `dessinePortail` : ce nom-la est DEJA pris par le
+   * portail de la salle du coffre, plus haut dans ce fichier. Deux declarations
+   * du meme nom dans la meme portee ne se plaignent pas — la derniere gagne, en
+   * silence — et la salle du coffre se serait mise a appeler celle-ci sans
+   * argument, donc a jeter une exception a chaque image. Le seul symptome
+   * aurait ete un ecran de coffre noir.
+   */
+  function dessinePorte(p) {
+    var T = 128;
+    /* Le halo d'abord, sous elle : c'est ce qui la fait voir de loin, au milieu
+       des eclats et des chiffres de degats. Une porte qui s'ouvre a cent
+       quatre-vingt-dix unites derriere une creature qu'on regardait mourir se
+       rate sans lui. */
+    var teinte = p.rt ? '#7CFF9B' : '#C07BFF';
+    var bat = 0.72 + 0.28 * Math.sin(performance.now() / 460);
+    halo(p.x, p.y + 6, T * 0.46 * bat, teinte, 0.30);
+    if (!IMG_PORTE || !IMG_PORTE.complete || !IMG_PORTE.naturalWidth) return;
+    var cadre = IMG_PORTE.naturalHeight;
+    var n = Math.max(1, Math.round(IMG_PORTE.naturalWidth / cadre));
+    var img = Math.floor(performance.now() / 130) % n;
+    ctx.save();
+    /* Elle clignote sur la fin, comme un sac : c'est la seule facon de dire « il
+       sera trop tard dans dix secondes » sans ecrire un chiffre par-dessus le
+       jeu. Une porte qui ne se referme jamais (`r` nul) ne clignote pas. */
+    if (p.r !== null && p.r !== undefined && p.r < 12) {
+      var cl = 0.45 + 0.55 * Math.abs(Math.cos(performance.now() / 1000 * Math.PI * 2));
+      ctx.globalAlpha = Math.max(0.35, cl);
+    }
+    ctx.drawImage(IMG_PORTE, img * cadre, 0, cadre, cadre,
+                  p.x - T / 2, p.y - T + 22, T, T);
+    ctx.restore();
+  }
+
   function dessineTombe(t) {
     if (!IMG_TOMBE || !IMG_TOMBE.complete || !IMG_TOMBE.naturalWidth) return;
     var H = 86, L = H * (IMG_TOMBE.naturalWidth / IMG_TOMBE.naturalHeight);
@@ -2055,7 +2170,17 @@
     for (var i = 0; i < MONDE_C.anneaux.length; i++) {
       if (r <= MONDE_C.anneaux[i].jusqua) return MONDE_C.anneaux[i].biome;
     }
-    return 'terre';
+    /* ---- LE REPLI EST LE DERNIER ANNEAU, PAS « terre » ----
+     * Le dernier anneau du monde ouvert EST la terre, donc le repli en dur y
+     * disait la verite — par chance. Un donjon n'envoie qu'un anneau, et il ne
+     * s'appelle pas terre : le jour ou sa borne arrive mal (un `Infinity`
+     * devenu `null` en traversant JSON, par exemple), la page se serait mise a
+     * poser le sol du monde ouvert SUR le donjon, avec les tuiles au bon
+     * endroit et la mauvaise texture, et rien nulle part pour dire pourquoi.
+     * Le dernier anneau est toujours la bonne reponse : c'est celui qui va
+     * jusqu'au bord. */
+    var dernier = MONDE_C.anneaux[MONDE_C.anneaux.length - 1];
+    return (dernier && dernier.biome) || 'terre';
   }
 
   /* Ce que le serveur voit autour de nous, dix fois par seconde. On ne
@@ -2140,6 +2265,10 @@
        peu nombreuses et ne bougent pas, il n'y a rien a interpoler. */
     TOMBES_C = m.tombes || [];
     SACS_C = m.sacs || [];
+    /* Les portes viennent en entier a chaque image, comme les pierres : elles
+       sont trois au plus, elles ne bougent pas, et il n'y a rien a
+       interpoler. */
+    PORTAILS_C = m.portails || [];
 
     var vusJ = {};
     (m.joueurs || []).forEach(function (o) {
@@ -2311,6 +2440,23 @@
        et aucun n'etait dessine. */
     OBSTACLES_C = m.obstacles || [];
     SALLES_C = m.salles || [];
+    /* ---- OU L'ON EST ----
+     * Un seul champ separe un donjon du monde ouvert : son nom. Tout le reste —
+     * le sol, les murs, le bouton pour sortir — se deduit de lui.
+     * `TUILES_D` est la forme EXACTE du sol, recue une fois : sans elle, la
+     * page redessinerait la forme a partir des memes cinq nombres que le
+     * serveur, et le jour ou le plan gagne une salle, l'un des deux dessins
+     * l'oublierait. */
+    DONJON_C = m.donjon || null;
+    TUILES_D = null;
+    if (m.tuiles && m.tuiles.length) {
+      TUILES_D = Object.create(null);
+      for (var iT = 0; iT < m.tuiles.length; iT++) {
+        TUILES_D[m.tuiles[iT][0] + ',' + m.tuiles[iT][1]] = 1;
+      }
+    }
+    PORTAILS_C = [];
+    PORTAIL_PIEDS = null; PORTAIL_SIGNE = ''; peintPorte();
     moiMonde = { pv: m.moi.pv, pvMax: m.moi.pvMax, xp: 0 };
     VIE.pv = m.moi.pv; VIE.max = m.moi.pvMax;
     if (m.moi.mpMax !== undefined) { VIE.mp = m.moi.mp; VIE.mpMax = m.moi.mpMax; }
@@ -2340,10 +2486,18 @@
          donne envie d'essayer. */
       var nomPo = (POUVOIRS_C && POUVOIR_C && POUVOIRS_C[POUVOIR_C])
         ? POUVOIRS_C[POUVOIR_C].nom : null;
-      indiceEl.innerHTML = 'You are in the <b>wild</b> &middot; ' +
-        (nomPo ? '<b>' + (nomTouche(PERSO_TOUCHES.pouvoir) || 'Space') + '</b> for ' +
-                 ech(nomPo) + ' &middot; ' : '') +
-        'press E to run home';
+      /* Dans un donjon, la ligne dit AUTRE CHOSE : « press E to run home »
+         serait un mensonge — E ramene au Nexus, ce qui abandonne le donjon sans
+         rien en tirer. Ce qu'il faut savoir la, c'est par ou l'on repart. */
+      indiceEl.innerHTML = DONJON_C
+        ? 'You are deep in the <b>' + ech(DONJON_C) + '</b> &middot; ' +
+          (nomPo ? '<b>' + (nomTouche(PERSO_TOUCHES.pouvoir) || 'Space') + '</b> for ' +
+                   ech(nomPo) + ' &middot; ' : '') +
+          'the gate you came through takes you back'
+        : 'You are in the <b>wild</b> &middot; ' +
+          (nomPo ? '<b>' + (nomTouche(PERSO_TOUCHES.pouvoir) || 'Space') + '</b> for ' +
+                   ech(nomPo) + ' &middot; ' : '') +
+          'press E to run home';
       indiceEl.classList.add('on');
     }
     peintPanneau();
@@ -2354,6 +2508,11 @@
     if (enLigne) envoie({ type: 'realmLeave' });
     SCENE = 'nexus';
     peintBoutonTir();
+    /* On abandonne le donjon avec le monde : `realmLeave` sort de la simulation
+       ou l'on etait, quelle qu'elle soit. Garder `DONJON_C` pose ici aurait
+       laisse le bouton « EXIT » sur l'ecran du Nexus. */
+    DONJON_C = null; TUILES_D = null; PORTAILS_C = [];
+    PORTAIL_PIEDS = null; PORTAIL_SIGNE = ''; peintPorte();
     MONSTRES_C = {}; TIRS_C = []; TIRS_M = []; DEVINES = []; DISTANTS_M = {}; TOMBES_C = []; SACS_C = [];
     ZONES_C = []; ONDES = [];
     RECALE = null; ENVOIS.length = 0; CADENCE_M = 0;
@@ -4328,6 +4487,11 @@
    * un deuxieme a garder d'accord avec le premier, et le desaccord aurait ete
    * silencieux : une potion de defense sous l'image d'une potion de vitesse.
    */
+  var elPorte = document.getElementById('nxPorte');
+  var elPorteBtn = document.getElementById('nxPorteBtn');
+  var elPorteNom = document.getElementById('nxPorteNom');
+  var elPorteTemps = document.getElementById('nxPorteTemps');
+  if (elPorteBtn) elPorteBtn.addEventListener('click', franchit);
   var elButin = document.getElementById('nxButin');
   var elFlot = document.getElementById('nxButinFlot');
   var elButinNom = document.getElementById('nxButinNom');
@@ -4470,6 +4634,82 @@
       if (d2 <= d2mini) { d2mini = d2; pres = SACS_C[i]; }
     }
     return pres;
+  }
+
+  /* ---- LA PORTE SOUS NOS PIEDS ----
+   *
+   * La page le calcule pour AFFICHER le bouton, jamais pour decider. C'est le
+   * serveur qui verifie qu'on est bien dessus quand on appuie — sans quoi
+   * nommer un identifiant depuis la console suffirait a entrer dans un donjon
+   * depuis l'autre bout de la carte, et un donjon est exactement ce qu'on
+   * aurait interet a atteindre sans le meriter.
+   *
+   * Le rayon vient du serveur (`MONDE_C.portail.rayon`). L'ecrire ici en dur
+   * aurait fait deux chiffres a tenir d'accord, et le desaccord serait le pire
+   * des defauts : un bouton qui s'affiche a un endroit ou le serveur refuse
+   * d'entrer, donc un bouton qui ne marche pas.
+   */
+  function portailSousLesPieds() {
+    if (!PORTAILS_C.length) return null;
+    var R = (MONDE_C && MONDE_C.portail && MONDE_C.portail.rayon) || 72;
+    var pres = null, d2mini = R * R;
+    for (var i = 0; i < PORTAILS_C.length; i++) {
+      var p = PORTAILS_C[i];
+      var dx = p.x - joueur.x, dy = p.y - joueur.y, d2 = dx * dx + dy * dy;
+      if (d2 <= d2mini) { d2mini = d2; pres = p; }
+    }
+    return pres;
+  }
+
+  function regardePortails() {
+    var p = portailSousLesPieds();
+    /* La signature porte le SENS de la porte autant que son identite : une porte
+       de donjon et une porte de retour ne mettent pas le meme mot sur le bouton,
+       et deux portes qui se succedent au meme endroit doivent repeindre. */
+    var signe = p ? (p.i + ':' + (p.rt ? 'r' : 'e') + ':' + (p.dj || '')) : '';
+    if (signe === PORTAIL_SIGNE) return;
+    PORTAIL_SIGNE = signe;
+    PORTAIL_PIEDS = p;
+    peintPorte();
+  }
+
+  /* ---- LE BOUTON, SOUS LE SAC ----
+   *
+   * Il n'apparait que quand on se tient sur une porte, et c'est tout ce qui
+   * fait qu'entrer est un CHOIX. Une porte qui aspirerait en marchant dessus
+   * enverrait dans le donjon le plus dur du jeu quelqu'un qui traversait pour
+   * ramasser un sac — avec un equipement paye en argent reel, et une mort qui
+   * le detruit.
+   *
+   * Il est SOUS le sac au sol et non par-dessus : quand les deux sont la, on
+   * ramasse d'abord et l'on entre ensuite. C'est l'ordre dans lequel on veut
+   * que ca se fasse, et la place du bouton le dit sans un mot. */
+  function peintPorte() {
+    if (!elPorte) return;
+    var p = PORTAIL_PIEDS;
+    if (!p || SCENE !== 'monde') { elPorte.hidden = true; return; }
+    var retour = !!p.rt;
+    elPorteBtn.textContent = retour ? 'EXIT' : 'ENTER';
+    elPorteBtn.className = 'nxp-porte-b' + (retour ? ' retour' : '');
+    elPorteNom.textContent = retour
+      ? 'Back to the wild'
+      : ('The ' + (p.dj || 'dungeon') + ' — enter?');
+    /* Le compte a rebours, quand il y en a un. Une porte qui ne se referme
+       jamais rend `null` : on n'ecrit alors rien, plutot qu'un « 0s » qui ferait
+       croire qu'elle va disparaitre. */
+    elPorteTemps.textContent = (p.r === null || p.r === undefined)
+      ? '' : Math.max(0, Math.ceil(p.r)) + 's';
+    elPorte.hidden = false;
+  }
+
+  function franchit() {
+    var p = PORTAIL_PIEDS;
+    if (!p || !enLigne) return;
+    debloqueSon();
+    /* La page ne nomme PAS la porte : elle dit « j'entre » ou « je sors », et le
+       serveur trouve laquelle est sous les pieds. Nommer l'identifiant aurait
+       suffi a franchir une porte a l'autre bout de la carte. */
+    envoie({ type: p.rt ? 'realmSort' : 'realmPorte' });
   }
 
   function regardeSacs() {
@@ -4640,6 +4880,7 @@
         if (ENVOIS.length > 24) ENVOIS.pop();
       }
       regardeSacs();
+      regardePortails();
       if (!saut.en_cours) avanceCadre(joueur, PERSO, dt);
       else {
         saut.chrono += dt;
@@ -4866,6 +5107,14 @@
       var mr1 = Math.floor((camY + hauteurMonde + TM) / TM);
       for (var mr = mr0; mr <= mr1; mr++) {
         for (var mc = mc0; mc <= mc1; mc++) {
+          /* ---- DANS UN DONJON, LE SOL S'ARRETE ----
+           * Dehors, chaque tuile de la carte a un sol : c'est un monde, il n'a
+           * pas de bord visible. Un donjon en a un, et c'est ce qui le fait lire
+           * comme un INTERIEUR. Un sol de pierre etale jusqu'a l'horizon aurait
+           * donne l'impression d'un deuxieme monde ouvert dont on aurait bati
+           * trois pieces au milieu — et les murs n'auraient plus rien enferme.
+           * On ne devine pas la forme : elle est arrivee avec l'entree. */
+          if (TUILES_D && !TUILES_D[mc + ',' + mr]) continue;
           var b = biomeEn(mc * TM + TM / 2, mr * TM + TM / 2);
           var img = TUILES_M[b];
           if (img && img.complete) ctx.drawImage(img, mc * TM, mr * TM, TM, TM);
@@ -4898,6 +5147,13 @@
          devant un monstre doit passer devant lui. */
       SACS_C.forEach(function (s) {
         pileM.push({ y: s.y, dessine: function () { dessineSac(s); } });
+      });
+      /* Les portes aussi. Une porte dessinee par-dessus tout aurait recouvert la
+         creature qu'on combat devant ; dessinee sous tout, elle aurait disparu
+         derriere le sac qu'elle accompagne. Elle se trie par les pieds, comme le
+         reste — c'est un objet au sol. */
+      PORTAILS_C.forEach(function (p) {
+        pileM.push({ y: p.y, dessine: function () { dessinePorte(p); } });
       });
       /* Les blocs se trient avec les vivants : passer DERRIERE un rocher doit
          se voir, sinon on ne comprend pas qu'il fait couvert. On ne pousse

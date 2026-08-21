@@ -235,6 +235,31 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
 .nxp-butin .nxp-c u.fiole{ display:block; width:78%; height:78%;
   background-image:url('img/nexus/objets/potions_stat.webp');
   background-repeat:no-repeat; background-size:800% 100%; image-rendering:pixelated; }
+/* ---- LA PORTE, SOUS LE SAC ----
+ * Elle n'apparait que quand on se tient dessus, et c'est tout ce qui fait
+ * qu'entrer est un CHOIX. Une porte qui aspirerait en marchant dessus
+ * enverrait dans le donjon le plus dur du jeu quelqu'un qui traversait pour
+ * ramasser un sac — avec un équipement payé en argent réel, et une mort qui
+ * le détruit.
+ * SOUS le sac, jamais dessus : quand les deux sont là, on ramasse d'abord et
+ * l'on entre ensuite. La place du bouton dit l'ordre sans un mot. */
+.nxp-porte{ margin-top:6px; padding-top:6px; flex:0 0 auto;
+  border-top:1px dashed rgba(192,123,255,.5); }
+.nxp-porte[hidden]{ display:none; }
+.nxp-porte > i{ display:block; font:800 9px/1.4 'Archivo',system-ui,sans-serif;
+  letter-spacing:.8px; text-transform:uppercase; margin-bottom:4px; color:#C07BFF; }
+.nxp-porte-b{ display:block; width:100%; height:34px; border-radius:6px;
+  font:900 13px/1 'Archivo',system-ui,sans-serif; letter-spacing:1.6px;
+  cursor:pointer; color:#0A0614;
+  border:1px solid #6A3FA0; background:linear-gradient(#D9A6FF,#A65CF0); }
+.nxp-porte-b:hover{ filter:brightness(1.12); }
+/* Le vert de la sortie, pour la même raison que le violet de l'entrée : les
+   deux boutons sont au même endroit, et celui qui ramène ne doit pas pouvoir
+   se cliquer en croyant entrer. */
+.nxp-porte-b.retour{ color:#04140A;
+  border-color:#2E7A46; background:linear-gradient(#B8FFCE,#5CE08A); }
+.nxp-porte em{ display:block; margin-top:3px; text-align:center; font-style:normal;
+  font:700 10px/1.3 'Archivo',system-ui,sans-serif; color:#9AA3C0; }
 .nxp-pot{ display:grid; grid-template-columns:1fr 1fr; gap:4px; margin-top:4px; }
 .nxp-pot button{ position:relative; display:flex; align-items:center; justify-content:center;
   gap:4px; height:34px; border-radius:6px; font:inherit; cursor:pointer;
@@ -938,6 +963,14 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
       <i id="nxButinNom"></i>
       <div class="nxp-cases" id="nxButinCases"></div>
     </div>
+    <!-- ---- LA PORTE SOUS NOS PIEDS ----
+         Elle n'existe que tant qu'on se tient dessus. Sous le sac au sol :
+         quand les deux sont là, on ramasse d'abord et l'on entre ensuite. -->
+    <div class="nxp-porte" id="nxPorte" hidden>
+      <i id="nxPorteNom"></i>
+      <button class="nxp-porte-b" id="nxPorteBtn" type="button">ENTER</button>
+      <em id="nxPorteTemps"></em>
+    </div>
     <!-- Les potions ont leurs propres places : elles s'empilent, le sac non. -->
     <div class="nxp-pot" id="nxPotions"></div>
     <div class="nxp-gens" id="nxGens"></div>
@@ -1039,7 +1072,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
   </div>
 </div>
 
-<script src="nexus.js?v=20260821a" defer></script>
+<script src="nexus.js?v=20260821b" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

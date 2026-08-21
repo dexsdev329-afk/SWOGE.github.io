@@ -1523,6 +1523,14 @@
   /* Les zones marquees au sol, en attente de frapper. */
   var ZONES_C = [];
   var IMG_ANNONCE = null, IMG_ONDE = null;
+  /* ---- LE CERCLE DU DONJON EST UN AUTRE CERCLE ----
+   * Meme forme, meme nombre d'images, autre metal. Ce n'est pas de la
+   * decoration : le cercle qui previent est la seule chose qu'on regarde
+   * pendant la seconde et demie ou l'on decide de partir, et un joueur qui a
+   * appris a lire celui de la lave doit sentir qu'il n'est plus dans la lave.
+   * Deux planches plutot qu'une teinte : une couleur passee par-dessus aurait
+   * demande un canevas de plus par image. */
+  var IMG_ANNONCE_DJ = null, IMG_ONDE_DJ = null;
   var ANNONCE_CADRES = 4, ONDE_CADRES = 4, ONDE_DUREE = 0.55;
   var IMG_SACS = null, IMG_OBST = null, IMG_MUR = null, IMG_TEMPLE = null;
   var IMG_MUR_DJ = null, IMG_PORTE = null;
@@ -1655,6 +1663,8 @@
     if (!IMG_COFFRE) { IMG_COFFRE = new Image(); IMG_COFFRE.src = 'img/nexus/tiles/obj_coffre_garde.webp'; }
     if (!IMG_ANNONCE) { IMG_ANNONCE = new Image(); IMG_ANNONCE.src = 'img/nexus/effets/annonce.webp'; }
     if (!IMG_ONDE) { IMG_ONDE = new Image(); IMG_ONDE.src = 'img/nexus/effets/onde.webp'; }
+    if (!IMG_ANNONCE_DJ) { IMG_ANNONCE_DJ = new Image(); IMG_ANNONCE_DJ.src = 'img/nexus/effets/annonce_donjon.webp'; }
+    if (!IMG_ONDE_DJ) { IMG_ONDE_DJ = new Image(); IMG_ONDE_DJ.src = 'img/nexus/effets/onde_donjon.webp'; }
   }
 
   /* ---- L'AURA DE RAFALE ----
@@ -1939,14 +1949,36 @@
    * plus PETITE des quatre images. Toutes les autres deborderont, et aucune
    * ne mentira. Le chiffre est lu dans le fichier et pas ecrit ici : le jour
    * ou l'on redessine l'annonce, l'echelle suit toute seule. */
-  var ANNONCE_PLEIN = 0;
+  /* Un plein PAR PLANCHE. Il etait garde dans un seul nombre, ce qui allait
+     tant qu'il n'y avait qu'un cercle : la deuxieme planche aurait recu la
+     mesure de la premiere, et son cercle serait sorti a la mauvaise taille —
+     donc aurait promis un rayon que le serveur n'applique pas. */
+  var ANNONCE_PLEIN = {};
+
+  /* La planche du cercle, ici ou dans un donjon. On retombe sur celle du monde
+     tant que l'autre n'est pas chargee : mieux vaut le mauvais metal qu'aucun
+     cercle — un coup de zone qui frappe sans avoir ete annonce n'est pas
+     difficile, il est arbitraire. */
+  function plancheAnnonce() {
+    return (DONJON_C && IMG_ANNONCE_DJ && IMG_ANNONCE_DJ.complete &&
+            IMG_ANNONCE_DJ.naturalWidth)
+      ? { img: IMG_ANNONCE_DJ, cle: 'donjon' }
+      : { img: IMG_ANNONCE, cle: 'monde' };
+  }
+  function plancheOnde() {
+    return (DONJON_C && IMG_ONDE_DJ && IMG_ONDE_DJ.complete && IMG_ONDE_DJ.naturalWidth)
+      ? IMG_ONDE_DJ : IMG_ONDE;
+  }
   /* Si la mesure est impossible (canvas souille), on prend une valeur assez
      BASSE pour que le cercle peint deborde quoi qu'il arrive. Se tromper vers
      le grand fait sortir trop tot ; se tromper vers le petit tue. */
   var ANNONCE_PLEIN_SECOURS = 0.85;
-  function pleinDeLAnnonce() {
-    if (ANNONCE_PLEIN) return ANNONCE_PLEIN;
-    var cw = IMG_ANNONCE.naturalWidth / ANNONCE_CADRES, ch = IMG_ANNONCE.naturalHeight;
+  function pleinDeLAnnonce(planche, cle) {
+    var img = planche || IMG_ANNONCE;
+    cle = cle || 'monde';
+    if (!img || !img.naturalWidth) return ANNONCE_PLEIN_SECOURS;
+    if (ANNONCE_PLEIN[cle]) return ANNONCE_PLEIN[cle];
+    var cw = img.naturalWidth / ANNONCE_CADRES, ch = img.naturalHeight;
     var demi = Math.min(cw, ch) / 2, mini = 0;
     try {
       var cv = document.createElement('canvas');
@@ -1954,7 +1986,7 @@
       var c2 = cv.getContext('2d', { willReadFrequently: true });
       for (var k = 0; k < ANNONCE_CADRES; k++) {
         c2.clearRect(0, 0, cw, ch);
-        c2.drawImage(IMG_ANNONCE, k * cw, 0, cw, ch, 0, 0, cw, ch);
+        c2.drawImage(img, k * cw, 0, cw, ch, 0, 0, cw, ch);
         var d = c2.getImageData(0, 0, cw, ch).data, loin = 0;
         for (var y = 0; y < ch; y++) {
           for (var x = 0; x < cw; x++) {
@@ -1969,21 +2001,23 @@
         if (loin > 0 && (!mini || loin < mini)) mini = loin;
       }
     } catch (e) { mini = 0; }
-    ANNONCE_PLEIN = mini > 0 ? mini / demi : ANNONCE_PLEIN_SECOURS;
-    return ANNONCE_PLEIN;
+    ANNONCE_PLEIN[cle] = mini > 0 ? mini / demi : ANNONCE_PLEIN_SECOURS;
+    return ANNONCE_PLEIN[cle];
   }
 
   function dessineZones() {
     if (!ZONES_C.length) return;
-    if (!IMG_ANNONCE || !IMG_ANNONCE.complete || !IMG_ANNONCE.naturalWidth) return;
-    var cw = IMG_ANNONCE.naturalWidth / ANNONCE_CADRES, ch = IMG_ANNONCE.naturalHeight;
-    var plein = pleinDeLAnnonce();
+    var pl = plancheAnnonce();
+    var img = pl.img;
+    if (!img || !img.complete || !img.naturalWidth) return;
+    var cw = img.naturalWidth / ANNONCE_CADRES, ch = img.naturalHeight;
+    var plein = pleinDeLAnnonce(img, pl.cle);
     for (var i = 0; i < ZONES_C.length; i++) {
       var z = ZONES_C[i];
       var av = z.d ? Math.max(0, Math.min(1, 1 - z.t / z.d)) : 1;
       var c = Math.min(ANNONCE_CADRES - 1, Math.floor(av * ANNONCE_CADRES));
       var T = (z.r * 2) / plein;
-      ctx.drawImage(IMG_ANNONCE, c * cw, 0, cw, ch, z.x - T / 2, z.y - T / 2, T, T);
+      ctx.drawImage(img, c * cw, 0, cw, ch, z.x - T / 2, z.y - T / 2, T, T);
     }
   }
 
@@ -1995,9 +2029,10 @@
   var ONDES = [];
   function peintOndes(dt) {
     if (!ONDES.length) return;
-    var pret = IMG_ONDE && IMG_ONDE.complete && IMG_ONDE.naturalWidth;
-    var cw = pret ? IMG_ONDE.naturalWidth / ONDE_CADRES : 0;
-    var ch = pret ? IMG_ONDE.naturalHeight : 0;
+    var img = plancheOnde();
+    var pret = img && img.complete && img.naturalWidth;
+    var cw = pret ? img.naturalWidth / ONDE_CADRES : 0;
+    var ch = pret ? img.naturalHeight : 0;
     for (var i = ONDES.length - 1; i >= 0; i--) {
       var o = ONDES[i];
       o.vie -= dt;
@@ -2009,7 +2044,7 @@
       ctx.save();
       /* Le dernier quart s'efface : c'est la cinquieme image, faite en alpha. */
       ctx.globalAlpha = av > 0.75 ? Math.max(0, (1 - av) * 4) : 1;
-      ctx.drawImage(IMG_ONDE, c * cw, 0, cw, ch, o.x - T / 2, o.y - T / 2, T, T);
+      ctx.drawImage(img, c * cw, 0, cw, ch, o.x - T / 2, o.y - T / 2, T, T);
       ctx.restore();
     }
   }

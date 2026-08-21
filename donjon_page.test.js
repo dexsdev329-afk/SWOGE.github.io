@@ -343,7 +343,7 @@ process.on('unhandledRejection', (e) => {
    * plus a couvrir. C'est exactement ce que fait un joueur devant un rocher.
    * `ou` rend la cible : elle change entre le monde et le donjon. */
   const versLaPorte = async (ou, tours) => {
-    let dernier = null, sansProgres = 0;
+    let dernier = null, detour = 0, sens = 1;
     for (let i = 0; i < tours; i++) {
       const vu = await p.evaluate(() => {
         const e = document.getElementById('nxPorte');
@@ -355,17 +355,28 @@ process.on('unhandledRejection', (e) => {
       const cible = ou.cible();
       if (!cible) return 0;
       const dx = cible.x - j.x, dy = cible.y - j.y;
-      /* Bloque : on pousse sur l'autre axe pour se degager, comme on
-         contournerait un rocher. */
+      /* ---- ET QUAND CA NE BOUGE PLUS ----
+       * Un rocher, ou le mur d'une salle gardee. Pousser UN pas sur l'autre axe
+       * ne suffit pas : au pas suivant l'axe dominant redevient le meme, on
+       * revient se coller, et l'on fait du sur-place pendant quatre-vingt-dix
+       * tours. On s'engage donc sur le cote pour cinq pas d'affilee — c'est un
+       * contournement, pas une hesitation — et l'on change de cote si ca
+       * recommence. C'est ce que fait un joueur devant un obstacle. */
       const bloque = dernier !== null &&
                      Math.abs(dernier.x - j.x) < 2 && Math.abs(dernier.y - j.y) < 2;
-      sansProgres = bloque ? sansProgres + 1 : 0;
       dernier = { x: j.x, y: j.y };
-      const horizontal = (sansProgres > 1)
-        ? Math.abs(dx) <= Math.abs(dy)
-        : Math.abs(dx) > Math.abs(dy);
-      const t = horizontal ? (dx > 0 ? 'ArrowRight' : 'ArrowLeft')
-                           : (dy > 0 ? 'ArrowDown' : 'ArrowUp');
+      if (bloque && detour <= 0) { detour = 5; sens = -sens; }
+      const horizontal = detour > 0 ? Math.abs(dx) <= Math.abs(dy)
+                                    : Math.abs(dx) > Math.abs(dy);
+      let t;
+      if (detour > 0) {
+        detour--;
+        t = horizontal ? (sens > 0 ? 'ArrowRight' : 'ArrowLeft')
+                       : (sens > 0 ? 'ArrowDown' : 'ArrowUp');
+      } else {
+        t = horizontal ? (dx > 0 ? 'ArrowRight' : 'ArrowLeft')
+                       : (dy > 0 ? 'ArrowDown' : 'ArrowUp');
+      }
       await p.keyboard.down(t);
       await p.waitForTimeout(140);
       await p.keyboard.up(t);
@@ -391,7 +402,10 @@ process.on('unhandledRejection', (e) => {
 
   /* ================== 4. ON ENTRE ================== */
   console.log('\n-- on entre --');
-  await p.click('#nxPorteBtn');
+  /* Le clic ne PEND pas : si le bouton n'est pas la, on veut lire « le bouton
+     n'est pas apparu » et la suite, pas trente secondes d'attente muette suivies
+     d'un essai coupe au milieu. */
+  await p.click('#nxPorteBtn', { timeout: 5000 }).catch(() => {});
   await p.waitForTimeout(2000);
   const dedans = await p.evaluate(() => {
     const s = window.__s[0];
@@ -453,7 +467,7 @@ process.on('unhandledRejection', (e) => {
   ok(surSortie.texte === 'EXIT', `et elle dit EXIT (« ${surSortie.texte} »)`);
   ok(surSortie.vert, 'et elle n\'a pas la couleur d\'une entree');
 
-  await p.click('#nxPorteBtn');
+  await p.click('#nxPorteBtn', { timeout: 5000 }).catch(() => {});
   await p.waitForTimeout(2000);
   const dehors = await p.evaluate(() => {
     const s = window.__s[0];
@@ -494,7 +508,54 @@ process.on('unhandledRejection', (e) => {
   ok(!repropose.visible || repropose.texte === 'ENTER',
      `de retour sur la porte d'aller, le bouton dit ENTER (« ${repropose.texte} »)`);
 
-  /* ================== 6. RIEN NE MANQUE ================== */
+  /* ================== 6. LE CERCLE DU DONJON EST UN AUTRE CERCLE ==================
+   *
+   * Le cercle qui previent est la seule chose qu'on regarde pendant la seconde
+   * et demie ou l'on decide de partir. Le Foundry Brute en pose un, et il ne
+   * doit pas ressembler a celui de la lave — sinon le donjon n'est qu'une carte
+   * de plus avec les memes signaux.
+   * On verifie que la page a DEMANDE les deux planches en entrant : provoquer le
+   * coup demanderait de traverser trois salles pleines et de survivre, ce qui
+   * mesurerait la difficulte du donjon plutot que le cablage de son dessin. */
+  console.log('\n-- le cercle du donjon --');
+  ok(servis.some((u) => /annonce_donjon\.webp$/.test(u)),
+     'la page a demande le cercle d\'annonce du donjon');
+  ok(servis.some((u) => /onde_donjon\.webp$/.test(u)),
+     'et l\'onde qui suit le coup');
+  /* ET LES DEUX PLANCHES ONT LA MEME DECOUPE QUE CELLES DU MONDE. Un nombre
+     d'images different ferait lire la troisieme la ou il y en a quatre : le
+     cercle se remplirait par a-coups, ou sauterait la derniere image — celle
+     qui dit « ca frappe maintenant ». */
+  const geo = (f) => {
+    const b = fs.readFileSync(path.join(SITE, f));
+    /* Un WebP porte sa taille dans son entete VP8/VP8L. Plutot que d'ajouter une
+       dependance pour deux nombres, on lit la paire que le format expose — et si
+       la lecture echoue on le DIT, au lieu de laisser passer. */
+    const i = b.indexOf('VP8', 0, 'ascii');
+    if (i < 0) return null;
+    const t = b.toString('ascii', i, i + 4);
+    if (t === 'VP8 ') return { w: b.readUInt16LE(i + 14) & 0x3fff,
+                               h: b.readUInt16LE(i + 16) & 0x3fff };
+    if (t === 'VP8L') {
+      const n = b.readUInt32LE(i + 9);
+      return { w: (n & 0x3fff) + 1, h: ((n >> 14) & 0x3fff) + 1 };
+    }
+    if (t === 'VP8X') return { w: b.readUIntLE(i + 12, 3) + 1,
+                               h: b.readUIntLE(i + 15, 3) + 1 };
+    return null;
+  };
+  for (const [a, b] of [['img/nexus/effets/annonce.webp', 'img/nexus/effets/annonce_donjon.webp'],
+                        ['img/nexus/effets/onde.webp', 'img/nexus/effets/onde_donjon.webp']]) {
+    const ga = geo(a), gb = geo(b);
+    ok(ga && gb, `${b.split('/').pop()} se lit`);
+    if (ga && gb) {
+      ok(ga.w / ga.h === gb.w / gb.h,
+         `${b.split('/').pop()} a la meme decoupe que ${a.split('/').pop()} ` +
+         `(${gb.w}x${gb.h} contre ${ga.w}x${ga.h})`);
+    }
+  }
+
+  /* ================== 7. RIEN NE MANQUE ================== */
   console.log('\n-- les images --');
   const perdus = manquants.filter((u) => /\.webp$/.test(u));
   ok(perdus.length === 0, 'aucune image demandee n\'est absente' +

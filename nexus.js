@@ -1926,9 +1926,12 @@
   var MONDE = { w: CARTE.cols * TUILE, h: CARTE.rows * TUILE };
   var CENTRE = { x: MONDE.w / 2, y: MONDE.h / 2 - 32 };
 
-  var TUILES = { herbe: new Image(), chemin: new Image() };
+  var TUILES = { herbe: new Image(), chemin: new Image(), ferme: new Image() };
   TUILES.herbe.src = 'img/nexus/tiles/ground_grass.webp';
   TUILES.chemin.src = 'img/nexus/tiles/ground_path.webp';
+  /* La terre battue de l'enclos. Un troisieme sol, et pas un chemin teinte :
+     c'est ce qui dit ou l'enclos COMMENCE, avant meme qu'on voie la barriere. */
+  TUILES.ferme.src = 'img/nexus/tiles/ground_ferme.webp';
 
   /* Chaque lieu : son image, sa taille affichee, son point d'ancrage (les
      pieds, pas le centre — c'est ce qui permet de le trier avec le joueur),
@@ -1983,11 +1986,13 @@
      * AU-DESSUS de son point d'ancrage, et quiconque s'y tiendrait serait
      * recouvert par elle. Marcher dedans demandera une cloture en pieces, pas
      * une cloture peinte. */
-    { cle: 'petworld', src: 'img/nexus/tiles/obj_petworld.webp',
-      x: CENTRE.x + 780, y: CENTRE.y + 800, larg: 500, haut: 752,
-      rayon: 160, nom: 'Petworld', bientot: 1 },
+    /* La grange se pose SUR le bord haut de l'enclos : c'est le fond de la
+       cour, et la barriere passe derriere elle. */
+    { cle: 'petworld', src: 'img/nexus/tiles/obj_grange.webp',
+      x: CENTRE.x + 840, y: CENTRE.y + 322, larg: 420, haut: 334,
+      rayon: 150, nom: 'Petworld', bientot: 1 },
     { cle: 'petworldEnseigne', src: 'img/nexus/tiles/obj_petworld_sign.webp',
-      x: CENTRE.x + 460, y: CENTRE.y + 720, larg: 140, haut: 209 },
+      x: CENTRE.x + 400, y: CENTRE.y + 700, larg: 140, haut: 209 },
     { cle: 'casino', src: 'img/nexus/tiles/obj_bj_table.webp',
       x: CENTRE.x, y: CENTRE.y + 470, larg: 300, haut: 251,
       rayon: 120, nom: 'the blackjack table' },
@@ -4468,8 +4473,8 @@
      * et le chemin etait simplement invisible. Les bornes ci-dessous encadrent
      * des centres de tuiles (…, 1216, 1344, 1472, 1600, …), pas des jolis
      * chiffres ronds. */
-    { x0: CENTRE.x, y0: CENTRE.y + 260, x1: CENTRE.x + 780, y1: CENTRE.y + 425 },
-    { x0: CENTRE.x + 620, y0: CENTRE.y + 300, x1: CENTRE.x + 840, y1: CENTRE.y + 880 },
+    { x0: CENTRE.x - 105, y0: CENTRE.y + 470, x1: CENTRE.x + 105, y1: CENTRE.y + 830 },
+    { x0: CENTRE.x + 105, y0: CENTRE.y + 700, x1: CENTRE.x + 940, y1: CENTRE.y + 830 },
   ];
   function estChemin(px, py) {
     var dx = px - CENTRE.x, dy = py - CENTRE.y;
@@ -4479,6 +4484,131 @@
       if (px >= c.x0 && px <= c.x1 && py >= c.y0 && py <= c.y1) return true;
     }
     return false;
+  }
+
+  /* ================== PETWORLD : UN ENCLOS OU L'ON MARCHE ==================
+   *
+   * La premiere version etait UNE image : grange, cour, barriere et animaux
+   * dans le meme dessin. Elle etait belle et on ne pouvait pas y entrer — une
+   * image occupe l'espace AU-DESSUS de son point d'ancrage, et quiconque se
+   * serait tenu dans la cour aurait ete recouvert par elle.
+   *
+   * L'enclos est donc un LIEU, pas un dessin : un rectangle de terre battue,
+   * une barriere posee piece par piece autour, un portail au sud, et des
+   * meubles a l'interieur. Chaque piece se trie par les pieds comme le reste
+   * du Nexus — on passe donc devant la barriere du bas et derriere celle du
+   * haut, ce qui est exactement ce qu'on attend en y entrant.
+   *
+   * ---- POURQUOI LA BARRIERE ARRETE ----
+   *
+   * Sans collision, on traverserait la cloture partout et le portail ne
+   * servirait a rien : une barriere qu'on franchit n'est plus une barriere,
+   * c'est un dessin de barriere. Cinq rectangles minces — les quatre cotes,
+   * le bas coupe en deux par l'ouverture — et l'on repousse par le cote le
+   * plus proche. On ne peut donc entrer que par le portail.
+   */
+  /* ---- IL FAUT DE LA PLACE DEVANT LE PORTAIL ----
+   * La premiere pose laissait cent vingt unites entre le portail et le bord
+   * de la carte : on arrivait dos au vide, colle contre la borne du monde, et
+   * il fallait se tortiller pour se presenter en face. Une entree doit avoir
+   * un parvis, sinon elle se rate. */
+  var FERME = {
+    x0: CENTRE.x + 490, y0: CENTRE.y + 322,
+    x1: CENTRE.x + 1190, y1: CENTRE.y + 722,
+    porteX: CENTRE.x + 840, porteL: 176,
+  };
+  /* Les pieces, a l'echelle du monde. Les rapports viennent des dessins :
+     131x129 pour la lisse horizontale, 73x170 pour la verticale. On garde
+     leurs proportions — une barriere ecrasee se voit tout de suite. */
+  var CL = {
+    h:     { src: 'img/nexus/tiles/obj_cloture_h.webp',     larg: 112, haut: 110 },
+    v:     { src: 'img/nexus/tiles/obj_cloture_v.webp',     larg: 62,  haut: 145 },
+    coin:  { src: 'img/nexus/tiles/obj_cloture_coin.webp',  larg: 122, haut: 128 },
+    porte: { src: 'img/nexus/tiles/obj_cloture_porte.webp', larg: 166, haut: 117 },
+  };
+  /* Les rapports des dessins. Une piece de barriere se dessine a la taille du
+     PAS, pas a une taille choisie : un pas plus grand que la piece laisse un
+     trou a chaque raccord, et une barriere trouee n'arrete visiblement rien.
+     C'est donc le pas qui commande, et la largeur suit le rapport. */
+  var CL_RH = 131 / 129, CL_RV = 73 / 170;
+  Object.keys(CL).forEach(function (k) { CL[k].img = new Image(); CL[k].img.src = CL[k].src; });
+  var IMG_FERME_DECOR = new Image();
+  IMG_FERME_DECOR.src = 'img/nexus/tiles/ferme_decor.webp';
+
+  /* Les meubles de la cour. Places a la main, et ECARTES du portail : un
+     abreuvoir en travers de l'entree se contourne mal quand on arrive au
+     doigt. Les colonnes suivent la planche : abreuvoir, foin, niche,
+     mangeoire. */
+  var FERME_MEUBLES = [
+    { col: 0, x: FERME.x0 + 105, y: FERME.y1 - 60,  taille: 132 },
+    { col: 1, x: FERME.x1 - 105, y: FERME.y1 - 80,  taille: 140 },
+    { col: 2, x: FERME.x1 - 120, y: FERME.y0 + 190, taille: 138 },
+    { col: 3, x: FERME.x0 + 120, y: FERME.y0 + 215, taille: 120 },
+  ];
+
+  /* ---- LA BARRIERE, PIECE PAR PIECE ----
+   * Construite UNE fois : les positions ne bougent jamais, et les recalculer
+   * a chaque image reviendrait a refaire soixante divisions par tour pour
+   * obtenir le meme resultat. La grange occupe le milieu du bord haut : la
+   * barriere s'arrete de part et d'autre au lieu de lui passer au travers. */
+  var CLOTURE = (function () {
+    var out = [];
+    var gauchePorte = FERME.porteX - FERME.porteL / 2;
+    var droitePorte = FERME.porteX + FERME.porteL / 2;
+    var grangeG = FERME.porteX - 210, grangeD = FERME.porteX + 210;
+    function remplitH(x0, x1, y) {
+      var n = Math.max(0, Math.round((x1 - x0) / CL.h.larg));
+      if (!n) return;
+      var pas = (x1 - x0) / n;
+      for (var i = 0; i < n; i++) {
+        out.push({ p: CL.h, x: x0 + pas * (i + 0.5), y: y,
+                   larg: pas, haut: pas / CL_RH });
+      }
+    }
+    function remplitV(y0, y1, x) {
+      var n = Math.max(0, Math.round((y1 - y0) / CL.v.haut));
+      if (!n) return;
+      var pas = (y1 - y0) / n;
+      for (var i = 0; i < n; i++) {
+        out.push({ p: CL.v, x: x, y: y0 + pas * (i + 1),
+                   larg: pas * CL_RV, haut: pas });
+      }
+    }
+    remplitH(FERME.x0, grangeG, FERME.y0);
+    remplitH(grangeD, FERME.x1, FERME.y0);
+    remplitH(FERME.x0, gauchePorte, FERME.y1);
+    remplitH(droitePorte, FERME.x1, FERME.y1);
+    remplitV(FERME.y0, FERME.y1, FERME.x0);
+    remplitV(FERME.y0, FERME.y1, FERME.x1);
+    out.push({ p: CL.porte, x: FERME.porteX, y: FERME.y1 });
+    /* Les angles par-dessus les bouts de lisse : ils portent le poteau qui
+       ferme les deux directions d'un coup. */
+    out.push({ p: CL.coin, x: FERME.x0, y: FERME.y0 });
+    out.push({ p: CL.coin, x: FERME.x1, y: FERME.y0 });
+    out.push({ p: CL.coin, x: FERME.x0, y: FERME.y1 });
+    out.push({ p: CL.coin, x: FERME.x1, y: FERME.y1 });
+    return out;
+  })();
+
+  /* Ce qui arrete le pas. Assez epais pour qu'on ne traverse pas en une
+     image a pleine vitesse, assez mince pour ne pas voler de terrain a la
+     cour. */
+  var CL_EP = 24;
+  var BARRIERES = (function () {
+    var f = FERME, g = f.porteX - f.porteL / 2, d = f.porteX + f.porteL / 2;
+    return [
+      { x0: f.x0 - CL_EP, y0: f.y0 - CL_EP, x1: f.x1 + CL_EP, y1: f.y0 + CL_EP },
+      { x0: f.x0 - CL_EP, y0: f.y0 - CL_EP, x1: f.x0 + CL_EP, y1: f.y1 + CL_EP },
+      { x0: f.x1 - CL_EP, y0: f.y0 - CL_EP, x1: f.x1 + CL_EP, y1: f.y1 + CL_EP },
+      { x0: f.x0 - CL_EP, y0: f.y1 - CL_EP, x1: g,            y1: f.y1 + CL_EP },
+      { x0: d,            y0: f.y1 - CL_EP, x1: f.x1 + CL_EP, y1: f.y1 + CL_EP },
+    ];
+  })();
+
+  /** Le sol sous un point : la terre de l'enclos, le dallage, ou l'herbe. */
+  function solEn(px, py) {
+    if (px >= FERME.x0 && px <= FERME.x1 && py >= FERME.y0 && py <= FERME.y1) return TUILES.ferme;
+    return estChemin(px, py) ? TUILES.chemin : TUILES.herbe;
   }
 
   // ------------------------------------------------------- le joueur
@@ -6303,6 +6433,22 @@
       joueur.y = (f.y - COL_FONT.dy) + fdy * fk;
     }
 
+    /* ---- LA BARRIERE DE L'ENCLOS ----
+     * On repousse par le cote le PLUS PROCHE : quelqu'un qui arrive du sud
+     * ressort par le sud, et l'on ne se retrouve jamais projete de l'autre
+     * cote de la cloture pour avoir marche dessus de travers. */
+    for (var bi = 0; bi < BARRIERES.length; bi++) {
+      var b = BARRIERES[bi];
+      if (joueur.x <= b.x0 || joueur.x >= b.x1 || joueur.y <= b.y0 || joueur.y >= b.y1) continue;
+      var pg = joueur.x - b.x0, pd = b.x1 - joueur.x;
+      var ph = joueur.y - b.y0, pb = b.y1 - joueur.y;
+      var mini2 = Math.min(pg, pd, ph, pb);
+      if (mini2 === pg) joueur.x = b.x0;
+      else if (mini2 === pd) joueur.x = b.x1;
+      else if (mini2 === ph) joueur.y = b.y0;
+      else joueur.y = b.y1;
+    }
+
     // le saut, en cadres, independamment du deplacement
     if (saut.en_cours) {
       saut.chrono += dt;
@@ -6804,7 +6950,7 @@
     for (var r = r0; r <= r1; r++) {
       for (var c = c0; c <= c1; c++) {
         var cx = c * TUILE + TUILE / 2, cy = r * TUILE + TUILE / 2;
-        var t = estChemin(cx, cy) ? TUILES.chemin : TUILES.herbe;
+        var t = solEn(cx, cy);
         if (t.complete) ctx.drawImage(t, c * TUILE, r * TUILE, TUILE, TUILE);
       }
     }
@@ -6822,6 +6968,28 @@
     /* Les sacs poses dans le hall se trient avec les vivants, comme dans le
        monde de combat : un sac pose devant quelqu'un doit passer devant lui.
        Meme fonction de dessin — c'est le meme sac, il doit se reconnaitre. */
+    /* ---- LA CLOTURE ET LES MEUBLES DE L'ENCLOS ----
+     * Dans la MEME pile que les vivants : on passe devant la barriere du bas
+     * et derriere celle du haut, ce qui est exactement ce qu'on attend en
+     * entrant dans une cour. Les dessiner a part, avant ou apres tout le
+     * monde, aurait donne un joueur soit toujours devant, soit toujours
+     * derriere — et l'enclos aurait cesse d'etre un lieu. */
+    CLOTURE.forEach(function (c) {
+      pile.push({ y: c.y, dessine: function () {
+        if (!c.p.img.complete || !c.p.img.naturalWidth) return;
+        var L = c.larg || c.p.larg, H = c.haut || c.p.haut;
+        ctx.drawImage(c.p.img, c.x - L / 2, c.y - H, L, H);
+      } });
+    });
+    if (IMG_FERME_DECOR.complete && IMG_FERME_DECOR.naturalWidth) {
+      var cadreM = IMG_FERME_DECOR.naturalHeight;   // quatre cases carrees
+      FERME_MEUBLES.forEach(function (m) {
+        pile.push({ y: m.y, dessine: function () {
+          ctx.drawImage(IMG_FERME_DECOR, m.col * cadreM, 0, cadreM, cadreM,
+                        m.x - m.taille / 2, m.y - m.taille, m.taille, m.taille);
+        } });
+      });
+    }
     SACS_C.forEach(function (sc) {
       pile.push({ y: sc.y, dessine: function () { dessineSac(sc); } });
     });
@@ -7317,12 +7485,16 @@
     g.fillStyle = '#000'; g.fillRect(0, 0, MINI, MINI);
     g.fillStyle = '#24401c'; g.fillRect(ox, oy, MONDE.w * e, MONDE.h * e);
     // les chemins, echantillonnes a la tuile
-    g.fillStyle = '#8f8f88';
     for (var r = 0; r < CARTE.rows; r++) {
       for (var c2 = 0; c2 < CARTE.cols; c2++) {
         var cx = c2 * TUILE + TUILE / 2, cy = r * TUILE + TUILE / 2;
-        if (estChemin(cx, cy)) g.fillRect(ox + c2 * TUILE * e, oy + r * TUILE * e,
-                                          Math.ceil(TUILE * e), Math.ceil(TUILE * e));
+        var t = solEn(cx, cy);
+        if (t === TUILES.herbe) continue;
+        /* La cour a sa couleur : sur une carte de cent vingt pixels, deux
+           gris identiques ne distinguent plus un enclos d'un carrefour. */
+        g.fillStyle = t === TUILES.ferme ? '#b58a4a' : '#8f8f88';
+        g.fillRect(ox + c2 * TUILE * e, oy + r * TUILE * e,
+                   Math.ceil(TUILE * e), Math.ceil(TUILE * e));
       }
     }
     // les lieux, chacun de sa couleur

@@ -3490,7 +3490,20 @@
     var av = Math.max(0, Math.min(1, (s.ouvre || 0) / COFFRE_OUVERTURE));
     var col = Math.min(COFFRE_CADRES - 1, Math.floor(av * COFFRE_CADRES));
     var T = COFFRE_H;
-    /* ---- IL A SA PLACE, ET ELLE SE VOIT ----
+    /* ---- LA LUEUR D'ABORD, LE SOCLE ENSUITE ----
+     *
+     * Ouvert, le coffre fait de la lumiere : c'est ce qui le rend visible a
+     * travers la piece une fois le combat fini, sinon on cherche le sac au
+     * sol. Elle etait peinte APRES le socle et le lavait — sur la pierre noire
+     * du temple, un jaune a trente pour cent d'opacite vire a l'olive, et
+     * l'ensemble se lisait comme une tache sale sous le coffre plutot que
+     * comme un tresor qui brille.
+     * Elle passe donc derriere, et elle a maigri : une lueur qui deborde du
+     * socle n'eclaire plus le coffre, elle le cerne.
+     */
+    if (av > 0) halo(s.x, s.y - T * 0.34, T * 0.40, '#FFD98A', 0.06 + 0.16 * av);
+
+    /* ---- ET IL A SA PLACE, QUI SE VOIT ----
      *
      * Le coffre etait pose a meme la dalle du temple, et deux choses le
      * faisaient flotter :
@@ -3500,13 +3513,11 @@
      *    soit la facon dont on carrele, une ligne d'or finit par traverser le
      *    coffre — le decaler ne peut pas resoudre un motif qui se repete plus
      *    souvent que l'objet n'est large.
-     *  - SON DESSIN PORTE SA PROPRE MOTTE DE MOUSSE, verte et claire. Sur
-     *    l'herbe elle passe ; sur la pierre noire du temple, elle se lit comme
-     *    un objet pose sur autre chose.
+     *  - IL N'AVAIT PAS D'ASSISE. Rien ne disait ou il touche le sol.
      *
      * On lui donne donc un SOCLE : un disque de pierre sombre cercle d'or, de
      * la meme langue que le sol de la salle. Il masque le quadrillage a
-     * l'endroit precis ou il derangeait, il assoit la mousse, et surtout il
+     * l'endroit precis ou il derangeait, il assoit le coffre, et surtout il
      * DIT quelque chose — cet endroit-la est celui du coffre, c'est pour lui
      * qu'on est entre. Une ombre portee seule aurait cache le motif sans rien
      * ajouter.
@@ -3533,9 +3544,6 @@
     ctx.lineWidth = 1;
     ctx.stroke();
     ctx.restore();
-    /* Ouvert, il fait de la lumiere. C'est ce qui le rend visible a travers la
-       piece une fois le combat fini — sinon on cherche le sac au sol. */
-    if (av > 0) halo(s.x, s.y - T * 0.30, T * 0.55, '#FFC53D', 0.10 + 0.22 * av);
     /* Comme les rochers : on cale le BAS REEL, pas le bas de la case. Les
        trois images du coffre ne s'arretent pas a la meme ligne — cale sur la
        case, il sauterait de sept pixels en s'ouvrant. */
@@ -8276,11 +8284,32 @@
   /* Le portail du coffre : le MEME dessin que celui du Nexus, en plus petit.
      Reutiliser l'image plutot que d'en inventer une seconde fait qu'un joueur
      reconnait la sortie sans qu'on la lui explique. */
+  /* ---- LE PORTAIL DE LA SALLE DU COFFRE ----
+   *
+   * Il REUTILISE l'image du portail du Nexus, et c'est voulu : reconnaitre la
+   * sortie sans qu'on la lui explique vaut mieux qu'un second dessin.
+   *
+   * Mais reutiliser une image veut dire en suivre les changements. Le jour ou
+   * le portail du hall est devenu une PLANCHE de quatre images, cette ligne a
+   * continue de la poser en entier : quatre portails ecrases cote a cote a la
+   * place d'un. Rien n'a plante — le dessin ne sait pas qu'il est devenu une
+   * planche, et c'est exactement pour ca que le nombre de cases doit venir du
+   * LIEU (`l.cadres`) et non d'une supposition.
+   */
   function dessinePortail() {
     var p = SALLE.portail;
     halo(p.x, p.y, p.r, '#8FD4FF', 0.24);
-    var img = PORTAIL_L && PORTAIL_L.img;
-    if (img && img.complete) ctx.drawImage(img, p.x - p.larg / 2, p.y - p.haut, p.larg, p.haut);
+    var l = PORTAIL_L;
+    var img = l && l.img;
+    if (!img || !img.complete || !img.naturalWidth) return;
+    var n = Math.max(1, l.cadres || 1);
+    var cw = img.naturalWidth / n;
+    /* La meme horloge que le hall : six images par seconde. Deux compteurs
+       pour la meme porte finiraient par la montrer a deux etats differents
+       selon la piece ou l'on se tient. */
+    var k = Math.floor(performance.now() / 166) % n;
+    ctx.drawImage(img, k * cw, 0, cw, img.naturalHeight,
+                  p.x - p.larg / 2, p.y - p.haut, p.larg, p.haut);
   }
 
   /* Un monstre : la rangee de l'atlas EST sa direction, l'index sa marche.

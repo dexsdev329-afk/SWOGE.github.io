@@ -1975,6 +1975,19 @@
      * Elle ouvre son panneau sur place, comme l'etal : le blackjack existe
      * deja tout entier cote serveur, sur la MEME socket et le MEME solde. Il
      * n'y avait rien a ecrire de ce cote-la — seulement une porte. */
+    /* ---- PETWORLD, AU SUD-EST ----
+     * La ferme n'ouvre encore rien : `bientot` le DIT au lieu de laisser le
+     * joueur marcher dedans et se demander pourquoi rien ne se passe. Un lieu
+     * muet se lit comme un lieu casse.
+     * L'enclos dessine n'est pas praticable : une seule image occupe l'espace
+     * AU-DESSUS de son point d'ancrage, et quiconque s'y tiendrait serait
+     * recouvert par elle. Marcher dedans demandera une cloture en pieces, pas
+     * une cloture peinte. */
+    { cle: 'petworld', src: 'img/nexus/tiles/obj_petworld.webp',
+      x: CENTRE.x + 780, y: CENTRE.y + 800, larg: 500, haut: 752,
+      rayon: 160, nom: 'Petworld', bientot: 1 },
+    { cle: 'petworldEnseigne', src: 'img/nexus/tiles/obj_petworld_sign.webp',
+      x: CENTRE.x + 460, y: CENTRE.y + 720, larg: 140, haut: 209 },
     { cle: 'casino', src: 'img/nexus/tiles/obj_bj_table.webp',
       x: CENTRE.x, y: CENTRE.y + 470, larg: 300, haut: 251,
       rayon: 120, nom: 'the blackjack table' },
@@ -4443,6 +4456,20 @@
        destinations ont chacune la sienne, et c'est le chemin qui les annonce
        bien avant qu'on les voie. */
     { x0: CENTRE.x - 105, y0: CENTRE.y, x1: CENTRE.x + 105, y1: CENTRE.y + 470 },
+    /* ---- L'EMBRANCHEMENT VERS LA FERME ----
+     *
+     * Sans dallage, Petworld serait pose dans l'herbe et rien ne dirait qu'on
+     * peut y aller : c'est le chemin qui annonce une destination, bien avant
+     * qu'on la voie.
+     *
+     * ATTENTION A LA LARGEUR. Le sol se peint par TUILE de 128, en testant le
+     * CENTRE de chaque tuile. Un couloir de cent cinq unites de haut peut donc
+     * ne contenir aucun centre et ne rien peindre du tout — c'est arrive ici,
+     * et le chemin etait simplement invisible. Les bornes ci-dessous encadrent
+     * des centres de tuiles (…, 1216, 1344, 1472, 1600, …), pas des jolis
+     * chiffres ronds. */
+    { x0: CENTRE.x, y0: CENTRE.y + 260, x1: CENTRE.x + 780, y1: CENTRE.y + 425 },
+    { x0: CENTRE.x + 620, y0: CENTRE.y + 300, x1: CENTRE.x + 840, y1: CENTRE.y + 880 },
   ];
   function estChemin(px, py) {
     var dx = px - CENTRE.x, dy = py - CENTRE.y;
@@ -6335,6 +6362,12 @@
             if (enLigne) envoie({ type: 'realmJoin', monde: l.monde });
             l.dwell = 0; entre = true; return;
           }
+          /* Un lieu qui n'ouvre encore rien. On le laisse SUR la carte plutot
+             que d'attendre qu'il soit fini : un batiment qu'on voit se
+             construire donne une raison de revenir. Mais il doit le dire — un
+             lieu ou l'on marche et ou rien ne se passe se lit comme un lieu
+             casse, pas comme un lieu a venir. */
+          if (l.bientot) { l.dwell = 0; entre = true; return; }
           /* L'etal etait le dernier endroit du Nexus qui faisait SORTIR du
              jeu pour acheter. Il ouvre son panneau sur place.
              Le garde-fou compte : le sejour se remet a zero et RECOMMENCE a
@@ -6366,7 +6399,12 @@
     if (proche !== indiceActuel) {
       indiceActuel = proche;
       if (indiceEl) {
-        if (proche) { indiceEl.innerHTML = 'Walk in to open <b>' + proche.nom + '</b>'; indiceEl.classList.add('on'); }
+        if (proche) {
+          indiceEl.innerHTML = proche.bientot
+            ? '<b>' + proche.nom + '</b> &middot; opening soon'
+            : 'Walk in to open <b>' + proche.nom + '</b>';
+          indiceEl.classList.add('on');
+        }
         else indiceEl.classList.remove('on');
       }
     }
@@ -7288,8 +7326,10 @@
       }
     }
     // les lieux, chacun de sa couleur
-    var TEINTE = { fontaine: '#3fa9f5', portail: '#c04ce0', etal: '#e0a33c',
-                   coffre: '#d8d8d8', casino: '#2fa86a', enseigne: '#2fa86a' };
+    var TEINTE = { fontaine: '#3fa9f5', portail: '#c04ce0', portailPvp: '#e0453c',
+                   etal: '#e0a33c', coffre: '#d8d8d8', casino: '#2fa86a',
+                   enseigne: '#2fa86a', petworld: '#e07b3c',
+                   petworldEnseigne: '#e07b3c' };
     LIEUX.forEach(function (l) {
       g.fillStyle = TEINTE[l.cle] || '#fff';
       var w = Math.max(3, l.larg * e * 0.6), h = Math.max(3, l.haut * e * 0.6);

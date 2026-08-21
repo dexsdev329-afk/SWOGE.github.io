@@ -264,6 +264,32 @@
         indiceActuel = null;   // la ligne d'ambiance reprendra la main
       }
     }
+    /* ---- QUELQU'UN A OUVERT UNE PORTE ----
+     * Pas forcement nous, et pas forcement pres d'ici. On garde la position et
+     * son compte a rebours : la fleche au bord de l'ecran vit de ca. */
+    if (m.type === 'realmPortailOuvert' && SCENE === 'monde') {
+      var deja = false;
+      for (var iP = 0; iP < PORTAILS_LOIN.length; iP++) {
+        if (PORTAILS_LOIN[iP].i === m.id) { deja = true; break; }
+      }
+      if (!deja) {
+        PORTAILS_LOIN.push({ i: m.id, x: m.x, y: m.y, dj: m.donjon,
+                             nom: m.nom || null, reste: m.duree || 180 });
+      }
+      /* Celui qui l'a ouverte a deja son propre message — le sien dit
+         « derriere toi », celui-la dirait la meme chose en moins bien. */
+      if (!m.mien) {
+        joueSample('niveau', { vol: 0.42, hauteur: 0.8 });
+        flotte('A PORTAL OPENED');
+        if (indiceEl) {
+          indiceEl.innerHTML = (m.nom ? '<b>' + ech(m.nom) + '</b> opened a portal to the '
+                                      : 'A portal to the ') +
+            '<b>' + ech(m.donjon || 'dungeon') + '</b> — follow the arrow';
+          indiceEl.classList.add('on');
+          indiceActuel = null;
+        }
+      }
+    }
     /* Un refus de porte. Il arrive toujours, comme celui du pouvoir : un bouton
        qui ne repond rien se lit comme un defaut. */
     if (m.type === 'realmPorteRefus') {
@@ -464,7 +490,7 @@
       /* Mourir dans un donjon en fait sortir : le serveur a deja remis le
          joueur dans le monde ouvert. Laisser `DONJON_C` pose ici aurait garde le
          sol de pierre et le bouton « EXIT » sur l'ecran du Nexus. */
-      DONJON_C = null; TUILES_D = null; PORTAILS_C = [];
+      DONJON_C = null; TUILES_D = null; PORTAILS_C = []; PORTAILS_LOIN = [];
       PORTAIL_PIEDS = null; PORTAIL_SIGNE = ''; peintPorte();
       POUVOIR_C = null; EFFETS_P = []; PARALYSE = 0; RALENTI = 0; BRULURE = 0;
       VITESSE = 260; peintPouvoir();
@@ -1557,6 +1583,16 @@
   /* Le nom du donjon ou l'on se trouve, ou null dehors. Et la forme de son sol,
      tuile par tuile. */
   var DONJON_C = null, TUILES_D = null;
+  /* ---- LES PORTES QU'ON NE VOIT PAS ENCORE ----
+   * L'etat du monde ne porte que ce qui est a moins de 1400 unites. Une porte
+   * qui s'ouvre a l'autre bout de la carte n'y est donc PAS — et c'est bien la
+   * seule qu'on ait besoin qu'on nous montre : celle qu'on a sous les pieds,
+   * on la voit.
+   * Le serveur annonce l'ouverture a tout le monde ; on garde la position et
+   * l'on dessine une fleche au bord de l'ecran tant que la porte vit. C'est ce
+   * qui fait la difference entre « un donjon existe quelque part » et « c'est
+   * par la, il reste deux minutes ». */
+  var PORTAILS_LOIN = [];
   var MONSTRES_C = {};         // id -> etat interpole
   var TIRS_C = [];             // nos projectiles, tels que le serveur les voit
   var TIRS_M = [];             // ceux des monstres, contre nous
@@ -2490,7 +2526,7 @@
         TUILES_D[m.tuiles[iT][0] + ',' + m.tuiles[iT][1]] = 1;
       }
     }
-    PORTAILS_C = [];
+    PORTAILS_C = []; PORTAILS_LOIN = [];
     PORTAIL_PIEDS = null; PORTAIL_SIGNE = ''; peintPorte();
     moiMonde = { pv: m.moi.pv, pvMax: m.moi.pvMax, xp: 0 };
     VIE.pv = m.moi.pv; VIE.max = m.moi.pvMax;
@@ -2546,7 +2582,7 @@
     /* On abandonne le donjon avec le monde : `realmLeave` sort de la simulation
        ou l'on etait, quelle qu'elle soit. Garder `DONJON_C` pose ici aurait
        laisse le bouton « EXIT » sur l'ecran du Nexus. */
-    DONJON_C = null; TUILES_D = null; PORTAILS_C = [];
+    DONJON_C = null; TUILES_D = null; PORTAILS_C = []; PORTAILS_LOIN = [];
     PORTAIL_PIEDS = null; PORTAIL_SIGNE = ''; peintPorte();
     MONSTRES_C = {}; TIRS_C = []; TIRS_M = []; DEVINES = []; DISTANTS_M = {}; TOMBES_C = []; SACS_C = [];
     ZONES_C = []; ONDES = [];
@@ -5296,6 +5332,10 @@
       peintSoins(dt);
       ctx.restore();
       DERNIERE_CAM.x = camX; DERNIERE_CAM.y = camY; DERNIERE_CAM.z = zoom;
+      /* APRES `restore` : la boussole est a l'ecran, pas dans le monde. Et
+         apres la camera, parce qu'elle a besoin du zoom du tour en cours pour
+         savoir jusqu'ou l'on voit. */
+      peintBoussole(dt);
       peintFlottants();
       return;
     }
@@ -5660,6 +5700,78 @@
       }
       ctx.restore();
     }
+  }
+
+  /* ---- LA FLECHE VERS LA PORTE ----
+   *
+   * En coordonnees ECRAN, comme les textes qui montent : elle parle au joueur,
+   * pas au decor. C'est la seule chose qui rend le donjon TROUVABLE — sans
+   * elle, « un portail s'est ouvert » est une nouvelle sans suite, et trois
+   * minutes ne suffisent pas a fouiller une carte de sept mille sept cents
+   * unites de cote.
+   *
+   * Elle disparait quand la porte entre dans le cadre : a partir de la, on la
+   * VOIT, et une fleche qui continuerait de pointer un objet visible se lit
+   * comme un defaut d'affichage.
+   *
+   * La distance est ecrite dessus. « Par la » ne dit pas s'il faut dix
+   * secondes ou une minute et demie, et c'est exactement la question qu'on se
+   * pose avec un compte a rebours qui court.
+   */
+  function peintBoussole(dt) {
+    if (!PORTAILS_LOIN.length) return;
+    var vw = canvas.width / DPR, vh = canvas.height / DPR;
+    var libreB = Math.max(120, vw - largeurPanneau());
+    var cx = libreB / 2, cy = vh / 2;
+    /* Le rayon du cadre ou l'on pose la fleche : un ovale inscrit dans la
+       partie libre, avec de la marge — collee au bord elle serait a moitie
+       rognee sur telephone. */
+    var rx = libreB / 2 - 46, ry = vh / 2 - 46;
+    ctx.save();
+    ctx.scale(DPR, DPR);
+    for (var i = PORTAILS_LOIN.length - 1; i >= 0; i--) {
+      var q = PORTAILS_LOIN[i];
+      q.reste -= dt;
+      if (q.reste <= 0) { PORTAILS_LOIN.splice(i, 1); continue; }
+      var dx = q.x - joueur.x, dy = q.y - joueur.y;
+      var d = Math.sqrt(dx * dx + dy * dy);
+      /* Dans le cadre : on la voit pour de vrai, la fleche n'a plus rien a
+         dire. La demi-diagonale de l'ecran en unites du monde, c'est la portee
+         du regard — on la CALCULE depuis le zoom plutot que de l'ecrire, sinon
+         la fleche resterait sur un ecran large et partirait trop tot sur un
+         telephone. */
+      var z = DERNIERE_CAM.z || 1;
+      var vue = Math.sqrt((libreB / z / 2) * (libreB / z / 2) + (vh / z / 2) * (vh / z / 2));
+      if (d < vue * 0.82) continue;
+      var a = Math.atan2(dy, dx);
+      var px = cx + Math.cos(a) * rx, py = cy + Math.sin(a) * ry;
+      var bat = 0.75 + 0.25 * Math.sin(performance.now() / 380);
+      ctx.save();
+      ctx.translate(px, py);
+      ctx.globalAlpha = q.reste < 15
+        ? Math.max(0.35, 0.45 + 0.55 * Math.abs(Math.cos(performance.now() / 500)))
+        : bat;
+      ctx.save();
+      ctx.rotate(a);
+      ctx.beginPath();
+      ctx.moveTo(20, 0); ctx.lineTo(-12, 12); ctx.lineTo(-5, 0); ctx.lineTo(-12, -12);
+      ctx.closePath();
+      ctx.fillStyle = '#C07BFF';
+      ctx.strokeStyle = 'rgba(0,0,0,.75)'; ctx.lineWidth = 3;
+      ctx.stroke(); ctx.fill();
+      ctx.restore();
+      /* Le texte NE TOURNE PAS avec la fleche : une distance a l'envers ne se
+         lit pas, et c'est le seul chiffre du cadre. */
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.font = '900 12px system-ui, sans-serif';
+      var t = Math.round(d) + 'u · ' + Math.max(0, Math.ceil(q.reste)) + 's';
+      ctx.lineWidth = 4; ctx.strokeStyle = 'rgba(0,0,0,.8)';
+      ctx.strokeText(t, 0, 26);
+      ctx.fillStyle = '#EBD9FF';
+      ctx.fillText(t, 0, 26);
+      ctx.restore();
+    }
+    ctx.restore();
   }
 
   /* Les textes qui montent : en coordonnees ECRAN, pas monde. Ils parlent au

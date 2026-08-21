@@ -332,6 +332,27 @@
       }
       if (m.sacJoueur) { SAC = m.sacJoueur; peintPanneau(); }
     }
+    /* ---- LE FAMILIER VIENT D'AGIR ----
+     * Il agit tout seul : sans un geste a l'ecran, un joueur ne saurait
+     * jamais si son compagnon sert a quelque chose, ni lequel choisir. Le
+     * message ne porte QUE ce que le serveur a decide — la page ne rejoue
+     * aucun calcul, elle montre. */
+    if (m.type === 'realmFam') {
+      if (m.quoi === 'soigne') {
+        VIE.pv = m.pv; moiMonde.pv = m.pv;
+        flotte('\uD83D\uDC96 +' + m.gain);
+        joueSample('niveau', { vol: 0.32, hauteur: 1.5 });
+      } else if (m.quoi === 'bouclier') {
+        BOUCLIER = m.duree || 0;
+        BOUCLIER_PART = m.part || 0;
+      } else {
+        /* Les quatre autres visent quelque chose : le compagnon s'y rue.
+           Le CHIFFRE des degats arrive par `realmTouche`, comme pour nos
+           propres tirs — deux chemins d'affichage auraient fini par montrer
+           les degats du chien autrement que les notres. */
+        FAM_GESTE = { x: m.x, y: m.y, reste: FAM_RUEE, quoi: m.quoi };
+      }
+    }
     if (m.type === 'familiers') {
       FAMILIERS_C = m.familiers || [];
       REGLES_FAM = m.reglesFam || REGLES_FAM;
@@ -1713,6 +1734,30 @@
     return null;
   }
 
+  /* ---- CE QUE SON POUVOIR VAUT, EN CLAIR ----
+   * Les chiffres viennent du serveur (`effet`), calcules par la meme formule
+   * qui les APPLIQUE. Les recalculer ici aurait fini par promettre autre
+   * chose que ce qui se passe — et c'est le genre d'ecart qu'un joueur
+   * mesure, puisqu'il voit les degats a l'ecran.
+   * Sans eux, un niveau qui monte ne montre rien : c'est une barre de
+   * progression, pas une progression. */
+  function detailPouvoir(f) {
+    var e = f && f.effet;
+    if (!e) return '';
+    var tous = ' every ' + e.recharge + 's';
+    if (e.pouvoir === 'mord')     return Math.round(e.degats) + ' damage' + tous;
+    if (e.pouvoir === 'brule')    return Math.round(e.parSeconde) + ' burn/s for ' +
+                                         e.duree + 's' + tous;
+    if (e.pouvoir === 'gele')     return 'freezes ' + e.duree.toFixed(1) + 's' + tous;
+    if (e.pouvoir === 'repousse') return 'pushes ' + Math.round(e.force) +
+                                         ' units' + tous;
+    if (e.pouvoir === 'bouclier') return '-' + Math.round(e.reduction * 100) +
+                                         '% damage for ' + e.duree + 's' + tous;
+    if (e.pouvoir === 'soigne')   return '+' + (e.part * 100).toFixed(1) +
+                                         '% HP' + tous;
+    return '';
+  }
+
   /* ---- CE QU'ON PEUT LUI DONNER ----
    * La liste des raretes vient du SERVEUR (`REGLES_FAM`). L'ecrire ici
    * aurait continue de promettre « commun et rare » le jour ou l'on ouvre
@@ -1791,7 +1836,8 @@
         '<div class="nxpw-vig gros" style="background-image:url(' + dessinDe(f.espece) + ')"></div>' +
         '<div class="nxpw-tt">' +
           '<div class="nxpw-tn">' + ech(f.nom || 'Pet') + ' <span>Lv ' + (f.niveau || 1) + '</span></div>' +
-          '<div class="nxpw-pou">' + ech((f.pouvoir && f.pouvoir.nom) || '') + '</div>' +
+          '<div class="nxpw-pou">' + ech((f.pouvoir && f.pouvoir.nom) || '') +
+            (detailPouvoir(f) ? ' <b>' + ech(detailPouvoir(f)) + '</b>' : '') + '</div>' +
           '<div class="nxpw-xp"><i style="width:' + Math.round(part * 100) + '%"></i></div>' +
           '<div class="nxpw-xpt">' + texte + '</div>' +
         '</div>' +
@@ -3461,6 +3507,9 @@
       /* La stase, quand le serveur la marque. Sans ce report, cinq secondes
          de monstres immobiles se liraient comme un serveur qui a lache. */
       e.stase = o.st || 0;
+      /* Et le feu du familier. Une creature qui perd des points de vie sans
+         que rien ne le montre se lit comme un bug, pas comme une brulure. */
+      e.feu = o.fe || 0;
     });
     Object.keys(MONSTRES_C).forEach(function (k) { if (!vus[k]) delete MONSTRES_C[k]; });
 
@@ -3593,6 +3642,10 @@
       /* Le serveur fait foi sur la paralysie : la page decompte entre deux
          messages pour que ce soit fluide, mais elle se recale sur lui a
          chaque image recue. */
+      /* L'instantane fait AUTORITE sur le bouclier : le message `realmFam`
+         l'allume, mais c'est le serveur qui le decompte. S'en tenir au seul
+         message aurait laisse l'anneau a l'ecran si un paquet se perdait. */
+      BOUCLIER = m.moi.bo || 0;
       PARALYSE = m.moi.par || 0;
       RALENTI = m.moi.ral || 0;
       BRULURE = m.moi.feu || 0;
@@ -5120,6 +5173,16 @@
   var FAM_CADRES = 4;
   var TRAINEES = {};          // cle -> { x, y, dir, cadre, chrono }
   var SCENE_FAM = null;       // la scene ou ces traines ont un sens
+  /* ---- CE QUE LE FAMILIER VIENT DE FAIRE ----
+   * Il agit tout seul, sans qu'on appuie sur rien. Une aide invisible n'est
+   * pas une aide : sans un geste a l'ecran, un joueur ne saurait jamais si
+   * son compagnon sert a quelque chose, ni lequel choisir. On lui fait donc
+   * faire une RUEE vers ce qu'il vient de toucher — court, et vers le point
+   * exact, pour que la cause et l'effet se lisent ensemble. */
+  var FAM_GESTE = null;       // { x, y, reste, quoi }
+  var FAM_RUEE = 0.28;        // la duree de l'aller-retour, en secondes
+  var BOUCLIER = 0;           // ce qu'il reste du bouclier de la terre
+  var BOUCLIER_PART = 0;      // et ce qu'il retire, pour l'annoncer
 
   function imageFamilier(espece) {
     if (!espece) return null;
@@ -5181,8 +5244,26 @@
     if (!img || !img.complete || !img.naturalWidth) return t;
     var cadre = img.naturalWidth / FAM_CADRES;
     var lig = DIRS_M[t.dir] === undefined ? 1 : DIRS_M[t.dir];
+    var px = t.x, py = t.y;
+    /* ---- LA RUEE ----
+     * Seulement le NOTRE : le serveur n'annonce les gestes d'un familier qu'a
+     * son maitre, et faire bondir celui des autres demanderait de diffuser
+     * chaque morsure de chaque chien a trente-neuf personnes.
+     * Un aller-retour en cloche : il part vite et revient, ce qui se lit comme
+     * un elan. Une interpolation lineaire aurait donne un glissement. */
+    if (cle === 'moi' && FAM_GESTE && FAM_GESTE.reste > 0) {
+      var av = 1 - FAM_GESTE.reste / FAM_RUEE;
+      var cloche = Math.sin(Math.max(0, Math.min(1, av)) * Math.PI);
+      /* On ne va pas JUSQU'A la cible : un chien qui se teleporte sur un
+         monstre a trois cents unites cesse d'etre le chien qui trotte
+         derriere. Un tiers du chemin dit d'ou vient le coup. */
+      px += (FAM_GESTE.x - t.x) * 0.34 * cloche;
+      py += (FAM_GESTE.y - t.y) * 0.34 * cloche;
+      if (FAM_GESTE.x !== t.x) t.dir = FAM_GESTE.x > t.x ? 'right' : 'left';
+      lig = DIRS_M[t.dir] === undefined ? 1 : DIRS_M[t.dir];
+    }
     ctx.drawImage(img, t.cadre * cadre, lig * cadre, cadre, cadre,
-                  t.x - FAM_TAILLE / 2, t.y - FAM_TAILLE, FAM_TAILLE, FAM_TAILLE);
+                  px - FAM_TAILLE / 2, py - FAM_TAILLE, FAM_TAILLE, FAM_TAILLE);
     return t;
   }
 
@@ -7331,7 +7412,14 @@
      * nouvelle en traversant toute la carte a la premiere image apres une
      * porte. On le fait reapparaitre derriere son maitre, ce qui est
      * exactement ce qu'on voit quand quelqu'un franchit un portail. */
-    if (SCENE_FAM !== SCENE) { SCENE_FAM = SCENE; TRAINEES = {}; }
+    if (SCENE_FAM !== SCENE) { SCENE_FAM = SCENE; TRAINEES = {}; FAM_GESTE = null; }
+    /* La ruee s'eteint ICI, au rythme de l'image — un compteur decremente
+       dans le message serait remis a zero sept fois par seconde et le bond ne
+       finirait jamais. */
+    if (FAM_GESTE) {
+      FAM_GESTE.reste -= dt;
+      if (FAM_GESTE.reste <= 0) FAM_GESTE = null;
+    }
     var vueW = canvas.width / DPR, vueH = canvas.height / DPR;
     var zoom = zoomCourant(vueH);
     /* On centre le joueur sur la partie VISIBLE, pas sur la fenetre : sinon
@@ -7519,6 +7607,22 @@
           ctx.globalAlpha = 0.92;
           ctx.drawImage(IMG_PARA, pc * pcw, 0, pcw, pch,
                         joueur.x - PT / 2, joueur.y - PT * 0.40, PT, PT * 0.58);
+          ctx.restore();
+        }
+        /* ---- LE BOUCLIER DE LA TERRE ----
+         * Il agit en RETIRANT des degats, et l'absence ne se dessine pas :
+         * sans cet anneau, la terre serait le seul des six pouvoirs dont on
+         * ne verrait jamais rien. Deux traits de pierre qui tournent — plein,
+         * pas en arc de decompte comme les etats : ce n'est pas une menace
+         * qui s'ecoule, c'est une protection qui tient. */
+        if (BOUCLIER > 0) {
+          ctx.save();
+          ctx.globalAlpha = 0.55 + 0.25 * Math.sin(performance.now() / 140);
+          ctx.strokeStyle = '#C9A66B';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.ellipse(joueur.x, joueur.y - 26, 34, 42, 0, 0, Math.PI * 2);
+          ctx.stroke();
           ctx.restore();
         }
         var etats = MONDE_C && MONDE_C.effets ? [
@@ -7863,7 +7967,19 @@
       ctx.fill();
       ctx.restore();
     }
-    if (fige) {
+    /* ---- UNE SEULE TEINTE, TROIS RAISONS ----
+     * Le gel, l'emprunt et le feu peignaient chacun leur copie du meme bloc.
+     * Trois copies, c'est trois occasions d'en corriger deux — et la
+     * troisieme continue de peindre l'ancienne couleur sans que rien ne le
+     * dise. On choisit la couleur, puis on peint une fois.
+     * L'ORDRE compte : brule par-dessus fige serait faux dans le jeu comme a
+     * l'ecran — la glace est ce qui vient d'arriver et ce qui decide de ce
+     * qu'on peut faire, elle passe donc devant. */
+    var voile = fige ? { c: '#9DE8FF', a: 0.38 }
+              : e.feu > 0 ? { c: '#FF8A3D', a: 0.42 }
+              : empruntee ? { c: '#C07BFF', a: 0.45 }
+              : null;
+    if (voile) {
       /* La teinte passe par un CANEVAS A PART. Teinter directement sur la
          scene avec `source-atop` toucherait aussi le sol : a cet endroit le
          decor est deja peint, donc « la ou il y a quelque chose » ne veut pas
@@ -7873,25 +7989,12 @@
       g.ctx.clearRect(0, 0, C, C);
       g.ctx.globalCompositeOperation = 'source-over';
       g.ctx.globalAlpha = 1;
-      g.ctx.drawImage(img, e.cadre * C, r * C, C, C,
-                      0, 0, C, C);
+      g.ctx.drawImage(img, e.cadre * C, r * C, C, C, 0, 0, C, C);
       g.ctx.globalCompositeOperation = 'source-atop';
-      g.ctx.globalAlpha = 0.38;
-      g.ctx.fillStyle = '#9DE8FF';
+      g.ctx.globalAlpha = voile.a;
+      g.ctx.fillStyle = voile.c;
       g.ctx.fillRect(0, 0, C, C);
       ctx.drawImage(g.el, 0, 0, C, C, sx, sy, T, T);
-    } else if (empruntee) {
-      var g2 = gel(C);
-      g2.ctx.clearRect(0, 0, C, C);
-      g2.ctx.globalCompositeOperation = 'source-over';
-      g2.ctx.globalAlpha = 1;
-      g2.ctx.drawImage(img, e.cadre * C, r * C, C, C,
-                       0, 0, C, C);
-      g2.ctx.globalCompositeOperation = 'source-atop';
-      g2.ctx.globalAlpha = 0.45;
-      g2.ctx.fillStyle = '#C07BFF';
-      g2.ctx.fillRect(0, 0, C, C);
-      ctx.drawImage(g2.el, 0, 0, C, C, sx, sy, T, T);
     } else {
       ctx.drawImage(img, e.cadre * C, r * C, C, C,
                     sx, sy, T, T);

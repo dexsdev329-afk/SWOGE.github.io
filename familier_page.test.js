@@ -75,6 +75,16 @@ process.on('unhandledRejection', (e) => {
   const { Game } = require(path.join(SERVEUR, 'game'));
   let moteur = null; const _p0 = Game.prototype._p;
   Game.prototype._p = function (a) { moteur = this; return _p0.call(this, a); };
+  /* Toutes les simulations, pas la derniere qui a tourne : il y en a deux
+     (le monde vert et la carte rouge) et un donjon en cree une troisieme. On
+     retrouvera la bonne par le JOUEUR qu elle contient. */
+  const { Realm } = require(path.join(SERVEUR, 'realm'));
+  const mondes = [];
+  const _rj = Realm.prototype.rejoint;
+  Realm.prototype.rejoint = function () {
+    if (mondes.indexOf(this) < 0) mondes.push(this);
+    return _rj.apply(this, arguments);
+  };
   require(path.join(SERVEUR, 'server'));
   const ethers = require(path.join(SERVEUR, 'node_modules', 'ethers'));
   await new Promise((r) => setTimeout(r, 1400));
@@ -428,6 +438,62 @@ process.on('unhandledRejection', (e) => {
      chacun ne verrait que son propre chien. */
   const fiche = moteur.familierActifDe(w.address);
   eq(fiche, 'legendaire', 'le serveur sait toujours lequel est sorti');
+
+  /* ================== 7. ET IL AIDE ==================
+   * Le legendaire soigne toutes les cinq secondes, sans qu on appuie sur
+   * rien. Une aide invisible n est pas une aide : si rien n arrive a la page,
+   * le joueur ne saura jamais si son compagnon sert a quelque chose, ni
+   * lequel choisir — et les six deviennent six dessins. */
+  console.log('\n-- et il soigne --');
+  /* On le blesse dans la SIMULATION, la ou la vie existe. Fabriquer une
+     valeur dans la page testerait un chiffre qu elle s est donne toute
+     seule. Le monde se retrouve par le joueur qu il CONTIENT : « le dernier
+     monde qui a tourne » se trompe des qu il y en a deux. */
+  const jm = mondes.map((R) => R.joueurs.get(w.address.toLowerCase()))
+                   .filter(Boolean)[0];
+  ok(!!jm, 'la simulation nous a bien');
+  jm.pv = Math.max(1, Math.round(jm.pvMax * 0.4));
+  /* ---- ON GUETTE UNE REMONTEE, PAS UN ETAT FINAL ----
+   * Comparer la vie avant et apres six secondes serait faux : les monstres
+   * tapent pendant ce temps-la, et un joueur soigne PUIS mordu finit plus bas
+   * qu il n a commence. Seule une AUGMENTATION entre deux mesures ne peut
+   * venir que du soin — rien d autre dans ce jeu ne rend de la vie en combat.
+   * On garde aussi la vie a flot : mesurer un soin sur un mort n a pas de
+   * sens, et l essai porte sur le soin. */
+  /* ---- ET PAS LA REGENERATION ----
+   * Premiere version : « n importe quelle remontee ». Elle passait au vert
+   * sur un +1 — la regeneration naturelle, qui remonte aussi la vie. On
+   * compare donc la plus grosse remontee au GAIN que le serveur annonce :
+   * seul le soin fait un bond de cette taille-la. */
+  /* On fait le VIDE autour : l essai porte sur le soin, pas sur le combat.
+     Une morsure dans la meme fenetre de cent millisecondes retranche du bond
+     qu on mesure, et l essai passait ou echouait selon ce qui rodait. Le
+     monde se repeuple « jamais sous le nez de quelqu un », donc le vide
+     tient. */
+  const monde0 = mondes.filter((R) => R.joueurs.get(w.address.toLowerCase()))[0];
+  let remonte = 0, dernier = jm.pv;
+  for (let k = 0; k < 75; k++) {
+    monde0.monstres.length = 0; monde0.tirsM.length = 0; monde0.zones.length = 0;
+    await p.waitForTimeout(100);
+    if (jm.pv <= 0) break;
+    if (jm.pv > dernier) remonte = Math.max(remonte, jm.pv - dernier);
+    dernier = jm.pv;
+    if (jm.pv < jm.pvMax * 0.2) { jm.pv = Math.round(jm.pvMax * 0.4); dernier = jm.pv; }
+    /* On ne sort PAS a la premiere remontee : la premiere est presque
+       toujours le +1 de la regeneration, et s arreter la reviendrait a
+       mesurer la regeneration en croyant mesurer le soin. On laisse passer
+       deux recharges entieres et l on garde le plus gros bond. */
+  }
+  const vu = await p.evaluate(() => window.__s[0].__m.filter((x) => x.type === 'realmFam'));
+  ok(vu.length > 0, `la page apprend le geste (${vu.length})`);
+  eq(vu[0] && vu[0].quoi, 'soigne', 'par un message qui dit ce que c est');
+  ok(vu[0] && vu[0].gain > 0, `avec le nombre de points rendus (${vu[0] && vu[0].gain})`);
+  /* La moitie du gain, pas le gain exact : un monstre peut mordre dans la
+     meme fenetre de cent millisecondes, et la mesure porte alors sur le soin
+     MOINS sa morsure. La moitie reste hors de portee de la regeneration, qui
+     rend un point a la fois — c est la confusion qu on cherche a exclure. */
+  ok(remonte >= (vu[0] ? vu[0].gain : 1e9) / 2,
+     `et la vie fait un bond, pas le +1 de la regeneration (+${remonte} pour ${vu[0] && vu[0].gain} annonces)`);
 
   ok(erreurs.length === 0, 'aucune erreur de page' +
      (erreurs.length ? ' — ' + erreurs.slice(0, 3).join(' | ') : ''));

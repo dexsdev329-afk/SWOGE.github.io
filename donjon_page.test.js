@@ -7,14 +7,18 @@
  *    creature qu'on regardait mourir, au milieu des eclats et des chiffres de
  *    degats. Si elle n'est pas dessinee, on la manque, on s'en va, et le donjon
  *    qu'on vient de meriter se referme sans qu'on ait su qu'il existait.
- * 2. LE BOUTON N'APPARAIT QUE DESSUS. C'est tout ce qui fait qu'entrer est un
+ * 2. ET ON SAIT PAR OU. Une porte qui s'ouvre a l'autre bout de la carte n'est
+ *    meme pas dans l'etat qu'on recoit — la portee s'arrete a 1400 unites. La
+ *    fleche au bord de l'ecran est la seule chose qui separe « un portail
+ *    existe quelque part » de « c'est par la, il reste deux minutes ».
+ * 3. LE BOUTON N'APPARAIT QUE DESSUS. C'est tout ce qui fait qu'entrer est un
  *    CHOIX. Une porte qui aspirerait en marchant dessus enverrait dans le
  *    donjon le plus dur du jeu quelqu'un qui traversait pour ramasser un sac.
- * 3. LE DONJON A L'AIR D'UN INTERIEUR. Autre sol, autres murs, et du NOIR
+ * 4. LE DONJON A L'AIR D'UN INTERIEUR. Autre sol, autres murs, et du NOIR
  *    autour. Un sol de pierre etale jusqu'a l'horizon donnerait l'impression
  *    d'un deuxieme monde ouvert, et les murs n'enfermeraient plus rien.
- * 4. ON PEUT TOUJOURS RESSORTIR, ET ON RESSORT LA OU L'ON EST ENTRE.
- * 5. AUCUNE IMAGE NE MANQUE. Un 404 ne casse rien de visible — le mur reste
+ * 5. ON PEUT TOUJOURS RESSORTIR, ET ON RESSORT LA OU L'ON EST ENTRE.
+ * 6. AUCUNE IMAGE NE MANQUE. Un 404 ne casse rien de visible — le mur reste
  *    vide, le jeu continue — et c'est bien le probleme.
  *
  * Comme partout ici : on ne lit aucune variable de la page — elles vivent dans
@@ -322,7 +326,96 @@ process.on('unhandledRejection', (e) => {
      `a chaque image (${dessin.images} sur ${dessin.rendues} rendues)`);
   ok(dessin.taille >= 64, `et assez grande pour se voir (${dessin.taille} px)`);
 
-  /* ================== 3. LE BOUTON N'APPARAIT QUE DESSUS ================== */
+  /* ================== 3. LA FLECHE VERS UNE PORTE LOINTAINE ==================
+   *
+   * C'est ce qui rend le donjon trouvable. Une porte s'ouvre a l'autre bout de
+   * la carte : elle n'est PAS dans l'etat qu'on recoit (la portee s'arrete a
+   * 1400 unites), donc la page ne peut la connaitre que par l'annonce. Sans
+   * fleche, « un portail s'est ouvert » est une nouvelle sans suite — trois
+   * minutes ne suffisent pas a fouiller sept mille sept cents unites de cote.
+   */
+  console.log('\n-- la fleche vers la porte --');
+  await p.evaluate(() => { window.__trace = []; });
+  /* On espionne le TRACE, pas une image : la fleche est dessinee au trait, et
+     `drawImage` ne la verra jamais. */
+  await p.evaluate(() => {
+    const S = CanvasRenderingContext2D.prototype.stroke;
+    CanvasRenderingContext2D.prototype.stroke = function () {
+      if (String(this.fillStyle).toLowerCase() === '#c07bff') {
+        const t = this.getTransform();
+        window.__trace.push({ x: Math.round(t.e), y: Math.round(t.f) });
+      }
+      return S.apply(this, arguments);
+    };
+  });
+  /* Rien tant qu'aucune porte lointaine n'est annoncee : une fleche qui
+     pointerait en permanence ne pointerait plus rien. */
+  await p.waitForTimeout(600);
+  const avantFleche = await p.evaluate(() => window.__trace.length);
+  ok(avantFleche === 0, 'sans annonce, aucune fleche');
+
+  /* Le serveur annonce une porte a l'autre bout de la carte. On passe par le
+     VRAI message, dans le vrai format. */
+  /* ---- ICI, ET PAS APRES LE DONJON ----
+   * La boussole n'a rien a voir avec l'interieur du donjon : elle se mesure
+   * aussi bien avant. Placee apres la traversee, elle dependait d'un
+   * personnage encore vivant au bout de trois minutes de combat — et un
+   * passage sur trois se coupait sur « lire .x sur rien », ce qui ne dit rien
+   * de la fleche. Un essai qui depend d'un voisin lointain se met a mentir. */
+  const jm = monde0.joueurs.get(addr);
+  ok(!!jm, 'le personnage est vivant dans le monde');
+  const posJ = jm ? { x: jm.x, y: jm.y } : { x: porte.x, y: porte.y };
+  const cibleLoin = { x: Math.min(M.MONDE.w - 100, posJ.x + 3000),
+                      y: Math.min(M.MONDE.h - 100, posJ.y + 2000) };
+  await p.evaluate((q) => {
+    window.__s[0].dispatchEvent(new MessageEvent('message', {
+      data: JSON.stringify({ type: 'realmPortailOuvert', id: 987654,
+                             donjon: 'forge', x: q.x, y: q.y,
+                             nom: 'Quelqu\'un', duree: 180, mien: false }),
+    }));
+  }, cibleLoin);
+  await p.waitForTimeout(800);
+  const fleche = await p.evaluate(() => ({
+    n: window.__trace.length,
+    dernier: window.__trace[window.__trace.length - 1] || null,
+    ligne: (document.getElementById('nxIndice') || {}).textContent || '',
+  }));
+  ok(fleche.n > 5, `la fleche est tracee (${fleche.n} fois)`);
+  ok(/forge/i.test(fleche.ligne), `et la ligne dit ou (« ${fleche.ligne.slice(0, 70)} »)`);
+  /* ELLE POINTE DU BON COTE. La porte est au sud-est : la fleche doit etre
+     posee dans ce quart de l'ecran, pas au hasard sur le cadre. */
+  const vue = await p.evaluate(() => {
+    const c = document.querySelector('canvas');
+    return { w: c.clientWidth, h: c.clientHeight };
+  });
+  ok(fleche.dernier && fleche.dernier.x > vue.w * 0.4 && fleche.dernier.y > vue.h * 0.4,
+     `et elle pointe vers le sud-est, comme la porte (${fleche.dernier ? fleche.dernier.x + ',' + fleche.dernier.y : '?'})`);
+
+  /* ---- ET ELLE S'EFFACE QUAND LA PORTE EST DANS LE CADRE ----
+   * Une fleche qui continuerait de pointer un objet visible se lit comme un
+   * defaut d'affichage. */
+  await p.evaluate(() => { window.__trace.length = 0; });
+  await p.evaluate((q) => {
+    window.__s[0].dispatchEvent(new MessageEvent('message', {
+      data: JSON.stringify({ type: 'realmPortailOuvert', id: 987655,
+                             donjon: 'forge', x: q.x, y: q.y,
+                             nom: null, duree: 180, mien: false }),
+    }));
+  }, { x: Math.round(posJ.x), y: Math.round(posJ.y) });
+  await p.waitForTimeout(700);
+  const surPlace = await p.evaluate(() => window.__trace.length);
+  /* La premiere, elle, est toujours loin : on ne compte donc que l'absence
+     d'une DEUXIEME fleche, en regardant qu'il n'y en a pas deux par image. */
+  const parImage = await p.evaluate(() => {
+    const n = {};
+    window.__trace.forEach((t) => { const k = t.x + ',' + t.y; n[k] = (n[k] || 0) + 1; });
+    return Object.keys(n).length;
+  });
+  ok(parImage <= 1,
+     `une porte sous nos pieds n'ajoute pas de fleche (${parImage} position(s) tracee(s))`);
+
+
+  /* ================== 4. LE BOUTON N'APPARAIT QUE DESSUS ================== */
   console.log('\n-- le bouton --');
   const loin = await p.evaluate(() => {
     const e = document.getElementById('nxPorte');
@@ -408,7 +501,7 @@ process.on('unhandledRejection', (e) => {
   ok(!dessus.vert, 'ce n\'est pas le bouton de sortie');
   ok(/forge/i.test(dessus.nom), `et il nomme le donjon (« ${dessus.nom} »)`);
 
-  /* ================== 4. ON ENTRE ================== */
+  /* ================== 5. ON ENTRE ================== */
   console.log('\n-- on entre --');
   /* Le clic ne PEND pas : si le bouton n'est pas la, on veut lire « le bouton
      n'est pas apparu » et la suite, pas trente secondes d'attente muette suivies
@@ -456,7 +549,7 @@ process.on('unhandledRejection', (e) => {
   ok(decor.murDehors === 0, 'ni un seul mur de ruine');
   ok(decor.rocher === 0, 'ni un rocher');
 
-  /* ================== 5. ON PEUT TOUJOURS RESSORTIR ================== */
+  /* ================== 6. ON PEUT TOUJOURS RESSORTIR ================== */
   console.log('\n-- on ressort --');
   /* La sortie est a l'est de l'arrivee : on y va a pied, par petits pas, comme
      tout a l'heure et pour la meme raison. */
@@ -515,86 +608,6 @@ process.on('unhandledRejection', (e) => {
   });
   ok(!repropose.visible || repropose.texte === 'ENTER',
      `de retour sur la porte d'aller, le bouton dit ENTER (« ${repropose.texte} »)`);
-
-  /* ================== 6. LA FLECHE VERS UNE PORTE LOINTAINE ==================
-   *
-   * C'est ce qui rend le donjon trouvable. Une porte s'ouvre a l'autre bout de
-   * la carte : elle n'est PAS dans l'etat qu'on recoit (la portee s'arrete a
-   * 1400 unites), donc la page ne peut la connaitre que par l'annonce. Sans
-   * fleche, « un portail s'est ouvert » est une nouvelle sans suite — trois
-   * minutes ne suffisent pas a fouiller sept mille sept cents unites de cote.
-   */
-  console.log('\n-- la fleche vers la porte --');
-  await p.evaluate(() => { window.__trace = []; });
-  /* On espionne le TRACE, pas une image : la fleche est dessinee au trait, et
-     `drawImage` ne la verra jamais. */
-  await p.evaluate(() => {
-    const S = CanvasRenderingContext2D.prototype.stroke;
-    CanvasRenderingContext2D.prototype.stroke = function () {
-      if (String(this.fillStyle).toLowerCase() === '#c07bff') {
-        const t = this.getTransform();
-        window.__trace.push({ x: Math.round(t.e), y: Math.round(t.f) });
-      }
-      return S.apply(this, arguments);
-    };
-  });
-  /* Rien tant qu'aucune porte lointaine n'est annoncee : une fleche qui
-     pointerait en permanence ne pointerait plus rien. */
-  await p.waitForTimeout(600);
-  const avantFleche = await p.evaluate(() => window.__trace.length);
-  ok(avantFleche === 0, 'sans annonce, aucune fleche');
-
-  /* Le serveur annonce une porte a l'autre bout de la carte. On passe par le
-     VRAI message, dans le vrai format. */
-  const posJ = monde0.joueurs.get(addr);
-  const cibleLoin = { x: Math.min(M.MONDE.w - 100, posJ.x + 3000),
-                      y: Math.min(M.MONDE.h - 100, posJ.y + 2000) };
-  await p.evaluate((q) => {
-    window.__s[0].dispatchEvent(new MessageEvent('message', {
-      data: JSON.stringify({ type: 'realmPortailOuvert', id: 987654,
-                             donjon: 'forge', x: q.x, y: q.y,
-                             nom: 'Quelqu\'un', duree: 180, mien: false }),
-    }));
-  }, cibleLoin);
-  await p.waitForTimeout(800);
-  const fleche = await p.evaluate(() => ({
-    n: window.__trace.length,
-    dernier: window.__trace[window.__trace.length - 1] || null,
-    ligne: (document.getElementById('nxIndice') || {}).textContent || '',
-  }));
-  ok(fleche.n > 5, `la fleche est tracee (${fleche.n} fois)`);
-  ok(/forge/i.test(fleche.ligne), `et la ligne dit ou (« ${fleche.ligne.slice(0, 70)} »)`);
-  /* ELLE POINTE DU BON COTE. La porte est au sud-est : la fleche doit etre
-     posee dans ce quart de l'ecran, pas au hasard sur le cadre. */
-  const vue = await p.evaluate(() => {
-    const c = document.querySelector('canvas');
-    return { w: c.clientWidth, h: c.clientHeight };
-  });
-  ok(fleche.dernier && fleche.dernier.x > vue.w * 0.4 && fleche.dernier.y > vue.h * 0.4,
-     `et elle pointe vers le sud-est, comme la porte (${fleche.dernier ? fleche.dernier.x + ',' + fleche.dernier.y : '?'})`);
-
-  /* ---- ET ELLE S'EFFACE QUAND LA PORTE EST DANS LE CADRE ----
-   * Une fleche qui continuerait de pointer un objet visible se lit comme un
-   * defaut d'affichage. */
-  await p.evaluate(() => { window.__trace.length = 0; });
-  await p.evaluate((q) => {
-    window.__s[0].dispatchEvent(new MessageEvent('message', {
-      data: JSON.stringify({ type: 'realmPortailOuvert', id: 987655,
-                             donjon: 'forge', x: q.x, y: q.y,
-                             nom: null, duree: 180, mien: false }),
-    }));
-  }, { x: Math.round(posJ.x), y: Math.round(posJ.y) });
-  await p.waitForTimeout(700);
-  const surPlace = await p.evaluate(() => window.__trace.length);
-  /* La premiere, elle, est toujours loin : on ne compte donc que l'absence
-     d'une DEUXIEME fleche, en regardant qu'il n'y en a pas deux par image. */
-  const parImage = await p.evaluate(() => {
-    const n = {};
-    window.__trace.forEach((t) => { const k = t.x + ',' + t.y; n[k] = (n[k] || 0) + 1; });
-    return Object.keys(n).length;
-  });
-  ok(parImage <= 1,
-     `une porte sous nos pieds n'ajoute pas de fleche (${parImage} position(s) tracee(s))`);
 
   /* ================== 7. LE CERCLE DU DONJON EST UN AUTRE CERCLE ==================
    *

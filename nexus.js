@@ -284,6 +284,24 @@
                'pas-la': 'They are not in this world',
                'no-one': 'Nobody to join' }[m.raison] || 'Cannot join them');
     }
+    /* La reponse de la table. Un seul type pour les cinq gestes : c'est
+       l'ETAT qui revient, pas un accuse de reception — la page n'a donc rien a
+       deviner de ce que son message a produit. */
+    if (m.type === 'bj') {
+      BJ = m.state || null;
+      bjErreur = '';
+      if (BJ && BJ.balance != null && BOUTIQUE) BOUTIQUE.balance = BJ.balance;
+      if (bjOuvert) peintBj();
+      peintPanneau();
+    }
+    /* Le serveur refuse par `error`, comme partout ailleurs. On ne le montre
+       QUE si la table est ouverte : la meme socket porte les erreurs de tout
+       le jeu, et les afficher ici ferait dire a la table des choses qui ne la
+       concernent pas. */
+    if (m.type === 'error' && bjOuvert) {
+      bjErreur = String(m.error || '');
+      peintBj();
+    }
     if (m.type === 'potionBue') {
       POTIONS_C = m.potions || POTIONS_C;
       if (m.pv !== null && m.pv !== undefined) { VIE.pv = m.pv; moiMonde.pv = m.pv; }
@@ -593,13 +611,21 @@
      refaire la mise en forme la-bas donnerait deux facons d'ecrire le meme
      nombre — « 8.97M » d'un cote, « 8 973 000 » de l'autre. */
   var SOLDE_TEXTE = '';
+  /* La VALEUR, gardee au meme endroit que sa mise en forme. La table de
+     blackjack lisait `BOUTIQUE.balance`, qui n'existe qu'une fois la boutique
+     ouverte : on arrivait donc sur la table avec « Balance 0 » et cinq mille
+     $SWOGE en poche. Une deuxieme lecture ailleurs aurait fait un deuxieme
+     chiffre a tenir d'accord ; celle-ci est posee la ou le solde arrive. */
+  var SOLDE_NUM = 0;
   function majSolde(v) {
     var n = parseFloat(v || 0);
     if (isNaN(n)) return;
+    SOLDE_NUM = n;
     var t = n >= 1e9 ? (n / 1e9).toFixed(2) + 'B' : n >= 1e6 ? (n / 1e6).toFixed(2) + 'M'
       : n >= 1000 ? (n / 1000).toFixed(1) + 'k' : n.toFixed(2);
     SOLDE_TEXTE = t + ' $SWOGE';
     if (shopOuvert) peintShop();
+    if (bjOuvert) peintBj();
     if (!soldeEl) return;
     soldeEl.innerHTML = '<b>' + t + '</b><em>$SWOGE</em>';
     soldeEl.classList.add('on');
@@ -1414,6 +1440,163 @@
   var NOM_ANNEAU = { terre: 'Dirt', marais: 'Swamp', neige: 'Snow',
                      cendres: 'Ashes', lave: 'Lava',
                      donjon: 'Forge', cave: 'Pirate Cave' };
+  /*
+   * ==================== LA TABLE DE BLACKJACK ====================
+   *
+   * Le jeu existe DEJA tout entier cote serveur : `bj_bet`, `bj_hit`,
+   * `bj_stand`, `bj_double`, `bj_insure`, sur la meme socket et le meme solde
+   * que le reste. Il n'y avait donc rien a ecrire de ce cote-la — seulement
+   * une porte. Ce panneau ne decide de rien : il envoie les cinq messages et
+   * peint l'etat que le serveur renvoie.
+   *
+   * Les CARTES viennent de la meme planche que la table du casino. Un
+   * deuxieme jeu de dessins aurait donne deux valets de pique differents dans
+   * le meme jeu, selon la porte par laquelle on est entre.
+   */
+  var elBjVoile = document.getElementById('nxBjVoile');
+  var elBjCorps = elBjVoile ? elBjVoile.querySelector('.nxbj-corps') : null;
+  var bjOuvert = false, BJ = null, bjMise = 10, bjErreur = '';
+
+  /* rang 0=A, 1..8 = 2..9, 9=10, 10=J, 11=Q, 12=K — et quatre enseignes. La
+     table est celle de swoge_blackjack.html, recopiee ici parce que c'est de
+     la DONNEE (des noms de fichiers), pas une regle : la dupliquer ne peut
+     pas faire diverger deux comportements, seulement deux listes d'images. */
+  var BJ_ART = [
+    ['img/d28b37ae6758.png','img/ff0e0ec96647.png','img/a816746fc318.png','img/f761e7e9413e.png'],
+    ['img/20d5e6379842.png','img/9ed6934f72fb.png','img/62533678a787.png','img/380e1bc76fad.png'],
+    ['img/bfa372441c27.png','img/baa362c891f0.png','img/f116d07a3911.png','img/98cb838a4200.png'],
+    ['img/5441341f1628.png','img/2992ecd67b6f.png','img/ffe2e67f5f6c.png','img/8839015a9d5a.png'],
+    ['img/6505c0f01954.png','img/3d469c1a86b1.png','img/b9eb7be1a115.png','img/24f4405415bf.png'],
+    ['img/7cfa6a04f532.png','img/17c6cbecef93.png','img/feb7a5f8eac0.png','img/215c4bfd0870.png'],
+    ['img/54139cd4e34b.png','img/0d70498b3b5a.png','img/a1efb84d3eb8.png','img/26beb5783892.png'],
+    ['img/ca526f505e6c.png','img/07e33c92abcc.png','img/e537d11fe1c9.png','img/17bac737803f.png'],
+    ['img/ae32cf8d933b.png','img/676e81ca20e7.png','img/7a26228ebbf2.png','img/c58b8560477f.png'],
+    ['img/167b09be5c1c.png','img/68b3b5a6c138.png','img/ad1149eda680.png','img/1c33fb3cefd2.png'],
+    ['img/0190e01c43f6.png','img/c3b722b56ad8.png','img/3aa89cf46679.png','img/5035c7637dd5.png'],
+    ['img/4fbca9fbe650.png','img/16de477601ef.png','img/2d404029b6b9.png','img/f9de1e9b75a1.png'],
+    ['img/aba02d7cff4d.png','img/1df00603b61f.png','img/8e26bdfec10e.png','img/49a50eaa20a1.png'],
+  ];
+  function bjCarte(c) {
+    var n = Number(c) || 0;
+    var rang = ((n % 13) + 13) % 13;
+    var ens = Math.floor((((n % 52) + 52) % 52) / 13);
+    var jeu = BJ_ART[rang] || BJ_ART[0];
+    return '<div class="nxbj-c"><img alt="" src="' + (jeu[ens] || jeu[0]) +
+           '" onerror="this.remove()"></div>';
+  }
+
+  function ouvreBj() {
+    if (!elBjVoile) return;
+    bjOuvert = true;
+    bjErreur = '';
+    peintBj();
+    elBjVoile.classList.add('on');
+  }
+  function fermeBj(parLaMain) {
+    bjOuvert = false;
+    if (parLaMain) marqueFerme('casino');
+    if (elBjVoile) elBjVoile.classList.remove('on');
+  }
+  if (elBjVoile) {
+    elBjVoile.addEventListener('click', function (e) {
+      var c = e.target.classList;
+      if (e.target === elBjVoile || (c && c.contains('nxcf-x'))) fermeBj(true);
+    });
+  }
+
+  function peintBj() {
+    if (!elBjCorps) return;
+    var st = BJ;
+    /* Celui de l'etat s'il y en a un — il est plus frais que tout le reste,
+       puisqu'il vient de la main qu'on vient de jouer. Sinon celui du
+       panneau, qui arrive avec la connexion. */
+    var solde = (st && st.balance != null) ? Number(st.balance) : SOLDE_NUM;
+    var enMain = st && st.stage && st.stage !== 'done';
+    var html = '';
+
+    if (bjErreur) {
+      html += '<div class="nxcf-refus">' + ech(bjErreur) + '</div>';
+    }
+
+    if (st) {
+      html += '<div class="nxbj-main"><i>Dealer <b>' +
+        (st.dealer.hidden ? '?' : st.dealer.value) + '</b></i>' +
+        '<div class="nxbj-cartes">' +
+        st.dealer.cards.map(bjCarte).join('') +
+        /* La carte cachee se DESSINE : sans elle, le croupier a une seule
+           carte a l'ecran et l'on croit la donne incomplete. */
+        (st.dealer.hidden ? '<div class="nxbj-c dos"></div>' : '') +
+        '</div></div>';
+      html += '<div class="nxbj-main"><i>You <b>' + st.player.value + '</b>' +
+        (st.doubled ? ' &middot; doubled' : '') + '</i>' +
+        '<div class="nxbj-cartes">' + st.player.cards.map(bjCarte).join('') + '</div></div>';
+    }
+
+    if (enMain) {
+      if (st.stage === 'insurance') {
+        html += '<div class="nxbj-act">' +
+          '<button type="button" data-bj="ins">Insure ' + st.insuranceMax + '</button>' +
+          '<button type="button" class="gris" data-bj="noins">No insurance</button></div>';
+      } else {
+        html += '<div class="nxbj-act">' +
+          '<button type="button" data-bj="hit">Hit</button>' +
+          '<button type="button" class="gris" data-bj="stand">Stand</button>' +
+          (st.canDouble ? '<button type="button" class="gris" data-bj="double">Double</button>' : '') +
+          '</div>';
+      }
+    } else {
+      /* ---- LE RESULTAT, AVANT LA MISE SUIVANTE ----
+       * Il doit rester a l'ecran pendant qu'on remise : le remplacer par le
+       * formulaire ferait disparaitre « tu as gagne 40 » au moment ou l'on
+       * regarde son solde changer. */
+      if (st && st.result) {
+        var gagne = st.payout > (st.doubled ? st.bet * 2 : st.bet);
+        var nul = st.payout === (st.doubled ? st.bet * 2 : st.bet);
+        html += '<div class="nxbj-res ' + (nul ? 'nul' : gagne ? 'gagne' : 'perdu') + '">' +
+          ech(String(st.result).toUpperCase()) +
+          (st.payout ? ' &middot; +' + st.payout + ' $SWOGE' : '') + '</div>';
+      }
+      html += '<div class="nxbj-mise">' +
+        '<input id="nxBjMise" type="number" min="1" step="1" value="' + bjMise + '">' +
+        [10, 50, 100].map(function (v) {
+          return '<button type="button" data-mise="' + v + '">' + v + '</button>';
+        }).join('') +
+        '<button type="button" data-mise="max">Max</button>' +
+        '</div>' +
+        '<div class="nxbj-act"><button type="button" data-bj="deal">Deal</button></div>';
+    }
+    html += '<div class="nxbj-solde">Balance <b>' + Math.floor(solde) + '</b> $SWOGE</div>';
+    elBjCorps.innerHTML = html;
+
+    var champ = document.getElementById('nxBjMise');
+    if (champ) {
+      champ.addEventListener('change', function () {
+        bjMise = Math.max(1, Math.floor(Number(champ.value) || 1));
+        champ.value = bjMise;
+      });
+    }
+    Array.prototype.forEach.call(elBjCorps.querySelectorAll('[data-mise]'), function (b) {
+      b.addEventListener('click', function () {
+        var v = b.getAttribute('data-mise');
+        bjMise = v === 'max' ? Math.max(1, Math.floor(solde)) : Number(v);
+        clic(false); peintBj();
+      });
+    });
+    Array.prototype.forEach.call(elBjCorps.querySelectorAll('[data-bj]'), function (b) {
+      b.addEventListener('click', function () {
+        var q = b.getAttribute('data-bj');
+        clic(true);
+        bjErreur = '';
+        if (q === 'deal') { envoie({ type: 'bj_bet', amount: bjMise }); return; }
+        if (q === 'hit') { envoie({ type: 'bj_hit' }); return; }
+        if (q === 'stand') { envoie({ type: 'bj_stand' }); return; }
+        if (q === 'double') { envoie({ type: 'bj_double' }); return; }
+        if (q === 'ins') { envoie({ type: 'bj_insure', amount: BJ ? BJ.insuranceMax : 0 }); return; }
+        if (q === 'noins') { envoie({ type: 'bj_insure', amount: 0 }); return; }
+      });
+    });
+  }
+
   function peintBalises() {
     if (!elBalises) return;
     var l = (SCENE === 'monde' && !DONJON_C)
@@ -1576,6 +1759,23 @@
     { cle: 'coffre', src: 'img/nexus/tiles/obj_vault_door.webp',
       x: CENTRE.x + 620, y: CENTRE.y, larg: 260, haut: 251,
       rayon: 120, href: 'games.html?open=ap', nom: 'your vault' },
+    /* ---- LA TABLE DE BLACKJACK, AU SUD ----
+     *
+     * Les trois autres destinations partent au nord, a l'ouest et a l'est. Le
+     * sud etait vide — et c'est precisement la qu'on APPARAIT en arrivant. On
+     * se levait donc au milieu d'un carre d'herbe.
+     *
+     * Elle ouvre son panneau sur place, comme l'etal : le blackjack existe
+     * deja tout entier cote serveur, sur la MEME socket et le MEME solde. Il
+     * n'y avait rien a ecrire de ce cote-la — seulement une porte. */
+    { cle: 'casino', src: 'img/nexus/tiles/obj_bj_table.webp',
+      x: CENTRE.x, y: CENTRE.y + 470, larg: 300, haut: 251,
+      rayon: 120, nom: 'the blackjack table' },
+    /* L'enseigne est du DECOR : pas de rayon, donc rien a ouvrir. Elle sert a
+       voir de loin qu'il y a quelque chose la-bas — c'est ce qui manquait le
+       plus a cette carte, de quoi viser. */
+    { cle: 'enseigne', src: 'img/nexus/tiles/obj_bj_enseigne.webp',
+      x: CENTRE.x - 230, y: CENTRE.y + 400, larg: 120, haut: 193 },
   ];
   LIEUX.forEach(function (l) { l.img = new Image(); l.img.src = l.src; l.dwell = 0; });
 
@@ -2939,7 +3139,7 @@
     chargeEffets();
     chargeSols();
     chargeTirs();
-    fermeCoffreMenu(); fermeShop();
+    fermeCoffreMenu(); fermeShop(); fermeBj();
     LIEUX.forEach(function (l) { l.dwell = 0; });
     indiceActuel = null;
     if (indiceEl) {
@@ -3151,21 +3351,35 @@
    *
    * Ouvrir a la main reste possible a tout moment : ce blocage ne concerne
    * que l'ouverture AUTOMATIQUE, celle qu'on n'a pas demandee. */
-  var shopFermeA = 0;          // quand la croix a ete tapee
-  var shopFermeIci = false;    // ... et on n'a pas encore quitte l'etal
-  var SHOP_REPOS = 10000;      // dix secondes, comme demande
+  /* ---- LE REPOS, POUR TOUS LES LIEUX QUI OUVRENT UN PANNEAU ----
+   *
+   * Ecrit une fois et indexe par la CLE du lieu. L'etal avait le sien, ecrit a
+   * la main ; la table de blackjack aurait eu exactement le meme, recopie —
+   * et le troisieme panneau aurait eu le sien, legerement different, parce que
+   * c'est ce qui arrive a la troisieme copie.
+   *
+   * Deux conditions independantes pour rouvrir tout seul :
+   *   — s'etre ECARTE du lieu depuis la fermeture. C'est elle qui resout le
+   *     defaut signale : rester dessus ne rouvre plus jamais ;
+   *   — et DIX SECONDES ecoulees, ce qui couvre le rebond de celui qui longe
+   *     le lieu en repartant.
+   * Les faire dependre l'une de l'autre ferait tomber la seconde avec la
+   * premiere — le rebond reviendrait par la fenetre. */
+  var REPOS = {};
+  var REPOS_MS = 10000;
 
-  /* Le repos ne depend PAS de `shopFermeIci` : sortir du rayon leve la
-     premiere condition, et si le repos en dependait il tomberait avec elle —
-     le rebond de celui qui longe l'etal serait revenu par la fenetre. Les
-     deux conditions sont independantes, et il faut les deux pour rouvrir. */
-  function shopEnRepos() {
-    return shopFermeA > 0 && (performance.now() - shopFermeA) < SHOP_REPOS;
+  function marqueFerme(cle) { REPOS[cle] = { a: performance.now(), ici: true }; }
+  function quitteLieu(cle) { if (REPOS[cle]) REPOS[cle].ici = false; }
+  function peutRouvrir(cle) {
+    var r = REPOS[cle];
+    if (!r) return true;
+    if (r.ici) return false;                                   // toujours dessus
+    return (performance.now() - r.a) >= REPOS_MS;              // et le repos passe
   }
 
   function fermeShop(parLaMain) {
     shopOuvert = false;
-    if (parLaMain) { shopFermeA = performance.now(); shopFermeIci = true; }
+    if (parLaMain) marqueFerme('etal');
     if (elShopVoile) elShopVoile.classList.remove('on');
   }
   if (elShopVoile) {
@@ -3983,6 +4197,11 @@
     { x0: CENTRE.x - 105, y0: CENTRE.y - 470, x1: CENTRE.x + 105, y1: CENTRE.y },
     { x0: CENTRE.x - 620, y0: CENTRE.y - 105, x1: CENTRE.x, y1: CENTRE.y + 105 },
     { x0: CENTRE.x, y0: CENTRE.y - 105, x1: CENTRE.x + 620, y1: CENTRE.y + 105 },
+    /* Le chemin du sud, vers la table. Sans lui, la table serait posee dans
+       l'herbe et rien ne dirait qu'on peut y aller — les trois autres
+       destinations ont chacune la sienne, et c'est le chemin qui les annonce
+       bien avant qu'on les voie. */
+    { x0: CENTRE.x - 105, y0: CENTRE.y, x1: CENTRE.x + 105, y1: CENTRE.y + 470 },
   ];
   function estChemin(px, py) {
     var dx = px - CENTRE.x, dy = py - CENTRE.y;
@@ -5866,19 +6085,22 @@
              redemandait son etat au serveur — ce qui effacait l'annonce du
              coffre qu'on venait d'ouvrir, sous les yeux du joueur. */
           if (l.cle === 'etal') {
-            /* `shopFermeIci` ne se leve qu'en SORTANT du rayon (plus bas) :
-               tant qu'on est dessus, la boutique reste fermee. */
-            if (!shopOuvert && !shopEnRepos() && !shopFermeIci) ouvreShop();
+            if (!shopOuvert && peutRouvrir('etal')) ouvreShop();
+            l.dwell = 0; entre = true; return;
+          }
+          /* La table de blackjack, au sud. Meme geste que l'etal, meme repos :
+             c'est le meme mecanisme, indexe par la cle du lieu. */
+          if (l.cle === 'casino') {
+            if (!bjOuvert && peutRouvrir('casino')) ouvreBj();
             l.dwell = 0; entre = true; return;
           }
           location.href = l.href;
         }
       } else {
         l.dwell = 0;
-        /* On s'est ecarte : l'etal cesse d'etre « celui qu'on vient de
-           fermer ». Le repos de dix secondes, lui, court toujours — c'est ce
-           qui evite le rebond de celui qui longe l'etal en repartant. */
-        if (l.cle === 'etal') shopFermeIci = false;
+        /* On s'est ecarte : ce lieu cesse d'etre « celui qu'on vient de
+           fermer ». Le repos de dix secondes, lui, court toujours. */
+        quitteLieu(l.cle);
       }
       if (dist < l.rayon * 1.8 && dist < plusPresDist) { plusPresDist = dist; proche = l; }
     });
@@ -6698,7 +6920,8 @@
       }
     }
     // les lieux, chacun de sa couleur
-    var TEINTE = { fontaine: '#3fa9f5', portail: '#c04ce0', etal: '#e0a33c', coffre: '#d8d8d8' };
+    var TEINTE = { fontaine: '#3fa9f5', portail: '#c04ce0', etal: '#e0a33c',
+                   coffre: '#d8d8d8', casino: '#2fa86a', enseigne: '#2fa86a' };
     LIEUX.forEach(function (l) {
       g.fillStyle = TEINTE[l.cle] || '#fff';
       var w = Math.max(3, l.larg * e * 0.6), h = Math.max(3, l.haut * e * 0.6);

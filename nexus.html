@@ -644,6 +644,48 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
   background:rgba(124,255,155,.09); border:1px solid rgba(124,255,155,.32); }
 .nxp-bal:hover{ background:rgba(124,255,155,.18); color:#fff; }
 .nxp-bal u{ text-decoration:none; font-size:9.5px; font-weight:700; color:#5c7a66; }
+/* ---- LE PANNEAU DE BLACKJACK ----
+ * Meme carte que la boutique et le coffre : un joueur qui a appris a fermer
+ * l'un ferme les trois. */
+#nxBjVoile{ position:fixed; top:0; bottom:0; left:0; right:var(--nxp);
+  z-index:95; background:rgba(4,7,13,.7);
+  display:flex; align-items:center; justify-content:center; padding:16px;
+  opacity:0; pointer-events:none; transition:opacity .18s,right .22s ease; }
+#nxWrap.replie ~ #nxBjVoile, body.nxreplie #nxBjVoile{ right:0; }
+#nxBjVoile.on{ opacity:1; pointer-events:auto; }
+#nxBjVoile .nxcf-carte{ max-width:620px; }
+.nxbj-main{ margin:10px 0 4px; }
+.nxbj-main > i{ display:block; font-style:normal; font-size:10.5px; font-weight:800;
+  letter-spacing:.06em; text-transform:uppercase; color:#8DA0C4; margin-bottom:5px; }
+.nxbj-main > i b{ color:#FFC53D; }
+/* Les cartes : la MEME planche que la table du casino, pas un deuxieme jeu de
+   dessins. Une carte doit se reconnaitre aux deux endroits. */
+.nxbj-cartes{ display:flex; gap:6px; min-height:96px; flex-wrap:wrap; }
+.nxbj-c{ width:68px; height:96px; border-radius:7px; overflow:hidden;
+  background:#0f1420; border:1px solid rgba(255,255,255,.12); flex:0 0 auto; }
+.nxbj-c img{ width:100%; height:100%; object-fit:contain; display:block; }
+.nxbj-c.dos{ background:url('img/bj_back.webp') center/contain no-repeat #0f1420; }
+.nxbj-act{ display:flex; gap:6px; flex-wrap:wrap; margin-top:12px; }
+.nxbj-act button{ flex:1 1 auto; min-width:84px; height:40px; border-radius:10px;
+  cursor:pointer; font:800 13px/1 'Archivo',system-ui,sans-serif;
+  color:#0d1117; background:#7CFF9B; border:1px solid #7CFF9B; }
+.nxbj-act button.gris{ color:#c9d3f2; background:rgba(255,255,255,.06);
+  border-color:rgba(255,255,255,.16); }
+.nxbj-act button:disabled{ opacity:.4; cursor:not-allowed; }
+.nxbj-mise{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:10px; }
+.nxbj-mise input{ width:110px; height:38px; border-radius:9px; padding:0 10px;
+  font:800 14px/1 'Archivo',system-ui,sans-serif; color:#F2F6FF;
+  background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.16); }
+.nxbj-mise button{ height:38px; padding:0 10px; border-radius:9px; cursor:pointer;
+  font:800 12px/1 'Archivo',system-ui,sans-serif; color:#E8C97A;
+  background:rgba(232,201,122,.1); border:1px solid rgba(232,201,122,.3); }
+.nxbj-res{ margin-top:10px; padding:9px 11px; border-radius:10px; font-size:12.5px;
+  font-weight:800; line-height:1.5; }
+.nxbj-res.gagne{ background:rgba(124,255,155,.1); border:1px solid rgba(124,255,155,.32); color:#8CFFB4; }
+.nxbj-res.perdu{ background:rgba(242,104,94,.1); border:1px solid rgba(242,104,94,.32); color:#F5938B; }
+.nxbj-res.nul{ background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.14); color:#c9d3f2; }
+.nxbj-solde{ font-size:11.5px; color:#8DA0C4; margin-top:8px; }
+.nxbj-solde b{ color:#FFC53D; }
 .nxsh-cof .o b{ color:#F2F6FF; }
 /* Le lot d'achat : personne n'achete des potions une par une. */
 .nxsh-lots{ display:flex; gap:6px; margin-top:10px; justify-content:center; }
@@ -1247,6 +1289,19 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
   </div>
 </div>
 
+<!-- ---- LA TABLE DE BLACKJACK ----
+     Le jeu existe entierement cote serveur, sur la MEME socket et le MEME
+     solde que le reste : ce panneau n'est qu'une porte de plus. On y arrive
+     en marchant sur la table, au sud de la fontaine. -->
+<div id="nxBjVoile">
+  <div class="nxcf-carte nxbj-carte">
+    <button class="nxcf-x" type="button" aria-label="Close">&times;</button>
+    <b class="nxcf-titre">&#127183; Blackjack</b>
+    <div class="nxcf-sous">Same balance as everywhere else. The dealer stands on 17.</div>
+    <div class="nxbj-corps"></div>
+  </div>
+</div>
+
 <div id="nxRangVoile">
   <div class="nxcf-carte nxrg-carte">
     <button class="nxcf-x" type="button" aria-label="Close">&times;</button>
@@ -1283,7 +1338,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
   </div>
 </div>
 
-<script src="nexus.js?v=20260821t" defer></script>
+<script src="nexus.js?v=20260821u" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

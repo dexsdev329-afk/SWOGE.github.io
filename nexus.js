@@ -3131,14 +3131,47 @@
     peintShop();
     elShopVoile.classList.add('on');
   }
-  function fermeShop() {
+  /* ---- ON NE ROUVRE PAS CE QU'ON VIENT DE FERMER ----
+   *
+   * L'etal se rouvrait UNE DEMI-SECONDE apres la croix : la condition etait
+   * « on est dessus et il est ferme », et fermer la rendait vraie a nouveau.
+   * La croix marchait donc parfaitement, et elle etait annulee aussitot — ce
+   * qui se lit exactement comme un bouton mort. On ne pouvait pas s'ecarter
+   * de l'etal sans voir la boutique clignoter.
+   *
+   * Le coffre avait deja ce garde-fou ; l'etal ne l'avait pas. Deux
+   * conditions doivent etre reunies pour rouvrir tout seul :
+   *
+   *   — s'etre ECARTE de l'etal depuis la fermeture. C'est la regle du
+   *     coffre, et c'est elle qui resout le cas signale : rester dessus ne
+   *     rouvre plus jamais, quel que soit le temps ;
+   *   — et DIX SECONDES ecoulees. Elle couvre le rebond de celui qui longe
+   *     l'etal en repartant : sortir du rayon d'un pas et y rentrer du
+   *     suivant ne doit pas relancer la boutique.
+   *
+   * Ouvrir a la main reste possible a tout moment : ce blocage ne concerne
+   * que l'ouverture AUTOMATIQUE, celle qu'on n'a pas demandee. */
+  var shopFermeA = 0;          // quand la croix a ete tapee
+  var shopFermeIci = false;    // ... et on n'a pas encore quitte l'etal
+  var SHOP_REPOS = 10000;      // dix secondes, comme demande
+
+  /* Le repos ne depend PAS de `shopFermeIci` : sortir du rayon leve la
+     premiere condition, et si le repos en dependait il tomberait avec elle —
+     le rebond de celui qui longe l'etal serait revenu par la fenetre. Les
+     deux conditions sont independantes, et il faut les deux pour rouvrir. */
+  function shopEnRepos() {
+    return shopFermeA > 0 && (performance.now() - shopFermeA) < SHOP_REPOS;
+  }
+
+  function fermeShop(parLaMain) {
     shopOuvert = false;
+    if (parLaMain) { shopFermeA = performance.now(); shopFermeIci = true; }
     if (elShopVoile) elShopVoile.classList.remove('on');
   }
   if (elShopVoile) {
     elShopVoile.addEventListener('click', function (e) {
       var c = e.target.classList;
-      if (e.target === elShopVoile || (c && c.contains('nxcf-x'))) fermeShop();
+      if (e.target === elShopVoile || (c && c.contains('nxcf-x'))) fermeShop(true);
     });
   }
 
@@ -5832,10 +5865,21 @@
              rouvrait toutes les demi-secondes et chaque reouverture
              redemandait son etat au serveur — ce qui effacait l'annonce du
              coffre qu'on venait d'ouvrir, sous les yeux du joueur. */
-          if (l.cle === 'etal') { if (!shopOuvert) ouvreShop(); l.dwell = 0; entre = true; return; }
+          if (l.cle === 'etal') {
+            /* `shopFermeIci` ne se leve qu'en SORTANT du rayon (plus bas) :
+               tant qu'on est dessus, la boutique reste fermee. */
+            if (!shopOuvert && !shopEnRepos() && !shopFermeIci) ouvreShop();
+            l.dwell = 0; entre = true; return;
+          }
           location.href = l.href;
         }
-      } else l.dwell = 0;
+      } else {
+        l.dwell = 0;
+        /* On s'est ecarte : l'etal cesse d'etre « celui qu'on vient de
+           fermer ». Le repos de dix secondes, lui, court toujours — c'est ce
+           qui evite le rebond de celui qui longe l'etal en repartant. */
+        if (l.cle === 'etal') shopFermeIci = false;
+      }
       if (dist < l.rayon * 1.8 && dist < plusPresDist) { plusPresDist = dist; proche = l; }
     });
     if (entre) return;

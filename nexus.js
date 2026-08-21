@@ -1688,7 +1688,7 @@
   var IMG_ANNONCE_DJ = null, IMG_ONDE_DJ = null;
   var ANNONCE_CADRES = 4, ONDE_CADRES = 4, ONDE_DUREE = 0.55;
   var IMG_SACS = null, IMG_OBST = null, IMG_MUR = null, IMG_TEMPLE = null;
-  var IMG_MUR_DJ = null, IMG_PORTE = null;
+  var IMG_MUR_DJ = null, IMG_MUR_CAVE = null, IMG_PORTE = null;
   /* Le coffre des salles gardees : ferme, entrouvert, ouvert. */
   var IMG_COFFRE = null, COFFRE_CADRES = 3;
   /* Sa hauteur en unites de monde. Un peu moins qu'un personnage : il doit se
@@ -1745,7 +1745,12 @@
                          `biomeEn` rend donc 'donjon' partout, et cette ligne
                          suffit — pas un deuxieme mode de dessin a apprendre a
                          la page. */
-                      donjon: 'ground_donjon' };
+                      donjon: 'ground_donjon',
+                      /* La cave des pirates a son bois et son fer. Un donjon
+                         de plus, c'est une LIGNE de plus ici — pas un mode de
+                         dessin de plus : le serveur nomme le sol dans son
+                         anneau unique, et la page le lit comme les autres. */
+                      cave: 'ground_cave' };
   function chargeSols() {
     Object.keys(FICHIER_SOL).forEach(function (b) {
       if (TUILES_M[b]) return;
@@ -1824,6 +1829,7 @@
     if (!IMG_OBST) { IMG_OBST = new Image(); IMG_OBST.src = 'img/nexus/tiles/obstacles.webp'; }
     if (!IMG_MUR) { IMG_MUR = new Image(); IMG_MUR.src = 'img/nexus/tiles/mur_ruine.webp'; }
     if (!IMG_MUR_DJ) { IMG_MUR_DJ = new Image(); IMG_MUR_DJ.src = 'img/nexus/tiles/mur_donjon.webp'; }
+    if (!IMG_MUR_CAVE) { IMG_MUR_CAVE = new Image(); IMG_MUR_CAVE.src = 'img/nexus/tiles/mur_cave.webp'; }
     if (!IMG_PORTE) { IMG_PORTE = new Image(); IMG_PORTE.src = 'img/nexus/tiles/obj_portail.webp'; }
     if (!IMG_TEMPLE) { IMG_TEMPLE = new Image(); IMG_TEMPLE.src = 'img/nexus/tiles/ground_temple.webp'; }
     if (!IMG_COFFRE) { IMG_COFFRE = new Image(); IMG_COFFRE.src = 'img/nexus/tiles/obj_coffre_garde.webp'; }
@@ -2049,7 +2055,12 @@
        (8) serait passe par la branche du mur de ruine (>= 4) et se serait
        dessine avec sa planche — le donjon aurait ressemble a une salle gardee,
        et rien n'aurait plante pour le dire. */
-    var img = t >= md ? IMG_MUR_DJ : (mur ? IMG_MUR : IMG_OBST);
+    /* Quel mur de donjon : le serveur le NOMME avec le plan. Le deduire du
+       nom du donjon ici aurait demande a la page de tenir une deuxieme table
+       en face de celle du serveur, et le troisieme donjon aurait eu ses murs
+       dans une des deux seulement. */
+    var murDJ = (MONDE_C && MONDE_C.mur === 'cave') ? IMG_MUR_CAVE : IMG_MUR_DJ;
+    var img = t >= md ? murDJ : (mur ? IMG_MUR : IMG_OBST);
     if (!img || !img.complete || !img.naturalWidth) return;
     var cadre = img.naturalHeight;
     var col = t >= md ? (t - md) : (mur ? (t - mb) : t);

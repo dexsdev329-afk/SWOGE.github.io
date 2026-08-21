@@ -1476,24 +1476,91 @@
     ['img/4fbca9fbe650.png','img/16de477601ef.png','img/2d404029b6b9.png','img/f9de1e9b75a1.png'],
     ['img/aba02d7cff4d.png','img/1df00603b61f.png','img/8e26bdfec10e.png','img/49a50eaa20a1.png'],
   ];
-  function bjCarte(c) {
+
+  /* ---- LA DONNE SE VOIT ARRIVER ----
+   *
+   * Le panneau repeignait la main entiere a chaque message : deux cartes
+   * apparaissaient d'un bloc, et l'on ne pouvait pas dire si le serveur venait
+   * de distribuer ou si l'ecran s'etait simplement rafraichi. Le probleme
+   * n'etait pas l'absence de joliesse, c'etait l'absence d'EVENEMENT.
+   *
+   * On garde donc les cartes DEJA vues, par main. Celles qui n'y sont pas
+   * volent depuis le sabot, decalees de 130 ms, avec leur bruit. Le reste ne
+   * bouge pas : une carte posee qui redecolle a chaque rafraichissement serait
+   * pire que pas d'animation du tout.
+   *
+   * La comparaison se fait sur le PREFIXE. Une main qui commence par les memes
+   * cartes est la meme main qu'on prolonge ; une main qui differe des le debut
+   * est une nouvelle donne, et tout y est neuf — y compris quand elle tombe
+   * par hasard sur les memes valeurs. */
+  var BJ_VU_D = [], BJ_VU_J = [], BJ_VU_DOS = false, BJ_VU_FINI = false;
+  var BJ_SONS = [];
+  var BJ_SIG = null;
+  var BJ_PAS = 130;                                  // ms entre deux cartes
+
+  function bjNeufDepuis(avant, apres) {
+    var i = 0;
+    while (i < avant.length && i < apres.length && avant[i] === apres[i]) i++;
+    /* Le prefixe casse : ce n'est plus la meme main, tout est neuf. */
+    return i === avant.length ? avant.length : 0;
+  }
+
+  /* Trois prises pour le meme geste, tirees au hasard — meme raison que les
+     deux cris de mort : quatre cartes distribuees avec exactement le meme
+     bruit sonnent comme une machine, pas comme un croupier. */
+  var A_CHARGER_BJ = {
+    bjCarte1:   'img/nexus/bj/carte1.wav',
+    bjCarte2:   'img/nexus/bj/carte2.wav',
+    bjCarte3:   'img/nexus/bj/carte3.wav',
+    bjRetourne: 'img/nexus/bj/retourne.wav',
+    bjJeton:    'img/nexus/bj/jeton.wav',
+  };
+  function sonBj(nom, delai) {
+    /* Le decalage doit valoir pour le SON comme pour l'image : un bruit de
+       carte qui part avant que la carte ne se pose s'entend comme un bug. */
+    BJ_SONS.push(setTimeout(function () {
+      joueSample(nom, { vol: 0.6, hauteur: 0.96 + Math.random() * 0.08 });
+    }, delai || 0));
+  }
+  function sonCarte(delai) {
+    sonBj('bjCarte' + (1 + Math.floor(Math.random() * 3)), delai);
+  }
+  function bjTaisToi() {
+    BJ_SONS.forEach(clearTimeout);
+    BJ_SONS = [];
+  }
+
+  function bjCarte(c, delai) {
     var n = Number(c) || 0;
     var rang = ((n % 13) + 13) % 13;
     var ens = Math.floor((((n % 52) + 52) % 52) / 13);
     var jeu = BJ_ART[rang] || BJ_ART[0];
-    return '<div class="nxbj-c"><img alt="" src="' + (jeu[ens] || jeu[0]) +
+    return '<div class="nxbj-c' + (delai == null ? '' : ' neuf') + '"' +
+           (delai ? ' style="animation-delay:' + delai + 'ms"' : '') +
+           '><img alt="" src="' + (jeu[ens] || jeu[0]) +
            '" onerror="this.remove()"></div>';
+  }
+  function bjDos(delai) {
+    return '<div class="nxbj-c dos' + (delai == null ? '' : ' neuf') + '"' +
+           (delai ? ' style="animation-delay:' + delai + 'ms"' : '') + '></div>';
   }
 
   function ouvreBj() {
     if (!elBjVoile) return;
     bjOuvert = true;
     bjErreur = '';
+    /* Les bruits de la table ne sont charges qu'ICI. Les mettre avec le reste
+       ferait telecharger cinquante kilo-octets de cartes a tous ceux qui ne
+       s'assoient jamais. */
+    debloqueSon();
+    chargeSamples(A_CHARGER_BJ);
+    BJ_SIG = null;                                   // la carte a pu changer pendant qu'on etait ailleurs
     peintBj();
     elBjVoile.classList.add('on');
   }
   function fermeBj(parLaMain) {
     bjOuvert = false;
+    bjTaisToi();
     if (parLaMain) marqueFerme('casino');
     if (elBjVoile) elBjVoile.classList.remove('on');
   }
@@ -1504,6 +1571,10 @@
     });
   }
 
+  /* La banniere peinte, pour les resultats qui en ont une. */
+  var BJ_BANNIERE = { win: 'ban-win', blackjack: 'ban-blackjack',
+                      bust: 'ban-bust', push: 'ban-push' };
+
   function peintBj() {
     if (!elBjCorps) return;
     var st = BJ;
@@ -1512,24 +1583,93 @@
        panneau, qui arrive avec la connexion. */
     var solde = (st && st.balance != null) ? Number(st.balance) : SOLDE_NUM;
     var enMain = st && st.stage && st.stage !== 'done';
-    var html = '';
 
+    /* ---- ON NE REPEINT QUE SI QUELQUE CHOSE A CHANGE ----
+     * Sans ce garde-fou, le message de solde qui suit la donne reconstruisait
+     * le HTML une centaine de millisecondes apres elle : les cartes en plein
+     * vol retombaient d'un coup a leur place, et l'animation ne se voyait
+     * qu'une fois sur deux, au hasard du reseau. */
+    var sig = [st ? st.stage : '-', st ? st.player.cards.join(',') : '',
+               st ? st.dealer.cards.join(',') : '', st ? (st.dealer.hidden ? 'h' : '') : '',
+               st ? st.result : '', st ? st.payout : '', st ? st.canDouble : '',
+               st ? st.insuranceMax : '', Math.floor(solde), bjMise, bjErreur].join('|');
+    if (sig === BJ_SIG) return;
+    BJ_SIG = sig;
+
+    var html = '';
     if (bjErreur) {
       html += '<div class="nxcf-refus">' + ech(bjErreur) + '</div>';
     }
 
     if (st) {
+      var dc = st.dealer.cards, jc = st.player.cards;
+      /* Trois cas, et le premier est le plus important : LE TAPIS N'A PAS
+         CHANGE. Il arrive a chaque fois qu'on touche un jeton apres une main
+         finie — et sans ce cas, la main deja jouee redecollerait a chaque
+         clic. */
+      var identique = BJ_VU_J.join() === jc.join() && BJ_VU_D.join() === dc.join()
+                      && BJ_VU_DOS === !!st.dealer.hidden;
+      var dNeuf, jNeuf, dosNeuf;
+      if (identique) { dNeuf = dc.length; jNeuf = jc.length; dosNeuf = false; }
+      else if (BJ_VU_FINI) {
+        /* La main d'avant etait FINIE : ce qu'on voit est forcement une
+           nouvelle donne, meme si elle commence par les memes cartes. Le
+           prefixe se tromperait exactement ce jour-la. */
+        dNeuf = 0; jNeuf = 0; dosNeuf = !!st.dealer.hidden;
+      } else {
+        dNeuf = bjNeufDepuis(BJ_VU_D, dc);
+        jNeuf = bjNeufDepuis(BJ_VU_J, jc);
+        /* Le dos ne vole que la premiere fois qu'il se montre : il reste
+           ensuite en place jusqu'a ce que la vraie carte le remplace. */
+        dosNeuf = st.dealer.hidden && (!BJ_VU_DOS || dNeuf === 0);
+      }
+      /* Le premier decouvert du croupier n'est pas une carte donnee, c'est une
+         carte RETOURNEE — et ca ne fait pas le meme bruit. */
+      var retourne = !identique && BJ_VU_DOS && !st.dealer.hidden && dNeuf < dc.length;
+
+      /* L'ordre du tapis : joueur, croupier, joueur, croupier. On le
+         reconstitue meme si le serveur, lui, ne nous envoie que l'etat final —
+         c'est l'ordre que le joueur reconnait. */
+      var dTot = (dc.length - dNeuf) + (dosNeuf ? 1 : 0);
+      var jTot = jc.length - jNeuf;
+      var rang = 0, delaiD = [], delaiJ = [];
+      for (var k = 0; k < Math.max(dTot, jTot); k++) {
+        if (k < jTot) delaiJ[k] = (rang++) * BJ_PAS;
+        if (k < dTot) delaiD[k] = (rang++) * BJ_PAS;
+      }
+
+      bjTaisToi();
+      html += '<div class="nxbj-tapis">';
       html += '<div class="nxbj-main"><i>Dealer <b>' +
         (st.dealer.hidden ? '?' : st.dealer.value) + '</b></i>' +
         '<div class="nxbj-cartes">' +
-        st.dealer.cards.map(bjCarte).join('') +
+        dc.map(function (c, k) {
+          if (k < dNeuf) return bjCarte(c, null);
+          var d = delaiD[k - dNeuf];
+          if (retourne && k === dNeuf) sonBj('bjRetourne', d); else sonCarte(d);
+          return bjCarte(c, d);
+        }).join('') +
         /* La carte cachee se DESSINE : sans elle, le croupier a une seule
            carte a l'ecran et l'on croit la donne incomplete. */
-        (st.dealer.hidden ? '<div class="nxbj-c dos"></div>' : '') +
+        (st.dealer.hidden ? bjDos(dosNeuf ? delaiD[dc.length - dNeuf] : null) : '') +
         '</div></div>';
       html += '<div class="nxbj-main"><i>You <b>' + st.player.value + '</b>' +
         (st.doubled ? ' &middot; doubled' : '') + '</i>' +
-        '<div class="nxbj-cartes">' + st.player.cards.map(bjCarte).join('') + '</div></div>';
+        '<div class="nxbj-cartes">' +
+        jc.map(function (c, k) {
+          if (k < jNeuf) return bjCarte(c, null);
+          var d = delaiJ[k - jNeuf];
+          sonCarte(d);
+          return bjCarte(c, d);
+        }).join('') + '</div></div>';
+      html += '</div>';
+
+      BJ_VU_D = dc.slice();
+      BJ_VU_J = jc.slice();
+      BJ_VU_DOS = !!st.dealer.hidden;
+      BJ_VU_FINI = st.stage === 'done';
+    } else {
+      BJ_VU_D = []; BJ_VU_J = []; BJ_VU_DOS = false; BJ_VU_FINI = false;
     }
 
     if (enMain) {
@@ -1539,9 +1679,9 @@
           '<button type="button" class="gris" data-bj="noins">No insurance</button></div>';
       } else {
         html += '<div class="nxbj-act">' +
-          '<button type="button" data-bj="hit">Hit</button>' +
-          '<button type="button" class="gris" data-bj="stand">Stand</button>' +
-          (st.canDouble ? '<button type="button" class="gris" data-bj="double">Double</button>' : '') +
+          '<button type="button" class="plaque" data-bj="hit">Hit</button>' +
+          '<button type="button" class="plaque" data-bj="stand">Stand</button>' +
+          (st.canDouble ? '<button type="button" class="plaque" data-bj="double">Double</button>' : '') +
           '</div>';
       }
     } else {
@@ -1552,18 +1692,31 @@
       if (st && st.result) {
         var gagne = st.payout > (st.doubled ? st.bet * 2 : st.bet);
         var nul = st.payout === (st.doubled ? st.bet * 2 : st.bet);
-        html += '<div class="nxbj-res ' + (nul ? 'nul' : gagne ? 'gagne' : 'perdu') + '">' +
-          ech(String(st.result).toUpperCase()) +
-          (st.payout ? ' &middot; +' + st.payout + ' $SWOGE' : '') + '</div>';
+        var ban = BJ_BANNIERE[st.result];
+        /* Quand la banniere DIT le resultat, le mot en dessous ne fait que le
+           repeter. On ne garde alors que ce que le dessin ne peut pas dire :
+           combien on a recupere. */
+        var txt = ban ? (st.payout ? '+' + st.payout + ' $SWOGE' : '')
+          : ech(String(st.result).replace(/_/g, ' ').toUpperCase()) +
+            (st.payout ? ' &middot; +' + st.payout + ' $SWOGE' : '');
+        html += '<div class="nxbj-res ' + (nul ? 'nul' : gagne ? 'gagne' : 'perdu') +
+          (ban ? ' ban ' + ban : '') + (ban && !txt ? ' vide' : '') +
+          '" data-res="' + ech(st.result) + '">' + txt + '</div>';
       }
+      /* Les jetons AJOUTENT — on pose un jeton sur le tapis, on ne remplace
+         pas sa mise par lui. C'est le geste de la table, et il permet 130
+         sans passer par le clavier. */
       html += '<div class="nxbj-mise">' +
         '<input id="nxBjMise" type="number" min="1" step="1" value="' + bjMise + '">' +
-        [10, 50, 100].map(function (v) {
-          return '<button type="button" data-mise="' + v + '">' + v + '</button>';
-        }).join('') +
-        '<button type="button" data-mise="max">Max</button>' +
+        '<button type="button" class="efface" data-mise="0">Clear</button>' +
         '</div>' +
-        '<div class="nxbj-act"><button type="button" data-bj="deal">Deal</button></div>';
+        '<div class="nxbj-jetons">' +
+        [10, 100, 1000].map(function (v) {
+          return '<button type="button" class="nxbj-jeton" data-mise="' + v + '">+' + v + '</button>';
+        }).join('') +
+        '<button type="button" class="nxbj-jeton" data-mise="max">Max</button>' +
+        '</div>' +
+        '<div class="nxbj-act"><button type="button" class="plaque" data-bj="deal">Deal</button></div>';
     }
     html += '<div class="nxbj-solde">Balance <b>' + Math.floor(solde) + '</b> $SWOGE</div>';
     elBjCorps.innerHTML = html;
@@ -1573,13 +1726,17 @@
       champ.addEventListener('change', function () {
         bjMise = Math.max(1, Math.floor(Number(champ.value) || 1));
         champ.value = bjMise;
+        BJ_SIG = null;
       });
     }
     Array.prototype.forEach.call(elBjCorps.querySelectorAll('[data-mise]'), function (b) {
       b.addEventListener('click', function () {
         var v = b.getAttribute('data-mise');
-        bjMise = v === 'max' ? Math.max(1, Math.floor(solde)) : Number(v);
-        clic(false); peintBj();
+        if (v === 'max') bjMise = Math.max(1, Math.floor(solde));
+        else if (v === '0') bjMise = 1;
+        else bjMise = Math.max(1, bjMise + Number(v));
+        joueSample('bjJeton', { vol: 0.5, hauteur: 0.95 + Math.random() * 0.1 }) || clic(false);
+        peintBj();
       });
     });
     Array.prototype.forEach.call(elBjCorps.querySelectorAll('[data-bj]'), function (b) {
@@ -4367,12 +4524,19 @@
     mort2: 'img/nexus/mort2.mp3',
     niveau: 'img/nexus/niveau.mp3',
   };
-  function chargeSamples() {
+  /* ---- CHARGEMENT PAR GROUPES ----
+   * Tout ce qu'on ecoute n'interesse pas tout le monde : les cinquante
+   * kilo-octets de la table de blackjack n'ont aucune raison de partir chez
+   * qui traverse le Nexus sans s'asseoir. La fonction prend donc un LOT, et
+   * le Nexus ne charge le sien qu'au premier geste ; la table demande le sien
+   * quand on ouvre le panneau. */
+  function chargeSamples(lot) {
     if (!AUDIO) return;
-    Object.keys(A_CHARGER).forEach(function (nom) {
+    var L = lot || A_CHARGER;
+    Object.keys(L).forEach(function (nom) {
       if (nom in SAMPLES) return;
       SAMPLES[nom] = null;                    // en cours : on ne redemande pas
-      fetch(A_CHARGER[nom])
+      fetch(L[nom])
         .then(function (r) { return r.arrayBuffer(); })
         .then(function (b) {
           return new Promise(function (res, rej) {

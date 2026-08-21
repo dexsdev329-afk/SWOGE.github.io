@@ -15,6 +15,13 @@
  *    pas jouer.
  * 4. LA CROIX TIENT. Meme repos que l etal, et pour la meme raison : sans lui
  *    la table se rouvre sous les doigts tant qu on est dessus.
+ * 5. LA DONNE SE VOIT ARRIVER. Les cartes neuves volent, decalees ; les
+ *    anciennes ne bougent pas. Une main qui redecolle a chaque rafraichis-
+ *    sement serait pire que pas d animation du tout.
+ * 6. LES PLAQUES ONT UNE TAILLE. Hit et Stand sont des DESSINS, avec leur
+ *    texte pousse hors du cadre : si l image manque ou si la boite s ecrase,
+ *    le joueur n a plus de bouton du tout — et c est exactement ce qu on
+ *    verifie ici, en mesurant.
  */
 'use strict';
 const path = require('path');
@@ -96,6 +103,15 @@ process.on('unhandledRejection', (e) => {
     window.WebSocket = C;
   });
   p.on('pageerror', (e) => erreurs.push(String(e).slice(0, 200)));
+  /* Les bruits de la table sont charges A PART, quand on ouvre le panneau :
+     cinquante kilo-octets de cartes n ont pas a partir chez qui traverse le
+     Nexus sans s asseoir. On verifie donc qu ils partent QUAND MEME, sinon
+     l animation serait muette sans que rien ne le dise. */
+  const sons = [];
+  p.on('request', (r) => {
+    const u = r.url();
+    if (u.indexOf('/img/nexus/bj/') >= 0) sons.push(u.split('/').pop());
+  });
 
   await p.goto(`http://127.0.0.1:${site.port}/nexus.html?server=ws://127.0.0.1:${port}`,
                { waitUntil: 'domcontentloaded' });
@@ -168,7 +184,11 @@ process.on('unhandledRejection', (e) => {
       dos: c.querySelectorAll('.nxbj-c.dos').length,
       boutons: Array.from(c.querySelectorAll('[data-bj]')).map((b) => b.getAttribute('data-bj')),
       solde: (c.querySelector('.nxbj-solde b') || {}).textContent || null,
+      /* Le resultat s annonce de DEUX facons : un mot, ou une banniere peinte.
+         « BUST » n a pas besoin d etre ecrit sous son propre dessin — mais il
+         doit etre annonce, et c est ce qu on lit ici. */
       res: (c.querySelector('.nxbj-res') || {}).textContent || null,
+      resban: (c.querySelector('.nxbj-res') || { getAttribute: () => null }).getAttribute('data-res'),
       refus: (c.querySelector('.nxcf-refus') || {}).textContent || null,
     };
   });
@@ -196,6 +216,74 @@ process.on('unhandledRejection', (e) => {
   const apresMise = Number(moteur.balanceStr(w.address));
   ok(apresMise < avant, `la mise a ete debitee (${avant} -> ${apresMise})`);
 
+  /* ================== 2 bis. LA DONNE SE VOIT ARRIVER ================== */
+  console.log('\n-- la donne, carte par carte --');
+  const cartes = () => p.evaluate(() =>
+    Array.from(document.querySelectorAll('#nxBjVoile .nxbj-c')).map((el) => ({
+      neuf: el.classList.contains('neuf'),
+      dos: el.classList.contains('dos'),
+      delai: parseInt(el.style.animationDelay || '0', 10) || 0,
+    })));
+  let c = await cartes();
+  ok(c.length >= 3 && c.every((x) => x.neuf),
+     `toutes les cartes de la donne volent (${c.filter((x) => x.neuf).length}/${c.length})`);
+  /* DECALEES : quatre cartes qui partent ensemble, c est un rideau qui se
+     leve, pas un croupier qui distribue. */
+  const retards = c.map((x) => x.delai).sort((a2, b2) => a2 - b2);
+  ok(new Set(retards).size >= 3,
+     `elles arrivent l une apres l autre (${retards.join(', ')} ms)`);
+  ok(retards[retards.length - 1] >= 300,
+     `la derniere se pose apres les autres (${retards[retards.length - 1]} ms)`);
+  ok(sons.length >= 3, `les bruits de la table sont charges (${sons.join(', ') || 'aucun'})`);
+
+  /* ---- LE PIEGE : un rafraichissement N EST PAS une donne ----
+   * Le panneau se repeint aussi quand le solde change, ou quand on touche un
+   * jeton. S il rejouait l animation a chaque fois, les cartes deja posees
+   * redecolleraient sous les yeux du joueur — et il croirait qu on lui
+   * redistribue une main. */
+  await p.evaluate(() => { window.__peint = document.querySelector('#nxBjVoile .nxbj-corps').innerHTML; });
+  await p.evaluate(() => window.__s[0].send(JSON.stringify({ type: 'potionMarche' })));
+  await p.waitForTimeout(600);
+  c = await cartes();
+  ok(c.length >= 3 && c.every((x) => x.neuf),
+     'un message de solde ne fait pas redecoller les cartes (rien n a ete repeint)');
+
+  /* ---- LES PLAQUES ONT UNE TAILLE ---- */
+  /* Quel bouton, cela depend de la main : un blackjack naturel du croupier la
+     termine avant qu on ait eu a decider, et il ne reste alors que « Deal ».
+     L essai mesure celui qui EST la — exiger « hit » ferait echouer une main
+     sur vingt pour une raison qui n a rien a voir avec ce qu on verifie. */
+  let boite = await p.evaluate(() => {
+    const b2 = document.querySelector('#nxBjVoile [data-bj="hit"]')
+            || document.querySelector('#nxBjVoile [data-bj="noins"]')
+            || document.querySelector('#nxBjVoile [data-bj="deal"]');
+    if (!b2) return null;
+    const r = b2.getBoundingClientRect();
+    return { q: b2.getAttribute('data-bj'), w: Math.round(r.width), h: Math.round(r.height) };
+  });
+  ok(boite && boite.w >= 60 && boite.h >= 24,
+     `le bouton de decision se touche (${boite ? boite.q + ' ' + boite.w + 'x' + boite.h : 'absent'})`);
+
+  /* ---- UNE CARTE TIREE VOLE, LES AUTRES NON ---- */
+  const avantHit = (await cartes()).length;
+  const peutTirer = await p.evaluate(() => !!document.querySelector('#nxBjVoile [data-bj="hit"]'));
+  if (peutTirer) {
+    await p.click('#nxBjVoile [data-bj="hit"]');
+    await p.waitForTimeout(700);
+    c = await cartes();
+    const neuves = c.filter((x) => x.neuf).length;
+    ok(c.length === avantHit + 1, `tirer ajoute une carte (${avantHit} -> ${c.length})`);
+    /* La main peut avoir saute (bust) : le croupier se decouvre alors, et
+       plusieurs cartes sont neuves a juste titre. Sinon, une seule. */
+    const saute = await p.evaluate(() =>
+      !document.querySelector('#nxBjVoile [data-bj="hit"]'));
+    ok(saute || neuves === 1,
+       `seule la carte tiree vole (${neuves} neuve(s)${saute ? ', main terminee' : ''})`);
+  } else {
+    ok(true, 'pas de tirage possible sur cette main — rien a verifier');
+    ok(true, 'idem');
+  }
+
   /* On termine la main quoi qu il arrive : elle peut etre finie d office (un
      blackjack naturel), ou demander une decision. */
   for (let k = 0; k < 12; k++) {
@@ -207,10 +295,32 @@ process.on('unhandledRejection', (e) => {
   }
   e = await vu();
   ok(e.boutons.indexOf('deal') >= 0, 'la main est finie : on peut en remiser une');
-  ok(!!e.res, `le resultat est annonce (« ${e.res} »)`);
+  ok(!!(e.res || e.resban), `le resultat est annonce (« ${e.res || e.resban} »)`);
   /* Le solde affiche suit celui du compte, sans aller-retour de plus. */
   eq(Number(e.solde), Math.floor(Number(moteur.balanceStr(w.address))),
      `et le solde affiche suit (${e.solde})`);
+
+  /* ---- ET UNE MAIN FINIE RESTE POSEE ----
+   * On touche un jeton : la mise change, le panneau se repeint, et le tapis
+   * ne bouge pas. C est le cas qui casse la comparaison naive « les memes
+   * cartes qu avant », parce que le HTML, lui, est bien reconstruit. */
+  await p.click('#nxBjVoile [data-mise="100"]');
+  await p.waitForTimeout(400);
+  c = await cartes();
+  ok(c.length > 0 && c.every((x) => !x.neuf),
+     `un jeton pose ne redistribue pas la main (${c.filter((x) => x.neuf).length} carte(s) en vol)`);
+  /* Les quatre jetons sur UNE ligne : un plateau casse en deux ne se lit plus
+     comme un plateau, et c est le telephone qui casse en premier. */
+  const lignes = await p.evaluate(() => {
+    const j = Array.from(document.querySelectorAll('#nxBjVoile .nxbj-jeton'));
+    return { n: j.length, hauts: new Set(j.map((b2) => Math.round(b2.getBoundingClientRect().top))).size };
+  });
+  ok(lignes.n === 4 && lignes.hauts === 1,
+     `les quatre jetons tiennent sur une ligne (${lignes.n} jetons, ${lignes.hauts} ligne(s))`);
+  const mise = await p.evaluate(() => Number(document.getElementById('nxBjMise').value));
+  /* Le jeton AJOUTE : c est le geste de la table. Un jeton qui remplacerait la
+     mise ne permettrait jamais 110. */
+  ok(mise > 100, `le jeton s ajoute a la mise au lieu de la remplacer (${mise})`);
 
   /* ================== 3. LA CROIX TIENT ================== */
   console.log('\n-- on ferme, et on reste dessus --');

@@ -226,6 +226,24 @@
       } else shopMsg = '';
       if (shopOuvert) peintShop();
     }
+    /* L'etal des potions. Il arrive apres une mise en vente, une reprise, un
+       achat — et aussi tout seul apres un achat de potion, parce que la file
+       vient de bouger. */
+    if (m.type === 'potionMarche') {
+      MARCHE_P = m;
+      if (m.potions) POTIONS_C = m.potions;
+      if (m.fioles) FIOLES_C = m.fioles;
+      if (m.balance != null && BOUTIQUE) BOUTIQUE.balance = m.balance;
+      if (m.error) shopMsg = { texte: m.error, ok: false };
+      else if (m.misEnVente) shopMsg = { texte: '\uD83C\uDFF7 ' + m.misEnVente +
+        ' listed \u2014 you get paid when they sell', ok: true };
+      else if (m.repris) shopMsg = { texte: '\u21A9 ' + m.repris + ' taken back', ok: true };
+      else if (m.achete) shopMsg = { texte: '\u2728 ' + m.achete + ' stat potion' +
+        (m.achete > 1 ? 's' : '') + ' \u2014 ' + m.paye + ' $SWOGE', ok: true };
+      if (shopOuvert) peintShop();
+      if (coffreOuvert) peintCoffreMenu();
+      peintPanneau();
+    }
     if (m.type === 'potionBue') {
       POTIONS_C = m.potions || POTIONS_C;
       if (m.pv !== null && m.pv !== undefined) { VIE.pv = m.pv; moiMonde.pv = m.pv; }
@@ -546,6 +564,14 @@
   var elRepli = document.getElementById('nxRepli');
   var elPotions = document.getElementById('nxPotions');
   var POTIONS_C = [];
+  /* ---- L'ETAL DES POTIONS ----
+   * Le stock du magasin vient des joueurs. `MARCHE_P` porte, pour chaque
+   * sorte, ce qu'on en a, ce qu'on en a mis en vente, et ce que le serveur en
+   * a. Le serveur le renvoie ENTIER a chaque geste : la page ne recalcule
+   * jamais un stock, elle affiche celui qu'on vient de lui dire. */
+  var MARCHE_P = null;
+  var shopVente = false;      // l'onglet potions montre-t-il le comptoir de vente
+  var venteQte = {};          // combien on met en vente, par sorte
   /* Le nom court d'une stat, pour les mots qui flottent. « +1 att » ne se lit
      pas au milieu d'un combat ; « +1 ATT » si. */
   var NOM_STAT = { hp: 'hp', mp: 'mp', att: 'att', def: 'def',
@@ -2974,8 +3000,102 @@
     // ---- le rayon des potions
     if (shopSaison === 'pot') {
       var soldeP = Number(BOUTIQUE.balance || 0);
-      elShopCorps.innerHTML = (POTIONS_C || []).map(function (p) {
+      /* Le stock du magasin appartient aux JOUEURS. Tant que le marche n'est
+         pas arrive, on ne montre pas un comptoir vide qui dirait « personne ne
+         vend » : on le demande, et on affiche ce qu'on sait deja. */
+      if (!MARCHE_P && enLigne) envoie({ type: 'potionMarche' });
+      var lignesM = (MARCHE_P && MARCHE_P.lignes) || [];
+      var deM = function (cle) {
+        for (var i = 0; i < lignesM.length; i++) if (lignesM[i].cle === cle) return lignesM[i];
+        return null;
+      };
+
+      /* ---- LE COMPTOIR DE VENTE ----
+       * Un seul bouton fait la bascule, et il porte le mot qu'on cherche :
+       * « Sell my potions ». Deux onglets de plus en haut auraient noye les
+       * saisons, qui sont la raison principale d'ouvrir cette boutique. */
+      var bascule = '<button type="button" class="nxsh-bascule' + (shopVente ? ' on' : '') +
+        '" data-vente="1">' + (shopVente ? '\u2190 Back to buying'
+                                         : '\uD83C\uDFF7 Sell my potions') + '</button>';
+
+      if (shopVente) {
+        /* On ne montre que ce qu'on peut vendre ou reprendre : une liste de
+           huit fioles a zero serait huit lignes mortes a lire avant de
+           trouver la seule qui compte. */
+        var vendables = lignesM.filter(function (l) { return l.jai > 0 || l.enVente > 0; });
+        elShopCorps.innerHTML = bascule +
+          '<div class="nxsh-note">Players stock this shop. You keep <b>' +
+          (100 - (MARCHE_P ? MARCHE_P.maison : 50)) +
+          '%</b> of every sale, and you are paid when someone actually buys \u2014 ' +
+          'not when you list. Take yours back any time.</div>' +
+          (vendables.length ? vendables.map(function (l) {
+            var q = Math.max(1, Math.min(venteQte[l.cle] || 1, Math.max(1, l.jai)));
+            return '<div class="nxsh-vente">' +
+              (l.image
+                ? '<img alt="" src="img/nexus/objets/' + encodeURIComponent(l.image) +
+                  '.webp" onerror="this.remove()">'
+                : '<u class="fiole" style="background-position:' + colonneFiole(l) + '% 0"></u>') +
+              '<span class="i"><span class="n">' + ech(l.nom) + '</span>' +
+              '<span class="o">You have <b>' + l.jai + '</b>' +
+              (l.enVente ? ' &middot; <b>' + l.enVente + '</b> listed' : '') +
+              ' &middot; <b>' + l.stock + '</b> in the shop</span></span>' +
+              '<span class="g">+' + l.gain + ' <i>$SWOGE each</i></span>' +
+              '<span class="b">' +
+                (l.jai > 0
+                  ? '<span class="nxsh-qte">' +
+                      '<button type="button" data-moins="' + ech(l.cle) + '">&minus;</button>' +
+                      '<b>' + q + '</b>' +
+                      '<button type="button" data-plus="' + ech(l.cle) + '">+</button>' +
+                      '<button type="button" data-tout="' + ech(l.cle) + '">All</button>' +
+                    '</span>' +
+                    '<button type="button" class="nxsh-act sell" data-vend="' + ech(l.cle) +
+                    '">Sell ' + q + '</button>'
+                  : '') +
+                (l.enVente > 0
+                  ? '<button type="button" class="nxsh-act" data-reprend="' + ech(l.cle) +
+                    '">Take back</button>' : '') +
+              '</span></div>';
+          }).join('')
+            : '<div class="nxsh-note">Nothing to sell yet. Health and magic potions ' +
+              'drop in the wild, and stat potions come off big monsters \u2014 ' +
+              'store them in your vault and they show up here.</div>');
+
+        Array.prototype.forEach.call(elShopCorps.querySelectorAll('[data-moins],[data-plus],[data-tout]'), function (b) {
+          b.addEventListener('click', function () {
+            var k = b.getAttribute('data-moins') || b.getAttribute('data-plus') || b.getAttribute('data-tout');
+            var l = deM(k); if (!l) return;
+            var q = Math.max(1, Math.min(venteQte[k] || 1, Math.max(1, l.jai)));
+            if (b.hasAttribute('data-moins')) q = Math.max(1, q - 1);
+            else if (b.hasAttribute('data-plus')) q = Math.min(l.jai, q + 1);
+            else q = l.jai;
+            venteQte[k] = q;
+            clic(false); peintShop();
+          });
+        });
+        Array.prototype.forEach.call(elShopCorps.querySelectorAll('[data-vend],[data-reprend]'), function (b) {
+          b.addEventListener('click', function () {
+            clic(true);
+            var v = b.getAttribute('data-vend');
+            if (v) {
+              var l = deM(v);
+              envoie({ type: 'potionVend', cle: v,
+                       qte: Math.max(1, Math.min(venteQte[v] || 1, l ? l.jai : 1)) });
+            } else {
+              var r = b.getAttribute('data-reprend');
+              var lr = deM(r);
+              envoie({ type: 'potionReprend', cle: r, qte: lr ? lr.enVente : 1 });
+            }
+          });
+        });
+        Array.prototype.forEach.call(elShopCorps.querySelectorAll('[data-vente]'), function (b) {
+          b.addEventListener('click', function () { shopVente = false; shopMsg = ''; clic(false); peintShop(); });
+        });
+        return;
+      }
+
+      elShopCorps.innerHTML = bascule + (POTIONS_C || []).map(function (p) {
         var reste = p.max - p.quantite;
+        var l = deM(p.cle);
         return '<button type="button" class="nxsh-cof" data-pot="' + ech(p.cle) + '"' +
           (soldeP >= p.prix && reste > 0 ? '' : ' disabled') + '>' +
           '<img alt="" src="img/nexus/objets/' + encodeURIComponent(p.image) +
@@ -2983,13 +3103,37 @@
           '<span><span class="n">' + ech(p.nom) + '</span><span class="o">Restores <b>' +
           p.soigne + '</b> ' + (p.quoi === 'hp' ? 'HP' : 'MP') +
           ' &middot; you carry <b>' + p.quantite + '</b> of ' + p.max +
+          /* D'ou vient ce qu'on achete. Sans cette ligne, « le stock vient des
+             joueurs » est une phrase de Telegram et rien dans l'ecran ne la
+             confirme. */
+          (l ? '<br><i class="nxsh-src">' + (l.stock
+                ? l.stock + ' in stock from players'
+                : 'no player stock \u2014 sold by the house') + '</i>' : '') +
           '</span></span><span class="p">' + p.prix + ' $SWOGE</span></button>';
       }).join('') +
       /* Dix par dix : personne n'achete des potions une par une, et taper
          dix fois le meme bouton n'a jamais amuse personne. */
       '<div class="nxsh-lots">' + [1, 10, 25].map(function (q) {
         return '<button type="button" data-lot="' + q + '">Buy x' + q + '</button>';
-      }).join('') + '</div>';
+      }).join('') + '</div>' +
+      /* ---- LES FIOLES DE STAT, QUAND UN JOUEUR EN VEND ----
+       * Elles n'ont pas de fond de la maison : la ligne n'existe que s'il y en
+       * a vraiment une en vente. Un rayon vide en permanence apprendrait a ne
+       * plus le regarder. */
+      (function () {
+        var f = lignesM.filter(function (l) { return l.stat && l.stock > 0; });
+        if (!f.length) return '';
+        return '<div class="nxsh-grp">Stat potions \u2014 sold by players only</div>' +
+          f.map(function (l) {
+            return '<button type="button" class="nxsh-cof" data-fiole="' + ech(l.stat) + '"' +
+              (soldeP >= l.prix ? '' : ' disabled') + '>' +
+              '<u class="fiole" style="background-position:' + colonneFiole(l) + '% 0"></u>' +
+              '<span><span class="n">+' + l.pas + ' ' + ech(String(l.stat).toUpperCase()) +
+              '</span><span class="o">Permanent \u2014 and it stays if you die' +
+              ' &middot; <b>' + l.stock + '</b> in stock</span></span>' +
+              '<span class="p">' + l.prix + ' $SWOGE</span></button>';
+          }).join('');
+      })();
 
       var lot = shopLot || 1;
       Array.prototype.forEach.call(elShopCorps.querySelectorAll('[data-lot]'), function (b) {
@@ -3005,6 +3149,16 @@
           clic(true);
           envoie({ type: 'potionAchat', cle: b.getAttribute('data-pot'), qte: shopLot || 1 });
         });
+      });
+      Array.prototype.forEach.call(elShopCorps.querySelectorAll('[data-fiole]'), function (b) {
+        b.addEventListener('click', function () {
+          if (b.disabled) return;
+          clic(true);
+          envoie({ type: 'fioleAchat', stat: b.getAttribute('data-fiole'), qte: 1 });
+        });
+      });
+      Array.prototype.forEach.call(elShopCorps.querySelectorAll('[data-vente]'), function (b) {
+        b.addEventListener('click', function () { shopVente = true; shopMsg = ''; clic(false); peintShop(); });
       });
       return;
     }

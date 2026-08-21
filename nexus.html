@@ -533,6 +533,57 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
 .nxsh-cof .o{ display:block; font-size:10.5px; color:#8DA0C4; margin-top:3px; line-height:1.6; }
 .nxsh-cof .p{ flex:0 0 auto; font-size:13px; font-weight:800; color:#FFC53D; }
 .nxsh-cof span:nth-child(2){ flex:1; min-width:0; }
+/* ---- L'ETAL DES POTIONS ----
+ * Le stock vient des joueurs. La bascule est UN bouton et non deux onglets de
+ * plus en haut : les saisons sont la raison principale d'ouvrir cette
+ * boutique, et trois onglets supplementaires les auraient noyees. */
+.nxsh-bascule{ display:block; width:100%; margin-bottom:9px; padding:9px 12px;
+  border-radius:10px; cursor:pointer; font:800 12.5px/1 'Archivo',system-ui,sans-serif;
+  color:#E8C97A; background:rgba(232,201,122,.09); border:1px solid rgba(232,201,122,.32); }
+.nxsh-bascule:hover{ background:rgba(232,201,122,.16); }
+.nxsh-bascule.on{ color:#c9d3f2; background:rgba(255,255,255,.06);
+  border-color:rgba(255,255,255,.16); }
+.nxsh-note{ font-size:11px; color:#8DA0C4; line-height:1.6; margin-bottom:10px;
+  padding:9px 11px; border-radius:10px; background:rgba(255,255,255,.03);
+  border:1px solid rgba(255,255,255,.07); }
+.nxsh-note b{ color:#7CFF9B; }
+/* D'ou vient ce qu'on achete. Sans cette ligne, « le stock vient des joueurs »
+   n'est qu'une phrase de Telegram que l'ecran ne confirme jamais. */
+.nxsh-src{ font-style:normal; font-size:10px; color:#7CFF9B; }
+.nxsh-grp{ margin:14px 0 7px; font-size:10.5px; font-weight:800; letter-spacing:.06em;
+  text-transform:uppercase; color:#8DA0C4; }
+/* La MEME planche de fioles que dans le sac et le coffre : on doit reconnaitre
+   la meme fiole partout sans y penser. */
+.nxsh-cof u.fiole, .nxsh-vente u.fiole{ flex:0 0 auto; width:52px; height:52px; display:block;
+  background-image:url('img/nexus/objets/potions_stat.webp');
+  background-repeat:no-repeat; background-size:800% 100%; image-rendering:pixelated; }
+.nxsh-vente{ display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+  margin-bottom:7px; padding:9px 10px; border-radius:11px;
+  border:1px solid rgba(255,255,255,.09); background:rgba(255,255,255,.03); }
+.nxsh-vente img{ width:52px; height:52px; object-fit:contain; flex:0 0 auto; }
+.nxsh-vente .i{ flex:1 1 150px; min-width:0; }
+.nxsh-vente .n{ display:block; font-size:13.5px; font-weight:800; color:#F2F6FF; }
+.nxsh-vente .o{ display:block; font-size:10.5px; color:#8DA0C4; margin-top:3px; line-height:1.6; }
+.nxsh-vente .o b{ color:#DCE6F8; }
+.nxsh-vente .g{ flex:0 0 auto; font-size:13px; font-weight:800; color:#7CFF9B; }
+.nxsh-vente .g i{ font-style:normal; font-size:9.5px; font-weight:700; color:#5c7a66;
+  display:block; }
+.nxsh-vente .b{ display:flex; align-items:center; gap:6px; flex:0 0 auto; }
+/* Le compteur : moins, le chiffre, plus, et « All ». Quatre-vingt-dix-neuf
+   potions ne se mettent pas en vente une par une. */
+.nxsh-qte{ display:inline-flex; align-items:center; gap:2px;
+  border:1px solid rgba(255,255,255,.14); border-radius:9px; overflow:hidden; }
+.nxsh-qte button{ width:28px; height:30px; border:0; cursor:pointer;
+  background:rgba(255,255,255,.05); color:#c9d3f2; font:800 13px/1 'Archivo',system-ui,sans-serif; }
+.nxsh-qte button[data-tout]{ width:auto; padding:0 8px; font-size:10.5px; }
+.nxsh-qte button:hover{ background:rgba(255,255,255,.14); color:#fff; }
+.nxsh-qte b{ min-width:26px; text-align:center; font-size:12.5px; color:#F2F6FF; }
+.nxsh-act{ height:30px; padding:0 11px; border-radius:9px; cursor:pointer;
+  font:800 11.5px/1 'Archivo',system-ui,sans-serif; color:#c9d3f2;
+  border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.05); }
+.nxsh-act:hover{ background:rgba(255,255,255,.14); color:#fff; }
+.nxsh-act.sell{ color:#0d1117; background:#7CFF9B; border-color:#7CFF9B; }
+.nxsh-act.sell:hover{ filter:brightness(1.08); }
 .nxsh-cof .o b{ color:#F2F6FF; }
 /* Le lot d'achat : personne n'achete des potions une par une. */
 .nxsh-lots{ display:flex; gap:6px; margin-top:10px; justify-content:center; }
@@ -1168,7 +1219,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
   </div>
 </div>
 
-<script src="nexus.js?v=20260821h" defer></script>
+<script src="nexus.js?v=20260821i" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

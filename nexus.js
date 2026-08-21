@@ -244,6 +244,19 @@
       if (coffreOuvert) peintCoffreMenu();
       peintPanneau();
     }
+    /* On vient de sauter aupres d'un ami : la position vient du SERVEUR, comme
+       toute position dans le monde de combat. Se deplacer ici et l'annoncer
+       ensuite laisserait une image ou l'on est a deux endroits. */
+    if (m.type === 'realmRejoint') {
+      joueur.x = m.x; joueur.y = m.y;
+      RECALE = null; ENVOIS.length = 0;
+      flotte('\u2192 ' + (m.nom || 'teammate'));
+    }
+    if (m.type === 'realmRejointRefus') {
+      flotte({ 'pas-ami': 'Add them as a friend first',
+               'pas-la': 'They are not in this world',
+               'no-one': 'Nobody to join' }[m.raison] || 'Cannot join them');
+    }
     if (m.type === 'potionBue') {
       POTIONS_C = m.potions || POTIONS_C;
       if (m.pv !== null && m.pv !== undefined) { VIE.pv = m.pv; moiMonde.pv = m.pv; }
@@ -1343,17 +1356,47 @@
       veut savoir QUI est la, c'est tout l'interet d'un lieu de rencontre. */
   function peintGens() {
     if (!elGens) return;
-    var l = Object.keys(DISTANTS).map(function (a) { return DISTANTS[a]; });
+    /* ---- LA LISTE SUIT LE MONDE OU L'ON EST ----
+     * Elle ne lisait que le Nexus : dans le monde de combat elle affichait
+     * « Nobody else around » avec cinq personnes a l'ecran. Deux registres
+     * pour deux simulations, et c'est le MEME registre qui dessine — donc la
+     * liste ne peut pas mentir sur qui est la. */
+    var dansLeMonde = SCENE === 'monde';
+    var src = dansLeMonde ? DISTANTS_M : DISTANTS;
+    var l = Object.keys(src).map(function (a) {
+      var d = src[a];
+      return { addr: d.addr || a, nom: d.nom, skin: d.skin, ami: !!d.ami };
+    });
     if (!l.length) {
       elGens.innerHTML = '<i class="nxp-seul">Nobody else around.</i>';
       return;
     }
+    /* Les amis en tete : c'est eux qu'on cherche dans la liste, et c'est sur
+       eux qu'il y a quelque chose a faire. */
+    l.sort(function (a, b) { return (b.ami ? 1 : 0) - (a.ami ? 1 : 0); });
     elGens.innerHTML = l.slice(0, 12).map(function (d) {
-      return '<div class="nxp-g" title="' + ech(d.nom || d.addr) + '">' +
+      /* ---- LE BOUTON N'EXISTE QUE LA OU LE SAUT EST POSSIBLE ----
+       * Pas d'ami, pas de bouton ; pas dans le monde de combat, pas de bouton.
+       * Un bouton grise qu'on ne peut jamais presser dans le Nexus
+       * apprendrait a ne plus le regarder le jour ou il sert. */
+      var saut = dansLeMonde && d.ami;
+      return '<div class="nxp-g' + (d.ami ? ' ami' : '') +
+        '" title="' + ech(d.nom || d.addr) + (d.ami ? ' — teammate' : '') + '">' +
         '<img alt="" src="img/skins/skin_' + encodeURIComponent(d.skin) + '.webp" ' +
         'onerror="this.style.visibility=\'hidden\'">' +
-        '<span>' + ech(d.nom || court(d.addr)) + '</span></div>';
+        '<span>' + ech(d.nom || court(d.addr)) + '</span>' +
+        (saut ? '<button type="button" class="nxp-tp" data-tp="' + ech(d.addr) +
+                '" title="Teleport to ' + ech(d.nom || court(d.addr)) +
+                '">&#10132;</button>' : '') +
+        '</div>';
     }).join('');
+    Array.prototype.forEach.call(elGens.querySelectorAll('[data-tp]'), function (b) {
+      b.addEventListener('click', function (ev) {
+        ev.stopPropagation();
+        clic(true);
+        envoie({ type: 'realmRejoint', addr: b.getAttribute('data-tp') });
+      });
+    });
   }
 
   // ------------------------------------------------------- les personnages
@@ -1683,6 +1726,7 @@
   var TIRS_C = [];             // nos projectiles, tels que le serveur les voit
   var TIRS_M = [];             // ceux des monstres, contre nous
   var DISTANTS_M = {};         // les autres joueurs du monde
+  var signatureGensM = '';     // la composition de la liste, pour ne repeindre qu'utile
   var TUILES_M = {};           // les sols des anneaux, charges a l'entree
   var moiMonde = { pv: 0, pvMax: 1, xp: 0 };
 
@@ -2533,9 +2577,22 @@
       if (!d) d = DISTANTS_M[o.a] = { rx: o.x, ry: o.y, cadre: 0, chrono: 0 };
       d.x = o.x; d.y = o.y; d.dir = o.dir; d.anim = o.anim;
       d.skin = o.skin || 'andy'; d.nom = o.nom; d.pv = o.pv; d.pvMax = o.pvMax;
+      /* « Ami » est une RELATION, pas une propriete de la personne : le
+         serveur la calcule pour NOUS, a chaque instantane. Le meme joueur est
+         vert chez l'un et gris chez l'autre. */
+      d.ami = !!o.ami; d.addr = o.a;
       assureCharge(d.skin);
     });
     Object.keys(DISTANTS_M).forEach(function (k) { if (!vusJ[k]) delete DISTANTS_M[k]; });
+    /* Meme precaution que dans le Nexus : un instantane arrive dix fois par
+       seconde, et refabriquer le HTML pour les memes noms ferait clignoter la
+       liste. On ne repeint que si la COMPOSITION change — le drapeau « ami »
+       en fait partie, puisqu'il decide du bouton. */
+    var sigM = Object.keys(DISTANTS_M).sort().map(function (a) {
+      return a + ':' + DISTANTS_M[a].skin + ':' + (DISTANTS_M[a].nom || '') +
+             ':' + (DISTANTS_M[a].ami ? 1 : 0);
+    }).join('|');
+    if (sigM !== signatureGensM) { signatureGensM = sigM; peintGens(); }
 
     if (m.moi) {
       moiMonde.pv = m.moi.pv; moiMonde.pvMax = m.moi.pvMax; moiMonde.xp = m.moi.xp;
@@ -5780,6 +5837,21 @@
       Object.keys(DISTANTS_M).forEach(function (k) {
         var d = DISTANTS_M[k];
         pileM.push({ y: d.ry, dessine: function () {
+          /* ---- UN COEQUIPIER SE RECONNAIT AVANT D'ETRE LU ----
+           * A dix personnages a l'ecran, chercher un nom au-dessus d'une tete
+           * pendant qu'on esquive coute le combat. Un carre vert au sol se lit
+           * sans lecture — vert, comme tout ce qui est acquis dans ce jeu.
+           * Il est dessine AU SOL et sous les pieds : par-dessus, il cacherait
+           * justement ce qu'on regarde. */
+          if (d.ami) {
+            ctx.save();
+            ctx.strokeStyle = 'rgba(124,255,155,.9)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(d.rx - 15, d.ry - 8, 30, 16);
+            ctx.fillStyle = 'rgba(124,255,155,.16)';
+            ctx.fillRect(d.rx - 15, d.ry - 8, 30, 16);
+            ctx.restore();
+          }
           dessineAvatar(d.rx, d.ry, d.skin, d.dir, d.anim, d.cadre);
           barreVie(d.rx, d.ry, d.pv, d.pvMax, 44);
         } });

@@ -247,6 +247,18 @@
     /* On vient de sauter aupres d'un ami : la position vient du SERVEUR, comme
        toute position dans le monde de combat. Se deplacer ici et l'annoncer
        ensuite laisserait une image ou l'on est a deux endroits. */
+    /* On vient de sauter a une balise. La position vient du SERVEUR, comme
+       toute position dans le monde de combat. */
+    if (m.type === 'realmBalise') {
+      joueur.x = m.x; joueur.y = m.y;
+      RECALE = null; ENVOIS.length = 0;
+      peintBalises();
+      flotte('\uD83D\uDCCD Beacon');
+    }
+    if (m.type === 'realmBaliseRefus') {
+      flotte(m.raison === 'donjon' ? 'Not from inside a dungeon'
+                                   : 'That beacon is not lit yet');
+    }
     if (m.type === 'realmRejoint') {
       joueur.x = m.x; joueur.y = m.y;
       RECALE = null; ENVOIS.length = 0;
@@ -599,6 +611,7 @@
   var elStats = document.getElementById('nxStats');
   var elEquip = document.getElementById('nxEquip'), elSac = document.getElementById('nxSac');
   var elGens = document.getElementById('nxGens');
+  var elBalises = document.getElementById('nxBalises');
   var elVide = document.getElementById('nxVide');
   var enveloppe = document.getElementById('nxWrap');
 
@@ -1354,6 +1367,47 @@
 
   /** Les joueurs a portee, en bas du panneau. Le nombre ne suffit pas : on
       veut savoir QUI est la, c'est tout l'interet d'un lieu de rencontre. */
+  /* ---- LES BALISES DU MONDE, DANS LE PANNEAU ----
+   *
+   * Elles ne se montrent QUE dans le monde de combat, et seulement une fois
+   * allumees. Une liste de balises eteintes serait une liste de boutons morts
+   * — et un joueur qui apprend qu'un bouton ne fait rien cesse de le regarder
+   * le jour ou il se met a marcher.
+   *
+   * Le nom dit l'ANNEAU et pas le numero : « Snow » se retient, « salle 2 »
+   * ne veut rien dire tant qu'on ne l'a pas deja visitee.
+   */
+  var NOM_ANNEAU = { terre: 'Dirt', marais: 'Swamp', neige: 'Snow',
+                     cendres: 'Ashes', lave: 'Lava',
+                     donjon: 'Forge', cave: 'Pirate Cave' };
+  function peintBalises() {
+    if (!elBalises) return;
+    var l = (SCENE === 'monde' && !DONJON_C)
+      ? BALISES_C.filter(function (b) { return b.on; }) : [];
+    if (!l.length) {
+      elBalises.innerHTML = '';
+      elBalises.classList.remove('on');
+      return;
+    }
+    elBalises.classList.add('on');
+    elBalises.innerHTML = '<i class="nxp-bt">&#128205; Beacons</i>' +
+      l.map(function (b) {
+        var nom = NOM_ANNEAU[biomeEn(b.x, b.y)] || 'Beacon';
+        /* La distance dit s'il vaut la peine d'y sauter. Sans elle, on clique
+           pour decouvrir qu'on etait deja a cote. */
+        var d = Math.round(Math.hypot(b.x - joueur.x, b.y - joueur.y));
+        return '<button type="button" class="nxp-bal" data-bal="' + b.i +
+          '" title="Travel to the ' + ech(nom) + ' beacon">' +
+          ech(nom) + ' <u>' + (d > 999 ? (d / 1000).toFixed(1) + 'k' : d) + '</u></button>';
+      }).join('');
+    Array.prototype.forEach.call(elBalises.querySelectorAll('[data-bal]'), function (b) {
+      b.addEventListener('click', function () {
+        clic(true);
+        envoie({ type: 'realmBalise', i: Number(b.getAttribute('data-bal')) });
+      });
+    });
+  }
+
   function peintGens() {
     if (!elGens) return;
     /* ---- LA LISTE SUIT LE MONDE OU L'ON EST ----
@@ -1675,6 +1729,12 @@
   /* Les salles gardees. Leur dalle remplace le sol de l'anneau : c'est ce qui
      les rend visibles de loin, et donc ce qui en fait une destination. */
   var SALLES_C = [];
+  /* ---- LES BALISES ----
+   * Toutes, pas seulement celles a l'ecran : une balise sert a aller
+   * AILLEURS, et n'afficher que celles qu'on voit deja reviendrait a ne
+   * proposer de voyager que vers l'endroit ou l'on se tient. */
+  var BALISES_C = [];
+  var signatureBalises = '';
   /* Les zones marquees au sol, en attente de frapper. */
   var ZONES_C = [];
   var IMG_ANNONCE = null, IMG_ONDE = null;
@@ -2257,6 +2317,26 @@
    * qui tombe quand le dernier gardien meurt — le coffre ne fait que dire
    * pourquoi on est entre.
    */
+  /* ---- UNE BALISE ALLUMEE SE VOIT DE LOIN ----
+   * Sans marque au sol, « cette salle est faite » ne se lit qu'en entrant —
+   * et on y entre pour rien. L'anneau dit les deux a la fois : la salle est
+   * videe, et on peut revenir ici d'un clic. */
+  function dessineBalise(b) {
+    /* La MEME horloge que les autres battements du jeu : `performance.now()`.
+       Un compteur par balise aurait demande de le creer a l'allumage et de
+       l'effacer a la sortie du monde — deux occasions de fuir. */
+    var R = 78 + Math.sin(performance.now() / 450) * 6;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(124,255,155,.75)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.ellipse(b.x, b.y, R, R * 0.46, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(124,255,155,.12)';
+    ctx.fill();
+    ctx.restore();
+  }
+
   function dessineCoffre(s) {
     if (!IMG_COFFRE || !IMG_COFFRE.complete || !IMG_COFFRE.naturalWidth) return;
     var cadre = IMG_COFFRE.naturalHeight;
@@ -2580,6 +2660,14 @@
        sont trois au plus, elles ne bougent pas, et il n'y a rien a
        interpoler. */
     PORTAILS_C = m.portails || [];
+    if (m.balises) {
+      BALISES_C = m.balises;
+      /* On ne repeint la liste que si une balise a CHANGE d'etat. L'instantane
+         arrive dix fois par seconde, et refabriquer les memes boutons ferait
+         clignoter le panneau pour rien. */
+      var sigB = BALISES_C.map(function (b) { return b.i + ':' + b.on; }).join('|');
+      if (sigB !== signatureBalises) { signatureBalises = sigB; peintBalises(); }
+    }
 
     var vusJ = {};
     (m.joueurs || []).forEach(function (o) {
@@ -5794,6 +5882,15 @@
          reste : c'est un sol, pas un objet. C'est elle qui rend une salle
          visible de loin — donc qui en fait une destination. */
       dessineSalles();
+      /* Les balises allumees, au sol, sous tout le reste : elles disent « ici
+         c'est fait » et « on peut revenir ici », deux choses qu'on veut lire
+         de loin sans entrer. */
+      for (var iB = 0; iB < BALISES_C.length; iB++) {
+        var bb = BALISES_C[iB];
+        if (!bb.on) continue;
+        if (Math.abs(bb.x - joueur.x) > 2200 || Math.abs(bb.y - joueur.y) > 2000) continue;
+        dessineBalise(bb);
+      }
 
       /* L'aura de rafale d'abord : elle est au SOL, sous tout le monde. */
       peintRafale(dt);

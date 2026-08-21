@@ -621,6 +621,20 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
   font:800 12px/1 'Archivo',system-ui,sans-serif; color:#0d1117;
   background:#7CFF9B; border:1px solid #7CFF9B; }
 .nxp-tp:hover{ filter:brightness(1.1); }
+/* ---- LES BALISES ----
+ * Vertes comme tout ce qui est acquis dans ce jeu, et comme l'anneau qu'elles
+ * dessinent au sol : la meme information doit avoir la meme couleur aux deux
+ * endroits. */
+.nxp-balises{ display:none; }
+.nxp-balises.on{ display:block; margin:6px 0 2px; }
+.nxp-bt{ display:block; font-style:normal; font-size:9.5px; font-weight:800;
+  letter-spacing:.06em; text-transform:uppercase; color:#8DA0C4; margin-bottom:4px; }
+.nxp-bal{ display:inline-flex; align-items:center; gap:5px; margin:0 4px 4px 0;
+  padding:4px 8px; border-radius:8px; cursor:pointer;
+  font:800 11px/1 'Archivo',system-ui,sans-serif; color:#8CFFB4;
+  background:rgba(124,255,155,.09); border:1px solid rgba(124,255,155,.32); }
+.nxp-bal:hover{ background:rgba(124,255,155,.18); color:#fff; }
+.nxp-bal u{ text-decoration:none; font-size:9.5px; font-weight:700; color:#5c7a66; }
 .nxsh-cof .o b{ color:#F2F6FF; }
 /* Le lot d'achat : personne n'achete des potions une par une. */
 .nxsh-lots{ display:flex; gap:6px; margin-top:10px; justify-content:center; }
@@ -1149,6 +1163,10 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
     </div>
     <!-- Les potions ont leurs propres places : elles s'empilent, le sac non. -->
     <div class="nxp-pot" id="nxPotions"></div>
+    <!-- ---- LES BALISES DU MONDE ----
+         Elles n'apparaissent qu'une fois allumees, et seulement dans le monde
+         de combat : une liste de boutons morts s'apprend a etre ignoree. -->
+    <div class="nxp-balises" id="nxBalises"></div>
     <div class="nxp-gens" id="nxGens"></div>
   </aside>
   <!-- Le manche. La zone entoure le socle largement : on ne vise pas son
@@ -1256,7 +1274,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
   </div>
 </div>
 
-<script src="nexus.js?v=20260821m" defer></script>
+<script src="nexus.js?v=20260821n" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

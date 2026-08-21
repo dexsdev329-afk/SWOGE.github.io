@@ -1748,7 +1748,7 @@
   var IMG_ANNONCE_DJ = null, IMG_ONDE_DJ = null;
   var ANNONCE_CADRES = 4, ONDE_CADRES = 4, ONDE_DUREE = 0.55;
   var IMG_SACS = null, IMG_OBST = null, IMG_MUR = null, IMG_TEMPLE = null;
-  var IMG_MUR_DJ = null, IMG_MUR_CAVE = null, IMG_PORTE = null;
+  var IMG_MUR_DJ = null, IMG_MUR_CAVE = null, IMG_PORTE = null, IMG_BALISE = null;
   /* Le coffre des salles gardees : ferme, entrouvert, ouvert. */
   var IMG_COFFRE = null, COFFRE_CADRES = 3;
   /* Sa hauteur en unites de monde. Un peu moins qu'un personnage : il doit se
@@ -1890,6 +1890,7 @@
     if (!IMG_MUR) { IMG_MUR = new Image(); IMG_MUR.src = 'img/nexus/tiles/mur_ruine.webp'; }
     if (!IMG_MUR_DJ) { IMG_MUR_DJ = new Image(); IMG_MUR_DJ.src = 'img/nexus/tiles/mur_donjon.webp'; }
     if (!IMG_MUR_CAVE) { IMG_MUR_CAVE = new Image(); IMG_MUR_CAVE.src = 'img/nexus/tiles/mur_cave.webp'; }
+    if (!IMG_BALISE) { IMG_BALISE = new Image(); IMG_BALISE.src = 'img/nexus/tiles/obj_balise.webp'; }
     if (!IMG_PORTE) { IMG_PORTE = new Image(); IMG_PORTE.src = 'img/nexus/tiles/obj_portail.webp'; }
     if (!IMG_TEMPLE) { IMG_TEMPLE = new Image(); IMG_TEMPLE.src = 'img/nexus/tiles/ground_temple.webp'; }
     if (!IMG_COFFRE) { IMG_COFFRE = new Image(); IMG_COFFRE.src = 'img/nexus/tiles/obj_coffre_garde.webp'; }
@@ -2321,20 +2322,36 @@
    * Sans marque au sol, « cette salle est faite » ne se lit qu'en entrant —
    * et on y entre pour rien. L'anneau dit les deux a la fois : la salle est
    * videe, et on peut revenir ici d'un clic. */
+  var BALISE_CADRES = 3, BALISE_H = 150;
   function dessineBalise(b) {
-    /* La MEME horloge que les autres battements du jeu : `performance.now()`.
-       Un compteur par balise aurait demande de le creer a l'allumage et de
-       l'effacer a la sortie du monde — deux occasions de fuir. */
-    var R = 78 + Math.sin(performance.now() / 450) * 6;
-    ctx.save();
-    ctx.strokeStyle = 'rgba(124,255,155,.75)';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.ellipse(b.x, b.y, R, R * 0.46, 0, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.fillStyle = 'rgba(124,255,155,.12)';
-    ctx.fill();
-    ctx.restore();
+    /* ---- ETEINTE, ELLE SE DESSINE QUAND MEME ----
+     * C'est ce qui en fait un REPERE. Une carte de 7680 unites sans rien a
+     * viser se traverse au hasard ; une pierre sombre a l'horizon dit « il y a
+     * quelque chose la-bas », et une fois allumee elle dit « et tu peux y
+     * revenir ». Le meme objet repond aux deux questions, a deux moments — et
+     * c'est ce qui manquait le plus a cette carte : de quoi viser. */
+    if (!IMG_BALISE || !IMG_BALISE.complete || !IMG_BALISE.naturalWidth) return;
+    var cadre = IMG_BALISE.naturalHeight;
+    var col = b.on ? BALISE_CADRES - 1 : 0;
+    /* L'anneau au sol AVANT la pierre : par-dessus, il la barrerait. Il ne
+       sort que si elle est allumee — c'est lui qui dit « on peut revenir
+       ici », pas la pierre. La MEME horloge que les autres battements du jeu :
+       un compteur par balise aurait demande de le creer a l'allumage et de
+       l'effacer a la sortie du monde, donc deux occasions de fuir. */
+    if (b.on) {
+      var R = 78 + Math.sin(performance.now() / 450) * 6;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(124,255,155,.75)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.ellipse(b.x, b.y, R, R * 0.46, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.fillStyle = 'rgba(124,255,155,.12)';
+      ctx.fill();
+      ctx.restore();
+    }
+    ctx.drawImage(IMG_BALISE, col * cadre, 0, cadre, cadre,
+                  b.x - BALISE_H / 2, b.y - BALISE_H + 18, BALISE_H, BALISE_H);
   }
 
   function dessineCoffre(s) {
@@ -5887,7 +5904,6 @@
          de loin sans entrer. */
       for (var iB = 0; iB < BALISES_C.length; iB++) {
         var bb = BALISES_C[iB];
-        if (!bb.on) continue;
         if (Math.abs(bb.x - joueur.x) > 2200 || Math.abs(bb.y - joueur.y) > 2000) continue;
         dessineBalise(bb);
       }

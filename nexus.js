@@ -3274,18 +3274,24 @@
         return;
       }
 
-      elShopCorps.innerHTML = bascule + (POTIONS_C || []).map(function (p) {
+      /* ---- LE RAYON NE MONTRE QUE CE QUI EST VRAIMENT EN VENTE ----
+       *
+       * La boutique ne fabrique plus rien : soin, mana et fioles de stat
+       * viennent tous des joueurs. Une ligne « Health Potion — out of stock »
+       * affichee en permanence est un rayon vide qu'on apprend a ne plus
+       * regarder, et le jour ou quelqu'un en met enfin en vente, personne ne
+       * le remarque. On n'affiche donc la ligne QUE si elle a du stock : le
+       * rayon dit ce qu'on peut acheter, pas ce qui existerait si quelqu'un
+       * vendait. */
+      var enRayon = (POTIONS_C || []).filter(function (p) {
+        var l = deM(p.cle);
+        return l && l.stock > 0;
+      });
+      elShopCorps.innerHTML = bascule + enRayon.map(function (p) {
         var reste = p.max - p.quantite;
         var l = deM(p.cle);
-        /* ---- LE STOCK VIENT DES JOUEURS, DONC IL PEUT MANQUER ----
-         * Quand la file est vide, il n'y a rien a vendre : le bouton est
-         * grise et il DIT pourquoi. Un bouton mort sans phrase se lit
-         * « casse » ; avec « OUT OF STOCK » il se lit « a vous d'en mettre »,
-         * ce qui est justement l'invitation qu'on veut faire. */
-        var vide = !!l && l.stock <= 0;
-        return '<button type="button" class="nxsh-cof' + (vide ? ' vide' : '') +
-          '" data-pot="' + ech(p.cle) + '"' +
-          (!vide && soldeP >= p.prix && reste > 0 ? '' : ' disabled') + '>' +
+        return '<button type="button" class="nxsh-cof" data-pot="' + ech(p.cle) + '"' +
+          (soldeP >= p.prix && reste > 0 ? '' : ' disabled') + '>' +
           '<img alt="" src="img/nexus/objets/' + encodeURIComponent(p.image) +
           '.webp" onerror="this.remove()">' +
           '<span><span class="n">' + ech(p.nom) + '</span><span class="o">Restores <b>' +
@@ -3294,18 +3300,19 @@
           /* D'ou vient ce qu'on achete. Sans cette ligne, « le stock vient des
              joueurs » est une phrase de Telegram et rien dans l'ecran ne la
              confirme. */
-          (l ? '<br><i class="nxsh-src' + (vide ? ' vide' : '') + '">' + (l.stock
-                ? l.stock + ' in stock from players'
-                : 'OUT OF STOCK \u2014 players stock this shop') + '</i>' : '') +
-          '</span></span><span class="p">' +
-          (vide ? '<b class="nxsh-rupture">Out of stock</b>' : p.prix + ' $SWOGE') +
-          '</span></button>';
+          '<br><i class="nxsh-src">' + (l ? l.stock : 0) + ' in stock from players</i>' +
+          '</span></span><span class="p">' + p.prix + ' $SWOGE</span></button>';
       }).join('') +
-      /* Dix par dix : personne n'achete des potions une par une, et taper
-         dix fois le meme bouton n'a jamais amuse personne. */
-      '<div class="nxsh-lots">' + [1, 10, 25].map(function (q) {
-        return '<button type="button" data-lot="' + q + '">Buy x' + q + '</button>';
-      }).join('') + '</div>' +
+      /* Les lots ne servent qu'aux potions de soin, et seulement s'il y en a :
+         trois boutons « Buy x25 » au-dessus d'un rayon vide sont trois
+         boutons qui ne peuvent rien acheter. */
+      (enRayon.length
+        /* Dix par dix : personne n'achete des potions une par une, et taper
+           dix fois le meme bouton n'a jamais amuse personne. */
+        ? '<div class="nxsh-lots">' + [1, 10, 25].map(function (q) {
+            return '<button type="button" data-lot="' + q + '">Buy x' + q + '</button>';
+          }).join('') + '</div>'
+        : '') +
       /* ---- LES FIOLES DE STAT, QUAND UN JOUEUR EN VEND ----
        * Elles n'ont pas de fond de la maison : la ligne n'existe que s'il y en
        * a vraiment une en vente. Un rayon vide en permanence apprendrait a ne
@@ -3324,6 +3331,17 @@
               '<span class="p">' + l.prix + ' $SWOGE</span></button>';
           }).join('');
       })();
+
+      /* ---- LE RAYON ENTIEREMENT VIDE ----
+       * Ce n'est pas une panne, c'est l'etat normal d'un magasin dont le stock
+       * vient des joueurs — et il faut le DIRE, sinon il se lit comme une
+       * boutique cassee. La phrase pointe vers le seul geste qui le remplit. */
+      if (!elShopCorps.querySelector('[data-pot],[data-fiole]')) {
+        elShopCorps.innerHTML = bascule +
+          '<div class="nxsh-note">Nothing for sale right now. Every potion in this ' +
+          'shop was found and listed by a player \u2014 <b>put yours up</b> and ' +
+          'you keep half of every sale.</div>';
+      }
 
       var lot = shopLot || 1;
       Array.prototype.forEach.call(elShopCorps.querySelectorAll('[data-lot]'), function (b) {

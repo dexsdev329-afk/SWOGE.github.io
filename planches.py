@@ -365,6 +365,88 @@ def _fondSombre(p, seuil):
     return max(p[0], p[1], p[2]) <= seuil
 
 
+def detoure_uni(source, tolerance=26, adoucit=1):
+    """Retire un fond d'UNE SEULE COULEUR, quelle qu'elle soit.
+
+    `detoure` sait enlever un damier clair, `detoure_sombre` un aplat noir. Le
+    generateur rend maintenant des aplats GRIS — ni l'un ni l'autre ne les
+    voit, et le sprite sortait avec un rectangle de fond autour.
+
+    La couleur est LUE aux quatre coins et non passee en argument : chaque
+    image arrive avec sa nuance (93, 97, 104, 139 sur cinq planches), et
+    l'ecrire aurait demande de la relever a la main a chaque fois — donc de se
+    tromper une fois sur cinq.
+
+    On propage depuis les BORDS, comme les deux autres. C'est le point qui
+    compte : « tout ce qui ressemble au fond » mangerait la pierre grise des
+    portails, qui est justement de la meme famille de gris. Ce qui est enclos
+    par le dessin — le ciel entre deux colonnes, l'interieur d'une arche —
+    reste, parce que la propagation ne l'atteint jamais.
+    """
+    im = source if isinstance(source, Image.Image) else Image.open(source)
+    im = im.convert('RGBA')
+    w, h = im.size
+    px = im.load()
+    coins = [px[2, 2], px[w - 3, 2], px[2, h - 3], px[w - 3, h - 3]]
+    fr = sum(c[0] for c in coins) // 4
+    fg = sum(c[1] for c in coins) // 4
+    fb = sum(c[2] for c in coins) // 4
+
+    def estFond(p):
+        return (abs(p[0] - fr) + abs(p[1] - fg) + abs(p[2] - fb)) <= tolerance
+
+    fond = bytearray(w * h)
+    file = deque()
+
+    def pousse(x, y):
+        i = y * w + x
+        if fond[i] or not estFond(px[x, y]):
+            return
+        fond[i] = 1
+        file.append((x, y))
+
+    for x in range(w):
+        pousse(x, 0); pousse(x, h - 1)
+    for y in range(h):
+        pousse(0, y); pousse(w - 1, y)
+    while file:
+        x, y = file.popleft()
+        if x > 0: pousse(x - 1, y)
+        if x < w - 1: pousse(x + 1, y)
+        if y > 0: pousse(x, y - 1)
+        if y < h - 1: pousse(x, y + 1)
+
+    """Le lisere. La compression a bave sur une ou deux rangees : ces pixels ne
+       sont plus assez purs pour la propagation, mais ils restent COLLES au
+       fond et se voient comme un halo gris autour du sprite. On enleve autant
+       de couronnes que demande — au-dela de deux passes, on mange le contour
+       noir du dessin, qui est ce qui le tient a l'ecran."""
+    for _ in range(adoucit):
+        bord = []
+        for y in range(h):
+            for x in range(w):
+                if fond[y * w + x]:
+                    continue
+                for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    nx, ny = x + dx, y + dy
+                    if 0 <= nx < w and 0 <= ny < h and fond[ny * w + nx]:
+                        if estFond(px[x, y]) or _proche(px[x, y], (fr, fg, fb), tolerance * 2):
+                            bord.append((x, y))
+                        break
+        for x, y in bord:
+            fond[y * w + x] = 1
+
+    for y in range(h):
+        for x in range(w):
+            if fond[y * w + x]:
+                px[x, y] = (0, 0, 0, 0)
+    return im
+
+
+def _proche(p, c, t):
+    return (abs(p[0] - c[0]) + abs(p[1] - c[1]) + abs(p[2] - c[2])) <= t
+
+
 def detoure_sombre(source, seuil=26, adoucit=1):
     """Le meme travail, sur un fond NOIR.
 

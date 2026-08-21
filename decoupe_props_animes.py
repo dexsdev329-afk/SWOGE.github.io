@@ -54,37 +54,38 @@ RECHERCHE = 3
 DECORS = {
     'portail': {
         'sortie': 'img/nexus/tiles/obj_portal.webp',
-        # Le tourbillon dans l'arche, et les deux torches de part et d'autre.
-        'anime': [(0.30, 0.06, 0.70, 0.55),      # le vortex
-                  (0.02, 0.34, 0.22, 0.62),      # torche gauche
-                  (0.78, 0.34, 0.98, 0.62)],     # torche droite
+        # Le tourbillon dans l'arche, et les deux torches du socle.
+        'anime': [(0.30, 0.13, 0.70, 0.54),
+                  (0.03, 0.40, 0.22, 0.60),
+                  (0.78, 0.40, 0.97, 0.60)],
         # La pierre du socle : elle ne bouge jamais, c'est la meilleure
-        # reference qui soit.
-        'fixe': (0.20, 0.72, 0.80, 0.98),
+        # reference qui soit pour mesurer une derive.
+        'fixe': (0.22, 0.62, 0.78, 0.84),
     },
     'portailPvp': {
         'sortie': 'img/nexus/tiles/obj_portal_pvp.webp',
-        'anime': [(0.32, 0.10, 0.68, 0.58),
-                  (0.04, 0.02, 0.28, 0.30),
-                  (0.72, 0.02, 0.96, 0.30)],
-        'fixe': (0.20, 0.72, 0.80, 0.98),
+        'anime': [(0.28, 0.18, 0.72, 0.60),
+                  (0.04, 0.11, 0.24, 0.32),
+                  (0.76, 0.11, 0.96, 0.32)],
+        'fixe': (0.22, 0.64, 0.78, 0.86),
     },
     'etal': {
         'sortie': 'img/nexus/tiles/obj_market_stall.webp',
-        # L'auvent qui ondule, et les deux lanternes.
-        'anime': [(0.14, 0.12, 0.86, 0.40),
-                  (0.02, 0.28, 0.20, 0.55),
-                  (0.80, 0.28, 0.98, 0.55)],
-        # Le plateau et les caisses : du bois qui n'a aucune raison de remuer.
-        'fixe': (0.20, 0.62, 0.80, 0.98),
+        # L'auvent, les deux lanternes, et les gemmes qui accrochent la lumiere.
+        'anime': [(0.08, 0.14, 0.92, 0.36),
+                  (0.08, 0.30, 0.26, 0.50),
+                  (0.70, 0.30, 0.88, 0.50),
+                  (0.24, 0.48, 0.76, 0.60)],
+        # Le plateau et le tapis : du bois qui n'a aucune raison de remuer.
+        'fixe': (0.18, 0.62, 0.82, 0.82),
     },
     'coffre': {
         'sortie': 'img/nexus/tiles/obj_vault_door.webp',
         # Les deux torches, et la couronne de rivets qui s'allume.
-        'anime': [(0.06, 0.02, 0.30, 0.34),
-                  (0.70, 0.02, 0.94, 0.34),
-                  (0.28, 0.28, 0.72, 0.76)],
-        'fixe': (0.20, 0.80, 0.80, 0.99),
+        'anime': [(0.01, 0.21, 0.20, 0.41),
+                  (0.80, 0.21, 0.99, 0.41),
+                  (0.20, 0.26, 0.80, 0.74)],
+        'fixe': (0.20, 0.76, 0.80, 0.88),
     },
 }
 
@@ -134,7 +135,11 @@ def masque_de(zones, L, H):
 def fait(cle):
     D = DECORS[cle]
     src = SC + cle + '.png'
-    im = Image.open(src).convert('RGBA')
+    # Le fond est un APLAT gris, d'une nuance differente a chaque image (93,
+    # 97, 104 sur trois planches). `detoure_uni` le lit aux coins plutot que
+    # de le recevoir en argument : l'ecrire aurait demande de le relever a la
+    # main a chaque fois, donc de se tromper une fois sur cinq.
+    im = P.detoure_uni(Image.open(src), tolerance=30)
     lot = cases(im, CADRES)
     L, H = lot[0].size
     fixe = tuple(int(v * (L if i % 2 == 0 else H)) for i, v in enumerate(D['fixe']))
@@ -153,12 +158,26 @@ def fait(cle):
     print('  la zone animee couvre %.0f%% du dessin, le reste est fige '
           '(ecart %d, zero attendu)' % (100 * part, reste))
 
+    # ---- ON RECADRE LES QUATRE SUR LA MEME BOITE ----
+    # La case fait 160x320 et l'objet n'en occupe que le milieu : garder la
+    # marge donnerait un decor deux fois trop petit a l'ecran, puisque la page
+    # cale la taille sur celle du FICHIER.
+    # La boite est l'UNION des quatre, et elle sert aux quatre : recadrer
+    # chaque image sur son propre contenu la deplacerait dans sa case — une
+    # flamme qui monte d'un pixel recentrerait tout le decor d'un pixel vers le
+    # bas, ce qui est exactement le tremblement qu'on vient de retirer.
+    boites = [P.boite(c, seuil=12) for c in aligne]
+    x0 = min(b[0] for b in boites); y0 = min(b[1] for b in boites)
+    x1 = max(b[2] for b in boites); y1 = max(b[3] for b in boites)
+    aligne = [c.crop((x0, y0, x1, y1)) for c in aligne]
+    L, H = aligne[0].size
+
     planche = Image.new('RGBA', (L * CADRES, H), (0, 0, 0, 0))
     for i, c in enumerate(aligne):
         planche.paste(c, (i * L, 0), c)
     P.ecrit(planche, D['sortie'])
-    print('  %-30s %s  %d images de %dx%d'
-          % (D['sortie'].split('/')[-1], planche.size, CADRES, L, H))
+    print('  %-30s %s  %d images de %dx%d  (rapport %.3f)'
+          % (D['sortie'].split('/')[-1], planche.size, CADRES, L, H, L / float(H)))
 
 
 if __name__ == '__main__':

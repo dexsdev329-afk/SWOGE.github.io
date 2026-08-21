@@ -2349,20 +2349,28 @@
      * Ecartees de 420 unites — deux fois le rayon d'entree, plus la marge :
      * on ne peut pas etre dans les deux a la fois, et l'on ne franchit pas
      * l'une en visant l'autre. */
+    /* ---- LES QUATRE DECORS QUI BOUGENT ----
+     * `cadres: 4` suffit : la page lit la planche, en deduit la largeur d'une
+     * case et joue l'image que dit l'horloge. Rien d'autre a brancher — c'est
+     * le meme chemin que la fontaine, et c'est pour ca qu'il a ete ecrit
+     * comme une DONNEE et non comme un cas particulier de la fontaine.
+     * Les tailles suivent le rapport des nouvelles planches. Les recopier de
+     * l'ancienne les aurait ecrasees : l'etal et le coffre ont gagne des
+     * banderoles et des piliers, donc de la hauteur. */
     { cle: 'portail', src: 'img/nexus/tiles/obj_portal.webp',
-      x: CENTRE.x - 210, y: CENTRE.y - 500, larg: 210, haut: 324,
+      x: CENTRE.x - 210, y: CENTRE.y - 500, larg: 210, haut: 326, cadres: 4,
       rayon: 110, href: 'games.html', nom: 'the wild', monde: 'ouvert' },
     { cle: 'portailPvp', src: 'img/nexus/tiles/obj_portal_pvp.webp',
-      x: CENTRE.x + 210, y: CENTRE.y - 500, larg: 210, haut: 324,
+      x: CENTRE.x + 210, y: CENTRE.y - 500, larg: 210, haut: 313, cadres: 4,
       rayon: 110, nom: 'the Crimson Reach', monde: 'crimson' },
     { cle: 'etal', src: 'img/nexus/tiles/obj_market_stall.webp',
-      x: CENTRE.x - 620, y: CENTRE.y, larg: 260, haut: 244,
+      x: CENTRE.x - 620, y: CENTRE.y, larg: 272, haut: 350, cadres: 4,
       /* Ouvre sur les coffres, mais la meme feuille porte l'onglet
          « Character skins » juste a cote dans sa barre — le nom dit les
          deux, pour qu'on sache que l'un mene aussi a l'autre. */
       rayon: 120, href: 'games.html?open=sh', nom: 'the shop' },
     { cle: 'coffre', src: 'img/nexus/tiles/obj_vault_door.webp',
-      x: CENTRE.x + 620, y: CENTRE.y, larg: 260, haut: 251,
+      x: CENTRE.x + 620, y: CENTRE.y, larg: 265, haut: 386, cadres: 4,
       rayon: 120, href: 'games.html?open=ap', nom: 'your vault' },
     /* ---- LA TABLE DE BLACKJACK, AU SUD ----
      *
@@ -2892,6 +2900,22 @@
    * traversait la carte en croyant courir apres une relique. Une trouvaille
    * mal annoncee decoit plus qu'une trouvaille qu'on n'a pas faite. */
   var SAC_A_PART = { oeuf: 'img/nexus/objets/sac_oeuf.webp' };
+  /* ---- COMBIEN DE CASES DANS UNE PLANCHE DE SAC ----
+   * Les planches carrees se comptent par `largeur / hauteur`. Celle-ci ne
+   * l'est pas : sa case fait 96 sur 126, et cette division rendrait TROIS
+   * cases sur une planche qui en a quatre — le sac se dessinerait coupe en
+   * biais. Le nombre est donc ecrit A COTE du fichier : une deduction
+   * geometrique se trompe des que le dessin change de forme, et celle-la
+   * s'est deja trompee une fois, sur les portails de donjon. Un sac absent de
+   * cette table a une seule case, ce qui est la bonne reponse pour un sac
+   * fixe. */
+  var CASES_SAC_A_PART = { oeuf: 4 };
+  function casesDe(img) {
+    for (var k in SAC_A_PART) {
+      if (img.src.indexOf(SAC_A_PART[k]) >= 0) return CASES_SAC_A_PART[k] || 1;
+    }
+    return 1;
+  }
   var IMG_SAC_A_PART = {};
   function imageSacAPart(cle) {
     var src = SAC_A_PART[cle];
@@ -3367,12 +3391,25 @@
     var apart = imageSacAPart(s.s);
     if (apart) {
       if (apart.complete && apart.naturalWidth) {
+        /* ---- IL SCINTILLE ----
+         * Une planche de quatre cases, comme la fontaine et les portails. Le
+         * nombre de cases se DEDUIT du fichier, il n'est pas ecrit : le jour
+         * ou un sac arrive avec six images, il jouera ses six sans qu'une
+         * ligne bouge — et un dessin qui n'aurait qu'UNE case marche encore,
+         * ce qui est la seule facon d'ajouter un sac fixe sans y penser.
+         * La case est plus haute que large : `largeur / hauteur` — la
+         * deduction qui marche pour les planches carrees — rendrait TROIS
+         * cases sur une planche qui en a quatre. Voir `casesDe`. */
+        var n = casesDe(apart);
+        var cw = apart.naturalWidth / n;
+        var k = Math.floor(performance.now() / 166) % n;
         /* Un peu plus GRAND que les autres, et c'est voulu : c'est la chose
            la plus rare qui tombe, elle doit se voir depuis l'autre bout de
            l'anneau. Le rapport vient du dessin — un sac ecrase se lit comme
            un sac casse. */
-        var TL = T * 1.18, TH = TL * (apart.naturalHeight / apart.naturalWidth);
-        ctx.drawImage(apart, s.x - TL / 2, s.y - TH + 10, TL, TH);
+        var TL = T * 1.18, TH = TL * (apart.naturalHeight / cw);
+        ctx.drawImage(apart, k * cw, 0, cw, apart.naturalHeight,
+                      s.x - TL / 2, s.y - TH + 10, TL, TH);
       }
     } else {
       ctx.drawImage(IMG_SACS, col * cadre, 0, cadre, cadre,

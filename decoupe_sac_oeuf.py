@@ -96,15 +96,39 @@ def fond_lumineux(im, couleur=(199, 253, 190), tolerance=26):
             px[x, y] = (r, g, b, int(round(a * part * part)))
     return im
 
-im = Image.open(SOURCE).convert('RGBA')
-im = P.detoure(im, seuilClair=232, seuilGris=18)
-im = P.nettoie_isoles(im)
+# ---- UNE PLANCHE DE QUATRE ----
+# Le sac scintille maintenant. Memes regles que les autres decors animes :
+#  - coupe au PAS FIXE, jamais au contenu — une coupe au contenu deplacerait
+#    le sac d'une case a l'autre, et il sauterait au rythme de ses etincelles ;
+#  - recadrage sur l'UNION des quatre boites, et non sur celle de chacune, pour
+#    la meme raison : les etincelles depassent du contour et ne sont pas au
+#    meme endroit d'une image a l'autre.
+#
 # `boite` rend une BOITE, pas une image : c'est une mesure, et c'est a
 # l'appelant de decider s'il recadre dessus. La lire comme une image donne un
 # tuple qu'on essaie d'enregistrer, et le message d'erreur parle alors de
 # `tuple.save` — trois lignes plus loin que la faute.
-im = fond_lumineux(im)
-im = im.crop(P.boite(im, seuil=12))
+CADRES = 4
+
+im = Image.open(SOURCE).convert('RGBA')
+# Le fond arrive tantot en damier clair, tantot en aplat gris. On regarde
+# lequel plutot que de le supposer : une planche detouree avec le mauvais
+# outil ressort avec son rectangle de fond, et ca ne se voit qu'a l'ecran.
+coin = im.convert('RGB').getpixel((2, 2))
+if abs(coin[0] - coin[1]) + abs(coin[1] - coin[2]) < 12 and coin[0] < 200:
+    im = P.detoure_uni(im, tolerance=30)
+else:
+    im = P.detoure(im, seuilClair=232, seuilGris=18)
+    im = P.nettoie_isoles(im)
+
+pas = im.width / float(CADRES)
+lot = [im.crop((round(i * pas), 0, round((i + 1) * pas), im.height))
+       for i in range(CADRES)]
+lot = [fond_lumineux(c) for c in lot]
+boites = [P.boite(c, seuil=12) for c in lot]
+x0 = min(b[0] for b in boites); y0 = min(b[1] for b in boites)
+x1 = max(b[2] for b in boites); y1 = max(b[3] for b in boites)
+lot = [c.crop((x0, y0, x1, y1)) for c in lot]
 
 # ---- ET A LA TAILLE DES AUTRES ----
 # Les six sacs de la planche font 96 pixels de cote. Le generateur en rend 640,
@@ -116,7 +140,12 @@ im = im.crop(P.boite(im, seuil=12))
 # plages de couleur identique font UN pixel de long, pas dix. Un NEAREST y
 # choisirait un pixel sur sept au hasard et hacherait les contours.
 LARGE = 96
-im = im.resize((LARGE, int(round(LARGE * im.height / float(im.width)))), Image.LANCZOS)
-P.ecrit(im, SORTIE)
-print('%-34s %s  (rapport %.2f)' % (SORTIE.split('/')[-1], im.size,
-                                    im.width / float(im.height)))
+lot = [c.resize((LARGE, int(round(LARGE * c.height / float(c.width)))), Image.LANCZOS)
+       for c in lot]
+L, H = lot[0].size
+planche = Image.new('RGBA', (L * CADRES, H), (0, 0, 0, 0))
+for i, c in enumerate(lot):
+    planche.paste(c, (i * L, 0), c)
+P.ecrit(planche, SORTIE)
+print('%-34s %s  %d images de %dx%d  (rapport %.2f)'
+      % (SORTIE.split('/')[-1], planche.size, CADRES, L, H, L / float(H)))

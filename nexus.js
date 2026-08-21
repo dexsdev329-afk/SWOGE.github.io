@@ -2980,6 +2980,46 @@
     return bas;
   }
 
+  /* ================== CE QU'IL Y A DERRIERE LES MURS ==================
+   *
+   * Rien, jusqu'ici : le fond bleu nuit de la page. Un donjon se lisait donc
+   * comme trois pieces posees dans le VIDE — et quand on longeait un mur, on
+   * avait l'impression d'etre au bord du jeu plutot qu'au fond d'un couloir.
+   * C'est le reproche qui a ete fait, et il est juste : un cul-de-sac doit
+   * etre plein, pas ouvert sur le noir.
+   *
+   * On y pose donc de la ROCHE, et c'est la meme planche que les murs — pas
+   * une texture de plus a telecharger, et surtout : la matiere derriere le
+   * mur est celle du mur, ce qui est la seule chose qui ait un sens. Elle est
+   * assombrie parce qu'elle est DERRIERE : sans cet assombrissement, le mur
+   * cesserait de se distinguer de ce qu'il retient, et l'on ne saurait plus
+   * ou l'on peut marcher.
+   *
+   * La case varie avec la position : une seule case repetee fait un damier
+   * regulier qui se lit comme un carrelage, exactement ce qu'une masse de
+   * pierre ne doit pas etre. La formule est deterministe — un tirage au
+   * hasard aurait fait scintiller la roche a chaque image.
+   */
+  function peintRoche(mc, mr, TM) {
+    var img = (MONDE_C && MONDE_C.mur === 'cave') ? IMG_MUR_CAVE : IMG_MUR_DJ;
+    if (!img || !img.complete || !img.naturalWidth) return;
+    var cadre = img.naturalHeight;
+    var n = Math.max(1, Math.round(img.naturalWidth / cadre));
+    /* Deux nombres premiers : sinon les colonnes et les lignes retomberaient
+       en phase tous les `n` pas et le damier reviendrait. */
+    var col = ((mc * 7 + mr * 13) % n + n) % n;
+    /* Un demi-pixel de recouvrement : a l'echelle, deux tuiles voisines
+       laissent sinon un liseré du fond entre elles, et la masse de pierre se
+       remet a ressembler a une grille. */
+    ctx.drawImage(img, col * cadre, 0, cadre, cadre,
+                  mc * TM - 0.5, mr * TM - 0.5, TM + 1, TM + 1);
+    ctx.save();
+    ctx.globalAlpha = 0.62;
+    ctx.fillStyle = '#05070C';
+    ctx.fillRect(mc * TM - 0.5, mr * TM - 0.5, TM + 1, TM + 1);
+    ctx.restore();
+  }
+
   function dessineObstacle(o) {
     var t = o.t || 0;
     /* Les bornes viennent du SERVEUR quand il les envoie : deux nombres tenus
@@ -7529,7 +7569,7 @@
            * donne l'impression d'un deuxieme monde ouvert dont on aurait bati
            * trois pieces au milieu — et les murs n'auraient plus rien enferme.
            * On ne devine pas la forme : elle est arrivee avec l'entree. */
-          if (TUILES_D && !TUILES_D[mc + ',' + mr]) continue;
+          if (TUILES_D && !TUILES_D[mc + ',' + mr]) { peintRoche(mc, mr, TM); continue; }
           var b = biomeEn(mc * TM + TM / 2, mr * TM + TM / 2);
           var img = TUILES_M[b];
           if (img && img.complete) ctx.drawImage(img, mc * TM, mr * TM, TM, TM);

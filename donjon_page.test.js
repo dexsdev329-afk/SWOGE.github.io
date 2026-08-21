@@ -640,6 +640,42 @@ process.on('unhandledRejection', (e) => {
   ok(decor.murDehors === 0, 'ni un seul mur de ruine');
   ok(decor.rocher === 0, 'ni un rocher');
 
+  /* ---- ET DERRIERE LES MURS, DE LA ROCHE ----
+   * Il n'y avait rien : le fond bleu nuit de la page. Un donjon se lisait donc
+   * comme trois pieces posees dans le VIDE, et longer un mur donnait
+   * l'impression d'etre au bord du jeu plutot qu'au fond d'un couloir. Un
+   * cul-de-sac doit etre PLEIN.
+   * On le verifie la ou c'est vrai : des tuiles peintes AILLEURS que sur le
+   * sol. Compter les images ne suffirait pas — les murs eux-memes utilisent
+   * la meme planche, et un donjon sans un gramme de roche en dessinerait
+   * quand meme des centaines. */
+  const roche = await p.evaluate(() => {
+    const e = window.__s[0].__m.filter((m) => m.type === 'realmEntre').pop();
+    const sol = new Set((e && e.tuiles ? e.tuiles : []).map((t) => t[0] + ',' + t[1]));
+    const T = (e && e.monde && e.monde.tuile) || 128;
+    /* Les tuiles de fond sont posees a un demi-pixel en arriere et debordent
+       d'un pixel : c'est ce qui les distingue d'un bloc de mur, qui est
+       centre sur son point. On repere donc la POSITION, pas la taille. */
+    const v = window.__peint.filter((o) => o.ecran && o.src === 'mur_donjon.webp');
+    let dessus = 0, dehors = 0;
+    const cases = new Set();
+    for (const o of v) {
+      /* Une tuile de fond tombe exactement sur la grille (au demi-pixel
+         pres) ; un bloc de mur est pose depuis son centre et n'y tombe pas
+         forcement. On ne garde que celles qui sont sur la grille. */
+      const c = Math.round((o.dx + 0.5) / T), l = Math.round((o.dy + 0.5) / T);
+      if (Math.abs(c * T - 0.5 - o.dx) > 0.01 || Math.abs(l * T - 0.5 - o.dy) > 0.01) continue;
+      if (sol.has(c + ',' + l)) dessus++;
+      else { dehors++; cases.add(c + ',' + l); }
+    }
+    return { dehors, dessus, distinctes: cases.size, total: v.length };
+  });
+  ok(roche.dehors > 0,
+     `la roche est peinte derriere les murs (${roche.dehors} tuiles, ${roche.distinctes} distinctes)`);
+  /* Et JAMAIS sur le sol : de la roche posee sur une tuile ou l'on marche
+     cacherait le sol qui dit ou l'on peut aller. */
+  ok(roche.dessus === 0, `et jamais sur une tuile de sol (${roche.dessus})`);
+
   /* ================== 6. ON PEUT TOUJOURS RESSORTIR ================== */
   console.log('\n-- on ressort --');
   /* La sortie est a l'est de l'arrivee : on y va a pied, par petits pas, comme

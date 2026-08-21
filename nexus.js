@@ -4550,21 +4550,111 @@
     });
   })();
 
-  /* Le pave tactile : mêmes drapeaux TOUCHES, poses au doigt plutot qu'au
-     clavier. `pointerdown/up/cancel/leave` couvrent en un seul jeu
-     d'ecouteurs la souris et le tactile — pas besoin d'en dupliquer deux. */
-  (function poseLePave() {
+  /* ================== LE MANCHE ==================
+   *
+   * C'etait une croix de quatre boutons. Au CLAVIER quatre touches suffisent,
+   * parce qu'on en tient deux a la fois : la diagonale se fait a l'index et au
+   * majeur. Au POUCE on n'en tient qu'une — la croix n'avait donc que quatre
+   * directions la ou le clavier en a huit, et contourner un rocher demandait
+   * deux mouvements en escalier pendant qu'on se faisait tirer dessus.
+   *
+   * Le manche rend une direction CONTINUE. Elle entre par le meme chemin que
+   * le clavier — `dx, dy`, normalises juste apres — donc aucune regle de
+   * deplacement ne change : ni la borne de vitesse, ni le ralentissement, ni
+   * la paralysie, ni les rochers. C'est une SOURCE de plus, pas un deuxieme
+   * deplacement a tenir d'accord avec le premier.
+   *
+   * La distance au centre ne sert PAS a doser la vitesse. Le personnage n'a
+   * qu'une allure — celle que le serveur borne — et un manche qui ferait
+   * marcher moins vite en le poussant a moitie donnerait au joueur un moyen de
+   * se punir sans le savoir. Il ne sert qu'a l'angle, et a la zone morte.
+   */
+  var MANCHE = { actif: false, x: 0, y: 0, pointeur: null };
+  /* Sous ce rayon, on ne bouge pas : un pouce pose ne vaut pas un pas, et sans
+     zone morte le personnage part tout seul des qu'on effleure. */
+  var MANCHE_MORT = 0.22;
+  (function poseLeManche() {
     var pave = document.getElementById('nxPad');
     if (!pave) return;
-    [].forEach.call(pave.querySelectorAll('button'), function (b) {
-      var d = b.dataset.dir;
-      var pose = function (ev) { debloqueSon(); TOUCHES[d] = true; b.classList.add('on'); ev.preventDefault(); };
-      var leve = function () { TOUCHES[d] = false; b.classList.remove('on'); };
-      b.addEventListener('pointerdown', pose);
-      b.addEventListener('pointerup', leve);
-      b.addEventListener('pointercancel', leve);
-      b.addEventListener('pointerleave', leve);
-    });
+    var socle = pave.querySelector('.socle');
+    var pommeau = pave.querySelector('.pommeau');
+    if (!socle || !pommeau) return;
+    var cx = 0, cy = 0, R = 1;
+
+    /* On mesure le socle AU MOMENT de la prise, pas une fois pour toutes :
+       la barre du navigateur mobile apparait et disparait au defilement, et
+       un centre mesure au chargement se retrouve a cinquante pixels de la
+       verite des qu'elle bouge. */
+    function ancre() {
+      var r = socle.getBoundingClientRect();
+      cx = r.left + r.width / 2;
+      cy = r.top + r.height / 2;
+      R = Math.max(24, r.width / 2);
+      pommeau.style.left = (cx - pave.getBoundingClientRect().left) + 'px';
+      pommeau.style.top = (cy - pave.getBoundingClientRect().top) + 'px';
+    }
+    function poseLePommeau(dx, dy) {
+      var b = pave.getBoundingClientRect();
+      pommeau.style.left = (cx - b.left + dx) + 'px';
+      pommeau.style.top = (cy - b.top + dy) + 'px';
+    }
+    function lit(ev) {
+      var dx = ev.clientX - cx, dy = ev.clientY - cy;
+      var d = Math.sqrt(dx * dx + dy * dy);
+      /* Au-dela du socle, le pommeau reste au bord et la direction continue de
+         tourner. Sans ca on perdrait le controle des qu'on deborde — ce qui
+         arrive a chaque fois qu'on pousse fort. */
+      var k = d > R ? R / d : 1;
+      poseLePommeau(dx * k, dy * k);
+      if (d < R * MANCHE_MORT) { MANCHE.x = 0; MANCHE.y = 0; return; }
+      MANCHE.x = dx / d;
+      MANCHE.y = dy / d;
+    }
+    function prend(ev) {
+      debloqueSon();
+      MANCHE.actif = true;
+      MANCHE.pointeur = ev.pointerId;
+      pave.classList.add('on');
+      ancre();
+      lit(ev);
+      if (pave.setPointerCapture) { try { pave.setPointerCapture(ev.pointerId); } catch (e) {} }
+      ev.preventDefault();
+    }
+    function suit(ev) {
+      if (!MANCHE.actif || ev.pointerId !== MANCHE.pointeur) return;
+      lit(ev);
+      ev.preventDefault();
+    }
+    function lache(ev) {
+      if (ev && MANCHE.actif && ev.pointerId !== MANCHE.pointeur) return;
+      /* ---- ON REND LA CAPTURE ----
+       * La prendre sans la rendre laisse l'element proprietaire du pointeur.
+       * Le doigt suivant portant le meme identifiant n'arrive alors plus par
+       * le chemin normal : le manche marchait deux ou trois fois puis cessait
+       * de repondre, sans erreur nulle part. C'est aussi ce qui arriverait a
+       * un joueur dont le doigt sort de l'ecran par le bas — le geste le plus
+       * courant du monde sur un telephone. */
+      if (MANCHE.pointeur !== null && pave.releasePointerCapture) {
+        try {
+          if (!pave.hasPointerCapture || pave.hasPointerCapture(MANCHE.pointeur)) {
+            pave.releasePointerCapture(MANCHE.pointeur);
+          }
+        } catch (e) {}
+      }
+      MANCHE.actif = false; MANCHE.pointeur = null;
+      MANCHE.x = 0; MANCHE.y = 0;
+      pave.classList.remove('on');
+      ancre();
+    }
+    pave.addEventListener('pointerdown', prend);
+    pave.addEventListener('pointermove', suit);
+    pave.addEventListener('pointerup', lache);
+    pave.addEventListener('pointercancel', lache);
+    /* Pas de `pointerleave` : avec la capture, le doigt qui sort de la zone
+       continue d'etre suivi — et c'est exactement ce qu'on veut. Le lacher est
+       le seul evenement qui arrete le personnage. */
+    ancre();
+    window.addEventListener('resize', ancre);
   })();
 
   /* ================== LE BOUTON DE TIR TACTILE ==================
@@ -4940,8 +5030,12 @@
     if (PARALYSE > 0) PARALYSE = Math.max(0, PARALYSE - dt);
     if (RALENTI > 0) RALENTI = Math.max(0, RALENTI - dt);
     if (BRULURE > 0) BRULURE = Math.max(0, BRULURE - dt);
-    var dx = (TOUCHES.right ? 1 : 0) - (TOUCHES.left ? 1 : 0);
-    var dy = (TOUCHES.down ? 1 : 0) - (TOUCHES.up ? 1 : 0);
+    /* Le manche PREND LE PAS quand on le tient : les deux sources donnent la
+       meme chose — une direction — et les additionner ferait s'annuler un
+       pouce qui pousse a droite et une touche restee enfoncee a gauche. Le
+       geste en cours gagne. */
+    var dx = MANCHE.actif ? MANCHE.x : (TOUCHES.right ? 1 : 0) - (TOUCHES.left ? 1 : 0);
+    var dy = MANCHE.actif ? MANCHE.y : (TOUCHES.down ? 1 : 0) - (TOUCHES.up ? 1 : 0);
     /* ---- CLOUE AU SOL ----
      * On garde la DIRECTION du regard : se retourner n'est pas se deplacer,
      * et un personnage fige qui tire dans le dos de ce qu'il vise serait
@@ -4949,8 +5043,12 @@
      * difference entre paralyser et etourdir, et c'est ce qui laisse une
      * reponse au joueur au lieu de le faire regarder mourir. */
     if (PARALYSE > 0) {
-      if (dx !== 0) joueur.dir = dx > 0 ? 'right' : 'left';
-      else if (dy !== 0) joueur.dir = dy > 0 ? 'down' : 'up';
+      /* Le meme axe dominant qu'en marchant : un personnage fige doit regarder
+         la ou l'on pousse, pas a cote. */
+      if (dx || dy) {
+        if (Math.abs(dx) >= Math.abs(dy)) joueur.dir = dx > 0 ? 'right' : 'left';
+        else joueur.dir = dy > 0 ? 'down' : 'up';
+      }
       dx = 0; dy = 0;
     }
     var bouge = dx !== 0 || dy !== 0;
@@ -4972,7 +5070,12 @@
         var p = glisse(deX, deY, joueur.x, joueur.y);
         joueur.x = p.x; joueur.y = p.y;
       }
-      if (dx !== 0) joueur.dir = dx > 0 ? 'right' : 'left';
+      /* ---- L'AXE DOMINANT, PAS « dx n'est pas nul » ----
+       * Au clavier `dx` vaut 0 ou 1, et « non nul » suffisait. Le manche rend
+       * une direction CONTINUE : pousser droit vers le haut donne un `dx` de
+       * deux centiemes, et l'ancien test faisait alors regarder le personnage
+       * a DROITE pendant qu'il monte. On compare donc les deux. */
+      if (Math.abs(dx) >= Math.abs(dy)) joueur.dir = dx > 0 ? 'right' : 'left';
       else joueur.dir = dy > 0 ? 'down' : 'up';
     }
     if (bouge && pas.paused) pas.play().catch(function () {});
@@ -5236,9 +5339,35 @@
    *
    * On ne descend jamais sous 1 : agrandir des pixels est acceptable, les
    * reduire rend le pixel art sale. */
-  var MONDE_VISIBLE_H = 1000;    // unites de monde vues verticalement
+  /* ---- COMBIEN DE MONDE ON VOIT ----
+   *
+   * Le zoom n'etait borne qu'en HAUT (jamais plus de 4) et bloque a 1 en bas.
+   * Sur telephone, la fenetre utile fait six cent quarante pixels de haut : le
+   * calcul rendait 0,64, la borne le remontait a 1, et l'ecran montrait donc
+   * SIX CENT QUARANTE unites de monde la ou un ordinateur en montre mille.
+   * Le plus petit ecran voyait le moins loin — exactement l'inverse de ce
+   * qu'il faut, puisque c'est la qu'on a le moins de place pour reagir.
+   *
+   * Au doigt, on vise donc plus large ET l'on autorise le zoom a descendre
+   * sous 1. La borne basse n'est pas un gout : sous 0,55 un personnage de
+   * quatre-vingts unites tombe a quarante pixels et les petites creatures a
+   * quinze — on ne les distingue plus du decor, et un jeu ou l'on ne voit pas
+   * ce qui tire n'est pas plus lisible parce qu'il montre plus de terrain.
+   *
+   * `pointer: coarse` et pas la largeur : c'est le DOIGT qui change le besoin,
+   * pas la taille de la fenetre. Une tablette large au doigt a le meme
+   * probleme qu'un telephone, et une petite fenetre de navigateur a la souris
+   * ne l'a pas. */
+  var TACTILE = (function () {
+    try { return !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches); }
+    catch (e) { return false; }
+  })();
+  var MONDE_VISIBLE_H = 1000;         // unites de monde vues verticalement
+  var MONDE_VISIBLE_TACTILE = 1250;   // au doigt : plus haut, on voit venir
   function zoomCourant(vueH) {
-    return Math.max(1, Math.min(4, vueH / MONDE_VISIBLE_H));
+    var cible = TACTILE ? MONDE_VISIBLE_TACTILE : MONDE_VISIBLE_H;
+    var mini = TACTILE ? 0.55 : 1;
+    return Math.max(mini, Math.min(4, vueH / cible));
   }
 
   function camAxe(pos, vue, monde) {

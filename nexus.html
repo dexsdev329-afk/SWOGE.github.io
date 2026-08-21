@@ -797,22 +797,49 @@ body.nxdrag *{ cursor:grabbing !important; }
   color:#c9d3f2; font:700 13px 'Archivo',system-ui,sans-serif; cursor:pointer; }
 .nxrp-reset:hover{ background:rgba(255,255,255,.09); color:#fff; }
 
-/* ---- le pave tactile, en bas a gauche ----
- * Le clavier marche deja sur ordinateur (WASD / fleches). Sur telephone il
- * n'y a rien d'autre : quatre boutons en croix, tenus au doigt. */
-#nxPad{ position:absolute; left:max(16px, env(safe-area-inset-left));
-  bottom:max(16px, env(safe-area-inset-bottom)); z-index:20;
-  width:150px; height:150px; display:grid;
-  grid-template-columns:1fr 1fr 1fr; grid-template-rows:1fr 1fr 1fr;
-  gap:4px; touch-action:none; user-select:none; -webkit-user-select:none; }
-#nxPad button{ grid-column:2; background:rgba(20,26,50,.62);
-  border:1px solid rgba(255,255,255,.22); border-radius:12px; color:#eaf0ff;
-  font-size:18px; display:flex; align-items:center; justify-content:center;
-  touch-action:none; }
-#nxPad button:active, #nxPad button.on{ background:rgba(90,120,220,.55);
-  border-color:rgba(255,255,255,.5); }
-#nxPad .u{ grid-row:1; } #nxPad .l{ grid-row:2; grid-column:1; }
-#nxPad .r{ grid-row:2; grid-column:3; } #nxPad .d{ grid-row:3; }
+/* ---- LE MANCHE, EN BAS A GAUCHE ----
+ *
+ * C'etait une croix de quatre boutons. Le clavier a quatre touches et ca
+ * marche, parce qu'on en tient deux a la fois — en diagonale, l'index et le
+ * majeur. Au POUCE on n'en tient qu'une : la croix n'avait donc que quatre
+ * directions la ou le clavier en a huit, et l'on ne pouvait pas contourner un
+ * rocher sans faire deux mouvements en escalier.
+ *
+ * Un manche donne la direction CONTINUE, au meme pouce et au meme endroit.
+ *
+ * La ZONE de prise est plus grande que le dessin : sur un telephone on ne
+ * regarde pas son pouce, on regarde le jeu. Un manche qu'il faut viser est un
+ * manche qu'on rate, et le rater en combat coute un personnage. Le socle reste
+ * ou il est — un manche flottant se pose la ou le pouce tombe, ce qui est plus
+ * doux mais fait perdre le repere quand on le lache une seconde. */
+/* La zone s'arrete SOUS la rangee flottante du sac au sol (bottom: 172px) :
+   elle prend les touches, et une zone qui monterait plus haut avalerait les
+   appuis sur le butin — le geste le plus utile du telephone. */
+#nxPad{ position:absolute; left:0; bottom:0; z-index:20;
+  width:min(46vw, 240px); height:min(30vh, 166px);
+  touch-action:none; user-select:none; -webkit-user-select:none;
+  -webkit-tap-highlight-color:transparent; }
+/* Le socle, dessine : ce qu'on voit, et non ce qu'on peut toucher. */
+#nxPad i.socle{ position:absolute;
+  left:max(18px, env(safe-area-inset-left));
+  bottom:max(18px, env(safe-area-inset-bottom));
+  width:132px; height:132px; border-radius:50%;
+  background:radial-gradient(circle at 50% 50%,
+    rgba(28,36,68,.30) 0 52%, rgba(28,36,68,.62) 62% 100%);
+  border:1px solid rgba(255,255,255,.20);
+  box-shadow:inset 0 0 24px rgba(0,0,0,.35);
+  transition:border-color .12s, background .12s; }
+#nxPad.on i.socle{ border-color:rgba(255,255,255,.42); }
+/* Le pommeau. Il suit le pouce, borne au socle : au-dela, il reste au bord et
+   la direction continue de tourner — sinon on perd le controle des qu'on
+   deborde, ce qui arrive tout le temps. */
+#nxPad i.pommeau{ position:absolute; width:58px; height:58px; border-radius:50%;
+  left:0; top:0; transform:translate(-50%,-50%);
+  background:linear-gradient(#8FA8FF,#4A63C8);
+  border:1px solid rgba(255,255,255,.55);
+  box-shadow:0 4px 12px rgba(0,0,0,.5);
+  pointer-events:none; }
+#nxPad.on i.pommeau{ background:linear-gradient(#B9C8FF,#5F7AE0); }
 
 /* ---- LE RETOUR AU NEXUS, A DROITE ----
  * Il a d'abord ete pose au-dessus de la fleche du haut. C'etait une erreur :
@@ -876,7 +903,7 @@ body.nxdrag *{ cursor:grabbing !important; }
 }
 
 @media (min-width:900px) and (pointer:fine){
-  #nxPad{ display:none; }     /* clavier disponible : la croix n'ajoute rien */
+  #nxPad{ display:none; }     /* clavier disponible : le manche n ajoute rien */
   #nxHint{ display:block; }
 }
 #nxHint{ display:none; position:absolute; left:max(16px, env(safe-area-inset-left));
@@ -986,12 +1013,9 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
     <div class="nxp-pot" id="nxPotions"></div>
     <div class="nxp-gens" id="nxGens"></div>
   </aside>
-  <div id="nxPad" aria-hidden="true">
-    <button class="u" type="button" data-dir="up" aria-label="Move up">&#9650;</button>
-    <button class="l" type="button" data-dir="left" aria-label="Move left">&#9664;</button>
-    <button class="r" type="button" data-dir="right" aria-label="Move right">&#9654;</button>
-    <button class="d" type="button" data-dir="down" aria-label="Move down">&#9660;</button>
-  </div>
+  <!-- Le manche. La zone entoure le socle largement : on ne vise pas son
+       pouce en combat. -->
+  <div id="nxPad" aria-hidden="true"><i class="socle"></i><i class="pommeau"></i></div>
 </div>
 
 <!-- ---- LE COFFRE, AU CENTRE DE L'ECRAN ----
@@ -1083,7 +1107,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
   </div>
 </div>
 
-<script src="nexus.js?v=20260821e" defer></script>
+<script src="nexus.js?v=20260821f" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

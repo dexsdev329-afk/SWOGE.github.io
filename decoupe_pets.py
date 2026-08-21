@@ -41,7 +41,7 @@ FAMILIERS = [
     ('pet_tenebre', 'img/nexus/monstres/pet_shiba_tenebre.webp'),
     ('pet_terre', 'img/nexus/monstres/pet_shiba_terre.webp'),
     ('pet_feu', 'img/nexus/monstres/pet_shiba_feu.webp'),
-    ('pet_arc', 'img/nexus/monstres/pet_shiba_arc.webp'),
+    ('pet_arc', 'img/nexus/monstres/pet_shiba_legendaire.webp'),
 ]
 
 

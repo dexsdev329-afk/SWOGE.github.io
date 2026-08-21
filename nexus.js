@@ -84,6 +84,13 @@
       envoie({ type: 'skins' });
       envoie({ type: 'nexusJoin' });
       envoie({ type: 'profile' });
+      /* ---- LES FAMILIERS DES L'ARRIVEE ----
+       * Pas seulement a l'ouverture du panneau : celui qu'on a sorti doit
+       * trotter derriere nous des la premiere image, et ceux qui restent
+       * doivent etre dans l'enclos quand on passe devant la grange. Les
+       * demander au moment de les voir aurait fait apparaitre un compagnon
+       * une seconde apres le joueur, a chaque connexion. */
+      envoie({ type: 'familiers' });
       enLigne = true;
     }
     /* ---- DEUX QUESTIONS DIFFERENTES, DEUX CONDITIONS ----
@@ -317,13 +324,24 @@
       if (m.error) { flotte(m.error); }
       else if (m.familier) {
         FAMILIERS_C = m.familiers || FAMILIERS_C;
+        peintPetworld();
         flotte((m.nouveau ? '\uD83E\uDD5A ' : '\u2B06 ') + m.familier.nom +
                (m.nouveau ? ' hatched!' : ' grew stronger'));
         joueSample('niveau', { vol: 0.9 });
       }
       if (m.sacJoueur) { SAC = m.sacJoueur; peintPanneau(); }
     }
-    if (m.type === 'familiers') { FAMILIERS_C = m.familiers || []; }
+    if (m.type === 'familiers') { FAMILIERS_C = m.familiers || []; peintPetworld(); }
+    /* ---- LE CHOIX A PRIS, OU IL N'A PAS PRIS ----
+     * On repeint depuis la liste que le SERVEUR renvoie, jamais depuis ce
+     * qu'on vient de cliquer : c'est lui qui sait lequel est sorti, et une
+     * fiche cochee sur une demande refusee aurait menti sans jamais se
+     * corriger. */
+    if (m.type === 'familierSort') {
+      if (m.error) flotte(m.error);
+      FAMILIERS_C = m.familiers || FAMILIERS_C;
+      peintPetworld();
+    }
     if (m.type === 'potionBue') {
       POTIONS_C = m.potions || POTIONS_C;
       if (m.pv !== null && m.pv !== undefined) { VIE.pv = m.pv; moiMonde.pv = m.pv; }
@@ -1611,6 +1629,88 @@
            (delai ? ' style="animation-delay:' + delai + 'ms"' : '') + '></div>';
   }
 
+  /* ================== L'ENCLOS DE PETWORLD ==================
+   *
+   * La grange n'ouvrait rien : elle disait « opening soon », ce qui etait
+   * honnete tant qu'il n'y avait aucun familier a y mettre. Maintenant qu'un
+   * oeuf eclot, elle a une raison d'exister — c'est le seul endroit ou l'on
+   * choisit lequel sort.
+   *
+   * Le panneau ne DECIDE rien : il envoie `familierSort` et attend la reponse
+   * du serveur. Cocher la fiche sur place aurait montre un compagnon sorti
+   * alors que le serveur l'a peut-etre refuse (une espece qu'on n'a pas), et
+   * le hall aurait continue d'en dessiner un autre.
+   */
+  var elPetVoile = document.getElementById('nxPetVoile');
+  var elPetCorps = document.getElementById('nxPetCorps');
+  var elPetRentre = document.getElementById('nxPetRentre');
+  var petOuvert = false;
+
+  /* Les noms et les pouvoirs viennent du SERVEUR avec chaque fiche. Cette
+     page n'en garde pas de copie : deux tables des memes six pouvoirs
+     finiraient par ne plus dire la meme chose, et c'est le serveur qui les
+     applique. */
+  function peintPetworld() {
+    if (!elPetCorps) return;
+    if (!FAMILIERS_C.length) {
+      elPetCorps.innerHTML =
+        '<div class="nxpw-vide">The pen is empty. Pets come from <b>mythic eggs</b>' +
+        ' &mdash; any monster can drop one, about once in 5,000 kills.' +
+        ' Hatch the egg from your backpack.</div>';
+      if (elPetRentre) elPetRentre.style.display = 'none';
+      return;
+    }
+    if (elPetRentre) elPetRentre.style.display = '';
+    elPetCorps.innerHTML = FAMILIERS_C.map(function (f) {
+      var src = 'img/nexus/monstres/pet_shiba' +
+                (f.espece === 'normal' ? '' : '_' + f.espece) + '.webp';
+      return '<div class="nxpw-f' + (f.actif ? ' actif' : '') +
+             '" data-espece="' + ech(f.espece) + '">' +
+             '<div class="nxpw-vig" style="background-image:url(' + src + ')"></div>' +
+             '<div class="nxpw-nom">' + ech(f.nom || 'Pet') + '</div>' +
+             '<div class="nxpw-niv">Lv ' + (f.niveau || 1) +
+             (f.actif ? ' &middot; out' : '') + '</div>' +
+             '<div class="nxpw-pou">' +
+             ech((f.pouvoir && f.pouvoir.nom) || '') + '</div>' +
+             '</div>';
+    }).join('');
+  }
+
+  function ouvrePetworld() {
+    if (!elPetVoile) return;
+    petOuvert = true;
+    /* On redemande la liste a l'ouverture : elle a pu changer dans un autre
+       onglet, et surtout un oeuf ouvert pendant qu'on etait ailleurs doit
+       apparaitre ici sans recharger la page. */
+    if (enLigne) envoie({ type: 'familiers' });
+    peintPetworld();
+    elPetVoile.classList.add('on');
+  }
+  function fermePetworld(parLaMain) {
+    petOuvert = false;
+    if (parLaMain) marqueFerme('petworld');
+    if (elPetVoile) elPetVoile.classList.remove('on');
+  }
+  if (elPetVoile) {
+    elPetVoile.addEventListener('click', function (e) {
+      var c = e.target.classList;
+      if (e.target === elPetVoile || (c && c.contains('nxcf-x'))) { fermePetworld(true); return; }
+      var f = e.target.closest ? e.target.closest('.nxpw-f') : null;
+      if (!f || !elPetCorps.contains(f)) return;
+      var es = f.getAttribute('data-espece');
+      /* Recliquer sur celui qui est deja dehors le fait RENTRER. Sans ca, il
+         faudrait chercher le bouton du bas pour annuler un choix qu'on vient
+         de faire d'un clic. */
+      if (enLigne) envoie({ type: 'familierSort',
+                            espece: f.classList.contains('actif') ? null : es });
+    });
+  }
+  if (elPetRentre) {
+    elPetRentre.addEventListener('click', function () {
+      if (enLigne) envoie({ type: 'familierSort', espece: null });
+    });
+  }
+
   function ouvreBj() {
     if (!elBjVoile) return;
     bjOuvert = true;
@@ -2035,7 +2135,7 @@
        cour, et la barriere passe derriere elle. */
     { cle: 'petworld', src: 'img/nexus/tiles/obj_grange.webp',
       x: CENTRE.x + 832, y: CENTRE.y + 352, larg: 420, haut: 334,
-      rayon: 150, nom: 'Petworld', bientot: 1 },
+      rayon: 150, nom: 'Petworld' },
     { cle: 'petworldEnseigne', src: 'img/nexus/tiles/obj_petworld_sign.webp',
       x: CENTRE.x + 400, y: CENTRE.y + 700, larg: 140, haut: 209 },
     { cle: 'casino', src: 'img/nexus/tiles/obj_bj_table.webp',
@@ -3246,9 +3346,15 @@
          serveur la calcule pour NOUS, a chaque instantane. Le meme joueur est
          vert chez l'un et gris chez l'autre. */
       d.ami = !!o.ami; d.addr = o.a;
+      /* Son familier arrive avec l'instantane : c'est le serveur qui sait
+         lequel il a sorti, la page ne fait que le dessiner. */
+      d.fam = o.fam || null;
       assureCharge(d.skin);
     });
     Object.keys(DISTANTS_M).forEach(function (k) { if (!vusJ[k]) delete DISTANTS_M[k]; });
+    var vifs = { moi: 1 };
+    Object.keys(DISTANTS_M).forEach(function (k) { vifs['j:' + k] = 1; });
+    oublieFamiliers(vifs);
     /* Meme precaution que dans le Nexus : un instantane arrive dix fois par
        seconde, et refabriquer le HTML pour les memes noms ferait clignoter la
        liste. On ne repeint que si la COMPOSITION change — le drapeau « ami »
@@ -4782,6 +4888,174 @@
   // sans le moindre message dedie.
   var DISTANTS = {};                 // { addr: {x,y,rx,ry,dir,anim,skin,nom,cadre,chrono} }
   var signatureGens = '';
+  /* ================== LES FAMILIERS ==================
+   *
+   * Un familier n'est PAS une entite du serveur : il n'a ni position, ni
+   * points de vie, ni collision. Le serveur dit seulement « ce joueur a
+   * celui-ci » (une chaine), et c'est la page qui le fait trotter derriere
+   * son maitre.
+   *
+   * Le simuler cote serveur aurait double le nombre de choses a deplacer et a
+   * diffuser, pour un compagnon qui ne fait encore rien. Le jour ou il MORD,
+   * il deviendra une entite — et ce jour-la ce champ ne suffira plus, ce qui
+   * est tres bien : on saura exactement ou regarder.
+   *
+   * ---- IL SUIT, IL NE COLLE PAS ----
+   *
+   * Un compagnon pose sur son maitre disparait sous lui. Un compagnon qui
+   * garde une distance FIXE derriere lui pivote de facon absurde des qu'on
+   * tourne sur place. Celui-ci a une position a lui : il ne bouge que si le
+   * maitre s'eloigne de plus de sa laisse, et il s'arrete quand il l'a
+   * rejoint. C'est ce qui lui donne l'air de decider.
+   */
+  var IMG_FAM = {};
+  var FAM_LAISSE = 62;        // au-dela, il se met a courir
+  var FAM_ARRET = 34;         // en deca, il s'assoit
+  var FAM_VITESSE = 300;      // un peu plus vite que le joueur : il rattrape
+  var FAM_TAILLE = 82;
+  var FAM_CADRES = 4;
+  var TRAINEES = {};          // cle -> { x, y, dir, cadre, chrono }
+  var SCENE_FAM = null;       // la scene ou ces traines ont un sens
+
+  function imageFamilier(espece) {
+    if (!espece) return null;
+    if (!IMG_FAM[espece]) {
+      var i = new Image();
+      /* Le normal n'a pas de suffixe : c'est le premier qu'on a decoupe, et
+         le renommer aurait casse un fichier deja en ligne pour une regularite
+         que personne ne voit. */
+      i.src = 'img/nexus/monstres/pet_shiba' +
+              (espece === 'normal' ? '' : '_' + espece) + '.webp';
+      IMG_FAM[espece] = i;
+    }
+    return IMG_FAM[espece];
+  }
+
+  /** Avance le familier de `cle` vers son maitre, et rend sa position. */
+  function avanceFamilier(cle, mx, my, dt) {
+    var t = TRAINEES[cle];
+    if (!t) {
+      /* Il apparait DERRIERE : ne pas le poser sur le maitre evite qu'il
+         traverse l'ecran a la premiere image pour rejoindre sa place. */
+      t = TRAINEES[cle] = { x: mx, y: my + FAM_ARRET, dir: 'down', cadre: 0, chrono: 0, court: false };
+    }
+    var dx = mx - t.x, dy = my - t.y;
+    var d = Math.sqrt(dx * dx + dy * dy);
+    /* ---- DEUX SEUILS, PAS UN ----
+     * Avec un seul seuil, le familier repart des qu'il l'a franchi d'un
+     * pixel : il vibre en permanence derriere un joueur qui marche, toujours
+     * a la meme distance exacte, et l'on voit une image tractee plutot qu'un
+     * animal. Il PART a la laisse et ne s'arrete qu'une fois vraiment revenu
+     * — c'est ce va-et-vient entre les deux seuils qui lui donne l'air de
+     * decider tout seul.
+     * L'etat est garde sur la traine : le deduire de la distance seule est
+     * justement ce qui n'a qu'un seuil. */
+    if (t.court) { if (d <= FAM_ARRET) t.court = false; }
+    else if (d > FAM_LAISSE) t.court = true;
+    if (t.court) {
+      /* On ne DEPASSE jamais le maitre : sans ce plafond, un dt long — un
+         onglet qu'on vient de reveiller — le projetterait de l'autre cote. */
+      var pas = Math.min(d, FAM_VITESSE * dt);
+      t.x += dx / d * pas;
+      t.y += dy / d * pas;
+      t.dir = Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? 'right' : 'left')
+                                           : (dy > 0 ? 'down' : 'up');
+      /* Le cycle de marche n'avance QUE s'il marche : un familier assis qui
+         continue de courir sur place est le defaut le plus visible d'un
+         compagnon. */
+      t.chrono += dt;
+      if (t.chrono >= 0.13) { t.chrono = 0; t.cadre = (t.cadre + 1) % FAM_CADRES; }
+    } else {
+      t.cadre = 0;
+    }
+    return t;
+  }
+
+  function dessineFamilier(cle, espece, mx, my, dt) {
+    var img = imageFamilier(espece);
+    var t = avanceFamilier(cle, mx, my, dt);
+    if (!img || !img.complete || !img.naturalWidth) return t;
+    var cadre = img.naturalWidth / FAM_CADRES;
+    var lig = DIRS_M[t.dir] === undefined ? 1 : DIRS_M[t.dir];
+    ctx.drawImage(img, t.cadre * cadre, lig * cadre, cadre, cadre,
+                  t.x - FAM_TAILLE / 2, t.y - FAM_TAILLE, FAM_TAILLE, FAM_TAILLE);
+    return t;
+  }
+
+  /* Ceux qui ne sont plus la n'ont plus de traine : sans ce menage, le
+     familier d'un joueur parti resterait a sa derniere place pour toujours. */
+  function oublieFamiliers(vivants) {
+    Object.keys(TRAINEES).forEach(function (k) { if (!vivants[k]) delete TRAINEES[k]; });
+  }
+
+  /* ---- MON FAMILIER, C'EST CELUI QUI EST ACTIF ----
+   * On le lit dans la liste des familiers plutot que de garder une variable
+   * a part : deux copies de la meme verite finissent toujours par diverger,
+   * et c'est le serveur qui decide lequel est sorti (route familierSort).
+   * Le meme appel sert dans le hall et dans le monde de combat — un seul
+   * endroit ou se tromper. */
+  /* ================== CEUX QUI RESTENT A L'ENCLOS ==================
+   *
+   * Un familier eclos qu'on n'a pas sorti existe quand meme. Le laisser
+   * nulle part aurait fait de Petworld une liste dans un panneau — et l'enclos
+   * qu'on a construit, une cour vide qu'on traverse. Ils y broutent donc.
+   *
+   * Leur promenade est CALCULEE a partir de l'horloge, pas gardee : chacun
+   * suit une ellipse propre, si lente qu'on ne la lit pas comme un circuit.
+   * Une vraie errance au hasard aurait demande un etat par animal, une
+   * decision toutes les N secondes, et surtout : ils auraient fini par sortir
+   * de la cour ou se marcher dessus. Ici on sait, par construction, qu'ils
+   * restent dedans et qu'ils ne se superposent jamais.
+   *
+   * Rien de tout cela n'est simule au serveur, et ce n'est pas un raccourci :
+   * personne d'autre que le proprietaire ne les voit — deux joueurs devant la
+   * meme grange voient chacun SES animaux, ce qui est exactement ce qu'on
+   * veut d'un enclos personnel.
+   */
+  var PEN_MARGE = 96;         // on les garde loin de la barriere
+  function placeEnclos(i, n) {
+    /* Les orbites sont reparties en HAUTEUR d'abord : deux animaux sur la
+       meme ligne se croiseraient a chaque tour. Une bande chacun, et la pile
+       de profondeur suffit a les demeler. */
+    var bx0 = FERME.x0 + PEN_MARGE, bx1 = FERME.x1 - PEN_MARGE;
+    var by0 = FERME.y0 + PEN_MARGE + 60, by1 = FERME.y1 - PEN_MARGE;
+    var bande = (by1 - by0) / Math.max(1, n);
+    var cy = by0 + bande * (i + 0.5);
+    var cx = (bx0 + bx1) / 2;
+    var rx = Math.max(40, (bx1 - bx0) / 2 - 30);
+    var ry = Math.max(18, bande / 2 - 14);
+    /* Chacun sa vitesse et son depart : sinon les six tournent en formation,
+       ce qui se lit comme un decor anime, pas comme des animaux. */
+    var t = performance.now() / 1000;
+    var a = t * (0.22 + i * 0.045) + i * 1.7;
+    return { x: cx + Math.cos(a) * rx, y: cy + Math.sin(a) * ry,
+             dir: Math.cos(a) < 0 ? 'left' : 'right',
+             cadre: Math.floor(t * 5 + i) % FAM_CADRES };
+  }
+
+  /** Dessine, dans la pile du hall, les familiers restes a l'enclos. */
+  function empileEnclos(pile) {
+    var au = FAMILIERS_C.filter(function (f) { return f && !f.actif; });
+    au.forEach(function (f, i) {
+      var p = placeEnclos(i, au.length);
+      pile.push({ y: p.y, dessine: function () {
+        var img = imageFamilier(f.espece);
+        if (!img || !img.complete || !img.naturalWidth) return;
+        var cadre = img.naturalWidth / FAM_CADRES;
+        var lig = DIRS_M[p.dir] === undefined ? 1 : DIRS_M[p.dir];
+        ctx.drawImage(img, p.cadre * cadre, lig * cadre, cadre, cadre,
+                      p.x - FAM_TAILLE / 2, p.y - FAM_TAILLE, FAM_TAILLE, FAM_TAILLE);
+      } });
+    });
+  }
+
+  function monFamilier() {
+    for (var i = 0; i < FAMILIERS_C.length; i++) {
+      if (FAMILIERS_C[i] && FAMILIERS_C[i].actif) return FAMILIERS_C[i].espece;
+    }
+    return null;
+  }
+
   function majJoueursDistants(liste) {
     var vus = {};
     liste.forEach(function (j) {
@@ -4790,9 +5064,13 @@
       var d = DISTANTS[j.addr];
       if (!d) d = DISTANTS[j.addr] = { x: j.x, y: j.y, rx: j.x, ry: j.y, cadre: 0, chrono: 0 };
       d.x = j.x; d.y = j.y; d.dir = j.dir; d.anim = j.anim; d.skin = j.skin; d.nom = j.nom;
+      d.fam = j.fam || null;
       assureCharge(j.skin);
     });
     Object.keys(DISTANTS).forEach(function (a) { if (!vus[a]) delete DISTANTS[a]; });
+    var vifsN = { moi: 1 };
+    Object.keys(DISTANTS).forEach(function (a) { vifsN['n:' + a] = 1; });
+    oublieFamiliers(vifsN);
 
     /* On ne repeint la liste que si sa COMPOSITION a change. Un instantane
        arrive sept fois par seconde ; refabriquer le HTML a chaque fois pour
@@ -6654,6 +6932,14 @@
              construire donne une raison de revenir. Mais il doit le dire — un
              lieu ou l'on marche et ou rien ne se passe se lit comme un lieu
              casse, pas comme un lieu a venir. */
+          /* La grange OUVRE maintenant : elle a des familiers a montrer.
+             Meme mecanisme que l'etal et la table — meme repos, pour la
+             meme raison : sans lui le panneau se rouvrirait deux fois par
+             seconde tant qu'on reste devant la porte. */
+          if (l.cle === 'petworld') {
+            if (!petOuvert && peutRouvrir('petworld')) ouvrePetworld();
+            l.dwell = 0; entre = true; return;
+          }
           if (l.bientot) { l.dwell = 0; entre = true; return; }
           /* L'etal etait le dernier endroit du Nexus qui faisait SORTIR du
              jeu pour acheter. Il ouvre son panneau sur place.
@@ -6835,6 +7121,13 @@
 
   function dessine(dt) {
     dt = dt || 0;
+    /* ---- CHANGER DE SCENE, C'EST REPARTIR DE ZERO ----
+     * Les coordonnees du hall et celles d'un donjon n'ont rien a voir. Sans
+     * cet oubli, le familier « courrait » de l'ancienne place vers la
+     * nouvelle en traversant toute la carte a la premiere image apres une
+     * porte. On le fait reapparaitre derriere son maitre, ce qui est
+     * exactement ce qu'on voit quand quelqu'un franchit un portail. */
+    if (SCENE_FAM !== SCENE) { SCENE_FAM = SCENE; TRAINEES = {}; }
     var vueW = canvas.width / DPR, vueH = canvas.height / DPR;
     var zoom = zoomCourant(vueH);
     /* On centre le joueur sur la partie VISIBLE, pas sur la fenetre : sinon
@@ -6971,7 +7264,27 @@
           dessineAvatar(d.rx, d.ry, d.skin, d.dir, d.anim, d.cadre);
           barreVie(d.rx, d.ry, d.pv, d.pvMax, 44);
         } });
+        /* Le familier d'un autre joueur se trie AVEC lui, pas avec lui-meme :
+           il a sa propre position, donc sa propre place dans la pile. Le
+           coller au maitre l'aurait fait passer devant des murs qu'il longe. */
+        if (d.fam) {
+          var tf = avanceFamilier('j:' + k, d.rx, d.ry, dt);
+          pileM.push({ y: tf.y, dessine: function () { dessineFamilier('j:' + k, d.fam, d.rx, d.ry, 0); } });
+        }
       });
+      /* ---- LE MIEN ----
+       * Il se trie dans la MEME pile que tout le monde : sinon il passerait
+       * toujours devant, ou toujours derriere, et cesserait d'etre dans la
+       * scene. C'est le seul dont la page connait l'espece sans instantane
+       * (elle vient du compte), donc le seul qui suit tout de suite apres un
+       * changement d'equipement. */
+      var monFam = monFamilier();
+      if (monFam) {
+        var tm = avanceFamilier('moi', joueur.x, joueur.y, dt);
+        pileM.push({ y: tm.y, dessine: function () {
+          dessineFamilier('moi', monFam, joueur.x, joueur.y, 0);
+        } });
+      }
       pileM.push({ y: joueur.y, dessine: function () {
         /* ---- CLOUE AU SOL, ET CA SE VOIT ----
          * Un anneau sous les pieds qui se REFERME : il dit a la fois « tu ne
@@ -7158,7 +7471,21 @@
       pile.push({ y: d.ry, dessine: function () {
         dessineAvatar(d.rx, d.ry, d.skin, d.dir, d.anim, d.cadre);
       } });
+      if (d.fam) {
+        var tf = avanceFamilier('n:' + a, d.rx, d.ry, dt);
+        pile.push({ y: tf.y, dessine: function () { dessineFamilier('n:' + a, d.fam, d.rx, d.ry, 0); } });
+      }
     });
+    empileEnclos(pile);
+    /* Le mien trotte dans le hall comme dans le monde : c'est le meme
+       compagnon, il n'a pas a disparaitre entre deux portes. */
+    var monFamN = monFamilier();
+    if (monFamN) {
+      var tmN = avanceFamilier('moi', joueur.x, joueur.y, dt);
+      pile.push({ y: tmN.y, dessine: function () {
+        dessineFamilier('moi', monFamN, joueur.x, joueur.y, 0);
+      } });
+    }
     pile.sort(function (a, b) { return a.y - b.y; });
     pile.forEach(function (p) { p.dessine(); });
 

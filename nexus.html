@@ -660,6 +660,44 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
  * range des pieces, et l'on veut voir ses stats en le faisant. Une table de
  * jeu, non — on n'y fait qu'une chose, et la reduire au tiers gauche de
  * l'ecran donnait des cartes de la taille d'un timbre sur telephone. */
+/* ---- L'ENCLOS ----
+ *
+ * Un panneau de CHOIX, pas un inventaire : on y fait une seule chose, sortir
+ * un compagnon. Les fiches sont donc grandes et cliquables en entier plutot
+ * que des lignes avec un bouton au bout — sur telephone, viser un bouton de
+ * quarante pixels a cote de son animal est le geste qu'on rate. */
+#nxPetVoile{ position:fixed; inset:0;
+  z-index:95; background:rgba(4,7,13,.82);
+  display:flex; align-items:center; justify-content:center; padding:10px;
+  opacity:0; pointer-events:none; transition:opacity .18s; }
+#nxPetVoile.on{ opacity:1; pointer-events:auto; }
+#nxPetVoile .nxcf-carte{ max-width:560px; max-height:96vh; padding:16px 16px 18px; }
+.nxpw-corps{ display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
+  gap:10px; margin-top:12px; max-height:60vh; overflow:auto; }
+.nxpw-f{ background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.10);
+  border-radius:12px; padding:10px; text-align:center; cursor:pointer;
+  transition:border-color .12s, background .12s, transform .12s; }
+.nxpw-f:hover{ background:rgba(255,255,255,.08); transform:translateY(-2px); }
+/* Celui qui est dehors se reconnait SANS lire : le vert est la couleur de
+   tout ce qui est acquis dans ce jeu, et le cadre plein dit « c'est lui »
+   mieux qu'un mot en bas de la fiche. */
+.nxpw-f.actif{ border-color:#7CFF9B; background:rgba(124,255,155,.12); }
+/* ---- LA VIGNETTE EST UNE CASE DE PLANCHE ----
+ * L'image du familier est une planche de 4x4 : la poser telle quelle
+ * montrerait les seize poses en timbre-poste. On cadre donc la case de face
+ * (rangee « down », premiere colonne) — c'est la pose sous laquelle on le
+ * reconnait, celle qu'il a quand il vous regarde. */
+.nxpw-vig{ width:76px; height:76px; margin:0 auto; image-rendering:pixelated;
+  background-repeat:no-repeat; background-size:400% 400%;
+  background-position:0% 33.333%; }
+.nxpw-nom{ font-weight:700; margin-top:4px; }
+.nxpw-niv{ font-size:12px; opacity:.72; }
+.nxpw-pou{ font-size:11px; opacity:.62; margin-top:3px; line-height:1.25; }
+.nxpw-vide{ opacity:.68; font-size:13px; line-height:1.5; padding:14px 4px; }
+.nxpw-rentre{ margin-top:12px; width:100%; padding:9px; border-radius:10px;
+  border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.05);
+  color:inherit; font:inherit; cursor:pointer; }
+.nxpw-rentre:hover{ background:rgba(255,255,255,.09); }
 #nxBjVoile{ position:fixed; inset:0;
   z-index:95; background:rgba(4,7,13,.82);
   display:flex; align-items:center; justify-content:center; padding:10px;
@@ -1376,6 +1414,16 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
      Le jeu existe entierement cote serveur, sur la MEME socket et le MEME
      solde que le reste : ce panneau n'est qu'une porte de plus. On y arrive
      en marchant sur la table, au sud de la fontaine. -->
+<div id="nxPetVoile">
+  <div class="nxcf-carte">
+    <button class="nxcf-x" type="button" aria-label="Close">&times;</button>
+    <b class="nxcf-titre">&#128054; Petworld</b>
+    <div class="nxcf-sous">Hatched pets live here. Pick one and it follows you everywhere.</div>
+    <div class="nxpw-corps" id="nxPetCorps"></div>
+    <button class="nxpw-rentre" id="nxPetRentre" type="button">Send everyone back to the pen</button>
+  </div>
+</div>
+
 <div id="nxBjVoile">
   <div class="nxcf-carte nxbj-carte">
     <button class="nxcf-x" type="button" aria-label="Close">&times;</button>
@@ -1442,7 +1490,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
      racine ; c'est le seul endroit d'ou elle peut couvrir tout le reste. -->
 <div id="nxFiche"></div>
 
-<script src="nexus.js?v=20260822f" defer></script>
+<script src="nexus.js?v=20260822g" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

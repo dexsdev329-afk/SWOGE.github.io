@@ -241,6 +241,17 @@ process.on('unhandledRejection', (e) => {
   const pose = await new Promise((res) => {
     const j = monde0.joueurs.get(addr);
     if (!j) return res({ err: 'pas de joueur cote serveur' });
+    /* ---- ON DEGAGE LES ALENTOURS ----
+     * Le personnage est de niveau 1 avec une lame commune, et l'anneau de
+     * terre est peuple. Un passage sur cinq, il mourait pendant qu'on tirait
+     * sur Optimus — et l'essai annoncait alors « la porte n'est pas peinte »
+     * alors qu'on regardait un ecran de mort. Ce qu'on mesure ici est le
+     * PORTAIL, pas la survie d'un niveau 1 : les autres essais s'occupent du
+     * combat, et celui-la n'a aucune raison d'en dependre. */
+    monde0.monstres = monde0.monstres.filter((m) => {
+      const dx = m.x - j.x, dy = m.y - j.y;
+      return dx * dx + dy * dy > 1100 * 1100;
+    });
     const dx = M.CENTRE.x - j.x, dy = M.CENTRE.y - j.y;
     const horizontal = Math.abs(dx) > Math.abs(dy);
     const ux = horizontal ? Math.sign(dx) : 0;

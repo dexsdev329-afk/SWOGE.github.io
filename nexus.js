@@ -310,6 +310,20 @@
       bjErreur = String(m.error || '');
       peintBj();
     }
+    /* ---- L OEUF S OUVRE ----
+     * Une fois sur cinq mille, et une seule fois par oeuf : ca merite mieux
+     * qu'une case de sac qui se vide en silence. */
+    if (m.type === 'oeufOuvre') {
+      if (m.error) { flotte(m.error); }
+      else if (m.familier) {
+        FAMILIERS_C = m.familiers || FAMILIERS_C;
+        flotte((m.nouveau ? '\uD83E\uDD5A ' : '\u2B06 ') + m.familier.nom +
+               (m.nouveau ? ' hatched!' : ' grew stronger'));
+        joueSample('niveau', { vol: 0.9 });
+      }
+      if (m.sacJoueur) { SAC = m.sacJoueur; peintPanneau(); }
+    }
+    if (m.type === 'familiers') { FAMILIERS_C = m.familiers || []; }
     if (m.type === 'potionBue') {
       POTIONS_C = m.potions || POTIONS_C;
       if (m.pv !== null && m.pv !== undefined) { VIE.pv = m.pv; moiMonde.pv = m.pv; }
@@ -540,6 +554,16 @@
         if (m.fioles) FIOLES_C = m.fioles;
         flotte('+1 ' + (NOM_STAT[m.stat] || m.stat).toUpperCase() + ' POTION');
         joueSample('clic2', { vol: 0.6 });
+        peintPanneau();
+      } else if (m.oeuf) {
+        /* ---- UN OEUF ----
+         * Une fois sur cinq mille : ca ne se ramasse pas comme une epee
+         * commune. Le meme chemin que la piece — le sac complet revient, la
+         * case se remplit — mais annonce, et avec le son du niveau : c'est la
+         * seule chose du jeu qu'on ne peut ni viser ni acheter. */
+        if (m.sacJoueur) SAC = m.sacJoueur;
+        flotte('\uD83E\uDD5A ' + (NOM_OEUF[m.oeuf] || 'EGG').toUpperCase());
+        joueSample('niveau', { vol: 0.85 });
         peintPanneau();
       } else if (m.item) {
         /* Une PIECE. Le sac complet revient avec la reponse : sans lui, la
@@ -1242,6 +1266,13 @@
      * la toucher. */
     var st = String(id).slice(0, 3) === 'st:' ? String(id).slice(3) : null;
     if (st) { envoie({ type: 'fioleBoit', skin: PERSO, stat: st }); clic(true); return; }
+    /* ---- ET UN OEUF S'OUVRE ----
+     * Le meme geste, le meme sens : « utilise ca ». Une piece se met sur soi,
+     * une fiole se boit, un oeuf s'ouvre. Trois gestes differents pour la meme
+     * intention auraient oblige le joueur a savoir ce qu'il tient avant d'y
+     * toucher. */
+    var oe = String(id).slice(0, 3) === 'oe:' ? String(id).slice(3) : null;
+    if (oe) { envoie({ type: 'oeufOuvre', espece: oe }); clic(true); return; }
     envoie({ type: 'equipeDuSac', skin: PERSO, item: Number(id) });
     clic(true);
   }
@@ -1407,13 +1438,22 @@
       /* Une FIOLE DE STAT n'a pas d'image de boutique : elle se lit sur la
          planche des fioles, a la colonne de sa stat — la meme que dans le sac
          au sol, pour qu'on reconnaisse la meme chose aux deux endroits. */
-      var img = o && o.fiole
+      /* Un OEUF a son propre dessin, comme une piece — mais il ne vient pas
+         de la boutique : il n'a pas d'identifiant de catalogue, et son fichier
+         se nomme par son espece. */
+      var img = o && o.oeuf
+        ? '<img alt="" src="img/nexus/objets/oeuf_' + encodeURIComponent(o.oeuf) +
+          '.webp" onerror="this.style.visibility=\'hidden\'">'
+        : o && o.fiole
         ? '<u class="fiole" style="background-position:' + colonneFiole(o) + '% 0"></u>'
         : (o ? '<img alt="" src="img/shop/' + encodeURIComponent(o.cle) + '.webp" ' +
                'onerror="this.style.visibility=\'hidden\'">' : '');
+      var cleCase = o ? (o.oeuf ? 'oe:' + o.oeuf : o.fiole ? 'st:' + o.fiole : o.id) : '';
       cases.push(o
-        ? '<div class="nxp-c" data-sac="' + (o.fiole ? 'st:' + o.fiole : o.id) +
-          '" data-place="' + i + '"' + (o.fiole ? ' data-fiole="' + o.fiole + '"' : '') + '>' +
+        ? '<div class="nxp-c' + (o.oeuf ? ' oeuf' : '') + '" data-sac="' + cleCase +
+          '" data-place="' + i + '"' +
+          (o.fiole ? ' data-fiole="' + o.fiole + '"' : '') +
+          (o.oeuf ? ' data-oeuf="' + o.oeuf + '"' : '') + '>' +
           img + marqueOG(o) + pileFiole(o) + '</div>'
         : '<div class="nxp-c vide"><u>' + (i + 1) + '</u></div>');
     }
@@ -2201,6 +2241,10 @@
   /* Les sacs de butin au sol. Comme les tombes : le serveur les tient, la
      page les dessine, et personne ici ne decide de leur contenu. */
   var SACS_C = [];
+  /* Les familiers eclos. Ils vivent sur le COMPTE cote serveur — ni le
+     personnage ni la scene ne les touchent — et la page n'en garde qu'une
+     copie pour l'afficher. */
+  var FAMILIERS_C = [];
   /* Le monde de chaque porte : { ouvert: n, crimson: n }. Vide tant que le
      serveur n'a rien dit — on ne dessine pas « 0 inside » sur une porte dont
      on ignore l'etat, ce serait une information fausse. */
@@ -6050,7 +6094,22 @@
   /* Ce que porte UNE place, decrit une fois pour les deux surfaces. Deux
      rendus separes auraient fini par ne plus montrer la meme chose — et le
      desaccord se verrait la ou on ne regarde pas. */
+  /* Le nom lisible des six especes d'oeuf. Il vient AUSSI du serveur avec le
+     sac du joueur ; ici on en a besoin pour une place du SOL, qui ne porte que
+     l'espece — le sol ne transporte pas de noms, il transporte des choses. */
+  var NOM_OEUF = { normal: 'Plain Egg', feu: 'Ember Egg', glace: 'Frost Egg',
+                   terre: 'Verdant Egg', tenebre: 'Umbral Egg',
+                   legendaire: 'Prism Egg' };
+
   function contenuDeLaPlace(o, ordre) {
+    /* UN OEUF, en tete : c'est la chose la plus rare du jeu, et le jour ou une
+       place porterait deux champs, c'est lui qu'on veut voir. */
+    if (o.oe) {
+      return { titre: NOM_OEUF[o.oe] || 'Egg',
+               html: '<img alt="" src="img/nexus/objets/oeuf_' +
+                     encodeURIComponent(o.oe) + '.webp" ' +
+                     'onerror="this.style.visibility=\'hidden\'">' };
+    }
     if (o.st) {
       var col = ordre.indexOf(o.st);
       if (col < 0) col = 0;
@@ -6266,7 +6325,7 @@
        une potion dans un sac a deux places ne repeindrait pas la grille — la
        fiole prise resterait dessinee, et un deuxieme clic irait chercher une
        place qui n'existe plus. */
-    var signe = s ? (s.i + ':' + s.c.map(function (o) { return o.st || o.po; }).join(',')) : '';
+    var signe = s ? (s.i + ':' + s.c.map(function (o) { return o.oe || o.st || o.po; }).join(',')) : '';
     if (signe === SAC_SIGNE) return;
     SAC_SIGNE = signe;
     SAC_PIEDS = s;

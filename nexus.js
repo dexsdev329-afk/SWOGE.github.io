@@ -1957,10 +1957,6 @@
     { cle: 'portailPvp', src: 'img/nexus/tiles/obj_portal_pvp.webp',
       x: CENTRE.x + 210, y: CENTRE.y - 500, larg: 210, haut: 324,
       rayon: 110, nom: 'the Crimson Reach', monde: 'crimson' },
-    /* L'enseigne DIT ce que la couleur suggere. Une porte rouge se comprend
-       apres coup ; « you can be killed here » se comprend avant. */
-    { cle: 'enseignePvp', src: 'img/nexus/tiles/obj_portal_pvp_sign.webp',
-      x: CENTRE.x + 430, y: CENTRE.y - 430, larg: 130, haut: 190 },
     { cle: 'etal', src: 'img/nexus/tiles/obj_market_stall.webp',
       x: CENTRE.x - 620, y: CENTRE.y, larg: 260, haut: 244,
       /* Ouvre sur les coffres, mais la meme feuille porte l'onglet

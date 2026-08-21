@@ -1,4 +1,4 @@
-"""La porte rouge, et son enseigne.
+"""La porte rouge.
 
 Les deux dessins arrivent en JPEG avec le damier de transparence DESSINE
 dedans : il faut le retirer, pas se fier a un canal alpha qui n'existe pas.
@@ -19,8 +19,6 @@ import planches as P
 CIBLES = [
     ('/tmp/claude-0/-home-user/118d9ef2-eea7-5e85-9073-c9373d1a7fd3/scratchpad/p2.jpg',
      'img/nexus/tiles/obj_portal_pvp.webp'),
-    ('/tmp/claude-0/-home-user/118d9ef2-eea7-5e85-9073-c9373d1a7fd3/scratchpad/p1.jpg',
-     'img/nexus/tiles/obj_portal_pvp_sign.webp'),
 ]
 
 for source, sortie in CIBLES:

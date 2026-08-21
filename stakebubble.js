@@ -3602,18 +3602,59 @@
     } else P.filleuls.forEach(function (f) {
       var d = document.createElement('div');
       d.className = 'swp-r';
-      d.innerHTML = corpsAmi(f, f.depose ? '' : 'has not deposited yet — you earn nothing until then') +
+      /* ---- LE TAUX DE CE LIEN-LA, ET DE QUOI LE REFAIRE ----
+       * Depuis la prime de recruteur, deux amis ne rapportent plus au meme
+       * taux : celui qui a lui-meme amene du monde rapporte plus. Afficher un
+       * seul pourcentage en tete de page ferait donc mentir la moitie des
+       * lignes — et quelqu'un qui ne peut pas refaire le calcul cesse de
+       * croire le total juste a cote.
+       * On l'ecrit sur la ligne, avec sa raison. */
+      var raison = '';
+      if (!f.depose) raison = 'has not deposited yet — you earn nothing until then';
+      else if (f.prime > 0) {
+        raison = f.part + '% of what they lose · +' + f.prime + '% because they brought ' +
+                 f.recrues + (f.recrues > 1 ? ' players' : ' player') + ' who play';
+      } else if (f.part) {
+        raison = f.part + '% of what they lose';
+      }
+      d.innerHTML = corpsAmi(f, raison) +
         '<div class="v"><b class="g">' + nb(f.rapporte) + '</b><span>earned</span></div>';
       peintVisage(d.querySelector('.av'), f);
       copiable(d);
       l.appendChild(d);
     });
 
+    /* ---- POURQUOI ON VOUDRAIT QU'ILS RECRUTENT AUSSI ----
+     * La regle ne se devine pas en regardant les lignes : il faut qu'un ami
+     * ait deja amene quelqu'un pour qu'elle apparaisse quelque part. On la dit
+     * donc en toutes lettres, une fois, sous la liste — et avec les chiffres
+     * du SERVEUR, jamais les notres : deux tables a tenir d'accord de part et
+     * d'autre du reseau finissent par ne plus l'etre, et ce desaccord-la se
+     * lit comme un compte faux. */
+    if (P.primeMax > 0) {
+      var pr = document.createElement('div');
+      pr.className = 'swp-ex';
+      pr.style.marginTop = '10px';
+      var pas = (P.primePalier && P.primePalier[1]) ? P.primePalier[1].prime : 0;
+      pr.innerHTML = '<b>Invite people who invite people.</b> When a friend brings in ' +
+        'someone who actually plays, your share <i>on that friend</i> goes up by ' +
+        pas + '% — up to +' + P.primeMax + '%. ' +
+        'It is still their losses you earn from, never a cut of anyone else\'s.';
+      l.appendChild(pr);
+    }
+
     if (P.parrain) {
       var q = document.createElement('div');
       q.className = 'swp-ex';
       q.style.marginTop = '10px';
-      q.textContent = 'You were invited by ' + (P.parrain.name || court(P.parrain.address)) + '.';
+      /* Ce qu'on rapporte a SON parrain ferme la boucle : on comprend d'un
+         coup d'oeil que recruter des recruteurs paie, parce qu'on est
+         soi-meme le recruteur de quelqu'un. */
+      q.textContent = 'You were invited by ' + (P.parrain.name || court(P.parrain.address)) + '.' +
+        (P.mesRecrues > 0
+          ? ' You have brought in ' + P.mesRecrues + (P.mesRecrues > 1 ? ' players' : ' player') +
+            ' who play — so they earn more on you.'
+          : '');
       l.appendChild(q);
     }
   }

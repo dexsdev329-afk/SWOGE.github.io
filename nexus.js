@@ -160,6 +160,21 @@
         if (m.rendu) {
           var q = (SAC || []).filter(function (o) { return o.id === m.rendu; })[0];
           flotte((q && q.nom ? q.nom : 'Your gear') + ' \u2192 backpack');
+        } else if (m.item) {
+          /* ---- ET QUAND RIEN NE REVIENT, ON LE DIT AUSSI ----
+           * L'emplacement etait VIDE : il n'y a pas d'echange, la piece est
+           * simplement mise. La case du sac se vide donc, et la piece part au
+           * coffre — parce que c'est la que vit ce qu'on porte. Sans un mot,
+           * ce geste se lit « elle a disparu de mon sac et s'est mise dans mon
+           * vault », ce qui est exact et pourtant faux : elle est SUR SOI.
+           * On nous l'a signale deux fois. */
+          var w = null;
+          if (FICHE) {
+            ['equipFruit', 'equipArme', 'equipArmure', 'equipBague'].forEach(function (k) {
+              if (FICHE[k] && FICHE[k].item === m.item) w = FICHE[k];
+            });
+          }
+          flotte((w && w.nom ? w.nom : 'Your gear') + ' \u2192 equipped');
         }
       }
     }

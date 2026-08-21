@@ -3411,7 +3411,20 @@
       '<b class="nxrg-r">' + r.rang + '</b>' +
       (v ? '<img class="nxrg-v" alt="" src="' + v + '" onerror="this.style.visibility=\'hidden\'">' : '<i class="nxrg-v"></i>') +
       '<span class="nxrg-q">' +
-        '<b class="nxrg-n">' + ech(r.name || (r.address || '').slice(0, 10)) + '</b>' +
+        '<b class="nxrg-n">' + ech(r.name || (r.address || '').slice(0, 10)) +
+        /* ---- COMBIEN DE STATS IL A POUSSEES AU BOUT ----
+         * Le niveau dit combien il a joue, ce chiffre dit combien il a
+         * INVESTI : deux personnages de niveau vingt ne se valent pas si
+         * l'un a bu vingt fioles et l'autre aucune, et rien sur la ligne ne
+         * le montrait. Le compte vient du serveur — c'est lui qui sait ce
+         * qu'est une stat pleine, et la fiche du joueur jaunit les memes.
+         * A zero, on n'affiche rien : « 0/8 » sur toutes les lignes du
+         * tableau serait une colonne de zeros qu'on apprend a ne plus lire. */
+        (r.pleines && r.pleines.n > 0
+          ? ' <u class="nxrg-max' + (r.pleines.n >= r.pleines.total ? ' plein' : '') +
+            '" title="' + r.pleines.n + ' of ' + r.pleines.total +
+            ' stats maxed out for good">' + r.pleines.n + '/' + r.pleines.total + '</u>'
+          : '') + '</b>' +
         '<em class="nxrg-x">Lvl ' + r.niveau + ' &middot; ' + r.skin +
           ' &middot; ' + (r.xp || 0).toLocaleString('en-US') + ' XP</em>' +
       '</span>' +

@@ -599,6 +599,13 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
 .nxp-pile{ position:absolute; right:2px; bottom:1px; z-index:3;
   font-size:10px; font-weight:900; color:#F2F6FF; line-height:1;
   text-shadow:0 1px 2px #000, 0 -1px 2px #000, 1px 0 2px #000, -1px 0 2px #000; }
+/* Le « 3/8 » du classement : combien de stats sont poussees au bout. Jaune
+   comme le chiffre plein de la fiche — la meme information doit avoir la meme
+   couleur aux deux endroits, sinon il faut apprendre deux codes. */
+.nxrg-max{ text-decoration:none; font-size:10px; font-weight:900; letter-spacing:.02em;
+  color:#FFC53D; background:rgba(255,197,61,.12); border:1px solid rgba(255,197,61,.3);
+  border-radius:99px; padding:1px 6px; margin-left:5px; vertical-align:middle; }
+.nxrg-max.plein{ color:#0d1117; background:#FFC53D; border-color:#FFC53D; }
 .nxsh-cof .o b{ color:#F2F6FF; }
 /* Le lot d'achat : personne n'achete des potions une par une. */
 .nxsh-lots{ display:flex; gap:6px; margin-top:10px; justify-content:center; }
@@ -1234,7 +1241,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
   </div>
 </div>
 
-<script src="nexus.js?v=20260821j" defer></script>
+<script src="nexus.js?v=20260821k" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

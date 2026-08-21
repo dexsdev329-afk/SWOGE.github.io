@@ -673,6 +673,14 @@
      vient du SERVEUR — c'est lui qui dit dans quel ordre les huit fioles sont
      dessinees — et se recopier ici les ferait deriver le jour ou une neuvieme
      stat apparait. */
+  /* La HAUTEUR d'une pile de fioles, quand il y en a plus d'une. Le chiffre
+     vient du serveur : c'est lui qui tient les cases du sac, et le recompter
+     ici ferait deux verites sur ce qu'on transporte. */
+  function pileFiole(o) {
+    var q = o && Number(o.quantite);
+    return q > 1 ? '<b class="nxp-pile">' + q + '</b>' : '';
+  }
+
   function colonneFiole(o) {
     /* La colonne vient AVEC la ligne : le serveur la compte, parce que l'ordre
        des huit stats n'existe cote page que dans le monde de combat — dans le
@@ -1294,7 +1302,7 @@
       cases.push(o
         ? '<div class="nxp-c" data-sac="' + (o.fiole ? 'st:' + o.fiole : o.id) +
           '" data-place="' + i + '"' + (o.fiole ? ' data-fiole="' + o.fiole + '"' : '') + '>' +
-          img + marqueOG(o) + '</div>'
+          img + marqueOG(o) + pileFiole(o) + '</div>'
         : '<div class="nxp-c vide"><u>' + (i + 1) + '</u></div>');
     }
     elSac.innerHTML = cases.join('');
@@ -3096,8 +3104,15 @@
       elShopCorps.innerHTML = bascule + (POTIONS_C || []).map(function (p) {
         var reste = p.max - p.quantite;
         var l = deM(p.cle);
-        return '<button type="button" class="nxsh-cof" data-pot="' + ech(p.cle) + '"' +
-          (soldeP >= p.prix && reste > 0 ? '' : ' disabled') + '>' +
+        /* ---- LE STOCK VIENT DES JOUEURS, DONC IL PEUT MANQUER ----
+         * Quand la file est vide, il n'y a rien a vendre : le bouton est
+         * grise et il DIT pourquoi. Un bouton mort sans phrase se lit
+         * « casse » ; avec « OUT OF STOCK » il se lit « a vous d'en mettre »,
+         * ce qui est justement l'invitation qu'on veut faire. */
+        var vide = !!l && l.stock <= 0;
+        return '<button type="button" class="nxsh-cof' + (vide ? ' vide' : '') +
+          '" data-pot="' + ech(p.cle) + '"' +
+          (!vide && soldeP >= p.prix && reste > 0 ? '' : ' disabled') + '>' +
           '<img alt="" src="img/nexus/objets/' + encodeURIComponent(p.image) +
           '.webp" onerror="this.remove()">' +
           '<span><span class="n">' + ech(p.nom) + '</span><span class="o">Restores <b>' +
@@ -3106,10 +3121,12 @@
           /* D'ou vient ce qu'on achete. Sans cette ligne, « le stock vient des
              joueurs » est une phrase de Telegram et rien dans l'ecran ne la
              confirme. */
-          (l ? '<br><i class="nxsh-src">' + (l.stock
+          (l ? '<br><i class="nxsh-src' + (vide ? ' vide' : '') + '">' + (l.stock
                 ? l.stock + ' in stock from players'
-                : 'no player stock \u2014 sold by the house') + '</i>' : '') +
-          '</span></span><span class="p">' + p.prix + ' $SWOGE</span></button>';
+                : 'OUT OF STOCK \u2014 players stock this shop') + '</i>' : '') +
+          '</span></span><span class="p">' +
+          (vide ? '<b class="nxsh-rupture">Out of stock</b>' : p.prix + ' $SWOGE') +
+          '</span></button>';
       }).join('') +
       /* Dix par dix : personne n'achete des potions une par une, et taper
          dix fois le meme bouton n'a jamais amuse personne. */

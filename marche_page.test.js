@@ -281,8 +281,21 @@ process.on('unhandledRejection', (e) => {
   console.log('\n-- au rayon --');
   await clique('.nxsh-bascule');
   e = await vu();
-  ok(e.source.some((t) => /sold by the house/i.test(t)),
-     `sans vendeur, l ecran le dit (« ${e.source.join(' | ')} »)`);
+  /* ---- RUPTURE DE STOCK ----
+   * La maison ne fabrique plus de potions. File vide, rayon vide — et le
+   * bouton DIT pourquoi. Un bouton grise sans phrase se lit « casse » ; avec
+   * le mot il se lit « a vous d en mettre », qui est l invitation qu on veut
+   * faire. */
+  ok(e.source.some((t) => /out of stock/i.test(t)),
+     `sans vendeur, l ecran affiche la rupture (« ${e.source.join(' | ')} »)`);
+  const grise = await p.evaluate(() => {
+    const b = document.querySelector('#nxShopVoile .nxsh-corps [data-pot="vie"]');
+    return { off: !!(b && b.disabled), vide: !!(b && b.classList.contains('vide')),
+             mot: b ? (b.querySelector('.nxsh-rupture') || {}).textContent || null : null };
+  });
+  ok(grise.off, 'et le bouton d achat est grise : il n y a rien a vendre');
+  ok(/out of stock/i.test(grise.mot || ''),
+     `avec le mot a la place du prix (« ${grise.mot} »)`);
   /* Un autre joueur approvisionne : la meme ligne doit changer de phrase. */
   qa.potions = { vie: 6 };
   moteur.metPotionEnVente(autre, 'vie', 6);
@@ -291,6 +304,15 @@ process.on('unhandledRejection', (e) => {
   e = await vu();
   ok(e.source.some((t) => /6 in stock from players/i.test(t)),
      `et quand un joueur en vend, elle le dit aussi (« ${e.source.join(' | ')} »)`);
+  /* ---- ET LE COMPTEUR DESCEND ----
+   * On achete deux potions : l ecran doit montrer quatre, pas six. Une page
+   * qui garde son ancien chiffre promet un stock qui n existe plus. */
+  moteur.achetePotion(w.address, 'vie', 2);
+  await p.evaluate(() => window.__s[0].send(JSON.stringify({ type: 'potionMarche' })));
+  await p.waitForTimeout(500);
+  e = await vu();
+  ok(e.source.some((t) => /4 in stock from players/i.test(t)),
+     `et il DESCEND a mesure qu on achete (« ${e.source.join(' | ')} »)`);
 
   /* ---- LES FIOLES DE STAT N APPARAISSENT QUE SI QUELQU UN EN VEND ----
    * Elles n'ont pas de fond de la maison. Un rayon vide en permanence

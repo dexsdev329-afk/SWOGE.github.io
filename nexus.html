@@ -584,6 +584,21 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
 .nxsh-act:hover{ background:rgba(255,255,255,.14); color:#fff; }
 .nxsh-act.sell{ color:#0d1117; background:#7CFF9B; border-color:#7CFF9B; }
 .nxsh-act.sell:hover{ filter:brightness(1.08); }
+/* ---- RUPTURE DE STOCK ----
+ * Le rayon ne fabrique plus rien : quand aucun joueur ne vend, il n'y a rien
+ * a acheter. Un bouton grise sans phrase se lit « casse » ; avec le mot, il se
+ * lit « a vous d'en mettre » — ce qui est l'invitation qu'on veut faire. */
+.nxsh-cof.vide{ opacity:.62; border-style:dashed; }
+.nxsh-src.vide{ color:#F5938B; font-weight:800; letter-spacing:.03em; }
+.nxsh-rupture{ font-size:10px; font-weight:900; letter-spacing:.05em;
+  text-transform:uppercase; color:#F5938B; background:rgba(242,104,94,.12);
+  border:1px solid rgba(242,104,94,.34); border-radius:99px; padding:3px 8px;
+  white-space:nowrap; }
+/* La hauteur d'une pile de fioles, dans la case du sac. Meme coin que la
+   marque OG ne conviendrait pas — elle y est deja ; on prend le bas. */
+.nxp-pile{ position:absolute; right:2px; bottom:1px; z-index:3;
+  font-size:10px; font-weight:900; color:#F2F6FF; line-height:1;
+  text-shadow:0 1px 2px #000, 0 -1px 2px #000, 1px 0 2px #000, -1px 0 2px #000; }
 .nxsh-cof .o b{ color:#F2F6FF; }
 /* Le lot d'achat : personne n'achete des potions une par une. */
 .nxsh-lots{ display:flex; gap:6px; margin-top:10px; justify-content:center; }
@@ -1219,7 +1234,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
   </div>
 </div>
 
-<script src="nexus.js?v=20260821i" defer></script>
+<script src="nexus.js?v=20260821j" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

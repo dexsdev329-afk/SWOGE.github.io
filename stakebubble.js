@@ -474,8 +474,24 @@
       }
       if (m.catalogue) BOUTIQUE = Object.assign(BOUTIQUE || {}, m);
       if (m.balance != null) rafraichitSolde();
-      if (profOnglet === 'mk') profRend();
-      else if (profOnglet === 'sh') profRend();
+      /* Vendre ou acheter un animal change l'enclos et le coffre a oeufs. Le
+         serveur les renvoie AVEC la vitrine : les rafraichir chacun de leur
+         cote montrerait un familier qu'on vient de vendre encore assis dans
+         son enclos. */
+      if (m.familiers) FAMILIERS = m.familiers;
+      if (m.coffreOeufs) OEUFS_COFFRE = m.coffreOeufs;
+      if (profOnglet === 'mk' || profOnglet === 'sh' || profOnglet === 'pt') profRend();
+    }
+    /* ---- L'ENCLOS ET LE COFFRE A OEUFS ----
+     * Ils arrivent ensemble et se lisent ensemble : « tu as cet animal, donc
+     * cet oeuf-la ne peut plus eclore » est UNE phrase. Deux messages
+     * l'auraient affichee dans deux etats differents pendant une
+     * demi-seconde. */
+    if (m.type === 'familiers' || m.type === 'oeufRange' || m.type === 'oeufSort') {
+      if (m.error) toast(m.error, 'bad');
+      if (m.familiers) FAMILIERS = m.familiers;
+      if (m.coffreOeufs) OEUFS_COFFRE = m.coffreOeufs;
+      if (profOnglet === 'pt') profRend();
     }
     /* ---- LES SKINS ----
      *
@@ -1028,6 +1044,10 @@
     ['Standing', [['lb', 'Leaderboard']]],
   ];
   var ONGLETS = FAMILLES.reduce(function (t, f) { return t.concat(f[1]); }, []);
+  /* L'enclos et le coffre a oeufs. Vides tant que le serveur n'a rien dit —
+     on ne montre pas « aucun familier » a quelqu'un dont on n'a pas encore
+     demande la liste, ce serait une information fausse. */
+  var FAMILIERS = null, OEUFS_COFFRE = null;
   var VISAGES = [], MOI = { name: null, visage: null, address: null };
   var AMIS = { amis: [], recues: [], envoyees: [] }, EN_ATTENTE = 0, RECHERCHE = [];
   var NON_LUS = 0, PARRAIN = null, STATS = null, CLASSEMENT = null, NIVEAU = null;
@@ -2001,6 +2021,13 @@
         'border-left:3px solid var(--t);}' +
       '.swm-a.mien{background:rgba(255,197,61,.08);border-color:rgba(255,197,61,.3);}' +
       '.swm-a img{width:42px;height:42px;flex:0 0 42px;object-fit:contain;}' +
+      /* La vignette d'un familier est une CASE de planche : seize poses dans
+         une image de quatre sur quatre. On cadre la pose de face — rangee
+         « down », premiere colonne — c'est celle sous laquelle on le
+         reconnait, celle qu'il a quand il vous regarde. */
+      '.swm-a .pl{width:42px;height:42px;flex:0 0 42px;display:block;' +
+      'image-rendering:pixelated;background-repeat:no-repeat;' +
+      'background-size:400% 400%;background-position:0% 33.333%;}' +
       '.swm-a .nm{flex:1;min-width:0;}' +
       '.swm-a .nm b{display:block;font-size:13px;font-weight:800;color:#F2F6FF;' +
         'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}' +
@@ -2716,6 +2743,17 @@
       sk.textContent = '🎭 Character skins';
       sk.addEventListener('click', function () { profVa('sk'); });
       t.appendChild(sk);
+      /* ---- L'ENCLOS ET LE COFFRE A OEUFS ----
+       * Dans le groupe Shop parce que c'est de la ce qu'on FAIT avec : on les
+       * y met en vente. Les animaux se gagnent dans le monde — l'oeuf tombe
+       * une fois sur mille deux cents — mais ce panneau-ci n'est pas celui
+       * ou l'on joue avec eux : c'est celui ou l'on gere ce qu'on possede,
+       * comme les coffres et la collection. */
+      var pt = document.createElement('button');
+      pt.type = 'button'; pt.dataset.k = 'pt';
+      pt.textContent = '\uD83D\uDC36 Pets & eggs';
+      pt.addEventListener('click', function () { profVa('pt'); });
+      t.appendChild(pt);
     })();
     FAMILLES.forEach(function (f) {
       var g = document.createElement('div');
@@ -4480,11 +4518,36 @@
       d.className = 'swm-a' + (a.mien ? ' mien' : '');
       d.style.setProperty('--t', a.item.couleur || teinte[a.item.rarete] || '#8DA0C4');
       var reste = a.item.plafond ? Math.max(0, a.item.plafond - a.item.emis) : null;
+      /* ---- UN ANIMAL N'A PAS DE DESSIN DE BOUTIQUE ----
+       * Les oeufs et les familiers vivent dans `img/nexus/objets` et
+       * `img/nexus/monstres`. Le serveur nomme le genre (`item.genre`) plutot
+       * que de laisser la page le deviner d'un champ present ou absent : le
+       * jour ou un troisieme genre arrive, c'est une ligne ici et pas un
+       * troisieme test a ne pas oublier. */
+      var img = a.oeuf ? 'img/nexus/objets/oeuf_' + a.oeuf + '.webp'
+              : a.fam ? 'img/nexus/monstres/pet_shiba' +
+                        (a.fam.espece === 'normal' ? '' : '_' + a.fam.espece) + '.webp'
+              : 'img/shop/' + encodeURIComponent(a.item.cle) + '.webp';
+      /* La planche d'un familier porte SEIZE poses. Posee telle quelle, la
+         vignette montrerait les seize en timbre-poste ; on cadre donc la pose
+         de face, celle sous laquelle on le reconnait. */
+      var vignette = a.fam
+        ? '<i class="pl" style="background-image:url(' + img + ')"></i>'
+        : '<img alt="" src="' + img + '" onerror="this.remove()">';
+      /* Ce que la ligne dit d'un animal n'est pas ce qu'elle dit d'une piece.
+         « Mythic · 40 left in the edition » n'a aucun sens pour un familier :
+         ce qui compte, c'est ce qu'il SAIT FAIRE et a quelle cadence. */
+      var sous = a.fam
+        ? ech((a.fam.pouvoir && a.fam.pouvoir.nom) || 'Pet') + ' \u00b7 every ' +
+          (a.fam.effet ? Math.round(a.fam.effet.recharge) : '?') + 's'
+        : a.oeuf
+        ? 'Mythic egg \u00b7 ' + (a.jaiDeja ? 'you already hatched this one' : 'never hatched')
+        : ech(a.item.rareteNom || a.item.rarete) +
+          (reste === null ? '' : ' \u00b7 ' + nb(reste, 0) + ' left in the edition');
       d.innerHTML =
-        '<img alt="" src="img/shop/' + encodeURIComponent(a.item.cle) + '.webp" onerror="this.remove()">' +
+        vignette +
         '<div class="nm"><b>' + ech(a.item.nom) + (a.qte > 1 ? ' <em>x' + a.qte + '</em>' : '') + '</b>' +
-        '<i>' + ech(a.item.rareteNom || a.item.rarete) +
-          (reste === null ? '' : ' · ' + nb(reste, 0) + ' left in the edition') + '</i>' +
+        '<i>' + sous + '</i>' +
         '<i class="v">' + (a.mien ? 'your listing' : 'by ' + ech(a.nomVendeur)) + '</i></div>' +
         '<div class="px"><b>' + nb(a.prix, 0) + '</b><i>$SWOGE</i></div>';
       var b = document.createElement('button');
@@ -4492,7 +4555,17 @@
       /* Une seule action par ligne, et elle depend de qui regarde. Deux
          boutons dont un toujours grise apprendraient a ne plus les lire. */
       b.textContent = a.mien ? 'Take back' : 'Buy';
+      /* ---- CE QU'ON NE PEUT PAS ACHETER, ON NE LE PROPOSE PAS ----
+       * Un compte ne tient qu'un familier par espece : l'achat serait refuse
+       * par le serveur. Un bouton qui ne marche jamais apprend a ne plus lire
+       * les boutons — on dit donc POURQUOI, a la place. */
+      if (!a.mien && a.fam && a.jaiDeja) {
+        b.disabled = true;
+        b.textContent = 'You have it';
+        b.title = 'One pet of each species per account.';
+      }
       b.addEventListener('click', function () {
+        if (b.disabled) return;
         b.disabled = true;
         envoie(a.mien ? { type: 'marketCancel', id: a.id, season: SAISON }
                       : { type: 'marketBuy', id: a.id, season: SAISON });
@@ -4560,6 +4633,18 @@
     var it = venteBoite.querySelector('i');
     it.textContent = 'You own ' + possede;
     it.style.color = couleur || '#8DA0C4';
+    /* On REMET la feuille en mode piece : elle a pu servir a un animal, qui
+       cache la quantite et le rachat. Sans ce retour, la vente suivante
+       proposerait une piece sans champ de quantite. */
+    venteBoite.dataset.animal = '';
+    venteBoite.dataset.espece = '';
+    var vieux = venteBoite.querySelector('.swv-t .pl');
+    if (vieux) vieux.remove();
+    im.style.display = '';
+    ['.swv-q', '.swv-or', '.swv-now', '.swv-note'].forEach(function (sel) {
+      venteBoite.querySelector(sel).style.display = '';
+    });
+    venteBoite.querySelector('.swv-max').parentNode.style.display = '';
     venteBoite.querySelector('.swv-max').textContent = '(max ' + possede + ')';
     var q = venteBoite.querySelector('.swv-q');
     q.max = possede; q.value = 1;
@@ -4568,10 +4653,64 @@
     venteBoite.classList.add('on');
     setTimeout(function () { venteBoite.querySelector('.swv-p').focus(); }, 60);
   }
+  /* ---- LA MEME FEUILLE, POUR UN ANIMAL ----
+   *
+   * Un oeuf et un familier passent par `ouvreVente` comme une piece : meme
+   * coque, meme champ de prix, meme calcul du net, meme bouton. Ecrire une
+   * seconde feuille aurait voulu dire ecrire une seconde fois « et n'oublie
+   * pas de retirer les cinq pour cent » — et la rater d'un cote, c'est
+   * annoncer au vendeur une somme qu'il ne touchera pas.
+   *
+   * Trois choses les separent, et elles se lisent toutes ici :
+   *  - la QUANTITE n'existe pas. On ne vend pas cinq fois le meme familier,
+   *    il n'y en a qu'un. Le champ disparait plutot que d'afficher « max 1 »,
+   *    qui est un choix qu'on n'a pas ;
+   *  - il n'y a PAS de rachat instantane. La maison ne rachete pas les
+   *    animaux : elle n'a pas de bareme pour une progression ;
+   *  - le dessin ne vient pas de `img/shop`.
+   */
+  function ouvreVenteAnimal(quoi, cle, nom, sous, img, couleur, planche) {
+    ouvreVente({ id: 0, cle: '', nom: nom, rachat: 0 }, 1, couleur);
+    venteBoite.dataset.animal = quoi;      // 'oeuf' ou 'fam'
+    venteBoite.dataset.espece = cle;
+    var im = venteBoite.querySelector('.swv-t img');
+    var t = venteBoite.querySelector('.swv-t');
+    /* La planche d'un familier porte seize poses : on la cadre en fond plutot
+       que de poser l'image entiere, qui les montrerait toutes en
+       timbre-poste. */
+    var vig = t.querySelector('.pl');
+    if (vig) vig.remove();
+    if (planche) {
+      im.style.display = 'none';
+      var e = document.createElement('i');
+      e.className = 'pl';
+      e.style.cssText = 'width:48px;height:48px;flex:0 0 48px;display:block;' +
+        'image-rendering:pixelated;background-repeat:no-repeat;' +
+        'background-size:400% 400%;background-position:0% 33.333%;' +
+        'background-image:url(' + img + ')';
+      t.insertBefore(e, t.firstChild);
+    } else {
+      im.style.display = '';
+      im.src = img;
+    }
+    venteBoite.querySelector('.swv-t i').textContent = sous;
+    /* Pas de quantite, pas de rachat : deux sections qu'on cache au lieu de
+       les griser. Un champ grise se lit comme un choix qu'on n'a pas encore
+       fait ; un champ absent se lit comme un choix qui n'existe pas. */
+    venteBoite.querySelector('.swv-q').style.display = 'none';
+    venteBoite.querySelector('.swv-max').parentNode.style.display = 'none';
+    venteBoite.querySelector('.swv-or').style.display = 'none';
+    venteBoite.querySelector('.swv-now').style.display = 'none';
+    venteBoite.querySelector('.swv-note').style.display = 'none';
+    venteBoite.querySelector('.swv-q').value = 1;
+    calculeNet();
+  }
+
   function fermeVente() { if (venteBoite) venteBoite.classList.remove('on'); }
   function calculeNet() {
     if (!venteBoite) return;
-    var q = Math.max(1, Math.min(Number(venteBoite.dataset.max) || 1,
+    var q = venteBoite.dataset.animal ? 1
+          : Math.max(1, Math.min(Number(venteBoite.dataset.max) || 1,
                                  Math.floor(Number(venteBoite.querySelector('.swv-q').value) || 1)));
     var p = Math.floor(Number(venteBoite.querySelector('.swv-p').value) || 0);
     var frais = (MARCHE && MARCHE.frais) || 5;
@@ -4630,11 +4769,22 @@
   }
   function envoieVente() {
     if (!venteBoite) return;
+    var p = Math.floor(Number(venteBoite.querySelector('.swv-p').value) || 0);
+    if (!(p > 0)) { toast('Set a price first', 'bad'); return; }
+    /* Le MEME message que pour une piece, avec `oeuf` ou `fam` a la place de
+       `item`. Le serveur choisit le chemin ; la page n'a pas a connaitre
+       trois messages pour un seul geste. */
+    var animal = venteBoite.dataset.animal;
+    if (animal) {
+      var msg = { type: 'marketSell', price: p, season: SAISON };
+      msg[animal] = venteBoite.dataset.espece;
+      envoie(msg);
+      fermeVente();
+      return;
+    }
     var id = Number(venteBoite.dataset.item);
     var q = Math.max(1, Math.min(Number(venteBoite.dataset.max) || 1,
                                  Math.floor(Number(venteBoite.querySelector('.swv-q').value) || 1)));
-    var p = Math.floor(Number(venteBoite.querySelector('.swv-p').value) || 0);
-    if (!(p > 0)) { toast('Set a price first', 'bad'); return; }
     envoie({ type: 'marketSell', item: id, price: p, qty: q, season: SAISON });
     fermeVente();
   }
@@ -4746,6 +4896,127 @@
       b.appendChild(t);
     });
     l.appendChild(b);
+  }
+
+  /* ==================== L'ENCLOS ET LE COFFRE A OEUFS ====================
+   *
+   * Deux listes dans un seul panneau, et c'est deliberé : « tu as cet animal,
+   * donc cet oeuf-la ne peut plus eclore » est UNE phrase. Les separer en deux
+   * onglets aurait oblige le joueur a faire l'aller-retour pour repondre a une
+   * question que le serveur repond deja (`eclos` sur chaque oeuf).
+   */
+  function rendAnimaux() {
+    var l = profBoite.querySelector('.swp-l');
+    l.innerHTML = '';
+    if (!FAMILIERS || !OEUFS_COFFRE) {
+      var att = document.createElement('div');
+      att.className = 'swp-v'; att.textContent = 'Loading…';
+      l.appendChild(att);
+      if (etat.socket && etat.socket.readyState === 1)
+        etat.socket.send(JSON.stringify({ type: 'familiers' }));
+      return;
+    }
+    var dessin = function (es) {
+      return 'img/nexus/monstres/pet_shiba' + (es === 'normal' ? '' : '_' + es) + '.webp';
+    };
+
+    /* ---- L'ENCLOS ---- */
+    var g1 = document.createElement('div');
+    g1.className = 'swp-g'; g1.textContent = 'Your pets';
+    l.appendChild(g1);
+    if (!FAMILIERS.length) {
+      var v1 = document.createElement('div');
+      v1.className = 'swp-v';
+      v1.innerHTML = 'No pet yet. Mythic eggs drop from <b>any</b> monster, ' +
+                     'about once in 1,200 kills — hatch one at Petworld.';
+      l.appendChild(v1);
+    }
+    FAMILIERS.forEach(function (f) {
+      var d = document.createElement('div');
+      d.className = 'swm-a';
+      d.style.setProperty('--t', '#7CFF9B');
+      /* Ce qu'un familier VAUT se lit a sa cadence, pas a son niveau seul :
+         le niveau achete de la frequence — soixante secondes au premier,
+         trois au centieme. C'est le chiffre qu'un acheteur regarde. */
+      var r = f.effet ? (f.effet.recharge >= 10 ? Math.round(f.effet.recharge)
+                                                : f.effet.recharge.toFixed(1)) : '?';
+      d.innerHTML =
+        '<i class="pl" style="background-image:url(' + dessin(f.espece) + ')"></i>' +
+        '<div class="nm"><b>' + ech(f.nom) + ' <em>Lv ' + f.niveau + '</em></b>' +
+        '<i>' + ech((f.pouvoir && f.pouvoir.nom) || '') + ' \u00b7 every ' + r + 's</i>' +
+        '<i class="v">' + (f.actif ? 'out with you' : 'in the pen') + '</i></div>' +
+        '<div class="px"><b>' + nb(f.xp, 0) + '</b><i>XP</i></div>';
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'swact';
+      b.textContent = 'Sell';
+      b.addEventListener('click', function () {
+        /* On DIT que la vente est definitive avant d'ouvrir le formulaire.
+           Un familier qu'on a nourri pendant des semaines ne doit pas partir
+           sur un clic mal vise. */
+        ouvreVenteAnimal('fam', f.espece, f.nom + ' \u00b7 Lv ' + f.niveau,
+                         'Sold for good \u2014 with its ' + nb(f.xp, 0) + ' XP',
+                         dessin(f.espece), '#7CFF9B', true);
+      });
+      d.appendChild(b);
+      l.appendChild(d);
+    });
+
+    /* ---- LE COFFRE A OEUFS ---- */
+    var g2 = document.createElement('div');
+    g2.className = 'swp-g'; g2.textContent = 'Egg vault';
+    l.appendChild(g2);
+    if (!OEUFS_COFFRE.length) {
+      var v2 = document.createElement('div');
+      v2.className = 'swp-v';
+      v2.innerHTML = 'Nothing stored. Eggs you cannot hatch \u2014 because you ' +
+                     'already have that pet \u2014 go here instead of taking a ' +
+                     'backpack slot you lose when you die.';
+      l.appendChild(v2);
+    }
+    OEUFS_COFFRE.forEach(function (o) {
+      var d = document.createElement('div');
+      d.className = 'swm-a';
+      d.style.setProperty('--t', o.espece === 'legendaire' ? '#FFFFFF' : '#FF4655');
+      d.innerHTML =
+        '<img alt="" src="img/nexus/objets/oeuf_' + o.espece + '.webp" onerror="this.remove()">' +
+        '<div class="nm"><b>' + ech(o.nom) + (o.quantite > 1 ? ' <em>x' + o.quantite + '</em>' : '') + '</b>' +
+        '<i>' + (o.eclos ? 'you already have this pet \u2014 it cannot hatch again'
+                         : 'never hatched \u2014 take it out and open it at Petworld') + '</i>' +
+        '<i class="v">in your vault</i></div>';
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'swact';
+      /* Un oeuf qu'on peut encore ouvrir se REPREND ; un oeuf qu'on ne peut
+         plus ouvrir se VEND. Le bouton propose le geste qui a un sens, plutot
+         que deux dont un ne sert jamais. */
+      b.textContent = o.eclos ? 'Sell' : 'Take out';
+      b.addEventListener('click', function () {
+        if (o.eclos) {
+          ouvreVenteAnimal('oeuf', o.espece, o.nom, 'Mythic egg',
+                           'img/nexus/objets/oeuf_' + o.espece + '.webp',
+                           o.espece === 'legendaire' ? '#FFFFFF' : '#FF4655', false);
+          return;
+        }
+        b.disabled = true;
+        envoie({ type: 'oeufSort', espece: o.espece });
+      });
+      d.appendChild(b);
+      /* Le SECOND geste, pour un oeuf qu'on peut encore ouvrir : le vendre
+         quand meme. Il est la, en petit, parce que c'est un choix legitime —
+         mais ce n'est pas celui qu'on propose en premier. */
+      if (!o.eclos) {
+        var b2 = document.createElement('button');
+        b2.type = 'button'; b2.className = 'swact';
+        b2.style.opacity = '.7';
+        b2.textContent = 'Sell';
+        b2.addEventListener('click', function () {
+          ouvreVenteAnimal('oeuf', o.espece, o.nom, 'Mythic egg',
+                           'img/nexus/objets/oeuf_' + o.espece + '.webp',
+                           o.espece === 'legendaire' ? '#FFFFFF' : '#FF4655', false);
+        });
+        d.appendChild(b2);
+      }
+      l.appendChild(d);
+    });
   }
 
   function rendClassementFruits() {
@@ -5703,7 +5974,8 @@
        boutique envoyait quand meme une demande d'historique de genre inconnu
        — que le serveur honore en relisant tout le journal du joueur pour
        rendre vingt-cinq lignes que personne n'affiche. */
-    if (profOnglet === 'sh' || profOnglet === 'cl' || profOnglet === 'mk' || profOnglet === 'sk') return;
+    if (profOnglet === 'sh' || profOnglet === 'cl' || profOnglet === 'mk'
+        || profOnglet === 'sk' || profOnglet === 'pt') return;
     if (profCharge) return;
     if (!etat.socket || etat.socket.readyState !== 1) { profRend(); return; }
     profCharge = true;
@@ -6805,6 +7077,7 @@
     if (profOnglet === 'cl') { profEnTete(); return rendClassementFruits(); }
     if (profOnglet === 'mk') { profEnTete(); return rendMarche(); }
     if (profOnglet === 'sk') { profEnTete(); return rendSkins(); }
+    if (profOnglet === 'pt') { profEnTete(); return rendAnimaux(); }
     var l = profBoite.querySelector('.swp-l');
     var sous = profBoite.querySelector('.swp-sub');
     if (profResume) {

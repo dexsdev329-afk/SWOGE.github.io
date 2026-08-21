@@ -369,9 +369,28 @@
     }
     if (m.type === 'familiers') {
       FAMILIERS_C = m.familiers || [];
+      if (m.coffreOeufs) OEUFS_COFFRE_C = m.coffreOeufs;
       REGLES_FAM = m.reglesFam || REGLES_FAM;
       if (m.or != null) OR_C = Number(m.or);
       peintPetworld(); peintLigneFamilier();
+      if (shopOuvert && shopSaison === 'pet') peintShop();
+    }
+    /* ---- L'OEUF PASSE DU SAC AU COFFRE, ET RETOUR ---- */
+    if (m.type === 'oeufRange' || m.type === 'oeufSort') {
+      if (m.error) flotte(m.error);
+      if (m.coffreOeufs) OEUFS_COFFRE_C = m.coffreOeufs;
+      if (m.sacJoueur) { SAC = m.sacJoueur; peintPanneau(); }
+      if (shopOuvert && shopSaison === 'pet') peintShop();
+    }
+    /* Une vente change l'enclos ET le coffre : le serveur renvoie les deux
+       avec la vitrine, et la boutique du hall les relit sans rien redemander. */
+    if (m.type === 'market') {
+      if (m.error) flotte(m.error);
+      if (m.familiers) FAMILIERS_C = m.familiers;
+      if (m.coffreOeufs) OEUFS_COFFRE_C = m.coffreOeufs;
+      if (m.fait && m.fait.prix !== undefined) flotte('\uD83C\uDFF7 Listed for ' + m.fait.prix + ' $SWOGE');
+      peintLigneFamilier();
+      if (shopOuvert && shopSaison === 'pet') peintShop();
     }
     /* ---- LE REPAS ----
      * Le serveur renvoie d'un coup le familier, le sac et l'or : les trois
@@ -2636,6 +2655,11 @@
      personnage ni la scene ne les touchent — et la page n'en garde qu'une
      copie pour l'afficher. */
   var FAMILIERS_C = [];
+  /* Les oeufs ranges au coffre. Ils arrivent AVEC la liste des familiers : la
+     question « cet oeuf peut-il encore eclore ? » se lit sur les deux a la
+     fois, et deux messages l'auraient affichee dans deux etats differents
+     pendant une demi-seconde. */
+  var OEUFS_COFFRE_C = [];
   /* Le monde de chaque porte : { ouvert: n, crimson: n }. Vide tant que le
      serveur n'a rien dit — on ne dessine pas « 0 inside » sur une porte dont
      on ignore l'etat, ce serait une information fausse. */
@@ -4556,19 +4580,127 @@
       '<button type="button" data-s="pot"' + (shopSaison === 'pot' ? ' class="on"' : '') +
       '>&#129514; Potions</button>' +
       '<button type="button" data-s="skin"' + (shopSaison === 'skin' ? ' class="on"' : '') +
-      '>&#127917; Characters</button>';
+      '>&#127917; Characters</button>' +
+      /* ---- LES ANIMAUX ----
+       * Ni une saison, ni un tirage : ils viennent du monde. Ils sont ici
+       * parce que c'est ici qu'on les VEND — le joueur a cherche « vendre mon
+       * oeuf » dans la boutique, et c'est le bon endroit pour l'avoir
+       * cherche. */
+      '<button type="button" data-s="pet"' + (shopSaison === 'pet' ? ' class="on"' : '') +
+      '>&#128054; Pets &amp; eggs</button>';
       majFleches();
       Array.prototype.forEach.call(elShopOng.querySelectorAll('button'), function (b) {
         b.addEventListener('click', function () {
           var v = b.getAttribute('data-s');
-          shopSaison = (v === 'pot' || v === 'skin') ? v : Number(v);
+          shopSaison = (v === 'pot' || v === 'skin' || v === 'pet') ? v : Number(v);
           shopMsg = '';
           clic(false);
           if (shopSaison === 'pot') peintShop();
           else if (shopSaison === 'skin') { if (enLigne) envoie({ type: 'skins' }); peintShop(); }
+          else if (shopSaison === 'pet') { if (enLigne) envoie({ type: 'familiers' }); peintShop(); }
           else if (enLigne) envoie({ type: 'shop', season: shopSaison });
         });
       });
+    }
+
+    /* ---- LE RAYON DES ANIMAUX ----
+     *
+     * Deux listes dans un seul rayon, et c'est deliberé : « tu as cet animal,
+     * donc cet oeuf-la ne peut plus eclore » est UNE phrase. Le serveur la dit
+     * deja (`eclos` sur chaque oeuf) ; les separer en deux onglets aurait
+     * oblige a l'aller-retour pour la relire.
+     */
+    if (shopSaison === 'pet') {
+      var dess = function (es) {
+        return 'img/nexus/monstres/pet_shiba' + (es === 'normal' ? '' : '_' + es) + '.webp';
+      };
+      var lignes = [];
+      lignes.push('<div class="nxsh-titre">Your pets</div>');
+      if (!FAMILIERS_C.length) {
+        lignes.push('<div class="nxsh-vide">No pet yet. Mythic eggs drop from ' +
+                    '<b>any</b> monster, about once in 1,200 kills.</div>');
+      }
+      FAMILIERS_C.forEach(function (f) {
+        var r = f.effet ? (f.effet.recharge >= 10 ? Math.round(f.effet.recharge)
+                                                  : f.effet.recharge.toFixed(1)) : '?';
+        lignes.push(
+          '<div class="nxsh-l" data-vendfam="' + ech(f.espece) + '">' +
+          '<i class="nxpw-vig" style="background-image:url(' + dess(f.espece) + ')"></i>' +
+          '<div class="nxsh-n"><b>' + ech(f.nom) + ' &middot; Lv ' + f.niveau + '</b>' +
+          '<i>' + ech((f.pouvoir && f.pouvoir.nom) || '') + ' &middot; every ' + r + 's</i></div>' +
+          '<button type="button" class="nxsh-b">Sell</button></div>');
+      });
+      lignes.push('<div class="nxsh-titre">Egg vault</div>');
+      if (!OEUFS_COFFRE_C.length) {
+        lignes.push('<div class="nxsh-vide">Nothing stored. An egg you cannot hatch ' +
+                    '&mdash; because you already have that pet &mdash; goes here ' +
+                    'instead of taking a backpack slot you lose when you die.</div>');
+      }
+      OEUFS_COFFRE_C.forEach(function (o) {
+        lignes.push(
+          '<div class="nxsh-l" data-oeufc="' + ech(o.espece) + '">' +
+          '<img alt="" src="img/nexus/objets/oeuf_' + ech(o.espece) + '.webp">' +
+          '<div class="nxsh-n"><b>' + ech(o.nom) +
+            (o.quantite > 1 ? ' &times;' + o.quantite : '') + '</b>' +
+          '<i>' + (o.eclos ? 'you already have this pet &mdash; it cannot hatch again'
+                           : 'never hatched') + '</i></div>' +
+          (o.eclos ? '' : '<button type="button" class="nxsh-b" data-sortir="1">Take out</button>') +
+          '<button type="button" class="nxsh-b">Sell</button></div>');
+      });
+      /* ---- ET LE PRIX SE FIXE ICI ----
+       * Le marche complet vit sur la page des jeux ; celui-ci ne fait qu'une
+       * chose — poser une annonce. Un champ et un bouton suffisent, et le
+       * serveur borne le prix : le recopier ici donnerait un deuxieme avis
+       * sur la meme question. */
+      lignes.push('<div class="nxsh-prix" hidden>' +
+        '<div class="nxsh-quoi"></div>' +
+        '<input type="number" min="1" step="1" inputmode="numeric" placeholder="Price in $SWOGE">' +
+        '<button type="button" class="nxsh-b go">Put up for sale</button>' +
+        '<button type="button" class="nxsh-b non">Cancel</button></div>');
+      elShopCorps.innerHTML = lignes.join('');
+
+      /* ---- UN SEUL ECOUTEUR, SUR LE RAYON ----
+       * Un par bouton voudrait dire les reposer a chaque repeinture, et une
+       * repeinture arrive a chaque message. L'ecouteur vit sur le conteneur,
+       * qui lui ne change pas. */
+      var zone = elShopCorps.querySelector('.nxsh-prix');
+      var champ = zone ? zone.querySelector('input') : null;
+      var enCours = null;
+      elShopCorps.onclick = function (ev) {
+        var b = ev.target.closest ? ev.target.closest('button') : null;
+        if (!b) return;
+        if (b.classList.contains('non')) { zone.hidden = true; enCours = null; return; }
+        if (b.classList.contains('go')) {
+          var prix = Math.floor(Number(champ.value) || 0);
+          if (!(prix > 0)) { flotte('Set a price first'); return; }
+          if (!enCours) return;
+          var msg = { type: 'marketSell', price: prix };
+          msg[enCours.quoi] = enCours.cle;
+          if (enLigne) envoie(msg);
+          zone.hidden = true; enCours = null; champ.value = '';
+          return;
+        }
+        var l = b.closest('.nxsh-l');
+        if (!l) return;
+        /* Reprendre un oeuf : c'est le seul geste qui ne passe pas par un
+           prix. Il est teste EN PREMIER — l'ordre des tests est ce qui decide
+           si « Take out » ouvre le formulaire de vente. */
+        if (b.getAttribute('data-sortir')) {
+          if (enLigne) envoie({ type: 'oeufSort', espece: l.getAttribute('data-oeufc') });
+          return;
+        }
+        var fam = l.getAttribute('data-vendfam');
+        enCours = fam ? { quoi: 'fam', cle: fam }
+                      : { quoi: 'oeuf', cle: l.getAttribute('data-oeufc') };
+        zone.querySelector('.nxsh-quoi').innerHTML =
+          (fam ? 'Selling <b>' + ech(l.querySelector('b').textContent) +
+                 '</b> \u2014 it leaves your account for good, with its XP.'
+               : 'Selling <b>' + ech(l.querySelector('b').textContent) + '</b>.') +
+          ' The house keeps 5%.';
+        zone.hidden = false;
+        champ.focus();
+      };
+      return;
     }
 
     // ---- le rayon des potions

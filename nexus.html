@@ -25,7 +25,7 @@ canvas{ touch-action:none; }
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-<script src="stakebubble.js?v=20260819o"></script>
+<script src="stakebubble.js?v=20260822a"></script>
 
 <style>
 html,body{ height:100%; margin:0; background:#0A1128; overscroll-behavior:none; }
@@ -709,6 +709,34 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
 .nxpw-niv{ font-size:12px; opacity:.72; }
 .nxpw-pou{ font-size:11px; opacity:.62; margin-top:3px; line-height:1.25; }
 .nxpw-vide{ opacity:.68; font-size:13px; line-height:1.5; padding:14px 4px; }
+/* ---- LE RAYON DES ANIMAUX, DANS LA BOUTIQUE DU HALL ----
+ * Des LIGNES et non des cases : un familier se juge a ce qu'il fait et a
+ * quelle cadence, deux phrases qui ne tiennent pas sous une vignette. */
+.nxsh-titre{ font:700 11px/1 'Archivo',system-ui,sans-serif; letter-spacing:.1em;
+  text-transform:uppercase; color:#8DA0C4; margin:14px 2px 7px; }
+.nxsh-vide{ opacity:.66; font-size:12.5px; line-height:1.5; padding:8px 4px 12px; }
+.nxsh-l{ display:flex; align-items:center; gap:10px; padding:8px 10px; margin-bottom:6px;
+  border-radius:12px; background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.09); }
+.nxsh-l img{ width:42px; height:42px; flex:0 0 42px; object-fit:contain;
+  image-rendering:pixelated; }
+.nxsh-l .nxpw-vig{ width:42px; height:42px; flex:0 0 42px; }
+.nxsh-n{ flex:1; min-width:0; }
+.nxsh-n b{ display:block; font:700 13px/1.25 'Archivo',system-ui,sans-serif; }
+.nxsh-n i{ font-style:normal; font-size:11px; opacity:.66; }
+.nxsh-b{ padding:7px 11px; border-radius:9px; font:700 12px/1 'Archivo',system-ui,sans-serif;
+  border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.06);
+  color:inherit; cursor:pointer; white-space:nowrap; }
+.nxsh-b:hover{ background:rgba(255,255,255,.11); }
+.nxsh-b.go{ border-color:rgba(124,255,155,.4); background:rgba(124,255,155,.14); }
+/* Le prix se fixe SOUS la liste et non dans une modale : on veut voir ce
+   qu'on vend pendant qu'on ecrit son prix. */
+.nxsh-prix{ margin-top:12px; padding:11px; border-radius:12px;
+  background:rgba(255,197,61,.07); border:1px solid rgba(255,197,61,.24);
+  display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.nxsh-quoi{ flex:1 1 100%; font-size:12px; line-height:1.4; }
+.nxsh-prix input{ flex:1 1 140px; padding:8px 10px; border-radius:9px; font:inherit;
+  border:1px solid rgba(255,255,255,.16); background:rgba(0,0,0,.25); color:inherit; }
 /* Celui qu'on REGARDE, distinct de celui qui est DEHORS : deux etats
    differents, deux marques differentes. Les confondre aurait oblige a sortir
    un animal pour lire sa fiche. */
@@ -1550,7 +1578,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
      racine ; c'est le seul endroit d'ou elle peut couvrir tout le reste. -->
 <div id="nxFiche"></div>
 
-<script src="nexus.js?v=20260822s" defer></script>
+<script src="nexus.js?v=20260822t" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

@@ -128,7 +128,7 @@ process.on('unhandledRejection', (e) => {
     const C = CanvasRenderingContext2D.prototype;
     if (C.__espionFam) return;
     C.__espionFam = true;
-    window.__pets = {}; window.__moi = null;
+    window.__pets = {}; window.__moi = null; window.__fx = {};
     const di = C.drawImage;
     C.drawImage = function (im) {
       const u = (im && (im.currentSrc || im.src)) || '';
@@ -144,6 +144,11 @@ process.on('unhandledRejection', (e) => {
         l.vus.push({ x: l.x, y: l.y, t: performance.now() });
         if (l.vus.length > 60) l.vus.shift();
       }
+      /* Les planches d effet du familier : on compte celles qui arrivent
+         VRAIMENT au canvas. « le serveur a soigne » et « le joueur a vu son
+         familier le soigner » sont deux affirmations differentes. */
+      const fx = u.match(/fam_([a-z]+)\.webp/);
+      if (fx) window.__fx[fx[1]] = (window.__fx[fx[1]] || 0) + 1;
       /* Le joueur : la seule planche dessinee en 150x150 depuis des cases de
          256. On ne recopie pas ses coordonnees du jeu — on lit ou il est
          PEINT, dans le meme repere que le chien. */
@@ -518,6 +523,13 @@ process.on('unhandledRejection', (e) => {
   }
   const vu = await p.evaluate(() => window.__s[0].__m.filter((x) => x.type === 'realmFam'));
   ok(vu.length > 0, `la page apprend le geste (${vu.length})`);
+  /* ---- ET ELLE LE DESSINE ----
+   * C est la moitie qui compte. Le serveur peut soigner parfaitement et
+   * l aide reste invisible si la planche n arrive jamais au canvas — et rien
+   * ne le dirait, puisque les points de vie remontent quand meme. */
+  const peint = await p.evaluate(() => window.__fx || {});
+  ok((peint.soigne || 0) > 0,
+     `et elle peint la colonne de soin (${peint.soigne || 0} images)`);
   eq(vu[0] && vu[0].quoi, 'soigne', 'par un message qui dit ce que c est');
   ok(vu[0] && vu[0].gain > 0, `avec le nombre de points rendus (${vu[0] && vu[0].gain})`);
   /* La moitie du gain, pas le gain exact : un monstre peut mordre dans la

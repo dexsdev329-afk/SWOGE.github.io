@@ -229,7 +229,7 @@ def nettoie_isoles(im, part=0.03, ecart=0.08):
     return im
 
 
-def lueur(source, seuil=8, gamma=1.0):
+def lueur(source, seuil=8, gamma=1.0, gain=1.0):
     """Un dessin de LUMIERE sur fond noir : l'alpha vient de la luminosite.
 
     `detoure_sombre` propage depuis les bords, et c'est la bonne methode pour un
@@ -261,7 +261,16 @@ def lueur(source, seuil=8, gamma=1.0):
             k = (v - seuil) / float(255 - seuil)
             if gamma != 1.0:
                 k = k ** gamma
-            px[x, y] = (r, g, b, min(255, int(round(k * 255))))
+            """`gain` multiplie l'alpha SANS toucher a sa forme.
+
+               Le gamma ne suffit pas pour un effet fait de MATIERE plutot que
+               de lumiere — un mur de roche, par exemple. Ses blocs gris
+               plafonnent a une luminosite moyenne : meme avec un gamma tres
+               bas, ils ressortent a moitie transparents et le mur ressemble a
+               de la fumee. Le gain les rend opaques tout en laissant le bord
+               s'eteindre en degrade, ce qu'un seuil brutal ne fait pas.
+               Le fond, lui, est a zero : le multiplier le laisse a zero."""
+            px[x, y] = (r, g, b, min(255, int(round(k * 255 * gain))))
     return im
 
 

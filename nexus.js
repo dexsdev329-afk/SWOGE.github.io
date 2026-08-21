@@ -338,12 +338,26 @@
      * message ne porte QUE ce que le serveur a decide — la page ne rejoue
      * aucun calcul, elle montre. */
     if (m.type === 'realmFam') {
+      /* Le DESSIN, pour les six : c'est lui qui dit ce que le compagnon vient
+         de faire. Il se pose au meme endroit pour tous — la table `FX_FAM`
+         sait lesquels suivent le joueur et lesquels restent sur leur cible. */
+      /* Sauf le bouclier : il n'est pas un evenement mais un ETAT, et
+         l'instantane le porte (`moi.bo`). Le poser ici l'aurait fait
+         disparaitre si un seul paquet se perdait, alors que le serveur, lui,
+         continuerait d'amortir les coups — le joueur aurait vu son bouclier
+         s'evanouir tout en restant protege. */
+      if (m.quoi !== 'bouclier') poseFx(m.quoi, m.x, m.y);
       if (m.quoi === 'soigne') {
         VIE.pv = m.pv; moiMonde.pv = m.pv;
         flotte('\uD83D\uDC96 +' + m.gain);
         joueSample('niveau', { vol: 0.32, hauteur: 1.5 });
       } else if (m.quoi === 'bouclier') {
         BOUCLIER = m.duree || 0;
+        /* Sa duree TOTALE, telle que le serveur l'annonce : c'est elle qui dit
+           ou l'on en est dans le tour de roche. L'ecrire ici en dur aurait
+           fait tourner l'anneau au mauvais rythme le jour ou le bouclier dure
+           quatre secondes — sans que rien ne le dise. */
+        BOUCLIER_MAX = m.duree || BOUCLIER_MAX;
         BOUCLIER_PART = m.part || 0;
       } else {
         /* Les quatre autres visent quelque chose : le compagnon s'y rue.
@@ -3235,6 +3249,118 @@
      ici — c'est le meme resultat, et ca ne pretend pas avoir une image qu'on
      n'a plus. */
   var ONDES = [];
+  /* ================== CE QUE FAIT LE FAMILIER, A L'ECRAN ==================
+   *
+   * Il agit tout seul, sans qu'on appuie sur rien. Sans un dessin, l'aide est
+   * invisible : un joueur ne saurait jamais si son compagnon sert a quelque
+   * chose, ni lequel choisir, et les six deviendraient six couleurs de chien.
+   * Il y avait bien une ruee et un anneau trace au canvas ; ca disait « il
+   * s'est passe quelque chose », pas QUOI.
+   *
+   * ---- LA PLANCHE DECIDE DE TOUT, SAUF DE L'ANCRE ----
+   *
+   * Six images par effet, la taille et la duree dans une table, et le dessin
+   * se deduit. Ce qui NE se deduit pas, c'est de quoi l'effet est accroche :
+   * la morsure, le gel et le feu appartiennent au MONSTRE et restent ou il
+   * etait ; le bouclier et le soin appartiennent au JOUEUR et doivent le
+   * suivre, sinon on sort de son propre bouclier en marchant.
+   *
+   * ---- ET LE BOUCLIER TOURNE EN ROND, LES AUTRES NON ----
+   *
+   * Les cinq autres sont des evenements : ils naissent, ils s'eteignent. Le
+   * bouclier est un ETAT qui dure trois secondes — joue une fois, il aurait
+   * disparu au bout d'une demi-seconde en laissant deux secondes et demie de
+   * protection invisible.
+   */
+  var FAM_EFFETS = [];
+  var FAM_CADRES_FX = 6;
+  var IMG_FX = {};
+  var FX_FAM = {
+    mord:     { taille: 150, duree: 0.50, suit: false, boucle: false, dy: -26 },
+    brule:    { taille: 165, duree: 0.75, suit: false, boucle: false, dy: -14 },
+    gele:     { taille: 175, duree: 0.85, suit: false, boucle: false, dy: -18 },
+    repousse: { taille: 320, duree: 0.60, suit: false, boucle: false, dy: -10 },
+    soigne:   { taille: 190, duree: 0.90, suit: true,  boucle: false, dy: -22 },
+  };
+  function plancheFx(cle) {
+    if (!IMG_FX[cle]) {
+      var i = new Image();
+      i.src = 'img/nexus/effets/fam_' + cle + '.webp';
+      IMG_FX[cle] = i;
+    }
+    return IMG_FX[cle];
+  }
+  /* On pose l'effet, on ne le joue pas ici : le dessin appartient a la boucle
+     d'image, et le message arrive dix fois par seconde. */
+  function poseFx(cle, x, y) {
+    var F = FX_FAM[cle];
+    if (!F) return;
+    /* Un seul a la fois par espece : le bouclier se repose avant la fin de
+       l'ancien (le serveur ne le renouvelle pas, mais un paquet double
+       suffirait), et deux anneaux superposes clignotent. */
+    for (var i = FAM_EFFETS.length - 1; i >= 0; i--) {
+      if (FAM_EFFETS[i].cle === cle && F.suit) FAM_EFFETS.splice(i, 1);
+    }
+    FAM_EFFETS.push({ cle: cle, x: x, y: y, vie: F.duree });
+  }
+  /* ---- LE BOUCLIER TOURNE TANT QU'IL TIENT ----
+   * Ce n'est pas un evenement : c'est un etat de trois secondes, et c'est
+   * l'INSTANTANE qui le decompte (`moi.bo`). Joue comme les cinq autres, il
+   * aurait disparu au bout d'une demi-seconde en laissant deux secondes et
+   * demie de protection invisible — et un paquet perdu l'aurait efface alors
+   * que le serveur amortissait encore les coups.
+   * Il ne se fond pas a la fin : le serveur coupe net, et un anneau qui
+   * palirait annoncerait une protection qui dure encore. */
+  var BOUCLIER_TOURS = 2;      // tours de roche pendant les trois secondes
+  function peintBouclier() {
+    var img = plancheFx('bouclier');
+    if (!img.complete || !img.naturalWidth) return;
+    var cw = img.naturalWidth / FAM_CADRES_FX, ch = img.naturalHeight;
+    /* L'image se DEDUIT du temps restant, elle ne se garde pas : un compteur
+       demanderait de le creer a la pose et de l'effacer a la fin, deux
+       occasions de fuir pour un chiffre qu'on possede deja. */
+    var av = 1 - BOUCLIER / Math.max(0.1, BOUCLIER_MAX);
+    var c = Math.floor(Math.max(0, av) * FAM_CADRES_FX * BOUCLIER_TOURS) % FAM_CADRES_FX;
+    var TL = 200, TH = TL * (ch / cw);
+    ctx.drawImage(img, c * cw, 0, cw, ch,
+                  joueur.x - TL / 2, joueur.y - 34 - TH / 2, TL, TH);
+  }
+
+  function peintFxFamilier(dt) {
+    if (!FAM_EFFETS.length) return;
+    for (var i = FAM_EFFETS.length - 1; i >= 0; i--) {
+      var e = FAM_EFFETS[i];
+      e.vie -= dt;
+      if (e.vie <= 0) { FAM_EFFETS.splice(i, 1); continue; }
+      var F = FX_FAM[e.cle];
+      var img = plancheFx(e.cle);
+      if (!img.complete || !img.naturalWidth) continue;
+      var cw = img.naturalWidth / FAM_CADRES_FX, ch = img.naturalHeight;
+      var av = 1 - e.vie / F.duree;
+      var c;
+      if (F.boucle) {
+        /* Deux tours complets sur les trois secondes : un seul est trop lent
+           pour qu'on voie la roche tourner, trois donnent une toupie. */
+        c = Math.floor(av * FAM_CADRES_FX * 2) % FAM_CADRES_FX;
+      } else {
+        c = Math.min(FAM_CADRES_FX - 1, Math.floor(av * FAM_CADRES_FX));
+      }
+      /* Le point : fixe pour ce qui appartient au monstre, le joueur pour ce
+         qui appartient au joueur. */
+      var px = F.suit ? joueur.x : e.x;
+      var py = (F.suit ? joueur.y : e.y) + F.dy;
+      var TL = F.taille, TH = TL * (ch / cw);
+      ctx.save();
+      /* La derniere fraction s'efface. La planche s'eteint deja d'elle-meme,
+         mais elle s'arrete sur une image : sans ce fondu, l'effet dispararait
+         d'un coup au lieu de finir. Le bouclier, lui, s'efface a la FIN de ses
+         trois secondes et pas a chaque tour. */
+      if (av > 0.82) ctx.globalAlpha = Math.max(0, (1 - av) / 0.18);
+      ctx.drawImage(img, c * cw, 0, cw, ch, px - TL / 2, py - TH / 2, TL, TH);
+      ctx.restore();
+    }
+  }
+
   function peintOndes(dt) {
     if (!ONDES.length) return;
     var img = plancheOnde();
@@ -5439,6 +5565,7 @@
   var FAM_RUEE = 0.28;        // la duree de l'aller-retour, en secondes
   var BOUCLIER = 0;           // ce qu'il reste du bouclier de la terre
   var BOUCLIER_PART = 0;      // et ce qu'il retire, pour l'annoncer
+  var BOUCLIER_MAX = 3;       // sa duree totale, annoncee par le serveur
 
   function imageFamilier(espece) {
     if (!espece) return null;
@@ -7877,16 +8004,7 @@
          * ne verrait jamais rien. Deux traits de pierre qui tournent — plein,
          * pas en arc de decompte comme les etats : ce n'est pas une menace
          * qui s'ecoule, c'est une protection qui tient. */
-        if (BOUCLIER > 0) {
-          ctx.save();
-          ctx.globalAlpha = 0.55 + 0.25 * Math.sin(performance.now() / 140);
-          ctx.strokeStyle = '#C9A66B';
-          ctx.lineWidth = 3;
-          ctx.beginPath();
-          ctx.ellipse(joueur.x, joueur.y - 26, 34, 42, 0, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.restore();
-        }
+        if (BOUCLIER > 0) peintBouclier();
         var etats = MONDE_C && MONDE_C.effets ? [
           { reste: PARALYSE, max: MONDE_C.effets.paralyse.duree, c: '#C07BFF', r: 34 },
           { reste: RALENTI,  max: MONDE_C.effets.ralenti.duree,  c: '#7CC8FF', r: 42 },
@@ -7923,6 +8041,12 @@
       } });
       pileM.sort(function (a, b) { return a.y - b.y; });
       pileM.forEach(function (p) { p.dessine(); });
+      /* ---- LES EFFETS DU FAMILIER PAR-DESSUS TOUT LE MONDE ----
+       * Dans la pile, ils se seraient tries par leur `y` et une creature un
+       * peu plus basse serait passee devant la glace qui l'enferme. Ce sont
+       * des effets, pas des objets : ils appartiennent a l'air, comme les
+       * chiffres de degats. */
+      peintFxFamilier(dt);
 
       dessineTirsMonde();
       peintCoups(dt);

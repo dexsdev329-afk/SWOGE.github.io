@@ -1938,8 +1938,13 @@
      et — sauf la fontaine, purement decorative — la destination qu'on
      rejoint en marchant dessus. */
   var LIEUX = [
-    { cle: 'fontaine', src: 'img/nexus/tiles/obj_fountain_plaza.webp',
-      x: CENTRE.x, y: CENTRE.y, larg: 340, haut: 355, collision: 108 },
+    /* ---- LA FONTAINE COULE ----
+     * Quatre images sur une planche, et c'est le PREMIER decor anime du hall.
+     * `cadres` suffit a le dire : la boucle de dessin decoupe la planche par
+     * ce nombre et choisit l'image a l'horloge — il n'y a pas de compteur par
+     * lieu a creer, a avancer et a oublier de remettre a zero. */
+    { cle: 'fontaine', src: 'img/nexus/tiles/obj_fontaine.webp',
+      x: CENTRE.x, y: CENTRE.y, larg: 340, haut: 453, collision: 108, cadres: 4 },
     /* ---- DEUX PORTES AU NORD, ET C'EST UN CHOIX ----
      *
      * La porte violette etait seule au bout du chemin : on marchait dedans
@@ -2021,7 +2026,13 @@
      la ou la pierre est — et bloquait sous le bassin, la ou il n'y a rien.
      Une ellipse mesuree sur le dessin colle. Les tirs s'en servent aussi :
      un pas et un projectile doivent buter sur la MEME pierre. */
-  var COL_FONT = { rx: 152, ry: 70, dy: 62 };
+  /* ---- LE BASSIN DE LA NOUVELLE FONTAINE ----
+   * Mesures reprises sur le dessin anime : le bassin occupe la moitie basse
+   * de la planche, son centre est a 38 % de la hauteur au-dessus du point
+   * d'ancrage, et il est deux fois plus large que haut. Garder les chiffres de
+   * l'ancienne fontaine aurait bloque la ou il n'y a plus rien et laisse
+   * passer la ou il y a de la pierre. */
+  var COL_FONT = { rx: 158, ry: 72, dy: 172 };
 
   /* ================== LA VIE, ET LE REPLI ==================
    *
@@ -7030,7 +7041,21 @@
     // est plus bas a l'ecran se dessine par-dessus, comme dans n'importe
     // quelle vue du dessus a la RotMG.
     var pile = LIEUX.map(function (l) { return { y: l.y, dessine: function () {
-      if (l.img.complete) ctx.drawImage(l.img, l.x - l.larg / 2, l.y - l.haut, l.larg, l.haut);
+      if (!l.img.complete || !l.img.naturalWidth) return;
+      if (!l.cadres) {
+        ctx.drawImage(l.img, l.x - l.larg / 2, l.y - l.haut, l.larg, l.haut);
+        return;
+      }
+      /* ---- UN DECOR ANIME ----
+       * L'image se DEDUIT de l'horloge, elle ne se garde pas : un compteur
+       * par lieu demanderait de le creer, de l'avancer et de le remettre a
+       * zero — trois occasions de se tromper pour un chiffre qu'on possede
+       * deja. Six images par seconde : au-dela l'eau bouillonne, en dessous
+       * elle saccade. */
+      var cw = l.img.naturalWidth / l.cadres;
+      var k = Math.floor(performance.now() / 166) % l.cadres;
+      ctx.drawImage(l.img, k * cw, 0, cw, l.img.naturalHeight,
+                    l.x - l.larg / 2, l.y - l.haut, l.larg, l.haut);
     } }; });
     pile.push({ y: joueur.y, dessine: function () {
       var cadre = joueur.anim === 'jump' ? saut.cadre : joueur.cadre;

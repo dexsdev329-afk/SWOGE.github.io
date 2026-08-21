@@ -660,6 +660,21 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
  * range des pieces, et l'on veut voir ses stats en le faisant. Une table de
  * jeu, non — on n'y fait qu'une chose, et la reduire au tiers gauche de
  * l'ecran donnait des cartes de la taille d'un timbre sur telephone. */
+/* ---- LA LIGNE DU FAMILIER ----
+ * Elle a l allure d une case d equipement parce que c en est une : le joueur
+ * ne doit pas avoir a apprendre qu un compagnon se range ailleurs que son
+ * arme. Elle vit pourtant hors de la grille — voir le commentaire du HTML. */
+.nxp-fam{ display:flex; align-items:center; gap:8px; margin-top:4px;
+  cursor:pointer; user-select:none; }
+.nxp-fam .nxp-c{ flex:0 0 44px; width:44px; height:44px; aspect-ratio:auto; }
+.nxp-fam .nxpw-vig{ width:100%; height:100%; }
+.nxp-fam .nxpf-t{ min-width:0; line-height:1.25; }
+.nxp-fam .nxpf-n{ font:700 12px/1.2 'Archivo',system-ui,sans-serif; }
+.nxp-fam .nxpf-s{ font-size:10px; opacity:.62;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.nxp-fam:hover .nxp-c{ outline:1px solid rgba(255,197,61,.7); }
+/* Vide, elle ne crie pas : c est une invitation, pas un manque. */
+.nxp-fam.rien .nxpf-n{ font-weight:600; opacity:.7; }
 /* ---- L'ENCLOS ----
  *
  * Un panneau de CHOIX, pas un inventaire : on y fait une seule chose, sortir
@@ -694,6 +709,40 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
 .nxpw-niv{ font-size:12px; opacity:.72; }
 .nxpw-pou{ font-size:11px; opacity:.62; margin-top:3px; line-height:1.25; }
 .nxpw-vide{ opacity:.68; font-size:13px; line-height:1.5; padding:14px 4px; }
+/* Celui qu'on REGARDE, distinct de celui qui est DEHORS : deux etats
+   differents, deux marques differentes. Les confondre aurait oblige a sortir
+   un animal pour lire sa fiche. */
+.nxpw-f.vu{ outline:2px solid rgba(255,197,61,.85); outline-offset:-2px; }
+.nxpw-fiche{ margin-top:12px; border-top:1px solid rgba(255,255,255,.10); padding-top:12px; }
+.nxpw-tete{ display:flex; gap:12px; align-items:center; }
+.nxpw-vig.gros{ width:92px; height:92px; flex:0 0 92px; }
+.nxpw-tt{ flex:1 1 auto; min-width:0; }
+.nxpw-tn{ font:700 16px/1.2 'Archivo',system-ui,sans-serif; }
+.nxpw-tn span{ opacity:.6; font-size:13px; }
+/* La barre montre l'avance DANS le palier, pas l'XP totale : « 845 » ne dit
+   rien, « 45 sur 400 » dit combien de repas il reste. */
+.nxpw-xp{ height:7px; border-radius:4px; background:rgba(255,255,255,.10);
+  overflow:hidden; margin-top:6px; }
+.nxpw-xp i{ display:block; height:100%; background:#7CFF9B; }
+.nxpw-xpt{ font-size:11px; opacity:.62; margin-top:3px; }
+.nxpw-sort{ margin-top:12px; width:100%; padding:9px; border-radius:10px;
+  border:1px solid rgba(124,255,155,.35); background:rgba(124,255,155,.10);
+  color:inherit; font:inherit; cursor:pointer; }
+.nxpw-sort:hover{ background:rgba(124,255,155,.18); }
+.nxpw-repas{ margin-top:12px; }
+.nxpw-rt{ font-size:12px; opacity:.8; }
+/* Le prix en rouge quand on ne l'a pas : on le voit AVANT de cliquer, au lieu
+   d'apprendre le refus par un message. */
+.nxpw-rt b.court{ color:#FF7A85; }
+.nxpw-plats{ display:grid; grid-template-columns:repeat(auto-fill,minmax(46px,1fr));
+  gap:5px; margin-top:7px; }
+.nxpw-plats .nxp-c{ cursor:pointer; }
+.nxpw-plats .nxp-c:hover{ outline:1px solid rgba(255,197,61,.7); }
+/* Le refus, la ou l on a clique. `flotte` peint sur le canvas : sous un
+   panneau plein ecran, il ne se voit pas. */
+.nxpw-non{ margin-top:8px; font-size:12px; color:#FF7A85;
+  background:rgba(255,70,85,.10); border:1px solid rgba(255,70,85,.28);
+  border-radius:8px; padding:7px 9px; }
 .nxpw-rentre{ margin-top:12px; width:100%; padding:9px; border-radius:10px;
   border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.05);
   color:inherit; font:inherit; cursor:pointer; }
@@ -1315,6 +1364,13 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
     <div class="nxp-b nxp-mp"><i id="nxMpJauge" style="width:100%"></i><span>MP</span><em id="nxMp"></em></div>
     <div class="nxp-stats" id="nxStats"></div>
     <div class="nxp-cases" id="nxEquip"></div>
+    <!-- ---- L EMPLACEMENT DU FAMILIER ----
+         Sur SA ligne, pas en cinquieme case : les quatre cases d equipement
+         sont alignees avec les huit du sac, et passer a cinq colonnes aurait
+         decale les deux grilles l une par rapport a l autre pour toujours.
+         Sa ligne a de la place pour son nom et son niveau — ce qu une case
+         carree ne peut pas montrer, et ce qu on veut justement savoir. -->
+    <div class="nxp-fam" id="nxFam"></div>
     <div class="nxp-cases" id="nxSac"></div>
     <!-- ---- LE SAC SUR LEQUEL ON MARCHE ----
          Huit places de plus, SOUS les siennes, qui n'existent que tant qu'on
@@ -1420,6 +1476,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
     <b class="nxcf-titre">&#128054; Petworld</b>
     <div class="nxcf-sous">Hatched pets live here. Pick one and it follows you everywhere.</div>
     <div class="nxpw-corps" id="nxPetCorps"></div>
+    <div class="nxpw-fiche" id="nxPetFiche"></div>
     <button class="nxpw-rentre" id="nxPetRentre" type="button">Send everyone back to the pen</button>
   </div>
 </div>
@@ -1490,7 +1547,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
      racine ; c'est le seul endroit d'ou elle peut couvrir tout le reste. -->
 <div id="nxFiche"></div>
 
-<script src="nexus.js?v=20260822g" defer></script>
+<script src="nexus.js?v=20260822h" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

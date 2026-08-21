@@ -248,9 +248,24 @@ process.on('unhandledRejection', (e) => {
 
   /* ================== 3. LE CHOIX PART AU SERVEUR ================== */
   console.log('\n-- on en sort un --');
+  /* Cliquer une fiche SELECTIONNE : on nourrit aussi ceux qu on laisse a
+     l enclos, et un panneau qui obligerait a sortir un animal pour lui donner
+     a manger aurait fait sortir six fois de suite quelqu un qui voulait juste
+     nourrir tout le monde. Sortir a donc son propre bouton. */
   await p.evaluate(() => {
     document.querySelector('#nxPetCorps .nxpw-f[data-espece="legendaire"]').click();
   });
+  await p.waitForTimeout(300);
+  const regarde = await p.evaluate(() => {
+    const e = document.querySelector('#nxPetCorps .nxpw-f[data-espece="legendaire"]');
+    return { vu: !!(e && e.classList.contains('vu')),
+             fiche: (document.getElementById('nxPetFiche') || {}).textContent || '' };
+  });
+  ok(regarde.vu, 'un clic marque celui qu on REGARDE');
+  ok(/Prism/.test(regarde.fiche), 'et sa fiche s ouvre en dessous');
+  eq((await envois('familierSort')).length, 0,
+     'sans rien sortir — regarder n est pas equiper');
+  await p.evaluate(() => document.querySelector('#nxPetFiche [data-sort]').click());
   await p.waitForTimeout(700);
   const dep = await envois('familierSort');
   eq(dep.length, 1, 'un clic envoie familierSort');
@@ -262,6 +277,69 @@ process.on('unhandledRejection', (e) => {
     return !!(e && e.classList.contains('actif'));
   });
   ok(coche, 'la fiche se coche depuis la reponse, pas depuis le clic');
+
+  /* ================== 3bis. ON LE NOURRIT ================== */
+  console.log('\n-- et on le nourrit --');
+  /* Une commune et une legendaire dans le sac, plus de l or. La legendaire
+     est la : le panneau ne doit PAS la proposer — au moment ou une legendaire
+     nourrit mieux qu elle ne se porte, le meilleur usage d une legendaire
+     devient de la detruire. */
+  const boutique = require(path.join(SERVEUR, 'boutique'));
+  let idCommun = null, idLegendaire = null;
+  for (let id = 1000; id < 6000 && !(idCommun && idLegendaire); id++) {
+    const o = boutique.item(id);
+    if (!o) continue;
+    if (o.rarete === 'commun' && !idCommun) idCommun = o.id;
+    if (o.rarete === 'legendaire' && !idLegendaire) idLegendaire = o.id;
+  }
+  q.sac = {}; q.sac[idCommun] = 2; q.sac[idLegendaire] = 1;
+  q.sacCases = null; q.fame = 5000;
+  await p.evaluate(() => window.__s[0].send(JSON.stringify({ type: 'equipable' })));
+  await p.evaluate(() => window.__s[0].send(JSON.stringify({ type: 'familiers' })));
+  await p.waitForTimeout(700);
+  const plats = await p.evaluate(() => Array.from(document.querySelectorAll('#nxPetFiche [data-plat]'))
+    .map((e) => Number(e.getAttribute('data-plat'))));
+  ok(plats.indexOf(idCommun) >= 0, `la commune est proposee au repas (${plats.join(',')})`);
+  ok(plats.indexOf(idLegendaire) < 0, 'la legendaire ne l est PAS');
+  const prixVu = await p.evaluate(() => (document.querySelector('#nxPetFiche .nxpw-rt') || {}).textContent || '');
+  ok(/40 gold/.test(prixVu), `le prix se lit AVANT de cliquer (${prixVu.trim()})`);
+
+  const xpAvant = moteur.familiersDe(w.address).filter((f) => f.espece === 'legendaire')[0].xp;
+  const orAvant = moteur.orDe(w.address);
+  await p.evaluate((id) => document.querySelector('#nxPetFiche [data-plat="' + id + '"]').click(), idCommun);
+  await p.waitForTimeout(800);
+  const apresRepas = moteur.familiersDe(w.address).filter((f) => f.espece === 'legendaire')[0];
+  eq(apresRepas.xp - xpAvant, 10, 'un clic sur une commune donne dix points');
+  eq(orAvant - moteur.orDe(w.address), 40, 'et coute quarante d or');
+  eq((moteur._p(w.address).sac || {})[idCommun], 1, 'la piece a quitte le sac, une seule');
+  const barre = await p.evaluate(() => {
+    const i = document.querySelector('#nxPetFiche .nxpw-xp i');
+    return { large: i ? i.style.width : null,
+             texte: (document.querySelector('#nxPetFiche .nxpw-xpt') || {}).textContent || '' };
+  });
+  ok(/10 \/ 80 XP/.test(barre.texte), `la barre montre l avance DANS le palier (${barre.texte})`);
+  ok(barre.large && parseFloat(barre.large) > 0, `et elle se remplit (${barre.large})`);
+
+  /* Le refus se VOIT : sans or, la page ne doit pas laisser croire que ca a
+     marche. On vide la bourse et l on reessaie. */
+  q.fame = 0;
+  await p.evaluate(() => window.__s[0].send(JSON.stringify({ type: 'familiers' })));
+  await p.waitForTimeout(500);
+  const xp2 = moteur.familiersDe(w.address).filter((f) => f.espece === 'legendaire')[0].xp;
+  await p.evaluate((id) => {
+    const e = document.querySelector('#nxPetFiche [data-plat="' + id + '"]');
+    if (e) e.click();
+  }, idCommun);
+  await p.waitForTimeout(700);
+  eq(moteur.familiersDe(w.address).filter((f) => f.espece === 'legendaire')[0].xp, xp2,
+     'sans or, le repas ne passe pas');
+  eq((moteur._p(w.address).sac || {})[idCommun], 1, 'et la piece n est pas detruite');
+  /* Le refus doit se lire DANS le panneau : `flotte` peint sur le canvas, et
+     sous un panneau plein ecran le joueur clique, rien ne se passe, et rien ne
+     dit pourquoi. */
+  const dit = await p.evaluate(() => (document.querySelector('#nxPetFiche .nxpw-non') || {}).textContent || '');
+  ok(/Need 40 gold/.test(dit), `la page dit pourquoi, dans le panneau (${dit.trim()})`);
+  q.fame = 5000;
 
   /* On referme pour rendre la main au personnage. */
   await p.evaluate(() => document.querySelector('#nxPetVoile .nxcf-x').click());

@@ -325,13 +325,43 @@
       else if (m.familier) {
         FAMILIERS_C = m.familiers || FAMILIERS_C;
         peintPetworld();
+        peintLigneFamilier();
         flotte((m.nouveau ? '\uD83E\uDD5A ' : '\u2B06 ') + m.familier.nom +
                (m.nouveau ? ' hatched!' : ' grew stronger'));
         joueSample('niveau', { vol: 0.9 });
       }
       if (m.sacJoueur) { SAC = m.sacJoueur; peintPanneau(); }
     }
-    if (m.type === 'familiers') { FAMILIERS_C = m.familiers || []; peintPetworld(); }
+    if (m.type === 'familiers') {
+      FAMILIERS_C = m.familiers || [];
+      REGLES_FAM = m.reglesFam || REGLES_FAM;
+      if (m.or != null) OR_C = Number(m.or);
+      peintPetworld(); peintLigneFamilier();
+    }
+    /* ---- LE REPAS ----
+     * Le serveur renvoie d'un coup le familier, le sac et l'or : les trois
+     * sont a l'ecran au meme endroit, et les rafraichir chacun de leur cote
+     * aurait montre un sac vide a cote d'un or inchange. */
+    if (m.type === 'familierNourrit') {
+      PET_ERREUR = m.error || '';
+      /* Aussi sur le canvas : le repas peut se demander sans que le panneau
+         soit ouvert, et un message qui n'aurait qu'un seul endroit ou
+         paraitre serait muet dans l'autre cas. */
+      if (m.error) flotte(m.error);
+      FAMILIERS_C = m.familiers || FAMILIERS_C;
+      if (m.or != null) OR_C = Number(m.or);
+      if (m.sacJoueur) SAC = m.sacJoueur;
+      if (!m.error) {
+        /* Le passage de niveau s'ENTEND. C'est le seul moment ou un repas se
+           distingue du precedent, et le serveur le dit — la page ne recalcule
+           pas la courbe pour le deviner. */
+        if (m.monte) { flotte('\u2B06 ' + (m.familier && m.familier.nom) +
+                              ' reached Lv ' + (m.familier && m.familier.niveau));
+                       joueSample('niveau', { vol: 0.9 }); }
+        else flotte('+' + m.gagne + ' XP');
+      }
+      peintPetworld(); peintLigneFamilier(); peintPanneau();
+    }
     /* ---- LE CHOIX A PRIS, OU IL N'A PAS PRIS ----
      * On repeint depuis la liste que le SERVEUR renvoie, jamais depuis ce
      * qu'on vient de cliquer : c'est lui qui sait lequel est sorti, et une
@@ -341,6 +371,7 @@
       if (m.error) flotte(m.error);
       FAMILIERS_C = m.familiers || FAMILIERS_C;
       peintPetworld();
+      peintLigneFamilier();
     }
     if (m.type === 'potionBue') {
       POTIONS_C = m.potions || POTIONS_C;
@@ -1312,6 +1343,10 @@
   document.addEventListener('pointercancel', finPrise);
 
   function peintPanneau() {
+    /* La ligne du familier se repeint avec le panneau : elle vit dedans, et
+       la reveiller seulement quand la liste change l'aurait laissee vide au
+       premier affichage — avant qu'aucun message ne soit arrive. */
+    peintLigneFamilier();
     // ---- le nom et sa vignette
     if (elNom) elNom.textContent = MON_NOM || court(MON_ADRESSE) || '—';
     /* ---- L'OR ----
@@ -1643,16 +1678,65 @@
    */
   var elPetVoile = document.getElementById('nxPetVoile');
   var elPetCorps = document.getElementById('nxPetCorps');
+  var elPetFiche = document.getElementById('nxPetFiche');
   var elPetRentre = document.getElementById('nxPetRentre');
   var petOuvert = false;
+  var PET_CHOISI = null;      // celui dont on regarde la fiche
+  /* Les regles du repas, telles que le SERVEUR les annonce. Vides tant qu'il
+     n'a rien dit : mieux vaut un panneau qui ne propose rien qu'un panneau
+     qui propose une regle inventee. */
+  var REGLES_FAM = null;
+  /* ---- LE REFUS SE LIT LA OU L'ON A CLIQUE ----
+   * `flotte` peint sur le CANVAS. Tant qu'un panneau plein ecran est ouvert,
+   * le message passe derriere lui : le joueur clique, rien ne se passe, et
+   * rien ne dit pourquoi. Le refus d'un repas s'affiche donc dans le panneau
+   * — et il s'efface au repas suivant, sinon il resterait a mentir apres que
+   * le probleme est regle. */
+  var PET_ERREUR = '';
+  /* L'or DEJA acquis. Il vient de la meme reponse que les familiers : le
+     deduire du panneau du personnage aurait pris la fame EN COURS, celle
+     qu'on n'a pas encore, et le repas aurait ete refuse sans explication. */
+  var OR_C = 0;
 
   /* Les noms et les pouvoirs viennent du SERVEUR avec chaque fiche. Cette
      page n'en garde pas de copie : deux tables des memes six pouvoirs
      finiraient par ne plus dire la meme chose, et c'est le serveur qui les
      applique. */
+  function dessinDe(espece) {
+    return 'img/nexus/monstres/pet_shiba' +
+           (espece === 'normal' ? '' : '_' + espece) + '.webp';
+  }
+  function familierDe(espece) {
+    for (var i = 0; i < FAMILIERS_C.length; i++) {
+      if (FAMILIERS_C[i] && FAMILIERS_C[i].espece === espece) return FAMILIERS_C[i];
+    }
+    return null;
+  }
+
+  /* ---- CE QU'ON PEUT LUI DONNER ----
+   * La liste des raretes vient du SERVEUR (`REGLES_FAM`). L'ecrire ici
+   * aurait continue de promettre « commun et rare » le jour ou l'on ouvre
+   * l'epique, et un joueur se serait fait refuser un repas sans comprendre. */
+  function comestibles() {
+    var r = (REGLES_FAM && REGLES_FAM.rarete) || [];
+    return (SAC || []).filter(function (o) {
+      return o && o.id && r.indexOf(o.rarete) >= 0;
+    });
+  }
+
+  /* ---- LE PANNEAU DE L'ENCLOS ----
+   *
+   * Trois etages : le troupeau, la fiche de celui qu'on regarde, et son
+   * repas. Cliquer une fiche SELECTIONNE au lieu de sortir l'animal — sortir
+   * etait le geste evident tant qu'on ne pouvait rien faire d'autre, mais on
+   * nourrit aussi ceux qu'on laisse a l'enclos, et un panneau qui obligerait
+   * a sortir un animal pour lui donner a manger aurait fait sortir six fois
+   * de suite quelqu'un qui voulait juste nourrir tout le monde.
+   */
   function peintPetworld() {
     if (!elPetCorps) return;
     if (!FAMILIERS_C.length) {
+      PET_CHOISI = null;
       elPetCorps.innerHTML =
         '<div class="nxpw-vide">The pen is empty. Pets come from <b>mythic eggs</b>' +
         ' &mdash; any monster can drop one, about once in 5,000 kills.' +
@@ -1661,12 +1745,17 @@
       return;
     }
     if (elPetRentre) elPetRentre.style.display = '';
-    elPetCorps.innerHTML = FAMILIERS_C.map(function (f) {
-      var src = 'img/nexus/monstres/pet_shiba' +
-                (f.espece === 'normal' ? '' : '_' + f.espece) + '.webp';
+    /* Celui qu'on regardait a pu partir (une sauvegarde rechargee) : on
+       retombe sur celui qui est dehors, puis sur le premier. Laisser une
+       selection morte aurait montre une fiche vide sous un troupeau plein. */
+    if (!familierDe(PET_CHOISI)) {
+      PET_CHOISI = (monFamilier() || (FAMILIERS_C[0] && FAMILIERS_C[0].espece)) || null;
+    }
+    var grille = FAMILIERS_C.map(function (f) {
       return '<div class="nxpw-f' + (f.actif ? ' actif' : '') +
+             (f.espece === PET_CHOISI ? ' vu' : '') +
              '" data-espece="' + ech(f.espece) + '">' +
-             '<div class="nxpw-vig" style="background-image:url(' + src + ')"></div>' +
+             '<div class="nxpw-vig" style="background-image:url(' + dessinDe(f.espece) + ')"></div>' +
              '<div class="nxpw-nom">' + ech(f.nom || 'Pet') + '</div>' +
              '<div class="nxpw-niv">Lv ' + (f.niveau || 1) +
              (f.actif ? ' &middot; out' : '') + '</div>' +
@@ -1674,6 +1763,106 @@
              ech((f.pouvoir && f.pouvoir.nom) || '') + '</div>' +
              '</div>';
     }).join('');
+    elPetCorps.innerHTML = grille;
+    peintFicheFamilier();
+  }
+
+  function peintFicheFamilier() {
+    if (!elPetFiche) return;
+    var f = familierDe(PET_CHOISI);
+    if (!f) { elPetFiche.innerHTML = ''; return; }
+    /* ---- LA BARRE D'XP SE LIT DANS SON PALIER ----
+     * On montre l'avance DANS le niveau courant, pas l'XP totale : « 845 »
+     * ne dit rien, « 45 sur 400 » dit combien de repas il reste. Les deux
+     * bornes viennent du serveur — une seconde formule ici finirait par
+     * promettre un niveau qui n'arrive pas. */
+    var part = 0, texte = 'Max level';
+    if (!f.max && f.xpHaut) {
+      var dans = f.xp - f.xpBas, large = f.xpHaut - f.xpBas;
+      part = Math.max(0, Math.min(1, large > 0 ? dans / large : 0));
+      texte = dans + ' / ' + large + ' XP';
+    }
+    var manger = comestibles();
+    var prix = f.max ? null : f.prixRepas;
+    var assez = prix == null || OR_C >= prix;
+    var souci = PET_ERREUR ? '<div class="nxpw-non">' + ech(PET_ERREUR) + '</div>' : '';
+    elPetFiche.innerHTML =
+      '<div class="nxpw-tete">' +
+        '<div class="nxpw-vig gros" style="background-image:url(' + dessinDe(f.espece) + ')"></div>' +
+        '<div class="nxpw-tt">' +
+          '<div class="nxpw-tn">' + ech(f.nom || 'Pet') + ' <span>Lv ' + (f.niveau || 1) + '</span></div>' +
+          '<div class="nxpw-pou">' + ech((f.pouvoir && f.pouvoir.nom) || '') + '</div>' +
+          '<div class="nxpw-xp"><i style="width:' + Math.round(part * 100) + '%"></i></div>' +
+          '<div class="nxpw-xpt">' + texte + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<button class="nxpw-sort" type="button" data-sort="' + ech(f.espece) + '">' +
+        (f.actif ? 'Send back to the pen' : 'Take ' + ech(f.nom || 'it') + ' out') +
+      '</button>' +
+      (f.max
+        ? '<div class="nxpw-vide">' + ech(f.nom) + ' has nothing left to learn.</div>'
+        : '<div class="nxpw-repas">' +
+            '<div class="nxpw-rt">Feed &middot; <b class="' + (assez ? '' : 'court') + '">' +
+              prix + ' gold</b> a meal &middot; you have ' + nbCourt(OR_C) + '</div>' +
+            (manger.length
+              ? '<div class="nxpw-plats">' + manger.map(function (o) {
+                  return '<div class="nxp-c" data-plat="' + o.id + '" title="' +
+                         ech(o.nom + ' \u2014 ' + o.rarete) + '">' +
+                         '<img alt="" src="img/shop/' + encodeURIComponent(o.cle) + '.webp" ' +
+                         'onerror="this.style.visibility=\'hidden\'"></div>';
+                }).join('') + '</div>'
+              : '<div class="nxpw-vide">Nothing edible in your backpack. Pets eat <b>' +
+                ech(((REGLES_FAM && REGLES_FAM.rarete) || []).join(' and ')) +
+                '</b> gear &mdash; the two you find most.</div>') +
+            souci +
+          '</div>');
+  }
+
+  /* ---- LA LIGNE DU FAMILIER, DANS LE PANNEAU ----
+   *
+   * Choisir son compagnon ne devait pas obliger a traverser le hall. La
+   * grange reste le lieu ou l'on s'en OCCUPE — c'est la qu'on les nourrit —
+   * mais celui qu'on sort est un equipement, et un equipement se change la ou
+   * l'on change les autres.
+   *
+   * Elle se peint depuis FAMILIERS_C, jamais depuis la fiche du personnage :
+   * un familier appartient au COMPTE. Le ranger sur le personnage l'aurait
+   * fait disparaitre en changeant de skin, et mourir avec lui — alors que
+   * c'est justement la seule chose du jeu qu'on garde a vie.
+   */
+  var elFam = document.getElementById('nxFam');
+  function peintLigneFamilier() {
+    if (!elFam) return;
+    var a = null;
+    for (var i = 0; i < FAMILIERS_C.length; i++) {
+      if (FAMILIERS_C[i] && FAMILIERS_C[i].actif) { a = FAMILIERS_C[i]; break; }
+    }
+    if (!a) {
+      elFam.className = 'nxp-fam rien';
+      elFam.innerHTML = '<div class="nxp-c vide"></div>' +
+        '<div class="nxpf-t"><div class="nxpf-n">No pet out</div>' +
+        '<div class="nxpf-s">' +
+        (FAMILIERS_C.length
+          ? FAMILIERS_C.length + ' waiting at Petworld \u2014 tap to pick'
+          : 'Hatch a mythic egg to get one') +
+        '</div></div>';
+      return;
+    }
+    var src = 'img/nexus/monstres/pet_shiba' +
+              (a.espece === 'normal' ? '' : '_' + a.espece) + '.webp';
+    elFam.className = 'nxp-fam';
+    elFam.innerHTML =
+      '<div class="nxp-c"><div class="nxpw-vig" style="background-image:url(' + src + ')"></div></div>' +
+      '<div class="nxpf-t"><div class="nxpf-n">' + ech(a.nom || 'Pet') +
+      ' <span style="opacity:.6">Lv ' + (a.niveau || 1) + '</span></div>' +
+      '<div class="nxpf-s">' + ech((a.pouvoir && a.pouvoir.nom) || '') + '</div></div>';
+  }
+  if (elFam) {
+    /* Un clic ouvre le CHOIX, il ne renvoie pas le compagnon a l'enclos. Un
+       emplacement qui se vide au premier clic est le meilleur moyen de perdre
+       son animal en voulant le regarder — et le panneau a deja un geste pour
+       le faire rentrer. */
+    elFam.addEventListener('click', function () { ouvrePetworld(); });
   }
 
   function ouvrePetworld() {
@@ -1683,6 +1872,7 @@
        onglet, et surtout un oeuf ouvert pendant qu'on etait ailleurs doit
        apparaitre ici sans recharger la page. */
     if (enLigne) envoie({ type: 'familiers' });
+    PET_ERREUR = '';
     peintPetworld();
     elPetVoile.classList.add('on');
   }
@@ -1695,14 +1885,28 @@
     elPetVoile.addEventListener('click', function (e) {
       var c = e.target.classList;
       if (e.target === elPetVoile || (c && c.contains('nxcf-x'))) { fermePetworld(true); return; }
+      /* ---- UN PLAT ----
+       * Avant la fiche : une piece cliquee est un repas, pas un changement de
+       * selection, et l'ordre des tests est ce qui le decide. */
+      var plat = e.target.closest ? e.target.closest('[data-plat]') : null;
+      if (plat && PET_CHOISI) {
+        if (enLigne) envoie({ type: 'familierNourrit', espece: PET_CHOISI,
+                              item: Number(plat.getAttribute('data-plat')) });
+        return;
+      }
+      /* ---- SORTIR OU RENTRER ---- */
+      var b = e.target.closest ? e.target.closest('[data-sort]') : null;
+      if (b) {
+        var deja = familierDe(b.getAttribute('data-sort'));
+        if (enLigne) envoie({ type: 'familierSort',
+                              espece: (deja && deja.actif) ? null : b.getAttribute('data-sort') });
+        return;
+      }
+      /* ---- CHOISIR CELUI QU'ON REGARDE ---- */
       var f = e.target.closest ? e.target.closest('.nxpw-f') : null;
       if (!f || !elPetCorps.contains(f)) return;
-      var es = f.getAttribute('data-espece');
-      /* Recliquer sur celui qui est deja dehors le fait RENTRER. Sans ca, il
-         faudrait chercher le bouton du bas pour annuler un choix qu'on vient
-         de faire d'un clic. */
-      if (enLigne) envoie({ type: 'familierSort',
-                            espece: f.classList.contains('actif') ? null : es });
+      PET_CHOISI = f.getAttribute('data-espece');
+      peintPetworld();
     });
   }
   if (elPetRentre) {

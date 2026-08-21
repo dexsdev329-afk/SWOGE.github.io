@@ -427,10 +427,18 @@
         /* « AT MAX » ne peut plus concerner une fiole de stat : elle se
            ramasse desormais meme au plafond, et se boit plus tard. Il ne
            reste que le sac plein, et les fioles de soin a leur pile. */
-        flotte(m.refus === 'sac-plein' ? 'BAG FULL'
+        /* ---- UN REFUS AUTOMATIQUE MERITE PLUS QU'UN MOT ----
+         * Celui-la n'a pas ete demande : on a marche sur un sac, et il n'est
+         * rien entre. « BAG FULL » tout court laisse chercher CE qu'on vient
+         * de laisser derriere soi — et quand c'est une fiole de stat, une sur
+         * cinquante morts, on ne le laisse pas deux fois. */
+        flotte(m.refus === 'sac-plein'
+                 ? (m.auto && m.stat ? 'BAG FULL — STAT POTION LEFT BEHIND'
+                    : m.auto ? 'BAG FULL — LOOT LEFT BEHIND' : 'BAG FULL')
              : m.refus === 'plein' ? 'AT MAX'
              : String(m.refus).toUpperCase());
-        joueSample('clic', { vol: 0.35 });
+        joueSample('clic', { vol: m.auto && m.stat ? 0.6 : 0.35,
+                             hauteur: m.auto && m.stat ? 0.7 : 1 });
       } else if (m.stat) {
         /* ---- UNE FIOLE SE RAMASSE, ELLE NE SE BOIT PLUS ----
          * Cette branche annoncait encore « +1 DEF (3/6) », comme au temps ou

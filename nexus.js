@@ -1190,8 +1190,33 @@
     elStats.innerHTML = ATTRIBUTS.map(function (k) {
       if (!FICHE) return '<div class="nxp-st">' + NOM_ATTR[k] + ' - <b>—</b></div>';
       var b = bonusPour(k);
-      return '<div class="nxp-st' + (b ? ' up' : '') + '">' + NOM_ATTR[k] +
-        ' - <b>' + FICHE.stats[k] + '</b>' + (b ? ' <u>(+' + b + ')</u>' : '') + '</div>';
+      /* ---- CE QU'IL MANQUE POUR ETRE AU PLAFOND ----
+       *
+       * Le plafond vient du SERVEUR (`plafond[k]`), et la page ne le refait
+       * pas : elle aurait pu — elle a `base` et la table des potions — mais ce
+       * serait la meme formule ecrite des deux cotes du reseau, et le jour ou
+       * la courbe des niveaux change, l'un des deux dirait encore l'ancien
+       * plafond. Le joueur lirait « il te manque 3 » sur une stat deja pleine
+       * sans aucun moyen de savoir lequel des deux chiffres ment.
+       *
+       * On compare la part PERMANENTE — niveau plus potions bues — et pas le
+       * total affiche : celui-la contient l'equipement, qui se prete et se
+       * perd a la mort. Une stat qui passerait pour pleine parce qu'on porte
+       * une bague redeviendrait creuse en changeant de bague, sans que rien ne
+       * l'explique. */
+      var pl = FICHE.plafond && FICHE.plafond[k];
+      var reste = pl ? Math.max(0, pl.max - pl.atteint) : null;
+      var plein = pl && reste === 0;
+      return '<div class="nxp-st' + (b ? ' up' : '') + (plein ? ' max' : '') + '">' +
+        NOM_ATTR[k] +
+        ' - <b>' + FICHE.stats[k] + '</b>' +
+        (b ? ' <u>(+' + b + ')</u>' : '') +
+        /* Le manque en petit, a cote : c'est une information de progression,
+           pas le chiffre qu'on lit en combat. Rien quand c'est plein — le
+           jaune le dit deja, et « MAX » a cote d'un chiffre jaune serait deux
+           fois la meme chose. */
+        (reste > 0 ? ' <i>+' + reste + '</i>' : '') +
+        '</div>';
     }).join('');
 
     // ---- les quatre cases d'equipement

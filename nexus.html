@@ -287,6 +287,14 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
 .nxp-st b{ font-weight:700; color:#e8e8e8; }
 .nxp-st.up b{ color:#63d13f; }
 .nxp-st u{ text-decoration:none; color:#63d13f; font-weight:700; }
+/* ---- CE QU'IL MANQUE, ET CE QUI EST PLEIN ----
+ * Le manque en gris et en petit : c'est une information de progression, pas le
+ * chiffre qu'on lit en combat. Le plafond atteint passe le chiffre en JAUNE —
+ * une couleur qu'aucune autre ligne du panneau n'utilise, donc qu'on ne
+ * confond avec rien. On n'écrit pas « MAX » à côté : le jaune le dit déjà, et
+ * deux fois la même chose sur une ligne de dix pixels, c'est une de trop. */
+.nxp-st i{ font-style:normal; color:#6b6b6b; font-weight:700; font-size:.9em; }
+.nxp-st.max b, .nxp-st.max.up b{ color:#FFC53D; }
 
 /* les cases : quatre d'equipement en haut, huit de sac en dessous */
 .nxp-cases{ display:grid; grid-template-columns:repeat(4,1fr); gap:4px; flex:0 0 auto; }
@@ -1107,7 +1115,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
   </div>
 </div>
 
-<script src="nexus.js?v=20260821f" defer></script>
+<script src="nexus.js?v=20260821g" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

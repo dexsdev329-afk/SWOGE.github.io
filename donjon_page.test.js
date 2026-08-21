@@ -104,12 +104,18 @@ process.on('unhandledRejection', (e) => {
   Game.prototype._p = function (a) { moteur = this; return _p0.call(this, a); };
   const { Realm } = require(path.join(SERVEUR, 'realm'));
   let monde0 = null, donjon0 = null;
+  const ouverts = new Set();
+  const mondeDe = (a2) => [...ouverts].find((r) => r.joueurs.has(String(a2).toLowerCase()))
+                       || [...ouverts][0] || null;
   const pas0 = Realm.prototype.pas;
   Realm.prototype.pas = function (dt) {
     /* `plan` est ce qui distingue un donjon d'un monde. On garde les deux : le
        monde ouvert pour y poser Optimus, le donjon pour savoir ou se trouve le
        personnage quand il y marche. */
-    if (this.plan) donjon0 = this; else monde0 = this;
+    /* Il y a DEUX mondes ouverts depuis la deuxieme porte du Nexus : garder
+       « le dernier qui a battu » designait une fois sur deux celui ou notre
+       joueur n est pas. On les collecte, et l on choisit par l occupant. */
+    if (this.plan) donjon0 = this; else ouverts.add(this);
     return pas0.call(this, dt);
   };
 
@@ -214,9 +220,9 @@ process.on('unhandledRejection', (e) => {
   });
   console.log('\n-- on entre dans le monde --');
   ok(entre.entre, 'on entre dans le monde de combat' + (entre.refus ? ' (refus: ' + entre.refus + ')' : ''));
-  ok(!!monde0, 'et la simulation du monde ouvert est attrapee');
-
   const addr = portefeuille.address.toLowerCase();
+  monde0 = mondeDe(addr);
+  ok(!!monde0, 'et la simulation du monde ouvert est attrapee');
 
   /* ================== 1. OPTIMUS MEURT, LA PORTE S'OUVRE ==================
    *

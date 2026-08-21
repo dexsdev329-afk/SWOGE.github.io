@@ -3000,11 +3000,17 @@
      * fois le rayon : une porte se lit debout, et celle-la doit se voir de
      * loin sans manger la scene. */
     var m = mesurePorte();
-    var T = (R * 2.8) / Math.max(0.05, m.haute);
-    /* Et les PIEDS au sol : le bas du dessin se pose sur le point du portail,
-       pas le bas de la case. Un ovale qui flotte quinze pixels au-dessus de sa
-       zone donne l'impression qu'on passe dessous. */
-    var haut = p.y + 6 - m.bas * T;
+    /* ---- ELLE A MAIGRI, ET ELLE EST ENTREE DANS LE SOL ----
+     * A deux fois huit dixiemes du rayon d'entree elle montait a deux cents
+     * unites : plus haute que la fontaine, et elle mangeait la creature qu'on
+     * combattait devant. Deux fois un dixieme la ramene a la taille d'une
+     * porte — assez pour se voir de loin, assez peu pour qu'on voie ce qui
+     * arrive derriere.
+     * Et le bas s'enfonce : pose a six unites elle avait l'air d'un decor
+     * COLLE sur l'herbe. A vingt-deux, sa base disparait dans le sol et l'on
+     * croit a un trou, ce qu'un portail est cense etre. */
+    var T = (R * 2.1) / Math.max(0.05, m.haute);
+    var haut = p.y + 22 - m.bas * T;
 
     ctx.save();
     /* Elle respire une fois ouverte. Sans ca une porte ouverte est un decor
@@ -3012,7 +3018,7 @@
        fait jamais disparaitre. */
     if (img === n - 1) {
       var souffle = 1 + 0.035 * Math.sin(performance.now() / 520);
-      ctx.translate(p.x, p.y + 6);
+      ctx.translate(p.x, p.y + 22);
       ctx.scale(1, souffle);
       ctx.translate(-p.x, -(p.y + 6));
     }

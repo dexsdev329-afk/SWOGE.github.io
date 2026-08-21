@@ -3348,12 +3348,21 @@
     if (s.s !== 'brun') {
       var teinte = { bleu: '#5AA9FF', violet: '#C07BFF', or: '#FFC53D',
                      rouge: '#F2685E', blanc: '#FFFFFF',
-                     /* Le vert de tout ce qui s'acquiert dans ce jeu. Il ne
-                        sert a aucun autre sac : c'est ce qui le rend lisible
-                        d'un coup d'oeil au milieu des cinq autres. */
-                     oeuf: '#7CFF9B' }[s.s] || '#FFFFFF';
+                     /* ---- TURQUOISE, ET PAS VERT ----
+                      * Le vert etait le choix de principe : c'est la couleur
+                      * de tout ce qui s'acquiert dans ce jeu. Pose sur les six
+                      * sols, il DISPARAIT — l'herbe est verte, le marais
+                      * aussi, et un halo qu'on ne voit pas ne fait rien.
+                      * Le turquoise ne se trouve sur aucun sol et sur aucun
+                      * autre sac : c'est la seule couleur qui reste lisible
+                      * de l'herbe a la lave. Le blanc l'aurait ete aussi —
+                      * mais le blanc est celui des reliques, et c'est
+                      * justement la confusion qu'on vient de retirer. */
+                     oeuf: '#3FE0D0' }[s.s] || '#FFFFFF';
+      /* Un peu plus fort pour l'oeuf : c'est la chose la plus rare qui tombe,
+         et il faut la voir depuis l'autre bout de l'anneau. */
       halo(s.x, s.y + 4, T * 0.62, teinte,
-           (s.s === 'blanc' || s.s === 'oeuf') ? 0.34 : 0.22);
+           s.s === 'oeuf' ? 0.42 : s.s === 'blanc' ? 0.34 : 0.22);
     }
     var apart = imageSacAPart(s.s);
     if (apart) {
@@ -6794,7 +6803,7 @@
   var elButinCases = document.getElementById('nxButinCases');
   var COUL_SAC = { brun: '#B08050', bleu: '#5AA9FF', violet: '#C07BFF',
                    or: '#FFC53D', rouge: '#F2685E', blanc: '#FFFFFF',
-                   oeuf: '#7CFF9B' };
+                   oeuf: '#3FE0D0' };
   var NOM_SAC = { brun: 'Loot bag', bleu: 'Stat potion', violet: 'Rare drop',
                   or: 'Legendary drop', rouge: 'Mythic drop', blanc: 'RELIC',
                   /* Il DIT ce que c'est. « RELIC » sur un sac d'oeuf envoyait

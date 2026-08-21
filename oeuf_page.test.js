@@ -168,6 +168,35 @@ process.on('unhandledRejection', (e) => {
   ok(etiquette.ouvert, 'le panneau du sol est ouvert — on est dessus');
   ok(/EGG/i.test(etiquette.texte || ''),
      `et il annonce l oeuf, pas « Loot » (${etiquette.texte})`);
+
+  /* ---- ET SON DESSIN EST BIEN LE SIEN ----
+   * Le code retombe sur la planche des six autres quand le fichier manque —
+   * c'est voulu, un butin invisible est pire qu'un butin mal colore. Mais ce
+   * repli est SILENCIEUX : sans cette verification, le sac d'oeuf pourrait
+   * porter le sac brun pour toujours sans que rien ne le dise. */
+  const dessine = await p.evaluate(() => {
+    const C = CanvasRenderingContext2D.prototype;
+    if (!C.__espionSac) {
+      C.__espionSac = true;
+      window.__sacsPeints = {};
+      const di = C.drawImage;
+      C.drawImage = function (im) {
+        const u = (im && (im.currentSrc || im.src)) || '';
+        const m = u.match(/(sac_oeuf|sacs)\.webp/);
+        if (m) window.__sacsPeints[m[1]] = (window.__sacsPeints[m[1]] || 0) + 1;
+        return di.apply(this, arguments);
+      };
+    }
+    window.__sacsPeints = {};
+    return true;
+  });
+  ok(dessine, 'on regarde ce que la page peint');
+  await p.waitForTimeout(700);
+  const peints = await p.evaluate(() => window.__sacsPeints);
+  ok((peints.sac_oeuf || 0) > 0,
+     `le sac d oeuf a SON dessin a l ecran (${peints.sac_oeuf || 0} fois)`);
+  ok(!(peints.sacs > 0),
+     `et il ne retombe pas sur la planche des six autres (${peints.sacs || 0})`);
   eq(auSol && auSol.contenu[0] && auSol.contenu[0].oe, 'legendaire',
      'et la page recoit l espece');
   const vu = await p.evaluate(() => {

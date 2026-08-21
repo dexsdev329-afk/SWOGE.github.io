@@ -251,6 +251,112 @@ process.on('unhandledRejection', (e) => {
   ok(resteAuSol && resteAuSol.contenu.every((o) => !o.stat),
      `et les communs sont restes par terre (${resteAuSol ? resteAuSol.contenu.length : 0})`);
 
+  /* ================== 6. ON PEUT LA DEPLACER, ET LA JETER ==================
+   *
+   * Une fiole prend une place du sac. Si elle ne peut ni se ranger ailleurs ni
+   * se jeter, un sac de huit places dont une case ne se vide pas est un sac de
+   * sept places — et le seul moyen de la reprendre serait de la boire.
+   */
+  console.log('\n-- la deplacer, la jeter --');
+  remplit(8);                                   // rien d'autre que les fioles
+  await p.waitForTimeout(500);
+  /* ---- LE RANG, PAS `data-place` ----
+   * Une case VIDE ne porte pas de `data-place` : elle ne porte pas de piece.
+   * C'est son RANG parmi les huit qui la designe, des deux cotes — c'est
+   * exactement ce que fait `ouEstLePointeur`. Un essai qui viserait
+   * `[data-place]` ne pourrait donc jamais lacher dans une case libre, c'est-a-
+   * dire dans le seul endroit ou l'on veut lacher. */
+  const etatSac = await p.evaluate(() => {
+    const c = document.getElementById('nxSac');
+    const cases = [].slice.call(c.querySelectorAll('.nxp-c'));
+    return cases.map((el, i) => ({ rang: i,
+                                   fiole: el.dataset.fiole || null,
+                                   sac: el.dataset.sac || null,
+                                   vide: el.classList.contains('vide') }));
+  });
+  const pleines = etatSac.filter((x) => x.fiole);
+  ok(pleines.length >= 2, `au moins deux fioles dans le sac (${pleines.length})`);
+
+  /* ---- LE FANTOME MONTRE LA FIOLE ----
+   * Il etait un `<img>` dont on remplissait la source avec celle de la case.
+   * Une fiole est dessinee par un fond CSS sur un `<u>` : il n'y a aucune
+   * source a copier, et le fantome qui suivait le doigt sortait VIDE. */
+  const depart = pleines[0], arrivee = etatSac.find((x) => x.vide);
+  ok(!!arrivee, 'et une case libre pour l\'y poser');
+  const caseN = (i) => document.querySelectorAll('#nxSac .nxp-c')[i];
+  const fantome = await p.evaluate((pl) => {
+    const el = document.querySelectorAll('#nxSac .nxp-c')[pl];
+    if (!el) return { err: 'case introuvable' };
+    const r = el.getBoundingClientRect();
+    el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0,
+      clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 }));
+    const f = document.querySelector('.nxp-fantome');
+    return { existe: !!f,
+             fiole: !!(f && f.querySelector('u.fiole')),
+             img: !!(f && f.querySelector('img')),
+             fond: f && f.querySelector('u.fiole')
+               ? getComputedStyle(f.querySelector('u.fiole')).backgroundImage : '' };
+  }, depart.rang);
+  ok(fantome.existe, 'prendre une fiole cree un fantome');
+  ok(fantome.fiole, 'et le fantome porte le dessin de la FIOLE, pas un vide');
+  ok(/potions_stat/.test(fantome.fond || ''),
+     `avec sa planche (${String(fantome.fond).slice(0, 60)})`);
+
+  /* ---- ET ON LA REPOSE AILLEURS ---- */
+  const avantPlaces = await p.evaluate(() => {
+    const c = document.getElementById('nxSac');
+    return [].slice.call(c.querySelectorAll('.nxp-c')).map((el) => el.dataset.fiole || '');
+  });
+  await p.evaluate((pl) => {
+    const el = document.querySelectorAll('#nxSac .nxp-c')[pl];
+    const r = el.getBoundingClientRect();
+    document.dispatchEvent(new PointerEvent('pointerup', { bubbles: true,
+      clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 }));
+  }, arrivee.rang);
+  await p.waitForTimeout(700);
+  const apresPlaces = await p.evaluate(() => {
+    const c = document.getElementById('nxSac');
+    return [].slice.call(c.querySelectorAll('.nxp-c')).map((el) => el.dataset.fiole || '');
+  });
+  ok(JSON.stringify(avantPlaces) !== JSON.stringify(apresPlaces),
+     `la fiole a change de case (${JSON.stringify(avantPlaces)} -> ${JSON.stringify(apresPlaces)})`);
+  ok(apresPlaces.filter(Boolean).length === avantPlaces.filter(Boolean).length,
+     'et aucune n\'a disparu au passage');
+
+  /* ---- ET ON LA JETTE PAR TERRE ----
+   * `realmDepose` lisait « st:att » comme un identifiant d'objet, donc NaN,
+   * donc « Unknown item ». On ne pouvait plus s'en defaire autrement qu'en la
+   * buvant. */
+  const avantJet = moteur.fiolesPour(w.address)
+    .reduce((t, f) => t + f.sac, 0);
+  monde0.sacs.length = 0;
+  const quelle = apresPlaces.findIndex(Boolean);
+  await p.evaluate((pl) => {
+    const el = document.querySelectorAll('#nxSac .nxp-c')[pl];
+    const r = el.getBoundingClientRect();
+    el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0,
+      clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 }));
+    /* On lache sur le CANEVAS : c'est « par terre ». */
+    const c = document.querySelector('canvas');
+    const rc = c.getBoundingClientRect();
+    document.dispatchEvent(new PointerEvent('pointerup', { bubbles: true,
+      clientX: rc.left + rc.width * 0.3, clientY: rc.top + rc.height * 0.5 }));
+  }, quelle);
+  await p.waitForTimeout(900);
+  const refusJet = await p.evaluate(() => {
+    const s = window.__s[0];
+    const r = s.__m.filter((m) => m.type === 'realmDepose').pop();
+    return r ? (r.refus || null) : 'aucune reponse';
+  });
+  ok(!refusJet, `le serveur accepte de la poser (${refusJet || 'aucun refus'})`);
+  const apresJet = moteur.fiolesPour(w.address).reduce((t, f) => t + f.sac, 0);
+  ok(apresJet === avantJet - 1,
+     `elle a quitte le sac (${avantJet} -> ${apresJet})`);
+  const auSol = monde0.sacs.find((s) => s.contenu.some((o) => o.stat));
+  ok(!!auSol, 'et elle est par terre, dans un sac');
+  ok(auSol && auSol.sac === 'bleu',
+     `dans un sac BLEU, celui des fioles (${auSol ? auSol.sac : '-'})`);
+
   ok(erreurs.length === 0, 'aucune erreur de page' +
      (erreurs.length ? ' — ' + erreurs.slice(0, 3).join(' | ') : ''));
 

@@ -1015,9 +1015,28 @@
        moment-la, ancree a la case d'origine. */
     if (source.el) montreFiche(objetDeLaCase(source.el), source.el);
     document.body.classList.add('nxdrag');
-    elFantome = document.createElement('img');
+    /* ---- LE FANTOME EST UNE COPIE, PAS UNE IMAGE ----
+     *
+     * C'etait un `<img>` dont on remplissait la source avec celle de la case.
+     * Ca marche pour une piece — elle a un `<img>` — et pas pour une FIOLE de
+     * stat : elle est dessinee par un fond CSS sur un `<u>`, il n'y a aucune
+     * source a copier. On prenait donc une fiole et le fantome qui suivait le
+     * doigt etait vide. C'est ce qu'on nous a rapporte : « la photo ne
+     * s'affiche pas ».
+     *
+     * On COPIE ce que la case montre, quelle que soit sa forme. La page n'a
+     * plus a savoir comment un objet est dessine — et le jour ou une troisieme
+     * facon apparait, elle n'aura pas a l'apprendre non plus. */
+    elFantome = document.createElement('div');
     elFantome.className = 'nxp-fantome';
-    elFantome.src = source.src || '';
+    var dessin = source.el && source.el.querySelector
+      ? source.el.querySelector('img, u.fiole') : null;
+    if (dessin) elFantome.appendChild(dessin.cloneNode(true));
+    else if (source.src) {
+      var im = document.createElement('img');
+      im.src = source.src;
+      elFantome.appendChild(im);
+    }
     document.body.appendChild(elFantome);
     bougePrise(ev.clientX, ev.clientY);
     clic(false);
@@ -1860,6 +1879,10 @@
      dessin, trois planches. Deux listes separees auraient donne deux
      collisions a tenir d'accord. */
   var MUR_DONJON = 8;
+  /* Le temps que met une porte a s'ouvrir en grand. Court : c'est un
+     dechirement, pas une animation d'attente — et pendant ce temps-la elle est
+     plus etroite qu'elle ne le sera, donc moins visible. */
+  var PORTE_OUVERTURE = 0.7;
   /* ---- OU S'ARRETE VRAIMENT LE DESSIN D'UN BLOC ----
    *
    * Les rochers avaient l'air POSES SUR le sol plutot que dedans : un
@@ -2185,20 +2208,115 @@
    * argument, donc a jeter une exception a chaque image. Le seul symptome
    * aurait ete un ecran de coffre noir.
    */
+  /* ---- CE QUE LA PLANCHE OCCUPE VRAIMENT DE SA CASE ----
+   *
+   * La porte est un OVALE ETROIT dans un carre : sa derniere image tient sur
+   * soixante et un pixels de large et cent vingt-trois de haut, dans une case
+   * de cent vingt-huit. Caler la CASE sur le rayon du portail donnait donc une
+   * porte moitie moins large que le cercle ou l'on entre — on marchait dedans
+   * sans avoir l'impression d'y etre.
+   *
+   * On MESURE, comme pour le cercle d'annonce et pour l'assise des rochers :
+   * une fois, sur la derniere image (celle de la porte ouverte), et l'on garde
+   * la largeur et le bas du dessin en fraction de la case. Les ecrire a la main
+   * aurait fait deux nombres a tenir d'accord avec un dessin qu'on remplacera.
+   */
+  var PORTE_MESURE = null;
+  function mesurePorte() {
+    if (PORTE_MESURE) return PORTE_MESURE;
+    var repli = { large: 0.48, haute: 0.96, bas: 0.96 };
+    if (!IMG_PORTE || !IMG_PORTE.naturalWidth) return repli;
+    var c = IMG_PORTE.naturalHeight;
+    var n = Math.max(1, Math.round(IMG_PORTE.naturalWidth / c));
+    try {
+      var cv = document.createElement('canvas');
+      cv.width = c; cv.height = c;
+      var c2 = cv.getContext('2d', { willReadFrequently: true });
+      c2.drawImage(IMG_PORTE, (n - 1) * c, 0, c, c, 0, 0, c, c);
+      var d = c2.getImageData(0, 0, c, c).data;
+      var x0 = c, x1 = -1, y0 = c, y1 = -1;
+      for (var y = 0; y < c; y++) {
+        for (var x = 0; x < c; x++) {
+          /* Le seuil compte : ces planches descendent a alpha 1 autour du
+             dessin, invisible a l'oeil mais assez pour faire mesurer la case
+             entiere. C'est la meme lecon que dans le decoupeur. */
+          if (d[(y * c + x) * 4 + 3] < 40) continue;
+          if (x < x0) x0 = x;
+          if (x > x1) x1 = x;
+          if (y < y0) y0 = y;
+          if (y > y1) y1 = y;
+        }
+      }
+      if (x1 < x0 || y1 < y0) return repli;
+      PORTE_MESURE = { large: (x1 - x0 + 1) / c, haute: (y1 - y0 + 1) / c,
+                       bas: (y1 + 1) / c };
+    } catch (e) { return repli; }
+    return PORTE_MESURE;
+  }
+
   function dessinePorte(p) {
-    var T = 128;
+    var teinte = p.rt ? '#7CFF9B' : '#C07BFF';
+    var R = (MONDE_C && MONDE_C.portail && MONDE_C.portail.rayon) || 72;
     /* Le halo d'abord, sous elle : c'est ce qui la fait voir de loin, au milieu
        des eclats et des chiffres de degats. Une porte qui s'ouvre a cent
        quatre-vingt-dix unites derriere une creature qu'on regardait mourir se
-       rate sans lui. */
-    var teinte = p.rt ? '#7CFF9B' : '#C07BFF';
-    var bat = 0.72 + 0.28 * Math.sin(performance.now() / 460);
-    halo(p.x, p.y + 6, T * 0.46 * bat, teinte, 0.30);
+       rate sans lui. Il a le rayon OU L'ON ENTRE : c'est la seule facon de dire
+       « d'ici, ca marche » sans ecrire un chiffre. */
+    var bat = 0.82 + 0.18 * Math.sin(performance.now() / 460);
+    halo(p.x, p.y + 6, R * bat, teinte, 0.30);
     if (!IMG_PORTE || !IMG_PORTE.complete || !IMG_PORTE.naturalWidth) return;
     var cadre = IMG_PORTE.naturalHeight;
     var n = Math.max(1, Math.round(IMG_PORTE.naturalWidth / cadre));
-    var img = Math.floor(performance.now() / 130) % n;
+
+    /* ---- ELLE S'OUVRE UNE FOIS, ELLE NE CLIGNOTE PAS ----
+     *
+     * Les quatre images ne sont pas une boucle : c'est une OUVERTURE. Une
+     * fente, un ovale etroit, un ovale large, la porte ouverte. Jouees en
+     * rond, la porte se refermait en fente toutes les demi-secondes — et la
+     * premiere image ne remplit que quatre pour cent de sa case. Elle
+     * passait donc les trois quarts du temps invisible, et l'on nous a
+     * rapporte exactement ca : « je ne vois pas le portail ».
+     *
+     * L'AGE se DEDUIT, il ne se garde pas : le serveur envoie le temps
+     * restant, la duree totale est arrivee a l'entree, et la difference est
+     * l'age. Un compteur par porte aurait demande de le creer a la naissance
+     * et de l'effacer a la fermeture — deux occasions de fuir, pour un
+     * chiffre qu'on possede deja. */
+    var img = n - 1;
+    if (p.r !== null && p.r !== undefined) {
+      var duree = (MONDE_C && MONDE_C.portail && MONDE_C.portail.duree) || 180;
+      var age = duree - p.r;
+      if (age < PORTE_OUVERTURE) {
+        img = Math.max(0, Math.min(n - 1, Math.floor(age / (PORTE_OUVERTURE / n))));
+      }
+    }
+
+    /* ---- LA TAILLE SE PREND SUR LE DESSIN, ET PAR SA HAUTEUR ----
+     * Sur la case, l'ovale serait moitie moins large que le cercle ou l'on
+     * entre — on marcherait dedans sans avoir l'impression d'y etre.
+     * Mais sur sa LARGEUR non plus : la planche est un ovale haut et etroit,
+     * et l'ajuster en largeur au cercle d'entree le fait monter a plus de
+     * trois cents unites — quatre fois la taille du personnage, la moitie de
+     * l'ecran. C'est donc la HAUTEUR qui commande, a un peu moins de trois
+     * fois le rayon : une porte se lit debout, et celle-la doit se voir de
+     * loin sans manger la scene. */
+    var m = mesurePorte();
+    var T = (R * 2.8) / Math.max(0.05, m.haute);
+    /* Et les PIEDS au sol : le bas du dessin se pose sur le point du portail,
+       pas le bas de la case. Un ovale qui flotte quinze pixels au-dessus de sa
+       zone donne l'impression qu'on passe dessous. */
+    var haut = p.y + 6 - m.bas * T;
+
     ctx.save();
+    /* Elle respire une fois ouverte. Sans ca une porte ouverte est un decor
+       colle : c'est le seul mouvement qui dit qu'elle est vivante, et il ne la
+       fait jamais disparaitre. */
+    if (img === n - 1) {
+      var souffle = 1 + 0.035 * Math.sin(performance.now() / 520);
+      ctx.translate(p.x, p.y + 6);
+      ctx.scale(1, souffle);
+      ctx.translate(-p.x, -(p.y + 6));
+    }
     /* Elle clignote sur la fin, comme un sac : c'est la seule facon de dire « il
        sera trop tard dans dix secondes » sans ecrire un chiffre par-dessus le
        jeu. Une porte qui ne se referme jamais (`r` nul) ne clignote pas. */
@@ -2207,7 +2325,7 @@
       ctx.globalAlpha = Math.max(0.35, cl);
     }
     ctx.drawImage(IMG_PORTE, img * cadre, 0, cadre, cadre,
-                  p.x - T / 2, p.y - T + 22, T, T);
+                  p.x - T / 2, haut, T, T);
     ctx.restore();
   }
 

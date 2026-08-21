@@ -160,6 +160,12 @@ process.on('unhandledRejection', (e) => {
         const bouts = String(src).split('?')[0].split('/');
         window.__peint.push({ src: bouts[bouts.length - 1],
                               dossier: bouts[bouts.length - 2] || '',
+                              /* La case SOURCE : c'est le seul moyen de savoir
+                                 QUELLE image d'une planche a ete posee, et donc
+                                 de voir une animation jouee a l'envers ou en
+                                 rond. */
+                              sx: n === 9 ? arguments[1] : 0,
+                              sw: n === 9 ? arguments[3] : 0,
                               dx: arguments[n === 9 ? 5 : 1], dy: arguments[n === 9 ? 6 : 2],
                               dw: arguments[n === 9 ? 7 : 3], dh: arguments[n === 9 ? 8 : 4],
                               f: window.__image,
@@ -325,6 +331,56 @@ process.on('unhandledRejection', (e) => {
   ok(dessin.rendues > 0 && dessin.images >= dessin.rendues - 2,
      `a chaque image (${dessin.images} sur ${dessin.rendues} rendues)`);
   ok(dessin.taille >= 64, `et assez grande pour se voir (${dessin.taille} px)`);
+
+  /* ---- ELLE NE SE REFERME PAS TOUTE SEULE ----
+   *
+   * Les quatre cases de la planche sont une OUVERTURE — une fente, un ovale
+   * etroit, un ovale large, la porte ouverte — et pas une boucle. Jouees en
+   * rond, la porte revenait a la fente toutes les demi-secondes, et la premiere
+   * case ne remplit que quatre pour cent de son cadre : elle passait les trois
+   * quarts du temps invisible. C'est ce qu'on nous a rapporte, mot pour mot :
+   * « je ne vois pas le portail ».
+   * Une seconde apres son ouverture, elle doit donc etre sur sa DERNIERE case,
+   * et y rester. */
+  const suite = await p.evaluate(() => {
+    const v = window.__peint.filter((o) => o.src === 'obj_portail.webp' && o.ecran);
+    /* La suite des cases DANS L'ORDRE ou elles ont ete posees, une entree par
+       changement : c'est la seule forme qui distingue une ouverture d'une
+       boucle. Un simple decompte dirait « les cases 2 et 3 ont ete vues » sans
+       dire si l'on est passe de 2 a 3 ou de 3 a 2. */
+    const out = [];
+    v.forEach((o) => {
+      const k = Math.round(o.sx / Math.max(1, o.sw));
+      if (out[out.length - 1] !== k) out.push(k);
+    });
+    return out;
+  });
+  /* ELLE N'AVANCE QUE DANS UN SENS. Une porte qui repasse par une case
+     precedente est une porte qui se referme. */
+  let recule = 0;
+  for (let i = 1; i < suite.length; i++) if (suite[i] < suite[i - 1]) recule++;
+  ok(recule === 0, `elle ne revient jamais en arriere (${JSON.stringify(suite)})`);
+  ok(suite[suite.length - 1] === 3,
+     `et elle finit ouverte, sur la derniere case (${suite[suite.length - 1]})`);
+  /* ET ELLE S'Y ARRETE : la derniere case tient la grande majorite du temps,
+     l'ouverture n'est qu'un dechirement. */
+  const tenue = await p.evaluate(() => {
+    const v = window.__peint.filter((o) => o.src === 'obj_portail.webp' && o.ecran);
+    const der = v.filter((o) => Math.round(o.sx / Math.max(1, o.sw)) === 3).length;
+    return { der, tout: v.length };
+  });
+  ok(tenue.der > tenue.tout * 0.6,
+     `et elle y reste (${tenue.der} images sur ${tenue.tout})`);
+  /* ET ELLE FAIT LA TAILLE D'UNE PORTE. Calee sur sa case, l'ovale sortait
+     moitie moins large que le cercle ou l'on entre — on marchait dedans sans
+     avoir l'impression d'y etre. */
+  const rayon = await p.evaluate(() => {
+    const s = window.__s[0];
+    const e = s.__m.filter((m) => m.type === 'realmEntre').pop();
+    return (e && e.portail && e.portail.rayon) || 72;
+  });
+  ok(dessin.taille > rayon * 2,
+     `et elle est plus haute que large que sa zone d'entree (${dessin.taille} px pour un rayon de ${rayon})`);
 
   /* ================== 3. LA FLECHE VERS UNE PORTE LOINTAINE ==================
    *

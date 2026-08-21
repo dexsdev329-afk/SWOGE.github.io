@@ -624,9 +624,20 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
  * Il suit le doigt ou la souris, sans jamais intercepter le pointeur : sinon
  * `elementFromPoint` le trouverait LUI a chaque image et ne verrait jamais la
  * case sur laquelle on le lache. */
+/* Ce n'est plus un <img> mais une BOITE qui contient la copie de ce que la
+   case montre : une piece a une image, une fiole de stat a un fond CSS sur un
+   <u>, et le fantôme ne doit pas avoir à connaître la différence. */
 .nxp-fantome{ position:fixed; z-index:2147483100; width:44px; height:44px;
-  object-fit:contain; pointer-events:none; transform:translate(-50%,-50%);
+  pointer-events:none; transform:translate(-50%,-50%);
+  display:flex; align-items:center; justify-content:center;
   filter:drop-shadow(0 6px 12px rgba(0,0,0,.6)); opacity:.92; }
+.nxp-fantome > img{ width:100%; height:100%; object-fit:contain; }
+/* La fiole clonée garde sa planche : elle est cadrée par `background-position`,
+   posé en style en ligne sur l'élément — donc il voyage avec la copie. */
+.nxp-fantome > u.fiole{ display:block; width:100%; height:100%;
+  background-image:url('img/nexus/objets/potions_stat.webp');
+  background-repeat:no-repeat; background-size:800% 100%;
+  image-rendering:pixelated; }
 /* Pendant le geste, rien ne se selectionne ni ne defile sous les doigts. */
 body.nxdrag{ user-select:none; -webkit-user-select:none; touch-action:none; }
 body.nxdrag #nxSac, body.nxdrag #nxEquip{ outline:1px dashed rgba(255,197,61,.5);
@@ -1072,7 +1083,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
   </div>
 </div>
 
-<script src="nexus.js?v=20260821d" defer></script>
+<script src="nexus.js?v=20260821e" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

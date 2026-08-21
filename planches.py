@@ -229,6 +229,42 @@ def nettoie_isoles(im, part=0.03, ecart=0.08):
     return im
 
 
+def lueur(source, seuil=8, gamma=1.0):
+    """Un dessin de LUMIERE sur fond noir : l'alpha vient de la luminosite.
+
+    `detoure_sombre` propage depuis les bords, et c'est la bonne methode pour un
+    objet solide. Elle ne marche pas pour un ANNEAU : le noir enferme au centre
+    ne touche aucun bord, la propagation ne l'atteint jamais, et le cercle
+    d'annonce se retrouve avec un disque noir opaque au milieu — pose sur le
+    sol, il cache le sol.
+
+    On ne peut pas non plus enlever « toutes les poches sombres » comme on
+    enleve les poches claires d'un damier : une ombre portee est une poche
+    sombre, et c'est du dessin.
+
+    Pour une LUEUR, la question ne se pose pas : ce qui est noir est vide, ce
+    qui brille est le dessin, et entre les deux il y a un degrade qu'on veut
+    garder — c'est lui qui fait le halo. L'alpha EST la luminosite. Le seuil
+    coupe le bruit de compression ; le gamma sert a durcir un halo trop mou.
+    """
+    im = source if isinstance(source, Image.Image) else Image.open(source)
+    im = im.convert('RGBA')
+    px = im.load()
+    w, h = im.size
+    for y in range(h):
+        for x in range(w):
+            r, g, b, a = px[x, y]
+            v = max(r, g, b)
+            if v <= seuil:
+                px[x, y] = (0, 0, 0, 0)
+                continue
+            k = (v - seuil) / float(255 - seuil)
+            if gamma != 1.0:
+                k = k ** gamma
+            px[x, y] = (r, g, b, min(255, int(round(k * 255))))
+    return im
+
+
 def _fondClair(p, seuilClair, seuilGris):
     r, g, b = p[0], p[1], p[2]
     return min(r, g, b) >= seuilClair and (max(r, g, b) - min(r, g, b)) <= seuilGris

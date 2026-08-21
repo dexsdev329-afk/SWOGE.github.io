@@ -500,7 +500,12 @@
      * les deux — sans lui, un simple rafraichissement de la liste aurait
      * affiche un toast d'achat a chaque ouverture de l'onglet. */
     if (m.type === 'skins') {
-      SKINS = { catalogue: m.catalogue, actif: m.actif };
+      /* `or` voyage avec le catalogue : c'est le seul endroit du tiroir qui
+         connait l'or du compte, et une fiche affichant un prix en or sans
+         dire ce qu'on a laisse deviner. Recopier les champs un par un est
+         DELIBERE — un `Object.assign(m)` embarquerait `type` et `error`, et
+         un refus resterait colle a l'etat jusqu'au message suivant. */
+      SKINS = { catalogue: m.catalogue, actif: m.actif, or: m.or };
       if (m.error) toast(m.error, 'bad');
       else if (m.achete) {
         var acq = (m.catalogue || []).filter(function (s) { return s.id === m.achete; })[0] || {};
@@ -1056,7 +1061,7 @@
      s'allume seulement quand on pense a regarder ne ramene personne. */
   var SERIE = null, ATTENTE = null, OFFERT = null;
   var MARCHE = null, MARCHE_F = 'tout', MARCHE_Q = '';
-  var SKINS = null;   // { catalogue, actif } — independant de SAISON
+  var SKINS = null;   // { catalogue, actif, or } — independant de SAISON
   var PERSO_PAR_SKIN = {};                // skinId -> etat (niveau/xp/stats/equip) une fois recu
   var EQUIPABLE = null;                   // { fruits, armes } — ce qu'il y a a equiper, toutes saisons confondues
   var EQUIPABLE_DEMANDE = false;          // pour ne demander la liste qu'une fois par session
@@ -2121,6 +2126,26 @@
       '.swk-c .swk-free{position:absolute;top:8px;right:8px;text-decoration:none;' +
         'font-size:9.5px;font-weight:900;letter-spacing:.08em;color:#0d1117;' +
         'background:#7CFF9B;border-radius:99px;padding:2px 7px;line-height:1.4;}' +
+      /* Le compteur d edition prend la MEME place que « FREE » — les deux ne
+         peuvent pas coexister sur une carte (un skin offert n a pas d
+         edition), et deux pastilles au meme coin se superposeraient. */
+      '.swk-c .swk-ed{position:absolute;top:8px;right:8px;text-decoration:none;' +
+        'font-size:9.5px;font-weight:900;letter-spacing:.06em;color:#0d1117;' +
+        'background:#FFC53D;border-radius:99px;padding:2px 7px;line-height:1.4;}' +
+      '.swk-c .swk-ed.vide{background:#5B6478;color:#0d1117;}' +
+      '.swk-edl{font-style:normal;font-size:11.5px;font-weight:700;color:#FFC53D;' +
+        'letter-spacing:.03em;}' +
+      '.swk-edl.vide{color:#8DA0C4;}' +
+      '.swk-avoir{font-style:normal;font-size:11px;color:#8DA0C4;}' +
+      /* La fiche empile maintenant trois choses sous le portrait (le compteur
+         d edition, l or qu on a, le bouton). En flux normal, un <i> et un
+         <button> se rangent cote a cote sur la meme ligne : la colonne le DIT
+         plutot que d ajouter un <br> entre chaque. */
+      '.swk-da{display:flex;flex-direction:column;align-items:center;gap:6px;}' +
+      /* « SOLD OUT » n est pas une bonne nouvelle : il ne prend pas le vert de
+         « Wearing », qui se lit comme une reussite. */
+      '.swk-c .swtag.swk-fini,.swk-da .swtag.swk-fini{color:#8DA0C4;' +
+        'border-color:rgba(255,255,255,.16);}' +
       /* ---- LA FICHE EN GRAND ----
        *
        * Meme coque que la feuille de vente (.swv, .swv-f, .swv-x) — mais PAS
@@ -4124,9 +4149,23 @@
       });
       return w;
     }
+    /* ---- L EDITION EPUISEE ----
+     * Le controle vient APRES « Wear » : quelqu un qui possede deja un skin
+     * d edition doit pouvoir le porter le jour ou le dernier exemplaire part.
+     * Un bouton « SOLD OUT » a la place du sien lui ferait croire qu il l a
+     * perdu. */
+    if (s.edition && !s.reste) {
+      var fin = document.createElement('span');
+      fin.className = 'swtag swk-fini'; fin.textContent = 'SOLD OUT';
+      return fin;
+    }
     var b = document.createElement('button');
     b.type = 'button'; b.className = 'swact swprix';
-    b.innerHTML = nb(s.prix, 0) + ' <i>$SWOGE</i>';
+    /* L unite vient du SERVEUR. « 20 000 » se lit exactement pareil en or et
+       en jetons, et la deviner d apres le montant — « c est petit, donc c est
+       de l or » — c est afficher un prix dans une monnaie que le joueur n a
+       pas choisie. */
+    b.innerHTML = nb(s.prix, 0) + ' <i>' + (s.monnaie === 'or' ? 'GOLD' : '$SWOGE') + '</i>';
     b.addEventListener('click', function (e) {
       e.stopPropagation();
       b.disabled = true;
@@ -4162,6 +4201,11 @@
       var actif = SKINS.actif === s.id;
       var d = document.createElement('div');
       d.className = 'swk-c' + (actif ? ' actif' : '');
+      /* La carte porte son identifiant, comme la fiche en grand. Sans lui, le
+         seul moyen de savoir de QUI parle une carte est de relire le nom
+         d'un fichier image dans un `src` — ce qui casse le jour ou l'image
+         manque. */
+      d.dataset.id = s.id;
       d.style.setProperty('--t', s.couleur || '#8DA0C4');
       /* Toute la carte s'ouvre en grand — pas seulement l'image — parce que
          rien sur une carte de 84 px ne dit qu'elle cache un geste distinct du
@@ -4175,6 +4219,10 @@
       d.innerHTML =
         '<div class="ico"><img alt="" src="img/skins/skin_' + encodeURIComponent(s.id) + '.webp" onerror="this.remove()"></div>' +
         (s.offert ? '<u class="swk-free">FREE</u>' : '') +
+        (s.edition
+          ? '<u class="swk-ed' + (s.reste ? '' : ' vide') + '">' +
+              (s.reste ? nb(s.reste, 0) + ' left' : 'GONE') + '</u>'
+          : '') +
         '<b class="nm">' + ech(s.nom) + '</b>' +
         '<i class="pw">' + points + '</i>' +
         '<i class="pv">' + ech(s.pouvoir) + '</i>';
@@ -4320,6 +4368,29 @@
     }
     var za = skinBoite.querySelector('.swk-da');
     za.innerHTML = '';
+    /* ---- CE QU IL RESTE, EN TOUTES LETTRES ----
+     * La pastille de la carte tient en deux mots ; la fiche est l endroit ou
+     * l on decide de payer, et « 7 left » sans le total ne dit pas si l
+     * edition etait de dix ou de mille. */
+    if (s.edition) {
+      var el = document.createElement('i');
+      el.className = 'swk-edl' + (s.reste ? '' : ' vide');
+      el.textContent = s.reste
+        ? 'Limited edition — ' + nb(s.reste, 0) + ' of ' + nb(s.edition, 0) + ' left'
+        : 'Limited edition — all ' + nb(s.edition, 0) + ' claimed';
+      za.appendChild(el);
+    }
+    /* ---- L OR QU ON A ----
+     * On l AFFICHE, on ne bloque pas le bouton avec. Ce chiffre date de la
+     * derniere reponse du serveur, et l or monte a chaque monstre tue : un
+     * bouton grise sur une valeur perimee refuserait un achat que le compte
+     * peut se payer. Le serveur reste le seul a dire non. */
+    if (!s.possede && !s.offert && s.monnaie === 'or' && SKINS && SKINS.or != null) {
+      var av = document.createElement('i');
+      av.className = 'swk-avoir';
+      av.textContent = 'You have ' + nb(SKINS.or, 0) + ' gold';
+      za.appendChild(av);
+    }
     za.appendChild(boutonSkin(s, actif));
   }
 

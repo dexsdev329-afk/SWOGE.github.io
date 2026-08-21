@@ -65,8 +65,18 @@ process.on('unhandledRejection', (e) => {
   const port = await new Promise((r) => { const s = net.createServer(); s.listen(0, () => { const q = s.address().port; s.close(() => r(q)); }); });
   process.env.PORT = String(port);
   const { Realm } = require(path.join(SERVEUR, 'realm'));
-  let monde0 = null; const pas0 = Realm.prototype.pas;
-  Realm.prototype.pas = function (dt) { if (!this.plan) monde0 = this; return pas0.call(this, dt); };
+  /* ---- IL Y A PLUSIEURS MONDES OUVERTS ----
+   * Cet espion gardait « la derniere simulation qui a battu ». Il n y en avait
+   * qu une ; depuis la deuxieme porte du Nexus il y en a deux, et `monde0`
+   * valait une fois sur deux celle ou notre joueur n est pas. On les collecte
+   * toutes et l on designe la bonne par LE JOUEUR QU ELLE CONTIENT. */
+  let monde0 = null; const ouverts = new Set(); const pas0 = Realm.prototype.pas;
+  Realm.prototype.pas = function (dt) {
+    if (!this.plan) ouverts.add(this);
+    return pas0.call(this, dt);
+  };
+  const mondeDe = (a) => [...ouverts].find((r) => r.joueurs.has(String(a).toLowerCase()))
+                      || [...ouverts][0] || null;
   require(path.join(SERVEUR, 'server'));
   const ethers = require(path.join(SERVEUR, 'node_modules', 'ethers'));
   await new Promise((r) => setTimeout(r, 1400));
@@ -123,6 +133,7 @@ process.on('unhandledRejection', (e) => {
   await p.evaluate(() => window.__s[0].send(JSON.stringify({ type: 'realmJoin' })));
   await p.waitForTimeout(1600);
   const addr = w.address.toLowerCase();
+  monde0 = mondeDe(addr);
   ok(!!monde0 && monde0.joueurs.has(addr), 'on est dans le monde de combat');
 
   /* ================== 1. LE MANCHE A REMPLACE LA CROIX ================== */
@@ -258,10 +269,55 @@ process.on('unhandledRejection', (e) => {
   });
   ok(zoomTel !== null, 'le zoom se mesure');
   ok(zoomTel < 1, `au doigt, il descend SOUS 1 (${zoomTel && zoomTel.toFixed(2)})`);
-  ok(zoomTel >= 0.5, `mais pas sous la moitie, ou plus rien ne se distingue (${zoomTel && zoomTel.toFixed(2)})`);
-  const vu = await p.evaluate((z) => Math.round((document.querySelector('canvas').height /
-    (window.devicePixelRatio || 1)) / z), zoomTel);
-  ok(vu > 1000, `on voit ${vu} unites de monde de haut (un ordinateur en voit ~900)`);
+  ok(zoomTel >= 0.38, `mais pas sous 0,38, ou plus rien ne se distingue (${zoomTel && zoomTel.toFixed(2)})`);
+  const combien = () => p.evaluate(() => {
+    const z = window.__zoom.filter((x) => x > 0 && x < 8);
+    const zz = z.length ? z[z.length - 1] : null;
+    if (!zz) return null;
+    return Math.round((document.querySelector('canvas').height /
+                       (window.devicePixelRatio || 1)) / zz);
+  });
+  const vu = await combien();
+  ok(vu > 1200, `on voit ${vu} unites de monde de haut (un ordinateur en voit ~900)`);
+
+  /* ---- ET C EST UN REGLAGE ----
+   * « Je veux voir plus loin » n a pas de bonne reponse universelle : plus
+   * large montre les creatures plus tot, plus serre les garde lisibles. Ce qui
+   * se verifie n est donc pas UN chiffre, c est que le curseur AGIT — et qu il
+   * se souvient. Un reglage qu on refait a chaque visite n en est pas un. */
+  console.log('\n-- le curseur de distance de vue --');
+  const regle = async (v) => {
+    await p.evaluate((val) => {
+      const e = document.getElementById('nxVuePct');
+      e.value = String(val);
+      e.dispatchEvent(new Event('input', { bubbles: true }));
+      window.__zoom.length = 0;
+    }, v);
+    await p.waitForTimeout(400);
+    return combien();
+  };
+  const large = await regle(1800);
+  const serre = await regle(900);
+  ok(large !== null && serre !== null, 'le curseur existe et le zoom se remesure');
+  ok(large > serre + 200,
+     `pousse a fond on voit BIEN plus loin (${large} contre ${serre})`);
+  /* La borne mord sur un petit ecran : le chiffre affiche doit etre celui
+     qu on VOIT, pas celui qu on a demande — sinon on croit que le reglage a
+     cesse de repondre alors qu il est au bout de sa course. */
+  await regle(1800);
+  const affiche = await p.evaluate(() =>
+    Number((document.getElementById('nxVueVal') || {}).textContent));
+  const reel = await combien();
+  ok(Math.abs(affiche - reel) <= 40,
+     `et le chiffre affiche est celui qu on voit (${affiche} pour ${reel})`);
+
+  /* ---- IL SURVIT A LA VISITE SUIVANTE ---- */
+  await p.reload({ waitUntil: 'domcontentloaded' });
+  await p.waitForTimeout(1500);
+  const garde = await p.evaluate(() =>
+    Number((document.getElementById('nxVuePct') || {}).value));
+  ok(garde === 1800, `le choix est garde d une visite a l autre (${garde})`);
+  await p.evaluate(() => { try { localStorage.removeItem('swogeNexusVue'); } catch (e) {} });
 
   /* ---- ET A LA SOURIS, RIEN NE CHANGE ----
    * Le zoom sous 1 est pour le DOIGT. L'appliquer partout aurait rendu le

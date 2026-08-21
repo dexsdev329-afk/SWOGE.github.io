@@ -5309,6 +5309,7 @@
   });
   peintRepli();
 
+
   /** L'ennemi le plus proche, en coordonnees monde — ou `null`. Il n'y en a
       aucun aujourd'hui : les autres JOUEURS n'en sont pas, on ne se tire pas
       dessus dans une zone sure. La fonction existe pour que le jour ou les
@@ -6414,12 +6415,79 @@
     catch (e) { return false; }
   })();
   var MONDE_VISIBLE_H = 1000;         // unites de monde vues verticalement
-  var MONDE_VISIBLE_TACTILE = 1250;   // au doigt : plus haut, on voit venir
+  var MONDE_VISIBLE_TACTILE = 1400;   // au doigt : plus haut, on voit venir
+  /* ---- ET C'EST UN REGLAGE, PAS UN CHIFFRE EN DUR ----
+   *
+   * « Je veux voir plus loin » n'a pas de bonne reponse universelle : plus
+   * large montre les creatures plus tot, plus serre les garde lisibles. Un
+   * telephone de six pouces et une tablette n'ont pas le meme arbitrage, et
+   * personne ici ne peut le trancher a la place du joueur. On lui donne donc
+   * le curseur, et on garde son choix.
+   *
+   * La BORNE BASSE du zoom suit la cible au lieu d'etre fixe. Elle valait
+   * 0,55 en dur : au-dela de mille cent soixante unites le calcul rendait
+   * moins, la borne le remontait, et le curseur n'aurait plus rien fait
+   * passe la moitie de sa course — un reglage qui ne repond plus est pire
+   * qu'un chiffre fige, parce qu'on croit avoir regle quelque chose.
+   *
+   * Elle ne descend pas sous 0,38 pour autant : a ce zoom un personnage de
+   * quatre-vingts unites fait trente pixels et les petites creatures une
+   * douzaine. Un jeu ou l'on ne distingue plus ce qui tire n'est pas plus
+   * lisible parce qu'il montre plus de terrain. */
+  var VUE_MIN = 900, VUE_MAX = 1800;
+  var CLE_VUE = 'swogeNexusVue';
+  var vueChoisie = 0;                 // 0 = pas de choix : on prend le defaut
+  try {
+    var vv = parseInt(localStorage.getItem(CLE_VUE) || '', 10);
+    if (vv >= VUE_MIN && vv <= VUE_MAX) vueChoisie = vv;
+  } catch (e) {}
+  function cibleVue() {
+    if (vueChoisie) return vueChoisie;
+    return TACTILE ? MONDE_VISIBLE_TACTILE : MONDE_VISIBLE_H;
+  }
   function zoomCourant(vueH) {
-    var cible = TACTILE ? MONDE_VISIBLE_TACTILE : MONDE_VISIBLE_H;
-    var mini = TACTILE ? 0.55 : 1;
+    var cible = cibleVue();
+    /* Sur un ecran a la souris on ne reduit jamais sous 1 tant que le joueur
+       n'a rien demande : agrandir des pixels est acceptable, les reduire rend
+       le pixel art sale. Des qu'il regle, c'est lui qui decide. */
+    var mini = (TACTILE || vueChoisie) ? 0.38 : 1;
     return Math.max(mini, Math.min(4, vueH / cible));
   }
+
+  /* ---- LE CURSEUR VIT ICI, PAS AVEC LES AUTRES REGLAGES ----
+   * Il etait cable plus haut, avec l'auto-Nexus. `vueChoisie` et `TACTILE`
+   * sont declares ICI : plus haut dans le fichier ils existent (var), mais ne
+   * valent encore RIEN. Le curseur se peignait donc avec la valeur par defaut
+   * au lieu du choix relu, et l'on rouvrait les reglages sur un chiffre qui
+   * n'etait pas celui qu'on subissait. */
+  /* ---- LE CURSEUR DE DISTANCE DE VUE ----
+   * Il agit tout de suite : le zoom est relu a chaque image, il n'y a donc
+   * rien a rafraichir. Ce qui compte est de GARDER le choix — un reglage
+   * qu'on refait a chaque visite n'est pas un reglage. */
+  var elVuePct = document.getElementById('nxVuePct');
+  var elVueVal = document.getElementById('nxVueVal');
+  function peintVue() {
+    var v = cibleVue();
+    if (elVuePct) elVuePct.value = String(v);
+    /* On affiche ce qu'on VOIT, pas ce qu'on a demande. Sur un petit ecran la
+       borne du zoom mord avant le haut de la course : un curseur qui annonce
+       mille huit cents quand on en voit mille six cent quatre-vingts ment, et
+       le joueur croit que le reglage ne marche plus alors qu'il est au bout. */
+    if (elVueVal) {
+      var h = window.innerHeight || 640;
+      elVueVal.textContent = String(Math.round(h / zoomCourant(h)));
+    }
+  }
+  if (elVuePct) elVuePct.addEventListener('input', function () {
+    var v = Math.max(VUE_MIN, Math.min(VUE_MAX, Number(elVuePct.value) || 0));
+    vueChoisie = v;
+    try { localStorage.setItem(CLE_VUE, String(v)); } catch (e) {}
+    peintVue();
+  });
+  peintVue();
+  /* Tourner le telephone change la hauteur, donc ce qu'on voit : le chiffre
+     doit suivre, sinon il decrit l'ecran d'avant. */
+  window.addEventListener('resize', peintVue);
 
   function camAxe(pos, vue, monde) {
     if (monde <= vue) return (monde - vue) / 2;

@@ -1406,6 +1406,19 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
              aria-label="Auto-Nexus health threshold">
       <b id="nxEscVal">35%</b>
     </div>
+    <!-- ---- COMBIEN DE MONDE ON VOIT ----
+         Le reglage etait un chiffre en dur, et « je veux voir plus loin » n'a
+         pas de bonne reponse universelle : plus large montre les creatures
+         plus tot, plus serre les rend lisibles. C'est un arbitrage, donc un
+         curseur — et il se garde d'une visite a l'autre. -->
+    <div class="nxrp-ligne">
+      <span class="nxrp-nom">View distance<i class="nxrp-sous">wider sees danger sooner &middot; tighter keeps creatures readable</i></span>
+    </div>
+    <div class="nxrp-ligne nxrp-glisse" id="nxVueLigne">
+      <input id="nxVuePct" type="range" min="900" max="1800" step="50" value="1250"
+             aria-label="How much of the world you see">
+      <b id="nxVueVal">1250</b>
+    </div>
     <div class="nxrp-liste"></div>
     <div class="nxrp-note">Click to shoot, mouse to aim (right-click works too). Arrow keys always move your
       character too, whatever you bind above.</div>
@@ -1424,7 +1437,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
      racine ; c'est le seul endroit d'ou elle peut couvrir tout le reste. -->
 <div id="nxFiche"></div>
 
-<script src="nexus.js?v=20260821x" defer></script>
+<script src="nexus.js?v=20260821y" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

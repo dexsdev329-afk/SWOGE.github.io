@@ -185,6 +185,13 @@ def nettoie_isoles(im, part=0.03, ecart=0.08):
     rien. On propage donc depuis les pixels du dessin — c'est plus cher d'un
     parcours, et c'est la seule mesure qui veut dire ce qu'elle dit.
     """
+    # ---- ON TRAVAILLE SUR UNE COPIE ----
+    # `nettoie` le fait deja ; celle-ci ecrivait dans l'image recue. Deux
+    # fonctions voisines aux effets differents sont un piege : une image
+    # construite par `Image.fromarray` est en LECTURE SEULE, et l'appel
+    # explosait au premier eclat a effacer — donc seulement sur les planches
+    # qui en avaient un, ce qui est la pire facon de decouvrir un defaut.
+    im = im.copy()
     w, h = im.size
     px = im.load()
     vu = bytearray(w * h)

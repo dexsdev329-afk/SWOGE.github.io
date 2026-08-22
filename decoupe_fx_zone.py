@@ -173,6 +173,39 @@ def main():
     print('boite commune : %d x %d' % (cote, cote))
 
     finales = [f.crop((x0, y0, x0 + cote, y0 + cote)) for f in poses]
+    # ---- ET L ECLAT DU VOISIN QUI A SAUTE LE TRAIT ----
+    #
+    # Le fondu enleve ce qui est COLLE au trait de coupe. Une braise ou une
+    # feuille du voisin, elle, atterrit un peu plus loin dans notre case,
+    # detachee et flottant dans le vide — invisible sur la planche, et bien
+    # visible en jeu sous la forme d une poussiere qui apparait sans raison a
+    # cote de l effet.
+    #
+    # ICI et pas sur la case brute : tant que le fondu et le recadrage ne sont
+    # pas passes, l eclat tient encore au dessin par une trainee tenue le long
+    # du bord, `nettoie_isoles` le voit comme un morceau du meme amas et n y
+    # touche pas. Mesure sur l abysse : ZERO pixel retire avant, 80 apres.
+    #
+    # Ce qu il enleve est a la fois MINUSCULE et LOIN : les debris que l effet
+    # projette lui-meme sont nombreux mais proches, et ils restent — verifie,
+    # zero pixel retire sur les cinq autres cases.
+    # ---- ET L ECLAT DU VOISIN QUI A SAUTE LE TRAIT : ON LE GARDE ----
+    #
+    # Le fondu enleve ce qui est colle au trait de coupe. Une braise du voisin
+    # qui atterrit plus loin dans la case, detachee, il ne l'atteint pas.
+    # `nettoie_isoles` sait retirer ce genre d'eclat — minuscule et loin du
+    # dessin — et je l'ai essaye ici.
+    #
+    # IL NE FAUT PAS. Ces effets PROJETTENT des debris : des feuilles, des
+    # braises, des flocons qui derivent au-dessus de l'anneau. Sur la planche
+    # de glace, il emportait 436 et 317 pixels des deux dernieres cases,
+    # c'est-a-dire les flocons qui sont le sujet meme de ces deux images. Il
+    # n'a aucun moyen de distinguer une poussiere volee au voisin d'un debris
+    # que l'effet a lance lui-meme : les deux sont petits, detaches, et loin.
+    #
+    # Ce qui reste est de l'ordre de quatre-vingts pixels sur une case, visible
+    # un dixieme de seconde. C'est moins cher qu'une planche a qui l'on retire
+    # son dessin.
     planche = P.bandeau(finales, cote)
     os.makedirs(os.path.dirname(sortie), exist_ok=True)
     P.ecrit(planche, sortie)

@@ -7286,6 +7286,42 @@
   })();
 
   /** Le sol sous un point : la terre de l'enclos, le dallage, ou l'herbe. */
+  /* ---- LA TEXTURE COUVRE UN BLOC DE CASES, PAS UNE CASE ----
+   *
+   * L'herbe fait 1254 sur 1254 et se dessinait ENTIERE dans une case de 128 :
+   * ecrasee dix fois, puis repetee trois cents fois sur la place. Le
+   * quadrillage se voyait a l'oeil nu, et c'est ce qui faisait du Nexus une
+   * pelouse et non un lieu — aucun decor pose par-dessus n'y aurait change
+   * quoi que ce soit.
+   *
+   * Chaque case dessine maintenant SA PART d'une texture etalee sur trois
+   * cases sur trois. Deux gains, du meme coup :
+   *   - le motif ne revient plus que toutes les 384 unites au lieu de 128,
+   *     soit neuf fois moins souvent ;
+   *   - chaque pixel de la source occupe trois fois plus de place a l'ecran
+   *     (0,31 au lieu de 0,10), donc le detail cesse d'etre bouilli.
+   *
+   * Et AUCUNE couture nouvelle : la texture se raccorde deja avec elle-meme
+   * puisqu'elle etait posee bord a bord. La decouper en neuf et reposer les
+   * neuf morceaux dans le meme ordre redonne exactement le meme champ continu
+   * — on ne change pas le dessin, on change la taille a laquelle il se repete.
+   *
+   * `%` en javascript garde le signe : une colonne negative rendrait un index
+   * negatif, donc un decoupage hors de l'image, donc une case vide au bord
+   * ouest de la carte. Le double modulo l'evite. */
+  var BLOC_SOL = 3;
+  function peintSol(t, c, r) {
+    var sw = t.naturalWidth / BLOC_SOL, sh = t.naturalHeight / BLOC_SOL;
+    var sc = ((c % BLOC_SOL) + BLOC_SOL) % BLOC_SOL;
+    var sr = ((r % BLOC_SOL) + BLOC_SOL) % BLOC_SOL;
+    /* Un demi-pixel de recouvrement, comme pour la roche des donjons : a
+       l'echelle, deux cases voisines laissent sinon un lisere du fond entre
+       elles, et le sol se remet a ressembler a une grille — ce qu'on vient
+       precisement de faire disparaitre. */
+    ctx.drawImage(t, sc * sw, sr * sh, sw, sh,
+                  c * TUILE - 0.5, r * TUILE - 0.5, TUILE + 1, TUILE + 1);
+  }
+
   function solEn(px, py) {
     if (px >= FERME.x0 && px <= FERME.x1 && py >= FERME.y0 && py <= FERME.y1) return TUILES.ferme;
     return estChemin(px, py) ? TUILES.chemin : TUILES.herbe;
@@ -10022,7 +10058,7 @@
       for (var c = c0; c <= c1; c++) {
         var cx = c * TUILE + TUILE / 2, cy = r * TUILE + TUILE / 2;
         var t = solEn(cx, cy);
-        if (t.complete) ctx.drawImage(t, c * TUILE, r * TUILE, TUILE, TUILE);
+        if (t.complete && t.naturalWidth) peintSol(t, c, r);
       }
     }
 

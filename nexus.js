@@ -2580,13 +2580,46 @@
   var arcOuvert = false;
   var ARC_SRC = 'arcade/index.html';
 
-  function ouvreArcade() {
+  var elArcTitre = document.getElementById('nxArcTitre');
+  var elArcSous = document.getElementById('nxArcSous');
+  var elArcChoix = document.getElementById('nxArcChoix');
+
+  /* ---- UN SEUL GRAND ECRAN, POUR DEUX SALLES ----
+   *
+   * La borne d'arcade et l'ecran du cinema veulent exactement la meme chose :
+   * un cadre plein, le hall fige, les touches relachees en sortant, un bouton
+   * plein ecran. La seule difference tient en une ligne — la borne a UNE
+   * source et se charge tout de suite, l'ecran en a PLUSIEURS et attend qu'on
+   * choisisse.
+   *
+   * Deux panneaux auraient fait deux endroits ou corriger le meme oubli. Il y
+   * en a donc un, et ce qui change voyage dans son argument.
+   *
+   * `choix` compte pour une raison qui n'est pas cosmetique : tant qu'on n'a
+   * pas clique, RIEN ne part sur le reseau. Entrer dans une salle ne doit pas
+   * telecharger ce que personne n'a demande.
+   */
+  function ouvreEcran(cfg) {
     if (!elArcVoile || !elArcJeu) return;
     arcOuvert = true;
+    if (elArcTitre) elArcTitre.innerHTML = cfg.titre || '';
+    if (elArcSous) elArcSous.innerHTML = cfg.sous || '';
+    if (elArcChoix) {
+      elArcChoix.innerHTML = '';
+      var l = cfg.choix || [];
+      elArcChoix.hidden = !l.length;
+      l.forEach(function (c) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = c.nom;
+        b.setAttribute('data-src', c.src || '');
+        elArcChoix.appendChild(b);
+      });
+    }
     /* Recharger MEME si l'adresse n'a pas change : sans le passage par
        about:blank, revenir sur la borne rouvrait la partie a l'endroit ou on
        l'avait laissee, avec deux combattants a genoux et un chrono a zero. */
-    elArcJeu.src = ARC_SRC;
+    elArcJeu.src = cfg.src || 'about:blank';
     elArcVoile.classList.add('on');
     /* ---- GRAND ECRAN TOUT DE SUITE ----
      *
@@ -2608,6 +2641,28 @@
     /* La borne a sa propre musique : les deux ensemble ne font pas deux
        musiques, elles font du bruit. */
     musiqueArcade(false);
+  }
+
+  /* La borne d'arcade : une seule source, chargee tout de suite. */
+  function ouvreArcade() {
+    ouvreEcran({ titre: '&#127918; Arcade',
+                 sous: 'Two players, one keyboard. Click the screen first, then fight.',
+                 src: ARC_SRC });
+  }
+
+  /* ---- LE CHOIX DE LA VERSION ----
+   * Le bouton pose l'adresse dans le cadre. Il ne se contente pas de charger :
+   * il se MARQUE, sinon on ne sait plus laquelle des deux on regarde des que
+   * l'image demarre. */
+  if (elArcChoix) {
+    elArcChoix.addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('button[data-src]') : null;
+      if (!b || !elArcJeu) return;
+      var q = elArcChoix.querySelectorAll('button');
+      for (var i = 0; i < q.length; i++) q[i].classList.remove('actif');
+      b.classList.add('actif');
+      elArcJeu.src = b.getAttribute('data-src') || 'about:blank';
+    });
   }
   function fermeArcade(parLaMain) {
     arcOuvert = false;
@@ -3478,6 +3533,34 @@
    * tapis s'arrete. J'ai renonce a lire une salle a l'oeil apres m'etre trompe
    * deux fois sur l'arcade.
    */
+  /* ================== SWOGE FLIX ==================
+   *
+   * Ce qui passe a l'ecran du cinema. La table est VIDE tant que personne n'y
+   * met rien, et la salle se comporte alors exactement comme aujourd'hui :
+   * l'ecran annonce qu'il n'y a pas de seance. Poser une entree suffit a tout
+   * allumer — l'affiche se projette, l'ecran devient un point ou l'on ouvre le
+   * lecteur, et les versions apparaissent en boutons.
+   *
+   * Une entree :
+   *   { titre:   'LE TITRE',
+   *     affiche: 'img/nexus/flix/mon_affiche.webp',   // portrait, 250x345 ou plus
+   *     versions: [ { nom: 'VF', src: 'https://…' },
+   *                 { nom: 'VO', src: 'https://…' } ] }
+   *
+   * `src` est charge dans un IFRAME, comme la borne d'arcade : la page n'a
+   * aucune idee de ce qu'il y a dedans et n'a pas a en avoir. Rien n'est
+   * telecharge tant qu'on n'a pas clique sur une version.
+   *
+   * DEUX CHOSES A SAVOIR AVANT D'Y METTRE UNE ADRESSE :
+   *   - beaucoup de lecteurs refusent d'etre encadres (en-tete
+   *     `X-Frame-Options` ou `frame-ancestors`). Le cadre reste alors noir, et
+   *     ce n'est pas un defaut de cette page — c'est le lecteur qui dit non ;
+   *   - ce qui est diffuse ici est diffuse depuis swoleeswoge.dog, avec ce que
+   *     ca engage. Le choix du contenu appartient a celui qui remplit la
+   *     table, pas a ce fichier.
+   */
+  var FILMS = [];
+
   var SALLE_CINE = {
     img: null, src: 'img/nexus/tiles/room_cinema.webp',
     w: 1600, h: 1600,
@@ -3498,6 +3581,10 @@
      * projecteur. */
     x0: 1600 * 0.425, x1: 1600 * 0.565,
     y0: 1600 * 0.315, y1: 1600 * 0.845,
+    /* La surface de l'ECRAN, relevee sur la planche : c'est la que l'affiche
+       se projette. On la garde ici plutot que dans le dessin — le jour ou la
+       salle est redessinee, un seul endroit change. */
+    ecran: { x0: 1600 * 0.285, x1: 1600 * 0.730, y0: 1600 * 0.070, y1: 1600 * 0.252 },
     /* Au fond de l'allee, dos a l'ecran. Pas devant la porte peinte, qui est
        hors de l'allee : le commentaire du coffre le dit depuis longtemps —
        une porte de decor ne se lit pas comme une sortie, un portail si. */
@@ -3507,7 +3594,7 @@
        avant son ouverture. Un lieu muet se lit comme un lieu casse ; un lieu
        qui s'annonce donne une raison de revenir. */
     bornes: [
-      { x: 1600 * 0.495, y: 1600 * 0.340, r: 84, nom: 'THE BIG SCREEN' },
+      { x: 1600 * 0.495, y: 1600 * 0.340, r: 84, nom: 'SWOGE FLIX' },
     ],
   };
   SALLE_CINE.img = new Image(); SALLE_CINE.img.src = SALLE_CINE.src;
@@ -7173,9 +7260,35 @@
              { pret: 'two players, one keyboard', bientot: 'out of order',
                rien: 'Walk up to a cabinet &middot; the door takes you home' });
   }
+  /* Les affiches, chargees a la demande : celui qui ne va jamais au cinema
+     n'a pas a les telecharger. */
+  var AFFICHES = {};
+  function afficheDuFilm(f) {
+    if (!f || !f.affiche) return null;
+    if (!AFFICHES[f.affiche]) {
+      var i = new Image();
+      i.src = f.affiche;
+      AFFICHES[f.affiche] = i;
+    }
+    return AFFICHES[f.affiche];
+  }
+
   function pasSalleCinema(surPortail, dt) {
-    pasSalle(SALLE_CINE, surPortail, dt, null,
-             { pret: '', bientot: 'nothing showing yet &middot; come back soon',
+    var film = FILMS[0] || null;
+    /* ---- L'ECRAN S'ALLUME PARCE QU'IL Y A UN FILM, PAS PARCE QU'ON L'A DIT ----
+     * Le point devient ouvrable des que la table en contient un, et redevient
+     * une annonce quand elle est vide. Un drapeau ecrit a la main aurait fini
+     * par promettre une seance qui n'existe plus, ou taire celle qui existe. */
+    SALLE_CINE.bornes[0].jeu = (film && film.versions && film.versions.length) ? 'flix' : null;
+    SALLE_CINE.bornes[0].nom = film ? film.titre : 'SWOGE FLIX';
+    pasSalle(SALLE_CINE, surPortail, dt,
+             function () {
+               if (arcOuvert || !film) return;
+               ouvreEcran({ titre: '&#127916; ' + ech(film.titre),
+                            sous: 'Pick a version &middot; nothing loads until you do',
+                            choix: film.versions });
+             },
+             { pret: 'walk up to watch', bientot: 'nothing showing yet &middot; come back soon',
                rien: 'Walk down the aisle &middot; the EXIT takes you home' });
   }
 
@@ -7217,20 +7330,21 @@
       combien: 190, min: 44, max: 76,  ecart: 58,  sol: true },
     /* Les arbres et les pierres magiques se TRIENT : on passe derriere un
        arbre, et un arbre qu'on traverse n'est plus un arbre. */
-    /* L'ecart est descendu de 300 a 210 : a 300, DIX arbres sur trente-quatre
-       trouvaient une place — l'essai l'a chiffre — parce que les onze pierres
-       levees, posees en premier avec leur ecart de quatre cents, avaient deja
-       decoupe la pelouse. Un bosquet de deux arbres proches est de toute facon
-       plus juste qu'une haie reguliere. */
+    /* ---- SEIZE, ET NON TRENTE-QUATRE ----
+     * Le joueur a demande deux fois d'en retirer, et il a raison une deuxieme
+     * fois : trente-quatre arbres sur une place de mille six cents unites
+     * faisaient un bois, et l'on ne voyait plus les batiments qu'entre deux
+     * troncs. Seize, avec trois cents unites d'ecart, laissent la place
+     * respirer — un arbre se remarque quand il n'est pas dans une haie. */
     { cle: 'arbres', src: 'img/nexus/tiles/nexus_arbres.webp', cases: 4,
-      combien: 34,  min: 190, max: 280, ecart: 190, sol: false },
+      combien: 16,  min: 190, max: 280, ecart: 300, sol: false },
     /* Peu nombreuses, et c'est le point : quelques pierres qui brillent dans un
        pre font de la magie, quarante font une decheterie de cristaux. Onze
        etait deja trop — le joueur l'a dit, et il a raison : a onze on ne les
        remarque plus, on les traverse. Cinq, avec cinq cents unites entre
        elles, veut dire qu'on en croise une et qu'on la regarde. */
     { cle: 'magie',  src: 'img/nexus/tiles/nexus_magie.webp',  cases: 4,
-      combien: 5,   min: 120, max: 160, ecart: 520, sol: false },
+      combien: 3,   min: 120, max: 160, ecart: 700, sol: false },
   ];
   DECOR_FAMILLES.forEach(function (f) { f.img = new Image(); f.img.src = f.src; });
 
@@ -10267,6 +10381,29 @@
     var SD = (SCENE !== 'coffre') && salleCourante();
     if (SD && SD.bornes) {
       if (SD.img.complete) ctx.drawImage(SD.img, 0, 0, SD.w, SD.h);
+      /* ---- CE QUI EST PROJETE ----
+       * L'affiche se pose SUR la surface d'ecran relevee dans la table, et
+       * jamais a une taille choisie : elle est calee par la HAUTEUR et centree,
+       * parce qu'une affiche est portrait et un ecran paysage. L'etirer pour
+       * remplir aurait donne un visage large d'un tiers de plus, ce qu'on
+       * remarque immediatement sans savoir pourquoi.
+       * Le reste de l'ecran reste ce que le dessin y a mis — la lumiere de la
+       * salle vient de la, et l'eteindre aurait eteint la piece. */
+      if (SD.ecran && FILMS.length) {
+        var af = afficheDuFilm(FILMS[0]);
+        if (af && af.complete && af.naturalWidth) {
+          var eh = SD.ecran.y1 - SD.ecran.y0;
+          var ew = eh * (af.naturalWidth / af.naturalHeight);
+          var ex = (SD.ecran.x0 + SD.ecran.x1) / 2 - ew / 2;
+          ctx.save();
+          /* On assombrit d'abord la toile : une affiche posee sur du blanc pur
+             garde un halo tout autour et flotte au lieu d'etre projetee. */
+          ctx.fillStyle = 'rgba(6,8,14,.86)';
+          ctx.fillRect(SD.ecran.x0, SD.ecran.y0, SD.ecran.x1 - SD.ecran.x0, eh);
+          ctx.drawImage(af, ex, SD.ecran.y0, ew, eh);
+          ctx.restore();
+        }
+      }
       /* ---- UN HALO SOUS CHAQUE BORNE ----
        * Meme raison que sous les coffres : le dessin en montre six, et rien
        * n'y dit qu'on peut marcher devant. Mais PAS la meme couleur pour

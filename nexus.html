@@ -1294,6 +1294,17 @@ body.nxdrag *{ cursor:grabbing !important; }
   background:#000; border:2px solid #2a1030; border-radius:10px;
   overflow:hidden; box-shadow:inset 0 0 40px rgba(255,62,165,.18); }
 .nxarc-ecran iframe{ display:block; width:100%; height:100%; border:0; }
+/* ---- LA BARRE DE CHOIX ----
+   Deux boutons larges et espaces : on la lit de loin, on la vise au pouce, et
+   l'un ne s'attrape pas en visant l'autre. */
+.nxarc-choix{ display:flex; gap:10px; margin-top:12px; flex-wrap:wrap; }
+.nxarc-choix button{ flex:1 1 140px; min-height:44px; border-radius:10px;
+  cursor:pointer; font:800 14px/1 system-ui,sans-serif; letter-spacing:.06em;
+  color:#ffd8ee; background:rgba(255,62,165,.14);
+  border:1px solid rgba(255,62,165,.45); }
+.nxarc-choix button:hover{ background:rgba(255,62,165,.3); }
+.nxarc-choix button.actif{ background:rgba(255,62,165,.5); color:#fff; }
+#nxArcVoile.geant .nxarc-choix{ margin:8px 12px 0; }
 .nxarc-touches{ display:flex; flex-wrap:wrap; gap:6px 18px; margin-top:10px;
   font-size:11px; color:#9aa3b4; }
 .nxarc-touches b{ color:#ff3ea5; margin-right:5px; }
@@ -1762,10 +1773,16 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
   <div class="nxcf-carte nxarc-carte">
     <button class="nxcf-x" type="button" aria-label="Close">&times;</button>
     <button class="nxarc-grand" type="button" aria-label="Fullscreen">&#9974;</button>
-    <b class="nxcf-titre">&#127918; Arcade</b>
-    <div class="nxcf-sous">Two players, one keyboard. Click the screen first, then fight.</div>
+    <b class="nxcf-titre" id="nxArcTitre">&#127918; Arcade</b>
+    <div class="nxcf-sous" id="nxArcSous">Two players, one keyboard. Click the screen first, then fight.</div>
+    <!-- La barre de CHOIX. Vide et masquee pour la borne d'arcade, qui n'a
+         qu'une source ; remplie pour le cinema, ou l'on choisit sa version
+         avant que quoi que ce soit ne se charge. Rien ne part sur le reseau
+         tant qu'on n'a pas clique : une salle ou l'on entre ne doit pas
+         telecharger un film que personne n'a demande. -->
+    <div class="nxarc-choix" id="nxArcChoix" hidden></div>
     <div class="nxarc-ecran"><iframe id="nxArcJeu" title="Arcade cabinet"
-      allow="autoplay" src="about:blank"></iframe></div>
+      allow="autoplay; fullscreen" src="about:blank"></iframe></div>
     <div class="nxarc-touches">
       <span><b>P1</b> WASD move &middot; QER punch &middot; FVG kick</span>
       <span><b>P2</b> Arrows move &middot; / RCtrl . punch &middot; RShift ' &#9166; kick</span>
@@ -1868,7 +1885,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
      racine ; c'est le seul endroit d'ou elle peut couvrir tout le reste. -->
 <div id="nxFiche"></div>
 
-<script src="nexus.js?v=20260823z" defer></script>
+<script src="nexus.js?v=20260824a" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

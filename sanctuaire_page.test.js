@@ -198,12 +198,51 @@ process.on('unhandledRejection', (e) => {
   q.objets[ARME.id] = (q.objets[ARME.id] || 0) + 1;
   moteur.equipeArme(portefeuille.address, 'andy', ARME.id);
 
+  /* ---- CE QUE LA PAGE VA CHERCHER, ET QUAND ----
+   * Le defaut n'est PAS que la texture manque : c'est qu'elle part en
+   * dernier. Un essai qui attend cinq secondes puis regarde le sol le trouvera
+   * toujours peint — c'est justement l'attente qu'on reproche.
+   * On enregistre donc l'ORDRE des demandes, ce qui se mesure sans brider le
+   * reseau et reste vrai quelle que soit la machine. */
+  const solsDemandes = [];
+  p.on('request', (r) => {
+    const u = r.url();
+    const m2 = u.match(/\/img\/nexus\/tiles\/(ground_[a-z]+)\.webp/);
+    if (m2 && solsDemandes.indexOf(m2[1]) < 0) solsDemandes.push(m2[1]);
+  });
+
   await p.evaluate(() => window.__s[0].send(JSON.stringify({ type: 'realmJoin' })));
   await p.waitForTimeout(1500);
   const addr = portefeuille.address.toLowerCase();
   const monde0 = [...ouverts].find((r) => r.joueurs.has(addr)) || [...ouverts][0] || null;
   console.log('\n-- on entre dans le monde --');
   ok(!!monde0, 'la simulation du monde ouvert est attrapee');
+  /* ---- LE MONDE OUVERT NE DEMANDE QUE SES PROPRES SOLS ----
+   * Il en nomme cinq dans ses anneaux. Le catalogue en dur en compte sept :
+   * les deux autres sont des sols de DONJON, que personne ne dessinera ici.
+   * Les charger malgre tout n'etait pas seulement du gachis — c'est ce qui
+   * mettait la texture du donjon en file derriere elles au moment d'entrer. */
+  /* Le PREMIER `realmEntre` : celui du monde ouvert. On le relit du flux comme
+     le reste — supposer les cinq anneaux ici, c'est recopier monde.js. */
+  const anneauxOuverts = await p.evaluate(() => {
+    const e = window.__s[0].__m.filter((m) => m.type === 'realmEntre')[0];
+    return (e && e.anneaux) || [];
+  });
+  const attendus = anneauxOuverts.map((a) => 'ground_' + a.biome);
+  /* ---- ON COMPTE, ON NE NOMME PAS ----
+   * Ma premiere version fabriquait les noms attendus par 'ground_' + biome.
+   * C'est FAUX, et l'essai me l'a dit : la page tient une table de traduction
+   * — terre donne ground_dirt, neige ground_snow, lave ground_lava — et la
+   * recopier ici aurait fait deux tables a tenir d'accord, ce que ce depot
+   * passe son temps a eviter. La refaire dans l'essai, c'est verifier le
+   * calcul de la page avec le meme calcul.
+   * Le NOMBRE, lui, ne demande aucune traduction : un sol par anneau nomme,
+   * plus au plus la dalle des salles gardees (ground_temple, posee PAR-DESSUS
+   * le biome dans le monde ouvert et jamais dans un donjon). */
+  ok(attendus.length > 0, `le serveur nomme ${attendus.length} sols pour le monde ouvert`);
+  ok(solsDemandes.length <= attendus.length + 1,
+     `et la page en demande ${solsDemandes.length}, pas une de plus que necessaire (${solsDemandes.join(', ')})`);
+  const avantDonjon = solsDemandes.slice();
 
   /* ================== 1. L'OUVREUR MEURT ==================
    * Meme chemin que donjon_page.test.js : on le pose vers le centre, a portee
@@ -313,6 +352,20 @@ process.on('unhandledRejection', (e) => {
      unique du donjon. On le RELIT du message plutot que de le supposer. */
   const biome = dedans.anneaux.length ? dedans.anneaux[dedans.anneaux.length - 1].biome : null;
   ok(biome === SOL, `l'anneau du donjon porte le sol du Sanctuaire (« ${biome} »)`);
+  /* ---- ET SON SOL EST DEMANDE A L'ENTREE, PAS AU PREMIER DESSIN ----
+   * C'est LA le defaut que le joueur a signale deux fois. Il ne se voit pas en
+   * regardant l'ecran cinq secondes plus tard — a ce moment-la tout est
+   * arrive. Il se voit dans l'ORDRE : la texture du donjon doit partir avec
+   * l'entree, seule, et pas derriere six sols de biomes qu'on ne dessinera
+   * jamais ici. */
+  const nouveaux = solsDemandes.filter((f) => avantDonjon.indexOf(f) < 0);
+  ok(nouveaux.length === 1,
+     `entrer ne declenche qu'UNE nouvelle texture de sol (${nouveaux.join(', ') || 'aucune'})`);
+  ok(nouveaux[0] === 'ground_' + SOL,
+     `et c'est celle du Sanctuaire, pas une autre (${nouveaux[0]})`);
+  /* Le total, pour que le gachis se lise d'un coup d'oeil dans six mois. */
+  ok(solsDemandes.length <= attendus.length + 2,
+     `au total ${solsDemandes.length} textures pour deux mondes — ${attendus.length} anneaux, la dalle, et le donjon (${solsDemandes.join(', ')})`);
 
   /* ================== 3. ET LE SOL SE VOIT ==================
    *

@@ -3406,8 +3406,33 @@
     i.src = 'img/nexus/tiles/' + fichierSol(b) + '.webp';
     TUILES_M[b] = i;
   }
-  function chargeSols() {
-    Object.keys(FICHIER_SOL).forEach(chargeSol);
+  /* ---- ON NE TELECHARGE QUE LES SOLS DE L'ENDROIT OU L'ON ENTRE ----
+   *
+   * On demandait le CATALOGUE entier a chaque entree — sept textures, dont
+   * ground_temple.webp qui pese a lui seul un demi-mega-octet — et l'on
+   * comptait sur le hasard pour que celle dont on avait besoin arrive la
+   * premiere.
+   *
+   * Le Sanctuaire, lui, n'est meme pas dans le catalogue : il passe par le
+   * repli `'ground_' + b`, et n'etait donc demande qu'au PREMIER DESSIN,
+   * derriere les sept autres qui saturaient deja la connexion. Sur un
+   * telephone, cela fait plusieurs secondes de fond bleu a la place du sol.
+   * C'est ce que le joueur a signale deux fois : la premiere, la texture ne
+   * partait jamais ; la seconde, elle partait trop tard et derriere six qui
+   * n'allaient jamais servir. Rendre une image chargeable ne suffit pas si
+   * elle est chargee en dernier.
+   *
+   * Le serveur NOMME deja les sols de ce monde-la, un par anneau — c'est la
+   * meme liste que `biomeEn` lit pour choisir la planche. On charge ce qu'il
+   * nomme, et rien d'autre : le monde ouvert en demande cinq au lieu de sept,
+   * et un donjon UNE au lieu de sept plus la sienne.
+   *
+   * Sans anneaux — un vieux message qui ne les porterait pas — on retombe sur
+   * le catalogue : mieux vaut trop charger que ne rien dessiner. */
+  function chargeSols(anneaux) {
+    var l = anneaux || [];
+    if (!l.length) { Object.keys(FICHIER_SOL).forEach(chargeSol); return; }
+    l.forEach(function (a) { if (a && a.biome) chargeSol(a.biome); });
   }
   var ATLAS_M = {};
   /* Le dessin d'une espece. Le nom du fichier n'est PAS toujours celui de
@@ -3672,7 +3697,6 @@
     if (!IMG_MUR_CAVE) { IMG_MUR_CAVE = new Image(); IMG_MUR_CAVE.src = 'img/nexus/tiles/mur_cave.webp'; }
     if (!IMG_BALISE) { IMG_BALISE = new Image(); IMG_BALISE.src = 'img/nexus/tiles/obj_balise.webp'; }
     if (!IMG_PORTE) { IMG_PORTE = new Image(); IMG_PORTE.src = 'img/nexus/tiles/obj_portail.webp'; }
-    if (!IMG_TEMPLE) { IMG_TEMPLE = new Image(); IMG_TEMPLE.src = 'img/nexus/tiles/ground_temple.webp'; }
     if (!IMG_COFFRE) { IMG_COFFRE = new Image(); IMG_COFFRE.src = 'img/nexus/tiles/obj_coffre_garde.webp'; }
     if (!IMG_ANNONCE) { IMG_ANNONCE = new Image(); IMG_ANNONCE.src = 'img/nexus/effets/annonce.webp'; }
     if (!IMG_ONDE) { IMG_ONDE = new Image(); IMG_ONDE.src = 'img/nexus/effets/onde.webp'; }
@@ -4348,9 +4372,24 @@
     }
   }
 
+  /* ---- LA DALLE DEMANDE SA PROPRE PLANCHE ----
+   *
+   * Elle arrivait avec `chargeEffets()`, appele a CHAQUE entree — y compris
+   * dans un donjon, qui n'a aucune salle gardee et ne la dessinera donc
+   * jamais. C'est un demi-mega-octet, le plus gros fichier de sol du jeu, et
+   * il partait en meme temps que la texture du donjon qu'on attendait.
+   *
+   * Meme geste que `chargeSacs`, pour la meme raison exactement : le seul
+   * endroit qui sache qu'on en a besoin, c'est celui qui dessine. Le test
+   * `!SALLES_C.length` au-dessus repond deja a la question — il suffisait de
+   * le laisser decider. */
+  function chargeTemple() {
+    if (!IMG_TEMPLE) { IMG_TEMPLE = new Image(); IMG_TEMPLE.src = 'img/nexus/tiles/ground_temple.webp'; }
+  }
   function dessineSalles() {
     if (!SALLES_C.length) return;
-    if (!IMG_TEMPLE || !IMG_TEMPLE.complete || !IMG_TEMPLE.naturalWidth) return;
+    chargeTemple();
+    if (!IMG_TEMPLE.complete || !IMG_TEMPLE.naturalWidth) return;
     var t = IMG_TEMPLE.naturalWidth;
     for (var i = 0; i < SALLES_C.length; i++) {
       var s = SALLES_C[i];
@@ -5172,8 +5211,12 @@
     joueur.x = m.moi.x; joueur.y = m.moi.y; joueur.dir = 'up';
     SCENE = 'monde';
     peintBoutonTir();
+    /* Le sol AVANT le reste : c'est la seule image dont l'absence se VOIT
+       comme un trou. Les effets et les projectiles peuvent arriver une seconde
+       plus tard sans que personne ne s'en apercoive — un sol qui manque, lui,
+       laisse le fond bleu de la page a la place du donjon. */
+    chargeSols(m.anneaux);
     chargeEffets();
-    chargeSols();
     chargeTirs();
     fermeCoffreMenu(); fermeShop(); fermeBj();
     LIEUX.forEach(function (l) { l.dwell = 0; });

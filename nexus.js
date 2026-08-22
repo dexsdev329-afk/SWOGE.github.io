@@ -3360,38 +3360,54 @@
     img: null, src: 'img/nexus/tiles/room_arcade.webp',
     w: 1600, h: 1600,
     nom: 'ARCADE',
-    /* Le damier, releve a la regle sur la planche : de .130 a .840 en largeur
-       — au-dela commencent le skee-ball et le flipper — et de .300 en hauteur,
-       sous le comptoir PRIZES, a .715, juste devant les bornes. */
-    x0: 1600 * 0.130, x1: 1600 * 0.840,
-    y0: 1600 * 0.300, y1: 1600 * 0.715,
-    /* Devant la porte EXIT du mur gauche, et posee DANS le damier : un portail
-       plaque contre le mur se rate en marchant, parce qu'on ne longe pas un
-       mur, on le frole. */
-    portail: { x: 1600 * 0.170, y: 1600 * 0.470, r: 96, larg: 104, haut: 160 },
-    /* ---- LES SIX BORNES, RELEVEES DEUX FOIS ----
+    /* ---- LA SALLE A ETE REDESSINEE, ET TOUT A BOUGE ----
+     * Premiere version : les bornes etaient contre le mur du BAS. On les
+     * approchait donc par le haut, c'est-a-dire qu'on se tenait DERRIERE les
+     * machines — leur ecran regardait la camera, pas le joueur. Elles sont
+     * maintenant contre le mur du HAUT : on monte vers elles, elles font face,
+     * et le personnage se dessine devant.
+     * Tous les nombres qui suivent ont donc ete relus a la regle sur la
+     * nouvelle planche, graduation tous les 0.025. Aucun n'a survecu.
      *
-     * Ma premiere lecture disait « .115 a .715 par pas de .12 ». Elle etait
-     * FAUSSE : l'ecart reel est de .1385 et la premiere borne est a .130. En
-     * jeu, ca se voyait — le bandeau annoncait « the shooter » devant le
-     * labyrinthe, et le decalage grandissait de borne en borne. Une lecture a
-     * l'oeil sur une image de 640 pixels ne vaut rien ; il a fallu poser une
-     * graduation tous les 0.025 sur la bande des bornes et lire dessus.
-     * Un essai les verifie maintenant contre le DESSIN lui-meme, en
-     * echantillonnant la planche : c'est la seule facon que cette erreur-la ne
-     * revienne pas en silence.
+     * Le damier va de .100 a .870 en largeur — au-dela commencent le skee-ball
+     * et le flipper — et de .340, sous les pieds des bornes, a .700, ou
+     * commence l'enseigne ARCADE du mur du bas. */
+    x0: 1600 * 0.100, x1: 1600 * 0.870,
+    y0: 1600 * 0.340, y1: 1600 * 0.700,
+    /* Devant la porte EXIT du mur gauche, et posee DANS le damier. Elle est
+       DESCENDUE a .470 : a hauteur de porte, son cercle mordait celui de la
+       premiere borne, et l'on serait ressorti du batiment en voulant jouer. */
+    portail: { x: 1600 * 0.140, y: 1600 * 0.470, r: 92, larg: 104, haut: 160 },
+    /* ---- LES SIX BORNES, ET LEURS VRAIS NOMS ----
      *
-     * Le point d'interaction est DEVANT la borne (a .700) et non dessus : on
-     * se tient devant une machine, on ne monte pas dessus. Le rayon laisse un
-     * creux entre deux : « etre devant une borne » doit vouloir dire une
-     * seule, sinon le bandeau change en marchant sans qu'on comprenne. */
+     * Le dessin les NOMME maintenant, en toutes lettres au-dessus de chaque
+     * ecran. Les libellés viennent donc de la planche et non de mon
+     * imagination : « the racer » ecrit sous une borne qui affiche TURBO DRIVE
+     * aurait fait douter le joueur de ce qu'il lit.
+     *
+     * ---- ET J'AI ENCORE LU DE TRAVERS ----
+     * J'avais releve « .134 d'ecart, de .180 a .851 » a l'oeil. A partir de la
+     * troisieme borne, les points tombaient DANS LE CREUX entre deux machines
+     * — l'essai l'a chiffre : deux sur cinq seulement etaient devant un ecran.
+     * Deuxieme fois que l'oeil se trompe sur cette salle. Les centres viennent
+     * donc d'une MESURE : profil de couleur vive sur la bande des ecrans,
+     * vallees sombres entre les machines, huit groupes trouves dont six sont
+     * les bornes (les deux autres sont les neons des murs lateraux). L'ecart
+     * reel est de .1266, pas .134 — trois millemes par borne, qui font une
+     * demi-machine au bout du rang.
+     *
+     * Le point d'interaction est a .360,
+     * c'est-a-dire DEVANT les machines et non dessus — on se tient devant une
+     * borne, on ne monte pas dessus. Le rayon laisse un creux de quatre-vingt-
+     * quatorze unites entre deux : « etre devant une borne » doit vouloir dire
+     * une seule. */
     bornes: [
-      { x: 1600 * 0.130, y: 1600 * 0.700, r: 62, jeu: 'duel', nom: 'Street Fighter' },
-      { x: 1600 * 0.272, y: 1600 * 0.700, r: 62, nom: 'the racer' },
-      { x: 1600 * 0.410, y: 1600 * 0.700, r: 62, nom: 'the maze' },
-      { x: 1600 * 0.548, y: 1600 * 0.700, r: 62, nom: 'the shooter' },
-      { x: 1600 * 0.685, y: 1600 * 0.700, r: 62, nom: 'the puzzle' },
-      { x: 1600 * 0.822, y: 1600 * 0.700, r: 62, nom: 'the platformer' },
+      { x: 1600 * 0.184, y: 1600 * 0.360, r: 60, jeu: 'duel', nom: 'DUEL FIGHTER' },
+      { x: 1600 * 0.308, y: 1600 * 0.360, r: 60, nom: 'TURBO DRIVE' },
+      { x: 1600 * 0.441, y: 1600 * 0.360, r: 60, nom: 'PIXEL MAZE' },
+      { x: 1600 * 0.566, y: 1600 * 0.360, r: 60, nom: 'GALAXY RAID' },
+      { x: 1600 * 0.691, y: 1600 * 0.360, r: 60, nom: 'BLOCK DROP' },
+      { x: 1600 * 0.817, y: 1600 * 0.360, r: 60, nom: 'HERO QUEST' },
     ],
   };
   SALLE_ARC.img = new Image(); SALLE_ARC.img.src = SALLE_ARC.src;

@@ -316,10 +316,11 @@ function litSource() {
       c.width = im.naturalWidth; c.height = im.naturalHeight;
       const g = c.getContext('2d');
       g.drawImage(im, 0, 0);
-      /* La bande des ECRANS, relevee sur la planche : entre .76 et .87 de la
-         hauteur. C'est la seule partie d'une borne qui soit vive a coup sur —
-         le corps est noir et la base est dans l'ombre. */
-      const y0 = Math.round(c.height * 0.76), y1 = Math.round(c.height * 0.87);
+      /* La bande des ECRANS, relevee sur la planche : entre .16 et .24 de la
+         hauteur, depuis que les bornes sont contre le mur du HAUT. C'est la
+         seule partie d'une borne qui soit vive a coup sur — le corps est noir
+         et la base est dans l'ombre. */
+      const y0 = Math.round(c.height * 0.12), y1 = Math.round(c.height * 0.28);
       const vif = (fx) => {
         const x = Math.max(0, Math.min(c.width - 3, Math.round(c.width * fx)));
         const d = g.getImageData(x - 1, y0, 3, y1 - y0).data;
@@ -346,10 +347,11 @@ function litSource() {
   }
 
   /* ---- ON VA JUSQU'A CELLE QUI JOUE ----
-   * La premiere du rang, en bas a gauche : on arrive au milieu de la piece,
-   * donc on descend et on va vers la gauche. */
+   * DUEL FIGHTER, premiere du rang, en HAUT a gauche depuis que la salle a ete
+   * redessinee : on arrive au milieu de la piece, donc on monte et l'on va
+   * vers la gauche. */
   for (let i = 0; i < 12 && !(await vue()).on; i++) {
-    await marche('ArrowDown', 260);
+    await marche('ArrowUp', 260);
     await marche('ArrowLeft', 300);
   }
   v = await vue();
@@ -434,8 +436,12 @@ function litSource() {
   ok(v.src === 'about:blank', 'le src est vide : plus de musique ni de boucle (src = ' + v.src + ')');
   /* Et le hall repart : sans ca, fermer la borne laissait le joueur fige
      pour de bon, ce qui est pire que le probleme qu'on soignait. */
+  /* On redescend, on ne remonte pas : apres avoir marche jusqu'a la borne on
+     est colle au mur du haut, et « monter » ne deplace plus rien. L'essai
+     aurait accuse le gel de ne pas se lever alors qu'il n'y avait plus de
+     place devant. */
   const p0 = (await vue()).moi;
-  await marche('ArrowUp', 700);
+  await marche('ArrowDown', 700);
   const p1 = (await vue()).moi;
   ok(p0 && p1 && Math.hypot(p1.x - p0.x, p1.y - p0.y) > 20,
      'le personnage remarche apres la fermeture');
@@ -446,12 +452,12 @@ function litSource() {
    * jouer par-dessus le Nexus, sans que rien ne dise d'ou elle vient. */
   console.log('- on ressort du batiment');
   /* Le portail est a MI-HAUTEUR du mur gauche, et l'on se tient devant les
-     bornes, tout en bas. Ma premiere version ne marchait que vers la gauche :
+     bornes, tout en HAUT. Ma premiere version ne marchait que vers la gauche :
      le personnage etait deja colle au bord, il ne bougeait plus d'un pixel, et
      l'essai accusait la sortie de ne pas couper la musique alors qu'on n'avait
-     jamais quitte la piece. Il faut MONTER puis aller a gauche. */
+     jamais quitte la piece. Il faut DESCENDRE puis aller a gauche. */
   for (let i = 0; i < 16; i++) {
-    await marche('ArrowUp', 260);
+    await marche('ArrowDown', 260);
     await marche('ArrowLeft', 300);
     const dehors = await p.evaluate(() => {
       const c = document.getElementById('nxArcMusique');

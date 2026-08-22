@@ -1254,10 +1254,43 @@ body.nxdrag *{ cursor:grabbing !important; }
   display:flex; align-items:center; justify-content:center; padding:10px;
   opacity:0; pointer-events:none; transition:opacity .18s; }
 #nxArcVoile.on{ opacity:1; pointer-events:auto; }
-.nxarc-carte{ max-width:860px; width:100%; max-height:96vh; overflow:auto;
+/* ---- LA BARRE DU BAS ----
+ * `overflow:auto` en donnait DEUX : une verticale, utile sur telephone quand
+ * la croix directionnelle allonge la carte, et une horizontale qui ne servait
+ * a rien — elle n'apparaissait que parce que la bordure et le padding
+ * poussent la carte d'un ou deux pixels au-dela de sa largeur. On coupe
+ * l'horizontale et on garde la verticale : couper les deux aurait fait
+ * disparaitre les boutons du bas sur un petit ecran. */
+.nxarc-carte{ max-width:860px; width:100%; max-height:96vh;
+  overflow-x:hidden; overflow-y:auto;
   padding:16px 16px 14px; border-color:#ff3ea5;
   box-shadow:0 0 0 1px rgba(255,62,165,.25), 0 18px 60px rgba(255,62,165,.18); }
+/* Le bouton d'agrandissement, a cote de la croix. Assez loin d'elle pour
+   qu'un pouce ne ferme pas la borne en voulant l'agrandir : quarante-quatre
+   pixels d'ecart, la largeur d'une cible tactile. */
+.nxarc-grand{ position:absolute; top:12px; right:56px; width:30px; height:30px;
+  border-radius:8px; border:1px solid rgba(255,62,165,.45);
+  background:rgba(255,62,165,.14); color:#ffd8ee; font-size:15px;
+  line-height:1; cursor:pointer; }
+.nxarc-grand:hover{ background:rgba(255,62,165,.3); }
+/* Le repli quand le navigateur refuse le plein ecran natif — dans un iframe
+   sans autorisation, ou sur un mobile qui n'en veut pas. Un bouton qui ne
+   fait rien se lit comme un bouton casse. */
+#nxArcVoile.geant{ padding:0; }
+#nxArcVoile.geant .nxarc-carte{ max-width:100%; width:100%; max-height:100vh;
+  height:100vh; border-radius:0; display:flex; flex-direction:column; }
+#nxArcVoile.geant .nxarc-ecran{ flex:1 1 auto; aspect-ratio:auto; }
+#nxArcVoile.geant .nxarc-touches, #nxArcVoile.geant .nxarc-credit{ display:none; }
+/* En plein ecran natif, c'est l'ECRAN qui est promu : il doit alors remplir,
+   sans garder le rapport de la carte qui n'existe plus autour de lui. */
+.nxarc-ecran:fullscreen{ aspect-ratio:auto; width:100%; height:100%;
+  border:0; border-radius:0; }
+/* `box-sizing` : la bordure de deux pixels s'AJOUTAIT a la largeur de cent
+   pour cent, donc l'ecran depassait sa carte de quatre pixels et faisait
+   apparaitre la barre du bas. Masquer la barre avec overflow-x cachait le
+   symptome — le debord etait toujours la, mesure a 4 px par l'essai. */
 .nxarc-ecran{ margin-top:12px; aspect-ratio:382 / 224; width:100%;
+  box-sizing:border-box;
   background:#000; border:2px solid #2a1030; border-radius:10px;
   overflow:hidden; box-shadow:inset 0 0 40px rgba(255,62,165,.18); }
 .nxarc-ecran iframe{ display:block; width:100%; height:100%; border:0; }
@@ -1728,6 +1761,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
 <div id="nxArcVoile">
   <div class="nxcf-carte nxarc-carte">
     <button class="nxcf-x" type="button" aria-label="Close">&times;</button>
+    <button class="nxarc-grand" type="button" aria-label="Fullscreen">&#9974;</button>
     <b class="nxcf-titre">&#127918; Arcade</b>
     <div class="nxcf-sous">Two players, one keyboard. Click the screen first, then fight.</div>
     <div class="nxarc-ecran"><iframe id="nxArcJeu" title="Arcade cabinet"
@@ -1819,7 +1853,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
      racine ; c'est le seul endroit d'ou elle peut couvrir tout le reste. -->
 <div id="nxFiche"></div>
 
-<script src="nexus.js?v=20260823m" defer></script>
+<script src="nexus.js?v=20260823n" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

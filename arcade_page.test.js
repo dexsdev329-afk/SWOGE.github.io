@@ -238,6 +238,26 @@ function litSource() {
   ok(echecsHall.length === 0, 'la borne se charge sans 404 depuis le hall'
      + (echecsHall.length ? ' — ' + echecsHall.join(' | ') : ''));
 
+  /* ---- LA BARRE DU BAS, ET LE PLEIN ECRAN ----
+   * Le joueur les a demandes ensemble, et ils se mesurent ensemble : une
+   * carte qui deborde d'un pixel fait apparaitre une barre horizontale, et
+   * c'est exactement ce qu'on ne voit pas en regardant une capture d'ecran. */
+  console.log('- la carte ne deborde pas, et elle s\'agrandit');
+  const carte = await p.evaluate(() => {
+    const c = document.querySelector('#nxArcVoile .nxarc-carte');
+    const g = document.querySelector('#nxArcVoile .nxarc-grand');
+    const x = document.querySelector('#nxArcVoile .nxcf-x');
+    const rg = g && g.getBoundingClientRect(), rx = x && x.getBoundingClientRect();
+    return { deborde: c.scrollWidth - c.clientWidth,
+             bouton: !!g,
+             ecart: (rg && rx) ? Math.round(Math.abs(rg.left - rx.left)) : 0 };
+  });
+  ok(carte.deborde <= 0, `aucune barre horizontale (debord ${carte.deborde} px)`);
+  ok(carte.bouton, 'le bouton plein ecran est la');
+  /* Assez loin de la croix pour qu'un pouce ne ferme pas la borne en voulant
+     l'agrandir : une cible tactile fait quarante-quatre pixels. */
+  ok(carte.ecart >= 40, `et a ${carte.ecart} px de la croix, pas sous le meme pouce`);
+
   /* COUTURE 3 : WASD ne doit plus faire marcher le personnage. */
   console.log('- le hall est fige derriere le voile');
   const avant = (await vue()).moi;

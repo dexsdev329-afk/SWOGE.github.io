@@ -676,6 +676,26 @@
                     m.familier ? 'familier' : 'inflige');
       }
     }
+    /* ---- ON A ETE PROJETE ----
+     *
+     * Un message A PART du coup, et pas un champ de plus dessus : le choc est
+     * un DEPLACEMENT decide par le serveur, qui arrivera un jour sans degats
+     * — une zone qui repousse, ou une bourrade annulee par l'egide. L'attacher
+     * au coup l'aurait fait taire ces jours-la, sans rien dire.
+     *
+     * On SAUTE a la position que le serveur donne, on n'y glisse pas. Le
+     * lissage habituel sert a masquer la latence sur un mouvement CONTINU ;
+     * ici le mouvement est instantane et voulu, et l'adoucir donnerait
+     * l'impression d'etre tire par une corde plutot que frappe. */
+    if (m.type === 'realmPousse' && SCENE === 'monde') {
+      joueur.x = m.x; joueur.y = m.y;
+      POUSSE = m.duree || 0.4;
+      /* Les touches tenues ne doivent pas relancer la marche a la seconde ou
+         le vol finit — sinon on repart droit dans ce qui vient de nous jeter. */
+      secousse = Math.max(secousse, 0.22);
+      joueSample('degat', { vol: 0.5, hauteur: 0.55, duree: 0.5 });
+      return;
+    }
     if (m.type === 'realmCoup' && SCENE === 'monde') {
       VIE.pv = m.pv; moiMonde.pv = m.pv;
       /* ---- LA BRULURE NE COGNE PAS ----
@@ -856,9 +876,9 @@
       /* Mourir dans un donjon en fait sortir : le serveur a deja remis le
          joueur dans le monde ouvert. Laisser `DONJON_C` pose ici aurait garde le
          sol de pierre et le bouton « EXIT » sur l'ecran du Nexus. */
-      DONJON_C = null; TUILES_D = null; PORTAILS_C = []; PORTAILS_LOIN = [];
+      DONJON_C = null; TUILES_D = null; BRAISES_C = []; PORTAILS_C = []; PORTAILS_LOIN = [];
       PORTAIL_PIEDS = null; PORTAIL_SIGNE = ''; peintPorte();
-      POUVOIR_C = null; EFFETS_P = []; PARALYSE = 0; RALENTI = 0; BRULURE = 0;
+      POUVOIR_C = null; EFFETS_P = []; PARALYSE = 0; RALENTI = 0; BRULURE = 0; POUSSE = 0;
       VITESSE = 260; peintPouvoir();
       var pp = PORTAIL_L;
       joueur.x = pp.x; joueur.y = pp.y + pp.rayon + 60;
@@ -2558,14 +2578,50 @@
     if (parLaMain) marqueFerme('arcade');
     if (elArcVoile) elArcVoile.classList.remove('on');
     if (elArcJeu) elArcJeu.src = 'about:blank';
+    /* Sinon on rouvre la borne en mode geant sans l'avoir demande — et pire,
+       on peut sortir du plein ecran natif par la touche du navigateur en
+       laissant la classe posee. */
+    elArcVoile.classList.remove('geant');
+    if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen();
     arcRelacheTout();
     gelLeHall(false);
   }
   if (elArcVoile) {
     elArcVoile.addEventListener('click', function (e) {
       var c = e.target.classList;
+      /* Le plein ecran AVANT la fermeture : le bouton est dans la carte, donc
+         un clic dessus ne ferme pas — mais l'ordre des tests est ce qui le
+         decide, et l'inverse aurait ferme le panneau en agrandissant. */
+      if (c && c.contains('nxarc-grand')) { basculePleinEcran(); return; }
       if (e.target === elArcVoile || (c && c.contains('nxcf-x'))) fermeArcade(true);
     });
+  }
+  /* ---- LE PLEIN ECRAN ----
+   * Sur l'ECRAN et pas sur l'iframe : le cadre du jeu fait 382 sur 224, et le
+   * mettre en plein ecran lui seul aurait laisse le navigateur choisir sa
+   * couleur de remplissage — un liseré blanc autour d'un jeu noir. On agrandit
+   * le conteneur, qui a deja son fond et son rapport.
+   *
+   * L'API peut refuser : dans un iframe sans `allow`, sur un navigateur
+   * mobile qui n'en veut pas. Une promesse refusee non attrapee remonte en
+   * erreur de page et ne fait RIEN de visible — le joueur clique et croit le
+   * bouton casse. On retombe donc sur une classe qui agrandit dans la page,
+   * ce qui marche partout. */
+  function basculePleinEcran() {
+    var e = elArcVoile && elArcVoile.querySelector('.nxarc-ecran');
+    if (!e) return;
+    var dedans = document.fullscreenElement || document.webkitFullscreenElement;
+    if (dedans) {
+      if (document.exitFullscreen) document.exitFullscreen();
+      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+      return;
+    }
+    var f = e.requestFullscreen || e.webkitRequestFullscreen;
+    if (!f) { elArcVoile.classList.toggle('geant'); return; }
+    try {
+      var p = f.call(e);
+      if (p && p.catch) p.catch(function () { elArcVoile.classList.add('geant'); });
+    } catch (x) { elArcVoile.classList.add('geant'); }
   }
 
   /* ---- LES TOUCHES DU TELEPHONE ----
@@ -3059,9 +3115,14 @@
      * pour la borne, 227 x 625 pour l'enseigne). Choisir deux nombres ronds
      * aurait ecrase le dessin, et rien ne l'aurait dit — une image etiree ne
      * fait pas d'erreur, elle a juste l'air moins bien. */
-    { cle: 'arcade', src: 'img/nexus/tiles/obj_arcade_borne.webp',
-      x: CENTRE.x - 832, y: CENTRE.y + 352, larg: 106, haut: 179,
-      rayon: 110, nom: 'the Arcade' },
+    /* Le BATIMENT, et non plus la borne isolee. Une borne posee dans l'herbe
+       se lisait comme un objet oublie ; une maison aux portes ouvertes dit
+       qu'on peut entrer. `larg`/`haut` recopient le rapport de la planche
+       decoupee (634 x 412) — deux nombres ronds l'auraient ecrasee, et une
+       image etiree ne leve aucune erreur. */
+    { cle: 'arcade', src: 'img/nexus/tiles/obj_arcade_maison.webp',
+      x: CENTRE.x - 832, y: CENTRE.y + 352, larg: 420, haut: 273,
+      rayon: 150, nom: 'the Arcade' },
     /* L'enseigne est du DECOR, comme celle du blackjack : pas de rayon, donc
        rien a ouvrir. Elle se pose entre le centre et la borne, parce que la
        borne seule est trop petite pour se voir depuis la fontaine. */
@@ -3345,6 +3406,7 @@
   /* Le nom du donjon ou l'on se trouve, ou null dehors. Et la forme de son sol,
      tuile par tuile. */
   var DONJON_C = null, TUILES_D = null;
+  var BRAISES_C = [];          // la lave a meme le sol, envoyee avec le plan
   /* ---- LES PORTES QU'ON NE VOIT PAS ENCORE ----
    * L'etat du monde ne porte que ce qui est a moins de 1400 unites. Une porte
    * qui s'ouvre a l'autre bout de la carte n'y est donc PAS — et c'est bien la
@@ -4178,6 +4240,41 @@
     return ANNONCE_PLEIN[cle];
   }
 
+  /* ---- LES PLAQUES DE BRAISE ----
+   *
+   * Chargee au premier besoin, comme la dalle des salles : un joueur qui n'ira
+   * jamais au Sanctuaire n'a pas a telecharger sa lave.
+   *
+   * Le battement compte plus qu'il n'en a l'air. Une plaque parfaitement fixe
+   * se lit comme une TEXTURE — c'est-a-dire comme du decor — et le joueur
+   * marche dedans. Ce qui bouge se lit comme vivant, donc dangereux, et c'est
+   * la seule chose qui separe cette image d'un tapis rouge.
+   *
+   * On ne fait PAS varier la taille : le rayon dit ou ca brule, et une plaque
+   * qui respire mentirait sur sa bordure une fois sur deux. C'est l'ECLAT qui
+   * bat, pas le bord. */
+  var IMG_BRAISE = null;
+  function dessineBraises() {
+    if (!BRAISES_C.length) return;
+    if (!IMG_BRAISE) {
+      IMG_BRAISE = new Image();
+      IMG_BRAISE.src = 'img/nexus/tiles/obj_braise.webp';
+    }
+    if (!IMG_BRAISE.complete || !IMG_BRAISE.naturalWidth) return;
+    var t = performance.now() / 1000;
+    for (var i = 0; i < BRAISES_C.length; i++) {
+      var b = BRAISES_C[i];
+      if (Math.abs(b.x - joueur.x) > 2200 || Math.abs(b.y - joueur.y) > 2000) continue;
+      var T = b.r * 2;
+      /* Chaque plaque bat a son propre rythme : toutes ensemble, la salle
+         entiere clignoterait d'un bloc, ce qui ne ressemble a rien. */
+      ctx.save();
+      ctx.globalAlpha = 0.88 + 0.12 * Math.sin(t * 2.1 + i * 1.7);
+      ctx.drawImage(IMG_BRAISE, b.x - T / 2, b.y - T / 2, T, T);
+      ctx.restore();
+    }
+  }
+
   function dessineZones() {
     if (!ZONES_C.length) return;
     var pl = plancheAnnonce();
@@ -4191,7 +4288,41 @@
       var c = Math.min(ANNONCE_CADRES - 1, Math.floor(av * ANNONCE_CADRES));
       var T = (z.r * 2) / plein;
       ctx.drawImage(img, c * cw, 0, cw, ch, z.x - T / 2, z.y - T / 2, T, T);
+      /* ---- ET CE QUI TOMBE DESSUS ----
+       * Le cercle seul dit « ici, bientot ». Il ne dit pas D'OU. L'Idole en
+       * pose jusqu'a sept a la fois : sans la pierre qui descend, sept
+       * cercles qui s'ouvrent en meme temps se lisent comme un decor et non
+       * comme une menace.
+       * Le serveur marque la zone (`m`) plutot que la page ne devine d'apres
+       * l'espece : elle n'a pas a savoir quelles creatures ont une averse. */
+      if (z.m) dessineMeteore(z, av, T);
     }
+  }
+
+  /* La pierre, chargee au premier besoin — comme la dalle des salles. Un
+     joueur qui n'ira jamais au Sanctuaire n'a aucune raison de la
+     telecharger. */
+  var IMG_METEORE = null;
+  function dessineMeteore(z, av, T) {
+    if (!IMG_METEORE) {
+      IMG_METEORE = new Image();
+      IMG_METEORE.src = 'img/nexus/effets/meteore.webp';
+    }
+    /* Rien tant qu'elle n'est pas la : le cercle suffit a jouer, et une
+       exception ici arreterait le dessin de TOUT le reste de la trame. */
+    if (!IMG_METEORE.complete || !IMG_METEORE.naturalWidth) return;
+    /* Elle part HAUT et PETITE, elle arrive AU CENTRE et GRANDE : c'est ce
+       qui donne la perspective, sans avoir a dessiner un ciel. La hauteur de
+       depart vaut trois fois le diametre du cercle — assez pour qu'on la voie
+       venir de hors de la zone, pas assez pour qu'elle parte de l'autre bout
+       de l'ecran.
+       Le carre : `av` va de 0 a 1 tout au long de l'annonce, et une chute
+       lineaire monte comme un ballon. Une pierre accelere. */
+    var chute = av * av;
+    var haut = T * 3 * (1 - chute);
+    var ech = 0.35 + 0.65 * chute;
+    var t2 = T * 0.62 * ech;
+    ctx.drawImage(IMG_METEORE, z.x - t2 / 2, z.y - haut - t2 / 2, t2, t2);
   }
 
   /* Ce qui reste quand la zone a frappe. L'onde n'a que quatre images : la
@@ -5186,6 +5317,11 @@
      * serveur, et le jour ou le plan gagne une salle, l'un des deux dessins
      * l'oublierait. */
     DONJON_C = m.donjon || null;
+    /* Les plaques de braise viennent AVEC le plan, comme les tuiles. Le
+       serveur les fait bruler a partir de cette meme liste : deux listes
+       auraient fini par ne plus decrire le meme sol, et le joueur aurait pris
+       feu sur de la pierre. */
+    BRAISES_C = m.braises || [];
     TUILES_D = null;
     if (m.tuiles && m.tuiles.length) {
       TUILES_D = Object.create(null);
@@ -5206,7 +5342,7 @@
     if (m.moi.v) VITESSE = m.moi.v;
     POUVOIR_C = m.moi.pouvoir || null;
     POUVOIR_ETAT = { recharge: 0, rafale: 0 };
-    PARALYSE = 0; RALENTI = 0; BRULURE = 0;
+    PARALYSE = 0; RALENTI = 0; BRULURE = 0; POUSSE = 0;
     EFFETS_P = []; COUPS = []; NIVEAUX = [];
     joueur.x = m.moi.x; joueur.y = m.moi.y; joueur.dir = 'up';
     SCENE = 'monde';
@@ -7693,6 +7829,12 @@
    * glisser le personnage puis le ramenerait d'un coup — le pire des deux
    * mondes. Elle obeit tout de suite pour que ce soit franc. */
   var PARALYSE = 0;
+  /* Le vol de la projection. Meme role que PARALYSE : pendant ces quatre
+     dixiemes de seconde, la position appartient au SERVEUR, qui refuse tout
+     deplacement annonce. Sans ce verrou cote page, on continuerait de pousser
+     le personnage dans le vide — il ne bougerait pas, les touches ne
+     repondraient plus, et rien n'expliquerait pourquoi. */
+  var POUSSE = 0;
   /* Le ralentissement et la brulure, tels que le serveur les annonce. `FREIN`
      arrive avec la table des effets a l'entree du monde : le facteur n'est
      pas ecrit ici, sinon il finirait par ne plus etre celui qu'on subit. */
@@ -8722,6 +8864,7 @@
       if (rangChrono <= 0) { rangChrono = 5; envoie({ type: 'leaderboardMonde', n: 20 }); }
     }
     if (PARALYSE > 0) PARALYSE = Math.max(0, PARALYSE - dt);
+    if (POUSSE > 0) POUSSE = Math.max(0, POUSSE - dt);
     if (RALENTI > 0) RALENTI = Math.max(0, RALENTI - dt);
     if (BRULURE > 0) BRULURE = Math.max(0, BRULURE - dt);
     /* Le manche PREND LE PAS quand on le tient : les deux sources donnent la
@@ -8736,7 +8879,7 @@
      * absurde. Le tir, lui, n'est pas touche du tout — c'est toute la
      * difference entre paralyser et etourdir, et c'est ce qui laisse une
      * reponse au joueur au lieu de le faire regarder mourir. */
-    if (PARALYSE > 0) {
+    if (PARALYSE > 0 || POUSSE > 0) {
       /* Le meme axe dominant qu'en marchant : un personnage fige doit regarder
          la ou l'on pousse, pas a cote. */
       if (dx || dy) {
@@ -9290,6 +9433,11 @@
          reste : c'est un sol, pas un objet. C'est elle qui rend une salle
          visible de loin — donc qui en fait une destination. */
       dessineSalles();
+      /* ---- LA LAVE A MEME LE SOL ----
+       * Juste apres la dalle et avant tout le reste : c'est du SOL, pas un
+       * objet. Posee plus tard, elle recouvrirait les sacs tombes dedans et
+       * l'on ne verrait plus ce qu'on a laisse bruler. */
+      dessineBraises();
       /* Les balises allumees, au sol, sous tout le reste : elles disent « ici
          c'est fait » et « on peut revenir ici », deux choses qu'on veut lire
          de loin sans entrer. */

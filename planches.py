@@ -35,6 +35,14 @@ recommis les memes erreurs. Ce qui suit est ce qu'elles ont coute :
    « tous les gris clairs » : ca mange les pinces palees du crabe et les
    plaques du robot. On propage depuis les BORDS — le fond est connexe et
    touche le cadre, une pince enfermee dans son contour ne l'est pas.
+
+6. Un EFFET pose sur un damier ne se detoure pas comme un objet. `detoure`
+   rend un alpha binaire : bon pour un crabe, qui a un contour, faux pour une
+   flamme, qui n'en a pas. Le halo se retrouve coupe net, et l'effet se lit
+   comme un autocollant. Pour un effet il faut DECOMPOSER : le generateur a
+   melange l'effet et le damier, on retrouve l'alpha en mesurant de combien
+   chaque pixel s'ecarte du fond, et la couleur en retirant ce que le fond y
+   a mis. C'est `detoure_effet`.
 """
 from PIL import Image
 from collections import deque
@@ -450,6 +458,96 @@ def detoure_uni(source, tolerance=26, adoucit=1):
             if fond[y * w + x]:
                 px[x, y] = (0, 0, 0, 0)
     return im
+
+
+def detoure_effet(source, fond=None, seuil=44, plancher=10, adoucit=0):
+    """Un EFFET pose sur un fond clair ou sur un damier : on DECOMPOSE.
+
+    ---- pourquoi pas `detoure` ----
+
+    `detoure` propage depuis les bords et rend un alpha BINAIRE. C'est ce
+    qu'il faut pour un objet, qui a un contour. Une flamme n'en a pas : elle
+    s'eteint en degrade, et c'est ce degrade qui la fait tenir par-dessus le
+    decor. Coupee net, elle se lit comme un autocollant colle sur le monde.
+
+    ---- ce qu'on fait a la place ----
+
+    Le generateur a MELANGE l'effet et son fond : chaque pixel vaut
+    `a*C + (1-a)*F`, ou `F` est le fond. On connait `F` — c'est du blanc, ou
+    les deux tons d'un damier, tous neutres et tres clairs. On en tire les
+    deux inconnues :
+
+      • l'ALPHA, par l'ecart au fond. Un pixel identique au fond est vide ; un
+        pixel qui s'en ecarte de `seuil` ou plus est plein ; entre les deux,
+        le degrade est conserve. On mesure l'ecart de DEUX facons et l'on
+        garde la plus grande : ce qui ASSOMBRIT (la fumee, la braise noire) et
+        ce qui COLORE (la flamme). Une seule des deux perdrait la moitie de
+        l'effet — un panache gris sur fond blanc n'est pas colore, une flamme
+        jaune n'est pas sombre.
+
+      • la COULEUR, en retirant ce que le fond y a mis : `C = (P - (1-a)F)/a`.
+        Sans cette etape, tout le degrade reste delave vers le blanc, et
+        l'effet parait terne la ou il devrait etre le plus vif.
+
+    `fond` peut etre impose (un triplet) ; par defaut on le lit sur les quatre
+    bords, qui sont toujours du fond et jamais du dessin.
+
+    ---- et le PLANCHER, qui n'est pas un detail ----
+
+    Un damier a DEUX tons. Mesure sur la premiere planche : 254 et 247, soit
+    sept niveaux d'ecart. Avec un seul `fond` — la mediane, 250 — la moitie
+    des carreaux s'ecarte de trois et ressort a sept pour cent d'opacite : un
+    voile laiteux sur toute l'image, qui ne se voit pas sur fond blanc et se
+    voit tres bien pose sur l'herbe.
+
+    Le plancher est la marge morte sous laquelle on ne croit pas l'ecart.
+    Au-dessus du bruit du damier, largement sous le halo le plus tenu d'un
+    effet — qui descend, lui, de plusieurs dizaines.
+    """
+    im = source if isinstance(source, Image.Image) else Image.open(source)
+    im = im.convert('RGBA')
+    w, h = im.size
+    px = im.load()
+
+    if fond is None:
+        # La MEDIANE des bords, pas la moyenne : un coin ou l'effet deborde
+        # tirerait une moyenne, il ne deplace pas une mediane.
+        ech = []
+        for x in range(0, w, 3):
+            ech.append(px[x, 0][:3]); ech.append(px[x, h - 1][:3])
+        for y in range(0, h, 3):
+            ech.append(px[0, y][:3]); ech.append(px[w - 1, y][:3])
+        ech.sort(key=lambda p: p[0] + p[1] + p[2])
+        fond = ech[len(ech) // 2]
+    fr, fg, fb = float(fond[0]), float(fond[1]), float(fond[2])
+
+    out = Image.new('RGBA', (w, h))
+    op = out.load()
+    for y in range(h):
+        for x in range(w):
+            r, g, b, _ = px[x, y]
+            # Ce qui assombrit : de combien le pixel descend sous le fond.
+            sombre = max(fr - r, fg - g, fb - b)
+            # Ce qui colore : de combien ses canaux s'ecartent entre eux. Le
+            # fond est neutre, donc tout ecart vient de l'effet.
+            colore = max(r, g, b) - min(r, g, b)
+            a = (max(sombre, colore) - plancher) / float(max(1, seuil - plancher))
+            if a <= 0:
+                op[x, y] = (0, 0, 0, 0); continue
+            if a > 1.0:
+                a = 1.0
+            # On retire ce que le fond a mis. Sur un alpha faible la division
+            # explose : on la borne, sinon un halo a peine visible ressort en
+            # aplat sature.
+            k = max(a, 0.08)
+            cr = int(round(min(255.0, max(0.0, (r - (1 - a) * fr) / k))))
+            cg = int(round(min(255.0, max(0.0, (g - (1 - a) * fg) / k))))
+            cb = int(round(min(255.0, max(0.0, (b - (1 - a) * fb) / k))))
+            op[x, y] = (cr, cg, cb, int(round(a * 255)))
+
+    for _ in range(max(0, adoucit)):
+        out = nettoie_isoles(out)
+    return out
 
 
 def _proche(p, c, t):

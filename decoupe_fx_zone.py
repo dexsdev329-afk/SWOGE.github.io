@@ -41,56 +41,58 @@ import planches as P
 
 SEUIL = 40          # ce qu'on considere comme de la matiere
 MARGE = 6           # ce qu'on garde autour de la boite commune
+BORD = 5            # le fondu applique contre un trait de coupe interieur
 
 
-def bandes_vides(masque, axe):
-    """Les tranches entierement transparentes, dans un axe. Ce sont elles qui
-    disent ou le generateur a separe ses cases — plutot que de supposer une
-    forme de grille qu'il n'a pas forcement respectee."""
-    occ = masque.sum(axis=1 - axe)
-    vides, deb = [], None
-    for i, v in enumerate(occ):
-        if v == 0 and deb is None:
-            deb = i
-        if v != 0 and deb is not None:
-            vides.append((deb, i - 1)); deb = None
-    if deb is not None:
-        vides.append((deb, len(occ) - 1))
-    return vides
-
-
-def coupures(masque, axe, mini=8):
-    """Les milieux des bandes vides INTERIEURES : les traits de coupe."""
-    n = masque.shape[1 - axe] if axe == 0 else masque.shape[0]
-    n = masque.shape[0] if axe == 0 else masque.shape[1]
-    out = []
-    for a, b in bandes_vides(masque, axe):
-        if a == 0 or b == n - 1:
-            continue                      # la marge du bord, pas une coupure
-        if b - a + 1 >= mini:
-            out.append((a + b) // 2)
-    return out
+def note(masque, cx, cy):
+    """Combien de dessin les traits de coupe traversent. C'est le seul juge
+    d'une grille : la bonne est celle dont les traits tombent dans le vide."""
+    return (sum(int(masque[:, x].sum()) for x in cx)
+            + sum(int(masque[y, :].sum()) for y in cy))
 
 
 def main():
-    if len(sys.argv) < 3:
-        print('usage: decoupe_fx_zone.py <source.png> <nom>'); return 1
+    if len(sys.argv) < 5:
+        print('usage: decoupe_fx_zone.py <source.png> <nom> <colonnes> <lignes>')
+        print('  ex : decoupe_fx_zone.py bloc/meute.png meute 2 3')
+        return 1
     source, nom = sys.argv[1], sys.argv[2]
+    cols, lignes = int(sys.argv[3]), int(sys.argv[4])
+    if cols * lignes != 6:
+        print('il faut six cases, pas %d.' % (cols * lignes)); return 1
     sortie = 'img/nexus/effets/fam_%s.webp' % nom
 
     im = Image.open(source).convert('RGBA')
-    a = np.array(im)
-    m = a[:, :, 3] > SEUIL
     print('source : %s %dx%d' % (source, im.width, im.height))
 
-    cy = coupures(m, 0)        # traits horizontaux -> lignes
-    cx = coupures(m, 1)        # traits verticaux   -> colonnes
-    cols, lignes = len(cx) + 1, len(cy) + 1
-    print('grille lue : %d colonne(s) x %d ligne(s)  (coupes x=%s, y=%s)'
-          % (cols, lignes, cx, cy))
-    if cols * lignes != 6:
-        print('ATTENTION : %d cases au lieu de six — on n ecrit rien.' % (cols * lignes))
-        return 1
+    # ---- LE DAMIER DESSINE ----
+    # Un generateur sur deux rend la transparence en la PEIGNANT : l'image
+    # arrive opaque, avec le damier gris et blanc en dur. On le voit tout de
+    # suite — pas un seul pixel transparent — et on decompose plutot que de
+    # detourer : un effet n'a pas de contour, et un alpha binaire le
+    # transformerait en autocollant. Voir `detoure_effet`.
+    if np.array(im)[:, :, 3].min() == 255:
+        print('       fond peint (aucune transparence) -> detoure_effet')
+        im = P.detoure_effet(im)
+
+    a = np.array(im)
+    m = a[:, :, 3] > SEUIL
+
+    # ---- LA GRILLE SE DONNE, ELLE NE SE DEVINE PAS ----
+    # J'ai essaye de la lire — bandes vides, puis recherche de creux. Les deux
+    # se trompent : le halo d'un effet deborde de sa case et remplit les
+    # colonnes qui devraient etre vides, et une vallee trouvee au mauvais
+    # endroit donne une grille fausse SANS RIEN DIRE. Or la forme se voit d'un
+    # coup d'oeil sur la planche. On la passe donc, et le script REND COMPTE
+    # de ce que ses coupes traversent : c'est ce chiffre qui dit si on s'est
+    # trompe, pas une devinette.
+    cx = [round(im.width * i / cols) for i in range(1, cols)]
+    cy = [round(im.height * i / lignes) for i in range(1, lignes)]
+    score = note(m, cx, cy)
+    print('grille %dx%d, coupes x=%s y=%s -> %d px de dessin traverses'
+          % (cols, lignes, cx, cy, score))
+    if score > 0:
+        print('       ATTENTION : les traits tombent dans le dessin.')
 
     # On coupe au PAS FIXE de la grille lue, jamais sur le contenu.
     cases = []
@@ -100,7 +102,35 @@ def main():
             x1 = im.width if c == cols - 1 else cx[c]
             y0 = 0 if l == 0 else cy[l - 1]
             y1 = im.height if l == lignes - 1 else cy[l]
-            cases.append(im.crop((x0, y0, x1, y1)))
+            case = im.crop((x0, y0, x1, y1))
+            # ---- LE LISERE DU VOISIN ----
+            # Le halo d'un effet deborde de sa case : coupee au pas de la
+            # grille, chaque case garde contre le trait une lamelle du voisin.
+            # Elle ne se voit pas sur la planche et se voit tres bien en jeu —
+            # une barre verticale claire au bord de l'effet, qui apparait et
+            # disparait d'une image a l'autre.
+            # On l'efface EN FONDU sur quelques pixels, et seulement du cote
+            # d'un trait interieur : un bord de planche n'a pas de voisin. Ce
+            # qu'on perd du halo propre a la case, a cet endroit-la, est de
+            # toute facon le plus tenu.
+            if BORD > 0:
+                al = np.array(case)[:, :, 3].astype(float)
+                if c > 0:
+                    for k in range(BORD):
+                        al[:, k] *= k / float(BORD)
+                if c < cols - 1:
+                    for k in range(BORD):
+                        al[:, case.width - 1 - k] *= k / float(BORD)
+                if l > 0:
+                    for k in range(BORD):
+                        al[k, :] *= k / float(BORD)
+                if l < lignes - 1:
+                    for k in range(BORD):
+                        al[case.height - 1 - k, :] *= k / float(BORD)
+                t = np.array(case)
+                t[:, :, 3] = np.clip(al, 0, 255).astype(np.uint8)
+                case = Image.fromarray(t, 'RGBA')
+            cases.append(case)
     print('lecture ligne par ligne : %d cases' % len(cases))
 
     # ---- LES CENTRES DE GRAVITE, ET RIEN D'AUTRE ----

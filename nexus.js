@@ -352,10 +352,26 @@
          continuerait d'amortir les coups — le joueur aurait vu son bouclier
          s'evanouir tout en restant protege. */
       if (m.quoi !== 'bouclier') poseFx(m.quoi, m.x, m.y);
-      if (m.quoi === 'soigne') {
+      /* ---- CE QUI NOUS REND DES POINTS DE VIE ----
+       * Le soin, l'aura de la relique, et le vol de l'ombre. Les trois
+       * arrivent avec `gain` et `pv` : un seul chemin d'affichage, sinon
+       * l'ombre rendrait la vie sans que la barre bouge — et l'on chercherait
+       * le defaut dans le calcul du vol, qui serait juste. */
+      if (m.gain > 0 && m.pv !== undefined) {
         VIE.pv = m.pv; moiMonde.pv = m.pv;
         flotte('\uD83D\uDC96 +' + m.gain);
         joueSample('niveau', { vol: 0.32, hauteur: 1.5 });
+        majJauges();
+      }
+      if (m.quoi === 'soigne' || m.quoi === 'aura') {
+        /* Rien de plus : le gain est deja affiche au-dessus. Ce `if` existe
+           pour que le compagnon ne BONDISSE pas — on ne se rue pas sur
+           quelqu'un qu'on soigne. */
+      } else if (m.zone) {
+        /* Une zone eclate AUTOUR du maitre : le compagnon n'a personne vers
+           qui bondir. Le faire courir vers un point choisi au hasard parmi
+           trois creatures aurait laisse croire qu'il n'avait frappe que
+           celle-la. */
       } else if (m.quoi === 'bouclier') {
         BOUCLIER = m.duree || 0;
         /* Sa duree TOTALE, telle que le serveur l'annonce : c'est elle qui dit
@@ -1836,8 +1852,8 @@
    * mesure, puisqu'il voit les degats a l'ecran.
    * Sans eux, un niveau qui monte ne montre rien : c'est une barre de
    * progression, pas une progression. */
-  function detailPouvoir(f) {
-    var e = f && f.effet;
+  function detailPouvoir(f) { return detailEffet(f && f.effet); }
+  function detailEffet(e) {
     if (!e) return '';
     /* ---- LA RECHARGE EST LA PROGRESSION ----
      * Le niveau achete de la FREQUENCE : soixante secondes au premier,
@@ -1859,7 +1875,45 @@
                                          '% damage for ' + e.duree + 's' + tous;
     if (e.pouvoir === 'soigne')   return '+' + (e.part * 100).toFixed(1) +
                                          '% HP' + tous;
+    /* ---- LES SIX DE ZONE ----
+     * Chacun dit CE QU'IL CHANGE par rapport au premier cran : « to all » est
+     * le seul mot qui compte, et une phrase qui l'omettrait laisserait croire
+     * a un simple gain de chiffres. */
+    if (e.pouvoir === 'meute')    return Math.round(e.degats) + ' damage to all' + tous;
+    if (e.pouvoir === 'brasier')  return Math.round(e.parSeconde) + ' burn/s for ' +
+                                         e.duree + 's, to all' + tous;
+    if (e.pouvoir === 'gresil')   return 'freezes all ' + e.duree.toFixed(1) + 's' + tous;
+    if (e.pouvoir === 'secousse') return 'pushes all ' + Math.round(e.force) +
+                                         ' units and stuns ' + e.stase.toFixed(1) + 's' + tous;
+    if (e.pouvoir === 'abysse')   return Math.round(e.degats) + ' damage to all, ' +
+                                         Math.round(e.vol * 100) + '% back to you' + tous;
+    if (e.pouvoir === 'aura')     return '+' + (e.part * 100).toFixed(1) +
+                                         '% HP to you and nearby players' + tous;
     return '';
+  }
+
+  /* ---- SES DEUX GESTES, OUVERT OU NON ----
+   *
+   * Le second est montre MEME FERME, avec le niveau qui l'ouvre. C'est le
+   * seul endroit ou le joueur peut apprendre qu'il y a autre chose a aller
+   * chercher : un pouvoir qu'on ne voit pas ne se merite pas, et la courbe de
+   * nourriture — mille repas pour aller au bout — demande une raison d'y
+   * croire.
+   *
+   * La liste vient du SERVEUR, phrase comprise. La page ne decide ni du cran
+   * ni du nom : deux tables auraient fini par annoncer un pouvoir et en
+   * appliquer un autre. */
+  function listePouvoirs(f) {
+    var l = (f && f.pouvoirs) || [];
+    if (l.length < 2) return '';
+    return '<div class="nxpw-pous">' + l.map(function (p) {
+      var d = p.ouvert ? detailEffet(p.effet) : '';
+      return '<div class="nxpw-p' + (p.ouvert ? ' on' : '') + '">' +
+        '<b>' + ech(p.nom || p.cle) + '</b>' +
+        (p.ouvert ? (d ? ' <i>' + ech(d) + '</i>' : '')
+                  : ' <u>Lv ' + p.niveau + '</u>') +
+        '</div>';
+    }).join('') + '</div>';
   }
 
   /* ---- CE QU'ON PEUT LUI DONNER ----
@@ -1940,8 +1994,9 @@
         '<div class="nxpw-vig gros" style="background-image:url(' + dessinDe(f.espece) + ')"></div>' +
         '<div class="nxpw-tt">' +
           '<div class="nxpw-tn">' + ech(f.nom || 'Pet') + ' <span>Lv ' + (f.niveau || 1) + '</span></div>' +
-          '<div class="nxpw-pou">' + ech((f.pouvoir && f.pouvoir.nom) || '') +
-            (detailPouvoir(f) ? ' <b>' + ech(detailPouvoir(f)) + '</b>' : '') + '</div>' +
+          (listePouvoirs(f) ||
+            '<div class="nxpw-pou">' + ech((f.pouvoir && f.pouvoir.nom) || '') +
+              (detailPouvoir(f) ? ' <b>' + ech(detailPouvoir(f)) + '</b>' : '') + '</div>') +
           /* Ce que le NIVEAU SUIVANT change, en toutes lettres. Un palier
              franchi qui ne montre rien est une barre de progression, pas une
              progression — et ici il montre la seule chose qui compte
@@ -3469,6 +3524,22 @@
     gele:     { taille: 175, duree: 0.85, suit: false, boucle: false, dy: -18 },
     repousse: { taille: 320, duree: 0.60, suit: false, boucle: false, dy: -10 },
     soigne:   { taille: 190, duree: 0.90, suit: true,  boucle: false, dy: -22 },
+    /* ---- LES SIX DE ZONE ----
+     * Quatre cents unites : le DIAMETRE du rayon que le serveur applique
+     * (deux cents). L'anneau dessine dit donc exactement ou le coup porte —
+     * un effet plus petit que sa portee ferait croire qu'on est hors de
+     * danger a l'endroit ou l'on prend le coup.
+     * `dy` presque nul : ce sont des anneaux au SOL, pas des auras. Le
+     * decalage vers le haut des quatre premiers vient de ce qu'ils se posent
+     * sur une creature, a hauteur de corps.
+     * Et `suit: false` : la zone part d'ou l'on etait quand elle a eclate.
+     * L'aura fait exception, comme le soin — elle accompagne. */
+    meute:    { taille: 400, duree: 0.80, suit: false, boucle: false, dy: -6 },
+    brasier:  { taille: 400, duree: 0.85, suit: false, boucle: false, dy: -6 },
+    gresil:   { taille: 400, duree: 0.85, suit: false, boucle: false, dy: -6 },
+    secousse: { taille: 400, duree: 0.75, suit: false, boucle: false, dy: -6 },
+    abysse:   { taille: 400, duree: 0.90, suit: false, boucle: false, dy: -6 },
+    aura:     { taille: 400, duree: 0.95, suit: true,  boucle: false, dy: -10 },
   };
   function plancheFx(cle) {
     if (!IMG_FX[cle]) {

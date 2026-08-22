@@ -730,6 +730,15 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
 .nxpw-nom{ font-weight:700; margin-top:4px; }
 .nxpw-niv{ font-size:12px; opacity:.72; }
 .nxpw-pou{ font-size:11px; opacity:.62; margin-top:3px; line-height:1.25; }
+/* Les deux gestes du compagnon, l'un sous l'autre. Le ferme reste LISIBLE et
+   pas efface : c'est lui qui donne envie de nourrir, et un texte a vingt pour
+   cent d'opacite ne se lit pas sur un telephone. */
+.nxpw-pous{ margin-top:4px; display:flex; flex-direction:column; gap:2px; }
+.nxpw-p{ font-size:11px; line-height:1.3; opacity:.45; }
+.nxpw-p.on{ opacity:.85; }
+.nxpw-p b{ font-weight:700; }
+.nxpw-p i{ font-style:normal; color:#7CFF9B; }
+.nxpw-p u{ text-decoration:none; color:#FFC53D; font-weight:700; }
 .nxpw-vide{ opacity:.68; font-size:13px; line-height:1.5; padding:14px 4px; }
 /* ---- LE RAYON DES ANIMAUX, DANS LA BOUTIQUE DU HALL ----
  * Des LIGNES et non des cases : un familier se juge a ce qu'il fait et a
@@ -1619,7 +1628,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
      racine ; c'est le seul endroit d'ou elle peut couvrir tout le reste. -->
 <div id="nxFiche"></div>
 
-<script src="nexus.js?v=20260822w" defer></script>
+<script src="nexus.js?v=20260822x" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

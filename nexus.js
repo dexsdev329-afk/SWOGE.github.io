@@ -1224,6 +1224,16 @@
     if (o.og) lignes += '<em style="color:#C89BFF">OG \u2014 limited series</em>';
     elFiche.innerHTML = '<b>' + ech(o.nom || '') + '</b>' + lignes;
     elFiche.style.setProperty('--fc', o.couleur || '#EAF2FF');
+    /* ---- ELLE REDEVIENT TRANSPARENTE AUX CLICS ----
+     * Le menu la rend cliquable (`.actes`). Si la classe survivait au
+     * re-affichage, la fiche resterait un OBSTACLE : elle se pose a gauche de
+     * la case, c'est-a-dire SUR le canvas, et `ouEstLePointeur` la trouvait a
+     * la place du sol. Lacher une piece sur la scene ne la jetait plus par
+     * terre — le geste tombait dans le vide sans rien dire.
+     * On l'enleve ici parce que c'est le seul endroit qui reconstruit la
+     * fiche : la remettre a zero ailleurs aurait laisse un chemin ou la
+     * classe passe. */
+    elFiche.classList.remove('actes');
     elFiche.classList.add('on');
     poseFiche(cible);
   }
@@ -1244,8 +1254,107 @@
   }
 
   function cacheFiche() {
-    if (elFiche) elFiche.classList.remove('on');
+    if (elFiche) { elFiche.classList.remove('on'); elFiche.classList.remove('actes'); }
   }
+
+  /*
+   * ================== LE MENU D'UN OBJET ==================
+   *
+   * ---- POURQUOI IL EXISTE ----
+   *
+   * Le sac avait deux gestes, et aucun des deux ne s'apprend :
+   *
+   *   - le DOUBLE-CLIC porte, boit ou fait eclore. Sur telephone il se bat
+   *     avec le zoom du navigateur, et rien ne dit qu'il existe ;
+   *   - le GLISSEMENT jusqu'au canvas jette par terre. Il faut traverser
+   *     l'ecran en tirant sur une case, et rien ne dit ca non plus.
+   *
+   * Un joueur a demande comment on jetait un objet sur telephone. La reponse
+   * honnete etait : « tu ne peux pas le deviner ». Il proposait lui-meme la
+   * solution — toucher l'objet et voir ses options — et c'est la bonne.
+   *
+   * ---- CE QU'IL MONTRE EST DERIVE, PAS UNE LISTE ----
+   *
+   * Chaque bouton correspond a un geste qui EXISTE deja, et envoie exactement
+   * le meme message. Un menu qui aurait son propre chemin vers le serveur
+   * aurait fini par faire autre chose que le glissement pour le meme mot.
+   *
+   * ---- ET « RANGER » NE S'AFFICHE PAS DANS LE MONDE ----
+   *
+   * Ranger deplace du sac (perdu a la mort) vers le coffre (a l'abri). Le
+   * serveur ne verifie pas OU l'on se tient — c'est un trou qui existe deja
+   * au niveau du protocole. Mais le mettre a une touche du doigt en plein
+   * combat le transformerait d'obscurite en evidence : on rangerait tout son
+   * butin a la seconde ou l'on va mourir, et la mort ne couterait plus rien.
+   * Le menu ne le propose donc que la ou l'on est deja a l'abri.
+   */
+  function actesDeLObjet(p) {
+    var actes = [];
+    if (!p || p.de !== 'sac') return actes;
+    var cle = String(p.id || '');
+    var oeuf = cle.slice(0, 3) === 'oe:' ? cle.slice(3) : null;
+    var stat = cle.slice(0, 3) === 'st:' ? cle.slice(3) : null;
+    /* Le PREMIER geste est celui du double-clic, quel que soit l'objet :
+       `porteDuSac` sait deja lequel c'est. Le nommer ici en trois `if`
+       aurait donne un second endroit ou decider ce qu'un objet « fait ». */
+    actes.push({ nom: oeuf ? 'Hatch' : stat ? 'Drink' : 'Wear',
+                 fais: function () { porteDuSac(cle); } });
+    /* JETER : le geste qui manquait vraiment. Seulement la ou il y a un sol —
+       dans un menu, une action impossible se lit comme une panne. */
+    if (SCENE === 'monde' || SCENE === 'nexus') {
+      actes.push({ nom: 'Drop', danger: true, fais: function () {
+        envoie({ type: SCENE === 'nexus' ? 'nexusDepose' : 'realmDepose', item: cle });
+        clic(true);
+      } });
+    }
+    /* RANGER : jamais depuis le monde de combat, voir plus haut. */
+    if (SCENE !== 'monde') {
+      actes.push({ nom: 'Store', fais: function () {
+        if (oeuf) envoie({ type: 'oeufRange', espece: oeuf });
+        else if (stat) envoie({ type: 'fioleRange', stat: stat });
+        else envoie({ type: 'rangeCoffre', item: Number(cle) });
+        clic(true);
+      } });
+    }
+    return actes;
+  }
+
+  var MENU_ACTES = [];
+  function ouvreMenuObjet(p) {
+    var actes = actesDeLObjet(p);
+    if (!actes.length || !elFiche || !p.el) return cacheFiche();
+    /* La fiche est deja ouverte et deja posee A COTE de la case — `debutPrise`
+       s'en est charge. On lui AJOUTE les boutons plutot que d'ouvrir une
+       seconde boite : deux panneaux pour un seul objet se recouvriraient, et
+       le second cacherait ce que le premier explique. */
+    MENU_ACTES = actes;
+    var html = '<div class="nxfi-actes">';
+    for (var i = 0; i < actes.length; i++) {
+      html += '<button type="button" data-acte="' + i + '"' +
+              (actes[i].danger ? ' class="danger"' : '') + '>' +
+              ech(actes[i].nom) + '</button>';
+    }
+    elFiche.insertAdjacentHTML('beforeend', html + '</div>');
+    /* Elle devient CLIQUABLE le temps du menu : au repos elle laisse passer
+       les clics — c'est une info-bulle — et le rester ici rendrait ses
+       boutons morts. */
+    elFiche.classList.add('on');
+    elFiche.classList.add('actes');
+    poseFiche(p.el);
+  }
+  document.addEventListener('click', function (ev) {
+    var b = ev.target.closest ? ev.target.closest('#nxFiche [data-acte]') : null;
+    if (!b) {
+      /* Toucher AILLEURS ferme le menu. Sans ca il resterait ouvert sur un
+         objet qu'on ne regarde plus, et le prochain geste tomberait dessus. */
+      if (elFiche && elFiche.classList.contains('actes')) cacheFiche();
+      return;
+    }
+    ev.stopPropagation();
+    var a = MENU_ACTES[Number(b.getAttribute('data-acte'))];
+    cacheFiche();
+    if (a) a.fais();
+  }, true);
 
   /* Le survol a la souris. Sur telephone il n'existe pas : c'est le
      GLISSEMENT qui ouvre la fiche (voir `debutPrise`), ce qui revient au meme
@@ -1431,6 +1540,9 @@
 
   function debutPrise(ev, source) {
     PRISE = source;
+    /* D'ou le doigt est parti, pour savoir plus tard s'il a glisse. */
+    PRISE.dep = { x: ev.clientX, y: ev.clientY };
+    PRISE.bouge = false;
     /* Au doigt il n'y a pas de survol : prendre la piece EST le geste par
        lequel on demande « c'est quoi ? ». On ouvre donc la fiche a ce
        moment-la, ancree a la case d'origine. */
@@ -1464,6 +1576,15 @@
   }
   function bougePrise(x, y) {
     if (elFantome) { elFantome.style.left = x + 'px'; elFantome.style.top = y + 'px'; }
+    /* ---- A-T-ON GLISSE, OU SEULEMENT TOUCHE ? ----
+     * Les deux gestes commencent pareil — un doigt qui se pose — et c'est la
+     * SUITE qui les separe. Huit pixels : moins, et le tremblement d'un pouce
+     * transformerait chaque touche en glissement rate ; plus, et un vrai
+     * petit glissement passerait pour une touche. */
+    if (PRISE && PRISE.dep) {
+      var dx = x - PRISE.dep.x, dy = y - PRISE.dep.y;
+      if (dx * dx + dy * dy > 64) PRISE.bouge = true;
+    }
   }
 
   /* UN seul couple d'ecouteurs sur le document, pas un par case : les cases
@@ -1540,7 +1661,28 @@
     if (PRISE) { bougePrise(ev.clientX, ev.clientY); ev.preventDefault(); }
   });
   document.addEventListener('pointerup', function (ev) {
-    if (PRISE) lachePrise(ev.clientX, ev.clientY);
+    if (!PRISE) return;
+    /* ---- TOUCHER N'EST PAS GLISSER ----
+     *
+     * Un doigt qui se pose et se releve SANS bouger ne faisait rien : le
+     * glissement se terminait sur la case de depart, `lachePrise` voyait un
+     * echange d'une case avec elle-meme et sortait. Toute la panoplie du sac
+     * — porter, boire, eclore, ranger, JETER — n'avait donc que deux gestes :
+     * le double-clic (qui se bat avec le zoom du navigateur) et le glissement
+     * jusqu'au canvas (que rien n'annonce). Un joueur nous a demande comment
+     * on jetait un objet sur telephone. La reponse etait « traverse l'ecran
+     * en tirant dessus », et personne ne pouvait la deviner.
+     *
+     * Une touche ouvre donc le MENU de l'objet. Le glissement et le
+     * double-clic ne bougent pas d'un pouce : on AJOUTE une porte, on n'en
+     * ferme aucune. */
+    if (!PRISE.bouge) {
+      var src = PRISE;
+      finPrise();
+      ouvreMenuObjet(src);
+      return;
+    }
+    lachePrise(ev.clientX, ev.clientY);
   });
   document.addEventListener('pointercancel', finPrise);
 
@@ -3116,6 +3258,100 @@
        par seconde et qu'aucun d'eux ne merite de survivre aux autres. */
     if (COUPS.length > 40) COUPS.shift();
   }
+  /*
+   * ================== LA BANNIERE DU BOSS ==================
+   *
+   * Un joueur nous l'a dit tel quel : « on ne voit rien dans aucun donjon ».
+   * Il avait raison. La creature du fond recevait la meme barre de cinq
+   * pixels qu'une lime — et cette barre ne s'affiche qu'une fois blessee. On
+   * traversait trois salles pour arriver devant quelque chose que rien ne
+   * distinguait d'un monstre de plus.
+   *
+   * ---- POURQUOI EN HAUT DE L'ECRAN, ET PAS SEULEMENT SUR LUI ----
+   *
+   * Sa barre au-dessus de sa tete existe aussi, plus large et cerclee d'or.
+   * Elle ne suffit pas : dans une salle de boss on REGARDE le boss, donc on
+   * regarde le bas de l'ecran quand il est au nord, et la barre bouge avec
+   * lui. Un chiffre qu'on doit poursuivre des yeux n'est pas un chiffre qu'on
+   * lit — c'est justement pendant qu'on esquive qu'on veut savoir s'il reste
+   * beaucoup.
+   *
+   * ---- LE NOM VIENT DU SERVEUR ----
+   *
+   * `MONDE_C.especes` porte la table entiere, `nom` compris. L'ecrire ici
+   * aurait fait une deuxieme liste de noms de monstres, et un donjon ajoute
+   * demain serait arrive avec « fonderie » ecrit en petit dans le code.
+   *
+   * ---- ET LE POURCENTAGE, PARCE QUE LES CHIFFRES SONT ENORMES ----
+   *
+   * Un boss a trois mille six cents points de vie. « 2 847 / 3 600 » ne se
+   * lit pas en esquivant ; « 79 % » se lit d'un coup d'oeil. On montre les
+   * deux — le brut pour ceux qui comptent leurs coups, la part pour tout le
+   * monde.
+   */
+  function peintBanniereBoss() {
+    var b = null;
+    for (var k in MONSTRES_C) {
+      var e = MONSTRES_C[k];
+      /* Le PLUS BLESSE gagne, s'il y en avait plusieurs : c'est celui qu'on
+         est en train de combattre. Prendre le premier venu ferait sauter la
+         banniere d'un boss a l'autre au gre de l'ordre des clefs. */
+      if (!e || !e.boss || !(e.pvMax > 0)) continue;
+      if (!b || e.pv / e.pvMax < b.pv / b.pvMax) b = e;
+    }
+    if (!b) return;
+    var t = MONDE_C && MONDE_C.especes && MONDE_C.especes[b.espece];
+    var nom = (t && t.nom) || b.espece;
+    var p = Math.max(0, Math.min(1, b.pv / b.pvMax));
+
+    /* On la centre sur la partie LIBRE de l'ecran, pas sur toute sa largeur :
+       le panneau occupe la droite, et une banniere centree sur le canvas
+       entier passerait a moitie dessous sur un grand ecran. */
+    var vw = canvas.width / DPR;
+    var libreB = Math.max(160, vw - largeurPanneau());
+    var larg = Math.min(560, Math.round(libreB * 0.86));
+    var x = Math.round((libreB - larg) / 2), y = 14, h = 20;
+
+    ctx.save();
+    ctx.scale(DPR, DPR);
+    /* Un fond sombre DERRIERE le texte : la banniere flotte au-dessus d'un
+       sol qui peut etre clair, et un liserre d'or sur de la lave ne se lit
+       pas. */
+    ctx.fillStyle = 'rgba(8,10,16,.80)';
+    ctx.fillRect(x - 10, y - 22, larg + 20, h + 34);
+    ctx.strokeStyle = 'rgba(255,197,61,.55)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x - 10.5, y - 22.5, larg + 21, h + 35);
+
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'alphabetic';
+    /* Le MOT « BOSS » avant le nom : c'est la reponse a la question posee —
+       « c'est lui ? ». Le nom seul laisse encore chercher. */
+    ctx.font = '800 11px Archivo, system-ui, sans-serif';
+    ctx.fillStyle = '#FFC53D';
+    ctx.fillText('BOSS', x, y - 7);
+    ctx.font = '800 15px Archivo, system-ui, sans-serif';
+    ctx.fillStyle = '#EAF2FF';
+    ctx.fillText(nom, x + 40, y - 6);
+
+    ctx.fillStyle = 'rgba(255,255,255,.10)';
+    ctx.fillRect(x, y, larg, h);
+    ctx.fillStyle = p > 0.5 ? '#7CFF9B' : p > 0.25 ? '#FFC53D' : '#F2685E';
+    ctx.fillRect(x, y, Math.round(larg * p), h);
+    ctx.strokeStyle = 'rgba(255,197,61,.9)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x - 1, y - 1, larg + 2, h + 2);
+
+    ctx.font = '800 12px Archivo, system-ui, sans-serif';
+    ctx.fillStyle = '#0A0C12';
+    ctx.textAlign = 'right';
+    ctx.fillText(Math.round(p * 100) + '%', x + larg - 8, y + h - 6);
+    ctx.textAlign = 'left';
+    ctx.fillStyle = 'rgba(255,255,255,.92)';
+    ctx.fillText(nbCourt(b.pv) + ' / ' + nbCourt(b.pvMax), x + 8, y + h - 6);
+    ctx.restore();
+  }
+
   function peintCoups(dt) {
     if (!COUPS.length) return;
     var pret = IMG_COUP && IMG_COUP.complete && IMG_COUP.naturalWidth;
@@ -4369,6 +4605,10 @@
       var e = MONSTRES_C[o.i];
       if (!e) {
         e = MONSTRES_C[o.i] = { espece: o.e, rx: o.x, ry: o.y, cadre: 0, chrono: 0 };
+        /* Le drapeau du serveur, garde tel quel : la page ne DEDUIT pas
+           qu'une creature est un boss — une seconde liste cote navigateur
+           aurait fini par ne plus etre celle du serveur. */
+        e.boss = !!o.boss;
         atlasMonstre(o.e);
       }
       e.x = o.x; e.y = o.y; e.dir = o.d; e.pv = o.pv; e.pvMax = o.pvMax;
@@ -8940,6 +9180,7 @@
          apres la camera, parce qu'elle a besoin du zoom du tour en cours pour
          savoir jusqu'ou l'on voit. */
       peintBoussole(dt);
+      peintBanniereBoss();
       peintFlottants();
       return;
     }
@@ -9289,18 +9530,31 @@
       ctx.drawImage(img, e.cadre * C, r * C, C, C,
                     sx, sy, T, T);
     }
-    barreVie(e.rx, e.ry, e.pv, e.pvMax, T * 0.46);
+    barreVie(e.rx, e.ry, e.pv, e.pvMax, T * (e.boss ? 0.86 : 0.46), e.boss);
   }
 
   /* La barre de vie ne s'affiche QUE si la creature est blessee : cinquante
-     barres pleines a l'ecran cachent le decor et n'apprennent rien. */
-  function barreVie(x, y, pv, pvMax, larg) {
-    if (!pvMax || pv >= pvMax) return;
-    var h = 5, p = Math.max(0, Math.min(1, pv / pvMax));
+     barres pleines a l'ecran cachent le decor et n'apprennent rien.
+     UN BOSS FAIT EXCEPTION. Il est seul dans sa salle, il n'y a donc pas de
+     melee a encombrer — et c'est justement devant lui qu'on veut savoir ou
+     l'on en est AVANT de decider de rester. Sa barre est aussi plus large et
+     plus haute : la meme que celle d'une lime disait « creature de plus ». */
+  function barreVie(x, y, pv, pvMax, larg, boss) {
+    if (!pvMax || (pv >= pvMax && !boss)) return;
+    var h = boss ? 9 : 5, p = Math.max(0, Math.min(1, pv / pvMax));
     var gx = x - larg / 2, gy = y + 6;
-    ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(gx - 1, gy - 1, larg + 2, h + 2);
+    ctx.fillStyle = 'rgba(0,0,0,.55)';
+    ctx.fillRect(gx - (boss ? 2 : 1), gy - (boss ? 2 : 1),
+                 larg + (boss ? 4 : 2), h + (boss ? 4 : 2));
     ctx.fillStyle = p > 0.5 ? '#7CFF9B' : p > 0.25 ? '#FFC53D' : '#F2685E';
     ctx.fillRect(gx, gy, larg * p, h);
+    if (!boss) return;
+    /* Un LISERE d'or : c'est ce qui la separe d'une barre ordinaire agrandie.
+       La couleur du remplissage dit la vie qui reste — elle ne peut donc pas
+       dire aussi « c'est un boss », elle change en cours de combat. */
+    ctx.strokeStyle = 'rgba(255,197,61,.9)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(gx - 2, gy - 2, larg + 4, h + 4);
   }
 
   /* ---- LES DEUX JAUGES DU JOUEUR ----

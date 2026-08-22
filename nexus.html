@@ -374,6 +374,24 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
 #nxFiche i.nxfi-sort{ color:#8CD9FF; font-weight:800; margin-top:6px; }
 #nxFiche em{ display:block; font-style:italic; color:#7b8496; margin-top:4px;
   font-size:10.5px; }
+/* ---- LE MENU DE L'OBJET ----
+   La fiche laisse passer les clics au repos — c'est une info-bulle. Le temps
+   du menu elle les PREND, sinon ses boutons seraient morts. */
+#nxFiche.actes{ pointer-events:auto; }
+.nxfi-actes{ display:flex; flex-wrap:wrap; gap:5px; margin-top:9px;
+  padding-top:8px; border-top:1px solid rgba(255,255,255,.12); }
+/* Assez grands pour un POUCE : quarante-quatre pixels de haut, la borne
+   au-dessous de laquelle on touche a cote. C'est un menu qui existe pour le
+   telephone — le faire a la taille d'une souris l'aurait rate. */
+.nxfi-actes button{ flex:1 1 auto; min-width:74px; min-height:44px; padding:0 12px;
+  border-radius:9px; cursor:pointer; font:800 12.5px/1 'Archivo',system-ui,sans-serif;
+  border:1px solid rgba(255,255,255,.18); background:#242a38; color:#EAF2FF; }
+.nxfi-actes button:hover{ background:#2f3648; }
+/* JETER est irreversible : la piece tombe par terre et n'importe qui peut la
+   prendre. Elle ne se confond donc pas avec « porter » d'un coup d'oeil. */
+.nxfi-actes button.danger{ border-color:rgba(255,107,107,.45); color:#FF9B9B;
+  background:rgba(255,107,107,.10); }
+.nxfi-actes button.danger:hover{ background:rgba(255,107,107,.18); }
 
 /* ---- LE FRUIT PENDANT SA RECHARGE ----
  * Le pouvoir se lance depuis la barre d'espace, mais il APPARTIENT au fruit :
@@ -1712,7 +1730,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
      racine ; c'est le seul endroit d'ou elle peut couvrir tout le reste. -->
 <div id="nxFiche"></div>
 
-<script src="nexus.js?v=20260823d" defer></script>
+<script src="nexus.js?v=20260823f" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

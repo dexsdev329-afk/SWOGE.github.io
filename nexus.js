@@ -3235,18 +3235,35 @@
                          suffit — pas un deuxieme mode de dessin a apprendre a
                          la page. */
                       donjon: 'ground_donjon',
-                      /* La cave des pirates a son bois et son fer. Un donjon
-                         de plus, c'est une LIGNE de plus ici — pas un mode de
-                         dessin de plus : le serveur nomme le sol dans son
-                         anneau unique, et la page le lit comme les autres. */
+                      /* La cave des pirates a son bois et son fer. */
                       cave: 'ground_cave' };
+  /* ---- ET CE QUI N'EST PAS DANS LA TABLE SUIT LA CONVENTION ----
+   *
+   * Le commentaire d'avant disait « un donjon de plus, c'est une LIGNE de plus
+   * ici ». C'etait vrai, et c'est precisement ce qui a rate : le Sanctuaire
+   * est arrive, personne n'a ajoute la ligne, et son sol ne s'est pas dessine
+   * — un fond bleu a la place, sans une erreur nulle part.
+   *
+   * Une table cote page a tenir d'accord avec la liste des donjons cote
+   * serveur, c'est le defaut que ce depot passe son temps a eviter ailleurs.
+   * Les entrees qui restent sont celles dont le FICHIER ne porte pas le nom du
+   * biome (terre -> dirt, neige -> snow, lave -> lava). Pour toutes les
+   * autres, le nom du sol EST le nom du fichier, et un donjon de plus ne
+   * demande plus qu'une image. */
+  function fichierSol(b) { return FICHIER_SOL[b] || ('ground_' + b); }
+
+  /* ---- ON CHARGE AUSSI CE QU'ON N'AVAIT PAS PREVU ----
+   * `chargeSols` ne parcourait que les clefs connues : un biome absent de la
+   * table n'etait jamais demande, donc jamais dessine. La texture du monde ou
+   * l'on entre est demandee A L'ENTREE, avec son nom, quel qu'il soit. */
+  function chargeSol(b) {
+    if (!b || TUILES_M[b]) return;
+    var i = new Image();
+    i.src = 'img/nexus/tiles/' + fichierSol(b) + '.webp';
+    TUILES_M[b] = i;
+  }
   function chargeSols() {
-    Object.keys(FICHIER_SOL).forEach(function (b) {
-      if (TUILES_M[b]) return;
-      var i = new Image();
-      i.src = 'img/nexus/tiles/' + FICHIER_SOL[b] + '.webp';
-      TUILES_M[b] = i;
-    });
+    Object.keys(FICHIER_SOL).forEach(chargeSol);
   }
   var ATLAS_M = {};
   /* Le dessin d'une espece. Le nom du fichier n'est PAS toujours celui de
@@ -3357,6 +3374,19 @@
     ctx.font = '800 15px Archivo, system-ui, sans-serif';
     ctx.fillStyle = '#EAF2FF';
     ctx.fillText(nom, x + 40, y - 6);
+    /* ---- LA PHASE, ET LA MUE ----
+     * « 2/5 » donne son sens au temps mort : sans lui, deux secondes ou les
+     * coups ne portent pas ne sont qu'une panne. Le mot « SHIFTING » le dit
+     * en toutes lettres, parce qu'un chiffre qui change tout seul ne se
+     * remarque pas au milieu d'un combat. */
+    if (b.phaseMax > 1) {
+      ctx.textAlign = 'right';
+      ctx.font = '800 12px Archivo, system-ui, sans-serif';
+      ctx.fillStyle = b.mue > 0 ? '#FFC53D' : '#9AA3C0';
+      ctx.fillText(b.mue > 0 ? 'SHIFTING\u2026' : 'PHASE ' + b.phase + '/' + b.phaseMax,
+                   x + larg, y - 6);
+      ctx.textAlign = 'left';
+    }
 
     ctx.fillStyle = 'rgba(255,255,255,.10)';
     ctx.fillRect(x, y, larg, h);
@@ -4686,6 +4716,11 @@
       /* La stase, quand le serveur la marque. Sans ce report, cinq secondes
          de monstres immobiles se liraient comme un serveur qui a lache. */
       e.stase = o.st || 0;
+      /* La MUE d'un boss : le temps qu'il reste avant que les coups repassent.
+         Sans ce report, deux secondes ou l'on tape sans rien enlever se lisent
+         comme une panne — et c'est le pire moment pour en avoir l'air. */
+      e.mue = o.mue || 0;
+      e.phase = o.ph || 0; e.phaseMax = o.phMax || 0;
       /* Et le feu du familier. Une creature qui perd des points de vie sans
          que rien ne le montre se lit comme un bug, pas comme une brulure. */
       e.feu = o.fe || 0;
@@ -9042,6 +9077,10 @@
            * On ne devine pas la forme : elle est arrivee avec l'entree. */
           if (TUILES_D && !TUILES_D[mc + ',' + mr]) { peintRoche(mc, mr, TM); continue; }
           var b = biomeEn(mc * TM + TM / 2, mr * TM + TM / 2);
+          /* Demande a la volee : le serveur peut nommer un sol que la table ne
+             connait pas — c'est arrive avec le Sanctuaire, et le donjon
+             s'affichait en bleu. */
+          if (!TUILES_M[b]) chargeSol(b);
           var img = TUILES_M[b];
           if (img && img.complete) ctx.drawImage(img, mc * TM, mr * TM, TM, TM);
         }
@@ -9602,6 +9641,22 @@
                     sx, sy, T, T);
     }
     barreVie(e.rx, e.ry, e.pv, e.pvMax, T * (e.boss ? 0.86 : 0.46), e.boss);
+    /* ---- IL MUE : ON LE DIT SUR LUI ----
+     * Un anneau d'or qui se referme autour de la creature, plus le mot. La
+     * banniere en haut le dit aussi, mais on REGARDE le boss — et c'est
+     * justement pendant qu'on tape dessus qu'il faut comprendre pourquoi les
+     * coups ne portent plus. */
+    if (e.mue > 0) {
+      var pm = Math.max(0, Math.min(1, e.mue / 2));
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,197,61,.95)';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.arc(e.rx, e.ry - T * 0.28, T * 0.5, -Math.PI / 2,
+              -Math.PI / 2 + Math.PI * 2 * pm);
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 
   /* La barre de vie ne s'affiche QUE si la creature est blessee : cinquante

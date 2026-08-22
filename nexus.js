@@ -7089,6 +7089,163 @@
     }
   }
 
+  /* ================== LE DECOR SEME DU NEXUS ==================
+   *
+   * La place etait une pelouse : trois quarts d'herbe nue entre six batiments.
+   * Etaler la texture sur trois cases a fait disparaitre le quadrillage, mais
+   * une herbe uniforme reste une herbe uniforme — ce qui manquait, c'est
+   * quelque chose a regarder entre les portes.
+   *
+   * ---- SEME, ET NON PLACE A LA MAIN ----
+   *
+   * Trois cents touffes posees une par une seraient trois cents nombres a
+   * tenir a jour, et le jour ou un batiment bouge il faudrait toutes les
+   * relire. On tire au sort, et l'on ECARTE ce qu'il faut ecarter.
+   *
+   * ---- MAIS AVEC UNE GRAINE FIXE ----
+   *
+   * `Math.random` aurait redessine la place a chaque rechargement. Un lieu
+   * qu'on reconnait est un lieu ou l'on sait ou l'on est : l'arbre au coin
+   * doit etre le meme demain, et le meme pour tout le monde. La graine est
+   * donc en dur, et le generateur ci-dessous est le plus court qui melange
+   * correctement — `Math.sin` en guise de hasard donne des motifs visibles en
+   * diagonale, ce qui est exactement ce qu'on cherche a casser.
+   *
+   * ---- CE QU'ON ECARTE ----
+   *
+   * Les chemins (on ne pose pas un arbre au milieu d'une allee), la cour de
+   * l'enclos (elle a son propre decor), et le RECTANGLE de chaque lieu — pas
+   * son rayon : un batiment de quatre cent vingt unites de large avec un
+   * rayon de cent cinquante aurait laisse pousser un chene dans sa facade.
+   */
+  var DECORS_SEMES = null;
+  var DECOR_FAMILLES = [
+    /* L'herbe est au SOL : petite, nombreuse, et dessinee sous tout le monde.
+       La trier avec les vivants pour une touffe de cinquante unites couterait
+       trois cents comparaisons par image pour un resultat invisible. */
+    { cle: 'herbe',  src: 'img/nexus/tiles/nexus_herbe.webp',  cases: 6,
+      combien: 300, min: 44, max: 76,  ecart: 46,  sol: true },
+    /* Les arbres et les pierres magiques se TRIENT : on passe derriere un
+       arbre, et un arbre qu'on traverse n'est plus un arbre. */
+    /* L'ecart est descendu de 300 a 210 : a 300, DIX arbres sur trente-quatre
+       trouvaient une place — l'essai l'a chiffre — parce que les onze pierres
+       levees, posees en premier avec leur ecart de quatre cents, avaient deja
+       decoupe la pelouse. Un bosquet de deux arbres proches est de toute facon
+       plus juste qu'une haie reguliere. */
+    { cle: 'arbres', src: 'img/nexus/tiles/nexus_arbres.webp', cases: 4,
+      combien: 34,  min: 190, max: 280, ecart: 190, sol: false },
+    /* Peu nombreuses, et c'est le point : quatre pierres qui brillent dans un
+       pre font de la magie, quarante font une decheterie de cristaux. */
+    { cle: 'magie',  src: 'img/nexus/tiles/nexus_magie.webp',  cases: 4,
+      combien: 11,  min: 120, max: 160, ecart: 380, sol: false },
+  ];
+  DECOR_FAMILLES.forEach(function (f) { f.img = new Image(); f.img.src = f.src; });
+
+  function semeLeDecor() {
+    if (DECORS_SEMES) return DECORS_SEMES;
+    /* Un generateur a graine fixe. `x = (x * 1103515245 + 12345) % 2^31` en
+       arithmetique EXACTE : en flottant, le produit depasse 2^53 et perd ses
+       bits de poids faible — ceux qui font justement le hasard. On coupe donc
+       en deux moities de seize bits. */
+    var g = 20260823;
+    function alea() {
+      var h = ((g >>> 16) * 1103515245 + ((g & 0xFFFF) * 1103515245 >>> 16)) & 0xFFFF;
+      g = (((h << 16) >>> 0) + ((g & 0xFFFF) * 1103515245 & 0xFFFF) + 12345) >>> 0;
+      return (g >>> 8) / 0x1000000;
+    }
+    /* ---- DEUX SEAUX D'ECARTEMENT, PAS UN ----
+     * Premiere version : une seule liste de poses, et l'ecart exige etait le
+     * plus grand des deux. Trois cents touffes d'herbe posees en premier, puis
+     * un arbre qui devait se tenir a trois cents unites de CHACUNE — aucun
+     * arbre ni aucune pierre levee n'est apparu, et la place est restee une
+     * pelouse fleurie.
+     * Une touffe d'herbe sous un arbre n'est pas un probleme, c'en est meme le
+     * contraire. Ce qui doit s'ecarter, ce sont les GRANDS entre eux. On tient
+     * donc deux listes, et l'on pose les grands EN PREMIER — ils ont besoin de
+     * place, l'herbe se glisse ensuite dans ce qui reste. */
+    var posesG = [], posesS = [];
+    DECORS_SEMES = [];
+    /* ---- LE PLUS RARE PASSE EN PREMIER ----
+     * Deuxieme fois que l'ordre me joue un tour. Les arbres poses avant les
+     * pierres levees prenaient toute la place : onze objets magiques qui
+     * doivent se tenir a quatre cent vingt unites de trente-quatre arbres
+     * deja plantes ne trouvent rien, et pas une seule pierre n'est apparue.
+     * Ce qui est RARE choisit son endroit d'abord ; ce qui est nombreux se
+     * glisse dans ce qui reste. C'est vrai des pierres devant les arbres comme
+     * des arbres devant l'herbe. */
+    var ordre = DECOR_FAMILLES.slice().sort(function (a, b) { return a.combien - b.combien; });
+    ordre.forEach(function (f) {
+      var poses = f.sol ? posesS : posesG;
+      for (var k = 0; k < f.combien; k++) {
+        /* Cent vingt essais et non quarante. Le semis ne tourne QU'UNE FOIS,
+           au premier dessin : economiser des tirages ici, c'est economiser une
+           milliseconde une fois dans la partie, au prix d'arbres qui ne se
+           posent pas. L'essai le chiffrait — treize sur trente-quatre. */
+        for (var essai = 0; essai < 120; essai++) {
+          /* ---- ON ARRONDIT AVANT DE VERIFIER, PAS APRES ----
+           * Je tirais un flottant, je verifiais la case avec LUI, puis je
+           * stockais `Math.round(y)` pour le dessin. Un arbre a 1663,6 tombait
+           * dans la case du dessus — de l'herbe — et se dessinait a 1664,
+           * c'est-a-dire sur la premiere ligne de l'allee. Un seul arbre sur
+           * trois cent vingt-cinq objets, trouve par l'essai. On decide donc
+           * de la position AVANT de poser la moindre question. */
+          var x = Math.round(60 + alea() * (MONDE.w - 120));
+          var y = Math.round(80 + alea() * (MONDE.h - 140));
+          /* ---- ON TESTE LA CASE, PAS LE POINT ----
+           * `estChemin` est une geometrie — des cercles et des rectangles. Le
+           * DESSIN, lui, pose une case entiere de chemin des que le CENTRE de
+           * cette case tombe dans la geometrie. Un objet peut donc etre hors
+           * des couloirs et se retrouver quand meme sur une dalle peinte, au
+           * bord de la case. L'essai en a compte quatorze.
+           * On pose donc la meme question que le dessin : la case ou l'objet a
+           * les pieds est-elle une case de chemin ? Deux regles differentes
+           * pour un seul sol finissent toujours par ne plus dire la meme
+           * chose. */
+          var cxT = Math.floor(x / TUILE) * TUILE + TUILE / 2;
+          var cyT = Math.floor(y / TUILE) * TUILE + TUILE / 2;
+          if (estChemin(cxT, cyT)) continue;
+          /* Et la case juste au-dessus des pieds : un arbre plante au ras
+             d'une allee y laisse pendre ses racines. */
+          if (estChemin(cxT, cyT - TUILE)) continue;
+          if (x > FERME.x0 - 40 && x < FERME.x1 + 40
+              && y > FERME.y0 - 40 && y < FERME.y1 + 40) continue;
+          var dansUnLieu = false;
+          for (var i = 0; i < LIEUX.length; i++) {
+            var l = LIEUX[i];
+            if (Math.abs(x - l.x) < l.larg / 2 + 50
+                && y < l.y + 60 && y > l.y - l.haut - 30) { dansUnLieu = true; break; }
+          }
+          if (dansUnLieu) continue;
+          var colle = false;
+          for (var j = 0; j < poses.length; j++) {
+            var q = poses[j], dd = Math.max(f.ecart, q.e);
+            if ((q.x - x) * (q.x - x) + (q.y - y) * (q.y - y) < dd * dd) { colle = true; break; }
+          }
+          if (colle) continue;
+          poses.push({ x: x, y: y, e: f.ecart });
+          DECORS_SEMES.push({ f: f, x: x, y: y,
+                              col: Math.floor(alea() * f.cases),
+                              t: Math.round(f.min + alea() * (f.max - f.min)) });
+          break;
+        }
+      }
+    });
+    return DECORS_SEMES;
+  }
+
+  function dessineDecorSol() {
+    var l = semeLeDecor();
+    for (var i = 0; i < l.length; i++) {
+      var d = l[i];
+      if (!d.f.sol) continue;
+      var im = d.f.img;
+      if (!im.complete || !im.naturalWidth) continue;
+      var cw = im.naturalWidth / d.f.cases;
+      ctx.drawImage(im, d.col * cw, 0, cw, im.naturalHeight,
+                    d.x - d.t / 2, d.y - d.t, d.t, d.t);
+    }
+  }
+
   /* Les couloirs de chemin, en cercles et rectangles du MONDE — pas des
      tuiles listees une par une : a chaque case visible on demande juste
      "es-tu dans un de ces cinq morceaux ?". */
@@ -10062,6 +10219,10 @@
       }
     }
 
+    /* Les touffes et les fleurs, POSEES SUR LE SOL et sous tout le reste :
+       elles font partie du terrain, pas du mobilier. */
+    dessineDecorSol();
+
     // les lieux, le joueur et les autres, tries par leurs "pieds" : ce qui
     // est plus bas a l'ecran se dessine par-dessus, comme dans n'importe
     // quelle vue du dessus a la RotMG.
@@ -10086,6 +10247,18 @@
       var cadre = joueur.anim === 'jump' ? saut.cadre : joueur.cadre;
       dessineAvatar(joueur.x, joueur.y, PERSO, joueur.dir, joueur.anim, cadre);
     } });
+    /* Les arbres et les pierres levees DANS la pile : on passe derriere un
+       arbre, et un arbre qu'on traverse n'est plus un arbre. */
+    semeLeDecor().forEach(function (d) {
+      if (d.f.sol) return;
+      pile.push({ y: d.y, dessine: function () {
+        var im = d.f.img;
+        if (!im.complete || !im.naturalWidth) return;
+        var cw = im.naturalWidth / d.f.cases;
+        ctx.drawImage(im, d.col * cw, 0, cw, im.naturalHeight,
+                      d.x - d.t / 2, d.y - d.t, d.t, d.t);
+      } });
+    });
     /* Les sacs poses dans le hall se trient avec les vivants, comme dans le
        monde de combat : un sac pose devant quelqu'un doit passer devant lui.
        Meme fonction de dessin — c'est le meme sac, il doit se reconnaitre. */

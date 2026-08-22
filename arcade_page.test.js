@@ -266,6 +266,13 @@ function litSource() {
     C.drawImage = function (im) {
       const u = (im && (im.currentSrc || im.src)) || '';
       if (u.indexOf('room_arcade') >= 0) window.__salle++;
+      /* La planche du portail, et son point d'ancrage : elle se dessine par
+         ses PIEDS, comme tout ce qui se trie dans ce jeu. */
+      if (/obj_portal\.webp/.test(u) && arguments.length >= 5) {
+        const q = arguments.length >= 9 ? 5 : 1;
+        window.__peintPortail = { x: Math.round(arguments[q] + arguments[q + 2] / 2),
+                                  y: Math.round(arguments[q + 1] + arguments[q + 3]) };
+      }
       if (arguments.length >= 9 && arguments[3] === 256 && arguments[4] === 256
           && arguments[7] === 150 && arguments[8] === 150) {
         window.__moi = { x: Math.round(arguments[5] + 75), y: Math.round(arguments[6] + 130) };
@@ -318,6 +325,26 @@ function litSource() {
    * S'ils tombent ailleurs que sur les machines du dessin, le joueur marche a
    * cote sans rien declencher — et rien n'aurait leve d'erreur. */
   ok(v.halos.length >= 6, `la salle allume ${v.halos.length} reperes au sol`);
+
+  /* ---- LE PORTAIL EST DESSINE LA OU IL FAIT SORTIR ----
+   * `dessinePortail` lisait la sortie du COFFRE en dur : le cercle qui fait
+   * sortir etait au bon endroit, l'image etait ailleurs — on voyait la porte
+   * dans un coin et l'on ressortait d'un autre. Cet essai ne pouvait pas le
+   * voir : il franchit la sortie par son CERCLE. On compare donc les deux. */
+  {
+    const bloc = fs.readFileSync(path.join(SITE, 'nexus.js'), 'utf8');
+    const dep = bloc.indexOf('SALLE_ARC = {');
+    const zone = bloc.slice(dep, bloc.indexOf('SALLE_ARC.img', dep));
+    const px = Number((zone.match(/portail:\s*\{\s*x:\s*1600 \* ([\d.]+)/) || [])[1]) * 1600;
+    const py = Number((zone.match(/portail:[\s\S]*?y:\s*1600 \* ([\d.]+)/) || [])[1]) * 1600;
+    const dessine = await p.evaluate(() => (window.__peintPortail || null));
+    ok(!!dessine, 'la sortie est dessinee quelque part');
+    if (dessine) {
+      const d = Math.hypot(dessine.x - px, dessine.y - py);
+      ok(d < 60,
+         `et a ${Math.round(d)} unites du cercle qui fait sortir (${Math.round(px)},${Math.round(py)})`);
+    }
+  }
 
   /* ---- ET ELLES TOMBENT SUR LES MACHINES DU DESSIN ----
    *

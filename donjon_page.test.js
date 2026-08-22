@@ -754,24 +754,10 @@ process.on('unhandledRejection', (e) => {
      d'images different ferait lire la troisieme la ou il y en a quatre : le
      cercle se remplirait par a-coups, ou sauterait la derniere image — celle
      qui dit « ca frappe maintenant ». */
-  const geo = (f) => {
-    const b = fs.readFileSync(path.join(SITE, f));
-    /* Un WebP porte sa taille dans son entete VP8/VP8L. Plutot que d'ajouter une
-       dependance pour deux nombres, on lit la paire que le format expose — et si
-       la lecture echoue on le DIT, au lieu de laisser passer. */
-    const i = b.indexOf('VP8', 0, 'ascii');
-    if (i < 0) return null;
-    const t = b.toString('ascii', i, i + 4);
-    if (t === 'VP8 ') return { w: b.readUInt16LE(i + 14) & 0x3fff,
-                               h: b.readUInt16LE(i + 16) & 0x3fff };
-    if (t === 'VP8L') {
-      const n = b.readUInt32LE(i + 9);
-      return { w: (n & 0x3fff) + 1, h: ((n >> 14) & 0x3fff) + 1 };
-    }
-    if (t === 'VP8X') return { w: b.readUIntLE(i + 12, 3) + 1,
-                               h: b.readUIntLE(i + 15, 3) + 1 };
-    return null;
-  };
+  /* Lecteur PARTAGE. Celui-ci lisait juste, deux autres non — c'est
+     exactement ce qui arrive a une dizaine de lignes recopiee trois fois. */
+  const { tailleWebp } = require('./taille_image');
+  const geo = (f) => tailleWebp(path.join(SITE, f));
   for (const [a, b] of [['img/nexus/effets/annonce.webp', 'img/nexus/effets/annonce_donjon.webp'],
                         ['img/nexus/effets/onde.webp', 'img/nexus/effets/onde_donjon.webp']]) {
     const ga = geo(a), gb = geo(b);

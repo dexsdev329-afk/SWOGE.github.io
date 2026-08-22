@@ -3246,6 +3246,26 @@
     { cle: 'cinema', src: 'img/nexus/tiles/obj_cinema_maison.webp',
       x: CENTRE.x - 832, y: CENTRE.y - 352, larg: 420, haut: 291,
       rayon: 150, nom: 'the Cinema' },
+    /* ---- LA MAISON MANGA, AU NORD-EST ----
+     * Le dernier coin de la place. Les huit autres directions sont prises :
+     * nord les portails, est le coffre, ouest l'etal, sud la table, sud-est
+     * la ferme, sud-ouest l'arcade, nord-ouest le cinema. Elle repond au
+     * cinema en diagonale — deux salles obscures, une de chaque cote de la
+     * fontaine.
+     *
+     * `haut` recopie le RAPPORT de la planche (640 x 427) : 420 de large en
+     * donne 280 de haut. Choisir un nombre rond ecraserait le dessin, et une
+     * image etiree ne leve aucune erreur — elle a seulement l'air moins bien.
+     *
+     * `bientot` PARCE QUE L'INTERIEUR N'EXISTE PAS ENCORE. La facade est la,
+     * on tourne autour, et marcher dedans dit « opening soon » au lieu de ne
+     * rien faire. Un batiment ou l'on entre et ou rien ne se passe se lit
+     * comme un batiment casse ; celui-la se lit comme un batiment a venir.
+     * Le jour ou la planche de la salle arrive, `bientot` disparait et
+     * `SALLES_DU_HALL` gagne une ligne — comme l'arcade et le cinema. */
+    { cle: 'manga', src: 'img/nexus/tiles/obj_manga_maison.webp',
+      x: CENTRE.x + 832, y: CENTRE.y - 352, larg: 420, haut: 280,
+      rayon: 150, nom: 'SWOGE Manga', bientot: true },
     /* L'enseigne est du DECOR, comme celle du blackjack : pas de rayon, donc
        rien a ouvrir. Elle se pose entre le centre et la borne, parce que la
        borne seule est trop petite pour se voir depuis la fontaine. */

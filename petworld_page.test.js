@@ -90,20 +90,39 @@ process.on('unhandledRejection', (e) => {
     C.drawImage = function (im) {
       const u = (im && (im.currentSrc || im.src)) || '';
       const m = u.match(/(ground_ferme|obj_cloture_[a-z]+|ferme_decor|obj_grange)\.webp/);
-      if (m) window.__vus[m[1]] = (window.__vus[m[1]] || 0) + 1;
-      /* L etendue de la terre battue : c est la DEFINITION visible de la cour,
-         et elle vient de la page, pas d un chiffre recopie ici. */
-      if (m && m[1] === 'ground_ferme' && arguments.length >= 5) {
-        const x0 = arguments[1], y0 = arguments[2];
-        const x1 = x0 + arguments[3], y1 = y0 + arguments[4];
-        const b3 = window.__solF;
-        window.__solF = b3
-          ? { x0: Math.min(b3.x0, x0), y0: Math.min(b3.y0, y0),
-              x1: Math.max(b3.x1, x1), y1: Math.max(b3.y1, y1) }
-          : { x0: x0, y0: y0, x1: x1, y1: y1 };
-      }
-      if (m && m[1] === 'obj_cloture_porte' && arguments.length >= 5) {
-        window.__porteF = { x: arguments[1] + arguments[3] / 2, y: arguments[2] + arguments[4] };
+      /* ---- ON LIT LA DESTINATION, PAS LA DECOUPE ----
+       * drawImage a deux formes. La courte, (image, dx, dy, dl, dh), pose
+       * l image entiere ; la longue, (image, sx, sy, sl, sh, dx, dy, dl, dh),
+       * n en pose qu un MORCEAU, et ses quatre premiers nombres decrivent
+       * alors la decoupe DANS l image, en pixels de la source.
+       *
+       * Le sol se peint morceau par morceau : lire arguments[1..4] revenait
+       * donc a mesurer la texture de terre battue — 640 sur 640 pixels de
+       * fichier — et a la prendre pour la cour. Le personnage, lui, etait
+       * bien releve en coordonnees du monde : on comparait deux reperes
+       * etrangers, et « dans l enclos » etait faux partout.
+       *
+       * Le rectangle qui interesse l essai est toujours le DERNIER des deux. */
+      if (m) {
+        window.__vus[m[1]] = (window.__vus[m[1]] || 0) + 1;
+        const d = arguments.length >= 9 ? 5 : 1;
+        const x0 = arguments[d], y0 = arguments[d + 1];
+        const x1 = x0 + arguments[d + 2], y1 = y0 + arguments[d + 3];
+        /* L etendue de la terre battue : c est la DEFINITION visible de la
+           cour, et elle vient de la page, pas d un chiffre recopie ici. */
+        if (m[1] === 'ground_ferme' && arguments.length >= 5) {
+          const b3 = window.__solF;
+          window.__solF = b3
+            ? { x0: Math.min(b3.x0, x0), y0: Math.min(b3.y0, y0),
+                x1: Math.max(b3.x1, x1), y1: Math.max(b3.y1, y1) }
+            : { x0: x0, y0: y0, x1: x1, y1: y1 };
+        }
+        /* Le portail : son milieu et ses pieds, plus sa largeur dessinee —
+           c est elle qui dira de combien on a le droit d etre a cote de
+           l axe en s y presentant. */
+        if (m[1] === 'obj_cloture_porte' && arguments.length >= 5) {
+          window.__porteF = { x: (x0 + x1) / 2, y: y1, larg: x1 - x0 };
+        }
       }
       if (arguments.length >= 9 && arguments[3] === 256 && arguments[4] === 256
           && arguments[7] === 150 && arguments[8] === 150) {
@@ -145,46 +164,77 @@ process.on('unhandledRejection', (e) => {
     if (!b2 || !m) return null;
     return m.x > b2.x0 && m.x < b2.x1 && m.y > b2.y0 && m.y < b2.y1;
   });
-  /* On se place a GAUCHE de la cour, a mi-hauteur, et l on pousse vers elle.
-     Sans collision, on la traverserait de part en part en six secondes. */
   const cible = await p.evaluate(() => window.__solF);
   ok(!!cible, `la cour se mesure a l ecran (${cible ? Math.round(cible.x1 - cible.x0) + 'x' + Math.round(cible.y1 - cible.y0) : 'absente'})`);
-  for (let k = 0; k < 18; k++) {
+
+  /* ---- MARCHER JUSQU A, ET NON PENDANT ----
+   * Compter les secondes supposerait une vitesse et un point de depart, deux
+   * choses qui changeront. On marche donc JUSQU A ce que la condition soit
+   * vraie. Et chaque temps se termine avant que le suivant commence : un
+   * arbre de decisions relu a chaque pas OSCILLE des que deux de ses branches
+   * se contredisent, et le personnage fait la navette jusqu a epuisement du
+   * compteur. */
+  const jusqua = async (touche, atteint, ms) => {
+    for (let k = 0; k < 24; k++) {
+      const m = await moi();
+      if (!m || atteint(m)) break;
+      await marche(touche, ms || 240);
+    }
     const m = await moi();
-    if (!m || !cible) break;
-    if (m.y < cible.y0 + 60) { await marche('ArrowDown', 260); continue; }
-    if (m.y > cible.y1 - 60) { await marche('ArrowUp', 260); continue; }
-    if (m.x > cible.x0 - 40) break;
-    await marche('ArrowRight', 260);
-  }
+    return !!(m && atteint(m));
+  };
+  /* De quoi contourner la cloture sans la froler. Ce n est pas une valeur
+     verifiee — c est une distance de marche, et elle se lit dans le trajet,
+     pas dans une assertion. */
+  const JEU = 60;
+
+  /* ---- ON CONTOURNE, ON NE TRAVERSE PAS ----
+   * L enclos se ferme au NORD : on y arrive par le haut, et descendre tout
+   * droit revient a pousser contre le fond de la cour — le personnage reste
+   * colle a la cloture du nord, et tout ce qui suit se joue au mauvais
+   * endroit. On passe donc a l ouest de la cour avant de s en approcher. */
+  await jusqua('ArrowLeft', (m) => m.x < cible.x0 - JEU);
+  await jusqua('ArrowDown', (m) => m.y > (cible.y0 + cible.y1) / 2);
+  /* Et l on pousse vers elle. Sans collision, on la traverserait de part en
+     part en deux secondes et demie. */
   await marche('ArrowRight', 2600);
+  const arret = await moi();
+  await marche('ArrowRight', 800);
+  const encore = await moi();
   const traverse = await dedans();
   ok(traverse === false,
      `pousser contre le flanc ne fait pas entrer (dedans = ${traverse})`);
+  /* Ne pas entrer ne prouve rien tout seul : on n entre pas non plus quand on
+     pousse dans le vide a dix pas de la cour, ni quand on s est fait arreter
+     par le bord du monde a l autre bout de la carte. Ce qui prouve la
+     cloture, c est d etre ARRETE JUSTE DEVANT ELLE : pousser encore sans
+     avancer d une unite, a l ouest de la cour et a moins d un jeu de son
+     bord — la ou la cloture est, et nulle part ailleurs. */
+  ok(!!arret && !!encore && Math.abs(encore.x - arret.x) < 2
+     && arret.x < cible.x0 && arret.x > cible.x0 - JEU,
+     `on bute sur son flanc et l on n avance plus (x = ${arret ? arret.x : '?'} puis ${encore ? encore.x : '?'}, flanc a ${Math.round(cible.x0)})`);
 
   /* ================== 3. LE PORTAIL LAISSE PASSER ================== */
   console.log('\n-- on entre par le portail --');
   /* On VISE le portail la ou il est dessine, on ne compte pas les secondes :
      compter supposerait une vitesse et une position de depart, deux choses
      qui changeront. */
-  /* ---- TROIS TEMPS, ET DANS CET ORDRE ----
-   * Un arbre de decisions relu a chaque pas OSCILLE : « descends si tu es
-   * trop haut, monte si tu es aligne » se contredit des qu'on est aligne et
-   * trop haut, et le personnage fait la navette devant le portail jusqu'a
-   * epuisement du compteur. On se presente donc en trois temps separes —
-   * descendre SOUS le portail, se mettre en face, puis monter — chacun
-   * jusqu'a ce qu'il soit fait. */
-  const porte = () => p.evaluate(() => window.__porteF);
-  for (let k = 0; k < 14; k++) {
-    const m = await moi(); const g = await porte();
-    if (m && g && m.y > g.y + 100) break;
-    await marche('ArrowDown', 260);
-  }
-  for (let k = 0; k < 14; k++) {
-    const m = await moi(); const g = await porte();
-    if (m && g && Math.abs(m.x - g.x) <= 25) break;
-    if (!m || !g) break;
-    await marche(m.x < g.x ? 'ArrowRight' : 'ArrowLeft', 200);
+  /* ---- ON SE PRESENTE PAR LE SUD ----
+   * Le portail est au sud, et c est le seul cote ouvert : s y presenter
+   * depuis le flanc ouest ou le nord revient a monter le long d une cloture
+   * pleine. Quatre temps, chacun mene a son terme — repasser a l ouest,
+   * descendre SOUS la cour, se mettre en face du portail, puis monter. */
+  const porte = await p.evaluate(() => window.__porteF);
+  await jusqua('ArrowLeft', (m) => m.x < cible.x0 - JEU);
+  await jusqua('ArrowDown', (m) => m.y > cible.y1 + JEU);
+  /* De combien on a le droit d etre a cote de l axe : un quart du portail tel
+     qu il est DESSINE. Le pas de reglage reste plus court que cette marge,
+     sinon on la franchit d un bord a l autre sans jamais s y poser. */
+  const MARGE = porte.larg / 4;
+  for (let k = 0; k < 24; k++) {
+    const m = await moi();
+    if (!m || Math.abs(m.x - porte.x) <= MARGE) break;
+    await marche(m.x < porte.x ? 'ArrowRight' : 'ArrowLeft', 120);
   }
   for (let k = 0; k < 14 && !(await dedans()); k++) await marche('ArrowUp', 220);
   const entre = await dedans();

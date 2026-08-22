@@ -169,15 +169,13 @@ function litSource() {
   }
 
   console.log('- les planches');
-  const tailleWebp = (f) => {
-    const d = fs.readFileSync(f);
-    const i = d.indexOf(Buffer.from('VP8X'));
-    if (i >= 0) return { w: d.readUIntLE(i + 8, 3) + 1, h: d.readUIntLE(i + 11, 3) + 1 };
-    const j = d.indexOf(Buffer.from('VP8L'));
-    if (j >= 0) { const v = d.readUInt32LE(j + 9); return { w: (v & 0x3FFF) + 1, h: ((v >> 14) & 0x3FFF) + 1 }; }
-    const k = d.indexOf(Buffer.from('VP8 '));
-    return { w: d.readUInt16LE(k + 14) & 0x3FFF, h: d.readUInt16LE(k + 16) & 0x3FFF };
-  };
+  /* Le lecteur de planches est PARTAGE. Il etait recopie ici, et la copie
+     lisait la mauvaise paire d'octets dans les WebP de forme etendue : le
+     premier batiment encode ainsi a ete mesure 17 sur 163585, pour un ecart
+     de rapport de 1 443 297 %. Trois copies d'une meme dizaine de lignes,
+     dont deux fausses — une seule maintenant, et les essais tombent ensemble
+     le jour ou elle se trompe. */
+  const { tailleWebp } = require('./taille_image');
   S.lieux.forEach((l) => {
     if (!l.src || !l.larg || !l.haut) return;
     const f = path.join(SITE, l.src);

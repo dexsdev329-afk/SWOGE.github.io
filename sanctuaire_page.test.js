@@ -527,15 +527,12 @@ process.on('unhandledRejection', (e) => {
         /* Le rapport vient du FICHIER, jamais d'ici : le jour ou l'on
            redessine la meteorite plus haute, cet essai doit continuer de
            dire vrai sans qu'on y touche. */
-        const d = fs.readFileSync(path.join(SITE, 'img/nexus/effets/meteore.webp'));
-        const iv = d.indexOf(Buffer.from('VP8X'));
-        let W, H;
-        if (iv >= 0) { W = d.readUIntLE(iv + 8, 3) + 1; H = d.readUIntLE(iv + 11, 3) + 1; }
-        else {
-          const jv = d.indexOf(Buffer.from('VP8L'));
-          const v = d.readUInt32LE(jv + 9);
-          W = (v & 0x3FFF) + 1; H = ((v >> 14) & 0x3FFF) + 1;
-        }
+        /* Lecteur PARTAGE : la copie qui etait ici lisait les drapeaux a la
+           place de la largeur des que la planche etait au format etendu. */
+        const { tailleWebp } = require('./taille_image');
+        const t = tailleWebp(path.join(SITE, 'img/nexus/effets/meteore.webp'));
+        ok(!!t, 'la planche de la meteorite se lit');
+        const W = t.w, H = t.h;
         const attendu = H / W;
         const pires = tombees.map((o) => Math.abs((o.dh / o.dw) / attendu - 1));
         const pire = Math.max(...pires);

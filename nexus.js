@@ -2680,9 +2680,19 @@
        sous nos pieds : sans elle le panneau se rouvrait a l'image suivante,
        puisqu'on est toujours devant la meme machine. Le repos du hall, lui,
        n'a plus de sens ici — on n'entre plus dans le jeu depuis le hall. */
-    if (parLaMain && SCENE === 'arcade') {
-      for (var i = 0; i < SALLE_ARC.bornes.length; i++) {
-        var b = SALLE_ARC.bornes[i];
+    /* ---- LA SALLE OU L'ON SE TIENT, ET NON « L'ARCADE » ----
+     * Cette ligne nommait SALLE_ARC et testait SCENE === 'arcade'. Dans le
+     * cinema elle tombait donc dans l'autre branche, qui marque un lieu du
+     * HALL — ce qui ne veut rien dire quand on est deja dans une salle. Le
+     * point sous nos pieds n'etait pas retenu, l'image suivante voyait un
+     * point ouvrable et rouvrait le panneau : la croix avait l'air morte.
+     * On demande donc a `salleCourante()` quelle salle nous porte. Le cinema
+     * marche pour la meme raison que l'arcade, et la salle suivante marchera
+     * sans qu'on y revienne. */
+    var SF = parLaMain ? salleCourante() : null;
+    if (SF && SF.bornes) {
+      for (var i = 0; i < SF.bornes.length; i++) {
+        var b = SF.bornes[i];
         var dx = joueur.x - b.x, dy = joueur.y - b.y;
         if (dx * dx + dy * dy < b.r * b.r) { borneFermee = b; break; }
       }
@@ -3266,6 +3276,32 @@
     { cle: 'manga', src: 'img/nexus/tiles/obj_manga_maison.webp',
       x: CENTRE.x + 832, y: CENTRE.y - 352, larg: 420, haut: 280,
       rayon: 150, nom: 'SWOGE Manga', bientot: true },
+    /* ---- SWOGE SERIES, PLEIN SUD ET AU LARGE ----
+     * Les huit directions du premier anneau sont prises : nord les portails,
+     * nord-est le manga, est le coffre, sud-est la ferme, sud la table,
+     * sud-ouest l'arcade, ouest l'etal, nord-ouest le cinema. Il ne restait
+     * pas de case libre — la place a ete SCANNEE plutot que devinee, et les
+     * seuls emplacements degages sont le fond de carte.
+     *
+     * On prend l'axe central plutot qu'un coin : le batiment ferme l'allee
+     * du sud au lieu de se cacher dans un angle, et la carte garde sa
+     * symetrie. Le prix est la largeur — 360 et non 420 comme ses voisins.
+     * Ce n'est pas de la coquetterie : a 420 il ne restait que 112 unites
+     * entre lui et la table de blackjack, contre 150 pour le reste de
+     * l'anneau. Un batiment plus etroit et bien ecarte se lit mieux qu'un
+     * batiment large colle a son voisin.
+     *
+     * `haut` suit le rapport de la planche RECADREE (544 x 427). La planche
+     * livree faisait 640 de large dont cent de vide transparent de chaque
+     * cote : la garder telle quelle aurait dessine un batiment deux tiers
+     * plus petit que ses voisins pour la meme largeur declaree, et aurait
+     * fait fuir le decor d'une bande de vide.
+     *
+     * `bientot`, comme le manga : la salle existe en planche, elle n'est pas
+     * encore branchee. */
+    { cle: 'series', src: 'img/nexus/tiles/obj_series_maison.webp',
+      x: CENTRE.x, y: CENTRE.y + 912, larg: 360, haut: 283,
+      rayon: 150, nom: 'SWOGE Series', bientot: true },
     /* L'enseigne est du DECOR, comme celle du blackjack : pas de rayon, donc
        rien a ouvrir. Elle se pose entre le centre et la borne, parce que la
        borne seule est trop petite pour se voir depuis la fontaine. */

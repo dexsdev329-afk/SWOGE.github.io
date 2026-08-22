@@ -372,6 +372,10 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
 /* Le sort d'un fruit : sa propre couleur, parce que ce n'est pas un bonus de
    plus mais la seule ligne qui dise ce que la barre d'espace va faire. */
 #nxFiche i.nxfi-sort{ color:#8CD9FF; font-weight:800; margin-top:6px; }
+/* Le PASSIF a sa couleur, distincte du pouvoir du fruit : l'un se declenche a
+   la barre d'espace, l'autre est simplement la. Les confondre ferait chercher
+   une touche qui n'existe pas. */
+#nxFiche i.nxfi-passif{ color:#C89BFF; font-weight:800; margin-top:6px; }
 #nxFiche em{ display:block; font-style:italic; color:#7b8496; margin-top:4px;
   font-size:10.5px; }
 /* ---- LE MENU DE L'OBJET ----
@@ -1730,7 +1734,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
      racine ; c'est le seul endroit d'ou elle peut couvrir tout le reste. -->
 <div id="nxFiche"></div>
 
-<script src="nexus.js?v=20260823h" defer></script>
+<script src="nexus.js?v=20260823i" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

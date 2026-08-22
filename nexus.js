@@ -1226,6 +1226,18 @@
         ' \u00b7 ' + o.sort.cout + ' MP</i>' +
         '<em>' + ech(o.sort.quoi) + ' \u00b7 ' + o.sort.recharge + 's cooldown</em>';
     }
+    /* ---- LE PASSIF D'UNE ARMURE OU D'UNE BAGUE ----
+     * Il ne se declenche pas : rien a l'ecran ne dira jamais qu'il a marche.
+     * Sa fiche est donc le SEUL endroit ou le joueur peut apprendre qu'il l'a,
+     * et la seule raison de preferer une piece a une autre a stats egales.
+     * Sa couleur le separe du pouvoir du fruit : les deux ne se jouent pas
+     * pareil, et les confondre ferait chercher une touche qui n'existe pas.
+     * La phrase vient du SERVEUR, avec ses chiffres deja calcules — la
+     * recalculer ici finirait par annoncer autre chose que ce qu'il applique. */
+    if (o.passif) {
+      lignes += '<i class="nxfi-passif">\u25C6 ' + ech(o.passif.nom) + '</i>' +
+        '<em>' + ech(o.passif.quoi) + '</em>';
+    }
     /* `note` dit ce qu'un objet fait quand ce n'est pas un bonus — une fiole
        qui rend de la vie n'a pas de stat a montrer, et « sans bonus » serait
        faux plutot que vide. */

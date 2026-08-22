@@ -211,6 +211,10 @@
       if (m.balance != null) { SOLDE = parseFloat(m.balance) || 0; poseTout(); }
       envoieRetrait(m.voucher || m);
     }
+    if (m.type === 'bonAttente') {
+      var attend = parseFloat(m.montant) || 0;
+      montreLeBon(attend > 0, attend);
+    }
     if (m.type === 'error') dit(String(m.error || 'error').slice(0, 90), 'ko');
   }
 
@@ -697,6 +701,23 @@
         '</div>' +
         '<div class="swc-n" id="swcWdNote"></div>' +
         '<button class="swc-b p" id="swcWdGo" type="button">Withdraw</button>' +
+        /* ---- LE BON QU'ON N'A PAS ENCAISSE ----
+         *
+         * Refuser dans son portefeuille, une transaction qui echoue, un onglet
+         * ferme : le solde est DEJA parti et le bon expire au bout d'une heure.
+         * « Withdraw » ne peut plus rien : il exige un solde, et le solde est
+         * vide. Le joueur n'avait aucun recours qu'un nouveau depot, pour
+         * reprendre un argent qui etait deja le sien.
+         *
+         * Ce bouton redemande le bon sans rien debiter. Il reste CACHE tant que
+         * rien n'attend : un « Claim » permanent sur un panneau de retrait se
+         * lit comme un second retrait, et on finirait par cliquer les deux. */
+        /* Sa PROPRE ligne, pas `swcWdNote` : celle-la porte le minimum et les
+           frais, et `poseTout` la reecrit a chaque repeinture — un message
+           pose dessus disparaitrait au premier rafraichissement du solde. */
+        '<div class="swc-n" id="swcWdAttente" style="display:none"></div>' +
+        '<button class="swc-b" id="swcWdClaim" type="button" style="display:none">' +
+          'Claim pending withdrawal</button>' +
         '<button class="swc-b" data-close type="button">Close</button>' +
       '</div></div>' +
 
@@ -766,6 +787,7 @@
     $('swcWOut').addEventListener('click', deconnecte);
     $('swcDGo').addEventListener('click', depose);
     $('swcWdGo').addEventListener('click', demandeRetrait);
+    $('swcWdClaim').addEventListener('click', reprendLeBon);
     $('swcSGo').addEventListener('click', mise);
     $('swcSClaim').addEventListener('click', function () { demande('claimStake'); });
     $('swcSOut').addEventListener('click', retireMise);
@@ -802,6 +824,11 @@
       el.classList.toggle('show', b === nom);
     });
     if (nom === 'wallet' || nom === 'dep') litSoldesChaine();
+    /* On demande a chaque ouverture s'il reste un bon a encaisser. Le garder en
+       memoire depuis la derniere fois ne suffirait pas : le cas qu'on veut
+       couvrir est justement celui du joueur qui a recharge sa page apres avoir
+       refuse dans son portefeuille. */
+    if (nom === 'wd') { montreLeBon(false); demande('withdrawPending'); }
     if (nom === 'stake') demande('stakeInfo');
     if (nom === 'quests') { demande('quests'); demande('bonusState'); }
     poseTout();
@@ -1014,8 +1041,41 @@
       dit('✅ Paid to your wallet', 'ok');
       ferme(); litSoldesChaine();
     }).catch(function (e) {
+      /* ---- ON DIT QUE L'ARGENT N'EST PAS PERDU ----
+       * C'est le moment exact ou le joueur croit qu'il vient de perdre son
+       * solde : il a vu le chiffre tomber a zero, et sa transaction a echoue.
+       * Le bon est cumulatif — le contrat paiera l'ecart la prochaine fois —
+       * mais personne ne peut le deviner. */
       dit(texteErreur('Withdraw', e), 'ko', e && e.sortie);
+      montreLeBon(true);
     });
+  }
+
+  /* Le bouton n'apparait QUE quand il sert : apres un encaissement rate, ou
+     quand le serveur nous a dit qu'un bon attendait. */
+  function montreLeBon(oui, montant) {
+    var b = $('swcWdClaim');
+    if (b) b.style.display = oui ? '' : 'none';
+    var l = $('swcWdAttente');
+    if (!l) return;
+    l.style.display = oui ? '' : 'none';
+    /* On le DIT en toutes lettres, avec le montant quand on le connait :
+       « Claim pending withdrawal » tout seul ne dit pas s'il s'agit de dix
+       jetons ou de tout ce qu'on possede, et c'est precisement le doute du
+       joueur qui vient de voir son solde tomber a zero. */
+    if (!oui) { l.textContent = ''; return; }
+    l.innerHTML = montant > 0
+      ? '<b>' + montant.toLocaleString('en-US') + ' $SWOGE</b> already authorized and not ' +
+        'yet claimed — it is still yours.'
+      : 'Your last withdrawal was authorized but never claimed — it is still yours.';
+  }
+
+  /* Redemander le bon deja signe. Le serveur ne debite rien : il resigne le
+     cumul deja autorise, et le contrat ne paie que l'ecart avec ce qui a deja
+     ete tire — un bon resigne ne peut donc pas payer un jeton de plus. */
+  function reprendLeBon() {
+    if (!demande('withdrawVoucher')) return dit('Not connected — try again in a few seconds', 'ko');
+    dit('Looking up your pending withdrawal…');
   }
 
   function mise() {

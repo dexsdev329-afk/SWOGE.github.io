@@ -137,6 +137,37 @@ function litSource() {
 
   /* COUTURE 4 : le rapport dessine contre le rapport du FICHIER. On ne
      compare pas a un nombre ecrit ici : on ouvre la planche. */
+  /* ---- LA SORTIE N'EST PAS SOUS LES MACHINES ----
+   * Deux cercles trop proches et le geste « je vais jouer » finit dehors. On
+   * relit les deux dans la source et l'on mesure l'ecart, plutot que de faire
+   * confiance a l'oeil — c'est deja l'oeil qui avait pose le portail a
+   * trente-huit unites de la premiere borne. */
+  {
+    const src2 = fs.readFileSync(path.join(SITE, 'nexus.js'), 'utf8');
+    const dep2 = src2.indexOf('SALLE_ARC = {');
+    const bloc2 = src2.slice(dep2, src2.indexOf('SALLE_ARC.img', dep2));
+    const nb = (re) => { const m2 = bloc2.match(re); return m2 ? Number(m2[1]) : null; };
+    const P = { x: nb(/portail:\s*\{\s*x:\s*1600 \* ([\d.]+)/) * 1600,
+                y: nb(/portail:[\s\S]*?y:\s*1600 \* ([\d.]+)/) * 1600,
+                r: nb(/portail:[\s\S]*?r:\s*(\d+)/) };
+    const listeB = bloc2.slice(bloc2.indexOf('bornes: ['));
+    const bx = [...listeB.matchAll(/x: 1600 \* ([\d.]+), y: 1600 \* ([\d.]+), r: (\d+)/g)]
+      .map((m2) => ({ x: Number(m2[1]) * 1600, y: Number(m2[2]) * 1600, r: Number(m2[3]) }));
+    ok(bx.length === 6 && P.r > 0, `portail et ${bx.length} bornes relus dans la source`);
+    const ecarts = bx.map((b) => Math.hypot(P.x - b.x, P.y - b.y) - P.r - b.r);
+    const pire = Math.min(...ecarts);
+    /* Une largeur de personnage — cent cinquante unites — entre les deux
+       cercles : en deca, le pouce qui vise la borne attrape la sortie. */
+    ok(pire > 150,
+       `la sortie est a ${Math.round(pire)} unites de la borne la plus proche (il en faut plus de 150)`);
+    /* ET ELLE SE TROUVE EN LONGEANT LE MUR. C'est le geste de quelqu'un qui
+       cherche a sortir ; un portail qu'on frole sans y entrer est un portail
+       devant lequel on tourne. */
+    const x0b = nb(/x0:\s*1600 \* ([\d.]+)/) * 1600;
+    ok(Math.abs(P.x - x0b) < P.r,
+       `et l'on tombe dedans en longeant le mur gauche (${Math.round(Math.abs(P.x - x0b))} u pour un rayon de ${P.r})`);
+  }
+
   console.log('- les planches');
   const tailleWebp = (f) => {
     const d = fs.readFileSync(f);
@@ -468,6 +499,13 @@ function litSource() {
   {
     const m2 = await musique();
     ok(!m2.joue, 'sortir du batiment coupe la musique');
+    /* ---- ET LA SORTIE DOIT ETRE LOIN DES MACHINES ----
+     * Le joueur l'a demande : le portail etait a trente-huit unites du cercle
+     * de la premiere borne, soit un sixieme de la largeur d'un personnage. On
+     * visait DUEL FIGHTER et l'on ressortait du batiment. La regle est lue
+     * dans la SOURCE, pas recopiee : elle doit survivre au prochain
+     * redessinage de la salle. */
+
     ok(m2.ou < 1, `et elle repart du debut a la prochaine visite (${m2.ou.toFixed(1)} s)`);
   }
 

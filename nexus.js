@@ -3374,10 +3374,35 @@
      * commence l'enseigne ARCADE du mur du bas. */
     x0: 1600 * 0.100, x1: 1600 * 0.870,
     y0: 1600 * 0.340, y1: 1600 * 0.700,
-    /* Devant la porte EXIT du mur gauche, et posee DANS le damier. Elle est
-       DESCENDUE a .470 : a hauteur de porte, son cercle mordait celui de la
-       premiere borne, et l'on serait ressorti du batiment en voulant jouer. */
-    portail: { x: 1600 * 0.140, y: 1600 * 0.470, r: 92, larg: 104, haut: 160 },
+    /* ---- LE PORTAIL, DANS LE COIN BAS-GAUCHE ----
+     *
+     * Il etait a .470, devant la porte EXIT dessinee sur le mur gauche. Trop
+     * pres des machines : le joueur le signale, et la mesure lui donne raison
+     * — TRENTE-HUIT unites separaient son cercle de celui de la premiere
+     * borne, soit un sixieme de la largeur d'un personnage. On visait DUEL
+     * FIGHTER et l'on ressortait du batiment.
+     *
+     * Il descend donc dans le coin bas-gauche : 441 unites du centre de la
+     * premiere borne, 289 entre les deux cercles. Un geste vers les machines
+     * ne peut plus finir dehors.
+     *
+     * ---- ET IL DOIT MORDRE LE MUR, PAS S'EN ECARTER ----
+     *
+     * J'ai d'abord recule le cercle pour qu'il tienne ENTIEREMENT dans le
+     * damier. L'essai l'a refuse, et il avait raison : en longeant le mur
+     * gauche — le geste exact de quelqu'un qui cherche la sortie — on passait
+     * a NEUF UNITES du bord du cercle sans jamais y entrer. Le portail etait
+     * la, visible, et l'on tournait devant.
+     * Le commentaire du coffre dit deja la regle : « on le pose assez pres du
+     * mur pour qu'en longeant celui-ci on tombe dedans ». Ce qui deborde du
+     * damier est de toute facon inatteignable ; ce qui compte, c'est que le
+     * chemin naturel PASSE DEDANS.
+     *
+     * Il n'est plus aligne sur la porte peinte, et c'est ASSUME : le
+     * commentaire du coffre le dit deja — une porte de decor ne se lit pas
+     * comme une sortie, un portail si. C'est deja par un portail qu'on quitte
+     * le Nexus, et le joueur n'a qu'un geste a apprendre. */
+    portail: { x: 1600 * 0.155, y: 1600 * 0.635, r: 92, larg: 104, haut: 160 },
     /* ---- LES SIX BORNES, ET LEURS VRAIS NOMS ----
      *
      * Le dessin les NOMME maintenant, en toutes lettres au-dessus de chaque

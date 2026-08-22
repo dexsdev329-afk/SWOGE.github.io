@@ -2862,24 +2862,25 @@
        pose assez pres du mur pour qu'en longeant celui-ci on tombe dedans —
        c'est le geste naturel de quelqu'un qui cherche la sortie. */
     portail: { x: 1600 * 0.225, y: 1600 * 0.470, r: 104, larg: 104, haut: 160 },
-    /* Les cinq coffres du mur du bas, releves sur le dessin. UN SEUL est
-       ouvrable — celui du milieu, le plus facile a trouver. Les quatre autres
-       restent du decor, en attendant qu'on leur donne chacun son role.
-       Les faire tous ouvrir le meme menu etait plus simple, mais mentait :
-       cinq poignees pour une seule porte laissent croire a cinq rangements
-       differents, et le jour ou ils en auront vraiment, le joueur aura pris
-       l'habitude qu'ils soient interchangeables. */
-    /* DEUX coffres ouvrables sur les cinq du dessin, et ils ne font pas la
-       meme chose : celui du milieu porte les objets, celui de gauche les
-       personnages. Les trois autres restent du decor en attendant leur role.
-       Un coffre par usage plutot qu'un menu a onglets : on va au coffre des
-       personnages pour changer de personnage, et le chemin dit deja ce qu'on
-       vient faire. */
-    /* Quatre coffres, releves un par un sur le dessin — la planche en montre
-       cinq, aux abscisses 0.269, 0.370, 0.498, 0.621 et 0.721. Celui de
-       GAUCHE reste decoratif, et c'est voulu : une salle ou tout est
-       cliquable n'a plus de decor, et le joueur perd le reflexe de regarder
-       ou il va. */
+    /* ---- LES COFFRES DU MUR DU BAS ----
+     *
+     * QUATRE ouvrables, releves un par un sur le dessin : la planche en
+     * montre cinq, aux abscisses 0.269, 0.370, 0.498, 0.621 et 0.721. Celui
+     * de GAUCHE reste decoratif, et c'est voulu — une salle ou tout est
+     * cliquable n'a plus de decor, et le joueur perd le reflexe de regarder
+     * ou il va.
+     *
+     * UN COFFRE PAR USAGE, plutot qu'un menu a onglets : on va au coffre des
+     * personnages pour changer de personnage, et le chemin dit deja ce qu'on
+     * vient faire. Les faire tous ouvrir le meme menu etait plus simple, mais
+     * mentait — cinq poignees pour une seule porte laissent croire a cinq
+     * rangements differents, et le jour ou ils en auraient vraiment, le
+     * joueur aurait pris l'habitude qu'ils soient interchangeables.
+     *
+     * (Trois versions de ce paragraphe s'etaient empilees ici — « un seul
+     * ouvrable », puis « deux », puis « quatre ». Un lecteur ne pouvait plus
+     * savoir lequel disait la regle d'aujourd'hui, et c'est le genre de pile
+     * qui fait ecrire du code d'apres le mauvais alinea.) */
     coffres: [
       { x: 1600 * 0.500, y: 1600 * 0.842, r: 74, role: 'objets' },
       { x: 1600 * 0.375, y: 1600 * 0.842, r: 70, role: 'skins' },
@@ -5645,6 +5646,14 @@
     if (!elCoffreVoile) return;
     coffreOuvert = true;
     coffreRole = role || 'objets';
+    /* ---- LE REFUS APPARTIENT AU COFFRE QUI L'A RECU ----
+     * `coffreErreur` survivait a la fermeture, et les quatre branches
+     * l'affichent. Un « Your backpack is full » attrape en sortant un oeuf se
+     * relisait donc dans le coffre aux objets, ou il ne veut rien dire : le
+     * joueur cherche ce qu'il a fait de mal a un endroit ou il n'a rien fait.
+     * Il ne tenait a rien tant qu'il n'y avait qu'un coffre ouvrable ; a
+     * quatre, c'est une phrase qui voyage. */
+    coffreErreur = '';
     if (coffreRole === 'skins') { if (enLigne) envoie({ type: 'skins' }); }
     /* On REDEMANDE a chaque ouverture, sans condition. Les oeufs bougent par
        trois chemins — on en ramasse un, on en vend un, on en fait eclore un —

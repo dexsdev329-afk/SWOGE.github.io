@@ -142,9 +142,19 @@ process.on('unhandledRejection', (e) => {
       /* La porte se repere a SON dessin, dans le meme repere que le
          personnage : on n a alors ni le zoom ni la camera a refaire, et
          l essai ne verifie pas le calcul de la page avec le meme calcul. */
+      /* ---- NEUF ARGUMENTS, PAS CINQ ----
+       * La porte du coffre a recu `cadres: 4` : elle s anime, donc la page la
+       * dessine en NEUF arguments — (image, sx, sy, sw, sh, dx, dy, dw, dh).
+       * `arguments[1..4]` sont alors le decoupage dans la PLANCHE SOURCE, pas
+       * la destination dans le monde. L essai visait donc un point du fichier
+       * image, n entrait jamais dans la salle, et les huit verifications qui
+       * suivent tombaient en cascade sans qu une seule regle du jeu soit
+       * fausse.
+       * On lit la destination, la ou elle est, selon la forme de l appel. */
       if (u.indexOf('obj_vault_door') >= 0 && arguments.length >= 5) {
-        window.__porte = { x: arguments[1] + arguments[3] / 2,
-                           y: arguments[2] + arguments[4] };
+        var d = arguments.length >= 9 ? 5 : 1;
+        window.__porte = { x: arguments[d] + arguments[d + 2] / 2,
+                           y: arguments[d + 1] + arguments[d + 3] };
       }
       if (arguments.length >= 9 && arguments[3] === 256 && arguments[4] === 256
           && arguments[7] === 150 && arguments[8] === 150) {

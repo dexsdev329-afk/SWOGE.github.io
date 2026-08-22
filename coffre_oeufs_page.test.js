@@ -457,6 +457,47 @@ process.on('unhandledRejection', (e) => {
   ok(erreurs.length === 0, 'aucune erreur de page' +
      (erreurs.length ? ' — ' + erreurs.slice(0, 3).join(' | ') : ''));
 
+  /* ================== 7. LE REFUS NE VOYAGE PAS D UN COFFRE A L AUTRE ======
+   *
+   * `coffreErreur` survivait a la fermeture, et les quatre branches du
+   * panneau l affichent. Un « Your backpack is full » attrape en sortant un
+   * oeuf se relisait donc dans le coffre aux OBJETS, ou il ne veut rien dire :
+   * le joueur cherche ce qu il a fait de mal a un endroit ou il n a rien fait.
+   * Ca ne tenait a rien tant qu un seul coffre etait ouvrable ; a quatre,
+   * c est une phrase qui voyage. */
+  console.log('\n-- le refus reste dans le coffre qui l a recu --');
+  {
+    /* On part du refus qu on vient de provoquer, il est encore a l ecran. */
+    const avant = await p.evaluate(() =>
+      (document.querySelector('#nxCoffreVoile .nxcf-refus') || {}).textContent || '');
+    ok(avant.length > 0, `le refus est bien affiche dans le coffre aux oeufs (« ${avant.trim()} »)`);
+    /* On ferme, puis on rouvre un AUTRE coffre — par le vrai chemin, celui
+       qu emprunte le joueur qui marche d un coffre au suivant. */
+    await fermeALaMain();
+    /* On marche jusqu au coffre VOISIN, par le vrai chemin. Rouvrir le meme
+       panneau par une fonction interne ne prouverait rien : c est le trajet
+       d un coffre a l autre qui fait voyager la phrase. */
+    let apres = null;
+    for (let k = 0; k < 12 && !apres; k++) {
+      await marche('ArrowLeft', 260);
+      const e = await veille();
+      if (!e.on) continue;
+      const vu = await p.evaluate(() => ({
+        refus: (document.querySelector('#nxCoffreVoile .nxcf-refus') || {}).textContent || '',
+        titre: (document.querySelector('#nxCoffreVoile .nxcf-titre') || {}).textContent || '',
+      }));
+      /* N importe quel coffre AUTRE que celui des oeufs fait l affaire : le
+         sujet est que la phrase ne suive pas, pas lequel des trois on croise. */
+      if (!/egg/i.test(vu.titre)) apres = vu;
+      else await fermeALaMain();
+    }
+    ok(!!apres, 'on a marche jusqu a un autre coffre'
+       + (apres ? ` (« ${apres.titre.trim()} »)` : ''));
+    ok(apres && apres.refus.length === 0,
+       'et le refus des oeufs ne l a pas suivi'
+       + (apres && apres.refus ? ` (« ${apres.refus.trim()} »)` : ''));
+  }
+
   await nav.close();
   site.stop();
   console.log(`\ncoffre_oeufs_page.test.js — ${n} verifications, ${rates} echec(s)`);

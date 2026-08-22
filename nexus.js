@@ -2506,6 +2506,133 @@
     });
   }
 
+  /* Les lieux du hall qui ouvrent un panneau, et comment savoir s'il est
+     deja ouvert. Voir le commentaire au point d'entree : c'est ici qu'on
+     inscrit une porte, et une porte non inscrite se voit par son absence.
+     Declaree au niveau du module et pas dans la boucle de proximite : cette
+     boucle tourne soixante fois par seconde, et rebatir quatre fermetures a
+     chaque trame ne servirait a rien. */
+  var PANNEAUX = {
+    petworld: { ouvre: function () { ouvrePetworld(); }, ouvert: function () { return petOuvert; } },
+    etal:     { ouvre: function () { ouvreShop(); },     ouvert: function () { return shopOuvert; } },
+    casino:   { ouvre: function () { ouvreBj(); },       ouvert: function () { return bjOuvert; } },
+    arcade:   { ouvre: function () { ouvreArcade(); },   ouvert: function () { return arcOuvert; } },
+  };
+
+  /* ================== LA BORNE D'ARCADE ==================
+   *
+   * Le jeu n'est pas de nous : il vit dans un iframe, sous `arcade/`, avec
+   * ses propres regles de style et son propre ecouteur clavier. Ce bloc-ci
+   * ne fait donc que trois choses — l'allumer, l'eteindre, et lui envoyer
+   * les touches du telephone.
+   *
+   * On MET le `src` a l'ouverture et on le VIDE a la fermeture, au lieu de
+   * le laisser charge une fois pour toutes. Deux raisons :
+   *   - la borne joue sa musique en boucle ; un iframe cache continue de la
+   *     jouer, et le joueur cherche d'ou vient le son en croyant le Nexus
+   *     casse ;
+   *   - elle tourne une boucle d'animation a soixante trames par seconde,
+   *     qui prendrait la place de celle du hall pendant tout le reste de la
+   *     partie, pour dessiner un ecran que personne ne regarde.
+   * Vider le `src` detruit le document : c'est la seule facon d'arreter les
+   * deux a coup sur. Une mise en pause laisserait le minuteur audio courir.
+   */
+  var elArcVoile = document.getElementById('nxArcVoile');
+  var elArcJeu = document.getElementById('nxArcJeu');
+  var elArcPad = document.getElementById('nxArcPad');
+  var arcOuvert = false;
+  var ARC_SRC = 'arcade/index.html';
+
+  function ouvreArcade() {
+    if (!elArcVoile || !elArcJeu) return;
+    arcOuvert = true;
+    /* Recharger MEME si l'adresse n'a pas change : sans le passage par
+       about:blank, revenir sur la borne rouvrait la partie a l'endroit ou on
+       l'avait laissee, avec deux combattants a genoux et un chrono a zero. */
+    elArcJeu.src = ARC_SRC;
+    elArcVoile.classList.add('on');
+    gelLeHall(true);
+  }
+  function fermeArcade(parLaMain) {
+    arcOuvert = false;
+    if (parLaMain) marqueFerme('arcade');
+    if (elArcVoile) elArcVoile.classList.remove('on');
+    if (elArcJeu) elArcJeu.src = 'about:blank';
+    arcRelacheTout();
+    gelLeHall(false);
+  }
+  if (elArcVoile) {
+    elArcVoile.addEventListener('click', function (e) {
+      var c = e.target.classList;
+      if (e.target === elArcVoile || (c && c.contains('nxcf-x'))) fermeArcade(true);
+    });
+  }
+
+  /* ---- LES TOUCHES DU TELEPHONE ----
+   * La borne n'ecoute QUE le clavier. Sur telephone il n'y en a pas, donc
+   * sans ce qui suit elle est un ecran qu'on regarde sans pouvoir y jouer.
+   *
+   * L'iframe est sur notre propre domaine, donc on a le droit d'atteindre sa
+   * fenetre et d'y poser un evenement. On construit l'evenement avec SON
+   * constructeur `KeyboardEvent` et pas le notre : un evenement fabrique dans
+   * la fenetre du parent porte le mauvais `view`, et certains navigateurs le
+   * refusent en silence — le bouton s'allume et le combattant ne bouge pas.
+   */
+  var ARC_TENUES = {};              // touche -> vrai tant que le doigt est pose
+  function arcFenetre() {
+    try { return elArcJeu && elArcJeu.contentWindow; } catch (e) { return null; }
+  }
+  function arcTouche(code, enfonce) {
+    var w = arcFenetre();
+    if (!w || !w.KeyboardEvent) return;
+    /* Un doigt qui glisse d'un bouton a l'autre lance deux fois le meme
+       `keydown`. Le jeu compte les fronts montants pour ses enchainements :
+       deux fronts pour un seul appui lui font voir un double coup de poing
+       qu'on n'a pas donne. */
+    if (enfonce === !!ARC_TENUES[code]) return;
+    ARC_TENUES[code] = enfonce;
+    w.dispatchEvent(new w.KeyboardEvent(enfonce ? 'keydown' : 'keyup',
+                                        { code: code, bubbles: true }));
+  }
+  function arcRelacheTout() {
+    /* Fermer le panneau le doigt encore pose laissait la touche ENFONCEE :
+       a la reouverture le combattant partait tout seul vers la gauche, sans
+       que rien ne le touche. */
+    Object.keys(ARC_TENUES).forEach(function (c) { if (ARC_TENUES[c]) arcTouche(c, false); });
+    ARC_TENUES = {};
+    if (elArcPad) {
+      var b = elArcPad.querySelectorAll('button');
+      for (var i = 0; i < b.length; i++) b[i].classList.remove('presse');
+    }
+  }
+  if (elArcPad) {
+    var arcPointeurs = {};          // pointeur -> le bouton qu'il tient
+    function arcPose(e) {
+      var b = e.target.closest ? e.target.closest('[data-t]') : null;
+      if (!b) return;
+      e.preventDefault();
+      var c = b.getAttribute('data-t');
+      arcPointeurs[e.pointerId] = b;
+      b.classList.add('presse');
+      arcTouche(c, true);
+    }
+    function arcLeve(e) {
+      var b = arcPointeurs[e.pointerId];
+      if (!b) return;
+      delete arcPointeurs[e.pointerId];
+      b.classList.remove('presse');
+      arcTouche(b.getAttribute('data-t'), false);
+    }
+    elArcPad.addEventListener('pointerdown', arcPose);
+    /* `pointercancel` autant que `pointerup` : le navigateur annule le
+       pointeur des qu'il decide que le geste est un defilement, et sans
+       cette ligne la touche restait enfoncee pour de bon. */
+    elArcPad.addEventListener('pointerup', arcLeve);
+    elArcPad.addEventListener('pointercancel', arcLeve);
+    elArcPad.addEventListener('pointerleave', arcLeve);
+    elArcPad.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+  }
+
   /* La banniere peinte, pour les resultats qui en ont une. */
   var BJ_BANNIERE = { win: 'ban-win', blackjack: 'ban-blackjack',
                       bust: 'ban-bust', push: 'ban-push' };
@@ -2923,6 +3050,23 @@
        plus a cette carte, de quoi viser. */
     { cle: 'enseigne', src: 'img/nexus/tiles/obj_bj_enseigne.webp',
       x: CENTRE.x - 230, y: CENTRE.y + 400, larg: 120, haut: 193 },
+    /* ---- LA SALLE D'ARCADE, AU SUD-OUEST ----
+     * C'est le dernier quart de la place qui restait vide : le sud-est a la
+     * ferme, l'est le coffre, l'ouest l'etal. Une carte dont un coin ne
+     * contient rien apprend au joueur a ne plus y aller.
+     *
+     * `larg`/`haut` recopient le RAPPORT de la planche decoupee (366 x 619
+     * pour la borne, 227 x 625 pour l'enseigne). Choisir deux nombres ronds
+     * aurait ecrase le dessin, et rien ne l'aurait dit — une image etiree ne
+     * fait pas d'erreur, elle a juste l'air moins bien. */
+    { cle: 'arcade', src: 'img/nexus/tiles/obj_arcade_borne.webp',
+      x: CENTRE.x - 832, y: CENTRE.y + 352, larg: 106, haut: 179,
+      rayon: 110, nom: 'the Arcade' },
+    /* L'enseigne est du DECOR, comme celle du blackjack : pas de rayon, donc
+       rien a ouvrir. Elle se pose entre le centre et la borne, parce que la
+       borne seule est trop petite pour se voir depuis la fontaine. */
+    { cle: 'arcadeEnseigne', src: 'img/nexus/tiles/obj_arcade_enseigne.webp',
+      x: CENTRE.x - 470, y: CENTRE.y + 660, larg: 96, haut: 264 },
   ];
   LIEUX.forEach(function (l) { l.img = new Image(); l.img.src = l.src; l.dwell = 0; });
   /* ---- ON DESIGNE UN LIEU PAR SON NOM, PAS PAR SA PLACE ----
@@ -7270,9 +7414,25 @@
     return code;
   }
 
+  /* ---- FIGER LE HALL PENDANT QU'UN PANNEAU PLEIN ECRAN EST OUVERT ----
+   * Le geste etait ecrit en toutes lettres dans le panneau des reglages, et
+   * la borne d'arcade en avait besoin du mot pour mot : elle se joue en
+   * WASD, c'est-a-dire exactement les touches qui font marcher le
+   * personnage. Sans ce gel, se battre faisait AUSSI traverser la place, et
+   * on ressortait de la borne devant la boutique sans avoir marche.
+   *
+   * Remettre les touches a faux dans les DEUX sens compte autant : une
+   * direction encore enfoncee a l'ouverture continue de pousser le
+   * personnage derriere le voile, et une direction enfoncee a la fermeture
+   * le fait partir tout seul. */
+  function gelLeHall(oui) {
+    panelOuvert = !!oui;
+    Object.keys(TOUCHES).forEach(function (k) { TOUCHES[k] = false; });
+  }
+
   window.addEventListener('keydown', function (ev) {
     if (ecouteRebind) { captureRebind(ev); return; }
-    if (panelOuvert) return;         // les reglages sont ouverts : rien ne bouge derriere
+    if (panelOuvert) return;         // un panneau plein ecran est ouvert : rien ne bouge derriere
     var d = CODE_VERS_ACTION[ev.code];
     if (!d) return;
     debloqueSon(); ev.preventDefault();
@@ -8002,13 +8162,11 @@
     };
 
     bouton.addEventListener('click', function () {
-      panelOuvert = true; voile.classList.add('on'); peint();
-      Object.keys(TOUCHES).forEach(function (k) { TOUCHES[k] = false; });  // une touche deja enfoncee ne continue pas de marcher derriere
+      gelLeHall(true); voile.classList.add('on'); peint();
     });
     function ferme() {
       annuleEcoute();
-      panelOuvert = false; voile.classList.remove('on');
-      Object.keys(TOUCHES).forEach(function (k) { TOUCHES[k] = false; });  // rien ne reste enfonce en sortant
+      gelLeHall(false); voile.classList.remove('on');
     }
     voile.querySelector('.nxrp-x').addEventListener('click', ferme);
     voile.addEventListener('click', function (ev) { if (ev.target === voile) ferme(); });
@@ -8822,37 +8980,36 @@
             if (enLigne) envoie({ type: 'realmJoin', monde: l.monde });
             l.dwell = 0; entre = true; return;
           }
+          /* ---- UN LIEU QUI OUVRE UN PANNEAU LE NOMME DANS LA TABLE ----
+           * Il y avait ici trois `if (l.cle === ...)` de suite, un par
+           * panneau. La quatrieme porte — la borne d'arcade — en aurait
+           * ajoute un quatrieme, et c'est exactement la faute que le
+           * commentaire de `l.monde`, quinze lignes plus haut, decrit deja :
+           * une porte qu'on oublie d'inscrire ici ne fait RIEN, sans rien
+           * dire. La table met les quatre au meme endroit, ou une absence se
+           * voit.
+           *
+           * `ouvert` est une fonction et pas une valeur : la table est
+           * construite une fois, les panneaux s'ouvrent et se ferment mille
+           * fois. Lire `petOuvert` au montage aurait fige « ferme » pour
+           * toujours, et le panneau se serait rouvert a chaque trame.
+           *
+           * Le garde-fou compte : le sejour se remet a zero et RECOMMENCE a
+           * s'accumuler tant qu'on reste dessus. Sans lui, la boutique se
+           * rouvrait toutes les demi-secondes et chaque reouverture
+           * redemandait son etat au serveur — ce qui effacait l'annonce du
+           * coffre qu'on venait d'ouvrir, sous les yeux du joueur. */
+          if (PANNEAUX[l.cle]) {
+            var P = PANNEAUX[l.cle];
+            if (!P.ouvert() && peutRouvrir(l.cle)) P.ouvre();
+            l.dwell = 0; entre = true; return;
+          }
           /* Un lieu qui n'ouvre encore rien. On le laisse SUR la carte plutot
              que d'attendre qu'il soit fini : un batiment qu'on voit se
              construire donne une raison de revenir. Mais il doit le dire — un
              lieu ou l'on marche et ou rien ne se passe se lit comme un lieu
              casse, pas comme un lieu a venir. */
-          /* La grange OUVRE maintenant : elle a des familiers a montrer.
-             Meme mecanisme que l'etal et la table — meme repos, pour la
-             meme raison : sans lui le panneau se rouvrirait deux fois par
-             seconde tant qu'on reste devant la porte. */
-          if (l.cle === 'petworld') {
-            if (!petOuvert && peutRouvrir('petworld')) ouvrePetworld();
-            l.dwell = 0; entre = true; return;
-          }
           if (l.bientot) { l.dwell = 0; entre = true; return; }
-          /* L'etal etait le dernier endroit du Nexus qui faisait SORTIR du
-             jeu pour acheter. Il ouvre son panneau sur place.
-             Le garde-fou compte : le sejour se remet a zero et RECOMMENCE a
-             s'accumuler tant qu'on reste dessus. Sans lui, la boutique se
-             rouvrait toutes les demi-secondes et chaque reouverture
-             redemandait son etat au serveur — ce qui effacait l'annonce du
-             coffre qu'on venait d'ouvrir, sous les yeux du joueur. */
-          if (l.cle === 'etal') {
-            if (!shopOuvert && peutRouvrir('etal')) ouvreShop();
-            l.dwell = 0; entre = true; return;
-          }
-          /* La table de blackjack, au sud. Meme geste que l'etal, meme repos :
-             c'est le meme mecanisme, indexe par la cle du lieu. */
-          if (l.cle === 'casino') {
-            if (!bjOuvert && peutRouvrir('casino')) ouvreBj();
-            l.dwell = 0; entre = true; return;
-          }
           location.href = l.href;
         }
       } else {
@@ -9965,7 +10122,8 @@
     var TEINTE = { fontaine: '#3fa9f5', portail: '#c04ce0', portailPvp: '#e0453c',
                    etal: '#e0a33c', coffre: '#d8d8d8', casino: '#2fa86a',
                    enseigne: '#2fa86a', petworld: '#e07b3c',
-                   petworldEnseigne: '#e07b3c' };
+                   petworldEnseigne: '#e07b3c',
+                   arcade: '#ff3ea5', arcadeEnseigne: '#ff3ea5' };
     LIEUX.forEach(function (l) {
       g.fillStyle = TEINTE[l.cle] || '#fff';
       var w = Math.max(3, l.larg * e * 0.6), h = Math.max(3, l.haut * e * 0.6);

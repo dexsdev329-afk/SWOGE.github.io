@@ -1246,6 +1246,46 @@ body.nxdrag *{ cursor:grabbing !important; }
   #nxCoffreVoile, #nxRangVoile{ right:0; padding:10px; }
   #nxCoffreVoile .nxcf-carte, #nxRangVoile .nxcf-carte{ max-height:88vh; }
 }
+/* ---- LA BORNE ----
+   L'ecran garde le rapport 382 x 224 de la borne d'origine. L'etirer pour
+   remplir la carte deformerait les sprites, et un jeu de combat en pixels
+   deforme se voit au premier pas de cote. */
+#nxArcVoile{ position:fixed; inset:0; z-index:96; background:rgba(3,2,10,.9);
+  display:flex; align-items:center; justify-content:center; padding:10px;
+  opacity:0; pointer-events:none; transition:opacity .18s; }
+#nxArcVoile.on{ opacity:1; pointer-events:auto; }
+.nxarc-carte{ max-width:860px; width:100%; max-height:96vh; overflow:auto;
+  padding:16px 16px 14px; border-color:#ff3ea5;
+  box-shadow:0 0 0 1px rgba(255,62,165,.25), 0 18px 60px rgba(255,62,165,.18); }
+.nxarc-ecran{ margin-top:12px; aspect-ratio:382 / 224; width:100%;
+  background:#000; border:2px solid #2a1030; border-radius:10px;
+  overflow:hidden; box-shadow:inset 0 0 40px rgba(255,62,165,.18); }
+.nxarc-ecran iframe{ display:block; width:100%; height:100%; border:0; }
+.nxarc-touches{ display:flex; flex-wrap:wrap; gap:6px 18px; margin-top:10px;
+  font-size:11px; color:#9aa3b4; }
+.nxarc-touches b{ color:#ff3ea5; margin-right:5px; }
+.nxarc-credit{ margin-top:8px; font-size:10px; color:#6b7280; }
+.nxarc-credit a{ color:#6b7280; }
+/* La croix reste cachee au clavier : six boutons roses sous un jeu qu'on
+   joue deja aux touches ne servent qu'a manger de la hauteur d'ecran. */
+.nxarc-pad{ display:none; }
+@media (hover:none) and (pointer:coarse){
+  .nxarc-pad{ display:flex; justify-content:space-between; gap:10px;
+    margin-top:12px; touch-action:none; user-select:none; }
+  .nxarc-touches{ display:none; }
+  .nxarc-croix{ position:relative; width:132px; height:132px; flex:0 0 auto; }
+  .nxarc-croix button{ position:absolute; width:44px; height:44px; }
+  .nxarc-croix button[data-t="KeyW"]{ left:44px; top:0; }
+  .nxarc-croix button[data-t="KeyA"]{ left:0; top:44px; }
+  .nxarc-croix button[data-t="KeyS"]{ left:44px; top:88px; }
+  .nxarc-croix button[data-t="KeyD"]{ left:88px; top:44px; }
+  .nxarc-coups{ display:grid; grid-template-columns:repeat(3,52px);
+    grid-auto-rows:52px; gap:8px; }
+  .nxarc-pad button{ border-radius:10px; font:700 13px/1 system-ui,sans-serif;
+    color:#ffd8ee; background:rgba(255,62,165,.14);
+    border:1px solid rgba(255,62,165,.45); }
+  .nxarc-pad button.presse{ background:rgba(255,62,165,.45); }
+}
 #nxReglagesVoile{ position:fixed; inset:0; z-index:90; background:rgba(4,7,13,.66);
   display:flex; align-items:center; justify-content:center; padding:16px;
   opacity:0; pointer-events:none; transition:opacity .18s ease; }
@@ -1677,6 +1717,51 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
   </div>
 </div>
 
+<!-- ---- LA BORNE D'ARCADE ----
+     Le jeu vit dans un IFRAME et non dans la page. Trois raisons, chacune
+     mesuree : il pose ses propres regles sur `*`, `body` et `canvas`, qui
+     ecraseraient la moitie du Nexus ; il ecoute `keydown` sur window, et A/D
+     ferait donc marcher le personnage du hall pendant qu'on se bat ; et sa
+     musique tourne en boucle, qu'on regarde ou non. Vider le `src` a la
+     fermeture detruit le document — c'est la seule facon SURE d'arreter la
+     boucle audio et la boucle d'animation, une pause laisserait les deux. -->
+<div id="nxArcVoile">
+  <div class="nxcf-carte nxarc-carte">
+    <button class="nxcf-x" type="button" aria-label="Close">&times;</button>
+    <b class="nxcf-titre">&#127918; Arcade</b>
+    <div class="nxcf-sous">Two players, one keyboard. Click the screen first, then fight.</div>
+    <div class="nxarc-ecran"><iframe id="nxArcJeu" title="Arcade cabinet"
+      allow="autoplay" src="about:blank"></iframe></div>
+    <div class="nxarc-touches">
+      <span><b>P1</b> WASD move &middot; QER punch &middot; FVG kick</span>
+      <span><b>P2</b> Arrows move &middot; / RCtrl . punch &middot; RShift ' &#9166; kick</span>
+    </div>
+    <!-- La croix de direction et les six boutons ne servent QU'au telephone :
+         sans eux la borne y est un ecran qu'on regarde. Ils pilotent le
+         joueur 1 seulement — deux croix sur 412 px de large donnent des
+         boutons qu'on rate au pouce, ce qui est pire que pas de boutons. -->
+    <div class="nxarc-pad" id="nxArcPad" aria-hidden="true">
+      <div class="nxarc-croix">
+        <button type="button" data-t="KeyW" aria-label="Up">&#9650;</button>
+        <button type="button" data-t="KeyA" aria-label="Left">&#9664;</button>
+        <button type="button" data-t="KeyS" aria-label="Down">&#9660;</button>
+        <button type="button" data-t="KeyD" aria-label="Right">&#9654;</button>
+      </div>
+      <div class="nxarc-coups">
+        <button type="button" data-t="KeyQ">LP</button>
+        <button type="button" data-t="KeyE">MP</button>
+        <button type="button" data-t="KeyR">HP</button>
+        <button type="button" data-t="KeyF">LK</button>
+        <button type="button" data-t="KeyV">MK</button>
+        <button type="button" data-t="KeyG">HK</button>
+      </div>
+    </div>
+    <div class="nxarc-credit">Fan game by Mayank Jain &middot;
+      <a href="https://github.com/Mayank-Jain-1/StreetFighter" target="_blank"
+         rel="noopener noreferrer">github.com/Mayank-Jain-1/StreetFighter</a></div>
+  </div>
+</div>
+
 <div id="nxRangVoile">
   <div class="nxcf-carte nxrg-carte">
     <button class="nxcf-x" type="button" aria-label="Close">&times;</button>
@@ -1734,7 +1819,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
      racine ; c'est le seul endroit d'ou elle peut couvrir tout le reste. -->
 <div id="nxFiche"></div>
 
-<script src="nexus.js?v=20260823j" defer></script>
+<script src="nexus.js?v=20260823k" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

@@ -7214,7 +7214,7 @@
        La trier avec les vivants pour une touffe de cinquante unites couterait
        trois cents comparaisons par image pour un resultat invisible. */
     { cle: 'herbe',  src: 'img/nexus/tiles/nexus_herbe.webp',  cases: 6,
-      combien: 300, min: 44, max: 76,  ecart: 46,  sol: true },
+      combien: 190, min: 44, max: 76,  ecart: 58,  sol: true },
     /* Les arbres et les pierres magiques se TRIENT : on passe derriere un
        arbre, et un arbre qu'on traverse n'est plus un arbre. */
     /* L'ecart est descendu de 300 a 210 : a 300, DIX arbres sur trente-quatre
@@ -7224,10 +7224,13 @@
        plus juste qu'une haie reguliere. */
     { cle: 'arbres', src: 'img/nexus/tiles/nexus_arbres.webp', cases: 4,
       combien: 34,  min: 190, max: 280, ecart: 190, sol: false },
-    /* Peu nombreuses, et c'est le point : quatre pierres qui brillent dans un
-       pre font de la magie, quarante font une decheterie de cristaux. */
+    /* Peu nombreuses, et c'est le point : quelques pierres qui brillent dans un
+       pre font de la magie, quarante font une decheterie de cristaux. Onze
+       etait deja trop — le joueur l'a dit, et il a raison : a onze on ne les
+       remarque plus, on les traverse. Cinq, avec cinq cents unites entre
+       elles, veut dire qu'on en croise une et qu'on la regarde. */
     { cle: 'magie',  src: 'img/nexus/tiles/nexus_magie.webp',  cases: 4,
-      combien: 11,  min: 120, max: 160, ecart: 380, sol: false },
+      combien: 5,   min: 120, max: 160, ecart: 520, sol: false },
   ];
   DECOR_FAMILLES.forEach(function (f) { f.img = new Image(); f.img.src = f.src; });
 

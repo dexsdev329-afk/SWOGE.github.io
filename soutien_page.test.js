@@ -248,7 +248,15 @@ process.on('unhandledRejection', (e) => {
     }, esp);
     await p.waitForTimeout(180);
     return p.evaluate(() => Array.from(document.querySelectorAll('#nxPetFiche .nxpw-p'))
-      .map((e) => ({ txt: e.textContent, ouvert: e.classList.contains('on') })));
+      /* Les espaces INSECABLES redeviennent des espaces. La puce du cran
+         ecrit « Lv&nbsp;60 » — c est la bonne typographie pour une etiquette
+         etroite, ou « Lv » seul sur une ligne ne voudrait rien dire — mais
+         `textContent` rend alors U+00A0 et pas U+0020. Un essai qui verifie
+         du texte VISIBLE doit comparer ce que le lecteur voit : pour lui, les
+         deux sont un espace. Sans ca, l essai reclamerait a la page une
+         typographie moins bonne pour le seul confort de son propre indexOf. */
+      .map((e) => ({ txt: e.textContent.replace(/\u00a0/g, ' '),
+                     ouvert: e.classList.contains('on') })));
   };
   await ouvre();
   await p.waitForTimeout(600);

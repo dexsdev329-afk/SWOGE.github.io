@@ -2064,12 +2064,38 @@
        dessous : une « liste » d'un element n'apprend rien de plus qu'elle et
        coute une ligne de plus dans une fiche deja serree. */
     if (l.length < 2) return '';
+    /* ---- TROIS POUVOIRS TIENNENT MAL SUR UNE LIGNE CHACUN ----
+     *
+     * Ils etaient un par ligne : le nom en gras, les chiffres colles derriere
+     * en italique, le tout en onze pixels a moins de la moitie d'opacite.
+     * A deux pouvoirs ca passait. A trois, les chiffres du premier passent a
+     * la ligne sous le nom du deuxieme et l'on ne sait plus ce qui appartient
+     * a quoi — c'est exactement ce qu'on nous a rapporte : « j'arrive pas a
+     * lire les attaques speciales ».
+     *
+     * Trois changements, et chacun repond a une raison :
+     *
+     * 1. LE NOM ET LES CHIFFRES SUR DEUX LIGNES. Le nom dit ce que ca fait,
+     *    les chiffres disent combien : deux questions, deux lignes.
+     * 2. LE CRAN SE VOIT A GAUCHE. `zone` et `soutien` viennent du serveur —
+     *    on ne les devine pas d'un nom. « Une cible », « autour de toi »,
+     *    « sur toi » : c'est le modele mental du systeme, et sans lui trois
+     *    pouvoirs se lisent comme trois attaques interchangeables.
+     * 3. CE QUI EST FERME RESTE LISIBLE. C'etait a 45 % d'opacite, soit
+     *    presque rien — alors que c'est justement la seule chose qui donne
+     *    envie de nourrir. Un pouvoir qu'on ne voit pas ne se merite pas.
+     */
     return '<div class="nxpw-pous">' + l.map(function (p) {
       var d = p.ouvert ? detailEffet(p.effet) : '';
+      var genre = p.soutien ? 'on you' : p.zone ? 'all around you' : 'one target';
       return '<div class="nxpw-p' + (p.ouvert ? ' on' : '') + '">' +
-        '<b>' + ech(p.nom || p.cle) + '</b>' +
-        (p.ouvert ? (d ? ' <i>' + ech(d) + '</i>' : '')
-                  : ' <u>Lv ' + p.niveau + '</u>') +
+        '<span class="nxpw-cran">' +
+          (p.ouvert ? '\u2713' : 'Lv&nbsp;' + p.niveau) + '</span>' +
+        '<span class="nxpw-txt">' +
+          '<b>' + ech(p.nom || p.cle) + '</b>' +
+          '<em>' + genre + '</em>' +
+          (p.ouvert && d ? '<i>' + ech(d) + '</i>' : '') +
+        '</span>' +
         '</div>';
     }).join('') + '</div>';
   }

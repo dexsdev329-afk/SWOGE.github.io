@@ -422,6 +422,13 @@ process.on('unhandledRejection', (e) => {
   q.fame = 5000;
 
   /* On referme pour rendre la main au personnage. */
+  /* Une photo de la fiche, pour regarder ce qu'on vient de changer. On la
+     prend AVANT de fermer, et seulement quand SWOGE_PHOTO le demande : un
+     essai qui ecrit des fichiers a chaque lancement salit le depot. */
+  if (process.env.SWOGE_PHOTO) {
+    const carte = await p.$('#nxPetVoile .nxcf-carte, #nxPetVoile');
+    if (carte) await carte.screenshot({ path: process.env.SWOGE_PHOTO });
+  }
   await p.evaluate(() => document.querySelector('#nxPetVoile .nxcf-x').click());
   await p.waitForTimeout(300);
   /* On s ecarte de la grange, sinon on la remet aussitot en marchant. */

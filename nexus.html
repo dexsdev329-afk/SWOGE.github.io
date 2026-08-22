@@ -756,12 +756,45 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
 /* Les deux gestes du compagnon, l'un sous l'autre. Le ferme reste LISIBLE et
    pas efface : c'est lui qui donne envie de nourrir, et un texte a vingt pour
    cent d'opacite ne se lit pas sur un telephone. */
-.nxpw-pous{ margin-top:4px; display:flex; flex-direction:column; gap:2px; }
-.nxpw-p{ font-size:11px; line-height:1.3; opacity:.45; }
-.nxpw-p.on{ opacity:.85; }
-.nxpw-p b{ font-weight:700; }
-.nxpw-p i{ font-style:normal; color:#7CFF9B; }
-.nxpw-p u{ text-decoration:none; color:#FFC53D; font-weight:700; }
+/* ---- LES TROIS POUVOIRS D'UN FAMILIER ----
+ * Ils tenaient sur une ligne chacun, en onze pixels a 45 % d'opacite, nom et
+ * chiffres colles. A trois pouvoirs, les chiffres du premier passaient sous
+ * le nom du deuxieme : on ne savait plus ce qui appartenait a quoi.
+ * Une carte par pouvoir, le cran a gauche, le nom et les chiffres sur deux
+ * lignes. Ca prend plus de hauteur — et c'est le prix a payer pour que la
+ * chose la plus rare du jeu se lise. */
+.nxpw-pous{ margin-top:7px; display:flex; flex-direction:column; gap:5px; }
+.nxpw-p{ display:flex; align-items:flex-start; gap:9px;
+  padding:7px 9px; border-radius:9px;
+  background:rgba(255,255,255,.035); border:1px solid rgba(255,255,255,.07); }
+/* Ce qui est OUVERT se detache : un liistage ou tout se ressemble oblige a
+   lire les trois pour trouver celui qui sert aujourd'hui. */
+.nxpw-p.on{ background:rgba(124,255,155,.07); border-color:rgba(124,255,155,.22); }
+/* Le CRAN, a gauche : une coche s'il est acquis, le niveau sinon. C'est la
+   colonne qu'on parcourt du regard pour savoir ou l'on en est. */
+.nxpw-cran{ flex:0 0 auto; min-width:34px; text-align:center; padding:3px 5px;
+  border-radius:6px; white-space:nowrap;
+  font:800 10.5px/1.35 'Archivo',system-ui,sans-serif;
+  background:rgba(255,197,61,.14); color:#FFC53D; }
+.nxpw-p.on .nxpw-cran{ background:rgba(124,255,155,.16); color:#7CFF9B; font-size:12px; }
+.nxpw-txt{ flex:1; min-width:0; }
+/* Le NOM dit ce que ca fait. Il passe de 11 a 12.5 px et cesse d'etre
+   transparent : c'est la ligne qu'on cherche. */
+.nxpw-txt b{ display:block; font:700 12.5px/1.3 'Archivo',system-ui,sans-serif;
+  color:#EAF2FF; }
+/* LE CRAN EN TOUTES LETTRES — une cible, autour de toi, sur toi. Sans lui,
+   trois pouvoirs se lisent comme trois attaques interchangeables. */
+.nxpw-txt em{ display:block; font-style:normal; margin-top:1px;
+  font:700 9.5px/1.3 'Archivo',system-ui,sans-serif; letter-spacing:.07em;
+  text-transform:uppercase; color:#8DA0C4; }
+/* Les CHIFFRES sur leur propre ligne : « combien » est une autre question que
+   « quoi », et les coller au nom faisait passer l'une sous l'autre. */
+.nxpw-txt i{ display:block; margin-top:3px; font-style:normal;
+  font:600 11.5px/1.4 'Archivo',system-ui,sans-serif; color:#7CFF9B; }
+/* Ferme, mais LISIBLE. C'etait a 45 % d'opacite, soit presque rien — alors
+   que c'est la seule chose qui donne envie de nourrir. */
+.nxpw-p:not(.on) .nxpw-txt b{ color:#B9C4DC; }
+.nxpw-p:not(.on){ opacity:.82; }
 .nxpw-vide{ opacity:.68; font-size:13px; line-height:1.5; padding:14px 4px; }
 /* ---- LE RAYON DES ANIMAUX, DANS LA BOUTIQUE DU HALL ----
  * Des LIGNES et non des cases : un familier se juge a ce qu'il fait et a
@@ -1679,7 +1712,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
      racine ; c'est le seul endroit d'ou elle peut couvrir tout le reste. -->
 <div id="nxFiche"></div>
 
-<script src="nexus.js?v=20260823b" defer></script>
+<script src="nexus.js?v=20260823c" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

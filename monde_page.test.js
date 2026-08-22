@@ -1111,7 +1111,14 @@ process.on('unhandledRejection', (e) => {
       await p.evaluate(() => window.__s[0].send(JSON.stringify({ type: 'equipable' })));
       await p.waitForTimeout(450);
       const fio = await p.evaluate(async () => {
-        const c = document.querySelector('#nxSac .nxp-c[data-fiole]');
+        /* ---- ELLE N EST PLUS DANS LE SAC ----
+         * Les fioles de stat ont leur propre reserve, a cote des huit cases
+         * de butin. Elles en occupaient une chacune, et le nombre de STATS
+         * differentes qu on pouvait porter etait donc borne par ce qui
+         * restait de sac : avec quatre pieces d equipement, quatre sortes de
+         * fioles et pas une de plus.
+         * On la cherche la ou elle vit maintenant. */
+        const c = document.querySelector('#nxFioles [data-fio]');
         if (!c) return { case: false };
         const u = c.querySelector('u.fiole');
         if (!u) return { case: true, dessin: false };
@@ -1127,16 +1134,27 @@ process.on('unhandledRejection', (e) => {
           im.onerror = () => res({ ok: false });
           im.src = url;
         }) : { ok: false };
-        return { case: true, dessin: true, stat: c.dataset.fiole,
+        return { case: true, dessin: true, stat: c.getAttribute('data-fio'),
+                 compte: (c.querySelector('b') || {}).textContent || '',
                  url: url.split('/').pop(), charge,
                  taille: st.backgroundSize, pos: st.backgroundPosition,
                  vu: q.width > 2 && q.height > 2,
                  largeur: Math.round(q.width), hauteur: Math.round(q.height) };
       });
-      console.log('\n-- la fiole dans le sac --');
+      console.log('\n-- la fiole dans sa reserve --');
       console.log('   ' + JSON.stringify(fio));
-      ok(fio.case, 'la fiole occupe une case du sac');
-      ok(fio.dessin, 'et cette case porte un dessin de fiole');
+      ok(fio.case, 'la fiole a sa ligne dans la reserve');
+      /* Et le SAC, lui, n en porte aucune : c est le fond du changement, et
+         c est ce qui rend les huit cases entierement disponibles pour le
+         butin. */
+      const dansLeSac = await p.evaluate(() =>
+        document.querySelectorAll('#nxSac .nxp-c[data-fiole]').length);
+      eqOk(dansLeSac, 0, 'et elle ne prend AUCUNE des huit cases de butin');
+      ok(fio.dessin, 'sa ligne porte un dessin de fiole');
+      /* LE COMPTE se lit dessus. C est la seule question qu on pose a cette
+         rangee — combien il m en reste avant de repartir — et une reponse
+         qu il faut chercher est une reponse qu on ne lit pas. */
+      eqOk(fio.compte, '1', 'avec son compte, lisible sur la fiole');
       ok(fio.vu, `qui a une taille a l ecran (${fio.largeur}x${fio.hauteur})`);
       ok(fio.charge && fio.charge.ok,
          `et dont l image EXISTE vraiment (${fio.url})`);
@@ -1156,8 +1174,8 @@ process.on('unhandledRejection', (e) => {
       await p.evaluate(() => window.__s[0].send(JSON.stringify({ type: 'equipable' })));
       await p.waitForTimeout(350);
       const avantF = await p.evaluate(() =>
-        document.querySelectorAll('#nxSac .nxp-c[data-fiole]').length);
-      eqOk(avantF, 0, 'on part sans fiole dans le sac');
+        document.querySelectorAll('#nxFioles [data-fio]').length);
+      eqOk(avantF, 0, 'on part sans fiole en reserve');
       /* On rejoue la reponse du serveur telle qu'il l'envoie apres un
          ramassage — sac complet compris. */
       sacDuJoueur.sacFioles = { att: 1 }; sacDuJoueur.sacCases = null;
@@ -1170,13 +1188,13 @@ process.on('unhandledRejection', (e) => {
         new MessageEvent('message', { data: JSON.stringify(m) })), reponse);
       await p.waitForTimeout(300);
       const apresF = await p.evaluate(() => {
-        const c = document.querySelector('#nxSac .nxp-c[data-fiole]');
-        return { n: document.querySelectorAll('#nxSac .nxp-c[data-fiole]').length,
-                 stat: c ? c.dataset.fiole : null,
+        const c = document.querySelector('#nxFioles [data-fio]');
+        return { n: document.querySelectorAll('#nxFioles [data-fio]').length,
+                 stat: c ? c.getAttribute('data-fio') : null,
                  dessin: !!(c && c.querySelector('u.fiole')) };
       });
       console.log('   apres ramassage : ' + JSON.stringify(apresF));
-      eqOk(apresF.n, 1, 'ramasser une fiole remplit une case, tout de suite');
+      eqOk(apresF.n, 1, 'ramasser une fiole remplit sa ligne, tout de suite');
       eqOk(apresF.stat, 'att', 'et c est bien celle qu on a prise');
       ok(apresF.dessin, 'avec son dessin — pas une case vide');
 
@@ -2347,10 +2365,17 @@ process.on('unhandledRejection', (e) => {
         const u = (im && (im.currentSrc || im.src)) || '';
         if (u.indexOf('room_vault') >= 0) window.__salleVue++;
         /* La porte du coffre, dans le MEME repere que le personnage : on n'a
-           alors ni le zoom ni la camera a refaire. */
+           alors ni le zoom ni la camera a refaire.
+           NEUF arguments, pas cinq : la porte a recu `cadres: 4`, donc elle
+           s'anime, donc `arguments[1..4]` sont le decoupage dans la PLANCHE
+           SOURCE et pas la destination dans le monde. Cette lecture-la visait
+           un point du fichier image. La meme faute avait casse
+           coffre_page.test.js en entier — ici elle dormait, selon le chemin
+           emprunte. */
         if (u.indexOf('obj_vault_door') >= 0 && arguments.length >= 5) {
-          window.__porteC = { x: arguments[1] + arguments[3] / 2,
-                              y: arguments[2] + arguments[4] };
+          const d = arguments.length >= 9 ? 5 : 1;
+          window.__porteC = { x: arguments[d] + arguments[d + 2] / 2,
+                              y: arguments[d + 1] + arguments[d + 3] };
         }
         if (arguments.length >= 9 && arguments[3] === 256 && arguments[4] === 256
             && arguments[7] === 150 && arguments[8] === 150) {

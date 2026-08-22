@@ -528,8 +528,23 @@
      * changement d'equipement — les deux rendent l'etat COMPLET du skin
      * concerne, donc un seul lecteur suffit. */
     if (m.type === 'personnage') {
-      PERSO_PAR_SKIN[m.skin] = m.etat || null;
+      /* Un REFUS ne remplace pas la fiche qu'on avait deja. Le serveur repond
+         au refus avec `etat: null` — exactement le meme null que pour un skin
+         qu'on ne possede pas, qui n'a legitimement aucune fiche a montrer. Ce
+         qui separe les deux n'est pas le null, c'est `error` : sans lui le
+         null est une reponse, avec lui c'est une reponse qui n'a pas eu lieu.
+         Ranger ce null-la effacait le niveau, les stats et les quatre cases
+         sous les yeux du joueur : il lisait « you do not own this item » et
+         voyait en meme temps son personnage devenir vierge, donc il en
+         concluait qu'il venait de perdre son equipement. Et l'ecran restait
+         faux jusqu'a ce qu'il referme la fiche.
+         Ne rien ecrire garde aussi la distinction que `peintDetailSkin` fait
+         plus bas entre `undefined` (« Loading character… ») et `null` (rien a
+         montrer) : un refus n'est ni l'un ni l'autre, il ne dit rien de la
+         fiche. Un skin sans fiche arrive par la route de LECTURE, qui ne pose
+         jamais `error` — le cas legitime passe donc toujours. */
       if (m.error) toast(m.error, 'bad');
+      else PERSO_PAR_SKIN[m.skin] = m.etat || null;
       peintDetailSkin();
     }
     /* La liste de ce qu'il y a a equiper ne depend d'aucune saison parcourue
@@ -4476,8 +4491,17 @@
   /** Ce que porte la pastille de la case. Une ARME ne donne plus aucune stat
       — « +0 » sur une epee mythique qui frappe a 120 serait faux. Elle montre
       donc ses degats, prefixes d'une lame pour qu'on ne lise pas un bonus de
-      stat a la place. */
-  function pastille(o) {
+      stat a la place.
+
+      Le nom porte « libelle » et pas seulement « pastille » parce que le nom
+      nu est DEJA pris, au meme niveau, par la pastille des joueurs en ligne
+      (un <span> du DOM range dans un `var` en tete de fichier). La fonction
+      etait hoistee, puis l'affectation de ce `var` l'ecrasait avant le
+      premier clic : peindre une case remplie levait « pastille is not a
+      function », et la fiche entiere restait figee sur « Loading character… ».
+      Deux choses differentes ne peuvent pas partager un nom dans une portee
+      ou l'une des deux est une variable. */
+  function libellePastille(o) {
     var b = bonusEnTete(o);
     if (b > 0) return '+' + nb(b, 0);
     if (o && o.degats) return '\u2694' + o.degats[1];
@@ -4509,7 +4533,7 @@
     el.style.setProperty('--c', equipe ? (equipe.couleur || '#8DA0C4') : 'rgba(255,255,255,.18)');
     el.innerHTML = equipe
       ? '<img alt="" src="img/shop/' + encodeURIComponent(equipe.cle) + '.webp" onerror="this.remove()">' +
-        '<b>' + pastille(equipe) + '</b>' +
+        '<b>' + libellePastille(equipe) + '</b>' +
         '<span class="rm" title="Remove">&times;</span>'
       : '<i>+ ' + cfg.label + '</i>';
     el.onclick = function (e) {

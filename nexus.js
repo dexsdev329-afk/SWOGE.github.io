@@ -366,9 +366,12 @@
         BOUCLIER_PART = m.part || 0;
       } else {
         /* Les quatre autres visent quelque chose : le compagnon s'y rue.
-           Le CHIFFRE des degats arrive par `realmTouche`, comme pour nos
-           propres tirs — deux chemins d'affichage auraient fini par montrer
-           les degats du chien autrement que les notres. */
+           Le CHIFFRE de sa morsure arrive par `realmTouche`, comme pour nos
+           propres tirs — le serveur y pousse les deux, et marque le sien avec
+           `familier`. On ne le peint donc PAS ici : ce message porte bien une
+           `perte`, mais l'ecrire une seconde fois poserait deux nombres
+           identiques l'un sur l'autre, et il faudrait ensuite les tenir
+           d'accord a deux endroits. */
         FAM_GESTE = { x: m.x, y: m.y, reste: FAM_RUEE, quoi: m.quoi };
       }
     }
@@ -562,7 +565,19 @@
                  { vol: 0.22, hauteur: 1.15 + Math.random() * 0.2, duree: 0.28 });
       /* Le point du coup vient du serveur. Sans lui on savait qu'on avait
          touche, jamais ou. */
-      if (m.x !== undefined && m.y !== undefined) poseCoup(m.x, m.y - DECALAGE_TIR);
+      if (m.x !== undefined && m.y !== undefined) {
+        poseCoup(m.x, m.y - DECALAGE_TIR);
+        /* ---- LE CHIFFRE, AU MEME ENDROIT QUE L'ECLAT ----
+         * `perte` etait sur le fil depuis toujours et personne ne le lisait.
+         *
+         * `familier` dit QUI a frappe : le serveur pousse la morsure du
+         * compagnon dans le meme evenement que nos tirs — un seul chemin
+         * d'affichage, c'est voulu — et la marque. Sans ce champ on peindrait
+         * son coup de notre couleur ; en le peignant AUSSI depuis `realmFam`
+         * on ecrirait le meme nombre deux fois, l'un sur l'autre. */
+        poseChiffre(m.x, m.y - DECALAGE_TIR, m.perte,
+                    m.familier ? 'familier' : 'inflige');
+      }
     }
     if (m.type === 'realmCoup' && SCENE === 'monde') {
       VIE.pv = m.pv; moiMonde.pv = m.pv;
@@ -577,6 +592,17 @@
         joueSample('degat', { vol: 0.75, hauteur: 0.8, duree: 0.8 });
         secousse = 0.16;
       }
+      /* ---- ET LE CHIFFRE DE CE QU'ON VIENT DE PRENDRE ----
+       *
+       * Sur NOUS, parce que le serveur n'envoie pas de point pour ce coup-ci :
+       * il n'en a pas besoin — c'est nous qui sommes touches, et nous savons
+       * ou nous sommes. Il monte de nos pieds, dans sa couleur a lui.
+       *
+       * C'est le seul moyen de repondre a « pourquoi je meurs si vite ? ».
+       * La barre baissait, et rien ne disait si elle baissait d'un coup de
+       * douze ou de trois coups de quatre — donc rien ne disait si c'etait
+       * l'armure qui manquait ou le nombre d'assaillants. */
+      poseChiffre(joueur.x, joueur.y - DECALAGE_TIR, m.perte, 'subi');
       /* ---- LE COUP QUI POSE UN ETAT ----
        * Perdre le controle sans un mot se lit comme une page qui a plante,
        * pas comme une attaque. On le NOMME, chacun avec sa voix, et l'anneau
@@ -2854,6 +2880,89 @@
       ctx.restore();
     }
   }
+  /* ==================== LES CHIFFRES DE DEGATS ====================
+   *
+   * Le serveur envoie `perte` a CHAQUE coup : le notre (`realmTouche`), celui
+   * du familier (`realmFam`, quoi `mord`) et celui qu'on encaisse
+   * (`realmCoup`). La page les jetait tous les trois — elle posait un anneau
+   * blanc et jouait un son — et le seul retour chiffre du combat etait la
+   * barre de vie de la creature : une PROPORTION, jamais un nombre.
+   *
+   * C'est pourtant le seul retour qui rende visibles les huit statistiques.
+   * Sans lui, on ne peut pas savoir si l'epee qu'on vient de ramasser vaut
+   * mieux que la sienne, si la fiole d'attaque qu'on a bue a servi, ni
+   * pourquoi une creature a grosse defense encaisse les coups. Acheter une
+   * arme en $SWOGE se ressentait exactement comme ne pas en acheter.
+   *
+   * ---- RIEN N'EST CALCULE ICI ----
+   *
+   * `perte` arrive tel quel. La page ne rejoue aucune formule de degats : il
+   * y en a une, dans monde.js, et une seconde ici finirait par afficher un
+   * chiffre que le serveur n'a pas applique — le pire des mensonges, parce
+   * qu'il est precis. Pas de « critique » non plus : le serveur n'en a pas la
+   * notion, et l'inventer serait exactement cette deuxieme table.
+   *
+   * ---- TROIS FAMILLES, TROIS COULEURS ----
+   *
+   * Ce qu'on inflige, ce que le familier inflige, ce qu'on encaisse. Au
+   * milieu d'une melee, il faut savoir d'ou vient un nombre SANS le lire :
+   * c'est la couleur qui le dit. Celui qu'on encaisse est le plus gros des
+   * trois — c'est le seul qui demande une decision tout de suite.
+   */
+  var CHIFFRES = [];
+  var CHIFFRE_DUREE = 0.85, CHIFFRE_MONTEE = 34;
+  var CHIFFRE_STYLE = {
+    inflige:  { couleur: '#FFE9A8', taille: 15 },
+    familier: { couleur: '#7CFF9B', taille: 14 },
+    subi:     { couleur: '#FF6B6B', taille: 18 },
+  };
+  function poseChiffre(x, y, perte, genre) {
+    var n = Math.round(Number(perte) || 0);
+    /* Zero ne s'affiche pas : la brulure vaut moins d'un point par pas, et
+       une pluie de « 0 » ferait croire que les coups ne portent plus. */
+    if (!(n > 0)) return;
+    /* ---- DEUX COUPS AU MEME ENDROIT NE SE SUPERPOSENT PAS ----
+     * Une cadence de quatre tirs par seconde pose quatre nombres sur le meme
+     * pixel : ils s'ecrivent l'un sur l'autre et ne font plus qu'une tache.
+     * On decale le nouveau, d'un cote puis de l'autre, pour qu'on lise les
+     * deux. On ne regarde que les derniers poses — remonter toute la liste a
+     * chaque coup couterait plus cher que le dessin lui-meme. */
+    var d = 0;
+    for (var i = CHIFFRES.length - 1; i >= 0 && i >= CHIFFRES.length - 8; i--) {
+      var c = CHIFFRES[i];
+      if (c.genre === genre && Math.abs(c.x - x) < 28 && Math.abs(c.y - y) < 28) d++;
+    }
+    CHIFFRES.push({ x: x, y: y, dx: (d % 2 ? 1 : -1) * 9 * Math.ceil(d / 2),
+                    texte: String(n), genre: genre, vie: CHIFFRE_DUREE });
+    /* Une borne, comme pour les eclats : un arc mythique en rafale en pose
+       dix par seconde, et aucun ne merite de survivre aux autres. */
+    if (CHIFFRES.length > 48) CHIFFRES.shift();
+  }
+  function peintChiffres(dt) {
+    if (!CHIFFRES.length) return;
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(0,0,0,.85)';
+    for (var i = CHIFFRES.length - 1; i >= 0; i--) {
+      var e = CHIFFRES[i];
+      e.vie -= dt;
+      if (e.vie <= 0) { CHIFFRES.splice(i, 1); continue; }
+      var avance = 1 - e.vie / CHIFFRE_DUREE;
+      var st = CHIFFRE_STYLE[e.genre] || CHIFFRE_STYLE.inflige;
+      /* Il MONTE en ralentissant, et ne s'efface que sur la fin. Fondre des
+         le premier tiers le rendrait illisible a la cadence ou il arrive :
+         on le lit pendant qu'il est plein, il disparait ensuite. */
+      var y = e.y - CHIFFRE_MONTEE * Math.sqrt(avance);
+      ctx.globalAlpha = avance < 0.6 ? 1 : Math.max(0, (1 - avance) / 0.4);
+      ctx.font = '900 ' + st.taille + 'px Archivo, system-ui, sans-serif';
+      ctx.strokeText(e.texte, e.x + e.dx, y);
+      ctx.fillStyle = st.couleur;
+      ctx.fillText(e.texte, e.x + e.dx, y);
+    }
+    ctx.restore();
+  }
+
   var SOIN_CADRES = 6, SOIN_DUREE = 1.1;
   var RAFALE_CADRES = 4, STASE_CADRES = 3;
   function chargeEffets() {
@@ -8352,11 +8461,15 @@
        * Dans la pile, ils se seraient tries par leur `y` et une creature un
        * peu plus basse serait passee devant la glace qui l'enferme. Ce sont
        * des effets, pas des objets : ils appartiennent a l'air, comme les
-       * chiffres de degats. */
+       * chiffres de degats — qui se peignent maintenant pour de vrai, juste
+       * apres les eclats. */
       peintFxFamilier(dt);
 
       dessineTirsMonde();
       peintCoups(dt);
+      /* Les chiffres APRES les eclats : l'anneau s'ouvre sous le nombre, pas
+         par-dessus. */
+      peintChiffres(dt);
       peintNiveaux(dt);
       /* Les traces des pouvoirs par-dessus tout, mais AVANT `restore` : elles
          sont posees en coordonnees du monde comme le reste de la scene. */

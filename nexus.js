@@ -4321,8 +4321,19 @@
     var chute = av * av;
     var haut = T * 3 * (1 - chute);
     var ech = 0.35 + 0.65 * chute;
-    var t2 = T * 0.62 * ech;
-    ctx.drawImage(IMG_METEORE, z.x - t2 / 2, z.y - haut - t2 / 2, t2, t2);
+    var l = T * 0.62 * ech;
+    /* ---- ELLE N'EST PAS CARREE ----
+     * La planche fait 298 sur 597 : la pierre en bas, la trainee de feu et de
+     * fumee au-dessus. Je l'avais dessinee dans un CARRE, ce qui l'ecrasait de
+     * moitie — une meteorite aplatie ne se lit plus comme quelque chose qui
+     * tombe. Le rapport est demande a l'IMAGE et jamais ecrit ici : le jour ou
+     * on la redessine plus haute, le dessin suit tout seul. */
+    var h = l * (IMG_METEORE.naturalHeight / IMG_METEORE.naturalWidth);
+    /* On cale le BAS de la planche, pas son centre. La planche est detouree,
+       donc son bas EST le bas de la pierre : quand la chute finit, la pierre
+       touche exactement le centre du cercle. Cale sur le centre, la moitie de
+       la trainee serait passee sous le sol. */
+    ctx.drawImage(IMG_METEORE, z.x - l / 2, z.y - haut - h, l, h);
   }
 
   /* Ce qui reste quand la zone a frappe. L'onde n'a que quatre images : la

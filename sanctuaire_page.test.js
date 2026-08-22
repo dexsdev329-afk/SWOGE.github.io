@@ -454,6 +454,108 @@ process.on('unhandledRejection', (e) => {
   console.log('  (sols poses a l\'ecran : ' + (Object.keys(poses).length
     ? Object.keys(poses).map((k) => k + ' x' + poses[k]).join(', ') : 'aucun') + ')');
 
+  /* ================== 4. L'AVERSE DE METEORITES ==================
+   *
+   * Elle ne commence qu'en phase trois — soit apres avoir enleve cent
+   * cinquante mille points de vie a l'Idole, ce qu'aucun essai ne fera en
+   * marchant. On lui BAISSE la vie sur le serveur : c'est le seul raccourci
+   * pris ici, et il ne touche a rien de ce qu'on mesure ensuite.
+   *
+   * On rapproche le BOSS du joueur plutot que l'inverse. Deplacer le joueur
+   * cote serveur aurait ete corrige au message suivant — la page annonce sa
+   * propre position, le serveur la ramene a la vitesse de la marche — et
+   * l'essai aurait mesure une teleportation en train de se defaire.
+   *
+   * CE QU'ON VERIFIE, ET POURQUOI CE N'EST PAS DECORATIF : la planche fait 298
+   * sur 597. Dessinee dans un carre, elle est ecrasee de moitie — et une
+   * meteorite aplatie ne se lit plus comme quelque chose qui tombe. C'est
+   * exactement la faute qui etait dans le code avant ce commit.
+   */
+  console.log('\n-- l averse de meteorites --');
+  {
+    const boss = donjon0 && donjon0.monstres.find((mm) => mm.espece === 'idole');
+    ok(!!boss, 'l Idole est bien dans la salle du fond');
+    if (boss && j2) {
+      /* Juste sous le seuil de la phase trois, demande au MOTEUR : ecrire
+         « 0,55 » ici serait recopier un reglage de monde.js. */
+      const M = require(path.join(SERVEUR, 'monde'));
+      let pv = boss.pvMax;
+      for (let q = 1000; q >= 0; q--) {
+        pv = boss.pvMax * (q / 1000);
+        if (M.statsMonstre('idole', pv, boss.pvMax).pluie) break;
+      }
+      boss.pv = pv;
+      /* ---- ON LE REND INTUABLE, ET C'EST DELIBERE ----
+       * L'Idole en phase trois, a deux cent soixante unites, tue le
+       * personnage en moins d'une seconde — et un mort ne recoit plus l'etat
+       * du monde. La premiere version de cet essai mesurait donc zero cercle
+       * et accusait l'averse, alors que c'est le joueur qui n'etait plus la
+       * pour la voir.
+       * On ne mesure PAS la survie ici : on mesure ce qui tombe et comment
+       * c'est dessine. Les degats ont leur propre essai. */
+      j2.pvMax = 9999999; j2.pv = j2.pvMax;
+      boss.x = j2.x + 260; boss.y = j2.y;
+      const ph = M.phaseMonstre('idole', pv, boss.pvMax);
+      ok(!!M.statsMonstre('idole', pv, boss.pvMax).pluie,
+         `on la met en phase ${ph + 1}, celle qui fait tomber le ciel`);
+      /* Assez longtemps pour plusieurs averses : la cadence vient du moteur. */
+      await p.waitForTimeout(6000);
+
+      /* 1. LE SERVEUR MARQUE SES CERCLES. Sans le marqueur, la page ne peut
+            pas distinguer une meteorite d'un cercle ordinaire, et elle
+            dessinerait la pierre sur les deux. */
+      const marquees = await p.evaluate(() => {
+        const l = window.__s[0].__m.filter((x) => x.type === 'realmEtat' && x.zones && x.zones.length);
+        let avec = 0, sans = 0;
+        for (const x of l) for (const z of x.zones) (z.m ? avec++ : sans++);
+        return { avec, sans };
+      });
+      /* Ce qu'on a vu des DEUX cotes. « Zero cercle » a l'arrivee peut vouloir
+         dire qu'il n'en tombe pas, ou que le joueur n'est plus la pour les
+         recevoir — c'est arrive en ecrivant cet essai, et les deux se
+         ressemblent trait pour trait dans un echec. */
+      console.log(`  (boss a ${Math.round(Math.hypot(boss.x - j2.x, boss.y - j2.y))} unites, `
+                  + `${marquees.avec} cercles marques recus sur ${marquees.avec + marquees.sans})`);
+      ok(marquees.avec > 0, `le serveur envoie des cercles marques « meteorite » (${marquees.avec})`);
+
+      /* 2. LA PAGE LA DESSINE, ET SANS L'ECRASER. */
+      const tombees = await p.evaluate(() => window.__peint
+        .filter((o) => o.ecran && /^meteore\./.test(o.src))
+        .map((o) => ({ dx: o.dx, dy: o.dy, dw: o.dw, dh: o.dh })));
+      ok(tombees.length > 0, `et la page dessine la pierre qui tombe (${tombees.length} fois)`);
+      if (tombees.length) {
+        /* Le rapport vient du FICHIER, jamais d'ici : le jour ou l'on
+           redessine la meteorite plus haute, cet essai doit continuer de
+           dire vrai sans qu'on y touche. */
+        const d = fs.readFileSync(path.join(SITE, 'img/nexus/effets/meteore.webp'));
+        const iv = d.indexOf(Buffer.from('VP8X'));
+        let W, H;
+        if (iv >= 0) { W = d.readUIntLE(iv + 8, 3) + 1; H = d.readUIntLE(iv + 11, 3) + 1; }
+        else {
+          const jv = d.indexOf(Buffer.from('VP8L'));
+          const v = d.readUInt32LE(jv + 9);
+          W = (v & 0x3FFF) + 1; H = ((v >> 14) & 0x3FFF) + 1;
+        }
+        const attendu = H / W;
+        const pires = tombees.map((o) => Math.abs((o.dh / o.dw) / attendu - 1));
+        const pire = Math.max(...pires);
+        ok(pire < 0.02,
+           `en gardant le rapport de sa planche (${W}x${H}, ecart maximal ${(pire * 100).toFixed(1)} %)`);
+        /* 3. ELLE DESCEND. Une pierre dessinee toujours au meme endroit est
+              une decalcomanie, pas une chute — et c'est le seul cas ou l'on
+              verrait quelque chose de faux sans qu'aucune valeur ne soit
+              fausse. */
+        const hauts = tombees.map((o) => o.dy);
+        ok(Math.max(...hauts) - Math.min(...hauts) > 20,
+           `et elle descend vraiment (${Math.round(Math.max(...hauts) - Math.min(...hauts))} unites parcourues)`);
+        /* 4. ET ELLE GRANDIT EN APPROCHANT. */
+        const larg = tombees.map((o) => o.dw);
+        ok(Math.max(...larg) > Math.min(...larg) * 1.5,
+           `en grandissant a l approche (${Math.round(Math.min(...larg))} -> ${Math.round(Math.max(...larg))})`);
+      }
+    }
+  }
+
   const perdus = manquants.filter((u) => /\.webp$/.test(u));
   ok(perdus.length === 0, 'aucune image demandee n\'est absente' +
      (perdus.length ? ' — ' + perdus.slice(0, 6).join(', ') : ''));

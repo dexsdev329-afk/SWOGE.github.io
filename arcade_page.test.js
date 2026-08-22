@@ -414,6 +414,20 @@ function litSource() {
   });
   ok(carte.deborde <= 0, `aucune barre horizontale (debord ${carte.deborde} px)`);
   ok(carte.bouton, 'le bouton plein ecran est la');
+  /* ---- ET ELLE S'OUVRE DEJA EN GRAND ----
+   * Le cadre du jeu fait 382 sur 224 : dans une carte de huit cent soixante
+   * pixels c'est une vignette, et l'on ne joue pas a un jeu de combat dans une
+   * vignette. On mesure la HAUTEUR REELLE de l'ecran contre celle de la
+   * fenetre — un attribut de classe pourrait etre pose sans que le style
+   * suive. */
+  const grand = await p.evaluate(() => {
+    const e = document.querySelector('#nxArcVoile .nxarc-ecran');
+    const r = e.getBoundingClientRect();
+    return { h: Math.round(r.height), fen: window.innerHeight,
+             part: r.height / window.innerHeight };
+  });
+  ok(grand.part > 0.6,
+     `l'ecran occupe ${(grand.part * 100).toFixed(0)} % de la fenetre des l'ouverture (${grand.h} px sur ${grand.fen})`);
   /* Assez loin de la croix pour qu'un pouce ne ferme pas la borne en voulant
      l'agrandir : une cible tactile fait quarante-quatre pixels. */
   ok(carte.ecart >= 40, `et a ${carte.ecart} px de la croix, pas sous le meme pouce`);

@@ -2583,6 +2583,22 @@
        l'avait laissee, avec deux combattants a genoux et un chrono a zero. */
     elArcJeu.src = ARC_SRC;
     elArcVoile.classList.add('on');
+    /* ---- GRAND ECRAN TOUT DE SUITE ----
+     *
+     * Le cadre du jeu fait 382 sur 224 : dans une carte de huit cent soixante
+     * pixels, c'est une vignette. On ne joue pas a un jeu de combat dans une
+     * vignette.
+     *
+     * On passe par la CLASSE et non par `requestFullscreen`, et ce n'est pas
+     * un choix de confort : le plein ecran du navigateur exige un GESTE de
+     * l'utilisateur, et ce panneau s'ouvre depuis la boucle de jeu — on a
+     * marche sur une borne, on n'a clique nulle part. L'API aurait refuse, et
+     * une promesse refusee ne fait rien de visible : la borne se serait
+     * ouverte petite sans que rien n'explique pourquoi.
+     * La classe remplit la fenetre entiere sans rien demander a personne. Le
+     * bouton, lui, est un vrai clic : il peut donc promouvoir l'ecran au plein
+     * ecran natif, celui qui mange aussi la barre du navigateur. */
+    elArcVoile.classList.add('geant');
     gelLeHall(true);
     /* La borne a sa propre musique : les deux ensemble ne font pas deux
        musiques, elles font du bruit. */

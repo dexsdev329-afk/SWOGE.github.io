@@ -103,6 +103,11 @@
      * demandee. Panneau vide, sans une erreur nulle part. */
     if (m.type === 'skins') {
       SKINS_C = m.catalogue || SKINS_C;
+      /* L'or du compte voyage AVEC le catalogue, et c'est le seul endroit d'ou
+         le rayon peut l'apprendre : le solde qu'il connait par ailleurs est en
+         JETONS. Sans lui, un prix en or n'aurait aucun moyen d'etre accompagne
+         de ce qu'on a pour le payer. */
+      if (m.or != null) SKINS_OR = m.or;
       if (m.error) shopMsg = { texte: m.error, ok: false };
       else if (m.achete) shopMsg = { texte: '\u2728 ' + m.achete + ' is yours', ok: true };
       if (m.balance != null && BOUTIQUE) BOUTIQUE.balance = m.balance;
@@ -861,6 +866,23 @@
      bague — ce que l'on tient, ce que l'on porte, puis les deux bijoux. */
   var EMPLACEMENTS = ['equipArme', 'equipArmure', 'equipFruit', 'equipBague'];
   var CASES_SAC = 8;
+
+  /* ---- LA COULEUR D'UNE RARETE ----
+   *
+   * Le serveur la joint a chaque objet qu'il decrit (`couleur`), et c'est
+   * toujours celle-la qu'on peint. Deux endroits ne recoivent que la CLE :
+   * les salles de la mini-carte, qui annoncent le butin d'une salle, et le
+   * bilan de mort, qui nomme ce qu'on vient de perdre. Une table ici, une
+   * table la-bas, et deux rouges finissent par ne plus etre le meme rouge —
+   * sur un ecran qui sert justement a reconnaitre une piece a sa couleur.
+   *
+   * La liste s'arrete a « relique », qui n'existe pas dans la boutique : elle
+   * ne tombe que dans le monde, et c'est pourtant elle qu'on veut reconnaitre
+   * en premier sur un ecran de mort.
+   */
+  var COUL_RARETE = { commun: '#9AA7BF', rare: '#5AC8FF', epique: '#C07BFF',
+                      legendaire: '#FFC53D', mythique: '#FF4655',
+                      relique: '#FFFFFF' };
 
   /* ---- « OG » : LA PIECE EST NUMEROTEE ----
    *
@@ -4370,15 +4392,85 @@
     q('.nxmt-or').textContent = '+' + nbCourt(m.fameGagnee);
     q('.nxmt-ort').textContent = nbCourt(m.fameTotale);
 
-    /* Ce qu'on a perdu, NOMMEMENT. « Vous avez perdu votre equipement » ne
-       dit pas si la piece mythique y etait ; la liste, si. */
+    /* ================== CE QU'ON A PERDU, PAR NATURE ==================
+     *
+     * L'ecran affichait « You were carrying nothing. Nothing was lost. » a un
+     * joueur qui venait de perdre trois fioles, un oeuf legendaire et quatre
+     * potions bues : il ne lisait que `perdus` et un COMPTE de pieces, alors
+     * que le serveur envoyait les quatre listes nommees depuis le debut. Un
+     * oeuf tombe une fois sur mille deux cents et le legendaire une fois sur
+     * trente mille morts ; le seul moment ou le joueur apprend qu'il l'a
+     * perdu etait un ecran qui lui disait qu'il n'avait rien.
+     *
+     * UNE LIGNE PAR NATURE, parce qu'on ne perd pas la meme chose : une piece
+     * se rachete, une fiole se serait rangee au coffre, une potion bue ne
+     * revient par aucun chemin. Les fondre dans un seul compte — « 9 items »
+     * — redonnerait exactement le silence qu'on corrige ici.
+     *
+     * Rien n'est recalcule : les noms, les quantites et les raretes viennent
+     * du bilan tel quel. La page ne sait pas ce qu'il y avait dans le sac,
+     * elle ne fait que le lire.
+     */
     var bouts = [];
-    if (m.perdus && m.perdus.length) {
-      bouts.push('Destroyed: <b>' + m.perdus.map(function (o) {
-        return ech(o.nom || 'an item'); }).join('</b>, <b>') + '</b>');
-    }
-    if (m.sacPerdu) {
-      bouts.push('Backpack: <b>' + m.sacPerdu + ' item' + (m.sacPerdu > 1 ? 's' : '') + '</b> lost');
+    var lot = function (nom, contenu) {
+      if (!contenu || !contenu.length) return;
+      bouts.push('<div class="nxmt-lot"><i>' + nom + '</i><span>' +
+                 contenu.join(', ') + '</span></div>');
+    };
+    /* Le nom d'une piece, a la couleur de sa rarete — la seule chose qui dit
+       d'un coup d'oeil si la mythique y etait. Le bilan ne porte que la CLE
+       de la rarete ; la couleur est celle que la mini-carte peint deja sur
+       les salles a butin, et c'est LA MEME table. */
+    var piece = function (o) {
+      return '<em style="color:' + (COUL_RARETE[o.rarete] || '#C9B8C4') + '">' +
+             ech(o.nom || 'an item') + '</em>' +
+             (o.qte > 1 ? ' <u>&times;' + o.qte + '</u>' : '');
+    };
+    /* Fioles et potions bues se comptent par STAT, pas par objet : « ATT x3 »
+       est ce que le joueur reconnait, « 3 vials » ne lui dit pas lesquelles. */
+    var parStat = function (t) {
+      return Object.keys(t || {}).map(function (k) {
+        return '<em>' + ech((NOM_STAT[k] || k).toUpperCase()) + '</em>' +
+               (t[k] > 1 ? ' <u>&times;' + t[k] + '</u>' : '');
+      });
+    };
+    /* ---- L'OEUF EN TETE ----
+     * C'est la chose la plus rare du jeu, et le sac le montre deja en premier
+     * pour cette raison exacte. Le poser sous deux lignes de pieces communes
+     * le noierait au moment precis ou il faut qu'on le voie. Son DESSIN part
+     * avec : c'est celui du sac et du sol, la page n'en connait pas d'autre. */
+    lot('Eggs', Object.keys(m.oeufsPerdus || {}).map(function (e) {
+      return '<img alt="" src="img/nexus/objets/oeuf_' + encodeURIComponent(e) +
+             '.webp" onerror="this.remove()"><em>' + ech(NOM_OEUF[e] || 'Egg') +
+             '</em>' + (m.oeufsPerdus[e] > 1 ? ' <u>&times;' + m.oeufsPerdus[e] + '</u>' : '');
+    }));
+    lot('Destroyed', (m.perdus || []).map(piece));
+    /* `sacDetail` NOMME ce que `sacPerdu` comptait. Le compte reste en repli :
+       un serveur qui n'enverrait pas le detail vaut toujours mieux qu'un ecran
+       muet sur un sac qui vient de partir. */
+    if (m.sacDetail && m.sacDetail.length) lot('Backpack', m.sacDetail.map(piece));
+    else if (m.sacPerdu) lot('Backpack', ['<em>' + m.sacPerdu + ' item' +
+      (m.sacPerdu > 1 ? 's' : '') + '</em>']);
+    /* Celles du SAC seulement — celles du coffre sont a l'abri, et c'est toute
+       la difference entre les deux endroits. */
+    lot('Vials', parStat(m.fiolesPerdues));
+    /* ---- ET CE QU'ON AVAIT BU ----
+     * Souvent la perte la plus lourde d'une sortie, et la seule qu'aucun
+     * coffre n'aurait pu eviter : une potion de stat ne se retire pas, ne se
+     * range pas, ne se met a l'abri nulle part. La taire donnait un bilan qui
+     * mentait par omission. */
+    lot('Potions drunk', parStat(m.supPerdu));
+    /* ---- LES AUTRES PERSONNAGES QU'ON VIENT DE DESHABILLER ----
+     * L'exemplaire porte a ete detruit ; s'il etait aussi sur une autre fiche,
+     * elle vient de le perdre. Sans un mot ici, on retrouve un second
+     * personnage sans arme trois parties plus tard sans jamais faire le lien
+     * avec cette mort-la. */
+    if (m.desequipes && m.desequipes.length) {
+      var qui = m.desequipes.map(function (d) { return d.skin; })
+        .filter(function (x, i, l) { return l.indexOf(x) === i; });
+      bouts.push('<div class="nxmt-lot"><i>Unequipped</i><span><em>' +
+        qui.map(ech).join('</em>, <em>') +
+        '</em> <u>&mdash; the copy they wore is gone</u></span></div>');
     }
     /* ---- TOMBER DANS LA CARTE ROUGE N'EST PAS MOURIR ----
      * L'ecran de mort annonce « Destroyed » et remet un personnage a choisir.
@@ -4388,11 +4480,13 @@
      * qui croit avoir perdu sa relique n'y retourne pas. */
     if (m.pvp) {
       bouts.length = 0;
-      bouts.push('Your <b>backpack</b> stayed where you fell &mdash; go take it back.');
-      bouts.push('<i>Your gear, your level and your vault are untouched.</i>');
+      bouts.push('<div class="nxmt-note">Your <b>backpack</b> stayed where you fell ' +
+                 '&mdash; go take it back.</div>');
+      bouts.push('<div class="nxmt-note"><i>Your gear, your level and your vault ' +
+                 'are untouched.</i></div>');
     }
-    q('.nxmt-perdu').innerHTML = bouts.length ? bouts.join('<br>')
-      : 'You were carrying nothing. Nothing was lost.';
+    q('.nxmt-perdu').innerHTML = bouts.length ? bouts.join('')
+      : '<div class="nxmt-note">You were carrying nothing. Nothing was lost.</div>';
 
 
     /* Choisir avec QUI repartir. Les skins survivent toujours — c'est ce qui
@@ -4453,6 +4547,10 @@
    */
   var BOUTIQUE = null, shopSaison = 2, shopOuvert = false, shopMsg = '', shopLot = 1;
   var SKINS_C = [];            // le catalogue des personnages
+  /* L'or du compte, tel que le serveur l'a envoye avec le catalogue. On
+     l'AFFICHE sous un prix en or, on ne grise rien avec : il date de la
+     derniere reponse, et l'or monte a chaque monstre tue. */
+  var SKINS_OR = null;
   var elShopVoile = document.getElementById('nxShopVoile');
   var elShopOng = elShopVoile ? elShopVoile.querySelector('.nxsh-ong') : null;
   var elShopCorps = elShopVoile ? elShopVoile.querySelector('.nxsh-corps') : null;
@@ -4922,27 +5020,63 @@
       var soldeS = Number(BOUTIQUE.balance || 0);
       elShopCorps.innerHTML = (SKINS_C || []).map(function (k) {
         var a = k.id === PERSO;
-        return '<button type="button" class="nxsh-cof" data-skin="' + ech(k.id) + '"' +
-          ' data-a="' + (k.possede ? (a ? 'porte' : 'porter') : 'acheter') + '"' +
-          (k.possede || soldeS >= k.prix ? '' : ' disabled') + (a ? ' class="nxsh-cof on"' : '') + '>' +
+        /* ---- VINGT MILLE QUOI ----
+         * L'unite vient de `monnaie`, jamais du montant : « 20,000 » se lit
+         * exactement pareil en or et en jetons, et la deviner d'apres le
+         * chiffre — « c'est petit, donc c'est de l'or » — c'est afficher un
+         * prix dans une monnaie que le joueur n'a pas choisie. Ce rayon
+         * ecrivait « $SWOGE » en dur : le jour ou une edition en or ouvre, le
+         * joueur depose de l'argent reel pour un achat qui n'en demande pas. */
+        var enOr = k.monnaie === 'or';
+        /* ---- L'EDITION EPUISEE ----
+         * Le controle passe APRES « wear » : celui qui possede deja le skin
+         * doit pouvoir le porter le jour ou le dernier exemplaire part. Un
+         * « SOLD OUT » a la place de son bouton lui ferait croire qu'il l'a
+         * perdu. Meme regle que dans le tiroir du hall — meme source, memes
+         * mots. */
+        var fini = !k.possede && !k.offert && k.edition && !k.reste;
+        /* ---- ON NE GRISE QU'UN PRIX EN JETONS ----
+         * `soldeS` est le solde en JETONS : le comparer a un prix en or
+         * refusait a un joueur riche en or ce qu'il pouvait s'offrir. Et sous
+         * un prix en or on AFFICHE l'or qu'on a sans bloquer avec — ce
+         * chiffre date de la derniere reponse, l'or monte a chaque monstre
+         * tue, et le serveur reste seul a dire non. */
+        var trop = !k.possede && !k.offert && !enOr && soldeS < k.prix;
+        return '<button type="button" class="nxsh-cof' + (a ? ' on' : '') +
+          '" data-skin="' + ech(k.id) + '"' +
+          ' data-a="' + (k.possede ? (a ? 'porte' : 'porter') : fini ? 'fini' : 'acheter') + '"' +
+          (trop || fini ? ' disabled' : '') + '>' +
           '<img alt="" src="img/skins/skin_' + encodeURIComponent(k.id) +
           '.webp" onerror="this.remove()">' +
           '<span><span class="n">' + ech(k.nom) +
           (k.offert ? ' <u class="nxsh-free">FREE</u>' : '') +
+          /* Ce qu'il RESTE, pas ce qui est parti : « 2 left » se lit sans
+             soustraction. Zero veut dire « sans limite » cote serveur, et la
+             pastille ne sort donc que pour une vraie edition — l'ecrire sur
+             cinq lignes sur six aurait dilue la seule qui compte. */
+          (k.edition ? ' <u class="nxsh-ed' + (k.reste ? '' : ' vide') + '">' +
+             (k.reste ? Math.round(k.reste).toLocaleString('en-US') + ' left' : 'GONE') +
+             '</u>' : '') +
           '</span><span class="o">' +
-          ech(k.pouvoir || '') + '</span></span><span class="p">' +
+          ech(k.pouvoir || '') +
+          (!k.possede && !k.offert && enOr && SKINS_OR != null
+            ? '<u class="nxsh-avoir">You have ' +
+              Math.round(SKINS_OR).toLocaleString('en-US') + ' gold</u>' : '') +
+          '</span></span><span class="p' + (fini ? ' fini' : '') + '">' +
           /* « FREE » et pas « 0 $SWOGE » : un prix a zero se lit comme un prix
              qu'on n'a pas su calculer, le mot se lit comme une promesse. */
           (k.possede ? (a ? 'worn' : 'wear')
                      : k.offert ? 'FREE'
-                     : Math.round(k.prix).toLocaleString('en-US') + ' $SWOGE') +
+                     : fini ? 'SOLD OUT'
+                     : Math.round(k.prix).toLocaleString('en-US') +
+                       (enOr ? ' GOLD' : ' $SWOGE')) +
           '</span></button>';
       }).join('');
       Array.prototype.forEach.call(elShopCorps.querySelectorAll('[data-skin]'), function (b) {
         b.addEventListener('click', function () {
           if (b.disabled) return;
           var quoi = b.getAttribute('data-a');
-          if (quoi === 'porte') return;
+          if (quoi === 'porte' || quoi === 'fini') return;
           clic(true);
           envoie(quoi === 'acheter'
             ? { type: 'skinBuy', id: b.getAttribute('data-skin') }
@@ -8918,10 +9052,8 @@
        * Le carre porte la couleur de son BUTIN, comme le sac : blanc pour la
        * relique, or pour le legendaire. On sait donc laquelle vaut le
        * detour avant de traverser un anneau pour y aller. */
-      var COUL_BUTIN = { relique: '#FFFFFF', mythique: '#FF4655',
-                         legendaire: '#FFC53D', epique: '#C07BFF' };
       SALLES_C.forEach(function (s) {
-        var c = COUL_BUTIN[s.butin] || '#FFC53D';
+        var c = COUL_RARETE[s.butin] || '#FFC53D';
         var t = Math.max(4, s.cote * e);
         mctx.save();
         mctx.strokeStyle = c;

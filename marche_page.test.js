@@ -126,15 +126,27 @@ process.on('unhandledRejection', (e) => {
     window.__moi = null; window.__etal = null;
     const di = C.drawImage;
     C.drawImage = function (im) {
+      const a = arguments;
       const u = (im && (im.currentSrc || im.src)) || '';
-      if (u.indexOf('obj_market_stall') >= 0 && arguments.length >= 5) {
-        window.__etal = { x: arguments[1] + arguments[3] / 2, y: arguments[2] + arguments[4] };
+      if (u.indexOf('obj_market_stall') >= 0) {
+        /* ---- LES ARGUMENTS DE DESTINATION, PAS CEUX DE LA SOURCE ----
+         * On lisait `a[1..4]`. L etal est un decor ANIME : il se dessine en
+         * neuf arguments, dont les quatre premiers decoupent la PLANCHE. On
+         * visait donc un point qui n existe nulle part sur la carte, et l on
+         * n arrivait a l etal que par accident — il est a l ouest, et une
+         * boucle qui repart toujours a gauche finit par tomber dessus. C est
+         * exactement ce qui se lisait comme « une intermittence connue ».
+         * Le centre du LIEU est cinquante pixels plus haut que le pied du
+         * dessin : la page mesure la distance depuis `y - haut * 0.15`. */
+        const neuf = a.length >= 9;
+        const dx = neuf ? a[5] : a[1], dy = neuf ? a[6] : a[2];
+        const dw = neuf ? a[7] : a[3], dh = neuf ? a[8] : a[4];
+        if (dw) window.__etal = { x: dx + dw / 2, y: dy + dh * 0.85 };
       }
-      if (arguments.length >= 9 && arguments[3] === 256 && arguments[4] === 256
-          && arguments[7] === 150 && arguments[8] === 150) {
-        window.__moi = { x: Math.round(arguments[5] + 75), y: Math.round(arguments[6] + 130) };
+      if (a.length >= 9 && a[3] === 256 && a[4] === 256 && a[7] === 150 && a[8] === 150) {
+        window.__moi = { x: Math.round(a[5] + 75), y: Math.round(a[6] + 130) };
       }
-      return di.apply(this, arguments);
+      return di.apply(this, a);
     };
   });
   const marche = async (touche, ms) => {
@@ -148,16 +160,21 @@ process.on('unhandledRejection', (e) => {
     moi: window.__moi, etal: window.__etal,
   }));
   const ouvreShop = async () => {
-    for (let k = 0; k < 30; k++) {
+    for (let k = 0; k < 70; k++) {
       const v = await ouvertShop();
       if (v.on) break;
       if (!v.moi || !v.etal) { await marche('ArrowLeft', 200); continue; }
       const ex = v.etal.x - v.moi.x, ey = v.etal.y - v.moi.y;
-      /* L etal demande de RESTER dessus pres d une demi-seconde : on relache
+      const loin = Math.max(Math.abs(ex), Math.abs(ey));
+      /* L etal demande de RESTER DESSUS pres d une demi-seconde : on relache
          et on attend, sinon on le traverse sans jamais l ouvrir. */
-      if (Math.abs(ex) < 80 && Math.abs(ey) < 80) { await p.waitForTimeout(700); continue; }
-      if (Math.abs(ex) > Math.abs(ey)) await marche(ex > 0 ? 'ArrowRight' : 'ArrowLeft', 350);
-      else await marche(ey > 0 ? 'ArrowDown' : 'ArrowUp', 350);
+      if (loin < 26) { await p.waitForTimeout(500); continue; }
+      /* Le pas se raccourcit avec la distance : un pas de 350 ms depasse la
+         cible de plusieurs dizaines de pixels, et l on repart dans l autre
+         sens indefiniment sans jamais s arreter dessus. */
+      const pas = loin > 200 ? 300 : loin > 90 ? 140 : 70;
+      if (Math.abs(ex) > Math.abs(ey)) await marche(ex > 0 ? 'ArrowRight' : 'ArrowLeft', pas);
+      else await marche(ey > 0 ? 'ArrowDown' : 'ArrowUp', pas);
     }
     const v = await ouvertShop();
     if (!v.on) { console.log('   la boutique ne s est pas ouverte : ' + JSON.stringify(v)); return false; }

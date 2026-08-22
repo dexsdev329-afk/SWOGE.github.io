@@ -336,6 +336,10 @@
         joueSample('niveau', { vol: 0.9 });
       }
       if (m.sacJoueur) { SAC = m.sacJoueur; peintPanneau(); }
+      if (m.coffreOeufs) OEUFS_COFFRE_C = m.coffreOeufs;
+      /* Eclore change `eclos` : l'oeuf du meme animal qui dort au coffre ne
+         peut plus s'ouvrir, et le coffre doit le dire tout de suite. */
+      if (m.oeufs) { OEUFS_C = m.oeufs; if (coffreOuvert) peintCoffreMenu(); }
     }
     /* ---- LE FAMILIER VIENT D'AGIR ----
      * Il agit tout seul : sans un geste a l'ecran, un joueur ne saurait
@@ -367,6 +371,51 @@
         /* Rien de plus : le gain est deja affiche au-dessus. Ce `if` existe
            pour que le compagnon ne BONDISSE pas — on ne se rue pas sur
            quelqu'un qu'on soigne. */
+      } else if (m.soutien) {
+        /* ---- LE TROISIEME CRAN NE VISE RIEN ----
+         * Un soutien se pose sur le MAITRE. Le compagnon ne bondit donc pas —
+         * il n'y a pas de cible — et l'effet n'est pas une zone au sol : il
+         * colle au joueur, c'est `FX_FAM` qui le sait (`suit`).
+         * Cette branche vient AVANT celle des zones parce qu'un soutien
+         * porte le meme `rayon` qu'elles sans rien poser par terre : le
+         * laisser tomber dans la branche des zones aurait ete juste par
+         * accident, et faux le jour ou une zone rendrait du mana. */
+        /* ---- LE MANA DE L'EMPRISE ----
+         * Le seul des six qui donne quelque chose tout de suite. On reprend
+         * le chemin qui existe deja pour le mana VOLE (`realmCoup`) —
+         * recopier la valeur du serveur, le dire, repeindre — au lieu d'en
+         * ouvrir un second : deux facons de bouger la barre bleue auraient
+         * fini par ne plus s'accorder, et c'est le bouton du pouvoir qui
+         * s'eteint ou s'allume derriere elle. */
+        if (m.gain > 0 && m.mp !== undefined) {
+          VIE.mp = m.mp;
+          flotte('+' + m.gain + ' MP');
+          /* Le meme son que le vol de mana, mais aigu la ou l'autre est
+             grave : c'est le meme evenement a l'envers, et deux sons sans
+             rapport auraient demande d'apprendre lequel est bon. */
+          joueSample('clic', { vol: 0.4, hauteur: 1.8 });
+          majJauges();
+          peintPouvoir();
+        }
+        /* ---- LA BENEDICTION EST UN BOUCLIER ----
+         * Le serveur pose le MEME etat que le bouclier de la terre, et
+         * l'instantane le renvoie dans `bo` : l'anneau de roche s'allumera
+         * donc tout seul. Ce qu'il ne saurait pas, c'est en combien de temps
+         * il doit faire son tour — sans cette duree il tournerait au rythme
+         * de trois secondes alors que la benediction en dure cinq, et
+         * l'anneau serait fini avant la protection. On ne redecompte rien :
+         * `bo` reste seul maitre du temps qui reste. */
+        if (m.quoi === 'benediction') {
+          BOUCLIER = m.duree || BOUCLIER;
+          BOUCLIER_MAX = m.duree || BOUCLIER_MAX;
+          BOUCLIER_PART = m.part || 0;
+        }
+        /* Le givre efface la paralysie, le ralentissement et la brulure ; la
+           benediction efface la brulure. On ne les eteint PAS ici : la page
+           les dessine depuis `par`, `ral` et `feu` de l'instantane, qui
+           arrive dix fois par seconde et fait autorite. Les remettre a zero
+           en double aurait donne deux endroits ou dire la meme chose — et
+           celui-ci se tromperait le jour ou le serveur n'en efface qu'un. */
       } else if (m.zone) {
         /* Une zone eclate AUTOUR du maitre : le compagnon n'a personne vers
            qui bondir. Le faire courir vers un point choisi au hasard parmi
@@ -394,6 +443,12 @@
     if (m.type === 'familiers') {
       FAMILIERS_C = m.familiers || [];
       if (m.coffreOeufs) OEUFS_COFFRE_C = m.coffreOeufs;
+      if (m.oeufs) { OEUFS_C = m.oeufs; if (coffreOuvert) peintCoffreMenu(); }
+      /* Le sac vient AVEC, parce que le rayon montre maintenant les oeufs qui
+         y sont encore. Le lire depuis un etat plus vieux aurait fait manquer
+         l'oeuf qu'on vient de ramasser — celui, precisement, qu'on a envie de
+         ranger en arrivant. */
+      if (m.sacJoueur) { SAC = m.sacJoueur; peintPanneau(); }
       REGLES_FAM = m.reglesFam || REGLES_FAM;
       if (m.or != null) OR_C = Number(m.or);
       peintPetworld(); peintLigneFamilier();
@@ -401,8 +456,13 @@
     }
     /* ---- L'OEUF PASSE DU SAC AU COFFRE, ET RETOUR ---- */
     if (m.type === 'oeufRange' || m.type === 'oeufSort') {
+      /* Le refus se lit DANS le coffre quand il est ouvert : « ton sac est
+         plein » peint sur la carte, derriere le voile, ne se voit pas — et le
+         joueur tape le bouton une seconde fois en croyant a une panne. */
+      coffreErreur = m.error || '';
       if (m.error) flotte(m.error);
       if (m.coffreOeufs) OEUFS_COFFRE_C = m.coffreOeufs;
+      if (m.oeufs) { OEUFS_C = m.oeufs; if (coffreOuvert) peintCoffreMenu(); }
       if (m.sacJoueur) { SAC = m.sacJoueur; peintPanneau(); }
       if (shopOuvert && shopSaison === 'pet') peintShop();
     }
@@ -412,6 +472,7 @@
       if (m.error) flotte(m.error);
       if (m.familiers) FAMILIERS_C = m.familiers;
       if (m.coffreOeufs) OEUFS_COFFRE_C = m.coffreOeufs;
+      if (m.oeufs) { OEUFS_C = m.oeufs; if (coffreOuvert) peintCoffreMenu(); }
       if (m.fait && m.fait.prix !== undefined) flotte('\uD83C\uDFF7 Listed for ' + m.fait.prix + ' $SWOGE');
       peintLigneFamilier();
       if (shopOuvert && shopSaison === 'pet') peintShop();
@@ -844,6 +905,7 @@
   var elOr = document.getElementById('nxOr');
   var elRepli = document.getElementById('nxRepli');
   var elPotions = document.getElementById('nxPotions');
+  var elFioles = document.getElementById('nxFioles');
   var POTIONS_C = [];
   /* ---- L'ETAL DES POTIONS ----
    * Le stock du magasin vient des joueurs. `MARCHE_P` porte, pour chaque
@@ -1668,6 +1730,50 @@
       });
     }
 
+    /* ---- LA RESERVE DE FIOLES DE STAT ----
+     *
+     * Elles etaient DANS le sac, une case par stat. Le commentaire du serveur
+     * disait pourtant deja qu'une fiole « n'est pas du butin qu'on choisit de
+     * garder, c'est une reserve, comme les potions de soin qui ont deja leur
+     * pile » — mais elles se disputaient quand meme les huit places. Mesure
+     * faite avec quatre pieces portees : def 20, att 20, spd 20, puis UNE
+     * dexterite et plus rien. On lisait ca comme « quatre maximum ».
+     *
+     * ---- LE COMPTE EST LE SUJET, DONC IL EST GROS ----
+     * Il se lisait en petit, a cote, dans une phrase (« 3 stored, 1 carried »).
+     * On regarde cette rangee pour UNE question — combien il m'en reste avant
+     * de repartir — et une reponse qu'il faut chercher dans une phrase est une
+     * reponse qu'on ne lit pas.
+     *
+     * ---- ET ON LA BOIT EN DOUBLE-CLIQUANT, PAS EN TAPANT ----
+     * Une potion de soin ratee coute une potion. Une fiole de stat est
+     * DEFINITIVE : elle monte une stat pour toujours, et elle meurt avec le
+     * personnage. C'etait deja un double-clic quand elle vivait dans le sac —
+     * on garde exactement la meme protection plutot que de la perdre en
+     * changeant de rangee.
+     */
+    if (elFioles) {
+      var fio = (FIOLES_C || []).filter(function (x) { return x.sac > 0 || x.coffre > 0; });
+      elFioles.innerHTML = fio.map(function (x) {
+        return '<button type="button" data-fio="' + ech(x.cle) + '" title="' +
+          ech('+' + x.pas + ' ' + x.cle.toUpperCase() + ' \u2014 ' + x.sac +
+              ' carried, ' + x.coffre + ' in the vault. Double-click to drink ' +
+              '(permanent, and lost when this character dies).') + '">' +
+          '<u class="fiole" style="background-position:' + colonneFiole(x) + '% 0"></u>' +
+          (x.coffre > 0 ? '<i>' + x.coffre + '</i>' : '') +
+          '<b>' + x.sac + '</b></button>';
+      }).join('');
+      Array.prototype.forEach.call(elFioles.querySelectorAll('button'), function (b) {
+        b.addEventListener('dblclick', function (ev) {
+          ev.preventDefault();
+          if (!PERSO) return;
+          debloqueSon();
+          envoie({ type: 'fioleBoit', skin: PERSO, stat: b.getAttribute('data-fio') });
+          clic(true);
+        });
+      });
+    }
+
     /* Le panneau vient d'etre reconstruit : le voile de recharge du fruit est
        neuf et vide. On lui redonne son etat, sinon un fruit en pleine
        recharge repasserait en couleur a chaque changement de niveau. */
@@ -1889,22 +1995,66 @@
                                          Math.round(e.vol * 100) + '% back to you' + tous;
     if (e.pouvoir === 'aura')     return '+' + (e.part * 100).toFixed(1) +
                                          '% HP to you and nearby players' + tous;
+    /* ---- LES SIX DE SOUTIEN ----
+     * Deux choses les separent des douze au-dessus, et les deux se lisent
+     * dans la phrase.
+     *
+     * D'abord ils se posent sur SOI : « to you », partout ou ce n'est pas
+     * evident. Un joueur qui a lu « to all » au deuxieme cran attend un
+     * troisieme pouvoir de degats, et il faut lui dire que celui-la ne
+     * frappe personne.
+     *
+     * Ensuite le RYTHME n'est plus celui du compagnon. Les douze autres
+     * partent a chaque recharge — trois secondes au centieme niveau — mais un
+     * soutien a son propre repos, `delai`, dix-huit secondes, compte a part.
+     * Ecrire ici la recharge aurait promis un coup de pouce toutes les trois
+     * secondes quand il en vient un toutes les dix-huit : le joueur aurait
+     * cru son compagnon casse, et c'est justement ce delai qui tient
+     * l'equilibre du cran — sans lui le soutien serait permanent. */
+    var attente = ' every ' + Math.round(e.delai || 0) + 's';
+    if (e.pouvoir === 'elan')     return 'x' + e.facteur.toFixed(2) +
+                                         ' fire rate for ' + e.duree + 's' + attente;
+    if (e.pouvoir === 'ardeur')   return '+' + Math.round(e.part * 100) +
+                                         '% damage for ' + e.duree + 's' + attente;
+    if (e.pouvoir === 'givre')    return 'clears and blocks stun, slow and burn ' +
+                                         e.duree.toFixed(1) + 's' + attente;
+    if (e.pouvoir === 'racines')  return 'x' + (1 + e.part).toFixed(1) +
+                                         ' HP regen for ' + e.duree + 's' + attente;
+    if (e.pouvoir === 'emprise')  return '+' + Math.round(e.part * 100) +
+                                         '% max MP to you' + attente;
+    if (e.pouvoir === 'benediction') return '-' + Math.round(e.reduction * 100) +
+                                         '% damage and no burn for ' + e.duree +
+                                         's' + attente;
     return '';
   }
 
-  /* ---- SES DEUX GESTES, OUVERT OU NON ----
+  /* ---- TOUS SES GESTES, OUVERTS OU NON ----
    *
-   * Le second est montre MEME FERME, avec le niveau qui l'ouvre. C'est le
-   * seul endroit ou le joueur peut apprendre qu'il y a autre chose a aller
-   * chercher : un pouvoir qu'on ne voit pas ne se merite pas, et la courbe de
-   * nourriture — mille repas pour aller au bout — demande une raison d'y
-   * croire.
+   * Ils sont TROIS depuis le cran de soutien : cible unique au premier
+   * niveau, zone au vingt-cinquieme, soutien au soixantieme.
+   *
+   * Ceux qui restent a ouvrir sont montres MEME FERMES, avec le niveau qui
+   * les ouvre. C'est le seul endroit ou le joueur peut apprendre qu'il y a
+   * autre chose a aller chercher : un pouvoir qu'on ne voit pas ne se merite
+   * pas, et la courbe de nourriture — mille repas pour aller au bout —
+   * demande une raison d'y croire. Le troisieme cran est justement celui
+   * qu'on n'atteint qu'apres des centaines de repas : le cacher jusque-la
+   * aurait fait nourrir a l'aveugle.
+   *
+   * On COMPTE ce que le serveur envoie, on ne suppose aucun nombre de crans :
+   * la liste est passee de deux a trois sans que cette fonction change, et
+   * elle ira a quatre de la meme facon. Une boucle qui aurait nomme « le
+   * second » et « le dernier » aurait laisse le troisieme dehors, en
+   * silence.
    *
    * La liste vient du SERVEUR, phrase comprise. La page ne decide ni du cran
    * ni du nom : deux tables auraient fini par annoncer un pouvoir et en
    * appliquer un autre. */
   function listePouvoirs(f) {
     var l = (f && f.pouvoirs) || [];
+    /* Une espece qui n'aurait qu'un seul geste retombe sur la ligne simple du
+       dessous : une « liste » d'un element n'apprend rien de plus qu'elle et
+       coute une ligne de plus dans une fiche deja serree. */
     if (l.length < 2) return '';
     return '<div class="nxpw-pous">' + l.map(function (p) {
       var d = p.ouvert ? detailEffet(p.effet) : '';
@@ -2717,15 +2867,27 @@
        Un coffre par usage plutot qu'un menu a onglets : on va au coffre des
        personnages pour changer de personnage, et le chemin dit deja ce qu'on
        vient faire. */
-    /* Trois coffres, aux trois dessins du milieu de la piece. La planche en
-       montre cinq : celui de gauche et celui de droite restent decoratifs, et
-       c'est tres bien — une salle ou tout est cliquable n'a plus de decor. */
+    /* Quatre coffres, releves un par un sur le dessin — la planche en montre
+       cinq, aux abscisses 0.269, 0.370, 0.498, 0.621 et 0.721. Celui de
+       GAUCHE reste decoratif, et c'est voulu : une salle ou tout est
+       cliquable n'a plus de decor, et le joueur perd le reflexe de regarder
+       ou il va. */
     coffres: [
       { x: 1600 * 0.500, y: 1600 * 0.842, r: 74, role: 'objets' },
       { x: 1600 * 0.375, y: 1600 * 0.842, r: 70, role: 'skins' },
       /* LES FIOLES. Ce qu'on y range survit a la mort du personnage — c'est la
          seule chose dans ce jeu, avec le coffre aux pieces, qui y survive. */
       { x: 1600 * 0.617, y: 1600 * 0.842, r: 70, role: 'fioles' },
+      /* ---- ET LES OEUFS, AU BOUT DE LA RANGEE ----
+       * Meme raison que les fioles, et c'est la raison la plus chere du jeu :
+       * un oeuf tombe une fois sur mille deux cents, et le SAC SE PERD EN
+       * MOURANT. Il n'avait aucun endroit ou attendre — on pouvait le ranger
+       * depuis le rayon des animaux, a l'autre bout du hall, et nulle part
+       * ailleurs.
+       * Il est ICI parce que c'est ici qu'on vient quand on veut mettre
+       * quelque chose a l'abri : chercher le rangement des oeufs dans une
+       * boutique demandait de savoir d'avance que c'etait la. */
+      { x: 1600 * 0.721, y: 1600 * 0.842, r: 70, role: 'oeufs' },
     ],
   };
   SALLE.img = new Image(); SALLE.img.src = SALLE.src;
@@ -2777,6 +2939,12 @@
      fois, et deux messages l'auraient affichee dans deux etats differents
      pendant une demi-seconde. */
   var OEUFS_COFFRE_C = [];
+  /* Les oeufs, LES DEUX MOITIES : ce qu'on porte et ce qu'on a range, par
+     espece. Le rayon des animaux lisait le sac dans `SAC` et le coffre dans
+     `OEUFS_COFFRE_C` — deux sources pour une seule question, et elles ne se
+     rafraichissaient pas au meme rythme. Le serveur repond desormais aux deux
+     d'un coup. */
+  var OEUFS_C = [];
   /* Le monde de chaque porte : { ouvert: n, crimson: n }. Vide tant que le
      serveur n'a rien dit — on ne dessine pas « 0 inside » sur une porte dont
      on ignore l'etat, ce serait une information fausse. */
@@ -3540,6 +3708,28 @@
     secousse: { taille: 400, duree: 0.75, suit: false, boucle: false, dy: -6 },
     abysse:   { taille: 400, duree: 0.90, suit: false, boucle: false, dy: -6 },
     aura:     { taille: 400, duree: 0.95, suit: true,  boucle: false, dy: -10 },
+    /* ---- LES SIX DE SOUTIEN ----
+     * Ils ne visent RIEN : ils se posent sur le MAITRE. `suit: true` pour les
+     * six, donc, comme le soin et l'aura — un coup de pouce qu'on quitterait
+     * en marchant se lirait comme un effet rate, alors que le serveur, lui,
+     * l'applique encore pendant quatre a cinq secondes.
+     * Et DEUX CENTS, pas quatre cents comme les zones : le `rayon` que le
+     * serveur envoie avec eux ne dit pas ou l'effet porte — il dit seulement
+     * qu'il faut une creature dedans pour que le compagnon se decide. Un
+     * anneau de la taille des zones aurait promis une aide aux gens autour,
+     * alors qu'elle ne touche que celui qui l'a. Deux cents, c'est la taille
+     * du bouclier : la meme chose, une protection posee sur une personne.
+     * Ils NE bouclent PAS : le geste est une annonce qui eclot et s'eteint.
+     * Faire tourner l'anneau pendant toute la duree du pouvoir aurait demande
+     * de le decompter, donc de tenir un etat par soutien — six etats de plus
+     * a remettre a zero a la mort, pour dire ce que la barre de mana, la
+     * cadence de tir et l'anneau de bouclier montrent deja. */
+    elan:        { taille: 200, duree: 0.75, suit: true,  boucle: false, dy: -24 },
+    ardeur:      { taille: 200, duree: 0.85, suit: true,  boucle: false, dy: -24 },
+    givre:       { taille: 200, duree: 0.85, suit: true,  boucle: false, dy: -24 },
+    racines:     { taille: 200, duree: 0.90, suit: true,  boucle: false, dy: -24 },
+    emprise:     { taille: 200, duree: 0.80, suit: true,  boucle: false, dy: -24 },
+    benediction: { taille: 200, duree: 0.95, suit: true,  boucle: false, dy: -24 },
   };
   function plancheFx(cle) {
     if (!IMG_FX[cle]) {
@@ -4922,11 +5112,51 @@
           '<i>' + ech((f.pouvoir && f.pouvoir.nom) || '') + ' &middot; every ' + r + 's</i></div>' +
           '<button type="button" class="nxsh-b">Sell</button></div>');
       });
+      /* ---- LES OEUFS DU SAC, ET LE GESTE QUI MANQUAIT ----
+       *
+       * Le coffre etait une piece SANS PORTE. `rangeOeuf` existait cote
+       * serveur, la route `oeufRange` aussi, et la reponse etait meme deja
+       * traitee plus haut — mais aucune page ne l'envoyait jamais. Un oeuf
+       * trouve tombait donc dans le sac et n'en sortait plus : impossible a
+       * ranger, et impossible a VENDRE puisque la vente lit le coffre.
+       *
+       * Ce n'etait pas un detail d'affichage. Le sac se perd a la mort : le
+       * bouton manquant, c'etait la difference entre garder et perdre une
+       * trouvaille a un sur mille deux cents. Et le refus du serveur, quand
+       * on rouvrait l'oeuf d'une bete deja eclose, disait mot pour mot
+       * « store the egg in your vault or sell it » — il decrivait un geste
+       * qui n'existait nulle part.
+       *
+       * On les lit dans le SAC, la ou ils sont : une seconde liste envoyee a
+       * part aurait fini par ne plus etre d'accord avec les cases que le
+       * joueur a sous les yeux. */
+      /* La liste vient du SERVEUR, les deux moities d'un coup. Elle etait
+         d'abord lue dans `SAC` ici et dans `OEUFS_COFFRE_C` plus bas : deux
+         sources pour une seule question, rafraichies a deux rythmes
+         differents — et c'est comme ca qu'un oeuf ramasse a l'instant
+         n'apparaissait pas. */
+      var oeufsSac = (OEUFS_C || []).filter(function (o) { return o.sac > 0; });
+      if (oeufsSac.length) {
+        lignes.push('<div class="nxsh-titre">In your backpack</div>');
+        oeufsSac.forEach(function (o) {
+          lignes.push(
+            '<div class="nxsh-l" data-oeufs="' + ech(o.espece) + '">' +
+            '<img alt="" src="img/nexus/objets/oeuf_' + ech(o.espece) + '.webp">' +
+            '<div class="nxsh-n"><b>' + ech(o.nom) +
+              (o.sac > 1 ? ' &times;' + o.sac : '') + '</b>' +
+            /* On DIT le risque plutot que de le laisser decouvrir : le sac se
+               perd en mourant, et c'est la seule raison de ranger. */
+            '<i>in your backpack &mdash; you lose it if you die</i></div>' +
+            '<button type="button" class="nxsh-b" data-ranger="1">Store</button></div>');
+        });
+      }
       lignes.push('<div class="nxsh-titre">Egg vault</div>');
       if (!OEUFS_COFFRE_C.length) {
-        lignes.push('<div class="nxsh-vide">Nothing stored. An egg you cannot hatch ' +
-                    '&mdash; because you already have that pet &mdash; goes here ' +
-                    'instead of taking a backpack slot you lose when you die.</div>');
+        /* Le texte promettait que l'oeuf s'y rangeait TOUT SEUL. C'etait faux,
+           et c'est ce mensonge qui empechait de chercher le bouton. */
+        lignes.push('<div class="nxsh-vide">Nothing stored. Store an egg here ' +
+                    'and it is safe &mdash; the vault survives death, your ' +
+                    'backpack does not. Selling an egg also starts here.</div>');
       }
       OEUFS_COFFRE_C.forEach(function (o) {
         lignes.push(
@@ -4979,6 +5209,13 @@
            si « Take out » ouvre le formulaire de vente. */
         if (b.getAttribute('data-sortir')) {
           if (enLigne) envoie({ type: 'oeufSort', espece: l.getAttribute('data-oeufc') });
+          return;
+        }
+        /* Et le geste inverse, teste au meme endroit et pour la meme raison :
+           ranger ne passe pas par un prix, donc il doit sortir AVANT que la
+           ligne n'ouvre le formulaire de vente. */
+        if (b.getAttribute('data-ranger')) {
+          if (enLigne) envoie({ type: 'oeufRange', espece: l.getAttribute('data-oeufs') });
           return;
         }
         var fam = l.getAttribute('data-vendfam');
@@ -5401,6 +5638,12 @@
     coffreOuvert = true;
     coffreRole = role || 'objets';
     if (coffreRole === 'skins') { if (enLigne) envoie({ type: 'skins' }); }
+    /* On REDEMANDE a chaque ouverture, sans condition. Les oeufs bougent par
+       trois chemins — on en ramasse un, on en vend un, on en fait eclore un —
+       et un coffre qui garderait sa premiere reponse aurait montre un oeuf
+       vendu il y a dix minutes. `familiers` rend les deux moities d'un coup,
+       le sac et le coffre. */
+    else if (coffreRole === 'oeufs') { if (enLigne) envoie({ type: 'familiers' }); }
     else if (!COFFRE && enLigne) envoie({ type: 'equipable' });
     peintCoffreMenu();
     elCoffreVoile.classList.add('on');
@@ -5576,11 +5819,21 @@
       elCoffreCorps.innerHTML = aBoire.length
         ? '<div class="nxcf-l">' + aBoire.map(function (x) {
             var pas = x.pas || 1;
+            /* ---- LE COMPTE SE LIT, IL NE SE CHERCHE PAS ----
+             * Il vivait dans une phrase en petit vert (« 3 stored · 1
+             * carried »), sous un titre plus gros que lui. On ouvre ce coffre
+             * pour UNE question — combien il m'en reste — et une reponse
+             * qu'il faut chercher dans une phrase est une reponse qu'on ne
+             * lit pas. Les deux nombres passent donc devant, en gros, avec le
+             * mot en dessous ; la stat, elle, se reconnait deja au dessin. */
             return '<div class="nxcf-i" style="--c:#EAF2FF">' +
               '<u class="fiole" style="background-position:' +
                 colonneFiole(x) + '% 0"></u>' +
               '<span><b>+' + pas + ' ' + ech(x.cle.toUpperCase()) + '</b>' +
-              '<em>' + x.coffre + ' stored &middot; ' + x.sac + ' carried</em></span>' +
+              '<em class="nxcf-cpt">' +
+                '<u><b>' + x.coffre + '</b>stored</u>' +
+                '<u><b>' + x.sac + '</b>carried</u>' +
+              '</em></span>' +
               (x.sac > 0 ? '<button type="button" class="nxcf-act" data-range="' + ech(x.cle) +
                            '" title="Store it — safe from death">&uarr;</button>' : '') +
               (x.coffre > 0 ? '<button type="button" class="nxcf-act" data-sort="' + ech(x.cle) +
@@ -5608,6 +5861,69 @@
       compteCoffre(aBoire.reduce(function (n, x) {
         return n + (x.coffre || 0) + (x.sac || 0);
       }, 0), 'potion');
+      majFlechesCoffre();
+      return;
+    }
+    /* ---- LE COFFRE AUX OEUFS ----
+     *
+     * Meme forme que celui des fioles, et pour la meme raison — ce qu'on y
+     * range survit a la mort — mais l'enjeu n'est pas le meme : un oeuf tombe
+     * une fois sur mille deux cents, et il n'y en a pas d'autre a farmer.
+     * Perdre celui qu'on porte en mourant est la perte la plus chere du jeu.
+     *
+     * Il ne se VEND pas d'ici. Vendre demande un prix, une vitrine et un
+     * sequestre — c'est le rayon des animaux qui a tout ca. Refaire un
+     * formulaire de vente dans un coffre aurait fait deux endroits pour poser
+     * une annonce, et deux endroits ou se tromper de prix. On dit ou aller.
+     */
+    if (coffreRole === 'oeufs') {
+      if (titre) titre.innerHTML = '\uD83E\uDD5A Mythic eggs';
+      if (sous) sous.textContent =
+        'Stored here, they survive your death. Carried in your backpack, they do not.';
+      var oe = OEUFS_C || [];
+      elCoffreCorps.innerHTML = oe.length
+        ? '<div class="nxcf-l">' + oe.map(function (x) {
+            return '<div class="nxcf-i" style="--c:' +
+                (x.espece === 'legendaire' ? '#FFFFFF' : '#FF4655') + '">' +
+              '<img alt="" src="img/nexus/objets/oeuf_' + encodeURIComponent(x.espece) +
+                '.webp" onerror="this.remove()">' +
+              '<span><b>' + ech(x.nom) + '</b>' +
+              '<em>' + x.coffre + ' stored &middot; ' + x.sac + ' carried' +
+              /* On DIT qu'il ne peut plus eclore, ici aussi. Sans ca le joueur
+                 garde un doublon des mois en croyant qu'il lui servira, alors
+                 que sa seule valeur est a la vente. */
+              (x.eclos ? ' &middot; already hatched \u2014 sell it at Petworld' : '') +
+              '</em></span>' +
+              (x.sac > 0 ? '<button type="button" class="nxcf-act" data-oeufrange="' + ech(x.espece) +
+                           '" title="Store it — safe from death">&uarr;</button>' : '') +
+              (x.coffre > 0 ? '<button type="button" class="nxcf-act" data-oeufsort="' + ech(x.espece) +
+                           '" title="Take one out">&darr;</button>' : '') +
+              '</div>';
+          }).join('') + '</div>'
+        : '<div class="nxcf-vide">No mythic eggs yet. Any monster can drop one, ' +
+          'about once in 1,200 kills. Hatch it at Petworld \u2014 or store it here, ' +
+          'where it is safe from death.</div>';
+      Array.prototype.forEach.call(
+        elCoffreCorps.querySelectorAll('[data-oeufrange],[data-oeufsort]'), function (b) {
+        b.addEventListener('click', function (e) {
+          e.stopPropagation();
+          clic(true);
+          if (b.hasAttribute('data-oeufrange')) {
+            envoie({ type: 'oeufRange', espece: b.getAttribute('data-oeufrange') });
+          } else {
+            envoie({ type: 'oeufSort', espece: b.getAttribute('data-oeufsort') });
+          }
+        });
+      });
+      if (coffreErreur) {
+        elCoffreCorps.insertAdjacentHTML('afterbegin',
+          '<div class="nxcf-refus">' + ech(coffreErreur) + '</div>');
+      }
+      /* Ranges ET portes, comme les fioles : on en a autant dans les deux cas,
+         c'est l'endroit qui change. */
+      compteCoffre(oe.reduce(function (n, x) {
+        return n + (x.coffre || 0) + (x.sac || 0);
+      }, 0), 'egg');
       majFlechesCoffre();
       return;
     }
@@ -8563,11 +8879,15 @@
       if (SALLE.img.complete) ctx.drawImage(SALLE.img, 0, 0, SALLE.w, SALLE.h);
       /* Un halo doux sous chaque coffre : le dessin de la piece en montre
          cinq, mais rien n'y dit qu'on peut marcher dessus. */
-      /* Deux couleurs pour deux usages : l'or pour les objets, le violet pour
-         les personnages. Le meme halo partout ferait croire a deux portes
-         vers la meme piece. */
+      /* Une couleur par usage. Le meme halo partout ferait croire a quatre
+         portes vers la meme piece — et le joueur qui cherche ses oeufs les
+         ouvrirait tous avant de trouver.
+         L'oeuf prend le rouge de sa rarete : c'est la couleur qu'il porte
+         deja dans le sac et dans le rayon des animaux, et reconnaitre la
+         meme chose aux trois endroits vaut mieux qu'une legende a lire. */
+      var TEINTE_COFFRE = { skins: '#C07BFF', fioles: '#5AC8FF', oeufs: '#FF4655' };
       SALLE.coffres.forEach(function (cf) {
-        halo(cf.x, cf.y, cf.r, cf.role === 'skins' ? '#C07BFF' : '#FFC53D', 0.18);
+        halo(cf.x, cf.y, cf.r, TEINTE_COFFRE[cf.role] || '#FFC53D', 0.18);
       });
       var pileC = [{ y: SALLE.portail.y, dessine: dessinePortail }];
       pileC.push({ y: joueur.y, dessine: function () {

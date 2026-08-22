@@ -13,6 +13,13 @@
  * 3. CE QUI PART N EST PLUS LA. Le sequestre se lit a l ecran, pas seulement
  *    dans la memoire du serveur.
  * 4. ET UN OEUF QU ON PEUT ENCORE OUVRIR SE REPREND, sans passer par un prix.
+ * 5. ET IL Y ARRIVE PAR LA PAGE. C est le trou que ce fichier avait laisse
+ *    passer, en contredisant sa propre premiere phrase : il remplissait le
+ *    coffre en appelant `moteur.rangeOeuf` A LA MAIN, donc en sautant
+ *    exactement le geste manquant. Le coffre etait une piece sans porte —
+ *    aucune page n envoyait jamais `oeufRange` — et comme la vente lit le
+ *    coffre, un oeuf trouve ne pouvait ni se ranger ni se vendre. Un essai
+ *    qui prepare son decor par le moteur ne prouve rien sur l ecran.
  */
 'use strict';
 const path = require('path');
@@ -123,10 +130,11 @@ process.on('unhandledRejection', (e) => {
   q.sacOeufs = { tenebre: 1, feu: 1, glace: 1 };
   moteur.ouvreOeuf(w.address, 'tenebre');
   q.familiers.tenebre.xp = 3 * 30 * 31;              // niveau 31
-  moteur.rangeOeuf(w.address, 'feu');
-  moteur.rangeOeuf(w.address, 'glace');
   q.sacOeufs.tenebre = 1;                            // un doublon, qu on rangera
-  moteur.rangeOeuf(w.address, 'tenebre');
+  q.sacCases = null;
+  /* Ils restent dans le SAC. C est la page qui devra les ranger, plus bas —
+     les y mettre ici par le moteur serait refaire l erreur qui a cache le
+     bouton manquant pendant tout ce temps. */
 
   /* ---- ON VA A L ETAL EN MARCHANT ----
    * Poser `on` sur le voile a la main afficherait la carte sans que la page se
@@ -183,6 +191,47 @@ process.on('unhandledRejection', (e) => {
   });
   ok(!!onglet, `l onglet existe (${onglet})`);
   await p.waitForTimeout(900);
+
+  /* ================== 0. LA PORTE DU COFFRE ==================
+   *
+   * Avant toute vente : le coffre doit pouvoir se REMPLIR depuis la page.
+   * C est le geste qui manquait, et il manquait en silence — le serveur
+   * savait le faire, la route existait, la reponse etait meme deja traitee,
+   * mais aucun ecran n envoyait jamais `oeufRange`. Un oeuf trouve restait
+   * dans le sac, se perdait a la mort, et ne pouvait pas se vendre puisque la
+   * vente lit le coffre. */
+  console.log('\n-- le sac se vide dans le coffre --');
+  const avantRangement = await p.evaluate(() => {
+    const c = document.querySelector('#nxShopVoile .nxsh-corps');
+    return {
+      sac: Array.from(c.querySelectorAll('[data-oeufs]')).map((e) => e.getAttribute('data-oeufs')),
+      coffre: c.querySelectorAll('[data-oeufc]').length,
+    };
+  });
+  eq(avantRangement.coffre, 0, 'le coffre part vide');
+  ok(avantRangement.sac.length === 3,
+     `et le rayon montre les trois oeufs du SAC (${avantRangement.sac.join(',')})`);
+  /* Le bouton porte le geste, et il est LA. Sans lui, la ligne du sac
+     n aurait servi qu a regarder. */
+  const boutonRanger = await p.evaluate(() =>
+    !!document.querySelector('#nxShopVoile [data-oeufs="feu"] [data-ranger]'));
+  ok(boutonRanger, 'chaque oeuf du sac porte un bouton pour le ranger');
+
+  for (const es of ['feu', 'glace', 'tenebre']) {
+    await p.evaluate((e) => {
+      const b = document.querySelector('#nxShopVoile [data-oeufs="' + e + '"] [data-ranger]');
+      if (b) b.click();
+    }, es);
+    await p.waitForTimeout(500);
+  }
+  /* On mesure sur le SERVEUR, pas sur l ecran : une page qui aurait seulement
+     deplace une ligne sans envoyer le message aurait passe un essai qui ne
+     regarde que le DOM — et c est exactement le genre de trou qu on repare. */
+  eq(Object.keys(moteur._p(w.address).sacOeufs || {}).length, 0,
+     'le sac du serveur est vide');
+  eq(moteur.oeufsDuCoffre(w.address).length, 3,
+     'et les trois oeufs sont au coffre, ranges depuis la page');
+
   const rayon = await p.evaluate(() => {
     const c = document.querySelector('#nxShopVoile .nxsh-corps');
     return {

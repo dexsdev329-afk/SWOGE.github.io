@@ -312,13 +312,27 @@ process.on('unhandledRejection', (e) => {
   console.log('\n-- le nombre du familier --');
   loin();
   /* Le compagnon revient, et c'est LUI SEUL qui frappe : on ne tire pas, et la
-     cible reste epinglee a cent vingt — dans sa portee a lui (260), hors de
-     tout contact. On remet sa recharge a zero : au niveau cent elle vaut trois
-     secondes, et l'essai n'a pas a attendre le hasard du premier tour. */
+     cible reste epinglee hors de tout contact. On remet sa recharge a zero :
+     au niveau cent elle vaut trois secondes, et l'essai n'a pas a attendre le
+     hasard du premier tour. */
+  /* ---- ET HORS DU RAYON DE SON TROISIEME CRAN ----
+   * La cible etait a cent vingt. Depuis le cran de SOUTIEN (niveau 60), un
+   * compagnon de niveau cent pose d'abord son aide sur son maitre des qu'une
+   * creature se tient dans son rayon de zone (200) — et cette aide consomme
+   * la recharge. Sur les trois secondes que dure cette section, il ne restait
+   * donc plus un seul tour pour mordre : l'essai disait « le familier a mordu
+   * 0 fois » alors que rien n'etait casse.
+   * On epingle donc la proie ENTRE les deux distances : dans sa portee a lui
+   * (260), hors du rayon qui declenche le soutien (200). La fenetre ne
+   * contient plus qu'une seule chose — sa morsure — qui est le sujet. */
   j.fam = especeFam;
   j.famR = 0;
   const k3 = await vide();
-  const proie = poseCible(120, 100000);
+  /* Les deux bornes viennent du MONDE, pas d'un nombre choisi ici : le jour
+     ou la portee du compagnon ou le rayon de ses zones changent, la proie se
+     replace toute seule au lieu de sortir d'une des deux sans rien dire. */
+  const proie = poseCible(
+    Math.round((M.FAMILIERS.zoneRayon + M.FAMILIERS.portee) / 2), 100000);
   for (let tour = 0; tour < 15; tour++) { epingle(proie); await p.waitForTimeout(200); }
   /* La morsure arrive par le MEME evenement que nos tirs, marque `familier` :
      c'est tout le sens du champ, et c'est ce que l'essai doit eprouver. */

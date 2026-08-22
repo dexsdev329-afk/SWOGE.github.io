@@ -25,7 +25,7 @@ canvas{ touch-action:none; }
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-<script src="stakebubble.js?v=20260822d"></script>
+<script src="stakebubble.js?v=20260822e"></script>
 
 <style>
 html,body{ height:100%; margin:0; background:#0A1128; overscroll-behavior:none; }
@@ -268,6 +268,29 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
 .nxp-pot button:disabled{ opacity:.4; cursor:default; }
 .nxp-pot img{ width:22px; height:22px; object-fit:contain; }
 .nxp-pot b{ font-size:12px; font-weight:800; }
+/* ---- LA RESERVE DE FIOLES ----
+   Quatre par ligne : les huit stats tiennent en deux rangees sous les
+   potions, sans allonger le panneau au point de pousser le sac hors de
+   l'ecran sur un telephone.
+   Le COMPTE est le sujet de cette rangee — on la regarde pour savoir combien
+   il en reste — donc il est pose en gros SUR la fiole, comme la pile du sac,
+   et pas en petit a cote. */
+.nxp-fio{ display:grid; grid-template-columns:repeat(4,1fr); gap:4px; margin-top:4px; }
+.nxp-fio button{ position:relative; display:flex; align-items:center; justify-content:center;
+  height:38px; border-radius:6px; font:inherit; cursor:pointer;
+  border:1px solid #1c1c1c; background:#2a2a2a; color:#e6e6e6; }
+.nxp-fio button:hover{ background:#353535; }
+.nxp-fio u.fiole{ display:block; width:24px; height:24px;
+  background-image:url('img/nexus/objets/potions_stat.webp'); background-size:800% 100%;
+  background-repeat:no-repeat; image-rendering:pixelated; }
+.nxp-fio b{ position:absolute; right:2px; bottom:1px;
+  font:800 12px/1 'Archivo',system-ui,sans-serif; color:#fff;
+  text-shadow:0 0 3px #000,0 1px 2px #000; pointer-events:none; }
+/* Ce qui dort au coffre se lit aussi, mais en second — c'est a l'abri, donc
+   ce n'est pas ce qu'on compte avant de partir. */
+.nxp-fio i{ position:absolute; left:3px; top:1px; font-style:normal;
+  font:700 9px/1 'Archivo',system-ui,sans-serif; color:#8FD3FF;
+  text-shadow:0 1px 2px #000; pointer-events:none; }
 .nxp-b i{ position:absolute; inset:0 auto 0 0; display:block;
   transition:width .18s ease-out; }
 .nxp-b span{ position:relative; z-index:1; display:block; padding:0 5px;
@@ -1012,6 +1035,18 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
   white-space:nowrap; }
 .nxcf-i em{ display:block; font-style:normal; font-size:11px; color:#7CFF9B; font-weight:700;
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+/* ---- LE COMPTE DES FIOLES, LU D'UN COUP D'OEIL ----
+   Il tenait dans la meme petite ligne verte que tout le reste, sous un titre
+   deux fois plus gros que lui. On ouvre ce coffre pour savoir COMBIEN il en
+   reste : le nombre passe devant, le mot derriere. */
+.nxcf-i em.nxcf-cpt{ display:flex; gap:14px; align-items:baseline; margin-top:2px; }
+.nxcf-i em.nxcf-cpt u{ display:flex; gap:4px; align-items:baseline; text-decoration:none;
+  font:600 10px/1 'Archivo',system-ui,sans-serif; color:#9AA3C0; text-transform:uppercase;
+  letter-spacing:.04em; }
+.nxcf-i em.nxcf-cpt b{ font:800 18px/1 'Archivo',system-ui,sans-serif; color:#EAF2FF; }
+/* Ce qu'on PORTE est ce qui peut se perdre : c'est le nombre qui doit
+   inquieter, donc le seul colore. */
+.nxcf-i em.nxcf-cpt u:last-child b{ color:#8FD3FF; }
 /* Les deux lettres, la aussi : c'est dans le coffre qu'on compare avant de
    choisir ce qu'on emporte, et c'est donc la qu'on veut savoir laquelle est
    numerotee. */
@@ -1472,6 +1507,13 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
     </div>
     <!-- Les potions ont leurs propres places : elles s'empilent, le sac non. -->
     <div class="nxp-pot" id="nxPotions"></div>
+    <!-- ---- LA RESERVE DE FIOLES DE STAT ----
+         Elles occupaient des cases du SAC. Avec quatre pieces d'equipement
+         portees, on ne pouvait plus en ramasser que quatre sortes — mesure
+         faite : def 20, att 20, spd 20, puis UNE dexterite et plus rien.
+         Elles ont leur rangee, comme les potions de soin juste au-dessus, et
+         le compte se lit dessus au lieu de se deviner. -->
+    <div class="nxp-fio" id="nxFioles"></div>
     <!-- ---- LES BALISES DU MONDE ----
          Elles n'apparaissent qu'une fois allumees, et seulement dans le monde
          de combat : une liste de boutons morts s'apprend a etre ignoree. -->
@@ -1628,7 +1670,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
      racine ; c'est le seul endroit d'ou elle peut couvrir tout le reste. -->
 <div id="nxFiche"></div>
 
-<script src="nexus.js?v=20260822x" defer></script>
+<script src="nexus.js?v=20260822z" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

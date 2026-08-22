@@ -5112,9 +5112,15 @@
     if (!OEUFS_COFFRE.length) {
       var v2 = document.createElement('div');
       v2.className = 'swp-v';
-      v2.innerHTML = 'Nothing stored. Eggs you cannot hatch \u2014 because you ' +
-                     'already have that pet \u2014 go here instead of taking a ' +
-                     'backpack slot you lose when you die.';
+      /* Le texte disait que l'oeuf s'y rangeait TOUT SEUL. C'etait faux : il
+         reste dans le sac tant qu'on ne le range pas, et cette page ne
+         connait pas le sac — c'est Petworld qui l'a. Un joueur venu ici pour
+         VENDRE son oeuf trouvait un coffre vide et aucune explication ; on
+         lui dit maintenant ou est la porte. */
+      v2.innerHTML = 'Nothing stored. An egg stays in your backpack until you ' +
+                     'store it \u2014 open <b>Petworld</b> in the hall and hit ' +
+                     'Store. The vault survives death, your backpack does not, ' +
+                     'and selling an egg starts from here.';
       l.appendChild(v2);
     }
     OEUFS_COFFRE.forEach(function (o) {

@@ -295,10 +295,16 @@ process.on('unhandledRejection', (e) => {
 
   /* ================== 3bis. ON LE NOURRIT ================== */
   console.log('\n-- et on le nourrit --');
-  /* Une commune et une legendaire dans le sac, plus de l or. La legendaire
-     est la : le panneau ne doit PAS la proposer — au moment ou une legendaire
-     nourrit mieux qu elle ne se porte, le meilleur usage d une legendaire
-     devient de la detruire. */
+  /* Une commune et une legendaire dans le sac, plus de l or. LES DEUX doivent
+     etre proposees.
+     Le panneau interdisait la legendaire — l interdiction est tombee cote
+     serveur, et la page ne doit rien decider de son cote. Ce qui remplace
+     l interdiction est le BAREME, pas un refus : une legendaire vaut vingt
+     communes a manger alors qu il en existe vingt-cinq fois moins, et il en
+     faudrait soixante pour un centieme niveau quand il n en existera que
+     quarante. L echange est mauvais, le joueur le voit, et c est lui qui
+     choisit. Une page qui refuserait ce que le serveur accepte lui ferait
+     croire a une panne. */
   const boutique = require(path.join(SERVEUR, 'boutique'));
   let idCommun = null, idLegendaire = null;
   for (let id = 1000; id < 6000 && !(idCommun && idLegendaire); id++) {
@@ -315,7 +321,50 @@ process.on('unhandledRejection', (e) => {
   const plats = await p.evaluate(() => Array.from(document.querySelectorAll('#nxPetFiche [data-plat]'))
     .map((e) => Number(e.getAttribute('data-plat'))));
   ok(plats.indexOf(idCommun) >= 0, `la commune est proposee au repas (${plats.join(',')})`);
-  ok(plats.indexOf(idLegendaire) < 0, 'la legendaire ne l est PAS');
+  ok(plats.indexOf(idLegendaire) >= 0, 'et la legendaire AUSSI — plus aucun cran n est refuse');
+  /* La page ne recopie aucun bareme : elle propose ce que le SERVEUR declare
+     mangeable. On le verifie contre sa table, pas contre une liste ecrite ici
+     — deux listes a tenir d accord finissent toujours par diverger, et celle
+     de la page se tromperait en silence. */
+  {
+    /* On garde le sac tel qu il etait : la suite de cet essai compte les
+       pieces au fil des repas, et un sac qu on aurait laisse rempli d un
+       exemplaire de chaque rarete aurait fait tomber des verifications qui
+       n ont rien a voir avec ce qu on mesure ici. */
+    const sacAvant = JSON.parse(JSON.stringify(q.sac));
+    /* ---- ON VIDE LE SAC D ABORD ----
+     * Il n a que huit cases. En ajoutant un exemplaire de chaque rarete
+     * PAR-DESSUS ce qui s y trouvait deja, on en demandait neuf : la derniere
+     * tombait, et l essai accusait la page de ne pas proposer une piece
+     * qu elle n avait jamais recue. Le sujet ici est « aucun cran n est
+     * refuse », pas « le sac deborde » — il a son propre essai. */
+    q.sac = {};
+    const regles = require(path.join(SERVEUR, 'game')).Game.reglesFamilier();
+    const manquant = [];
+    for (const cle of regles.rarete) {
+      let id = null;
+      for (let k = 1000; k < 7000 && !id; k++) {
+        const o = boutique.item(k);
+        if (o && o.rarete === cle) id = o.id;
+      }
+      if (!id) continue;                 // la relique n a pas d objet au catalogue
+      q.sac[id] = (q.sac[id] || 0) + 1;
+      manquant.push({ cle, id });
+    }
+    q.sacCases = null;
+    await p.evaluate(() => window.__s[0].send(JSON.stringify({ type: 'equipable' })));
+    await p.evaluate(() => window.__s[0].send(JSON.stringify({ type: 'familiers' })));
+    await p.waitForTimeout(700);
+    const tous = await p.evaluate(() => Array.from(document.querySelectorAll('#nxPetFiche [data-plat]'))
+      .map((e) => Number(e.getAttribute('data-plat'))));
+    for (const m of manquant) {
+      ok(tous.indexOf(m.id) >= 0, `« ${m.cle} » est proposee au repas`);
+    }
+    q.sac = sacAvant; q.sacCases = null;
+    await p.evaluate(() => window.__s[0].send(JSON.stringify({ type: 'equipable' })));
+    await p.evaluate(() => window.__s[0].send(JSON.stringify({ type: 'familiers' })));
+    await p.waitForTimeout(700);
+  }
   /* Le prix et le gain viennent du SERVEUR, jamais recopies ici : les deux ont
      change quand le familier est passe de vingt a cent niveaux, et un essai
      qui les portait en dur serait tombe sans qu une seule regle soit fausse. */

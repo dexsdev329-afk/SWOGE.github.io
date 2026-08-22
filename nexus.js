@@ -4600,9 +4600,33 @@
     return null;
   }
   function glisse(deX, deY, x, y) {
-    /* Etre dedans n'est pas une prison — meme regle que le serveur, sinon la
-       page refuserait un pas que le serveur accepte. */
-    if (blocEn(deX, deY, RAYON_MOI)) return { x: x, y: y };
+    /* ---- ETRE DEDANS N'EST PAS UNE PRISON, MAIS CE N'EST PAS UN COULOIR ----
+     * On laissait passer N'IMPORTE quel pas des que le point de DEPART etait
+     * bloque, et le serveur faisait pareil : une fois dans un rocher, on y
+     * circulait librement, mesure a trente-quatre unites sous sa surface. La
+     * garantie « on ne traverse pas la pierre » ne valait que pour
+     * l'approche.
+     * L'intention reste — refuser le pas donnerait un joueur qui ne peut plus
+     * rien faire, et une regle qui se repare toute seule vaut mieux qu'un
+     * piege ferme — mais elle ne paie plus que ce qu'elle coute : on
+     * n'accepte que ce qui EN SORT, c'est-a-dire une destination libre ou, a
+     * defaut, un pas qui s'ecarte STRICTEMENT du centre de l'obstacle ou l'on
+     * se tient. S'eloigner tout droit augmente toujours la distance au
+     * centre : il existe donc toujours une direction de sortie.
+     * MOT POUR MOT CELLE DU SERVEUR, jusqu'a l'ordre des multiplications :
+     * `blocEn` rend l'obstacle comme `monde.bloque`, on compare des carres et
+     * jamais des racines. Deux regles qui ne repondraient pas la meme chose
+     * au meme pas rameneraient le joueur en arriere plusieurs fois par
+     * seconde, ce qui se lit comme une panne de reseau et pas comme un
+     * rocher. */
+    var dedans = blocEn(deX, deY, RAYON_MOI);
+    if (dedans) {
+      if (!blocEn(x, y, RAYON_MOI)) return { x: x, y: y };
+      var ax = deX - dedans.x, ay = deY - dedans.y;
+      var bx = x - dedans.x, by = y - dedans.y;
+      if (bx * bx + by * by > ax * ax + ay * ay) return { x: x, y: y };
+      return { x: deX, y: deY };
+    }
     if (!blocEn(x, y, RAYON_MOI)) return { x: x, y: y };
     if (!blocEn(x, deY, RAYON_MOI)) return { x: x, y: deY };
     if (!blocEn(deX, y, RAYON_MOI)) return { x: deX, y: y };

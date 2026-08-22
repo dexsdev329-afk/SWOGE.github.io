@@ -2536,8 +2536,20 @@
     petworld: { ouvre: function () { ouvrePetworld(); }, ouvert: function () { return petOuvert; } },
     etal:     { ouvre: function () { ouvreShop(); },     ouvert: function () { return shopOuvert; } },
     casino:   { ouvre: function () { ouvreBj(); },       ouvert: function () { return bjOuvert; } },
-    arcade:   { ouvre: function () { ouvreArcade(); },   ouvert: function () { return arcOuvert; } },
   };
+
+  /* ---- LES LIEUX DU HALL DANS LESQUELS ON ENTRE ----
+   *
+   * Le coffre etait teste a la main, juste avant la table des panneaux —
+   * `if (l.cle === 'coffre')`. L'arcade en aurait ajoute un deuxieme, et
+   * c'est la faute que le commentaire de `l.monde` decrit deja : une porte
+   * qu'on oublie d'inscrire ne fait RIEN, sans rien dire.
+   *
+   * La borne d'arcade a quitte la table des PANNEAUX en meme temps. Elle
+   * ouvrait le jeu sur place, en marchant sur une borne posee dans l'herbe ;
+   * on entre maintenant dans le batiment, et le jeu est a une borne PRECISE
+   * dedans. Le hall n'a plus a le savoir. */
+  var SALLES_DU_HALL = { coffre: entreCoffre, arcade: entreSalleArcade };
 
   /* ================== LA BORNE D'ARCADE ==================
    *
@@ -2575,7 +2587,17 @@
   }
   function fermeArcade(parLaMain) {
     arcOuvert = false;
-    if (parLaMain) marqueFerme('arcade');
+    /* DANS la salle, ce qu'on retient n'est pas le lieu du hall mais la BORNE
+       sous nos pieds : sans elle le panneau se rouvrait a l'image suivante,
+       puisqu'on est toujours devant la meme machine. Le repos du hall, lui,
+       n'a plus de sens ici — on n'entre plus dans le jeu depuis le hall. */
+    if (parLaMain && SCENE === 'arcade') {
+      for (var i = 0; i < SALLE_ARC.bornes.length; i++) {
+        var b = SALLE_ARC.bornes[i];
+        var dx = joueur.x - b.x, dy = joueur.y - b.y;
+        if (dx * dx + dy * dy < b.r * b.r) { borneFermee = b; break; }
+      }
+    } else if (parLaMain) marqueFerme('arcade');
     if (elArcVoile) elArcVoile.classList.remove('on');
     if (elArcJeu) elArcJeu.src = 'about:blank';
     /* Sinon on rouvre la borne en mode geant sans l'avoir demande — et pire,
@@ -3210,6 +3232,7 @@
   /** Rentrer au Nexus, d'ou qu'on soit. Rend `true` si on a bouge. */
   function retourNexus(raison) {
     if (SCENE === 'coffre') { sortCoffre(); return true; }
+    if (SCENE === 'arcade') { sortSalleArcade(); return true; }
     if (SCENE === 'monde') { quitteMonde(); return true; }
     /* Depuis le Nexus lui-meme il n'y a nulle part d'ou revenir. Ce n'est
        pas un echec : c'est la seule reponse juste tant que le monde de
@@ -3246,6 +3269,7 @@
   var SALLE = {
     img: null, src: 'img/nexus/tiles/room_vault.webp',
     w: 1600, h: 1600,
+    nom: 'VAULT',
     // la zone ou l'on pose les pieds, en unites de monde
     x0: 1600 * 0.185, x1: 1600 * 0.825,
     y0: 1600 * 0.200, y1: 1600 * 0.840,
@@ -3298,6 +3322,85 @@
   };
   SALLE.img = new Image(); SALLE.img.src = SALLE.src;
 
+  /* ================== LA SALLE D'ARCADE ==================
+   *
+   * Meme recette que le coffre, au pixel pres : une seule planche de 640,
+   * etiree sur mille six cents unites de monde, et des bornes RELEVEES sur le
+   * dessin. Rien n'est devine — une grille de mesure a ete posee sur l'image
+   * et les fractions lues dessus.
+   *
+   * ---- POURQUOI UNE SALLE ET PAS LE PANNEAU QU'ON AVAIT ----
+   *
+   * Le jeu s'ouvrait dans un panneau, en marchant sur une borne posee dans
+   * l'herbe. Ca marchait, et ca ne racontait rien : une borne seule au milieu
+   * d'un pre se lit comme un objet oublie. On entre maintenant dans le
+   * batiment comme on entre dans le coffre, et le jeu est DANS la salle — a
+   * une borne precise, qu'il faut aller chercher.
+   *
+   * ---- UNE SEULE BORNE JOUE, ET C'EST VOULU ----
+   *
+   * Le dessin en montre six. Les faire toutes ouvrir le meme jeu etait plus
+   * simple, mais c'est exactement la faute que le commentaire des coffres
+   * decrit vingt lignes plus haut : six poignees pour une seule porte laissent
+   * croire a six jeux, et le jour ou il y en aura vraiment six, le joueur aura
+   * pris l'habitude qu'elles soient interchangeables.
+   * La premiere — celle dont l'ecran montre deux combattants face a face —
+   * lance le combat. Les cinq autres DISENT ce qu'elles seront. Un lieu muet
+   * se lit comme un lieu casse ; un lieu qui s'annonce donne une raison de
+   * revenir.
+   */
+  var SALLE_ARC = {
+    img: null, src: 'img/nexus/tiles/room_arcade.webp',
+    w: 1600, h: 1600,
+    nom: 'ARCADE',
+    /* Le damier, releve a la regle sur la planche : de .130 a .840 en largeur
+       — au-dela commencent le skee-ball et le flipper — et de .300 en hauteur,
+       sous le comptoir PRIZES, a .715, juste devant les bornes. */
+    x0: 1600 * 0.130, x1: 1600 * 0.840,
+    y0: 1600 * 0.300, y1: 1600 * 0.715,
+    /* Devant la porte EXIT du mur gauche, et posee DANS le damier : un portail
+       plaque contre le mur se rate en marchant, parce qu'on ne longe pas un
+       mur, on le frole. */
+    portail: { x: 1600 * 0.170, y: 1600 * 0.470, r: 96, larg: 104, haut: 160 },
+    /* ---- LES SIX BORNES, RELEVEES DEUX FOIS ----
+     *
+     * Ma premiere lecture disait « .115 a .715 par pas de .12 ». Elle etait
+     * FAUSSE : l'ecart reel est de .1385 et la premiere borne est a .130. En
+     * jeu, ca se voyait — le bandeau annoncait « the shooter » devant le
+     * labyrinthe, et le decalage grandissait de borne en borne. Une lecture a
+     * l'oeil sur une image de 640 pixels ne vaut rien ; il a fallu poser une
+     * graduation tous les 0.025 sur la bande des bornes et lire dessus.
+     * Un essai les verifie maintenant contre le DESSIN lui-meme, en
+     * echantillonnant la planche : c'est la seule facon que cette erreur-la ne
+     * revienne pas en silence.
+     *
+     * Le point d'interaction est DEVANT la borne (a .700) et non dessus : on
+     * se tient devant une machine, on ne monte pas dessus. Le rayon laisse un
+     * creux entre deux : « etre devant une borne » doit vouloir dire une
+     * seule, sinon le bandeau change en marchant sans qu'on comprenne. */
+    bornes: [
+      { x: 1600 * 0.130, y: 1600 * 0.700, r: 62, jeu: 'duel', nom: 'Street Fighter' },
+      { x: 1600 * 0.272, y: 1600 * 0.700, r: 62, nom: 'the racer' },
+      { x: 1600 * 0.410, y: 1600 * 0.700, r: 62, nom: 'the maze' },
+      { x: 1600 * 0.548, y: 1600 * 0.700, r: 62, nom: 'the shooter' },
+      { x: 1600 * 0.685, y: 1600 * 0.700, r: 62, nom: 'the puzzle' },
+      { x: 1600 * 0.822, y: 1600 * 0.700, r: 62, nom: 'the platformer' },
+    ],
+  };
+  SALLE_ARC.img = new Image(); SALLE_ARC.img.src = SALLE_ARC.src;
+
+  /* ---- LES SALLES OU L'ON ENTRE, PAR LEUR SCENE ----
+   *
+   * Six endroits du fichier testaient `SCENE === 'coffre'` : le cadrage, le
+   * deplacement, le dessin, la mini-carte, le bouton de tir et le retour au
+   * hall. Ajouter une deuxieme piece en aurait demande six de plus, et celui
+   * qu'on aurait oublie aurait donne une salle ou l'on tire, ou dont la carte
+   * montre le monde — sans une erreur nulle part.
+   *
+   * C'est la table qui repond maintenant. Une troisieme piece est une ligne. */
+  var SALLES = { coffre: SALLE, arcade: SALLE_ARC };
+  function salleCourante() { return SALLES[SCENE] || null; }
+
   /* Ou l'on se tenait dans le Nexus avant d'entrer : on ressort exactement
      la, sinon on reapparait au centre de la carte sans savoir pourquoi. */
   var SCENE = 'nexus';
@@ -3309,7 +3412,8 @@
   var coffreErreur = '';      // le refus du serveur, s'il y en a un
 
   function scene() {
-    if (SCENE === 'coffre') return SALLE;
+    var S = salleCourante();
+    if (S) return S;
     if (SCENE === 'monde' && MONDE_C) return MONDE_C.monde;
     return { w: MONDE.w, h: MONDE.h };
   }
@@ -6815,6 +6919,78 @@
     LIEUX.forEach(function (l) { l.dwell = 0; });
   }
 
+  /* ================== ENTRER ET SORTIR DE L'ARCADE ==================
+   *
+   * Meme geste que le coffre, et volontairement le meme : un joueur qui a
+   * appris a entrer et sortir de l'un le fait dans l'autre sans y penser. */
+  function entreSalleArcade() {
+    RETOUR = { x: joueur.x, y: joueur.y };
+    SCENE = 'arcade';
+    /* Au MILIEU de la piece, pas sur la sortie. Le coffre s'etait fait avoir :
+       pose a quarante unites du seuil dont le rayon en fait cent, on
+       apparaissait DEDANS et l'on ressortait aussitot. */
+    joueur.x = (SALLE_ARC.x0 + SALLE_ARC.x1) / 2;
+    joueur.y = (SALLE_ARC.y0 + SALLE_ARC.y1) / 2;
+    joueur.dir = 'down';
+    LIEUX.forEach(function (l) { l.dwell = 0; });
+    SALLE_ARC.portailArme = false;
+    /* On oublie la borne sur laquelle on se tenait en sortant : sinon le
+       panneau refuse de se rouvrir a la visite suivante. */
+    borneFermee = null;
+    indiceActuel = null;
+  }
+  function sortSalleArcade() {
+    SCENE = 'nexus';
+    fermeArcade(false);
+    indiceActuel = null;
+    if (indiceEl) { indiceEl.classList.remove('on'); indiceEl.innerHTML = ''; }
+    if (RETOUR) { joueur.x = RETOUR.x; joueur.y = RETOUR.y; }
+    joueur.dir = 'down';
+    /* HORS du rayon de la porte, sinon on rentre a l'image suivante. */
+    var d = LIEUX.filter(function (l) { return l.cle === 'arcade'; })[0];
+    if (d) { joueur.x = d.x; joueur.y = d.y + d.rayon + 50; }
+    LIEUX.forEach(function (l) { l.dwell = 0; });
+  }
+
+  /* La borne qu'on vient de quitter. Meme role que `coffreFerme` : sans elle,
+     fermer le panneau le rouvrait a l'image suivante — on est toujours devant
+     la borne, donc « dessus et pas ouvert » redevenait vrai aussitot, et la
+     croix se lisait comme un bouton mort. */
+  var borneFermee = null;
+
+  function pasSalleArcade(surPortail, dt) {
+    var sous = null;
+    for (var i = 0; i < SALLE_ARC.bornes.length; i++) {
+      var b = SALLE_ARC.bornes[i];
+      var dx = joueur.x - b.x, dy = joueur.y - b.y;
+      if (dx * dx + dy * dy < b.r * b.r) { sous = b; break; }
+    }
+    if (sous !== borneFermee) borneFermee = null;
+    /* Seule celle qui PORTE un jeu l'ouvre. Les cinq autres se contentent de
+       dire ce qu'elles seront — marcher devant et voir un panneau vide serait
+       pire que de n'avoir rien du tout. */
+    if (sous && sous.jeu && !arcOuvert && sous !== borneFermee) ouvreArcade();
+
+    var quoi = surPortail ? 'portail' : (sous ? 'borne:' + sous.nom : 'salle');
+    if (quoi !== indiceActuel) {
+      indiceActuel = quoi;
+      if (indiceEl) {
+        indiceEl.innerHTML = surPortail
+          ? 'Step out to the <b>Nexus</b>'
+          : sous ? (sous.jeu ? '<b>' + sous.nom + '</b> &middot; two players, one keyboard'
+                             : '<b>' + sous.nom + '</b> &middot; out of order')
+          : 'Walk up to a cabinet &middot; the door on the left takes you home';
+        indiceEl.classList.add('on');
+      }
+    }
+    if (!saut.en_cours) avanceCadre(joueur, PERSO, dt);
+    else {
+      saut.chrono += dt;
+      saut.cadre = Math.min(PERSONNAGES[PERSO].images - 1, Math.floor(saut.chrono * FPS_ANIM));
+      if (saut.chrono >= saut.duree) saut.en_cours = false;
+    }
+  }
+
   /* Les couloirs de chemin, en cercles et rectangles du MONDE — pas des
      tuiles listees une par une : a chaque case visible on demande juste
      "es-tu dans un de ces cinq morceaux ?". */
@@ -8496,7 +8672,9 @@
   if (elTir) {
     var presseTir = function (ev) {
       ev.preventDefault(); debloqueSon();
-      if (SCENE === 'coffre') return;
+      /* Dans une SALLE, quelle qu'elle soit : il n'y a rien a viser dedans, et
+         le bouton restait actif au-dessus du coffre. */
+      if (salleCourante()) return;
       VISE_AUTO = true; tireur.presse = true;
       elTir.classList.add('presse');
     };
@@ -9038,15 +9216,24 @@
       return;
     }
 
-    if (SCENE === 'coffre') {
-      joueur.x = Math.min(Math.max(joueur.x, SALLE.x0), SALLE.x1);
-      joueur.y = Math.min(Math.max(joueur.y, SALLE.y0), SALLE.y1);
+    var SC = salleCourante();
+    if (SC) {
+      /* ---- CE QUE TOUTE SALLE PARTAGE ----
+       * Les bords et le portail de sortie. Le reste — ce qu'on trouve dedans
+       * — appartient a la piece. */
+      joueur.x = Math.min(Math.max(joueur.x, SC.x0), SC.x1);
+      joueur.y = Math.min(Math.max(joueur.y, SC.y0), SC.y1);
       /* Le portail ne mord qu'apres qu'on s'en soit ecarte une fois : sans
          ce verrou, apparaitre a portee suffirait a ressortir. */
-      var px = joueur.x - SALLE.portail.x, py = joueur.y - SALLE.portail.y;
-      var surPortail = px * px + py * py < SALLE.portail.r * SALLE.portail.r;
-      if (!surPortail) SALLE.portailArme = true;
-      else if (SALLE.portailArme) { sortCoffre(); return; }
+      var px = joueur.x - SC.portail.x, py = joueur.y - SC.portail.y;
+      var surPortail = px * px + py * py < SC.portail.r * SC.portail.r;
+      if (!surPortail) SC.portailArme = true;
+      else if (SC.portailArme) {
+        if (SCENE === 'arcade') sortSalleArcade(); else sortCoffre();
+        return;
+      }
+
+      if (SCENE === 'arcade') { pasSalleArcade(surPortail, dt); return; }
 
       /* Les coffres : on marche dessus, le menu s'ouvre. On ne le REFERME pas
          en s'en allant — on vient peut-etre d'y changer une piece, le fermer
@@ -9163,7 +9350,7 @@
       if (dist < l.rayon) {
         l.dwell += dt;
         if (l.dwell > 0.45) {
-          if (l.cle === 'coffre') { entreCoffre(); entre = true; return; }
+          if (SALLES_DU_HALL[l.cle]) { SALLES_DU_HALL[l.cle](); entre = true; return; }
           /* Le portail menait au hall des jeux. Il mene au MONDE : c'est ce
              qu'un portail au milieu d'un nexus promet, et le hall a deja son
              bouton dans l'en-tete du panneau. */
@@ -9657,6 +9844,28 @@
     /* ---- LA SALLE DU COFFRE ----
        Un seul dessin, mis a l'echelle de la piece : pas de tuiles a decouper,
        la salle EST une image. On sort tot, le Nexus ne la concerne pas. */
+    if (SCENE === 'arcade') {
+      if (SALLE_ARC.img.complete) ctx.drawImage(SALLE_ARC.img, 0, 0, SALLE_ARC.w, SALLE_ARC.h);
+      /* ---- UN HALO SOUS CHAQUE BORNE ----
+       * Meme raison que sous les coffres : le dessin en montre six, et rien
+       * n'y dit qu'on peut marcher devant. Mais PAS la meme couleur pour
+       * toutes — celle qui joue est rose vif, celles qui attendent sont
+       * grises. Un halo identique partout aurait promis six jeux, et le
+       * joueur aurait fait les six avant de comprendre qu'il n'y en a qu'un. */
+      SALLE_ARC.bornes.forEach(function (b) {
+        halo(b.x, b.y, b.r, b.jeu ? '#FF3EA5' : '#5B6070', b.jeu ? 0.22 : 0.10);
+      });
+      var pileA = [{ y: SALLE_ARC.portail.y, dessine: dessinePortail }];
+      pileA.push({ y: joueur.y, dessine: function () {
+        var cadreA = joueur.anim === 'jump' ? saut.cadre : joueur.cadre;
+        dessineAvatar(joueur.x, joueur.y, PERSO, joueur.dir, joueur.anim, cadreA);
+      } });
+      pileA.sort(function (a, b) { return a.y - b.y; });
+      pileA.forEach(function (p) { p.dessine(); });
+      ctx.restore();
+      DERNIERE_CAM.x = camX; DERNIERE_CAM.y = camY; DERNIERE_CAM.z = zoom;
+      return;
+    }
     if (SCENE === 'coffre') {
       if (SALLE.img.complete) ctx.drawImage(SALLE.img, 0, 0, SALLE.w, SALLE.h);
       /* Un halo doux sous chaque coffre : le dessin de la piece en montre
@@ -10416,15 +10625,24 @@
     /* Dans la salle du coffre, la mini-carte montrerait le Nexus — un plan
        de l'endroit ou l'on n'est PAS. On la remplace par son nom : c'est la
        seule chose vraie qu'on puisse y ecrire. */
-    if (SCENE === 'coffre') {
+    /* ---- LA CARTE D'UNE SALLE DIT SON NOM, PAS SA FORME ----
+     * Un plan de mille six cents unites sur cent vingt pixels ne montre qu'un
+     * carre gris. Le NOM, lui, repond a la seule question qu'on se pose en
+     * regardant la carte depuis une piece : « ou suis-je ? ».
+     * La table porte le nom et les deux couleurs, plutot qu'un `if` par
+     * piece : la troisieme salle n'a rien a ajouter ici. */
+    var SM = salleCourante();
+    if (SM) {
       var gc = mini && mini.getContext ? mini.getContext('2d') : null;
       if (!gc) return;
+      var TEINTE = { coffre: ['#1b1710', '#C8A24A'], arcade: ['#170f22', '#FF3EA5'] };
+      var tm = TEINTE[SCENE] || ['#12141c', '#8DA0C4'];
       gc.clearRect(0, 0, MINI, MINI);
-      gc.fillStyle = '#1b1710'; gc.fillRect(0, 0, MINI, MINI);
-      gc.fillStyle = '#C8A24A';
+      gc.fillStyle = tm[0]; gc.fillRect(0, 0, MINI, MINI);
+      gc.fillStyle = tm[1];
       gc.font = '700 11px system-ui, sans-serif';
       gc.textAlign = 'center'; gc.textBaseline = 'middle';
-      gc.fillText('VAULT', MINI / 2, MINI / 2);
+      gc.fillText(SM.nom || 'VAULT', MINI / 2, MINI / 2);
       return;
     }
     if (!mctx) return;

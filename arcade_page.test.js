@@ -94,24 +94,41 @@ function litSource() {
                  cadres: val('cadres') ? Number(val('cadres')) : 1,
                  href: !!val('href'), monde: !!val('monde'), bientot: !!val('bientot') });
   }
-  const tab = src.slice(src.indexOf('var PANNEAUX = {'));
-  const panneaux = (tab.slice(0, tab.indexOf('};')).match(/^\s*(\w+):/gm) || [])
-    .map((x) => x.trim().replace(':', ''));
-  return { lieux, panneaux };
+  /* ---- DEUX TABLES, UNE SEULE REGLE ----
+   * Un lieu du hall qui ne mene nulle part ailleurs doit etre inscrit QUELQUE
+   * PART : dans `PANNEAUX` s'il ouvre un panneau sur place, dans
+   * `SALLES_DU_HALL` si l'on entre dedans. La borne d'arcade a demenage de
+   * l'une a l'autre le jour ou elle est devenue un batiment — la regle qui
+   * compte n'a pas bouge d'un mot, seul le nombre de tables a change. Verifier
+   * une seule des deux aurait accuse une porte parfaitement branchee. */
+  const cles = (nom) => {
+    const t = src.slice(src.indexOf('var ' + nom + ' = {'));
+    return (t.slice(0, t.indexOf('};')).match(/^\s*(\w+):/gm) || [])
+      .map((x) => x.trim().replace(':', ''));
+  };
+  const brut = src.slice(src.indexOf('var SALLES_DU_HALL = {'));
+  const salles = (brut.slice(0, brut.indexOf('};')).match(/(\w+):/g) || [])
+    .map((x) => x.replace(':', ''));
+  const panneaux = cles('PANNEAUX').concat(salles);
+  return { lieux, panneaux, salles };
 }
 
 (async () => {
   const S = litSource();
   console.log('- la source');
   ok(S.lieux.length >= 10, S.lieux.length + ' lieux relus dans la source');
-  ok(S.panneaux.length >= 4, 'la table PANNEAUX en compte ' + S.panneaux.length);
+  ok(S.panneaux.length >= 4,
+     S.panneaux.length + ' lieux branches : ' + S.panneaux.join(', '));
   ok(S.lieux.some((l) => l.cle === 'arcade'), 'la borne est un lieu du hall');
-  ok(S.panneaux.indexOf('arcade') >= 0, 'la borne est inscrite dans PANNEAUX');
+  ok(S.salles.indexOf('arcade') >= 0,
+     'et l\'arcade est une SALLE ou l\'on entre, pas un panneau qui s\'ouvre sur place');
 
   /* COUTURE 5 : toute porte qui ne mene nulle part d'autre doit etre
      inscrite. `coffre` est traite avant la table, dans sa propre salle — on
      le NOMME ici plutot que de laisser l'essai croire qu'il l'a oublie. */
-  const HORS_TABLE = ['coffre'];
+  /* Plus aucune exception : le coffre etait teste a la main avant la table,
+     il est maintenant inscrit dans `SALLES_DU_HALL` comme l'arcade. */
+  const HORS_TABLE = [];
   const orphelines = S.lieux.filter((l) => l.rayon && !l.href && !l.monde && !l.bientot
                                    && HORS_TABLE.indexOf(l.cle) < 0
                                    && S.panneaux.indexOf(l.cle) < 0);
@@ -187,7 +204,7 @@ function litSource() {
   /* ---- LE HALL ----
    * On y marche comme un joueur. Poser `on` sur le voile a la main
    * ouvrirait le panneau sans passer par le chemin qu'on veut mesurer. */
-  console.log('- on marche jusqu\'a la borne');
+  console.log('- on entre dans la salle, puis on va jusqu\'a la borne');
   const p = await nav.newPage({ viewport: { width: 1280, height: 900 } });
   const echecsHall = [];
   p.on('response', (r) => { if (r.status() >= 400 && r.url().indexOf('/arcade/') >= 0) echecsHall.push(r.status() + ' ' + r.url().replace(base, '')); });
@@ -200,14 +217,20 @@ function litSource() {
     const C = CanvasRenderingContext2D.prototype;
     if (C.__espionArc) return;
     C.__espionArc = true;
-    window.__moi = null; window.__borne = null;
+    window.__moi = null; window.__salle = 0; window.__halos = [];
     const di = C.drawImage;
+    /* Les halos disent ou la page CROIT que sont les bornes. On les releve
+       pour verifier qu'ils tombent sur le dessin, et pas cinquante unites a
+       cote — un halo decale se voit a l'oeil mais ne casse rien, donc rien ne
+       le dirait jamais. */
+    const el = C.ellipse;
+    C.ellipse = function (x, y, rx, ry) {
+      if (window.__salle && rx > 30 && ry < rx) window.__halos.push({ x: Math.round(x), y: Math.round(y), r: Math.round(rx) });
+      return el.apply(this, arguments);
+    };
     C.drawImage = function (im) {
       const u = (im && (im.currentSrc || im.src)) || '';
-      if (u.indexOf('obj_arcade_borne') >= 0 && arguments.length >= 5) {
-        const d = arguments.length >= 9 ? 5 : 1;
-        window.__borne = { x: arguments[d] + arguments[d + 2] / 2, y: arguments[d + 1] + arguments[d + 3] };
-      }
+      if (u.indexOf('room_arcade') >= 0) window.__salle++;
       if (arguments.length >= 9 && arguments[3] === 256 && arguments[4] === 256
           && arguments[7] === 150 && arguments[8] === 150) {
         window.__moi = { x: Math.round(arguments[5] + 75), y: Math.round(arguments[6] + 130) };
@@ -220,22 +243,97 @@ function litSource() {
     const v = document.getElementById('nxArcVoile');
     const f = document.getElementById('nxArcJeu');
     return { on: !!(v && v.classList.contains('on')), src: f ? f.getAttribute('src') : null,
-             moi: window.__moi, borne: window.__borne };
+             moi: window.__moi, salle: window.__salle || 0,
+             halos: (window.__halos || []).slice(-8) };
   });
 
-  /* La borne est au sud-ouest. On part deja trois cents unites SOUS le
-     centre, a vingt-cinq unites de sa hauteur : il ne reste qu'a aller vers
-     l'ouest, tout droit.
-     Descendre d'abord — ce que faisait cet essai — passait par la table de
-     blackjack, qui s'ouvrait, gelait le hall, et les quatorze pas suivants
-     ne bougeaient plus rien. L'essai accusait alors la borne de ne pas
-     s'ouvrir alors qu'on n'avait jamais quitte le sud. */
-  for (let i = 0; i < 14 && !(await vue()).on; i++) await marche('ArrowLeft', 500);
+  /* ---- LE BATIMENT EST AU SUD-OUEST ----
+   * On part deja trois cents unites SOUS le centre, a vingt-cinq unites de sa
+   * hauteur : il ne reste qu'a aller vers l'ouest, tout droit.
+   * Descendre d'abord — ce que faisait cet essai — passait par la table de
+   * blackjack, qui s'ouvrait, gelait le hall, et les quatorze pas suivants ne
+   * bougeaient plus rien. L'essai accusait alors la borne de ne pas s'ouvrir
+   * alors qu'on n'avait jamais quitte le sud. */
+  for (let i = 0; i < 14 && !(await vue()).salle; i++) await marche('ArrowLeft', 500);
   let v = await vue();
-  ok(v.on, 'marcher sur la borne ouvre le panneau');
+  ok(v.salle > 0, 'marcher sur le batiment fait ENTRER dans la salle');
+  ok(!v.on, 'et le jeu ne s\'ouvre pas tout seul en entrant — il est a une borne, dedans');
+
+  /* ---- LES SIX BORNES SONT LA OU LE DESSIN LES MONTRE ----
+   * Les halos que la page pose au sol sont sa version de « voila une borne ».
+   * S'ils tombent ailleurs que sur les machines du dessin, le joueur marche a
+   * cote sans rien declencher — et rien n'aurait leve d'erreur. */
+  ok(v.halos.length >= 6, `la salle allume ${v.halos.length} reperes au sol`);
+
+  /* ---- ET ELLES TOMBENT SUR LES MACHINES DU DESSIN ----
+   *
+   * C'est l'essai qui compte ici, et il vient d'une vraie erreur : mes
+   * premieres abscisses, lues a l'oeil sur une image de 640 pixels, etaient
+   * decalees — le bandeau annoncait « the shooter » devant le labyrinthe. Rien
+   * ne l'aurait dit : un point d'interaction pose entre deux bornes ne leve
+   * aucune erreur, il ne repond simplement pas la ou l'on croit.
+   *
+   * On echantillonne donc la PLANCHE. L'ecran d'une borne est vif et colore ;
+   * l'espace entre deux bornes est du mur sombre. On compare la couleur au
+   * point de chaque borne a celle du creux qui la suit — si l'ecart s'inverse,
+   * les points sont entre les machines et non devant.
+   *
+   * Les abscisses viennent de la SOURCE, jamais recopiees ici : cet essai doit
+   * continuer de dire vrai le jour ou l'on redessine la salle. */
+  {
+    const bloc = fs.readFileSync(path.join(SITE, 'nexus.js'), 'utf8');
+    const dep = bloc.indexOf('bornes: [');
+    const liste = bloc.slice(dep, bloc.indexOf(']', dep));
+    const xs = (liste.match(/x: 1600 \* ([\d.]+)/g) || []).map((m2) => Number(m2.split('* ')[1]));
+    ok(xs.length === 6, `six bornes declarees dans la source (${xs.join(', ')})`);
+    const mesure = await p.evaluate(async (arg) => {
+      const im = new Image();
+      await new Promise((r, j) => { im.onload = r; im.onerror = j; im.src = arg.src; });
+      const c = document.createElement('canvas');
+      c.width = im.naturalWidth; c.height = im.naturalHeight;
+      const g = c.getContext('2d');
+      g.drawImage(im, 0, 0);
+      /* La bande des ECRANS, relevee sur la planche : entre .76 et .87 de la
+         hauteur. C'est la seule partie d'une borne qui soit vive a coup sur —
+         le corps est noir et la base est dans l'ombre. */
+      const y0 = Math.round(c.height * 0.76), y1 = Math.round(c.height * 0.87);
+      const vif = (fx) => {
+        const x = Math.max(0, Math.min(c.width - 3, Math.round(c.width * fx)));
+        const d = g.getImageData(x - 1, y0, 3, y1 - y0).data;
+        let t = 0;
+        for (let i = 0; i < d.length; i += 4) {
+          const M = Math.max(d[i], d[i + 1], d[i + 2]), m = Math.min(d[i], d[i + 1], d[i + 2]);
+          t += (M - m) + M * 0.5;
+        }
+        return t / (d.length / 4);
+      };
+      return arg.xs.map((fx, i) => {
+        const suivant = arg.xs[i + 1];
+        const creux = suivant === undefined ? null : (fx + suivant) / 2;
+        return { fx, borne: vif(fx), creux: creux === null ? null : vif(creux) };
+      });
+    }, { src: base + '/img/nexus/tiles/room_arcade.webp', xs });
+    let bons = 0;
+    for (const m2 of mesure) {
+      if (m2.creux === null) continue;
+      if (m2.borne > m2.creux * 1.25) bons++;
+    }
+    ok(bons === mesure.length - 1,
+       `chaque point tombe sur un ecran, pas dans le creux d'a cote (${bons}/${mesure.length - 1})`);
+  }
+
+  /* ---- ON VA JUSQU'A CELLE QUI JOUE ----
+   * La premiere du rang, en bas a gauche : on arrive au milieu de la piece,
+   * donc on descend et on va vers la gauche. */
+  for (let i = 0; i < 12 && !(await vue()).on; i++) {
+    await marche('ArrowDown', 260);
+    await marche('ArrowLeft', 300);
+  }
+  v = await vue();
+  ok(v.on, 'marcher devant la premiere borne ouvre le jeu');
   ok(v.src === 'arcade/index.html', 'le panneau charge le jeu (src = ' + v.src + ')');
   await p.waitForTimeout(2500);
-  ok(echecsHall.length === 0, 'la borne se charge sans 404 depuis le hall'
+  ok(echecsHall.length === 0, 'la borne se charge sans 404 depuis la salle'
      + (echecsHall.length ? ' — ' + echecsHall.join(' | ') : ''));
 
   /* ---- LA BARRE DU BAS, ET LE PLEIN ECRAN ----

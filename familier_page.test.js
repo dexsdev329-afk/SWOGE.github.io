@@ -139,6 +139,9 @@ process.on('unhandledRejection', (e) => {
         l.n++;
         l.x = Math.round(arguments[5] + arguments[7] / 2);
         l.y = Math.round(arguments[6] + arguments[8]);
+        /* Sa taille DESSINEE, relevee et pas supposee : c est elle qui donne
+           l echelle a laquelle on juge « colle » ou « a distance ». */
+        l.taille = Math.round(arguments[7]);
         /* Combien on en voit DANS UNE MEME IMAGE : deux chiens de la meme
            espece a l ecran, c est l enclos qui n a pas lache le sien. */
         l.vus.push({ x: l.x, y: l.y, t: performance.now() });
@@ -541,7 +544,35 @@ process.on('unhandledRejection', (e) => {
   const m2 = await moi();
   const pres2 = (dedans.legendaire && m2)
     ? Math.hypot(dedans.legendaire.x - m2.x, dedans.legendaire.y - m2.y) : 1e9;
-  ok(pres2 < 260, `il se replace derriere son maitre, pas a l autre bout (${Math.round(pres2)})`);
+  /* La borne vient du MOTEUR. « 260 » ecrit ici serait passe le jour ou l on
+     rallonge la laisse du compagnon — c est justement ce jour-la qu on veut
+     que l essai parle. */
+  const PORTEE_FAM = require(path.join(SERVEUR, 'monde')).FAMILIERS.portee;
+  ok(pres2 < PORTEE_FAM,
+     `il se replace derriere son maitre, pas a l autre bout (${Math.round(pres2)} < ${PORTEE_FAM})`);
+  /* ---- ET IL N EST PAS DANS LES JAMBES ----
+   * Le vrai defaut d un compagnon est l inverse du precedent : colle au
+   * maitre, les deux sprites se chevauchent et l on ne voit plus qu une
+   * bouillie. On mesure donc les DEUX bornes, pas seulement la lointaine.
+   * Le plancher se deduit de sa taille dessinee : un compagnon doit se tenir
+   * a environ une longueur de lui-meme, quelle que soit cette longueur. */
+  const tailleFam = await p.evaluate(() =>
+    (window.__pets.legendaire && window.__pets.legendaire.taille) || 0);
+  ok(tailleFam > 0, `on connait sa taille dessinee (${tailleFam})`);
+  ok(pres2 >= tailleFam * 0.6,
+     `et il ne rentre pas dans son maitre (${Math.round(pres2)} pour une taille de ${tailleFam})`);
+
+  if (process.env.SWOGE_PHOTO_MONDE) {
+    /* Le panneau est encore ouvert a ce point de l essai : sans le fermer, la
+       photo montre la fiche et pas le monde — c est-a-dire tout sauf ce qu on
+       voulait regarder. */
+    await p.evaluate(() => {
+      const x = document.querySelector('#nxPetVoile .nxcf-x');
+      if (x) x.click();
+    });
+    await p.waitForTimeout(700);
+    await p.screenshot({ path: process.env.SWOGE_PHOTO_MONDE });
+  }
 
   /* Le serveur le porte aussi dans ce que voient les AUTRES : sans ce champ,
      chacun ne verrait que son propre chien. */

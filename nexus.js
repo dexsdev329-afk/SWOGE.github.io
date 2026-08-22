@@ -6404,15 +6404,29 @@
    */
   var IMG_FAM = {};
   /* ---- IL SE TIENT A DISTANCE, PAS DANS LES JAMBES ----
+   *
    * Trente-quatre unites, c'etait moins que la demi-largeur du personnage :
    * le familier lui rentrait dedans, et les deux sprites se chevauchaient a
    * chaque arret. Un compagnon doit se voir COMME un compagnon — a cote, pas
-   * dessus. Sa taille (82) donne l'echelle : il s'arrete a un peu moins d'une
-   * longueur de lui-meme, et il repart a un peu plus d'une. */
-  var FAM_LAISSE = 118;       // au-dela, il se met a courir
-  var FAM_ARRET = 70;         // en deca, il s'assoit
+   * dessus.
+   *
+   * ---- SA TAILLE DONNE L'ECHELLE, ET LES DEUX SEUILS EN DECOULENT ----
+   *
+   * C'etaient trois nombres poses cote a cote (82, 70, 118) avec une phrase
+   * qui expliquait leur rapport. Trois nombres independants finissent par
+   * deriver : on grossit le chien, on oublie de pousser les seuils, et il
+   * revient dans les jambes sans que personne ne comprenne pourquoi.
+   * On ecrit donc le RAPPORT — il s'assoit a un peu moins d'une longueur de
+   * lui-meme, il repart a une longueur et demie — et les seuils suivent tout
+   * seuls la prochaine fois qu'on change sa taille.
+   *
+   * Cent, et pas quatre-vingt-deux : il etait petit et colle. Le personnage
+   * en fait cent cinquante — a cent, le compagnon reste clairement le second
+   * des deux, ce qui est le but. */
+  var FAM_TAILLE = 100;
+  var FAM_ARRET = Math.round(FAM_TAILLE * 0.96);   // en deca, il s'assoit
+  var FAM_LAISSE = Math.round(FAM_TAILLE * 1.5);   // au-dela, il se met a courir
   var FAM_VITESSE = 300;      // un peu plus vite que le joueur : il rattrape
-  var FAM_TAILLE = 82;
   var FAM_CADRES = 4;
   var TRAINEES = {};          // cle -> { x, y, dir, cadre, chrono }
   var SCENE_FAM = null;       // la scene ou ces traines ont un sens

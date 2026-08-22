@@ -3764,6 +3764,21 @@
     ctx.restore();
   }
 
+  /* La planche d'objets du donjon courant, chargee UNE fois. Son nom vient du
+     serveur avec le plan : le deduire du nom du donjon ici aurait fait une
+     deuxieme table a tenir d'accord avec la sienne. */
+  var IMG_DECOR = {};
+  function plancheDecor() {
+    var nom = (MONDE_C && MONDE_C.decor) || null;
+    if (!nom) return null;
+    if (!IMG_DECOR[nom]) {
+      var i = new Image();
+      i.src = 'img/nexus/tiles/obj_' + encodeURIComponent(nom) + '.webp';
+      IMG_DECOR[nom] = i;
+    }
+    return IMG_DECOR[nom];
+  }
+
   function dessineObstacle(o) {
     var t = o.t || 0;
     /* Les bornes viennent du SERVEUR quand il les envoie : deux nombres tenus
@@ -3783,13 +3798,34 @@
        en face de celle du serveur, et le troisieme donjon aurait eu ses murs
        dans une des deux seulement. */
     var murDJ = (MONDE_C && MONDE_C.mur === 'cave') ? IMG_MUR_CAVE : IMG_MUR_DJ;
-    var img = t >= md ? murDJ : (mur ? IMG_MUR : IMG_OBST);
+    /* ---- ET LA QUATRIEME BANDE : LE DECOR ----
+     * Au-dela de `murs.decor`, `t` ne designe plus un mur mais un OBJET —
+     * brasier renverse, obelisque, enclume. Ils passent par ici et pas par un
+     * chemin a eux parce qu'ils BLOQUENT : meme collision, meme diffusion,
+     * meme dessin. On peut se cacher derriere l'obelisque pendant que le
+     * cercle tombe, et c'est ce qui fait la difference entre une salle
+     * decoree et une salle qui a une forme.
+     * La planche est NOMMEE par le serveur (`MONDE_C.decor`), comme le sol et
+     * le mur : la deduire du nom du donjon aurait fait une deuxieme table. */
+    var mdec = (MONDE_C && MONDE_C.murs && MONDE_C.murs.decor) || 0;
+    var estDecor = mdec > 0 && t >= mdec;
+    var img = estDecor ? plancheDecor()
+            : (t >= md ? murDJ : (mur ? IMG_MUR : IMG_OBST));
     if (!img || !img.complete || !img.naturalWidth) return;
-    var cadre = img.naturalHeight;
-    var col = t >= md ? (t - md) : (mur ? (t - mb) : t);
+    /* Une planche de decor est une GRILLE 2x2, pas une bande d'une seule
+       ligne comme les murs : quatre objets sur deux rangees. On lit donc la
+       ligne ET la colonne, au lieu de la colonne seule. */
+    var cadre = estDecor ? Math.round(img.naturalWidth / 2) : img.naturalHeight;
+    var col = estDecor ? ((t - mdec) % 2)
+            : (t >= md ? (t - md) : (mur ? (t - mb) : t));
+    var lig = estDecor ? Math.floor(((t - mdec) % 4) / 2) : 0;
     /* Un mur remplit sa tuile, un rocher deborde un peu : le premier doit
        JOINDRE son voisin, le second doit avoir l'air pose. */
-    var T = mur ? o.r * 2 : o.r * 2.7;
+    /* Un mur remplit sa tuile, un rocher deborde un peu, un OBJET deborde
+       beaucoup : un brasier renverse fait plus large que ce qu'il arrete, et
+       c'est justement ce qui le fait lire comme un objet pose plutot que
+       comme un bloc. */
+    var T = mur ? o.r * 2 : (estDecor ? o.r * 3.4 : o.r * 2.7);
     if (!mur) {
       ctx.save();
       ctx.globalAlpha = 0.30;
@@ -3815,6 +3851,17 @@
     if (mur) {
       ctx.drawImage(img, col * cadre, 0, cadre, cadre,
                     o.x - T / 2, o.y - T + o.r, T, T);
+      return;
+    }
+    /* ---- UN OBJET DE DECOR SE POSE SUR SES PIEDS ----
+     * On le dessine en visant le BAS de la case, comme un mur, mais sans son
+     * quart de tour : une enclume tournee de quatre-vingt-dix degres se lit
+     * comme un bogue, pas comme de la variete. Les rochers, eux, passent par
+     * `basDesBlocs` — une mesure faite sur leur planche a eux, qui n'a aucune
+     * raison de valoir pour celle-ci. */
+    if (estDecor) {
+      ctx.drawImage(img, col * cadre, lig * cadre, cadre, cadre,
+                    o.x - T / 2, o.y - T + o.r * 1.15, T, T);
       return;
     }
     /* Le bas REEL de la piece se pose a `BLOC_ASSISE` rayons sous le centre,

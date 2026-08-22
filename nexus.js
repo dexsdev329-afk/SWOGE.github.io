@@ -3517,6 +3517,35 @@
     { cle: 'series', src: 'img/nexus/tiles/obj_series_maison.webp',
       x: CENTRE.x, y: CENTRE.y + 912, larg: 360, haut: 283,
       rayon: 150, nom: 'SWOGE Series', bientot: true },
+    /* ---- LA TROISIEME PORTE, ET ELLE N'EST PAS JUMELLE ----
+     *
+     * Les deux portes du nord sont volontairement identiques a la couleur
+     * pres : une paire se lit comme une question, et l'on choisit AVANT
+     * d'entrer. Celle-ci ne rejoint pas la paire, et c'est un choix : une
+     * troisieme arche alignee aurait transforme la question en liste, et
+     * aurait dit que les trois cartes se valent. Elle est au fond, a l'ecart
+     * — une porte de derriere, ce que le dessin annonce deja.
+     *
+     * L'ENDROIT A ETE BALAYE, PAS CHOISI A L'OEIL. Et le premier balayage
+     * s'est trompe : il ne mesurait que les rectangles de LIEUX, alors que
+     * l'enclos de Petworld n'en est pas un. Le coin sud-est, qui semblait le
+     * plus degage, tombait EN PLEIN DEDANS. En comptant l'enclos, il ne reste
+     * qu'un emplacement a plus de soixante-dix unites de quoi que ce soit :
+     * celui-ci, a deux cent cinquante-deux de l'arcade.
+     *
+     * `haut` suit le rapport de la planche (636 x 248 pour quatre images, donc
+     * 159 x 248 chacune). La planche livree faisait 639 de large : quatre ne
+     * divise pas 639, et une largeur d'image fractionnaire fait baver un
+     * sliver de l'image voisine sur les bords. Ramenee a 636.
+     *
+     * `monde` et non `bientot` : la carte existe cote serveur. Une porte qui
+     * dirait « bientot » alors que le monde repond serait un mensonge, et une
+     * porte qui nommerait un monde inconnu du serveur en serait un autre — le
+     * serveur retombe alors sur le monde par defaut, et l'on se retrouverait
+     * dans la plaine verte sans comprendre pourquoi. */
+    { cle: 'portail18', src: 'img/nexus/tiles/obj_portal_18.webp',
+      x: CENTRE.x - 880, y: CENTRE.y + 932, larg: 210, haut: 328, cadres: 4,
+      rayon: 110, nom: 'SWOGE +18', monde: 'plus18' },
     /* L'enseigne est du DECOR, comme celle du blackjack : pas de rayon, donc
        rien a ouvrir. Elle se pose entre le centre et la borne, parce que la
        borne seule est trop petite pour se voir depuis la fontaine. */
@@ -10125,7 +10154,21 @@
          coffre qu'on a ferme, et on ne le rouvre qu'apres en etre parti. */
       coffreSous = surCoffre;
       if (surCoffre !== coffreFerme) coffreFerme = null;
-      if (surCoffre && !coffreOuvert && surCoffre !== coffreFerme) ouvreCoffreMenu(surCoffre.role);
+      /* ---- LA FICHE SUIT LE COFFRE SOUS LES PIEDS ----
+       * La condition etait « dessus, et pas deja ouvert ». Le menu ne se
+       * refermant pas quand on s'en va — c'est voulu, on vient peut-etre d'y
+       * changer une piece — passer d'un coffre a l'autre ne le repeignait
+       * donc JAMAIS : on se posait sur le coffre aux objets, il s'ouvrait
+       * tout seul, on marchait jusqu'au coffre aux personnages, et « Your
+       * vault » restait a l'ecran. Les deux coffres avaient l'air de rendre
+       * la meme fiche.
+       * `coffreRole` dit ce que le menu montre EN CE MOMENT ; le coffre sous
+       * les pieds dit ce qu'il devrait montrer. Quand les deux different, on
+       * repeint. C'est la meme question qu'avant — « la fiche est-elle a
+       * jour ? » — mais posee au bon endroit : l'ancienne demandait « le menu
+       * est-il ouvert ? », ce qui n'a jamais voulu dire la meme chose. */
+      if (surCoffre && surCoffre !== coffreFerme
+          && (!coffreOuvert || coffreRole !== surCoffre.role)) ouvreCoffreMenu(surCoffre.role);
 
       var quoi = surPortail ? 'portail' : (surCoffre ? 'coffre' : 'salle');
       if (quoi !== indiceActuel) {

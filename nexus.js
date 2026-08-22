@@ -557,6 +557,16 @@
       flotte('+' + m.soigne + ' ' + (m.quoi === 'hp' ? 'HP' : 'MP'));
       peintPanneau();
     }
+    /* ---- LA SEANCE, POSEE PAR LE PANNEAU D'ADMINISTRATION ----
+     * Elle arrive avec le BONJOUR, pour celui qui se connecte, et par un
+     * message a part quand le proprietaire la change en cours de route. Les
+     * deux passent par la meme ligne : une seance changee doit s'afficher chez
+     * ceux qui sont deja la, sans rien recharger.
+     *
+     * La page ne verifie RIEN de ces adresses : le serveur les a deja refusees
+     * si elles n'etaient pas en http ou https, et c'est lui qui compte —
+     * revalider ici ferait deux regles pour une seule question. */
+    if (m.type === 'hello' || m.type === 'cinema') poseLaSeance(m.cinema);
     if (m.type === 'realmEntre') entreMonde(m);
     if (m.type === 'realmRefus') {
       if (indiceEl) {
@@ -3560,6 +3570,19 @@
    *     table, pas a ce fichier.
    */
   var FILMS = [];
+
+  /* Ce que le serveur annonce devient la table. On la REMPLACE au lieu d'y
+     ajouter : il n'y a qu'une seance a la fois, et empiler les anciennes ferait
+     un ecran qui montre ce qui n'est plus a l'affiche. */
+  function poseLaSeance(c) {
+    FILMS.length = 0;
+    if (!c || !c.titre) return;
+    var v = [];
+    if (c.vf) v.push({ nom: 'VF', src: c.vf });
+    if (c.vo) v.push({ nom: 'VO', src: c.vo });
+    if (!v.length) return;
+    FILMS.push({ titre: c.titre, affiche: c.affiche || '', versions: v });
+  }
 
   var SALLE_CINE = {
     img: null, src: 'img/nexus/tiles/room_cinema.webp',
@@ -7267,6 +7290,17 @@
     if (!f || !f.affiche) return null;
     if (!AFFICHES[f.affiche]) {
       var i = new Image();
+      /* ---- ELLE VIENT D'AILLEURS, ET CA SE PAIE ----
+       * L'affiche est une adresse posee dans le panneau d'administration :
+       * elle vient donc d'un autre domaine. Une image etrangere dessinee sur
+       * un canvas le SALIT — `getImageData` y devient interdit. Rien dans le
+       * jeu ne relit les pixels de cette scene, mais un essai qui le ferait
+       * un jour echouerait sans dire pourquoi, et c'est ce commentaire-la
+       * qu'il faudra retrouver.
+       * On ne demande PAS `crossOrigin` : un hebergeur d'images qui ne renvoie
+       * pas l'en-tete refuserait alors l'image entierement, et l'ecran
+       * resterait noir pour une raison invisible. Une affiche qui salit vaut
+       * mieux qu'une affiche absente. */
       i.src = f.affiche;
       AFFICHES[f.affiche] = i;
     }

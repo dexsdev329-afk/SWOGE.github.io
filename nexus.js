@@ -566,7 +566,20 @@
      * La page ne verifie RIEN de ces adresses : le serveur les a deja refusees
      * si elles n'etaient pas en http ou https, et c'est lui qui compte —
      * revalider ici ferait deux regles pour une seule question. */
-    if (m.type === 'hello' || m.type === 'cinema') poseLaSeance(m.cinema);
+    /* ---- ACCOMMODATION DE MIGRATION, POSEE LE 2026-08-22 ----
+     * Le fil annonce desormais une GALERIE (`cinemas`) la ou il annoncait une
+     * seance unique (`cinema`). Les deux depots ne se deploient pas a la
+     * meme seconde : pendant cette fenetre le serveur d'avant parle encore a
+     * la page d'apres, et sans la ligne qui suit le cinema serait vide pour
+     * tout le monde le temps du deploiement. On traite donc l'ancienne forme
+     * comme une galerie d'un seul element — le serveur fait exactement la
+     * meme chose pour son etat sauvegarde.
+     * ELLE PEUT DISPARAITRE une fois les deux cotes deployes : plus rien
+     * ailleurs n'en depend, et `cinema_page.test.js` cesse tout seul de la
+     * verifier quand elle n'est plus dans ce fichier. */
+    if (m.type === 'hello' || m.type === 'cinema') {
+      poseLesSeances(m.cinemas || (m.cinema ? [m.cinema] : []));
+    }
     if (m.type === 'realmEntre') entreMonde(m);
     if (m.type === 'realmRefus') {
       if (indiceEl) {
@@ -2593,39 +2606,61 @@
   var elArcTitre = document.getElementById('nxArcTitre');
   var elArcSous = document.getElementById('nxArcSous');
   var elArcChoix = document.getElementById('nxArcChoix');
+  var elArcCat = document.getElementById('nxArcCat');
+
+  /* ---- LE PANNEAU A DEUX VISAGES, ET UN SEUL ETAT POUR LES DIRE ----
+   *
+   * La GALERIE (des affiches, et rien de charge) ou UNE SEANCE (ses versions,
+   * et le cadre). Un booleen « on parcourt » a cote d'un « film courant »
+   * aurait fait deux verites pour une seule question, et le jour ou l'une des
+   * deux n'est pas remise a jour le panneau affiche une grille en pretendant
+   * jouer un film. Il n'y en a donc qu'une : `SEANCE_CHOISIE` vaut la seance
+   * ouverte, ou rien — et « rien » VEUT DIRE la galerie.
+   *
+   * `CAT_LISTE` est la liste telle qu'on nous l'a donnee, gardee PAR
+   * REFERENCE : le cinema passe sa propre table, qui est remplie sur place a
+   * chaque message du serveur. Une copie aurait fige la galerie a l'instant
+   * ou le panneau s'est ouvert, et une seance retiree par le proprietaire
+   * serait restee cliquable sous les yeux de tout le monde.
+   *
+   * `SOUS_ECRAN` est la phrase d'accueil du panneau : la seance ouverte la
+   * remplace par son titre, et revenir a la galerie doit la retrouver. La
+   * relire dans le DOM aurait relu le titre du film. */
+  var CAT_LISTE = [];
+  var SEANCE_CHOISIE = null;
+  var SOUS_ECRAN = '';
 
   /* ---- UN SEUL GRAND ECRAN, POUR DEUX SALLES ----
    *
    * La borne d'arcade et l'ecran du cinema veulent exactement la meme chose :
    * un cadre plein, le hall fige, les touches relachees en sortant, un bouton
-   * plein ecran. La seule difference tient en une ligne — la borne a UNE
-   * source et se charge tout de suite, l'ecran en a PLUSIEURS et attend qu'on
-   * choisisse.
+   * plein ecran. La difference tient dans l'ARGUMENT — la borne a UNE source
+   * et se charge tout de suite ; l'ecran a une GALERIE, et l'on y choisit
+   * d'abord la seance, puis sa version.
    *
    * Deux panneaux auraient fait deux endroits ou corriger le meme oubli. Il y
    * en a donc un, et ce qui change voyage dans son argument.
    *
-   * `choix` compte pour une raison qui n'est pas cosmetique : tant qu'on n'a
-   * pas clique, RIEN ne part sur le reseau. Entrer dans une salle ne doit pas
-   * telecharger ce que personne n'a demande.
+   * Ce qu'on lui passe :
+   *   titre, sous : le bandeau, ecrit ICI, donc pose en `innerHTML` ;
+   *   chezNous    : vrai pour une page a nous (manette gardee, cadre libre),
+   *                 faux pour un lecteur etranger (cadre en bac a sable) ;
+   *   src         : l'adresse a charger TOUT DE SUITE, s'il y en a une ;
+   *   choix       : des versions a proposer sans galerie ;
+   *   catalogue   : la galerie, PAR REFERENCE — la table du cinema est
+   *                 remplie sur place a chaque message du serveur, et le
+   *                 panneau ouvert doit suivre.
+   *
+   * `catalogue` et `choix` comptent pour une raison qui n'est pas cosmetique :
+   * tant qu'on n'a pas clique une VERSION, rien ne part sur le reseau. Entrer
+   * dans une salle ne doit pas telecharger ce que personne n'a demande.
    */
   function ouvreEcran(cfg) {
     if (!elArcVoile || !elArcJeu) return;
     arcOuvert = true;
     if (elArcTitre) elArcTitre.innerHTML = cfg.titre || '';
-    if (elArcSous) elArcSous.innerHTML = cfg.sous || '';
-    if (elArcChoix) {
-      elArcChoix.innerHTML = '';
-      var l = cfg.choix || [];
-      elArcChoix.hidden = !l.length;
-      l.forEach(function (c) {
-        var b = document.createElement('button');
-        b.type = 'button';
-        b.textContent = c.nom;
-        b.setAttribute('data-src', c.src || '');
-        elArcChoix.appendChild(b);
-      });
-    }
+    SOUS_ECRAN = cfg.sous || '';
+    CAT_LISTE = cfg.catalogue || [];
     /* ================ CE QUI EST DE NOUS, ET CE QUI NE L'EST PAS ================
      *
      * Ce panneau sert deux contenus qui n'ont rien en commun sauf leur cadre :
@@ -2669,6 +2704,13 @@
        about:blank, revenir sur la borne rouvrait la partie a l'endroit ou on
        l'avait laissee, avec deux combattants a genoux et un chrono a zero. */
     elArcJeu.src = cfg.src || 'about:blank';
+    /* ---- ON OUVRE SUR LA GALERIE, JAMAIS SUR UN FILM ----
+     * Ouvrir directement la premiere seance aurait choisi a la place du
+     * joueur — et surtout, avec `cfg.src` vide, RIEN ne part sur le reseau
+     * tant qu'aucune version n'est cliquee. La borne d'arcade n'a pas de
+     * galerie : elle prend le meme chemin sans liste ni retour. */
+    if (CAT_LISTE.length) montreCatalogue();
+    else montreSeance(null, cfg.choix || []);
     elArcVoile.classList.add('on');
     /* ---- GRAND ECRAN TOUT DE SUITE ----
      *
@@ -2692,6 +2734,133 @@
     musiqueArcade(false);
   }
 
+  /* ---- UN SEUL ENDROIT OU L'ON FABRIQUE UN BOUTON DE CHOIX ----
+   * La borne d'arcade n'en a aucun, une seance en a deux, et la galerie en
+   * ajoute un troisieme pour revenir. Trois fabriques auraient fini par en
+   * laisser une poser le titre en `innerHTML`. */
+  function poseChoix(liste, avecRetour) {
+    if (!elArcChoix) return;
+    elArcChoix.innerHTML = '';
+    var l = liste || [];
+    elArcChoix.hidden = !(l.length || avecRetour);
+    if (avecRetour) {
+      var r = document.createElement('button');
+      r.type = 'button';
+      r.className = 'nxarc-retour';
+      r.textContent = '\u2190 ALL SHOWS';
+      elArcChoix.appendChild(r);
+    }
+    l.forEach(function (c) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = c.nom;
+      b.setAttribute('data-src', c.src || '');
+      elArcChoix.appendChild(b);
+    });
+  }
+
+  /* ---- LA GALERIE ----
+   * Ce que le panneau montre quand aucune seance n'est ouverte. */
+  function montreCatalogue() {
+    SEANCE_CHOISIE = null;
+    if (!elArcVoile) return;
+    elArcVoile.classList.add('nxarc-parcours');
+    /* ---- REVENIR A LA GALERIE DETRUIT LE LECTEUR ----
+     * Le cacher aurait laisse le son du film courir derriere les affiches,
+     * sans que rien a l'ecran ne dise d'ou il vient — et deux retours de
+     * suite auraient fait deux bandes-son. Vider le `src` est la seule
+     * facon sure d'arreter un document etranger qu'on ne pilote pas. */
+    if (elArcJeu) elArcJeu.src = 'about:blank';
+    if (elArcSous) elArcSous.innerHTML = SOUS_ECRAN;
+    poseChoix([], false);
+    peintCatalogue();
+  }
+
+  /* ---- UNE SEANCE OUVERTE ----
+   * `f` vaut rien pour la borne d'arcade, qui n'a ni galerie ni retour : le
+   * meme chemin sert les deux, et ses versions lui sont alors donnees a
+   * part. */
+  function montreSeance(f, choix) {
+    SEANCE_CHOISIE = f || null;
+    if (elArcVoile) elArcVoile.classList.remove('nxarc-parcours');
+    if (elArcCat) { elArcCat.innerHTML = ''; elArcCat.hidden = true; }
+    /* ---- LE TITRE VIENT DU PANNEAU D'ADMINISTRATION ----
+     * Donc d'un humain, par le serveur, et jamais par `innerHTML` : une
+     * balise dans un titre de film serait executee dans notre page. La
+     * phrase d'accueil, elle, est ecrite ici et peut porter ses entites. */
+    if (elArcSous) {
+      if (f) elArcSous.textContent = f.titre;
+      else elArcSous.innerHTML = SOUS_ECRAN;
+    }
+    poseChoix(f ? f.versions : choix, !!f);
+  }
+
+  /* ---- LES VIGNETTES ----
+   * Refaites en entier a chaque fois plutot que mises a jour une par une :
+   * une galerie qui retire sa troisieme seance et en renomme la premiere
+   * demanderait sinon de comparer deux listes, et c'est exactement la ou l'on
+   * finit par laisser un bouton mort qui pointe sur ce qui n'existe plus. */
+  function peintCatalogue() {
+    if (!elArcCat) return;
+    elArcCat.innerHTML = '';
+    elArcCat.hidden = !CAT_LISTE.length;
+    CAT_LISTE.forEach(function (f) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      /* La seance est accrochee AU BOUTON, et non son rang dans la liste : la
+         galerie peut etre remplacee par le serveur entre l'affichage et le
+         clic, et un rang aurait alors ouvert la seance d'a cote. */
+      b.__film = f;
+      var v = document.createElement('span');
+      v.className = 'nxarc-vign';
+      /* Le symbole est POSE D'ABORD, sous l'image : c'est ce qui reste quand
+         l'affiche ne vient jamais. */
+      v.textContent = '\uD83C\uDFAC';
+      if (f.affiche) {
+        var im = document.createElement('img');
+        im.alt = '';
+        /* Une affiche etrangere qui repond 404, ou dont le domaine est
+           eteint, laissait l'icone d'image cassee du navigateur au milieu de
+           la grille. On retire l'image : la vignette garde sa forme, son
+           symbole et son titre, et reste lisible. */
+        im.addEventListener('error', function () {
+          if (im.parentNode) im.parentNode.removeChild(im);
+        });
+        im.src = f.affiche;
+        v.appendChild(im);
+      }
+      var t = document.createElement('span');
+      t.className = 'nxarc-nom';
+      t.textContent = f.titre;
+      b.appendChild(v);
+      b.appendChild(t);
+      elArcCat.appendChild(b);
+    });
+  }
+
+  /* ---- CE QUI EST A L'AFFICHE PEUT CHANGER PENDANT QU'ON REGARDE ----
+   * Le proprietaire retire une seance depuis son panneau. Sans ce rappel, la
+   * galerie ouverte continuait de la proposer et le clic lancait un lecteur
+   * que plus personne n'annonce. Le meme message qui remplit la table repeint
+   * donc le panneau — un seul entonnoir, pas un minuteur qui compare. */
+  function rafraichitCatalogue() {
+    if (SEANCE_CHOISIE && CAT_LISTE.indexOf(SEANCE_CHOISIE) < 0) {
+      /* Celle qu'on regardait n'est plus a l'affiche : on ne la laisse ni a
+         l'ecran de la salle ni dans le cadre. */
+      SEANCE_CHOISIE = null;
+      if (arcOuvert) { montreCatalogue(); return; }
+    }
+    if (arcOuvert && elArcVoile && elArcVoile.classList.contains('nxarc-parcours')) peintCatalogue();
+  }
+
+  if (elArcCat) {
+    elArcCat.addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('button') : null;
+      if (!b || !b.__film) return;
+      montreSeance(b.__film, null);
+    });
+  }
+
   /* La borne d'arcade : une seule source, chargee tout de suite. */
   function ouvreArcade() {
     ouvreEcran({ titre: '&#127918; Arcade',
@@ -2708,6 +2877,10 @@
    * l'image demarre. */
   if (elArcChoix) {
     elArcChoix.addEventListener('click', function (e) {
+      /* Le retour n'a PAS de `data-src` : sans ce test il tombait dans la
+         branche suivante, qui pose une adresse vide dans le cadre et laisse
+         la galerie fermee — un bouton qui a l'air mort. */
+      if (e.target.closest && e.target.closest('button.nxarc-retour')) { montreCatalogue(); return; }
       var b = e.target.closest ? e.target.closest('button[data-src]') : null;
       if (!b || !elArcJeu) return;
       var q = elArcChoix.querySelectorAll('button');
@@ -3643,11 +3816,12 @@
    */
   /* ================== SWOGE FLIX ==================
    *
-   * Ce qui passe a l'ecran du cinema. La table est VIDE tant que personne n'y
-   * met rien, et la salle se comporte alors exactement comme aujourd'hui :
-   * l'ecran annonce qu'il n'y a pas de seance. Poser une entree suffit a tout
-   * allumer — l'affiche se projette, l'ecran devient un point ou l'on ouvre le
-   * lecteur, et les versions apparaissent en boutons.
+   * Ce qui passe a l'ecran du cinema : une GALERIE de seances, et non plus
+   * une seule. La table est VIDE tant que personne n'y met rien, et la salle
+   * se comporte alors exactement comme aujourd'hui : l'ecran annonce qu'il n'y
+   * a pas de seance et montre son fond d'attente. Poser une entree suffit a
+   * tout allumer — l'ecran devient un point ou l'on ouvre le catalogue, on y
+   * choisit une seance, puis sa version.
    *
    * Une entree :
    *   { titre:   'LE TITRE',
@@ -3670,22 +3844,41 @@
   var FILMS = [];
 
   /* Ce que le serveur annonce devient la table. On la REMPLACE au lieu d'y
-     ajouter : il n'y a qu'une seance a la fois, et empiler les anciennes ferait
-     un ecran qui montre ce qui n'est plus a l'affiche. */
-  function poseLaSeance(c) {
+     ajouter : le proprietaire retire une seance depuis son panneau, et
+     empiler les anciennes ferait une salle qui propose ce qui n'est plus a
+     l'affiche — sans qu'aucun rechargement ne l'en debarrasse.
+     La table est VIDEE SUR PLACE et jamais remplacee par une autre : le
+     panneau ouvert la tient par reference, et lui en donner une neuve aurait
+     fige sa galerie a l'instant ou il s'est ouvert.
+     On ne compte ni ne borne rien ici — le serveur a deja refuse ce qui
+     n'etait ni http ni https et coupe au-dela de sa limite. Revalider ferait
+     deux regles pour une seule question, et c'est la sienne qui compte. */
+  function poseLesSeances(liste) {
     FILMS.length = 0;
-    if (!c || !c.titre) return;
-    var v = [];
-    if (c.vf) v.push({ nom: 'VF', src: c.vf });
-    if (c.vo) v.push({ nom: 'VO', src: c.vo });
-    if (!v.length) return;
-    FILMS.push({ titre: c.titre, affiche: c.affiche || '', versions: v });
+    (liste || []).forEach(function (c) {
+      if (!c || !c.titre) return;
+      var v = [];
+      if (c.vf) v.push({ nom: 'VF', src: c.vf });
+      if (c.vo) v.push({ nom: 'VO', src: c.vo });
+      /* Une seance sans aucune version n'est pas une seance : elle aurait
+         donne une vignette qui ouvre une liste de boutons vide. */
+      if (!v.length) return;
+      FILMS.push({ titre: c.titre, affiche: c.affiche || '', versions: v });
+    });
+    rafraichitCatalogue();
   }
 
   var SALLE_CINE = {
     img: null, src: 'img/nexus/tiles/room_cinema.webp',
     w: 1600, h: 1600,
     nom: 'CINEMA',
+    /* ---- LE FOND D'ATTENTE, PROPRIETE DE LA SALLE ----
+     * Ce que la toile montre quand aucune seance n'est choisie. Il est ICI et
+     * non en constante du cinema : la salle manga a deja sa planche
+     * (`ecran_manga.webp`) et n'existe pas encore comme salle. Le jour ou elle
+     * ouvre, elle nomme son fond sur sa propre ligne et rien d'autre ne bouge
+     * — une constante `FOND_CINEMA` aurait demande de rouvrir le dessin. */
+    fond: 'img/nexus/tiles/ecran_cinema.webp',
     /* ---- L'ALLEE, ET RIEN QU'ELLE ----
      *
      * J'avais fait une forme en T : l'allee verticale plus un couloir derriere
@@ -3730,6 +3923,16 @@
    *
    * C'est la table qui repond maintenant. Une troisieme piece est une ligne. */
   var SALLES = { coffre: SALLE, arcade: SALLE_ARC, cinema: SALLE_CINE };
+  /* Le fond d'attente est charge PAR LA TABLE, pas par la salle qui le
+     declare : une deuxieme salle a ecran aurait sinon oublie sa propre ligne
+     de chargement, et son fond serait reste une adresse que personne ne
+     demande — un ecran noir sans erreur nulle part. */
+  Object.keys(SALLES).forEach(function (k) {
+    var S = SALLES[k];
+    if (!S.fond) return;
+    S.fondImg = new Image();
+    S.fondImg.src = S.fond;
+  });
   function salleCourante() { return SALLES[SCENE] || null; }
 
   /* Ou l'on se tenait dans le Nexus avant d'entrer : on ressort exactement
@@ -7406,21 +7609,30 @@
   }
 
   function pasSalleCinema(surPortail, dt) {
-    var film = FILMS[0] || null;
-    /* ---- L'ECRAN S'ALLUME PARCE QU'IL Y A UN FILM, PAS PARCE QU'ON L'A DIT ----
-     * Le point devient ouvrable des que la table en contient un, et redevient
-     * une annonce quand elle est vide. Un drapeau ecrit a la main aurait fini
-     * par promettre une seance qui n'existe plus, ou taire celle qui existe. */
-    SALLE_CINE.bornes[0].jeu = (film && film.versions && film.versions.length) ? 'flix' : null;
-    SALLE_CINE.bornes[0].nom = film ? film.titre : 'SWOGE FLIX';
+    /* ---- L'ECRAN S'ALLUME PARCE QU'IL Y A UNE GALERIE, PAS PARCE QU'ON L'A DIT ----
+     * Le point devient ouvrable des que la table contient quelque chose, et
+     * redevient une annonce quand elle est vide. Un drapeau ecrit a la main
+     * aurait fini par promettre une seance qui n'existe plus, ou taire celles
+     * qui existent. */
+    SALLE_CINE.bornes[0].jeu = FILMS.length ? 'flix' : null;
+    /* ---- LE POINT GARDE LE NOM QUE LA SALLE LUI DONNE ----
+     * Il portait le titre de la seule seance a l'affiche. Deux raisons de ne
+     * plus le faire : il y en a maintenant douze, donc en nommer une seule
+     * mentirait ; et `pasSalle` ecrit ce nom en `innerHTML`, ce qui posait un
+     * texte d'administration dans notre page sans l'echapper. Les titres sont
+     * dans le catalogue, poses en `textContent`. */
     pasSalle(SALLE_CINE, surPortail, dt,
              function () {
-               if (arcOuvert || !film) return;
-               ouvreEcran({ titre: '&#127916; ' + ech(film.titre),
-                            sous: 'Pick a version &middot; nothing loads until you do',
-                            choix: film.versions });
+               if (arcOuvert || !FILMS.length) return;
+               /* La table est passee PAR REFERENCE : le panneau doit voir les
+                  seances que le proprietaire ajoute ou retire pendant qu'il
+                  est ouvert. */
+               ouvreEcran({ titre: '&#127916; SWOGE FLIX',
+                            sous: 'Pick a show &middot; nothing loads until you do',
+                            catalogue: FILMS });
              },
-             { pret: 'walk up to watch', bientot: 'nothing showing yet &middot; come back soon',
+             { pret: 'walk up to browse tonight&rsquo;s shows',
+               bientot: 'nothing showing yet &middot; come back soon',
                rien: 'Walk down the aisle &middot; the EXIT takes you home' });
   }
 
@@ -10514,6 +10726,11 @@
     if (SD && SD.bornes) {
       if (SD.img.complete) ctx.drawImage(SD.img, 0, 0, SD.w, SD.h);
       /* ---- CE QUI EST PROJETE ----
+       * Deux choses, et une seule a la fois : l'affiche de la seance ouverte
+       * dans le panneau, ou — quand aucune n'est choisie — le FOND D'ATTENTE
+       * que la salle declare. Une toile noire entre deux seances se lit comme
+       * un projecteur en panne ; une salle de cinema montre toujours quelque
+       * chose.
        * L'affiche se pose SUR la surface d'ecran relevee dans la table, et
        * jamais a une taille choisie : elle est calee par la HAUTEUR et centree,
        * parce qu'une affiche est portrait et un ecran paysage. L'etirer pour
@@ -10521,19 +10738,32 @@
        * remarque immediatement sans savoir pourquoi.
        * Le reste de l'ecran reste ce que le dessin y a mis — la lumiere de la
        * salle vient de la, et l'eteindre aurait eteint la piece. */
-      if (SD.ecran && FILMS.length) {
-        var af = afficheDuFilm(FILMS[0]);
+      if (SD.ecran) {
+        var eL = SD.ecran.x1 - SD.ecran.x0, eH = SD.ecran.y1 - SD.ecran.y0;
+        var af = SEANCE_CHOISIE ? afficheDuFilm(SEANCE_CHOISIE) : null;
         if (af && af.complete && af.naturalWidth) {
-          var eh = SD.ecran.y1 - SD.ecran.y0;
-          var ew = eh * (af.naturalWidth / af.naturalHeight);
+          var ew = eH * (af.naturalWidth / af.naturalHeight);
           var ex = (SD.ecran.x0 + SD.ecran.x1) / 2 - ew / 2;
           ctx.save();
           /* On assombrit d'abord la toile : une affiche posee sur du blanc pur
              garde un halo tout autour et flotte au lieu d'etre projetee. */
           ctx.fillStyle = 'rgba(6,8,14,.86)';
-          ctx.fillRect(SD.ecran.x0, SD.ecran.y0, SD.ecran.x1 - SD.ecran.x0, eh);
-          ctx.drawImage(af, ex, SD.ecran.y0, ew, eh);
+          ctx.fillRect(SD.ecran.x0, SD.ecran.y0, eL, eH);
+          ctx.drawImage(af, ex, SD.ecran.y0, ew, eH);
           ctx.restore();
+        } else if (SD.fondImg && SD.fondImg.complete && SD.fondImg.naturalWidth) {
+          /* ---- LE FOND D'ATTENTE COUVRE, IL NE S'ETIRE PAS ----
+           * La planche fait 2,00:1 et la surface d'ecran 2,02:1. L'ecart est
+           * faible, et c'est bien le probleme : une image etiree ne leve
+           * aucune erreur, elle a seulement l'air moins bien, et personne ne
+           * saurait dire pourquoi. On DECOUPE donc dans la source de quoi
+           * remplir exactement le rectangle, centre — la meme chose que
+           * `object-fit: cover`, mais sans avoir a decouper la toile. */
+          var im = SD.fondImg;
+          var pr = Math.min(im.naturalWidth / eL, im.naturalHeight / eH);
+          var sw = eL * pr, sh = eH * pr;
+          ctx.drawImage(im, (im.naturalWidth - sw) / 2, (im.naturalHeight - sh) / 2,
+                        sw, sh, SD.ecran.x0, SD.ecran.y0, eL, eH);
         }
       }
       /* ---- UN HALO SOUS CHAQUE BORNE ----

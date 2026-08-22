@@ -1305,6 +1305,59 @@ body.nxdrag *{ cursor:grabbing !important; }
 .nxarc-choix button:hover{ background:rgba(255,62,165,.3); }
 .nxarc-choix button.actif{ background:rgba(255,62,165,.5); color:#fff; }
 #nxArcVoile.geant .nxarc-choix{ margin:8px 12px 0; }
+/* Le retour a la galerie n'est pas une version : il ne doit pas se lire
+   comme une troisieme piste ni s'attraper en visant VF. Meme hauteur de
+   touche, couleur neutre, et il ne s'etire pas pour occuper la ligne. */
+.nxarc-choix button.nxarc-retour{ flex:0 1 130px; color:#cbd5e1;
+  background:rgba(255,255,255,.06); border-color:rgba(255,255,255,.22); }
+/* ---- LE CATALOGUE ----
+ *
+ * L'ecran ne diffuse plus UNE seance mais une galerie, et l'on choisit
+ * d'abord le film, ensuite la version. La grille est en `auto-fill` et non en
+ * nombre de colonnes fixe : sur 412 px de large elle en met deux, sur un
+ * ordinateur elle en met cinq, et personne n'a de point de rupture a tenir a
+ * jour le jour ou une treizieme seance arrive.
+ *
+ * `minmax(112px, 1fr)` plutot qu'une largeur : 112 px d'affiche plus le titre
+ * dessous fait une cible bien au-dela des quarante-quatre pixels d'un pouce,
+ * et `1fr` reprend la place qui reste au lieu de laisser une colonne vide a
+ * droite. */
+.nxarc-cat{ display:grid; gap:10px; margin-top:12px;
+  grid-template-columns:repeat(auto-fill, minmax(112px, 1fr)); }
+.nxarc-cat button{ display:flex; flex-direction:column; gap:6px; padding:6px;
+  min-height:44px; border-radius:10px; cursor:pointer; text-align:center;
+  color:#ffd8ee; background:rgba(255,62,165,.10);
+  border:1px solid rgba(255,62,165,.45); }
+.nxarc-cat button:hover{ background:rgba(255,62,165,.26); }
+/* ---- UNE AFFICHE QUI NE VIENT JAMAIS ----
+ * L'adresse est posee dans le panneau d'administration : elle vient d'un
+ * autre domaine, et cet autre domaine peut etre eteint. Sans `aspect-ratio`
+ * la vignette d'une affiche absente s'effondrait a zero pixel de haut et la
+ * grille devenait une liste de titres de hauteurs inegales — un trou. La
+ * boite garde donc sa forme toute seule, avec son symbole dessous : l'image
+ * ne fait que la recouvrir quand elle arrive. */
+.nxarc-vign{ position:relative; width:100%; aspect-ratio:250 / 345;
+  border-radius:6px; overflow:hidden; background:rgba(4,7,13,.55);
+  display:flex; align-items:center; justify-content:center;
+  font-size:26px; color:rgba(255,62,165,.5); }
+/* `cover` et non `fill` : une affiche portrait etiree pour remplir une boite
+   d'un autre rapport donne un visage large d'un tiers de plus, ce qu'on
+   remarque sans savoir pourquoi. */
+.nxarc-vign img{ position:absolute; inset:0; width:100%; height:100%;
+  object-fit:cover; display:block; }
+/* Le titre est TOUJOURS la, image ou pas : c'est lui qui rend la vignette
+   lisible quand l'affiche manque. `anywhere` parce qu'un titre d'admin peut
+   etre un seul mot de trente lettres, et un mot qui deborde pousse une barre
+   horizontale sous toute la carte. */
+.nxarc-cat .nxarc-nom{ font:800 12px/1.25 system-ui,sans-serif;
+  letter-spacing:.04em; overflow-wrap:anywhere; }
+/* ---- EN TRAIN DE PARCOURIR ----
+ * Le cadre du lecteur est vide tant qu'aucune version n'est choisie : le
+ * laisser affiche mettait un rectangle noir de 382 sur 224 sous la grille,
+ * qui poussait la moitie des affiches hors de l'ecran d'un telephone. */
+#nxArcVoile.nxarc-parcours .nxarc-ecran{ display:none; }
+#nxArcVoile.geant.nxarc-parcours .nxarc-cat{ flex:1 1 auto; min-height:0;
+  overflow-y:auto; margin:8px 12px 0; }
 .nxarc-touches{ display:flex; flex-wrap:wrap; gap:6px 18px; margin-top:10px;
   font-size:11px; color:#9aa3b4; }
 .nxarc-touches b{ color:#ff3ea5; margin-right:5px; }
@@ -1788,10 +1841,17 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
     <b class="nxcf-titre" id="nxArcTitre">&#127918; Arcade</b>
     <div class="nxcf-sous" id="nxArcSous">Two players, one keyboard. Click the screen first, then fight.</div>
     <!-- La barre de CHOIX. Vide et masquee pour la borne d'arcade, qui n'a
-         qu'une source ; remplie pour le cinema, ou l'on choisit sa version
-         avant que quoi que ce soit ne se charge. Rien ne part sur le reseau
-         tant qu'on n'a pas clique : une salle ou l'on entre ne doit pas
-         telecharger un film que personne n'a demande. -->
+         qu'une source ; remplie au cinema une fois la seance choisie dans la
+         galerie ci-dessus — ses versions, et le retour a la galerie. Rien ne
+         part sur le reseau tant qu'on n'a pas clique une version : une salle
+         ou l'on entre ne doit pas telecharger un film que personne n'a
+         demande. -->
+    <!-- La GALERIE. Vide et masquee pour la borne d'arcade, qui n'a qu'une
+         source ; remplie pour le cinema, ou l'on choisit d'abord la seance et
+         ensuite sa version. Les affiches sont des images du panneau
+         d'administration : elles viennent d'ailleurs et peuvent ne jamais
+         arriver, d'ou la vignette qui tient sa forme toute seule. -->
+    <div class="nxarc-cat" id="nxArcCat" hidden></div>
     <div class="nxarc-choix" id="nxArcChoix" hidden></div>
     <div class="nxarc-ecran"><iframe id="nxArcJeu" title="Arcade cabinet"
       allow="autoplay; fullscreen" src="about:blank"></iframe></div>
@@ -1897,7 +1957,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
      racine ; c'est le seul endroit d'ou elle peut couvrir tout le reste. -->
 <div id="nxFiche"></div>
 
-<script src="nexus.js?v=20260825b" defer></script>
+<script src="nexus.js?v=20260825c" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

@@ -2626,6 +2626,45 @@
         elArcChoix.appendChild(b);
       });
     }
+    /* ================ CE QUI EST DE NOUS, ET CE QUI NE L'EST PAS ================
+     *
+     * Ce panneau sert deux contenus qui n'ont rien en commun sauf leur cadre :
+     * la borne d'arcade, qui est une page A NOUS sous `arcade/`, et le lecteur
+     * d'un film, qui est la page de QUELQU'UN D'AUTRE. Tout ce qui suit
+     * decoule de cette seule distinction, et c'est celui qui OUVRE le panneau
+     * qui la declare — la deviner ici, au nombre de versions ou au nom de la
+     * scene, serait la meme faute que les `SCENE === 'arcade'` qu'on a deja
+     * payes trois fois.
+     *
+     * 1. LA MANETTE. La borne ecoute le clavier : sur telephone il lui faut
+     *    une croix et six boutons. Le lecteur a ses propres commandes. Le
+     *    panneau etant partage, la manette s'affichait AUSSI sous le film :
+     *    LP, MP, HP, LK, MK et une croix de direction sous un ecran de
+     *    cinema, que rien ne pilotait, et qui mangeaient la moitie de la
+     *    hauteur utile d'un telephone.
+     *
+     * 2. LE BAC A SABLE. Une page etrangere chargee dans notre cadre peut,
+     *    par defaut, ouvrir des fenetres et DEROUTER la page qui la contient.
+     *    Les hebergeurs de lecteurs vivent de ces fenetres : sur ordinateur un
+     *    bloqueur les arrete, sur telephone il n'y en a pas et elles
+     *    s'ouvrent en rafale. `sandbox` sans `allow-popups` ni
+     *    `allow-top-navigation` le leur interdit au niveau du navigateur — ce
+     *    n'est pas un filtre de publicites, c'est le retrait d'un pouvoir
+     *    qu'on n'avait aucune raison d'accorder a un inconnu.
+     *    On garde `allow-scripts` et `allow-same-origin`, sans quoi aucun
+     *    lecteur ne demarre : un cadre sans origine ne peut plus joindre son
+     *    propre serveur. Les deux ensemble ne sont dangereux que pour une
+     *    page de NOTRE domaine — et celle-la, justement, n'est pas mise en
+     *    bac a sable.
+     *    Certains hebergeurs s'en apercoivent et refusent de jouer plutot que
+     *    de renoncer a leurs fenetres. C'est leur choix, pas une panne d'ici.
+     *
+     * L'attribut se pose AVANT l'adresse : change apres coup il ne vaut qu'au
+     * prochain chargement, et le premier serait parti sans protection. */
+    var etranger = !cfg.chezNous;
+    elArcVoile.classList.toggle('nxarc-etranger', etranger);
+    if (etranger) elArcJeu.setAttribute('sandbox', 'allow-scripts allow-same-origin');
+    else elArcJeu.removeAttribute('sandbox');
     /* Recharger MEME si l'adresse n'a pas change : sans le passage par
        about:blank, revenir sur la borne rouvrait la partie a l'endroit ou on
        l'avait laissee, avec deux combattants a genoux et un chrono a zero. */
@@ -2657,6 +2696,9 @@
   function ouvreArcade() {
     ouvreEcran({ titre: '&#127918; Arcade',
                  sous: 'Two players, one keyboard. Click the screen first, then fight.',
+                 /* La seule page du panneau qui soit de nous : elle garde sa
+                    manette et n'a pas besoin d'etre bridee. */
+                 chezNous: true,
                  src: ARC_SRC });
   }
 

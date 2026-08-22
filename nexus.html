@@ -1313,6 +1313,18 @@ body.nxdrag *{ cursor:grabbing !important; }
 /* La croix reste cachee au clavier : six boutons roses sous un jeu qu'on
    joue deja aux touches ne servent qu'a manger de la hauteur d'ecran. */
 .nxarc-pad{ display:none; }
+/* ---- LE PANNEAU SERT DEUX CONTENUS, ET UN SEUL EST DE NOUS ----
+ * La borne d'arcade est une page A NOUS : elle ecoute le clavier, donc sur
+ * telephone il lui faut une croix et six boutons. Le lecteur d'un film est la
+ * page de QUELQU'UN D'AUTRE, avec ses propres commandes.
+ * Le panneau etant partage, la manette de la borne s'affichait aussi sous le
+ * film : le proprietaire a vu LP, MP, HP, LK, MK et une croix de direction
+ * sous un ecran de cinema. Rien ne les pilotait — six boutons morts qui
+ * mangeaient la moitie de la hauteur utile d'un telephone.
+ * Ce n'est pas au style de deviner lequel des deux contenus est affiche :
+ * c'est celui qui OUVRE le panneau qui le sait, et il le dit. */
+#nxArcVoile.nxarc-etranger .nxarc-pad,
+#nxArcVoile.nxarc-etranger .nxarc-touches{ display:none; }
 @media (hover:none) and (pointer:coarse){
   .nxarc-pad{ display:flex; justify-content:space-between; gap:10px;
     margin-top:12px; touch-action:none; user-select:none; }
@@ -1885,7 +1897,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
      racine ; c'est le seul endroit d'ou elle peut couvrir tout le reste. -->
 <div id="nxFiche"></div>
 
-<script src="nexus.js?v=20260825a" defer></script>
+<script src="nexus.js?v=20260825b" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

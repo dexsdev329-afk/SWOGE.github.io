@@ -1796,6 +1796,21 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
   </div>
 </div>
 
+<!-- ---- LA MUSIQUE DE LA SALLE D'ARCADE ----
+     Un ELEMENT AUDIO et non un echantillon Web Audio : le morceau pese 4,7 Mo,
+     et `decodeAudioData` exige de l'avoir telecharge en entier avant la
+     premiere note, puis le garde DECOMPRESSE en memoire — plusieurs dizaines
+     de mega-octets pour une boucle de fond. Un element audio le diffuse au fil
+     de l'eau et boucle tout seul.
+     `preload="none"` et pas de `src` : personne ne telecharge quatre
+     mega-octets pour un batiment ou il n'entrera jamais. L'adresse est posee
+     par la page a la premiere entree.
+     Il est ICI, dans le document, plutot que fabrique en javascript : un
+     `new Audio()` n'appartient a aucun document et reste donc invisible pour
+     un essai — et une musique qu'on ne peut pas observer est une musique dont
+     on ne saura jamais si elle s'est arretee quand il fallait. -->
+<audio id="nxArcMusique" loop preload="none"></audio>
+
 <div id="nxRangVoile">
   <div class="nxcf-carte nxrg-carte">
     <button class="nxcf-x" type="button" aria-label="Close">&times;</button>
@@ -1853,7 +1868,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
      racine ; c'est le seul endroit d'ou elle peut couvrir tout le reste. -->
 <div id="nxFiche"></div>
 
-<script src="nexus.js?v=20260823q" defer></script>
+<script src="nexus.js?v=20260823r" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

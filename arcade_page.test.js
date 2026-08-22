@@ -208,6 +208,10 @@ function litSource() {
   const p = await nav.newPage({ viewport: { width: 1280, height: 900 } });
   const echecsHall = [];
   p.on('response', (r) => { if (r.status() >= 400 && r.url().indexOf('/arcade/') >= 0) echecsHall.push(r.status() + ' ' + r.url().replace(base, '')); });
+  /* Le morceau pese pres de cinq mega-octets. La promesse est qu'il ne part
+     QUE pour ceux qui entrent — on regarde donc le reseau, pas un attribut. */
+  const demandes = [];
+  p.on('request', (r) => { if (/arcade\.mp3/.test(r.url())) demandes.push(r.url()); });
   await p.goto(base + '/nexus.html', { waitUntil: 'domcontentloaded' });
   await p.waitForTimeout(2200);
 
@@ -254,9 +258,28 @@ function litSource() {
    * blackjack, qui s'ouvrait, gelait le hall, et les quatorze pas suivants ne
    * bougeaient plus rien. L'essai accusait alors la borne de ne pas s'ouvrir
    * alors qu'on n'avait jamais quitte le sud. */
+  const musique = () => p.evaluate(() => {
+    const a = document.getElementById('nxArcMusique');
+    return a ? { la: true, src: a.getAttribute('src') || '', boucle: a.loop,
+                 pre: a.preload, joue: !a.paused, ou: a.currentTime } : { la: false };
+  });
+  {
+    const m2 = await musique();
+    ok(m2.la, 'la salle a un element de musique');
+    ok(m2.boucle, 'et il boucle — une musique de fond qui s\'arrete au bout de trois minutes se remarque');
+    ok(!m2.src && demandes.length === 0,
+       `et les cinq mega-octets ne partent PAS tant qu'on n'est pas entre (${demandes.length} demande(s))`);
+  }
+
   for (let i = 0; i < 14 && !(await vue()).salle; i++) await marche('ArrowLeft', 500);
   let v = await vue();
   ok(v.salle > 0, 'marcher sur le batiment fait ENTRER dans la salle');
+  {
+    await p.waitForTimeout(600);
+    const m2 = await musique();
+    ok(/arcade\.mp3/.test(m2.src), 'entrer pose l\'adresse du morceau');
+    ok(m2.joue, 'et la musique demarre');
+  }
   ok(!v.on, 'et le jeu ne s\'ouvre pas tout seul en entrant — il est a une borne, dedans');
 
   /* ---- LES SIX BORNES SONT LA OU LE DESSIN LES MONTRE ----
@@ -331,6 +354,12 @@ function litSource() {
   }
   v = await vue();
   ok(v.on, 'marcher devant la premiere borne ouvre le jeu');
+  {
+    /* LA BORNE A SA PROPRE MUSIQUE. Les deux ensemble ne font pas deux
+       musiques, elles font du bruit. */
+    const m2 = await musique();
+    ok(!m2.joue, 'et la musique de la salle se TAIT pendant qu\'on joue');
+  }
   ok(v.src === 'arcade/index.html', 'le panneau charge le jeu (src = ' + v.src + ')');
   await p.waitForTimeout(2500);
   ok(echecsHall.length === 0, 'la borne se charge sans 404 depuis la salle'
@@ -397,6 +426,11 @@ function litSource() {
   console.log('- la fermeture');
   v = await vue();
   ok(!v.on, 'la croix ferme le panneau');
+  {
+    await p.waitForTimeout(400);
+    const m2 = await musique();
+    ok(m2.joue, 'et la musique de la salle REVIENT quand on quitte le jeu');
+  }
   ok(v.src === 'about:blank', 'le src est vide : plus de musique ni de boucle (src = ' + v.src + ')');
   /* Et le hall repart : sans ca, fermer la borne laissait le joueur fige
      pour de bon, ce qui est pire que le probleme qu'on soignait. */
@@ -405,6 +439,31 @@ function litSource() {
   const p1 = (await vue()).moi;
   ok(p0 && p1 && Math.hypot(p1.x - p0.x, p1.y - p0.y) > 20,
      'le personnage remarche apres la fermeture');
+
+  /* ---- ET EN SORTANT DU BATIMENT, ELLE S'ARRETE ----
+   * Le panneau du jeu se ferme AUSSI quand on quitte la salle. Si la reprise
+   * ne regardait pas ou l'on est, la musique de l'arcade se serait mise a
+   * jouer par-dessus le Nexus, sans que rien ne dise d'ou elle vient. */
+  console.log('- on ressort du batiment');
+  /* Le portail est a MI-HAUTEUR du mur gauche, et l'on se tient devant les
+     bornes, tout en bas. Ma premiere version ne marchait que vers la gauche :
+     le personnage etait deja colle au bord, il ne bougeait plus d'un pixel, et
+     l'essai accusait la sortie de ne pas couper la musique alors qu'on n'avait
+     jamais quitte la piece. Il faut MONTER puis aller a gauche. */
+  for (let i = 0; i < 16; i++) {
+    await marche('ArrowUp', 260);
+    await marche('ArrowLeft', 300);
+    const dehors = await p.evaluate(() => {
+      const c = document.getElementById('nxArcMusique');
+      return c ? !c.paused : false;
+    });
+    if (!dehors) break;
+  }
+  {
+    const m2 = await musique();
+    ok(!m2.joue, 'sortir du batiment coupe la musique');
+    ok(m2.ou < 1, `et elle repart du debut a la prochaine visite (${m2.ou.toFixed(1)} s)`);
+  }
 
   await nav.close(); site.stop();
   console.log('\n' + n + ' verifications, ' + rates + ' rate(s)');

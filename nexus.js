@@ -2584,6 +2584,9 @@
     elArcJeu.src = ARC_SRC;
     elArcVoile.classList.add('on');
     gelLeHall(true);
+    /* La borne a sa propre musique : les deux ensemble ne font pas deux
+       musiques, elles font du bruit. */
+    musiqueArcade(false);
   }
   function fermeArcade(parLaMain) {
     arcOuvert = false;
@@ -2607,6 +2610,10 @@
     if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen();
     arcRelacheTout();
     gelLeHall(false);
+    /* SEULEMENT si l'on est encore dans la salle. Ce panneau se ferme aussi en
+       SORTANT du batiment, et rallumer la musique a ce moment-la la ferait
+       jouer par-dessus le Nexus, sans que rien ne dise d'ou elle vient. */
+    if (SCENE === 'arcade') musiqueArcade(true);
   }
   if (elArcVoile) {
     elArcVoile.addEventListener('click', function (e) {
@@ -6923,6 +6930,31 @@
    *
    * Meme geste que le coffre, et volontairement le meme : un joueur qui a
    * appris a entrer et sortir de l'un le fait dans l'autre sans y penser. */
+  /* ---- LA MUSIQUE DE LA SALLE ----
+   *
+   * Elle joue dans la salle, se TAIT pendant qu'on joue, et revient quand on
+   * quitte le jeu. La raison est simple a entendre : la borne a sa propre
+   * musique, en boucle, dans son iframe. Les deux ensemble ne font pas deux
+   * musiques, elles font du bruit.
+   *
+   * `play()` rend une promesse qui peut etre REFUSEE — un navigateur qui n'a
+   * pas encore vu de geste de l'utilisateur, un telephone en mode economie.
+   * Une promesse refusee non attrapee remonte en erreur de page et n'explique
+   * rien ; on l'avale. La salle marche sans musique, elle ne marche pas avec
+   * une erreur a chaque entree.
+   */
+  var elMusiqueArc = document.getElementById('nxArcMusique');
+  var SRC_MUSIQUE_ARC = 'img/nexus/arcade.mp3';
+  function musiqueArcade(oui) {
+    if (!elMusiqueArc) return;
+    if (!oui) { elMusiqueArc.pause(); return; }
+    /* L'adresse n'est posee qu'ICI, a la premiere entree : c'est ce qui fait
+       que le morceau n'est telecharge que par ceux qui entrent. */
+    if (!elMusiqueArc.getAttribute('src')) elMusiqueArc.setAttribute('src', SRC_MUSIQUE_ARC);
+    var p = elMusiqueArc.play();
+    if (p && p.catch) p.catch(function () {});
+  }
+
   function entreSalleArcade() {
     RETOUR = { x: joueur.x, y: joueur.y };
     SCENE = 'arcade';
@@ -6938,10 +6970,19 @@
        panneau refuse de se rouvrir a la visite suivante. */
     borneFermee = null;
     indiceActuel = null;
+    musiqueArcade(true);
   }
   function sortSalleArcade() {
+    /* SCENE d'abord : `fermeArcade` relance la musique quand on est encore
+       dans la salle, et l'appeler avant aurait rallume ce qu'on vient
+       d'eteindre — une musique qui repart une demi-seconde apres qu'on ait
+       passe la porte. */
     SCENE = 'nexus';
     fermeArcade(false);
+    musiqueArcade(false);
+    /* Au debut, pas la ou on l'a laissee : revenir dans la salle doit
+       ressembler a entrer dans la salle. */
+    if (elMusiqueArc) { try { elMusiqueArc.currentTime = 0; } catch (e) {} }
     indiceActuel = null;
     if (indiceEl) { indiceEl.classList.remove('on'); indiceEl.innerHTML = ''; }
     if (RETOUR) { joueur.x = RETOUR.x; joueur.y = RETOUR.y; }

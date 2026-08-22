@@ -349,6 +349,18 @@
          peut plus s'ouvrir, et le coffre doit le dire tout de suite. */
       if (m.oeufs) { OEUFS_C = m.oeufs; if (coffreOuvert) peintCoffreMenu(); }
     }
+    /* ---- LE BOSS EN APPELLE D'AUTRES ----
+     * Dans une salle de boss on REGARDE le boss : celles qui naissent dans le
+     * dos ne se voient pas, et l'on decouvre trois cendreux en prenant leurs
+     * coups. Un mot et un son, pour qu'on se retourne.
+     * Le NOM vient de la table du serveur, comme partout : l'ecrire ici
+     * ferait une seconde liste de noms de creatures. */
+    if (m.type === 'realmAppel') {
+      var tA = MONDE_C && MONDE_C.especes && MONDE_C.especes[m.espece];
+      flotte('\u26A0 ' + (m.combien > 1 ? m.combien + '\u00d7 ' : '') +
+             ((tA && tA.nom) || m.espece));
+      joueSample('niveau', { vol: 0.55, hauteur: 0.62 });
+    }
     /* ---- LE FAMILIER VIENT D'AGIR ----
      * Il agit tout seul : sans un geste a l'ecran, un joueur ne saurait
      * jamais si son compagnon sert a quelque chose, ni lequel choisir. Le

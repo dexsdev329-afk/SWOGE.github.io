@@ -397,6 +397,20 @@
       peintLigneFamilier();
       if (shopOuvert && shopSaison === 'pet') peintShop();
     }
+    /* ---- ON A ETE PAYE, PENDANT QU'ON JOUAIT ----
+     *
+     * On met en vente depuis la boutique du hall, puis on repart chasser : le
+     * vendeur est alors DANS LE MONDE, pas dans le tiroir. Sans ce message il
+     * n'apprenait rien — ni ici, ni la-bas — jusqu'a ce qu'il pense a rouvrir
+     * la vitrine. Le seul comptoir du jeu ou l'on echange des $SWOGE reels
+     * etait le seul sans un signal.
+     *
+     * Le NET, pas le prix demande : c'est ce qui arrive sur le solde. */
+    if (m.type === 'marketSold' && m.vente) {
+      var nomVendu = (m.vente.annonce && m.vente.annonce.item && m.vente.annonce.item.nom)
+        || 'Your listing';
+      flotte('\uD83D\uDCB0 ' + nomVendu + ' sold \u2014 +' + m.vente.net + ' $SWOGE');
+    }
     /* ---- LE REPAS ----
      * Le serveur renvoie d'un coup le familier, le sac et l'or : les trois
      * sont a l'ecran au meme endroit, et les rafraichir chacun de leur cote

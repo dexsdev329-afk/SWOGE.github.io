@@ -482,6 +482,55 @@
       if (m.coffreOeufs) OEUFS_COFFRE = m.coffreOeufs;
       if (profOnglet === 'mk' || profOnglet === 'sh' || profOnglet === 'pt') profRend();
     }
+    /* ---- ON A ETE PAYE ----
+     *
+     * Le seul comptoir du jeu ou deux joueurs echangent des $SWOGE reels
+     * contre un bien, et le seul qui n'envoyait rien au vendeur : sa page
+     * gardait l'ancien solde et son annonce comme si elle courait toujours,
+     * jusqu'a ce qu'il clique ailleurs. Un joueur qui ne voit pas sa vente
+     * aboutir conclut que le marche ne marche pas.
+     *
+     * Le message arrive QUAND ON VEUT, sans qu'on ait rien demande : il est
+     * donc traite ici, et pas dans la reponse a un clic. */
+    if (m.type === 'marketSold' && m.vente) {
+      var ve = m.vente;
+      var nomVendu = (ve.annonce && ve.annonce.item && ve.annonce.item.nom) || 'Your listing';
+      /* Le NET, pas le prix affiche : c'est ce qui arrive sur le solde, et
+         c'est le chiffre que le vendeur va comparer. Les frais se disent a
+         cote plutot que d'etre passes sous silence — un ecart inexplique entre
+         le prix demande et le solde recu se lit comme un vol. */
+      toast('\uD83D\uDCB0 ' + nomVendu + ' sold — +' + nb(ve.net, 0) + ' $SWOGE'
+            + (ve.frais > 0 ? ' (fee ' + nb(ve.frais, 0) + ')' : ''), 'good');
+      if (m.balance != null) rafraichitSolde();
+      /* L'inventaire du vendeur a bouge : ce qu'il croyait equipable ne l'est
+         plus forcement. */
+      EQUIPABLE = null;
+      /* La vitrine se redemande AVEC LA SAISON QU'IL REGARDE, lui. Le serveur
+         ne la pousse pas : il ne connait que celle de l'acheteur, et la lui
+         imposer lui changerait d'onglet sous les doigts. */
+      if (profOnglet === 'mk' || profOnglet === 'pt') envoie({ type: 'market', season: SAISON });
+    }
+    /* ---- UNE LIGNE VIENT DE PARTIR, CHEZ QUELQU'UN D'AUTRE ----
+     *
+     * Sans ce message, la vitrine des autres gardait a l'ecran des annonces
+     * qui n'existaient plus, et le seul retour etait l'erreur « this listing no
+     * longer exists » — c'est-a-dire APRES le clic sur un bouton mort.
+     *
+     * On retire la ligne au lieu de rafraichir toute la vitrine : le serveur
+     * n'envoie qu'un identifiant, et la repeindre en entier a chaque vente du
+     * site couterait cent fois plus pour la meme chose. */
+    if (m.type === 'marketGone' && MARCHE && MARCHE.annonces) {
+      var avant = MARCHE.annonces.length;
+      if (m.reste > 0) {
+        MARCHE.annonces.forEach(function (a) { if (a.id === m.id) a.qte = m.reste; });
+      } else {
+        MARCHE.annonces = MARCHE.annonces.filter(function (a) { return a.id !== m.id; });
+      }
+      /* On ne repeint QUE si la vitrine est sous les yeux, et QUE si quelque
+         chose a change : repeindre un panneau ferme est du travail pour
+         personne. */
+      if ((avant !== MARCHE.annonces.length || m.reste > 0) && profOnglet === 'mk') profRend();
+    }
     /* ---- L'ENCLOS ET LE COFFRE A OEUFS ----
      * Ils arrivent ensemble et se lisent ensemble : « tu as cet animal, donc
      * cet oeuf-la ne peut plus eclore » est UNE phrase. Deux messages

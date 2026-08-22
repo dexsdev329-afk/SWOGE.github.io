@@ -556,6 +556,83 @@ process.on('unhandledRejection', (e) => {
     }
   }
 
+  /* ================== 5. LA VISEE AUTOMATIQUE PREND LE BOSS ==================
+   *
+   * Le joueur l'a signale : « dans un donjon, s'il y a plein de monstres, elle
+   * ne vise jamais le boss ». C'est exact — la regle etait « le plus proche »,
+   * et l'Idole appelle jusqu'a cinquante cendreux. Il n'existe alors AUCUN
+   * instant ou le boss soit le plus proche : la visee tirait sur la meute tout
+   * le combat, et la meute revient sans fin.
+   *
+   * On mesure l'ANGLE ENVOYE AU SERVEUR, pas ce que la page croit viser : c'est
+   * le seul chiffre qui decide vraiment ou part le projectile.
+   *
+   * La scene est arrangee pour que le piege soit present : un cendreux plus
+   * PRES que le boss. Sans lui, « elle vise le boss » serait vrai par hasard —
+   * il serait le seul.
+   */
+  console.log('\n-- la visee automatique --');
+  {
+    const boss2 = donjon0 && donjon0.monstres.find((mm) => mm.espece === 'idole');
+    if (boss2 && j2) {
+      j2.pvMax = 9999999; j2.pv = j2.pvMax;
+      /* ---- LES DEUX A PORTEE, ET LE CENDREUX PLUS PRES ----
+       * Premiere version : le boss a 380 unites, avec une lame qui porte a
+       * 320. Il etait donc HORS DE PORTEE, et la regle dit — a raison — qu'on
+       * ne vise pas ce qu'on ne peut pas atteindre. L'essai rendait 9 sur 10
+       * une fois et 2 sur 11 la suivante, selon que le boss avait marche vers
+       * nous ou non. Il mesurait la promenade du boss, pas la regle.
+       * Les deux sont maintenant DANS la portee de l'arme, et le cendreux deux
+       * fois plus pres : c'est exactement le piege qu'on veut tendre. */
+      const PORTEE = await p.evaluate(() => {
+        const e = window.__s[0].__m.filter((x) => x.type === 'realmEntre').pop();
+        return (e && e.armes && e.armes.lame && e.armes.lame.portee) || 320;
+      });
+      const dBoss = Math.round(PORTEE * 0.7), dPres = Math.round(PORTEE * 0.3);
+      boss2.x = j2.x + dBoss; boss2.y = j2.y;
+      const proche = donjon0._naissance({ espece: 'cendreux', biome: 'lave',
+                                          x: j2.x, y: j2.y + dPres });
+      donjon0.monstres.push(proche);
+      /* Il ne doit pas s'enfuir ni mourir pendant la mesure : on le fige en le
+         gardant loin de sa cible a chaque tour n'aurait pas marche — on lui
+         donne simplement beaucoup de vie et on le repose. */
+      proche.pv = proche.pvMax = 999999;
+      await p.waitForTimeout(600);
+      /* On allume la visee automatique par le BOUTON, comme un joueur. */
+      await p.evaluate(() => {
+        const b = document.getElementById('nxTir');
+        if (b) b.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 7, bubbles: true }));
+      });
+      /* On oublie ce qui a ete envoye AVANT : la page tire aussi pendant qu'on
+         marche, et compter ces tirs-la reviendrait a mesurer le chemin. */
+      await p.evaluate(() => { window.__s[0].__out.length = 0; });
+      /* On garde le cendreux colle pendant la mesure : sinon il fonce sur nous,
+         devient le plus proche a une distance nulle, et l'angle n'a plus de
+         sens. */
+      for (let i = 0; i < 22; i++) {
+        proche.x = j2.x; proche.y = j2.y + dPres;
+        boss2.x = j2.x + dBoss; boss2.y = j2.y;
+        await p.waitForTimeout(90);
+      }
+      /* Les angles envoyes : on relit le flux SORTANT, deja enregistre par
+         l'enveloppe posee sur la socket au demarrage. */
+      const angles = await p.evaluate(() => (window.__s[0].__out || [])
+        .filter((m2) => m2.type === 'realmTir').map((m2) => m2.a));
+      ok(angles.length > 0, `la visee automatique a tire ${angles.length} fois`);
+      if (angles.length) {
+        /* Le boss est a DROITE : angle proche de 0. Le cendreux est en BAS :
+           angle proche de +PI/2. On compte de quel cote vont les tirs. */
+        const versBoss = angles.filter((a2) => Math.abs(Math.atan2(Math.sin(a2), Math.cos(a2))) < 0.5).length;
+        ok(versBoss > angles.length * 0.8,
+           `et ${versBoss} sur ${angles.length} partent vers le BOSS a ${dBoss} u, pas vers le cendreux a ${dPres} u`);
+      }
+      await p.evaluate(() => {
+        const b = document.getElementById('nxTir');
+        if (b) b.dispatchEvent(new PointerEvent('pointerup', { pointerId: 7, bubbles: true }));
+      });
+    }
+  }
+
   const perdus = manquants.filter((u) => /\.webp$/.test(u));
   ok(perdus.length === 0, 'aucune image demandee n\'est absente' +
      (perdus.length ? ' — ' + perdus.slice(0, 6).join(', ') : ''));

@@ -8351,23 +8351,46 @@
       monstres arrivent, il n'y ait qu'une liste a lui donner. */
   function cibleLaPlusProche() {
     /* Dans le Nexus il n'y a rien a viser — c'est une zone sure, et c'est
-       voulu. Dans le monde, on prend le plus proche, tout simplement : viser
-       le plus faible ou le plus dangereux demanderait au joueur de deviner
-       la regle, et il n'y en aurait aucune bonne. */
+       voulu. */
     if (SCENE !== 'monde') return null;
+    /* ---- LE BOSS PASSE DEVANT ----
+     *
+     * La regle etait « le plus proche, tout simplement », et son commentaire
+     * disait qu'une regle plus fine demanderait au joueur de la deviner. Le
+     * joueur l'a corrigee : dans un donjon, l'Idole appelle jusqu'a cinquante
+     * cendreux, et il n'y a plus AUCUN instant ou le boss soit le plus proche.
+     * La visee automatique tirait donc sur la meute pendant tout le combat, et
+     * la meute repousse — abattre le boss devenait impossible sans couper
+     * l'auto-visee.
+     *
+     * « Le boss d'abord » n'est pas une regle a deviner : c'est la seule
+     * raison d'etre dans la piece, et sa barre de vie est deja au haut de
+     * l'ecran. Les creatures appelees ne rapportent rien et reviennent sans
+     * fin ; leur tirer dessus est un travail sans terme.
+     *
+     * Il faut quand meme qu'il soit A PORTEE. Un boss vise a travers la moitie
+     * de la salle ferait partir tous les tirs dans le vide pendant qu'on se
+     * fait mordre — c'est le contraire de ce qu'on cherche. Hors de portee, on
+     * revient au plus proche.
+     *
+     * Deux passages sur la meme liste plutot qu'un tri : il y a jusqu'a
+     * cinquante creatures a l'ecran, dix fois par seconde. */
+    var a = ARMES[familleArme() || 'poing'] || ARMES.poing;
+    var maxi = a.portee * 1.15, maxi2 = maxi * maxi;
+    var boss = null, dBoss = Infinity;
     var mieux = null, d2 = Infinity;
     for (var k in MONSTRES_C) {
       var e = MONSTRES_C[k];
       var dx = e.rx - joueur.x, dy = (e.ry - 30) - joueur.y;
       var q = dx * dx + dy * dy;
       if (q < d2) { d2 = q; mieux = e; }
+      if (e.boss && q < dBoss && q <= maxi2) { dBoss = q; boss = e; }
     }
+    if (boss) return { x: boss.rx, y: boss.ry - 30 };
     /* Hors de portee de l'arme, on ne vise pas : le tir partirait dans une
        direction ou rien ne peut arriver, et le joueur croirait que la visee
        est cassee alors qu'il est simplement trop loin. */
-    var a = ARMES[familleArme() || 'poing'] || ARMES.poing;
-    var maxi = a.portee * 1.15;
-    if (!mieux || d2 > maxi * maxi) return null;
+    if (!mieux || d2 > maxi2) return null;
     return { x: mieux.rx, y: mieux.ry - 30 };
   }
 

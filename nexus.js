@@ -196,6 +196,14 @@
       if (m.fioles) FIOLES_C = m.fioles;
       if (m.sacJoueur) SAC = m.sacJoueur;
       if (m.etat && m.skin === PERSO) { FICHE = m.etat; }
+      /* On DIT combien sont parties. Un panneau qui se repeint a l'identique
+         apres un clic se lit comme une panne — et c'est justement ce qui
+         arrive quand il n'y avait rien a ranger. */
+      if (m.type === 'fioleRangeTout' && !m.error) {
+        flotte(m.total > 0 ? '\u2191 ' + m.total + ' stored \u2014 safe from death'
+                           : 'Nothing to store');
+        if (m.total > 0) joueSample('clic', { vol: 0.5, hauteur: 1.4 });
+      }
       if (m.type === 'fioleBoit' && !m.error) {
         /* Le meme son que la montee de niveau : boire une fiole ajoute un
            point pour toujours, c'est exactement ce que fait un niveau. */
@@ -5816,8 +5824,22 @@
         'Stored here, they survive your death. Carried in your backpack, they do not.';
       var f = FIOLES_C || [];
       var aBoire = f.filter(function (x) { return x.coffre > 0 || x.sac > 0; });
+      /* ---- TOUT RANGER, D'UN GESTE ----
+       * C'est le geste qu'on fait CHAQUE FOIS qu'on rentre, parce que ce
+       * qu'on porte meurt avec le personnage. Huit stats, huit clics : un
+       * geste qu'on repete a chaque retour et qui coute huit clics, c'est un
+       * geste qu'on finit par ne plus faire — et une reserve entiere perdue a
+       * la mort suivante.
+       * Il ne se montre QUE s'il y a quelque chose a ranger. Un bouton
+       * toujours la, qui ne fait rien la plupart du temps, devient un bouton
+       * qu'on n'essaie plus. */
+      var porte = aBoire.reduce(function (n, x) { return n + (x.sac || 0); }, 0);
+      var tout = porte > 0
+        ? '<button type="button" class="nxcf-tout" data-toutranger="1">' +
+          '&uarr; Store all &middot; ' + porte + '</button>'
+        : '';
       elCoffreCorps.innerHTML = aBoire.length
-        ? '<div class="nxcf-l">' + aBoire.map(function (x) {
+        ? tout + '<div class="nxcf-l">' + aBoire.map(function (x) {
             var pas = x.pas || 1;
             /* ---- LE COMPTE SE LIT, IL NE SE CHERCHE PAS ----
              * Il vivait dans une phrase en petit vert (« 3 stored · 1
@@ -5843,11 +5865,12 @@
               '</div>';
           }).join('') + '</div>'
         : '<div class="nxcf-vide">No stat potions yet. They drop in the wild — walk over a bag to pick them up.</div>';
-      Array.prototype.forEach.call(elCoffreCorps.querySelectorAll('[data-range],[data-sort],[data-boit]'), function (b) {
+      Array.prototype.forEach.call(elCoffreCorps.querySelectorAll('[data-range],[data-sort],[data-boit],[data-toutranger]'), function (b) {
         b.addEventListener('click', function (e) {
           e.stopPropagation();
           clic(true);
-          if (b.hasAttribute('data-range')) envoie({ type: 'fioleRange', stat: b.getAttribute('data-range') });
+          if (b.hasAttribute('data-toutranger')) envoie({ type: 'fioleRangeTout' });
+          else if (b.hasAttribute('data-range')) envoie({ type: 'fioleRange', stat: b.getAttribute('data-range') });
           else if (b.hasAttribute('data-sort')) envoie({ type: 'fioleSort', stat: b.getAttribute('data-sort') });
           else envoie({ type: 'fioleBoit', skin: PERSO, stat: b.getAttribute('data-boit') });
         });

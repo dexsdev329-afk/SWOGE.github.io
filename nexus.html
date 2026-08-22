@@ -1033,6 +1033,15 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
 .nxcf-i span{ flex:1; min-width:0; }
 .nxcf-i b{ display:block; font-size:13px; overflow:hidden; text-overflow:ellipsis;
   white-space:nowrap; }
+/* ---- LE BOUTON « TOUT RANGER » ----
+   Pleine largeur, au-dessus de la liste : c'est le geste qu'on vient faire,
+   pas une option. Le poser en bas l'aurait cache sous huit lignes, c'est-a-
+   dire exactement la ou l'on ne regarde pas quand on est presse de repartir. */
+.nxcf-tout{ display:block; width:100%; margin:0 0 8px; padding:9px 12px;
+  border-radius:8px; cursor:pointer; text-align:center;
+  border:1px solid #2E7A46; background:linear-gradient(#2b5c3c,#1e4530); color:#CFFFE0;
+  font:800 13px/1 'Archivo',system-ui,sans-serif; letter-spacing:.02em; }
+.nxcf-tout:hover{ background:linear-gradient(#357049,#255339); }
 .nxcf-i em{ display:block; font-style:normal; font-size:11px; color:#7CFF9B; font-weight:700;
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 /* ---- LE COMPTE DES FIOLES, LU D'UN COUP D'OEIL ----
@@ -1670,7 +1679,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
      racine ; c'est le seul endroit d'ou elle peut couvrir tout le reste. -->
 <div id="nxFiche"></div>
 
-<script src="nexus.js?v=20260822z" defer></script>
+<script src="nexus.js?v=20260823a" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

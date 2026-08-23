@@ -213,8 +213,19 @@ process.on('unhandledRejection', (e) => {
   });
   ok((compte['ground_' + solNom + '.webp'] || 0) > 20,
      `le pave de la ville est peint (${compte['ground_' + solNom + '.webp'] || 0} tuiles)`);
-  ok((compte['mur_donjon.webp'] || 0) > 0,
-     `et la roche remplit ce qui n'est pas une rue (${compte['mur_donjon.webp'] || 0} poses)`);
+  /* ---- LA ROCHE, PAS UNE PIERRE EN PARTICULIER ----
+   * Cette ligne nommait `mur_donjon.webp`. La ville a emprunte cette pierre
+   * le temps qu'une pierre de ville soit dessinee ; le jour ou elle a eu la
+   * sienne, l'essai a compte ZERO et annonce que la roche ne remplissait plus
+   * rien — alors qu'elle remplissait tout, dans une autre planche. Un essai
+   * qui code en dur une valeur qu'il verifie finit toujours par accuser le
+   * code d'avoir change. Ce qu'il veut dire, c'est « de la roche » ; quelle
+   * pierre exactement est l'affaire de ville_accord, qui suit la chaine du
+   * nom jusqu'au fichier. */
+  const roche = Object.keys(compte)
+    .filter((k) => /^mur_.*\.webp$/.test(k))
+    .reduce((t, k) => t + compte[k], 0);
+  ok(roche > 0, `et la roche remplit ce qui n'est pas une rue (${roche} poses)`);
 
   /* ================== 2. LES FACADES, AU BON ENDROIT ================== */
   console.log('\n-- chaque facade est posee sur SON bloc --');
@@ -273,7 +284,9 @@ process.on('unhandledRejection', (e) => {
         for (var j2 = v.i + 1; j2 < window.__peint.length; j2++) {
           var w = window.__peint[j2];
           if (w.f !== v.f) break;
-          if (w.src !== 'mur_donjon.webp') continue;
+          /* N'importe quelle pierre : voir plus haut, la ville a change de
+             planche et « mur_donjon » ecrit ici ne comptait plus rien. */
+          if (!/^mur_.*\.webp$/.test(w.src)) continue;
           if (Math.abs(w.dy - (v.dy + v.dh - 128)) > 1) continue;
           if (w.dx + w.dw < v.dx || w.dx > v.dx + v.dw) continue;
           derriere++;

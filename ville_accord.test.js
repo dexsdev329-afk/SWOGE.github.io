@@ -69,10 +69,24 @@ function fichierSolSelonLaPage(biome) {
  * La page ne connait que deux planches de mur, et elle les choisit sur le nom
  * que le serveur envoie. On relit la ligne plutot que de la recopier : le jour
  * ou une troisieme pierre arrive, cet essai suit sans qu'on y pense. */
+/* ---- ON SUIT LA CHAINE, ON NE RECONNAIT PAS UNE FORME ----
+ * Ce resolveur cherchait le ternaire a deux cas, et ne savait rendre que
+ * `mur_cave` ou `mur_donjon`. Il aurait donc echoue le jour ou le serveur
+ * nomme une troisieme pierre — quelle que soit la qualite du code de la page.
+ * Deux ancres ont deja lache aujourd'hui pour cette raison : on ne s'accroche
+ * plus a la FORME d'une expression, on suit la chaine que la page declare —
+ * nom de pierre, variable d'image, fichier. Une quatrieme pierre ajoutee a la
+ * table sera resolue sans qu'on touche a cet essai. */
 function fichierMurSelonLaPage(nom) {
-  const l = /var img = \(MONDE_C && MONDE_C\.mur === '(\w+)'\) \? IMG_MUR_CAVE : IMG_MUR_DJ;/.exec(src);
-  if (!l) return null;
-  return nom === l[1] ? 'mur_cave' : 'mur_donjon';
+  const t = /var MURS = \{([^}]*)\};/.exec(src);
+  if (!t) return null;
+  const paire = new RegExp('(?:^|[,{\\s])' + nom + '\\s*:\\s*(IMG_[A-Z_]+)').exec(t[1]);
+  if (!paire) return null;
+  /* De la variable au fichier : c'est la page qui dit lequel elle charge, et
+     le lire ici evite de recopier une convention de nommage qui n'existe
+     peut-etre pas. */
+  const f = new RegExp(paire[1] + "\\.src = 'img/nexus/tiles/([\\w-]+)\\.webp'").exec(src);
+  return f ? f[1] : null;
 }
 
 const plan = monde.planDeVille();

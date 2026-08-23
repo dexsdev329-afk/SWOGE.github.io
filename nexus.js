@@ -4714,6 +4714,7 @@
   var IMG_ANNONCE_DJ = null, IMG_ONDE_DJ = null;
   var ANNONCE_CADRES = 4, ONDE_CADRES = 4, ONDE_DUREE = 0.55;
   var IMG_SACS = null, IMG_OBST = null, IMG_MUR = null, IMG_TEMPLE = null;
+  var IMG_MUR_VILLE = null;
   var IMG_MUR_DJ = null, IMG_MUR_CAVE = null, IMG_PORTE = null, IMG_BALISE = null;
   /* Le coffre des salles gardees : ferme, entrouvert, ouvert. */
   var IMG_COFFRE = null, COFFRE_CADRES = 3;
@@ -5089,6 +5090,7 @@
     if (!IMG_MUR) { IMG_MUR = new Image(); IMG_MUR.src = 'img/nexus/tiles/mur_ruine.webp'; }
     if (!IMG_MUR_DJ) { IMG_MUR_DJ = new Image(); IMG_MUR_DJ.src = 'img/nexus/tiles/mur_donjon.webp'; }
     if (!IMG_MUR_CAVE) { IMG_MUR_CAVE = new Image(); IMG_MUR_CAVE.src = 'img/nexus/tiles/mur_cave.webp'; }
+    if (!IMG_MUR_VILLE) { IMG_MUR_VILLE = new Image(); IMG_MUR_VILLE.src = 'img/nexus/tiles/mur_ville.webp'; }
     if (!IMG_BALISE) { IMG_BALISE = new Image(); IMG_BALISE.src = 'img/nexus/tiles/obj_balise.webp'; }
     if (!IMG_PORTE) { IMG_PORTE = new Image(); IMG_PORTE.src = 'img/nexus/tiles/obj_portail.webp'; }
     if (!IMG_COFFRE) { IMG_COFFRE = new Image(); IMG_COFFRE.src = 'img/nexus/tiles/obj_coffre_garde.webp'; }
@@ -5402,8 +5404,23 @@
     return n > 1 ? (Math.floor(performance.now() / CADENCE_PLANCHE) % n) : 0;
   }
 
+  /* ---- QUELLE PIERRE POUR CETTE CARTE ----
+   * C'etait un ternaire a deux cas, ecrit DEUX FOIS : « si c'est la grotte,
+   * la pierre de grotte, sinon celle du donjon ». La ville a donc emprunte
+   * la pierre de donjon faute d'avoir sa ligne, et ajouter une troisieme
+   * pierre demandait de retrouver les deux endroits — c'est toujours le
+   * second qu'on oublie, et l'oubli serait muet : la moitie des blocs d'une
+   * carte dans une pierre, l'autre moitie dans une autre.
+   * Une table, un repli. Le nom vient du SERVEUR, avec le plan : la page ne
+   * le devine pas, et une pierre qu'il nommerait sans qu'on la connaisse
+   * retombe sur celle du donjon plutot que de ne rien dessiner. */
+  function murDeLaCarte() {
+    var MURS = { cave: IMG_MUR_CAVE, ville: IMG_MUR_VILLE, donjon: IMG_MUR_DJ };
+    return (MONDE_C && MURS[MONDE_C.mur]) || IMG_MUR_DJ;
+  }
+
   function peintRoche(mc, mr, TM) {
-    var img = (MONDE_C && MONDE_C.mur === 'cave') ? IMG_MUR_CAVE : IMG_MUR_DJ;
+    var img = murDeLaCarte();
     if (!img || !img.complete || !img.naturalWidth) return;
     var cadre = img.naturalHeight;
     var n = Math.max(1, Math.round(img.naturalWidth / cadre));
@@ -5519,7 +5536,7 @@
        nom du donjon ici aurait demande a la page de tenir une deuxieme table
        en face de celle du serveur, et le troisieme donjon aurait eu ses murs
        dans une des deux seulement. */
-    var murDJ = (MONDE_C && MONDE_C.mur === 'cave') ? IMG_MUR_CAVE : IMG_MUR_DJ;
+    var murDJ = murDeLaCarte();
     /* ---- ET LA QUATRIEME BANDE : LE DECOR ----
      * Au-dela de `murs.decor`, `t` ne designe plus un mur mais un OBJET —
      * brasier renverse, obelisque, enclume. Ils passent par ici et pas par un

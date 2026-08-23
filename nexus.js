@@ -2742,6 +2742,13 @@
      *
      * L'attribut se pose AVANT l'adresse : change apres coup il ne vaut qu'au
      * prochain chargement, et le premier serait parti sans protection. */
+    /* ---- LE CADRE DIT CE QU'IL MONTRE ----
+     * Son `title` etait fige a « Arcade cabinet », du temps ou le panneau ne
+     * servait qu'a la borne. Le navigateur en fait une INFOBULLE : en
+     * survolant un film, on lisait « Arcade cabinet » par-dessus l'image. Vu
+     * sur un enregistrement d'ecran du proprietaire, a trente et une
+     * secondes. C'est celui qui OUVRE le panneau qui sait ce qu'il y met. */
+    elArcJeu.title = cfg.cadreNom || 'Ecran';
     var etranger = !cfg.chezNous;
     elArcVoile.classList.toggle('nxarc-etranger', etranger);
     /* Plus de bac a sable, meme pour l'etranger : voir l'entete. On RETIRE
@@ -3146,6 +3153,7 @@
                  /* La seule page du panneau qui soit de nous : elle garde sa
                     manette et n'a pas besoin d'etre bridee. */
                  chezNous: true,
+                 cadreNom: 'Arcade cabinet',
                  src: ARC_SRC });
   }
 
@@ -3178,6 +3186,9 @@
       for (var i = 0; i < q.length; i++) {
         q[i].classList.toggle('actif', q[i].getAttribute('data-src') === src);
       }
+      /* Le titre vient du panneau d'administration : il est pose en PROPRIETE
+         et jamais dans du HTML, comme partout ailleurs pour ces chaines. */
+      if (SEANCE_CHOISIE && SEANCE_CHOISIE.titre) elArcJeu.title = SEANCE_CHOISIE.titre;
       elArcJeu.src = src;
       poseLaSortie(src);
     });

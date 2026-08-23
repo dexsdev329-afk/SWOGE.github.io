@@ -8713,6 +8713,30 @@
      * chiffres ronds. */
     { x0: CENTRE.x - 105, y0: CENTRE.y + 470, x1: CENTRE.x + 105, y1: CENTRE.y + 830 },
     { x0: CENTRE.x + 105, y0: CENTRE.y + 700, x1: CENTRE.x + 940, y1: CENTRE.y + 830 },
+    /* ---- L'ANNEAU QUI RELIE LES QUATRE COINS ----
+     *
+     * Jusqu'ici la place n'avait que des RAYONS : chaque batiment etait relie
+     * a la fontaine, et a rien d'autre. Aller du cinema a l'arcade — deux
+     * voisins pourtant, l'un au-dessus de l'autre — demandait de revenir au
+     * centre ou de couper a travers l'herbe. Une place ou l'on coupe a travers
+     * l'herbe est une place dont le dallage ment sur les trajets reels.
+     *
+     * L'anneau passe PAR les batiments et non entre eux : ses quatre branches
+     * sont calees sur les colonnes x = centre +/- 832 et les lignes
+     * y = centre +/- 352, qui sont exactement les coordonnees du cinema, du
+     * manga, de l'arcade et de la ferme. Un anneau pose ailleurs aurait relie
+     * du vide.
+     *
+     * LARGEUR 192, ET C'EST UNE CONTRAINTE, PAS UN GOUT. Le sol se peint par
+     * tuile de 128 en testant le CENTRE de chaque tuile : une bande de moins
+     * de 128 peut ne contenir aucun centre et ne rien peindre du tout — c'est
+     * deja arrive au chemin de la ferme, qui etait simplement invisible. A 192
+     * on est sur d'en contenir un, quel que soit l'alignement, sans avoir a
+     * caler chaque borne a la main sur la grille. */
+    { x0: CENTRE.x - 928, y0: CENTRE.y - 448, x1: CENTRE.x - 736, y1: CENTRE.y + 448 },
+    { x0: CENTRE.x + 736, y0: CENTRE.y - 448, x1: CENTRE.x + 928, y1: CENTRE.y + 448 },
+    { x0: CENTRE.x - 928, y0: CENTRE.y - 448, x1: CENTRE.x + 928, y1: CENTRE.y - 256 },
+    { x0: CENTRE.x - 928, y0: CENTRE.y + 256, x1: CENTRE.x + 928, y1: CENTRE.y + 448 },
   ];
   function estChemin(px, py) {
     var dx = px - CENTRE.x, dy = py - CENTRE.y;

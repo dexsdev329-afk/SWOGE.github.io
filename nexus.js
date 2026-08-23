@@ -8584,6 +8584,27 @@
        elles, veut dire qu'on en croise une et qu'on la regarde. */
     { cle: 'magie',  src: 'img/nexus/tiles/nexus_magie.webp',  cases: 4,
       combien: 3,   min: 120, max: 160, ecart: 700, sol: false },
+    /* ---- LA LISIERE, ET SEULEMENT SUR LE POURTOUR ----
+     *
+     * Seize arbres epars ne font pas un bois : ils font une pelouse avec des
+     * arbres dessus, et la carte s'arrete sur du vide. Ce qui manquait n'etait
+     * pas PLUS d'arbres — on en a deja retire deux fois parce qu'on ne voyait
+     * plus les batiments entre les troncs — mais des arbres AILLEURS : serres,
+     * au bord, la ou personne ne marche.
+     *
+     * D'ou `bordure` : cette famille ne se seme pas sur toute la carte, elle
+     * se seme dans une bande de trois cents unites le long des quatre cotes.
+     * Les batiments les plus excentres sont a 448 et 2112 en x, la bande va de
+     * 0 a 300 et de 2260 a 2560 — elle ne les touche donc pas. Ceux du bas,
+     * eux, y entrent (les Series a 1840, la porte +18 a 1860), et c'est le
+     * rejet « dans un lieu » deja en place qui les protege.
+     *
+     * `ecart: 150` pour des bouquets de 300 a 400 de large : ils se
+     * CHEVAUCHENT, et c'est le but — un bois est une masse, pas un alignement.
+     * Sa case fait 160 sur 320, la premiere non carree du fichier : c'est
+     * elle qui a rendu le dessin proportionnel. */
+    { cle: 'foret',  src: 'img/nexus/tiles/nexus_foret.webp',  cases: 4,
+      combien: 52,  min: 300, max: 420, ecart: 150, sol: false, bordure: 300 },
   ];
   DECOR_FAMILLES.forEach(function (f) { f.img = new Image(); f.img.src = f.src; });
 
@@ -8609,7 +8630,19 @@
      * contraire. Ce qui doit s'ecarter, ce sont les GRANDS entre eux. On tient
      * donc deux listes, et l'on pose les grands EN PREMIER — ils ont besoin de
      * place, l'herbe se glisse ensuite dans ce qui reste. */
-    var posesG = [], posesS = [];
+    /* ---- TROIS SEAUX, ET LE TROISIEME EST LA BORDURE ----
+     * Les deux premiers separent les GRANDS de l'herbe, pour la raison dite
+     * plus haut. Le troisieme separe la lisiere du reste, et c'est un cas a
+     * part pour deux raisons qui vont ensemble :
+     *   - elle vit dans une bande de trois cents unites le long des bords, ou
+     *     rien d'autre n'a de raison d'etre ;
+     *   - un bois est fait pour etre SERRE, alors que la regle d'ecartement
+     *     retient le plus grand des deux — une piece de lisiere devait donc se
+     *     tenir a trois cents unites de chaque arbre et a SEPT CENTS de chaque
+     *     pierre levee. Mesure faite : deux pieces posees sur cinquante-deux.
+     * En lui donnant son seau, elle ne s'ecarte que d'elle-meme, de cent
+     * cinquante — donc elle se chevauche, ce qui est le but. */
+    var posesG = [], posesS = [], posesB = [];
     DECORS_SEMES = [];
     /* ---- LE PLUS RARE PASSE EN PREMIER ----
      * Deuxieme fois que l'ordre me joue un tour. Les arbres poses avant les
@@ -8621,7 +8654,7 @@
      * des arbres devant l'herbe. */
     var ordre = DECOR_FAMILLES.slice().sort(function (a, b) { return a.combien - b.combien; });
     ordre.forEach(function (f) {
-      var poses = f.sol ? posesS : posesG;
+      var poses = f.bordure ? posesB : (f.sol ? posesS : posesG);
       for (var k = 0; k < f.combien; k++) {
         /* Cent vingt essais et non quarante. Le semis ne tourne QU'UNE FOIS,
            au premier dessin : economiser des tirages ici, c'est economiser une
@@ -8635,8 +8668,24 @@
            * c'est-a-dire sur la premiere ligne de l'allee. Un seul arbre sur
            * trois cent vingt-cinq objets, trouve par l'essai. On decide donc
            * de la position AVANT de poser la moindre question. */
-          var x = Math.round(60 + alea() * (MONDE.w - 120));
-          var y = Math.round(80 + alea() * (MONDE.h - 140));
+          var x, y;
+          if (f.bordure) {
+            /* On tire un COTE, puis une place le long de ce cote, puis une
+               profondeur dans la bande. Tirer un point au hasard et le rejeter
+               s'il n'est pas au bord aurait gaspille la quasi-totalite des
+               tirages : la bande ne represente qu'un tiers de la carte, et les
+               cent vingt essais par objet se seraient epuises a viser le
+               milieu. */
+            var cote = Math.floor(alea() * 4);
+            var lelong = alea(), profond = alea() * f.bordure;
+            if (cote === 0) { x = Math.round(lelong * MONDE.w); y = Math.round(30 + profond); }
+            else if (cote === 1) { x = Math.round(lelong * MONDE.w); y = Math.round(MONDE.h - 30 - profond); }
+            else if (cote === 2) { x = Math.round(30 + profond); y = Math.round(lelong * MONDE.h); }
+            else { x = Math.round(MONDE.w - 30 - profond); y = Math.round(lelong * MONDE.h); }
+          } else {
+            x = Math.round(60 + alea() * (MONDE.w - 120));
+            y = Math.round(80 + alea() * (MONDE.h - 140));
+          }
           /* ---- ON TESTE LA CASE, PAS LE POINT ----
            * `estChemin` est une geometrie — des cercles et des rectangles. Le
            * DESSIN, lui, pose une case entiere de chemin des que le CENTRE de
@@ -8679,17 +8728,31 @@
     return DECORS_SEMES;
   }
 
+  /* ---- UN SEUL DESSIN DE DECOR, ET LA HAUTEUR VIENT DE LA PLANCHE ----
+   *
+   * Ces dix lignes existaient en DEUX exemplaires — un pour ce qui se pose au
+   * sol, un pour ce qui se trie avec les vivants — et tous deux dessinaient un
+   * CARRE de `t` sur `t`. Ce n'etait pas faux tant que les trois familles
+   * avaient des cases carrees (128, 256, 256), mais ce n'etait vrai que par
+   * chance : la premiere planche non carree se serait ecrasee de moitie sans
+   * qu'aucune erreur ne se leve. C'est arrive avec la lisiere, dont les cases
+   * font 160 sur 320.
+   * La hauteur se DEDUIT donc du rapport de la planche, comme partout ailleurs
+   * dans ce fichier — les facades et les lieux le font depuis longtemps. Pour
+   * une case carree le resultat est identique au pixel pres, donc les trois
+   * familles d'avant ne bougent pas. */
+  function dessineUnDecor(d) {
+    var im = d.f.img;
+    if (!im.complete || !im.naturalWidth) return;
+    var cw = im.naturalWidth / d.f.cases;
+    var h = d.t * im.naturalHeight / cw;
+    ctx.drawImage(im, d.col * cw, 0, cw, im.naturalHeight,
+                  d.x - d.t / 2, d.y - h, d.t, h);
+  }
+
   function dessineDecorSol() {
     var l = semeLeDecor();
-    for (var i = 0; i < l.length; i++) {
-      var d = l[i];
-      if (!d.f.sol) continue;
-      var im = d.f.img;
-      if (!im.complete || !im.naturalWidth) continue;
-      var cw = im.naturalWidth / d.f.cases;
-      ctx.drawImage(im, d.col * cw, 0, cw, im.naturalHeight,
-                    d.x - d.t / 2, d.y - d.t, d.t, d.t);
-    }
+    for (var i = 0; i < l.length; i++) if (l[i].f.sol) dessineUnDecor(l[i]);
   }
 
   /* Les couloirs de chemin, en cercles et rectangles du MONDE — pas des
@@ -12027,13 +12090,7 @@
        arbre, et un arbre qu'on traverse n'est plus un arbre. */
     semeLeDecor().forEach(function (d) {
       if (d.f.sol) return;
-      pile.push({ y: d.y, dessine: function () {
-        var im = d.f.img;
-        if (!im.complete || !im.naturalWidth) return;
-        var cw = im.naturalWidth / d.f.cases;
-        ctx.drawImage(im, d.col * cw, 0, cw, im.naturalHeight,
-                      d.x - d.t / 2, d.y - d.t, d.t, d.t);
-      } });
+      pile.push({ y: d.y, dessine: function () { dessineUnDecor(d); } });
     });
     /* Les sacs poses dans le hall se trient avec les vivants, comme dans le
        monde de combat : un sac pose devant quelqu'un doit passer devant lui.

@@ -86,7 +86,20 @@ const espionne = () => `(() => {
     const u = (im && (im.currentSrc || im.src)) || '';
     const n = arguments.length;
     const d = n >= 9 ? 5 : 1;
-    const m = u.match(/nexus_(herbe|magie|arbres)\\.webp/);
+    /* ---- LE NOM VIENT DU FICHIER, PAS D'UNE LISTE ----
+     * Il y avait ici trois noms ecrits en dur : herbe, magie, arbres. Dans un
+     * essai qui declare pourtant, vingt lignes plus haut, ne PAS recopier les
+     * familles, pour que le jour ou une cinquieme arrive il l'exige sans qu'on
+     * y pense. La liste etait bien derivee ; le motif qui reconnait les
+     * planches, lui, etait grave dans la pierre.
+     * La lisiere est arrivee : l'essai a exige qu'elle pose quelque chose et
+     * n'a jamais pu en compter une seule. Il annoncait 0 sur 52 et accusait le
+     * semis d'un defaut qui etait le sien.
+     * Le nom se lit donc dans le chemin du fichier, qui EST la cle : une
+     * famille nomme sa planche nexus_<cle>.webp.
+     * Et pas de guillemet oblique dans ce commentaire : il vit a l'interieur
+     * d'un litteral de gabarit, ou le moindre en refermerait la chaine. */
+    const m = u.match(/nexus_(\\w+)\\.webp/);
     if (m && n >= 5) {
       window.__dec.push({ f: m[1],
                           x: Math.round(arguments[d] + arguments[d + 2] / 2),

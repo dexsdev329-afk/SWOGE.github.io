@@ -103,12 +103,27 @@ process.on('unhandledRejection', (e) => {
     }
     C.prototype = N.prototype; ['CONNECTING','OPEN','CLOSING','CLOSED'].forEach((k) => { C[k] = N[k]; });
     window.WebSocket = C;
-    /* On note l'echelle passee au canevas : c'est LE zoom, et il ne se lit
-       nulle part ailleurs. */
+    /* ---- ON NOTE LE ZOOM, ET LUI SEUL ----
+     * L'echelle passee au canevas est le seul endroit ou le zoom se lise. Mais
+     * la page en pose PLUSIEURS par image : le monde fait `scale(DPR)` puis
+     * `scale(zoom)` par-dessus, et le bandeau du lieu, les fleches de portail
+     * lointain et les textes qui montent refont chacun un `scale(DPR)` APRES.
+     * Garder la derniere revenait donc a lire le pixel-ratio — 2 — des qu'un
+     * chiffre de degats montait a l'ecran. L'essai annoncait alors « au doigt
+     * on voit 390 unites » et accusait le zoom d'un crime commis par un
+     * dommage affiche.
+     * Ce qui distingue le zoom n'est pas sa VALEUR, c'est d'ou il part : il
+     * s'applique alors que la transformation courante vaut deja DPR, tandis
+     * que les autres partent de l'identite. On regarde donc la transformation
+     * AVANT de la modifier. */
     window.__zoom = [];
     const S = CanvasRenderingContext2D.prototype.scale;
     CanvasRenderingContext2D.prototype.scale = function (x, y) {
-      if (this.canvas && this.canvas.isConnected && x === y) window.__zoom.push(x);
+      if (this.canvas && this.canvas.isConnected && x === y && this.getTransform) {
+        const t = this.getTransform();
+        const dpr = window.devicePixelRatio || 1;
+        if (Math.abs(t.a - dpr) < 1e-6 && Math.abs(t.b) < 1e-6) window.__zoom.push(x);
+      }
       return S.apply(this, arguments);
     };
   });
@@ -154,14 +169,56 @@ process.on('unhandledRejection', (e) => {
   ok(manche.visible, 'le manche est a l\'ecran sur telephone');
   ok(manche.boutons === 0, `et il ne reste aucun bouton de croix (${manche.boutons})`);
   ok(manche.socle && manche.pommeau, 'il a un socle et un pommeau');
-  /* LA ZONE EST PLUS GRANDE QUE LE DESSIN. Sur un telephone on ne regarde pas
-     son pouce ; un manche qu'il faut viser est un manche qu'on rate. */
-  ok(manche.zone.w > manche.socleR * 1.2,
-     `la zone de prise deborde le socle (${manche.zone.w} px pour un socle de ${manche.socleR})`);
-  /* ET ELLE S'ARRETE SOUS LA RANGEE DU SAC AU SOL (bottom: 172px) : une zone
-     qui monterait plus haut avalerait les appuis sur le butin. */
-  ok(manche.zone.h <= 170,
-     `et elle s'arrete sous la rangee du butin (${manche.zone.h} px de haut)`);
+  /* ---- LA ZONE DE PRISE EST TOUTE LA MOITIE GAUCHE ----
+   * Elle mesurait deux cent quarante pixels sur cent soixante-six, dans le
+   * coin. Sur un telephone qu'on tient d'une main, ce coin n'est pas ou tombe
+   * le pouce : il fallait REGARDER pour le trouver, et pendant qu'on regarde
+   * son pouce on ne regarde pas ce qui nous tire dessus. */
+  ok(manche.zone.h > 780 * 0.8,
+     `elle couvre la hauteur de l'ecran (${manche.zone.h} px)`);
+  ok(manche.zone.w > manche.socleR,
+     `et elle est plus large que le socle (${manche.zone.w} px pour un socle de ${manche.socleR})`);
+
+  /* ---- ET LE MANCHE VIENT SOUS LE POUCE ----
+   * C'est LA question, celle qui a fait tout ce remaniement : « on peut poser
+   * le doigt ou on veut ». On la pose donc au navigateur — on appuie a un
+   * endroit arbitraire de la zone et l'on regarde ou le socle a atterri. Un
+   * essai qui se contenterait de lire la taille de la zone aurait dit oui a un
+   * manche reste cloue dans son coin. */
+  const flottant = await p.evaluate(async () => {
+    const pave = document.getElementById('nxPad');
+    const socle = pave.querySelector('.socle');
+    const b = pave.getBoundingClientRect();
+    const centreDe = (e) => { const r = e.getBoundingClientRect();
+                              return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; };
+    const repos = centreDe(socle);
+    /* Haut et a droite du coin de repos : deux ecarts, pour qu'un manche qui
+       ne bougerait que dans un sens ne passe pas. */
+    const cible = { x: b.left + b.width * 0.7, y: b.top + b.height * 0.35 };
+    const ev = (t, x, y) => pave.dispatchEvent(new PointerEvent(t, { bubbles: true,
+      pointerId: 11, pointerType: 'touch', isPrimary: true, clientX: x, clientY: y }));
+    ev('pointerdown', cible.x, cible.y);
+    const pendant = centreDe(socle);
+    ev('pointerup', cible.x, cible.y);
+    await new Promise((r) => setTimeout(r, 80));
+    return { repos, cible, pendant, apres: centreDe(socle) };
+  });
+  const ecartPouce = Math.hypot(flottant.pendant.x - flottant.cible.x,
+                                flottant.pendant.y - flottant.cible.y);
+  const bougeDuRepos = Math.hypot(flottant.pendant.x - flottant.repos.x,
+                                  flottant.pendant.y - flottant.repos.y);
+  ok(bougeDuRepos > 60,
+     `le manche quitte son coin pour venir au doigt (${Math.round(bougeDuRepos)} px)`);
+  ok(ecartPouce < 4,
+     `et il se centre PILE dessus (${Math.round(ecartPouce)} px d'ecart)`);
+  /* ---- ET IL RETOURNE ATTENDRE DANS LE COIN ----
+   * Sans ca il resterait la ou le dernier doigt l'a laisse : un temoin pose au
+   * milieu de l'ecran ne dit plus « pose ton pouce ou tu veux », il dit « le
+   * manche est ici », ce qui est exactement le malentendu qu'on vient de
+   * supprimer. */
+  const retour = Math.hypot(flottant.apres.x - flottant.repos.x,
+                            flottant.apres.y - flottant.repos.y);
+  ok(retour < 4, `une fois lache, il revient attendre dans le coin (${Math.round(retour)} px)`);
 
   /* ================== 2. IL FAIT MARCHER, DANS TOUTES LES DIRECTIONS ================== */
   console.log('\n-- huit directions, pas quatre --');
@@ -307,6 +364,87 @@ process.on('unhandledRejection', (e) => {
   const encore = await annonce();
   ok(Math.hypot(encore.x - arret.x, encore.y - arret.y) < 12,
      `et il ne bouge plus une fois le pouce leve (${Math.round(Math.hypot(encore.x - arret.x, encore.y - arret.y))} u)`);
+  /* ================== 2 bis. LA MOITIE DROITE TIRE ==================
+   *
+   * Le bouton rond de quatre-vingt-seize pixels dans le coin avait le meme
+   * defaut que le manche fixe, en pire : on ne tire pas une fois, on tient le
+   * tir pendant tout un combat, et le pouce devait rester pose sur une cible
+   * qu'il ne voit pas. Rate d'un centimetre, on ne tire pas, et rien ne le dit.
+   * On verifie donc DEUX choses qu'un simple coup d'oeil au style ne dirait
+   * pas : que le bouton n'est plus la (sinon il resterait deux facons de tirer,
+   * une de trop), et qu'un pouce pose n'importe ou dans cette moitie fait
+   * partir de vrais tirs. */
+  console.log('\n-- la moitie droite tire --');
+  ok(await p.evaluate(() => !document.getElementById('nxTir')),
+     'le bouton de tir a disparu, il n\'y a plus deux facons de tirer');
+  const zoneTir = await p.evaluate(() => {
+    const e = document.getElementById('nxVise');
+    if (!e) return null;
+    const r = e.getBoundingClientRect();
+    return { on: e.classList.contains('on'),
+             x: Math.round(r.x), w: Math.round(r.width), h: Math.round(r.height) };
+  });
+  ok(!!zoneTir && zoneTir.on, 'la moitie droite est active dans le monde de combat');
+  ok(!!zoneTir && zoneTir.h > 780 * 0.8,
+     `et elle couvre la hauteur de l'ecran (${zoneTir && zoneTir.h} px)`);
+  const compteTirs = () => p.evaluate(() => {
+    for (let i = window.__s.length - 1; i >= 0; i--) {
+      const t = window.__s[i].__out.filter((x) => x.type === 'realmTir');
+      if (t.length) return t.length;
+    }
+    return 0;
+  });
+  const anglesTires = (depuis) => p.evaluate((k) => {
+    for (let i = window.__s.length - 1; i >= 0; i--) {
+      const t = window.__s[i].__out.filter((x) => x.type === 'realmTir');
+      if (t.length) return t.slice(k).map((x) => x.a);
+    }
+    return [];
+  }, depuis);
+
+  /* Un appui SIMPLE, au hasard dans la moitie droite : il doit tirer. */
+  const avantTir = await compteTirs();
+  await p.evaluate((q) => {
+    const el = document.getElementById('nxVise');
+    window.__evt = (t, x, y) => el.dispatchEvent(new PointerEvent(t, { bubbles: true,
+      pointerId: 13, pointerType: 'touch', isPrimary: true, clientX: x, clientY: y }));
+    window.__evt('pointerdown', q.x, q.y);
+  }, { x: zoneTir.x + zoneTir.w * 0.6, y: zoneTir.h * 0.7 });
+  await p.waitForTimeout(700);
+  const pendantTir = await compteTirs();
+  await p.evaluate((q) => window.__evt('pointerup', q.x, q.y),
+                   { x: zoneTir.x + zoneTir.w * 0.6, y: zoneTir.h * 0.7 });
+  ok(pendantTir > avantTir,
+     `un pouce pose n'importe ou dans la moitie droite tire (${pendantTir - avantTir} tirs)`);
+
+  /* ---- ET GLISSER VISE ----
+   * Sans ca, on ne peut tirer que sur l'ennemi le plus proche — donc jamais
+   * sur le tireur du fond pendant qu'une chauve-souris vous colle. On glisse
+   * vers le nord-est et l'on relit l'angle REELLEMENT envoye au serveur : ni
+   * la direction du personnage (0 ou -PI/2) ni une cible automatique ne
+   * donnent -PI/4, l'essai ne peut donc pas passer pour la mauvaise raison. */
+  const CIBLE_A = -Math.PI / 4;
+  const avantVisee = await compteTirs();
+  await p.evaluate((q) => {
+    const el = document.getElementById('nxVise');
+    window.__evt = (t, x, y) => el.dispatchEvent(new PointerEvent(t, { bubbles: true,
+      pointerId: 17, pointerType: 'touch', isPrimary: true, clientX: x, clientY: y }));
+    window.__evt('pointerdown', q.x, q.y);
+    window.__evt('pointermove', q.x + 90, q.y - 90);
+  }, { x: zoneTir.x + zoneTir.w * 0.5, y: zoneTir.h * 0.6 });
+  await p.waitForTimeout(700);
+  await p.evaluate((q) => window.__evt('pointerup', q.x + 90, q.y - 90),
+                   { x: zoneTir.x + zoneTir.w * 0.5, y: zoneTir.h * 0.6 });
+  const angles = await anglesTires(avantVisee);
+  ok(angles.length > 0, `le glissement tire aussi (${angles.length} tirs)`);
+  if (angles.length) {
+    const bons = angles.filter((a) =>
+      Math.abs(Math.atan2(Math.sin(a - CIBLE_A), Math.cos(a - CIBLE_A))) < 0.35).length;
+    ok(bons > angles.length * 0.8,
+       `et ${bons} sur ${angles.length} partent dans le sens du glissement ` +
+       `(${angles.slice(0, 4).map((a) => a.toFixed(2)).join(', ')} pour ${CIBLE_A.toFixed(2)})`);
+  }
+
   /* On lache la perfusion SEULEMENT ici : une mort pendant l'arret aurait fige
      l'annonce, et « il ne bouge plus » serait devenu vrai pour la mauvaise
      raison. Et l'on dit si une mort est quand meme passee — sans ce temoin, la
@@ -380,10 +518,15 @@ process.on('unhandledRejection', (e) => {
   const ctx2 = await nav.newContext({ viewport: { width: 1280, height: 800 } });
   const p2 = await ctx2.newPage();
   await p2.addInitScript(function () {
+    /* Meme espion qu'au doigt, meme raison : voir l'entete de l'autre. */
     window.__zoom = [];
     const S = CanvasRenderingContext2D.prototype.scale;
     CanvasRenderingContext2D.prototype.scale = function (x, y) {
-      if (this.canvas && this.canvas.isConnected && x === y) window.__zoom.push(x);
+      if (this.canvas && this.canvas.isConnected && x === y && this.getTransform) {
+        const t = this.getTransform();
+        const dpr = window.devicePixelRatio || 1;
+        if (Math.abs(t.a - dpr) < 1e-6 && Math.abs(t.b) < 1e-6) window.__zoom.push(x);
+      }
       return S.apply(this, arguments);
     };
   });

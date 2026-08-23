@@ -1723,18 +1723,45 @@ body.nxdrag *{ cursor:grabbing !important; }
  * manche qu'on rate, et le rater en combat coute un personnage. Le socle reste
  * ou il est — un manche flottant se pose la ou le pouce tombe, ce qui est plus
  * doux mais fait perdre le repere quand on le lache une seconde. */
-/* La zone s'arrete SOUS la rangee flottante du sac au sol (bottom: 172px) :
-   elle prend les touches, et une zone qui monterait plus haut avalerait les
-   appuis sur le butin — le geste le plus utile du telephone. */
-#nxPad{ position:absolute; left:0; bottom:0; z-index:20;
-  width:min(46vw, 240px); height:min(30vh, 166px);
+/* ---- LE MANCHE VIENT AU POUCE, PAS L'INVERSE ----
+ * Il etait pose dans le coin en bas a gauche, a une taille fixe. Sur un
+ * telephone qu'on tient d'une main, ce coin n'est pas toujours la ou tombe le
+ * pouce : selon la taille de l'appareil et la facon de le tenir, il faut
+ * REGARDER pour le trouver — et pendant qu'on regarde son pouce on ne regarde
+ * pas ce qui nous tire dessus.
+ * La zone de prise couvre donc toute la moitie gauche : on pose le doigt ou
+ * l'on veut, le manche apparait LA. Il n'y en a toujours qu'un — celui du coin
+ * n'a pas ete double, il s'est mis a bouger. Ce qui reste dans le coin au repos
+ * est un temoin, a demi efface : sans lui, personne ne devinerait que la moitie
+ * gauche de l'ecran fait marcher.
+ * `z-index:12` : SOUS le panneau, les potions et le butin, qui gardent donc
+ * leurs appuis. Une zone qui passerait au-dessus les avalerait tous. */
+/* La moitie de l'AIRE DE JEU, pas de la fenetre : le panneau mange cent
+   quarante-huit pixels sur trois cent quatre-vingt-dix, et couper la fenetre en
+   deux aurait laisse quarante-sept pixels de zone de tir derriere lui. On suit
+   la meme regle que la rangee du butin : la limite recule quand le panneau se
+   replie. */
+#nxPad{ position:absolute; left:0; right:calc(50% + var(--nxp) / 2);
+  top:0; bottom:0; z-index:12;
   touch-action:none; user-select:none; -webkit-user-select:none;
-  -webkit-tap-highlight-color:transparent; }
-/* Le socle, dessine : ce qu'on voit, et non ce qu'on peut toucher. */
-#nxPad i.socle{ position:absolute;
-  left:max(18px, env(safe-area-inset-left));
-  bottom:max(18px, env(safe-area-inset-bottom));
-  width:132px; height:132px; border-radius:50%;
+  -webkit-tap-highlight-color:transparent;
+  opacity:.42; transition:opacity .14s, right .22s ease; }
+#nxWrap.replie #nxPad{ right:50%; }
+#nxPad.on{ opacity:1; }
+/* Le socle, dessine : ce qu'on voit, et non ce qu'on peut toucher. Il se
+   centre sur `left`/`top`, que le script pose en pixels de la zone — au repos
+   dans le coin, sous le pouce des qu'on appuie. */
+#nxPad i.socle{ position:absolute; left:0; top:0;
+  transform:translate(-50%,-50%); pointer-events:none;
+  /* ---- L'ANNEAU SUIT SA ZONE ----
+   * Cent trente-deux pixels en dur : panneau ouvert sur un telephone de trois
+   * cent quatre-vingt-dix, la moitie gauche n'en fait que cent vingt et un, et
+   * l'anneau etait plus large que la surface qui le commande. Il se mesure
+   * donc SUR la zone, plafonne a sa taille d'avant — inchange des qu'il y a la
+   * place, retreci quand il n'y en a pas. `aspect-ratio` et non une hauteur en
+   * pourcentage : celle-ci se lirait sur la HAUTEUR de la zone, qui vaut tout
+   * l'ecran, et l'anneau deviendrait un oeuf. */
+  width:min(132px, 84%); aspect-ratio:1; border-radius:50%;
   background:radial-gradient(circle at 50% 50%,
     rgba(28,36,68,.30) 0 52%, rgba(28,36,68,.62) 62% 100%);
   border:1px solid rgba(255,255,255,.20);
@@ -1744,7 +1771,11 @@ body.nxdrag *{ cursor:grabbing !important; }
 /* Le pommeau. Il suit le pouce, borne au socle : au-dela, il reste au bord et
    la direction continue de tourner — sinon on perd le controle des qu'on
    deborde, ce qui arrive tout le temps. */
-#nxPad i.pommeau{ position:absolute; width:58px; height:58px; border-radius:50%;
+/* Le pommeau garde sa proportion : 37 % de la zone contre 84 % pour l'anneau,
+   soit les memes 44 % de l'un dans l'autre qu'avant. Une seule reference — la
+   zone — pour les deux, sinon l'un retrecit sans l'autre. */
+#nxPad i.pommeau{ position:absolute; width:min(58px, 37%); aspect-ratio:1;
+  border-radius:50%;
   left:0; top:0; transform:translate(-50%,-50%);
   background:linear-gradient(#8FA8FF,#4A63C8);
   border:1px solid rgba(255,255,255,.55);
@@ -1757,9 +1788,10 @@ body.nxdrag *{ cursor:grabbing !important; }
  * le pouce gauche tient les quatre directions en continu pendant un combat,
  * et un bouton qui SORT du monde a un demi-centimetre de « avancer » finit
  * par etre touche pendant qu'on recule d'un golem.
- * Il passe donc a droite, au-dessus du tir : cette main-la ne fait qu'un
- * geste ponctuel, et rentrer chez soi en est un aussi. Il reste VERT — le
- * seul bouton du jeu qui ne se joue pas. */
+ * Il passe donc a droite : cette main-la ne fait qu'un geste ponctuel, et
+ * rentrer chez soi en est un aussi. Il reste VERT — le seul bouton du jeu qui
+ * ne se joue pas.
+ * Au doigt il descend au milieu du bas, avec le pouvoir : voir plus bas. */
 #nxMaison{ position:absolute;
   right:calc(var(--nxp) + max(14px, env(safe-area-inset-right)));
   bottom:calc(max(22px, calc(env(safe-area-inset-bottom) + 6px)) + 110px);
@@ -1791,26 +1823,66 @@ body.nxdrag *{ cursor:grabbing !important; }
    Son z-index passe au-dessus de tout le monde par prudence, et il se recale
    au bord quand le panneau est replie — c'est justement comme ca qu'on joue
    sur telephone. */
-#nxTir{ position:absolute;
-  right:calc(var(--nxp) + max(14px, env(safe-area-inset-right)));
-  bottom:max(22px, calc(env(safe-area-inset-bottom) + 6px)); z-index:24;
-  transition:right .22s ease;
-  width:96px; height:96px; border-radius:50%; display:none;
-  align-items:center; justify-content:center; touch-action:none;
-  user-select:none; -webkit-user-select:none; -webkit-tap-highlight-color:transparent;
-  background:radial-gradient(circle at 38% 34%, rgba(255,190,90,.30), rgba(60,30,10,.78));
-  border:2px solid rgba(255,197,61,.62); color:#FFC53D;
-  font:800 26px/1 'Space Mono',monospace; }
-#nxTir.on{ display:flex; }
-#nxWrap.replie #nxTir{ right:max(16px, env(safe-area-inset-right)); }
-#nxTir:active, #nxTir.presse{ background:radial-gradient(circle at 38% 34%,
-  rgba(255,210,120,.55), rgba(120,60,15,.85)); border-color:#FFC53D; }
-/* La petite marque qui dit qu'il vise tout seul. */
-#nxTir i{ position:absolute; bottom:9px; font-style:normal; font-size:9px;
-  letter-spacing:.6px; opacity:.75; }
+/* ---- ET LA MOITIE DROITE TIRE ----
+ * C'etait un bouton rond de quatre-vingt-seize pixels dans le coin. Meme
+ * defaut que le manche fixe, en pire : on ne tire pas une fois, on tient le
+ * tir pendant tout un combat, et le pouce devait rester pose sur une cible
+ * qu'il ne voit pas. Rate d'un centimetre, on ne tire pas — et rien ne le dit.
+ * La moitie droite le remplace en entier. Appuyer n'importe ou dedans tire sur
+ * l'ennemi le plus proche ; GLISSER vise a la main, dans le sens du glissement.
+ * Le bouton n'est pas garde a cote : il est supprime. Deux facons de tirer,
+ * c'est une de trop, et celle qui reste couvre la surface de l'autre. */
+#nxVise{ position:absolute; left:calc(50% - var(--nxp) / 2); right:var(--nxp);
+  top:0; bottom:0; z-index:12;
+  display:none; touch-action:none;
+  transition:left .22s ease, right .22s ease;
+  user-select:none; -webkit-user-select:none;
+  -webkit-tap-highlight-color:transparent; }
+#nxWrap.replie #nxVise{ left:50%; right:0; }
+#nxVise.on{ display:block; }
+/* Rien au repos : cette moitie doit laisser VOIR le jeu. Quand le pouce est
+   pose, une lueur dit « ca tire » — c'est le retour qui apprend la commande,
+   puisqu'il n'y a plus de bouton pour l'annoncer. */
+#nxVise i{ position:absolute; left:0; top:0; width:118px; height:118px;
+  border-radius:50%; transform:translate(-50%,-50%); display:none;
+  pointer-events:none;
+  background:radial-gradient(circle at 50% 50%,
+    rgba(255,197,61,.22) 0 44%, rgba(255,197,61,.06) 62%, rgba(255,197,61,0) 100%);
+  border:1px solid rgba(255,197,61,.40); }
+#nxVise.presse i{ display:block; }
+/* La fleche de visee : elle n'apparait que si l'on GLISSE, et elle montre le
+   sens vise. Sans elle, viser a la main serait un geste invisible. */
+#nxVise u{ position:absolute; left:0; top:0; display:none; pointer-events:none;
+  width:78px; height:4px; border-radius:2px; transform-origin:0 50%;
+  background:linear-gradient(90deg, rgba(255,197,61,.85), rgba(255,197,61,0)); }
+#nxVise.main u{ display:block; }
 
 @media (min-width:900px) and (pointer:fine){
-  #nxTir{ display:none !important; }   /* la souris vise mieux que lui */
+  #nxVise{ display:none !important; }   /* la souris vise mieux que lui */
+}
+
+/* ---- TOUT CE QU'ON TOUCHE TIENT DANS LE TIERS DU BAS ----
+ * Un telephone se tient d'une ou deux mains, et le pouce atteint le bas de
+ * l'ecran, pas le haut. Le bouton de pouvoir vivait en haut a gauche, sous le
+ * temoin AUTO : pour s'en servir il fallait lacher l'appareil, le rattraper de
+ * l'autre main, viser un bouton de la taille d'un timbre — au milieu d'un
+ * combat, autant dire qu'il n'existait pas.
+ * Les deux boutons ponctuels — le pouvoir et le retour au Nexus — descendent
+ * donc au MILIEU du bas. Ni a gauche, ou le pouce qui marche est pose, ni a
+ * droite, ou le pouce qui tire est pose : entre les deux, la ou aucun des deux
+ * ne traine et ou les deux arrivent.
+ * Ce qui reste en haut ne se touche pas : le solde, le temoin AUTO, la ligne
+ * d'indice. On les LIT, et on lit en levant les yeux, pas le pouce. */
+@media (pointer:coarse){
+  #nxPow, #nxMaison{ top:auto; right:auto;
+    bottom:calc(max(16px, env(safe-area-inset-bottom)) + 6px);
+    z-index:24; transition:left .22s ease; }
+  /* Le milieu de l'AIRE DE JEU, pas de la fenetre — comme le manche et la
+     zone de tir, et pour la meme raison : le panneau prend la droite. */
+  #nxPow{ left:calc(50% - var(--nxp) / 2);
+    transform:translateX(-100%) translateX(-5px); }
+  #nxMaison{ left:calc(50% - var(--nxp) / 2); transform:translateX(5px); }
+  #nxWrap.replie #nxPow, #nxWrap.replie #nxMaison{ left:50%; }
 }
 
 @media (min-width:900px) and (pointer:fine){
@@ -1862,7 +1934,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
   <canvas id="nxCanvas"></canvas>
   <div id="nxSolde"></div>
   <div id="nxAuto">⌖ AUTO-FIRE</div>
-  <div id="nxTir" role="button" tabindex="0" aria-label="Fire at nearest enemy">&#9674;<i>AUTO</i></div>
+  <div id="nxVise" aria-hidden="true"><i></i><u></u></div>
   <button id="nxMaison" type="button" aria-label="Back to Nexus">&#127968;</button>
   <!-- ---- LE SAC AU SOL, AU DOIGT ----
        Il vit AUSSI dans le panneau, ou il sert a glisser. Mais le panneau se
@@ -2212,7 +2284,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
      racine ; c'est le seul endroit d'ou elle peut couvrir tout le reste. -->
 <div id="nxFiche"></div>
 
-<script src="nexus.js?v=50864315" defer></script>
+<script src="nexus.js?v=764ee8fe" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

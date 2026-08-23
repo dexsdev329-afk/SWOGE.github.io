@@ -1533,33 +1533,56 @@ process.on('unhandledRejection', (e) => {
       const q = e.getBoundingClientRect();
       return { x: Math.round(q.x), y: Math.round(q.y), w: Math.round(q.width),
                h: Math.round(q.height), vu: q.width > 0 && q.height > 0 }; };
-    return { maison: r('nxMaison'), tir: r('nxTir'), pad: r('nxPad'),
-             largeur: window.innerWidth,
+    return { maison: r('nxMaison'), vise: r('nxVise'), pad: r('nxPad'),
+             pow: r('nxPow'),
+             largeur: window.innerWidth, hauteur: window.innerHeight,
              dansLePad: !!document.querySelector('#nxPad [data-nexus]') };
   });
   console.log('\n-- les commandes tactiles --');
   console.log('   maison : ' + JSON.stringify(boutons.maison));
-  console.log('   tir    : ' + JSON.stringify(boutons.tir));
+  console.log('   visee  : ' + JSON.stringify(boutons.vise));
   console.log('   pave   : ' + JSON.stringify(boutons.pad));
 
   ok(boutons.maison && boutons.maison.vu, 'le bouton maison est visible au doigt');
   ok(!boutons.dansLePad, 'et il n est PLUS dans le pave de deplacement');
-  if (boutons.maison && boutons.tir && boutons.pad) {
-    /* Son CENTRE, pas son bord gauche : un bouton de 54 px pose a 196 sur un
-       ecran de 412 a son bord a gauche du milieu et son centre a droite. */
-    const centre = boutons.maison.x + boutons.maison.w / 2;
-    ok(centre > boutons.largeur / 2,
-       `son centre est dans la moitie DROITE (${centre} sur ${boutons.largeur})`);
-    /* Il est cale au bord de la ZONE DE JEU, comme le tir : le panneau occupe
-       la droite de l'ecran, et un bouton pose au bord de l'ecran tomberait
-       derriere lui — on le verrait, le doigt atterrirait sur le panneau, et
-       rien ne se passerait sans que rien ne le dise. */
-    ok(Math.abs(boutons.maison.x + boutons.maison.w - (boutons.tir.x + boutons.tir.w)) < 2,
-       'et il est aligne a droite sur le bouton de tir');
-    ok(boutons.maison.x > boutons.pad.x + boutons.pad.w,
-       'a distance du pave, pas a un demi-centimetre de « avancer »');
-    ok(boutons.maison.y + boutons.maison.h <= boutons.tir.y,
-       `et AU-DESSUS du tir (${boutons.maison.y}+${boutons.maison.h} contre ${boutons.tir.y})`);
+  if (boutons.maison && boutons.vise && boutons.pad) {
+    /* ---- LES DEUX MOITIES SE TOUCHENT ET NE SE CHEVAUCHENT PAS ----
+     * Le manche prend la gauche de l'aire de jeu, la visee la droite. Un
+     * recouvrement ferait tirer en marchant sur la bande commune ; un trou
+     * ferait une bande morte ou le doigt ne fait rien, et rien ne le dirait. */
+    ok(Math.abs(boutons.pad.x + boutons.pad.w - boutons.vise.x) <= 1,
+       `le manche et la visee se partagent l'aire de jeu sans trou ni recouvrement ` +
+       `(${boutons.pad.x + boutons.pad.w} contre ${boutons.vise.x})`);
+    /* Et elles couvrent la HAUTEUR : on pose le pouce ou l'on veut, pas dans
+       un rectangle qu'il faut viser. C'etait tout le probleme du manche fixe. */
+    ok(boutons.pad.h > boutons.hauteur * 0.8 && boutons.vise.h > boutons.hauteur * 0.8,
+       `et chacune couvre la hauteur de l'ecran (${boutons.pad.h} et ${boutons.vise.h} sur ${boutons.hauteur})`);
+    /* ---- LE RETOUR AU NEXUS N'EST SOUS AUCUN DES DEUX POUCES ----
+     * Il SORT du monde. Pose la ou le pouce gauche marche, on le touche en
+     * reculant d'un golem ; pose la ou le pouce droit tire, on le touche en
+     * tirant. Il est donc au milieu, entre les deux — la ou aucun des deux ne
+     * traine et ou les deux arrivent. */
+    ok(boutons.maison.x >= boutons.pad.x + boutons.pad.w,
+       'le retour au Nexus est hors de la zone qui fait marcher');
+    ok(boutons.maison.x < boutons.vise.x + boutons.vise.w * 0.35,
+       `et il est pres du milieu, pas la ou le pouce droit se pose ` +
+       `(${boutons.maison.x} pour une moitie droite de ${boutons.vise.x} a ${boutons.vise.x + boutons.vise.w})`);
+    /* ---- ET IL TIENT DANS LE TIERS DU BAS ----
+     * Le pouce atteint le bas de l'ecran, pas le haut. Un bouton en haut d'un
+     * telephone demande de lacher l'appareil pour s'en servir. */
+    ok(boutons.maison.y > boutons.hauteur * 0.66,
+       `il est dans le tiers du bas (${boutons.maison.y} sur ${boutons.hauteur})`);
+    if (boutons.pow && boutons.pow.vu) {
+      ok(boutons.pow.y > boutons.hauteur * 0.66,
+         `le bouton de pouvoir aussi (${boutons.pow.y} sur ${boutons.hauteur})`);
+      ok(boutons.pow.x + boutons.pow.w <= boutons.maison.x,
+         'et les deux ne se marchent pas dessus');
+    }
+    /* Il repose sur le bas de l'ecran, comme le pouvoir : deux boutons voisins
+       cales sur la meme ligne se trouvent du coin de l'oeil, deux boutons a
+       des hauteurs differentes se cherchent. */
+    ok(boutons.maison.y + boutons.maison.h < boutons.hauteur,
+       `et il tient entierement a l'ecran (${boutons.maison.y}+${boutons.maison.h} sur ${boutons.hauteur})`);
   }
 
   /* ---- LE SAC AU SOL, HORS DU PANNEAU ----
@@ -1597,8 +1620,7 @@ process.on('unhandledRejection', (e) => {
     return { visible: el.classList.contains('on'), y: Math.round(q.y),
              h: Math.round(q.height), cases,
              panneauLu: pan ? Math.round(pan.getBoundingClientRect().x) : null,
-             hauteur: window.innerHeight,
-             tir: Math.round(document.getElementById('nxTir').getBoundingClientRect().y) };
+             hauteur: window.innerHeight };
   });
   console.log('\n-- le sac au sol, panneau replie --');
   console.log('   ' + JSON.stringify(flot));
@@ -1607,8 +1629,36 @@ process.on('unhandledRejection', (e) => {
   if (flot.cases.length) {
     ok(flot.cases.every((c) => c.vu), 'et chacune est reellement visible');
     ok(/ATT/.test(flot.cases[0].titre), 'la premiere dit ce qu elle donne : ' + flot.cases[0].titre);
-    ok(flot.y + flot.h <= flot.tir + 6,
-       `elle est AU-DESSUS des commandes (${flot.y}+${flot.h} contre ${flot.tir})`);
+  }
+
+  /* ---- LES ZONES DE JEU NE MANGENT PAS LES BOUTONS ----
+   *
+   * Le manche et la visee couvrent maintenant TOUT l'ecran a elles deux. Avant,
+   * la rangee du butin etait protegee par un calcul de hauteur : la zone du
+   * manche s'arretait sous elle. Cette protection-la n'existe plus, et la
+   * remplacer par une autre mesure de hauteur aurait reconduit le meme piege.
+   * Ce qui protege desormais, c'est l'ORDRE DE SUPERPOSITION — et un ordre ne
+   * se verifie pas en lisant un chiffre de style, il se verifie en demandant au
+   * navigateur QUI recoit le doigt a cet endroit precis. C'est le seul essai
+   * qui aurait attrape un `z-index` mal choisi.
+   * Panneau replie : le cas le plus dur, les deux zones sont au plus large. */
+  const atteint = await t.evaluate(() => {
+    const q = (sel) => {
+      const e = document.querySelector(sel);
+      if (!e) return 'absent';
+      const r = e.getBoundingClientRect();
+      if (!r.width || !r.height) return 'absent';
+      const sous = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+      if (!sous) return 'rien';
+      return sous.closest(sel) ? 'ok' : ('#' + (sous.id || sous.tagName));
+    };
+    return { butin: q('#nxButinFlot .fl'), potion: q('#nxPot button'),
+             maison: q('#nxMaison'), pouvoir: q('#nxPow') };
+  });
+  console.log('   qui recoit le doigt : ' + JSON.stringify(atteint));
+  for (const [quoi, r] of Object.entries(atteint)) {
+    if (r === 'absent') continue;   // rien a l'ecran a ce moment-la : rien a garder
+    ok(r === 'ok', `le doigt pose sur « ${quoi} » atteint ${quoi}, pas la zone de jeu (${r})`);
   }
 
   /* Un simple appui prend. C'est le seul endroit du jeu ou un clic simple
@@ -1651,10 +1701,13 @@ process.on('unhandledRejection', (e) => {
   const fioles = await t.evaluate(() => {
     const el = document.getElementById('nxPot');
     const q = el.getBoundingClientRect();
-    const pad = document.getElementById('nxPad').getBoundingClientRect();
+    const b0 = el.querySelector('[data-pot]');
+    const r0 = b0 ? b0.getBoundingClientRect() : null;
+    const sous = r0 ? document.elementFromPoint(r0.x + r0.width / 2, r0.y + r0.height / 2) : null;
     return {
       on: el.classList.contains('on'), y: Math.round(q.y), h: Math.round(q.height),
-      padY: Math.round(pad.y),
+      hauteur: window.innerHeight,
+      recu: sous ? (sous.closest('#nxPot [data-pot]') ? 'ok' : ('#' + (sous.id || sous.tagName))) : 'rien',
       boutons: [].map.call(el.querySelectorAll('[data-pot]'), (b) => ({
         cle: b.dataset.pot, mort: b.disabled, n: b.querySelector('b').textContent })),
     };
@@ -1665,8 +1718,18 @@ process.on('unhandledRejection', (e) => {
   ok(fioles.boutons.length === 2, 'les deux fioles sont la');
   ok(fioles.boutons[0].n === '2', 'avec leur compte : ' + fioles.boutons[0].n);
   ok(fioles.boutons[1].mort, 'et celle qu on n a pas est grisee');
-  ok(fioles.y + fioles.h <= fioles.padY + 6,
-     `elles sont AU-DESSUS du pave (${fioles.y}+${fioles.h} contre ${fioles.padY})`);
+  /* ---- ELLES RECOIVENT LE DOIGT ----
+   * Elles etaient protegees par la hauteur : la zone du manche s'arretait sous
+   * elles. Cette zone couvre maintenant tout l'ecran, et remplacer ce calcul de
+   * hauteur par un autre calcul de hauteur aurait reconduit le meme piege. Ce
+   * qui protege desormais est l'ORDRE DE SUPERPOSITION — et cela ne se lit pas
+   * dans une feuille de style, cela se demande au navigateur. */
+  ok(fioles.recu === 'ok',
+     `le doigt pose sur une fiole atteint la fiole, pas la zone de marche (${fioles.recu})`);
+  /* Et elles restent dans le tiers du bas : boire se fait en marchant, du meme
+     pouce, sans lacher l'appareil. */
+  ok(fioles.y > fioles.hauteur * 0.66,
+     `elles restent a portee du pouce (${fioles.y} sur ${fioles.hauteur})`);
 
   const avantT = await t.evaluate(() => window.__s[0].__out.filter((m) => m.type === 'potionBoit').length);
   await t.evaluate(() => {
@@ -1693,15 +1756,24 @@ process.on('unhandledRejection', (e) => {
   ok(surSouris.existe && !surSouris.allumee,
      'a la souris la rangee flottante reste eteinte : le panneau suffit');
 
-  /* Panneau replie, les deux boutons glissent au bord de l'ecran : c'est
-     justement comme ca qu'on joue sur telephone. */
+  /* ---- PANNEAU REPLIE, LES BOUTONS SUIVENT LE MILIEU ----
+   * C'est comme ca qu'on joue sur telephone : le panneau replie, l'aire de jeu
+   * prend toute la largeur, et son milieu se deplace de soixante-quatorze
+   * pixels vers la droite. Les boutons ponctuels doivent suivre — restes ou ils
+   * etaient, ils tomberaient dans la moitie qui fait marcher. */
   await t.evaluate(() => { document.getElementById('nxWrap').classList.add('replie'); });
   await t.waitForTimeout(400);
   const replie = await t.evaluate(() => {
     const q = document.getElementById('nxMaison').getBoundingClientRect();
-    return { bord: Math.round(window.innerWidth - (q.x + q.width)) };
+    const pad = document.getElementById('nxPad').getBoundingClientRect();
+    return { centre: Math.round(q.x + q.width / 2),
+             milieu: Math.round(window.innerWidth / 2),
+             finDuPave: Math.round(pad.x + pad.width) };
   });
-  ok(replie.bord <= 20, `panneau replie, la maison passe a ${replie.bord} px du bord`);
+  ok(Math.abs(replie.centre - replie.milieu) <= 45,
+     `panneau replie, la maison se recale au milieu (${replie.centre} pour un milieu a ${replie.milieu})`);
+  ok(replie.centre >= replie.finDuPave,
+     `et elle reste hors de la zone qui fait marcher (${replie.centre} contre ${replie.finDuPave})`);
   await t.evaluate(() => { document.getElementById('nxWrap').classList.remove('replie'); });
   await t.waitForTimeout(300);
 
@@ -1725,10 +1797,10 @@ process.on('unhandledRejection', (e) => {
      de tir dans le Nexus n'a rien a viser. */
   const apresRentree = await t.evaluate(() => ({
     maison: document.getElementById('nxMaison').classList.contains('on'),
-    tir: document.getElementById('nxTir').classList.contains('on'),
+    vise: document.getElementById('nxVise').classList.contains('on'),
   }));
-  ok(!apresRentree.maison && !apresRentree.tir,
-     'de retour au Nexus, ni maison ni tir ne restent allumes');
+  ok(!apresRentree.maison && !apresRentree.vise,
+     'de retour au Nexus, ni maison ni zone de tir ne restent allumees');
 
   /* ---- BOIRE EN COMBAT ----
    *

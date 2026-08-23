@@ -10090,7 +10090,12 @@
   /** La direction du tir, en radians. Trois sources, dans cet ordre : la
       cible automatique, le curseur, puis le regard du personnage. */
   function angleDeTir(camX, camY) {
-    /* Le bouton tactile vise tout seul, que le reglage « auto-fire » soit
+    /* ---- LE POUCE QUI GLISSE PASSE DEVANT TOUT ----
+     * Quand le joueur MONTRE ou tirer, on ne tire pas ailleurs. C'est la seule
+     * facon de viser un ennemi qui n'est pas le plus proche — un tireur au
+     * fond de la piece pendant qu'une chauve-souris vous colle. */
+    if (VISE_MAIN.actif) return VISE_MAIN.a;
+    /* La moitie droite vise toute seule, que le reglage « auto-fire » soit
        allume ou non : c'est le geste qui le demande, pas la preference. */
     var c = (tireur.auto || VISE_AUTO) ? cibleLaPlusProche() : null;
     if (c) return Math.atan2(c.y - joueur.y, c.x - joueur.x);
@@ -10352,10 +10357,32 @@
     if (!socle || !pommeau) return;
     var cx = 0, cy = 0, R = 1;
 
-    /* On mesure le socle AU MOMENT de la prise, pas une fois pour toutes :
-       la barre du navigateur mobile apparait et disparait au defilement, et
-       un centre mesure au chargement se retrouve a cinquante pixels de la
-       verite des qu'elle bouge. */
+    /* ---- OU LE MANCHE SE POSE ----
+     * `poseLeSocle` prend des pixels de la ZONE, pas de la page : c'est ce que
+     * comprennent `left`/`top`, et le socle se centre dessus par son
+     * `transform`. Le rayon et le centre en coordonnees page sont ensuite
+     * RELUS sur l'element — mesurer plutot que recalculer, parce que la barre
+     * du navigateur mobile apparait et disparait au defilement et qu'un centre
+     * deduit se retrouve a cinquante pixels de la verite des qu'elle bouge. */
+    function poseLeSocle(x, y) {
+      socle.style.left = x + 'px';
+      socle.style.top = y + 'px';
+    }
+    /* La demi-largeur du socle, LUE : c'est elle qui dit de combien il faut
+       rentrer du bord pour qu'il reste entier a l'ecran. L'ecrire en dur
+       aurait menti le jour ou le socle change de taille. */
+    function demi() {
+      var w = socle.getBoundingClientRect().width;
+      return (w > 0 ? w : 132) / 2 + 18;
+    }
+    /* Le coin de repos : la ou le temoin attend qu'on le prenne. Le meme coin
+       qu'avant, pour que rien ne change pour qui avait pris l'habitude. */
+    function repos() {
+      var b = pave.getBoundingClientRect();
+      var d = demi();
+      poseLeSocle(d, Math.max(d, b.height - d));
+      ancre();
+    }
     function ancre() {
       var r = socle.getBoundingClientRect();
       cx = r.left + r.width / 2;
@@ -10382,7 +10409,21 @@
       MANCHE.y = dy / d;
     }
     function prend(ev) {
+      /* UN pouce a la fois. Le second doigt pose dans la moitie gauche pendant
+         qu'on marche deja deplacerait le manche sous le premier. */
+      if (MANCHE.actif) return;
       debloqueSon();
+      /* ---- LE MANCHE VIENT SOUS LE DOIGT, EXACTEMENT ----
+       * Pas de bornage. On avait commence par en mettre un, pour que l'anneau
+       * reste entier a l'ecran ; il rendait le manche IMMOBILE : panneau
+       * ouvert, la moitie gauche d'un telephone de trois cent quatre-vingt-dix
+       * pixels en fait cent vingt et un, l'anneau en fait cent trente-deux, et
+       * toute borne le ramenait au meme point.
+       * Le centre est donc le point touche, et l'anneau deborde s'il le faut —
+       * il ne se touche pas, il se regarde. Ce qui compte est que le centre
+       * soit sous le pouce : c'est de lui que part la direction. */
+      var b = pave.getBoundingClientRect();
+      poseLeSocle(ev.clientX - b.left, ev.clientY - b.top);
       MANCHE.actif = true;
       MANCHE.pointeur = ev.pointerId;
       pave.classList.add('on');
@@ -10415,7 +10456,7 @@
       MANCHE.actif = false; MANCHE.pointeur = null;
       MANCHE.x = 0; MANCHE.y = 0;
       pave.classList.remove('on');
-      ancre();
+      repos();
     }
     pave.addEventListener('pointerdown', prend);
     pave.addEventListener('pointermove', suit);
@@ -10424,8 +10465,8 @@
     /* Pas de `pointerleave` : avec la capture, le doigt qui sort de la zone
        continue d'etre suivi — et c'est exactement ce qu'on veut. Le lacher est
        le seul evenement qui arrete le personnage. */
-    ancre();
-    window.addEventListener('resize', ancre);
+    repos();
+    window.addEventListener('resize', function () { if (!MANCHE.actif) repos(); });
   })();
 
   /* ================== LE BOUTON DE TIR TACTILE ==================
@@ -10441,24 +10482,84 @@
    * souris pour toujours.
    */
   var VISE_AUTO = false;
-  var elTir = document.getElementById('nxTir');
-  if (elTir) {
+  /* La visee au pouce : une DIRECTION, pas un point. Un point vise se
+     perimerait entre deux images puisque la camera bouge ; une direction reste
+     vraie tant que le pouce n'a pas bouge. */
+  var VISE_MAIN = { actif: false, a: 0 };
+  var elVise = document.getElementById('nxVise');
+  if (elVise) {
+    var lueur = elVise.querySelector('i');
+    var fleche = elVise.querySelector('u');
+    var vPtr = null, vx0 = 0, vy0 = 0;
+    /* Sous ce glissement, c'est un appui et non une visee. Trop bas, la main
+       qui tremble se mettrait a viser toute seule ; trop haut, viser
+       demanderait un geste de toute la main. */
+    var SEUIL_VISE = 24;
+    var poseLueur = function (x, y) {
+      var b = elVise.getBoundingClientRect();
+      lueur.style.left = (x - b.left) + 'px';
+      lueur.style.top = (y - b.top) + 'px';
+      fleche.style.left = (x - b.left) + 'px';
+      fleche.style.top = (y - b.top) + 'px';
+    };
     var presseTir = function (ev) {
+      /* UN pouce a la fois de ce cote aussi. */
+      if (vPtr !== null) return;
       ev.preventDefault(); debloqueSon();
       /* Dans une SALLE, quelle qu'elle soit : il n'y a rien a viser dedans, et
-         le bouton restait actif au-dessus du coffre. */
+         le tir restait actif au-dessus du coffre. */
       if (salleCourante()) return;
+      vPtr = ev.pointerId; vx0 = ev.clientX; vy0 = ev.clientY;
+      VISE_MAIN.actif = false;
       VISE_AUTO = true; tireur.presse = true;
-      elTir.classList.add('presse');
+      poseLueur(ev.clientX, ev.clientY);
+      elVise.classList.add('presse');
+      elVise.classList.remove('main');
+      if (elVise.setPointerCapture) { try { elVise.setPointerCapture(ev.pointerId); } catch (e) {} }
     };
-    var lacheTir = function () {
-      VISE_AUTO = false; tireur.presse = false;
-      elTir.classList.remove('presse');
+    var suitTir = function (ev) {
+      if (vPtr === null || ev.pointerId !== vPtr) return;
+      var dx = ev.clientX - vx0, dy = ev.clientY - vy0;
+      var d = Math.sqrt(dx * dx + dy * dy);
+      if (d < SEUIL_VISE) {
+        /* On REVIENT a la cible automatique si le pouce retourne a son point de
+           depart : sinon une visee manuelle prise par accident resterait
+           collee jusqu'au lacher. */
+        VISE_MAIN.actif = false;
+        elVise.classList.remove('main');
+        return;
+      }
+      VISE_MAIN.actif = true;
+      VISE_MAIN.a = Math.atan2(dy, dx);
+      fleche.style.transform = 'rotate(' + VISE_MAIN.a + 'rad)';
+      elVise.classList.add('main');
+      ev.preventDefault();
     };
-    elTir.addEventListener('pointerdown', presseTir);
-    elTir.addEventListener('pointerup', lacheTir);
-    elTir.addEventListener('pointercancel', lacheTir);
-    elTir.addEventListener('pointerleave', lacheTir);
+    var lacheTir = function (ev) {
+      if (ev && vPtr !== null && ev.pointerId !== vPtr) return;
+      /* On rend la capture. La prendre sans la rendre laisse l'element
+         proprietaire du pointeur, et le doigt suivant portant le meme
+         identifiant n'arrive plus par le chemin normal — le tir marcherait
+         deux ou trois fois puis cesserait, sans erreur nulle part. */
+      if (vPtr !== null && elVise.releasePointerCapture) {
+        try {
+          if (!elVise.hasPointerCapture || elVise.hasPointerCapture(vPtr)) {
+            elVise.releasePointerCapture(vPtr);
+          }
+        } catch (e) {}
+      }
+      vPtr = null;
+      VISE_MAIN.actif = false; VISE_AUTO = false; tireur.presse = false;
+      elVise.classList.remove('presse');
+      elVise.classList.remove('main');
+    };
+    elVise.addEventListener('pointerdown', presseTir);
+    elVise.addEventListener('pointermove', suitTir);
+    elVise.addEventListener('pointerup', lacheTir);
+    elVise.addEventListener('pointercancel', lacheTir);
+    /* Pas de `pointerleave` : avec la capture, le doigt qui sort de la moitie
+       droite continue d'etre suivi — et c'est voulu, on vise souvent vers le
+       centre de l'ecran. Le lacher est le seul evenement qui arrete le tir. */
   }
 
   /* Il ne se montre QUE dans le monde de combat, et seulement au doigt :
@@ -10512,7 +10613,12 @@
        seulement au doigt. Les separer aurait fini par en laisser un allume
        dans le Nexus. */
     var montre = tactile && SCENE === 'monde';
-    if (elTir) elTir.classList.toggle('on', montre);
+    if (elVise) {
+      elVise.classList.toggle('on', montre);
+      /* Eteinte avec la zone : cachee en plein appui, la lueur serait restee
+         allumee au retour dans le monde sans qu'aucun doigt ne la tienne. */
+      if (!montre) { elVise.classList.remove('presse'); elVise.classList.remove('main'); }
+    }
     if (elMaison) elMaison.classList.toggle('on', montre);
     peintPotionsTactiles();
   }

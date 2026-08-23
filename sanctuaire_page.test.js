@@ -595,9 +595,12 @@ process.on('unhandledRejection', (e) => {
          donne simplement beaucoup de vie et on le repose. */
       proche.pv = proche.pvMax = 999999;
       await p.waitForTimeout(600);
-      /* On allume la visee automatique par le BOUTON, comme un joueur. */
+      /* On allume la visee automatique en POSANT LE POUCE dans la moitie
+         droite, comme un joueur. Il n'y a plus de bouton de tir : la moitie de
+         l'ecran l'a remplace. On ne glisse pas — un glissement viserait a la
+         main, et c'est justement la visee AUTOMATIQUE qu'on mesure ici. */
       await p.evaluate(() => {
-        const b = document.getElementById('nxTir');
+        const b = document.getElementById('nxVise');
         if (b) b.dispatchEvent(new PointerEvent('pointerdown', { pointerId: 7, bubbles: true }));
       });
       /* On oublie ce qui a ete envoye AVANT : la page tire aussi pendant qu'on
@@ -624,7 +627,7 @@ process.on('unhandledRejection', (e) => {
            `et ${versBoss} sur ${angles.length} partent vers le BOSS a ${dBoss} u, pas vers le cendreux a ${dPres} u`);
       }
       await p.evaluate(() => {
-        const b = document.getElementById('nxTir');
+        const b = document.getElementById('nxVise');
         if (b) b.dispatchEvent(new PointerEvent('pointerup', { pointerId: 7, bubbles: true }));
       });
     }

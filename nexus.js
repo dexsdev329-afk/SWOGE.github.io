@@ -8638,8 +8638,15 @@
      * CHEVAUCHENT, et c'est le but — un bois est une masse, pas un alignement.
      * Sa case fait 160 sur 320, la premiere non carree du fichier : c'est
      * elle qui a rendu le dessin proportionnel. */
+    /* `min`/`max` sont des HAUTEURS. Trois cents a quatre cent vingt : un
+       bouquet de pins un peu plus haut qu'un batiment, ce qui est juste, et
+       non deux fois et demie comme avant.
+       `bordure: 110` et non 300 : les pieds se serrent contre le bord, si bien
+       que le sommet du plus grand monte a 2384 par le bas — juste sous la porte
+       +18, dessinee a partir de 2372. Le rideau ne mord plus sur le
+       village, verifie plutot que suppose. */
     { cle: 'foret',  src: 'img/nexus/tiles/nexus_foret.webp',  cases: 4,
-      combien: 52,  min: 300, max: 420, ecart: 150, sol: false, bordure: 300 },
+      combien: 52,  min: 300, max: 420, ecart: 150, sol: false, bordure: 110 },
   ];
   DECOR_FAMILLES.forEach(function (f) { f.img = new Image(); f.img.src = f.src; });
 
@@ -8691,6 +8698,11 @@
     ordre.forEach(function (f) {
       var poses = f.bordure ? posesB : (f.sol ? posesS : posesG);
       for (var k = 0; k < f.combien; k++) {
+        /* La taille se tire AVANT la position : la bande du haut en a besoin.
+           Un bouquet dont les pieds sont a trente unites du bord se dessine
+           VERS LE HAUT, donc entierement hors de la carte — on ne l'aurait
+           jamais vu, et rien ne l'aurait dit. */
+        var taille = Math.round(f.min + alea() * (f.max - f.min));
         /* Cent vingt essais et non quarante. Le semis ne tourne QU'UNE FOIS,
            au premier dessin : economiser des tirages ici, c'est economiser une
            milliseconde une fois dans la partie, au prix d'arbres qui ne se
@@ -8713,7 +8725,7 @@
                milieu. */
             var cote = Math.floor(alea() * 4);
             var lelong = alea(), profond = alea() * f.bordure;
-            if (cote === 0) { x = Math.round(lelong * MONDE.w); y = Math.round(30 + profond); }
+            if (cote === 0) { x = Math.round(lelong * MONDE.w); y = Math.round(taille + 20 + profond); }
             else if (cote === 1) { x = Math.round(lelong * MONDE.w); y = Math.round(MONDE.h - 30 - profond); }
             else if (cote === 2) { x = Math.round(30 + profond); y = Math.round(lelong * MONDE.h); }
             else { x = Math.round(MONDE.w - 30 - profond); y = Math.round(lelong * MONDE.h); }
@@ -8758,8 +8770,7 @@
           if (colle) continue;
           poses.push({ x: x, y: y, e: f.ecart });
           DECORS_SEMES.push({ f: f, x: x, y: y,
-                              col: Math.floor(alea() * f.cases),
-                              t: Math.round(f.min + alea() * (f.max - f.min)) });
+                              col: Math.floor(alea() * f.cases), t: taille });
           break;
         }
       }
@@ -8780,13 +8791,26 @@
    * dans ce fichier — les facades et les lieux le font depuis longtemps. Pour
    * une case carree le resultat est identique au pixel pres, donc les trois
    * familles d'avant ne bougent pas. */
+  /* ---- `t` EST LA HAUTEUR, PAS LA LARGEUR ----
+   * Il a d'abord designe la largeur, la hauteur suivant le rapport de la
+   * planche. Pour les trois premieres familles, aux cases carrees, les deux
+   * reviennent au meme — et c'est ce qui a cache le probleme. La lisiere a des
+   * cases deux fois plus hautes que larges : une taille de 420 donnait donc un
+   * bouquet de HUIT CENT QUARANTE unites de haut. Une bande de pieds large de
+   * trois cents devenait un rideau de huit cent quarante de profond, qui
+   * recouvrait l'arcade, la table de blackjack, les Series et la porte +18.
+   * Mesure faite : son sommet montait jusqu'a 1774, soit six cents unites
+   * au-dessus du plus bas des batiments.
+   * Sur un arbre, ce qu'on veut regler est sa HAUTEUR — c'est elle qu'on
+   * compare a un batiment, et c'est elle qui dit ce qu'il cache. La largeur en
+   * decoule. Pour une case carree, le resultat est identique au pixel pres. */
   function dessineUnDecor(d) {
     var im = d.f.img;
     if (!im.complete || !im.naturalWidth) return;
     var cw = im.naturalWidth / d.f.cases;
-    var h = d.t * im.naturalHeight / cw;
+    var l = d.t * cw / im.naturalHeight;
     ctx.drawImage(im, d.col * cw, 0, cw, im.naturalHeight,
-                  d.x - d.t / 2, d.y - h, d.t, h);
+                  d.x - l / 2, d.y - d.t, l, d.t);
   }
 
   function dessinePonts() {

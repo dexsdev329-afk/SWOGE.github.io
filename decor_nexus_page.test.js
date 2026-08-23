@@ -70,8 +70,8 @@ function famillesDeclarees() {
   const src = fs.readFileSync(path.join(SITE, 'nexus.js'), 'utf8');
   const dep = src.indexOf('var DECOR_FAMILLES = [');
   const bloc = src.slice(dep, src.indexOf('];', dep));
-  return [...bloc.matchAll(/cle: '(\w+)'[\s\S]*?combien: (\d+)/g)]
-    .map((m) => ({ cle: m[1], combien: Number(m[2]) }));
+  return [...bloc.matchAll(/cle: '(\w+)'[\s\S]*?combien: (\d+)[\s\S]*?sol: (true|false)/g)]
+    .map((m) => ({ cle: m[1], combien: Number(m[2]), sol: m[3] === 'true' }));
 }
 
 /* Ce que la page peint : on releve la destination de chaque planche de decor,
@@ -103,7 +103,9 @@ const espionne = () => `(() => {
     if (m && n >= 5) {
       window.__dec.push({ f: m[1],
                           x: Math.round(arguments[d] + arguments[d + 2] / 2),
-                          y: Math.round(arguments[d + 1] + arguments[d + 3]) });
+                          y: Math.round(arguments[d + 1] + arguments[d + 3]),
+                          l: Math.round(arguments[d + 2]),
+                          h: Math.round(arguments[d + 3]) });
     }
     /* Les cases de CHEMIN, relevees par leur planche : c'est la page qui sait
        ou elle en pose, et le refaire ici serait refaire son calcul. */
@@ -214,6 +216,34 @@ const espionne = () => `(() => {
     ok(lieux.length >= 5, `${lieux.length} batiments relus dans la source`);
     const dedans = a.dec.filter((d) => lieux.some((l) =>
       Math.abs(d.x - l.x) < l.larg / 2 && d.y < l.y + 10 && d.y > l.y - l.haut));
+    /* ---- ET AUCUN NE RECOUVRE UN BATIMENT ----
+     *
+     * Le controle du dessus regarde les PIEDS. Il ne dit donc rien d'un objet
+     * dont les pieds sont ailleurs mais dont le DESSIN monte par-dessus un
+     * batiment — et c'est exactement le defaut qui est arrive : la lisiere a
+     * des cases deux fois plus hautes que larges, sa taille reglait la largeur,
+     * et chaque bouquet montait a huit cent quarante unites. Une bande de pieds
+     * le long du bord devenait un rideau qui recouvrait l'arcade, la table de
+     * blackjack, les Series et la porte +18. Mesure faite apres coup : son
+     * sommet montait a 1774.
+     * Rien ne l'a signale. Aucune erreur, aucun essai rouge — il a fallu qu'un
+     * joueur regarde son telephone. C'est le genre de defaut qui merite un
+     * gardien, parce que l'oeil ne repasse pas a chaque fois.
+     *
+     * On ne regarde que le decor qui se TRIE : celui du sol est peint sous les
+     * batiments, une touffe d'herbe sous une facade ne cache rien. Ce qui se
+     * trie, lui, passe devant des que ses pieds sont plus bas. */
+    const trie = new Set(decl.filter((f) => !f.sol).map((f) => f.cle));
+    const rideaux = a.dec.filter((d) => trie.has(d.f) && d.l && d.h).filter((d) => lieux.some((l) =>
+      d.y > l.y                                        // il passe DEVANT
+      && d.x + d.l / 2 > l.x - l.larg / 2 + 20         // et son dessin
+      && d.x - d.l / 2 < l.x + l.larg / 2 - 20         // mord sur le sien
+      && d.y - d.h < l.y - 20));
+    ok(rideaux.length === 0,
+       `aucun decor ne recouvre un batiment` +
+       (rideaux.length ? ` — ${rideaux.length} le font, dont ${rideaux[0].f} en ` +
+        `(${rideaux[0].x},${rideaux[0].y}), haut de ${rideaux[0].h}` : ''));
+
     ok(dedans.length === 0,
        `aucun objet n'a pousse dans une facade` +
        (dedans.length ? ` — ${dedans.length}, dont ${dedans[0].f} en (${dedans[0].x},${dedans[0].y})` : ''));

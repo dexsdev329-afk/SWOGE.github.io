@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="fr"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>SWOGE Download</title>
+<link rel="icon" href="img/favicon.png">
+<style>
+  :root{ --or:#FFD97A; --rose:#ff3ea5; --fond:#0b0d14; --carte:#141824; }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--fond); color:#e8e2ee; min-height:100dvh;
+        font:400 15px/1.55 system-ui,-apple-system,Segoe UI,sans-serif;
+        display:flex; align-items:flex-start; justify-content:center; padding:22px 14px 60px; }
+  main{ width:100%; max-width:660px; }
+  h1{ margin:0 0 4px; font:900 26px/1.1 'Archivo',system-ui,sans-serif; letter-spacing:.02em; }
+  h1 b{ color:var(--or); } h1 i{ color:var(--rose); font-style:normal; }
+  .sous{ color:#9aa3b4; font-size:13.5px; margin:0 0 20px; }
+  .carte{ background:var(--carte); border:1px solid rgba(255,255,255,.08);
+          border-radius:14px; padding:16px; margin:0 0 14px; }
+  label{ display:block; font:700 12px/1 system-ui,sans-serif; letter-spacing:.14em;
+         text-transform:uppercase; color:var(--or); margin:0 0 8px; }
+  input{ width:100%; padding:12px 13px; border-radius:10px; font:inherit; font-size:14px;
+         color:#fff; background:rgba(0,0,0,.45); border:1px solid rgba(255,255,255,.14); }
+  input:focus{ outline:none; border-color:var(--or); }
+  .rang{ display:flex; gap:10px; margin-top:12px; flex-wrap:wrap; }
+  button, .bouton{ flex:1 1 190px; min-height:46px; border-radius:10px; cursor:pointer;
+    font:800 14px/1 system-ui,sans-serif; letter-spacing:.06em; border:0;
+    display:flex; align-items:center; justify-content:center; text-decoration:none;
+    color:#2b0f2e; background:linear-gradient(180deg,#FFE9A8,#F4C24A); }
+  button:disabled{ opacity:.5; cursor:default; }
+  .bouton.pale{ color:#e8e2ee; background:transparent;
+                border:1px dashed rgba(255,255,255,.2); }
+  .jauge{ height:9px; border-radius:99px; background:rgba(255,255,255,.09);
+          overflow:hidden; margin-top:14px; display:none; }
+  .jauge > i{ display:block; height:100%; width:0; background:var(--or); transition:width .15s; }
+  #etat{ margin-top:12px; font-size:13.5px; min-height:20px; }
+  .ok{ color:#8BE28B; } .mal{ color:#ff8a8a; } .att{ color:var(--or); }
+  .note{ font-size:12.5px; color:#8a93a6; }
+  .note b{ color:#c9c2d2; }
+  code{ background:rgba(0,0,0,.4); padding:1px 5px; border-radius:5px; font-size:12px; }
+</style></head><body><main>
+
+<h1>👑 <b>SWOGE</b> <i>DOWNLOAD</i></h1>
+<p class="sous">Colle l’adresse directe d’un fichier, il se télécharge et s’enregistre.</p>
+
+<div class="carte">
+  <label for="url">Adresse du fichier</label>
+  <input id="url" type="url" inputmode="url" spellcheck="false"
+         placeholder="https://…/ma-video.mp4">
+  <div class="rang">
+    <button id="go">Télécharger</button>
+    <a class="bouton pale" id="direct" href="#" target="_blank" rel="noopener noreferrer">Ouvrir dans un onglet</a>
+  </div>
+  <div class="jauge" id="jauge"><i id="barre"></i></div>
+  <div id="etat"></div>
+</div>
+
+<div class="carte">
+  <p class="note" style="margin:0 0 10px"><b>Ce que cette page peut faire, et ce qu’elle ne peut pas.</b></p>
+  <p class="note" style="margin:0 0 8px">
+    Elle télécharge un <b>fichier direct</b> — une adresse qui se termine par le fichier
+    lui-même (<code>.mp4</code>, <code>.webm</code>, <code>.zip</code>, une image…).
+    Elle fonctionne sur <b>tes propres fichiers</b> et sur tout hébergeur qui autorise la
+    lecture depuis un autre domaine.
+  </p>
+  <p class="note" style="margin:0 0 8px">
+    Elle ne peut <b>pas</b> extraire la vidéo d’une page de lecteur. Ce n’est pas une
+    limite que j’ai choisie : un navigateur interdit à une page de lire le contenu d’un
+    autre domaine sans sa permission. Une adresse de lecteur donnera donc
+    <em>« lecture refusée par l’hébergeur »</em>, et c’est normal.
+  </p>
+  <p class="note" style="margin:0">
+    Le bouton <b>Ouvrir dans un onglet</b> marche toujours, lui : il laisse le navigateur
+    faire ce qu’il sait faire avec l’adresse.
+  </p>
+</div>
+
+<script>
+var $ = function (s) { return document.querySelector(s); };
+var elU = $('#url'), elGo = $('#go'), elD = $('#direct'),
+    elJ = $('#jauge'), elB = $('#barre'), elE = $('#etat');
+
+function dit(t, c) { elE.textContent = t; elE.className = c || ''; }
+function poids(n) {
+  if (!n && n !== 0) return '';
+  var u = ['o', 'Ko', 'Mo', 'Go'], i = 0;
+  while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }
+  return (i ? n.toFixed(1) : n) + ' ' + u[i];
+}
+/* Le nom vient de l'adresse, pas d'une invention : c'est celui que le
+   proprietaire du fichier lui a donne, et le retrouver dans ses telechargements
+   est plus simple qu'un nom fabrique. */
+function nomDe(u) {
+  try {
+    var p = new URL(u).pathname.split('/').filter(Boolean).pop() || '';
+    p = decodeURIComponent(p);
+    return p && p.indexOf('.') > 0 ? p : 'swoge-telechargement';
+  } catch (e) { return 'swoge-telechargement'; }
+}
+/* Le bouton d'a cote suit ce qu'on tape : il n'y a rien a valider pour lui,
+   c'est le navigateur qui decidera. */
+function suit() {
+  var v = elU.value.trim();
+  if (/^https?:\/\//i.test(v)) { elD.href = v; elD.style.opacity = ''; }
+  else { elD.removeAttribute('href'); elD.style.opacity = '.45'; }
+}
+elU.addEventListener('input', suit); suit();
+
+elGo.onclick = async function () {
+  var u = elU.value.trim();
+  if (!/^https?:\/\//i.test(u)) { dit('Il faut une adresse commençant par http:// ou https://', 'mal'); return; }
+  elGo.disabled = true; elJ.style.display = 'block'; elB.style.width = '0';
+  dit('connexion…', 'att');
+  try {
+    var r = await fetch(u);
+    if (!r.ok) throw new Error('l’hébergeur répond ' + r.status + (r.status === 404 ? ' — le fichier n’existe plus' : ''));
+    var total = Number(r.headers.get('content-length')) || 0;
+    /* On lit par MORCEAUX plutot que d'attendre le fichier entier : un film
+       de deux gigaoctets sans le moindre signe de vie se lit comme une page
+       plantee, et l'on recharge — en perdant tout ce qui etait deja arrive. */
+    var lu = 0, bouts = [], flux = r.body && r.body.getReader ? r.body.getReader() : null;
+    if (flux) {
+      for (;;) {
+        var p = await flux.read();
+        if (p.done) break;
+        bouts.push(p.value); lu += p.value.length;
+        if (total) { elB.style.width = Math.min(100, lu * 100 / total) + '%'; }
+        dit('téléchargé ' + poids(lu) + (total ? ' sur ' + poids(total) : ''), 'att');
+      }
+    } else {
+      bouts = [await r.blob()]; lu = bouts[0].size; elB.style.width = '100%';
+    }
+    var b = new Blob(bouts, { type: r.headers.get('content-type') || 'application/octet-stream' });
+    var lien = document.createElement('a');
+    lien.href = URL.createObjectURL(b);
+    lien.download = nomDe(u);
+    document.body.appendChild(lien); lien.click(); lien.remove();
+    setTimeout(function () { URL.revokeObjectURL(lien.href); }, 30000);
+    elB.style.width = '100%';
+    dit('✓ enregistré : ' + lien.download + ' (' + poids(lu) + ')', 'ok');
+  } catch (e) {
+    /* `fetch` ne dit PAS « CORS » : un refus de lecture entre domaines arrive
+       comme un echec reseau nu. On nomme donc la cause la plus probable au
+       lieu de laisser « Failed to fetch », qui n'apprend rien a personne. */
+    var m = String(e && e.message || e);
+    if (/failed to fetch|networkerror|load failed/i.test(m)) {
+      dit('✗ lecture refusée par l’hébergeur, ou fichier injoignable. Cette page ne peut lire que les fichiers qui l’autorisent — les tiens, par exemple. Essaie « Ouvrir dans un onglet ».', 'mal');
+    } else { dit('✗ ' + m, 'mal'); }
+    elJ.style.display = 'none';
+  }
+  elGo.disabled = false;
+};
+</script>
+</main></body></html>

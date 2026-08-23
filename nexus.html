@@ -1348,8 +1348,29 @@ body.nxdrag *{ cursor:grabbing !important; }
  * l'affiche, dont on n'avait alors plus besoin. Le texte est a gauche, donc
  * c'est a gauche qu'on assombrit. */
 .nxarc-une-fond{ position:absolute; inset:0; }
-.nxarc-une-fond img{ display:block; width:100%; height:100%;
+/* ---- LA JAQUETTE, SUR LES LARGES SEULEMENT ----
+ * Sur telephone la banniere est presque aussi haute que large : le fond etale
+ * y tient tres bien, et une jaquette debout mangerait la place du titre. Sur
+ * un ecran d'ordinateur c'est l'inverse — le fond n'y garde qu'une tranche
+ * horizontale de l'affiche, prise au hasard du rapport, et c'etait le defaut
+ * le plus visible. On montre donc l'affiche ENTIERE, debout, a droite. */
+.nxarc-une-jaquette{ display:none; }
+@media (min-width:900px){
+  .nxarc-une-jaquette{ display:block; position:absolute; right:26px; top:50%;
+    transform:translateY(-50%); height:78%; width:auto; max-width:30%;
+    aspect-ratio:250 / 345; object-fit:cover; object-position:center;
+    border-radius:10px; z-index:1;
+    box-shadow:0 10px 30px rgba(0,0,0,.65), 0 0 0 1px rgba(255,255,255,.10); }
+}
+.nxarc-une-fond > img:not(.nxarc-une-jaquette){ display:block; width:100%; height:100%;
   object-fit:cover; object-position:50% 28%; }
+/* Floute : une tranche d'affiche nette se lit comme un cadrage rate, la meme
+   tranche floue se lit comme une lumiere. On l'agrandit un peu pour que le
+   flou ne laisse pas de bord clair sur les cotes. */
+@media (min-width:900px){
+  .nxarc-une-fond > img:not(.nxarc-une-jaquette){ filter:blur(18px) saturate(1.15);
+    transform:scale(1.12); }
+}
 .nxarc-une-fond::after{ content:''; position:absolute; inset:0;
   background:linear-gradient(90deg, rgba(8,3,16,.94) 0%, rgba(8,3,16,.78) 42%,
                                     rgba(8,3,16,.18) 100%),
@@ -1438,6 +1459,14 @@ body.nxdrag *{ cursor:grabbing !important; }
 /* Plus de carte ni de bordure : l'affiche EST le bouton. Le rembourrage part
    avec elles, sinon un lisere de fond subsisterait autour de chaque image et
    c'est exactement ce qu'on retire. */
+/* 124 px sur telephone, 168 sur un ecran large : la meme rangee laissait, sur
+   1400 px, trois vignettes serrees a gauche et neuf cents pixels de noir vide
+   a droite. Une etagere se remplit a la taille du meuble. */
+@media (min-width:900px){
+  .nxarc-rangee button{ flex-basis:168px !important; }
+  .nxarc-rangee{ gap:14px; }
+  .nxarc-rangee .nxarc-nom{ font-size:12.5px; }
+}
 .nxarc-rangee button{ flex:0 0 124px; scroll-snap-align:start;
   display:flex; flex-direction:column; gap:7px; padding:0;
   min-height:44px; border-radius:8px; cursor:pointer; text-align:left;
@@ -1501,6 +1530,12 @@ body.nxdrag *{ cursor:grabbing !important; }
 #nxArcVoile.geant.nxarc-parcours .nxarc-carte{ height:auto; }
 #nxArcVoile.geant.nxarc-parcours .nxarc-une{ flex:0 0 auto; margin:8px 12px 0; }
 #nxArcVoile.geant.nxarc-parcours .nxarc-cat{ flex:0 0 auto; margin:14px 12px 8px; }
+.nxarc-ailleurs{ display:block; margin-top:9px; text-align:center;
+  font:700 12px/1.4 system-ui,sans-serif; letter-spacing:.02em;
+  color:#9aa3b4; text-decoration:none; padding:8px; border-radius:8px;
+  border:1px dashed rgba(255,255,255,.16); }
+.nxarc-ailleurs:hover{ color:#FFD97A; border-color:rgba(255,217,122,.45); }
+.nxarc-ailleurs[hidden]{ display:none; }
 .nxarc-touches{ display:flex; flex-wrap:wrap; gap:6px 18px; margin-top:10px;
   font-size:11px; color:#9aa3b4; }
 .nxarc-touches b{ color:#ff3ea5; margin-right:5px; }
@@ -2018,6 +2053,19 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
     <div class="nxarc-cat" id="nxArcCat" hidden></div>
     <div class="nxarc-ecran"><iframe id="nxArcJeu" title="Arcade cabinet"
       allow="autoplay; fullscreen" src="about:blank"></iframe></div>
+    <!-- ---- LA SORTIE DE SECOURS ----
+         Un hebergeur peut REFUSER d'etre affiche dans un cadre, par un en-tete
+         que le navigateur applique avant que la moindre ligne de notre code ne
+         s'execute. Le cadre reste alors vide ou blanc, alors que la meme
+         adresse collee dans un onglet s'ouvre tout de suite — c'est le
+         symptome exact rapporte. Aucun reglage d'ici ne passe outre : ce n'est
+         pas un blocage qu'on peut contourner, c'est un refus qu'on respecte.
+         On donne donc la porte : le lien s'ouvre A COTE, dans un onglet, ou
+         plus rien ne s'oppose a la lecture. Il est toujours visible plutot
+         qu'affiche apres coup — deviner si le cadre a echoue demanderait de
+         lire dans un document etranger, ce qu'on n'a pas le droit de faire. -->
+    <a class="nxarc-ailleurs" id="nxArcAilleurs" target="_blank"
+       rel="noopener noreferrer" hidden>Le lecteur ne s&rsquo;affiche pas&nbsp;? Ouvrir dans un onglet &rarr;</a>
     <div class="nxarc-touches">
       <span><b>P1</b> WASD move &middot; QER punch &middot; FVG kick</span>
       <span><b>P2</b> Arrows move &middot; / RCtrl . punch &middot; RShift ' &#9166; kick</span>
@@ -2120,7 +2168,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
      racine ; c'est le seul endroit d'ou elle peut couvrir tout le reste. -->
 <div id="nxFiche"></div>
 
-<script src="nexus.js?v=2bb9d30a" defer></script>
+<script src="nexus.js?v=88670273" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

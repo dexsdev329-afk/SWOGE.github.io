@@ -2605,6 +2605,7 @@
   var elArcVoile = document.getElementById('nxArcVoile');
   var elArcJeu = document.getElementById('nxArcJeu');
   var elArcPad = document.getElementById('nxArcPad');
+  var elArcAilleurs = document.getElementById('nxArcAilleurs');
   var arcOuvert = false;
   var ARC_SRC = 'arcade/index.html';
 
@@ -2938,6 +2939,24 @@
     });
     im.src = adr;
     elArcUneFond.appendChild(im);
+    /* ---- LA MEME AFFICHE, MONTREE COMME UNE AFFICHE ----
+     * Le fond etale une image PORTRAIT sur une banniere large : le cadrage en
+     * `cover` n'en garde qu'une tranche horizontale, prise au hasard du
+     * rapport, et sur un ecran d'ordinateur c'est ce qui se voyait le plus.
+     * On pose donc une SECONDE copie, entiere et debout, a cote du titre. Le
+     * style ne la montre que sur les larges : sur telephone elle mangerait la
+     * place du titre, et le fond etale y passe tres bien puisque la banniere y
+     * est presque aussi haute que large.
+     * Meme adresse, donc AUCUNE requete de plus — le navigateur sert la
+     * seconde depuis son cache. */
+    var jaq = document.createElement('img');
+    jaq.alt = '';
+    jaq.className = 'nxarc-une-jaquette';
+    jaq.addEventListener('error', function () {
+      if (jaq.parentNode) jaq.parentNode.removeChild(jaq);
+    });
+    jaq.src = adr;
+    elArcUneFond.appendChild(jaq);
   }
 
   /* ---- LA GALERIE : LA BANNIERE ET SA RANGEE, PEINTES ENSEMBLE ----
@@ -2964,6 +2983,7 @@
      * suite auraient fait deux bandes-son. Vider le `src` est la seule
      * facon sure d'arreter un document etranger qu'on ne pilote pas. */
     if (elArcJeu) elArcJeu.src = 'about:blank';
+    poseLaSortie('');
     if (elArcSous) elArcSous.innerHTML = SOUS_ECRAN;
     /* On revient sur CELLE QU'ON REGARDAIT, et non sur la premiere du rang :
        sortir d'un film pour retrouver la banniere d'un autre donne
@@ -3159,7 +3179,21 @@
         q[i].classList.toggle('actif', q[i].getAttribute('data-src') === src);
       }
       elArcJeu.src = src;
+      poseLaSortie(src);
     });
+  }
+  /* ---- LA PORTE A COTE ----
+   * Elle ne s'affiche QUE pour une adresse etrangere reellement chargee : sur
+   * la borne d'arcade elle n'aurait aucun sens, et sur un cadre vide elle
+   * mènerait a `about:blank`. On ne cherche pas a deviner si le cadre a
+   * echoue — un document etranger ne se lit pas depuis ici — donc elle est la
+   * d'avance, discrete, et ne sert qu'a ceux qui en ont besoin. */
+  function poseLaSortie(src) {
+    if (!elArcAilleurs) return;
+    var bonne = /^https?:\/\//i.test(src || '');
+    elArcAilleurs.hidden = !bonne;
+    if (bonne) elArcAilleurs.href = src;
+    else elArcAilleurs.removeAttribute('href');
   }
   function fermeArcade(parLaMain) {
     arcOuvert = false;

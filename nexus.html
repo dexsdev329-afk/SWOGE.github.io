@@ -1199,6 +1199,36 @@ body.nxdrag #nxSac, body.nxdrag #nxEquip{ outline:1px dashed rgba(255,197,61,.5)
 /* Les cases se prennent : on le dit au curseur. */
 #nxSac .nxp-c[data-sac], #nxEquip .nxp-c[data-item], .nxcf-i{ cursor:grab; }
 body.nxdrag *{ cursor:grabbing !important; }
+/* ---- L'ASCENSEUR DE SWOGE TOWER ----
+   Meme voile que le classement et que le coffre : un joueur qui a appris a
+   fermer l'un ferme l'autre sans y penser. Un panneau a lui aurait donne une
+   troisieme facon de fermer une carte, et c'est toujours la troisieme qu'on
+   cherche a tatons. */
+#nxTourVoile{ position:fixed; top:0; bottom:0; left:0; right:var(--nxp);
+  display:flex; align-items:center; justify-content:center; padding:18px;
+  background:rgba(6,8,14,.82); backdrop-filter:blur(3px); z-index:52;
+  opacity:0; pointer-events:none; transition:opacity .18s ease; }
+#nxWrap.replie ~ #nxTourVoile, body.nxreplie #nxTourVoile{ right:0; }
+#nxTourVoile.on{ opacity:1; pointer-events:auto; }
+#nxTourVoile.on .nxcf-carte{ transform:none; }
+.nxtr-carte{ max-width:380px; }
+.nxtr-corps{ display:flex; flex-direction:column; gap:6px; }
+/* Les arrets se lisent de bas en haut comme la tour se monte : le dernier de
+   la liste est celui d'ou l'on vient. Le bouton porte le NOM de l'etage et
+   pas son numero — « REGGAE » dit ou l'on va, « 3 » demande de s'en
+   souvenir. */
+.nxtr-b{ display:block; width:100%; text-align:left; padding:10px 12px;
+  border-radius:10px; border:1px solid #22252e; background:rgba(255,255,255,.04);
+  color:#D7E0F2; font:600 13px/1.2 system-ui, sans-serif; letter-spacing:.04em;
+  cursor:pointer; transition:background .12s, border-color .12s; }
+.nxtr-b:hover{ background:rgba(179,107,255,.14); border-color:rgba(179,107,255,.55); }
+/* L'etage ou l'on est deja. Il reste CLIQUABLE : un bouton mort au milieu
+   d'une liste de boutons vivants se lit comme une panne, et le presser ne
+   fait que refermer le panneau devant les memes portes. */
+.nxtr-b.ici{ border-color:rgba(179,107,255,.65); color:#E6D6FF;
+  background:rgba(179,107,255,.16); }
+.nxtr-b.rue{ margin-top:6px; color:#9FB0CC; }
+.nxtr-b.rue:hover{ background:rgba(255,255,255,.09); border-color:#39404f; }
 /* ---- LE CLASSEMENT DU MONDE ----
    Meme voile que le coffre : un joueur qui a appris a fermer l'un ferme
    l'autre sans y penser. */
@@ -2111,6 +2141,20 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
      on ne saura jamais si elle s'est arretee quand il fallait. -->
 <audio id="nxArcMusique" loop preload="none"></audio>
 
+<!-- ---- L'ASCENSEUR DE SWOGE TOWER ----
+     Cinq arrets plus la rue, et AUCUN n'est ecrit ici : les boutons sont
+     engendres par la table des etages, dans nexus.js. Cinq boutons ecrits a la
+     main auraient ete cinq occasions d'en oublier un, et l'etage oublie
+     n'aurait simplement pas existe — sans qu'aucune erreur ne le dise. -->
+<div id="nxTourVoile">
+  <div class="nxcf-carte nxtr-carte">
+    <button class="nxcf-x" type="button" aria-label="Close">&times;</button>
+    <b class="nxcf-titre">&#127970; SWOGE TOWER</b>
+    <div class="nxcf-sous">Pick a floor. The stairs take you down one flight at a time.</div>
+    <div class="nxtr-corps" id="nxTourCorps"></div>
+  </div>
+</div>
+
 <div id="nxRangVoile">
   <div class="nxcf-carte nxrg-carte">
     <button class="nxcf-x" type="button" aria-label="Close">&times;</button>
@@ -2168,7 +2212,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
      racine ; c'est le seul endroit d'ou elle peut couvrir tout le reste. -->
 <div id="nxFiche"></div>
 
-<script src="nexus.js?v=ca4d3234" defer></script>
+<script src="nexus.js?v=6a32a6fd" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

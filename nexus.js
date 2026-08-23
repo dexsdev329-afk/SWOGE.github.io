@@ -899,7 +899,11 @@
       MONSTRES_C = {}; TIRS_C = []; TIRS_M = []; DEVINES = []; DISTANTS_M = {}; TOMBES_C = []; SACS_C = [];
       ZONES_C = []; ONDES = [];
       RECALE = null; ENVOIS.length = 0; CADENCE_M = 0; CADENCE_M = 0;
-      OBSTACLES_C = []; SALLES_C = [];
+      OBSTACLES_C = []; SALLES_C = []; PORTES_M = [];
+      /* Mourir dans un batiment en fait sortir aussi : le serveur a deja remis
+         le joueur ailleurs, et laisser le panneau de l'ascenseur pose ici
+         l'aurait affiche par-dessus l'ecran de mort. */
+      fermeAscenseur();
       SAC_PIEDS = null; SAC_SIGNE = ''; peintButin();
       /* Mourir dans un donjon en fait sortir : le serveur a deja remis le
          joueur dans le monde ouvert. Laisser `DONJON_C` pose ici aurait garde le
@@ -2579,10 +2583,21 @@
    * dedans. Le hall n'a plus a le savoir. */
   var SALLES_DU_HALL = { coffre: entreCoffre, arcade: entreSalleArcade,
                          cinema: entreSalleCinema };
-  /* Et par quoi l'on ressort. Deux tables en face l'une de l'autre : une
-     entree sans sortie, ou l'inverse, se lit d'un coup d'oeil. */
+  /* ---- ET PAR QUOI L'ON RESSORT, DE N'IMPORTE QUELLE SALLE ----
+   *
+   * La table du dessus est celle du HALL : les portes de la place. Celle-ci
+   * couvre TOUTES les salles, y compris celles ou l'on entre autrement — la
+   * tour s'ouvre depuis la rue, par une porte que le serveur derive du
+   * batiment, et rien ne l'inscrit dans la table du hall.
+   *
+   * C'est pour ca qu'elles ne se font plus face une a une, et il fallait le
+   * dire ici plutot que de laisser croire a une symetrie qui n'existe plus.
+   * Ce qui reste verifiable — et ce que l'essai verifie — est qu'AUCUNE salle
+   * de la table `SALLES` ne manque a celle-ci : une salle sans sortie est une
+   * salle dont on ne ressort pas.
+   */
   var SORTIES = { coffre: sortCoffre, arcade: sortSalleArcade,
-                  cinema: sortSalleCinema };
+                  cinema: sortSalleCinema, tour: sortSalleTour };
 
   /* ================== LA BORNE D'ARCADE ==================
    *
@@ -3949,9 +3964,19 @@
 
   /** Rentrer au Nexus, d'ou qu'on soit. Rend `true` si on a bouge. */
   function retourNexus(raison) {
-    if (SCENE === 'coffre') { sortCoffre(); return true; }
-    if (SCENE === 'arcade') { sortSalleArcade(); return true; }
-    if (SCENE === 'cinema') { sortSalleCinema(); return true; }
+    /* ---- ON RESSORT D'ABORD DE LA PIECE, ENSUITE DU MONDE ----
+     *
+     * Il y avait ici un `if` par salle. La quatrieme en aurait ajoute un
+     * quatrieme, et celle qu'on aurait oublie d'inscrire n'aurait RIEN fait :
+     * la vie tombe sous le seuil, le repli se declenche, et le joueur reste
+     * dans la piece a regarder sa barre rouge.
+     *
+     * La table des sorties repond pour toutes. Et l'on REDEMANDE apres :
+     * sortir d'une salle du hall depose sur la place et il n'y a plus rien a
+     * faire, sortir de la tour depose dans la RUE — il reste alors une ville
+     * a quitter. La salle sait deja sur quoi elle donne ; cette ligne n'a pas
+     * a le savoir. */
+    if (SORTIES[SCENE]) { SORTIES[SCENE](); retourNexus(raison); return true; }
     if (SCENE === 'monde') { quitteMonde(); return true; }
     /* Depuis le Nexus lui-meme il n'y a nulle part d'ou revenir. Ce n'est
        pas un echec : c'est la seule reponse juste tant que le monde de
@@ -4308,6 +4333,255 @@
   };
   SALLE_CINE.img = new Image(); SALLE_CINE.img.src = SALLE_CINE.src;
 
+  /* ================== SWOGE TOWER : CINQ ETAGES ==================
+   *
+   * ---- UNE SALLE, CINQ PLANCHES, ET NON CINQ SALLES ----
+   *
+   * Les cinq etages ont la meme forme, le meme ascenseur au meme endroit, le
+   * meme escalier au meme endroit : ce qui change est la PLANCHE et le
+   * rectangle ou l'on marche. Cinq entrees dans la table des salles auraient
+   * donne cinq scenes — donc cinq lignes dans le pas, cinq dans le dessin,
+   * cinq dans la mini-carte, cinq dans les sorties. Celle qu'on aurait
+   * oubliee aurait ete la cinquieme, c'est-a-dire le toit : celui qu'on
+   * regarde en dernier.
+   *
+   * C'est donc UNE salle qui change d'etage, et `ETAGES` est la table.
+   * L'ascenseur et l'escalier la LISENT ; ni l'un ni l'autre ne connait un
+   * etage par son nom. Un sixieme etage est une ligne ici et un fichier dans
+   * le dossier des tuiles.
+   */
+  var TOUR_COTE = 1600;
+
+  /* ---- LE RECTANGLE OU L'ON MARCHE, MESURE SUR CHAQUE PLANCHE ----
+   *
+   * Releve a la REGLE GRADUEE : une grille tous les 0.0125 posee sur la
+   * planche agrandie, et l'on lit. Trois mesures automatiques se sont trompees
+   * sur ce projet — profil de couleur, variance verticale, seuil a mi-hauteur
+   * d'un pic — et la seule facon d'y croire est de calibrer la methode sur une
+   * salle DEJA cablee. Passee sur `room_cinema.webp`, la regle rend l'allee du
+   * cinema a cinq millemes pres en largeur et a quinze en hauteur, avec le
+   * meme biais dans le meme sens : le chiffre ecrit est TOUJOURS un peu a
+   * l'interieur du bord visible. On garde donc ce biais ici.
+   *
+   * ---- ET POURQUOI LE HAUT S'ARRETE A .40 ----
+   *
+   * Ce n'est pas le fond de la piece, c'est le PLAN DE LA PORTE DE
+   * L'ASCENSEUR. Au-dessus de cette ligne, la colonne de gauche n'est plus un
+   * sol sur aucune des cinq planches : c'est le caisson de l'ascenseur, et
+   * au-dessus encore les banquettes, les etageres, la regie. Un rectangle qui
+   * monterait plus haut ferait marcher sur ce caisson pour aller chercher un
+   * ascenseur qui est en dessous. Le cinema a tranche la meme question dans le
+   * meme sens : il a renonce a son couloir du fond plutot que d'y coincer le
+   * personnage.
+   */
+  var ETAGES = [
+    { cle: 'tour1', nom: 'NEON 80s', src: 'img/nexus/tiles/room_tour_1.webp',
+      x0: 0.075, x1: 0.790, y0: 0.400, y1: 0.915 },
+    { cle: 'tour2', nom: 'TRANCE', src: 'img/nexus/tiles/room_tour_2.webp',
+      x0: 0.070, x1: 0.770, y0: 0.400, y1: 0.915 },
+    { cle: 'tour3', nom: 'REGGAE', src: 'img/nexus/tiles/room_tour_3.webp',
+      x0: 0.075, x1: 0.770, y0: 0.400, y1: 0.915 },
+    { cle: 'tour4', nom: 'HARDCORE', src: 'img/nexus/tiles/room_tour_4.webp',
+      x0: 0.075, x1: 0.820, y0: 0.400, y1: 0.920 },
+    { cle: 'toit', nom: 'ROOFTOP', src: 'img/nexus/tiles/room_tour_toit.webp',
+      x0: 0.085, x1: 0.740, y0: 0.385, y1: 0.920 },
+  ];
+
+  /* ---- L'ASCENSEUR ET L'ESCALIER, MESURES EUX AUSSI ----
+   *
+   * UNE SEULE POSITION POUR LES CINQ ETAGES, et c'est une mesure et non une
+   * commodite : la barre lumineuse au-dessus des portes de l'ascenseur tombe a
+   * y = .383 / .384 / .391 / .384 sur les etages 1 a 4, et .370 sur le toit.
+   * Les quatre premiers tiennent dans huit millemes ; le toit derive de
+   * quinze, soit vingt-quatre unites une fois etale sur mille six cents —
+   * moins du tiers du rayon du point. Cinq positions auraient ete cinq
+   * chiffres a corriger le jour ou une planche est redessinee, et quatre de
+   * corriges.
+   *
+   * Le POINT est le centre de la boite mesuree ; son RAYON est le plus petit
+   * demi-cote de cette meme boite — le plus grand disque qui tienne dans ce
+   * qu'on a vu. Une seule regle pour les deux points : un rayon choisi a
+   * l'oeil pour chacun aurait fait deux nombres que plus rien ne rattache au
+   * dessin, et c'est exactement le genre de nombre qu'on n'ose plus toucher.
+   */
+  var BOITE_ASCENSEUR = { x0: 0.030, x1: 0.155, y0: 0.392, y1: 0.505 };
+  var BOITE_ESCALIER = { x0: 0.060, x1: 0.200, y0: 0.760, y1: 0.920 };
+  function pointMesure(b) {
+    return { x: TOUR_COTE * (b.x0 + b.x1) / 2,
+             y: TOUR_COTE * (b.y0 + b.y1) / 2,
+             r: TOUR_COTE * Math.min(b.x1 - b.x0, b.y1 - b.y0) / 2 };
+  }
+  var ASCENSEUR = pointMesure(BOITE_ASCENSEUR);
+  var ESCALIER = pointMesure(BOITE_ESCALIER);
+
+  /* Les planches, chargees A LA DEMANDE : celui qui monte au deuxieme n'a pas
+     a telecharger le toit, et celui qui n'entre jamais dans la tour ne
+     telecharge rien du tout. Cinq planches font plus d'un demi-megaoctet, et
+     c'est ce que paye tout le monde a l'ouverture de la page si on les demande
+     au montage. */
+  var IMG_ETAGE = {};
+  function plancheEtage(e) {
+    if (!IMG_ETAGE[e.cle]) {
+      var i = new Image();
+      i.src = e.src;
+      IMG_ETAGE[e.cle] = i;
+    }
+    return IMG_ETAGE[e.cle];
+  }
+
+  var SALLE_TOUR = {
+    img: null, w: TOUR_COTE, h: TOUR_COTE,
+    /* Le nom suit l'etage : c'est ce que la mini-carte ecrit, et « SWOGE
+       TOWER » sur les cinq n'aurait pas repondu a la seule question qu'on se
+       pose depuis l'interieur — a quel etage suis-je ? */
+    nom: '',
+    /* ---- CETTE SALLE S'OUVRE SUR LA RUE, ET RIEN ICI NE LE DIT ----
+     * On aurait pu poser un champ « depuis : monde ». Ce serait une deuxieme
+     * verite : la scene d'ou l'on vient est DEJA retenue a l'entree, dans
+     * `RETOUR`, et c'est elle que la sortie relit. Un champ ecrit ici et une
+     * scene retenue la-bas finiraient par ne plus dire la meme chose le jour
+     * ou une salle s'ouvrira depuis deux endroits — et c'est le champ ecrit
+     * qui aurait tort, sans que rien ne le signale.
+     *
+     * PAS DE PORTAIL non plus. On ne sort pas de la tour par un trou peint au sol : on
+       en sort par l'escalier du rez-de-chaussee ou par le bouton « rue » de
+       l'ascenseur. Un portail de plus au milieu de la piste aurait promis une
+       sortie que le dessin ne montre nulle part. */
+    bornes: [
+      { x: ASCENSEUR.x, y: ASCENSEUR.y, r: ASCENSEUR.r, nom: 'ELEVATOR',
+        jeu: 'ascenseur', pret: 'pick a floor' },
+      { x: ESCALIER.x, y: ESCALIER.y, r: ESCALIER.r, nom: 'STAIRS',
+        jeu: 'escalier', pret: 'one flight down' },
+    ],
+    /* Remplis par `poseEtage` des la premiere entree. Ecrits ici quand meme :
+       un champ qui apparait en cours de route est un champ que la moitie du
+       code teste avec `undefined`. */
+    x0: 0, x1: TOUR_COTE, y0: 0, y1: TOUR_COTE,
+  };
+  /* L'etage courant, par son INDICE dans la table et jamais par sa cle :
+     monter d'un cran est alors « +1 » et non une recherche dans une liste, et
+     l'ascenseur comme l'escalier posent la meme question a la meme table. */
+  var ETAGE = 0;
+
+  function poseEtage(i) {
+    var e = ETAGES[i];
+    if (!e) return;
+    ETAGE = i;
+    SALLE_TOUR.nom = e.nom;
+    SALLE_TOUR.img = plancheEtage(e);
+    /* Les fractions deviennent des unites ICI, et une seule fois : les avoir
+       gardees en fractions dans la salle aurait demande a chaque lecteur —
+       les bornes, le cadrage, le milieu de la piece — de les multiplier
+       lui-meme, et celui qui aurait oublie aurait cadre sur un carre d'une
+       unite et demie. */
+    SALLE_TOUR.x0 = TOUR_COTE * e.x0; SALLE_TOUR.x1 = TOUR_COTE * e.x1;
+    SALLE_TOUR.y0 = TOUR_COTE * e.y0; SALLE_TOUR.y1 = TOUR_COTE * e.y1;
+  }
+
+  /* ---- CHANGER D'ETAGE ----
+   *
+   * `ou` est le point par lequel on DEBOUCHE : par l'escalier on arrive dans
+   * la cage d'escalier, par l'ascenseur devant ses portes. Deboucher toujours
+   * au meme endroit aurait fait sortir de l'ascenseur en bas des marches.
+   *
+   * En dessous du premier etage il n'y a pas d'etage : il y a la RUE. La
+   * sortie est donc un cran de plus dans la meme table et pas un cas a part —
+   * c'est ce qui fait que le bouton « street » de l'ascenseur et l'escalier du
+   * rez-de-chaussee font exactement la meme chose, sans que ce soit ecrit
+   * deux fois.
+   */
+  function vaAlEtage(i, ou) {
+    if (i < 0) { sortSalleTour(); return; }
+    if (i >= ETAGES.length) return;
+    poseEtage(i);
+    joueur.x = ou.x; joueur.y = ou.y;
+    joueur.dir = 'down';
+    /* Le bandeau garde son dernier texte tant que ce qu'on survole ne change
+       pas : sans cet oubli, on change d'etage et le nom de l'ancien reste
+       affiche. */
+    indiceActuel = null;
+  }
+
+  /* ---- LE PANNEAU DE L'ASCENSEUR ----
+   *
+   * Les boutons sont ENGENDRES par la table. Cinq boutons ecrits a la main
+   * auraient ete cinq occasions d'en oublier un, et l'etage oublie n'aurait
+   * simplement pas existe — sans qu'aucune erreur ne le dise.
+   */
+  var elTourVoile = document.getElementById('nxTourVoile');
+  var elTourCorps = document.getElementById('nxTourCorps');
+  var tourOuvert = false;
+
+  function peintAscenseur() {
+    if (!elTourCorps) return;
+    elTourCorps.innerHTML = ETAGES.map(function (e, i) {
+      return '<button type="button" class="nxtr-b' + (i === ETAGE ? ' ici' : '') +
+             '" data-etage="' + i + '">' + ech(e.nom) + '</button>';
+    }).join('') +
+      /* La rue est un ARRET de l'ascenseur, au meme titre que les etages, et
+         pas une croix dans un coin : c'est le seul moyen de sortir quand on
+         est monte au toit, et le mettre ailleurs que dans la liste des arrets
+         l'aurait rendu introuvable. */
+      '<button type="button" class="nxtr-b rue" data-etage="-1">Back to the street</button>';
+    Array.prototype.forEach.call(elTourCorps.querySelectorAll('[data-etage]'), function (b) {
+      b.addEventListener('click', function () {
+        var i = Number(b.getAttribute('data-etage'));
+        fermeAscenseur();
+        vaAlEtage(i, ASCENSEUR);
+      });
+    });
+  }
+  function ouvreAscenseur() {
+    if (!elTourVoile || tourOuvert) return;
+    tourOuvert = true;
+    peintAscenseur();
+    elTourVoile.classList.add('on');
+  }
+  function fermeAscenseur() {
+    tourOuvert = false;
+    if (elTourVoile) elTourVoile.classList.remove('on');
+  }
+  if (elTourVoile) {
+    elTourVoile.addEventListener('click', function (e) {
+      var c = e.target.classList;
+      if (e.target === elTourVoile || (c && c.contains('nxcf-x'))) fermeAscenseur();
+    });
+  }
+
+  /* ---- ENTRER DANS LA TOUR, ET EN SORTIR ----
+   * On entre toujours par le BAS : c'est la rue qui pousse la porte, et la rue
+   * est au pied du batiment. `poseEtage` avant `entreSalle`, jamais apres :
+   * l'entonnoir pose le joueur au milieu du rectangle de la salle, et ce
+   * rectangle est celui de l'etage — le lire avant de l'avoir pose aurait
+   * depose le joueur au milieu d'un carre de zero unite. */
+  function entreSalleTour(porte) {
+    poseEtage(0);
+    entreSalle('tour', porte);
+  }
+  function sortSalleTour() {
+    fermeAscenseur();
+    sortSalle('tour');
+  }
+
+  /* ---- UN PAS DANS LA TOUR ----
+   * Deux points, et ils ne disent pas la meme chose : `pasSalle` lit donc la
+   * phrase SUR LA BORNE quand elle en porte une. Sans quoi l'escalier aurait
+   * annonce « pick a floor ».
+   * Le verrou est pose A L'ALLER et non a la fermeture d'un panneau : on reste
+   * sur la borne apres l'avoir jouee, donc « dessus et pas encore joue »
+   * redeviendrait vrai a l'image suivante — et l'escalier aurait descendu les
+   * cinq etages en cinq images. */
+  function pasSalleTour(dt) {
+    pasSalle(SALLE_TOUR, false, dt,
+             function (b) {
+               borneFermee = b;
+               if (b.jeu === 'ascenseur') ouvreAscenseur();
+               else vaAlEtage(ETAGE - 1, ESCALIER);
+             },
+             { pret: 'step in', bientot: 'nothing here yet',
+               rien: 'The lift and the stairs are on your left' });
+  }
+
   /* ---- LES SALLES OU L'ON ENTRE, PAR LEUR SCENE ----
    *
    * Six endroits du fichier testaient `SCENE === 'coffre'` : le cadrage, le
@@ -4317,7 +4591,7 @@
    * montre le monde — sans une erreur nulle part.
    *
    * C'est la table qui repond maintenant. Une troisieme piece est une ligne. */
-  var SALLES = { coffre: SALLE, arcade: SALLE_ARC, cinema: SALLE_CINE };
+  var SALLES = { coffre: SALLE, arcade: SALLE_ARC, cinema: SALLE_CINE, tour: SALLE_TOUR };
   /* Le fond d'attente est charge PAR LA TABLE, pas par la salle qui le
      declare : une deuxieme salle a ecran aurait sinon oublie sa propre ligne
      de chargement, et son fond serait reste une adresse que personne ne
@@ -4330,10 +4604,22 @@
   });
   function salleCourante() { return SALLES[SCENE] || null; }
 
-  /* Ou l'on se tenait dans le Nexus avant d'entrer : on ressort exactement
-     la, sinon on reapparait au centre de la carte sans savoir pourquoi. */
+  /* ---- OU L'ON SE TENAIT AVANT D'ENTRER, ET DANS QUELLE SCENE ----
+   *
+   * On ressort exactement la, sinon on reapparait au centre de la carte sans
+   * savoir pourquoi.
+   *
+   * La SCENE en fait partie depuis que la tour s'ouvre sur la RUE et non sur
+   * la place. Ecrire « on rentre au Nexus » dans la sortie aurait abandonne la
+   * ville en silence : le joueur serait ressorti d'un batiment pour se
+   * retrouver sur la place, avec une simulation de ville qui le croit encore
+   * dedans. La scene d'ou l'on vient est la seule chose qui reponde
+   * correctement aux deux cas, et elle se LIT au lieu de s'ecrire.
+   *
+   * `r` est le rayon de la porte franchie quand il y en a une : on ressort a
+   * cote d'elle et jamais dessus, sinon on rentre a l'image suivante. */
   var SCENE = 'nexus';
-  var RETOUR = null;
+  var RETOUR = null;        // { scene, x, y, r }
   var COFFRE = null;        // les quatre listes du message `equipable`
   var FIOLES_C = [];        // les fioles de stat : ce qu'on a au coffre et au sac
   var coffreOuvert = false;   // le menu du coffre, au centre de l'ecran
@@ -4393,6 +4679,19 @@
      desaccord se verrait tout de suite, on marcherait dans un rocher ou l'on
      serait arrete par du vide. */
   var OBSTACLES_C = [];
+  /* ---- LES PORTES DES BATIMENTS ----
+   * Elles arrivent avec le plan, comme les blocs, et pour la meme raison : la
+   * page n'a ni le semis de la ville ni la table des facades, elle ne peut
+   * donc pas les redeviner — et si elle essayait, le desaccord serait muet :
+   * un batiment qu'on pousse et qui ne s'ouvre pas.
+   *
+   * Une liste A PART des portails, et ce n'est pas de la coquetterie. Un
+   * portail EMMENE dans une autre simulation et le serveur en garde la clef ;
+   * une porte ouvre une piece que la page dessine, sans que la simulation
+   * change. Les avoir melanges aurait demande, a chaque ligne qui touche aux
+   * portails — le compte a rebours, le bouton ENTER, la verification a
+   * l'entree, le halo — de se souvenir d'ecarter celles-ci. */
+  var PORTES_M = [];
   /* Les salles gardees. Leur dalle remplace le sol de l'anneau : c'est ce qui
      les rend visibles de loin, et donc ce qui en fait une destination. */
   var SALLES_C = [];
@@ -6383,7 +6682,16 @@
        * seconde de marche. */
       var d2Abs = (m.moi.x - joueur.x) * (m.moi.x - joueur.x)
                 + (m.moi.y - joueur.y) * (m.moi.y - joueur.y);
-      if (d2Abs > 700 * 700) {
+      /* ---- ON NE SE RECALE QUE LA OU L'ON MARCHE ----
+       * Le serveur continue d'annoncer notre position DANS LA RUE pendant
+       * qu'on est monte dans la tour : notre personnage n'a pas quitte la
+       * simulation, il a juste cesse de bouger. Or les coordonnees d'une salle
+       * et celles d'une ville sont les memes nombres — sans ce garde, chaque
+       * instantane tirait le personnage vers un coin de la piece, ou l'y
+       * teleportait carrement par la branche des sept cents unites. Le defaut
+       * aurait ete muet, et on l'aurait cherche dans le dessin. */
+      if (SCENE !== 'monde') { RECALE = null; ENVOIS.length = 0; }
+      else if (d2Abs > 700 * 700) {
         /* Ce n'est plus une derive, c'est un autre endroit : une mort, une
            entree, un refus net. Sauter est la bonne reponse, et l'historique
            des annonces ne vaut plus rien. */
@@ -6459,6 +6767,11 @@
        et aucun n'etait dessine. */
     OBSTACLES_C = m.obstacles || [];
     SALLES_C = m.salles || [];
+    /* Les portes des batiments, posees au meme endroit que les blocs et pour
+       la meme raison : elles ne bougent pas, et la page ne peut pas les
+       redeviner. Une carte sans batiment n'en annonce aucune — la liste vide
+       est alors la bonne reponse, et pas un manque. */
+    PORTES_M = m.portes || [];
     /* ---- OU L'ON EST ----
      * Un seul champ separe un donjon du monde ouvert : son nom. Tout le reste —
      * le sol, les murs, le bouton pour sortir — se deduit de lui.
@@ -6559,7 +6872,7 @@
     MONSTRES_C = {}; TIRS_C = []; TIRS_M = []; DEVINES = []; DISTANTS_M = {}; TOMBES_C = []; SACS_C = [];
     ZONES_C = []; ONDES = [];
     RECALE = null; ENVOIS.length = 0; CADENCE_M = 0;
-    OBSTACLES_C = []; SALLES_C = [];
+    OBSTACLES_C = []; SALLES_C = []; PORTES_M = [];
     SAC_PIEDS = null; SAC_SIGNE = ''; peintButin();
     /* On revient AU PIED DU PORTAIL, pas au centre : c'est par la qu'on est
        parti, et reapparaitre ailleurs donne l'impression d'avoir ete
@@ -7933,7 +8246,7 @@
   function entreCoffre() {
     // si le coffre n'est pas encore arrive, on le redemande en entrant
     if (!COFFRE && enLigne) envoie({ type: 'equipable' });
-    RETOUR = { x: joueur.x, y: joueur.y };
+    RETOUR = { scene: SCENE, x: joueur.x, y: joueur.y, r: 0 };
     SCENE = 'coffre';
     /* On arrive au MILIEU de la piece, pas sur la sortie. La version
        precedente posait le joueur a quarante unites du seuil, dont le rayon
@@ -7952,7 +8265,11 @@
   }
 
   function sortCoffre() {
-    SCENE = 'nexus';
+    /* La scene d'ou l'on venait, et pas « nexus » ecrit ici : le coffre ne
+       s'ouvre aujourd'hui que depuis la place, mais deux sorties qui repondent
+       differemment a la meme question sont deux occasions d'en corriger une
+       seule. */
+    SCENE = (RETOUR && RETOUR.scene) || 'nexus';
     fermeCoffreMenu();
     joueSample('vault', { vol: 0.85 });
     /* Le bandeau garde son dernier texte tant que le lieu proche ne CHANGE
@@ -8005,10 +8322,19 @@
    * On arrive au milieu de la BOITE — et si la piece a une forme, on
    * redescend vers le premier point qui en fait partie : le milieu de la
    * boite du cinema tombe dans les fauteuils. */
-  function entreSalle(cle) {
+  function entreSalle(cle, porte) {
     var S = SALLES[cle];
     if (!S) return;
-    RETOUR = { x: joueur.x, y: joueur.y };
+    /* ---- LA PORTE PAR LAQUELLE ON ENTRE ----
+     * Quand il y en a une — celles de la ville sont des points du plan, pas
+     * des lieux de la place — c'est devant ELLE qu'on ressortira, et son rayon
+     * dit de combien il faut s'en ecarter. Sans porte nommee, on retient
+     * l'endroit ou l'on se tenait et `sortSalle` retrouve la porte dans les
+     * LIEUX du hall, comme avant. */
+    RETOUR = { scene: SCENE,
+               x: porte ? porte.x : joueur.x,
+               y: porte ? porte.y : joueur.y,
+               r: porte ? porte.r : 0 };
     SCENE = cle;
     joueur.x = (S.x0 + S.x1) / 2;
     joueur.y = (S.y0 + S.y1) / 2;
@@ -8017,17 +8343,36 @@
     S.portailArme = false;
     borneFermee = null;
     indiceActuel = null;
+    peintPorte();
+    peintBalises();
+    peintBoutonTir();
   }
   function sortSalle(cle) {
-    SCENE = 'nexus';
+    SCENE = (RETOUR && RETOUR.scene) || 'nexus';
     indiceActuel = null;
     if (indiceEl) { indiceEl.classList.remove('on'); indiceEl.innerHTML = ''; }
-    if (RETOUR) { joueur.x = RETOUR.x; joueur.y = RETOUR.y; }
+    /* HORS du rayon de la porte, sinon on rentre a l'image suivante. Le recul
+       vient du rayon RETENU a l'aller : les portes de la ville n'ont pas de
+       lieu dans les LIEUX du hall, et chercher le leur ici aurait rendu
+       n'importe laquelle des trois tours plutot que celle qu'on a poussee. */
+    if (RETOUR) { joueur.x = RETOUR.x; joueur.y = RETOUR.y + RETOUR.r + 50; }
     joueur.dir = 'down';
-    /* HORS du rayon de la porte, sinon on rentre a l'image suivante. */
     var d = LIEUX.filter(function (l) { return l.cle === cle; })[0];
     if (d) { joueur.x = d.x; joueur.y = d.y + d.rayon + 50; }
     LIEUX.forEach(function (l) { l.dwell = 0; });
+    /* ---- LES COMMANDES QUI NE VALENT QUE DANS LA RUE ----
+     * Le bouton de porte, la liste des balises, le bouton de tir et celui de
+     * la maison ne se repeignent qu'aux CHANGEMENTS DE SCENE — et entrer dans
+     * un batiment en est un. Rien d'autre ne change : on est simplement
+     * ailleurs. Le bouton « ENTER » restait donc a l'ecran par-dessus la
+     * piece, cliquable, et au doigt le bouton de tir restait pose sur la piste
+     * de danse ou il est inerte — c'est-a-dire ou il se lit comme une panne.
+     * Tous savent deja se taire hors du monde ; il suffisait de le leur
+     * demander, et de le leur demander ICI, dans l'entonnoir que TOUTE salle
+     * traverse. */
+    peintPorte();
+    peintBalises();
+    peintBoutonTir();
   }
   function entreSalleCinema() { entreSalle('cinema'); }
   function sortSalleCinema() { sortSalle('cinema'); }
@@ -8081,7 +8426,13 @@
       if (indiceEl) {
         indiceEl.innerHTML = surPortail
           ? 'Step out to the <b>Nexus</b>'
-          : sous ? '<b>' + sous.nom + '</b> &middot; ' + (sous.jeu ? phrases.pret : phrases.bientot)
+          /* La phrase de la borne l'emporte sur celle de la salle quand elle en
+             porte une : deux points de la MEME piece ne font pas forcement la
+             meme chose — l'ascenseur ouvre un panneau, l'escalier descend d'un
+             etage — et une seule phrase pour les deux en aurait fait mentir
+             une. Les salles a un seul point ne changent pas d'un mot. */
+          : sous ? '<b>' + sous.nom + '</b> &middot; '
+                   + (sous.jeu ? (sous.pret || phrases.pret) : phrases.bientot)
           : phrases.rien;
         indiceEl.classList.add('on');
       }
@@ -10354,6 +10705,40 @@
     return pres;
   }
 
+  /* ---- LA PORTE D'UN BATIMENT SOUS NOS PIEDS ----
+   *
+   * On entre apres un COURT SEJOUR et non au premier contact, exactement comme
+   * les portes de la place : traverser la rue devant une vitrine ne doit pas y
+   * faire entrer. Le sejour est porte par la PORTE elle-meme — un compteur
+   * unique aurait fait passer d'une porte a l'autre en gardant le temps de la
+   * premiere, et l'on serait entre dans la deuxieme sans s'y etre arrete.
+   *
+   * Rien n'est demande au serveur : la piece est dessinee ici, la simulation
+   * ne change pas, et notre personnage reste ou il est dans la rue. C'est ce
+   * qui separe cette porte d'un portail, et c'est pour ca qu'il n'y a rien a
+   * valider — il n'y a rien a meriter.
+   */
+  function regardeLesPortes(dt) {
+    for (var i = 0; i < PORTES_M.length; i++) {
+      var q = PORTES_M[i];
+      var dx = joueur.x - q.x, dy = joueur.y - q.y;
+      if (dx * dx + dy * dy > q.r * q.r) { q.sejour = 0; continue; }
+      q.sejour = (q.sejour || 0) + dt;
+      if (q.sejour < 0.45) continue;
+      q.sejour = 0;
+      /* C'est la PORTE qui nomme sa salle, et le serveur la derive du
+         batiment : la page ne tient aucune table de cles en face de la sienne.
+         Une salle que la page ne connait pas encore — les deux depots ne se
+         deploient pas a la meme seconde — ne fait RIEN : mieux vaut une porte
+         muette qu'une scene vide dont on ne saurait plus sortir. */
+      if (!SALLES[q.salle]) continue;
+      if (q.salle === 'tour') entreSalleTour(q);
+      else entreSalle(q.salle, q);
+      return true;
+    }
+    return false;
+  }
+
   function regardePortails() {
     var p = portailSousLesPieds();
     /* La signature porte le SENS de la porte autant que son identite : une porte
@@ -10471,9 +10856,17 @@
       var deX = joueur.x, deY = joueur.y;
       joueur.x += (dx / n) * vit * dt;
       joueur.y += (dy / n) * vit * dt;
-      /* Les blocs n'existent que dans le monde de combat : le Nexus a ses
-         propres murs, et sa liste est vide. */
-      if (OBSTACLES_C.length) {
+      /* ---- LES BLOCS NE VALENT QUE DANS LE MONDE ----
+       * Le commentaire disait deja « les blocs n'existent que dans le monde de
+       * combat », et la ligne, elle, se contentait de regarder si la liste
+       * etait vide. Ca tenait tant que la seule autre scene etait le hall, qui
+       * vide la liste en la quittant. Ce n'est plus vrai : on entre dans la
+       * tour DEPUIS la ville, la liste des blocs est donc encore pleine, et
+       * les coordonnees d'une salle sont les memes nombres que celles d'une
+       * rue. Le personnage se serait cogne, au milieu de la piste de danse,
+       * contre un mur de pate de maisons invisible. On dit donc ce que le
+       * commentaire disait deja. */
+      if (SCENE === 'monde' && OBSTACLES_C.length) {
         var p = glisse(deX, deY, joueur.x, joueur.y);
         joueur.x = p.x; joueur.y = p.y;
       }
@@ -10586,6 +10979,12 @@
         ENVOIS.unshift({ x: ax, y: ay });
         if (ENVOIS.length > 24) ENVOIS.pop();
       }
+      /* Entrer dans un batiment CHANGE de scene. Tout ce qui suit — le sac
+         sous les pieds, la porte de donjon, l'animation, l'envoi de notre
+         position — parle du monde qu'on vient de quitter, et le faire quand
+         meme aurait pose notre avatar quelque part dans la piece. On sort du
+         tour. */
+      if (regardeLesPortes(dt)) return;
       regardeSacs();
       regardePortails();
       if (!saut.en_cours) avanceCadre(joueur, PERSO, dt);
@@ -10604,25 +11003,36 @@
        * — appartient a la piece. */
       joueur.x = Math.min(Math.max(joueur.x, SC.x0), SC.x1);
       joueur.y = Math.min(Math.max(joueur.y, SC.y0), SC.y1);
-      /* Le portail ne mord qu'apres qu'on s'en soit ecarte une fois : sans
-         ce verrou, apparaitre a portee suffirait a ressortir. */
-      var px = joueur.x - SC.portail.x, py = joueur.y - SC.portail.y;
-      var surPortail = px * px + py * py < SC.portail.r * SC.portail.r;
-      if (!surPortail) SC.portailArme = true;
-      else if (SC.portailArme) {
-        /* ---- ON SORT PAR LA MEME PORTE QU'ON ENTRE ----
-         * J'avais mis `sortSalle(SCENE)` en generique. C'est faux pour
-         * l'arcade : sa sortie fait DEUX choses de plus — fermer le panneau du
-         * jeu et arreter la musique — et le generique les sautait. L'essai l'a
-         * vu tout de suite : la musique continuait par-dessus le Nexus.
-         * Une table de sorties, en face de la table d'entrees : elles vont par
-         * paires, et une paire depareillee se voit. */
-        (SORTIES[SCENE] || sortCoffre)();
-        return;
+      /* ---- UNE SALLE N'A PAS FORCEMENT DE PORTAIL ----
+       * Les trois premieres sortent par un trou peint au sol. La tour, elle,
+       * sort par son escalier : lui poser un portail au milieu de la piste
+       * aurait promis une sortie que le dessin ne montre nulle part. Sans ce
+       * garde, la premiere image passee dans la tour lisait `SC.portail.x` sur
+       * rien du tout — et une exception dans la boucle de dessin fige TOUT le
+       * jeu, pas seulement la piece. */
+      var surPortail = false;
+      if (SC.portail) {
+        /* Le portail ne mord qu'apres qu'on s'en soit ecarte une fois : sans
+           ce verrou, apparaitre a portee suffirait a ressortir. */
+        var px = joueur.x - SC.portail.x, py = joueur.y - SC.portail.y;
+        surPortail = px * px + py * py < SC.portail.r * SC.portail.r;
+        if (!surPortail) SC.portailArme = true;
+        else if (SC.portailArme) {
+          /* ---- ON SORT PAR LA MEME PORTE QU'ON ENTRE ----
+           * J'avais mis `sortSalle(SCENE)` en generique. C'est faux pour
+           * l'arcade : sa sortie fait DEUX choses de plus — fermer le panneau
+           * du jeu et arreter la musique — et le generique les sautait.
+           * L'essai l'a vu tout de suite : la musique continuait par-dessus le
+           * Nexus. La table des sorties repond pour toutes les salles, celles
+           * du hall comme celle de la ville. */
+          (SORTIES[SCENE] || sortCoffre)();
+          return;
+        }
       }
 
       if (SCENE === 'arcade') { pasSalleArcade(surPortail, dt); return; }
       if (SCENE === 'cinema') { pasSalleCinema(surPortail, dt); return; }
+      if (SCENE === 'tour') { pasSalleTour(dt); return; }
 
       /* Les coffres : on marche dessus, le menu s'ouvre. On ne le REFERME pas
          en s'en allant — on vient peut-etre d'y changer une piece, le fermer
@@ -11277,7 +11687,15 @@
      * ses coffres ont chacun leur couleur, ce qui est une vraie difference. */
     var SD = (SCENE !== 'coffre') && salleCourante();
     if (SD && SD.bornes) {
-      if (SD.img.complete) ctx.drawImage(SD.img, 0, 0, SD.w, SD.h);
+      /* `naturalWidth` et pas seulement `complete` : une image qui a ECHOUE
+         est « complete » elle aussi, et `drawImage` leve alors une exception
+         qui arrete la boucle de dessin — tout le jeu se fige pour une planche
+         manquante. La meme precaution que les facades de la ville, prise ici
+         parce que la tour charge ses cinq planches A LA DEMANDE : la premiere
+         image d'un etage arrive toujours avant sa planche. */
+      if (SD.img && SD.img.complete && SD.img.naturalWidth) {
+        ctx.drawImage(SD.img, 0, 0, SD.w, SD.h);
+      }
       /* ---- CE QUI EST PROJETE ----
        * Deux choses, et une seule a la fois : l'affiche de la seance ouverte
        * dans le panneau, ou — quand aucune n'est choisie — le FOND D'ATTENTE
@@ -11328,7 +11746,12 @@
       SD.bornes.forEach(function (b) {
         halo(b.x, b.y, b.r, b.jeu ? '#FF3EA5' : '#5B6070', b.jeu ? 0.22 : 0.10);
       });
-      var pileA = [{ y: SD.portail.y, dessine: function () { dessinePortail(SD.portail); } }];
+      /* Le portail n'est dessine que par les salles qui en ont un : voir le
+         pas, plus haut, meme raison et meme garde. */
+      var pileA = [];
+      if (SD.portail) {
+        pileA.push({ y: SD.portail.y, dessine: function () { dessinePortail(SD.portail); } });
+      }
       pileA.push({ y: joueur.y, dessine: function () {
         var cadreA = joueur.anim === 'jump' ? saut.cadre : joueur.cadre;
         dessineAvatar(joueur.x, joueur.y, PERSO, joueur.dir, joueur.anim, cadreA);
@@ -12129,7 +12552,7 @@
       var gc = mini && mini.getContext ? mini.getContext('2d') : null;
       if (!gc) return;
       var TEINTE = { coffre: ['#1b1710', '#C8A24A'], arcade: ['#170f22', '#FF3EA5'],
-                     cinema: ['#1a0c0e', '#E0453C'] };
+                     cinema: ['#1a0c0e', '#E0453C'], tour: ['#120a1e', '#B36BFF'] };
       var tm = TEINTE[SCENE] || ['#12141c', '#8DA0C4'];
       gc.clearRect(0, 0, MINI, MINI);
       gc.fillStyle = tm[0]; gc.fillRect(0, 0, MINI, MINI);

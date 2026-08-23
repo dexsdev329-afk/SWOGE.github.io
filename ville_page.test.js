@@ -176,6 +176,7 @@ process.on('unhandledRejection', (e) => {
     const m = window.__s[0].__m.filter((x) => x.type === 'realmEntre').pop();
     if (!m) return null;
     return { carte: m.carte, donjon: m.donjon, sortie: m.sortie || null,
+             portes: m.portes || [],
              tuiles: (m.tuiles || []).length, sol: (m.anneaux || [])[0],
              monstres: 0, moi: m.moi,
              blocs: (m.obstacles || []).length,
@@ -220,6 +221,24 @@ process.on('unhandledRejection', (e) => {
   /* On se place devant chaque facade a tour de role : la page ne dessine que
      ce qui est a portee, et un essai qui reste a l'arrivee ne verrait qu'une
      partie de la ville. */
+  /* ---- ON SE POSE DANS LA RUE, MAIS PAS SUR LA PORTE ----
+   *
+   * Cent quatre-vingt-dix unites au sud du bloc, c'etait la rue — et c'est
+   * devenu, depuis que les batiments ouvrent, soixante-deux unites du POINT DE
+   * PORTE que le plan pose devant eux. L'essai entrait donc dans la tour au
+   * lieu de la regarder, et les facades suivantes n'etaient plus peintes du
+   * tout : six lignes rouges pour une seule cause, et pas celle qu'elles
+   * annoncaient.
+   *
+   * On recule d'autant que la porte est large, et le chiffre se DERIVE du
+   * rayon que le serveur annonce plutot que de se choisir : le jour ou une
+   * porte s'elargit, ce recul suit tout seul. La rue fait trois tuiles, il y a
+   * la place. */
+  const PORTE_R = Math.max(0, ...(entre.portes || []).map((q) => q.r || 0));
+  const RECUL = 190 + PORTE_R;
+  ok(RECUL > PORTE_R * 2,
+     `on regarde les facades depuis ${RECUL} unites au sud, hors des portes (rayon ${PORTE_R})`);
+
   const tailles = {};
   const bilans = [];
   for (const f of entre.facades) {
@@ -235,7 +254,7 @@ process.on('unhandledRejection', (e) => {
     /* On pose le joueur dans la rue, un pas au sud du bloc. */
     await p.evaluate(() => { window.__peint.length = 0; });
     const j = ville0.joueurs.get(addr);
-    if (j) { j.x = f.x; j.y = f.y + 190; }
+    if (j) { j.x = f.x; j.y = f.y + RECUL; }
     await p.waitForTimeout(700);
     const releve = await p.evaluate((c) => {
       var vus = [], derriere = 0;
@@ -307,7 +326,7 @@ process.on('unhandledRejection', (e) => {
   if (animee) {
     await p.evaluate(() => { window.__peint.length = 0; });
     const j2 = ville0.joueurs.get(addr);
-    if (j2) { j2.x = animee.x; j2.y = animee.y + 190; }
+    if (j2) { j2.x = animee.x; j2.y = animee.y + RECUL; }
     await p.waitForTimeout(1600);
     const cases = await p.evaluate((cible) => {
       const s = new Set();

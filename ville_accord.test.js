@@ -144,4 +144,98 @@ for (const champ of ['o.bat', 'o.larg', 'o.cadres']) {
 ok(/if \(o\.bat\) return dessineFacade\(o\);/.test(src),
    'et un bloc qui NOMME sa planche passe par le dessin des facades');
 
+/* ================== LES PORTES : UNE CLE, DEUX DEPOTS ==================
+ *
+ * Le serveur derive une porte du batiment et la NOMME : « cette facade ouvre
+ * sur `tour` ». La page recoit ce nom et va chercher la piece dans sa propre
+ * table de salles. Les deux moities sont coherentes chacune de son cote —
+ * l'essai du serveur relit la table des facades DANS le serveur, celui de la
+ * page relit sa table de salles DANS la page — et elles peuvent parfaitement
+ * parler de deux choses differentes. Le desaccord ne vit dans aucun des deux
+ * depots : il vit ENTRE eux.
+ *
+ * Et il serait MUET. La page ignore poliment une salle qu'elle ne connait pas
+ * — c'est voulu, les deux depots ne se deploient pas a la meme seconde. Une
+ * cle renommee d'un seul cote ne planterait donc nulle part : on pousserait la
+ * porte de la tour, et il ne se passerait rien.
+ */
+console.log('\n-- la cle des portes est la meme des deux cotes --');
+const portes = plan.portes || [];
+ok(portes.length > 0, `${portes.length} portes derivees par le serveur`);
+const clesServeur = [...new Set(portes.map((p) => p.salle))].sort();
+ok(clesServeur.length > 0, `elles nomment : ${clesServeur.join(', ')}`);
+
+/* La table des salles, RELUE dans la page. La recopier ici aurait fait de cet
+   essai une troisieme moitie coherente avec elle-meme. */
+function sallesDeLaPage() {
+  const l = /var SALLES = \{([^}]*)\};/.exec(src);
+  if (!l) return null;
+  return [...l[1].matchAll(/(\w+)\s*:/g)].map((m) => m[1]);
+}
+const clesPage = sallesDeLaPage();
+ok(!!clesPage,
+   clesPage ? `nexus.js declare ${clesPage.length} salles : ${clesPage.join(', ')}`
+            : 'la table des salles est introuvable dans nexus.js — cet essai ne verifie RIEN');
+for (const c of clesServeur) {
+  ok(clesPage.indexOf(c) >= 0,
+     `la salle « ${c} » que le serveur nomme existe dans la page`);
+}
+/* LE TEMOIN. Sans lui, « toutes les cles sont connues » serait vrai aussi
+   d'une relecture qui rendrait toutes les cles imaginables. */
+ok(clesPage.indexOf('tour_maison') < 0 && clesPage.indexOf('salle_qui_nexiste_pas') < 0,
+   'et la relecture ne rend pas n\'importe quel nom — elle rend une liste finie');
+/* ET LA SORTIE. Une salle dans laquelle on entre sans que rien ne sache l'en
+   faire sortir est une salle ou l'on reste. Le fichier a une table pour ca ;
+   on la relit, elle aussi. */
+const bloc = /var SORTIES = \{([\s\S]*?)\};/.exec(src);
+ok(!!bloc, 'nexus.js declare une table de sorties');
+const clesSortie = bloc ? [...bloc[1].matchAll(/(\w+)\s*:/g)].map((m) => m[1]) : [];
+for (const c of clesPage) {
+  ok(clesSortie.indexOf(c) >= 0, `la salle « ${c} » a une sortie`);
+}
+
+/* ================== LES PLANCHES DES ETAGES ==================
+ *
+ * Meme regle que pour les facades, et la meme sanction : un nom sans fichier
+ * derriere ne laisse pas un carre vide. `drawImage` leve sur une image
+ * cassee, l'exception part a chaque image, et la boucle de dessin s'arrete —
+ * tout le jeu se fige. Les cinq planches sont chargees A LA DEMANDE, ce qui
+ * veut dire qu'un nom faux ne se verrait qu'au moment ou quelqu'un monte a
+ * l'etage : la panne la plus tardive et la plus chere possible.
+ */
+console.log('\n-- les planches des cinq etages --');
+const tableEtages = /var ETAGES = \[([\s\S]*?)\n  \];/.exec(src);
+ok(!!tableEtages,
+   tableEtages ? 'la table des etages est relue dans nexus.js'
+               : 'la table des etages est introuvable — cet essai ne verifie RIEN');
+const etages = tableEtages
+  ? [...tableEtages[1].matchAll(/cle:\s*'([^']+)'[\s\S]*?src:\s*'([^']+)'/g)]
+      .map((m) => ({ cle: m[1], src: m[2] }))
+  : [];
+ok(etages.length >= 2, `${etages.length} etages declares : ${etages.map((e) => e.cle).join(', ')}`);
+for (const e of etages) {
+  const f = path.join(SITE, e.src);
+  ok(fs.existsSync(f), `« ${e.cle} » nomme ${e.src}, et le fichier est la`);
+  const t = fs.existsSync(f) ? tailleWebp(f) : null;
+  ok(!!t, `${e.src} est une planche WebP mesurable`);
+  /* La salle est posee sur un CARRE de 1600 : `drawImage(img, 0, 0, w, h)`
+     avec w = h. Une planche qui ne serait pas carree ne leverait aucune
+     erreur — elle serait seulement etiree, et personne ne saurait dire
+     pourquoi la piece a l'air de travers. Le cinema et l'arcade tiennent la
+     meme regle, et c'est a eux qu'on la compare plutot qu'a un nombre ecrit
+     ici. */
+  if (t) eq(t.w, t.h, `${e.src} est carree (${t.w}x${t.h}) — la salle l'etale sur un carre`);
+}
+const cine = tailleWebp(path.join(SITE, 'img/nexus/tiles/room_cinema.webp'));
+ok(!!cine && etages.every((e) => {
+     const t = tailleWebp(path.join(SITE, e.src));
+     return t && t.w === cine.w && t.h === cine.h;
+   }),
+   `et toutes a la taille des salles deja cablees (${cine && cine.w}x${cine && cine.h})`);
+/* Aucune musique n'est nommee pour ces etages, et c'est une regle, pas un
+   oubli : une planche sonore nommee sans fichier derriere fait lever la page a
+   chaque image. On verifie donc que la table n'en nomme aucune. */
+ok(!/room_tour_[^']*\.mp3/.test(src) && !/tour[^']*\.mp3/.test(src),
+   'aucun morceau n\'est nomme pour la tour — un fichier absent figerait la page');
+
 console.log(`\nville_accord.test.js : ${n} verifications OK`);

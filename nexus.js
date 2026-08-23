@@ -4221,7 +4221,7 @@
      * nommer dans le panneau aurait redonne le `SCENE === 'arcade'` que ce
      * depot a deja paye trois fois — la salle manga et la salle series
      * poseront leur ligne, et rien d'autre ne bougera. */
-    rubrique: 'films',
+    rubrique: 'cinema',
     /* ---- LE FOND D'ATTENTE, PROPRIETE DE LA SALLE ----
      * Ce que la toile montre quand aucune seance n'est choisie. Il est ICI et
      * non en constante du cinema : la salle manga a deja sa planche

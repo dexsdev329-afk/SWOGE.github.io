@@ -1415,7 +1415,15 @@ body.nxdrag *{ cursor:grabbing !important; }
  * barre horizontale sous tout le panneau, mesuree a chaque essai. Le poser sur
  * `.nxarc-cat`, qui empile les rangees, aurait fait defiler les trois ensemble
  * — trois catalogues qui bougent quand on en pousse un. */
-.nxarc-cat{ display:flex; flex-direction:column; gap:16px; margin-top:14px; }
+/* ---- LE FOND EST NOIR, ET LES AFFICHES SONT LA SEULE COULEUR ----
+ * Chaque affiche etait posee sur une carte rose bordee de rose. Une affiche
+ * est deja une image composee, coloree et cadree par quelqu'un : l'entourer
+ * d'une couleur vive la met en concurrence avec elle, et la rangee se lit
+ * alors comme une grille de boutons illustres plutot que comme une etagere.
+ * Le noir ne se voit pas — c'est precisement ce qu'on lui demande. */
+.nxarc-cat{ display:flex; flex-direction:column; gap:18px; margin-top:14px;
+  background:#000; border-radius:12px; padding:14px 12px 6px;
+  border:1px solid rgba(255,255,255,.06); }
 .nxarc-cat[hidden]{ display:none; }
 /* Le nom de la rubrique, tel que le serveur l'annonce. Discret : c'est un
    intertitre, pas un deuxieme titre — la banniere est deja au-dessus. */
@@ -1427,17 +1435,26 @@ body.nxdrag *{ cursor:grabbing !important; }
    qui s'arrete pile au bord se lit comme une rangee qui s'arrete la. */
 .nxarc-rangee{ display:flex; gap:10px; padding-bottom:8px;
   overflow-x:auto; overflow-y:hidden; scroll-snap-type:x proximity; }
+/* Plus de carte ni de bordure : l'affiche EST le bouton. Le rembourrage part
+   avec elles, sinon un lisere de fond subsisterait autour de chaque image et
+   c'est exactement ce qu'on retire. */
 .nxarc-rangee button{ flex:0 0 124px; scroll-snap-align:start;
-  display:flex; flex-direction:column; gap:6px; padding:6px;
-  min-height:44px; border-radius:10px; cursor:pointer; text-align:center;
-  color:#ffd8ee; background:rgba(255,62,165,.10);
-  border:1px solid rgba(255,62,165,.45); }
-.nxarc-rangee button:hover{ background:rgba(255,62,165,.26); }
+  display:flex; flex-direction:column; gap:7px; padding:0;
+  min-height:44px; border-radius:8px; cursor:pointer; text-align:left;
+  color:#e8e2ee; background:transparent; border:0;
+  transition:transform .12s ease; }
+/* Au survol on SOULEVE au lieu de teinter : agrandir une affiche la met en
+   avant sans lui ajouter une couleur qui n'est pas la sienne. */
+.nxarc-rangee button:hover{ transform:translateY(-3px); }
+.nxarc-rangee button:hover .nxarc-vign{ box-shadow:0 6px 18px rgba(0,0,0,.6); }
 /* Celle qui est dans la banniere est marquee dans sa rangee : sans ce lisere,
    cliquer une affiche changeait le haut du panneau sans que rien, en bas, ne
    dise laquelle on venait de choisir. */
-.nxarc-rangee button.actif{ border-color:#FFD97A; color:#fff;
-  box-shadow:0 0 0 2px rgba(255,217,122,.35); }
+/* Le lisere passe sur la VIGNETTE et non sur le bouton, qui n'a plus de
+   bordure. Il reste dore : c'est le seul habillage qui porte un sens — il dit
+   laquelle des affiches est en ce moment dans la banniere. */
+.nxarc-rangee button.actif{ color:#fff; }
+.nxarc-rangee button.actif .nxarc-vign{ box-shadow:0 0 0 2px #FFD97A; }
 /* ---- UNE AFFICHE QUI NE VIENT JAMAIS ----
  * L'adresse est posee dans le panneau d'administration : elle vient d'un
  * autre domaine, et cet autre domaine peut etre eteint. Sans `aspect-ratio`
@@ -1445,10 +1462,14 @@ body.nxdrag *{ cursor:grabbing !important; }
  * rangee devenait une liste de titres de hauteurs inegales — un trou. La
  * boite garde donc sa forme toute seule, avec son symbole dessous : l'image
  * ne fait que la recouvrir quand elle arrive. */
+/* Le fond de la vignette est NOIR OPAQUE et non un voile sombre : une affiche
+   au rapport different, ou qui porte de la transparence, laissait voir le rose
+   du panneau au travers et par les cotes. Sur noir, ce qui depasse ne se
+   remarque pas. */
 .nxarc-vign{ position:relative; width:100%; aspect-ratio:250 / 345;
-  border-radius:6px; overflow:hidden; background:rgba(4,7,13,.55);
+  border-radius:8px; overflow:hidden; background:#000;
   display:flex; align-items:center; justify-content:center;
-  font-size:26px; color:rgba(255,62,165,.5); }
+  font-size:26px; color:rgba(255,255,255,.22); }
 /* `cover` et non `fill` : une affiche portrait etiree pour remplir une boite
    d'un autre rapport donne un visage large d'un tiers de plus, ce qu'on
    remarque sans savoir pourquoi. */
@@ -1458,8 +1479,10 @@ body.nxdrag *{ cursor:grabbing !important; }
    lisible quand l'affiche manque. `anywhere` parce qu'un titre d'admin peut
    etre un seul mot de trente lettres, et un mot qui deborde pousse une barre
    horizontale sous toute la carte. */
-.nxarc-rangee .nxarc-nom{ font:800 12px/1.25 system-ui,sans-serif;
-  letter-spacing:.04em; overflow-wrap:anywhere; }
+.nxarc-rangee .nxarc-nom{ font:700 11.5px/1.3 system-ui,sans-serif;
+  letter-spacing:.02em; overflow-wrap:anywhere; color:#c9c2d2;
+  padding:0 2px 2px; }
+.nxarc-rangee button.actif .nxarc-nom{ color:#FFD97A; }
 /* ---- EN TRAIN DE PARCOURIR ----
  * Le cadre du lecteur est vide tant qu'aucune version n'est choisie : le
  * laisser affiche mettait un rectangle noir de 382 sur 224 sous la rangee,

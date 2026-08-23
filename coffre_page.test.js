@@ -444,6 +444,83 @@ process.on('unhandledRejection', (e) => {
     }
   }
 
+  /* ================================================================
+   * LA FICHE SUIT LE COFFRE SOUS LES PIEDS
+   * ================================================================
+   *
+   * Le menu ne se referme pas quand on s'en va — c'est voulu, on vient
+   * peut-etre d'y changer une piece. La condition d'ouverture etait donc
+   * « dessus, et pas deja ouvert », et passer d'un coffre a l'autre ne
+   * repeignait JAMAIS : on se posait sur le coffre aux objets, il s'ouvrait
+   * tout seul, on marchait jusqu'au coffre aux personnages, et « Your vault »
+   * restait a l'ecran. Les deux coffres avaient l'air de rendre la meme fiche.
+   *
+   * Cet essai manquait depuis le premier jour, et c'est pour cela que le
+   * defaut a vecu si longtemps : rien n'allait d'un coffre a l'autre. On y va
+   * donc, et on revient — l'aller seul prouverait qu'une fiche a change une
+   * fois, l'aller-retour prouve qu'elle SUIT. */
+  console.log('\n-- la fiche suit le coffre sous les pieds --');
+  {
+    /* Les coffres viennent de la SOURCE : leurs places, leurs rayons et leurs
+       roles. Les recopier ici en ferait une deuxieme verite, et le jour ou la
+       rangee bouge cet essai continuerait de viser le vide en disant vrai. */
+    const src = fs.readFileSync(path.join(SITE, 'nexus.js'), 'utf8');
+    const bloc = src.slice(src.indexOf('coffres: ['), src.indexOf(']', src.indexOf('coffres: [')));
+    const COFFRES = [...bloc.matchAll(/x:\s*1600\s*\*\s*([\d.]+),\s*y:\s*1600\s*\*\s*([\d.]+),\s*r:\s*(\d+),\s*role:\s*'(\w+)'/g)]
+      .map((m) => ({ x: 1600 * Number(m[1]), y: 1600 * Number(m[2]), r: Number(m[3]), role: m[4] }));
+    ok(COFFRES.length >= 2,
+       `la salle declare ${COFFRES.length} coffres : ${COFFRES.map((c) => c.role).join(', ')}`);
+
+    /* Marcher VERS un coffre, en relisant sa position entre chaque pas. Une
+       duree fixe supposerait une vitesse que cet essai n'a pas a connaitre. */
+    const versCoffre = async (c) => {
+      for (let k = 0; k < 40; k++) {
+        const e = await veille();
+        if (!e.moi) { await p.waitForTimeout(120); continue; }
+        const dx = c.x - e.moi.x, dy = c.y - e.moi.y;
+        if (dx * dx + dy * dy < (c.r * 0.6) * (c.r * 0.6)) return true;
+        if (Math.abs(dx) > Math.abs(dy)) await marche(dx > 0 ? 'ArrowRight' : 'ArrowLeft', 160);
+        else await marche(dy > 0 ? 'ArrowDown' : 'ArrowUp', 160);
+      }
+      return false;
+    };
+
+    const depart = await veille();
+    ok(depart.on && depart.titre,
+       `on part d'un coffre ouvert ("${depart.titre}")`);
+    /* Celui sous nos pieds, retrouve par la geometrie et non suppose : le
+       chemin d'arrivee peut changer, la question « lequel me porte » non. */
+    const sous = COFFRES.find((c) => {
+      const dx = c.x - depart.moi.x, dy = c.y - depart.moi.y;
+      return dx * dx + dy * dy < c.r * c.r;
+    });
+    ok(!!sous, `et le jeu nous compte sur un coffre precis (${sous && sous.role})`);
+
+    const autre = COFFRES.find((c) => c !== sous);
+    /* Sans ce garde-fou, tout ce qui suit repondrait vrai dans le vide le jour
+       ou l'on n'atteint plus le deuxieme coffre. */
+    const arrive = await versCoffre(autre);
+    ok(arrive, `on marche jusqu'au coffre « ${autre.role} »`);
+    if (arrive) {
+      await p.waitForTimeout(500);
+      const apres = await veille();
+      ok(apres.on, `le menu est toujours ouvert ("${apres.titre}")`);
+      ok(apres.titre !== depart.titre,
+         `et la fiche a CHANGE : "${depart.titre}" est devenue "${apres.titre}"`);
+
+      /* Le retour. Une fiche qui changerait une fois puis resterait figee
+         passerait la verification precedente sans suivre les pieds. */
+      const revenu = await versCoffre(sous);
+      ok(revenu, `on revient sur le coffre « ${sous.role} »`);
+      if (revenu) {
+        await p.waitForTimeout(500);
+        const retour = await veille();
+        ok(retour.titre === depart.titre,
+           `et la fiche est REVENUE a "${depart.titre}" (lue : "${retour.titre}")`);
+      }
+    }
+  }
+
   ok(erreurs.length === 0, 'aucune erreur de page' +
      (erreurs.length ? ' — ' + erreurs.slice(0, 3).join(' | ') : ''));
 

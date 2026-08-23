@@ -22,6 +22,22 @@
  * forme de cet essai — il ne demande pas « est-ce que le cinema marche »,
  * il demande « est-ce que la croix ferme, ET reste fermee ».
  *
+ * ---- CE QUE LE PANNEAU EST DEVENU ----
+ *
+ * Une grille de vignettes disait « voici douze cases », pas « voici ce qui
+ * passe ce soir ». Le panneau est maintenant une page de presentation : une
+ * BANNIERE en haut — l'affiche de la seance mise en avant en fond large et
+ * assombrie, son titre en grand, une ligne d'information, et SES BOUTONS DE
+ * VERSION — puis, en dessous, UNE RANGEE PAR RUBRIQUE (films, mangas,
+ * series), qui servent a changer la banniere et a rien d'autre.
+ *
+ * Ce dessin cree une donnee de plus : « laquelle est en avant ». Une donnee de
+ * plus est une occasion de plus de se contredire, et c'est ce que cet essai
+ * traque le plus serieusement — la banniere qui annonce un film pendant que le
+ * cadre en joue un autre, la banniere restee sur une seance que le serveur
+ * vient de retirer, l'affiche cliquee qui telecharge un film que personne n'a
+ * demande.
+ *
  * ---- CE QU'IL VERIFIE ----
  *
  * 1. ON ENTRE. La planche de la salle se dessine.
@@ -35,24 +51,62 @@
  *    rectangle de l'ecran au lieu de s'y etirer — une image etiree ne leve
  *    aucune erreur, elle a seulement l'air moins bien.
  * 5. LA GALERIE ARRIVE PAR LE RESEAU et l'ecran s'allume : c'est le serveur
- *    qui dit ce qui passe, jamais la page. Le catalogue montre AUTANT
- *    d'entrees qu'on en a pousse — nombre relu de ce qu'on a envoye.
- * 6. LA TABLE EST REMPLACEE ET NON COMPLETEE : on repousse une galerie plus
+ *    qui dit ce qui passe, jamais la page. La RANGEE montre AUTANT d'entrees
+ *    qu'on en a pousse — nombre relu de ce qu'on a envoye.
+ * 6. LA BANNIERE MONTRE UNE SEANCE, et son titre est l'un de ceux qu'on a
+ *    pousses — relu de ce qu'on pousse, jamais ecrit en dur. Les BOUTONS DE
+ *    VERSION sont DEDANS (prouve par la parente, pas par leur existence), et
+ *    ce sont ceux de cette seance-la.
+ * 7. LA TABLE EST REMPLACEE ET NON COMPLETEE : on repousse une galerie plus
  *    courte, et le catalogue OUVERT retrecit sans rechargement. C'est le meme
  *    geste qui prouve l'ACCOMMODATION DE MIGRATION, puisque la forme courte
  *    est l'ancien message a une seule seance.
- * 7. RIEN NE PART SUR LE RESEAU avant le clic sur une VERSION. C'est la
+ * 8. CLIQUER UNE AFFICHE DE LA RANGEE PROMEUT cette seance dans la banniere —
+ *    et NE CHARGE RIEN. La rangee la marque, la banniere prend ses versions,
+ *    le cadre reste vide et le reseau muet.
+ * 9. RIEN NE PART SUR LE RESEAU avant le clic sur une VERSION. C'est la
  *    promesse du panneau : entrer dans une salle ne doit pas telecharger un
  *    film que personne n'a demande. On surveille les requetes, et l'on
  *    n'attend pas la fin pour le dire — on le mesure a chaque etape.
- * 8. CHOISIR UNE SEANCE PUIS UNE VERSION charge CETTE adresse-la, et pas
- *    celle de la premiere seance de la liste.
- * 9. ON REVIENT A LA GALERIE depuis une seance ouverte, et le cadre se vide.
- * 10. LA CROIX FERME — ET LE PANNEAU RESTE FERME plusieurs images durant,
+ * 10. LA VEDETTE TIENT D'UNE ANNONCE A L'AUTRE. On repousse la MEME galerie
+ *    et la banniere ne bouge pas. Sans cette etape, la verification suivante
+ *    serait vraie d'une page qui retombe sur la premiere du rang a chaque
+ *    message — la bonne reponse pour la mauvaise raison.
+ * 11. LE SERVEUR RETIRE LA SEANCE EN VEDETTE : la banniere se rabat sur une
+ *    seance ENCORE a l'affiche, et ses boutons de version pointent sur ELLE.
+ *    Un titre de repli au-dessus de boutons restes sur le fantome serait le
+ *    pire des deux mondes.
+ * 12. CLIQUER UNE VERSION DANS LA BANNIERE charge CETTE adresse-la, fait
+ *    apparaitre le retour, replie la banniere, et projette l'affiche de cette
+ *    seance sur la toile de la salle.
+ * 13. LE CADRE DU LECTEUR NE PORTE AUCUN BAC A SABLE. Il en a porte un, et
+ *    `allow-popups` n'a pas suffi : un hebergeur a repondu « Streaming
+ *    Blocked — the page is running in a sandboxed environment » a la place
+ *    du film. Le proprietaire a tranche. Cette verification n'est donc pas
+ *    la pour proteger quoi que ce soit — elle est la pour que personne ne le
+ *    REMETTE par reflexe sans savoir que ca casse le lecteur sur telephone.
+ * 14. ON REVIENT A LA GALERIE, le cadre se vide, et la banniere retrouve la
+ *    seance qu'on venait de voir — pas la premiere du rang.
+ * 15. LA CROIX FERME — ET LE PANNEAU RESTE FERME plusieurs images durant,
  *    SANS QU'ON BOUGE ET SANS QU'ON QUITTE LE POINT. C'est la verification
  *    qui manquait le jour ou cet essai a ete ecrit.
- * 11. ON PEUT LE ROUVRIR en repassant dessus : une croix qui condamne l'ecran
+ * 16. ON PEUT LE ROUVRIR en repassant dessus : une croix qui condamne l'ecran
  *    jusqu'a la sortie serait l'autre facon de se tromper.
+ * 17. LES RANGEES SUIVENT UNE SEULE REGLE : on ecarte les rubriques vides,
+ *    puis celle de la SALLE passe en premier, les autres suivant dans l'ordre
+ *    ou le serveur les annonce. Verifiee sous trois eclairages — une rubrique
+ *    vide n'apparait pas, celle de la salle est en tete, et quand c'est ELLE
+ *    qui est vide la suivante annoncee prend la place sans qu'aucune ligne du
+ *    code ne parle de ce cas. La cle de la salle est relue de la source, les
+ *    noms de rubrique sont inventes par l'essai.
+ * 18. UNE SEULE GALERIE SUR LE FIL DONNE UNE SEULE RANGEE, avant comme apres
+ *    un message par rubriques : c'est la forme que le serveur envoie encore
+ *    aujourd'hui, et elle ne doit pas avoir de branche a elle.
+ * 19. AU POUCE, SUR 412 px : aucun debord horizontal — ni de la carte, ni de
+ *    la page — et chaque cible tactile du dessin tient les quarante-quatre
+ *    pixels. La rangee d'affiches defile a l'horizontale, ce qui est
+ *    exactement le genre de dessin qui pousse une barre sous toute la page si
+ *    le defilement n'est pas confine.
  *
  * ---- LE CONTRAT DE FIL, ET SA FENETRE DE MIGRATION ----
  *
@@ -165,6 +219,19 @@ function ecranDeLaSalle() {
   const f = (c) => Number(bl.match(new RegExp(c + ':\\s*1600 \\* ([\\d.]+)'))[1]) * 1600;
   return { x: f('x'), y: f('y'), r: Number(bl.match(/r:\s*(\d+)/)[1]),
            nom: bl.match(/nom:\s*'([^']*)'/)[1] };
+}
+
+/* ---- LA RUBRIQUE DE LA SALLE, D'APRES LA SOURCE ----
+ * C'est la salle qui declare sous quelle cle le serveur annonce SA galerie, et
+ * c'est cette cle qui doit passer en tete des rangees. La recopier ici aurait
+ * fait passer l'essai le jour ou la salle change de rubrique — ou pire, le
+ * jour ou quelqu'un ecrit la cle en dur dans le panneau partage, ce qui est
+ * precisement la faute que cette salle a deja payee trois fois. */
+function rubriqueDeLaSalle() {
+  const src = fs.readFileSync(path.join(SITE, 'nexus.js'), 'utf8');
+  const b = src.slice(src.indexOf('var SALLE_CINE'));
+  const m = b.slice(0, b.indexOf('bornes: [')).match(/rubrique:\s*'([^']*)'/);
+  return m ? m[1] : null;
 }
 
 /* ---- LE FOND D'ATTENTE, D'APRES LA SOURCE ----
@@ -380,13 +447,40 @@ const MARQUEUR_AFFICHE = 'affiche=cet-essai';
     const i = document.getElementById('nxIndice');
     const f = document.getElementById('nxArcJeu');
     const vus = (el) => (el && !el.hidden) ? [...el.querySelectorAll(':scope > button')] : [];
+    /* Les affiches ne sont plus les enfants directs du catalogue : elles vivent
+       dans des RANGEES, une par rubrique. On les releve a plat pour tout ce qui
+       ne regarde que « quelles seances sont proposees », et par rangee pour ce
+       qui regarde l'ordre et les intitules. Le catalogue masque ne rend rien —
+       une grille cachee qui garde ses boutons aurait compte comme affichee. */
+    const vues = (el) => (el && !el.hidden) ? [...el.querySelectorAll('button')] : [];
     return { ouvert: !!(v && v.classList.contains('on')),
              salle: window.__salle || 0, moi: window.__moi,
              affiche: window.__affiche || {}, fond: window.__fond || 0,
              fondArgs: window.__fondArgs || null,
              indice: i ? i.textContent : '',
              cadre: f ? f.getAttribute('src') : '',
-             cat: vus(g).map((b) => {
+             /* Ce que le cadre etranger a le DROIT de faire. On releve
+                l'attribut tel quel : les jetons sont compares un par un plus
+                bas, parce que l'ordre d'une liste de permissions n'engage
+                personne et qu'un essai qui recopie la chaine entiere tombe le
+                jour ou quelqu'un la reecrit dans un autre ordre. */
+             bac: f ? f.getAttribute('sandbox') : null,
+             /* ---- LES RANGEES ----
+              * Leur ORDRE est la question, donc on les releve dans l'ordre du
+              * document. `brut` sur l'intitule pour la meme raison que sur les
+              * titres : le nom d'une rubrique vient du serveur, donc d'un
+              * humain, et une balise posee en `innerHTML` s'executerait dans la
+              * page de chaque joueur. */
+             rangs: (g && !g.hidden)
+               ? [...g.querySelectorAll('.nxarc-rang')].map((sec) => {
+                   const h = sec.querySelector('.nxarc-rang-nom');
+                   return { nom: h ? h.textContent : '',
+                            brut: h ? h.innerHTML : '',
+                            titres: [...sec.querySelectorAll('button .nxarc-nom')]
+                                      .map((t) => t.textContent) };
+                 })
+               : [],
+             cat: vues(g).map((b) => {
                const t = b.querySelector('.nxarc-nom');
                /* `brut` est le balisage REELLEMENT produit : un titre pose en
                   `textContent` y ressort echappe, pose en `innerHTML` il y
@@ -394,8 +488,32 @@ const MARQUEUR_AFFICHE = 'affiche=cet-essai';
                   distingue — `textContent` rend la meme chaine dans les deux
                   cas. */
                return { titre: t ? t.textContent : '', brut: t ? t.innerHTML : '',
-                        vignette: !!b.querySelector('.nxarc-vign') };
+                        vignette: !!b.querySelector('.nxarc-vign'),
+                        /* Ce que la rangee dit de la seance mise en avant. Sans
+                           ce releve, « la banniere a change » aurait pu etre
+                           vrai pendant que la rangee marquait encore l'autre. */
+                        marquee: b.classList.contains('actif') };
              }),
+             /* ---- LA BANNIERE ----
+              * On releve ce qu'elle ANNONCE, et aussi OU sont les boutons de
+              * version : « ils existent » et « ils sont dans la banniere » sont
+              * deux questions differentes, et seule la parente repond a la
+              * seconde. `plate` est l'etat sans decor — lecteur ouvert, ou
+              * borne d'arcade. */
+             une: (() => {
+               const u = document.getElementById('nxArcUne');
+               const t = document.getElementById('nxArcUneTitre');
+               const nf = document.getElementById('nxArcUneFond');
+               const inf = document.getElementById('nxArcUneInfo');
+               const im = nf ? nf.querySelector('img') : null;
+               return { existe: !!u,
+                        plate: !!(u && u.classList.contains('nxarc-plate')),
+                        titre: t ? t.textContent : '',
+                        brut: t ? t.innerHTML : '',
+                        info: inf ? inf.textContent : '',
+                        affiche: im ? im.getAttribute('src') : '',
+                        porteLesVersions: !!(u && c && u.contains(c)) };
+             })(),
              /* Le retour est un bouton de la meme barre : on le distingue par
                 sa classe et par l'absence d'adresse, sinon « deux versions »
                 aurait ete vrai avec une version et un retour. */
@@ -601,11 +719,11 @@ const MARQUEUR_AFFICHE = 'affiche=cet-essai';
   ok(v.ouvert, 'marcher devant l ecran ouvre le panneau');
   if (!v.ouvert) await arrete('le panneau ne s est pas ouvert : le catalogue ne peut pas etre juge');
 
-  console.log('-- LE CATALOGUE --');
+  console.log('-- LA RANGEE D AFFICHES --');
   /* Le nombre vient de ce qu'on a POUSSE, jamais d'un chiffre ecrit ici : un
      essai qui code en dur ce qu'il verifie ne verifie plus rien. */
   ok(v.cat.length === COMBIEN,
-     `le catalogue montre autant d entrees qu il y a de seances (${v.cat.length} pour ${COMBIEN})`);
+     `la rangee montre autant d entrees qu il y a de seances (${v.cat.length} pour ${COMBIEN})`);
   const titresVus = v.cat.map((c) => c.titre);
   ok(SEANCES.every((s) => titresVus.indexOf(s.titre) >= 0),
      `et chaque titre annonce y figure (${JSON.stringify(titresVus)})`);
@@ -623,10 +741,68 @@ const MARQUEUR_AFFICHE = 'affiche=cet-essai';
   ok(v.cat.every((c) => c.vignette), 'chaque entree porte sa vignette');
   ok(v.cat.every((c) => !/<[a-z]/i.test(c.brut)),
      `et aucun titre n a pose de balise dans la page (${JSON.stringify(v.cat.map((c) => c.brut))})`);
-  ok(v.boutons.length === 0,
-     `aucune version proposee tant qu on n a pas choisi de seance (${JSON.stringify(v.boutons.map((b) => b.nom))})`);
-  ok(versLesLecteurs.length === 0,
-     `et rien n est encore parti vers un lecteur (${versLesLecteurs.length} requete(s))`);
+  /* ---- UNE SEULE GALERIE SUR LE FIL DONNE UNE SEULE RANGEE ----
+   * C'est la forme que le serveur envoie encore aujourd'hui. Le catalogue par
+   * rubriques ne doit pas avoir besoin d'une branche pour elle : une rubrique
+   * donne une rangee, et rien d'autre ne change. */
+  ok(v.rangs.length === 1,
+     `une galerie plate donne UNE rangee (${v.rangs.length})`);
+
+  console.log('-- LA BANNIERE --');
+  /* ---- ELLE MONTRE UNE SEANCE, ET C'EST L'UNE DES NOTRES ----
+   * Le titre attendu est RELU de ce qu'on a pousse. Ecrire ici le nom du film
+   * aurait fait passer l'essai le jour ou la banniere annonce autre chose que
+   * ce que le serveur annonce — c'est-a-dire exactement le defaut a attraper. */
+  const titresPousses = SEANCES.map((s) => s.titre);
+  ok(titresPousses.indexOf(v.une.titre) >= 0,
+     `la banniere annonce une seance poussee (${JSON.stringify(v.une.titre)})`);
+  if (titresPousses.indexOf(v.une.titre) < 0) {
+    await arrete('la banniere n annonce aucune des seances poussees : la suite ne mesurerait rien');
+  }
+  /* Le titre de la banniere vient du meme panneau d'administration que ceux de
+     la rangee : pose en `innerHTML`, une balise y serait executee dans la page
+     de chaque joueur. Le releve est le BALISAGE produit, pas le texte rendu —
+     `textContent` rend la meme chaine des deux facons. */
+  ok(!/<[a-z]/i.test(v.une.brut),
+     `et son titre n a pose aucune balise dans la page (${JSON.stringify(v.une.brut)})`);
+  ok(!v.une.plate, 'et elle porte bien son decor, pas la forme repliee du lecteur');
+  /* ---- LES BOUTONS DE VERSION SONT DEDANS ----
+   * « Il y a deux boutons quelque part dans le panneau » ne dit rien : la
+   * demande est qu'ils soient DANS la banniere. Seule la parente le prouve. */
+  ok(v.une.porteLesVersions,
+     'les boutons de version sont dans la banniere, pas a cote');
+  const vedette = SEANCES.filter((s) => s.titre === v.une.titre)[0];
+  const versionsUne = v.boutons.filter((b) => !b.retour).map((b) => b.src).sort();
+  ok(versionsUne.length === 2
+     && versionsUne.join('|') === [vedette.vf, vedette.vo].sort().join('|'),
+     `et ce sont les versions de CETTE seance (${JSON.stringify(versionsUne)})`);
+  /* Le retour n'a de sens qu'en sortant d'un lecteur : le proposer dans la
+     galerie donnerait un bouton qui ramene la ou l'on est deja. */
+  ok(!v.boutons.some((b) => b.retour),
+     'et aucun retour n est propose tant qu on parcourt');
+  ok(versLesLecteurs.length === 0 && v.cadre === 'about:blank',
+     `et rien n est encore parti vers un lecteur (cadre ${v.cadre}, ${versLesLecteurs.length} requete(s))`);
+  /* ---- ON MET LE PIEGE DANS LA BANNIERE, SINON ON NE PROUVE RIEN ----
+   * La banniere s'ouvre sur la premiere seance, dont le titre est sage : « son
+   * titre n'a pose aucune balise » etait donc vrai d'une banniere qui pose TOUT
+   * en `innerHTML`. Mesure faite en annulant la correction — la verification
+   * ci-dessus est restee verte pendant que la banniere posait du balisage.
+   * On met donc en avant CELLE dont le titre est un piege, et l'on relit le
+   * balisage produit. Le piege est retrouve dans ce qu'on pousse, jamais ecrit
+   * ici : le jour ou l'essai change ses titres, il suit. */
+  const PIEGE = SEANCES.filter((x) => /<[a-z]/i.test(x.titre))[0];
+  ok(!!PIEGE,
+     `l essai pousse bien un titre qui ressemble a du balisage (${JSON.stringify(PIEGE && PIEGE.titre)})`);
+  if (!PIEGE) await arrete('aucun titre piege parmi les seances poussees : l echappement ne peut pas etre juge');
+  const rangPiege = v.cat.map((c) => c.titre).indexOf(PIEGE.titre);
+  if (rangPiege < 0) await arrete('le titre piege n est pas dans la rangee : on ne peut pas le mettre en banniere');
+  await p.evaluate((i) => {
+    document.querySelectorAll('#nxArcCat button')[i].click();
+  }, rangPiege);
+  await p.waitForTimeout(400);
+  v = await vue();
+  ok(v.une.titre === PIEGE.titre && !/<[a-z]/i.test(v.une.brut),
+     `et mise en banniere elle y reste un TITRE, pas un element (${JSON.stringify(v.une.brut)})`);
 
   console.log('-- la table est REMPLACEE, pas completee --');
   /* ---- LE MEME GESTE PROUVE DEUX CHOSES ----
@@ -652,35 +828,100 @@ const MARQUEUR_AFFICHE = 'affiche=cet-essai';
      `et la galerie complete revient sans rechargement (${v.cat.length} pour ${COMBIEN})`);
   if (v.cat.length !== COMBIEN) await arrete('le catalogue ne suit pas la table : la suite ne mesurerait rien');
 
-  console.log('-- on choisit une seance, puis une version --');
+  console.log('-- cliquer une affiche PROMEUT, et ne charge rien --');
   /* ---- PAS LA PREMIERE ----
-   * L'ancienne page n'ouvrait QUE `FILMS[0]`. Choisir la premiere entree
-   * aurait donc laisse passer exactement le defaut qu'on corrige : on prend
-   * la DERNIERE, et l'on verifie que c'est bien son adresse qui part. */
+   * L'ancienne page n'ouvrait QUE `FILMS[0]`, et la banniere s'ouvre sur la
+   * premiere du rang : promouvoir la premiere entree aurait donc laisse passer
+   * les deux defauts a la fois. On prend la DERNIERE. */
   const CHOISIE = SEANCES[SEANCES.length - 1];
   const rang = titresVus.indexOf(CHOISIE.titre);
-  ok(rang >= 0, `la seance visee est bien dans le catalogue (${CHOISIE.titre})`);
-  if (rang < 0) await arrete('la seance visee n est pas dans le catalogue');
+  ok(rang >= 0, `la seance visee est bien dans la rangee (${CHOISIE.titre})`);
+  if (rang < 0) await arrete('la seance visee n est pas dans la rangee');
+  /* Si elle etait DEJA en banniere, le clic ne prouverait rien : « la banniere
+     montre cette seance » serait vrai avant comme apres. */
+  ok(v.une.titre !== CHOISIE.titre,
+     `et ce n est pas deja elle qui est en banniere (${JSON.stringify(v.une.titre)})`);
+  if (v.une.titre === CHOISIE.titre) {
+    await arrete('la seance visee est deja en banniere : le clic ne prouverait rien');
+  }
   await raz();
   await p.evaluate((i) => {
-    document.querySelectorAll('#nxArcCat > button')[i].click();
+    document.querySelectorAll('#nxArcCat button')[i].click();
   }, rang);
   await p.waitForTimeout(500);
   v = await vue();
+  ok(v.une.titre === CHOISIE.titre,
+     `cliquer une affiche met CETTE seance en banniere (${JSON.stringify(v.une.titre)})`);
+  const marquees = v.cat.filter((c) => c.marquee).map((c) => c.titre);
+  ok(marquees.length === 1 && marquees[0] === CHOISIE.titre,
+     `et la rangee marque celle qui est en avant, elle seule (${JSON.stringify(marquees)})`);
   const versions = v.boutons.filter((b) => !b.retour);
-  ok(versions.length === 2 && v.boutons.some((b) => b.retour),
-     `choisir une seance montre ses versions et le retour (${JSON.stringify(v.boutons.map((b) => b.nom))})`);
+  ok(versions.length === 2
+     && versions.map((b) => b.src).sort().join('|')
+        === [CHOISIE.vf, CHOISIE.vo].sort().join('|'),
+     `et la banniere porte SES versions (${JSON.stringify(versions.map((b) => b.src))})`);
+  /* ---- LA PROMESSE DU PANNEAU ----
+   * Promouvoir n'est pas lire. Une affiche cliquee qui remplirait le cadre
+   * telechargerait un film pour l'avoir regarde de loin. */
   ok(v.cadre === 'about:blank' && versLesLecteurs.length === 0,
-     `et TOUJOURS rien sur le reseau avant le clic sur une version (cadre ${v.cadre}, ${versLesLecteurs.length} requete(s))`);
-  /* L'affiche projetee est celle de la seance choisie, et non celle du haut
-     de la liste : c'est la meme question que « quelle adresse va partir »,
-     posee a la toile. */
-  const marqueChoisie = CHOISIE.affiche.slice(CHOISIE.affiche.indexOf(MARQUEUR_AFFICHE));
-  ok(v.affiche[marqueChoisie] > 0,
-     `l ecran de la salle projette l affiche de CETTE seance (${JSON.stringify(Object.keys(v.affiche))})`);
+     `et promouvoir n a RIEN charge (cadre ${v.cadre}, ${versLesLecteurs.length} requete(s))`);
+  ok(v.cat.length === COMBIEN,
+     `et la rangee montre toujours toutes les seances (${v.cat.length} pour ${COMBIEN})`);
 
-  const vo = versions.filter((b) => b.src === CHOISIE.vo)[0];
-  ok(!!vo, `la version VO porte l adresse annoncee (${JSON.stringify(versions.map((b) => b.src))})`);
+  console.log('-- le serveur retire la seance en vedette --');
+  /* ---- D'ABORD PROUVER QUE LA VEDETTE TIENT ----
+   * Sans cette etape, « la banniere en montre une autre » serait vrai aussi
+   * d'une page qui retombe sur la premiere du rang a CHAQUE annonce du
+   * serveur : la bonne reponse pour la mauvaise raison. On repousse donc la
+   * MEME galerie, et l'on verifie que la banniere ne bouge pas. */
+  await p.evaluate((l) => window.__pousse({ type: 'cinema', cinemas: l }), SEANCES);
+  await p.waitForTimeout(400);
+  v = await vue();
+  ok(v.une.titre === CHOISIE.titre,
+     `une annonce du serveur ne deplace pas la vedette (${JSON.stringify(v.une.titre)})`);
+  /* La galerie sans la seance en avant. Ce qui RESTE est relu de ce qu'on
+     envoie : ecrire ici le titre de repli aurait fige l'essai sur un choix de
+     la page au lieu de le verifier. */
+  const SANS = SEANCES.filter((s) => s.titre !== CHOISIE.titre);
+  await p.evaluate((l) => window.__pousse({ type: 'cinema', cinemas: l }), SANS);
+  await p.waitForTimeout(400);
+  v = await vue();
+  ok(v.cat.length === SANS.length,
+     `la rangee suit la galerie raccourcie (${v.cat.length} pour ${SANS.length})`);
+  const restants = SANS.map((s) => s.titre);
+  ok(v.une.titre !== CHOISIE.titre && restants.indexOf(v.une.titre) >= 0,
+     `et la banniere se rabat sur une seance ENCORE a l affiche (${JSON.stringify(v.une.titre)})`);
+  /* Un titre de repli juste au-dessus de boutons restes sur le fantome serait
+     le pire des deux mondes : la banniere aurait l'air d'avoir suivi, et son
+     bouton chargerait ce que le proprietaire vient de retirer. */
+  const repli = SANS.filter((s) => s.titre === v.une.titre)[0];
+  const srcsUne = v.boutons.filter((b) => !b.retour).map((b) => b.src);
+  ok(!!repli && srcsUne.length === 2
+     && srcsUne.every((u) => u === repli.vf || u === repli.vo),
+     `et ses boutons de version pointent sur ELLE, pas sur la retiree (${JSON.stringify(srcsUne)})`);
+  ok(versLesLecteurs.length === 0,
+     `et rien n est parti vers un lecteur pendant tout cela (${versLesLecteurs.length} requete(s))`);
+
+  console.log('-- on remet la galerie entiere, et on repromeut --');
+  await p.evaluate((l) => window.__pousse({ type: 'cinema', cinemas: l }), SEANCES);
+  await p.waitForTimeout(400);
+  v = await vue();
+  ok(v.cat.length === COMBIEN,
+     `la galerie entiere revient (${v.cat.length} pour ${COMBIEN})`);
+  const rang2 = v.cat.map((c) => c.titre).indexOf(CHOISIE.titre);
+  if (rang2 < 0) await arrete('la seance visee n est pas revenue dans la rangee');
+  await raz();
+  await p.evaluate((i) => {
+    document.querySelectorAll('#nxArcCat button')[i].click();
+  }, rang2);
+  await p.waitForTimeout(500);
+  v = await vue();
+  ok(v.une.titre === CHOISIE.titre,
+     `et elle revient en banniere quand on la reclique (${JSON.stringify(v.une.titre)})`);
+
+  console.log('-- on lance une version DEPUIS LA BANNIERE --');
+  const vo = v.boutons.filter((b) => !b.retour && b.src === CHOISIE.vo)[0];
+  ok(!!vo, `la version VO porte l adresse annoncee (${JSON.stringify(v.boutons.map((b) => b.src))})`);
   if (!vo) await arrete('aucune version ne porte l adresse annoncee');
   await p.evaluate((src) => {
     document.querySelector('#nxArcChoix button[data-src="' + src + '"]').click();
@@ -691,15 +932,151 @@ const MARQUEUR_AFFICHE = 'affiche=cet-essai';
   ok(versLesLecteurs.length > 0 && versLesLecteurs.every((u) => u.indexOf(CHOISIE.vo) === 0),
      `et le reseau ne voit QUE celle-la (${JSON.stringify(versLesLecteurs)})`);
 
+  /* ---- CE QUE LE LECTEUR ETRANGER A LE DROIT DE FAIRE ----
+   *
+   * Deux pouvoirs que le navigateur donne par defaut a une page encadree, et
+   * qui n'ont pas du tout le meme prix.
+   *
+   * OUVRIR UNE FENETRE A COTE est accorde. Les hebergeurs de lecteurs le
+   * verifient avant de jouer : sans lui, le cadre restait noir sur telephone
+   * et le film ne demarrait jamais. Un onglet de publicite se ferme.
+   *
+   * REMPLACER LA PAGE QUI CONTIENT LE CADRE reste refuse. Celui-la emporte la
+   * partie en cours — le personnage, la salle, tout — et il faut recharger le
+   * Nexus pour revenir. C'est la garantie qui protege la partie du joueur, et
+   * elle ne tient a rien d'autre qu'a l'absence d'un jeton dans un attribut :
+   * exactement le genre de chose qu'on retire par megarde en reecrivant une
+   * ligne, et que personne ne voit jamais en regardant la page.
+   *
+   * Jeton par jeton, et non la chaine entiere : l'ordre d'une liste de
+   * permissions n'engage personne. */
+  ok(v.bac === null,
+     `le cadre du lecteur ne porte AUCUN bac a sable (${JSON.stringify(v.bac)})`);
+  /* On le dit aussi en negatif, jeton par jeton : le jour ou quelqu'un
+     remettra un bac a sable « juste un peu permissif », c'est cette ligne-la
+     qui nommera le jeton fautif au lieu de dire « ce n'est pas null ». */
+  const jetons = (v.bac || '').split(/\s+/).filter(Boolean);
+  ok(jetons.length === 0,
+     `donc aucun jeton de permission a discuter (${JSON.stringify(jetons)})`);
+  /* ---- LE CLIC SUR UNE VERSION FAIT PASSER EN LECTURE ----
+   * Il se donne depuis la galerie : sans ce passage, le film jouait derriere
+   * la rangee d'affiches, sans ecran visible et sans retour pour en sortir. */
+  ok(v.boutons.some((b) => b.retour),
+     `et le retour a la galerie apparait (${JSON.stringify(v.boutons.map((b) => b.nom))})`);
+  ok(v.une.plate,
+     'et la banniere se replie pour laisser la hauteur a l ecran');
+  /* L'affiche projetee est celle de la seance ouverte, et non celle du haut de
+     la liste : c'est la meme question que « quelle adresse est partie », posee
+     a la toile de la salle. */
+  const marqueChoisie = CHOISIE.affiche.slice(CHOISIE.affiche.indexOf(MARQUEUR_AFFICHE));
+  ok(v.affiche[marqueChoisie] > 0,
+     `l ecran de la salle projette l affiche de CETTE seance (${JSON.stringify(Object.keys(v.affiche))})`);
+
   console.log('-- on revient au catalogue --');
   await p.evaluate(() => document.querySelector('#nxArcChoix button.nxarc-retour').click());
   await p.waitForTimeout(400);
   v = await vue();
-  ok(v.cat.length === COMBIEN && v.boutons.length === 0,
-     `le retour ramene la galerie entiere (${v.cat.length} entrees, ${v.boutons.length} bouton(s) de version)`);
+  ok(v.cat.length === COMBIEN && !v.boutons.some((b) => b.retour),
+     `le retour ramene la rangee entiere (${v.cat.length} entrees, retour ${v.boutons.some((b) => b.retour)})`);
+  /* Sortir d'un film pour retrouver la banniere d'un AUTRE donne l'impression
+     d'avoir perdu sa place au milieu du catalogue. */
+  ok(v.une.titre === CHOISIE.titre && !v.une.plate,
+     `et la banniere retrouve la seance qu on venait de voir (${JSON.stringify(v.une.titre)})`);
   /* Le cadre VIDE et pas seulement cache : un lecteur laisse en place
      continuait de jouer son son derriere les affiches. */
   ok(v.cadre === 'about:blank', `et le lecteur est detruit, pas masque (cadre ${v.cadre})`);
+
+  console.log('-- PLUSIEURS RANGEES, UNE PAR RUBRIQUE --');
+  /* ---- LA REGLE, ET RIEN QU'ELLE ----
+   *
+   *   on ECARTE les rubriques vides, puis on met celle de la SALLE en premier,
+   *   les autres suivant dans l'ordre ou le serveur les annonce.
+   *
+   * Ce qui est verifie ici, ce ne sont pas trois comportements : c'est cette
+   * phrase-la, sous trois eclairages. La cle de la salle est RELUE de la
+   * source — l'ecrire ici aurait fait passer l'essai le jour ou quelqu'un
+   * code la cle en dur dans le panneau partage, qui est exactement la faute
+   * qu'on cherche a rendre impossible.
+   *
+   * Les noms de rubrique sont inventes PAR L'ESSAI et relus de ce qu'il
+   * pousse : jamais « FILMS », « MANGAS » ni « SERIES » ecrits ici, sans quoi
+   * l'essai dirait au serveur comment nommer ses galeries. Et l'un d'eux
+   * RESSEMBLE A DU BALISAGE, pour la meme raison que l'un des titres : un nom
+   * de categorie traverse le serveur tel quel et se pose dans notre page. */
+  const CLE_SALLE = rubriqueDeLaSalle();
+  ok(!!CLE_SALLE, `la salle declare sa rubrique (${JSON.stringify(CLE_SALLE)})`);
+  if (!CLE_SALLE) await arrete('la salle ne declare aucune rubrique : l ordre des rangees ne veut rien dire');
+  /* Une rubrique VIDE, une rubrique etrangere annoncee AVANT celle de la
+     salle, et celle de la salle en dernier : si l'ordre affiche etait celui du
+     serveur, la rangee de la salle serait troisieme. */
+  const VIDE = { cle: 'z-rien', nom: 'RIEN CE SOIR', seances: [] };
+  const AUTRE = { cle: 'a-autre', nom: 'AUTRE <b>RANGEE</b>', seances: [SEANCES[1]] };
+  const MIENNE = { cle: CLE_SALLE, nom: 'CELLE DE LA SALLE',
+                   seances: [SEANCES[0], SEANCES[2]] };
+  const TROIS = [VIDE, AUTRE, MIENNE];
+  await p.evaluate((l) => window.__pousse({ type: 'cinema', salles: l }), TROIS);
+  await p.waitForTimeout(500);
+  v = await vue();
+  /* Le nombre attendu est COMPTE sur ce qu'on pousse, jamais ecrit : une
+     rubrique de plus dans le tableau ci-dessus et l'essai suit tout seul. */
+  const PLEINES = TROIS.filter((r) => r.seances.length);
+  ok(v.rangs.length === PLEINES.length,
+     `autant de rangees que de rubriques NON VIDES (${v.rangs.length} pour ${PLEINES.length})`);
+  if (v.rangs.length !== PLEINES.length) {
+    await arrete('les rangees ne suivent pas les rubriques poussees : la suite repondrait dans le vide');
+  }
+  ok(v.rangs.every((r) => r.nom !== VIDE.nom),
+     `une rubrique vide n apparait pas du tout (${JSON.stringify(v.rangs.map((r) => r.nom))})`);
+  ok(v.rangs[0].nom === MIENNE.nom,
+     `la rubrique de la salle est la PREMIERE rangee (${JSON.stringify(v.rangs[0].nom)})`);
+  /* Et les autres n'ont pas ete melangees au passage : elles suivent dans
+     l'ordre ou le serveur les annonce, ce qui est la seconde moitie de la
+     regle et la seule chose qui la distingue d'un tri. */
+  ok(v.rangs.slice(1).map((r) => r.nom).join('|')
+     === PLEINES.filter((r) => r.cle !== CLE_SALLE).map((r) => r.nom).join('|'),
+     `et les autres suivent dans l ordre annonce (${JSON.stringify(v.rangs.slice(1).map((r) => r.nom))})`);
+  ok(v.rangs[0].titres.join('|') === MIENNE.seances.map((x) => x.titre).join('|'),
+     `chaque rangee porte SES seances (${JSON.stringify(v.rangs[0].titres)})`);
+  ok(v.rangs.every((r) => !/<[a-z]/i.test(r.brut)),
+     `et aucun nom de rubrique n a pose de balise dans la page (${JSON.stringify(v.rangs.map((r) => r.brut))})`);
+  ok(versLesLecteurs.length === 0 || v.cadre === 'about:blank',
+     `et le cadre est toujours vide (${v.cadre})`);
+
+  console.log('-- la rubrique de la salle est vide --');
+  /* ---- LE MEME REGLE, SANS CAS PARTICULIER ----
+   * La salle n'a rien a l'affiche ce soir. Elle disparait a la premiere etape
+   * — on ecarte les vides — il ne reste plus personne a mettre devant, et la
+   * PREMIERE ANNONCEE prend la tete toute seule. Aucune ligne du code ne parle
+   * de ce cas : c'est ce qu'on verifie. */
+  const SANS_MOI = [{ cle: CLE_SALLE, nom: MIENNE.nom, seances: [] },
+                    AUTRE,
+                    { cle: 'b-tiers', nom: 'TROISIEME', seances: [SEANCES[2]] }];
+  await p.evaluate((l) => window.__pousse({ type: 'cinema', salles: l }), SANS_MOI);
+  await p.waitForTimeout(500);
+  v = await vue();
+  const RESTE = SANS_MOI.filter((r) => r.seances.length);
+  ok(v.rangs.length === RESTE.length,
+     `la rangee de la salle disparait avec ses seances (${v.rangs.length} pour ${RESTE.length})`);
+  ok(v.rangs.length === RESTE.length && v.rangs[0].nom === RESTE[0].nom,
+     `et c est la SUIVANTE ANNONCEE qui prend la tete (${JSON.stringify(v.rangs.map((r) => r.nom))})`);
+  /* La banniere suit : elle ne peut pas rester sur une seance qu'aucune rangee
+     ne propose plus. */
+  const TITRES_RESTANTS = RESTE.reduce((a, r) => a.concat(r.seances.map((x) => x.titre)), []);
+  ok(TITRES_RESTANTS.indexOf(v.une.titre) >= 0,
+     `et la banniere annonce une seance encore proposee (${JSON.stringify(v.une.titre)})`);
+
+  console.log('-- et l on revient a une seule galerie --');
+  /* La forme que le serveur envoie AUJOURD'HUI, repoussee apres les rubriques :
+     le catalogue doit redevenir utilisable sans rechargement — une rangee, ses
+     affiches, et une banniere qui lance quelque chose. */
+  await p.evaluate((l) => window.__pousse({ type: 'cinema', cinemas: l }), SEANCES);
+  await p.waitForTimeout(500);
+  v = await vue();
+  ok(v.rangs.length === 1 && v.cat.length === COMBIEN,
+     `une galerie plate redonne UNE rangee et toutes les seances (${v.rangs.length} rangee(s), ${v.cat.length} pour ${COMBIEN})`);
+  const encore = SEANCES.filter((x) => x.titre === v.une.titre)[0];
+  ok(!!encore && v.boutons.filter((b) => !b.retour).length === 2,
+     `et le catalogue reste utilisable : la banniere annonce ${JSON.stringify(v.une.titre)} avec ses deux versions`);
 
   console.log('-- LA CROIX, ET CE QUI SE PASSE APRES --');
   /* ---- ON NE VERIFIE PAS UNE FERMETURE QUI N'A RIEN A FERMER ----
@@ -742,6 +1119,55 @@ const MARQUEUR_AFFICHE = 'affiche=cet-essai';
     if (!(await versPoint(E, MARGE))) await arrete('impossible de revenir sur le point apres la fermeture');
     await p.waitForTimeout(500);
     ok((await vue()).ouvert, 'repasser devant l ecran le rouvre');
+  }
+
+  console.log('-- au pouce, sur 412 px --');
+  /* ---- LE PANNEAU EST D'ABORD REGARDE SUR UN TELEPHONE ----
+   *
+   * Deux mesures, et aucune des deux ne se voit sur une capture d'ecran : une
+   * carte qui deborde d'un pixel fait apparaitre une barre horizontale sous
+   * tout le panneau, et une cible de trente pixels se rate au pouce une fois
+   * sur trois. La rangee d'affiches defile a l'horizontale : c'est exactement
+   * le genre de dessin qui pousse une barre sous la page entiere si le
+   * defilement n'est pas confine a la rangee.
+   *
+   * Le bouton de fermeture n'est pas mesure ici : il est partage par tous les
+   * panneaux du Nexus, et le redimensionner depuis le cinema deplacerait une
+   * decision qui appartient a tous.
+   *
+   * On mesure a la FIN, panneau rouvert : redimensionner au milieu du trajet
+   * aurait change la camera entre deux pas et fausse la marche vers le point. */
+  if (!(await vue()).ouvert) {
+    ok(false, 'le debord ne peut pas etre juge : le panneau n est pas ouvert');
+    ok(false, 'les boutons de version ne peuvent pas etre mesures : le panneau n est pas ouvert');
+    ok(false, 'les affiches ne peuvent pas etre mesurees : le panneau n est pas ouvert');
+  } else {
+    await p.setViewportSize({ width: 412, height: 915 });
+    await p.waitForTimeout(700);
+    const pouce = await p.evaluate(() => {
+      const carte = document.querySelector('#nxArcVoile .nxarc-carte');
+      const doc = document.documentElement;
+      const trop = (el) => {
+        const r = el.getBoundingClientRect();
+        return r.height < 44 || r.width < 44;
+      };
+      const vers = [...document.querySelectorAll('#nxArcChoix > button')];
+      const aff = [...document.querySelectorAll('#nxArcCat button')];
+      return { carte: carte.scrollWidth - carte.clientWidth,
+               page: doc.scrollWidth - doc.clientWidth,
+               versions: vers.length, versionsPetites: vers.filter(trop).length,
+               affiches: aff.length, affichesPetites: aff.filter(trop).length };
+    });
+    ok(pouce.carte <= 0 && pouce.page <= 0,
+       `aucun debord horizontal (carte ${pouce.carte} px, page ${pouce.page} px)`);
+    /* `> 0` autant que « aucun trop petit » : `filter` rend une liste vide sur
+       une liste vide, et un panneau sans boutons aurait repondu vert. */
+    ok(pouce.versions > 0 && pouce.versionsPetites === 0,
+       `les ${pouce.versions} boutons de version tiennent les 44 px (${pouce.versionsPetites} trop petits)`);
+    ok(pouce.affiches > 0 && pouce.affichesPetites === 0,
+       `les ${pouce.affiches} affiches de la rangee tiennent les 44 px (${pouce.affichesPetites} trop petites)`);
+    await p.setViewportSize({ width: 1400, height: 900 });
+    await p.waitForTimeout(300);
   }
 
   console.log('-- la page n a rien casse --');

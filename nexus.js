@@ -578,7 +578,12 @@
      * ailleurs n'en depend, et `cinema_page.test.js` cesse tout seul de la
      * verifier quand elle n'est plus dans ce fichier. */
     if (m.type === 'hello' || m.type === 'cinema') {
-      poseLesSeances(m.cinemas || (m.cinema ? [m.cinema] : []));
+      /* Trois formes sur le meme fil, par ordre d'arrivee dans le temps : une
+         galerie PAR SALLE (celle qui vient), la galerie plate (`cinemas`), et
+         la seance unique d'avant. On ne devine pas la forme au nom du champ —
+         `poseLesSeances` la reconnait a ce qu'elle contient. */
+      poseLesSeances(m.salles || m.rubriques
+                     || m.cinemas || (m.cinema ? [m.cinema] : []));
     }
     if (m.type === 'realmEntre') entreMonde(m);
     if (m.type === 'realmRefus') {
@@ -2607,6 +2612,13 @@
   var elArcSous = document.getElementById('nxArcSous');
   var elArcChoix = document.getElementById('nxArcChoix');
   var elArcCat = document.getElementById('nxArcCat');
+  /* La banniere de la seance mise en avant. `elArcUne` reste dans le flux meme
+     pour la borne d'arcade : c'est elle qui CONTIENT la barre de versions, et
+     la retirer aurait emporte les boutons avec elle. */
+  var elArcUne = document.getElementById('nxArcUne');
+  var elArcUneFond = document.getElementById('nxArcUneFond');
+  var elArcUneTitre = document.getElementById('nxArcUneTitre');
+  var elArcUneInfo = document.getElementById('nxArcUneInfo');
 
   /* ---- LE PANNEAU A DEUX VISAGES, ET UN SEUL ETAT POUR LES DIRE ----
    *
@@ -2617,7 +2629,7 @@
    * jouer un film. Il n'y en a donc qu'une : `SEANCE_CHOISIE` vaut la seance
    * ouverte, ou rien — et « rien » VEUT DIRE la galerie.
    *
-   * `CAT_LISTE` est la liste telle qu'on nous l'a donnee, gardee PAR
+   * `CAT_RUBRIQUES` est la table telle qu'on nous l'a donnee, gardee PAR
    * REFERENCE : le cinema passe sa propre table, qui est remplie sur place a
    * chaque message du serveur. Une copie aurait fige la galerie a l'instant
    * ou le panneau s'est ouvert, et une seance retiree par le proprietaire
@@ -2626,8 +2638,30 @@
    * `SOUS_ECRAN` est la phrase d'accueil du panneau : la seance ouverte la
    * remplace par son titre, et revenir a la galerie doit la retrouver. La
    * relire dans le DOM aurait relu le titre du film. */
-  var CAT_LISTE = [];
+  var CAT_RUBRIQUES = [];
   var SEANCE_CHOISIE = null;
+  /* ---- LA SEANCE MISE EN AVANT, ET POURQUOI ELLE NE PEUT PAS MENTIR ----
+   *
+   * La galerie n'est plus une grille : c'est une BANNIERE — une seance en
+   * grand, avec ses boutons de version — au-dessus d'une rangee d'affiches
+   * qui sert a changer la banniere. « Laquelle est en avant » est donc une
+   * donnee de plus, et une donnee de plus est une occasion de plus de se
+   * contredire.
+   *
+   * Deux regles la tiennent, et une seule fonction les applique :
+   *   - elle est TOUJOURS une seance ENCORE ANNONCEE, ou rien quand plus rien
+   *     ne l'est. Une vedette retiree par le proprietaire serait annoncee dans
+   *     la banniere alors que la rangee ne la propose plus, et son bouton de
+   *     version chargerait ce qui n'est plus a l'affiche ;
+   *   - des qu'une seance est OUVERTE, c'est elle la vedette. Sans quoi la
+   *     banniere annoncerait un film pendant que le cadre en joue un autre —
+   *     exactement les deux verites pour une question qu'on cherche a eviter.
+   *
+   * `SEANCE_CHOISIE` garde son sens et reste le seul a le dire : la seance
+   * dont le lecteur est ouvert, ou rien — et « rien » VEUT DIRE la galerie.
+   * La vedette, elle, existe AUSSI dans la galerie : c'est la difference, et
+   * c'est la seule. */
+  var SEANCE_VEDETTE = null;
   var SOUS_ECRAN = '';
 
   /* ---- UN SEUL GRAND ECRAN, POUR DEUX SALLES ----
@@ -2647,11 +2681,13 @@
    *                 faux pour un lecteur etranger (cadre en bac a sable) ;
    *   src         : l'adresse a charger TOUT DE SUITE, s'il y en a une ;
    *   choix       : des versions a proposer sans galerie ;
-   *   catalogue   : la galerie, PAR REFERENCE — la table du cinema est
+   *   rubriques   : la galerie, PAR REFERENCE — la table du cinema est
    *                 remplie sur place a chaque message du serveur, et le
-   *                 panneau ouvert doit suivre.
+   *                 panneau ouvert doit suivre. Une rubrique par categorie :
+   *                 films, mangas, series. Une seule donne une rangee, trois
+   *                 en donnent trois, et le panneau ne fait pas la difference.
    *
-   * `catalogue` et `choix` comptent pour une raison qui n'est pas cosmetique :
+   * `rubriques` et `choix` comptent pour une raison qui n'est pas cosmetique :
    * tant qu'on n'a pas clique une VERSION, rien ne part sur le reseau. Entrer
    * dans une salle ne doit pas telecharger ce que personne n'a demande.
    */
@@ -2660,7 +2696,7 @@
     arcOuvert = true;
     if (elArcTitre) elArcTitre.innerHTML = cfg.titre || '';
     SOUS_ECRAN = cfg.sous || '';
-    CAT_LISTE = cfg.catalogue || [];
+    CAT_RUBRIQUES = cfg.rubriques || [];
     /* ================ CE QUI EST DE NOUS, ET CE QUI NE L'EST PAS ================
      *
      * Ce panneau sert deux contenus qui n'ont rien en commun sauf leur cadre :
@@ -2684,18 +2720,21 @@
      *    aucun bloqueur ne les arrete : `sandbox` sans `allow-popups` ni
      *    `allow-top-navigation` le leur interdisait au niveau du navigateur.
      *
-     *    Ils s'en apercoivent. L'un d'eux a repondu, en toutes lettres et a
-     *    la place du film : « Streaming Blocked — it seems that either
-     *    AdBlock is enabled or the page is running in a sandboxed
-     *    environment ». Ce n'etait pas une supposition, c'etait leur page.
+     *    Ils s'en apercoivent, et `allow-popups` n'a pas suffi. L'un d'eux a
+     *    repondu, en toutes lettres et a la place du film : « Streaming
+     *    Blocked — it seems that either AdBlock is enabled or the page is
+     *    running in a sandboxed environment. » Ils ne demandent pas la
+     *    permission d'ouvrir une fenetre : ils exigent qu'il n'y ait PAS de
+     *    bac a sable.
      *
-     *    Le proprietaire a tranche, deux fois : il prefere la publicite au
-     *    film qui ne demarre pas. On retire donc le bac a sable pour le
-     *    contenu etranger, et il faut savoir ce que cela rend possible — le
-     *    lecteur peut ouvrir des fenetres, et il peut remplacer la page du
-     *    jeu, ce qui coute la partie en cours a celui qui regardait. C'est un
-     *    prix, pas un detail, et c'est un prix accepte en connaissance de
-     *    cause. Le remettre est une ligne, le jour ou l'on changera de source.
+     *    Le proprietaire a tranche, deux fois, capture a l'appui : il prefere
+     *    la publicite au film qui ne demarre pas. On retire donc le bac a
+     *    sable pour le contenu etranger, et il faut savoir ce que cela rend
+     *    possible — le lecteur peut ouvrir des fenetres, et il peut REMPLACER
+     *    la page du jeu, ce qui coute la partie en cours a celui qui
+     *    regardait. C'est un prix, pas un detail, et c'est un prix accepte en
+     *    connaissance de cause. Le remettre est une ligne, le jour ou l'on
+     *    changera de source.
      *
      *    La page de la borne d'arcade, elle, n'a jamais eu de bac a sable et
      *    n'en a jamais eu besoin : elle est a nous.
@@ -2718,7 +2757,7 @@
      * joueur — et surtout, avec `cfg.src` vide, RIEN ne part sur le reseau
      * tant qu'aucune version n'est cliquee. La borne d'arcade n'a pas de
      * galerie : elle prend le meme chemin sans liste ni retour. */
-    if (CAT_LISTE.length) montreCatalogue();
+    if (rubriquesEnOrdre(CAT_RUBRIQUES).length) montreCatalogue();
     else montreSeance(null, cfg.choix || []);
     elArcVoile.classList.add('on');
     /* ---- GRAND ECRAN TOUT DE SUITE ----
@@ -2768,6 +2807,151 @@
     });
   }
 
+  /* ---- CE QUI SE MONTRE, ET DANS QUEL ORDRE : UNE SEULE REGLE ----
+   *
+   *     ON ECARTE LES RUBRIQUES VIDES, PUIS ON MET CELLE DE LA SALLE EN
+   *     PREMIER, LES AUTRES SUIVANT DANS L'ORDRE OU LE SERVEUR LES ANNONCE.
+   *
+   * Cette phrase produit A ELLE SEULE les deux comportements demandes, et
+   * c'est la raison pour laquelle il n'y en a qu'une.
+   *
+   * Le cinema montre les films d'abord ; la salle manga montrera les mangas
+   * d'abord, puis ce que le serveur annonce ensuite. Et une salle dont la
+   * rubrique est VIDE ? Elle disparait a la premiere etape, il ne reste plus
+   * personne a mettre devant, et la suivante annoncee se retrouve en tete
+   * toute seule.
+   *
+   * Ecrire « si la rubrique de la salle est vide, mettre les films devant »
+   * aurait ete une DEUXIEME regle qui dit la meme chose. Deux regles ne
+   * restent d'accord que tant que personne n'en touche une : le jour ou le
+   * serveur change l'ordre dans lequel il annonce ses galeries, la premiere
+   * suivrait et la seconde continuerait de nommer les films.
+   *
+   * La cle vient de LA SALLE et jamais d'ici : ce panneau sert toutes les
+   * salles, et `SCENE === 'arcade'` ecrit dans un endroit partage est
+   * exactement la faute que ce depot a deja payee trois fois. */
+  function rubriquesEnOrdre(table) {
+    var s = salleCourante();
+    var cle = (s && s.rubrique) || '';
+    var pleines = (table || []).filter(function (r) { return r.films.length; });
+    return pleines.filter(function (r) { return r.cle === cle; })
+                  .concat(pleines.filter(function (r) { return r.cle !== cle; }));
+  }
+
+  /* ---- CE QUI EST PLAT SE RECALCULE, IL NE SE RANGE PAS ----
+   * La banniere raisonne sur des seances et non sur des rubriques : « est-elle
+   * encore a l'affiche », « la combientieme sur combien ». Garder une seconde
+   * table a plat a cote des rubriques aurait fait deux endroits ou une seance
+   * retiree peut survivre. On la refabrique : elle ne peut alors rien dire que
+   * les rubriques ne disent pas.
+   * Dans l'ORDRE D'AFFICHAGE, pour que « la premiere seance » soit celle que le
+   * joueur voit en premier et non celle d'une rangee qu'il faut aller
+   * chercher. */
+  function toutesLesSeances() {
+    var t = [];
+    rubriquesEnOrdre(CAT_RUBRIQUES).forEach(function (r) {
+      r.films.forEach(function (f) { t.push(f); });
+    });
+    return t;
+  }
+
+  /* ---- RETROUVER UNE SEANCE APRES UN MESSAGE DU SERVEUR ----
+   *
+   * `poseLesSeances` refabrique la table entiere a chaque annonce : les objets
+   * sont NEUFS, meme quand les seances, elles, n'ont pas bouge. Comparer les
+   * objets aurait donc ramene la banniere sur la premiere du rang a chaque
+   * message — et referme le lecteur au milieu d'un film parce que le
+   * proprietaire venait de renommer une AUTRE seance.
+   *
+   * Pire pour l'essai : « la vedette retiree est remplacee » aurait ete vrai
+   * a tous les coups, y compris quand elle ne l'est pas — une verification qui
+   * passe pour la mauvaise raison.
+   *
+   * On la reconnait donc a son TITRE, le seul repere que le serveur reconduit
+   * d'un message a l'autre. Deux seances homonymes rendraient la premiere :
+   * meme titre, meme affiche ou presque, personne ne peut le distinguer a
+   * l'ecran. */
+  function memeSeance(f) {
+    if (!f) return null;
+    var t = toutesLesSeances();
+    for (var i = 0; i < t.length; i++) {
+      if (t[i] === f || t[i].titre === f.titre) return t[i];
+    }
+    return null;
+  }
+
+  /* ---- LE SEUL ENDROIT QUI ECRIT LA VEDETTE ----
+   * Une affectation directe ailleurs, et l'une des deux regles ci-dessus
+   * finirait par ne plus valoir. Ce qu'on demande n'est pas force : la seance
+   * demandee si elle est encore a l'affiche, sinon la premiere qui l'est,
+   * sinon rien. */
+  function metEnVedette(f) {
+    SEANCE_VEDETTE = memeSeance(f) || toutesLesSeances()[0] || null;
+    peintUne();
+  }
+
+  /* ---- LA LIGNE D'INFORMATION ----
+   * Elle est COMPTEE, jamais ecrite : un texte fixe aurait promis « deux
+   * versions » a une seance qui n'en a qu'une. Les noms de version viennent de
+   * `poseLesSeances`, donc de nous ; le titre, lui, n'entre jamais ici — il a
+   * sa propre ligne, et elle est posee en `textContent`. */
+  function ligneDeLaVedette(f) {
+    var t = toutesLesSeances();
+    var noms = (f.versions || []).map(function (v) { return v.nom; });
+    return 'NOW SHOWING \u00b7 ' + (t.indexOf(f) + 1) + ' / ' + t.length
+         + (noms.length ? ' \u00b7 ' + noms.join(' \u00b7 ') : '');
+  }
+
+  /* ---- LA BANNIERE ----
+   * Elle n'a de decor que dans la GALERIE : le lecteur ouvert, le titre est
+   * deja dans le bandeau et trois cents pixels d'affiche voleraient la hauteur
+   * de l'ecran. La borne d'arcade, elle, n'a pas de seance du tout. Les deux
+   * cas se disent d'une seule ligne, tiree des deux etats — rien de plus a
+   * tenir a jour. */
+  function peintUne() {
+    if (!elArcUne) return;
+    var f = SEANCE_VEDETTE;
+    elArcUne.classList.toggle('nxarc-plate', !f || !!SEANCE_CHOISIE);
+    /* ---- LE TITRE VIENT DU PANNEAU D'ADMINISTRATION ----
+     * Donc d'un humain, par le serveur, et jamais par `innerHTML` : une balise
+     * dans un titre de film serait executee dans la page de chaque joueur. */
+    if (elArcUneTitre) elArcUneTitre.textContent = f ? f.titre : '';
+    if (elArcUneInfo) elArcUneInfo.textContent = f ? ligneDeLaVedette(f) : '';
+    if (!elArcUneFond) return;
+    var adr = (f && f.affiche) || '';
+    /* ---- ON NE REPOSE PAS UNE IMAGE QUI N'A PAS CHANGE ----
+     * La banniere est repeinte a chaque message du serveur. Recreer l'element
+     * a chaque fois redemandait l'affiche au reseau et la faisait clignoter
+     * derriere le titre, pour rien. */
+    if (elArcUneFond.__adr === adr) return;
+    elArcUneFond.__adr = adr;
+    elArcUneFond.innerHTML = '';
+    if (!adr) return;
+    var im = document.createElement('img');
+    im.alt = '';
+    /* Une affiche etrangere qui repond 404, ou dont le domaine est eteint,
+       laissait l'icone d'image cassee du navigateur en travers de la banniere.
+       On retire l'image : le degrade de la maison reste dessous, et le titre
+       comme les boutons restent lisibles. */
+    im.addEventListener('error', function () {
+      if (im.parentNode) im.parentNode.removeChild(im);
+    });
+    im.src = adr;
+    elArcUneFond.appendChild(im);
+  }
+
+  /* ---- LA GALERIE : LA BANNIERE ET SA RANGEE, PEINTES ENSEMBLE ----
+   * Les deux disent la meme seance — l'une en grand, l'autre d'un lisere — et
+   * les peindre a deux endroits differents aurait fini par laisser la rangee
+   * marquer une affiche que la banniere n'annonce plus. */
+  function montreGalerie(f) {
+    metEnVedette(f);
+    /* Les versions de la vedette sont DANS la banniere, et il n'y a pas de
+       retour a proposer : on est deja dans la galerie. */
+    poseChoix(SEANCE_VEDETTE ? SEANCE_VEDETTE.versions : [], false);
+    peintCatalogue();
+  }
+
   /* ---- LA GALERIE ----
    * Ce que le panneau montre quand aucune seance n'est ouverte. */
   function montreCatalogue() {
@@ -2781,8 +2965,11 @@
      * facon sure d'arreter un document etranger qu'on ne pilote pas. */
     if (elArcJeu) elArcJeu.src = 'about:blank';
     if (elArcSous) elArcSous.innerHTML = SOUS_ECRAN;
-    poseChoix([], false);
-    peintCatalogue();
+    /* On revient sur CELLE QU'ON REGARDAIT, et non sur la premiere du rang :
+       sortir d'un film pour retrouver la banniere d'un autre donne
+       l'impression d'avoir perdu sa place. `metEnVedette` la revalide contre
+       la table — retiree entre-temps, on retombe sur une seance reelle. */
+    montreGalerie(SEANCE_VEDETTE);
   }
 
   /* ---- UNE SEANCE OUVERTE ----
@@ -2791,6 +2978,13 @@
    * part. */
   function montreSeance(f, choix) {
     SEANCE_CHOISIE = f || null;
+    /* ---- LA BANNIERE NE PEUT PAS ANNONCER AUTRE CHOSE QUE CE QUI JOUE ----
+     * Elle est appelee AVANT tout le reste et avec la seance qu'on ouvre : a
+     * partir d'ici les deux etats disent la meme seance, et le retour a la
+     * galerie retrouve celle qu'on vient de voir. Appelee meme quand `f` vaut
+     * rien — la borne d'arcade n'a pas de seance, et sans ce passage la
+     * banniere gardait le decor de la derniere vedette du cinema. */
+    metEnVedette(f);
     if (elArcVoile) elArcVoile.classList.remove('nxarc-parcours');
     if (elArcCat) { elArcCat.innerHTML = ''; elArcCat.hidden = true; }
     /* ---- LE TITRE VIENT DU PANNEAU D'ADMINISTRATION ----
@@ -2804,22 +2998,55 @@
     poseChoix(f ? f.versions : choix, !!f);
   }
 
-  /* ---- LES VIGNETTES ----
-   * Refaites en entier a chaque fois plutot que mises a jour une par une :
-   * une galerie qui retire sa troisieme seance et en renomme la premiere
-   * demanderait sinon de comparer deux listes, et c'est exactement la ou l'on
-   * finit par laisser un bouton mort qui pointe sur ce qui n'existe plus. */
+  /* ---- LES RANGEES ----
+   * Une par rubrique, dans l'ordre que la regle donne, et refaites en entier a
+   * chaque fois plutot que mises a jour une par une : une galerie qui retire sa
+   * troisieme seance et en renomme la premiere demanderait sinon de comparer
+   * deux listes, et c'est exactement la ou l'on finit par laisser un bouton
+   * mort qui pointe sur ce qui n'existe plus. */
   function peintCatalogue() {
     if (!elArcCat) return;
     elArcCat.innerHTML = '';
-    elArcCat.hidden = !CAT_LISTE.length;
-    CAT_LISTE.forEach(function (f) {
+    var ordre = rubriquesEnOrdre(CAT_RUBRIQUES);
+    elArcCat.hidden = !ordre.length;
+    ordre.forEach(function (r) {
+      var sec = document.createElement('section');
+      sec.className = 'nxarc-rang';
+      /* ---- LE NOM DE LA RUBRIQUE VIENT DU SERVEUR, LUI AUSSI ----
+       * Donc d'un humain, et jamais par `innerHTML` : une balise dans le nom
+       * d'une categorie serait executee dans la page de chaque joueur, tout
+       * comme dans le titre d'un film.
+       * Pas de titre quand la rubrique n'en porte pas : une seule rangee sans
+       * nom n'a rien a annoncer, et un intitule vide laisserait un blanc au
+       * milieu du panneau. */
+      if (r.nom) {
+        var h = document.createElement('h3');
+        h.className = 'nxarc-rang-nom';
+        h.textContent = r.nom;
+        sec.appendChild(h);
+      }
+      var rg = document.createElement('div');
+      rg.className = 'nxarc-rangee';
+      r.films.forEach(function (f) { rg.appendChild(vignetteDe(f)); });
+      sec.appendChild(rg);
+      elArcCat.appendChild(sec);
+    });
+  }
+
+  /* ---- UNE VIGNETTE ----
+   * Une seule fabrique : trois rangees qui construisent chacune leur bouton
+   * auraient fini par en laisser une poser le titre en `innerHTML`. */
+  function vignetteDe(f) {
       var b = document.createElement('button');
       b.type = 'button';
       /* La seance est accrochee AU BOUTON, et non son rang dans la liste : la
          galerie peut etre remplacee par le serveur entre l'affichage et le
          clic, et un rang aurait alors ouvert la seance d'a cote. */
       b.__film = f;
+      /* Celle qui est dans la banniere est marquee ICI aussi : sans ce lisere,
+         cliquer une affiche changeait le haut du panneau sans que rien, en
+         bas, ne dise laquelle on venait de choisir. */
+      if (f === SEANCE_VEDETTE) b.classList.add('actif');
       var v = document.createElement('span');
       v.className = 'nxarc-vign';
       /* Le symbole est POSE D'ABORD, sous l'image : c'est ce qui reste quand
@@ -2843,8 +3070,7 @@
       t.textContent = f.titre;
       b.appendChild(v);
       b.appendChild(t);
-      elArcCat.appendChild(b);
-    });
+      return b;
   }
 
   /* ---- CE QUI EST A L'AFFICHE PEUT CHANGER PENDANT QU'ON REGARDE ----
@@ -2853,20 +3079,43 @@
    * que plus personne n'annonce. Le meme message qui remplit la table repeint
    * donc le panneau — un seul entonnoir, pas un minuteur qui compare. */
   function rafraichitCatalogue() {
-    if (SEANCE_CHOISIE && CAT_LISTE.indexOf(SEANCE_CHOISIE) < 0) {
-      /* Celle qu'on regardait n'est plus a l'affiche : on ne la laisse ni a
-         l'ecran de la salle ni dans le cadre. */
-      SEANCE_CHOISIE = null;
-      if (arcOuvert) { montreCatalogue(); return; }
+    if (SEANCE_CHOISIE) {
+      /* On la cherche par `memeSeance` et non par identite : la table est
+         refabriquee a chaque message, donc l'identite aurait coupe le film en
+         cours a la premiere annonce du serveur, quelle qu'elle soit. */
+      var enc = memeSeance(SEANCE_CHOISIE);
+      if (!enc) {
+        /* Celle qu'on regardait n'est plus a l'affiche : on ne la laisse ni a
+           l'ecran de la salle ni dans le cadre. */
+        SEANCE_CHOISIE = null;
+        if (arcOuvert) { montreCatalogue(); return; }
+      } else {
+        /* Toujours a l'affiche, mais sous un objet neuf. On raccroche les DEUX
+           etats au meme objet : n'en raccrocher qu'un aurait fait dire a la
+           banniere et au cadre deux seances differentes. */
+        SEANCE_CHOISIE = enc;
+        metEnVedette(enc);
+      }
     }
-    if (arcOuvert && elArcVoile && elArcVoile.classList.contains('nxarc-parcours')) peintCatalogue();
+    /* ---- LA VEDETTE PEUT DISPARAITRE SANS QU'ON REGARDE QUOI QUE CE SOIT ----
+     * Le proprietaire retire la seance mise en avant pendant qu'on parcourt la
+     * rangee. Repeindre la seule rangee laissait la banniere sur un fantome :
+     * un titre, une affiche et deux boutons de version qui pointaient sur ce
+     * qui n'est plus annonce. `montreGalerie` la revalide contre la table et
+     * se rabat sur la premiere encore a l'affiche. */
+    if (arcOuvert && elArcVoile && elArcVoile.classList.contains('nxarc-parcours')) montreGalerie(SEANCE_VEDETTE);
   }
 
   if (elArcCat) {
     elArcCat.addEventListener('click', function (e) {
       var b = e.target.closest ? e.target.closest('button') : null;
       if (!b || !b.__film) return;
-      montreSeance(b.__film, null);
+      /* ---- UNE AFFICHE PROMEUT, ELLE NE LANCE RIEN ----
+       * Elle ouvrait la seance : la rangee disparaissait, le panneau passait en
+       * lecture, et il fallait revenir en arriere pour seulement REGARDER une
+       * autre affiche. Elle ne fait plus que changer la banniere — rien ne part
+       * sur le reseau tant qu'on n'a pas clique une version. */
+      montreGalerie(b.__film);
     });
   }
 
@@ -2892,10 +3141,24 @@
       if (e.target.closest && e.target.closest('button.nxarc-retour')) { montreCatalogue(); return; }
       var b = e.target.closest ? e.target.closest('button[data-src]') : null;
       if (!b || !elArcJeu) return;
+      /* L'adresse est lue AVANT tout le reste : `montreSeance` refait les
+         boutons, et l'on marquerait alors un element que le navigateur vient
+         de jeter. */
+      var src = b.getAttribute('data-src') || 'about:blank';
+      /* ---- C'EST LE CLIC SUR UNE VERSION QUI OUVRE LA SEANCE ----
+       * Les versions sont dans la BANNIERE : on les clique donc alors que le
+       * panneau montre encore la rangee d'affiches. Sans ce passage, le cadre
+       * se remplissait derriere la galerie — un film qui joue sous des
+       * affiches, sans ecran visible et sans retour pour en sortir.
+       * On ouvre la VEDETTE et pas « la seance du bouton » : le bouton ne sait
+       * que son adresse, et c'est la banniere qui dit de quelle seance elle
+       * est. La borne d'arcade n'a pas de vedette et garde son chemin direct. */
+      if (!SEANCE_CHOISIE && SEANCE_VEDETTE) montreSeance(SEANCE_VEDETTE, null);
       var q = elArcChoix.querySelectorAll('button');
-      for (var i = 0; i < q.length; i++) q[i].classList.remove('actif');
-      b.classList.add('actif');
-      elArcJeu.src = b.getAttribute('data-src') || 'about:blank';
+      for (var i = 0; i < q.length; i++) {
+        q[i].classList.toggle('actif', q[i].getAttribute('data-src') === src);
+      }
+      elArcJeu.src = src;
     });
   }
   function fermeArcade(parLaMain) {
@@ -3879,7 +4142,18 @@
    *     ca engage. Le choix du contenu appartient a celui qui remplit la
    *     table, pas a ce fichier.
    */
-  var FILMS = [];
+  /* ---- LE CATALOGUE EST FAIT DE RUBRIQUES, PAS D'UNE LISTE ----
+   *
+   * Films, mangas, series. Chaque rubrique porte la CLE que le serveur lui
+   * donne, son NOM LISIBLE, et ses seances. Une seule table, remplie SUR PLACE
+   * a chaque message : le panneau ouvert la tient par reference, et lui en
+   * donner une neuve aurait fige sa galerie a l'instant ou il s'est ouvert.
+   *
+   * Il n'y a PAS de seconde table a plat a cote. Deux representations des
+   * memes seances, c'est deux endroits ou une seance retiree peut survivre :
+   * ce qui est plat se recalcule quand on en a besoin, et ne peut donc pas
+   * dire autre chose que les rubriques. */
+  var RUBRIQUES = [];
 
   /* Ce que le serveur annonce devient la table. On la REMPLACE au lieu d'y
      ajouter : le proprietaire retire une seance depuis son panneau, et
@@ -3891,17 +4165,47 @@
      On ne compte ni ne borne rien ici — le serveur a deja refuse ce qui
      n'etait ni http ni https et coupe au-dela de sa limite. Revalider ferait
      deux regles pour une seule question, et c'est la sienne qui compte. */
+  /* ---- ON RECONNAIT UNE RUBRIQUE A CE QU'ELLE CONTIENT ----
+   *
+   * Le serveur apprend a annoncer une galerie PAR SALLE ; les deux depots ne se
+   * deploient pas a la meme seconde, et le nom du champ qui portera ces
+   * galeries n'est pas encore fige. Attendre un nom precis aurait fait un
+   * rendez-vous qu'on rate : on regarde donc la FORME. Une entree qui porte une
+   * LISTE est une rubrique ; une entree qui porte un TITRE est une seance.
+   * Le jour ou le fil est fige, cette fonction se reduit a une ligne et rien
+   * d'autre ne bouge. */
+  function seancesDe(r) {
+    var l = r && (r.seances || r.cinemas || r.films || r.liste);
+    return Array.isArray(l) ? l : null;
+  }
+
   function poseLesSeances(liste) {
-    FILMS.length = 0;
-    (liste || []).forEach(function (c) {
-      if (!c || !c.titre) return;
-      var v = [];
-      if (c.vf) v.push({ nom: 'VF', src: c.vf });
-      if (c.vo) v.push({ nom: 'VO', src: c.vo });
-      /* Une seance sans aucune version n'est pas une seance : elle aurait
-         donne une vignette qui ouvre une liste de boutons vide. */
-      if (!v.length) return;
-      FILMS.push({ titre: c.titre, affiche: c.affiche || '', versions: v });
+    RUBRIQUES.length = 0;
+    var l = liste || [];
+    /* Une liste de seances est traitee comme UNE rubrique sans nom : une
+       branche « s'il n'y a qu'une categorie » aurait fait un deuxieme chemin a
+       tenir a jour, et c'est toujours celui-la qu'on oublie. Une rubrique
+       donne une rangee, trois en donnent trois — le reste du code ne sait meme
+       pas qu'il y a eu deux formes de message. */
+    var brut = l.some(function (r) { return seancesDe(r); })
+             ? l : [{ cle: '', nom: '', seances: l }];
+    brut.forEach(function (r) {
+      if (!r) return;
+      var films = [];
+      (seancesDe(r) || []).forEach(function (c) {
+        if (!c || !c.titre) return;
+        var v = [];
+        if (c.vf) v.push({ nom: 'VF', src: c.vf });
+        if (c.vo) v.push({ nom: 'VO', src: c.vo });
+        /* Une seance sans aucune version n'est pas une seance : elle aurait
+           donne une vignette qui ouvre une liste de boutons vide. */
+        if (!v.length) return;
+        films.push({ titre: c.titre, affiche: c.affiche || '', versions: v });
+      });
+      /* On garde meme les rubriques vides : c'est `rubriquesEnOrdre` qui les
+         ecarte, et l'ecarter DEUX fois aurait fait deux regles pour une seule
+         question — celle de savoir ce qui se montre. */
+      RUBRIQUES.push({ cle: (r.cle || ''), nom: (r.nom || ''), films: films });
     });
     rafraichitCatalogue();
   }
@@ -3910,6 +4214,14 @@
     img: null, src: 'img/nexus/tiles/room_cinema.webp',
     w: 1600, h: 1600,
     nom: 'CINEMA',
+    /* ---- LA RUBRIQUE DE CETTE SALLE ----
+     * La cle sous laquelle le serveur annonce la galerie de CE lieu. Elle est
+     * ici, sur la salle, et pas dans le panneau : le panneau sert toutes les
+     * salles, et seule celle qui s'ouvre sait laquelle est la sienne. La
+     * nommer dans le panneau aurait redonne le `SCENE === 'arcade'` que ce
+     * depot a deja paye trois fois — la salle manga et la salle series
+     * poseront leur ligne, et rien d'autre ne bougera. */
+    rubrique: 'films',
     /* ---- LE FOND D'ATTENTE, PROPRIETE DE LA SALLE ----
      * Ce que la toile montre quand aucune seance n'est choisie. Il est ICI et
      * non en constante du cinema : la salle manga a deja sa planche
@@ -7676,7 +7988,7 @@
      * redevient une annonce quand elle est vide. Un drapeau ecrit a la main
      * aurait fini par promettre une seance qui n'existe plus, ou taire celles
      * qui existent. */
-    SALLE_CINE.bornes[0].jeu = FILMS.length ? 'flix' : null;
+    SALLE_CINE.bornes[0].jeu = rubriquesEnOrdre(RUBRIQUES).length ? 'flix' : null;
     /* ---- LE POINT GARDE LE NOM QUE LA SALLE LUI DONNE ----
      * Il portait le titre de la seule seance a l'affiche. Deux raisons de ne
      * plus le faire : il y en a maintenant douze, donc en nommer une seule
@@ -7685,13 +7997,13 @@
      * dans le catalogue, poses en `textContent`. */
     pasSalle(SALLE_CINE, surPortail, dt,
              function () {
-               if (arcOuvert || !FILMS.length) return;
+               if (arcOuvert || !rubriquesEnOrdre(RUBRIQUES).length) return;
                /* La table est passee PAR REFERENCE : le panneau doit voir les
                   seances que le proprietaire ajoute ou retire pendant qu'il
                   est ouvert. */
                ouvreEcran({ titre: '&#127916; SWOGE FLIX',
                             sous: 'Pick a show &middot; nothing loads until you do',
-                            catalogue: FILMS });
+                            rubriques: RUBRIQUES });
              },
              { pret: 'walk up to browse tonight&rsquo;s shows',
                bientot: 'nothing showing yet &middot; come back soon',

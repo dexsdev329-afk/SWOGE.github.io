@@ -1298,7 +1298,13 @@ body.nxdrag *{ cursor:grabbing !important; }
    Deux boutons larges et espaces : on la lit de loin, on la vise au pouce, et
    l'un ne s'attrape pas en visant l'autre. */
 .nxarc-choix{ display:flex; gap:10px; margin-top:12px; flex-wrap:wrap; }
-.nxarc-choix button{ flex:1 1 140px; min-height:44px; border-radius:10px;
+.nxarc-choix[hidden]{ display:none; }
+/* `box-sizing` : la bordure d'un pixel s'AJOUTAIT a la base de flex, et deux
+   boutons de cent cinquante-deux pixels passaient a trois cent dix-huit dans
+   une ligne qui en offre trois cent dix-huit. Ils se repliaient l'un sous
+   l'autre sur 412 px pour ces deux pixels-la. */
+.nxarc-choix button{ box-sizing:border-box;
+  flex:1 1 140px; min-height:44px; border-radius:10px;
   cursor:pointer; font:800 14px/1 system-ui,sans-serif; letter-spacing:.06em;
   color:#ffd8ee; background:rgba(255,62,165,.14);
   border:1px solid rgba(255,62,165,.45); }
@@ -1310,30 +1316,133 @@ body.nxdrag *{ cursor:grabbing !important; }
    touche, couleur neutre, et il ne s'etire pas pour occuper la ligne. */
 .nxarc-choix button.nxarc-retour{ flex:0 1 130px; color:#cbd5e1;
   background:rgba(255,255,255,.06); border-color:rgba(255,255,255,.22); }
-/* ---- LE CATALOGUE ----
+/* ---- LA BANNIERE DE LA SEANCE MISE EN AVANT ----
  *
- * L'ecran ne diffuse plus UNE seance mais une galerie, et l'on choisit
- * d'abord le film, ensuite la version. La grille est en `auto-fill` et non en
- * nombre de colonnes fixe : sur 412 px de large elle en met deux, sur un
- * ordinateur elle en met cinq, et personne n'a de point de rupture a tenir a
- * jour le jour ou une treizieme seance arrive.
+ * La grille de vignettes disait « voici douze cases », pas « voici ce qui
+ * passe ce soir » : douze affiches de cent douze pixels se valent toutes, et
+ * rien dans la page ne donnait envie d'en ouvrir une plutot qu'une autre.
+ * La banniere repond a la question dans l'ordre ou on se la pose — QUOI, puis
+ * EN QUELLE VERSION — et la rangee d'affiches n'est plus qu'un moyen de
+ * changer la reponse a la premiere.
  *
- * `minmax(112px, 1fr)` plutot qu'une largeur : 112 px d'affiche plus le titre
- * dessous fait une cible bien au-dela des quarante-quatre pixels d'un pouce,
- * et `1fr` reprend la place qui reste au lieu de laisser une colonne vide a
- * droite. */
-.nxarc-cat{ display:grid; gap:10px; margin-top:12px;
-  grid-template-columns:repeat(auto-fill, minmax(112px, 1fr)); }
-.nxarc-cat button{ display:flex; flex-direction:column; gap:6px; padding:6px;
+ * `min-height` en `clamp` et non en pixels : sur 412 px de large, une
+ * banniere de trois cents pixels de haut poussait la rangee entiere sous le
+ * bord de l'ecran, et l'on ne voyait plus qu'un film sur douze. En `30vh`
+ * elle prend le tiers de la hauteur disponible, quelle que soit la fenetre.
+ *
+ * Le fond de secours est un degrade de la maison — magenta et prune. Sans
+ * lui, une banniere dont l'affiche ne repond pas serait un rectangle noir
+ * avec un titre dedans, ce qui se lit comme une panne. */
+.nxarc-une{ position:relative; margin-top:12px; border-radius:14px;
+  overflow:hidden; display:flex; align-items:flex-end;
+  min-height:clamp(180px, 30vh, 300px);
+  border:1px solid rgba(255,62,165,.35);
+  background:linear-gradient(122deg,#25102c 0%,#3a0f3a 46%,#120a1e 100%); }
+.nxarc-une[hidden]{ display:none; }
+/* ---- L'AFFICHE EN FOND, ET CE QUI LA REND LISIBLE ----
+ * Une affiche est PORTRAIT et la banniere est PAYSAGE : `cover` la recadre au
+ * lieu de l'etirer, et `28 %` vise le haut de la planche, la ou se trouve
+ * presque toujours le visage — cale au centre, on affichait des ceintures.
+ * Le voile est en deux degrades et pas en teinte plate : un aplat sombre
+ * assez opaque pour rendre le titre lisible eteignait AUSSI le cote droit de
+ * l'affiche, dont on n'avait alors plus besoin. Le texte est a gauche, donc
+ * c'est a gauche qu'on assombrit. */
+.nxarc-une-fond{ position:absolute; inset:0; }
+.nxarc-une-fond img{ display:block; width:100%; height:100%;
+  object-fit:cover; object-position:50% 28%; }
+.nxarc-une-fond::after{ content:''; position:absolute; inset:0;
+  background:linear-gradient(90deg, rgba(8,3,16,.94) 0%, rgba(8,3,16,.78) 42%,
+                                    rgba(8,3,16,.18) 100%),
+             linear-gradient(0deg, rgba(8,3,16,.96) 0%, rgba(8,3,16,0) 66%); }
+.nxarc-une-txt{ position:relative; z-index:1; width:100%; max-width:580px;
+  padding:16px; }
+/* ---- LA MARQUE : C'EST SWOGE, ET RIEN D'AUTRE ----
+ * Une couronne doree et le nom entier. Pas une lettre seule dans un carre :
+ * une initiale isolee sur fond sombre est le signe de quelqu'un d'autre, et
+ * cette salle est dans le Nexus de SWOGE. */
+.nxarc-marque{ display:flex; align-items:center; gap:8px; margin-bottom:10px;
+  font:900 12px/1 'Archivo',system-ui,sans-serif; letter-spacing:.24em;
+  color:#FFD97A; }
+.nxarc-marque i{ font-style:normal; color:#ff3ea5; }
+.nxarc-couronne{ font-size:16px; line-height:1;
+  filter:drop-shadow(0 0 7px rgba(255,197,61,.6)); }
+/* `anywhere` : un titre saisi au panneau d'administration peut etre un seul
+   mot de quarante lettres, et un mot qui deborde pousse une barre horizontale
+   sous toute la carte. */
+.nxarc-une-titre{ font:900 clamp(22px,4.4vw,38px)/1.06 'Archivo',system-ui,sans-serif;
+  color:#fff; overflow-wrap:anywhere; text-shadow:0 3px 20px rgba(0,0,0,.8); }
+.nxarc-une-info{ margin-top:8px; font:700 12px/1.4 system-ui,sans-serif;
+  letter-spacing:.09em; color:#f0cfe2; }
+/* ---- LES VERSIONS SONT DANS LA BANNIERE ----
+ * C'est le seul endroit ou l'on charge quelque chose, donc le seul qui ait le
+ * droit d'attirer l'oeil : or plein contre magenta, la couleur que rien
+ * d'autre ne porte dans ce panneau. La barre reste la MEME barre qu'en
+ * lecture — un seul conteneur, une seule fabrique de boutons — elle change
+ * seulement de robe. */
+.nxarc-une .nxarc-choix{ margin-top:14px; }
+.nxarc-une:not(.nxarc-plate) .nxarc-choix button{ flex:0 1 152px;
+  min-height:46px; font-weight:900; color:#2b0f2e;
+  border-color:rgba(255,217,122,.85);
+  background:linear-gradient(180deg,#FFD97A,#FFC53D); }
+.nxarc-une:not(.nxarc-plate) .nxarc-choix button:hover{
+  background:linear-gradient(180deg,#FFE8A8,#FFD062); }
+.nxarc-une:not(.nxarc-plate) .nxarc-choix button.actif{ color:#2b0f2e;
+  box-shadow:0 0 0 2px rgba(255,62,165,.75); }
+/* ---- QUAND IL N'Y A PAS DE BANNIERE A MONTRER ----
+ * Deux cas, et un seul style : le lecteur est ouvert (le titre est deja dans
+ * le bandeau, et trois cents pixels d'affiche voleraient la hauteur de
+ * l'ecran), ou c'est la borne d'arcade, qui n'a pas de seance du tout.
+ * La banniere ne DISPARAIT pas pour autant : elle contient la barre de
+ * versions, et la faire disparaitre aurait emporte les boutons avec elle. Il
+ * ne lui reste que son role de conteneur. */
+.nxarc-une.nxarc-plate{ min-height:0; margin-top:0; border:0; border-radius:0;
+  background:none; overflow:visible; display:block; }
+.nxarc-une.nxarc-plate .nxarc-une-fond,
+.nxarc-une.nxarc-plate .nxarc-marque,
+.nxarc-une.nxarc-plate .nxarc-une-titre,
+.nxarc-une.nxarc-plate .nxarc-une-info{ display:none; }
+.nxarc-une.nxarc-plate .nxarc-une-txt{ padding:0; max-width:none; }
+/* ---- LES RANGEES, UNE PAR RUBRIQUE ----
+ *
+ * Films, mangas, series : le catalogue s'empile en rangees, et chaque rangee
+ * DEFILE a l'horizontale. La grille en `auto-fill` mettait deux colonnes sur
+ * un telephone : au-dela de quatre seances, la moitie du catalogue passait
+ * sous le bord de l'ecran et il fallait faire descendre toute la carte pour la
+ * voir — en emportant la banniere au passage. Une rangee garde la banniere en
+ * place et se parcourt au pouce, dans le sens ou l'on parcourt un catalogue.
+ *
+ * `overflow-x` est sur LA RANGEE et pas sur la carte : c'est ce qui evite la
+ * barre horizontale sous tout le panneau, mesuree a chaque essai. Le poser sur
+ * `.nxarc-cat`, qui empile les rangees, aurait fait defiler les trois ensemble
+ * — trois catalogues qui bougent quand on en pousse un. */
+.nxarc-cat{ display:flex; flex-direction:column; gap:16px; margin-top:14px; }
+.nxarc-cat[hidden]{ display:none; }
+/* Le nom de la rubrique, tel que le serveur l'annonce. Discret : c'est un
+   intertitre, pas un deuxieme titre — la banniere est deja au-dessus. */
+.nxarc-rang-nom{ margin:0 0 8px; font:900 12px/1 'Archivo',system-ui,sans-serif;
+  letter-spacing:.2em; color:#FFD97A; text-transform:uppercase;
+  overflow-wrap:anywhere; }
+/* 124 px de large : bien au-dela des quarante-quatre pixels d'une cible
+   tactile, et assez etroit pour qu'on voie DEPASSER la suivante — une rangee
+   qui s'arrete pile au bord se lit comme une rangee qui s'arrete la. */
+.nxarc-rangee{ display:flex; gap:10px; padding-bottom:8px;
+  overflow-x:auto; overflow-y:hidden; scroll-snap-type:x proximity; }
+.nxarc-rangee button{ flex:0 0 124px; scroll-snap-align:start;
+  display:flex; flex-direction:column; gap:6px; padding:6px;
   min-height:44px; border-radius:10px; cursor:pointer; text-align:center;
   color:#ffd8ee; background:rgba(255,62,165,.10);
   border:1px solid rgba(255,62,165,.45); }
-.nxarc-cat button:hover{ background:rgba(255,62,165,.26); }
+.nxarc-rangee button:hover{ background:rgba(255,62,165,.26); }
+/* Celle qui est dans la banniere est marquee dans sa rangee : sans ce lisere,
+   cliquer une affiche changeait le haut du panneau sans que rien, en bas, ne
+   dise laquelle on venait de choisir. */
+.nxarc-rangee button.actif{ border-color:#FFD97A; color:#fff;
+  box-shadow:0 0 0 2px rgba(255,217,122,.35); }
 /* ---- UNE AFFICHE QUI NE VIENT JAMAIS ----
  * L'adresse est posee dans le panneau d'administration : elle vient d'un
  * autre domaine, et cet autre domaine peut etre eteint. Sans `aspect-ratio`
  * la vignette d'une affiche absente s'effondrait a zero pixel de haut et la
- * grille devenait une liste de titres de hauteurs inegales — un trou. La
+ * rangee devenait une liste de titres de hauteurs inegales — un trou. La
  * boite garde donc sa forme toute seule, avec son symbole dessous : l'image
  * ne fait que la recouvrir quand elle arrive. */
 .nxarc-vign{ position:relative; width:100%; aspect-ratio:250 / 345;
@@ -1349,15 +1458,26 @@ body.nxdrag *{ cursor:grabbing !important; }
    lisible quand l'affiche manque. `anywhere` parce qu'un titre d'admin peut
    etre un seul mot de trente lettres, et un mot qui deborde pousse une barre
    horizontale sous toute la carte. */
-.nxarc-cat .nxarc-nom{ font:800 12px/1.25 system-ui,sans-serif;
+.nxarc-rangee .nxarc-nom{ font:800 12px/1.25 system-ui,sans-serif;
   letter-spacing:.04em; overflow-wrap:anywhere; }
 /* ---- EN TRAIN DE PARCOURIR ----
  * Le cadre du lecteur est vide tant qu'aucune version n'est choisie : le
- * laisser affiche mettait un rectangle noir de 382 sur 224 sous la grille,
+ * laisser affiche mettait un rectangle noir de 382 sur 224 sous la rangee,
  * qui poussait la moitie des affiches hors de l'ecran d'un telephone. */
 #nxArcVoile.nxarc-parcours .nxarc-ecran{ display:none; }
-#nxArcVoile.geant.nxarc-parcours .nxarc-cat{ flex:1 1 auto; min-height:0;
-  overflow-y:auto; margin:8px 12px 0; }
+/* En grand ecran la carte est une colonne : sans `flex:0 0 auto`, la banniere
+   et la rangee se faisaient ecraser a quelques pixels de haut par le premier
+   enfant extensible venu. */
+/* ---- EN PARCOURANT, LA CARTE NE S'ETIRE PAS SUR TOUTE LA HAUTEUR ----
+ * Le panneau s'ouvre en grand parce qu'un jeu de combat ne se joue pas dans
+ * une vignette. Mais la galerie, elle, n'a rien a mettre sous la rangee : la
+ * carte de cent pour cent de hauteur laissait six cents pixels de vide sombre
+ * sous les affiches, ce qui se lit comme un catalogue qui n'a pas fini de
+ * charger. Elle reprend sa hauteur des qu'une version est cliquee — c'est
+ * l'ecran qui en a besoin, pas la rangee. */
+#nxArcVoile.geant.nxarc-parcours .nxarc-carte{ height:auto; }
+#nxArcVoile.geant.nxarc-parcours .nxarc-une{ flex:0 0 auto; margin:8px 12px 0; }
+#nxArcVoile.geant.nxarc-parcours .nxarc-cat{ flex:0 0 auto; margin:14px 12px 8px; }
 .nxarc-touches{ display:flex; flex-wrap:wrap; gap:6px 18px; margin-top:10px;
   font-size:11px; color:#9aa3b4; }
 .nxarc-touches b{ color:#ff3ea5; margin-right:5px; }
@@ -1840,19 +1960,39 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
     <button class="nxarc-grand" type="button" aria-label="Fullscreen">&#9974;</button>
     <b class="nxcf-titre" id="nxArcTitre">&#127918; Arcade</b>
     <div class="nxcf-sous" id="nxArcSous">Two players, one keyboard. Click the screen first, then fight.</div>
-    <!-- La barre de CHOIX. Vide et masquee pour la borne d'arcade, qui n'a
-         qu'une source ; remplie au cinema une fois la seance choisie dans la
-         galerie ci-dessus — ses versions, et le retour a la galerie. Rien ne
-         part sur le reseau tant qu'on n'a pas clique une version : une salle
-         ou l'on entre ne doit pas telecharger un film que personne n'a
-         demande. -->
-    <!-- La GALERIE. Vide et masquee pour la borne d'arcade, qui n'a qu'une
-         source ; remplie pour le cinema, ou l'on choisit d'abord la seance et
-         ensuite sa version. Les affiches sont des images du panneau
-         d'administration : elles viennent d'ailleurs et peuvent ne jamais
-         arriver, d'ou la vignette qui tient sa forme toute seule. -->
+    <!-- ---- LA BANNIERE, ET LA BARRE DE CHOIX QU'ELLE CONTIENT ----
+         La seance mise en avant : son affiche en fond large, son titre, une
+         ligne d'information, et SES VERSIONS. C'est le seul endroit du
+         panneau ou l'on charge quelque chose — cliquer une affiche de la
+         rangee ne fait que changer ce qui est ici.
+
+         La barre `nxArcChoix` est DEDANS et non a cote : il n'y a qu'une
+         barre de versions dans ce panneau, et deux conteneurs auraient fini
+         par en laisser un poser un titre en `innerHTML`. En lecture, la
+         banniere perd son decor et ne garde que la barre — plus le retour a
+         la galerie.
+
+         Le fond est vide au depart : l'image y est posee par la page, avec
+         son ecouteur d'erreur. Une affiche d'un domaine eteint est retiree au
+         lieu de laisser l'icone d'image cassee du navigateur en travers de la
+         banniere. -->
+    <div class="nxarc-une" id="nxArcUne">
+      <div class="nxarc-une-fond" id="nxArcUneFond" aria-hidden="true"></div>
+      <div class="nxarc-une-txt">
+        <div class="nxarc-marque"><span class="nxarc-couronne">&#128081;</span>SWOGE&nbsp;<i>FLIX</i></div>
+        <div class="nxarc-une-titre" id="nxArcUneTitre"></div>
+        <div class="nxarc-une-info" id="nxArcUneInfo"></div>
+        <div class="nxarc-choix" id="nxArcChoix" hidden></div>
+      </div>
+    </div>
+    <!-- LES RANGEES, UNE PAR RUBRIQUE. Vides et masquees pour la borne
+         d'arcade, qui n'a qu'une source ; remplies pour le cinema, ou elles
+         servent a PROMOUVOIR une seance dans la banniere — jamais a lancer un
+         lecteur. Une rubrique donne une rangee, trois en donnent trois : le
+         nombre vient du serveur, pas d'ici. Les affiches sont des images du
+         panneau d'administration : elles viennent d'ailleurs et peuvent ne
+         jamais arriver, d'ou la vignette qui tient sa forme toute seule. -->
     <div class="nxarc-cat" id="nxArcCat" hidden></div>
-    <div class="nxarc-choix" id="nxArcChoix" hidden></div>
     <div class="nxarc-ecran"><iframe id="nxArcJeu" title="Arcade cabinet"
       allow="autoplay; fullscreen" src="about:blank"></iframe></div>
     <div class="nxarc-touches">
@@ -1957,7 +2097,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
      racine ; c'est le seul endroit d'ou elle peut couvrir tout le reste. -->
 <div id="nxFiche"></div>
 
-<script src="nexus.js?v=e5bd6405" defer></script>
+<script src="nexus.js?v=a714f419" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

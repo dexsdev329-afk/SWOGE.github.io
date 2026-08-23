@@ -3713,7 +3713,15 @@
   var MONDE = { w: CARTE.cols * TUILE, h: CARTE.rows * TUILE };
   var CENTRE = { x: MONDE.w / 2, y: MONDE.h / 2 - 32 };
 
-  var TUILES = { herbe: new Image(), chemin: new Image(), ferme: new Image() };
+  var TUILES = { herbe: new Image(), chemin: new Image(), ferme: new Image(),
+                 eau: new Image(), eauBas: new Image() };
+  TUILES.eau.src = 'img/nexus/tiles/ground_eau.webp';
+  /* Deux eaux, et ce n'est pas de la coquetterie : une riviere dont le lit est
+     partout aussi profond se lit comme une bande bleue posee sur l'herbe. Le
+     bas-fond rocheux va contre les BERGES, l'eau profonde au milieu — c'est
+     ce que fait un cours d'eau, et c'est ce qui donne un bord au lieu d'une
+     arete. */
+  TUILES.eauBas.src = 'img/nexus/tiles/ground_eau_bas.webp';
   TUILES.herbe.src = 'img/nexus/tiles/ground_grass.webp';
   TUILES.chemin.src = 'img/nexus/tiles/ground_path.webp';
   /* La terre battue de l'enclos. Un troisieme sol, et pas un chemin teinte :
@@ -8726,6 +8734,10 @@
           var cxT = Math.floor(x / TUILE) * TUILE + TUILE / 2;
           var cyT = Math.floor(y / TUILE) * TUILE + TUILE / 2;
           if (estChemin(cxT, cyT)) continue;
+          /* Ni dans la riviere, ni sur ses berges : un arbre plante dans l'eau
+             se voit tout de suite, et la lisiere se seme justement dans la
+             marge, c'est-a-dire des deux cotes du cours d'eau. */
+          if (dansLEau(x, y) || dansLEau(cxT, cyT)) continue;
           /* Et la case juste au-dessus des pieds : un arbre plante au ras
              d'une allee y laisse pendre ses racines. */
           if (estChemin(cxT, cyT - TUILE)) continue;
@@ -8777,6 +8789,25 @@
                   d.x - d.t / 2, d.y - h, d.t, h);
   }
 
+  function dessinePonts() {
+    if (!IMG_PONT.complete || !IMG_PONT.naturalWidth) return;
+    for (var i = 0; i < PONTS.length; i++) {
+      var p = PONTS[i];
+      if (!p.tourne) {
+        ctx.drawImage(IMG_PONT, p.x - p.larg / 2, p.y - p.haut / 2, p.larg, p.haut);
+        continue;
+      }
+      /* Un quart de tour : les planches doivent couper le courant, pas le
+         suivre. On tourne le repere plutot que l'image — la planche est carree,
+         les deux etendues s'echangent donc simplement. */
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(Math.PI / 2);
+      ctx.drawImage(IMG_PONT, -p.haut / 2, -p.larg / 2, p.haut, p.larg);
+      ctx.restore();
+    }
+  }
+
   function dessineDecorSol() {
     var l = semeLeDecor();
     for (var i = 0; i < l.length; i++) if (l[i].f.sol) dessineUnDecor(l[i]);
@@ -8814,30 +8845,21 @@
      * chiffres ronds. */
     { x0: CENTRE.x - 105, y0: CENTRE.y + 470, x1: CENTRE.x + 105, y1: CENTRE.y + 830 },
     { x0: CENTRE.x + 105, y0: CENTRE.y + 700, x1: CENTRE.x + 940, y1: CENTRE.y + 830 },
-    /* ---- L'ANNEAU QUI RELIE LES QUATRE COINS ----
-     *
-     * Jusqu'ici la place n'avait que des RAYONS : chaque batiment etait relie
-     * a la fontaine, et a rien d'autre. Aller du cinema a l'arcade — deux
-     * voisins pourtant, l'un au-dessus de l'autre — demandait de revenir au
-     * centre ou de couper a travers l'herbe. Une place ou l'on coupe a travers
-     * l'herbe est une place dont le dallage ment sur les trajets reels.
-     *
-     * L'anneau passe PAR les batiments et non entre eux : ses quatre branches
-     * sont calees sur les colonnes x = centre +/- 832 et les lignes
-     * y = centre +/- 352, qui sont exactement les coordonnees du cinema, du
-     * manga, de l'arcade et de la ferme. Un anneau pose ailleurs aurait relie
-     * du vide.
-     *
-     * LARGEUR 192, ET C'EST UNE CONTRAINTE, PAS UN GOUT. Le sol se peint par
-     * tuile de 128 en testant le CENTRE de chaque tuile : une bande de moins
-     * de 128 peut ne contenir aucun centre et ne rien peindre du tout — c'est
-     * deja arrive au chemin de la ferme, qui etait simplement invisible. A 192
-     * on est sur d'en contenir un, quel que soit l'alignement, sans avoir a
-     * caler chaque borne a la main sur la grille. */
-    { x0: CENTRE.x - 928, y0: CENTRE.y - 448, x1: CENTRE.x - 736, y1: CENTRE.y + 448 },
-    { x0: CENTRE.x + 736, y0: CENTRE.y - 448, x1: CENTRE.x + 928, y1: CENTRE.y + 448 },
-    { x0: CENTRE.x - 928, y0: CENTRE.y - 448, x1: CENTRE.x + 928, y1: CENTRE.y - 256 },
-    { x0: CENTRE.x - 928, y0: CENTRE.y + 256, x1: CENTRE.x + 928, y1: CENTRE.y + 448 },
+    /* ---- L'ANNEAU A ETE ESSAYE, PUIS RETIRE ----
+     * On avait relie les quatre coins par un anneau de dallage, cale sur les
+     * colonnes et les lignes des batiments, pour qu'aller du cinema a l'arcade
+     * ne demande plus de revenir au centre.
+     * Le rendu l'a desavoue : ses branches rejoignaient les rayons et la
+     * clairiere, et tout se soudait en une esplanade continue. La place ne
+     * disait plus « on va par la », elle disait « tout est une route ». Sur
+     * l'image de reference les allees sont des bandes ETROITES separees par de
+     * larges carres d'herbe, et c'est ce contraste qui les rend lisibles.
+     * On ne marche pas moins vite dans l'herbe : le dallage n'est pas un
+     * raccourci, c'est une indication. Quatre rayons et une clairiere
+     * suffisent a indiquer quatre destinations.
+     * La lecon est gardee ici plutot que dans un commit qu'on ne relit pas :
+     * elargir le dallage ne rend pas la place plus lisible, ca la rend plus
+     * grise. */
   ];
   function estChemin(px, py) {
     var dx = px - CENTRE.x, dy = py - CENTRE.y;
@@ -8845,6 +8867,69 @@
     for (var i = 0; i < COULOIRS.length; i++) {
       var c = COULOIRS[i];
       if (px >= c.x0 && px <= c.x1 && py >= c.y0 && py <= c.y1) return true;
+    }
+    return false;
+  }
+
+  /* ================== LA RIVIERE ==================
+   *
+   * Un anneau d'eau dans la marge, entre le bois et le village. Il n'a pu
+   * exister qu'apres l'agrandissement de la carte : sur l'ancienne, le balayage
+   * ne trouvait aucune bande libre ou le faire passer.
+   *
+   * ---- POURQUOI UN ANNEAU, ET CE QU'IL ENFERME ----
+   * Rien. Tous les lieux sont a l'interieur, verifie : le plus excentre en x
+   * est a 2624 pour une eau qui commence a 3114, et le plus bas est la porte
+   * +18, dessinee jusqu'a 2372 pour une eau qui commence a 2474. L'anneau ne
+   * coupe donc l'acces a rien — il donne un BORD au monde, et un bord d'eau
+   * vaut mieux qu'un mur invisible : on voit pourquoi on ne passe pas.
+   *
+   * ---- ET LES PONTS LE TRAVERSENT ----
+   * Quatre, un par cote, sur les axes. Ils ne menent nulle part d'utile et
+   * c'est voulu : ce qui est de l'autre cote, c'est le bois. Un monde dont le
+   * bord se franchit se lit comme un monde qui continue.
+   */
+  var RIVIERE = { bord: 340, large: 130, basfond: 40 };
+  var RIVIERES = [
+    { x0: RIVIERE.bord, y0: RIVIERE.bord,
+      x1: RIVIERE.bord + RIVIERE.large, y1: MONDE.h - RIVIERE.bord },
+    { x0: MONDE.w - RIVIERE.bord - RIVIERE.large, y0: RIVIERE.bord,
+      x1: MONDE.w - RIVIERE.bord, y1: MONDE.h - RIVIERE.bord },
+    { x0: RIVIERE.bord, y0: RIVIERE.bord,
+      x1: MONDE.w - RIVIERE.bord, y1: RIVIERE.bord + RIVIERE.large },
+    { x0: RIVIERE.bord, y0: MONDE.h - RIVIERE.bord - RIVIERE.large,
+      x1: MONDE.w - RIVIERE.bord, y1: MONDE.h - RIVIERE.bord },
+  ];
+  /* La planche du pont est CARREE : pour franchir une eau verticale il faut la
+     tourner d'un quart de tour, sinon les planches courent dans le sens de la
+     marche au lieu de la traverser. `tourne` porte cette question, et les deux
+     etendues s'echangent avec elle. */
+  var PONT_TRAVERS = 210, PONT_LARGE = 190;
+  var PONTS = [
+    { x: CENTRE.x, y: RIVIERE.bord + RIVIERE.large / 2, tourne: false },
+    { x: CENTRE.x, y: MONDE.h - RIVIERE.bord - RIVIERE.large / 2, tourne: false },
+    { x: RIVIERE.bord + RIVIERE.large / 2, y: CENTRE.y, tourne: true },
+    { x: MONDE.w - RIVIERE.bord - RIVIERE.large / 2, y: CENTRE.y, tourne: true },
+  ];
+  PONTS.forEach(function (p) {
+    p.larg = p.tourne ? PONT_TRAVERS : PONT_LARGE;
+    p.haut = p.tourne ? PONT_LARGE : PONT_TRAVERS;
+  });
+  var IMG_PONT = new Image(); IMG_PONT.src = 'img/nexus/tiles/obj_pont.webp';
+
+  /** Le rectangle d'eau qui contient ce point, ou `null`. */
+  function dansLEau(px, py) {
+    for (var i = 0; i < RIVIERES.length; i++) {
+      var r = RIVIERES[i];
+      if (px > r.x0 && px < r.x1 && py > r.y0 && py < r.y1) return r;
+    }
+    return null;
+  }
+  /** Un pont porte-t-il ce point ? C'est la seule chose qui annule l'eau. */
+  function surUnPont(px, py) {
+    for (var i = 0; i < PONTS.length; i++) {
+      var p = PONTS[i];
+      if (Math.abs(px - p.x) < p.larg / 2 && Math.abs(py - p.y) < p.haut / 2) return true;
     }
     return false;
   }
@@ -9041,6 +9126,18 @@
 
   function solEn(px, py) {
     if (px >= FERME.x0 && px <= FERME.x1 && py >= FERME.y0 && py <= FERME.y1) return TUILES.ferme;
+    /* L'eau passe AVANT le chemin : les deux ne se croisent pas aujourd'hui,
+       mais le jour ou une allee ira jusqu'au pont, c'est l'eau qui doit gagner
+       sous lui — un dallage peint dans la riviere se lirait comme un gue. */
+    var r = dansLEau(px, py);
+    if (r) {
+      /* Le bas-fond contre les berges, l'eau profonde au milieu. Sans ca, la
+         riviere est une bande bleue posee sur l'herbe : c'est le changement de
+         fond au bord qui lui donne une rive au lieu d'une arete. */
+      var b = RIVIERE.basfond;
+      var auBord = (px - r.x0 < b) || (r.x1 - px < b) || (py - r.y0 < b) || (r.y1 - py < b);
+      return auBord ? TUILES.eauBas : TUILES.eau;
+    }
     return estChemin(px, py) ? TUILES.chemin : TUILES.herbe;
   }
 
@@ -11396,6 +11493,27 @@
       joueur.y = (f.y - COL_FONT.dy) + fdy * fk;
     }
 
+    /* ---- LA RIVIERE NE SE TRAVERSE PAS A LA NAGE ----
+     * On repousse par le cote le PLUS PROCHE, comme la barriere de l'enclos et
+     * pour la meme raison : celui qui arrive du sud ressort par le sud, et l'on
+     * ne se retrouve jamais projete sur l'autre rive pour avoir touche l'eau de
+     * travers. Sans ce soin, l'anneau se franchirait n'importe ou.
+     * Le pont est la SEULE chose qui annule l'eau, et il l'annule avant meme
+     * qu'on la teste : un pont qui repousserait au milieu de sa traversee
+     * serait pire qu'une riviere infranchissable. */
+    if (!surUnPont(joueur.x, joueur.y)) {
+      var re = dansLEau(joueur.x, joueur.y);
+      if (re) {
+        var eg = joueur.x - re.x0, ed = re.x1 - joueur.x;
+        var eh = joueur.y - re.y0, eb = re.y1 - joueur.y;
+        var mini3 = Math.min(eg, ed, eh, eb);
+        if (mini3 === eg) joueur.x = re.x0;
+        else if (mini3 === ed) joueur.x = re.x1;
+        else if (mini3 === eh) joueur.y = re.y0;
+        else joueur.y = re.y1;
+      }
+    }
+
     /* ---- LA BARRIERE DE L'ENCLOS ----
      * On repousse par le cote le PLUS PROCHE : quelqu'un qui arrive du sud
      * ressort par le sud, et l'on ne se retrouve jamais projete de l'autre
@@ -12088,6 +12206,12 @@
         if (t.complete && t.naturalWidth) peintSol(t, c, r);
       }
     }
+
+    /* Les ponts, A PLAT sur le sol : ils ne se trient pas avec les vivants
+       puisqu'on MARCHE DESSUS. Un pont trie par ses pieds passerait devant le
+       personnage des qu'il serait dessus, et l'on traverserait la riviere en
+       disparaissant sous les planches. */
+    dessinePonts();
 
     /* Les touffes et les fleurs, POSEES SUR LE SOL et sous tout le reste :
        elles font partie du terrain, pas du mobilier. */

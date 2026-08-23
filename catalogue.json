@@ -1,0 +1,810 @@
+{
+ "sol": [
+  {
+   "cle": "cave",
+   "fichier": "img/nexus/tiles/ground_cave.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "cendres",
+   "fichier": "img/nexus/tiles/ground_cendres.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "dirt",
+   "fichier": "img/nexus/tiles/ground_dirt.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "donjon",
+   "fichier": "img/nexus/tiles/ground_donjon.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "eau",
+   "fichier": "img/nexus/tiles/ground_eau.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "eau_bas",
+   "fichier": "img/nexus/tiles/ground_eau_bas.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "ferme",
+   "fichier": "img/nexus/tiles/ground_ferme.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "grass",
+   "fichier": "img/nexus/tiles/ground_grass.webp",
+   "l": 1254,
+   "h": 1254,
+   "cadres": 1
+  },
+  {
+   "cle": "lava",
+   "fichier": "img/nexus/tiles/ground_lava.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "marais",
+   "fichier": "img/nexus/tiles/ground_marais.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "path",
+   "fichier": "img/nexus/tiles/ground_path.webp",
+   "l": 1254,
+   "h": 1254,
+   "cadres": 1
+  },
+  {
+   "cle": "sanctuaire",
+   "fichier": "img/nexus/tiles/ground_sanctuaire.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "snow",
+   "fichier": "img/nexus/tiles/ground_snow.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "temple",
+   "fichier": "img/nexus/tiles/ground_temple.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "ville",
+   "fichier": "img/nexus/tiles/ground_ville.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "ville_route",
+   "fichier": "img/nexus/tiles/ground_ville_route.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  }
+ ],
+ "mur": [
+  {
+   "cle": "cave",
+   "fichier": "img/nexus/tiles/mur_cave.webp",
+   "l": 512,
+   "h": 128,
+   "cadres": 1
+  },
+  {
+   "cle": "donjon",
+   "fichier": "img/nexus/tiles/mur_donjon.webp",
+   "l": 512,
+   "h": 128,
+   "cadres": 1
+  },
+  {
+   "cle": "ruine",
+   "fichier": "img/nexus/tiles/mur_ruine.webp",
+   "l": 512,
+   "h": 128,
+   "cadres": 1
+  },
+  {
+   "cle": "ville",
+   "fichier": "img/nexus/tiles/mur_ville.webp",
+   "l": 640,
+   "h": 160,
+   "cadres": 1
+  }
+ ],
+ "objet": [
+  {
+   "cle": "arcade_borne",
+   "fichier": "img/nexus/tiles/obj_arcade_borne.webp",
+   "l": 366,
+   "h": 619,
+   "cadres": 1
+  },
+  {
+   "cle": "arcade_decor",
+   "fichier": "img/nexus/tiles/obj_arcade_decor.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "arcade_enseigne",
+   "fichier": "img/nexus/tiles/obj_arcade_enseigne.webp",
+   "l": 227,
+   "h": 625,
+   "cadres": 1
+  },
+  {
+   "cle": "arcade_maison",
+   "fichier": "img/nexus/tiles/obj_arcade_maison.webp",
+   "l": 634,
+   "h": 412,
+   "cadres": 1
+  },
+  {
+   "cle": "balise",
+   "fichier": "img/nexus/tiles/obj_balise.webp",
+   "l": 768,
+   "h": 256,
+   "cadres": 1
+  },
+  {
+   "cle": "bar_maison",
+   "fichier": "img/nexus/tiles/obj_bar_maison.webp",
+   "l": 608,
+   "h": 427,
+   "cadres": 1
+  },
+  {
+   "cle": "bj_enseigne",
+   "fichier": "img/nexus/tiles/obj_bj_enseigne.webp",
+   "l": 878,
+   "h": 1410,
+   "cadres": 1
+  },
+  {
+   "cle": "bj_table",
+   "fichier": "img/nexus/tiles/obj_bj_table.webp",
+   "l": 1200,
+   "h": 1006,
+   "cadres": 1
+  },
+  {
+   "cle": "boxe",
+   "fichier": "img/nexus/tiles/obj_boxe.webp",
+   "l": 640,
+   "h": 256,
+   "cadres": 4
+  },
+  {
+   "cle": "braise",
+   "fichier": "img/nexus/tiles/obj_braise.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "cabaret_maison",
+   "fichier": "img/nexus/tiles/obj_cabaret_maison.webp",
+   "l": 639,
+   "h": 365,
+   "cadres": 1
+  },
+  {
+   "cle": "chambres_maison",
+   "fichier": "img/nexus/tiles/obj_chambres_maison.webp",
+   "l": 640,
+   "h": 427,
+   "cadres": 1
+  },
+  {
+   "cle": "cine18_maison",
+   "fichier": "img/nexus/tiles/obj_cine18_maison.webp",
+   "l": 535,
+   "h": 423,
+   "cadres": 1
+  },
+  {
+   "cle": "cinema_maison",
+   "fichier": "img/nexus/tiles/obj_cinema_maison.webp",
+   "l": 590,
+   "h": 409,
+   "cadres": 1
+  },
+  {
+   "cle": "cloture_coin",
+   "fichier": "img/nexus/tiles/obj_cloture_coin.webp",
+   "l": 143,
+   "h": 150,
+   "cadres": 1
+  },
+  {
+   "cle": "cloture_h",
+   "fichier": "img/nexus/tiles/obj_cloture_h.webp",
+   "l": 131,
+   "h": 129,
+   "cadres": 1
+  },
+  {
+   "cle": "cloture_porte",
+   "fichier": "img/nexus/tiles/obj_cloture_porte.webp",
+   "l": 195,
+   "h": 137,
+   "cadres": 1
+  },
+  {
+   "cle": "cloture_v",
+   "fichier": "img/nexus/tiles/obj_cloture_v.webp",
+   "l": 73,
+   "h": 170,
+   "cadres": 1
+  },
+  {
+   "cle": "club_maison",
+   "fichier": "img/nexus/tiles/obj_club_maison.webp",
+   "l": 640,
+   "h": 427,
+   "cadres": 1
+  },
+  {
+   "cle": "coffeeshop_maison",
+   "fichier": "img/nexus/tiles/obj_coffeeshop_maison.webp",
+   "l": 640,
+   "h": 390,
+   "cadres": 1
+  },
+  {
+   "cle": "coffre_donjon",
+   "fichier": "img/nexus/tiles/obj_coffre_donjon.webp",
+   "l": 384,
+   "h": 128,
+   "cadres": 1
+  },
+  {
+   "cle": "coffre_garde",
+   "fichier": "img/nexus/tiles/obj_coffre_garde.webp",
+   "l": 384,
+   "h": 128,
+   "cadres": 1
+  },
+  {
+   "cle": "fontaine",
+   "fichier": "img/nexus/tiles/obj_fontaine.webp",
+   "l": 640,
+   "h": 256,
+   "cadres": 4
+  },
+  {
+   "cle": "fountain_plaza",
+   "fichier": "img/nexus/tiles/obj_fountain_plaza.webp",
+   "l": 1273,
+   "h": 1328,
+   "cadres": 1
+  },
+  {
+   "cle": "grange",
+   "fichier": "img/nexus/tiles/obj_grange.webp",
+   "l": 622,
+   "h": 494,
+   "cadres": 1
+  },
+  {
+   "cle": "jeux_maison",
+   "fichier": "img/nexus/tiles/obj_jeux_maison.webp",
+   "l": 640,
+   "h": 427,
+   "cadres": 1
+  },
+  {
+   "cle": "manege",
+   "fichier": "img/nexus/tiles/obj_manege.webp",
+   "l": 636,
+   "h": 213,
+   "cadres": 4
+  },
+  {
+   "cle": "manga_maison",
+   "fichier": "img/nexus/tiles/obj_manga_maison.webp",
+   "l": 640,
+   "h": 427,
+   "cadres": 1
+  },
+  {
+   "cle": "market_stall",
+   "fichier": "img/nexus/tiles/obj_market_stall.webp",
+   "l": 628,
+   "h": 202,
+   "cadres": 4
+  },
+  {
+   "cle": "murson",
+   "fichier": "img/nexus/tiles/obj_murson.webp",
+   "l": 636,
+   "h": 213,
+   "cadres": 4
+  },
+  {
+   "cle": "petworld_sign",
+   "fichier": "img/nexus/tiles/obj_petworld_sign.webp",
+   "l": 419,
+   "h": 625,
+   "cadres": 1
+  },
+  {
+   "cle": "pont",
+   "fichier": "img/nexus/tiles/obj_pont.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "portail",
+   "fichier": "img/nexus/tiles/obj_portail.webp",
+   "l": 1280,
+   "h": 320,
+   "cadres": 1
+  },
+  {
+   "cle": "portail_cave",
+   "fichier": "img/nexus/tiles/obj_portail_cave.webp",
+   "l": 640,
+   "h": 213,
+   "cadres": 1
+  },
+  {
+   "cle": "portail_forge",
+   "fichier": "img/nexus/tiles/obj_portail_forge.webp",
+   "l": 640,
+   "h": 233,
+   "cadres": 1
+  },
+  {
+   "cle": "portail_sanctuaire",
+   "fichier": "img/nexus/tiles/obj_portail_sanctuaire.webp",
+   "l": 640,
+   "h": 256,
+   "cadres": 1
+  },
+  {
+   "cle": "portal",
+   "fichier": "img/nexus/tiles/obj_portal.webp",
+   "l": 624,
+   "h": 242,
+   "cadres": 4
+  },
+  {
+   "cle": "portal_18",
+   "fichier": "img/nexus/tiles/obj_portal_18.webp",
+   "l": 636,
+   "h": 248,
+   "cadres": 4
+  },
+  {
+   "cle": "portal_pvp",
+   "fichier": "img/nexus/tiles/obj_portal_pvp.webp",
+   "l": 612,
+   "h": 228,
+   "cadres": 4
+  },
+  {
+   "cle": "sanctuaire",
+   "fichier": "img/nexus/tiles/obj_sanctuaire.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "series_maison",
+   "fichier": "img/nexus/tiles/obj_series_maison.webp",
+   "l": 544,
+   "h": 427,
+   "cadres": 1
+  },
+  {
+   "cle": "sexshop_maison",
+   "fichier": "img/nexus/tiles/obj_sexshop_maison.webp",
+   "l": 613,
+   "h": 386,
+   "cadres": 1
+  },
+  {
+   "cle": "tour_maison",
+   "fichier": "img/nexus/tiles/obj_tour_maison.webp",
+   "l": 556,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "vault_door",
+   "fichier": "img/nexus/tiles/obj_vault_door.webp",
+   "l": 624,
+   "h": 227,
+   "cadres": 4
+  },
+  {
+   "cle": "vitrines_maison",
+   "fichier": "img/nexus/tiles/obj_vitrines_maison.webp",
+   "l": 639,
+   "h": 490,
+   "cadres": 1
+  }
+ ],
+ "salle": [
+  {
+   "cle": "arcade",
+   "fichier": "img/nexus/tiles/room_arcade.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "cinema",
+   "fichier": "img/nexus/tiles/room_cinema.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "manga",
+   "fichier": "img/nexus/tiles/room_manga.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "series",
+   "fichier": "img/nexus/tiles/room_series.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "tour_1",
+   "fichier": "img/nexus/tiles/room_tour_1.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "tour_2",
+   "fichier": "img/nexus/tiles/room_tour_2.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "tour_3",
+   "fichier": "img/nexus/tiles/room_tour_3.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "tour_4",
+   "fichier": "img/nexus/tiles/room_tour_4.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "tour_toit",
+   "fichier": "img/nexus/tiles/room_tour_toit.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "vault",
+   "fichier": "img/nexus/tiles/room_vault.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "vitrine",
+   "fichier": "img/nexus/tiles/room_vitrine.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  }
+ ],
+ "monstre": [
+  {
+   "cle": "archer",
+   "fichier": "img/nexus/monstres/archer.webp",
+   "l": 512,
+   "h": 512,
+   "cadres": 1
+  },
+  {
+   "cle": "bobine",
+   "fichier": "img/nexus/monstres/bobine.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "braisier",
+   "fichier": "img/nexus/monstres/braisier.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "brasier",
+   "fichier": "img/nexus/monstres/brasier.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "carapace",
+   "fichier": "img/nexus/monstres/carapace.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "cendreux",
+   "fichier": "img/nexus/monstres/cendreux.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "colosse",
+   "fichier": "img/nexus/monstres/colosse.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "couronne",
+   "fichier": "img/nexus/monstres/couronne.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "dreadstump",
+   "fichier": "img/nexus/monstres/dreadstump.webp",
+   "l": 1024,
+   "h": 1024,
+   "cadres": 1
+  },
+  {
+   "cle": "drone",
+   "fichier": "img/nexus/monstres/drone.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "ferraille",
+   "fichier": "img/nexus/monstres/ferraille.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "fonderie",
+   "fichier": "img/nexus/monstres/fonderie.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "gardien",
+   "fichier": "img/nexus/monstres/gardien.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "glace",
+   "fichier": "img/nexus/monstres/glace.webp",
+   "l": 512,
+   "h": 512,
+   "cadres": 1
+  },
+  {
+   "cle": "heraut",
+   "fichier": "img/nexus/monstres/heraut.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "hoodrat",
+   "fichier": "img/nexus/monstres/hoodrat.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "idole",
+   "fichier": "img/nexus/monstres/idole.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "lave",
+   "fichier": "img/nexus/monstres/lave.webp",
+   "l": 512,
+   "h": 512,
+   "cadres": 1
+  },
+  {
+   "cle": "lieutenant",
+   "fichier": "img/nexus/monstres/lieutenant.webp",
+   "l": 1024,
+   "h": 1024,
+   "cadres": 1
+  },
+  {
+   "cle": "lime",
+   "fichier": "img/nexus/monstres/lime.webp",
+   "l": 512,
+   "h": 512,
+   "cadres": 1
+  },
+  {
+   "cle": "machine",
+   "fichier": "img/nexus/monstres/machine.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "meduse",
+   "fichier": "img/nexus/monstres/meduse.webp",
+   "l": 1280,
+   "h": 1280,
+   "cadres": 1
+  },
+  {
+   "cle": "nuee",
+   "fichier": "img/nexus/monstres/nuee.webp",
+   "l": 256,
+   "h": 256,
+   "cadres": 1
+  },
+  {
+   "cle": "optimus",
+   "fichier": "img/nexus/monstres/optimus.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "oracle",
+   "fichier": "img/nexus/monstres/oracle.webp",
+   "l": 512,
+   "h": 512,
+   "cadres": 1
+  },
+  {
+   "cle": "pet_shiba",
+   "fichier": "img/nexus/monstres/pet_shiba.webp",
+   "l": 1024,
+   "h": 1024,
+   "cadres": 1
+  },
+  {
+   "cle": "pet_shiba_feu",
+   "fichier": "img/nexus/monstres/pet_shiba_feu.webp",
+   "l": 1024,
+   "h": 1024,
+   "cadres": 1
+  },
+  {
+   "cle": "pet_shiba_glace",
+   "fichier": "img/nexus/monstres/pet_shiba_glace.webp",
+   "l": 1024,
+   "h": 1024,
+   "cadres": 1
+  },
+  {
+   "cle": "pet_shiba_legendaire",
+   "fichier": "img/nexus/monstres/pet_shiba_legendaire.webp",
+   "l": 1024,
+   "h": 1024,
+   "cadres": 1
+  },
+  {
+   "cle": "pet_shiba_tenebre",
+   "fichier": "img/nexus/monstres/pet_shiba_tenebre.webp",
+   "l": 1024,
+   "h": 1024,
+   "cadres": 1
+  },
+  {
+   "cle": "pet_shiba_terre",
+   "fichier": "img/nexus/monstres/pet_shiba_terre.webp",
+   "l": 1024,
+   "h": 1024,
+   "cadres": 1
+  },
+  {
+   "cle": "pirate",
+   "fichier": "img/nexus/monstres/pirate.webp",
+   "l": 1024,
+   "h": 1024,
+   "cadres": 1
+  },
+  {
+   "cle": "piratesse",
+   "fichier": "img/nexus/monstres/piratesse.webp",
+   "l": 1024,
+   "h": 1024,
+   "cadres": 1
+  },
+  {
+   "cle": "rodeur",
+   "fichier": "img/nexus/monstres/rodeur.webp",
+   "l": 512,
+   "h": 512,
+   "cadres": 1
+  },
+  {
+   "cle": "sentinelle",
+   "fichier": "img/nexus/monstres/sentinelle.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
+   "cle": "skeleton",
+   "fichier": "img/nexus/monstres/skeleton.webp",
+   "l": 512,
+   "h": 512,
+   "cadres": 1
+  },
+  {
+   "cle": "sorcier",
+   "fichier": "img/nexus/monstres/sorcier.webp",
+   "l": 1024,
+   "h": 1024,
+   "cadres": 1
+  },
+  {
+   "cle": "sylvain",
+   "fichier": "img/nexus/monstres/sylvain.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  }
+ ]
+}

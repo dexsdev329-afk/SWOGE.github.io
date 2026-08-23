@@ -3914,6 +3914,37 @@
        borne seule est trop petite pour se voir depuis la fontaine. */
     { cle: 'arcadeEnseigne', src: 'img/nexus/tiles/obj_arcade_enseigne.webp',
       x: CENTRE.x - 470, y: CENTRE.y + 660, larg: 96, haut: 264 },
+    /* ---- LA MACHINE A COUPS DE POING ----
+     *
+     * Du DECOR, et rien d'autre : pas de rayon, donc rien ne s'ouvre en
+     * passant devant. Le jour ou elle jouera, ce sera le SERVEUR qui tranchera
+     * le score — un chiffre decide dans la page se retrouve dans la console en
+     * trois minutes, et cette place a deja un blackjack pour le rappeler.
+     *
+     * L'ENDROIT A ETE BALAYE, PAS CHOISI. Et le premier balayage s'est trompe,
+     * comme celui de la porte +18 en son temps : il reconnaissait les
+     * rectangles par un motif exigeant « CENTRE.x + N » des deux cotes, si bien
+     * qu'il ratait la fontaine, ecrite « x: CENTRE.x », et le couloir de
+     * l'ouest, ferme par « x1: CENTRE.x ». Trois couloirs sur sept, dix lieux
+     * sur quinze — et la place qu'il proposait tombait en plein milieu du
+     * chemin de l'etal. On EVALUE donc les litteraux au lieu de les
+     * reconnaitre.
+     *
+     * ET IL A FALLU LE REFAIRE UNE SECONDE FOIS. La version corrigee testait
+     * encore le PIED de la machine contre la riviere, pas son dessin : posee a
+     * sept cent quarante-huit, elle avait les pieds a deux cent soixante-dix
+     * unites de l'eau et la tete DEDANS, ce que le rendu a montre. Le
+     * rectangle dessine, toujours — c'est la meme lecon que le semis du decor
+     * a apprise le meme jour.
+     * Elle se glisse donc a l'ouest, entre le cinema et l'arcade, sur leur
+     * colonne : dessinee de 1152 a 1456, quand le cinema finit a 1088 et que
+     * l'arcade commence a 1519.
+     *
+     * `haut` suit le rapport de la planche (cases de 160 sur 256, soit 1,60) :
+     * 190 de large en donnent 304. Un nombre rond l'aurait ecrasee, et une
+     * image etiree ne leve aucune erreur. */
+    { cle: 'boxe', src: 'img/nexus/tiles/obj_boxe.webp',
+      x: CENTRE.x - 912, y: CENTRE.y + 16, larg: 190, haut: 304, cadres: 4 },
   ];
   LIEUX.forEach(function (l) { l.img = new Image(); l.img.src = l.src; l.dwell = 0; });
   /* ---- ON DESIGNE UN LIEU PAR SON NOM, PAS PAR SA PLACE ----
@@ -8755,11 +8786,29 @@
           if (estChemin(cxT, cyT - TUILE)) continue;
           if (x > FERME.x0 - 40 && x < FERME.x1 + 40
               && y > FERME.y0 - 40 && y < FERME.y1 + 40) continue;
+          /* ---- DEUX QUESTIONS, PAS UNE ----
+           * La premiere etait la seule posee : les PIEDS de l'objet tombent-ils
+           * dans le rectangle d'un batiment ? Elle ne dit rien d'un objet plante
+           * PLUS BAS, dont le dessin remonte par-dessus la facade — et comme il
+           * se trie par les pieds, il passe alors DEVANT.
+           * C'est le defaut de la lisiere, en plus discret : un arbre de deux
+           * cent cinquante-six unites pose juste sous la maison manga la
+           * recouvrait a moitie. Il ne s'est montre qu'en ajoutant un lieu, qui
+           * a rebattu le semis — donc il dependait du hasard, et il pouvait
+           * rester cache des mois.
+           * La seconde question ne vaut que pour ce qui se TRIE : le decor de
+           * sol est peint SOUS les facades, une touffe d'herbe dessous ne cache
+           * rien. Et la largeur est bornee par la taille : dans toutes les
+           * familles la case est au moins aussi haute que large, donc s'en
+           * servir comme largeur rejette un peu large, jamais trop peu. */
           var dansUnLieu = false;
           for (var i = 0; i < LIEUX.length; i++) {
             var l = LIEUX[i];
             if (Math.abs(x - l.x) < l.larg / 2 + 50
                 && y < l.y + 60 && y > l.y - l.haut - 30) { dansUnLieu = true; break; }
+            if (!f.sol && y > l.y
+                && x + taille / 2 > l.x - l.larg / 2 && x - taille / 2 < l.x + l.larg / 2
+                && y - taille < l.y) { dansUnLieu = true; break; }
           }
           if (dansUnLieu) continue;
           var colle = false;

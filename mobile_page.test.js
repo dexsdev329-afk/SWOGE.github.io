@@ -197,11 +197,18 @@ process.on('unhandledRejection', (e) => {
     const cible = { x: b.left + b.width * 0.7, y: b.top + b.height * 0.35 };
     const ev = (t, x, y) => pave.dispatchEvent(new PointerEvent(t, { bubbles: true,
       pointerId: 11, pointerType: 'touch', isPrimary: true, clientX: x, clientY: y }));
+    const vu = () => Number(getComputedStyle(pave).opacity);
+    /* Le fondu dure un dixieme de seconde : lu tout de suite, on lirait la
+       valeur de depart et l'essai dirait que rien ne s'allume. */
+    const auRepos = vu();
     ev('pointerdown', cible.x, cible.y);
     const pendant = centreDe(socle);
+    await new Promise((r) => setTimeout(r, 260));
+    const pendantVu = vu();
     ev('pointerup', cible.x, cible.y);
-    await new Promise((r) => setTimeout(r, 80));
-    return { repos, cible, pendant, apres: centreDe(socle) };
+    await new Promise((r) => setTimeout(r, 260));
+    return { repos, cible, pendant, apres: centreDe(socle),
+             auRepos, pendantVu, apresVu: vu() };
   });
   const ecartPouce = Math.hypot(flottant.pendant.x - flottant.cible.x,
                                 flottant.pendant.y - flottant.cible.y);
@@ -219,6 +226,19 @@ process.on('unhandledRejection', (e) => {
   const retour = Math.hypot(flottant.apres.x - flottant.repos.x,
                             flottant.apres.y - flottant.repos.y);
   ok(retour < 4, `une fois lache, il revient attendre dans le coin (${Math.round(retour)} px)`);
+  /* ---- ET AU REPOS, ON NE LE VOIT PAS ----
+   * Un anneau pale laisse dans le coin se lit comme une tache sur le decor,
+   * pas comme une commande : sur un vrai telephone il se pose par-dessus une
+   * facade et l'on croit a un defaut d'affichage. Il ne montrait rien de plus
+   * que ce que le premier doigt pose apprend aussitot.
+   * C'est l'OPACITE CALCULEE qu'on lit, pas une regle de style : elle seule dit
+   * ce que l'oeil recoit apres les transitions et les classes. */
+  ok(flottant.auRepos < 0.02,
+     `au repos il est invisible (opacite ${flottant.auRepos})`);
+  ok(flottant.pendantVu > 0.9,
+     `il apparait quand le pouce se pose (opacite ${flottant.pendantVu})`);
+  ok(flottant.apresVu < 0.02,
+     `et il repart quand on lache (opacite ${flottant.apresVu})`);
 
   /* ================== 2. IL FAIT MARCHER, DANS TOUTES LES DIRECTIONS ================== */
   console.log('\n-- huit directions, pas quatre --');

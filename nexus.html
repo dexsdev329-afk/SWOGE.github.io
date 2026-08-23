@@ -1731,9 +1731,14 @@ body.nxdrag *{ cursor:grabbing !important; }
  * pas ce qui nous tire dessus.
  * La zone de prise couvre donc toute la moitie gauche : on pose le doigt ou
  * l'on veut, le manche apparait LA. Il n'y en a toujours qu'un — celui du coin
- * n'a pas ete double, il s'est mis a bouger. Ce qui reste dans le coin au repos
- * est un temoin, a demi efface : sans lui, personne ne devinerait que la moitie
- * gauche de l'ecran fait marcher.
+ * n'a pas ete double, il s'est mis a bouger.
+ * ---- ET AU REPOS, ON NE LE VOIT PAS ----
+ * On avait laisse un temoin a demi efface dans le coin, pour la decouverte. Vu
+ * sur un vrai telephone, c'etait une tache pale posee sur le decor : un grand
+ * anneau delave par-dessus une facade, qu'on prend pour un defaut d'affichage
+ * avant de comprendre que c'est une commande. Il ne montrait rien de plus que
+ * ce que le premier doigt pose apprend en un dixieme de seconde — puisque la
+ * moitie de l'ecran repond, il n'y a rien a trouver.
  * `z-index:12` : SOUS le panneau, les potions et le butin, qui gardent donc
  * leurs appuis. Une zone qui passerait au-dessus les avalerait tous. */
 /* La moitie de l'AIRE DE JEU, pas de la fenetre : le panneau mange cent
@@ -1745,7 +1750,7 @@ body.nxdrag *{ cursor:grabbing !important; }
   top:0; bottom:0; z-index:12;
   touch-action:none; user-select:none; -webkit-user-select:none;
   -webkit-tap-highlight-color:transparent;
-  opacity:.42; transition:opacity .14s, right .22s ease; }
+  opacity:0; transition:opacity .14s, right .22s ease; }
 #nxWrap.replie #nxPad{ right:50%; }
 #nxPad.on{ opacity:1; }
 /* Le socle, dessine : ce qu'on voit, et non ce qu'on peut toucher. Il se

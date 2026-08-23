@@ -2310,5 +2310,59 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
 
 <script src="nexus.js?v=cfa526e9" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
+
+<script>
+/* ---- UNE PAGE PERIMEE SE REMPLACE TOUTE SEULE ----
+ *
+ * Le marqueur `?v=` est l'empreinte du script : si `nexus.js` change, son
+ * empreinte change, la page en demande une autre, et aucun navigateur ne peut
+ * servir l'ancien. C'est solide — mais cela repose entierement sur la PAGE,
+ * et la page, elle, n'est versionnee par rien du tout. Une page gardee en
+ * cache porte l'ancien marqueur, donc redemande l'ancien script : toute la
+ * chaine est neuve sauf son premier maillon.
+ * On l'a vu en vrai. Le correctif etait pousse, servi, verifie octet par
+ * octet sur le domaine — et un joueur voyait toujours l'ancien jeu, dans le
+ * navigateur integre d'une messagerie, qui garde une page bien plus
+ * longtemps qu'un navigateur ordinaire.
+ *
+ * Ce bout de code ferme la boucle : la page demande au serveur les empreintes
+ * du jour, les compare a celles qu'elle porte, et se recharge UNE fois si
+ * elles different. Il est ecrit ICI, en clair dans la page, et non dans un
+ * fichier a part : un fichier a part serait lui-meme sujet au cache qu'on
+ * essaie de contourner.
+ *
+ * Aucun nom de script n'est ecrit : on releve ce que la page charge vraiment.
+ * Et une seule relance — on garde en memoire la signature d'ou l'on vient, si
+ * bien qu'une page qui resterait perimee apres rechargement ne tournerait pas
+ * en boucle, elle s'arreterait la ou elle est.
+ *
+ * A savoir : ce garde-fou ne sauve pas les pages DEJA en cache chez les
+ * joueurs, puisqu'elles ne le contiennent pas. Il vaut a partir de celle-ci. */
+(function () {
+  try {
+    if (!window.fetch || !window.sessionStorage) return;
+    var vus = {}, aumoinsun = false;
+    var el = document.getElementsByTagName('script');
+    for (var i = 0; i < el.length; i++) {
+      var m = /([A-Za-z0-9_]+\.js)\?v=([0-9a-z]+)/.exec(el[i].getAttribute('src') || '');
+      if (m) { vus[m[1]] = m[2]; aumoinsun = true; }
+    }
+    if (!aumoinsun) return;
+    var signature = JSON.stringify(vus);
+    var CLE = 'swogeRelanceCache';
+    if (sessionStorage.getItem(CLE) === signature) return;
+    fetch('version.json', { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (vrai) {
+        if (!vrai) return;
+        var perime = false;
+        for (var f in vus) if (vrai[f] && vrai[f] !== vus[f]) perime = true;
+        if (!perime) return;
+        sessionStorage.setItem(CLE, signature);
+        location.reload();
+      })['catch'](function () {});
+  } catch (e) {}
+})();
+</script>
 </body>
 </html>

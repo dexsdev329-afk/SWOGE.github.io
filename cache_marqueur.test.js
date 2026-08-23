@@ -84,4 +84,52 @@ for (const s of scripts) {
      `${s} : une seule marque en circulation${vues.size === 1 ? '' : ' — ' + [...vues].join(' / ')}`);
 }
 
+/* ---- ET LE MAILLON QUI MANQUAIT : LA PAGE ELLE-MEME ----
+ *
+ * Tout ce qui precede repose sur la PAGE : c'est elle qui porte le marqueur et
+ * qui demande donc le bon script. Mais la page, elle, n'est versionnee par
+ * rien. Une page gardee en cache porte l'ancien marqueur et redemande
+ * l'ancien script : la chaine est neuve sauf son premier maillon.
+ * Vu en vrai. Le correctif etait pousse, servi, verifie octet par octet sur le
+ * domaine — et un joueur voyait toujours l'ancien jeu, dans le navigateur
+ * integre d'une messagerie, qui garde une page bien plus longtemps qu'un
+ * navigateur ordinaire.
+ * `version.json` porte les empreintes du jour ; la page les redemande au
+ * chargement et se recharge une fois si les siennes different. Ce fichier ne
+ * doit donc JAMAIS etre perime — sinon il reproduit exactement le defaut qu'il
+ * corrige, en silence et avec l'air d'y remedier. */
+console.log('\n-- et le fichier des empreintes du jour --');
+const FV = path.join(SITE, 'version.json');
+if (!fs.existsSync(FV)) {
+  ok(false, "version.json est absent : la page ne peut plus savoir qu'elle est perimee");
+} else {
+  let manifeste = null;
+  try { manifeste = JSON.parse(fs.readFileSync(FV, 'utf8')); } catch (e) { manifeste = null; }
+  ok(!!manifeste, 'version.json se lit');
+  if (manifeste) {
+    const attendu = {};
+    for (const s of scripts) if (fs.existsSync(path.join(SITE, s))) attendu[s] = empreinte(s);
+    const faux = Object.keys(attendu).filter((s) => manifeste[s] !== attendu[s]);
+    ok(faux.length === 0,
+       faux.length === 0
+         ? `version.json porte les ${Object.keys(attendu).length} empreintes a jour`
+         : 'version.json est perime — ecrire ' +
+           faux.map((s) => `${s}: ${attendu[s]}`).join(', '));
+    /* Une entree pour un script qui n'existe plus ne casse rien, mais elle
+       ment sur ce que le site charge, et c'est de ce genre de mensonge que
+       viennent les heures perdues. */
+    const orphelins = Object.keys(manifeste).filter((s) => !(s in attendu));
+    ok(orphelins.length === 0,
+       `aucune entree orpheline${orphelins.length ? ' — ' + orphelins.join(', ') : ''}`);
+  }
+}
+
+/* Le mecanisme ne vaut que s'il est DANS la page : ecrit dans un fichier a
+   part, il serait lui-meme sujet au cache qu'il essaie de contourner. On
+   verifie donc qu'une page au moins le porte en clair, et laquelle. */
+const porteuses = pages.filter((p) =>
+  /fetch\('version\.json'/.test(fs.readFileSync(path.join(SITE, p), 'utf8')));
+ok(porteuses.length > 0,
+   `la verification est ecrite en clair dans ${porteuses.length} page(s) : ${porteuses.join(', ')}`);
+
 console.log(`\ncache_marqueur.test.js : ${n} verifications OK`);

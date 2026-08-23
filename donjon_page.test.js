@@ -103,21 +103,28 @@ process.on('unhandledRejection', (e) => {
   let moteur = null; const _p0 = Game.prototype._p;
   Game.prototype._p = function (a) { moteur = this; return _p0.call(this, a); };
   const { Realm } = require(path.join(SERVEUR, 'realm'));
-  let monde0 = null, donjon0 = null;
-  const ouverts = new Set();
-  const mondeDe = (a2) => [...ouverts].find((r) => r.joueurs.has(String(a2).toLowerCase()))
-                       || [...ouverts][0] || null;
+  let monde0 = null;
+  const ouverts = new Set(), donjons = new Set();
+  /* ---- MONDE OUVERT OU DONJON : C'EST UNE QUESTION DE MOMENT ----
+   * C'etait « avec plan / sans plan ». Ca ne l'est plus : la ville de SWOGE
+   * +18 est un monde ouvert qui a un plan a lui. Avec l'ancien critere, elle
+   * disparaissait des mondes ouverts ET s'ajoutait aux donjons — et comme
+   * `donjon0` retenait « le dernier qui a battu », il designait une fois sur
+   * deux la ville au lieu du donjon ou notre joueur se trouve. On collecte
+   * donc ce qui tourne DEJA a la fin du demarrage (les mondes ouverts : un
+   * donjon n'existe qu'a partir de la porte franchie), et l'on designe la
+   * bonne simulation par SON OCCUPANT — ce qui est de toute facon plus juste
+   * que « la derniere ». */
+  let demarrageFini = false;
   const pas0 = Realm.prototype.pas;
   Realm.prototype.pas = function (dt) {
-    /* `plan` est ce qui distingue un donjon d'un monde. On garde les deux : le
-       monde ouvert pour y poser Optimus, le donjon pour savoir ou se trouve le
-       personnage quand il y marche. */
-    /* Il y a DEUX mondes ouverts depuis la deuxieme porte du Nexus : garder
-       « le dernier qui a battu » designait une fois sur deux celui ou notre
-       joueur n est pas. On les collecte, et l on choisit par l occupant. */
-    if (this.plan) donjon0 = this; else ouverts.add(this);
+    if (!demarrageFini) ouverts.add(this);
+    else if (!ouverts.has(this)) donjons.add(this);
     return pas0.call(this, dt);
   };
+  const dansLaListe = (l, a2) => [...l].find((r) => r.joueurs.has(String(a2).toLowerCase())) || null;
+  const mondeDe = (a2) => dansLaListe(ouverts, a2) || [...ouverts][0] || null;
+  const donjonDe = (a2) => dansLaListe(donjons, a2) || null;
 
   require(path.join(SERVEUR, 'server'));
   const ethers = require(path.join(SERVEUR, 'node_modules', 'ethers'));
@@ -129,6 +136,7 @@ process.on('unhandledRejection', (e) => {
   const ARME = boutique.ITEMS.concat(boutique.ITEMS_DROP)
     .find((o) => o.famille === 'lame' && o.rarete === 'commun');
   await new Promise((r) => setTimeout(r, 1500));
+  demarrageFini = true;
   const site = await servirLeSite(SITE);
   const nav = await chromium.launch({ args: ['--no-sandbox', '--disable-dev-shm-usage'] });
   const portefeuille = ethers.Wallet.createRandom();
@@ -680,7 +688,10 @@ process.on('unhandledRejection', (e) => {
   console.log('\n-- on ressort --');
   /* La sortie est a l'est de l'arrivee : on y va a pied, par petits pas, comme
      tout a l'heure et pour la meme raison. */
-  ok(!!donjon0, 'la simulation du donjon tourne');
+  /* Le donjon OU NOTRE JOUEUR SE TROUVE, et pas « le dernier qui a battu » :
+     plusieurs simulations a plan tournent en meme temps. */
+  const donjon0 = donjonDe(portefeuille.address);
+  ok(!!donjon0, 'la simulation du donjon ou vit notre personnage tourne');
   const pas2 = await versLaPorte({
     realm: donjon0 || { joueurs: new Map() },
     cible: () => dedans.sortie }, 90);

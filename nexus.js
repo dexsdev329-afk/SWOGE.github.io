@@ -5085,6 +5085,24 @@
    * pierre ne doit pas etre. La formule est deterministe — un tirage au
    * hasard aurait fait scintiller la roche a chaque image.
    */
+  /* ---- SIX IMAGES PAR SECONDE, DIT UNE FOIS ----
+   *
+   * L'image d'une planche animee se DEDUIT de l'horloge, elle ne se garde
+   * pas : un compteur par objet demanderait de le creer, de l'avancer et de
+   * le remettre a zero — trois occasions de se tromper pour un chiffre qu'on
+   * possede deja.
+   *
+   * La cadence, elle, vit ICI et nulle part ailleurs. Le hall l'avait chez
+   * lui ; la ville allait la recopier. Deux nombres pour la meme chose, et le
+   * jour ou l'un des deux change, la fontaine et le manege ne tournent plus
+   * au meme rythme sans que personne ne sache pourquoi. Six par seconde :
+   * au-dela l'eau bouillonne, en dessous elle saccade.
+   */
+  var CADENCE_PLANCHE = 166;
+  function cadreDeLHorloge(n) {
+    return n > 1 ? (Math.floor(performance.now() / CADENCE_PLANCHE) % n) : 0;
+  }
+
   function peintRoche(mc, mr, TM) {
     var img = (MONDE_C && MONDE_C.mur === 'cave') ? IMG_MUR_CAVE : IMG_MUR_DJ;
     if (!img || !img.complete || !img.naturalWidth) return;
@@ -5120,7 +5138,71 @@
     return IMG_DECOR[nom];
   }
 
+  /* Les planches de FACADE, chargees a la demande et gardees. Le nom vient du
+     serveur, avec le bloc : la page ne le deduit de rien. Une ville qui gagne
+     un batiment, c'est une ligne dans la table du serveur et une image dans ce
+     dossier — pas une ligne ici. C'est la meme regle que `plancheDecor` et que
+     `fichierSol`, et pour la meme raison : une table cote page a tenir
+     d'accord avec une table cote serveur finit toujours par ne plus l'etre, et
+     le desaccord est MUET. */
+  var IMG_BATI = {};
+  function plancheBati(nom) {
+    if (!IMG_BATI[nom]) {
+      var i = new Image();
+      i.src = 'img/nexus/tiles/obj_' + encodeURIComponent(nom) + '.webp';
+      IMG_BATI[nom] = i;
+    }
+    return IMG_BATI[nom];
+  }
+
+  /* ---- UN BATIMENT SE POSE SUR SES PIEDS ----
+   *
+   * Il occupe l'espace AU-DESSUS de son point d'ancrage, comme les maisons du
+   * hall. C'est ce qui lui permet de se trier par les pieds avec ceux qui
+   * passent devant — et c'est pour ca que le serveur ne pose ses facades que
+   * sur le bord SUD d'un pate de maisons : posee au nord, une facade
+   * recouvrirait la rue et celui qui y marche.
+   *
+   * ---- LA HAUTEUR SE MESURE, ELLE NE S'ENVOIE PAS ----
+   *
+   * Le serveur dit la LARGEUR : c'est une distance de monde, il la connait en
+   * tuiles, et c'est elle qui doit s'accorder avec le pate qui la porte. La
+   * hauteur, elle, est une propriete du DESSIN. L'envoyer aurait fait deux
+   * nombres a tenir d'accord avec un fichier image — et une image etiree ne
+   * leve aucune erreur, elle a seulement l'air moins bien. C'est la lecon que
+   * la table des LIEUX a payee trois fois. On lit donc le rapport dans la
+   * planche elle-meme.
+   */
+  function dessineFacade(o) {
+    var img = plancheBati(o.bat);
+    /* `naturalWidth` et pas seulement `complete` : une image qui a ECHOUE est
+       « complete » elle aussi, et `drawImage` leve alors une exception qui
+       arreterait la boucle de dessin — tout le jeu se figerait pour une
+       planche manquante. */
+    if (!img || !img.complete || !img.naturalWidth) return;
+    /* Une planche animee est une BANDE de `cadres` images cote a cote ; sans
+       `cadres`, c'est une image seule et la case vaut le fichier entier. Le
+       nombre vient du serveur : la page ne peut pas le deviner d'un fichier,
+       et le deviner d'une largeur ronde serait un pari. */
+    var n = Math.max(1, o.cadres || 1);
+    var cw = img.naturalWidth / n, ch = img.naturalHeight;
+    var L = o.larg || o.r * 4;
+    var H = L * ch / cw;
+    ctx.drawImage(img, cadreDeLHorloge(n) * cw, 0, cw, ch,
+                  o.x - L / 2, o.y + o.r - H, L, H);
+  }
+
   function dessineObstacle(o) {
+    /* ---- UNE FACADE AVANT TOUT LE RESTE ----
+     * Elle NOMME sa planche ; les blocs ordinaires, eux, portent un `t` qui
+     * designe une case dans l'une des quatre bandes connues. On ne lui donne
+     * donc pas une cinquieme borne a tenir d'accord de part et d'autre du
+     * reseau : la presence du nom suffit a dire de quoi il s'agit, et un nom
+     * ne peut pas se decaler d'une case comme un indice.
+     * Le bloc garde son `t` de mur par-dessous : une page qui ne connait pas
+     * encore ce champ — un navigateur qui tient une vieille version en cache —
+     * dessine alors de la pierre a cet endroit. Degrade, jamais troue. */
+    if (o.bat) return dessineFacade(o);
     var t = o.t || 0;
     /* Les bornes viennent du SERVEUR quand il les envoie : deux nombres tenus
        d'accord de part et d'autre du reseau finissent par ne plus l'etre, et le
@@ -6432,6 +6514,21 @@
          donne envie d'essayer. */
       var nomPo = (POUVOIRS_C && POUVOIR_C && POUVOIRS_C[POUVOIR_C])
         ? POUVOIRS_C[POUVOIR_C].nom : null;
+      /* ---- ET OU L'ON EST, NOMME PAR LA PORTE QU'ON A PRISE ----
+       * C'etait « the wild » en dur, ce qui allait tant qu'il n'y avait qu'une
+       * carte. A trois, on accueillait dans « the wild » celui qui vient
+       * d'entrer dans une ville. Le nom existe deja, et une seule fois : c'est
+       * celui que la PORTE du hall porte (`nom`, en face de `monde`). On le
+       * relit la plutot que d'ouvrir une deuxieme table — deux tables de noms
+       * de cartes finiraient par ne plus dire la meme chose, et l'ecart serait
+       * muet. Sans porte trouvee — une carte ou l'on entre autrement — on
+       * retombe sur « the wild », qui reste vrai de toute carte de combat. */
+      var nomCarte = null;
+      for (var iC = 0; iC < LIEUX.length; iC++) {
+        if (LIEUX[iC].monde && LIEUX[iC].monde === (MONDE_C && MONDE_C.carte)) {
+          nomCarte = LIEUX[iC].nom;
+        }
+      }
       /* Dans un donjon, la ligne dit AUTRE CHOSE : « press E to run home »
          serait un mensonge — E ramene au Nexus, ce qui abandonne le donjon sans
          rien en tirer. Ce qu'il faut savoir la, c'est par ou l'on repart. */
@@ -6440,7 +6537,7 @@
           (nomPo ? '<b>' + (nomTouche(PERSO_TOUCHES.pouvoir) || 'Space') + '</b> for ' +
                    ech(nomPo) + ' &middot; ' : '') +
           'the gate you came through takes you back'
-        : 'You are in the <b>wild</b> &middot; ' +
+        : 'You are in <b>' + ech(nomCarte || 'the wild') + '</b> &middot; ' +
           (nomPo ? '<b>' + (nomTouche(PERSO_TOUCHES.pouvoir) || 'Space') + '</b> for ' +
                    ech(nomPo) + ' &middot; ' : '') +
           'press E to run home';
@@ -10929,7 +11026,15 @@
              s'affichait en bleu. */
           if (!TUILES_M[b]) chargeSol(b);
           var img = TUILES_M[b];
-          if (img && img.complete) ctx.drawImage(img, mc * TM, mr * TM, TM, TM);
+          /* `naturalWidth` en plus de `complete` : une image qui a ECHOUE est
+             « complete » elle aussi, et `drawImage` leve alors une exception.
+             Ici, ce serait la pire des pannes — l'exception part a chaque
+             image, la boucle de dessin s'arrete, et TOUT le jeu se fige parce
+             qu'un fichier de sol manque. Le sol absent doit rester un sol
+             absent, pas un ecran mort. */
+          if (img && img.complete && img.naturalWidth) {
+            ctx.drawImage(img, mc * TM, mr * TM, TM, TM);
+          }
         }
       }
 
@@ -10995,7 +11100,22 @@
            gauche du cadrage, pas son centre, et le seuil aurait rogne les
            rochers de droite sur un ecran large. */
         if (Math.abs(o.x - joueur.x) > 1400 || Math.abs(o.y - joueur.y) > 1100) return;
-        pileM.push({ y: o.y, dessine: function () { dessineObstacle(o); } });
+        /* ---- UN BATIMENT SE TRIE PAR SES PIEDS, UNE PIERRE PAR SA TUILE ----
+         *
+         * Un bloc de pierre remplit sa tuile : le trier par son centre est
+         * juste. Une facade, elle, se DRESSE au-dessus de la sienne, et les
+         * blocs qui la bordent sont a la meme hauteur exacte — donc a la meme
+         * cle de tri. L'egalite se departageait par l'ordre de la liste,
+         * c'est-a-dire au hasard : la moitie du temps, les pierres voisines
+         * passaient DEVANT le bas du batiment et le coupaient en deux. On
+         * voyait un manege enfonce dans un mur.
+         *
+         * Ses pieds sont au bas de sa tuile — un cheveu avant, pour rester
+         * derriere quiconque marche dans la rue en dessous : leurs pieds a eux
+         * commencent exactement la, et un joueur a moitie recouvert par une
+         * facade se lit comme un defaut d'affichage. */
+        pileM.push({ y: o.bat ? o.y + o.r - 1 : o.y,
+                     dessine: function () { dessineObstacle(o); } });
       });
       Object.keys(MONSTRES_C).forEach(function (k) {
         var e = MONSTRES_C[k];
@@ -11271,14 +11391,10 @@
         ctx.drawImage(l.img, l.x - l.larg / 2, l.y - l.haut, l.larg, l.haut);
         return;
       }
-      /* ---- UN DECOR ANIME ----
-       * L'image se DEDUIT de l'horloge, elle ne se garde pas : un compteur
-       * par lieu demanderait de le creer, de l'avancer et de le remettre a
-       * zero — trois occasions de se tromper pour un chiffre qu'on possede
-       * deja. Six images par seconde : au-dela l'eau bouillonne, en dessous
-       * elle saccade. */
+      /* Un decor anime : l'image vient de l'horloge, et la cadence de
+         `cadreDeLHorloge` — la meme pour le hall et pour la ville. */
       var cw = l.img.naturalWidth / l.cadres;
-      var k = Math.floor(performance.now() / 166) % l.cadres;
+      var k = cadreDeLHorloge(l.cadres);
       ctx.drawImage(l.img, k * cw, 0, cw, l.img.naturalHeight,
                     l.x - l.larg / 2, l.y - l.haut, l.larg, l.haut);
     } }; });

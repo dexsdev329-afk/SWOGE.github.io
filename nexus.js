@@ -9679,6 +9679,19 @@
   var IMPACTS = [];           // eclats en cours, au point de contact
   var DUREE_IMPACT = 0.28;
   var viseur = { x: 0, y: 0, actif: false };   // en coordonnees ECRAN
+  /* ---- LE DOIGT, DEMANDE UNE FOIS ----
+   * Le meme test etait ecrit QUATRE fois dans ce fichier — trois copies en
+   * ligne et cette constante, declaree trop bas pour servir aux premieres.
+   * Elle remonte ici, au-dessus de son premier besoin : le tir automatique,
+   * qui doit connaitre le doigt pour choisir son defaut.
+   * `pointer: coarse` et pas la largeur de la fenetre : c'est le DOIGT qui
+   * change le besoin. Une tablette large au doigt a le meme probleme qu'un
+   * telephone, une petite fenetre a la souris ne l'a pas. */
+  var TACTILE = (function () {
+    try { return !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches); }
+    catch (e) { return false; }
+  })();
+
   var tireur = { presse: false, auto: false, recharge: 0 };
 
   /* ---- VISER ----
@@ -9978,7 +9991,18 @@
     try { localStorage.setItem(CLE_AUTO, tireur.auto ? '1' : '0'); } catch (e) {}
     peintAuto();
   }
-  try { tireur.auto = localStorage.getItem(CLE_AUTO) === '1'; } catch (e) {}
+  /* ---- ACTIF PAR DEFAUT AU DOIGT, ET SEULEMENT PAR DEFAUT ----
+   * `getItem` rend `null` quand personne n'a jamais choisi, et `null === '1'`
+   * vaut faux : le tir automatique etait donc eteint partout, y compris la ou
+   * il change tout. Sur telephone, viser demande un second pouce que la main
+   * qui tient l'appareil n'a pas — un pouce pour marcher et le tir qui se
+   * debrouille, c'est ce qui rend le jeu jouable d'une seule main.
+   * On distingue « jamais choisi » de « choisi non » : celui qui l'eteint le
+   * retrouve eteint. Un defaut n'est pas un reglage impose. */
+  try {
+    var choixAuto = localStorage.getItem(CLE_AUTO);
+    tireur.auto = (choixAuto === null) ? TACTILE : (choixAuto === '1');
+  } catch (e) { tireur.auto = TACTILE; }
   if (elAutoBtn) elAutoBtn.addEventListener('click', basculeAuto);
   peintAuto();
 
@@ -10464,7 +10488,7 @@
   function peintPotionsTactiles() {
     if (!elPotTac) return;
     var tactile = false;
-    try { tactile = window.matchMedia('(pointer: coarse)').matches; } catch (e) {}
+    tactile = TACTILE;   // meme question, une seule source
     if (!tactile || SCENE !== 'monde') { elPotTac.classList.remove('on'); return; }
     elPotTac.innerHTML = (POTIONS_C || []).map(function (p) {
       return '<button type="button" data-pot="' + p.cle + '"' +
@@ -10483,7 +10507,7 @@
 
   function peintBoutonTir() {
     var tactile = false;
-    try { tactile = window.matchMedia('(pointer: coarse)').matches; } catch (e) {}
+    tactile = TACTILE;   // meme question, une seule source
     /* Les deux ensemble : ils n'ont de sens que dans le monde de combat, et
        seulement au doigt. Les separer aurait fini par en laisser un allume
        dans le Nexus. */
@@ -10600,7 +10624,7 @@
   function peintFlot(s, ordre) {
     if (!elFlot) return;
     var tactile = false;
-    try { tactile = window.matchMedia('(pointer: coarse)').matches; } catch (e) {}
+    tactile = TACTILE;   // meme question, une seule source
     if (!tactile || !s || !s.c.length) { elFlot.classList.remove('on'); elFlot.innerHTML = ''; return; }
     elFlot.innerHTML = s.c.map(function (o, i) {
       var d = contenuDeLaPlace(o, ordre);
@@ -11279,14 +11303,8 @@
    * quinze — on ne les distingue plus du decor, et un jeu ou l'on ne voit pas
    * ce qui tire n'est pas plus lisible parce qu'il montre plus de terrain.
    *
-   * `pointer: coarse` et pas la largeur : c'est le DOIGT qui change le besoin,
-   * pas la taille de la fenetre. Une tablette large au doigt a le meme
-   * probleme qu'un telephone, et une petite fenetre de navigateur a la souris
-   * ne l'a pas. */
-  var TACTILE = (function () {
-    try { return !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches); }
-    catch (e) { return false; }
-  })();
+   * Le doigt se reconnait par `TACTILE`, declare plus haut avec la raison de
+   * ce choix — une seule question posee une seule fois. */
   var MONDE_VISIBLE_H = 1000;         // unites de monde vues verticalement
   var MONDE_VISIBLE_TACTILE = 1400;   // au doigt : plus haut, on voit venir
   /* ---- ET C'EST UN REGLAGE, PAS UN CHIFFRE EN DUR ----

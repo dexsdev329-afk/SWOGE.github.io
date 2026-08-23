@@ -218,26 +218,73 @@ process.on('unhandledRejection', (e) => {
    * C'est le manche, sans rien d'autre. */
   jm.x = libre.x; jm.y = libre.y;
   await p.waitForTimeout(1500);
+  /* ---- LA DERNIERE ANNONCE, ET DE QUEL FIL ----
+   * `__s[0]` etait le PREMIER fil ouvert. Une reconnexion en ouvre un second
+   * et le premier se fige : on lisait alors eternellement la meme position.
+   * On prend le fil qui parle, et l'on compte ses annonces — c'est ce compte
+   * qui dit « une nouvelle est partie », la ou un sommeil de deux cent
+   * soixante millisecondes ne faisait que l'esperer. */
   const annonce = () => p.evaluate(() => {
-    const m = window.__s[0].__out.filter((x) => x.type === 'realmMove').pop();
-    return m ? { x: m.x, y: m.y } : null;
+    for (let i = window.__s.length - 1; i >= 0; i--) {
+      const t = window.__s[i].__out.filter((x) => x.type === 'realmMove');
+      if (t.length) return { x: t[t.length - 1].x, y: t[t.length - 1].y, n: t.length };
+    }
+    return null;
   });
+  const attendUneAnnonce = async (depuis) => {
+    try {
+      await p.waitForFunction((k) => {
+        for (let i = window.__s.length - 1; i >= 0; i--) {
+          const c = window.__s[i].__out.filter((x) => x.type === 'realmMove').length;
+          if (c) return c > k;
+        }
+        return false;
+      }, depuis, { timeout: 5000 });
+      return true;
+    } catch (e) { return false; }
+  };
+  /* ---- ON RESTE DEBOUT PENDANT LA MESURE ----
+   * Le monde de combat a des monstres, et ils tirent. Quand le personnage
+   * tombe, le serveur envoie `realmMort` : la page revient au Nexus et cesse
+   * d'annoncer sa position. Les sens qui restaient lisaient alors tous la MEME
+   * derniere annonce et repondaient « d=0 » — un echec sur quatre, qui
+   * accusait le manche d'un meurtre commis par un monstre.
+   * La question posee ici est « le manche fait-il marcher dans les huit sens »,
+   * pas « survit-on six secondes ». On tient donc le personnage debout, et l'on
+   * verifie apres coup qu'aucune mort n'est venue brouiller la mesure. */
+  const debout = setInterval(() => { try { jm.pv = jm.pvMax; } catch (e) {} }, 40);
   const rates8 = [];
   for (const [nom, ux, uy] of sens) {
     const depart = await annonce();
     if (!depart) { rates8.push(nom + ' (aucune position annoncee)'); continue; }
-    await p.evaluate(async (q) => {
+    await p.evaluate((q) => {
       const el = document.getElementById('nxPad');
-      const ev = (t, x, y) => el.dispatchEvent(new PointerEvent(t, { bubbles: true,
+      window.__ev = (t, x, y) => el.dispatchEvent(new PointerEvent(t, { bubbles: true,
         pointerId: 7, pointerType: 'touch', isPrimary: true, clientX: x, clientY: y }));
-      ev('pointerdown', q.cx, q.cy);
-      ev('pointermove', q.cx + q.ux * q.r * 0.9, q.cy + q.uy * q.r * 0.9);
-      /* Le deplacement se fait dans la boucle de DESSIN, pas dans
-         l'evenement : on laisse le personnage marcher. */
-      await new Promise((r) => setTimeout(r, 450));
-      ev('pointerup', q.cx + q.ux * q.r * 0.9, q.cy + q.uy * q.r * 0.9);
+      window.__ev('pointerdown', q.cx, q.cy);
+      window.__ev('pointermove', q.cx + q.ux * q.r * 0.9, q.cy + q.uy * q.r * 0.9);
     }, { cx: centre.x, cy: centre.y, r: centre.r, ux, uy });
-    await p.waitForTimeout(260);          // la page annonce son dernier pas
+    /* ---- ON POUSSE JUSQU'A CE QU'IL AIT MARCHE, PAS PENDANT UN DELAI ----
+     * Le deplacement se fait dans la boucle de DESSIN, et cette boucle depend
+     * de la charge de la machine : sur un navigateur sans fenetre, quatre cent
+     * cinquante millisecondes valaient tantot quatre-vingts unites de monde,
+     * tantot onze — et l'essai declarait alors que le manche ne repond pas vers
+     * le nord. On tient le pouce jusqu'a ce que le personnage ait franchi la
+     * distance qu'on veut mesurer, ou qu'un delai large soit ecoule (auquel cas
+     * la mesure d'apres dira honnetement qu'il n'a pas bouge). */
+    const t0 = Date.now();
+    let vue = depart;
+    while (Date.now() - t0 < 6000) {
+      await p.waitForTimeout(60);
+      const a = await annonce();
+      if (a) vue = a;
+      if (Math.hypot(vue.x - depart.x, vue.y - depart.y) > 60) break;
+    }
+    await p.evaluate((q) => window.__ev('pointerup', q.x, q.y),
+                     { x: centre.x + ux * centre.r * 0.9, y: centre.y + uy * centre.r * 0.9 });
+    /* Et l'on attend une annonce DE PLUS, pas un delai : le dernier pas part
+       avec la boucle suivante. */
+    if (!(await attendUneAnnonce(vue.n))) { rates8.push(nom + ' (plus aucune annonce)'); continue; }
     const arrivee = await annonce();
     const dx = arrivee.x - depart.x, dy = arrivee.y - depart.y;
     const d = Math.hypot(dx, dy);
@@ -260,6 +307,14 @@ process.on('unhandledRejection', (e) => {
   const encore = await annonce();
   ok(Math.hypot(encore.x - arret.x, encore.y - arret.y) < 12,
      `et il ne bouge plus une fois le pouce leve (${Math.round(Math.hypot(encore.x - arret.x, encore.y - arret.y))} u)`);
+  /* On lache la perfusion SEULEMENT ici : une mort pendant l'arret aurait fige
+     l'annonce, et « il ne bouge plus » serait devenu vrai pour la mauvaise
+     raison. Et l'on dit si une mort est quand meme passee — sans ce temoin, la
+     mesure d'a cote mentirait sans que rien ne le signale. */
+  clearInterval(debout);
+  const estMort = await p.evaluate(() =>
+    window.__s.some((x) => x.__m.some((m) => m.type === 'realmMort')));
+  ok(!estMort, 'aucune mort n\'est venue brouiller la mesure du manche');
 
   /* ================== 3. ON VOIT PLUS LOIN ================== */
   console.log('\n-- ce qu on voit --');

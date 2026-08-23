@@ -2678,28 +2678,37 @@
      *    cinema, que rien ne pilotait, et qui mangeaient la moitie de la
      *    hauteur utile d'un telephone.
      *
-     * 2. LE BAC A SABLE. Une page etrangere chargee dans notre cadre peut,
-     *    par defaut, ouvrir des fenetres et DEROUTER la page qui la contient.
-     *    Les hebergeurs de lecteurs vivent de ces fenetres : sur ordinateur un
-     *    bloqueur les arrete, sur telephone il n'y en a pas et elles
-     *    s'ouvrent en rafale. `sandbox` sans `allow-popups` ni
-     *    `allow-top-navigation` le leur interdit au niveau du navigateur — ce
-     *    n'est pas un filtre de publicites, c'est le retrait d'un pouvoir
-     *    qu'on n'avait aucune raison d'accorder a un inconnu.
-     *    On garde `allow-scripts` et `allow-same-origin`, sans quoi aucun
-     *    lecteur ne demarre : un cadre sans origine ne peut plus joindre son
-     *    propre serveur. Les deux ensemble ne sont dangereux que pour une
-     *    page de NOTRE domaine — et celle-la, justement, n'est pas mise en
-     *    bac a sable.
-     *    Certains hebergeurs s'en apercoivent et refusent de jouer plutot que
-     *    de renoncer a leurs fenetres. C'est leur choix, pas une panne d'ici.
+     * 2. LE BAC A SABLE : POSE, PUIS RETIRE. Une page etrangere peut, par
+     *    defaut, ouvrir des fenetres et DEROUTER la page qui la contient. Les
+     *    hebergeurs de lecteurs vivent de ces fenetres, et sur telephone
+     *    aucun bloqueur ne les arrete : `sandbox` sans `allow-popups` ni
+     *    `allow-top-navigation` le leur interdisait au niveau du navigateur.
+     *
+     *    Ils s'en apercoivent. L'un d'eux a repondu, en toutes lettres et a
+     *    la place du film : « Streaming Blocked — it seems that either
+     *    AdBlock is enabled or the page is running in a sandboxed
+     *    environment ». Ce n'etait pas une supposition, c'etait leur page.
+     *
+     *    Le proprietaire a tranche, deux fois : il prefere la publicite au
+     *    film qui ne demarre pas. On retire donc le bac a sable pour le
+     *    contenu etranger, et il faut savoir ce que cela rend possible — le
+     *    lecteur peut ouvrir des fenetres, et il peut remplacer la page du
+     *    jeu, ce qui coute la partie en cours a celui qui regardait. C'est un
+     *    prix, pas un detail, et c'est un prix accepte en connaissance de
+     *    cause. Le remettre est une ligne, le jour ou l'on changera de source.
+     *
+     *    La page de la borne d'arcade, elle, n'a jamais eu de bac a sable et
+     *    n'en a jamais eu besoin : elle est a nous.
      *
      * L'attribut se pose AVANT l'adresse : change apres coup il ne vaut qu'au
      * prochain chargement, et le premier serait parti sans protection. */
     var etranger = !cfg.chezNous;
     elArcVoile.classList.toggle('nxarc-etranger', etranger);
-    if (etranger) elArcJeu.setAttribute('sandbox', 'allow-scripts allow-same-origin');
-    else elArcJeu.removeAttribute('sandbox');
+    /* Plus de bac a sable, meme pour l'etranger : voir l'entete. On RETIRE
+       l'attribut dans les deux cas plutot que de laisser la branche vide —
+       le cadre est reutilise d'une ouverture a l'autre, et un attribut pose
+       une fois y serait reste. */
+    elArcJeu.removeAttribute('sandbox');
     /* Recharger MEME si l'adresse n'a pas change : sans le passage par
        about:blank, revenir sur la borne rouvrait la partie a l'endroit ou on
        l'avait laissee, avec deux combattants a genoux et un chrono a zero. */

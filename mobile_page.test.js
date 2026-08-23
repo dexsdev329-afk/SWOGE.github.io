@@ -227,22 +227,26 @@ process.on('unhandledRejection', (e) => {
   const retour = Math.hypot(flottant.apres.x - flottant.repos.x,
                             flottant.apres.y - flottant.repos.y);
   ok(retour < 4, `une fois lache, il revient a son point de depart (${Math.round(retour)} px)`);
-  /* ---- INVISIBLE AU REPOS, VISIBLE SOUS LE POUCE ----
-   * Les deux extremes ont ete essayes et les deux etaient faux. Un anneau
-   * laisse dans le coin se lit comme une tache sur le decor, pas comme une
-   * commande. Mais rien du tout ne marche pas non plus : le doigt cache le
-   * CENTRE, pas le pourtour, et sans le pourtour on ne voit plus ni de combien
-   * on pousse ni ou est le point de depart quand le pouce a derive.
+  /* ---- ON NE LE VOIT JAMAIS ----
+   * Trois etats ont ete essayes — temoin dans le coin, anneau sous le pouce,
+   * rien du tout — et le proprietaire tranche pour rien du tout. Le pouce est
+   * pose dessus de toute facon.
    * C'est l'OPACITE CALCULEE qu'on lit, pas une regle de style : elle seule dit
    * ce que l'oeil recoit apres les transitions et les classes. Les trois
-   * moments sont verifies separement — un manche visible en permanence, comme
-   * un manche jamais visible, passerait une lecture unique. */
+   * moments sont verifies separement : lus d'un bloc, un manche qui
+   * s'allumerait sous le pouce passerait pour invisible. */
   ok(flottant.auRepos < 0.02,
      `au repos il est invisible (opacite ${flottant.auRepos})`);
-  ok(flottant.pendantVu > 0.9,
-     `il apparait sous le pouce (opacite ${flottant.pendantVu})`);
+  ok(flottant.pendantVu < 0.02,
+     `il le reste sous le pouce (opacite ${flottant.pendantVu})`);
   ok(flottant.apresVu < 0.02,
-     `et il repart quand on lache (opacite ${flottant.apresVu})`);
+     `et apres le lacher (opacite ${flottant.apresVu})`);
+  /* Invisible, mais VIVANT — c'est tout l'enjeu de la demande. Le socle a
+     saute pour venir sous le doigt, ce qui n'arrive que si l'evenement a ete
+     recu ; les huit directions, plus bas, achevent la preuve en faisant
+     reellement marcher le personnage. */
+  ok(bougeDuRepos > 60 && ecartPouce < 4,
+     'la zone recoit le doigt bien qu\'on ne voie rien');
 
 
   /* ================== 2. IL FAIT MARCHER, DANS TOUTES LES DIRECTIONS ================== */

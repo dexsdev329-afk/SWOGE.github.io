@@ -1732,17 +1732,16 @@ body.nxdrag *{ cursor:grabbing !important; }
  * La zone de prise couvre donc toute la moitie gauche : on pose le doigt ou
  * l'on veut, le manche apparait LA. Il n'y en a toujours qu'un — celui du coin
  * n'a pas ete double, il s'est mis a bouger.
- * ---- INVISIBLE AU REPOS, VISIBLE SOUS LE POUCE ----
- * Trois etats ont ete essayes. Un temoin a demi efface dans le coin : c'etait
- * une tache pale sur le decor, un grand anneau delave par-dessus une facade,
- * qu'on prend pour un defaut d'affichage avant de comprendre que c'est une
- * commande. Rien du tout, jamais : un joueur l'a signale aussitot, et il a
- * raison — le doigt cache le CENTRE, pas le pourtour, et sans le pourtour on ne
- * voit plus ni de combien on pousse, ni ou est le point de depart quand le
- * pouce a derive. Le manche redevient devinable au lieu d'etre lisible.
- * Reste le seul etat qui tienne : rien au repos, l'anneau sous le pouce. Et
- * leger — un trait fin et un pommeau pale, pas le disque sombre a ombre
- * interieure d'avant, qui etait justement ce qui salissait le decor.
+ * ---- ON NE LE VOIT JAMAIS ----
+ * Ni au repos, ni sous le pouce. Trois etats ont ete essayes et le
+ * proprietaire tranche pour celui-ci : rien a l'ecran. Un temoin dans le coin
+ * faisait une tache pale sur le decor ; l'anneau sous le pouce restait une
+ * tache, plus petite. Le pouce est POSE dessus de toute facon.
+ * Ce qui reste du socle et du pommeau est leur GEOMETRIE, pas un dessin : le
+ * centre du socle donne la direction, sa largeur donne le rayon, et la
+ * proportion du pommeau borne la course. Un element sans peinture occupe
+ * quand meme sa place, et une opacite nulle n'empeche personne de toucher —
+ * la moitie gauche repond exactement comme avant.
  * ---- ET ELLE PASSE SOUS LES BOUTONS ----
  * `z-index:12` : SOUS le panneau, les potions et le butin, qui gardent donc
  * leurs appuis. Une zone qui passerait au-dessus les avalerait tous. */
@@ -1755,18 +1754,16 @@ body.nxdrag *{ cursor:grabbing !important; }
   top:0; bottom:0; z-index:12;
   touch-action:none; user-select:none; -webkit-user-select:none;
   -webkit-tap-highlight-color:transparent;
-  opacity:0; transition:opacity .12s, right .22s ease; }
+  opacity:0; transition:right .22s ease; }
 #nxWrap.replie #nxPad{ right:50%; }
-#nxPad.on{ opacity:1; }
 /* Le socle, dessine : ce qu'on voit, et non ce qu'on peut toucher. Il se
    centre sur `left`/`top`, que le script pose en pixels de la zone — sous le
    pouce des qu'on appuie, dans le coin le reste du temps.
-   ---- IL SE PEINT LEGER ----
-   Un trait fin et un fond a peine teinte. L'ancien etait un disque sombre a
-   degrade et ombre interieure : sur un decor clair il faisait une tache, et
-   c'est pour cette tache-la qu'on l'avait supprime. Ce qu'il faut montrer
-   tient en deux choses — ou est le CENTRE, et jusqu'ou va la course. Un
-   contour les dit toutes les deux sans rien masquer du jeu.
+   ---- IL NE SE PEINT PLUS ----
+   Ni trait ni fond : il ne reste que la GEOMETRIE. Un dessin qu'on ne montrera
+   jamais est une regle que quelqu'un finira par croire vivante ; on la retire
+   plutot que de la masquer. Ce qui subsiste sert a MESURER, et il faut que ca
+   garde une taille — d'ou la regle qui suit.
    ---- ET IL SUIT SA ZONE ----
    Cent trente-deux pixels en dur : panneau ouvert sur un telephone de trois
    cent quatre-vingt-dix, la moitie gauche n'en fait que cent vingt et un, et le
@@ -1776,17 +1773,12 @@ body.nxdrag *{ cursor:grabbing !important; }
    l'ecran, et le cercle deviendrait un oeuf. */
 #nxPad i.socle{ position:absolute; left:0; top:0;
   transform:translate(-50%,-50%); pointer-events:none;
-  width:min(132px, 84%); aspect-ratio:1; border-radius:50%;
-  border:2px solid rgba(255,255,255,.34);
-  background:rgba(12,20,46,.14); }
+  width:min(132px, 84%); aspect-ratio:1; }
 /* Le pommeau garde sa proportion : 37 % de la zone contre 84 % pour le socle,
    soit les memes 44 % de l'un dans l'autre. Une seule reference — la zone —
    pour les deux, sinon l'un retrecit sans l'autre. */
 #nxPad i.pommeau{ position:absolute; width:min(58px, 37%); aspect-ratio:1;
-  left:0; top:0; transform:translate(-50%,-50%); pointer-events:none;
-  border-radius:50%;
-  background:rgba(206,220,255,.52);
-  border:1px solid rgba(255,255,255,.66); }
+  left:0; top:0; transform:translate(-50%,-50%); pointer-events:none; }
 
 /* ---- LE RETOUR AU NEXUS, A DROITE ----
  * Il a d'abord ete pose au-dessus de la fleche du haut. C'etait une erreur :

@@ -3708,7 +3708,7 @@
      * ce nombre et choisit l'image a l'horloge — il n'y a pas de compteur par
      * lieu a creer, a avancer et a oublier de remettre a zero. */
     { cle: 'fontaine', src: 'img/nexus/tiles/obj_fontaine.webp',
-      x: CENTRE.x, y: CENTRE.y, larg: 340, haut: 453, collision: 108, cadres: 4 },
+      x: CENTRE.x, y: CENTRE.y, larg: 340, haut: 544, collision: 108, cadres: 4 },
     /* ---- DEUX PORTES AU NORD, ET C'EST UN CHOIX ----
      *
      * La porte violette etait seule au bout du chemin : on marchait dedans
@@ -3903,13 +3903,24 @@
      la ou la pierre est — et bloquait sous le bassin, la ou il n'y a rien.
      Une ellipse mesuree sur le dessin colle. Les tirs s'en servent aussi :
      un pas et un projectile doivent buter sur la MEME pierre. */
-  /* ---- LE BASSIN DE LA NOUVELLE FONTAINE ----
-   * Mesures reprises sur le dessin anime : le bassin occupe la moitie basse
-   * de la planche, son centre est a 38 % de la hauteur au-dessus du point
-   * d'ancrage, et il est deux fois plus large que haut. Garder les chiffres de
-   * l'ancienne fontaine aurait bloque la ou il n'y a plus rien et laisse
-   * passer la ou il y a de la pierre. */
-  var COL_FONT = { rx: 158, ry: 72, dy: 172 };
+  /* ---- LE BASSIN SE REMESURE A CHAQUE FONTAINE ----
+   * Trois fontaines se sont succede ici, et chacune a demande ses propres
+   * chiffres. Ce n'est pas une corvee, c'est la consequence d'une regle : le
+   * bassin est une propriete du DESSIN, et un dessin qui change change son
+   * bassin. Reprendre les anciens chiffres bloque la ou il n'y a plus rien et
+   * laisse passer la ou il y a de la pierre — et rien ne le signale, parce
+   * qu'une collision fausse ne leve aucune erreur.
+   *
+   * Les chiffres ci-dessous sont LUS sur la planche de l'ange, pas estimes :
+   * dans un cadre de 160 sur 256, la vasque s'etend de y=116 a y=190 et sa
+   * ligne la plus large fait 131 pixels, de x=17 a x=148. Ramene au dessin
+   * (340 sur 544), cela donne un demi-axe horizontal de 139, un vertical de
+   * 79, et un centre a 219 unites AU-DESSUS du point d'ancrage — l'image se
+   * dessine vers le haut depuis ce point.
+   * L'ancienne planche faisait 160 sur 213, soit un rapport de 1,33 contre
+   * 1,60 aujourd'hui : reprendre ses trois nombres aurait rate le bassin de
+   * pres de cinquante unites en hauteur. */
+  var COL_FONT = { rx: 139, ry: 79, dy: 219 };
 
   /* ================== LA VIE, ET LE REPLI ==================
    *

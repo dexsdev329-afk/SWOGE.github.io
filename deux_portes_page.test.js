@@ -172,11 +172,27 @@ process.on('unhandledRejection', (e) => {
     };
     C.drawImage = function (im) {
       const u = (im && (im.currentSrc || im.src)) || '';
-      if (arguments.length >= 5) {
+      /* ---- LA DESTINATION N'EST PAS AU MEME RANG SELON LA FORME ----
+       * `drawImage` a deux formes. A cinq arguments, la destination vient en
+       * 1 a 4. A NEUF, les rangs 1 a 4 designent le decoupage dans l'image
+       * SOURCE, et la destination passe en 5 a 8.
+       * Les portails sont animes depuis qu'ils ont `cadres: 4`, donc dessines
+       * a neuf arguments — et cet espion lisait leur decoupage en croyant lire
+       * leur place a l'ecran. Les deux portes rendaient alors la meme valeur
+       * quand elles etaient sur la meme image du cycle, et l'essai concluait
+       * qu'elles sont au meme endroit. Il ne mesurait plus rien depuis que
+       * l'animation existe, sans jamais le dire autrement que par cet echec. */
+      let dx = null, dy = null, dw = 0, dh = 0;
+      if (arguments.length >= 9) {
+        dx = arguments[5]; dy = arguments[6]; dw = arguments[7]; dh = arguments[8];
+      } else if (arguments.length >= 5) {
+        dx = arguments[1]; dy = arguments[2]; dw = arguments[3]; dh = arguments[4];
+      }
+      if (dx !== null) {
         if (u.indexOf('obj_portal_pvp.webp') >= 0) {
-          window.__rouge = { x: arguments[1] + arguments[3] / 2, y: arguments[2] + arguments[4] };
+          window.__rouge = { x: dx + dw / 2, y: dy + dh };
         } else if (u.indexOf('obj_portal.webp') >= 0) {
-          window.__verte = { x: arguments[1] + arguments[3] / 2, y: arguments[2] + arguments[4] };
+          window.__verte = { x: dx + dw / 2, y: dy + dh };
         }
       }
       if (arguments.length >= 9 && arguments[3] === 256 && arguments[4] === 256

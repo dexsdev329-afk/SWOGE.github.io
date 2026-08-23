@@ -169,10 +169,28 @@ const espionne = () => `(() => {
        `et pas une poignee : ${vus} sur ${f.combien}, soit ${Math.round(vus / f.combien * 100)} %`);
   }
 
+  /* ---- LA GEOMETRIE DE LA CARTE SE LIT DANS LA SOURCE ----
+   * Elle etait ecrite en dur ici : la tuile a 128, et surtout le centre a
+   * (1280, 928), c'est-a-dire le centre d'une carte de vingt sur quinze. Le
+   * jour ou la carte a grandi pour faire place a la lisiere et a la riviere,
+   * tous les rectangles de batiment reconstruits ici se sont retrouves decales
+   * de cinq cent douze unites — et l'essai a annonce trente-cinq objets
+   * plantes dans des facades qui n'etaient plus la.
+   * Meme lecon que l'espion vingt lignes plus haut, dans le meme fichier : ce
+   * qui est derive resiste au changement, ce qui est grave l'accuse. */
+  const geo = (() => {
+    const src = fs.readFileSync(path.join(SITE, 'nexus.js'), 'utf8');
+    const t = Number(/var TUILE = (\d+)/.exec(src)[1]);
+    const c = /var CARTE = \{ cols: (\d+), rows: (\d+) \}/.exec(src);
+    const d = /y: MONDE\.h \/ 2 - (\d+)/.exec(src);
+    return { T: t, cx: c[1] * t / 2, cy: c[2] * t / 2 - Number(d[1]) };
+  })();
+  console.log(`   carte lue dans la source : tuile ${geo.T}, centre ${geo.cx},${geo.cy}`);
+
   /* 2. RIEN SUR UN CHEMIN. Les cases de chemin viennent du DESSIN de la page. */
   console.log('\n-- rien sur les allees --');
   {
-    const T = 128;
+    const T = geo.T;
     const chemin = new Set(a.sol.map((k) => {
       const [x, y] = k.split(',').map(Number);
       return Math.round(x / T) + ',' + Math.round(y / T);
@@ -190,8 +208,8 @@ const espionne = () => `(() => {
     const src = fs.readFileSync(path.join(SITE, 'nexus.js'), 'utf8');
     const bloc = src.slice(src.indexOf('var LIEUX = ['), src.indexOf('LIEUX.forEach(function (l) { l.img'));
     const lieux = [...bloc.matchAll(/x: CENTRE\.x ([-+]) (\d+), y: CENTRE\.y ([-+]) (\d+), larg: (\d+), haut: (\d+)/g)]
-      .map((m) => ({ x: 1280 + (m[1] === '-' ? -1 : 1) * Number(m[2]),
-                     y: 928 + (m[3] === '-' ? -1 : 1) * Number(m[4]),
+      .map((m) => ({ x: geo.cx + (m[1] === '-' ? -1 : 1) * Number(m[2]),
+                     y: geo.cy + (m[3] === '-' ? -1 : 1) * Number(m[4]),
                      larg: Number(m[5]), haut: Number(m[6]) }));
     ok(lieux.length >= 5, `${lieux.length} batiments relus dans la source`);
     const dedans = a.dec.filter((d) => lieux.some((l) =>

@@ -3686,7 +3686,30 @@
   // ------------------------------------------------------- le decor
 
   var TUILE = 128;
-  var CARTE = { cols: 20, rows: 15 };            // 2560 x 1920
+  /* ---- LA PLACE A BESOIN D'UNE MARGE, ET ELLE N'EN AVAIT AUCUNE ----
+   *
+   * Vingt sur quinze, c'etait 2560 sur 1920 — et le village les remplissait
+   * entierement. Mesure faite en balayant la carte : il ne restait AUCUNE
+   * bande libre sur toute la hauteur hormis cent soixante unites au bord
+   * gauche, ni sur toute la largeur hormis trente-deux en haut. Impossible d'y
+   * faire courir une riviere ou de poser un bois sans traverser un batiment.
+   * Ce n'est pas un detail d'habillage : c'est ce qui separait notre place de
+   * l'image de reference, ou le village est ENTOURE de foret et d'eau. Le
+   * village n'avait pas besoin de changer, le cadre si.
+   *
+   * Vingt-huit sur vingt-trois donnent 3584 sur 2944, soit cinq cent douze
+   * unites de marge sur les quatre cotes. Tous les lieux se placent par
+   * rapport a CENTRE : ils se deplacent ensemble et le village reste
+   * identique, il gagne seulement du bord.
+   *
+   * LES DEUX NOMBRES NE SONT PAS LIBRES. L'enclos exige que ses quatre bornes
+   * tombent sur des multiples de 128, sinon la terre battue et la barriere ne
+   * coincident plus — c'est ecrit plus bas, et ca s'est deja vu. Ses bornes
+   * valent CENTRE +/- 512, 352, 736, 1152 ; avec CENTRE.x = cols*64 et
+   * CENTRE.y = rows*64 - 32, cela impose des COLONNES PAIRES et des LIGNES
+   * IMPAIRES. 28 et 23 les respectent ; 26 et 22 auraient decale la cour d'une
+   * demi-tuile sans qu'aucune erreur ne se leve. */
+  var CARTE = { cols: 28, rows: 23 };            // 3584 x 2944
   var MONDE = { w: CARTE.cols * TUILE, h: CARTE.rows * TUILE };
   var CENTRE = { x: MONDE.w / 2, y: MONDE.h / 2 - 32 };
 
@@ -8565,8 +8588,12 @@
     /* L'herbe est au SOL : petite, nombreuse, et dessinee sous tout le monde.
        La trier avec les vivants pour une touffe de cinquante unites couterait
        trois cents comparaisons par image pour un resultat invisible. */
+    /* Le compte suit l'AIRE : la carte a plus que double en passant de 20x15 a
+       28x23, et garder cent quatre-vingt-dix touffes aurait divise par deux la
+       densite du centre — la ou l'on joue — pour un chiffre qui n'avait ete
+       regle que sur l'ancienne taille. */
     { cle: 'herbe',  src: 'img/nexus/tiles/nexus_herbe.webp',  cases: 6,
-      combien: 190, min: 44, max: 76,  ecart: 58,  sol: true },
+      combien: 400, min: 44, max: 76,  ecart: 58,  sol: true },
     /* Les arbres et les pierres magiques se TRIENT : on passe derriere un
        arbre, et un arbre qu'on traverse n'est plus un arbre. */
     /* ---- SEIZE, ET NON TRENTE-QUATRE ----

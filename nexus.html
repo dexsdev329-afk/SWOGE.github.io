@@ -1732,19 +1732,18 @@ body.nxdrag *{ cursor:grabbing !important; }
  * La zone de prise couvre donc toute la moitie gauche : on pose le doigt ou
  * l'on veut, le manche apparait LA. Il n'y en a toujours qu'un — celui du coin
  * n'a pas ete double, il s'est mis a bouger.
- * ---- ET ON NE LE VOIT JAMAIS ----
- * Ni au repos, ni sous le pouce. On avait d'abord laisse un temoin a demi
- * efface dans le coin, puis on l'a cache au repos seulement ; les deux fois,
- * c'etait une tache pale posee sur le decor — un grand anneau delave par-dessus
- * une facade, qu'on prend pour un defaut d'affichage avant de comprendre que
- * c'est une commande. Et sous le pouce il ne sert a rien non plus : le doigt
- * est POSE DESSUS, il le cache entierement, et ce qu'on veut voir a cet
- * instant-la c'est le jeu.
- * Le socle et le pommeau restent dans la page — ils ne sont pas un decor, ils
- * sont la MESURE : c'est le centre du socle qui donne la direction et sa
- * largeur qui donne le rayon. Invisibles, ils occupent toujours leur place, et
- * la zone continue de recevoir les doigts : une opacite nulle n'empeche
- * personne de toucher.
+ * ---- INVISIBLE AU REPOS, VISIBLE SOUS LE POUCE ----
+ * Trois etats ont ete essayes. Un temoin a demi efface dans le coin : c'etait
+ * une tache pale sur le decor, un grand anneau delave par-dessus une facade,
+ * qu'on prend pour un defaut d'affichage avant de comprendre que c'est une
+ * commande. Rien du tout, jamais : un joueur l'a signale aussitot, et il a
+ * raison — le doigt cache le CENTRE, pas le pourtour, et sans le pourtour on ne
+ * voit plus ni de combien on pousse, ni ou est le point de depart quand le
+ * pouce a derive. Le manche redevient devinable au lieu d'etre lisible.
+ * Reste le seul etat qui tienne : rien au repos, l'anneau sous le pouce. Et
+ * leger — un trait fin et un pommeau pale, pas le disque sombre a ombre
+ * interieure d'avant, qui etait justement ce qui salissait le decor.
+ * ---- ET ELLE PASSE SOUS LES BOUTONS ----
  * `z-index:12` : SOUS le panneau, les potions et le butin, qui gardent donc
  * leurs appuis. Une zone qui passerait au-dessus les avalerait tous. */
 /* La moitie de l'AIRE DE JEU, pas de la fenetre : le panneau mange cent
@@ -1756,19 +1755,18 @@ body.nxdrag *{ cursor:grabbing !important; }
   top:0; bottom:0; z-index:12;
   touch-action:none; user-select:none; -webkit-user-select:none;
   -webkit-tap-highlight-color:transparent;
-  opacity:0; transition:right .22s ease; }
+  opacity:0; transition:opacity .12s, right .22s ease; }
 #nxWrap.replie #nxPad{ right:50%; }
+#nxPad.on{ opacity:1; }
 /* Le socle, dessine : ce qu'on voit, et non ce qu'on peut toucher. Il se
    centre sur `left`/`top`, que le script pose en pixels de la zone — sous le
    pouce des qu'on appuie, dans le coin le reste du temps.
-   ---- IL NE SE PEINT PLUS ----
-   Il ne reste ici que sa GEOMETRIE : une taille et une position. Le degrade,
-   la bordure et l'ombre ont ete retires, pas seulement masques — un dessin
-   qu'on ne montrera jamais est une regle que quelqu'un finira par croire
-   vivante. Ce qui reste sert a MESURER : le centre du socle donne la
-   direction, sa largeur donne le rayon, et le pommeau garde sa proportion
-   parce que c'est lui qui borne la course. Un element sans peinture occupe
-   quand meme sa place, et c'est tout ce qu'on lui demande.
+   ---- IL SE PEINT LEGER ----
+   Un trait fin et un fond a peine teinte. L'ancien etait un disque sombre a
+   degrade et ombre interieure : sur un decor clair il faisait une tache, et
+   c'est pour cette tache-la qu'on l'avait supprime. Ce qu'il faut montrer
+   tient en deux choses — ou est le CENTRE, et jusqu'ou va la course. Un
+   contour les dit toutes les deux sans rien masquer du jeu.
    ---- ET IL SUIT SA ZONE ----
    Cent trente-deux pixels en dur : panneau ouvert sur un telephone de trois
    cent quatre-vingt-dix, la moitie gauche n'en fait que cent vingt et un, et le
@@ -1778,12 +1776,17 @@ body.nxdrag *{ cursor:grabbing !important; }
    l'ecran, et le cercle deviendrait un oeuf. */
 #nxPad i.socle{ position:absolute; left:0; top:0;
   transform:translate(-50%,-50%); pointer-events:none;
-  width:min(132px, 84%); aspect-ratio:1; }
+  width:min(132px, 84%); aspect-ratio:1; border-radius:50%;
+  border:2px solid rgba(255,255,255,.34);
+  background:rgba(12,20,46,.14); }
 /* Le pommeau garde sa proportion : 37 % de la zone contre 84 % pour le socle,
    soit les memes 44 % de l'un dans l'autre. Une seule reference — la zone —
    pour les deux, sinon l'un retrecit sans l'autre. */
 #nxPad i.pommeau{ position:absolute; width:min(58px, 37%); aspect-ratio:1;
-  left:0; top:0; transform:translate(-50%,-50%); pointer-events:none; }
+  left:0; top:0; transform:translate(-50%,-50%); pointer-events:none;
+  border-radius:50%;
+  background:rgba(206,220,255,.52);
+  border:1px solid rgba(255,255,255,.66); }
 
 /* ---- LE RETOUR AU NEXUS, A DROITE ----
  * Il a d'abord ete pose au-dessus de la fleche du haut. C'etait une erreur :
@@ -1876,15 +1879,34 @@ body.nxdrag *{ cursor:grabbing !important; }
  * Ce qui reste en haut ne se touche pas : le solde, le temoin AUTO, la ligne
  * d'indice. On les LIT, et on lit en levant les yeux, pas le pouce. */
 @media (pointer:coarse){
-  #nxPow, #nxMaison{ top:auto; right:auto;
-    bottom:calc(max(16px, env(safe-area-inset-bottom)) + 6px);
+  /* ---- RIEN QU'ON TOUCHE NE SE POSE SUR LA MOITIE QUI FAIT MARCHER ----
+   * On avait mis le pouvoir « au milieu du bas ». Mesure faite : il occupait
+   * x = -10 a 116 sur une moitie gauche qui va de 0 a 121 — il etait ENTIEREMENT
+   * dedans. Un appui qui tombe dessus n'atteint jamais le manche, et le joueur
+   * ne comprend pas pourquoi son personnage refuse de partir. Les potions et la
+   * rangee du butin avaient le meme defaut, cache tant que la zone du manche
+   * n'etait qu'un petit rectangle dans le coin.
+   * Regle desormais : la moitie gauche ne porte QUE la marche. Tout ce qui se
+   * touche descend dans une colonne juste a droite de la separation.
+   * Pourquoi a droite et pas a gauche : marcher est CONTINU et s'interrompt mal
+   * — un pas perdu en plein combat coute un personnage — tandis que viser est
+   * une pression qu'on reprend a l'instant, et que le tir automatique tient
+   * tout seul entre-temps. Le pouce qui vise peut etre derange ; celui qui
+   * marche, non. */
+  #nxPow, #nxMaison, #nxPot{ top:auto; right:auto;
+    left:calc(50% - var(--nxp) / 2); transform:translateX(6px);
     z-index:24; transition:left .22s ease; }
-  /* Le milieu de l'AIRE DE JEU, pas de la fenetre — comme le manche et la
-     zone de tir, et pour la meme raison : le panneau prend la droite. */
-  #nxPow{ left:calc(50% - var(--nxp) / 2);
-    transform:translateX(-100%) translateX(-5px); }
-  #nxMaison{ left:calc(50% - var(--nxp) / 2); transform:translateX(5px); }
-  #nxWrap.replie #nxPow, #nxWrap.replie #nxMaison{ left:50%; }
+  #nxButinFlot{ left:calc(50% - var(--nxp) / 2); justify-content:flex-start;
+    flex-wrap:wrap; }
+  #nxWrap.replie #nxPow, #nxWrap.replie #nxMaison,
+  #nxWrap.replie #nxPot, #nxWrap.replie #nxButinFlot{ left:50%; }
+  /* Une colonne, du plus utilise au moins utilise en montant. Les hauteurs se
+     suivent sans se chevaucher : 38 + 54 + 52 + 56 de haut pour des paliers a
+     6, 70, 134 et 198. */
+  #nxPow{ bottom:calc(max(16px, env(safe-area-inset-bottom)) + 6px); }
+  #nxMaison{ bottom:calc(max(16px, env(safe-area-inset-bottom)) + 70px); }
+  #nxPot{ bottom:calc(max(16px, env(safe-area-inset-bottom)) + 134px); }
+  #nxButinFlot{ bottom:calc(max(16px, env(safe-area-inset-bottom)) + 198px); }
 }
 
 @media (min-width:900px) and (pointer:fine){
@@ -2286,7 +2308,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
      racine ; c'est le seul endroit d'ou elle peut couvrir tout le reste. -->
 <div id="nxFiche"></div>
 
-<script src="nexus.js?v=764ee8fe" defer></script>
+<script src="nexus.js?v=cfa526e9" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 </body>
 </html>

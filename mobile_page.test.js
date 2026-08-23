@@ -227,29 +227,23 @@ process.on('unhandledRejection', (e) => {
   const retour = Math.hypot(flottant.apres.x - flottant.repos.x,
                             flottant.apres.y - flottant.repos.y);
   ok(retour < 4, `une fois lache, il revient a son point de depart (${Math.round(retour)} px)`);
-  /* ---- ET ON NE LE VOIT JAMAIS ----
-   * Ni au repos, ni sous le pouce. Un anneau pale se lit comme une tache sur le
-   * decor, pas comme une commande ; et sous le pouce il ne sert a rien non plus,
-   * puisque le doigt est pose dessus et le cache. Ce qui reste dans la page est
-   * la MESURE, pas un dessin.
+  /* ---- INVISIBLE AU REPOS, VISIBLE SOUS LE POUCE ----
+   * Les deux extremes ont ete essayes et les deux etaient faux. Un anneau
+   * laisse dans le coin se lit comme une tache sur le decor, pas comme une
+   * commande. Mais rien du tout ne marche pas non plus : le doigt cache le
+   * CENTRE, pas le pourtour, et sans le pourtour on ne voit plus ni de combien
+   * on pousse ni ou est le point de depart quand le pouce a derive.
    * C'est l'OPACITE CALCULEE qu'on lit, pas une regle de style : elle seule dit
    * ce que l'oeil recoit apres les transitions et les classes. Les trois
-   * moments sont verifies separement — un manche cache au repos et rallume sous
-   * le pouce passerait une lecture unique. */
+   * moments sont verifies separement — un manche visible en permanence, comme
+   * un manche jamais visible, passerait une lecture unique. */
   ok(flottant.auRepos < 0.02,
      `au repos il est invisible (opacite ${flottant.auRepos})`);
-  ok(flottant.pendantVu < 0.02,
-     `il reste invisible MEME sous le pouce (opacite ${flottant.pendantVu})`);
+  ok(flottant.pendantVu > 0.9,
+     `il apparait sous le pouce (opacite ${flottant.pendantVu})`);
   ok(flottant.apresVu < 0.02,
-     `et apres le lacher (opacite ${flottant.apresVu})`);
-  /* ---- INVISIBLE, MAIS VIVANT ----
-   * C'est tout l'enjeu de cette demande : cacher le dessin sans debrancher la
-   * commande. On verifie donc que la prise a bien pris — le socle a saute de
-   * quatre cents pixels pour venir sous le doigt, ce qui ne se produit que si
-   * l'evenement a ete recu. Les huit directions, plus bas, achevent la preuve
-   * en faisant reellement marcher le personnage. */
-  ok(bougeDuRepos > 60 && ecartPouce < 4,
-     'la zone recoit le doigt bien qu\'on ne voie rien');
+     `et il repart quand on lache (opacite ${flottant.apresVu})`);
+
 
   /* ================== 2. IL FAIT MARCHER, DANS TOUTES LES DIRECTIONS ================== */
   console.log('\n-- huit directions, pas quatre --');
@@ -395,6 +389,137 @@ process.on('unhandledRejection', (e) => {
   const encore = await annonce();
   ok(Math.hypot(encore.x - arret.x, encore.y - arret.y) < 12,
      `et il ne bouge plus une fois le pouce leve (${Math.round(Math.hypot(encore.x - arret.x, encore.y - arret.y))} u)`);
+  /* ---- RIEN QU'ON TOUCHE NE SE POSE SUR LA MOITIE QUI FAIT MARCHER ----
+   *
+   * C'est la regle qui manquait, et son absence a coute un defaut signale par un
+   * joueur : « si tu passes le doigt sur le pouvoir, ca coupe, il faut
+   * rappuyer ». Le bouton de pouvoir avait ete pose « au milieu du bas » en
+   * partant du centre de l'aire de jeu — et il se retrouvait de x = -10 a 116
+   * sur une moitie gauche qui va de 0 a 121, donc ENTIEREMENT dedans. Un appui
+   * qui tombe dessus n'atteint jamais le manche.
+   * Les potions et la rangee du butin avaient le meme defaut. Il etait cache
+   * tant que la zone du manche n'etait qu'un petit rectangle dans le coin :
+   * c'est en l'etendant a tout l'ecran qu'on l'a cree, sans le voir.
+   * On mesure donc le CHEVAUCHEMENT, pas la position de chacun. Une regle sur
+   * une position se contourne au prochain deplacement ; celle-ci tient quel que
+   * soit l'endroit choisi. */
+  const surLaMarche = await p.evaluate(() => {
+    /* On les allume de force : leur PLACE ne depend pas de l'etat du jeu, et
+       c'est la place qu'on mesure. Attendre qu'un pouvoir existe et qu'un sac
+       traine par terre ferait un essai qui ne verifie rien la plupart du
+       temps — et qui dormirait le jour ou la regle casse. */
+    for (const id of ['nxPow', 'nxPot', 'nxMaison', 'nxButinFlot']) {
+      const e = document.getElementById(id); if (e) e.classList.add('on');
+    }
+    const pot = document.getElementById('nxPot');
+    if (pot && !pot.children.length) pot.innerHTML = '<button data-pot="a"></button><button data-pot="b"></button>';
+    const fl = document.getElementById('nxButinFlot');
+    if (fl && !fl.children.length) fl.innerHTML = '<div class="fl"></div><div class="fl"></div>';
+    const pad = document.getElementById('nxPad').getBoundingClientRect();
+    const dedans = [];
+    for (const id of ['nxPow', 'nxPot', 'nxMaison', 'nxButinFlot']) {
+      const e = document.getElementById(id); if (!e) continue;
+      const b = e.getBoundingClientRect();
+      if (!b.width || !b.height) continue;
+      if (b.x < pad.x + pad.width && b.x + b.width > pad.x) {
+        dedans.push(`${id} (${Math.round(b.x)}..${Math.round(b.x + b.width)})`);
+      }
+    }
+    return { dedans, pad: `${Math.round(pad.x)}..${Math.round(pad.x + pad.width)}` };
+  });
+  ok(surLaMarche.dedans.length === 0,
+     `aucun bouton ne se pose sur la moitie qui fait marcher (${surLaMarche.pad})` +
+     (surLaMarche.dedans.length ? ' — dessus : ' + surLaMarche.dedans.join(', ') : ''));
+
+  /* ================== 2 ter. LE POUCE TRAVERSE UN BOUTON ==================
+   *
+   * Un joueur l'a decrit ainsi : « si tu passes le doigt sur le pouvoir, ca
+   * coupe et ca s'arrete, il faut rappuyer ». Les boutons ponctuels sont poses
+   * en bas au milieu, au-dessus de la zone qui fait marcher, et le pouce qui
+   * marche les traverse.
+   * Le manche prend la capture du pointeur, ce qui devrait suffire. S'y fier
+   * SEULE, c'est parier que rien ne viendra la reprendre — un bouton dessous,
+   * un navigateur qui l'annule a sa facon, le doigt qui sort dans la moitie
+   * droite. Et le pire n'est pas le personnage qui se fige : c'est le LACHER
+   * qui n'arrive jamais et le personnage qui continue tout seul.
+   *
+   * ---- CE QUE CET ESSAI PROUVE, ET CE QU'IL NE PROUVE PAS ----
+   * `dispatchEvent` livre a l'element qu'on nomme, sans test de superposition :
+   * un essai ecrit comme ca serait vert quoi qu'il arrive. On passe donc par le
+   * protocole du navigateur, qui envoie un vrai contact suivant le meme chemin
+   * qu'un pouce. Et l'on debranche `setPointerCapture` par-dessus, pour ne
+   * dependre d'aucune capture explicite.
+   * Il faut dire la limite : cet essai ne DISCRIMINE pas. Verifie en remettant
+   * l'ecoute sur la zone au lieu de la fenetre, il reste vert — parce que ce
+   * navigateur-ci donne aux contacts tactiles une capture IMPLICITE, que rien
+   * ici ne peut retirer, et que la zone recoit donc tout le geste de toute
+   * facon. Le defaut signale ne se reproduit pas dans ce navigateur.
+   * Ce qu'il garde est reel quand meme : un vrai doigt traverse un bouton, le
+   * personnage marche, et le lacher est entendu. Il attraperait un bouton qui
+   * se mettrait a avaler l'evenement, ou un `pointerleave` ajoute par
+   * distraction. La cause du defaut signale, elle, est geometrique et se
+   * verifie juste au-dessus. */
+  console.log('\n-- le pouce traverse un bouton --');
+  const cdp = await ctx.newCDPSession(p);
+  const touche = (type, x, y) => cdp.send('Input.dispatchTouchEvent',
+    { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y, id: 1 }] });
+  const trajet = await p.evaluate(() => {
+    const pave = document.getElementById('nxPad');
+    const b = pave.getBoundingClientRect();
+    /* Le MEME plan que les vrais boutons, relu sur l'un d'eux : ecrit en dur,
+       il aurait cesse de les representer le jour ou ils changent d'etage. */
+    const z = getComputedStyle(document.getElementById('nxMaison')).zIndex;
+    const faux = document.createElement('div');
+    faux.id = 'fauxBoutonEssai';
+    faux.style.cssText = 'position:absolute;z-index:' + z + ';width:110px;height:52px;left:' +
+      Math.round(b.x + b.width * 0.08) + 'px;top:' + Math.round(b.y + b.height - 170) + 'px;';
+    document.getElementById('nxWrap').appendChild(faux);
+    const f = faux.getBoundingClientRect();
+    return { plan: z,
+             x0: Math.round(b.x + b.width * 0.6), y0: Math.round(b.y + b.height * 0.42),
+             fx: Math.round(f.x + f.width / 2), fy: Math.round(f.y + f.height / 2) };
+  });
+  console.log('   bouton temoin au plan ' + trajet.plan + ' ' + JSON.stringify(trajet));
+  const tientLeManche = () => p.evaluate(() =>
+    document.getElementById('nxPad').classList.contains('on'));
+  /* La capture debranchee : les mouvements partent alors vers l'element qui se
+     trouve sous le doigt — le bouton temoin, puis la moitie droite — et seul
+     qui ecoute la FENETRE les entend encore. */
+  await p.evaluate(() => {
+    window.__vraieCapture = Element.prototype.setPointerCapture;
+    Element.prototype.setPointerCapture = function () {};
+  });
+  const avantTraversee = await annonce();
+  await touche('touchStart', trajet.x0, trajet.y0);
+  await p.waitForTimeout(90);
+  let laches = [];
+  for (let i = 1; i <= 10; i++) {
+    await touche('touchMove', Math.round(trajet.x0 + (trajet.fx - trajet.x0) * i / 10),
+                              Math.round(trajet.y0 + (trajet.fy - trajet.y0) * i / 10));
+    await p.waitForTimeout(60);
+    if (!(await tientLeManche())) laches.push(i);
+  }
+  const surLeBouton = await tientLeManche();
+  await touche('touchEnd', trajet.fx, trajet.fy);
+  await p.waitForTimeout(150);
+  const relache = !(await tientLeManche());
+  await attendUneAnnonce(avantTraversee.n);
+  const apresTraversee = await annonce();
+  await p.evaluate(() => {
+    const e = document.getElementById('fauxBoutonEssai'); if (e) e.remove();
+    if (window.__vraieCapture) Element.prototype.setPointerCapture = window.__vraieCapture;
+  });
+
+  ok(laches.length === 0,
+     `le manche tient pendant toute la traversee${laches.length ? ' — laches aux etapes ' + laches.join(', ') : ''}`);
+  ok(surLeBouton, 'et il tient encore une fois le doigt POSE sur le bouton');
+  /* L'autre moitie du defaut, et la plus vicieuse : un lacher qui se perd
+     laisse le personnage marcher tout seul jusqu'a ce qu'on rappuie. */
+  ok(relache, 'et le lacher est entendu, meme par-dessus le bouton');
+  const parcouru = Math.hypot(apresTraversee.x - avantTraversee.x,
+                              apresTraversee.y - avantTraversee.y);
+  ok(parcouru > 30, `le personnage a bel et bien marche pendant la traversee (${Math.round(parcouru)} u)`);
+
   /* ================== 2 bis. LA MOITIE DROITE TIRE ==================
    *
    * Le bouton rond de quatre-vingt-seize pixels dans le coin avait le meme
@@ -455,7 +580,6 @@ process.on('unhandledRejection', (e) => {
    * la direction du personnage (0 ou -PI/2) ni une cible automatique ne
    * donnent -PI/4, l'essai ne peut donc pas passer pour la mauvaise raison. */
   const CIBLE_A = -Math.PI / 4;
-  const avantVisee = await compteTirs();
   await p.evaluate((q) => {
     const el = document.getElementById('nxVise');
     window.__evt = (t, x, y) => el.dispatchEvent(new PointerEvent(t, { bubbles: true,
@@ -463,6 +587,14 @@ process.on('unhandledRejection', (e) => {
     window.__evt('pointerdown', q.x, q.y);
     window.__evt('pointermove', q.x + 90, q.y - 90);
   }, { x: zoneTir.x + zoneTir.w * 0.5, y: zoneTir.h * 0.6 });
+  /* ---- ON COMPTE A PARTIR DU GLISSEMENT DEJA PRIS EN COMPTE ----
+   * La pose du pouce tire DEJA, sur la cible automatique, et ce tir-la part
+   * avant que le glissement n'ait ete lu. Compte dans l'echantillon, il faisait
+   * tomber le taux a une chance sur deux quand la mesure ne recoltait que deux
+   * tirs — l'essai accusait alors la visee a la main d'un tir qui ne la
+   * concernait pas. On laisse passer une image, PUIS on ouvre le compte. */
+  await p.waitForTimeout(180);
+  const avantVisee = await compteTirs();
   await p.waitForTimeout(700);
   await p.evaluate((q) => window.__evt('pointerup', q.x + 90, q.y - 90),
                    { x: zoneTir.x + zoneTir.w * 0.5, y: zoneTir.h * 0.6 });

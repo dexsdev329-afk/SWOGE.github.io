@@ -1575,8 +1575,16 @@ process.on('unhandledRejection', (e) => {
     if (boutons.pow && boutons.pow.vu) {
       ok(boutons.pow.y > boutons.hauteur * 0.66,
          `le bouton de pouvoir aussi (${boutons.pow.y} sur ${boutons.hauteur})`);
-      ok(boutons.pow.x + boutons.pow.w <= boutons.maison.x,
-         'et les deux ne se marchent pas dessus');
+      /* Ils sont EMPILES, pas cote a cote : la moitie droite d'un telephone ne
+         fait que cent vingt et un pixels panneau ouvert, et le bouton de
+         pouvoir en fait cent vingt-six a lui seul. On verifie donc qu'ils ne se
+         recouvrent pas — la question est celle-la, pas leur rangement. */
+      const seRecouvrent =
+        boutons.pow.x < boutons.maison.x + boutons.maison.w &&
+        boutons.pow.x + boutons.pow.w > boutons.maison.x &&
+        boutons.pow.y < boutons.maison.y + boutons.maison.h &&
+        boutons.pow.y + boutons.pow.h > boutons.maison.y;
+      ok(!seRecouvrent, 'et les deux ne se marchent pas dessus');
     }
     /* Il repose sur le bas de l'ecran, comme le pouvoir : deux boutons voisins
        cales sur la meme ligne se trouvent du coin de l'oeil, deux boutons a
@@ -1761,19 +1769,33 @@ process.on('unhandledRejection', (e) => {
    * prend toute la largeur, et son milieu se deplace de soixante-quatorze
    * pixels vers la droite. Les boutons ponctuels doivent suivre — restes ou ils
    * etaient, ils tomberaient dans la moitie qui fait marcher. */
+  /* ---- ON S'ASSURE D'ETRE VIVANT AVANT DE MESURER ----
+   * Les boutons du monde s'eteignent quand on meurt : la page revient au Nexus
+   * et `#nxMaison` passe a `display:none`, donc a une boite de zero par zero.
+   * L'essai lisait alors « centre 0 » et accusait la mise en page d'avoir pose
+   * le bouton dans le coin — alors qu'un monstre venait de nous tuer. On
+   * releve d'abord, et l'on dit si le bouton est bien la : sans ce temoin, la
+   * mesure d'a cote mentirait de nouveau sans que rien ne le signale. */
+  const vifR = await assureVivant(t);
+  if (vifR) await t.waitForTimeout(600);
   await t.evaluate(() => { document.getElementById('nxWrap').classList.add('replie'); });
   await t.waitForTimeout(400);
   const replie = await t.evaluate(() => {
     const q = document.getElementById('nxMaison').getBoundingClientRect();
     const pad = document.getElementById('nxPad').getBoundingClientRect();
-    return { centre: Math.round(q.x + q.width / 2),
+    return { vu: q.width > 0 && q.height > 0,
+             centre: Math.round(q.x + q.width / 2),
              milieu: Math.round(window.innerWidth / 2),
              finDuPave: Math.round(pad.x + pad.width) };
   });
-  ok(Math.abs(replie.centre - replie.milieu) <= 45,
-     `panneau replie, la maison se recale au milieu (${replie.centre} pour un milieu a ${replie.milieu})`);
-  ok(replie.centre >= replie.finDuPave,
-     `et elle reste hors de la zone qui fait marcher (${replie.centre} contre ${replie.finDuPave})`);
+  ok(replie.vu, 'panneau replie, le retour au Nexus est bien a l\'ecran' +
+     (vifR ? ' (apres une relance : on etait mort)' : ''));
+  if (replie.vu) {
+    ok(Math.abs(replie.centre - replie.milieu) <= 45,
+       `il se recale au milieu (${replie.centre} pour un milieu a ${replie.milieu})`);
+    ok(replie.centre >= replie.finDuPave,
+       `et il reste hors de la zone qui fait marcher (${replie.centre} contre ${replie.finDuPave})`);
+  }
   await t.evaluate(() => { document.getElementById('nxWrap').classList.remove('replie'); });
   await t.waitForTimeout(300);
 

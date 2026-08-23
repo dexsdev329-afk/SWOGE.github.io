@@ -10438,7 +10438,12 @@
       ev.preventDefault();
     }
     function lache(ev) {
-      if (ev && MANCHE.actif && ev.pointerId !== MANCHE.pointeur) return;
+      /* On ecoute sur la FENETRE : la plupart des levers de doigt qui passent
+         ici ne nous concernent pas. On sort avant de toucher a quoi que ce
+         soit, sinon un appui sur un bouton du panneau rendrait une capture
+         qu'on n'a pas prise. */
+      if (!MANCHE.actif) return;
+      if (ev && ev.pointerId !== MANCHE.pointeur) return;
       /* ---- ON REND LA CAPTURE ----
        * La prendre sans la rendre laisse l'element proprietaire du pointeur.
        * Le doigt suivant portant le meme identifiant n'arrive alors plus par
@@ -10459,12 +10464,25 @@
       repos();
     }
     pave.addEventListener('pointerdown', prend);
-    pave.addEventListener('pointermove', suit);
-    pave.addEventListener('pointerup', lache);
-    pave.addEventListener('pointercancel', lache);
-    /* Pas de `pointerleave` : avec la capture, le doigt qui sort de la zone
-       continue d'etre suivi — et c'est exactement ce qu'on veut. Le lacher est
-       le seul evenement qui arrete le personnage. */
+    /* ---- LA SUITE DU GESTE SE SUIT SUR LA FENETRE, PAS SUR LA ZONE ----
+     * On prend bien la capture du pointeur, mais s'y fier SEULE revient a
+     * parier que rien ne viendra la reprendre. Il suffit d'un bouton du bas qui
+     * passe sous le pouce, d'un navigateur qui annule la capture a sa facon, ou
+     * du doigt qui sort dans la moitie droite, pour que la zone cesse de
+     * recevoir les mouvements. Et le pire n'est pas le personnage qui se fige :
+     * c'est le LACHER qui n'arrive jamais, et le personnage qui continue tout
+     * seul dans la derniere direction jusqu'a ce qu'on rappuie.
+     * C'est exactement ce qu'un joueur a decrit : « le doigt passe sur le
+     * bouton de pouvoir, ca coupe, il faut rappuyer. »
+     * La fenetre, elle, voit tout. Les deux garde-fous se completent : la
+     * capture empeche l'element du dessous de reagir, la fenetre garantit qu'on
+     * entend la fin du geste quoi qu'il arrive entre-temps. */
+    window.addEventListener('pointermove', suit);
+    window.addEventListener('pointerup', lache);
+    window.addEventListener('pointercancel', lache);
+    /* Pas de `pointerleave` : le doigt qui sort de la zone continue d'etre
+       suivi — et c'est exactement ce qu'on veut. Le lacher est le seul
+       evenement qui arrete le personnage. */
     repos();
     window.addEventListener('resize', function () { if (!MANCHE.actif) repos(); });
   })();
@@ -10536,7 +10554,8 @@
       ev.preventDefault();
     };
     var lacheTir = function (ev) {
-      if (ev && vPtr !== null && ev.pointerId !== vPtr) return;
+      if (vPtr === null) return;
+      if (ev && ev.pointerId !== vPtr) return;
       /* On rend la capture. La prendre sans la rendre laisse l'element
          proprietaire du pointeur, et le doigt suivant portant le meme
          identifiant n'arrive plus par le chemin normal — le tir marcherait
@@ -10554,12 +10573,15 @@
       elVise.classList.remove('main');
     };
     elVise.addEventListener('pointerdown', presseTir);
-    elVise.addEventListener('pointermove', suitTir);
-    elVise.addEventListener('pointerup', lacheTir);
-    elVise.addEventListener('pointercancel', lacheTir);
-    /* Pas de `pointerleave` : avec la capture, le doigt qui sort de la moitie
-       droite continue d'etre suivi — et c'est voulu, on vise souvent vers le
-       centre de l'ecran. Le lacher est le seul evenement qui arrete le tir. */
+    /* Sur la FENETRE pour la meme raison que le manche, et le risque y est plus
+       grand encore : un tir dont le lacher se perd ne se voit pas — le
+       personnage tire dans le vide jusqu'a ce qu'on rappuie. */
+    window.addEventListener('pointermove', suitTir);
+    window.addEventListener('pointerup', lacheTir);
+    window.addEventListener('pointercancel', lacheTir);
+    /* Pas de `pointerleave` : le doigt qui sort de la moitie droite continue
+       d'etre suivi — et c'est voulu, on vise souvent vers le centre de
+       l'ecran. Le lacher est le seul evenement qui arrete le tir. */
   }
 
   /* Il ne se montre QUE dans le monde de combat, et seulement au doigt :

@@ -218,27 +218,38 @@ process.on('unhandledRejection', (e) => {
      `le manche quitte son coin pour venir au doigt (${Math.round(bougeDuRepos)} px)`);
   ok(ecartPouce < 4,
      `et il se centre PILE dessus (${Math.round(ecartPouce)} px d'ecart)`);
-  /* ---- ET IL RETOURNE ATTENDRE DANS LE COIN ----
-   * Sans ca il resterait la ou le dernier doigt l'a laisse : un temoin pose au
-   * milieu de l'ecran ne dit plus « pose ton pouce ou tu veux », il dit « le
-   * manche est ici », ce qui est exactement le malentendu qu'on vient de
-   * supprimer. */
+  /* ---- ET IL RETOURNE A SON POINT DE DEPART ----
+   * Non pour se montrer — il ne se montre jamais — mais pour que la geometrie
+   * soit definie avant la prochaine prise : c'est le centre du socle qui donne
+   * la direction et sa largeur qui donne le rayon. Laisse ou le dernier doigt
+   * l'a pose, il resterait juste ; mais un point de depart connu est ce qui
+   * rend cette mesure-ci reproductible. */
   const retour = Math.hypot(flottant.apres.x - flottant.repos.x,
                             flottant.apres.y - flottant.repos.y);
-  ok(retour < 4, `une fois lache, il revient attendre dans le coin (${Math.round(retour)} px)`);
-  /* ---- ET AU REPOS, ON NE LE VOIT PAS ----
-   * Un anneau pale laisse dans le coin se lit comme une tache sur le decor,
-   * pas comme une commande : sur un vrai telephone il se pose par-dessus une
-   * facade et l'on croit a un defaut d'affichage. Il ne montrait rien de plus
-   * que ce que le premier doigt pose apprend aussitot.
+  ok(retour < 4, `une fois lache, il revient a son point de depart (${Math.round(retour)} px)`);
+  /* ---- ET ON NE LE VOIT JAMAIS ----
+   * Ni au repos, ni sous le pouce. Un anneau pale se lit comme une tache sur le
+   * decor, pas comme une commande ; et sous le pouce il ne sert a rien non plus,
+   * puisque le doigt est pose dessus et le cache. Ce qui reste dans la page est
+   * la MESURE, pas un dessin.
    * C'est l'OPACITE CALCULEE qu'on lit, pas une regle de style : elle seule dit
-   * ce que l'oeil recoit apres les transitions et les classes. */
+   * ce que l'oeil recoit apres les transitions et les classes. Les trois
+   * moments sont verifies separement — un manche cache au repos et rallume sous
+   * le pouce passerait une lecture unique. */
   ok(flottant.auRepos < 0.02,
      `au repos il est invisible (opacite ${flottant.auRepos})`);
-  ok(flottant.pendantVu > 0.9,
-     `il apparait quand le pouce se pose (opacite ${flottant.pendantVu})`);
+  ok(flottant.pendantVu < 0.02,
+     `il reste invisible MEME sous le pouce (opacite ${flottant.pendantVu})`);
   ok(flottant.apresVu < 0.02,
-     `et il repart quand on lache (opacite ${flottant.apresVu})`);
+     `et apres le lacher (opacite ${flottant.apresVu})`);
+  /* ---- INVISIBLE, MAIS VIVANT ----
+   * C'est tout l'enjeu de cette demande : cacher le dessin sans debrancher la
+   * commande. On verifie donc que la prise a bien pris — le socle a saute de
+   * quatre cents pixels pour venir sous le doigt, ce qui ne se produit que si
+   * l'evenement a ete recu. Les huit directions, plus bas, achevent la preuve
+   * en faisant reellement marcher le personnage. */
+  ok(bougeDuRepos > 60 && ecartPouce < 4,
+     'la zone recoit le doigt bien qu\'on ne voie rien');
 
   /* ================== 2. IL FAIT MARCHER, DANS TOUTES LES DIRECTIONS ================== */
   console.log('\n-- huit directions, pas quatre --');

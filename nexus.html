@@ -1732,13 +1732,19 @@ body.nxdrag *{ cursor:grabbing !important; }
  * La zone de prise couvre donc toute la moitie gauche : on pose le doigt ou
  * l'on veut, le manche apparait LA. Il n'y en a toujours qu'un — celui du coin
  * n'a pas ete double, il s'est mis a bouger.
- * ---- ET AU REPOS, ON NE LE VOIT PAS ----
- * On avait laisse un temoin a demi efface dans le coin, pour la decouverte. Vu
- * sur un vrai telephone, c'etait une tache pale posee sur le decor : un grand
- * anneau delave par-dessus une facade, qu'on prend pour un defaut d'affichage
- * avant de comprendre que c'est une commande. Il ne montrait rien de plus que
- * ce que le premier doigt pose apprend en un dixieme de seconde — puisque la
- * moitie de l'ecran repond, il n'y a rien a trouver.
+ * ---- ET ON NE LE VOIT JAMAIS ----
+ * Ni au repos, ni sous le pouce. On avait d'abord laisse un temoin a demi
+ * efface dans le coin, puis on l'a cache au repos seulement ; les deux fois,
+ * c'etait une tache pale posee sur le decor — un grand anneau delave par-dessus
+ * une facade, qu'on prend pour un defaut d'affichage avant de comprendre que
+ * c'est une commande. Et sous le pouce il ne sert a rien non plus : le doigt
+ * est POSE DESSUS, il le cache entierement, et ce qu'on veut voir a cet
+ * instant-la c'est le jeu.
+ * Le socle et le pommeau restent dans la page — ils ne sont pas un decor, ils
+ * sont la MESURE : c'est le centre du socle qui donne la direction et sa
+ * largeur qui donne le rayon. Invisibles, ils occupent toujours leur place, et
+ * la zone continue de recevoir les doigts : une opacite nulle n'empeche
+ * personne de toucher.
  * `z-index:12` : SOUS le panneau, les potions et le butin, qui gardent donc
  * leurs appuis. Une zone qui passerait au-dessus les avalerait tous. */
 /* La moitie de l'AIRE DE JEU, pas de la fenetre : le panneau mange cent
@@ -1750,43 +1756,34 @@ body.nxdrag *{ cursor:grabbing !important; }
   top:0; bottom:0; z-index:12;
   touch-action:none; user-select:none; -webkit-user-select:none;
   -webkit-tap-highlight-color:transparent;
-  opacity:0; transition:opacity .14s, right .22s ease; }
+  opacity:0; transition:right .22s ease; }
 #nxWrap.replie #nxPad{ right:50%; }
-#nxPad.on{ opacity:1; }
 /* Le socle, dessine : ce qu'on voit, et non ce qu'on peut toucher. Il se
-   centre sur `left`/`top`, que le script pose en pixels de la zone — au repos
-   dans le coin, sous le pouce des qu'on appuie. */
+   centre sur `left`/`top`, que le script pose en pixels de la zone — sous le
+   pouce des qu'on appuie, dans le coin le reste du temps.
+   ---- IL NE SE PEINT PLUS ----
+   Il ne reste ici que sa GEOMETRIE : une taille et une position. Le degrade,
+   la bordure et l'ombre ont ete retires, pas seulement masques — un dessin
+   qu'on ne montrera jamais est une regle que quelqu'un finira par croire
+   vivante. Ce qui reste sert a MESURER : le centre du socle donne la
+   direction, sa largeur donne le rayon, et le pommeau garde sa proportion
+   parce que c'est lui qui borne la course. Un element sans peinture occupe
+   quand meme sa place, et c'est tout ce qu'on lui demande.
+   ---- ET IL SUIT SA ZONE ----
+   Cent trente-deux pixels en dur : panneau ouvert sur un telephone de trois
+   cent quatre-vingt-dix, la moitie gauche n'en fait que cent vingt et un, et le
+   socle etait plus large que la surface qui le commande. Il se mesure donc SUR
+   la zone, plafonne a sa taille d'avant. `aspect-ratio` et non une hauteur en
+   pourcentage : celle-ci se lirait sur la HAUTEUR de la zone, qui vaut tout
+   l'ecran, et le cercle deviendrait un oeuf. */
 #nxPad i.socle{ position:absolute; left:0; top:0;
   transform:translate(-50%,-50%); pointer-events:none;
-  /* ---- L'ANNEAU SUIT SA ZONE ----
-   * Cent trente-deux pixels en dur : panneau ouvert sur un telephone de trois
-   * cent quatre-vingt-dix, la moitie gauche n'en fait que cent vingt et un, et
-   * l'anneau etait plus large que la surface qui le commande. Il se mesure
-   * donc SUR la zone, plafonne a sa taille d'avant — inchange des qu'il y a la
-   * place, retreci quand il n'y en a pas. `aspect-ratio` et non une hauteur en
-   * pourcentage : celle-ci se lirait sur la HAUTEUR de la zone, qui vaut tout
-   * l'ecran, et l'anneau deviendrait un oeuf. */
-  width:min(132px, 84%); aspect-ratio:1; border-radius:50%;
-  background:radial-gradient(circle at 50% 50%,
-    rgba(28,36,68,.30) 0 52%, rgba(28,36,68,.62) 62% 100%);
-  border:1px solid rgba(255,255,255,.20);
-  box-shadow:inset 0 0 24px rgba(0,0,0,.35);
-  transition:border-color .12s, background .12s; }
-#nxPad.on i.socle{ border-color:rgba(255,255,255,.42); }
-/* Le pommeau. Il suit le pouce, borne au socle : au-dela, il reste au bord et
-   la direction continue de tourner — sinon on perd le controle des qu'on
-   deborde, ce qui arrive tout le temps. */
-/* Le pommeau garde sa proportion : 37 % de la zone contre 84 % pour l'anneau,
-   soit les memes 44 % de l'un dans l'autre qu'avant. Une seule reference — la
-   zone — pour les deux, sinon l'un retrecit sans l'autre. */
+  width:min(132px, 84%); aspect-ratio:1; }
+/* Le pommeau garde sa proportion : 37 % de la zone contre 84 % pour le socle,
+   soit les memes 44 % de l'un dans l'autre. Une seule reference — la zone —
+   pour les deux, sinon l'un retrecit sans l'autre. */
 #nxPad i.pommeau{ position:absolute; width:min(58px, 37%); aspect-ratio:1;
-  border-radius:50%;
-  left:0; top:0; transform:translate(-50%,-50%);
-  background:linear-gradient(#8FA8FF,#4A63C8);
-  border:1px solid rgba(255,255,255,.55);
-  box-shadow:0 4px 12px rgba(0,0,0,.5);
-  pointer-events:none; }
-#nxPad.on i.pommeau{ background:linear-gradient(#B9C8FF,#5F7AE0); }
+  left:0; top:0; transform:translate(-50%,-50%); pointer-events:none; }
 
 /* ---- LE RETOUR AU NEXUS, A DROITE ----
  * Il a d'abord ete pose au-dessus de la fleche du haut. C'etait une erreur :

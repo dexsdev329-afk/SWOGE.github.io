@@ -865,6 +865,14 @@
    "cases": 5
   },
   {
+   "cle": "iso_ile",
+   "fichier": "img/nexus/iso/iso_ile.webp",
+   "l": 609,
+   "h": 403,
+   "cadres": 1,
+   "cases": 5
+  },
+  {
    "cle": "iso_jardin",
    "fichier": "img/nexus/iso/iso_jardin.webp",
    "l": 628,

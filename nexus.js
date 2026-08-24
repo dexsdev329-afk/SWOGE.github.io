@@ -122,7 +122,12 @@
            avoir enregistre, comme dans n'importe quel editeur. */
         mapSale = false;
         peintMapOutils();
-        mapDit('Saved.');
+        /* Une carte sans depart est enregistree, mais elle ne se VISITE pas.
+           Dire seulement « enregistre » laisserait chercher pourquoi le
+           bouton « Play » n'apparait pas sur sa propre fiche. */
+        mapDit(MAP && !MAP.depart
+               ? 'Saved. Place a start point (Start) to make it walkable.'
+               : 'Saved.');
         return;
       }
       if (m.carte) { ouvreAtelier(m.carte); return; }
@@ -3545,7 +3550,7 @@
    * et c'est la vignette, celle qu'on regarde AVANT d'ouvrir, qui aurait
    * menti.
    */
-  function peintLaCarte(C, cases, n, p, ox, oy, avecGrille) {
+  function peintLaCarte(C, cases, n, p, ox, oy, avecGrille, depart) {
     C.imageSmoothingEnabled = false;
     C.fillStyle = '#0a1020';
     C.fillRect(ox, oy, p * n, p * n);
@@ -3569,7 +3574,7 @@
     cases.forEach(function (v, k) {
       if (!v.o) return;
       var q = k.split(',');
-      poses.push({ c: +q[0], l: +q[1], cle: v.o });
+      poses.push({ c: +q[0], l: +q[1], cle: v.o, n: v.n || 1 });
     });
     poses.sort(function (a, b) { return a.l - b.l || a.c - b.c; });
     poses.forEach(function (o) {
@@ -3584,8 +3589,8 @@
        * clic reste l'endroit ou la chose se trouve. La hauteur suit le
        * rapport de la planche et n'est jamais choisie : une parcelle etiree
        * ne ressemble plus a rien. */
-      if (e.cases > 1) {
-        var lg = e.cases * p;
+      if (o.n > 1) {
+        var lg = o.n * p;
         var im = plancheCat(e);
         if (!im.complete || !im.naturalWidth) return;
         var cw = im.naturalWidth / Math.max(1, e.cadres);
@@ -3611,6 +3616,23 @@
        dise ou l on a le droit de dessiner. */
     C.strokeStyle = 'rgba(157,180,255,.45)'; C.lineWidth = 1;
     C.strokeRect(ox + .5, oy + .5, p * n - 1, p * n - 1);
+    /* ---- OU L'ON ARRIVERA ----
+     * Par-dessus tout, y compris les parcelles : c'est le seul reperage qui
+     * doive rester visible quoi qu'on pose dessus. Une carte sans depart ne
+     * se joue pas, et ne rien montrer laisserait chercher pourquoi. */
+    if (depart) {
+      var dx = ox + (depart.c + 0.5) * p, dy = oy + (depart.l + 0.5) * p;
+      var ry = Math.max(4, p * 0.42);
+      C.beginPath(); C.arc(dx, dy, ry, 0, Math.PI * 2);
+      C.fillStyle = 'rgba(124,255,155,.30)'; C.fill();
+      C.strokeStyle = '#7CFF9B'; C.lineWidth = 2; C.stroke();
+      C.beginPath();
+      C.moveTo(dx - ry * 0.35, dy - ry * 0.5);
+      C.lineTo(dx + ry * 0.55, dy);
+      C.lineTo(dx - ry * 0.35, dy + ry * 0.5);
+      C.closePath();
+      C.fillStyle = '#0a1020'; C.fill();
+    }
   }
 
   /* ---- LA VIGNETTE D'UNE CARTE ----
@@ -3639,7 +3661,7 @@
       var C = cv.getContext('2d');
       C.fillStyle = '#070b16';
       C.fillRect(0, 0, MAP_VIGNETTE, MAP_VIGNETTE);
-      peintLaCarte(C, MAP.cases, MAP.cote, MAP_VIGNETTE / MAP.cote, 0, 0, false);
+      peintLaCarte(C, MAP.cases, MAP.cote, MAP_VIGNETTE / MAP.cote, 0, 0, false, MAP.depart);
       var d = cv.toDataURL('image/webp', 0.6);
       /* Un navigateur qui ne sait pas encoder en webp rend du PNG sans le
          dire : on ne suppose donc rien du format, on regarde ce qui sort. Et
@@ -3675,7 +3697,7 @@
        en croyant dessiner dedans. */
     C.fillStyle = '#070b16';
     C.fillRect(0, 0, W, H);
-    peintLaCarte(C, MAP.cases, n, p, ox, oy, true);
+    peintLaCarte(C, MAP.cases, n, p, ox, oy, true, MAP.depart);
     /* ---- ET LE RECTANGLE QU'ON EST EN TRAIN DE TIRER ----
      * Il se dessine PAR-DESSUS la grille et n'entre pas dans les cases : tant
      * que le doigt n'est pas leve, rien n'est pose. Le montrer autrement —
@@ -3694,6 +3716,10 @@
   }
 
   /** Une copie franche des cases : la pile ne doit rien partager avec la carte. */
+  /* Le depart voyage AVEC les cases dans la pile : annuler apres l'avoir
+     deplace doit le ramener ou il etait, sinon « Undo » defait une moitie du
+     geste et laisse l'autre. */
+  function etatDuDepart() { return MAP.depart ? { c: MAP.depart.c, l: MAP.depart.l } : null; }
   function copieDesCases() {
     var m = new Map();
     MAP.cases.forEach(function (v, k) {
@@ -3708,7 +3734,7 @@
   var mapSaleAvant = false;
   function memorise() {
     if (!MAP || !MAP.mienne) return;
-    mapPile.push(copieDesCases());
+    mapPile.push({ cases: copieDesCases(), depart: etatDuDepart() });
     if (mapPile.length > MAP_PILE) mapPile.shift();
     mapRefaire.length = 0;
     mapSaleAvant = mapSale;
@@ -3723,22 +3749,25 @@
    * fermer. */
   function defaitLeGeste() {
     if (!MAP || !mapPile.length) return;
-    MAP.cases = mapPile.pop();
+    var e = mapPile.pop();
+    MAP.cases = e.cases; MAP.depart = e.depart;
     mapSale = mapSaleAvant;
     peintMapOutils(); mapRedessine();
   }
   function annule() {
     if (!MAP || !MAP.mienne || !mapPile.length) return;
-    mapRefaire.push(copieDesCases());
-    MAP.cases = mapPile.pop();
+    mapRefaire.push({ cases: copieDesCases(), depart: etatDuDepart() });
+    var e = mapPile.pop();
+    MAP.cases = e.cases; MAP.depart = e.depart;
     mapSale = true;
     mapDit('');
     peintMapOutils(); mapRedessine();
   }
   function refais() {
     if (!MAP || !MAP.mienne || !mapRefaire.length) return;
-    mapPile.push(copieDesCases());
-    MAP.cases = mapRefaire.pop();
+    mapPile.push({ cases: copieDesCases(), depart: etatDuDepart() });
+    var e = mapRefaire.pop();
+    MAP.cases = e.cases; MAP.depart = e.depart;
     mapSale = true;
     mapDit('');
     peintMapOutils(); mapRedessine();
@@ -3778,6 +3807,17 @@
     if (!mapChoix) return false;
     var v = MAP.cases.get(k) || {};
     v[champDe(mapChoix.famille)] = mapChoix.cle;
+    /* ---- L'EMPRISE EST FIGEE AU MOMENT OU L'ON POSE ----
+     * Elle vient du catalogue, mais elle est ECRITE dans la carte. Relue du
+     * catalogue a chaque dessin, elle changerait le jour ou la planche change
+     * de largeur : la carte de quelqu'un se redessinerait autrement que
+     * quand il l'a faite. Et c'est ce meme nombre qui dira plus tard ce que
+     * l'element BLOQUE quand on marchera dedans — un seul chiffre, donc le
+     * dessin et la collision ne peuvent pas se contredire. */
+    if (champDe(mapChoix.famille) === 'o') {
+      var el = elementDe(mapChoix.famille, mapChoix.cle);
+      if (el && el.cases > 1) v.n = el.cases; else delete v.n;
+    }
     var neuve = !MAP.cases.has(k);
     MAP.cases.set(k, v);
     if (neuve && MAP.cases.size > MAP_CASES_MAX) {
@@ -3883,8 +3923,16 @@
       }
       var q = caseSous(ev);
       if (!q) return;
-      if (mapOutil !== 'gomme' && !mapChoix) {
+      if (mapOutil !== 'gomme' && mapOutil !== 'depart' && !mapChoix) {
         mapDit('Pick an element on the right first.', true); return;
+      }
+      if (mapOutil === 'depart') {
+        /* Un SEUL depart : le poser ailleurs deplace le precedent. Deux
+           points d'arrivee demanderaient de choisir, et rien dans la carte ne
+           dirait lequel. */
+        memorise();
+        MAP.depart = { c: q.c, l: q.l };
+        mapDit(''); peintMapOutils(); mapRedessine(); return;
       }
       if (mapOutil === 'pot') { remplis(q.c, q.l); return; }
       if (mapOutil === 'rect') {
@@ -3981,7 +4029,8 @@
       if (e) e.style.display = montre ? '' : 'none';
     };
     v('nxMapNom', mien); v('nxMapOutilDessin', mien); v('nxMapOutilGomme', mien);
-    v('nxMapOutilPot', mien); v('nxMapOutilRect', mien); v('nxMapOutilMain', mien);
+    v('nxMapOutilPot', mien); v('nxMapOutilRect', mien); v('nxMapOutilDepart', mien);
+    v('nxMapOutilMain', mien);
     v('nxMapAnnule', mien); v('nxMapRefais', mien);
     /* Le zoom appartient a QUI REGARDE, pas a qui possede : une carte qu'on
        visite doit pouvoir se parcourir de pres. */
@@ -3990,7 +4039,8 @@
     /* L'outil en vedette se lit de la TABLE : quatre `if` a tenir d'accord
        auraient laisse deux outils allumes le jour ou un cinquieme arrive. */
     var OUTILS = { dessin: 'nxMapOutilDessin', gomme: 'nxMapOutilGomme',
-                   pot: 'nxMapOutilPot', rect: 'nxMapOutilRect', main: 'nxMapOutilMain' };
+                   pot: 'nxMapOutilPot', rect: 'nxMapOutilRect',
+                   depart: 'nxMapOutilDepart', main: 'nxMapOutilMain' };
     if (elMapGrille) elMapGrille.classList.toggle('main', mapOutil === 'main' || (atelier && !mien));
     Object.keys(OUTILS).forEach(function (o) {
       var b = document.getElementById(OUTILS[o]);
@@ -4048,7 +4098,8 @@
       var i = document.createElement('i');
       i.textContent = (k.mienne ? 'yours' : (k.auteur ? 'by ' + k.auteur : 'by someone else'))
                       + ' · ' + (k.mode === 'iso' ? '2.5D' : '2D')
-                      + ' · ' + k.cote + '×' + k.cote + ' · ' + k.cases + ' tiles';
+                      + ' · ' + k.cote + '×' + k.cote + ' · ' + k.cases + ' tiles'
+                      + (k.jouable ? '' : ' · no start point');
       var r = document.createElement('div');
       r.className = 'rang';
       var o = document.createElement('button');
@@ -4076,6 +4127,7 @@
   function ouvreAtelier(c) {
     MAP = { id: c.id || null, nom: c.nom || '', cote: c.cote || MAP_COTE,
             mode: MAP_MODES[c.mode] ? c.mode : 'plat',
+            depart: (c.depart && typeof c.depart.c === 'number') ? { c: c.depart.c, l: c.depart.l } : null,
             cases: new Map(), mienne: c.mienne !== false, auteur: c.auteur || null };
     /* Une carte chargee n'a rien a annuler et rien a perdre : garder la pile
        de la precedente aurait permis d'annuler CELLE-CI vers l'etat d'une
@@ -4091,6 +4143,7 @@
       var v = {};
       if (q.s) v.s = q.s;
       if (q.o) v.o = q.o;
+      if (q.n > 1) v.n = q.n;
       MAP.cases.set(q.c + ',' + q.l, v);
     });
     if (elMapNom) elMapNom.value = MAP.nom;
@@ -4231,6 +4284,7 @@
     b('nxMapOutilGomme', function () { mapOutil = 'gomme'; peintMapOutils(); });
     b('nxMapOutilPot', function () { mapOutil = 'pot'; peintMapOutils(); });
     b('nxMapOutilRect', function () { mapOutil = 'rect'; peintMapOutils(); });
+    b('nxMapOutilDepart', function () { mapOutil = 'depart'; peintMapOutils(); });
     b('nxMapOutilMain', function () { mapOutil = 'main'; peintMapOutils(); });
     if (elMapCherche) {
       elMapCherche.addEventListener('input', function () {
@@ -4266,11 +4320,13 @@
         var e = { c: Number(q[0]), l: Number(q[1]) };
         if (v.s) e.s = v.s;
         if (v.o) e.o = v.o;
+        if (v.n > 1) e.n = v.n;
         cases.push(e);
       });
       mapDit('Saving…');
       var vg = vignetteDeLaCarte();
-      var envoi = { nom: nom, cote: MAP.cote, mode: MAP.mode, cases: cases };
+      var envoi = { nom: nom, cote: MAP.cote, mode: MAP.mode, cases: cases,
+                    depart: MAP.depart || null };
       if (vg) envoi.vignette = vg;
       envoie({ type: 'carteEnregistre', id: MAP.id || undefined, carte: envoi });
     });

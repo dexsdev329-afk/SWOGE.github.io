@@ -92,6 +92,32 @@ const servirLeSite = async () => {
     C.prototype = N.prototype; C.OPEN = N.OPEN; C.CLOSED = N.CLOSED;
     window.WebSocket = C;
   });
+  /* ---- ON REGARDE OU SONT LE JOUEUR ET LA MACHINE, A L'ECRAN ----
+   * C'est la seule facon de marcher vers quelque chose sans rien deviner :
+   * les deux sont DESSINES, donc les deux sont mesurables. Le joueur se
+   * reconnait a sa signature de dessin — une source de 256 rendue en 150 —
+   * et la machine a sa planche. Leur ecart a l'ecran EST leur ecart dans le
+   * monde, la camera etant la meme pour les deux. Aucune position n'est
+   * recopiee de la source, aucune duree n'est supposee.
+   * Meme technique que l'essai de la riviere, qui se sert du pont comme
+   * repere. */
+  await p.addInitScript(function () {
+    const C = CanvasRenderingContext2D.prototype;
+    if (C.__espionCarte) return; C.__espionCarte = true;
+    window.__vu = { moi: null, boxe: null };
+    const di = C.drawImage;
+    C.drawImage = function (im) {
+      const a = arguments;
+      const u = (im && (im.currentSrc || im.src)) || '';
+      if (a.length >= 9 && a[3] === 256 && a[4] === 256 && a[7] === 150 && a[8] === 150) {
+        window.__vu.moi = { x: a[5] + 75, y: a[6] + 130 };
+      }
+      if (/obj_boxe\.webp/.test(u) && a.length >= 9) {
+        window.__vu.boxe = { x: a[5] + a[7] / 2, y: a[6] + a[8] };
+      }
+      return di.apply(this, arguments);
+    };
+  });
   /* ---- ON DIT A LA PAGE OU EST LE SERVEUR ----
    * Sans `?server=`, elle retombe sur l'adresse de PRODUCTION : la socket
    * s'ouvre, ne recoit rien de notre serveur d'essai, et l'essai attend un
@@ -136,37 +162,57 @@ const servirLeSite = async () => {
    * n'ouvre pas », ce qui est faux — il n'y etait simplement pas arrive.
    * C'est la meme lecon que l'essai du telephone, au meme endroit. */
   /* ---- ET L'ON CHERCHE SON CHEMIN, ON NE LE SUPPOSE PAS ----
-   * Marcher vers l'ouest pendant une duree fixe supposait deux choses : que
-   * la page avance a la meme vitesse a chaque fois — au premier chargement
-   * elle telecharge quinze megaoctets de decor et saute des trames — et qu'on
-   * parte dans le BON couloir. La riviere traverse le Nexus, et un pas de
-   * travers au depart met une rive entre le personnage et la machine : on
-   * pousse alors vers l'ouest indefiniment contre une berge, et l'essai
-   * conclut « la machine n'ouvre pas », ce qui est faux.
-   * On avance donc vers l'ouest, et si rien ne vient au bout de trois
-   * secondes on change de voie et l'on recommence. C'est ce que fait un
-   * joueur devant un obstacle. */
-  let arrive = false;
+   *
+   * Marcher vers l'ouest pendant une duree fixe supposait deux choses : que la
+   * page avance a la meme vitesse a chaque fois — au premier chargement elle
+   * telecharge quinze megaoctets de decor et saute des trames — et qu'on parte
+   * dans le BON couloir. La riviere traverse le Nexus, et un pas de travers au
+   * depart met une rive entre le personnage et la machine : on pousse alors
+   * contre une berge, et l'essai conclut « la machine n'ouvre pas », ce qui est
+   * faux.
+   *
+   * Un premier correctif alternait haut et bas d'un essai a l'autre : il
+   * oscillait autour du point de depart au lieu de BALAYER, et retombait sur
+   * les memes trois couloirs. On balaie donc dans un seul sens a la fois —
+   * vers le haut, puis vers le bas — ce qui couvre une bande large de part et
+   * d'autre.
+   */
+  /* Un pas dans une direction, puis on relit ou l'on en est. */
+  const pas = async (touche, ms) => {
+    await p.keyboard.down(touche);
+    await p.waitForTimeout(ms);
+    await p.keyboard.up(touche);
+  };
+  const panneauOuvert = () => p.evaluate(() => {
+    const v = document.getElementById('nxMapVoile');
+    return !!v && v.classList.contains('on');
+  });
   const t0 = Date.now();
-  const voies = ['ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowUp', 'ArrowUp', 'ArrowDown'];
-  for (let essai = 0; essai < voies.length && !arrive; essai++) {
-    await p.keyboard.down(voies[essai]);
-    await p.waitForTimeout(essai === 0 ? 900 : 700);
-    await p.keyboard.up(voies[essai]);
-    await p.keyboard.down('ArrowLeft');
-    const fin = Date.now() + 4000;
-    while (Date.now() < fin) {
-      await p.waitForTimeout(350);
-      arrive = await p.evaluate(() => {
-        const v = document.getElementById('nxMapVoile');
-        return !!v && v.classList.contains('on');
-      });
-      if (arrive) break;
+  let arrive = false;
+  let vus = 0;
+  while (Date.now() - t0 < 40000 && !arrive) {
+    const vu = await p.evaluate(() => {
+      const q = window.__vu || {};
+      window.__vu = { moi: null, boxe: null };
+      return q;
+    });
+    if (!vu.moi) { await p.waitForTimeout(200); continue; }
+    if (!vu.boxe) {
+      /* Pas encore a l'ecran : elle est a l'ouest, on y va. */
+      await pas('ArrowLeft', 500);
+    } else {
+      vus++;
+      const dx = vu.boxe.x - vu.moi.x, dy = vu.boxe.y - vu.moi.y;
+      /* L'axe le plus grand d'abord : deux pas en diagonale contournent le
+         batiment d'a cote au lieu de s'y coincer. */
+      if (Math.abs(dx) > Math.abs(dy)) await pas(dx < 0 ? 'ArrowLeft' : 'ArrowRight', 200);
+      else await pas(dy < 0 ? 'ArrowUp' : 'ArrowDown', 200);
     }
-    await p.keyboard.up('ArrowLeft');
+    arrive = await panneauOuvert();
   }
   await p.waitForTimeout(1200);
-  ok(arrive, `on a marche ${Math.round((Date.now() - t0) / 100) / 10} s jusqu a la machine`);
+  ok(arrive, `on a marche ${Math.round((Date.now() - t0) / 100) / 10} s jusqu a la machine,`
+     + ` vue a l ecran pendant ${vus} pas`);
   const ouvert = await p.evaluate(() => {
     const v = document.getElementById('nxMapVoile');
     return { on: !!v && v.classList.contains('on'),
@@ -313,7 +359,8 @@ const servirLeSite = async () => {
   await p.click('#nxMapEnregistre');
   await p.waitForTimeout(1600);
   const apres = await p.evaluate(() => (document.getElementById('nxMapDit') || {}).textContent);
-  eq(apres, 'Saved.', 'la page annonce l enregistrement');
+  ok(/^Saved\./.test(apres || ''),
+     'la page annonce l enregistrement — et dit qu il manque le depart : ' + apres);
 
   /* ---- ET LE SERVEUR, LUI, A-T-IL GARDE QUELQUE CHOSE ? ----
    * C'est la seule question qui compte. Une page peut annoncer « enregistre »
@@ -559,6 +606,82 @@ const servirLeSite = async () => {
     eq(relief.mode, 'iso', 'avec son mode');
     eq(relief.cote, 16, 'et la taille choisie a la creation');
   }
+
+  console.log('\n-- le point de depart, pose et rendu par le serveur --');
+  /* ---- CE QUI MANQUAIT POUR QU UNE CARTE SE MARCHE ----
+   * Une carte sans depart n'est pas invalide : elle n'est pas encore jouable.
+   * L'essai pose le point par le bouton, l'enregistre, et va le relire chez le
+   * serveur — la seule preuve qui compte. */
+  await p.click('#nxMapRetour'); await p.waitForTimeout(250);
+  if (await p.evaluate(() => document.getElementById('nxMapConfirme').classList.contains('on'))) {
+    await p.click('#nxMapJette'); await p.waitForTimeout(400);
+  }
+  await cree('plat', 16);
+  const camD = await cadre(16);
+  await p.evaluate(() => {
+    document.querySelector('#nxMapPalette .nxmap-el[data-fam="sol"]').click();
+    document.getElementById('nxMapOutilRect').click();
+  });
+  await geste(camD, [{ t: 'down', c: 2, l: 2, id: 51 }, { t: 'move', c: 9, l: 9, id: 51 },
+                     { t: 'up', c: 9, l: 9, id: 51 }]);
+  await p.waitForTimeout(500);
+  await p.evaluate(() => { document.getElementById('nxMapOutilDepart').click(); });
+  await geste(camD, [{ t: 'down', c: 5, l: 6, id: 52 }, { t: 'up', c: 5, l: 6, id: 52 }]);
+  await p.waitForTimeout(400);
+  await p.fill('#nxMapNom', 'Ma carte a marcher');
+  await p.click('#nxMapEnregistre');
+  await p.waitForTimeout(1600);
+  const j3 = await (await fetch(base + '/admin/cartes', { headers: { 'x-admin-key': 'k' } })).json();
+  const am = (j3.cartes || []).find((k) => k.nom === 'Ma carte a marcher');
+  ok(!!am, 'le serveur a garde la carte');
+  if (am) {
+    const d = await (await fetch(base + '/admin/cartes?id=' + am.id,
+                                 { headers: { 'x-admin-key': 'k' } })).json();
+    ok(!!d.carte.depart, 'avec un point de depart');
+    eq(d.carte.depart && (d.carte.depart.c + ',' + d.carte.depart.l), '5,6',
+       'et c est EXACTEMENT la case ou l on a clique');
+  }
+
+  /* ---- ET « ANNULER » DEFAIT AUSSI LE DEPART ----
+   * Il ne vit pas dans les cases : sans precaution, « Undo » rendait les cases
+   * d'avant et laissait le depart la ou on venait de le mettre — un geste
+   * defait a moitie, ce qui est pire que pas defait du tout. */
+  /* ---- ON REMESURE LE CADRE AVANT DE VISER ----
+   * Entre la creation et ici, la barre d'outils a gagne une ligne : le
+   * message d'enregistrement est long, il passe a la ligne, et la scene perd
+   * la hauteur correspondante. Le cadre mesure a la creation ne vaut donc
+   * plus, et viser avec lui tombe une case a cote. Un cadre se mesure quand
+   * on s'en sert. */
+  const camD2 = await cadre(16);
+  const ouEstLeDepart = () => p.evaluate((cm) => {
+    const g = document.getElementById('nxMapGrille');
+    const d = g.getContext('2d').getImageData(0, 0, g.width, g.height).data;
+    /* Le disque du depart est le seul vert franc de la carte. */
+    /* ---- ON PREND LE CENTRE DE GRAVITE DU VERT ----
+       Le centre de la case porte la FLECHE, qui est sombre, et le disque n'est
+       qu'a trente pour cent d'opacite. Le seul vert franc est le CERCLE qui
+       borde le repere — mais un cercle deborde d'un pixel ou deux sur la case
+       voisine, et chercher « la premiere case ou l'on voit du vert » rendait
+       systematiquement celle du dessus. Le centre de gravite, lui, tombe au
+       milieu du repere quoi qu'il deborde. */
+    let sx = 0, sy = 0, n2 = 0;
+    for (let y = 0; y < g.height; y++) {
+      for (let x = 0; x < g.width; x++) {
+        const i = (y * g.width + x) * 4;
+        if (d[i + 1] > 220 && d[i] > 90 && d[i] < 170 && d[i + 2] > 110 && d[i + 2] < 200) {
+          sx += x; sy += y; n2++;
+        }
+      }
+    }
+    if (!n2) return null;
+    return Math.floor((sx / n2 - cm.x0) / cm.p) + ',' + Math.floor((sy / n2 - cm.y0) / cm.p);
+  }, { p: camD2.p, x0: camD2.x0, y0: camD2.y0 });
+  await geste(camD2, [{ t: 'down', c: 8, l: 3, id: 53 }, { t: 'up', c: 8, l: 3, id: 53 }]);
+  await p.waitForTimeout(400);
+  eq(await ouEstLeDepart(), '8,3', 'le depart deplace se voit sur le dessin');
+  await p.click('#nxMapAnnule');
+  await p.waitForTimeout(500);
+  eq(await ouEstLeDepart(), '5,6', 'et « Undo » le ramene ou il etait');
 
   ok(erreurs.length === 0, 'aucune erreur de page' + (erreurs.length ? ' — ' + erreurs[0] : ''));
   await nav.close(); site.stop();

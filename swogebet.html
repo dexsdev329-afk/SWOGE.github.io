@@ -670,6 +670,27 @@ body::before{ content:""; position:fixed; inset:0; z-index:-1; pointer-events:no
 .sb-cotes button span{ font-size:.68rem; letter-spacing:.08em; text-transform:uppercase; opacity:.6; }
 .sb-cotes button b{ font-size:1.06rem; font-variant-numeric:tabular-nums; }
 .sb-cotes button:hover{ background:rgba(120,180,255,.16); border-color:rgba(120,180,255,.5); }
+/* ---- LES MARCHES EN PLUS ----
+ * Replies par defaut. Six marches et dix-sept scores exacts ne tiennent pas
+ * dans une ligne de tableau, et les deplier tous ferait vingt lignes par
+ * rencontre : on ne verrait plus le calendrier. Le bouton dit COMBIEN il y en
+ * a — « +5 markets » se clique, « More » se devine. */
+.sb-plus{ grid-column:1/-1; display:flex; justify-content:flex-start; margin-top:2px; }
+.sb-plusb{ background:none; border:1px dashed rgba(255,255,255,.22); color:#9fb3d9;
+  border-radius:8px; padding:4px 10px; font-size:.72rem; letter-spacing:.04em;
+  text-transform:uppercase; cursor:pointer; }
+.sb-plusb:hover{ border-color:rgba(120,180,255,.6); color:#dbe6ff; }
+.sb-plusb.on{ border-style:solid; border-color:rgba(120,230,160,.55); color:#bff5cd; }
+.sb-mk{ grid-column:1/-1; margin-top:6px; }
+.sb-mk > b{ display:block; font-size:.68rem; letter-spacing:.08em; text-transform:uppercase;
+  opacity:.55; margin:0 0 5px; }
+/* Le score exact porte dix-sept reponses. En colonnes fixes elles seraient
+   illisibles sur un telephone ; en grille auto-remplie, la rangee se coupe ou
+   elle peut. */
+.sb-cotes.grille{ grid-template-columns:repeat(auto-fill,minmax(74px,1fr)); }
+.sb-cotes.grille button{ padding:6px 2px; }
+.sb-cotes.grille button span{ font-size:.62rem; }
+.sb-cotes.grille button b{ font-size:.92rem; }
 .sb-plein{ grid-column:1/-1; font-size:.72rem; opacity:.55; }
 /* ---- LE BULLETIN EST UN PANNEAU ANCRE, PLUS UNE MODALE ----
  *
@@ -1351,7 +1372,18 @@ body.sb-dock main{ padding-bottom:150px; }
 <script>
 (function(){
   "use strict";
-  var SERVER_URL="wss://web-production-220a3.up.railway.app";
+  /* ---- L ADRESSE DU SERVEUR, ET LE GARDE QUI VA AVEC ----
+   * Ecrite en dur, elle rendait cette page INESSAYABLE : n importe quel essai
+   * automatise aurait ouvert sa socket sur la PRODUCTION et pose de vrais
+   * paris avec de vrais soldes. Le meme parametre existe deja ailleurs sur le
+   * site — c est la troisieme page a le porter, et la seule qui manquait.
+   * En clair sur le site public, ca ne donne rien de plus a personne : la
+   * socket exige de toute facon un compte signe. */
+  function sbAdresseServeur(){
+    try{ var q=new URLSearchParams(location.search).get("server"); if(q) return q; }catch(e){}
+    return "wss://web-production-220a3.up.railway.app";
+  }
+  var SERVER_URL=sbAdresseServeur();
   (function(){ var q=new URLSearchParams(location.search).get("server"); if(q) SERVER_URL=q; })();
 
   var CHAIN={ id:4663, hex:"0x1237", name:"Robinhood Chain", rpc:"https://rpc.mainnet.chain.robinhood.com", scan:"https://robinhoodchain.blockscout.com", sym:"ETH" };
@@ -1654,9 +1686,75 @@ body.sb-dock main{ padding-bottom:150px; }
      on parie, au moment precis ou l'on mise. Seul le tennis oppose deux
      personnes. */
   var SB_DUEL={ tennis:1 };
-  function sbNomIssue(m,c){
+  /* ---- LES MARCHES, ET COMMENT ON LES NOMME ----
+   * Le serveur envoie des CLES — « btts », « ou25 », « 1X » — parce qu'une cle
+   * ne se traduit pas et ne se decale pas d'une case. Les mots sont ici, ou
+   * ils se lisent. La table est la SEULE a les porter : un libelle recopie
+   * dans le bulletin et dans le tableau finirait par ne plus dire la meme
+   * chose des deux cotes, et c'est au moment de miser qu'on s'en apercevrait.
+   *
+   * L'ORDRE de la table est celui de l'affichage. Le 1-N-2 d'abord parce que
+   * c'est celui qu'on vient chercher ; le score exact en dernier parce qu'il
+   * prend dix-sept cases a lui seul. */
+  var SB_MARCHES = [
+    { cle:"1n2",  nom:"Match result",        court:"Result" },
+    { cle:"dc",   nom:"Double chance",       court:"Dbl chance",
+      mots:{ "1X":"Home or draw", "12":"Home or away", "X2":"Draw or away" } },
+    { cle:"btts", nom:"Both teams to score", court:"Both score",
+      mots:{ oui:"Yes", non:"No" } },
+    { cle:"ou25", nom:"Total goals",         court:"Over/under",
+      mots:{ plus:"Over 2.5", moins:"Under 2.5" } },
+    { cle:"hand", nom:"Handicap \u22121.5",  court:"Handicap",
+      mots:{ "1":"Home \u22121.5", "2":"Away +1.5" } },
+    { cle:"score",nom:"Correct score",       court:"Correct score",
+      mots:{ autre:"Any other" }, grille:1 },
+  ];
+  var SB_MARCHE_PAR_CLE = {};
+  for (var iM=0;iM<SB_MARCHES.length;iM++) SB_MARCHE_PAR_CLE[SB_MARCHES[iM].cle]=SB_MARCHES[iM];
+  var SB_BASE = "1n2";
+
+  function sbNomIssue(m,c,marche){
+    var k = marche || SB_BASE;
+    if(k!==SB_BASE){
+      var M = SB_MARCHE_PAR_CLE[k];
+      return (M && M.mots && M.mots[c]) || c;
+    }
     var duel = m && SB_DUEL[m.sport] && (m.issues||[]).length===2;
     return (duel?SB_NOM2:SB_NOM)[c] || c;
+  }
+  /* Le nom du marche, pour le bulletin. Court : la ligne y porte deja les deux
+     equipes et la cote. */
+  function sbNomMarche(k){
+    var M = SB_MARCHE_PAR_CLE[k || SB_BASE];
+    return M ? M.court : (k || SB_BASE);
+  }
+  /* Les reponses d'un marche, dans l'ordre ou le serveur les a rangees. On ne
+     les redevine pas ici : une liste ecrite des deux cotes finirait par ne
+     plus etre la meme, et c'est celle de la page qui ferait cliquer sur une
+     reponse que le serveur refuse. */
+  function sbIssuesDe(m,k){
+    var lot = m && m.marches && m.marches[k];
+    if(lot && lot.issues && lot.issues.length) return lot.issues;
+    if(lot && lot.cotes) { var o=[],x; for(x in lot.cotes) o.push(x); return o; }
+    return (k===SB_BASE) ? (m.issues||["1","N","2"]) : [];
+  }
+  function sbCoteDe(m,k,c){
+    var lot = m && m.marches && m.marches[k];
+    if(lot && lot.cotes && isFinite(lot.cotes[c])) return Number(lot.cotes[c]);
+    /* Le repli sur les cotes a plat : une reponse du serveur d'avant les
+       marches ne porte que celles-la. */
+    if((k||SB_BASE)===SB_BASE && m && m.cotes && isFinite(m.cotes[c])) return Number(m.cotes[c]);
+    return NaN;
+  }
+  /* Les marches EN PLUS du resultat, dans l'ordre de la table. */
+  function sbAutresMarches(m){
+    var o=[],i,k;
+    for(i=0;i<SB_MARCHES.length;i++){
+      k=SB_MARCHES[i].cle;
+      if(k===SB_BASE) continue;
+      if(m.marches && m.marches[k]) o.push(SB_MARCHES[i]);
+    }
+    return o;
   }
 
   function sbFmt(n){ n=Number(n||0);
@@ -1788,21 +1886,55 @@ body.sb-dock main{ padding-bottom:150px; }
        + '<span><i class="dr">'+sbDrapeau(m.paysDomicile)+'</i>'+sbEchappe(m.domicile)+'</span>'
        + '<span><i class="dr">'+sbDrapeau(m.paysExterieur)+'</i>'+sbEchappe(m.exterieur)+'</span></div>'
        + '<div class="sb-h">'+sbHeureCourte(m.debut)+'</div>'
-       + '<div class="sb-cotes n'+(m.issues||["1","N","2"]).length+'">'
-       + (m.issues||["1","N","2"]).map(function(c){ return sbBouton(m,c); }).join("")
+       + '<div class="sb-cotes n'+sbIssuesDe(m,SB_BASE).length+'">'
+       + sbIssuesDe(m,SB_BASE).map(function(c){ return sbBouton(m,SB_BASE,c); }).join("")
        + '</div>'
+       /* ---- LES AUTRES MARCHES SONT REPLIES ----
+        * Six marches et dix-sept scores exacts ne tiennent pas dans une ligne
+        * de tableau, et les DEPLIER tous ferait vingt lignes par rencontre :
+        * on ne verrait plus le calendrier. Le bouton dit COMBIEN il y en a —
+        * « +5 markets » se clique, « More » se devine. */
+       + sbPlusDeMarches(m)
        + (serre?'<div class="sb-plein">'+sbFmt(m.place)+' of exposure left</div>':'')
        + '</div>';
     }
     z.innerHTML=h;
   }
-  function sbBouton(m,c){
+  function sbBouton(m,k,c){
     var pris=false, i;
     for(i=0;i<SB.panier.length;i++)
-      if(SB.panier[i].match===m.id && SB.panier[i].choix===c) pris=true;
-    return '<button type="button" data-m="'+sbEchappe(m.id)+'" data-c="'+c+'"'
-         + (pris?' class="pris"':'')+'>'
-         + '<span>'+sbNomIssue(m,c)+'</span><b>'+Number(m.cotes[c]).toFixed(2)+'</b></button>';
+      if(SB.panier[i].match===m.id && (SB.panier[i].marche||SB_BASE)===k
+         && SB.panier[i].choix===c) pris=true;
+    var cote = sbCoteDe(m,k,c);
+    return '<button type="button" data-m="'+sbEchappe(m.id)+'" data-k="'+sbEchappe(k)+'"'
+         + ' data-c="'+sbEchappe(c)+'"'+(pris?' class="pris"':'')+'>'
+         + '<span>'+sbEchappe(sbNomIssue(m,c,k))+'</span>'
+         + '<b>'+(isFinite(cote)?cote.toFixed(2):"\u2013")+'</b></button>';
+  }
+
+  /* Quels marches sont DEPLIES, par identifiant de rencontre. Dans un objet a
+     part et non sur la carte : le tableau se repeint entier a chaque message
+     du serveur, et un etat garde dans le HTML se refermerait tout seul sous
+     la main de celui qui vient de l ouvrir. */
+  var SB_OUVERTS = {};
+  function sbPlusDeMarches(m){
+    var autres = sbAutresMarches(m);
+    if(!autres.length) return "";
+    var ouvert = !!SB_OUVERTS[m.id];
+    var h = '<div class="sb-plus">'
+      + '<button type="button" class="sb-plusb'+(ouvert?" on":"")+'" data-plus="'+sbEchappe(m.id)+'">'
+      + (ouvert ? "Hide markets" : ("+"+autres.length+" market"+(autres.length>1?"s":"")))
+      + '</button></div>';
+    if(!ouvert) return h;
+    var i,j,M,iss;
+    for(i=0;i<autres.length;i++){
+      M=autres[i]; iss=sbIssuesDe(m,M.cle);
+      h += '<div class="sb-mk"><b>'+sbEchappe(M.nom)+'</b>'
+         + '<div class="sb-cotes'+(M.grille?" grille":(" n"+Math.min(3,iss.length)))+'">';
+      for(j=0;j<iss.length;j++) h += sbBouton(m,M.cle,iss[j]);
+      h += '</div></div>';
+    }
+    return h;
   }
 
   /* L'heure du coup d'envoi, courte. Un pari en cours ne se lit pas sans
@@ -1851,7 +1983,11 @@ body.sb-dock main{ padding-bottom:150px; }
         var aff = m ? (sbDrapeau(m.paysDomicile)+sbEchappe(dom)+" &ndash; "+sbDrapeau(m.paysExterieur)+sbEchappe(ext))
                     : (sbEchappe(dom)+" &ndash; "+sbEchappe(ext));
         var issues = m ? (m.issues||[]) : (j.issues||[]);
-        var nom = sbNomIssue(m||{sport:p.sport,issues:issues}, j.choix);
+        /* Le marche est NOMME dans l'historique aussi. Sans lui, un pari
+           gagne sur « Yes » ne dit plus, trois jours apres, oui a quoi — et
+           c'est la ligne qu'on relit quand on conteste un reglement. */
+        var nom = ((j.marche && j.marche!==SB_BASE) ? sbNomMarche(j.marche)+" \u00b7 " : "")
+                + sbNomIssue(m||{sport:p.sport,issues:issues}, j.choix, j.marche);
         var quand = sbHeure(m ? m.debut : (j.debut || p.debut));
         lignes += '<div class="sb-pj">'+aff+' &middot; <b>'+nom+'</b> @ '+Number(j.cote||p.cote).toFixed(2)
                 + (quand?' <span>&middot; '+quand+'</span>':'')+'</div>';
@@ -1913,7 +2049,11 @@ body.sb-dock main{ padding-bottom:150px; }
     var c=1, i;
     for(i=0;i<SB.panier.length;i++){
       var m=sbTrouve(SB.panier[i].match); if(!m) return 0;
-      c*=Number(m.cotes[SB.panier[i].choix]);
+      /* La cote de CHAQUE jambe vient de SON marche : lire `m.cotes` ferait
+         multiplier la cote du resultat pour une jambe posee sur « les deux
+         equipes marquent », et le bulletin annoncerait un retour que le
+         serveur ne paierait pas. */
+      c*=Number(sbCoteDe(m, SB.panier[i].marche||SB_BASE, SB.panier[i].choix));
     }
     return SB.panier.length ? Math.floor(c*1e4)/1e4 : 0;
   }
@@ -1921,17 +2061,26 @@ body.sb-dock main{ padding-bottom:150px; }
      seconde selection sur un match deja au bulletin REMPLACE la premiere : le
      serveur refuse deux jambes sur un match, et lui renvoyer une erreur pour
      un geste evident serait le punir de sa logique. */
-  function sbOuvre(matchId, choix){
+  function sbOuvre(matchId, choix, marche){
     var m=sbTrouve(matchId); if(!m) return;
     if(!authed) return toast("Connect your wallet first");
+    var k = marche || SB_BASE;
     var i, deja=-1;
     for(i=0;i<SB.panier.length;i++) if(SB.panier[i].match===matchId) deja=i;
     if(deja>=0){
-      if(SB.panier[deja].choix===choix){ SB.panier.splice(deja,1); }
-      else SB.panier[deja].choix=choix;
+      /* ---- UNE SEULE SELECTION PAR RENCONTRE, MARCHES COMPRIS ----
+       * Le serveur refuse deux jambes sur le meme match, et il a raison de le
+       * faire ici plus que jamais : « les deux equipes marquent » et « plus de
+       * 2,5 buts » sur la MEME rencontre sont fortement lies, et un combine
+       * les multiplierait comme s ils etaient independants — la maison paierait
+       * la difference. Recliquer la meme reponse la retire ; en cliquer une
+       * autre, du meme marche ou d un autre, REMPLACE. */
+      if((SB.panier[deja].marche||SB_BASE)===k && SB.panier[deja].choix===choix){
+        SB.panier.splice(deja,1);
+      } else { SB.panier[deja].marche=k; SB.panier[deja].choix=choix; }
     } else {
       if(SB.panier.length>=SB.jambesMax) return toast("At most "+SB.jambesMax+" selections");
-      SB.panier.push({ match:matchId, choix:choix });
+      SB.panier.push({ match:matchId, marche:k, choix:choix });
     }
     if(!SB.panier.length){ sbFerme(); sbRend(); return; }
     sbPeintBulletin();
@@ -1982,8 +2131,14 @@ body.sb-dock main{ padding-bottom:150px; }
       h+='<div class="sb-j"><span>'+sbDrapeau(m.paysDomicile)+sbEchappe(m.domicile)
        + ' &ndash; '+sbDrapeau(m.paysExterieur)+sbEchappe(m.exterieur)+'</span>'
        /* Le bulletin affichait SB_NOM sans condition : une selection de tennis
-          s'y lisait « Home ». C'est le dernier endroit ou ca trainait. */
-       + '<b>'+sbNomIssue(m,j.choix)+' @ '+Number(m.cotes[j.choix]).toFixed(2)+'</b>'
+          s'y lisait « Home ». C'est le dernier endroit ou ca trainait.
+          Le MARCHE y figure des qu'il n'est pas le resultat : « Yes @ 1.76 »
+          tout seul ne dit pas oui a quoi, et c'est la derniere ligne qu'on lit
+          avant d'engager de l'argent. */
+       + '<b>'+((j.marche&&j.marche!==SB_BASE)
+                ? sbEchappe(sbNomMarche(j.marche))+' \u00b7 ' : '')
+       + sbEchappe(sbNomIssue(m,j.choix,j.marche))+' @ '
+       + Number(sbCoteDe(m,j.marche||SB_BASE,j.choix)).toFixed(2)+'</b>'
        + '<button type="button" data-ote="'+sbEchappe(j.match)+'" aria-label="remove">&times;</button></div>';
     }
     $("sbJambes").innerHTML=h;
@@ -2059,8 +2214,17 @@ body.sb-dock main{ padding-bottom:150px; }
       SB.sport=b.getAttribute("data-sp"); sbRend();
     });
     $("sbListe").addEventListener("click", function(e){
+      /* Le bouton « + n markets » vit dans le meme tableau que les cotes :
+         teste AVANT, sinon `closest("[data-m]")` remonterait a la carte. */
+      var pl=e.target.closest("button[data-plus]");
+      if(pl){
+        var idp=pl.getAttribute("data-plus");
+        SB_OUVERTS[idp] = !SB_OUVERTS[idp];
+        sbRend();
+        return;
+      }
       var b=e.target.closest("button[data-m]"); if(!b) return;
-      sbOuvre(b.getAttribute("data-m"), b.getAttribute("data-c"));
+      sbOuvre(b.getAttribute("data-m"), b.getAttribute("data-c"), b.getAttribute("data-k"));
     });
     $("sbTete").addEventListener("click", sbBascule);
     $("sbOnglets").addEventListener("click", function(e){

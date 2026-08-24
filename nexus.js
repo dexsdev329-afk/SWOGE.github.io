@@ -109,9 +109,18 @@
      * ci-dessous suit celui des gestes. */
     if (m.type === 'cartes') { peintMapGalerie(m.liste || []); return; }
     if (m.type === 'carte') {
-      if (m.error) { mapDit(m.error, true); return; }
+      if (m.error) {
+        /* Le serveur envoie un CODE a cote du texte. On traduit ce qu'on
+           connait et l'on retombe sur SON texte pour le reste — degrade,
+           jamais muet : une erreur sans mot est pire qu'une erreur dans la
+           mauvaise langue. */
+        var CODES = { invalide: 'errInvalide', inconnue: 'errInconnue',
+                      plafond: 'errPlafond', pasLaVotre: 'errPasLaVotre' };
+        mapDit(m.code && CODES[m.code] ? T(CODES[m.code]) : m.error, true);
+        return;
+      }
       if (m.liste) peintMapGalerie(m.liste);
-      if (m.supprime !== undefined) { MAP = null; peintMapOutils(); mapDit('Deleted.'); return; }
+      if (m.supprime !== undefined) { MAP = null; peintMapOutils(); mapDit(T('supprime')); return; }
       if (m.enregistre) {
         /* LE NUMERO, et c'est tout ce qui manquait a la page : sans lui, le
            second enregistrement creerait une deuxieme carte au lieu de
@@ -125,9 +134,7 @@
         /* Une carte sans depart est enregistree, mais elle ne se VISITE pas.
            Dire seulement « enregistre » laisserait chercher pourquoi le
            bouton « Play » n'apparait pas sur sa propre fiche. */
-        mapDit(MAP && !MAP.depart
-               ? 'Saved. Place a start point (Start) to make it walkable.'
-               : 'Saved.');
+        mapDit(T(MAP && !MAP.depart ? 'sauveSansDepart' : 'sauve'));
         return;
       }
       if (m.carte) { ouvreAtelier(m.carte); return; }
@@ -3221,6 +3228,191 @@
    * lui donne. Une planche livree demain apparait dans la palette sans qu'on
    * touche a ce fichier.
    */
+  /* ================== LES TROIS LANGUES DE L'EDITEUR ==================
+   *
+   * ---- POURQUOI ELLES SONT LA ----
+   *
+   * L'editeur est le seul endroit du jeu ou quelqu'un PASSE DU TEMPS, et le
+   * seul dont les mots comptent : « Fill », « Rect », « Start » ne se devinent
+   * pas quand on ne lit pas l'anglais. Le reste du jeu se joue aux fleches ;
+   * ici, on lit.
+   *
+   * ---- UNE SEULE TABLE, ET LE FRANCAIS COMME REFERENCE ----
+   *
+   * Les textes ne vivent pas dans le HTML : chaque element porte un `data-t`,
+   * et c'est cette table qui l'emplit. Ecrits dans les deux endroits, ils
+   * auraient diverge au premier changement — et c'est toujours la langue qu'on
+   * ne parle pas qui garde l'ancien mot.
+   *
+   * L'anglais est la langue par defaut, parce que c'est celle du jeu. Une cle
+   * absente d'une traduction retombe dessus : une phrase en anglais au milieu
+   * du francais se voit et se repare ; une phrase VIDE se lit comme un bouton
+   * casse. Un essai verifie que les trois listes portent les memes cles.
+   */
+  var MAP_TEXTES = {
+    en: {
+      titre: 'Map Editor', sansNom: 'Untitled', par: 'by',
+      nouvelle: 'New map', ferme: 'Close', galerie: 'Gallery', enregistre: 'Save',
+      dessin: 'Draw', gomme: 'Erase', pot: 'Fill', rect: 'Rect',
+      depart: 'Start', main: 'Pan', annule: 'Undo', refais: 'Redo', ajuste: 'Fit',
+      nomCarte: 'Map name', chercher: 'Search elements…',
+      cree: 'Create', pasMaintenant: 'Cancel',
+      neuveTitre: 'New map', neuveSous: 'Both choices are fixed once the map is created.',
+      mode2d: '2D · tiles', mode25d: '2.5D · plots',
+      mode2dDit: 'A grid of tiles seen from above. Grounds, walls, props, monsters.',
+      mode25dDit: 'Ready-made plots seen at three quarters. Each one brings its own ground.',
+      taille: 'Size',
+      saleTitre: 'This map has changes you have not saved.',
+      jette: 'Discard them', gardeLa: 'Keep editing',
+      famSol: 'Ground', famMur: 'Walls', famObjet: 'Objects',
+      famMonstre: 'Monsters', famSalle: 'Rooms', famIso: 'Isometric plots',
+      vide: 'No maps yet', videSous: 'Press “New map” to draw the first one.',
+      tienne: 'yours', autre: 'by someone else', tuiles: 'tiles',
+      sansDepart: 'no start point', editer: 'Edit', visiter: 'Visit', supprimer: 'Delete',
+      charge: 'Loading…', sauvegarde: 'Saving…', sauve: 'Saved.',
+      sauveSansDepart: 'Saved. Place a start point (Start) to make it walkable.',
+      supprime: 'Deleted.',
+      choisis: 'Pick an element on the right first.',
+      pleine: 'This map is full.', dejaRempli: 'Already filled with that.',
+      nomDabord: 'Give your map a name first.',
+      horsLigne: 'Not connected.',
+      horsLigneCartes: 'Not connected — maps cannot be loaded.',
+      catalogueKo: 'Could not load the element catalogue.',
+      errInvalide: 'That map was refused.', errInconnue: 'That map no longer exists.',
+      errPlafond: 'You have reached your map limit.',
+      errPasLaVotre: 'This map is not yours.',
+    },
+    fr: {
+      titre: 'Éditeur de cartes', sansNom: 'Sans titre', par: 'de',
+      nouvelle: 'Nouvelle carte', ferme: 'Fermer', galerie: 'Galerie', enregistre: 'Enregistrer',
+      dessin: 'Pinceau', gomme: 'Gomme', pot: 'Pot', rect: 'Rect.',
+      depart: 'Départ', main: 'Main', annule: 'Annuler', refais: 'Rétablir', ajuste: 'Cadrer',
+      nomCarte: 'Nom de la carte', chercher: 'Chercher un élément…',
+      cree: 'Créer', pasMaintenant: 'Annuler',
+      neuveTitre: 'Nouvelle carte',
+      neuveSous: 'Ces deux choix ne se reprennent plus une fois la carte créée.',
+      mode2d: '2D · tuiles', mode25d: '2,5D · parcelles',
+      mode2dDit: 'Une grille de tuiles vue de dessus. Sols, murs, objets, monstres.',
+      mode25dDit: 'Des parcelles vues de trois quarts. Chacune apporte son propre terrain.',
+      taille: 'Taille',
+      saleTitre: 'Cette carte a des changements qui ne sont pas enregistrés.',
+      jette: 'Les jeter', gardeLa: 'Continuer à dessiner',
+      famSol: 'Sols', famMur: 'Murs', famObjet: 'Objets',
+      famMonstre: 'Monstres', famSalle: 'Salles', famIso: 'Parcelles isométriques',
+      vide: 'Aucune carte pour l’instant',
+      videSous: 'Appuyez sur « Nouvelle carte » pour dessiner la première.',
+      tienne: 'la vôtre', autre: 'de quelqu’un d’autre', tuiles: 'cases',
+      sansDepart: 'sans point de départ', editer: 'Modifier', visiter: 'Visiter',
+      supprimer: 'Supprimer',
+      charge: 'Chargement…', sauvegarde: 'Enregistrement…', sauve: 'Enregistré.',
+      sauveSansDepart: 'Enregistré. Posez un point de départ pour pouvoir y marcher.',
+      supprime: 'Supprimée.',
+      choisis: 'Choisissez d’abord un élément à droite.',
+      pleine: 'Cette carte est pleine.', dejaRempli: 'C’est déjà rempli avec ça.',
+      nomDabord: 'Donnez d’abord un nom à votre carte.',
+      horsLigne: 'Hors ligne.',
+      horsLigneCartes: 'Hors ligne — les cartes ne peuvent pas être chargées.',
+      catalogueKo: 'Le catalogue des éléments n’a pas pu être chargé.',
+      errInvalide: 'Cette carte a été refusée.', errInconnue: 'Cette carte n’existe plus.',
+      errPlafond: 'Vous avez atteint votre nombre maximum de cartes.',
+      errPasLaVotre: 'Cette carte n’est pas la vôtre.',
+    },
+    es: {
+      titre: 'Editor de mapas', sansNom: 'Sin título', par: 'de',
+      nouvelle: 'Mapa nuevo', ferme: 'Cerrar', galerie: 'Galería', enregistre: 'Guardar',
+      dessin: 'Pincel', gomme: 'Borrar', pot: 'Rellenar', rect: 'Rect.',
+      depart: 'Inicio', main: 'Mover', annule: 'Deshacer', refais: 'Rehacer', ajuste: 'Ajustar',
+      nomCarte: 'Nombre del mapa', chercher: 'Buscar un elemento…',
+      cree: 'Crear', pasMaintenant: 'Cancelar',
+      neuveTitre: 'Mapa nuevo',
+      neuveSous: 'Estas dos opciones no se pueden cambiar una vez creado el mapa.',
+      mode2d: '2D · baldosas', mode25d: '2,5D · parcelas',
+      mode2dDit: 'Una cuadrícula de baldosas vista desde arriba. Suelos, muros, objetos, monstruos.',
+      mode25dDit: 'Parcelas vistas en tres cuartos. Cada una trae su propio terreno.',
+      taille: 'Tamaño',
+      saleTitre: 'Este mapa tiene cambios sin guardar.',
+      jette: 'Descartarlos', gardeLa: 'Seguir dibujando',
+      famSol: 'Suelos', famMur: 'Muros', famObjet: 'Objetos',
+      famMonstre: 'Monstruos', famSalle: 'Salas', famIso: 'Parcelas isométricas',
+      vide: 'Todavía no hay mapas',
+      videSous: 'Pulsa «Mapa nuevo» para dibujar el primero.',
+      tienne: 'tuyo', autre: 'de otra persona', tuiles: 'casillas',
+      sansDepart: 'sin punto de inicio', editer: 'Editar', visiter: 'Visitar',
+      supprimer: 'Borrar',
+      charge: 'Cargando…', sauvegarde: 'Guardando…', sauve: 'Guardado.',
+      sauveSansDepart: 'Guardado. Coloca un punto de inicio para poder caminarlo.',
+      supprime: 'Borrado.',
+      choisis: 'Elige primero un elemento a la derecha.',
+      pleine: 'Este mapa está lleno.', dejaRempli: 'Ya está relleno con eso.',
+      nomDabord: 'Ponle primero un nombre a tu mapa.',
+      horsLigne: 'Sin conexión.',
+      horsLigneCartes: 'Sin conexión — no se pueden cargar los mapas.',
+      catalogueKo: 'No se ha podido cargar el catálogo de elementos.',
+      errInvalide: 'Ese mapa fue rechazado.', errInconnue: 'Ese mapa ya no existe.',
+      errPlafond: 'Has alcanzado tu límite de mapas.',
+      errPasLaVotre: 'Este mapa no es tuyo.',
+    },
+  };
+
+  /* La langue choisie tient dans le navigateur : elle n'a rien a faire sur le
+     serveur, et un compte n'a pas de langue — c'est l'appareil qui en a une. */
+  var MAP_LANGUE = 'en';
+  try {
+    var lu = localStorage.getItem('nxMapLangue');
+    if (lu && MAP_TEXTES[lu]) MAP_LANGUE = lu;
+  } catch (e) {}
+  /** Le texte d'une cle. L'anglais bouche les trous : une phrase dans la
+   *  mauvaise langue se voit et se repare, une phrase VIDE se lit comme un
+   *  bouton casse. */
+  function T(cle) {
+    var d = MAP_TEXTES[MAP_LANGUE] || MAP_TEXTES.en;
+    return (d && d[cle]) || MAP_TEXTES.en[cle] || cle;
+  }
+
+  /**
+   * POSE LA LANGUE SUR TOUT CE QUI EST ECRIT DANS LE PANNEAU.
+   *
+   * Les libelles vivent dans le HTML avec un `data-t` : le texte anglais y
+   * reste, ce qui laisse la page lisible avant que ce code tourne, et cette
+   * fonction le remplace. `data-tp` garde le pictogramme devant — il ne se
+   * traduit pas, et le mettre dans la table l'aurait fait recopier trois fois.
+   *
+   * Ce qui est ECRIT PAR LE CODE — la galerie, les messages, les titres de
+   * famille — ne passe pas par ici : il se repeint, et se repeindra dans la
+   * langue courante. C'est pour ca que cette fonction rappelle les peintures.
+   */
+  function appliqueLaLangue() {
+    var v = document.getElementById('nxMapVoile');
+    if (!v) return;
+    /* `data-txt` et non `data-t` : le reglage des touches se sert deja de
+       `data-t` pour porter un code clavier, et deux conventions du meme nom
+       dans la meme page finissent toujours par se marcher dessus — ici, un
+       essai qui relit la page ne saurait plus lesquelles sont des textes. */
+    var l = v.querySelectorAll('[data-txt]');
+    for (var i = 0; i < l.length; i++) {
+      l[i].textContent = (l[i].dataset.txtp || '') + T(l[i].dataset.txt);
+    }
+    var p = v.querySelectorAll('[data-txtph]');
+    for (var j = 0; j < p.length; j++) p[j].placeholder = T(p[j].dataset.txtph);
+    var b = document.querySelectorAll('#nxMapLangues button[data-lang]');
+    for (var q = 0; q < b.length; q++) {
+      b[q].classList.toggle('vedette', b[q].dataset.lang === MAP_LANGUE);
+    }
+    if (elMapPalette) {
+      /* La palette porte les titres de famille : elle doit se refaire. */
+      var hote = elMapListe || elMapPalette;
+      hote.dataset.pret = '0';
+    }
+    peintMapPalette();
+    peintMapOutils();
+    peintCreation();
+    if (mapDernier) peintMapGalerie(mapDernier);
+    mapRedessine();
+  }
+  /* La derniere liste recue, gardee pour pouvoir la repeindre dans une autre
+     langue sans la redemander au serveur. */
+  var mapDernier = null;
+
   var mapOuvert = false;
   var CATALOGUE = null;
   var IMG_CAT = {};                       // fichier -> Image, chargee une fois
@@ -3285,10 +3477,8 @@
    * de gout, tenu la ou le gout se decide.
    */
   var MAP_MODES = {
-    plat: { cote: 48, familles: ['sol', 'mur', 'objet', 'salle', 'monstre'],
-            dit: 'A grid of tiles seen from above. Grounds, walls, props, monsters.' },
-    iso:  { cote: 16, familles: ['iso'],
-            dit: 'Ready-made plots seen at three quarters. Each one brings its own ground.' },
+    plat: { cote: 48, familles: ['sol', 'mur', 'objet', 'salle', 'monstre'], dit: 'mode2dDit' },
+    iso:  { cote: 16, familles: ['iso'], dit: 'mode25dDit' },
   };
   var mapModeNeuf = 'plat';
 
@@ -3445,8 +3635,8 @@
       }
       return;
     }
-    var TITRES = { sol: 'Ground', mur: 'Walls', objet: 'Objects',
-                   monstre: 'Monsters', salle: 'Rooms', iso: 'Isometric plots' };
+    var TITRES = { sol: T('famSol'), mur: T('famMur'), objet: T('famObjet'),
+                   monstre: T('famMonstre'), salle: T('famSalle'), iso: T('famIso') };
     /* La palette est celle du MODE de la carte ouverte. Sans elle, on posait
        des parcelles isometriques sur une carte de tuiles plates et l'inverse,
        et le resultat etait deux langages dans la meme image. */
@@ -3821,7 +4011,7 @@
     var neuve = !MAP.cases.has(k);
     MAP.cases.set(k, v);
     if (neuve && MAP.cases.size > MAP_CASES_MAX) {
-      MAP.cases.delete(k); mapDit('This map is full.', true); return false;
+      MAP.cases.delete(k); mapDit(T('pleine'), true); return false;
     }
     return true;
   }
@@ -3831,7 +4021,7 @@
     var q = caseSous(ev);
     if (!q) return;
     if (mapOutil !== 'gomme' && !mapChoix) {
-      mapDit('Pick an element on the right first.', true); return;
+      mapDit(T('choisis'), true); return;
     }
     if (!ecritCase(q.c, q.l)) return;
     mapDit('');
@@ -3861,7 +4051,7 @@
     var cible = mapOutil === 'gomme' ? null : mapChoix.cle;
     /* Deja de cette couleur : le pot ne ferait rien, et empiler un etat pour
        rien rendrait l'annulation muette une fois sur deux. */
-    if (ch && depart === cible) { mapDit('Already filled with that.', true); return; }
+    if (ch && depart === cible) { mapDit(T('dejaRempli'), true); return; }
     memorise();
     var file = [[c0, l0]], vus = {}, n = MAP.cote;
     while (file.length) {
@@ -3924,7 +4114,7 @@
       var q = caseSous(ev);
       if (!q) return;
       if (mapOutil !== 'gomme' && mapOutil !== 'depart' && !mapChoix) {
-        mapDit('Pick an element on the right first.', true); return;
+        mapDit(T('choisis'), true); return;
       }
       if (mapOutil === 'depart') {
         /* Un SEUL depart : le poser ailleurs deplace le precedent. Deux
@@ -4056,10 +4246,11 @@
     if (t) {
       var mq = atelier && MAP.mode === 'iso' ? ' <i style="font-style:normal;color:#7CFF9B">2.5D</i>'
                                               : (atelier ? ' <i style="font-style:normal;color:#7f93c9">2D</i>' : '');
-      t.innerHTML = !atelier ? '&#128506; Map Editor'
-        : (mien ? '&#128506; ' + ech(MAP.nom || 'Untitled')
-                : '&#128065; ' + ech(MAP.nom || 'Untitled')
-                  + (MAP.auteur ? ' <i style="font-style:normal;color:#8fa2d6">by ' + ech(MAP.auteur) + '</i>' : ''))
+      t.innerHTML = !atelier ? '&#128506; ' + ech(T('titre'))
+        : (mien ? '&#128506; ' + ech(MAP.nom || T('sansNom'))
+                : '&#128065; ' + ech(MAP.nom || T('sansNom'))
+                  + (MAP.auteur ? ' <i style="font-style:normal;color:#8fa2d6">' + ech(T('par'))
+                                  + ' ' + ech(MAP.auteur) + '</i>' : ''))
         + mq;
     }
     var neuve = document.getElementById('nxMapNeuve');
@@ -4074,9 +4265,12 @@
 
   function peintMapGalerie(liste) {
     if (!elMapGalerie) return;
+    /* Gardee pour pouvoir la repeindre dans une autre langue sans la
+       redemander au serveur. */
+    mapDernier = liste || [];
     if (!liste || !liste.length) {
-      elMapGalerie.innerHTML = '<div class="nxmap-fiche"><b>No maps yet</b>'
-        + '<i>Press "New map" to draw the first one.</i></div>';
+      elMapGalerie.innerHTML = '<div class="nxmap-fiche"><b>' + ech(T('vide')) + '</b>'
+        + '<i>' + ech(T('videSous')) + '</i></div>';
       return;
     }
     elMapGalerie.innerHTML = '';
@@ -4096,23 +4290,24 @@
       var b = document.createElement('b');
       b.textContent = k.nom;
       var i = document.createElement('i');
-      i.textContent = (k.mienne ? 'yours' : (k.auteur ? 'by ' + k.auteur : 'by someone else'))
+      i.textContent = (k.mienne ? T('tienne')
+                                : (k.auteur ? T('par') + ' ' + k.auteur : T('autre')))
                       + ' · ' + (k.mode === 'iso' ? '2.5D' : '2D')
-                      + ' · ' + k.cote + '×' + k.cote + ' · ' + k.cases + ' tiles'
-                      + (k.jouable ? '' : ' · no start point');
+                      + ' · ' + k.cote + '×' + k.cote + ' · ' + k.cases + ' ' + T('tuiles')
+                      + (k.jouable ? '' : ' · ' + T('sansDepart'));
       var r = document.createElement('div');
       r.className = 'rang';
       var o = document.createElement('button');
       o.type = 'button';
-      o.textContent = k.mienne ? 'Edit' : 'Visit';
+      o.textContent = T(k.mienne ? 'editer' : 'visiter');
       o.addEventListener('click', function () {
-        mapDit('Loading…');
+        mapDit(T('charge'));
         if (enLigne) envoie({ type: 'carteLit', id: k.id });
       });
       r.appendChild(o);
       if (k.mienne) {
         var x = document.createElement('button');
-        x.type = 'button'; x.textContent = 'Delete';
+        x.type = 'button'; x.textContent = T('supprimer');
         x.addEventListener('click', function () {
           if (enLigne) envoie({ type: 'carteSupprime', id: k.id });
         });
@@ -4162,7 +4357,7 @@
        reapparaitrait par-dessus la galerie. */
     var neuve = document.getElementById('nxMapNeuve');
     if (neuve) neuve.classList.remove('on');
-    peintMapOutils();
+    appliqueLaLangue();
     mapDit('');
     /* LE CATALOGUE, une fois par visite de page et SANS CACHE : il est genere
        des dossiers, il change quand une planche arrive, et un navigateur qui
@@ -4171,10 +4366,10 @@
       fetch('catalogue.json', { cache: 'no-store' })
         .then(function (r) { return r.ok ? r.json() : null; })
         .then(function (j) { if (j) { CATALOGUE = j; peintMapPalette(); mapRedessine(); } })
-        ['catch'](function () { mapDit('Could not load the element catalogue.', true); });
+        ['catch'](function () { mapDit(T('catalogueKo'), true); });
     }
     if (enLigne) envoie({ type: 'carteListe' });
-    else mapDit('Not connected — maps cannot be loaded.', true);
+    else mapDit(T('horsLigneCartes'), true);
   }
   function fermeMap() {
     if (!elMapVoile) return;
@@ -4214,7 +4409,7 @@
       }
     }
     var d = document.getElementById('nxMapModeDit');
-    if (d) d.textContent = MAP_MODES[mapModeNeuf].dit;
+    if (d) d.textContent = T(MAP_MODES[mapModeNeuf].dit);
     var t = document.getElementById('nxMapTaille');
     var td = document.getElementById('nxMapTailleDit');
     if (t && td) td.textContent = t.value + ' \u00d7 ' + t.value;
@@ -4284,6 +4479,16 @@
     b('nxMapOutilGomme', function () { mapOutil = 'gomme'; peintMapOutils(); });
     b('nxMapOutilPot', function () { mapOutil = 'pot'; peintMapOutils(); });
     b('nxMapOutilRect', function () { mapOutil = 'rect'; peintMapOutils(); });
+    var lang = document.getElementById('nxMapLangues');
+    if (lang) {
+      lang.addEventListener('click', function (ev) {
+        var q = ev.target.closest ? ev.target.closest('button[data-lang]') : null;
+        if (!q || !MAP_TEXTES[q.dataset.lang]) return;
+        MAP_LANGUE = q.dataset.lang;
+        try { localStorage.setItem('nxMapLangue', MAP_LANGUE); } catch (e) {}
+        appliqueLaLangue();
+      });
+    }
     b('nxMapOutilDepart', function () { mapOutil = 'depart'; peintMapOutils(); });
     b('nxMapOutilMain', function () { mapOutil = 'main'; peintMapOutils(); });
     if (elMapCherche) {
@@ -4312,8 +4517,8 @@
     b('nxMapEnregistre', function () {
       if (!MAP || !MAP.mienne) return;
       var nom = (elMapNom && elMapNom.value || '').trim();
-      if (!nom) { mapDit('Give your map a name first.', true); return; }
-      if (!enLigne) { mapDit('Not connected.', true); return; }
+      if (!nom) { mapDit(T('nomDabord'), true); return; }
+      if (!enLigne) { mapDit(T('horsLigne'), true); return; }
       var cases = [];
       MAP.cases.forEach(function (v, k) {
         var q = k.split(',');
@@ -4323,7 +4528,7 @@
         if (v.n > 1) e.n = v.n;
         cases.push(e);
       });
-      mapDit('Saving…');
+      mapDit(T('sauvegarde'));
       var vg = vignetteDeLaCarte();
       var envoi = { nom: nom, cote: MAP.cote, mode: MAP.mode, cases: cases,
                     depart: MAP.depart || null };

@@ -1936,6 +1936,11 @@ body.nxdrag *{ cursor:grabbing !important; }
 #nxMapConfirme.on{ display:flex; }
 #nxMapConfirme b{ font:800 13px/1.3 'Archivo',system-ui,sans-serif; color:#ffd7d7; }
 #nxMapBarre b{ font:800 15px/1 'Space Mono',monospace; letter-spacing:.5px; color:#9db4ff; }
+#nxMapLangues{ display:flex; gap:4px; }
+#nxMapLangues button{ padding:6px 8px; font:700 11px/1 'Archivo',system-ui,sans-serif;
+  opacity:.55; }
+#nxMapLangues button.vedette{ opacity:1; background:rgba(30,40,74,.85);
+  border-color:rgba(157,180,255,.6); color:#dfe6ff; }
 #nxMapBarre .creux{ flex:1 1 auto; }
 #nxMapVoile button{ font:700 12px/1 'Archivo',system-ui,sans-serif; color:#dfe6ff;
   background:rgba(30,40,74,.85); border:1px solid rgba(255,255,255,.20);
@@ -2335,27 +2340,37 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
      n'aurait simplement pas existe — sans qu'aucune erreur ne le dise. -->
 <div id="nxMapVoile">
   <div id="nxMapBarre">
+    <!-- ---- LES TROIS LANGUES ----
+         En tete de barre, avant tout le reste : quelqu'un qui ne lit pas
+         l'anglais doit pouvoir changer AVANT d'avoir a comprendre les
+         boutons. Le drapeau ET le code : les drapeaux ne se dessinent pas sur
+         tous les systemes, et un carre vide ne se clique pas. -->
+    <div id="nxMapLangues" role="group" aria-label="Language">
+      <button type="button" data-lang="en" lang="en">&#127468;&#127463; EN</button>
+      <button type="button" data-lang="fr" lang="fr">&#127467;&#127479; FR</button>
+      <button type="button" data-lang="es" lang="es">&#127466;&#127480; ES</button>
+    </div>
     <b id="nxMapTitre">&#128506; Map Editor</b>
     <span id="nxMapDit"></span>
     <span class="creux"></span>
-    <input id="nxMapNom" type="text" maxlength="48" placeholder="Map name" style="display:none">
-    <button id="nxMapOutilDessin" type="button" style="display:none">Draw</button>
-    <button id="nxMapOutilGomme" type="button" style="display:none">Erase</button>
-    <button id="nxMapOutilPot" type="button" style="display:none">Fill</button>
-    <button id="nxMapOutilRect" type="button" style="display:none">Rect</button>
-    <button id="nxMapOutilDepart" type="button" style="display:none">&#9873; Start</button>
-    <button id="nxMapOutilMain" type="button" style="display:none">&#9995; Pan</button>
+    <input id="nxMapNom" type="text" maxlength="48" data-txtph="nomCarte" placeholder="Map name" style="display:none">
+    <button id="nxMapOutilDessin" type="button" data-txt="dessin" style="display:none">Draw</button>
+    <button id="nxMapOutilGomme" type="button" data-txt="gomme" style="display:none">Erase</button>
+    <button id="nxMapOutilPot" type="button" data-txt="pot" style="display:none">Fill</button>
+    <button id="nxMapOutilRect" type="button" data-txt="rect" style="display:none">Rect</button>
+    <button id="nxMapOutilDepart" type="button" data-txt="depart" data-txtp="&#9873; " style="display:none">&#9873; Start</button>
+    <button id="nxMapOutilMain" type="button" data-txt="main" data-txtp="&#9995; " style="display:none">&#9995; Pan</button>
     <span id="nxMapZoomBloc" style="display:none">
       <button id="nxMapMoins" type="button">&minus;</button>
       <button id="nxMapPlus" type="button">+</button>
-      <button id="nxMapAjuste" type="button">Fit</button>
+      <button id="nxMapAjuste" type="button" data-txt="ajuste">Fit</button>
     </span>
-    <button id="nxMapAnnule" type="button" style="display:none">&#8630; Undo</button>
-    <button id="nxMapRefais" type="button" style="display:none">&#8631; Redo</button>
-    <button id="nxMapEnregistre" type="button" class="vedette" style="display:none">Save</button>
-    <button id="nxMapRetour" type="button" style="display:none">Gallery</button>
-    <button id="nxMapNouvelle" type="button" class="vedette">New map</button>
-    <button id="nxMapFerme" type="button">Close</button>
+    <button id="nxMapAnnule" type="button" data-txt="annule" data-txtp="&#8630; " style="display:none">&#8630; Undo</button>
+    <button id="nxMapRefais" type="button" data-txt="refais" data-txtp="&#8631; " style="display:none">&#8631; Redo</button>
+    <button id="nxMapEnregistre" type="button" class="vedette" data-txt="enregistre" style="display:none">Save</button>
+    <button id="nxMapRetour" type="button" data-txt="galerie" style="display:none">Gallery</button>
+    <button id="nxMapNouvelle" type="button" class="vedette" data-txt="nouvelle">New map</button>
+    <button id="nxMapFerme" type="button" data-txt="ferme">Close</button>
   </div>
   <!-- ---- LA QUESTION QUI SAUVE UN TRAVAIL ----
        « Gallery » et « Close » remettaient la carte a zero sans un mot : on
@@ -2365,9 +2380,9 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
        fenetre du navigateur aurait fait le meme travail ; celle-ci reste dans
        le panneau, et ne peut pas etre bloquee par un telephone. -->
   <div id="nxMapConfirme">
-    <b>This map has changes you have not saved.</b>
-    <button id="nxMapJette" type="button">Discard them</button>
-    <button id="nxMapGarde" type="button" class="vedette">Keep editing</button>
+    <b data-txt="saleTitre">This map has changes you have not saved.</b>
+    <button id="nxMapJette" type="button" data-txt="jette">Discard them</button>
+    <button id="nxMapGarde" type="button" class="vedette" data-txt="gardeLa">Keep editing</button>
   </div>
   <div id="nxMapGalerie" class="on"></div>
   <!-- ---- LE CHOIX QUI NE SE REPREND PAS ----
@@ -2378,20 +2393,20 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
        choisissent donc ici, une fois, et le serveur les refuse ensuite. -->
   <div id="nxMapNeuve">
     <div class="nxmap-fiche">
-      <b>New map</b>
-      <i>Both choices are fixed once the map is created.</i>
+      <b data-txt="neuveTitre">New map</b>
+      <i data-txt="neuveSous">Both choices are fixed once the map is created.</i>
       <div class="rang" id="nxMapModes">
-        <button type="button" data-mode="plat" class="vedette">2D &middot; tiles</button>
-        <button type="button" data-mode="iso">2.5D &middot; plots</button>
+        <button type="button" data-mode="plat" data-txt="mode2d" class="vedette">2D &middot; tiles</button>
+        <button type="button" data-mode="iso" data-txt="mode25d">2.5D &middot; plots</button>
       </div>
       <i id="nxMapModeDit"></i>
-      <label class="nxmap-taille">Size
+      <label class="nxmap-taille"><span data-txt="taille">Size</span>
         <input id="nxMapTaille" type="range" min="8" max="48" step="4" value="48">
         <b id="nxMapTailleDit">48 &times; 48</b>
       </label>
       <div class="rang">
-        <button id="nxMapCree" type="button" class="vedette">Create</button>
-        <button id="nxMapNeuveNon" type="button">Cancel</button>
+        <button id="nxMapCree" type="button" class="vedette" data-txt="cree">Create</button>
+        <button id="nxMapNeuveNon" type="button" data-txt="pasMaintenant">Cancel</button>
       </div>
     </div>
   </div>
@@ -2402,7 +2417,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
            Cent trente-quatre elements en six blocs : trouver « fontaine »
            demandait de tout parcourir. Le champ reste EN HAUT quand on
            defile, sinon il faudrait remonter pour changer de recherche. -->
-      <input id="nxMapCherche" type="search" placeholder="Search elements…" autocomplete="off">
+      <input id="nxMapCherche" type="search" data-txtph="chercher" placeholder="Search elements…" autocomplete="off">
       <div id="nxMapListe"></div>
     </div>
   </div>
@@ -2474,7 +2489,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
      racine ; c'est le seul endroit d'ou elle peut couvrir tout le reste. -->
 <div id="nxFiche"></div>
 
-<script src="nexus.js?v=e8b5e1e8" defer></script>
+<script src="nexus.js?v=d50aa8bb" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 
 <script>

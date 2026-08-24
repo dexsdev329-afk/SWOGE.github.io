@@ -306,6 +306,67 @@ const servirLeSite = async () => {
     await p.waitForTimeout(500);
   };
 
+  console.log('\n-- trois drapeaux, et le panneau change de langue --');
+  /* ---- CE QUE CET ESSAI TIENT ----
+   * Que la table des textes soit complete, un autre essai le dit. Celui-ci
+   * dit que la page S'EN SERT : un dictionnaire parfait branche sur rien
+   * laisserait les boutons en anglais, et aucun controle de cles ne le
+   * verrait. On lit donc les libelles a l'ecran, avant et apres. */
+  const libelles = () => p.evaluate(() => ({
+    nouvelle: document.getElementById('nxMapNouvelle').textContent,
+    ferme: document.getElementById('nxMapFerme').textContent,
+    titre: document.getElementById('nxMapTitre').textContent,
+    drapeaux: document.querySelectorAll('#nxMapLangues button[data-lang]').length,
+    choisi: (document.querySelector('#nxMapLangues button.vedette') || {}).dataset,
+  }));
+  const enAnglais = await libelles();
+  eq(enAnglais.drapeaux, 3, 'trois drapeaux dans la barre');
+  eq(enAnglais.nouvelle, 'New map', 'et l anglais par defaut');
+  eq(enAnglais.choisi && enAnglais.choisi.lang, 'en', 'le drapeau anglais est celui qui est marque');
+  await p.click('#nxMapLangues button[data-lang="fr"]');
+  await p.waitForTimeout(400);
+  const enFrancais = await libelles();
+  eq(enFrancais.nouvelle, 'Nouvelle carte', 'le francais change le bouton');
+  eq(enFrancais.ferme, 'Fermer', 'et celui d a cote');
+  ok(/Éditeur/.test(enFrancais.titre), 'et le titre du panneau : ' + enFrancais.titre);
+  await p.click('#nxMapLangues button[data-lang="es"]');
+  await p.waitForTimeout(400);
+  eq((await libelles()).nouvelle, 'Mapa nuevo', 'l espagnol aussi');
+  /* ---- ET LE CHOIX SURVIT A LA FERMETURE ----
+   * Une langue a rechoisir a chaque ouverture est une langue qu'on ne
+   * choisit pas. */
+  await p.click('#nxMapFerme');
+  await p.waitForTimeout(600);
+  const garde = await p.evaluate(() => {
+    try { return localStorage.getItem('nxMapLangue'); } catch (e) { return null; }
+  });
+  eq(garde, 'es', 'le choix est garde dans le navigateur');
+  /* On rouvre par le meme chemin qu'un joueur : on s'ecarte, on revient. */
+  await p.keyboard.down('ArrowRight'); await p.waitForTimeout(1200); await p.keyboard.up('ArrowRight');
+  let revenu = false;
+  const tr = Date.now();
+  while (Date.now() - tr < 25000 && !revenu) {
+    const vu = await p.evaluate(() => {
+      const q = window.__vu || {};
+      window.__vu = { moi: null, boxe: null };
+      return q;
+    });
+    if (!vu.moi) { await p.waitForTimeout(200); continue; }
+    if (!vu.boxe) { await pas('ArrowLeft', 400); }
+    else {
+      const dx = vu.boxe.x - vu.moi.x, dy = vu.boxe.y - vu.moi.y;
+      if (Math.abs(dx) > Math.abs(dy)) await pas(dx < 0 ? 'ArrowLeft' : 'ArrowRight', 200);
+      else await pas(dy < 0 ? 'ArrowUp' : 'ArrowDown', 200);
+    }
+    revenu = await panneauOuvert();
+  }
+  ok(revenu, 'on revient a la machine');
+  eq((await libelles()).nouvelle, 'Mapa nuevo', 'et le panneau rouvre en espagnol');
+  /* On repasse en anglais : le reste de l essai lit des libelles anglais. */
+  await p.click('#nxMapLangues button[data-lang="en"]');
+  await p.waitForTimeout(400);
+  eq((await libelles()).nouvelle, 'New map', 'et l on peut revenir a l anglais');
+
   console.log('\n-- on cherche dans la palette --');
   await cree('plat', 48);
   const cherche = async (q) => {
@@ -676,12 +737,24 @@ const servirLeSite = async () => {
     if (!n2) return null;
     return Math.floor((sx / n2 - cm.x0) / cm.p) + ',' + Math.floor((sy / n2 - cm.y0) / cm.p);
   }, { p: camD2.p, x0: camD2.x0, y0: camD2.y0 });
+  /* ---- ON ATTEND LE DESSIN, ON NE COMPTE PAS DESSUS ----
+   * La grille se repeint a la prochaine image, pas au geste : un demi-seconde
+   * suffit presque toujours, et « presque » veut dire un essai qui tombe une
+   * fois sur cinq en accusant le code. */
+  const attendLeDepart = async (vise) => {
+    const fin = Date.now() + 6000;
+    let ou = null;
+    while (Date.now() < fin) {
+      ou = await ouEstLeDepart();
+      if (ou === vise) return ou;
+      await p.waitForTimeout(250);
+    }
+    return ou;
+  };
   await geste(camD2, [{ t: 'down', c: 8, l: 3, id: 53 }, { t: 'up', c: 8, l: 3, id: 53 }]);
-  await p.waitForTimeout(400);
-  eq(await ouEstLeDepart(), '8,3', 'le depart deplace se voit sur le dessin');
+  eq(await attendLeDepart('8,3'), '8,3', 'le depart deplace se voit sur le dessin');
   await p.click('#nxMapAnnule');
-  await p.waitForTimeout(500);
-  eq(await ouEstLeDepart(), '5,6', 'et « Undo » le ramene ou il etait');
+  eq(await attendLeDepart('5,6'), '5,6', 'et « Undo » le ramene ou il etait');
 
   ok(erreurs.length === 0, 'aucune erreur de page' + (erreurs.length ? ' — ' + erreurs[0] : ''));
   await nav.close(); site.stop();

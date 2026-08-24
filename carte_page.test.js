@@ -571,21 +571,34 @@ const servirLeSite = async () => {
   /* ---- ET LA MAIN DEPLACE ---- */
   await p.evaluate(() => { document.getElementById('nxMapOutilMain').click(); });
   const vueAvantMain = await cadre();
+  /* ---- DE COMBIEN ON POUSSE SE MESURE, IL NE SE DECIDE PAS ----
+   * `cadre` lit le RECTANGLE DESSINE : si la carte sort du canevas, le bord
+   * du canevas devient le bord mesure, et la taille d'une case se met a
+   * retrecir sans que le zoom ait bouge. Quatre-vingt-dix pixels tenaient
+   * tant que la scene faisait toute la largeur ; le panneau de gauche lui en
+   * a pris cent soixante-seize, et l'essai s'est mis a accuser le zoom d'un
+   * defaut de sa propre mesure. On pousse donc de ce qui RESTE, moitie
+   * moins, et l'on verifie qu'il en reste assez pour que le geste veuille
+   * dire quelque chose. */
+  const marge = vueAvantMain.W - (vueAvantMain.x1 - vueAvantMain.x0 + 1);
+  const pousse = Math.min(90, Math.floor(marge / 2) - 4);
+  ok(pousse >= 20, `il reste ${marge} px autour de la carte : on peut la pousser de ${pousse}`);
   await p.evaluate((cm) => {
     const g = document.getElementById('nxMapGrille');
     const r = g.getBoundingClientRect();
-    const dx = 90 * r.width / cm.W;
+    const dx = cm.d * r.width / cm.W;
     const x = r.left + r.width / 2, y = r.top + r.height / 2;
     g.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 31, clientX: x, clientY: y }));
     g.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerId: 31, clientX: x + dx, clientY: y }));
     window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 31 }));
-  }, { W: vueAvantMain.W });
+  }, { W: vueAvantMain.W, d: pousse });
   await p.waitForTimeout(400);
   const vueApresMain = await cadre();
-  ok(Math.abs((vueApresMain.x0 - vueAvantMain.x0) - 90) <= 3,
-     `la main deplace la carte de ${Math.round(vueApresMain.x0 - vueAvantMain.x0)} px pour 90 demandes`);
+  ok(Math.abs((vueApresMain.x0 - vueAvantMain.x0) - pousse) <= 3,
+     `la main deplace la carte de ${Math.round(vueApresMain.x0 - vueAvantMain.x0)} px pour ${pousse} demandes`);
   ok(Math.round(vueApresMain.p * 100) === Math.round(vueAvantMain.p * 100),
-     'et ne change pas le zoom en le faisant');
+     `et ne change pas le zoom en le faisant (${vueApresMain.p.toFixed(2)} px par case,`
+     + ` ${vueAvantMain.p.toFixed(2)} avant)`);
   const rienPose = await compte({ p: vueApresMain.p, x0: vueApresMain.x0, y0: vueApresMain.y0 });
   eq(rienPose.t, 1, 'et la main ne pose aucune case en passant sur la grille');
 
@@ -759,9 +772,12 @@ const servirLeSite = async () => {
     const dt = await (await fetch(base + '/admin/cartes?id=' + tk.id,
                                   { headers: { 'x-admin-key': 'k' } })).json();
     /* L'objet vit dans sa propre liste depuis les couches : c'est la qu'on va
-       chercher son quart de tour. */
+       chercher son angle. En DEGRES depuis que la glissiere existe — le
+       bouton, lui, ne donne plus « un quart de tour de plus » mais « le
+       prochain multiple de quatre-vingt-dix », pour qu'on puisse toujours
+       retomber d equerre depuis un angle libre. */
     const cel = (dt.carte.objets || []).find((q) => q.c === iso.cc && q.l === iso.ll);
-    eq(cel && cel.a, 1, 'et l objet porte son quart de tour');
+    eq(cel && cel.g, 90, 'et l objet porte son angle, en degres');
     eq(cel && cel.z, 0, 'sur la premiere couche, qui est celle ou l on posait');
   }
   await lache();
@@ -1061,6 +1077,267 @@ const servirLeSite = async () => {
   await p.evaluate(() => { document.querySelectorAll('#nxMapFicheCouches button')[5].click(); });
   await p.waitForTimeout(500);
   eq((await couches()).fiche, 5, 'le changer de couche se voit tout de suite');
+
+  console.log('\n-- ce qu on vient de poser est ce qu on tient --');
+  /* ---- CE QUI ETAIT DEMANDE ----
+   * « Si on vient de poser un item, faut qu il soit selectionne directement,
+   * qu on le voie en haut a droite — on est encore sur l ancienne selection. »
+   * La fiche montrait le PRECEDENT : on posait une maison, on regardait a
+   * droite pour la regler, et l'on reglait le tonneau d avant.
+   *
+   * L'essai part de l'etat FAUTIF : on tient encore l'element de la section
+   * precedente. Sans ce depart, poser le premier element d'une carte vide
+   * aurait rempli la fiche par hasard, et la verification aurait passe meme
+   * si personne n'avait rien change. */
+  eq((await couches()).nom, cles[1],
+     'avant de poser, la fiche montre encore le precedent — c est l etat fautif');
+  const cle3 = await p.evaluate(() =>
+    [...document.querySelectorAll('#nxMapPalette .nxmap-el[data-fam="objet"]')][2].dataset.cle);
+  await p.evaluate((k) => {
+    document.querySelector('#nxMapPalette .nxmap-el[data-cle="' + k + '"]').click();
+    document.getElementById('nxMapOutilDessin').click();
+  }, cle3);
+  /* ---- OU L ON POSE N EST PAS INDIFFERENT ----
+   * `largeurDessinee` prend son FOND sur les deux premieres cases de la
+   * carte. Pose en 3, un element de quatre cases s etend jusqu a la case et
+   * demie — il mordait donc sur la zone de reference, le fond montait, le
+   * seuil avec lui, et seule la partie la plus claire du dessin comptait. Le
+   * decaler d une case le sortait de cette zone, le seuil retombait, tout le
+   * dessin comptait, et la mesure annoncait un deplacement VERS LA GAUCHE
+   * pour un decalage vers la droite. Le defaut etait dans la regle, pas dans
+   * le produit. On pose donc loin de la reference. */
+  await geste(camC2, [{ t: 'down', c: 10, l: 12, id: 78 }, { t: 'up', c: 10, l: 12, id: 78 }]);
+  await p.waitForTimeout(500);
+  eq((await couches()).nom, cle3,
+     'des qu on pose, la fiche montre CE QU ON VIENT DE POSER');
+  /* Et l'outil n'a pas change : on tient sans avoir quitte le pinceau, sinon
+     le trait suivant ne partirait pas. */
+  ok(await p.evaluate(() => document.getElementById('nxMapOutilDessin')
+                              .classList.contains('vedette')),
+     'et l on est toujours au pinceau : tenir n interrompt pas le trait');
+
+  console.log('\n-- les trois glissieres : l angle et les deux axes --');
+  /* ---- CE QUI ETAIT DEMANDE ----
+   * « Le tourner est nul, faudrait des slides pour changer les axes et etre
+   * plus precis. » Le bouton ne donnait que quatre positions, et la case
+   * etait la seule unite de placement — on ne pouvait ni poser une passerelle
+   * de biais, ni coller un toit sur son mur.
+   * On mesure ce que les glissieres FONT AU DESSIN : un champ ecrit et jamais
+   * lu serait exact et sans effet. */
+  const camG = await cadre(16);
+  const bande = { p: camG.p, x0: camG.x0, x1: camG.x1, y0: camG.y0 };
+  /* On l'agrandit : un objet d'une case fait quinze pixels a l'ecran, et un
+     decalage d'une case s'y mesurerait a la louche. */
+  for (let i = 0; i < 3; i++) { await p.click('#nxMapPlusGrand'); await p.waitForTimeout(200); }
+  await p.waitForTimeout(500);
+  /* Le bas du dessin, dans les colonnes de l'element : c'est ce qui bouge
+     quand on le decale VERS LE BAS, et rien d'autre sur la carte ne se
+     trouve dans ces colonnes-la. Le seuil se mesure comme ailleurs, sur deux
+     cases entieres et vides — un chiffre en dur prendrait un croisement de
+     grille pour du dessin. */
+  const piedDessine = (cam2, xa, xb, ya, yb) => p.evaluate(([cam2, xa, xb, ya, yb]) => {
+    const g = document.getElementById('nxMapGrille');
+    const d = g.getContext('2d').getImageData(0, 0, g.width, g.height).data;
+    const somme = (x, y) => { const i = (y * g.width + x) * 4; return d[i] + d[i + 1] + d[i + 2]; };
+    let fond = 0;
+    const gx = Math.round(cam2.x0) + 1, gl = Math.max(10, Math.ceil(cam2.p * 2));
+    const gy = Math.round(cam2.y0) + 1;
+    for (let x = gx; x < gx + gl; x++)
+      for (let y = gy; y < gy + gl; y++) fond = Math.max(fond, somme(x, y));
+    const seuil = fond + 40;
+    let bas = -1;
+    for (let x = Math.max(0, Math.round(xa)); x <= Math.min(g.width - 1, Math.round(xb)); x++)
+      for (let y = Math.max(0, Math.round(ya)); y <= Math.min(g.height - 1, Math.round(yb)); y++)
+        if (somme(x, y) > seuil && y > bas) bas = y;
+    return { bas, fond, seuil };
+  }, [cam2, xa, xb, ya, yb]);
+  /* Les bornes du balayage : les colonnes de l'element, et une hauteur qui
+     evite les DEUX bords de la carte — le cadre est un trait clair, et le
+     compter aurait rendu le bas de la carte a chaque mesure. */
+  const colA = () => bande.x0 + 8.2 * bande.p, colB = () => bande.x0 + 13.8 * bande.p;
+  const ligA = () => bande.y0 + 8 * bande.p, ligB = () => bande.y0 + 15.4 * bande.p;
+  const regle = async (id, v) => {
+    await p.evaluate(([id, v]) => {
+      const e = document.getElementById(id);
+      e.value = String(v);
+      e.dispatchEvent(new Event('input', { bubbles: true }));
+      e.dispatchEvent(new Event('change', { bubbles: true }));
+    }, [id, v]);
+    await p.waitForTimeout(450);
+  };
+  /* Ce que la fiche AFFICHE de l'element tenu : c'est aussi ce que voit celui
+     qui s'en sert, et cela suffit a dire pourquoi une mesure a bouge. */
+  const tenuEtat = () => p.evaluate(() => ({
+    nom: (document.getElementById('nxMapFicheNom') || {}).textContent,
+    taille: (document.getElementById('nxMapFicheTaille') || {}).textContent,
+    x: (document.getElementById('nxMapRegX') || {}).value,
+    y: (document.getElementById('nxMapRegY') || {}).value,
+    g: (document.getElementById('nxMapRegG') || {}).value,
+  }));
+  const etat0 = await tenuEtat();
+  const droit = await largeurDessinee({ ll: 12 }, bande);
+  ok(droit.max > droit.min,
+     `l element pose se mesure : ${droit.max - droit.min + 1} px de large`
+     + ` (${etat0.nom}, ${etat0.taille}, colonnes ${droit.min}..${droit.max},`
+     + ` case de ${Math.round(bande.p)} px, x0=${Math.round(bande.x0)})`);
+  const piedDroit = await piedDessine(bande, colA(), colB(), ligA(), ligB());
+  ok(piedDroit.bas > 0, `son pied est a ${piedDroit.bas} px`);
+
+  await regle('nxMapRegX', 100);
+  const etatX = await tenuEtat();
+  const pousseX = await largeurDessinee({ ll: 12 }, bande);
+  ok(Math.abs((pousseX.min - droit.min) - bande.p) <= 4,
+     `la glissiere X le pousse d une case exactement :`
+     + ` ${Math.round(pousseX.min - droit.min)} px pour une case de ${Math.round(bande.p)}`
+     + ` (colonnes ${droit.min}..${droit.max} puis ${pousseX.min}..${pousseX.max},`
+     + ` glissiere a ${etatX.x}, taille ${etatX.taille})`);
+  await regle('nxMapRegX', 0);
+  const remisAZero = await largeurDessinee({ ll: 12 }, bande);
+  ok(Math.abs(remisAZero.min - droit.min) <= 3, 'et zero le ramene exactement ou il etait');
+
+  /* ---- ET L ON ATTRAPE CE QU ON VOIT, PAS LA CASE D ORIGINE ----
+   * Le decalage deplace le DESSIN ; s il ne deplacait pas aussi la zone
+   * sensible, l element se prendrait a cote de lui-meme — et plus il serait
+   * decale, plus le clic tomberait dans le vide. On le prouve des DEUX
+   * cotes : la meme case tient l element quand il est decale, et ne tient
+   * plus rien quand il ne l est plus. Un seul des deux passerait tout seul.
+   */
+  await regle('nxMapRegX', 100);
+  await p.evaluate(() => { document.getElementById('nxMapOutilChoix').click(); });
+  const attrape = async (c, l, id) => {
+    await geste(camG, [{ t: 'down', c: c, l: l, id: id }, { t: 'up', c: c, l: l, id: id }]);
+    await p.waitForTimeout(500);
+    return p.evaluate(() => ({
+      vu: document.getElementById('nxMapFiche').classList.contains('on'),
+      nom: (document.getElementById('nxMapFicheNom') || {}).textContent,
+    }));
+  };
+  const loin = await attrape(13, 11, 79);
+  ok(loin.vu && loin.nom === cle3,
+     `decale, il s attrape a sa place NOUVELLE : ${loin.vu ? loin.nom : 'rien'}`);
+  await regle('nxMapRegX', 0);
+  const plusRien = await attrape(13, 11, 80);
+  ok(!plusRien.vu,
+     'et remis droit, la meme case ne tient plus rien — c est le DESSIN qu on'
+     + ' attrape, pas la case ou l element fut pose');
+  const repris = await attrape(10, 11, 81);
+  ok(repris.vu && repris.nom === cle3, 'on le reprend par son milieu pour la suite');
+  /* Retour au pinceau AVANT de mesurer : sous « choisir », le cadre jaune est
+     dessine sur l emprise et se mesurerait comme du dessin. */
+  await p.evaluate(() => { document.getElementById('nxMapOutilDessin').click(); });
+  await p.waitForTimeout(400);
+
+  await regle('nxMapRegY', 100);
+  const piedBas = await piedDessine(bande, colA(), colB(), ligA(), ligB());
+  ok(Math.abs((piedBas.bas - piedDroit.bas) - bande.p) <= 4,
+     `la glissiere Y le descend d une case exactement :`
+     + ` ${Math.round(piedBas.bas - piedDroit.bas)} px pour une case de ${Math.round(bande.p)}`);
+  await regle('nxMapRegY', 0);
+
+  /* ---- L ANGLE, ET LE BOUTON QUI REMET D EQUERRE ----
+   * Le bouton ne fait PAS « plus quatre-vingt-dix » : depuis dix-sept degres,
+   * il rendrait cent sept, et l'on ne pourrait plus jamais retomber droit
+   * autrement qu'en visant le zero a la glissiere. */
+  await regle('nxMapRegG', 17);
+  eq(await p.evaluate(() => document.getElementById('nxMapRegGVal').textContent), '17°',
+     'la glissiere d angle affiche le degre choisi');
+  await p.click('#nxMapTourne'); await p.waitForTimeout(450);
+  eq(await p.evaluate(() => document.getElementById('nxMapRegG').value), '90',
+     'et le bouton ne rajoute pas quatre-vingt-dix a dix-sept : il remet d equerre');
+  await p.click('#nxMapTourne'); await p.waitForTimeout(450);
+  eq(await p.evaluate(() => document.getElementById('nxMapRegG').value), '180',
+     'puis avance d un quart de tour a la fois');
+
+  /* ---- ET TOUT CELA ARRIVE JUSQU AU SERVEUR ---- */
+  await regle('nxMapRegG', 47);
+  await regle('nxMapRegX', -30);
+  /* Deux gestes de suite sur la MEME glissiere : l annulation devra ramener
+     quarante, et non zero. Voir plus bas — partir de zero ne prouvait rien. */
+  await regle('nxMapRegY', 40);
+  await regle('nxMapRegY', 12);
+  await p.fill('#nxMapNom', 'Ma carte reglee');
+  await p.click('#nxMapEnregistre');
+  await p.waitForTimeout(1800);
+  const jr = await (await fetch(base + '/admin/cartes', { headers: { 'x-admin-key': 'k' } })).json();
+  const kr = (jr.cartes || []).find((k) => k.nom === 'Ma carte reglee');
+  ok(!!kr, 'le serveur a garde la carte reglee');
+  if (kr) {
+    const dr = await (await fetch(base + '/admin/cartes?id=' + kr.id,
+                                  { headers: { 'x-admin-key': 'k' } })).json();
+    const q = (dr.carte.objets || []).find((o) => o.c === 10 && o.l === 12);
+    eq(q && q.g, 47, 'avec l angle au degre pres');
+    eq(q && q.dx, -30, 'et le decalage en X');
+    eq(q && q.dy, 12, 'et celui en Y');
+  }
+  /* ---- UNE ANNULATION PAR GESTE, ET QUI RAMENE CE QU IL Y AVAIT AVANT ----
+   * Deux pieges ici, et le second a failli passer.
+   * Le premier : une entree dans la pile par DEGRE aurait demande trente
+   * clics pour defaire un geste — on empile donc au premier cran et l on
+   * rouvre au lacher.
+   * Le second : verifier qu on revient a ZERO ne prouve rien. Une copie de
+   * pile qui PERD le champ rend zero elle aussi, et l essai passe pour la
+   * mauvaise raison — verifie en retirant le champ de la copie : il passait
+   * encore. On revient donc a une valeur PRECEDENTE NON NULLE, que seule une
+   * copie complete peut rendre. */
+  await p.click('#nxMapAnnule'); await p.waitForTimeout(700);
+  eq(await p.evaluate(() => document.getElementById('nxMapRegY').value), '40',
+     'et « Undo » ramene la valeur PRECEDENTE d un coup, pas zero et pas degre par degre');
+  await p.click('#nxMapAnnule'); await p.waitForTimeout(700);
+  const remonte = await tenuEtat();
+  eq(remonte.y, '0', 'un second « Undo » remonte encore d un geste');
+  eq(remonte.g, '47', "et l angle n est pas perdu en chemin : la copie de la pile porte TOUS les champs");
+  eq(remonte.x, '-30', 'le decalage en X non plus');
+
+  console.log('\n-- le panneau de gauche : ce qu on a deja pose --');
+  /* ---- CE QUI ETAIT DEMANDE ----
+   * « Sur la gauche faudrait un panneau voir ce qu on a deja pose et pouvoir
+   * le selectionner via le panneau de gauche. »
+   * SA RAISON D ETRE tient en une phrase : un element cache SOUS un autre ne
+   * se retrouve pas au clic. On le prouve — celui de la couche basse, sur la
+   * meme case, que la carte ne rend jamais. */
+  const listeGauche = () => p.evaluate(() => ({
+    vu: document.getElementById('nxMapPoses').classList.contains('on'),
+    titres: [...document.querySelectorAll('#nxMapPosesListe h5')].map((h) => h.textContent),
+    lignes: [...document.querySelectorAll('#nxMapPosesListe .nxmap-pose')].map((b) => ({
+      i: b.dataset.i,
+      nom: b.querySelector('span').textContent,
+      ou: b.querySelector('i').textContent,
+      image: !!(b.querySelector('img') || {}).src,
+      pris: b.classList.contains('pris'),
+    })),
+  }));
+  const gauche = await listeGauche();
+  ok(gauche.vu, 'le panneau est la, a gauche de la scene');
+  eq(gauche.lignes.length, 3, 'et il porte les trois elements poses');
+  ok(gauche.lignes.every((l) => l.image), 'chacun avec sa vignette');
+  eq(gauche.lignes.filter((l) => l.pris).length, 1, 'une seule ligne est allumee');
+  eq(gauche.lignes.find((l) => l.pris).nom, cle3,
+     'et c est celle de l element qu on tient');
+  ok(gauche.titres.length >= 2,
+     `ranges par couche : ${gauche.titres.join(' | ')}`);
+  /* Les deux de la case 8,8 sont bien tous les deux la, alors que la carte
+     n'en montre qu'un. */
+  eq(gauche.lignes.filter((l) => l.ou.indexOf('8,8') === 0).length, 2,
+     'les DEUX elements empiles sur la case 8,8 y figurent, alors que la carte'
+     + " n'en montre qu'un");
+  /* ---- ET L ON ATTRAPE CELUI DU DESSOUS ----
+   * Au clic sur la carte, c'est celui du dessus qui vient — verifie plus
+   * haut. Par le panneau, on prend celui qu'on veut. */
+  const ligneBasse = gauche.lignes.find((l) => l.nom === cles[0]);
+  ok(!!ligneBasse, `la ligne de l element cache existe : ${cles[0]}`);
+  await p.evaluate((i) => {
+    document.querySelector('#nxMapPosesListe .nxmap-pose[data-i="' + i + '"]').click();
+  }, ligneBasse.i);
+  await p.waitForTimeout(500);
+  eq((await couches()).nom, cles[0],
+     "un clic dans le panneau tient l element CACHE — ce que le clic sur la carte"
+     + ' ne peut pas faire');
+  ok(await p.evaluate(() => document.getElementById('nxMapOutilChoix')
+                              .classList.contains('vedette')),
+     'et l on passe a « choisir », pour que les poignees suivent le cadre');
+  const apresClic = await listeGauche();
+  eq(apresClic.lignes.filter((l) => l.pris).length, 1, 'une seule ligne reste allumee');
+  eq(apresClic.lignes.find((l) => l.pris).nom, cles[0], 'et c est la bonne');
 
   console.log('\n-- et l on va MARCHER dedans --');
   /* ---- LE BOUT DU CHEMIN ----

@@ -3260,6 +3260,15 @@
       choisir: 'Select',
       potSolSeul: 'Fill works on grounds. Pick a ground on the right.',
       couche: 'Layer',
+      poses: 'Placed',
+      posesVide: 'Nothing placed yet.',
+      aidePoses: 'Everything you have placed, layer by layer. Click a line to select it.',
+      regleAngle: 'Angle',
+      regleX: 'Shift X',
+      regleY: 'Shift Y',
+      aideRegleAngle: 'Turn it to any angle. Pixel art turns blurry off-square \u2014 the \u21bb button snaps it back.',
+      aideRegleX: 'Nudge it left or right, up to one tile.',
+      aideRegleY: 'Nudge it up or down, up to one tile.',
       aideCouche: 'Which layer new elements go on. Higher layers are drawn on top.',
       aideEditer: 'Open this map and change it.',
       aideVisiter: 'Look at this map. You cannot change someone else\'s.',
@@ -3285,14 +3294,13 @@
       aideLangue: 'Change the editor language.',
       aidePlusPetit: 'Make it smaller by one tile.',
       aidePlusGrand: 'Make it bigger by one tile. Drag its green corner for more.',
-      aideTourne: 'Turn it a quarter turn.',
+      aideTourne: 'Snap it to the next square angle \u2014 90, 180, 270, 0.',
       aideEfface: 'Remove this element from the map.',
       aideLache: 'Stop holding it.',
       aideCherche: 'Type to narrow the list below.',
       jouer: 'Play',
-      tourne: 'Turn',
       rienChoisi: 'Tap a placed element to select it.',
-      choisi: 'Selected — resize it with − and +, turn it with Turn.',
+      choisi: 'Selected \u2014 resize it with \u2212 and +, and use the sliders to place it exactly.',
       nouvelle: 'New map', ferme: 'Close', galerie: 'Gallery', enregistre: 'Save',
       dessin: 'Draw', gomme: 'Erase', pot: 'Fill', rect: 'Rect',
       depart: 'Start', main: 'Pan', annule: 'Undo', refais: 'Redo', ajuste: 'Fit',
@@ -3328,6 +3336,15 @@
       choisir: 'Choisir',
       potSolSeul: 'Le pot remplit du sol. Choisissez un sol a droite.',
       couche: 'Couche',
+      poses: 'Posés',
+      posesVide: 'Rien de posé pour l\u2019instant.',
+      aidePoses: 'Tout ce que vous avez posé, couche par couche. Cliquez une ligne pour la tenir.',
+      regleAngle: 'Angle',
+      regleX: 'Décalage X',
+      regleY: 'Décalage Y',
+      aideRegleAngle: 'Lui donne l\u2019angle que vous voulez. Hors d\u2019équerre, un dessin en pixels devient flou \u2014 le bouton \u21bb le redresse.',
+      aideRegleX: 'Le décale à gauche ou à droite, d\u2019une case au plus.',
+      aideRegleY: 'Le décale en haut ou en bas, d\u2019une case au plus.',
       aideCouche: 'La couche ou vont les elements poses. Les couches hautes passent devant.',
       aideEditer: 'Ouvre cette carte pour la modifier.',
       aideVisiter: 'Regarde cette carte. On ne modifie pas celle d\'un autre.',
@@ -3353,14 +3370,13 @@
       aideLangue: 'Change la langue de l\'editeur.',
       aidePlusPetit: 'Reduit d\'une case.',
       aidePlusGrand: 'Agrandit d\'une case. Tirez son coin vert pour aller plus vite.',
-      aideTourne: 'Lui donne un quart de tour.',
+      aideTourne: 'Le remet d\u2019équerre au quart de tour suivant \u2014 90, 180, 270, 0.',
       aideEfface: 'Retire cet element de la carte.',
       aideLache: 'Arrete de le tenir.',
       aideCherche: 'Tapez pour reduire la liste en dessous.',
       jouer: 'Visiter',
-      tourne: 'Tourner',
       rienChoisi: 'Touchez un élément posé pour le choisir.',
-      choisi: 'Choisi — agrandissez-le avec − et +, tournez-le avec Tourner.',
+      choisi: 'Choisi — agrandissez-le avec − et +, et servez-vous des glissières pour le poser au pixel près.',
       nouvelle: 'Nouvelle carte', ferme: 'Fermer', galerie: 'Galerie', enregistre: 'Enregistrer',
       dessin: 'Pinceau', gomme: 'Gomme', pot: 'Pot', rect: 'Rect.',
       depart: 'Départ', main: 'Main', annule: 'Annuler', refais: 'Rétablir', ajuste: 'Cadrer',
@@ -3399,6 +3415,15 @@
       choisir: 'Elegir',
       potSolSeul: 'El relleno funciona con suelos. Elige un suelo a la derecha.',
       couche: 'Capa',
+      poses: 'Colocados',
+      posesVide: 'Aún no hay nada colocado.',
+      aidePoses: 'Todo lo que has colocado, capa por capa. Pulsa una línea para cogerlo.',
+      regleAngle: 'Ángulo',
+      regleX: 'Desfase X',
+      regleY: 'Desfase Y',
+      aideRegleAngle: 'Le da el ángulo que quieras. Fuera de escuadra, el pixel art sale borroso \u2014 el botón \u21bb lo endereza.',
+      aideRegleX: 'Lo desplaza a izquierda o derecha, como mucho una casilla.',
+      aideRegleY: 'Lo desplaza arriba o abajo, como mucho una casilla.',
       aideCouche: 'La capa donde van los elementos colocados. Las capas altas van delante.',
       aideEditer: 'Abre este mapa para cambiarlo.',
       aideVisiter: 'Mira este mapa. El de otra persona no se puede cambiar.',
@@ -3424,14 +3449,13 @@
       aideLangue: 'Cambia el idioma del editor.',
       aidePlusPetit: 'Lo hace una casilla mas pequeno.',
       aidePlusGrand: 'Lo hace una casilla mas grande. Tira de su esquina verde para ir mas rapido.',
-      aideTourne: 'Le da un cuarto de vuelta.',
+      aideTourne: 'Lo pone en escuadra en el siguiente cuarto de vuelta \u2014 90, 180, 270, 0.',
       aideEfface: 'Quita este elemento del mapa.',
       aideLache: 'Deja de sostenerlo.',
       aideCherche: 'Escribe para reducir la lista de abajo.',
       jouer: 'Jugar',
-      tourne: 'Girar',
       rienChoisi: 'Toca un elemento colocado para elegirlo.',
-      choisi: 'Elegido — cámbialo de tamaño con − y +, gíralo con Girar.',
+      choisi: 'Elegido — cámbialo de tamaño con − y +, y usa los deslizadores para colocarlo con precisión.',
       nouvelle: 'Mapa nuevo', ferme: 'Cerrar', galerie: 'Galería', enregistre: 'Guardar',
       dessin: 'Pincel', gomme: 'Borrar', pot: 'Rellenar', rect: 'Rect.',
       depart: 'Inicio', main: 'Mover', annule: 'Deshacer', refais: 'Rehacer', ajuste: 'Ajustar',
@@ -3651,7 +3675,7 @@
       /* On redessine quand elle arrive : sans ca, la palette et la grille
          resteraient vides jusqu'au prochain geste, et l'on croirait que
          l'element n'existe pas. */
-      i.onload = function () { mapRedessine(); peintMapPalette(); };
+      i.onload = function () { mapRedessine(); peintMapPalette(); remplisVignettes(); };
       IMG_CAT[e.fichier] = i;
     }
     return IMG_CAT[e.fichier];
@@ -3675,7 +3699,7 @@
    * une facade ecrasee dans un carre ne ressemble plus a rien, et c'est en
    * regardant la palette qu'on choisit.
    */
-  function peintElement(c2, e, x, y, w, h, remplir, tour) {
+  function peintElement(c2, e, x, y, w, h, remplir, deg) {
     var im = plancheCat(e);
     if (!im.complete || !im.naturalWidth) return false;
     var cw = im.naturalWidth / Math.max(1, e.cadres);
@@ -3683,13 +3707,17 @@
     var k = Math.min(w / cw, h / im.naturalHeight);
     var lw = cw * k, lh = im.naturalHeight * k;
     var dx = x + (w - lw) / 2, dy = y + h - lh;
-    /* ---- LE QUART DE TOUR SE PREND AU CENTRE DU DESSIN ----
+    /* ---- L'ANGLE SE PREND AU CENTRE DU DESSIN ----
      * Pris au pied, un objet tourne partirait de cote au lieu de pivoter sur
-     * place, et l'on ne saurait plus ou il va atterrir. */
-    if (tour) {
+     * place, et l'on ne saurait plus ou il va atterrir.
+     * EN DEGRES, et non plus en quarts de tour : c'est une glissiere qui le
+     * donne maintenant, et une glissiere a quatre crans ne sert a rien. Un
+     * seul endroit lit l'unite, donc elle ne peut pas se contredire d'un
+     * dessin a l'autre. */
+    if (deg) {
       c2.save();
       c2.translate(dx + lw / 2, dy + lh / 2);
-      c2.rotate(tour * Math.PI / 2);
+      c2.rotate(deg * Math.PI / 180);
       c2.drawImage(im, 0, 0, cw, im.naturalHeight, -lw / 2, -lh / 2, lw, lh);
       c2.restore();
       return true;
@@ -3936,8 +3964,8 @@
     var o = objetDe(mapSel);
     if (!o) return null;
     var n = o.n || 1, p = mapVue.p;
-    var x = mapVue.x + (o.c + 0.5) * p - n * p / 2;
-    var y = mapVue.y + (o.l + 1) * p - n * p;
+    var x = mapVue.x + (o.c + 0.5) * p - n * p / 2 + decalageX(o, p);
+    var y = mapVue.y + (o.l + 1) * p - n * p + decalageY(o, p);
     return { x: x, y: y, t: n * p, n: n, p: p };
   }
   /** Sur quelle poignee tombe ce point de canevas, ou `null`. */
@@ -3996,6 +4024,15 @@
    * et c'est la vignette, celle qu'on regarde AVANT d'ouvrir, qui aurait
    * menti.
    */
+  /* ---- LE DECALAGE, LU AU MEME ENDROIT PAR TOUT LE MONDE ----
+   * Le dessin, le cadre jaune, les poignees et le clic s'en servent tous les
+   * quatre. Quatre fois « (dx || 0) / 100 * p » ecrit a la main, c'est trois
+   * occasions d'oublier la division le jour ou l'unite changera — et l'on
+   * dessinerait l'element a un endroit pour l'attraper a un autre. */
+  var MAP_DECALAGE_MAX = 100;          // en centiemes de case, comme le serveur
+  function decalageX(o, p) { return ((o && o.dx) || 0) / 100 * p; }
+  function decalageY(o, p) { return ((o && o.dy) || 0) / 100 * p; }
+
   function peintLaCarte(C, cases, objets, n, p, ox, oy, avecGrille, depart, sel) {
     C.imageSmoothingEnabled = false;
     C.fillStyle = '#0a1020';
@@ -4035,17 +4072,24 @@
        * clic reste l'endroit ou la chose se trouve. La hauteur suit le
        * rapport de la planche et n'est jamais choisie : une parcelle etiree
        * ne ressemble plus a rien. */
+      /* ---- LE DECALAGE FIN, EN CENTIEMES DE CASE ----
+       * La grille dit ou l'element est POSE ; le decalage dit ou il se
+       * trouve exactement. C'est ce qui permet de COMPOSER — coller un toit
+       * sur un mur, avancer une passerelle d'un demi-pas — sans avoir a
+       * couper la carte en cases quatre fois plus petites, ce qui aurait
+       * quadruple tout le reste. */
+      var ex = decalageX(o, p), ey = decalageY(o, p);
       if (o.n > 1) {
         var lg = o.n * p;
         var im = plancheCat(e);
         if (!im.complete || !im.naturalWidth) return;
         var cw = im.naturalWidth / Math.max(1, e.cadres);
         var ht = lg * im.naturalHeight / cw;
-        var px = ox + (o.c + 0.5) * p - lg / 2, py = oy + (o.l + 1) * p - ht;
-        if (o.a) {
+        var px = ox + (o.c + 0.5) * p - lg / 2 + ex, py = oy + (o.l + 1) * p - ht + ey;
+        if (o.g) {
           C.save();
           C.translate(px + lg / 2, py + ht / 2);
-          C.rotate(o.a * Math.PI / 2);
+          C.rotate(o.g * Math.PI / 180);
           C.drawImage(im, 0, 0, cw, im.naturalHeight, -lg / 2, -ht / 2, lg, ht);
           C.restore();
         } else {
@@ -4053,20 +4097,30 @@
         }
         return;
       }
-      peintElement(C, e, ox + o.c * p, oy + o.l * p, p, p, false, o.a);
+      peintElement(C, e, ox + o.c * p + ex, oy + o.l * p + ey, p, p, false, o.g);
     });
     /* ---- ET LE CADRE DE CE QU'ON TIENT ----
      * Sur l'EMPRISE, pas sur la case cliquee : c'est la place que l'element
      * occupe vraiment, et c'est elle qu'on est en train d'agrandir. Un cadre
      * d'une case autour d'une parcelle de cinq aurait dit le contraire de ce
      * que fait le bouton. */
-    if (sel) {
+    /* ---- LE CADRE EST L'AFFORDANCE DE « CHOISIR », PAS DE « DESSINER » ----
+     * Depuis qu'un element pose devient aussitot celui qu'on tient, le cadre
+     * suivrait le pinceau case par case : un rectangle jaune qui clignote
+     * sous la main pendant qu'on trace, et qui se mesure comme du dessin.
+     * La fiche, a droite, dit deja ce qu'on vient de poser — c'est ce qui
+     * etait demande. Le cadre, lui, ne sert qu'a viser ses deux poignees, et
+     * elles n'existent que sous « choisir ». */
+    if (sel && (!avecGrille || mapOutil === 'choix')) {
       var sv = null;
       for (var iS = 0; iS < poses.length; iS++) { if (poses[iS].i === sel) sv = poses[iS]; }
       if (sv) {
         var sn = sv.n || 1;
-        var sx = ox + (sv.c + 0.5) * p - sn * p / 2;
-        var sy = oy + (sv.l + 1) * p - sn * p;
+        /* Le cadre suit le DECALAGE : pose sur la case et non sur le dessin,
+           il aurait designe le vide a cote de ce qu'on tient — et les deux
+           poignees avec lui. */
+        var sx = ox + (sv.c + 0.5) * p - sn * p / 2 + decalageX(sv, p);
+        var sy = oy + (sv.l + 1) * p - sn * p + decalageY(sv, p);
         var st = sn * p;
         C.strokeStyle = '#FFD166'; C.lineWidth = 2;
         C.setLineDash([6, 4]);
@@ -4225,7 +4279,12 @@
      permet de retrouver apres une annulation CELUI qu'on tenait avant. */
   function copieDesObjets() {
     return MAP.objets.map(function (o) {
-      return { i: o.i, c: o.c, l: o.l, k: o.k, n: o.n || 1, a: o.a || 0, z: o.z || 0 };
+      /* TOUS les champs, y compris l'angle et le decalage : la copie en
+         avait deja perdu deux une fois, et l'annulation ramenait alors une
+         parcelle droite et reduite a une case. Trouve en mesurant le DESSIN
+         apres l'annulation — la donnee, elle, avait l'air juste. */
+      return { i: o.i, c: o.c, l: o.l, k: o.k, n: o.n || 1, z: o.z || 0,
+               g: o.g || 0, dx: o.dx || 0, dy: o.dy || 0 };
     });
   }
   function copieDesCases() {
@@ -4316,9 +4375,13 @@
     for (var i = 0; i < MAP.objets.length; i++) {
       var o = MAP.objets[i], n = o.n || 1;
       /* L'emprise : centree en largeur sur la case d'ancrage, et montant vers
-         le haut depuis son bas — exactement comme elle se dessine. */
-      var g = o.c + 0.5 - n / 2, d = o.c + 0.5 + n / 2;
-      var h = o.l + 1 - n, b = o.l + 1;
+         le haut depuis son bas — exactement comme elle se dessine. Decalage
+         compris : on attrape ce qu'on VOIT, pas la case ou l'element fut
+         pose. Sans lui, un toit colle a un demi-pas se serait attrape a
+         cote de lui-meme. */
+      var ux = decalageX(o, 1), uy = decalageY(o, 1);
+      var g = o.c + 0.5 - n / 2 + ux, d = o.c + 0.5 + n / 2 + ux;
+      var h = o.l + 1 - n + uy, b = o.l + 1 + uy;
       if (c + 0.5 < g || c + 0.5 > d || l + 0.5 < h || l + 0.5 > b) continue;
       /* Le plus HAUT gagne, puis le plus AVANT : c'est l'ordre inverse du
          dessin, donc celui qu'on voit en premier est celui qu'on attrape. */
@@ -4392,6 +4455,13 @@
    * PREMIERE case franchie, sinon un simple clic pour choisir laisserait une
    * annulation qui ne defait rien. */
   var mapDeplace = null;
+  /* ---- UN DOIGT EST POSE SUR LA GRILLE ----
+   * Le panneau de gauche s'en sert pour ne PAS se refaire pendant un trait :
+   * un pinceau pose un objet par case franchie, et refaire mille huit cents
+   * lignes a chaque case ferait ramer le trait lui-meme. `mapTrace`, qui dit
+   * la meme chose, vit dans le bloc des ecouteurs et n'est pas lisible d'ici
+   * — le sortir de la aurait melange deux etats qui ne servent pas au meme. */
+  var mapGeste = false;
 
   /**
    * DEPLACE CE QU'ON TIENT SOUS LE DOIGT.
@@ -4433,8 +4503,30 @@
     peintMapOutils(); mapRedessine();
   }
 
+  /**
+   * UN QUART DE TOUR, ET IL RETOMBE TOUJOURS D'EQUERRE.
+   *
+   * La glissiere donne les trois cent soixante degres ; ce bouton donne le
+   * geste courant en un clic. Il ne fait pas « plus quatre-vingt-dix » mais
+   * « le prochain multiple de quatre-vingt-dix » : depuis dix-sept degres,
+   * ajouter quatre-vingt-dix aurait rendu cent sept, et l'on n'aurait jamais
+   * pu revenir d'equerre autrement qu'en visant le zero a la glissiere.
+   */
   function tourne() {
-    retouche(function (v) { v.a = ((v.a || 0) + 1) % 4; });
+    retouche(function (v) {
+      v.g = (Math.floor(((v.g || 0) + 1) / 90) * 90 + 90) % 360;
+    });
+  }
+
+  /** Ecrit un champ de l'element tenu, sans empiler un etat par frisson de
+      la glissiere — voir `mapGlissiere`. */
+  function regleTenu(champ, valeur) {
+    if (!MAP || !MAP.mienne || !mapSel) return;
+    var o = objetDe(mapSel);
+    if (!o) { mapSel = null; peintMapOutils(); mapRedessine(); return; }
+    o[champ] = valeur;
+    mapSale = true;
+    peintMapOutils(); mapRedessine();
   }
 
   /** La case sous un point de l'ecran, ou `null` si l'on est hors de la carte. */
@@ -4494,7 +4586,13 @@
        ce que fait un trait au pinceau qui repasse. On ne le pose qu'une. */
     for (var d = 0; d < MAP.objets.length; d++) {
       var q = MAP.objets[d];
-      if (q.c === c && q.l === l && q.z === mapCouche && q.k === mapChoix.cle) return true;
+      if (q.c === c && q.l === l && q.z === mapCouche && q.k === mapChoix.cle) {
+        /* Repasser dessus ne pose rien de neuf, mais TIENT quand meme celui
+           qui est deja la : sans cela, repasser sur sa propre case laisserait
+           la fiche montrer un autre element que celui qu'on vient de toucher. */
+        mapSel = q.i;
+        return true;
+      }
     }
     if (MAP.objets.length >= MAP_OBJETS_MAX) { mapDit(T('pleine'), true); return false; }
     /* ---- L'EMPRISE EST FIGEE AU MOMENT OU L'ON POSE ----
@@ -4505,8 +4603,17 @@
      * quand on marchera dedans — un seul chiffre, donc le dessin et la
      * collision ne peuvent pas se contredire. */
     var el = elementDe(mapChoix.famille, mapChoix.cle);
-    MAP.objets.push({ i: mapNo++, c: c, l: l, k: mapChoix.cle,
-                      n: (el && el.cases > 1) ? el.cases : 1, a: 0, z: mapCouche });
+    var neuf = { i: mapNo++, c: c, l: l, k: mapChoix.cle,
+                 n: (el && el.cases > 1) ? el.cases : 1, g: 0, dx: 0, dy: 0,
+                 z: mapCouche };
+    MAP.objets.push(neuf);
+    /* ---- CE QU'ON VIENT DE POSER EST CE QU'ON TIENT ----
+     * La fiche montrait encore l'element PRECEDENT : on posait une maison,
+     * on regardait en haut a droite pour la tourner, et l'on tournait le
+     * tonneau d'avant. Poser et tenir sont le meme geste — celui qui pose
+     * regarde ce qu'il vient de poser, il ne va pas le rechercher avec
+     * l'outil « choisir ». */
+    mapSel = neuf.i;
     return true;
   }
 
@@ -4598,6 +4705,7 @@
       var pc = pointCanevas(ev);
       if (!pc) return;
       mapDoigts[ev.pointerId] = pc;
+      mapGeste = true;
       if (elMapGrille.setPointerCapture) { try { elMapGrille.setPointerCapture(ev.pointerId); } catch (e) {} }
       /* ---- DEUX DOIGTS : C'EST UN PINCEMENT, PAS UN TRAIT ---- */
       if (nbDoigts() === 2) {
@@ -4726,10 +4834,15 @@
       if (nbDoigts() < 2) mapPince = null;
       if (nbDoigts() > 0) return;
       mapGlisse = null; mapTrace = false; mapEtire = false; mapDeplace = null;
+      mapGeste = false;
       if (mapRect) {
         var r = mapRect; mapRect = null;
         if (annuleLeRect) mapRedessine(); else poseRect(r);
       }
+      /* Le geste fini, le panneau de gauche rattrape ce qu'il n'a pas suivi
+         pendant qu'on tracait. Sans cet appel, un trait au pinceau ne se
+         verrait dans la liste qu'au geste SUIVANT. */
+      peintMapOutils();
     };
     window.addEventListener('pointerup', function (ev) { leveLeDoigt(ev, false); });
     /* Un geste ANNULE par le systeme ne pose rien : on jette le rectangle au
@@ -4769,6 +4882,7 @@
     v('nxMapOutilPot', mien); v('nxMapOutilRect', mien); v('nxMapOutilChoix', mien);
     v('nxMapOutilDepart', mien); v('nxMapOutilMain', mien);
     peintFiche(mien);
+    peintPoses();
     v('nxMapAnnule', mien); v('nxMapRefais', mien);
     /* Le zoom appartient a QUI REGARDE, pas a qui possede : une carte qu'on
        visite doit pouvoir se parcourir de pres. */
@@ -4852,10 +4966,39 @@
       var C = cv.getContext('2d');
       C.clearRect(0, 0, cv.width, cv.height);
       /* Tournee comme sur la carte : une fiche qui montrerait la planche
-         droite pendant que la carte la montre de travers ferait douter du
-         bouton. */
-      if (e) peintElement(C, e, 0, 0, cv.width, cv.height, false, v.a || 0);
+         droite pendant que la carte la montre de travers ferait douter des
+         glissieres. */
+      if (e) peintElement(C, e, 0, 0, cv.width, cv.height, false, v.g || 0);
     }
+    peintGlissieres(v);
+  }
+
+  /**
+   * LES TROIS GLISSIERES : L'ANGLE, ET LES DEUX AXES.
+   *
+   * Un bouton « tourner » ne donnait que quatre positions, et l'on ne pouvait
+   * poser une passerelle de biais ni coller un toit sur son mur : la case
+   * etait la seule unite disponible, et elle est grosse. Les glissieres
+   * donnent les trois cent soixante degres et le centieme de case.
+   *
+   * IL FAUT DIRE UNE FOIS, ET NE PAS Y REVENIR, qu'une planche de pixels
+   * tournee de dix-sept degres sera FLOUE : le navigateur interpole, et rien
+   * ici ne peut l'eviter. C'est le dessin de celui qui pose, le flou est une
+   * chose qu'il voit, et le bouton d'equerre reste a cote pour retomber
+   * droit en un clic.
+   */
+  function peintGlissieres(tenu) {
+    ['G', 'X', 'Y'].forEach(function (q, i) {
+      var e = document.getElementById('nxMapReg' + q);
+      var b = document.getElementById('nxMapReg' + q + 'Val');
+      if (!e) return;
+      var val = !tenu ? 0 : (i === 0 ? (tenu.g || 0) : (i === 1 ? (tenu.dx || 0) : (tenu.dy || 0)));
+      /* On n'ECRIT la glissiere que si elle dit deja autre chose : lui
+         reposer sa propre valeur pendant qu'un doigt la tient la ferait
+         sauter sous le doigt dans certains navigateurs. */
+      if (String(e.value) !== String(val)) e.value = String(val);
+      if (b) b.textContent = i === 0 ? val + '\u00b0' : (val > 0 ? '+' : '') + val;
+    });
   }
 
   /**
@@ -4897,6 +5040,143 @@
     boutonsDeCouche(document.getElementById('nxMapFicheCouches'),
                     tenu ? tenu.z : -1,
                     function (z) { retouche(function (o) { o.z = z; }); });
+  }
+
+  /* ================= CE QU'ON A DEJA POSE, A GAUCHE =================
+   *
+   * La carte MONTRE ce qu'on a pose, mais elle ne le LISTE pas : un element
+   * glisse derriere un autre, ou pose sur une couche qu'on ne regarde pas, ne
+   * se retrouve qu'en fouillant la carte au clic. Le panneau, lui, les tient
+   * tous, ranges par couche — et cliquer une ligne, c'est tenir l'element.
+   *
+   * TROIS PRECAUTIONS, parce qu'une carte pleine porte mille huit cents
+   * objets et que la liste se repeint a chaque geste :
+   *   - on ne refait le HTML que si la SIGNATURE a change (voir plus bas) ;
+   *   - on ne le refait JAMAIS pendant qu'un doigt trace : un trait au
+   *     pinceau pose un objet par case franchie, et refaire mille huit cents
+   *     lignes dix fois par seconde ferait ramer le trait lui-meme. Le geste
+   *     fini, on rattrape ;
+   *   - les vignettes sont des `data:` gardees PAR CLE et non par objet :
+   *     cinquante murs identiques partagent une seule image.
+   */
+  var MAP_VIGNETTES = {};               // cle d'element -> data:image, ou null
+  var mapPosesAttend = [];              // les <img> qui attendent leur planche
+  var mapPosesSignature = null;
+
+  function vignetteDeLElement(k) {
+    if (MAP_VIGNETTES[k]) return MAP_VIGNETTES[k];
+    var e = elementDe('objet', k) || elementDe('iso', k) || elementDe('mur', k)
+         || elementDe('salle', k) || elementDe('monstre', k);
+    if (!e) return null;
+    var cv = document.createElement('canvas');
+    cv.width = 40; cv.height = 40;
+    var C = cv.getContext('2d');
+    C.imageSmoothingEnabled = false;
+    /* Droite, sans son angle : la ligne dit CE QUE C'EST, la carte dit
+       comment ca se tient. Une vignette tournee dans une liste rangee se
+       lirait comme un defaut d'affichage. */
+    if (!peintElement(C, e, 0, 0, 40, 40, false, 0)) return null;
+    MAP_VIGNETTES[k] = cv.toDataURL('image/png');
+    return MAP_VIGNETTES[k];
+  }
+  /* La planche arrive apres coup : on remplit les vignettes restees vides
+     sans refaire la liste — refaire le HTML a chaque image qui arrive
+     rejetterait le defilement en haut a chaque fois. */
+  function remplisVignettes() {
+    if (!mapPosesAttend.length) return;
+    var reste = [];
+    for (var i = 0; i < mapPosesAttend.length; i++) {
+      var q = mapPosesAttend[i];
+      var v = vignetteDeLElement(q.k);
+      if (v) q.im.src = v; else reste.push(q);
+    }
+    mapPosesAttend = reste;
+  }
+
+  /** Amene sous les yeux un element choisi ailleurs qu'a la souris. */
+  function ameneEnVue(o) {
+    if (!o || !mapVue.p || !elMapGrille) return;
+    var p = mapVue.p, W = elMapGrille.width, H = elMapGrille.height;
+    var cx = (o.c + 0.5) * p + decalageX(o, p);
+    var cy = (o.l + 0.5) * p + decalageY(o, p);
+    var m = Math.min(W, H) * 0.15;
+    /* On ne bouge la vue que s'il est HORS CADRE : recentrer a chaque clic
+       ferait sauter la carte sous celui qui parcourt simplement sa liste. */
+    if (mapVue.x + cx >= m && mapVue.x + cx <= W - m
+        && mapVue.y + cy >= m && mapVue.y + cy <= H - m) return;
+    mapVue.x = W / 2 - cx; mapVue.y = H / 2 - cy;
+    borneLaVue();
+  }
+
+  function peintPoses() {
+    var bloc = document.getElementById('nxMapPoses');
+    var hote = document.getElementById('nxMapPosesListe');
+    if (!bloc || !hote) return;
+    var montre = !!(MAP && MAP.mienne);
+    bloc.classList.toggle('on', montre);
+    if (!montre) { mapPosesSignature = null; hote.innerHTML = ''; mapPosesAttend = []; return; }
+    /* Pendant le geste, on laisse la liste telle quelle : `mapGeste` retombe
+       au lacher, et `peintMapOutils` repasse aussitot. */
+    if (mapGeste) return;
+    var poses = MAP.objets.slice().sort(function (a, b) {
+      return (a.z || 0) - (b.z || 0) || a.l - b.l || a.c - b.c;
+    });
+    /* ---- LA SIGNATURE ----
+     * Exactement ce que la ligne AFFICHE, et rien de plus : y mettre l'angle
+     * ferait refaire mille huit cents lignes a chaque degre de la glissiere,
+     * alors qu'aucune ligne n'en montre un seul. */
+    var sig = poses.map(function (o) {
+      return o.i + ':' + o.k + ':' + o.c + ',' + o.l + ':' + (o.z || 0);
+    }).join('|');
+    if (sig !== mapPosesSignature) {
+      mapPosesSignature = sig;
+      mapPosesAttend = [];
+      hote.innerHTML = '';
+      if (!poses.length) {
+        var vide = document.createElement('i');
+        vide.className = 'nxmap-pose-vide';
+        vide.textContent = T('posesVide');
+        hote.appendChild(vide);
+      }
+      var couche = -1;
+      poses.forEach(function (o) {
+        if ((o.z || 0) !== couche) {
+          couche = o.z || 0;
+          var h = document.createElement('h5');
+          var combien = poses.filter(function (q) { return (q.z || 0) === couche; }).length;
+          h.textContent = T('couche') + ' ' + (couche + 1) + ' \u00b7 ' + combien;
+          hote.appendChild(h);
+        }
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'nxmap-pose';
+        b.dataset.i = String(o.i);
+        var im = document.createElement('img');
+        im.alt = '';
+        var v = vignetteDeLElement(o.k);
+        if (v) im.src = v; else mapPosesAttend.push({ im: im, k: o.k });
+        var nm = document.createElement('span');
+        nm.textContent = o.k;
+        var ou = document.createElement('i');
+        ou.textContent = o.c + ',' + o.l + (o.n > 1 ? ' \u00b7 ' + o.n + '\u00d7' + o.n : '');
+        b.appendChild(im); b.appendChild(nm); b.appendChild(ou);
+        hote.appendChild(b);
+      });
+    }
+    /* La ligne allumee se met a jour SANS refaire le HTML : c'est ce qui
+       permet de garder la meme signature quand seul le choix change. */
+    var lignes = hote.querySelectorAll('.nxmap-pose');
+    var vu = null;
+    for (var i = 0; i < lignes.length; i++) {
+      var pris = Number(lignes[i].dataset.i) === mapSel;
+      lignes[i].classList.toggle('pris', pris);
+      if (pris) vu = lignes[i];
+    }
+    /* Et l'on descend jusqu'a elle : choisir un element sur la carte doit se
+       voir dans la liste, sinon les deux se contredisent a l'ecran. */
+    if (vu && vu.scrollIntoView) {
+      try { vu.scrollIntoView({ block: 'nearest' }); } catch (e) {}
+    }
   }
 
   function peintMapGalerie(liste) {
@@ -4981,6 +5261,24 @@
     });
   }
 
+  /* ---- L'ANGLE D'UNE CARTE ENREGISTREE, D'OU QU'IL VIENNE ----
+   * `g` est en degres ; `a` etait en quarts de tour. Le serveur convertit les
+   * cartes deja enregistrees, mais un onglet ouvert depuis hier peut encore
+   * en renvoyer un vieux — et la page ne coute rien a le comprendre. Un seul
+   * endroit lit les deux, sinon celui qu'on oublie dessine de travers. */
+  function angleLu(q) {
+    var g = Math.round(Number(q && q.g));
+    if (Number.isInteger(g) && g > 0 && g < 360) return g;
+    var t = Math.round(Number(q && q.a));
+    if (Number.isInteger(t) && t > 0 && t < 4) return t * 90;
+    return 0;
+  }
+  function borneDecalage(v) {
+    var d = Math.round(Number(v));
+    if (!Number.isInteger(d)) return 0;
+    return Math.max(-MAP_DECALAGE_MAX, Math.min(MAP_DECALAGE_MAX, d));
+  }
+
   /** Ouvre une carte dans l'atelier. `mienne` decide de tout ce qui s'affiche. */
   function ouvreAtelier(c) {
     MAP = { id: c.id || null, nom: c.nom || '', cote: c.cote || MAP_COTE,
@@ -5015,13 +5313,14 @@
          encore en lire un vieux — on le remonte de la meme facon. */
       if (q.o) {
         MAP.objets.push({ i: mapNo++, c: q.c, l: q.l, k: q.o,
-                          n: q.n > 1 ? q.n : 1, a: q.a || 0, z: 0 });
+                          n: q.n > 1 ? q.n : 1, g: angleLu(q), dx: 0, dy: 0, z: 0 });
       }
     });
     (c.objets || []).forEach(function (q) {
       if (!q || !q.k) return;
       MAP.objets.push({ i: mapNo++, c: q.c, l: q.l, k: q.k,
-                        n: q.n > 1 ? q.n : 1, a: q.a || 0,
+                        n: q.n > 1 ? q.n : 1, g: angleLu(q),
+                        dx: borneDecalage(q.dx), dy: borneDecalage(q.dy),
                         z: Math.max(0, Math.min(MAP_COUCHES - 1, q.z || 0)) });
     });
     if (elMapNom) elMapNom.value = MAP.nom;
@@ -5197,6 +5496,47 @@
     b('nxMapPlusGrand', function () { agrandis(1); });
     b('nxMapPlusPetit', function () { agrandis(-1); });
     b('nxMapTourne', tourne);
+    /* ---- LES TROIS GLISSIERES ----
+     * UN SEUL etat dans la pile par GESTE de glissiere, et non un par degre :
+     * un aller-retour de zero a trois cents en aurait empile trois cents, et
+     * « annuler » aurait demande trois cents clics pour defaire un geste.
+     * `change` arrive au lacher, `input` a chaque cran — on empile au premier
+     * `input` d'un geste, et l'on rouvre au `change`. */
+    var mapGlissiere = null;
+    [['nxMapRegG', 'g'], ['nxMapRegX', 'dx'], ['nxMapRegY', 'dy']].forEach(function (q) {
+      var e = document.getElementById(q[0]);
+      if (!e) return;
+      e.addEventListener('input', function () {
+        if (mapGlissiere !== q[0]) { memorise(); mapGlissiere = q[0]; }
+        var v = Math.round(Number(e.value)) || 0;
+        regleTenu(q[1], q[1] === 'g' ? ((v % 360) + 360) % 360
+                                     : Math.max(-MAP_DECALAGE_MAX,
+                                                Math.min(MAP_DECALAGE_MAX, v)));
+      });
+      e.addEventListener('change', function () { mapGlissiere = null; });
+    });
+    /* ---- ET LE PANNEAU DE GAUCHE ----
+     * UN seul ecouteur sur la liste, et non un par ligne : mille huit cents
+     * ecouteurs, ce sont mille huit cents fermetures a defaire a chaque
+     * refonte de la liste — et celles qu'on oublie retiennent la carte
+     * precedente en memoire. */
+    var poses = document.getElementById('nxMapPosesListe');
+    if (poses) {
+      poses.addEventListener('click', function (ev) {
+        var q = ev.target.closest ? ev.target.closest('.nxmap-pose') : null;
+        if (!q || !MAP || !MAP.mienne) return;
+        var o = objetDe(Number(q.dataset.i));
+        if (!o) return;
+        mapSel = o.i;
+        /* On passe a « choisir » : sans cela, la ligne allumerait un cadre
+           que les poignees ne suivraient pas, et l'on ne pourrait ni le
+           tirer ni le retirer sans changer d'outil a la main. */
+        mapOutil = 'choix';
+        ameneEnVue(o);
+        mapDit('');
+        peintMapOutils(); mapRedessine();
+      });
+    }
     b('nxMapEfface', function () {
       if (!MAP || !MAP.mienne || !mapSel) return;
       var oe = objetDe(mapSel);
@@ -5249,10 +5589,13 @@
       var objets = MAP.objets.map(function (o) {
         var e = { c: o.c, l: o.l, k: o.k, z: o.z };
         /* Les valeurs par defaut ne partent pas : mille huit cents objets qui
-           porteraient chacun `n:1, a:0` pour ne rien dire, ce sont vingt
-           kilo-octets de trame pour rien. */
+           porteraient chacun `n:1, g:0, dx:0, dy:0` pour ne rien dire, ce sont
+           quarante kilo-octets de trame pour rien — et la trame entiere est
+           bornee a deux cent cinquante-six. */
         if (o.n > 1) e.n = o.n;
-        if (o.a) e.a = o.a;
+        if (o.g) e.g = o.g;
+        if (o.dx) e.dx = o.dx;
+        if (o.dy) e.dy = o.dy;
         return e;
       });
       mapDit(T('sauvegarde'));
@@ -7696,7 +8039,7 @@
        « complete » elle aussi, et `drawImage` leve alors une exception qui
        arreterait la boucle de dessin — tout le jeu se figerait pour une
        planche manquante. */
-    if (!img || !img.complete || !img.naturalWidth) return;
+    if (!img || !img.complete || !img.naturalWidth) return false;
     /* Une planche animee est une BANDE de `cadres` images cote a cote ; sans
        `cadres`, c'est une image seule et la case vaut le fichier entier. Le
        nombre vient du serveur : la page ne peut pas le deviner d'un fichier,
@@ -7712,19 +8055,22 @@
     var L = o.larg || o.r * 4;
     var H = L * ch / cw;
     var X = o.x - L / 2, Y = o.y + o.r - H;
-    /* ---- ET LE QUART DE TOUR, PRIS AU CENTRE DU DESSIN ----
+    /* ---- ET L'ANGLE, PRIS AU CENTRE DU DESSIN ----
      * Comme dans l'editeur, et pour la meme raison : pris au pied, l'objet
      * partirait de cote au lieu de pivoter sur place — et l'on ne verrait pas
-     * la meme chose dans les deux endroits, ce qui est le pire. */
-    if (o.a) {
+     * la meme chose dans les deux endroits, ce qui est le pire.
+     * EN DEGRES : c'est une glissiere qui l'a choisi, et le serveur le fait
+     * voyager tel quel. */
+    if (o.g) {
       ctx.save();
       ctx.translate(X + L / 2, Y + H / 2);
-      ctx.rotate(o.a * Math.PI / 2);
+      ctx.rotate(o.g * Math.PI / 180);
       ctx.drawImage(img, cadreDeLHorloge(n) * cw, 0, cw, ch, -L / 2, -H / 2, L, H);
       ctx.restore();
-      return;
+      return true;
     }
     ctx.drawImage(img, cadreDeLHorloge(n) * cw, 0, cw, ch, X, Y, L, H);
+    return true;
   }
 
   function dessineObstacle(o) {
@@ -7737,7 +8083,13 @@
      * Le bloc garde son `t` de mur par-dessous : une page qui ne connait pas
      * encore ce champ — un navigateur qui tient une vieille version en cache —
      * dessine alors de la pierre a cet endroit. Degrade, jamais troue. */
-    if (o.bat) return dessineFacade(o);
+    /* ---- ET SI LA PLANCHE N'EST PLUS LA, C'EST DE LA PIERRE ----
+     * Une planche retiree du catalogue laissait un bloc INVISIBLE : le
+     * visiteur se cognait dans le vide. Le `t` de mur voyage justement pour
+     * ce cas — degrade, jamais troue — mais il ne servait a rien tant qu'on
+     * quittait le dessin sans regarder s'il avait eu lieu. On ne quitte donc
+     * que si la facade a REELLEMENT ete peinte. */
+    if (o.bat && dessineFacade(o)) return;
     var t = o.t || 0;
     /* Les bornes viennent du SERVEUR quand il les envoie : deux nombres tenus
        d'accord de part et d'autre du reseau finissent par ne plus l'etre, et le

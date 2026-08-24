@@ -155,8 +155,21 @@ for (const champ of ['o.bat', 'o.larg', 'o.cadres']) {
   ok(src.indexOf(champ) >= 0,
      `nexus.js lit « ${champ} » — le champ que le serveur pose sur les blocs`);
 }
-ok(/if \(o\.bat\) return dessineFacade\(o\);/.test(src),
+ok(/if \(o\.bat && dessineFacade\(o\)\) return;/.test(src),
    'et un bloc qui NOMME sa planche passe par le dessin des facades');
+/* ---- ET SI LA PLANCHE N EST PLUS LA, IL RETOMBE SUR LA PIERRE ----
+ * Le dessin quittait sans rien dire quand l image manquait : le bloc restait,
+ * INVISIBLE, et l on se cognait dans le vide. Le `t` de mur voyage justement
+ * pour ce cas, mais il ne servait a rien tant qu on quittait sans regarder si
+ * la facade avait eu lieu. On verifie donc que la facade REND quelque chose —
+ * une fonction qui ne rend rien laisse `if (... && ...)` toujours faux, et le
+ * repli se ferait alors pour TOUS les batiments, ce qui est l autre facon de
+ * se tromper. */
+ok(/if \(!img \|\| !img\.complete \|\| !img\.naturalWidth\) return false;/.test(src),
+   'et le dessin des facades DIT quand il n a rien pu peindre');
+ok((src.match(/^\s*return true;$/gm) || []).length >= 2,
+   'et qu il a peint, dans les deux chemins — sans quoi tout batiment'
+   + ' se dessinerait en pierre');
 
 /* ================== LES PORTES : UNE CLE, DEUX DEPOTS ==================
  *

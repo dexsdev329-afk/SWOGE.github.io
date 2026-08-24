@@ -779,6 +779,50 @@ const servirLeSite = async () => {
   ok(Math.abs((rendue.max - rendue.min) - vise) <= 3,
      `et « Undo » defait le quart de tour comme le reste`
      + ` (${rendue.max - rendue.min} px, ${vise} attendus)`);
+  /* ---- LES POIGNEES : LA CROIX ET LE COIN ----
+   * Le proprietaire les a demandees : « une croix pour supprimer l element et
+   * un bouton pour agrandir comme si on etirait un coin ». On mesure ce
+   * qu'elles FONT au dessin, et l'on va chercher le coin la ou il est — au bas
+   * a droite de l emprise, en pixels d ecran et non en cases. */
+  /* Le coin de l emprise, en cases : l ancre plus la moitie de l emprise a
+     droite, et le bas de l emprise. Converti en ecran par le meme chemin que
+     les autres gestes. */
+  /* Le dessin pose le bord droit en `(c + 0.5 + n/2)` de case ; `deCase`
+     ajoute deja un demi, donc on lui donne `c + n/2`. Un demi de trop et l'on
+     vise vingt-six pixels a cote de la poignee, qui en fait vingt. */
+  const coinDe = (n) => ({ c: iso.cc + n / 2, l: iso.ll + 0.5 });
+  const tailleAffichee = () => p.evaluate(() =>
+    (document.getElementById('nxMapFicheTaille') || {}).textContent);
+  await p.evaluate(() => { document.getElementById('nxMapOutilChoix').click(); });
+  await tiens();
+  const avantEtire = await tailleAffichee();
+  /* On tire le coin de trois cases vers le bas a droite. */
+  const c0 = coinDe(4);
+  await geste(camS, [{ t: 'down', c: c0.c, l: c0.l, id: 66 },
+                     { t: 'move', c: c0.c + 3, l: c0.l + 3, id: 66 },
+                     { t: 'up', c: c0.c + 3, l: c0.l + 3, id: 66 }]);
+  await p.waitForTimeout(700);
+  const apresEtire = await tailleAffichee();
+  ok(apresEtire !== avantEtire,
+     `tirer le coin agrandit : ${avantEtire} puis ${apresEtire}`);
+  ok(parseInt(apresEtire, 10) > parseInt(avantEtire, 10), 'et dans le bon sens');
+  await p.click('#nxMapAnnule');
+  await p.waitForTimeout(600);
+  eq(await tailleAffichee(), avantEtire, 'et « Undo » defait tout l etirement d un coup');
+
+  /* La croix, au HAUT a droite de l emprise. */
+  await tiens();
+  const n0 = parseInt(await tailleAffichee(), 10);
+  await geste(camS, [{ t: 'down', c: iso.cc + n0 / 2, l: iso.ll + 0.5 - n0, id: 67 },
+                     { t: 'up', c: iso.cc + n0 / 2, l: iso.ll + 0.5 - n0, id: 67 }]);
+  await p.waitForTimeout(700);
+  const apresCroix = await largeurDessinee(iso, repere);
+  ok(!(apresCroix.combien > 4),
+     `la croix retire l element (${apresCroix.combien} colonnes restantes)`);
+  await p.click('#nxMapAnnule');
+  await p.waitForTimeout(700);
+  ok((await largeurDessinee(iso, repere)).combien > 20, 'et « Undo » le remet');
+
   /* ---- ET LA GOMME EFFACE CE QU ON VOIT ----
    * Elle effacait la CASE : sur une parcelle de quatre, trois clics sur
    * quatre ne faisaient rien, et l'on frottait le batiment sans qu'il

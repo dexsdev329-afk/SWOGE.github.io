@@ -3812,6 +3812,35 @@
     requestAnimationFrame(function () { mapPeintPrevu = false; peintMapGrille(); });
   }
 
+  /* ---- LA TAILLE D'UNE POIGNEE NE SUIT PAS LE ZOOM ----
+   * Elle suit le DOIGT. A quatre pixels par case, une poignee a l'echelle de
+   * la case serait invisible ; a quatre-vingt-seize, elle mangerait
+   * l'element. Vingt-deux pixels d'ecran, borne par la case quand la case est
+   * plus grande — sinon deux poignees voisines se recouvriraient. */
+  function poigneeRayon(p) { return Math.max(9, Math.min(20, Math.round(p * 0.5))); }
+  /** Le rectangle de ce qu'on tient, en pixels de canevas. */
+  function cadreDuChoix() {
+    if (!MAP || !mapSel || !mapVue.p) return null;
+    var v = MAP.cases.get(mapSel.c + ',' + mapSel.l);
+    if (!v || !v.o) return null;
+    var n = v.n || 1, p = mapVue.p;
+    var x = mapVue.x + (mapSel.c + 0.5) * p - n * p / 2;
+    var y = mapVue.y + (mapSel.l + 1) * p - n * p;
+    return { x: x, y: y, t: n * p, n: n, p: p };
+  }
+  /** Sur quelle poignee tombe ce point de canevas, ou `null`. */
+  function poigneeSous(pc) {
+    if (!MAP || !MAP.mienne || mapOutil !== 'choix') return null;
+    var r = cadreDuChoix();
+    if (!r) return null;
+    var rp = poigneeRayon(r.p) + 4;
+    var dx = pc.x - (r.x + r.t), dy = pc.y - (r.y + r.t);
+    if (dx * dx + dy * dy <= rp * rp) return 'coin';
+    dy = pc.y - r.y;
+    if (dx * dx + dy * dy <= rp * rp) return 'croix';
+    return null;
+  }
+
   /** Cadre la carte entiere dans la place disponible. */
   function ajusteLaVue() {
     if (!elMapGrille || !MAP) return;
@@ -3925,10 +3954,39 @@
         var sn = sv.n || 1;
         var sx = ox + (sel.c + 0.5) * p - sn * p / 2;
         var sy = oy + (sel.l + 1) * p - sn * p;
+        var st = sn * p;
         C.strokeStyle = '#FFD166'; C.lineWidth = 2;
         C.setLineDash([6, 4]);
-        C.strokeRect(sx + 1, sy + 1, sn * p - 2, sn * p - 2);
+        C.strokeRect(sx + 1, sy + 1, st - 2, st - 2);
         C.setLineDash([]);
+        /* ---- ET LES DEUX POIGNEES ----
+         * Une croix pour retirer, un coin pour etirer. Sur le DESSIN et non
+         * dans la barre : on tire un coin la ou il est, on ne va pas chercher
+         * un bouton a l'autre bout de l'ecran pour agrandir ce qu'on regarde.
+         * Elles ne se dessinent que si l'on peut s'en servir — visibles sur la
+         * carte d'un autre, elles promettraient un geste que le serveur
+         * refuserait. */
+        if (avecGrille && MAP && MAP.mienne && mapOutil === 'choix') {
+          var rp = poigneeRayon(p);
+          C.fillStyle = '#1b2340'; C.strokeStyle = '#FFD166'; C.lineWidth = 2;
+          /* La croix, en HAUT A DROITE. */
+          C.beginPath(); C.arc(sx + st, sy, rp, 0, Math.PI * 2); C.fill(); C.stroke();
+          C.strokeStyle = '#ff9b9b'; C.lineWidth = Math.max(2, rp * 0.28);
+          var q2 = rp * 0.45;
+          C.beginPath();
+          C.moveTo(sx + st - q2, sy - q2); C.lineTo(sx + st + q2, sy + q2);
+          C.moveTo(sx + st + q2, sy - q2); C.lineTo(sx + st - q2, sy + q2);
+          C.stroke();
+          /* Le coin, EN BAS A DROITE : c'est celui qu'on tire pour agrandir
+             dans toutes les fenetres du monde. */
+          C.fillStyle = '#1b2340'; C.strokeStyle = '#7CFF9B'; C.lineWidth = 2;
+          C.beginPath(); C.arc(sx + st, sy + st, rp, 0, Math.PI * 2); C.fill(); C.stroke();
+          C.lineWidth = Math.max(2, rp * 0.24);
+          C.beginPath();
+          C.moveTo(sx + st - q2, sy + st + q2); C.lineTo(sx + st + q2, sy + st - q2);
+          C.moveTo(sx + st, sy + st + q2); C.lineTo(sx + st + q2, sy + st);
+          C.stroke();
+        }
       }
     }
     /* Les traits se taisent quand ils seraient plus serres que lisibles : a
@@ -4177,12 +4235,41 @@
     MAP.cases.set(k, v);
     peintMapOutils(); mapRedessine();
   }
+  /* Le plafond de la page suit celui du serveur ET le cote de la carte : un
+     element plus grand que ce qui le contient ne veut rien dire, et laisser
+     l'agrandir au-dela ferait travailler quelqu'un pour un refus a
+     l'enregistrement. */
+  var MAP_EMPRISE_MAX = 32;
+  function empriseMax() { return Math.max(1, Math.min(MAP_EMPRISE_MAX, MAP ? MAP.cote : 1)); }
   function agrandis(d) {
-    retouche(function (v) {
-      var n = Math.max(1, Math.min(8, (v.n || 1) + d));
-      v.n = n;
-    });
+    retouche(function (v) { v.n = Math.max(1, Math.min(empriseMax(), (v.n || 1) + d)); });
   }
+  /* ---- ON TIRE LE COIN, LA TAILLE SUIT ----
+   * L'emprise est CENTREE en largeur sur la case d'ancrage et POSEE sur son
+   * bas : tirer le coin bas-droit donne donc deux mesures — la demi-largeur
+   * depuis l'axe, et la hauteur depuis le pied. On prend la plus grande, pour
+   * que le coin suive le doigt au lieu de se derober quand on tire en
+   * diagonale.
+   */
+  var mapEtire = false;
+  function etireVers(pc) {
+    if (!MAP || !mapSel || !mapVue.p) return;
+    var k = mapSel.c + ',' + mapSel.l, v = MAP.cases.get(k);
+    if (!v || !v.o) { mapEtire = false; return; }
+    var p = mapVue.p;
+    var axe = mapVue.x + (mapSel.c + 0.5) * p;
+    var pied = mapVue.y + (mapSel.l + 1) * p;
+    var parLarge = (pc.x - axe) * 2 / p;
+    var parHaut = (pied - pc.y) / p;
+    var n = Math.round(Math.max(parLarge, parHaut));
+    n = Math.max(1, Math.min(empriseMax(), n));
+    if (n === (v.n || 1)) return;
+    if (n > 1) v.n = n; else delete v.n;
+    MAP.cases.set(k, v);
+    mapSale = true;
+    peintMapOutils(); mapRedessine();
+  }
+
   function tourne() {
     retouche(function (v) { v.a = ((v.a || 0) + 1) % 4; });
   }
@@ -4352,6 +4439,29 @@
       if (mapOutil === 'main' || ev.button === 1 || !MAP.mienne) {
         mapGlisse = { x: pc.x, y: pc.y }; return;
       }
+      /* ---- LES POIGNEES PASSENT AVANT LA CASE, ET AVANT LE BORD ----
+       * Elles sont POSEES SUR la carte. Testees apres le choix de la case,
+       * tirer le coin aurait d'abord attrape l'element du dessous ; testees
+       * apres la borne de la carte, le coin d'un element pose au bord — qui
+       * DEPASSE — serait sorti par le `return` sans qu'on ait pu l'attraper. */
+      var po = poigneeSous(pc);
+      if (po === 'croix') {
+        var kc = mapSel.c + ',' + mapSel.l, vc = MAP.cases.get(kc);
+        memorise();
+        if (vc) {
+          delete vc.o; delete vc.n; delete vc.a;
+          if (vc.s) MAP.cases.set(kc, vc); else MAP.cases.delete(kc);
+        }
+        mapSel = null; mapDit('');
+        peintMapOutils(); mapRedessine(); return;
+      }
+      if (po === 'coin') {
+        /* UN etat pour tout l'etirement, pris avant le premier pixel : un par
+           image aurait demande cinquante annulations pour defaire un geste. */
+        memorise();
+        mapEtire = true; mapTrace = true;
+        etireVers(pc); return;
+      }
       var q = caseSous(ev);
       if (!q) return;
       if (mapOutil !== 'gomme' && mapOutil !== 'depart' && mapOutil !== 'choix' && !mapChoix) {
@@ -4411,6 +4521,7 @@
         borneLaVue(); mapRedessine(); return;
       }
       if (!mapTrace) return;
+      if (mapEtire) { etireVers(pc); return; }
       if (mapRect) {
         var q = caseSous(ev);
         if (q) { mapRect.c1 = q.c; mapRect.l1 = q.l; mapRedessine(); }
@@ -4426,7 +4537,7 @@
       else mapDoigts = {};
       if (nbDoigts() < 2) mapPince = null;
       if (nbDoigts() > 0) return;
-      mapGlisse = null; mapTrace = false;
+      mapGlisse = null; mapTrace = false; mapEtire = false;
       if (mapRect) {
         var r = mapRect; mapRect = null;
         if (annuleLeRect) mapRedessine(); else poseRect(r);
@@ -4482,6 +4593,13 @@
                    choix: 'nxMapOutilChoix', depart: 'nxMapOutilDepart',
                    main: 'nxMapOutilMain' };
     if (elMapGrille) elMapGrille.classList.toggle('main', mapOutil === 'main' || (atelier && !mien));
+    /* Le plafond depend de la carte : sur une carte de huit, on ne depasse pas
+       huit, et le bouton doit le dire au lieu de ne rien faire. */
+    var pg = document.getElementById('nxMapPlusGrand');
+    var pp = document.getElementById('nxMapPlusPetit');
+    var vs = mapSel && MAP ? MAP.cases.get(mapSel.c + ',' + mapSel.l) : null;
+    if (pg) pg.disabled = !vs || (vs.n || 1) >= empriseMax();
+    if (pp) pp.disabled = !vs || (vs.n || 1) <= 1;
     Object.keys(OUTILS).forEach(function (o) {
       var b = document.getElementById(OUTILS[o]);
       if (b) b.classList.toggle('vedette', mapOutil === o);

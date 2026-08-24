@@ -4239,8 +4239,13 @@
      element plus grand que ce qui le contient ne veut rien dire, et laisser
      l'agrandir au-dela ferait travailler quelqu'un pour un refus a
      l'enregistrement. */
-  var MAP_EMPRISE_MAX = 32;
-  function empriseMax() { return Math.max(1, Math.min(MAP_EMPRISE_MAX, MAP ? MAP.cote : 1)); }
+  var MAP_EMPRISE_MAX = 64;
+  /* Le DOUBLE du cote : un fond doit pouvoir couvrir la carte et deborder,
+     sinon on voit ses bords. C'est la borne du serveur, ecrite pareil ici
+     pour ne pas laisser travailler quelqu'un jusqu'a un refus. */
+  function empriseMax() {
+    return Math.max(1, Math.min(MAP_EMPRISE_MAX, (MAP ? MAP.cote : 1) * 2));
+  }
   function agrandis(d) {
     retouche(function (v) { v.n = Math.max(1, Math.min(empriseMax(), (v.n || 1) + d)); });
   }
@@ -4252,6 +4257,48 @@
    * diagonale.
    */
   var mapEtire = false;
+  /* ---- CE QU'ON EST EN TRAIN DE DEPLACER ----
+   * `ec` et `el` sont l'ECART entre la case sous le doigt et l'ancre de
+   * l'element : sans lui, l'element sauterait sous le curseur des le premier
+   * pixel, au lieu de suivre la main depuis l'endroit ou on l'a pris.
+   * `memo` dit si l'on a deja mis un etat dans la pile : on ne le fait qu'a la
+   * PREMIERE case franchie, sinon un simple clic pour choisir laisserait une
+   * annulation qui ne defait rien. */
+  var mapDeplace = null;
+
+  /**
+   * DEPLACE CE QU'ON TIENT SOUS LE DOIGT.
+   *
+   * L'objet change de case ; le SOL ne bouge pas. C'est ce qu'on attend en
+   * tirant un batiment : on deplace le batiment, pas le terrain sous lui.
+   */
+  function deplaceVers(q) {
+    if (!MAP || !mapSel || !mapDeplace) return;
+    var nc = Math.max(0, Math.min(MAP.cote - 1, q.c - mapDeplace.ec));
+    var nl = Math.max(0, Math.min(MAP.cote - 1, q.l - mapDeplace.el));
+    if (nc === mapSel.c && nl === mapSel.l) return;
+    var ka = mapSel.c + ',' + mapSel.l, va = MAP.cases.get(ka);
+    if (!va || !va.o) { mapDeplace = null; return; }
+    if (!mapDeplace.memo) { memorise(); mapDeplace.memo = true; }
+    var porte = { o: va.o };
+    if (va.n > 1) porte.n = va.n;
+    if (va.a) porte.a = va.a;
+    /* La case de depart garde son sol et perd son objet. */
+    delete va.o; delete va.n; delete va.a;
+    if (va.s) MAP.cases.set(ka, va); else MAP.cases.delete(ka);
+    /* Celle d'arrivee garde le sien et recoit l'objet. Si elle en portait
+       deja un, il est remplace — c'est ce que fait n'importe quel editeur, et
+       l'annulation le rend. */
+    var kb = nc + ',' + nl, vb = MAP.cases.get(kb) || {};
+    vb.o = porte.o;
+    if (porte.n) vb.n = porte.n; else delete vb.n;
+    if (porte.a) vb.a = porte.a; else delete vb.a;
+    MAP.cases.set(kb, vb);
+    mapSel = { c: nc, l: nl };
+    mapSale = true;
+    peintMapOutils(); mapRedessine();
+  }
+
   function etireVers(pc) {
     if (!MAP || !mapSel || !mapVue.p) return;
     var k = mapSel.c + ',' + mapSel.l, v = MAP.cases.get(k);
@@ -4472,6 +4519,16 @@
            orientation, le choisir n'ouvrirait que des boutons sans effet. */
         mapSel = elementSous(q.c, q.l);
         mapDit(mapSel ? '' : T('rienChoisi'), !mapSel);
+        /* ---- ET L'ON PEUT LE TIRER TOUT DE SUITE ----
+         * Choisir puis deplacer sont le meme geste : on pose le doigt sur le
+         * batiment et on le glisse. Demander un second clic aurait fait deux
+         * gestes la ou la main n'en fait qu'un.
+         * L'ecart est garde pour que l'element suive la main depuis l'endroit
+         * ou on l'a pris, au lieu de sauter sous le curseur. */
+        if (mapSel) {
+          mapDeplace = { ec: q.c - mapSel.c, el: q.l - mapSel.l, memo: false };
+          mapTrace = true;
+        }
         peintMapOutils(); mapRedessine(); return;
       }
       if (mapOutil === 'depart') {
@@ -4522,6 +4579,11 @@
       }
       if (!mapTrace) return;
       if (mapEtire) { etireVers(pc); return; }
+      if (mapDeplace) {
+        var qd = caseSous(ev);
+        if (qd) deplaceVers(qd);
+        return;
+      }
       if (mapRect) {
         var q = caseSous(ev);
         if (q) { mapRect.c1 = q.c; mapRect.l1 = q.l; mapRedessine(); }
@@ -4537,7 +4599,7 @@
       else mapDoigts = {};
       if (nbDoigts() < 2) mapPince = null;
       if (nbDoigts() > 0) return;
-      mapGlisse = null; mapTrace = false; mapEtire = false;
+      mapGlisse = null; mapTrace = false; mapEtire = false; mapDeplace = null;
       if (mapRect) {
         var r = mapRect; mapRect = null;
         if (annuleLeRect) mapRedessine(); else poseRect(r);
@@ -4592,7 +4654,10 @@
                    pot: 'nxMapOutilPot', rect: 'nxMapOutilRect',
                    choix: 'nxMapOutilChoix', depart: 'nxMapOutilDepart',
                    main: 'nxMapOutilMain' };
-    if (elMapGrille) elMapGrille.classList.toggle('main', mapOutil === 'main' || (atelier && !mien));
+    if (elMapGrille) {
+      elMapGrille.classList.toggle('main', mapOutil === 'main' || (atelier && !mien));
+      elMapGrille.classList.toggle('choix', mien && mapOutil === 'choix');
+    }
     /* Le plafond depend de la carte : sur une carte de huit, on ne depasse pas
        huit, et le bouton doit le dire au lieu de ne rien faire. */
     var pg = document.getElementById('nxMapPlusGrand');

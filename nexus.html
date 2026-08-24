@@ -1992,6 +1992,8 @@ body.nxdrag *{ cursor:grabbing !important; }
   background:#070b16; border:1px solid rgba(255,255,255,.16); border-radius:8px;
   width:100%; height:100%; display:block; }
 #nxMapGrille.main{ cursor:grab; }
+/* Choisir, c'est aussi pouvoir tirer : le curseur le dit avant qu'on essaie. */
+#nxMapGrille.choix{ cursor:move; }
 #nxMapZoomBloc{ display:inline-flex; gap:6px; }
 /* ---- LA COLONNE DE DROITE ----
    La fiche en haut, la palette dessous : la fiche prend la place qu'il lui
@@ -2546,7 +2548,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
      racine ; c'est le seul endroit d'ou elle peut couvrir tout le reste. -->
 <div id="nxFiche"></div>
 
-<script src="nexus.js?v=aee5f534" defer></script>
+<script src="nexus.js?v=edd7a05a" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 
 <script>

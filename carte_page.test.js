@@ -823,6 +823,45 @@ const servirLeSite = async () => {
   await p.waitForTimeout(700);
   ok((await largeurDessinee(iso, repere)).combien > 20, 'et « Undo » le remet');
 
+  /* ---- ET ON LE DEPLACE EN LE TIRANT ----
+   * « Quand on est sur choisir, si on clique au centre de l image on peut la
+   * deplacer directement avec la souris. » Choisir et deplacer sont le meme
+   * geste : on pose le doigt sur le batiment et on le glisse. On mesure ou
+   * l element se retrouve, pas ce que la carte declare. */
+  await tiens();
+  const ouEst = () => p.evaluate((cm) => {
+    /* La ligne du bas de l element : c'est son ancre. On la trouve en
+       cherchant la colonne peinte la plus a droite dans chaque bande. */
+    const g = document.getElementById('nxMapGrille');
+    const d = g.getContext('2d').getImageData(0, 0, g.width, g.height).data;
+    let sx = 0, sy = 0, n2 = 0;
+    for (let y = 0; y < g.height; y++) {
+      for (let x = 0; x < g.width; x++) {
+        const i = (y * g.width + x) * 4;
+        /* Le cadre de selection, jaune franc : c'est LUI qu'on suit, il est
+           cale sur l emprise et donc sur l ancre. */
+        if (d[i] > 230 && d[i+1] > 190 && d[i+1] < 230 && d[i+2] < 140) { sx += x; sy += y; n2++; }
+      }
+    }
+    if (!n2) return null;
+    return { c: (sx / n2 - cm.x0) / cm.p, l: (sy / n2 - cm.y0) / cm.p };
+  }, { p: camS.p, x0: camS.x0, y0: camS.y0 });
+  const avantD = await ouEst();
+  ok(!!avantD, 'le cadre de selection se voit');
+  await geste(camS, [{ t: 'down', c: iso.cc, l: iso.ll - 1, id: 68 },
+                     { t: 'move', c: iso.cc + 3, l: iso.ll + 1, id: 68 },
+                     { t: 'up', c: iso.cc + 3, l: iso.ll + 1, id: 68 }]);
+  await p.waitForTimeout(800);
+  const apresD = await ouEst();
+  ok(!!apresD && apresD.c - avantD.c > 2,
+     `tirer l element le deplace de ${(apresD ? apresD.c - avantD.c : 0).toFixed(1)} cases vers la droite`);
+  ok(!!apresD && apresD.l - avantD.l > 1, 'et vers le bas');
+  await p.click('#nxMapAnnule');
+  await p.waitForTimeout(800);
+  const rendueD = await ouEst();
+  ok(!!rendueD && Math.abs(rendueD.c - avantD.c) < 0.6 && Math.abs(rendueD.l - avantD.l) < 0.6,
+     'et « Undo » le remet ou il etait, en une fois');
+
   /* ---- ET LA GOMME EFFACE CE QU ON VOIT ----
    * Elle effacait la CASE : sur une parcelle de quatre, trois clics sur
    * quatre ne faisaient rien, et l'on frottait le batiment sans qu'il

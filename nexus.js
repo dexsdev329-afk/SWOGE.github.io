@@ -3299,7 +3299,7 @@
       return;
     }
     var TITRES = { sol: 'Ground', mur: 'Walls', objet: 'Objects',
-                   monstre: 'Monsters', salle: 'Rooms' };
+                   monstre: 'Monsters', salle: 'Rooms', iso: 'Isometric plots' };
     elMapPalette.innerHTML = '';
     Object.keys(CATALOGUE).forEach(function (fam) {
       var liste = CATALOGUE[fam];
@@ -3358,12 +3358,44 @@
       var q = k.split(','), e = elementDe('sol', v.s);
       if (e) peintElement(C, e, q[0] * p, q[1] * p, p, p, true);
     });
+    /* ---- ET LES OBJETS DU FOND VERS L'AVANT ----
+     * Une `Map` rend ses cases dans l'ordre ou on les a POSEES. Tant qu'un
+     * objet tenait dans sa case, cet ordre ne se voyait pas. Une parcelle
+     * isometrique, elle, monte bien plus haut qu'elle n'est large : celle de
+     * derriere, posee en second, recouvrait celle de devant, et l'on voyait
+     * un batiment flotter au travers d'un autre. On trie donc par LIGNE, ce
+     * qui est le seul ordre dans lequel un dessin vu de trois quarts se tient
+     * — le meme que celui du hall. */
+    var poses = [];
     MAP.cases.forEach(function (v, k) {
       if (!v.o) return;
       var q = k.split(',');
-      var e = elementDe('objet', v.o) || elementDe('monstre', v.o)
-              || elementDe('mur', v.o) || elementDe('salle', v.o);
-      if (e) peintElement(C, e, q[0] * p, q[1] * p, p, p, false);
+      poses.push({ c: +q[0], l: +q[1], cle: v.o });
+    });
+    poses.sort(function (a, b) { return a.l - b.l || a.c - b.c; });
+    poses.forEach(function (o) {
+      var e = elementDe('objet', o.cle) || elementDe('monstre', o.cle)
+              || elementDe('mur', o.cle) || elementDe('salle', o.cle)
+              || elementDe('iso', o.cle);
+      if (!e) return;
+      /* ---- UNE PARCELLE PREND LA PLACE QU'ELLE OCCUPE ----
+       * `cases` vient du catalogue, qui la deduit de la largeur de la
+       * planche. Elle se dessine centree sur la case cliquee et POSEE dessus
+       * — le pied a la meme place que pour un objet ordinaire, pour que le
+       * clic reste l'endroit ou la chose se trouve. La hauteur suit le
+       * rapport de la planche et n'est jamais choisie : une parcelle etiree
+       * ne ressemble plus a rien. */
+      if (e.cases > 1) {
+        var lg = e.cases * p;
+        var im = plancheCat(e);
+        if (!im.complete || !im.naturalWidth) return;
+        var cw = im.naturalWidth / Math.max(1, e.cadres);
+        var ht = lg * im.naturalHeight / cw;
+        C.drawImage(im, 0, 0, cw, im.naturalHeight,
+                    (o.c + 0.5) * p - lg / 2, (o.l + 1) * p - ht, lg, ht);
+        return;
+      }
+      peintElement(C, e, o.c * p, o.l * p, p, p, false);
     });
     C.strokeStyle = 'rgba(255,255,255,.07)';
     C.lineWidth = 1;

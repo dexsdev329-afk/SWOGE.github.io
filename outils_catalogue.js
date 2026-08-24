@@ -31,12 +31,26 @@ const fs = require('fs');
 const path = require('path');
 const { tailleWebp } = require('./taille_image.js');
 
+/* La tuile du jeu, en unites de monde. C'est la meme que celle du Nexus, et
+   c'est ce qui donne un sens a la largeur en pixels d'une parcelle. */
+const TUILE = 128;
+
 const FAMILLES = [
   { famille: 'sol',     dossier: 'img/nexus/tiles',    prefixe: 'ground_' },
   { famille: 'mur',     dossier: 'img/nexus/tiles',    prefixe: 'mur_' },
   { famille: 'objet',   dossier: 'img/nexus/tiles',    prefixe: 'obj_' },
   { famille: 'salle',   dossier: 'img/nexus/tiles',    prefixe: 'room_' },
   { famille: 'monstre', dossier: 'img/nexus/monstres', prefixe: '' },
+  /* ---- LES PARCELLES ISOMETRIQUES ----
+   * Elles ne portent PAS de prefixe a retirer : le fichier s'appelle deja
+   * `iso_vault.webp` et la cle vaut `iso_vault`. C'est voulu. Une carte ne
+   * garde que la CLE d'un element, jamais sa famille — `elementDe` essaie les
+   * familles l'une apres l'autre — donc deux familles qui contiendraient
+   * chacune un `arcade` se voleraient le dessin, et c'est la premiere de la
+   * liste qui gagnerait, en silence. Le prefixe dans la cle rend la collision
+   * impossible par construction plutot que par vigilance ; un essai verifie
+   * l'unicite pour les familles qui, elles, decoupent leur prefixe. */
+  { famille: 'iso',     dossier: 'img/nexus/iso',      prefixe: '' },
 ];
 
 /** Les `cadres:` declares dans la page, par nom de planche. */
@@ -83,10 +97,35 @@ function construis(racine) {
         const cle = f.slice(F.prefixe.length, -5);
         const t = tailleWebp(path.join(d, f));
         const n = cadres[f.slice(0, -5)] || 1;
-        return { cle, fichier: F.dossier + '/' + f, l: t.w, h: t.h, cadres: n };
+        const e = { cle, fichier: F.dossier + '/' + f, l: t.w, h: t.h, cadres: n };
+        /* ---- L'EMPRISE, EN CASES, DEDUITE DE LA PLANCHE ----
+         * Une parcelle isometrique n'est pas un objet pose dans une case :
+         * c'est un morceau de terrain, dessine a l'echelle du jeu. Sa largeur
+         * en pixels EST donc sa largeur en unites de monde, et une tuile en
+         * vaut cent vingt-huit. Six cents pixels font cinq cases, et le calcul
+         * le dit — le jour ou une planche arrive plus large, elle prend la
+         * place qu'elle occupe vraiment sans qu'on la mesure a la main.
+         * Deux au minimum : une parcelle dans une seule case serait une
+         * vignette, pas un batiment. */
+        if (F.famille === 'iso') e.cases = Math.max(2, Math.round(t.w / TUILE));
+        return e;
       });
   }
   return out;
+}
+
+/* ---- ET DE QUOI LE REGENERER SANS SE SOUVENIR DE RIEN ----
+ * `node outils_catalogue.js` reecrit le fichier. L'essai dit quand il est
+ * perime ; encore faut-il que la reparation tienne en une ligne, sinon elle
+ * se fait a la main et se fait mal. Meme mise en forme qu'avant, pour que le
+ * diff ne montre que ce qui a vraiment change. */
+if (require.main === module) {
+  const racine = process.argv[2] || __dirname;
+  const f = path.join(racine, 'catalogue.json');
+  fs.writeFileSync(f, JSON.stringify(construis(racine), null, 1) + '\n');
+  const c = construis(racine);
+  const t = Object.values(c).reduce((s, l) => s + l.length, 0);
+  console.log(`${f} : ${t} elements, ${Object.keys(c).length} familles`);
 }
 
 module.exports = { construis, FAMILLES };

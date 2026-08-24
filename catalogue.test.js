@@ -28,7 +28,7 @@ const total = Object.values(vrai).reduce((s, l) => s + l.length, 0);
 ok(total > 80, `${total} elements trouves dans les dossiers`);
 /* Sans ce plancher, « le catalogue est a jour » serait vrai d'un catalogue
    VIDE le jour ou la lecture des dossiers cesse de trouver quoi que ce soit. */
-for (const f of ['sol', 'mur', 'objet', 'monstre', 'salle']) {
+for (const f of ['sol', 'mur', 'objet', 'monstre', 'salle', 'iso']) {
   ok(vrai[f] && vrai[f].length > 0, `la famille « ${f} » n'est pas vide (${vrai[f] ? vrai[f].length : 0})`);
 }
 
@@ -44,8 +44,9 @@ for (const [fam, liste] of Object.entries(vrai)) {
   for (const e of liste) {
     const a = par.get(e.cle);
     if (!a) { manquants.push(fam + ':' + e.cle); continue; }
-    if (a.l !== e.l || a.h !== e.h || a.cadres !== e.cadres) {
-      differents.push(`${fam}:${e.cle} (${a.l}x${a.h}/${a.cadres} ecrit, ${e.l}x${e.h}/${e.cadres} reel)`);
+    if (a.l !== e.l || a.h !== e.h || a.cadres !== e.cadres || a.cases !== e.cases) {
+      differents.push(`${fam}:${e.cle} (${a.l}x${a.h}/${a.cadres}/${a.cases} ecrit,`
+                      + ` ${e.l}x${e.h}/${e.cadres}/${e.cases} reel)`);
     }
     par.delete(e.cle);
   }
@@ -60,6 +61,48 @@ ok(enTrop.length === 0,
    bande passee de une a quatre images se dessinerait aplatie. */
 ok(differents.length === 0,
    `taille et nombre d'images concordent${differents.length ? ' — ' + differents.slice(0, 5).join(' | ') : ''}`);
+
+console.log('\n-- deux familles ne se volent pas une cle --');
+/* ---- POURQUOI CET ESSAI EXISTE, ET SUR QUELLES FAMILLES ----
+ *
+ * Une case de carte a DEUX champs : `s` pour le sol, `o` pour ce qui se pose
+ * dessus. Elle garde la CLE de l'element, jamais sa famille — c'est ce qui la
+ * fait tenir dans une socket. Le champ `s` designe donc les sols sans
+ * ambiguite possible, et un `ground_cave` peut porter le meme nom qu'un
+ * `mur_cave` sans que rien ne s'y trompe : ils ne sont jamais cherches dans le
+ * meme champ. C'est le cas aujourd'hui de « cave », « donjon », « ville » et
+ * « sanctuaire », et ce n'est pas un defaut.
+ *
+ * Le champ `o`, lui, est PARTAGE par quatre familles, et le dessin les essaie
+ * l'une apres l'autre. La, deux memes noms font que la premiere repond a la
+ * place de l'autre : la carte affiche autre chose que ce qu'on y a pose, et
+ * rien ne le dit. C'est ce groupe-la, et lui seul, que cet essai tient.
+ *
+ * Le prefixe des parcelles isometriques rend le cas impossible pour elles ;
+ * les autres familles, dont les cles sont decoupees du nom de fichier, n'ont
+ * que cet essai pour les en empecher.
+ */
+const POSABLES = ['mur', 'objet', 'monstre', 'salle', 'iso'];
+const vues = new Map();
+const doubles = [];
+for (const fam of POSABLES) {
+  for (const e of (vrai[fam] || [])) {
+    if (vues.has(e.cle)) doubles.push(`${e.cle} (${vues.get(e.cle)} et ${fam})`);
+    else vues.set(e.cle, fam);
+  }
+}
+ok(doubles.length === 0,
+   `les ${vues.size} elements du champ « o » portent des noms distincts`
+   + `${doubles.length ? ' — ' + doubles.join(', ') : ''}`);
+
+console.log('\n-- une parcelle isometrique occupe la place qu elle prend --');
+/* Sans emprise, une parcelle de six cents pixels se dessinerait dans une case
+   de quatorze : un batiment reduit a une tache. Et sans borne haute, une
+   planche livree en pleine page couvrirait la moitie de la carte. */
+for (const e of (vrai.iso || [])) {
+  ok(e.cases >= 2 && e.cases <= 8,
+     `${e.cle} : ${e.l} px de large font ${e.cases} cases`);
+}
 
 console.log('\n-- ce qu un editeur peut poser --');
 const animes = (vrai.objet || []).filter((e) => e.cadres > 1);

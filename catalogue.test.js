@@ -99,10 +99,17 @@ console.log('\n-- une parcelle isometrique occupe la place qu elle prend --');
 /* Sans emprise, une parcelle de six cents pixels se dessinerait dans une case
    de quatorze : un batiment reduit a une tache. Et sans borne haute, une
    planche livree en pleine page couvrirait la moitie de la carte. */
+let empriseUne = 0, empriseGrande = 0;
 for (const e of (vrai.iso || [])) {
-  ok(e.cases >= 2 && e.cases <= 8,
-     `${e.cle} : ${e.l} px de large font ${e.cases} cases`);
+  ok(e.cases >= 1 && e.cases <= 8,
+     `${e.cle} : ${e.l} px de large font ${e.cases} case(s)`);
+  if (e.cases === 1) empriseUne++; else empriseGrande++;
 }
+/* Les deux tailles coexistent : des PLAQUES d'une case et des PARCELLES de
+   plusieurs. Un plancher a deux les aurait toutes rendues grandes, et une
+   plaque de soixante-quinze pixels aurait couvert quatre fois sa surface. */
+ok(empriseUne > 0 && empriseGrande > 0,
+   `${empriseUne} plaques d'une case et ${empriseGrande} parcelles plus larges`);
 
 console.log('\n-- ce qu un editeur peut poser --');
 const animes = (vrai.objet || []).filter((e) => e.cadres > 1);

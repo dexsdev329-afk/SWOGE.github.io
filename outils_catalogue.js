@@ -105,9 +105,13 @@ function construis(racine) {
          * vaut cent vingt-huit. Six cents pixels font cinq cases, et le calcul
          * le dit — le jour ou une planche arrive plus large, elle prend la
          * place qu'elle occupe vraiment sans qu'on la mesure a la main.
-         * Deux au minimum : une parcelle dans une seule case serait une
-         * vignette, pas un batiment. */
-        if (F.famille === 'iso') e.cases = Math.max(2, Math.round(t.w / TUILE));
+         * UNE au minimum, et non deux. Le plancher etait a deux quand la
+         * famille ne contenait que des parcelles de six cents pixels : une
+         * plaque de sol isometrique en fait soixante-quinze, soit un peu plus
+         * d'une demi-tuile, et la forcer a deux cases l'aurait fait couvrir
+         * quatre fois sa surface. Le plancher protegeait contre un cas qui
+         * n'existait pas encore ; celui qui existe maintenant est l'inverse. */
+        if (F.famille === 'iso') e.cases = Math.max(1, Math.round(t.w / TUILE));
         return e;
       });
   }

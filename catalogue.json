@@ -817,6 +817,14 @@
    "cases": 4
   },
   {
+   "cle": "iso_bassin",
+   "fichier": "img/nexus/iso/iso_bassin.webp",
+   "l": 73,
+   "h": 66,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
    "cle": "iso_beachclub",
    "fichier": "img/nexus/iso/iso_beachclub.webp",
    "l": 632,
@@ -833,6 +841,134 @@
    "cases": 5
   },
   {
+   "cle": "iso_bloc_bois",
+   "fichier": "img/nexus/iso/iso_bloc_bois.webp",
+   "l": 62,
+   "h": 50,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_bloc_bois2",
+   "fichier": "img/nexus/iso/iso_bloc_bois2.webp",
+   "l": 55,
+   "h": 47,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_bloc_lave",
+   "fichier": "img/nexus/iso/iso_bloc_lave.webp",
+   "l": 50,
+   "h": 47,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_bloc_marbre",
+   "fichier": "img/nexus/iso/iso_bloc_marbre.webp",
+   "l": 48,
+   "h": 49,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_bloc_neon",
+   "fichier": "img/nexus/iso/iso_bloc_neon.webp",
+   "l": 48,
+   "h": 45,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_bloc_obsi",
+   "fichier": "img/nexus/iso/iso_bloc_obsi.webp",
+   "l": 46,
+   "h": 47,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_bloc_pierre",
+   "fichier": "img/nexus/iso/iso_bloc_pierre.webp",
+   "l": 53,
+   "h": 51,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_bloc_pierre2",
+   "fichier": "img/nexus/iso/iso_bloc_pierre2.webp",
+   "l": 47,
+   "h": 49,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_bloc_pierre3",
+   "fichier": "img/nexus/iso/iso_bloc_pierre3.webp",
+   "l": 51,
+   "h": 49,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_bloc_pre",
+   "fichier": "img/nexus/iso/iso_bloc_pre.webp",
+   "l": 52,
+   "h": 47,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_bloc_rive",
+   "fichier": "img/nexus/iso/iso_bloc_rive.webp",
+   "l": 52,
+   "h": 47,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_bloc_tapis",
+   "fichier": "img/nexus/iso/iso_bloc_tapis.webp",
+   "l": 55,
+   "h": 47,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_boue",
+   "fichier": "img/nexus/iso/iso_boue.webp",
+   "l": 74,
+   "h": 60,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_boussole",
+   "fichier": "img/nexus/iso/iso_boussole.webp",
+   "l": 74,
+   "h": 57,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_cascade",
+   "fichier": "img/nexus/iso/iso_cascade.webp",
+   "l": 82,
+   "h": 78,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_cascade2",
+   "fichier": "img/nexus/iso/iso_cascade2.webp",
+   "l": 70,
+   "h": 66,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
    "cle": "iso_casino",
    "fichier": "img/nexus/iso/iso_casino.webp",
    "l": 594,
@@ -847,6 +983,38 @@
    "h": 427,
    "cadres": 1,
    "cases": 4
+  },
+  {
+   "cle": "iso_eau",
+   "fichier": "img/nexus/iso/iso_eau.webp",
+   "l": 78,
+   "h": 68,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_flaque",
+   "fichier": "img/nexus/iso/iso_flaque.webp",
+   "l": 56,
+   "h": 47,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_flaque2",
+   "fichier": "img/nexus/iso/iso_flaque2.webp",
+   "l": 54,
+   "h": 47,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_fleurs",
+   "fichier": "img/nexus/iso/iso_fleurs.webp",
+   "l": 75,
+   "h": 61,
+   "cadres": 1,
+   "cases": 1
   },
   {
    "cle": "iso_fontaine",
@@ -881,12 +1049,124 @@
    "cases": 5
   },
   {
+   "cle": "iso_lave",
+   "fichier": "img/nexus/iso/iso_lave.webp",
+   "l": 72,
+   "h": 58,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_marbre",
+   "fichier": "img/nexus/iso/iso_marbre.webp",
+   "l": 75,
+   "h": 59,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
    "cle": "iso_nature",
    "fichier": "img/nexus/iso/iso_nature.webp",
    "l": 608,
    "h": 425,
    "cadres": 1,
    "cases": 5
+  },
+  {
+   "cle": "iso_obsidienne",
+   "fichier": "img/nexus/iso/iso_obsidienne.webp",
+   "l": 77,
+   "h": 58,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_pas_fleuri",
+   "fichier": "img/nexus/iso/iso_pas_fleuri.webp",
+   "l": 74,
+   "h": 68,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_pas_lave",
+   "fichier": "img/nexus/iso/iso_pas_lave.webp",
+   "l": 70,
+   "h": 69,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_pas_marbre",
+   "fichier": "img/nexus/iso/iso_pas_marbre.webp",
+   "l": 70,
+   "h": 66,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_pas_neon",
+   "fichier": "img/nexus/iso/iso_pas_neon.webp",
+   "l": 78,
+   "h": 72,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_pas_obsi",
+   "fichier": "img/nexus/iso/iso_pas_obsi.webp",
+   "l": 66,
+   "h": 68,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_pas_pierre",
+   "fichier": "img/nexus/iso/iso_pas_pierre.webp",
+   "l": 55,
+   "h": 68,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_pas_pierre2",
+   "fichier": "img/nexus/iso/iso_pas_pierre2.webp",
+   "l": 58,
+   "h": 66,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_pas_pierre3",
+   "fichier": "img/nexus/iso/iso_pas_pierre3.webp",
+   "l": 62,
+   "h": 65,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_pas_plage",
+   "fichier": "img/nexus/iso/iso_pas_plage.webp",
+   "l": 65,
+   "h": 67,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_pas_tapis",
+   "fichier": "img/nexus/iso/iso_pas_tapis.webp",
+   "l": 61,
+   "h": 69,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_passerelle",
+   "fichier": "img/nexus/iso/iso_passerelle.webp",
+   "l": 85,
+   "h": 70,
+   "cadres": 1,
+   "cases": 1
   },
   {
    "cle": "iso_penthouse",
@@ -921,12 +1201,84 @@
    "cases": 5
   },
   {
+   "cle": "iso_pierre",
+   "fichier": "img/nexus/iso/iso_pierre.webp",
+   "l": 75,
+   "h": 55,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_pierre_herbe",
+   "fichier": "img/nexus/iso/iso_pierre_herbe.webp",
+   "l": 77,
+   "h": 56,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_pierre_lierre",
+   "fichier": "img/nexus/iso/iso_pierre_lierre.webp",
+   "l": 76,
+   "h": 57,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_pierre_mousse",
+   "fichier": "img/nexus/iso/iso_pierre_mousse.webp",
+   "l": 70,
+   "h": 56,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
    "cle": "iso_piscine",
    "fichier": "img/nexus/iso/iso_piscine.webp",
    "l": 625,
    "h": 569,
    "cadres": 1,
    "cases": 5
+  },
+  {
+   "cle": "iso_planches",
+   "fichier": "img/nexus/iso/iso_planches.webp",
+   "l": 79,
+   "h": 56,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_pont_bois",
+   "fichier": "img/nexus/iso/iso_pont_bois.webp",
+   "l": 73,
+   "h": 67,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_pont_corde",
+   "fichier": "img/nexus/iso/iso_pont_corde.webp",
+   "l": 69,
+   "h": 68,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_pont_pierre",
+   "fichier": "img/nexus/iso/iso_pont_pierre.webp",
+   "l": 81,
+   "h": 73,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_ponton",
+   "fichier": "img/nexus/iso/iso_ponton.webp",
+   "l": 75,
+   "h": 59,
+   "cadres": 1,
+   "cases": 1
   },
   {
    "cle": "iso_portail_rouge",
@@ -945,12 +1297,124 @@
    "cases": 4
   },
   {
+   "cle": "iso_rive",
+   "fichier": "img/nexus/iso/iso_rive.webp",
+   "l": 72,
+   "h": 62,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_rond_bois",
+   "fichier": "img/nexus/iso/iso_rond_bois.webp",
+   "l": 61,
+   "h": 48,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_rond_cristal",
+   "fichier": "img/nexus/iso/iso_rond_cristal.webp",
+   "l": 66,
+   "h": 52,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_rond_fleuri",
+   "fichier": "img/nexus/iso/iso_rond_fleuri.webp",
+   "l": 63,
+   "h": 50,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_rond_lave",
+   "fichier": "img/nexus/iso/iso_rond_lave.webp",
+   "l": 64,
+   "h": 50,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_rond_neon",
+   "fichier": "img/nexus/iso/iso_rond_neon.webp",
+   "l": 66,
+   "h": 49,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_rond_obsi",
+   "fichier": "img/nexus/iso/iso_rond_obsi.webp",
+   "l": 61,
+   "h": 47,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_rond_pierre",
+   "fichier": "img/nexus/iso/iso_rond_pierre.webp",
+   "l": 66,
+   "h": 51,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_rond_sable",
+   "fichier": "img/nexus/iso/iso_rond_sable.webp",
+   "l": 61,
+   "h": 44,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_rond_tapis",
+   "fichier": "img/nexus/iso/iso_rond_tapis.webp",
+   "l": 61,
+   "h": 44,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_roulette",
+   "fichier": "img/nexus/iso/iso_roulette.webp",
+   "l": 79,
+   "h": 60,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_sable",
+   "fichier": "img/nexus/iso/iso_sable.webp",
+   "l": 76,
+   "h": 57,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
    "cle": "iso_stand",
    "fichier": "img/nexus/iso/iso_stand.webp",
    "l": 636,
    "h": 512,
    "cadres": 1,
    "cases": 5
+  },
+  {
+   "cle": "iso_tapis_bleu",
+   "fichier": "img/nexus/iso/iso_tapis_bleu.webp",
+   "l": 77,
+   "h": 57,
+   "cadres": 1,
+   "cases": 1
+  },
+  {
+   "cle": "iso_tapis_rouge",
+   "fichier": "img/nexus/iso/iso_tapis_rouge.webp",
+   "l": 78,
+   "h": 55,
+   "cadres": 1,
+   "cases": 1
   },
   {
    "cle": "iso_vault",

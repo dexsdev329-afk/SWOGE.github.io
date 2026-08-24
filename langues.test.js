@@ -71,7 +71,19 @@ const demandes = new Set();
    l'autre ferait reclamer une traduction de « KeyW ». */
 for (const m of html.matchAll(/data-txt="([A-Za-z0-9_]+)"/g)) demandes.add(m[1]);
 for (const m of html.matchAll(/data-txtph="([A-Za-z0-9_]+)"/g)) demandes.add(m[1]);
+for (const m of html.matchAll(/data-txtaide="([A-Za-z0-9_]+)"/g)) demandes.add(m[1]);
 ok(demandes.size > 15, `${demandes.size} libelles marques dans la page`);
+/* ---- ET CHAQUE BOUTON D'OUTIL EXPLIQUE CE QU'IL FAIT ----
+ * Un libelle NOMME, il n'explique pas : « Fill », « Rect », « Start » ne se
+ * devinent pas, et quelqu'un qui ouvre l'editeur pour la premiere fois n'a
+ * personne a qui demander. On verifie donc que tout bouton d'outil porte une
+ * aide — c'est la seule facon d'etre sur que le prochain outil ajoute en
+ * portera une aussi. */
+const outils = [...html.matchAll(/<button id="(nxMapOutil[A-Za-z]+)"[^>]*>/g)];
+ok(outils.length >= 6, `${outils.length} boutons d'outil dans la page`);
+const muets = outils.filter((m) => !/data-txtaide=/.test(m[0])).map((m) => m[1]);
+ok(muets.length === 0,
+   `chaque outil dit ce qu'il fait${muets.length ? ' — muets : ' + muets.join(', ') : ''}`);
 /* ---- UNE CLE EST DEMANDEE DES QUE QUELQU'UN LA NOMME ----
  * La moitie des appels choisissent leur cle sans l'ecrire dans l'appel :
  * `T(mienne ? 'editer' : 'visiter')` passe encore, mais `T(CODES[m.code])` et

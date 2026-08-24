@@ -2387,25 +2387,25 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
     <b id="nxMapTitre">&#128506; Map Editor</b>
     <span id="nxMapDit"></span>
     <span class="creux"></span>
-    <input id="nxMapNom" type="text" maxlength="48" data-txtph="nomCarte" placeholder="Map name" style="display:none">
-    <button id="nxMapOutilDessin" type="button" data-txt="dessin" style="display:none">Draw</button>
-    <button id="nxMapOutilGomme" type="button" data-txt="gomme" style="display:none">Erase</button>
-    <button id="nxMapOutilPot" type="button" data-txt="pot" style="display:none">Fill</button>
-    <button id="nxMapOutilRect" type="button" data-txt="rect" style="display:none">Rect</button>
-    <button id="nxMapOutilChoix" type="button" data-txt="choisir" style="display:none">Select</button>
-    <button id="nxMapOutilDepart" type="button" data-txt="depart" data-txtp="&#9873; " style="display:none">&#9873; Start</button>
-    <button id="nxMapOutilMain" type="button" data-txt="main" data-txtp="&#9995; " style="display:none">&#9995; Pan</button>
+    <input id="nxMapNom" type="text" maxlength="48" data-txtaide="aideNom" data-txtph="nomCarte" placeholder="Map name" style="display:none">
+    <button id="nxMapOutilDessin" type="button" data-txt="dessin" data-txtaide="aideDessin" style="display:none">Draw</button>
+    <button id="nxMapOutilGomme" type="button" data-txt="gomme" data-txtaide="aideGomme" style="display:none">Erase</button>
+    <button id="nxMapOutilPot" type="button" data-txt="pot" data-txtaide="aidePot" style="display:none">Fill</button>
+    <button id="nxMapOutilRect" type="button" data-txt="rect" data-txtaide="aideRect" style="display:none">Rect</button>
+    <button id="nxMapOutilChoix" type="button" data-txt="choisir" data-txtaide="aideChoix" style="display:none">Select</button>
+    <button id="nxMapOutilDepart" type="button" data-txt="depart" data-txtaide="aideDepart" data-txtp="&#9873; " style="display:none">&#9873; Start</button>
+    <button id="nxMapOutilMain" type="button" data-txt="main" data-txtaide="aideMain" data-txtp="&#9995; " style="display:none">&#9995; Pan</button>
     <span id="nxMapZoomBloc" style="display:none">
-      <button id="nxMapMoins" type="button">&minus;</button>
-      <button id="nxMapPlus" type="button">+</button>
-      <button id="nxMapAjuste" type="button" data-txt="ajuste">Fit</button>
+      <button id="nxMapMoins" type="button" data-txtaide="aideMoins">&minus;</button>
+      <button id="nxMapPlus" type="button" data-txtaide="aidePlus">+</button>
+      <button id="nxMapAjuste" type="button" data-txt="ajuste" data-txtaide="aideAjuste">Fit</button>
     </span>
-    <button id="nxMapAnnule" type="button" data-txt="annule" data-txtp="&#8630; " style="display:none">&#8630; Undo</button>
-    <button id="nxMapRefais" type="button" data-txt="refais" data-txtp="&#8631; " style="display:none">&#8631; Redo</button>
-    <button id="nxMapEnregistre" type="button" class="vedette" data-txt="enregistre" style="display:none">Save</button>
-    <button id="nxMapRetour" type="button" data-txt="galerie" style="display:none">Gallery</button>
-    <button id="nxMapNouvelle" type="button" class="vedette" data-txt="nouvelle">New map</button>
-    <button id="nxMapFerme" type="button" data-txt="ferme">Close</button>
+    <button id="nxMapAnnule" type="button" data-txt="annule" data-txtaide="aideAnnule" data-txtp="&#8630; " style="display:none">&#8630; Undo</button>
+    <button id="nxMapRefais" type="button" data-txt="refais" data-txtaide="aideRefais" data-txtp="&#8631; " style="display:none">&#8631; Redo</button>
+    <button id="nxMapEnregistre" type="button" class="vedette" data-txt="enregistre" data-txtaide="aideEnregistre" style="display:none">Save</button>
+    <button id="nxMapRetour" type="button" data-txt="galerie" data-txtaide="aideGalerie" style="display:none">Gallery</button>
+    <button id="nxMapNouvelle" type="button" class="vedette" data-txt="nouvelle" data-txtaide="aideNouvelle">New map</button>
+    <button id="nxMapFerme" type="button" data-txt="ferme" data-txtaide="aideFerme">Close</button>
   </div>
   <!-- ---- LA QUESTION QUI SAUVE UN TRAVAIL ----
        « Gallery » et « Close » remettaient la carte a zero sans un mot : on
@@ -2462,20 +2462,20 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
       <canvas id="nxMapFicheVue" width="120" height="120"></canvas>
       <b id="nxMapFicheNom"></b>
       <div class="rang">
-        <button id="nxMapPlusPetit" type="button">&minus;</button>
+        <button id="nxMapPlusPetit" type="button" data-txtaide="aidePlusPetit">&minus;</button>
         <b id="nxMapFicheTaille">1</b>
-        <button id="nxMapPlusGrand" type="button">+</button>
+        <button id="nxMapPlusGrand" type="button" data-txtaide="aidePlusGrand">+</button>
       </div>
-      <button id="nxMapTourne" type="button" data-txt="tourne" data-txtp="&#8635; ">&#8635; Turn</button>
-      <button id="nxMapEfface" type="button" data-txt="supprimer">Delete</button>
-      <button id="nxMapLache" type="button" data-txt="ferme">Close</button>
+      <button id="nxMapTourne" type="button" data-txt="tourne" data-txtaide="aideTourne" data-txtp="&#8635; ">&#8635; Turn</button>
+      <button id="nxMapEfface" type="button" data-txt="supprimer" data-txtaide="aideEfface">Delete</button>
+      <button id="nxMapLache" type="button" data-txt="ferme" data-txtaide="aideLache">Close</button>
     </div>
     <div id="nxMapPalette">
       <!-- ---- CHERCHER PLUTOT QUE DEFILER ----
            Cent trente-quatre elements en six blocs : trouver « fontaine »
            demandait de tout parcourir. Le champ reste EN HAUT quand on
            defile, sinon il faudrait remonter pour changer de recherche. -->
-      <input id="nxMapCherche" type="search" data-txtph="chercher" placeholder="Search elements…" autocomplete="off">
+      <input id="nxMapCherche" type="search" data-txtaide="aideCherche" data-txtph="chercher" placeholder="Search elements…" autocomplete="off">
       <div id="nxMapListe"></div>
     </div>
     </div>
@@ -2548,7 +2548,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
      racine ; c'est le seul endroit d'ou elle peut couvrir tout le reste. -->
 <div id="nxFiche"></div>
 
-<script src="nexus.js?v=edd7a05a" defer></script>
+<script src="nexus.js?v=746a5402" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 
 <script>

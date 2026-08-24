@@ -3258,6 +3258,34 @@
     en: {
       titre: 'Map Editor', sansNom: 'Untitled', par: 'by',
       choisir: 'Select',
+      aideEditer: 'Open this map and change it.',
+      aideVisiter: 'Look at this map. You cannot change someone else\'s.',
+      aideJouer: 'Walk inside this map.',
+      aideSupprimeCarte: 'Delete this map for good.',
+      aideDessin: 'Paint the chosen element. Hold and drag to draw a line.',
+      aideGomme: 'Remove what you click. On a building, anywhere on it works.',
+      aidePot: 'Fill the whole connected area with the chosen element.',
+      aideRect: 'Press and drag to fill a rectangle.',
+      aideChoix: 'Pick a placed element: drag to move it, or use its handles.',
+      aideDepart: 'Place where visitors arrive. A map needs one to be walkable.',
+      aideMain: 'Drag the map around without drawing on it.',
+      aideAnnule: 'Undo the last thing you did.',
+      aideRefais: 'Redo what you just undid.',
+      aideMoins: 'Zoom out.',
+      aidePlus: 'Zoom in.',
+      aideAjuste: 'Fit the whole map on screen.',
+      aideNom: 'Name your map. It needs one before you can save.',
+      aideEnregistre: 'Save your map on the server.',
+      aideGalerie: 'Back to the list of maps.',
+      aideNouvelle: 'Start a new map.',
+      aideFerme: 'Close the editor and go back to the Nexus.',
+      aideLangue: 'Change the editor language.',
+      aidePlusPetit: 'Make it smaller by one tile.',
+      aidePlusGrand: 'Make it bigger by one tile. Drag its green corner for more.',
+      aideTourne: 'Turn it a quarter turn.',
+      aideEfface: 'Remove this element from the map.',
+      aideLache: 'Stop holding it.',
+      aideCherche: 'Type to narrow the list below.',
       jouer: 'Play',
       tourne: 'Turn',
       rienChoisi: 'Tap a placed element to select it.',
@@ -3295,6 +3323,34 @@
     fr: {
       titre: 'Éditeur de cartes', sansNom: 'Sans titre', par: 'de',
       choisir: 'Choisir',
+      aideEditer: 'Ouvre cette carte pour la modifier.',
+      aideVisiter: 'Regarde cette carte. On ne modifie pas celle d\'un autre.',
+      aideJouer: 'Va marcher dans cette carte.',
+      aideSupprimeCarte: 'Supprime cette carte pour de bon.',
+      aideDessin: 'Peint l\'element choisi. Maintenez et glissez pour tracer.',
+      aideGomme: 'Efface ce que vous touchez. Sur un batiment, n\'importe ou dessus.',
+      aidePot: 'Remplit toute la zone d\'un seul tenant avec l\'element choisi.',
+      aideRect: 'Appuyez et glissez pour remplir un rectangle.',
+      aideChoix: 'Prend un element pose : glissez-le pour le deplacer, ou tirez ses poignees.',
+      aideDepart: 'Pose l\'endroit ou les visiteurs arrivent. Sans lui, la carte ne se marche pas.',
+      aideMain: 'Deplace la carte sans dessiner dessus.',
+      aideAnnule: 'Annule la derniere chose faite.',
+      aideRefais: 'Refait ce que vous venez d\'annuler.',
+      aideMoins: 'Dezoome.',
+      aidePlus: 'Zoome.',
+      aideAjuste: 'Remet la carte entiere dans l\'ecran.',
+      aideNom: 'Nommez votre carte. Il en faut un pour l\'enregistrer.',
+      aideEnregistre: 'Enregistre votre carte sur le serveur.',
+      aideGalerie: 'Retour a la liste des cartes.',
+      aideNouvelle: 'Commence une nouvelle carte.',
+      aideFerme: 'Ferme l\'editeur et revient au Nexus.',
+      aideLangue: 'Change la langue de l\'editeur.',
+      aidePlusPetit: 'Reduit d\'une case.',
+      aidePlusGrand: 'Agrandit d\'une case. Tirez son coin vert pour aller plus vite.',
+      aideTourne: 'Lui donne un quart de tour.',
+      aideEfface: 'Retire cet element de la carte.',
+      aideLache: 'Arrete de le tenir.',
+      aideCherche: 'Tapez pour reduire la liste en dessous.',
       jouer: 'Visiter',
       tourne: 'Tourner',
       rienChoisi: 'Touchez un élément posé pour le choisir.',
@@ -3335,6 +3391,34 @@
     es: {
       titre: 'Editor de mapas', sansNom: 'Sin título', par: 'de',
       choisir: 'Elegir',
+      aideEditer: 'Abre este mapa para cambiarlo.',
+      aideVisiter: 'Mira este mapa. El de otra persona no se puede cambiar.',
+      aideJouer: 'Camina dentro de este mapa.',
+      aideSupprimeCarte: 'Borra este mapa para siempre.',
+      aideDessin: 'Pinta el elemento elegido. Manten y arrastra para trazar.',
+      aideGomme: 'Borra lo que tocas. En un edificio, vale cualquier punto.',
+      aidePot: 'Rellena toda la zona contigua con el elemento elegido.',
+      aideRect: 'Pulsa y arrastra para rellenar un rectangulo.',
+      aideChoix: 'Coge un elemento colocado: arrastralo para moverlo, o tira de sus tiradores.',
+      aideDepart: 'Coloca donde llegan los visitantes. Sin el, el mapa no se camina.',
+      aideMain: 'Mueve el mapa sin dibujar encima.',
+      aideAnnule: 'Deshace lo ultimo.',
+      aideRefais: 'Rehace lo que acabas de deshacer.',
+      aideMoins: 'Aleja.',
+      aidePlus: 'Acerca.',
+      aideAjuste: 'Encaja el mapa entero en la pantalla.',
+      aideNom: 'Ponle nombre al mapa. Hace falta para guardarlo.',
+      aideEnregistre: 'Guarda tu mapa en el servidor.',
+      aideGalerie: 'Volver a la lista de mapas.',
+      aideNouvelle: 'Empieza un mapa nuevo.',
+      aideFerme: 'Cierra el editor y vuelve al Nexus.',
+      aideLangue: 'Cambia el idioma del editor.',
+      aidePlusPetit: 'Lo hace una casilla mas pequeno.',
+      aidePlusGrand: 'Lo hace una casilla mas grande. Tira de su esquina verde para ir mas rapido.',
+      aideTourne: 'Le da un cuarto de vuelta.',
+      aideEfface: 'Quita este elemento del mapa.',
+      aideLache: 'Deja de sostenerlo.',
+      aideCherche: 'Escribe para reducir la lista de abajo.',
       jouer: 'Jugar',
       tourne: 'Girar',
       rienChoisi: 'Toca un elemento colocado para elegirlo.',
@@ -3414,6 +3498,16 @@
     }
     var p = v.querySelectorAll('[data-txtph]');
     for (var j = 0; j < p.length; j++) p[j].placeholder = T(p[j].dataset.txtph);
+    /* ---- ET CE QUE CHAQUE BOUTON FAIT ----
+     * « Fill », « Rect », « Start » ne se devinent pas. Un libelle nomme, il
+     * n'explique pas — et quelqu'un qui ouvre l'editeur pour la premiere fois
+     * n'a personne a qui demander. L'infobulle du navigateur suffit : elle
+     * arrive au survol, elle ne prend pas de place, et elle se traduit avec le
+     * reste. */
+    var h = v.querySelectorAll('[data-txtaide]');
+    for (var q = 0; q < h.length; q++) h[q].title = T(h[q].dataset.txtaide);
+    var lg = document.querySelectorAll('#nxMapLangues button[data-lang]');
+    for (var w = 0; w < lg.length; w++) lg[w].title = T('aideLangue');
     var b = document.querySelectorAll('#nxMapLangues button[data-lang]');
     for (var q = 0; q < b.length; q++) {
       b[q].classList.toggle('vedette', b[q].dataset.lang === MAP_LANGUE);
@@ -4768,6 +4862,7 @@
       var o = document.createElement('button');
       o.type = 'button';
       o.textContent = T(k.mienne ? 'editer' : 'visiter');
+      o.title = T(k.mienne ? 'aideEditer' : 'aideVisiter');
       o.addEventListener('click', function () {
         mapDit(T('charge'));
         if (enLigne) envoie({ type: 'carteLit', id: k.id });
@@ -4781,6 +4876,7 @@
         var jo = document.createElement('button');
         jo.type = 'button'; jo.className = 'vedette';
         jo.textContent = T('jouer');
+        jo.title = T('aideJouer');
         jo.addEventListener('click', function () {
           if (!enLigne) { mapDit(T('horsLigne'), true); return; }
           mapDit(T('charge'));
@@ -4800,6 +4896,7 @@
       if (k.mienne) {
         var x = document.createElement('button');
         x.type = 'button'; x.textContent = T('supprimer');
+        x.title = T('aideSupprimeCarte');
         x.addEventListener('click', function () {
           if (enLigne) envoie({ type: 'carteSupprime', id: k.id });
         });

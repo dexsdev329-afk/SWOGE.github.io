@@ -3278,6 +3278,48 @@
     return true;
   }
 
+  /* ---- LA PALETTE NE TELECHARGE QUE CE QU'ON REGARDE ----
+   *
+   * Les cent trente-quatre planches pesent trente megaoctets. Peintes toutes
+   * a l'ouverture, elles etaient toutes DEMANDEES a l'ouverture : sur un
+   * telephone, l'editeur commencait par avaler un forfait. Et pour quoi —
+   * des vignettes de quarante-six pixels, dont une vingtaine seulement tient
+   * a l'ecran.
+   *
+   * On ne peint donc une vignette que lorsqu'elle entre dans la fenetre, et
+   * c'est la peinture qui declenche le telechargement, puisque `plancheCat`
+   * ne cree l'image qu'au premier appel. Faire defiler charge la suite.
+   *
+   * `rootMargin` monte a 200 px pour que la vignette soit prete avant d'etre
+   * vue : sans marge, on defile sur des cases vides qui se remplissent apres
+   * coup. */
+  var mapVoit = null;
+  function regardeLaPalette(b) {
+    if (!('IntersectionObserver' in window)) { peintLaVignette(b); return; }
+    if (!mapVoit) {
+      mapVoit = new IntersectionObserver(function (lot) {
+        for (var i = 0; i < lot.length; i++) {
+          if (!lot[i].isIntersecting) continue;
+          peintLaVignette(lot[i].target);
+        }
+      }, { root: elMapPalette, rootMargin: '200px' });
+    }
+    mapVoit.observe(b);
+  }
+  function peintLaVignette(b) {
+    var cv = b.firstChild;
+    if (!cv || cv.dataset.peint === '1') return;
+    /* « Vue » veut dire « demandee » : la planche est peut-etre encore en
+       route, et c'est ce drapeau qui dira au repassage suivant qu'il faut
+       reessayer CELLE-CI et pas les cent trente-trois autres. */
+    cv.dataset.vu = '1';
+    var el = elementDe(b.dataset.fam, b.dataset.cle);
+    if (el && peintElement(cv.getContext('2d'), el, 0, 0, cv.width, cv.height, false)) {
+      cv.dataset.peint = '1';
+      if (mapVoit) mapVoit.unobserve(b);
+    }
+  }
+
   function peintMapPalette() {
     if (!elMapPalette || !CATALOGUE) return;
     if (elMapPalette.dataset.pret === '1') {
@@ -3288,13 +3330,12 @@
         var b = pris[q];
         b.classList.toggle('pris', !!mapChoix && b.dataset.fam === mapChoix.famille
                                    && b.dataset.cle === mapChoix.cle);
+        /* On ne repeint QUE ce que l'observateur a deja retenu : une planche
+           arrivee declenche ce repassage, et repeindre tout le monde ici
+           redemanderait les cent trente-quatre fichiers d'un coup — c'est-a-
+           dire exactement ce que le chargement paresseux evite. */
         var cv = b.firstChild;
-        if (cv && cv.dataset.peint !== '1') {
-          var el = elementDe(b.dataset.fam, b.dataset.cle);
-          if (el && peintElement(cv.getContext('2d'), el, 0, 0, cv.width, cv.height, false)) {
-            cv.dataset.peint = '1';
-          }
-        }
+        if (cv && cv.dataset.peint !== '1' && cv.dataset.vu === '1') peintLaVignette(b);
       }
       return;
     }
@@ -3317,13 +3358,13 @@
         var cv = document.createElement('canvas');
         cv.width = 46; cv.height = 46;
         b.appendChild(cv);
-        if (peintElement(cv.getContext('2d'), e, 0, 0, 46, 46, false)) cv.dataset.peint = '1';
         b.addEventListener('click', function () {
           mapChoix = { famille: fam, cle: e.cle };
           mapOutil = 'dessin';
           peintMapPalette(); peintMapOutils();
         });
         g.appendChild(b);
+        regardeLaPalette(b);
       });
       elMapPalette.appendChild(g);
     });

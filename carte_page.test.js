@@ -36,11 +36,19 @@ if (!fs.existsSync(path.join(SERVEUR, 'server.js'))) {
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'application/json',
                 '.webp': 'image/webp', '.png': 'image/png', '.jpg': 'image/jpeg',
                 '.css': 'text/css', '.mp3': 'audio/mpeg' };
+/* ---- ON COMPTE CE QUI PART VRAIMENT SUR LE FIL ----
+ * Cote page, une image « chargee » ne dit pas si elle a ete telechargee ou
+ * relue du cache. Le seul endroit qui sait est celui qui sert : on compte
+ * donc ici, par fichier et par octet. C'est ce qui permet de dire ce que
+ * l'ouverture de l'editeur coute a un joueur au telephone. */
+const servi = { fichiers: new Set(), octets: 0 };
 const servirLeSite = async () => {
   const s = http.createServer((q, r) => {
-    const f = path.join(SITE, decodeURIComponent(q.url.split('?')[0]));
+    const nom = decodeURIComponent(q.url.split('?')[0]);
+    const f = path.join(SITE, nom);
     fs.readFile(f, (e, d) => {
       if (e) { r.writeHead(404); r.end(); return; }
+      if (/^\/img\//.test(nom)) { servi.fichiers.add(nom); servi.octets += d.length; }
       r.writeHead(200, { 'content-type': TYPES[path.extname(f)] || 'application/octet-stream' });
       r.end(d);
     });
@@ -132,6 +140,22 @@ const servirLeSite = async () => {
   ok(ouvert.on, 'la machine ouvre le panneau — sans passer par la console');
   ok(ouvert.vignettes > 80, `la palette porte ${ouvert.vignettes} elements, lus du catalogue`);
   ok(!/Not connected/.test(ouvert.dit || ''), 'et la galerie a pu etre demandee (connecte)');
+
+  /* ---- ET CE QUE L'OUVERTURE A COUTE ----
+   * La palette montre cent trente-quatre planches ; elles pesent trente
+   * megaoctets. Les demander toutes pour en afficher une vingtaine a
+   * l'ecran, en vignettes de quarante-six pixels, revenait a faire payer un
+   * forfait pour ouvrir un panneau. Le plafond ci-dessous se compare au
+   * catalogue REEL, jamais a un nombre ecrit ici : le jour ou trente planches
+   * arrivent, il monte tout seul. */
+  const cat = JSON.parse(fs.readFileSync(path.join(SITE, 'catalogue.json'), 'utf8'));
+  const tout = Object.values(cat).flat();
+  const poidsTotal = tout.reduce((t, e) => t + fs.statSync(path.join(SITE, e.fichier)).size, 0);
+  ok(servi.fichiers.size < tout.length / 2,
+     `l'ouverture a demande ${servi.fichiers.size} images sur ${tout.length} au catalogue`);
+  ok(servi.octets < poidsTotal / 3,
+     `soit ${(servi.octets / 1048576).toFixed(1)} Mo sur les `
+     + `${(poidsTotal / 1048576).toFixed(1)} Mo que pese le catalogue entier`);
 
   console.log('\n-- on dessine --');
   await p.click('#nxMapNouvelle');

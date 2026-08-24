@@ -3252,6 +3252,10 @@
   var MAP_TEXTES = {
     en: {
       titre: 'Map Editor', sansNom: 'Untitled', par: 'by',
+      choisir: 'Select',
+      tourne: 'Turn',
+      rienChoisi: 'Tap a placed element to select it.',
+      choisi: 'Selected — resize it with − and +, turn it with Turn.',
       nouvelle: 'New map', ferme: 'Close', galerie: 'Gallery', enregistre: 'Save',
       dessin: 'Draw', gomme: 'Erase', pot: 'Fill', rect: 'Rect',
       depart: 'Start', main: 'Pan', annule: 'Undo', refais: 'Redo', ajuste: 'Fit',
@@ -3284,6 +3288,10 @@
     },
     fr: {
       titre: 'Éditeur de cartes', sansNom: 'Sans titre', par: 'de',
+      choisir: 'Choisir',
+      tourne: 'Tourner',
+      rienChoisi: 'Touchez un élément posé pour le choisir.',
+      choisi: 'Choisi — agrandissez-le avec − et +, tournez-le avec Tourner.',
       nouvelle: 'Nouvelle carte', ferme: 'Fermer', galerie: 'Galerie', enregistre: 'Enregistrer',
       dessin: 'Pinceau', gomme: 'Gomme', pot: 'Pot', rect: 'Rect.',
       depart: 'Départ', main: 'Main', annule: 'Annuler', refais: 'Rétablir', ajuste: 'Cadrer',
@@ -3319,6 +3327,10 @@
     },
     es: {
       titre: 'Editor de mapas', sansNom: 'Sin título', par: 'de',
+      choisir: 'Elegir',
+      tourne: 'Girar',
+      rienChoisi: 'Toca un elemento colocado para elegirlo.',
+      choisi: 'Elegido — cámbialo de tamaño con − y +, gíralo con Girar.',
       nouvelle: 'Mapa nuevo', ferme: 'Cerrar', galerie: 'Galería', enregistre: 'Guardar',
       dessin: 'Pincel', gomme: 'Borrar', pot: 'Rellenar', rect: 'Rect.',
       depart: 'Inicio', main: 'Mover', annule: 'Deshacer', refais: 'Rehacer', ajuste: 'Ajustar',
@@ -3444,6 +3456,11 @@
      par ce qui charge ou enregistre — un seul endroit chacun. */
   var mapSale = false;
   var mapRect = null;                     // { c0, l0, c1, l1 } pendant le glisse
+  /* ---- L'ELEMENT QU'ON TIENT ----
+   * Une case, pas un objet : la carte est la verite, et garder une copie de
+   * l'element aurait fait deux etats a defaire ensemble a chaque annulation.
+   * `null` quand rien n'est tenu, et c'est ce qui cache les boutons. */
+  var mapSel = null;                      // { c, l }
   var mapEnAttente = null;                // le geste suspendu par la question
 
   /* ---- LA VUE ----
@@ -3531,14 +3548,26 @@
    * une facade ecrasee dans un carre ne ressemble plus a rien, et c'est en
    * regardant la palette qu'on choisit.
    */
-  function peintElement(c2, e, x, y, w, h, remplir) {
+  function peintElement(c2, e, x, y, w, h, remplir, tour) {
     var im = plancheCat(e);
     if (!im.complete || !im.naturalWidth) return false;
     var cw = im.naturalWidth / Math.max(1, e.cadres);
     if (remplir) { c2.drawImage(im, 0, 0, cw, im.naturalHeight, x, y, w, h); return true; }
     var k = Math.min(w / cw, h / im.naturalHeight);
     var lw = cw * k, lh = im.naturalHeight * k;
-    c2.drawImage(im, 0, 0, cw, im.naturalHeight, x + (w - lw) / 2, y + h - lh, lw, lh);
+    var dx = x + (w - lw) / 2, dy = y + h - lh;
+    /* ---- LE QUART DE TOUR SE PREND AU CENTRE DU DESSIN ----
+     * Pris au pied, un objet tourne partirait de cote au lieu de pivoter sur
+     * place, et l'on ne saurait plus ou il va atterrir. */
+    if (tour) {
+      c2.save();
+      c2.translate(dx + lw / 2, dy + lh / 2);
+      c2.rotate(tour * Math.PI / 2);
+      c2.drawImage(im, 0, 0, cw, im.naturalHeight, -lw / 2, -lh / 2, lw, lh);
+      c2.restore();
+      return true;
+    }
+    c2.drawImage(im, 0, 0, cw, im.naturalHeight, dx, dy, lw, lh);
     return true;
   }
 
@@ -3582,6 +3611,62 @@
       cv.dataset.peint = '1';
       if (mapVoit) mapVoit.unobserve(b);
     }
+  }
+
+  /* ---- LA LOUPE ----
+   *
+   * Une vignette de quarante-six pixels dit ce qu'est un sol ou un tonneau.
+   * Elle ne dit RIEN d'une parcelle isometrique, qui porte un batiment, ses
+   * escaliers et son terrain : le proprietaire l'a signale, on ne voyait pas
+   * ce qu'on choisissait.
+   *
+   * Deux gestes, parce qu'il y a deux facons de se servir de l'editeur : au
+   * survol pour la souris, et au CHOIX pour le doigt — qui ne survole rien.
+   * Un appui long aurait marche aussi ; il se confond avec le debut d'un
+   * glissement dans une liste qui defile, et l'on aurait ouvert la loupe en
+   * cherchant a faire defiler.
+   *
+   * Elle ne prend PAS les evenements de pointeur : posee sous le curseur,
+   * elle se fermerait a la seconde ou elle s'ouvre.
+   */
+  var elMapLoupe = document.getElementById('nxMapLoupe');
+  var mapLoupeFin = 0;
+  function montreLaLoupe(fam, cle, ancre, msDuree) {
+    if (!elMapLoupe) return;
+    var e = elementDe(fam, cle);
+    if (!e) return;
+    var cv = elMapLoupe.querySelector('canvas');
+    var t = elMapLoupe.querySelector('b');
+    /* Le cote de la loupe suit la place a l'ecran, borne : sur un telephone
+       une image de deux cent quarante pixels sortirait de l'ecran. */
+    var cote = Math.max(120, Math.min(260, Math.round(Math.min(window.innerWidth,
+                                                               window.innerHeight) * 0.42)));
+    if (cv.width !== cote) { cv.width = cote; cv.height = cote; }
+    var C = cv.getContext('2d');
+    C.clearRect(0, 0, cote, cote);
+    if (!peintElement(C, e, 0, 0, cote, cote, false)) return;
+    t.textContent = cle;
+    elMapLoupe.classList.add('on');
+    /* A GAUCHE de la vignette, parce que la palette est a droite : posee a
+       droite, la loupe sortirait de la fenetre. Et rabattue vers le haut si
+       elle depasse en bas. */
+    var r = ancre.getBoundingClientRect();
+    var b = elMapLoupe.getBoundingClientRect();
+    var x = r.left - b.width - 10;
+    if (x < 8) x = Math.min(window.innerWidth - b.width - 8, r.right + 10);
+    var y = Math.min(window.innerHeight - b.height - 8, Math.max(8, r.top - b.height / 3));
+    elMapLoupe.style.left = Math.round(x) + 'px';
+    elMapLoupe.style.top = Math.round(y) + 'px';
+    mapLoupeFin = msDuree ? performance.now() + msDuree : 0;
+    if (msDuree) {
+      setTimeout(function () {
+        if (mapLoupeFin && performance.now() >= mapLoupeFin - 20) cacheLaLoupe();
+      }, msDuree);
+    }
+  }
+  function cacheLaLoupe() {
+    mapLoupeFin = 0;
+    if (elMapLoupe) elMapLoupe.classList.remove('on');
   }
 
   /* ---- LA RECHERCHE ----
@@ -3664,13 +3749,28 @@
         b.dataset.fam = fam; b.dataset.cle = e.cle;
         b.title = e.cle;
         var cv = document.createElement('canvas');
-        cv.width = 46; cv.height = 46;
+        /* La resolution suit la place que le CSS donne a la famille : une
+           parcelle dessinee en quarante-six et etiree a quatre-vingt-seize
+           serait floue, et c'est exactement ce qu'on cherche a corriger. */
+        var cote = fam === 'iso' ? 96 : (fam === 'salle' ? 72 : 46);
+        cv.width = cote; cv.height = cote;
         b.appendChild(cv);
         b.addEventListener('click', function () {
           mapChoix = { famille: fam, cle: e.cle };
-          mapOutil = 'dessin';
+          /* On ne bascule PAS sur le pinceau si l'on etait en train de choisir
+             un element pose : changer d'outil sous la main de quelqu'un est le
+             genre de service qu'on ne rend jamais deux fois. */
+          if (mapOutil !== 'rect' && mapOutil !== 'pot') mapOutil = 'dessin';
           peintMapPalette(); peintMapOutils();
+          /* Au doigt, il n'y a pas de survol : le choix EST le moment ou l'on
+             veut voir ce qu'on prend. */
+          montreLaLoupe(fam, e.cle, b, 1600);
         });
+        b.addEventListener('pointerenter', function (ev) {
+          if (ev.pointerType === 'touch') return;
+          montreLaLoupe(fam, e.cle, b, 0);
+        });
+        b.addEventListener('pointerleave', function () { if (!mapLoupeFin) cacheLaLoupe(); });
         g.appendChild(b);
         regardeLaPalette(b);
       });
@@ -3740,7 +3840,7 @@
    * et c'est la vignette, celle qu'on regarde AVANT d'ouvrir, qui aurait
    * menti.
    */
-  function peintLaCarte(C, cases, n, p, ox, oy, avecGrille, depart) {
+  function peintLaCarte(C, cases, n, p, ox, oy, avecGrille, depart, sel) {
     C.imageSmoothingEnabled = false;
     C.fillStyle = '#0a1020';
     C.fillRect(ox, oy, p * n, p * n);
@@ -3764,7 +3864,7 @@
     cases.forEach(function (v, k) {
       if (!v.o) return;
       var q = k.split(',');
-      poses.push({ c: +q[0], l: +q[1], cle: v.o, n: v.n || 1 });
+      poses.push({ c: +q[0], l: +q[1], cle: v.o, n: v.n || 1, a: v.a || 0 });
     });
     poses.sort(function (a, b) { return a.l - b.l || a.c - b.c; });
     poses.forEach(function (o) {
@@ -3785,12 +3885,37 @@
         if (!im.complete || !im.naturalWidth) return;
         var cw = im.naturalWidth / Math.max(1, e.cadres);
         var ht = lg * im.naturalHeight / cw;
-        C.drawImage(im, 0, 0, cw, im.naturalHeight,
-                    ox + (o.c + 0.5) * p - lg / 2, oy + (o.l + 1) * p - ht, lg, ht);
+        var px = ox + (o.c + 0.5) * p - lg / 2, py = oy + (o.l + 1) * p - ht;
+        if (o.a) {
+          C.save();
+          C.translate(px + lg / 2, py + ht / 2);
+          C.rotate(o.a * Math.PI / 2);
+          C.drawImage(im, 0, 0, cw, im.naturalHeight, -lg / 2, -ht / 2, lg, ht);
+          C.restore();
+        } else {
+          C.drawImage(im, 0, 0, cw, im.naturalHeight, px, py, lg, ht);
+        }
         return;
       }
-      peintElement(C, e, ox + o.c * p, oy + o.l * p, p, p, false);
+      peintElement(C, e, ox + o.c * p, oy + o.l * p, p, p, false, o.a);
     });
+    /* ---- ET LE CADRE DE CE QU'ON TIENT ----
+     * Sur l'EMPRISE, pas sur la case cliquee : c'est la place que l'element
+     * occupe vraiment, et c'est elle qu'on est en train d'agrandir. Un cadre
+     * d'une case autour d'une parcelle de cinq aurait dit le contraire de ce
+     * que fait le bouton. */
+    if (sel) {
+      var sv = cases.get(sel.c + ',' + sel.l);
+      if (sv && sv.o) {
+        var sn = sv.n || 1;
+        var sx = ox + (sel.c + 0.5) * p - sn * p / 2;
+        var sy = oy + (sel.l + 1) * p - sn * p;
+        C.strokeStyle = '#FFD166'; C.lineWidth = 2;
+        C.setLineDash([6, 4]);
+        C.strokeRect(sx + 1, sy + 1, sn * p - 2, sn * p - 2);
+        C.setLineDash([]);
+      }
+    }
     /* Les traits se taisent quand ils seraient plus serres que lisibles : a
        quatre pixels par case, une grille dessinee est un aplat gris qui cache
        le travail au lieu de l aider. */
@@ -3887,7 +4012,7 @@
        en croyant dessiner dedans. */
     C.fillStyle = '#070b16';
     C.fillRect(0, 0, W, H);
-    peintLaCarte(C, MAP.cases, n, p, ox, oy, true, MAP.depart);
+    peintLaCarte(C, MAP.cases, n, p, ox, oy, true, MAP.depart, mapSel);
     /* ---- ET LE RECTANGLE QU'ON EST EN TRAIN DE TIRER ----
      * Il se dessine PAR-DESSUS la grille et n'entre pas dans les cases : tant
      * que le doigt n'est pas leve, rien n'est pose. Le montrer autrement —
@@ -3913,9 +4038,21 @@
   function copieDesCases() {
     var m = new Map();
     MAP.cases.forEach(function (v, k) {
+      /* ---- TOUS LES CHAMPS, PAS SEULEMENT LES DEUX PREMIERS ----
+       * Elle ne recopiait que le sol et l'objet. L'emprise et le quart de
+       * tour etaient donc PERDUS a chaque annulation : on tournait une
+       * parcelle, on annulait, et elle revenait droite ET reduite a une case.
+       * Le defaut ne se voyait pas tant que l'annulation ne servait qu'au
+       * pinceau, qui n'ecrit ni l'un ni l'autre. Trouve par l'essai, en
+       * mesurant le DESSIN apres l'annulation — la donnee, elle, avait l'air
+       * juste des deux cotes.
+       * Ecrit champ par champ et non par copie franche : une carte pleine
+       * fait deux mille trois cents cases, et la pile en garde quarante. */
       var q = {};
       if (v.s) q.s = v.s;
       if (v.o) q.o = v.o;
+      if (v.n > 1) q.n = v.n;
+      if (v.a) q.a = v.a;
       m.set(k, q);
     });
     return m;
@@ -3970,6 +4107,37 @@
     return { x: (ev.clientX - r.left) * elMapGrille.width / r.width,
              y: (ev.clientY - r.top) * elMapGrille.height / r.height };
   }
+  /**
+   * CHANGE CE QU'ON TIENT. Un seul chemin pour les trois boutons.
+   *
+   * Trois copies auraient fini par ne plus memoriser pareil — et c'est celle
+   * qui oublie qui rend l'annulation muette sur ce geste-la.
+   */
+  function retouche(f) {
+    if (!MAP || !MAP.mienne || !mapSel) return;
+    var k = mapSel.c + ',' + mapSel.l;
+    var v = MAP.cases.get(k);
+    if (!v || !v.o) { mapSel = null; peintMapOutils(); mapRedessine(); return; }
+    memorise();
+    f(v);
+    /* Les valeurs par defaut ne s'ecrivent pas : une case sur deux mille trois
+       cents porterait `n:1, a:0` pour ne rien dire, et le serveur les jette de
+       toute facon. */
+    if (!(v.n > 1)) delete v.n;
+    if (!v.a) delete v.a;
+    MAP.cases.set(k, v);
+    peintMapOutils(); mapRedessine();
+  }
+  function agrandis(d) {
+    retouche(function (v) {
+      var n = Math.max(1, Math.min(8, (v.n || 1) + d));
+      v.n = n;
+    });
+  }
+  function tourne() {
+    retouche(function (v) { v.a = ((v.a || 0) + 1) % 4; });
+  }
+
   /** La case sous un point de l'ecran, ou `null` si l'on est hors de la carte. */
   function caseSous(ev) {
     var q = pointCanevas(ev);
@@ -4007,6 +4175,10 @@
     if (champDe(mapChoix.famille) === 'o') {
       var el = elementDe(mapChoix.famille, mapChoix.cle);
       if (el && el.cases > 1) v.n = el.cases; else delete v.n;
+      /* Un element pose par-dessus un autre repart droit : garder le quart de
+         tour du precedent ferait arriver la nouvelle planche de travers sans
+         que personne ne l'ait demande. */
+      delete v.a;
     }
     var neuve = !MAP.cases.has(k);
     MAP.cases.set(k, v);
@@ -4113,8 +4285,16 @@
       }
       var q = caseSous(ev);
       if (!q) return;
-      if (mapOutil !== 'gomme' && mapOutil !== 'depart' && !mapChoix) {
+      if (mapOutil !== 'gomme' && mapOutil !== 'depart' && mapOutil !== 'choix' && !mapChoix) {
         mapDit(T('choisis'), true); return;
+      }
+      if (mapOutil === 'choix') {
+        var vc = MAP.cases.get(q.c + ',' + q.l);
+        /* On ne tient QUE ce qui est pose dessus : un sol n'a ni taille ni
+           orientation, le choisir n'ouvrirait que des boutons sans effet. */
+        mapSel = (vc && vc.o) ? { c: q.c, l: q.l } : null;
+        mapDit(mapSel ? T('choisi') : T('rienChoisi'), !mapSel);
+        peintMapOutils(); mapRedessine(); return;
       }
       if (mapOutil === 'depart') {
         /* Un SEUL depart : le poser ailleurs deplace le precedent. Deux
@@ -4219,8 +4399,13 @@
       if (e) e.style.display = montre ? '' : 'none';
     };
     v('nxMapNom', mien); v('nxMapOutilDessin', mien); v('nxMapOutilGomme', mien);
-    v('nxMapOutilPot', mien); v('nxMapOutilRect', mien); v('nxMapOutilDepart', mien);
-    v('nxMapOutilMain', mien);
+    v('nxMapOutilPot', mien); v('nxMapOutilRect', mien); v('nxMapOutilChoix', mien);
+    v('nxMapOutilDepart', mien); v('nxMapOutilMain', mien);
+    /* Les trois boutons de retouche n'apparaissent QUE quand on tient quelque
+       chose : montres en permanence et sans effet, ils se lisent comme cassés
+       — et l'on cherche ce qu'on a mal fait au lieu de choisir un element. */
+    var tenu = mien && !!mapSel && !!MAP.cases.get(mapSel.c + ',' + mapSel.l);
+    v('nxMapSelBloc', tenu);
     v('nxMapAnnule', mien); v('nxMapRefais', mien);
     /* Le zoom appartient a QUI REGARDE, pas a qui possede : une carte qu'on
        visite doit pouvoir se parcourir de pres. */
@@ -4230,7 +4415,8 @@
        auraient laisse deux outils allumes le jour ou un cinquieme arrive. */
     var OUTILS = { dessin: 'nxMapOutilDessin', gomme: 'nxMapOutilGomme',
                    pot: 'nxMapOutilPot', rect: 'nxMapOutilRect',
-                   depart: 'nxMapOutilDepart', main: 'nxMapOutilMain' };
+                   choix: 'nxMapOutilChoix', depart: 'nxMapOutilDepart',
+                   main: 'nxMapOutilMain' };
     if (elMapGrille) elMapGrille.classList.toggle('main', mapOutil === 'main' || (atelier && !mien));
     Object.keys(OUTILS).forEach(function (o) {
       var b = document.getElementById(OUTILS[o]);
@@ -4328,6 +4514,10 @@
        de la precedente aurait permis d'annuler CELLE-CI vers l'etat d'une
        AUTRE carte, ce qui est la pire chose qu'un editeur puisse faire. */
     mapPile.length = 0; mapRefaire.length = 0; mapSale = false; mapRect = null;
+    /* Tenir encore la case d'une AUTRE carte ferait agrandir un element qui
+       n'est plus la, a des coordonnees qui veulent maintenant dire autre
+       chose. */
+    mapSel = null;
     /* La vue se refait a la carte suivante : gardee, un zoom serre sur une
        petite carte laisserait la grande hors du cadre a l'ouverture, sans que
        rien ne dise ou elle est. Zero veut dire « a cadrer » — voir
@@ -4339,6 +4529,7 @@
       if (q.s) v.s = q.s;
       if (q.o) v.o = q.o;
       if (q.n > 1) v.n = q.n;
+      if (q.a) v.a = q.a;
       MAP.cases.set(q.c + ',' + q.l, v);
     });
     if (elMapNom) elMapNom.value = MAP.nom;
@@ -4489,8 +4680,19 @@
         appliqueLaLangue();
       });
     }
+    b('nxMapOutilChoix', function () {
+      mapOutil = 'choix';
+      mapDit(mapSel ? T('choisi') : T('rienChoisi'), !mapSel);
+      peintMapOutils();
+    });
+    b('nxMapPlusGrand', function () { agrandis(1); });
+    b('nxMapPlusPetit', function () { agrandis(-1); });
+    b('nxMapTourne', tourne);
     b('nxMapOutilDepart', function () { mapOutil = 'depart'; peintMapOutils(); });
     b('nxMapOutilMain', function () { mapOutil = 'main'; peintMapOutils(); });
+    /* La loupe est posee en coordonnees d'ecran : si la palette defile sous
+       elle, elle designe une autre vignette que celle qu'elle montre. */
+    if (elMapPalette) elMapPalette.addEventListener('scroll', cacheLaLoupe);
     if (elMapCherche) {
       elMapCherche.addEventListener('input', function () {
         mapCherche = elMapCherche.value || '';
@@ -4526,6 +4728,7 @@
         if (v.s) e.s = v.s;
         if (v.o) e.o = v.o;
         if (v.n > 1) e.n = v.n;
+        if (v.a) e.a = v.a;
         cases.push(e);
       });
       mapDit(T('sauvegarde'));

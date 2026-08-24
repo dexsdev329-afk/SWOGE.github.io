@@ -620,7 +620,10 @@ const servirLeSite = async () => {
   await geste(camIso, [{ t: 'down', c: iso.cc, l: iso.ll, id: 41 },
                        { t: 'up', c: iso.cc, l: iso.ll, id: 41 }]);
   await p.waitForTimeout(900);
-  const large = await p.evaluate(([q, cam2]) => {
+  /* La largeur DESSINEE d'un element pose, mesuree sur la bande qui va de son
+     pied vers le haut. Extraite en fonction parce qu'on la mesure trois fois :
+     a la pose, apres l'avoir agrandi, et apres l'avoir tourne. */
+  const largeurDessinee = (q, cam2) => p.evaluate(([q, cam2]) => {
     const g = document.getElementById('nxMapGrille');
     const C = g.getContext('2d');
     const pas = cam2.p;
@@ -646,7 +649,9 @@ const servirLeSite = async () => {
       for (let y = 0; y < h; y++) { if (somme(x, y) > seuil) { cols.push(x); break; } }
     }
     return { min: cols[0], max: cols[cols.length - 1], combien: cols.length, fond, seuil };
-  }, [iso, { p: camIso.p, x0: camIso.x0, x1: camIso.x1, y0: camIso.y0 }]);
+  }, [q, cam2]);
+  const large = await largeurDessinee(iso,
+    { p: camIso.p, x0: camIso.x0, x1: camIso.x1, y0: camIso.y0 });
   const attendu = (JSON.parse(fs.readFileSync(path.join(SITE, 'catalogue.json'), 'utf8'))
                    .iso.find((e) => e.cle === iso.cle) || {}).cases;
   const dessine = large.max - large.min + 1;
@@ -655,6 +660,98 @@ const servirLeSite = async () => {
      `elle est dessinee sur ${dessine} px la ou une case en fait ${Math.round(camIso.p)}`
      + ` — soit ${attendu} cases (${large.combien} colonnes chaudes,`
      + ` fond mesure a ${large.fond}, seuil ${large.seuil})`);
+
+  console.log('\n-- on tient une parcelle posee, on l agrandit, on la tourne --');
+  /* ---- CE QU IL MANQUAIT ----
+   * Le proprietaire l'a demande : « comment je selectionne une art posee pour
+   * l agrandir ou bouger les angles ». La reponse etait « on ne peut pas ».
+   * On mesure donc ce que ces boutons FONT au dessin, pas ce qu'ils mettent
+   * dans la carte : un champ `n` a trois qui se dessine encore a quatre serait
+   * exact et sans effet. */
+  const camS = await cadre(16);
+  await p.evaluate(() => { document.getElementById('nxMapOutilChoix').click(); });
+  await geste(camS, [{ t: 'down', c: iso.cc, l: iso.ll, id: 61 },
+                     { t: 'up', c: iso.cc, l: iso.ll, id: 61 }]);
+  await p.waitForTimeout(500);
+  const bloc = () => p.evaluate(() => {
+    const e = document.getElementById('nxMapSelBloc');
+    return !!e && e.offsetParent !== null;
+  });
+  ok(await bloc(), 'les boutons de retouche apparaissent quand on tient un element');
+  const repere = { p: camS.p, x0: camS.x0, x1: camS.x1, y0: camS.y0 };
+  /* ---- ON LACHE AVANT DE MESURER ----
+   * Le cadre de selection est dessine sur l'EMPRISE, en jaune franc, et il
+   * passe donc le seuil comme le reste. Mesurer sans lacher revenait a
+   * mesurer le CADRE : il suit l'agrandissement — d'ou des chiffres justes
+   * pour « + » et « − » — mais il ne tourne pas, d'ou un quart de tour
+   * invisible et une accusation portee contre le dessin, qui etait correct.
+   * On lache donc en cliquant une case vide, comme on le ferait a la main. */
+  const lache = async () => {
+    await geste(camS, [{ t: 'down', c: 1, l: 14, id: 62 }, { t: 'up', c: 1, l: 14, id: 62 }]);
+    await p.waitForTimeout(400);
+  };
+  const tiens = async () => {
+    await geste(camS, [{ t: 'down', c: iso.cc, l: iso.ll, id: 63 },
+                       { t: 'up', c: iso.cc, l: iso.ll, id: 63 }]);
+    await p.waitForTimeout(400);
+  };
+  await lache();
+  const avant = await largeurDessinee(iso, repere);
+  await tiens();
+  await p.click('#nxMapPlusGrand');
+  await p.waitForTimeout(600);
+  await lache();
+  const apresPlus = await largeurDessinee(iso, repere);
+  await tiens();
+  const dPlus = (apresPlus.max - apresPlus.min) - (avant.max - avant.min);
+  ok(Math.abs(dPlus - camS.p) <= camS.p * 0.35,
+     `« + » l elargit d une case : ${Math.round(dPlus)} px pour une case de ${Math.round(camS.p)}`);
+  await p.click('#nxMapPlusPetit');
+  await p.waitForTimeout(600);
+  await lache();
+  const apresMoins = await largeurDessinee(iso, repere);
+  await tiens();
+  ok(Math.abs((apresMoins.max - apresMoins.min) - (avant.max - avant.min)) <= 3,
+     '« − » la ramene exactement ou elle etait');
+
+  /* ---- TOURNER : LA DONNEE ET LE DESSIN, SEPAREMENT ----
+   * Les deux peuvent tomber independamment — un champ pose et jamais lu, ou
+   * un dessin qui tourne sans que rien ne soit garde — et les confondre ferait
+   * chercher la panne du mauvais cote. */
+  await p.click('#nxMapTourne');
+  await p.waitForTimeout(600);
+  await p.fill('#nxMapNom', 'Ma carte tournee');
+  await p.click('#nxMapEnregistre');
+  await p.waitForTimeout(1600);
+  const jt = await (await fetch(base + '/admin/cartes', { headers: { 'x-admin-key': 'k' } })).json();
+  const tk = (jt.cartes || []).find((k) => k.nom === 'Ma carte tournee');
+  ok(!!tk, 'le serveur a garde la carte tournee');
+  if (tk) {
+    const dt = await (await fetch(base + '/admin/cartes?id=' + tk.id,
+                                  { headers: { 'x-admin-key': 'k' } })).json();
+    const cel = (dt.carte.cases || []).find((q) => q.c === iso.cc && q.l === iso.ll);
+    eq(cel && cel.a, 1, 'et la case porte son quart de tour');
+  }
+  await lache();
+  const tournee = await largeurDessinee(iso, repere);
+  ok((tournee.max - tournee.min) < (avant.max - avant.min) * 0.92,
+     `et le dessin la retrecit en largeur : ${tournee.max - tournee.min} px`
+     + ` contre ${avant.max - avant.min}`);
+  /* On ATTEND la largeur d'avant : la grille se repeint a la prochaine image,
+     et un demi-seconde suffit « presque » toujours. */
+  const vise = avant.max - avant.min;
+  await p.click('#nxMapAnnule');
+  let rendue = null, finU = Date.now() + 6000;
+  while (Date.now() < finU) {
+    rendue = await largeurDessinee(iso, repere);
+    if (Math.abs((rendue.max - rendue.min) - vise) <= 3) break;
+    await p.waitForTimeout(250);
+  }
+  ok(Math.abs((rendue.max - rendue.min) - vise) <= 3,
+     `et « Undo » defait le quart de tour comme le reste`
+     + ` (${rendue.max - rendue.min} px, ${vise} attendus)`);
+  /* On repasse au pinceau pour la suite. */
+  await p.evaluate(() => { document.getElementById('nxMapOutilDessin').click(); });
 
   /* ---- ET LE SERVEUR LE GARDE ---- */
   await p.fill('#nxMapNom', 'Ma carte en relief');

@@ -624,7 +624,12 @@
       poseLesSeances(m.salles || m.rubriques
                      || m.cinemas || (m.cinema ? [m.cinema] : []));
     }
-    if (m.type === 'realmEntre') entreMonde(m);
+    if (m.type === 'realmEntre') {
+      /* Le panneau de l'editeur se referme quand le monde s'ouvre : laisse
+         ouvert, il recouvrirait la carte qu'on vient d'aller voir. */
+      if (mapOuvert) fermeMap();
+      entreMonde(m);
+    }
     if (m.type === 'realmRefus') {
       if (indiceEl) {
         indiceEl.innerHTML = m.raison === 'no-character'
@@ -3253,6 +3258,7 @@
     en: {
       titre: 'Map Editor', sansNom: 'Untitled', par: 'by',
       choisir: 'Select',
+      jouer: 'Play',
       tourne: 'Turn',
       rienChoisi: 'Tap a placed element to select it.',
       choisi: 'Selected — resize it with − and +, turn it with Turn.',
@@ -3264,7 +3270,7 @@
       neuveTitre: 'New map', neuveSous: 'Both choices are fixed once the map is created.',
       mode2d: '2D · tiles', mode25d: '2.5D · plots',
       mode2dDit: 'A grid of tiles seen from above. Grounds, walls, props, monsters.',
-      mode25dDit: 'Ready-made plots seen at three quarters. Each one brings its own ground.',
+      mode25dDit: 'Ready-made plots seen at three quarters. Lay a ground under them.',
       taille: 'Size',
       saleTitre: 'This map has changes you have not saved.',
       jette: 'Discard them', gardeLa: 'Keep editing',
@@ -3289,6 +3295,7 @@
     fr: {
       titre: 'Éditeur de cartes', sansNom: 'Sans titre', par: 'de',
       choisir: 'Choisir',
+      jouer: 'Visiter',
       tourne: 'Tourner',
       rienChoisi: 'Touchez un élément posé pour le choisir.',
       choisi: 'Choisi — agrandissez-le avec − et +, tournez-le avec Tourner.',
@@ -3301,7 +3308,7 @@
       neuveSous: 'Ces deux choix ne se reprennent plus une fois la carte créée.',
       mode2d: '2D · tuiles', mode25d: '2,5D · parcelles',
       mode2dDit: 'Une grille de tuiles vue de dessus. Sols, murs, objets, monstres.',
-      mode25dDit: 'Des parcelles vues de trois quarts. Chacune apporte son propre terrain.',
+      mode25dDit: 'Des parcelles vues de trois quarts. Posez un sol dessous.',
       taille: 'Taille',
       saleTitre: 'Cette carte a des changements qui ne sont pas enregistrés.',
       jette: 'Les jeter', gardeLa: 'Continuer à dessiner',
@@ -3328,6 +3335,7 @@
     es: {
       titre: 'Editor de mapas', sansNom: 'Sin título', par: 'de',
       choisir: 'Elegir',
+      jouer: 'Jugar',
       tourne: 'Girar',
       rienChoisi: 'Toca un elemento colocado para elegirlo.',
       choisi: 'Elegido — cámbialo de tamaño con − y +, gíralo con Girar.',
@@ -3340,7 +3348,7 @@
       neuveSous: 'Estas dos opciones no se pueden cambiar una vez creado el mapa.',
       mode2d: '2D · baldosas', mode25d: '2,5D · parcelas',
       mode2dDit: 'Una cuadrícula de baldosas vista desde arriba. Suelos, muros, objetos, monstruos.',
-      mode25dDit: 'Parcelas vistas en tres cuartos. Cada una trae su propio terreno.',
+      mode25dDit: 'Parcelas vistas en tres cuartos. Pon un suelo debajo.',
       taille: 'Tamaño',
       saleTitre: 'Este mapa tiene cambios sin guardar.',
       jette: 'Descartarlos', gardeLa: 'Seguir dibujando',
@@ -3495,7 +3503,14 @@
    */
   var MAP_MODES = {
     plat: { cote: 48, familles: ['sol', 'mur', 'objet', 'salle', 'monstre'], dit: 'mode2dDit' },
-    iso:  { cote: 16, familles: ['iso'], dit: 'mode25dDit' },
+    /* ---- ET LE SOL RESTE, MEME EN 2,5D ----
+     * Il en etait exclu, au motif qu'une tuile vue de dessus ne se raccorde
+     * pas au terrain peint dans une parcelle. C'etait vrai et c'etait le
+     * mauvais choix : sans sol, une carte 2,5D est un VIDE avec des batiments
+     * posses dessus — vu au rendu, une fois qu'on a pu y marcher. Un fond de
+     * sable ou d'herbe sous les parcelles vaut mille fois mieux qu'un
+     * plancher de donjon par defaut, et c'est a l'auteur de choisir. */
+    iso:  { cote: 16, familles: ['sol', 'iso'], dit: 'mode25dDit' },
   };
   var mapModeNeuf = 'plat';
 
@@ -4108,6 +4123,40 @@
              y: (ev.clientY - r.top) * elMapGrille.height / r.height };
   }
   /**
+   * L'ELEMENT POSE QUI COUVRE CETTE CASE.
+   *
+   * ---- POURQUOI CE N'EST PAS « LA CASE CLIQUEE » ----
+   *
+   * Une parcelle est ANCREE sur une case et DESSINEE sur cinq. Son ancre est
+   * au milieu du bas de l'image : cliquer sur le batiment qu'on voit ne
+   * tombait donc presque jamais dessus, et il fallait deviner l'endroit exact.
+   * Le proprietaire l'a dit deux fois — « j'arrive toujours pas a
+   * selectionner », « la gomme, je dois cliquer trop de fois ». C'etait vrai,
+   * et c'etait la meme cause pour les deux.
+   *
+   * On cherche donc dans l'EMPRISE, et du plus proche du devant vers le fond :
+   * c'est l'ordre inverse du dessin, donc celui qu'on voit en premier est
+   * celui qu'on attrape.
+   */
+  function elementSous(c, l) {
+    var trouve = null;
+    MAP.cases.forEach(function (v, k) {
+      if (!v.o) return;
+      var q = k.split(','), qc = +q[0], ql = +q[1], n = v.n || 1;
+      /* L'emprise : centree en largeur sur la case d'ancrage, et montant vers
+         le haut depuis son bas — exactement comme elle se dessine. */
+      var g = qc + 0.5 - n / 2, d = qc + 0.5 + n / 2;
+      var h = ql + 1 - n, b = ql + 1;
+      if (c + 0.5 < g || c + 0.5 > d || l + 0.5 < h || l + 0.5 > b) return;
+      /* Le plus AVANT gagne : plus grande ligne, puis plus grande colonne. */
+      if (!trouve || ql > trouve.l || (ql === trouve.l && qc > trouve.c)) {
+        trouve = { c: qc, l: ql };
+      }
+    });
+    return trouve;
+  }
+
+  /**
    * CHANGE CE QU'ON TIENT. Un seul chemin pour les trois boutons.
    *
    * Trois copies auraient fini par ne plus memoriser pareil — et c'est celle
@@ -4161,7 +4210,27 @@
    */
   function ecritCase(c, l) {
     var k = c + ',' + l;
-    if (mapOutil === 'gomme') { MAP.cases.delete(k); return true; }
+    if (mapOutil === 'gomme') {
+      /* ---- LA GOMME EFFACE CE QU'ON VOIT ----
+       * Elle effacait la CASE, ancre comprise : sur une parcelle de cinq
+       * cases, quatre clics sur cinq ne faisaient rien du tout, et l'on
+       * frottait le batiment sans qu'il disparaisse. Elle cherche donc
+       * l'element dont l'emprise couvre le point, et retire son objet ; s'il
+       * n'y en a pas, elle retire ce que la case porte — c'est-a-dire le sol.
+       */
+      var e = elementSous(c, l);
+      if (e) {
+        var ke = e.c + ',' + e.l, ve = MAP.cases.get(ke);
+        if (ve) {
+          delete ve.o; delete ve.n; delete ve.a;
+          if (ve.s) MAP.cases.set(ke, ve); else MAP.cases.delete(ke);
+        }
+        if (mapSel && mapSel.c === e.c && mapSel.l === e.l) mapSel = null;
+        return true;
+      }
+      MAP.cases.delete(k);
+      return true;
+    }
     if (!mapChoix) return false;
     var v = MAP.cases.get(k) || {};
     v[champDe(mapChoix.famille)] = mapChoix.cle;
@@ -4289,11 +4358,10 @@
         mapDit(T('choisis'), true); return;
       }
       if (mapOutil === 'choix') {
-        var vc = MAP.cases.get(q.c + ',' + q.l);
         /* On ne tient QUE ce qui est pose dessus : un sol n'a ni taille ni
            orientation, le choisir n'ouvrirait que des boutons sans effet. */
-        mapSel = (vc && vc.o) ? { c: q.c, l: q.l } : null;
-        mapDit(mapSel ? T('choisi') : T('rienChoisi'), !mapSel);
+        mapSel = elementSous(q.c, q.l);
+        mapDit(mapSel ? '' : T('rienChoisi'), !mapSel);
         peintMapOutils(); mapRedessine(); return;
       }
       if (mapOutil === 'depart') {
@@ -4401,11 +4469,7 @@
     v('nxMapNom', mien); v('nxMapOutilDessin', mien); v('nxMapOutilGomme', mien);
     v('nxMapOutilPot', mien); v('nxMapOutilRect', mien); v('nxMapOutilChoix', mien);
     v('nxMapOutilDepart', mien); v('nxMapOutilMain', mien);
-    /* Les trois boutons de retouche n'apparaissent QUE quand on tient quelque
-       chose : montres en permanence et sans effet, ils se lisent comme cassés
-       — et l'on cherche ce qu'on a mal fait au lieu de choisir un element. */
-    var tenu = mien && !!mapSel && !!MAP.cases.get(mapSel.c + ',' + mapSel.l);
-    v('nxMapSelBloc', tenu);
+    peintFiche(mien);
     v('nxMapAnnule', mien); v('nxMapRefais', mien);
     /* Le zoom appartient a QUI REGARDE, pas a qui possede : une carte qu'on
        visite doit pouvoir se parcourir de pres. */
@@ -4447,6 +4511,41 @@
        le laisser aurait permis d'en ouvrir une deuxieme par-dessus la
        premiere, et la reponse serait allee a celle qu'on ne voit pas. */
     v('nxMapNouvelle', !atelier && !enCreation);
+  }
+
+  /**
+   * LA FICHE DE CE QU'ON TIENT.
+   *
+   * Elle n'apparait QUE quand on tient quelque chose : montree en permanence
+   * et sans effet, elle se lirait comme cassee — et l'on chercherait ce qu'on
+   * a mal fait au lieu de choisir un element.
+   *
+   * Elle montre l'IMAGE, parce que c'est ce qu'on reconnait : une rangee de
+   * boutons dans la barre du haut ne dit pas ce qu'on est en train de tenir,
+   * et c'est precisement ce qui manquait.
+   */
+  function peintFiche(mien) {
+    var f = document.getElementById('nxMapFiche');
+    if (!f) return;
+    var v = mapSel && MAP ? MAP.cases.get(mapSel.c + ',' + mapSel.l) : null;
+    var tenu = !!mien && !!v && !!v.o;
+    f.classList.toggle('on', tenu);
+    if (!tenu) return;
+    var nom = document.getElementById('nxMapFicheNom');
+    var tai = document.getElementById('nxMapFicheTaille');
+    var cv = document.getElementById('nxMapFicheVue');
+    if (nom) nom.textContent = v.o;
+    if (tai) tai.textContent = String(v.n || 1) + '\u00d7' + String(v.n || 1);
+    if (cv) {
+      var e = elementDe('objet', v.o) || elementDe('iso', v.o) || elementDe('mur', v.o)
+           || elementDe('salle', v.o) || elementDe('monstre', v.o);
+      var C = cv.getContext('2d');
+      C.clearRect(0, 0, cv.width, cv.height);
+      /* Tournee comme sur la carte : une fiche qui montrerait la planche
+         droite pendant que la carte la montre de travers ferait douter du
+         bouton. */
+      if (e) peintElement(C, e, 0, 0, cv.width, cv.height, false, v.a || 0);
+    }
   }
 
   function peintMapGalerie(liste) {
@@ -4491,6 +4590,30 @@
         if (enLigne) envoie({ type: 'carteLit', id: k.id });
       });
       r.appendChild(o);
+      /* ---- ET « JOUER », QUAND LA CARTE A UN DEPART ----
+       * Le bouton n'apparait pas sur une carte qui n'en a pas : l'afficher
+       * pour repondre « carte sans depart » ferait chercher ce qu'on a mal
+       * fait. La fiche, elle, dit deja qu'il manque. */
+      if (k.jouable) {
+        var jo = document.createElement('button');
+        jo.type = 'button'; jo.className = 'vedette';
+        jo.textContent = T('jouer');
+        jo.addEventListener('click', function () {
+          if (!enLigne) { mapDit(T('horsLigne'), true); return; }
+          mapDit(T('charge'));
+          /* ---- ON RETIENT D'OU L'ON PART ET CE QU'ON VA VOIR ----
+           * D'ou : pour revenir devant la machine et non au pied du portail,
+           * qui est a l'autre bout de la place — on aurait eu l'impression
+           * d'avoir ete deplace.
+           * Quoi : le serveur n'envoie pas le NOM de la carte a l'entree, et
+           * le lui faire envoyer serait un champ de plus pour quelque chose
+           * que la page vient elle-meme de demander. */
+          CARTE_JOUEE = { cle: 'carte:' + k.id, nom: k.nom };
+          RETOUR_NEXUS = { x: joueur.x, y: joueur.y };
+          envoie({ type: 'carteJoue', id: k.id });
+        });
+        r.appendChild(jo);
+      }
       if (k.mienne) {
         var x = document.createElement('button');
         x.type = 'button'; x.textContent = T('supprimer');
@@ -4539,6 +4662,25 @@
     peintMapGrille();
   }
 
+  /* ---- LE CATALOGUE, UNE FOIS, ET DEMANDE PAR DEUX ENDROITS ----
+   * L'editeur en a besoin pour sa palette ; le MONDE en a besoin pour dessiner
+   * une carte de joueur, dont les planches ne sont pas toutes rangees sous
+   * `obj_`. Deux fetch auraient fini par ne pas attendre le meme fichier. */
+  var catalogueEnRoute = null;
+  function chargeCatalogue(fini) {
+    if (CATALOGUE) { if (fini) fini(true); return; }
+    if (!catalogueEnRoute) {
+      /* SANS CACHE : il est genere des dossiers, il change quand une planche
+         arrive, et un navigateur qui en garderait une vieille version
+         proposerait une palette d'hier. */
+      catalogueEnRoute = fetch('catalogue.json', { cache: 'no-store' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (j) { if (j) CATALOGUE = j; return !!j; })
+        ['catch'](function () { return false; });
+    }
+    catalogueEnRoute.then(function (ok) { if (fini) fini(ok); });
+  }
+
   function ouvreMap() {
     if (!elMapVoile) return;
     mapOuvert = true;
@@ -4553,12 +4695,10 @@
     /* LE CATALOGUE, une fois par visite de page et SANS CACHE : il est genere
        des dossiers, il change quand une planche arrive, et un navigateur qui
        en garderait une vieille version proposerait une palette d'hier. */
-    if (!CATALOGUE) {
-      fetch('catalogue.json', { cache: 'no-store' })
-        .then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (j) { if (j) { CATALOGUE = j; peintMapPalette(); mapRedessine(); } })
-        ['catch'](function () { mapDit(T('catalogueKo'), true); });
-    }
+    chargeCatalogue(function (ok) {
+      if (!ok) { mapDit(T('catalogueKo'), true); return; }
+      peintMapPalette(); mapRedessine();
+    });
     if (enLigne) envoie({ type: 'carteListe' });
     else mapDit(T('horsLigneCartes'), true);
   }
@@ -4688,6 +4828,17 @@
     b('nxMapPlusGrand', function () { agrandis(1); });
     b('nxMapPlusPetit', function () { agrandis(-1); });
     b('nxMapTourne', tourne);
+    b('nxMapEfface', function () {
+      if (!MAP || !MAP.mienne || !mapSel) return;
+      var k = mapSel.c + ',' + mapSel.l, v = MAP.cases.get(k);
+      if (!v) { mapSel = null; peintMapOutils(); return; }
+      memorise();
+      delete v.o; delete v.n; delete v.a;
+      if (v.s) MAP.cases.set(k, v); else MAP.cases.delete(k);
+      mapSel = null;
+      peintMapOutils(); mapRedessine();
+    });
+    b('nxMapLache', function () { mapSel = null; mapDit(''); peintMapOutils(); mapRedessine(); });
     b('nxMapOutilDepart', function () { mapOutil = 'depart'; peintMapOutils(); });
     b('nxMapOutilMain', function () { mapOutil = 'main'; peintMapOutils(); });
     /* La loupe est posee en coordonnees d'ecran : si la palette defile sous
@@ -6481,6 +6632,10 @@
     if (!l.length) { Object.keys(FICHIER_SOL).forEach(chargeSol); return; }
     l.forEach(function (a) { if (a && a.biome) chargeSol(a.biome); });
   }
+  /* La palette des sols d'une carte de joueur, ou `null` partout ailleurs. */
+  var SOLS_C = null;
+  /* La carte qu'on est alle visiter, et l'endroit du hall d'ou l'on est parti. */
+  var CARTE_JOUEE = null, RETOUR_NEXUS = null;
   var ATLAS_M = {};
   /* Le dessin d'une espece. Le nom du fichier n'est PAS toujours celui de
      l'espece : une creature dont l'image n'existe pas encore emprunte celle
@@ -7114,10 +7269,31 @@
      d'accord avec une table cote serveur finit toujours par ne plus l'etre, et
      le desaccord est MUET. */
   var IMG_BATI = {};
+  /* ---- LE CHEMIN D'UNE PLANCHE NOMMEE ----
+   *
+   * La ville nomme ses facades sans prefixe : `tour_maison` designe
+   * `obj_tour_maison.webp`, et cette regle a suffi tant que seul le serveur
+   * nommait des planches.
+   *
+   * Une carte de joueur, elle, nomme ce que son auteur a pose : une parcelle
+   * isometrique vit sous `img/nexus/iso/`, une salle sous `room_`, une
+   * creature sous `monstres/`. Deviner le dossier d'apres la cle aurait
+   * demande de recopier ici la convention du catalogue — c'est-a-dire d'en
+   * tenir une deuxieme copie, qui se serait perimee au premier dossier
+   * ajoute. On DEMANDE donc au catalogue, qui porte le chemin exact, et l'on
+   * garde la vieille regle en repli pour la ville et pour le cas ou il ne
+   * serait pas encore la.
+   */
+  function elementCatalogue(cle) {
+    if (!CATALOGUE) return null;
+    return elementDe('objet', cle) || elementDe('iso', cle) || elementDe('mur', cle)
+        || elementDe('salle', cle) || elementDe('monstre', cle);
+  }
   function plancheBati(nom) {
     if (!IMG_BATI[nom]) {
+      var e = elementCatalogue(nom);
       var i = new Image();
-      i.src = 'img/nexus/tiles/obj_' + encodeURIComponent(nom) + '.webp';
+      i.src = e ? e.fichier : 'img/nexus/tiles/obj_' + encodeURIComponent(nom) + '.webp';
       IMG_BATI[nom] = i;
     }
     return IMG_BATI[nom];
@@ -7152,12 +7328,30 @@
        `cadres`, c'est une image seule et la case vaut le fichier entier. Le
        nombre vient du serveur : la page ne peut pas le deviner d'un fichier,
        et le deviner d'une largeur ronde serait un pari. */
-    var n = Math.max(1, o.cadres || 1);
+    /* ---- COMBIEN D'IMAGES DANS LA BANDE ----
+     * La ville le DIT : c'est elle qui compose ses facades. Une carte de
+     * joueur ne le dit pas — le serveur ne connait pas le catalogue — mais la
+     * page l'a sous la main. On lui demande, et l'on retombe sur une image
+     * unique, ce qui est le cas de la plupart des planches. */
+    var e = !o.cadres ? elementCatalogue(o.bat) : null;
+    var n = Math.max(1, o.cadres || (e && e.cadres) || 1);
     var cw = img.naturalWidth / n, ch = img.naturalHeight;
     var L = o.larg || o.r * 4;
     var H = L * ch / cw;
-    ctx.drawImage(img, cadreDeLHorloge(n) * cw, 0, cw, ch,
-                  o.x - L / 2, o.y + o.r - H, L, H);
+    var X = o.x - L / 2, Y = o.y + o.r - H;
+    /* ---- ET LE QUART DE TOUR, PRIS AU CENTRE DU DESSIN ----
+     * Comme dans l'editeur, et pour la meme raison : pris au pied, l'objet
+     * partirait de cote au lieu de pivoter sur place — et l'on ne verrait pas
+     * la meme chose dans les deux endroits, ce qui est le pire. */
+    if (o.a) {
+      ctx.save();
+      ctx.translate(X + L / 2, Y + H / 2);
+      ctx.rotate(o.a * Math.PI / 2);
+      ctx.drawImage(img, cadreDeLHorloge(n) * cw, 0, cw, ch, -L / 2, -H / 2, L, H);
+      ctx.restore();
+      return;
+    }
+    ctx.drawImage(img, cadreDeLHorloge(n) * cw, 0, cw, ch, X, Y, L, H);
   }
 
   function dessineObstacle(o) {
@@ -8455,12 +8649,24 @@
        feu sur de la pierre. */
     BRAISES_C = m.braises || [];
     TUILES_D = null;
+    /* ---- ET LE SOL DE CHAQUE TUILE, QUAND IL Y EN A UN ----
+     * Un donjon a UN sol partout : sa tuile ne porte que ses coordonnees, et
+     * la page lit l'anneau. Une carte de joueur en a un par case, et sa tuile
+     * porte donc un troisieme nombre — l'indice de son sol dans une courte
+     * palette. On garde `indice + 1` pour que « pas de tuile ici » reste
+     * simplement faux, comme avant : le sol numero zero existe. */
+    SOLS_C = (m.sols && m.sols.length) ? m.sols : null;
     if (m.tuiles && m.tuiles.length) {
       TUILES_D = Object.create(null);
       for (var iT = 0; iT < m.tuiles.length; iT++) {
-        TUILES_D[m.tuiles[iT][0] + ',' + m.tuiles[iT][1]] = 1;
+        var tq = m.tuiles[iT];
+        TUILES_D[tq[0] + ',' + tq[1]] = (tq.length > 2 ? tq[2] : 0) + 1;
       }
     }
+    /* Les planches des sols de la carte, demandees tout de suite : elles ne
+       sont pas dans la table des biomes, et les attendre au premier dessin
+       ferait plusieurs secondes de roche a la place du sol. */
+    if (SOLS_C) SOLS_C.forEach(chargeSol);
     PORTAILS_C = []; PORTAILS_LOIN = [];
     PORTAIL_PIEDS = null; PORTAIL_SIGNE = ''; peintPorte();
     moiMonde = { pv: m.moi.pv, pvMax: m.moi.pvMax, xp: 0 };
@@ -8511,6 +8717,12 @@
           nomCarte = LIEUX[iC].nom;
         }
       }
+      /* Une carte de joueur n'est dans aucune table : c'est la page qui a
+         demande a la visiter, et c'est donc elle qui sait comment elle
+         s'appelle. */
+      if (CARTE_JOUEE && MONDE_C && MONDE_C.carte === CARTE_JOUEE.cle) {
+        nomCarte = CARTE_JOUEE.nom;
+      }
       /* Dans un donjon, la ligne dit AUTRE CHOSE : « press E to run home »
          serait un mensonge — E ramene au Nexus, ce qui abandonne le donjon sans
          rien en tirer. Ce qu'il faut savoir la, c'est par ou l'on repart. */
@@ -8536,7 +8748,7 @@
     /* On abandonne le donjon avec le monde : `realmLeave` sort de la simulation
        ou l'on etait, quelle qu'elle soit. Garder `DONJON_C` pose ici aurait
        laisse le bouton « EXIT » sur l'ecran du Nexus. */
-    DONJON_C = null; TUILES_D = null; PORTAILS_C = []; PORTAILS_LOIN = [];
+    DONJON_C = null; TUILES_D = null; SOLS_C = null; PORTAILS_C = []; PORTAILS_LOIN = [];
     PORTAIL_PIEDS = null; PORTAIL_SIGNE = ''; peintPorte();
     MONSTRES_C = {}; TIRS_C = []; TIRS_M = []; DEVINES = []; DISTANTS_M = {}; TOMBES_C = []; SACS_C = [];
     ZONES_C = []; ONDES = [];
@@ -8548,6 +8760,15 @@
        deplace. Un cran plus bas pour ne pas repartir aussitot. */
     var p = PORTAIL_L;
     joueur.x = p.x; joueur.y = p.y + p.rayon + 60;
+    /* ---- SAUF SI L'ON ETAIT PARTI D'AILLEURS ----
+     * On revient d'une carte de joueur : on n'est pas parti par le portail,
+     * on est parti d'un panneau, et reapparaitre a l'autre bout de la place
+     * donne l'impression d'avoir ete deplace. */
+    if (RETOUR_NEXUS) {
+      joueur.x = RETOUR_NEXUS.x; joueur.y = RETOUR_NEXUS.y;
+      RETOUR_NEXUS = null;
+    }
+    CARTE_JOUEE = null;
     joueur.dir = 'down';
     LIEUX.forEach(function (l) { l.dwell = 0; });
     indiceActuel = null;
@@ -13487,8 +13708,12 @@
            * donne l'impression d'un deuxieme monde ouvert dont on aurait bati
            * trois pieces au milieu — et les murs n'auraient plus rien enferme.
            * On ne devine pas la forme : elle est arrivee avec l'entree. */
-          if (TUILES_D && !TUILES_D[mc + ',' + mr]) { peintRoche(mc, mr, TM); continue; }
-          var b = biomeEn(mc * TM + TM / 2, mr * TM + TM / 2);
+          var tv = TUILES_D ? TUILES_D[mc + ',' + mr] : 1;
+          if (TUILES_D && !tv) { peintRoche(mc, mr, TM); continue; }
+          /* La palette de la carte d'abord, l'anneau ensuite : une carte de
+             joueur nomme le sol de CHAQUE case, et c'est le seul endroit du
+             jeu ou deux cases voisines peuvent en avoir deux differents. */
+          var b = (SOLS_C && SOLS_C[tv - 1]) || biomeEn(mc * TM + TM / 2, mr * TM + TM / 2);
           /* Demande a la volee : le serveur peut nommer un sol que la table ne
              connait pas — c'est arrive avec le Sanctuaire, et le donjon
              s'affichait en bleu. */

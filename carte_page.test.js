@@ -104,7 +104,7 @@ const servirLeSite = async () => {
   await p.addInitScript(function () {
     const C = CanvasRenderingContext2D.prototype;
     if (C.__espionCarte) return; C.__espionCarte = true;
-    window.__vu = { moi: null, boxe: null };
+    window.__vu = { moi: null, boxe: null, dessines: {} };
     const di = C.drawImage;
     C.drawImage = function (im) {
       const a = arguments;
@@ -114,6 +114,13 @@ const servirLeSite = async () => {
       }
       if (/obj_boxe\.webp/.test(u) && a.length >= 9) {
         window.__vu.boxe = { x: a[5] + a[7] / 2, y: a[6] + a[8] };
+      }
+      /* Ce qui est REELLEMENT dessine, par nom de fichier. C'est la seule
+         preuve qu'une planche a servi : elle peut etre chargee, connue du
+         catalogue, et n'apparaitre nulle part. */
+      if (u) {
+        const nom = u.split('/').pop();
+        window.__vu.dessines[nom] = (window.__vu.dessines[nom] || 0) + 1;
       }
       return di.apply(this, arguments);
     };
@@ -193,7 +200,7 @@ const servirLeSite = async () => {
   while (Date.now() - t0 < 40000 && !arrive) {
     const vu = await p.evaluate(() => {
       const q = window.__vu || {};
-      window.__vu = { moi: null, boxe: null };
+      window.__vu = { moi: null, boxe: null, dessines: {} };
       return q;
     });
     if (!vu.moi) { await p.waitForTimeout(200); continue; }
@@ -348,7 +355,7 @@ const servirLeSite = async () => {
   while (Date.now() - tr < 25000 && !revenu) {
     const vu = await p.evaluate(() => {
       const q = window.__vu || {};
-      window.__vu = { moi: null, boxe: null };
+      window.__vu = { moi: null, boxe: null, dessines: {} };
       return q;
     });
     if (!vu.moi) { await p.waitForTimeout(200); continue; }
@@ -600,7 +607,8 @@ const servirLeSite = async () => {
     });
     return fams;
   });
-  eq(Object.keys(pal).join(','), 'iso', 'la palette d une carte 2,5D ne montre que la famille des parcelles');
+  eq(Object.keys(pal).join(','), 'sol,iso',
+     'la palette d une carte 2,5D montre les parcelles et de quoi poser un sol dessous');
   ok(pal.iso >= 20, `soit ${pal.iso} parcelles`);
   const camIso = await cadre(16);
   ok(camIso.p > 3 * cam.p,
@@ -674,10 +682,31 @@ const servirLeSite = async () => {
                      { t: 'up', c: iso.cc, l: iso.ll, id: 61 }]);
   await p.waitForTimeout(500);
   const bloc = () => p.evaluate(() => {
-    const e = document.getElementById('nxMapSelBloc');
-    return !!e && e.offsetParent !== null;
+    const e = document.getElementById('nxMapFiche');
+    return { vue: !!e && e.classList.contains('on'),
+             nom: (document.getElementById('nxMapFicheNom') || {}).textContent,
+             taille: (document.getElementById('nxMapFicheTaille') || {}).textContent };
   });
-  ok(await bloc(), 'les boutons de retouche apparaissent quand on tient un element');
+  const fi = await bloc();
+  ok(fi.vue, 'la fiche de l element apparait a droite quand on en tient un');
+  eq(fi.nom, iso.cle, 'et elle nomme ce qu on tient');
+
+  /* ---- ON L ATTRAPE PAR LE BATIMENT, PAS PAR SON ANCRE ----
+   * Une parcelle est ancree sur une case et dessinee sur quatre : son ancre
+   * est au milieu du bas de l image. Cliquer sur le batiment qu'on VOIT ne
+   * tombait donc presque jamais dessus. Le proprietaire l'a signale deux
+   * fois — pour la selection et pour la gomme, qui avaient la meme cause. */
+  await p.evaluate(() => { document.getElementById('nxMapLache').click(); });
+  await p.waitForTimeout(300);
+  ok(!(await bloc()).vue, 'on lache');
+  /* Deux cases PLUS HAUT que l'ancre, et une de cote : en plein dans le
+     batiment, nulle part pres de la case ou l'on a clique pour le poser. */
+  await geste(camS, [{ t: 'down', c: iso.cc - 1, l: iso.ll - 2, id: 64 },
+                     { t: 'up', c: iso.cc - 1, l: iso.ll - 2, id: 64 }]);
+  await p.waitForTimeout(400);
+  const parLeHaut = await bloc();
+  ok(parLeHaut.vue, 'un clic sur le batiment lui-meme le tient');
+  eq(parLeHaut.nom, iso.cle, 'et c est bien celui-la');
   const repere = { p: camS.p, x0: camS.x0, x1: camS.x1, y0: camS.y0 };
   /* ---- ON LACHE AVANT DE MESURER ----
    * Le cadre de selection est dessine sur l'EMPRISE, en jaune franc, et il
@@ -750,6 +779,22 @@ const servirLeSite = async () => {
   ok(Math.abs((rendue.max - rendue.min) - vise) <= 3,
      `et « Undo » defait le quart de tour comme le reste`
      + ` (${rendue.max - rendue.min} px, ${vise} attendus)`);
+  /* ---- ET LA GOMME EFFACE CE QU ON VOIT ----
+   * Elle effacait la CASE : sur une parcelle de quatre, trois clics sur
+   * quatre ne faisaient rien, et l'on frottait le batiment sans qu'il
+   * disparaisse. On efface donc par le HAUT du dessin, la ou l'ancre n'est
+   * pas. */
+  await p.evaluate(() => { document.getElementById('nxMapOutilGomme').click(); });
+  await geste(camS, [{ t: 'down', c: iso.cc + 1, l: iso.ll - 2, id: 65 },
+                     { t: 'up', c: iso.cc + 1, l: iso.ll - 2, id: 65 }]);
+  await p.waitForTimeout(700);
+  const efface = await largeurDessinee(iso, repere);
+  ok(!(efface.combien > 4),
+     `un seul coup de gomme sur le batiment l efface (${efface.combien} colonnes restantes)`);
+  await p.click('#nxMapAnnule');
+  await p.waitForTimeout(700);
+  const revenue = await largeurDessinee(iso, repere);
+  ok(revenue.combien > 20, 'et « Undo » la remet');
   /* On repasse au pinceau pour la suite. */
   await p.evaluate(() => { document.getElementById('nxMapOutilDessin').click(); });
 
@@ -852,6 +897,96 @@ const servirLeSite = async () => {
   eq(await attendLeDepart('8,3'), '8,3', 'le depart deplace se voit sur le dessin');
   await p.click('#nxMapAnnule');
   eq(await attendLeDepart('5,6'), '5,6', 'et « Undo » le ramene ou il etait');
+
+  console.log('\n-- et l on va MARCHER dedans --');
+  /* ---- LE BOUT DU CHEMIN ----
+   * Une carte se dessinait ; elle se marche. Trois pieces devaient tenir
+   * ensemble et chacune pouvait tomber seule : le sol de CHAQUE case — un plan
+   * n'en portait qu'un pour tout le donjon —, les planches nommees que le
+   * serveur ne sait pas situer, et le point d'arrivee.
+   *
+   * On ne verifie donc pas « le message est arrive » : on regarde ce qui est
+   * DESSINE. Une planche peut etre chargee, connue du catalogue, et
+   * n'apparaitre nulle part. */
+  await p.click('#nxMapRetour'); await p.waitForTimeout(250);
+  if (await p.evaluate(() => document.getElementById('nxMapConfirme').classList.contains('on'))) {
+    await p.click('#nxMapJette'); await p.waitForTimeout(400);
+  }
+  await cree('plat', 16);
+  const camJ = await cadre(16);
+  /* Un sol partout, un objet posé, un depart : le minimum d'une carte ou l'on
+     peut se tenir. */
+  const solJ = await p.evaluate(() => {
+    const b = document.querySelector('#nxMapPalette .nxmap-el[data-fam="sol"]');
+    b.click(); document.getElementById('nxMapOutilRect').click();
+    return b.dataset.cle;
+  });
+  await geste(camJ, [{ t: 'down', c: 0, l: 0, id: 71 }, { t: 'move', c: 15, l: 15, id: 71 },
+                     { t: 'up', c: 15, l: 15, id: 71 }]);
+  await p.waitForTimeout(600);
+  const objJ = await p.evaluate(() => {
+    const b = document.querySelector('#nxMapPalette .nxmap-el[data-fam="objet"]');
+    b.click(); document.getElementById('nxMapOutilDessin').click();
+    return b.dataset.cle;
+  });
+  await geste(camJ, [{ t: 'down', c: 10, l: 5, id: 72 }, { t: 'up', c: 10, l: 5, id: 72 }]);
+  await p.waitForTimeout(400);
+  await p.evaluate(() => { document.getElementById('nxMapOutilDepart').click(); });
+  await geste(camJ, [{ t: 'down', c: 4, l: 4, id: 73 }, { t: 'up', c: 4, l: 4, id: 73 }]);
+  await p.waitForTimeout(400);
+  await p.fill('#nxMapNom', 'Ma carte a visiter');
+  await p.click('#nxMapEnregistre');
+  await p.waitForTimeout(1800);
+  ok(!!solJ && !!objJ, `la carte porte du « ${solJ} » et un « ${objJ} »`);
+
+  /* On revient a la galerie et l'on appuie sur « Play », comme un joueur. */
+  await p.click('#nxMapRetour');
+  await p.waitForTimeout(1200);
+  const boutons = await p.evaluate(() => [...document.querySelectorAll('.nxmap-fiche')]
+    .map((f) => ({ nom: f.querySelector('b').textContent,
+                   actions: [...f.querySelectorAll('button')].map((b) => b.textContent) })));
+  const fiche = boutons.find((f) => f.nom === 'Ma carte a visiter');
+  ok(!!fiche && fiche.actions.indexOf('Play') >= 0,
+     'la fiche propose « Play » : ' + (fiche ? fiche.actions.join(', ') : 'fiche absente'));
+  const sansDepart = boutons.find((f) => f.nom === 'Ma premiere carte');
+  ok(!sansDepart || sansDepart.actions.indexOf('Play') < 0,
+     'et pas sur une carte sans point de depart');
+
+  await p.evaluate(() => {
+    const f = [...document.querySelectorAll('.nxmap-fiche')]
+      .find((q) => q.querySelector('b').textContent === 'Ma carte a visiter');
+    [...f.querySelectorAll('button')].find((b) => b.textContent === 'Play').click();
+  });
+  await p.waitForTimeout(3500);
+  const dedans = await p.evaluate(() => ({
+    panneau: document.getElementById('nxMapVoile').classList.contains('on'),
+    entree: (window.__s || []).flatMap((q) => q.__m)
+      .filter((mm) => mm.type === 'realmEntre').slice(-1)[0] || null,
+  }));
+  ok(!dedans.panneau, 'le panneau se referme quand le monde s ouvre');
+  ok(!!dedans.entree, 'le serveur repond par une entree de monde');
+  if (dedans.entree) {
+    ok(/^carte:/.test(String(dedans.entree.carte)),
+       'et c est bien la carte qu on a demandee : ' + dedans.entree.carte);
+    ok((dedans.entree.sols || []).indexOf(solJ) >= 0,
+       `le plan porte la palette des sols : ${JSON.stringify(dedans.entree.sols)}`);
+    ok((dedans.entree.tuiles || []).length === 256,
+       `et les ${(dedans.entree.tuiles || []).length} tuiles de la carte`);
+    const ob = (dedans.entree.obstacles || []).find((q) => q.bat === objJ);
+    ok(!!ob, `l objet pose est devenu un bloc qui porte son nom (${objJ})`);
+    ok(!!ob && ob.r > 0, `avec un rayon qui bloque : ${ob && ob.r}`);
+    ok(dedans.entree.peuplement === undefined || !(dedans.entree.peuplement || []).length,
+       'et aucune creature : une carte est un endroit ou l on marche');
+  }
+  /* ---- CE QUI EST DESSINE ---- */
+  await p.waitForTimeout(1500);
+  const peints = await p.evaluate(() => (window.__vu || {}).dessines || {});
+  ok((peints['ground_' + solJ + '.webp'] || 0) > 10,
+     `le sol de la carte est peint case par case`
+     + ` (${peints['ground_' + solJ + '.webp'] || 0} fois)`);
+  ok((peints['obj_' + objJ + '.webp'] || 0) > 0,
+     `et la planche de l objet est dessinee dans le monde`
+     + ` (${peints['obj_' + objJ + '.webp'] || 0} fois)`);
 
   ok(erreurs.length === 0, 'aucune erreur de page' + (erreurs.length ? ' — ' + erreurs[0] : ''));
   await nav.close(); site.stop();

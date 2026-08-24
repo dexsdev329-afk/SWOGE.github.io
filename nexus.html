@@ -2617,12 +2617,20 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
            verticale, c est la RETOURNER. Un bouton par sens, et c est le seul
            retournement qui ne floute rien — un miroir echange des pixels, il
            n en invente aucun. -->
+      <!-- ---- LE CADENAS ----
+           Ouvert, on le voit ouvert ; ferme, on le voit ferme. Le dessin EST
+           l etat : un bouton qui dirait « Lock » dans les deux positions
+           demanderait de se souvenir de ce qu on vient de faire.
+           Il est SUR la rangee du miroir plutot que sur la sienne : la colonne
+           est deja longue, et un cadenas seul sur une ligne se lirait comme un
+           titre. -->
       <div class="nxmap-regle">
         <label data-txt="miroir" data-txtaide="aideMiroirX">Mirror</label>
         <span class="nxmap-mir">
           <button id="nxMapMiroirX" type="button" data-txtaide="aideMiroirX">&#8646;</button>
           <button id="nxMapMiroirY" type="button" data-txtaide="aideMiroirY">&#8645;</button>
         </span>
+        <button id="nxMapVerrou" type="button" data-txtaide="aideVerrouOuvert">&#128275;</button>
       </div>
       <div class="nxmap-regle">
         <label data-txt="regleX" data-txtaide="aideRegleX" for="nxMapRegX">Shift X</label>
@@ -2715,7 +2723,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
      racine ; c'est le seul endroit d'ou elle peut couvrir tout le reste. -->
 <div id="nxFiche"></div>
 
-<script src="nexus.js?v=a616b57a" defer></script>
+<script src="nexus.js?v=98132dc1" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 
 <script>

@@ -1451,6 +1451,113 @@ const servirLeSite = async () => {
   eq(apresClic.lignes.filter((l) => l.pris).length, 1, 'une seule ligne reste allumee');
   eq(apresClic.lignes.find((l) => l.pris).nom, cles[0], 'et c est la bonne');
 
+  console.log('\n-- le cadenas : ce qui est verrouille ne part plus sous la main --');
+  /* ---- CE QUI ETAIT DEMANDE ----
+   * « Rajouter un petit cadenas ouvert, et quand on clique dessus il se ferme,
+   * ca evite de bouger des elements sans faire expres. »
+   *
+   * Le defaut qu il corrige est celui-ci : un fond couvre la carte entiere,
+   * et des qu on travaille ce qui est POSE DESSUS, chaque clic un peu large
+   * attrape le fond. Le choix et le deplacement etant le meme geste, il PART —
+   * et l on ne s en apercoit qu apres.
+   *
+   * On tient encore `cles[0]`, en 8,8, pris par le panneau de gauche. Il y a
+   * DEUX elements empiles sur cette case : c est exactement la situation ou le
+   * verrou sert.
+   */
+  const cadenas = () => p.evaluate(() => {
+    const b = document.getElementById('nxMapVerrou');
+    return { dessin: b.textContent.trim(), ferme: b.classList.contains('vedette'),
+             tailleEteinte: document.getElementById('nxMapRegT').disabled,
+             effaceEteint: document.getElementById('nxMapEfface').disabled,
+             coucheEteinte: document.getElementById('nxMapFicheCouches').children[0].disabled };
+  });
+  const cadOuvert = await cadenas();
+  eq(cadOuvert.dessin, '🔓', 'le cadenas est OUVERT au depart, et son dessin le dit');
+  ok(!cadOuvert.tailleEteinte && !cadOuvert.effaceEteint,
+     'et tout repond encore');
+  /* On note ou il est, pour pouvoir dire qu il n a pas bouge. On le suit par
+     son NUMERO et non par la ligne allumee : le tirage qui va suivre choisit
+     l element du DESSUS, et lire « la ligne allumee » rendrait celui-la. Le
+     premier essai s y est fait prendre et a cru le verrou casse. */
+  const parNo = async (i) => (await listeGauche()).lignes.find((l) => l.i === String(i));
+  const ouIlEtait = (await parNo(ligneBasse.i)).ou;
+  const voisin = (await listeGauche()).lignes.find((l) => l.i !== ligneBasse.i
+                                                      && l.ou.indexOf('8,8') === 0);
+  ok(!!voisin, `un second element est pose sur la meme case : ${voisin && voisin.nom}`);
+  await p.click('#nxMapVerrou'); await p.waitForTimeout(500);
+  const cadFerme = await cadenas();
+  eq(cadFerme.dessin, '🔒', 'un clic le ferme, et le dessin change : il EST l etat');
+  ok(cadFerme.ferme, 'le bouton s allume avec lui');
+  /* ---- ET TOUT CE QUI MODIFIE S ETEINT ----
+   * Les laisser vivants pour repondre « verrouille » a chaque geste apprend la
+   * regle une fois puis agace mille fois. */
+  ok(cadFerme.tailleEteinte && cadFerme.effaceEteint && cadFerme.coucheEteinte,
+     'la taille, la suppression et les couches s eteignent : on VOIT la regle'
+     + ' au lieu de se la faire dire a chaque geste');
+  /* ---- LE CLIC SUR LA CARTE LE TRAVERSE ---- */
+  await p.evaluate(() => { document.getElementById('nxMapOutilChoix').click(); });
+  const parDessus = await attrape(8, 8, 95);
+  ok(parDessus.vu && parDessus.nom !== cles[0],
+     `le clic sur la case le traverse et prend celui du dessus : ${parDessus.nom}`);
+  /* ---- ET IL NE PART PAS QUAND ON TIRE DESSUS ----
+   * C est la demande, mot pour mot. On le reprend par le panneau — la seule
+   * porte qui reste — puis on tire franchement. */
+  await p.evaluate((i) => {
+    document.querySelector('#nxMapPosesListe .nxmap-pose[data-i="' + i + '"]').click();
+  }, ligneBasse.i);
+  await p.waitForTimeout(400);
+  await geste(camG, [{ t: 'down', c: 8, l: 8, id: 96 },
+                     { t: 'move', c: 12, l: 8, id: 96 },
+                     { t: 'up', c: 12, l: 8, id: 96 }]);
+  await p.waitForTimeout(500);
+  const apresTirage = await parNo(ligneBasse.i);
+  eq(apresTirage.ou, ouIlEtait,
+     'quatre cases de tirage ne le deplacent pas d un pouce');
+  /* ---- ET LE GESTE A BIEN EU LIEU ----
+   * Sans ce controle, « il n a pas bouge » passerait aussi bien si le tirage
+   * n avait rien fait du tout — un mauvais numero de pointeur, un clic hors
+   * de la grille — et l essai dirait « le verrou tient » en ne verifiant
+   * rien. C est le VOISIN, non verrouille, qui prouve que la main a porte. */
+  const voisinApres = await parNo(voisin.i);
+  ok(voisinApres.ou !== voisin.ou,
+     `c est le voisin non verrouille qui est parti : ${voisin.ou} devient`
+     + ` ${voisinApres.ou} — donc le geste a bien porte sur la carte`);
+  ok(apresTirage.nom.indexOf('🔒') === 0,
+     `et le panneau montre son cadenas : « ${apresTirage.nom} » — sans ce signe,`
+     + ' un element qui ne repond plus au clic passerait pour casse');
+  /* ---- ON PEUT TOUJOURS L OUVRIR ----
+   * C est la verification qui compte le plus : un verrou dont le bouton
+   * s eteindrait avec les autres enfermerait l element pour toujours.
+   * On le REPREND d abord par le panneau : le tirage qui precede a laisse la
+   * main sur le voisin, celui qu il a effectivement deplace. Cliquer le
+   * cadenas sans cela aurait verrouille le voisin — ce que le premier essai a
+   * fait, en croyant que le cadenas refusait de s ouvrir. */
+  await p.evaluate((i) => {
+    document.querySelector('#nxMapPosesListe .nxmap-pose[data-i="' + i + '"]').click();
+  }, ligneBasse.i);
+  await p.waitForTimeout(400);
+  await p.click('#nxMapVerrou'); await p.waitForTimeout(500);
+  const rouvert = await cadenas();
+  eq(rouvert.dessin, '🔓', 'le cadenas se rouvre : son propre bouton ne s eteint jamais');
+  ok(!rouvert.tailleEteinte && !rouvert.effaceEteint, 'et tout repond de nouveau');
+  await geste(camG, [{ t: 'down', c: 8, l: 8, id: 97 },
+                     { t: 'move', c: 10, l: 8, id: 97 },
+                     { t: 'up', c: 10, l: 8, id: 97 }]);
+  await p.waitForTimeout(500);
+  const bouge = await parNo(ligneBasse.i);
+  ok(bouge.ou !== ouIlEtait,
+     `et il se deplace de nouveau : ${ouIlEtait} devient ${bouge.ou}`);
+  ok(bouge.nom.indexOf('🔒') < 0, 'et son cadenas a disparu du panneau');
+  /* Et on le RAMENE ou il etait, ouvert : ce qui suit part de la case 8,8, et
+     un essai qui laisse la carte autrement qu il l a trouvee fait tomber le
+     suivant pour une raison qui n a rien a voir avec lui. */
+  await geste(camG, [{ t: 'down', c: 10, l: 8, id: 98 },
+                     { t: 'move', c: 8, l: 8, id: 98 },
+                     { t: 'up', c: 8, l: 8, id: 98 }]);
+  await p.waitForTimeout(500);
+  eq((await parNo(ligneBasse.i)).ou, ouIlEtait, 'et il revient exactement d ou il vient');
+
   console.log('\n-- l aimant : sur la grille, ou la ou le doigt lache --');
   /* ---- CE QUI ETAIT DEMANDE ----
    * « On peut rajouter plus de precision sur les deplacements ? » On tirait un

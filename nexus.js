@@ -3261,6 +3261,11 @@
       potSolSeul: 'Fill works on grounds. Pick a ground on the right.',
       couche: 'Layer',
       aideCoucheTenu: 'Which layer this element sits on. A higher layer draws in front.',
+      verrouille: 'That element is locked. Open its padlock to change it.',
+      verrouMis: 'Locked. It will not move when you work on top of it.',
+      verrouOte: 'Unlocked.',
+      aideVerrouOuvert: 'Lock it, so a stray click cannot move or delete it. Locked elements are still reachable from the Placed panel.',
+      aideVerrouFerme: 'Unlock it to move, resize or delete it again.',
       aimant: 'Snap',
       aimantOn: 'Snap on: items land on the grid.',
       aimantOff: 'Snap off: items land wherever you drop them.',
@@ -3347,6 +3352,11 @@
       potSolSeul: 'Le pot remplit du sol. Choisissez un sol a droite.',
       couche: 'Couche',
       aideCoucheTenu: 'La couche où cet élément se trouve. Une couche plus haute passe devant.',
+      verrouille: 'Cet élément est verrouillé. Ouvrez son cadenas pour le changer.',
+      verrouMis: 'Verrouillé. Il ne bougera plus quand vous travaillerez par-dessus.',
+      verrouOte: 'Déverrouillé.',
+      aideVerrouOuvert: 'Le verrouille, pour qu\u2019un clic de travers ne le déplace ni ne l\u2019efface. Il reste atteignable par le panneau « Posés ».',
+      aideVerrouFerme: 'L\u2019ouvre, pour pouvoir de nouveau le bouger, le redimensionner ou l\u2019effacer.',
       aimant: 'Aimant',
       aimantOn: 'Aimant mis : les éléments se posent sur la grille.',
       aimantOff: 'Aimant ôté : les éléments se posent où vous les lâchez.',
@@ -3436,6 +3446,11 @@
       potSolSeul: 'El relleno funciona con suelos. Elige un suelo a la derecha.',
       couche: 'Capa',
       aideCoucheTenu: 'La capa en la que está este elemento. Una capa más alta se dibuja delante.',
+      verrouille: 'Este elemento está bloqueado. Abre su candado para cambiarlo.',
+      verrouMis: 'Bloqueado. No se moverá cuando trabajes encima.',
+      verrouOte: 'Desbloqueado.',
+      aideVerrouOuvert: 'Lo bloquea, para que un clic desviado no lo mueva ni lo borre. Sigue siendo accesible desde el panel «Colocados».',
+      aideVerrouFerme: 'Lo abre, para poder moverlo, redimensionarlo o borrarlo de nuevo.',
       aimant: 'Imán',
       aimantOn: 'Imán puesto: los elementos caen sobre la rejilla.',
       aimantOff: 'Imán quitado: los elementos caen donde los sueltes.',
@@ -4008,6 +4023,8 @@
   /** Sur quelle poignee tombe ce point de canevas, ou `null`. */
   function poigneeSous(pc) {
     if (!MAP || !MAP.mienne || mapOutil !== 'choix') return null;
+    var ov = objetDe(mapSel);
+    if (ov && ov.v) return null;
     var r = cadreDuChoix();
     if (!r) return null;
     var rp = poigneeRayon(r.p) + 4;
@@ -4171,7 +4188,11 @@
          * Elles ne se dessinent que si l'on peut s'en servir — visibles sur la
          * carte d'un autre, elles promettraient un geste que le serveur
          * refuserait. */
-        if (avecGrille && MAP && MAP.mienne && mapOutil === 'choix') {
+        /* Les poignees ne se dessinent pas sur un element verrouille : une
+           croix qui ne supprime pas et un coin qui n'etire pas promettraient
+           un geste refuse. Le cadre jaune, lui, reste — il faut bien voir ce
+           qu'on tient. */
+        if (avecGrille && MAP && MAP.mienne && mapOutil === 'choix' && !sv.v) {
           var rp = poigneeRayon(p);
           C.fillStyle = '#1b2340'; C.strokeStyle = '#FFD166'; C.lineWidth = 2;
           /* La croix, en HAUT A DROITE. */
@@ -4322,7 +4343,7 @@
          parcelle droite et reduite a une case. Trouve en mesurant le DESSIN
          apres l'annulation — la donnee, elle, avait l'air juste. */
       return { i: o.i, c: o.c, l: o.l, k: o.k, n: o.n || 1, z: o.z || 0,
-               g: o.g || 0, m: o.m || 0, dx: o.dx || 0, dy: o.dy || 0 };
+               g: o.g || 0, m: o.m || 0, v: o.v || 0, dx: o.dx || 0, dy: o.dy || 0 };
     });
   }
   function copieDesCases() {
@@ -4408,10 +4429,29 @@
    * c'est l'ordre inverse du dessin, donc celui qu'on voit en premier est
    * celui qu'on attrape.
    */
+  /**
+   * CE QUI EST VERROUILLE N'EXISTE PLUS POUR LA CARTE.
+   *
+   * ---- CE QUE LE VERROU EMPECHE VRAIMENT ----
+   * Un fond couvre la carte entiere. Des qu'on travaille ce qui est POSE
+   * DESSUS, chaque clic un peu large attrape le fond au lieu du batiment — et
+   * comme le choix et le deplacement sont le meme geste, il PART. On ne
+   * s'en apercoit qu'apres, une fois le fond de travers.
+   *
+   * On aurait pu le laisser choisissable et refuser seulement le
+   * deplacement : c'aurait ete pire. La fiche aurait montre le fond a la
+   * place du batiment qu'on croyait tenir, et les glissieres auraient regle
+   * quelque chose d'autre que ce qu'on regardait. Ici, le clic traverse.
+   *
+   * Il reste atteignable par le PANNEAU DE GAUCHE, qui montre son cadenas :
+   * c'est la seule porte, et c'est ce qui fait qu'on ne peut pas s'enfermer
+   * dehors.
+   */
   function elementSous(c, l) {
     var trouve = null;
     for (var i = 0; i < MAP.objets.length; i++) {
       var o = MAP.objets[i], n = o.n || 1;
+      if (o.v) continue;
       /* L'emprise : centree en largeur sur la case d'ancrage, et montant vers
          le haut depuis son bas — exactement comme elle se dessine. Decalage
          compris : on attrape ce qu'on VOIT, pas la case ou l'element fut
@@ -4453,10 +4493,19 @@
    * Trois copies auraient fini par ne plus memoriser pareil — et c'est celle
    * qui oublie qui rend l'annulation muette sur ce geste-la.
    */
-  function retouche(f) {
+  /**
+   * MODIFIE CE QU'ON TIENT. Le seul chemin, et c'est voulu.
+   *
+   * `malgreLeVerrou` n'est vrai que pour le cadenas lui-meme : sans cette
+   * exception, on ne pourrait plus jamais l'ouvrir. Toute autre retouche est
+   * refusee tant qu'il est ferme — et refusee EN SILENCE serait pire que tout,
+   * donc on le dit.
+   */
+  function retouche(f, malgreLeVerrou) {
     if (!MAP || !MAP.mienne || !mapSel) return;
     var o = objetDe(mapSel);
     if (!o) { mapSel = null; peintMapOutils(); mapRedessine(); return; }
+    if (o.v && !malgreLeVerrou) { mapDit(T('verrouille'), true); return; }
     /* `memorise` empile des COPIES : la liste vivante n'est pas remplacee, et
        l'objet qu'on tient reste le bon. */
     memorise();
@@ -4567,7 +4616,7 @@
   function deplaceVers(pc) {
     if (!MAP || !mapSel || !mapDeplace || !mapVue.p) return;
     var o = objetDe(mapSel);
-    if (!o) { mapDeplace = null; return; }
+    if (!o || o.v) { mapDeplace = null; return; }
     var p = mapVue.p;
     var vx = (pc.x - mapVue.x) / p - mapDeplace.ec;
     var vy = (pc.y - mapVue.y) / p - mapDeplace.el;
@@ -4595,7 +4644,7 @@
   function etireVers(pc) {
     if (!MAP || !mapSel || !mapVue.p) return;
     var o = objetDe(mapSel);
-    if (!o) { mapEtire = false; return; }
+    if (!o || o.v) { mapEtire = false; return; }
     var p = mapVue.p;
     var axe = mapVue.x + (o.c + 0.5) * p;
     var pied = mapVue.y + (o.l + 1) * p;
@@ -4717,8 +4766,8 @@
      * collision ne peuvent pas se contredire. */
     var el = elementDe(mapChoix.famille, mapChoix.cle);
     var neuf = { i: mapNo++, c: c, l: l, k: mapChoix.cle,
-                 n: (el && el.cases > 1) ? el.cases : 1, g: 0, m: 0, dx: 0, dy: 0,
-                 z: mapCouche };
+                 n: (el && el.cases > 1) ? el.cases : 1, g: 0, m: 0, v: 0,
+                 dx: 0, dy: 0, z: mapCouche };
     MAP.objets.push(neuf);
     /* ---- CE QU'ON VIENT DE POSER EST CE QU'ON TIENT ----
      * La fiche montrait encore l'element PRECEDENT : on posait une maison,
@@ -5124,7 +5173,29 @@
     return Math.max(0, Math.min(MAP_TAILLE_CRANS, v));
   }
 
+  /* ---- CE QUI EST ETEINT QUAND LE CADENAS EST FERME ----
+   * Tout ce qui MODIFIE, et rien d'autre. Les laisser vivants aurait fait
+   * repondre « verrouille » a chaque geste, ce qui apprend la regle une fois
+   * puis agace mille fois ; les eteindre la MONTRE, une bonne fois. */
+  var MAP_SOUS_VERROU = ['nxMapPlusPetit', 'nxMapPlusGrand', 'nxMapRegT', 'nxMapTourne',
+                         'nxMapMiroirX', 'nxMapMiroirY', 'nxMapRegG', 'nxMapRegX',
+                         'nxMapRegY', 'nxMapEfface'];
   function peintGlissieres(tenu) {
+    var ferme = !!(tenu && tenu.v);
+    var cad = document.getElementById('nxMapVerrou');
+    if (cad) {
+      /* Le dessin du cadenas EST son etat : un bouton qui dirait « Lock » dans
+         les deux positions demanderait de se souvenir de ce qu'on a fait. */
+      cad.textContent = ferme ? '\uD83D\uDD12' : '\uD83D\uDD13';
+      cad.classList.toggle('vedette', ferme);
+      cad.title = T(ferme ? 'aideVerrouFerme' : 'aideVerrouOuvert');
+    }
+    MAP_SOUS_VERROU.forEach(function (id) {
+      var e = document.getElementById(id);
+      if (e) e.disabled = ferme;
+    });
+    var fc = document.getElementById('nxMapFicheCouches');
+    if (fc) for (var q = 0; q < fc.childNodes.length; q++) fc.childNodes[q].disabled = ferme;
     var tg = document.getElementById('nxMapRegT');
     if (tg) {
       tg.max = String(MAP_TAILLE_CRANS);
@@ -5275,7 +5346,8 @@
      * ferait refaire mille huit cents lignes a chaque degre de la glissiere,
      * alors qu'aucune ligne n'en montre un seul. */
     var sig = poses.map(function (o) {
-      return o.i + ':' + o.k + ':' + o.c + ',' + o.l + ':' + (o.z || 0) + ':' + (o.n || 1);
+      return o.i + ':' + o.k + ':' + o.c + ',' + o.l + ':' + (o.z || 0) + ':' + (o.n || 1)
+             + ':' + (o.v || 0);
     }).join('|');
     if (sig !== mapPosesSignature) {
       mapPosesSignature = sig;
@@ -5305,7 +5377,11 @@
         var v = vignetteDeLElement(o.k);
         if (v) im.src = v; else mapPosesAttend.push({ im: im, k: o.k });
         var nm = document.createElement('span');
-        nm.textContent = o.k;
+        /* Le cadenas se voit ICI, et c'est necessaire : sur la carte, un
+           element verrouille ne repond plus au clic. Sans ce signe, il
+           passerait pour casse — et le panneau est la seule porte qui reste
+           pour l'ouvrir. */
+        nm.textContent = (o.v ? '\uD83D\uDD12 ' : '') + o.k;
         var ou = document.createElement('i');
         ou.textContent = o.c + ',' + o.l
                        + (o.n && o.n !== 1 ? ' \u00b7 ' + ditTaille(o.n) : '');
@@ -5474,14 +5550,14 @@
          encore en lire un vieux — on le remonte de la meme facon. */
       if (q.o) {
         MAP.objets.push({ i: mapNo++, c: q.c, l: q.l, k: q.o,
-                          n: tailleLue(q), g: angleLu(q), m: miroirLu(q),
+                          n: tailleLue(q), g: angleLu(q), m: miroirLu(q), v: q.v ? 1 : 0,
                           dx: 0, dy: 0, z: 0 });
       }
     });
     (c.objets || []).forEach(function (q) {
       if (!q || !q.k) return;
       MAP.objets.push({ i: mapNo++, c: q.c, l: q.l, k: q.k,
-                        n: tailleLue(q), g: angleLu(q), m: miroirLu(q),
+                        n: tailleLue(q), g: angleLu(q), m: miroirLu(q), v: q.v ? 1 : 0,
                         dx: borneDecalage(q.dx), dy: borneDecalage(q.dy),
                         z: Math.max(0, Math.min(MAP_COUCHES - 1, q.z || 0)) });
     });
@@ -5663,6 +5739,14 @@
      * troisieme dimension, la tourner autour de sa verticale c'est la
      * RETOURNER. Et c'est le seul retournement qui ne floute rien — un miroir
      * echange des pixels, il n'en invente aucun. */
+    /* ---- LE CADENAS ----
+     * La SEULE retouche qui passe outre le verrou : sans elle, on ne pourrait
+     * plus jamais l'ouvrir. */
+    b('nxMapVerrou', function () {
+      retouche(function (o) { o.v = o.v ? 0 : 1; }, true);
+      var ov = objetDe(mapSel);
+      mapDit(T(ov && ov.v ? 'verrouMis' : 'verrouOte'));
+    });
     b('nxMapMiroirX', function () { retouche(function (o) { o.m = (o.m || 0) ^ 1; }); });
     b('nxMapMiroirY', function () { retouche(function (o) { o.m = (o.m || 0) ^ 2; }); });
     b('nxMapAimant', function () {
@@ -5726,6 +5810,9 @@
       if (!MAP || !MAP.mienne || !mapSel) return;
       var oe = objetDe(mapSel);
       if (!oe) { mapSel = null; peintMapOutils(); return; }
+      /* Le verrou vaut aussi pour le bouton : il n'y aurait pas grand sens a
+         proteger l'element du doigt qui glisse et pas de celui qui vise. */
+      if (oe.v) { mapDit(T('verrouille'), true); return; }
       memorise();
       oteObjet(objetDe(mapSel));
       mapSel = null;
@@ -5783,6 +5870,7 @@
         if (o.n && o.n !== 1) e.n = o.n;
         if (o.g) e.g = o.g;
         if (o.m) e.m = o.m;
+        if (o.v) e.v = 1;
         if (o.dx) e.dx = o.dx;
         if (o.dy) e.dy = o.dy;
         return e;

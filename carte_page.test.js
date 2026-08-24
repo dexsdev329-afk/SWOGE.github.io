@@ -157,9 +157,77 @@ const servirLeSite = async () => {
      `soit ${(servi.octets / 1048576).toFixed(1)} Mo sur les `
      + `${(poidsTotal / 1048576).toFixed(1)} Mo que pese le catalogue entier`);
 
+  /* ---- OU EST LA CARTE DANS LE CANEVAS ----
+   *
+   * Le canevas occupe toute la scene et la carte y est POSEE : sa taille et
+   * sa position dependent du zoom. L'essai ne recalcule pas cette regle — la
+   * recopier reviendrait a se tromper de la meme facon que la page, sans que
+   * rien ne le dise. Il la MESURE sur le dessin : le fond de la fenetre vaut
+   * #070b16 et rien d'autre ne le vaut, donc tout ce qui n'est pas cette
+   * couleur est la carte.
+   *
+   * A faire sur une carte VIDE : une parcelle isometrique deborde vers le
+   * haut, et le cadre mesure ne serait plus celui de la carte.
+   */
+  const cadre = async (cote) => {
+    const n = cote || 48;
+    const m = await p.evaluate(() => {
+      const g = document.getElementById('nxMapGrille');
+      const d = g.getContext('2d').getImageData(0, 0, g.width, g.height).data;
+      let x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;
+      for (let y = 0; y < g.height; y++) {
+        for (let x = 0; x < g.width; x++) {
+          const i = (y * g.width + x) * 4;
+          if (d[i] === 7 && d[i + 1] === 11 && d[i + 2] === 22) continue;
+          if (x < x0) x0 = x; if (x > x1) x1 = x;
+          if (y < y0) y0 = y; if (y > y1) y1 = y;
+        }
+      }
+      const r = g.getBoundingClientRect();
+      return { x0, y0, x1, y1, W: g.width, H: g.height,
+               left: r.left, top: r.top, rw: r.width, rh: r.height };
+    });
+    /* La taille d'une case se DEDUIT du cadre mesure et du cote de la carte.
+       Ecrite pour quarante-huit, elle donnait dix-sept pixels sur une carte de
+       seize — et tous les clics tombaient a cote sans qu'aucune verification
+       ne le dise, puisque chacune se contentait de comparer a elle-meme. */
+    m.p = (m.x1 - m.x0 + 1) / n;
+    /* Du pixel de canevas au point d'ecran : le canevas peut etre affiche a
+       une taille differente de sa resolution. */
+    m.ecran = (cx, cy) => ({ x: m.left + cx * m.rw / m.W, y: m.top + cy * m.rh / m.H });
+    m.deCase = (c, l) => m.ecran(m.x0 + (c + 0.5) * m.p, m.y0 + (l + 0.5) * m.p);
+    return m;
+  };
+  /* Un geste de pointeur sur la grille, en cases. */
+  const geste = async (cam, pas) => {
+    await p.evaluate(([pts]) => {
+      const g = document.getElementById('nxMapGrille');
+      for (const q of pts) {
+        (q.t === 'up' ? window : g).dispatchEvent(new PointerEvent('pointer' + q.t,
+          { bubbles: true, pointerId: q.id || 9, clientX: q.x, clientY: q.y }));
+      }
+    }, [pas.map((q) => Object.assign({}, q, cam.deCase(q.c, q.l)))]);
+  };
+
+  /* Creer une carte passe maintenant par un ecran : mode et taille s'y
+     choisissent, et ne se reprennent plus ensuite. */
+  const cree = async (mode, cote) => {
+    await p.click('#nxMapNouvelle');
+    await p.waitForTimeout(300);
+    await p.evaluate(([m, t]) => {
+      document.querySelector('#nxMapModes button[data-mode="' + m + '"]').click();
+      const r = document.getElementById('nxMapTaille');
+      r.value = String(t);
+      r.dispatchEvent(new Event('input', { bubbles: true }));
+    }, [mode, cote]);
+    await p.click('#nxMapCree');
+    await p.waitForTimeout(500);
+  };
+
   console.log('\n-- on dessine --');
-  await p.click('#nxMapNouvelle');
-  await p.waitForTimeout(400);
+  await cree('plat', 48);
+  let cam = await cadre();
+  ok(cam.p > 4, `la carte est cadree dans le canevas : ${Math.round(cam.p * 100) / 100} px par case`);
   /* Un SOL, choisi dans la palette comme un joueur le ferait. On prend le
      premier de la famille : son nom vient du catalogue, pas d'ici. */
   const cle = await p.evaluate(() => {
@@ -170,21 +238,10 @@ const servirLeSite = async () => {
   ok(!!cle, 'un sol est choisi dans la palette : ' + cle);
 
   /* Trois cases, posees par de vrais evenements de pointeur sur la grille. */
-  const pose = await p.evaluate(() => {
-    const g = document.getElementById('nxMapGrille');
-    const r = g.getBoundingClientRect();
-    const p1 = (x, y) => g.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true,
-      pointerId: 3, clientX: r.left + x, clientY: r.top + y }));
-    const p2 = (x, y) => g.dispatchEvent(new PointerEvent('pointermove', { bubbles: true,
-      pointerId: 3, clientX: r.left + x, clientY: r.top + y }));
-    const pas = r.width / 48;
-    p1(pas * 2.5, pas * 2.5);
-    p2(pas * 3.5, pas * 2.5);
-    p2(pas * 4.5, pas * 2.5);
-    window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 3 }));
-    return { largeur: Math.round(r.width) };
-  });
-  ok(pose.largeur > 100, `la grille est a l ecran (${pose.largeur} px)`);
+  await geste(cam, [{ t: 'down', c: 2, l: 2 }, { t: 'move', c: 3, l: 2 },
+                    { t: 'move', c: 4, l: 2 }, { t: 'up', c: 4, l: 2 }]);
+  await p.waitForTimeout(300);
+  ok(cam.rw > 100, `la grille est a l ecran (${Math.round(cam.rw)} px)`);
 
   console.log('\n-- on nomme et on enregistre --');
   await p.fill('#nxMapNom', 'Ma premiere carte');
@@ -209,73 +266,13 @@ const servirLeSite = async () => {
        'chaque case porte bien le sol choisi dans la palette : ' + cle);
   }
 
-  console.log('\n-- et une parcelle isometrique prend la place qu elle occupe --');
-  /* ---- POURQUOI ON MESURE LE DESSIN, ET NON LE MODELE ----
-   * Le catalogue dit qu'une parcelle vaut cinq cases. Verifier que la page a
-   * bien lu ce nombre ne dirait rien : ce qui compte est ce qui est DESSINE.
-   * Une parcelle enfermee dans sa case redeviendrait une tache de quatorze
-   * pixels, et le champ `cases` serait toujours la, exact et sans effet.
-   * On compte donc les colonnes peintes sur la grille, sur une carte vide ou
-   * seul le fond est de couleur connue. */
-  const iso = await p.evaluate(() => {
-    const b = document.querySelector('#nxMapPalette .nxmap-el[data-fam="iso"]');
-    if (!b) return null;
-    b.click();
-    const g = document.getElementById('nxMapGrille');
-    const r = g.getBoundingClientRect();
-    const pas = r.width / 48;
-    /* Loin des bords : une parcelle posee en (1,1) sortirait de la grille et
-       la mesure compterait ce qui reste, pas ce qui est dessine. */
-    const cc = 24, ll = 24;
-    g.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 7,
-      clientX: r.left + (cc + .5) * pas, clientY: r.top + (ll + .5) * pas }));
-    window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 7 }));
-    return { cle: b.dataset.cle, cc, ll };
-  });
-  await p.waitForTimeout(1200);
-  const large = await p.evaluate((q) => {
-    const g = document.getElementById('nxMapGrille');
-    const C = g.getContext('2d');
-    const n = 48, pas = g.width / n;
-    /* La bande de la parcelle, du haut de son dessin jusqu'a son pied. */
-    const y0 = Math.max(0, Math.round((q.ll + 1) * pas) - Math.round(pas * 8));
-    const h = Math.round((q.ll + 1) * pas) - y0;
-    const d = C.getImageData(0, y0, g.width, h).data;
-    const somme = (x, y) => {
-      const i = (y * g.width + x) * 4;
-      return d[i] + d[i + 1] + d[i + 2];
-    };
-    /* ---- LE SEUIL SE MESURE, IL NE SE DEVINE PAS ----
-     * Ecrit en dur, il etait faux : le fond vaut #0a1020, mais un CROISEMENT
-     * de deux traits de grille monte a 61 de bleu, et un seuil pose a 60
-     * declarait alors toute la largeur « dessinee ». On prend donc pour
-     * reference les colonnes de GAUCHE de la bande — vides par construction,
-     * la parcelle etant posee au milieu — et l'on ne compte que ce qui les
-     * depasse franchement. Le jour ou la grille change d'opacite, la mesure
-     * suit toute seule.
-     */
-    let fond = 0;
-    for (let x = 0; x < 6; x++) for (let y = 0; y < h; y++) fond = Math.max(fond, somme(x, y));
-    const seuil = fond + 40;
-    const cols = [];
-    for (let x = 0; x < g.width; x++) {
-      for (let y = 0; y < h; y++) { if (somme(x, y) > seuil) { cols.push(x); break; } }
-    }
-    return { min: cols[0], max: cols[cols.length - 1], combien: cols.length,
-             fond, seuil, pas: Math.round(pas) };
-  }, iso);
-  const attendu = (JSON.parse(fs.readFileSync(path.join(SITE, 'catalogue.json'), 'utf8'))
-                   .iso.find((e) => e.cle === iso.cle) || {}).cases;
-  const dessine = large.max - large.min + 1;
-  ok(attendu >= 2, `le catalogue donne ${attendu} cases a ${iso.cle}`);
-  ok(dessine > large.pas * (attendu - 1) && dessine <= large.pas * (attendu + 1),
-     `elle est dessinee sur ${dessine} px la ou une case en fait ${large.pas}`
-     + ` — soit ${attendu} cases (fond mesure a ${large.fond}, seuil ${large.seuil})`);
-
-
   console.log('\n-- rien ne se jette sans qu on le demande --');
+  /* Une case de plus, posee APRES l'enregistrement : c'est elle qu'on risque
+     de perdre, et c'est donc elle que cet essai protege. */
+  await geste(cam, [{ t: 'down', c: 6, l: 6, id: 15 }, { t: 'up', c: 6, l: 6, id: 15 }]);
+  await p.waitForTimeout(300);
   /* ---- CE QUE CET ESSAI TIENT ----
-   * La parcelle qu'on vient de poser n'est PAS enregistree. « Gallery »
+   * La case qu'on vient de poser n'est PAS enregistree. « Gallery »
    * remettait la carte a zero sans un mot : on cliquait pour aller voir celle
    * d'un voisin, et la sienne n'existait plus. */
   const etatQuestion = () => p.evaluate(() => ({
@@ -299,65 +296,197 @@ const servirLeSite = async () => {
   ok(!q3.question && !q3.atelier, 'et « Discard » seul ramene a la galerie');
 
   console.log('\n-- le rectangle, l annulation et le pot --');
-  await p.click('#nxMapNouvelle');
-  await p.waitForTimeout(400);
+  await cree('plat', 48);
+  cam = await cadre();
   /* ---- ON COMPTE LES CASES SUR LE DESSIN ----
    * La carte vit dans une variable que la page ne publie pas, et lui ajouter
    * une porte pour l'essai serait ajouter du code qui n'existe que pour
    * l'essai. On compte donc les cases PEINTES : le centre de chaque case,
    * compare au fond mesure sur la carte vide. C'est aussi ce qu'un joueur
    * voit, ce qui est la seule chose qui compte. */
-  const compte = () => p.evaluate(() => {
+  const compte = (k) => p.evaluate((cm) => {
     const g = document.getElementById('nxMapGrille');
     const C = g.getContext('2d');
-    const n = 48, pas = g.width / n;
+    const n = 48;
     const d = C.getImageData(0, 0, g.width, g.height).data;
-    let t = 0;
+    let t = 0, ou = null;
     for (let c = 0; c < n; c++) {
       for (let l = 0; l < n; l++) {
-        const x = Math.floor((c + .5) * pas), y = Math.floor((l + .5) * pas);
+        const x = Math.floor(cm.x0 + (c + .5) * cm.p), y = Math.floor(cm.y0 + (l + .5) * cm.p);
+        if (x < 0 || y < 0 || x >= g.width || y >= g.height) continue;
         const i = (y * g.width + x) * 4;
-        /* Le fond vaut #0a1020 et un croisement de traits monte a peine plus :
-           on prend large, une tuile de sol etant une image, jamais du bleu
-           nuit uni. */
-        if (d[i] + d[i + 1] + d[i + 2] > 160) t++;
+        /* Le fond de la carte vaut #0a1020 et un croisement de traits monte a
+           peine plus : on prend large, une tuile de sol etant une image,
+           jamais du bleu nuit uni. */
+        if (d[i] + d[i + 1] + d[i + 2] > 160) { t++; if (!ou) ou = c + ',' + l; }
       }
     }
-    return t;
-  });
-  eq(await compte(), 0, 'une carte neuve ne porte aucune case');
+    return { t, ou };
+  }, k).then((r) => r);
+  const combien = async () => (await compte({ p: cam.p, x0: cam.x0, y0: cam.y0 })).t;
+  eq(await combien(), 0, 'une carte neuve ne porte aucune case');
   await p.evaluate(() => {
     document.querySelector('#nxMapPalette .nxmap-el[data-fam="sol"]').click();
     document.getElementById('nxMapOutilRect').click();
-    const g = document.getElementById('nxMapGrille');
-    const r = g.getBoundingClientRect();
-    const pas = r.width / 48;
-    const ev = (t, c, l) => (t === 'up' ? window : g).dispatchEvent(new PointerEvent('pointer' + t,
-      { bubbles: true, pointerId: 9, clientX: r.left + (c + .5) * pas, clientY: r.top + (l + .5) * pas }));
-    ev('down', 10, 10); ev('move', 13, 13); ev('up', 13, 13);
   });
+  await geste(cam, [{ t: 'down', c: 10, l: 10 }, { t: 'move', c: 13, l: 13 },
+                    { t: 'up', c: 13, l: 13 }]);
   await p.waitForTimeout(600);
-  eq(await compte(), 16, 'un rectangle de quatre sur quatre pose seize cases');
+  eq(await combien(), 16, 'un rectangle de quatre sur quatre pose seize cases');
   await p.click('#nxMapAnnule');
   await p.waitForTimeout(400);
-  eq(await compte(), 0, 'et « Undo » les retire toutes d un coup, pas une par une');
+  eq(await combien(), 0, 'et « Undo » les retire toutes d un coup, pas une par une');
   await p.click('#nxMapRefais');
   await p.waitForTimeout(400);
-  eq(await compte(), 16, 'et « Redo » les remet');
-  await p.evaluate(() => {
-    document.getElementById('nxMapOutilPot').click();
-    const g = document.getElementById('nxMapGrille');
-    const r = g.getBoundingClientRect();
-    const pas = r.width / 48;
-    g.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 11,
-      clientX: r.left + pas * .5, clientY: r.top + pas * .5 }));
-    window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 11 }));
-  });
-  await p.waitForTimeout(900);
-  eq(await compte(), 48 * 48, 'le pot remplit le reste de la carte en un geste');
+  eq(await combien(), 16, 'et « Redo » les remet');
+  await p.evaluate(() => { document.getElementById('nxMapOutilPot').click(); });
+  await geste(cam, [{ t: 'down', c: 0, l: 0, id: 11 }, { t: 'up', c: 0, l: 0, id: 11 }]);
+  await p.waitForTimeout(1200);
+  eq(await combien(), 48 * 48, 'le pot remplit le reste de la carte en un geste');
   await p.click('#nxMapAnnule');
   await p.waitForTimeout(500);
-  eq(await compte(), 16, 'et le pot entier s annule en une fois, lui aussi');
+  eq(await combien(), 16, 'et le pot entier s annule en une fois, lui aussi');
+
+  console.log('\n-- le zoom, le deplacement, et le clic qui les suit --');
+  /* ---- POURQUOI LE CLIC EST LE VRAI SUJET ----
+   * Zoomer est facile ; ce qui casse, c'est la conversion INVERSE. Une page
+   * qui dessine avec la vue mais teste le clic sans elle pose la case a cote,
+   * et l'ecart grandit avec le zoom — le genre de defaut qu'on ne voit qu'au
+   * doigt, sur un telephone, et qu'aucune capture ne montre.
+   * On mesure donc le cadre APRES chaque changement, on clique une case
+   * NOMMEE, et l'on regarde laquelle a ete peinte. */
+  await p.click('#nxMapRetour'); await p.waitForTimeout(200);
+  await p.click('#nxMapJette'); await p.waitForTimeout(400);
+  await cree('plat', 48);
+  await p.click('#nxMapAjuste'); await p.waitForTimeout(300);
+  const vue0 = await cadre();
+  await p.click('#nxMapMoins'); await p.waitForTimeout(200);
+  await p.click('#nxMapMoins'); await p.waitForTimeout(400);
+  const vue1 = await cadre();
+  ok(vue1.p < vue0.p, `« − » retrecit la carte : ${vue0.p.toFixed(2)} px par case, puis ${vue1.p.toFixed(2)}`);
+  ok(vue1.x0 > 0 && vue1.x1 < vue1.W - 1 && vue1.y0 > 0 && vue1.y1 < vue1.H - 1,
+     'et la carte tient entierement dans la fenetre, donc la mesure est exacte');
+  cam = vue1;
+  await p.evaluate(() => {
+    document.querySelector('#nxMapPalette .nxmap-el[data-fam="sol"]').click();
+    document.getElementById('nxMapOutilDessin').click();
+  });
+  await geste(cam, [{ t: 'down', c: 20, l: 20, id: 21 }, { t: 'up', c: 20, l: 20, id: 21 }]);
+  await p.waitForTimeout(500);
+  const apresZoom = await compte({ p: cam.p, x0: cam.x0, y0: cam.y0 });
+  eq(apresZoom.t, 1, 'une seule case posee apres le zoom');
+  eq(apresZoom.ou, '20,20', 'et c est EXACTEMENT celle que le clic visait');
+
+  await p.click('#nxMapAjuste'); await p.waitForTimeout(400);
+  const vue2 = await cadre();
+  eq(Math.round(vue2.p * 100), Math.round(vue0.p * 100), '« Fit » recadre la carte comme a l ouverture');
+
+  /* ---- ET LA MAIN DEPLACE ---- */
+  await p.evaluate(() => { document.getElementById('nxMapOutilMain').click(); });
+  const vueAvantMain = await cadre();
+  await p.evaluate((cm) => {
+    const g = document.getElementById('nxMapGrille');
+    const r = g.getBoundingClientRect();
+    const dx = 90 * r.width / cm.W;
+    const x = r.left + r.width / 2, y = r.top + r.height / 2;
+    g.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 31, clientX: x, clientY: y }));
+    g.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerId: 31, clientX: x + dx, clientY: y }));
+    window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 31 }));
+  }, { W: vueAvantMain.W });
+  await p.waitForTimeout(400);
+  const vueApresMain = await cadre();
+  ok(Math.abs((vueApresMain.x0 - vueAvantMain.x0) - 90) <= 3,
+     `la main deplace la carte de ${Math.round(vueApresMain.x0 - vueAvantMain.x0)} px pour 90 demandes`);
+  ok(Math.round(vueApresMain.p * 100) === Math.round(vueAvantMain.p * 100),
+     'et ne change pas le zoom en le faisant');
+  const rienPose = await compte({ p: vueApresMain.p, x0: vueApresMain.x0, y0: vueApresMain.y0 });
+  eq(rienPose.t, 1, 'et la main ne pose aucune case en passant sur la grille');
+
+  console.log('\n-- une carte 2,5D ne propose que des parcelles --');
+  /* ---- LE MODE EST UN CHOIX DE CREATION ----
+   * On verifie ce que la PALETTE propose, et non ce que la carte declare :
+   * un mode garde dans un champ mais ignore par la palette laisserait poser
+   * des tuiles plates sur une carte de parcelles, et la carte serait deux
+   * langages dans la meme image. */
+  await p.click('#nxMapRetour'); await p.waitForTimeout(250);
+  const encoreSale = await p.evaluate(() =>
+    document.getElementById('nxMapConfirme').classList.contains('on'));
+  if (encoreSale) { await p.click('#nxMapJette'); await p.waitForTimeout(400); }
+  await cree('iso', 16);
+  const pal = await p.evaluate(() => {
+    const fams = {};
+    document.querySelectorAll('#nxMapPalette .nxmap-el').forEach((b) => {
+      fams[b.dataset.fam] = (fams[b.dataset.fam] || 0) + 1;
+    });
+    return fams;
+  });
+  eq(Object.keys(pal).join(','), 'iso', 'la palette d une carte 2,5D ne montre que la famille des parcelles');
+  ok(pal.iso >= 20, `soit ${pal.iso} parcelles`);
+  const camIso = await cadre(16);
+  ok(camIso.p > 3 * cam.p,
+     `et ses cases sont bien plus grandes : ${camIso.p.toFixed(1)} px pour seize cases de cote,`
+     + ` contre ${cam.p.toFixed(1)} pour quarante-huit`);
+
+  /* ---- ET UNE PARCELLE PREND LA PLACE QU ELLE OCCUPE ----
+   * Le catalogue dit qu'une parcelle vaut quatre ou cinq cases. Verifier que
+   * la page a bien LU ce nombre ne dirait rien : ce qui compte est ce qui est
+   * DESSINE. Une parcelle enfermee dans sa case redeviendrait une tache, et
+   * le champ `cases` serait toujours la, exact et sans effet. */
+  const iso = await p.evaluate(() => {
+    const b = document.querySelector('#nxMapPalette .nxmap-el[data-fam="iso"]');
+    b.click();
+    return { cle: b.dataset.cle, cc: 8, ll: 8 };
+  });
+  await geste(camIso, [{ t: 'down', c: iso.cc, l: iso.ll, id: 41 },
+                       { t: 'up', c: iso.cc, l: iso.ll, id: 41 }]);
+  await p.waitForTimeout(900);
+  const large = await p.evaluate(([q, cam2]) => {
+    const g = document.getElementById('nxMapGrille');
+    const C = g.getContext('2d');
+    const pas = cam2.p;
+    const pied = Math.round(cam2.y0 + (q.ll + 1) * pas);
+    const y0 = Math.max(0, pied - Math.round(pas * 3));
+    const h = pied - y0;
+    const d = C.getImageData(0, y0, g.width, h).data;
+    const somme = (x, y) => { const i = (y * g.width + x) * 4; return d[i] + d[i + 1] + d[i + 2]; };
+    /* ---- LE SEUIL SE MESURE, IL NE SE DEVINE PAS ----
+     * Pose en dur a soixante, il prenait un CROISEMENT de deux traits de
+     * grille pour du dessin et declarait toute la largeur peinte. Et pris sur
+     * huit pixels, il tombait a l'interieur d'une case, ou aucun croisement
+     * n'existe — le seuil passait dessous et la grille comptait de nouveau.
+     * On lit donc deux cases entieres, vides par construction. */
+    let fond = 0;
+    const gx = Math.round(cam2.x0) + 1, gl = Math.max(10, Math.ceil(pas * 2));
+    for (let x = gx; x < gx + gl; x++) for (let y = 0; y < h; y++) fond = Math.max(fond, somme(x, y));
+    const seuil = fond + 40;
+    const cols = [];
+    /* Sans les deux pixels de bordure de chaque cote : le cadre de la carte
+       est un trait clair, et le compter donnait la largeur de la carte. */
+    for (let x = Math.round(cam2.x0) + 2; x <= Math.round(cam2.x1) - 2; x++) {
+      for (let y = 0; y < h; y++) { if (somme(x, y) > seuil) { cols.push(x); break; } }
+    }
+    return { min: cols[0], max: cols[cols.length - 1], combien: cols.length, fond, seuil };
+  }, [iso, { p: camIso.p, x0: camIso.x0, x1: camIso.x1, y0: camIso.y0 }]);
+  const attendu = (JSON.parse(fs.readFileSync(path.join(SITE, 'catalogue.json'), 'utf8'))
+                   .iso.find((e) => e.cle === iso.cle) || {}).cases;
+  const dessine = large.max - large.min + 1;
+  ok(attendu >= 2, `le catalogue donne ${attendu} cases a ${iso.cle}`);
+  ok(dessine > camIso.p * (attendu - 1) && dessine <= camIso.p * (attendu + 1),
+     `elle est dessinee sur ${dessine} px la ou une case en fait ${Math.round(camIso.p)}`
+     + ` — soit ${attendu} cases (${large.combien} colonnes chaudes,`
+     + ` fond mesure a ${large.fond}, seuil ${large.seuil})`);
+
+  /* ---- ET LE SERVEUR LE GARDE ---- */
+  await p.fill('#nxMapNom', 'Ma carte en relief');
+  await p.click('#nxMapEnregistre');
+  await p.waitForTimeout(1600);
+  const j2 = await (await fetch(base + '/admin/cartes', { headers: { 'x-admin-key': 'k' } })).json();
+  const relief = (j2.cartes || []).find((k) => k.nom === 'Ma carte en relief');
+  ok(!!relief, 'le serveur a garde la carte en relief');
+  if (relief) {
+    eq(relief.mode, 'iso', 'avec son mode');
+    eq(relief.cote, 16, 'et la taille choisie a la creation');
+  }
 
   ok(erreurs.length === 0, 'aucune erreur de page' + (erreurs.length ? ' — ' + erreurs[0] : ''));
   await nav.close(); site.stop();

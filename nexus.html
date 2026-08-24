@@ -1962,14 +1962,30 @@ body.nxdrag *{ cursor:grabbing !important; }
 .nxmap-fiche i{ font-style:normal; font-size:11px; color:#8fa2d6; }
 .nxmap-fiche .rang{ display:flex; gap:6px; margin-top:4px; }
 
+/* ---- LA CARTE NEUVE ---- */
+#nxMapNeuve{ flex:1 1 auto; display:none; align-items:center; justify-content:center; padding:14px; }
+#nxMapNeuve.on{ display:flex; }
+#nxMapNeuve .nxmap-fiche{ width:min(420px, 92vw); gap:10px; }
+#nxMapNeuve .nxmap-taille{ display:flex; align-items:center; gap:10px;
+  font:700 12px/1 'Archivo',system-ui,sans-serif; color:#8fa2d6; }
+#nxMapNeuve .nxmap-taille input{ flex:1 1 auto; accent-color:#7CFF9B; }
+#nxMapNeuve .nxmap-taille b{ font:800 13px/1 'Space Mono',monospace; color:#eaf0ff; min-width:70px; text-align:right; }
+
 /* ---- L'ATELIER ---- */
 #nxMapAtelier{ flex:1 1 auto; display:none; min-height:0; }
 #nxMapAtelier.on{ display:flex; }
 #nxMapScene{ flex:1 1 auto; min-width:0; display:flex; align-items:center;
   justify-content:center; padding:10px; background:rgba(6,10,22,.6); }
+/* ---- LA GRILLE OCCUPE TOUTE LA SCENE ----
+   Elle etait a la taille de la carte et mise a l echelle par le CSS : la
+   fenetre de dessin valait donc toujours la carte entiere, et zoomer n aurait
+   rien montre de plus. Maintenant le canevas fait la taille de la place
+   disponible, et c est la VUE qui decide de ce qu on y voit. */
 #nxMapGrille{ image-rendering:pixelated; touch-action:none; cursor:crosshair;
-  background:#0a1020; border:1px solid rgba(255,255,255,.16); border-radius:8px;
-  max-width:100%; max-height:100%; }
+  background:#070b16; border:1px solid rgba(255,255,255,.16); border-radius:8px;
+  width:100%; height:100%; display:block; }
+#nxMapGrille.main{ cursor:grab; }
+#nxMapZoomBloc{ display:inline-flex; gap:6px; }
 #nxMapPalette{ flex:0 0 250px; overflow-y:auto; padding:10px;
   border-left:1px solid rgba(255,255,255,.12); background:rgba(10,16,34,.8); }
 #nxMapPalette h4{ margin:10px 0 6px; font:800 11px/1 'Space Mono',monospace;
@@ -2321,6 +2337,12 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
     <button id="nxMapOutilGomme" type="button" style="display:none">Erase</button>
     <button id="nxMapOutilPot" type="button" style="display:none">Fill</button>
     <button id="nxMapOutilRect" type="button" style="display:none">Rect</button>
+    <button id="nxMapOutilMain" type="button" style="display:none">&#9995; Pan</button>
+    <span id="nxMapZoomBloc" style="display:none">
+      <button id="nxMapMoins" type="button">&minus;</button>
+      <button id="nxMapPlus" type="button">+</button>
+      <button id="nxMapAjuste" type="button">Fit</button>
+    </span>
     <button id="nxMapAnnule" type="button" style="display:none">&#8630; Undo</button>
     <button id="nxMapRefais" type="button" style="display:none">&#8631; Redo</button>
     <button id="nxMapEnregistre" type="button" class="vedette" style="display:none">Save</button>
@@ -2341,6 +2363,31 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
     <button id="nxMapGarde" type="button" class="vedette">Keep editing</button>
   </div>
   <div id="nxMapGalerie" class="on"></div>
+  <!-- ---- LE CHOIX QUI NE SE REPREND PAS ----
+       Le mode et la taille bornent tout ce qui suit : la taille borne les
+       cases, le mode decide de ce qu'on peut poser. Les changer sur une carte
+       deja dessinee retrecirait la carte sous ses propres cases, ou
+       declarerait « isometrique » un travail fait de tuiles plates. Ils se
+       choisissent donc ici, une fois, et le serveur les refuse ensuite. -->
+  <div id="nxMapNeuve">
+    <div class="nxmap-fiche">
+      <b>New map</b>
+      <i>Both choices are fixed once the map is created.</i>
+      <div class="rang" id="nxMapModes">
+        <button type="button" data-mode="plat" class="vedette">2D &middot; tiles</button>
+        <button type="button" data-mode="iso">2.5D &middot; plots</button>
+      </div>
+      <i id="nxMapModeDit"></i>
+      <label class="nxmap-taille">Size
+        <input id="nxMapTaille" type="range" min="8" max="48" step="4" value="48">
+        <b id="nxMapTailleDit">48 &times; 48</b>
+      </label>
+      <div class="rang">
+        <button id="nxMapCree" type="button" class="vedette">Create</button>
+        <button id="nxMapNeuveNon" type="button">Cancel</button>
+      </div>
+    </div>
+  </div>
   <div id="nxMapAtelier">
     <div id="nxMapScene"><canvas id="nxMapGrille"></canvas></div>
     <div id="nxMapPalette"></div>
@@ -2413,7 +2460,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
      racine ; c'est le seul endroit d'ou elle peut couvrir tout le reste. -->
 <div id="nxFiche"></div>
 
-<script src="nexus.js?v=8fa3ede7" defer></script>
+<script src="nexus.js?v=c436d444" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 
 <script>

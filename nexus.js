@@ -3249,6 +3249,44 @@
   var mapRect = null;                     // { c0, l0, c1, l1 } pendant le glisse
   var mapEnAttente = null;                // le geste suspendu par la question
 
+  /* ---- LA VUE ----
+   *
+   * Le canevas faisait la taille de la CARTE et le CSS le mettait a l echelle
+   * de la place disponible : la fenetre de dessin valait donc toujours la
+   * carte entiere. A quarante-huit cases de cote, une case tombait a quatorze
+   * pixels — impossible a viser au doigt, et une parcelle isometrique y
+   * ressemblait a un timbre.
+   *
+   * Le canevas fait maintenant la taille de la PLACE, et la vue dit ce qu on
+   * y voit : `p` pixels par case, et le coin (0,0) de la carte pose en
+   * (x, y) dans le canevas. Tout le reste — dessin, clic, zoom, deplacement —
+   * passe par ces trois nombres, et il n y a donc qu un seul endroit ou se
+   * tromper de conversion.
+   */
+  var mapVue = { p: 0, x: 0, y: 0 };
+  var MAP_P_MIN = 4, MAP_P_MAX = 96;
+
+  /* ---- LES DEUX FACONS DE DESSINER ----
+   *
+   * Une table et non deux `if` : le mode decide de trois choses a la fois — ce
+   * que la palette propose, la taille par defaut, et ce qu'on en dit au
+   * joueur. Eparpillees, la troisieme aurait fini par ne plus parler de la
+   * meme chose que les deux autres.
+   *
+   * `familles` est ce que la palette montre. En 2,5D elle ne montre QUE les
+   * parcelles : elles portent chacune leur propre terrain, et une tuile de sol
+   * vue de dessus glissee dessous ne se raccorde a rien. Le serveur, lui, ne
+   * verifie pas cette regle — il ne connait pas le catalogue. C'est un choix
+   * de gout, tenu la ou le gout se decide.
+   */
+  var MAP_MODES = {
+    plat: { cote: 48, familles: ['sol', 'mur', 'objet', 'salle', 'monstre'],
+            dit: 'A grid of tiles seen from above. Grounds, walls, props, monsters.' },
+    iso:  { cote: 16, familles: ['iso'],
+            dit: 'Ready-made plots seen at three quarters. Each one brings its own ground.' },
+  };
+  var mapModeNeuf = 'plat';
+
   var elMapVoile = document.getElementById('nxMapVoile');
   var elMapGalerie = document.getElementById('nxMapGalerie');
   var elMapAtelier = document.getElementById('nxMapAtelier');
@@ -3350,6 +3388,16 @@
 
   function peintMapPalette() {
     if (!elMapPalette || !CATALOGUE) return;
+    /* Reconstruire quand le MODE a change : la palette est gardee d'une carte
+       a l'autre pour ne pas repeindre cent trente-quatre vignettes a chaque
+       ouverture, mais gardee TELLE QUELLE elle proposait les tuiles plates
+       sur une carte isometrique — la premiere carte ouverte decidait pour
+       toutes les suivantes. */
+    var modeAffiche = (MAP && MAP.mode) || 'plat';
+    if (elMapPalette.dataset.mode !== modeAffiche) {
+      elMapPalette.dataset.pret = '0';
+      elMapPalette.dataset.mode = modeAffiche;
+    }
     if (elMapPalette.dataset.pret === '1') {
       /* Deja construite : on ne refait que la marque du choix. Reconstruire a
          chaque image chargee ferait clignoter cent quatorze vignettes. */
@@ -3369,10 +3417,15 @@
     }
     var TITRES = { sol: 'Ground', mur: 'Walls', objet: 'Objects',
                    monstre: 'Monsters', salle: 'Rooms', iso: 'Isometric plots' };
+    /* La palette est celle du MODE de la carte ouverte. Sans elle, on posait
+       des parcelles isometriques sur une carte de tuiles plates et l'inverse,
+       et le resultat etait deux langages dans la meme image. */
+    var permis = (MAP_MODES[(MAP && MAP.mode) || 'plat'] || MAP_MODES.plat).familles;
     elMapPalette.innerHTML = '';
     Object.keys(CATALOGUE).forEach(function (fam) {
       var liste = CATALOGUE[fam];
       if (!liste || !liste.length) return;
+      if (permis.indexOf(fam) < 0) return;
       var t = document.createElement('h4');
       t.textContent = (TITRES[fam] || fam) + ' (' + liste.length + ')';
       elMapPalette.appendChild(t);
@@ -3397,6 +3450,10 @@
       elMapPalette.appendChild(g);
     });
     elMapPalette.dataset.pret = '1';
+    /* Le choix courant peut ne plus exister dans la nouvelle palette : le
+       garder ferait poser une tuile plate sur une carte isometrique, par un
+       bouton qui n'y est plus. */
+    if (mapChoix && permis.indexOf(mapChoix.famille) < 0) mapChoix = null;
     peintMapPalette();
   }
 
@@ -3411,21 +3468,71 @@
     requestAnimationFrame(function () { mapPeintPrevu = false; peintMapGrille(); });
   }
 
+  /** Cadre la carte entiere dans la place disponible. */
+  function ajusteLaVue() {
+    if (!elMapGrille || !MAP) return;
+    var W = elMapGrille.width, H = elMapGrille.height;
+    mapVue.p = Math.max(MAP_P_MIN, Math.min(MAP_P_MAX,
+                Math.floor(Math.min(W, H) / MAP.cote)));
+    mapVue.x = Math.round((W - mapVue.p * MAP.cote) / 2);
+    mapVue.y = Math.round((H - mapVue.p * MAP.cote) / 2);
+  }
+  /* On ne peut pas pousser la carte entierement hors de l ecran : un
+     deplacement d un doigt trop large laissait un canevas vide, sans rien qui
+     dise ou est passee la carte ni comment la retrouver. Un quart reste
+     toujours visible. */
+  function borneLaVue() {
+    if (!elMapGrille || !MAP) return;
+    var t = mapVue.p * MAP.cote, W = elMapGrille.width, H = elMapGrille.height;
+    var g = Math.round(Math.min(t, W) / 4), gh = Math.round(Math.min(t, H) / 4);
+    mapVue.x = Math.max(g - t, Math.min(W - g, mapVue.x));
+    mapVue.y = Math.max(gh - t, Math.min(H - gh, mapVue.y));
+  }
+  /** Zoome en gardant fixe le point (px, py) du canevas. */
+  function zoomeVers(px, py, facteur) {
+    if (!MAP) return;
+    var p0 = mapVue.p;
+    var p1 = Math.max(MAP_P_MIN, Math.min(MAP_P_MAX, Math.round(p0 * facteur)));
+    /* Un facteur trop petit pour changer l entier laissait le zoom muet aux
+       petites tailles : on force alors d une case. */
+    if (p1 === p0) p1 = Math.max(MAP_P_MIN, Math.min(MAP_P_MAX, p0 + (facteur > 1 ? 1 : -1)));
+    if (p1 === p0) return;
+    mapVue.x = Math.round(px - (px - mapVue.x) * p1 / p0);
+    mapVue.y = Math.round(py - (py - mapVue.y) * p1 / p0);
+    mapVue.p = p1;
+    borneLaVue(); mapRedessine();
+  }
+
   function peintMapGrille() {
     if (!elMapGrille || !MAP) return;
     var C = elMapGrille.getContext('2d');
-    var n = MAP.cote, p = Math.max(8, Math.floor(672 / n));
-    if (elMapGrille.width !== n * p) { elMapGrille.width = n * p; elMapGrille.height = n * p; }
+    var n = MAP.cote;
+    /* La taille du canevas suit la place que le CSS lui donne. Sans ce
+       reglage, le canevas garderait ses trois cents pixels par defaut et
+       l on dessinerait dans un timbre etire a l ecran. */
+    var r = elMapGrille.getBoundingClientRect();
+    var W = Math.max(1, Math.round(r.width)), H = Math.max(1, Math.round(r.height));
+    if (elMapGrille.width !== W || elMapGrille.height !== H) {
+      elMapGrille.width = W; elMapGrille.height = H;
+      ajusteLaVue();
+    }
+    if (!mapVue.p) ajusteLaVue();
+    var p = mapVue.p, ox = mapVue.x, oy = mapVue.y;
     C.imageSmoothingEnabled = false;
+    /* Deux fonds : celui de la FENETRE, et celui de la CARTE. Sans le premier,
+       on ne verrait pas ou la carte s arrete, et l on dessinerait dans le vide
+       en croyant dessiner dedans. */
+    C.fillStyle = '#070b16';
+    C.fillRect(0, 0, W, H);
     C.fillStyle = '#0a1020';
-    C.fillRect(0, 0, elMapGrille.width, elMapGrille.height);
+    C.fillRect(ox, oy, p * n, p * n);
     /* Les sols d'abord, TOUS, puis les objets : sinon un objet pose avant le
        sol de son voisin de droite passerait dessous. C'est la meme regle que
        le hall, pour la meme raison. */
     MAP.cases.forEach(function (v, k) {
       if (!v.s) return;
       var q = k.split(','), e = elementDe('sol', v.s);
-      if (e) peintElement(C, e, q[0] * p, q[1] * p, p, p, true);
+      if (e) peintElement(C, e, ox + q[0] * p, oy + q[1] * p, p, p, true);
     });
     /* ---- ET LES OBJETS DU FOND VERS L'AVANT ----
      * Une `Map` rend ses cases dans l'ordre ou on les a POSEES. Tant qu'un
@@ -3461,27 +3568,36 @@
         var cw = im.naturalWidth / Math.max(1, e.cadres);
         var ht = lg * im.naturalHeight / cw;
         C.drawImage(im, 0, 0, cw, im.naturalHeight,
-                    (o.c + 0.5) * p - lg / 2, (o.l + 1) * p - ht, lg, ht);
+                    ox + (o.c + 0.5) * p - lg / 2, oy + (o.l + 1) * p - ht, lg, ht);
         return;
       }
-      peintElement(C, e, o.c * p, o.l * p, p, p, false);
+      peintElement(C, e, ox + o.c * p, oy + o.l * p, p, p, false);
     });
-    C.strokeStyle = 'rgba(255,255,255,.07)';
-    C.lineWidth = 1;
-    for (var i = 0; i <= n; i++) {
-      C.beginPath(); C.moveTo(i * p + .5, 0); C.lineTo(i * p + .5, n * p); C.stroke();
-      C.beginPath(); C.moveTo(0, i * p + .5); C.lineTo(n * p, i * p + .5); C.stroke();
+    /* Les traits se taisent quand ils seraient plus serres que lisibles : a
+       quatre pixels par case, une grille dessinee est un aplat gris qui cache
+       le travail au lieu de l aider. */
+    if (p >= 7) {
+      C.strokeStyle = 'rgba(255,255,255,.07)';
+      C.lineWidth = 1;
+      for (var i = 0; i <= n; i++) {
+        C.beginPath(); C.moveTo(ox + i * p + .5, oy); C.lineTo(ox + i * p + .5, oy + n * p); C.stroke();
+        C.beginPath(); C.moveTo(ox, oy + i * p + .5); C.lineTo(ox + n * p, oy + i * p + .5); C.stroke();
+      }
     }
+    /* Le bord de la carte, lui, se voit toujours : c est la seule chose qui
+       dise ou l on a le droit de dessiner. */
+    C.strokeStyle = 'rgba(157,180,255,.45)'; C.lineWidth = 1;
+    C.strokeRect(ox + .5, oy + .5, p * n - 1, p * n - 1);
     /* ---- ET LE RECTANGLE QU'ON EST EN TRAIN DE TIRER ----
      * Il se dessine PAR-DESSUS la grille et n'entre pas dans les cases : tant
      * que le doigt n'est pas leve, rien n'est pose. Le montrer autrement —
      * en ecrivant les cases puis en les retirant — aurait mis un etat de plus
      * dans la pile d'annulation a chaque frisson du doigt. */
     if (mapRect) {
-      var x0 = Math.min(mapRect.c0, mapRect.c1) * p;
-      var y0 = Math.min(mapRect.l0, mapRect.l1) * p;
-      var x1 = (Math.max(mapRect.c0, mapRect.c1) + 1) * p;
-      var y1 = (Math.max(mapRect.l0, mapRect.l1) + 1) * p;
+      var x0 = ox + Math.min(mapRect.c0, mapRect.c1) * p;
+      var y0 = oy + Math.min(mapRect.l0, mapRect.l1) * p;
+      var x1 = ox + (Math.max(mapRect.c0, mapRect.c1) + 1) * p;
+      var y1 = oy + (Math.max(mapRect.l0, mapRect.l1) + 1) * p;
       C.fillStyle = 'rgba(124,255,155,.18)';
       C.fillRect(x0, y0, x1 - x0, y1 - y0);
       C.strokeStyle = '#7CFF9B'; C.lineWidth = 2;
@@ -3501,12 +3617,27 @@
     return m;
   }
   /** A appeler AVANT de modifier, une fois par geste. */
+  var mapSaleAvant = false;
   function memorise() {
     if (!MAP || !MAP.mienne) return;
     mapPile.push(copieDesCases());
     if (mapPile.length > MAP_PILE) mapPile.shift();
     mapRefaire.length = 0;
+    mapSaleAvant = mapSale;
     mapSale = true;
+  }
+  /* ---- DEFAIRE UN GESTE QUI N'AURAIT PAS DU AVOIR LIEU ----
+   * Le premier doigt d'un pincement pose une case avant que le second
+   * n'arrive : sans ce retour en arriere, zoomer laissait une tache a chaque
+   * fois. Ce n'est PAS `annule()` — un geste involontaire n'a rien a faire
+   * dans la pile de « refaire », et l'etat « pas enregistre » revient comme il
+   * etait, sinon un simple pincement ferait poser la question au moment de
+   * fermer. */
+  function defaitLeGeste() {
+    if (!MAP || !mapPile.length) return;
+    MAP.cases = mapPile.pop();
+    mapSale = mapSaleAvant;
+    peintMapOutils(); mapRedessine();
   }
   function annule() {
     if (!MAP || !MAP.mienne || !mapPile.length) return;
@@ -3525,12 +3656,19 @@
     peintMapOutils(); mapRedessine();
   }
 
-  /** La case sous un point de l'ecran, ou `null` si l'on est dehors. */
-  function caseSous(ev) {
+  /** Le point d'ecran, ramene aux pixels du canevas. */
+  function pointCanevas(ev) {
     var r = elMapGrille.getBoundingClientRect();
     if (!r.width || !r.height) return null;
-    var c = Math.floor((ev.clientX - r.left) / r.width * MAP.cote);
-    var l = Math.floor((ev.clientY - r.top) / r.height * MAP.cote);
+    return { x: (ev.clientX - r.left) * elMapGrille.width / r.width,
+             y: (ev.clientY - r.top) * elMapGrille.height / r.height };
+  }
+  /** La case sous un point de l'ecran, ou `null` si l'on est hors de la carte. */
+  function caseSous(ev) {
+    var q = pointCanevas(ev);
+    if (!q || !mapVue.p) return null;
+    var c = Math.floor((q.x - mapVue.x) / mapVue.p);
+    var l = Math.floor((q.y - mapVue.y) / mapVue.p);
     if (c < 0 || l < 0 || c >= MAP.cote || l >= MAP.cote) return null;
     return { c: c, l: l };
   }
@@ -3622,15 +3760,44 @@
 
   if (elMapGrille) {
     var mapTrace = false;
+    var mapDoigts = {};                   // pointerId -> point en pixels canevas
+    var mapPince = null;                  // reference du pincement en cours
+    var mapGlisse = null;                 // dernier point d'un deplacement
+
+    var nbDoigts = function () { return Object.keys(mapDoigts).length; };
+    var centreEtEcart = function () {
+      var k = Object.keys(mapDoigts), a = mapDoigts[k[0]], b = mapDoigts[k[1]];
+      return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2,
+               d: Math.max(1, Math.sqrt((a.x - b.x) * (a.x - b.x) + (a.y - b.y) * (a.y - b.y))) };
+    };
+
     elMapGrille.addEventListener('pointerdown', function (ev) {
       ev.preventDefault();
-      if (!MAP || !MAP.mienne) return;
+      if (!MAP) return;
+      var pc = pointCanevas(ev);
+      if (!pc) return;
+      mapDoigts[ev.pointerId] = pc;
+      if (elMapGrille.setPointerCapture) { try { elMapGrille.setPointerCapture(ev.pointerId); } catch (e) {} }
+      /* ---- DEUX DOIGTS : C'EST UN PINCEMENT, PAS UN TRAIT ---- */
+      if (nbDoigts() === 2) {
+        if (mapTrace) { defaitLeGeste(); }
+        mapTrace = false; mapRect = null; mapGlisse = null;
+        var t = centreEtEcart();
+        mapPince = { d: t.d, p: mapVue.p, x: t.x, y: t.y };
+        mapRedessine(); return;
+      }
+      if (nbDoigts() > 2) return;
+      /* La main, le bouton du milieu, ou la carte d'un autre : on deplace.
+         Une carte qu'on VISITE doit pouvoir se parcourir — sans quoi la
+         regarder de pres serait reserve a son auteur. */
+      if (mapOutil === 'main' || ev.button === 1 || !MAP.mienne) {
+        mapGlisse = { x: pc.x, y: pc.y }; return;
+      }
       var q = caseSous(ev);
       if (!q) return;
       if (mapOutil !== 'gomme' && !mapChoix) {
         mapDit('Pick an element on the right first.', true); return;
       }
-      if (elMapGrille.setPointerCapture) { try { elMapGrille.setPointerCapture(ev.pointerId); } catch (e) {} }
       if (mapOutil === 'pot') { remplis(q.c, q.l); return; }
       if (mapOutil === 'rect') {
         mapTrace = true;
@@ -3642,7 +3809,33 @@
       memorise();
       mapTrace = true; poseCase(ev);
     });
+
     elMapGrille.addEventListener('pointermove', function (ev) {
+      if (!MAP) return;
+      if (!(ev.pointerId in mapDoigts)) return;
+      var pc = pointCanevas(ev);
+      if (!pc) return;
+      mapDoigts[ev.pointerId] = pc;
+      if (mapPince && nbDoigts() >= 2) {
+        var t = centreEtEcart();
+        var p1 = Math.max(MAP_P_MIN, Math.min(MAP_P_MAX,
+                   Math.round(mapPince.p * t.d / mapPince.d)));
+        if (p1 !== mapVue.p) {
+          mapVue.x = t.x - (t.x - mapVue.x) * p1 / mapVue.p;
+          mapVue.y = t.y - (t.y - mapVue.y) * p1 / mapVue.p;
+          mapVue.p = p1;
+        }
+        /* Et l'on SUIT le centre des deux doigts : pincer sans suivre donne
+           l'impression que la carte glisse toute seule sous la main. */
+        mapVue.x += t.x - mapPince.x; mapVue.y += t.y - mapPince.y;
+        mapPince.x = t.x; mapPince.y = t.y;
+        borneLaVue(); mapRedessine(); return;
+      }
+      if (mapGlisse) {
+        mapVue.x += pc.x - mapGlisse.x; mapVue.y += pc.y - mapGlisse.y;
+        mapGlisse = { x: pc.x, y: pc.y };
+        borneLaVue(); mapRedessine(); return;
+      }
       if (!mapTrace) return;
       if (mapRect) {
         var q = caseSous(ev);
@@ -3651,16 +3844,40 @@
       }
       poseCase(ev);
     });
+
     /* Sur la FENETRE, comme le manche : un doigt qui quitte la grille en
        dessinant doit arreter le trait, meme si le lacher arrive ailleurs. */
-    var finDuGeste = function () {
-      mapTrace = false;
-      if (mapRect) { var r = mapRect; mapRect = null; poseRect(r); }
+    var leveLeDoigt = function (ev, annuleLeRect) {
+      if (ev && ev.pointerId != null) delete mapDoigts[ev.pointerId];
+      else mapDoigts = {};
+      if (nbDoigts() < 2) mapPince = null;
+      if (nbDoigts() > 0) return;
+      mapGlisse = null; mapTrace = false;
+      if (mapRect) {
+        var r = mapRect; mapRect = null;
+        if (annuleLeRect) mapRedessine(); else poseRect(r);
+      }
     };
-    window.addEventListener('pointerup', finDuGeste);
+    window.addEventListener('pointerup', function (ev) { leveLeDoigt(ev, false); });
     /* Un geste ANNULE par le systeme ne pose rien : on jette le rectangle au
        lieu de le peindre, sinon un appel entrant dessine tout seul. */
-    window.addEventListener('pointercancel', function () { mapTrace = false; mapRect = null; mapRedessine(); });
+    window.addEventListener('pointercancel', function (ev) { leveLeDoigt(ev, true); });
+
+    /* ---- LA MOLETTE ZOOME LA OU EST LE CURSEUR ----
+     * Zoomer au centre du canevas obligerait a deplacer apres chaque cran
+     * pour revenir a l'endroit qu'on regardait. `passive: false` parce qu'on
+     * empeche le defilement de la page derriere le panneau. */
+    elMapGrille.addEventListener('wheel', function (ev) {
+      if (!MAP) return;
+      ev.preventDefault();
+      var pc = pointCanevas(ev);
+      if (pc) zoomeVers(pc.x, pc.y, ev.deltaY < 0 ? 1.15 : 1 / 1.15);
+    }, { passive: false });
+
+    /* La place disponible change quand on tourne le telephone : le canevas
+       doit se remesurer, sinon il reste a l'ancienne taille, etire par le
+       CSS, et le clic ne tombe plus sur la case qu'on vise. */
+    window.addEventListener('resize', function () { if (mapOuvert) mapRedessine(); });
   }
 
   /* ---- LES BOUTONS, ET CE QU'ILS MONTRENT DE L'ETAT ----
@@ -3676,13 +3893,17 @@
       if (e) e.style.display = montre ? '' : 'none';
     };
     v('nxMapNom', mien); v('nxMapOutilDessin', mien); v('nxMapOutilGomme', mien);
-    v('nxMapOutilPot', mien); v('nxMapOutilRect', mien);
+    v('nxMapOutilPot', mien); v('nxMapOutilRect', mien); v('nxMapOutilMain', mien);
     v('nxMapAnnule', mien); v('nxMapRefais', mien);
-    v('nxMapEnregistre', mien); v('nxMapRetour', atelier); v('nxMapNouvelle', !atelier);
+    /* Le zoom appartient a QUI REGARDE, pas a qui possede : une carte qu'on
+       visite doit pouvoir se parcourir de pres. */
+    v('nxMapZoomBloc', atelier);
+    v('nxMapEnregistre', mien); v('nxMapRetour', atelier);
     /* L'outil en vedette se lit de la TABLE : quatre `if` a tenir d'accord
        auraient laisse deux outils allumes le jour ou un cinquieme arrive. */
     var OUTILS = { dessin: 'nxMapOutilDessin', gomme: 'nxMapOutilGomme',
-                   pot: 'nxMapOutilPot', rect: 'nxMapOutilRect' };
+                   pot: 'nxMapOutilPot', rect: 'nxMapOutilRect', main: 'nxMapOutilMain' };
+    if (elMapGrille) elMapGrille.classList.toggle('main', mapOutil === 'main' || (atelier && !mien));
     Object.keys(OUTILS).forEach(function (o) {
       var b = document.getElementById(OUTILS[o]);
       if (b) b.classList.toggle('vedette', mapOutil === o);
@@ -3695,13 +3916,22 @@
     if (re) re.disabled = !mapRefaire.length;
     var t = document.getElementById('nxMapTitre');
     if (t) {
+      var mq = atelier && MAP.mode === 'iso' ? ' <i style="font-style:normal;color:#7CFF9B">2.5D</i>'
+                                              : (atelier ? ' <i style="font-style:normal;color:#7f93c9">2D</i>' : '');
       t.innerHTML = !atelier ? '&#128506; Map Editor'
         : (mien ? '&#128506; ' + ech(MAP.nom || 'Untitled')
                 : '&#128065; ' + ech(MAP.nom || 'Untitled')
-                  + (MAP.auteur ? ' <i style="font-style:normal;color:#8fa2d6">by ' + ech(MAP.auteur) + '</i>' : ''));
+                  + (MAP.auteur ? ' <i style="font-style:normal;color:#8fa2d6">by ' + ech(MAP.auteur) + '</i>' : ''))
+        + mq;
     }
-    if (elMapGalerie) elMapGalerie.classList.toggle('on', !atelier);
+    var neuve = document.getElementById('nxMapNeuve');
+    var enCreation = !!neuve && neuve.classList.contains('on');
+    if (elMapGalerie) elMapGalerie.classList.toggle('on', !atelier && !enCreation);
     if (elMapAtelier) elMapAtelier.classList.toggle('on', atelier);
+    /* Le bouton « New map » disparait pendant qu'on repond a ses questions :
+       le laisser aurait permis d'en ouvrir une deuxieme par-dessus la
+       premiere, et la reponse serait allee a celle qu'on ne voit pas. */
+    v('nxMapNouvelle', !atelier && !enCreation);
   }
 
   function peintMapGalerie(liste) {
@@ -3719,6 +3949,7 @@
       b.textContent = k.nom;
       var i = document.createElement('i');
       i.textContent = (k.mienne ? 'yours' : (k.auteur ? 'by ' + k.auteur : 'by someone else'))
+                      + ' · ' + (k.mode === 'iso' ? '2.5D' : '2D')
                       + ' · ' + k.cote + '×' + k.cote + ' · ' + k.cases + ' tiles';
       var r = document.createElement('div');
       r.className = 'rang';
@@ -3746,11 +3977,18 @@
   /** Ouvre une carte dans l'atelier. `mienne` decide de tout ce qui s'affiche. */
   function ouvreAtelier(c) {
     MAP = { id: c.id || null, nom: c.nom || '', cote: c.cote || MAP_COTE,
+            mode: MAP_MODES[c.mode] ? c.mode : 'plat',
             cases: new Map(), mienne: c.mienne !== false, auteur: c.auteur || null };
     /* Une carte chargee n'a rien a annuler et rien a perdre : garder la pile
        de la precedente aurait permis d'annuler CELLE-CI vers l'etat d'une
        AUTRE carte, ce qui est la pire chose qu'un editeur puisse faire. */
     mapPile.length = 0; mapRefaire.length = 0; mapSale = false; mapRect = null;
+    /* La vue se refait a la carte suivante : gardee, un zoom serre sur une
+       petite carte laisserait la grande hors du cadre a l'ouverture, sans que
+       rien ne dise ou elle est. Zero veut dire « a cadrer » — voir
+       `peintMapGrille`. */
+    mapVue.p = 0;
+    mapOutil = 'dessin';
     (c.cases || []).forEach(function (q) {
       var v = {};
       if (q.s) v.s = q.s;
@@ -3769,6 +4007,10 @@
     mapOuvert = true;
     elMapVoile.classList.add('on');
     MAP = null;
+    /* Une carte neuve laissee a moitie choisie a la fermeture precedente
+       reapparaitrait par-dessus la galerie. */
+    var neuve = document.getElementById('nxMapNeuve');
+    if (neuve) neuve.classList.remove('on');
     peintMapOutils();
     mapDit('');
     /* LE CATALOGUE, une fois par visite de page et SANS CACHE : il est genere
@@ -3812,6 +4054,37 @@
     if (q) q.classList.remove('on');
   }
 
+  function peintCreation() {
+    var mods = document.getElementById('nxMapModes');
+    if (mods) {
+      var bs = mods.querySelectorAll('button[data-mode]');
+      for (var i = 0; i < bs.length; i++) {
+        bs[i].classList.toggle('vedette', bs[i].dataset.mode === mapModeNeuf);
+      }
+    }
+    var d = document.getElementById('nxMapModeDit');
+    if (d) d.textContent = MAP_MODES[mapModeNeuf].dit;
+    var t = document.getElementById('nxMapTaille');
+    var td = document.getElementById('nxMapTailleDit');
+    if (t && td) td.textContent = t.value + ' \u00d7 ' + t.value;
+  }
+  function ouvreCreation() {
+    var n = document.getElementById('nxMapNeuve');
+    if (!n) { ouvreAtelier({ nom: '', cote: MAP_COTE, cases: [], mienne: true }); return; }
+    var t = document.getElementById('nxMapTaille');
+    if (t) t.value = String(MAP_MODES[mapModeNeuf].cote);
+    peintCreation();
+    n.classList.add('on');
+    if (elMapGalerie) elMapGalerie.classList.remove('on');
+    var b = document.getElementById('nxMapNouvelle');
+    if (b) b.style.display = 'none';
+  }
+  function fermeCreation() {
+    var n = document.getElementById('nxMapNeuve');
+    if (n) n.classList.remove('on');
+    peintMapOutils();
+  }
+
   (function boutonsMap() {
     var b = function (id, f) {
       var e = document.getElementById(id);
@@ -3833,11 +4106,37 @@
         MAP = null; peintMapOutils(); if (enLigne) envoie({ type: 'carteListe' });
       });
     });
-    b('nxMapNouvelle', function () { ouvreAtelier({ nom: '', cote: MAP_COTE, cases: [], mienne: true }); });
+    b('nxMapNouvelle', function () { ouvreCreation(); });
+    b('nxMapNeuveNon', function () { fermeCreation(); });
+    b('nxMapCree', function () {
+      var t = document.getElementById('nxMapTaille');
+      var cote = Math.max(4, Math.min(MAP_COTE, parseInt(t && t.value, 10) || MAP_MODES[mapModeNeuf].cote));
+      fermeCreation();
+      ouvreAtelier({ nom: '', cote: cote, mode: mapModeNeuf, cases: [], mienne: true });
+    });
+    var mods = document.getElementById('nxMapModes');
+    if (mods) {
+      mods.addEventListener('click', function (ev) {
+        var q = ev.target.closest ? ev.target.closest('button[data-mode]') : null;
+        if (!q || !MAP_MODES[q.dataset.mode]) return;
+        mapModeNeuf = q.dataset.mode;
+        /* La taille par defaut suit le mode : une parcelle isometrique dans
+           une carte de quarante-huit fait cinquante pixels, un timbre. */
+        var t = document.getElementById('nxMapTaille');
+        if (t) t.value = String(MAP_MODES[mapModeNeuf].cote);
+        peintCreation();
+      });
+    }
+    var tail = document.getElementById('nxMapTaille');
+    if (tail) tail.addEventListener('input', peintCreation);
     b('nxMapOutilDessin', function () { mapOutil = 'dessin'; peintMapOutils(); });
     b('nxMapOutilGomme', function () { mapOutil = 'gomme'; peintMapOutils(); });
     b('nxMapOutilPot', function () { mapOutil = 'pot'; peintMapOutils(); });
     b('nxMapOutilRect', function () { mapOutil = 'rect'; peintMapOutils(); });
+    b('nxMapOutilMain', function () { mapOutil = 'main'; peintMapOutils(); });
+    b('nxMapPlus', function () { zoomeVers(elMapGrille.width / 2, elMapGrille.height / 2, 1.3); });
+    b('nxMapMoins', function () { zoomeVers(elMapGrille.width / 2, elMapGrille.height / 2, 1 / 1.3); });
+    b('nxMapAjuste', function () { ajusteLaVue(); mapRedessine(); });
     b('nxMapAnnule', annule);
     b('nxMapRefais', refais);
     /* ---- ET AU CLAVIER ----
@@ -3867,7 +4166,7 @@
       });
       mapDit('Saving…');
       envoie({ type: 'carteEnregistre', id: MAP.id || undefined,
-               carte: { nom: nom, cote: MAP.cote, cases: cases } });
+               carte: { nom: nom, cote: MAP.cote, mode: MAP.mode, cases: cases } });
     });
   })();
 

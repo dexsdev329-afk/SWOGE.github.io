@@ -758,8 +758,11 @@ const servirLeSite = async () => {
   if (tk) {
     const dt = await (await fetch(base + '/admin/cartes?id=' + tk.id,
                                   { headers: { 'x-admin-key': 'k' } })).json();
-    const cel = (dt.carte.cases || []).find((q) => q.c === iso.cc && q.l === iso.ll);
-    eq(cel && cel.a, 1, 'et la case porte son quart de tour');
+    /* L'objet vit dans sa propre liste depuis les couches : c'est la qu'on va
+       chercher son quart de tour. */
+    const cel = (dt.carte.objets || []).find((q) => q.c === iso.cc && q.l === iso.ll);
+    eq(cel && cel.a, 1, 'et l objet porte son quart de tour');
+    eq(cel && cel.z, 0, 'sur la premiere couche, qui est celle ou l on posait');
   }
   await lache();
   const tournee = await largeurDessinee(iso, repere);
@@ -796,9 +799,15 @@ const servirLeSite = async () => {
   await p.evaluate(() => { document.getElementById('nxMapOutilChoix').click(); });
   await tiens();
   const avantEtire = await tailleAffichee();
+  /* ---- ON REMESURE AVANT DE VISER LES POIGNEES ----
+   * La fiche et le bandeau des couches apparaissent dans la colonne de
+   * droite quand on tient quelque chose. Tant qu'ils changent la largeur de
+   * cette colonne, la scene change de taille et la camera avec — un cadre
+   * mesure avant vaut alors quatre-vingt-seize pixels a cote. */
+  const camP = await cadre(16);
   /* On tire le coin de trois cases vers le bas a droite. */
   const c0 = coinDe(4);
-  await geste(camS, [{ t: 'down', c: c0.c, l: c0.l, id: 66 },
+  await geste(camP, [{ t: 'down', c: c0.c, l: c0.l, id: 66 },
                      { t: 'move', c: c0.c + 3, l: c0.l + 3, id: 66 },
                      { t: 'up', c: c0.c + 3, l: c0.l + 3, id: 66 }]);
   await p.waitForTimeout(700);
@@ -813,7 +822,7 @@ const servirLeSite = async () => {
   /* La croix, au HAUT a droite de l emprise. */
   await tiens();
   const n0 = parseInt(await tailleAffichee(), 10);
-  await geste(camS, [{ t: 'down', c: iso.cc + n0 / 2, l: iso.ll + 0.5 - n0, id: 67 },
+  await geste(camP, [{ t: 'down', c: iso.cc + n0 / 2, l: iso.ll + 0.5 - n0, id: 67 },
                      { t: 'up', c: iso.cc + n0 / 2, l: iso.ll + 0.5 - n0, id: 67 }]);
   await p.waitForTimeout(700);
   const apresCroix = await largeurDessinee(iso, repere);
@@ -980,6 +989,78 @@ const servirLeSite = async () => {
   eq(await attendLeDepart('8,3'), '8,3', 'le depart deplace se voit sur le dessin');
   await p.click('#nxMapAnnule');
   eq(await attendLeDepart('5,6'), '5,6', 'et « Undo » le ramene ou il etait');
+
+  console.log('\n-- les couches : deux elements au meme endroit --');
+  /* ---- CE QUE LES COUCHES CHANGENT ----
+   * « Si je pose un sol et je veux poser une maison par-dessus, le sol sera
+   * en premier, la maison en 2 — et on peut mettre deux items sur la couche
+   * 2. » Une case portait UN objet : le second remplacait le premier. On
+   * verifie donc qu'ils COEXISTENT, et que celui de la couche haute est celui
+   * qu'on attrape. */
+  await p.click('#nxMapRetour'); await p.waitForTimeout(250);
+  if (await p.evaluate(() => document.getElementById('nxMapConfirme').classList.contains('on'))) {
+    await p.click('#nxMapJette'); await p.waitForTimeout(400);
+  }
+  await cree('plat', 16);
+  const camC = await cadre(16);
+  const couches = () => p.evaluate(() => ({
+    barre: document.querySelectorAll('#nxMapCouchesBoutons button').length,
+    active: [...document.querySelectorAll('#nxMapCouchesBoutons button')]
+      .findIndex((b) => b.classList.contains('vedette')),
+    fiche: [...document.querySelectorAll('#nxMapFicheCouches button')]
+      .findIndex((b) => b.classList.contains('vedette')),
+    nom: (document.getElementById('nxMapFicheNom') || {}).textContent,
+  }));
+  const c1 = await couches();
+  eq(c1.barre, 8, 'huit couches proposees');
+  eq(c1.active, 0, 'et la premiere est celle ou l on pose');
+  /* Deux objets DIFFERENTS sur la MEME case, deux couches. */
+  const cles = await p.evaluate(() => {
+    const bs = [...document.querySelectorAll('#nxMapPalette .nxmap-el[data-fam="objet"]')];
+    return [bs[0].dataset.cle, bs[1].dataset.cle];
+  });
+  await p.evaluate((k) => {
+    document.querySelector('#nxMapPalette .nxmap-el[data-cle="' + k + '"]').click();
+    document.getElementById('nxMapOutilDessin').click();
+  }, cles[0]);
+  await geste(camC, [{ t: 'down', c: 8, l: 8, id: 75 }, { t: 'up', c: 8, l: 8, id: 75 }]);
+  await p.waitForTimeout(400);
+  /* On passe sur la couche 3 et l'on pose le second AU MEME ENDROIT. */
+  await p.evaluate((k) => {
+    document.querySelectorAll('#nxMapCouchesBoutons button')[2].click();
+    document.querySelector('#nxMapPalette .nxmap-el[data-cle="' + k + '"]').click();
+    document.getElementById('nxMapOutilDessin').click();
+  }, cles[1]);
+  await geste(camC, [{ t: 'down', c: 8, l: 8, id: 76 }, { t: 'up', c: 8, l: 8, id: 76 }]);
+  await p.waitForTimeout(400);
+  eq((await couches()).active, 2, 'la couche choisie reste celle ou l on pose');
+  await p.fill('#nxMapNom', 'Ma carte a couches');
+  await p.click('#nxMapEnregistre');
+  await p.waitForTimeout(1800);
+  const jc = await (await fetch(base + '/admin/cartes', { headers: { 'x-admin-key': 'k' } })).json();
+  const kc = (jc.cartes || []).find((k) => k.nom === 'Ma carte a couches');
+  ok(!!kc, 'le serveur a garde la carte a couches');
+  if (kc) {
+    const dc = await (await fetch(base + '/admin/cartes?id=' + kc.id,
+                                  { headers: { 'x-admin-key': 'k' } })).json();
+    const ici = (dc.carte.objets || []).filter((q) => q.c === 8 && q.l === 8);
+    eq(ici.length, 2, 'les DEUX objets tiennent sur la meme case');
+    eq(ici.map((q) => q.z).sort().join(','), '0,2', 'chacun sur sa couche');
+    ok(ici.map((q) => q.k).indexOf(cles[0]) >= 0 && ici.map((q) => q.k).indexOf(cles[1]) >= 0,
+       `et ce sont bien les deux qu on a poses : ${cles.join(' et ')}`);
+  }
+  /* ---- ET C'EST CELUI DU DESSUS QU'ON ATTRAPE ---- */
+  await p.evaluate(() => { document.getElementById('nxMapOutilChoix').click(); });
+  const camC2 = await cadre(16);
+  await geste(camC2, [{ t: 'down', c: 8, l: 8, id: 77 }, { t: 'up', c: 8, l: 8, id: 77 }]);
+  await p.waitForTimeout(500);
+  const pris = await couches();
+  eq(pris.nom, cles[1], 'un clic prend celui de la couche la plus haute');
+  eq(pris.fiche, 2, 'et la fiche montre sur quelle couche il est');
+  /* On le renvoie sur la couche 6 : la fiche suit, et rien d'autre ne bouge. */
+  await p.evaluate(() => { document.querySelectorAll('#nxMapFicheCouches button')[5].click(); });
+  await p.waitForTimeout(500);
+  eq((await couches()).fiche, 5, 'le changer de couche se voit tout de suite');
 
   console.log('\n-- et l on va MARCHER dedans --');
   /* ---- LE BOUT DU CHEMIN ----

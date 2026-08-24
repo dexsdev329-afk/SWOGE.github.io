@@ -3258,6 +3258,9 @@
     en: {
       titre: 'Map Editor', sansNom: 'Untitled', par: 'by',
       choisir: 'Select',
+      potSolSeul: 'Fill works on grounds. Pick a ground on the right.',
+      couche: 'Layer',
+      aideCouche: 'Which layer new elements go on. Higher layers are drawn on top.',
       aideEditer: 'Open this map and change it.',
       aideVisiter: 'Look at this map. You cannot change someone else\'s.',
       aideJouer: 'Walk inside this map.',
@@ -3323,6 +3326,9 @@
     fr: {
       titre: 'Éditeur de cartes', sansNom: 'Sans titre', par: 'de',
       choisir: 'Choisir',
+      potSolSeul: 'Le pot remplit du sol. Choisissez un sol a droite.',
+      couche: 'Couche',
+      aideCouche: 'La couche ou vont les elements poses. Les couches hautes passent devant.',
       aideEditer: 'Ouvre cette carte pour la modifier.',
       aideVisiter: 'Regarde cette carte. On ne modifie pas celle d\'un autre.',
       aideJouer: 'Va marcher dans cette carte.',
@@ -3391,6 +3397,9 @@
     es: {
       titre: 'Editor de mapas', sansNom: 'Sin título', par: 'de',
       choisir: 'Elegir',
+      potSolSeul: 'El relleno funciona con suelos. Elige un suelo a la derecha.',
+      couche: 'Capa',
+      aideCouche: 'La capa donde van los elementos colocados. Las capas altas van delante.',
       aideEditer: 'Abre este mapa para cambiarlo.',
       aideVisiter: 'Mira este mapa. El de otra persona no se puede cambiar.',
       aideJouer: 'Camina dentro de este mapa.',
@@ -3562,7 +3571,16 @@
    * Une case, pas un objet : la carte est la verite, et garder une copie de
    * l'element aurait fait deux etats a defaire ensemble a chaque annulation.
    * `null` quand rien n'est tenu, et c'est ce qui cache les boutons. */
-  var mapSel = null;                      // { c, l }
+  /* ---- CE QU'ON TIENT, PAR SON NUMERO ----
+   * Un objet vit dans une LISTE : garder sa place dans le tableau se
+   * perimerait a la premiere suppression, et garder l'objet lui-meme se
+   * perimerait a la premiere annulation, qui rend une copie. Un numero, lui,
+   * survit aux deux — la copie le recopie. */
+  var mapSel = null;                      // numero d'objet, ou `null`
+  var mapNo = 1;                          // le prochain numero a distribuer
+  /* La couche ou vont les objets qu'on POSE. Huit, comme le serveur. */
+  var MAP_COUCHES = 8;
+  var mapCouche = 0;
   var mapEnAttente = null;                // le geste suspendu par la question
 
   /* ---- LA VUE ----
@@ -3915,11 +3933,11 @@
   /** Le rectangle de ce qu'on tient, en pixels de canevas. */
   function cadreDuChoix() {
     if (!MAP || !mapSel || !mapVue.p) return null;
-    var v = MAP.cases.get(mapSel.c + ',' + mapSel.l);
-    if (!v || !v.o) return null;
-    var n = v.n || 1, p = mapVue.p;
-    var x = mapVue.x + (mapSel.c + 0.5) * p - n * p / 2;
-    var y = mapVue.y + (mapSel.l + 1) * p - n * p;
+    var o = objetDe(mapSel);
+    if (!o) return null;
+    var n = o.n || 1, p = mapVue.p;
+    var x = mapVue.x + (o.c + 0.5) * p - n * p / 2;
+    var y = mapVue.y + (o.l + 1) * p - n * p;
     return { x: x, y: y, t: n * p, n: n, p: p };
   }
   /** Sur quelle poignee tombe ce point de canevas, ou `null`. */
@@ -3978,7 +3996,7 @@
    * et c'est la vignette, celle qu'on regarde AVANT d'ouvrir, qui aurait
    * menti.
    */
-  function peintLaCarte(C, cases, n, p, ox, oy, avecGrille, depart, sel) {
+  function peintLaCarte(C, cases, objets, n, p, ox, oy, avecGrille, depart, sel) {
     C.imageSmoothingEnabled = false;
     C.fillStyle = '#0a1020';
     C.fillRect(ox, oy, p * n, p * n);
@@ -3998,17 +4016,17 @@
      * un batiment flotter au travers d'un autre. On trie donc par LIGNE, ce
      * qui est le seul ordre dans lequel un dessin vu de trois quarts se tient
      * — le meme que celui du hall. */
-    var poses = [];
-    cases.forEach(function (v, k) {
-      if (!v.o) return;
-      var q = k.split(',');
-      poses.push({ c: +q[0], l: +q[1], cle: v.o, n: v.n || 1, a: v.a || 0 });
+    /* ---- LA COUCHE D'ABORD, LA LIGNE ENSUITE ----
+     * Sans la couche, un toit passerait sous sa maison. Sans la ligne, deux
+     * batiments de la MEME couche se recouvriraient selon l'ordre ou on les a
+     * poses — et cet ordre-la ne veut rien dire pour l'oeil. */
+    var poses = (objets || []).slice().sort(function (a, b) {
+      return (a.z || 0) - (b.z || 0) || a.l - b.l || a.c - b.c;
     });
-    poses.sort(function (a, b) { return a.l - b.l || a.c - b.c; });
     poses.forEach(function (o) {
-      var e = elementDe('objet', o.cle) || elementDe('monstre', o.cle)
-              || elementDe('mur', o.cle) || elementDe('salle', o.cle)
-              || elementDe('iso', o.cle);
+      var e = elementDe('objet', o.k) || elementDe('monstre', o.k)
+              || elementDe('mur', o.k) || elementDe('salle', o.k)
+              || elementDe('iso', o.k);
       if (!e) return;
       /* ---- UNE PARCELLE PREND LA PLACE QU'ELLE OCCUPE ----
        * `cases` vient du catalogue, qui la deduit de la largeur de la
@@ -4043,11 +4061,12 @@
      * d'une case autour d'une parcelle de cinq aurait dit le contraire de ce
      * que fait le bouton. */
     if (sel) {
-      var sv = cases.get(sel.c + ',' + sel.l);
-      if (sv && sv.o) {
+      var sv = null;
+      for (var iS = 0; iS < poses.length; iS++) { if (poses[iS].i === sel) sv = poses[iS]; }
+      if (sv) {
         var sn = sv.n || 1;
-        var sx = ox + (sel.c + 0.5) * p - sn * p / 2;
-        var sy = oy + (sel.l + 1) * p - sn * p;
+        var sx = ox + (sv.c + 0.5) * p - sn * p / 2;
+        var sy = oy + (sv.l + 1) * p - sn * p;
         var st = sn * p;
         C.strokeStyle = '#FFD166'; C.lineWidth = 2;
         C.setLineDash([6, 4]);
@@ -4143,7 +4162,7 @@
       var C = cv.getContext('2d');
       C.fillStyle = '#070b16';
       C.fillRect(0, 0, MAP_VIGNETTE, MAP_VIGNETTE);
-      peintLaCarte(C, MAP.cases, MAP.cote, MAP_VIGNETTE / MAP.cote, 0, 0, false, MAP.depart);
+      peintLaCarte(C, MAP.cases, MAP.objets, MAP.cote, MAP_VIGNETTE / MAP.cote, 0, 0, false, MAP.depart);
       var d = cv.toDataURL('image/webp', 0.6);
       /* Un navigateur qui ne sait pas encoder en webp rend du PNG sans le
          dire : on ne suppose donc rien du format, on regarde ce qui sort. Et
@@ -4179,7 +4198,7 @@
        en croyant dessiner dedans. */
     C.fillStyle = '#070b16';
     C.fillRect(0, 0, W, H);
-    peintLaCarte(C, MAP.cases, n, p, ox, oy, true, MAP.depart, mapSel);
+    peintLaCarte(C, MAP.cases, MAP.objets, n, p, ox, oy, true, MAP.depart, mapSel);
     /* ---- ET LE RECTANGLE QU'ON EST EN TRAIN DE TIRER ----
      * Il se dessine PAR-DESSUS la grille et n'entre pas dans les cases : tant
      * que le doigt n'est pas leve, rien n'est pose. Le montrer autrement —
@@ -4202,6 +4221,13 @@
      deplace doit le ramener ou il etait, sinon « Undo » defait une moitie du
      geste et laisse l'autre. */
   function etatDuDepart() { return MAP.depart ? { c: MAP.depart.c, l: MAP.depart.l } : null; }
+  /* Les objets se recopient un par un, numero compris : c'est le numero qui
+     permet de retrouver apres une annulation CELUI qu'on tenait avant. */
+  function copieDesObjets() {
+    return MAP.objets.map(function (o) {
+      return { i: o.i, c: o.c, l: o.l, k: o.k, n: o.n || 1, a: o.a || 0, z: o.z || 0 };
+    });
+  }
   function copieDesCases() {
     var m = new Map();
     MAP.cases.forEach(function (v, k) {
@@ -4215,12 +4241,7 @@
        * juste des deux cotes.
        * Ecrit champ par champ et non par copie franche : une carte pleine
        * fait deux mille trois cents cases, et la pile en garde quarante. */
-      var q = {};
-      if (v.s) q.s = v.s;
-      if (v.o) q.o = v.o;
-      if (v.n > 1) q.n = v.n;
-      if (v.a) q.a = v.a;
-      m.set(k, q);
+      if (v.s) m.set(k, { s: v.s });
     });
     return m;
   }
@@ -4228,7 +4249,7 @@
   var mapSaleAvant = false;
   function memorise() {
     if (!MAP || !MAP.mienne) return;
-    mapPile.push({ cases: copieDesCases(), depart: etatDuDepart() });
+    mapPile.push({ cases: copieDesCases(), objets: copieDesObjets(), depart: etatDuDepart() });
     if (mapPile.length > MAP_PILE) mapPile.shift();
     mapRefaire.length = 0;
     mapSaleAvant = mapSale;
@@ -4244,22 +4265,22 @@
   function defaitLeGeste() {
     if (!MAP || !mapPile.length) return;
     var e = mapPile.pop();
-    MAP.cases = e.cases; MAP.depart = e.depart;
+    MAP.cases = e.cases; MAP.objets = e.objets; MAP.depart = e.depart;
     mapSale = mapSaleAvant;
     peintMapOutils(); mapRedessine();
   }
   function annule() {
     if (!MAP || !MAP.mienne || !mapPile.length) return;
-    mapRefaire.push({ cases: copieDesCases(), depart: etatDuDepart() });
+    mapRefaire.push({ cases: copieDesCases(), objets: copieDesObjets(), depart: etatDuDepart() });
     var e = mapPile.pop();
-    MAP.cases = e.cases; MAP.depart = e.depart;
+    MAP.cases = e.cases; MAP.objets = e.objets; MAP.depart = e.depart;
     mapSale = true;
     mapDit('');
     peintMapOutils(); mapRedessine();
   }
   function refais() {
     if (!MAP || !MAP.mienne || !mapRefaire.length) return;
-    mapPile.push({ cases: copieDesCases(), depart: etatDuDepart() });
+    mapPile.push({ cases: copieDesCases(), objets: copieDesObjets(), depart: etatDuDepart() });
     var e = mapRefaire.pop();
     MAP.cases = e.cases; MAP.depart = e.depart;
     mapSale = true;
@@ -4292,20 +4313,37 @@
    */
   function elementSous(c, l) {
     var trouve = null;
-    MAP.cases.forEach(function (v, k) {
-      if (!v.o) return;
-      var q = k.split(','), qc = +q[0], ql = +q[1], n = v.n || 1;
+    for (var i = 0; i < MAP.objets.length; i++) {
+      var o = MAP.objets[i], n = o.n || 1;
       /* L'emprise : centree en largeur sur la case d'ancrage, et montant vers
          le haut depuis son bas — exactement comme elle se dessine. */
-      var g = qc + 0.5 - n / 2, d = qc + 0.5 + n / 2;
-      var h = ql + 1 - n, b = ql + 1;
-      if (c + 0.5 < g || c + 0.5 > d || l + 0.5 < h || l + 0.5 > b) return;
-      /* Le plus AVANT gagne : plus grande ligne, puis plus grande colonne. */
-      if (!trouve || ql > trouve.l || (ql === trouve.l && qc > trouve.c)) {
-        trouve = { c: qc, l: ql };
+      var g = o.c + 0.5 - n / 2, d = o.c + 0.5 + n / 2;
+      var h = o.l + 1 - n, b = o.l + 1;
+      if (c + 0.5 < g || c + 0.5 > d || l + 0.5 < h || l + 0.5 > b) continue;
+      /* Le plus HAUT gagne, puis le plus AVANT : c'est l'ordre inverse du
+         dessin, donc celui qu'on voit en premier est celui qu'on attrape. */
+      if (!trouve || o.z > trouve.z
+          || (o.z === trouve.z && (o.l > trouve.l || (o.l === trouve.l && o.c > trouve.c)))) {
+        trouve = o;
       }
-    });
+    }
     return trouve;
+  }
+  /** L'objet d'un numero, ou `null`. */
+  function objetDe(i) {
+    if (!MAP || !i) return null;
+    for (var q = 0; q < MAP.objets.length; q++) {
+      if (MAP.objets[q].i === i) return MAP.objets[q];
+    }
+    return null;
+  }
+  /** Retire un objet de la liste. Rend vrai s'il y etait. */
+  function oteObjet(o) {
+    var q = MAP.objets.indexOf(o);
+    if (q < 0) return false;
+    MAP.objets.splice(q, 1);
+    if (mapSel === o.i) mapSel = null;
+    return true;
   }
 
   /**
@@ -4316,17 +4354,12 @@
    */
   function retouche(f) {
     if (!MAP || !MAP.mienne || !mapSel) return;
-    var k = mapSel.c + ',' + mapSel.l;
-    var v = MAP.cases.get(k);
-    if (!v || !v.o) { mapSel = null; peintMapOutils(); mapRedessine(); return; }
+    var o = objetDe(mapSel);
+    if (!o) { mapSel = null; peintMapOutils(); mapRedessine(); return; }
+    /* `memorise` empile des COPIES : la liste vivante n'est pas remplacee, et
+       l'objet qu'on tient reste le bon. */
     memorise();
-    f(v);
-    /* Les valeurs par defaut ne s'ecrivent pas : une case sur deux mille trois
-       cents porterait `n:1, a:0` pour ne rien dire, et le serveur les jette de
-       toute facon. */
-    if (!(v.n > 1)) delete v.n;
-    if (!v.a) delete v.a;
-    MAP.cases.set(k, v);
+    f(o);
     peintMapOutils(); mapRedessine();
   }
   /* Le plafond de la page suit celui du serveur ET le cote de la carte : un
@@ -4368,45 +4401,34 @@
    */
   function deplaceVers(q) {
     if (!MAP || !mapSel || !mapDeplace) return;
+    var o = objetDe(mapSel);
+    if (!o) { mapDeplace = null; return; }
     var nc = Math.max(0, Math.min(MAP.cote - 1, q.c - mapDeplace.ec));
     var nl = Math.max(0, Math.min(MAP.cote - 1, q.l - mapDeplace.el));
-    if (nc === mapSel.c && nl === mapSel.l) return;
-    var ka = mapSel.c + ',' + mapSel.l, va = MAP.cases.get(ka);
-    if (!va || !va.o) { mapDeplace = null; return; }
+    if (nc === o.c && nl === o.l) return;
     if (!mapDeplace.memo) { memorise(); mapDeplace.memo = true; }
-    var porte = { o: va.o };
-    if (va.n > 1) porte.n = va.n;
-    if (va.a) porte.a = va.a;
-    /* La case de depart garde son sol et perd son objet. */
-    delete va.o; delete va.n; delete va.a;
-    if (va.s) MAP.cases.set(ka, va); else MAP.cases.delete(ka);
-    /* Celle d'arrivee garde le sien et recoit l'objet. Si elle en portait
-       deja un, il est remplace — c'est ce que fait n'importe quel editeur, et
-       l'annulation le rend. */
-    var kb = nc + ',' + nl, vb = MAP.cases.get(kb) || {};
-    vb.o = porte.o;
-    if (porte.n) vb.n = porte.n; else delete vb.n;
-    if (porte.a) vb.a = porte.a; else delete vb.a;
-    MAP.cases.set(kb, vb);
-    mapSel = { c: nc, l: nl };
+    /* L'objet change de case, et RIEN d'autre : ni le sol qu'il survole, ni
+       ce qui est deja pose la ou il arrive. C'est ce que les couches ont rendu
+       possible — avant, arriver sur une case occupee remplacait ce qu'elle
+       portait. */
+    o.c = nc; o.l = nl;
     mapSale = true;
     peintMapOutils(); mapRedessine();
   }
 
   function etireVers(pc) {
     if (!MAP || !mapSel || !mapVue.p) return;
-    var k = mapSel.c + ',' + mapSel.l, v = MAP.cases.get(k);
-    if (!v || !v.o) { mapEtire = false; return; }
+    var o = objetDe(mapSel);
+    if (!o) { mapEtire = false; return; }
     var p = mapVue.p;
-    var axe = mapVue.x + (mapSel.c + 0.5) * p;
-    var pied = mapVue.y + (mapSel.l + 1) * p;
+    var axe = mapVue.x + (o.c + 0.5) * p;
+    var pied = mapVue.y + (o.l + 1) * p;
     var parLarge = (pc.x - axe) * 2 / p;
     var parHaut = (pied - pc.y) / p;
     var n = Math.round(Math.max(parLarge, parHaut));
     n = Math.max(1, Math.min(empriseMax(), n));
-    if (n === (v.n || 1)) return;
-    if (n > 1) v.n = n; else delete v.n;
-    MAP.cases.set(k, v);
+    if (n === (o.n || 1)) return;
+    o.n = n;
     mapSale = true;
     peintMapOutils(); mapRedessine();
   }
@@ -4429,6 +4451,10 @@
      au-dela reviendrait a laisser quelqu'un travailler une heure pour un
      refus a l'enregistrement. */
   var MAP_CASES_MAX = 2600;
+  /* Le plafond d'objets du serveur, ecrit ici aussi pour la meme raison :
+     mieux vaut arreter au geste qui deborde que refuser une heure de travail
+     a l'enregistrement. */
+  var MAP_OBJETS_MAX = 1800;
 
   /**
    * ECRIT UNE CASE. Le seul endroit qui touche `MAP.cases`.
@@ -4447,41 +4473,40 @@
        * n'y en a pas, elle retire ce que la case porte — c'est-a-dire le sol.
        */
       var e = elementSous(c, l);
-      if (e) {
-        var ke = e.c + ',' + e.l, ve = MAP.cases.get(ke);
-        if (ve) {
-          delete ve.o; delete ve.n; delete ve.a;
-          if (ve.s) MAP.cases.set(ke, ve); else MAP.cases.delete(ke);
-        }
-        if (mapSel && mapSel.c === e.c && mapSel.l === e.l) mapSel = null;
-        return true;
-      }
+      if (e) { oteObjet(e); return true; }
       MAP.cases.delete(k);
       return true;
     }
     if (!mapChoix) return false;
-    var v = MAP.cases.get(k) || {};
-    v[champDe(mapChoix.famille)] = mapChoix.cle;
+    /* ---- UN SOL PAVE, UN OBJET SE POSE ----
+     * Le sol remplace celui de la case ; l'objet s'AJOUTE a la liste. C'est
+     * toute la difference que les couches ont introduite, et elle tient en
+     * ces deux branches. */
+    if (champDe(mapChoix.famille) === 's') {
+      var neuve = !MAP.cases.has(k);
+      MAP.cases.set(k, { s: mapChoix.cle });
+      if (neuve && MAP.cases.size > MAP_CASES_MAX) {
+        MAP.cases.delete(k); mapDit(T('pleine'), true); return false;
+      }
+      return true;
+    }
+    /* Le meme element, sur la meme case et la meme couche, deux fois : c'est
+       ce que fait un trait au pinceau qui repasse. On ne le pose qu'une. */
+    for (var d = 0; d < MAP.objets.length; d++) {
+      var q = MAP.objets[d];
+      if (q.c === c && q.l === l && q.z === mapCouche && q.k === mapChoix.cle) return true;
+    }
+    if (MAP.objets.length >= MAP_OBJETS_MAX) { mapDit(T('pleine'), true); return false; }
     /* ---- L'EMPRISE EST FIGEE AU MOMENT OU L'ON POSE ----
      * Elle vient du catalogue, mais elle est ECRITE dans la carte. Relue du
      * catalogue a chaque dessin, elle changerait le jour ou la planche change
-     * de largeur : la carte de quelqu'un se redessinerait autrement que
-     * quand il l'a faite. Et c'est ce meme nombre qui dira plus tard ce que
-     * l'element BLOQUE quand on marchera dedans — un seul chiffre, donc le
-     * dessin et la collision ne peuvent pas se contredire. */
-    if (champDe(mapChoix.famille) === 'o') {
-      var el = elementDe(mapChoix.famille, mapChoix.cle);
-      if (el && el.cases > 1) v.n = el.cases; else delete v.n;
-      /* Un element pose par-dessus un autre repart droit : garder le quart de
-         tour du precedent ferait arriver la nouvelle planche de travers sans
-         que personne ne l'ait demande. */
-      delete v.a;
-    }
-    var neuve = !MAP.cases.has(k);
-    MAP.cases.set(k, v);
-    if (neuve && MAP.cases.size > MAP_CASES_MAX) {
-      MAP.cases.delete(k); mapDit(T('pleine'), true); return false;
-    }
+     * de largeur : la carte de quelqu'un se redessinerait autrement que quand
+     * il l'a faite. Et c'est ce meme nombre qui dira ce que l'element BLOQUE
+     * quand on marchera dedans — un seul chiffre, donc le dessin et la
+     * collision ne peuvent pas se contredire. */
+    var el = elementDe(mapChoix.famille, mapChoix.cle);
+    MAP.objets.push({ i: mapNo++, c: c, l: l, k: mapChoix.cle,
+                      n: (el && el.cases > 1) ? el.cases : 1, a: 0, z: mapCouche });
     return true;
   }
 
@@ -4510,17 +4535,25 @@
    * diagonale est un pot qui deborde sans qu'on comprenne pourquoi.
    */
   function remplis(c0, l0) {
-    var ch = mapOutil === 'gomme' ? null : champDe(mapChoix.famille);
+    /* ---- LE POT NE REMPLIT QUE DU SOL ----
+     * Un sol PAVE : le remplir, c'est remplacer une valeur par une autre, et
+     * la zone est celle qui portait la meme. Un objet, lui, s'AJOUTE — un pot
+     * d'objets poserait deux mille trois cents arbres d'un geste, ferait
+     * exploser le plafond, et personne ne veut ca. La gomme, elle, efface bien
+     * une zone de sol. */
+    var efface = mapOutil === 'gomme';
+    if (!efface && mapChoix && champDe(mapChoix.famille) !== 's') {
+      mapDit(T('potSolSeul'), true); return;
+    }
     var lit = function (c, l) {
       var v = MAP.cases.get(c + ',' + l);
-      if (!v) return '';
-      return (ch ? v[ch] : (v.s || '') + '|' + (v.o || '')) || '';
+      return (v && v.s) || '';
     };
     var depart = lit(c0, l0);
-    var cible = mapOutil === 'gomme' ? null : mapChoix.cle;
+    var cible = efface ? '' : mapChoix.cle;
     /* Deja de cette couleur : le pot ne ferait rien, et empiler un etat pour
        rien rendrait l'annulation muette une fois sur deux. */
-    if (ch && depart === cible) { mapDit(T('dejaRempli'), true); return; }
+    if (depart === cible) { mapDit(T('dejaRempli'), true); return; }
     memorise();
     var file = [[c0, l0]], vus = {}, n = MAP.cote;
     while (file.length) {
@@ -4528,7 +4561,8 @@
       if (c < 0 || l < 0 || c >= n || l >= n || vus[k]) continue;
       if (lit(c, l) !== depart) continue;
       vus[k] = 1;
-      if (!ecritCase(c, l)) break;
+      if (efface) MAP.cases.delete(k);
+      else MAP.cases.set(k, { s: cible });
       file.push([c + 1, l], [c - 1, l], [c, l + 1], [c, l - 1]);
     }
     mapRedessine(); peintMapOutils();
@@ -4587,12 +4621,9 @@
        * DEPASSE — serait sorti par le `return` sans qu'on ait pu l'attraper. */
       var po = poigneeSous(pc);
       if (po === 'croix') {
-        var kc = mapSel.c + ',' + mapSel.l, vc = MAP.cases.get(kc);
+        var oc = objetDe(mapSel);
         memorise();
-        if (vc) {
-          delete vc.o; delete vc.n; delete vc.a;
-          if (vc.s) MAP.cases.set(kc, vc); else MAP.cases.delete(kc);
-        }
+        if (oc) oteObjet(oc);
         mapSel = null; mapDit('');
         peintMapOutils(); mapRedessine(); return;
       }
@@ -4611,7 +4642,8 @@
       if (mapOutil === 'choix') {
         /* On ne tient QUE ce qui est pose dessus : un sol n'a ni taille ni
            orientation, le choisir n'ouvrirait que des boutons sans effet. */
-        mapSel = elementSous(q.c, q.l);
+        var pris = elementSous(q.c, q.l);
+        mapSel = pris ? pris.i : null;
         mapDit(mapSel ? '' : T('rienChoisi'), !mapSel);
         /* ---- ET L'ON PEUT LE TIRER TOUT DE SUITE ----
          * Choisir puis deplacer sont le meme geste : on pose le doigt sur le
@@ -4619,8 +4651,8 @@
          * gestes la ou la main n'en fait qu'un.
          * L'ecart est garde pour que l'element suive la main depuis l'endroit
          * ou on l'a pris, au lieu de sauter sous le curseur. */
-        if (mapSel) {
-          mapDeplace = { ec: q.c - mapSel.c, el: q.l - mapSel.l, memo: false };
+        if (pris) {
+          mapDeplace = { ec: q.c - pris.c, el: q.l - pris.l, memo: false };
           mapTrace = true;
         }
         peintMapOutils(); mapRedessine(); return;
@@ -4756,7 +4788,7 @@
        huit, et le bouton doit le dire au lieu de ne rien faire. */
     var pg = document.getElementById('nxMapPlusGrand');
     var pp = document.getElementById('nxMapPlusPetit');
-    var vs = mapSel && MAP ? MAP.cases.get(mapSel.c + ',' + mapSel.l) : null;
+    var vs = objetDe(mapSel);
     if (pg) pg.disabled = !vs || (vs.n || 1) >= empriseMax();
     if (pp) pp.disabled = !vs || (vs.n || 1) <= 1;
     Object.keys(OUTILS).forEach(function (o) {
@@ -4804,18 +4836,19 @@
   function peintFiche(mien) {
     var f = document.getElementById('nxMapFiche');
     if (!f) return;
-    var v = mapSel && MAP ? MAP.cases.get(mapSel.c + ',' + mapSel.l) : null;
-    var tenu = !!mien && !!v && !!v.o;
+    var v = objetDe(mapSel);
+    var tenu = !!mien && !!v;
     f.classList.toggle('on', tenu);
+    peintCouches(v);
     if (!tenu) return;
     var nom = document.getElementById('nxMapFicheNom');
     var tai = document.getElementById('nxMapFicheTaille');
     var cv = document.getElementById('nxMapFicheVue');
-    if (nom) nom.textContent = v.o;
+    if (nom) nom.textContent = v.k;
     if (tai) tai.textContent = String(v.n || 1) + '\u00d7' + String(v.n || 1);
     if (cv) {
-      var e = elementDe('objet', v.o) || elementDe('iso', v.o) || elementDe('mur', v.o)
-           || elementDe('salle', v.o) || elementDe('monstre', v.o);
+      var e = elementDe('objet', v.k) || elementDe('iso', v.k) || elementDe('mur', v.k)
+           || elementDe('salle', v.k) || elementDe('monstre', v.k);
       var C = cv.getContext('2d');
       C.clearRect(0, 0, cv.width, cv.height);
       /* Tournee comme sur la carte : une fiche qui montrerait la planche
@@ -4823,6 +4856,47 @@
          bouton. */
       if (e) peintElement(C, e, 0, 0, cv.width, cv.height, false, v.a || 0);
     }
+  }
+
+  /**
+   * LES HUIT COUCHES, DEUX FOIS : CELLE OU L'ON POSE, ET CELLE DE CE QU'ON TIENT.
+   *
+   * Les memes huit boutons aux deux endroits, parce que ce sont les memes
+   * couches : deux facons de designer la meme chose auraient fini par ne plus
+   * s'accorder, et l'on aurait pose sur la deux en croyant poser sur la trois.
+   *
+   * Huit boutons plutot qu'un menu ou deux fleches : un menu demande deux
+   * gestes et cache le choix courant, des fleches obligent a compter. Ici on
+   * voit les huit, et on voit laquelle est allumee.
+   */
+  function boutonsDeCouche(hote, actif, quand) {
+    if (!hote) return;
+    if (hote.childNodes.length !== MAP_COUCHES) {
+      hote.innerHTML = '';
+      for (var i = 0; i < MAP_COUCHES; i++) {
+        (function (z) {
+          var b = document.createElement('button');
+          b.type = 'button';
+          b.textContent = String(z + 1);
+          b.addEventListener('click', function () { quand(z); });
+          hote.appendChild(b);
+        })(i);
+      }
+    }
+    for (var q = 0; q < hote.childNodes.length; q++) {
+      hote.childNodes[q].classList.toggle('vedette', q === actif);
+    }
+  }
+  function peintCouches(tenu) {
+    var bloc = document.getElementById('nxMapCouches');
+    /* Le choix de la couche ne s'affiche que quand on peut POSER : sur la
+       carte d'un autre, il ne servirait a rien. */
+    if (bloc) bloc.classList.toggle('on', !!(MAP && MAP.mienne));
+    boutonsDeCouche(document.getElementById('nxMapCouchesBoutons'), mapCouche,
+                    function (z) { mapCouche = z; peintMapOutils(); });
+    boutonsDeCouche(document.getElementById('nxMapFicheCouches'),
+                    tenu ? tenu.z : -1,
+                    function (z) { retouche(function (o) { o.z = z; }); });
   }
 
   function peintMapGalerie(liste) {
@@ -4912,11 +4986,13 @@
     MAP = { id: c.id || null, nom: c.nom || '', cote: c.cote || MAP_COTE,
             mode: MAP_MODES[c.mode] ? c.mode : 'plat',
             depart: (c.depart && typeof c.depart.c === 'number') ? { c: c.depart.c, l: c.depart.l } : null,
-            cases: new Map(), mienne: c.mienne !== false, auteur: c.auteur || null };
+            cases: new Map(), objets: [],
+            mienne: c.mienne !== false, auteur: c.auteur || null };
     /* Une carte chargee n'a rien a annuler et rien a perdre : garder la pile
        de la precedente aurait permis d'annuler CELLE-CI vers l'etat d'une
        AUTRE carte, ce qui est la pire chose qu'un editeur puisse faire. */
     mapPile.length = 0; mapRefaire.length = 0; mapSale = false; mapRect = null;
+    mapCouche = 0;
     /* Tenir encore la case d'une AUTRE carte ferait agrandir un element qui
        n'est plus la, a des coordonnees qui veulent maintenant dire autre
        chose. */
@@ -4927,13 +5003,26 @@
        `peintMapGrille`. */
     mapVue.p = 0;
     mapOutil = 'dessin';
+    /* ---- LES SOLS D'UN COTE, LES OBJETS DE L'AUTRE ----
+     * Un sol PAVE : un par case, et deux sols sur une case ne veulent rien
+     * dire. Un objet se POSE : plusieurs au meme endroit, chacun sur sa
+     * couche. Les tenir dans la meme structure obligeait a choisir un des
+     * deux comportements pour les deux. */
     (c.cases || []).forEach(function (q) {
-      var v = {};
-      if (q.s) v.s = q.s;
-      if (q.o) v.o = q.o;
-      if (q.n > 1) v.n = q.n;
-      if (q.a) v.a = q.a;
-      MAP.cases.set(q.c + ',' + q.l, v);
+      if (q.s) MAP.cases.set(q.c + ',' + q.l, { s: q.s });
+      /* L'ANCIEN FORMAT : une carte enregistree avant les couches porte son
+         objet dans la case. Le serveur les convertit, mais une page peut
+         encore en lire un vieux — on le remonte de la meme facon. */
+      if (q.o) {
+        MAP.objets.push({ i: mapNo++, c: q.c, l: q.l, k: q.o,
+                          n: q.n > 1 ? q.n : 1, a: q.a || 0, z: 0 });
+      }
+    });
+    (c.objets || []).forEach(function (q) {
+      if (!q || !q.k) return;
+      MAP.objets.push({ i: mapNo++, c: q.c, l: q.l, k: q.k,
+                        n: q.n > 1 ? q.n : 1, a: q.a || 0,
+                        z: Math.max(0, Math.min(MAP_COUCHES - 1, q.z || 0)) });
     });
     if (elMapNom) elMapNom.value = MAP.nom;
     mapDit('');
@@ -5110,11 +5199,10 @@
     b('nxMapTourne', tourne);
     b('nxMapEfface', function () {
       if (!MAP || !MAP.mienne || !mapSel) return;
-      var k = mapSel.c + ',' + mapSel.l, v = MAP.cases.get(k);
-      if (!v) { mapSel = null; peintMapOutils(); return; }
+      var oe = objetDe(mapSel);
+      if (!oe) { mapSel = null; peintMapOutils(); return; }
       memorise();
-      delete v.o; delete v.n; delete v.a;
-      if (v.s) MAP.cases.set(k, v); else MAP.cases.delete(k);
+      oteObjet(objetDe(mapSel));
       mapSel = null;
       peintMapOutils(); mapRedessine();
     });
@@ -5154,18 +5242,23 @@
       if (!enLigne) { mapDit(T('horsLigne'), true); return; }
       var cases = [];
       MAP.cases.forEach(function (v, k) {
+        if (!v.s) return;
         var q = k.split(',');
-        var e = { c: Number(q[0]), l: Number(q[1]) };
-        if (v.s) e.s = v.s;
-        if (v.o) e.o = v.o;
-        if (v.n > 1) e.n = v.n;
-        if (v.a) e.a = v.a;
-        cases.push(e);
+        cases.push({ c: Number(q[0]), l: Number(q[1]), s: v.s });
+      });
+      var objets = MAP.objets.map(function (o) {
+        var e = { c: o.c, l: o.l, k: o.k, z: o.z };
+        /* Les valeurs par defaut ne partent pas : mille huit cents objets qui
+           porteraient chacun `n:1, a:0` pour ne rien dire, ce sont vingt
+           kilo-octets de trame pour rien. */
+        if (o.n > 1) e.n = o.n;
+        if (o.a) e.a = o.a;
+        return e;
       });
       mapDit(T('sauvegarde'));
       var vg = vignetteDeLaCarte();
       var envoi = { nom: nom, cote: MAP.cote, mode: MAP.mode, cases: cases,
-                    depart: MAP.depart || null };
+                    objets: objets, depart: MAP.depart || null };
       if (vg) envoi.vignette = vg;
       envoie({ type: 'carteEnregistre', id: MAP.id || undefined, carte: envoi });
     });

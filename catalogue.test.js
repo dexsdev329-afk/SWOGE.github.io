@@ -105,11 +105,23 @@ for (const e of (vrai.iso || [])) {
      `${e.cle} : ${e.l} px de large font ${e.cases} case(s)`);
   if (e.cases === 1) empriseUne++; else empriseGrande++;
 }
-/* Les deux tailles coexistent : des PLAQUES d'une case et des PARCELLES de
-   plusieurs. Un plancher a deux les aurait toutes rendues grandes, et une
-   plaque de soixante-quinze pixels aurait couvert quatre fois sa surface. */
-ok(empriseUne > 0 && empriseGrande > 0,
-   `${empriseUne} plaques d'une case et ${empriseGrande} parcelles plus larges`);
+console.log(`   (${empriseUne} plaque(s) d'une case, ${empriseGrande} parcelle(s) plus larges)`);
+/* ---- ET LA REGLE ELLE-MEME, PLUTOT QUE L'INVENTAIRE DU JOUR ----
+ * On verifiait ici que des plaques d'une case et des parcelles de plusieurs
+ * COEXISTAIENT dans le catalogue. C'etait vrai tant que les plaques y
+ * etaient — et le jour ou on les a retirees, cet essai est tombe en parlant
+ * d'un plancher que personne n'avait touche. Un essai qui tombe pour une
+ * raison qu'il ne nomme pas est pire qu'aucun essai : on le repare au hasard.
+ * On interroge donc la fonction, avec les largeurs qui font la difference —
+ * elles repondront la meme chose le jour ou plus aucune planche ne les
+ * mesure. */
+const { empriseIso } = require('./outils_catalogue.js');
+ok(empriseIso(75) === 1,
+   'une plaque de 75 px tient sur UNE case : un plancher a deux lui aurait fait'
+   + ' couvrir quatre fois sa surface');
+ok(empriseIso(600) === 5, 'une parcelle de 600 px en occupe cinq');
+ok(empriseIso(128) === 1, 'et une tuile pleine, exactement une');
+ok(empriseIso(1) === 1, 'rien ne descend sous une case, pas meme un pixel');
 
 console.log('\n-- ce qu un editeur peut poser --');
 const animes = (vrai.objet || []).filter((e) => e.cadres > 1);

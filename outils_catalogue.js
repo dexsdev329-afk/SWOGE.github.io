@@ -83,6 +83,28 @@ function cadresDeclares(racine) {
   return out;
 }
 
+/* ---- L'EMPRISE, EN CASES, DEDUITE DE LA LARGEUR DE LA PLANCHE ----
+ * Une parcelle isometrique n'est pas un objet pose dans une case : c'est un
+ * morceau de terrain, dessine a l'echelle du jeu. Sa largeur en pixels EST
+ * donc sa largeur en unites de monde, et une tuile en vaut cent vingt-huit.
+ * Six cents pixels font cinq cases, et le calcul le dit — le jour ou une
+ * planche arrive plus large, elle prend la place qu'elle occupe vraiment sans
+ * qu'on la mesure a la main.
+ *
+ * UNE au minimum, et non deux. Le plancher etait a deux quand la famille ne
+ * contenait que des parcelles de six cents pixels ; une plaque de sol de
+ * soixante-quinze pixels fait un peu plus d'une demi-tuile, et la forcer a
+ * deux cases lui aurait fait couvrir quatre fois sa surface.
+ *
+ * ELLE EST UNE FONCTION, ET NON TROIS SIGNES AU MILIEU D'UNE BOUCLE, parce
+ * que c'est la REGLE qui doit etre verifiee et non l'inventaire du jour :
+ * l'essai s'assurait que des plaques d'une case et des parcelles de plusieurs
+ * coexistaient dans le catalogue, ce qui etait vrai tant que les plaques y
+ * etaient — et retirer les plaques a fait tomber un essai qui ne parlait
+ * pourtant pas d'elles. Ici, soixante-quinze pixels feront une case meme le
+ * jour ou plus aucune planche ne mesure soixante-quinze pixels. */
+function empriseIso(l) { return Math.max(1, Math.round(l / TUILE)); }
+
 function construis(racine) {
   const cadres = cadresDeclares(racine);
   const out = {};
@@ -98,20 +120,7 @@ function construis(racine) {
         const t = tailleWebp(path.join(d, f));
         const n = cadres[f.slice(0, -5)] || 1;
         const e = { cle, fichier: F.dossier + '/' + f, l: t.w, h: t.h, cadres: n };
-        /* ---- L'EMPRISE, EN CASES, DEDUITE DE LA PLANCHE ----
-         * Une parcelle isometrique n'est pas un objet pose dans une case :
-         * c'est un morceau de terrain, dessine a l'echelle du jeu. Sa largeur
-         * en pixels EST donc sa largeur en unites de monde, et une tuile en
-         * vaut cent vingt-huit. Six cents pixels font cinq cases, et le calcul
-         * le dit — le jour ou une planche arrive plus large, elle prend la
-         * place qu'elle occupe vraiment sans qu'on la mesure a la main.
-         * UNE au minimum, et non deux. Le plancher etait a deux quand la
-         * famille ne contenait que des parcelles de six cents pixels : une
-         * plaque de sol isometrique en fait soixante-quinze, soit un peu plus
-         * d'une demi-tuile, et la forcer a deux cases l'aurait fait couvrir
-         * quatre fois sa surface. Le plancher protegeait contre un cas qui
-         * n'existait pas encore ; celui qui existe maintenant est l'inverse. */
-        if (F.famille === 'iso') e.cases = Math.max(1, Math.round(t.w / TUILE));
+        if (F.famille === 'iso') e.cases = empriseIso(t.w);
         return e;
       });
   }
@@ -132,4 +141,4 @@ if (require.main === module) {
   console.log(`${f} : ${t} elements, ${Object.keys(c).length} familles`);
 }
 
-module.exports = { construis, FAMILLES };
+module.exports = { construis, empriseIso, FAMILLES };

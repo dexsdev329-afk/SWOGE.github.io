@@ -128,9 +128,45 @@ const servirLeSite = async () => {
   ok(true, 'un compte est connecte : ' + w.address.slice(0, 10));
 
   console.log('\n-- on marche jusqu a la machine --');
-  await p.keyboard.down('ArrowUp'); await p.waitForTimeout(900); await p.keyboard.up('ArrowUp');
-  await p.keyboard.down('ArrowLeft'); await p.waitForTimeout(3600); await p.keyboard.up('ArrowLeft');
-  await p.waitForTimeout(2200);
+  /* ---- ON MARCHE JUSQU'A CE QU'ON Y SOIT, PAS PENDANT UN TEMPS FIXE ----
+   * Une duree ecrite en dur suppose que la page avance a la meme vitesse a
+   * chaque fois. Elle ne le fait pas : au premier chargement elle telecharge
+   * quinze megaoctets de decor, la boucle de jeu saute des trames, et le
+   * personnage s'arrete a mi-chemin. L'essai echouait alors sur « la machine
+   * n'ouvre pas », ce qui est faux — il n'y etait simplement pas arrive.
+   * C'est la meme lecon que l'essai du telephone, au meme endroit. */
+  /* ---- ET L'ON CHERCHE SON CHEMIN, ON NE LE SUPPOSE PAS ----
+   * Marcher vers l'ouest pendant une duree fixe supposait deux choses : que
+   * la page avance a la meme vitesse a chaque fois — au premier chargement
+   * elle telecharge quinze megaoctets de decor et saute des trames — et qu'on
+   * parte dans le BON couloir. La riviere traverse le Nexus, et un pas de
+   * travers au depart met une rive entre le personnage et la machine : on
+   * pousse alors vers l'ouest indefiniment contre une berge, et l'essai
+   * conclut « la machine n'ouvre pas », ce qui est faux.
+   * On avance donc vers l'ouest, et si rien ne vient au bout de trois
+   * secondes on change de voie et l'on recommence. C'est ce que fait un
+   * joueur devant un obstacle. */
+  let arrive = false;
+  const t0 = Date.now();
+  const voies = ['ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowUp', 'ArrowUp', 'ArrowDown'];
+  for (let essai = 0; essai < voies.length && !arrive; essai++) {
+    await p.keyboard.down(voies[essai]);
+    await p.waitForTimeout(essai === 0 ? 900 : 700);
+    await p.keyboard.up(voies[essai]);
+    await p.keyboard.down('ArrowLeft');
+    const fin = Date.now() + 4000;
+    while (Date.now() < fin) {
+      await p.waitForTimeout(350);
+      arrive = await p.evaluate(() => {
+        const v = document.getElementById('nxMapVoile');
+        return !!v && v.classList.contains('on');
+      });
+      if (arrive) break;
+    }
+    await p.keyboard.up('ArrowLeft');
+  }
+  await p.waitForTimeout(1200);
+  ok(arrive, `on a marche ${Math.round((Date.now() - t0) / 100) / 10} s jusqu a la machine`);
   const ouvert = await p.evaluate(() => {
     const v = document.getElementById('nxMapVoile');
     return { on: !!v && v.classList.contains('on'),
@@ -224,8 +260,37 @@ const servirLeSite = async () => {
     await p.waitForTimeout(500);
   };
 
-  console.log('\n-- on dessine --');
+  console.log('\n-- on cherche dans la palette --');
   await cree('plat', 48);
+  const cherche = async (q) => {
+    await p.evaluate((t) => {
+      const c = document.getElementById('nxMapCherche');
+      c.value = t;
+      c.dispatchEvent(new Event('input', { bubbles: true }));
+    }, q);
+    await p.waitForTimeout(200);
+    return p.evaluate(() => {
+      const vus = [...document.querySelectorAll('#nxMapPalette .nxmap-el')]
+        .filter((b) => b.offsetParent !== null);
+      const titres = [...document.querySelectorAll('#nxMapPalette .nxmap-fam')]
+        .filter((d) => d.offsetParent !== null).length;
+      return { combien: vus.length, cles: vus.map((b) => b.dataset.cle), familles: titres };
+    });
+  };
+  const palTout = await cherche('');
+  const palFont = await cherche('font');
+  ok(palFont.combien > 0 && palFont.combien < palTout.combien,
+     `« font » ramene ${palFont.combien} elements sur ${palTout.combien} :`
+     + ` ${palFont.cles.join(', ')}`);
+  ok(palFont.cles.every((c) => c.indexOf('font') >= 0), 'et rien qui ne porte pas le mot');
+  ok(palFont.familles < palTout.familles,
+     `les familles videes disparaissent avec leur titre`
+     + ` (${palFont.familles} sur ${palTout.familles})`);
+  const palRien = await cherche('zzzzzz');
+  eq(palRien.combien, 0, 'une recherche sans reponse ne montre rien');
+  eq((await cherche('')).combien, palTout.combien, 'et effacer la recherche rend tout');
+
+  console.log('\n-- on dessine --');
   let cam = await cadre();
   ok(cam.p > 4, `la carte est cadree dans le canevas : ${Math.round(cam.p * 100) / 100} px par case`);
   /* Un SOL, choisi dans la palette comme un joueur le ferait. On prend le
@@ -264,6 +329,13 @@ const servirLeSite = async () => {
                                    { headers: { 'x-admin-key': 'k' } })).json();
     ok(une.carte.cases.every((q) => q.s === cle),
        'chaque case porte bien le sol choisi dans la palette : ' + cle);
+    /* ---- ET L'IMAGE DE LA FICHE ----
+     * Sa TAILLE compte autant que sa presence : elle voyage avec chaque carte
+     * de la galerie, et le budget de la trame est deja mange par les cases. */
+    ok(/^data:image\/(webp|png);base64,/.test(une.carte.vignette || ''),
+       'la carte porte son image, dessinee par la page a l enregistrement');
+    ok((une.carte.vignette || '').length < 24000,
+       `elle pese ${Math.round((une.carte.vignette || '').length / 1024)} ko`);
   }
 
   console.log('\n-- rien ne se jette sans qu on le demande --');

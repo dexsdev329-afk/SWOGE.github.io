@@ -3291,6 +3291,9 @@
   var elMapGalerie = document.getElementById('nxMapGalerie');
   var elMapAtelier = document.getElementById('nxMapAtelier');
   var elMapPalette = document.getElementById('nxMapPalette');
+  var elMapListe = document.getElementById('nxMapListe');
+  var elMapCherche = document.getElementById('nxMapCherche');
+  var mapCherche = '';
   var elMapGrille = document.getElementById('nxMapGrille');
   var elMapNom = document.getElementById('nxMapNom');
   var elMapDit = document.getElementById('nxMapDit');
@@ -3386,6 +3389,27 @@
     }
   }
 
+  /* ---- LA RECHERCHE ----
+   * Elle cache, elle ne reconstruit pas : reconstruire a chaque lettre
+   * rejetterait les cent trente-quatre vignettes et redemanderait leurs
+   * planches. Et un bloc dont tout est cache disparait avec son titre. */
+  function filtreLaPalette() {
+    var hote = elMapListe || elMapPalette;
+    if (!hote) return;
+    var q = mapCherche.trim().toLowerCase();
+    var blocs = hote.querySelectorAll('.nxmap-fam');
+    for (var i = 0; i < blocs.length; i++) {
+      var bs = blocs[i].querySelectorAll('.nxmap-el');
+      var vus = 0;
+      for (var j = 0; j < bs.length; j++) {
+        var ok = !q || bs[j].dataset.cle.toLowerCase().indexOf(q) >= 0;
+        bs[j].style.display = ok ? '' : 'none';
+        if (ok) vus++;
+      }
+      blocs[i].style.display = vus ? '' : 'none';
+    }
+  }
+
   function peintMapPalette() {
     if (!elMapPalette || !CATALOGUE) return;
     /* Reconstruire quand le MODE a change : la palette est gardee d'une carte
@@ -3393,15 +3417,16 @@
        ouverture, mais gardee TELLE QUELLE elle proposait les tuiles plates
        sur une carte isometrique — la premiere carte ouverte decidait pour
        toutes les suivantes. */
+    var hote = elMapListe || elMapPalette;
     var modeAffiche = (MAP && MAP.mode) || 'plat';
-    if (elMapPalette.dataset.mode !== modeAffiche) {
-      elMapPalette.dataset.pret = '0';
-      elMapPalette.dataset.mode = modeAffiche;
+    if (hote.dataset.mode !== modeAffiche) {
+      hote.dataset.pret = '0';
+      hote.dataset.mode = modeAffiche;
     }
-    if (elMapPalette.dataset.pret === '1') {
+    if (hote.dataset.pret === '1') {
       /* Deja construite : on ne refait que la marque du choix. Reconstruire a
          chaque image chargee ferait clignoter cent quatorze vignettes. */
-      var pris = elMapPalette.querySelectorAll('.nxmap-el');
+      var pris = hote.querySelectorAll('.nxmap-el');
       for (var q = 0; q < pris.length; q++) {
         var b = pris[q];
         b.classList.toggle('pris', !!mapChoix && b.dataset.fam === mapChoix.famille
@@ -3421,14 +3446,21 @@
        des parcelles isometriques sur une carte de tuiles plates et l'inverse,
        et le resultat etait deux langages dans la meme image. */
     var permis = (MAP_MODES[(MAP && MAP.mode) || 'plat'] || MAP_MODES.plat).familles;
-    elMapPalette.innerHTML = '';
+    hote.innerHTML = '';
     Object.keys(CATALOGUE).forEach(function (fam) {
       var liste = CATALOGUE[fam];
       if (!liste || !liste.length) return;
       if (permis.indexOf(fam) < 0) return;
+      /* Chaque famille dans SON bloc : la recherche cache le bloc entier
+         quand il ne reste rien dedans, titre compris. Un titre reste seul
+         au-dessus du vide se lit comme une famille vide, pas comme une
+         famille filtree. */
+      var bloc = document.createElement('div');
+      bloc.className = 'nxmap-fam';
+      bloc.dataset.fam = fam;
       var t = document.createElement('h4');
       t.textContent = (TITRES[fam] || fam) + ' (' + liste.length + ')';
-      elMapPalette.appendChild(t);
+      bloc.appendChild(t);
       var g = document.createElement('div');
       g.className = 'nxmap-cases';
       liste.forEach(function (e) {
@@ -3447,9 +3479,11 @@
         g.appendChild(b);
         regardeLaPalette(b);
       });
-      elMapPalette.appendChild(g);
+      bloc.appendChild(g);
+      hote.appendChild(bloc);
     });
-    elMapPalette.dataset.pret = '1';
+    hote.dataset.pret = '1';
+    filtreLaPalette();
     /* Le choix courant peut ne plus exister dans la nouvelle palette : le
        garder ferait poser une tuile plate sur une carte isometrique, par un
        bouton qui n'y est plus. */
@@ -3503,33 +3537,22 @@
     borneLaVue(); mapRedessine();
   }
 
-  function peintMapGrille() {
-    if (!elMapGrille || !MAP) return;
-    var C = elMapGrille.getContext('2d');
-    var n = MAP.cote;
-    /* La taille du canevas suit la place que le CSS lui donne. Sans ce
-       reglage, le canevas garderait ses trois cents pixels par defaut et
-       l on dessinerait dans un timbre etire a l ecran. */
-    var r = elMapGrille.getBoundingClientRect();
-    var W = Math.max(1, Math.round(r.width)), H = Math.max(1, Math.round(r.height));
-    if (elMapGrille.width !== W || elMapGrille.height !== H) {
-      elMapGrille.width = W; elMapGrille.height = H;
-      ajusteLaVue();
-    }
-    if (!mapVue.p) ajusteLaVue();
-    var p = mapVue.p, ox = mapVue.x, oy = mapVue.y;
+  /**
+   * DESSINE UNE CARTE DANS UN CONTEXTE, A UNE ECHELLE DONNEE.
+   *
+   * Le meme code sert a la grille de l'atelier et a la vignette de la
+   * galerie. Deux routines auraient fini par ne plus dessiner la meme carte —
+   * et c'est la vignette, celle qu'on regarde AVANT d'ouvrir, qui aurait
+   * menti.
+   */
+  function peintLaCarte(C, cases, n, p, ox, oy, avecGrille) {
     C.imageSmoothingEnabled = false;
-    /* Deux fonds : celui de la FENETRE, et celui de la CARTE. Sans le premier,
-       on ne verrait pas ou la carte s arrete, et l on dessinerait dans le vide
-       en croyant dessiner dedans. */
-    C.fillStyle = '#070b16';
-    C.fillRect(0, 0, W, H);
     C.fillStyle = '#0a1020';
     C.fillRect(ox, oy, p * n, p * n);
     /* Les sols d'abord, TOUS, puis les objets : sinon un objet pose avant le
        sol de son voisin de droite passerait dessous. C'est la meme regle que
        le hall, pour la meme raison. */
-    MAP.cases.forEach(function (v, k) {
+    cases.forEach(function (v, k) {
       if (!v.s) return;
       var q = k.split(','), e = elementDe('sol', v.s);
       if (e) peintElement(C, e, ox + q[0] * p, oy + q[1] * p, p, p, true);
@@ -3543,7 +3566,7 @@
      * qui est le seul ordre dans lequel un dessin vu de trois quarts se tient
      * — le meme que celui du hall. */
     var poses = [];
-    MAP.cases.forEach(function (v, k) {
+    cases.forEach(function (v, k) {
       if (!v.o) return;
       var q = k.split(',');
       poses.push({ c: +q[0], l: +q[1], cle: v.o });
@@ -3576,7 +3599,7 @@
     /* Les traits se taisent quand ils seraient plus serres que lisibles : a
        quatre pixels par case, une grille dessinee est un aplat gris qui cache
        le travail au lieu de l aider. */
-    if (p >= 7) {
+    if (avecGrille && p >= 7) {
       C.strokeStyle = 'rgba(255,255,255,.07)';
       C.lineWidth = 1;
       for (var i = 0; i <= n; i++) {
@@ -3588,6 +3611,71 @@
        dise ou l on a le droit de dessiner. */
     C.strokeStyle = 'rgba(157,180,255,.45)'; C.lineWidth = 1;
     C.strokeRect(ox + .5, oy + .5, p * n - 1, p * n - 1);
+  }
+
+  /* ---- LA VIGNETTE D'UNE CARTE ----
+   *
+   * La galerie ne montrait que du texte : « by 0x1b2a… · 48×48 · 128 tiles ».
+   * Rien a regarder, alors que voir le travail des autres est tout l'interet
+   * de la chose.
+   *
+   * Elle est fabriquee ICI, a l'enregistrement, et voyage AVEC la carte. Les
+   * deux autres facons etaient pires : envoyer les cases de chaque carte a
+   * l'ouverture de la galerie, c'est jusqu'a deux mille trois cents cases fois
+   * vingt-quatre cartes pour des images de deux centimetres ; et la fabriquer
+   * sur le serveur demanderait qu'il sache dessiner, c'est-a-dire qu'il
+   * tienne une copie du catalogue de l'autre depot.
+   *
+   * Cent vingt-huit pixels : c'est la taille a laquelle on la regarde. Le
+   * dessin passe par `peintLaCarte`, le meme que la grille.
+   */
+  var MAP_VIGNETTE = 128;
+  var MAP_VIGNETTE_OCTETS = 24000;
+  function vignetteDeLaCarte() {
+    if (!MAP) return null;
+    try {
+      var cv = document.createElement('canvas');
+      cv.width = MAP_VIGNETTE; cv.height = MAP_VIGNETTE;
+      var C = cv.getContext('2d');
+      C.fillStyle = '#070b16';
+      C.fillRect(0, 0, MAP_VIGNETTE, MAP_VIGNETTE);
+      peintLaCarte(C, MAP.cases, MAP.cote, MAP_VIGNETTE / MAP.cote, 0, 0, false);
+      var d = cv.toDataURL('image/webp', 0.6);
+      /* Un navigateur qui ne sait pas encoder en webp rend du PNG sans le
+         dire : on ne suppose donc rien du format, on regarde ce qui sort. Et
+         au-dela du plafond on n'envoie RIEN plutot qu'une image refusee — la
+         fiche retombe sur son texte, ce qui est le pire cas acceptable. */
+      if (!/^data:image\/(webp|png);base64,/.test(d)) return null;
+      if (d.length > MAP_VIGNETTE_OCTETS) {
+        d = cv.toDataURL('image/webp', 0.35);
+        if (d.length > MAP_VIGNETTE_OCTETS) return null;
+      }
+      return d;
+    } catch (e) { return null; }
+  }
+
+  function peintMapGrille() {
+    if (!elMapGrille || !MAP) return;
+    var C = elMapGrille.getContext('2d');
+    var n = MAP.cote;
+    /* La taille du canevas suit la place que le CSS lui donne. Sans ce
+       reglage, le canevas garderait ses trois cents pixels par defaut et
+       l on dessinerait dans un timbre etire a l ecran. */
+    var r = elMapGrille.getBoundingClientRect();
+    var W = Math.max(1, Math.round(r.width)), H = Math.max(1, Math.round(r.height));
+    if (elMapGrille.width !== W || elMapGrille.height !== H) {
+      elMapGrille.width = W; elMapGrille.height = H;
+      ajusteLaVue();
+    }
+    if (!mapVue.p) ajusteLaVue();
+    var p = mapVue.p, ox = mapVue.x, oy = mapVue.y;
+    C.imageSmoothingEnabled = false;
+    /* Deux fonds : celui de la FENETRE, et celui de la CARTE. Sans le premier,
+       on ne verrait pas ou la carte s arrete, et l on dessinerait dans le vide
+       en croyant dessiner dedans. */
+    C.fillStyle = '#070b16';
+    C.fillRect(0, 0, W, H);
+    peintLaCarte(C, MAP.cases, n, p, ox, oy, true);
     /* ---- ET LE RECTANGLE QU'ON EST EN TRAIN DE TIRER ----
      * Il se dessine PAR-DESSUS la grille et n'entre pas dans les cases : tant
      * que le doigt n'est pas leve, rien n'est pose. Le montrer autrement —
@@ -3945,6 +4033,16 @@
     liste.forEach(function (k) {
       var f = document.createElement('div');
       f.className = 'nxmap-fiche' + (k.mienne ? ' mienne' : '');
+      /* L'image d'abord : c'est elle qu'on regarde, le texte n'est que la
+         legende. Une carte enregistree avant que la vignette existe n'en a
+         pas — sa fiche reste ce qu'elle etait, et rien ne casse. */
+      if (k.vignette) {
+        var im = document.createElement('img');
+        im.className = 'nxmap-vue';
+        im.src = k.vignette;
+        im.alt = '';
+        f.appendChild(im);
+      }
       var b = document.createElement('b');
       b.textContent = k.nom;
       var i = document.createElement('i');
@@ -4134,6 +4232,12 @@
     b('nxMapOutilPot', function () { mapOutil = 'pot'; peintMapOutils(); });
     b('nxMapOutilRect', function () { mapOutil = 'rect'; peintMapOutils(); });
     b('nxMapOutilMain', function () { mapOutil = 'main'; peintMapOutils(); });
+    if (elMapCherche) {
+      elMapCherche.addEventListener('input', function () {
+        mapCherche = elMapCherche.value || '';
+        filtreLaPalette();
+      });
+    }
     b('nxMapPlus', function () { zoomeVers(elMapGrille.width / 2, elMapGrille.height / 2, 1.3); });
     b('nxMapMoins', function () { zoomeVers(elMapGrille.width / 2, elMapGrille.height / 2, 1 / 1.3); });
     b('nxMapAjuste', function () { ajusteLaVue(); mapRedessine(); });
@@ -4165,8 +4269,10 @@
         cases.push(e);
       });
       mapDit('Saving…');
-      envoie({ type: 'carteEnregistre', id: MAP.id || undefined,
-               carte: { nom: nom, cote: MAP.cote, mode: MAP.mode, cases: cases } });
+      var vg = vignetteDeLaCarte();
+      var envoi = { nom: nom, cote: MAP.cote, mode: MAP.mode, cases: cases };
+      if (vg) envoi.vignette = vg;
+      envoie({ type: 'carteEnregistre', id: MAP.id || undefined, carte: envoi });
     });
   })();
 

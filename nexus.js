@@ -101,6 +101,29 @@
      * vaut « andy » par defaut, donc un joueur qui porte JUSTEMENT Andy
      * tombait dans « rien n'a change » — et sa fiche n'etait jamais
      * demandee. Panneau vide, sans une erreur nulle part. */
+    /* ---- LES CARTES ----
+     * Deux messages, et le second porte trois choses differentes selon ce
+     * qu'on vient de demander : une carte lue, un enregistrement, une
+     * suppression. Un type par cas aurait fait trois routes pour une seule
+     * idee ; ce qui distingue, c'est le CHAMP present, et l'ordre des tests
+     * ci-dessous suit celui des gestes. */
+    if (m.type === 'cartes') { peintMapGalerie(m.liste || []); return; }
+    if (m.type === 'carte') {
+      if (m.error) { mapDit(m.error, true); return; }
+      if (m.liste) peintMapGalerie(m.liste);
+      if (m.supprime !== undefined) { MAP = null; peintMapOutils(); mapDit('Deleted.'); return; }
+      if (m.enregistre) {
+        /* LE NUMERO, et c'est tout ce qui manquait a la page : sans lui, le
+           second enregistrement creerait une deuxieme carte au lieu de
+           remplacer la premiere. */
+        if (MAP) { MAP.id = m.enregistre.id; MAP.nom = m.enregistre.nom; }
+        peintMapOutils();
+        mapDit('Saved.');
+        return;
+      }
+      if (m.carte) { ouvreAtelier(m.carte); return; }
+      return;
+    }
     if (m.type === 'skins') {
       SKINS_C = m.catalogue || SKINS_C;
       /* L'or du compte voyage AVEC le catalogue, et c'est le seul endroit d'ou
@@ -2568,6 +2591,11 @@
     petworld: { ouvre: function () { ouvrePetworld(); }, ouvert: function () { return petOuvert; } },
     etal:     { ouvre: function () { ouvreShop(); },     ouvert: function () { return shopOuvert; } },
     casino:   { ouvre: function () { ouvreBj(); },       ouvert: function () { return bjOuvert; } },
+    /* La machine a coups de poing n'etait qu'un decor. Elle ouvre l'atelier :
+       c'est la porte de l'editeur de cartes, et elle se nomme ici comme les
+       trois autres — le commentaire de `l.monde` dit deja pourquoi une porte
+       ecrite ailleurs ne ferait rien, sans rien dire. */
+    boxe:     { ouvre: function () { ouvreMap(); },      ouvert: function () { return mapOuvert; } },
   };
 
   /* ---- LES LIEUX DU HALL DANS LESQUELS ON ENTRE ----
@@ -3162,6 +3190,370 @@
   }
 
   /* La borne d'arcade : une seule source, chargee tout de suite. */
+  /* ================== L'EDITEUR DE CARTES ==================
+   *
+   * Un panneau plein ecran ouvert par la machine a coups de poing. Deux vues
+   * dans le meme voile : la GALERIE, ou l'on choisit, et l'ATELIER, ou l'on
+   * dessine. On passe de l'une a l'autre sans arret, et deux voiles auraient
+   * fait deux fermetures a tenir d'accord.
+   *
+   * ---- CE QUE CETTE PAGE NE DECIDE PAS ----
+   *
+   * Qui peut ecrire. Le drapeau `mienne` ne sert qu'a montrer ou cacher un
+   * bouton : le refus vit dans le serveur, qui compare l'adresse de la socket
+   * a celle de l'auteur. Cacher le bouton est du confort ; c'est le serveur
+   * qui garde. Un editeur qui croirait garder quelque chose serait une porte
+   * peinte sur un mur.
+   *
+   * ---- ET LE CATALOGUE VIENT D'UN FICHIER, PAS D'UNE LISTE ----
+   *
+   * `catalogue.json` est genere des dossiers d'images, et un essai le tient a
+   * jour. La page ne connait donc aucun nom d'element : elle affiche ce qu'on
+   * lui donne. Une planche livree demain apparait dans la palette sans qu'on
+   * touche a ce fichier.
+   */
+  var mapOuvert = false;
+  var CATALOGUE = null;
+  var IMG_CAT = {};                       // fichier -> Image, chargee une fois
+  var MAP_COTE = 48;                      // borne du serveur ; corrigee a l'ouverture d'une carte
+  var MAP = null;                         // { id, nom, cote, cases: Map, mienne }
+  var mapOutil = 'dessin';
+  var mapChoix = null;                    // { famille, cle }
+  var mapPeintPrevu = false;
+
+  var elMapVoile = document.getElementById('nxMapVoile');
+  var elMapGalerie = document.getElementById('nxMapGalerie');
+  var elMapAtelier = document.getElementById('nxMapAtelier');
+  var elMapPalette = document.getElementById('nxMapPalette');
+  var elMapGrille = document.getElementById('nxMapGrille');
+  var elMapNom = document.getElementById('nxMapNom');
+  var elMapDit = document.getElementById('nxMapDit');
+
+  function mapDit(t, mauvais) {
+    if (!elMapDit) return;
+    elMapDit.textContent = t || '';
+    elMapDit.classList.toggle('mauvais', !!mauvais);
+  }
+
+  /** La planche d'un element, chargee une fois et gardee. */
+  function plancheCat(e) {
+    if (!IMG_CAT[e.fichier]) {
+      var i = new Image();
+      i.src = e.fichier;
+      /* On redessine quand elle arrive : sans ca, la palette et la grille
+         resteraient vides jusqu'au prochain geste, et l'on croirait que
+         l'element n'existe pas. */
+      i.onload = function () { mapRedessine(); peintMapPalette(); };
+      IMG_CAT[e.fichier] = i;
+    }
+    return IMG_CAT[e.fichier];
+  }
+  /** L'element d'une cle, quelle que soit sa famille. `null` si inconnu. */
+  function elementDe(famille, cle) {
+    if (!CATALOGUE || !CATALOGUE[famille]) return null;
+    for (var i = 0; i < CATALOGUE[famille].length; i++) {
+      if (CATALOGUE[famille][i].cle === cle) return CATALOGUE[famille][i];
+    }
+    return null;
+  }
+  /* Un sol se pose au sol, tout le reste se pose par-dessus. La famille dit
+     lequel des deux champs d'une case l'element occupe — sans quoi il faudrait
+     demander a chaque clic « est-ce un sol ? », et la reponse serait ailleurs. */
+  function champDe(famille) { return famille === 'sol' ? 's' : 'o'; }
+
+  /**
+   * DESSINE UN ELEMENT DANS UN RECTANGLE.
+   * La premiere image de la bande, et le rapport de la planche est CONSERVE :
+   * une facade ecrasee dans un carre ne ressemble plus a rien, et c'est en
+   * regardant la palette qu'on choisit.
+   */
+  function peintElement(c2, e, x, y, w, h, remplir) {
+    var im = plancheCat(e);
+    if (!im.complete || !im.naturalWidth) return false;
+    var cw = im.naturalWidth / Math.max(1, e.cadres);
+    if (remplir) { c2.drawImage(im, 0, 0, cw, im.naturalHeight, x, y, w, h); return true; }
+    var k = Math.min(w / cw, h / im.naturalHeight);
+    var lw = cw * k, lh = im.naturalHeight * k;
+    c2.drawImage(im, 0, 0, cw, im.naturalHeight, x + (w - lw) / 2, y + h - lh, lw, lh);
+    return true;
+  }
+
+  function peintMapPalette() {
+    if (!elMapPalette || !CATALOGUE) return;
+    if (elMapPalette.dataset.pret === '1') {
+      /* Deja construite : on ne refait que la marque du choix. Reconstruire a
+         chaque image chargee ferait clignoter cent quatorze vignettes. */
+      var pris = elMapPalette.querySelectorAll('.nxmap-el');
+      for (var q = 0; q < pris.length; q++) {
+        var b = pris[q];
+        b.classList.toggle('pris', !!mapChoix && b.dataset.fam === mapChoix.famille
+                                   && b.dataset.cle === mapChoix.cle);
+        var cv = b.firstChild;
+        if (cv && cv.dataset.peint !== '1') {
+          var el = elementDe(b.dataset.fam, b.dataset.cle);
+          if (el && peintElement(cv.getContext('2d'), el, 0, 0, cv.width, cv.height, false)) {
+            cv.dataset.peint = '1';
+          }
+        }
+      }
+      return;
+    }
+    var TITRES = { sol: 'Ground', mur: 'Walls', objet: 'Objects',
+                   monstre: 'Monsters', salle: 'Rooms' };
+    elMapPalette.innerHTML = '';
+    Object.keys(CATALOGUE).forEach(function (fam) {
+      var liste = CATALOGUE[fam];
+      if (!liste || !liste.length) return;
+      var t = document.createElement('h4');
+      t.textContent = (TITRES[fam] || fam) + ' (' + liste.length + ')';
+      elMapPalette.appendChild(t);
+      var g = document.createElement('div');
+      g.className = 'nxmap-cases';
+      liste.forEach(function (e) {
+        var b = document.createElement('button');
+        b.type = 'button'; b.className = 'nxmap-el';
+        b.dataset.fam = fam; b.dataset.cle = e.cle;
+        b.title = e.cle;
+        var cv = document.createElement('canvas');
+        cv.width = 46; cv.height = 46;
+        b.appendChild(cv);
+        if (peintElement(cv.getContext('2d'), e, 0, 0, 46, 46, false)) cv.dataset.peint = '1';
+        b.addEventListener('click', function () {
+          mapChoix = { famille: fam, cle: e.cle };
+          mapOutil = 'dessin';
+          peintMapPalette(); peintMapOutils();
+        });
+        g.appendChild(b);
+      });
+      elMapPalette.appendChild(g);
+    });
+    elMapPalette.dataset.pret = '1';
+    peintMapPalette();
+  }
+
+  /* ---- LE DESSIN DE LA GRILLE, GROUPE EN UNE SEULE IMAGE ----
+   * Un clic pose une case ; repeindre la grille entiere a chaque case posee
+   * ferait deux mille trois cents dessins pour un trait continu. On demande
+   * donc UNE peinture a la prochaine image, quel que soit le nombre de gestes
+   * qui l'ont demandee. */
+  function mapRedessine() {
+    if (mapPeintPrevu || !mapOuvert) return;
+    mapPeintPrevu = true;
+    requestAnimationFrame(function () { mapPeintPrevu = false; peintMapGrille(); });
+  }
+
+  function peintMapGrille() {
+    if (!elMapGrille || !MAP) return;
+    var C = elMapGrille.getContext('2d');
+    var n = MAP.cote, p = Math.max(8, Math.floor(672 / n));
+    if (elMapGrille.width !== n * p) { elMapGrille.width = n * p; elMapGrille.height = n * p; }
+    C.imageSmoothingEnabled = false;
+    C.fillStyle = '#0a1020';
+    C.fillRect(0, 0, elMapGrille.width, elMapGrille.height);
+    /* Les sols d'abord, TOUS, puis les objets : sinon un objet pose avant le
+       sol de son voisin de droite passerait dessous. C'est la meme regle que
+       le hall, pour la meme raison. */
+    MAP.cases.forEach(function (v, k) {
+      if (!v.s) return;
+      var q = k.split(','), e = elementDe('sol', v.s);
+      if (e) peintElement(C, e, q[0] * p, q[1] * p, p, p, true);
+    });
+    MAP.cases.forEach(function (v, k) {
+      if (!v.o) return;
+      var q = k.split(',');
+      var e = elementDe('objet', v.o) || elementDe('monstre', v.o)
+              || elementDe('mur', v.o) || elementDe('salle', v.o);
+      if (e) peintElement(C, e, q[0] * p, q[1] * p, p, p, false);
+    });
+    C.strokeStyle = 'rgba(255,255,255,.07)';
+    C.lineWidth = 1;
+    for (var i = 0; i <= n; i++) {
+      C.beginPath(); C.moveTo(i * p + .5, 0); C.lineTo(i * p + .5, n * p); C.stroke();
+      C.beginPath(); C.moveTo(0, i * p + .5); C.lineTo(n * p, i * p + .5); C.stroke();
+    }
+  }
+
+  /** La case sous un point de l'ecran, ou `null` si l'on est dehors. */
+  function caseSous(ev) {
+    var r = elMapGrille.getBoundingClientRect();
+    if (!r.width || !r.height) return null;
+    var c = Math.floor((ev.clientX - r.left) / r.width * MAP.cote);
+    var l = Math.floor((ev.clientY - r.top) / r.height * MAP.cote);
+    if (c < 0 || l < 0 || c >= MAP.cote || l >= MAP.cote) return null;
+    return { c: c, l: l };
+  }
+
+  function poseCase(ev) {
+    if (!MAP || !MAP.mienne) return;
+    var q = caseSous(ev);
+    if (!q) return;
+    var k = q.c + ',' + q.l;
+    if (mapOutil === 'gomme') { MAP.cases.delete(k); mapRedessine(); return; }
+    if (!mapChoix) { mapDit('Pick an element on the right first.', true); return; }
+    var v = MAP.cases.get(k) || {};
+    v[champDe(mapChoix.famille)] = mapChoix.cle;
+    MAP.cases.set(k, v);
+    /* Le plafond du SERVEUR, applique ici aussi : laisser dessiner au-dela
+       reviendrait a laisser quelqu'un travailler une heure pour un refus a
+       l'enregistrement. Mieux vaut l'arreter au geste qui deborde. */
+    if (MAP.cases.size > 2600) { MAP.cases.delete(k); mapDit('This map is full.', true); return; }
+    mapDit('');
+    mapRedessine();
+  }
+
+  if (elMapGrille) {
+    var mapTrace = false;
+    elMapGrille.addEventListener('pointerdown', function (ev) {
+      mapTrace = true; poseCase(ev); ev.preventDefault();
+      if (elMapGrille.setPointerCapture) { try { elMapGrille.setPointerCapture(ev.pointerId); } catch (e) {} }
+    });
+    elMapGrille.addEventListener('pointermove', function (ev) { if (mapTrace) poseCase(ev); });
+    /* Sur la FENETRE, comme le manche : un doigt qui quitte la grille en
+       dessinant doit arreter le trait, meme si le lacher arrive ailleurs. */
+    window.addEventListener('pointerup', function () { mapTrace = false; });
+    window.addEventListener('pointercancel', function () { mapTrace = false; });
+  }
+
+  /* ---- LES BOUTONS, ET CE QU'ILS MONTRENT DE L'ETAT ----
+   * Un seul endroit decide de ce qui est visible. Repartir ces `style.display`
+   * dans les fonctions qui ouvrent et ferment aurait fait cinq endroits a
+   * tenir d'accord, et le premier oubli laisse un bouton « Enregistrer » sur
+   * la carte de quelqu'un d'autre. */
+  function peintMapOutils() {
+    var atelier = !!MAP;
+    var mien = atelier && MAP.mienne;
+    var v = function (id, montre) {
+      var e = document.getElementById(id);
+      if (e) e.style.display = montre ? '' : 'none';
+    };
+    v('nxMapNom', mien); v('nxMapOutilDessin', mien); v('nxMapOutilGomme', mien);
+    v('nxMapEnregistre', mien); v('nxMapRetour', atelier); v('nxMapNouvelle', !atelier);
+    var d = document.getElementById('nxMapOutilDessin');
+    var g = document.getElementById('nxMapOutilGomme');
+    if (d) d.classList.toggle('vedette', mapOutil === 'dessin');
+    if (g) g.classList.toggle('vedette', mapOutil === 'gomme');
+    var t = document.getElementById('nxMapTitre');
+    if (t) {
+      t.innerHTML = !atelier ? '&#128506; Map Editor'
+        : (mien ? '&#128506; ' + ech(MAP.nom || 'Untitled')
+                : '&#128065; ' + ech(MAP.nom || 'Untitled')
+                  + (MAP.auteur ? ' <i style="font-style:normal;color:#8fa2d6">by ' + ech(MAP.auteur) + '</i>' : ''));
+    }
+    if (elMapGalerie) elMapGalerie.classList.toggle('on', !atelier);
+    if (elMapAtelier) elMapAtelier.classList.toggle('on', atelier);
+  }
+
+  function peintMapGalerie(liste) {
+    if (!elMapGalerie) return;
+    if (!liste || !liste.length) {
+      elMapGalerie.innerHTML = '<div class="nxmap-fiche"><b>No maps yet</b>'
+        + '<i>Press "New map" to draw the first one.</i></div>';
+      return;
+    }
+    elMapGalerie.innerHTML = '';
+    liste.forEach(function (k) {
+      var f = document.createElement('div');
+      f.className = 'nxmap-fiche' + (k.mienne ? ' mienne' : '');
+      var b = document.createElement('b');
+      b.textContent = k.nom;
+      var i = document.createElement('i');
+      i.textContent = (k.mienne ? 'yours' : (k.auteur ? 'by ' + k.auteur : 'by someone else'))
+                      + ' · ' + k.cote + '×' + k.cote + ' · ' + k.cases + ' tiles';
+      var r = document.createElement('div');
+      r.className = 'rang';
+      var o = document.createElement('button');
+      o.type = 'button';
+      o.textContent = k.mienne ? 'Edit' : 'Visit';
+      o.addEventListener('click', function () {
+        mapDit('Loading…');
+        if (enLigne) envoie({ type: 'carteLit', id: k.id });
+      });
+      r.appendChild(o);
+      if (k.mienne) {
+        var x = document.createElement('button');
+        x.type = 'button'; x.textContent = 'Delete';
+        x.addEventListener('click', function () {
+          if (enLigne) envoie({ type: 'carteSupprime', id: k.id });
+        });
+        r.appendChild(x);
+      }
+      f.appendChild(b); f.appendChild(i); f.appendChild(r);
+      elMapGalerie.appendChild(f);
+    });
+  }
+
+  /** Ouvre une carte dans l'atelier. `mienne` decide de tout ce qui s'affiche. */
+  function ouvreAtelier(c) {
+    MAP = { id: c.id || null, nom: c.nom || '', cote: c.cote || MAP_COTE,
+            cases: new Map(), mienne: c.mienne !== false, auteur: c.auteur || null };
+    (c.cases || []).forEach(function (q) {
+      var v = {};
+      if (q.s) v.s = q.s;
+      if (q.o) v.o = q.o;
+      MAP.cases.set(q.c + ',' + q.l, v);
+    });
+    if (elMapNom) elMapNom.value = MAP.nom;
+    mapDit('');
+    peintMapOutils();
+    peintMapPalette();
+    peintMapGrille();
+  }
+
+  function ouvreMap() {
+    if (!elMapVoile) return;
+    mapOuvert = true;
+    elMapVoile.classList.add('on');
+    MAP = null;
+    peintMapOutils();
+    mapDit('');
+    /* LE CATALOGUE, une fois par visite de page et SANS CACHE : il est genere
+       des dossiers, il change quand une planche arrive, et un navigateur qui
+       en garderait une vieille version proposerait une palette d'hier. */
+    if (!CATALOGUE) {
+      fetch('catalogue.json', { cache: 'no-store' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (j) { if (j) { CATALOGUE = j; peintMapPalette(); mapRedessine(); } })
+        ['catch'](function () { mapDit('Could not load the element catalogue.', true); });
+    }
+    if (enLigne) envoie({ type: 'carteListe' });
+    else mapDit('Not connected — maps cannot be loaded.', true);
+  }
+  function fermeMap() {
+    if (!elMapVoile) return;
+    mapOuvert = false; MAP = null;
+    elMapVoile.classList.remove('on');
+    marqueFerme('boxe');
+  }
+
+  (function boutonsMap() {
+    var b = function (id, f) {
+      var e = document.getElementById(id);
+      if (e) e.addEventListener('click', f);
+    };
+    b('nxMapFerme', function () { fermeMap(); });
+    b('nxMapRetour', function () { MAP = null; peintMapOutils(); if (enLigne) envoie({ type: 'carteListe' }); });
+    b('nxMapNouvelle', function () { ouvreAtelier({ nom: '', cote: MAP_COTE, cases: [], mienne: true }); });
+    b('nxMapOutilDessin', function () { mapOutil = 'dessin'; peintMapOutils(); });
+    b('nxMapOutilGomme', function () { mapOutil = 'gomme'; peintMapOutils(); });
+    b('nxMapEnregistre', function () {
+      if (!MAP || !MAP.mienne) return;
+      var nom = (elMapNom && elMapNom.value || '').trim();
+      if (!nom) { mapDit('Give your map a name first.', true); return; }
+      if (!enLigne) { mapDit('Not connected.', true); return; }
+      var cases = [];
+      MAP.cases.forEach(function (v, k) {
+        var q = k.split(',');
+        var e = { c: Number(q[0]), l: Number(q[1]) };
+        if (v.s) e.s = v.s;
+        if (v.o) e.o = v.o;
+        cases.push(e);
+      });
+      mapDit('Saving…');
+      envoie({ type: 'carteEnregistre', id: MAP.id || undefined,
+               carte: { nom: nom, cote: MAP.cote, cases: cases } });
+    });
+  })();
+
   function ouvreArcade() {
     ouvreEcran({ titre: '&#127918; Arcade',
                  sous: 'Two players, one keyboard. Click the screen first, then fight.',
@@ -3944,7 +4336,8 @@
      * 190 de large en donnent 304. Un nombre rond l'aurait ecrasee, et une
      * image etiree ne leve aucune erreur. */
     { cle: 'boxe', src: 'img/nexus/tiles/obj_boxe.webp',
-      x: CENTRE.x - 912, y: CENTRE.y + 16, larg: 190, haut: 304, cadres: 4 },
+      x: CENTRE.x - 912, y: CENTRE.y + 16, larg: 190, haut: 304, cadres: 4,
+      rayon: 130, nom: 'the map editor' },
   ];
   LIEUX.forEach(function (l) { l.img = new Image(); l.img.src = l.src; l.dwell = 0; });
   /* ---- ON DESIGNE UN LIEU PAR SON NOM, PAS PAR SA PLACE ----

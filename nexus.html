@@ -1910,6 +1910,74 @@ body.nxdrag *{ cursor:grabbing !important; }
   padding:7px 12px; border-radius:10px; background:rgba(10,17,40,.6);
   color:#c9d3f2; font:600 12px/1.3 'Space Mono',monospace; }
 
+
+/* ================== L'EDITEUR DE CARTES ==================
+ * Un panneau plein ecran, comme l'arcade et le coffre. Deux vues dans le meme
+ * voile — la galerie et l'atelier — parce qu'on passe de l'une a l'autre sans
+ * arret : on ouvre une carte, on la ferme, on en ouvre une autre. Deux voiles
+ * auraient fait deux fermetures a tenir d'accord.
+ * La palette est a DROITE et la grille a gauche : on dessine de la main qui
+ * tient la souris, et l'on choisit de l'autre. Sur telephone, la palette passe
+ * en bas — le pouce n'atteint pas le bord droit d'un ecran tenu d'une main. */
+#nxMapVoile{ position:fixed; inset:0; z-index:97; display:none;
+  background:rgba(4,7,13,.94); backdrop-filter:blur(3px);
+  font-family:'Archivo',system-ui,sans-serif; color:#dfe6ff; }
+#nxMapVoile.on{ display:flex; flex-direction:column; }
+#nxMapBarre{ display:flex; align-items:center; gap:10px; flex:0 0 auto;
+  padding:10px 14px; border-bottom:1px solid rgba(255,255,255,.12);
+  background:rgba(10,16,34,.9); }
+#nxMapBarre b{ font:800 15px/1 'Space Mono',monospace; letter-spacing:.5px; color:#9db4ff; }
+#nxMapBarre .creux{ flex:1 1 auto; }
+#nxMapVoile button{ font:700 12px/1 'Archivo',system-ui,sans-serif; color:#dfe6ff;
+  background:rgba(30,40,74,.85); border:1px solid rgba(255,255,255,.20);
+  border-radius:9px; padding:7px 12px; cursor:pointer;
+  -webkit-tap-highlight-color:transparent; }
+#nxMapVoile button:hover{ background:rgba(52,68,120,.9); }
+#nxMapVoile button.vedette{ background:rgba(46,104,72,.9); border-color:rgba(124,255,155,.5); color:#bff5cd; }
+#nxMapVoile button:disabled{ opacity:.4; cursor:default; }
+#nxMapNom{ font:700 13px/1 'Archivo',system-ui,sans-serif; color:#eaf0ff;
+  background:rgba(8,12,26,.9); border:1px solid rgba(255,255,255,.20);
+  border-radius:9px; padding:7px 10px; width:min(240px, 38vw); }
+#nxMapDit{ font:600 12px/1.3 'Archivo',system-ui,sans-serif; color:#9db4ff; }
+#nxMapDit.mauvais{ color:#ff9b9b; }
+
+/* ---- LA GALERIE ---- */
+#nxMapGalerie{ flex:1 1 auto; overflow-y:auto; padding:14px; display:none;
+  grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:12px; align-content:start; }
+#nxMapGalerie.on{ display:grid; }
+.nxmap-fiche{ background:rgba(14,20,40,.9); border:1px solid rgba(255,255,255,.14);
+  border-radius:12px; padding:12px; display:flex; flex-direction:column; gap:6px; }
+.nxmap-fiche.mienne{ border-color:rgba(124,255,155,.45); }
+.nxmap-fiche b{ font:800 14px/1.2 'Archivo',system-ui,sans-serif; color:#eaf0ff;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.nxmap-fiche i{ font-style:normal; font-size:11px; color:#8fa2d6; }
+.nxmap-fiche .rang{ display:flex; gap:6px; margin-top:4px; }
+
+/* ---- L'ATELIER ---- */
+#nxMapAtelier{ flex:1 1 auto; display:none; min-height:0; }
+#nxMapAtelier.on{ display:flex; }
+#nxMapScene{ flex:1 1 auto; min-width:0; display:flex; align-items:center;
+  justify-content:center; padding:10px; background:rgba(6,10,22,.6); }
+#nxMapGrille{ image-rendering:pixelated; touch-action:none; cursor:crosshair;
+  background:#0a1020; border:1px solid rgba(255,255,255,.16); border-radius:8px;
+  max-width:100%; max-height:100%; }
+#nxMapPalette{ flex:0 0 250px; overflow-y:auto; padding:10px;
+  border-left:1px solid rgba(255,255,255,.12); background:rgba(10,16,34,.8); }
+#nxMapPalette h4{ margin:10px 0 6px; font:800 11px/1 'Space Mono',monospace;
+  letter-spacing:.8px; color:#7f93c9; text-transform:uppercase; }
+#nxMapPalette h4:first-child{ margin-top:0; }
+.nxmap-cases{ display:grid; grid-template-columns:repeat(auto-fill, minmax(46px, 1fr)); gap:5px; }
+.nxmap-el{ position:relative; aspect-ratio:1; border-radius:7px; overflow:hidden;
+  background:rgba(6,10,22,.9); border:1px solid rgba(255,255,255,.14);
+  cursor:pointer; padding:0; }
+.nxmap-el.pris{ border-color:#7CFF9B; box-shadow:0 0 0 2px rgba(124,255,155,.35); }
+.nxmap-el canvas{ width:100%; height:100%; display:block; image-rendering:pixelated; }
+@media (max-width:820px){
+  #nxMapAtelier.on{ flex-direction:column; }
+  #nxMapPalette{ flex:0 0 34vh; border-left:none; border-top:1px solid rgba(255,255,255,.12); }
+  #nxMapNom{ width:34vw; }
+}
+
 body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed; background-color:#0A1128; }
 @media (orientation:landscape){ body{ background-image:url('img/8080b12ee3d6.jpg'); } }
 </style>
@@ -2234,6 +2302,25 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
      engendres par la table des etages, dans nexus.js. Cinq boutons ecrits a la
      main auraient ete cinq occasions d'en oublier un, et l'etage oublie
      n'aurait simplement pas existe — sans qu'aucune erreur ne le dise. -->
+<div id="nxMapVoile">
+  <div id="nxMapBarre">
+    <b id="nxMapTitre">&#128506; Map Editor</b>
+    <span id="nxMapDit"></span>
+    <span class="creux"></span>
+    <input id="nxMapNom" type="text" maxlength="48" placeholder="Map name" style="display:none">
+    <button id="nxMapOutilDessin" type="button" style="display:none">Draw</button>
+    <button id="nxMapOutilGomme" type="button" style="display:none">Erase</button>
+    <button id="nxMapEnregistre" type="button" class="vedette" style="display:none">Save</button>
+    <button id="nxMapRetour" type="button" style="display:none">Gallery</button>
+    <button id="nxMapNouvelle" type="button" class="vedette">New map</button>
+    <button id="nxMapFerme" type="button">Close</button>
+  </div>
+  <div id="nxMapGalerie" class="on"></div>
+  <div id="nxMapAtelier">
+    <div id="nxMapScene"><canvas id="nxMapGrille"></canvas></div>
+    <div id="nxMapPalette"></div>
+  </div>
+</div>
 <div id="nxTourVoile">
   <div class="nxcf-carte nxtr-carte">
     <button class="nxcf-x" type="button" aria-label="Close">&times;</button>
@@ -2241,6 +2328,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
     <div class="nxcf-sous">Pick a floor. The stairs take you down one flight at a time.</div>
     <div class="nxtr-corps" id="nxTourCorps"></div>
   </div>
+
 </div>
 
 <div id="nxRangVoile">
@@ -2300,7 +2388,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
      racine ; c'est le seul endroit d'ou elle peut couvrir tout le reste. -->
 <div id="nxFiche"></div>
 
-<script src="nexus.js?v=f08e35e7" defer></script>
+<script src="nexus.js?v=99ab0a33" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 
 <script>

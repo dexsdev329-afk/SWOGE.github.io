@@ -1110,11 +1110,32 @@ const servirLeSite = async () => {
   await p.waitForTimeout(500);
   eq((await couches()).nom, cle3,
      'des qu on pose, la fiche montre CE QU ON VIENT DE POSER');
-  /* Et l'outil n'a pas change : on tient sans avoir quitte le pinceau, sinon
-     le trait suivant ne partirait pas. */
-  ok(await p.evaluate(() => document.getElementById('nxMapOutilDessin')
+  /* ---- ET POSER FAIT PASSER A « CHOISIR » ----
+   * Cet essai verifiait EXACTEMENT LE CONTRAIRE, et c'etait un mauvais choix :
+   * tenir sans avoir l'outil ne servait qu'a moitie — la fiche montrait
+   * l'element, mais les poignees ne se dessinaient pas et le tirer ne faisait
+   * rien. Il fallait aller cliquer « Choisir » APRES CHAQUE POSE.
+   * Le retour ne coute rien : cliquer un element de la palette remet le
+   * pinceau, ce qu'on verifie juste apres. La boucle poser-regler-reprendre se
+   * ferme donc sans un seul clic d'outil. */
+  ok(await p.evaluate(() => document.getElementById('nxMapOutilChoix')
                               .classList.contains('vedette')),
-     'et l on est toujours au pinceau : tenir n interrompt pas le trait');
+     'et poser fait passer a « choisir » : on tient l element ET on en a l outil');
+  const versLaPalette = await p.evaluate(() => {
+    const b = document.querySelector('#nxMapListe .nxmap-el');
+    if (b) b.click();
+    return document.getElementById('nxMapOutilDessin').classList.contains('vedette');
+  });
+  ok(versLaPalette,
+     'et reprendre un element dans la palette remet le pinceau : le retour ne'
+     + ' coute pas un clic de plus');
+  /* On remet ce qu'on tenait, que la suite mesure. */
+  await p.evaluate((k) => {
+    const b = [...document.querySelectorAll('#nxMapListe .nxmap-el')]
+      .find((q) => q.dataset.cle === k);
+    if (b) b.click();
+  }, cle3);
+  await p.waitForTimeout(300);
 
   console.log('\n-- les trois glissieres : l angle et les deux axes --');
   /* ---- CE QUI ETAIT DEMANDE ----
@@ -1179,6 +1200,15 @@ const servirLeSite = async () => {
               .querySelector ? document.querySelector('#nxMapPosesListe .nxmap-pose.pris')
                                        .querySelector('i').textContent : ''),
   }));
+  /* ---- AU PINCEAU AVANT DE MESURER ----
+   * Depuis que poser fait passer a « choisir », les deux poignees sont
+   * dessinees sur les coins du cadre : elles debordent de vingt pixels et se
+   * mesuraient comme du dessin — deux cent vingt-neuf pixels de large pour un
+   * element qui en fait cent quatre-vingt-sept, et un pied vingt-six pixels
+   * trop bas. Trouve par la mesure elle-meme, qui s'est mise a rendre des
+   * nombres ronds mais faux. */
+  await p.evaluate(() => { document.getElementById('nxMapOutilDessin').click(); });
+  await p.waitForTimeout(300);
   const etat0 = await tenuEtat();
   const droit = await largeurDessinee({ ll: 12 }, bande);
   ok(droit.max > droit.min,
@@ -1243,9 +1273,40 @@ const servirLeSite = async () => {
    * Le bouton ne fait PAS « plus quatre-vingt-dix » : depuis dix-sept degres,
    * il rendrait cent sept, et l'on ne pourrait plus jamais retomber droit
    * autrement qu'en visant le zero a la glissiere. */
+  /* ---- L AIMANT CALE AUSSI L ANGLE ----
+   * « Il manque la rotation basique pour bien placer les elements. » Viser
+   * quarante-cinq ou quatre-vingt-dix sur une glissiere de trois cent
+   * soixante crans demandait de la patience, et c'est sur ces angles-la qu'on
+   * passe son temps quand on aligne. C'est le MEME aimant que pour la grille :
+   * un second interrupteur, propre a l'angle, aurait fait deux choses a se
+   * rappeler.
+   * On verifie les DEUX etats. Un seul passerait tout seul : mis, dix-sept
+   * doit devenir quinze ; ote, dix-sept doit rester dix-sept. */
+  await regle('nxMapRegG', 17);
+  eq(await p.evaluate(() => document.getElementById('nxMapRegGVal').textContent), '15°',
+     'aimant mis, la glissiere d angle s accroche aux quinze degres');
+  await p.click('#nxMapAimant'); await p.waitForTimeout(300);
   await regle('nxMapRegG', 17);
   eq(await p.evaluate(() => document.getElementById('nxMapRegGVal').textContent), '17°',
-     'la glissiere d angle affiche le degre choisi');
+     'aimant ote, elle rend le degre pres');
+  await p.click('#nxMapAimant'); await p.waitForTimeout(300);
+  /* ---- ET LES HUIT BOUTONS POSENT L ANGLE EN UN CLIC ----
+   * Une glissiere se vise, meme aimantee ; un bouton ne se vise pas. */
+  const boutonsAngle = await p.evaluate(() =>
+    [...document.querySelectorAll('#nxMapAngles button')].map((b) => b.dataset.deg));
+  eq(boutonsAngle.join(','), '0,45,90,135,180,225,270,315',
+     'les huit quarts et demi-quarts de tour sont la');
+  await p.evaluate(() => {
+    document.querySelector('#nxMapAngles button[data-deg="135"]').click();
+  });
+  await p.waitForTimeout(400);
+  eq(await p.evaluate(() => document.getElementById('nxMapRegGVal').textContent), '135°',
+     'un clic sur « 135° » y pose l element, sans viser');
+  ok(await p.evaluate(() => document.querySelector('#nxMapAngles button[data-deg="135"]')
+                              .classList.contains('vedette')),
+     'et celui qui porte l angle courant s allume : huit boutons identiques ne'
+     + ' diraient pas ou l on en est');
+  await regle('nxMapRegG', 17);
   await p.click('#nxMapTourne'); await p.waitForTimeout(450);
   eq(await p.evaluate(() => document.getElementById('nxMapRegG').value), '90',
      'et le bouton ne rajoute pas quatre-vingt-dix a dix-sept : il remet d equerre');
@@ -1358,7 +1419,7 @@ const servirLeSite = async () => {
 
   /* ---- ET TOUT CELA ARRIVE JUSQU AU SERVEUR ---- */
   await p.click('#nxMapMiroirY'); await p.waitForTimeout(400);
-  await regle('nxMapRegG', 47);
+  await regle('nxMapRegG', 45);
   await regle('nxMapRegX', -30);
   /* Deux gestes de suite sur la MEME glissiere : l annulation devra ramener
      quarante, et non zero. Voir plus bas — partir de zero ne prouvait rien. */
@@ -1374,7 +1435,7 @@ const servirLeSite = async () => {
     const dr = await (await fetch(base + '/admin/cartes?id=' + kr.id,
                                   { headers: { 'x-admin-key': 'k' } })).json();
     const q = (dr.carte.objets || []).find((o) => o.c === 10 && o.l === 12);
-    eq(q && q.g, 47, 'avec l angle au degre pres');
+    eq(q && q.g, 45, 'avec l angle, tel que l aimant l a pose');
     eq(q && q.dx, -30, 'et le decalage en X');
     eq(q && q.dy, 12, 'et celui en Y');
     eq(q && q.m, 2, 'et le miroir haut-bas');
@@ -1397,7 +1458,7 @@ const servirLeSite = async () => {
   await p.click('#nxMapAnnule'); await p.waitForTimeout(700);
   const remonte = await tenuEtat();
   eq(remonte.y, '0', 'un second « Undo » remonte encore d un geste');
-  eq(remonte.g, '47', "et l angle n est pas perdu en chemin : la copie de la pile porte TOUS les champs");
+  eq(remonte.g, '45', "et l angle n est pas perdu en chemin : la copie de la pile porte TOUS les champs");
   eq(remonte.x, '-30', 'le decalage en X non plus');
 
   console.log('\n-- le panneau de gauche : ce qu on a deja pose --');

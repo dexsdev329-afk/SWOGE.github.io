@@ -3261,6 +3261,8 @@
       potSolSeul: 'Fill works on grounds. Pick a ground on the right.',
       couche: 'Layer',
       aideCoucheTenu: 'Which layer this element sits on. A higher layer draws in front.',
+      anglesRonds: 'Turn to',
+      aideAngleRond: 'Snap it to a round angle in one click. The Angle slider still gives you everything in between.',
       verrouille: 'That element is locked. Open its padlock to change it.',
       verrouMis: 'Locked. It will not move when you work on top of it.',
       verrouOte: 'Unlocked.',
@@ -3269,7 +3271,7 @@
       aimant: 'Snap',
       aimantOn: 'Snap on: items land on the grid.',
       aimantOff: 'Snap off: items land wherever you drop them.',
-      aideAimant: 'On, items land on the grid. Off, they land wherever you drop them \u2014 down to a hundredth of a tile.',
+      aideAimant: 'On, items land on the grid and the Angle slider snaps to 15\u00b0 steps. Off, both go free \u2014 down to a hundredth of a tile and to the degree.',
       regleTaille: 'Size',
       aideRegleTaille: 'Resize it smoothly. \u2212 and + jump back to whole tiles.',
       miroir: 'Mirror',
@@ -3352,6 +3354,8 @@
       potSolSeul: 'Le pot remplit du sol. Choisissez un sol a droite.',
       couche: 'Couche',
       aideCoucheTenu: 'La couche où cet élément se trouve. Une couche plus haute passe devant.',
+      anglesRonds: 'Tourner à',
+      aideAngleRond: 'Le pose sur un angle rond en un clic. La glissière Angle donne toujours tout ce qu\u2019il y a entre les deux.',
       verrouille: 'Cet élément est verrouillé. Ouvrez son cadenas pour le changer.',
       verrouMis: 'Verrouillé. Il ne bougera plus quand vous travaillerez par-dessus.',
       verrouOte: 'Déverrouillé.',
@@ -3360,7 +3364,7 @@
       aimant: 'Aimant',
       aimantOn: 'Aimant mis : les éléments se posent sur la grille.',
       aimantOff: 'Aimant ôté : les éléments se posent où vous les lâchez.',
-      aideAimant: 'Mis, les éléments se posent sur la grille. Ôté, ils se posent où vous les lâchez \u2014 au centième de case près.',
+      aideAimant: 'Mis, les éléments se posent sur la grille et la glissière Angle s\u2019accroche aux 15\u00b0. Ôté, les deux sont libres \u2014 au centième de case et au degré près.',
       regleTaille: 'Taille',
       aideRegleTaille: 'La redimensionne finement. \u2212 et + reviennent aux cases pleines.',
       miroir: 'Miroir',
@@ -3446,6 +3450,8 @@
       potSolSeul: 'El relleno funciona con suelos. Elige un suelo a la derecha.',
       couche: 'Capa',
       aideCoucheTenu: 'La capa en la que está este elemento. Una capa más alta se dibuja delante.',
+      anglesRonds: 'Girar a',
+      aideAngleRond: 'Lo pone en un ángulo redondo de un clic. El deslizador Ángulo sigue dando todo lo intermedio.',
       verrouille: 'Este elemento está bloqueado. Abre su candado para cambiarlo.',
       verrouMis: 'Bloqueado. No se moverá cuando trabajes encima.',
       verrouOte: 'Desbloqueado.',
@@ -3454,7 +3460,7 @@
       aimant: 'Imán',
       aimantOn: 'Imán puesto: los elementos caen sobre la rejilla.',
       aimantOff: 'Imán quitado: los elementos caen donde los sueltes.',
-      aideAimant: 'Puesto, los elementos caen sobre la rejilla. Quitado, caen donde los sueltes \u2014 hasta la centésima de casilla.',
+      aideAimant: 'Puesto, los elementos caen sobre la rejilla y el deslizador Ángulo salta de 15\u00b0 en 15\u00b0. Quitado, ambos van libres \u2014 hasta la centésima de casilla y al grado.',
       regleTaille: 'Tamaño',
       aideRegleTaille: 'Lo redimensiona con finura. \u2212 y + vuelven a casillas enteras.',
       miroir: 'Espejo',
@@ -4591,6 +4597,10 @@
    * l'editeur pour la premiere fois n'a rien demande d'autre. C'est celui qui
    * veut composer finement qui l'eteint, et il sait ce qu'il cherche. */
   var mapAimant = true;
+  /* Leve des qu'un OBJET est pose, lu et remis a plat au lacher. Un sol ne le
+     leve pas : on pave par grandes surfaces, et passer a « choisir » a chaque
+     dalle rendrait le pinceau inutilisable. */
+  var mapObjetPose = false;
 
   /**
    * DEPLACE CE QU'ON TIENT SOUS LE DOIGT.
@@ -4776,6 +4786,17 @@
      * regarde ce qu'il vient de poser, il ne va pas le rechercher avec
      * l'outil « choisir ». */
     mapSel = neuf.i;
+    /* ---- ET L'ON PASSE A « CHOISIR » DES QUE LE DOIGT SE LEVE ----
+     * Tenir l'element sans en avoir l'outil ne servait qu'a moitie : la fiche
+     * le montrait, mais les poignees ne se dessinaient pas et le tirer ne
+     * faisait rien. Il fallait aller cliquer « Choisir » APRES CHAQUE POSE.
+     * Ce n'est pas fait ici mais au LACHER : le pinceau pose une case par
+     * case franchie, et changer d'outil a la premiere sortirait de l'outil au
+     * milieu du trait.
+     * Le retour ne coute rien : cliquer un element de la palette remet le
+     * pinceau. Poser, regler, reprendre dans la palette — la boucle se ferme
+     * sans un seul clic d'outil. */
+    mapObjetPose = true;
     return true;
   }
 
@@ -5001,6 +5022,16 @@
         var r = mapRect; mapRect = null;
         if (annuleLeRect) mapRedessine(); else poseRect(r);
       }
+      /* ---- POSER, C'EST PASSER A « CHOISIR » ----
+       * Lu APRES le rectangle : c'est lui qui vient de poser, et le lire
+       * avant laisserait le pinceau alors qu'on tient ce qu'on vient de
+       * tracer. Au LACHER et non a la pose : le pinceau pose une case par
+       * case franchie, et changer d'outil a la premiere sortirait de l'outil
+       * au milieu du trait. */
+      if (mapObjetPose) {
+        mapObjetPose = false;
+        if (mapOutil === 'dessin' || mapOutil === 'rect') { mapOutil = 'choix'; mapRedessine(); }
+      }
       /* Le geste fini, le panneau de gauche rattrape ce qu'il n'a pas suivi
          pendant qu'on tracait. Sans cet appel, un trait au pinceau ne se
          verrait dans la liste qu'au geste SUIVANT. */
@@ -5162,6 +5193,18 @@
    * En logarithme, un meme geste vaut le meme POURCENTAGE partout, ce qui est
    * la facon dont on pense une taille : « un peu plus gros », jamais « deux
    * cases de plus ». */
+  /* ---- LES ANGLES RONDS ----
+   * L'angle libre allait de degre en degre : viser quarante-cinq ou quatre-
+   * vingt-dix a la glissiere demandait de la patience, et c'est justement sur
+   * ces angles-la qu'on passe son temps quand on aligne des elements.
+   * L'AIMANT s'en charge, celui-la meme qui cale les poses sur la grille : mis,
+   * la glissiere s'accroche aux quinze degres ; ote, elle rend le degre pres.
+   * Un seul interrupteur pour « tout se cale sur des valeurs rondes » — un
+   * second, propre a l'angle, aurait fait deux choses a se rappeler. */
+  var MAP_ANGLE_CRAN = 15;
+  /* Les huit quarts et demi-quarts de tour, en un clic. Une glissiere se vise,
+     meme aimantee ; un bouton ne se vise pas. */
+  var MAP_ANGLES = [0, 45, 90, 135, 180, 225, 270, 315];
   var MAP_TAILLE_CRANS = 1000;
   function tailleDuCran(v) {
     var lo = Math.log(MAP_EMPRISE_MIN), hi = Math.log(empriseMax());
@@ -5207,6 +5250,18 @@
     for (var b = 0; b < 2; b++) {
       var mb = document.getElementById(b ? 'nxMapMiroirY' : 'nxMapMiroirX');
       if (mb) mb.classList.toggle('vedette', !!(tenu && ((tenu.m || 0) & (1 << b))));
+    }
+    /* Celui qui porte l'angle courant s'allume : sans cela, huit boutons
+       identiques ne diraient pas ou l'on en est, et il faudrait lire la
+       glissiere pour le savoir. */
+    var ha = document.getElementById('nxMapAngles');
+    if (ha) {
+      for (var w = 0; w < ha.childNodes.length; w++) {
+        var bt = ha.childNodes[w];
+        bt.classList.toggle('vedette',
+          !!tenu && Number(bt.dataset.deg) === ((tenu.g || 0) % 360));
+        bt.disabled = ferme;
+      }
     }
     ['G', 'X', 'Y'].forEach(function (q, i) {
       var e = document.getElementById('nxMapReg' + q);
@@ -5734,6 +5789,22 @@
     b('nxMapPlusGrand', function () { agrandis(1); });
     b('nxMapPlusPetit', function () { agrandis(-1); });
     b('nxMapTourne', tourne);
+    (function () {
+      var hote = document.getElementById('nxMapAngles');
+      if (!hote) return;
+      MAP_ANGLES.forEach(function (a) {
+        var q = document.createElement('button');
+        q.type = 'button';
+        /* Sans le signe « degre » : trois chiffres et un signe ne tiennent pas
+           dans un huitieme de colonne, et c'est le SIGNE qui saute — la
+           legende de la rangee dit deja qu'il s'agit d'angles. */
+        q.textContent = String(a);
+        q.dataset.deg = String(a);
+        q.title = T('aideAngleRond');
+        q.addEventListener('click', function () { retouche(function (o) { o.g = a; }); });
+        hote.appendChild(q);
+      });
+    })();
     /* ---- LES DEUX MIROIRS ----
      * Le seul autre axe qu'une image plate possede : elle n'a pas de
      * troisieme dimension, la tourner autour de sa verticale c'est la
@@ -5768,9 +5839,12 @@
       e.addEventListener('input', function () {
         geste(q[0]);
         var v = Math.round(Number(e.value)) || 0;
-        regleTenu(q[1], q[1] === 'g' ? ((v % 360) + 360) % 360
-                                     : Math.max(-MAP_DECALAGE_MAX,
-                                                Math.min(MAP_DECALAGE_MAX, v)));
+        if (q[1] === 'g') {
+          if (mapAimant) v = Math.round(v / MAP_ANGLE_CRAN) * MAP_ANGLE_CRAN;
+          regleTenu('g', ((v % 360) + 360) % 360);
+          return;
+        }
+        regleTenu(q[1], Math.max(-MAP_DECALAGE_MAX, Math.min(MAP_DECALAGE_MAX, v)));
       });
       e.addEventListener('change', function () { mapGlissiere = null; });
     });

@@ -2089,6 +2089,20 @@ body.nxdrag *{ cursor:grabbing !important; }
    classe, n'avait rien change du tout et le rendu le disait. */
 #nxMapCouches .nxmap-couches button,
 #nxMapFiche .nxmap-couches button{ padding:6px 2px; font-size:11px; }
+/* ---- HUIT ANGLES SUR TOUTE LA LARGEUR ----
+   Ils ont d abord ete mis en rangee ETIQUETEE, comme les couches : l etiquette
+   prenait quarante-huit pixels, il restait dix-neuf par bouton, et l ecran
+   affichait « 0° 45 90 13 18 22 27 31 » — les nombres coupes net. Un chiffre
+   de couche tient dans dix-neuf pixels, trois chiffres non.
+   La legende passe donc AU-DESSUS, et les huit boutons prennent les deux cent
+   trente pixels entiers. Vu au rendu, une fois de plus. */
+.nxmap-bloc{ display:flex; flex-direction:column; gap:4px; min-width:0; }
+.nxmap-bloc > b{ font:700 10px/1 'Space Mono',monospace; color:#7f93c9;
+  text-transform:uppercase; letter-spacing:.5px;
+  /* A GAUCHE comme les autres legendes : `#nxMapFiche b` centre les titres,
+     et cette legende-la n'en est pas un — elle nomme la rangee du dessous. */
+  text-align:left; }
+#nxMapAngles button{ font-size:10px; letter-spacing:-.2px; padding:6px 1px; }
 /* Les deux miroirs prennent la place de la glissiere : ce sont eux, ici, le
    reglage — et la colonne de droite ne fait que deux cent cinquante pixels,
    ou trois boutons cote a cote debordent. */
@@ -2612,6 +2626,15 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
         <b id="nxMapRegGVal">0&deg;</b>
         <button id="nxMapTourne" type="button" data-txtaide="aideTourne">&#8635;</button>
       </div>
+      <!-- ---- LES HUIT ANGLES RONDS ----
+           Une glissiere se vise, meme aimantee ; un bouton ne se vise pas. Et
+           c est sur ces angles-la qu on passe son temps quand on aligne des
+           elements les uns sur les autres. La glissiere garde tout le reste :
+           l aimant l accroche aux quinze degres, ote elle rend le degre pres. -->
+      <div class="nxmap-bloc">
+        <b data-txt="anglesRonds" data-txtaide="aideAngleRond">Turn to</b>
+        <span class="nxmap-couches" id="nxMapAngles"></span>
+      </div>
       <!-- ---- LE SEUL AUTRE AXE QU UNE IMAGE PLATE POSSEDE ----
            Une planche n a pas de troisieme dimension : la tourner autour de sa
            verticale, c est la RETOURNER. Un bouton par sens, et c est le seul
@@ -2723,7 +2746,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
      racine ; c'est le seul endroit d'ou elle peut couvrir tout le reste. -->
 <div id="nxFiche"></div>
 
-<script src="nexus.js?v=98132dc1" defer></script>
+<script src="nexus.js?v=140b6298" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 
 <script>

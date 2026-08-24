@@ -117,6 +117,10 @@
            second enregistrement creerait une deuxieme carte au lieu de
            remplacer la premiere. */
         if (MAP) { MAP.id = m.enregistre.id; MAP.nom = m.enregistre.nom; }
+        /* Le travail est chez le serveur : la question avant de jeter n'a plus
+           lieu d'etre. La PILE, elle, reste — on doit pouvoir annuler apres
+           avoir enregistre, comme dans n'importe quel editeur. */
+        mapSale = false;
         peintMapOutils();
         mapDit('Saved.');
         return;
@@ -3221,6 +3225,30 @@
   var mapChoix = null;                    // { famille, cle }
   var mapPeintPrevu = false;
 
+  /* ---- L'ANNULATION ----
+   *
+   * Le pinceau peint en GLISSANT : un doigt qui derape trace une ligne au
+   * travers d'une heure de travail, et il n'y avait aucun moyen de revenir en
+   * arriere. La pile garde donc l'etat AVANT chaque geste — un trait entier,
+   * un pot, un rectangle valent chacun une entree, pas une par case, sans
+   * quoi annuler un trait demanderait deux cents annulations.
+   *
+   * Quarante etats : de quoi couvrir une session de dessin, et borne parce
+   * qu'une carte pleine fait deux mille trois cents cases et qu'une pile sans
+   * fin finirait par peser plus que la carte elle-meme.
+   *
+   * `mapRefaire` se vide des qu'on redessine : refaire apres avoir repris un
+   * autre chemin n'aurait plus de sens, et un « refaire » qui recolle un etat
+   * d'une branche abandonnee est pire que pas de refaire du tout.
+   */
+  var mapPile = [], mapRefaire = [];
+  var MAP_PILE = 40;
+  /* Ce qui n'est pas enregistre. Mis a vrai par ce qui MODIFIE, remis a faux
+     par ce qui charge ou enregistre — un seul endroit chacun. */
+  var mapSale = false;
+  var mapRect = null;                     // { c0, l0, c1, l1 } pendant le glisse
+  var mapEnAttente = null;                // le geste suspendu par la question
+
   var elMapVoile = document.getElementById('nxMapVoile');
   var elMapGalerie = document.getElementById('nxMapGalerie');
   var elMapAtelier = document.getElementById('nxMapAtelier');
@@ -3444,6 +3472,57 @@
       C.beginPath(); C.moveTo(i * p + .5, 0); C.lineTo(i * p + .5, n * p); C.stroke();
       C.beginPath(); C.moveTo(0, i * p + .5); C.lineTo(n * p, i * p + .5); C.stroke();
     }
+    /* ---- ET LE RECTANGLE QU'ON EST EN TRAIN DE TIRER ----
+     * Il se dessine PAR-DESSUS la grille et n'entre pas dans les cases : tant
+     * que le doigt n'est pas leve, rien n'est pose. Le montrer autrement —
+     * en ecrivant les cases puis en les retirant — aurait mis un etat de plus
+     * dans la pile d'annulation a chaque frisson du doigt. */
+    if (mapRect) {
+      var x0 = Math.min(mapRect.c0, mapRect.c1) * p;
+      var y0 = Math.min(mapRect.l0, mapRect.l1) * p;
+      var x1 = (Math.max(mapRect.c0, mapRect.c1) + 1) * p;
+      var y1 = (Math.max(mapRect.l0, mapRect.l1) + 1) * p;
+      C.fillStyle = 'rgba(124,255,155,.18)';
+      C.fillRect(x0, y0, x1 - x0, y1 - y0);
+      C.strokeStyle = '#7CFF9B'; C.lineWidth = 2;
+      C.strokeRect(x0 + 1, y0 + 1, x1 - x0 - 2, y1 - y0 - 2);
+    }
+  }
+
+  /** Une copie franche des cases : la pile ne doit rien partager avec la carte. */
+  function copieDesCases() {
+    var m = new Map();
+    MAP.cases.forEach(function (v, k) {
+      var q = {};
+      if (v.s) q.s = v.s;
+      if (v.o) q.o = v.o;
+      m.set(k, q);
+    });
+    return m;
+  }
+  /** A appeler AVANT de modifier, une fois par geste. */
+  function memorise() {
+    if (!MAP || !MAP.mienne) return;
+    mapPile.push(copieDesCases());
+    if (mapPile.length > MAP_PILE) mapPile.shift();
+    mapRefaire.length = 0;
+    mapSale = true;
+  }
+  function annule() {
+    if (!MAP || !MAP.mienne || !mapPile.length) return;
+    mapRefaire.push(copieDesCases());
+    MAP.cases = mapPile.pop();
+    mapSale = true;
+    mapDit('');
+    peintMapOutils(); mapRedessine();
+  }
+  function refais() {
+    if (!MAP || !MAP.mienne || !mapRefaire.length) return;
+    mapPile.push(copieDesCases());
+    MAP.cases = mapRefaire.pop();
+    mapSale = true;
+    mapDit('');
+    peintMapOutils(); mapRedessine();
   }
 
   /** La case sous un point de l'ecran, ou `null` si l'on est dehors. */
@@ -3456,35 +3535,132 @@
     return { c: c, l: l };
   }
 
+  /* Le plafond du SERVEUR. Ecrit ici aussi, parce que laisser dessiner
+     au-dela reviendrait a laisser quelqu'un travailler une heure pour un
+     refus a l'enregistrement. */
+  var MAP_CASES_MAX = 2600;
+
+  /**
+   * ECRIT UNE CASE. Le seul endroit qui touche `MAP.cases`.
+   * Le pinceau, le pot et le rectangle passent tous par la : trois copies
+   * auraient fini par ne plus appliquer le meme plafond, et c'est celle qu'on
+   * oublie qui fait perdre le travail a l'enregistrement.
+   */
+  function ecritCase(c, l) {
+    var k = c + ',' + l;
+    if (mapOutil === 'gomme') { MAP.cases.delete(k); return true; }
+    if (!mapChoix) return false;
+    var v = MAP.cases.get(k) || {};
+    v[champDe(mapChoix.famille)] = mapChoix.cle;
+    var neuve = !MAP.cases.has(k);
+    MAP.cases.set(k, v);
+    if (neuve && MAP.cases.size > MAP_CASES_MAX) {
+      MAP.cases.delete(k); mapDit('This map is full.', true); return false;
+    }
+    return true;
+  }
+
   function poseCase(ev) {
     if (!MAP || !MAP.mienne) return;
     var q = caseSous(ev);
     if (!q) return;
-    var k = q.c + ',' + q.l;
-    if (mapOutil === 'gomme') { MAP.cases.delete(k); mapRedessine(); return; }
-    if (!mapChoix) { mapDit('Pick an element on the right first.', true); return; }
-    var v = MAP.cases.get(k) || {};
-    v[champDe(mapChoix.famille)] = mapChoix.cle;
-    MAP.cases.set(k, v);
-    /* Le plafond du SERVEUR, applique ici aussi : laisser dessiner au-dela
-       reviendrait a laisser quelqu'un travailler une heure pour un refus a
-       l'enregistrement. Mieux vaut l'arreter au geste qui deborde. */
-    if (MAP.cases.size > 2600) { MAP.cases.delete(k); mapDit('This map is full.', true); return; }
+    if (mapOutil !== 'gomme' && !mapChoix) {
+      mapDit('Pick an element on the right first.', true); return;
+    }
+    if (!ecritCase(q.c, q.l)) return;
     mapDit('');
     mapRedessine();
+  }
+
+  /* ---- LE POT DE PEINTURE ----
+   *
+   * Remplir un sol de quarante-huit sur quarante-huit demandait deux mille
+   * trois cents clics maintenus. Personne ne le fait, donc personne ne
+   * termine une carte. Le pot etend la meme valeur de proche en proche : il
+   * ne remplit pas « tout », il remplit la ZONE qu'on a montree, ce qui
+   * permet de peindre une clairiere sans effacer la riviere a cote.
+   *
+   * Par les quatre cotes et non par les huit : deux zones qui ne se touchent
+   * que par un coin sont deux zones pour l'oeil, et un pot qui fuit par la
+   * diagonale est un pot qui deborde sans qu'on comprenne pourquoi.
+   */
+  function remplis(c0, l0) {
+    var ch = mapOutil === 'gomme' ? null : champDe(mapChoix.famille);
+    var lit = function (c, l) {
+      var v = MAP.cases.get(c + ',' + l);
+      if (!v) return '';
+      return (ch ? v[ch] : (v.s || '') + '|' + (v.o || '')) || '';
+    };
+    var depart = lit(c0, l0);
+    var cible = mapOutil === 'gomme' ? null : mapChoix.cle;
+    /* Deja de cette couleur : le pot ne ferait rien, et empiler un etat pour
+       rien rendrait l'annulation muette une fois sur deux. */
+    if (ch && depart === cible) { mapDit('Already filled with that.', true); return; }
+    memorise();
+    var file = [[c0, l0]], vus = {}, n = MAP.cote;
+    while (file.length) {
+      var p = file.pop(), c = p[0], l = p[1], k = c + ',' + l;
+      if (c < 0 || l < 0 || c >= n || l >= n || vus[k]) continue;
+      if (lit(c, l) !== depart) continue;
+      vus[k] = 1;
+      if (!ecritCase(c, l)) break;
+      file.push([c + 1, l], [c - 1, l], [c, l + 1], [c, l - 1]);
+    }
+    mapRedessine(); peintMapOutils();
+  }
+
+  /** Le rectangle pose, du coin ou l'on a appuye a celui ou l'on lache. */
+  function poseRect(r) {
+    memorise();
+    var c0 = Math.min(r.c0, r.c1), c1 = Math.max(r.c0, r.c1);
+    var l0 = Math.min(r.l0, r.l1), l1 = Math.max(r.l0, r.l1);
+    for (var c = c0; c <= c1; c++) {
+      for (var l = l0; l <= l1; l++) { if (!ecritCase(c, l)) { c = c1 + 1; break; } }
+    }
+    mapRedessine(); peintMapOutils();
   }
 
   if (elMapGrille) {
     var mapTrace = false;
     elMapGrille.addEventListener('pointerdown', function (ev) {
-      mapTrace = true; poseCase(ev); ev.preventDefault();
+      ev.preventDefault();
+      if (!MAP || !MAP.mienne) return;
+      var q = caseSous(ev);
+      if (!q) return;
+      if (mapOutil !== 'gomme' && !mapChoix) {
+        mapDit('Pick an element on the right first.', true); return;
+      }
       if (elMapGrille.setPointerCapture) { try { elMapGrille.setPointerCapture(ev.pointerId); } catch (e) {} }
+      if (mapOutil === 'pot') { remplis(q.c, q.l); return; }
+      if (mapOutil === 'rect') {
+        mapTrace = true;
+        mapRect = { c0: q.c, l0: q.l, c1: q.c, l1: q.l };
+        mapRedessine(); return;
+      }
+      /* UN etat par trait, pris avant la premiere case : une entree par case
+         aurait demande deux cents annulations pour effacer un trait. */
+      memorise();
+      mapTrace = true; poseCase(ev);
     });
-    elMapGrille.addEventListener('pointermove', function (ev) { if (mapTrace) poseCase(ev); });
+    elMapGrille.addEventListener('pointermove', function (ev) {
+      if (!mapTrace) return;
+      if (mapRect) {
+        var q = caseSous(ev);
+        if (q) { mapRect.c1 = q.c; mapRect.l1 = q.l; mapRedessine(); }
+        return;
+      }
+      poseCase(ev);
+    });
     /* Sur la FENETRE, comme le manche : un doigt qui quitte la grille en
        dessinant doit arreter le trait, meme si le lacher arrive ailleurs. */
-    window.addEventListener('pointerup', function () { mapTrace = false; });
-    window.addEventListener('pointercancel', function () { mapTrace = false; });
+    var finDuGeste = function () {
+      mapTrace = false;
+      if (mapRect) { var r = mapRect; mapRect = null; poseRect(r); }
+    };
+    window.addEventListener('pointerup', finDuGeste);
+    /* Un geste ANNULE par le systeme ne pose rien : on jette le rectangle au
+       lieu de le peindre, sinon un appel entrant dessine tout seul. */
+    window.addEventListener('pointercancel', function () { mapTrace = false; mapRect = null; mapRedessine(); });
   }
 
   /* ---- LES BOUTONS, ET CE QU'ILS MONTRENT DE L'ETAT ----
@@ -3500,11 +3676,23 @@
       if (e) e.style.display = montre ? '' : 'none';
     };
     v('nxMapNom', mien); v('nxMapOutilDessin', mien); v('nxMapOutilGomme', mien);
+    v('nxMapOutilPot', mien); v('nxMapOutilRect', mien);
+    v('nxMapAnnule', mien); v('nxMapRefais', mien);
     v('nxMapEnregistre', mien); v('nxMapRetour', atelier); v('nxMapNouvelle', !atelier);
-    var d = document.getElementById('nxMapOutilDessin');
-    var g = document.getElementById('nxMapOutilGomme');
-    if (d) d.classList.toggle('vedette', mapOutil === 'dessin');
-    if (g) g.classList.toggle('vedette', mapOutil === 'gomme');
+    /* L'outil en vedette se lit de la TABLE : quatre `if` a tenir d'accord
+       auraient laisse deux outils allumes le jour ou un cinquieme arrive. */
+    var OUTILS = { dessin: 'nxMapOutilDessin', gomme: 'nxMapOutilGomme',
+                   pot: 'nxMapOutilPot', rect: 'nxMapOutilRect' };
+    Object.keys(OUTILS).forEach(function (o) {
+      var b = document.getElementById(OUTILS[o]);
+      if (b) b.classList.toggle('vedette', mapOutil === o);
+    });
+    /* Un bouton d'annulation qui reste cliquable quand il n'y a rien a
+       annuler ment sur l'etat du travail. */
+    var an = document.getElementById('nxMapAnnule');
+    var re = document.getElementById('nxMapRefais');
+    if (an) an.disabled = !mapPile.length;
+    if (re) re.disabled = !mapRefaire.length;
     var t = document.getElementById('nxMapTitre');
     if (t) {
       t.innerHTML = !atelier ? '&#128506; Map Editor'
@@ -3559,6 +3747,10 @@
   function ouvreAtelier(c) {
     MAP = { id: c.id || null, nom: c.nom || '', cote: c.cote || MAP_COTE,
             cases: new Map(), mienne: c.mienne !== false, auteur: c.auteur || null };
+    /* Une carte chargee n'a rien a annuler et rien a perdre : garder la pile
+       de la precedente aurait permis d'annuler CELLE-CI vers l'etat d'une
+       AUTRE carte, ce qui est la pire chose qu'un editeur puisse faire. */
+    mapPile.length = 0; mapRefaire.length = 0; mapSale = false; mapRect = null;
     (c.cases || []).forEach(function (q) {
       var v = {};
       if (q.s) v.s = q.s;
@@ -3598,16 +3790,68 @@
     marqueFerme('boxe');
   }
 
+  /* ---- CE QUI JETTE LE TRAVAIL PASSE PAR ICI ----
+   *
+   * « Gallery » et « Close » remettaient la carte a zero sans un mot. On
+   * cliquait pour aller voir celle d'un voisin, et la sienne n'existait plus.
+   *
+   * `demande` execute tout de suite s'il n'y a rien a perdre, et sinon
+   * SUSPEND le geste en montrant la question. C'est le meme chemin pour les
+   * deux boutons : celui qui n'y passerait pas serait exactement celui qui
+   * fait perdre une heure de travail.
+   */
+  function demandeAvantDeJeter(f) {
+    if (!mapSale) { f(); return; }
+    mapEnAttente = f;
+    var q = document.getElementById('nxMapConfirme');
+    if (q) q.classList.add('on');
+  }
+  function fermeLaQuestion() {
+    mapEnAttente = null;
+    var q = document.getElementById('nxMapConfirme');
+    if (q) q.classList.remove('on');
+  }
+
   (function boutonsMap() {
     var b = function (id, f) {
       var e = document.getElementById(id);
       if (e) e.addEventListener('click', f);
     };
-    b('nxMapFerme', function () { fermeMap(); });
-    b('nxMapRetour', function () { MAP = null; peintMapOutils(); if (enLigne) envoie({ type: 'carteListe' }); });
+    b('nxMapJette', function () {
+      var f = mapEnAttente;
+      /* La question se ferme AVANT d'agir : le geste suspendu peut lui-meme
+         ouvrir autre chose, et une question restee affichee par-dessus
+         demanderait de repondre a une carte qui n'existe plus. */
+      fermeLaQuestion();
+      mapSale = false;
+      if (f) f();
+    });
+    b('nxMapGarde', function () { fermeLaQuestion(); });
+    b('nxMapFerme', function () { demandeAvantDeJeter(function () { fermeMap(); }); });
+    b('nxMapRetour', function () {
+      demandeAvantDeJeter(function () {
+        MAP = null; peintMapOutils(); if (enLigne) envoie({ type: 'carteListe' });
+      });
+    });
     b('nxMapNouvelle', function () { ouvreAtelier({ nom: '', cote: MAP_COTE, cases: [], mienne: true }); });
     b('nxMapOutilDessin', function () { mapOutil = 'dessin'; peintMapOutils(); });
     b('nxMapOutilGomme', function () { mapOutil = 'gomme'; peintMapOutils(); });
+    b('nxMapOutilPot', function () { mapOutil = 'pot'; peintMapOutils(); });
+    b('nxMapOutilRect', function () { mapOutil = 'rect'; peintMapOutils(); });
+    b('nxMapAnnule', annule);
+    b('nxMapRefais', refais);
+    /* ---- ET AU CLAVIER ----
+     * Ctrl+Z est le geste que tout le monde tente en premier ; ne rien faire
+     * se lit comme un editeur qui a perdu le travail. On n'y touche PAS dans
+     * le champ du nom : la, c'est le navigateur qui doit annuler la frappe,
+     * et lui voler la touche serait pire que de ne pas l'avoir. */
+    window.addEventListener('keydown', function (ev) {
+      if (!mapOuvert || !MAP || !MAP.mienne) return;
+      if (ev.target && ev.target.id === 'nxMapNom') return;
+      if (!(ev.ctrlKey || ev.metaKey) || ev.code !== 'KeyZ') return;
+      ev.preventDefault();
+      if (ev.shiftKey) refais(); else annule();
+    });
     b('nxMapEnregistre', function () {
       if (!MAP || !MAP.mienne) return;
       var nom = (elMapNom && elMapNom.value || '').trim();

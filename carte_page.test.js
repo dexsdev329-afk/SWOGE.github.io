@@ -273,6 +273,92 @@ const servirLeSite = async () => {
      + ` — soit ${attendu} cases (fond mesure a ${large.fond}, seuil ${large.seuil})`);
 
 
+  console.log('\n-- rien ne se jette sans qu on le demande --');
+  /* ---- CE QUE CET ESSAI TIENT ----
+   * La parcelle qu'on vient de poser n'est PAS enregistree. « Gallery »
+   * remettait la carte a zero sans un mot : on cliquait pour aller voir celle
+   * d'un voisin, et la sienne n'existait plus. */
+  const etatQuestion = () => p.evaluate(() => ({
+    question: document.getElementById('nxMapConfirme').classList.contains('on'),
+    atelier: document.getElementById('nxMapAtelier').classList.contains('on'),
+  }));
+  await p.click('#nxMapRetour');
+  await p.waitForTimeout(300);
+  let q1 = await etatQuestion();
+  ok(q1.question, 'la question s affiche au lieu de jeter');
+  ok(q1.atelier, 'et la carte est toujours a l ecran pendant qu on repond');
+  await p.click('#nxMapGarde');
+  await p.waitForTimeout(300);
+  let q2 = await etatQuestion();
+  ok(!q2.question && q2.atelier, '« Keep editing » referme la question et garde la carte');
+  await p.click('#nxMapRetour');
+  await p.waitForTimeout(200);
+  await p.click('#nxMapJette');
+  await p.waitForTimeout(400);
+  let q3 = await etatQuestion();
+  ok(!q3.question && !q3.atelier, 'et « Discard » seul ramene a la galerie');
+
+  console.log('\n-- le rectangle, l annulation et le pot --');
+  await p.click('#nxMapNouvelle');
+  await p.waitForTimeout(400);
+  /* ---- ON COMPTE LES CASES SUR LE DESSIN ----
+   * La carte vit dans une variable que la page ne publie pas, et lui ajouter
+   * une porte pour l'essai serait ajouter du code qui n'existe que pour
+   * l'essai. On compte donc les cases PEINTES : le centre de chaque case,
+   * compare au fond mesure sur la carte vide. C'est aussi ce qu'un joueur
+   * voit, ce qui est la seule chose qui compte. */
+  const compte = () => p.evaluate(() => {
+    const g = document.getElementById('nxMapGrille');
+    const C = g.getContext('2d');
+    const n = 48, pas = g.width / n;
+    const d = C.getImageData(0, 0, g.width, g.height).data;
+    let t = 0;
+    for (let c = 0; c < n; c++) {
+      for (let l = 0; l < n; l++) {
+        const x = Math.floor((c + .5) * pas), y = Math.floor((l + .5) * pas);
+        const i = (y * g.width + x) * 4;
+        /* Le fond vaut #0a1020 et un croisement de traits monte a peine plus :
+           on prend large, une tuile de sol etant une image, jamais du bleu
+           nuit uni. */
+        if (d[i] + d[i + 1] + d[i + 2] > 160) t++;
+      }
+    }
+    return t;
+  });
+  eq(await compte(), 0, 'une carte neuve ne porte aucune case');
+  await p.evaluate(() => {
+    document.querySelector('#nxMapPalette .nxmap-el[data-fam="sol"]').click();
+    document.getElementById('nxMapOutilRect').click();
+    const g = document.getElementById('nxMapGrille');
+    const r = g.getBoundingClientRect();
+    const pas = r.width / 48;
+    const ev = (t, c, l) => (t === 'up' ? window : g).dispatchEvent(new PointerEvent('pointer' + t,
+      { bubbles: true, pointerId: 9, clientX: r.left + (c + .5) * pas, clientY: r.top + (l + .5) * pas }));
+    ev('down', 10, 10); ev('move', 13, 13); ev('up', 13, 13);
+  });
+  await p.waitForTimeout(600);
+  eq(await compte(), 16, 'un rectangle de quatre sur quatre pose seize cases');
+  await p.click('#nxMapAnnule');
+  await p.waitForTimeout(400);
+  eq(await compte(), 0, 'et « Undo » les retire toutes d un coup, pas une par une');
+  await p.click('#nxMapRefais');
+  await p.waitForTimeout(400);
+  eq(await compte(), 16, 'et « Redo » les remet');
+  await p.evaluate(() => {
+    document.getElementById('nxMapOutilPot').click();
+    const g = document.getElementById('nxMapGrille');
+    const r = g.getBoundingClientRect();
+    const pas = r.width / 48;
+    g.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerId: 11,
+      clientX: r.left + pas * .5, clientY: r.top + pas * .5 }));
+    window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 11 }));
+  });
+  await p.waitForTimeout(900);
+  eq(await compte(), 48 * 48, 'le pot remplit le reste de la carte en un geste');
+  await p.click('#nxMapAnnule');
+  await p.waitForTimeout(500);
+  eq(await compte(), 16, 'et le pot entier s annule en une fois, lui aussi');
+
   ok(erreurs.length === 0, 'aucune erreur de page' + (erreurs.length ? ' — ' + erreurs[0] : ''));
   await nav.close(); site.stop();
   console.log(`\ncarte_page.test.js : ${n} verifications, ${echecs} echec(s)`);

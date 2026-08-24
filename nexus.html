@@ -1923,9 +1923,18 @@ body.nxdrag *{ cursor:grabbing !important; }
   background:rgba(4,7,13,.94); backdrop-filter:blur(3px);
   font-family:'Archivo',system-ui,sans-serif; color:#dfe6ff; }
 #nxMapVoile.on{ display:flex; flex-direction:column; }
-#nxMapBarre{ display:flex; align-items:center; gap:10px; flex:0 0 auto;
+#nxMapBarre{ display:flex; align-items:center; gap:8px; flex:0 0 auto; flex-wrap:wrap;
   padding:10px 14px; border-bottom:1px solid rgba(255,255,255,.12);
   background:rgba(10,16,34,.9); }
+/* ---- LA QUESTION AVANT DE JETER ----
+   Elle prend toute la largeur sous la barre et pousse le reste vers le bas :
+   posee en surimpression, elle aurait recouvert la grille et l'on aurait
+   repondu sans voir ce qu'on jette. */
+#nxMapConfirme{ display:none; align-items:center; gap:10px; flex:0 0 auto;
+  padding:10px 14px; background:rgba(58,26,26,.92);
+  border-bottom:1px solid rgba(255,155,155,.35); }
+#nxMapConfirme.on{ display:flex; }
+#nxMapConfirme b{ font:800 13px/1.3 'Archivo',system-ui,sans-serif; color:#ffd7d7; }
 #nxMapBarre b{ font:800 15px/1 'Space Mono',monospace; letter-spacing:.5px; color:#9db4ff; }
 #nxMapBarre .creux{ flex:1 1 auto; }
 #nxMapVoile button{ font:700 12px/1 'Archivo',system-ui,sans-serif; color:#dfe6ff;
@@ -2310,10 +2319,26 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
     <input id="nxMapNom" type="text" maxlength="48" placeholder="Map name" style="display:none">
     <button id="nxMapOutilDessin" type="button" style="display:none">Draw</button>
     <button id="nxMapOutilGomme" type="button" style="display:none">Erase</button>
+    <button id="nxMapOutilPot" type="button" style="display:none">Fill</button>
+    <button id="nxMapOutilRect" type="button" style="display:none">Rect</button>
+    <button id="nxMapAnnule" type="button" style="display:none">&#8630; Undo</button>
+    <button id="nxMapRefais" type="button" style="display:none">&#8631; Redo</button>
     <button id="nxMapEnregistre" type="button" class="vedette" style="display:none">Save</button>
     <button id="nxMapRetour" type="button" style="display:none">Gallery</button>
     <button id="nxMapNouvelle" type="button" class="vedette">New map</button>
     <button id="nxMapFerme" type="button">Close</button>
+  </div>
+  <!-- ---- LA QUESTION QUI SAUVE UN TRAVAIL ----
+       « Gallery » et « Close » remettaient la carte a zero sans un mot : on
+       cliquait pour regarder celle d'un voisin, et la sienne n'existait plus.
+       La barre ci-dessous ne s'affiche que si quelque chose n'est PAS
+       enregistre, et les deux issues y sont ecrites en toutes lettres. Une
+       fenetre du navigateur aurait fait le meme travail ; celle-ci reste dans
+       le panneau, et ne peut pas etre bloquee par un telephone. -->
+  <div id="nxMapConfirme">
+    <b>This map has changes you have not saved.</b>
+    <button id="nxMapJette" type="button">Discard them</button>
+    <button id="nxMapGarde" type="button" class="vedette">Keep editing</button>
   </div>
   <div id="nxMapGalerie" class="on"></div>
   <div id="nxMapAtelier">
@@ -2388,7 +2413,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
      racine ; c'est le seul endroit d'ou elle peut couvrir tout le reste. -->
 <div id="nxFiche"></div>
 
-<script src="nexus.js?v=76f463b2" defer></script>
+<script src="nexus.js?v=8fa3ede7" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 
 <script>

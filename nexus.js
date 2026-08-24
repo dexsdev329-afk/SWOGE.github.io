@@ -3260,6 +3260,16 @@
       choisir: 'Select',
       potSolSeul: 'Fill works on grounds. Pick a ground on the right.',
       couche: 'Layer',
+      aideCoucheTenu: 'Which layer this element sits on. A higher layer draws in front.',
+      aimant: 'Snap',
+      aimantOn: 'Snap on: items land on the grid.',
+      aimantOff: 'Snap off: items land wherever you drop them.',
+      aideAimant: 'On, items land on the grid. Off, they land wherever you drop them \u2014 down to a hundredth of a tile.',
+      regleTaille: 'Size',
+      aideRegleTaille: 'Resize it smoothly. \u2212 and + jump back to whole tiles.',
+      miroir: 'Mirror',
+      aideMiroirX: 'Flip it left to right. A mirror never blurs \u2014 it swaps pixels instead of inventing them.',
+      aideMiroirY: 'Flip it top to bottom. A mirror never blurs \u2014 it swaps pixels instead of inventing them.',
       poses: 'Placed',
       posesVide: 'Nothing placed yet.',
       aidePoses: 'Everything you have placed, layer by layer. Click a line to select it.',
@@ -3292,8 +3302,8 @@
       aideNouvelle: 'Start a new map.',
       aideFerme: 'Close the editor and go back to the Nexus.',
       aideLangue: 'Change the editor language.',
-      aidePlusPetit: 'Make it smaller by one tile.',
-      aidePlusGrand: 'Make it bigger by one tile. Drag its green corner for more.',
+      aidePlusPetit: 'Down to the previous whole tile \u2014 the way back to a round size.',
+      aidePlusGrand: 'Up to the next whole tile. Drag its green corner for anything in between.',
       aideTourne: 'Snap it to the next square angle \u2014 90, 180, 270, 0.',
       aideEfface: 'Remove this element from the map.',
       aideLache: 'Stop holding it.',
@@ -3336,6 +3346,16 @@
       choisir: 'Choisir',
       potSolSeul: 'Le pot remplit du sol. Choisissez un sol a droite.',
       couche: 'Couche',
+      aideCoucheTenu: 'La couche où cet élément se trouve. Une couche plus haute passe devant.',
+      aimant: 'Aimant',
+      aimantOn: 'Aimant mis : les éléments se posent sur la grille.',
+      aimantOff: 'Aimant ôté : les éléments se posent où vous les lâchez.',
+      aideAimant: 'Mis, les éléments se posent sur la grille. Ôté, ils se posent où vous les lâchez \u2014 au centième de case près.',
+      regleTaille: 'Taille',
+      aideRegleTaille: 'La redimensionne finement. \u2212 et + reviennent aux cases pleines.',
+      miroir: 'Miroir',
+      aideMiroirX: 'Le retourne de gauche à droite. Un miroir ne floute jamais \u2014 il échange des pixels au lieu d\u2019en inventer.',
+      aideMiroirY: 'Le retourne de haut en bas. Un miroir ne floute jamais \u2014 il échange des pixels au lieu d\u2019en inventer.',
       poses: 'Posés',
       posesVide: 'Rien de posé pour l\u2019instant.',
       aidePoses: 'Tout ce que vous avez posé, couche par couche. Cliquez une ligne pour la tenir.',
@@ -3368,8 +3388,8 @@
       aideNouvelle: 'Commence une nouvelle carte.',
       aideFerme: 'Ferme l\'editeur et revient au Nexus.',
       aideLangue: 'Change la langue de l\'editeur.',
-      aidePlusPetit: 'Reduit d\'une case.',
-      aidePlusGrand: 'Agrandit d\'une case. Tirez son coin vert pour aller plus vite.',
+      aidePlusPetit: 'Redescend à la case pleine précédente \u2014 le chemin de retour à une taille ronde.',
+      aidePlusGrand: 'Monte à la case pleine suivante. Tirez son coin vert pour tout ce qu\u2019il y a entre les deux.',
       aideTourne: 'Le remet d\u2019équerre au quart de tour suivant \u2014 90, 180, 270, 0.',
       aideEfface: 'Retire cet element de la carte.',
       aideLache: 'Arrete de le tenir.',
@@ -3415,6 +3435,16 @@
       choisir: 'Elegir',
       potSolSeul: 'El relleno funciona con suelos. Elige un suelo a la derecha.',
       couche: 'Capa',
+      aideCoucheTenu: 'La capa en la que está este elemento. Una capa más alta se dibuja delante.',
+      aimant: 'Imán',
+      aimantOn: 'Imán puesto: los elementos caen sobre la rejilla.',
+      aimantOff: 'Imán quitado: los elementos caen donde los sueltes.',
+      aideAimant: 'Puesto, los elementos caen sobre la rejilla. Quitado, caen donde los sueltes \u2014 hasta la centésima de casilla.',
+      regleTaille: 'Tamaño',
+      aideRegleTaille: 'Lo redimensiona con finura. \u2212 y + vuelven a casillas enteras.',
+      miroir: 'Espejo',
+      aideMiroirX: 'Lo voltea de izquierda a derecha. Un espejo nunca emborrona \u2014 intercambia píxeles en vez de inventarlos.',
+      aideMiroirY: 'Lo voltea de arriba abajo. Un espejo nunca emborrona \u2014 intercambia píxeles en vez de inventarlos.',
       poses: 'Colocados',
       posesVide: 'Aún no hay nada colocado.',
       aidePoses: 'Todo lo que has colocado, capa por capa. Pulsa una línea para cogerlo.',
@@ -3447,8 +3477,8 @@
       aideNouvelle: 'Empieza un mapa nuevo.',
       aideFerme: 'Cierra el editor y vuelve al Nexus.',
       aideLangue: 'Cambia el idioma del editor.',
-      aidePlusPetit: 'Lo hace una casilla mas pequeno.',
-      aidePlusGrand: 'Lo hace una casilla mas grande. Tira de su esquina verde para ir mas rapido.',
+      aidePlusPetit: 'Baja a la casilla entera anterior \u2014 la vuelta a un tamaño redondo.',
+      aidePlusGrand: 'Sube a la casilla entera siguiente. Tira de su esquina verde para todo lo intermedio.',
       aideTourne: 'Lo pone en escuadra en el siguiente cuarto de vuelta \u2014 90, 180, 270, 0.',
       aideEfface: 'Quita este elemento del mapa.',
       aideLache: 'Deja de sostenerlo.',
@@ -3699,7 +3729,7 @@
    * une facade ecrasee dans un carre ne ressemble plus a rien, et c'est en
    * regardant la palette qu'on choisit.
    */
-  function peintElement(c2, e, x, y, w, h, remplir, deg) {
+  function peintElement(c2, e, x, y, w, h, remplir, deg, mir) {
     var im = plancheCat(e);
     if (!im.complete || !im.naturalWidth) return false;
     var cw = im.naturalWidth / Math.max(1, e.cadres);
@@ -3714,10 +3744,17 @@
      * donne maintenant, et une glissiere a quatre crans ne sert a rien. Un
      * seul endroit lit l'unite, donc elle ne peut pas se contredire d'un
      * dessin a l'autre. */
-    if (deg) {
+    if (deg || mir) {
       c2.save();
       c2.translate(dx + lw / 2, dy + lh / 2);
+      /* ---- LE MIROIR AVANT L'ANGLE ----
+       * Il appartient a la PLANCHE : retourner puis tourner de trente degres,
+       * ce n'est pas tourner de trente degres puis retourner — le second
+       * revient a tourner de moins trente. On retourne donc dans le repere de
+       * l'image, avant de la faire pivoter, et les deux reglages restent
+       * lisibles separement. */
       c2.rotate(deg * Math.PI / 180);
+      if (mir) c2.scale((mir & 1) ? -1 : 1, (mir & 2) ? -1 : 1);
       c2.drawImage(im, 0, 0, cw, im.naturalHeight, -lw / 2, -lh / 2, lw, lh);
       c2.restore();
       return true;
@@ -4086,10 +4123,11 @@
         var cw = im.naturalWidth / Math.max(1, e.cadres);
         var ht = lg * im.naturalHeight / cw;
         var px = ox + (o.c + 0.5) * p - lg / 2 + ex, py = oy + (o.l + 1) * p - ht + ey;
-        if (o.g) {
+        if (o.g || o.m) {
           C.save();
           C.translate(px + lg / 2, py + ht / 2);
-          C.rotate(o.g * Math.PI / 180);
+          C.rotate((o.g || 0) * Math.PI / 180);
+          if (o.m) C.scale((o.m & 1) ? -1 : 1, (o.m & 2) ? -1 : 1);
           C.drawImage(im, 0, 0, cw, im.naturalHeight, -lg / 2, -ht / 2, lg, ht);
           C.restore();
         } else {
@@ -4097,7 +4135,7 @@
         }
         return;
       }
-      peintElement(C, e, ox + o.c * p + ex, oy + o.l * p + ey, p, p, false, o.g);
+      peintElement(C, e, ox + o.c * p + ex, oy + o.l * p + ey, p, p, false, o.g, o.m);
     });
     /* ---- ET LE CADRE DE CE QU'ON TIENT ----
      * Sur l'EMPRISE, pas sur la case cliquee : c'est la place que l'element
@@ -4284,7 +4322,7 @@
          parcelle droite et reduite a une case. Trouve en mesurant le DESSIN
          apres l'annulation — la donnee, elle, avait l'air juste. */
       return { i: o.i, c: o.c, l: o.l, k: o.k, n: o.n || 1, z: o.z || 0,
-               g: o.g || 0, dx: o.dx || 0, dy: o.dy || 0 };
+               g: o.g || 0, m: o.m || 0, dx: o.dx || 0, dy: o.dy || 0 };
     });
   }
   function copieDesCases() {
@@ -4430,14 +4468,49 @@
      l'agrandir au-dela ferait travailler quelqu'un pour un refus a
      l'enregistrement. */
   var MAP_EMPRISE_MAX = 64;
+  /* ---- ET LE PLANCHER, PARCE QU'UNE EMPRISE N'EST PLUS UN ENTIER ----
+   * Elle se comptait en cases pleines : d'une case a deux, du simple au
+   * double, et rien entre les deux. Elle se compte au CENTIEME de case, comme
+   * le decalage — plus fin que ce que l'oeil distingue a l'ecran. Un quart de
+   * case au minimum : en dessous, l'element est un point qu'on ne peut plus
+   * ni viser ni reprendre, et il resterait sur la carte pour toujours.
+   * Le meme nombre que le serveur, et pour la meme raison que les autres
+   * plafonds ecrits ici : mieux vaut arreter le geste que refuser le travail
+   * a l'enregistrement. */
+  var MAP_EMPRISE_MIN = 0.25;
+  /* Deux decimales, et pas une de plus quand elles ne disent rien : « 4 » se
+     lit d'un coup d'oeil, « 4.00 » fait chercher ce qui a change. */
+  function ditTaille(n) {
+    var v = Math.round((n || 1) * 100) / 100;
+    return (Math.abs(v - Math.round(v)) < 0.005) ? String(Math.round(v)) : v.toFixed(2);
+  }
+  function borneTaille(n) {
+    var v = Math.round(Number(n) * 100) / 100;
+    if (!isFinite(v)) return 1;
+    return Math.max(MAP_EMPRISE_MIN, Math.min(empriseMax(), v));
+  }
   /* Le DOUBLE du cote : un fond doit pouvoir couvrir la carte et deborder,
      sinon on voit ses bords. C'est la borne du serveur, ecrite pareil ici
      pour ne pas laisser travailler quelqu'un jusqu'a un refus. */
   function empriseMax() {
     return Math.max(1, Math.min(MAP_EMPRISE_MAX, (MAP ? MAP.cote : 1) * 2));
   }
+  /**
+   * « MOINS » ET « PLUS » RAMENENT A LA CASE PLEINE.
+   *
+   * Ils ajoutaient une case a ce qu'il y avait : depuis deux cases trente-
+   * cinq, « + » aurait rendu trois cent trente-cinq millimes, et l'on
+   * n'aurait plus jamais pu revenir a un compte rond sans viser le chiffre a
+   * la glissiere. Ils vont donc a la case pleine SUIVANTE — c'est le chemin
+   * de retour depuis n'importe quelle valeur fine, et c'est aussi ce que fait
+   * un bouton « une case de plus » quand on est deja sur un compte rond.
+   */
   function agrandis(d) {
-    retouche(function (v) { v.n = Math.max(1, Math.min(empriseMax(), (v.n || 1) + d)); });
+    retouche(function (v) {
+      var n = v.n || 1;
+      var cible = d > 0 ? Math.floor(n + 1e-9) + 1 : Math.ceil(n - 1e-9) - 1;
+      v.n = Math.max(MAP_EMPRISE_MIN, Math.min(empriseMax(), cible));
+    });
   }
   /* ---- ON TIRE LE COIN, LA TAILLE SUIT ----
    * L'emprise est CENTREE en largeur sur la case d'ancrage et POSEE sur son
@@ -4462,6 +4535,13 @@
    * la meme chose, vit dans le bloc des ecouteurs et n'est pas lisible d'ici
    * — le sortir de la aurait melange deux etats qui ne servent pas au meme. */
   var mapGeste = false;
+  /* ---- L'AIMANT ----
+   * Allume, un element se pose sur la case ; eteint, il se pose ou le doigt
+   * le laisse, au centieme de case. Allume PAR DEFAUT : la grille est ce qui
+   * permet de rabouter des sols sans couture, et quelqu'un qui ouvre
+   * l'editeur pour la premiere fois n'a rien demande d'autre. C'est celui qui
+   * veut composer finement qui l'eteint, et il sait ce qu'il cherche. */
+  var mapAimant = true;
 
   /**
    * DEPLACE CE QU'ON TIENT SOUS LE DOIGT.
@@ -4469,19 +4549,45 @@
    * L'objet change de case ; le SOL ne bouge pas. C'est ce qu'on attend en
    * tirant un batiment : on deplace le batiment, pas le terrain sous lui.
    */
-  function deplaceVers(q) {
-    if (!MAP || !mapSel || !mapDeplace) return;
+  /**
+   * DEPLACE CE QU'ON TIENT, AU POINT ET NON A LA CASE.
+   *
+   * ---- LA POSITION EST UN NOMBRE A VIRGULE, EN DEUX MORCEAUX ----
+   * `c` est la case, `dx` le centieme de case en plus : ensemble ils font une
+   * position fine, dont la case est la partie entiere et le decalage la
+   * partie fractionnaire. C'est ce qui permet a l'aimant de n'etre qu'un
+   * ARRONDI — les deux modes ecrivent la meme chose, l'un jette la virgule et
+   * l'autre la garde. Deux chemins separes auraient fini par ne plus poser au
+   * meme endroit.
+   *
+   * ---- ET L'ECART DE PRISE EST FIN, LUI AUSSI ----
+   * Il etait compte en cases entieres : prendre un batiment par son bord le
+   * faisait sauter d'une demi-case sous le curseur des le premier pixel.
+   */
+  function deplaceVers(pc) {
+    if (!MAP || !mapSel || !mapDeplace || !mapVue.p) return;
     var o = objetDe(mapSel);
     if (!o) { mapDeplace = null; return; }
-    var nc = Math.max(0, Math.min(MAP.cote - 1, q.c - mapDeplace.ec));
-    var nl = Math.max(0, Math.min(MAP.cote - 1, q.l - mapDeplace.el));
-    if (nc === o.c && nl === o.l) return;
+    var p = mapVue.p;
+    var vx = (pc.x - mapVue.x) / p - mapDeplace.ec;
+    var vy = (pc.y - mapVue.y) / p - mapDeplace.el;
+    var nc = Math.max(0, Math.min(MAP.cote - 1, Math.round(vx)));
+    var nl = Math.max(0, Math.min(MAP.cote - 1, Math.round(vy)));
+    var ndx = 0, ndy = 0;
+    if (!mapAimant) {
+      /* La virgule, bornee a une demi-case : au-dela, c'est la CASE qui
+         change, et la garder ici ferait deux facons d'ecrire la meme
+         position — celle qu'on lirait ne serait plus celle qu'on a posee. */
+      ndx = Math.max(-50, Math.min(50, Math.round((vx - nc) * 100)));
+      ndy = Math.max(-50, Math.min(50, Math.round((vy - nl) * 100)));
+    }
+    if (nc === o.c && nl === o.l && ndx === (o.dx || 0) && ndy === (o.dy || 0)) return;
     if (!mapDeplace.memo) { memorise(); mapDeplace.memo = true; }
-    /* L'objet change de case, et RIEN d'autre : ni le sol qu'il survole, ni
+    /* L'objet change de place, et RIEN d'autre : ni le sol qu'il survole, ni
        ce qui est deja pose la ou il arrive. C'est ce que les couches ont rendu
        possible — avant, arriver sur une case occupee remplacait ce qu'elle
        portait. */
-    o.c = nc; o.l = nl;
+    o.c = nc; o.l = nl; o.dx = ndx; o.dy = ndy;
     mapSale = true;
     peintMapOutils(); mapRedessine();
   }
@@ -4495,8 +4601,15 @@
     var pied = mapVue.y + (o.l + 1) * p;
     var parLarge = (pc.x - axe) * 2 / p;
     var parHaut = (pied - pc.y) / p;
-    var n = Math.round(Math.max(parLarge, parHaut));
-    n = Math.max(1, Math.min(empriseMax(), n));
+    /* ---- LE COIN SUIT LE DOIGT, IL NE SAUTE PLUS DE CASE EN CASE ----
+     * Il arrondissait a la case : d'une case a deux, on doublait, et il n'y
+     * avait rien entre les deux — c'est precisement ce qui manquait. Au
+     * centieme, la ou une case fait cinquante pixels a l'ecran, chaque pixel
+     * tire compte pour deux centiemes : le coin ne peut plus se derober.
+     * « Moins » et « plus », eux, restent sur les cases pleines : c'est le
+     * chemin de retour a un compte rond. */
+    var n = Math.round(Math.max(parLarge, parHaut) * 100) / 100;
+    n = Math.max(MAP_EMPRISE_MIN, Math.min(empriseMax(), n));
     if (n === (o.n || 1)) return;
     o.n = n;
     mapSale = true;
@@ -4604,7 +4717,7 @@
      * collision ne peuvent pas se contredire. */
     var el = elementDe(mapChoix.famille, mapChoix.cle);
     var neuf = { i: mapNo++, c: c, l: l, k: mapChoix.cle,
-                 n: (el && el.cases > 1) ? el.cases : 1, g: 0, dx: 0, dy: 0,
+                 n: (el && el.cases > 1) ? el.cases : 1, g: 0, m: 0, dx: 0, dy: 0,
                  z: mapCouche };
     MAP.objets.push(neuf);
     /* ---- CE QU'ON VIENT DE POSER EST CE QU'ON TIENT ----
@@ -4760,7 +4873,11 @@
          * L'ecart est garde pour que l'element suive la main depuis l'endroit
          * ou on l'a pris, au lieu de sauter sous le curseur. */
         if (pris) {
-          mapDeplace = { ec: q.c - pris.c, el: q.l - pris.l, memo: false };
+          /* En cases FRACTIONNAIRES : compte en cases entieres, il faisait
+             sauter d'une demi-case sous le curseur des le premier pixel. */
+          mapDeplace = { ec: (pc.x - mapVue.x) / mapVue.p - (pris.c + (pris.dx || 0) / 100),
+                         el: (pc.y - mapVue.y) / mapVue.p - (pris.l + (pris.dy || 0) / 100),
+                         memo: false };
           mapTrace = true;
         }
         peintMapOutils(); mapRedessine(); return;
@@ -4813,11 +4930,7 @@
       }
       if (!mapTrace) return;
       if (mapEtire) { etireVers(pc); return; }
-      if (mapDeplace) {
-        var qd = caseSous(ev);
-        if (qd) deplaceVers(qd);
-        return;
-      }
+      if (mapDeplace) { deplaceVers(pc); return; }
       if (mapRect) {
         var q = caseSous(ev);
         if (q) { mapRect.c1 = q.c; mapRect.l1 = q.l; mapRedessine(); }
@@ -4904,7 +5017,12 @@
     var pp = document.getElementById('nxMapPlusPetit');
     var vs = objetDe(mapSel);
     if (pg) pg.disabled = !vs || (vs.n || 1) >= empriseMax();
-    if (pp) pp.disabled = !vs || (vs.n || 1) <= 1;
+    if (pp) pp.disabled = !vs || (vs.n || 1) <= MAP_EMPRISE_MIN;
+    /* L'aimant s'allume comme un outil, mais il n'en est pas un : il ne
+       change pas ce que fait le clic, il change ou l'element se pose. */
+    var ai = document.getElementById('nxMapAimant');
+    if (ai) ai.classList.toggle('vedette', mapAimant);
+    v('nxMapAimant', mien);
     Object.keys(OUTILS).forEach(function (o) {
       var b = document.getElementById(OUTILS[o]);
       if (b) b.classList.toggle('vedette', mapOutil === o);
@@ -4959,7 +5077,7 @@
     var tai = document.getElementById('nxMapFicheTaille');
     var cv = document.getElementById('nxMapFicheVue');
     if (nom) nom.textContent = v.k;
-    if (tai) tai.textContent = String(v.n || 1) + '\u00d7' + String(v.n || 1);
+    if (tai) tai.textContent = ditTaille(v.n) + '\u00d7' + ditTaille(v.n);
     if (cv) {
       var e = elementDe('objet', v.k) || elementDe('iso', v.k) || elementDe('mur', v.k)
            || elementDe('salle', v.k) || elementDe('monstre', v.k);
@@ -4968,7 +5086,7 @@
       /* Tournee comme sur la carte : une fiche qui montrerait la planche
          droite pendant que la carte la montre de travers ferait douter des
          glissieres. */
-      if (e) peintElement(C, e, 0, 0, cv.width, cv.height, false, v.g || 0);
+      if (e) peintElement(C, e, 0, 0, cv.width, cv.height, false, v.g || 0, v.m || 0);
     }
     peintGlissieres(v);
   }
@@ -4987,7 +5105,38 @@
    * chose qu'il voit, et le bouton d'equerre reste a cote pour retomber
    * droit en un clic.
    */
+  /* ---- LA GLISSIERE DE TAILLE EST LOGARITHMIQUE ----
+   * Un quart de case a soixante-quatre, c'est un rapport de deux cent
+   * cinquante-six. Etalee lineairement, la moitie basse — ou vivent presque
+   * tous les elements, entre une et cinq cases — aurait tenu dans les deux
+   * premiers pour cent de la course : impossible d'y regler quoi que ce soit.
+   * En logarithme, un meme geste vaut le meme POURCENTAGE partout, ce qui est
+   * la facon dont on pense une taille : « un peu plus gros », jamais « deux
+   * cases de plus ». */
+  var MAP_TAILLE_CRANS = 1000;
+  function tailleDuCran(v) {
+    var lo = Math.log(MAP_EMPRISE_MIN), hi = Math.log(empriseMax());
+    return borneTaille(Math.exp(lo + (hi - lo) * v / MAP_TAILLE_CRANS));
+  }
+  function cranDeLaTaille(n) {
+    var lo = Math.log(MAP_EMPRISE_MIN), hi = Math.log(empriseMax());
+    var v = Math.round(MAP_TAILLE_CRANS * (Math.log(borneTaille(n)) - lo) / (hi - lo));
+    return Math.max(0, Math.min(MAP_TAILLE_CRANS, v));
+  }
+
   function peintGlissieres(tenu) {
+    var tg = document.getElementById('nxMapRegT');
+    if (tg) {
+      tg.max = String(MAP_TAILLE_CRANS);
+      var ct = String(cranDeLaTaille(tenu ? (tenu.n || 1) : 1));
+      if (tg.value !== ct) tg.value = ct;
+    }
+    /* Les deux miroirs s'allument comme les couches : on voit lequel est mis
+       sans avoir a retourner l'element pour s'en assurer. */
+    for (var b = 0; b < 2; b++) {
+      var mb = document.getElementById(b ? 'nxMapMiroirY' : 'nxMapMiroirX');
+      if (mb) mb.classList.toggle('vedette', !!(tenu && ((tenu.m || 0) & (1 << b))));
+    }
     ['G', 'X', 'Y'].forEach(function (q, i) {
       var e = document.getElementById('nxMapReg' + q);
       var b = document.getElementById('nxMapReg' + q + 'Val');
@@ -5126,7 +5275,7 @@
      * ferait refaire mille huit cents lignes a chaque degre de la glissiere,
      * alors qu'aucune ligne n'en montre un seul. */
     var sig = poses.map(function (o) {
-      return o.i + ':' + o.k + ':' + o.c + ',' + o.l + ':' + (o.z || 0);
+      return o.i + ':' + o.k + ':' + o.c + ',' + o.l + ':' + (o.z || 0) + ':' + (o.n || 1);
     }).join('|');
     if (sig !== mapPosesSignature) {
       mapPosesSignature = sig;
@@ -5158,7 +5307,8 @@
         var nm = document.createElement('span');
         nm.textContent = o.k;
         var ou = document.createElement('i');
-        ou.textContent = o.c + ',' + o.l + (o.n > 1 ? ' \u00b7 ' + o.n + '\u00d7' + o.n : '');
+        ou.textContent = o.c + ',' + o.l
+                       + (o.n && o.n !== 1 ? ' \u00b7 ' + ditTaille(o.n) : '');
         b.appendChild(im); b.appendChild(nm); b.appendChild(ou);
         hote.appendChild(b);
       });
@@ -5273,6 +5423,17 @@
     if (Number.isInteger(t) && t > 0 && t < 4) return t * 90;
     return 0;
   }
+  /* L'emprise d'une carte enregistree. « Absente » veut dire UNE case, et
+     c'est le seul cas ou l'absence a un sens : toute autre valeur, entiere ou
+     non, est ecrite. */
+  function tailleLue(q) {
+    var v = Number(q && q.n);
+    return (isFinite(v) && v > 0 && v !== 1) ? borneTaille(v) : 1;
+  }
+  function miroirLu(q) {
+    var v = Math.round(Number(q && q.m));
+    return (Number.isInteger(v) && v > 0 && v < 4) ? v : 0;
+  }
   function borneDecalage(v) {
     var d = Math.round(Number(v));
     if (!Number.isInteger(d)) return 0;
@@ -5313,13 +5474,14 @@
          encore en lire un vieux — on le remonte de la meme facon. */
       if (q.o) {
         MAP.objets.push({ i: mapNo++, c: q.c, l: q.l, k: q.o,
-                          n: q.n > 1 ? q.n : 1, g: angleLu(q), dx: 0, dy: 0, z: 0 });
+                          n: tailleLue(q), g: angleLu(q), m: miroirLu(q),
+                          dx: 0, dy: 0, z: 0 });
       }
     });
     (c.objets || []).forEach(function (q) {
       if (!q || !q.k) return;
       MAP.objets.push({ i: mapNo++, c: q.c, l: q.l, k: q.k,
-                        n: q.n > 1 ? q.n : 1, g: angleLu(q),
+                        n: tailleLue(q), g: angleLu(q), m: miroirLu(q),
                         dx: borneDecalage(q.dx), dy: borneDecalage(q.dy),
                         z: Math.max(0, Math.min(MAP_COUCHES - 1, q.z || 0)) });
     });
@@ -5496,6 +5658,18 @@
     b('nxMapPlusGrand', function () { agrandis(1); });
     b('nxMapPlusPetit', function () { agrandis(-1); });
     b('nxMapTourne', tourne);
+    /* ---- LES DEUX MIROIRS ----
+     * Le seul autre axe qu'une image plate possede : elle n'a pas de
+     * troisieme dimension, la tourner autour de sa verticale c'est la
+     * RETOURNER. Et c'est le seul retournement qui ne floute rien — un miroir
+     * echange des pixels, il n'en invente aucun. */
+    b('nxMapMiroirX', function () { retouche(function (o) { o.m = (o.m || 0) ^ 1; }); });
+    b('nxMapMiroirY', function () { retouche(function (o) { o.m = (o.m || 0) ^ 2; }); });
+    b('nxMapAimant', function () {
+      mapAimant = !mapAimant;
+      mapDit(T(mapAimant ? 'aimantOn' : 'aimantOff'));
+      peintMapOutils();
+    });
     /* ---- LES TROIS GLISSIERES ----
      * UN SEUL etat dans la pile par GESTE de glissiere, et non un par degre :
      * un aller-retour de zero a trois cents en aurait empile trois cents, et
@@ -5503,11 +5677,12 @@
      * `change` arrive au lacher, `input` a chaque cran — on empile au premier
      * `input` d'un geste, et l'on rouvre au `change`. */
     var mapGlissiere = null;
+    var geste = function (id) { if (mapGlissiere !== id) { memorise(); mapGlissiere = id; } };
     [['nxMapRegG', 'g'], ['nxMapRegX', 'dx'], ['nxMapRegY', 'dy']].forEach(function (q) {
       var e = document.getElementById(q[0]);
       if (!e) return;
       e.addEventListener('input', function () {
-        if (mapGlissiere !== q[0]) { memorise(); mapGlissiere = q[0]; }
+        geste(q[0]);
         var v = Math.round(Number(e.value)) || 0;
         regleTenu(q[1], q[1] === 'g' ? ((v % 360) + 360) % 360
                                      : Math.max(-MAP_DECALAGE_MAX,
@@ -5515,6 +5690,16 @@
       });
       e.addEventListener('change', function () { mapGlissiere = null; });
     });
+    /* La taille passe par la meme porte, mais son cran n'est pas sa valeur :
+       la course est logarithmique. */
+    var tg = document.getElementById('nxMapRegT');
+    if (tg) {
+      tg.addEventListener('input', function () {
+        geste('nxMapRegT');
+        regleTenu('n', tailleDuCran(Math.round(Number(tg.value)) || 0));
+      });
+      tg.addEventListener('change', function () { mapGlissiere = null; });
+    }
     /* ---- ET LE PANNEAU DE GAUCHE ----
      * UN seul ecouteur sur la liste, et non un par ligne : mille huit cents
      * ecouteurs, ce sont mille huit cents fermetures a defaire a chaque
@@ -5592,8 +5777,12 @@
            porteraient chacun `n:1, g:0, dx:0, dy:0` pour ne rien dire, ce sont
            quarante kilo-octets de trame pour rien — et la trame entiere est
            bornee a deux cent cinquante-six. */
-        if (o.n > 1) e.n = o.n;
+        /* « Une case » est le defaut qui ne part pas — mais « plus d'une »
+           ne peut plus etre la regle : une demi-case est une taille, et ne
+           pas l'ecrire la ramenerait a une case entiere au chargement. */
+        if (o.n && o.n !== 1) e.n = o.n;
         if (o.g) e.g = o.g;
+        if (o.m) e.m = o.m;
         if (o.dx) e.dx = o.dx;
         if (o.dy) e.dy = o.dy;
         return e;
@@ -8061,10 +8250,13 @@
      * la meme chose dans les deux endroits, ce qui est le pire.
      * EN DEGRES : c'est une glissiere qui l'a choisi, et le serveur le fait
      * voyager tel quel. */
-    if (o.g) {
+    if (o.g || o.m) {
       ctx.save();
       ctx.translate(X + L / 2, Y + H / 2);
-      ctx.rotate(o.g * Math.PI / 180);
+      /* Le miroir avant l'angle, comme dans l'editeur : l'ordre inverse
+         donnerait l'angle oppose, et les deux dessins se contrediraient. */
+      ctx.rotate((o.g || 0) * Math.PI / 180);
+      if (o.m) ctx.scale((o.m & 1) ? -1 : 1, (o.m & 2) ? -1 : 1);
       ctx.drawImage(img, cadreDeLHorloge(n) * cw, 0, cw, ch, -L / 2, -H / 2, L, H);
       ctx.restore();
       return true;

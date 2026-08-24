@@ -2074,6 +2074,28 @@ body.nxdrag *{ cursor:grabbing !important; }
 .nxmap-regle > b{ min-width:3.2em; text-align:right;
   font:800 11px/1 'Space Mono',monospace; color:#eaf0ff; }
 .nxmap-regle button{ padding:3px 7px; font-size:13px; }
+/* Une rangee qui n'a pas de valeur a afficher a droite prend toute la place :
+   huit boutons dans une seule colonne de grille seraient illisibles. */
+.nxmap-regle-large{ grid-template-columns:auto 1fr; }
+/* ---- ET LES HUIT COUCHES GARDENT LEUR PROPRE CHASSE ----
+   `#nxMapVoile button` donne DOUZE pixels de marge de chaque cote a tous les
+   boutons du panneau : sur huit boutons cela fait cent quatre-vingt-douze
+   pixels de marge seule, et le huitieme sortait de la colonne des qu'une
+   etiquette lui prenait quarante pixels. La rangee du haut, elle, tenait a UN
+   pixel pres — ce qui explique qu'on ne l'ait jamais vu.
+   Ecrit avec l'identifiant et non avec la classe : `.nxmap-couches button` ne
+   pesait pas assez lourd et n'avait JAMAIS pris, depuis le premier jour. Vu a
+   l'ecran, puis mesure bouton par bouton — la premiere correction, ecrite en
+   classe, n'avait rien change du tout et le rendu le disait. */
+#nxMapCouches .nxmap-couches button,
+#nxMapFiche .nxmap-couches button{ padding:6px 2px; font-size:11px; }
+/* Les deux miroirs prennent la place de la glissiere : ce sont eux, ici, le
+   reglage — et la colonne de droite ne fait que deux cent cinquante pixels,
+   ou trois boutons cote a cote debordent. */
+.nxmap-mir{ display:flex; gap:6px; min-width:0; }
+.nxmap-mir button{ flex:1 1 0; min-width:0; padding:3px 0; font-size:14px; opacity:.55; }
+.nxmap-mir button.vedette{ opacity:1; border-color:#FFD166;
+  box-shadow:0 0 0 1px rgba(255,209,102,.45); }
 #nxMapPalette{ flex:1 1 auto; overflow-y:auto; padding:10px; min-height:0; }
 #nxMapCherche{ position:sticky; top:-10px; z-index:2; width:100%; box-sizing:border-box;
   margin:0 0 10px; padding:8px 10px; border-radius:9px;
@@ -2463,6 +2485,12 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
     <button id="nxMapOutilChoix" type="button" data-txt="choisir" data-txtaide="aideChoix" style="display:none">Select</button>
     <button id="nxMapOutilDepart" type="button" data-txt="depart" data-txtaide="aideDepart" data-txtp="&#9873; " style="display:none">&#9873; Start</button>
     <button id="nxMapOutilMain" type="button" data-txt="main" data-txtaide="aideMain" data-txtp="&#9995; " style="display:none">&#9995; Pan</button>
+    <!-- ---- L AIMANT ----
+         Il n est PAS un outil : il ne change pas ce que fait le clic, il
+         change ou l element se pose. Mis, sur la case ; ote, au centieme de
+         case, la ou le doigt le laisse. Mis par defaut — la grille est ce qui
+         permet de rabouter des sols sans couture. -->
+    <button id="nxMapAimant" type="button" class="vedette" data-txt="aimant" data-txtaide="aideAimant" data-txtp="&#129522; " style="display:none">&#129522; Snap</button>
     <span id="nxMapZoomBloc" style="display:none">
       <button id="nxMapMoins" type="button" data-txtaide="aideMoins">&minus;</button>
       <button id="nxMapPlus" type="button" data-txtaide="aidePlus">+</button>
@@ -2551,9 +2579,26 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
         <b id="nxMapFicheTaille">1</b>
         <button id="nxMapPlusGrand" type="button" data-txtaide="aidePlusGrand">+</button>
       </div>
+      <!-- ---- ET LA TAILLE AU CENTIEME DE CASE ----
+           Les deux boutons vont de case pleine en case pleine ; la glissiere
+           donne tout ce qu il y a entre les deux. Sa course est LOGARITHMIQUE :
+           d un quart de case a soixante-quatre, le rapport est de deux cent
+           cinquante-six, et etalee lineairement la moitie basse — ou vivent
+           presque tous les elements — aurait tenu dans les deux premiers pour
+           cent de la course. -->
+      <div class="nxmap-regle">
+        <label data-txt="regleTaille" data-txtaide="aideRegleTaille" for="nxMapRegT">Size</label>
+        <input id="nxMapRegT" type="range" min="0" max="1000" step="1" value="0" data-txtaide="aideRegleTaille">
+      </div>
       <!-- La couche de CE qu'on tient : les memes huit boutons, pour qu'on
-           n'ait pas deux facons de designer la meme chose. -->
-      <div class="nxmap-couches" id="nxMapFicheCouches"></div>
+           n'ait pas deux facons de designer la meme chose.
+           ETIQUETEE, et c'est la vue a l'ecran qui l'a demande : deux rangees
+           de un a huit se suivaient dans la meme colonne, l'une legendee et
+           l'autre nue. Rien ne disait laquelle reglait quoi. -->
+      <div class="nxmap-regle nxmap-regle-large">
+        <label data-txt="couche" data-txtaide="aideCoucheTenu">Layer</label>
+        <span class="nxmap-couches" id="nxMapFicheCouches"></span>
+      </div>
       <!-- ---- L ANGLE ET LES DEUX AXES ----
            Le bouton seul ne donnait que quatre positions : on ne pouvait ni
            poser une passerelle de biais, ni coller un toit sur son mur — la
@@ -2566,6 +2611,18 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
         <input id="nxMapRegG" type="range" min="0" max="359" step="1" value="0" data-txtaide="aideRegleAngle">
         <b id="nxMapRegGVal">0&deg;</b>
         <button id="nxMapTourne" type="button" data-txtaide="aideTourne">&#8635;</button>
+      </div>
+      <!-- ---- LE SEUL AUTRE AXE QU UNE IMAGE PLATE POSSEDE ----
+           Une planche n a pas de troisieme dimension : la tourner autour de sa
+           verticale, c est la RETOURNER. Un bouton par sens, et c est le seul
+           retournement qui ne floute rien — un miroir echange des pixels, il
+           n en invente aucun. -->
+      <div class="nxmap-regle">
+        <label data-txt="miroir" data-txtaide="aideMiroirX">Mirror</label>
+        <span class="nxmap-mir">
+          <button id="nxMapMiroirX" type="button" data-txtaide="aideMiroirX">&#8646;</button>
+          <button id="nxMapMiroirY" type="button" data-txtaide="aideMiroirY">&#8645;</button>
+        </span>
       </div>
       <div class="nxmap-regle">
         <label data-txt="regleX" data-txtaide="aideRegleX" for="nxMapRegX">Shift X</label>
@@ -2658,7 +2715,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
      racine ; c'est le seul endroit d'ou elle peut couvrir tout le reste. -->
 <div id="nxFiche"></div>
 
-<script src="nexus.js?v=32b6752d" defer></script>
+<script src="nexus.js?v=a616b57a" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 
 <script>

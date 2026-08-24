@@ -1173,6 +1173,11 @@ const servirLeSite = async () => {
     x: (document.getElementById('nxMapRegX') || {}).value,
     y: (document.getElementById('nxMapRegY') || {}).value,
     g: (document.getElementById('nxMapRegG') || {}).value,
+    /* La case et la taille se lisent dans le panneau de gauche, sur la ligne
+       allumee : c'est ce que voit celui qui s'en sert, et non un interne. */
+    ligne: ((document.querySelector('#nxMapPosesListe .nxmap-pose.pris') || {})
+              .querySelector ? document.querySelector('#nxMapPosesListe .nxmap-pose.pris')
+                                       .querySelector('i').textContent : ''),
   }));
   const etat0 = await tenuEtat();
   const droit = await largeurDessinee({ ll: 12 }, bande);
@@ -1248,7 +1253,111 @@ const servirLeSite = async () => {
   eq(await p.evaluate(() => document.getElementById('nxMapRegG').value), '180',
      'puis avance d un quart de tour a la fois');
 
+
+  /* ---- LE MIROIR : LE SEUL AUTRE AXE QU UNE IMAGE PLATE POSSEDE ----
+   * « Il manque un axe de rotation. » Une planche n a pas de troisieme
+   * dimension : la tourner autour de sa verticale, c est la RETOURNER.
+   * On le mesure au CENTRE DE MASSE : un miroir ne change ni la largeur ni la
+   * hauteur, mesurer l une ou l autre ne dirait rien du tout. */
+  await regle('nxMapRegG', 0);
+  /* ---- ON COMPARE LE DESSIN A SON PROPRE REFLET ----
+   * Le premier essai mesurait le CENTRE DE MASSE et le voyait bouger de treize
+   * pixels : cela passait, mais treize pixels contre une tolerance de quatre,
+   * ce n'est pas une preuve, c'est une coincidence a un cheveu du bruit — et
+   * sur une planche plus symetrique il n'y aurait plus rien du tout a
+   * mesurer.
+   * On photographie donc la bande, et l'on pose la seule question qui ne
+   * depende pas de la planche : le dessin retourne est-il le REFLET du dessin
+   * droit ? Deux ecarts, et c'est leur rapport qui conclut — quelle que soit
+   * la dissymetrie, pourvu qu'il y en ait une, ce qu'on verifie aussi. */
+  const photo = (cam2, xa, xb, ya, yb) => p.evaluate(([cam2, xa, xb, ya, yb]) => {
+    const g = document.getElementById('nxMapGrille');
+    const d = g.getContext('2d').getImageData(0, 0, g.width, g.height).data;
+    const x0 = Math.round(xa), x1 = Math.round(xb), y0 = Math.round(ya), y1 = Math.round(yb);
+    const out = [];
+    for (let y = y0; y < y1; y++)
+      for (let x = x0; x < x1; x++) {
+        const i = (y * g.width + x) * 4;
+        out.push(d[i] + d[i + 1] + d[i + 2]);
+      }
+    return { px: out, w: x1 - x0, h: y1 - y0 };
+  }, [cam2, xa, xb, ya, yb]);
+  const ecart = (a, b) => {
+    let t = 0;
+    for (let i = 0; i < a.px.length; i++) t += Math.abs(a.px[i] - b.px[i]);
+    return t / a.px.length;
+  };
+  const reflet = (a) => {
+    const px = new Array(a.px.length);
+    for (let y = 0; y < a.h; y++)
+      for (let x = 0; x < a.w; x++) px[y * a.w + x] = a.px[y * a.w + (a.w - 1 - x)];
+    return { px, w: a.w, h: a.h };
+  };
+  /* La boite est CENTREE sur la planche : un reflet ne se compare qu'autour de
+     l axe qui le produit. */
+  const bx = [bande.x0 + 8 * bande.p, bande.x0 + 13 * bande.p];
+  const by = [bande.y0 + 10 * bande.p, bande.y0 + 13 * bande.p];
+  const pDroite = await photo(bande, bx[0], bx[1], by[0], by[1]);
+  const dissymetrie = ecart(pDroite, reflet(pDroite));
+  ok(dissymetrie > 5,
+     `la planche est dissymetrique, donc son miroir se verra : ${dissymetrie.toFixed(1)}`
+     + ` d ecart avec son propre reflet`);
+  await p.click('#nxMapMiroirX'); await p.waitForTimeout(500);
+  const pMiroir = await photo(bande, bx[0], bx[1], by[0], by[1]);
+  const versLeReflet = ecart(pMiroir, reflet(pDroite));
+  const versLOriginal = ecart(pMiroir, pDroite);
+  ok(versLeReflet < versLOriginal / 3,
+     `le dessin retourne EST le reflet du dessin droit : ${versLeReflet.toFixed(1)} d ecart`
+     + ` avec le reflet, ${versLOriginal.toFixed(1)} avec l original`);
+  await p.click('#nxMapMiroirX'); await p.waitForTimeout(500);
+  const pRevenue = await photo(bande, bx[0], bx[1], by[0], by[1]);
+  ok(ecart(pRevenue, pDroite) < versLOriginal / 10,
+     `et deux fois de suite la remet exactement comme elle etait :`
+     + ` ${ecart(pRevenue, pDroite).toFixed(1)} d ecart`);
+  ok(await p.evaluate(() => !document.getElementById('nxMapMiroirX')
+                              .classList.contains('vedette')),
+     'le bouton s eteint avec elle : on voit lequel est mis sans retourner l element');
+  /* ---- ET LE SECOND AXE DESSINE, LUI AUSSI ----
+   * Les deux sens passent par la meme ligne, mais par un BIT different : une
+   * faute de frappe sur le second serait muette, l element resterait droit et
+   * le serveur garderait quand meme le champ. */
+  await p.click('#nxMapMiroirY'); await p.waitForTimeout(500);
+  const pHautBas = await photo(bande, bx[0], bx[1], by[0], by[1]);
+  ok(ecart(pHautBas, pDroite) > versLOriginal / 3,
+     `le miroir haut-bas change le dessin lui aussi : ${ecart(pHautBas, pDroite).toFixed(1)}`
+     + ` d ecart`);
+  await p.click('#nxMapMiroirY'); await p.waitForTimeout(500);
+
+  /* ---- LA TAILLE AU CENTIEME DE CASE ----
+   * « On peut rajouter plus de precision sur les agrandissements ? » Elle
+   * allait de case pleine en case pleine : d une case a deux, du simple au
+   * double, et rien entre les deux. */
+  const avantTaille = await tenuEtat();
+  eq(avantTaille.taille, '4×4', 'on part de quatre cases pleines');
+  const quatre = await largeurDessinee({ ll: 12 }, bande);
+  const largeQuatre = quatre.max - quatre.min;
+  /* Le cran est LOGARITHMIQUE : on ne le calcule pas ici, on le pose et l on
+     lit ce que la fiche annonce — c est ce que voit celui qui s en sert. */
+  await regle('nxMapRegT', 474);
+  const fine = await tenuEtat();
+  const nFine = Number(String(fine.taille).split('×')[0]);
+  ok(String(fine.taille).indexOf('.') > 0 && nFine > 2 && nFine < 3,
+     `la glissiere donne une taille entre deux cases pleines : ${fine.taille}`);
+  const largeFine = await largeurDessinee({ ll: 12 }, bande);
+  const rapport = (largeFine.max - largeFine.min) / largeQuatre;
+  ok(Math.abs(rapport - nFine / 4) <= 0.06,
+     `et le DESSIN suit au meme rapport : ${rapport.toFixed(3)} pour ${(nFine / 4).toFixed(3)}`);
+  /* Et « + » ramene a la case pleine SUIVANTE : sans cela, on ne pourrait
+     plus jamais revenir a un compte rond depuis une valeur fine. */
+  await p.click('#nxMapPlusGrand'); await p.waitForTimeout(500);
+  eq((await tenuEtat()).taille, '3×3',
+     '« + » remonte a la case pleine suivante, et non a « la meme plus une »');
+  await p.click('#nxMapPlusPetit'); await p.waitForTimeout(500);
+  eq((await tenuEtat()).taille, '2×2', 'et « − » redescend a la precedente');
+  await regle('nxMapRegT', 474);
+
   /* ---- ET TOUT CELA ARRIVE JUSQU AU SERVEUR ---- */
+  await p.click('#nxMapMiroirY'); await p.waitForTimeout(400);
   await regle('nxMapRegG', 47);
   await regle('nxMapRegX', -30);
   /* Deux gestes de suite sur la MEME glissiere : l annulation devra ramener
@@ -1268,6 +1377,9 @@ const servirLeSite = async () => {
     eq(q && q.g, 47, 'avec l angle au degre pres');
     eq(q && q.dx, -30, 'et le decalage en X');
     eq(q && q.dy, 12, 'et celui en Y');
+    eq(q && q.m, 2, 'et le miroir haut-bas');
+    ok(q && q.n > 2 && q.n < 3 && q.n !== Math.round(q.n),
+       `et l emprise fractionnaire, telle quelle : ${q && q.n}`);
   }
   /* ---- UNE ANNULATION PAR GESTE, ET QUI RAMENE CE QU IL Y AVAIT AVANT ----
    * Deux pieges ici, et le second a failli passer.
@@ -1338,6 +1450,60 @@ const servirLeSite = async () => {
   const apresClic = await listeGauche();
   eq(apresClic.lignes.filter((l) => l.pris).length, 1, 'une seule ligne reste allumee');
   eq(apresClic.lignes.find((l) => l.pris).nom, cles[0], 'et c est la bonne');
+
+  console.log('\n-- l aimant : sur la grille, ou la ou le doigt lache --');
+  /* ---- CE QUI ETAIT DEMANDE ----
+   * « On peut rajouter plus de precision sur les deplacements ? » On tirait un
+   * element de CASE EN CASE : sur une carte de seize, le plus petit
+   * deplacement possible valait un seizieme de la carte. Il n y avait aucun
+   * moyen de le poser entre deux.
+   *
+   * LA POSITION EST UN NOMBRE A VIRGULE EN DEUX MORCEAUX : la case en est la
+   * partie entiere, le decalage la partie fractionnaire. L aimant n est donc
+   * qu un ARRONDI — les deux modes ecrivent la meme chose, l un jette la
+   * virgule et l autre la garde. On verifie les DEUX : un seul des deux
+   * passerait tout seul.
+   */
+  const camA = await cadre(16);
+  const tire = async (deA, versA, id) => {
+    await geste(camA, [{ t: 'down', c: deA, l: 8, id: id },
+                       { t: 'move', c: versA, l: 8, id: id },
+                       { t: 'up', c: versA, l: 8, id: id }]);
+    await p.waitForTimeout(500);
+    return tenuEtat();
+  };
+  /* On tient encore `cles[0]`, en 8,8, choisi par le panneau de gauche. */
+  eq((await tenuEtat()).ligne, '8,8', "l element tenu est bien celui de la case 8,8");
+  ok(await p.evaluate(() => document.getElementById('nxMapAimant')
+                              .classList.contains('vedette')),
+     "l aimant est mis au depart : la grille est ce qui permet de rabouter"
+     + " des sols sans couture, et personne n a rien demande d autre");
+  /* ---- AIMANT MIS : UN TIERS DE CASE NE DEPLACE RIEN ---- */
+  const colle = await tire(8, 8.3, 91);
+  eq(colle.ligne, '8,8', 'un tiers de case ne le sort pas de sa case');
+  eq(colle.x, '0', 'et ne laisse aucun decalage : il se pose SUR la grille');
+  /* ---- AIMANT OTE : IL SE POSE OU LE DOIGT LE LACHE ---- */
+  await p.click('#nxMapAimant'); await p.waitForTimeout(300);
+  ok(await p.evaluate(() => !document.getElementById('nxMapAimant')
+                               .classList.contains('vedette')),
+     'on ote l aimant, et le bouton s eteint');
+  const libre = await tire(8, 8.3, 92);
+  eq(libre.ligne, '8,8', 'la case ne change pas pour un tiers de case');
+  ok(Math.abs(Number(libre.x) - 30) <= 4,
+     `mais le decalage, lui, l enregistre : ${libre.x} centiemes pour trente demandes`);
+  /* Et au-dela d une demi-case, c est la CASE qui change : sans quoi la meme
+     position s ecrirait de deux facons, et celle qu on relit ne serait plus
+     celle qu on a posee. */
+  const pluLoin = await tire(8.3, 9.1, 93);
+  eq(pluLoin.ligne, '9,8', 'au-dela d une demi-case, c est la case qui change');
+  ok(Math.abs(Number(pluLoin.x)) <= 15,
+     `et le decalage repart de pres de zero : ${pluLoin.x}`);
+  /* ---- ET REMETTRE L AIMANT RAMENE SUR LA GRILLE ----
+   * C est le chemin de retour : sans lui, un element pose finement ne
+   * pourrait plus jamais etre raboute a ses voisins. */
+  await p.click('#nxMapAimant'); await p.waitForTimeout(300);
+  const recolle = await tire(9, 9.2, 94);
+  eq(recolle.x, '0', 'l aimant remis ramene l element sur la grille au premier geste');
 
   console.log('\n-- et l on va MARCHER dedans --');
   /* ---- LE BOUT DU CHEMIN ----

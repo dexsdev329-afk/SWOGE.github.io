@@ -223,5 +223,27 @@
         if (a) entre(a, SwogePrivy.getProvider());
       })['catch'](function () {});
     }
+    /* ---- ET LE PORTEFEUILLE, QUI N ETAIT PAS RESTAURE DU TOUT ----
+     *
+     * `swogeAuth` valait deja « wallet » depuis le premier jour, et PERSONNE
+     * ne le relisait. Consequence, signalee depuis un telephone avec la
+     * capture : on connecte son portefeuille, on change de page — ou l on
+     * recharge — et « CONNECT WALLET » revient, alors que la pastille de solde
+     * affiche les jetons juste a cote. Deux mecanismes savaient, chacun la
+     * moitie : celui-ci ne restaurait que le courriel, et celui de la bulle
+     * connaissait le portefeuille sans le dire a personne.
+     *
+     * `eth_accounts` et NON `eth_requestAccounts` : le premier rend les
+     * comptes deja autorises sans rien demander, le second ouvre une fenetre.
+     * Rouvrir une demande d autorisation a chaque chargement de page serait
+     * une bien pire panne que celle qu on repare.
+     *
+     * Rien n est attendu : si le portefeuille ne repond pas, la page reste
+     * telle quelle et l on peut toujours se connecter a la main. */
+    if (localStorage.getItem('swogeAuth') === 'wallet' && window.ethereum) {
+      window.ethereum.request({ method: 'eth_accounts' })
+        .then(function (c) { if (c && c[0]) entre(c[0], window.ethereum); })
+        ['catch'](function () {});
+    }
   } catch (e) {}
 })();

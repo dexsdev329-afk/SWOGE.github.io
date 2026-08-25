@@ -117,6 +117,103 @@ const TYPES = { '.html': 'text/html', '.js': 'application/javascript',
     }
   }
 
+  /* ================== LA SESSION PAR PORTEFEUILLE ==================
+   *
+   * ---- LE DEFAUT, SIGNALE AVEC UNE CAPTURE ----
+   * On connecte son portefeuille, on change de page — ou l on recharge — et
+   * « CONNECT WALLET » revient, alors que la pastille de solde affiche les
+   * jetons juste a cote. Deux mecanismes savaient, chacun la moitie :
+   * `swogecx.js` ne restaurait QUE le courriel, et la bulle de solde
+   * connaissait le portefeuille sans le dire a personne. `swogeAuth` valait
+   * « wallet » depuis le premier jour, et personne ne le relisait.
+   */
+  console.log('\n-- la session par portefeuille se retrouve toute seule --');
+  {
+    const ADR = '0x' + 'ab'.repeat(20);
+    const ctx = await nav.newContext({ viewport: { width: 1400, height: 900 } });
+    /* Un portefeuille d essai, pose AVANT que la page ne s execute. Il repond
+       a `eth_accounts` — la question qui ne demande rien — et REFUSE
+       `eth_requestAccounts` : si la page ouvrait une demande d autorisation a
+       chaque chargement, ce serait une bien pire panne que celle qu on
+       repare, et l essai doit le voir. */
+    await ctx.addInitScript(() => {
+      try { localStorage.setItem('swogeAuth', 'wallet'); } catch (e) {}
+      window.__demande = 0;
+      window.ethereum = {
+        request: (o) => {
+          const m = o && o.method;
+          if (m === 'eth_requestAccounts') { window.__demande++; return Promise.reject(new Error('jamais')); }
+          if (m === 'eth_accounts') return Promise.resolve(['0x' + 'ab'.repeat(20)]);
+          if (m === 'eth_chainId') return Promise.resolve('0x1237');
+          if (m === 'eth_getBalance') return Promise.resolve('0x6f05b59d3b20000');
+          if (m === 'eth_call') return Promise.resolve('0x' + (10n ** 21n).toString(16).padStart(64, '0'));
+          return Promise.resolve(null);
+        },
+        on: () => {},
+      };
+    });
+    const p = await ctx.newPage();
+    await p.route('**/cdnjs.cloudflare.com/**', (r) => r.abort());
+    await p.goto(`http://127.0.0.1:${s.address().port}/games.html`, { waitUntil: 'domcontentloaded' });
+    await p.waitForTimeout(2500);
+    const etat = await p.evaluate(() => ({
+      compte: !document.getElementById('cxCompte').hidden,
+      adresse: (document.getElementById('cxAdr') || {}).textContent,
+      boutons: [...document.querySelectorAll('.cx-wallet, .cx-mail')]
+        .filter((b) => { const r = b.getBoundingClientRect();
+                         return getComputedStyle(b).display !== 'none' && r.width > 0; })
+        .map((b) => (b.textContent || '').trim()).filter(Boolean),
+      demandes: window.__demande,
+    }));
+    ok(etat.compte, 'la page retrouve le portefeuille sans qu on reclique');
+    eq(etat.adresse, '0xabab…abab', 'et elle affiche SON adresse, pas une autre');
+    eq(etat.boutons.length, 0,
+       `plus aucun appel a se connecter quand on l est deja${etat.boutons.length ? ' — ' + etat.boutons.join(' + ') : ''}`);
+    eq(etat.demandes, 0,
+       'et AUCUNE fenetre d autorisation n a ete ouverte : `eth_accounts` demande'
+       + ' ce qui est deja accorde, `eth_requestAccounts` ouvrirait une fenetre a'
+       + ' chaque chargement de page');
+
+    /* ================== ET LES PASTILLES DE LA BARRE ==================
+     * Elles viennent de deux scripts partages par dix-sept pages SOMBRES, qui
+     * injectent leur propre feuille : solde dore sur brun, bulle vert neon,
+     * rond brun cercle d or. Sur une page claire, quatre taches. La page les
+     * habille sans toucher au script — c est elle qui est claire, pas le
+     * widget qui est faux. */
+    const pastilles = await p.evaluate(() => {
+      const bar = document.querySelector('.sw-haut') || document.body;
+      const fait = (cls, html) => { const e = document.createElement('span');
+        e.className = cls; e.innerHTML = html; bar.appendChild(e); return e; };
+      const l = {
+        swbal: fait('swbal', '<span class="pt"></span>164.9k<em>$SWOGE</em>'),
+        swusd: fait('swusd on', '≈ $4.87'),
+        swstk: fait('swstk', '<b>4680.91</b>'),
+        swpb: fait('swpb', '👤'),
+      };
+      const clair = (c) => { const v = (c.match(/\d+/g) || []).map(Number);
+        return v.length >= 3 ? (v[0] + v[1] + v[2]) / 3 : null; };
+      const out = {};
+      for (const k of Object.keys(l)) {
+        const st = getComputedStyle(l[k]);
+        out[k] = { fond: clair(st.backgroundColor), texte: clair(st.color) };
+      }
+      return out;
+    });
+    for (const k of ['swbal', 'swusd', 'swpb']) {
+      ok(pastilles[k].fond > 200 && pastilles[k].texte < 140,
+         `« ${k} » : fond clair et texte sombre (${Math.round(pastilles[k].fond)} sur `
+         + `${Math.round(pastilles[k].texte)}) — elle etait doree sur brun`);
+    }
+    /* La bulle de staking garde le VERT : elle est cliquable et annonce un gain
+       qui monte. La reduire au bleu de la page la rendrait indistinguable des
+       deux pastilles qui, elles, ne se cliquent pas. */
+    ok(pastilles.swstk.fond < 200 && pastilles.swstk.texte > 200,
+       `« swstk » reste pleine et lisible a l envers (${Math.round(pastilles.swstk.fond)}`
+       + ` sur ${Math.round(pastilles.swstk.texte)}) : c est la seule des quatre`
+       + ' qui se clique, et elle doit se distinguer');
+    await ctx.close();
+  }
+
   await nav.close(); s.close();
   console.log(`\nconnexion_unique.test.js : ${n} verifications, ${echecs} echec(s)`);
   process.exit(echecs ? 1 : 0);

@@ -896,6 +896,50 @@ a{color:inherit;text-decoration:none}
 </footer>
 
 
-<script src="swogecx.js?v=3e9abea6" defer></script>
+<script src="swogecx.js?v=9ad8fbf0" defer></script>
+<style>
+/* ==================== LES PASTILLES DE LA BARRE, AU CLAIR ====================
+ *
+ * ---- D OU ELLES VIENNENT ----
+ *
+ * Le solde, l estimation en dollars, la bulle de staking et le bouton de
+ * profil sont poses par `stakebubble.js` et `swogebuy.js`, partages par
+ * DIX-SEPT pages de jeu qui sont toutes sombres. Ils injectent leur propre
+ * feuille de style, dessinee pour du noir : un solde dore sur brun, une bulle
+ * vert vif, un rond brun cercle d or. Sur cette page-ci, quatre taches.
+ *
+ * ---- POURQUOI L HABILLAGE VIT ICI ET NON LA-BAS ----
+ *
+ * Changer les couleurs dans le script les changerait sur les dix-sept autres
+ * pages, ou elles sont justes. C est la PAGE qui est claire, pas le widget qui
+ * est faux — donc c est la page qui l habille. Chacune garde le sien, et
+ * aucune ne casse celle d a cote.
+ *
+ * Les regles sont posees APRES le script dans l ordre du document ; a
+ * specificite egale, la derniere gagne. On ne monte donc pas la specificite
+ * artificiellement — une classe suffit, comme la-bas.
+ */
+.swbal{ background:var(--carte) !important; border:1px solid var(--bord) !important;
+  color:var(--nuit) !important; box-shadow:var(--ombre) !important;
+  font-weight:800 !important; }
+/* Le point vert reste vert : c est un ETAT — la socket repond — et non une
+   couleur d habillage. Le rendre bleu ferait disparaitre la seule chose que
+   cette pastille dit en plus du chiffre. On lui retire seulement son halo,
+   qui existait pour percer un fond noir. */
+.swbal .pt{ box-shadow:none !important; }
+.swbal em{ color:var(--gris) !important; }
+.swusd{ background:var(--carte) !important; border:1px solid var(--bord) !important;
+  color:var(--gris) !important; box-shadow:var(--ombre) !important; }
+/* La bulle de staking garde le VERT : elle est cliquable et elle annonce un
+   gain qui monte. La reduire au bleu de la page la rendrait indistinguable
+   des deux pastilles qui, elles, ne se cliquent pas. Elle passe en vert plein
+   sur texte blanc — le vert de la page, pas celui du neon. */
+.swstk{ background:var(--vert) !important; color:#fff !important;
+  box-shadow:var(--ombre) !important; }
+.swstk:hover{ box-shadow:0 0 0 2px rgba(18,161,80,.35), var(--ombre) !important; }
+.swpb{ background:var(--carte) !important; border:1px solid var(--bord) !important;
+  color:var(--bleu) !important; box-shadow:var(--ombre) !important; }
+.swpb:hover{ border-color:var(--bleu) !important; color:var(--nuit) !important; }
+</style>
 </body>
 </html>

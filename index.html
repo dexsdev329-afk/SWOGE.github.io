@@ -1,713 +1,640 @@
-
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
+<head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<style>
-/* ================== CORRECTIFS COMMUNS ==================
- * Bloc identique sur les vingt-cinq pages. Il se pose juste apres le viewport
- * pour qu'aucune feuille de style de la page ne puisse le prendre de vitesse.
- *
- * LE DOUBLE-TAP NE ZOOME PLUS. Deux appuis rapproches sur un bouton — tirer,
- * tirer ; miser, miser — etaient lus comme un double-tap, et la page grossissait.
- * On jouait le coup suivant a moitie hors de l'ecran et il fallait pincer pour
- * revenir. `manipulation` supprime CE geste, et lui seul : le pincement pour
- * zoomer reste possible, ce qui n'aurait pas ete le cas avec un
- * `user-scalable=no` dans le viewport — la solution courante, qui prive aussi
- * les gens qui zooment pour lire. Les 300 ms d'attente avant que le clic parte
- * disparaissent avec, en prime.
- *
- * LA SURFACE DE JEU, elle, ne doit rien laisser passer : un doigt qui glisse
- * sur un plateau ne doit pas faire defiler la page derriere.
- *
- * LES CIBLES : le bouton menu tombait a 38x38 sur telephone, sous les 44 px
- * recommandes — et c'est le seul chemin vers le depot, le retrait et le compte.
- * ========================================================= */
-html{ -webkit-text-size-adjust:100%; }
+<title>SWOGE WORLD</title>
+<!--
+  ================== UNE BASE, ET RIEN QUE LA BASE ==================
 
-/* ---- ON RELEVE LE NOIR, PARTOUT ----
- *
- * Les tables etaient presque entierement noires : 80 % des pixels du casino
- * sous le seuil du visible, 96 % au Coin Pusher, contre 58 % au hall. A cote
- * du hall, chaque jeu paraissait eteint.
- *
- * Le calque est en `screen`, pas en voile blanc, et la difference est tout :
- *
- *   screen(a, g) = 255 - (255 - a)(255 - g) / 255
- *
- * Le NOIR monte a la valeur du calque, le BLANC ne bouge pas d'un cran. Les
- * plaques peintes, les jetons et les cartes gardent donc exactement leur
- * eclat — seuls les creux se remplissent. Un voile blanc a 5 %, lui, aurait
- * laiteuse les cartes en meme temps.
- *
- * `filter: brightness()` est ecarte pour deux raisons : il MULTIPLIE, donc le
- * noir reste noir — or c'est justement le noir qu'on veut relever — et un
- * filtre fait de son element le repere de tout descendant en position fixe,
- * ce qui nous a deja coute un cadre de palier de deux cents pixels sur le Spin.
- *
- * `pointer-events:none` : le calque couvre tout l'ecran, il ne doit rien
- * intercepter. Verifie par un vrai clic sur la bulle de profil, avec et sans.
- *
- * Une seule valeur a regler ici, et elle vaut pour les vingt-six pages. */
-html::after{ content:""; position:fixed; inset:0; pointer-events:none;
-  z-index:2147483000; background:#12121a; mix-blend-mode:screen; }
-button, a, input, select, textarea, label, summary,
-[role="button"], [onclick],
-.card, .chipbtn, .btn, .tile, .sbet, .qclaim, .abtn, .pct, .chip, .sday{
-  touch-action:manipulation;
-}
-canvas{ touch-action:none; }
-.menubtn{ min-width:44px; min-height:44px; }
-</style>
+  Cette page reproduit la maquette envoyee en photo : la mise en page, les
+  blocs, les images. Les TEXTES et les CHIFFRES sont ceux de la maquette, donc
+  faux — cent vingt-huit mille joueurs, vingt-quatre millions mises, un prix du
+  jeton. Ils sont ici pour tenir la place, pas pour etre lus.
 
-<title>$SWOGE — the swole doge</title>
-<meta name="description" content="SWOGE. A golden Shiba with more muscle than sense. Peak performance, zero brain.">
+  RIEN N'EST BRANCHE. Aucun appel au serveur, aucune socket, aucun portefeuille.
+  Un bouton « Connect Wallet » qui ne connecte rien vaut mieux qu'un bouton qui
+  connecte a moitie : on voit tout de suite ce qui reste a faire.
 
-<meta property="og:title" content="$SWOGE — the swole doge">
-<meta property="og:description" content="Peak performance. Zero brain. The most jacked dog on Robinhood Chain.">
-<meta property="og:image" content="https://swoleeswoge.dog/media/og.jpg">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-<meta property="og:url" content="https://swoleeswoge.dog/">
-<meta property="og:type" content="website">
-<meta property="og:site_name" content="$SWOGE">
-<meta name="twitter:image" content="https://swoleeswoge.dog/media/og.jpg">
-<meta name="twitter:title" content="$SWOGE — the swole doge">
-<meta name="twitter:description" content="Peak performance. Zero brain. The most jacked dog on Robinhood Chain.">
-<meta name="twitter:card" content="summary_large_image">
-
-<link rel="icon" type="image/png" href="img/icone_swoge.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-
+  Tout tient dans CE fichier — style compris. Une base se deplace, se duplique
+  et se jette ; trois fichiers a garder ensemble pour ca, ce serait trois
+  occasions d'en oublier un.
+-->
 <style>
 :root{
-  /* La base passe du BRUN au noir bleute. C'est le seul changement qui compte :
-     le brun est de l'orange sombre desature, donc quand le fond et l'accent
-     sont tous les deux chauds, l'or n'a rien contre quoi ressortir et la page
-     entiere a l'air passee au sepia. Le meme or sur une base froide parait
-     deux fois plus vif — l'or n'a pas bouge, c'est le fond qui a change. */
-  --void:#070B14; --void2:#0F1626; --gold:#FFC53D; --goldlite:#FFD971;
-  --fur:#EAD2A0; --cream:#EAF2FF; --deep:#2E7BFF; --line:#23304F; --dim:#8DA0C4;
-  /* les couleurs de sens : une seule signification chacune, jamais deux */
-  --win:#16D97F; --loss:#FF4655; --violet:#7C4DFF;
+  /* La maquette tient sur six couleurs. Les nommer ici plutot que de les
+     repeter trente fois est ce qui permettra de la reteinter en une minute
+     quand les couleurs definitives arriveront. */
+  --fond:#EEF3FB; --carte:#FFFFFF; --bord:#E1E9F6;
+  --nuit:#0A1F44; --nuit2:#123468;
+  --bleu:#1B5FE0; --bleu-clair:#EAF1FF;
+  --or:#F5B301;
+  --texte:#0B1B36; --gris:#6B7C99;
+  --vert:#12A150; --rouge:#E0443E;
+  --rayon:14px;
+  --ombre:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05);
 }
-*{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth}
-body{background:var(--void);color:var(--cream);font-family:'Archivo',system-ui,sans-serif;overflow-x:hidden;line-height:1.5}
-::selection{background:var(--gold);color:var(--void)}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+/* ---- iOS GROSSIT LE TEXTE EN PAYSAGE, SANS PREVENIR ----
+   Le bloc de correctifs communs des vingt-cinq autres pages porte cette ligne
+   depuis toujours. La reprendre ici coute un mot ; l'oublier laisse la page
+   d'accueil grandir d'un tiers quand on tourne le telephone, et elle seule. */
+html{-webkit-text-size-adjust:100%}
+
+/* ================== RIEN N'EST CLIQUABLE, ET C'EST VOULU ==================
+ * La page est une BASE : aucun bouton ne mene quelque part, aucun ne parle au
+ * serveur. Les laisser repondre au doigt serait la seule facon de se tromper
+ * ici — on cliquerait « Claim bonus », rien n'arriverait, et l'on chercherait
+ * la panne. Ils gardent donc leur dessin et perdent leur geste.
+ *
+ * `pointer-events` plutot que `disabled` : `disabled` grise les boutons, et
+ * c'est justement l'apparence qu'on est en train de juger. Ici le dessin ne
+ * bouge pas d'un pixel — seul le curseur cesse de promettre.
+ *
+ * Le survol part avec : une vignette qui grandit sous la souris promet un
+ * clic autant qu'un curseur en main. */
+a[href], button{ pointer-events:none; cursor:default; }
+body{
+  background:var(--fond); color:var(--texte);
+  font:400 14px/1.45 'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
 img{display:block;max-width:100%}
+button{font:inherit;cursor:pointer;border:0;background:none;color:inherit}
+a{color:inherit;text-decoration:none}
 
-body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;
-  background:radial-gradient(circle at 22% 8%,rgba(255,197,61,.13),transparent 42%),
-             radial-gradient(circle at 82% 78%,rgba(46,123,255,.16),transparent 46%)}
-
-.mono{font-family:'Space Mono',monospace}
-.wrap{position:relative;z-index:1;max-width:1160px;margin:0 auto;padding:0 22px}
-.anton{font-family:'Anton',sans-serif;text-transform:uppercase}
-
-nav{position:sticky;top:0;z-index:50;background:rgba(7,11,20,.86);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
-.navin{max-width:1160px;margin:0 auto;padding:11px 22px;display:flex;align-items:center;justify-content:space-between;gap:16px}
-.brand{display:flex;align-items:center;gap:11px;font-family:'Anton',sans-serif;font-size:23px;text-transform:uppercase;letter-spacing:.02em}
-.brand img{width:42px;height:42px;border-radius:50%;border:2px solid var(--gold);object-fit:cover;object-position:center 28%;background:var(--void2)}
-.brand b{color:var(--gold)}
-.navlinks{display:flex;gap:22px;align-items:center}
-.navlinks a{font-family:'Space Mono',monospace;font-size:12px;text-decoration:none;color:var(--dim);letter-spacing:.03em}
-.navlinks a:hover{color:var(--gold)}
-.navbuy{font-family:'Anton',sans-serif;font-size:14px;letter-spacing:.04em;background:var(--gold);color:var(--void);padding:9px 18px;border-radius:3px;text-decoration:none;border:2px solid var(--gold);transition:transform .1s;text-transform:uppercase}
-.navbuy:hover{transform:scale(1.04)}
-@media(max-width:720px){
-  /* La regle d'origine cachait les liens commencant par « # » — sauf qu'aucun
-     lien de cette barre n'en a. Elle ne cachait donc rien, et les neuf liens
-     debordaient par-dessus la marque. On empile : la marque sur une ligne, les
-     liens sur une bande qui defile a l'horizontale, tous accessibles. */
-  .navin{flex-wrap:wrap; row-gap:8px; padding:9px 14px}
-  .brand{flex:0 0 auto}
-  /* flex:1 1 100%, pas 1 0 100%. Le chiffre du milieu est le facteur de
-     RETRECISSEMENT : a zero, l'element refuse de descendre sous la taille de
-     son contenu, donc la barre s'elargissait a 856 px pour loger ses huit
-     onglets — sur un telephone de 390. La page devenait deux fois plus large
-     que l'ecran, on pouvait la faire glisser sur le cote, et tout paraissait
-     dezoome. Avec 1, la boite reprend la largeur de l'ecran et c'est son
-     overflow-x:auto qui fait defiler les onglets A L'INTERIEUR. */
-  .navlinks{flex:1 1 100%; order:3; overflow-x:auto; overflow-y:hidden;
-            scrollbar-width:none; -webkit-overflow-scrolling:touch;
-            padding-bottom:2px}
-  .navlinks::-webkit-scrollbar{display:none}
-  .navlinks a{flex:0 0 auto; white-space:nowrap}
-  .navlinks{gap:10px}
-  .navlinks a{font-size:11px}
-  .navbuy{padding:8px 13px;font-size:12px}
-  .brand{font-size:19px}
-  .brand img{width:34px;height:34px}
+/* ---------------------------------------------------------- LE BANDEAU HAUT */
+.sw-haut{
+  display:flex; align-items:center; gap:14px; padding:10px 16px;
+  background:var(--carte); border-bottom:1px solid var(--bord);
+  position:sticky; top:0; z-index:30;
 }
-@media(max-width:380px){
-  .navlinks a[title="Twitter / X"],.navlinks a[title="Telegram"]{display:none}
+.sw-marque{display:flex; align-items:center; gap:9px; flex:0 0 auto}
+.sw-patte{
+  width:34px;height:34px;border-radius:10px;background:var(--bleu-clair);
+  display:grid;place-items:center;font-size:19px;
+}
+.sw-marque b{display:block;font:800 17px/1 'Inter',system-ui,sans-serif;letter-spacing:.4px;color:var(--bleu)}
+.sw-marque i{display:block;font:700 9.5px/1.4 'Inter',system-ui,sans-serif;font-style:normal;
+  letter-spacing:2.6px;color:var(--gris)}
+
+/* Les quatre chiffres du haut. Ils DEFILENT quand la fenetre retrecit plutot
+   que de passer a la ligne : une rangee qui se casse en deux pousse tout le
+   reste du bandeau vers le bas et fait sauter la page a chaque redimension. */
+.sw-chiffres{
+  flex:1 1 auto; min-width:0; display:flex; gap:8px; overflow-x:auto;
+  padding:8px 10px; background:var(--fond); border:1px solid var(--bord);
+  border-radius:12px; scrollbar-width:none;
+}
+.sw-chiffres::-webkit-scrollbar{display:none}
+.sw-ch{display:flex;align-items:center;gap:8px;padding:0 12px;flex:0 0 auto}
+.sw-ch+.sw-ch{border-left:1px solid var(--bord)}
+.sw-ch .ic{width:26px;height:26px;border-radius:8px;background:var(--bleu-clair);
+  display:grid;place-items:center;font-size:13px}
+.sw-ch small{display:block;font:700 9px/1 'Inter',system-ui,sans-serif;letter-spacing:.9px;color:var(--gris)}
+.sw-ch b{display:block;font:800 14px/1.3 'Inter',system-ui,sans-serif}
+
+.sw-b{
+  padding:10px 16px;border-radius:10px;
+  font:700 12.5px/1 'Inter',system-ui,sans-serif;letter-spacing:.3px;white-space:nowrap;
+}
+.sw-b-plein{background:var(--bleu);color:#fff}
+.sw-b-plein:hover{background:#1750c4}
+.sw-b-vide{background:var(--carte);color:var(--bleu);border:1.5px solid var(--bleu)}
+.sw-b-vide:hover{background:var(--bleu-clair)}
+.sw-b-or{background:var(--or);color:#3A2B00}
+.sw-b-nuit{background:var(--nuit);color:#fff}
+.sw-avatar{
+  width:38px;height:38px;border-radius:11px;border:1px solid var(--bord);
+  background:var(--fond);display:grid;place-items:center;font-size:16px;flex:0 0 auto;
 }
 
-.hero{position:relative;padding:52px 0 36px}
-.herogrid{display:grid;grid-template-columns:1.02fr .98fr;gap:26px;align-items:center}
-@media(max-width:860px){.herogrid{grid-template-columns:1fr;text-align:center}}
-.tagpill{display:inline-flex;align-items:center;gap:8px;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--goldlite);border:1px solid var(--line);border-radius:20px;padding:6px 13px;margin-bottom:18px}
-.tagpill .blip{width:7px;height:7px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 3px rgba(255,197,61,.22)}
-.hero h1{font-family:'Anton',sans-serif;text-transform:uppercase;font-size:clamp(56px,11vw,128px);line-height:.85;letter-spacing:-.01em;color:var(--cream)}
-.hero h1 .g{color:var(--gold);-webkit-text-stroke:2px var(--deep)}
-.hero .sub{font-size:clamp(17px,2.4vw,22px);color:var(--dim);margin-top:20px;max-width:440px;font-weight:600}
-@media(max-width:860px){.hero .sub{margin-left:auto;margin-right:auto}}
-.herocta{display:flex;gap:12px;margin-top:26px;flex-wrap:wrap}
-@media(max-width:860px){.herocta{justify-content:center}}
-.btn{font-family:'Anton',sans-serif;font-size:19px;letter-spacing:.03em;padding:14px 26px;border-radius:4px;text-decoration:none;border:2px solid var(--gold);transition:transform .1s,background .15s;text-transform:uppercase}
-.btn.solid{background:var(--gold);color:var(--void)}
-.btn.solid:hover{transform:translateY(-2px)}
-.btn.ghost{background:transparent;color:var(--gold)}
-.btn.ghost:hover{background:rgba(255,197,61,.12)}
-.heroimg{position:relative}
-.heroimg img{width:100%;border-radius:10px;filter:drop-shadow(0 30px 60px rgba(0,0,0,.65))}
-.heroimg .ring{position:absolute;inset:-5%;border:1px dashed rgba(255,197,61,.32);border-radius:14px;animation:spin 42s linear infinite;pointer-events:none}
-@keyframes spin{to{transform:rotate(360deg)}}
+/* ------------------------------------------------------------ LA COLONNE DE GAUCHE */
+.sw-corps{display:flex; align-items:flex-start; gap:14px; padding:14px; max-width:1680px; margin:0 auto}
+.sw-cote{
+  flex:0 0 208px; position:sticky; top:74px;
+  display:flex; flex-direction:column; gap:12px;
+}
+.sw-nav{background:var(--carte);border:1px solid var(--bord);border-radius:var(--rayon);
+  padding:8px; box-shadow:var(--ombre)}
+.sw-nav a{
+  display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:10px;
+  font:600 13.5px/1 'Inter',system-ui,sans-serif;color:var(--texte);
+}
+.sw-nav a .ic{width:20px;text-align:center;font-size:15px;opacity:.75}
+.sw-nav a:hover{background:var(--fond)}
+.sw-nav a.on{background:var(--bleu-clair);color:var(--bleu)}
+.sw-nav a.on .ic{opacity:1}
+.sw-cote .sw-b{width:100%;padding:13px 16px;font-size:13px}
+.sw-reseaux{display:flex;gap:8px;justify-content:center;padding-top:4px}
+.sw-reseaux a{
+  width:34px;height:34px;border-radius:10px;background:var(--carte);border:1px solid var(--bord);
+  display:grid;place-items:center;font-size:14px;color:var(--gris);
+}
+.sw-reseaux a:hover{color:var(--bleu);border-color:var(--bleu)}
 
-.marq{border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--void2);overflow:hidden;white-space:nowrap;padding:13px 0;margin-top:40px}
-.marqin{display:inline-block;animation:slide 22s linear infinite;font-family:'Anton',sans-serif;font-size:22px;text-transform:uppercase;letter-spacing:.05em;color:var(--gold)}
-.marqin span{margin:0 26px;color:var(--deep)}
-@keyframes slide{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-@media(prefers-reduced-motion:reduce){.marqin,.heroimg .ring{animation:none}}
+/* ------------------------------------------------------------------ LE PLATEAU */
+.sw-plat{flex:1 1 auto;min-width:0;display:grid;grid-template-columns:minmax(0,1.62fr) minmax(0,1fr);gap:14px}
+.sw-col{display:flex;flex-direction:column;gap:14px;min-width:0}
+.carte{background:var(--carte);border:1px solid var(--bord);border-radius:var(--rayon);
+  box-shadow:var(--ombre);overflow:hidden}
+.carte-p{padding:15px 16px}
+.tete{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.tete h3{margin:0;font:800 15px/1 'Inter',system-ui,sans-serif;color:var(--nuit);letter-spacing:.2px}
+.tete a{font:700 10.5px/1 'Inter',system-ui,sans-serif;letter-spacing:.9px;color:var(--bleu)}
 
-section{padding:70px 0;position:relative;z-index:1}
-.eyebrow{font-family:'Space Mono',monospace;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--goldlite);margin-bottom:10px}
-.h2{font-family:'Anton',sans-serif;text-transform:uppercase;font-size:clamp(34px,6vw,60px);line-height:.95;color:var(--cream)}
-.lead{color:var(--dim);font-size:16px;max-width:560px;margin-top:14px;font-weight:600}
+/* ---- LA BANNIERE ---- */
+/* ---- LA HAUTEUR DE LA BANNIERE EQUILIBRE LES DEUX COLONNES ----
+   La colonne de droite porte cinq blocs, celle de gauche quatre : a hauteur
+   egale de banniere, la gauche s'arretait trois cents pixels plus haut et
+   laissait un trou blanc sous le classement. C'est la banniere qui rattrape,
+   parce que c'est le seul bloc dont la hauteur ne dit rien d'autre qu'elle-
+   meme — grandir une carte de chiffres aurait fait croire a un chiffre de
+   plus. */
+.heros{position:relative;border-radius:var(--rayon);overflow:hidden;min-height:330px;
+  display:flex;align-items:center;border:1px solid var(--bord)}
+.heros img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.heros .voile{position:absolute;inset:0;
+  background:linear-gradient(100deg,rgba(6,20,46,.92) 0%,rgba(6,20,46,.72) 34%,rgba(6,20,46,.06) 62%,rgba(6,20,46,0) 100%)}
+.heros .dit{position:relative;padding:30px 28px;max-width:60%}
+.heros small{display:block;font:800 11px/1 'Inter',system-ui,sans-serif;letter-spacing:2.4px;
+  color:rgba(255,255,255,.82);margin-bottom:8px}
+.heros h1{margin:0 0 12px;font:900 50px/.94 'Inter',system-ui,sans-serif;color:#fff;letter-spacing:-1.4px}
+.heros p{margin:0 0 18px;font:600 12.5px/1.55 'Inter',system-ui,sans-serif;
+  letter-spacing:1.1px;color:rgba(255,255,255,.86);text-transform:uppercase}
 
-.about{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:center}
-@media(max-width:860px){.about{grid-template-columns:1fr}}
-.about .logowrap{display:flex;justify-content:center}
-.about .logowrap img{width:82%;filter:drop-shadow(0 18px 40px rgba(0,0,0,.5))}
-.statline{display:flex;gap:24px;flex-wrap:wrap;margin-top:26px}
-.statline .s{border-left:2px solid var(--gold);padding-left:12px}
-.statline .n{font-family:'Anton',sans-serif;font-size:30px;color:var(--gold)}
-.statline .l{font-family:'Space Mono',monospace;font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+/* ---- LES QUATRE UNIVERS ---- */
+.univers{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.uni{position:relative;border-radius:var(--rayon);overflow:hidden;min-height:258px;
+  display:flex;flex-direction:column;justify-content:flex-end;background:var(--nuit)}
+.uni img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center top}
+.uni .voile{position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(8,24,58,0) 34%,rgba(8,24,58,.88) 74%,rgba(8,24,58,.97) 100%)}
+.uni .dit{position:relative;padding:14px;text-align:center}
+.uni b{display:block;font:900 20px/1 'Inter',system-ui,sans-serif;color:#fff;letter-spacing:.4px}
+.uni i{display:block;font-style:normal;font:600 11px/1.4 'Inter',system-ui,sans-serif;
+  color:rgba(255,255,255,.76);margin:5px 0 11px}
+.uni .sw-b{width:100%;background:rgba(255,255,255,.94);color:var(--nuit)}
 
-/* prophecy */
-.proph-intro{max-width:640px;margin-top:16px}
-.proph-intro p{color:var(--cream);font-size:16px;line-height:1.7;margin-bottom:14px}
-.proph-intro .whisper{font-family:'Space Mono',monospace;color:var(--goldlite);font-size:14px;font-style:normal;border-left:2px solid var(--gold);padding-left:14px;margin-top:20px}
-.signs{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;margin-top:44px}
-@media(max-width:720px){.signs{grid-template-columns:1fr}}
-.sign{position:relative;padding-left:0}
-.sign .idx{font-family:'Anton',sans-serif;font-size:13px;letter-spacing:.16em;color:var(--gold);text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:10px}
-.sign .idx::before{content:"";width:22px;height:2px;background:var(--gold)}
-.sign .shot{border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--void2)}
-.sign .shot img{width:100%;display:block}
-.sign .say{font-size:14px;color:var(--dim);margin-top:12px;line-height:1.6;font-weight:600}
-.sign .say b{color:var(--cream)}
-.gal{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:36px}
-@media(max-width:720px){.gal{grid-template-columns:1fr}}
-.gcard{position:relative;border-radius:8px;overflow:hidden;border:1px solid var(--line);aspect-ratio:16/10}
-.gcard img{width:100%;height:100%;object-fit:cover;transition:transform .4s}
-.gcard:hover img{transform:scale(1.06)}
-.gcard .cap{position:absolute;left:0;right:0;bottom:0;padding:14px;font-family:'Anton',sans-serif;font-size:18px;text-transform:uppercase;color:var(--cream);background:linear-gradient(transparent,rgba(7,11,20,.86));letter-spacing:.02em}
+/* ---- L ECONOMIE ET LE NIVEAU ---- */
+.duo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+/* Seize pixels et non dix : a dix, « 1,000,000,000 » et « 412,586,390 » se
+   suivaient sans respirer et se lisaient comme un seul nombre. */
+.eco{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;text-align:center}
+.eco div small{display:block;font:700 8.5px/1.3 'Inter',system-ui,sans-serif;letter-spacing:.7px;color:var(--gris)}
+/* ---- LES CHIFFRES SE CHEVAUCHAIENT ----
+   « 1,000,000,000 » et « 412,586,390 » se touchaient dans leurs colonnes. La
+   police declaree est Inter, mais elle n'est CHARGEE nulle part : la page
+   retombe sur celle du systeme, dont les chiffres gras sont plus larges — et
+   la mise en page calee sur Inter deborde chez tout le monde sauf chez celui
+   qui l'a installee. On ne compte donc sur aucune police : chiffres a chasse
+   fixe, taille reduite, et la colonne peut retrecir. Vu au rendu. */
+.eco div b{display:block;font:800 12px/1.35 'Inter',system-ui,sans-serif;color:var(--nuit);
+  font-variant-numeric:tabular-nums;letter-spacing:-.2px;white-space:nowrap}
+.eco div{min-width:0}
+.eco div i{display:block;font-style:normal;font:600 9px/1.3 'Inter',system-ui,sans-serif;color:var(--gris)}
+.niveau{position:relative;min-height:172px;display:flex;align-items:center;background:var(--nuit)}
+.niveau img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:right center}
+.niveau .voile{position:absolute;inset:0;
+  background:linear-gradient(90deg,rgba(8,24,58,.95) 0%,rgba(8,24,58,.78) 46%,rgba(8,24,58,.1) 100%)}
+.niveau .dit{position:relative;padding:16px}
+.niveau small{display:block;font:800 10px/1 'Inter',system-ui,sans-serif;letter-spacing:1.4px;
+  color:rgba(255,255,255,.72)}
+.niveau b{display:block;font:900 30px/1.1 'Inter',system-ui,sans-serif;color:#fff;font-style:italic}
+.jauge{height:7px;border-radius:99px;background:rgba(255,255,255,.22);margin:10px 0 7px;max-width:200px}
+.jauge i{display:block;height:100%;width:62%;border-radius:99px;background:#fff}
+.niveau em{font-style:normal;font:700 9.5px/1 'Inter',system-ui,sans-serif;letter-spacing:1.2px;
+  color:rgba(255,255,255,.72)}
 
-.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:36px}
-@media(max-width:860px){.steps{grid-template-columns:1fr 1fr}}
-@media(max-width:520px){.steps{grid-template-columns:1fr}}
-.step{background:var(--void2);border:1px solid var(--line);border-radius:6px;padding:22px;position:relative;overflow:hidden}
-.step .num{font-family:'Anton',sans-serif;font-size:60px;color:var(--gold);opacity:.24;line-height:.8;position:absolute;top:8px;right:14px}
-.step h3{font-family:'Anton',sans-serif;text-transform:uppercase;font-size:20px;color:var(--gold);margin-bottom:8px;position:relative}
-.step p{font-size:13.5px;color:var(--dim);position:relative;font-weight:600}
+/* ---- LE CLASSEMENT ET LA COURSE ---- */
+.rang{display:flex;align-items:center;gap:11px;padding:9px 0}
+.rang+.rang{border-top:1px solid var(--bord)}
+.rang .no{font:900 15px/1 'Inter',system-ui,sans-serif;color:var(--gris);width:22px}
+.rang img{width:34px;height:34px;border-radius:10px;object-fit:cover;flex:0 0 auto}
+.rang .qui{flex:1 1 auto;min-width:0}
+.rang .qui b{display:block;font:700 13px/1.25 'Inter',system-ui,sans-serif;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rang .qui small{display:block;font:800 8.5px/1.3 'Inter',system-ui,sans-serif;letter-spacing:1px;color:var(--bleu)}
+.rang .xp{font:700 11.5px/1 'Inter',system-ui,sans-serif;color:var(--gris)}
+.course{position:relative;min-height:172px;display:flex;align-items:center;background:var(--nuit)}
+.course img{position:absolute;right:0;top:0;height:100%;width:52%;object-fit:cover}
+.course .voile{position:absolute;inset:0;
+  background:linear-gradient(90deg,rgba(8,24,58,.96) 0%,rgba(8,24,58,.8) 50%,rgba(8,24,58,.12) 100%)}
+.course .dit{position:relative;padding:16px}
+.course b{display:block;font:900 34px/1 'Inter',system-ui,sans-serif;color:#fff}
 
-.ca{margin-top:30px;background:var(--void2);border:1px dashed var(--gold);border-radius:6px;padding:18px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:space-between}
-.ca .lbl{font-family:'Space Mono',monospace;font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em}
-.ca .val{font-family:'Space Mono',monospace;font-size:14px;color:var(--gold);word-break:break-all}
-.ca button{font-family:'Anton',sans-serif;font-size:14px;letter-spacing:.04em;background:var(--gold);color:var(--void);border:0;border-radius:3px;padding:9px 16px;cursor:pointer;text-transform:uppercase}
-.ca button:hover{filter:brightness(1.08)}
+/* ------------------------------------------------------- LA COLONNE DE DROITE */
+.bonus{position:relative;min-height:158px;display:flex;align-items:center;background:var(--nuit)}
+.bonus img{position:absolute;right:0;top:0;height:100%;width:56%;object-fit:cover}
+.bonus .voile{position:absolute;inset:0;
+  background:linear-gradient(90deg,rgba(8,24,58,.96) 0%,rgba(8,24,58,.8) 46%,rgba(8,24,58,.08) 100%)}
+.bonus .dit{position:relative;padding:16px;max-width:70%}
+.bonus small{display:block;font:800 10px/1 'Inter',system-ui,sans-serif;letter-spacing:1.5px;
+  color:rgba(255,255,255,.74);margin-bottom:6px}
+.bonus b{display:block;font:900 21px/1.2 'Inter',system-ui,sans-serif;color:#fff;margin-bottom:12px}
 
-.tok{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:36px}
-@media(max-width:720px){.tok{grid-template-columns:1fr}}
-.tk{background:var(--void2);border:1px solid var(--line);border-radius:6px;padding:26px;text-align:center}
-.tk .big{font-family:'Anton',sans-serif;font-size:44px;color:var(--gold);line-height:1}
-.tk .cap{font-family:'Space Mono',monospace;font-size:12px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em;margin-top:8px}
+.jeux{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px}
+.jeu{position:relative;border-radius:11px;overflow:hidden;aspect-ratio:1/1;background:var(--nuit)}
+.jeu img{width:100%;height:100%;object-fit:cover;transition:transform .18s}
+.jeu:hover img{transform:scale(1.06)}
+/* ---- CES JEUX N EXISTENT PAS ENCORE ----
+   Les montrer sans le dire ferait cliquer dessus, et un clic qui ne mene nulle
+   part se lit comme une panne. Le bandeau est POSE SUR l image et non a cote :
+   a cote, on le prend pour la legende d une vignette voisine. Et l image est
+   assombrie — un bandeau seul sur une vignette bien nette ne suffit pas a
+   arreter la main. */
+.jeu.bientot img{filter:saturate(.55) brightness(.62)}
+.jeu.bientot:hover img{transform:none}
+.jeu.bientot span{
+  position:absolute; inset:auto 0 0 0; padding:5px 0; text-align:center;
+  background:rgba(8,24,58,.86); color:#fff;
+  font:800 8.5px/1 'Inter',system-ui,sans-serif; letter-spacing:1.6px;
+}
+.bientot-t{
+  padding:5px 9px; border-radius:99px; background:var(--bleu-clair); color:var(--bleu);
+  font:800 9px/1 'Inter',system-ui,sans-serif; letter-spacing:1.2px;
+}
 
-footer{border-top:1px solid var(--line);padding:44px 0 60px;text-align:center}
-.socials{display:flex;gap:14px;justify-content:center;margin-bottom:22px;flex-wrap:wrap}
-.socials a{font-family:'Anton',sans-serif;font-size:15px;letter-spacing:.03em;text-decoration:none;color:var(--gold);border:2px solid var(--line);border-radius:4px;padding:11px 20px;transition:border-color .15s;text-transform:uppercase}
-.socials a:hover{border-color:var(--gold)}
-footer .fine{font-family:'Space Mono',monospace;font-size:11px;color:var(--dim);line-height:1.8;max-width:560px;margin:0 auto}
-footer .big{font-family:'Anton',sans-serif;font-size:clamp(40px,9vw,90px);color:var(--void2);-webkit-text-stroke:1px var(--line);text-transform:uppercase;margin-bottom:24px;line-height:1}
+/* ---- LES SPORTS ---- */
+.onglets{display:flex;gap:6px;overflow-x:auto;padding-bottom:9px;margin-bottom:9px;
+  border-bottom:1px solid var(--bord);scrollbar-width:none}
+.onglets::-webkit-scrollbar{display:none}
+.onglets button{
+  flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:4px;
+  padding:7px 11px;border-radius:10px;font:700 9.5px/1 'Inter',system-ui,sans-serif;color:var(--gris);
+}
+.onglets button .ic{font-size:14px}
+.onglets button.on{background:var(--bleu-clair);color:var(--bleu)}
+/* La ligne qui nomme les six marches. Sous le titre et non dans une
+   infobulle : c'est ce qui distingue ce panneau de n'importe quel autre, et
+   une infobulle ne se survole pas sur un telephone. */
+.sous{margin:-6px 0 11px;font:500 11.5px/1.5 'Inter',system-ui,sans-serif;color:var(--gris)}
+.sous b{color:var(--texte);font-weight:800}
+/* « Ferme au coup d'envoi » : ce n'est pas un detail d'affichage, c'est LA
+   regle du catalogue. Elle prend la place ou la maquette mettait « LIVE ». */
+.ferme{padding:5px 9px;border-radius:99px;background:var(--fond);color:var(--gris);
+  font:800 8.5px/1 'Inter',system-ui,sans-serif;letter-spacing:1.1px;white-space:nowrap}
+/* Un sport porte au catalogue mais marque inactif. Eteint plutot qu'absent :
+   absent, on ne saurait pas qu'il arrive ; vif, on cliquerait pour rien. */
+.onglets button.eteint{opacity:.42}
+.match{padding:10px 0}
+.match+.match{border-top:1px solid var(--bord)}
+.match .ligue{font:700 9px/1 'Inter',system-ui,sans-serif;letter-spacing:.8px;color:var(--gris);margin-bottom:7px}
+.match .duel{display:flex;align-items:center;gap:9px;margin-bottom:8px}
+.match .eq{display:flex;align-items:center;gap:7px;flex:1 1 0;min-width:0}
+.match .eq span{width:22px;height:22px;border-radius:7px;background:var(--fond);
+  display:grid;place-items:center;font-size:11px;flex:0 0 auto}
+.match .eq b{font:700 12.5px/1.2 'Inter',system-ui,sans-serif;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.match .eq.d{justify-content:flex-end;text-align:right}
+/* L'HEURE, la ou la maquette mettait le score en cours. Plus etroite en
+   chiffres qu'un « 2 – 1 », donc plus petite, et grise : c'est un repere, pas
+   un resultat. */
+.match .sc{font:700 10px/1.3 'Inter',system-ui,sans-serif;color:var(--gris);flex:0 0 auto;
+  text-align:center;letter-spacing:.4px}
+.cotes{display:flex;gap:6px}
+.cotes button{flex:1 1 0;min-width:0;display:flex;align-items:center;justify-content:space-between;
+  gap:6px;padding:9px 10px;border-radius:9px;background:var(--fond);border:1px solid var(--bord);
+  font:700 12px/1 'Inter',system-ui,sans-serif}
+.cotes button small{color:var(--gris);font-weight:700}
+.cotes button:hover,.cotes button.on{background:var(--bleu-clair);border-color:var(--bleu);color:var(--bleu)}
+.cotes .plus{flex:0 0 auto;background:none;border:0;color:var(--gris);font-weight:700}
 
-.toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,14px);background:var(--gold);color:var(--void);font-family:'Anton',sans-serif;font-size:15px;text-transform:uppercase;letter-spacing:.04em;padding:11px 22px;border-radius:4px;opacity:0;pointer-events:none;transition:.2s;z-index:99}
-.toast.on{opacity:1;transform:translate(-50%,0)}
+/* ---- LE BULLETIN ET LE SECOND BONUS SONT PARTIS ----
+   Ils fermaient la colonne de droite quatre cent soixante pixels plus bas que
+   la gauche, et rien de la page ne tenait plus a l'ecran d'un coup. Leur style
+   part AVEC eux : une regle qui ne dessine plus rien se relit comme une piste,
+   et la prochaine personne la suivra jusqu'a comprendre qu'elle ne mene nulle
+   part.
+   Le gestionnaire d'onglets, lui, reste : il est ecrit pour n'importe quel
+   `[data-groupe]`, et c'est celui des sports qu'il sert maintenant. */
 
-/* ---- cash game poker : la vidéo ----
-   Le cadre est une image a fenetre creuse ; la video vit DERRIERE lui, calee
-   sur l'ouverture. C'est ce qui permet de changer la video sans retoucher la
-   dorure, et l'inverse. */
-/* Marge du haut reduite de moitie : la section commencait par du vide, et
-   c'est la table qu'on doit voir en arrivant, pas l'espace au-dessus. */
-.pk{ padding:26px 0 58px; }
-/* La table est le sujet de la section : elle prend la place. Le bloc, lui,
-   ne grandit pas — c'est le texte au-dessus qui recule. */
-.pk-cadre{ position:relative; max-width:920px; margin:0 auto; }
-.pk-cadre>img{ display:block; width:100%; height:auto; position:relative; z-index:2;
-  pointer-events:none; }
-.pk-video{ position:absolute; left:5.2%; top:5.6%; right:5.2%; bottom:5.6%;
-  z-index:1; overflow:hidden; border-radius:6px; background:#05070d; }
-.pk-video video{ width:100%; height:100%; object-fit:cover; display:block; }
-.pk-tete{ text-align:center; margin-bottom:16px; }
-.pk-live{ display:inline-flex; align-items:center; gap:8px; font-family:'Space Mono',monospace;
-  font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--win);
-  border:1px solid rgba(22,217,127,.4); background:rgba(22,217,127,.08);
-  padding:6px 13px; border-radius:99px; }
-.pk-live i{ width:7px; height:7px; border-radius:50%; background:var(--win);
-  box-shadow:0 0 0 3px rgba(22,217,127,.25); animation:pkPulse 1.6s infinite; }
-@keyframes pkPulse{ 50%{ opacity:.35 } }
-.pk-btn{ display:block; width:min(100%,340px); margin:26px auto 0; position:relative;
-  text-decoration:none; transition:transform .09s; }
-.pk-btn:active{ transform:translateY(2px) scale(.985); }
-.pk-btn img{ display:block; width:100%; height:auto; }
-.pk-btn span{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-  font-family:'Anton',sans-serif; letter-spacing:1.4px; font-size:clamp(15px,4.2vw,22px);
-  color:#eaffef; text-shadow:0 2px 4px rgba(0,0,0,.9), 0 0 10px rgba(22,217,127,.5); }
-@media(max-width:720px){ .pk{ padding:44px 0 } }
+/* ------------------------------------------------------------------- LE PIED */
+.sw-bas{max-width:1680px;margin:0 auto;padding:6px 14px 22px}
+.promesses{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;
+  background:var(--carte);border:1px solid var(--bord);border-radius:var(--rayon);
+  padding:16px;box-shadow:var(--ombre)}
+.pro{display:flex;gap:11px;align-items:flex-start}
+.pro .ic{width:32px;height:32px;border-radius:10px;background:var(--bleu-clair);
+  display:grid;place-items:center;font-size:15px;flex:0 0 auto}
+.pro b{display:block;font:800 11.5px/1.3 'Inter',system-ui,sans-serif;letter-spacing:.5px}
+.pro small{display:block;font:500 11px/1.45 'Inter',system-ui,sans-serif;color:var(--gris)}
 
-/* ---- boutons images ----
-   Le libelle est GRAVE dans l'image : biseau, lueur et or que le CSS ne sait
-   pas imiter. Le prix a payer, c'est qu'un libelle ne se change plus sans
-   regenerer l'image — assume pour six boutons fixes. */
-.bimg{ display:inline-block; line-height:0; text-decoration:none; border:0; background:none;
-  padding:0; transition:transform .09s, filter .12s; }
-.bimg img{ display:block; width:100%; height:auto; }
-.bimg:hover{ transform:translateY(-2px); filter:brightness(1.08); }
-.bimg:active{ transform:translateY(1px) scale(.985); }
-.bimg.lg{ width:min(100%,300px); }
-.bimg.sm{ width:150px; }
-.hero .cta{ display:flex; flex-wrap:wrap; gap:14px; justify-content:center; align-items:center; }
-
-/* Le bouton d'achat vit HORS de la bande qui defile : c'est l'action
-   principale, on ne doit jamais avoir a faire defiler pour la trouver. */
-.navin>.bimg.sm{ flex:0 0 auto; order:2; }
-@media(max-width:720px){ .navin>.bimg.sm{ width:120px } }
-
-/* ---- le Swoge isometrique ----
- * Chaque planche est une grille 8 x 8 de frames de 80 px : 64 images, et la
- * derniere revient sur la premiere, donc la boucle est franche.
- *
- * Deux animations, pas une : `steps(8)` fait defiler les colonnes, et une
- * seconde, huit fois plus lente, fait descendre les rangees. C'est ce qui
- * permet de jouer les 64 frames avec une seule image de fond.
- *
- * Tout est en PIXELS, jamais en pourcentage : un fond positionne en pourcents
- * aligne le n-ieme de l'image sur le n-ieme du cadre, ce qui ne tombe pas sur
- * les bords des frames et fait baver deux images l'une sur l'autre.
- *
- * image-rendering:pixelated est un choix, pas un defaut : les frames sources
- * font 80 px, les agrandir en lissant donnerait une bouillie floue. Nettes et
- * carrees, elles se lisent comme du pixel art assume.
- */
-.gymband{ position:relative; overflow:hidden; padding:0; border-top:1px solid var(--line);
-  border-bottom:1px solid var(--line); background:
-    radial-gradient(ellipse at 50% 120%, rgba(46,123,255,.18), transparent 60%),
-    linear-gradient(180deg, var(--void) 0%, var(--void2) 100%); }
-.gymband .sol{ position:absolute; left:0; right:0; bottom:0; height:2px;
-  background:linear-gradient(90deg, transparent, rgba(255,197,61,.5), transparent); }
-.gympiste{ position:relative; height:var(--h); }
-.swoge{ --h:220px; --f:calc(var(--h)); position:absolute; bottom:8px; left:0;
-  width:var(--f); height:var(--f);
-  background-repeat:no-repeat;
-  background-size:calc(var(--f) * 8) calc(var(--f) * 8);
-  image-rendering:pixelated;
-  filter:drop-shadow(0 6px 10px rgba(0,0,0,.6));
-  animation:swX .34s steps(8) infinite, swY 2.7s steps(8) infinite, swTraverse 13s linear infinite; }
-@keyframes swX{ from{ background-position-x:0 } to{ background-position-x:calc(var(--f) * -8) } }
-@keyframes swY{ from{ background-position-y:0 } to{ background-position-y:calc(var(--f) * -8) } }
-/* il traverse la bande de gauche a droite, puis reapparait a gauche */
-@keyframes swTraverse{ from{ left:calc(-1 * var(--f)) } to{ left:100% } }
-.swoge.idle{ animation:swX .5s steps(8) infinite, swY 4s steps(8) infinite; left:auto; right:6%; }
-@media(max-width:720px){ .swoge{ --h:150px } .swoge.idle{ display:none } }
-@media(prefers-reduced-motion:reduce){
-  .swoge{ animation:none; background-position:0 0 } }
-
-/* ---- plaques de titre ----
-   Le titre reste un <h2> avec son texte : la plaque est une image DANS le
-   titre, et son alt porte le meme mot. Remplacer le texte par une image tout
-   court le retirerait des lecteurs d'ecran et des moteurs de recherche. */
-.plaque{ display:block; width:min(100%,460px); height:auto; margin:0 auto 6px; }
-.plaque+span{ position:absolute; width:1px; height:1px; overflow:hidden;
-  clip-path:inset(50%); white-space:nowrap; }
-
-/* ---- assets en fichiers ----
-   Ces images vivent dans media/ et non dans le HTML. La page etait a 2,4 Mo :
-   une image collee en base64 doit etre telechargee AVANT que la page
-   s'affiche, alors qu'un fichier se charge en parallele et reste en cache
-   d'une visite a l'autre. */
-.plaque2{ display:block; width:min(100%,440px); height:auto; margin:0 auto 8px; }
-.plaque2.sm{ width:min(100%,330px); }
-.vh{ position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
-
-/* le fond de la bande : il defile sous le doge. Repete a l'horizontale, il
-   donne la vitesse que le doge seul ne peut pas donner — il court sur place. */
-.gymband{ isolation:isolate; }
-.gymfond{ position:absolute; inset:0; z-index:0; opacity:.5;
-  background-image:var(--fond); background-repeat:repeat-x;
-  background-size:auto 100%; background-position:0 center;
-  animation:gymDefile 26s linear infinite; }
-@keyframes gymDefile{ from{ background-position-x:0 } to{ background-position-x:-1280px } }
-.gymband .wrap, .gympiste, .gymband .sol{ position:relative; z-index:1; }
-@media(prefers-reduced-motion:reduce){ .gymfond{ animation:none } }
-
-/* les icones des quatre etapes */
-.step .ico{ display:block; width:74px; height:auto; margin:0 0 10px; }
-@media(max-width:720px){ .step .ico{ width:58px } }
-
-/* ---- pied de page : les quatre liens ----
-   Le meme bouton rond pour les quatre, avec le VRAI logo pose par-dessus en
-   SVG. Un logo dessine par une IA se reconnait toujours a ce qu'il est
-   presque juste, et c'est exactement ce qui fait amateur. Ceux-ci sont les
-   marques officielles, en un seul chemin vectoriel : net a toutes les tailles
-   pour moins d'un kilo-octet chacun. */
-.socials{ display:flex; gap:16px; justify-content:center; flex-wrap:wrap; }
-.socials a{ position:relative; width:62px; height:62px; display:grid; place-items:center;
-  background:url(media/rond.webp) center/contain no-repeat; text-decoration:none;
-  transition:transform .1s, filter .12s; }
-.socials a:hover{ transform:translateY(-3px); filter:brightness(1.15); }
-.socials a:active{ transform:translateY(1px) scale(.96); }
-/* Centrage EXPLICITE, pas deduit. Le place-items:center de la grille posait
-   les quatre logos 3 px trop a droite — mesure, identique sur les quatre. On
-   ne discute pas avec la grille : on pose le logo au centre exact du bouton. */
-.socials a svg{ position:absolute; left:50%; top:50%;
-  transform:translate(-50%,-50%);
-  width:24px; height:24px; fill:#EAF2FF; filter:drop-shadow(0 1px 2px rgba(0,0,0,.8)); }
-.socials a span{ position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
-
-/* ---- fonds de section ----
- * Le voile est RADIAL, pas uniforme, et c'est tout le sujet.
- *
- * Premiere version : un voile plat a 70-88 % sur des images qui sortaient deja
- * a 10-20 de luminance sur 255. Le produit des deux ne laissait rien a voir —
- * on aurait dit qu'il n'y avait pas de fond du tout. Le decor etait la, il
- * etait juste eteint.
- *
- * Un voile radial resout la contradiction : dense au centre, la ou le texte
- * passe et ou la lisibilite prime, il s'ouvre vers les bords ou il n'y a que du
- * decor. On voit l'image sans jamais lire par-dessus.
- *
- * Les images elles-memes ont ete relevees par une courbe gamma : c'est leur
- * structure qu'il fallait faire remonter, pas leur clarte. Un simple + de
- * luminosite aurait delave les noirs en gris sale.
- */
-#about, #poker, #prophecy, #buy, #tokenomics, footer{
-  background-repeat:no-repeat; background-position:center; background-size:cover; }
-#about{ background-image:radial-gradient(ellipse 78% 62% at 50% 50%, rgba(7,11,20,.90), rgba(7,11,20,.55) 72%, rgba(7,11,20,.30)), url(media/fond-about.webp); }
-#poker{ background-image:radial-gradient(ellipse 78% 62% at 50% 50%, rgba(7,11,20,.90), rgba(7,11,20,.55) 72%, rgba(7,11,20,.28)), url(media/fond-poker.webp); }
-#prophecy{ background-image:radial-gradient(ellipse 78% 62% at 50% 50%, rgba(7,11,20,.90), rgba(7,11,20,.55) 72%, rgba(7,11,20,.26)), url(media/fond-prophecy.webp); }
-#buy{ background-image:radial-gradient(ellipse 80% 64% at 50% 50%, rgba(7,11,20,.91), rgba(7,11,20,.58) 72%, rgba(7,11,20,.30)), url(media/fond-buy.webp); }
-#tokenomics{ background-image:radial-gradient(ellipse 78% 62% at 50% 50%, rgba(7,11,20,.90), rgba(7,11,20,.55) 72%, rgba(7,11,20,.28)), url(media/fond-tokenomics.webp); }
-footer{ background-image:linear-gradient(rgba(7,11,20,.50), rgba(7,11,20,.88)), url(media/fond-footer.webp); }
-
-/* Et ils respirent. Un fond parfaitement immobile se lit comme une couleur ;
-   un fond qui derive tres lentement se lit comme un decor. Quarante secondes
-   par cycle : trop lent pour qu'on le remarque, assez pour que ce soit vivant. */
-#about, #poker, #prophecy, #tokenomics{
-  animation:fondDerive 44s ease-in-out infinite alternate; }
-#buy{ animation:fondDerive 58s ease-in-out infinite alternate; }
-@keyframes fondDerive{
-  from{ background-position:center, 48% 46% }
-  to{ background-position:center, 52% 54% } }
-@media(prefers-reduced-motion:reduce){
-  #about, #poker, #prophecy, #tokenomics, #buy{ animation:none } }
-
-/* ---- onglets de navigation ----
-   Le libelle est grave dans l'image ; le texte reste dans un span masque pour
-   que la barre garde du sens sans les images (lecteur d'ecran, image bloquee,
-   moteur de recherche). La hauteur est fixe et la largeur suit : les huit
-   onglets n'ont pas la meme longueur de mot, seule une hauteur commune les
-   aligne. */
-.navlinks a img{ display:block; height:30px; width:auto; transition:transform .1s, filter .12s; }
-.navlinks a{ line-height:0; }
-.navlinks a:hover img{ transform:translateY(-2px); filter:brightness(1.12); }
-.navlinks a:active img{ transform:translateY(1px) scale(.97); }
-@media(max-width:720px){ .navlinks a img{ height:26px } }
-
-/* La marque ne se laisse pas comprimer : avec huit onglets a cote, le
-   navigateur retrecissait « $SWOGE » jusqu'a le couper en deux. */
-.navin>.brand{ flex:0 0 auto; }
-.navlinks{ min-width:0; }
-
-/* Le badge « live » se pose DANS le coin de la video, comme l'incrustation
-   d'une retransmission. Pose sous le bouton, il informait ; pose sur l'image,
-   il dit que ce qu'on regarde est en train de se jouer.
-   z-index 3 : au-dessus du cadre dore, qui est lui-meme au-dessus de la video. */
-.pk-cadre .pk-live2{ position:absolute; top:7%; right:7.5%; z-index:3;
-  width:min(38%,190px); height:auto; pointer-events:none;
-  filter:drop-shadow(0 3px 8px rgba(0,0,0,.75)); }
-@media(max-width:560px){ .pk-cadre .pk-live2{ width:min(46%,150px); top:8%; right:8% } }
-
-/* Le bouton reste seul et centre sous la video : c'est la seule action de la
-   section, elle n'a pas a partager sa ligne. */
-.pk-agir{ display:flex; justify-content:center; margin:24px auto 0; }
-.pk-agir .bimg.lg{ width:min(100%,320px); margin:0; }
-
-/* ---- le bloc « the prophecy » ----
- * Les six captures vont de 2.54 a 0.46 de rapport — 450 % d'ecart. Posees a
- * 100 % de large, elles donnaient six cartes de six hauteurs, et aucune mise
- * en page ne rattrape ca.
- *
- * On impose donc un cadre IDENTIQUE a toutes, et c'est l'image qui s'y adapte
- * en « cover ». Le cadrage part du HAUT parce que ce sont des captures de
- * tweets : l'auteur, l'avatar et la premiere ligne sont en haut, et c'est tout
- * ce qui compte. Centrer aurait coupe la phrase pour montrer les boutons de
- * partage.
- *
- * Un degrade en bas dit que la capture continue. Sans lui, une image coupee net
- * ressemble a un bug ; avec lui, elle ressemble a un extrait.
- */
-.sign{ display:flex; flex-direction:column; }
-.sign .shot{ position:relative; aspect-ratio:4/3; }
-.sign .shot img{ width:100%; height:100%; object-fit:cover; object-position:top center; }
-.sign .shot::after{ content:""; position:absolute; left:0; right:0; bottom:0; height:34%;
-  background:linear-gradient(to bottom, rgba(7,11,20,0), rgba(7,11,20,.92));
-  pointer-events:none; }
-.sign .say{ margin-top:12px; }
-@media(max-width:720px){ .sign .shot{ aspect-ratio:5/4 } }
-
-/* La barre du haut est collante : elle recouvre le debut de la section quand
-   on y arrive par un lien d'ancre. On reserve sa hauteur. */
-section[id], footer{ scroll-margin-top:96px; }
-@media(max-width:720px){ section[id], footer{ scroll-margin-top:112px } }
-
-/* La rangee d'onglets defile bien dans sa boite, mais la barre laissait quand
-   meme filer le debordement vers la page : sur un telephone de 390 px, le
-   document en faisait 856. On pouvait le faire glisser sur le cote, et tout
-   paraissait dezoome.
-   `clip` plutot que `hidden` : hidden fabrique un conteneur de defilement, ce
-   qui aurait desactive le position:sticky de la barre elle-meme. */
-nav{ overflow-x:clip; }
-/* PAS de clip sur <html> : il change la facon dont le sticky se rattache au
-   viewport et decolle la barre. Couper au niveau de la barre suffit. */
-
-/* Sur telephone la plaque mangeait la bande entiere et le doge disparaissait
-   derriere. On lui laisse la place de courir. */
-@media(max-width:720px){
-  .gymband .plaque2{ width:min(82%,330px); }
-  .gympiste{ --h:170px }
+/* ------------------------------------------------- CE QUI PLIE, ET DANS QUEL ORDRE
+   La colonne de droite passe SOUS le plateau avant que la barre laterale ne
+   parte : c'est elle qui porte le bulletin et les jeux, et les serrer a moins
+   de trois cents pixels les rend illisibles bien avant que la navigation ne
+   gene. */
+@media (max-width:1240px){
+  .sw-plat{grid-template-columns:minmax(0,1fr)}
+  .jeux{grid-template-columns:repeat(5,minmax(0,1fr))}
+}
+@media (max-width:980px){
+  .sw-corps{flex-direction:column;padding:12px}
+  .sw-cote{position:static;flex:1 1 auto;width:100%;flex-direction:row;flex-wrap:wrap;align-items:center}
+  .sw-nav{flex:1 1 100%;display:flex;overflow-x:auto;scrollbar-width:none}
+  .sw-nav a{flex:0 0 auto}
+  .sw-cote .sw-b{width:auto;flex:1 1 auto}
+  .sw-reseaux{padding-top:0}
+  .univers{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .duo{grid-template-columns:minmax(0,1fr)}
+  .promesses{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .heros h1{font-size:34px}
+  .heros .dit{max-width:78%}
+}
+@media (max-width:620px){
+  .sw-haut{flex-wrap:wrap}
+  .sw-chiffres{order:3;flex:1 1 100%}
+  .jeux{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .univers{grid-template-columns:minmax(0,1fr)}
+  .promesses{grid-template-columns:minmax(0,1fr)}
+  .eco{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .heros h1{font-size:28px}
+  .heros .dit{max-width:100%}
 }
 </style>
+</head>
+<body>
 
-<nav>
-  <div class="navin">
-    <div class="brand"><img src="img/fa05d30cc698.jpg" alt="SWOGE"><span>$<b>SWOGE</b></span></div>
-    <div class="navlinks">
-      <a href="holder_scan.html" title="Holder scanner" aria-label="Scanner"><img src="media/nav-scanner.webp" alt="Scanner"><span class="vh">Scanner</span></a>
-      <a href="swoge_bench.html" title="Wallet bench" aria-label="Bench"><img src="media/nav-bench.webp" alt="Bench"><span class="vh">Bench</span></a>
-      <a href="launchpad.html" title="Token launchpad" aria-label="Launchpad"><img src="media/nav-launchpad.webp" alt="Launchpad"><span class="vh">Launchpad</span></a>
-      <a href="games.html" title="SWOGE Games — play with $SWOGE" aria-label="Games"><img src="media/nav-games.webp" alt="Games"><span class="vh">Games</span></a><!-- games-hub v2 -->
-      <a href="swoge_staking.html" title="Stake $SWOGE — earn yield" aria-label="Staking"><img src="media/nav-staking.webp" alt="Staking"><span class="vh">Staking</span></a>
-      <a href="burn.html" title="Burn $SWOGE" aria-label="Burn"><img src="media/nav-burn.webp" alt="Burn"><span class="vh">Burn</span></a>
-      <a href="https://x.com/SwoleDogeSwoge" target="_blank" rel="noopener" title="Twitter / X" aria-label="Twitter / X"><img src="media/nav-x.webp" alt="Twitter / X"><span class="vh">Twitter / X</span></a>
-      <a href="https://t.me/swoleswoge" target="_blank" rel="noopener" title="Telegram" aria-label="Telegram"><img src="media/nav-telegram.webp" alt="Telegram"><span class="vh">Telegram</span></a>
-    </div>
-    <a class="bimg sm" href="https://dexscreener.com/robinhood/0x2dc0fb72d9284228046cc95910eeaabebfe48456" target="_blank" rel="noopener" aria-label="Buy $SWOGE"><img src="img/e1b6175b4fbb.webp" alt="Buy $SWOGE"></a>
+<header class="sw-haut">
+  <a class="sw-marque" href="#">
+    <span class="sw-patte">&#128062;</span>
+    <span><b>SWOGE</b><i>WORLD</i></span>
+  </a>
+  <div class="sw-chiffres">
+    <div class="sw-ch"><span class="ic">&#128100;</span><span><small>PLAYERS</small><b>128K+</b></span></div>
+    <div class="sw-ch"><span class="ic">&#127922;</span><span><small>TOTAL WAGERED</small><b>$24.8M+</b></span></div>
+    <div class="sw-ch"><span class="ic">&#127918;</span><span><small>GAMES</small><b>1,284+</b></span></div>
+    <div class="sw-ch"><span class="ic">&#127942;</span><span><small>WINNINGS PAID</small><b>$5.7M+</b></span></div>
   </div>
-</nav>
-
-<header class="hero">
-  <div class="wrap herogrid">
-    <div>
-      <span class="tagpill"><span class="blip"></span>Robinhood Chain · $SWOGE</span>
-      <h1>THE <span class="g">SWOLE</span> DOGE</h1>
-      <p class="sub">They kept posting him. Robinhood. X. Elon. They didn't know they were summoning him. $SWOGE was always coming.</p>
-      <div class="herocta">
-        <a class="bimg lg" href="https://dexscreener.com/robinhood/0x2dc0fb72d9284228046cc95910eeaabebfe48456" target="_blank" rel="noopener" aria-label="Buy the Dog"><img src="img/6ab8ec57a99a.webp" alt="Buy the Dog"></a>
-        <a class="bimg lg" href="games.html" aria-label="Play the Games"><img src="img/33fb7042d617.webp" alt="Play the Games"></a>
-        <a class="bimg lg" href="#buy" aria-label="How it Works"><img src="img/93c9c82f0724.webp" alt="How it Works"></a>
-        <a class="bimg lg" href="https://twitter.com/intent/tweet?text=%24SWOGE%20%E2%80%94%20the%20swole%20doge%20on%20Robinhood%20Chain%20%F0%9F%92%AA%20peak%20performance%2C%20zero%20brain.%20we%20lift%20we%20hold.&url=https%3A%2F%2Fx.com%2FSwoleDogeSwoge" target="_blank" rel="noopener" aria-label="Share on X"><img src="img/278ca5ba1744.webp" alt="Share on X"></a>
-      </div>
-    </div>
-    <div class="heroimg">
-      <div class="ring"></div>
-      <img src="img/3f60b4ef45d7.jpg" alt="SWOGE flexing double biceps">
-    </div>
-  </div>
-
-  <div class="marq" aria-hidden="true">
-    <div class="marqin">
-      IT WAS WRITTEN <span>◆</span> THEY SUMMONED HIM <span>◆</span> WE LIFT WE HOLD <span>◆</span> ZERO BRAIN ALL MUSCLE <span>◆</span>
-      IT WAS WRITTEN <span>◆</span> THEY SUMMONED HIM <span>◆</span> WE LIFT WE HOLD <span>◆</span> ZERO BRAIN ALL MUSCLE <span>◆</span>
-    </div>
-  </div>
+  <button class="sw-b sw-b-vide">CONNECT WALLET</button>
+  <button class="sw-b sw-b-plein">PLAY NOW</button>
+  <div class="sw-avatar">&#128100;</div>
 </header>
 
-<section id="about">
-  <div class="wrap about">
-    <div>
-      <div class="eyebrow vh">Who is he</div>
-      <h2 class="h2"><img class="plaque" src="img/9481cb0e99d7.webp" alt="Who is he"><span>Who is he</span></h2>
-      <p class="lead">SWOGE isn't a new character. He's the one they've been posting for years — Robinhood's mascot, X's totem, the meme that shows up at every turning point. He doesn't read whitepapers. He reads reps. And he was always going to end up on Robinhood Chain.</p>
-      <div class="statline">
-        <div class="s"><div class="n">∞</div><div class="l">reps to failure</div></div>
-        <div class="s"><div class="n">0</div><div class="l">brain cells</div></div>
-        <div class="s"><div class="n">100%</div><div class="l">good boy</div></div>
-      </div>
+<div class="sw-corps">
+
+  <aside class="sw-cote">
+    <nav class="sw-nav">
+      <a href="#" class="on"><span class="ic">&#127968;</span>Home</a>
+      <a href="#"><span class="ic">&#127920;</span>Casino</a>
+      <a href="#"><span class="ic">&#9917;</span>Sports</a>
+      <a href="#"><span class="ic">&#127918;</span>Arcade</a>
+      <a href="#"><span class="ic">&#127873;</span>Rewards</a>
+      <a href="#"><span class="ic">&#128202;</span>Leaderboard</a>
+      <a href="#"><span class="ic">&#128176;</span>$SWOGE</a>
+      <a href="#"><span class="ic">&#128220;</span>Docs</a>
+    </nav>
+    <button class="sw-b sw-b-plein">CONNECT WALLET</button>
+    <button class="sw-b sw-b-vide">PLAY NOW</button>
+    <div class="sw-reseaux">
+      <a href="#" title="X">&#120143;</a><a href="#" title="Telegram">&#9992;</a>
+      <a href="#" title="Discord">&#128172;</a><a href="#" title="YouTube">&#9654;</a>
     </div>
-    <div class="logowrap"><img src="media/hero-lifts.webp" alt="SWOGE mascot flexing" loading="lazy"></div>
-  </div>
-</section>
+  </aside>
 
+  <main class="sw-plat">
 
+    <!-- ============================ LA COLONNE LARGE ============================ -->
+    <div class="sw-col">
 
-<section class="gymband">
-  <div class="gymfond" style="--fond:url(media/fond-gym.webp)"></div>
-  <div class="wrap" style="padding-top:22px;padding-bottom:6px;text-align:center">
-    <img class="plaque2" src="media/plaque-legday.webp" alt="Never skips leg day" loading="lazy">
-  </div>
-  <div class="gympiste" style="--h:220px">
-    <div class="swoge" style="background-image:url(img/69fc9cb24ce2.webp)"></div>
-    <div class="swoge idle" style="background-image:url(img/160ce7bffb64.webp)"></div>
-  </div>
-  <div class="sol"></div>
-</section>
-
-<section id="poker" class="pk" style="border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
-  <div class="wrap">
-    <div class="pk-tete">
-      <h2 style="margin:12px 0 8px"><img class="plaque2" src="media/plaque-poker.webp" alt="SWOGE Poker" loading="lazy"><span class="vh">SWOGE Poker</span></h2>
-      <p style="color:var(--dim);max-width:520px;margin:0 auto;line-height:1.55;font-size:clamp(12px,2.9vw,14px)">
-        Real tables, real stacks, played in $SWOGE. Sit down against other holders,
-        not against the house &mdash; the table only takes a rake.</p>
-    </div>
-    <div class="pk-cadre">
-      <img class="pk-live2" src="media/badge-live.webp" alt="Cash game — live" loading="lazy">
-      <div class="pk-video">
-        <video poster="media/poker-poster.jpg"
-               autoplay muted loop playsinline preload="metadata">
-          <!-- Le MP4 d'abord : le navigateur prend la premiere source qu'il sait
-               lire, et le H.264 passe partout dans la vraie vie pour trois fois
-               moins de poids que le VP9. Le WebM n'est qu'un filet de securite
-               pour les navigateurs livres sans codec proprietaire. -->
-          <source src="media/poker.mp4" type="video/mp4">
-          <source src="media/poker.webm" type="video/webm">
-        </video>
-      </div>
-      <img src="img/441e137e6fca.webp" alt="">
-    </div>
-    <div class="pk-agir">
-      <a class="bimg lg" href="swoge_poker.html" aria-label="Take a seat"><img src="img/fb0a8743d0e9.webp" alt="Take a seat"></a>
+      <section class="heros">
+        <img src="img/site/monde.webp" alt="">
+        <div class="voile"></div>
+        <div class="dit">
+          <small>WELCOME TO</small>
+          <h1>SWOGE<br>WORLD</h1>
+          <p>One token. One world.<br>Infinite ways to play.</p>
+          <button class="sw-b sw-b-plein">ENTER SWOGE WORLD &nbsp;&rarr;</button>
         </div>
-  </div>
-</section>
+      </section>
 
-<section id="gym" style="border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
-  <div class="wrap">
-    <div class="eyebrow vh">A day in the life</div>
-    <h2 class="h2"><img class="plaque" src="img/3a2ec5c462f7.webp" alt="A day in the life"><span>A day in the life</span></h2>
-    <div class="gal">
-      <div class="gcard"><img src="img/471cd0e972fd.jpg" alt="SWOGE squatting"><div class="cap">Leg day</div></div>
-      <div class="gcard"><img src="img/80a2cc52776d.jpg" alt="SWOGE drinking protein"><div class="cap">Post-workout</div></div>
-      <div class="gcard"><img src="img/8c0d9e37476e.jpg" alt="SWOGE on the beach"><div class="cap">Recovery</div></div>
-    </div>
-  </div>
-</section>
+      <section class="univers">
+        <article class="uni">
+          <img src="img/site/doge_casino.webp" alt=""><div class="voile"></div>
+          <div class="dit"><b>CASINO</b><i>Spin. Bet. Win.</i>
+            <button class="sw-b">EXPLORE</button></div>
+        </article>
+        <article class="uni">
+          <img src="img/site/doge_sport.webp" alt=""><div class="voile"></div>
+          <div class="dit"><b>SPORTS</b><i>Back Your Team.</i>
+            <button class="sw-b">BET NOW</button></div>
+        </article>
+        <article class="uni">
+          <img src="img/site/doge_arcade.webp" alt=""><div class="voile"></div>
+          <div class="dit"><b>ARCADE</b><i>Play. Compete. Earn.</i>
+            <button class="sw-b">PLAY NOW</button></div>
+        </article>
+        <article class="uni">
+          <img src="img/site/doge_roi.webp" alt=""><div class="voile"></div>
+          <div class="dit"><b>REWARDS</b><i>Play More. Unlock More.</i>
+            <button class="sw-b">VIEW REWARDS</button></div>
+        </article>
+      </section>
 
-<section id="prophecy">
-  <div class="wrap">
-    <div class="eyebrow">It was written</div>
-    <h2 class="h2"><img class="plaque" src="img/1830e6db4763.webp" alt="The prophecy"><span>The prophecy</span></h2>
-    <div class="proph-intro">
-      <p>The Swole Doge was never invented. He was <b style="color:var(--cream)">summoned</b> — one post at a time, by the two forces that shaped this era of the internet: <b style="color:var(--gold)">Robinhood</b> and <b style="color:var(--gold)">X</b>.</p>
-      <p>They kept posting him at every turning point. The 4% Gold rate. The Twitter-to-X rebirth. Every "we need Elon posting memes again." They thought it was a joke. They were leaving a trail.</p>
-      <div class="whisper">And now $SWOGE lives natively on Robinhood Chain. The symbol they couldn't stop posting became a token on their own rails. The circle closes.</div>
+      <section class="duo">
+        <div class="carte carte-p">
+          <div class="tete"><h3>THE $SWOGE ECONOMY</h3></div>
+          <!-- ================== QUATRE CHIFFRES, QUATRE SOURCES ==================
+               Ceux de la maquette etaient inventes — quatre cent douze millions
+               brules, soixante-huit virgule quatre de rendement, vingt-huit mille
+               sept cent quarante et un porteurs. Aucun ne venait de nulle part.
+
+               Ceux-ci sont VERIFIABLES, et chacun porte sa source dans la ligne
+               du dessous :
+                 · l offre est fixe et le contrat n a pas de fonction de frappe ;
+                 · le solde du coffre est celui du contrat de coffre ;
+                 · le brule est le solde de l adresse morte, et il ne fait que
+                   monter — a chaque retrait ;
+                 · le rendement et son plafond sont ceux de la configuration du
+                   serveur : cent pour cent l an, plafonnes a vingt pour cent de
+                   l offre tous joueurs confondus.
+
+               CE QUI N EST PAS ICI EST VOLONTAIRE. Le whitepaper dit lui-meme que
+               la table de repartition complete n est PAS decidee — ou vivent les
+               huit cent quatre-vingt-treize millions restants n est pas
+               documente. Ecrire une part d equipe qu on ne peut pas prouver
+               serait pire que de ne rien ecrire : c est la premiere chose qu un
+               investisseur verifiera, et un chiffre dementi coute plus cher
+               qu une case vide. -->
+          <div class="eco">
+            <div><small>TOTAL SUPPLY</small><b>1,000,000,000</b><i>FIXED &middot; NOT MINTABLE</i></div>
+            <div><small>CASINO VAULT</small><b>99,826,711</b><i>&asymp;10% OF SUPPLY</i></div>
+            <div><small>BURNED</small><b>6,827,534</b><i>0.68% &middot; PERMANENT</i></div>
+            <div><small>STAKING APR</small><b>100%</b><i>CAP 200,000,000</i></div>
+          </div>
+          <div style="margin-top:13px"><a href="#" style="font:700 11px/1 'Inter',system-ui,sans-serif;letter-spacing:.8px;color:var(--bleu)">VIEW TOKENOMICS &nbsp;&rarr;</a></div>
+        </div>
+        <div class="carte niveau">
+          <img src="img/site/doge_muscle.webp" alt=""><div class="voile"></div>
+          <div class="dit">
+            <small>YOUR SWOGE LEVEL</small>
+            <b>BEAST</b>
+            <div class="jauge"><i></i></div>
+            <em>NEXT LEVEL: ALPHA</em>
+          </div>
+        </div>
+      </section>
+
+      <section class="duo">
+        <div class="carte carte-p">
+          <div class="tete"><h3>SWOGE WORLD LEADERBOARD</h3><a href="#">VIEW ALL</a></div>
+          <div class="rang"><span class="no">01</span><img src="img/site/doge_roi.webp" alt="">
+            <span class="qui"><b>SwogeKing</b><small>LEGEND</small></span><span class="xp">984,200 XP</span></div>
+          <div class="rang"><span class="no">02</span><img src="img/site/doge_arcade.webp" alt="">
+            <span class="qui"><b>DogeLord</b><small>ALPHA</small></span><span class="xp">821,300 XP</span></div>
+          <div class="rang"><span class="no">03</span><img src="img/site/doge_casino.webp" alt="">
+            <span class="qui"><b>FlonDoge</b><small>GAMMA</small></span><span class="xp">774,250 XP</span></div>
+        </div>
+        <div class="carte course">
+          <img src="img/site/trophee.webp" alt=""><div class="voile"></div>
+          <div class="dit">
+            <small style="display:block;font:800 11px/1 'Inter',system-ui,sans-serif;letter-spacing:1.4px;color:rgba(255,255,255,.74);margin-bottom:8px">WEEKLY SWOGE RACE</small>
+            <b>$50,000</b>
+            <em style="font-style:normal;font:700 9.5px/1 'Inter',system-ui,sans-serif;letter-spacing:1.2px;color:rgba(255,255,255,.72)">REWARD POOL</em>
+          </div>
+        </div>
+      </section>
+
     </div>
 
-    <div class="signs">
-      <div class="sign">
-        <div class="idx">Sign 01</div>
-        <div class="shot"><img src="img/c1f4be23dc22.jpg" alt="Robinhood 4% Gold rate with Swole Doge"></div>
-        <p class="say"><b>Robinhood raises Gold to 4%.</b> Their chosen mascot? The Swole Doge, flexing over "the average bank savings rate." Even the cash cat couldn't compete.</p>
-      </div>
-      <div class="sign">
-        <div class="idx">Sign 02</div>
-        <div class="shot"><img src="img/2480d492af70.jpg" alt="Twitter became X with Swole Doge"></div>
-        <p class="say"><b>Twitter becomes X.</b> Three years later, the platform celebrates its rebirth — and the Swole Doge is right there in the thread, holding the new world up.</p>
-      </div>
-      <div class="sign">
-        <div class="idx">Sign 03</div>
-        <div class="shot"><img src="img/38cc410c40bc.jpg" alt="We need Elon posting memes again with Swole Doge"></div>
-        <p class="say"><b>"We need Elon posting memes again. That will heal us."</b> The healing image the community reached for was, once more, the swole one.</p>
-      </div>
-      <div class="sign">
-        <div class="idx">Sign 04</div>
-        <div class="shot"><img src="img/63019bb1acea.jpg" alt="If Elon likes this SWOGE goes to the moon"></div>
-        <p class="say"><b>The trenches noticed.</b> $SWOGE surfaces, Elon gets tagged: "if he likes this, it goes to the moon in a second." The prophecy speaks its own name.</p>
-      </div>
-      <div class="sign">
-        <div class="idx">Sign 05</div>
-        <div class="shot"><img src="img/1372b9897cb9.jpg" alt="Dogecoin i hold myself"></div>
-        <p class="say"><b>@dogecoin itself:</b> "i hold myself. Every night. So fluffy. Much wow." Even the original doge was talking about holding. Diamond paws before it had a name.</p>
-      </div>
-      <div class="sign">
-        <div class="idx">Sign 06</div>
-        <div class="shot"><img src="img/3b79f682661d.jpg" alt="Elon former trillionaire with Swole Doge in window"></div>
-        <p class="say"><b>"Former Trillionaire."</b> And in the window behind him, watching, waiting — the golden silhouette. He's always in frame. You just weren't looking.</p>
-      </div>
-    </div>
-  </div>
-</section>
+    <!-- ============================ LA COLONNE ETROITE ============================ -->
+    <div class="sw-col">
 
-<section id="buy">
-  <div class="wrap">
-    <div class="eyebrow vh">Get swole in 4 sets</div>
-    <img class="plaque2 sm" src="media/plaque-4sets.webp" alt="Get swole in 4 sets" loading="lazy">
-      <h2 class="h2"><img class="plaque" src="img/0bb1b56e029a.webp" alt="How to buy"><span>How to buy</span></h2>
-    <div class="steps">
-      <div class="step"><img class="ico" src="media/etape1.webp" alt="" loading="lazy"><span class="num">01</span><h3>Get a wallet</h3><p>Install a wallet that supports Robinhood Chain. Fund it with a little ETH for gas.</p></div>
-      <div class="step"><img class="ico" src="media/etape2.webp" alt="" loading="lazy"><span class="num">02</span><h3>Bridge ETH</h3><p>Move some ETH onto Robinhood Chain so you've got weight to lift.</p></div>
-      <div class="step"><img class="ico" src="media/etape3.webp" alt="" loading="lazy"><span class="num">03</span><h3>Swap for SWOGE</h3><p>Paste the contract below into the DEX and swap your ETH for $SWOGE.</p></div>
-      <div class="step"><img class="ico" src="media/etape4.webp" alt="" loading="lazy"><span class="num">04</span><h3>Flex &amp; hold</h3><p>You're one of the swole now. Diamond paws. Never skip leg day.</p></div>
-    </div>
-    <div class="ca">
-      <div>
-        <img class="plaque2 sm" src="media/plaque-contract.webp" alt="Contract address" loading="lazy" style="margin:0 0 6px">
-        <div class="val" id="ca">0x8a166Fb41Cd659a0a43396272FF73973Ce29F817</div>
-      </div>
-      <button id="copyCa">Copy CA</button>
-    </div>
-  </div>
-</section>
+      <section class="carte bonus">
+        <img src="img/site/doge_roulette.webp" alt=""><div class="voile"></div>
+        <div class="dit">
+          <small>WELCOME BONUS</small>
+          <b>100% UP TO<br>5,000 $SWOGE</b>
+          <button class="sw-b sw-b-plein">CLAIM BONUS</button>
+        </div>
+      </section>
 
-<section id="tokenomics" style="border-top:1px solid var(--line);border-bottom:1px solid var(--line)">
-  <div class="wrap">
-    <div class="eyebrow">The gains breakdown</div>
-    <h2 class="h2"><img class="plaque2" src="media/plaque-tokenomics.webp" alt="Tokenomics" loading="lazy"><span class="vh">Tokenomics</span></h2>
-    <p class="lead">Simple like his workout split. Swap these for your real numbers — placeholders for now.</p>
-    <div class="tok">
-      <div class="tk"><div class="big">1B</div><div class="cap">total supply</div></div>
-      <div class="tk"><div class="big">0 / 0</div><div class="cap">buy / sell tax</div></div>
-      <div class="tk"><div class="big">LP 🔥</div><div class="cap">liquidity burned</div></div>
-    </div>
-  </div>
-</section>
+      <section class="carte carte-p">
+        <div class="tete"><h3>FEATURED GAMES</h3><span class="bientot-t">COMING SOON</span></div>
+        <div class="jeux">
+          <a class="jeu bientot" href="#"><img src="img/site/jeu_bonanza.webp" alt="Sweet Bonanza"><span>SOON</span></a>
+          <a class="jeu bientot" href="#"><img src="img/site/jeu_olympus.webp" alt="Gates of Olympus"><span>SOON</span></a>
+          <a class="jeu bientot" href="#"><img src="img/site/jeu_bigbass.webp" alt="Big Bass Bonanza"><span>SOON</span></a>
+          <a class="jeu bientot" href="#"><img src="img/site/jeu_wanted.webp" alt="Wanted"><span>SOON</span></a>
+          <a class="jeu bientot" href="#"><img src="img/site/jeu_sugarrush.webp" alt="Sugar Rush"><span>SOON</span></a>
+          <a class="jeu bientot" href="#"><img src="img/site/jeu_roulette.webp" alt="Roulette Live"><span>SOON</span></a>
+          <a class="jeu bientot" href="#"><img src="img/site/jeu_blackjack.webp" alt="Blackjack Live"><span>SOON</span></a>
+          <a class="jeu bientot" href="#"><img src="img/site/jeu_poker.webp" alt="Swoge Poker"><span>SOON</span></a>
+          <a class="jeu bientot" href="#"><img src="img/site/jeu_crazytime.webp" alt="Crazy Time"><span>SOON</span></a>
+          <a class="jeu bientot" href="#"><img src="img/site/doge_smoking.webp" alt="Plinko"><span>SOON</span></a>
+        </div>
+      </section>
 
-<footer>
-  <div class="wrap">
-    <div class="big">Never skip leg day</div>
-    <div class="socials">
-      <a href="https://x.com/SwoleDogeSwoge" target="_blank" rel="noopener" title="Twitter / X" aria-label="Twitter / X"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18.9 1.2h3.7l-8 9.1 9.4 12.4h-7.4l-5.8-7.6-6.6 7.6H.5l8.6-9.8L0 1.2h7.6l5.2 6.9zM17.6 20.5h2L6.5 3.3H4.3z"/></svg><span>Twitter / X</span></a>
-      <a href="https://t.me/swoleswoge" target="_blank" rel="noopener" title="Telegram" aria-label="Telegram"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M23.9 3.5 20.3 20.4c-.3 1.2-1 1.5-2 .9l-5.5-4-2.7 2.6c-.3.3-.6.6-1.2.6l.4-5.6L19.4 5.6c.4-.4-.1-.6-.7-.2L5.1 14 .7 12.6c-1-.3-1-1 .2-1.4L22.6 2.4c.8-.3 1.5.2 1.3 1.1z"/></svg><span>Telegram</span></a>
-      <a href="https://dexscreener.com/robinhood/0x2dc0fb72d9284228046cc95910eeaabebfe48456" target="_blank" rel="noopener" title="DexScreener" aria-label="DexScreener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 20V9h4v11H2zm7 0V4h4v16H9zm7 0v-7h4v7h-4z"/></svg><span>DexScreener</span></a>
-      <a href="https://robinhoodchain.blockscout.com/token/0x8a166Fb41Cd659a0a43396272FF73973Ce29F817" target="_blank" rel="noopener" title="Explorer" aria-label="Explorer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm6.9 9h-3a15.5 15.5 0 0 0-1.3-5.6A8 8 0 0 1 18.9 11zM12 4.1c.8 1.2 1.5 3.3 1.7 6.9h-3.4c.2-3.6.9-5.7 1.7-6.9zM5.1 11a8 8 0 0 1 4.3-5.6A15.5 15.5 0 0 0 8.1 11h-3zm0 2h3a15.5 15.5 0 0 0 1.3 5.6A8 8 0 0 1 5.1 13zM12 19.9c-.8-1.2-1.5-3.3-1.7-6.9h3.4c-.2 3.6-.9 5.7-1.7 6.9zm2.6-1.3a15.5 15.5 0 0 0 1.3-5.6h3a8 8 0 0 1-4.3 5.6z"/></svg><span>Explorer</span></a>
+      <!-- ================== CE QU'ON PROPOSE VRAIMENT ==================
+           Les rencontres, les cotes, les competitions et les marches viennent
+           du catalogue du serveur, pas d'une maquette. Trois choses fausses
+           sont parties avec l'ancien bloc :
+
+           1. « LIVE » et le score en cours. ON NE PREND AUCUN PARI EN DIRECT :
+              le catalogue ferme au coup d'envoi — « accepter un pari sur un
+              match commence, c'est accepter le pari de quelqu'un qui regarde
+              le score ». Un bandeau LIVE promettait exactement ce qu'on
+              refuse. L'heure du coup d'envoi prend sa place, parce que c'est
+              elle qui compte : c'est la limite.
+
+           2. Basketball et MMA dans les onglets. On ne porte ni l'un ni
+              l'autre. La NBA existe au catalogue mais elle y est marquee
+              INACTIVE — elle est donc montree comme telle, et non comme un
+              onglet qui ne rendrait rien.
+
+           3. « +128 », « +96 », « +72 » marches en plus. Le vrai nombre est
+              CINQ, et seulement au football : double chance, les deux equipes
+              marquent, plus ou moins de deux buts et demi, score exact,
+              handicap. Le tennis n'a que le vainqueur. Annoncer cent
+              vingt-huit marches qu'on n'a pas est la seule sorte de mensonge
+              qu'un joueur verifie en un clic. -->
+      <section class="carte carte-p">
+        <div class="tete"><h3>SWOGE SPORTS</h3>
+          <span class="ferme">CLOSES AT KICK-OFF</span></div>
+        <p class="sous">Football carries <b>six markets</b> &mdash; winner, double chance,
+          both teams to score, over/under 2.5, correct score, handicap &minus;1.5.</p>
+        <div class="onglets" data-groupe="sports">
+          <button class="on"><span class="ic">&#9878;</span>All Sports</button>
+          <button><span class="ic">&#9917;</span>Football</button>
+          <button><span class="ic">&#127934;</span>Tennis</button>
+          <button class="eteint"><span class="ic">&#127936;</span>NBA</button>
+        </div>
+
+        <div class="match">
+          <div class="ligue">FOOTBALL &middot; CHAMPIONSHIP &middot; ENGLAND</div>
+          <div class="duel">
+            <span class="eq"><span>&#127988;</span><b>Bolton</b></span>
+            <span class="sc">15 AUG &middot; 12:30</span>
+            <span class="eq d"><b>Preston</b><span>&#127988;</span></span>
+          </div>
+          <div class="cotes">
+            <button class="on">1 <small>2.12</small></button>
+            <button>X <small>3.22</small></button>
+            <button>2 <small>3.17</small></button>
+            <span class="plus">+5</span>
+          </div>
+        </div>
+
+        <div class="match">
+          <div class="ligue">FOOTBALL &middot; CHAMPIONSHIP &middot; ENGLAND</div>
+          <div class="duel">
+            <span class="eq"><span>&#127988;</span><b>Norwich</b></span>
+            <span class="sc">15 AUG &middot; 15:00</span>
+            <span class="eq d"><b>West Brom</b><span>&#127988;</span></span>
+          </div>
+          <div class="cotes">
+            <button>1 <small>1.87</small></button>
+            <button>X <small>3.38</small></button>
+            <button>2 <small>3.73</small></button>
+            <span class="plus">+5</span>
+          </div>
+        </div>
+
+        <div class="match">
+          <div class="ligue">TENNIS &middot; CINCINNATI ATP</div>
+          <div class="duel">
+            <span class="eq"><span>&#127479;&#127480;</span><b>Djokovic N.</b></span>
+            <span class="sc">15 AUG &middot; 16:30</span>
+            <span class="eq d"><b>Tirante T. A.</b><span>&#127462;&#127479;</span></span>
+          </div>
+          <div class="cotes">
+            <button>1 <small>1.25</small></button>
+            <button>2 <small>3.80</small></button>
+          </div>
+        </div>
+
+        <div class="match">
+          <div class="ligue">TENNIS &middot; CINCINNATI ATP</div>
+          <div class="duel">
+            <span class="eq"><span>&#127482;&#127480;</span><b>Paul T.</b></span>
+            <span class="sc">15 AUG &middot; 18:00</span>
+            <span class="eq d"><b>Hurkacz H.</b><span>&#127477;&#127473;</span></span>
+          </div>
+          <div class="cotes">
+            <button>1 <small>1.53</small></button>
+            <button>2 <small>2.25</small></button>
+          </div>
+        </div>
+      </section>
+
     </div>
-    <p class="fine">$SWOGE is a meme coin with no intrinsic value or expectation of financial return. There is no formal team or roadmap. It exists for entertainment and community only. Crypto is risky — never put in more than you can afford to lose entirely.</p>
+  </main>
+</div>
+
+<footer class="sw-bas">
+  <div class="promesses">
+    <div class="pro"><span class="ic">&#128737;</span><span><b>SAFE &amp; SECURE</b>
+      <small>Provably fair games &amp; secure transactions</small></span></div>
+    <div class="pro"><span class="ic">&#9889;</span><span><b>INSTANT PAYOUTS</b>
+      <small>Fastest withdrawals in crypto</small></span></div>
+    <div class="pro"><span class="ic">&#127911;</span><span><b>24/7 SUPPORT</b>
+      <small>We&rsquo;re here for you anytime</small></span></div>
+    <div class="pro"><span class="ic">&#129309;</span><span><b>COMMUNITY FIRST</b>
+      <small>Built for the community, by the community</small></span></div>
   </div>
 </footer>
 
-<div class="toast" id="toast">Copied 💪</div>
-
-<script>
-const ca = document.getElementById("ca").textContent.trim();
-document.getElementById("copyCa").addEventListener("click", () => {
-  navigator.clipboard.writeText(ca).then(() => {
-    const t = document.getElementById("toast");
-    t.classList.add("on"); setTimeout(() => t.classList.remove("on"), 1500);
-  });
-});
-</script>
+</body>
 </html>

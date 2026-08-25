@@ -307,11 +307,16 @@ a{color:inherit;text-decoration:none}
 .onglets{display:flex;gap:6px;overflow-x:auto;padding-bottom:9px;margin-bottom:9px;
   border-bottom:1px solid var(--bord);scrollbar-width:none}
 .onglets::-webkit-scrollbar{display:none}
+/* ---- SUR UNE LIGNE, ET NON EN COLONNE ----
+   L'icone au-dessus du mot coutait dix-huit pixels de hauteur pour ne rien
+   dire de plus : « Football » se lit sans ballon. Cote a cote, la rangee passe
+   de cinquante-deux a trente-quatre pixels, et c'est la moitie des quarante
+   qu'il fallait rendre. */
 .onglets button{
-  flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:4px;
-  padding:7px 11px;border-radius:10px;font:700 9.5px/1 'Inter',system-ui,sans-serif;color:var(--gris);
+  flex:0 0 auto;display:flex;align-items:center;gap:6px;
+  padding:8px 11px;border-radius:10px;font:700 10.5px/1 'Inter',system-ui,sans-serif;color:var(--gris);
 }
-.onglets button .ic{font-size:14px}
+.onglets button .ic{font-size:13px}
 .onglets button.on{background:var(--bleu-clair);color:var(--bleu)}
 /* La ligne qui nomme les six marches. Sous le titre et non dans une
    infobulle : c'est ce qui distingue ce panneau de n'importe quel autre, et
@@ -325,10 +330,14 @@ a{color:inherit;text-decoration:none}
 /* Un sport porte au catalogue mais marque inactif. Eteint plutot qu'absent :
    absent, on ne saurait pas qu'il arrive ; vif, on cliquerait pour rien. */
 .onglets button.eteint{opacity:.42}
-.match{padding:10px 0}
+/* Neuf pixels au lieu de dix, et sept d'ecart au lieu de huit entre le duel
+   et ses cotes : sur quatre rencontres cela rend vingt-quatre pixels sans
+   qu'aucune ligne ne se serre visiblement. Le reste des quarante vient des
+   onglets. */
+.match{padding:8px 0}
 .match+.match{border-top:1px solid var(--bord)}
-.match .ligue{font:700 9px/1 'Inter',system-ui,sans-serif;letter-spacing:.8px;color:var(--gris);margin-bottom:7px}
-.match .duel{display:flex;align-items:center;gap:9px;margin-bottom:8px}
+.match .ligue{font:700 9px/1 'Inter',system-ui,sans-serif;letter-spacing:.8px;color:var(--gris);margin-bottom:6px}
+.match .duel{display:flex;align-items:center;gap:9px;margin-bottom:7px}
 .match .eq{display:flex;align-items:center;gap:7px;flex:1 1 0;min-width:0}
 .match .eq span{width:22px;height:22px;border-radius:7px;background:var(--fond);
   display:grid;place-items:center;font-size:11px;flex:0 0 auto}
@@ -342,7 +351,7 @@ a{color:inherit;text-decoration:none}
   text-align:center;letter-spacing:.4px}
 .cotes{display:flex;gap:6px}
 .cotes button{flex:1 1 0;min-width:0;display:flex;align-items:center;justify-content:space-between;
-  gap:6px;padding:9px 10px;border-radius:9px;background:var(--fond);border:1px solid var(--bord);
+  gap:6px;padding:8px 10px;border-radius:9px;background:var(--fond);border:1px solid var(--bord);
   font:700 12px/1 'Inter',system-ui,sans-serif}
 .cotes button small{color:var(--gris);font-weight:700}
 .cotes button:hover,.cotes button.on{background:var(--bleu-clair);border-color:var(--bleu);color:var(--bleu)}
@@ -427,14 +436,13 @@ a{color:inherit;text-decoration:none}
       <a href="#" class="on"><span class="ic">&#127968;</span>Home</a>
       <a href="games.html" class="vif"><span class="ic">&#127920;</span>Casino</a>
       <a href="swogebet.html" class="vif"><span class="ic">&#9917;</span>Sports</a>
-      <!-- L'arcade demande un portefeuille connecte AVANT d'ouvrir quoi que ce
-           soit : un lien qui mene a un ecran de refus est pire qu'un lien
-           mort, parce qu'il fait faire le trajet pour rien. Il s'allumera le
-           jour ou la connexion vit sur cette page. -->
-      <a href="#"><span class="ic">&#127918;</span>Arcade</a>
-      <a href="#"><span class="ic">&#127873;</span>Rewards</a>
-      <a href="#"><span class="ic">&#128202;</span>Leaderboard</a>
-      <a href="#"><span class="ic">&#128176;</span>$SWOGE</a>
+      <!-- ---- QUATRE ENTREES SONT PARTIES ----
+           Arcade, Rewards, Leaderboard et $SWOGE ne menaient nulle part. Un
+           menu ou une entree sur deux ne repond pas n'apprend pas la patience
+           a celui qui clique : il lui apprend que le site est casse, et il
+           arrete d'essayer les autres. Elles reviendront quand leur page
+           existera — l'arcade la premiere, le jour ou la connexion du
+           portefeuille vit ici. -->
       <a href="whitepaper.html" class="vif"><span class="ic">&#128220;</span>Docs</a>
     </nav>
     <button class="sw-b sw-b-plein">CONNECT WALLET</button>

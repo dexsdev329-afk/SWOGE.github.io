@@ -1589,7 +1589,9 @@
       'font-size:15px;line-height:1;color:#1B5FE0;' +
       'background:linear-gradient(180deg,rgba(244,247,252,.95),rgba(255,255,255,.98));' +
       'border:1px solid rgba(27,95,224,.5);}' +
-      '.swpb:hover{border-color:#FFC53D;color:#0B1B36;}' +
+      /* Le survol virait a l or : la derniere couleur d avant, sur le bouton
+         qu on regarde le plus. */
+      '.swpb:hover{border-color:#1B5FE0;color:#0B1B36;}' +
       /* En tete de barre il n'a personne a sa gauche : la marge qui le
          decollait de la pastille de solde le decollerait du bord.
        *
@@ -1682,8 +1684,14 @@
          se lisait comme une note de bas de page sous un poster. */
       '@media (min-width:900px){.swb-o{font-size:11px;padding:6px 6px 3px;}' +
         '.swb-r{gap:7px;}}' +
+      /* ---- LA BARRE DU HAUT AUSSI ----
+       * C etait le dernier aplat teinte du tiroir : un fond bleu a huit pour
+       * cent, reste de l epoque ou tout etait sombre et ou il fallait detacher
+       * l en-tete du reste. Sur un tiroir blanc, il n a plus rien a detacher —
+       * le filet du bas suffit. Demande : « quand j ouvre le profil, tout en
+       * blanc ». */
       '.swp-h{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:12px 15px;' +
-      'border-bottom:1px solid rgba(27,95,224,.26);background:rgba(27,95,224,.08);}' +
+      'border-bottom:1px solid rgba(11,27,54,.12);background:#FFFFFF;}' +
       /* ---- L ECHELLE ----
          Le panneau portait HUIT tailles, de 9,5 a 13,5 px : la plus GROSSE
          faisait 13,5. Chez n'importe quelle application de compte, 13 px c'est

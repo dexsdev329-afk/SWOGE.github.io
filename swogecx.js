@@ -169,7 +169,20 @@
    */
   window.swogeEntreLeMonde = function (ev) {
     if (ev && ev.preventDefault) ev.preventDefault();
-    if (window.swogeConnecte()) { location.href = 'nexus.html'; return; }
+    /* ---- LA DESTINATION EST CELLE DU LIEN, PAS UNE ADRESSE ECRITE ICI ----
+     * Elle etait ecrite : `nexus.html`, en dur. Le jour ou une carte a voulu
+     * mener a une SALLE du monde — la borne d arcade — il aurait fallu une
+     * seconde fonction, puis une troisieme, chacune avec sa propre idee de ce
+     * que « etre connecte » veut dire. La question reste posee une seule fois ;
+     * seule la destination change, et c est le lien qui la porte, la ou on la
+     * lit en regardant la page. */
+    var vers = 'nexus.html';
+    var el = ev && (ev.currentTarget || ev.target);
+    if (el && el.getAttribute) {
+      var h = el.getAttribute('href');
+      if (h && h !== '#') vers = h;
+    }
+    if (window.swogeConnecte()) { location.href = vers; return; }
     var b = document.querySelector('.cx-mail') || document.querySelector('.cx-wallet');
     if (b) b.click();
   };

@@ -11399,6 +11399,19 @@
    * On arrive au milieu de la BOITE — et si la piece a une forme, on
    * redescend vers le premier point qui en fait partie : le milieu de la
    * boite du cinema tombe dans les fauteuils. */
+  /* ---- LA SCENE COURANTE S ECRIT SUR LA PAGE ----
+   * Elle ne vivait que dans une variable de ce fichier. Le monde est dessine
+   * sur un canevas : de l exterieur, entrer dans une salle ne change RIEN
+   * d observable — ni balise, ni classe, ni adresse. Un essai ne pouvait donc
+   * pas dire si l on y etait, et le lien qui ouvre directement la borne
+   * d arcade serait reste une promesse inverifiable.
+   * Un attribut sur la racine coute une ligne et rend la chose lisible : par
+   * un essai, par une regle de style, et par quiconque ouvre l inspecteur. */
+  function marqueLaScene() {
+    try { document.documentElement.setAttribute('data-scene', SCENE || 'nexus'); }
+    catch (e) {}
+  }
+
   function entreSalle(cle, porte) {
     var S = SALLES[cle];
     if (!S) return;
@@ -11413,6 +11426,7 @@
                y: porte ? porte.y : joueur.y,
                r: porte ? porte.r : 0 };
     SCENE = cle;
+    marqueLaScene();
     joueur.x = (S.x0 + S.x1) / 2;
     joueur.y = (S.y0 + S.y1) / 2;
     joueur.dir = 'down';
@@ -11426,6 +11440,7 @@
   }
   function sortSalle(cle) {
     SCENE = (RETOUR && RETOUR.scene) || 'nexus';
+    marqueLaScene();
     indiceActuel = null;
     if (indiceEl) { indiceEl.classList.remove('on'); indiceEl.innerHTML = ''; }
     /* HORS du rayon de la porte, sinon on rentre a l'image suivante. Le recul
@@ -16075,4 +16090,40 @@
   requestAnimationFrame(boucle);
   peintBoutonTir();
   peintPanneau();   // le panneau existe des la premiere image, meme vide
+
+  /* ================== ON PEUT ARRIVER DIRECTEMENT DANS UNE SALLE ==================
+   *
+   * DEMANDE : « si on a notre wallet connecte et on clique sur arcade, ca nous
+   * fait arriver directement dans le jeu SWOGE nexus mais dans le salon
+   * d arcade ».
+   *
+   * Le hall porte ses salles dans `SALLES_DU_HALL` : c est la table que la
+   * boucle consulte quand on marche dans une porte. On la relit ici, plutot
+   * que d ecrire « si arcade alors » — une salle ajoutee demain sera joignable
+   * par son nom sans qu on revienne, et une salle retiree cessera de l etre
+   * sans laisser une adresse qui ne mene plus nulle part.
+   *
+   * Un nom inconnu ne fait RIEN, et c est voulu : arriver sur la place est le
+   * bon repli, alors qu inventer une salle serait une porte vers le vide.
+   *
+   * A la deuxieme image, et non tout de suite : la premiere pose la camera et
+   * les lieux. Entrer avant elle ferait entrer dans une salle qu on n a pas
+   * encore vue, et la sortie ramenerait a un hall jamais dessine. */
+  (function () {
+    var nom = '';
+    try { nom = new URLSearchParams(location.search).get('salle') || ''; } catch (e) {}
+    if (!nom) { try { nom = (location.hash || '').replace(/^#/, ''); } catch (e) {} }
+    nom = String(nom || '').toLowerCase();
+    if (!nom || !SALLES_DU_HALL[nom]) return;
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        try { SALLES_DU_HALL[nom](); } catch (e) {}
+      });
+    });
+  })();
+  /* La scene de depart est ecrite des la premiere image, meme si personne ne
+     l a changee : un attribut absent se lit comme « on ne sait pas ». */
+  (function () {
+    try { document.documentElement.setAttribute('data-scene', 'nexus'); } catch (e) {}
+  })();
 })();

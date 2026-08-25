@@ -874,15 +874,21 @@ a.match:hover .cotes button{border-color:var(--bleu)}
           <div class="dit"><b>SPORTS</b><i>Back Your Team.</i>
             <a class="sw-b vif" href="swogebet.html">BET NOW</a></div>
         </article>
-        <!-- L'arcade attend la connexion du portefeuille. Le bouton le DIT au
-             lieu de mentir : « PLAY NOW » sur un bouton qui ne joue pas est
-             exactement ce qu'on evite partout ailleurs sur cette page. -->
+        <!-- ---- L ARCADE MENE A LA BORNE, PAS A LA PLACE ----
+             Le bouton disait « CONNECT WALLET FIRST » et ne faisait rien : la
+             page etant une maquette, c etait honnete mais sterile. Il mene
+             maintenant a la SALLE d arcade du monde, directement — et non a la
+             place, d ou il faudrait retrouver le batiment.
+             Connecte, on y arrive ; sinon, la porte de connexion s ouvre
+             d abord. La decision est celle de `swogecx.js`, la meme que pour
+             la marque : deux endroits qui la poseraient chacun de leur cote
+             finiraient par ne plus repondre pareil. -->
         <article class="uni">
           <video class="film" src="media/doge_arcade.mp4" poster="img/site/doge_arcade_poster.webp"
                  muted autoplay loop playsinline disablepictureinpicture
                  aria-hidden="true"></video><div class="voile"></div>
           <div class="dit"><b>ARCADE</b><i>Play. Compete. Earn.</i>
-            <button class="sw-b attente">CONNECT WALLET FIRST</button></div>
+            <a class="sw-b vif" id="gxArcade" href="nexus.html?salle=arcade">ENTER THE ARCADE</a></div>
         </article>
         <article class="uni">
           <video class="film" src="media/doge_roi.mp4" poster="img/site/doge_roi_poster.webp"
@@ -1329,10 +1335,10 @@ a.match:hover .cotes button{border-color:var(--bleu)}
 })();
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
-<script src="stakebubble.js?v=319f39a1"></script>
+<script src="stakebubble.js?v=020a9cc2"></script>
 <script src="swogecompte.js?v=cd504287"></script>
 <script src="swogebuy.js?v=0d5e5215"></script>
-<script src="swogecx.js?v=d872f894" defer></script>
+<script src="swogecx.js?v=8d0516d1" defer></script>
 <style>
 /* ---- UN SEUL BOUTON DE PROFIL ----
  * `stakebubble.js` pose le sien dans la premiere `<nav>` de la page — ici la
@@ -1448,7 +1454,7 @@ a.match:hover .cotes button{border-color:var(--bleu)}
        que de rester sur un lien mort. */
     if (typeof window.swogeEntreLeMonde === "function") window.swogeEntreLeMonde(ev);
   }
-  ["gxMonde","gxMonde2"].forEach(function(i){
+  ["gxMonde","gxMonde2","gxArcade"].forEach(function(i){
     var e = document.getElementById(i);
     if (e) e.addEventListener("click", va);
   });

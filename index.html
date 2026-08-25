@@ -55,6 +55,14 @@ html{-webkit-text-size-adjust:100%}
  * Le survol part avec : une vignette qui grandit sous la souris promet un
  * clic autant qu'un curseur en main. */
 a[href], button{ pointer-events:none; cursor:default; }
+/* ---- SAUF CE QUI MENE QUELQUE PART ----
+ * Trois destinations existent deja sur le site et n'attendent rien de
+ * personne : les jeux, les paris, le livre blanc. Les laisser morts avec le
+ * reste aurait ete de la prudence mal placee — une page d'accueil dont AUCUN
+ * lien ne marche ne se distingue pas d'une page cassee.
+ * Les autres restent muets, et chacun pour une raison ecrite a cote. */
+a.vif{ pointer-events:auto; cursor:pointer; }
+a.vif:hover{ opacity:.86; }
 body{
   background:var(--fond); color:var(--texte);
   font:400 14px/1.45 'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
@@ -175,7 +183,12 @@ a{color:inherit;text-decoration:none}
 .uni b{display:block;font:900 20px/1 'Inter',system-ui,sans-serif;color:#fff;letter-spacing:.4px}
 .uni i{display:block;font-style:normal;font:600 11px/1.4 'Inter',system-ui,sans-serif;
   color:rgba(255,255,255,.76);margin:5px 0 11px}
-.uni .sw-b{width:100%;background:rgba(255,255,255,.94);color:var(--nuit)}
+.uni .sw-b{width:100%;background:rgba(255,255,255,.94);color:var(--nuit);
+  display:block;text-align:center;border-radius:10px}
+/* Le bouton qui attend la connexion. Pale et non blanc : il doit se lire comme
+   « pas encore » et non comme « clique ici ». */
+.uni .attente{background:rgba(255,255,255,.16);color:rgba(255,255,255,.72);
+  font-size:11px;letter-spacing:.6px}
 
 /* ---- L ECONOMIE ET LE NIVEAU ---- */
 .duo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
@@ -226,13 +239,32 @@ a{color:inherit;text-decoration:none}
 
 /* ------------------------------------------------------- LA COLONNE DE DROITE */
 .bonus{position:relative;min-height:158px;display:flex;align-items:center;background:var(--nuit)}
-.bonus img{position:absolute;right:0;top:0;height:100%;width:56%;object-fit:cover}
+.bonus img{position:absolute;right:0;top:0;height:100%;width:52%;object-fit:cover}
 .bonus .voile{position:absolute;inset:0;
-  background:linear-gradient(90deg,rgba(8,24,58,.96) 0%,rgba(8,24,58,.8) 46%,rgba(8,24,58,.08) 100%)}
-.bonus .dit{position:relative;padding:16px;max-width:70%}
+  background:linear-gradient(90deg,rgba(8,24,58,.97) 0%,rgba(8,24,58,.9) 56%,rgba(8,24,58,.18) 100%)}
+.bonus .dit{position:relative;padding:16px;max-width:72%}
+/* Les deux lignes de l'offre. Elles allongent la carte, donc l'image passe
+   derriere au lieu de tenir la moitie droite : a soixante-douze pour cent de
+   large, un texte sur trois lignes chevauchait le chien. */
+.offres{list-style:none;margin:0 0 13px;padding:0;display:flex;flex-direction:column;gap:5px}
+.offres li{position:relative;padding-left:14px;
+  font:500 11px/1.45 'Inter',system-ui,sans-serif;color:rgba(255,255,255,.8)}
+.offres li:before{content:'';position:absolute;left:0;top:6px;width:5px;height:5px;
+  border-radius:99px;background:rgba(255,255,255,.5)}
+.offres b{color:#fff;font-weight:800}
+/* Le bouton qui attend la connexion, comme celui de l'arcade : pale, il se lit
+   « pas encore » et non « clique ici ». */
+.bonus .attente{background:rgba(255,255,255,.17);color:rgba(255,255,255,.78);
+  font-size:11px;letter-spacing:.5px}
 .bonus small{display:block;font:800 10px/1 'Inter',system-ui,sans-serif;letter-spacing:1.5px;
   color:rgba(255,255,255,.74);margin-bottom:6px}
-.bonus b{display:block;font:900 21px/1.2 'Inter',system-ui,sans-serif;color:#fff;margin-bottom:12px}
+/* ---- LE TITRE, ET LUI SEUL ----
+   Ecrite `.bonus b`, cette regle attrapait aussi les `<b>` de la liste
+   d'offres : « free chest » et « 500 $SWOGE » sortaient en vingt et un pixels
+   gras, chacun sur sa propre ligne, et la carte debordait. Le titre est un
+   enfant DIRECT de `.dit` — c'est ce qui le distingue, et non sa balise. */
+.bonus .dit > b{display:block;font:900 21px/1.2 'Inter',system-ui,sans-serif;color:#fff;
+  margin-bottom:12px}
 
 .jeux{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px}
 .jeu{position:relative;border-radius:11px;overflow:hidden;aspect-ratio:1/1;background:var(--nuit)}
@@ -378,13 +410,17 @@ a{color:inherit;text-decoration:none}
   <aside class="sw-cote">
     <nav class="sw-nav">
       <a href="#" class="on"><span class="ic">&#127968;</span>Home</a>
-      <a href="#"><span class="ic">&#127920;</span>Casino</a>
-      <a href="#"><span class="ic">&#9917;</span>Sports</a>
+      <a href="games.html" class="vif"><span class="ic">&#127920;</span>Casino</a>
+      <a href="swogebet.html" class="vif"><span class="ic">&#9917;</span>Sports</a>
+      <!-- L'arcade demande un portefeuille connecte AVANT d'ouvrir quoi que ce
+           soit : un lien qui mene a un ecran de refus est pire qu'un lien
+           mort, parce qu'il fait faire le trajet pour rien. Il s'allumera le
+           jour ou la connexion vit sur cette page. -->
       <a href="#"><span class="ic">&#127918;</span>Arcade</a>
       <a href="#"><span class="ic">&#127873;</span>Rewards</a>
       <a href="#"><span class="ic">&#128202;</span>Leaderboard</a>
       <a href="#"><span class="ic">&#128176;</span>$SWOGE</a>
-      <a href="#"><span class="ic">&#128220;</span>Docs</a>
+      <a href="whitepaper.html" class="vif"><span class="ic">&#128220;</span>Docs</a>
     </nav>
     <button class="sw-b sw-b-plein">CONNECT WALLET</button>
     <button class="sw-b sw-b-vide">PLAY NOW</button>
@@ -414,17 +450,20 @@ a{color:inherit;text-decoration:none}
         <article class="uni">
           <img src="img/site/doge_casino.webp" alt=""><div class="voile"></div>
           <div class="dit"><b>CASINO</b><i>Spin. Bet. Win.</i>
-            <button class="sw-b">EXPLORE</button></div>
+            <a class="sw-b vif" href="games.html">EXPLORE</a></div>
         </article>
         <article class="uni">
           <img src="img/site/doge_sport.webp" alt=""><div class="voile"></div>
           <div class="dit"><b>SPORTS</b><i>Back Your Team.</i>
-            <button class="sw-b">BET NOW</button></div>
+            <a class="sw-b vif" href="swogebet.html">BET NOW</a></div>
         </article>
+        <!-- L'arcade attend la connexion du portefeuille. Le bouton le DIT au
+             lieu de mentir : « PLAY NOW » sur un bouton qui ne joue pas est
+             exactement ce qu'on evite partout ailleurs sur cette page. -->
         <article class="uni">
           <img src="img/site/doge_arcade.webp" alt=""><div class="voile"></div>
           <div class="dit"><b>ARCADE</b><i>Play. Compete. Earn.</i>
-            <button class="sw-b">PLAY NOW</button></div>
+            <button class="sw-b attente">CONNECT WALLET FIRST</button></div>
         </article>
         <article class="uni">
           <img src="img/site/doge_roi.webp" alt=""><div class="voile"></div>
@@ -502,12 +541,40 @@ a{color:inherit;text-decoration:none}
     <!-- ============================ LA COLONNE ETROITE ============================ -->
     <div class="sw-col">
 
+      <!-- ================== L OFFRE REELLE, LUE DANS LA CONFIGURATION ==================
+           « Cent pour cent jusqu a cinq mille » n existait nulle part : c etait
+           la maquette. Les trois lignes ci-dessous sont dans `config.js` et
+           chacune se verifie :
+
+             · WELCOME_BONUS = 100 — « credit d essai, a la premiere connexion » ;
+             · le COFFRE DU JOUR, un par jour, gratuit. Son essai dit les deux
+               regles qui comptent et qu aucune signature ne porte : il NE S
+               ACCUMULE PAS, et manquer un jour NE PUNIT PAS ;
+             · REFERRAL_WELCOME = 500 pour le filleul, et REFERRAL_PALIER_BPS
+               1000 a 2000 pour le parrain, soit dix a vingt pour cent.
+
+           CE QU ON NE MET PAS : les conditions du parrainage — dix mille de
+           depot minimum et une mise a atteindre. Elles sont vraies et elles
+           comptent, mais une banniere n est pas un contrat : l ecrire en trois
+           mots la rendrait fausse dans l autre sens. La ligne dit ce qu on
+           gagne, la page du parrainage dira a quelles conditions.
+
+           LE BOUTON NE PROMET QUE LA CONNEXION, parce que c est tout ce qu il
+           demande — par courriel ou par portefeuille. Il reste muet tant que
+           cette connexion ne vit pas sur cette page : un bouton qui mene a un
+           ecran de refus fait faire le trajet pour rien. -->
       <section class="carte bonus">
         <img src="img/site/doge_roulette.webp" alt=""><div class="voile"></div>
         <div class="dit">
-          <small>WELCOME BONUS</small>
-          <b>100% UP TO<br>5,000 $SWOGE</b>
-          <button class="sw-b sw-b-plein">CLAIM BONUS</button>
+          <small>WELCOME</small>
+          <b>100 $SWOGE<br>TO START</b>
+          <ul class="offres">
+            <li>A <b>free chest</b> every day &mdash; it never stacks, and missing
+              a day costs you nothing.</li>
+            <li>Invite a friend: they start with <b>500 $SWOGE</b>, you earn
+              <b>10&ndash;20%</b> of what they play.</li>
+          </ul>
+          <button class="sw-b attente">CONNECT &mdash; EMAIL OR WALLET</button>
         </div>
       </section>
 

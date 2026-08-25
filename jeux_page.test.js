@@ -311,6 +311,63 @@ const servirLeSite = async () => {
   eq(await p.evaluate(() => document.getElementById('gxMenu').hidden), true,
      'et le menu se referme derriere');
 
+  /* ---- ET QUAND LE TIROIR EXISTE, C EST LUI QU ON MONTRE ----
+   * `stakebubble.js` construit un tiroir de navigation qui porte SES sections
+   * — boutique, classement, coffres, marche, familiers, paris, amis — ET les
+   * entrees du menu de la page, qu il recopie. Il est donc la liste complete
+   * et deja groupee. Il n existe qu une fois le joueur authentifie ; on en
+   * pose ici la FORME EXACTE — `.swp .swp-t`, des titres `.swp-g`, des
+   * `<button>` — pour verifier qu on sait la lire.
+   * Sans cette rangee « Shop », le menu de la page resterait celui d avant :
+   * cinq actions de portefeuille, et rien de ce que le joueur venait chercher.
+   */
+  await p.evaluate(() => {
+    const d = document.createElement('div'); d.className = 'swp';
+    const t = document.createElement('div'); t.className = 'swp-t';
+    const g1 = document.createElement('div'); g1.className = 'swp-g'; g1.textContent = 'Shop';
+    const b1 = document.createElement('button'); b1.dataset.k = 'sh'; b1.textContent = '🛒 Chests & items';
+    const b2 = document.createElement('button'); b2.dataset.k = 'cl'; b2.textContent = '🏅 Collection ranking';
+    const g2 = document.createElement('div'); g2.className = 'swp-g'; g2.textContent = 'Standing';
+    const b3 = document.createElement('button'); b3.dataset.k = 'lb'; b3.textContent = '🏆 Leaderboard';
+    /* Une rangee que la page CACHE ne doit pas remonter : le tiroir masque
+       celles qui ne s'appliquent pas a la page ou l'on est. */
+    const b4 = document.createElement('button'); b4.dataset.k = 'xx';
+    b4.textContent = '🚫 Hidden row'; b4.style.display = 'none';
+    [g1, b1, b2, g2, b3, b4].forEach((x) => t.appendChild(x));
+    d.appendChild(t); document.body.appendChild(d);
+    window.__vuTiroir = null;
+    t.addEventListener('click', (e) => {
+      const b = e.target.closest && e.target.closest('button');
+      if (b) window.__vuTiroir = b.dataset.k;
+    }, true);
+  });
+  await p.click('#gxProfil'); await p.waitForTimeout(250);
+  const avecTiroir = await p.evaluate(() => {
+    const m = document.getElementById('gxMenu');
+    return {
+      groupes: [...m.querySelectorAll('.gx-g')].map((x) => x.textContent.trim()),
+      mots: [...m.querySelectorAll('a')].map((a) => {
+        const c = a.cloneNode(true);
+        [...c.querySelectorAll('i')].forEach((x) => x.remove());
+        return c.textContent.trim();
+      }),
+    };
+  });
+  eq(avecTiroir.groupes.join(' | '), 'Shop | Standing',
+     'les titres de groupe du tiroir sont repris : sans eux, dix-sept rangees'
+     + ' d affilee ne se lisent plus');
+  ok(avecTiroir.mots.indexOf('Chests & items') >= 0
+     && avecTiroir.mots.indexOf('Leaderboard') >= 0,
+     `la boutique et le classement sont revenus : ${avecTiroir.mots.join(' | ')}`);
+  ok(avecTiroir.mots.indexOf('Hidden row') < 0,
+     'et une rangee que le tiroir cache ne remonte pas : elle ne s applique pas'
+     + ' a cette page, et la montrer ouvrirait sur rien');
+  await p.locator('#gxMenu a').filter({ hasText: /Leaderboard/ }).first().click();
+  await p.waitForTimeout(200);
+  eq(await p.evaluate(() => window.__vuTiroir), 'lb',
+     'et le clic repart sur la rangee du TIROIR, qui sait ouvrir sa section');
+  await p.evaluate(() => { document.querySelector('.swp').remove(); });
+
   await p.click('#gxProfil'); await p.waitForTimeout(200);
   await p.evaluate(() => document.body.click());
   await p.waitForTimeout(200);

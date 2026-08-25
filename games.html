@@ -131,6 +131,17 @@ a{color:inherit;text-decoration:none}
   font:700 12px/1 'Inter',system-ui,sans-serif;color:var(--texte);text-decoration:none}
 .gx-menu a:hover{background:var(--bleu-clair);color:var(--bleu)}
 .gx-menu .gx-sep{height:1px;background:var(--bord);margin:5px 2px}
+/* Les titres de groupe du tiroir, repris tels quels : ils separent la
+   boutique des paris et des amis, et sans eux dix-sept rangees d'affilee ne
+   se lisent plus. */
+.gx-menu .gx-g{padding:9px 10px 4px;font:800 9px/1 'Inter',system-ui,sans-serif;
+  letter-spacing:1.1px;text-transform:uppercase;color:var(--gris)}
+.gx-menu .gx-g:first-child{padding-top:4px}
+/* ---- ET LE MENU DEFILE ----
+   Le tiroir compte dix-sept rangees et cinq titres. Les poser d'un bloc
+   ferait un menu plus haut que l'ecran d'un telephone, dont le bas serait
+   inatteignable — on n'atteindrait plus « Leaderboard », qui est en dernier. */
+.gx-menu{max-height:min(74vh,560px);overflow-y:auto;scrollbar-width:thin}
 /* L'icone reste a largeur fixe : sans elle les mots ne s'alignent pas, et une
    colonne de mots decales se lit comme une liste mal faite. */
 .gx-menu a i{font-style:normal;font-size:14px;width:18px;text-align:center;flex:0 0 auto}
@@ -983,18 +994,52 @@ a.match:hover .cotes button{border-color:var(--bleu)}
    * On garde le lien D'ORIGINE et l'on renvoie le clic dessus : c'est son
    * gestionnaire qui sait ouvrir le panneau, et le refaire ici serait un
    * second chemin vers le meme argent. */
-  function rangees(){
+  function coupe(t){
+    /* Le premier caractere est un emoji : il devient l'icone, le reste le mot.
+       Un emoji colle au mot ne s'aligne pas d'une ligne a l'autre. */
+    var m = String(t||"").trim().match(/^(\S+)\s+(.*)$/);
+    return m ? { ic:m[1], mot:m[2] } : { ic:"", mot:String(t||"").trim() };
+  }
+  /* ---- LE TIROIR PORTE DEJA TOUT ----
+   * `stakebubble.js` construit un tiroir de navigation qui contient SES
+   * sections — la boutique, le classement, les coffres, le marche, les
+   * familiers, les paris, les amis — ET les entrees du menu de la page, qu'il
+   * recopie. Il est donc la liste complete, groupee, et deja tenue a jour.
+   * Le menu de la page en montre le meme contenu, en clair. On ne choisit pas
+   * « les plus utiles » : choisir serait inventer, et la rangee qu'on
+   * ecarterait serait introuvable ici sans qu'aucun texte ne le dise.
+   *
+   * Il n'existe qu'une fois le joueur AUTHENTIFIE — c'est a ce moment que le
+   * script le monte. Avant, on retombe sur le `#menu` de `swogecompte.js`,
+   * qui est la declaration minimale et suffit a deposer. */
+  function duTiroir(){
+    var t = document.querySelector(".swp .swp-t") || document.querySelector(".swp-t");
+    if(!t) return [];
+    var l = [];
+    [].forEach.call(t.children, function(n){
+      if(n.classList && n.classList.contains("swp-g")){
+        l.push({ groupe:(n.textContent||"").trim() }); return;
+      }
+      if(n.tagName !== "BUTTON") return;
+      if(n.style && n.style.display === "none") return;   // une rangee que la page cache
+      var c = coupe(n.textContent);
+      l.push({ ic:c.ic, mot:c.mot, href:"#", vers:n });
+    });
+    return l;
+  }
+  function duMenu(){
     var src = document.getElementById("menu");
     if(!src) return [];
     return [].map.call(src.children, function(n){
       if(n.classList && n.classList.contains("msep")) return { sep:true };
       if(n.tagName !== "A") return null;
-      var t = (n.textContent||"").trim();
-      /* Le premier caractere est un emoji : il devient l'icone, le reste le
-         mot. Un emoji colle au mot ne s'aligne pas d'une ligne a l'autre. */
-      var m = t.match(/^(\S+)\s+(.*)$/);
-      return { ic: m?m[1]:"", mot: m?m[2]:t, href: n.getAttribute("href")||"#", vers:n };
+      var c = coupe(n.textContent);
+      return { ic:c.ic, mot:c.mot, href: n.getAttribute("href")||"#", vers:n };
     }).filter(Boolean);
+  }
+  function rangees(){
+    var t = duTiroir();
+    return t.length ? t : duMenu();
   }
 
   function peint(){
@@ -1016,9 +1061,10 @@ a.match:hover .cotes button{border-color:var(--bleu)}
          qu'un menu absent. */
       h += '<a href="swoge_pusher.html"><i>&#128176;</i>Deposit &amp; play</a>';
     } else {
-      h += l.map(function(r){
+      h += l.map(function(r, i){
         if(r.sep) return '<div class="gx-sep"></div>';
-        return '<a href="'+r.href+'" data-i="'+l.indexOf(r)+'"><i>'+r.ic+'</i>'+r.mot+'</a>';
+        if(r.groupe) return '<div class="gx-g">'+r.groupe+'</div>';
+        return '<a href="'+r.href+'" data-i="'+i+'"><i>'+r.ic+'</i>'+r.mot+'</a>';
       }).join("");
     }
     menu.innerHTML = h;

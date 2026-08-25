@@ -266,7 +266,11 @@ a{color:inherit;text-decoration:none}
 
 /* ------------------------------------------------------- LA COLONNE DE DROITE */
 .bonus{position:relative;min-height:158px;display:flex;align-items:center;background:var(--nuit)}
-.bonus img{position:absolute;right:0;top:0;height:100%;width:52%;object-fit:cover}
+/* Le film occupe la moitie droite, comme l'image qu'il remplace : le texte de
+   l'offre vit a gauche, et c'est le voile qui fait la jonction. */
+.bonus img,.bonus .film{position:absolute;right:0;top:0;height:100%;width:52%;object-fit:cover;
+  border:0;background:var(--nuit)}
+@media (prefers-reduced-motion:reduce){ .bonus .film{display:none} }
 .bonus .voile{position:absolute;inset:0;
   background:linear-gradient(90deg,rgba(8,24,58,.97) 0%,rgba(8,24,58,.9) 56%,rgba(8,24,58,.18) 100%)}
 .bonus .dit{position:relative;padding:16px;max-width:72%}
@@ -674,7 +678,9 @@ a{color:inherit;text-decoration:none}
            cette connexion ne vit pas sur cette page : un bouton qui mene a un
            ecran de refus fait faire le trajet pour rien. -->
       <section class="carte bonus">
-        <img src="img/site/doge_roulette.webp" alt=""><div class="voile"></div>
+        <video class="film" src="media/doge_roulette.mp4" poster="img/site/doge_roulette_poster.webp"
+               muted autoplay loop playsinline disablepictureinpicture
+               aria-hidden="true"></video><div class="voile"></div>
         <div class="dit">
           <small>WELCOME</small>
           <b>100 $SWOGE<br>TO START</b>

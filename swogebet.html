@@ -72,7 +72,7 @@ canvas{ touch-action:none; }
 <!-- La bulle de staking. Chargee tot et SANS defer : elle enveloppe WebSocket
      pour ecouter ce qui passe deja, et doit donc etre en place avant que la page
      n ouvre sa connexion. -->
-<script src="stakebubble.js?v=a2b3a1e9"></script>
+<script src="stakebubble.js?v=319f39a1"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <script src="swogebuy.js?v=0d5e5215"></script>
 <script src="https://sad.adsgram.ai/js/sad.min.js" async></script>
@@ -1059,37 +1059,14 @@ body.sb-dock main{ padding-bottom:150px; }
 </style>
 </head>
 <body>
-<!-- L ECRAN DE CHARGEMENT PORTE LA CARTE VERTE DE SWOGE BET.
-     Il portait d abord le logo du blackjack (la page est nee d une copie),
-     puis trois fois de suite l icone jaune de l application : un titre, un
-     cadre de barre et un texte, tous pointes sur le meme fichier faute d avoir
-     les trois images. On voyait donc le meme chien empile trois fois, en
-     jaune, sur une carte verte — et la barre de chargement se remplissait a
-     l interieur d un cadre qui n en etait pas un, donc invisible.
-     L ILLUSTRATION EST LE TITRE. Elle dit deja SWOGE BET en grand : il ne
-     reste qu une barre a poser dessous. Elle est montree ENTIERE, jamais
-     recadree — une carte en 3:2 recadree sur un telephone ne laisse voir
-     qu une bande au milieu, et le logo tombe justement hors de cette bande.
-     Le meme fichier sert deux fois : flou et assombri en fond pleine page pour
-     que l ecran ne soit pas un rectangle pose sur du noir, net au centre pour
-     qu on lise le titre. Aucune image de plus a charger. -->
-<div id="preloader"><style>
-/* ---- L ECRAN DE CHARGEMENT ----
-   C est la PREMIERE chose que quiconque voit de cette page, et il etait vert
-   tres sombre : la page s ouvrait donc en noir avant de basculer au clair, ce
-   qui se lit comme un defaut d affichage plutot que comme un chargement. */
-#preloader{position:fixed;inset:0;z-index:100000;background:var(--ink);overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;transition:opacity .6s ease;font-family:'Orbitron',system-ui,sans-serif}
-/* Le meme visuel floute derriere lui-meme, ASSOMBRI de soixante pour cent :
-   sur un fond clair il faut au contraire l ECLAIRCIR, sinon il reste une tache
-   sombre derriere une carte claire. */
-#preloader::before{content:"";position:absolute;inset:-6%;background:url('img/bet_carte.webp') center/cover no-repeat;filter:blur(26px) brightness(1.6) saturate(.55) opacity(.35)}
-#preloader.done{opacity:0;pointer-events:none}
-#preloader .pl-art{position:relative;width:min(92vw,700px);aspect-ratio:640/427;background:url('img/bet_carte.webp') center/contain no-repeat;filter:drop-shadow(0 10px 34px rgba(0,0,0,.75))}
-#preloader .pl-box{position:relative;width:min(82vw,360px);text-align:center}
-#preloader .pl-bar{position:relative;height:10px;border-radius:999px;overflow:hidden;background:rgba(11,27,54,.10);border:1px solid var(--line);box-shadow:none}
-#preloader .pl-bar i{position:absolute;top:0;bottom:0;width:34%;border-radius:999px;background:linear-gradient(90deg,rgba(27,95,224,0),var(--gold),rgba(27,95,224,0));animation:plload 1.15s ease-in-out infinite}
-@keyframes plload{0%{left:-34%}100%{left:100%}}
-#preloader .pl-txt{margin-top:11px;font-size:12px;letter-spacing:.26em;text-transform:uppercase;color:var(--muted);text-shadow:none}
+<!-- ---- PLUS D ECRAN DE CHARGEMENT ----
+     Demande : « swobet retire l ecran de loading, l image de loading, pas
+     besoin d ecran de chargement ». Il montrait l affiche de la page, une
+     barre qui avance et le mot « Loading » pendant une demi-seconde AU MOINS —
+     un delai ajoute a une page qui, sans lui, s affiche des la premiere image.
+     Le `<style>` qui suit vivait DANS ce bloc : un heritage de la greffe. Il
+     reste, evidemment — c est la feuille de la page. -->
+<style>
 </style>
 <style>
 /* ---- Daily Quests theme (ported from Spin) ---- */
@@ -2012,8 +1989,6 @@ main{ min-width:0; }
   .sw-chiffres{ order:5 }
 }
 </style>
-<div class="pl-art"></div><div class="pl-box"><div class="pl-bar"><i></i></div><div class="pl-txt">Loading</div></div></div>
-<script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 
 
 <!-- ==================== L EN-TETE, CELUI DES DEUX AUTRES PAGES ====================

@@ -986,7 +986,27 @@ a{color:inherit;text-decoration:none}
      celle des pages de jeu, exactement le meme message signe ». Il manquait
      simplement ici. Il n a besoin ni d `ethers` ni d aucun autre script — il
      ne signe qu avec le fournisseur du portefeuille. -->
-<script src="stakebubble.js?v=a2b3a1e9"></script>
+<!-- ==================== LES PANNEAUX DU COMPTE, POUR DE VRAI ====================
+     Signale : « quand je suis sur index html, que je clique sur mon profil,
+     que j appuie sur My Wallet, ca m ouvre une redirection vers le Coin Pusher
+     alors que ca devrait m ouvrir le panneau My Wallet ».
+
+     C etait le comportement PREVU, faute de mieux : `stakebubble.js` constate
+     qu une page n a aucun panneau de compte et envoie alors ses cinq rangees
+     vers la page qui en a — le Coin Pusher, panneau ouvert d apres l adresse.
+     Il ne les refait pas lui-meme, et il a raison : un formulaire de depot
+     ecrit dans ce fichier serait une seconde version du chemin de l argent.
+
+     Le remede n est donc pas de detourner la rangee, c est de DONNER ses
+     panneaux a cette page. `swogecompte.js` est exactement cela : la version
+     partagee, ecrite une fois, que le hall charge deja. Il ne s installe que
+     sur une page qui n a rien.
+
+     `ethers` vient avec : c est lui qui signe les retraits. C est le seul
+     poids ajoute a l accueil, et il ne l est que parce qu on y depose. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+<script src="stakebubble.js?v=319f39a1"></script>
+<script src="swogecompte.js?v=cd504287"></script>
 <script src="swogecx.js?v=d872f894" defer></script>
 <!-- Le menu du compte, le meme fichier que le hall. L accueil n a pas
      `swogecompte.js` : quand personne n est entre, le bouton ouvre la porte

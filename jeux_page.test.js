@@ -659,7 +659,7 @@ const servirLeSite = async () => {
     await ctx4.close();
   }
 
-  console.log('\n-- les vingt-six cartes du catalogue menent quelque part --');
+  console.log('\n-- toutes les cartes du catalogue menent quelque part --');
   /* ---- CE QUI ETAIT DEMANDE ----
    * « le catalogue faut tu mette les redirection sur le blacjack et gold
    * table ». Les cartes etaient inertes : CINQUIEME fois que
@@ -670,11 +670,49 @@ const servirLeSite = async () => {
   const source = fs.readFileSync(path.join(SITE, 'games.html'), 'utf8');
   const cartes = [...source.matchAll(/<a class="([^"]*)" href="([^"]+)"[^>]*title=/g)]
     .filter((m) => /\bjc\b/.test(m[1]));
-  eq(cartes.length, 26, 'les vingt-six cartes du catalogue sont toujours la');
+  /* Le NOMBRE n est plus ecrit ici. Il l etait — vingt-six — et il est tombe
+     le jour ou l on a retire la table de blackjack ordinaire, sur un essai qui
+     n avait rien a reprocher a la page. Un compte fige dans un essai devient
+     un compte a tenir a jour a deux endroits ; ce qui compte est qu il y en
+     ait, qu elles soient toutes vives, et qu elles menent toutes quelque part. */
+  ok(cartes.length >= 20,
+     `le catalogue porte ${cartes.length} cartes`);
   const mortes = cartes.filter((m) => !/\bvif\b/.test(m[1])).map((m) => m[2]);
   ok(mortes.length === 0,
-     `les vingt-six portent « vif » — sans ce mot le clic traverse la carte :`
+     `toutes portent « vif » — sans ce mot le clic traverse la carte :`
      + `${mortes.length ? ' manque ' + mortes.join(', ') : ' aucune oubliee'}`);
+  /* ---- UNE SEULE TABLE DE BLACKJACK ----
+   * Demande : « le blackjack supprime le, garde que le blackjack gold ». Deux
+   * vignettes du meme jeu, cote a cote, obligeaient a lire les legendes pour
+   * choisir. On verifie que la table d or est restee ET que l autre est
+   * partie : retirer la mauvaise des deux se lirait comme un succes. */
+  const bj = cartes.map((m) => m[2]).filter((h) => /swoge_blackjack\.html/.test(h));
+  eq(bj.join(','), 'swoge_blackjack.html?table=or',
+     'une seule carte de blackjack au catalogue, et c est la table d or');
+
+  /* ---- LE PREMIER CARRE NE PROPOSE PLUS LA PAGE OU L ON EST ----
+   * Il disait « CASINO — EXPLORE » et menait a `games.html` : on est dessus,
+   * et le seul geste qu il offrait etait de recharger la page. La meme
+   * correction que sur la page de paris, ou « SPORTS » a laisse la place au
+   * monde. La regle vaut pour les deux : sur chaque page, le carre de cette
+   * page-la devient celui du MONDE. */
+  const carres = await p.evaluate(() => [...document.querySelectorAll('.univers .uni')]
+    .map((a) => ({ t: a.querySelector('b').textContent.trim(),
+                   h: (a.querySelector('.sw-b') || {}).getAttribute
+                      ? a.querySelector('.sw-b').getAttribute('href') : null })));
+  eq(carres.map((c) => c.t).join(' / '), 'SWOGE WORLD / SPORTS / ARCADE / REWARDS',
+     'les quatre carres du haut : le premier est le MONDE, plus le casino');
+  ok(!carres.some((c) => c.h === 'games.html'),
+     'et aucun ne renvoie a la page ou l on se trouve deja');
+
+  /* Le compte de chaque rangee est LU sur les cartes, plus ecrit a la main :
+     « Against the house » annoncait neuf jeux et n en portait plus que huit. */
+  const comptes = await p.evaluate(() => [...document.querySelectorAll('.rangee')]
+    .map((r) => ({ dit: r.querySelector('.nb').textContent,
+                   vrai: String(r.querySelectorAll('.jc').length) })));
+  ok(comptes.every((c) => c.dit === c.vrai),
+     `chaque rangee annonce le nombre de jeux qu elle porte vraiment`
+     + ` (${comptes.map((c) => c.dit).join(', ')})`);
   const absentes = cartes
     .map((m) => m[2].split('?')[0].split('#')[0])
     .filter((f) => !fs.existsSync(path.join(SITE, f)));
@@ -703,8 +741,8 @@ const servirLeSite = async () => {
     const hall = `http://127.0.0.1:${site.port}/games.html?server=`
                  + encodeURIComponent('ws://127.0.0.1:1');
     /* Les deux cartes NOMMEES par la demande, l une apres l autre. */
-    for (const [cible, attendu] of [['swoge_blackjack.html', /\/swoge_blackjack\.html$/],
-                                    ['swoge_blackjack.html?table=or', /\/swoge_blackjack\.html\?table=or$/]]) {
+    for (const [cible, attendu] of [['swoge_blackjack.html?table=or', /\/swoge_blackjack\.html\?table=or$/],
+                                    ['swoge_poker.html', /\/swoge_poker\.html$/]]) {
       await p5.goto(hall, { waitUntil: 'domcontentloaded' });
       await p5.waitForTimeout(600);
       await p5.click(`a.jc[href="${cible}"]`);
@@ -721,7 +759,7 @@ const servirLeSite = async () => {
     await p5.goto(hall, { waitUntil: 'domcontentloaded' });
     await p5.waitForTimeout(600);
     await p5.addStyleTag({ content: 'a.jc{ pointer-events:none !important }' });
-    const refus = await p5.click('a.jc[href="swoge_blackjack.html"]', { timeout: 3000 })
+    const refus = await p5.click('a.jc[href="swoge_blackjack.html?table=or"]', { timeout: 3000 })
       .then(() => 'passe', () => 'refuse');
     ok(refus === 'refuse' && /games\.html/.test(p5.url()),
        `le defaut remis, le MEME clic n aboutit pas (${refus}) et l on reste sur`

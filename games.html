@@ -290,9 +290,20 @@ a{color:inherit;text-decoration:none}
    pixels — mesure, pas suppose. Aucun recadrage de l'image ne peut donc
    convenir aux deux. L'image est gardee ENTIERE, en quatre tiers, et c'est le
    point de visee qui tient : legerement a gauche et vers le haut, la ou vivent
-   le logo et le « LIVE ». Centre, le « S » de SWOGE sortait du cadre. */
+   le logo et le « LIVE ». Centre, le « S » de SWOGE sortait du cadre.
+
+   ---- ET LE POINT DE VISEE REMONTE ----
+   Il etait a trente-quatre pour cent EN HAUTEUR aussi. Mesure : a mille quatre
+   cents pixels la carte fait 344 sur 172 et le film 820 sur 606 — il est donc
+   reduit a 0,42 et deborde de quatre-vingt-deux pixels en hauteur, dont
+   vingt-huit rognes par le haut. C est exactement la bande ou se trouve
+   « SWOGE POKER », et le titre s en trouvait coupe. Signale a l ecran, pas
+   trouve a la lecture : la regle avait l air raisonnable.
+   Huit pour cent laissent le titre entier a toutes les largeurs mesurees —
+   de mille vingt-quatre a mille six cents, ou le rapport de la carte va de
+   4,5 a 2,35. */
 .salon img,.salon .film{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
-  object-position:34% 34%;border:0;background:var(--nuit)}
+  object-position:34% 8%;border:0;background:var(--nuit)}
 @media (prefers-reduced-motion:reduce){ .salon .film{display:none} }
 .salon .voile{position:absolute;inset:auto 0 0 0;height:58%;
   background:linear-gradient(180deg,rgba(6,16,40,0) 0%,rgba(6,16,40,.86) 78%,rgba(6,16,40,.95) 100%)}
@@ -843,12 +854,18 @@ a.match:hover .cotes button{border-color:var(--bleu)}
       </script>
 
 <section class="univers">
+        <!-- ---- LE PREMIER CARRE NE PROPOSE PLUS LA PAGE OU L ON EST ----
+             Il disait « CASINO — EXPLORE » et menait a `games.html` : on est
+             DESSUS. Le seul geste qu il offrait etait de recharger la page.
+             C est la meme correction que sur la page de paris, ou « SPORTS »
+             a laisse la place au monde : sur chaque page, le carre de cette
+             page-la devient celui du MONDE. -->
         <article class="uni">
-          <video class="film" src="media/doge_casino.mp4" poster="img/site/doge_casino_poster.webp"
+          <video class="film" src="media/monde_carte.mp4" poster="img/site/monde_carte_poster.webp"
                  muted autoplay loop playsinline disablepictureinpicture
                  aria-hidden="true"></video><div class="voile"></div>
-          <div class="dit"><b>CASINO</b><i>Spin. Bet. Win.</i>
-            <a class="sw-b vif" href="games.html">EXPLORE</a></div>
+          <div class="dit"><b>SWOGE WORLD</b><i>Meet. Explore. Own.</i>
+            <a class="sw-b vif" href="nexus.html">ENTER</a></div>
         </article>
         <article class="uni">
           <video class="film" src="media/doge_sport.mp4" poster="img/site/doge_sport_poster.webp"
@@ -912,8 +929,11 @@ a.match:hover .cotes button{border-color:var(--bleu)}
           <span class="nb">9</span>
         </div>
         <div class="piste" role="list" aria-label="Against the house">
-          <a class="jc vif" href="swoge_blackjack.html" title="SWOGE Blackjack"><img src="img/card_bj.webp?v=2" alt="SWOGE Blackjack" loading="lazy"
-             width="640" height="427" decoding="async"><span>SWOGE Blackjack</span></a>
+          <!-- ---- UNE SEULE TABLE DE BLACKJACK ----
+               Il y en avait deux, cote a cote : la table ordinaire et la table
+               d or. Meme jeu, meme page, un parametre d ecart — et deux
+               vignettes qui se ressemblent obligent a lire les legendes pour
+               choisir. Demande : garder la table d or. -->
           <a class="jc vif" href="swoge_blackjack.html?table=or" title="Blackjack · Gold Table"><img src="img/card_bj_or.webp?v=2" alt="Blackjack Gold Table" loading="lazy"
              width="640" height="427" decoding="async"><span>Blackjack · Gold Table</span></a>
           <a class="jc vif" href="swoge_spin.html" title="SWOGE Spin"><img src="img/card_sp.webp?v=2" alt="SWOGE Spin" loading="lazy"
@@ -1309,7 +1329,7 @@ a.match:hover .cotes button{border-color:var(--bleu)}
 })();
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
-<script src="stakebubble.js?v=a2b3a1e9"></script>
+<script src="stakebubble.js?v=319f39a1"></script>
 <script src="swogecompte.js?v=cd504287"></script>
 <script src="swogebuy.js?v=0d5e5215"></script>
 <script src="swogecx.js?v=d872f894" defer></script>
@@ -1562,6 +1582,19 @@ a.match:hover .cotes button{border-color:var(--bleu)}
   }
   var pistes = document.querySelectorAll(".piste");
   for(var i = 0; i < pistes.length; i++) posteDeFleches(pistes[i]);
+
+  /* ---- LE COMPTE DE LA RANGEE SE LIT, IL NE S ECRIT PLUS ----
+   * Il etait pose a la main dans le fichier. « Against the house » annoncait
+   * NEUF jeux et n en portait plus que huit apres qu on eut retire la table de
+   * blackjack ordinaire — un chiffre faux a cote de la chose qu il compte,
+   * c est-a-dire la seule sorte d erreur qu un visiteur verifie en un coup
+   * d oeil. Le nombre vient donc des cartes elles-memes, et il suivra le jour
+   * ou l on en ajoutera une. */
+  for(var r = 0; r < pistes.length; r++){
+    var rangee = pistes[r].closest(".rangee");
+    var nb = rangee && rangee.querySelector(".nb");
+    if(nb) nb.textContent = String(pistes[r].querySelectorAll(".jc").length);
+  }
 })();
 </script>
 <!-- ==================== LES DEUX BANDEAUX EN MOUVEMENT ==================== -->

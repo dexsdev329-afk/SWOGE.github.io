@@ -195,6 +195,39 @@
       'font-family:inherit;font-size:13px;color:#0B1B36;background:rgba(11,27,54,.05);' +
       'border:1px solid rgba(11,27,54,.16);}' +
       '.swcon-b .m{margin-top:10px;font-size:11.5px;line-height:1.45;color:#1B5FE0;}' +
+      /* ==================== CE QUE CE FICHIER DESSINE, IL LE REND CLIQUABLE ====================
+       *
+       * Trois pages du site portent `a[href], button{ pointer-events:none }` :
+       * elles sont des MAQUETTES, et leurs boutons gardent leur dessin sans
+       * repondre au doigt. La regle vise les elements par leur TYPE, donc elle
+       * frappe aussi tout ce que ce fichier ajoute apres coup — la porte de
+       * connexion et les rangees du tiroir.
+       *
+       * Signale : « quand je clique sur connect wallet, ca me met Connect
+       * wallet / Sign email et je n arrive pas a cliquer ». La porte s ouvrait
+       * bel et bien ; ses deux boutons etaient morts. Et le tiroir avait le
+       * meme mal : ses rangees ne repondaient qu au script.
+       *
+       * La garde est posee ICI, dans le fichier qui cree ces elements, et non
+       * dans chaque page : une page qui adopterait la regle demain serait
+       * couverte sans rien savoir. Les selecteurs portent une CLASSE, donc ils
+       * l emportent sur un selecteur de type, quel que soit l ordre des
+       * feuilles.
+       *
+       * Un clic lance par script IGNORE `pointer-events` : aucun essai qui
+       * appelle `.click()` ne pouvait voir ce defaut. Seul un vrai pointeur
+       * le montre. */
+      '.swcon,.swpb,' +
+      '.swcon-ov button,.swcon-ov input,.swcon-ov a,' +
+      '.swpov button,.swpov a,.swpov input,.swpov select,.swpov textarea' +
+      '{pointer-events:auto;}' +
+      /* ---- SAUF DERRIERE UN CALQUE ENCORE FERME ----
+         Deux calques s ouvrent en fondu et se gardent d etre cliquables tant
+         qu ils sont transparents. Mais `pointer-events:none` sur un parent
+         n empeche PAS un enfant qui dit `auto` de recevoir le clic : sans ces
+         deux lignes, la regle du dessus aurait rendu cliquables des boutons
+         invisibles, poses en travers de l ecran. */
+      '.swb-scene:not(.on) *,.swv:not(.on) *{pointer-events:none;}' +
       '.swcon-b .x{margin-top:12px;background:transparent;color:#5F6E88;font-weight:600;' +
       'font-size:11.5px;}';
     document.head.appendChild(c);
@@ -2122,27 +2155,23 @@
       '.swp-av.swcad{margin:0 7px;border-color:transparent;}' +
       /* Le mur de la salle derriere les blocs du profil : le meme que la page
          d accueil, assombri pour que le texte reste lisible. */
-      '.swp-me,.swnv{background-image:linear-gradient(rgba(9,13,24,.72),rgba(9,13,24,.86)),' +
-      'url(media/fond-gym.webp);background-size:auto,cover;background-position:center;}' +
-      /* ---- LE MUR RESTE SOMBRE, DONC SON TEXTE RESTE CLAIR ----
-       * Le tiroir est passe au blanc ; ces deux blocs-la gardent la photo de
-       * la salle, qui est leur decor. Leur texte, lui, avait suivi le reste et
-       * etait devenu bleu nuit : le nom du joueur et son adresse ont disparu
-       * dans le mur — on ouvrait son profil et l on n y lisait plus son nom.
-       * Vu au rendu ; a la lecture, la couleur du tiroir etait juste partout.
-       * La regle est posee ICI, contre la declaration du mur : celui qui le
-       * retirera un jour verra du meme coup ce qui en dependait. */
-      /* Les selecteurs portent `.swp` DEVANT : les regles d origine de ces
-       * memes elements sont declarees PLUS BAS dans la meme feuille, et a
-       * poids egal c est la derniere qui gagne. La premiere fois, le nom du
-       * joueur est reste invisible malgre la correction — elle etait ecrite,
-       * simplement perdue d avance. */
-      '.swp .swp-me .nm b,.swp .swnv .h,.swp .swnv .h b{color:#EAF2FF;}' +
-      '.swp .swp-me .nm > span,.swp .swnv .h i,.swp .swnv .r{color:#C6D3EA;}' +
-      '.swp .swp-me .swp-adr{border-bottom-color:rgba(255,255,255,.45);}' +
-      '.swp .swp-me .swp-ed{color:#EAF2FF;background:rgba(255,255,255,.10);' +
-      'border-color:rgba(255,255,255,.22);}' +
-      '.swp .swp-me .swp-ed:hover{color:#fff;border-color:rgba(255,255,255,.5);}' +
+      /* ---- LE MUR DE LA SALLE EST PARTI ----
+       * Ces deux blocs gardaient la photo de la salle sous un voile sombre,
+       * seuls ilots de nuit dans un tiroir devenu blanc. Il fallait leur ecrire
+       * un jeu de couleurs a part — texte clair, bordures claires — et cette
+       * exception s est deja retournee une fois : le nom du joueur et son
+       * adresse avaient disparu dans le mur.
+       * Demande : « my profil, le menu tout en blanc ». Ils prennent donc la
+       * meme carte que le reste, et les regles d exception disparaissent avec
+       * le fond qui les justifiait. Une image de moins a charger. */
+      '.swp-me,.swnv{background:#F4F7FC;border:1px solid rgba(11,27,54,.10);}' +
+      '.swp-me{border-width:0 0 1px 0;}' +
+      '.swp .swp-me .nm b,.swp .swnv .h,.swp .swnv .h b{color:#0B1B36;}' +
+      '.swp .swp-me .nm > span,.swp .swnv .h i,.swp .swnv .r{color:#5F6E88;}' +
+      '.swp .swp-me .swp-adr{border-bottom-color:rgba(11,27,54,.28);}' +
+      '.swp .swp-me .swp-ed{color:#5F6E88;background:rgba(11,27,54,.06);' +
+      'border-color:rgba(11,27,54,.13);}' +
+      '.swp .swp-me .swp-ed:hover{color:#1B5FE0;border-color:rgba(27,95,224,.5);}' +
       /* 56 px et non 40 : le cadre de palier est ce qu'on remarque en premier
          chez les autres joueurs — c'est la seule chose du profil qui se voie
          d'un coup d'oeil et qui se merite. A 40 px il etait un detail. */

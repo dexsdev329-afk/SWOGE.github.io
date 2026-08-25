@@ -162,7 +162,11 @@ a{color:inherit;text-decoration:none}
    plus. */
 .heros{position:relative;border-radius:var(--rayon);overflow:hidden;min-height:330px;
   display:flex;align-items:center;border:1px solid var(--bord)}
-.heros img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.heros img,.heros .film{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  border:0;background:var(--nuit)}
+/* Un ecran qui demande moins de mouvement n'en recoit pas : la video s'arrete
+   sur son affiche, qui est sa premiere image — rien ne manque. */
+@media (prefers-reduced-motion:reduce){ .heros .film{display:none} }
 .heros .voile{position:absolute;inset:0;
   background:linear-gradient(100deg,rgba(6,20,46,.92) 0%,rgba(6,20,46,.72) 34%,rgba(6,20,46,.06) 62%,rgba(6,20,46,0) 100%)}
 .heros .dit{position:relative;padding:30px 28px;max-width:60%}
@@ -366,6 +370,44 @@ a{color:inherit;text-decoration:none}
    Le gestionnaire d'onglets, lui, reste : il est ecrit pour n'importe quel
    `[data-groupe]`, et c'est celui des sports qu'il sert maintenant. */
 
+/* ========================= LE PANNEAU DE CONNEXION ========================= */
+.cx-voile{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:18px;
+  background:rgba(6,16,40,.62);backdrop-filter:blur(3px)}
+.cx-voile[hidden]{display:none}
+.cx-boite{position:relative;width:100%;max-width:380px;background:var(--carte);
+  border:1px solid var(--bord);border-radius:16px;padding:22px;
+  box-shadow:0 24px 64px rgba(6,16,40,.34);display:flex;flex-direction:column;gap:10px}
+.cx-boite > b{font:800 17px/1.2 'Inter',system-ui,sans-serif;color:var(--nuit)}
+.cx-dit{margin:0 0 4px;font:500 12px/1.5 'Inter',system-ui,sans-serif;color:var(--gris)}
+.cx-dit.ko{color:var(--rouge)}
+.cx-dit.ok{color:var(--vert)}
+.cx-champ{display:flex;flex-direction:column;gap:5px}
+.cx-champ span{font:700 9.5px/1 'Inter',system-ui,sans-serif;letter-spacing:1.1px;
+  text-transform:uppercase;color:var(--gris)}
+.cx-champ input{padding:12px 13px;border-radius:10px;border:1px solid var(--bord);
+  background:var(--fond);color:var(--texte);outline:none;
+  font:600 14px/1 'Inter',system-ui,sans-serif}
+.cx-champ input:focus{border-color:var(--bleu);background:var(--carte)}
+/* ---- CE QUI ECHAPPE A LA REGLE INERTE ----
+   Les boutons du panneau, ET CEUX QUI L'OUVRENT. Les seconds avaient ete
+   oublies : `a[href], button{pointer-events:none}` les tenait muets, le clic
+   traversait jusqu'a la barre laterale, et « Sign up with email » ne faisait
+   rien du tout. Ils avaient pourtant leur gestionnaire, leur style et leur
+   libelle — tout sauf l'effet. Trouve par l'essai qui clique pour de vrai ;
+   a la lecture, le code avait l'air complet. */
+.cx-boite button, .cx-wallet, .cx-mail{pointer-events:auto;cursor:pointer}
+.cx-large{width:100%;padding:13px}
+.cx-large[disabled]{opacity:.55;cursor:progress}
+.cx-fermer{position:absolute;top:10px;right:12px;font-size:22px;line-height:1;color:var(--gris);
+  padding:4px 8px}
+.cx-ou{display:flex;align-items:center;gap:10px;color:var(--gris);
+  font:700 9.5px/1 'Inter',system-ui,sans-serif;letter-spacing:1.2px;text-transform:uppercase}
+.cx-ou:before,.cx-ou:after{content:'';flex:1 1 0;height:1px;background:var(--bord)}
+/* Une fois connecte, les boutons d'appel montrent l'adresse plutot que de
+   proposer une connexion de plus. */
+.cx-wallet.branche,.cx-mail.branche{background:rgba(18,161,80,.12);color:var(--vert);
+  border:1.5px solid rgba(18,161,80,.4)}
+
 /* ------------------------------------------------------------------- LE PIED */
 .sw-bas{max-width:1680px;margin:0 auto;padding:6px 14px 22px}
 .promesses{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;
@@ -424,8 +466,8 @@ a{color:inherit;text-decoration:none}
     <div class="sw-ch"><span class="ic">&#127918;</span><span><small>GAMES</small><b>1,284+</b></span></div>
     <div class="sw-ch"><span class="ic">&#127942;</span><span><small>WINNINGS PAID</small><b>$5.7M+</b></span></div>
   </div>
-  <button class="sw-b sw-b-vide">CONNECT WALLET</button>
-  <button class="sw-b sw-b-plein">PLAY NOW</button>
+  <button class="sw-b sw-b-vide cx-wallet">CONNECT WALLET</button>
+  <button class="sw-b sw-b-plein cx-mail">SIGN UP &mdash; EMAIL</button>
   <div class="sw-avatar">&#128100;</div>
 </header>
 
@@ -445,11 +487,21 @@ a{color:inherit;text-decoration:none}
            portefeuille vit ici. -->
       <a href="whitepaper.html" class="vif"><span class="ic">&#128220;</span>Docs</a>
     </nav>
-    <button class="sw-b sw-b-plein">CONNECT WALLET</button>
-    <button class="sw-b sw-b-vide">PLAY NOW</button>
+    <button class="sw-b sw-b-plein cx-wallet">CONNECT WALLET</button>
+    <button class="sw-b sw-b-vide cx-mail">SIGN UP WITH EMAIL</button>
+    <!-- ---- LES TROIS ADRESSES QUI EXISTENT ----
+         Elles sont reprises de l'ancienne page d'accueil, pas inventees : le
+         compte X, le canal Telegram, et la paire sur Dexscreener. Discord et
+         YouTube etaient deux icones de maquette qui ne menaient nulle part.
+         `rel="noopener"` avec `target="_blank"` : sans lui, la page ouverte
+         garde une prise sur celle-ci par `window.opener`. -->
     <div class="sw-reseaux">
-      <a href="#" title="X">&#120143;</a><a href="#" title="Telegram">&#9992;</a>
-      <a href="#" title="Discord">&#128172;</a><a href="#" title="YouTube">&#9654;</a>
+      <a class="vif" href="https://x.com/SwoleDogeSwoge" target="_blank" rel="noopener"
+         title="X — @SwoleDogeSwoge">&#120143;</a>
+      <a class="vif" href="https://t.me/swoleswoge" target="_blank" rel="noopener"
+         title="Telegram — t.me/swoleswoge">&#9992;</a>
+      <a class="vif" href="https://dexscreener.com/robinhood/0x2dc0fb72d9284228046cc95910eeaabebfe48456"
+         target="_blank" rel="noopener" title="Dexscreener — $SWOGE chart">&#128200;</a>
     </div>
   </aside>
 
@@ -458,8 +510,21 @@ a{color:inherit;text-decoration:none}
     <!-- ============================ LA COLONNE LARGE ============================ -->
     <div class="sw-col">
 
+      <!-- ---- LA VIDEO, ET L IMAGE QUI TIENT SA PLACE ----
+           `poster` n'est pas une precaution de style : la video pese un
+           mega-octet et met un instant a arriver, et sans affiche la banniere
+           est un rectangle NOIR pendant ce temps — c'est la premiere chose
+           qu'on voit du site. L'affiche est la premiere image du film, donc
+           le passage de l'une a l'autre ne se voit pas.
+           `muted` avant `autoplay` : un navigateur refuse de lancer tout seul
+           une video qui pourrait faire du bruit, et l'ordre des attributs
+           compte pour certains d'entre eux. `playsinline` empeche iOS de
+           passer en plein ecran tout seul. `preload="none"` non : on VEUT
+           qu'elle arrive vite, elle est le sujet. -->
       <section class="heros">
-        <img src="img/site/monde.webp" alt="">
+        <video class="film" src="media/monde.mp4" poster="img/site/monde_poster.webp"
+               muted autoplay loop playsinline disablepictureinpicture
+               aria-hidden="true"></video>
         <div class="voile"></div>
         <div class="dit">
           <small>WELCOME TO</small>
@@ -603,7 +668,7 @@ a{color:inherit;text-decoration:none}
             <li>Invite a friend: they start with <b>500 $SWOGE</b>, you earn
               <b>10&ndash;20%</b> of what they play.</li>
           </ul>
-          <button class="sw-b attente">CONNECT &mdash; EMAIL OR WALLET</button>
+          <button class="sw-b sw-b-plein cx-mail">CONNECT &mdash; EMAIL OR WALLET</button>
         </div>
       </section>
 
@@ -719,6 +784,36 @@ a{color:inherit;text-decoration:none}
   </main>
 </div>
 
+<!-- ================== LA CONNEXION ==================
+     DEUX CHEMINS, ET LE SECOND N'EST PAS UN REPLI. Un portefeuille injecte
+     quand il y en a un ; un courriel sinon — Privy cree alors le portefeuille
+     tout seul. C'est le chemin NORMAL dans le navigateur de Telegram, ou il
+     n'y a pas d'extension a interroger, et c'est de la qu'arrive une bonne
+     part des joueurs.
+     Le meme couple sert deja sur les dix-sept pages de jeu, avec le meme
+     identifiant d'application et les memes appels. On ne refait pas un second
+     mecanisme d'authentification a cote du premier : deux facons d'entrer,
+     c'est deux facons de se tromper sur qui est connecte. -->
+<div id="cxVoile" class="cx-voile" hidden>
+  <div class="cx-boite" role="dialog" aria-modal="true" aria-labelledby="cxTitre">
+    <button class="cx-fermer" type="button" aria-label="Close">&times;</button>
+    <b id="cxTitre">Sign in</b>
+    <p class="cx-dit" id="cxDit">A wallet is created for you automatically &mdash; no app needed.</p>
+    <label class="cx-champ"><span>Email</span>
+      <input id="cxMail" type="email" inputmode="email" autocomplete="email"
+             placeholder="you@example.com"></label>
+    <div id="cxCodeBloc" hidden>
+      <label class="cx-champ"><span>Code</span>
+        <input id="cxCode" type="text" inputmode="numeric" autocomplete="one-time-code"
+               placeholder="6 digits"></label>
+    </div>
+    <button class="sw-b sw-b-plein cx-large" id="cxEnvoie">SEND ME A CODE</button>
+    <button class="sw-b sw-b-plein cx-large" id="cxVerifie" hidden>VERIFY &amp; CREATE MY WALLET</button>
+    <div class="cx-ou"><span>or</span></div>
+    <button class="sw-b sw-b-vide cx-large" id="cxPortefeuille">CONNECT A WALLET</button>
+  </div>
+</div>
+
 <footer class="sw-bas">
   <div class="promesses">
     <div class="pro"><span class="ic">&#128737;</span><span><b>SAFE &amp; SECURE</b>
@@ -732,5 +827,160 @@ a{color:inherit;text-decoration:none}
   </div>
 </footer>
 
+
+<script>
+/* ================== LA CONNEXION, ET RIEN D'AUTRE ==================
+ *
+ * ---- POURQUOI CE SCRIPT EXISTE ALORS QUE LA PAGE EST INERTE ----
+ * Tout le reste de la page ne repond pas au doigt, et c'est voulu. Ici on ne
+ * simule rien : ces deux chemins entrent VRAIMENT, avec le meme identifiant
+ * d'application et les memes appels que les dix-sept pages de jeu. Refaire un
+ * second mecanisme a cote du premier aurait donne deux facons de se tromper
+ * sur qui est connecte.
+ *
+ * ---- LE COURRIEL N'EST PAS UN REPLI ----
+ * Dans le navigateur interne de Telegram il n'y a AUCUNE extension a
+ * interroger, et c'est de la qu'arrive une bonne part des joueurs. Privy y
+ * cree le portefeuille tout seul. C'est donc le chemin normal, presente comme
+ * tel, et non un lot de consolation propose apres un echec.
+ *
+ * ---- CE QUE CETTE PAGE NE FAIT PAS ----
+ * Elle ne se connecte a AUCUNE socket et ne signe aucun message : entrer ici
+ * veut dire « le portefeuille est connu », pas « la partie est ouverte ». La
+ * session de jeu se noue sur la page du jeu, ou elle a toujours vecu.
+ */
+(function () {
+  var PRIVY = 'cmsga0yzp00a50biaf9vlzzd2';
+  var CHAINE = { hex: '0x1237', nom: 'Robinhood Chain', rpc: 'https://rpc.mainnet.chain.robinhood.com',
+                 scan: 'https://robinhoodchain.blockscout.com', sym: 'ETH' };
+  var $ = function (i) { return document.getElementById(i); };
+  var voile = $('cxVoile'), dit = $('cxDit'), courriel = '';
+
+  function parle(t, quoi) {
+    dit.textContent = t;
+    dit.className = 'cx-dit' + (quoi ? ' ' + quoi : '');
+  }
+  function ouvre() {
+    $('cxCodeBloc').hidden = true; $('cxVerifie').hidden = true;
+    $('cxEnvoie').hidden = false; $('cxCode').value = '';
+    parle('A wallet is created for you automatically \u2014 no app needed.');
+    voile.hidden = false;
+    /* Le SDK se charge PENDANT que le panneau est deja ouvert : demarre avant,
+       un reseau lent laisse quelqu'un devant un bouton qui ne fait rien et
+       aucune explication. */
+    chargePrivy().catch(function () {
+      parle("Couldn't load email sign-in \u2014 check your connection and reopen this panel.", 'ko');
+    });
+    setTimeout(function () { try { $('cxMail').focus(); } catch (e) {} }, 60);
+  }
+  function ferme() { voile.hidden = true; }
+
+  var enRoute = null;
+  function chargePrivy() {
+    if (window.SwogePrivy) return Promise.resolve();
+    if (enRoute) return enRoute;
+    enRoute = new Promise(function (ok, non) {
+      var b = document.createElement('script');
+      b.src = 'privy-swoge.js';
+      b.onload = function () { try { SwogePrivy.init(PRIVY); } catch (e) {} ok(); };
+      b.onerror = function () { enRoute = null; non(new Error('load failed')); };
+      document.head.appendChild(b);
+    });
+    return enRoute;
+  }
+
+  /* ---- CE QU'ON MONTRE UNE FOIS ENTRE ----
+   * L'adresse, abregee. Laisser « Connect wallet » allume apres coup ferait
+   * douter que la connexion a pris, et l'on cliquerait une seconde fois. */
+  function entre(adresse) {
+    var court = String(adresse || '').slice(0, 6) + '\u2026' + String(adresse || '').slice(-4);
+    [].forEach.call(document.querySelectorAll('.cx-wallet, .cx-mail'), function (b) {
+      b.textContent = court;
+      b.classList.add('branche');
+    });
+    ferme();
+  }
+
+  function connectePortefeuille() {
+    var eth = window.ethereum;
+    /* Pas d'extension : on n'annonce pas un echec, on montre le chemin qui
+       marche. C'est le cas de tout le navigateur de Telegram. */
+    if (!eth) { ouvre(); parle('No wallet extension here \u2014 sign in by email instead, we create one for you.'); return; }
+    eth.request({ method: 'eth_requestAccounts' }).then(function (c) {
+      return eth.request({ method: 'eth_chainId' }).then(function (id) {
+        if (id === CHAINE.hex) return c;
+        return eth.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: CHAINE.hex }] })
+          ['catch'](function (e) {
+            /* 4902 : la chaine est inconnue du portefeuille. On la lui donne
+               au lieu de renvoyer quelqu'un lire une documentation. */
+            if (e && e.code === 4902) {
+              return eth.request({ method: 'wallet_addEthereumChain', params: [{
+                chainId: CHAINE.hex, chainName: CHAINE.nom,
+                nativeCurrency: { name: 'Ether', symbol: CHAINE.sym, decimals: 18 },
+                rpcUrls: [CHAINE.rpc], blockExplorerUrls: [CHAINE.scan] }] });
+            }
+            throw e;
+          }).then(function () { return c; });
+      });
+    }).then(function (c) {
+      try { localStorage.setItem('swogeAuth', 'wallet'); } catch (e) {}
+      entre(c && c[0]);
+    })['catch'](function (e) {
+      ouvre(); parle(String((e && e.message) || e).slice(0, 120), 'ko');
+    });
+  }
+
+  [].forEach.call(document.querySelectorAll('.cx-mail'), function (b) { b.addEventListener('click', ouvre); });
+  [].forEach.call(document.querySelectorAll('.cx-wallet'), function (b) { b.addEventListener('click', connectePortefeuille); });
+  $('cxPortefeuille').addEventListener('click', connectePortefeuille);
+  document.querySelector('.cx-fermer').addEventListener('click', ferme);
+  voile.addEventListener('click', function (e) { if (e.target === voile) ferme(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !voile.hidden) ferme(); });
+
+  $('cxEnvoie').addEventListener('click', function () {
+    var e = ($('cxMail').value || '').trim();
+    if (!/.+@.+\..+/.test(e)) { parle('Enter a valid email address.', 'ko'); return; }
+    courriel = e; this.disabled = true; parle('Sending code\u2026');
+    var moi = this;
+    chargePrivy().then(function () { return SwogePrivy.sendCode(e); }).then(function () {
+      $('cxCodeBloc').hidden = false; $('cxVerifie').hidden = false; moi.hidden = true;
+      parle('Code sent to ' + e + ' \u2014 check your inbox, and your spam.', 'ok');
+      try { $('cxCode').focus(); } catch (x) {}
+    })['catch'](function (err) {
+      parle('Error: ' + String((err && err.message) || err).slice(0, 120), 'ko');
+    }).then(function () { moi.disabled = false; });
+  });
+
+  $('cxVerifie').addEventListener('click', function () {
+    var c = ($('cxCode').value || '').trim();
+    if (!c) { parle('Enter the code we emailed you.', 'ko'); return; }
+    this.disabled = true; parle('Verifying, and creating your wallet\u2026');
+    var moi = this;
+    SwogePrivy.verifyCode(courriel, c).then(function () {
+      try { localStorage.setItem('swogeAuth', 'email'); } catch (x) {}
+      entre(SwogePrivy.getAddress());
+    })['catch'](function (err) {
+      parle('Error: ' + String((err && err.message) || err).slice(0, 140), 'ko');
+    }).then(function () { moi.disabled = false; });
+  });
+
+  /* ---- ET SI L'ON EST DEJA ENTRE ----
+   * Privy garde la session. La retrouver evite de redemander un code a
+   * quelqu'un qui s'est connecte il y a dix minutes sur une autre page.
+   * `restore()` peut ne JAMAIS repondre — l'iframe de Privy est cloisonnee
+   * dans le navigateur de Telegram — donc on ne l'attend pas : on la lance et
+   * la page vit sa vie. */
+  try {
+    if (localStorage.getItem('swogeAuth') === 'email') {
+      chargePrivy().then(function () {
+        return SwogePrivy.restore();
+      }).then(function () {
+        var a = SwogePrivy.getAddress();
+        if (a) entre(a);
+      })['catch'](function () {});
+    }
+  } catch (e) {}
+})();
+</script>
 </body>
 </html>

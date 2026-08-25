@@ -575,9 +575,41 @@ a.match:hover .cotes button{border-color:var(--bleu)}
    s'arrete toujours sur une demi-carte, ce qui donne l'impression d'un
    affichage casse plutot que d'une liste plus longue que l'ecran. */
 .piste{ display:flex; gap:10px; overflow-x:auto; scroll-snap-type:x mandatory;
-  padding-bottom:4px; scrollbar-width:thin }
-.piste::-webkit-scrollbar{ height:6px }
-.piste::-webkit-scrollbar-thumb{ background:var(--bord); border-radius:99px }
+  padding-bottom:4px }
+/* ---- ET ELLE DEFILE SANS BARRE ----
+   DEMANDE : « against the housse met des fleche retire la barre de scroll
+   pareil pour la category utility ». La barre grise de six pixels sous chaque
+   rangee etait la seule chose qui disait qu il restait des cartes — et sur
+   telephone elle N EXISTE PAS : on voyait quatre jeux et l on croyait qu il
+   n y en avait que quatre. Deux fleches la remplacent, posees par le script
+   du bas ; elles se voient sur tous les appareils, elles.
+   Les trois lignes ensemble : Firefox lit `scrollbar-width`, les anciens Edge
+   lisent `-ms-overflow-style`, Chrome et Safari ne connaissent que le
+   pseudo-element. Il en manquerait une et la barre reviendrait sur un tiers
+   des navigateurs, sans qu on la voie sur le sien. */
+.piste{ scrollbar-width:none; -ms-overflow-style:none }
+.piste::-webkit-scrollbar{ width:0; height:0; display:none }
+/* ---- LE POSTE DE FLECHES ----
+   Il est CACHE quand la rangee tient entiere : deux fleches grises en
+   permanence au-dessus d une rangee d une seule carte seraient deux boutons
+   qui ne font rien, et l on apprendrait a ne plus les regarder — donc a ne
+   plus les voir le jour ou elles servent. « SWOGE World » et « Sports
+   betting » n ont qu une carte chacune.
+   `display:flex` bat l attribut `hidden` : sans cette ligne, le poste cache
+   resterait a l ecran. */
+.pfl{ display:flex; gap:6px; justify-content:flex-end; padding:5px 2px 0 }
+.pfl[hidden]{ display:none }
+.pfl-b{ flex:0 0 auto; width:34px; height:23px; border-radius:8px;
+  border:1px solid var(--bord); background:var(--carte); color:var(--nuit);
+  font:700 13px/1 'Inter',system-ui,sans-serif; display:grid; place-items:center;
+  transition:background .13s, border-color .13s, color .13s }
+.pfl-b:not([disabled]):hover{ background:var(--bleu-clair); border-color:var(--bleu);
+  color:var(--bleu) }
+/* Le bout de piste : la fleche reste LA, eteinte, plutot que de disparaitre —
+   un poste qui perd une fleche a l arrivee se decale d un cran et l autre
+   fuit sous le doigt qui la suivait. */
+.pfl-b[disabled]{ opacity:.32; cursor:default; color:var(--gris) }
+.pfl-b:focus-visible{ outline:2px solid var(--bleu); outline-offset:2px }
 /* La carte s'adapte : cent soixante-seize pixels sur un grand ecran, moins
    quand la colonne retrecit — sinon la meme rangee montre six cartes ici et
    deux sur un portable, sans que rien ne change entre les deux. */
@@ -770,6 +802,24 @@ a.match:hover .cotes button{border-color:var(--bleu)}
         </article>
       </section>
 
+      <!-- ================== LES VINGT-SIX CARTES MENENT QUELQUE PART ==================
+           DEMANDE : « le catalogue faut tu mette les redirection sur le
+           blacjack et gold table ».
+
+           Elles etaient inertes, et pas par oubli : `a[href]{pointer-events:none}`
+           en haut de cette page rend TOUT muet par defaut, et les cartes en
+           faisaient partie. Dessin, image, titre, `href` juste — tout sauf le
+           clic. C est la CINQUIEME fois que ce piege se referme ici, et il ne
+           se voit ni a la lecture ni dans un essai qui clique par script :
+           `element.click()` en JavaScript ignore `pointer-events` et passe sur
+           un lien mort. Il faut un vrai pointeur pour s en apercevoir.
+
+           Les VINGT-SIX sont reveillees, pas seulement les deux nommees : leurs
+           vingt-deux destinations existent toutes sur le disque — verifie
+           fichier par fichier, et l essai le refait a chaque passage. N en
+           reveiller que deux aurait ete arbitraire : on cliquerait la
+           troisieme et l on retrouverait la panne, sans savoir que c est la
+           meme. -->
       <section class="rangee">
         <div class="tete">
           <h3><span class="ric" aria-hidden="true">&#9962;</span>SWOGE World
@@ -777,7 +827,7 @@ a.match:hover .cotes button{border-color:var(--bleu)}
           <span class="nb">1</span>
         </div>
         <div class="piste" role="list" aria-label="SWOGE World">
-          <a class="jc" href="nexus.html" title="Nexus"><img src="img/card_nx.webp?v=2" alt="Nexus" loading="lazy"
+          <a class="jc vif" href="nexus.html" title="Nexus"><img src="img/card_nx.webp?v=2" alt="Nexus" loading="lazy"
              width="640" height="427" decoding="async"><span>Nexus</span></a>
         </div>
       </section>
@@ -788,23 +838,23 @@ a.match:hover .cotes button{border-color:var(--bleu)}
           <span class="nb">9</span>
         </div>
         <div class="piste" role="list" aria-label="Against the house">
-          <a class="jc" href="swoge_blackjack.html" title="SWOGE Blackjack"><img src="img/card_bj.webp?v=2" alt="SWOGE Blackjack" loading="lazy"
+          <a class="jc vif" href="swoge_blackjack.html" title="SWOGE Blackjack"><img src="img/card_bj.webp?v=2" alt="SWOGE Blackjack" loading="lazy"
              width="640" height="427" decoding="async"><span>SWOGE Blackjack</span></a>
-          <a class="jc" href="swoge_blackjack.html?table=or" title="Blackjack · Gold Table"><img src="img/card_bj_or.webp?v=2" alt="Blackjack Gold Table" loading="lazy"
+          <a class="jc vif" href="swoge_blackjack.html?table=or" title="Blackjack · Gold Table"><img src="img/card_bj_or.webp?v=2" alt="Blackjack Gold Table" loading="lazy"
              width="640" height="427" decoding="async"><span>Blackjack · Gold Table</span></a>
-          <a class="jc" href="swoge_spin.html" title="SWOGE Spin"><img src="img/card_sp.webp?v=2" alt="SWOGE Spin" loading="lazy"
+          <a class="jc vif" href="swoge_spin.html" title="SWOGE Spin"><img src="img/card_sp.webp?v=2" alt="SWOGE Spin" loading="lazy"
              width="640" height="427" decoding="async"><span>SWOGE Spin</span></a>
-          <a class="jc" href="swoge_casino.html?game=holdem" title="Casino Hold'em"><img src="img/card_ho.webp?v=2" alt="Casino Hold'em" loading="lazy"
+          <a class="jc vif" href="swoge_casino.html?game=holdem" title="Casino Hold'em"><img src="img/card_ho.webp?v=2" alt="Casino Hold'em" loading="lazy"
              width="640" height="427" decoding="async"><span>Casino Hold'em</span></a>
-          <a class="jc" href="swoge_casino.html?game=three" title="Three Card"><img src="img/card_tc.webp?v=2" alt="Three Card" loading="lazy"
+          <a class="jc vif" href="swoge_casino.html?game=three" title="Three Card"><img src="img/card_tc.webp?v=2" alt="Three Card" loading="lazy"
              width="640" height="427" decoding="async"><span>Three Card</span></a>
-          <a class="jc" href="swoge_casino.html?game=mines" title="Mines"><img src="img/card_mn.webp?v=2" alt="Mines" loading="lazy"
+          <a class="jc vif" href="swoge_casino.html?game=mines" title="Mines"><img src="img/card_mn.webp?v=2" alt="Mines" loading="lazy"
              width="640" height="427" decoding="async"><span>Mines</span></a>
-          <a class="jc" href="swoge_casino.html?game=hilo" title="Hi-Lo"><img src="img/card_hl.webp?v=2" alt="Hi-Lo" loading="lazy"
+          <a class="jc vif" href="swoge_casino.html?game=hilo" title="Hi-Lo"><img src="img/card_hl.webp?v=2" alt="Hi-Lo" loading="lazy"
              width="640" height="427" decoding="async"><span>Hi-Lo</span></a>
-          <a class="jc" href="plinko.html" title="Plinko"><img src="img/card_pl.webp?v=2" alt="Plinko" loading="lazy"
+          <a class="jc vif" href="plinko.html" title="Plinko"><img src="img/card_pl.webp?v=2" alt="Plinko" loading="lazy"
              width="640" height="427" decoding="async"><span>Plinko</span></a>
-          <a class="jc" href="swoge_smash.html" title="SWOGE Smash"><img src="img/card_sm.webp?v=2" alt="SWOGE Smash" loading="lazy"
+          <a class="jc vif" href="swoge_smash.html" title="SWOGE Smash"><img src="img/card_sm.webp?v=2" alt="SWOGE Smash" loading="lazy"
              width="640" height="427" decoding="async"><span>SWOGE Smash</span></a>
         </div>
       </section>
@@ -815,13 +865,13 @@ a.match:hover .cotes button{border-color:var(--bleu)}
           <span class="nb">4</span>
         </div>
         <div class="piste" role="list" aria-label="Against other players">
-          <a class="jc" href="boulier.html" title="Boulier"><img src="img/card_bo.webp?v=2" alt="Boulier" loading="lazy"
+          <a class="jc vif" href="boulier.html" title="Boulier"><img src="img/card_bo.webp?v=2" alt="Boulier" loading="lazy"
              width="640" height="427" decoding="async"><span>Boulier</span></a>
-          <a class="jc" href="swoge_poker.html" title="SWOGE Poker"><img src="img/card_pk.webp?v=2" alt="SWOGE Poker" loading="lazy"
+          <a class="jc vif" href="swoge_poker.html" title="SWOGE Poker"><img src="img/card_pk.webp?v=2" alt="SWOGE Poker" loading="lazy"
              width="640" height="427" decoding="async"><span>SWOGE Poker</span></a>
-          <a class="jc" href="swoge_pusher_live.html" title="Coin Pusher"><img src="img/card_cp.webp?v=2" alt="Coin Pusher" loading="lazy"
+          <a class="jc vif" href="swoge_pusher_live.html" title="Coin Pusher"><img src="img/card_cp.webp?v=2" alt="Coin Pusher" loading="lazy"
              width="640" height="427" decoding="async"><span>Coin Pusher</span></a>
-          <a class="jc" href="crash.html" title="Crash"><img src="img/card_cr.webp?v=2" alt="Crash" loading="lazy"
+          <a class="jc vif" href="crash.html" title="Crash"><img src="img/card_cr.webp?v=2" alt="Crash" loading="lazy"
              width="640" height="427" decoding="async"><span>Crash</span></a>
         </div>
       </section>
@@ -832,15 +882,15 @@ a.match:hover .cotes button{border-color:var(--bleu)}
           <span class="nb">5</span>
         </div>
         <div class="piste" role="list" aria-label="Head to head">
-          <a class="jc" href="connect4.html" title="Connect 4"><img src="img/card_p4.webp?v=2" alt="Connect 4" loading="lazy"
+          <a class="jc vif" href="connect4.html" title="Connect 4"><img src="img/card_p4.webp?v=2" alt="Connect 4" loading="lazy"
              width="640" height="427" decoding="async"><span>Connect 4</span></a>
-          <a class="jc" href="morpion.html" title="Tic-Tac-Toe"><img src="img/card_mp.webp?v=2" alt="Tic-Tac-Toe" loading="lazy"
+          <a class="jc vif" href="morpion.html" title="Tic-Tac-Toe"><img src="img/card_mp.webp?v=2" alt="Tic-Tac-Toe" loading="lazy"
              width="640" height="427" decoding="async"><span>Tic-Tac-Toe</span></a>
-          <a class="jc" href="morpion_fantome.html" title="Ghost Tic-Tac-Toe"><img src="img/card_mf.webp?v=2" alt="Ghost Tic-Tac-Toe" loading="lazy"
+          <a class="jc vif" href="morpion_fantome.html" title="Ghost Tic-Tac-Toe"><img src="img/card_mf.webp?v=2" alt="Ghost Tic-Tac-Toe" loading="lazy"
              width="640" height="427" decoding="async"><span>Ghost Tic-Tac-Toe</span></a>
-          <a class="jc" href="dernier_chiffre.html" title="Last Number"><img src="img/card_dc.webp?v=2" alt="Last Number" loading="lazy"
+          <a class="jc vif" href="dernier_chiffre.html" title="Last Number"><img src="img/card_dc.webp?v=2" alt="Last Number" loading="lazy"
              width="640" height="427" decoding="async"><span>Last Number</span></a>
-          <a class="jc" href="dames.html" title="Checkers"><img src="img/card_dm.webp?v=2" alt="Checkers" loading="lazy"
+          <a class="jc vif" href="dames.html" title="Checkers"><img src="img/card_dm.webp?v=2" alt="Checkers" loading="lazy"
              width="640" height="427" decoding="async"><span>Checkers</span></a>
         </div>
       </section>
@@ -851,7 +901,7 @@ a.match:hover .cotes button{border-color:var(--bleu)}
           <span class="nb">1</span>
         </div>
         <div class="piste" role="list" aria-label="Sports betting">
-          <a class="jc" href="swogebet.html" title="SWOGE Bet"><img src="img/bet_carte.webp?v=2" alt="SWOGE Bet" loading="lazy"
+          <a class="jc vif" href="swogebet.html" title="SWOGE Bet"><img src="img/bet_carte.webp?v=2" alt="SWOGE Bet" loading="lazy"
              width="640" height="427" decoding="async"><span>SWOGE Bet</span></a>
         </div>
       </section>
@@ -862,17 +912,17 @@ a.match:hover .cotes button{border-color:var(--bleu)}
           <span class="nb">6</span>
         </div>
         <div class="piste" role="list" aria-label="Utility">
-          <a class="jc" href="swoge_staking.html" title="Staking"><img src="img/card_st.webp?v=2" alt="Staking" loading="lazy"
+          <a class="jc vif" href="swoge_staking.html" title="Staking"><img src="img/card_st.webp?v=2" alt="Staking" loading="lazy"
              width="640" height="427" decoding="async"><span>Staking</span></a>
-          <a class="jc" href="swoge_bench.html" title="Wallet Bench"><img src="img/card_wb.webp?v=2" alt="Wallet Bench" loading="lazy"
+          <a class="jc vif" href="swoge_bench.html" title="Wallet Bench"><img src="img/card_wb.webp?v=2" alt="Wallet Bench" loading="lazy"
              width="640" height="427" decoding="async"><span>Wallet Bench</span></a>
-          <a class="jc" href="launchpad.html" title="Launchpad"><img src="img/card_lp.webp?v=2" alt="Launchpad" loading="lazy"
+          <a class="jc vif" href="launchpad.html" title="Launchpad"><img src="img/card_lp.webp?v=2" alt="Launchpad" loading="lazy"
              width="640" height="427" decoding="async"><span>Launchpad</span></a>
-          <a class="jc" href="burn.html" title="Burn"><img src="img/card_bn.webp?v=2" alt="Burn" loading="lazy"
+          <a class="jc vif" href="burn.html" title="Burn"><img src="img/card_bn.webp?v=2" alt="Burn" loading="lazy"
              width="640" height="427" decoding="async"><span>Burn</span></a>
-          <a class="jc" href="holder_scan.html" title="Holder Scanner"><img src="img/card_hs.webp?v=2" alt="Holder Scanner" loading="lazy"
+          <a class="jc vif" href="holder_scan.html" title="Holder Scanner"><img src="img/card_hs.webp?v=2" alt="Holder Scanner" loading="lazy"
              width="640" height="427" decoding="async"><span>Holder Scanner</span></a>
-          <a class="jc" href="whitepaper.html" title="White Paper"><img src="img/card_wp.webp?v=2" alt="White Paper" loading="lazy"
+          <a class="jc vif" href="whitepaper.html" title="White Paper"><img src="img/card_wp.webp?v=2" alt="White Paper" loading="lazy"
              width="640" height="427" decoding="async"><span>White Paper</span></a>
         </div>
       </section>
@@ -1173,7 +1223,7 @@ a.match:hover .cotes button{border-color:var(--bleu)}
 })();
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
-<script src="stakebubble.js?v=233ccc57"></script>
+<script src="stakebubble.js?v=a2b3a1e9"></script>
 <script src="swogecompte.js?v=cd504287"></script>
 <script src="swogebuy.js?v=0d5e5215"></script>
 <script src="swogecx.js?v=d872f894" defer></script>
@@ -1281,7 +1331,7 @@ a.match:hover .cotes button{border-color:var(--bleu)}
 
 
 </style>
-<!-- La marque et le bouton du bandeau mènent au monde. -->
+<!-- La marque et le bouton du bandeau menent au monde. -->
 <script>
 (function(){
   "use strict";
@@ -1336,6 +1386,96 @@ a.match:hover .cotes button{border-color:var(--bleu)}
        * clic, et c est la confiance qui part avec. */
       bloc.hidden = true;
     });
+})();
+</script>
+<!-- Des fleches a la place de la barre de defilement, sur CHAQUE rangee. -->
+<script>
+(function(){
+  "use strict";
+  /* ================== DES FLECHES A LA PLACE DE LA BARRE ==================
+   *
+   * DEMANDE : « sur game html againts the housse met des fleche retire la
+   * barre de scroll pareil pour la category utility ».
+   *
+   * ---- POURQUOI TOUTES LES RANGEES, ET PAS LES DEUX NOMMEES ----
+   *
+   * Le defaut n appartient pas a « Against the house » ni a « Utility » : il
+   * appartient a `.piste`, dont il y a SIX exemplaires. N en corriger deux
+   * aurait laisse quatre barres grises en place — et le jour ou l on ajoute
+   * une septieme rangee, elle serait nee cassee.
+   *
+   * ---- CE QUE LA BARRE FAISAIT, ET CE QU ELLE NE FAISAIT PAS ----
+   *
+   * Elle etait la seule chose qui annoncait qu il restait des cartes sous le
+   * bord droit. Sur telephone elle N EXISTE PAS : la rangee des neuf jeux de
+   * maison en montrait deux, et rien ne disait qu il y en avait sept autres.
+   * La retirer sans rien mettre a la place aurait donc ete le defaut d
+   * origine, en pire.
+   *
+   * ---- UNE SEULE FONCTION, APPELEE SIX FOIS ----
+   *
+   * `nexus.js` en a une equivalente pour ses colonnes verticales. Elle n est
+   * pas importee : cette page ne charge pas `nexus.js`, et l y brancher pour
+   * deux boutons ferait descendre huit cent mille octets. La FORME est
+   * reprise, pas le fichier.
+   *
+   * ---- ET LES FLECHES SONT `vif` ----
+   *
+   * `a[href], button{pointer-events:none}` en haut de cette page tue tout
+   * bouton qui ne porte pas cette classe. Sans elle : deux fleches dessinees,
+   * leur gestionnaire branche, et le clic qui traverse jusqu au bloc du
+   * dessous. C est arrive a « ENTER SWOGE WORLD », a la barre du bas, et aux
+   * cartes du catalogue juste au-dessus. */
+  function posteDeFleches(piste){
+    if(!piste || !piste.parentNode) return function(){};
+    var poste = document.createElement("div");
+    poste.className = "pfl";
+    var gauche = document.createElement("button");
+    var droite = document.createElement("button");
+    gauche.type = droite.type = "button";
+    /* `vif` ou rien : voir plus haut. Ce mot est la difference entre un bouton
+       et un dessin de bouton. */
+    gauche.className = droite.className = "pfl-b vif";
+    gauche.innerHTML = "&#8249;";
+    droite.innerHTML = "&#8250;";
+    var quoi = piste.getAttribute("aria-label") || "row";
+    gauche.setAttribute("aria-label", "Scroll " + quoi + " left");
+    droite.setAttribute("aria-label", "Scroll " + quoi + " right");
+    poste.appendChild(gauche); poste.appendChild(droite);
+    piste.parentNode.insertBefore(poste, piste.nextSibling);
+
+    /* Ce qui depasse du cadre. La marge d un pixel absorbe les largeurs
+       fractionnaires : sans elle, une piste de 900,5 px dans 900 allumerait
+       les deux fleches pour un demi-pixel, et le clic ne bougerait rien. */
+    function trop(){ return piste.scrollWidth - piste.clientWidth; }
+    function maj(){
+      var t = trop();
+      if(t <= 1){ poste.hidden = true; return; }
+      poste.hidden = false;
+      var x = piste.scrollLeft;
+      gauche.disabled = x <= 1;
+      droite.disabled = x >= t - 1;
+    }
+    function bouge(vers){
+      /* Un peu MOINS d une largeur visible : la derniere carte lue reste a
+         l ecran apres le saut. A une largeur pleine, on ne sait plus ou l on
+         en etait et l on revient en arriere pour verifier. */
+      var pas = Math.max(120, Math.round(piste.clientWidth * 0.8)) * vers;
+      piste.scrollLeft += pas;
+      maj();
+    }
+    gauche.addEventListener("click", function(){ bouge(-1); });
+    droite.addEventListener("click", function(){ bouge(1); });
+    /* `scroll` pour le doigt et la molette, `resize` parce que la carte est en
+       `clamp()` : a la rotation du telephone une rangee qui debordait peut
+       tenir entiere, et ses fleches doivent partir avec le debordement. */
+    piste.addEventListener("scroll", maj);
+    window.addEventListener("resize", maj);
+    maj();
+    return maj;
+  }
+  var pistes = document.querySelectorAll(".piste");
+  for(var i = 0; i < pistes.length; i++) posteDeFleches(pistes[i]);
 })();
 </script>
 </body>

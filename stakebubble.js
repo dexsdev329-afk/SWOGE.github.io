@@ -179,23 +179,23 @@
          (2147483000). C'est le seul panneau qu'on ouvre PAR-DESSUS un
          autre — on s'y reconnecte sans quitter ce qu'on faisait. */
       '.swcon-ov{position:fixed;inset:0;z-index:2147483200;display:none;align-items:center;' +
-      'justify-content:center;padding:16px;background:rgba(4,6,12,.72);}' +
+      'justify-content:center;padding:16px;background:rgba(244,247,252,.72);}' +
       '.swcon-ov.on{display:flex;}' +
       '.swcon-b{width:min(360px,100%);border-radius:16px;padding:18px;' +
-      'background:#0E1422;border:1px solid rgba(255,197,61,.28);color:#EAF2FF;' +
-      'font-family:inherit;box-shadow:0 24px 60px rgba(0,0,0,.6);}' +
+      'background:#FFFFFF;border:1px solid rgba(27,95,224,.28);color:#0B1B36;' +
+      'font-family:inherit;box-shadow:0 24px 60px rgba(11,27,54,0.18);}' +
       '.swcon-b h4{margin:0 0 4px;font-size:15px;}' +
-      '.swcon-b p{margin:0 0 14px;font-size:11.5px;line-height:1.5;color:#8DA0C4;}' +
+      '.swcon-b p{margin:0 0 14px;font-size:11.5px;line-height:1.5;color:#5F6E88;}' +
       '.swcon-b button{width:100%;margin-top:8px;padding:11px;border-radius:11px;' +
       'cursor:pointer;font-family:inherit;font-size:13px;font-weight:800;border:0;}' +
       '.swcon-b .w{color:#231a06;background:linear-gradient(180deg,#F2C868,#E6A537);}' +
-      '.swcon-b .e{color:#EAF2FF;background:rgba(255,255,255,.08);' +
-      'border:1px solid rgba(255,255,255,.16);}' +
+      '.swcon-b .e{color:#0B1B36;background:rgba(11,27,54,.08);' +
+      'border:1px solid rgba(11,27,54,.16);}' +
       '.swcon-b input{width:100%;margin-top:8px;padding:11px;border-radius:11px;' +
-      'font-family:inherit;font-size:13px;color:#EAF2FF;background:rgba(0,0,0,.35);' +
-      'border:1px solid rgba(255,255,255,.16);}' +
-      '.swcon-b .m{margin-top:10px;font-size:11.5px;line-height:1.45;color:#F2C868;}' +
-      '.swcon-b .x{margin-top:12px;background:transparent;color:#8DA0C4;font-weight:600;' +
+      'font-family:inherit;font-size:13px;color:#0B1B36;background:rgba(11,27,54,.05);' +
+      'border:1px solid rgba(11,27,54,.16);}' +
+      '.swcon-b .m{margin-top:10px;font-size:11.5px;line-height:1.45;color:#1B5FE0;}' +
+      '.swcon-b .x{margin-top:12px;background:transparent;color:#5F6E88;font-weight:600;' +
       'font-size:11.5px;}';
     document.head.appendChild(c);
   }
@@ -355,12 +355,12 @@
       css.textContent =
         '.swbal{display:inline-flex;align-items:center;gap:7px;vertical-align:middle;' +
         'padding:7px 13px;border-radius:999px;font-family:inherit;font-size:13px;' +
-        'font-weight:800;color:#FFD97A;white-space:nowrap;' +
-        'background:linear-gradient(180deg,rgba(46,26,10,.92),rgba(20,10,4,.96));' +
-        'border:1px solid rgba(230,165,55,.45);}' +
+        'font-weight:800;color:#1B5FE0;white-space:nowrap;' +
+        'background:linear-gradient(180deg,rgba(244,247,252,.92),rgba(255,255,255,.96));' +
+        'border:1px solid rgba(27,95,224,.45);}' +
         '.swbal .pt{width:8px;height:8px;border-radius:50%;background:#16D97F;' +
         'box-shadow:0 0 8px #16D97F;}' +
-        '.swbal em{font-style:normal;font-size:10px;color:#C9A24A;letter-spacing:.8px;}' +
+        '.swbal em{font-style:normal;font-size:10px;color:#1B5FE0;letter-spacing:.8px;}' +
         '@media (max-width:520px){.swbal{font-size:11px;padding:5px 10px;}}' +
         /* Le mot « $SWOGE » colle au solde s'efface sur telephone, comme sur les
            pages de jeu — swogebuy.js y fait la meme chose depuis longtemps, mais
@@ -812,8 +812,8 @@
       note = document.createElement('div');
       note.id = 'swfrais';
       note.style.cssText = 'margin-top:7px;padding:8px 10px;border-radius:9px;font-size:11.5px;' +
-        'line-height:1.5;color:#FFD97A;background:rgba(255,197,61,.08);' +
-        'border:1px solid rgba(255,197,61,.28);';
+        'line-height:1.5;color:#1B5FE0;background:rgba(27,95,224,.08);' +
+        'border:1px solid rgba(27,95,224,.28);';
       (champ.parentElement || champ).appendChild(note);
     }
     note.innerHTML = '🔥 <b>' + f.taux + '% of every withdrawal is burned</b> — it is not a fee ' +
@@ -871,15 +871,15 @@
       'margin-left:8px;padding:5px 11px;border:0;border-radius:999px;cursor:pointer;' +
       'font-family:inherit;font-size:12.5px;font-weight:800;line-height:1;color:#0A1608;' +
       'background:linear-gradient(180deg,#8CFFC0,#16D97F 58%,#0E9257);' +
-      'box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 2px 8px rgba(22,217,127,.3);' +
+      'box-shadow:inset 0 1px 0 rgba(11,27,54,.5),0 2px 8px rgba(18,161,80,.3);' +
       'white-space:nowrap;transition:transform .1s,box-shadow .15s;}' +
-      '.swstk:hover{box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 0 0 2px rgba(22,217,127,.45),0 4px 12px rgba(22,217,127,.4);}' +
+      '.swstk:hover{box-shadow:inset 0 1px 0 rgba(11,27,54,.5),0 0 0 2px rgba(18,161,80,.45),0 4px 12px rgba(18,161,80,.4);}' +
       '.swstk:active{transform:translateY(1px);}' +
       '.swstk b{font-variant-numeric:tabular-nums;font-weight:800;letter-spacing:.2px;}' +
       '.swstk .swi{font-size:12px;filter:none;}' +
       '.swstk.swflash{animation:swflash .7s ease-out;}' +
-      '@keyframes swflash{0%{transform:scale(1.18);box-shadow:0 0 0 6px rgba(22,217,127,.5);}' +
-      '100%{transform:scale(1);box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 2px 8px rgba(22,217,127,.3);}}' +
+      '@keyframes swflash{0%{transform:scale(1.18);box-shadow:0 0 0 6px rgba(18,161,80,.5);}' +
+      '100%{transform:scale(1);box-shadow:inset 0 1px 0 rgba(11,27,54,.5),0 2px 8px rgba(18,161,80,.3);}}' +
       /* Sur telephone la barre du Blackjack n'a pas cinq pixels a donner : la
          bulle debordait de l'ecran. On la resserre au lieu d'esperer que
          chaque barre saura l'absorber — et sous 400 px le cadenas s'efface,
@@ -919,10 +919,10 @@
     css.textContent =
       '.swppl{display:inline-flex;align-items:center;gap:6px;vertical-align:middle;' +
       'margin-left:8px;padding:5px 11px;border-radius:999px;' +
-      'font-family:inherit;font-size:12px;font-weight:700;line-height:1;color:#EAF2FF;' +
-      'background:linear-gradient(180deg,rgba(46,123,255,.22),rgba(10,16,32,.75));' +
+      'font-family:inherit;font-size:12px;font-weight:700;line-height:1;color:#0B1B36;' +
+      'background:linear-gradient(180deg,rgba(46,123,255,.22),rgba(244,247,252,.75));' +
       'border:1px solid rgba(46,123,255,.5);white-space:nowrap;' +
-      'box-shadow:inset 0 1px 0 rgba(255,255,255,.12);}' +
+      'box-shadow:inset 0 1px 0 rgba(11,27,54,.12);}' +
       '.swppl .swdot{width:7px;height:7px;border-radius:50%;background:#16D97F;' +
       'box-shadow:0 0 7px #16D97F;animation:swbat 2.2s ease-in-out infinite;}' +
       '@keyframes swbat{50%{opacity:.35}}' +
@@ -1153,7 +1153,10 @@
      dans une liste d'amis, au vestibule d'un duel. */
   function pastilleNiveau(p) {
     if (!p || !p.niveau) return '';
-    return '<span class="swlv" style="color:' + couleurPalier(p.palier) + ';border-color:' +
+    /* Le TEXTE passe par `lisible`, la bordure garde la teinte pleine : sur du
+       blanc, un lisere pale est une decoration, un chiffre pale est une
+       information qu on n arrive pas a lire. */
+    return '<span class="swlv" style="color:' + lisible(couleurPalier(p.palier)) + ';border-color:' +
            couleurPalier(p.palier) + '55">' + p.niveau + '</span>';
   }
   /* ============== LE VISAGE ET LE NIVEAU, PENDANT LA PARTIE ==============
@@ -1224,7 +1227,7 @@
     c.textContent =
       '.swhav{flex:0 0 auto;display:inline-block;width:26px;height:26px;border-radius:50%;' +
       'background-size:cover;background-position:center;vertical-align:middle;' +
-      'background-color:rgba(255,255,255,.07);position:relative;}' +
+      'background-color:rgba(11,27,54,.07);position:relative;}' +
       /* Le visage REMPLACE la pastille de couleur : elle disait qui etait
          rouge et qui etait bleu, le cadre de palier le dit mieux, et sur un
          telephone les deux ensemble ne laissaient plus de place au nom. La
@@ -1236,7 +1239,7 @@
       'background:var(--cadre) center/contain no-repeat;pointer-events:none;}' +
       '.swhlv{display:inline-block;margin-top:3px;padding:1px 7px;border-radius:999px;' +
       'font-family:inherit;font-size:9.5px;font-weight:900;letter-spacing:.5px;' +
-      'border:1px solid;background:rgba(255,255,255,.05);white-space:nowrap;}' +
+      'border:1px solid;background:rgba(11,27,54,.05);white-space:nowrap;}' +
       /* On ne touche PAS a la disposition du bloc joueur : la page l'a deja
          reglee, et la refaire ici deplacait le X sur la meme ligne que le nom
          en recouvrant celui-ci. */
@@ -1351,13 +1354,13 @@
       '.swdire{display:flex;flex-wrap:wrap;justify-content:center;gap:5px;margin:10px auto 0;' +
       'max-width:560px;}' +
       '.swdire button{width:36px;height:34px;border-radius:9px;cursor:pointer;font-size:16px;' +
-      'line-height:1;padding:0;font-family:inherit;color:#EAF2FF;' +
-      'background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);}' +
-      '.swdire button:hover{background:rgba(255,197,61,.16);border-color:rgba(255,197,61,.45);}' +
+      'line-height:1;padding:0;font-family:inherit;color:#0B1B36;' +
+      'background:rgba(11,27,54,.06);border:1px solid rgba(11,27,54,.12);}' +
+      '.swdire button:hover{background:rgba(27,95,224,.16);border-color:rgba(27,95,224,.45);}' +
       '.swdire button:active{transform:translateY(1px);}' +
       '.swdire button.mu{margin-left:8px;font-size:14px;}' +
       '.swdire .rst{align-self:center;margin-left:8px;font-style:normal;font-size:10.5px;' +
-      'font-weight:800;letter-spacing:.4px;color:#F2A65E;}' +
+      'font-weight:800;letter-spacing:.4px;color:#C2410C;}' +
       /* La bulle : posee en absolu au-dessus du joueur, donc le bloc qui la
          porte doit devenir un repere — sans quoi elle irait se placer par
          rapport a la page entiere. */
@@ -1365,7 +1368,7 @@
       '.swdit{position:absolute;left:50%;bottom:100%;transform:translateX(-50%);' +
       'margin-bottom:7px;padding:6px 11px;border-radius:11px;white-space:nowrap;' +
       'font-family:inherit;font-size:12px;font-weight:700;color:#07101F;z-index:9;' +
-      'background:linear-gradient(180deg,#FFE08A,#FFC53D);box-shadow:0 6px 18px rgba(0,0,0,.45);' +
+      'background:linear-gradient(180deg,#FFE08A,#FFC53D);box-shadow:0 6px 18px rgba(11,27,54,0.18);' +
       'animation:swditIn .18s ease-out;}' +
       '.swdit b{font-size:14px;}' +
       '@keyframes swditIn{from{opacity:0;transform:translateX(-50%) translateY(5px);}' +
@@ -1481,6 +1484,65 @@
   }
 
   var profStyleFait = false;
+  /* ================== UNE COULEUR DU SERVEUR, LISIBLE SUR BLANC ==================
+   *
+   * Les teintes de rarete viennent du CATALOGUE : le serveur les envoie, le
+   * monde les dessine, et elles ne se decident pas ici — les reecrire dans ce
+   * fichier ferait deux verites sur la couleur d un objet legendaire.
+   *
+   * Mais elles ont ete choisies pour un fond NOIR. Sur le tiroir blanc, « 0,19 %
+   * Legendary » en or pale a dix pixels et demi ne se lit plus : l information
+   * est affichee et illisible, ce qui est pire que de ne pas l afficher — on
+   * croit l avoir montree.
+   *
+   * On garde donc la TEINTE et l on baisse la clarte jusqu a ce que le rapport
+   * de contraste passe. La couleur reste reconnaissable — un legendaire reste
+   * dore, un mythique reste rouge — et le mot se lit. C est fait au moment de
+   * PEINDRE, jamais en memoire : ce que le serveur a envoye n est pas modifie.
+   *
+   * Seul le TEXTE passe par ici. Une bordure pale sur du blanc est une
+   * decoration, pas une information ; l assombrir lui donnerait un poids
+   * qu elle n a pas. */
+  /* ---- LE GRIS DU TIROIR EST PLUS SOMBRE QUE CELUI DU SITE ----
+   * Le site ecrit son texte secondaire en `#6B7C99`. Mesure sur le blanc du
+   * tiroir, ce gris donne 4,0 pour 1 — sous le seuil de 4,5 des textes
+   * ordinaires, et ce sont justement les libelles qui expliquent les chiffres
+   * (« $SWOGE », « reward ready », « quests »). Ils etaient affiches et
+   * a peine lisibles, ce qui est pire que de ne pas les afficher : on croit
+   * les avoir montres.
+   * Le tiroir prend donc `#5F6E88`, qui passe a 5,2. Meme histoire pour le
+   * vert des reussites : `#12A150` ne donnait que 3,1 sur le vert pale des
+   * cartes « OPEN » et « Wearing » — il devient `#0E7C3E`.
+   * La meme mesure vaut pour les trois pages claires du site, qui portent
+   * encore les couleurs d origine : c est un changement a part, sur d autres
+   * fichiers. */
+  function lisible(c) {
+    var m = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(String(c || '').trim());
+    if (!m) return c;
+    var h = m[1];
+    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+    var r = parseInt(h.slice(0, 2), 16), v = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
+    function canal(x) { x /= 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); }
+    function rapport() {
+      var L = 0.2126 * canal(r) + 0.7152 * canal(v) + 0.0722 * canal(b);
+      return 1.05 / (L + 0.05);                      /* contre du blanc */
+    }
+    /* Quatre et demi, c est le seuil des textes ordinaires. On vise 4,8 : le
+       calcul se fait contre du BLANC PUR, mais les cartes du tiroir sont
+       peintes d un degrade qui descend vers #F4F7FC. Un texte tout juste a
+       4,5 sur du blanc retombait a 4,2 sur la carte, et les pourcentages de
+       rarete passaient sous le seuil — mesure, pas suppose.
+       On descend par petits pas plutot que d un coup : un seul saut
+       assombrirait un rouge deja lisible autant qu un jaune qui ne l est pas
+       du tout. */
+    var garde = 0;
+    while (rapport() < 4.8 && garde++ < 40) {
+      r = Math.round(r * 0.92); v = Math.round(v * 0.92); b = Math.round(b * 0.92);
+    }
+    function deux(x) { var t = x.toString(16); return t.length < 2 ? '0' + t : t; }
+    return '#' + deux(r) + deux(v) + deux(b);
+  }
+
   function profStyle() {
     /* Injecte UNE fois. Ce bloc porte aussi l'habit de la scene d'ouverture
        de coffre, que le Nexus emprunte : sans ce garde-fou, chaque appel
@@ -1491,10 +1553,10 @@
     css.textContent =
       '.swpb{display:inline-flex;align-items:center;justify-content:center;vertical-align:middle;' +
       'margin-left:8px;width:34px;height:34px;padding:0;border-radius:50%;cursor:pointer;' +
-      'font-size:15px;line-height:1;color:#FFD97A;' +
-      'background:linear-gradient(180deg,rgba(46,26,10,.95),rgba(20,10,4,.98));' +
-      'border:1px solid rgba(230,165,55,.5);}' +
-      '.swpb:hover{border-color:#FFC53D;color:#fff;}' +
+      'font-size:15px;line-height:1;color:#1B5FE0;' +
+      'background:linear-gradient(180deg,rgba(244,247,252,.95),rgba(255,255,255,.98));' +
+      'border:1px solid rgba(27,95,224,.5);}' +
+      '.swpb:hover{border-color:#FFC53D;color:#0B1B36;}' +
       /* En tete de barre il n'a personne a sa gauche : la marge qui le
          decollait de la pastille de solde le decollerait du bord.
        *
@@ -1514,7 +1576,7 @@
       'font-size:14px;margin-left:0;margin-right:7px;}' +
       /* Quand il a une medaille ou une photo, le bouton EST son visage. */
       '.swpb.img{background-size:cover;background-position:center;background-repeat:no-repeat;' +
-      'background-color:rgba(10,6,2,.9);}' +
+      'background-color:rgba(255,255,255,.9);}' +
       /* ---- LE PANNEAU EST UN TIROIR, PAS UNE BOITE FLOTTANTE ----
          Une boite centree avec un rail de 124 px a gauche laissait 230 px
          de liste sur un telephone de 390 : le tiers de l'ecran servait a
@@ -1526,7 +1588,7 @@
          s'anime pas depuis un element qui vient d'apparaitre, le tiroir
          serait deja en place a la premiere image. */
       '.swpov{position:fixed;inset:0;z-index:99999;display:block;' +
-      'background:rgba(3,6,12,.72);opacity:0;visibility:hidden;' +
+      'background:rgba(244,247,252,.42);opacity:0;visibility:hidden;' +
       '-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);' +
       'transition:opacity .22s ease,visibility .22s;}' +
       '.swpov.on{opacity:1;visibility:visible;}' +
@@ -1546,12 +1608,12 @@
          illisible, avec un W qui partait en bouillie. Les DONNEES prennent donc
          la police du systeme, dessinee pour etre lue petit. Le titre garde
          celle de la page : lui est assez gros pour la porter. */
-      'border-radius:0 18px 18px 0;overflow:hidden;color:#EAF2FF;' +
+      'border-radius:0 18px 18px 0;overflow:hidden;color:#0B1B36;' +
       'font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,' +
       '"Helvetica Neue",Arial,sans-serif;' +
-      'background:linear-gradient(180deg,#141C30,#080C16);' +
-      'border:1px solid rgba(255,197,61,.4);border-left:0;' +
-      'box-shadow:18px 0 60px rgba(0,0,0,.72);}' +
+      'background:linear-gradient(180deg,#FFFFFF,#F7FAFF);' +
+      'border:1px solid rgba(27,95,224,.4);border-left:0;' +
+      'box-shadow:18px 0 60px rgba(11,27,54,0.18);}' +
       '.swpov.on .swp{transform:none;}' +
       /* ---- AUCUNE BARRE DE DEFILEMENT DANS LE TIROIR ----
          Trois zones defilent : le sommaire, la liste d'une section, et le
@@ -1588,18 +1650,18 @@
       '@media (min-width:900px){.swb-o{font-size:11px;padding:6px 6px 3px;}' +
         '.swb-r{gap:7px;}}' +
       '.swp-h{flex:0 0 auto;display:flex;align-items:center;gap:10px;padding:12px 15px;' +
-      'border-bottom:1px solid rgba(255,197,61,.26);background:rgba(255,197,61,.08);}' +
+      'border-bottom:1px solid rgba(27,95,224,.26);background:rgba(27,95,224,.08);}' +
       /* ---- L ECHELLE ----
          Le panneau portait HUIT tailles, de 9,5 a 13,5 px : la plus GROSSE
          faisait 13,5. Chez n'importe quelle application de compte, 13 px c'est
          la legende, pas le libelle. Quatre tailles remplacent les huit —
          16 / 14 / 12,5 / 11 — et la graisse cesse d'etre a 800 partout : quand
          tout est gras, rien ne ressort. */
-      '.swp-h b{font-size:15px;letter-spacing:1.2px;text-transform:uppercase;color:#FFD97A;' +
+      '.swp-h b{font-size:15px;letter-spacing:1.2px;text-transform:uppercase;color:#1B5FE0;' +
       'font-family:inherit;}' +
-      '.swp-h span{flex:1;font-size:12.5px;color:#8DA0C4;}' +
+      '.swp-h span{flex:1;font-size:12.5px;color:#5F6E88;}' +
       '.swp-x{width:30px;height:30px;border-radius:9px;cursor:pointer;font-size:15px;' +
-      'color:#EAF2FF;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);}' +
+      'color:#0B1B36;background:rgba(11,27,54,.07);border:1px solid rgba(11,27,54,.14);}' +
       /* ---- LE CORPS : DEUX VUES, PAS DEUX COLONNES ----
          Dans un tiroir de 400 px, un rail lateral coute 124 px a la liste
          pour afficher onze mots. On empile donc : le tiroir s'ouvre sur le
@@ -1611,15 +1673,15 @@
       /* La deconnexion n'est pas une rangee comme les autres : elle se
          detache, sans crier. Un rouge plein en ferait un bouton qu'on
          evite de frôler, alors que c'est un geste ordinaire. */
-      '.swp-sep{height:1px;margin:14px 12px 8px;background:rgba(255,255,255,.09);}' +
+      '.swp-sep{height:1px;margin:14px 12px 8px;background:rgba(11,27,54,.09);}' +
       '.swp-out{display:block;width:calc(100% - 16px);margin:0 8px 14px;padding:11px 12px;' +
-      'border-radius:10px;border:1px solid rgba(242,104,94,.28);background:rgba(242,104,94,.07);' +
-      'color:#F5938B;font:inherit;font-size:13px;font-weight:700;text-align:left;cursor:pointer;}' +
-      '.swp-out:hover{background:rgba(242,104,94,.14);color:#FFB4AC;}' +
+      'border-radius:10px;border:1px solid rgba(224,68,62,.28);background:rgba(224,68,62,.07);' +
+      'color:#E0443E;font:inherit;font-size:13px;font-weight:700;text-align:left;cursor:pointer;}' +
+      '.swp-out:hover{background:rgba(224,68,62,.14);color:#E0443E;}' +
       '.swp-t{flex:1;display:flex;flex-direction:column;gap:3px;' +
       'padding:8px 10px 18px;overflow-y:auto;background:transparent;}' +
       '.swp-t .swp-g{margin:13px 0 4px;padding:0 6px;font-size:10.5px;font-weight:700;' +
-      'letter-spacing:1.3px;text-transform:uppercase;color:#6C7C99;}' +
+      'letter-spacing:1.3px;text-transform:uppercase;color:#5F6E88;}' +
       '.swp-t .swp-g:first-child{margin-top:2px;}' +
       /* ---- CE QUI ATTEND LE JOUEUR ----
        *
@@ -1636,14 +1698,14 @@
       '.swp-nz{margin:0 0 4px;}' +
       '.swp-n{display:flex!important;align-items:center;gap:11px;width:100%;' +
         'min-height:56px;padding:9px 11px;margin-bottom:6px;border-radius:12px;' +
-        'border:1px solid rgba(255,197,61,.28);background:rgba(255,197,61,.07);' +
-        'color:#F2F6FF;font:inherit;text-align:left;cursor:pointer;}' +
-      '.swp-n:hover{background:rgba(255,197,61,.13);}' +
+        'border:1px solid rgba(27,95,224,.28);background:rgba(27,95,224,.07);' +
+        'color:#0B1B36;font:inherit;text-align:left;cursor:pointer;}' +
+      '.swp-n:hover{background:rgba(27,95,224,.13);}' +
       '.swp-n:disabled{opacity:.5;cursor:default;}' +
       '.swp-n .ic{flex:0 0 auto;font-size:19px;line-height:1;}' +
       '.swp-n .tx{flex:1;min-width:0;}' +
       '.swp-n .tx b{display:block;font-size:13.5px;font-weight:700;line-height:1.3;}' +
-      '.swp-n .tx i{display:block;font-style:normal;font-size:11px;color:#9FB0CC;' +
+      '.swp-n .tx i{display:block;font-style:normal;font-size:11px;color:#5F6E88;' +
         'margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}' +
       /* « Claim » est un BOUTON dans le bouton : le geste se termine ici. Le
          chevron dit l'inverse — il emmene ailleurs. Deux gestes differents ne
@@ -1656,26 +1718,26 @@
        * promet d'aller ailleurs a un bouton qui termine le geste sur place.
        * Trouve a la capture d'ecran, pas a la lecture. */
       '.swp-t .swp-n::after{content:none;}' +
-      '.swp-n .fl{flex:0 0 auto;font-size:12px;font-weight:800;color:#FFC53D;}' +
-      '.swp-n:not(.agir) .fl{font-size:17px;font-weight:400;color:#6C7C99;}' +
+      '.swp-n .fl{flex:0 0 auto;font-size:12px;font-weight:800;color:#1B5FE0;}' +
+      '.swp-n:not(.agir) .fl{font-size:17px;font-weight:400;color:#5F6E88;}' +
       '.swp-n.agir .fl{padding:5px 11px;border-radius:9px;' +
-        'border:1px solid rgba(255,197,61,.55);background:rgba(255,197,61,.16);}' +
+        'border:1px solid rgba(27,95,224,.55);background:rgba(27,95,224,.16);}' +
       /* 46 px de haut : c'est la cible tactile confortable, et c'est aussi
          ce qui donne au sommaire l'air d'un menu plutot que d'une liste de
          cases a cocher serrees. */
       '.swp-t button{display:flex;align-items:center;width:100%;min-height:46px;' +
       'text-align:left;padding:0 12px;border-radius:11px;cursor:pointer;min-width:0;' +
       'font-family:inherit;font-size:14px;font-weight:600;letter-spacing:.1px;' +
-      'color:#C6D3EA;background:rgba(255,255,255,.03);border:1px solid transparent;}' +
+      'color:#24406E;background:rgba(11,27,54,.03);border:1px solid transparent;}' +
       '.swp-t button::after{content:"\\203A";margin-left:auto;padding-left:10px;' +
-      'font-size:17px;line-height:1;color:#5C6C88;}' +
-      '.swp-t button:hover{background:rgba(255,255,255,.08);color:#EAF2FF;}' +
+      'font-size:17px;line-height:1;color:#5F6E88;}' +
+      '.swp-t button:hover{background:rgba(11,27,54,.08);color:#0B1B36;}' +
       /* La derniere section ouverte se signale par un lisere, pas par un
          aplat dore : sur toute la largeur, l'aplat se lit comme un bouton
          d'action a presser, et il y en avait un par ouverture du tiroir. */
-      '.swp-t button.on{color:#FFD97A;background:rgba(255,197,61,.10);' +
-      'border-color:rgba(255,197,61,.34);}' +
-      '.swp-t button.on::after{color:#FFD97A;}' +
+      '.swp-t button.on{color:#1B5FE0;background:rgba(27,95,224,.10);' +
+      'border-color:rgba(27,95,224,.34);}' +
+      '.swp-t button.on::after{color:#1B5FE0;}' +
       '.swp-t button.swp-mir.tog::after{content:"";padding:0;}' +
       /* La rangee en attente : meme forme que les autres pour qu'elle tienne
          dans la colonne, mais eteinte, sans chevron et sans curseur — rien
@@ -1688,23 +1750,23 @@
          de loin a sa teinte, sans lire une etiquette. */
       '.swb-off{display:flex;align-items:center;gap:11px;text-align:left;width:100%;' +
         'margin:0 0 13px;padding:11px 13px;border-radius:14px;font:inherit;cursor:pointer;' +
-        'border:1px solid rgba(124,255,155,.45);background:rgba(124,255,155,.10);' +
-        'color:#DFF6E4;transition:background .15s,border-color .15s;}' +
-      '.swb-off:hover:not(:disabled){background:rgba(124,255,155,.16);border-color:rgba(124,255,155,.7);}' +
+        'border:1px solid rgba(18,161,80,.45);background:rgba(18,161,80,.10);' +
+        'color:#0B1B36;transition:background .15s,border-color .15s;}' +
+      '.swb-off:hover:not(:disabled){background:rgba(18,161,80,.16);border-color:rgba(18,161,80,.7);}' +
       '.swb-off .cf{flex:0 0 auto;width:52px;height:52px;object-fit:contain;}' +
-      '.swb-off .n{display:block;font-weight:800;font-size:13.5px;color:#C8FFD6;}' +
-      '.swb-off .o{display:block;font-size:10.5px;color:#8DA0C4;margin-top:2px;}' +
-      '.swb-off .p{margin-left:auto;font-weight:800;font-size:12px;letter-spacing:.1em;color:#7CFF9B;}' +
+      '.swb-off .n{display:block;font-weight:800;font-size:13.5px;color:#0B1B36;}' +
+      '.swb-off .o{display:block;font-size:10.5px;color:#5F6E88;margin-top:2px;}' +
+      '.swb-off .p{margin-left:auto;font-weight:800;font-size:12px;letter-spacing:.1em;color:#0E7C3E;}' +
       /* Pris : la carte reste, elle ne disparait pas. Un panneau qui change de
          forme selon l heure fait douter de ce qu on y a vu la veille. */
-      '.swb-off.pris{opacity:.5;cursor:default;border-color:rgba(255,255,255,.12);' +
-        'background:rgba(255,255,255,.04);}' +
-      '.swb-off.pris .n,.swb-off.pris .p{color:#8DA0C4;}' +
+      '.swb-off.pris{opacity:.5;cursor:default;border-color:rgba(11,27,54,.12);' +
+        'background:rgba(11,27,54,.04);}' +
+      '.swb-off.pris .n,.swb-off.pris .p{color:#5F6E88;}' +
       '.swb-c{display:grid;gap:9px;margin:2px 0 14px;}' +
       '.swb-cof{display:flex;align-items:center;gap:11px;text-align:left;width:100%;' +
         'padding:10px 12px;border-radius:13px;cursor:pointer;' +
-        'background:linear-gradient(180deg,rgba(24,34,62,.95),rgba(10,15,30,.96));' +
-        'border:1px solid rgba(255,197,61,.28);color:#E8EEFA;font:inherit;}' +
+        'background:linear-gradient(180deg,rgba(255,255,255,.95),rgba(244,247,252,.96));' +
+        'border:1px solid rgba(27,95,224,.28);color:#0B1B36;font:inherit;}' +
       '.swb-cof:disabled{opacity:.42;cursor:not-allowed;}' +
       /* LE COFFRE SUR LE BOUTON. Un prix et cinq pourcentages ne donnent pas
          envie d'appuyer ; un coffre, si. Il se retire tout seul si le dessin
@@ -1715,35 +1777,35 @@
         'margin-right:-3px;filter:drop-shadow(0 0 10px rgba(255,200,90,.35));}' +
       '@media (min-width:900px){.swb-cof .cf{width:64px;height:64px;}}' +
       '.swb-cof .n{font-weight:800;font-size:13.5px;}' +
-      '.swb-cof .p{margin-left:auto;color:#FFD97A;font-weight:800;white-space:nowrap;}' +
-      '.swb-cof .o{display:block;font-size:10.5px;color:#8DA0C4;margin-top:2px;}' +
+      '.swb-cof .p{margin-left:auto;color:#1B5FE0;font-weight:800;white-space:nowrap;}' +
+      '.swb-cof .o{display:block;font-size:10.5px;color:#5F6E88;margin-top:2px;}' +
       '.swb-ch{display:flex;flex-wrap:wrap;gap:4px 10px;font-size:10.5px;margin:-8px 2px 14px;}' +
-      '.swb-ch span{color:#8DA0C4;}' +
+      '.swb-ch span{color:#5F6E88;}' +
       '.swb-ch b{font-weight:800;}' +
       '.swb-fam{display:flex;align-items:baseline;gap:7px;margin:13px 2px 5px;}' +
-      '.swb-fam b{font-size:12px;letter-spacing:.6px;text-transform:uppercase;color:#E7C97A;}' +
-      '.swb-fam i{font-style:normal;font-size:11px;color:#8DA0C4;margin-left:auto;}' +
-      '.swb-fam.plein i{color:#7CFF9B;font-weight:800;}' +
-      '.swb-mention{font-size:10.5px;color:#8DA0C4;line-height:1.5;margin:-2px 2px 4px;font-style:italic;}' +
+      '.swb-fam b{font-size:12px;letter-spacing:.6px;text-transform:uppercase;color:#1B5FE0;}' +
+      '.swb-fam i{font-style:normal;font-size:11px;color:#5F6E88;margin-left:auto;}' +
+      '.swb-fam.plein i{color:#0E7C3E;font-weight:800;}' +
+      '.swb-mention{font-size:10.5px;color:#5F6E88;line-height:1.5;margin:-2px 2px 4px;font-style:italic;}' +
       '.swb-gain .pv{font-style:italic;margin-top:2px;line-height:1.35;}' +
       '.swb-gain .num{font-weight:800;letter-spacing:.4px;margin-top:3px;}' +
       '.swb-ed{font-style:normal;margin-top:-2px;}' +
-      '.swb-ed b{color:#E7C97A;}' +
+      '.swb-ed b{color:#1B5FE0;}' +
       '.swb-course{margin:2px 0 13px;padding:11px 13px;border-radius:13px;' +
-        'background:linear-gradient(180deg,rgba(46,36,10,.92),rgba(14,11,4,.95));' +
-        'border:1px solid rgba(255,197,61,.34);}' +
+        'background:linear-gradient(180deg,rgba(234,241,255,.92),rgba(244,247,252,.95));' +
+        'border:1px solid rgba(27,95,224,.34);}' +
       '.swb-course .t{font-size:11px;letter-spacing:1.3px;text-transform:uppercase;' +
-        'color:#FFD97A;font-weight:800;margin-bottom:7px;}' +
+        'color:#1B5FE0;font-weight:800;margin-bottom:7px;}' +
       '.swb-course .l{font-size:12.5px;line-height:1.75;}' +
-      '.swb-course .l b{color:#FFE9A8;}' +
-      '.swb-course .l span{color:#8DA0C4;}' +
+      '.swb-course .l b{color:#1B5FE0;}' +
+      '.swb-course .l span{color:#5F6E88;}' +
       '.swb-course .l.pris{opacity:.55;}' +
-      '.swb-course .l.pris span{color:#7CFF9B;}' +
-      '.swb-course .s{font-size:10.5px;color:#8DA0C4;margin-top:6px;font-style:italic;}' +
+      '.swb-course .l.pris span{color:#0E7C3E;}' +
+      '.swb-course .s{font-size:10.5px;color:#5F6E88;margin-top:6px;font-style:italic;}' +
       '.swb-course.finie{opacity:.6;}' +
       '.swb-course.gagne{border-color:#7CFF9B;' +
-        'background:linear-gradient(180deg,rgba(12,46,26,.94),rgba(4,16,10,.96));}' +
-      '.swb-course.gagne .t{color:#7CFF9B;}' +
+        'background:linear-gradient(180deg,rgba(232,248,238,.94),rgba(240,251,244,.96));}' +
+      '.swb-course.gagne .t{color:#0E7C3E;}' +
       /* ---- LA SCENE D'OUVERTURE ----
          Elle est au-dessus du tiroir ET du voile de la page : c'est le seul
          moment ou plus rien d'autre ne compte. */
@@ -1753,9 +1815,9 @@
          le reste du travail sans rendre l'ecran opaque. */
       '.swb-scene{position:fixed;inset:0;z-index:2147483100;display:flex;' +
         'flex-direction:column;align-items:center;justify-content:center;' +
-        'background:rgba(3,5,12,.96);-webkit-backdrop-filter:blur(7px);' +
+        'background:rgba(244,247,252,.96);-webkit-backdrop-filter:blur(7px);' +
         'backdrop-filter:blur(7px);opacity:0;pointer-events:none;' +
-        'transition:opacity .25s;--teinte:#8DA0C4;' +
+        'transition:opacity .25s;--teinte:#5F6E88;' +
         /* La scene est posee sur le body, elle heritait donc de la police de
            la PAGE — Space Mono sur les tables, Orbitron sur la roue. Un nom
            de fruit en machine a ecrire n'a pas l'air d'une recompense. */
@@ -1831,20 +1893,20 @@
       '.swb-cl .bar{display:grid;grid-template-columns:repeat(30,1fr);gap:1px;' +
         'margin:5px 0 0 33px;}' +
       '.swb-cl .bar span{position:relative;aspect-ratio:1;border-radius:3px;' +
-        'background:rgba(255,255,255,.05);}' +
-      '.swb-cl .bar span.a{background:rgba(0,0,0,.35);' +
+        'background:rgba(11,27,54,.05);}' +
+      '.swb-cl .bar span.a{background:rgba(11,27,54,.05);' +
         'box-shadow:inset 0 0 0 1px var(--t),0 0 5px -1px var(--t);}' +
       '.swb-cl .bar img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;}' +
-      '.swb-cl .r:nth-child(odd){background:rgba(255,255,255,.035);}' +
-      '.swb-cl .r.moi{background:rgba(255,197,61,.13);' +
-        'box-shadow:inset 0 0 0 1px rgba(255,197,61,.32);}' +
-      '.swb-cl .rg{flex:0 0 24px;text-align:center;font-weight:800;color:#8DA0C4;}' +
+      '.swb-cl .r:nth-child(odd){background:rgba(11,27,54,.035);}' +
+      '.swb-cl .r.moi{background:rgba(27,95,224,.13);' +
+        'box-shadow:inset 0 0 0 1px rgba(27,95,224,.32);}' +
+      '.swb-cl .rg{flex:0 0 24px;text-align:center;font-weight:800;color:#5F6E88;}' +
       '.swb-cl .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}' +
-      '.swb-cl .fp{flex:0 0 auto;font-size:10px;font-weight:800;color:#7CFF9B;' +
-        'background:rgba(124,255,155,.12);padding:2px 6px;border-radius:6px;}' +
+      '.swb-cl .fp{flex:0 0 auto;font-size:10px;font-weight:800;color:#0E7C3E;' +
+        'background:rgba(18,161,80,.12);padding:2px 6px;border-radius:6px;}' +
       '.swb-cl .sc{flex:0 0 auto;font-weight:800;}' +
-      '.swb-cl .sc i{font-style:normal;font-weight:600;color:#5C6B85;font-size:10.5px;}' +
-      '.swb-cl .sep{height:1px;background:rgba(255,255,255,.1);margin:5px 9px;}' +
+      '.swb-cl .sc i{font-style:normal;font-weight:600;color:#5F6E88;font-size:10.5px;}' +
+      '.swb-cl .sep{height:1px;background:rgba(11,27,54,.1);margin:5px 9px;}' +
       /* Le bandeau des saisons. Deux onglets pleine largeur : a deux, une
          rangee qui se partage l'espace se lit mieux qu'une barre de defilement
          horizontale — et le jour ou il y en a quatre, le `flex-wrap` les met
@@ -1852,27 +1914,27 @@
       '.swb-sai{display:flex;flex-wrap:wrap;gap:7px;margin:0 0 13px;}' +
       '.swb-s{flex:1 1 130px;display:flex;align-items:baseline;gap:6px;' +
         'padding:9px 11px;border-radius:11px;font:inherit;font-size:12px;cursor:pointer;' +
-        'border:1px solid rgba(255,255,255,.13);background:rgba(255,255,255,.04);' +
-        'color:#8DA0C4;transition:background .15s,border-color .15s,color .15s;}' +
-      '.swb-s b{font-size:12.5px;font-weight:800;letter-spacing:.4px;color:#C9D6EE;}' +
-      '.swb-s:hover:not(:disabled){background:rgba(255,255,255,.08);' +
-        'border-color:rgba(255,255,255,.24);}' +
-      '.swb-s.on{background:rgba(255,197,61,.13);border-color:rgba(255,197,61,.55);color:#FFE9A8;}' +
-      '.swb-s.on b{color:#FFC53D;}' +
+        'border:1px solid rgba(11,27,54,.13);background:rgba(11,27,54,.04);' +
+        'color:#5F6E88;transition:background .15s,border-color .15s,color .15s;}' +
+      '.swb-s b{font-size:12.5px;font-weight:800;letter-spacing:.4px;color:#24406E;}' +
+      '.swb-s:hover:not(:disabled){background:rgba(11,27,54,.08);' +
+        'border-color:rgba(11,27,54,.24);}' +
+      '.swb-s.on{background:rgba(27,95,224,.13);border-color:rgba(27,95,224,.55);color:#1B5FE0;}' +
+      '.swb-s.on b{color:#1B5FE0;}' +
       /* Verrouillee : grisee, mais PAS cachee, et le curseur dit qu'il n'y a
          rien a cliquer plutot que de laisser essayer. */
       '.swb-s.clos{opacity:.55;cursor:not-allowed;}' +
       '.swb-s i{font-style:normal;margin-left:auto;font-size:10px;font-weight:800;' +
         'letter-spacing:.5px;text-transform:uppercase;white-space:nowrap;}' +
-      '.swb-s i.cl{color:#8DA0C4;}' +
+      '.swb-s i.cl{color:#5F6E88;}' +
       /* Le renvoi vers la boutique, au bas du classement. Discret — c'est une
          sortie, pas un appel : le bouton d'achat est dans l'autre section et
          il n'y a rien a gagner a en poser un faux ici. */
       '.swb-vers{display:block;width:100%;margin:14px 0 4px;padding:11px;' +
-        'border-radius:12px;border:1px solid rgba(255,255,255,.14);' +
-        'background:rgba(255,255,255,.05);color:#C9D6EE;font:inherit;font-weight:700;' +
+        'border-radius:12px;border:1px solid rgba(11,27,54,.14);' +
+        'background:rgba(11,27,54,.05);color:#24406E;font:inherit;font-weight:700;' +
         'font-size:12.5px;cursor:pointer;transition:background .15s,border-color .15s;}' +
-      '.swb-vers:hover{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.26);}' +
+      '.swb-vers:hover{background:rgba(11,27,54,.09);border-color:rgba(11,27,54,.26);}' +
       '.swb-scene .halo::after{content:"";position:absolute;inset:0;border-radius:50%;' +
         'background:radial-gradient(circle,#fff,transparent 45%);opacity:0;}' +
       '.swb-scene.ouvert .halo::after{animation:swbEclair .55s ease-out forwards;}' +
@@ -1883,11 +1945,11 @@
       '.swb-scene.ouvert .txt{opacity:1;transform:none;}' +
       '.swb-scene .rar{font-size:12px;letter-spacing:2.4px;text-transform:uppercase;' +
         'font-weight:800;color:var(--teinte);}' +
-      '.swb-scene .nom{font-size:26px;font-weight:800;margin:3px 0 5px;color:#F2F7FF;}' +
-      '.swb-scene .num{font-size:13px;font-weight:800;color:#E7C97A;letter-spacing:.6px;}' +
-      '.swb-scene .pv{font-size:12.5px;font-style:italic;color:#8DA0C4;margin-top:7px;line-height:1.5;}' +
+      '.swb-scene .nom{font-size:26px;font-weight:800;margin:3px 0 5px;color:#0B1B36;}' +
+      '.swb-scene .num{font-size:13px;font-weight:800;color:#1B5FE0;letter-spacing:.6px;}' +
+      '.swb-scene .pv{font-size:12.5px;font-style:italic;color:#5F6E88;margin-top:7px;line-height:1.5;}' +
       '.swb-scene .tap{position:absolute;bottom:34px;font-size:11px;letter-spacing:1.6px;' +
-        'text-transform:uppercase;color:#5C6B85;opacity:0;transition:opacity .4s 1s;}' +
+        'text-transform:uppercase;color:#5F6E88;opacity:0;transition:opacity .4s 1s;}' +
       '.swb-scene.ouvert .tap{opacity:1;}' +
       /* Un joueur qui a demande moins d animations n en recoit pas. */
       '@media (prefers-reduced-motion:reduce){.swb-scene *{animation:none!important;' +
@@ -1900,7 +1962,7 @@
       '.swb-o.vide{border-style:dashed;opacity:.26;}' +
       '.swb-o.vide .t{font-size:8.5px;}' +
       '.swb-o{position:relative;aspect-ratio:1/1;border-radius:12px;overflow:hidden;' +
-        'background:radial-gradient(120% 120% at 30% 20%,rgba(255,255,255,.07),rgba(0,0,0,.5));' +
+        'background:radial-gradient(120% 120% at 30% 20%,rgba(11,27,54,.07),rgba(11,27,54,.05));' +
         'border:1px solid;display:flex;align-items:flex-end;justify-content:center;' +
         /* Le nom descend de trois pixels. Cale a cinq de chaque cote il
            flottait au milieu du bas du dessin ; pose plus bas il se lit
@@ -1908,7 +1970,7 @@
         'padding:5px 5px 2px;font-size:9.5px;line-height:1.15;text-align:center;}' +
       '.swb-o img{position:absolute;inset:9%;width:82%;height:82%;object-fit:contain;}' +
       '.swb-o .q{position:absolute;top:4px;right:5px;font-weight:800;font-size:10px;' +
-        'background:rgba(0,0,0,.6);border-radius:6px;padding:1px 4px;}' +
+        'background:rgba(11,27,54,.05);border-radius:6px;padding:1px 4px;}' +
       '.swb-o .t{position:relative;z-index:2;text-shadow:0 1px 3px #000,0 0 6px #000;}' +
       /* UN VOILE SOUS LE NOM. Tant que les dessins manquaient, le nom flottait
          sur un fond uni et se lisait tout seul. Pose sur un fruit clair, il se
@@ -1916,11 +1978,11 @@
          le rendre propre. Le degrade ne couvre que le tiers bas et n'existe
          que sur les cases qui ont une image. */
       '.swb-o:has(img) .t::before{content:"";position:absolute;inset:-4px -8px -6px -8px;' +
-        'z-index:-1;background:linear-gradient(to top,rgba(4,7,16,.92),rgba(4,7,16,0));}' +
-      '.swb-vide{color:#8DA0C4;font-size:12px;text-align:center;padding:16px 8px;line-height:1.55;}' +
+        'z-index:-1;background:linear-gradient(to top,rgba(244,247,252,.92),rgba(244,247,252,0));}' +
+      '.swb-vide{color:#5F6E88;font-size:12px;text-align:center;padding:16px 8px;line-height:1.55;}' +
       '.swb-gain{margin:2px 0 12px;padding:11px 12px;border-radius:13px;border:1px solid;' +
         'display:flex;align-items:center;gap:11px;}' +
-      '.swb-gain .l{font-size:11px;color:#8DA0C4;}' +
+      '.swb-gain .l{font-size:11px;color:#5F6E88;}' +
       '.swb-gain .n{font-weight:800;font-size:14px;}' +
       '.swp-l{display:none;flex:1;overflow-y:auto;padding:8px 12px 18px;min-height:180px;}' +
       '.swp.detail .swp-t{display:none;}' +
@@ -1929,27 +1991,27 @@
          elle n'existe que la. Un bouton retour toujours visible sur le
          sommaire ferait croire qu'il y a un cran au-dessus. */
       '.swp-back{display:none;align-items:center;gap:9px;padding:9px 12px;' +
-      'border-bottom:1px solid rgba(255,255,255,.09);background:rgba(255,255,255,.02);}' +
+      'border-bottom:1px solid rgba(11,27,54,.09);background:rgba(11,27,54,.02);}' +
       '.swp.detail .swp-back{display:flex;}' +
       '.swp-back .swp-bk{width:30px;height:30px;flex:0 0 30px;border-radius:9px;cursor:pointer;' +
-      'font-size:17px;line-height:1;color:#EAF2FF;font-family:inherit;' +
-      'background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);}' +
-      '.swp-back .swp-bk:hover{color:#FFD97A;border-color:rgba(255,197,61,.5);}' +
-      '.swp-back b{font-size:14px;font-weight:700;letter-spacing:.2px;color:#EAF2FF;}' +
+      'font-size:17px;line-height:1;color:#0B1B36;font-family:inherit;' +
+      'background:rgba(11,27,54,.07);border:1px solid rgba(11,27,54,.14);}' +
+      '.swp-back .swp-bk:hover{color:#1B5FE0;border-color:rgba(27,95,224,.5);}' +
+      '.swp-back b{font-size:14px;font-weight:700;letter-spacing:.2px;color:#0B1B36;}' +
       '.swp-r{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:10px;' +
-      'margin-bottom:6px;background:rgba(255,255,255,.04);' +
-      'border:1px solid rgba(255,255,255,.07);}' +
+      'margin-bottom:6px;background:rgba(11,27,54,.04);' +
+      'border:1px solid rgba(11,27,54,.07);}' +
       '.swp-r .w{flex:1;min-width:0;}' +
-      '.swp-r .w b{display:block;font-size:14px;font-weight:600;color:#EAF2FF;}' +
-      '.swp-r .w span{display:block;font-size:12px;color:#8DA0C4;margin-top:3px;}' +
+      '.swp-r .w b{display:block;font-size:14px;font-weight:600;color:#0B1B36;}' +
+      '.swp-r .w span{display:block;font-size:12px;color:#5F6E88;margin-top:3px;}' +
       /* L adresse en entier : c est elle qu on relit avant d envoyer. */
       '.swp-r .w span.ad{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;' +
       'font-size:11px;letter-spacing:.15px;color:#7E92B6;word-break:break-all;cursor:pointer;}' +
-      '.swp-r .w span.ad:hover{color:#FFC53D;}' +
-      '.swp-r .w span.su{color:#8DA0C4;font-size:12px;}' +
+      '.swp-r .w span.ad:hover{color:#1B5FE0;}' +
+      '.swp-r .w span.su{color:#5F6E88;font-size:12px;}' +
       '.swlv{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:999px;' +
       'font-size:10px;font-weight:900;line-height:1.5;vertical-align:middle;' +
-      'border:1px solid;background:rgba(255,255,255,.05);}' +
+      'border:1px solid;background:rgba(11,27,54,.05);}' +
       /* La regle des lignes, « .swp-r .w span{display:block} », est PLUS
          SPECIFIQUE que « .swlv » : la pastille s etirait sur toute la largeur
          de la ligne et ressemblait a un champ de saisie vide. Il faut donc
@@ -1959,29 +2021,29 @@
       /* La barre de progression : un niveau sans la marche suivante ne donne
          envie de rien. */
       '.swnv{margin-bottom:10px;padding:10px 12px;border-radius:12px;' +
-      'background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.10);}' +
+      'background:rgba(11,27,54,.04);border:1px solid rgba(11,27,54,.10);}' +
       '.swnv .h{display:flex;align-items:baseline;gap:8px;font-size:12.5px;font-weight:800;' +
-      'color:#EAF2FF;}' +
-      '.swnv .h i{margin-left:auto;font-style:normal;font-size:10.5px;color:#8DA0C4;}' +
+      'color:#0B1B36;}' +
+      '.swnv .h i{margin-left:auto;font-style:normal;font-size:10.5px;color:#5F6E88;}' +
       '.swnv .b{height:7px;border-radius:999px;margin-top:8px;overflow:hidden;' +
-      'background:rgba(0,0,0,.45);}' +
+      'background:rgba(11,27,54,.05);}' +
       '.swnv .b>i{display:block;height:100%;border-radius:999px;transition:width .4s;}' +
-      '.swnv .r .sr{color:#7CFF9B;opacity:.85;}' +
-      '.swnv .r{margin-top:6px;font-size:10.5px;color:#8DA0C4;}' +
+      '.swnv .r .sr{color:#0E7C3E;opacity:.85;}' +
+      '.swnv .r{margin-top:6px;font-size:10.5px;color:#5F6E88;}' +
       /* L echelle des dix paliers de parrainage : dix pastilles qui se
          replient, celle du joueur allumee. */
       '.swech{display:flex;flex-wrap:wrap;gap:4px;margin-top:9px;}' +
       '.swech span{flex:1 1 auto;min-width:52px;text-align:center;padding:5px 3px;' +
-      'border-radius:8px;font-size:9px;color:#8DA0C4;line-height:1.5;' +
-      'background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.09);}' +
-      '.swech span b{display:block;font-size:12px;font-weight:900;color:#EAF2FF;}' +
-      '.swech span.on{background:rgba(255,255,255,.07);}' +
+      'border-radius:8px;font-size:9px;color:#5F6E88;line-height:1.5;' +
+      'background:rgba(11,27,54,.05);border:1px solid rgba(11,27,54,.09);}' +
+      '.swech span b{display:block;font-size:12px;font-weight:900;color:#0B1B36;}' +
+      '.swech span.on{background:rgba(11,27,54,.07);}' +
       '.swech span.on b{color:inherit;}' +
       '.swp-r .v{flex:0 0 auto;text-align:right;font-variant-numeric:tabular-nums;}' +
       '.swp-r .v b{display:block;font-size:16px;font-weight:700;}' +
-      '.swp-r .v span{font-size:11px;color:#8DA0C4;}' +
-      '.swp-r .g{color:#7CFF9B;} .swp-r .p{color:#F2685E;} .swp-r .n{color:#E7C97A;}' +
-      '.swp-v{text-align:center;color:#8DA0C4;font-size:13.5px;padding:30px 10px;line-height:1.7;}' +
+      '.swp-r .v span{font-size:11px;color:#5F6E88;}' +
+      '.swp-r .g{color:#0E7C3E;} .swp-r .p{color:#E0443E;} .swp-r .n{color:#1B5FE0;}' +
+      '.swp-v{text-align:center;color:#5F6E88;font-size:13.5px;padding:30px 10px;line-height:1.7;}' +
       /* L'apercu : des cartes, pas un tableau. Un tableau se lit de gauche a
          droite ; une grille de cartes se balaie, et c'est ce qu'on fait devant
          son propre profil. */
@@ -1990,41 +2052,41 @@
          partout ailleurs ou un skin s affiche. */
       '.swap-skin{display:flex;flex-direction:column;align-items:center;gap:2px;' +
         'margin:2px 0 14px;padding:16px 10px 13px;border-radius:16px;cursor:pointer;' +
-        'border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.03);' +
+        'border:1px solid rgba(11,27,54,.10);background:rgba(11,27,54,.03);' +
         'border-top:3px solid var(--t);}' +
-      '.swap-skin:hover{background:rgba(255,255,255,.06);}' +
+      '.swap-skin:hover{background:rgba(11,27,54,.06);}' +
       '.swap-skin .ico{width:104px;height:104px;display:flex;align-items:center;justify-content:center;}' +
       '.swap-skin .ico img{max-width:100%;max-height:100%;object-fit:contain;' +
         'filter:drop-shadow(0 8px 14px rgba(0,0,0,.4));}' +
       '.swap-skin i{font-style:normal;font-size:10px;letter-spacing:.8px;text-transform:uppercase;' +
-        'color:#7E8FAC;margin-top:4px;}' +
-      '.swap-skin b{font-size:15.5px;font-weight:800;color:#F2F6FF;}' +
+        'color:#5F6E88;margin-top:4px;}' +
+      '.swap-skin b{font-size:15.5px;font-weight:800;color:#0B1B36;}' +
       '.swap-g{display:grid;gap:7px;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));' +
       'margin-bottom:12px;}' +
-      '.swap-c{padding:10px 11px;border-radius:11px;background:rgba(255,255,255,.05);' +
-      'border:1px solid rgba(255,255,255,.10);}' +
+      '.swap-c{padding:10px 11px;border-radius:11px;background:rgba(11,27,54,.05);' +
+      'border:1px solid rgba(11,27,54,.10);}' +
       '.swap-c span{display:block;font-size:10px;letter-spacing:.7px;text-transform:uppercase;' +
-      'color:#7E8FAC;}' +
-      '.swap-c b{display:block;margin-top:3px;font-size:16px;font-weight:900;color:#EAF2FF;' +
+      'color:#5F6E88;}' +
+      '.swap-c b{display:block;margin-top:3px;font-size:16px;font-weight:900;color:#0B1B36;' +
       'font-variant-numeric:tabular-nums;}' +
-      '.swap-c i{display:block;margin-top:2px;font-style:normal;font-size:10.5px;color:#8DA0C4;}' +
+      '.swap-c i{display:block;margin-top:2px;font-style:normal;font-size:10.5px;color:#5F6E88;}' +
       '.swap-t{margin:12px 0 6px;font-size:10px;letter-spacing:1px;text-transform:uppercase;' +
-      'color:#7E8FAC;}' +
+      'color:#5F6E88;}' +
       '.swap-f{display:flex;flex-wrap:wrap;gap:6px;}' +
       '.swap-f span{padding:7px 10px;border-radius:10px;font-size:11.5px;font-weight:700;' +
-      'color:#EAF2FF;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.10);}' +
-      '.swap-f span i{margin-left:6px;font-style:normal;font-weight:600;color:#8DA0C4;}' +
+      'color:#0B1B36;background:rgba(11,27,54,.05);border:1px solid rgba(11,27,54,.10);}' +
+      '.swap-f span i{margin-left:6px;font-style:normal;font-weight:600;color:#5F6E88;}' +
       /* Les pastilles de filtre : assez petites pour ne pas voler la vedette a
          la liste qu'elles trient. */
       '.swap-fl{display:flex;flex-wrap:wrap;gap:5px;margin:2px 0 10px;}' +
       '.swap-fl button{padding:5px 9px;border-radius:999px;cursor:pointer;font-family:inherit;' +
-      'font-size:10.5px;font-weight:700;color:#8DA0C4;background:rgba(255,255,255,.05);' +
-      'border:1px solid rgba(255,255,255,.10);}' +
+      'font-size:10.5px;font-weight:700;color:#5F6E88;background:rgba(11,27,54,.05);' +
+      'border:1px solid rgba(11,27,54,.10);}' +
       '.swap-fl button.on{color:#07101F;background:linear-gradient(180deg,#FFE08A,#FFC53D);' +
       'border-color:transparent;}' +
       '.swp-more{display:block;width:100%;margin-top:6px;padding:10px;border-radius:10px;' +
-      'cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:800;color:#EAF2FF;' +
-      'background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);}' +
+      'cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:800;color:#0B1B36;' +
+      'background:rgba(11,27,54,.06);border:1px solid rgba(11,27,54,.14);}' +
       '.swp-more[disabled]{opacity:.5;cursor:default;}' +
       /* Sur telephone les rangees du sommaire perdent un demi-point et un
          peu de hauteur : onze rangees de 46 px demandent un coup de pouce
@@ -2036,14 +2098,14 @@
       '}' +
       /* l en-tete : le visage, le nom, et de quoi les changer */
       '.swp-me{flex:0 0 auto;display:flex;align-items:center;gap:11px;padding:12px 13px;' +
-      'border-bottom:1px solid rgba(255,197,61,.18);background:rgba(255,255,255,.03);}' +
+      'border-bottom:1px solid rgba(27,95,224,.18);background:rgba(11,27,54,.03);}' +
       /* L'adresse partageable. Elle passe a la ligne sous le nom : la mettre
          a cote comprimerait un nom long, qui est justement ce qu'on partage. */
       '.swp-me{flex-wrap:wrap;}' +
       '.swpart{flex:1 0 100%;margin-top:9px;padding:8px 10px;border-radius:9px;cursor:pointer;' +
-      'font-family:inherit;font-size:11.5px;font-weight:800;color:#FFD97A;' +
-      'background:rgba(255,197,61,.10);border:1px solid rgba(255,197,61,.34);}' +
-      '.swpart:hover{background:rgba(255,197,61,.18);}' +
+      'font-family:inherit;font-size:11.5px;font-weight:800;color:#1B5FE0;' +
+      'background:rgba(27,95,224,.10);border:1px solid rgba(27,95,224,.34);}' +
+      '.swpart:hover{background:rgba(27,95,224,.18);}' +
       /* ---- LE CADRE DE PALIER ----
          Il se pose SANS toucher au balisage : un ::after par-dessus la photo,
          un peu plus grand qu'elle. Le trou du cadre fait 56 % de l'image, donc
@@ -2062,33 +2124,52 @@
          d accueil, assombri pour que le texte reste lisible. */
       '.swp-me,.swnv{background-image:linear-gradient(rgba(9,13,24,.72),rgba(9,13,24,.86)),' +
       'url(media/fond-gym.webp);background-size:auto,cover;background-position:center;}' +
+      /* ---- LE MUR RESTE SOMBRE, DONC SON TEXTE RESTE CLAIR ----
+       * Le tiroir est passe au blanc ; ces deux blocs-la gardent la photo de
+       * la salle, qui est leur decor. Leur texte, lui, avait suivi le reste et
+       * etait devenu bleu nuit : le nom du joueur et son adresse ont disparu
+       * dans le mur — on ouvrait son profil et l on n y lisait plus son nom.
+       * Vu au rendu ; a la lecture, la couleur du tiroir etait juste partout.
+       * La regle est posee ICI, contre la declaration du mur : celui qui le
+       * retirera un jour verra du meme coup ce qui en dependait. */
+      /* Les selecteurs portent `.swp` DEVANT : les regles d origine de ces
+       * memes elements sont declarees PLUS BAS dans la meme feuille, et a
+       * poids egal c est la derniere qui gagne. La premiere fois, le nom du
+       * joueur est reste invisible malgre la correction — elle etait ecrite,
+       * simplement perdue d avance. */
+      '.swp .swp-me .nm b,.swp .swnv .h,.swp .swnv .h b{color:#EAF2FF;}' +
+      '.swp .swp-me .nm > span,.swp .swnv .h i,.swp .swnv .r{color:#C6D3EA;}' +
+      '.swp .swp-me .swp-adr{border-bottom-color:rgba(255,255,255,.45);}' +
+      '.swp .swp-me .swp-ed{color:#EAF2FF;background:rgba(255,255,255,.10);' +
+      'border-color:rgba(255,255,255,.22);}' +
+      '.swp .swp-me .swp-ed:hover{color:#fff;border-color:rgba(255,255,255,.5);}' +
       /* 56 px et non 40 : le cadre de palier est ce qu'on remarque en premier
          chez les autres joueurs — c'est la seule chose du profil qui se voie
          d'un coup d'oeil et qui se merite. A 40 px il etait un detail. */
       '.swp-av{flex:0 0 auto;width:56px;height:56px;border-radius:50%;cursor:pointer;' +
       'display:flex;align-items:center;justify-content:center;font-size:21px;' +
-      'background:linear-gradient(180deg,rgba(46,26,10,.95),rgba(20,10,4,.98));' +
-      'border:1px solid rgba(230,165,55,.5);}' +
+      'background:linear-gradient(180deg,rgba(244,247,252,.95),rgba(255,255,255,.98));' +
+      'border:1px solid rgba(27,95,224,.5);}' +
       '.swp-me .nm{flex:1;min-width:0;}' +
-      '.swp-me .nm b{display:block;font-size:17px;font-weight:700;color:#F2F6FF;' +
+      '.swp-me .nm b{display:block;font-size:17px;font-weight:700;color:#0B1B36;' +
       'letter-spacing:.1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}' +
       '.swp-adr{cursor:pointer;-webkit-user-select:all;user-select:all;' +
-      'border-bottom:1px dashed #46557d;padding-bottom:1px;}' +
+      'border-bottom:1px dashed #E1E9F6;padding-bottom:1px;}' +
       '.swp-adr:hover{color:#CFE0FF;border-bottom-color:#7d92cc;}' +
-      '.swp-adr-ok{color:#7BE3A0!important;border-bottom-color:#7BE3A0!important;}' +
+      '.swp-adr-ok{color:#0E7C3E!important;border-bottom-color:#7BE3A0!important;}' +
       '.swp-ch{display:flex;gap:7px;padding:0 13px 12px;flex-wrap:wrap;}' +
       /* Des <span>, jamais des <button> : rien ici ne se clique, et un survol
          qui reagit apprend le contraire. */
       /* La vitrine */
       '.swm-q{width:100%;padding:9px 12px;margin:0 0 12px;border-radius:11px;font:inherit;' +
-        'font-size:13px;border:1px solid rgba(255,255,255,.13);background:rgba(255,255,255,.04);' +
-        'color:#EAF2FF;-webkit-appearance:none;}' +
-      '.swm-q::placeholder{color:#5C6B85;}' +
+        'font-size:13px;border:1px solid rgba(11,27,54,.13);background:rgba(11,27,54,.04);' +
+        'color:#0B1B36;-webkit-appearance:none;}' +
+      '.swm-q::placeholder{color:#5F6E88;}' +
       '.swm-l{display:grid;gap:8px;margin:0 0 14px;}' +
       '.swm-a{display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:13px;' +
-        'border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.04);' +
+        'border:1px solid rgba(11,27,54,.10);background:rgba(11,27,54,.04);' +
         'border-left:3px solid var(--t);}' +
-      '.swm-a.mien{background:rgba(255,197,61,.08);border-color:rgba(255,197,61,.3);}' +
+      '.swm-a.mien{background:rgba(27,95,224,.08);border-color:rgba(27,95,224,.3);}' +
       '.swm-a img{width:42px;height:42px;flex:0 0 42px;object-fit:contain;}' +
       /* La vignette d'un familier est une CASE de planche : seize poses dans
          une image de quatre sur quatre. On cadre la pose de face — rangee
@@ -2098,21 +2179,21 @@
       'image-rendering:pixelated;background-repeat:no-repeat;' +
       'background-size:400% 400%;background-position:0% 33.333%;}' +
       '.swm-a .nm{flex:1;min-width:0;}' +
-      '.swm-a .nm b{display:block;font-size:13px;font-weight:800;color:#F2F6FF;' +
+      '.swm-a .nm b{display:block;font-size:13px;font-weight:800;color:#0B1B36;' +
         'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}' +
       '.swm-a .nm b em{font-style:normal;color:var(--t);}' +
-      '.swm-a .nm i{display:block;font-style:normal;font-size:10px;color:#8DA0C4;margin-top:1px;}' +
-      '.swm-a .nm i.v{color:#5C6B85;}' +
+      '.swm-a .nm i{display:block;font-style:normal;font-size:10px;color:#5F6E88;margin-top:1px;}' +
+      '.swm-a .nm i.v{color:#5F6E88;}' +
       '.swm-a .px{text-align:right;flex:0 0 auto;}' +
-      '.swm-a .px b{display:block;font-size:14px;font-weight:800;color:#FFD97A;' +
+      '.swm-a .px b{display:block;font-size:14px;font-weight:800;color:#1B5FE0;' +
         'font-variant-numeric:tabular-nums;}' +
-      '.swm-a .px i{font-style:normal;font-size:9px;color:#8DA0C4;letter-spacing:.06em;}' +
+      '.swm-a .px i{font-style:normal;font-size:9px;color:#5F6E88;letter-spacing:.06em;}' +
       '.swm-a .swact{flex:0 0 auto;padding:8px 13px;border-radius:10px;font:inherit;' +
-        'font-size:12px;font-weight:800;cursor:pointer;border:1px solid rgba(255,255,255,.18);' +
-        'background:rgba(255,255,255,.06);color:#EAF2FF;}' +
-      '.swm-a .swact:hover:not(:disabled){background:rgba(255,255,255,.12);}' +
+        'font-size:12px;font-weight:800;cursor:pointer;border:1px solid rgba(11,27,54,.18);' +
+        'background:rgba(11,27,54,.06);color:#0B1B36;}' +
+      '.swm-a .swact:hover:not(:disabled){background:rgba(11,27,54,.12);}' +
       '.swm-a .swact:disabled{opacity:.45;cursor:default;}' +
-      '.swm-a.mien .act{border-color:rgba(255,197,61,.5);color:#FFD97A;}' +
+      '.swm-a.mien .act{border-color:rgba(27,95,224,.5);color:#1B5FE0;}' +
       /* ---- LES SKINS : UNE CARTE PAR PERSONNAGE, PAS UNE LIGNE ----
        *
        * Le marche est une liste parce qu'une annonce est faite de texte —
@@ -2124,29 +2205,29 @@
       '@media (min-width:360px){.swk-g{grid-template-columns:repeat(2,1fr);}}' +
       '.swk-c{display:flex;flex-direction:column;align-items:center;text-align:center;' +
         'padding:14px 10px 12px;border-radius:14px;gap:6px;cursor:pointer;' +
-        'border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.03);' +
+        'border:1px solid rgba(11,27,54,.10);background:rgba(11,27,54,.03);' +
         'border-top:3px solid var(--t);}' +
-      '.swk-c:hover{background:rgba(255,255,255,.06);}' +
-      '.swk-c.actif{background:rgba(124,255,155,.06);border-color:rgba(124,255,155,.35);' +
+      '.swk-c:hover{background:rgba(11,27,54,.06);}' +
+      '.swk-c.actif{background:rgba(18,161,80,.06);border-color:rgba(18,161,80,.35);' +
         'border-top-color:#7CFF9B;}' +
       '.swk-c .ico{width:84px;height:84px;display:flex;align-items:center;justify-content:center;}' +
       '.swk-c .ico img{max-width:100%;max-height:100%;object-fit:contain;' +
         'filter:drop-shadow(0 6px 10px rgba(0,0,0,.4));}' +
-      '.swk-c .nm{font-size:13.5px;font-weight:800;color:#F2F6FF;}' +
+      '.swk-c .nm{font-size:13.5px;font-weight:800;color:#0B1B36;}' +
       /* La puissance en points, pas en chiffre : cinq cartes se comparent
          d'un regard, sans avoir a lire cinq nombres et les classer soi-meme. */
       '.swk-c .pw{display:flex;gap:3px;font-style:normal;}' +
-      '.swk-c .pw i{width:6px;height:6px;border-radius:99px;background:rgba(255,255,255,.16);}' +
+      '.swk-c .pw i{width:6px;height:6px;border-radius:99px;background:rgba(11,27,54,.16);}' +
       '.swk-c .pw i.on{background:var(--t);}' +
-      '.swk-c .pv{font-style:normal;font-size:10.5px;color:#8DA0C4;line-height:1.4;' +
+      '.swk-c .pv{font-style:normal;font-size:10.5px;color:#5F6E88;line-height:1.4;' +
         'min-height:2.7em;}' +
       '.swk-c .bas,.swk-da{margin-top:4px;}' +
-      '.swk-c .swtag,.swk-da .swtag{font-size:11px;font-weight:800;color:#7CFF9B;' +
-        'border:1px solid rgba(124,255,155,.4);border-radius:99px;padding:4px 12px;}' +
+      '.swk-c .swtag,.swk-da .swtag{font-size:11px;font-weight:800;color:#0E7C3E;' +
+        'border:1px solid rgba(18,161,80,.4);border-radius:99px;padding:4px 12px;}' +
       '.swk-c .swact,.swk-da .swact{padding:8px 14px;border-radius:10px;font:inherit;font-size:12px;' +
-        'font-weight:800;cursor:pointer;border:1px solid rgba(255,255,255,.18);' +
-        'background:rgba(255,255,255,.06);color:#EAF2FF;}' +
-      '.swk-c .swact:hover:not(:disabled),.swk-da .swact:hover:not(:disabled){background:rgba(255,255,255,.12);}' +
+        'font-weight:800;cursor:pointer;border:1px solid rgba(11,27,54,.18);' +
+        'background:rgba(11,27,54,.06);color:#0B1B36;}' +
+      '.swk-c .swact:hover:not(:disabled),.swk-da .swact:hover:not(:disabled){background:rgba(11,27,54,.12);}' +
       '.swk-c .swact:disabled,.swk-da .swact:disabled{opacity:.45;cursor:default;}' +
       /* Le prix est le SEUL bouton dore du tiroir en dehors des gestes
          d argent : il doit se voir comme « ceci coute », pas comme un bouton
@@ -2176,16 +2257,16 @@
        * Le prefixe n'est donc pas une convention d'ecriture, c'est le seul
        * mecanisme d'isolation qu'on ait sans Shadow DOM. Une classe nue
        * ajoutee ici est une panne qui attend sa page. */
-      '.swk-c .swact.swprix,.swk-da .swact.swprix{border-color:rgba(255,197,61,.55);background:rgba(255,197,61,.14);' +
-        'color:#FFD97A;}' +
+      '.swk-c .swact.swprix,.swk-da .swact.swprix{border-color:rgba(27,95,224,.55);background:rgba(27,95,224,.14);' +
+        'color:#1B5FE0;}' +
       '.swk-c .swact.swprix i,.swk-da .swact.swprix i{font-style:normal;font-weight:600;opacity:.85;}' +
       /* ---- CELUI QU'ON DONNE ----
          Vert, comme tout ce qui est acquis dans ce jeu, et pas dore comme un
          prix : la couleur dit deja qu'il n'y a rien a payer avant qu'on ait lu
          le mot. Le ruban se pose sur la vignette parce que c'est elle qu'on
          regarde en premier dans une grille de six. */
-      '.swk-c .swact.swgratuit,.swk-da .swact.swgratuit{border-color:rgba(124,255,155,.5);' +
-        'background:rgba(124,255,155,.14);color:#7CFF9B;font-weight:800;letter-spacing:.06em;}' +
+      '.swk-c .swact.swgratuit,.swk-da .swact.swgratuit{border-color:rgba(18,161,80,.5);' +
+        'background:rgba(18,161,80,.14);color:#0E7C3E;font-weight:800;letter-spacing:.06em;}' +
       '.swk-c{position:relative;}' +
       '.swk-c .swk-free{position:absolute;top:8px;right:8px;text-decoration:none;' +
         'font-size:9.5px;font-weight:900;letter-spacing:.08em;color:#0d1117;' +
@@ -2196,11 +2277,11 @@
       '.swk-c .swk-ed{position:absolute;top:8px;right:8px;text-decoration:none;' +
         'font-size:9.5px;font-weight:900;letter-spacing:.06em;color:#0d1117;' +
         'background:#FFC53D;border-radius:99px;padding:2px 7px;line-height:1.4;}' +
-      '.swk-c .swk-ed.vide{background:#5B6478;color:#0d1117;}' +
-      '.swk-edl{font-style:normal;font-size:11.5px;font-weight:700;color:#FFC53D;' +
+      '.swk-c .swk-ed.vide{background:#E1E9F6;color:#0d1117;}' +
+      '.swk-edl{font-style:normal;font-size:11.5px;font-weight:700;color:#1B5FE0;' +
         'letter-spacing:.03em;}' +
-      '.swk-edl.vide{color:#8DA0C4;}' +
-      '.swk-avoir{font-style:normal;font-size:11px;color:#8DA0C4;}' +
+      '.swk-edl.vide{color:#5F6E88;}' +
+      '.swk-avoir{font-style:normal;font-size:11px;color:#5F6E88;}' +
       /* La fiche empile maintenant trois choses sous le portrait (le compteur
          d edition, l or qu on a, le bouton). En flux normal, un <i> et un
          <button> se rangent cote a cote sur la meme ligne : la colonne le DIT
@@ -2208,8 +2289,8 @@
       '.swk-da{display:flex;flex-direction:column;align-items:center;gap:6px;}' +
       /* « SOLD OUT » n est pas une bonne nouvelle : il ne prend pas le vert de
          « Wearing », qui se lit comme une reussite. */
-      '.swk-c .swtag.swk-fini,.swk-da .swtag.swk-fini{color:#8DA0C4;' +
-        'border-color:rgba(255,255,255,.16);}' +
+      '.swk-c .swtag.swk-fini,.swk-da .swtag.swk-fini{color:#5F6E88;' +
+        'border-color:rgba(11,27,54,.16);}' +
       /* ---- LA FICHE EN GRAND ----
        *
        * Meme coque que la feuille de vente (.swv, .swv-f, .swv-x) — mais PAS
@@ -2242,26 +2323,26 @@
       '.swk-slotcol{display:flex;flex-direction:column;gap:10px;flex:0 0 auto;}' +
       '.swk-slot{position:relative;flex:0 0 auto;width:58px;height:58px;border-radius:13px;' +
         'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;' +
-        'padding:4px;font:inherit;cursor:pointer;border:2px solid var(--c,rgba(255,255,255,.18));' +
-        'background:rgba(255,255,255,.04);color:#8DA0C4;}' +
-      '.swk-slot:hover{background:rgba(255,255,255,.09);}' +
+        'padding:4px;font:inherit;cursor:pointer;border:2px solid var(--c,rgba(11,27,54,.18));' +
+        'background:rgba(11,27,54,.04);color:#5F6E88;}' +
+      '.swk-slot:hover{background:rgba(11,27,54,.09);}' +
       '.swk-slot.vide{border-style:dashed;}' +
       '.swk-slot img{max-width:70%;max-height:56%;object-fit:contain;}' +
-      '.swk-slot b{font-style:normal;font-size:9px;font-weight:800;color:#7CFF9B;line-height:1.15;}' +
+      '.swk-slot b{font-style:normal;font-size:9px;font-weight:800;color:#0E7C3E;line-height:1.15;}' +
       '.swk-slot i{font-style:normal;font-size:9.5px;line-height:1.2;}' +
       /* Le retrait se fait depuis le badge, pas depuis le corps du bouton —
          sinon toucher la case pour voir ce qu on pourrait mettre a la place
          retirerait l objet au lieu d ouvrir le choix. */
       '.swk-slot .rm{position:absolute;top:-6px;right:-6px;width:19px;height:19px;' +
         'border-radius:99px;display:flex;align-items:center;justify-content:center;' +
-        'font-size:11px;line-height:1;border:1px solid rgba(255,255,255,.2);' +
-        'background:#1B2536;color:#8DA0C4;}' +
+        'font-size:11px;line-height:1;border:1px solid rgba(11,27,54,.2);' +
+        'background:#EEF3FB;color:#5F6E88;}' +
       '.swk-slot .rm:hover{color:#FF7A7A;border-color:rgba(255,122,122,.4);}' +
-      '.swk-dn{font-size:19px;font-weight:800;color:#F2F6FF;}' +
+      '.swk-dn{font-size:19px;font-weight:800;color:#0B1B36;}' +
       '.swk-dp{display:flex;gap:5px;font-style:normal;justify-content:center;}' +
-      '.swk-dp i{width:8px;height:8px;border-radius:99px;background:rgba(255,255,255,.16);}' +
+      '.swk-dp i{width:8px;height:8px;border-radius:99px;background:rgba(11,27,54,.16);}' +
       '.swk-dp i.on{background:var(--t);}' +
-      '.swk-dv{font-style:normal;font-size:13px;color:#8DA0C4;line-height:1.5;' +
+      '.swk-dv{font-style:normal;font-size:13px;color:#5F6E88;line-height:1.5;' +
         'max-width:280px;margin:2px 0 4px;}' +
       '.swk-da .swact{padding:12px 26px;font-size:14px;}' +
       /* Le cadeau pixel : une phrase avant l achat, deux petits boutons
@@ -2269,50 +2350,50 @@
          ca n est pas l argument principal de la fiche, juste un plus. */
       '.swk-dg{min-height:20px;display:flex;align-items:center;justify-content:center;' +
         'gap:6px;margin-top:2px;}' +
-      '.swk-teaser{font-style:normal;font-size:11.5px;color:#8DA0C4;}' +
+      '.swk-teaser{font-style:normal;font-size:11.5px;color:#5F6E88;}' +
       '.swk-face{padding:5px 12px;border-radius:99px;font:inherit;font-size:11px;' +
-        'font-weight:700;cursor:pointer;border:1px solid rgba(255,255,255,.16);' +
-        'background:rgba(255,255,255,.04);color:#8DA0C4;}' +
-      '.swk-face.on{border-color:var(--t);color:#F2F6FF;background:rgba(255,255,255,.08);}' +
+        'font-weight:700;cursor:pointer;border:1px solid rgba(11,27,54,.16);' +
+        'background:rgba(11,27,54,.04);color:#5F6E88;}' +
+      '.swk-face.on{border-color:var(--t);color:#0B1B36;background:rgba(11,27,54,.08);}' +
       /* ---- LA PROGRESSION DU PERSONNAGE ----
        *
        * Niveau, XP, huit stats, deux emplacements — tout tient sous la
        * description, avant le bouton d achat/port, dans la meme feuille. */
       '.swk-st{width:100%;max-width:320px;display:flex;flex-direction:column;gap:10px;' +
         'margin-top:2px;}' +
-      '.swk-stload{font-style:normal;font-size:12px;color:#8DA0C4;}' +
+      '.swk-stload{font-style:normal;font-size:12px;color:#5F6E88;}' +
       '.swk-lvl{width:100%;}' +
       '.swk-lvlt{display:flex;justify-content:space-between;align-items:baseline;' +
-        'font-size:11.5px;color:#8DA0C4;margin-bottom:4px;}' +
-      '.swk-lvlt b{font-size:13px;color:#F2F6FF;}' +
-      '.swk-xpb{height:6px;border-radius:99px;background:rgba(255,255,255,.08);overflow:hidden;}' +
+        'font-size:11.5px;color:#5F6E88;margin-bottom:4px;}' +
+      '.swk-lvlt b{font-size:13px;color:#0B1B36;}' +
+      '.swk-xpb{height:6px;border-radius:99px;background:rgba(11,27,54,.08);overflow:hidden;}' +
       '.swk-xpb i{display:block;height:100%;border-radius:99px;background:var(--t);}' +
       '.swk-sg{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}' +
       '.swk-s{display:flex;flex-direction:column;align-items:center;gap:2px;' +
-        'padding:6px 2px;border-radius:8px;background:rgba(255,255,255,.04);}' +
+        'padding:6px 2px;border-radius:8px;background:rgba(11,27,54,.04);}' +
       '.swk-s i{font-style:normal;font-size:9.5px;font-weight:800;letter-spacing:.03em;' +
-        'color:#8DA0C4;}' +
-      '.swk-s b{font-size:13px;font-weight:800;color:#F2F6FF;}' +
-      '.swk-s b em{font-style:normal;font-size:10.5px;font-weight:800;color:#7CFF9B;}' +
+        'color:#5F6E88;}' +
+      '.swk-s b{font-size:13px;font-weight:800;color:#0B1B36;}' +
+      '.swk-s b em{font-style:normal;font-size:10.5px;font-weight:800;color:#0E7C3E;}' +
       /* La liste de choix, sous les stats : elle n existe dans le DOM que le
          temps ou une case est ouverte (display:none sinon), affichee juste
          sous la grille de stats — bordee en haut pour la separer d elle. */
       '.swk-eql{width:100%;display:flex;flex-direction:column;gap:5px;' +
-        'padding-top:8px;border-top:1px solid rgba(255,255,255,.08);' +
+        'padding-top:8px;border-top:1px solid rgba(11,27,54,.08);' +
         'max-height:150px;overflow-y:auto;}' +
       '.swk-eqi{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:9px;' +
-        'font:inherit;cursor:pointer;border:1px solid rgba(255,255,255,.14);' +
-        'border-left:3px solid var(--c,#8DA0C4);background:rgba(255,255,255,.04);text-align:left;}' +
+        'font:inherit;cursor:pointer;border:1px solid rgba(11,27,54,.14);' +
+        'border-left:3px solid var(--c,#8DA0C4);background:rgba(11,27,54,.04);text-align:left;}' +
       '.swk-eqi img{width:28px;height:28px;object-fit:contain;flex:0 0 auto;}' +
-      '.swk-eqi:hover{background:rgba(255,255,255,.09);}' +
-      '.swk-eqi.actif{background:rgba(124,255,155,.08);border-color:rgba(124,255,155,.35);}' +
+      '.swk-eqi:hover{background:rgba(11,27,54,.09);}' +
+      '.swk-eqi.actif{background:rgba(18,161,80,.08);border-color:rgba(18,161,80,.35);}' +
       /* le nom cede la place au detail des stats, pas l'inverse : sur un telephone
          c'est le chiffre qu'on vient lire, le nom est deja sur l'image. */
-      '.swk-eqi b{font-size:12px;color:#F2F6FF;flex:1;min-width:0;overflow:hidden;'+
+      '.swk-eqi b{font-size:12px;color:#0B1B36;flex:1;min-width:0;overflow:hidden;'+
       'text-overflow:ellipsis;white-space:nowrap;}' +
-      '.swk-eqi i{font-style:normal;font-size:10.5px;color:#7CFF9B;font-weight:800;'+
+      '.swk-eqi i{font-style:normal;font-size:10.5px;color:#0E7C3E;font-weight:800;'+
       'flex:0 0 auto;text-align:right;}' +
-      '.swk-eqi span{font-size:10px;color:#8DA0C4;}' +
+      '.swk-eqi span{font-size:10px;color:#5F6E88;}' +
       /* La case vendable : rien de crie, juste de quoi comprendre qu on peut
          appuyer dessus. Un bouton sur chaque case ferait une grille de
          boutons au lieu d une collection. */
@@ -2334,7 +2415,7 @@
        * sans qu'on ait a synchroniser quoi que ce soit, et elle ne peut plus
        * etre plus large que lui. */
       '.swv{position:absolute;inset:0;z-index:40;display:flex;align-items:flex-end;' +
-        'justify-content:center;background:rgba(4,7,13,.66);opacity:0;pointer-events:none;' +
+        'justify-content:center;background:rgba(244,247,252,.66);opacity:0;pointer-events:none;' +
         'transition:opacity .18s;border-radius:inherit;}' +
       '.swv.on{opacity:1;pointer-events:auto;}' +
       /* ---- LA BARRE DU BAS PASSE DEVANT ----
@@ -2351,7 +2432,7 @@
        * `max-height` + `overflow-y` : sur un petit ecran en paysage, la
        * feuille depasse la hauteur du tiroir. Sans plafond, le bouton de vente
        * sortait par le haut et devenait inatteignable. */
-      '.swv-f{width:100%;background:#131B2A;border:1px solid rgba(255,255,255,.12);' +
+      '.swv-f{width:100%;background:#F4F7FD;border:1px solid rgba(11,27,54,.12);' +
         'border-radius:18px 18px 0 0;' +
         'padding:18px 18px calc(var(--swbb-h,62px) + 14px);' +
         'max-height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;' +
@@ -2359,71 +2440,71 @@
         'transition:transform .22s;position:relative;}' +
       '.swv.on .swv-f{transform:none;}' +
       '.swv-x{position:absolute;top:12px;right:12px;width:30px;height:30px;border-radius:9px;' +
-        'border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);' +
-        'color:#8DA0C4;font-size:17px;cursor:pointer;line-height:1;}' +
+        'border:1px solid rgba(11,27,54,.14);background:rgba(11,27,54,.05);' +
+        'color:#5F6E88;font-size:17px;cursor:pointer;line-height:1;}' +
       '.swv-t{display:flex;align-items:center;gap:11px;margin-bottom:4px;}' +
       '.swv-t img{width:48px;height:48px;object-fit:contain;}' +
-      '.swv-t b{display:block;font-size:16px;font-weight:800;color:#F2F6FF;}' +
+      '.swv-t b{display:block;font-size:16px;font-weight:800;color:#0B1B36;}' +
       '.swv-t i{font-style:normal;font-size:11px;}' +
-      '.swv-l{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#8DA0C4;' +
+      '.swv-l{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#5F6E88;' +
         'font-weight:700;margin-top:4px;}' +
-      '.swv-l span{color:#5C6B85;letter-spacing:0;text-transform:none;}' +
+      '.swv-l span{color:#5F6E88;letter-spacing:0;text-transform:none;}' +
       '.swv-f input{padding:11px 13px;border-radius:11px;font:inherit;font-size:15px;' +
-        'font-weight:700;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.25);' +
-        'color:#EAF2FF;-webkit-appearance:none;}' +
-      '.swv-net{font-size:12.5px;color:#8DA0C4;margin:2px 0 4px;}' +
-      '.swv-net b{color:#7CFF9B;font-weight:800;}' +
-      '.swv-net span{color:#5C6B85;}' +
+        'font-weight:700;border:1px solid rgba(11,27,54,.14);background:rgba(11,27,54,.05);' +
+        'color:#0B1B36;-webkit-appearance:none;}' +
+      '.swv-net{font-size:12.5px;color:#5F6E88;margin:2px 0 4px;}' +
+      '.swv-net b{color:#0E7C3E;font-weight:800;}' +
+      '.swv-net span{color:#5F6E88;}' +
       '.swv-go{margin-top:4px;padding:13px;border-radius:12px;font:inherit;font-size:14px;' +
-        'font-weight:800;cursor:pointer;border:1px solid rgba(255,197,61,.6);' +
-        'background:rgba(255,197,61,.16);color:#FFD97A;}' +
-      '.swv-go:hover{background:rgba(255,197,61,.24);}' +
+        'font-weight:800;cursor:pointer;border:1px solid rgba(27,95,224,.6);' +
+        'background:rgba(27,95,224,.16);color:#1B5FE0;}' +
+      '.swv-go:hover{background:rgba(27,95,224,.24);}' +
       /* Le rachat est une SECONDE action, pas une variante de la premiere :
          un separateur, un bouton sobre, et la phrase qui dit ce qu'on perd.
          Le mettre au meme niveau visuel que la mise en vente pousserait au
          geste le moins bon des deux. */
       '.swv-or{display:flex;align-items:center;gap:8px;margin:12px 0 2px;font-size:11px;' +
-        'text-transform:uppercase;letter-spacing:.08em;color:#5C6B85;}' +
+        'text-transform:uppercase;letter-spacing:.08em;color:#5F6E88;}' +
       '.swv-or:before,.swv-or:after{content:"";flex:1;height:1px;' +
-        'background:rgba(255,255,255,.1);}' +
+        'background:rgba(11,27,54,.1);}' +
       '.swv-now{padding:12px;border-radius:12px;font:inherit;font-size:13.5px;' +
-        'font-weight:800;cursor:pointer;border:1px solid rgba(255,255,255,.16);' +
-        'background:rgba(255,255,255,.05);color:#EAF2FF;}' +
-      '.swv-now:hover{background:rgba(255,255,255,.09);}' +
+        'font-weight:800;cursor:pointer;border:1px solid rgba(11,27,54,.16);' +
+        'background:rgba(11,27,54,.05);color:#0B1B36;}' +
+      '.swv-now:hover{background:rgba(11,27,54,.09);}' +
       '.swv-now:disabled{opacity:.45;cursor:default;}' +
-      '.swv-note{font-size:11.5px;line-height:1.5;color:#5C6B85;margin-top:7px;}' +
+      '.swv-note{font-size:11.5px;line-height:1.5;color:#5F6E88;margin-top:7px;}' +
       '.swp-ho{display:flex;gap:5px;overflow-x:auto;margin:0 0 12px;padding-bottom:2px;' +
         '-webkit-overflow-scrolling:touch;scrollbar-width:none;}' +
       '.swp-ho::-webkit-scrollbar{display:none;}' +
       '.swp-ho button{flex:0 0 auto;padding:7px 13px;border-radius:999px;font:inherit;' +
         'font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;' +
-        'border:1px solid rgba(255,255,255,.13);background:rgba(255,255,255,.04);' +
-        'color:#8DA0C4;transition:background .14s,border-color .14s,color .14s;}' +
-      '.swp-ho button:hover{color:#C9D6EE;border-color:rgba(255,255,255,.26);}' +
-      '.swp-ho button.on{background:rgba(255,197,61,.14);border-color:rgba(255,197,61,.55);' +
-        'color:#FFD97A;}' +
+        'border:1px solid rgba(11,27,54,.13);background:rgba(11,27,54,.04);' +
+        'color:#5F6E88;transition:background .14s,border-color .14s,color .14s;}' +
+      '.swp-ho button:hover{color:#24406E;border-color:rgba(11,27,54,.26);}' +
+      '.swp-ho button.on{background:rgba(27,95,224,.14);border-color:rgba(27,95,224,.55);' +
+        'color:#1B5FE0;}' +
       '.swp-ch span{flex:1 1 92px;display:flex;flex-direction:column;gap:1px;' +
-        'padding:8px 10px;border-radius:11px;border:1px solid rgba(255,255,255,.12);' +
-        'background:rgba(255,255,255,.05);font:inherit;text-align:left;color:#C9D6EE;}' +
-      '.swp-ch b{font-size:15px;font-weight:800;color:#F2F6FF;line-height:1.15;' +
+        'padding:8px 10px;border-radius:11px;border:1px solid rgba(11,27,54,.12);' +
+        'background:rgba(11,27,54,.05);font:inherit;text-align:left;color:#24406E;}' +
+      '.swp-ch b{font-size:15px;font-weight:800;color:#0B1B36;line-height:1.15;' +
         'font-variant-numeric:tabular-nums;}' +
       '.swp-ch i{font-style:normal;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;' +
-        'color:#8DA0C4;font-weight:700;}' +
+        'color:#5F6E88;font-weight:700;}' +
       /* Le seul accent dore de l'en-tete : ce qui est A PRENDRE. Un accent
          qui est partout n'accentue rien. */
-      '.swp-ch .pret{border-color:rgba(255,197,61,.55);background:rgba(255,197,61,.13);}' +
-      '.swp-ch .pret b{color:#FFD97A;}' +
-      '.swp-ch .feu b{color:#FF9A3D;}' +
-      '.swp-me .nm > span{display:block;font-size:11.5px;color:#8DA0C4;margin-top:3px;' +
+      '.swp-ch .pret{border-color:rgba(27,95,224,.55);background:rgba(27,95,224,.13);}' +
+      '.swp-ch .pret b{color:#1B5FE0;}' +
+      '.swp-ch .feu b{color:#C2410C;}' +
+      '.swp-me .nm > span{display:block;font-size:11.5px;color:#5F6E88;margin-top:3px;' +
       'font-family:monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}' +
       /* Le bouton d'edition devient un CHEVRON. En haut d'un tiroir, un
          bouton dore intitule « Edit » attire l'oeil avant le nom et avant
          le sommaire, alors qu'on change son nom une fois dans sa vie. Le
          chevron dit la meme chose et laisse la vedette au reste. */
       '.swp-ed{flex:0 0 auto;width:32px;height:32px;padding:0;border-radius:50%;' +
-      'cursor:pointer;font-family:inherit;font-size:17px;line-height:1;color:#8DA0C4;' +
-      'background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.13);}' +
-      '.swp-ed:hover{color:#FFD97A;border-color:rgba(255,197,61,.5);}' +
+      'cursor:pointer;font-family:inherit;font-size:17px;line-height:1;color:#5F6E88;' +
+      'background:rgba(11,27,54,.06);border:1px solid rgba(11,27,54,.13);}' +
+      '.swp-ed:hover{color:#1B5FE0;border-color:rgba(27,95,224,.5);}' +
       '.swp-ed.on{color:#07101F;background:linear-gradient(180deg,#FFE08A,#FFC53D);' +
       'border-color:transparent;}' +
       /* Le formulaire vit maintenant dans un tiroir a hauteur FIXE, la ou
@@ -2432,24 +2513,24 @@
          la hauteur restante et poussaient le sommaire hors du tiroir. Il
          defile chez lui. */
       '.swp-form{flex:0 0 auto;max-height:46vh;overflow-y:auto;' +
-      'padding:11px 13px;border-bottom:1px solid rgba(255,197,61,.18);' +
-      'background:rgba(0,0,0,.25);}' +
+      'padding:11px 13px;border-bottom:1px solid rgba(27,95,224,.18);' +
+      'background:rgba(11,27,54,.05);}' +
       '.swp-form.off{display:none;}' +
       '.swp-avs{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:9px;}' +
       '.swp-avs button{width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:16px;' +
-      'background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);}' +
-      '.swp-avs button.on{background:rgba(255,197,61,.28);border-color:#FFC53D;}' +
+      'background:rgba(11,27,54,.05);border:1px solid rgba(11,27,54,.12);}' +
+      '.swp-avs button.on{background:rgba(27,95,224,.28);border-color:#FFC53D;}' +
       /* Les medailles sont dessinees : plus grandes que les frimousses, et
          posees en tete de liste, ce sont elles qu on choisit. */
       '.swp-avs button.bg{width:46px;height:46px;background-size:contain;' +
       'background-repeat:no-repeat;background-position:center;background-color:transparent;' +
-      'border-color:rgba(255,255,255,.10);}' +
-      '.swp-avs button.bg.on{background-color:rgba(255,197,61,.20);border-color:#FFC53D;' +
-      'box-shadow:0 0 0 2px rgba(255,197,61,.35);}' +
+      'border-color:rgba(11,27,54,.10);}' +
+      '.swp-avs button.bg.on{background-color:rgba(27,95,224,.20);border-color:#FFC53D;' +
+      'box-shadow:0 0 0 2px rgba(27,95,224,.35);}' +
       '.swp-in{display:flex;gap:7px;flex-wrap:wrap;}' +
       '.swp-in input{flex:1 1 150px;min-width:0;padding:9px 11px;border-radius:9px;' +
-      'font-family:inherit;font-size:13px;color:#EAF2FF;background:rgba(0,0,0,.4);' +
-      'border:1px solid rgba(255,255,255,.16);}' +
+      'font-family:inherit;font-size:13px;color:#0B1B36;background:rgba(11,27,54,.05);' +
+      'border:1px solid rgba(11,27,54,.16);}' +
       '.swp-in button{flex:0 0 auto;padding:9px 14px;border-radius:9px;cursor:pointer;' +
       'font-family:inherit;font-size:12.5px;font-weight:800;color:#07101F;' +
       'background:linear-gradient(180deg,#FFE08A,#FFC53D);border:0;}' +
@@ -2458,14 +2539,14 @@
       '.swpn{position:absolute;top:-4px;right:-4px;min-width:17px;height:17px;padding:0 4px;z-index:3;' +
       'border-radius:999px;display:flex;align-items:center;justify-content:center;' +
       'font-size:10px;font-weight:900;color:#07101F;background:#16D97F;' +
-      'box-shadow:0 0 0 2px rgba(7,16,31,.9);}' +
+      'box-shadow:0 0 0 2px rgba(11,27,54,.9);}' +
       /* Au-dessus de la barre du bas (2147482000) ET au-dessus d'elle en
          position : sinon le message existe mais personne ne le voit. */
       '.swtoast{position:fixed;left:50%;bottom:calc(var(--swbb-h,0px) + 16px);' +
       'transform:translate(-50%,20px);z-index:2147483000;' +
       'padding:11px 16px;border-radius:999px;font-family:inherit;font-size:13px;font-weight:700;' +
       'color:#07101F;background:linear-gradient(180deg,#8CFFC0,#16D97F);opacity:0;' +
-      'transition:opacity .25s,transform .25s;box-shadow:0 8px 24px rgba(0,0,0,.5);}' +
+      'transition:opacity .25s,transform .25s;box-shadow:0 8px 24px rgba(11,27,54,0.18);}' +
       '.swtoast.go{opacity:1;transform:translate(-50%,0);}' +
       /* UN REFUS NE DOIT PAS ETRE VERT. La classe `bad` etait deja passee par
          deux appels — un solde insuffisant, une erreur du serveur — mais elle
@@ -2473,50 +2554,50 @@
          « Sent 5 000 $SWOGE », et se lisait comme une reussite. */
       '.swtoast.bad{background:linear-gradient(180deg,#FF9B92,#E8483C);color:#2A0704;}' +
       '.swp-res:not(:empty){margin-bottom:9px;padding-bottom:7px;' +
-      'border-bottom:1px solid rgba(255,255,255,.09);}' +
+      'border-bottom:1px solid rgba(11,27,54,.09);}' +
       '.swp-up{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:9px;}' +
       '.swp-up button{flex:1 1 auto;padding:9px 12px;border-radius:9px;cursor:pointer;' +
-      'font-family:inherit;font-size:12px;font-weight:800;color:#EAF2FF;' +
-      'background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);}' +
+      'font-family:inherit;font-size:12px;font-weight:800;color:#0B1B36;' +
+      'background:rgba(11,27,54,.07);border:1px solid rgba(11,27,54,.16);}' +
       '.swp-up button:hover{border-color:#FFC53D;}' +
       '.swp-up .swp-drop{flex:0 0 auto;}' +
       /* Le parrainage et les chiffres. Une grille qui se replie toute seule :
          deux colonnes sur telephone, quatre sur un ecran large. */
-      '.swp-ex{font-size:11.5px;line-height:1.6;color:#A9BBD8;margin-bottom:9px;' +
-      'padding:9px 11px;border-radius:10px;background:rgba(255,197,61,.07);' +
-      'border:1px solid rgba(255,197,61,.20);}' +
-      '.swp-ex b{color:#FFD97A;}' +
+      '.swp-ex{font-size:11.5px;line-height:1.6;color:#5F6E88;margin-bottom:9px;' +
+      'padding:9px 11px;border-radius:10px;background:rgba(27,95,224,.07);' +
+      'border:1px solid rgba(27,95,224,.20);}' +
+      '.swp-ex b{color:#1B5FE0;}' +
       '.swp-lien{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;}' +
       '.swp-st{margin-bottom:10px;padding:10px 11px;border-radius:12px;' +
-      'background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.09);}' +
+      'background:rgba(11,27,54,.035);border:1px solid rgba(11,27,54,.09);}' +
       '.swp-st-h{font-size:10.5px;letter-spacing:.6px;text-transform:uppercase;' +
-      'color:#8DA0C4;margin-bottom:9px;}' +
+      'color:#5F6E88;margin-bottom:9px;}' +
       '.swp-st-g{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));}' +
       '.swp-st-g>div{min-width:0;}' +
-      '.swp-st-g span{display:block;font-size:10px;color:#8DA0C4;margin-bottom:2px;}' +
-      '.swp-st-g b{display:block;font-size:13.5px;font-weight:800;color:#EAF2FF;' +
+      '.swp-st-g span{display:block;font-size:10px;color:#5F6E88;margin-bottom:2px;}' +
+      '.swp-st-g b{display:block;font-size:13.5px;font-weight:800;color:#0B1B36;' +
       'font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;}' +
-      '.swp-st-g b.g{color:#7CFF9B;} .swp-st-g b.p{color:#F2685E;}' +
-      '.swp-st-f{margin-top:9px;padding-top:8px;font-size:10.5px;color:#8DA0C4;' +
-      'border-top:1px solid rgba(255,255,255,.07);}' +
-      '.swp-r .rg{flex:0 0 auto;min-width:30px;font-size:12px;font-weight:800;color:#C9A24A;' +
+      '.swp-st-g b.g{color:#0E7C3E;} .swp-st-g b.p{color:#E0443E;}' +
+      '.swp-st-f{margin-top:9px;padding-top:8px;font-size:10.5px;color:#5F6E88;' +
+      'border-top:1px solid rgba(11,27,54,.07);}' +
+      '.swp-r .rg{flex:0 0 auto;min-width:30px;font-size:12px;font-weight:800;color:#1B5FE0;' +
       'text-align:center;font-variant-numeric:tabular-nums;}' +
-      '.swp-r.moi{border-color:rgba(255,197,61,.55);background:rgba(255,197,61,.09);}' +
+      '.swp-r.moi{border-color:rgba(27,95,224,.55);background:rgba(27,95,224,.09);}' +
       /* Le prix d un nom, annonce AVANT la saisie. Un prix decouvert au
          moment du refus se lit comme une panne. */
-      '.swp-prix{margin:7px 0 2px;font-size:11.5px;line-height:1.5;color:#8DA0C4;}' +
-      '.swp-prix b{color:#FFC53D;}' +
-      '.swp-prix.ko b{color:#F2685E;}' +
-      '.swp-msg{margin-top:8px;font-size:11.5px;line-height:1.5;color:#8DA0C4;}' +
-      '.swp-msg.ko{color:#F2685E;} .swp-msg.ok{color:#7CFF9B;}' +
+      '.swp-prix{margin:7px 0 2px;font-size:11.5px;line-height:1.5;color:#5F6E88;}' +
+      '.swp-prix b{color:#1B5FE0;}' +
+      '.swp-prix.ko b{color:#E0443E;}' +
+      '.swp-msg{margin-top:8px;font-size:11.5px;line-height:1.5;color:#5F6E88;}' +
+      '.swp-msg.ko{color:#E0443E;} .swp-msg.ok{color:#0E7C3E;}' +
       '.swp-r .av{flex:0 0 auto;width:30px;height:30px;border-radius:50%;display:flex;' +
       'align-items:center;justify-content:center;font-size:15px;' +
-      'background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);}' +
+      'background:rgba(11,27,54,.06);border:1px solid rgba(11,27,54,.12);}' +
       '.swp-r .mini{flex:0 0 auto;padding:6px 10px;border-radius:8px;cursor:pointer;' +
       'font-family:inherit;font-size:11.5px;font-weight:800;color:#07101F;' +
       'background:linear-gradient(180deg,#FFE08A,#FFC53D);border:0;}' +
-      '.swp-r .mini.gh{color:#EAF2FF;background:rgba(255,255,255,.08);' +
-      'border:1px solid rgba(255,255,255,.16);}' +
+      '.swp-r .mini.gh{color:#0B1B36;background:rgba(11,27,54,.08);' +
+      'border:1px solid rgba(11,27,54,.16);}' +
       '.swp-fair{font-size:10px;color:#6E80A4;margin-top:3px;font-family:monospace;' +
       'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}' +
       /* Les jambes d'un pari. Un filet a gauche les rattache visiblement au
@@ -2525,40 +2606,40 @@
          caractere par caractere, et une police proportionnelle confond le
          1 et le l. */
       '.swp-r .w span .swp-pid{display:inline;font-family:ui-monospace,SFMono-Regular,' +
-      'Menlo,Consolas,monospace;font-size:11px;color:#9FB0CE;cursor:pointer;' +
+      'Menlo,Consolas,monospace;font-size:11px;color:#5F6E88;cursor:pointer;' +
       'border-bottom:1px dotted rgba(159,176,206,.45);}' +
-      '.swp-r .w span .swp-pid:hover{color:#FFC53D;border-bottom-color:#FFC53D;}' +
-      '.swp-r .w span .swp-pid.ok{color:#7CFF9B;border-bottom-color:#7CFF9B;}' +
-      '.swp-pj{font-size:12px;color:#B9C8E4;margin-top:4px;padding-left:9px;' +
-      'border-left:2px solid rgba(255,197,61,.35);line-height:1.45;}' +
+      '.swp-r .w span .swp-pid:hover{color:#1B5FE0;border-bottom-color:#FFC53D;}' +
+      '.swp-r .w span .swp-pid.ok{color:#0E7C3E;border-bottom-color:#7CFF9B;}' +
+      '.swp-pj{font-size:12px;color:#5F6E88;margin-top:4px;padding-left:9px;' +
+      'border-left:2px solid rgba(27,95,224,.35);line-height:1.45;}' +
       /* « .swp-r .w b » met les <b> en BLOC : sans ce selecteur plus
          specifique, le choix et sa cote partaient chacun a la ligne et une
          jambe tenait sur trois lignes. */
-      '.swp-r .w .swp-pj b{display:inline;font-size:12px;font-weight:700;color:#EAF2FF;}' +
+      '.swp-r .w .swp-pj b{display:inline;font-size:12px;font-weight:700;color:#0B1B36;}' +
       /* Comme « .swlv », cette pastille vit DANS un <b> que la regle des
          lignes voudrait mettre en bloc pleine largeur. */
       '.swp-r .w b .swp-pe{display:inline-block;width:auto;margin-left:7px;' +
       'padding:1px 7px;border-radius:999px;font-size:10.5px;font-weight:700;' +
       'letter-spacing:.4px;text-transform:uppercase;vertical-align:1px;' +
-      'background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);}' +
+      'background:rgba(11,27,54,.07);border:1px solid rgba(11,27,54,.14);}' +
       /* La couleur doit etre REPOSEE ici : « .swp-r .w span » est plus
          specifique que « .swp-r .g » et la repeignait en gris. */
-      '.swp-r .w b .swp-pe.g{color:#7CFF9B;background:rgba(124,255,155,.12);' +
-      'border-color:rgba(124,255,155,.32);}' +
-      '.swp-r .w b .swp-pe.p{color:#F2685E;background:rgba(242,104,94,.12);' +
-      'border-color:rgba(242,104,94,.32);}' +
-      '.swp-r .w b .swp-pe.n{color:#E7C97A;background:rgba(231,201,122,.12);' +
+      '.swp-r .w b .swp-pe.g{color:#0E7C3E;background:rgba(18,161,80,.12);' +
+      'border-color:rgba(18,161,80,.32);}' +
+      '.swp-r .w b .swp-pe.p{color:#E0443E;background:rgba(224,68,62,.12);' +
+      'border-color:rgba(224,68,62,.32);}' +
+      '.swp-r .w b .swp-pe.n{color:#1B5FE0;background:rgba(231,201,122,.12);' +
       'border-color:rgba(231,201,122,.32);}' +
       /* les mois : un bandeau qu'on replie */
       '.swp-mo{display:flex;align-items:center;gap:9px;width:100%;margin:10px 0 6px;' +
       'padding:8px 11px;border-radius:9px;cursor:pointer;font-family:inherit;' +
       'font-size:12px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;' +
-      'color:#FFD97A;background:rgba(255,197,61,.10);' +
-      'border:1px solid rgba(255,197,61,.28);}' +
+      'color:#1B5FE0;background:rgba(27,95,224,.10);' +
+      'border:1px solid rgba(27,95,224,.28);}' +
       '.swp-mo:first-child{margin-top:0;}' +
       '.swp-mo i{font-style:normal;font-weight:600;letter-spacing:.3px;text-transform:none;' +
-      'color:#8DA0C4;font-size:11px;margin-left:auto;}' +
-      '.swp-mo .ch{color:#8DA0C4;font-size:10px;}' +
+      'color:#5F6E88;font-size:11px;margin-left:auto;}' +
+      '.swp-mo .ch{color:#5F6E88;font-size:10px;}' +
       '@media (max-width:520px){.swpb{width:30px;height:30px;font-size:13px;margin-left:5px;}' +
       '.swp-h b{font-size:12px;}}' +
       'html.swtight .swpb{width:28px;height:28px;font-size:12px;margin-left:4px;}' +
@@ -3279,16 +3360,16 @@
       W + ' .strow{display:flex!important;align-items:center;' +
       'justify-content:space-between!important;gap:10px!important;' +
       'padding:11px 13px!important;margin:0 0 7px!important;border-radius:12px;' +
-      'font-size:11.5px!important;letter-spacing:.2px;color:#8DA0C4!important;' +
-      'background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.09);}' +
+      'font-size:11.5px!important;letter-spacing:.2px;color:#5F6E88!important;' +
+      'background:rgba(11,27,54,.035);border:1px solid rgba(11,27,54,.09);}' +
       W + ' .strow b{font-size:14px!important;font-weight:800;' +
-      'color:#EAF2FF!important;font-variant-numeric:tabular-nums;}' +
+      'color:#0B1B36!important;font-variant-numeric:tabular-nums;}' +
       /* Le $SWOGE porte l'or et le grand chiffre : c'est LUI qu'on est venu
          voir, et c'est lui qui decide si on peut deposer. On le designe par
          l'identifiant qu'il contient — `:first-of-type` viserait la plaque de
          titre, qui est un div elle aussi. */
       W + ' .strow:has(#acSwoge){order:0;padding:14px!important;' +
-      'background:rgba(255,197,61,.07);border-color:rgba(255,197,61,.20);}' +
+      'background:rgba(27,95,224,.07);border-color:rgba(27,95,224,.20);}' +
       W + ' .strow:has(#acSwoge) b{font-size:22px!important;color:' + OR + '!important;}' +
       /* Le gaz est une CONDITION, pas un avoir : on le garde lisible et petit.
          Il ne devient interessant que le jour ou il manque. */
@@ -3296,7 +3377,7 @@
 
       /* ---- 2. L'ADRESSE, EN ENTIER ---- */
       W + ' label{order:2;margin:15px 0 6px!important;' +
-      'font-size:10.5px!important;letter-spacing:1px;color:#8DA0C4!important;}' +
+      'font-size:10.5px!important;letter-spacing:1px;color:#5F6E88!important;}' +
       /* Un champ ne sait pas passer a la ligne : c'est la TAILLE qui doit
          rentrer les 42 caracteres. En chasse fixe leur largeur est previsible —
          environ 0,6 em par caractere — et le tiroir fait 92 vw tant qu'il n'a
@@ -3307,8 +3388,8 @@
       'font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace!important;' +
       'font-size:min(11.5px,2.8vw)!important;letter-spacing:.2px;' +
       'text-align:center;padding:12px 8px!important;border-radius:11px!important;' +
-      'color:#C6D3EA!important;background:rgba(0,0,0,.30)!important;' +
-      'border:1px solid rgba(255,255,255,.10)!important;}' +
+      'color:#24406E!important;background:rgba(11,27,54,.05)!important;' +
+      'border:1px solid rgba(11,27,54,.10)!important;}' +
 
       /* ---- 3. LES GESTES ---- */
       /* On defait la plaque peinte : plus d'image, plus de proportion imposee,
@@ -3321,31 +3402,31 @@
       'letter-spacing:.2px;text-align:center;text-indent:0!important;' +
       'overflow:visible!important;white-space:normal!important;text-decoration:none;' +
       'background-image:none!important;background-color:transparent!important;' +
-      'color:#EAF2FF!important;border:1px solid rgba(255,255,255,.14)!important;' +
+      'color:#0B1B36!important;border:1px solid rgba(11,27,54,.14)!important;' +
       'box-shadow:none!important;}' +
       /* Copier suit l'adresse et lui appartient : discret, et or parce qu'il
          agit sur ce qui est juste au-dessus. */
       W + ' #acCopy{order:4;margin-top:7px!important;padding:9px!important;' +
       'font-size:12px!important;color:' + OR + '!important;' +
-      'background:rgba(255,197,61,.10)!important;' +
-      'border-color:rgba(255,197,61,.34)!important;}' +
-      W + ' #acCopy:hover{background:rgba(255,197,61,.18)!important;}' +
+      'background:rgba(27,95,224,.10)!important;' +
+      'border-color:rgba(27,95,224,.34)!important;}' +
+      W + ' #acCopy:hover{background:rgba(27,95,224,.18)!important;}' +
       /* Deposer est LE geste du panneau — le seul qui fasse entrer de l'argent
          dans le jeu. Un seul aplat plein sur l'ecran, et c'est celui-la. */
       W + ' #acDeposit{order:5;margin-top:14px!important;padding:13px!important;' +
       'font-size:13.5px!important;color:' + ENCRE + '!important;' +
       'background:linear-gradient(180deg,#F2C868,#E6A537)!important;' +
       'border-color:transparent!important;}' +
-      W + ' #acExplorer{order:6;background:rgba(255,255,255,.05)!important;' +
-      'color:#C6D3EA!important;}' +
-      W + ' #acExplorer::after{content:" \\2197";color:#8DA0C4;}' +
+      W + ' #acExplorer{order:6;background:rgba(11,27,54,.05)!important;' +
+      'color:#24406E!important;}' +
+      W + ' #acExplorer::after{content:" \\2197";color:#5F6E88;}' +
       /* Se deconnecter reste possible, et cesse d'etre le plus visible : bord
          rouge sur fond vide, en bas, apres un trait. On ne le cache pas — on le
          met a sa place, celle d'un geste rare. */
       W + ' #acLogout{order:7;margin-top:16px!important;padding:10px!important;' +
-      'font-size:11.5px!important;font-weight:700!important;color:#F2685E!important;' +
-      'border-color:rgba(242,104,94,.28)!important;}' +
-      W + ' #acLogout:hover{background:rgba(242,104,94,.10)!important;}'
+      'font-size:11.5px!important;font-weight:700!important;color:#E0443E!important;' +
+      'border-color:rgba(224,68,62,.28)!important;}' +
+      W + ' #acLogout:hover{background:rgba(224,68,62,.10)!important;}'
     );
   }
 
@@ -3475,8 +3556,8 @@
     var css = document.createElement('style');
     css.textContent =
       '.swbb{position:fixed;left:0;right:0;bottom:0;z-index:2147482000;display:flex;' +
-        'background:rgba(11,15,23,.94);backdrop-filter:blur(10px);' +
-        'border-top:1px solid rgba(255,255,255,.10);' +
+        'background:rgba(244,247,252,.94);backdrop-filter:blur(10px);' +
+        'border-top:1px solid rgba(11,27,54,.10);' +
         /* La barre d'accueil de l'iPhone mange les vingt derniers pixels : sans
            cette marge, le quart des touches tombe dessus et n'arrive jamais. */
         'padding:5px 4px calc(5px + env(safe-area-inset-bottom,0px));' +
@@ -3485,8 +3566,8 @@
       '.swbb button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;' +
         'padding:5px 2px 3px;background:none;border:0;font:inherit;cursor:pointer;' +
         'color:#7A89A6;position:relative;transition:color .14s;-webkit-tap-highlight-color:transparent;}' +
-      '.swbb button:hover,.swbb button:focus-visible{color:#C9D6EE;}' +
-      '.swbb button.on{color:#FFC53D;}' +
+      '.swbb button:hover,.swbb button:focus-visible{color:#24406E;}' +
+      '.swbb button.on{color:#1B5FE0;}' +
       '.swbb span{font-size:9.5px;font-weight:700;letter-spacing:.04em;}' +
       '.swbb .av{width:23px;height:23px;border-radius:50%;border:1px solid currentColor;' +
         'display:flex;align-items:center;justify-content:center;font-size:13px;' +
@@ -3867,7 +3948,7 @@
         ';width:56px;flex:0 0 56px;aspect-ratio:1/1;">' + vignette(g.item, true) + '</div>' +
         (g.coffre ? '<img class="cf ouv" alt="" src="img/shop/coffre_' +
            encodeURIComponent(g.coffreImage || g.coffre) + '_ouvert.webp" onerror="this.remove()">' : '') +
-        '<div><div class="l" style="color:' + (teinte[g.rarete] || '#8DA0C4') + '">' +
+        '<div><div class="l" style="color:' + lisible(teinte[g.rarete] || '#8DA0C4') + '">' +
         ech(nomRarete[g.rarete] || g.rarete) +
         (g.coffreNom ? ' \u00b7 ' + ech(g.coffreNom) : '') + '</div>' +
         '<div class="n">' + ech(g.item.nom) + '</div>' +
@@ -3927,7 +4008,7 @@
            ligne cassait entre « 2.8% » et « Epic », et on lisait un chiffre
            qui ne se rapportait a rien. */
         '<span class="o">' + c.chances.map(function (x) {
-          return '<span style="white-space:nowrap"><b style="color:' + x.couleur + '">' +
+          return '<span style="white-space:nowrap"><b style="color:' + lisible(x.couleur) + '">' +
                  pc(x.pourcent) + '%</b> ' + ech(x.nom) + '</span>';
         }).join(' · ') + '</span></span>' +
         '<span class="p">' + nb(c.prix, 0) + ' $SWOGE</span>';
@@ -4011,7 +4092,7 @@
       ed.innerHTML = 'Season ' + (C.saison || 1) + ' — only <b>' + nb(total, 0) + '</b> ' +
         sujet + 's exist at any one time. ' +
         C.raretes.map(function (r) {
-          return '<span style="color:' + r.couleur + '">' + nb(r.plafond, 0) + ' ' + ech(r.nom) + '</span>';
+          return '<span style="color:' + lisible(r.couleur) + '">' + nb(r.plafond, 0) + ' ' + ech(r.nom) + '</span>';
         }).join(' \u00b7 ') + ' of each.';
       l.appendChild(ed);
     }
@@ -4034,7 +4115,7 @@
 
       var tete = document.createElement('div');
       tete.className = 'swb-fam' + (eus === lot.length ? ' plein' : '');
-      tete.innerHTML = '<b style="color:' + (f.couleur || '#E7C97A') + '">' + ech(f.nom) + '</b>' +
+      tete.innerHTML = '<b style="color:' + lisible(f.couleur || '#E7C97A') + '">' + ech(f.nom) + '</b>' +
         '<i>' + eus + '/' + lot.length + (eus === lot.length ? ' \u2713' : '') + '</i>';
       l.appendChild(tete);
 
@@ -4053,7 +4134,7 @@
           ? (q ? vignette(o) : '<span class="t">' + ech(C.raretes[i].nom) + '</span>')
           : '';
         if (q > 1) d.innerHTML += '<span class="q" style="color:' +
-          (teinte[o.rarete] || '#8DA0C4') + '">x' + q + '</span>';
+          lisible(teinte[o.rarete] || '#8DA0C4') + '">x' + q + '</span>';
         /* ---- VENDRE DEPUIS LA PLANCHE ----
          *
          * Le geste part de la case, pas d'un ecran separe : c'est en regardant
@@ -5267,7 +5348,7 @@
         '<span class="rg">' + (x.rang <= 3 ? ['\uD83E\uDD47','\uD83E\uDD48','\uD83E\uDD49'][x.rang - 1] : x.rang) + '</span>' +
         '<span class="nm">' + ech(nom || x.nom) + '</span>' +
         (x.pleines ? '<span class="fp">' + x.pleines + '\u00d7 5/5</span>' : '') +
-        '<span class="sc" style="color:' + (teinte[x.meilleure] || '#8DA0C4') + '">' +
+        '<span class="sc" style="color:' + lisible(teinte[x.meilleure] || '#8DA0C4') + '">' +
           x.sortes + '<i>/30</i></span>' +
       '</div>' + strip + '</div>';
   }
@@ -6167,7 +6248,7 @@
          hash qu'on ne peut pas cliquer ne sert qu'a etre recopie a la main. */
       var lien = (e.tx && /^0x[0-9a-fA-F]{64}$/.test(e.tx))
         ? ' · <a href="' + EXPLORATEUR + '/tx/' + e.tx + '" target="_blank" rel="noopener" ' +
-          'style="color:#7CFF9B">view on the explorer ↗</a>' : '';
+          'style="color:#0E7C3E">view on the explorer ↗</a>' : '';
       d.innerHTML = '<div class="w"><b>Deposit</b><span>' + quand(e.t) +
                     (e.from ? ' · from ' + court(e.from) : '') + lien + '</span></div>' +
                     '<div class="v"><b class="g">+' + nb(e.m) + '</b><span>$SWOGE</span></div>';
@@ -7354,41 +7435,41 @@
     c.id = 'swduels-css';
     c.textContent =
       '.swdb{position:fixed;right:16px;bottom:16px;z-index:99998;width:56px;height:56px;' +
-      'border-radius:50%;cursor:pointer;border:1px solid rgba(230,165,55,.55);' +
-      'background:linear-gradient(180deg,rgba(46,26,10,.96),rgba(20,10,4,.98));' +
-      'color:#FFD97A;font-family:inherit;font-size:17px;font-weight:900;letter-spacing:.5px;' +
+      'border-radius:50%;cursor:pointer;border:1px solid rgba(27,95,224,.55);' +
+      'background:linear-gradient(180deg,rgba(244,247,252,.96),rgba(255,255,255,.98));' +
+      'color:#1B5FE0;font-family:inherit;font-size:17px;font-weight:900;letter-spacing:.5px;' +
       'line-height:1;display:flex;align-items:center;' +
-      'justify-content:center;box-shadow:0 8px 24px rgba(0,0,0,.55);' +
+      'justify-content:center;box-shadow:0 8px 24px rgba(11,27,54,0.18);' +
       'transition:transform .15s,border-color .15s;}' +
       '.swdb:hover{transform:translateY(-2px);border-color:#FFC53D;}' +
       '.swdb .swdn{position:absolute;top:-3px;right:-3px;min-width:20px;height:20px;padding:0 5px;' +
       'border-radius:999px;display:flex;align-items:center;justify-content:center;' +
       'font-family:inherit;font-size:11px;font-weight:900;color:#07101F;background:#16D97F;' +
-      'box-shadow:0 0 0 2px rgba(7,16,31,.9);animation:swdPop .3s ease-out;}' +
+      'box-shadow:0 0 0 2px rgba(11,27,54,.9);animation:swdPop .3s ease-out;}' +
       '@keyframes swdPop{from{transform:scale(.3);}to{transform:scale(1);}}' +
       '.swdp{position:fixed;left:0;top:0;bottom:0;z-index:99999;width:min(340px,86vw);' +
       'transform:translateX(-102%);transition:transform .22s ease-out;' +
-      'background:linear-gradient(180deg,rgba(12,16,26,.99),rgba(6,9,16,.99));' +
-      'border-right:1px solid rgba(230,165,55,.35);box-shadow:14px 0 40px rgba(0,0,0,.6);' +
+      'background:linear-gradient(180deg,rgba(244,247,252,.99),rgba(244,247,252,.99));' +
+      'border-right:1px solid rgba(27,95,224,.35);box-shadow:14px 0 40px rgba(11,27,54,0.18);' +
       'display:flex;flex-direction:column;font-family:inherit;}' +
       '.swdp.on{transform:translateX(0);}' +
       '.swdp h4{margin:0;padding:15px 46px 11px 14px;font-size:12px;letter-spacing:1px;' +
-      'text-transform:uppercase;color:#FFD97A;display:flex;align-items:center;gap:8px;}' +
-      '.swdp h4 i{margin-left:auto;font-style:normal;font-size:11px;color:#8DA0C4;}' +
+      'text-transform:uppercase;color:#1B5FE0;display:flex;align-items:center;gap:8px;}' +
+      '.swdp h4 i{margin-left:auto;font-style:normal;font-size:11px;color:#5F6E88;}' +
       '.swdp .x{position:absolute;top:10px;right:10px;width:28px;height:28px;border-radius:8px;' +
-      'cursor:pointer;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.06);' +
-      'color:#EAF2FF;font-size:15px;line-height:1;}' +
+      'cursor:pointer;border:1px solid rgba(11,27,54,.16);background:rgba(11,27,54,.06);' +
+      'color:#0B1B36;font-size:15px;line-height:1;}' +
       '.swdl{flex:1;overflow-y:auto;padding:0 12px 14px;}' +
       '.swdt{display:flex;align-items:center;gap:10px;padding:10px;margin-bottom:8px;' +
-      'border-radius:11px;background:rgba(255,255,255,.045);' +
-      'border:1px solid rgba(255,255,255,.10);}' +
+      'border-radius:11px;background:rgba(11,27,54,.045);' +
+      'border:1px solid rgba(11,27,54,.10);}' +
       '.swdt .ic{flex:0 0 auto;width:34px;height:34px;border-radius:9px;display:flex;' +
       'align-items:center;justify-content:center;font-size:16px;' +
-      'background:rgba(255,197,61,.12);border:1px solid rgba(255,197,61,.28);}' +
+      'background:rgba(27,95,224,.12);border:1px solid rgba(27,95,224,.28);}' +
       '.swdt .w{flex:1;min-width:0;}' +
-      '.swdt .w b{display:block;font-size:12.5px;font-weight:800;color:#EAF2FF;' +
+      '.swdt .w b{display:block;font-size:12.5px;font-weight:800;color:#0B1B36;' +
       'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}' +
-      '.swdt .w span{display:block;font-size:10.5px;color:#8DA0C4;margin-top:2px;}' +
+      '.swdt .w span{display:block;font-size:10.5px;color:#5F6E88;margin-top:2px;}' +
       /* Meme piege que dans les lignes du profil : « .swdt .w span » l emporte
          sur « .swlv », et la pastille de niveau tombait a la ligne toute seule
          sous le nom. On redit donc ici, a specificite egale, ce qu elle est. */
@@ -7397,39 +7478,39 @@
       '.swdt button{flex:0 0 auto;padding:7px 12px;border-radius:9px;cursor:pointer;' +
       'font-family:inherit;font-size:12px;font-weight:800;color:#07101F;border:0;' +
       'background:linear-gradient(180deg,#FFE08A,#FFC53D);}' +
-      '.swdt.mienne{border-color:rgba(255,197,61,.45);background:rgba(255,197,61,.07);}' +
-      '.swdt.mienne button{background:rgba(255,255,255,.10);color:#8DA0C4;cursor:default;}' +
+      '.swdt.mienne{border-color:rgba(27,95,224,.45);background:rgba(27,95,224,.07);}' +
+      '.swdt.mienne button{background:rgba(11,27,54,.10);color:#5F6E88;cursor:default;}' +
       '.swdt button.gh{background:linear-gradient(180deg,#8FD3FF,#3FA9F5);}' +
       /* Le titre de section : les parties en cours ne sont pas des defis a
          relever, il ne faut pas melanger les deux listes. */
       '.swdh{margin:14px 0 8px;font-size:10.5px;letter-spacing:1.1px;font-weight:800;' +
-      'text-transform:uppercase;color:#8DA0C4;}' +
+      'text-transform:uppercase;color:#5F6E88;}' +
       /* Le plateau du spectateur. */
       '.swdw{margin:0 0 12px;border-radius:12px;overflow:hidden;' +
       'background:rgba(63,169,245,.07);border:1px solid rgba(63,169,245,.34);}' +
       '.swdw .hd{display:flex;align-items:center;gap:8px;padding:9px 10px;' +
-      'border-bottom:1px solid rgba(255,255,255,.08);}' +
-      '.swdw .hd b{flex:1;min-width:0;font-size:12px;font-weight:800;color:#EAF2FF;' +
+      'border-bottom:1px solid rgba(11,27,54,.08);}' +
+      '.swdw .hd b{flex:1;min-width:0;font-size:12px;font-weight:800;color:#0B1B36;' +
       'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}' +
       '.swdw .hd .x{position:relative;width:24px;height:24px;font-size:13px;flex:0 0 auto;touch-action:manipulation;}' +
       /* La croix mesurait 24 px de cote : on agrandit la ZONE SENSIBLE a 44 sans toucher au dessin, avec un pseudo-element centre. Grossir le bouton lui-meme aurait pousse le titre du tiroir. */
       '.x::after{content:"";position:absolute;left:50%;top:50%;width:44px;height:44px;transform:translate(-50%,-50%);}' +
       '.swdw .gr{display:grid;gap:3px;padding:8px;}' +
       '.swdw .c{display:block;width:100%;aspect-ratio:1/1;border-radius:50%;' +
-      'background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);}' +
+      'background:rgba(11,27,54,.05);border:1px solid rgba(11,27,54,.08);}' +
       '.swdw .gr.jmp .c{border-radius:5px;}' +
-      '.swdw .c.sq{background:rgba(0,0,0,.34);}' +
+      '.swdw .c.sq{background:rgba(11,27,54,.05);}' +
       '.swdw .c.p1{background:linear-gradient(180deg,#FFE08A,#FFC53D);border-color:#FFC53D;}' +
       '.swdw .c.p2{background:linear-gradient(180deg,#8FD3FF,#3FA9F5);border-color:#3FA9F5;}' +
-      '.swdw .c.dame{box-shadow:inset 0 0 0 3px rgba(7,16,31,.55);}' +
+      '.swdw .c.dame{box-shadow:inset 0 0 0 3px rgba(11,27,54,.55);}' +
       '.swdw .c.win{box-shadow:0 0 0 2px #7CE3A0;}' +
-      '.swdw .st{padding:8px 10px;border-top:1px solid rgba(255,255,255,.08);' +
-      'font-size:11px;font-weight:700;color:#8DA0C4;}' +
-      '.swdw .st.fin{color:#7CE3A0;}' +
-      '.swdv{padding:22px 14px;text-align:center;font-size:12px;line-height:1.7;color:#8DA0C4;}' +
-      '.swdp .pied{padding:11px 14px;border-top:1px solid rgba(255,255,255,.08);' +
-      'font-size:11px;line-height:1.6;color:#8DA0C4;}' +
-      '.swdp .pied a{color:#FFD97A;text-decoration:none;}' +
+      '.swdw .st{padding:8px 10px;border-top:1px solid rgba(11,27,54,.08);' +
+      'font-size:11px;font-weight:700;color:#5F6E88;}' +
+      '.swdw .st.fin{color:#0E7C3E;}' +
+      '.swdv{padding:22px 14px;text-align:center;font-size:12px;line-height:1.7;color:#5F6E88;}' +
+      '.swdp .pied{padding:11px 14px;border-top:1px solid rgba(11,27,54,.08);' +
+      'font-size:11px;line-height:1.6;color:#5F6E88;}' +
+      '.swdp .pied a{color:#1B5FE0;text-decoration:none;}' +
       '@media (max-width:520px){.swdb{width:48px;height:48px;font-size:20px;right:12px;bottom:12px;}}';
     document.head.appendChild(c);
   }

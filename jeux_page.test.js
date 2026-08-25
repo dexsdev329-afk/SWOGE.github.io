@@ -536,6 +536,200 @@ const servirLeSite = async () => {
   eq(await p.evaluate(() => document.getElementById('gxMenu').hidden), true,
      'et la touche d echappement aussi');
 
+  console.log('\n-- des fleches a la place de la barre de defilement --');
+  /* ---- CE QUI ETAIT DEMANDE ----
+   * « sur game html againts the housse met des fleche retire la barre de
+   * scroll pareil pour la category utility ».
+   *
+   * ---- POURQUOI ON MESURE LES DEUX ENSEMBLE ----
+   * Retirer la barre est la moitie facile, et prise seule c est une
+   * REGRESSION : la barre etait la seule chose qui annoncait qu il restait
+   * des cartes sous le bord droit. Chaque verification ci-dessous demande
+   * donc les DEUX a la fois — pas de barre ET des fleches — parce qu une page
+   * qui n a plus ni l une ni les autres passerait la moitie d entre elles.
+   *
+   * Et ce n est pas fait sur les deux rangees nommees seulement : le defaut
+   * appartient a `.piste`, dont il y a six exemplaires. Corriger « Against
+   * the house » et « Utility » aurait laisse quatre barres en place. */
+  const rangees = await p.evaluate(() => [...document.querySelectorAll('.piste')].map((t) => {
+    const poste = t.nextElementSibling;
+    const b = poste ? [...poste.querySelectorAll('button')] : [];
+    return {
+      quoi: t.getAttribute('aria-label'),
+      deborde: t.scrollWidth - t.clientWidth > 1,
+      barre: getComputedStyle(t).scrollbarWidth,
+      poste: !!poste && poste.classList.contains('pfl'),
+      /* `hidden` seul ne suffit pas a le prouver : `display:flex` bat
+         l attribut, et un poste « cache » resterait a l ecran. */
+      vu: !!poste && !poste.hidden && getComputedStyle(poste).display !== 'none',
+      vifs: b.length === 2 && b.every((x) => getComputedStyle(x).pointerEvents === 'auto'),
+      gauche: b[0] ? b[0].disabled : null,
+      droite: b[1] ? b[1].disabled : null,
+    };
+  }));
+  eq(rangees.length, 6, 'les six rangees du catalogue sont la');
+  ok(rangees.every((r) => r.barre === 'none'),
+     'AUCUNE des six ne montre de barre de defilement : c est la demande, et une'
+     + ' rangee oubliee se verrait — elle serait la seule a en avoir une');
+  ok(rangees.every((r) => r.poste),
+     'et chacune a recu son poste de fleches, y compris celles qui ne le montrent'
+     + ' pas encore : la meme fonction les pose toutes, il n y a pas six copies');
+  const larges = rangees.filter((r) => r.deborde);
+  const courtes = rangees.filter((r) => !r.deborde);
+  ok(larges.length >= 2 && courtes.length >= 2,
+     `a mille quatre cents pixels, ${larges.length} rangee(s) debordent et`
+     + ` ${courtes.length} tiennent entieres : les deux cas sont mesures`);
+  ok(larges.every((r) => r.vu),
+     `celles qui DEBORDENT montrent leurs fleches (${larges.map((r) => r.quoi).join(', ')})`
+     + ' — sans elles, plus rien ne dirait qu il reste des cartes sous le bord');
+  ok(courtes.every((r) => !r.vu),
+     `celles qui TIENNENT n en montrent pas (${courtes.map((r) => r.quoi).join(', ')}) :`
+     + ' deux fleches grises au-dessus d une rangee d une seule carte sont deux'
+     + ' boutons qui ne font rien, et l on apprend a ne plus les voir');
+  ok(larges.every((r) => r.vifs),
+     'et leurs fleches portent `vif` : `a[href], button{pointer-events:none}` tue'
+     + ' tout bouton de cette page qui ne l a pas — dessin complet, clic dans le vide');
+  ok(larges.every((r) => r.gauche === true && r.droite === false),
+     'au depart, celle de GAUCHE est eteinte et celle de droite vive : une fleche'
+     + ' vive qui ne bouge rien vaut une fleche morte');
+  /* Les deux rangees NOMMEES par la demande, verifiees pour elles-memes : si un
+     jour elles cessaient de deborder, les verifications generales passeraient
+     encore et celles-la diraient que la demande n est plus couverte. */
+  for (const nom of ['Against the house', 'Utility']) {
+    const r = rangees.find((x) => x.quoi === nom);
+    ok(r && r.deborde && r.vu && r.barre === 'none',
+       `« ${nom} » — celle que la demande nomme — n a plus de barre et a bien ses fleches`);
+  }
+
+  /* ---- ET LES FLECHES BOUGENT POUR DE VRAI ----
+   * `p.click`, avec un VRAI pointeur. `bouton.click()` en JavaScript ignore
+   * `pointer-events` : l essai passerait sur deux boutons que personne ne peut
+   * cliquer, ce qui est exactement le defaut qu on repare. */
+  const maison = '.piste[aria-label="Against the house"]';
+  const avantFleche = await p.evaluate((s) => {
+    const t = document.querySelector(s);
+    return { x: t.scrollLeft, vu: t.clientWidth };
+  }, maison);
+  await p.click(maison + ' + .pfl .pfl-b:last-child');
+  await p.waitForTimeout(400);
+  const apresFleche = await p.evaluate((s) => {
+    const t = document.querySelector(s);
+    const b = [...t.nextElementSibling.querySelectorAll('button')];
+    return { x: t.scrollLeft, gauche: b[0].disabled, droite: b[1].disabled };
+  }, maison);
+  ok(apresFleche.x > avantFleche.x,
+     `un VRAI clic sur la fleche droite fait defiler la rangee (${avantFleche.x}`
+     + ` puis ${apresFleche.x}) : un bouton dessine et branche mais inerte aurait`
+     + ' passe un essai qui clique par script');
+  ok(apresFleche.x - avantFleche.x <= avantFleche.vu,
+     `le saut (${apresFleche.x - avantFleche.x} px) ne depasse pas la largeur vue`
+     + ` (${avantFleche.vu} px) : a une largeur pleine, la derniere carte lue sort`
+     + ' de l ecran et l on revient en arriere pour savoir ou l on en etait');
+  eq(apresFleche.gauche, false,
+     'et celle de GAUCHE se rallume : sans elle, on part a droite et l on ne'
+     + ' revient jamais');
+
+  /* ---- SUR TELEPHONE, LA BARRE N A JAMAIS EXISTE ----
+   * C est la ou la demande compte le plus : aucun navigateur mobile ne dessine
+   * de barre au repos. La rangee des neuf jeux de maison en montrait deux, et
+   * RIEN ne disait qu il y en avait sept autres. */
+  {
+    const ctx4 = await ctx.browser().newContext({ viewport: { width: 390, height: 844 } });
+    const p4 = await ctx4.newPage();
+    await p4.route('**/cdnjs.cloudflare.com/**', (r) => r.abort());
+    await p4.goto(`http://127.0.0.1:${site.port}/games.html?server=`
+                  + encodeURIComponent('ws://127.0.0.1:1'),
+                  { waitUntil: 'domcontentloaded' });
+    await p4.waitForTimeout(1200);
+    const surTel = await p4.evaluate((s) => {
+      const t = document.querySelector(s);
+      return { deborde: t.scrollWidth - t.clientWidth, vu: t.clientWidth,
+               fleches: !t.nextElementSibling.hidden, x: t.scrollLeft };
+    }, maison);
+    ok(surTel.deborde > surTel.vu && surTel.fleches,
+       `a trois cent quatre-vingt-dix pixels la rangee deborde de ${surTel.deborde} px`
+       + ' et ses fleches sont la : c est le seul endroit ou le visiteur n avait'
+       + ' AUCUN indice');
+    await p4.click(maison + ' + .pfl .pfl-b:last-child');
+    await p4.waitForTimeout(400);
+    const bougeTel = await p4.evaluate((s) => document.querySelector(s).scrollLeft, maison);
+    ok(bougeTel > 0 && bougeTel < surTel.vu,
+       `et le saut y reste sous la largeur vue (${bougeTel} px pour ${surTel.vu} px vus)`
+       + ' — la derniere carte lue est encore a l ecran apres le saut');
+    await ctx4.close();
+  }
+
+  console.log('\n-- les vingt-six cartes du catalogue menent quelque part --');
+  /* ---- CE QUI ETAIT DEMANDE ----
+   * « le catalogue faut tu mette les redirection sur le blacjack et gold
+   * table ». Les cartes etaient inertes : CINQUIEME fois que
+   * `a[href]{pointer-events:none}` referme le meme piege sur cette page.
+   *
+   * On lit le FICHIER, pas le navigateur : une cible fausse s afficherait
+   * parfaitement et n echouerait qu au clic de quelqu un. */
+  const source = fs.readFileSync(path.join(SITE, 'games.html'), 'utf8');
+  const cartes = [...source.matchAll(/<a class="([^"]*)" href="([^"]+)"[^>]*title=/g)]
+    .filter((m) => /\bjc\b/.test(m[1]));
+  eq(cartes.length, 26, 'les vingt-six cartes du catalogue sont toujours la');
+  const mortes = cartes.filter((m) => !/\bvif\b/.test(m[1])).map((m) => m[2]);
+  ok(mortes.length === 0,
+     `les vingt-six portent « vif » — sans ce mot le clic traverse la carte :`
+     + `${mortes.length ? ' manque ' + mortes.join(', ') : ' aucune oubliee'}`);
+  const absentes = cartes
+    .map((m) => m[2].split('?')[0].split('#')[0])
+    .filter((f) => !fs.existsSync(path.join(SITE, f)));
+  ok(absentes.length === 0,
+     `et chaque destination existe sur le disque${absentes.length
+       ? ' — introuvable(s) : ' + absentes.join(', ') : ''} : reveiller un lien vers`
+     + ' une page morte est pire que le laisser inerte');
+  const auDoigt = await p.evaluate(() => {
+    const a = [...document.querySelectorAll('a.jc')];
+    return { n: a.length,
+             vives: a.filter((x) => getComputedStyle(x).pointerEvents === 'auto').length,
+             doigt: a.filter((x) => getComputedStyle(x).cursor === 'pointer').length };
+  });
+  eq(auDoigt.vives, auDoigt.n,
+     `les ${auDoigt.n} cartes repondent au doigt dans la page rendue`);
+  eq(auDoigt.doigt, auDoigt.n, 'et le curseur le promet sur chacune');
+
+  /* ---- LA PREUVE : ON NAVIGUE POUR DE VRAI ----
+   * Dans un onglet a part : la page du blackjack fait un demi-megaoctet et
+   * ses erreurs de chargement n ont rien a faire dans le compte de celles de
+   * `games.html`. */
+  {
+    const ctx5 = await ctx.browser().newContext({ viewport: { width: 1400, height: 1000 } });
+    const p5 = await ctx5.newPage();
+    await p5.route('**/cdnjs.cloudflare.com/**', (r) => r.abort());
+    const hall = `http://127.0.0.1:${site.port}/games.html?server=`
+                 + encodeURIComponent('ws://127.0.0.1:1');
+    /* Les deux cartes NOMMEES par la demande, l une apres l autre. */
+    for (const [cible, attendu] of [['swoge_blackjack.html', /\/swoge_blackjack\.html$/],
+                                    ['swoge_blackjack.html?table=or', /\/swoge_blackjack\.html\?table=or$/]]) {
+      await p5.goto(hall, { waitUntil: 'domcontentloaded' });
+      await p5.waitForTimeout(600);
+      await p5.click(`a.jc[href="${cible}"]`);
+      await p5.waitForTimeout(1500);
+      ok(attendu.test(p5.url()),
+         `un vrai clic sur « ${cible} » CHANGE DE PAGE : ${p5.url().split('/').pop()}`
+         + ' — c est la redirection demandee, et rien d autre ne la prouve');
+    }
+
+    /* ---- ET SANS LE CORRECTIF, LE MEME CLIC ECHOUE ----
+     * On remet le defaut d origine par-dessus la page, et l on redemande le
+     * meme geste. Un essai qui passe AUSSI quand la regle manque ne protege
+     * de rien : c est ce qui a laisse le piege se refermer quatre fois. */
+    await p5.goto(hall, { waitUntil: 'domcontentloaded' });
+    await p5.waitForTimeout(600);
+    await p5.addStyleTag({ content: 'a.jc{ pointer-events:none !important }' });
+    const refus = await p5.click('a.jc[href="swoge_blackjack.html"]', { timeout: 3000 })
+      .then(() => 'passe', () => 'refuse');
+    ok(refus === 'refuse' && /games\.html/.test(p5.url()),
+       `le defaut remis, le MEME clic n aboutit pas (${refus}) et l on reste sur`
+       + ' le hall : la verification d au-dessus mesure bien le correctif, et non'
+       + ' un navigateur complaisant');
+    await ctx5.close();
+  }
+
   console.log('\n-- et les deux etats qu on n aime pas montrer --');
   /* VIDE. Un calendrier peut l etre : hors saison, ou entre deux imports. */
   await p.goto(`http://127.0.0.1:${site.port}/games.html?server=`

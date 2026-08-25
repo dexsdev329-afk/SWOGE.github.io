@@ -194,6 +194,50 @@ const servirLeSite = async () => {
   ok(/🇫🇷/.test(await p.content()) || apres.matchs[0].dom.length > 0,
      'le drapeau se fabrique du code ISO, sans une image a telecharger');
 
+  console.log('\n-- les quatre chiffres de la vitrine --');
+  /* ---- CE QU ILS ETAIENT ----
+   * « 128K+ joueurs », « $24.8M+ joues », « 1,284+ parties » : des chiffres de
+   * MAQUETTE, ecrits en dur, et le fichier le disait. Un site qui annonce un
+   * volume invente le fait verifier — c est la premiere chose qu on cherche a
+   * recouper. Ils viennent du serveur, par la meme route publique que le
+   * calendrier.
+   */
+  const chiffres = await p.evaluate(() => {
+    const b = document.getElementById('gxChiffres');
+    return {
+      vu: !!b && !b.hidden,
+      titres: [...document.querySelectorAll('#gxChiffres small')].map((x) => x.textContent),
+      valeurs: [...document.querySelectorAll('#gxChiffres b[data-n]')]
+        .map((x) => x.textContent.trim()),
+      brut: document.body.textContent,
+    };
+  });
+  ok(chiffres.vu, 'le bandeau s affiche une fois les chiffres recus');
+  eq(chiffres.titres.join(' | '), 'PLAYERS | CASINO VOLUME | ROUNDS PLAYED | WINNINGS PAID',
+     '« TOTAL WAGERED » devient « CASINO VOLUME », et « GAMES » devient « ROUNDS'
+     + ' PLAYED » — le nombre qu on y met est celui des MANCHES, et sous « GAMES »'
+     + ' il se serait lu comme un nombre de jeux');
+  ok(chiffres.valeurs.length === 4 && chiffres.valeurs.every((v) => /^[\d.]+[kMB]?$/.test(v)),
+     `les quatre sont des nombres lisibles : ${chiffres.valeurs.join(' / ')}`);
+  ok(!/128K\+|24\.8M\+|1,284\+|5\.7M\+/.test(chiffres.brut),
+     'et AUCUN des chiffres de la maquette ne subsiste dans la page');
+  /* Serveur injoignable : le bandeau DISPARAIT. Un bandeau vide se remarque et
+     ne trompe personne ; un bandeau qui annonce cent vingt-huit mille joueurs
+     qu on n a pas se verifie en un clic. */
+  {
+    const ctx2 = await ctx.browser().newContext({ viewport: { width: 1400, height: 900 } });
+    const p2 = await ctx2.newPage();
+    await p2.route('**/cdnjs.cloudflare.com/**', (r) => r.abort());
+    await p2.goto(`http://127.0.0.1:${site.port}/games.html?server=`
+                  + encodeURIComponent('ws://127.0.0.1:1'),
+                  { waitUntil: 'domcontentloaded' });
+    await p2.waitForTimeout(2500);
+    ok(await p2.evaluate(() => document.getElementById('gxChiffres').hidden),
+       'serveur injoignable : le bandeau disparait plutot que de remettre les'
+       + ' chiffres de la maquette');
+    await ctx2.close();
+  }
+
   console.log('\n-- le menu du profil --');
   /* ---- CE QUI ETAIT DEMANDE ----
    * « Avant il y avait un menu pour deposit etc, faudrait le remettre dans

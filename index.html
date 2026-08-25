@@ -501,11 +501,22 @@ a{color:inherit;text-decoration:none}
     <span class="sw-patte">&#128062;</span>
     <span><b>SWOGE</b><i>WORLD</i></span>
   </a>
-  <div class="sw-chiffres">
-    <div class="sw-ch"><span class="ic">&#128100;</span><span><small>PLAYERS</small><b>128K+</b></span></div>
-    <div class="sw-ch"><span class="ic">&#127922;</span><span><small>TOTAL WAGERED</small><b>$24.8M+</b></span></div>
-    <div class="sw-ch"><span class="ic">&#127918;</span><span><small>GAMES</small><b>1,284+</b></span></div>
-    <div class="sw-ch"><span class="ic">&#127942;</span><span><small>WINNINGS PAID</small><b>$5.7M+</b></span></div>
+  <!-- ---- LES QUATRE CHIFFRES VIENNENT DU SERVEUR ----
+       Ils etaient ecrits en dur : « 128K+ », « $24.8M+ », « 1,284+ ». Des
+       chiffres de MAQUETTE, et le fichier le disait. Un site qui annonce un
+       volume invente le fait verifier — c est la premiere chose qu on cherche
+       a recouper.
+       « TOTAL WAGERED » devient « CASINO VOLUME » : c est le mot demande, et
+       c est aussi le plus juste — la somme des mises du casino.
+       « GAMES » devient « ROUNDS PLAYED » : le nombre qu on y met est celui
+       des MANCHES jouees. Sous « GAMES », il se serait lu comme un nombre de
+       jeux, et le site n en a pas mille deux cents. -->
+  <div class="sw-chiffres" id="gxChiffres" hidden>
+    <div class="sw-ch"><span class="ic">&#128100;</span><span><small>PLAYERS</small><b data-n="joueurs">&mdash;</b></span></div>
+    <div class="sw-ch"><span class="ic">&#127922;</span><span><small>CASINO VOLUME</small><b data-n="volume">&mdash;</b></span></div>
+    <div class="sw-ch"><span class="ic">&#127918;</span><span><small>ROUNDS PLAYED</small><b data-n="manches">&mdash;</b></span></div>
+    <div class="sw-ch"><span class="ic">&#127942;</span><span><small>WINNINGS PAID</small><b data-n="rendus">&mdash;</b></span></div>
+  </div>
   </div>
   <button class="sw-b sw-b-vide cx-wallet">CONNECT WALLET</button>
   <button class="sw-b sw-b-plein cx-mail">SIGN UP &mdash; EMAIL</button>
@@ -1003,6 +1014,46 @@ a{color:inherit;text-decoration:none}
     var e = document.getElementById(i);
     if (e) e.addEventListener("click", va);
   });
+})();
+</script>
+<!-- Les quatre chiffres de la vitrine, lus sur le serveur. -->
+<script>
+(function(){
+  "use strict";
+  var bloc = document.getElementById("gxChiffres");
+  if(!bloc) return;
+  function serveur(){
+    try{ var q=new URLSearchParams(location.search).get("server"); if(q)
+      return String(q).replace(/^ws/,"http"); }catch(e){}
+    return "https://web-production-220a3.up.railway.app";
+  }
+  /* Court, et sans arrondir vers le HAUT. Sur un volume, annoncer plus que la
+     verite est exactement le defaut qu on repare — « 4.7M » pour 4 799 999
+     passe encore, « 4.8M » annonce de l argent qui n a pas ete joue. */
+  function court(n){
+    n = Number(n) || 0;
+    var t = function(v, s){ return (Math.floor(v*10)/10).toFixed(1).replace(/\.0$/,"") + s; };
+    if(n >= 1e9) return t(n/1e9, "B");
+    if(n >= 1e6) return t(n/1e6, "M");
+    if(n >= 1e3) return t(n/1e3, "k");
+    return String(Math.floor(n));
+  }
+  fetch(serveur()+"/vitrine.json", { cache:"no-store" })
+    .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function(j){
+      [].forEach.call(bloc.querySelectorAll("b[data-n]"), function(b){
+        var v = j[b.getAttribute("data-n")];
+        b.textContent = (typeof v === "number" && isFinite(v)) ? court(v) : "\u2014";
+      });
+      bloc.hidden = false;
+    })
+    ['catch'](function(){
+      /* ---- ON NE REMET PAS LES CHIFFRES DE LA MAQUETTE ----
+       * Un bandeau vide se remarque et ne trompe personne ; un bandeau qui
+       * annonce cent vingt-huit mille joueurs qu on n a pas se verifie en un
+       * clic, et c est la confiance qui part avec. */
+      bloc.hidden = true;
+    });
 })();
 </script>
 </body>

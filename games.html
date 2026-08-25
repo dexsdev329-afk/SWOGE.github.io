@@ -373,6 +373,19 @@ a{color:inherit;text-decoration:none}
 .cotes button small{color:var(--gris);font-weight:700}
 .cotes button:hover,.cotes button.on{background:var(--bleu-clair);border-color:var(--bleu);color:var(--bleu)}
 .cotes .plus{flex:0 0 auto;background:none;border:0;color:var(--gris);font-weight:700}
+/* ---- CE QUI S AFFICHE QUAND IL N Y A RIEN A AFFICHER ----
+   Un calendrier peut etre legitimement vide : hors saison, ou entre deux
+   imports. Laisser le bloc blanc se lit comme une panne ; y remettre un
+   exemple se lit comme une offre. On DIT ce qu il en est, et le bouton reste
+   a cote — c est la seule reponse honnete aux trois cas, et il y en a trois :
+   ca charge, c est vide, ca n a pas repondu. */
+.gx-dit{padding:14px 0;font:500 11.5px/1.5 'Inter',system-ui,sans-serif;color:var(--gris)}
+.gx-dit a{color:var(--bleu);font-weight:700}
+/* La rencontre entiere est un lien : on clique le nom, l heure ou la cote, et
+   l on arrive au meme endroit. Un bouton de cote qui ne PREND pas le pari
+   serait un piege — ici il emmene la ou on le prend. */
+a.match{display:block;color:inherit;text-decoration:none}
+a.match:hover .cotes button{border-color:var(--bleu)}
 
 /* ---- LE BULLETIN ET LE SECOND BONUS SONT PARTIS ----
    Ils fermaient la colonne de droite quatre cent soixante pixels plus bas que
@@ -799,67 +812,30 @@ a{color:inherit;text-decoration:none}
           <span class="ferme">CLOSES AT KICK-OFF</span></div>
         <p class="sous">Football carries <b>six markets</b> &mdash; winner, double chance,
           both teams to score, over/under 2.5, correct score, handicap &minus;1.5.</p>
+        <!-- La cle du sport est ECRITE a cote du libelle, pas devinee dedans.
+             Elle l etait : le script lisait le texte du bouton pour en tirer
+             « foot » — et le texte commence par l ICONE, donc « ⚽Football »
+             ne commencait pas par « football ». L onglet ne filtrait rien et
+             se croyait vide. Un libelle est fait pour etre lu par un humain ;
+             la machine a besoin qu on le lui dise. -->
         <div class="onglets" data-groupe="sports">
-          <button class="on"><span class="ic">&#9878;</span>All Sports</button>
-          <button><span class="ic">&#9917;</span>Football</button>
-          <button><span class="ic">&#127934;</span>Tennis</button>
-          <button class="eteint"><span class="ic">&#127936;</span>NBA</button>
+          <button class="on" data-sport=""><span class="ic">&#9878;</span>All Sports</button>
+          <button data-sport="foot"><span class="ic">&#9917;</span>Football</button>
+          <button data-sport="tennis"><span class="ic">&#127934;</span>Tennis</button>
+          <button data-sport="nba"><span class="ic">&#127936;</span>NBA</button>
         </div>
 
-        <div class="match">
-          <div class="ligue">FOOTBALL &middot; CHAMPIONSHIP &middot; ENGLAND</div>
-          <div class="duel">
-            <span class="eq"><span>&#127988;</span><b>Bolton</b></span>
-            <span class="sc">15 AUG &middot; 12:30</span>
-            <span class="eq d"><b>Preston</b><span>&#127988;</span></span>
-          </div>
-          <div class="cotes">
-            <button class="on">1 <small>2.12</small></button>
-            <button>X <small>3.22</small></button>
-            <button>2 <small>3.17</small></button>
-            <span class="plus">+5</span>
-          </div>
-        </div>
-
-        <div class="match">
-          <div class="ligue">FOOTBALL &middot; CHAMPIONSHIP &middot; ENGLAND</div>
-          <div class="duel">
-            <span class="eq"><span>&#127988;</span><b>Norwich</b></span>
-            <span class="sc">15 AUG &middot; 15:00</span>
-            <span class="eq d"><b>West Brom</b><span>&#127988;</span></span>
-          </div>
-          <div class="cotes">
-            <button>1 <small>1.87</small></button>
-            <button>X <small>3.38</small></button>
-            <button>2 <small>3.73</small></button>
-            <span class="plus">+5</span>
-          </div>
-        </div>
-
-        <div class="match">
-          <div class="ligue">TENNIS &middot; CINCINNATI ATP</div>
-          <div class="duel">
-            <span class="eq"><span>&#127479;&#127480;</span><b>Djokovic N.</b></span>
-            <span class="sc">15 AUG &middot; 16:30</span>
-            <span class="eq d"><b>Tirante T. A.</b><span>&#127462;&#127479;</span></span>
-          </div>
-          <div class="cotes">
-            <button>1 <small>1.25</small></button>
-            <button>2 <small>3.80</small></button>
-          </div>
-        </div>
-
-        <div class="match">
-          <div class="ligue">TENNIS &middot; CINCINNATI ATP</div>
-          <div class="duel">
-            <span class="eq"><span>&#127482;&#127480;</span><b>Paul T.</b></span>
-            <span class="sc">15 AUG &middot; 18:00</span>
-            <span class="eq d"><b>Hurkacz H.</b><span>&#127477;&#127473;</span></span>
-          </div>
-          <div class="cotes">
-            <button>1 <small>1.53</small></button>
-            <button>2 <small>2.25</small></button>
-          </div>
+        <!-- ---- LES RENCONTRES VIENNENT DU CALENDRIER, PLUS DE LA MAIN ----
+             Quatre rencontres etaient ECRITES ICI, cotes comprises. Elles ont
+             ete jouees le 15 aout : la page annoncait donc des matchs finis, a
+             des prix qui n existent plus, et le premier clic menait ailleurs.
+             C est la seule sorte de mensonge qu un visiteur verifie en un
+             geste, et il le verifie toujours.
+             Le squelette reste VIDE dans le fichier : y laisser un exemple
+             « en attendant » ferait clignoter de fausses cotes a chaque
+             chargement, et l on finirait par les prendre pour les vraies. -->
+        <div id="gxSports" class="gx-liste" aria-live="polite">
+          <div class="gx-dit">Loading today&rsquo;s fixtures&hellip;</div>
         </div>
       </section>
 
@@ -948,6 +924,152 @@ a{color:inherit;text-decoration:none}
      fonction, et les deux ne se valent pas.
      `ethers` leur est necessaire — c est lui qui signe les retraits. La
      pastille de connexion, elle, n en a pas besoin : elle ne fait que lire. -->
+<!-- ==================== LE CALENDRIER SPORTIF, EN VRAI ====================
+     La page annoncait quatre rencontres ecrites a la main, jouees le 15 aout.
+     Elle lit maintenant le meme calendrier que la page de paris. -->
+<script>
+(function(){
+  "use strict";
+  var hote = document.getElementById("gxSports");
+  if(!hote) return;
+  /* Le meme parametre que sur les trois autres pages du site : sans lui, un
+     essai automatise irait lire la PRODUCTION. Ici il ne fait que lire, mais
+     l uniformite vaut mieux qu une exception a retenir. */
+  function gxServeur(){
+    try{ var q=new URLSearchParams(location.search).get("server"); if(q)
+      return String(q).replace(/^ws/, "http"); }catch(e){}
+    return "https://web-production-220a3.up.railway.app";
+  }
+  function ech(x){ return String(x==null?"":x).replace(/[&<>"']/g,function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+  /* Le drapeau se FABRIQUE a partir du code ISO — deux lettres, deux symboles
+     indicateurs regionaux. Aucune image a telecharger, rien a tenir a jour
+     quand un pays s ajoute, et la meme fonction que sur la page de paris.
+     Un code absent rend une case vide : le nom se lit tres bien seul. */
+  function drapeau(c){
+    if(!c || !/^[A-Z]{2}$/.test(c)) return "";
+    return String.fromCodePoint(0x1F1E6+c.charCodeAt(0)-65, 0x1F1E6+c.charCodeAt(1)-65);
+  }
+  /* « Today » et « Tomorrow » plutot qu une date : c est exactement ce qu on
+     vient chercher sur une affiche, et une date se relit deux fois. */
+  function quand(t){
+    var d=new Date(t), n=new Date();
+    var j0=new Date(n.getFullYear(),n.getMonth(),n.getDate());
+    var j1=new Date(d.getFullYear(),d.getMonth(),d.getDate());
+    var ec=Math.round((j1-j0)/86400000);
+    var h=d.toLocaleTimeString("en-GB",{hour:"2-digit",minute:"2-digit"});
+    if(ec===0) return "TODAY &middot; "+h;
+    if(ec===1) return "TOMORROW &middot; "+h;
+    return d.toLocaleDateString("en-GB",{day:"numeric",month:"short"}).toUpperCase()+" &middot; "+h;
+  }
+  /* Le nombre de marches EN PLUS du resultat. Il vient du serveur, jamais d un
+     nombre ecrit ici : le jour ou un marche s ajoute ou disparait, « +5 »
+     deviendrait faux en silence — et c est le genre de chiffre qu un joueur
+     verifie en un clic. */
+  function enPlus(m){
+    var k = m && m.marches ? Object.keys(m.marches).length : 1;
+    return k>1 ? k-1 : 0;
+  }
+  function carte(m){
+    var iss = (m.marches && m.marches["1n2"] && m.marches["1n2"].issues) || m.issues || [];
+    var cot = (m.marches && m.marches["1n2"] && m.marches["1n2"].cotes) || m.cotes || {};
+    /* « X » a l ecran, « N » sur le fil : le nul se nomme X partout ou l on
+       parie, et la cle du serveur n a pas a remonter jusqu au visiteur. */
+    var mot = function(i){ return i==="N" ? "X" : i; };
+    var plus = enPlus(m);
+    var titre = [nomSport(m.sport), m.competition, m.pays]
+                  .filter(Boolean).join(" · ").toUpperCase();
+    var dd = drapeau(m.paysDomicile), de = drapeau(m.paysExterieur);
+    return '<a class="match" href="swogebet.html">'
+      + '<div class="ligue">'+ech(titre)+'</div>'
+      + '<div class="duel">'
+        + '<span class="eq">'+(dd?'<span>'+dd+'</span>':'')+'<b>'+ech(m.domicile)+'</b></span>'
+        + '<span class="sc">'+quand(m.debut)+'</span>'
+        + '<span class="eq d"><b>'+ech(m.exterieur)+'</b>'+(de?'<span>'+de+'</span>':'')+'</span>'
+      + '</div>'
+      + '<div class="cotes">'
+        + iss.map(function(i){
+            var c = cot[i];
+            return '<button type="button">'+ech(mot(i))+' <small>'
+                 + (typeof c==="number" ? c.toFixed(2) : "&mdash;")+'</small></button>'; }).join("")
+        + (plus?'<span class="plus">+'+plus+'</span>':'')
+      + '</div></a>';
+  }
+
+  /* Le nom lisible d un sport, donne par le SERVEUR. « foot » est la cle qui
+     sert au filtre et au reste du serveur ; « Football » est ce qu on lit. Une
+     table ecrite ici serait un second endroit ou nommer les sports, et le jour
+     ou l un s ajoute il n y serait pas — l affiche annoncait « FOOT · TEST
+     LEAGUE », vu au rendu. */
+  var NOMS = {};
+  function nomSport(k){ return NOMS[k] || k; }
+  var TOUT = [], filtre = "";
+  /* Cinq rencontres : la carte en portait quatre, et au-dela le panneau pousse
+     le reste de la page hors de l ecran. Ce n est pas le calendrier, c est
+     l affiche — le calendrier est a un clic. */
+  var COMBIEN = 5;
+  function peint(){
+    var l = TOUT.filter(function(m){ return !filtre || m.sport===filtre; });
+    if(!l.length){
+      hote.innerHTML = '<div class="gx-dit">'
+        + (TOUT.length ? "Nothing open in this sport right now. "
+                       : "No fixture is open right now &mdash; the calendar fills up "
+                         + "before each matchday. ")
+        + '<a href="swogebet.html">See the board &rarr;</a></div>';
+      return;
+    }
+    hote.innerHTML = l.slice(0, COMBIEN).map(carte).join("");
+  }
+  /* ---- LES ONGLETS DISENT CE QU ON PROPOSE VRAIMENT ----
+     Un sport sans rencontre ouverte s eteint au lieu de disparaitre : absent,
+     on ne saurait pas qu il revient ; vif, on cliquerait sur une liste vide.
+     La liste des sports vient du CALENDRIER, pas de la page — sinon un onglet
+     survivrait a la ligue qu il nomme. */
+  var onglets = document.querySelector('.onglets[data-groupe="sports"]');
+  /* La cle est LUE sur le bouton, jamais tiree de son libelle : le texte
+     commence par l icone, et « ⚽Football » ne commence pas par « football ».
+     L onglet ne filtrait rien et se croyait vide — trouve par l essai. */
+  function cleOnglet(b){ return b.getAttribute("data-sport") || ""; }
+  if(onglets){
+    onglets.addEventListener("click", function(ev){
+      var b = ev.target.closest("button"); if(!b || b.disabled) return;
+      [].forEach.call(onglets.querySelectorAll("button"), function(x){ x.classList.remove("on"); });
+      b.classList.add("on");
+      filtre = cleOnglet(b);
+      peint();
+    });
+  }
+  function majOnglets(){
+    if(!onglets) return;
+    var vus = {};
+    TOUT.forEach(function(m){ vus[m.sport]=(vus[m.sport]||0)+1; });
+    [].forEach.call(onglets.querySelectorAll("button"), function(b){
+      var k = cleOnglet(b);
+      var vide = !!k && !vus[k];
+      b.classList.toggle("eteint", vide);
+      b.disabled = vide;
+      b.title = vide ? "No fixture open right now" : "";
+    });
+  }
+
+  fetch(gxServeur()+"/paris/calendrier", { cache:"no-store" })
+    .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function(j){
+      /* Du plus proche au plus lointain : une affiche montre ce qui vient, et
+         le serveur ne promet aucun ordre. */
+      (j.sports||[]).forEach(function(s){ if(s && s.cle) NOMS[s.cle]=s.nom||s.cle; });
+      TOUT = (j.matchs||[]).slice().sort(function(a,b){ return a.debut-b.debut; });
+      majOnglets(); peint();
+    })
+    .catch(function(){
+      /* On ne remet PAS d exemple : de fausses cotes affichees « en attendant »
+         finissent par etre prises pour les vraies. On dit que ca n a pas
+         repondu, et le bouton reste. */
+      hote.innerHTML = '<div class="gx-dit">Fixtures could not be loaded. '
+        + '<a href="swogebet.html">Open the board &rarr;</a></div>';
+    });
+})();
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <script src="stakebubble.js?v=233ccc57"></script>
 <script src="swogecompte.js?v=cd504287"></script>

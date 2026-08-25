@@ -348,21 +348,85 @@ function pistes(fichier) {
        + ' affiches, ni la fonction qui les echangeait — une table morte se relit'
        + ' comme une table vivante');
 
-    const cartes = await p.evaluate(() => [...document.querySelectorAll('main .sw-col .salon')]
-      .map((a) => ({ h: a.getAttribute('href'), t: a.querySelector('.dit').textContent.trim(),
-                     x: Math.round(a.getBoundingClientRect().x),
-                     vif: a.classList.contains('vif') })));
-    eq(cartes.length, 3, 'la colonne de droite porte trois cartes');
-    eq(cartes.map((c) => c.h).join(','), 'swoge_blackjack.html,nexus.html,swoge_poker.html',
-       'le blackjack, le monde et le salon de poker — et non « SWOGE Sports »,'
-       + ' qui proposerait la page ou l on se trouve deja');
-    for (const c of cartes) {
-      ok(fs.existsSync(path.join(SITE, c.h)), `${c.h} existe`);
-      ok(c.vif, `« ${c.t} » est vivante`);
-    }
+    /* ---- LES QUATRE RECTANGLES DES AUTRES PAGES ----
+     * L accueil et le hall portent « CASINO / SPORTS / ARCADE / REWARDS ».
+     * Ici « SPORTS » est la page ou l on se trouve : elle laisse la place au
+     * MONDE. C est la seule difference voulue — tout le reste doit se
+     * ressembler, c est la demande. */
+    const cartes = await p.evaluate(() => [...document.querySelectorAll('.sb-univers .uni')]
+      .map((a) => {
+        const b = a.querySelector('.sw-b');
+        const r = a.getBoundingClientRect();
+        return { t: a.querySelector('b').textContent.trim(),
+                 dit: a.querySelector('i').textContent.trim(),
+                 lib: b.textContent.trim(), href: b.getAttribute('href'),
+                 balise: b.tagName, vif: b.classList.contains('vif'),
+                 x: Math.round(r.x), w: Math.round(r.width) };
+      }));
+    eq(cartes.length, 4, 'la colonne de droite porte les quatre rectangles');
+    eq(cartes.map((c) => c.t).join(' / '), 'CASINO / SWOGE WORLD / ARCADE / REWARDS',
+       'ce sont ceux des autres pages, « SPORTS » remplace par le MONDE : proposer'
+       + ' la page ou l on se trouve deja serait inviter a ne pas bouger');
     ok(cartes.every((c) => c.x > 900),
-       `elles sont bien A DROITE (x = ${cartes.map((c) => c.x).join(', ')}) : c est ce`
-       + ' qui distingue une colonne d une pile de bannieres sous la page');
+       `elles sont bien A DROITE (x = ${cartes[0].x})`);
+    ok(cartes.every((c) => c.w > 200),
+       `et larges de ${cartes[0].w} px : quatre de front dans une colonne de trois`
+       + ' cents en feraient soixante-dix-sept, titres coupes au milieu d un mot');
+
+    /* ---- AUCUN BOUTON MORT ----
+     * Au hall, deux de ces boutons ne repondent pas : la page est une MAQUETTE
+     * et `pointer-events:none` les tient muets, ce qui y est honnete. Cette
+     * page-ci prend de vrais paris. Un bouton qui a l air d un bouton et ne
+     * fait rien y serait une panne. */
+    for (const c of cartes) {
+      if (c.balise === 'A') {
+        ok(!!c.href && fs.existsSync(path.join(SITE, c.href.split('#')[0])),
+           `« ${c.t} » mene a ${c.href}, qui existe`);
+        ok(c.vif, `et « ${c.lib} » est vivant`);
+      } else {
+        ok(c.t === 'REWARDS', `« ${c.t} » est le seul bouton sans adresse`);
+      }
+    }
+    /* ---- « VIEW REWARDS » FAIT EXACTEMENT CE QUE FAIT LA RANGEE DU MENU ----
+     * On ne verifie pas que la boite des quetes s ouvre : sans compte, le
+     * panneau REFUSE et propose de se connecter — ce qui est juste, et ce que
+     * la rangee du menu fait aussi. La premiere version de cet essai attendait
+     * la boite et echouait sur un comportement correct.
+     * Ce qu il faut prouver, c est qu il n y a qu UN chemin : on declenche les
+     * deux et l on compare ce qui arrive a l ecran. Deux resultats identiques
+     * disent que le bouton passe bien par le lien d origine ; s il avait sa
+     * propre copie de la logique, elle divergerait ici ou plus tard. */
+    const etat = () => p.evaluate(() => ({
+      voile: !!document.querySelector('#ovl.show'),
+      boites: [...document.querySelectorAll('.box.show')].map((b) => b.id).join(','),
+      porte: !!document.querySelector('.swcon-ov') || !!document.querySelector('#box-email.show'),
+    }));
+    const remets = () => p.evaluate(() => {
+      const o = document.getElementById('ovl'); if (o) o.classList.remove('show');
+      document.querySelectorAll('.box.show').forEach((b) => b.classList.remove('show'));
+      const c = document.querySelector('.swcon-ov'); if (c) c.remove();
+    });
+    await remets();
+    await p.evaluate(() => document.querySelector('#menu a[data-panel="quests"]').click());
+    await p.waitForTimeout(500);
+    const parLeMenu = await etat();
+    await remets();
+    await p.click('#sbRecompenses');
+    await p.waitForTimeout(500);
+    const parLaCarte = await etat();
+    ok(JSON.stringify(parLeMenu) === JSON.stringify(parLaCarte),
+       `« VIEW REWARDS » aboutit au meme etat que la rangee « Daily Quests » du`
+       + ` menu : ${JSON.stringify(parLaCarte)}`);
+    ok(parLaCarte.voile || parLaCarte.porte,
+       'et il se passe quelque chose : sans compte, le panneau demande d abord'
+       + ' de se connecter — comme la rangee du menu');
+    await remets();
+
+    /* Aucun des quatre films n a de source dans le fichier : quatre cartes,
+       c est deux megaoctets et demi qui partiraient au chargement d une page
+       ou l on vient lire des cotes. */
+    ok(!/<video class="film"[^>]*\ssrc=/.test(bruteBet),
+       'et aucune des quatre cartes ne porte de `src` dans le fichier');
     ok(demandes.indexOf('bet.mp4') < 0 || true,
        `videos demandees au chargement : ${demandes.join(', ') || 'aucune'}`);
     ok(err.length === 0, `aucune erreur de page${err.length ? ' — ' + err[0] : ''}`);

@@ -707,6 +707,26 @@ html{ background-color:#0b0906;
 /* Le pied traverse les deux colonnes : dans l une, il se retrouverait a mi-
    hauteur en face du vide de l autre. */
 .sb-pied{ grid-column:1 / -1; }
+
+/* ---- LES QUATRE RECTANGLES, DANS UNE COLONNE DE TROIS CENTS PIXELS ----
+   `.univers` est une rangee de QUATRE, taillee pour la largeur d une page.
+   Posee dans la colonne de droite, elle aurait donne quatre cartes de
+   quatre-vingt-cinq pixels de large — les titres seraient passes a la ligne au
+   milieu d un mot. Elles s empilent donc, et se remettent en rangee quand la
+   colonne disparait et que la page repasse sur un seul axe. */
+/* DEUX classes dans le selecteur, et non une : `.univers` est declaree plus
+   BAS dans la meme feuille, et a poids egal c est la derniere qui gagne. La
+   premiere version posait bien la regle — les cartes faisaient quand meme
+   soixante-dix-sept pixels de large, quatre de front dans une colonne qui n en
+   fait que trois cents. Vu au rendu ; a la lecture, la regle etait juste. */
+.univers.sb-univers{ grid-template-columns:minmax(0,1fr); }
+@media (max-width:1100px){
+  .univers.sb-univers{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media (max-width:520px){
+  .univers.sb-univers{ grid-template-columns:minmax(0,1fr); }
+  .univers.sb-univers .uni{ min-height:196px; }
+}
 .sb-film{ display:block; width:100%; height:auto; aspect-ratio:912/600;
   max-height:min(40vh,330px); object-fit:cover; object-position:center 38%;
   border-radius:15px; margin:0 0 14px;
@@ -2223,24 +2243,62 @@ main{ min-width:0; }
        bandeau, et trois videos de plus feraient d une page de paris la plus
        lourde du site. -->
   <div class="sw-col">
-    <a class="carte salon vif" href="swoge_blackjack.html">
-      <img src="img/card_bj.webp?v=2" alt="SWOGE Blackjack" loading="lazy"
-           width="640" height="427" decoding="async">
-      <span class="voile"></span>
-      <span class="dit">SWOGE BLACKJACK &nbsp;&rarr;</span>
-    </a>
-    <a class="carte salon vif" href="nexus.html">
-      <img src="img/card_nx.webp?v=2" alt="SWOGE World" loading="lazy"
-           width="640" height="427" decoding="async">
-      <span class="voile"></span>
-      <span class="dit">SWOGE WORLD &nbsp;&rarr;</span>
-    </a>
-    <a class="carte salon vif" href="swoge_poker.html">
-      <img src="img/card_pk.webp?v=2" alt="SWOGE Poker Live" loading="lazy"
-           width="640" height="427" decoding="async">
-      <span class="voile"></span>
-      <span class="dit">SWOGE POKER LIVE &nbsp;&rarr;</span>
-    </a>
+    <!-- ---- LES MEMES QUATRE RECTANGLES QUE LES AUTRES PAGES ----
+         L accueil et le hall portent « CASINO / SPORTS / ARCADE / REWARDS ».
+         Ici, « SPORTS » est la page ou l on se trouve : la proposer serait
+         inviter a ne pas bouger. Elle laisse la place au MONDE.
+
+         ---- ET CHAQUE BOUTON MENE QUELQUE PART ----
+         Au hall, deux de ces boutons ne font rien : la page est une maquette,
+         et `pointer-events:none` les tient muets, ce qui est honnete la-bas.
+         Cette page-ci est VIVANTE. Un bouton qui a l air d un bouton et ne
+         repond pas y serait une panne, pas une maquette. Les quatre ont donc
+         une destination reelle, et « VIEW REWARDS » ouvre le panneau des
+         quetes qui existe deja sur cette page — par SON lien d origine, pas
+         par un second chemin vers la meme boite. -->
+    <section class="univers sb-univers">
+      <article class="uni">
+        <video class="film" data-film="media/doge_casino.mp4"
+               poster="img/site/doge_casino_poster.webp"
+               muted loop playsinline preload="none" disablepictureinpicture
+               aria-hidden="true"></video><div class="voile"></div>
+        <div class="dit"><b>CASINO</b><i>Spin. Bet. Win.</i>
+          <a class="sw-b vif" href="games.html">EXPLORE</a></div>
+      </article>
+      <article class="uni">
+        <!-- `monde.mp4` fait neuf cent soixante pixels de large et un
+             megaoctet et demi : il est taille pour le grand bandeau de
+             l accueil. Dans une carte de deux cents pixels, c est un
+             megaoctet paye pour rien. Celui-ci est recadre a la mesure des
+             trois autres — quatre cent quarante — et pese sept cents
+             kilooctets de moins. -->
+        <video class="film" data-film="media/monde_carte.mp4"
+               poster="img/site/monde_carte_poster.webp"
+               muted loop playsinline preload="none" disablepictureinpicture
+               aria-hidden="true"></video><div class="voile"></div>
+        <div class="dit"><b>SWOGE WORLD</b><i>Meet. Explore. Own.</i>
+          <a class="sw-b vif" href="nexus.html">ENTER</a></div>
+      </article>
+      <!-- La borne d arcade n a pas de page a elle : elle est DANS le monde.
+           Le bouton le dit, plutot que d annoncer une destination qui
+           n existe pas. -->
+      <article class="uni">
+        <video class="film" data-film="media/doge_arcade.mp4"
+               poster="img/site/doge_arcade_poster.webp"
+               muted loop playsinline preload="none" disablepictureinpicture
+               aria-hidden="true"></video><div class="voile"></div>
+        <div class="dit"><b>ARCADE</b><i>Cabinets inside the world.</i>
+          <a class="sw-b vif" href="nexus.html">FIND THE CABINETS</a></div>
+      </article>
+      <article class="uni">
+        <video class="film" data-film="media/doge_roi.mp4"
+               poster="img/site/doge_roi_poster.webp"
+               muted loop playsinline preload="none" disablepictureinpicture
+               aria-hidden="true"></video><div class="voile"></div>
+        <div class="dit"><b>REWARDS</b><i>Play More. Unlock More.</i>
+          <button class="sw-b" id="sbRecompenses">VIEW REWARDS</button></div>
+      </article>
+    </section>
   </div>
 
   <footer class="sb-pied"><a href="games.html">← Back to the SWOGE Arcade</a></footer>
@@ -3729,6 +3787,60 @@ function renderBonus(b){ if(!b) return; bonusData=b;
     document.removeEventListener("pointerdown", reveil);
   };
   document.addEventListener("pointerdown", reveil);
+})();
+</script>
+<!-- ============ LES QUATRE RECTANGLES : FILMS TARDIFS, BOUTONS VIVANTS ============ -->
+<script>
+(function(){
+  "use strict";
+  var doux = false;
+  try { doux = window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch(e){}
+
+  /* ---- AUCUNE SOURCE DANS LE MARQUAGE ----
+   * Quatre cartes, quatre films : deux megaoctets et demi qui partiraient au
+   * chargement d une page ou l on vient lire des cotes. L adresse attend dans
+   * `data-film` et n est posee QUE lorsque la carte approche de l ecran.
+   * Sous « mouvement reduit » la feuille de style cache deja ces films : on ne
+   * pose alors aucune source, et l affiche — qui est la premiere image du
+   * film — reste seule. Cacher n empeche pas de telecharger ; ne pas donner
+   * d adresse, si. */
+  var cartes = document.querySelectorAll(".sb-univers .film");
+  if(cartes.length && !doux){
+    var lance = function(v){
+      if(!v.getAttribute("src")){
+        v.preload = "auto";
+        v.src = v.getAttribute("data-film");
+      }
+      var p = v.play();
+      if(p && p["catch"]) p["catch"](function(){});
+    };
+    if(!("IntersectionObserver" in window)){
+      for(var i = 0; i < cartes.length; i++) lance(cartes[i]);
+    } else {
+      var oeil = new IntersectionObserver(function(l){
+        for(var k = 0; k < l.length; k++){
+          if(l[k].isIntersecting) lance(l[k].target);
+          else { try { l[k].target.pause(); } catch(e){} }
+        }
+      }, { rootMargin: "300px 0px" });
+      for(var j = 0; j < cartes.length; j++) oeil.observe(cartes[j]);
+    }
+  }
+
+  /* ---- « VIEW REWARDS » OUVRE LE PANNEAU QUI EXISTE DEJA ----
+   * On clique SON lien d origine plutot que d appeler `openPanel` d ici :
+   * c est ce lien qui sait quoi ouvrir, et le refaire ici serait un second
+   * chemin vers la meme boite — celui qu on oublierait de corriger le jour ou
+   * l autre change. */
+  var bouton = document.getElementById("sbRecompenses");
+  var vers = document.querySelector('#menu a[data-panel="quests"]');
+  if(bouton && vers){
+    bouton.addEventListener("click", function(e){ e.preventDefault(); vers.click(); });
+  } else if(bouton){
+    /* Le panneau n existe pas sur cette page : on retire le bouton plutot que
+       de laisser un rectangle qui ne repond pas. */
+    bouton.remove();
+  }
 })();
 </script>
 </body>

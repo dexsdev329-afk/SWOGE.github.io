@@ -418,8 +418,20 @@ a{color:inherit;text-decoration:none}
 .cx-ou:before,.cx-ou:after{content:'';flex:1 1 0;height:1px;background:var(--bord)}
 /* Une fois connecte, les boutons d'appel montrent l'adresse plutot que de
    proposer une connexion de plus. */
-.cx-wallet.branche,.cx-mail.branche{background:rgba(18,161,80,.12);color:var(--vert);
-  border:1.5px solid rgba(18,161,80,.4)}
+/* ---- LA PASTILLE DU COMPTE ----
+   Une seule sur la page. Les boutons de connexion, eux, DISPARAISSENT une
+   fois entre : les laisser en les renommant chacun donnait cinq fois la meme
+   adresse a l'ecran, ce qui se lit comme cinq comptes. */
+.cx-compte{display:flex;align-items:center;gap:10px;flex:0 0 auto;
+  padding:7px 12px;border-radius:11px;background:rgba(18,161,80,.10);
+  border:1.5px solid rgba(18,161,80,.34)}
+.cx-compte[hidden]{display:none}
+.cx-compte > b{font:800 12.5px/1 'Inter',system-ui,sans-serif;color:var(--vert);white-space:nowrap}
+.cx-soldes{display:flex;flex-direction:column;gap:3px;padding-left:10px;
+  border-left:1px solid rgba(18,161,80,.28)}
+.cx-soldes i{font-style:normal;font:700 10.5px/1 'Inter',system-ui,sans-serif;
+  color:var(--gris);white-space:nowrap}
+.cx-soldes i b{color:var(--texte);font-weight:800}
 
 /* ------------------------------------------------------------------- LE PIED */
 .sw-bas{max-width:1680px;margin:0 auto;padding:6px 14px 22px}
@@ -481,6 +493,18 @@ a{color:inherit;text-decoration:none}
   </div>
   <button class="sw-b sw-b-vide cx-wallet">CONNECT WALLET</button>
   <button class="sw-b sw-b-plein cx-mail">SIGN UP &mdash; EMAIL</button>
+  <!-- ================== LE COMPTE, UNE SEULE FOIS ==================
+       Il est CACHE tant qu'on n'est pas entre, et c'est lui qui remplace les
+       cinq boutons de connexion a ce moment-la — et non chacun d'eux qui se
+       renomme. L'adresse s'affichait cinq fois : deux dans cette barre, deux
+       dans la colonne, une sur la carte du bonus. Signale depuis un
+       telephone, ou les deux de la barre se voient d'un coup.
+       Il porte les soldes parce que c'est la seule chose qu'on veuille savoir
+       une fois entre : combien j'ai. -->
+  <div id="cxCompte" class="cx-compte" hidden>
+    <b id="cxAdr"></b>
+    <span class="cx-soldes"><i id="cxEth">&hellip;</i><i id="cxSwoge">&hellip;</i></span>
+  </div>
   <div class="sw-avatar">&#128100;</div>
 </header>
 
@@ -914,16 +938,74 @@ a{color:inherit;text-decoration:none}
     return enRoute;
   }
 
-  /* ---- CE QU'ON MONTRE UNE FOIS ENTRE ----
-   * L'adresse, abregee. Laisser « Connect wallet » allume apres coup ferait
-   * douter que la connexion a pris, et l'on cliquerait une seconde fois. */
-  function entre(adresse) {
-    var court = String(adresse || '').slice(0, 6) + '\u2026' + String(adresse || '').slice(-4);
+  /* ================== CE QU'ON MONTRE UNE FOIS ENTRE ==================
+   *
+   * ---- UNE SEULE PASTILLE, ET LES BOUTONS S'EN VONT ----
+   * Chaque bouton de connexion prenait l'adresse pour libelle. Il y en a
+   * CINQ — deux dans la barre, deux dans la colonne, un sur la carte du
+   * bonus — donc l'adresse s'affichait cinq fois. Sur telephone, les deux de
+   * la barre se voient d'un coup et cela se lit comme deux portefeuilles.
+   * Signale depuis un vrai telephone ; a l'ecran large, on ne le voyait pas.
+   * Ils disparaissent donc, et une pastille unique prend leur place.
+   *
+   * ---- ET ELLE PORTE LES DEUX SOLDES ----
+   * C'est la seule chose qu'on veuille savoir une fois entre : combien j'ai.
+   * L'ETH pour payer le gaz, le $SWOGE pour jouer. */
+  var TOKEN = '0x8a166Fb41Cd659a0a43396272FF73973Ce29F817';
+
+  /* Un entier de la chaine, en clair. On ne charge PAS `ethers` pour ca : la
+     bibliotheque pese plus lourd que toutes les images de cette page reunies,
+     et deux divisions suffisent. `BigInt` parce qu'un solde de dix-huit
+     decimales depasse ce qu'un nombre flottant sait tenir exactement — en
+     virgule flottante, 1 000 000 de jetons peut s'afficher 999 999,999.
+     ---- ON TRONQUE, ON N'ARRONDIT PAS ----
+     0,077187 s'affiche « 0.0771 » et non « 0.0772 ». C'est deliberé : sur un
+     SOLDE, arrondir vers le haut annonce plus que ce qu'on possede, et
+     quelqu'un qui essaie de tout envoyer se fait refuser sans comprendre.
+     Montrer moins que la verite ne trompe personne ; montrer plus, si. */
+  function enClair(hex, dec, prec) {
+    try {
+      var v = BigInt(hex && hex !== '0x' ? hex : '0x0');
+      var d = BigInt(10) ** BigInt(dec);
+      var ent = v / d;
+      var frac = (v % d).toString().padStart(dec, '0').slice(0, prec);
+      var mille = ent.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+      return prec ? mille + '.' + frac : mille;
+    } catch (e) { return '?'; }
+  }
+
+  function litLesSoldes(fournisseur, adresse) {
+    var eEth = $('cxEth'), eSw = $('cxSwoge');
+    var pose = function (e, nom, val) { e.innerHTML = '<b>' + val + '</b> ' + nom; };
+    fournisseur.request({ method: 'eth_getBalance', params: [adresse, 'latest'] })
+      .then(function (h) { pose(eEth, 'ETH', enClair(h, 18, 4)); })
+      ['catch'](function () { eEth.textContent = 'ETH \u2014'; });
+    /* `balanceOf(address)` : les quatre octets du selecteur, puis l'adresse
+       calee a droite sur trente-deux octets. Un appel en lecture, rien de
+       signe, rien qui coute. */
+    fournisseur.request({ method: 'eth_call', params: [{
+      to: TOKEN,
+      data: '0x70a08231' + '000000000000000000000000' + String(adresse).replace(/^0x/, '')
+    }, 'latest'] })
+      .then(function (h) { pose(eSw, '$SWOGE', enClair(h, 18, 0)); })
+      ['catch'](function () { eSw.textContent = '$SWOGE \u2014'; });
+  }
+
+  function entre(adresse, fournisseur) {
+    if (!adresse) return;
+    var court = String(adresse).slice(0, 6) + '\u2026' + String(adresse).slice(-4);
+    /* Les boutons de connexion s'effacent — TOUS, y compris celui de la carte
+       du bonus, qui proposait de se connecter alors qu'on l'est. */
     [].forEach.call(document.querySelectorAll('.cx-wallet, .cx-mail'), function (b) {
-      b.textContent = court;
-      b.classList.add('branche');
+      b.hidden = true;
+      b.style.display = 'none';
     });
+    $('cxAdr').textContent = court;
+    $('cxCompte').hidden = false;
     ferme();
+    if (fournisseur && fournisseur.request) {
+      try { litLesSoldes(fournisseur, adresse); } catch (e) {}
+    }
   }
 
   function connectePortefeuille() {
@@ -949,7 +1031,7 @@ a{color:inherit;text-decoration:none}
       });
     }).then(function (c) {
       try { localStorage.setItem('swogeAuth', 'wallet'); } catch (e) {}
-      entre(c && c[0]);
+      entre(c && c[0], eth);
     })['catch'](function (e) {
       ouvre(); parle(String((e && e.message) || e).slice(0, 120), 'ko');
     });
@@ -983,7 +1065,7 @@ a{color:inherit;text-decoration:none}
     var moi = this;
     SwogePrivy.verifyCode(courriel, c).then(function () {
       try { localStorage.setItem('swogeAuth', 'email'); } catch (x) {}
-      entre(SwogePrivy.getAddress());
+      entre(SwogePrivy.getAddress(), SwogePrivy.getProvider());
     })['catch'](function (err) {
       parle('Error: ' + String((err && err.message) || err).slice(0, 140), 'ko');
     }).then(function () { moi.disabled = false; });
@@ -1001,7 +1083,7 @@ a{color:inherit;text-decoration:none}
         return SwogePrivy.restore();
       }).then(function () {
         var a = SwogePrivy.getAddress();
-        if (a) entre(a);
+        if (a) entre(a, SwogePrivy.getProvider());
       })['catch'](function () {});
     }
   } catch (e) {}

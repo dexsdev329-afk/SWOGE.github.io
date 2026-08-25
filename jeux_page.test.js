@@ -238,6 +238,64 @@ const servirLeSite = async () => {
     await ctx2.close();
   }
 
+  console.log('\n-- la barre du bas --');
+  /* ---- TROIS CHOSES, ET LA PREMIERE EST FONCTIONNELLE ----
+   * Elle vient de `stakebubble.js`, partage par dix-sept pages sombres. Ses
+   * quatre touches ne repondaient pas : QUATRIEME fois que le meme piege se
+   * referme — `a[href], button{pointer-events:none}` rend toute cette page
+   * inerte par defaut, et elles en faisaient partie. Dessin, libelle,
+   * gestionnaire : tout sauf l effet.
+   * On la POSE ici telle que le script la produit — une `.swbb` avec ses
+   * boutons — pour verifier l habillage que la page lui applique. */
+  const barre = await p.evaluate(() => {
+    const b = document.createElement('div'); b.className = 'swbb';
+    for (const m of ['Play', 'Bets', 'Chests', 'Profile']) {
+      const q = document.createElement('button'); q.textContent = m; b.appendChild(q);
+    }
+    document.body.appendChild(b);
+    const st = getComputedStyle(b), bt = getComputedStyle(b.firstChild);
+    const clair = (c) => { const v = (c.match(/\d+/g) || []).map(Number);
+      return v.length >= 3 ? (v[0] + v[1] + v[2]) / 3 : null; };
+    return { fond: clair(st.backgroundColor), texte: clair(bt.color),
+             vivante: bt.pointerEvents, doigt: bt.cursor };
+  });
+  eq(barre.vivante, 'auto',
+     'ses touches repondent au doigt : elles etaient inertes comme tout le reste'
+     + ' de cette page, et c est la quatrieme fois que ce piege se referme');
+  eq(barre.doigt, 'pointer', 'et le curseur le promet');
+  ok(barre.fond > 200 && barre.texte < 160,
+     `elle est blanche comme la page (${Math.round(barre.fond)} sur `
+     + `${Math.round(barre.texte)}) — son fond existait pour une page noire`);
+  /* ---- ET ELLE NE SERT QUE SUR TELEPHONE ----
+   * Sur un ecran large la colonne de gauche est LA, en permanence, avec les
+   * memes destinations : la barre y double une navigation deja visible et
+   * mange trente pixels en bas. */
+  const parLargeur = await p.evaluate(() => {
+    const b = document.querySelector('.swbb');
+    return getComputedStyle(b).display;
+  });
+  eq(parLargeur, 'none', 'a mille quatre cents pixels, elle ne s affiche pas');
+  {
+    const ctx3 = await ctx.browser().newContext({ viewport: { width: 390, height: 844 } });
+    const p3 = await ctx3.newPage();
+    await p3.route('**/cdnjs.cloudflare.com/**', (r) => r.abort());
+    await p3.goto(`http://127.0.0.1:${site.port}/games.html?server=`
+                  + encodeURIComponent('ws://127.0.0.1:' + port),
+                  { waitUntil: 'domcontentloaded' });
+    await p3.waitForTimeout(1500);
+    const surTel = await p3.evaluate(() => {
+      const b = document.createElement('div'); b.className = 'swbb';
+      const q = document.createElement('button'); q.textContent = 'Play'; b.appendChild(q);
+      document.body.appendChild(b);
+      return getComputedStyle(b).display;
+    });
+    ok(surTel !== 'none',
+       `sur telephone elle est la (${surTel}) : c est le seul endroit ou elle`
+       + ' remplace une colonne qu on ne voit plus');
+    await ctx3.close();
+  }
+  await p.evaluate(() => { const b = document.querySelector('.swbb'); if (b) b.remove(); });
+
   console.log('\n-- le menu du profil --');
   /* ---- CE QUI ETAIT DEMANDE ----
    * « Avant il y avait un menu pour deposit etc, faudrait le remettre dans

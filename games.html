@@ -683,8 +683,14 @@ a.match:hover .cotes button{border-color:var(--bleu)}
 
   <aside class="sw-cote">
     <nav class="sw-nav">
-      <a href="#" class="on"><span class="ic">&#127968;</span>Home</a>
-      <a href="games.html" class="vif"><span class="ic">&#127920;</span>Casino</a>
+      <!-- ---- « HOME » MENE A L ACCUEIL ----
+           Il portait `href="#"` ET la marque de page courante, sur la page des
+           JEUX. Deux fautes d un coup : le seul lien qui ramene a l accueil ne
+           menait nulle part, et la colonne annoncait qu on etait a la maison
+           alors qu on etait au casino. Un menu qui se trompe sur l endroit ou
+           l on est apprend a ne plus le lire. -->
+      <a href="index.html" class="vif"><span class="ic">&#127968;</span>Home</a>
+      <a href="games.html" class="vif on"><span class="ic">&#127920;</span>Casino</a>
       <a href="swogebet.html" class="vif"><span class="ic">&#9917;</span>Sports</a>
       <!-- ---- QUATRE ENTREES SONT PARTIES ----
            Arcade, Rewards, Leaderboard et $SWOGE ne menaient nulle part. Un
@@ -1394,6 +1400,39 @@ a.match:hover .cotes button{border-color:var(--bleu)}
    couleur d'habillage. Il perd son halo, qui existait pour percer un fond
    noir. */
 .swppl .swdot{ box-shadow:none !important; }
+
+/* ==================== LA BARRE DU BAS ====================
+ *
+ * Elle vient de `stakebubble.js`, partage par dix-sept pages SOMBRES. Trois
+ * choses la concernent ici.
+ *
+ * ---- ELLE NE FONCTIONNAIT PAS ----
+ * Quatrieme fois que le meme piege se referme : `a[href], button{pointer-
+ * events:none}` rend toute cette page inerte par defaut, et ses quatre
+ * touches en font partie. Elles avaient leur dessin, leur libelle et leur
+ * gestionnaire — tout sauf l'effet.
+ *
+ * ---- ELLE EST BLANCHE ----
+ * Comme le reste de la page. Le fond « rgba(11,15,23,.94) » existait pour
+ * une page noire.
+ *
+ * ---- ET ELLE NE SERT QUE SUR TELEPHONE ----
+ * Elle existe parce qu'atteindre les paris depuis une table demandait trois
+ * gestes et un ecran et demi de defilement. Sur un ecran large la colonne de
+ * gauche est LA, en permanence, avec les memes destinations : la barre y
+ * double une navigation deja visible, et mange trente pixels en bas. On
+ * reprend le point de bascule de la page — celui ou la colonne cesse d'etre
+ * une colonne pour devenir une rangee.
+ */
+.swbb{ pointer-events:auto;
+  background:var(--carte) !important;
+  border-top:1px solid var(--bord) !important;
+  box-shadow:0 -1px 2px rgba(11,27,54,.05), 0 -8px 24px rgba(11,27,54,.04) !important; }
+.swbb button{ pointer-events:auto !important; cursor:pointer; color:var(--gris) !important; }
+.swbb button:hover, .swbb button:focus-visible{ color:var(--bleu) !important; }
+.swbb button.on, .swbb button[aria-current]{ color:var(--bleu) !important; }
+@media (min-width:981px){ .swbb{ display:none !important; } }
+
 
 </style>
 <!-- La marque et le bouton du bandeau mènent au monde. -->

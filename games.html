@@ -520,8 +520,138 @@ body{background:url('img/fond-hall.webp') center center/cover no-repeat fixed;ba
      n a pas, et sa regle mobile ne vise que `nav .brand` et `.hero`, qui
      n existent plus sur cette page. -->
 <script src="swogebuy.js"></script>
+
+<!-- ================== LA TEINTE CLAIRE ==================
+     Une COUCHE, posee en dernier, et non une reecriture des cinq cents lignes
+     qui precedent. La difference porte : les rangees, les fleches, l'accroche
+     des cartes et le tiroir du profil continuent de vivre dans leur feuille
+     d'origine, avec leurs corrections et leurs cas particuliers. Ici on ne
+     change que ce qui se VOIT — le fond, l'encre, les bordures — et si la
+     teinte deplait, ce bloc se retire d'un coup sans laisser de trou.
+     Il est place APRES les autres pour l'emporter a poids egal, sans avoir a
+     surcharger chaque selecteur d'un identifiant. -->
+<style>
+:root{
+  --clair:#EEF3FB; --carte:#FFFFFF; --bord:#E1E9F6;
+  --nuit:#0A1F44; --bleu:#1B5FE0; --bleu-clair:#EAF1FF;
+  --gris:#6B7C99;
+  /* Les variables de la page d'origine sont REDEFINIES plutot que contournees :
+     tout ce qui les lit — et beaucoup de choses les lisent — suit sans qu'on
+     ait a les retrouver une par une. */
+  --text:#0B1B36; --muted:var(--gris); --line:var(--bord); --ink:var(--clair);
+}
+html{ background:var(--clair) }
+/* Le fond etait une photo de hall en `fixed`. Elle ne peut pas rester : sur
+   clair, elle mange le texte des rangees. */
+body{ background:var(--clair); color:var(--text);
+      font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif }
+
+/* ---- LE BANDEAU, LE MEME QUE SUR L ACCUEIL ----
+   Recopie et non partage : les deux pages n'ont aucune feuille commune, et en
+   creer une pour trente lignes ferait un fichier de plus a charger avant de
+   peindre. Le jour ou une troisieme page le reprendra, il faudra l'extraire. */
+.gh-haut{ display:flex; align-items:center; gap:14px; padding:10px 16px;
+  background:var(--carte); border-bottom:1px solid var(--bord);
+  position:sticky; top:0; z-index:40; }
+.gh-marque{ display:flex; align-items:center; gap:9px; flex:0 0 auto }
+.gh-patte{ width:34px;height:34px;border-radius:10px;background:var(--bleu-clair);
+  display:grid;place-items:center;font-size:19px }
+.gh-marque b{ display:block;font:800 17px/1 'Inter',system-ui,sans-serif;letter-spacing:.4px;color:var(--bleu) }
+.gh-marque i{ display:block;font:700 9.5px/1.4 'Inter',system-ui,sans-serif;font-style:normal;
+  letter-spacing:2.6px;color:var(--gris) }
+.gh-chiffres{ flex:1 1 auto;min-width:0;display:flex;gap:8px;overflow-x:auto;
+  padding:8px 10px;background:var(--clair);border:1px solid var(--bord);
+  border-radius:12px;scrollbar-width:none }
+.gh-chiffres::-webkit-scrollbar{ display:none }
+.gh-ch{ display:flex;align-items:center;gap:8px;padding:0 12px;flex:0 0 auto }
+.gh-ch+.gh-ch{ border-left:1px solid var(--bord) }
+.gh-ch .ic{ width:26px;height:26px;border-radius:8px;background:var(--bleu-clair);
+  display:grid;place-items:center;font-size:13px }
+.gh-ch small{ display:block;font:700 9px/1 'Inter',system-ui,sans-serif;letter-spacing:.9px;color:var(--gris) }
+.gh-ch b{ display:block;font:800 14px/1.3 'Inter',system-ui,sans-serif;color:var(--text) }
+.gh-b{ padding:10px 16px;border-radius:10px;border:0;cursor:pointer;
+  font:700 12.5px/1 'Inter',system-ui,sans-serif;letter-spacing:.3px;white-space:nowrap }
+.gh-plein{ background:var(--bleu);color:#fff } .gh-plein:hover{ background:#1750c4 }
+.gh-vide{ background:var(--carte);color:var(--bleu);border:1.5px solid var(--bleu) }
+.gh-vide:hover{ background:var(--bleu-clair) }
+.gh-avatar{ width:38px;height:38px;border-radius:11px;border:1px solid var(--bord);
+  background:var(--clair);display:grid;place-items:center;font-size:16px;flex:0 0 auto }
+
+/* ---- LA BANNIERE, ET SA HAUTEUR BORNEE ----
+   A son rapport naturel — 1312 sur 688 — elle faisait six cent cinquante
+   pixels de haut sur un ecran large : tout le premier ecran, et pas un seul
+   jeu visible avant de defiler. Sur la page des JEUX, c'est le catalogue qui
+   doit se voir en premier. On la borne donc en hauteur et `cover` recadre —
+   la table de poker est au centre de l'image, elle survit au rognage. */
+.gh-film{ display:block;width:100%;aspect-ratio:1312/688;max-height:min(38vh,300px);
+  object-fit:cover;border-radius:16px;border:1px solid var(--bord);
+  background:var(--nuit);margin-bottom:10px }
+@media (prefers-reduced-motion:reduce){ .gh-film{ display:none } }
+
+/* ---- LE CONTENU DANS UN PANNEAU BLANC ----
+   Sur fond sombre, les rangees flottaient sur la photo. Sur clair il leur faut
+   un support, sinon les titres pendent dans le vide. */
+main .wrap{ background:var(--carte); border:1px solid var(--bord); border-radius:16px;
+  padding:16px 14px 20px; margin-top:12px; margin-bottom:18px;
+  box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05) }
+.rangee{ margin-bottom:14px }
+.r-tete h3{ color:var(--nuit); font-family:'Inter',system-ui,sans-serif; font-weight:800 }
+.r-sous{ color:var(--gris); opacity:1 }
+.r-nb{ background:var(--bleu-clair); border:1px solid var(--bord); color:var(--bleu);
+  opacity:1; font-weight:700 }
+.r-ic{ filter:none }
+/* Les cartes gardent leur art ; c'est leur bordure et leur ombre qui changent. */
+.r-carte{ border:1px solid var(--bord); background:var(--clair);
+  box-shadow:0 1px 2px rgba(11,27,54,.05) }
+.r-carte:hover{ border-color:var(--bleu); box-shadow:0 6px 18px rgba(27,95,224,.18) }
+/* ---- LE BANDEAU DE NOM SOUS CHAQUE CARTE S EFFACE ----
+   Chaque planche porte deja son titre EN GRAND — « BLACKJACK », « GOLD
+   TABLE » — et le bandeau le repetait en petit par-dessus le dessin. Le nom
+   reste dans `alt` et dans `title` : ce que lit un lecteur d'ecran ne change
+   pas, c'est le doublon visuel qui part. */
+.r-nom{ display:none }
+.r-fleche{ color:#fff; background:var(--bleu); box-shadow:0 4px 14px rgba(11,27,54,.22) }
+.doc-tog{ color:var(--nuit) }
+.sec h1.marque .brand{ filter:none }
+nav{ display:none }
+
+/* ---- CE QUI PLIE SUR UN ECRAN ETROIT ----
+   Ces trois regles manquaient, et le defaut etait MESURABLE : a trois cent
+   quatre-vingt-dix pixels, la page en faisait cinq cent vingt-deux. « Connect
+   wallet » et « Play now » ne se coupent pas — c'est voulu, un bouton coupe
+   en deux ne se lit plus — donc la barre ne peut pas retrecir en dessous
+   d'eux, et c'est la page entiere qui glissait de cote. Les chiffres passent
+   donc SOUS les boutons, sur leur propre ligne, comme sur l'accueil. */
+@media (max-width:620px){
+  .gh-haut{ flex-wrap:wrap; gap:10px }
+  .gh-chiffres{ order:3; flex:1 1 100% }
+  .gh-b{ padding:10px 12px; font-size:11.5px }
+}
+@media (max-width:400px){
+  .gh-marque i{ display:none }
+  .gh-avatar{ display:none }
+}
+</style>
 </head>
 <body>
+
+<!-- Le bandeau et la banniere, avant tout le reste. Les chiffres sont ceux de
+     la maquette, donc faux — ils tiennent la place, comme sur l'accueil. -->
+<header class="gh-haut">
+  <a class="gh-marque" href="index.html">
+    <span class="gh-patte">&#128062;</span>
+    <span><b>SWOGE</b><i>WORLD</i></span>
+  </a>
+  <div class="gh-chiffres">
+    <div class="gh-ch"><span class="ic">&#128100;</span><span><small>PLAYERS</small><b>128K+</b></span></div>
+    <div class="gh-ch"><span class="ic">&#127922;</span><span><small>TOTAL WAGERED</small><b>$24.8M+</b></span></div>
+    <div class="gh-ch"><span class="ic">&#127918;</span><span><small>GAMES</small><b>1,284+</b></span></div>
+    <div class="gh-ch"><span class="ic">&#127942;</span><span><small>WINNINGS PAID</small><b>$5.7M+</b></span></div>
+  </div>
+  <button class="gh-b gh-vide">CONNECT WALLET</button>
+  <button class="gh-b gh-plein">PLAY NOW</button>
+  <div class="gh-avatar">&#128100;</div>
+</header>
 
 <nav>
   <!-- La marque n'est plus ici : elle est descendue en tete de page, a la
@@ -550,6 +680,8 @@ body{background:url('img/fond-hall.webp') center center/cover no-repeat fixed;ba
 
 <main>
   <div class="wrap" style="padding-top:clamp(20px,4vh,44px)">
+    <video class="gh-film" src="media/arcade.mp4" poster="img/site/arcade_poster.webp"
+           muted autoplay loop playsinline disablepictureinpicture aria-hidden="true"></video>
         <div class="sec"><h1 class="marque"><a class="brand" href="index.html">$SWOGE <span>ARCADE</span></a></h1></div>
     <section class="rangee">
       <header class="r-tete">

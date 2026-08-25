@@ -1313,7 +1313,7 @@ a.match:hover .cotes button{border-color:var(--bleu)}
 <script src="stakebubble.js?v=233ccc57"></script>
 <script src="swogecompte.js?v=cd504287"></script>
 <script src="swogebuy.js?v=0d5e5215"></script>
-<script src="swogecx.js?v=588b0a9a" defer></script>
+<script src="swogecx.js?v=d872f894" defer></script>
 <style>
 /* ---- UN SEUL BOUTON DE PROFIL ----
  * `stakebubble.js` pose le sien dans la premiere `<nav>` de la page — ici la
@@ -1367,6 +1367,23 @@ a.match:hover .cotes button{border-color:var(--bleu)}
 .swpb{ background:var(--carte) !important; border:1px solid var(--bord) !important;
   color:var(--bleu) !important; box-shadow:var(--ombre) !important; }
 .swpb:hover{ border-color:var(--bleu) !important; color:var(--nuit) !important; }
+
+/* ---- LE STAKING ET LES JOUEURS EN LIGNE, AU BLANC EUX AUSSI ----
+   J'avais garde la bulle de staking en vert plein, au motif qu'elle est la
+   seule des pastilles qui se CLIQUE et qu'elle devait se distinguer. Le
+   proprietaire a tranche l'inverse : toutes blanches. C'est son ecran.
+   Elles gardent chacune leur signe de vie — le cadenas, le point qui bat —
+   et c'est lui, desormais, qui les distingue plutot que la couleur du fond. */
+.swstk{ background:var(--carte) !important; color:var(--nuit) !important;
+  border:1px solid var(--bord) !important; box-shadow:var(--ombre) !important; }
+.swstk:hover{ box-shadow:0 0 0 2px rgba(18,161,80,.28), var(--ombre) !important; }
+.swppl{ background:var(--carte) !important; color:var(--nuit) !important;
+  border:1px solid var(--bord) !important; box-shadow:var(--ombre) !important; }
+/* Le point qui bat reste vert : c'est un ETAT — le serveur repond — et non une
+   couleur d'habillage. Il perd son halo, qui existait pour percer un fond
+   noir. */
+.swppl .swdot{ box-shadow:none !important; }
+
 </style>
 <!-- La marque et le bouton du bandeau mènent au monde. -->
 <script>

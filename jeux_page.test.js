@@ -226,12 +226,20 @@ const servirLeSite = async () => {
   await p.waitForTimeout(250);
   const horsCompte = await p.evaluate(() => ({
     menu: !document.getElementById('gxMenu').hidden,
-    connexion: !document.getElementById('cxVoile').hidden,
+    /* La porte ouverte est celle qui SIGNE — `stakebubble.js` — depuis qu'on
+       a compris que l'autre n'apprenait qu'une adresse et laissait arriver au
+       jeu sans session. L'ancienne reste acceptee en repli : elle sert encore
+       si ce script-la n'a pas charge. */
+    connexion: !!document.querySelector('.swcon-ov')
+               || !(document.getElementById('cxVoile') || {}).hidden,
   }));
   ok(!horsCompte.menu && horsCompte.connexion,
      'sans compte, le profil ouvre la CONNEXION plutot qu un menu qui repondrait'
      + ' « connectez-vous » cinq fois de suite');
-  await p.evaluate(() => { document.getElementById('cxVoile').hidden = true; });
+  await p.evaluate(() => {
+    const v = document.getElementById('cxVoile'); if (v) v.hidden = true;
+    const c = document.querySelector('.swcon-ov'); if (c) c.remove();
+  });
 
   /* ---- CONNECTE PAR LE TIROIR, ET PAR LUI SEUL ----
    * C'est LE cas signale : dans le navigateur de Telegram il n'existe aucune

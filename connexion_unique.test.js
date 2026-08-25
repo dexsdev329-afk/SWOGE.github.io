@@ -188,6 +188,7 @@ const TYPES = { '.html': 'text/html', '.js': 'application/javascript',
         swbal: fait('swbal', '<span class="pt"></span>164.9k<em>$SWOGE</em>'),
         swusd: fait('swusd on', '≈ $4.87'),
         swstk: fait('swstk', '<b>4680.91</b>'),
+        swppl: fait('swppl', '<span class="swdot"></span><i>2</i>'),
         swpb: fait('swpb', '👤'),
       };
       const clair = (c) => { const v = (c.match(/\d+/g) || []).map(Number);
@@ -199,18 +200,81 @@ const TYPES = { '.html': 'text/html', '.js': 'application/javascript',
       }
       return out;
     });
-    for (const k of ['swbal', 'swusd', 'swpb']) {
+    for (const k of ['swbal', 'swusd', 'swppl', 'swpb']) {
       ok(pastilles[k].fond > 200 && pastilles[k].texte < 140,
          `« ${k} » : fond clair et texte sombre (${Math.round(pastilles[k].fond)} sur `
          + `${Math.round(pastilles[k].texte)}) — elle etait doree sur brun`);
     }
-    /* La bulle de staking garde le VERT : elle est cliquable et annonce un gain
-       qui monte. La reduire au bleu de la page la rendrait indistinguable des
-       deux pastilles qui, elles, ne se cliquent pas. */
-    ok(pastilles.swstk.fond < 200 && pastilles.swstk.texte > 200,
-       `« swstk » reste pleine et lisible a l envers (${Math.round(pastilles.swstk.fond)}`
-       + ` sur ${Math.round(pastilles.swstk.texte)}) : c est la seule des quatre`
-       + ' qui se clique, et elle doit se distinguer');
+    /* ---- LA BULLE DE STAKING PASSE AU BLANC ELLE AUSSI ----
+     * Elle etait restee verte, au motif qu'elle est la seule qui se CLIQUE et
+     * qu'elle devait se distinguer. Le proprietaire a tranche l'inverse :
+     * toutes blanches. Cet essai verifiait donc une regle qui n'est plus la
+     * sienne — on ne le supprime pas, on le retourne, pour que le retour au
+     * vert ne repasse pas en silence. Elle garde son cadenas, et c'est lui qui
+     * la distingue maintenant. */
+    ok(pastilles.swstk.fond > 200 && pastilles.swstk.texte < 140,
+       `« swstk » : fond clair et texte sombre (${Math.round(pastilles.swstk.fond)}`
+       + ` sur ${Math.round(pastilles.swstk.texte)}) — comme les trois autres`);
+    await ctx.close();
+  }
+
+  /* ================== LA PORTE QU ON OUVRE EST CELLE QUI SIGNE ==================
+   *
+   * « Je me connecte a mon mail sur l accueil, je vais sur SWOGE World ou le
+   * casino, et ca me deconnecte. » Ce n etait pas une deconnexion : on n avait
+   * jamais ete connecte AU JEU.
+   *
+   * `swogecx.js` le disait lui-meme — « entrer ici veut dire le portefeuille
+   * est connu, pas la partie est ouverte ». Il apprend une adresse ; il ne
+   * signe rien. Le serveur, lui, n accepte qu un jeton signe range sous
+   * `swogeSession`. Les pages de jeu le cherchent, ne le trouvent pas, et
+   * redemandent — ce qui se lit exactement comme une deconnexion.
+   *
+   * On ne reecrit pas la signature ici : `stakebubble.js` porte deja « la meme
+   * porte que celle des pages de jeu, exactement le meme message signe ». Un
+   * second chemin vers une session serait un second chemin vers l argent.
+   */
+  console.log('\n-- le bouton de connexion ouvre la porte qui SIGNE --');
+  for (const page of ['index.html', 'games.html']) {
+    const ctx = await nav.newContext({ viewport: { width: 1400, height: 900 } });
+    const p = await ctx.newPage();
+    await p.route('**/cdnjs.cloudflare.com/**', (r) => r.abort());
+    await p.goto(`http://127.0.0.1:${s.address().port}/${page}`, { waitUntil: 'domcontentloaded' });
+    await p.waitForTimeout(1800);
+    ok(await p.evaluate(() => typeof (window.swogeConnexion || {}).ouvre === 'function'),
+       `${page} : la porte qui signe est disponible sur la page`);
+    await p.locator('.cx-mail').first().click();
+    await p.waitForTimeout(700);
+    const ouvert = await p.evaluate(() => ({
+      signe: !!document.querySelector('.swcon-ov'),
+      apprend: !(document.getElementById('cxVoile') || {}).hidden,
+    }));
+    ok(ouvert.signe,
+       `${page} : c est le formulaire qui SIGNE qui s ouvre — celui qui range`
+       + ' `swogeSession`, le seul jeton que le serveur accepte');
+    ok(!ouvert.apprend,
+       `${page} : et non celui qui se contente d apprendre une adresse, qui`
+       + ' laissait arriver au jeu sans session');
+    await ctx.close();
+  }
+  {
+    const ctx = await nav.newContext({ viewport: { width: 1400, height: 900 } });
+    await ctx.addInitScript(() => {
+      try { localStorage.setItem('swogeSession', 'jeton-d-essai'); } catch (e) {}
+    });
+    const p = await ctx.newPage();
+    await p.route('**/cdnjs.cloudflare.com/**', (r) => r.abort());
+    await p.route('**/nexus.html', (r) => r.fulfill({ status: 200,
+      contentType: 'text/html', body: '<html><body>LE MONDE</body></html>' }));
+    await p.goto(`http://127.0.0.1:${s.address().port}/index.html`, { waitUntil: 'domcontentloaded' });
+    await p.waitForTimeout(1500);
+    ok(await p.evaluate(() => window.swogeConnecte()),
+       'le jeton signe suffit a dire qu on est entre : c est la seule chose que le'
+       + ' serveur accepte, et la seule qui vaille d une page a l autre');
+    await p.click('#gxMonde');
+    await p.waitForTimeout(900);
+    eq(new URL(p.url()).pathname.split('/').pop(), 'nexus.html',
+       'et la marque emmene au monde sans redemander quoi que ce soit');
     await ctx.close();
   }
 
@@ -237,10 +301,9 @@ const TYPES = { '.html': 'text/html', '.js': 'application/javascript',
       await p.waitForTimeout(600);
       const ou = new URL(p.url()).pathname.split('/').pop();
       eq(ou, page, `${page} : sans compte, la marque ne quitte PAS la page`);
-      ok(await p.evaluate(() => {
-        const v = document.getElementById('cxVoile');
-        return !!v && !v.hidden;
-      }), `${page} : elle demande de qui il s agit, la ou l on est`);
+      ok(await p.evaluate(() => !!document.querySelector('.swcon-ov')
+                              || !(document.getElementById('cxVoile') || {}).hidden),
+         `${page} : elle demande de qui il s agit, la ou l on est`);
       await ctx.close();
     }
     /* ---- CONNECTE : ON ENTRE ---- */
@@ -280,10 +343,9 @@ const TYPES = { '.html': 'text/html', '.js': 'application/javascript',
     await p.waitForTimeout(1500);
     await p.click('#gxMonde2');
     await p.waitForTimeout(600);
-    ok(await p.evaluate(() => {
-      const v = document.getElementById('cxVoile');
-      return !!v && !v.hidden;
-    }), '« ENTER SWOGE WORLD » passe par le meme chemin que la marque');
+    ok(await p.evaluate(() => !!document.querySelector('.swcon-ov')
+                            || !(document.getElementById('cxVoile') || {}).hidden),
+       '« ENTER SWOGE WORLD » passe par le meme chemin que la marque');
     await ctx.close();
   }
 

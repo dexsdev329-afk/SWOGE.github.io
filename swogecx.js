@@ -148,6 +148,12 @@
    * On demande donc aux DEUX, a un seul endroit.
    */
   window.swogeConnecte = function () {
+    /* ---- LE JETON SIGNE D'ABORD ----
+     * C'est la SEULE chose que le serveur accepte, et la seule qui vaille
+     * d'une page a l'autre. Le reste — le tiroir monte, la pastille
+     * d'adresse — en decoule ou l'accompagne ; lui existe des la premiere
+     * signature et survit a la navigation. */
+    try { if (localStorage.getItem('swogeSession')) return true; } catch (e) {}
     if (document.querySelector('.swp .swp-t') || document.querySelector('.swp-t')) return true;
     var c = document.getElementById('cxCompte');
     return !!(c && !c.hidden);
@@ -214,8 +220,48 @@
     });
   }
 
-  [].forEach.call(document.querySelectorAll('.cx-mail'), function (b) { b.addEventListener('click', ouvre); });
-  [].forEach.call(document.querySelectorAll('.cx-wallet'), function (b) { b.addEventListener('click', connectePortefeuille); });
+  /* ==================== QUELLE PORTE ON OUVRE ====================
+   *
+   * ---- LE DEFAUT SIGNALE ----
+   * « Je me connecte a mon mail sur l'accueil, je vais sur SWOGE World ou le
+   * casino, et ca me deconnecte. » Ce n'etait pas une deconnexion : on n'avait
+   * jamais ete connecte AU JEU.
+   *
+   * Ce fichier disait lui-meme ce qu'il fait — « entrer ici veut dire le
+   * portefeuille est connu, pas la partie est ouverte ». Il apprend une
+   * adresse ; il ne signe rien et n'ouvre aucune session. Le serveur, lui,
+   * n'accepte qu'un jeton signe, range sous `swogeSession`. Les pages de jeu
+   * le cherchent, ne le trouvent pas, et redemandent — ce qui se lit
+   * exactement comme une deconnexion, et ce qui en est une en pratique.
+   *
+   * ---- ON N'EN ECRIT PAS UNE SECONDE ----
+   * `stakebubble.js`, charge sur ces deux pages, porte deja le formulaire qui
+   * signe : « la meme porte que celle des pages de jeu, exactement le meme
+   * message signe ». Reecrire ici la demande de nonce, la signature et le
+   * rangement du jeton ferait un SECOND chemin vers une session — sur le seul
+   * sujet ou un desaccord entre deux chemins coute de l'argent.
+   *
+   * Le panneau de ce fichier reste en repli : si `stakebubble.js` n'a pas
+   * charge, mieux vaut apprendre l'adresse que ne rien proposer du tout.
+   */
+  function porteDuJeu() {
+    var c = window.swogeConnexion;
+    return (c && typeof c.ouvre === 'function') ? c : null;
+  }
+  function ouvreLaPorte(repli) {
+    return function (ev) {
+      if (ev && ev.preventDefault) ev.preventDefault();
+      var c = porteDuJeu();
+      if (c) { c.ouvre(); return; }
+      repli();
+    };
+  }
+  [].forEach.call(document.querySelectorAll('.cx-mail'), function (b) {
+    b.addEventListener('click', ouvreLaPorte(ouvre));
+  });
+  [].forEach.call(document.querySelectorAll('.cx-wallet'), function (b) {
+    b.addEventListener('click', ouvreLaPorte(connectePortefeuille));
+  });
   $('cxPortefeuille').addEventListener('click', connectePortefeuille);
   document.querySelector('.cx-fermer').addEventListener('click', ferme);
   voile.addEventListener('click', function (e) { if (e.target === voile) ferme(); });

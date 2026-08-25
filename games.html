@@ -61,7 +61,14 @@ a[href], button{ pointer-events:none; cursor:default; }
  * reste aurait ete de la prudence mal placee — une page d'accueil dont AUCUN
  * lien ne marche ne se distingue pas d'une page cassee.
  * Les autres restent muets, et chacun pour une raison ecrite a cote. */
-a.vif{ pointer-events:auto; cursor:pointer; }
+/* ---- « VIF » VEUT DIRE VIVANT, QUEL QUE SOIT L ELEMENT ----
+   La regle ne visait que les LIENS. Un `<button class="vif">` restait donc
+   inerte : la classe etait posee, le gestionnaire ecrit, le libelle en place —
+   et le clic traversait jusqu au bloc du dessous. C est arrive a « ENTER SWOGE
+   WORLD », et c est la troisieme fois que ce piege se referme sur cette page.
+   Trouve par l essai qui clique pour de vrai ; a la lecture, tout avait l air
+   complet. */
+a.vif, button.vif{ pointer-events:auto; cursor:pointer; }
 a.vif:hover{ opacity:.86; }
 body{
   background:var(--fond); color:var(--texte);
@@ -615,7 +622,16 @@ a.match:hover .cotes button{border-color:var(--bleu)}
 <body>
 
 <header class="sw-haut">
-  <a class="sw-marque" href="#">
+  <!-- ---- LA MARQUE MENE AU MONDE ----
+       Elle portait `href="#"` : on cliquait « SWOGE WORLD » et rien
+       n arrivait, alors que c est le nom du jeu et le premier endroit ou l on
+       clique. Connecte, elle ouvre le monde ; sinon elle demande d abord de
+       qui il s agit — plutot que d envoyer vers une page de jeu qui
+       reposerait la question en arrivant.
+       La decision est prise dans `swogecx.js`, en un seul endroit : deux
+       pages qui la reprendraient chacune finiraient par ne plus repondre
+       pareil. -->
+  <a class="sw-marque vif" href="nexus.html" id="gxMonde">
     <span class="sw-patte">&#128062;</span>
     <span><b>SWOGE</b><i>WORLD</i></span>
   </a>
@@ -1127,9 +1143,12 @@ a.match:hover .cotes button{border-color:var(--bleu)}
      * centimetres, et le profil repond « connectez-vous ». On demande donc a
      * la source des rangees qu'on s'apprete a montrer — une seule question,
      * et c'est la bonne. */
-    var tiroir = document.querySelector(".swp .swp-t") || document.querySelector(".swp-t");
-    var cpt = document.getElementById("cxCompte");
-    if(!tiroir && (!cpt || cpt.hidden)){
+    /* La MEME question que la marque, par le meme chemin : elle vit dans
+       `swogecx.js`, et deux endroits qui la poseraient chacun de leur cote
+       finiraient par ne plus repondre pareil — c'est exactement le defaut
+       qu'on vient de corriger ici. */
+    var dedans = (typeof window.swogeConnecte === "function") && window.swogeConnecte();
+    if(!dedans){
       var b = document.querySelector(".cx-mail") || document.querySelector(".cx-wallet");
       if(b){ b.click(); return; }
     }
@@ -1294,7 +1313,7 @@ a.match:hover .cotes button{border-color:var(--bleu)}
 <script src="stakebubble.js?v=233ccc57"></script>
 <script src="swogecompte.js?v=cd504287"></script>
 <script src="swogebuy.js?v=0d5e5215"></script>
-<script src="swogecx.js?v=9ad8fbf0" defer></script>
+<script src="swogecx.js?v=588b0a9a" defer></script>
 <style>
 /* ---- UN SEUL BOUTON DE PROFIL ----
  * `stakebubble.js` pose le sien dans la premiere `<nav>` de la page — ici la
@@ -1349,5 +1368,22 @@ a.match:hover .cotes button{border-color:var(--bleu)}
   color:var(--bleu) !important; box-shadow:var(--ombre) !important; }
 .swpb:hover{ border-color:var(--bleu) !important; color:var(--nuit) !important; }
 </style>
+<!-- La marque et le bouton du bandeau mènent au monde. -->
+<script>
+(function(){
+  "use strict";
+  function va(ev){
+    /* La decision vit dans `swogecx.js`, chargee juste avant. S il n a pas
+       repondu — reseau coupe, script bloque — on laisse le lien faire son
+       travail : mieux vaut arriver sur la page du jeu et devoir s y connecter
+       que de rester sur un lien mort. */
+    if (typeof window.swogeEntreLeMonde === "function") window.swogeEntreLeMonde(ev);
+  }
+  ["gxMonde","gxMonde2"].forEach(function(i){
+    var e = document.getElementById(i);
+    if (e) e.addEventListener("click", va);
+  });
+})();
+</script>
 </body>
 </html>

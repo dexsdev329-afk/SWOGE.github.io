@@ -214,6 +214,79 @@ const TYPES = { '.html': 'text/html', '.js': 'application/javascript',
     await ctx.close();
   }
 
+  /* ================== LA MARQUE MENE AU MONDE ==================
+   *
+   * « SWOGE WORLD » portait `href="#"` : on cliquait le nom du jeu, en haut a
+   * gauche, et rien n arrivait. Connecte, elle doit ouvrir le monde ; sinon
+   * elle doit demander de qui il s agit — plutot que d envoyer vers une page
+   * de jeu qui reposerait la question en arrivant.
+   *
+   * LES DEUX ETATS SONT ESSAYES. Un seul passerait tout seul : un lien qui
+   * mene toujours au jeu passe le premier, un lien mort passe le second.
+   */
+  console.log('\n-- la marque mene au monde, ou demande d abord --');
+  for (const page of ['index.html', 'games.html']) {
+    /* ---- PAS CONNECTE : ON DEMANDE, ON NE NAVIGUE PAS ---- */
+    {
+      const ctx = await nav.newContext({ viewport: { width: 1400, height: 900 } });
+      const p = await ctx.newPage();
+      await p.route('**/cdnjs.cloudflare.com/**', (r) => r.abort());
+      await p.goto(`http://127.0.0.1:${s.address().port}/${page}`, { waitUntil: 'domcontentloaded' });
+      await p.waitForTimeout(1500);
+      await p.click('#gxMonde');
+      await p.waitForTimeout(600);
+      const ou = new URL(p.url()).pathname.split('/').pop();
+      eq(ou, page, `${page} : sans compte, la marque ne quitte PAS la page`);
+      ok(await p.evaluate(() => {
+        const v = document.getElementById('cxVoile');
+        return !!v && !v.hidden;
+      }), `${page} : elle demande de qui il s agit, la ou l on est`);
+      await ctx.close();
+    }
+    /* ---- CONNECTE : ON ENTRE ---- */
+    {
+      const ctx = await nav.newContext({ viewport: { width: 1400, height: 900 } });
+      /* Le tiroir de `stakebubble.js`, pose avant que la page ne s execute :
+         c est LUI que la question interroge en premier, et c est le cas du
+         navigateur de Telegram — connecte sans qu aucune extension existe. */
+      await ctx.addInitScript(() => {
+        addEventListener('DOMContentLoaded', () => {
+          const d = document.createElement('div'); d.className = 'swp';
+          const t = document.createElement('div'); t.className = 'swp-t';
+          d.appendChild(t); document.body.appendChild(d);
+        });
+      });
+      const p = await ctx.newPage();
+      await p.route('**/cdnjs.cloudflare.com/**', (r) => r.abort());
+      await p.route('**/nexus.html', (r) => r.fulfill({ status: 200,
+        contentType: 'text/html', body: '<html><body>LE MONDE</body></html>' }));
+      await p.goto(`http://127.0.0.1:${s.address().port}/${page}`, { waitUntil: 'domcontentloaded' });
+      await p.waitForTimeout(1500);
+      await p.click('#gxMonde');
+      await p.waitForTimeout(900);
+      eq(new URL(p.url()).pathname.split('/').pop(), 'nexus.html',
+         `${page} : connecte, elle ouvre le monde`);
+      await ctx.close();
+    }
+  }
+  /* Et le bouton du bandeau promet la meme chose : il doit faire la meme
+     chose. Deux promesses identiques qui divergent sont pires que l une des
+     deux morte. */
+  {
+    const ctx = await nav.newContext({ viewport: { width: 1400, height: 900 } });
+    const p = await ctx.newPage();
+    await p.route('**/cdnjs.cloudflare.com/**', (r) => r.abort());
+    await p.goto(`http://127.0.0.1:${s.address().port}/index.html`, { waitUntil: 'domcontentloaded' });
+    await p.waitForTimeout(1500);
+    await p.click('#gxMonde2');
+    await p.waitForTimeout(600);
+    ok(await p.evaluate(() => {
+      const v = document.getElementById('cxVoile');
+      return !!v && !v.hidden;
+    }), '« ENTER SWOGE WORLD » passe par le meme chemin que la marque');
+    await ctx.close();
+  }
+
   await nav.close(); s.close();
   console.log(`\nconnexion_unique.test.js : ${n} verifications, ${echecs} echec(s)`);
   process.exit(echecs ? 1 : 0);

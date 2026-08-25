@@ -128,6 +128,46 @@
       ['catch'](function () { eSw.textContent = '$SWOGE \u2014'; });
   }
 
+  /**
+   * EST-ON ENTRE ? La seule reponse, pour toute la page.
+   *
+   * ---- POURQUOI ELLE VIT ICI ----
+   *
+   * Deux scripts tiennent chacun LEUR session. `swogecx.js` — celui-ci — sait
+   * ce qu'il a lui-meme ouvert ; `stakebubble.js` monte son tiroir a
+   * l'authentification, celle qui affiche le solde. Dans le navigateur de
+   * Telegram, ou il n'existe aucune extension a interroger, le premier peut
+   * tres bien ignorer une connexion que le second a etablie.
+   *
+   * Le menu du profil s'y etait deja fait prendre : il repondait
+   * « connectez-vous » a quelqu'un dont les jetons s'affichaient a trois
+   * centimetres. La question allait etre posee une troisieme fois — par la
+   * marque, sur deux pages — et trois copies d'une question finissent par
+   * donner trois reponses.
+   *
+   * On demande donc aux DEUX, a un seul endroit.
+   */
+  window.swogeConnecte = function () {
+    if (document.querySelector('.swp .swp-t') || document.querySelector('.swp-t')) return true;
+    var c = document.getElementById('cxCompte');
+    return !!(c && !c.hidden);
+  };
+
+  /**
+   * ENTRER DANS LE MONDE, OU DEMANDER D'ABORD DE QUI IL S'AGIT.
+   *
+   * La marque « SWOGE WORLD » et le bouton « ENTER SWOGE WORLD » promettent la
+   * meme chose ; ils font donc la meme chose. Non connecte, on ne renvoie pas
+   * vers une page de jeu qui redemandera de se connecter en arrivant : on pose
+   * la question tout de suite, la ou l'on est.
+   */
+  window.swogeEntreLeMonde = function (ev) {
+    if (ev && ev.preventDefault) ev.preventDefault();
+    if (window.swogeConnecte()) { location.href = 'nexus.html'; return; }
+    var b = document.querySelector('.cx-mail') || document.querySelector('.cx-wallet');
+    if (b) b.click();
+  };
+
   function entre(adresse, fournisseur) {
     if (!adresse) return;
     var court = String(adresse).slice(0, 6) + '\u2026' + String(adresse).slice(-4);

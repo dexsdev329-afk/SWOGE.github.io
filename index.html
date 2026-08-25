@@ -125,6 +125,35 @@ a{color:inherit;text-decoration:none}
   background:var(--fond);display:grid;place-items:center;font-size:16px;flex:0 0 auto;
 }
 
+/* ---- LE MENU DU PROFIL ----
+   Il existait deja, mais dessine pour un fond sombre par le script qui le
+   porte : pose sur cette page il jurait. Il est REDESSINE ici, avec les
+   couleurs de la page — et seulement redessine : ses rangees restent
+   declarees ailleurs, sinon il y aurait deux listes a tenir d'accord. */
+.gx-menu{position:absolute;top:60px;right:14px;z-index:70;width:236px;
+  background:var(--carte);border:1px solid var(--bord);border-radius:14px;
+  box-shadow:var(--ombre);padding:6px;display:flex;flex-direction:column;gap:1px}
+.gx-menu[hidden]{display:none}
+.gx-menu a{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:9px;
+  font:700 12px/1 'Inter',system-ui,sans-serif;color:var(--texte);text-decoration:none}
+.gx-menu a:hover{background:var(--bleu-clair);color:var(--bleu)}
+.gx-menu .gx-sep{height:1px;background:var(--bord);margin:5px 2px}
+/* Les titres de groupe du tiroir, repris tels quels : ils separent la
+   boutique des paris et des amis, et sans eux dix-sept rangees d'affilee ne
+   se lisent plus. */
+.gx-menu .gx-g{padding:9px 10px 4px;font:800 9px/1 'Inter',system-ui,sans-serif;
+  letter-spacing:1.1px;text-transform:uppercase;color:var(--gris)}
+.gx-menu .gx-g:first-child{padding-top:4px}
+/* ---- ET LE MENU DEFILE ----
+   Le tiroir compte dix-sept rangees et cinq titres. Les poser d'un bloc
+   ferait un menu plus haut que l'ecran d'un telephone, dont le bas serait
+   inatteignable — on n'atteindrait plus « Leaderboard », qui est en dernier. */
+.gx-menu{max-height:min(74vh,560px);overflow-y:auto;scrollbar-width:thin}
+/* L'icone reste a largeur fixe : sans elle les mots ne s'alignent pas, et une
+   colonne de mots decales se lit comme une liste mal faite. */
+.gx-menu a i{font-style:normal;font-size:14px;width:18px;text-align:center;flex:0 0 auto}
+@media(max-width:520px){ .gx-menu{right:8px;left:8px;width:auto} }
+
 /* ------------------------------------------------------------ LA COLONNE DE GAUCHE */
 .sw-corps{display:flex; align-items:flex-start; gap:14px; padding:14px; max-width:1680px; margin:0 auto}
 .sw-cote{
@@ -416,6 +445,14 @@ a{color:inherit;text-decoration:none}
    libelle — tout sauf l'effet. Trouve par l'essai qui clique pour de vrai ;
    a la lecture, le code avait l'air complet. */
 .cx-boite button, .cx-wallet, .cx-mail{pointer-events:auto;cursor:pointer}
+/* ---- ET LES RANGEES DU MENU DU PROFIL ----
+   `.vif` reveille le BOUTON ; les rangees, elles, sont fabriquees par le
+   script et sont des `<a href="#">` — donc muettes sous la regle du dessus.
+   Le menu se serait ouvert, et aucune de ses lignes n aurait repondu : la
+   panne la plus trompeuse de la page, parce qu elle a l air d un menu qui
+   marche. C est le meme piege que le hall a deja pris quatre fois, et un
+   clic lance par script l ignore — seul un vrai clic le montre. */
+#gxProfil, #gxMenu a{ pointer-events:auto; cursor:pointer }
 .cx-large{width:100%;padding:13px}
 .cx-large[disabled]{opacity:.55;cursor:progress}
 .cx-fermer{position:absolute;top:10px;right:12px;font-size:22px;line-height:1;color:var(--gris);
@@ -532,7 +569,16 @@ a{color:inherit;text-decoration:none}
     <b id="cxAdr"></b>
     <span class="cx-soldes"><i id="cxEth">&hellip;</i><i id="cxSwoge">&hellip;</i></span>
   </div>
-  <div class="sw-avatar">&#128100;</div>
+  <!-- ---- L AVATAR OUVRE LE MENU, ICI AUSSI ----
+       C etait un `<div>` : un rond avec une silhouette, au bout de la barre,
+       qui ne repondait pas. Un avatar inerte est la pire chose qu on puisse
+       poser la — il a exactement l air d un bouton, et le hall en a un qui
+       s ouvre a trois centimetres de celui-ci sur la page d a cote.
+       Meme balise, meme identifiant et meme boite vide que dans le hall : le
+       comportement vient du fichier partage, pas d une copie. -->
+  <button class="sw-avatar vif" id="gxProfil" type="button"
+          aria-haspopup="menu" aria-expanded="false" aria-label="Account menu">&#128100;</button>
+  <div class="gx-menu" id="gxMenu" role="menu" hidden></div>
 </header>
 
 <div class="sw-corps">
@@ -942,6 +988,13 @@ a{color:inherit;text-decoration:none}
      ne signe qu avec le fournisseur du portefeuille. -->
 <script src="stakebubble.js?v=233ccc57"></script>
 <script src="swogecx.js?v=d872f894" defer></script>
+<!-- Le menu du compte, le meme fichier que le hall. L accueil n a pas
+     `swogecompte.js` : quand personne n est entre, le bouton ouvre la porte
+     de connexion au lieu de montrer un menu dont chaque rangee repondrait
+     « connectez-vous d abord ». Une fois entre, les rangees viennent du
+     tiroir de `stakebubble.js`, charge juste au-dessus — la meme liste, tenue
+     au meme endroit, que celle du hall. -->
+<script src="swogeprofil.js?v=fca73b7d" defer></script>
 <style>
 /* ==================== LES PASTILLES DE LA BARRE, AU CLAIR ====================
  *

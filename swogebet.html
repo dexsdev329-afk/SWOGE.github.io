@@ -130,15 +130,27 @@ canvas{ touch-action:none; }
 
   main,nav{position:relative;z-index:1}
 
-  nav{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);
-    background:rgba(255,255,255,.72);backdrop-filter:blur(8px);position:sticky;top:0;z-index:5}
+  /* ---- CETTE REGLE VISAIT L ANCIENNE BARRE, ET FRAPPAIT LA NOUVELLE COLONNE ----
+     Elle habillait `nav` — TOUS les `nav` de la page. Depuis que la coquille
+     apporte sa colonne de gauche, qui en est un, celle-ci se retrouvait
+     couchee en rangee collante en haut de l ecran. Un selecteur d ELEMENT
+     traverse tout ce qu on ajoute ensuite ; il ne vise plus que l ancre du
+     solde, qui est le seul `nav` restant de cette page.
+     `.sb-ancre` ne dessine rien : elle existe parce que `stakebubble.js`
+     remonte depuis `#bal` jusqu au `nav` le plus proche pour savoir ou poser
+     ses pastilles. Sans elle, le solde et le tiroir se posaient au hasard. */
+  nav.sb-ancre{display:flex;align-items:center;gap:12px}
   .brand{font-family:'Anton',sans-serif;font-size:20px;letter-spacing:1px;color:var(--gold)}
   .brand span{color:var(--text)}
   nav .sp{flex:1}
-  .chip{font-size:13px;color:var(--text);border:1px solid var(--line);border-radius:999px;padding:8px 13px;background:rgba(0,0,0,.3)}
-  .chip b{color:var(--gold)}
-  .menubtn{font-size:18px;line-height:1;color:var(--text);background:rgba(0,0,0,.3);border:1px solid var(--line);border-radius:12px;width:40px;height:40px;cursor:pointer}
-  .menubtn:hover{color:var(--gold);border-color:rgba(27,95,224,.6)}
+  .chip{font:800 12px/1 'Inter',system-ui,sans-serif;color:var(--nuit);
+    border:1px solid var(--bord);border-radius:999px;padding:9px 13px;background:var(--carte);
+    box-shadow:var(--ombre);white-space:nowrap}
+  .chip b{color:var(--nuit)}
+  .menubtn{font-size:17px;line-height:1;color:var(--bleu);background:var(--carte);
+    border:1px solid var(--bord);border-radius:11px;width:38px;height:38px;cursor:pointer;
+    box-shadow:var(--ombre)}
+  .menubtn:hover{color:var(--nuit);border-color:var(--bleu)}
   .menu{position:absolute;top:60px;right:12px;z-index:20;min-width:210px;display:none;flex-direction:column;
     background:rgba(255,255,255,.98);border:1px solid var(--line);border-radius:14px;padding:6px;box-shadow:0 16px 40px rgba(11,27,54,0.14);backdrop-filter:blur(8px)}
   .menu.open{display:flex}
@@ -232,100 +244,119 @@ canvas{ touch-action:none; }
   @media(max-width:480px){ .card{width:90px;height:126px} .cards{min-height:126px} }
 
 /* ===== SWOGE themed panels (auto-ported from Spin) ===== */
-#connectBtn,#emailBtn { font-size:1.6vh; letter-spacing:.5px; border-radius:12px; padding:1vh 1.8vh; border:none; }
-#connectBtn { color:#3a2400; background:linear-gradient(180deg,#ffe680,#f2a900); }
-#emailBtn { color:#fff; background:rgba(0,0,0,.5); border:1px solid rgba(255,213,74,.4); }
-.ovl { position:fixed; inset:0; z-index:300; background:rgba(4,4,12,.7); display:none; align-items:safe center; justify-content:center; padding:16px; font-family:system-ui; overflow-y:auto; }
+/* ---- LES DEUX BOUTONS DE CONNEXION NE SONT PLUS DECRITS ICI ----
+   Ils l etaient : une taille, un arrondi, deux couleurs, redits par
+   identifiant. C etait le meme dessin que sur l accueil et le hall, RECOPIE —
+   et deja divergent, puisque le plein et le cerne y etaient inverses.
+   Ils portent maintenant `sw-b sw-b-vide` et `sw-b sw-b-plein`, les classes
+   des deux autres pages. Une paire de boutons, une seule description. */
+.ovl { position:fixed; inset:0; z-index:300; background:rgba(10,31,68,.42); display:none; align-items:safe center; justify-content:center; padding:16px; font-family:system-ui; overflow-y:auto; }
 .ovl.show { display:flex; }
 .box.show { display:block; }
-#box-quests { max-height:88vh; overflow:hidden; background-color:#17092e; background-clip:padding-box; border:30px solid transparent; border-image:url('img/e95d01731f29.png') 62 fill / 30px stretch; border-radius:0; background:none; padding:0; }
-#box-dep, #box-wd, #box-wallet, #box-stake { width:min(452px,96vw); max-height:92vh; overflow:hidden; background-color:#17092e; background-clip:padding-box; box-shadow:none; border-radius:0; border-style:solid; border-color:transparent; border-width:30px 26px 40px 26px; border-image:url('img/62439edfd061.png') 72 56 86 56 fill / 30px 26px 40px 26px stretch; padding:0; }
+/* ================== LES PANNEAUX PASSENT AU BLANC ==================
+   Ils venaient d'une page NOIRE : un cadre de lave et d'or en `border-image`,
+   trente pixels de bordure peinte, un fond violet a l'interieur, et chaque
+   bouton remplace par une planche PNG avec son libelle masque derriere
+   (`color:transparent; text-indent:-9999px`). Pose sur du bleu pale, l'effet
+   n'etait pas seulement autre : c'etait visiblement un morceau d'un autre
+   site, et les titres — qui n'existaient QUE dans les images — ne se
+   traduisaient ni ne se lisaient a la loupe.
+   Ces panneaux prennent la carte blanche du reste du site. Les libelles
+   REVIENNENT : ils etaient deja dans le HTML, seulement caches. Ceux qui
+   n'existaient que dans une image sont ECRITS, faute de quoi le panneau
+   s'ouvrirait sans titre.
+   Ce n'est fait QUE sur cette page. Les quatorze autres portent le meme
+   habillage et le gardent : leur fond est encore noir, et une carte blanche
+   y jurerait exactement comme celle-ci jurait ici. */
+#box-quests, #box-dep, #box-wd, #box-wallet, #box-stake {
+  width:min(452px,96vw); max-height:92vh; overflow:hidden;
+  background:var(--carte); border:1px solid var(--line); border-radius:18px;
+  box-shadow:0 20px 60px rgba(11,27,54,.16); padding:0; }
+#box-quests { width:min(520px,96vw); max-height:88vh; }
 #box-dep .pscroll, #box-wd .pscroll, #box-wallet .pscroll, #box-stake .pscroll { max-height:calc(92vh - 88px); overflow-y:auto; padding:18px 30px 26px; scrollbar-width:none; -ms-overflow-style:none; }
-#box-dep .note2, #box-wd .note2, #box-wallet .note2, #box-stake .note2 { font-size:13px; line-height:1.45; text-align:center; color:#e2d6f2; margin-top:8px; }
+#box-dep .note2, #box-wd .note2, #box-wallet .note2, #box-stake .note2 { font-size:13px; line-height:1.45; text-align:center; color:var(--muted); margin-top:8px; }
 #box-dep .note2 b, #box-wd .note2 b, #box-wallet .note2 b, #box-stake .note2 b { color:var(--gold); }
-#box-dep label, #box-wd label, #box-wallet label, #box-stake label { font-size:11px; letter-spacing:1.5px; text-align:center; color:#c7b6dd; margin:8px 0 5px; }
-#box-dep .strow, #box-wd .strow, #box-wallet .strow, #box-stake .strow { font-size:14px; padding:5px 6px; color:#d8cae8; }
-#box-dep .strow b, #box-wd .strow b, #box-wallet .strow b, #box-stake .strow b { font-size:15px; color:#fff; }
+#box-dep label, #box-wd label, #box-wallet label, #box-stake label { font-size:11px; letter-spacing:1.5px; text-align:center; color:var(--muted); margin:8px 0 5px; }
+#box-dep .strow, #box-wd .strow, #box-wallet .strow, #box-stake .strow { font-size:14px; padding:5px 6px; color:var(--muted); }
+#box-dep .strow b, #box-wd .strow b, #box-wallet .strow b, #box-stake .strow b { font-size:15px; color:var(--text); }
 #box-stake .strow { justify-content:center; gap:11px; font-size:11px; padding:2px 4px; }
 #box-stake .strow b { font-size:12px; }
 #box-stake .note2 { font-size:10px; line-height:1.4; }
 #box-dep input, #box-wd input, #box-wallet input, #box-stake input { padding:10px; font-size:15px; text-align:center; }
 #box-stake .pcts, #box-dep .pcts { gap:6px; margin:6px 0; }
 #box-dep .pscroll::-webkit-scrollbar, #box-wd .pscroll::-webkit-scrollbar, #box-wallet .pscroll::-webkit-scrollbar, #box-stake .pscroll::-webkit-scrollbar { width:0; height:0; display:none; }
-.ptitle { width:62%; min-width:190px; max-width:280px; height:auto; background:center/100% 100% no-repeat; margin:4px auto 10px; filter:drop-shadow(0 2px 6px rgba(0,0,0,.5)); }
+.ptitle, .wtitle-plate { margin:2px auto 12px; text-align:center;
+  font:800 19px/1.2 'Inter',system-ui,sans-serif; letter-spacing:.4px; color:var(--text); }
 #box-dep .pscroll, #box-wd .pscroll, #box-stake .pscroll { text-align:center; }
 #box-dep .brow, #box-wd .brow, #box-stake .brow { display:block !important; text-align:center !important; margin-top:10px; }
 #box-dep .abtn.aimg, #box-wd .abtn.aimg, #box-stake .abtn.aimg, #stClaim { display:block !important; width:212px !important; max-width:82% !important; height:56px !important; aspect-ratio:auto !important; min-width:0 !important; margin:9px auto !important; float:none !important; flex:none !important; }
 #box-dep .abtn.closeimg, #box-wd .abtn.closeimg, #box-stake .abtn.closeimg { display:block !important; width:212px !important; max-width:82% !important; height:44px !important; aspect-ratio:auto !important; min-width:0 !important; margin:9px auto !important; float:none !important; flex:none !important; }
 #box-dep input, #box-wd input, #box-wallet input, #box-stake input { display:block; max-width:280px; margin-left:auto; margin-right:auto; }
 #box-dep .strow, #box-wd .strow, #box-wallet .strow, #box-stake .strow { justify-content:center; gap:14px; }
-.ptitle.pt-deposit { aspect-ratio:440/186; }
-.ptitle.pt-withdraw { aspect-ratio:440/191; }
-.ptitle.pt-stake { aspect-ratio:440/138; }
-.ptitle.pt-deposit { background-image:url('img/73990b426144.png'); }
-.ptitle.pt-withdraw { background-image:url('img/0258d32595c7.png'); }
-.ptitle.pt-stake { background-image:url('img/d650a96aeddd.png'); }
-.abtn.aimg { background-color:transparent !important; background-repeat:no-repeat !important; background-position:center !important; background-size:100% 100% !important; color:transparent !important; text-indent:-9999px; overflow:hidden; white-space:nowrap; border:none !important; box-shadow:none !important; height:52px; min-height:0; padding:0 !important; }
-.abtn.aimg.a-dep { background-image:url('img/98277aa4f988.png') !important; }
-.abtn.aimg.a-wd { background-image:url('img/3325d6a9f46d.png') !important; }
-.abtn.aimg.a-claim { background-image:url('img/78fa0d2133ec.png') !important; }
-.abtn.aimg.a-stake { background-image:url('img/e609569f126f.png') !important; }
-.abtn.aimg.a-unstake { background-image:url('img/754195de06f9.png') !important; }
+/* `aimg` voulait dire « ce bouton EST une image ». Il n'y a plus d'image :
+   la classe ne dit plus rien et le libelle, qui etait deja la, se voit. */
+.abtn.aimg { height:48px; min-height:0; }
 .brow.bcol { flex-direction:column; gap:10px; }
 .pcts { gap:8px; }
-.pct.imgpct { background:transparent center/100% 100% no-repeat !important; border:none !important; color:transparent !important; text-indent:-9999px; overflow:hidden; white-space:nowrap; aspect-ratio:257/104; min-height:0; padding:0 !important; box-shadow:none; border-radius:0; }
-.pct.imgpct.p10 { background-image:url('img/43a076a331c6.png') !important; }
-.pct.imgpct.p20 { background-image:url('img/aac55ffed61a.png') !important; }
-.pct.imgpct.p50 { background-image:url('img/139a3397b0e7.png') !important; }
-.pct.imgpct.pmax { background-image:url('img/15978cef7aa0.png') !important; }
 .box h3 { font-family:'Orbitron',sans-serif; font-size:20px; color:var(--gold); margin-bottom:12px; }
-.box label { font-size:11px; color:var(--gold); text-transform:uppercase; letter-spacing:1px; display:block; margin:8px 0 5px; }
-.box .note2 { font-size:12px; color:var(--gold); line-height:1.5; margin-top:8px; }
+.box label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; display:block; margin:8px 0 5px; }
+.box .note2 { font-size:12px; color:var(--muted); line-height:1.5; margin-top:8px; }
 .box .note2 b { color:var(--gold); }
-.box input { width:100%; padding:11px; border-radius:10px; border:1px solid rgba(124,77,255,.5); background:#0e0722; color:#fff; font-family:inherit; font-size:15px; }
+.box input { width:100%; padding:11px; border-radius:10px; border:1px solid var(--line); background:var(--ink); color:var(--text); font-family:inherit; font-size:15px; }
 .box .brow { display:flex; gap:8px; align-items:center; margin-top:10px; }
-.box .abtn { flex:1; padding:12px; border-radius:10px; border:none; font-weight:800; font-size:15px; cursor:pointer; font-family:'Orbitron',sans-serif;
-    color:#3a2400; background:linear-gradient(180deg,#ffe680,#f2a900); }
-.box .abtn.sec { color:#eee; background:rgba(255,255,255,.08); border:1px solid rgba(124,77,255,.5); }
+.box .abtn { flex:1; padding:12px; border-radius:10px; border:none; font-weight:800; font-size:15px; cursor:pointer; text-align:center; font-family:'Inter',system-ui,sans-serif;
+    color:#fff; background:var(--gold); }
+.box .abtn:hover { filter:brightness(1.06); }
+.box .abtn.sec { color:var(--gold); background:var(--carte); border:1px solid var(--gold); }
 .box .abtn.danger { color:#ff6b6b; background:transparent; border:1px solid rgba(255,107,107,.4); }
-.strow { display:flex; justify-content:space-between; align-items:baseline; font-size:13px; padding:6px 0; color:var(--gold); }
-.strow b { font-size:15px; color:#fff; }
+.strow { display:flex; justify-content:space-between; align-items:baseline; font-size:13px; padding:6px 0; color:var(--muted); }
+.strow b { font-size:15px; color:var(--text); }
 .pcts { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin:8px 0; }
-.pct { padding:9px 0; border-radius:8px; border:1px solid rgba(124,77,255,.5); background:rgba(255,255,255,.05); color:#eee; font-weight:700; cursor:pointer; font-size:13px; }
+.pct { padding:9px 0; border-radius:8px; border:1px solid var(--line); background:var(--ink); color:var(--text); font-weight:700; cursor:pointer; font-size:13px; }
 .pct:hover { border-color:var(--gold); color:var(--gold); }
-.wtitle-plate { width:230px; height:54px; margin:2px auto 14px; background:url('img/0f9b73d138e0.png') center/contain no-repeat; filter:drop-shadow(0 2px 6px rgba(0,0,0,.6)); }
-#box-wallet .abtn.wbtn { width:100%; aspect-ratio:260/74; min-height:0; padding:0; background-color:transparent; background-repeat:no-repeat; background-position:center; background-size:100% 100%; color:transparent; text-indent:-9999px; overflow:hidden; white-space:nowrap; border:none; box-shadow:none; }
-#box-wallet .wb-copy { background-image:url('img/291bf7675cee.png'); }
-#box-wallet .wb-deposit { background-image:url('img/46bd21cc39b1.png'); }
-#box-wallet .wb-explorer { background-image:url('img/3cf60dd1502c.png'); }
-#box-wallet .wb-disconnect { background-image:url('img/114eb6df7091.png'); }
-.abtn.closeimg { background:url('img/d59144cfa811.png') center/100% 100% no-repeat !important; color:transparent !important; text-indent:-9999px; overflow:hidden; white-space:nowrap; border:none; box-shadow:none; aspect-ratio:300/60; min-height:44px; padding:0; }
-.abtn.imgbtn.wimg { background-image:url('img/3e4da538a2f7.png'); }
-.abtn.imgbtn.pimg { background-image:url('img/b21951658a03.png'); }
-.abtn.imgbtn.cimg { background-image:url('img/3eac95539574.png'); }
+/* Les quatre boutons du portefeuille, le bouton « Close » et les trois
+   planches des quetes suivaient la meme recette. Ils redeviennent des
+   boutons : « Copy », « Deposit », « Explorer », « Disconnect », « Close »
+   etaient deja ecrits dans le HTML. */
+#box-wallet .abtn.wbtn { width:100%; min-height:44px; padding:12px; }
+#box-wallet .abtn.wb-disconnect { color:var(--red); background:var(--carte);
+  border:1px solid rgba(224,68,62,.45); }
+.abtn.closeimg { min-height:44px; }
 #box-quests .note2 { text-align:center; }
 .abtn:disabled { opacity:.5; cursor:default; }
-#box-email { width:min(452px,96vw); max-height:92vh; overflow:hidden; background-color:#17092e; background-clip:padding-box; box-shadow:none; border-radius:0; border-style:solid; border-color:transparent; border-width:30px 26px 40px 26px; border-image:url('img/62439edfd061.png') 72 56 86 56 fill / 30px 26px 40px 26px stretch; padding:0; }
+#box-email { width:min(452px,96vw); max-height:92vh; overflow:hidden;
+  background:var(--carte); border:1px solid var(--line); border-radius:18px;
+  box-shadow:0 20px 60px rgba(11,27,54,.16); padding:0; }
 #box-email .pscroll { max-height:calc(92vh - 88px); overflow-y:auto; padding:18px 30px 26px; text-align:center; scrollbar-width:none; -ms-overflow-style:none; }
 #box-email .pscroll::-webkit-scrollbar { width:0; height:0; display:none; }
-#box-email .note2 { font-size:13px; line-height:1.45; text-align:center; color:#e2d6f2; }
-#box-email label { font-size:11px; letter-spacing:1.5px; text-align:center; color:#c7b6dd; }
+#box-email .note2 { font-size:13px; line-height:1.45; text-align:center; color:var(--muted); }
+#box-email label { font-size:11px; letter-spacing:1.5px; text-align:center; color:var(--muted); }
 #box-email input { display:block; max-width:280px; margin:6px auto; text-align:center; }
 #box-email .brow { display:block !important; text-align:center !important; margin-top:10px; }
 #box-email .abtn.aimg { display:block !important; width:212px !important; max-width:82% !important; height:56px !important; aspect-ratio:auto !important; min-width:0 !important; margin:9px auto !important; float:none !important; flex:none !important; }
 #box-email .abtn.closeimg { display:block !important; width:212px !important; max-width:82% !important; height:44px !important; aspect-ratio:auto !important; min-width:0 !important; margin:9px auto !important; float:none !important; flex:none !important; }
-.ptitle.pt-email { aspect-ratio:440/170; background-image:url('img/a1e359ec449b.png'); }
-.abtn.aimg.a-emsend { background-image:url('img/6fbc8b548d31.png') !important; }
-.abtn.aimg.a-emverify { background-image:url('img/de0297dab018.png') !important; }
-#connectBtn, #emailBtn { width:158px; height:50px; background-color:transparent !important; background-repeat:no-repeat !important; background-position:center !important; background-size:100% 100% !important; color:transparent !important; text-indent:-9999px; overflow:hidden; white-space:nowrap; border:none !important; box-shadow:none !important; padding:0 !important; border-radius:0 !important; cursor:pointer; }
-#connectBtn { background-image:url('img/955006ff1f20.png') !important; }
-#emailBtn { background-image:url('img/6c6c3d5a723c.png') !important; }
-#connectBtn:hover, #emailBtn:hover { filter:brightness(1.1); }
+/* ---- LES DEUX PLAQUES PEINTES SONT PARTIES ----
+   « CONNECT WALLET » et « SIGN IN » etaient deux IMAGES : un cartouche d or et
+   de lave, texte compris, avec le libelle du bouton masque derriere
+   (`color:transparent; text-indent:-9999px`). Elles tenaient sur une page
+   noire ; posees sur du bleu pale, elles etaient les deux seules choses
+   dorees de l ecran et se lisaient comme un morceau d une autre page.
+   Le libelle REVIENT — il etait toujours la, dans le bouton, seulement
+   cache — et prend l habillage des deux autres pages. Deux images de moins a
+   telecharger, et un bouton qui se traduit et se redimensionne. */
+/* ---- ET LEURS MESURES AUSSI SONT PARTIES ----
+   Les plaques etaient des IMAGES : il leur fallait une largeur et une hauteur
+   fixes, donnees en `vh` pour suivre la fenetre. Sans image, ces mesures ne
+   decrivaient plus rien — elles etiraient seulement le bouton : `6.3vh` sur
+   une fenetre de neuf cents pixels faisait cinquante-sept pixels de haut,
+   quand la meme paire en fait trente-deux ailleurs, et montait l en-tete de
+   douze pixels. Mesure au rendu, apres avoir cru la ligne reglee. */
 @media (max-width: 820px), (orientation: portrait) {
-    #connectBtn,#emailBtn { font-size:11px; padding:6px 9px; border-radius:10px; }
+    /* Trente-quatre pixels de bordure servaient a loger le cadre peint.
+       Sans lui, c'etait un ruban vide autour du contenu. */
     #box-dep, #box-wd, #box-wallet, #box-stake, #box-quests {
       width:100vw; max-width:100vw; height:100vh; height:100dvh; max-height:100dvh;
-      border-radius:0; border-width:34px 24px 40px 24px; border-image-width:34px 24px 40px 24px;
+      border-radius:0; border-width:0;
     }
     #box-dep .pscroll, #box-wd .pscroll, #box-wallet .pscroll, #box-stake .pscroll {
       max-height:calc(100dvh - 74px); padding:18px 34px 28px;
@@ -338,23 +369,17 @@ canvas{ touch-action:none; }
     #box-dep .pcts, #box-stake .pcts { max-width:94%; margin-left:auto; margin-right:auto; }
 }
 @media (min-width:821px) and (orientation:landscape) {
-    #connectBtn,#emailBtn { font-size:1.6vh; padding:1.2vh 2.2vh; display:inline-block !important; }
-    #connectBtn { box-shadow:0 0 14px rgba(255,213,74,.5); }
-    #box-quests { width:min(760px,60vw); max-width:none; max-height:94vh; border-width:52px; border-image-width:52px; }
+    #box-quests { width:min(760px,60vw); max-width:none; max-height:94vh; }
 }
 @media (max-width:820px), (orientation:portrait) {
-    #box-email { width:100vw; max-width:100vw; height:100vh; height:100dvh; max-height:100dvh; border-radius:0; border-width:34px 24px 40px 24px; border-image-width:34px 24px 40px 24px; }
+    #box-email { width:100vw; max-width:100vw; height:100vh; height:100dvh; max-height:100dvh; border-radius:0; border-width:0; }
     #box-email .pscroll { max-height:calc(100dvh - 74px); padding:18px 34px 28px; }
-}
-@media (max-width:820px), (orientation:portrait) {
-    #connectBtn, #emailBtn { width:130px; height:41px; }
-}
-@media (min-width:821px) and (orientation:landscape) {
-    #connectBtn, #emailBtn { width:20vh; height:6.3vh; }
 }
 
   /* ===== Menu themed (adapte a la structure du jeu) ===== */
-  #menu { background:none !important; border:20px solid transparent !important; border-image:url('img/26ab6463b66b.png') 66 fill / 20px stretch !important; border-radius:0 !important; padding:14px 12px !important; box-shadow:none !important; min-width:230px; }
+  /* Le menu portait le meme cadre peint. Il redevient la carte blanche
+     decrite plus haut, celle des deux autres pages. */
+  #menu { min-width:230px; }
   #menu > a { display:block !important; width:96% !important; height:44px !important; margin:5px auto !important; background-color:transparent !important; background-repeat:no-repeat !important; background-position:center !important; background-size:100% 100% !important; color:transparent !important; text-indent:-9999px; overflow:hidden; white-space:nowrap; border:none !important; border-radius:0 !important; }
   #menu a[data-panel="wallet"] { background-image:url('img/542cbb0df18d.png') !important; }
   #menu a[data-panel="stake"] { background-image:url('img/5e1e1fa597be.png') !important; }
@@ -953,12 +978,14 @@ body.sb-dock main{ padding-bottom:150px; }
   /* Le cadre etait une border-image faite avec l'icone de l'application : le
      panneau des quetes etait donc entoure de chiens jaunes etires. Un panneau
      ordinaire, du meme bois que le bulletin de SWOGE Bet. */
+  /* Ce panneau avait deja perdu son cadre de chiens jaunes ; il lui restait
+     un fond de nuit. Il prend la meme carte blanche que les cinq autres. */
   #box-quests { max-height:88vh; overflow:hidden; padding:0; border-radius:18px;
-    background:#101a2c; border:1px solid rgba(255,255,255,.16);
-    box-shadow:0 18px 50px rgba(11,27,54,0.14); }
+    background:var(--carte); border:1px solid var(--line);
+    box-shadow:0 20px 60px rgba(11,27,54,.16); }
 #box-quests .qscroll { max-height:calc(88vh - 96px); overflow-y:auto; padding:26px 30px 14px; scrollbar-width:none; -ms-overflow-style:none; }
 #box-quests .qscroll::-webkit-scrollbar { width:0; height:0; display:none; }
-.quest { border:1px solid rgba(124,77,255,.4); border-radius:12px; padding:10px 12px; margin-bottom:8px; }
+.quest { border:1px solid var(--line); border-radius:12px; padding:10px 12px; margin-bottom:8px; background:var(--ink); }
 .quest .qh { display:flex; justify-content:center; text-align:center; font-size:13px; margin-bottom:6px; }
 .quest .qh .qr { color:var(--gold); font-weight:700; }
 .quest .qbar { height:6px; background:rgba(255,255,255,.1); border-radius:6px; overflow:hidden; margin-bottom:8px; }
@@ -967,11 +994,15 @@ body.sb-dock main{ padding-bottom:150px; }
 .qclaim.on { height:40px; cursor:pointer; color:#04121f; font-weight:800;
   background:linear-gradient(180deg,#7CFF9B,#22B45E); border:none; }
 .qclaim.on:hover { filter:brightness(1.08); }
-.qclaim.off { background:rgba(255,255,255,.06); color:var(--gold); cursor:default; border:1px solid rgba(124,77,255,.4); }
+.qclaim.off { background:var(--ink); color:var(--muted); cursor:default; border:1px solid var(--line); }
 .qclaim.done { height:40px; cursor:default; color:#8EF0B4;
   background:rgba(90,220,140,.12); border:1px solid rgba(120,230,160,.4); }
 /* welcome / streak / rewarded-ad cards */
-  .bcard { border:14px solid transparent; border-image:url('https://i.ibb.co/qY4GHp7p/Chat-GPT-Image-8-ao-t-2026-19-06-44.png') 70 fill / 14px stretch; padding:2px 6px 5px; margin:0 0 10px; background:none; }
+  /* Le cadre de cette carte etait une image DISTANTE, chargee chez un
+     hebergeur d'images a chaque ouverture du panneau. Une carte ordinaire :
+     rien a telecharger, et rien a perdre le jour ou le lien meurt. */
+  .bcard { border:1px solid var(--line); border-radius:14px; padding:10px 12px;
+    margin:0 0 10px; background:var(--ink); }
 .bcard .tbanner { width:100%; height:36px; background-position:center; background-repeat:no-repeat; background-size:contain; margin-top:6px; margin-bottom:3px; filter:drop-shadow(0 2px 6px rgba(0,0,0,.5)); }
 .bcard .abtn { margin-top:3px; }
 .bcard .brow { display:flex; gap:9px; align-items:center; }
@@ -993,7 +1024,7 @@ body.sb-dock main{ padding-bottom:150px; }
 /* La barre etait une image d'icone etiree, avec le remplissage pose a des
    coordonnees calculees pour un cadre qui n'etait pas celui-la. */
 #box-quests .quest .qbar { position:relative; height:8px; border-radius:999px; overflow:hidden;
-  background:rgba(0,0,0,.45); border:1px solid rgba(255,255,255,.12); }
+  background:var(--line); border:1px solid var(--line); }
 #box-quests .quest .qbar i { position:absolute; left:0; top:0; bottom:0; border-radius:999px;
   background:linear-gradient(90deg,#22B45E,#7CFF9B); box-shadow:0 0 8px rgba(124,255,155,.6); }
 /* Sept fois la meme icone sur fond de la meme icone : on ne pouvait pas dire
@@ -1001,8 +1032,8 @@ body.sb-dock main{ padding-bottom:150px; }
 .streakrow { display:flex; gap:5px; margin:10px 0 6px; justify-content:center; }
 .streakrow .sday { flex:1 1 0; max-width:52px; aspect-ratio:1/1; border-radius:10px; position:relative;
   display:flex; align-items:center; justify-content:center;
-  font-size:13px; font-weight:800; color:#c9d6c9;
-  background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.13); }
+  font-size:13px; font-weight:800; color:var(--muted);
+  background:var(--ink); border:1px solid var(--line); }
 .streakrow .sday.done { color:#04121f; border-color:transparent;
   background:linear-gradient(180deg,#7CFF9B,#22B45E); }
 .streakrow .sday.today { color:#7CFF9B; border-color:#7CFF9B;
@@ -1011,7 +1042,7 @@ body.sb-dock main{ padding-bottom:150px; }
 #box-quests .quest .qh span { width:100%; text-align:center; }
 @keyframes sdayPulse { from { box-shadow:0 0 0 rgba(124,255,155,0); } to { box-shadow:0 0 12px rgba(124,255,155,.75); } }
 #box-quests .qtitle { margin:2px auto 12px; text-align:center; font-size:1.05rem;
-  font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:#EAF6EE; }
+  font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--text); }
 /* Boutons Daily Quests en image (fix background-size !important) */
   /* LE TRAITEMENT « BOUTON EN IMAGE » NE VAUT QUE S'IL Y A UNE IMAGE. Il etait
      accroche aux trois identifiants sans condition : le texte passait en
@@ -1198,15 +1229,699 @@ body.sb-dock main{ padding-bottom:150px; }
   .hero h1 { width:min(250px,80%); }
   .menubtn { width:38px; height:38px; }
 }
-</style><div class="pl-art"></div><div class="pl-box"><div class="pl-bar"><i></i></div><div class="pl-txt">Loading</div></div></div>
+</style>
+<style>
+/* ==================== LA COQUILLE DE `games.html`, TELLE QUELLE ====================
+ *
+ * ---- POURQUOI RECOPIEE ET NON REECRITE ----
+ *
+ * Cette page etait une colonne de six cent quatre-vingts pixels heritee d'une
+ * page de JEU, avec sa propre barre. L'accueil et le hall, eux, ont un
+ * en-tete blanc collant, une colonne de gauche et des cartes larges. Refaire
+ * « quelque chose qui ressemble » aurait donne une troisieme mise en page
+ * voisine mais differente — ce qui se lit comme un defaut d'impression, et
+ * c'est pire que deux pages franchement opposees.
+ *
+ * ---- ET POURQUOI ELLE VIT ICI PLUTOT QUE DANS UN FICHIER PARTAGE ----
+ *
+ * Une feuille partagee entre trois pages serait mieux, et c'est ce qu'il
+ * faudra faire. Mais l'essai des marqueurs de cache ne surveille QUE les
+ * `.js` : une feuille commune et perimee dans le navigateur de quelqu'un
+ * serait exactement le defaut que ce mecanisme existe pour empecher, en
+ * silence et avec l'air d'y remedier. On recopie donc, en le disant.
+ */
+
+:root{
+  /* La maquette tient sur six couleurs. Les nommer ici plutot que de les
+     repeter trente fois est ce qui permettra de la reteinter en une minute
+     quand les couleurs definitives arriveront. */
+  --fond:#EEF3FB; --carte:#FFFFFF; --bord:#E1E9F6;
+  --nuit:#0A1F44; --nuit2:#123468;
+  --bleu:#1B5FE0; --bleu-clair:#EAF1FF;
+  --or:#F5B301;
+  --texte:#0B1B36; --gris:#6B7C99;
+  --vert:#12A150; --rouge:#E0443E;
+  --rayon:14px;
+  --ombre:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+/* ---- iOS GROSSIT LE TEXTE EN PAYSAGE, SANS PREVENIR ----
+   Le bloc de correctifs communs des vingt-cinq autres pages porte cette ligne
+   depuis toujours. La reprendre ici coute un mot ; l'oublier laisse la page
+   d'accueil grandir d'un tiers quand on tourne le telephone, et elle seule. */
+html{-webkit-text-size-adjust:100%}
+
+/* ================== ICI, TOUT EST CLIQUABLE ==================
+ * La coquille vient de `games.html`, qui est une MAQUETTE : elle porte
+ * `a[href], button{ pointer-events:none }` pour que ses boutons gardent leur
+ * dessin sans repondre au doigt — on ne clique pas « Claim bonus » sur une
+ * base. La regle est arrivee ici avec le reste du style.
+ *
+ * Sur CETTE page, elle rendait muet tout ce qui compte : les cotes, « +5
+ * markets », « Place bet », la connexion. Une page qui prend de vrais paris
+ * n'a pas de bouton decoratif — la regle est donc RETIREE, pas contournee
+ * bouton par bouton avec `.vif`.
+ *
+ * C'est la cinquieme fois que ce piege se referme dans ce travail, et la plus
+ * grave : un clic lance depuis un script IGNORE `pointer-events`, si bien
+ * qu'un essai qui clique par `evaluate` aurait tout valide. Celui-ci clique
+ * pour de vrai, et c'est lui qui l'a vu. `.vif` reste declare : la coquille
+ * pose la classe a plusieurs endroits, et une classe sans regle serait un
+ * piege pour la prochaine reprise. */
+a.vif, button.vif{ cursor:pointer; }
+a.vif:hover{ opacity:.86; }
+body{
+  background:var(--fond); color:var(--texte);
+  font:400 14px/1.45 'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+img{display:block;max-width:100%}
+button{font:inherit;cursor:pointer;border:0;background:none;color:inherit}
+a{color:inherit;text-decoration:none}
+
+/* ---------------------------------------------------------- LE BANDEAU HAUT */
+.sw-haut{
+  display:flex; align-items:center; gap:14px; padding:10px 16px;
+  background:var(--carte); border-bottom:1px solid var(--bord);
+  position:sticky; top:0; z-index:30;
+}
+.sw-marque{display:flex; align-items:center; gap:9px; flex:0 0 auto}
+.sw-patte{
+  width:34px;height:34px;border-radius:10px;background:var(--bleu-clair);
+  display:grid;place-items:center;font-size:19px;
+}
+.sw-marque b{display:block;font:800 17px/1 'Inter',system-ui,sans-serif;letter-spacing:.4px;color:var(--bleu)}
+.sw-marque i{display:block;font:700 9.5px/1.4 'Inter',system-ui,sans-serif;font-style:normal;
+  letter-spacing:2.6px;color:var(--gris)}
+
+/* Les quatre chiffres du haut. Ils DEFILENT quand la fenetre retrecit plutot
+   que de passer a la ligne : une rangee qui se casse en deux pousse tout le
+   reste du bandeau vers le bas et fait sauter la page a chaque redimension. */
+.sw-chiffres{
+  flex:1 1 auto; min-width:0; display:flex; gap:8px; overflow-x:auto;
+  padding:8px 10px; background:var(--fond); border:1px solid var(--bord);
+  border-radius:12px; scrollbar-width:none;
+}
+.sw-chiffres::-webkit-scrollbar{display:none}
+.sw-ch{display:flex;align-items:center;gap:8px;padding:0 12px;flex:0 0 auto}
+.sw-ch+.sw-ch{border-left:1px solid var(--bord)}
+.sw-ch .ic{width:26px;height:26px;border-radius:8px;background:var(--bleu-clair);
+  display:grid;place-items:center;font-size:13px}
+.sw-ch small{display:block;font:700 9px/1 'Inter',system-ui,sans-serif;letter-spacing:.9px;color:var(--gris)}
+.sw-ch b{display:block;font:800 14px/1.3 'Inter',system-ui,sans-serif}
+
+.sw-b{
+  padding:10px 16px;border-radius:10px;
+  font:700 12.5px/1 'Inter',system-ui,sans-serif;letter-spacing:.3px;white-space:nowrap;
+}
+.sw-b-plein{background:var(--bleu);color:#fff}
+.sw-b-plein:hover{background:#1750c4}
+.sw-b-vide{background:var(--carte);color:var(--bleu);border:1.5px solid var(--bleu)}
+.sw-b-vide:hover{background:var(--bleu-clair)}
+.sw-b-or{background:var(--or);color:#3A2B00}
+.sw-b-nuit{background:var(--nuit);color:#fff}
+.sw-avatar{
+  width:38px;height:38px;border-radius:11px;border:1px solid var(--bord);
+  background:var(--fond);display:grid;place-items:center;font-size:16px;flex:0 0 auto;
+}
+
+/* ---- LE MENU DU PROFIL ----
+   Il existait deja, mais dessine pour un fond sombre par le script qui le
+   porte : pose sur cette page il jurait. Il est REDESSINE ici, avec les
+   couleurs de la page — et seulement redessine : ses rangees restent
+   declarees ailleurs, sinon il y aurait deux listes a tenir d'accord. */
+.gx-menu{position:absolute;top:60px;right:14px;z-index:70;width:236px;
+  background:var(--carte);border:1px solid var(--bord);border-radius:14px;
+  box-shadow:var(--ombre);padding:6px;display:flex;flex-direction:column;gap:1px}
+.gx-menu[hidden]{display:none}
+.gx-menu a{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:9px;
+  font:700 12px/1 'Inter',system-ui,sans-serif;color:var(--texte);text-decoration:none}
+.gx-menu a:hover{background:var(--bleu-clair);color:var(--bleu)}
+.gx-menu .gx-sep{height:1px;background:var(--bord);margin:5px 2px}
+/* Les titres de groupe du tiroir, repris tels quels : ils separent la
+   boutique des paris et des amis, et sans eux dix-sept rangees d'affilee ne
+   se lisent plus. */
+.gx-menu .gx-g{padding:9px 10px 4px;font:800 9px/1 'Inter',system-ui,sans-serif;
+  letter-spacing:1.1px;text-transform:uppercase;color:var(--gris)}
+.gx-menu .gx-g:first-child{padding-top:4px}
+/* ---- ET LE MENU DEFILE ----
+   Le tiroir compte dix-sept rangees et cinq titres. Les poser d'un bloc
+   ferait un menu plus haut que l'ecran d'un telephone, dont le bas serait
+   inatteignable — on n'atteindrait plus « Leaderboard », qui est en dernier. */
+.gx-menu{max-height:min(74vh,560px);overflow-y:auto;scrollbar-width:thin}
+/* L'icone reste a largeur fixe : sans elle les mots ne s'alignent pas, et une
+   colonne de mots decales se lit comme une liste mal faite. */
+.gx-menu a i{font-style:normal;font-size:14px;width:18px;text-align:center;flex:0 0 auto}
+@media(max-width:520px){ .gx-menu{right:8px;left:8px;width:auto} }
+
+/* ------------------------------------------------------------ LA COLONNE DE GAUCHE */
+.sw-corps{display:flex; align-items:flex-start; gap:14px; padding:14px; max-width:1680px; margin:0 auto}
+.sw-cote{
+  flex:0 0 208px; position:sticky; top:74px;
+  display:flex; flex-direction:column; gap:12px;
+}
+.sw-nav{background:var(--carte);border:1px solid var(--bord);border-radius:var(--rayon);
+  padding:8px; box-shadow:var(--ombre)}
+.sw-nav a{
+  display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:10px;
+  font:600 13.5px/1 'Inter',system-ui,sans-serif;color:var(--texte);
+}
+.sw-nav a .ic{width:20px;text-align:center;font-size:15px;opacity:.75}
+.sw-nav a:hover{background:var(--fond)}
+.sw-nav a.on{background:var(--bleu-clair);color:var(--bleu)}
+.sw-nav a.on .ic{opacity:1}
+.sw-cote .sw-b{width:100%;padding:13px 16px;font-size:13px}
+.sw-reseaux{display:flex;gap:8px;justify-content:center;padding-top:4px}
+.sw-reseaux a{
+  width:34px;height:34px;border-radius:10px;background:var(--carte);border:1px solid var(--bord);
+  display:grid;place-items:center;font-size:14px;color:var(--gris);
+}
+.sw-reseaux a:hover{color:var(--bleu);border-color:var(--bleu)}
+
+/* ------------------------------------------------------------------ LE PLATEAU */
+.sw-plat{flex:1 1 auto;min-width:0;display:grid;grid-template-columns:minmax(0,1.62fr) minmax(0,1fr);gap:14px}
+.sw-col{display:flex;flex-direction:column;gap:14px;min-width:0}
+.carte{background:var(--carte);border:1px solid var(--bord);border-radius:var(--rayon);
+  box-shadow:var(--ombre);overflow:hidden}
+.carte-p{padding:15px 16px}
+.tete{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.tete h3{margin:0;font:800 15px/1 'Inter',system-ui,sans-serif;color:var(--nuit);letter-spacing:.2px}
+.tete a{font:700 10.5px/1 'Inter',system-ui,sans-serif;letter-spacing:.9px;color:var(--bleu)}
+
+/* ---- LA BANNIERE ---- */
+/* ---- LA HAUTEUR DE LA BANNIERE EQUILIBRE LES DEUX COLONNES ----
+   La colonne de droite porte cinq blocs, celle de gauche quatre : a hauteur
+   egale de banniere, la gauche s'arretait trois cents pixels plus haut et
+   laissait un trou blanc sous le classement. C'est la banniere qui rattrape,
+   parce que c'est le seul bloc dont la hauteur ne dit rien d'autre qu'elle-
+   meme — grandir une carte de chiffres aurait fait croire a un chiffre de
+   plus. */
+.heros{position:relative;border-radius:var(--rayon);overflow:hidden;min-height:330px;
+  display:flex;align-items:center;border:1px solid var(--bord)}
+.heros img,.heros .film{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  border:0;background:var(--nuit)}
+/* Un ecran qui demande moins de mouvement n'en recoit pas : la video s'arrete
+   sur son affiche, qui est sa premiere image — rien ne manque. */
+@media (prefers-reduced-motion:reduce){ .heros .film{display:none} }
+.heros .voile{position:absolute;inset:0;
+  background:linear-gradient(100deg,rgba(6,20,46,.92) 0%,rgba(6,20,46,.72) 34%,rgba(6,20,46,.06) 62%,rgba(6,20,46,0) 100%)}
+.heros .dit{position:relative;padding:30px 28px;max-width:60%}
+.heros small{display:block;font:800 11px/1 'Inter',system-ui,sans-serif;letter-spacing:2.4px;
+  color:rgba(255,255,255,.82);margin-bottom:8px}
+.heros h1{margin:0 0 12px;font:900 50px/.94 'Inter',system-ui,sans-serif;color:#fff;letter-spacing:-1.4px}
+.heros p{margin:0 0 18px;font:600 12.5px/1.55 'Inter',system-ui,sans-serif;
+  letter-spacing:1.1px;color:rgba(255,255,255,.86);text-transform:uppercase}
+
+/* ---- LES QUATRE UNIVERS ---- */
+.univers{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.uni{position:relative;border-radius:var(--rayon);overflow:hidden;min-height:258px;
+  display:flex;flex-direction:column;justify-content:flex-end;background:var(--nuit)}
+/* ---- LES QUATRE CARTES SONT DES FILMS ----
+   Meme regle que la banniere : l'affiche est la premiere image du film, donc
+   le passage de l'une a l'autre ne se voit pas, et la carte n'est jamais un
+   rectangle noir en attendant.
+   `object-position: center top` reste : les quatre chiens ont la tete en haut
+   du cadre, et un cadrage centre la coupait au menton. */
+.uni img,.uni .film{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  object-position:center top;border:0;background:var(--nuit)}
+@media (prefers-reduced-motion:reduce){ .uni .film{display:none} }
+.uni .voile{position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(8,24,58,0) 34%,rgba(8,24,58,.88) 74%,rgba(8,24,58,.97) 100%)}
+.uni .dit{position:relative;padding:14px;text-align:center}
+.uni b{display:block;font:900 20px/1 'Inter',system-ui,sans-serif;color:#fff;letter-spacing:.4px}
+.uni i{display:block;font-style:normal;font:600 11px/1.4 'Inter',system-ui,sans-serif;
+  color:rgba(255,255,255,.76);margin:5px 0 11px}
+.uni .sw-b{width:100%;background:rgba(255,255,255,.94);color:var(--nuit);
+  display:block;text-align:center;border-radius:10px}
+/* Le bouton qui attend la connexion. Pale et non blanc : il doit se lire comme
+   « pas encore » et non comme « clique ici ». */
+.uni .attente{background:rgba(255,255,255,.16);color:rgba(255,255,255,.72);
+  font-size:11px;letter-spacing:.6px}
+
+/* ---- L ECONOMIE ET LE NIVEAU ---- */
+.duo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+/* Seize pixels et non dix : a dix, « 1,000,000,000 » et « 412,586,390 » se
+   suivaient sans respirer et se lisaient comme un seul nombre. */
+.eco{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;text-align:center}
+.eco div small{display:block;font:700 8.5px/1.3 'Inter',system-ui,sans-serif;letter-spacing:.7px;color:var(--gris)}
+/* ---- LES CHIFFRES SE CHEVAUCHAIENT ----
+   « 1,000,000,000 » et « 412,586,390 » se touchaient dans leurs colonnes. La
+   police declaree est Inter, mais elle n'est CHARGEE nulle part : la page
+   retombe sur celle du systeme, dont les chiffres gras sont plus larges — et
+   la mise en page calee sur Inter deborde chez tout le monde sauf chez celui
+   qui l'a installee. On ne compte donc sur aucune police : chiffres a chasse
+   fixe, taille reduite, et la colonne peut retrecir. Vu au rendu. */
+.eco div b{display:block;font:800 12px/1.35 'Inter',system-ui,sans-serif;color:var(--nuit);
+  font-variant-numeric:tabular-nums;letter-spacing:-.2px;white-space:nowrap}
+.eco div{min-width:0}
+.eco div i{display:block;font-style:normal;font:600 9px/1.3 'Inter',system-ui,sans-serif;color:var(--gris)}
+.niveau{position:relative;min-height:172px;display:flex;align-items:center;background:var(--nuit)}
+.niveau img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:right center}
+.niveau .voile{position:absolute;inset:0;
+  background:linear-gradient(90deg,rgba(8,24,58,.95) 0%,rgba(8,24,58,.78) 46%,rgba(8,24,58,.1) 100%)}
+.niveau .dit{position:relative;padding:16px}
+.niveau small{display:block;font:800 10px/1 'Inter',system-ui,sans-serif;letter-spacing:1.4px;
+  color:rgba(255,255,255,.72)}
+.niveau b{display:block;font:900 30px/1.1 'Inter',system-ui,sans-serif;color:#fff;font-style:italic}
+.jauge{height:7px;border-radius:99px;background:rgba(255,255,255,.22);margin:10px 0 7px;max-width:200px}
+.jauge i{display:block;height:100%;width:62%;border-radius:99px;background:#fff}
+.niveau em{font-style:normal;font:700 9.5px/1 'Inter',system-ui,sans-serif;letter-spacing:1.2px;
+  color:rgba(255,255,255,.72)}
+
+/* ---- LE CLASSEMENT ET LA COURSE ---- */
+.rang{display:flex;align-items:center;gap:11px;padding:9px 0}
+.rang+.rang{border-top:1px solid var(--bord)}
+.rang .no{font:900 15px/1 'Inter',system-ui,sans-serif;color:var(--gris);width:22px}
+.rang img{width:34px;height:34px;border-radius:10px;object-fit:cover;flex:0 0 auto}
+.rang .qui{flex:1 1 auto;min-width:0}
+.rang .qui b{display:block;font:700 13px/1.25 'Inter',system-ui,sans-serif;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rang .qui small{display:block;font:800 8.5px/1.3 'Inter',system-ui,sans-serif;letter-spacing:1px;color:var(--bleu)}
+.rang .xp{font:700 11.5px/1 'Inter',system-ui,sans-serif;color:var(--gris)}
+/* ---- LE SALON : L AFFICHE PREND TOUTE LA CARTE ----
+   Les autres cartes sombres tiennent leur image sur une moitie et leur texte
+   sur l'autre. Celle-ci non : l'affiche EST le message, elle porte son propre
+   titre, et la couper en deux aurait tranche le logo ou la coupe. Le voile ne
+   couvre donc que le bas, juste assez pour poser l'invitation. */
+.salon{position:relative;display:block;min-height:172px;overflow:hidden;background:var(--nuit)}
+/* ---- LE CADRAGE VISE LE LOGO ----
+   La carte n'a pas de forme fixe : sa hauteur suit celle de sa voisine, et son
+   rapport passe de 1,87 a 1,32 entre seize cents et douze cent quatre-vingts
+   pixels — mesure, pas suppose. Aucun recadrage de l'image ne peut donc
+   convenir aux deux. L'image est gardee ENTIERE, en quatre tiers, et c'est le
+   point de visee qui tient : legerement a gauche et vers le haut, la ou vivent
+   le logo et le « LIVE ». Centre, le « S » de SWOGE sortait du cadre. */
+.salon img,.salon .film{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  object-position:34% 34%;border:0;background:var(--nuit)}
+@media (prefers-reduced-motion:reduce){ .salon .film{display:none} }
+.salon .voile{position:absolute;inset:auto 0 0 0;height:58%;
+  background:linear-gradient(180deg,rgba(6,16,40,0) 0%,rgba(6,16,40,.86) 78%,rgba(6,16,40,.95) 100%)}
+.salon .dit{position:absolute;left:16px;right:16px;bottom:14px;
+  font:800 12px/1 'Inter',system-ui,sans-serif;letter-spacing:1.4px;color:#fff}
+.salon:hover img,.salon:hover .film{transform:scale(1.03)}
+.salon img,.salon .film{transition:transform .2s}
+
+/* ------------------------------------------------------- LA COLONNE DE DROITE */
+.bonus{position:relative;min-height:158px;display:flex;align-items:center;background:var(--nuit)}
+/* Le film occupe la moitie droite, comme l'image qu'il remplace : le texte de
+   l'offre vit a gauche, et c'est le voile qui fait la jonction. */
+.bonus img,.bonus .film{position:absolute;right:0;top:0;height:100%;width:52%;object-fit:cover;
+  border:0;background:var(--nuit)}
+@media (prefers-reduced-motion:reduce){ .bonus .film{display:none} }
+.bonus .voile{position:absolute;inset:0;
+  background:linear-gradient(90deg,rgba(8,24,58,.97) 0%,rgba(8,24,58,.9) 56%,rgba(8,24,58,.18) 100%)}
+.bonus .dit{position:relative;padding:16px;max-width:72%}
+/* Les deux lignes de l'offre. Elles allongent la carte, donc l'image passe
+   derriere au lieu de tenir la moitie droite : a soixante-douze pour cent de
+   large, un texte sur trois lignes chevauchait le chien. */
+.offres{list-style:none;margin:0 0 13px;padding:0;display:flex;flex-direction:column;gap:5px}
+.offres li{position:relative;padding-left:14px;
+  font:500 11px/1.45 'Inter',system-ui,sans-serif;color:rgba(255,255,255,.8)}
+.offres li:before{content:'';position:absolute;left:0;top:6px;width:5px;height:5px;
+  border-radius:99px;background:rgba(255,255,255,.5)}
+.offres b{color:#fff;font-weight:800}
+/* Le bouton qui attend la connexion, comme celui de l'arcade : pale, il se lit
+   « pas encore » et non « clique ici ». */
+.bonus .attente{background:rgba(255,255,255,.17);color:rgba(255,255,255,.78);
+  font-size:11px;letter-spacing:.5px}
+.bonus small{display:block;font:800 10px/1 'Inter',system-ui,sans-serif;letter-spacing:1.5px;
+  color:rgba(255,255,255,.74);margin-bottom:6px}
+/* ---- LE TITRE, ET LUI SEUL ----
+   Ecrite `.bonus b`, cette regle attrapait aussi les `<b>` de la liste
+   d'offres : « free chest » et « 500 $SWOGE » sortaient en vingt et un pixels
+   gras, chacun sur sa propre ligne, et la carte debordait. Le titre est un
+   enfant DIRECT de `.dit` — c'est ce qui le distingue, et non sa balise. */
+.bonus .dit > b{display:block;font:900 21px/1.2 'Inter',system-ui,sans-serif;color:#fff;
+  margin-bottom:12px}
+
+.jeux{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px}
+.jeu{position:relative;border-radius:11px;overflow:hidden;aspect-ratio:1/1;background:var(--nuit)}
+.jeu img{width:100%;height:100%;object-fit:cover;transition:transform .18s}
+.jeu:hover img{transform:scale(1.06)}
+/* ---- CES JEUX N EXISTENT PAS ENCORE ----
+   Les montrer sans le dire ferait cliquer dessus, et un clic qui ne mene nulle
+   part se lit comme une panne. Le bandeau est POSE SUR l image et non a cote :
+   a cote, on le prend pour la legende d une vignette voisine. Et l image est
+   assombrie — un bandeau seul sur une vignette bien nette ne suffit pas a
+   arreter la main. */
+.jeu.bientot img{filter:saturate(.55) brightness(.62)}
+.jeu.bientot:hover img{transform:none}
+.jeu.bientot span{
+  position:absolute; inset:auto 0 0 0; padding:5px 0; text-align:center;
+  background:rgba(8,24,58,.86); color:#fff;
+  font:800 8.5px/1 'Inter',system-ui,sans-serif; letter-spacing:1.6px;
+}
+.bientot-t{
+  padding:5px 9px; border-radius:99px; background:var(--bleu-clair); color:var(--bleu);
+  font:800 9px/1 'Inter',system-ui,sans-serif; letter-spacing:1.2px;
+}
+
+/* ---- LES SPORTS ---- */
+.onglets{display:flex;gap:6px;overflow-x:auto;padding-bottom:9px;margin-bottom:9px;
+  border-bottom:1px solid var(--bord);scrollbar-width:none}
+.onglets::-webkit-scrollbar{display:none}
+/* ---- SUR UNE LIGNE, ET NON EN COLONNE ----
+   L'icone au-dessus du mot coutait dix-huit pixels de hauteur pour ne rien
+   dire de plus : « Football » se lit sans ballon. Cote a cote, la rangee passe
+   de cinquante-deux a trente-quatre pixels, et c'est la moitie des quarante
+   qu'il fallait rendre. */
+.onglets button{
+  flex:0 0 auto;display:flex;align-items:center;gap:6px;
+  padding:8px 11px;border-radius:10px;font:700 10.5px/1 'Inter',system-ui,sans-serif;color:var(--gris);
+}
+.onglets button .ic{font-size:13px}
+.onglets button.on{background:var(--bleu-clair);color:var(--bleu)}
+/* La ligne qui nomme les six marches. Sous le titre et non dans une
+   infobulle : c'est ce qui distingue ce panneau de n'importe quel autre, et
+   une infobulle ne se survole pas sur un telephone. */
+.sous{margin:-6px 0 11px;font:500 11.5px/1.5 'Inter',system-ui,sans-serif;color:var(--gris)}
+.sous b{color:var(--texte);font-weight:800}
+/* « Ferme au coup d'envoi » : ce n'est pas un detail d'affichage, c'est LA
+   regle du catalogue. Elle prend la place ou la maquette mettait « LIVE ». */
+.ferme{padding:5px 9px;border-radius:99px;background:var(--fond);color:var(--gris);
+  font:800 8.5px/1 'Inter',system-ui,sans-serif;letter-spacing:1.1px;white-space:nowrap}
+/* Un sport porte au catalogue mais marque inactif. Eteint plutot qu'absent :
+   absent, on ne saurait pas qu'il arrive ; vif, on cliquerait pour rien. */
+.onglets button.eteint{opacity:.42}
+/* Neuf pixels au lieu de dix, et sept d'ecart au lieu de huit entre le duel
+   et ses cotes : sur quatre rencontres cela rend vingt-quatre pixels sans
+   qu'aucune ligne ne se serre visiblement. Le reste des quarante vient des
+   onglets. */
+.match{padding:8px 0}
+.match+.match{border-top:1px solid var(--bord)}
+.match .ligue{font:700 9px/1 'Inter',system-ui,sans-serif;letter-spacing:.8px;color:var(--gris);margin-bottom:6px}
+.match .duel{display:flex;align-items:center;gap:9px;margin-bottom:7px}
+.match .eq{display:flex;align-items:center;gap:7px;flex:1 1 0;min-width:0}
+.match .eq span{width:22px;height:22px;border-radius:7px;background:var(--fond);
+  display:grid;place-items:center;font-size:11px;flex:0 0 auto}
+.match .eq b{font:700 12.5px/1.2 'Inter',system-ui,sans-serif;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.match .eq.d{justify-content:flex-end;text-align:right}
+/* L'HEURE, la ou la maquette mettait le score en cours. Plus etroite en
+   chiffres qu'un « 2 – 1 », donc plus petite, et grise : c'est un repere, pas
+   un resultat. */
+.match .sc{font:700 10px/1.3 'Inter',system-ui,sans-serif;color:var(--gris);flex:0 0 auto;
+  text-align:center;letter-spacing:.4px}
+.cotes{display:flex;gap:6px}
+.cotes button{flex:1 1 0;min-width:0;display:flex;align-items:center;justify-content:space-between;
+  gap:6px;padding:8px 10px;border-radius:9px;background:var(--fond);border:1px solid var(--bord);
+  font:700 12px/1 'Inter',system-ui,sans-serif}
+.cotes button small{color:var(--gris);font-weight:700}
+.cotes button:hover,.cotes button.on{background:var(--bleu-clair);border-color:var(--bleu);color:var(--bleu)}
+.cotes .plus{flex:0 0 auto;background:none;border:0;color:var(--gris);font-weight:700}
+/* ---- CE QUI S AFFICHE QUAND IL N Y A RIEN A AFFICHER ----
+   Un calendrier peut etre legitimement vide : hors saison, ou entre deux
+   imports. Laisser le bloc blanc se lit comme une panne ; y remettre un
+   exemple se lit comme une offre. On DIT ce qu il en est, et le bouton reste
+   a cote — c est la seule reponse honnete aux trois cas, et il y en a trois :
+   ca charge, c est vide, ca n a pas repondu. */
+.gx-dit{padding:14px 0;font:500 11.5px/1.5 'Inter',system-ui,sans-serif;color:var(--gris)}
+.gx-dit a{color:var(--bleu);font-weight:700}
+/* La rencontre entiere est un lien : on clique le nom, l heure ou la cote, et
+   l on arrive au meme endroit. Un bouton de cote qui ne PREND pas le pari
+   serait un piege — ici il emmene la ou on le prend. */
+a.match{display:block;color:inherit;text-decoration:none}
+a.match:hover .cotes button{border-color:var(--bleu)}
+
+/* ---- LE BULLETIN ET LE SECOND BONUS SONT PARTIS ----
+   Ils fermaient la colonne de droite quatre cent soixante pixels plus bas que
+   la gauche, et rien de la page ne tenait plus a l'ecran d'un coup. Leur style
+   part AVEC eux : une regle qui ne dessine plus rien se relit comme une piste,
+   et la prochaine personne la suivra jusqu'a comprendre qu'elle ne mene nulle
+   part.
+   Le gestionnaire d'onglets, lui, reste : il est ecrit pour n'importe quel
+   `[data-groupe]`, et c'est celui des sports qu'il sert maintenant. */
+
+/* ========================= LE PANNEAU DE CONNEXION ========================= */
+.cx-voile{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:18px;
+  background:rgba(6,16,40,.62);backdrop-filter:blur(3px)}
+.cx-voile[hidden]{display:none}
+.cx-boite{position:relative;width:100%;max-width:380px;background:var(--carte);
+  border:1px solid var(--bord);border-radius:16px;padding:22px;
+  box-shadow:0 24px 64px rgba(6,16,40,.34);display:flex;flex-direction:column;gap:10px}
+.cx-boite > b{font:800 17px/1.2 'Inter',system-ui,sans-serif;color:var(--nuit)}
+.cx-dit{margin:0 0 4px;font:500 12px/1.5 'Inter',system-ui,sans-serif;color:var(--gris)}
+.cx-dit.ko{color:var(--rouge)}
+.cx-dit.ok{color:var(--vert)}
+.cx-champ{display:flex;flex-direction:column;gap:5px}
+.cx-champ span{font:700 9.5px/1 'Inter',system-ui,sans-serif;letter-spacing:1.1px;
+  text-transform:uppercase;color:var(--gris)}
+.cx-champ input{padding:12px 13px;border-radius:10px;border:1px solid var(--bord);
+  background:var(--fond);color:var(--texte);outline:none;
+  font:600 14px/1 'Inter',system-ui,sans-serif}
+.cx-champ input:focus{border-color:var(--bleu);background:var(--carte)}
+/* ---- CE QUI ECHAPPE A LA REGLE INERTE ----
+   Les boutons du panneau, ET CEUX QUI L'OUVRENT. Les seconds avaient ete
+   oublies : `a[href], button{pointer-events:none}` les tenait muets, le clic
+   traversait jusqu'a la barre laterale, et « Sign up with email » ne faisait
+   rien du tout. Ils avaient pourtant leur gestionnaire, leur style et leur
+   libelle — tout sauf l'effet. Trouve par l'essai qui clique pour de vrai ;
+   a la lecture, le code avait l'air complet. */
+.cx-boite button, .cx-wallet, .cx-mail{pointer-events:auto;cursor:pointer}
+/* ---- ET TOUT CE QUI EST DEVENU VIVANT DEPUIS ----
+   Le profil et son menu, les onglets de sport, et les rencontres qui menent au
+   tableau. Le meme piege que ci-dessus, et il s'est referme deux fois : le
+   bouton de profil avait son gestionnaire, son style et son libelle — tout
+   sauf l'effet, parce que `a[href], button{pointer-events:none}` le tenait
+   muet. Trouve par l'essai qui clique POUR DE VRAI ; l'essai qui appelait
+   `.click()` en JavaScript passait, lui, parce qu'un appel de script ignore
+   `pointer-events`. C'est la difference entre verifier un gestionnaire et
+   verifier un bouton. */
+#gxProfil, #gxMenu a, .onglets[data-groupe="sports"] button,
+#gxSports a, .gx-dit a{ pointer-events:auto; cursor:pointer }
+.onglets[data-groupe="sports"] button:disabled{ pointer-events:none; cursor:default }
+.cx-large{width:100%;padding:13px}
+.cx-large[disabled]{opacity:.55;cursor:progress}
+.cx-fermer{position:absolute;top:10px;right:12px;font-size:22px;line-height:1;color:var(--gris);
+  padding:4px 8px}
+.cx-ou{display:flex;align-items:center;gap:10px;color:var(--gris);
+  font:700 9.5px/1 'Inter',system-ui,sans-serif;letter-spacing:1.2px;text-transform:uppercase}
+.cx-ou:before,.cx-ou:after{content:'';flex:1 1 0;height:1px;background:var(--bord)}
+/* Une fois connecte, les boutons d'appel montrent l'adresse plutot que de
+   proposer une connexion de plus. */
+/* ---- LA PASTILLE DU COMPTE ----
+   Une seule sur la page. Les boutons de connexion, eux, DISPARAISSENT une
+   fois entre : les laisser en les renommant chacun donnait cinq fois la meme
+   adresse a l'ecran, ce qui se lit comme cinq comptes. */
+.cx-compte{display:flex;align-items:center;gap:10px;flex:0 0 auto;
+  padding:7px 12px;border-radius:11px;background:rgba(18,161,80,.10);
+  border:1.5px solid rgba(18,161,80,.34)}
+.cx-compte[hidden]{display:none}
+.cx-compte > b{font:800 12.5px/1 'Inter',system-ui,sans-serif;color:var(--vert);white-space:nowrap}
+.cx-soldes{display:flex;flex-direction:column;gap:3px;padding-left:10px;
+  border-left:1px solid rgba(18,161,80,.28)}
+.cx-soldes i{font-style:normal;font:700 10.5px/1 'Inter',system-ui,sans-serif;
+  color:var(--gris);white-space:nowrap}
+.cx-soldes i b{color:var(--texte);font-weight:800}
+
+/* ------------------------------------------------------------------- LE PIED */
+.sw-bas{max-width:1680px;margin:0 auto;padding:6px 14px 22px}
+.promesses{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;
+  background:var(--carte);border:1px solid var(--bord);border-radius:var(--rayon);
+  padding:16px;box-shadow:var(--ombre)}
+.pro{display:flex;gap:11px;align-items:flex-start}
+.pro .ic{width:32px;height:32px;border-radius:10px;background:var(--bleu-clair);
+  display:grid;place-items:center;font-size:15px;flex:0 0 auto}
+.pro b{display:block;font:800 11.5px/1.3 'Inter',system-ui,sans-serif;letter-spacing:.5px}
+.pro small{display:block;font:500 11px/1.45 'Inter',system-ui,sans-serif;color:var(--gris)}
+
+/* ------------------------------------------------- CE QUI PLIE, ET DANS QUEL ORDRE
+   La colonne de droite passe SOUS le plateau avant que la barre laterale ne
+   parte : c'est elle qui porte le bulletin et les jeux, et les serrer a moins
+   de trois cents pixels les rend illisibles bien avant que la navigation ne
+   gene. */
+@media (max-width:1240px){
+  .sw-plat{grid-template-columns:minmax(0,1fr)}
+  .jeux{grid-template-columns:repeat(5,minmax(0,1fr))}
+}
+@media (max-width:980px){
+  .sw-corps{flex-direction:column;padding:12px}
+  .sw-cote{position:static;flex:1 1 auto;width:100%;flex-direction:row;flex-wrap:wrap;align-items:center}
+  .sw-nav{flex:1 1 100%;display:flex;overflow-x:auto;scrollbar-width:none}
+  .sw-nav a{flex:0 0 auto}
+  .sw-cote .sw-b{width:auto;flex:1 1 auto}
+  .sw-reseaux{padding-top:0}
+  .univers{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .duo{grid-template-columns:minmax(0,1fr)}
+  .promesses{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .heros h1{font-size:34px}
+  .heros .dit{max-width:78%}
+}
+@media (max-width:620px){
+  .sw-haut{flex-wrap:wrap}
+  .sw-chiffres{order:3;flex:1 1 100%}
+  .jeux{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .univers{grid-template-columns:minmax(0,1fr)}
+  .promesses{grid-template-columns:minmax(0,1fr)}
+  .eco{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .heros h1{font-size:28px}
+  .heros .dit{max-width:100%}
+}
+
+/* ================== CE QUE LA PAGE DES JEUX AJOUTE ==================
+   Le reste du style est celui de l'accueil, recopie. Recopie et non partage :
+   l'essai des marqueurs de cache ne surveille que les `.js`, et une feuille
+   commune perimee serait exactement le defaut que ce mecanisme existe pour
+   empecher — en silence, et avec l'air d'y remedier. Le SCRIPT, lui, est
+   partage : il est versionne, donc garde. */
+/* ---- LA COLONNE DES JEUX PREND PLUS DE PLACE QU AILLEURS ----
+   L accueil partage son plateau 1,62 contre 1 : ses quatre blocs de droite
+   valent bien ce tiers. Ici la droite ne porte que deux blocs et la gauche
+   porte VINGT-SIX cartes de jeu — a 1,62 elles n avaient que huit cent
+   vingt-cinq pixels et quatre tenaient a l ecran, le reste se cherchait au
+   defilement. A 2,3 elles en ont mille cent, et six se voient d un coup.
+   Mesure a seize cents pixels, sur la page rendue. */
+/* ---- ET SEULEMENT SUR LES GRANDS ECRANS ----
+   Ecrite sans borne, cette regle venait APRES la requete d'ecran etroit de la
+   feuille d'origine et l'ecrasait : a trois cent quatre-vingt-dix pixels, les
+   deux colonnes restaient cote a cote et le panneau des sports se lisait sur
+   une bande de cent pixels, un mot par ligne. Une regle qui s'ajoute apres
+   coup doit dire A QUELLE TAILLE elle s'applique, sinon elle defait les
+   reglages de toutes les autres. Vu au rendu, sur telephone. */
+@media (min-width:1241px){
+  .sw-plat{ grid-template-columns:minmax(0,2.3fr) minmax(0,1fr) }
+}
+.rangee{ margin-bottom:16px }
+.rangee .tete{ margin-bottom:9px }
+.rangee h3{ display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;
+  font:800 14px/1.2 'Inter',system-ui,sans-serif; color:var(--nuit) }
+.rangee h3 i{ font-style:normal; font:500 11.5px/1.3 'Inter',system-ui,sans-serif; color:var(--gris) }
+.ric{ font-size:14px }
+.nb{ padding:4px 9px; border-radius:99px; background:var(--bleu-clair); color:var(--bleu);
+  font:800 9.5px/1 'Inter',system-ui,sans-serif; letter-spacing:.6px }
+/* ---- LA PISTE DEFILE, ELLE NE SE COUPE PAS ----
+   Une rangee de neuf jeux ne tient sur aucun ecran. Elle glisse donc a
+   l'horizontale, et `scroll-snap` cale chaque carte au bord : sans lui, on
+   s'arrete toujours sur une demi-carte, ce qui donne l'impression d'un
+   affichage casse plutot que d'une liste plus longue que l'ecran. */
+.piste{ display:flex; gap:10px; overflow-x:auto; scroll-snap-type:x mandatory;
+  padding-bottom:4px; scrollbar-width:thin }
+.piste::-webkit-scrollbar{ height:6px }
+.piste::-webkit-scrollbar-thumb{ background:var(--bord); border-radius:99px }
+/* La carte s'adapte : cent soixante-seize pixels sur un grand ecran, moins
+   quand la colonne retrecit — sinon la meme rangee montre six cartes ici et
+   deux sur un portable, sans que rien ne change entre les deux. */
+.jc{ position:relative; flex:0 0 clamp(150px, 17.5%, 178px); scroll-snap-align:start; display:block;
+  border-radius:12px; overflow:hidden; aspect-ratio:3/2;
+  border:1px solid var(--bord); background:var(--nuit);
+  box-shadow:0 1px 2px rgba(11,27,54,.05); transition:transform .13s, box-shadow .15s, border-color .15s }
+.jc img{ width:100%; height:100%; object-fit:cover; display:block }
+/* Le nom reste, mais SOUS le dessin et non dessus : sur les planches sombres
+   de cette page, un bandeau pose par-dessus mangeait le titre peint. */
+.jc span{ position:absolute; left:0; right:0; bottom:0; padding:14px 9px 6px;
+  font:700 10.5px/1.2 'Inter',system-ui,sans-serif; color:#fff;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  background:linear-gradient(180deg,rgba(6,16,40,0),rgba(6,16,40,.9) 62%) }
+.jc:hover{ transform:translateY(-2px); border-color:var(--bleu);
+  box-shadow:0 8px 22px rgba(27,95,224,.20) }
+@media (max-width:620px){ .jc{ flex-basis:148px } }
+
+/* ---- LA BANNIERE DU BAS ----
+   Les deux boutons sont PEINTS dans l'image. Plutot que d'en superposer de
+   nouveaux — qui ne s'aligneraient jamais a toutes les largeurs — on pose
+   deux zones cliquables INVISIBLES par-dessus les boutons peints. Leurs
+   bornes sont mesurees sur l'image : trente-six et demi a cinquante-deux pour
+   cent pour le premier, cinquante-trois et demi a soixante-neuf pour le
+   second. En pour cent, donc justes a toutes les tailles. */
+.bas-ban{ position:relative; display:block; border-radius:16px; overflow:hidden;
+  border:1px solid var(--bord); margin-top:16px }
+.bas-ban img{ display:block; width:100%; height:auto }
+.bas-ban a{ position:absolute; top:77.5%; height:11%; border-radius:8px;
+  pointer-events:auto; cursor:pointer }
+.bas-ban .b1{ left:36.0%; width:16.2% }
+.bas-ban .b2{ left:53.2%; width:16.4% }
+.bas-ban a:focus-visible{ outline:3px solid #fff; outline-offset:2px }
+
+/* La banniere du haut : la meme video que l'arcade, en pleine largeur. */
+.haut-film{ display:block; width:100%; aspect-ratio:1312/688; max-height:min(40vh,340px);
+  object-fit:cover; border-radius:16px; border:1px solid var(--bord);
+  background:var(--nuit); margin-bottom:14px }
+@media (prefers-reduced-motion:reduce){ .haut-film{ display:none } }
+
+/* ---- CE QUI RESTE DE L'ANCIENNE MISE EN PAGE ----
+   La colonne etroite bornait tout a six cent quatre-vingts pixels : posee dans
+   la coquille, elle laissait deux tiers de l'ecran vides a droite du plateau. */
+.wrap{ max-width:none; padding:0; }
+.c4wrap{ max-width:none; padding:0 0 22px; }
+main{ min-width:0; }
+/* ---- LA RANGEE DE CONNEXION TIENT SUR UNE LIGNE ----
+   Elle vient d une mise en page ou elle etait POSEE A COTE du plateau : hors
+   du flux en paysage, empilee en colonne, et libre de passer a la ligne. Rien
+   de tout cela n a de sens dans un en-tete : la colonne montait la barre a
+   cent cinquante pixels de haut et poussait le quatrieme chiffre hors du
+   cadre. Elle redevient une simple paire de boutons, dans le flux, qui ne se
+   casse pas — `flex:0 0 auto` pour qu elle garde sa largeur pendant que les
+   chiffres, eux, defilent. Vu au rendu : en lisant les regles on croyait la
+   colonne annulee, mais `flex-wrap:wrap` restait et suffisait a l empiler. */
+.connrow{ position:static !important; flex:0 0 auto;
+  flex-direction:row !important; flex-wrap:nowrap !important;
+  justify-content:flex-start !important; gap:8px; padding:0 !important; }
+/* Les deux boutons prennent la mesure des autres pages plutot que celle du
+   plateau : la meme paire y fait 12,5 px et 10/16 de marge. Ici ils etaient
+   restes en 16 px et 14/34 — la taille d un bouton de jeu, pas d en-tete. */
+.connrow .sw-b{ margin:0 !important; }
+
+/* ---- L EN-TETE SUR UN TELEPHONE : TROIS RANGEES, PAS QUATRE ----
+   La coquille sait deja passer les chiffres a la ligne sous six cent vingt
+   pixels. Mais cette page porte deux boutons de plus que le hall — la pastille
+   du solde et le bouton du menu — et le tas retombait en QUATRE rangees, avec
+   le bouton du menu tout seul sur la sienne et la pastille tronquee a « — »
+   parce qu elle etait la seule chose que le navigateur pouvait retrecir.
+   On decide donc l ordre au lieu de le subir : marque, solde et menu tiennent
+   la premiere rangee, la paire de connexion la deuxieme, les chiffres la
+   troisieme. Deux cent trente-cinq pixels d en-tete tombent a cent soixante,
+   la mesure du hall. */
+@media (max-width:620px){
+  .sw-haut{ row-gap:8px; }
+  .sw-marque{ order:1 }
+  nav.sb-ancre{ order:2; flex:0 0 auto; margin-left:auto }
+  .menubtn{ order:3 }
+  .connrow{ order:4; flex:1 1 100% !important; justify-content:center !important }
+  .sw-chiffres{ order:5 }
+}
+</style>
+<div class="pl-art"></div><div class="pl-box"><div class="pl-bar"><i></i></div><div class="pl-txt">Loading</div></div></div>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 
 
-<nav>
-  <a class="brand" href="index.html">$SWOGE <span>BET</span></a>
-  <span class="sp"></span>
-  <span class="chip"><span class="statusdot off" id="dot"></span><b id="bal">—</b> $SWOGE</span>
-  <button class="menubtn" id="menuBtn" aria-label="Menu">☰</button>
+<!-- ==================== L EN-TETE, CELUI DES DEUX AUTRES PAGES ====================
+     C etait une barre etroite heritee d une page de jeu. Elle devient l en-tete
+     de l accueil et du hall — meme marque, memes chiffres, memes boutons.
+
+     LES QUATRE IDENTIFIANTS SURVIVENT. `#dot`, `#bal`, `#menuBtn` et `#menu`
+     sont lus par le script de la page et par `stakebubble.js`, qui remonte
+     depuis `#bal` pour trouver la barre ou poser ses pastilles. Les renommer
+     ou les deplacer hors d une `<nav>` aurait casse le solde et le tiroir sans
+     qu aucune couleur ne bouge. On garde donc une `<nav>` DEDANS : elle ne
+     dessine plus rien, elle sert d ancre.
+     C est aussi pour ca que cet en-tete est le seul endroit du travail ou l on
+     n a pas simplement recopie celui de `games.html`. -->
+<header class="sw-haut">
+  <a class="sw-marque vif" href="nexus.html" id="gxMonde">
+    <span class="sw-patte">&#128062;</span>
+    <span><b>SWOGE</b><i>WORLD</i></span>
+  </a>
+  <div class="sw-chiffres" id="gxChiffres" hidden>
+    <div class="sw-ch"><span class="ic">&#128100;</span><span><small>PLAYERS</small><b data-n="joueurs">&mdash;</b></span></div>
+    <div class="sw-ch"><span class="ic">&#127922;</span><span><small>CASINO VOLUME</small><b data-n="volume">&mdash;</b></span></div>
+    <div class="sw-ch"><span class="ic">&#127918;</span><span><small>ROUNDS PLAYED</small><b data-n="manches">&mdash;</b></span></div>
+    <div class="sw-ch"><span class="ic">&#127942;</span><span><small>WINNINGS PAID</small><b data-n="rendus">&mdash;</b></span></div>
+  </div>
+  <nav class="sb-ancre">
+    <span class="chip"><span class="statusdot off" id="dot"></span><b id="bal">&mdash;</b> $SWOGE</span>
+  </nav>
+  <!-- ---- LA RANGEE DE CONNEXION ENTRE DANS L EN-TETE ----
+       Elle vivait sous la barre, et se collait en haut a droite au-dessus de
+       huit cent vingt pixels — un heritage de la mise en page du Connect 4, ou
+       le plateau avait besoin de la place. Elle passait alors PAR-DESSUS la
+       phrase de presentation. Ici elle est a sa place, comme sur les deux
+       autres pages. -->
+  <div class="connrow" id="connRow">
+    <button class="sw-b sw-b-vide vif" id="connectBtn">CONNECT WALLET</button>
+    <button class="sw-b sw-b-plein vif" id="emailBtn">SIGN UP &mdash; EMAIL</button>
+  </div>
+  <button class="menubtn vif" id="menuBtn" aria-label="Menu">&#9776;</button>
   <div class="menu" id="menu">
     <a href="#" id="mnSignIn">✉️ Sign in</a>
     <a href="#" data-panel="wallet">👛 My Wallet</a>
@@ -1221,15 +1936,61 @@ body.sb-dock main{ padding-bottom:150px; }
     <a href="#" id="soundItem">🔊 Sound: on</a>
     <a href="#" id="musicItem">🎵 Music: 1</a>
   </div>
-</nav>
+</header>
 
-<!-- connexion : une seule ligne compacte au-dessus du jeu (a droite du plateau sur PC) -->
-<div class="connrow" id="connRow">
-  <button class="connectbtn" id="connectBtn">Connect wallet</button>
-  <button class="connectbtn" id="emailBtn">✉️ Sign in with email</button>
-</div>
 
-<main>
+<div class="sw-corps">
+
+  <aside class="sw-cote">
+    <nav class="sw-nav">
+      <!-- ---- « HOME » MENE A L ACCUEIL ----
+           Il portait `href="#"` ET la marque de page courante, sur la page des
+           JEUX. Deux fautes d un coup : le seul lien qui ramene a l accueil ne
+           menait nulle part, et la colonne annoncait qu on etait a la maison
+           alors qu on etait au casino. Un menu qui se trompe sur l endroit ou
+           l on est apprend a ne plus le lire. -->
+      <a href="index.html" class="vif"><span class="ic">&#127968;</span>Home</a>
+      <a href="games.html" class="vif"><span class="ic">&#127920;</span>Casino</a>
+      <a href="swogebet.html" class="vif on"><span class="ic">&#9917;</span>Sports</a>
+      <!-- ---- QUATRE ENTREES SONT PARTIES ----
+           Arcade, Rewards, Leaderboard et $SWOGE ne menaient nulle part. Un
+           menu ou une entree sur deux ne repond pas n'apprend pas la patience
+           a celui qui clique : il lui apprend que le site est casse, et il
+           arrete d'essayer les autres. Elles reviendront quand leur page
+           existera — l'arcade la premiere, le jour ou la connexion du
+           portefeuille vit ici. -->
+      <a href="whitepaper.html" class="vif"><span class="ic">&#128220;</span>Docs</a>
+    </nav>
+    <!-- ---- LA PAIRE DE CONNEXION VIVAIT ICI AUSSI ----
+         Elle est partie. Elle doublait celle de la barre du haut, et la barre
+         est COLLANTE : les deux se voyaient donc ensemble, partout, quelle que
+         soit la position dans la page. Sur telephone la colonne se range sous
+         l en-tete, et l ecran ouvrait sur « CONNECT WALLET / SIGN UP — EMAIL »
+         puis, trois centimetres plus bas, « CONNECT WALLET / SIGN UP WITH
+         EMAIL ». Signale depuis un telephone, capture a l appui.
+         Deux appels identiques a l ecran en meme temps ne doublent pas les
+         chances qu on clique : ils font hesiter sur la difference entre les
+         deux, et il n y en a aucune — ce sont les memes gestionnaires.
+         La page portait deja ce constat pour l ADRESSE une fois connecte ; il
+         valait tout autant pour les boutons avant de l etre, c est-a-dire
+         exactement quand ils comptent. -->
+    <!-- ---- LES TROIS ADRESSES QUI EXISTENT ----
+         Elles sont reprises de l'ancienne page d'accueil, pas inventees : le
+         compte X, le canal Telegram, et la paire sur Dexscreener. Discord et
+         YouTube etaient deux icones de maquette qui ne menaient nulle part.
+         `rel="noopener"` avec `target="_blank"` : sans lui, la page ouverte
+         garde une prise sur celle-ci par `window.opener`. -->
+    <div class="sw-reseaux">
+      <a class="vif" href="https://x.com/SwoleDogeSwoge" target="_blank" rel="noopener"
+         title="X — @SwoleDogeSwoge">&#120143;</a>
+      <a class="vif" href="https://t.me/swoleswoge" target="_blank" rel="noopener"
+         title="Telegram — t.me/swoleswoge">&#9992;</a>
+      <a class="vif" href="https://dexscreener.com/robinhood/0x2dc0fb72d9284228046cc95910eeaabebfe48456"
+         target="_blank" rel="noopener" title="Dexscreener — $SWOGE chart">&#128200;</a>
+    </div>
+  </aside>
+
+  <main class="sb-plat">
 
   <div class="wrap c4wrap">
     <h1 class="c4-titre">SWOGE <span>BET</span></h1>
@@ -1306,13 +2067,14 @@ body.sb-dock main{ padding-bottom:150px; }
 
 
   <footer><a href="games.html">← Back to the SWOGE Arcade</a></footer>
-</main>
+  </main>
+</div>
 
 <!-- account pop-ups (same shared balance as the Pusher) -->
 <div class="ovl" id="ovl">
   <div class="box" id="box-dep">
     <div class="pscroll">
-    <div class="ptitle pt-deposit"></div>
+    <div class="ptitle pt-deposit">Deposit</div>
     <div class="note2">In your wallet: <b id="depSwoge">…</b> $SWOGE · <b id="depEth">…</b> ETH (RH)</div>
     <label>Amount</label>
     <input id="depAmt" inputmode="decimal" placeholder="e.g. 100" value="100">
@@ -1325,7 +2087,7 @@ body.sb-dock main{ padding-bottom:150px; }
   </div>
   <div class="box" id="box-wd">
     <div class="pscroll">
-    <div class="ptitle pt-withdraw"></div>
+    <div class="ptitle pt-withdraw">Withdraw</div>
     <div class="note2">Game balance: <b id="wdBal">…</b> $SWOGE · min <b id="wdMin">50</b></div>
     <label>Amount</label>
     <input id="wdAmt" inputmode="decimal" placeholder="e.g. 50">
@@ -1339,7 +2101,7 @@ body.sb-dock main{ padding-bottom:150px; }
   </div>
   <div class="box" id="box-wallet">
     <div class="pscroll">
-    <div class="wtitle-plate"></div>
+    <div class="wtitle-plate">My Wallet</div>
     <label>Your address</label>
     <input id="acAddr" readonly style="width:100%">
     <button class="abtn wbtn wb-copy" id="acCopy" style="margin-top:8px">Copy</button>
@@ -1353,7 +2115,7 @@ body.sb-dock main{ padding-bottom:150px; }
   </div>
   <div class="box" id="box-stake">
     <div class="pscroll">
-    <div class="ptitle pt-stake"></div>
+    <div class="ptitle pt-stake">Staking</div>
     <div class="note2" id="stApr">100% APR · yield every second</div>
     <div class="strow"><span>Staked</span><b id="stStaked">0</b></div>
     <div class="strow"><span>Pending yield</span><b id="stPending" style="color:#7CFF9B">0</b></div>
@@ -1371,7 +2133,7 @@ body.sb-dock main{ padding-bottom:150px; }
   </div>
   <div class="box" id="box-quests">
     <div class="qscroll">
-    <div class="qtitle"></div>
+    <div class="qtitle">Daily Quests</div>
     <!-- Rewarded video (Adsgram) -->
     <div class="bcard" id="adCard">
       <div class="tbanner tb-watch"></div>
@@ -1415,7 +2177,7 @@ body.sb-dock main{ padding-bottom:150px; }
   </div>
   <div class="box" id="box-email">
     <div class="pscroll">
-    <div class="ptitle pt-email"></div>
+    <div class="ptitle pt-email">Sign in with email</div>
     <div class="note2" id="emMsg">A wallet is created for you automatically — no app needed.</div>
     <label>Email</label>
     <input id="emEmail" type="email" inputmode="email" placeholder="your@email.com">

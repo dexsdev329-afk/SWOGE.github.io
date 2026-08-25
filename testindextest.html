@@ -1,0 +1,602 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>SWOGE WORLD</title>
+<!--
+  ================== UNE BASE, ET RIEN QUE LA BASE ==================
+
+  Cette page reproduit la maquette envoyee en photo : la mise en page, les
+  blocs, les images. Les TEXTES et les CHIFFRES sont ceux de la maquette, donc
+  faux — cent vingt-huit mille joueurs, vingt-quatre millions mises, un prix du
+  jeton. Ils sont ici pour tenir la place, pas pour etre lus.
+
+  RIEN N'EST BRANCHE. Aucun appel au serveur, aucune socket, aucun portefeuille.
+  Un bouton « Connect Wallet » qui ne connecte rien vaut mieux qu'un bouton qui
+  connecte a moitie : on voit tout de suite ce qui reste a faire.
+
+  Tout tient dans CE fichier — style compris. Une base se deplace, se duplique
+  et se jette ; trois fichiers a garder ensemble pour ca, ce serait trois
+  occasions d'en oublier un.
+-->
+<style>
+:root{
+  /* La maquette tient sur six couleurs. Les nommer ici plutot que de les
+     repeter trente fois est ce qui permettra de la reteinter en une minute
+     quand les couleurs definitives arriveront. */
+  --fond:#EEF3FB; --carte:#FFFFFF; --bord:#E1E9F6;
+  --nuit:#0A1F44; --nuit2:#123468;
+  --bleu:#1B5FE0; --bleu-clair:#EAF1FF;
+  --or:#F5B301;
+  --texte:#0B1B36; --gris:#6B7C99;
+  --vert:#12A150; --rouge:#E0443E;
+  --rayon:14px;
+  --ombre:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--fond); color:var(--texte);
+  font:400 14px/1.45 'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+img{display:block;max-width:100%}
+button{font:inherit;cursor:pointer;border:0;background:none;color:inherit}
+a{color:inherit;text-decoration:none}
+
+/* ---------------------------------------------------------- LE BANDEAU HAUT */
+.sw-haut{
+  display:flex; align-items:center; gap:14px; padding:10px 16px;
+  background:var(--carte); border-bottom:1px solid var(--bord);
+  position:sticky; top:0; z-index:30;
+}
+.sw-marque{display:flex; align-items:center; gap:9px; flex:0 0 auto}
+.sw-patte{
+  width:34px;height:34px;border-radius:10px;background:var(--bleu-clair);
+  display:grid;place-items:center;font-size:19px;
+}
+.sw-marque b{display:block;font:800 17px/1 'Inter',system-ui,sans-serif;letter-spacing:.4px;color:var(--bleu)}
+.sw-marque i{display:block;font:700 9.5px/1.4 'Inter',system-ui,sans-serif;font-style:normal;
+  letter-spacing:2.6px;color:var(--gris)}
+
+/* Les quatre chiffres du haut. Ils DEFILENT quand la fenetre retrecit plutot
+   que de passer a la ligne : une rangee qui se casse en deux pousse tout le
+   reste du bandeau vers le bas et fait sauter la page a chaque redimension. */
+.sw-chiffres{
+  flex:1 1 auto; min-width:0; display:flex; gap:8px; overflow-x:auto;
+  padding:8px 10px; background:var(--fond); border:1px solid var(--bord);
+  border-radius:12px; scrollbar-width:none;
+}
+.sw-chiffres::-webkit-scrollbar{display:none}
+.sw-ch{display:flex;align-items:center;gap:8px;padding:0 12px;flex:0 0 auto}
+.sw-ch+.sw-ch{border-left:1px solid var(--bord)}
+.sw-ch .ic{width:26px;height:26px;border-radius:8px;background:var(--bleu-clair);
+  display:grid;place-items:center;font-size:13px}
+.sw-ch small{display:block;font:700 9px/1 'Inter',system-ui,sans-serif;letter-spacing:.9px;color:var(--gris)}
+.sw-ch b{display:block;font:800 14px/1.3 'Inter',system-ui,sans-serif}
+
+.sw-b{
+  padding:10px 16px;border-radius:10px;
+  font:700 12.5px/1 'Inter',system-ui,sans-serif;letter-spacing:.3px;white-space:nowrap;
+}
+.sw-b-plein{background:var(--bleu);color:#fff}
+.sw-b-plein:hover{background:#1750c4}
+.sw-b-vide{background:var(--carte);color:var(--bleu);border:1.5px solid var(--bleu)}
+.sw-b-vide:hover{background:var(--bleu-clair)}
+.sw-b-or{background:var(--or);color:#3A2B00}
+.sw-b-nuit{background:var(--nuit);color:#fff}
+.sw-avatar{
+  width:38px;height:38px;border-radius:11px;border:1px solid var(--bord);
+  background:var(--fond);display:grid;place-items:center;font-size:16px;flex:0 0 auto;
+}
+
+/* ------------------------------------------------------------ LA COLONNE DE GAUCHE */
+.sw-corps{display:flex; align-items:flex-start; gap:14px; padding:14px; max-width:1680px; margin:0 auto}
+.sw-cote{
+  flex:0 0 208px; position:sticky; top:74px;
+  display:flex; flex-direction:column; gap:12px;
+}
+.sw-nav{background:var(--carte);border:1px solid var(--bord);border-radius:var(--rayon);
+  padding:8px; box-shadow:var(--ombre)}
+.sw-nav a{
+  display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:10px;
+  font:600 13.5px/1 'Inter',system-ui,sans-serif;color:var(--texte);
+}
+.sw-nav a .ic{width:20px;text-align:center;font-size:15px;opacity:.75}
+.sw-nav a:hover{background:var(--fond)}
+.sw-nav a.on{background:var(--bleu-clair);color:var(--bleu)}
+.sw-nav a.on .ic{opacity:1}
+.sw-cote .sw-b{width:100%;padding:13px 16px;font-size:13px}
+.sw-reseaux{display:flex;gap:8px;justify-content:center;padding-top:4px}
+.sw-reseaux a{
+  width:34px;height:34px;border-radius:10px;background:var(--carte);border:1px solid var(--bord);
+  display:grid;place-items:center;font-size:14px;color:var(--gris);
+}
+.sw-reseaux a:hover{color:var(--bleu);border-color:var(--bleu)}
+
+/* ------------------------------------------------------------------ LE PLATEAU */
+.sw-plat{flex:1 1 auto;min-width:0;display:grid;grid-template-columns:minmax(0,1.62fr) minmax(0,1fr);gap:14px}
+.sw-col{display:flex;flex-direction:column;gap:14px;min-width:0}
+.carte{background:var(--carte);border:1px solid var(--bord);border-radius:var(--rayon);
+  box-shadow:var(--ombre);overflow:hidden}
+.carte-p{padding:15px 16px}
+.tete{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.tete h3{margin:0;font:800 15px/1 'Inter',system-ui,sans-serif;color:var(--nuit);letter-spacing:.2px}
+.tete a{font:700 10.5px/1 'Inter',system-ui,sans-serif;letter-spacing:.9px;color:var(--bleu)}
+
+/* ---- LA BANNIERE ---- */
+/* ---- LA HAUTEUR DE LA BANNIERE EQUILIBRE LES DEUX COLONNES ----
+   La colonne de droite porte cinq blocs, celle de gauche quatre : a hauteur
+   egale de banniere, la gauche s'arretait trois cents pixels plus haut et
+   laissait un trou blanc sous le classement. C'est la banniere qui rattrape,
+   parce que c'est le seul bloc dont la hauteur ne dit rien d'autre qu'elle-
+   meme — grandir une carte de chiffres aurait fait croire a un chiffre de
+   plus. */
+.heros{position:relative;border-radius:var(--rayon);overflow:hidden;min-height:330px;
+  display:flex;align-items:center;border:1px solid var(--bord)}
+.heros img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.heros .voile{position:absolute;inset:0;
+  background:linear-gradient(100deg,rgba(6,20,46,.92) 0%,rgba(6,20,46,.72) 34%,rgba(6,20,46,.06) 62%,rgba(6,20,46,0) 100%)}
+.heros .dit{position:relative;padding:30px 28px;max-width:60%}
+.heros small{display:block;font:800 11px/1 'Inter',system-ui,sans-serif;letter-spacing:2.4px;
+  color:rgba(255,255,255,.82);margin-bottom:8px}
+.heros h1{margin:0 0 12px;font:900 50px/.94 'Inter',system-ui,sans-serif;color:#fff;letter-spacing:-1.4px}
+.heros p{margin:0 0 18px;font:600 12.5px/1.55 'Inter',system-ui,sans-serif;
+  letter-spacing:1.1px;color:rgba(255,255,255,.86);text-transform:uppercase}
+
+/* ---- LES QUATRE UNIVERS ---- */
+.univers{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.uni{position:relative;border-radius:var(--rayon);overflow:hidden;min-height:258px;
+  display:flex;flex-direction:column;justify-content:flex-end;background:var(--nuit)}
+.uni img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center top}
+.uni .voile{position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(8,24,58,0) 34%,rgba(8,24,58,.88) 74%,rgba(8,24,58,.97) 100%)}
+.uni .dit{position:relative;padding:14px;text-align:center}
+.uni b{display:block;font:900 20px/1 'Inter',system-ui,sans-serif;color:#fff;letter-spacing:.4px}
+.uni i{display:block;font-style:normal;font:600 11px/1.4 'Inter',system-ui,sans-serif;
+  color:rgba(255,255,255,.76);margin:5px 0 11px}
+.uni .sw-b{width:100%;background:rgba(255,255,255,.94);color:var(--nuit)}
+
+/* ---- L ECONOMIE ET LE NIVEAU ---- */
+.duo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+/* Seize pixels et non dix : a dix, « 1,000,000,000 » et « 412,586,390 » se
+   suivaient sans respirer et se lisaient comme un seul nombre. */
+.eco{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;text-align:center}
+.eco div small{display:block;font:700 8.5px/1.3 'Inter',system-ui,sans-serif;letter-spacing:.7px;color:var(--gris)}
+/* ---- LES CHIFFRES SE CHEVAUCHAIENT ----
+   « 1,000,000,000 » et « 412,586,390 » se touchaient dans leurs colonnes. La
+   police declaree est Inter, mais elle n'est CHARGEE nulle part : la page
+   retombe sur celle du systeme, dont les chiffres gras sont plus larges — et
+   la mise en page calee sur Inter deborde chez tout le monde sauf chez celui
+   qui l'a installee. On ne compte donc sur aucune police : chiffres a chasse
+   fixe, taille reduite, et la colonne peut retrecir. Vu au rendu. */
+.eco div b{display:block;font:800 12px/1.35 'Inter',system-ui,sans-serif;color:var(--nuit);
+  font-variant-numeric:tabular-nums;letter-spacing:-.2px;white-space:nowrap}
+.eco div{min-width:0}
+.eco div i{display:block;font-style:normal;font:600 9px/1.3 'Inter',system-ui,sans-serif;color:var(--gris)}
+.niveau{position:relative;min-height:172px;display:flex;align-items:center;background:var(--nuit)}
+.niveau img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:right center}
+.niveau .voile{position:absolute;inset:0;
+  background:linear-gradient(90deg,rgba(8,24,58,.95) 0%,rgba(8,24,58,.78) 46%,rgba(8,24,58,.1) 100%)}
+.niveau .dit{position:relative;padding:16px}
+.niveau small{display:block;font:800 10px/1 'Inter',system-ui,sans-serif;letter-spacing:1.4px;
+  color:rgba(255,255,255,.72)}
+.niveau b{display:block;font:900 30px/1.1 'Inter',system-ui,sans-serif;color:#fff;font-style:italic}
+.jauge{height:7px;border-radius:99px;background:rgba(255,255,255,.22);margin:10px 0 7px;max-width:200px}
+.jauge i{display:block;height:100%;width:62%;border-radius:99px;background:#fff}
+.niveau em{font-style:normal;font:700 9.5px/1 'Inter',system-ui,sans-serif;letter-spacing:1.2px;
+  color:rgba(255,255,255,.72)}
+
+/* ---- LE CLASSEMENT ET LA COURSE ---- */
+.rang{display:flex;align-items:center;gap:11px;padding:9px 0}
+.rang+.rang{border-top:1px solid var(--bord)}
+.rang .no{font:900 15px/1 'Inter',system-ui,sans-serif;color:var(--gris);width:22px}
+.rang img{width:34px;height:34px;border-radius:10px;object-fit:cover;flex:0 0 auto}
+.rang .qui{flex:1 1 auto;min-width:0}
+.rang .qui b{display:block;font:700 13px/1.25 'Inter',system-ui,sans-serif;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rang .qui small{display:block;font:800 8.5px/1.3 'Inter',system-ui,sans-serif;letter-spacing:1px;color:var(--bleu)}
+.rang .xp{font:700 11.5px/1 'Inter',system-ui,sans-serif;color:var(--gris)}
+.course{position:relative;min-height:172px;display:flex;align-items:center;background:var(--nuit)}
+.course img{position:absolute;right:0;top:0;height:100%;width:52%;object-fit:cover}
+.course .voile{position:absolute;inset:0;
+  background:linear-gradient(90deg,rgba(8,24,58,.96) 0%,rgba(8,24,58,.8) 50%,rgba(8,24,58,.12) 100%)}
+.course .dit{position:relative;padding:16px}
+.course b{display:block;font:900 34px/1 'Inter',system-ui,sans-serif;color:#fff}
+
+/* ------------------------------------------------------- LA COLONNE DE DROITE */
+.bonus{position:relative;min-height:158px;display:flex;align-items:center;background:var(--nuit)}
+.bonus img{position:absolute;right:0;top:0;height:100%;width:56%;object-fit:cover}
+.bonus .voile{position:absolute;inset:0;
+  background:linear-gradient(90deg,rgba(8,24,58,.96) 0%,rgba(8,24,58,.8) 46%,rgba(8,24,58,.08) 100%)}
+.bonus .dit{position:relative;padding:16px;max-width:70%}
+.bonus small{display:block;font:800 10px/1 'Inter',system-ui,sans-serif;letter-spacing:1.5px;
+  color:rgba(255,255,255,.74);margin-bottom:6px}
+.bonus b{display:block;font:900 21px/1.2 'Inter',system-ui,sans-serif;color:#fff;margin-bottom:12px}
+
+.jeux{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px}
+.jeu{position:relative;border-radius:11px;overflow:hidden;aspect-ratio:1/1;background:var(--nuit)}
+.jeu img{width:100%;height:100%;object-fit:cover;transition:transform .18s}
+.jeu:hover img{transform:scale(1.06)}
+
+/* ---- LES SPORTS ---- */
+.onglets{display:flex;gap:6px;overflow-x:auto;padding-bottom:9px;margin-bottom:9px;
+  border-bottom:1px solid var(--bord);scrollbar-width:none}
+.onglets::-webkit-scrollbar{display:none}
+.onglets button{
+  flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:4px;
+  padding:7px 11px;border-radius:10px;font:700 9.5px/1 'Inter',system-ui,sans-serif;color:var(--gris);
+}
+.onglets button .ic{font-size:14px}
+.onglets button.on{background:var(--bleu-clair);color:var(--bleu)}
+.match{padding:10px 0}
+.match+.match{border-top:1px solid var(--bord)}
+.match .ligue{font:700 9px/1 'Inter',system-ui,sans-serif;letter-spacing:.8px;color:var(--gris);margin-bottom:7px}
+.match .duel{display:flex;align-items:center;gap:9px;margin-bottom:8px}
+.match .eq{display:flex;align-items:center;gap:7px;flex:1 1 0;min-width:0}
+.match .eq span{width:22px;height:22px;border-radius:7px;background:var(--fond);
+  display:grid;place-items:center;font-size:11px;flex:0 0 auto}
+.match .eq b{font:700 12.5px/1.2 'Inter',system-ui,sans-serif;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.match .eq.d{justify-content:flex-end;text-align:right}
+.match .sc{font:800 13px/1 'Inter',system-ui,sans-serif;color:var(--nuit);flex:0 0 auto}
+.match .live{font:800 9px/1 'Inter',system-ui,sans-serif;letter-spacing:.8px;color:var(--rouge);flex:0 0 auto}
+.cotes{display:flex;gap:6px}
+.cotes button{flex:1 1 0;min-width:0;display:flex;align-items:center;justify-content:space-between;
+  gap:6px;padding:9px 10px;border-radius:9px;background:var(--fond);border:1px solid var(--bord);
+  font:700 12px/1 'Inter',system-ui,sans-serif}
+.cotes button small{color:var(--gris);font-weight:700}
+.cotes button:hover,.cotes button.on{background:var(--bleu-clair);border-color:var(--bleu);color:var(--bleu)}
+.cotes .plus{flex:0 0 auto;background:none;border:0;color:var(--gris);font-weight:700}
+
+/* ---- LE BULLETIN ---- */
+.bul-bas{display:flex;gap:6px;background:var(--fond);border-radius:10px;padding:4px;margin-bottom:12px}
+.bul-bas button{flex:1 1 0;padding:8px;border-radius:8px;font:700 11.5px/1 'Inter',system-ui,sans-serif;color:var(--gris)}
+.bul-bas button.on{background:var(--carte);color:var(--texte);box-shadow:var(--ombre)}
+.bul-l{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:9px 0}
+.bul-l b{font:700 12.5px/1.3 'Inter',system-ui,sans-serif}
+.bul-l small{display:block;font:600 10.5px/1.3 'Inter',system-ui,sans-serif;color:var(--gris)}
+.bul-l .c{font:800 13px/1 'Inter',system-ui,sans-serif;color:var(--nuit)}
+.mise{display:flex;align-items:center;gap:8px;padding:10px 12px;margin:8px 0;
+  background:var(--fond);border:1px solid var(--bord);border-radius:10px}
+.mise input{flex:1 1 auto;min-width:0;border:0;background:none;outline:none;
+  font:800 15px/1 'Inter',system-ui,sans-serif;color:var(--texte)}
+.mise span{font:700 11px/1 'Inter',system-ui,sans-serif;color:var(--gris);white-space:nowrap}
+.bul-tot{display:flex;justify-content:space-between;align-items:baseline;
+  padding:9px 0 13px;border-top:1px solid var(--bord)}
+.bul-tot small{font:600 11px/1 'Inter',system-ui,sans-serif;color:var(--gris)}
+.bul-tot b{font:800 14px/1 'Inter',system-ui,sans-serif;color:var(--nuit)}
+
+/* ------------------------------------------------------------------- LE PIED */
+.sw-bas{max-width:1680px;margin:0 auto;padding:6px 14px 22px}
+.promesses{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;
+  background:var(--carte);border:1px solid var(--bord);border-radius:var(--rayon);
+  padding:16px;box-shadow:var(--ombre)}
+.pro{display:flex;gap:11px;align-items:flex-start}
+.pro .ic{width:32px;height:32px;border-radius:10px;background:var(--bleu-clair);
+  display:grid;place-items:center;font-size:15px;flex:0 0 auto}
+.pro b{display:block;font:800 11.5px/1.3 'Inter',system-ui,sans-serif;letter-spacing:.5px}
+.pro small{display:block;font:500 11px/1.45 'Inter',system-ui,sans-serif;color:var(--gris)}
+
+/* ------------------------------------------------- CE QUI PLIE, ET DANS QUEL ORDRE
+   La colonne de droite passe SOUS le plateau avant que la barre laterale ne
+   parte : c'est elle qui porte le bulletin et les jeux, et les serrer a moins
+   de trois cents pixels les rend illisibles bien avant que la navigation ne
+   gene. */
+@media (max-width:1240px){
+  .sw-plat{grid-template-columns:minmax(0,1fr)}
+  .jeux{grid-template-columns:repeat(5,minmax(0,1fr))}
+}
+@media (max-width:980px){
+  .sw-corps{flex-direction:column;padding:12px}
+  .sw-cote{position:static;flex:1 1 auto;width:100%;flex-direction:row;flex-wrap:wrap;align-items:center}
+  .sw-nav{flex:1 1 100%;display:flex;overflow-x:auto;scrollbar-width:none}
+  .sw-nav a{flex:0 0 auto}
+  .sw-cote .sw-b{width:auto;flex:1 1 auto}
+  .sw-reseaux{padding-top:0}
+  .univers{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .duo{grid-template-columns:minmax(0,1fr)}
+  .promesses{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .heros h1{font-size:34px}
+  .heros .dit{max-width:78%}
+}
+@media (max-width:620px){
+  .sw-haut{flex-wrap:wrap}
+  .sw-chiffres{order:3;flex:1 1 100%}
+  .jeux{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .univers{grid-template-columns:minmax(0,1fr)}
+  .promesses{grid-template-columns:minmax(0,1fr)}
+  .eco{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .heros h1{font-size:28px}
+  .heros .dit{max-width:100%}
+}
+</style>
+</head>
+<body>
+
+<header class="sw-haut">
+  <a class="sw-marque" href="#">
+    <span class="sw-patte">&#128062;</span>
+    <span><b>SWOGE</b><i>WORLD</i></span>
+  </a>
+  <div class="sw-chiffres">
+    <div class="sw-ch"><span class="ic">&#128100;</span><span><small>PLAYERS</small><b>128K+</b></span></div>
+    <div class="sw-ch"><span class="ic">&#127922;</span><span><small>TOTAL WAGERED</small><b>$24.8M+</b></span></div>
+    <div class="sw-ch"><span class="ic">&#127918;</span><span><small>GAMES</small><b>1,284+</b></span></div>
+    <div class="sw-ch"><span class="ic">&#127942;</span><span><small>WINNINGS PAID</small><b>$5.7M+</b></span></div>
+  </div>
+  <button class="sw-b sw-b-vide">CONNECT WALLET</button>
+  <button class="sw-b sw-b-plein">PLAY NOW</button>
+  <div class="sw-avatar">&#128100;</div>
+</header>
+
+<div class="sw-corps">
+
+  <aside class="sw-cote">
+    <nav class="sw-nav">
+      <a href="#" class="on"><span class="ic">&#127968;</span>Home</a>
+      <a href="#"><span class="ic">&#127920;</span>Casino</a>
+      <a href="#"><span class="ic">&#9917;</span>Sports</a>
+      <a href="#"><span class="ic">&#127918;</span>Arcade</a>
+      <a href="#"><span class="ic">&#127873;</span>Rewards</a>
+      <a href="#"><span class="ic">&#128202;</span>Leaderboard</a>
+      <a href="#"><span class="ic">&#128176;</span>$SWOGE</a>
+      <a href="#"><span class="ic">&#128220;</span>Docs</a>
+    </nav>
+    <button class="sw-b sw-b-plein">CONNECT WALLET</button>
+    <button class="sw-b sw-b-vide">PLAY NOW</button>
+    <div class="sw-reseaux">
+      <a href="#" title="X">&#120143;</a><a href="#" title="Telegram">&#9992;</a>
+      <a href="#" title="Discord">&#128172;</a><a href="#" title="YouTube">&#9654;</a>
+    </div>
+  </aside>
+
+  <main class="sw-plat">
+
+    <!-- ============================ LA COLONNE LARGE ============================ -->
+    <div class="sw-col">
+
+      <section class="heros">
+        <img src="img/site/monde.webp" alt="">
+        <div class="voile"></div>
+        <div class="dit">
+          <small>WELCOME TO</small>
+          <h1>SWOGE<br>WORLD</h1>
+          <p>One token. One world.<br>Infinite ways to play.</p>
+          <button class="sw-b sw-b-plein">ENTER SWOGE WORLD &nbsp;&rarr;</button>
+        </div>
+      </section>
+
+      <section class="univers">
+        <article class="uni">
+          <img src="img/site/doge_casino.webp" alt=""><div class="voile"></div>
+          <div class="dit"><b>CASINO</b><i>Spin. Bet. Win.</i>
+            <button class="sw-b">EXPLORE</button></div>
+        </article>
+        <article class="uni">
+          <img src="img/site/doge_sport.webp" alt=""><div class="voile"></div>
+          <div class="dit"><b>SPORTS</b><i>Back Your Team.</i>
+            <button class="sw-b">BET NOW</button></div>
+        </article>
+        <article class="uni">
+          <img src="img/site/doge_arcade.webp" alt=""><div class="voile"></div>
+          <div class="dit"><b>ARCADE</b><i>Play. Compete. Earn.</i>
+            <button class="sw-b">PLAY NOW</button></div>
+        </article>
+        <article class="uni">
+          <img src="img/site/doge_roi.webp" alt=""><div class="voile"></div>
+          <div class="dit"><b>REWARDS</b><i>Play More. Unlock More.</i>
+            <button class="sw-b">VIEW REWARDS</button></div>
+        </article>
+      </section>
+
+      <section class="duo">
+        <div class="carte carte-p">
+          <div class="tete"><h3>THE $SWOGE ECONOMY</h3></div>
+          <div class="eco">
+            <div><small>TOTAL SUPPLY</small><b>1,000,000,000</b><i>$SWOGE</i></div>
+            <div><small>BURNED</small><b>412,586,390</b><i>$SWOGE</i></div>
+            <div><small>STAKING APY</small><b>68.4%</b><i>CURRENT APY</i></div>
+            <div><small>HOLDERS</small><b>28,741</b><i>AND GROWING</i></div>
+          </div>
+          <div style="margin-top:13px"><a href="#" style="font:700 11px/1 'Inter',system-ui,sans-serif;letter-spacing:.8px;color:var(--bleu)">VIEW TOKENOMICS &nbsp;&rarr;</a></div>
+        </div>
+        <div class="carte niveau">
+          <img src="img/site/doge_muscle.webp" alt=""><div class="voile"></div>
+          <div class="dit">
+            <small>YOUR SWOGE LEVEL</small>
+            <b>BEAST</b>
+            <div class="jauge"><i></i></div>
+            <em>NEXT LEVEL: ALPHA</em>
+          </div>
+        </div>
+      </section>
+
+      <section class="duo">
+        <div class="carte carte-p">
+          <div class="tete"><h3>SWOGE WORLD LEADERBOARD</h3><a href="#">VIEW ALL</a></div>
+          <div class="rang"><span class="no">01</span><img src="img/site/doge_roi.webp" alt="">
+            <span class="qui"><b>SwogeKing</b><small>LEGEND</small></span><span class="xp">984,200 XP</span></div>
+          <div class="rang"><span class="no">02</span><img src="img/site/doge_arcade.webp" alt="">
+            <span class="qui"><b>DogeLord</b><small>ALPHA</small></span><span class="xp">821,300 XP</span></div>
+          <div class="rang"><span class="no">03</span><img src="img/site/doge_casino.webp" alt="">
+            <span class="qui"><b>FlonDoge</b><small>GAMMA</small></span><span class="xp">774,250 XP</span></div>
+        </div>
+        <div class="carte course">
+          <img src="img/site/trophee.webp" alt=""><div class="voile"></div>
+          <div class="dit">
+            <small style="display:block;font:800 11px/1 'Inter',system-ui,sans-serif;letter-spacing:1.4px;color:rgba(255,255,255,.74);margin-bottom:8px">WEEKLY SWOGE RACE</small>
+            <b>$50,000</b>
+            <em style="font-style:normal;font:700 9.5px/1 'Inter',system-ui,sans-serif;letter-spacing:1.2px;color:rgba(255,255,255,.72)">REWARD POOL</em>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- ============================ LA COLONNE ETROITE ============================ -->
+    <div class="sw-col">
+
+      <section class="carte bonus">
+        <img src="img/site/doge_roulette.webp" alt=""><div class="voile"></div>
+        <div class="dit">
+          <small>WELCOME BONUS</small>
+          <b>100% UP TO<br>5,000 $SWOGE</b>
+          <button class="sw-b sw-b-plein">CLAIM BONUS</button>
+        </div>
+      </section>
+
+      <section class="carte carte-p">
+        <div class="tete"><h3>FEATURED GAMES</h3><a href="#">VIEW ALL</a></div>
+        <div class="jeux">
+          <a class="jeu" href="#"><img src="img/site/jeu_bonanza.webp" alt="Sweet Bonanza"></a>
+          <a class="jeu" href="#"><img src="img/site/jeu_olympus.webp" alt="Gates of Olympus"></a>
+          <a class="jeu" href="#"><img src="img/site/jeu_bigbass.webp" alt="Big Bass Bonanza"></a>
+          <a class="jeu" href="#"><img src="img/site/jeu_wanted.webp" alt="Wanted"></a>
+          <a class="jeu" href="#"><img src="img/site/jeu_sugarrush.webp" alt="Sugar Rush"></a>
+          <a class="jeu" href="#"><img src="img/site/jeu_roulette.webp" alt="Roulette Live"></a>
+          <a class="jeu" href="#"><img src="img/site/jeu_blackjack.webp" alt="Blackjack Live"></a>
+          <a class="jeu" href="#"><img src="img/site/jeu_poker.webp" alt="Swoge Poker"></a>
+          <a class="jeu" href="#"><img src="img/site/jeu_crazytime.webp" alt="Crazy Time"></a>
+          <a class="jeu" href="#"><img src="img/site/doge_smoking.webp" alt="Plinko"></a>
+        </div>
+      </section>
+
+      <section class="carte carte-p">
+        <div class="tete"><h3>SWOGE SPORTS</h3>
+          <a href="#" style="color:var(--gris);letter-spacing:0;font-weight:600;text-transform:none">Bet on your passion.</a></div>
+        <div class="onglets" data-groupe="sports">
+          <button class="on"><span class="ic">&#11088;</span>Live Now</button>
+          <button><span class="ic">&#9917;</span>Football</button>
+          <button><span class="ic">&#127936;</span>Basketball</button>
+          <button><span class="ic">&#127934;</span>Tennis</button>
+          <button><span class="ic">&#129354;</span>MMA</button>
+          <button><span class="ic">&#9878;</span>All Sports</button>
+        </div>
+
+        <div class="match">
+          <div class="ligue">FOOTBALL &middot; UEFA CHAMPIONS LEAGUE</div>
+          <div class="duel">
+            <span class="eq"><span>&#127463;</span><b>Manchester City</b></span>
+            <span class="sc">2 &ndash; 1</span>
+            <span class="eq d"><b>Liverpool</b><span>&#128014;</span></span>
+            <span class="live">LIVE</span>
+          </div>
+          <div class="cotes">
+            <button class="on">1 <small>2.10</small></button>
+            <button>X <small>3.40</small></button>
+            <button>2 <small>3.20</small></button>
+            <span class="plus">+128</span>
+          </div>
+        </div>
+
+        <div class="match">
+          <div class="ligue">BASKETBALL &middot; NBA</div>
+          <div class="duel">
+            <span class="eq"><span>&#128293;</span><b>Lakers</b></span>
+            <span class="sc">&ndash;</span>
+            <span class="eq d"><b>Warriors</b><span>&#127744;</span></span>
+            <span class="live">LIVE</span>
+          </div>
+          <div class="cotes">
+            <button>1 <small>1.85</small></button>
+            <button>2 <small>1.95</small></button>
+            <span class="plus">+96</span>
+          </div>
+        </div>
+
+        <div class="match">
+          <div class="ligue">TENNIS &middot; ATP</div>
+          <div class="duel">
+            <span class="eq"><span>&#127907;</span><b>Novak Djokovic</b></span>
+            <span class="sc">&ndash;</span>
+            <span class="eq d"><b>Carlos Alcaraz</b><span>&#127942;</span></span>
+            <span class="live">LIVE</span>
+          </div>
+          <div class="cotes">
+            <button>1 <small>1.62</small></button>
+            <button>2 <small>2.30</small></button>
+            <span class="plus">+72</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="carte carte-p">
+        <div class="tete"><h3>BET SLIP</h3></div>
+        <div class="bul-bas" data-groupe="bulletin">
+          <button class="on">Single</button><button>Multi</button><button>System</button>
+        </div>
+        <div class="bul-l">
+          <span><b>Manchester City</b><small>To Win</small></span>
+          <span class="c">2.10</span>
+        </div>
+        <div class="mise">
+          <input type="text" inputmode="decimal" value="100" aria-label="Stake">
+          <span>&#128176; $SWOGE</span>
+        </div>
+        <div class="bul-tot"><small>Potential Payout</small><b>210 $SWOGE</b></div>
+        <button class="sw-b sw-b-plein" style="width:100%;padding:14px">PLACE BET</button>
+      </section>
+
+      <section class="carte bonus">
+        <img src="img/site/doge_ballon.webp" alt=""><div class="voile"></div>
+        <div class="dit">
+          <small>SPORTS WELCOME BONUS</small>
+          <b>100% UP TO<br>2,500 $SWOGE</b>
+          <button class="sw-b sw-b-plein">CLAIM BONUS</button>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<footer class="sw-bas">
+  <div class="promesses">
+    <div class="pro"><span class="ic">&#128737;</span><span><b>SAFE &amp; SECURE</b>
+      <small>Provably fair games &amp; secure transactions</small></span></div>
+    <div class="pro"><span class="ic">&#9889;</span><span><b>INSTANT PAYOUTS</b>
+      <small>Fastest withdrawals in crypto</small></span></div>
+    <div class="pro"><span class="ic">&#127911;</span><span><b>24/7 SUPPORT</b>
+      <small>We&rsquo;re here for you anytime</small></span></div>
+    <div class="pro"><span class="ic">&#129309;</span><span><b>COMMUNITY FIRST</b>
+      <small>Built for the community, by the community</small></span></div>
+  </div>
+</footer>
+
+<script>
+/* ---- LES SEULS GESTES QUI REPONDENT ----
+ * Les onglets et le choix d'une cote. C'est tout ce qu'il faut pour qu'on
+ * puisse JUGER la mise en page — un panneau ou rien ne s'allume ne dit pas si
+ * l'etat choisi se voit assez. Le reste ne fait rien, et c'est visible : mieux
+ * vaut un bouton mort qu'un bouton qui marche a moitie. */
+document.querySelectorAll('[data-groupe]').forEach(function (g) {
+  g.addEventListener('click', function (ev) {
+    var b = ev.target.closest('button');
+    if (!b || !g.contains(b)) return;
+    g.querySelectorAll('button').forEach(function (x) { x.classList.remove('on'); });
+    b.classList.add('on');
+  });
+});
+/* Une cote par match : en choisir une seconde remplace la premiere, comme
+   dans un vrai bulletin. */
+document.querySelectorAll('.match .cotes').forEach(function (r) {
+  r.addEventListener('click', function (ev) {
+    var b = ev.target.closest('button');
+    if (!b) return;
+    r.querySelectorAll('button').forEach(function (x) { x.classList.remove('on'); });
+    b.classList.add('on');
+  });
+});
+/* La navigation de gauche. Elle ne mene nulle part — la page est seule. */
+document.querySelectorAll('.sw-nav a').forEach(function (a) {
+  a.addEventListener('click', function (ev) {
+    ev.preventDefault();
+    document.querySelectorAll('.sw-nav a').forEach(function (x) { x.classList.remove('on'); });
+    a.classList.add('on');
+  });
+});
+</script>
+</body>
+</html>

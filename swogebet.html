@@ -758,24 +758,48 @@ html{ background-color:#0b0906;
    contraste reviendrait a le proposer. */
 .sb-sports button:disabled{ opacity:.55; cursor:default; }
 .sb-vide{ padding:34px 12px; text-align:center; color:var(--muted); font-size:.9rem; }
-/* Le bandeau de journee. Il porte le poids visuel : c'est la coupure qu'on
-   cherche en balayant la liste, la competition n'est qu'un sous-titre. Il
-   COLLE en haut pendant qu'on fait defiler — sur un telephone, une liste de
-   trente rencontres fait perdre de vue quel jour on regarde. */
-.sb-jour{ position:sticky; top:0; z-index:6; display:flex; align-items:baseline; gap:9px;
-  margin:18px 0 9px; padding:8px 11px; border-radius:11px;
-  /* OPAQUE, et pas un degrade a quatre-vingt-dix-sept pour cent : ce bandeau
-     COLLE, donc les rencontres defilent DESSOUS. Le reste de transparence
-     laissait passer un nom d'equipe en gris derriere le titre du jour — sur
-     fond noir on ne le voyait pas, sur fond blanc c'est une bavure. */
-  background:var(--ink2);
-  border:1px solid var(--line);
+/* Le bandeau de journee de PREMIER NIVEAU n existe plus : les rencontres sont
+   rangees par tournoi, et la journee n est plus qu une legende a l interieur
+   (`.sb-groupe`). Ses regles partaient avec lui — une classe qui ne vise plus
+   rien se relit comme une classe vivante, et la prochaine personne la
+   chercherait dans le HTML. */
+/* ================== LE TOURNOI, REPLIE ==================
+   Une page de paris qui s ouvre sur cinquante rencontres ne se lit pas. Les
+   competitions se replient ; seule la premiere — celle qui ferme le plus tot —
+   s ouvre d elle-meme.
+   L en-tete COLLE : en descendant dans un tournoi de vingt rencontres, on doit
+   pouvoir dire lequel on lit sans remonter. Il est le seul a coller, alors que
+   c etait le bandeau de journee avant lui : deux bandeaux colles l un sous
+   l autre se marchent dessus. */
+.sb-t{ margin:0 0 10px; }
+.sb-t-tete{ position:sticky; top:0; z-index:6; width:100%; display:flex;
+  align-items:center; gap:10px; padding:11px 13px; border-radius:12px;
+  background:var(--ink2); border:1px solid var(--line); cursor:pointer;
+  font:inherit; color:var(--text); text-align:left;
   box-shadow:0 6px 16px rgba(11,27,54,.10); }
-.sb-jour b{ font-size:.92rem; color:var(--gold); letter-spacing:.02em; }
-.sb-jour span{ font-size:.76rem; color:var(--muted); }
-.sb-jour i{ margin-left:auto; font-style:normal; font-size:.72rem;
-  padding:1px 8px; border-radius:999px; background:var(--accent-pale); color:var(--gold); }
-.sb-jour:first-child{ margin-top:2px; }
+.sb-t-tete:hover{ border-color:var(--gold); }
+.sb-t.on .sb-t-tete{ border-color:var(--gold); border-bottom-left-radius:0;
+  border-bottom-right-radius:0; }
+.sb-t-nom{ display:flex; flex-direction:column; gap:2px; min-width:0; flex:1; }
+.sb-t-nom b{ font-size:.94rem; color:var(--gold); letter-spacing:.02em;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.sb-t-nom span{ font-size:.74rem; color:var(--muted); }
+/* Le prochain coup d envoi : c est lui qui decide si l on ouvre ou si l on
+   passe, donc il est lisible sans ouvrir. */
+.sb-t-quand{ flex:0 0 auto; font-size:.76rem; color:var(--muted);
+  font-variant-numeric:tabular-nums; white-space:nowrap; }
+.sb-t-nb{ flex:0 0 auto; font-style:normal; font-size:.72rem; padding:1px 8px;
+  border-radius:999px; background:var(--accent-pale); color:var(--gold); }
+.sb-t-chev{ flex:0 0 auto; font-style:normal; font-size:.8rem; color:var(--muted);
+  transition:transform .18s; }
+.sb-t.on .sb-t-chev{ transform:rotate(180deg); }
+.sb-t-corps{ border:1px solid var(--line); border-top:0;
+  border-radius:0 0 12px 12px; padding:4px 10px 10px; }
+@media (max-width:520px){
+  /* Le pays et l heure passent a la ligne plutot que d ecraser le nom de la
+     competition, qui est ce qu on cherche. */
+  .sb-t-quand{ display:none; }
+}
 .sb-groupe{ display:flex; align-items:baseline; gap:9px; margin:12px 2px 8px; }
 .sb-groupe b{ font-size:.94rem; }
 .sb-groupe span{ font-size:.76rem; color:var(--muted); letter-spacing:.03em; }
@@ -2869,70 +2893,127 @@ main{ min-width:0; }
     z.innerHTML=h;
   }
 
+  /* ---- L OUVERTURE DE CHAQUE TOURNOI ----
+   * Elle survit aux redessins : poser une cote redessine la liste entiere, et
+   * sans cette memoire tous les tournois se refermeraient sous la main de
+   * celui qui vient d en ouvrir un.
+   * `SB_T_VU` retient les sports deja affiches une fois : c est ce qui permet
+   * d ouvrir le premier tournoi A LA PREMIERE VENUE seulement. Sans lui, un
+   * tournoi referme se rouvrirait au premier clic suivant. */
+  var SB_TOURNOIS = {}, SB_T_VU = {};
+  function sbCleTournoi(m){ return m.sport + "|" + m.competition; }
+
+  /* Le prochain coup d envoi d un tournoi, ecrit court : c est le seul chiffre
+     qui decide si l on ouvre ou si l on passe. */
+  function sbProchain(t){
+    var b = sbBandeauJour(t);
+    return (b.titre === "Today" || b.titre === "Tomorrow" ? b.titre : b.detail || b.titre)
+         + " " + sbHeureCourte(t);
+  }
+
   function sbPeintListe(){
-    var z=$("sbListe"), h="", i, groupe=null;
+    var z=$("sbListe"), h="", i;
     var l=SB.matchs.filter(function(m){ return m.sport===SB.sport; });
-    /* Par JOUR, puis par competition, puis par heure. Sans le tri par
-       competition a l'interieur d'une journee, deux rencontres de Liga se
-       retrouvent separees par une de Ligue 1 et le bandeau de competition
-       reapparait trois fois. */
-    l.sort(function(a,b){
-      var ja=sbCleJour(a.debut), jb=sbCleJour(b.debut);
-      if(ja!==jb) return a.debut-b.debut;
-      if(a.competition!==b.competition) return a.competition<b.competition?-1:1;
-      return a.debut-b.debut;
-    });
     $("sbVide").hidden = l.length>0;
     if(!l.length){
       $("sbVide").textContent = "Nothing on the board for this sport yet.";
       z.innerHTML=""; return;
     }
-    /* Deux niveaux de regroupement, et dans cet ordre : LA JOURNEE d'abord,
-       la competition ensuite. Tout etait auparavant dans une seule colonne
-       coupee par « competition + jour » : avec une seule competition, ca ne
-       coupait rien du tout, et vingt rencontres de trois jours differents se
-       suivaient sans separation visible. On ne choisit pas d'abord une
-       competition, on choisit d'abord QUAND on veut regarder — c'est comme
-       ca que les bookmakers rangent, et c'est comme ca qu'on cherche. */
-    var jour=null;
+    /* ================== PAR TOURNOI, ET REPLIES ==================
+     *
+     * DEMANDE : « rends-les par tournois, pas besoin d afficher la liste
+     * entiere sur la page ».
+     *
+     * C etait range par JOURNEE d abord, tout deplie. Le commentaire d alors
+     * defendait cet ordre — « on choisit d abord QUAND on veut regarder ». Ce
+     * n est plus le choix retenu, et il valait mieux le dire que de laisser
+     * deux intentions contraires dans le meme fichier : on choisit d abord
+     * SON tournoi. La Liga, la Premier League, un T20 international ne se
+     * comparent pas ; les melanger par heure obligeait a lire vingt lignes
+     * pour retrouver les six qui interessent.
+     *
+     * Et rien n est deplie d office, sauf le premier — celui dont le coup
+     * d envoi est le plus proche. Une page de paris qui s ouvre sur cinquante
+     * rencontres ne se lit pas ; une page qui s ouvre sur cinq en-tetes et un
+     * tournoi ouvert se parcourt d un coup d oeil.
+     */
+    var ordre=[], par={};
     for(i=0;i<l.length;i++){
-      var m=l[i], cj=sbCleJour(m.debut);
-      if(cj!==jour){
-        jour=cj; groupe=null;
-        var b=sbBandeauJour(m.debut);
-        var n=0, q;
-        for(q=0;q<l.length;q++) if(sbCleJour(l[q].debut)===cj) n++;
-        h+='<div class="sb-jour"><b>'+sbEchappe(b.titre)+'</b>'
-         + (b.detail?'<span>'+sbEchappe(b.detail)+'</span>':'')
-         + '<i>'+n+'</i></div>';
+      var m=l[i], c=sbCleTournoi(m);
+      if(!par[c]){ par[c]={ cle:c, nom:m.competition, pays:m.pays, matchs:[] }; ordre.push(par[c]); }
+      par[c].matchs.push(m);
+    }
+    /* Le tournoi dont on joue le plus tot passe en premier — c est ce qui
+       ferme le plus vite, donc ce qu on regarde d abord. */
+    ordre.forEach(function(t){
+      t.matchs.sort(function(a,b){ return a.debut-b.debut; });
+      t.tot = t.matchs[0].debut;
+    });
+    ordre.sort(function(a,b){ return a.tot-b.tot; });
+
+    if(!SB_T_VU[SB.sport]){
+      SB_T_VU[SB.sport]=true;
+      if(ordre.length && SB_TOURNOIS[ordre[0].cle]===undefined) SB_TOURNOIS[ordre[0].cle]=true;
+    }
+
+    for(i=0;i<ordre.length;i++){
+      var t=ordre[i], ouvert=!!SB_TOURNOIS[t.cle];
+      h+='<div class="sb-t'+(ouvert?" on":"")+'">'
+       + '<button type="button" class="sb-t-tete" data-tournoi="'+sbEchappe(t.cle)+'"'
+       + ' aria-expanded="'+(ouvert?"true":"false")+'">'
+       + '<span class="sb-t-nom"><b>'+sbEchappe(t.nom)+'</b>'
+       + (t.pays?'<span>'+sbEchappe(t.pays)+'</span>':'')+'</span>'
+       + '<span class="sb-t-quand">'+sbEchappe(sbProchain(t.tot))+'</span>'
+       + '<i class="sb-t-nb">'+t.matchs.length+'</i>'
+       + '<i class="sb-t-chev" aria-hidden="true">&#9662;</i>'
+       + '</button>';
+      if(ouvert){
+        h+='<div class="sb-t-corps">';
+        /* La journee reste marquee A L INTERIEUR du tournoi : une competition
+           qui court sur trois jours melangerait sinon le samedi et le mardi
+           dans la meme colonne. Elle ne COLLE plus, en revanche — deux
+           bandeaux colles l un sous l autre se marchent dessus. */
+        var jour=null, k;
+        for(k=0;k<t.matchs.length;k++){
+          var mm=t.matchs[k], cj=sbCleJour(mm.debut);
+          if(cj!==jour){
+            jour=cj;
+            var bj=sbBandeauJour(mm.debut);
+            h+='<div class="sb-groupe"><b>'+sbEchappe(bj.titre)+'</b>'
+             + (bj.detail?'<span>'+sbEchappe(bj.detail)+'</span>':'')+'</div>';
+          }
+          h+=sbLigneMatch(mm);
+        }
+        h+='</div>';
       }
-      var cle=m.competition;
-      if(cle!==groupe){
-        groupe=cle;
-        h+='<div class="sb-groupe"><b>'+sbEchappe(m.competition)+'</b>'
-         + (m.pays?'<span>'+sbEchappe(m.pays)+'</span>':'')+'</div>';
-      }
-      /* La place restante est affichee quand elle devient serree : un bouton
-         qui refuse sans prevenir se lit comme une panne. */
-      var serre = m.place < SB.max*3;
-      h+='<div class="sb-m">'
-       + '<div class="sb-eq">'
-       + '<span><i class="dr">'+sbDrapeau(m.paysDomicile)+'</i>'+sbEchappe(m.domicile)+'</span>'
-       + '<span><i class="dr">'+sbDrapeau(m.paysExterieur)+'</i>'+sbEchappe(m.exterieur)+'</span></div>'
-       + '<div class="sb-h">'+sbHeureCourte(m.debut)+'</div>'
-       + '<div class="sb-cotes n'+sbIssuesDe(m,SB_BASE).length+'">'
-       + sbIssuesDe(m,SB_BASE).map(function(c){ return sbBouton(m,SB_BASE,c); }).join("")
-       + '</div>'
-       /* ---- LES AUTRES MARCHES SONT REPLIES ----
-        * Six marches et dix-sept scores exacts ne tiennent pas dans une ligne
-        * de tableau, et les DEPLIER tous ferait vingt lignes par rencontre :
-        * on ne verrait plus le calendrier. Le bouton dit COMBIEN il y en a —
-        * « +5 markets » se clique, « More » se devine. */
-       + sbPlusDeMarches(m)
-       + (serre?'<div class="sb-plein">'+sbFmt(m.place)+' of exposure left</div>':'')
-       + '</div>';
+      h+='</div>';
     }
     z.innerHTML=h;
+  }
+
+  /* La rencontre elle-meme, sortie de la boucle : elle ne depend plus de
+     l ordre dans lequel on la rencontre, et le regroupement peut changer sans
+     y toucher. */
+  function sbLigneMatch(m){
+    /* La place restante est affichee quand elle devient serree : un bouton
+       qui refuse sans prevenir se lit comme une panne. */
+    var serre = m.place < SB.max*3;
+    return '<div class="sb-m">'
+     + '<div class="sb-eq">'
+     + '<span><i class="dr">'+sbDrapeau(m.paysDomicile)+'</i>'+sbEchappe(m.domicile)+'</span>'
+     + '<span><i class="dr">'+sbDrapeau(m.paysExterieur)+'</i>'+sbEchappe(m.exterieur)+'</span></div>'
+     + '<div class="sb-h">'+sbHeureCourte(m.debut)+'</div>'
+     + '<div class="sb-cotes n'+sbIssuesDe(m,SB_BASE).length+'">'
+     + sbIssuesDe(m,SB_BASE).map(function(c){ return sbBouton(m,SB_BASE,c); }).join("")
+     + '</div>'
+     /* ---- LES AUTRES MARCHES SONT REPLIES ----
+      * Six marches et dix-sept scores exacts ne tiennent pas dans une ligne
+      * de tableau, et les DEPLIER tous ferait vingt lignes par rencontre :
+      * on ne verrait plus le calendrier. Le bouton dit COMBIEN il y en a —
+      * « +5 markets » se clique, « More » se devine. */
+     + sbPlusDeMarches(m)
+     + (serre?'<div class="sb-plein">'+sbFmt(m.place)+' of exposure left</div>':'')
+     + '</div>';
   }
   function sbBouton(m,k,c){
     var pris=false, i;
@@ -3247,6 +3328,16 @@ main{ min-width:0; }
     $("sbListe").addEventListener("click", function(e){
       /* Le bouton « + n markets » vit dans le meme tableau que les cotes :
          teste AVANT, sinon `closest("[data-m]")` remonterait a la carte. */
+      /* L en-tete d un tournoi est teste EN PREMIER : il contient des
+         elements, et `closest` depuis l un d eux remonterait sinon jusqu a la
+         carte de la rencontre. */
+      var tt=e.target.closest("button[data-tournoi]");
+      if(tt){
+        var ct=tt.getAttribute("data-tournoi");
+        SB_TOURNOIS[ct] = !SB_TOURNOIS[ct];
+        sbRend();
+        return;
+      }
       var pl=e.target.closest("button[data-plus]");
       if(pl){
         var idp=pl.getAttribute("data-plus");

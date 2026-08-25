@@ -380,7 +380,10 @@ function pistes(fichier) {
      * fait rien y serait une panne. */
     for (const c of cartes) {
       if (c.balise === 'A') {
-        ok(!!c.href && fs.existsSync(path.join(SITE, c.href.split('#')[0])),
+        /* On coupe le `?` AUSSI : la carte de l arcade mene a
+           `nexus.html?salle=arcade`, et chercher ce nom-la sur le disque
+           declarait la page absente alors qu elle est bien la. */
+        ok(!!c.href && fs.existsSync(path.join(SITE, c.href.split(/[?#]/)[0])),
            `« ${c.t} » mene a ${c.href}, qui existe`);
         ok(c.vif, `et « ${c.lib} » est vivant`);
       } else {

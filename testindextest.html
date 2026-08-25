@@ -247,6 +247,18 @@ a{color:inherit;text-decoration:none}
 }
 .onglets button .ic{font-size:14px}
 .onglets button.on{background:var(--bleu-clair);color:var(--bleu)}
+/* La ligne qui nomme les six marches. Sous le titre et non dans une
+   infobulle : c'est ce qui distingue ce panneau de n'importe quel autre, et
+   une infobulle ne se survole pas sur un telephone. */
+.sous{margin:-6px 0 11px;font:500 11.5px/1.5 'Inter',system-ui,sans-serif;color:var(--gris)}
+.sous b{color:var(--texte);font-weight:800}
+/* « Ferme au coup d'envoi » : ce n'est pas un detail d'affichage, c'est LA
+   regle du catalogue. Elle prend la place ou la maquette mettait « LIVE ». */
+.ferme{padding:5px 9px;border-radius:99px;background:var(--fond);color:var(--gris);
+  font:800 8.5px/1 'Inter',system-ui,sans-serif;letter-spacing:1.1px;white-space:nowrap}
+/* Un sport porte au catalogue mais marque inactif. Eteint plutot qu'absent :
+   absent, on ne saurait pas qu'il arrive ; vif, on cliquerait pour rien. */
+.onglets button.eteint{opacity:.42}
 .match{padding:10px 0}
 .match+.match{border-top:1px solid var(--bord)}
 .match .ligue{font:700 9px/1 'Inter',system-ui,sans-serif;letter-spacing:.8px;color:var(--gris);margin-bottom:7px}
@@ -257,8 +269,11 @@ a{color:inherit;text-decoration:none}
 .match .eq b{font:700 12.5px/1.2 'Inter',system-ui,sans-serif;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .match .eq.d{justify-content:flex-end;text-align:right}
-.match .sc{font:800 13px/1 'Inter',system-ui,sans-serif;color:var(--nuit);flex:0 0 auto}
-.match .live{font:800 9px/1 'Inter',system-ui,sans-serif;letter-spacing:.8px;color:var(--rouge);flex:0 0 auto}
+/* L'HEURE, la ou la maquette mettait le score en cours. Plus etroite en
+   chiffres qu'un « 2 – 1 », donc plus petite, et grise : c'est un repere, pas
+   un resultat. */
+.match .sc{font:700 10px/1.3 'Inter',system-ui,sans-serif;color:var(--gris);flex:0 0 auto;
+  text-align:center;letter-spacing:.4px}
 .cotes{display:flex;gap:6px}
 .cotes button{flex:1 1 0;min-width:0;display:flex;align-items:center;justify-content:space-between;
   gap:6px;padding:9px 10px;border-radius:9px;background:var(--fond);border:1px solid var(--bord);
@@ -502,61 +517,94 @@ a{color:inherit;text-decoration:none}
         </div>
       </section>
 
+      <!-- ================== CE QU'ON PROPOSE VRAIMENT ==================
+           Les rencontres, les cotes, les competitions et les marches viennent
+           du catalogue du serveur, pas d'une maquette. Trois choses fausses
+           sont parties avec l'ancien bloc :
+
+           1. « LIVE » et le score en cours. ON NE PREND AUCUN PARI EN DIRECT :
+              le catalogue ferme au coup d'envoi — « accepter un pari sur un
+              match commence, c'est accepter le pari de quelqu'un qui regarde
+              le score ». Un bandeau LIVE promettait exactement ce qu'on
+              refuse. L'heure du coup d'envoi prend sa place, parce que c'est
+              elle qui compte : c'est la limite.
+
+           2. Basketball et MMA dans les onglets. On ne porte ni l'un ni
+              l'autre. La NBA existe au catalogue mais elle y est marquee
+              INACTIVE — elle est donc montree comme telle, et non comme un
+              onglet qui ne rendrait rien.
+
+           3. « +128 », « +96 », « +72 » marches en plus. Le vrai nombre est
+              CINQ, et seulement au football : double chance, les deux equipes
+              marquent, plus ou moins de deux buts et demi, score exact,
+              handicap. Le tennis n'a que le vainqueur. Annoncer cent
+              vingt-huit marches qu'on n'a pas est la seule sorte de mensonge
+              qu'un joueur verifie en un clic. -->
       <section class="carte carte-p">
         <div class="tete"><h3>SWOGE SPORTS</h3>
-          <a href="#" style="color:var(--gris);letter-spacing:0;font-weight:600;text-transform:none">Bet on your passion.</a></div>
+          <span class="ferme">CLOSES AT KICK-OFF</span></div>
+        <p class="sous">Football carries <b>six markets</b> &mdash; winner, double chance,
+          both teams to score, over/under 2.5, correct score, handicap &minus;1.5.</p>
         <div class="onglets" data-groupe="sports">
-          <button class="on"><span class="ic">&#11088;</span>Live Now</button>
+          <button class="on"><span class="ic">&#9878;</span>All Sports</button>
           <button><span class="ic">&#9917;</span>Football</button>
-          <button><span class="ic">&#127936;</span>Basketball</button>
           <button><span class="ic">&#127934;</span>Tennis</button>
-          <button><span class="ic">&#129354;</span>MMA</button>
-          <button><span class="ic">&#9878;</span>All Sports</button>
+          <button class="eteint"><span class="ic">&#127936;</span>NBA</button>
         </div>
 
         <div class="match">
-          <div class="ligue">FOOTBALL &middot; UEFA CHAMPIONS LEAGUE</div>
+          <div class="ligue">FOOTBALL &middot; CHAMPIONSHIP &middot; ENGLAND</div>
           <div class="duel">
-            <span class="eq"><span>&#127463;</span><b>Manchester City</b></span>
-            <span class="sc">2 &ndash; 1</span>
-            <span class="eq d"><b>Liverpool</b><span>&#128014;</span></span>
-            <span class="live">LIVE</span>
+            <span class="eq"><span>&#127988;</span><b>Bolton</b></span>
+            <span class="sc">15 AUG &middot; 12:30</span>
+            <span class="eq d"><b>Preston</b><span>&#127988;</span></span>
           </div>
           <div class="cotes">
-            <button class="on">1 <small>2.10</small></button>
-            <button>X <small>3.40</small></button>
-            <button>2 <small>3.20</small></button>
-            <span class="plus">+128</span>
-          </div>
-        </div>
-
-        <div class="match">
-          <div class="ligue">BASKETBALL &middot; NBA</div>
-          <div class="duel">
-            <span class="eq"><span>&#128293;</span><b>Lakers</b></span>
-            <span class="sc">&ndash;</span>
-            <span class="eq d"><b>Warriors</b><span>&#127744;</span></span>
-            <span class="live">LIVE</span>
-          </div>
-          <div class="cotes">
-            <button>1 <small>1.85</small></button>
-            <button>2 <small>1.95</small></button>
-            <span class="plus">+96</span>
+            <button class="on">1 <small>2.12</small></button>
+            <button>X <small>3.22</small></button>
+            <button>2 <small>3.17</small></button>
+            <span class="plus">+5</span>
           </div>
         </div>
 
         <div class="match">
-          <div class="ligue">TENNIS &middot; ATP</div>
+          <div class="ligue">FOOTBALL &middot; CHAMPIONSHIP &middot; ENGLAND</div>
           <div class="duel">
-            <span class="eq"><span>&#127907;</span><b>Novak Djokovic</b></span>
-            <span class="sc">&ndash;</span>
-            <span class="eq d"><b>Carlos Alcaraz</b><span>&#127942;</span></span>
-            <span class="live">LIVE</span>
+            <span class="eq"><span>&#127988;</span><b>Norwich</b></span>
+            <span class="sc">15 AUG &middot; 15:00</span>
+            <span class="eq d"><b>West Brom</b><span>&#127988;</span></span>
           </div>
           <div class="cotes">
-            <button>1 <small>1.62</small></button>
-            <button>2 <small>2.30</small></button>
-            <span class="plus">+72</span>
+            <button>1 <small>1.87</small></button>
+            <button>X <small>3.38</small></button>
+            <button>2 <small>3.73</small></button>
+            <span class="plus">+5</span>
+          </div>
+        </div>
+
+        <div class="match">
+          <div class="ligue">TENNIS &middot; CINCINNATI ATP</div>
+          <div class="duel">
+            <span class="eq"><span>&#127479;&#127480;</span><b>Djokovic N.</b></span>
+            <span class="sc">15 AUG &middot; 16:30</span>
+            <span class="eq d"><b>Tirante T. A.</b><span>&#127462;&#127479;</span></span>
+          </div>
+          <div class="cotes">
+            <button>1 <small>1.25</small></button>
+            <button>2 <small>3.80</small></button>
+          </div>
+        </div>
+
+        <div class="match">
+          <div class="ligue">TENNIS &middot; CINCINNATI ATP</div>
+          <div class="duel">
+            <span class="eq"><span>&#127482;&#127480;</span><b>Paul T.</b></span>
+            <span class="sc">15 AUG &middot; 18:00</span>
+            <span class="eq d"><b>Hurkacz H.</b><span>&#127477;&#127473;</span></span>
+          </div>
+          <div class="cotes">
+            <button>1 <small>1.53</small></button>
+            <button>2 <small>2.25</small></button>
           </div>
         </div>
       </section>
@@ -567,14 +615,14 @@ a{color:inherit;text-decoration:none}
           <button class="on">Single</button><button>Multi</button><button>System</button>
         </div>
         <div class="bul-l">
-          <span><b>Manchester City</b><small>To Win</small></span>
-          <span class="c">2.10</span>
+          <span><b>Bolton</b><small>To win &middot; Bolton v Preston</small></span>
+          <span class="c">2.12</span>
         </div>
         <div class="mise">
           <input type="text" inputmode="decimal" value="100" aria-label="Stake">
           <span>&#128176; $SWOGE</span>
         </div>
-        <div class="bul-tot"><small>Potential Payout</small><b>210 $SWOGE</b></div>
+        <div class="bul-tot"><small>Potential Payout</small><b>212 $SWOGE</b></div>
         <button class="sw-b sw-b-plein" style="width:100%;padding:14px">PLACE BET</button>
       </section>
 

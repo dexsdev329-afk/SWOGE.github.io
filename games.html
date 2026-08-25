@@ -1034,7 +1034,7 @@ a.match:hover .cotes button{border-color:var(--bleu)}
       if(n.tagName !== "BUTTON") return;
       if(n.style && n.style.display === "none") return;   // une rangee que la page cache
       var c = coupe(n.textContent);
-      l.push({ ic:c.ic, mot:c.mot, href:"#", vers:n });
+      l.push({ ic:c.ic, mot:c.mot, href:"#", vers:n, tiroir:true });
     });
     return l;
   }
@@ -1086,7 +1086,21 @@ a.match:hover .cotes button{border-color:var(--bleu)}
         /* Une vraie navigation — « Home » — se laisse passer telle quelle. Un
            panneau, lui, s'ouvre par son lien d'origine. */
         if(r.href && r.href !== "#") { ferme(); return; }
-        ev.preventDefault(); ferme(); r.vers.click();
+        ev.preventDefault(); ferme();
+        /* ---- UNE RANGEE DU TIROIR NE L'OUVRE PAS ----
+         * Son gestionnaire change l'ONGLET et redessine le contenu ; il ne
+         * MONTRE pas la boite, parce que la-bas on ne peut cliquer une rangee
+         * qu'une fois le tiroir deja ouvert. Appelee d'ici, elle reglait donc
+         * l'onglet dans une boite invisible, et le clic ne faisait
+         * visiblement RIEN — c'est le second defaut signale.
+         * On ouvre par la POIGNEE du tiroir, dont c'est le travail, puis on
+         * choisit la rangee. Refaire l'ouverture ici serait un second chemin
+         * vers la meme boite. */
+        if(r.tiroir){
+          var poignee = document.querySelector(".swpb");
+          if(poignee) poignee.click();
+        }
+        r.vers.click();
       });
     });
   }
@@ -1100,9 +1114,22 @@ a.match:hover .cotes button{border-color:var(--bleu)}
     /* ---- PAS ENCORE ENTRE : ON OUVRE LA CONNEXION ----
      * Un menu de compte propose a quelqu'un qui n'en a pas se lit comme une
      * panne : chaque rangee repondrait « connectez-vous d'abord », une par
-     * une. On l'emmene la ou il faut aller, en un geste. */
+     * une. On l'emmene la ou il faut aller, en un geste.
+     *
+     * ---- MAIS ON DEMANDE A CELUI QUI SAIT ----
+     * On interrogeait `#cxCompte`, c'est-a-dire `swogecx.js`. Or ce menu
+     * montre les rangees du TIROIR, et c'est `stakebubble.js` qui le monte, a
+     * l'authentification — celle-la meme qui affiche le solde. Les deux
+     * scripts ont leur PROPRE session : dans le navigateur de Telegram, ou il
+     * n'existe aucune extension a interroger, le premier peut tres bien
+     * ignorer une connexion que le second a etablie.
+     * Resultat, signale : on est connecte, le solde s'affiche a trois
+     * centimetres, et le profil repond « connectez-vous ». On demande donc a
+     * la source des rangees qu'on s'apprete a montrer — une seule question,
+     * et c'est la bonne. */
+    var tiroir = document.querySelector(".swp .swp-t") || document.querySelector(".swp-t");
     var cpt = document.getElementById("cxCompte");
-    if(!cpt || cpt.hidden){
+    if(!tiroir && (!cpt || cpt.hidden)){
       var b = document.querySelector(".cx-mail") || document.querySelector(".cx-wallet");
       if(b){ b.click(); return; }
     }
@@ -1269,6 +1296,16 @@ a.match:hover .cotes button{border-color:var(--bleu)}
 <script src="swogebuy.js?v=0d5e5215"></script>
 <script src="swogecx.js?v=9ad8fbf0" defer></script>
 <style>
+/* ---- UN SEUL BOUTON DE PROFIL ----
+ * `stakebubble.js` pose le sien dans la premiere `<nav>` de la page — ici la
+ * colonne de gauche — en plus de celui de l'en-tete. Deux avatars a l'ecran,
+ * qui ouvrent deux choses differentes : le doublon de trop.
+ * Il est CACHE, pas retire : c'est lui la poignee du tiroir, et le menu s'en
+ * sert pour l'ouvrir avant de choisir une rangee. Un `display:none` n'empeche
+ * pas un clic envoye par script — seulement celui du doigt, qui n'a plus
+ * besoin de lui. */
+.sw-cote .swpb, .sw-nav .swpb{ display:none !important; }
+
 /* ==================== LES PASTILLES DE LA BARRE, AU CLAIR ====================
  *
  * ---- D OU ELLES VIENNENT ----

@@ -233,6 +233,37 @@ const servirLeSite = async () => {
      + ' « connectez-vous » cinq fois de suite');
   await p.evaluate(() => { document.getElementById('cxVoile').hidden = true; });
 
+  /* ---- CONNECTE PAR LE TIROIR, ET PAR LUI SEUL ----
+   * C'est LE cas signale : dans le navigateur de Telegram il n'existe aucune
+   * extension a interroger, donc `swogecx.js` peut tres bien ignorer une
+   * connexion que `stakebubble.js` a etablie — celle-la meme qui affiche le
+   * solde. Le profil repondait « connectez-vous » a quelqu'un dont les jetons
+   * s'affichaient a trois centimetres.
+   * On pose donc le tiroir SANS toucher a `#cxCompte`, qui reste cache. */
+  await p.evaluate(() => {
+    const d = document.createElement('div'); d.className = 'swp';
+    const t = document.createElement('div'); t.className = 'swp-t';
+    const g = document.createElement('div'); g.className = 'swp-g'; g.textContent = 'You';
+    const b = document.createElement('button'); b.dataset.k = 'ap'; b.textContent = '📊 Overview';
+    t.appendChild(g); t.appendChild(b); d.appendChild(t); document.body.appendChild(d);
+  });
+  await p.click('#gxProfil'); await p.waitForTimeout(300);
+  const parLeTiroir = await p.evaluate(() => ({
+    menu: !document.getElementById('gxMenu').hidden,
+    connexion: !document.getElementById('cxVoile').hidden,
+    compteCache: document.getElementById('cxCompte').hidden,
+    mots: [...document.querySelectorAll('#gxMenu a')].map((a) => a.textContent.trim()),
+  }));
+  ok(parLeTiroir.compteCache,
+     "la pastille de `swogecx` reste cachee : ce script-la ne sait rien de cette"
+     + ' connexion, et c est exactement le cas signale');
+  ok(parLeTiroir.menu && !parLeTiroir.connexion,
+     `le menu s ouvre quand meme : ${parLeTiroir.mots.join(' | ')} — on demande a la`
+     + ' source des rangees qu on montre, pas a un second script qui a sa propre session');
+  await p.evaluate(() => { document.querySelector('.swp').remove();
+                           const h = document.querySelector('.swpb'); if (h) h.remove(); });
+  await p.evaluate(() => { document.getElementById('gxMenu').hidden = true; });
+
   /* ---- ENTRE ---- */
   /* On pose l etat « connecte » a la main : ce qu on essaie ici est le MENU,
      pas la chaine — et brancher un vrai portefeuille pour lire une liste de
@@ -335,11 +366,16 @@ const servirLeSite = async () => {
     b4.textContent = '🚫 Hidden row'; b4.style.display = 'none';
     [g1, b1, b2, g2, b3, b4].forEach((x) => t.appendChild(x));
     d.appendChild(t); document.body.appendChild(d);
-    window.__vuTiroir = null;
+    window.__vuTiroir = null; window.__poignee = 0;
     t.addEventListener('click', (e) => {
       const b = e.target.closest && e.target.closest('button');
       if (b) window.__vuTiroir = b.dataset.k;
     }, true);
+    /* La poignee, telle que `stakebubble.js` la pose : un bouton `.swpb`
+       quelque part dans la page, dont le gestionnaire OUVRE le tiroir. */
+    const h = document.createElement('button'); h.className = 'swpb';
+    h.addEventListener('click', () => { window.__poignee++; });
+    document.body.appendChild(h);
   });
   await p.click('#gxProfil'); await p.waitForTimeout(250);
   const avecTiroir = await p.evaluate(() => {
@@ -366,7 +402,18 @@ const servirLeSite = async () => {
   await p.waitForTimeout(200);
   eq(await p.evaluate(() => window.__vuTiroir), 'lb',
      'et le clic repart sur la rangee du TIROIR, qui sait ouvrir sa section');
-  await p.evaluate(() => { document.querySelector('.swp').remove(); });
+  /* ---- ET LA POIGNEE EST TIREE D ABORD ----
+   * La rangee du tiroir change l ONGLET ; elle ne MONTRE pas la boite, parce
+   * que la-bas on ne peut la cliquer qu une fois le tiroir deja ouvert.
+   * Appelee d ici, elle reglait l onglet dans une boite invisible et le clic
+   * ne faisait visiblement RIEN. C est le defaut signale, et sans cette
+   * verification il reviendrait sans bruit : la rangee repond, l onglet
+   * change, et l ecran ne bouge pas. */
+  eq(await p.evaluate(() => window.__poignee), 1,
+     'la poignee du tiroir est tiree AVANT la rangee : sinon l onglet change dans'
+     + ' une boite que personne ne voit');
+  await p.evaluate(() => { document.querySelector('.swp').remove();
+                           const h = document.querySelector('.swpb'); if (h) h.remove(); });
 
   await p.click('#gxProfil'); await p.waitForTimeout(200);
   await p.evaluate(() => document.body.click());

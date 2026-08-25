@@ -3712,6 +3712,100 @@
   var elMapNom = document.getElementById('nxMapNom');
   var elMapDit = document.getElementById('nxMapDit');
 
+  /* ================== DES FLECHES A LA PLACE DE LA BARRE ==================
+   *
+   * DEMANDE : « met des fleches si il y a trop d item dans la category
+   * utility ou autre, pas de barre de scroll ».
+   *
+   * Une barre de defilement est laide dans une colonne de deux cent cinquante
+   * pixels, et sur telephone elle N EXISTE PAS : rien ne dit alors qu il reste
+   * des elements sous le bord. On voyait trois rangees de sols et l on croyait
+   * qu il n y avait que ca.
+   *
+   * ---- CE QUE CETTE FONCTION FAIT, ET CE QU ELLE REFUSE DE FAIRE ----
+   *
+   * Elle POSE les deux boutons elle-meme, a cote du cadre qui defile, et rend
+   * la fonction qui les remet a jour. Les fleches ne se montrent QUE s il y a
+   * quelque chose sous le bord : deux fleches grises en permanence au-dessus
+   * d une famille de quatre elements seraient deux boutons qui ne font rien,
+   * et l on apprendrait a ne plus les regarder — donc a ne plus les voir le
+   * jour ou elles servent. Celle du bout se desactive.
+   *
+   * La marge d un pixel absorbe les hauteurs fractionnaires : sans elle, un
+   * cadre de 400,5 px sur 400 allumerait les fleches pour un demi-pixel.
+   *
+   * ---- IL EN EXISTE DEJA DEUX, ECRITES A LA MAIN ----
+   *
+   * L etal a la sienne (horizontale, sur ses onglets de saison) et le coffre
+   * la sienne (verticale, flottante a droite). Celle-ci est ecrite pour les
+   * absorber : elle sait deja les deux sens. Elles ne le sont PAS ici — les
+   * deplacer changerait leur position a l ecran sur deux panneaux dont
+   * personne ne s est plaint, et l etal n a aucun essai qui le rattraperait.
+   * C est un changement a part, avec ses propres essais. */
+  function posteDeFleches(hote, sens) {
+    if (!hote || !hote.parentNode) return function () {};
+    var vertical = sens !== 'x';
+    var poste = document.createElement('div');
+    poste.className = 'nxfl' + (vertical ? ' nxfl-y' : ' nxfl-x');
+    var avant = document.createElement('button');
+    var apres = document.createElement('button');
+    avant.type = apres.type = 'button';
+    avant.className = apres.className = 'nxfl-b';
+    avant.innerHTML = vertical ? '&#9650;' : '&#8249;';
+    apres.innerHTML = vertical ? '&#9660;' : '&#8250;';
+    avant.setAttribute('aria-label', vertical ? 'Scroll up' : 'Scroll left');
+    apres.setAttribute('aria-label', vertical ? 'Scroll down' : 'Scroll right');
+    poste.appendChild(avant); poste.appendChild(apres);
+    hote.parentNode.insertBefore(poste, hote.nextSibling);
+
+    function trop() {
+      return vertical ? hote.scrollHeight - hote.clientHeight
+                      : hote.scrollWidth - hote.clientWidth;
+    }
+    function ou() { return vertical ? hote.scrollTop : hote.scrollLeft; }
+    function maj() {
+      var t = trop();
+      if (t <= 1) { poste.hidden = true; return; }
+      poste.hidden = false;
+      var y = ou();
+      avant.disabled = y <= 1;
+      apres.disabled = y >= t - 1;
+    }
+    function bouge(vers) {
+      /* Un peu moins d une hauteur de cadre : la derniere rangee lue reste
+         visible apres le saut, sinon on ne sait plus ou l on en etait. */
+      var vu = vertical ? hote.clientHeight : hote.clientWidth;
+      var pas = Math.max(60, Math.round(vu * 0.8)) * vers;
+      if (vertical) hote.scrollTop += pas; else hote.scrollLeft += pas;
+      maj();
+    }
+    avant.addEventListener('click', function (e) { e.stopPropagation(); clic(false); bouge(-1); });
+    apres.addEventListener('click', function (e) { e.stopPropagation(); clic(false); bouge(1); });
+    hote.addEventListener('scroll', maj);
+    window.addEventListener('resize', maj);
+    maj();
+    return maj;
+  }
+
+  /* Les postes de la palette : celui de chaque famille, plus celui de la
+     colonne entiere. On les garde pour les remettre a jour quand la recherche
+     cache des elements — une famille filtree jusqu a trois vignettes n a plus
+     rien sous le bord, et ses fleches doivent disparaitre avec le reste. */
+  var mapPostes = [];
+  /* ---- CELUI DE LA COLONNE NE SE POSE QU UNE FOIS ----
+   * Les postes des familles vivent DANS la palette : `innerHTML = ''` les
+   * emporte a chaque reconstruction. Celui de la colonne, lui, est pose a
+   * COTE d elle — le reposer a chaque changement de mode aurait empile une
+   * paire de fleches de plus sous la colonne, a chaque fois. */
+  var majColonne = null;
+  function posteDeLaColonne() {
+    if (!majColonne) majColonne = posteDeFleches(elMapPalette, 'y');
+    mapPostes.push(majColonne);
+  }
+  function majLesFleches() {
+    for (var i = 0; i < mapPostes.length; i++) mapPostes[i]();
+  }
+
   function mapDit(t, mauvais) {
     if (!elMapDit) return;
     elMapDit.textContent = t || '';
@@ -3901,6 +3995,10 @@
       }
       blocs[i].style.display = vus ? '' : 'none';
     }
+    /* Une famille filtree jusqu a trois vignettes n a plus rien sous le bord.
+       Sans ce rappel, ses fleches restaient allumees au-dessus d une grille
+       qui tient entierement — deux boutons qui ne bougent plus rien. */
+    majLesFleches();
   }
 
   function peintMapPalette() {
@@ -3939,6 +4037,11 @@
        des parcelles isometriques sur une carte de tuiles plates et l'inverse,
        et le resultat etait deux langages dans la meme image. */
     var permis = (MAP_MODES[(MAP && MAP.mode) || 'plat'] || MAP_MODES.plat).familles;
+    /* `innerHTML = ''` emporte les postes de la construction precedente. Les
+       garder dans la liste ferait rappeler des fonctions qui mesurent des
+       elements detaches — muet, mais faux, et la liste grandirait a chaque
+       changement de mode. */
+    mapPostes.length = 0;
     hote.innerHTML = '';
     Object.keys(CATALOGUE).forEach(function (fam) {
       var liste = CATALOGUE[fam];
@@ -3989,8 +4092,13 @@
       });
       bloc.appendChild(g);
       hote.appendChild(bloc);
+      /* La grille de la famille est BORNEE par le style ; le poste va juste
+         dessous, dans le bloc, donc il suit la famille quand la recherche la
+         cache. */
+      mapPostes.push(posteDeFleches(g, 'y'));
     });
     hote.dataset.pret = '1';
+    posteDeLaColonne();
     filtreLaPalette();
     /* Le choix courant peut ne plus exister dans la nouvelle palette : le
        garder ferait poser une tuile plate sur une carte isometrique, par un

@@ -404,6 +404,130 @@ const servirLeSite = async () => {
   eq(palRien.combien, 0, 'une recherche sans reponse ne montre rien');
   eq((await cherche('')).combien, palTout.combien, 'et effacer la recherche rend tout');
 
+  console.log('\n-- des fleches, et aucune barre de defilement --');
+  /* ---- CE QUI ETAIT DEMANDE ----
+   * « met des fleches si il y a trop d item dans la category utility ou
+   *   autre, pas de barre de scroll ».
+   *
+   * Deux choses a prouver, et la seconde est celle qu'on oublie : que la
+   * barre est bien partie, ET que quelque chose la remplace. Masquer une
+   * barre sans rien mettre a sa place est le defaut d'origine en pire — sur
+   * telephone la barre n'existe deja pas, et rien ne disait alors qu'il
+   * restait des elements sous le bord.
+   */
+  const fam = (f) => p.evaluate((f) => {
+    const b = document.querySelector('.nxmap-fam[data-fam="' + f + '"]');
+    if (!b) return null;
+    const g = b.querySelector('.nxmap-cases'), fl = b.querySelector('.nxfl');
+    const cs = getComputedStyle(g);
+    return { elements: g.querySelectorAll('.nxmap-el').length,
+             haut: Math.round(g.clientHeight), dedans: Math.round(g.scrollHeight),
+             barre: cs.scrollbarWidth,
+             fleches: !!fl && !fl.hidden,
+             boutons: fl ? [...fl.querySelectorAll('button')].map((x) => x.disabled) : null };
+  }, f);
+
+  /* La famille la plus fournie du catalogue — celle qui deborde, quel que
+     soit le nombre de planches livrees ce jour-la. On ne nomme pas « objet »
+     ici : le jour ou une autre famille passe devant, l'essai suivrait. */
+  const plusFournie = await p.evaluate(() => {
+    let mieux = null, n = -1;
+    document.querySelectorAll('.nxmap-fam').forEach((b) => {
+      const c = b.querySelectorAll('.nxmap-el').length;
+      if (c > n) { n = c; mieux = b.dataset.fam; }
+    });
+    return mieux;
+  });
+  const grosse = await fam(plusFournie);
+  ok(grosse.dedans > grosse.haut + 1,
+     `la famille « ${plusFournie} » deborde : ${grosse.elements} elements,`
+     + ` ${grosse.dedans} px dans un cadre de ${grosse.haut}`);
+  eq(grosse.barre, 'none',
+     'et son cadre n a PAS de barre de defilement — c est ce qui etait demande');
+  ok(grosse.fleches,
+     'mais il a ses fleches : une barre masquee sans rien a la place serait le'
+     + ' defaut d origine en pire');
+  eq(JSON.stringify(grosse.boutons), '[true,false]',
+     'en haut de liste, seule celle du bas repond — l autre ne promet rien');
+
+  /* La fleche du bas descend VRAIMENT, et celle du haut se rallume. */
+  await p.click(`.nxmap-fam[data-fam="${plusFournie}"] .nxfl button:nth-child(2)`);
+  await p.waitForTimeout(450);
+  const descendu = await p.evaluate((f) => {
+    const g = document.querySelector('.nxmap-fam[data-fam="' + f + '"] .nxmap-cases');
+    const fl = document.querySelector('.nxmap-fam[data-fam="' + f + '"] .nxfl');
+    return { ou: Math.round(g.scrollTop),
+             boutons: [...fl.querySelectorAll('button')].map((x) => x.disabled) };
+  }, plusFournie);
+  ok(descendu.ou > 1, `la fleche du bas descend pour de vrai (${descendu.ou} px)`);
+  eq(descendu.boutons[0], false, 'et celle du haut se rallume une fois qu on est descendu');
+
+  /* ---- CELLES QUI NE SERVENT A RIEN NE S AFFICHENT PAS ----
+   * Deux fleches grises en permanence au-dessus d une famille de quatre
+   * elements seraient deux boutons qui ne font rien : on apprendrait a ne
+   * plus les regarder, donc a ne plus les voir le jour ou elles servent. */
+  const courtes = await p.evaluate(() => {
+    const l = [];
+    document.querySelectorAll('.nxmap-fam').forEach((b) => {
+      const g = b.querySelector('.nxmap-cases'), fl = b.querySelector('.nxfl');
+      if (g.scrollHeight <= g.clientHeight + 1) {
+        l.push({ fam: b.dataset.fam, fleches: !!fl && !fl.hidden });
+      }
+    });
+    return l;
+  });
+  ok(courtes.every((x) => !x.fleches),
+     courtes.length
+       ? `les ${courtes.length} famille(s) qui tiennent n affichent pas de fleches`
+       : 'toutes les familles debordent ici — rien a verifier de ce cote');
+
+  /* ---- ET LA RECHERCHE LES ETEINT ----
+   * Une famille filtree jusqu a trois vignettes n a plus rien sous le bord.
+   * Sans rappel apres le filtre, ses fleches restaient allumees au-dessus
+   * d une grille qui tient entierement. */
+  await cherche('font');
+  const filtree = await p.evaluate(() => {
+    const l = [];
+    document.querySelectorAll('.nxmap-fam').forEach((b) => {
+      if (b.offsetParent === null) return;
+      const g = b.querySelector('.nxmap-cases'), fl = b.querySelector('.nxfl');
+      l.push({ tient: g.scrollHeight <= g.clientHeight + 1, fleches: !!fl && !fl.hidden });
+    });
+    return l;
+  });
+  ok(filtree.length > 0 && filtree.every((x) => x.tient !== x.fleches),
+     'apres une recherche, les fleches suivent ce qui reste dans chaque famille');
+  await cherche('');
+
+  /* ---- LA COLONNE ENTIERE AUSSI ----
+   * Six familles bornees tiennent encore plus haut qu un ecran de telephone.
+   * Son poste est pose HORS de la zone qui defile, sinon il disparaitrait
+   * des qu on descend — c est-a-dire au moment ou il sert. */
+  const colonne = await p.evaluate(() => {
+    const pal = document.getElementById('nxMapPalette');
+    const fl = pal.nextElementSibling;
+    return { barre: getComputedStyle(pal).scrollbarWidth,
+             poste: !!fl && fl.classList.contains('nxfl'),
+             dehors: !!fl && !pal.contains(fl),
+             combien: document.querySelectorAll('#nxMapPalette + .nxfl').length };
+  });
+  eq(colonne.barre, 'none', 'la colonne non plus n a pas de barre');
+  ok(colonne.poste && colonne.dehors,
+     'et ses fleches sont posees a cote d elle, pas dedans : elles restent'
+     + ' visibles pendant qu on descend');
+
+  /* Le mode change reconstruit la palette. Le poste de la colonne, lui, vit
+     DEHORS : le reposer aurait empile une paire de fleches de plus a chaque
+     fois — invisible au premier changement, evident au cinquieme. */
+  await p.click('#nxMapRetour'); await p.waitForTimeout(250);
+  await cree('iso', 24);
+  await p.waitForTimeout(500);
+  eq(await p.evaluate(() => document.querySelectorAll('#nxMapPalette + .nxfl').length), 1,
+     'et changer de mode n en empile pas une seconde paire sous la colonne');
+  await p.click('#nxMapRetour'); await p.waitForTimeout(250);
+  await cree('plat', 48);
+  await p.waitForTimeout(400);
+
   console.log('\n-- on dessine --');
   let cam = await cadre();
   ok(cam.p > 4, `la carte est cadree dans le canevas : ${Math.round(cam.p * 100) / 100} px par case`);

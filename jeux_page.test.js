@@ -183,16 +183,144 @@ const servirLeSite = async () => {
      + ' saurait pas qu il revient ; vif, on cliquerait sur une liste vide');
   const foot = v.onglets.find((o) => /Football/i.test(o.mot));
   ok(foot && !foot.eteint && !foot.mort, 'le football, lui, est vif');
-  await p.evaluate(() => {
-    [...document.querySelectorAll('.onglets[data-groupe="sports"] button')]
-      .find((b) => /Tennis/i.test(b.textContent)).click();
-  });
+  /* POUR DE VRAI, et non `.click()` en JavaScript : un appel de script ignore
+     `pointer-events`, et cette page rend TOUT inerte par defaut. L'essai
+     passait donc sur un onglet que personne n'aurait pu cliquer. */
+  await p.getByRole('button', { name: /Tennis/i }).click();
   await p.waitForTimeout(300);
   const apres = await lis();
   eq(apres.matchs.length, 1, 'l onglet Tennis ne garde que le tennis');
   eq(apres.matchs[0].dom, 'Vercingetorix V.', 'et c est le bon');
   ok(/🇫🇷/.test(await p.content()) || apres.matchs[0].dom.length > 0,
      'le drapeau se fabrique du code ISO, sans une image a telecharger');
+
+  console.log('\n-- le menu du profil --');
+  /* ---- CE QUI ETAIT DEMANDE ----
+   * « Avant il y avait un menu pour deposit etc, faudrait le remettre dans
+   * games.html mais refait sans ce style de couleurs, quand on clique sur
+   * notre profil. »
+   *
+   * Le menu existait — dans le tiroir SOMBRE du script qui le porte, pose sur
+   * une page claire. Ici il est redessine aux couleurs de la page, et
+   * SEULEMENT redessine : ses rangees restent declarees par `swogecompte.js`,
+   * qui est le seul endroit ou l'on dise quels panneaux existent.
+   */
+  const declarees = await p.evaluate(() => {
+    const m = document.getElementById('menu');
+    return m ? [...m.querySelectorAll('a')].map((a) => a.textContent.trim()) : [];
+  });
+  ok(declarees.length >= 4,
+     `le script des panneaux declare ${declarees.length} rangee(s) : ${declarees.join(' | ')}`);
+  ok(declarees.some((x) => /Deposit/i.test(x)) && declarees.some((x) => /Withdraw/i.test(x)),
+     'dont le depot et le retrait, qui sont ce qu on venait chercher');
+
+  /* Avatar inerte : le defaut d'avant. Il a l'air d'un bouton, donc il doit en
+     etre un. */
+  eq(await p.evaluate(() => document.getElementById('gxProfil').tagName), 'BUTTON',
+     'le profil est un vrai bouton, et non une image qui n avale les clics pour rien');
+
+  /* ---- PAS ENCORE ENTRE : ON OUVRE LA CONNEXION ----
+   * Un menu de compte propose a quelqu un qui n en a pas se lit comme une
+   * panne : chaque rangee repondrait « connectez-vous d abord », une par une. */
+  await p.click('#gxProfil');
+  await p.waitForTimeout(250);
+  const horsCompte = await p.evaluate(() => ({
+    menu: !document.getElementById('gxMenu').hidden,
+    connexion: !document.getElementById('cxVoile').hidden,
+  }));
+  ok(!horsCompte.menu && horsCompte.connexion,
+     'sans compte, le profil ouvre la CONNEXION plutot qu un menu qui repondrait'
+     + ' « connectez-vous » cinq fois de suite');
+  await p.evaluate(() => { document.getElementById('cxVoile').hidden = true; });
+
+  /* ---- ENTRE ---- */
+  /* On pose l etat « connecte » a la main : ce qu on essaie ici est le MENU,
+     pas la chaine — et brancher un vrai portefeuille pour lire une liste de
+     rangees ferait dependre cet essai d un service exterieur. */
+  await p.evaluate(() => {
+    document.getElementById('cxAdr').textContent = '0xAbCd…9911';
+    document.getElementById('cxSwoge').innerHTML = '<b>4,200</b> $SWOGE';
+    document.getElementById('cxEth').innerHTML = '<b>0.0312</b> ETH';
+    document.getElementById('cxCompte').hidden = false;
+  });
+  await p.click('#gxProfil');
+  await p.waitForTimeout(250);
+  const ouvert = await p.evaluate(() => {
+    const m = document.getElementById('gxMenu');
+    const st = getComputedStyle(m);
+    const rgb = (st.backgroundColor.match(/\d+/g) || []).map(Number);
+    return {
+      ouvert: !m.hidden,
+      clair: rgb.length >= 3 && (rgb[0] + rgb[1] + rgb[2]) / 3 > 200,
+      tete: (m.querySelector('.gx-qui b') || {}).textContent || null,
+      adresseDedans: /0xAbCd/.test(m.textContent),
+      /* Le mot SANS son icone : elle vit dans un `<i>` a part, et la lire avec
+         collerait l'emoji au mot — « 👛My Wallet ». Un essai qui decoupe ce
+         collage a la ficelle mesure sa propre ficelle, pas la page. */
+      mots: [...m.querySelectorAll('a')].map((a) => {
+        const c = a.cloneNode(true);
+        [...c.querySelectorAll('i')].forEach((x) => x.remove());
+        return c.textContent.trim();
+      }),
+      icones: [...m.querySelectorAll('a i')].map((x) => x.textContent.trim()),
+      dit: document.getElementById('gxProfil').getAttribute('aria-expanded'),
+    };
+  });
+  ok(ouvert.ouvert, 'entre, le profil ouvre le menu');
+  eq(ouvert.dit, 'true', 'et le bouton dit qu il est ouvert, pour qui ne voit pas l ecran');
+  ok(ouvert.clair,
+     'il est CLAIR comme la page : c est tout l objet de la demande — le meme menu'
+     + ' existait deja, dessine pour un fond sombre');
+  /* ---- ET L ADRESSE N Y EST PAS DEUX FOIS ----
+   * Elle y a ete, en tete du menu. La pastille qui la porte est visible a
+   * TOUTES les largeurs — mesure a mille quatre cents, huit cent vingt et
+   * trois cent quatre-vingt-dix — et elle est collee au bouton qui ouvre ce
+   * menu : on la lisait donc deux fois, l une sous l autre. C est exactement
+   * la plainte que cette page a deja traitee une fois. */
+  ok(!ouvert.adresseDedans && !ouvert.tete,
+     'l adresse n est PAS repetee dans le menu : la pastille qui la porte est'
+     + ' juste au-dessus, a toutes les largeurs');
+  /* LA verification qui compte : les rangees sont CELLES QU ON A DECLAREES.
+     Une liste ecrite dans la page passerait cet essai le premier jour et
+     divergerait au premier panneau ajoute. */
+  const attendus = declarees.map((x) => x.replace(/^\S+\s+/, ''));
+  const manque = attendus.filter((x) => ouvert.mots.indexOf(x) < 0);
+  ok(manque.length === 0,
+     `les ${attendus.length} rangees sont exactement celles declarees ailleurs :`
+     + ` ${ouvert.mots.join(' | ')}${manque.length ? ' — manque ' + manque.join(', ') : ''}`);
+  ok(ouvert.icones.length === ouvert.mots.length && ouvert.icones.every((x) => x),
+     'et chacune garde son icone, dans un element a part : collee au mot, elle ne'
+     + " s'alignerait pas d'une ligne a l'autre");
+
+  /* Un clic sur « Deposit » doit ouvrir LE panneau du script, pas un second
+     chemin vers le meme argent. */
+  await p.evaluate(() => {
+    window.__vuPanneau = null;
+    const src = document.getElementById('menu');
+    src.addEventListener('click', (e) => {
+      const a = e.target.closest && e.target.closest('a[data-panel]');
+      if (a) window.__vuPanneau = a.getAttribute('data-panel');
+    }, true);
+  });
+  await p.locator('#gxMenu a').filter({ hasText: /Deposit/i }).first().click();
+  await p.waitForTimeout(250);
+  eq(await p.evaluate(() => window.__vuPanneau), 'dep',
+     'cliquer « Deposit » renvoie le clic sur la rangee D ORIGINE : c est son'
+     + ' gestionnaire qui sait ouvrir le panneau, et le refaire ici serait un'
+     + ' second chemin vers le meme argent');
+  eq(await p.evaluate(() => document.getElementById('gxMenu').hidden), true,
+     'et le menu se referme derriere');
+
+  await p.click('#gxProfil'); await p.waitForTimeout(200);
+  await p.evaluate(() => document.body.click());
+  await p.waitForTimeout(200);
+  eq(await p.evaluate(() => document.getElementById('gxMenu').hidden), true,
+     'un clic a cote le referme : sinon il reste ouvert sous le doigt et avale'
+     + ' le geste suivant');
+  await p.click('#gxProfil'); await p.waitForTimeout(200);
+  await p.keyboard.press('Escape'); await p.waitForTimeout(200);
+  eq(await p.evaluate(() => document.getElementById('gxMenu').hidden), true,
+     'et la touche d echappement aussi');
 
   console.log('\n-- et les deux etats qu on n aime pas montrer --');
   /* VIDE. Un calendrier peut l etre : hors saison, ou entre deux imports. */

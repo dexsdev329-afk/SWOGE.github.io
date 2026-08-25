@@ -118,6 +118,24 @@ a{color:inherit;text-decoration:none}
   background:var(--fond);display:grid;place-items:center;font-size:16px;flex:0 0 auto;
 }
 
+/* ---- LE MENU DU PROFIL ----
+   Il existait deja, mais dessine pour un fond sombre par le script qui le
+   porte : pose sur cette page il jurait. Il est REDESSINE ici, avec les
+   couleurs de la page — et seulement redessine : ses rangees restent
+   declarees ailleurs, sinon il y aurait deux listes a tenir d'accord. */
+.gx-menu{position:absolute;top:60px;right:14px;z-index:70;width:236px;
+  background:var(--carte);border:1px solid var(--bord);border-radius:14px;
+  box-shadow:var(--ombre);padding:6px;display:flex;flex-direction:column;gap:1px}
+.gx-menu[hidden]{display:none}
+.gx-menu a{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:9px;
+  font:700 12px/1 'Inter',system-ui,sans-serif;color:var(--texte);text-decoration:none}
+.gx-menu a:hover{background:var(--bleu-clair);color:var(--bleu)}
+.gx-menu .gx-sep{height:1px;background:var(--bord);margin:5px 2px}
+/* L'icone reste a largeur fixe : sans elle les mots ne s'alignent pas, et une
+   colonne de mots decales se lit comme une liste mal faite. */
+.gx-menu a i{font-style:normal;font-size:14px;width:18px;text-align:center;flex:0 0 auto}
+@media(max-width:520px){ .gx-menu{right:8px;left:8px;width:auto} }
+
 /* ------------------------------------------------------------ LA COLONNE DE GAUCHE */
 .sw-corps{display:flex; align-items:flex-start; gap:14px; padding:14px; max-width:1680px; margin:0 auto}
 .sw-cote{
@@ -422,6 +440,18 @@ a.match:hover .cotes button{border-color:var(--bleu)}
    libelle — tout sauf l'effet. Trouve par l'essai qui clique pour de vrai ;
    a la lecture, le code avait l'air complet. */
 .cx-boite button, .cx-wallet, .cx-mail{pointer-events:auto;cursor:pointer}
+/* ---- ET TOUT CE QUI EST DEVENU VIVANT DEPUIS ----
+   Le profil et son menu, les onglets de sport, et les rencontres qui menent au
+   tableau. Le meme piege que ci-dessus, et il s'est referme deux fois : le
+   bouton de profil avait son gestionnaire, son style et son libelle — tout
+   sauf l'effet, parce que `a[href], button{pointer-events:none}` le tenait
+   muet. Trouve par l'essai qui clique POUR DE VRAI ; l'essai qui appelait
+   `.click()` en JavaScript passait, lui, parce qu'un appel de script ignore
+   `pointer-events`. C'est la difference entre verifier un gestionnaire et
+   verifier un bouton. */
+#gxProfil, #gxMenu a, .onglets[data-groupe="sports"] button,
+#gxSports a, .gx-dit a{ pointer-events:auto; cursor:pointer }
+.onglets[data-groupe="sports"] button:disabled{ pointer-events:none; cursor:default }
 .cx-large{width:100%;padding:13px}
 .cx-large[disabled]{opacity:.55;cursor:progress}
 .cx-fermer{position:absolute;top:10px;right:12px;font-size:22px;line-height:1;color:var(--gris);
@@ -598,7 +628,17 @@ a.match:hover .cotes button{border-color:var(--bleu)}
     <b id="cxAdr"></b>
     <span class="cx-soldes"><i id="cxEth">&hellip;</i><i id="cxSwoge">&hellip;</i></span>
   </div>
-  <div class="sw-avatar">&#128100;</div>
+  <!-- ---- LE PROFIL OUVRE LE MENU ----
+       C'etait une image inerte : on cliquait dessus et rien n'arrivait, ce qui
+       est la pire chose qu'un avatar puisse faire — il a exactement l'air d'un
+       bouton. Il en est un maintenant, et il porte l'etat qu'il ouvre. -->
+  <button class="sw-avatar" id="gxProfil" type="button"
+          aria-haspopup="menu" aria-expanded="false" aria-label="Account menu">&#128100;</button>
+  <!-- Le menu est VIDE dans le fichier : ses rangees sont declarees par
+       `swogecompte.js`, qui est le seul endroit ou l'on dise quels panneaux
+       existent. Les ecrire ici en ferait un second, et le jour ou un panneau
+       s'ajoute il ne serait que d'un cote. -->
+  <div class="gx-menu" id="gxMenu" role="menu" hidden></div>
 </header>
 
 <div class="sw-corps">
@@ -924,6 +964,102 @@ a.match:hover .cotes button{border-color:var(--bleu)}
      fonction, et les deux ne se valent pas.
      `ethers` leur est necessaire — c est lui qui signe les retraits. La
      pastille de connexion, elle, n en a pas besoin : elle ne fait que lire. -->
+<!-- ==================== LE MENU DU PROFIL ====================
+     Il existait, mais dans le tiroir sombre du script qui le porte. Ici il est
+     REDESSINE aux couleurs de la page — et seulement redessine. -->
+<script>
+(function(){
+  "use strict";
+  var bouton = document.getElementById("gxProfil");
+  var menu   = document.getElementById("gxMenu");
+  if(!bouton || !menu) return;
+
+  /* ---- LES RANGEES SE LISENT, ELLES NE SE RECOPIENT PAS ----
+   * `swogecompte.js` pose un `#menu` cache : c'est LA declaration de ce qui
+   * existe — mon portefeuille, le staking, le depot, le retrait, les quetes.
+   * Le tiroir sombre le recopie ; on fait pareil, en clair. Ecrire la liste
+   * ici en ferait une seconde, et le jour ou un panneau s'ajoute il ne serait
+   * que d'un cote — celui qu'on regarde en developpant, jamais l'autre.
+   * On garde le lien D'ORIGINE et l'on renvoie le clic dessus : c'est son
+   * gestionnaire qui sait ouvrir le panneau, et le refaire ici serait un
+   * second chemin vers le meme argent. */
+  function rangees(){
+    var src = document.getElementById("menu");
+    if(!src) return [];
+    return [].map.call(src.children, function(n){
+      if(n.classList && n.classList.contains("msep")) return { sep:true };
+      if(n.tagName !== "A") return null;
+      var t = (n.textContent||"").trim();
+      /* Le premier caractere est un emoji : il devient l'icone, le reste le
+         mot. Un emoji colle au mot ne s'aligne pas d'une ligne a l'autre. */
+      var m = t.match(/^(\S+)\s+(.*)$/);
+      return { ic: m?m[1]:"", mot: m?m[2]:t, href: n.getAttribute("href")||"#", vers:n };
+    }).filter(Boolean);
+  }
+
+  function peint(){
+    var l = rangees(), h = "";
+    /* ---- L'ADRESSE N'EST PAS REPETEE ICI ----
+     * Elle y etait, en tete du menu, avec les deux soldes. Mesure a l'ecran :
+     * la pastille qui les porte est visible a TOUTES les largeurs — mille
+     * quatre cents, huit cent vingt, trois cent quatre-vingt-dix — et elle est
+     * collee au bouton qui ouvre ce menu. On lisait donc la meme adresse deux
+     * fois, l'une sous l'autre.
+     * C'est exactement la plainte que cette page a deja traitee une fois :
+     * l'adresse s'affichait a cinq endroits, et sur telephone deux d'entre eux
+     * se voyaient d'un coup — « cela se lit comme deux portefeuilles ». La
+     * remettre ici serait refaire le meme defaut en plus petit. */
+    if(!l.length){
+      /* Le script des panneaux n'a pas encore pose sa declaration — ou ne
+         chargera pas. On ne fabrique pas de fausses rangees : elles
+         n'ouvriraient rien, et un menu dont les lignes ne font rien est pire
+         qu'un menu absent. */
+      h += '<a href="swoge_pusher.html"><i>&#128176;</i>Deposit &amp; play</a>';
+    } else {
+      h += l.map(function(r){
+        if(r.sep) return '<div class="gx-sep"></div>';
+        return '<a href="'+r.href+'" data-i="'+l.indexOf(r)+'"><i>'+r.ic+'</i>'+r.mot+'</a>';
+      }).join("");
+    }
+    menu.innerHTML = h;
+    [].forEach.call(menu.querySelectorAll("a[data-i]"), function(a){
+      var r = l[Number(a.getAttribute("data-i"))];
+      if(!r || !r.vers) return;
+      a.addEventListener("click", function(ev){
+        /* Une vraie navigation — « Home » — se laisse passer telle quelle. Un
+           panneau, lui, s'ouvre par son lien d'origine. */
+        if(r.href && r.href !== "#") { ferme(); return; }
+        ev.preventDefault(); ferme(); r.vers.click();
+      });
+    });
+  }
+
+  function ouvre(){ peint(); menu.hidden = false; bouton.setAttribute("aria-expanded","true"); }
+  function ferme(){ menu.hidden = true; bouton.setAttribute("aria-expanded","false"); }
+
+  bouton.addEventListener("click", function(ev){
+    ev.stopPropagation();
+    if(!menu.hidden){ ferme(); return; }
+    /* ---- PAS ENCORE ENTRE : ON OUVRE LA CONNEXION ----
+     * Un menu de compte propose a quelqu'un qui n'en a pas se lit comme une
+     * panne : chaque rangee repondrait « connectez-vous d'abord », une par
+     * une. On l'emmene la ou il faut aller, en un geste. */
+    var cpt = document.getElementById("cxCompte");
+    if(!cpt || cpt.hidden){
+      var b = document.querySelector(".cx-mail") || document.querySelector(".cx-wallet");
+      if(b){ b.click(); return; }
+    }
+    ouvre();
+  });
+  /* Un menu qui ne se referme pas au clic a cote reste ouvert sous le doigt et
+     avale le geste suivant. */
+  document.addEventListener("click", function(ev){
+    if(menu.hidden) return;
+    if(!menu.contains(ev.target)) ferme();
+  });
+  document.addEventListener("keydown", function(ev){ if(ev.key === "Escape") ferme(); });
+})();
+</script>
 <!-- ==================== LE CALENDRIER SPORTIF, EN VRAI ====================
      La page annoncait quatre rencontres ecrites a la main, jouees le 15 aout.
      Elle lit maintenant le meme calendrier que la page de paris. -->

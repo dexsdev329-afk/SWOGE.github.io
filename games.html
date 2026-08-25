@@ -3,978 +3,955 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<style>
-/* ================== CORRECTIFS COMMUNS ==================
- * Bloc identique sur les vingt-cinq pages. Il se pose juste apres le viewport
- * pour qu'aucune feuille de style de la page ne puisse le prendre de vitesse.
- *
- * LE DOUBLE-TAP NE ZOOME PLUS. Deux appuis rapproches sur un bouton — tirer,
- * tirer ; miser, miser — etaient lus comme un double-tap, et la page grossissait.
- * On jouait le coup suivant a moitie hors de l'ecran et il fallait pincer pour
- * revenir. `manipulation` supprime CE geste, et lui seul : le pincement pour
- * zoomer reste possible, ce qui n'aurait pas ete le cas avec un
- * `user-scalable=no` dans le viewport — la solution courante, qui prive aussi
- * les gens qui zooment pour lire. Les 300 ms d'attente avant que le clic parte
- * disparaissent avec, en prime.
- *
- * LA SURFACE DE JEU, elle, ne doit rien laisser passer : un doigt qui glisse
- * sur un plateau ne doit pas faire defiler la page derriere.
- *
- * LES CIBLES : le bouton menu tombait a 38x38 sur telephone, sous les 44 px
- * recommandes — et c'est le seul chemin vers le depot, le retrait et le compte.
- * ========================================================= */
-html{ -webkit-text-size-adjust:100%; }
-
-/* ---- ON RELEVE LE NOIR, PARTOUT ----
- *
- * Les tables etaient presque entierement noires : 80 % des pixels du casino
- * sous le seuil du visible, 96 % au Coin Pusher, contre 58 % au hall. A cote
- * du hall, chaque jeu paraissait eteint.
- *
- * Le calque est en `screen`, pas en voile blanc, et la difference est tout :
- *
- *   screen(a, g) = 255 - (255 - a)(255 - g) / 255
- *
- * Le NOIR monte a la valeur du calque, le BLANC ne bouge pas d'un cran. Les
- * plaques peintes, les jetons et les cartes gardent donc exactement leur
- * eclat — seuls les creux se remplissent. Un voile blanc a 5 %, lui, aurait
- * laiteuse les cartes en meme temps.
- *
- * `filter: brightness()` est ecarte pour deux raisons : il MULTIPLIE, donc le
- * noir reste noir — or c'est justement le noir qu'on veut relever — et un
- * filtre fait de son element le repere de tout descendant en position fixe,
- * ce qui nous a deja coute un cadre de palier de deux cents pixels sur le Spin.
- *
- * `pointer-events:none` : le calque couvre tout l'ecran, il ne doit rien
- * intercepter. Verifie par un vrai clic sur la bulle de profil, avec et sans.
- *
- * Une seule valeur a regler ici, et elle vaut pour les vingt-six pages. */
-html::after{ content:""; position:fixed; inset:0; pointer-events:none;
-  z-index:2147483000; background:#12121a; mix-blend-mode:screen; }
-button, a, input, select, textarea, label, summary,
-[role="button"], [onclick],
-.card, .chipbtn, .btn, .tile, .sbet, .qclaim, .abtn, .pct, .chip, .sday{
-  touch-action:manipulation;
-}
-/* Le double-clic ne zoome plus. La regle etait posee element par element —
-   boutons, liens, cartes — et laissait donc zoomer partout ailleurs : sur un
-   titre, une marge, un paragraphe de la documentation. Un double-clic sur le
-   catalogue agrandissait la page et il fallait la redescendre a la main.
-   `manipulation` ne retire QUE le double-clic : le glissement et le pincement
-   restent, et c'est important — supprimer le pincement retirerait a qui voit
-   mal le seul moyen d'agrandir. */
-html, body{ touch-action:manipulation; }
-canvas{ touch-action:none; }
-.menubtn{ min-width:44px; min-height:44px; }
-</style>
-
 <title>SWOGE Games — play with $SWOGE</title>
-<link rel="icon" type="image/png" href="img/icone_swoge.png">
-<meta name="description" content="The SWOGE arcade. Play real-money games with $SWOGE on Robinhood Chain. Coin Pusher is live — more games coming soon.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-<style>
-  :root{
-    --gold:#FFC53D; --gold2:#FFB84D; --ink:#070B14; --ink2:#0F1626;
-    --text:#EAF2FF; --muted:#8DA0C4; --line:rgba(255,197,61,.28);
-  }
-  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-  html,body{color:var(--text);font-family:'Space Mono','Courier New',monospace}
-  html{background:#070B14}
-  /* ---- LE FOND, EN FICHIERS PLUTOT QU'EN BASE64 ----
-   Les deux fonds vivaient dans cette feuille, encodes : 133 ko que le
-   navigateur devait lire AVANT de peindre quoi que ce soit, et qu'il
-   relisait a chaque visite — un style ne se met pas en cache a part de la
-   page. En fichiers, il n'en telecharge qu'UN, celui que la requete
-   d'orientation reclame, et il le garde. */
-body{background:url('img/fond-hall.webp') center center/cover no-repeat fixed;background-color:#070B14}
-  body{min-height:100vh;overflow-x:hidden}
-  a{color:inherit;text-decoration:none}
-  .wrap{max-width:1080px;margin:0 auto;padding:0 18px}
+<!--
+  ================== LA PAGE DES JEUX ==================
 
-  main,nav{position:relative;z-index:1}
+  Elle est REFAITE dans le langage de l'accueil, et non repeinte par-dessus
+  l'ancienne. La couche de teinte precedente tenait, mais elle luttait contre
+  cinq cents lignes ecrites pour un fond sombre : chaque nouveau bloc
+  demandait une regle de plus pour annuler la precedente.
 
-  /* nav */
-  nav{display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid var(--line);
-    background:rgba(7,11,20,.7);backdrop-filter:blur(8px);position:sticky;top:0;z-index:5}
-  .brand{font-family:'Anton',sans-serif;font-size:20px;letter-spacing:1px;color:var(--gold)}
-  .brand span{color:var(--text)}
-  nav .sp{flex:1}
-  .nlink{font-size:13px;color:var(--muted);padding:8px 10px;border-radius:999px}
-  .nlink:hover{color:var(--text)}
-  .buy{font-size:13px;font-weight:700;color:var(--ink);background:linear-gradient(135deg,var(--gold2),var(--gold));
-    padding:9px 15px;border-radius:999px}
+  Les vingt-six cartes de jeu ne sont PAS retapees : elles sont relevees de
+  l'ancienne page, lien par lien et image par image. Une seule faute de frappe
+  sur un `href` enverrait quelqu'un sur une page morte, et rien dans un rendu
+  ne le dirait.
 
-  /* hero */
-  .hero{text-align:center;padding:52px 18px 26px}
-  .pill{display:inline-flex;align-items:center;gap:8px;font-size:12px;color:var(--gold);
-    border:1px solid var(--line);border-radius:999px;padding:6px 13px;margin-bottom:18px}
-  .pill .dot{width:8px;height:8px;border-radius:50%;background:#7CFF9B;box-shadow:0 0 10px #7CFF9B}
-  .hero h1{font-family:'Anton',sans-serif;font-size:clamp(38px,9vw,72px);line-height:.98;letter-spacing:1px}
-  .hero h1 .g{color:var(--gold)}
-  .hero p{max-width:620px;margin:16px auto 0;color:#cdbf9f;font-size:15px;line-height:1.6}
-
-  /* section title */
-  .sec{padding:22px 0 6px}
-  .sec h2{font-family:'Archivo',sans-serif;font-size:14px;letter-spacing:2px;text-transform:uppercase;
-    color:var(--muted);display:flex;align-items:center;gap:10px}
-  .sec h2::after{content:"";flex:1;height:1px;background:var(--line)}
-
-  /* game grid */
-  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px;padding:14px 0 40px}
-  .card{position:relative;border:1px solid var(--line);border-radius:18px;overflow:hidden;
-    background:linear-gradient(180deg,var(--ink2),#0c0a07);display:flex;flex-direction:column;
-    transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
-  .card.live:hover{transform:translateY(-4px);border-color:rgba(255,197,61,.6);
-    box-shadow:0 14px 40px rgba(0,0,0,.5),0 0 0 1px rgba(255,197,61,.15)}
-  .thumb{aspect-ratio:16/10;display:flex;align-items:center;justify-content:center;font-size:74px;
-    background:radial-gradient(120% 120% at 50% 0%,rgba(255,197,61,.22),transparent 62%),#100c08;
-    border-bottom:1px solid var(--line);position:relative;overflow:hidden}
-  .thumb video.tvid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
-  .badge{position:absolute;top:12px;right:12px;font-size:11px;font-weight:700;letter-spacing:1px;z-index:2;
-    padding:5px 10px;border-radius:999px;text-transform:uppercase}
-  .badge.on{background:linear-gradient(135deg,#7CFF9B,#39d16a);color:#062a12}
-  .badge.soon{background:rgba(255,255,255,.08);color:var(--muted);border:1px solid rgba(255,255,255,.12)}
-  .body{padding:16px 16px 18px;display:flex;flex-direction:column;gap:8px;flex:1}
-  .body h3{font-family:'Archivo',sans-serif;font-size:19px;font-weight:800;color:var(--text)}
-  .body p{font-size:13px;color:var(--muted);line-height:1.55;flex:1}
-  .tags{display:flex;flex-wrap:wrap;gap:6px}
-  .tag{font-size:11px;color:#cdbf9f;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);
-    padding:4px 9px;border-radius:999px}
-  .play{margin-top:6px;text-align:center;font-weight:700;font-size:14px;padding:12px;border-radius:12px;
-    background:linear-gradient(135deg,var(--gold2),var(--gold));color:var(--ink)}
-  .play.dis{background:rgba(255,255,255,.06);color:var(--muted);cursor:default}
-  .card.soon{opacity:.72}
-
-  /* footer */
-  footer{border-top:1px solid var(--line);padding:26px 18px 40px;text-align:center;color:var(--muted);font-size:12px}
-  footer a{color:var(--gold)}
-  .back{display:inline-block;margin-top:10px;font-size:13px;color:var(--muted)}
-
-  /* Le titre "Play now" et le bouton des jeux sont des PLAQUES PEINTES
-     (.sec h2.plate et .play portent une image de fond ou le texte est deja
-     dessine). Les nouvelles rubriques ne peuvent donc pas reutiliser ces
-     classes : elles afficheraient toutes "PLAY NOW". */
-  /* Hauteur alignee sur "Play now" (250 x 135/520 = 65 px) pour que les trois
-     bandeaux fassent la meme taille malgre des dessins de largeurs differentes. */
-  .sec h2.plate.pl-util{ width:min(210px,70%); aspect-ratio:620/192;
-    background-image:url("img/4d5ed94e5c92.png"); }
-  /* La plaque « Documentation » suit ses fiches : elles ont maigri, un
-     bandeau de deux cents pixels au-dessus les ecraserait. */
-  .sec h2.plate.pl-doc{ width:min(150px,44%); aspect-ratio:620/206;
-    background-image:url("img/108b3b83d40a.png"); }
-  .open{ margin-top:6px; text-align:center; font-weight:700; font-size:14px; padding:12px;
-    border-radius:12px; background:linear-gradient(135deg,var(--gold2),var(--gold)); color:var(--ink); }
-
-  /* ---- rubrique Utility : ce ne sont pas des jeux, la vignette porte un
-     embleme sur fond sombre plutot qu'une capture ---- */
-  .card.util .thumb{ background:radial-gradient(120% 120% at 50% 0%,rgba(255,197,61,.18),transparent 64%),#0d0b07; }
-  .card.util .thumb img{ position:absolute; inset:12%; width:76%; height:76%;
-    object-fit:contain; z-index:1; filter:drop-shadow(0 6px 14px rgba(0,0,0,.6)); }
-  .badge.util{ background:rgba(255,197,61,.16); color:var(--gold); border:1px solid rgba(255,197,61,.4); }
-
-  /* ---- rubrique Documentation : des fiches qu'on deplie sur place ---- */
-  /* Ces fiches ne sont pas des jeux : on les ouvre une fois, pour lire. Au
-     format des vignettes du catalogue — dix-huit pixels de rayon, seize de
-     texte gras, seize de rembourrage — elles pesaient autant que ce qu'on
-     vient jouer, et neuf d'affilee faisaient trois ecrans de telephone. */
-  .doc{ display:block; padding:0; border-radius:12px; }
-  .doc summary{ cursor:pointer; list-style:none; padding:11px 14px;
-    display:flex; align-items:center; gap:9px;
-    font-family:'Archivo',sans-serif; font-size:13.5px; font-weight:700;
-    letter-spacing:.1px; color:var(--text); }
-  .doc summary::-webkit-details-marker{ display:none; }
-  .doc summary::after{ content:"+"; margin-left:auto; color:var(--gold); font-size:16px; line-height:1; }
-  .doc[open] summary::after{ content:"\2013"; }
-  .doc summary:hover{ color:var(--gold2); }
-  .doc .in{ padding:0 14px 14px; font-size:12.5px; color:#cdbf9f; line-height:1.6; }
-  .doc .in p{ margin-bottom:9px; }
-  .doc .in p:last-child{ margin-bottom:0; }
-  .doc .in b{ color:var(--text); }
-  .doc .in a{ color:var(--gold); text-decoration:underline; }
-  .doc .in ol, .doc .in ul{ margin:0 0 9px 18px; }
-  .doc .in li{ margin-bottom:5px; }
-  .doc .in .avis{ margin-top:10px; padding:10px 12px; border-radius:10px; font-size:12.5px;
-    color:#e6cfa0; background:rgba(255,197,61,.07); border:1px solid rgba(255,197,61,.22); }
-  /* les fiches se lisent mieux sur toute la largeur que dans des colonnes courtes */
-  .grid.docs{ grid-template-columns:repeat(auto-fill,minmax(420px,1fr)); gap:9px; padding-top:6px; }
-  @media (max-width:520px){ .grid.docs{ grid-template-columns:1fr; } }
-</style>
-<style>
-/* ---- Les 4 jeux sur une seule ligne : la grille tenait dans 1080px, ce qui
-   ne laissait la place qu'a 3 cartes. En dessous de 1000px on garde le
-   comportement responsive (2 colonnes puis 1). ---- */
-@media (min-width:1000px) {
-  .wrap { max-width:1640px; }
-  .grid { grid-template-columns:repeat(5,1fr); gap:14px; }
-  .body { padding:14px 13px 16px; gap:7px; }
-  .body h3 { font-size:17px; }
-  .body p { font-size:12px; line-height:1.5; }
-  .play { width:min(200px,92%); }
-}
-
-/* ---- UI en image (boutons, badges, plaque de titre) ----
-   background-size en !important : les regles d'origine utilisent le raccourci
-   `background:` qui remet background-size a auto et fait deborder l'image. */
-.play, .badge.on, .badge.soon, .buy, .sec h2.plate {
-  background-color:transparent !important; background-repeat:no-repeat !important;
-  background-position:center !important; background-size:100% 100% !important;
-  color:transparent !important; text-indent:-9999px; overflow:hidden; white-space:nowrap;
-  border:none !important; box-shadow:none !important; padding:0 !important;
-}
-.play  { display:block; width:min(230px,86%); aspect-ratio:480/179; margin:10px auto 2px !important;
-         background-image:url('img/0a0efab84b19.png'); }
-.badge.on   { width:62px; height:auto; aspect-ratio:220/83; border-radius:0;
-              background-image:url('img/337929d90616.png'); }
-.badge.soon { width:62px; height:auto; aspect-ratio:220/80; border-radius:0;
-              background-image:url('img/2d8b1bb20333.png'); }
-.buy   { display:inline-block; flex:0 0 auto; width:108px; aspect-ratio:340/129; border-radius:0;
-         background-image:url('img/05e3c3646bd1.png'); }
-/* La plaque de titre : plus que sa geometrie. Le dessin « PLAY NOW » qui
-   etait ici a quitte la page avec le titre qu il portait — 52 ko de PNG en
-   base64 dans la premiere feuille de style, donc dans le premier octet que
-   le telephone attend avant de peindre quoi que ce soit. Les rubriques qui
-   restent (.pl-doc) apportent chacune son image ; ce cadre-ci ne sert plus
-   qu a les poser au bon endroit, a la bonne mesure. */
-.sec h2.plate { display:block; width:min(250px,70%); aspect-ratio:520/135; margin:0 auto; }
-@media (max-width:820px), (orientation:portrait) {
-  .buy { width:78px; }
-  .play { width:min(215px,88%); }
-}
-</style>
-<style>
-/* ---- le menu commun ----
-   games.html n'a pas de portefeuille : chaque jeu porte le sien. */
-
-/* ---- la barre passe a la ligne sur telephone ----
-   Elle porte le solde, deux liens, le compte de joueurs et le profil. A 390 px
-   elle depassait de 127 px : elle se replie donc.
-
-   Le SEPARATEUR, lui, s'efface ici. Il prenait toute la largeur pour couper la
-   barre en deux — la marque seule au-dessus, tout le reste dessous. C'etait
-   juste tant que la marque etait la : elle avait besoin de sa ligne. Depuis
-   qu'elle est descendue en tete de page, cette meme regle reservait une ligne
-   entiere au seul bouton de profil, et poussait le premier jeu 41 px plus bas
-   pour rien. Sans lui, les elements se rangent d'eux-memes : deux rangs bien
-   remplis au lieu de trois maigres.
-
-   Sur ecran large il reste indispensable — c'est lui qui pousse les liens a
-   droite de la marque. La regle ne vaut donc que sous 640 px. */
-@media (max-width:640px){
-  nav{ flex-wrap:wrap; row-gap:9px; gap:9px; padding:11px 13px; }
-  nav .sp{ display:none; }
-}
-
-/* ======================= LES RANGEES =======================
- *
- * Avant : une grille de cartes, chacune avec un titre, un paragraphe de
- * quatre lignes et trois etiquettes. Vingt-quatre jeux faisaient une page
- * de plusieurs ecrans qu'il fallait LIRE pour trouver quoi lancer — alors
- * que chaque vignette porte deja son nom, en gros, dessine dedans.
- *
- * Maintenant : une rangee par categorie, qui defile de cote. On voit les
- * cinq categories d'un seul coup d'oeil, on balaie celle qui interesse, on
- * touche, ca se lance. C'est la disposition de toutes les applications de
- * jeu, et pour une raison simple : la vignette EST le titre.
- *
- * Le defilement horizontal a un piege connu — rien ne dit qu'il existe. Trois
- * choses le disent ici : la derniere vignette visible est coupee par le bord
- * (une carte a moitie visible s'attrape), le compteur annonce combien il y en
- * a, et sur grand ecran deux chevrons apparaissent pour la souris, qui n'a
- * pas de geste de balayage.
- */
-/* ---- LES EN-TETES SE RAPPROCHENT DE LEURS VIGNETTES ----
-   Un titre de rangee separe de ses cartes par dix pixels, et vingt-six entre
-   deux rangees, flottait entre les deux : a l'oeil il appartenait autant a la
-   rangee du dessus qu'a la sienne. Il descend a six, et l'ecart entre rangees
-   a dix-huit — le titre est deux fois plus pres de ce qu'il annonce que de ce
-   qui precede, ce qui suffit a le rattacher. La rangee y gagne au passage la
-   hauteur d'une demi-vignette sur telephone. */
-.rangee{ margin:0 0 18px; }
-.r-tete{ display:flex; align-items:baseline; gap:8px; margin:0 2px 6px;
-  padding:0 var(--rgouttiere,14px); }
-.r-ic{ font-size:.95rem; line-height:1; }
-.r-tete h3{ margin:0; font-size:.9rem; letter-spacing:.03em; color:#F4E7C6; }
-.r-sous{ font-size:.76rem; opacity:.5; }
-.r-nb{ margin-left:auto; font-size:.72rem; opacity:.65; white-space:nowrap;
-  padding:3px 10px; border-radius:999px; background:rgba(255,255,255,.07);
-  border:1px solid rgba(255,255,255,.10); }
-
-/* La piste. `scroll-padding` et la gouttiere en padding font que la premiere
-   vignette s'aligne sur le texte de l'en-tete au lieu de coller au bord. */
-.r-piste{ display:grid; grid-auto-flow:column; gap:10px;
-  grid-auto-columns:minmax(196px, 46%);
-  overflow-x:auto; overscroll-behavior-x:contain;
-  scroll-snap-type:x proximity; scroll-padding-left:var(--rgouttiere,14px);
-  padding:2px var(--rgouttiere,14px) 10px;
-  -webkit-overflow-scrolling:touch;
-  scrollbar-width:none; }
-.r-piste::-webkit-scrollbar{ display:none; }
-
-.r-carte{ position:relative; display:block; scroll-snap-align:start;
-  border-radius:14px; overflow:hidden; aspect-ratio:3/2;
-  border:1px solid rgba(255,200,90,.20);
-  background:rgba(255,255,255,.04);
-  transition:transform .13s ease, border-color .15s ease, box-shadow .15s ease; }
-.r-carte img{ display:block; width:100%; height:100%; object-fit:cover; }
-.r-carte:hover, .r-carte:focus-visible{ transform:translateY(-2px);
-  border-color:rgba(255,200,90,.6); box-shadow:0 8px 22px rgba(0,0,0,.5); outline:none; }
-.r-carte:active{ transform:translateY(0); }
-/* ---- le nom, en bas de la vignette ----
- *
- * Il devait etre inutile : les vignettes de duel portent leur titre dessine
- * dedans, « SWOGE CONNECT 4 » en gros. Mais celles des jeux contre la
- * banque, non — ce sont des illustrations pures : une table de blackjack,
- * une grille de machine, un volcan. Alignees dans une rangee, on ne
- * distingue plus Mines de Hi-Lo ni de Plinko.
- *
- * D'ou cette bande : UN mot ou deux, au bas de la carte, sur un degrade qui
- * ne mange que le bord inferieur de l'image. Sur les vignettes qui portent
- * deja leur titre, elle se lit comme une legende et reste discrete. C'est le
- * minimum pour que la rangee serve a choisir, ce qui est son seul role. */
-.r-nom{ position:absolute; left:0; right:0; bottom:0; padding:16px 10px 7px;
-  font-size:.78rem; font-weight:700; letter-spacing:.02em; color:#FFF3D6;
-  text-shadow:0 1px 3px rgba(0,0,0,.9);
-  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-  background:linear-gradient(180deg,rgba(6,4,2,0),rgba(6,4,2,.88) 62%); }
-@media (max-width:460px){ .r-nom{ font-size:.72rem; padding:14px 8px 6px; } }
-
-/* ---- LE DESSIN PORTE LE NOM, LE SITE SE TAIT ----
-   Le site imprimait le nom du jeu par-dessus chaque vignette, en bas a gauche.
-   C'etait juste tant que les dessins etaient des scenes muettes. Ils portent
-   tous leur titre PEINT maintenant — plus gros, mieux place, lisible a la
-   taille d'une tuile — et les vingt-six affichaient donc leur nom deux fois.
-   La regle s'inverse : on se tait par defaut, et la classe `nomme` fait
-   revenir le nom pour une vignette muette, le jour ou il en arrivera une.
-   Le nom reste dans `title` et dans l'`alt` de l'image : rien n'est perdu
-   pour qui lit la page autrement qu'a l'oeil. */
-.r-nom{ display:none; }
-.r-carte.nomme .r-nom{ display:block; }
-
-/* ---- LA DOCUMENTATION SE PLIE ----
-   Neuf fiches sous le catalogue, c'est un ecran de telephone entier pour des
-   textes qu'on lit une fois. Elles partent, et la plaque devient la poignee :
-   le bouton l'englobe, donc appuyer sur le titre ou sur le signe revient au
-   meme — deux cibles pour un seul geste, et aucune plus petite que le doigt. */
-.sec-doc{ display:flex; justify-content:center; }
-.doc-tog{ display:inline-flex; align-items:center; gap:10px; padding:4px 6px;
-  background:none; border:0; cursor:pointer; font:inherit; }
-/* La plaque prend une largeur A ELLE. La regle d'origine la mesure en
-   pourcentage du parent — ce parent est maintenant un bouton qui se
-   dimensionne sur son contenu : chacun attendait l'autre, et la plaque
-   s'ecrasait a quelques pixels. On la mesure donc sur l'ECRAN. */
-.doc-tog .plate{ margin:0; width:min(150px,40vw) !important; }
-.doc-pm{ width:26px; height:26px; flex:0 0 26px; display:flex; align-items:center;
-  justify-content:center; border-radius:8px; font-size:17px; font-weight:800;
-  line-height:1; color:var(--gold); background:rgba(255,197,61,.10);
-  border:1px solid rgba(255,197,61,.34); }
-.doc-tog:hover .doc-pm{ background:rgba(255,197,61,.20); }
-.grid.docs{ display:none; }
-.grid.docs.on{ display:grid; }
-
-/* Les chevrons, pour la souris. Un balayage n'existe pas au clavier ni a la
-   souris : sans eux, sur un ordinateur, la moitie des jeux reste invisible. */
-.r-fleche{ position:absolute; top:50%; transform:translateY(-50%); z-index:3;
-  width:38px; height:38px; border-radius:50%; cursor:pointer; display:none;
-  align-items:center; justify-content:center; font-size:17px; line-height:1;
-  color:#0A0704; background:linear-gradient(180deg,#FFE08A,#FFC53D); border:0;
-  box-shadow:0 4px 14px rgba(0,0,0,.55); }
-.r-fleche.g{ left:2px; } .r-fleche.d{ right:2px; }
-.r-fleche[disabled]{ opacity:0; pointer-events:none; }
-.r-corps{ position:relative; }
-@media (hover:hover) and (min-width:760px){
-  .r-fleche{ display:flex; }
-  .r-piste{ grid-auto-columns:minmax(210px, 250px); }
-}
-@media (max-width:460px){
-  .r-piste{ grid-auto-columns:minmax(168px, 62%); }
-  .r-sous{ display:none; }     /* la place va aux vignettes */
-}
-
-/* ---- sous-rubriques des jeux ----
-   Les titres sont des PLAQUES PEINTES : le mot est dans le dessin, le <h3> ne
-   sert plus qu'a le laisser lisible aux lecteurs d'ecran et aux moteurs. D'ou
-   text-indent, et pas display:none.
-
-   C'est la LARGEUR qui pilote, pas la hauteur. Les trois plaques n'ont pas le
-   meme rapport — a hauteur egale, celle qui porte le texte le plus long est
-   la plus large. En posant width = hauteur voulue x rapport, les trois rendent
-   des lettres de la meme taille ; et comme la hauteur reste auto, max-width la
-   laisse suivre toute seule sur un ecran etroit. */
-.band{ display:flex; flex-direction:column; align-items:center; gap:7px;
-  max-width:1180px; margin:34px auto 12px; padding:0 4px; }
-.band h3{ display:block; max-width:96%;
-  background-repeat:no-repeat; background-position:center; background-size:100% 100%;
-  color:transparent; text-indent:-9999px; overflow:hidden; white-space:nowrap;
-  font-size:0; line-height:0; }
-.band.b-head h3{ width:calc(clamp(46px,5.4vw,74px) * 3.544); aspect-ratio:3.544;
-  background-image:url("media/band-head.webp"); }
-.band.b-players h3{ width:calc(clamp(46px,5.4vw,74px) * 4.096); aspect-ratio:4.096;
-  background-image:url("media/band-players.webp"); }
-.band.b-house h3{ width:calc(clamp(46px,5.4vw,74px) * 3.57); aspect-ratio:3.57;
-  background-image:url("media/band-house.webp"); }
-.band span{ font-size:11.5px; color:var(--muted); letter-spacing:.3px; text-align:center; }
-
-/* ---- les vignettes de cartes ----
-   Il n'y avait de regle de taille QUE pour les vidos : les images etaient
-   posees a leur taille naturelle, centrees, et la boite les rognait. Sur une
-   carte de 238 px on ne voyait donc qu'un tiers d'une image de 640 — assez
-   quand le sujet est au milieu, desastreux quand l'illustration porte un
-   cadre. Les douze vignettes font 640x400, exactement le rapport de la boite :
-   posees en cover elles tiennent entieres, sans rien perdre. */
-.thumb img.tvid{ position:absolute; inset:0; width:100%; height:100%;
-  object-fit:cover; z-index:0; }
-
-/* ---- la rubrique des duels ----
-   Elle n'avait qu'un jeu : une carte seule dans une grille a cinq colonnes se
-   serait rangee dans un coin et lue comme un oubli, d'ou la carte pleine
-   largeur. Avec trois jeux, cette exception n'a plus lieu d'etre — elle
-   mangeait trois ecrans pour dire ce que trois vignettes disent d'un coup.
-   Les regles restent la pour un eventuel retour a un seul duel. */
-.grid.duel{ grid-template-columns:1fr; max-width:920px; margin:0 auto; }
-@media (min-width:820px){
-  .grid.duel .card{ flex-direction:row; }
-  .grid.duel .thumb{ flex:0 0 46%; aspect-ratio:auto;
-    border-bottom:0; border-right:1px solid var(--line); }
-  .grid.duel .thumb img{ width:100%; height:100%; object-fit:cover; }
-  .grid.duel .body{ justify-content:center; padding:22px 26px; gap:10px; }
-  .grid.duel .body h3{ font-size:24px; }
-  .grid.duel .body p{ font-size:14px; flex:0 1 auto; }
-  .grid.duel .play{ margin-left:0 !important; margin-right:0 !important; }
-}
-
-/* Trois jeux dans une grille qui en tient cinq laissaient deux colonnes vides
-   a droite, et la rubrique avait l'air inachevee. On demande donc TROIS
-   colonnes, pas une largeur : plus bas dans la page une regle impose
-   repeat(5,1fr) au-dessus de 1000px, et borner la largeur ne faisait
-   qu'y ecraser cinq colonnes au lieu d'en enlever deux. */
-@media (min-width:1000px){
-  .grid.trio{ grid-template-columns:repeat(3,1fr); max-width:1000px; margin:0 auto; }
-}
-
-/* ---- Etiquettes des cartes : elles restaient en gris terne alors que toute
-   la page est passee en or/lave. Pas d'image ici : 12 pastilles de 93x22 en
-   texte gravé seraient floues et fixeraient les mots. ---- */
-.tag {
-  color:#f5d98a !important;
-  background:linear-gradient(180deg, rgba(58,26,8,.85), rgba(26,12,4,.9)) !important;
-  border:1px solid rgba(255,197,61,.55) !important;
-  box-shadow:inset 0 1px 0 rgba(255,214,130,.18), 0 1px 3px rgba(0,0,0,.5);
-  text-shadow:0 1px 2px rgba(0,0,0,.7);
-  font-weight:700; letter-spacing:.2px;
-}
-
-/* fond paysage sur ecran large (le 9:16 est le defaut, sinon cover massacre l'un des deux) */
-@media (orientation:landscape) { body { background-image:url('img/fond-hall-large.webp'); } }
-/* titre et liens de la barre en image */
-.brand, .nlink {
-  background-color:transparent !important; background-repeat:no-repeat !important;
-  background-position:center !important; background-size:100% 100% !important;
-  color:transparent !important; text-indent:-9999px; overflow:hidden; white-space:nowrap;
-  border:none !important; box-shadow:none !important; padding:0 !important; flex:0 0 auto;
-}
-.brand  { display:inline-block; width:168px; aspect-ratio:460/158; background-image:url('img/76dc9dd2f0e4.png'); }
-.nlink[href="index.html"] { display:inline-block; width:96px; aspect-ratio:300/96; background-image:url('img/912ee07b5df4.png'); }
-.nlink[href="swoge_staking.html"] { display:inline-block; width:96px; aspect-ratio:300/96; background-image:url('img/960325cb3535.png'); }
-@media (max-width:820px), (orientation:portrait) {
-  .brand { width:100px; }
-  .nlink[href="index.html"], .nlink[href="swoge_staking.html"] { width:62px; }
-  nav { gap:5px; padding-left:8px; padding-right:8px; }
-}
-
-/* ---- LA MARQUE EN TETE DE PAGE ----
- *
- * Elle occupe la place de l'ancienne plaque « Play now », et reprend sa
- * largeur : les trois bandeaux de la page — la marque, « Documentation » et
- * les rangees — restent alignes sur la meme mesure.
- *
- * On garde la classe `.brand`, donc le meme dessin : deux images de la meme
- * marque finiraient par diverger, et l'une des deux serait la mauvaise. Seule
- * la taille change ici — plus grande qu'en barre, puisqu'elle est maintenant
- * le titre de la page et non plus un logo de coin.
- *
- * La regle est plus specifique que le `.brand{width:100px}` du telephone
- * juste au-dessus : c'est ce qui l'emporte, pas l'ordre des lignes.
- */
-.sec h1.marque { margin:0; }
-.sec h1.marque .brand { display:block; width:min(232px,56%); margin:0 auto; }
-@media (max-width:820px), (orientation:portrait) {
-  .sec h1.marque .brand { width:min(196px,60%); }
-}
-</style>
-<!-- Le hall porte desormais son compte : portefeuille, depot, retrait,
-     staking. Les panneaux et leurs gestes vivent dans swogecompte.js, une
-     seule fois pour toutes les pages qui n en ont pas — voir l en-tete du
-     fichier. `ethers` est la bibliotheque de chaine dont le depot et le
-     retrait ont besoin ; elle ne sert qu au moment d envoyer une
-     transaction, jamais pour afficher un solde. -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
-<script src="stakebubble.js?v=233ccc57"></script>
-<script src="swogecompte.js?v=cd504287"></script>
-<!-- La pastille qui chiffre le solde en dollars vit dans swogebuy.js, et
-     elle s accroche a `#bal` — donc au badge que stakebubble.js pose ici.
-     Le hall etait la seule page a afficher un solde SANS sa valeur : on
-     lisait « 5.0k » sans savoir si c est beaucoup. Le reste du fichier ne
-     s active pas ici : son panneau d achat cherche `#depAmt`, que le hall
-     n a pas, et sa regle mobile ne vise que `nav .brand` et `.hero`, qui
-     n existent plus sur cette page. -->
-<script src="swogebuy.js"></script>
-
-<!-- ================== LA TEINTE CLAIRE ==================
-     Une COUCHE, posee en dernier, et non une reecriture des cinq cents lignes
-     qui precedent. La difference porte : les rangees, les fleches, l'accroche
-     des cartes et le tiroir du profil continuent de vivre dans leur feuille
-     d'origine, avec leurs corrections et leurs cas particuliers. Ici on ne
-     change que ce qui se VOIT — le fond, l'encre, les bordures — et si la
-     teinte deplait, ce bloc se retire d'un coup sans laisser de trou.
-     Il est place APRES les autres pour l'emporter a poids egal, sans avoir a
-     surcharger chaque selecteur d'un identifiant. -->
+  Les chiffres du bandeau sont ceux de la maquette, donc faux. Ils tiennent la
+  place, comme sur l'accueil.
+-->
 <style>
 :root{
-  --clair:#EEF3FB; --carte:#FFFFFF; --bord:#E1E9F6;
-  --nuit:#0A1F44; --bleu:#1B5FE0; --bleu-clair:#EAF1FF;
-  --gris:#6B7C99;
-  /* Les variables de la page d'origine sont REDEFINIES plutot que contournees :
-     tout ce qui les lit — et beaucoup de choses les lisent — suit sans qu'on
-     ait a les retrouver une par une. */
-  --text:#0B1B36; --muted:var(--gris); --line:var(--bord); --ink:var(--clair);
+  /* La maquette tient sur six couleurs. Les nommer ici plutot que de les
+     repeter trente fois est ce qui permettra de la reteinter en une minute
+     quand les couleurs definitives arriveront. */
+  --fond:#EEF3FB; --carte:#FFFFFF; --bord:#E1E9F6;
+  --nuit:#0A1F44; --nuit2:#123468;
+  --bleu:#1B5FE0; --bleu-clair:#EAF1FF;
+  --or:#F5B301;
+  --texte:#0B1B36; --gris:#6B7C99;
+  --vert:#12A150; --rouge:#E0443E;
+  --rayon:14px;
+  --ombre:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05);
 }
-html{ background:var(--clair) }
-/* Le fond etait une photo de hall en `fixed`. Elle ne peut pas rester : sur
-   clair, elle mange le texte des rangees. */
-body{ background:var(--clair); color:var(--text);
-      font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif }
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+/* ---- iOS GROSSIT LE TEXTE EN PAYSAGE, SANS PREVENIR ----
+   Le bloc de correctifs communs des vingt-cinq autres pages porte cette ligne
+   depuis toujours. La reprendre ici coute un mot ; l'oublier laisse la page
+   d'accueil grandir d'un tiers quand on tourne le telephone, et elle seule. */
+html{-webkit-text-size-adjust:100%}
 
-/* ---- LE BANDEAU, LE MEME QUE SUR L ACCUEIL ----
-   Recopie et non partage : les deux pages n'ont aucune feuille commune, et en
-   creer une pour trente lignes ferait un fichier de plus a charger avant de
-   peindre. Le jour ou une troisieme page le reprendra, il faudra l'extraire. */
-.gh-haut{ display:flex; align-items:center; gap:14px; padding:10px 16px;
+/* ================== RIEN N'EST CLIQUABLE, ET C'EST VOULU ==================
+ * La page est une BASE : aucun bouton ne mene quelque part, aucun ne parle au
+ * serveur. Les laisser repondre au doigt serait la seule facon de se tromper
+ * ici — on cliquerait « Claim bonus », rien n'arriverait, et l'on chercherait
+ * la panne. Ils gardent donc leur dessin et perdent leur geste.
+ *
+ * `pointer-events` plutot que `disabled` : `disabled` grise les boutons, et
+ * c'est justement l'apparence qu'on est en train de juger. Ici le dessin ne
+ * bouge pas d'un pixel — seul le curseur cesse de promettre.
+ *
+ * Le survol part avec : une vignette qui grandit sous la souris promet un
+ * clic autant qu'un curseur en main. */
+a[href], button{ pointer-events:none; cursor:default; }
+/* ---- SAUF CE QUI MENE QUELQUE PART ----
+ * Trois destinations existent deja sur le site et n'attendent rien de
+ * personne : les jeux, les paris, le livre blanc. Les laisser morts avec le
+ * reste aurait ete de la prudence mal placee — une page d'accueil dont AUCUN
+ * lien ne marche ne se distingue pas d'une page cassee.
+ * Les autres restent muets, et chacun pour une raison ecrite a cote. */
+a.vif{ pointer-events:auto; cursor:pointer; }
+a.vif:hover{ opacity:.86; }
+body{
+  background:var(--fond); color:var(--texte);
+  font:400 14px/1.45 'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+img{display:block;max-width:100%}
+button{font:inherit;cursor:pointer;border:0;background:none;color:inherit}
+a{color:inherit;text-decoration:none}
+
+/* ---------------------------------------------------------- LE BANDEAU HAUT */
+.sw-haut{
+  display:flex; align-items:center; gap:14px; padding:10px 16px;
   background:var(--carte); border-bottom:1px solid var(--bord);
-  position:sticky; top:0; z-index:40; }
-.gh-marque{ display:flex; align-items:center; gap:9px; flex:0 0 auto }
-.gh-patte{ width:34px;height:34px;border-radius:10px;background:var(--bleu-clair);
-  display:grid;place-items:center;font-size:19px }
-.gh-marque b{ display:block;font:800 17px/1 'Inter',system-ui,sans-serif;letter-spacing:.4px;color:var(--bleu) }
-.gh-marque i{ display:block;font:700 9.5px/1.4 'Inter',system-ui,sans-serif;font-style:normal;
-  letter-spacing:2.6px;color:var(--gris) }
-.gh-chiffres{ flex:1 1 auto;min-width:0;display:flex;gap:8px;overflow-x:auto;
-  padding:8px 10px;background:var(--clair);border:1px solid var(--bord);
-  border-radius:12px;scrollbar-width:none }
-.gh-chiffres::-webkit-scrollbar{ display:none }
-.gh-ch{ display:flex;align-items:center;gap:8px;padding:0 12px;flex:0 0 auto }
-.gh-ch+.gh-ch{ border-left:1px solid var(--bord) }
-.gh-ch .ic{ width:26px;height:26px;border-radius:8px;background:var(--bleu-clair);
-  display:grid;place-items:center;font-size:13px }
-.gh-ch small{ display:block;font:700 9px/1 'Inter',system-ui,sans-serif;letter-spacing:.9px;color:var(--gris) }
-.gh-ch b{ display:block;font:800 14px/1.3 'Inter',system-ui,sans-serif;color:var(--text) }
-.gh-b{ padding:10px 16px;border-radius:10px;border:0;cursor:pointer;
-  font:700 12.5px/1 'Inter',system-ui,sans-serif;letter-spacing:.3px;white-space:nowrap }
-.gh-plein{ background:var(--bleu);color:#fff } .gh-plein:hover{ background:#1750c4 }
-.gh-vide{ background:var(--carte);color:var(--bleu);border:1.5px solid var(--bleu) }
-.gh-vide:hover{ background:var(--bleu-clair) }
-.gh-avatar{ width:38px;height:38px;border-radius:11px;border:1px solid var(--bord);
-  background:var(--clair);display:grid;place-items:center;font-size:16px;flex:0 0 auto }
+  position:sticky; top:0; z-index:30;
+}
+.sw-marque{display:flex; align-items:center; gap:9px; flex:0 0 auto}
+.sw-patte{
+  width:34px;height:34px;border-radius:10px;background:var(--bleu-clair);
+  display:grid;place-items:center;font-size:19px;
+}
+.sw-marque b{display:block;font:800 17px/1 'Inter',system-ui,sans-serif;letter-spacing:.4px;color:var(--bleu)}
+.sw-marque i{display:block;font:700 9.5px/1.4 'Inter',system-ui,sans-serif;font-style:normal;
+  letter-spacing:2.6px;color:var(--gris)}
 
-/* ---- LA BANNIERE, ET SA HAUTEUR BORNEE ----
-   A son rapport naturel — 1312 sur 688 — elle faisait six cent cinquante
-   pixels de haut sur un ecran large : tout le premier ecran, et pas un seul
-   jeu visible avant de defiler. Sur la page des JEUX, c'est le catalogue qui
-   doit se voir en premier. On la borne donc en hauteur et `cover` recadre —
-   la table de poker est au centre de l'image, elle survit au rognage. */
-.gh-film{ display:block;width:100%;aspect-ratio:1312/688;max-height:min(38vh,300px);
-  object-fit:cover;border-radius:16px;border:1px solid var(--bord);
-  background:var(--nuit);margin-bottom:10px }
-@media (prefers-reduced-motion:reduce){ .gh-film{ display:none } }
+/* Les quatre chiffres du haut. Ils DEFILENT quand la fenetre retrecit plutot
+   que de passer a la ligne : une rangee qui se casse en deux pousse tout le
+   reste du bandeau vers le bas et fait sauter la page a chaque redimension. */
+.sw-chiffres{
+  flex:1 1 auto; min-width:0; display:flex; gap:8px; overflow-x:auto;
+  padding:8px 10px; background:var(--fond); border:1px solid var(--bord);
+  border-radius:12px; scrollbar-width:none;
+}
+.sw-chiffres::-webkit-scrollbar{display:none}
+.sw-ch{display:flex;align-items:center;gap:8px;padding:0 12px;flex:0 0 auto}
+.sw-ch+.sw-ch{border-left:1px solid var(--bord)}
+.sw-ch .ic{width:26px;height:26px;border-radius:8px;background:var(--bleu-clair);
+  display:grid;place-items:center;font-size:13px}
+.sw-ch small{display:block;font:700 9px/1 'Inter',system-ui,sans-serif;letter-spacing:.9px;color:var(--gris)}
+.sw-ch b{display:block;font:800 14px/1.3 'Inter',system-ui,sans-serif}
 
-/* ---- LE CONTENU DANS UN PANNEAU BLANC ----
-   Sur fond sombre, les rangees flottaient sur la photo. Sur clair il leur faut
-   un support, sinon les titres pendent dans le vide. */
-main .wrap{ background:var(--carte); border:1px solid var(--bord); border-radius:16px;
-  padding:16px 14px 20px; margin-top:12px; margin-bottom:18px;
-  box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05) }
-.rangee{ margin-bottom:14px }
-.r-tete h3{ color:var(--nuit); font-family:'Inter',system-ui,sans-serif; font-weight:800 }
-.r-sous{ color:var(--gris); opacity:1 }
-.r-nb{ background:var(--bleu-clair); border:1px solid var(--bord); color:var(--bleu);
-  opacity:1; font-weight:700 }
-.r-ic{ filter:none }
-/* Les cartes gardent leur art ; c'est leur bordure et leur ombre qui changent. */
-.r-carte{ border:1px solid var(--bord); background:var(--clair);
-  box-shadow:0 1px 2px rgba(11,27,54,.05) }
-.r-carte:hover{ border-color:var(--bleu); box-shadow:0 6px 18px rgba(27,95,224,.18) }
-/* ---- LE BANDEAU DE NOM SOUS CHAQUE CARTE S EFFACE ----
-   Chaque planche porte deja son titre EN GRAND — « BLACKJACK », « GOLD
-   TABLE » — et le bandeau le repetait en petit par-dessus le dessin. Le nom
-   reste dans `alt` et dans `title` : ce que lit un lecteur d'ecran ne change
-   pas, c'est le doublon visuel qui part. */
-.r-nom{ display:none }
-.r-fleche{ color:#fff; background:var(--bleu); box-shadow:0 4px 14px rgba(11,27,54,.22) }
-.doc-tog{ color:var(--nuit) }
-.sec h1.marque .brand{ filter:none }
-nav{ display:none }
+.sw-b{
+  padding:10px 16px;border-radius:10px;
+  font:700 12.5px/1 'Inter',system-ui,sans-serif;letter-spacing:.3px;white-space:nowrap;
+}
+.sw-b-plein{background:var(--bleu);color:#fff}
+.sw-b-plein:hover{background:#1750c4}
+.sw-b-vide{background:var(--carte);color:var(--bleu);border:1.5px solid var(--bleu)}
+.sw-b-vide:hover{background:var(--bleu-clair)}
+.sw-b-or{background:var(--or);color:#3A2B00}
+.sw-b-nuit{background:var(--nuit);color:#fff}
+.sw-avatar{
+  width:38px;height:38px;border-radius:11px;border:1px solid var(--bord);
+  background:var(--fond);display:grid;place-items:center;font-size:16px;flex:0 0 auto;
+}
 
-/* ---- CE QUI PLIE SUR UN ECRAN ETROIT ----
-   Ces trois regles manquaient, et le defaut etait MESURABLE : a trois cent
-   quatre-vingt-dix pixels, la page en faisait cinq cent vingt-deux. « Connect
-   wallet » et « Play now » ne se coupent pas — c'est voulu, un bouton coupe
-   en deux ne se lit plus — donc la barre ne peut pas retrecir en dessous
-   d'eux, et c'est la page entiere qui glissait de cote. Les chiffres passent
-   donc SOUS les boutons, sur leur propre ligne, comme sur l'accueil. */
+/* ------------------------------------------------------------ LA COLONNE DE GAUCHE */
+.sw-corps{display:flex; align-items:flex-start; gap:14px; padding:14px; max-width:1680px; margin:0 auto}
+.sw-cote{
+  flex:0 0 208px; position:sticky; top:74px;
+  display:flex; flex-direction:column; gap:12px;
+}
+.sw-nav{background:var(--carte);border:1px solid var(--bord);border-radius:var(--rayon);
+  padding:8px; box-shadow:var(--ombre)}
+.sw-nav a{
+  display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:10px;
+  font:600 13.5px/1 'Inter',system-ui,sans-serif;color:var(--texte);
+}
+.sw-nav a .ic{width:20px;text-align:center;font-size:15px;opacity:.75}
+.sw-nav a:hover{background:var(--fond)}
+.sw-nav a.on{background:var(--bleu-clair);color:var(--bleu)}
+.sw-nav a.on .ic{opacity:1}
+.sw-cote .sw-b{width:100%;padding:13px 16px;font-size:13px}
+.sw-reseaux{display:flex;gap:8px;justify-content:center;padding-top:4px}
+.sw-reseaux a{
+  width:34px;height:34px;border-radius:10px;background:var(--carte);border:1px solid var(--bord);
+  display:grid;place-items:center;font-size:14px;color:var(--gris);
+}
+.sw-reseaux a:hover{color:var(--bleu);border-color:var(--bleu)}
+
+/* ------------------------------------------------------------------ LE PLATEAU */
+.sw-plat{flex:1 1 auto;min-width:0;display:grid;grid-template-columns:minmax(0,1.62fr) minmax(0,1fr);gap:14px}
+.sw-col{display:flex;flex-direction:column;gap:14px;min-width:0}
+.carte{background:var(--carte);border:1px solid var(--bord);border-radius:var(--rayon);
+  box-shadow:var(--ombre);overflow:hidden}
+.carte-p{padding:15px 16px}
+.tete{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.tete h3{margin:0;font:800 15px/1 'Inter',system-ui,sans-serif;color:var(--nuit);letter-spacing:.2px}
+.tete a{font:700 10.5px/1 'Inter',system-ui,sans-serif;letter-spacing:.9px;color:var(--bleu)}
+
+/* ---- LA BANNIERE ---- */
+/* ---- LA HAUTEUR DE LA BANNIERE EQUILIBRE LES DEUX COLONNES ----
+   La colonne de droite porte cinq blocs, celle de gauche quatre : a hauteur
+   egale de banniere, la gauche s'arretait trois cents pixels plus haut et
+   laissait un trou blanc sous le classement. C'est la banniere qui rattrape,
+   parce que c'est le seul bloc dont la hauteur ne dit rien d'autre qu'elle-
+   meme — grandir une carte de chiffres aurait fait croire a un chiffre de
+   plus. */
+.heros{position:relative;border-radius:var(--rayon);overflow:hidden;min-height:330px;
+  display:flex;align-items:center;border:1px solid var(--bord)}
+.heros img,.heros .film{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  border:0;background:var(--nuit)}
+/* Un ecran qui demande moins de mouvement n'en recoit pas : la video s'arrete
+   sur son affiche, qui est sa premiere image — rien ne manque. */
+@media (prefers-reduced-motion:reduce){ .heros .film{display:none} }
+.heros .voile{position:absolute;inset:0;
+  background:linear-gradient(100deg,rgba(6,20,46,.92) 0%,rgba(6,20,46,.72) 34%,rgba(6,20,46,.06) 62%,rgba(6,20,46,0) 100%)}
+.heros .dit{position:relative;padding:30px 28px;max-width:60%}
+.heros small{display:block;font:800 11px/1 'Inter',system-ui,sans-serif;letter-spacing:2.4px;
+  color:rgba(255,255,255,.82);margin-bottom:8px}
+.heros h1{margin:0 0 12px;font:900 50px/.94 'Inter',system-ui,sans-serif;color:#fff;letter-spacing:-1.4px}
+.heros p{margin:0 0 18px;font:600 12.5px/1.55 'Inter',system-ui,sans-serif;
+  letter-spacing:1.1px;color:rgba(255,255,255,.86);text-transform:uppercase}
+
+/* ---- LES QUATRE UNIVERS ---- */
+.univers{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.uni{position:relative;border-radius:var(--rayon);overflow:hidden;min-height:258px;
+  display:flex;flex-direction:column;justify-content:flex-end;background:var(--nuit)}
+/* ---- LES QUATRE CARTES SONT DES FILMS ----
+   Meme regle que la banniere : l'affiche est la premiere image du film, donc
+   le passage de l'une a l'autre ne se voit pas, et la carte n'est jamais un
+   rectangle noir en attendant.
+   `object-position: center top` reste : les quatre chiens ont la tete en haut
+   du cadre, et un cadrage centre la coupait au menton. */
+.uni img,.uni .film{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  object-position:center top;border:0;background:var(--nuit)}
+@media (prefers-reduced-motion:reduce){ .uni .film{display:none} }
+.uni .voile{position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(8,24,58,0) 34%,rgba(8,24,58,.88) 74%,rgba(8,24,58,.97) 100%)}
+.uni .dit{position:relative;padding:14px;text-align:center}
+.uni b{display:block;font:900 20px/1 'Inter',system-ui,sans-serif;color:#fff;letter-spacing:.4px}
+.uni i{display:block;font-style:normal;font:600 11px/1.4 'Inter',system-ui,sans-serif;
+  color:rgba(255,255,255,.76);margin:5px 0 11px}
+.uni .sw-b{width:100%;background:rgba(255,255,255,.94);color:var(--nuit);
+  display:block;text-align:center;border-radius:10px}
+/* Le bouton qui attend la connexion. Pale et non blanc : il doit se lire comme
+   « pas encore » et non comme « clique ici ». */
+.uni .attente{background:rgba(255,255,255,.16);color:rgba(255,255,255,.72);
+  font-size:11px;letter-spacing:.6px}
+
+/* ---- L ECONOMIE ET LE NIVEAU ---- */
+.duo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+/* Seize pixels et non dix : a dix, « 1,000,000,000 » et « 412,586,390 » se
+   suivaient sans respirer et se lisaient comme un seul nombre. */
+.eco{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;text-align:center}
+.eco div small{display:block;font:700 8.5px/1.3 'Inter',system-ui,sans-serif;letter-spacing:.7px;color:var(--gris)}
+/* ---- LES CHIFFRES SE CHEVAUCHAIENT ----
+   « 1,000,000,000 » et « 412,586,390 » se touchaient dans leurs colonnes. La
+   police declaree est Inter, mais elle n'est CHARGEE nulle part : la page
+   retombe sur celle du systeme, dont les chiffres gras sont plus larges — et
+   la mise en page calee sur Inter deborde chez tout le monde sauf chez celui
+   qui l'a installee. On ne compte donc sur aucune police : chiffres a chasse
+   fixe, taille reduite, et la colonne peut retrecir. Vu au rendu. */
+.eco div b{display:block;font:800 12px/1.35 'Inter',system-ui,sans-serif;color:var(--nuit);
+  font-variant-numeric:tabular-nums;letter-spacing:-.2px;white-space:nowrap}
+.eco div{min-width:0}
+.eco div i{display:block;font-style:normal;font:600 9px/1.3 'Inter',system-ui,sans-serif;color:var(--gris)}
+.niveau{position:relative;min-height:172px;display:flex;align-items:center;background:var(--nuit)}
+.niveau img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:right center}
+.niveau .voile{position:absolute;inset:0;
+  background:linear-gradient(90deg,rgba(8,24,58,.95) 0%,rgba(8,24,58,.78) 46%,rgba(8,24,58,.1) 100%)}
+.niveau .dit{position:relative;padding:16px}
+.niveau small{display:block;font:800 10px/1 'Inter',system-ui,sans-serif;letter-spacing:1.4px;
+  color:rgba(255,255,255,.72)}
+.niveau b{display:block;font:900 30px/1.1 'Inter',system-ui,sans-serif;color:#fff;font-style:italic}
+.jauge{height:7px;border-radius:99px;background:rgba(255,255,255,.22);margin:10px 0 7px;max-width:200px}
+.jauge i{display:block;height:100%;width:62%;border-radius:99px;background:#fff}
+.niveau em{font-style:normal;font:700 9.5px/1 'Inter',system-ui,sans-serif;letter-spacing:1.2px;
+  color:rgba(255,255,255,.72)}
+
+/* ---- LE CLASSEMENT ET LA COURSE ---- */
+.rang{display:flex;align-items:center;gap:11px;padding:9px 0}
+.rang+.rang{border-top:1px solid var(--bord)}
+.rang .no{font:900 15px/1 'Inter',system-ui,sans-serif;color:var(--gris);width:22px}
+.rang img{width:34px;height:34px;border-radius:10px;object-fit:cover;flex:0 0 auto}
+.rang .qui{flex:1 1 auto;min-width:0}
+.rang .qui b{display:block;font:700 13px/1.25 'Inter',system-ui,sans-serif;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rang .qui small{display:block;font:800 8.5px/1.3 'Inter',system-ui,sans-serif;letter-spacing:1px;color:var(--bleu)}
+.rang .xp{font:700 11.5px/1 'Inter',system-ui,sans-serif;color:var(--gris)}
+/* ---- LE SALON : L AFFICHE PREND TOUTE LA CARTE ----
+   Les autres cartes sombres tiennent leur image sur une moitie et leur texte
+   sur l'autre. Celle-ci non : l'affiche EST le message, elle porte son propre
+   titre, et la couper en deux aurait tranche le logo ou la coupe. Le voile ne
+   couvre donc que le bas, juste assez pour poser l'invitation. */
+.salon{position:relative;display:block;min-height:172px;overflow:hidden;background:var(--nuit)}
+/* ---- LE CADRAGE VISE LE LOGO ----
+   La carte n'a pas de forme fixe : sa hauteur suit celle de sa voisine, et son
+   rapport passe de 1,87 a 1,32 entre seize cents et douze cent quatre-vingts
+   pixels — mesure, pas suppose. Aucun recadrage de l'image ne peut donc
+   convenir aux deux. L'image est gardee ENTIERE, en quatre tiers, et c'est le
+   point de visee qui tient : legerement a gauche et vers le haut, la ou vivent
+   le logo et le « LIVE ». Centre, le « S » de SWOGE sortait du cadre. */
+.salon img,.salon .film{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  object-position:34% 34%;border:0;background:var(--nuit)}
+@media (prefers-reduced-motion:reduce){ .salon .film{display:none} }
+.salon .voile{position:absolute;inset:auto 0 0 0;height:58%;
+  background:linear-gradient(180deg,rgba(6,16,40,0) 0%,rgba(6,16,40,.86) 78%,rgba(6,16,40,.95) 100%)}
+.salon .dit{position:absolute;left:16px;right:16px;bottom:14px;
+  font:800 12px/1 'Inter',system-ui,sans-serif;letter-spacing:1.4px;color:#fff}
+.salon:hover img,.salon:hover .film{transform:scale(1.03)}
+.salon img,.salon .film{transition:transform .2s}
+
+/* ------------------------------------------------------- LA COLONNE DE DROITE */
+.bonus{position:relative;min-height:158px;display:flex;align-items:center;background:var(--nuit)}
+/* Le film occupe la moitie droite, comme l'image qu'il remplace : le texte de
+   l'offre vit a gauche, et c'est le voile qui fait la jonction. */
+.bonus img,.bonus .film{position:absolute;right:0;top:0;height:100%;width:52%;object-fit:cover;
+  border:0;background:var(--nuit)}
+@media (prefers-reduced-motion:reduce){ .bonus .film{display:none} }
+.bonus .voile{position:absolute;inset:0;
+  background:linear-gradient(90deg,rgba(8,24,58,.97) 0%,rgba(8,24,58,.9) 56%,rgba(8,24,58,.18) 100%)}
+.bonus .dit{position:relative;padding:16px;max-width:72%}
+/* Les deux lignes de l'offre. Elles allongent la carte, donc l'image passe
+   derriere au lieu de tenir la moitie droite : a soixante-douze pour cent de
+   large, un texte sur trois lignes chevauchait le chien. */
+.offres{list-style:none;margin:0 0 13px;padding:0;display:flex;flex-direction:column;gap:5px}
+.offres li{position:relative;padding-left:14px;
+  font:500 11px/1.45 'Inter',system-ui,sans-serif;color:rgba(255,255,255,.8)}
+.offres li:before{content:'';position:absolute;left:0;top:6px;width:5px;height:5px;
+  border-radius:99px;background:rgba(255,255,255,.5)}
+.offres b{color:#fff;font-weight:800}
+/* Le bouton qui attend la connexion, comme celui de l'arcade : pale, il se lit
+   « pas encore » et non « clique ici ». */
+.bonus .attente{background:rgba(255,255,255,.17);color:rgba(255,255,255,.78);
+  font-size:11px;letter-spacing:.5px}
+.bonus small{display:block;font:800 10px/1 'Inter',system-ui,sans-serif;letter-spacing:1.5px;
+  color:rgba(255,255,255,.74);margin-bottom:6px}
+/* ---- LE TITRE, ET LUI SEUL ----
+   Ecrite `.bonus b`, cette regle attrapait aussi les `<b>` de la liste
+   d'offres : « free chest » et « 500 $SWOGE » sortaient en vingt et un pixels
+   gras, chacun sur sa propre ligne, et la carte debordait. Le titre est un
+   enfant DIRECT de `.dit` — c'est ce qui le distingue, et non sa balise. */
+.bonus .dit > b{display:block;font:900 21px/1.2 'Inter',system-ui,sans-serif;color:#fff;
+  margin-bottom:12px}
+
+.jeux{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px}
+.jeu{position:relative;border-radius:11px;overflow:hidden;aspect-ratio:1/1;background:var(--nuit)}
+.jeu img{width:100%;height:100%;object-fit:cover;transition:transform .18s}
+.jeu:hover img{transform:scale(1.06)}
+/* ---- CES JEUX N EXISTENT PAS ENCORE ----
+   Les montrer sans le dire ferait cliquer dessus, et un clic qui ne mene nulle
+   part se lit comme une panne. Le bandeau est POSE SUR l image et non a cote :
+   a cote, on le prend pour la legende d une vignette voisine. Et l image est
+   assombrie — un bandeau seul sur une vignette bien nette ne suffit pas a
+   arreter la main. */
+.jeu.bientot img{filter:saturate(.55) brightness(.62)}
+.jeu.bientot:hover img{transform:none}
+.jeu.bientot span{
+  position:absolute; inset:auto 0 0 0; padding:5px 0; text-align:center;
+  background:rgba(8,24,58,.86); color:#fff;
+  font:800 8.5px/1 'Inter',system-ui,sans-serif; letter-spacing:1.6px;
+}
+.bientot-t{
+  padding:5px 9px; border-radius:99px; background:var(--bleu-clair); color:var(--bleu);
+  font:800 9px/1 'Inter',system-ui,sans-serif; letter-spacing:1.2px;
+}
+
+/* ---- LES SPORTS ---- */
+.onglets{display:flex;gap:6px;overflow-x:auto;padding-bottom:9px;margin-bottom:9px;
+  border-bottom:1px solid var(--bord);scrollbar-width:none}
+.onglets::-webkit-scrollbar{display:none}
+/* ---- SUR UNE LIGNE, ET NON EN COLONNE ----
+   L'icone au-dessus du mot coutait dix-huit pixels de hauteur pour ne rien
+   dire de plus : « Football » se lit sans ballon. Cote a cote, la rangee passe
+   de cinquante-deux a trente-quatre pixels, et c'est la moitie des quarante
+   qu'il fallait rendre. */
+.onglets button{
+  flex:0 0 auto;display:flex;align-items:center;gap:6px;
+  padding:8px 11px;border-radius:10px;font:700 10.5px/1 'Inter',system-ui,sans-serif;color:var(--gris);
+}
+.onglets button .ic{font-size:13px}
+.onglets button.on{background:var(--bleu-clair);color:var(--bleu)}
+/* La ligne qui nomme les six marches. Sous le titre et non dans une
+   infobulle : c'est ce qui distingue ce panneau de n'importe quel autre, et
+   une infobulle ne se survole pas sur un telephone. */
+.sous{margin:-6px 0 11px;font:500 11.5px/1.5 'Inter',system-ui,sans-serif;color:var(--gris)}
+.sous b{color:var(--texte);font-weight:800}
+/* « Ferme au coup d'envoi » : ce n'est pas un detail d'affichage, c'est LA
+   regle du catalogue. Elle prend la place ou la maquette mettait « LIVE ». */
+.ferme{padding:5px 9px;border-radius:99px;background:var(--fond);color:var(--gris);
+  font:800 8.5px/1 'Inter',system-ui,sans-serif;letter-spacing:1.1px;white-space:nowrap}
+/* Un sport porte au catalogue mais marque inactif. Eteint plutot qu'absent :
+   absent, on ne saurait pas qu'il arrive ; vif, on cliquerait pour rien. */
+.onglets button.eteint{opacity:.42}
+/* Neuf pixels au lieu de dix, et sept d'ecart au lieu de huit entre le duel
+   et ses cotes : sur quatre rencontres cela rend vingt-quatre pixels sans
+   qu'aucune ligne ne se serre visiblement. Le reste des quarante vient des
+   onglets. */
+.match{padding:8px 0}
+.match+.match{border-top:1px solid var(--bord)}
+.match .ligue{font:700 9px/1 'Inter',system-ui,sans-serif;letter-spacing:.8px;color:var(--gris);margin-bottom:6px}
+.match .duel{display:flex;align-items:center;gap:9px;margin-bottom:7px}
+.match .eq{display:flex;align-items:center;gap:7px;flex:1 1 0;min-width:0}
+.match .eq span{width:22px;height:22px;border-radius:7px;background:var(--fond);
+  display:grid;place-items:center;font-size:11px;flex:0 0 auto}
+.match .eq b{font:700 12.5px/1.2 'Inter',system-ui,sans-serif;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.match .eq.d{justify-content:flex-end;text-align:right}
+/* L'HEURE, la ou la maquette mettait le score en cours. Plus etroite en
+   chiffres qu'un « 2 – 1 », donc plus petite, et grise : c'est un repere, pas
+   un resultat. */
+.match .sc{font:700 10px/1.3 'Inter',system-ui,sans-serif;color:var(--gris);flex:0 0 auto;
+  text-align:center;letter-spacing:.4px}
+.cotes{display:flex;gap:6px}
+.cotes button{flex:1 1 0;min-width:0;display:flex;align-items:center;justify-content:space-between;
+  gap:6px;padding:8px 10px;border-radius:9px;background:var(--fond);border:1px solid var(--bord);
+  font:700 12px/1 'Inter',system-ui,sans-serif}
+.cotes button small{color:var(--gris);font-weight:700}
+.cotes button:hover,.cotes button.on{background:var(--bleu-clair);border-color:var(--bleu);color:var(--bleu)}
+.cotes .plus{flex:0 0 auto;background:none;border:0;color:var(--gris);font-weight:700}
+
+/* ---- LE BULLETIN ET LE SECOND BONUS SONT PARTIS ----
+   Ils fermaient la colonne de droite quatre cent soixante pixels plus bas que
+   la gauche, et rien de la page ne tenait plus a l'ecran d'un coup. Leur style
+   part AVEC eux : une regle qui ne dessine plus rien se relit comme une piste,
+   et la prochaine personne la suivra jusqu'a comprendre qu'elle ne mene nulle
+   part.
+   Le gestionnaire d'onglets, lui, reste : il est ecrit pour n'importe quel
+   `[data-groupe]`, et c'est celui des sports qu'il sert maintenant. */
+
+/* ========================= LE PANNEAU DE CONNEXION ========================= */
+.cx-voile{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:18px;
+  background:rgba(6,16,40,.62);backdrop-filter:blur(3px)}
+.cx-voile[hidden]{display:none}
+.cx-boite{position:relative;width:100%;max-width:380px;background:var(--carte);
+  border:1px solid var(--bord);border-radius:16px;padding:22px;
+  box-shadow:0 24px 64px rgba(6,16,40,.34);display:flex;flex-direction:column;gap:10px}
+.cx-boite > b{font:800 17px/1.2 'Inter',system-ui,sans-serif;color:var(--nuit)}
+.cx-dit{margin:0 0 4px;font:500 12px/1.5 'Inter',system-ui,sans-serif;color:var(--gris)}
+.cx-dit.ko{color:var(--rouge)}
+.cx-dit.ok{color:var(--vert)}
+.cx-champ{display:flex;flex-direction:column;gap:5px}
+.cx-champ span{font:700 9.5px/1 'Inter',system-ui,sans-serif;letter-spacing:1.1px;
+  text-transform:uppercase;color:var(--gris)}
+.cx-champ input{padding:12px 13px;border-radius:10px;border:1px solid var(--bord);
+  background:var(--fond);color:var(--texte);outline:none;
+  font:600 14px/1 'Inter',system-ui,sans-serif}
+.cx-champ input:focus{border-color:var(--bleu);background:var(--carte)}
+/* ---- CE QUI ECHAPPE A LA REGLE INERTE ----
+   Les boutons du panneau, ET CEUX QUI L'OUVRENT. Les seconds avaient ete
+   oublies : `a[href], button{pointer-events:none}` les tenait muets, le clic
+   traversait jusqu'a la barre laterale, et « Sign up with email » ne faisait
+   rien du tout. Ils avaient pourtant leur gestionnaire, leur style et leur
+   libelle — tout sauf l'effet. Trouve par l'essai qui clique pour de vrai ;
+   a la lecture, le code avait l'air complet. */
+.cx-boite button, .cx-wallet, .cx-mail{pointer-events:auto;cursor:pointer}
+.cx-large{width:100%;padding:13px}
+.cx-large[disabled]{opacity:.55;cursor:progress}
+.cx-fermer{position:absolute;top:10px;right:12px;font-size:22px;line-height:1;color:var(--gris);
+  padding:4px 8px}
+.cx-ou{display:flex;align-items:center;gap:10px;color:var(--gris);
+  font:700 9.5px/1 'Inter',system-ui,sans-serif;letter-spacing:1.2px;text-transform:uppercase}
+.cx-ou:before,.cx-ou:after{content:'';flex:1 1 0;height:1px;background:var(--bord)}
+/* Une fois connecte, les boutons d'appel montrent l'adresse plutot que de
+   proposer une connexion de plus. */
+/* ---- LA PASTILLE DU COMPTE ----
+   Une seule sur la page. Les boutons de connexion, eux, DISPARAISSENT une
+   fois entre : les laisser en les renommant chacun donnait cinq fois la meme
+   adresse a l'ecran, ce qui se lit comme cinq comptes. */
+.cx-compte{display:flex;align-items:center;gap:10px;flex:0 0 auto;
+  padding:7px 12px;border-radius:11px;background:rgba(18,161,80,.10);
+  border:1.5px solid rgba(18,161,80,.34)}
+.cx-compte[hidden]{display:none}
+.cx-compte > b{font:800 12.5px/1 'Inter',system-ui,sans-serif;color:var(--vert);white-space:nowrap}
+.cx-soldes{display:flex;flex-direction:column;gap:3px;padding-left:10px;
+  border-left:1px solid rgba(18,161,80,.28)}
+.cx-soldes i{font-style:normal;font:700 10.5px/1 'Inter',system-ui,sans-serif;
+  color:var(--gris);white-space:nowrap}
+.cx-soldes i b{color:var(--texte);font-weight:800}
+
+/* ------------------------------------------------------------------- LE PIED */
+.sw-bas{max-width:1680px;margin:0 auto;padding:6px 14px 22px}
+.promesses{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;
+  background:var(--carte);border:1px solid var(--bord);border-radius:var(--rayon);
+  padding:16px;box-shadow:var(--ombre)}
+.pro{display:flex;gap:11px;align-items:flex-start}
+.pro .ic{width:32px;height:32px;border-radius:10px;background:var(--bleu-clair);
+  display:grid;place-items:center;font-size:15px;flex:0 0 auto}
+.pro b{display:block;font:800 11.5px/1.3 'Inter',system-ui,sans-serif;letter-spacing:.5px}
+.pro small{display:block;font:500 11px/1.45 'Inter',system-ui,sans-serif;color:var(--gris)}
+
+/* ------------------------------------------------- CE QUI PLIE, ET DANS QUEL ORDRE
+   La colonne de droite passe SOUS le plateau avant que la barre laterale ne
+   parte : c'est elle qui porte le bulletin et les jeux, et les serrer a moins
+   de trois cents pixels les rend illisibles bien avant que la navigation ne
+   gene. */
+@media (max-width:1240px){
+  .sw-plat{grid-template-columns:minmax(0,1fr)}
+  .jeux{grid-template-columns:repeat(5,minmax(0,1fr))}
+}
+@media (max-width:980px){
+  .sw-corps{flex-direction:column;padding:12px}
+  .sw-cote{position:static;flex:1 1 auto;width:100%;flex-direction:row;flex-wrap:wrap;align-items:center}
+  .sw-nav{flex:1 1 100%;display:flex;overflow-x:auto;scrollbar-width:none}
+  .sw-nav a{flex:0 0 auto}
+  .sw-cote .sw-b{width:auto;flex:1 1 auto}
+  .sw-reseaux{padding-top:0}
+  .univers{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .duo{grid-template-columns:minmax(0,1fr)}
+  .promesses{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .heros h1{font-size:34px}
+  .heros .dit{max-width:78%}
+}
 @media (max-width:620px){
-  .gh-haut{ flex-wrap:wrap; gap:10px }
-  .gh-chiffres{ order:3; flex:1 1 100% }
-  .gh-b{ padding:10px 12px; font-size:11.5px }
+  .sw-haut{flex-wrap:wrap}
+  .sw-chiffres{order:3;flex:1 1 100%}
+  .jeux{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .univers{grid-template-columns:minmax(0,1fr)}
+  .promesses{grid-template-columns:minmax(0,1fr)}
+  .eco{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .heros h1{font-size:28px}
+  .heros .dit{max-width:100%}
 }
-@media (max-width:400px){
-  .gh-marque i{ display:none }
-  .gh-avatar{ display:none }
+
+/* ================== CE QUE LA PAGE DES JEUX AJOUTE ==================
+   Le reste du style est celui de l'accueil, recopie. Recopie et non partage :
+   l'essai des marqueurs de cache ne surveille que les `.js`, et une feuille
+   commune perimee serait exactement le defaut que ce mecanisme existe pour
+   empecher — en silence, et avec l'air d'y remedier. Le SCRIPT, lui, est
+   partage : il est versionne, donc garde. */
+/* ---- LA COLONNE DES JEUX PREND PLUS DE PLACE QU AILLEURS ----
+   L accueil partage son plateau 1,62 contre 1 : ses quatre blocs de droite
+   valent bien ce tiers. Ici la droite ne porte que deux blocs et la gauche
+   porte VINGT-SIX cartes de jeu — a 1,62 elles n avaient que huit cent
+   vingt-cinq pixels et quatre tenaient a l ecran, le reste se cherchait au
+   defilement. A 2,3 elles en ont mille cent, et six se voient d un coup.
+   Mesure a seize cents pixels, sur la page rendue. */
+/* ---- ET SEULEMENT SUR LES GRANDS ECRANS ----
+   Ecrite sans borne, cette regle venait APRES la requete d'ecran etroit de la
+   feuille d'origine et l'ecrasait : a trois cent quatre-vingt-dix pixels, les
+   deux colonnes restaient cote a cote et le panneau des sports se lisait sur
+   une bande de cent pixels, un mot par ligne. Une regle qui s'ajoute apres
+   coup doit dire A QUELLE TAILLE elle s'applique, sinon elle defait les
+   reglages de toutes les autres. Vu au rendu, sur telephone. */
+@media (min-width:1241px){
+  .sw-plat{ grid-template-columns:minmax(0,2.3fr) minmax(0,1fr) }
 }
+.rangee{ margin-bottom:16px }
+.rangee .tete{ margin-bottom:9px }
+.rangee h3{ display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;
+  font:800 14px/1.2 'Inter',system-ui,sans-serif; color:var(--nuit) }
+.rangee h3 i{ font-style:normal; font:500 11.5px/1.3 'Inter',system-ui,sans-serif; color:var(--gris) }
+.ric{ font-size:14px }
+.nb{ padding:4px 9px; border-radius:99px; background:var(--bleu-clair); color:var(--bleu);
+  font:800 9.5px/1 'Inter',system-ui,sans-serif; letter-spacing:.6px }
+/* ---- LA PISTE DEFILE, ELLE NE SE COUPE PAS ----
+   Une rangee de neuf jeux ne tient sur aucun ecran. Elle glisse donc a
+   l'horizontale, et `scroll-snap` cale chaque carte au bord : sans lui, on
+   s'arrete toujours sur une demi-carte, ce qui donne l'impression d'un
+   affichage casse plutot que d'une liste plus longue que l'ecran. */
+.piste{ display:flex; gap:10px; overflow-x:auto; scroll-snap-type:x mandatory;
+  padding-bottom:4px; scrollbar-width:thin }
+.piste::-webkit-scrollbar{ height:6px }
+.piste::-webkit-scrollbar-thumb{ background:var(--bord); border-radius:99px }
+/* La carte s'adapte : cent soixante-seize pixels sur un grand ecran, moins
+   quand la colonne retrecit — sinon la meme rangee montre six cartes ici et
+   deux sur un portable, sans que rien ne change entre les deux. */
+.jc{ position:relative; flex:0 0 clamp(150px, 17.5%, 178px); scroll-snap-align:start; display:block;
+  border-radius:12px; overflow:hidden; aspect-ratio:3/2;
+  border:1px solid var(--bord); background:var(--nuit);
+  box-shadow:0 1px 2px rgba(11,27,54,.05); transition:transform .13s, box-shadow .15s, border-color .15s }
+.jc img{ width:100%; height:100%; object-fit:cover; display:block }
+/* Le nom reste, mais SOUS le dessin et non dessus : sur les planches sombres
+   de cette page, un bandeau pose par-dessus mangeait le titre peint. */
+.jc span{ position:absolute; left:0; right:0; bottom:0; padding:14px 9px 6px;
+  font:700 10.5px/1.2 'Inter',system-ui,sans-serif; color:#fff;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  background:linear-gradient(180deg,rgba(6,16,40,0),rgba(6,16,40,.9) 62%) }
+.jc:hover{ transform:translateY(-2px); border-color:var(--bleu);
+  box-shadow:0 8px 22px rgba(27,95,224,.20) }
+@media (max-width:620px){ .jc{ flex-basis:148px } }
+
+/* ---- LA BANNIERE DU BAS ----
+   Les deux boutons sont PEINTS dans l'image. Plutot que d'en superposer de
+   nouveaux — qui ne s'aligneraient jamais a toutes les largeurs — on pose
+   deux zones cliquables INVISIBLES par-dessus les boutons peints. Leurs
+   bornes sont mesurees sur l'image : trente-six et demi a cinquante-deux pour
+   cent pour le premier, cinquante-trois et demi a soixante-neuf pour le
+   second. En pour cent, donc justes a toutes les tailles. */
+.bas-ban{ position:relative; display:block; border-radius:16px; overflow:hidden;
+  border:1px solid var(--bord); margin-top:16px }
+.bas-ban img{ display:block; width:100%; height:auto }
+.bas-ban a{ position:absolute; top:77.5%; height:11%; border-radius:8px;
+  pointer-events:auto; cursor:pointer }
+.bas-ban .b1{ left:36.0%; width:16.2% }
+.bas-ban .b2{ left:53.2%; width:16.4% }
+.bas-ban a:focus-visible{ outline:3px solid #fff; outline-offset:2px }
+
+/* La banniere du haut : la meme video que l'arcade, en pleine largeur. */
+.haut-film{ display:block; width:100%; aspect-ratio:1312/688; max-height:min(40vh,340px);
+  object-fit:cover; border-radius:16px; border:1px solid var(--bord);
+  background:var(--nuit); margin-bottom:14px }
+@media (prefers-reduced-motion:reduce){ .haut-film{ display:none } }
 </style>
 </head>
 <body>
 
-<!-- Le bandeau et la banniere, avant tout le reste. Les chiffres sont ceux de
-     la maquette, donc faux — ils tiennent la place, comme sur l'accueil. -->
-<header class="gh-haut">
-  <a class="gh-marque" href="index.html">
-    <span class="gh-patte">&#128062;</span>
+<header class="sw-haut">
+  <a class="sw-marque" href="#">
+    <span class="sw-patte">&#128062;</span>
     <span><b>SWOGE</b><i>WORLD</i></span>
   </a>
-  <div class="gh-chiffres">
-    <div class="gh-ch"><span class="ic">&#128100;</span><span><small>PLAYERS</small><b>128K+</b></span></div>
-    <div class="gh-ch"><span class="ic">&#127922;</span><span><small>TOTAL WAGERED</small><b>$24.8M+</b></span></div>
-    <div class="gh-ch"><span class="ic">&#127918;</span><span><small>GAMES</small><b>1,284+</b></span></div>
-    <div class="gh-ch"><span class="ic">&#127942;</span><span><small>WINNINGS PAID</small><b>$5.7M+</b></span></div>
+  <div class="sw-chiffres">
+    <div class="sw-ch"><span class="ic">&#128100;</span><span><small>PLAYERS</small><b>128K+</b></span></div>
+    <div class="sw-ch"><span class="ic">&#127922;</span><span><small>TOTAL WAGERED</small><b>$24.8M+</b></span></div>
+    <div class="sw-ch"><span class="ic">&#127918;</span><span><small>GAMES</small><b>1,284+</b></span></div>
+    <div class="sw-ch"><span class="ic">&#127942;</span><span><small>WINNINGS PAID</small><b>$5.7M+</b></span></div>
   </div>
-  <button class="gh-b gh-vide">CONNECT WALLET</button>
-  <button class="gh-b gh-plein">PLAY NOW</button>
-  <div class="gh-avatar">&#128100;</div>
+  <button class="sw-b sw-b-vide cx-wallet">CONNECT WALLET</button>
+  <button class="sw-b sw-b-plein cx-mail">SIGN UP &mdash; EMAIL</button>
+  <!-- ================== LE COMPTE, UNE SEULE FOIS ==================
+       Il est CACHE tant qu'on n'est pas entre, et c'est lui qui remplace les
+       cinq boutons de connexion a ce moment-la — et non chacun d'eux qui se
+       renomme. L'adresse s'affichait cinq fois : deux dans cette barre, deux
+       dans la colonne, une sur la carte du bonus. Signale depuis un
+       telephone, ou les deux de la barre se voient d'un coup.
+       Il porte les soldes parce que c'est la seule chose qu'on veuille savoir
+       une fois entre : combien j'ai. -->
+  <div id="cxCompte" class="cx-compte" hidden>
+    <b id="cxAdr"></b>
+    <span class="cx-soldes"><i id="cxEth">&hellip;</i><i id="cxSwoge">&hellip;</i></span>
+  </div>
+  <div class="sw-avatar">&#128100;</div>
 </header>
 
-<nav>
-  <!-- La marque n'est plus ici : elle est descendue en tete de page, a la
-       place de la plaque « Play now ». Sur telephone la barre portait la
-       marque, le profil, le solde, deux liens, le compte de joueurs et le
-       bouton d'achat : elle debordait sur une seconde ligne, qui mangeait un
-       cinquieme de l'ecran avant meme le premier jeu. Et « Play now » ne
-       disait rien qu'on ne sache deja — on est sur la page des jeux. -->
-  <span class="sp"></span>
-  <!-- « Home » a suivi « Stake » et « Buy $SWOGE » hors de la barre : le tiroir
-       du profil le porte, sous « Go to », a portee de pouce et sans defiler.
-       La barre ne garde que ce qui n'est nulle part ailleurs — le solde, le
-       compte de joueurs et la poignee du profil. -->
-  <!-- « Stake » et « Buy $SWOGE » ne sont plus ici : ils prenaient toute la
-       largeur de la barre sur telephone pour deux liens qu'on suit rarement, et
-       qui vivent maintenant dans le tiroir du profil, sous « Go to ». Voir
-       stakebubble.js — c'est lui qui les pose, sur cette page comme sur les
-       autres pages sans menu. -->
-  <!-- Il y avait ici un bouton « menu » qui n ouvrait plus qu UNE entree,
-       « Chart » — et qui pointait vers la MEME adresse que le bouton
-       « Buy $SWOGE » juste a cote. Un menu deroulant pour un lien deja
-       present est du bruit : il ajoute un geste, un etat ouvert/ferme et une
-       zone qui recouvre la page, pour ne rien apporter. La barre porte deja
-       Home, Stake, Buy et le profil, sur telephone comme sur ordinateur. -->
-</nav>
+<div class="sw-corps">
 
-<main>
-  <div class="wrap" style="padding-top:clamp(20px,4vh,44px)">
-    <video class="gh-film" src="media/arcade.mp4" poster="img/site/arcade_poster.webp"
-           muted autoplay loop playsinline disablepictureinpicture aria-hidden="true"></video>
-        <div class="sec"><h1 class="marque"><a class="brand" href="index.html">$SWOGE <span>ARCADE</span></a></h1></div>
-    <section class="rangee">
-      <header class="r-tete">
-        <span class="r-ic" aria-hidden="true">&#9962;</span>
-        <h3>SWOGE World</h3>
-        <span class="r-sous">meet other players, reach your vault and the shop</span>
-        <span class="r-nb">1 place</span>
-      </header>
-      <div class="r-corps">
-        <button class="r-fleche g" type="button" aria-label="Scroll SWOGE World left">&#10094;</button>
-        <button class="r-fleche d" type="button" aria-label="Scroll SWOGE World right">&#10095;</button>
-      <div class="r-piste" role="list" aria-label="SWOGE World">
-        <a class="r-carte" role="listitem" href="nexus.html" title="Nexus"><img src="img/card_nx.webp?v=2" alt="Nexus" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Nexus</span></a>
-      </div>
-      </div>
-    </section>
-    <section class="rangee">
-      <header class="r-tete">
-        <span class="r-ic" aria-hidden="true">&#127920;</span>
-        <h3>Against the house</h3>
-        <span class="r-sous">play on your own, any time</span>
-        <span class="r-nb">9 games</span>
-      </header>
-      <div class="r-corps">
-        <button class="r-fleche g" type="button" aria-label="Scroll Against the house left">&#10094;</button>
-        <button class="r-fleche d" type="button" aria-label="Scroll Against the house right">&#10095;</button>
-      <div class="r-piste" role="list" aria-label="Against the house">
-        <a class="r-carte" role="listitem" href="swoge_blackjack.html" title="SWOGE Blackjack"><img src="img/card_bj.webp?v=2" alt="SWOGE Blackjack" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">SWOGE Blackjack</span></a>
-        <a class="r-carte" role="listitem" href="swoge_blackjack.html?table=or" title="Blackjack · Gold Table"><img src="img/card_bj_or.webp?v=2" alt="Blackjack Gold Table" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Blackjack · Gold</span></a>
-        <a class="r-carte" role="listitem" href="swoge_spin.html" title="SWOGE Spin"><img src="img/card_sp.webp?v=2" alt="SWOGE Spin" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">SWOGE Spin</span></a>
-        <a class="r-carte" role="listitem" href="swoge_casino.html?game=holdem" title="Casino Hold'em"><img src="img/card_ho.webp?v=2" alt="Casino Hold'em" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Casino Hold&rsquo;em</span></a>
-        <a class="r-carte" role="listitem" href="swoge_casino.html?game=three" title="Three Card"><img src="img/card_tc.webp?v=2" alt="Three Card" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Three Card</span></a>
-        <a class="r-carte" role="listitem" href="swoge_casino.html?game=mines" title="Mines"><img src="img/card_mn.webp?v=2" alt="Mines" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Mines</span></a>
-        <a class="r-carte" role="listitem" href="swoge_casino.html?game=hilo" title="Hi-Lo"><img src="img/card_hl.webp?v=2" alt="Hi-Lo" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Hi-Lo</span></a>
-        <a class="r-carte" role="listitem" href="plinko.html" title="Plinko"><img src="img/card_pl.webp?v=2" alt="Plinko" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Plinko</span></a>
-        <a class="r-carte" role="listitem" href="swoge_smash.html" title="SWOGE Smash"><img src="img/card_sm.webp?v=2" alt="SWOGE Smash" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">SWOGE Smash</span></a>
-      </div>
-      </div>
-    </section>
-
-    <section class="rangee">
-      <header class="r-tete">
-        <span class="r-ic" aria-hidden="true">&#128101;</span>
-        <h3>Against other players</h3>
-        <span class="r-sous">shared tables, live rounds, no bots</span>
-        <span class="r-nb">4 games</span>
-      </header>
-      <div class="r-corps">
-        <button class="r-fleche g" type="button" aria-label="Scroll Against other players left">&#10094;</button>
-        <button class="r-fleche d" type="button" aria-label="Scroll Against other players right">&#10095;</button>
-      <div class="r-piste" role="list" aria-label="Against other players">
-        <a class="r-carte" role="listitem" href="boulier.html" title="Boulier"><img src="img/card_bo.webp?v=2" alt="Boulier" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Boulier</span></a>
-        <a class="r-carte" role="listitem" href="swoge_poker.html" title="SWOGE Poker"><img src="img/card_pk.webp?v=2" alt="SWOGE Poker" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">SWOGE Poker</span></a>
-        <a class="r-carte" role="listitem" href="swoge_pusher_live.html" title="Coin Pusher"><img src="img/card_cp.webp?v=2" alt="Coin Pusher" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Coin Pusher</span></a>
-        <a class="r-carte" role="listitem" href="crash.html" title="Crash"><img src="img/card_cr.webp?v=2" alt="Crash" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Crash</span></a>
-      </div>
-      </div>
-    </section>
-
-    <section class="rangee">
-      <header class="r-tete">
-        <span class="r-ic" aria-hidden="true">&#9876;</span>
-        <h3>Head to head</h3>
-        <span class="r-sous">1v1 duels — the winner takes the stake</span>
-        <span class="r-nb">6 games</span>
-      </header>
-      <div class="r-corps">
-        <button class="r-fleche g" type="button" aria-label="Scroll Head to head left">&#10094;</button>
-        <button class="r-fleche d" type="button" aria-label="Scroll Head to head right">&#10095;</button>
-      <div class="r-piste" role="list" aria-label="Head to head">
-        <a class="r-carte" role="listitem" href="connect4.html" title="Connect 4"><img src="img/card_p4.webp?v=2" alt="Connect 4" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Connect 4</span></a>
-        <a class="r-carte" role="listitem" href="morpion.html" title="Tic-Tac-Toe"><img src="img/card_mp.webp?v=2" alt="Tic-Tac-Toe" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Tic-Tac-Toe</span></a>
-        <a class="r-carte" role="listitem" href="morpion_fantome.html" title="Ghost Tic-Tac-Toe"><img src="img/card_mf.webp?v=2" alt="Ghost Tic-Tac-Toe" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Ghost Tic-Tac-Toe</span></a>
-        <a class="r-carte" role="listitem" href="dernier_chiffre.html" title="Last Number"><img src="img/card_dc.webp?v=2" alt="Last Number" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Last Number</span></a>
-        <a class="r-carte" role="listitem" href="dames.html" title="Checkers"><img src="img/card_dm.webp?v=2" alt="Checkers" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Checkers</span></a>
-      </div>
-      </div>
-    </section>
-
-    <section class="rangee">
-      <header class="r-tete">
-        <span class="r-ic" aria-hidden="true">&#9917;</span>
-        <h3>Sports betting</h3>
-        <span class="r-sous">real fixtures, odds locked when you bet</span>
-        <span class="r-nb">1 game</span>
-      </header>
-      <div class="r-corps">
-        <button class="r-fleche g" type="button" aria-label="Scroll Sports betting left">&#10094;</button>
-        <button class="r-fleche d" type="button" aria-label="Scroll Sports betting right">&#10095;</button>
-      <div class="r-piste" role="list" aria-label="Sports betting">
-        <a class="r-carte" role="listitem" href="swogebet.html" title="SWOGE Bet"><img src="img/bet_carte.webp?v=2" alt="SWOGE Bet" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">SWOGE Bet</span></a>
-      </div>
-      </div>
-    </section>
-
-    <section class="rangee">
-      <header class="r-tete">
-        <span class="r-ic" aria-hidden="true">&#128295;</span>
-        <h3>Utility</h3>
-        <span class="r-sous">staking, tools and the paperwork</span>
-        <span class="r-nb">6 games</span>
-      </header>
-      <div class="r-corps">
-        <button class="r-fleche g" type="button" aria-label="Scroll Utility left">&#10094;</button>
-        <button class="r-fleche d" type="button" aria-label="Scroll Utility right">&#10095;</button>
-      <div class="r-piste" role="list" aria-label="Utility">
-        <a class="r-carte" role="listitem" href="swoge_staking.html" title="Staking"><img src="img/card_st.webp?v=2" alt="Staking" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Staking</span></a>
-        <a class="r-carte" role="listitem" href="swoge_bench.html" title="Wallet Bench"><img src="img/card_wb.webp?v=2" alt="Wallet Bench" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Wallet Bench</span></a>
-        <a class="r-carte" role="listitem" href="launchpad.html" title="Launchpad"><img src="img/card_lp.webp?v=2" alt="Launchpad" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Launchpad</span></a>
-        <a class="r-carte" role="listitem" href="burn.html" title="Burn"><img src="img/card_bn.webp?v=2" alt="Burn" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Burn</span></a>
-        <a class="r-carte" role="listitem" href="holder_scan.html" title="Holder Scanner"><img src="img/card_hs.webp?v=2" alt="Holder Scanner" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">Holder Scanner</span></a>
-        <a class="r-carte" role="listitem" href="whitepaper.html" title="White Paper"><img src="img/card_wp.webp?v=2" alt="White Paper" loading="lazy" width="640" height="427" decoding="async"><span class="r-nom">White Paper</span></a>
-      </div>
-      </div>
-    </section>
-
-<!-- La documentation est PLIEE par defaut. Neuf fiches, meme reduites, font
-     un ecran de telephone entier sous le catalogue — et on ne les ouvre qu'une
-     fois, la premiere. Le bouton porte la plaque avec lui : on appuie sur le
-     titre ou sur le signe, c'est la meme poignee. -->
-<div class="sec sec-doc">
-      <button class="doc-tog" id="docTog" type="button" aria-expanded="false" aria-controls="docs">
-        <h2 class="plate pl-doc">Documentation</h2><span class="doc-pm" aria-hidden="true">+</span>
-      </button>
+  <aside class="sw-cote">
+    <nav class="sw-nav">
+      <a href="#" class="on"><span class="ic">&#127968;</span>Home</a>
+      <a href="games.html" class="vif"><span class="ic">&#127920;</span>Casino</a>
+      <a href="swogebet.html" class="vif"><span class="ic">&#9917;</span>Sports</a>
+      <!-- ---- QUATRE ENTREES SONT PARTIES ----
+           Arcade, Rewards, Leaderboard et $SWOGE ne menaient nulle part. Un
+           menu ou une entree sur deux ne repond pas n'apprend pas la patience
+           a celui qui clique : il lui apprend que le site est casse, et il
+           arrete d'essayer les autres. Elles reviendront quand leur page
+           existera — l'arcade la premiere, le jour ou la connexion du
+           portefeuille vit ici. -->
+      <a href="whitepaper.html" class="vif"><span class="ic">&#128220;</span>Docs</a>
+    </nav>
+    <button class="sw-b sw-b-plein cx-wallet">CONNECT WALLET</button>
+    <button class="sw-b sw-b-vide cx-mail">SIGN UP WITH EMAIL</button>
+    <!-- ---- LES TROIS ADRESSES QUI EXISTENT ----
+         Elles sont reprises de l'ancienne page d'accueil, pas inventees : le
+         compte X, le canal Telegram, et la paire sur Dexscreener. Discord et
+         YouTube etaient deux icones de maquette qui ne menaient nulle part.
+         `rel="noopener"` avec `target="_blank"` : sans lui, la page ouverte
+         garde une prise sur celle-ci par `window.opener`. -->
+    <div class="sw-reseaux">
+      <a class="vif" href="https://x.com/SwoleDogeSwoge" target="_blank" rel="noopener"
+         title="X — @SwoleDogeSwoge">&#120143;</a>
+      <a class="vif" href="https://t.me/swoleswoge" target="_blank" rel="noopener"
+         title="Telegram — t.me/swoleswoge">&#9992;</a>
+      <a class="vif" href="https://dexscreener.com/robinhood/0x2dc0fb72d9284228046cc95910eeaabebfe48456"
+         target="_blank" rel="noopener" title="Dexscreener — $SWOGE chart">&#128200;</a>
     </div>
-    <div class="grid docs" id="docs">
+  </aside>
 
-      <details class="card doc">
-        <summary>✉️ Sign in with an email</summary>
-        <div class="in">
-          <p>The fastest way in — no app, no extension, nothing to install.</p>
-          <ol>
-            <li>Open any game and press <b>Sign in with email</b>.</li>
-            <li>Type your address. We send you a <b>6-digit code</b>.</li>
-            <li>Enter the code. A wallet is created for you automatically.</li>
-          </ol>
-          <p>That account is the same everywhere: Spin, Poker, Blackjack, the casino tables, the Pusher, Smash and the staking page all share one balance.</p>
+  <main class="sw-plat">
+
+    <div class="sw-col">
+      <video class="haut-film" src="media/arcade.mp4" poster="img/site/arcade_poster.webp"
+             muted autoplay loop playsinline disablepictureinpicture aria-hidden="true"></video>
+
+<section class="univers">
+        <article class="uni">
+          <video class="film" src="media/doge_casino.mp4" poster="img/site/doge_casino_poster.webp"
+                 muted autoplay loop playsinline disablepictureinpicture
+                 aria-hidden="true"></video><div class="voile"></div>
+          <div class="dit"><b>CASINO</b><i>Spin. Bet. Win.</i>
+            <a class="sw-b vif" href="games.html">EXPLORE</a></div>
+        </article>
+        <article class="uni">
+          <video class="film" src="media/doge_sport.mp4" poster="img/site/doge_sport_poster.webp"
+                 muted autoplay loop playsinline disablepictureinpicture
+                 aria-hidden="true"></video><div class="voile"></div>
+          <div class="dit"><b>SPORTS</b><i>Back Your Team.</i>
+            <a class="sw-b vif" href="swogebet.html">BET NOW</a></div>
+        </article>
+        <!-- L'arcade attend la connexion du portefeuille. Le bouton le DIT au
+             lieu de mentir : « PLAY NOW » sur un bouton qui ne joue pas est
+             exactement ce qu'on evite partout ailleurs sur cette page. -->
+        <article class="uni">
+          <video class="film" src="media/doge_arcade.mp4" poster="img/site/doge_arcade_poster.webp"
+                 muted autoplay loop playsinline disablepictureinpicture
+                 aria-hidden="true"></video><div class="voile"></div>
+          <div class="dit"><b>ARCADE</b><i>Play. Compete. Earn.</i>
+            <button class="sw-b attente">CONNECT WALLET FIRST</button></div>
+        </article>
+        <article class="uni">
+          <video class="film" src="media/doge_roi.mp4" poster="img/site/doge_roi_poster.webp"
+                 muted autoplay loop playsinline disablepictureinpicture
+                 aria-hidden="true"></video><div class="voile"></div>
+          <div class="dit"><b>REWARDS</b><i>Play More. Unlock More.</i>
+            <button class="sw-b">VIEW REWARDS</button></div>
+        </article>
+      </section>
+
+      <section class="rangee">
+        <div class="tete">
+          <h3><span class="ric" aria-hidden="true">&#9962;</span>SWOGE World
+            <i>meet other players, reach your vault and the shop</i></h3>
+          <span class="nb">1</span>
         </div>
-      </details>
-
-      <details class="card doc">
-        <summary>👛 Connect your own wallet</summary>
-        <div class="in">
-          <p>Already have a wallet? Press <b>Connect wallet</b> and pick it.</p>
-          <ol>
-            <li>Approve the connection in your wallet.</li>
-            <li><b>Sign the message</b> we show you. It only proves the address is yours — it is not a transaction and costs no gas.</li>
-            <li>If you are on another network, accept the switch to <b>Robinhood Chain</b> (chain id 4663).</li>
-          </ol>
-          <p>Your keys never leave your wallet. We only ever see your public address and signed transactions.</p>
+        <div class="piste" role="list" aria-label="SWOGE World">
+          <a class="jc" href="nexus.html" title="Nexus"><img src="img/card_nx.webp?v=2" alt="Nexus" loading="lazy"
+             width="640" height="427" decoding="async"><span>Nexus</span></a>
         </div>
-      </details>
-
-      <details class="card doc">
-        <summary>⬇️ Deposit $SWOGE</summary>
-        <div class="in">
-          <p>Depositing moves $SWOGE from your wallet into your in-game balance. It happens on the <a href="swoge_staking.html">staking page</a>, in the <b>Deposit $SWOGE</b> panel.</p>
-          <ol>
-            <li>Enter an amount, or tap 10% / 20% / 50% / MAX.</li>
-            <li><b>Approve once</b> — this lets the vault contract move your $SWOGE. You only do it the first time.</li>
-            <li>Press <b>Deposit</b> and confirm the transaction.</li>
-          </ol>
-          <p>Once the transaction is mined the amount shows up in your balance and works in every game. You need a little ETH on Robinhood Chain to pay the gas.</p>
+      </section>
+      <section class="rangee">
+        <div class="tete">
+          <h3><span class="ric" aria-hidden="true">&#127920;</span>Against the house
+            <i>play on your own, any time</i></h3>
+          <span class="nb">9</span>
         </div>
-      </details>
-
-      <details class="card doc">
-        <summary>🎁 Play for free — no deposit</summary>
-        <div class="in">
-          <p>You do not have to put anything in to start.</p>
-          <ul>
-            <li><b>Welcome bonus</b> — $SWOGE credited on your very first sign-in, plus an extra reward unlocked once you have played a little.</li>
-            <li><b>Daily streak</b> — come back each day and the reward grows: 1, 2, 3, 5, 7, 10, then 15.</li>
-            <li><b>Watch a video</b> — in SWOGE Spin, finishing a short ad credits <b>10 $SWOGE</b>. Up to <b>5 per day</b>, with a 30-second gap between two.</li>
-            <li><b>Free demos</b> — several games run without any wallet at all.</li>
-          </ul>
-          <p>It is enough to learn every game before you decide to deposit anything.</p>
+        <div class="piste" role="list" aria-label="Against the house">
+          <a class="jc" href="swoge_blackjack.html" title="SWOGE Blackjack"><img src="img/card_bj.webp?v=2" alt="SWOGE Blackjack" loading="lazy"
+             width="640" height="427" decoding="async"><span>SWOGE Blackjack</span></a>
+          <a class="jc" href="swoge_blackjack.html?table=or" title="Blackjack · Gold Table"><img src="img/card_bj_or.webp?v=2" alt="Blackjack Gold Table" loading="lazy"
+             width="640" height="427" decoding="async"><span>Blackjack · Gold Table</span></a>
+          <a class="jc" href="swoge_spin.html" title="SWOGE Spin"><img src="img/card_sp.webp?v=2" alt="SWOGE Spin" loading="lazy"
+             width="640" height="427" decoding="async"><span>SWOGE Spin</span></a>
+          <a class="jc" href="swoge_casino.html?game=holdem" title="Casino Hold'em"><img src="img/card_ho.webp?v=2" alt="Casino Hold'em" loading="lazy"
+             width="640" height="427" decoding="async"><span>Casino Hold'em</span></a>
+          <a class="jc" href="swoge_casino.html?game=three" title="Three Card"><img src="img/card_tc.webp?v=2" alt="Three Card" loading="lazy"
+             width="640" height="427" decoding="async"><span>Three Card</span></a>
+          <a class="jc" href="swoge_casino.html?game=mines" title="Mines"><img src="img/card_mn.webp?v=2" alt="Mines" loading="lazy"
+             width="640" height="427" decoding="async"><span>Mines</span></a>
+          <a class="jc" href="swoge_casino.html?game=hilo" title="Hi-Lo"><img src="img/card_hl.webp?v=2" alt="Hi-Lo" loading="lazy"
+             width="640" height="427" decoding="async"><span>Hi-Lo</span></a>
+          <a class="jc" href="plinko.html" title="Plinko"><img src="img/card_pl.webp?v=2" alt="Plinko" loading="lazy"
+             width="640" height="427" decoding="async"><span>Plinko</span></a>
+          <a class="jc" href="swoge_smash.html" title="SWOGE Smash"><img src="img/card_sm.webp?v=2" alt="SWOGE Smash" loading="lazy"
+             width="640" height="427" decoding="async"><span>SWOGE Smash</span></a>
         </div>
-      </details>
-
-      <details class="card doc">
-        <summary>🔒 How staking works</summary>
-        <div class="in">
-          <p>Staking locks part of your balance and pays you yield for holding it there.</p>
-          <ol>
-            <li>Go to the <a href="swoge_staking.html">staking page</a>.</li>
-            <li>Choose an amount — or tap 10% / 20% / 50% / MAX.</li>
-            <li>Press <b>STAKE NOW</b>.</li>
-          </ol>
-          <p>From that moment the yield accrues <b>every second</b>. <b>CLAIM YIELD</b> collects what has accrued so far and puts it back in your balance; <b>UNSTAKE ALL</b> returns your stake. While it is staked, that $SWOGE is out of circulation.</p>
+      </section>
+      <section class="rangee">
+        <div class="tete">
+          <h3><span class="ric" aria-hidden="true">&#128101;</span>Against other players
+            <i>shared tables, live rounds, no bots</i></h3>
+          <span class="nb">4</span>
         </div>
-      </details>
-
-      <details class="card doc">
-        <summary>🔥 Burning $SWOGE</summary>
-        <div class="in">
-          <p>Burning sends tokens to <b>0x…dEaD</b>, an address nobody holds the keys to. They can never be moved again, so they leave the circulating supply for good.</p>
-          <ol>
-            <li>Open the <a href="burn.html">burn page</a> and connect your wallet.</li>
-            <li>Pick how much — 10%, 25%, 50% or 100% of your balance.</li>
-            <li>Press <b>Burn forever</b> and confirm.</li>
-          </ol>
-          <p>The page shows the running total burned and what share of the supply that represents. It is <b>permanent and irreversible</b> — there is no undo.</p>
+        <div class="piste" role="list" aria-label="Against other players">
+          <a class="jc" href="boulier.html" title="Boulier"><img src="img/card_bo.webp?v=2" alt="Boulier" loading="lazy"
+             width="640" height="427" decoding="async"><span>Boulier</span></a>
+          <a class="jc" href="swoge_poker.html" title="SWOGE Poker"><img src="img/card_pk.webp?v=2" alt="SWOGE Poker" loading="lazy"
+             width="640" height="427" decoding="async"><span>SWOGE Poker</span></a>
+          <a class="jc" href="swoge_pusher_live.html" title="Coin Pusher"><img src="img/card_cp.webp?v=2" alt="Coin Pusher" loading="lazy"
+             width="640" height="427" decoding="async"><span>Coin Pusher</span></a>
+          <a class="jc" href="crash.html" title="Crash"><img src="img/card_cr.webp?v=2" alt="Crash" loading="lazy"
+             width="640" height="427" decoding="async"><span>Crash</span></a>
         </div>
-      </details>
-
-      <details class="card doc">
-        <summary>🎮 The games and their rules</summary>
-        <div class="in">
-          <p><b>SWOGE Spin</b> — a 3×3 slot. Line up $SWOGE symbols; three volcanoes trigger the Hold &amp; Push bonus and its coin jackpots.</p>
-          <p><b>SWOGE Poker</b> — Texas Hold&rsquo;em, 6 seats, <b>real players only, never a bot</b>. One minute per decision. The house takes 5% of the pot, and only when a flop is dealt.</p>
-          <p><b>SWOGE Blackjack</b> — blackjack pays 3:2, the dealer stands on 17.</p>
-          <p><b>Casino Hold&rsquo;em &amp; Three Card</b> — heads-up against the house, instant, no waiting for anyone. Pick a chip, tap a betting spot, tap the red &times; to take it back. Full paytables are behind the <b>i</b> button on the table.</p>
-          <p><b>Mines</b> — a grid of 25 tiles hiding the number of mines you chose. Turn tiles over one at a time; every safe tile pushes the multiplier up, and you cash out whenever you like. Hit a mine and the stake is gone. The mines are placed the moment you deal, never as you click — you can recompute the whole grid once the seed is revealed. The house edge of 3% is taken once, so opening one tile or twenty returns the same 97% on average.</p>
-          <p><b>Hi-Lo</b> — one card is face up. Call <b>higher</b> or <b>lower</b>: guess right and the multiplier climbs, guess wrong and the stake is gone. Cash out whenever you like. The same rank is a tie — the step is replayed, no win, no loss. Each announced multiplier already includes the house edge of 3% per step, so the odds never depend on how bold you are.</p>
-          <p><b>Plinko</b> — pick a board (8, 12 or 16 rows), a risk level and a stake, then drop the ball. Each row sends it left or right, and the cup it lands in decides the payout: the middle cups pay less than your stake, the outside ones far more — up to 78× on the wildest board. The cup is settled from the seeds the moment you drop, so the animation only retells a result already decided. The house edge of 3% is built into every table.</p>
-          <p><b>Coin Pusher</b> — the arcade classic on-chain, one shared table for everybody, with a live jackpot.</p>
-          <p><b>SWOGE Smash</b> — one smash, one multiplier, up to 250×.</p>
+      </section>
+      <section class="rangee">
+        <div class="tete">
+          <h3><span class="ric" aria-hidden="true">&#9876;</span>Head to head
+            <i>1v1 duels — the winner takes the stake</i></h3>
+          <span class="nb">5</span>
         </div>
-      </details>
-
-      <details class="card doc">
-        <summary>🎲 Provably fair — what it means</summary>
-        <div class="in">
-          <p>Every round is decided by two seeds: one from the server, one from you.</p>
-          <ol>
-            <li>Before you play, the server publishes the <b>hash</b> of its secret seed. You can see it at the bottom of the game.</li>
-            <li>Your own seed goes into the mix, so the server cannot know the outcome in advance either.</li>
-            <li>After the round the server reveals its seed. Hash it yourself: if it matches what was published, nothing was changed mid-hand.</li>
-          </ol>
-          <p>That is the whole point — you do not have to trust us, you can check.</p>
+        <div class="piste" role="list" aria-label="Head to head">
+          <a class="jc" href="connect4.html" title="Connect 4"><img src="img/card_p4.webp?v=2" alt="Connect 4" loading="lazy"
+             width="640" height="427" decoding="async"><span>Connect 4</span></a>
+          <a class="jc" href="morpion.html" title="Tic-Tac-Toe"><img src="img/card_mp.webp?v=2" alt="Tic-Tac-Toe" loading="lazy"
+             width="640" height="427" decoding="async"><span>Tic-Tac-Toe</span></a>
+          <a class="jc" href="morpion_fantome.html" title="Ghost Tic-Tac-Toe"><img src="img/card_mf.webp?v=2" alt="Ghost Tic-Tac-Toe" loading="lazy"
+             width="640" height="427" decoding="async"><span>Ghost Tic-Tac-Toe</span></a>
+          <a class="jc" href="dernier_chiffre.html" title="Last Number"><img src="img/card_dc.webp?v=2" alt="Last Number" loading="lazy"
+             width="640" height="427" decoding="async"><span>Last Number</span></a>
+          <a class="jc" href="dames.html" title="Checkers"><img src="img/card_dm.webp?v=2" alt="Checkers" loading="lazy"
+             width="640" height="427" decoding="async"><span>Checkers</span></a>
         </div>
-      </details>
-
-      <details class="card doc">
-        <summary>🎯 Where this is going</summary>
-        <div class="in">
-          <p>The long-term goal of the project is <b>$1 per $SWOGE</b>.</p>
-          <p>Everything here pulls in that direction. Staking takes tokens out of circulation for as long as they stay locked. Burning removes them for good. Each new game brings players who need $SWOGE to play. Supply goes down, uses go up.</p>
-          <p>It is a target, not a schedule — and certainly not a promise.</p>
-          <div class="avis">Nobody can guarantee a token price. Play and stake with what you can afford to lose, and make your own decisions — nothing on this site is financial advice.</div>
+      </section>
+      <section class="rangee">
+        <div class="tete">
+          <h3><span class="ric" aria-hidden="true">&#9917;</span>Sports betting
+            <i>real fixtures, odds locked when you bet</i></h3>
+          <span class="nb">1</span>
         </div>
-      </details>
-
+        <div class="piste" role="list" aria-label="Sports betting">
+          <a class="jc" href="swogebet.html" title="SWOGE Bet"><img src="img/bet_carte.webp?v=2" alt="SWOGE Bet" loading="lazy"
+             width="640" height="427" decoding="async"><span>SWOGE Bet</span></a>
+        </div>
+      </section>
+      <section class="rangee">
+        <div class="tete">
+          <h3><span class="ric" aria-hidden="true">&#128295;</span>Utility
+            <i>staking, tools and the paperwork</i></h3>
+          <span class="nb">6</span>
+        </div>
+        <div class="piste" role="list" aria-label="Utility">
+          <a class="jc" href="swoge_staking.html" title="Staking"><img src="img/card_st.webp?v=2" alt="Staking" loading="lazy"
+             width="640" height="427" decoding="async"><span>Staking</span></a>
+          <a class="jc" href="swoge_bench.html" title="Wallet Bench"><img src="img/card_wb.webp?v=2" alt="Wallet Bench" loading="lazy"
+             width="640" height="427" decoding="async"><span>Wallet Bench</span></a>
+          <a class="jc" href="launchpad.html" title="Launchpad"><img src="img/card_lp.webp?v=2" alt="Launchpad" loading="lazy"
+             width="640" height="427" decoding="async"><span>Launchpad</span></a>
+          <a class="jc" href="burn.html" title="Burn"><img src="img/card_bn.webp?v=2" alt="Burn" loading="lazy"
+             width="640" height="427" decoding="async"><span>Burn</span></a>
+          <a class="jc" href="holder_scan.html" title="Holder Scanner"><img src="img/card_hs.webp?v=2" alt="Holder Scanner" loading="lazy"
+             width="640" height="427" decoding="async"><span>Holder Scanner</span></a>
+          <a class="jc" href="whitepaper.html" title="White Paper"><img src="img/card_wp.webp?v=2" alt="White Paper" loading="lazy"
+             width="640" height="427" decoding="async"><span>White Paper</span></a>
+        </div>
+      </section>
     </div>
 
+    <div class="sw-col">
+<!-- ================== CE QU'ON PROPOSE VRAIMENT ==================
+           Les rencontres, les cotes, les competitions et les marches viennent
+           du catalogue du serveur, pas d'une maquette. Trois choses fausses
+           sont parties avec l'ancien bloc :
+
+           1. « LIVE » et le score en cours. ON NE PREND AUCUN PARI EN DIRECT :
+              le catalogue ferme au coup d'envoi — « accepter un pari sur un
+              match commence, c'est accepter le pari de quelqu'un qui regarde
+              le score ». Un bandeau LIVE promettait exactement ce qu'on
+              refuse. L'heure du coup d'envoi prend sa place, parce que c'est
+              elle qui compte : c'est la limite.
+
+           2. Basketball et MMA dans les onglets. On ne porte ni l'un ni
+              l'autre. La NBA existe au catalogue mais elle y est marquee
+              INACTIVE — elle est donc montree comme telle, et non comme un
+              onglet qui ne rendrait rien.
+
+           3. « +128 », « +96 », « +72 » marches en plus. Le vrai nombre est
+              CINQ, et seulement au football : double chance, les deux equipes
+              marquent, plus ou moins de deux buts et demi, score exact,
+              handicap. Le tennis n'a que le vainqueur. Annoncer cent
+              vingt-huit marches qu'on n'a pas est la seule sorte de mensonge
+              qu'un joueur verifie en un clic. -->
+      <section class="carte carte-p">
+        <div class="tete"><h3>SWOGE SPORTS</h3>
+          <span class="ferme">CLOSES AT KICK-OFF</span></div>
+        <p class="sous">Football carries <b>six markets</b> &mdash; winner, double chance,
+          both teams to score, over/under 2.5, correct score, handicap &minus;1.5.</p>
+        <div class="onglets" data-groupe="sports">
+          <button class="on"><span class="ic">&#9878;</span>All Sports</button>
+          <button><span class="ic">&#9917;</span>Football</button>
+          <button><span class="ic">&#127934;</span>Tennis</button>
+          <button class="eteint"><span class="ic">&#127936;</span>NBA</button>
+        </div>
+
+        <div class="match">
+          <div class="ligue">FOOTBALL &middot; CHAMPIONSHIP &middot; ENGLAND</div>
+          <div class="duel">
+            <span class="eq"><span>&#127988;</span><b>Bolton</b></span>
+            <span class="sc">15 AUG &middot; 12:30</span>
+            <span class="eq d"><b>Preston</b><span>&#127988;</span></span>
+          </div>
+          <div class="cotes">
+            <button class="on">1 <small>2.12</small></button>
+            <button>X <small>3.22</small></button>
+            <button>2 <small>3.17</small></button>
+            <span class="plus">+5</span>
+          </div>
+        </div>
+
+        <div class="match">
+          <div class="ligue">FOOTBALL &middot; CHAMPIONSHIP &middot; ENGLAND</div>
+          <div class="duel">
+            <span class="eq"><span>&#127988;</span><b>Norwich</b></span>
+            <span class="sc">15 AUG &middot; 15:00</span>
+            <span class="eq d"><b>West Brom</b><span>&#127988;</span></span>
+          </div>
+          <div class="cotes">
+            <button>1 <small>1.87</small></button>
+            <button>X <small>3.38</small></button>
+            <button>2 <small>3.73</small></button>
+            <span class="plus">+5</span>
+          </div>
+        </div>
+
+        <div class="match">
+          <div class="ligue">TENNIS &middot; CINCINNATI ATP</div>
+          <div class="duel">
+            <span class="eq"><span>&#127479;&#127480;</span><b>Djokovic N.</b></span>
+            <span class="sc">15 AUG &middot; 16:30</span>
+            <span class="eq d"><b>Tirante T. A.</b><span>&#127462;&#127479;</span></span>
+          </div>
+          <div class="cotes">
+            <button>1 <small>1.25</small></button>
+            <button>2 <small>3.80</small></button>
+          </div>
+        </div>
+
+        <div class="match">
+          <div class="ligue">TENNIS &middot; CINCINNATI ATP</div>
+          <div class="duel">
+            <span class="eq"><span>&#127482;&#127480;</span><b>Paul T.</b></span>
+            <span class="sc">15 AUG &middot; 18:00</span>
+            <span class="eq d"><b>Hurkacz H.</b><span>&#127477;&#127473;</span></span>
+          </div>
+          <div class="cotes">
+            <button>1 <small>1.53</small></button>
+            <button>2 <small>2.25</small></button>
+          </div>
+        </div>
+      </section>
+
+<!-- ================== LE SALON DE POKER ==================
+             La carte portait « WEEKLY SWOGE RACE / $50,000 / REWARD POOL » :
+             un montant qui n existe nulle part dans la configuration. Il part
+             avec le trophee.
+             L AFFICHE PARLE D ELLE-MEME — elle porte deja « SWOGE POKER LIVE »
+             en toutes lettres. Lui superposer les memes mots aurait fait deux
+             fois le meme titre, une fois peint et une fois pose dessus. Il ne
+             reste donc qu une invitation, en bas, et un voile qui la detache
+             du fond sans manger l affiche. -->
+        <a class="carte salon vif" href="swoge_poker.html">
+          <video class="film" src="media/poker_live.mp4" poster="img/site/poker_live_poster.webp"
+                 muted autoplay loop playsinline disablepictureinpicture
+                 aria-label="SWOGE Poker Live"></video>
+          <span class="voile"></span>
+          <span class="dit">ENTER THE ROOM &nbsp;&rarr;</span>
+        </a>
+    </div>
+  </main>
+</div>
+
+<div class="sw-bas">
+  <!-- ---- LA BANNIERE DU BAS ----
+       Le texte et les deux boutons sont peints dans l'image. On ne les
+       redessine donc pas : on pose deux zones cliquables invisibles sur les
+       boutons peints, aux bornes mesurees sur l'image. -->
+  <div class="bas-ban">
+    <img src="img/site/bas_banniere.webp" alt="One token. One world. Infinite ways to play.">
+    <a class="b1 vif" href="nexus.html" aria-label="Play now"></a>
+    <a class="b2 cx-wallet" href="#" aria-label="Connect wallet"></a>
   </div>
+</div>
 
-<script>
-/* La documentation, pliee par defaut. Quatre lignes : le signe dit dans quel
-   sens ca va, et `aria-expanded` le dit a qui n'y voit pas. */
-(function(){
-  var b = document.getElementById('docTog'), d = document.getElementById('docs');
-  if (!b || !d) return;
-  b.addEventListener('click', function(){
-    var ouvert = d.classList.toggle('on');
-    b.setAttribute('aria-expanded', ouvert ? 'true' : 'false');
-    b.querySelector('.doc-pm').textContent = ouvert ? '\u2212' : '+';
-  });
-})();
+<footer class="sw-bas">
+  <div class="promesses">
+    <div class="pro"><span class="ic">&#128737;</span><span><b>SAFE &amp; SECURE</b>
+      <small>Provably fair games &amp; secure transactions</small></span></div>
+    <div class="pro"><span class="ic">&#9889;</span><span><b>INSTANT PAYOUTS</b>
+      <small>Fastest withdrawals in crypto</small></span></div>
+    <div class="pro"><span class="ic">&#127911;</span><span><b>24/7 SUPPORT</b>
+      <small>We&rsquo;re here for you anytime</small></span></div>
+    <div class="pro"><span class="ic">&#129309;</span><span><b>COMMUNITY FIRST</b>
+      <small>Built for the community, by the community</small></span></div>
+  </div>
+</footer>
 
-/* Les chevrons. Dix-huit lignes, sans dependance : sans elles la page reste
-   entierement utilisable — les pistes defilent au doigt, a la molette et au
-   clavier, ce sont de vraies boites defilantes. */
-(function(){
-  var pistes = document.querySelectorAll('.r-corps');
-  for (var i=0;i<pistes.length;i++) (function(corps){
-    var piste = corps.querySelector('.r-piste');
-    var g = corps.querySelector('.r-fleche.g'), d = corps.querySelector('.r-fleche.d');
-    if(!piste||!g||!d) return;
-    function maj(){
-      /* Une fleche qui ne mene nulle part se cache : un bouton mort apprend a
-         ne plus regarder les boutons. La marge d'un pixel absorbe les demis
-         pixels d'un ecran a densite fractionnaire, ou scrollLeft n'atteint
-         jamais exactement le maximum. */
-      g.disabled = piste.scrollLeft <= 1;
-      d.disabled = piste.scrollLeft >= piste.scrollWidth - piste.clientWidth - 1;
-    }
-    function va(sens){
-      /* On avance d'un ecran moins une vignette : la carte du bord reste
-         visible et sert de repere, au lieu de sauter dans le vide. */
-      piste.scrollBy({ left: sens * Math.max(160, piste.clientWidth - 90), behavior:'smooth' });
-    }
-    g.addEventListener('click', function(){ va(-1); });
-    d.addEventListener('click', function(){ va(1); });
-    piste.addEventListener('scroll', maj, { passive:true });
-    window.addEventListener('resize', maj);
-    maj();
-  })(pistes[i]);
-})();
-</script>
-</main>
+<!-- ================== LA CONNEXION ==================
+     DEUX CHEMINS, ET LE SECOND N'EST PAS UN REPLI. Un portefeuille injecte
+     quand il y en a un ; un courriel sinon — Privy cree alors le portefeuille
+     tout seul. C'est le chemin NORMAL dans le navigateur de Telegram, ou il
+     n'y a pas d'extension a interroger, et c'est de la qu'arrive une bonne
+     part des joueurs.
+     Le meme couple sert deja sur les dix-sept pages de jeu, avec le meme
+     identifiant d'application et les memes appels. On ne refait pas un second
+     mecanisme d'authentification a cote du premier : deux facons d'entrer,
+     c'est deux facons de se tromper sur qui est connecte. -->
+<div id="cxVoile" class="cx-voile" hidden>
+  <div class="cx-boite" role="dialog" aria-modal="true" aria-labelledby="cxTitre">
+    <button class="cx-fermer" type="button" aria-label="Close">&times;</button>
+    <b id="cxTitre">Sign in</b>
+    <p class="cx-dit" id="cxDit">A wallet is created for you automatically &mdash; no app needed.</p>
+    <label class="cx-champ"><span>Email</span>
+      <input id="cxMail" type="email" inputmode="email" autocomplete="email"
+             placeholder="you@example.com"></label>
+    <div id="cxCodeBloc" hidden>
+      <label class="cx-champ"><span>Code</span>
+        <input id="cxCode" type="text" inputmode="numeric" autocomplete="one-time-code"
+               placeholder="6 digits"></label>
+    </div>
+    <button class="sw-b sw-b-plein cx-large" id="cxEnvoie">SEND ME A CODE</button>
+    <button class="sw-b sw-b-plein cx-large" id="cxVerifie" hidden>VERIFY &amp; CREATE MY WALLET</button>
+    <div class="cx-ou"><span>or</span></div>
+    <button class="sw-b sw-b-vide cx-large" id="cxPortefeuille">CONNECT A WALLET</button>
+  </div>
+</div>
 
-<!-- les vignettes sont des images fixes : plus de videos, plus de chien de garde -->
+<!-- ================== LE COMPTE, LE SOLDE ET L ACHAT ==================
+     Ces trois scripts etaient charges par l ancienne page, et elle etait la
+     SEULE du site a le faire. Les retirer en la refaisant aurait emporte avec
+     eux le depot, le retrait, les quetes et le bouton d achat — sans que rien
+     ne le dise, et pour une demande qui ne portait que sur le style.
+     Ils posent leur propre interface, dessinee pour un fond sombre : elle
+     jure ici. C est un defaut d apparence ; le supprimer serait un defaut de
+     fonction, et les deux ne se valent pas.
+     `ethers` leur est necessaire — c est lui qui signe les retraits. La
+     pastille de connexion, elle, n en a pas besoin : elle ne fait que lire. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+<script src="stakebubble.js?v=233ccc57"></script>
+<script src="swogecompte.js?v=cd504287"></script>
+<script src="swogebuy.js?v=0d5e5215"></script>
+<script src="swogecx.js?v=3e9abea6" defer></script>
 </body>
 </html>

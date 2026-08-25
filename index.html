@@ -255,14 +255,15 @@ a{color:inherit;text-decoration:none}
    convenir aux deux. L'image est gardee ENTIERE, en quatre tiers, et c'est le
    point de visee qui tient : legerement a gauche et vers le haut, la ou vivent
    le logo et le « LIVE ». Centre, le « S » de SWOGE sortait du cadre. */
-.salon img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
-  object-position:34% 34%}
+.salon img,.salon .film{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  object-position:34% 34%;border:0;background:var(--nuit)}
+@media (prefers-reduced-motion:reduce){ .salon .film{display:none} }
 .salon .voile{position:absolute;inset:auto 0 0 0;height:58%;
   background:linear-gradient(180deg,rgba(6,16,40,0) 0%,rgba(6,16,40,.86) 78%,rgba(6,16,40,.95) 100%)}
 .salon .dit{position:absolute;left:16px;right:16px;bottom:14px;
   font:800 12px/1 'Inter',system-ui,sans-serif;letter-spacing:1.4px;color:#fff}
-.salon:hover img{transform:scale(1.03)}
-.salon img{transition:transform .2s}
+.salon:hover img,.salon:hover .film{transform:scale(1.03)}
+.salon img,.salon .film{transition:transform .2s}
 
 /* ------------------------------------------------------- LA COLONNE DE DROITE */
 .bonus{position:relative;min-height:158px;display:flex;align-items:center;background:var(--nuit)}
@@ -644,7 +645,9 @@ a{color:inherit;text-decoration:none}
              reste donc qu une invitation, en bas, et un voile qui la detache
              du fond sans manger l affiche. -->
         <a class="carte salon vif" href="swoge_poker.html">
-          <img src="img/site/poker_live.webp" alt="SWOGE Poker Live">
+          <video class="film" src="media/poker_live.mp4" poster="img/site/poker_live_poster.webp"
+                 muted autoplay loop playsinline disablepictureinpicture
+                 aria-label="SWOGE Poker Live"></video>
           <span class="voile"></span>
           <span class="dit">ENTER THE ROOM &nbsp;&rarr;</span>
         </a>

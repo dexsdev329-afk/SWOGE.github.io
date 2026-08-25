@@ -180,7 +180,15 @@ a{color:inherit;text-decoration:none}
 .univers{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
 .uni{position:relative;border-radius:var(--rayon);overflow:hidden;min-height:258px;
   display:flex;flex-direction:column;justify-content:flex-end;background:var(--nuit)}
-.uni img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center top}
+/* ---- LES QUATRE CARTES SONT DES FILMS ----
+   Meme regle que la banniere : l'affiche est la premiere image du film, donc
+   le passage de l'une a l'autre ne se voit pas, et la carte n'est jamais un
+   rectangle noir en attendant.
+   `object-position: center top` reste : les quatre chiens ont la tete en haut
+   du cadre, et un cadrage centre la coupait au menton. */
+.uni img,.uni .film{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  object-position:center top;border:0;background:var(--nuit)}
+@media (prefers-reduced-motion:reduce){ .uni .film{display:none} }
 .uni .voile{position:absolute;inset:0;
   background:linear-gradient(180deg,rgba(8,24,58,0) 34%,rgba(8,24,58,.88) 74%,rgba(8,24,58,.97) 100%)}
 .uni .dit{position:relative;padding:14px;text-align:center}
@@ -536,12 +544,16 @@ a{color:inherit;text-decoration:none}
 
       <section class="univers">
         <article class="uni">
-          <img src="img/site/doge_casino.webp" alt=""><div class="voile"></div>
+          <video class="film" src="media/doge_casino.mp4" poster="img/site/doge_casino_poster.webp"
+                 muted autoplay loop playsinline disablepictureinpicture
+                 aria-hidden="true"></video><div class="voile"></div>
           <div class="dit"><b>CASINO</b><i>Spin. Bet. Win.</i>
             <a class="sw-b vif" href="games.html">EXPLORE</a></div>
         </article>
         <article class="uni">
-          <img src="img/site/doge_sport.webp" alt=""><div class="voile"></div>
+          <video class="film" src="media/doge_sport.mp4" poster="img/site/doge_sport_poster.webp"
+                 muted autoplay loop playsinline disablepictureinpicture
+                 aria-hidden="true"></video><div class="voile"></div>
           <div class="dit"><b>SPORTS</b><i>Back Your Team.</i>
             <a class="sw-b vif" href="swogebet.html">BET NOW</a></div>
         </article>
@@ -549,12 +561,16 @@ a{color:inherit;text-decoration:none}
              lieu de mentir : « PLAY NOW » sur un bouton qui ne joue pas est
              exactement ce qu'on evite partout ailleurs sur cette page. -->
         <article class="uni">
-          <img src="img/site/doge_arcade.webp" alt=""><div class="voile"></div>
+          <video class="film" src="media/doge_arcade.mp4" poster="img/site/doge_arcade_poster.webp"
+                 muted autoplay loop playsinline disablepictureinpicture
+                 aria-hidden="true"></video><div class="voile"></div>
           <div class="dit"><b>ARCADE</b><i>Play. Compete. Earn.</i>
             <button class="sw-b attente">CONNECT WALLET FIRST</button></div>
         </article>
         <article class="uni">
-          <img src="img/site/doge_roi.webp" alt=""><div class="voile"></div>
+          <video class="film" src="media/doge_roi.mp4" poster="img/site/doge_roi_poster.webp"
+                 muted autoplay loop playsinline disablepictureinpicture
+                 aria-hidden="true"></video><div class="voile"></div>
           <div class="dit"><b>REWARDS</b><i>Play More. Unlock More.</i>
             <button class="sw-b">VIEW REWARDS</button></div>
         </article>

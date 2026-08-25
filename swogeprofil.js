@@ -77,6 +77,19 @@
     return [].map.call(src.children, function(n){
       if(n.classList && n.classList.contains("msep")) return { sep:true };
       if(n.tagName !== "A") return null;
+      /* ---- UNE RANGEE QUE LA PAGE CACHE RESTE CACHEE ----
+       * `duTiroir` ecarte deja les rangees masquees ; celle-ci ne le faisait
+       * pas, et les deux listes ne repondaient donc pas pareil a la meme
+       * question. Le cas concret : une fois entre, la page cache « Sign in »
+       * de son propre menu — et le profil, tant que le tiroir n est pas
+       * monte, le remontrait. On proposait de se connecter a quelqu un qui
+       * l etait deja, dans le menu de son compte.
+       * On regarde la rangee ELLE-MEME, pas si elle est visible a l ecran :
+       * `#menu` est souvent cache EN ENTIER — c est une declaration, pas un
+       * menu qu on ouvre — et « invisible » y serait vrai de tout le monde.
+       * Meme critere que `duTiroir`, pour que les deux listes repondent
+       * pareil a la meme question. */
+      if(n.hidden || (n.style && n.style.display === "none")) return null;
       var c = coupe(n.textContent);
       return { ic:c.ic, mot:c.mot, href: n.getAttribute("href")||"#", vers:n };
     }).filter(Boolean);

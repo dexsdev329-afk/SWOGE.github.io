@@ -72,7 +72,7 @@ canvas{ touch-action:none; }
 <!-- La bulle de staking. Chargee tot et SANS defer : elle enveloppe WebSocket
      pour ecouter ce qui passe deja, et doit donc etre en place avant que la page
      n ouvre sa connexion. -->
-<script src="stakebubble.js?v=233ccc57"></script>
+<script src="stakebubble.js?v=a2b3a1e9"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <script src="swogebuy.js?v=0d5e5215"></script>
 <script src="https://sad.adsgram.ai/js/sad.min.js" async></script>
@@ -108,6 +108,14 @@ canvas{ touch-action:none; }
        son fond, et sans elle tout parait colle. */
     --accent-pale:#EAF1FF;
     --ombre:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05);
+    /* ---- LES DEUX COULEURS D'ETAT ONT UNE VERSION QU'ON POSE ----
+       `--green` et `--red` sont faites pour REMPLIR — une pastille, une
+       bordure, un fond. Posees comme TEXTE sur leur propre teinte pale, elles
+       tombent a 3,08:1 et 3,14:1 : au-dessus du seuil d'un cheveu, donc
+       fausses des que la teinte bouge d'un ton. Le vert et le rouge fonces
+       sont ceux qu'on ecrit ; les vifs restent ceux qu'on remplit. Sur fond
+       noir la question ne se posait pas : on y appuyait en ECLAIRCISSANT. */
+    --green-txt:#0E7A3D; --red-txt:#B22A24;
   }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
   /* La MEME pile que `games.html`, qui nomme Inter sans la telecharger : le
@@ -678,6 +686,32 @@ html{ background-color:#0b0906;
    l'ecran — sur une page de paris, ce qu'on vient voir doit rester visible.
    `contain` plutot que `cover` : le cadre dore EST le motif de la famille,
    le rogner reviendrait a le perdre. Le fond sombre remplit les cotes. */
+/* ================== LA BANNIERE EST UN FILM, ET UN SEUL ==================
+ *
+ * Elle etait une IMAGE PAR CATEGORIE : cinq affiches, echangees a chaque
+ * onglet. Une seule video les remplace, pour toutes les categories.
+ *
+ * `cover` et non `contain` : `contain` servait a ne pas rogner le cadre dore
+ * des affiches NFL et cricket, qui EST le motif de leur famille. Un film
+ * unique n a pas ce cadre — et `contain`, sur une colonne large et une
+ * hauteur bornee, aurait pose deux bandes blanches de cent vingt pixels de
+ * chaque cote.
+ *
+ * `object-position` a trente-huit pour cent : le cadrage part du HAUT, ou se
+ * trouve l enseigne « SWOGE BETTING ». Centre, la borne de hauteur lui
+ * coupait la couronne.
+ *
+ * Ni `autoplay` ni son : la lecture est lancee par le script, une fois le
+ * bandeau a l ecran, et l element ne porte aucune piste audio — elle a ete
+ * retiree du fichier lui-meme, pas seulement coupee a l affichage. */
+/* Le pied traverse les deux colonnes : dans l une, il se retrouverait a mi-
+   hauteur en face du vide de l autre. */
+.sb-pied{ grid-column:1 / -1; }
+.sb-film{ display:block; width:100%; height:auto; aspect-ratio:912/600;
+  max-height:min(40vh,330px); object-fit:cover; object-position:center 38%;
+  border-radius:15px; margin:0 0 14px;
+  background:var(--nuit); border:1px solid var(--line); }
+
 /* ---- LE FOND DE LA BANNIERE ----
    L'image est en `contain` : elle ne remplit pas sa boite, et ce qui deborde
    de chaque cote est le FOND de l'image elle-meme. Il etait noir a trente-cinq
@@ -690,33 +724,48 @@ html{ background-color:#0b0906;
 .sb-sports{ display:flex; gap:8px; margin:0 0 14px; overflow-x:auto; padding-bottom:4px; }
 .sb-sports button{ display:flex; align-items:center; gap:7px; white-space:nowrap;
   min-height:42px; padding:9px 16px; border-radius:11px; cursor:pointer; font:inherit;
-  border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.05); color:inherit; }
+  border:1px solid var(--line); background:var(--ink2); color:var(--text); }
 .sb-sports button i{ font-style:normal; font-size:.7rem; padding:2px 7px; border-radius:20px;
-  background:rgba(255,255,255,.12); }
-.sb-sports button i.bientot{ background:none; opacity:.5; letter-spacing:.08em; text-transform:uppercase; }
-.sb-sports button.on{ border-color:rgba(120,180,255,.6); background:rgba(90,150,255,.14); }
-.sb-sports button:disabled{ opacity:.42; cursor:default; }
-.sb-vide{ padding:34px 12px; text-align:center; opacity:.6; font-size:.9rem; }
+  background:var(--ink); color:var(--muted); }
+.sb-sports button i.bientot{ background:none; color:var(--muted);
+  letter-spacing:.08em; text-transform:uppercase; }
+/* L'onglet choisi prend l'accent de la page — le meme bleu pale que la colonne
+   de gauche pour la rubrique courante. Deux facons de dire « vous etes ici »
+   sur un meme ecran se lisent comme deux etats differents. */
+.sb-sports button.on{ border-color:var(--gold); background:var(--accent-pale); color:var(--gold); }
+/* Un sport pas encore ouvert reste PALE : c'est la seule chose qui le
+   distingue d'un onglet qu'on peut prendre. Le rendre lisible a plein
+   contraste reviendrait a le proposer. */
+.sb-sports button:disabled{ opacity:.55; cursor:default; }
+.sb-vide{ padding:34px 12px; text-align:center; color:var(--muted); font-size:.9rem; }
 /* Le bandeau de journee. Il porte le poids visuel : c'est la coupure qu'on
    cherche en balayant la liste, la competition n'est qu'un sous-titre. Il
    COLLE en haut pendant qu'on fait defiler — sur un telephone, une liste de
    trente rencontres fait perdre de vue quel jour on regarde. */
 .sb-jour{ position:sticky; top:0; z-index:6; display:flex; align-items:baseline; gap:9px;
   margin:18px 0 9px; padding:8px 11px; border-radius:11px;
-  background:linear-gradient(180deg,rgba(24,16,8,.97),rgba(14,9,4,.97));
-  border:1px solid rgba(255,197,61,.30);
-  box-shadow:0 6px 16px rgba(11,27,54,0.11); }
+  /* OPAQUE, et pas un degrade a quatre-vingt-dix-sept pour cent : ce bandeau
+     COLLE, donc les rencontres defilent DESSOUS. Le reste de transparence
+     laissait passer un nom d'equipe en gris derriere le titre du jour — sur
+     fond noir on ne le voyait pas, sur fond blanc c'est une bavure. */
+  background:var(--ink2);
+  border:1px solid var(--line);
+  box-shadow:0 6px 16px rgba(11,27,54,.10); }
 .sb-jour b{ font-size:.92rem; color:var(--gold); letter-spacing:.02em; }
-.sb-jour span{ font-size:.76rem; opacity:.6; }
-.sb-jour i{ margin-left:auto; font-style:normal; font-size:.72rem; opacity:.65;
-  padding:1px 8px; border-radius:999px; background:rgba(255,255,255,.08); }
+.sb-jour span{ font-size:.76rem; color:var(--muted); }
+.sb-jour i{ margin-left:auto; font-style:normal; font-size:.72rem;
+  padding:1px 8px; border-radius:999px; background:var(--accent-pale); color:var(--gold); }
 .sb-jour:first-child{ margin-top:2px; }
 .sb-groupe{ display:flex; align-items:baseline; gap:9px; margin:12px 2px 8px; }
 .sb-groupe b{ font-size:.94rem; }
-.sb-groupe span{ font-size:.76rem; opacity:.55; letter-spacing:.03em; }
+.sb-groupe span{ font-size:.76rem; color:var(--muted); letter-spacing:.03em; }
+/* La rencontre est une CARTE, comme partout ailleurs sur le site : fond plein,
+   filet, et l'ombre qui la decolle du fond. Elle etait un blanc a trois pour
+   cent pose sur du noir ; le meme blanc pose sur du blanc ne dessine plus
+   rien, et vingt rencontres se lisaient comme un seul bloc. */
 .sb-m{ display:grid; grid-template-columns:1fr auto; gap:8px 12px; align-items:center;
   padding:12px; margin-bottom:8px; border-radius:13px;
-  border:1px solid rgba(255,255,255,.10); background:rgba(255,255,255,.035); }
+  border:1px solid var(--line); background:var(--ink2); box-shadow:var(--ombre); }
 .sb-eq{ display:flex; flex-direction:column; gap:3px; min-width:0; }
 .sb-eq span{ display:flex; align-items:center; gap:7px; font-size:.95rem;
   overflow:hidden; white-space:nowrap; }
@@ -724,38 +773,50 @@ html{ background-color:#0b0906;
    d'une ligne a l'autre, et une colonne de noms decales se lit mal. */
 .sb-eq .dr{ flex:none; width:1.25em; font-style:normal; font-size:1.05em; line-height:1; }
 .sb-eq span > :last-child{ overflow:hidden; text-overflow:ellipsis; }
-.sb-h{ font-size:.82rem; opacity:.6; font-variant-numeric:tabular-nums; }
+.sb-h{ font-size:.82rem; color:var(--muted); font-variant-numeric:tabular-nums; }
 .sb-cotes{ grid-column:1/-1; display:grid; grid-template-columns:repeat(3,1fr); gap:7px; }
 .sb-cotes.n2{ grid-template-columns:repeat(2,1fr); }
-.sb-cotes button.pris{ border-color:rgba(120,230,160,.75); background:rgba(90,220,140,.18); }
+/* ---- LA COTE PRISE EST BLEUE, PLUS VERTE ----
+   Le vert dit GAGNE dans les tickets du meme panneau, a cinq centimetres de
+   la. Le garder ici pour « c'est dans mon bulletin » ferait dire a une
+   selection qu'elle est deja payee. Le bleu est ce que la page emploie
+   partout ailleurs pour « vous avez choisi ca ». */
+.sb-cotes button.pris{ border-color:var(--gold); background:var(--accent-pale); color:var(--gold);
+  box-shadow:inset 0 0 0 1px var(--gold); }
 .sb-jambes{ display:flex; flex-direction:column; gap:6px; margin:0 0 12px; }
 .sb-j{ display:flex; align-items:center; gap:8px; padding:8px 10px; border-radius:10px;
-  background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.10); }
+  background:var(--ink); border:1px solid var(--line); }
 .sb-j span{ flex:1; min-width:0; font-size:.8rem; overflow:hidden;
   text-overflow:ellipsis; white-space:nowrap; }
 .sb-j b{ font-size:.8rem; white-space:nowrap; }
 .sb-j button{ width:26px; height:26px; flex:none; border:0; border-radius:7px; cursor:pointer;
-  background:rgba(255,255,255,.08); color:inherit; font-size:1.1rem; line-height:1; }
+  background:var(--ink2); color:var(--muted); font-size:1.1rem; line-height:1; }
+/* Il RETIRE une jambe : il vire au rouge sous le doigt. Un bouton qui defait
+   quelque chose et qui reste gris se clique par erreur. */
+.sb-j button:hover{ background:#FBE4E3; color:var(--red-txt); }
 .sb-cotes button{ display:flex; flex-direction:column; align-items:center; gap:2px;
   min-height:52px; padding:7px 4px; border-radius:10px; cursor:pointer; font:inherit;
-  border:1px solid rgba(255,255,255,.16); background:rgba(255,255,255,.05); color:inherit; }
-.sb-cotes button span{ font-size:.68rem; letter-spacing:.08em; text-transform:uppercase; opacity:.6; }
+  border:1px solid var(--line); background:var(--ink); color:var(--text); }
+.sb-cotes button span{ font-size:.68rem; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--muted); }
 .sb-cotes button b{ font-size:1.06rem; font-variant-numeric:tabular-nums; }
-.sb-cotes button:hover{ background:rgba(120,180,255,.16); border-color:rgba(120,180,255,.5); }
+.sb-cotes button:hover{ background:var(--accent-pale); border-color:var(--gold); color:var(--gold); }
 /* ---- LES MARCHES EN PLUS ----
  * Replies par defaut. Six marches et dix-sept scores exacts ne tiennent pas
  * dans une ligne de tableau, et les deplier tous ferait vingt lignes par
  * rencontre : on ne verrait plus le calendrier. Le bouton dit COMBIEN il y en
  * a — « +5 markets » se clique, « More » se devine. */
 .sb-plus{ grid-column:1/-1; display:flex; justify-content:flex-start; margin-top:2px; }
-.sb-plusb{ background:none; border:1px dashed rgba(255,255,255,.22); color:#9fb3d9;
+/* Le pointille garde son fond PLEIN : sans lui, un filet a vingt-deux pour
+   cent de blanc pose sur du blanc ne dessinait plus de bouton du tout. */
+.sb-plusb{ background:var(--ink); border:1px dashed var(--line); color:var(--gold);
   border-radius:8px; padding:4px 10px; font-size:.72rem; letter-spacing:.04em;
   text-transform:uppercase; cursor:pointer; }
-.sb-plusb:hover{ border-color:rgba(120,180,255,.6); color:#dbe6ff; }
-.sb-plusb.on{ border-style:solid; border-color:rgba(120,230,160,.55); color:#bff5cd; }
+.sb-plusb:hover{ border-color:var(--gold); background:var(--accent-pale); }
+.sb-plusb.on{ border-style:solid; border-color:var(--gold); background:var(--accent-pale); }
 .sb-mk{ grid-column:1/-1; margin-top:6px; }
 .sb-mk > b{ display:block; font-size:.68rem; letter-spacing:.08em; text-transform:uppercase;
-  opacity:.55; margin:0 0 5px; }
+  color:var(--muted); margin:0 0 5px; }
 /* Le score exact porte dix-sept reponses. En colonnes fixes elles seraient
    illisibles sur un telephone ; en grille auto-remplie, la rangee se coupe ou
    elle peut. */
@@ -763,7 +824,7 @@ html{ background-color:#0b0906;
 .sb-cotes.grille button{ padding:6px 2px; }
 .sb-cotes.grille button span{ font-size:.62rem; }
 .sb-cotes.grille button b{ font-size:.92rem; }
-.sb-plein{ grid-column:1/-1; font-size:.72rem; opacity:.55; }
+.sb-plein{ grid-column:1/-1; font-size:.72rem; color:var(--muted); }
 /* ---- LE BULLETIN EST UN PANNEAU ANCRE, PLUS UNE MODALE ----
  *
  * Il etait plein ecran, avec un fond opaque : construire un combine revenait a
@@ -793,39 +854,52 @@ html{ background-color:#0b0906;
 /* Le panneau ne depasse jamais l'ecran : l'en-tete tient, le corps defile. Un
    combine de dix jambes poussait sinon le bouton « Place bet » sous le bord
    inferieur, et il n'y avait plus aucun moyen de valider. */
+/* Il FLOTTE par-dessus la page : c'est l'ombre, et elle seule, qui dit ou
+   s'arrete la page et ou commence le panneau. Sur du noir, un panneau noir se
+   detachait par sa bordure claire ; sur du blanc, une carte blanche posee sur
+   du blanc n'a plus que son ombre. */
 .sb-bul{ position:relative; border-radius:16px;
-  background:#101a2c; border:1px solid rgba(255,255,255,.16);
-  box-shadow:0 14px 44px rgba(11,27,54,0.14); overflow:hidden;
+  background:var(--ink2); border:1px solid var(--line);
+  box-shadow:0 20px 60px rgba(11,27,54,.16); overflow:hidden;
   display:flex; flex-direction:column; max-height:min(78vh, calc(100vh - 32px)); }
 /* L'en-tete EST le bouton de repli : c'est la plus grande cible du panneau et
    la seule qu'on cherche quand on veut le pousser de cote. */
 .sb-tete{ flex:none; display:flex; align-items:center; gap:10px; width:100%;
   padding:11px 44px 11px 14px;                 /* place pour le × pose par-dessus */
-  border:0; background:rgba(255,255,255,.04); color:inherit; font:inherit;
+  border:0; background:var(--ink); color:var(--text); font:inherit;
   text-align:left; cursor:pointer; }
-.sb-tete:hover{ background:rgba(255,255,255,.08); }
+.sb-tete:hover{ background:var(--accent-pale); }
 .sb-tete .sb-tt{ flex:1; min-width:0; }
 .sb-bt{ display:block; font-size:.95rem; font-weight:600;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.sb-bt i{ font-style:normal; opacity:.45; font-weight:400; }
-.sb-bc{ display:block; font-size:.8rem; opacity:.75; margin-top:2px;
+/* Ce qui etait dit par de l'OPACITE est dit par une couleur. Sur du noir,
+   baisser l'opacite d'un texte clair le rapproche du fond et le calme ; sur du
+   blanc, ca le rapproche du BLANC et l'efface — a quarante-cinq pour cent, ce
+   `<i>` tombait a 2,9:1, c'est-a-dire sous le seuil, en ayant l'air d'un choix
+   de style. Le gris de la page dit la meme chose et se mesure. */
+.sb-bt i{ font-style:normal; color:var(--muted); font-weight:400; }
+.sb-bc{ display:block; font-size:.8rem; color:var(--muted); margin-top:2px;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.sb-bc b{ opacity:1; }
+.sb-bc b{ color:var(--text); }
 /* Le chevron dit dans quel sens ca va : vers le bas quand le panneau est
    ouvert (« je peux le refermer »), vers le haut quand il est replie. */
-.sb-chev{ flex:none; width:26px; text-align:center; font-size:.9rem; opacity:.6;
+.sb-chev{ flex:none; width:26px; text-align:center; font-size:.9rem; color:var(--muted);
   transition:transform .18s ease; }
 .sb-ovl.replie .sb-chev{ transform:rotate(180deg); }
 .sb-corps{ flex:1 1 auto; overflow:auto; padding:14px;
-  border-top:1px solid rgba(255,255,255,.10); }
+  background:var(--ink2); border-top:1px solid var(--line); }
 .sb-onglets{ display:flex; gap:6px; margin:-2px 0 12px; }
 .sb-onglets button{ flex:1; min-height:34px; border-radius:9px; cursor:pointer; font:inherit;
-  font-size:.78rem; font-weight:600; color:#9fb0c9;
-  background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.12); }
-.sb-onglets button.on{ color:#04121f; border-color:transparent;
-  background:linear-gradient(180deg,#7CC4FF,#3D8DDD); }
-.sb-onglets i{ font-style:normal; opacity:.7; font-size:.72rem; }
-.sb-onglets button.on i{ opacity:.75; }
+  font-size:.78rem; font-weight:600; color:var(--muted);
+  background:var(--ink); border:1px solid var(--line); }
+/* Le degrade clair valait sur du noir : il y etait la chose la plus claire de
+   l'ecran. Pose sur du blanc, il portait un texte presque noir sur un bleu
+   pale — un onglet actif qui a l'air d'un bouton eteint. Fond d'accent plein,
+   texte blanc : c'est la paire que le site emploie pour son bouton principal. */
+.sb-onglets button.on{ color:#fff; border-color:var(--gold); background:var(--gold); }
+/* Le compte des paris. En opacite il tombait a 2,4:1 sur l'onglet au repos. */
+.sb-onglets i{ font-style:normal; font-size:.72rem; color:var(--gold); }
+.sb-onglets button.on i{ color:#fff; opacity:.85; }
 .sb-ovl.replie .sb-corps{ display:none; }
 /* Le × vide le bulletin. Il ne le FERME pas : un bulletin qu'on cache en
    gardant ses selections est un piege — on revient dessus dix minutes plus
@@ -833,8 +907,9 @@ html{ background-color:#0b0906;
    repli, et le repli laisse la barre visible. */
 .sb-x{ position:absolute; top:12px; right:10px; z-index:2;
   width:28px; height:28px; border:0; border-radius:8px; cursor:pointer;
-  background:rgba(255,255,255,.07); color:inherit; font-size:1rem; line-height:1; opacity:.65; }
-.sb-x:hover{ opacity:1; background:rgba(255,110,110,.22); }
+  background:var(--ink2); color:var(--muted); font-size:1rem; line-height:1; }
+/* Il VIDE le bulletin : rouge sous le doigt, comme le × d'une jambe. */
+.sb-x:hover{ background:#FBE4E3; color:var(--red-txt); }
 /* LA PLACE QUE LE PANNEAU PREND. Les cotes cliquables sont a DROITE de chaque
    ligne de match : un panneau ancre a droite tomberait pile dessus, et on
    aurait remplace une modale qui cache le tableau par un panneau qui cache les
@@ -857,57 +932,85 @@ body.sb-dock main{ padding-bottom:150px; }
   .sb-bc{ font-size:.74rem; }
 }
 .sb-lb{ display:block; font-size:.72rem; letter-spacing:.1em; text-transform:uppercase;
-  opacity:.55; margin-bottom:6px; }
+  color:var(--muted); margin-bottom:6px; }
+/* Le champ etait un NOIR A VINGT-HUIT POUR CENT : sur la page sombre il
+   creusait, sur la page claire il donne un gris sale, et la somme qu'on tape —
+   la seule chose de ce panneau qui coute de l'argent — s'y lisait mal. Il suit
+   maintenant les champs du reste du site : fond pale au repos, blanc et filet
+   d'accent des qu'on ecrit dedans. */
 .sb-mise{ width:100%; min-height:48px; padding:10px 12px; border-radius:11px; font:inherit;
   font-size:1.15rem; font-variant-numeric:tabular-nums;
-  border:1px solid rgba(255,255,255,.18); background:rgba(0,0,0,.28); color:inherit; }
+  border:1px solid var(--line); background:var(--ink); color:var(--text); }
+.sb-mise:focus{ outline:none; border-color:var(--gold); background:var(--ink2); }
 .sb-rapide{ display:flex; gap:6px; margin:8px 0 14px; }
 .sb-rapide button{ flex:1; min-height:36px; border-radius:9px; cursor:pointer; font:inherit;
-  font-size:.8rem; border:1px solid rgba(255,255,255,.14);
-  background:rgba(255,255,255,.05); color:inherit; }
+  font-size:.8rem; border:1px solid var(--line);
+  background:var(--ink); color:var(--text); }
+.sb-rapide button:hover{ border-color:var(--gold); background:var(--accent-pale); color:var(--gold); }
 .sb-retour{ display:flex; justify-content:space-between; align-items:baseline;
   padding:10px 12px; border-radius:11px; margin-bottom:14px;
-  background:rgba(90,220,140,.10); border:1px solid rgba(120,230,160,.32); }
-.sb-retour span{ font-size:.78rem; opacity:.7; }
-.sb-retour b{ font-size:1.2rem; font-variant-numeric:tabular-nums; }
+  background:#EAF7F0; border:1px solid #BEE3CD; }
+.sb-retour span{ font-size:.78rem; color:var(--muted); }
+.sb-retour b{ font-size:1.2rem; font-variant-numeric:tabular-nums; color:var(--green-txt); }
+/* Le bouton qui engage l'argent porte l'accent PLEIN de la page, comme
+   « SIGN UP — EMAIL » dans l'en-tete deux centimetres plus haut. Deux bleus
+   differents pour les deux boutons les plus importants de l'ecran se lisent
+   comme un defaut d'impression. */
 .sb-go{ width:100%; min-height:50px; border:0; border-radius:12px; cursor:pointer; font:inherit;
-  font-weight:700; font-size:1rem; color:#04121f;
-  background:linear-gradient(180deg,#7cc4ff,#3d8ddd); }
+  font-weight:700; font-size:1rem; color:#fff;
+  background:var(--gold); }
+.sb-go:hover:not(:disabled){ background:#1750c4; }
 .sb-go:disabled{ opacity:.45; cursor:default; filter:grayscale(.5); }
-.sb-note{ margin:10px 0 0; font-size:.74rem; opacity:.55; line-height:1.45; }
+.sb-note{ margin:10px 0 0; font-size:.74rem; color:var(--muted); line-height:1.45; }
 /* ---- MES PARIS, dans le panneau ancre ----
    Un ticket par pari. L'en-tete porte le type et l'etat, le corps porte CHAQUE
    jambe — l'ancienne version n'affichait que la premiere, donc un combine de
    trois se lisait comme un simple et on ne savait plus sur quoi on avait mise. */
 .sb-p{ padding:10px 11px; margin-bottom:8px; border-radius:11px;
-  border:1px solid rgba(255,255,255,.10); background:rgba(255,255,255,.035); }
+  border:1px solid var(--line); background:var(--ink); }
 .sb-ph{ display:flex; align-items:baseline; gap:8px; margin-bottom:6px; }
 .sb-ph b{ font-size:.82rem; }
 .sb-ph .sb-pe{ margin-left:auto; font-size:.64rem; letter-spacing:.1em;
   text-transform:uppercase; padding:2px 7px; border-radius:999px;
-  background:rgba(255,255,255,.08); }
-.sb-pj{ font-size:.76rem; line-height:1.45; opacity:.85; }
+  background:var(--ink2); color:var(--muted); }
+.sb-pj{ font-size:.76rem; line-height:1.45; color:var(--text); }
 /* La reference du pari. Monospace : on la recopie et on la compare
    caractere par caractere, et une police proportionnelle confond 1 et l. */
 .sb-pid{ font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-  font-size:.66rem; letter-spacing:.02em; color:#9FB0CE; cursor:pointer;
+  font-size:.66rem; letter-spacing:.02em; color:var(--muted); cursor:pointer;
   margin:2px 0 5px; display:inline-block;
-  border-bottom:1px dotted rgba(159,176,206,.45); }
+  border-bottom:1px dotted var(--muted); }
 .sb-pid:hover{ color:var(--gold); border-bottom-color:var(--gold); }
-.sb-pid.ok{ color:#7CFF9B; border-bottom-color:#7CFF9B; }
-.sb-pj span{ opacity:.55; }
+/* « copie » : le vert vif etait fait pour eclairer du noir. */
+.sb-pid.ok{ color:var(--green-txt); border-bottom-color:var(--green-txt); }
+.sb-pj span{ color:var(--muted); }
 .sb-pf{ display:flex; justify-content:space-between; align-items:baseline;
-  margin-top:7px; padding-top:7px; border-top:1px solid rgba(255,255,255,.09);
+  margin-top:7px; padding-top:7px; border-top:1px solid var(--line);
   font-size:.78rem; }
 .sb-pf b{ font-variant-numeric:tabular-nums; }
-.sb-p.gagne{ border-color:rgba(120,230,160,.5); background:rgba(90,220,140,.10); }
-.sb-p.gagne .sb-pe{ background:rgba(120,230,160,.22); color:#BFFFD0; }
-.sb-p.perdu{ border-color:rgba(255,110,110,.30); opacity:.72; }
-.sb-p.perdu .sb-pe{ background:rgba(255,110,110,.20); color:#FFC0BC; }
-.sb-p.attente .sb-pe{ background:rgba(255,200,90,.20); color:var(--gold); }
-.sb-p.rendu .sb-pe{ background:rgba(255,255,255,.12); }
+/* ---- LES QUATRE ETATS GARDENT LEUR SENS ----
+   Gagne en vert, perdu en rouge, en cours en bleu, rembourse en neutre. Seule
+   la MANIERE change : sur du noir on posait des teintes vives sur un fond
+   sombre, ici on pose une teinte foncee sur un fond pale. */
+.sb-p.gagne{ border-color:#BEE3CD; background:#EAF7F0; }
+.sb-p.gagne .sb-pe{ background:#D6F0E1; color:var(--green-txt); }
+/* ---- « PERDU » NE S'EFFACE PLUS, IL SE TEINTE ----
+   Il portait `opacity:.72`. Sur du noir, faner un ticket etait la seule facon
+   de dire « c'est fini ». Sur du blanc, faner rapproche du fond : la ligne des
+   equipes tombait a 2,7:1, donc un pari perdu devenait le plus dur a lire du
+   panneau — exactement celui qu'on relit pour comprendre. La pastille rouge
+   dit deja l'etat ; le fond la double, et le texte reste net. */
+.sb-p.perdu{ border-color:#F2C6C3; background:#FDF1F0; }
+.sb-p.perdu .sb-pe{ background:#FBE4E3; color:var(--red-txt); }
+/* Pastille BLANCHE et non bleu pale : le ticket est deja bleu pale, et une
+   pastille de la meme teinte que son fond n'en est plus une — vu au rendu, ou
+   « RUNNING » flottait sans son ovale pendant que « WON » gardait le sien. */
+.sb-p.attente .sb-pe{ background:var(--ink2); color:var(--gold); }
+/* « rembourse » est le seul etat qui ne dit rien : il garde la pastille
+   neutre de `.sb-pe`, et n'a donc plus de regle a lui. Une regle qui repete
+   celle qu'elle surcharge se lit comme un etat de plus. */
 .sb-mienListe:empty::after{ content:"No bets yet. Pick an odd to open a slip.";
-  display:block; text-align:center; font-size:.78rem; opacity:.5; padding:18px 6px; }
+  display:block; text-align:center; font-size:.78rem; color:var(--muted); padding:18px 6px; }
 @media (max-width:430px){ .sb-m{ padding:10px; } .sb-eq span{ font-size:.9rem; } }
 
 /* ------------------------------------------------- le plateau du morpion */
@@ -1225,6 +1328,12 @@ body.sb-dock main{ padding-bottom:150px; }
   display:none;
 }
 .menubtn { flex:0 0 auto; width:44px; height:44px; aspect-ratio:1/1; }
+/* Le hamburger est CACHE, pas supprime — voir l en-tete : sa liste est la
+   declaration que lit le menu du profil, et son gestionnaire est pose sans
+   garde. `[hidden]` seul ne suffit pas ici : les regles ci-dessus lui donnent
+   un `flex`/`width`, et une largeur declaree apres `[hidden]` le fait
+   reapparaitre — un bouton fantome de quarante-quatre pixels dans l en-tete. */
+.menubtn[hidden], #menu{ display:none !important; }
 @media (max-width: 820px), (orientation: portrait) {
   .hero h1 { width:min(250px,80%); }
   .menubtn { width:38px; height:38px; }
@@ -1876,7 +1985,9 @@ main{ min-width:0; }
   .sw-haut{ row-gap:8px; }
   .sw-marque{ order:1 }
   nav.sb-ancre{ order:2; flex:0 0 auto; margin-left:auto }
-  .menubtn{ order:3 }
+  /* Le hamburger tenait la troisieme place ; c est le profil qui la prend,
+     sinon il retombe sur sa propre rangee et l en-tete repasse a quatre. */
+  .menubtn, #gxProfil{ order:3 }
   .connrow{ order:4; flex:1 1 100% !important; justify-content:center !important }
   .sw-chiffres{ order:5 }
 }
@@ -1921,7 +2032,31 @@ main{ min-width:0; }
     <button class="sw-b sw-b-vide vif" id="connectBtn">CONNECT WALLET</button>
     <button class="sw-b sw-b-plein vif" id="emailBtn">SIGN UP &mdash; EMAIL</button>
   </div>
-  <button class="menubtn vif" id="menuBtn" aria-label="Menu">&#9776;</button>
+  <!-- ---- LE PROFIL OUVRE LE MENU, ICI AUSSI ----
+       Meme balise, meme identifiant et meme boite vide que sur l accueil et
+       dans le hall : le comportement vient de `swogeprofil.js`, partage. Le
+       recopier ici ferait un TROISIEME menu a tenir d accord, et le jour ou
+       une rangee change elle ne changerait que d un cote. -->
+  <button class="sw-avatar vif" id="gxProfil" type="button"
+          aria-haspopup="menu" aria-expanded="false" aria-label="Account menu">&#128100;</button>
+  <div class="gx-menu" id="gxMenu" role="menu" hidden></div>
+  <!-- ==================== LE HAMBURGER RESTE, MAIS NE SE VOIT PLUS ====================
+       Il ouvrait SA liste — Sign in, My Wallet, Staking, Deposit, Withdraw,
+       Daily Quests, Other games, Home, Sound, Music. Le menu du profil, lui,
+       montre EXACTEMENT la meme : `swogeprofil.js` LIT ce `#menu` quand le
+       tiroir de `stakebubble.js` n existe pas encore. Deux boutons cote a cote
+       qui ouvrent la meme liste, c est le defaut deja signale sur ce site —
+       « c est marque en double » — et il ne se voit qu a l ecran.
+       On garde donc la DECLARATION et l on retire la seconde vue : `#menu`
+       reste dans le fichier, cache, parce que trois choses le lisent — le
+       menu du profil, `openPanel` par `a[data-panel]`, et le bouton du son.
+       `#menuBtn` reste lui aussi : le script de la page fait
+       `menuBtn.addEventListener(...)` sans garde, et le retirer jetterait au
+       chargement. Il est simplement rendu invisible.
+       Rien ne se perd : les panneaux passent par le profil, le son et la
+       musique ont leurs deux pastilles fixes en bas a gauche, et la
+       navigation vit dans la colonne de gauche. -->
+  <button class="menubtn vif" id="menuBtn" aria-label="Menu" hidden aria-hidden="true" tabindex="-1">&#9776;</button>
   <div class="menu" id="menu">
     <a href="#" id="mnSignIn">✉️ Sign in</a>
     <a href="#" data-panel="wallet">👛 My Wallet</a>
@@ -1990,8 +2125,14 @@ main{ min-width:0; }
     </div>
   </aside>
 
-  <main class="sb-plat">
+  <!-- ==================== DEUX COLONNES, COMME AU HALL ====================
+       Le plateau a gauche, ce qu on propose a cote a droite. La grille est
+       celle de `games.html`, reprise telle quelle : deux pages qui posent la
+       meme mise en page avec des chiffres differents finissent par ne plus se
+       ressembler, et c est precisement ce qu on vient de corriger ici. -->
+  <main class="sw-plat sb-plat">
 
+  <div class="sw-col">
   <div class="wrap c4wrap">
     <h1 class="c4-titre">SWOGE <span>BET</span></h1>
     <p class="c4-sous">Real fixtures, real odds &mdash; <b>copied straight from the book</b>
@@ -1999,8 +2140,10 @@ main{ min-width:0; }
 
 
     <div class="sb-wrap">
-      <img class="sb-banniere" id="sbBanniere" alt="" src="img/bet_foot.webp"
-           width="1000" height="667" decoding="async">
+      <video class="sb-film" id="sbFilm" src="media/bet.mp4"
+             poster="img/site/bet_poster.webp"
+             muted loop playsinline preload="none" disablepictureinpicture
+             aria-label="SWOGE Betting"></video>
       <div class="sb-sports" id="sbSports"></div>
       <div class="sb-vide" id="sbVide" hidden></div>
       <div class="sb-liste" id="sbListe"></div>
@@ -2063,10 +2206,44 @@ main{ min-width:0; }
 
     <div class="c4-hist" id="c4Hist"></div>
     <div class="fair" id="fair" hidden></div>
+  <!-- Ce `</div>` ferme la colonne de gauche. Il y en avait DEUX ici : la
+       page portait depuis longtemps une balise fermante orpheline, sans
+       ouverture correspondante. Elle ne se voyait pas — un navigateur jette
+       un `</div>` qui ne ferme rien — jusqu au jour ou un vrai bloc l a
+       entouree : elle a ferme `<main>` avant l heure, et la colonne de droite
+       s est retrouvee dehors, en pleine largeur sous la page. -->
   </div>
 
+  <!-- ==================== LA COLONNE DE DROITE ====================
+       Au hall, cette colonne porte une carte « SWOGE SPORTS » qui mene ICI.
+       La reprendre telle quelle proposerait la page ou l on se trouve deja —
+       une invitation a ne pas bouger. Elle laisse donc la place aux trois
+       autres tables : le blackjack, le monde, et le salon de poker.
+       Des IMAGES et non des films : cette page porte deja deux megaoctets de
+       bandeau, et trois videos de plus feraient d une page de paris la plus
+       lourde du site. -->
+  <div class="sw-col">
+    <a class="carte salon vif" href="swoge_blackjack.html">
+      <img src="img/card_bj.webp?v=2" alt="SWOGE Blackjack" loading="lazy"
+           width="640" height="427" decoding="async">
+      <span class="voile"></span>
+      <span class="dit">SWOGE BLACKJACK &nbsp;&rarr;</span>
+    </a>
+    <a class="carte salon vif" href="nexus.html">
+      <img src="img/card_nx.webp?v=2" alt="SWOGE World" loading="lazy"
+           width="640" height="427" decoding="async">
+      <span class="voile"></span>
+      <span class="dit">SWOGE WORLD &nbsp;&rarr;</span>
+    </a>
+    <a class="carte salon vif" href="swoge_poker.html">
+      <img src="img/card_pk.webp?v=2" alt="SWOGE Poker Live" loading="lazy"
+           width="640" height="427" decoding="async">
+      <span class="voile"></span>
+      <span class="dit">SWOGE POKER LIVE &nbsp;&rarr;</span>
+    </a>
+  </div>
 
-  <footer><a href="games.html">← Back to the SWOGE Arcade</a></footer>
+  <footer class="sb-pied"><a href="games.html">← Back to the SWOGE Arcade</a></footer>
   </main>
 </div>
 
@@ -3020,17 +3197,14 @@ main{ min-width:0; }
     send({type:"parie", selections:SB.panier.slice(), mise:v});
   }
 
-  /* La banniere suit l'onglet. Elle est decorative : `alt` reste vide, et
-     une categorie sans image ne casse rien — on garde la precedente. */
-  var SB_IMG={ foot:"img/bet_foot.webp", tennis:"img/bet_tennis.webp",
-               nba:"img/bet_nba.webp", nfl:"img/bet_nfl.webp",
-               cricket:"img/bet_cricket.webp" };
-  function sbPeintBanniere(){
-    var u=SB_IMG[SB.sport]; if(!u) return;
-    var b=$("sbBanniere");
-    if(b.getAttribute("src")!==u) b.setAttribute("src", u);
-  }
-  function sbRend(){ sbPeintBanniere(); sbPeintSports(); sbPeintListe(); sbPeintMien(); }
+  /* ---- LA BANNIERE NE SUIT PLUS L ONGLET ----
+   * Elle etait une affiche PAR CATEGORIE, echangee a chaque changement de
+   * sport. C est un film unique maintenant, pour toutes les categories : la
+   * table des cinq images et la fonction qui la lisait n ont plus d objet.
+   * Les supprimer plutot que les laisser dormir : une table morte se relit
+   * comme une table vivante, et la premiere personne qui ajoutera un sport y
+   * ajoutera une image que rien n affichera. */
+  function sbRend(){ sbPeintSports(); sbPeintListe(); sbPeintMien(); }
 
   (function(){
     $("sbSports").addEventListener("click", function(e){
@@ -3508,5 +3682,54 @@ function renderBonus(b){ if(!b) return; bonusData=b;
     <div class="p"><input type="range" min="0" max="100" step="5" aria-label="Sound effects volume"><span class="v"></span></div>
   </div>
 </div>
+
+<!-- ==================== LE MENU DU PROFIL ====================
+     Le comportement vit dans `swogeprofil.js`, deja charge par l accueil et
+     par le hall. Le recopier ici en ferait un TROISIEME exemplaire a tenir
+     d accord — c est precisement ce que ce fichier existe pour eviter. La page
+     ne garde que ce qui la concerne : le bouton, la boite vide, et le style.
+     Le marqueur de cache est celui de `version.json` : sans lui, un navigateur
+     garderait l ancien menu apres la prochaine correction. -->
+<script src="swogeprofil.js?v=b8c90d90" defer></script>
+<!-- ==================== LE BANDEAU NE TOURNE QUE S IL EST VU ==================== -->
+<script>
+(function(){
+  "use strict";
+  var f = document.getElementById("sbFilm");
+  if(!f) return;
+  var doux = false;
+  try { doux = window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch(e){}
+  /* Sous « mouvement reduit » on ne lance rien : l affiche reste, et elle est
+     la premiere image du film — rien ne manque a l ecran. */
+  if(doux) return;
+
+  function joue(){
+    f.preload = "auto";
+    var p = f.play();
+    if(p && p["catch"]) p["catch"](function(){});
+  }
+  /* `preload="none"` retient les deux megaoctets du bandeau jusqu a ce qu il
+     serve. Sur une page de paris, ce qu on vient voir ce sont les cotes : les
+     faire attendre un film serait prendre le visiteur a rebours.
+     Et hors de l ecran on met en pause — un film qui tourne dans le vide fait
+     chauffer le telephone sans que personne le voie. */
+  if(!("IntersectionObserver" in window)){ joue(); return; }
+  var oeil = new IntersectionObserver(function(l){
+    for(var i = 0; i < l.length; i++){
+      if(l[i].isIntersecting) joue();
+      else { try { f.pause(); } catch(e){} }
+    }
+  }, { rootMargin: "200px 0px" });
+  oeil.observe(f);
+
+  /* Un navigateur peut refuser la lecture automatique meme sans son. Le
+     premier geste du visiteur la relance, et l ecouteur s efface derriere. */
+  var reveil = function(){
+    if(f.paused) joue();
+    document.removeEventListener("pointerdown", reveil);
+  };
+  document.addEventListener("pointerdown", reveil);
+})();
+</script>
 </body>
 </html>

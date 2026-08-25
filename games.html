@@ -637,18 +637,59 @@ a.match:hover .cotes button{border-color:var(--bleu)}
    second. En pour cent, donc justes a toutes les tailles. */
 .bas-ban{ position:relative; display:block; border-radius:16px; overflow:hidden;
   border:1px solid var(--bord); margin-top:16px }
-.bas-ban img{ display:block; width:100%; height:auto }
-.bas-ban a{ position:absolute; top:77.5%; height:11%; border-radius:8px;
+.bas-ban img, .bas-ban video{ display:block; width:100%; height:auto }
+/* ---- LES DEUX ZONES CLIQUABLES SUIVENT LA VIDEO, PAS L IMAGE ----
+ * Le texte et les deux boutons sont PEINTS dans le fond : on ne les redessine
+ * pas, on pose deux zones invisibles dessus. Tant que le fond etait une image
+ * fixe, il suffisait de les mesurer une fois.
+ *
+ * La video, elle, ZOOME LENTEMENT pendant ses six secondes. Les boutons
+ * peints descendent et s elargissent : « PLAY NOW » va de 36,0-52,5 % a
+ * 35,5-53,5 % en largeur, et de 79,4-88,5 % a 83,1-94,6 % en hauteur. Une
+ * zone posee aux anciennes mesures aurait donc glisse a cote du bouton en
+ * cours de boucle — et rien ne l aurait montre : le bandeau reste beau, c est
+ * le clic qui rate, une fois sur deux, sans regularite.
+ *
+ * Les bornes ci-dessous sont mesurees sur VINGT-QUATRE images reparties sur
+ * toute la boucle. En hauteur on prend l UNION : deborder de quelques pixels
+ * au-dessus ou au-dessous d un bouton peint est sans consequence — celui qui
+ * clique la visait le bouton. En largeur on coupe au MILIEU DE L ECART entre
+ * les deux, pour qu ils ne se recouvrent jamais l un l autre : c est la seule
+ * erreur qui enverrait quelqu un a la mauvaise porte. */
+.bas-ban a{ position:absolute; top:79.5%; height:15%; border-radius:8px;
   pointer-events:auto; cursor:pointer }
-.bas-ban .b1{ left:36.0%; width:16.2% }
-.bas-ban .b2{ left:53.2%; width:16.4% }
+.bas-ban .b1{ left:35.4%; width:19.0% }
+.bas-ban .b2{ left:55.4%; width:21.4% }
 .bas-ban a:focus-visible{ outline:3px solid #fff; outline-offset:2px }
+/* ---- SUR UN TELEPHONE, LA ZONE NE SUIT PLUS LE BOUTON ----
+   Le bandeau entier ne fait plus que cent cinquante pixels de haut : quinze
+   pour cent de cette hauteur font vingt-et-un pixels, moitie moins que ce
+   qu un doigt atteint sans viser. Mesure a trois cent quatre-vingt-dix, pas
+   suppose — et c etait deja vrai de l ancienne image, en pire (onze pour cent,
+   soit seize pixels).
+   La zone deborde donc au-dessus et au-dessous du bouton peint. C est sans
+   consequence : au-dessus il n y a que le fond, et celui qui appuie la visait
+   le bouton. Les deux gardent leur largeur, donc elles ne se rencontrent
+   toujours pas — c est la seule erreur qui enverrait quelqu un ailleurs. */
+@media (max-width:700px){
+  .bas-ban a{ top:70%; height:30% }
+}
 
-/* La banniere du haut : la meme video que l'arcade, en pleine largeur. */
-.haut-film{ display:block; width:100%; aspect-ratio:1312/688; max-height:min(40vh,340px);
-  object-fit:cover; border-radius:16px; border:1px solid var(--bord);
-  background:var(--nuit); margin-bottom:14px }
-@media (prefers-reduced-motion:reduce){ .haut-film{ display:none } }
+/* ---- LA BANNIERE DU HAUT ALTERNE ENTRE DEUX FILMS ----
+ * Les deux sont EMPILES et fondus l un dans l autre plutot que d etre un seul
+ * element dont on change la source : changer `src` vide l image a l ecran le
+ * temps du chargement, et l on verrait un trou noir toutes les six secondes,
+ * a l endroit le plus visible de la page.
+ * Le second ne se telecharge qu au moment ou le premier approche de sa fin —
+ * trois megaoctets demandes au chargement pour une image qu on ne voit qu a
+ * la sixieme seconde, c est trois megaoctets qui retardent le reste. */
+.haut-films{ position:relative; display:block; width:100%; aspect-ratio:1312/688;
+  max-height:min(40vh,340px); overflow:hidden; border-radius:16px;
+  border:1px solid var(--bord); background:var(--nuit); margin-bottom:14px }
+.haut-film{ position:absolute; inset:0; display:block; width:100%; height:100%;
+  object-fit:cover; transition:opacity .55s ease }
+.haut-film.eteint{ opacity:0 }
+@media (prefers-reduced-motion:reduce){ .haut-films{ display:none } }
 </style>
 </head>
 <body>
@@ -765,8 +806,41 @@ a.match:hover .cotes button{border-color:var(--bleu)}
   <main class="sw-plat">
 
     <div class="sw-col">
-      <video class="haut-film" src="media/arcade.mp4" poster="img/site/arcade_poster.webp"
-             muted autoplay loop playsinline disablepictureinpicture aria-hidden="true"></video>
+      <!-- ---- DEUX FILMS QUI SE RELAIENT ----
+           Le casino passe EN PREMIER : c est lui qu on voit en arrivant.
+           Aucun des deux ne porte `loop` — c est la fin de l un qui appelle
+           l autre. Le second n a pas `autoplay` non plus : il est joue par le
+           script, apres avoir ete demande au dernier moment. -->
+      <!-- ---- LA SOURCE N EST PAS DANS LE MARQUAGE ----
+           Elle y etait, sur le premier, avec `autoplay`. Sous « mouvement
+           reduit » la feuille de style retire le bloc — mais une video CACHEE
+           va quand meme chercher son fichier : trois megaoctets partaient pour
+           un bloc que personne ne verrait. Mesure en comptant les octets
+           recus, pas devine ; couper la source depuis le bas de la page
+           arrivait trop tard, le fichier etait deja la.
+           L adresse attend donc dans `data-film`, et le petit script juste
+           dessous la pose — ou ne la pose pas. Il est place LA, et non en bas
+           avec le reste, pour s executer pendant la lecture du document :
+           quelques millisecondes plus tard et l on retomberait dans le meme
+           defaut. -->
+      <div class="haut-films" id="gxFilms">
+        <video class="haut-film" data-film="media/casino.mp4" poster="img/site/casino_poster.webp"
+               muted playsinline preload="none" disablepictureinpicture aria-hidden="true"></video>
+        <video class="haut-film eteint" data-film="media/arcade.mp4" poster="img/site/arcade_poster.webp"
+               muted playsinline preload="none" disablepictureinpicture aria-hidden="true"></video>
+      </div>
+      <script>
+      (function(){
+        var doux = false;
+        try { doux = window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch(e){}
+        if(doux) return;
+        var v = document.querySelector("#gxFilms .haut-film");
+        if(!v) return;
+        v.preload = "auto";
+        v.src = v.getAttribute("data-film");
+        v.autoplay = true;
+      })();
+      </script>
 
 <section class="univers">
         <article class="uni">
@@ -1009,8 +1083,20 @@ a.match:hover .cotes button{border-color:var(--bleu)}
        Le texte et les deux boutons sont peints dans l'image. On ne les
        redessine donc pas : on pose deux zones cliquables invisibles sur les
        boutons peints, aux bornes mesurees sur l'image. -->
-  <div class="bas-ban">
-    <img src="img/site/bas_banniere.webp" alt="One token. One world. Infinite ways to play.">
+  <div class="bas-ban" id="gxBas">
+    <!-- ---- L IMAGE DEVIENT UN FILM ----
+         `poster` porte une image tiree du film lui-meme, et non l ancienne
+         affiche : les deux n avaient pas le meme cadrage (1600x659 contre
+         1520x592), et garder l ancienne aurait fait sauter le bandeau au
+         premier quart de seconde, boutons compris.
+         Pas d `autoplay` : ce bandeau est tout en bas d une longue page. Le
+         script ne le lance qu une fois a l ecran — sinon huit cent kilooctets
+         partent au chargement pour quelque chose que la plupart des visiteurs
+         ne feront jamais defiler jusqu ici. -->
+    <video class="bas-film" src="media/bas_banniere.mp4"
+           poster="img/site/bas_banniere_poster.webp"
+           muted loop playsinline preload="none" disablepictureinpicture
+           aria-label="One token. One world. Infinite ways to play."></video>
     <a class="b1 vif" href="nexus.html" aria-label="Play now"></a>
     <a class="b2 cx-wallet" href="#" aria-label="Connect wallet"></a>
   </div>
@@ -1075,7 +1161,7 @@ a.match:hover .cotes button{border-color:var(--bleu)}
      est parti dans `swogeprofil.js`, versionne comme les autres scripts
      partages. La page ne garde que ce qui la concerne : le bouton, la boite
      vide, et le style. -->
-<script src="swogeprofil.js?v=fca73b7d" defer></script>
+<script src="swogeprofil.js?v=b8c90d90" defer></script>
 <!-- ==================== LE CALENDRIER SPORTIF, EN VRAI ====================
      La page annoncait quatre rencontres ecrites a la main, jouees le 15 aout.
      Elle lit maintenant le meme calendrier que la page de paris. -->
@@ -1476,6 +1562,107 @@ a.match:hover .cotes button{border-color:var(--bleu)}
   }
   var pistes = document.querySelectorAll(".piste");
   for(var i = 0; i < pistes.length; i++) posteDeFleches(pistes[i]);
+})();
+</script>
+<!-- ==================== LES DEUX BANDEAUX EN MOUVEMENT ==================== -->
+<script>
+(function(){
+  "use strict";
+  var doux = false;
+  try { doux = window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch(e){}
+
+  /* ---- LE HAUT : DEUX FILMS QUI SE RELAIENT ----
+   * Sous « mouvement reduit » le bloc entier est cache par la feuille de
+   * style, comme il l etait deja quand il n y avait qu un film. On ne monte
+   * donc rien ici : faire tourner une alternance derriere un `display:none`
+   * telechargerait trois megaoctets pour personne. */
+  var films = document.querySelectorAll("#gxFilms .haut-film");
+  /* ---- CACHE NE VEUT PAS DIRE PAS TELECHARGE ----
+   * La feuille de style retire le bloc sous « mouvement reduit », mais un
+   * `<video autoplay>` cache continue d aller chercher son fichier : trois
+   * megaoctets partaient pour un bloc que personne ne verrait. Mesure en
+   * comptant les requetes, pas devine. On coupe la source et l on redemande le
+   * chargement — c est ce qui ANNULE la requete en cours. */
+  if(films.length === 2 && !doux){
+    var rang = 0, demande = false;
+    /* La source est posee au dernier moment, et une seule fois : c est elle
+       qui declenche le telechargement. */
+    function source(v){
+      if(!v.getAttribute("src")) v.src = v.getAttribute("data-film");
+    }
+    function joue(v){
+      source(v);
+      try { v.currentTime = 0; } catch(e){}
+      var p = v.play();
+      if(p && p["catch"]) p["catch"](function(){});
+    }
+    /* ---- LE SECOND N EST DEMANDE QU AU DERNIER MOMENT ----
+     * `preload="none"` l empeche de partir au chargement. On le reclame quand
+     * il reste deux secondes a l autre : assez pour qu il soit pret, assez
+     * tard pour qu il ne dispute rien au premier affichage. */
+    function veille(){
+      var v = films[rang];
+      if(demande || !v.duration) return;
+      if(v.duration - v.currentTime > 2) return;
+      demande = true;
+      var autre = films[(rang + 1) % 2];
+      autre.preload = "auto";
+      source(autre);
+    }
+    function suivant(){
+      var avant = films[rang];
+      rang = (rang + 1) % 2;
+      var apres = films[rang];
+      joue(apres);
+      apres.classList.remove("eteint");
+      avant.classList.add("eteint");
+      demande = false;
+      /* On met l ancien en pause APRES le fondu : le couper net ferait
+         apparaitre son affiche fixe a travers la transparence pendant la
+         demi-seconde ou les deux se croisent. */
+      setTimeout(function(){ try { avant.pause(); } catch(e){} }, 600);
+    }
+    for(var i = 0; i < films.length; i++){
+      films[i].addEventListener("ended", suivant);
+      films[i].addEventListener("timeupdate", veille);
+    }
+    /* Un navigateur peut refuser la lecture automatique meme sans son. On ne
+       laisse pas la page bloquee sur une affiche fixe : le premier geste du
+       visiteur la relance, et l ecouteur s efface derriere lui. */
+    var reveil = function(){
+      if(films[rang].paused) joue(films[rang]);
+      document.removeEventListener("pointerdown", reveil);
+    };
+    document.addEventListener("pointerdown", reveil);
+  }
+
+  /* ---- LE BAS : IL NE PART QU UNE FOIS A L ECRAN ----
+   * Huit cent kilooctets au pied d une page de trois mille pixels. Sans cette
+   * garde ils partaient au chargement, en concurrence avec ce qu on regarde
+   * vraiment — et pour un bandeau que beaucoup n atteindront jamais.
+   * Sous « mouvement reduit » on ne le lance pas du tout : son affiche reste,
+   * avec ses deux boutons peints, et les zones cliquables ne bougent pas. */
+  var bas = document.querySelector("#gxBas .bas-film");
+  if(bas && !doux){
+    if(!("IntersectionObserver" in window)){
+      bas.preload = "auto";
+      var q = bas.play(); if(q && q["catch"]) q["catch"](function(){});
+    } else {
+      var oeil = new IntersectionObserver(function(entrees){
+        for(var k = 0; k < entrees.length; k++){
+          if(entrees[k].isIntersecting){
+            bas.preload = "auto";
+            var r = bas.play(); if(r && r["catch"]) r["catch"](function(){});
+          } else {
+            /* Hors de l ecran on met en pause : un film qui tourne dans le
+               vide fait chauffer le telephone sans que personne le voie. */
+            try { bas.pause(); } catch(e){}
+          }
+        }
+      }, { rootMargin: "200px 0px" });
+      oeil.observe(bas);
+    }
+  }
 })();
 </script>
 </body>

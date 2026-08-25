@@ -219,6 +219,23 @@ a{color:inherit;text-decoration:none}
 .jeu{position:relative;border-radius:11px;overflow:hidden;aspect-ratio:1/1;background:var(--nuit)}
 .jeu img{width:100%;height:100%;object-fit:cover;transition:transform .18s}
 .jeu:hover img{transform:scale(1.06)}
+/* ---- CES JEUX N EXISTENT PAS ENCORE ----
+   Les montrer sans le dire ferait cliquer dessus, et un clic qui ne mene nulle
+   part se lit comme une panne. Le bandeau est POSE SUR l image et non a cote :
+   a cote, on le prend pour la legende d une vignette voisine. Et l image est
+   assombrie — un bandeau seul sur une vignette bien nette ne suffit pas a
+   arreter la main. */
+.jeu.bientot img{filter:saturate(.55) brightness(.62)}
+.jeu.bientot:hover img{transform:none}
+.jeu.bientot span{
+  position:absolute; inset:auto 0 0 0; padding:5px 0; text-align:center;
+  background:rgba(8,24,58,.86); color:#fff;
+  font:800 8.5px/1 'Inter',system-ui,sans-serif; letter-spacing:1.6px;
+}
+.bientot-t{
+  padding:5px 9px; border-radius:99px; background:var(--bleu-clair); color:var(--bleu);
+  font:800 9px/1 'Inter',system-ui,sans-serif; letter-spacing:1.2px;
+}
 
 /* ---- LES SPORTS ---- */
 .onglets{display:flex;gap:6px;overflow-x:auto;padding-bottom:9px;margin-bottom:9px;
@@ -394,11 +411,33 @@ a{color:inherit;text-decoration:none}
       <section class="duo">
         <div class="carte carte-p">
           <div class="tete"><h3>THE $SWOGE ECONOMY</h3></div>
+          <!-- ================== QUATRE CHIFFRES, QUATRE SOURCES ==================
+               Ceux de la maquette etaient inventes — quatre cent douze millions
+               brules, soixante-huit virgule quatre de rendement, vingt-huit mille
+               sept cent quarante et un porteurs. Aucun ne venait de nulle part.
+
+               Ceux-ci sont VERIFIABLES, et chacun porte sa source dans la ligne
+               du dessous :
+                 · l offre est fixe et le contrat n a pas de fonction de frappe ;
+                 · le solde du coffre est celui du contrat de coffre ;
+                 · le brule est le solde de l adresse morte, et il ne fait que
+                   monter — a chaque retrait ;
+                 · le rendement et son plafond sont ceux de la configuration du
+                   serveur : cent pour cent l an, plafonnes a vingt pour cent de
+                   l offre tous joueurs confondus.
+
+               CE QUI N EST PAS ICI EST VOLONTAIRE. Le whitepaper dit lui-meme que
+               la table de repartition complete n est PAS decidee — ou vivent les
+               huit cent quatre-vingt-treize millions restants n est pas
+               documente. Ecrire une part d equipe qu on ne peut pas prouver
+               serait pire que de ne rien ecrire : c est la premiere chose qu un
+               investisseur verifiera, et un chiffre dementi coute plus cher
+               qu une case vide. -->
           <div class="eco">
-            <div><small>TOTAL SUPPLY</small><b>1,000,000,000</b><i>$SWOGE</i></div>
-            <div><small>BURNED</small><b>412,586,390</b><i>$SWOGE</i></div>
-            <div><small>STAKING APY</small><b>68.4%</b><i>CURRENT APY</i></div>
-            <div><small>HOLDERS</small><b>28,741</b><i>AND GROWING</i></div>
+            <div><small>TOTAL SUPPLY</small><b>1,000,000,000</b><i>FIXED &middot; NOT MINTABLE</i></div>
+            <div><small>CASINO VAULT</small><b>99,826,711</b><i>&asymp;10% OF SUPPLY</i></div>
+            <div><small>BURNED</small><b>6,827,534</b><i>0.68% &middot; PERMANENT</i></div>
+            <div><small>STAKING APR</small><b>100%</b><i>CAP 200,000,000</i></div>
           </div>
           <div style="margin-top:13px"><a href="#" style="font:700 11px/1 'Inter',system-ui,sans-serif;letter-spacing:.8px;color:var(--bleu)">VIEW TOKENOMICS &nbsp;&rarr;</a></div>
         </div>
@@ -448,18 +487,18 @@ a{color:inherit;text-decoration:none}
       </section>
 
       <section class="carte carte-p">
-        <div class="tete"><h3>FEATURED GAMES</h3><a href="#">VIEW ALL</a></div>
+        <div class="tete"><h3>FEATURED GAMES</h3><span class="bientot-t">COMING SOON</span></div>
         <div class="jeux">
-          <a class="jeu" href="#"><img src="img/site/jeu_bonanza.webp" alt="Sweet Bonanza"></a>
-          <a class="jeu" href="#"><img src="img/site/jeu_olympus.webp" alt="Gates of Olympus"></a>
-          <a class="jeu" href="#"><img src="img/site/jeu_bigbass.webp" alt="Big Bass Bonanza"></a>
-          <a class="jeu" href="#"><img src="img/site/jeu_wanted.webp" alt="Wanted"></a>
-          <a class="jeu" href="#"><img src="img/site/jeu_sugarrush.webp" alt="Sugar Rush"></a>
-          <a class="jeu" href="#"><img src="img/site/jeu_roulette.webp" alt="Roulette Live"></a>
-          <a class="jeu" href="#"><img src="img/site/jeu_blackjack.webp" alt="Blackjack Live"></a>
-          <a class="jeu" href="#"><img src="img/site/jeu_poker.webp" alt="Swoge Poker"></a>
-          <a class="jeu" href="#"><img src="img/site/jeu_crazytime.webp" alt="Crazy Time"></a>
-          <a class="jeu" href="#"><img src="img/site/doge_smoking.webp" alt="Plinko"></a>
+          <a class="jeu bientot" href="#"><img src="img/site/jeu_bonanza.webp" alt="Sweet Bonanza"><span>SOON</span></a>
+          <a class="jeu bientot" href="#"><img src="img/site/jeu_olympus.webp" alt="Gates of Olympus"><span>SOON</span></a>
+          <a class="jeu bientot" href="#"><img src="img/site/jeu_bigbass.webp" alt="Big Bass Bonanza"><span>SOON</span></a>
+          <a class="jeu bientot" href="#"><img src="img/site/jeu_wanted.webp" alt="Wanted"><span>SOON</span></a>
+          <a class="jeu bientot" href="#"><img src="img/site/jeu_sugarrush.webp" alt="Sugar Rush"><span>SOON</span></a>
+          <a class="jeu bientot" href="#"><img src="img/site/jeu_roulette.webp" alt="Roulette Live"><span>SOON</span></a>
+          <a class="jeu bientot" href="#"><img src="img/site/jeu_blackjack.webp" alt="Blackjack Live"><span>SOON</span></a>
+          <a class="jeu bientot" href="#"><img src="img/site/jeu_poker.webp" alt="Swoge Poker"><span>SOON</span></a>
+          <a class="jeu bientot" href="#"><img src="img/site/jeu_crazytime.webp" alt="Crazy Time"><span>SOON</span></a>
+          <a class="jeu bientot" href="#"><img src="img/site/doge_smoking.webp" alt="Plinko"><span>SOON</span></a>
         </div>
       </section>
 

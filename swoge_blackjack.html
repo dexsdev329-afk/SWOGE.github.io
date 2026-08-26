@@ -108,14 +108,19 @@ canvas{ touch-action:none; }
     --green:#7CFF9B; --red:#FF6B6B;
   }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-  html,body{background:var(--ink);color:var(--text);font-family:'Space Mono','Courier New',monospace}
+  /* ---- LE FOND PASSE AU BLANC, COMME LES TROIS AUTRES PAGES ----
+     DEMANDE : « met le fond en blanc ». Il portait la photo sombre d une
+     table de casino — pensee pour une page toute noire, dans laquelle
+     s inseraient le tapis et ses cartes. Autour du nouvel en-tete blanc et
+     des deux colonnes claires, cette photo se lisait comme une fenetre
+     cassee : un rectangle noir qui n allait avec rien d autre a l ecran.
+     Le tapis lui-meme garde son propre fond fonce (`.felt`, plus bas) — ce
+     n est que la PAGE, autour de lui, qui rejoint le blanc du reste du
+     site. */
+  html,body{background:#EEF3FB;color:var(--text);font-family:'Space Mono','Courier New',monospace}
   body{min-height:100vh;overflow-x:hidden}
   a{color:inherit;text-decoration:none}
   .wrap{max-width:680px;margin:0 auto;padding:0 16px}
-  /* coin-rain table background */
-  body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
-    background:linear-gradient(180deg,rgba(11,9,6,.72),rgba(11,9,6,.88)),
-      url('https://i.ibb.co/Fk4f3HJj/Chat-GPT-Image-7-ao-t-2026-03-38-53.png') center/cover fixed;}
   main,nav{position:relative;z-index:1}
 
   nav{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);
@@ -135,9 +140,13 @@ canvas{ touch-action:none; }
   .menu .msep{height:1px;background:var(--line);margin:5px 8px}
 
   .hero{text-align:center;padding:18px 16px 2px}
-  .hero h1{font-family:'Anton',sans-serif;font-size:clamp(26px,6vw,42px);line-height:1;letter-spacing:1px}
+  /* Le titre et le sous-titre s'ecrivaient en creme et en beige — lisibles
+     sur la photo sombre qui vient de partir, invisibles sur le blanc qui
+     la remplace. Le mot d'accent garde l'or ; le reste passe au bleu nuit
+     du reste du site. */
+  .hero h1{font-family:'Anton',sans-serif;font-size:clamp(26px,6vw,42px);line-height:1;letter-spacing:1px;color:#0A1F44}
   .hero h1 .g{color:var(--gold)}
-  .hero p{max-width:520px;margin:8px auto 0;color:#cdbf9f;font-size:12.5px;line-height:1.55}
+  .hero p{max-width:520px;margin:8px auto 0;color:#5F6E88;font-size:12.5px;line-height:1.55}
 
   .felt{margin:12px 0;border:1px solid var(--line);border-radius:20px;background:rgba(6,4,2,.55);
     padding:16px 14px;box-shadow:inset 0 0 60px rgba(0,0,0,.5)}
@@ -196,10 +205,12 @@ canvas{ touch-action:none; }
   .connectbtn{font-family:'Archivo',sans-serif;font-weight:800;font-size:16px;color:var(--ink);
     background:linear-gradient(135deg,var(--gold2),var(--gold));border:none;cursor:pointer;padding:14px 34px;border-radius:14px}
 
-  .fair{font-size:11px;color:var(--muted);text-align:center;padding:2px 0 6px;word-break:break-all}
-  .fair b{color:#cdbf9f}
-  footer{border-top:1px solid var(--line);padding:20px 16px 40px;text-align:center;color:var(--muted);font-size:12px}
-  footer a{color:var(--gold)}
+  /* Meme raison que le titre : ce texte vit hors du tapis, directement sur
+     la page — il suit donc son fond, pas celui du jeu. */
+  .fair{font-size:11px;color:#6B7C99;text-align:center;padding:2px 0 6px;word-break:break-all}
+  .fair b{color:#0A1F44}
+  footer{border-top:1px solid #E1E9F6;padding:20px 16px 40px;text-align:center;color:#6B7C99;font-size:12px}
+  footer a{color:#1B5FE0}
   .statusdot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;background:#555;vertical-align:middle}
   .statusdot.on{background:var(--green);box-shadow:0 0 8px var(--green)}
   .statusdot.off{background:var(--red);box-shadow:0 0 8px var(--red)}
@@ -704,18 +715,6 @@ button, input, a, .card, .felt, .sbet, .chipbtn, .btn{ touch-action:manipulation
 </style>
 </head>
 <body>
-<div id="preloader"><style>
-#preloader{position:fixed;inset:0;z-index:100000;background:#0c0518 url('img/a77f9f5ed053.jpg') center/cover no-repeat;display:flex;align-items:flex-end;justify-content:center;padding-bottom:20vh;transition:opacity .6s ease;font-family:'Orbitron',system-ui,sans-serif}
-@media (orientation:landscape){#preloader{background-image:url('img/8080b12ee3d6.jpg');align-items:center;padding-bottom:0}}
-#preloader.done{opacity:0;pointer-events:none}
-#preloader .pl-box{text-align:center}
-#preloader .pl-title{width:min(76vw,370px);aspect-ratio:1.5;background:center/contain no-repeat;margin:0 auto 14px;filter:drop-shadow(0 3px 8px rgba(0,0,0,.6))}
-#preloader .pl-bar{position:relative;width:min(82vw,360px);aspect-ratio:1.533;background:url('img/bbf304b6e22c.png') center/100% 100% no-repeat;margin:0 auto}
-#preloader .pl-bar .fill{position:absolute;top:40%;left:14.5%;width:62.3%;height:19%;border-radius:999px;overflow:hidden}
-#preloader .pl-bar .fill i{display:block;height:100%;width:26%;border-radius:999px;background:linear-gradient(90deg,#f2a900,#ffe680);box-shadow:0 0 12px #ffd54a;animation:plload 1.1s ease-in-out infinite}
-@keyframes plload{0%{margin-left:-26%}100%{margin-left:100%}}
-#preloader .pl-txt{width:min(46vw,180px);aspect-ratio:1.732;background:url('img/dbeab9e4c466.png') center/contain no-repeat;margin:6px auto 0}
-</style>
 <style>
 /* ---- Daily Quests theme (ported from Spin) ---- */
 .bcard .abtn.imgbtn { width:100%; aspect-ratio:300/78; min-height:0; padding:0; background-color:transparent !important; background-repeat:no-repeat; background-position:center; background-size:100% 100%; color:transparent; text-shadow:none; border:none; box-shadow:none; }
@@ -956,9 +955,17 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
    vers la page ou parier marche vraiment.
    Les deux cartes ci-dessous sont donc des AFFICHES — memes videos, memes
    destinations que sur `games.html` — pas un second pari a suivre. */
-.sw-corps{display:flex; align-items:flex-start; gap:14px; padding:14px; max-width:1680px; margin:0 auto}
-.sw-corps main{flex:1 1 auto; min-width:0}
-.sw-cote{flex:0 0 208px; position:sticky; top:74px; display:flex; flex-direction:column; gap:12px}
+/* Grille, et non flex : les deux colonnes ne mesurent pas la meme chose
+   (208 px de navigation contre 300 px d affiches), et une rangee flex
+   aurait laisse le tapis un peu plus a gauche que le centre exact — c est
+   ce qui se lisait comme « pas centre ». Une grille a trois colonnes, ou
+   les deux extremes se partagent egalement ce qu il reste, garde la
+   colonne du milieu au centre EXACT de l ecran, quelle que soit la largeur
+   de ce qu on pose a cote. */
+.sw-corps{display:grid; grid-template-columns:minmax(208px,1fr) auto minmax(208px,1fr);
+  align-items:start; gap:14px; padding:14px; max-width:1680px; margin:0 auto}
+.sw-corps main{min-width:0}
+.sw-cote{position:sticky; top:74px; display:flex; flex-direction:column; gap:12px; justify-self:end}
 .sw-nav{background:#FFFFFF;border:1px solid #E1E9F6;border-radius:14px;
   padding:8px; box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05)}
 .sw-nav a{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:10px;
@@ -971,7 +978,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .sw-reseaux a{width:34px;height:34px;border-radius:10px;background:#FFFFFF;border:1px solid #E1E9F6;
   display:grid;place-items:center;font-size:14px;color:#6B7C99}
 .sw-reseaux a:hover{color:#1B5FE0;border-color:#1B5FE0}
-.sw-lat{flex:0 0 300px; position:sticky; top:74px; display:flex; flex-direction:column; gap:14px}
+.sw-lat{width:300px; position:sticky; top:74px; display:flex; flex-direction:column; gap:14px; justify-self:start}
 .sw-lat .carte{background:#FFFFFF;border:1px solid #E1E9F6;border-radius:14px;
   box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05); overflow:hidden}
 .sw-lat .salon{position:relative;display:block;min-height:172px;overflow:hidden;background:#0A1F44}
@@ -1147,8 +1154,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   .hero h1 { width:min(250px,80%); }
   .menubtn { width:38px; height:38px; }
 }
-</style><div class="pl-box"><div class="pl-title" style="background-image:url('img/519b6af64070.png')"></div><div class="pl-bar"><span class="fill"><i></i></span></div><div class="pl-txt"></div></div></div>
-<script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
+</style>
 
 
 <!-- ==================== L EN-TETE, CELUI DES TROIS AUTRES PAGES ====================

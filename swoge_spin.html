@@ -1867,10 +1867,19 @@ function connect(){
   ws.onerror=function(){ setDot(false); };
   ws.onmessage=function(ev){ var m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
     if(m.type==='state') return;
-    if(m.type==='hello'){ loginNonce=m.loginNonce; /* Le jeton de session evite de resigner : on le presente des que le nonce est connu. Le serveur repond soit par 'auth' — connecte, sans SDK ni signature — soit par 'resumeFailed'. */ (function(){ var j=null; try{ j=localStorage.getItem("swogeSession"); }catch(e){} if(j) send({type:"resume", token:j, tgId:(typeof TG_ID!=="undefined"?TG_ID:null)}); })(); if(m.vault)VAULT=m.vault; if(m.token)TOKEN=m.token; if(m.minWithdraw)MIN_WITHDRAW=m.minWithdraw;
+    if(m.type==='hello'){ loginNonce=m.loginNonce; /* Le jeton de session evite de resigner : on le presente des que le nonce est connu. Le serveur repond soit par 'auth' — connecte, sans SDK ni signature — soit par 'resumeFailed'. */
+      var reprise=false;
+      (function(){ var j=null; try{ j=localStorage.getItem("swogeSession"); }catch(e){} if(j){ reprise=true; send({type:"resume", token:j, tgId:(typeof TG_ID!=="undefined"?TG_ID:null)}); } })();
+      if(m.vault)VAULT=m.vault; if(m.token)TOKEN=m.token; if(m.minWithdraw)MIN_WITHDRAW=m.minWithdraw;
       /* le nonce n'existe QU'ICI : c'est le seul endroit ou l'on peut relancer la
-         session sauvegardee. ws.onopen se declenche avant ce message. */
-      if(myAddr) doLogin(); }
+         session sauvegardee. ws.onopen se declenche avant ce message.
+         Signer ici EN MEME TEMPS que la reprise silencieuse demandait une
+         signature a CHAQUE actualisation, jeton valide ou pas — le
+         portefeuille repond avant que le serveur ait confirme la reprise.
+         Meme fix que `swogebet.html` : pas de jeton a reprendre, on signe
+         tout de suite ; un jeton existe, on laisse d'abord `resume` tenter
+         sa chance ('resumeFailed', plus bas, signe si elle rate vraiment). */
+      if(myAddr && !reprise) doLogin(); }
     if(m.type==="resumeFailed"){ /* jeton perime ou revoque : on l oublie et on repart du chemin long */ try{ localStorage.removeItem("swogeSession"); }catch(e){} if(typeof autoReconnect==="function") autoReconnect(); else if(myAddr) doLogin(); return; }
       else if(m.type==='auth'){ authed=true; myAddr=m.address; if(m.session){ try{ localStorage.setItem("swogeSession",m.session); }catch(e){} } onAuthed(); setBalance(m.balance); if(m.stake) setStakeInfo(m.stake); if(m.quests) renderQuests(m.quests); if(m.bonus) renderBonus(m.bonus); if(m.welcomeGranted>0) gtoast('🎁 Welcome! +'+m.welcomeGranted+' $SWOGE to try'); if(m.volcano&&m.volcano.meter!=null){ collectMeter=m.volcano.meter; setMeterUI(); } }
     else if(m.type==='balance'||m.type==='deposit'){ setBalance(m.balance); if(m.type==='deposit') gtoast('💰 Deposit credited'); }

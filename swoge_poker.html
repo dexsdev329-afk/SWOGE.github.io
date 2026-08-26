@@ -394,8 +394,18 @@ canvas{ touch-action:none; }
    grandit un peu plutot que de rogner. */
 .pk-lobby{ display:grid; gap:14px; grid-template-columns:1fr; justify-items:center;
   margin:6px auto 0; max-width:none; }
-@media (min-width:700px){ .pk-lobby{ grid-template-columns:repeat(2,1fr); } }
-@media (min-width:980px){ .pk-lobby{ grid-template-columns:repeat(3,1fr); } }
+/* ---- LES TROIS CARTES ETAIENT ECRASEES ----
+ * DEMANDE : « agrandit les 3 cartes des 3 salons, que ce soit visible ».
+ * `@media(min-width:...)` mesurait la FENETRE : a 1440px de large elle
+ * passait toujours a trois colonnes, meme quand `.pkwrap` (qui les
+ * contient vraiment, retreci par les colonnes laterales plus haut) n
+ * offrait que 550-600px reels — trois cartes de moins de 200px de large
+ * chacune, illisibles. `@container` mesure `.pkwrap` lui-meme
+ * (`container-type:inline-size`, pose dessus plus haut) : la grille ne
+ * passe a deux puis trois colonnes que quand il y a vraiment la place,
+ * quelle que soit la largeur de la fenetre autour. */
+@container (min-width:700px){ .pk-lobby{ grid-template-columns:repeat(2,1fr); } }
+@container (min-width:980px){ .pk-lobby{ grid-template-columns:repeat(3,1fr); } }
 
 .pk-card{ position:relative; width:min(100%,320px); aspect-ratio:427/633; cursor:pointer;
   background-repeat:no-repeat; background-position:center; background-size:100% 100%;
@@ -767,6 +777,31 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .sw-lat .salon img,.sw-lat .salon .film{transition:transform .2s}
 @media (max-width:1360px){
   .sw-cote, .sw-lat{ display:none }
+}
+
+/* ---- ICI, LA TABLE PASSE AVANT LES COLONNES ----
+ * DEMANDE : « swoge poker fait plus petit home casino sport docs et le
+ * carre swoge world, agrandit les 3 cartes des 3 salons ... et meme la
+ * table sera plus grande, que ce soit agreable a jouer ».
+ * Sur les autres pages (blackjack, spin, casino), `.sw-cote` grandit
+ * jusqu a 416px — largement plus que ses 208px de plancher — parce que la
+ * grille partagee (`minmax(208px,1fr)` de chaque cote, plus haut) lui
+ * laisse tout l espace que la colonne du milieu, plus etroite, ne
+ * reclame pas. Ici, c est l inverse qu il faut : la nav et la video
+ * n ont pas besoin de plus que leur taille naturelle, et c est le plateau
+ * — les trois cartes de la salle d attente, puis la table elle-meme —
+ * qui doit recevoir tout ce qui reste. Colonnes bornees a leur contenu
+ * (`minmax(0,1fr)` du milieu absorbe le reste), pas de `1fr` de chaque
+ * cote qui se le partagerait a l aveugle. */
+.sw-corps{ grid-template-columns:230px minmax(0,1fr) 300px; }
+.sw-cote{ width:auto; max-width:230px; }
+/* Le tapis restait borne a 980px alors que la colonne du milieu, une fois
+   liberee, en offre bien plus a partir de 1360px (le seuil ou les
+   colonnes existent). Sans ce plafond releve, l espace regagne ne
+   servirait a rien : la salle d attente et la table s arreteraient
+   toujours a 980px, immobiles au milieu du vide. */
+@media (min-width:1360px){
+  .pkwrap{ max-width:1240px; }
 }
 </style>
 </head>

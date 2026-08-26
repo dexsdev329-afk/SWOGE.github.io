@@ -77,6 +77,40 @@ canvas{ touch-action:none; }
 <script src="swogebuy.js?v=0d5e5215"></script>
 <script src="https://sad.adsgram.ai/js/sad.min.js" async></script>
 <style>
+/* ==================== LES PASTILLES DE LA BARRE, AU CLAIR ====================
+ *
+ * Le solde, l estimation en dollars, la bulle de staking et le compte de
+ * joueurs en ligne sont poses par `stakebubble.js` et `swogebuy.js`,
+ * partages par dix-sept pages de jeu qui sont toutes sombres : un solde
+ * dore sur brun, une bulle vert vif, un rond brun cercle d or. Sur cette
+ * page claire, quatre taches — le meme defaut deja corrige sur `games.html`
+ * et `index.html`, jamais reporte ici.
+ *
+ * Les regles sont posees APRES les scripts dans l ordre du document ; a
+ * specificite egale, la derniere gagne — d ou le `!important`, puisque
+ * `stakebubble.js` et `swogebuy.js` inserent leur propre feuille de style
+ * PENDANT le chargement, donc apres celle-ci dans le head. */
+.swbal{ background:var(--carte) !important; border:1px solid var(--bord) !important;
+  color:var(--nuit) !important; box-shadow:var(--ombre) !important;
+  font-weight:800 !important; }
+.swbal .pt{ box-shadow:none !important; }
+.swbal em{ color:var(--gris) !important; }
+.swusd{ background:var(--carte) !important; border:1px solid var(--bord) !important;
+  color:var(--gris) !important; box-shadow:var(--ombre) !important; }
+.swstk{ background:var(--carte) !important; color:var(--nuit) !important;
+  border:1px solid var(--bord) !important; box-shadow:var(--ombre) !important; }
+.swstk:hover{ box-shadow:0 0 0 2px rgba(18,161,80,.28), var(--ombre) !important; }
+.swppl{ background:var(--carte) !important; color:var(--nuit) !important;
+  border:1px solid var(--bord) !important; box-shadow:var(--ombre) !important; }
+/* Le point qui bat reste vert : c est un ETAT — le serveur repond — et non
+   une couleur d habillage. Il perd seulement son halo, qui existait pour
+   percer un fond noir. */
+.swppl .swdot{ box-shadow:none !important; }
+/* Le bouton de profil que `stakebubble.js` pose contre le solde double celui
+   deja dessine dans l en-tete de cette page : deux avatars, deux tiroirs. */
+.sb-ancre .swpb{ display:none !important; }
+</style>
+<style>
   /* ==================== LA PALETTE, PASSEE AU CLAIR ====================
    *
    * ---- POURQUOI LES NOMS NE CHANGENT PAS ----

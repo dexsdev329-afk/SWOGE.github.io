@@ -976,6 +976,11 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <script src="stakebubble.js?v=9fd2eb2e"></script>
 <script src="swogecompte.js?v=cd504287"></script>
+<!-- La pastille du dollar a cote du solde, le meme fichier que le hall :
+     `swogebuy.js` la pose contre `#bal`, deja charge par `stakebubble.js`
+     ci-dessus. Sans lui l accueil montre le solde en $SWOGE mais jamais son
+     estimation en dollars, alors que la barre lui reserve deja la place. -->
+<script src="swogebuy.js?v=0d5e5215"></script>
 <script src="swogecx.js?v=8d0516d1" defer></script>
 <!-- Le menu du compte, le meme fichier que le hall. L accueil n a pas
      `swogecompte.js` : quand personne n est entre, le bouton ouvre la porte

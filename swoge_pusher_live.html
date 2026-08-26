@@ -68,41 +68,85 @@ canvas{ touch-action:none; }
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <script src="swogebuy.js?v=0d5e5215"></script>
+<!-- Le menu du profil : il LIT le `#menu` cache plus bas et le redessine
+     en clair dans `#gxMenu`. Versionne comme les autres scripts partages. -->
+<script src="swogeprofil.js?v=b8c90d90" defer></script>
 <style>
-  :root{--panelbg:url(img/4d8c5336c52c.jpg)}
+  /* `--panelbg` (la photo de fond des panneaux de compte) est retiree : les
+     quatre panneaux sont blancs desormais, plus personne ne la lisait. */
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-  html,body{height:100%;overflow:hidden;background:#0B0906;font-family:'Space Mono','Courier New',monospace;color:#F7EEDA}
-  #c{position:fixed;inset:0;display:block}
+  /* ---- LE SOL DE LA PAGE PASSE AU CLAIR ----
+   * C'est la seule ligne qui declare le SOL, et il n'y en a pas d'autre plus
+   * bas qui puisse reprendre la main : recherche faite sur `body::before`,
+   * `html::before`, `html,body{background` et `body{background` — cette page
+   * n'a ni pseudo-element de fond ni photo en surcouche, contrairement a
+   * plusieurs de ses voisines. Les autres fonds sombres du fichier etaient
+   * ceux des PANNEAUX (`.box`, `#quests`, `#stake`, `#lb`, et une seconde
+   * declaration `!important` posee plus bas par le theme de pierre, qui
+   * aurait repris la main si on n'avait neutralise que la premiere) : ils
+   * sont traites chacun a leur place. `html::after` (le calque `screen` du
+   * bloc commun) reste : sur du clair, screen ne change rien.
+   * La TABLE, elle, ne bouge pas : elle est peinte par WebGL dans `#c` avec
+   * sa propre texture de temple. C'est le POURTOUR — la barre, les deux
+   * colonnes, les panneaux de compte — qui rejoint le blanc. */
+  html,body{height:100%;overflow:hidden;background:#EEF3FB;font-family:'Space Mono','Courier New',monospace;color:#0B1B36}
+
+  /* ================== LA BOITE DU JEU ==================
+   * Cette page NE DEFILE JAMAIS. La barre blanche et les deux colonnes se
+   * posent donc en `position:fixed` PAR-DESSUS l'ecran (meme demarche que
+   * `swoge_spin.html`), et le plateau doit se retirer de dessous : sinon la
+   * barre lui mange le haut, les colonnes lui mangent les bords, et la barre
+   * du bas de `stakebubble.js` lui mange les boutons.
+   * Les quatre retraits vivent dans ces variables. Le repli en dur ci-dessous
+   * sert au premier rendu ; ensuite un script les MESURE (hauteur reelle de
+   * la barre, presence des colonnes, hauteur de `.swbb`) et les reecrit sur
+   * `documentElement` — mesure, pas devinette, la barre changeant de hauteur
+   * quand elle s'empile ou quand la ligne de chiffres arrive.
+   * `--jcx` est le centre de la COLONNE DU JEU : le HUD s'y centre, sinon il
+   * se centrerait sur la fenetre entiere et glisserait sous les colonnes. */
+  :root{ --jh:0px; --jb:0px; --jg:0px; --jd:0px;
+         --jcx:calc(var(--jg) + (100vw - var(--jg) - var(--jd)) / 2); }
+  @media (min-width:1361px){ :root{ --jg:236px; --jd:308px; } }
+  /* `#c` est un element REMPLACE : `right`/`bottom` y seraient ignores face a
+     une largeur automatique. On ne pose donc que `top`/`left`, et c'est
+     `renderer.setSize()` qui donne la taille — nourri par la meme mesure. */
+  #c{position:fixed;top:var(--jh);left:var(--jg);display:block}
   .hud{position:fixed;z-index:10;pointer-events:none}
   .hud .btn,.hud button,.hud .chip,#jackpot,#lb,#quests,#stake,#addr{pointer-events:auto}
-  /* top bar */
-  #top{top:0;left:0;right:0;display:flex;align-items:center;gap:8px;padding:10px 12px;flex-wrap:wrap;
-    background:linear-gradient(180deg,rgba(11,9,6,.85),transparent)}
-  .chip{font-size:12px;padding:8px 12px;border-radius:999px;border:1px solid rgba(230,165,55,.4);
-    background:rgba(21,16,10,.85);color:#F7EEDA;white-space:nowrap}
-  .chip b{color:#E6A537}
   .btn{font-size:12px;padding:9px 14px;border:none;border-radius:999px;cursor:pointer;font-family:inherit;
     background:linear-gradient(135deg,#FFB84D,#E6A537);color:#0B0906;font-weight:700}
-  .btn.ghost{background:rgba(21,16,10,.85);color:#F7EEDA;border:1px solid rgba(230,165,55,.4)}
+  .btn.ghost{background:#FFFFFF;color:#1B5FE0;border:1px solid #1B5FE0}
   .btn:disabled{opacity:.5}
-  #spacer{flex:1}
   /* bottom ticker */
-  #ticker{bottom:0;left:0;right:0;height:30px;overflow:hidden;background:rgba(0,0,0,.7);border-top:1px solid rgba(230,165,55,.3)}
+  /* `container-type` : le bandeau devient l'unite de mesure de ce qu'il
+     contient, pour que `100cqi` ci-dessous parle de LUI et non de la fenetre
+     (voir la note sur les `vw` juste en dessous). */
+  #ticker{bottom:var(--jb);left:var(--jg);right:var(--jd);height:30px;overflow:hidden;background:rgba(0,0,0,.7);border-top:1px solid rgba(230,165,55,.3);
+    container-type:inline-size}
   #tickrow{display:flex;gap:36px;white-space:nowrap;padding:6px 0;font-size:12px;color:#fff;animation:scroll 28s linear infinite}
-  @keyframes scroll{from{transform:translateX(100vw)}to{transform:translateX(-100%)}}
+  /* ---- `vw` -> `cqi` : LE DEFILE PARTAIT DU BORD DE LA FENETRE ----
+   * `100vw` mesure la fenetre ENTIERE. Les deux colonnes flottent par-dessus
+   * sans rien lui retirer : le bandeau, lui, s'arrete a la colonne du jeu, et
+   * le texte partait donc de trois cents pixels HORS de son propre cadre —
+   * un blanc au debut de chaque tour. `100cqi` est le meme chiffre, mesure
+   * sur le bandeau : l'apparence sans colonnes ne change pas d'un pixel. */
+  @keyframes scroll{from{transform:translateX(100cqi)}to{transform:translateX(-100%)}}
   /* status / toast */
-  #status{left:50%;top:52px;transform:translateX(-50%);font-size:12px;color:#E6A537;background:rgba(11,9,6,.8);
+  #status{left:var(--jcx);top:calc(var(--jh) + 52px);transform:translateX(-50%);font-size:12px;color:#E6A537;background:rgba(11,9,6,.8);
     padding:6px 12px;border-radius:999px;border:1px solid rgba(230,165,55,.3)}
   /* connected-address chip, bottom-left (out of the way of the top buttons) */
-  #addr{right:10px;bottom:96px;display:none;font-size:11px;color:#c9bfa8;background:rgba(11,9,6,.8);
+  #addr{right:calc(var(--jd) + 10px);bottom:calc(var(--jb) + 96px);display:none;font-size:11px;color:#c9bfa8;background:rgba(11,9,6,.8);
     padding:6px 10px;border-radius:999px;border:1px solid rgba(230,165,55,.3);white-space:nowrap;cursor:pointer}
-  #toast{left:50%;bottom:44px;transform:translateX(-50%) translateY(20px);background:#E6A537;color:#0B0906;
-    font-weight:700;padding:11px 18px;border-radius:12px;opacity:0;transition:.25s;font-size:13px;max-width:88vw;text-align:center}
+  #toast{left:var(--jcx);bottom:calc(var(--jb) + 44px);transform:translateX(-50%) translateY(20px);background:#E6A537;color:#0B0906;
+    font-weight:700;padding:11px 18px;border-radius:12px;opacity:0;transition:.25s;font-size:13px;text-align:center;
+    /* meme raison que le bandeau : le plafond doit parler de la colonne du
+       jeu, pas de la fenetre, sinon le message deborde sous les colonnes. */
+    max-width:min(88vw, calc((100vw - var(--jg) - var(--jd)) * .92))}
   #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
   /* coin queue bar (quick-add buttons + live counter) */
-  #qbar{bottom:40px;left:8px;display:flex;gap:6px;align-items:center;
+  #qbar{bottom:calc(var(--jb) + 40px);left:calc(var(--jg) + 8px);display:flex;gap:6px;align-items:center;
     padding:7px 9px;border-radius:14px;background:rgba(11,9,6,.82);border:1px solid rgba(230,165,55,.35);
-    max-width:96vw;flex-wrap:wrap;justify-content:center}
+    max-width:min(96vw, calc((100vw - var(--jg) - var(--jd)) - 24px));flex-wrap:wrap;justify-content:center}
   .qbtn{font-family:inherit;font-size:12px;font-weight:700;padding:8px 11px;border:none;border-radius:10px;
     cursor:pointer;background:linear-gradient(135deg,#FFB84D,#E6A537);color:#0B0906}
   .qbtn:active{transform:translateY(1px)}
@@ -112,7 +156,7 @@ canvas{ touch-action:none; }
   .qclear{font-family:inherit;font-size:12px;padding:8px 10px;border-radius:10px;cursor:pointer;
     background:rgba(255,107,53,.18);color:#FF8A5B;border:1px solid rgba(255,107,53,.4)}
   /* progressive jackpot banner */
-  #jackpot{top:120px;left:50%;transform:translateX(-50%);display:none;align-items:center;gap:7px;cursor:pointer;
+  #jackpot{top:calc(var(--jh) + 120px);left:var(--jcx);transform:translateX(-50%);display:none;align-items:center;gap:7px;cursor:pointer;
     padding:8px 16px;border-radius:999px;font-weight:800;font-size:14px;color:#0B0906;
     background:linear-gradient(135deg,#FFD76B,#E6A537);box-shadow:0 4px 18px rgba(230,165,55,.5);
     border:1px solid #FFE9A8;white-space:nowrap}
@@ -120,32 +164,39 @@ canvas{ touch-action:none; }
   #jackpot.pulse{animation:jp 1.4s ease-in-out infinite}
   @keyframes jp{0%,100%{transform:translateX(-50%) scale(1)}50%{transform:translateX(-50%) scale(1.045)}}
   /* daily leaderboard panel */
-  #lb{top:0;right:0;bottom:0;width:min(80vw,300px);transform:translateX(105%);transition:.25s;
-    background:rgba(11,9,6,.95);border-left:1px solid rgba(230,165,55,.35);padding:58px 14px 14px;overflow:auto}
+  /* ---- LES TIROIRS SE RANGENT HORS DE L'ECRAN, PAS HORS DE LA COLONNE ----
+   * `translateX(105%)` suffisait tant qu'ils etaient colles au bord de la
+   * fenetre. Depuis qu'ils sont cales sur la colonne du jeu, 105 % de leur
+   * propre largeur ne franchit plus le retrait des colonnes : mesure a
+   * 1440px, le tiroir des quetes depassait encore de 220px a gauche et celui
+   * du classement recouvrait la carte du solde a droite. On ajoute donc le
+   * retrait a la course. */
+  #lb{top:var(--jh);right:var(--jd);bottom:var(--jb);width:min(80vw,300px);transform:translateX(calc(100% + var(--jd) + 24px));transition:.25s;
+    background:#FFFFFF;border-left:1px solid #E1E9F6;padding:58px 14px 14px;overflow:auto}
   #lb.show{transform:translateX(0)}
-  #lb h3{font-size:13px;color:#E6A537;margin-bottom:10px;letter-spacing:1px}
+  #lb h3{font-size:13px;color:#1B5FE0;margin-bottom:10px;letter-spacing:1px}
   #lbClose{position:absolute;top:12px;right:12px}
   .lbrow{display:flex;justify-content:space-between;gap:8px;padding:8px 10px;border-radius:8px;
-    margin-bottom:6px;background:rgba(255,255,255,.04);font-size:13px}
-  .lbrow .r{color:#E6A537;font-weight:700}
-  .lbrow .v{color:#7CFF9B;font-weight:700}
-  .lbempty{color:#8a7f6a;font-size:12px;padding:6px 10px}
+    margin-bottom:6px;background:#EEF3FB;border:1px solid #E1E9F6;font-size:13px}
+  .lbrow .r{color:#0B1B36;font-weight:700}
+  .lbrow .v{color:#0E7C3E;font-weight:700}
+  .lbempty{color:#6B7C99;font-size:12px;padding:6px 10px}
   /* daily quests panel (slides from the left) */
-  #quests{top:0;left:0;bottom:0;width:min(86vw,330px);transform:translateX(-105%);transition:.25s;
-    background:linear-gradient(rgba(11,9,6,.9),rgba(11,9,6,.94)),var(--panelbg);background-size:cover;background-position:center;border-right:1px solid rgba(230,165,55,.35);padding:58px 14px 14px;overflow:auto}
+  #quests{top:var(--jh);left:var(--jg);bottom:var(--jb);width:min(86vw,330px);transform:translateX(calc(-100% - var(--jg) - 24px));transition:.25s;
+    background:#FFFFFF;border-right:1px solid #E1E9F6;padding:58px 14px 14px;overflow:auto}
   #quests.show{transform:translateX(0)}
-  #quests h3{font-size:13px;color:#E6A537;margin-bottom:4px;letter-spacing:1px}
-  #quests .sub{font-size:11px;color:#8a7f6a;margin-bottom:12px}
+  #quests h3{font-size:13px;color:#1B5FE0;margin-bottom:4px;letter-spacing:1px}
+  #quests .sub{font-size:11px;color:#6B7C99;margin-bottom:12px}
   #qClose{position:absolute;top:12px;right:12px}
-  .quest{background:rgba(255,255,255,.04);border-radius:10px;padding:11px;margin-bottom:10px}
+  .quest{background:#EEF3FB;border:1px solid #E1E9F6;border-radius:10px;padding:11px;margin-bottom:10px}
   .quest .qh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-size:13px;margin-bottom:8px}
-  .quest .qh .qr{color:#FFD76B;font-weight:700;white-space:nowrap}
-  .qbar{height:8px;border-radius:6px;background:rgba(255,255,255,.1);overflow:hidden;margin-bottom:9px}
+  .quest .qh .qr{color:#1B5FE0;font-weight:700;white-space:nowrap}
+  .qbar{height:8px;border-radius:6px;background:#E1E9F6;overflow:hidden;margin-bottom:9px}
   .qbar>i{display:block;height:100%;width:0;background:linear-gradient(90deg,#FFB84D,#E6A537);transition:width .3s}
   .qclaim{width:100%;font-size:12px;font-weight:700;padding:9px;border-radius:8px;border:none;font-family:inherit}
   .qclaim.on{background:linear-gradient(135deg,#7CFF9B,#39d16a);color:#062a12;cursor:pointer}
-  .qclaim.off{background:rgba(255,255,255,.07);color:#8a7f6a;cursor:default}
-  .qclaim.done{background:rgba(124,255,155,.14);color:#7CFF9B;cursor:default}
+  .qclaim.off{background:#EEF3FB;color:#6B7C99;cursor:default;border:1px solid #E1E9F6}
+  .qclaim.done{background:rgba(90,220,140,.16);color:#0E7C3E;cursor:default;border:1px solid rgba(120,230,160,.5)}
   /* dropdown menu (matches SWOGE Smash / Blackjack) */
   .pmenu{position:fixed;top:56px;right:14px;z-index:30;min-width:214px;display:none;flex-direction:column;
     background:rgba(11,9,6,.97);border:1px solid rgba(230,165,55,.28);border-radius:14px;padding:6px;
@@ -156,177 +207,139 @@ canvas{ touch-action:none; }
   .pmenu .msep{height:1px;background:rgba(230,165,55,.2);margin:5px 8px}
   /* claimable dot on the 🎯 button */
   #menuBtn{position:relative}
+  .sw-avatar{position:relative}
   #questDot{position:absolute;top:4px;right:4px;width:9px;height:9px;border-radius:50%;background:#7CFF9B;
     box-shadow:0 0 8px #7CFF9B;display:none}
   #questDot.on{display:block}
   /* staking panel (slides from the right) */
-  #stake{top:0;right:0;bottom:0;width:min(86vw,330px);transform:translateX(105%);transition:.25s;
-    background:linear-gradient(rgba(11,9,6,.9),rgba(11,9,6,.94)),var(--panelbg);background-size:cover;background-position:center;border-left:1px solid rgba(230,165,55,.35);padding:58px 16px 16px;overflow:auto}
+  #stake{top:var(--jh);right:var(--jd);bottom:var(--jb);width:min(86vw,330px);transform:translateX(calc(100% + var(--jd) + 24px));transition:.25s;
+    background:#FFFFFF;border-left:1px solid #E1E9F6;padding:58px 16px 16px;overflow:auto}
   #stake.show{transform:translateX(0)}
-  #stake h3{font-size:13px;color:#E6A537;margin-bottom:4px;letter-spacing:1px}
-  #stake .sub{font-size:11px;color:#8a7f6a;margin-bottom:14px}
+  #stake h3{font-size:13px;color:#1B5FE0;margin-bottom:4px;letter-spacing:1px}
+  #stake .sub{font-size:11px;color:#6B7C99;margin-bottom:14px}
   #stClose{position:absolute;top:12px;left:12px}
-  .stbox{background:rgba(255,255,255,.04);border-radius:10px;padding:12px;margin-bottom:12px}
+  .stbox{background:#EEF3FB;border:1px solid #E1E9F6;border-radius:10px;padding:12px;margin-bottom:12px}
   .strow{display:flex;justify-content:space-between;align-items:baseline;font-size:13px;padding:5px 0}
-  .strow b{font-size:15px;color:#F7EEDA}
-  .strow b.grn{color:#7CFF9B}
+  .strow b{font-size:15px;color:#0B1B36}
+  .strow b.grn{color:#0E7C3E}
   #stClaim{margin-bottom:14px}
-  #stAmt{width:100%;padding:11px;border-radius:10px;border:1px solid rgba(230,165,55,.4);
-    background:rgba(21,16,10,.9);color:#F7EEDA;font-family:inherit;font-size:14px;margin-bottom:9px}
+  #stAmt{width:100%;padding:11px;border-radius:10px;border:1px solid #E1E9F6;
+    background:#EEF3FB;color:#0B1B36;font-family:inherit;font-size:14px;margin-bottom:9px}
   .strow2{display:flex;gap:8px}
   .strow2 .btn{flex:1}
   /* win popup */
-  #win{left:50%;top:42%;transform:translate(-50%,-50%) scale(.6);opacity:0;transition:.25s;text-align:center;font-family:'Anton',sans-serif}
+  #win{left:var(--jcx);top:42%;transform:translate(-50%,-50%) scale(.6);opacity:0;transition:.25s;text-align:center;font-family:'Anton',sans-serif}
   #win.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
   #win .v{font-size:56px;color:#FF6B35;text-shadow:0 0 20px rgba(255,107,53,.7)}
   #win.jp .v{font-size:34px;color:#FFD76B;text-shadow:0 0 24px rgba(255,215,107,.9)}
   /* modal */
-  #modal{inset:0;background:rgba(4,6,10,.65);display:none;align-items:center;justify-content:center;padding:16px;z-index:20}
+  #modal{inset:0;background:rgba(11,27,54,.45);display:none;align-items:center;justify-content:center;padding:16px;z-index:20}
   #modal.show{display:flex}
-  .box{pointer-events:auto;background:linear-gradient(rgba(11,9,6,.88),rgba(11,9,6,.93)),var(--panelbg);background-size:cover;background-position:center;border:1px solid rgba(230,165,55,.4);
-    border-radius:16px;padding:18px;width:min(360px,94vw)}
-  .box h3{font-family:'Anton',sans-serif;font-size:20px;margin-bottom:12px;color:#E6A537}
-  .box label{font-size:11px;color:#A08a63;text-transform:uppercase;letter-spacing:1px;display:block;margin:10px 0 5px}
-  .box input{width:100%;padding:11px;border-radius:10px;border:1px solid rgba(230,165,55,.4);background:#0B0906;color:#F7EEDA;font-family:inherit;font-size:15px}
+  .box{pointer-events:auto;background:#FFFFFF;border:1px solid #E1E9F6;
+    border-radius:18px;box-shadow:0 20px 60px rgba(11,27,54,.16);padding:18px;width:min(360px,94vw)}
+  .box h3{font-family:'Inter',system-ui,sans-serif;font-size:20px;margin-bottom:12px;color:#1B5FE0}
+  .box label{font-size:11px;color:#6B7C99;text-transform:uppercase;letter-spacing:1px;display:block;margin:10px 0 5px}
+  .box input{width:100%;padding:11px;border-radius:10px;border:1px solid #E1E9F6;background:#EEF3FB;color:#0B1B36;font-family:inherit;font-size:15px}
   .box .row{display:flex;gap:8px;margin-top:14px}
-  .box .note{font-size:11px;color:#A08a63;margin-top:10px;line-height:1.5}
-  #tapHint{left:50%;bottom:44px;transform:translateX(-50%);font-size:12px;color:#A08a63;opacity:.9}
+  .box .note{font-size:11px;color:#6B7C99;margin-top:10px;line-height:1.5;border:1px solid #E1E9F6;border-radius:10px;padding:9px 11px;background:#EEF3FB}
+  #tapHint{left:var(--jcx);bottom:calc(var(--jb) + 44px);transform:translateX(-50%);font-size:12px;color:#F7EEDA;opacity:.9;text-shadow:0 1px 3px rgba(0,0,0,.8)}
 
-/* ===== SWOGE themed panels (auto-ported from Spin) ===== */
-#connectBtn,#emailBtn { font-size:1.6vh; letter-spacing:.5px; border-radius:12px; padding:1vh 1.8vh; border:none; }
-#connectBtn { color:#3a2400; background:linear-gradient(180deg,#ffe680,#f2a900); }
-#emailBtn { color:#fff; background:rgba(0,0,0,.5); border:1px solid rgba(255,213,74,.4); }
-.ovl { position:fixed; inset:0; z-index:300; background:rgba(4,4,12,.7); display:none; align-items:safe center; justify-content:center; padding:16px; font-family:system-ui; overflow-y:auto; }
-.ovl.show { display:flex; }
-.box.show { display:block; }
-#box-quests { max-height:88vh; overflow:hidden; background-color:#17092e; background-clip:padding-box; border:30px solid transparent; border-image:url('img/e95d01731f29.png') 62 fill / 30px stretch; border-radius:0; background:none; padding:0; }
-#depBox, #wdBox, #accountBox, #box-stake { width:min(452px,96vw); max-height:92vh; overflow:hidden; background-color:#17092e; background-clip:padding-box; box-shadow:none; border-radius:0; border-style:solid; border-color:transparent; border-width:30px 26px 40px 26px; border-image:url('img/62439edfd061.png') 72 56 86 56 fill / 30px 26px 40px 26px stretch; padding:0; }
-#depBox .pscroll, #wdBox .pscroll, #accountBox .pscroll, #box-stake .pscroll { max-height:calc(92vh - 88px); overflow-y:auto; padding:18px 30px 26px; scrollbar-width:none; -ms-overflow-style:none; }
-#depBox .note2, #wdBox .note2, #accountBox .note2, #box-stake .note2 { font-size:13px; line-height:1.45; text-align:center; color:#e2d6f2; margin-top:8px; }
-#depBox .note2 b, #wdBox .note2 b, #accountBox .note2 b, #box-stake .note2 b { color:var(--gold); }
-#depBox label, #wdBox label, #accountBox label, #box-stake label { font-size:11px; letter-spacing:1.5px; text-align:center; color:#c7b6dd; margin:8px 0 5px; }
-#depBox .strow, #wdBox .strow, #accountBox .strow, #box-stake .strow { font-size:14px; padding:5px 6px; color:#d8cae8; }
-#depBox .strow b, #wdBox .strow b, #accountBox .strow b, #box-stake .strow b { font-size:15px; color:#fff; }
-#box-stake .strow { justify-content:center; gap:11px; font-size:11px; padding:2px 4px; }
-#box-stake .strow b { font-size:12px; }
-#box-stake .note2 { font-size:10px; line-height:1.4; }
-#depBox input, #wdBox input, #accountBox input, #box-stake input { padding:10px; font-size:15px; text-align:center; }
-#box-stake .pcts, #depBox .pcts { gap:6px; margin:6px 0; }
-#depBox .pscroll::-webkit-scrollbar, #wdBox .pscroll::-webkit-scrollbar, #accountBox .pscroll::-webkit-scrollbar, #box-stake .pscroll::-webkit-scrollbar { width:0; height:0; display:none; }
-.ptitle { width:62%; min-width:190px; max-width:280px; height:auto; background:center/100% 100% no-repeat; margin:4px auto 10px; filter:drop-shadow(0 2px 6px rgba(0,0,0,.5)); }
-#depBox .pscroll, #wdBox .pscroll, #box-stake .pscroll { text-align:center; }
-#depBox .brow, #wdBox .brow, #box-stake .brow { display:block !important; text-align:center !important; margin-top:10px; }
-#depBox .abtn.aimg, #wdBox .abtn.aimg, #box-stake .abtn.aimg { display:block !important; width:212px !important; max-width:82% !important; height:56px !important; aspect-ratio:auto !important; min-width:0 !important; margin:9px auto !important; float:none !important; flex:none !important; }
-#depBox .abtn.closeimg, #wdBox .abtn.closeimg, #box-stake .abtn.closeimg { display:block !important; width:212px !important; max-width:82% !important; height:44px !important; aspect-ratio:auto !important; min-width:0 !important; margin:9px auto !important; float:none !important; flex:none !important; }
-#depBox input, #wdBox input, #accountBox input, #box-stake input { display:block; max-width:280px; margin-left:auto; margin-right:auto; }
-#depBox .strow, #wdBox .strow, #accountBox .strow, #box-stake .strow { justify-content:center; gap:14px; }
-.ptitle.pt-deposit { aspect-ratio:440/186; }
-.ptitle.pt-withdraw { aspect-ratio:440/191; }
-.ptitle.pt-stake { aspect-ratio:440/138; }
-.ptitle.pt-deposit { background-image:url('img/73990b426144.png'); }
-.ptitle.pt-withdraw { background-image:url('img/0258d32595c7.png'); }
-.ptitle.pt-stake { background-image:url('img/d650a96aeddd.png'); }
-.abtn.aimg { background-color:transparent !important; background-repeat:no-repeat !important; background-position:center !important; background-size:100% 100% !important; color:transparent !important; text-indent:-9999px; overflow:hidden; white-space:nowrap; border:none !important; box-shadow:none !important; height:52px; min-height:0; padding:0 !important; }
-.abtn.aimg.a-dep { background-image:url('img/98277aa4f988.png') !important; }
-.abtn.aimg.a-wd { background-image:url('img/3325d6a9f46d.png') !important; }
-.abtn.aimg.a-claim { background-image:url('img/78fa0d2133ec.png') !important; }
-.abtn.aimg.a-stake { background-image:url('img/e609569f126f.png') !important; }
-.abtn.aimg.a-unstake { background-image:url('img/754195de06f9.png') !important; }
+/* ===== SWOGE themed panels — AU CLAIR, meme conversion que swoge_casino.html =====
+   Les identifiants different de ceux du casino (`#depBox` ici, `#box-dep`
+   la-bas) : c'est la seule adaptation, les valeurs sont recopiees telles
+   quelles. Les cadres en `border-image` de pierre, les titres en image et les
+   quatre boutons de pourcentage en image sont RETIRES plutot que surcharges :
+   ils n'ont plus rien a habiller, et une regle morte laissee en place finit
+   par reprendre la main le jour ou une autre change.
+
+   ---- #connectBtn ET #emailBtn NE SONT PLUS DECRITS ICI ----
+   Ils vivent maintenant dans l'en-tete et portent `sw-b sw-b-vide` /
+   `sw-b sw-b-plein`, comme sur les pages deja converties. */
+#depBox, #wdBox, #accountBox, #emailBox, #whBox {
+  width:min(452px,96vw); max-height:92vh; overflow:hidden;
+  background:#FFFFFF; border:1px solid #E1E9F6; border-radius:18px;
+  box-shadow:0 20px 60px rgba(11,27,54,.16); padding:0; }
+#whBox { padding:18px; }
+#depBox .pscroll, #wdBox .pscroll, #accountBox .pscroll { max-height:calc(92vh - 88px); overflow-y:auto; padding:18px 30px 26px; scrollbar-width:none; -ms-overflow-style:none; }
+#depBox .note2, #wdBox .note2, #accountBox .note2 { font-size:13px; line-height:1.45; text-align:center; color:#6B7C99; margin-top:8px; }
+#depBox .note2 b, #wdBox .note2 b, #accountBox .note2 b { color:#1B5FE0; }
+#depBox label, #wdBox label, #accountBox label { font-size:11px; letter-spacing:1.5px; text-align:center; color:#6B7C99; margin:8px 0 5px; }
+#depBox .strow, #wdBox .strow, #accountBox .strow { font-size:14px; padding:5px 6px; color:#6B7C99; }
+#depBox .strow b, #wdBox .strow b, #accountBox .strow b { font-size:15px; color:#0B1B36; }
+#depBox input, #wdBox input, #accountBox input { padding:10px; font-size:15px; text-align:center; }
+#depBox .pcts { gap:6px; margin:6px 0; }
+#depBox .pscroll::-webkit-scrollbar, #wdBox .pscroll::-webkit-scrollbar, #accountBox .pscroll::-webkit-scrollbar { width:0; height:0; display:none; }
+.ptitle, .wtitle-plate { width:auto; min-width:0; max-width:none; height:auto; background:none; filter:none;
+  margin:2px auto 12px; text-align:center;
+  font:800 19px/1.2 'Inter',system-ui,sans-serif; letter-spacing:.4px; color:#0B1B36; }
+#depBox .pscroll, #wdBox .pscroll { text-align:center; }
+#depBox .brow, #wdBox .brow { display:block !important; text-align:center !important; margin-top:10px; }
+#depBox .abtn.aimg, #wdBox .abtn.aimg { display:block !important; width:212px !important; max-width:82% !important; height:56px !important; aspect-ratio:auto !important; min-width:0 !important; margin:9px auto !important; float:none !important; flex:none !important; }
+#depBox .abtn.closeimg, #wdBox .abtn.closeimg { display:block !important; width:212px !important; max-width:82% !important; height:44px !important; aspect-ratio:auto !important; min-width:0 !important; margin:9px auto !important; float:none !important; flex:none !important; }
+#depBox input, #wdBox input, #accountBox input { display:block; max-width:280px; margin-left:auto; margin-right:auto; }
+#depBox .strow, #wdBox .strow, #accountBox .strow { justify-content:center; gap:14px; }
+/* `aimg` voulait dire « ce bouton EST une image ». Il n'y a plus d'image :
+   la classe ne dit plus rien et le libelle, deja dans le HTML, se voit. */
+.abtn.aimg { height:48px; min-height:0; background:#1B5FE0; color:#fff; text-indent:0; border-radius:10px; }
 .brow.bcol { flex-direction:column; gap:10px; }
 .pcts { gap:8px; }
-.pct.imgpct { background:transparent center/100% 100% no-repeat !important; border:none !important; color:transparent !important; text-indent:-9999px; overflow:hidden; white-space:nowrap; aspect-ratio:257/104; min-height:0; padding:0 !important; box-shadow:none; border-radius:0; }
-.pct.imgpct.p10 { background-image:url('img/43a076a331c6.png') !important; }
-.pct.imgpct.p20 { background-image:url('img/aac55ffed61a.png') !important; }
-.pct.imgpct.p50 { background-image:url('img/139a3397b0e7.png') !important; }
-.pct.imgpct.pmax { background-image:url('img/15978cef7aa0.png') !important; }
-.box h3 { font-family:'Orbitron',sans-serif; font-size:20px; color:var(--gold); margin-bottom:12px; }
-.box label { font-size:11px; color:#a99; text-transform:uppercase; letter-spacing:1px; display:block; margin:8px 0 5px; }
-.box .note2 { font-size:12px; color:#b9a; line-height:1.5; margin-top:8px; }
-.box .note2 b { color:var(--gold); }
-.box input { width:100%; padding:11px; border-radius:10px; border:1px solid rgba(124,77,255,.5); background:#0e0722; color:#fff; font-family:inherit; font-size:15px; }
 .box .brow { display:flex; gap:8px; align-items:center; margin-top:10px; }
-.box .abtn { flex:1; padding:12px; border-radius:10px; border:none; font-weight:800; font-size:15px; cursor:pointer; font-family:'Orbitron',sans-serif;
-    color:#3a2400; background:linear-gradient(180deg,#ffe680,#f2a900); }
-.box .abtn.sec { color:#eee; background:rgba(255,255,255,.08); border:1px solid rgba(124,77,255,.5); }
-.box .abtn.danger { color:#ff6b6b; background:transparent; border:1px solid rgba(255,107,107,.4); }
-.strow { display:flex; justify-content:space-between; align-items:baseline; font-size:13px; padding:6px 0; color:#b9a; }
-.strow b { font-size:15px; color:#fff; }
+.box .abtn { flex:1; padding:12px; border-radius:10px; border:none; font-weight:800; font-size:15px; cursor:pointer; text-align:center; font-family:'Inter',system-ui,sans-serif;
+    color:#fff; background:#1B5FE0; }
+.box .abtn:hover { filter:brightness(1.06); }
+.box .abtn.sec { color:#1B5FE0; background:#FFFFFF; border:1px solid #1B5FE0; }
+.box .abtn.danger { color:#E0443E; background:transparent; border:1px solid rgba(224,68,62,.45); }
+.box .note2 { font-size:12px; color:#6B7C99; line-height:1.5; margin-top:8px; }
+.box .note2 b { color:#1B5FE0; }
+.strow { display:flex; justify-content:space-between; align-items:baseline; font-size:13px; padding:6px 0; color:#6B7C99; }
+.strow b { font-size:15px; color:#0B1B36; }
 .pcts { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin:8px 0; }
-.pct { padding:9px 0; border-radius:8px; border:1px solid rgba(124,77,255,.5); background:rgba(255,255,255,.05); color:#eee; font-weight:700; cursor:pointer; font-size:13px; }
-.pct:hover { border-color:var(--gold); color:var(--gold); }
-.wtitle-plate { width:230px; height:54px; margin:2px auto 14px; background:url('img/0f9b73d138e0.png') center/contain no-repeat; filter:drop-shadow(0 2px 6px rgba(0,0,0,.6)); }
-#accountBox .abtn.wbtn { width:100%; aspect-ratio:260/74; min-height:0; padding:0; background-color:transparent; background-repeat:no-repeat; background-position:center; background-size:100% 100%; color:transparent; text-indent:-9999px; overflow:hidden; white-space:nowrap; border:none; box-shadow:none; }
-#accountBox .wb-copy { background-image:url('img/291bf7675cee.png'); }
-#accountBox .wb-deposit { background-image:url('img/46bd21cc39b1.png'); }
-#accountBox .wb-explorer { background-image:url('img/3cf60dd1502c.png'); }
-#accountBox .wb-disconnect { background-image:url('img/114eb6df7091.png'); }
-.abtn.closeimg { background:url('img/d59144cfa811.png') center/100% 100% no-repeat !important; color:transparent !important; text-indent:-9999px; overflow:hidden; white-space:nowrap; border:none; box-shadow:none; aspect-ratio:300/60; min-height:44px; padding:0; }
-.abtn.imgbtn.wimg { background-image:url('img/3e4da538a2f7.png'); }
-.abtn.imgbtn.pimg { background-image:url('img/b21951658a03.png'); }
-.abtn.imgbtn.cimg { background-image:url('img/3eac95539574.png'); }
-#box-quests .note2 { text-align:center; }
+.pct, .pct.imgpct { padding:9px 0 !important; border-radius:8px; border:1px solid #E1E9F6 !important; background:#EEF3FB !important; color:#0B1B36 !important; font-weight:700; cursor:pointer; font-size:13px;
+  text-indent:0; aspect-ratio:auto; min-height:0; box-shadow:none; }
+.pct:hover { border-color:#1B5FE0 !important; color:#1B5FE0 !important; }
+#accountBox .abtn.wbtn { width:100%; min-height:44px; padding:12px; aspect-ratio:auto; background:#1B5FE0; color:#fff; text-indent:0; border-radius:10px; }
+#accountBox .abtn.wb-disconnect { color:#E0443E; background:#FFFFFF; border:1px solid rgba(224,68,62,.45); }
+.abtn.closeimg { min-height:44px; background:#FFFFFF !important; color:#1B5FE0 !important; border:1px solid #1B5FE0 !important; text-indent:0; aspect-ratio:auto; border-radius:10px; }
 .abtn:disabled { opacity:.5; cursor:default; }
-#emailBox { width:min(452px,96vw); max-height:92vh; overflow:hidden; background-color:#17092e; background-clip:padding-box; box-shadow:none; border-radius:0; border-style:solid; border-color:transparent; border-width:30px 26px 40px 26px; border-image:url('img/62439edfd061.png') 72 56 86 56 fill / 30px 26px 40px 26px stretch; padding:0; }
 #emailBox .pscroll { max-height:calc(92vh - 88px); overflow-y:auto; padding:18px 30px 26px; text-align:center; scrollbar-width:none; -ms-overflow-style:none; }
 #emailBox .pscroll::-webkit-scrollbar { width:0; height:0; display:none; }
-#emailBox .note2 { font-size:13px; line-height:1.45; text-align:center; color:#e2d6f2; }
-#emailBox label { font-size:11px; letter-spacing:1.5px; text-align:center; color:#c7b6dd; }
+#emailBox .note2 { font-size:13px; line-height:1.45; text-align:center; color:#6B7C99; }
+#emailBox label { font-size:11px; letter-spacing:1.5px; text-align:center; color:#6B7C99; }
 #emailBox input { display:block; max-width:280px; margin:6px auto; text-align:center; }
 #emailBox .brow { display:block !important; text-align:center !important; margin-top:10px; }
 #emailBox .abtn.aimg { display:block !important; width:212px !important; max-width:82% !important; height:56px !important; aspect-ratio:auto !important; min-width:0 !important; margin:9px auto !important; float:none !important; flex:none !important; }
 #emailBox .abtn.closeimg { display:block !important; width:212px !important; max-width:82% !important; height:44px !important; aspect-ratio:auto !important; min-width:0 !important; margin:9px auto !important; float:none !important; flex:none !important; }
-.ptitle.pt-email { aspect-ratio:440/170; background-image:url('img/a1e359ec449b.png'); }
-.abtn.aimg.a-emsend { background-image:url('img/6fbc8b548d31.png') !important; }
-.abtn.aimg.a-emverify { background-image:url('img/de0297dab018.png') !important; }
-#connectBtn, #emailBtn { width:158px; height:50px; background-color:transparent !important; background-repeat:no-repeat !important; background-position:center !important; background-size:100% 100% !important; color:transparent !important; text-indent:-9999px; overflow:hidden; white-space:nowrap; border:none !important; box-shadow:none !important; padding:0 !important; border-radius:0 !important; cursor:pointer; }
-#connectBtn { background-image:url('img/955006ff1f20.png') !important; }
-#emailBtn { background-image:url('img/6c6c3d5a723c.png') !important; }
-#connectBtn:hover, #emailBtn:hover { filter:brightness(1.1); }
 @media (max-width: 820px), (orientation: portrait) {
-    #connectBtn,#emailBtn { font-size:11px; padding:6px 9px; border-radius:10px; }
-    #depBox, #wdBox, #accountBox, #box-stake, #box-quests {
+    #depBox, #wdBox, #accountBox {
       width:100vw; max-width:100vw; height:100vh; height:100dvh; max-height:100dvh;
-      border-radius:0; border-width:34px 24px 40px 24px; border-image-width:34px 24px 40px 24px;
+      border-radius:0;
     }
-    #depBox .pscroll, #wdBox .pscroll, #accountBox .pscroll, #box-stake .pscroll {
+    #depBox .pscroll, #wdBox .pscroll, #accountBox .pscroll {
       max-height:calc(100dvh - 74px); padding:18px 34px 28px;
     }
-    #depBox .note2, #wdBox .note2, #accountBox .note2, #box-stake .note2 { font-size:12px; }
-    #depBox .strow, #wdBox .strow, #accountBox .strow, #box-stake .strow { font-size:12px; }
-    #depBox label, #wdBox label, #accountBox label, #box-stake label { font-size:10px; }
-    #depBox input, #wdBox input, #accountBox input, #box-stake input { font-size:14px; }
+    #depBox .note2, #wdBox .note2, #accountBox .note2 { font-size:12px; }
+    #depBox .strow, #wdBox .strow, #accountBox .strow { font-size:12px; }
+    #depBox label, #wdBox label, #accountBox label { font-size:10px; }
+    #depBox input, #wdBox input, #accountBox input { font-size:14px; }
     #accountBox .strow, #depBox .strow, #wdBox .strow { padding-left:2px; padding-right:2px; }
-    #depBox .pcts, #box-stake .pcts { max-width:94%; margin-left:auto; margin-right:auto; }
-}
-@media (min-width:821px) and (orientation:landscape) {
-    #connectBtn,#emailBtn { font-size:1.6vh; padding:1.2vh 2.2vh; display:inline-block !important; }
-    #connectBtn { box-shadow:0 0 14px rgba(255,213,74,.5); }
-    #box-quests { width:min(760px,60vw); max-width:none; max-height:94vh; border-width:52px; border-image-width:52px; }
+    #depBox .pcts { max-width:94%; margin-left:auto; margin-right:auto; }
 }
 @media (max-width:820px), (orientation:portrait) {
-    #emailBox { width:100vw; max-width:100vw; height:100vh; height:100dvh; max-height:100dvh; border-radius:0; border-width:34px 24px 40px 24px; border-image-width:34px 24px 40px 24px; }
+    #emailBox { width:100vw; max-width:100vw; height:100vh; height:100dvh; max-height:100dvh; border-radius:0; }
     #emailBox .pscroll { max-height:calc(100dvh - 74px); padding:18px 34px 28px; }
 }
-@media (max-width:820px), (orientation:portrait) {
-    #connectBtn, #emailBtn { width:130px; height:41px; }
-}
-@media (min-width:821px) and (orientation:landscape) {
-    #connectBtn, #emailBtn { width:20vh; height:6.3vh; }
-}
 
-  /* ===== Menu themed (#pmenu) ===== */
-  #pmenu { background:none !important; border:20px solid transparent !important; border-image:url('img/26ab6463b66b.png') 66 fill / 20px stretch !important; border-radius:0 !important; padding:14px 12px !important; box-shadow:none !important; min-width:230px; }
-  #pmenu > a { display:block !important; margin:5px auto !important; padding:9px 10px !important; text-align:center; color:#ffd54a !important; font-weight:800; font-size:13px; background:rgba(0,0,0,.4) !important; border-radius:9px !important; text-decoration:none; border:none !important; }
-  #pmenu .msep { display:none !important; }
-  #pmenu #mnWallet, #pmenu #mnStake, #pmenu #mnDeposit, #pmenu #mnWithdraw, #pmenu #mnQuests, #pmenu #mnGames, #pmenu a[href="swoge_staking.html"], #pmenu a[href="index.html"] { height:44px !important; width:96% !important; padding:0 !important; background-color:transparent !important; background-repeat:no-repeat !important; background-position:center !important; background-size:100% 100% !important; color:transparent !important; text-indent:-9999px; overflow:hidden; white-space:nowrap; border-radius:0 !important; }
-  #pmenu #mnWallet { background-image:url('img/542cbb0df18d.png') !important; }
-  #pmenu #mnStake { background-image:url('img/5e1e1fa597be.png') !important; }
-  #pmenu #mnDeposit { background-image:url('img/abda24debfcb.png') !important; }
-  #pmenu #mnWithdraw { background-image:url('img/46d164c97934.png') !important; }
-  #pmenu #mnQuests { background-image:url('img/e4f5ee5fb1d3.png') !important; }
-  #pmenu #mnGames { background-image:url('img/9e6be8200ef8.png') !important; }
-  #pmenu a[href="swoge_staking.html"] { background-image:url('img/42f973c95a72.png') !important; }
-  #pmenu a[href="index.html"] { background-image:url('img/9cbf3c83512f.png') !important; }
+/* ---- Daily Quests theme — AU CLAIR, meme conversion que swoge_casino.html ---- */
+.qclaim.on { background:linear-gradient(180deg,#7CFF9B,#22B45E); color:#04121f; font-weight:800; border:none; cursor:pointer; }
+.qclaim.on:hover { filter:brightness(1.08); }
+
+  /* ===== L'ANCIEN MENU DEROULANT NE SE MONTRE PLUS =====
+   * Il est renomme `#menu` et garde toutes ses rangees : c'est desormais
+   * `swogeprofil.js` qui les LIT et les redessine en clair dans `#gxMenu`,
+   * et qui renvoie le clic sur le lien d'origine — un seul chemin vers
+   * chaque panneau. Les neuf regles d'habillage en image (cadre de pierre,
+   * libelles graves) sont retirees : elles n'habillent plus rien. */
+  #menu{ display:none !important; }
 
   /* ================== LA TABLETTE ET LA PIERRE ==================
    *
@@ -353,7 +366,8 @@ canvas{ touch-action:none; }
    * Le biseau reste MINCE sur telephone : on a passe la journee a recuperer
    * des pixels en haut des pages, ce serait absurde d'en rendre douze.
    */
-  #tablette{ position:fixed; inset:0; z-index:9000; pointer-events:none;
+  #tablette{ position:fixed; top:var(--jh); left:var(--jg); right:var(--jd); bottom:var(--jb);
+    z-index:9000; pointer-events:none;
     border:7px solid #0B0A16; border-radius:20px;
     box-shadow:
       inset 0 0 0 1px rgba(230,165,55,.30),      /* le liseré dore du cadre */
@@ -369,43 +383,199 @@ canvas{ touch-action:none; }
         0 0 0 2px #000; }
   }
 
-  /* ---- les dalles ----
-     La recette du Temple : des striures horizontales par-dessus un degrade
-     vertical, un bord sombre epais, et un anneau dore a l'interieur. La
-     palette, elle, est la NOTRE — or sur indigo, comme le cadre du Connect 4
-     pose ce matin — et non le violet-gris de l'original : deux thematiques de
-     pierre differentes sur le meme site se verraient. */
-  #quests, #stake, #lb, .box{
-    background:
-      /* les joints horizontaux : c'est eux qui font les assises */
-      repeating-linear-gradient(0deg,
-        rgba(0,0,0,.34) 0 2px, rgba(255,228,160,.05) 2px 3px, transparent 3px 26px),
-      /* les joints verticaux : sans eux on lit des lignes, pas des blocs. Ils
-         tombent tous a la meme abscisse — un degrade repete ne sait pas
-         decaler une assise sur deux, et le faire demanderait une image. A
-         cette echelle, sous du texte, ca ne se remarque pas. */
-      repeating-linear-gradient(90deg,
-        rgba(0,0,0,.26) 0 2px, transparent 2px 74px),
-      linear-gradient(180deg,#2E2848 0%,#1E1A34 55%,#131120 100%) !important;
-    background-size:auto, auto, auto !important;
-    box-shadow: inset 0 0 0 2px rgba(230,165,55,.42),
-                inset 0 3px 16px rgba(0,0,0,.6),
-                0 10px 30px rgba(0,0,0,.6); }
-  #quests{ border-right:3px solid #14101F; }
-  #stake, #lb{ border-left:3px solid #14101F; }
-  .box{ border:3px solid #14101F !important; border-radius:14px; }
-
-  /* ---- le linteau de chaque dalle ----
-     Un bandeau grave, comme au-dessus d'une porte de temple. On ne le fait pas
-     deborder jusqu'aux bords du panneau : les trois n'ont pas la meme marge
-     interieure, et un debordement calcule pour l'un decalerait les autres. */
+  /* ---- LES DALLES DE PIERRE SONT RETIREES ----
+     Elles peignaient `#quests`, `#stake`, `#lb` et `.box` en indigo grave
+     d'or — c'etaient les PANNEAUX DE COMPTE, pas la table. Sur un site clair
+     ils devenaient les seules boites sombres, et leur texte clair y restait
+     accroche. Les regles ne sont pas surchargees mais SUPPRIMEES : deux
+     declarations de fond pour un meme panneau, c'est exactement le defaut
+     qui laisse une page a moitie sombre. Le blanc de ces quatre panneaux est
+     ecrit une seule fois, plus haut, avec le reste de la palette.
+     Le cadre `#tablette`, lui, reste : il entoure la TABLE, qui garde son
+     habillage de temple. */
+  #quests, #stake, #lb{ box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05); }
   #quests h3, #stake h3, #lb h3, .box h3{
-    display:block; padding:8px 11px; margin-bottom:12px; border-radius:8px;
-    background:linear-gradient(180deg,#5A4A2A,#3A2F18);
-    border:1px solid #14101F;
-    box-shadow:inset 0 1px 0 rgba(255,228,160,.25), 0 2px 8px rgba(0,0,0,.5);
-    color:#FFE4A0 !important; text-shadow:0 1px 0 #000;
+    display:block; padding:9px 11px; margin-bottom:12px; border-radius:10px;
+    background:#EAF1FF; border:1px solid #E1E9F6;
+    color:#1B5FE0; font-family:'Inter',system-ui,sans-serif;
     text-transform:uppercase; letter-spacing:1.4px; }
+
+/* ==================== LA NOUVELLE BARRE, BLANCHE ====================
+   Meme barre que `games.html`, `index.html`, `swogebet.html`,
+   `swoge_blackjack.html`, `swoge_spin.html` et `swoge_casino.html` : marque,
+   chiffres du serveur, solde, connexion, avatar. Seuls la BARRE, les deux
+   colonnes, les panneaux de compte et le fond de page passent au blanc — la
+   table, les pieces et le temple gardent leur propre habillage, qui est
+   celui du JEU et non de la navigation. Couleurs ECRITES ICI, en clair,
+   comme sur les autres pages : cette page garde ses propres variables pour
+   le reste.
+
+   CETTE PAGE NE DEFILE JAMAIS (`html,body{height:100%;overflow:hidden}`) :
+   la barre et les deux colonnes ne peuvent donc pas vivre dans le fil normal
+   du document, ni en `sticky`, ni dans la grille `.sw-corps` du casino — qui
+   a besoin d'un document qui defile. On recopie donc la variante EN FIXE de
+   `swoge_spin.html`, l'autre page qui ne defile jamais, telle quelle.
+
+   Le plateau, lui, se retire de dessous : voir « LA BOITE DU JEU » en tete
+   de feuille. Sans ce retrait la barre couvrirait le haut de la table et les
+   deux colonnes en couvriraient les bords.
+
+   BALLONNEMENT DE LA COLONNE DE GAUCHE : sans objet ici. Le defaut vient de
+   `grid-template-columns:minmax(208px,1fr) auto minmax(208px,1fr)`, ou les
+   deux pistes souples absorbent tout le reste. Cette variante-ci ne pose pas
+   de grille : `.sw-cote` a une largeur ECRITE de 208px, elle ne peut pas
+   grandir. Mesure faite a 1920px : 208px. */
+.sw-haut{
+  position:fixed; top:0; left:0; right:0; z-index:220;
+  display:flex; align-items:center; gap:14px; padding:10px 16px;
+  background:#FFFFFF; border-bottom:1px solid #E1E9F6;
+}
+.sw-marque{display:flex; align-items:center; gap:9px; flex:0 0 auto}
+/* `stakebubble.js` remonte depuis `#bal` jusqu au `nav` le plus proche : ce
+   `nav` doit rester dans l en-tete, sinon les pastilles se posent ailleurs. */
+nav.sb-ancre{display:flex;align-items:center;gap:12px;
+  background:none;backdrop-filter:none;padding:0;border-bottom:none;
+  position:static;z-index:auto;}
+.sw-patte{
+  width:34px;height:34px;border-radius:10px;background:#EAF1FF;
+  display:grid;place-items:center;font-size:19px;
+}
+.sw-marque b{display:block;font:800 17px/1 'Inter',system-ui,sans-serif;letter-spacing:.4px;color:#1B5FE0}
+.sw-marque i{display:block;font:700 9.5px/1.4 'Inter',system-ui,sans-serif;font-style:normal;
+  letter-spacing:2.6px;color:#6B7C99}
+.sw-chiffres{
+  flex:1 1 auto; min-width:0; display:flex; gap:8px; overflow-x:auto;
+  padding:8px 10px; background:#EEF3FB; border:1px solid #E1E9F6;
+  border-radius:12px; scrollbar-width:none;
+}
+.sw-chiffres::-webkit-scrollbar{display:none}
+/* La bande de stats ne pouvait pas se cacher : le script d'echec pose
+   `bloc.hidden = true`, mais `.sw-chiffres{display:flex}` est une regle
+   d'AUTEUR et l'emporte sur le `[hidden]{display:none}` du navigateur.
+   Quand le fetch de /vitrine.json echouait, la bande restait donc a
+   l'ecran avec ses quatre tirets — l'allure d'un compteur en direct sans
+   compteur derriere. Une ligne, et l'intention du script tient. */
+.sw-chiffres[hidden]{display:none}
+.sw-ch{display:flex;align-items:center;gap:8px;padding:0 12px;flex:0 0 auto}
+.sw-ch+.sw-ch{border-left:1px solid #E1E9F6}
+.sw-ch .ic{width:26px;height:26px;border-radius:8px;background:#EAF1FF;
+  display:grid;place-items:center;font-size:13px}
+.sw-ch small{display:block;font:700 9px/1 'Inter',system-ui,sans-serif;letter-spacing:.9px;color:#6B7C99}
+.sw-ch b{display:block;font:800 14px/1.3 'Inter',system-ui,sans-serif;color:#0A1F44}
+.sb-ancre .chip{font:800 12px/1 'Inter',system-ui,sans-serif;color:#0A1F44;
+  border:1px solid #E1E9F6;border-radius:999px;padding:9px 13px;background:#FFFFFF;
+  box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05);white-space:nowrap}
+.sb-ancre .chip b{color:#0A1F44}
+.sw-b{
+  padding:10px 16px;border-radius:10px;cursor:pointer;border:none;
+  font:700 12.5px/1 'Inter',system-ui,sans-serif;letter-spacing:.3px;white-space:nowrap;
+}
+.sw-b-plein{background:#1B5FE0;color:#fff}
+.sw-b-plein:hover{background:#1750c4}
+.sw-b-vide{background:#FFFFFF;color:#1B5FE0;border:1.5px solid #1B5FE0}
+.sw-b-vide:hover{background:#EAF1FF}
+.connrow{ flex:0 0 auto;
+  flex-direction:row !important; flex-wrap:nowrap !important;
+  justify-content:flex-start !important; gap:8px; padding:0 !important; }
+.connrow .sw-b{ margin:0 !important; }
+.sw-avatar{
+  width:38px;height:38px;border-radius:11px;border:1px solid #E1E9F6;
+  background:#EEF3FB;display:grid;place-items:center;font-size:16px;flex:0 0 auto;cursor:pointer;
+}
+/* Le menu du profil, dessine ici — meme note que sur `swoge_blackjack.html` :
+   `swogeprofil.js` lit l ancien `#menu` (garde plus bas, cache) et dessine
+   `#gxMenu`. */
+.gx-menu{position:absolute;top:60px;right:14px;z-index:70;width:236px;
+  background:#FFFFFF;border:1px solid #E1E9F6;border-radius:14px;
+  box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05);padding:6px;display:flex;flex-direction:column;gap:1px}
+.gx-menu[hidden]{display:none}
+.gx-menu a{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:9px;
+  font:700 12px/1 'Inter',system-ui,sans-serif;color:#0B1B36;text-decoration:none}
+.gx-menu a:hover{background:#EAF1FF;color:#1B5FE0}
+.gx-menu .gx-sep{height:1px;background:#E1E9F6;margin:5px 2px}
+.gx-menu .gx-g{padding:9px 10px 4px;font:800 9px/1 'Inter',system-ui,sans-serif;
+  letter-spacing:1.1px;text-transform:uppercase;color:#6B7C99}
+.gx-menu .gx-g:first-child{padding-top:4px}
+.gx-menu{max-height:min(74vh,560px);overflow-y:auto;scrollbar-width:thin}
+.gx-menu a i{font-style:normal;font-size:14px;width:18px;text-align:center;flex:0 0 auto}
+@media(max-width:520px){ .gx-menu{right:8px;left:8px;width:auto} }
+@media (max-width:620px){
+  .sw-haut{ flex-wrap:wrap; row-gap:8px; }
+  .sw-marque{ order:1 }
+  nav.sb-ancre{ order:2; flex:0 0 auto; margin-left:auto }
+  .menubtn, #gxProfil{ order:3 }
+  .connrow{ order:4; flex:1 1 100% !important; justify-content:center !important }
+  .sw-chiffres{ order:5; flex:1 1 100% }
+}
+
+/* ==================== LES DEUX COTES DE LA MACHINE ====================
+   DEMANDE : « fait le pour spin html » — memes colonnes que sur
+   `swoge_blackjack.html`, en `position:fixed` puisque cette page ne
+   defile pas (voir la note plus haut). Cachees en dessous de 1360px, comme
+   sur blackjack : la machine et ses deux colonnes ne tiendraient plus a
+   l aise, et le jeu doit reprendre l ecran entier sur telephone/tablette —
+   c est aussi la ou `#scene` garde ses reglages mobiles, deja tres ajustes. */
+.sw-cote{ position:fixed; top:88px; left:14px; width:208px; z-index:45;
+  display:flex; flex-direction:column; gap:12px; }
+.sw-nav{background:#FFFFFF;border:1px solid #E1E9F6;border-radius:14px;
+  padding:8px; box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05)}
+.sw-nav a{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:10px;
+  font:600 13.5px/1 'Inter',system-ui,sans-serif;color:#0B1B36}
+.sw-nav a .ic{width:20px;text-align:center;font-size:15px;opacity:.75}
+.sw-nav a:hover{background:#EEF3FB}
+.sw-nav a.on{background:#EAF1FF;color:#1B5FE0}
+.sw-nav a.on .ic{opacity:1}
+.sw-reseaux{display:flex;gap:8px;justify-content:center;padding-top:4px}
+.sw-reseaux a{width:34px;height:34px;border-radius:10px;background:#FFFFFF;border:1px solid #E1E9F6;
+  display:grid;place-items:center;font-size:14px;color:#6B7C99}
+.sw-reseaux a:hover{color:#1B5FE0;border-color:#1B5FE0}
+.uni{position:relative;border-radius:14px;overflow:hidden;min-height:258px;
+  display:flex;flex-direction:column;justify-content:flex-end;background:#0A1F44;
+  box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05)}
+.uni img,.uni .film{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  object-position:center top;border:0;background:#0A1F44}
+@media (prefers-reduced-motion:reduce){ .uni .film{display:none} }
+.uni .voile{position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(8,24,58,0) 34%,rgba(8,24,58,.88) 74%,rgba(8,24,58,.97) 100%)}
+.uni .dit{position:relative;padding:14px;text-align:center}
+.uni b{display:block;font:900 20px/1 'Inter',system-ui,sans-serif;color:#fff;letter-spacing:.4px}
+.uni i{display:block;font-style:normal;font:600 11px/1.4 'Inter',system-ui,sans-serif;
+  color:rgba(255,255,255,.76);margin:5px 0 11px}
+.uni .sw-b{width:100%;background:rgba(255,255,255,.94);color:#0A1F44;
+  display:block;text-align:center;border-radius:10px}
+.sw-lat{ position:fixed; top:88px; right:14px; width:280px; z-index:45;
+  display:flex; flex-direction:column; gap:14px; }
+.sw-lat .carte{background:#FFFFFF;border:1px solid #E1E9F6;border-radius:14px;
+  box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05); overflow:hidden}
+.sw-solde{display:flex;align-items:center;gap:12px;padding:14px 16px}
+.sw-solde .ic{flex:0 0 auto;width:38px;height:38px;border-radius:11px;background:#EAF1FF;
+  display:grid;place-items:center;font-size:17px}
+.sw-solde .tx{min-width:0}
+.sw-solde .tx small{display:block;font:800 9.5px/1 'Inter',system-ui,sans-serif;
+  letter-spacing:1.1px;color:#6B7C99}
+.sw-solde .tx b{display:block;margin-top:4px;font:800 17px/1 'Inter',system-ui,sans-serif;
+  color:#0A1F44;font-variant-numeric:tabular-nums}
+.sw-lat .salon{position:relative;display:block;min-height:150px;overflow:hidden;background:#0A1F44}
+.sw-lat .salon img,.sw-lat .salon .film{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  object-position:34% 8%;border:0;background:#0A1F44}
+@media (prefers-reduced-motion:reduce){ .sw-lat .salon .film{display:none} }
+.sw-lat .salon .voile{position:absolute;inset:auto 0 0 0;height:58%;
+  background:linear-gradient(180deg,rgba(6,16,40,0) 0%,rgba(6,16,40,.86) 78%,rgba(6,16,40,.95) 100%)}
+.sw-lat .salon .dit{position:absolute;left:16px;right:16px;bottom:14px;
+  font:800 12px/1 'Inter',system-ui,sans-serif;letter-spacing:1.4px;color:#fff}
+.sw-lat .salon:hover img,.sw-lat .salon:hover .film{transform:scale(1.03)}
+.sw-lat .salon img,.sw-lat .salon .film{transition:transform .2s}
+@media (max-width:1360px){
+  .sw-cote, .sw-lat{ display:none }
+}
+
+/* ---- LE HUD DU JEU NE PASSE PAS SOUS LES COLONNES ----
+ * Meme defaut que l'echelle de jackpots du Spin : les colonnes flottent en
+ * `position:fixed`, elles ne retirent rien a la largeur de la fenetre, donc
+ * un HUD centre sur `50%` ou cale sur `left:0` glissait dessous. Ici il ne
+ * reste rien a rattraper apres coup : chaque piece du HUD est accrochee aux
+ * quatre variables de la boite du jeu (voir en tete de feuille), et suit
+ * donc la colonne du jeu a toutes les largeurs. */
 </style>
 </head>
 <body>
@@ -413,18 +583,48 @@ canvas{ touch-action:none; }
 <div id="tablette" aria-hidden="true"></div>
 <canvas id="c"></canvas>
 
-<div id="top" class="hud">
-  <span class="chip">Balance <b id="bal">—</b> $SWOGE</span>
-  <span class="chip" id="playersChip">👥 <b id="players">0</b></span>
-  <div id="spacer"></div>
+<!-- LA BARRE BLANCHE remplace l'ancienne barre sombre `#top`, qui etait la
+     navigation de cette page. Ce qu'elle garde, et pourquoi :
+       • le solde : la page le suit VRAIMENT, dans `#bal` ;
+       • connexion et inscription : la page sait vraiment connecter un
+         portefeuille et creer un compte par e-mail ;
+       • les quatre chiffres du serveur : lus sur `/vitrine.json`, et la
+         ligne se cache d'elle-meme si la lecture echoue.
+     Ce qu'elle PERD : la pastille « 👥 0 ». Aucune ligne de la page ne
+     l'a jamais mise a jour — c'etait un zero fixe qui avait l'air d'un
+     compteur de joueurs. On ne montre pas un chiffre qu'on ne tient pas.
+     Les quatre boutons caches de l'ancienne barre restent dans le fil : leurs
+     gestionnaires les cherchent par identifiant, et c'est desormais le menu
+     du profil qui ouvre les memes panneaux. -->
+<header class="sw-haut">
+  <a class="sw-marque" href="nexus.html" id="gxMonde">
+    <span class="sw-patte">🐾</span>
+    <span><b>SWOGE</b><i>WORLD</i></span>
+  </a>
+  <div class="sw-chiffres" id="gxChiffres" hidden>
+    <div class="sw-ch"><span class="ic">👤</span><span><small>PLAYERS</small><b data-n="joueurs">—</b></span></div>
+    <div class="sw-ch"><span class="ic">🎲</span><span><small>CASINO VOLUME</small><b data-n="volume">—</b></span></div>
+    <div class="sw-ch"><span class="ic">🎮</span><span><small>ROUNDS PLAYED</small><b data-n="manches">—</b></span></div>
+    <div class="sw-ch"><span class="ic">🏆</span><span><small>WINNINGS PAID</small><b data-n="rendus">—</b></span></div>
+  </div>
+  <nav class="sb-ancre">
+    <span class="chip">Balance <b id="bal">—</b> $SWOGE</span>
+  </nav>
+  <div class="connrow" id="connRow">
+    <button class="sw-b sw-b-vide" id="connectBtn">🔗 CONNECT WALLET</button>
+    <button class="sw-b sw-b-plein" id="emailBtn" title="Sign in with email">✉️ SIGN UP</button>
+  </div>
+  <button class="sw-avatar" id="gxProfil" type="button"
+          aria-haspopup="menu" aria-expanded="false" aria-label="Account menu">👤<span id="questDot"></span></button>
+  <div class="gx-menu" id="gxMenu" role="menu" hidden></div>
   <button class="btn ghost" id="depositBtn" style="display:none">Deposit</button>
   <button class="btn ghost" id="withdrawBtn" style="display:none">Withdraw</button>
   <button class="btn ghost" id="questBtn" style="display:none" title="Daily quests">🎯</button>
   <button class="btn ghost" id="stakeBtn" style="display:none" title="Stake $SWOGE">💰</button>
-  <button class="btn ghost" id="menuBtn">☰ Menu<span id="questDot"></span></button>
-  <button class="btn ghost" id="emailBtn" title="Sign in with email">✉️ Email</button>
-  <button class="btn" id="connectBtn">Connect wallet</button>
-</div>
+  <!-- Le hamburger reste, mais ne se voit plus : c'est desormais le profil qui
+       ouvre la meme liste. Meme note que `swoge_spin.html`. -->
+  <button class="menubtn" id="menuBtn" aria-label="Menu" hidden aria-hidden="true" tabindex="-1">☰</button>
+</header>
 <div id="stake" class="hud">
   <button class="btn ghost" id="stClose">✕</button>
   <h3>💰 STAKE $SWOGE</h3>
@@ -474,8 +674,13 @@ canvas{ touch-action:none; }
   <button class="qclear" id="qclear" title="clear queue">✕</button>
 </div>
 
-<!-- dropdown menu (like SWOGE Smash / Blackjack) -->
-<div class="pmenu" id="pmenu">
+<!-- L'ancien menu deroulant. Il n'est plus ouvert par un clic : il est LU
+     par `swogeprofil.js`, qui le redessine en clair dans `#gxMenu` et
+     renvoie le clic sur le lien d'origine. Il garde donc toutes ses
+     rangees, et son identifiant devient `#menu` — c'est celui que le
+     script lit. Seule « Close » est masquee : elle fermait CE menu-la, qui
+     ne s'ouvre plus (une rangee que la page cache reste cachee). -->
+<div class="pmenu" id="menu" hidden>
   <a id="mnWallet">👛 My Wallet</a>
   <a id="mnStake">🔒 Staking</a>
   <a id="mnDeposit">💰 Deposit</a>
@@ -487,14 +692,14 @@ canvas{ touch-action:none; }
   <a href="index.html">🏠 Home</a>
   <div class="msep"></div>
   <a id="mnSound">🔊 Sound: ON</a>
-  <a id="mnClose">✕ Close</a>
+  <a id="mnClose" style="display:none">✕ Close</a>
 </div>
 
 <div id="modal" class="hud">
   <div class="box" id="depBox">
 
     <div class="pscroll">
-    <div class="ptitle pt-deposit"></div>
+    <div class="ptitle pt-deposit">Deposit</div>
     <div class="note2">In your wallet: <b id="depSwoge">…</b> $SWOGE · <b id="depEth">…</b> ETH (RH)</div>
     <label>Amount</label>
     <input id="depAmt" inputmode="decimal" placeholder="e.g. 100" value="100">
@@ -509,7 +714,7 @@ canvas{ touch-action:none; }
   <div class="box" id="wdBox" style="display:none">
 
     <div class="pscroll">
-    <div class="ptitle pt-withdraw"></div>
+    <div class="ptitle pt-withdraw">Withdraw</div>
     <div class="note2">Game balance: <b id="wdBal">…</b> $SWOGE · min <b id="wdMin">50</b></div>
     <label>Amount</label>
     <input id="wdAmt" inputmode="decimal" placeholder="e.g. 50">
@@ -528,13 +733,13 @@ canvas{ touch-action:none; }
     <div class="row" style="margin-bottom:10px"><button class="btn" id="whMM" style="flex:1">🦊 Open in MetaMask →</button></div>
     <div class="row" style="margin-bottom:10px"><button class="btn" id="whEmail" style="flex:1;background:linear-gradient(135deg,#8ea2ff,#5b6ee6);color:#fff">✉️ Sign in with email (no app)</button></div>
     <div class="note" style="margin:6px 0 6px">Other wallets (Rabby, etc.): open the app → <b>Dapps / Browser</b> tab → paste this link:</div>
-    <div class="note"><b id="whUrl" style="color:#E6A537;word-break:break-all"></b></div>
+    <div class="note"><b id="whUrl" style="color:#1B5FE0;word-break:break-all"></b></div>
     <div class="row" style="margin-top:12px"><button class="btn ghost" id="whCopy" style="flex:1">Copy link</button><button class="btn ghost" id="whCancel">Close</button></div>
   </div>
   <div class="box" id="emailBox" style="display:none">
 
     <div class="pscroll">
-    <div class="ptitle pt-email"></div>
+    <div class="ptitle pt-email">Sign in with email</div>
     <div class="note2" id="emMsg">A wallet is created for you automatically — no app needed.</div>
     <label>Email</label>
     <input id="emEmail" type="email" inputmode="email" placeholder="your@email.com">
@@ -550,7 +755,7 @@ canvas{ touch-action:none; }
   <div class="box" id="accountBox" style="display:none">
 
     <div class="pscroll">
-    <div class="wtitle-plate"></div>
+    <div class="wtitle-plate">My Wallet</div>
     <label>Your address</label>
     <input id="acAddr" readonly style="width:100%">
     <button class="abtn wbtn wb-copy" id="acCopy" style="margin-top:8px">Copy</button>
@@ -564,6 +769,162 @@ canvas{ touch-action:none; }
   
   </div>
 </div>
+
+<!-- Les quatre chiffres de la vitrine, lus sur le serveur — meme script que
+     `swoge_blackjack.html`. -->
+<script>
+(function(){
+  "use strict";
+  var bloc = document.getElementById("gxChiffres");
+  if(!bloc) return;
+  function serveur(){
+    try{ var q=new URLSearchParams(location.search).get("server"); if(q)
+      return String(q).replace(/^ws/,"http"); }catch(e){}
+    return "https://web-production-220a3.up.railway.app";
+  }
+  function court(n){
+    n = Number(n) || 0;
+    var t = function(v, s){ return (Math.floor(v*10)/10).toFixed(1).replace(/\.0$/,"") + s; };
+    if(n >= 1e9) return t(n/1e9, "B");
+    if(n >= 1e6) return t(n/1e6, "M");
+    if(n >= 1e3) return t(n/1e3, "k");
+    return String(Math.floor(n));
+  }
+  fetch(serveur()+"/vitrine.json", { cache:"no-store" })
+    .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function(j){
+      [].forEach.call(bloc.querySelectorAll("b[data-n]"), function(b){
+        var v = j[b.getAttribute("data-n")];
+        b.textContent = (typeof v === "number" && isFinite(v)) ? court(v) : "—";
+      });
+      bloc.hidden = false;
+      if(typeof ajusteJeu === "function") ajusteJeu();
+    })
+    ['catch'](function(){ bloc.hidden = true; });
+})();
+</script>
+
+<aside class="sw-cote">
+  <nav class="sw-nav">
+    <a href="index.html"><span class="ic">&#127968;</span>Home</a>
+    <a href="games.html" class="on"><span class="ic">&#127920;</span>Casino</a>
+    <a href="swogebet.html"><span class="ic">&#9917;</span>Sports</a>
+    <a href="whitepaper.html"><span class="ic">&#128220;</span>Docs</a>
+  </nav>
+  <div class="sw-reseaux">
+    <a href="https://x.com/SwoleDogeSwoge" target="_blank" rel="noopener"
+       title="X — @SwoleDogeSwoge">&#120143;</a>
+    <a href="https://t.me/swoleswoge" target="_blank" rel="noopener"
+       title="Telegram — t.me/swoleswoge">&#9992;</a>
+    <a href="https://dexscreener.com/robinhood/0x2dc0fb72d9284228046cc95910eeaabebfe48456"
+       target="_blank" rel="noopener" title="Dexscreener — $SWOGE chart">&#128200;</a>
+  </div>
+  <article class="uni">
+    <video class="film" src="media/monde_carte.mp4" poster="img/site/monde_carte_poster.webp"
+           muted autoplay loop playsinline disablepictureinpicture
+           aria-hidden="true"></video><div class="voile"></div>
+    <div class="dit"><b>SWOGE WORLD</b><i>Meet. Explore. Own.</i>
+      <a class="sw-b" href="nexus.html">ENTER</a></div>
+  </article>
+</aside>
+
+<aside class="sw-lat">
+  <!-- Le solde, pas une cagnotte inventee — meme note que `swoge_blackjack.html` :
+       ce jeu n a ni cagnotte commune ni flux de gagnants a montrer, seulement
+       le solde, deja suivi par `#bal`. -->
+  <div class="carte sw-solde">
+    <span class="ic">&#128176;</span>
+    <span class="tx"><small>YOUR BALANCE</small><b id="swSoldeCarte">&mdash;</b></span>
+  </div>
+  <a class="carte salon" href="swoge_blackjack.html">
+    <img src="img/site/jeu_blackjack.webp" alt="" loading="lazy">
+    <span class="voile"></span>
+    <span class="dit">GOLD TABLE &nbsp;&rarr;</span>
+  </a>
+  <a class="carte salon" href="swogebet.html">
+    <video class="film" src="media/doge_sport.mp4" poster="img/site/doge_sport_poster.webp"
+           muted autoplay loop playsinline disablepictureinpicture
+           aria-label="SWOGE Sports"></video>
+    <span class="voile"></span>
+    <span class="dit">SWOGE SPORTS &mdash; BET NOW &nbsp;&rarr;</span>
+  </a>
+</aside>
+
+<!-- ---- LA BOITE DU JEU EST MESUREE, PAS DEVINEE ----
+     Cette page ne defile jamais : la barre et les deux colonnes flottent en
+     `position:fixed` par-dessus l'ecran et ne retirent rien a la largeur de
+     la fenetre. Le plateau, lui, doit se retirer de dessous — sinon la barre
+     lui couvre le haut de la table et les colonnes lui couvrent les bords.
+
+     On MESURE les quatre retraits plutot que de les ecrire en dur : la barre
+     change de hauteur (elle s'empile sur telephone etroit, et la ligne des
+     quatre chiffres n'apparait qu'une fois `vitrine.json` lu), les colonnes
+     disparaissent en dessous de 1360px, et `stakebubble.js` ajoute sa propre
+     barre Play/Bets/Chests/Profile TOUT EN BAS, apres coup — le meme remede
+     que sur `swoge_spin.html`, dont ce script est la copie adaptee.
+
+     Les quatre valeurs partent dans des variables CSS : tout le HUD s'y
+     accroche, et le rendu WebGL les relit par `window.JEU`. -->
+<script>
+function ajusteJeu(){
+  var r = document.documentElement;
+  var h = document.querySelector(".sw-haut");
+  var haut = h ? Math.round(h.getBoundingClientRect().height) : 0;
+  var bb = document.querySelector(".swbb");
+  var bas = bb ? Math.round(bb.getBoundingClientRect().height) : 0;
+  /* Une colonne cachee mesure zero : on lit sa boite plutot que d'interroger
+     la largeur de la fenetre, pour que le seuil ne soit ecrit qu'UNE fois —
+     dans la feuille de style, avec le reste des colonnes. */
+  function retrait(sel, droite){
+    var e = document.querySelector(sel); if(!e) return 0;
+    var b = e.getBoundingClientRect(); if(!(b.width > 0)) return 0;
+    return Math.max(0, Math.round(droite ? (window.innerWidth - b.left + 14) : (b.right + 14)));
+  }
+  var g = retrait(".sw-cote", false), d = retrait(".sw-lat", true);
+  r.style.setProperty("--jh", haut + "px");
+  r.style.setProperty("--jb", bas  + "px");
+  r.style.setProperty("--jg", g    + "px");
+  r.style.setProperty("--jd", d    + "px");
+  window.JEU = { w: Math.max(1, Math.round(window.innerWidth  - g - d)),
+                 h: Math.max(1, Math.round(window.innerHeight - haut - bas)) };
+  if(typeof redimJeu === "function") redimJeu();
+}
+ajusteJeu();
+window.addEventListener("load", ajusteJeu);
+window.addEventListener("resize", ajusteJeu);
+window.addEventListener("orientationchange", ajusteJeu);
+new MutationObserver(ajusteJeu).observe(document.querySelector(".sw-haut"), { childList:true, subtree:true, attributes:true });
+/* `.swbb` n'existe pas encore au chargement : `stakebubble.js` l'ajoute a
+   `document.body` une fois son propre etat pret. On la guette, puis on la
+   suit (elle peut gagner ou perdre une ligne selon la largeur). */
+(function(){
+  var vu = null;
+  new MutationObserver(function(){
+    var bb = document.querySelector(".swbb");
+    if(bb && bb !== vu){
+      vu = bb;
+      ajusteJeu();
+      if(window.ResizeObserver) new ResizeObserver(ajusteJeu).observe(bb);
+    }
+  }).observe(document.body, { childList:true });
+})();
+</script>
+
+<!-- La carte « YOUR BALANCE » recopie #bal, jamais l inverse. -->
+<script>
+(function(){
+  "use strict";
+  var source = document.getElementById("bal");
+  var cible = document.getElementById("swSoldeCarte");
+  if(!source || !cible) return;
+  function copie(){
+    var t = (source.textContent || "").trim();
+    cible.textContent = t === "—" ? t : t + " $SWOGE";
+  }
+  copie();
+  new MutationObserver(copie).observe(source, { childList:true, characterData:true, subtree:true });
+})();
+</script>
 
 <script>
 "use strict";
@@ -599,6 +960,16 @@ var VAULT_ABI = [
 ];
 
 var $=function(s){return document.querySelector(s);};
+/* ---- LA SCENE SE MESURE SUR LA COLONNE DU JEU ----
+ * Elle prenait `innerWidth`/`innerHeight` : la fenetre ENTIERE. Depuis que la
+ * barre blanche et les deux colonnes se posent par-dessus, ce n'est plus la
+ * place dont le plateau dispose — le rendu se serait etire et le haut de la
+ * table serait passe sous la barre. `ajusteJeu()` (plus haut dans la page)
+ * mesure la boite reelle et la depose dans `window.JEU` ; on la lit ici. Le
+ * repli sur la fenetre entiere sert si le script n'a pas encore tourne. */
+function jeuW(){ return (window.JEU && window.JEU.w) || innerWidth; }
+function jeuH(){ return (window.JEU && window.JEU.h) || innerHeight; }
+function redimJeu(){ if(!renderer) return; renderer.setSize(jeuW(),jeuH()); fitCamera(); }
 function toast(m){var t=$("#toast");t.textContent=m;t.classList.add("show");clearTimeout(toast._t);toast._t=setTimeout(function(){t.classList.remove("show");},2600);}
 function setStatus(m){ var s=$("#status"); s.textContent=m||""; s.style.display=m?"":"none"; }
 
@@ -612,11 +983,11 @@ var plaqueGeo, plaqueTopMat, plaqueSideMat;   // prize coins render as rectangul
 
 function initScene(){
   scene=new THREE.Scene();
-  camera=new THREE.PerspectiveCamera(52, innerWidth/innerHeight, 0.1, 200);
+  camera=new THREE.PerspectiveCamera(52, jeuW()/jeuH(), 0.1, 200);
   fitCamera();
   renderer=new THREE.WebGLRenderer({canvas:$("#c"),antialias:true});
   renderer.setPixelRatio(Math.min(devicePixelRatio,2));
-  renderer.setSize(innerWidth,innerHeight);
+  renderer.setSize(jeuW(),jeuH());
   if("outputEncoding" in renderer) renderer.outputEncoding=THREE.sRGBEncoding;
 
   scene.add(new THREE.AmbientLight(0xffffff,0.85));
@@ -697,7 +1068,7 @@ function initScene(){
      deborde du cercle tombe hors de la piece. */
   L.load("img/cp_face.webp",function(t){ if(sRGB)t.encoding=sRGB; faceMat.map=t; faceMat.color.set(0xffffff); faceMat.needsUpdate=true; });
 
-  addEventListener("resize",function(){ renderer.setSize(innerWidth,innerHeight); fitCamera(); });
+  addEventListener("resize",function(){ if(typeof ajusteJeu==="function") ajusteJeu(); redimJeu(); });
   animate();
 }
 
@@ -705,7 +1076,7 @@ function initScene(){
 // and aim further forward so the empty back shelf falls out of frame and the
 // action (pile + pusher + front lip) fills the screen.
 function fitCamera(){
-  var aspect=innerWidth/innerHeight;
+  var aspect=jeuW()/jeuH();
   camera.aspect=aspect;
   if(aspect<0.75){            // portrait phone — steep, close, aimed at the front bed
     camera.fov=58; camera.position.set(0, 9.0, 9.5); camera.lookAt(0, -0.3, 1.2);
@@ -920,8 +1291,8 @@ function renderStake(){
   $("#stUnlocked").textContent=fmtBig(stUnlocked);
   var el=$("#stLock");
   if(stLocked>0){ var when=stNextUnlock?new Date(stNextUnlock).toLocaleDateString():"—";
-    el.innerHTML="🔒 "+fmtBig(stLocked)+" locked until "+when+" — unstaking now forfeits "+(stPenaltyBps/100)+"% of the locked part."; el.style.color="#FF8A5B"; }
-  else if(stStaked>0){ el.textContent="✅ All unlocked — unstake with no penalty."; el.style.color="#7CFF9B"; }
+    el.innerHTML="🔒 "+fmtBig(stLocked)+" locked until "+when+" — unstaking now forfeits "+(stPenaltyBps/100)+"% of the locked part."; el.style.color="#E0443E"; }
+  else if(stStaked>0){ el.textContent="✅ All unlocked — unstake with no penalty."; el.style.color="#0E7C3E"; }
   else { el.textContent=""; }
 }
 setInterval(function(){ if($("#stake").classList.contains("show")) $("#stPending").textContent=fmtYield(livePending()); },250);
@@ -1154,7 +1525,7 @@ async function doLogout(){
   $("#addr").style.display="none";
   $("#connectBtn").style.removeProperty("display"); $("#connectBtn").textContent="Connect wallet";
   var eb=$("#emailBtn"); if(eb) eb.style.removeProperty("display");
-  $("#qbar").style.display="none"; $("#pmenu").classList.remove("open");
+  $("#qbar").style.display="none"; $("#menu").classList.remove("open");
   ["#stake","#quests","#lb"].forEach(function(s){ $(s).classList.remove("show"); });
   setBalance("0"); closeModal(); syncJackpot(); toast("Disconnected");
 }
@@ -1179,12 +1550,12 @@ $("#acDeposit").onclick=function(){ openModal("dep"); };
 $("#acLogout").onclick=doLogout;
 
 /* ☰ dropdown menu (like Smash / Blackjack) */
-$("#menuBtn").onclick=function(e){ e.stopPropagation(); $("#pmenu").classList.toggle("open"); };
-document.addEventListener("click",function(e){ var p=$("#pmenu"); if(p&&p.classList.contains("open")&&!p.contains(e.target)&&e.target!==$("#menuBtn")) p.classList.remove("open"); });
-$("#pmenu").addEventListener("click",function(){ $("#pmenu").classList.remove("open"); });
-$("#mnClose").onclick=function(){ $("#pmenu").classList.remove("open"); };
+$("#menuBtn").onclick=function(e){ e.stopPropagation(); $("#menu").classList.toggle("open"); };
+document.addEventListener("click",function(e){ var p=$("#menu"); if(p&&p.classList.contains("open")&&!p.contains(e.target)&&e.target!==$("#menuBtn")) p.classList.remove("open"); });
+$("#menu").addEventListener("click",function(){ $("#menu").classList.remove("open"); });
+$("#mnClose").onclick=function(){ $("#menu").classList.remove("open"); };
 // account actions need a wallet — prompt to connect if not (like Smash/Blackjack)
-function menuNeedAuth(){ if(!authed){ $("#pmenu").classList.remove("open"); toast("connect your wallet first"); connectWallet(); return false; } return true; }
+function menuNeedAuth(){ if(!authed){ $("#menu").classList.remove("open"); toast("connect your wallet first"); connectWallet(); return false; } return true; }
 $("#mnWallet").onclick=function(){ if(menuNeedAuth()) openAccount(); };
 $("#mnDeposit").onclick=function(){ if(menuNeedAuth()) openModal("dep"); };
 $("#mnWithdraw").onclick=function(){ if(menuNeedAuth()) openModal("wd"); };
@@ -1267,7 +1638,7 @@ setInterval(drainTick,55); // ~18 coins/sec, throttled by the table's capacity
 /* tap anywhere (except UI) = queue one coin */
 (function(){
   var sx=0,sy=0,moved=false,st=0;
-  function isUI(t){ return t&&t.closest&&t.closest("button,input,.box,#top,#modal,#qbar,#ticker,#jackpot,#lb,#quests,#stake,#addr"); }
+  function isUI(t){ return t&&t.closest&&t.closest("button,input,a,.box,.sw-haut,.sw-cote,.sw-lat,.gx-menu,#menu,#modal,#qbar,#ticker,#jackpot,#lb,#quests,#stake,#addr"); }
   addEventListener("pointerdown",function(e){ sx=e.clientX;sy=e.clientY;moved=false;st=Date.now(); },true);
   addEventListener("pointermove",function(e){ if(Math.abs(e.clientX-sx)>12||Math.abs(e.clientY-sy)>12)moved=true; },true);
   addEventListener("pointerup",function(e){

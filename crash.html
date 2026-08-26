@@ -164,10 +164,14 @@ canvas{ touch-action:none; }
   .connectbtn{font-family:'Archivo',sans-serif;font-weight:800;font-size:16px;color:var(--ink);
     background:linear-gradient(135deg,var(--gold2),var(--gold));border:none;cursor:pointer;padding:14px 34px;border-radius:14px}
 
-  .fair{font-size:11px;color:var(--muted);text-align:center;padding:2px 0 6px;word-break:break-all}
-  .fair b{color:#cdbf9f}
-  footer{border-top:1px solid var(--line);padding:20px 16px 40px;text-align:center;color:var(--muted);font-size:12px}
-  footer a{color:var(--gold)}
+  /* `.fair` et le pied de page vivent SUR le fond clair, pas sur le tapis :
+     leurs couleurs (or `--gold`, creme `--muted`) etaient pensees pour du noir
+     et tombaient a 1,8:1 sur #EEF3FB. Reprises des jetons deja poses par la
+     conversion (`#6B7C99` etiquette, `#0A1F44` valeur, `#1B5FE0` lien). */
+  .fair{font-size:11px;color:#6B7C99;text-align:center;padding:2px 0 6px;word-break:break-all}
+  .fair b{color:#0A1F44}
+  footer{border-top:1px solid #E1E9F6;padding:20px 16px 40px;text-align:center;color:#6B7C99;font-size:12px}
+  footer a{color:#1B5FE0}
   .statusdot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;background:#555;vertical-align:middle}
   .statusdot.on{background:var(--green);box-shadow:0 0 8px var(--green)}
   .statusdot.off{background:var(--red);box-shadow:0 0 8px var(--red)}
@@ -494,8 +498,11 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
 .cr-reglages{ display:flex; gap:10px; justify-content:center; align-items:flex-end;
   flex-wrap:wrap; margin:14px auto 0; }
 .cr-groupe{ text-align:center; }
+/* Ces etiquettes sont posees SUR LA PAGE, pas sur le plateau : l'or #C9A24A y
+   tombait a 2,0:1. `#6B7C99` est deja l'etiquette discrete de cette page
+   (`.sw-ch small`, `.sw-solde small`, `#box-dep label`). */
 .cr-groupe .lb{ font-size:10px; letter-spacing:1.4px; text-transform:uppercase;
-  color:#C9A24A; margin-bottom:4px; font-weight:800; }
+  color:#6B7C99; margin-bottom:4px; font-weight:800; }
 .cr-mise{ display:inline-flex; align-items:center; gap:8px; padding:7px 14px;
   border-radius:11px; border:1px solid rgba(231,201,122,.45);
   background:rgba(12,10,7,.72); font-family:'Orbitron',sans-serif;
@@ -532,7 +539,7 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
 .cr-btn:active{ transform:translateY(2px) scale(.985); }
 .cr-btn[disabled]{ opacity:.34; cursor:not-allowed; filter:grayscale(.5); }
 
-.cr-note{ text-align:center; font-size:clamp(11px,2.7cqi,13px); color:var(--dim);
+.cr-note{ text-align:center; font-size:clamp(11px,2.7cqi,13px); color:#0B1B36;
   margin-top:9px; line-height:1.45; }
 
 /* ---- la table : qui a mise, qui est sorti ----
@@ -567,16 +574,22 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
 .cr-liste .l.perdu .m{ color:#F2685E; }
 .cr-liste .l.moi{ background:rgba(255,214,120,.09); border-radius:5px; }
 .cr-liste .vide{ text-align:center; color:#7a6437; padding:14px 0; font-size:12px; }
-.cr-tete{ text-align:center; font-size:12px; color:#cdbf9f; margin-bottom:6px; }
-.cr-tete b{ color:#ffe680; font-family:'Orbitron',sans-serif; }
-.cr-tete .ok{ color:#7CFF9B; font-weight:800; }
+/* Meme cas : l'entete de la table et son titre sont AU-DESSUS du panneau, sur
+   le fond clair. Creme 1,6:1, or 2,0:1, vert menthe 1,1:1 — tout est repris. */
+.cr-tete{ text-align:center; font-size:12px; color:#6B7C99; margin-bottom:6px; }
+.cr-tete b{ color:#0A1F44; font-family:'Orbitron',sans-serif; }
+.cr-tete .ok{ color:#0E7C3E; font-weight:800; }
 .cr-titrelist{ text-align:center; font-size:11px; letter-spacing:1.3px;
-  text-transform:uppercase; color:#C9A24A; font-weight:800; margin-bottom:5px; }
+  text-transform:uppercase; color:#6B7C99; font-weight:800; margin-bottom:5px; }
 
 /* ---- l'engagement de la chaine ---- */
+/* `var(--dim)` n'est defini nulle part : la declaration etait invalide et la
+   couleur retombait sur l'heritage, c'est-a-dire l'encre de page. On ECRIT
+   cette encre, plutot que de dependre d'une variable absente — et surtout on
+   ne profite pas du passage pour eclaircir un texte qui se lisait deja. */
 .cr-chaine{ max-width:620px; margin:12px auto 0; text-align:center;
-  font-size:11px; color:var(--dim); line-height:1.5; word-break:break-all; }
-.cr-chaine b{ color:#C9A24A; }
+  font-size:11px; color:#0B1B36; line-height:1.5; word-break:break-all; }
+.cr-chaine b{ color:#1B5FE0; }
 </style>
 <style>
 /* ==================== LA NOUVELLE BARRE, BLANCHE ====================
@@ -609,6 +622,13 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   border-radius:12px; scrollbar-width:none;
 }
 .sw-chiffres::-webkit-scrollbar{display:none}
+/* La bande de stats ne pouvait pas se cacher : le script d'echec pose
+   `bloc.hidden = true`, mais `.sw-chiffres{display:flex}` est une regle
+   d'AUTEUR et l'emporte sur le `[hidden]{display:none}` du navigateur.
+   Quand le fetch de /vitrine.json echouait, la bande restait donc a
+   l'ecran avec ses quatre tirets — l'allure d'un compteur en direct sans
+   compteur derriere. Une ligne, et l'intention du script tient. */
+.sw-chiffres[hidden]{display:none}
 .sw-ch{display:flex;align-items:center;gap:8px;padding:0 12px;flex:0 0 auto}
 .sw-ch+.sw-ch{border-left:1px solid #E1E9F6}
 .sw-ch .ic{width:26px;height:26px;border-radius:8px;background:#EAF1FF;
@@ -744,7 +764,11 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 #box-quests .qscroll { max-height:calc(88vh - 96px); overflow-y:auto; padding:26px 30px 14px; scrollbar-width:none; -ms-overflow-style:none; }
 #box-quests .qscroll::-webkit-scrollbar { width:0; height:0; display:none; }
 .quest { border:1px solid #E1E9F6; border-radius:12px; padding:10px 12px; margin-bottom:8px; background:#EEF3FB; }
-.quest .qh { display:flex; justify-content:center; text-align:center; font-size:13px; margin-bottom:6px; }
+/* LE LIBELLE DE LA QUETE ETAIT INVISIBLE. Le bloc sombre plus haut lui donne
+   `color:var(--text)` — un creme #F7EEDA — et ce bloc clair redecrivait
+   `.quest .qh` SANS couleur : le creme restait, pose sur une carte #EEF3FB.
+   Mesure : 1,04:1, soit rien du tout. Le libelle revient a l'encre de page. */
+.quest .qh { display:flex; justify-content:center; text-align:center; font-size:13px; margin-bottom:6px; color:#0B1B36; }
 .quest .qh .qr { color:#1B5FE0; font-weight:700; }
 .quest .qbar { height:6px; background:rgba(255,255,255,.1); border-radius:6px; overflow:hidden; margin-bottom:8px; }
 .quest .qbar i { display:block; height:100%; background:linear-gradient(90deg,#ffe680,#f2a900); }

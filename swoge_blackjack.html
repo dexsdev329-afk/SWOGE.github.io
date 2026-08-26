@@ -926,6 +926,13 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   border-radius:12px; scrollbar-width:none;
 }
 .sw-chiffres::-webkit-scrollbar{display:none}
+/* La bande de stats ne pouvait pas se cacher : le script d'echec pose
+   `bloc.hidden = true`, mais `.sw-chiffres{display:flex}` est une regle
+   d'AUTEUR et l'emporte sur le `[hidden]{display:none}` du navigateur.
+   Quand le fetch de /vitrine.json echouait, la bande restait donc a
+   l'ecran avec ses quatre tirets — l'allure d'un compteur en direct sans
+   compteur derriere. Une ligne, et l'intention du script tient. */
+.sw-chiffres[hidden]{display:none}
 .sw-ch{display:flex;align-items:center;gap:8px;padding:0 12px;flex:0 0 auto}
 .sw-ch+.sw-ch{border-left:1px solid #E1E9F6}
 .sw-ch .ic{width:26px;height:26px;border-radius:8px;background:#EAF1FF;

@@ -68,42 +68,66 @@ canvas{ touch-action:none; }
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.13.3/dist/index.umd.js"></script>
 <style>
-:root{--cream:#EAF2FF;--dim:#8DA0C4;--fur:#EAD2A0;--gold:#FFC53D;--goldlite:#FFD971;--line:#23304F;--void:#070B14;--void2:#0F1626;--signal:#6FD1C4;--danger:#FF4655;--ink:#0B1220}
-/* ---- Light theme (Pons-style clean white) ---- */
-body.light{--cream:#1A160D;--dim:#7E8CA8;--fur:#3A4459;--gold:#D9902A;--goldlite:#FFC53D;--line:#E7E2D6;--void:#FFFFFF;--void2:#FAF8F2;--signal:#0E9E8E;--danger:#DC4B45;--ink:#FFFFFF;background:radial-gradient(circle at 22% 8%,rgba(217,144,42,.10),transparent 42%),radial-gradient(circle at 88% 92%,rgba(217,144,42,.05),transparent 45%),var(--void)}
-body.light .panel{box-shadow:0 8px 26px rgba(120,110,80,.10)}
-body.light .thumb.ph{background:linear-gradient(135deg,#F3EEE1,#E7DFCB)}
-body.light .tcard:hover{box-shadow:0 10px 24px rgba(120,110,80,.16)}
-body.light .tcard .tgrad,body.light .tcard .tdex,body.light .trend-card .trank{background:rgba(255,255,255,.9)}
-body.light .trend-card{background:linear-gradient(160deg,#FFFFFF,var(--void2))}
-body.light .trend-card:hover{box-shadow:0 16px 34px rgba(255,107,53,.16),0 6px 16px rgba(120,110,80,.14)}
-body.light .trend-card::after{background:linear-gradient(100deg,transparent,rgba(0,0,0,.05),transparent)}
-body.light .heroBanner,body.light #heroBanner{box-shadow:0 10px 28px rgba(120,110,80,.14)}
+/* ==================== LA PALETTE PASSE AU CLAIR ====================
+ * CE QU IL Y AVAIT ICI : DEUX jeux de variables qui se contredisaient. Un
+ * `:root` sombre (--void:#070B14, --cream:#EAF2FF, --ink:#0B1220) et, juste
+ * dessous, un `body.light` clair (--void:#FFFFFF, --cream:#1A160D,
+ * --ink:#FFFFFF). MESURE avant edition : la classe `light` n etait posee sur
+ * <body> que si `localStorage.swogeTheme === "light"` ; au premier
+ * chargement elle ne l etait pas, donc c est le `:root` SOMBRE qui gagnait
+ * la cascade et la page s ouvrait noire. Une conversion au clair avait donc
+ * ete commencee ici, puis laissee derriere un bouton que personne ne voit.
+ *
+ * PLUTOT QU UNE TROISIEME COUCHE : le `:root` porte maintenant LUI-MEME la
+ * palette claire, et le bloc `body.light` (ainsi que le bouton de theme et
+ * son script, plus bas) est retire. La bascule sombre ne pouvait de toute
+ * facon plus tenir : la barre blanche et les deux colonnes sont ecrites en
+ * hex litteral, sans variante sombre — on aurait obtenu une page mi-blanche
+ * mi-noire au premier clic.
+ *
+ * TROIS declarations de fond de page existaient (`body.light{background:...}`,
+ * `html,body{background:var(--void)}` et un `body{background:radial-gradient(
+ * ...),var(--void)}` qui repassait par-dessus). Les deux dernieres sont ici :
+ * la premiere devient le fond clair du systeme, la seconde est SUPPRIMEE —
+ * ses deux halos or n avaient de sens que sur du noir, et une regle de meme
+ * specificite posee plus loin aurait rendu le noir sans qu on le voie venir.
+ * Il n y a ni `body::before` ni `html::before` sur cette page (verifie au
+ * grep) ; le seul calque plein ecran est le `html::after` en `screen` du
+ * bloc commun, qui sur du clair ne change presque rien. */
+:root{--cream:#0B1B36;--dim:#6B7C99;--fur:#0A1F44;--gold:#1B5FE0;--goldlite:#1750C4;--line:#E1E9F6;--void:#F6F9FE;--void2:#FFFFFF;--signal:#0E7C6B;--danger:#E0443E;--ink:#FFFFFF}
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{background:var(--void);color:var(--cream);font-family:'Archivo',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
-body{min-height:100vh;background:radial-gradient(circle at 22% 8%,rgba(255,197,61,.14),transparent 42%),radial-gradient(circle at 88% 92%,rgba(255,197,61,.08),transparent 45%),var(--void)}
+html,body{background:#EEF3FB;color:#0B1B36;font-family:'Archivo',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+body{min-height:100vh}
 a{color:var(--gold);text-decoration:none}
-.wrap{max-width:820px;margin:0 auto;padding:22px 16px 90px}
-header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+/* `container-type:inline-size` : les colonnes retrecissent la colonne du
+   milieu, alors que `vw` et `@media` mesurent la FENETRE. Tout ce qui suit
+   et qui vit dans ce wrap se mesure donc sur le wrap (`cqi`, `@container`),
+   memes coefficients qu avant — l allure sans colonnes ne bouge pas. */
+.wrap{max-width:820px;margin:0 auto;padding:22px 16px 90px;container-type:inline-size}
+/* Le `header{...}` nu est retire : le <header> de la page est desormais
+   `.sw-haut`, la barre blanche commune, et un selecteur d element l aurait
+   rattrape par-dessous (`justify-content:space-between`, `margin-bottom`)
+   sans qu aucune regle de `.sw-haut` ne le corrige. */
 .brand{display:flex;align-items:center;gap:11px}
 .brand .logo{width:44px;height:44px;border-radius:11px;border:1px solid var(--line)}
-.brand h1{font-family:'Anton',sans-serif;font-size:clamp(22px,4vw,34px);line-height:.95}
+.brand h1{font-family:'Anton',sans-serif;font-size:clamp(22px,4cqi,34px);line-height:.95}
 .brand h1 span{color:var(--gold)}
 .brand .sub{font-family:'Space Mono',monospace;font-size:11px;color:var(--dim);letter-spacing:2px;text-transform:uppercase}
-nav{display:flex;gap:8px;flex-wrap:wrap}
-nav a,.walletbtn{font-family:'Space Mono',monospace;font-size:12px;padding:8px 12px;border:1px solid var(--line);border-radius:999px;color:var(--fur);cursor:pointer;background:transparent}
-nav a:hover,.walletbtn:hover{border-color:var(--gold);color:var(--gold)}
+/* Les trois regles `nav ...` sont retirees avec l ancienne navigation : le
+   seul <nav> restant est `.sw-nav`, dans la colonne de gauche, et `nav a`
+   lui posait une pilule bordee que `.sw-nav a` ne defaisait pas (bordure et
+   fond ne figurent pas dans `.sw-nav a`, ils seraient passes au travers). */
 .tabs{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
 .tab{font-family:'Space Mono',monospace;font-size:12px;letter-spacing:.06em;text-transform:uppercase;padding:10px 16px;border:1px solid var(--line);border-radius:11px;background:var(--void2);color:var(--dim);cursor:pointer}
 .tab.on{background:var(--gold);color:var(--ink);border-color:var(--gold)}
-.panel{background:var(--void2);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:16px;box-shadow:0 14px 36px rgba(0,0,0,.4)}
+.panel{background:var(--void2);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:16px;box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05)}
 .panel h2{font-family:'Space Mono',monospace;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:14px}
 label{display:block;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--dim);margin:0 0 6px}
 input,select{width:100%;font-family:'Archivo',sans-serif;font-weight:600;font-size:15px;padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:var(--void);color:var(--cream);outline:none}
 input:focus,select:focus{border-color:var(--gold)}
 .field{margin-bottom:13px}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-@media(max-width:560px){.two{grid-template-columns:1fr}}
+@container (max-width:560px){.two{grid-template-columns:1fr}}
 .btn{font-family:'Archivo',sans-serif;font-weight:800;font-size:14px;padding:12px 15px;border-radius:11px;border:1px solid var(--line);background:var(--void2);color:var(--cream);cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:7px;justify-content:center}
 .btn:hover{border-color:var(--gold);color:var(--gold)}
 .btn.primary{background:var(--gold);color:var(--ink);border-color:var(--gold)}
@@ -122,9 +146,9 @@ input:focus,select:focus{border-color:var(--gold)}
 .socials a:hover{border-color:var(--gold);color:var(--gold)}
 .tlogo{width:40px;height:40px;border-radius:9px;object-fit:cover;border:1px solid var(--line);flex:0 0 auto;background:var(--void)}
 .tlogo.big{width:52px;height:52px;border-radius:11px}
-.wpick{position:fixed;inset:0;background:rgba(0,0,0,.62);display:none;align-items:center;justify-content:center;z-index:70;padding:16px}
+.wpick{position:fixed;inset:0;background:rgba(11,27,54,.45);display:none;align-items:center;justify-content:center;z-index:70;padding:16px}
 .wpick.show{display:flex}
-.wpick .box{background:var(--void2);border:1px solid var(--line);border-radius:16px;padding:18px;width:min(360px,92vw);box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.wpick .box{background:var(--void2);border:1px solid var(--line);border-radius:16px;padding:18px;width:min(360px,92vw);box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05)}
 .wpick h3{font-family:'Anton',sans-serif;font-size:20px;margin-bottom:14px}
 .wpick .wrow{display:flex;align-items:center;gap:12px;padding:12px 13px;border:1px solid var(--line);border-radius:11px;margin-bottom:8px;cursor:pointer;background:var(--void);transition:.12s}
 .wpick .wrow:hover{border-color:var(--gold)}
@@ -142,19 +166,19 @@ input:focus,select:focus{border-color:var(--gold)}
 .card:hover{border-color:var(--gold)}
 /* explore grid (pro card layout) */
 .tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
-@media(max-width:420px){.tgrid{grid-template-columns:repeat(2,1fr);gap:10px}}
+@container (max-width:420px){.tgrid{grid-template-columns:repeat(2,1fr);gap:10px}}
 .tcard{background:var(--void);border:1px solid var(--line);border-radius:14px;padding:9px;cursor:pointer;transition:.15s;position:relative}
-.tcard:hover{border-color:var(--gold);transform:translateY(-2px);box-shadow:0 10px 24px rgba(0,0,0,.35)}
+.tcard:hover{border-color:var(--gold);transform:translateY(-2px);box-shadow:0 10px 24px rgba(11,27,54,.10)}
 .thumbwrap{position:relative;width:100%;aspect-ratio:1;border-radius:11px;overflow:hidden;border:1px solid var(--line)}
 .thumb{width:100%;height:100%}
-.thumb.ph{display:flex;align-items:center;justify-content:center;font-family:'Anton',sans-serif;font-size:34px;color:var(--gold);background:linear-gradient(135deg,#0D1422,#23304F)}
+.thumb.ph{display:flex;align-items:center;justify-content:center;font-family:'Anton',sans-serif;font-size:34px;color:var(--gold);background:linear-gradient(135deg,#EAF1FF,#D6E5FA)}
 .thumb.ov{position:absolute;inset:0;object-fit:cover}
 .tcard .tnm{font-family:'Anton',sans-serif;font-size:16px;margin-top:8px;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tcard .tsy{font-family:'Space Mono',monospace;font-size:11px;color:var(--gold);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tcard .tmc{font-family:'Space Mono',monospace;font-size:13px;font-weight:700;color:var(--signal);margin-top:5px}
 .tcard .tmc small{color:var(--dim);font-weight:400;font-size:10px}
-.tcard .tgrad{position:absolute;top:13px;left:13px;font-family:'Space Mono',monospace;font-size:9px;padding:2px 6px;border-radius:6px;background:rgba(7,11,20,.75);color:var(--signal);border:1px solid rgba(111,209,196,.4)}
-.tcard .tdex{position:absolute;top:13px;right:13px;width:26px;height:26px;border-radius:8px;background:rgba(7,11,20,.8);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:13px}
+.tcard .tgrad{position:absolute;top:13px;left:13px;font-family:'Space Mono',monospace;font-size:9px;padding:2px 6px;border-radius:6px;background:rgba(255,255,255,.92);color:var(--signal);border:1px solid rgba(14,124,107,.35)}
+.tcard .tdex{position:absolute;top:13px;right:13px;width:26px;height:26px;border-radius:8px;background:rgba(255,255,255,.92);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:13px}
 .tcard .tdex:hover{border-color:var(--gold)}
 .sortseg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
 .sortseg button{font-family:'Space Mono',monospace;font-size:11px;padding:7px 11px;background:transparent;color:var(--dim);border:0;cursor:pointer;white-space:nowrap}
@@ -162,23 +186,23 @@ input:focus,select:focus{border-color:var(--gold)}
 .count{font-family:'Space Mono',monospace;font-size:11px;color:var(--dim);background:var(--void);border:1px solid var(--line);border-radius:999px;padding:3px 10px;margin-left:8px;vertical-align:middle}
 /* ---- Trending ---- */
 .totvol{font-family:'Space Mono',monospace;font-size:12px;color:var(--cream);background:linear-gradient(135deg,rgba(255,107,53,.14),rgba(255,197,61,.08));border:1px solid rgba(255,107,53,.4);border-radius:999px;padding:6px 13px;white-space:nowrap}
-.totvol b{color:#FF6B35;font-weight:700}
+.totvol b{color:#C2410C;font-weight:700}
 .trend-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-@media(max-width:640px){.trend-grid{grid-template-columns:repeat(2,1fr);gap:10px}}
+@container (max-width:640px){.trend-grid{grid-template-columns:repeat(2,1fr);gap:10px}}
 .trend-card{position:relative;background:linear-gradient(160deg,var(--void2),var(--void));border:1px solid var(--line);border-radius:16px;padding:10px;cursor:pointer;overflow:hidden;transition:transform .28s cubic-bezier(.2,.85,.25,1),box-shadow .28s,border-color .28s}
 .trend-card::before{content:"";position:absolute;inset:0;border-radius:16px;padding:1px;background:linear-gradient(140deg,rgba(255,107,53,.75),transparent 42%,transparent 58%,rgba(255,197,61,.55));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;opacity:0;transition:opacity .28s;pointer-events:none}
-.trend-card::after{content:"";position:absolute;top:0;left:-130%;width:65%;height:100%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.14),transparent);transform:skewX(-18deg);pointer-events:none}
-.trend-card:hover{transform:translateY(-6px) scale(1.025);box-shadow:0 18px 40px rgba(255,107,53,.2),0 6px 16px rgba(0,0,0,.45);border-color:transparent}
+.trend-card::after{content:"";position:absolute;top:0;left:-130%;width:65%;height:100%;background:linear-gradient(100deg,transparent,rgba(11,27,54,.05),transparent);transform:skewX(-18deg);pointer-events:none}
+.trend-card:hover{transform:translateY(-6px) scale(1.025);box-shadow:0 18px 40px rgba(255,107,53,.16),0 6px 16px rgba(11,27,54,.10);border-color:transparent}
 .trend-card:hover::before{opacity:1}
 .trend-card:hover::after{animation:trendShine .75s ease}
 @keyframes trendShine{to{left:135%}}
 .trend-card .thumbwrap{transition:transform .3s ease}
 .trend-card:hover .thumbwrap{transform:scale(1.05)}
-.trend-card .trank{position:absolute;top:12px;left:12px;z-index:3;font:700 12px 'Space Mono',monospace;background:rgba(7,11,20,.82);border:1px solid var(--line);border-radius:8px;padding:2px 7px;color:#FF6B35;transition:.28s}
+.trend-card .trank{position:absolute;top:12px;left:12px;z-index:3;font:700 12px 'Space Mono',monospace;background:rgba(255,255,255,.92);border:1px solid var(--line);border-radius:8px;padding:2px 7px;color:#C2410C;transition:.28s}
 .trend-card:hover .trank{background:#FF6B35;color:#070B14;border-color:#FF6B35;box-shadow:0 0 14px rgba(255,107,53,.65)}
 .trend-card .tnm{font-family:'Anton',sans-serif;font-size:15px;margin-top:8px;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .trend-card .tsy{font-family:'Space Mono',monospace;font-size:11px;color:var(--gold);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.trend-card .tvol{font-family:'Space Mono',monospace;font-size:14px;font-weight:700;color:#FF6B35;margin-top:5px}
+.trend-card .tvol{font-family:'Space Mono',monospace;font-size:14px;font-weight:700;color:#C2410C;margin-top:5px}
 .trend-card .tvol small{color:var(--dim);font-weight:400;font-size:10px}
 .card .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
 .card .nm{font-family:'Anton',sans-serif;font-size:18px}
@@ -186,35 +210,283 @@ input:focus,select:focus{border-color:var(--gold)}
 .card .meta{font-family:'Space Mono',monospace;font-size:11px;color:var(--dim);word-break:break-all;margin-top:4px}
 .badge{font-family:'Space Mono',monospace;font-size:10px;padding:3px 8px;border-radius:999px;border:1px solid var(--line);color:var(--fur)}
 .badge.grad{color:var(--signal);border-color:rgba(111,209,196,.5)}
-.spin{display:inline-block;width:13px;height:13px;border:2px solid rgba(255,197,61,.3);border-top-color:var(--gold);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid rgba(27,95,224,.25);border-top-color:var(--gold);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px}
 @keyframes sp{to{transform:rotate(360deg)}}
 .kv{display:flex;justify-content:space-between;gap:10px;font-family:'Space Mono',monospace;font-size:12px;padding:6px 0;border-bottom:1px solid var(--line)}
 .kv .k{color:var(--dim)}.kv .v{color:var(--cream);text-align:right;word-break:break-all}
 .warn{border:1px solid rgba(226,99,94,.5);background:rgba(226,99,94,.08);border-radius:12px;padding:11px 13px;font-size:12.5px;line-height:1.5;margin-bottom:16px}
 .warn b{color:var(--danger)}
-.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:var(--gold);color:var(--ink);font-family:'Archivo';font-weight:800;padding:12px 20px;border-radius:12px;box-shadow:0 12px 30px rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:.25s;z-index:60}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:var(--gold);color:var(--ink);font-family:'Archivo';font-weight:800;padding:12px 20px;border-radius:12px;box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05);opacity:0;pointer-events:none;transition:.25s;z-index:60}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .foot{margin-top:24px;text-align:center;font-family:'Space Mono',monospace;font-size:11px;color:var(--dim)}
+
+/* ==================== LA NOUVELLE BARRE, BLANCHE ====================
+   DEMANDE : « tous se qu on viens de faire a blackjack html et spin html » —
+   meme barre que `games.html`, `index.html`, `swogebet.html`,
+   `swoge_blackjack.html` et `swoge_spin.html` : marque, chiffres du serveur,
+   solde, connexion, avatar. Seule la BARRE, les panneaux de compte et le
+   fond de page passent au blanc — le tapis et les cartes gardent leur
+   propre habillage or-sur-noir, qui est celui de la TABLE et non de la
+   navigation. Couleurs ECRITES ICI, comme sur les quatre autres pages. */
+.sw-haut{
+  display:flex; align-items:center; gap:14px; padding:10px 16px;
+  background:#FFFFFF; border-bottom:1px solid #E1E9F6;
+  position:sticky; top:0; z-index:30;
+}
+.sw-marque{display:flex; align-items:center; gap:9px; flex:0 0 auto}
+nav.sb-ancre{display:flex;align-items:center;gap:12px;
+  background:none;backdrop-filter:none;padding:0;border-bottom:none;
+  position:static;z-index:auto;}
+.sw-patte{
+  width:34px;height:34px;border-radius:10px;background:#EAF1FF;
+  display:grid;place-items:center;font-size:19px;
+}
+.sw-marque b{display:block;font:800 17px/1 'Inter',system-ui,sans-serif;letter-spacing:.4px;color:#1B5FE0}
+.sw-marque i{display:block;font:700 9.5px/1.4 'Inter',system-ui,sans-serif;font-style:normal;
+  letter-spacing:2.6px;color:#6B7C99}
+.sw-chiffres{
+  flex:1 1 auto; min-width:0; display:flex; gap:8px; overflow-x:auto;
+  padding:8px 10px; background:#EEF3FB; border:1px solid #E1E9F6;
+  border-radius:12px; scrollbar-width:none;
+}
+.sw-chiffres::-webkit-scrollbar{display:none}
+/* La bande de stats ne pouvait pas se cacher : le script d'echec pose
+   `bloc.hidden = true`, mais `.sw-chiffres{display:flex}` est une regle
+   d'AUTEUR et l'emporte sur le `[hidden]{display:none}` du navigateur.
+   Quand le fetch de /vitrine.json echouait, la bande restait donc a
+   l'ecran avec ses quatre tirets — l'allure d'un compteur en direct sans
+   compteur derriere. Une ligne, et l'intention du script tient. */
+.sw-chiffres[hidden]{display:none}
+.sw-ch{display:flex;align-items:center;gap:8px;padding:0 12px;flex:0 0 auto}
+.sw-ch+.sw-ch{border-left:1px solid #E1E9F6}
+.sw-ch .ic{width:26px;height:26px;border-radius:8px;background:#EAF1FF;
+  display:grid;place-items:center;font-size:13px}
+.sw-ch small{display:block;font:700 9px/1 'Inter',system-ui,sans-serif;letter-spacing:.9px;color:#6B7C99}
+.sw-ch b{display:block;font:800 14px/1.3 'Inter',system-ui,sans-serif;color:#0A1F44}
+.sb-ancre .chip{font:800 12px/1 'Inter',system-ui,sans-serif;color:#0A1F44;
+  border:1px solid #E1E9F6;border-radius:999px;padding:9px 13px;background:#FFFFFF;
+  box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05);white-space:nowrap}
+.sb-ancre .chip b{color:#0A1F44}
+.sw-b{
+  padding:10px 16px;border-radius:10px;cursor:pointer;border:none;
+  font:700 12.5px/1 'Inter',system-ui,sans-serif;letter-spacing:.3px;white-space:nowrap;
+}
+.sw-b-plein{background:#1B5FE0;color:#fff}
+.sw-b-plein:hover{background:#1750c4}
+.sw-b-vide{background:#FFFFFF;color:#1B5FE0;border:1.5px solid #1B5FE0}
+.sw-b-vide:hover{background:#EAF1FF}
+.connrow{ position:static !important; flex:0 0 auto;
+  flex-direction:row !important; flex-wrap:nowrap !important;
+  justify-content:flex-start !important; gap:8px; padding:0 !important; }
+.connrow .sw-b{ margin:0 !important; }
+.sw-avatar{
+  width:38px;height:38px;border-radius:11px;border:1px solid #E1E9F6;
+  background:#EEF3FB;display:grid;place-items:center;font-size:16px;flex:0 0 auto;cursor:pointer;
+}
+.gx-menu{position:absolute;top:60px;right:14px;z-index:70;width:236px;
+  background:#FFFFFF;border:1px solid #E1E9F6;border-radius:14px;
+  box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05);padding:6px;display:flex;flex-direction:column;gap:1px}
+.gx-menu[hidden]{display:none}
+.gx-menu a{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:9px;
+  font:700 12px/1 'Inter',system-ui,sans-serif;color:#0B1B36;text-decoration:none}
+.gx-menu a:hover{background:#EAF1FF;color:#1B5FE0}
+.gx-menu .gx-sep{height:1px;background:#E1E9F6;margin:5px 2px}
+.gx-menu .gx-g{padding:9px 10px 4px;font:800 9px/1 'Inter',system-ui,sans-serif;
+  letter-spacing:1.1px;text-transform:uppercase;color:#6B7C99}
+.gx-menu .gx-g:first-child{padding-top:4px}
+.gx-menu{max-height:min(74vh,560px);overflow-y:auto;scrollbar-width:thin}
+.gx-menu a i{font-style:normal;font-size:14px;width:18px;text-align:center;flex:0 0 auto}
+@media(max-width:520px){ .gx-menu{right:8px;left:8px;width:auto} }
+@media (max-width:620px){
+  .sw-haut{ flex-wrap:wrap; row-gap:8px; }
+  .sw-marque{ order:1 }
+  nav.sb-ancre{ order:2; flex:0 0 auto; margin-left:auto }
+  .menubtn, #gxProfil{ order:3 }
+  .connrow{ order:4; flex:1 1 100% !important; justify-content:center !important }
+  .sw-chiffres{ order:5; flex:1 1 100% }
+}
+
+/* ==================== LES DEUX COTES DE LA TABLE ====================
+   Meme grille que `swoge_blackjack.html` : les deux colonnes ne mesurent pas
+   la meme chose (208 px de navigation contre 300 px d affiches), une grille a
+   trois colonnes garde donc la colonne du milieu au centre EXACT de l ecran,
+   quelle que soit la largeur de ce qu on pose a cote. */
+.sw-corps{display:grid; grid-template-columns:minmax(208px,1fr) auto minmax(208px,1fr);
+  align-items:start; gap:14px; padding:14px; max-width:1680px; margin:0 auto}
+.sw-corps main{min-width:0}
+.sw-cote{position:sticky; top:74px; width:100%; display:flex; flex-direction:column; gap:12px; justify-self:end}
+.sw-nav{background:#FFFFFF;border:1px solid #E1E9F6;border-radius:14px;
+  padding:8px; box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05)}
+.sw-nav a{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:10px;
+  font:600 13.5px/1 'Inter',system-ui,sans-serif;color:#0B1B36}
+.sw-nav a .ic{width:20px;text-align:center;font-size:15px;opacity:.75}
+.sw-nav a:hover{background:#EEF3FB}
+.sw-nav a.on{background:#EAF1FF;color:#1B5FE0}
+.sw-nav a.on .ic{opacity:1}
+.sw-reseaux{display:flex;gap:8px;justify-content:center;padding-top:4px}
+.sw-reseaux a{width:34px;height:34px;border-radius:10px;background:#FFFFFF;border:1px solid #E1E9F6;
+  display:grid;place-items:center;font-size:14px;color:#6B7C99}
+.sw-reseaux a:hover{color:#1B5FE0;border-color:#1B5FE0}
+.uni{position:relative;border-radius:14px;overflow:hidden;min-height:258px;
+  display:flex;flex-direction:column;justify-content:flex-end;background:#0A1F44;
+  box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05)}
+.uni img,.uni .film{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  object-position:center top;border:0;background:#0A1F44}
+@media (prefers-reduced-motion:reduce){ .uni .film{display:none} }
+.uni .voile{position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(8,24,58,0) 34%,rgba(8,24,58,.88) 74%,rgba(8,24,58,.97) 100%)}
+.uni .dit{position:relative;padding:14px;text-align:center}
+.uni b{display:block;font:900 20px/1 'Inter',system-ui,sans-serif;color:#fff;letter-spacing:.4px}
+.uni i{display:block;font-style:normal;font:600 11px/1.4 'Inter',system-ui,sans-serif;
+  color:rgba(255,255,255,.76);margin:5px 0 11px}
+.uni .sw-b{width:100%;background:rgba(255,255,255,.94);color:#0A1F44;
+  display:block;text-align:center;border-radius:10px}
+.sw-lat{width:300px; position:sticky; top:74px; display:flex; flex-direction:column; gap:14px; justify-self:start}
+.sw-lat .carte{background:#FFFFFF;border:1px solid #E1E9F6;border-radius:14px;
+  box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05); overflow:hidden}
+.sw-solde{display:flex;align-items:center;gap:12px;padding:14px 16px}
+.sw-solde .ic{flex:0 0 auto;width:38px;height:38px;border-radius:11px;background:#EAF1FF;
+  display:grid;place-items:center;font-size:17px}
+.sw-solde .tx{min-width:0}
+.sw-solde .tx small{display:block;font:800 9.5px/1 'Inter',system-ui,sans-serif;
+  letter-spacing:1.1px;color:#6B7C99}
+.sw-solde .tx b{display:block;margin-top:4px;font:800 17px/1 'Inter',system-ui,sans-serif;
+  color:#0A1F44;font-variant-numeric:tabular-nums}
+.sw-lat .salon{position:relative;display:block;min-height:172px;overflow:hidden;background:#0A1F44}
+.sw-lat .salon img,.sw-lat .salon .film{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  object-position:34% 8%;border:0;background:#0A1F44}
+@media (prefers-reduced-motion:reduce){ .sw-lat .salon .film{display:none} }
+.sw-lat .salon .voile{position:absolute;inset:auto 0 0 0;height:58%;
+  background:linear-gradient(180deg,rgba(6,16,40,0) 0%,rgba(6,16,40,.86) 78%,rgba(6,16,40,.95) 100%)}
+.sw-lat .salon .dit{position:absolute;left:16px;right:16px;bottom:14px;
+  font:800 12px/1 'Inter',system-ui,sans-serif;letter-spacing:1.4px;color:#fff}
+.sw-lat .salon:hover img,.sw-lat .salon:hover .film{transform:scale(1.03)}
+.sw-lat .salon img,.sw-lat .salon .film{transition:transform .2s}
+@media (max-width:1360px){
+  .sw-cote, .sw-lat{ display:none }
+  .sw-corps{ padding:0; display:block; max-width:none }
+}
+/* ---- LA COLONNE DE GAUCHE NE GONFLE PLUS (memes deux colonnes de bord que
+   `swoge_poker.html`) ----
+ * BUG MESURE : `minmax(208px,1fr)` sur les deux colonnes de bord absorbe TOUT
+ * l'espace libre que la colonne du milieu (`auto`, calee sur le contenu du
+ * jeu) ne reclame pas — a 1920px, `.sw-cote` faisait 594px de large au lieu
+ * des ~208px voulus (documentes plus haut : « 208 px de navigation »). Des
+ * colonnes de bord FIXES, et la colonne du milieu absorbe le reste (sans
+ * effet sous 1360px : la regle juste au-dessus y cache deja `.sw-cote`). */
+.sw-corps{ grid-template-columns:230px minmax(0,1fr) 300px; }
+.sw-cote{ width:auto; max-width:230px; }
 </style>
 <body>
+<!-- ==================== LA BARRE BLANCHE ====================
+     Copiee de `swoge_casino.html`, puis reduite a ce que CETTE page suit
+     reellement :
+       - la puce de solde de `nav.sb-ancre` est retiree : il n y a pas de
+         `#bal` ici, aucun solde de compte n est suivi sur le launchpad ;
+       - `SIGN UP - EMAIL` est retire pour la meme raison : cette page n a
+         pas de compte SWOGE, pas de `swogecx.js`, rien pour s inscrire ;
+       - `CONNECT WALLET` RESTE, parce qu il connecte vraiment quelque
+         chose : c est `#walletBtn`, le bouton portefeuille deja cable au
+         script de la page (EIP-6963 / WalletConnect). Il change juste de
+         classe pour prendre l habillage de la barre ;
+       - `#gxProfil` / `#gxMenu` et `swogeprofil.js` ne sont PAS ajoutes :
+         il n y a ni tiroir de compte ni `#menu` a lire sur cette page, le
+         menu s ouvrirait vide ;
+       - la vitrine reste : elle lit le vrai `/vitrine.json` et se cache
+         toute seule quand la lecture echoue.
+     L ancien <header> (marque + <nav>) est ce que la barre remplace ; sa
+     marque « $SWOGE FUN » redescend en tete de colonne, elle nomme la page
+     et la barre ne la porte pas. -->
+<header class="sw-haut">
+  <a class="sw-marque" href="nexus.html" id="gxMonde">
+    <span class="sw-patte">&#128062;</span>
+    <span><b>SWOGE</b><i>WORLD</i></span>
+  </a>
+  <div class="sw-chiffres" id="gxChiffres" hidden>
+    <div class="sw-ch"><span class="ic">&#128100;</span><span><small>PLAYERS</small><b data-n="joueurs">&mdash;</b></span></div>
+    <div class="sw-ch"><span class="ic">&#127922;</span><span><small>CASINO VOLUME</small><b data-n="volume">&mdash;</b></span></div>
+    <div class="sw-ch"><span class="ic">&#127918;</span><span><small>ROUNDS PLAYED</small><b data-n="manches">&mdash;</b></span></div>
+    <div class="sw-ch"><span class="ic">&#127942;</span><span><small>WINNINGS PAID</small><b data-n="rendus">&mdash;</b></span></div>
+  </div>
+  <div class="connrow" id="connRow">
+    <button class="sw-b sw-b-vide" id="walletBtn">CONNECT WALLET</button>
+  </div>
+</header>
+
+<!-- Les quatre chiffres de la vitrine, lus sur le serveur — meme script que
+     `swoge_blackjack.html` et `swoge_spin.html`. -->
+<script>
+(function(){
+  "use strict";
+  var bloc = document.getElementById("gxChiffres");
+  if(!bloc) return;
+  function serveur(){
+    try{ var q=new URLSearchParams(location.search).get("server"); if(q)
+      return String(q).replace(/^ws/,"http"); }catch(e){}
+    return "https://web-production-220a3.up.railway.app";
+  }
+  function court(n){
+    n = Number(n) || 0;
+    var t = function(v, s){ return (Math.floor(v*10)/10).toFixed(1).replace(/\.0$/,"") + s; };
+    if(n >= 1e9) return t(n/1e9, "B");
+    if(n >= 1e6) return t(n/1e6, "M");
+    if(n >= 1e3) return t(n/1e3, "k");
+    return String(Math.floor(n));
+  }
+  fetch(serveur()+"/vitrine.json", { cache:"no-store" })
+    .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function(j){
+      [].forEach.call(bloc.querySelectorAll("b[data-n]"), function(b){
+        var v = j[b.getAttribute("data-n")];
+        b.textContent = (typeof v === "number" && isFinite(v)) ? court(v) : "\u2014";
+      });
+      bloc.hidden = false;
+    })
+    ['catch'](function(){ bloc.hidden = true; });
+})();
+</script>
+
+<div class="sw-corps">
+
+  <aside class="sw-cote">
+    <nav class="sw-nav">
+      <a href="index.html"><span class="ic">&#127968;</span>Home</a>
+      <a href="games.html"><span class="ic">&#127920;</span>Casino</a>
+      <a href="swogebet.html"><span class="ic">&#9917;</span>Sports</a>
+      <!-- Les deux liens que portait l ancien <nav> de la page reviennent
+           ici, ou vit desormais la navigation. -->
+      <a href="launchpad.html" class="on"><span class="ic">&#128640;</span>Launchpad</a>
+      <a href="burn.html"><span class="ic">&#128293;</span>Burn</a>
+      <a href="whitepaper.html"><span class="ic">&#128220;</span>Docs</a>
+    </nav>
+    <div class="sw-reseaux">
+      <a href="https://x.com/SwoleDogeSwoge" target="_blank" rel="noopener"
+         title="X — @SwoleDogeSwoge">&#120143;</a>
+      <a href="https://t.me/swoleswoge" target="_blank" rel="noopener"
+         title="Telegram — t.me/swoleswoge">&#9992;</a>
+      <a href="https://dexscreener.com/robinhood/0x2dc0fb72d9284228046cc95910eeaabebfe48456"
+         target="_blank" rel="noopener" title="Dexscreener — $SWOGE chart">&#128200;</a>
+    </div>
+    <article class="uni">
+      <video class="film" src="media/monde_carte.mp4" poster="img/site/monde_carte_poster.webp"
+             muted autoplay loop playsinline disablepictureinpicture
+             aria-hidden="true"></video><div class="voile"></div>
+      <div class="dit"><b>SWOGE WORLD</b><i>Meet. Explore. Own.</i>
+        <a class="sw-b" href="nexus.html">ENTER</a></div>
+    </article>
+  </aside>
+
+<main>
 <div class="wrap">
-  <header>
-    <div class="brand">
+    <div class="brand" style="margin-bottom:16px">
       <img class="logo" id="logo" src="img/fa05d30cc698.jpg" alt="SWOGE">
       <div>
         <h1><span>$SWOGE</span> FUN</h1>
         <div class="sub">Launchpad · Curve or Instant · Robinhood Chain</div>
       </div>
     </div>
-    <nav>
-      <a href="index.html">← Home</a>
-      <a href="burn.html">🔥 Burn</a>
-      <button class="walletbtn" id="themeBtn" title="Light / Dark">☀️ Light</button>
-      <button class="walletbtn" id="walletBtn">Connect wallet</button>
-    </nav>
-  </header>
 
-  <img id="heroBanner" alt="SWOGE FUN — instant launches" style="display:none;width:100%;border-radius:16px;border:1px solid var(--line);margin-bottom:16px;object-fit:cover;box-shadow:0 14px 36px rgba(0,0,0,.4)">
+  <img id="heroBanner" alt="SWOGE FUN — instant launches" style="display:none;width:100%;border-radius:16px;border:1px solid var(--line);margin-bottom:16px;object-fit:cover;box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05)">
 
   <div class="warn hidden" id="cfgWarn">
     <b>Not configured yet.</b> Paste the SwogeFun V2 address in <code>CONTRACT_ADDRESS</code>.
@@ -357,6 +629,29 @@ input:focus,select:focus{border-color:var(--gold)}
   </section>
 
   <div class="foot">$SWOGE FUN · Instant Uniswap launches · 30% of the 1% fee to SWOGE · <a href="index.html">swoleeswoge.dog</a></div>
+</div>
+</main>
+
+  <aside class="sw-lat">
+    <!-- Pas de carte « YOUR BALANCE » ici, et pas de cagnotte : cette page
+         ne suit aucun `#bal`. Le seul solde qu elle connaisse est celui du
+         portefeuille connecte, lu a la demande dans les puces de %, et il
+         n existe pas tant qu on n a pas connecte. On ne met donc rien a la
+         place — deux portes vers des pages qui existent, et c est tout. -->
+    <a class="carte salon" href="swoge_blackjack.html">
+      <img src="img/site/jeu_blackjack.webp" alt="" loading="lazy">
+      <span class="voile"></span>
+      <span class="dit">GOLD TABLE &nbsp;&rarr;</span>
+    </a>
+    <a class="carte salon" href="swogebet.html">
+      <video class="film" src="media/doge_sport.mp4" poster="img/site/doge_sport_poster.webp"
+             muted autoplay loop playsinline disablepictureinpicture
+             aria-label="SWOGE Sports"></video>
+      <span class="voile"></span>
+      <span class="dit">SWOGE SPORTS &mdash; BET NOW &nbsp;&rarr;</span>
+    </a>
+  </aside>
+
 </div>
 
 <div class="wpick" id="wpick"><div class="box"><h3>Choose your wallet</h3><div id="wpickList"></div><div class="cancel" id="wpickCancel">Cancel</div></div></div>
@@ -531,14 +826,14 @@ async function connectWalletConnect(){
 }
 $("#walletBtn").onclick=openWalletPicker;
 $("#wpickCancel").onclick=function(){ $("#wpick").classList.remove("show"); };
-// ---- Light / Dark theme toggle (persisted) ----
-function applyTheme(light){
-  document.body.classList.toggle("light",light);
-  var b=$("#themeBtn"); if(b) b.textContent=light?"🌙 Dark":"☀️ Light";
-  try{ localStorage.setItem("swogeTheme",light?"light":"dark"); }catch(e){}
-}
-$("#themeBtn").onclick=function(){ applyTheme(!document.body.classList.contains("light")); };
-(function(){ var t; try{ t=localStorage.getItem("swogeTheme"); }catch(e){} applyTheme(t==="light"); })();
+/* ---- Le bascule Clair / Sombre est retire ----
+   Il posait la classe `light` sur <body>, seul endroit ou la palette claire
+   existait ; la page s ouvrait donc noire tant qu on n avait pas clique, et
+   `localStorage` gardait ce noir. La palette claire est maintenant dans
+   `:root` et vaut pour tout le monde des le premier affichage. Le bouton ne
+   pouvait pas survivre a ca : la barre blanche et les deux colonnes sont
+   ecrites en hex litteral, sans variante sombre. `#themeBtn` disparait avec
+   son gestionnaire — le laisser aurait leve un TypeError au chargement. */
 $("#wpick").onclick=function(e){ if(e.target===$("#wpick")) $("#wpick").classList.remove("show"); };
 
 /* ---------- tabs ---------- */
@@ -918,7 +1213,7 @@ async function loadMine(){
       var padMe="0x"+account.slice(2).toLowerCase().padStart(64,"0"), padDead="0x"+DEAD.slice(2).toLowerCase().padStart(64,"0");
       var blogs=await prov.getLogs({address:SWOGE_TOKEN, topics:[TRANSFER_TOPIC, padMe, padDead], fromBlock:0, toBlock:"latest"});
       var totalBurn=blogs.reduce(function(s,l){ return s+(+ethers.utils.formatEther(ethers.BigNumber.from(l.data))); },0);
-      burnHtml+='<div class="kv" style="border:0"><span class="k">You burned</span><span class="v" style="color:#FF6B35;font-size:15px">'+fmtNum(totalBurn)+' SWOGE</span></div>'
+      burnHtml+='<div class="kv" style="border:0"><span class="k">You burned</span><span class="v" style="color:#C2410C;font-size:15px">'+fmtNum(totalBurn)+' SWOGE</span></div>'
         +'<div class="note">'+blogs.length+' burn'+(blogs.length===1?"":"s")+' · <a href="burn.html">Burn more 🔥</a></div>';
     }catch(e){ burnHtml+='<div class="note">Could not load burns. <a href="burn.html">Burn page 🔥</a></div>'; }
     burnHtml+='</div>';
@@ -1121,7 +1416,7 @@ function drawCandles(candles, ethUsd){
   x.clearRect(0,0,W,H); x.font="10px 'Space Mono',monospace"; x.textAlign="left";
   if(!candles.length){
     if(!EMPTY_IMG_OK){                       // no mascot image → keep the text
-      x.fillStyle="#8DA0C4"; x.textAlign="center";
+      x.fillStyle="#6B7C99"; x.textAlign="center";
       x.fillText("No trades yet — be the first to buy 🚀", W/2, H/2);
       x.textAlign="left";
     }
@@ -1135,7 +1430,7 @@ function drawCandles(candles, ethUsd){
   var mul=ethUsd||1;
   var sy=function(v){ return padT+plotH-((v-lo)/(hi-lo))*plotH; };
   // grid + y labels (mcap)
-  x.strokeStyle="rgba(160,138,99,.16)"; x.fillStyle="#8DA0C4"; x.lineWidth=1;
+  x.strokeStyle="rgba(11,27,54,.10)"; x.fillStyle="#6B7C99"; x.lineWidth=1;
   for(var i=0;i<=4;i++){
     var v=lo+(hi-lo)*i/4, yy=sy(v);
     x.beginPath(); x.moveTo(padL,yy); x.lineTo(W-padR,yy); x.stroke();
@@ -1173,25 +1468,25 @@ function fmtNum(n){ if(n>=1e9)return (n/1e9).toFixed(2)+"B"; if(n>=1e6)return (n
 function renderTrades(){
   var el=$("#tvTrades"); if(!el) return;
   var tr=(candleState.trades||[]).slice().reverse();
-  if(!tr.length){ el.innerHTML='<span style="color:#8DA0C4">No trades yet — be the first 🚀</span>'; return; }
+  if(!tr.length){ el.innerHTML='<span style="color:#6B7C99">No trades yet — be the first 🚀</span>'; return; }
   var eu=candleState.ethUsd, now=Math.floor(Date.now()/1000);
   var me=account?account.toLowerCase():"";
   var rows=tr.slice(0,50).map(function(e){
-    var col=e.type==="buy"?"#3fb96b":"#e5544b";
+    var col=e.type==="buy"?"#12794A":"#C0392F";   /* lisibles sur fond clair */
     var ethStr=eu?("$"+(e.eth*eu).toFixed(2)):(e.eth.toFixed(5));
     var who=e.who?(e.who.slice(0,6)+"…"+e.who.slice(-4)):"";
     var mine=e.who&&e.who.toLowerCase()===me;
-    return '<tr'+(mine?' style="background:rgba(255,197,61,.10)"':'')+'>'+
+    return '<tr'+(mine?' style="background:rgba(27,95,224,.08)"':'')+'>'+
       '<td style="padding:5px 6px;color:'+col+';font-weight:700;text-transform:uppercase">'+e.type+'</td>'+
       '<td style="padding:5px 6px">'+ethStr+'</td>'+
       '<td style="padding:5px 6px">'+fmtNum(e.tokens)+'</td>'+
-      '<td style="padding:5px 6px"><a href="'+CHAIN.scan+'/address/'+e.who+'" target="_blank" style="color:#8DA0C4;text-decoration:none">'+who+(mine?' (you)':'')+'</a></td>'+
-      '<td style="padding:5px 6px;color:#8DA0C4">'+relTime(now-(e.ts||now))+'</td>'+
+      '<td style="padding:5px 6px"><a href="'+CHAIN.scan+'/address/'+e.who+'" target="_blank" style="color:#6B7C99;text-decoration:none">'+who+(mine?' (you)':'')+'</a></td>'+
+      '<td style="padding:5px 6px;color:#6B7C99">'+relTime(now-(e.ts||now))+'</td>'+
       '<td style="padding:5px 6px"><a href="'+CHAIN.scan+'/tx/'+e.tx+'" target="_blank" style="text-decoration:none">↗</a></td>'+
     '</tr>';
   }).join("");
   el.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:12px">'+
-    '<thead><tr style="color:#8DA0C4;text-align:left;position:sticky;top:0;background:var(--panel,#120d08)">'+
+    '<thead><tr style="color:#6B7C99;text-align:left;position:sticky;top:0;background:#FFFFFF">'+
     '<th style="padding:5px 6px">Type</th><th style="padding:5px 6px">'+(eu?"$":"ETH")+'</th><th style="padding:5px 6px">Tokens</th><th style="padding:5px 6px">Wallet</th><th style="padding:5px 6px">Time</th><th></th></tr></thead>'+
     '<tbody>'+rows+'</tbody></table>';
 }
@@ -1203,7 +1498,7 @@ function buildBuyPcts(){
   BUY_PCTS.forEach(function(p){
     var b=document.createElement("button");
     b.textContent=p+"%";
-    b.style.cssText="padding:4px 10px;border-radius:7px;border:1px solid var(--line);background:transparent;color:#8DA0C4;font:600 12px 'Space Mono',monospace;cursor:pointer";
+    b.style.cssText="padding:4px 10px;border-radius:7px;border:1px solid var(--line);background:transparent;color:#6B7C99;font:600 12px 'Space Mono',monospace;cursor:pointer";
     b.onclick=async function(){
       if(!account){ openWalletPicker(); return; }
       try{
@@ -1223,7 +1518,7 @@ function buildTfBar(){
     var on=candleState.tf===p[1];
     var b=document.createElement("button");
     b.textContent=p[0];
-    b.style.cssText="padding:4px 10px;border-radius:7px;border:1px solid var(--line);background:"+(on?"#FFC53D":"transparent")+";color:"+(on?"#0B1220":"#8DA0C4")+";font:600 12px 'Space Mono',monospace;cursor:pointer";
+    b.style.cssText="padding:4px 10px;border-radius:7px;border:1px solid var(--line);background:"+(on?"#1B5FE0":"transparent")+";color:"+(on?"#FFFFFF":"#6B7C99")+";font:600 12px 'Space Mono',monospace;cursor:pointer";
     b.onclick=function(){ candleState.tf=p[1]; buildTfBar(); renderChart(); };
     bar.appendChild(b);
   });

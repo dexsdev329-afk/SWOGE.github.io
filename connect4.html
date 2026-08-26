@@ -166,7 +166,11 @@ canvas{ touch-action:none; }
   .fair{font-size:11px;color:var(--muted);text-align:center;padding:2px 0 6px;word-break:break-all}
   .fair b{color:#cdbf9f}
   footer{border-top:1px solid var(--line);padding:20px 16px 40px;text-align:center;color:var(--muted);font-size:12px}
-  footer a{color:var(--gold)}
+  /* Le lien du pied de page gardait le dore de l'ancien theme sombre :
+   #E6A537 sur le fond clair #EEF3FB, soit 1,92:1 — sous le seuil de
+   lisibilite. `swoge_blackjack.html` et `crash.html` etaient deja passes
+   au bleu du systeme ; les dix autres pages converties suivent. */
+footer a{color:#1B5FE0}
   .statusdot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;background:#555;vertical-align:middle}
   .statusdot.on{background:var(--green);box-shadow:0 0 8px var(--green)}
   .statusdot.off{background:var(--red);box-shadow:0 0 8px var(--red)}
@@ -396,6 +400,26 @@ canvas{ touch-action:none; }
    vestibule sous le resultat de la partie. */
 .c4wrap [hidden]{ display:none !important; }
 
+/* ---- LE TEXTE SECONDAIRE DES PANNEAUX SOMBRES RESTE CLAIR ----
+ * `--dim` n'est declaree NULLE PART sur cette page. `color:var(--dim)`, ecrit
+ * neuf fois par le jeu, est donc une reference invalide : la propriete tombe
+ * sur la valeur HERITEE, c'est-a-dire la couleur de texte de la page. Tant que
+ * la page etait sombre (`html,body{color:var(--text)}`), cette couleur etait
+ * le creme #F7EEDA et tout se lisait. La page est passee au clair
+ * (`html,body{color:#0B1B36}`) : ces lignes-la sont devenues du bleu nuit sur
+ * les panneaux bleu nuit du jeu, qui gardent volontairement leur habillage
+ * sombre. Mesure avant correction : #0B1B36 sur un panneau rendu (41,48,71),
+ * soit un contraste de 1,1:1 — « Nobody is waiting right now », la note de
+ * mise et les mentions RED / BLUE du bandeau avaient purement disparu.
+ * On redeclare donc `--dim` UNIQUEMENT sur les surfaces sombres, avec le creme
+ * qu'elles avaient avant : elles retrouvent exactement leur aspect d'origine.
+ * `.c4-sous`, `.c4-sousmsg` et `.c4-hist`, eux, vivent sur le fond clair de la
+ * page et gardent le bleu nuit, qui s'y lit bien mieux — on n'y touche pas. */
+.c4-panel, .c4-joueur, .c4-pot, .c4-table{ --dim:#F7EEDA; }
+/* Meme cas, mais pose par `entrainement.js` : `.sw-ent-note` ne declare aucune
+   couleur, elle heritait donc elle aussi du texte de la page. */
+.c4-panel .sw-ent-note{ color:#F7EEDA; opacity:.78; }
+
 /* ---- enseigne ----
    En texte, pas en image : « CONNECT 4 » doit rester net a toutes les tailles
    et il n'existe pas de plaque peinte pour ce jeu. */
@@ -408,7 +432,9 @@ canvas{ touch-action:none; }
   -webkit-background-clip:text; background-clip:text; color:transparent; }
 .c4-sous{ text-align:center; color:var(--dim); font-size:clamp(11px,2.8cqi,13.5px);
   margin:0 0 14px; line-height:1.5; }
-.c4-sous b{ color:#FFD97A; }
+.c4-sous b{ color:#8A5E00; }  /* etait #FFD97A : de l'or pale POSE SUR LE FOND
+   CLAIR de la page, 1,22:1 — « the winner takes the pot » et « 5% » avaient
+   disparu dans le blanc. Meme or, assombri jusqu'a 5,1:1. */
 
 /* ---- panneaux ---- */
 .c4-grid2{ display:grid; grid-template-columns:1fr 1fr; gap:14px; align-items:start; }
@@ -570,22 +596,32 @@ canvas{ touch-action:none; }
 .c4-revanche .c4-lb{ justify-content:center; }
 
 .c4-hist{ max-width:560px; margin:18px auto 0; font-size:12px; color:var(--dim); }
+/* L'historique aussi est passe du fond sombre au fond clair, et il n'a PAS
+   de panneau a lui : il est pose a meme la page. Ses quatre couleurs etaient
+   calibrees pour du bleu nuit — mesure sur #EEF3FB : titre et en-tetes
+   #E7C97A a 1,45:1, le gain #7CFF9B a 1,13:1 (le montant gagne etait
+   litteralement invisible), la perte #F2685E a 2,72:1. Memes roles, memes
+   teintes, assombries jusqu'a passer AA. */
 .c4-hist h4{ margin:0 0 4px; font-size:12px; letter-spacing:1.2px;
-  text-transform:uppercase; color:#E7C97A; text-align:center; }
+  text-transform:uppercase; color:#8A5E00; text-align:center; }
 .c4-hist table{ width:100%; border-collapse:collapse; }
 .c4-hist th, .c4-hist td{ padding:3px 6px; text-align:left; }
-.c4-hist th{ color:#E7C97A; font-weight:800; font-size:11px; text-transform:uppercase; letter-spacing:.8px; }
+.c4-hist th{ color:#8A5E00; font-weight:800; font-size:11px; text-transform:uppercase; letter-spacing:.8px; }
 .c4-hist td:last-child, .c4-hist th:last-child{ text-align:right; }
-.c4-hist .g{ color:#7CFF9B; font-weight:800; }
-.c4-hist .p{ color:#F2685E; font-weight:800; }
+.c4-hist .g{ color:#0E7C3A; font-weight:800; }
+.c4-hist .p{ color:#C42B1C; font-weight:800; }
 /* ---- l historique replie ---- */
 .c4-hbox{ max-width:560px; margin:18px auto 0; }
+/* Meme cas que `.c4-sous b`, et sur une COMMANDE : ce depliant vit desormais
+   sur le fond clair, ou #E7C97A tombait a 1,45:1 et ou le liset a 30 %
+   d'opacite se confondait avec la page — le bouton « Your last matches »
+   etait la, cliquable, et invisible. */
 .c4-hbox > summary{ list-style:none; cursor:pointer; text-align:center;
-  font-size:11.5px; letter-spacing:1.2px; text-transform:uppercase; color:#E7C97A;
-  padding:9px 14px; border-radius:999px; border:1px solid rgba(255,197,61,.30);
-  background:rgba(255,255,255,.04); }
+  font-size:11.5px; letter-spacing:1.2px; text-transform:uppercase; color:#8A5E00;
+  padding:9px 14px; border-radius:999px; border:1px solid rgba(154,107,5,.45);
+  background:rgba(255,197,61,.10); }
 .c4-hbox > summary::-webkit-details-marker{ display:none; }
-.c4-hbox > summary:hover{ border-color:rgba(255,197,61,.6); }
+.c4-hbox > summary:hover{ border-color:rgba(154,107,5,.85); }
 .c4-hbox[open] > summary{ margin-bottom:10px; }
 .c4-hbox .c4-hist{ margin-top:0; }
 
@@ -740,6 +776,13 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   border-radius:12px; scrollbar-width:none;
 }
 .sw-chiffres::-webkit-scrollbar{display:none}
+/* La bande de stats ne pouvait pas se cacher : le script d'echec pose
+   `bloc.hidden = true`, mais `.sw-chiffres{display:flex}` est une regle
+   d'AUTEUR et l'emporte sur le `[hidden]{display:none}` du navigateur.
+   Quand le fetch de /vitrine.json echouait, la bande restait donc a
+   l'ecran avec ses quatre tirets — l'allure d'un compteur en direct sans
+   compteur derriere. Une ligne, et l'intention du script tient. */
+.sw-chiffres[hidden]{display:none}
 .sw-ch{display:flex;align-items:center;gap:8px;padding:0 12px;flex:0 0 auto}
 .sw-ch+.sw-ch{border-left:1px solid #E1E9F6}
 .sw-ch .ic{width:26px;height:26px;border-radius:8px;background:#EAF1FF;

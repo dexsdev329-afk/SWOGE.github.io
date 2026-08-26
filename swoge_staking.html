@@ -73,39 +73,70 @@ canvas{ touch-action:none; }
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <script src="swogebuy.js?v=0d5e5215"></script>
 <style>
+  /* ==================== AU CLAIR : LA PALETTE EST RETOURNEE ====================
+     Meme conversion que `swoge_casino.html`, `swoge_blackjack.html` et
+     `swoge_spin.html`. Les NOMS des variables ne changent pas — tout le reste
+     de la feuille et le script s'y accrochent — mais leur SENS passe au clair,
+     une seule fois, ici. Poser un `html,body{background:#EEF3FB}` par-dessus
+     l'ancienne palette n'aurait rien regle : `--paper` (#EAF2FF, un blanc
+     casse pense pour le fond noir) serait reste sur chaque titre, chaque
+     champ, chaque bouton — du blanc sur du blanc.
+
+       --ink   le SOL de la page      #070B14  ->  #EEF3FB
+       --paper le TEXTE               #EAF2FF  ->  #0B1B36
+       --panel les cartes             #0F1626  ->  #FFFFFF
+       --line  les filets             or 24 %  ->  #E1E9F6
+       --gold  l'accent (liens,       #FFC53D  ->  #1B5FE0
+               boutons, chiffre du solde)
+       --green / --red  releves pour rester lisibles SUR BLANC : #7CFF9B et
+               #F2685E disparaissaient tous les deux sur #EEF3FB. #0E7C3E est
+               deja celui des quetes converties, #E0443E celui du systeme.
+
+     L'OR N'EST PAS PERDU : il n'a jamais ete dans ces variables-la. Les
+     plaques peintes, les jetons, les cadenas et les coins ornementes sont des
+     IMAGES — vert sombre serti d'or, opaques, entierement autonomes. Posees
+     sur blanc elles gardent exactement leur eclat ; c'est la PAGE derriere
+     elles qui rejoint le blanc, pas elles. */
   :root{
-    --ink:#070B14; --bg:#070B14; --panel:#0F1626; --panel2:#0D1422; --line:rgba(255,197,61,.24);
-    --paper:#EAF2FF; --dim:#8DA0C4; --gold:#FFC53D; --gold2:#FFB84D;
-    --green:#7CFF9B; --red:#F2685E; --r:12px;
+    --ink:#EEF3FB; --bg:#EEF3FB; --panel:#FFFFFF; --panel2:#EEF3FB; --line:#E1E9F6;
+    --paper:#0B1B36; --dim:#6B7C99; --gold:#1B5FE0; --gold2:#1750C4;
+    --green:#0E7C3E; --red:#E0443E; --r:14px;
+    --ombre:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05);
   }
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
-  html{background:var(--ink)}
-  body{
-    background:
-      linear-gradient(rgba(7,11,20,.80),rgba(7,11,20,.90)),
-      url("img/4330a8bf7e8b.jpg") center center/420px repeat fixed;
-    background-color:var(--bg);
-    color:var(--paper);font-family:'Space Mono','Courier New',monospace;line-height:1.6;min-height:100vh}
+  /* ---- LES DEUX CALQUES SOMBRES SONT RETIRES, PAS SURCHARGES ----
+     Il y en avait deux, a deux endroits : `html{background:var(--ink)}` et,
+     sur <body>, une photo de marbre sous deux voiles noirs a 80/90 %. Deux
+     regles de meme portee se REMPLACENT au lieu de se cumuler : n'en
+     neutraliser qu'une aurait rendu la main a l'autre et la page serait
+     restee noire. Les deux disparaissent ici, remplacees par une seule
+     declaration. La photo n'est pas rechargee ailleurs. */
+  html,body{ background:#EEF3FB; color:#0B1B36;
+    font-family:'Space Mono','Courier New',monospace;line-height:1.6;min-height:100vh}
   a{color:var(--gold);text-decoration:none}
 
-  nav{display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid var(--line);
-    background:rgba(7,11,20,.72);backdrop-filter:blur(8px);position:sticky;top:0;z-index:5}
-  .brand{font-family:'Anton',sans-serif;font-size:19px;letter-spacing:1px;color:var(--gold)}
-  .brand span{color:var(--paper)}
-  nav .sp{flex:1}
-  .nlink{font-size:12px;color:var(--dim);padding:7px 10px}
-  .nlink:hover{color:var(--paper)}
-  .statusdot{width:8px;height:8px;border-radius:50%;background:#555;display:inline-block;margin-left:4px}
+  /* La barre `<nav>` d'origine — marque doree, fond noir translucide, filet or
+     — est REMPLACEE par `<header class="sw-haut">` (plus bas dans la feuille).
+     Ses regles sont retirees plutot que surchargees : les elements qu'elles
+     habillaient (.brand, .nlink, nav .sp) n'existent plus. La pastille d'etat
+     de connexion, elle, reste : elle a demenage dans la pastille du solde de
+     la nouvelle barre, et le script continue de l'allumer. */
+  .statusdot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;background:#555;vertical-align:middle}
   .statusdot.on{background:var(--green);box-shadow:0 0 8px var(--green)}
-  .statusdot.off{background:var(--red)}
+  .statusdot.off{background:var(--red);box-shadow:0 0 8px var(--red)}
 
-  .wrap{max-width:480px;margin:0 auto;padding:34px 18px 60px}
+  /* `container-type:inline-size` : les tailles en `vw` plus bas mesurent la
+     FENETRE, pas la colonne. Avec les deux colonnes laterales, la colonne du
+     milieu est plus etroite que la fenetre et une plaque calee sur `13vw`
+     deborderait. En `cqi`, meme coefficient, elle mesure la colonne. */
+  .wrap{max-width:480px;margin:0 auto;padding:34px 18px 60px; container-type:inline-size}
   .hero{text-align:center;margin-bottom:20px}
-  .hero h1{font-family:'Anton',sans-serif;font-size:clamp(32px,9vw,46px);letter-spacing:1px}
+  .hero h1{font-family:'Anton',sans-serif;font-size:clamp(32px,9cqi,46px);letter-spacing:1px}
   .hero h1 span{color:var(--gold)}
   .hero p{color:var(--dim);font-size:13px;margin-top:6px}
 
-  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:20px;margin-top:16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:20px;margin-top:16px;
+    box-shadow:var(--ombre)}
   .card h3{font-family:'Anton',sans-serif;font-size:16px;letter-spacing:.5px;color:var(--paper);margin-bottom:14px;display:flex;align-items:center;gap:8px}
 
   .stat{display:flex;justify-content:space-between;align-items:baseline;padding:9px 0;border-bottom:1px solid var(--line)}
@@ -117,7 +148,7 @@ canvas{ touch-action:none; }
 
   .lockinfo{font-size:11.5px;color:var(--dim);margin-top:10px;line-height:1.5}
 
-  input{width:100%;padding:13px 14px;border-radius:10px;border:1px solid var(--line);background:rgba(0,0,0,.3);
+  input{width:100%;padding:13px 14px;border-radius:10px;border:1px solid var(--line);background:#EEF3FB;
     color:var(--paper);font-family:inherit;font-size:16px;text-align:center}
   input:focus{outline:2px solid var(--gold);outline-offset:1px}
 
@@ -131,9 +162,11 @@ canvas{ touch-action:none; }
     font-family:'Anton',sans-serif;font-size:16px;letter-spacing:.04em;cursor:pointer;transition:filter .12s}
   button.btn:hover{filter:brightness(1.08)}
   button.btn:disabled{opacity:.5;cursor:not-allowed;filter:none}
-  button.btn.sec{background:transparent;color:var(--paper);border-color:var(--line)}
-  button.btn.sec:hover{border-color:var(--gold);color:var(--gold)}
-  button.btn.danger{background:transparent;color:var(--red);border-color:rgba(242,104,94,.4)}
+  /* Meme bouton secondaire que partout ailleurs : `.sw-b-vide` dans la barre,
+     `.abtn.sec` dans les panneaux — blanc, cerne et ecrit dans le bleu. */
+  button.btn.sec{background:#FFFFFF;color:var(--gold);border-color:var(--gold)}
+  button.btn.sec:hover{background:#EAF1FF}
+  button.btn.danger{background:#FFFFFF;color:var(--red);border-color:rgba(224,68,62,.45)}
   .row{display:flex;gap:8px}
   .row>*{flex:1}
   .mt{margin-top:10px}
@@ -152,7 +185,8 @@ canvas{ touch-action:none; }
   .note{font-size:11.5px;color:var(--dim);margin-top:8px}
 
   .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);opacity:0;pointer-events:none;
-    background:var(--panel);border:1px solid var(--gold);color:var(--paper);padding:11px 18px;border-radius:999px;
+    background:var(--panel);border:1px solid var(--line);color:var(--paper);padding:11px 18px;border-radius:999px;
+    box-shadow:0 8px 30px rgba(11,27,54,.16);
     font-size:13px;transition:all .22s;z-index:50;max-width:90vw;text-align:center}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
@@ -164,8 +198,8 @@ canvas{ touch-action:none; }
 .plate img{ display:block; width:auto; height:100%; }
 .plate:active{ transform:translateY(2px) scale(.985); }
 .plate:disabled{ opacity:.4; cursor:not-allowed; }
-.plate.grand{ height:clamp(46px,13vw,60px); }
-.plate.moyen{ height:clamp(38px,10.5vw,50px); }
+.plate.grand{ height:clamp(46px,13cqi,60px); }
+.plate.moyen{ height:clamp(38px,10.5cqi,50px); }
 .row .plate{ margin:0; }
 .row{ justify-content:center; align-items:center; }
 .row>.plate{ flex:0 0 auto; }
@@ -174,12 +208,21 @@ canvas{ touch-action:none; }
 .st-titre{ display:block; width:min(88%,420px); margin:0 auto 4px; }
 .st-trait{ display:block; width:min(92%,380px); margin:2px auto 14px; opacity:.9; }
 
-/* cartes : marbre vert sombre + quatre coins ornementes */
+/* cartes : blanches, et les quatre coins ornementes restent
+   ---- TROISIEME CALQUE SOMBRE, ET LE PLUS DISCRET ----
+   Celui-la ne peint pas le fond de la page mais celui des CARTES, et il
+   arrive APRES la regle `.card` du haut de la feuille : retourner la palette
+   ne l'aurait pas touche (il ecrit ses couleurs en clair), et les cartes
+   seraient restees en marbre vert sombre au milieu d'une page blanche, avec
+   du texte navy dessus — illisible. Le marbre part, la carte devient celle du
+   systeme : blanche, filet #E1E9F6, meme ombre que partout ailleurs.
+   Les coins ornementes (::before / ::after) RESTENT : ce sont des volutes
+   dorees decoupees, elles se lisent aussi bien sur blanc que sur noir. */
 .card{ position:relative;
-  background-color:rgba(10,16,10,.86);
-  background-image:url("img/4330a8bf7e8b.jpg");
-  background-size:340px; background-blend-mode:overlay;
-  border-color:rgba(255,197,61,.34); }
+  background-color:#FFFFFF;
+  background-image:none;
+  border-color:#E1E9F6;
+  box-shadow:var(--ombre); }
 .card::before, .card::after{ content:""; position:absolute; width:46px; height:36px;
   background-repeat:no-repeat; background-size:100% 100%; pointer-events:none; opacity:.95; }
 .card::before{ left:-3px; top:-3px;  background-image:url("img/71598b2fa55f.png"); }
@@ -196,37 +239,274 @@ canvas{ touch-action:none; }
 .stat .k i.gem{   background-image:url("img/66d5f24013a3.png"); }
 
 /* la piece tourne tant qu'il y a du rendement a reclamer */
-.st-piece{ display:block; width:clamp(58px,17vw,86px); margin:2px auto 8px;
+.st-piece{ display:block; width:clamp(58px,17cqi,86px); margin:2px auto 8px;
   animation:stTourne 7s linear infinite; }
 @keyframes stTourne{ from{ transform:rotateY(0deg); } to{ transform:rotateY(360deg); } }
 
 /* jetons de pourcentage */
 .pcts{ gap:10px; }
 .pct{ background:none !important; border:0 !important; padding:0; line-height:0;
-  filter:drop-shadow(0 3px 6px rgba(0,0,0,.6)); transition:transform .1s, filter .12s; }
+  filter:drop-shadow(0 3px 6px rgba(11,27,54,.20)); transition:transform .1s, filter .12s; }
 .pct img{ width:100%; height:auto; display:block; }
 .pct:hover{ transform:translateY(-2px); }
+/* Le halo du jeton choisi etait vert clair : sur blanc, il ne se voyait plus.
+   Il passe au bleu de l'accent, ou il se detache. */
 .pct.on{ transform:translateY(-4px) scale(1.06);
-  filter:drop-shadow(0 0 10px rgba(124,255,155,.85)) drop-shadow(0 4px 8px rgba(0,0,0,.6)); }
+  filter:drop-shadow(0 0 9px rgba(27,95,224,.70)) drop-shadow(0 4px 8px rgba(11,27,54,.22)); }
 
 /* illustration d'accueil */
 .st-heros{ display:block; width:min(58%,210px); margin:4px auto 10px;
-  filter:drop-shadow(0 8px 18px rgba(0,0,0,.6)); }
+  filter:drop-shadow(0 8px 18px rgba(11,27,54,.22)); }
 /* cadenas du bloc "staking bloque" */
 .st-lock{ float:left; width:34px; margin:0 10px 2px 0; }
 .lockinfo{ overflow:hidden; }
+
+/* ==================== LA NOUVELLE BARRE, BLANCHE ====================
+   DEMANDE : « tous se qu on viens de faire a blackjack html et spin html » —
+   meme barre que `games.html`, `index.html`, `swogebet.html`,
+   `swoge_blackjack.html` et `swoge_spin.html` : marque, chiffres du serveur,
+   solde, connexion, avatar. Seule la BARRE, les panneaux de compte et le
+   fond de page passent au blanc — le tapis et les cartes gardent leur
+   propre habillage or-sur-noir, qui est celui de la TABLE et non de la
+   navigation. Couleurs ECRITES ICI, comme sur les quatre autres pages. */
+.sw-haut{
+  display:flex; align-items:center; gap:14px; padding:10px 16px;
+  background:#FFFFFF; border-bottom:1px solid #E1E9F6;
+  position:sticky; top:0; z-index:30;
+}
+.sw-marque{display:flex; align-items:center; gap:9px; flex:0 0 auto}
+nav.sb-ancre{display:flex;align-items:center;gap:12px;
+  background:none;backdrop-filter:none;padding:0;border-bottom:none;
+  position:static;z-index:auto;}
+.sw-patte{
+  width:34px;height:34px;border-radius:10px;background:#EAF1FF;
+  display:grid;place-items:center;font-size:19px;
+}
+.sw-marque b{display:block;font:800 17px/1 'Inter',system-ui,sans-serif;letter-spacing:.4px;color:#1B5FE0}
+.sw-marque i{display:block;font:700 9.5px/1.4 'Inter',system-ui,sans-serif;font-style:normal;
+  letter-spacing:2.6px;color:#6B7C99}
+.sw-chiffres{
+  flex:1 1 auto; min-width:0; display:flex; gap:8px; overflow-x:auto;
+  padding:8px 10px; background:#EEF3FB; border:1px solid #E1E9F6;
+  border-radius:12px; scrollbar-width:none;
+}
+.sw-chiffres::-webkit-scrollbar{display:none}
+/* La bande de stats ne pouvait pas se cacher : le script d'echec pose
+   `bloc.hidden = true`, mais `.sw-chiffres{display:flex}` est une regle
+   d'AUTEUR et l'emporte sur le `[hidden]{display:none}` du navigateur.
+   Quand le fetch de /vitrine.json echouait, la bande restait donc a
+   l'ecran avec ses quatre tirets — l'allure d'un compteur en direct sans
+   compteur derriere. Une ligne, et l'intention du script tient. */
+.sw-chiffres[hidden]{display:none}
+.sw-ch{display:flex;align-items:center;gap:8px;padding:0 12px;flex:0 0 auto}
+.sw-ch+.sw-ch{border-left:1px solid #E1E9F6}
+.sw-ch .ic{width:26px;height:26px;border-radius:8px;background:#EAF1FF;
+  display:grid;place-items:center;font-size:13px}
+.sw-ch small{display:block;font:700 9px/1 'Inter',system-ui,sans-serif;letter-spacing:.9px;color:#6B7C99}
+.sw-ch b{display:block;font:800 14px/1.3 'Inter',system-ui,sans-serif;color:#0A1F44}
+.sb-ancre .chip{font:800 12px/1 'Inter',system-ui,sans-serif;color:#0A1F44;
+  border:1px solid #E1E9F6;border-radius:999px;padding:9px 13px;background:#FFFFFF;
+  box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05);white-space:nowrap}
+.sb-ancre .chip b{color:#0A1F44}
+.sw-b{
+  padding:10px 16px;border-radius:10px;cursor:pointer;border:none;
+  font:700 12.5px/1 'Inter',system-ui,sans-serif;letter-spacing:.3px;white-space:nowrap;
+}
+.sw-b-plein{background:#1B5FE0;color:#fff}
+.sw-b-plein:hover{background:#1750c4}
+.sw-b-vide{background:#FFFFFF;color:#1B5FE0;border:1.5px solid #1B5FE0}
+.sw-b-vide:hover{background:#EAF1FF}
+.connrow{ position:static !important; flex:0 0 auto;
+  flex-direction:row !important; flex-wrap:nowrap !important;
+  justify-content:flex-start !important; gap:8px; padding:0 !important; }
+.connrow .sw-b{ margin:0 !important; }
+.sw-avatar{
+  width:38px;height:38px;border-radius:11px;border:1px solid #E1E9F6;
+  background:#EEF3FB;display:grid;place-items:center;font-size:16px;flex:0 0 auto;cursor:pointer;
+}
+.gx-menu{position:absolute;top:60px;right:14px;z-index:70;width:236px;
+  background:#FFFFFF;border:1px solid #E1E9F6;border-radius:14px;
+  box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05);padding:6px;display:flex;flex-direction:column;gap:1px}
+.gx-menu[hidden]{display:none}
+.gx-menu a{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:9px;
+  font:700 12px/1 'Inter',system-ui,sans-serif;color:#0B1B36;text-decoration:none}
+.gx-menu a:hover{background:#EAF1FF;color:#1B5FE0}
+.gx-menu .gx-sep{height:1px;background:#E1E9F6;margin:5px 2px}
+.gx-menu .gx-g{padding:9px 10px 4px;font:800 9px/1 'Inter',system-ui,sans-serif;
+  letter-spacing:1.1px;text-transform:uppercase;color:#6B7C99}
+.gx-menu .gx-g:first-child{padding-top:4px}
+.gx-menu{max-height:min(74vh,560px);overflow-y:auto;scrollbar-width:thin}
+.gx-menu a i{font-style:normal;font-size:14px;width:18px;text-align:center;flex:0 0 auto}
+@media(max-width:520px){ .gx-menu{right:8px;left:8px;width:auto} }
+@media (max-width:620px){
+  .sw-haut{ flex-wrap:wrap; row-gap:8px; }
+  .sw-marque{ order:1 }
+  nav.sb-ancre{ order:2; flex:0 0 auto; margin-left:auto }
+  .menubtn, #gxProfil{ order:3 }
+  .connrow{ order:4; flex:1 1 100% !important; justify-content:center !important }
+  .sw-chiffres{ order:5; flex:1 1 100% }
+}
+
+/* ==================== LES DEUX COTES DE LA TABLE ====================
+   Meme grille que `swoge_blackjack.html` : les deux colonnes ne mesurent pas
+   la meme chose (208 px de navigation contre 300 px d affiches), une grille a
+   trois colonnes garde donc la colonne du milieu au centre EXACT de l ecran,
+   quelle que soit la largeur de ce qu on pose a cote. */
+.sw-corps{display:grid; grid-template-columns:minmax(208px,1fr) auto minmax(208px,1fr);
+  align-items:start; gap:14px; padding:14px; max-width:1680px; margin:0 auto}
+.sw-corps main{min-width:0}
+.sw-cote{position:sticky; top:74px; width:100%; display:flex; flex-direction:column; gap:12px; justify-self:end}
+.sw-nav{background:#FFFFFF;border:1px solid #E1E9F6;border-radius:14px;
+  padding:8px; box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05)}
+.sw-nav a{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:10px;
+  font:600 13.5px/1 'Inter',system-ui,sans-serif;color:#0B1B36}
+.sw-nav a .ic{width:20px;text-align:center;font-size:15px;opacity:.75}
+.sw-nav a:hover{background:#EEF3FB}
+.sw-nav a.on{background:#EAF1FF;color:#1B5FE0}
+.sw-nav a.on .ic{opacity:1}
+.sw-reseaux{display:flex;gap:8px;justify-content:center;padding-top:4px}
+.sw-reseaux a{width:34px;height:34px;border-radius:10px;background:#FFFFFF;border:1px solid #E1E9F6;
+  display:grid;place-items:center;font-size:14px;color:#6B7C99}
+.sw-reseaux a:hover{color:#1B5FE0;border-color:#1B5FE0}
+.uni{position:relative;border-radius:14px;overflow:hidden;min-height:258px;
+  display:flex;flex-direction:column;justify-content:flex-end;background:#0A1F44;
+  box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05)}
+.uni img,.uni .film{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  object-position:center top;border:0;background:#0A1F44}
+@media (prefers-reduced-motion:reduce){ .uni .film{display:none} }
+.uni .voile{position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(8,24,58,0) 34%,rgba(8,24,58,.88) 74%,rgba(8,24,58,.97) 100%)}
+.uni .dit{position:relative;padding:14px;text-align:center}
+.uni b{display:block;font:900 20px/1 'Inter',system-ui,sans-serif;color:#fff;letter-spacing:.4px}
+.uni i{display:block;font-style:normal;font:600 11px/1.4 'Inter',system-ui,sans-serif;
+  color:rgba(255,255,255,.76);margin:5px 0 11px}
+.uni .sw-b{width:100%;background:rgba(255,255,255,.94);color:#0A1F44;
+  display:block;text-align:center;border-radius:10px}
+.sw-lat{width:300px; position:sticky; top:74px; display:flex; flex-direction:column; gap:14px; justify-self:start}
+.sw-lat .carte{background:#FFFFFF;border:1px solid #E1E9F6;border-radius:14px;
+  box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05); overflow:hidden}
+.sw-solde{display:flex;align-items:center;gap:12px;padding:14px 16px}
+.sw-solde .ic{flex:0 0 auto;width:38px;height:38px;border-radius:11px;background:#EAF1FF;
+  display:grid;place-items:center;font-size:17px}
+.sw-solde .tx{min-width:0}
+.sw-solde .tx small{display:block;font:800 9.5px/1 'Inter',system-ui,sans-serif;
+  letter-spacing:1.1px;color:#6B7C99}
+.sw-solde .tx b{display:block;margin-top:4px;font:800 17px/1 'Inter',system-ui,sans-serif;
+  color:#0A1F44;font-variant-numeric:tabular-nums}
+.sw-lat .salon{position:relative;display:block;min-height:172px;overflow:hidden;background:#0A1F44}
+.sw-lat .salon img,.sw-lat .salon .film{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  object-position:34% 8%;border:0;background:#0A1F44}
+@media (prefers-reduced-motion:reduce){ .sw-lat .salon .film{display:none} }
+.sw-lat .salon .voile{position:absolute;inset:auto 0 0 0;height:58%;
+  background:linear-gradient(180deg,rgba(6,16,40,0) 0%,rgba(6,16,40,.86) 78%,rgba(6,16,40,.95) 100%)}
+.sw-lat .salon .dit{position:absolute;left:16px;right:16px;bottom:14px;
+  font:800 12px/1 'Inter',system-ui,sans-serif;letter-spacing:1.4px;color:#fff}
+.sw-lat .salon:hover img,.sw-lat .salon:hover .film{transform:scale(1.03)}
+.sw-lat .salon img,.sw-lat .salon .film{transition:transform .2s}
+@media (max-width:1360px){
+  .sw-cote, .sw-lat{ display:none }
+  .sw-corps{ padding:0; display:block; max-width:none }
+}
+/* ---- LA COLONNE DE GAUCHE NE GONFLE PLUS (memes deux colonnes de bord que
+   `swoge_poker.html`) ----
+ * BUG MESURE : `minmax(208px,1fr)` sur les deux colonnes de bord absorbe TOUT
+ * l'espace libre que la colonne du milieu (`auto`, calee sur le contenu du
+ * jeu) ne reclame pas — a 1920px, `.sw-cote` faisait 594px de large au lieu
+ * des ~208px voulus (documentes plus haut : « 208 px de navigation »). Des
+ * colonnes de bord FIXES, et la colonne du milieu absorbe le reste (sans
+ * effet sous 1360px : la regle juste au-dessus y cache deja `.sw-cote`). */
+.sw-corps{ grid-template-columns:230px minmax(0,1fr) 300px; }
+.sw-cote{ width:auto; max-width:230px; }
 </style>
 </head>
 <body>
 
-<nav>
-  <a class="brand" href="index.html">$SWOGE <span>STAKING</span></a>
-  <span class="sp"></span>
-  <a class="nlink" href="games.html">Games</a>
-  <a class="nlink" href="swoge_pusher_live.html">Pusher</a>
-  <span class="statusdot off" id="dot"></span>
-</nav>
+<header class="sw-haut">
+  <a class="sw-marque" href="nexus.html" id="gxMonde">
+    <span class="sw-patte">🐾</span>
+    <span><b>SWOGE</b><i>WORLD</i></span>
+  </a>
+  <div class="sw-chiffres" id="gxChiffres" hidden>
+    <div class="sw-ch"><span class="ic">👤</span><span><small>PLAYERS</small><b data-n="joueurs">—</b></span></div>
+    <div class="sw-ch"><span class="ic">🎲</span><span><small>CASINO VOLUME</small><b data-n="volume">—</b></span></div>
+    <div class="sw-ch"><span class="ic">🎮</span><span><small>ROUNDS PLAYED</small><b data-n="manches">—</b></span></div>
+    <div class="sw-ch"><span class="ic">🏆</span><span><small>WINNINGS PAID</small><b data-n="rendus">—</b></span></div>
+  </div>
+  <nav class="sb-ancre">
+    <span class="chip"><span class="statusdot off" id="dot"></span><b id="bal">—</b> $SWOGE</span>
+  </nav>
+  <div class="connrow" id="connRow">
+    <button class="sw-b sw-b-vide" id="connectBtn">CONNECT WALLET</button>
+    <button class="sw-b sw-b-plein" id="emailBtn">SIGN UP &mdash; EMAIL</button>
+  </div>
+  <!-- PAS D'AVATAR NI DE TIROIR ICI, ET PAS DE `swogeprofil.js`.
+       Le tiroir du profil se CONSTRUIT a partir du `#menu` de la page — la
+       liste « My Wallet / Deposit / Withdraw / Daily Quests ». Cette page-ci
+       n'a pas de `#menu` : elle n'a ni panneaux de compte ni quetes, tout ce
+       qu'elle sait faire est deja a l'ecran, dans ses deux cartes. Un bouton
+       de profil n'aurait rien eu a ouvrir. -->
+</header>
 
+<!-- Les quatre chiffres de la vitrine, lus sur le serveur — meme script que
+     `swoge_blackjack.html` et `swoge_spin.html`. -->
+<script>
+(function(){
+  "use strict";
+  var bloc = document.getElementById("gxChiffres");
+  if(!bloc) return;
+  function serveur(){
+    try{ var q=new URLSearchParams(location.search).get("server"); if(q)
+      return String(q).replace(/^ws/,"http"); }catch(e){}
+    return "https://web-production-220a3.up.railway.app";
+  }
+  function court(n){
+    n = Number(n) || 0;
+    var t = function(v, s){ return (Math.floor(v*10)/10).toFixed(1).replace(/\.0$/,"") + s; };
+    if(n >= 1e9) return t(n/1e9, "B");
+    if(n >= 1e6) return t(n/1e6, "M");
+    if(n >= 1e3) return t(n/1e3, "k");
+    return String(Math.floor(n));
+  }
+  fetch(serveur()+"/vitrine.json", { cache:"no-store" })
+    .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function(j){
+      [].forEach.call(bloc.querySelectorAll("b[data-n]"), function(b){
+        var v = j[b.getAttribute("data-n")];
+        b.textContent = (typeof v === "number" && isFinite(v)) ? court(v) : "—";
+      });
+      bloc.hidden = false;
+    })
+    ['catch'](function(){ bloc.hidden = true; });
+})();
+</script>
+
+<div class="sw-corps">
+
+  <aside class="sw-cote">
+    <nav class="sw-nav">
+      <a href="index.html"><span class="ic">&#127968;</span>Home</a>
+      <a href="games.html"><span class="ic">&#127920;</span>Casino</a>
+      <a href="swogebet.html"><span class="ic">&#9917;</span>Sports</a>
+      <a href="whitepaper.html"><span class="ic">&#128220;</span>Docs</a>
+    </nav>
+    <div class="sw-reseaux">
+      <a href="https://x.com/SwoleDogeSwoge" target="_blank" rel="noopener"
+         title="X — @SwoleDogeSwoge">&#120143;</a>
+      <a href="https://t.me/swoleswoge" target="_blank" rel="noopener"
+         title="Telegram — t.me/swoleswoge">&#9992;</a>
+      <a href="https://dexscreener.com/robinhood/0x2dc0fb72d9284228046cc95910eeaabebfe48456"
+         target="_blank" rel="noopener" title="Dexscreener — $SWOGE chart">&#128200;</a>
+    </div>
+    <article class="uni">
+      <video class="film" src="media/monde_carte.mp4" poster="img/site/monde_carte_poster.webp"
+             muted autoplay loop playsinline disablepictureinpicture
+             aria-hidden="true"></video><div class="voile"></div>
+      <div class="dit"><b>SWOGE WORLD</b><i>Meet. Explore. Own.</i>
+        <a class="sw-b" href="nexus.html">ENTER</a></div>
+    </article>
+  </aside>
+
+<main>
 <div class="wrap">
   <div class="hero">
     <img class="st-titre" src="img/c52ff67ca877.png" alt="SWOGE Staking">
@@ -238,14 +518,19 @@ canvas{ touch-action:none; }
   <div class="card connectbox" id="connectbox">
     <img class="st-heros" src="img/7e0d309be065.png" alt="">
     <p class="muted" style="margin-top:0">Same account &amp; balance as the arcade. Sign in with your wallet or your email.</p>
-    <button class="plate grand" id="connectBtn"><img src="img/c200ba7180c2.png" alt="Connect wallet"></button>
-    <button class="plate moyen mt" id="emailBtn"><img src="img/bff43b6482f0.png" alt="Sign in with email"></button>
+    <!-- Les identifiants `connectBtn` / `emailBtn` sont partis dans la barre
+         blanche, ou ils vivent sur toutes les pages converties (et ou
+         `swogebuy.js` et le reste du site vont les chercher). Les plaques
+         peintes restent le grand appel a l'action de la page et mènent au
+         MEME endroit : le cablage, plus bas, branche les deux. -->
+    <button class="plate grand" id="stConnect"><img src="img/c200ba7180c2.png" alt="Connect wallet"></button>
+    <button class="plate moyen mt" id="stEmail"><img src="img/bff43b6482f0.png" alt="Sign in with email"></button>
   </div>
 
   <!-- logged-in -->
   <div id="loggedin">
     <div class="card">
-      <div class="stat"><span class="k"><i class="coins"></i>Available to stake</span><span class="v big" id="bal">0</span></div>
+      <div class="stat"><span class="k"><i class="coins"></i>Available to stake</span><span class="v big" id="stDispo">0</span></div>
       <div class="stat"><span class="k"><i class="lock"></i>Currently staked</span><span class="v" id="stStaked">0</span></div>
       <div class="stat"><span class="k"><i class="gem"></i>Pending yield</span><span class="v green" id="stPending">0</span></div>
       <img class="st-lock" src="img/5a2ddabb8495.png" alt=""><div class="lockinfo" id="stLock"></div>
@@ -288,8 +573,54 @@ canvas{ touch-action:none; }
     <p class="muted"><span id="acShort"></span> · <a id="acExplorer" href="#" target="_blank" rel="noopener">Explorer ↗</a></p>
   </div>
 
-  <p class="muted">Play with your $SWOGE: <a href="games.html">SWOGE Arcade →</a></p>
+  <!-- Les deux liens que portait l'ancienne barre (« Games », « Pusher »)
+       reviennent ici : la colonne de gauche disparait sous 1360 px, et sans
+       eux le telephone n'aurait plus eu de chemin vers le reste du site. -->
+  <p class="muted">Play with your $SWOGE: <a href="games.html">SWOGE Arcade →</a>
+     &middot; <a href="swoge_pusher_live.html">Coin Pusher →</a></p>
 </div>
+</main>
+
+  <aside class="sw-lat">
+    <!-- Le solde, pas une cagnotte inventee — meme note que
+         `swoge_blackjack.html` et `swoge_spin.html` : ce jeu n a ni cagnotte
+         commune ni flux de gagnants a montrer, seulement le solde, deja
+         suivi par `#bal`. -->
+    <div class="carte sw-solde">
+      <span class="ic">&#128176;</span>
+      <span class="tx"><small>YOUR BALANCE</small><b id="swSoldeCarte">&mdash;</b></span>
+    </div>
+    <a class="carte salon" href="swoge_blackjack.html">
+      <img src="img/site/jeu_blackjack.webp" alt="" loading="lazy">
+      <span class="voile"></span>
+      <span class="dit">GOLD TABLE &nbsp;&rarr;</span>
+    </a>
+    <a class="carte salon" href="swogebet.html">
+      <video class="film" src="media/doge_sport.mp4" poster="img/site/doge_sport_poster.webp"
+             muted autoplay loop playsinline disablepictureinpicture
+             aria-label="SWOGE Sports"></video>
+      <span class="voile"></span>
+      <span class="dit">SWOGE SPORTS &mdash; BET NOW &nbsp;&rarr;</span>
+    </a>
+  </aside>
+
+</div>
+
+<!-- La carte « YOUR BALANCE » recopie #bal, jamais l inverse. -->
+<script>
+(function(){
+  "use strict";
+  var source = document.getElementById("bal");
+  var cible = document.getElementById("swSoldeCarte");
+  if(!source || !cible) return;
+  function copie(){
+    var t = (source.textContent || "").trim();
+    cible.textContent = t === "—" ? t : t + " $SWOGE";
+  }
+  copie();
+  new MutationObserver(copie).observe(source, { childList:true, characterData:true, subtree:true });
+})();
+</script>
 
 <!-- email login modal -->
 <div class="toast" id="toast"></div>
@@ -324,7 +655,16 @@ canvas{ touch-action:none; }
   function fmtBig(n){ n=parseFloat(n||0); if(n>=1e9)return (n/1e9).toFixed(2)+"B"; if(n>=1e6)return (n/1e6).toFixed(2)+"M"; if(n>=1e3)return (n/1e3).toFixed(2)+"k"; return (Math.round(n*100)/100).toString(); }
   function fmtYield(n){ n=parseFloat(n||0); if(n>=1000)return fmtBig(n); return n.toFixed(4); }
   function setDot(on){ $("dot").className="statusdot "+(on?"on":"off"); }
-  function setBalance(b){ balance=parseFloat(b||0); $("bal").textContent=fmtBig(balance); $("needbal").style.display=(authed&&balance<=0)?"":"none"; }
+  /* UNE seule source, deux affichages. Le solde vit maintenant dans la
+     pastille de la barre (`#bal`, comme sur les autres pages : c'est la que
+     `swogebuy.js` accroche la valeur en dollars et que la carte « YOUR
+     BALANCE » de la colonne de droite vient le recopier). La ligne
+     « Available to stake » de la carte en est une copie, `#stDispo` — meme
+     nombre, jamais recalcule ailleurs. */
+  function setBalance(b){ balance=parseFloat(b||0); var t=fmtBig(balance);
+    var h=$("bal"); if(h) h.textContent=t;
+    var d=$("stDispo"); if(d) d.textContent=t;
+    $("needbal").style.display=(authed&&balance<=0)?"":"none"; }
 
   function send(o){ if(ws&&ws.readyState===1) ws.send(JSON.stringify(o)); }
 
@@ -359,6 +699,9 @@ canvas{ touch-action:none; }
   function onAuthed(){
     $("connectbox").style.display="none";
     $("loggedin").style.display="block";
+    /* Une fois connecte, les deux boutons de la barre n'ont plus rien a
+       proposer — meme geste que `swoge_casino.html`. */
+    var cr=$("connRow"); if(cr) cr.style.display="none";
     $("acShort").textContent=myAddr.slice(0,6)+"…"+myAddr.slice(-4);
     $("acExplorer").href=CHAIN.scan+"/address/"+myAddr;
     loadWalletBalances();
@@ -429,36 +772,43 @@ canvas{ touch-action:none; }
     if(!el){
       var a=$("aprline"); if(!a) return;
       el=document.createElement("div"); el.id="stCap";
-      el.style.cssText="margin:12px auto 0;max-width:520px;padding:10px 13px;border-radius:12px;"+
-        "font-size:12px;line-height:1.55;text-align:left;background:rgba(255,255,255,.05);"+
-        "border:1px solid rgba(255,255,255,.12);";
+      /* Ce bloc-la n'est pas dans une carte : il est pose a meme le sol de la
+         page. Ecrit en blanc a 5 % sur blanc a 12 %, avec du texte #EAF2FF,
+         il devenait litteralement invisible des que le sol est passe au
+         clair — et c'est un vrai chiffre du serveur, pas une decoration. Il
+         devient la carte du systeme, comme celles d'a cote. */
+      el.style.cssText="margin:12px auto 0;max-width:520px;padding:10px 13px;border-radius:14px;"+
+        "font-size:12px;line-height:1.55;text-align:left;background:#FFFFFF;"+
+        "border:1px solid #E1E9F6;"+
+        "box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05);";
       a.parentNode.insertBefore(el,a.nextSibling);
     }
     if(!stCap||stCap.plafond==null){ el.style.display="none"; return; }
     el.style.display="block";
-    var c=stCap.plein?"var(--red)":stCap.taux>=90?"#FFC53D":"var(--green)";
+    /* #FFC53D sur blanc, c'est 1,7:1 — illisible. Meme signal, ambre fonce. */
+    var c=stCap.plein?"var(--red)":stCap.taux>=90?"#B45309":"var(--green)";
     el.innerHTML='<div style="display:flex;gap:8px;align-items:baseline">'+
-      '<b style="color:#EAF2FF;letter-spacing:.4px">STAKING POOL</b>'+
+      '<b style="color:#0A1F44;letter-spacing:.4px">STAKING POOL</b>'+
       '<span style="margin-left:auto;color:'+c+';font-weight:800">'+stCap.taux+'% full</span></div>'+
-      '<div style="height:7px;border-radius:999px;margin:8px 0;overflow:hidden;background:rgba(0,0,0,.45)">'+
+      '<div style="height:7px;border-radius:999px;margin:8px 0;overflow:hidden;background:#EAF1FF">'+
       '<i style="display:block;height:100%;border-radius:999px;width:'+Math.min(100,stCap.taux)+'%;background:'+c+'"></i></div>'+
-      '<div style="color:#8DA0C4">'+fmtBig(stCap.occupe)+' / '+fmtBig(stCap.plafond)+
+      '<div style="color:#6B7C99">'+fmtBig(stCap.occupe)+' / '+fmtBig(stCap.plafond)+
       ' $SWOGE staked across every player. The cap is '+stCap.partOffre+'% of total supply. '+
       (stCap.plein
         ? '<b style="color:var(--red)">Full — room frees up as soon as someone unstakes.</b>'
-        : '<b style="color:#EAF2FF">'+fmtBig(stCap.libre)+' $SWOGE of room left.</b>')+'</div>'+
+        : '<b style="color:#0A1F44">'+fmtBig(stCap.libre)+' $SWOGE of room left.</b>')+'</div>'+
       /* Le plafond par portefeuille se dit ICI, avant que le joueur tape un
          montant. Le decouvrir apres la saisie se lit comme une panne, pas
          comme une regle — et c'est deja la raison pour laquelle la salle est
          affichee juste au-dessus. */
       (stCap.plafondJoueur==null?'':
-        '<div style="margin-top:9px;padding-top:9px;border-top:1px solid rgba(255,255,255,.10);color:#8DA0C4">'+
-        '<b style="color:#EAF2FF">Per wallet: '+fmtBig(stCap.plafondJoueur)+' $SWOGE max</b>'+
+        '<div style="margin-top:9px;padding-top:9px;border-top:1px solid #E1E9F6;color:#6B7C99">'+
+        '<b style="color:#0A1F44">Per wallet: '+fmtBig(stCap.plafondJoueur)+' $SWOGE max</b>'+
         ' ('+stCap.partSalle+'% of the pool) — so the yield reaches many players instead of one.'+
         (stCap.libreJoueur==null?'':
           (stCap.libreJoueur>0
-            ? '<br><b style="color:#EAF2FF">You can still stake '+fmtBig(stCap.libreJoueur)+' $SWOGE.</b>'
-            : '<br><b style="color:#FFC53D">You are at your wallet cap. What you already staked stays '+
+            ? '<br><b style="color:#0A1F44">You can still stake '+fmtBig(stCap.libreJoueur)+' $SWOGE.</b>'
+            : '<br><b style="color:#B45309">You are at your wallet cap. What you already staked stays '+
               'exactly as it is — you just cannot add to it.</b>'))+
         '</div>');
   }
@@ -607,6 +957,8 @@ canvas{ touch-action:none; }
   // ---- wiring ----
   $("connectBtn").onclick=doConnect;
   $("emailBtn").onclick=openEmailLogin;
+  var plaqueC=$("stConnect"); if(plaqueC) plaqueC.onclick=doConnect;
+  var plaqueE=$("stEmail");   if(plaqueE) plaqueE.onclick=openEmailLogin;
   $("emClose").onclick=closeEmail;
   $("emOvl").addEventListener("click",function(e){ if(e.target===$("emOvl")) closeEmail(); });
   $("emSend").onclick=async function(){

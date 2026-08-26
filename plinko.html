@@ -162,7 +162,11 @@ canvas{ touch-action:none; }
   .fair{font-size:11px;color:var(--muted);text-align:center;padding:2px 0 6px;word-break:break-all}
   .fair b{color:#cdbf9f}
   footer{border-top:1px solid var(--line);padding:20px 16px 40px;text-align:center;color:var(--muted);font-size:12px}
-  footer a{color:var(--gold)}
+  /* Le lien du pied de page gardait le dore de l'ancien theme sombre :
+   #E6A537 sur le fond clair #EEF3FB, soit 1,92:1 — sous le seuil de
+   lisibilite. `swoge_blackjack.html` et `crash.html` etaient deja passes
+   au bleu du systeme ; les dix autres pages converties suivent. */
+footer a{color:#1B5FE0}
   .statusdot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;background:#555;vertical-align:middle}
   .statusdot.on{background:var(--green);box-shadow:0 0 8px var(--green)}
   .statusdot.off{background:var(--red);box-shadow:0 0 8px var(--red)}
@@ -540,6 +544,13 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   border-radius:12px; scrollbar-width:none;
 }
 .sw-chiffres::-webkit-scrollbar{display:none}
+/* La bande de stats ne pouvait pas se cacher : le script d'echec pose
+   `bloc.hidden = true`, mais `.sw-chiffres{display:flex}` est une regle
+   d'AUTEUR et l'emporte sur le `[hidden]{display:none}` du navigateur.
+   Quand le fetch de /vitrine.json echouait, la bande restait donc a
+   l'ecran avec ses quatre tirets — l'allure d'un compteur en direct sans
+   compteur derriere. Une ligne, et l'intention du script tient. */
+.sw-chiffres[hidden]{display:none}
 .sw-ch{display:flex;align-items:center;gap:8px;padding:0 12px;flex:0 0 auto}
 .sw-ch+.sw-ch{border-left:1px solid #E1E9F6}
 .sw-ch .ic{width:26px;height:26px;border-radius:8px;background:#EAF1FF;

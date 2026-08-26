@@ -70,48 +70,63 @@ canvas{ touch-action:none; }
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --ground:#070B14;
-  --surface:#101726;
-  --surface-2:#0C1220;
-  --line:rgba(255,197,61,.24);
-  --line-soft:rgba(255,197,61,.12);
-  --ink:#EAF2FF;
-  --ink-2:#C3CEE2;
-  --muted:#8DA0C4;
-  --gold:#FFC53D;
-  --gold-ink:#FFD97A;
-  --gold-wash:#2A2312;
-  --green:#7CFF9B;
-  --green-wash:#0F2A1D;
-  --amber:#FFB84D;
-  --amber-wash:#2B2211;
-  --slate:#9AA8C4;
-  --slate-wash:#161E2E;
-  --red:#F2685E;
-  --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px rgba(0,0,0,.35);
+  /* ==================== AU CLAIR ====================
+   * Le document passe au blanc, comme le reste du site (`index.html`,
+   * `games.html`, `swogebet.html`, `swoge_casino.html`). Les NOMS ne bougent
+   * pas — ils servent quelques centaines de fois plus bas, dans les encadres,
+   * les tableaux, les pastilles d etat — seules leurs VALEURS basculent. Une
+   * page entiere retournee en un seul endroit, plutot qu une surcouche posee
+   * par-dessus l ancienne : deux jeux de couleurs qui cohabitent, c est la
+   * garantie qu il en restera un morceau quelque part.
+   *
+   * L OR DEVIENT LE BLEU DU SYSTEME (#1B5FE0). Sur fond clair, #FFC53D tombe
+   * a 1,6:1 — un titre de section illisible. Le bleu est celui de la barre,
+   * ecrit a l identique.
+   *
+   * LES GRIS DE TEXTE SONT PLUS SOMBRES QUE LE GRIS DE LA BARRE (#6B7C99).
+   * Deux raisons : ce gris-la porte des etiquettes de 9 px en gras, pas des
+   * paragraphes ni un sommaire de quarante lignes ; et le calque `html::after`
+   * du bloc commun, en `screen`, RELEVE tout ce qui est sombre — il coute
+   * environ 0,5 point de contraste au texte. Mesure sur les pixels rendus :
+   * #6B7C99 y tombait a 3,8:1, sous le seuil. Les valeurs retenues passent
+   * 4,5:1 APRES le calque, pas avant. */
+  --ground:#EEF3FB;
+  --surface:#FFFFFF;
+  --surface-2:#EAF1FF;
+  --line:#E1E9F6;
+  --line-soft:#E8EEF8;
+  --ink:#0B1B36;
+  --ink-2:#35486B;
+  --muted:#4C5E80;
+  /* DEUX BLEUS, ET LE PARTAGE EST MESURE. `--gold` est le bleu du systeme,
+   * celui de la barre, ecrit a l identique : il tient les fonds, les traits,
+   * la selection et le titre de 50 px. `--gold-ink` est son bleu sombre
+   * (celui du survol des boutons pleins) et prend TOUT le petit texte —
+   * surtitre, intitules de partie, en-tetes de tableau, sommaire. Pixels
+   * releves a 1440 px : le bleu clair y donnait 4,45:1 sur le fond de page et
+   * 4,37:1 sur l en-tete de tableau, sous le seuil de 4,5:1 ; le bleu sombre
+   * donne 5,3 a 5,5:1. Le calque `screen` du bloc commun coute la moitie de
+   * cet ecart a lui seul. */
+  --gold:#1B5FE0;
+  --gold-ink:#1750C4;
+  --gold-wash:#EAF1FF;
+  --green:#0E6E34;
+  --green-wash:#E4F6EA;
+  --amber:#7F5300;
+  --amber-wash:#FBEFD8;
+  --slate:#4C5E80;
+  --slate-wash:#EAF1FF;
+  --red:#C4362F;
+  --shadow:0 1px 2px rgba(11,27,54,.06),0 8px 24px rgba(11,27,54,.05);
   --mono:'Space Mono',ui-monospace,'SFMono-Regular',Menlo,Consolas,monospace;
   --serif:Charter,'Bitstream Charter','Iowan Old Style',Palatino,Georgia,'Times New Roman',serif;
 }
-/* ---- barre du site ---- */
-.sitenav{
-  display:flex;align-items:center;gap:14px;padding:14px 18px;
-  border-bottom:1px solid var(--line);background:rgba(7,11,20,.92);
-  position:sticky;top:0;z-index:50;backdrop-filter:blur(8px);
-  font-family:var(--mono);font-size:12.5px;
-}
-.sitenav .brand{
-  font-family:'Anton',var(--mono);font-size:19px;letter-spacing:.5px;
-  color:var(--gold);text-decoration:none;
-}
-.sitenav .brand span{color:var(--ink)}
-.sitenav .sp{flex:1}
-.sitenav a.nlink{color:var(--muted);text-decoration:none;padding:6px 9px;border-radius:8px}
-.sitenav a.nlink:hover{color:var(--ink);background:rgba(255,197,61,.10)}
-.sitenav a.buy{
-  color:#07101F;background:linear-gradient(180deg,#FFE08A,#FFC53D);
-  text-decoration:none;font-weight:700;padding:7px 13px;border-radius:9px;
-}
-@media (max-width:640px){.sitenav a.nlink{display:none}}
+/* ---- barre du site ----
+ * L ancienne `.sitenav` — fond `rgba(7,11,20,.92)`, marque or, bouton
+ * « Buy » en degrade or — est SUPPRIMEE, pas repeinte : la barre blanche
+ * commune la remplace en entier, en bas de cette feuille, recopiee de
+ * `swoge_casino.html`. La repeindre aurait laisse deux barres a tenir
+ * d accord, dont une seule serait relue le jour d un changement. */
 
 
 *{box-sizing:border-box}
@@ -120,7 +135,9 @@ body{
   font-family:var(--serif);font-size:17px;line-height:1.62;
   -webkit-font-smoothing:antialiased;
 }
-::selection{background:var(--gold);color:var(--ground)}
+/* Blanc franc, pas `--ground` : #EEF3FB sur le bleu ne donne que 4,45:1 une
+   fois le calque `screen` du bloc commun applique, le blanc en donne 4,91:1. */
+::selection{background:var(--gold);color:#fff}
 :focus-visible{outline:2px solid var(--gold);outline-offset:3px;border-radius:3px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
@@ -142,7 +159,7 @@ nav.toc{display:none}
   }
   nav.toc h4{
     margin:22px 0 7px;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;
-    color:var(--gold);font-weight:700;
+    color:var(--gold-ink);font-weight:700;
   }
   nav.toc h4:first-child{margin-top:0}
   nav.toc a{
@@ -157,7 +174,7 @@ nav.toc{display:none}
 header.top{padding:64px 0 40px;border-bottom:1px solid var(--line)}
 .kicker{
   font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;
-  color:var(--gold);margin:0 0 20px;font-weight:700;
+  color:var(--gold-ink);margin:0 0 20px;font-weight:700;
 }
 h1{
   font-family:var(--mono);font-weight:700;font-size:clamp(30px,5.4vw,50px);
@@ -196,9 +213,9 @@ h1 em{font-style:normal;color:var(--gold)}
 .part{
   margin:76px 0 0;padding-top:26px;border-top:2px solid var(--gold);
   font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;
-  color:var(--gold);font-weight:700;
+  color:var(--gold-ink);font-weight:700;
 }
-section{scroll-margin-top:22px;padding-top:34px}
+section{scroll-margin-top:78px;padding-top:34px}
 h2{
   font-family:var(--mono);font-size:22px;font-weight:700;line-height:1.25;
   letter-spacing:-.01em;margin:0 0 6px;text-wrap:balance;
@@ -258,7 +275,7 @@ table{border-collapse:collapse;width:100%;min-width:520px;font-size:14px}
 th,td{padding:9px 14px;text-align:left;border-bottom:1px solid var(--line-soft);vertical-align:top}
 th{
   font-family:var(--mono);font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;
-  color:var(--gold);font-weight:700;background:var(--surface-2);white-space:nowrap;
+  color:var(--gold-ink);font-weight:700;background:var(--surface-2);white-space:nowrap;
 }
 tbody tr:last-child td{border-bottom:0}
 td.n,th.n{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -274,7 +291,7 @@ table .chip{font-size:8.5px}
   margin:0;font-family:var(--mono);font-size:12px;line-height:1.6;color:var(--ink-2);
   white-space:pre;
 }
-.flow pre b{color:var(--gold);font-weight:700}
+.flow pre b{color:var(--gold-ink);font-weight:700}
 .flow pre i{color:var(--muted);font-style:normal}
 
 code{
@@ -291,7 +308,10 @@ footer{
 }
 
 /* ---- ajustements propres a la page du site ---- */
-@media (min-width:1040px){nav.toc{top:60px;max-height:calc(100vh - 60px)}}
+/* La barre blanche est collante et mesure 62 px quand les chiffres de la
+   vitrine sont la, 54 px quand le serveur ne repond pas : le sommaire se cale
+   sous la plus haute des deux. */
+@media (min-width:1040px){nav.toc{top:66px;max-height:calc(100vh - 66px)}}
 
 /* ---- la bascule de langue ----
    Sans attribut (script en echec, ou avant qu'il tourne) on est en anglais :
@@ -307,11 +327,251 @@ footer{
 }
 .langbtn button+button{border-left:1px solid var(--line)}
 .langbtn button:hover{color:var(--ink)}
-.langbtn button.on{color:var(--ground);background:var(--gold)}
+/* Meme raison qu au `::selection` : le blanc, pas `--ground`, pour passer le
+   seuil sur le bleu (4,91:1 contre 4,45:1, pixels releves a 1440 px). */
+.langbtn button.on{color:#fff;background:var(--gold)}
 
-.sitenav .langbtn{margin-left:4px}
-.sitenav .langbtn button{padding:6px 10px;font-size:11px}
-@media (max-width:640px){.sitenav .langbtn{margin-left:auto}}
+/* ================== CE QUI SUIT EST RECOPIE MOT POUR MOT ==================
+ * De `swoge_casino.html`, du commentaire ci-dessous jusqu a
+ * `.sw-cote{ width:auto; max-width:230px; }` : rien n y est retouche, pour
+ * qu une correction faite la-bas se reporte ici par simple copie.
+ *
+ * LES DEUX COLONNES DE COTE (`.sw-cote`, `.sw-lat`) ARRIVENT DONC EN STYLE,
+ * MAIS CETTE PAGE NE LES POSE PAS, ET C EST VOULU. C est un document de
+ * lecture : quarante sections, une colonne de texte calee sur 70 caracteres,
+ * et un sommaire colle qui EST deja la colonne de gauche du site. Mesure a
+ * 1440 px : 230 + 300 px de colonnes plus les gouttieres laissent 854 px a
+ * `.shell`, sous le seuil de 1040 px qui fait apparaitre le sommaire — le
+ * document perdrait sa table des matieres POUR gagner deux colonnes
+ * d affiches, et la colonne de texte tomberait autour de 500 px. Le style
+ * reste, pret a servir si la page change de nature ; le balisage, non.
+ * ========================================================================== */
+
+/* ==================== LA NOUVELLE BARRE, BLANCHE ====================
+   DEMANDE : « tous se qu on viens de faire a blackjack html et spin html » —
+   meme barre que `games.html`, `index.html`, `swogebet.html`,
+   `swoge_blackjack.html` et `swoge_spin.html` : marque, chiffres du serveur,
+   solde, connexion, avatar. Seule la BARRE, les panneaux de compte et le
+   fond de page passent au blanc — le tapis et les cartes gardent leur
+   propre habillage or-sur-noir, qui est celui de la TABLE et non de la
+   navigation. Couleurs ECRITES ICI, comme sur les quatre autres pages. */
+.sw-haut{
+  display:flex; align-items:center; gap:14px; padding:10px 16px;
+  background:#FFFFFF; border-bottom:1px solid #E1E9F6;
+  position:sticky; top:0; z-index:30;
+}
+.sw-marque{display:flex; align-items:center; gap:9px; flex:0 0 auto}
+nav.sb-ancre{display:flex;align-items:center;gap:12px;
+  background:none;backdrop-filter:none;padding:0;border-bottom:none;
+  position:static;z-index:auto;}
+.sw-patte{
+  width:34px;height:34px;border-radius:10px;background:#EAF1FF;
+  display:grid;place-items:center;font-size:19px;
+}
+.sw-marque b{display:block;font:800 17px/1 'Inter',system-ui,sans-serif;letter-spacing:.4px;color:#1B5FE0}
+.sw-marque i{display:block;font:700 9.5px/1.4 'Inter',system-ui,sans-serif;font-style:normal;
+  letter-spacing:2.6px;color:#6B7C99}
+.sw-chiffres{
+  flex:1 1 auto; min-width:0; display:flex; gap:8px; overflow-x:auto;
+  padding:8px 10px; background:#EEF3FB; border:1px solid #E1E9F6;
+  border-radius:12px; scrollbar-width:none;
+}
+.sw-chiffres::-webkit-scrollbar{display:none}
+.sw-ch{display:flex;align-items:center;gap:8px;padding:0 12px;flex:0 0 auto}
+.sw-ch+.sw-ch{border-left:1px solid #E1E9F6}
+.sw-ch .ic{width:26px;height:26px;border-radius:8px;background:#EAF1FF;
+  display:grid;place-items:center;font-size:13px}
+.sw-ch small{display:block;font:700 9px/1 'Inter',system-ui,sans-serif;letter-spacing:.9px;color:#6B7C99}
+.sw-ch b{display:block;font:800 14px/1.3 'Inter',system-ui,sans-serif;color:#0A1F44}
+.sb-ancre .chip{font:800 12px/1 'Inter',system-ui,sans-serif;color:#0A1F44;
+  border:1px solid #E1E9F6;border-radius:999px;padding:9px 13px;background:#FFFFFF;
+  box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05);white-space:nowrap}
+.sb-ancre .chip b{color:#0A1F44}
+.sw-b{
+  padding:10px 16px;border-radius:10px;cursor:pointer;border:none;
+  font:700 12.5px/1 'Inter',system-ui,sans-serif;letter-spacing:.3px;white-space:nowrap;
+}
+.sw-b-plein{background:#1B5FE0;color:#fff}
+.sw-b-plein:hover{background:#1750c4}
+.sw-b-vide{background:#FFFFFF;color:#1B5FE0;border:1.5px solid #1B5FE0}
+.sw-b-vide:hover{background:#EAF1FF}
+.connrow{ position:static !important; flex:0 0 auto;
+  flex-direction:row !important; flex-wrap:nowrap !important;
+  justify-content:flex-start !important; gap:8px; padding:0 !important; }
+.connrow .sw-b{ margin:0 !important; }
+.sw-avatar{
+  width:38px;height:38px;border-radius:11px;border:1px solid #E1E9F6;
+  background:#EEF3FB;display:grid;place-items:center;font-size:16px;flex:0 0 auto;cursor:pointer;
+}
+.gx-menu{position:absolute;top:60px;right:14px;z-index:70;width:236px;
+  background:#FFFFFF;border:1px solid #E1E9F6;border-radius:14px;
+  box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05);padding:6px;display:flex;flex-direction:column;gap:1px}
+.gx-menu[hidden]{display:none}
+.gx-menu a{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:9px;
+  font:700 12px/1 'Inter',system-ui,sans-serif;color:#0B1B36;text-decoration:none}
+.gx-menu a:hover{background:#EAF1FF;color:#1B5FE0}
+.gx-menu .gx-sep{height:1px;background:#E1E9F6;margin:5px 2px}
+.gx-menu .gx-g{padding:9px 10px 4px;font:800 9px/1 'Inter',system-ui,sans-serif;
+  letter-spacing:1.1px;text-transform:uppercase;color:#6B7C99}
+.gx-menu .gx-g:first-child{padding-top:4px}
+.gx-menu{max-height:min(74vh,560px);overflow-y:auto;scrollbar-width:thin}
+.gx-menu a i{font-style:normal;font-size:14px;width:18px;text-align:center;flex:0 0 auto}
+@media(max-width:520px){ .gx-menu{right:8px;left:8px;width:auto} }
+@media (max-width:620px){
+  .sw-haut{ flex-wrap:wrap; row-gap:8px; }
+  .sw-marque{ order:1 }
+  nav.sb-ancre{ order:2; flex:0 0 auto; margin-left:auto }
+  .menubtn, #gxProfil{ order:3 }
+  .connrow{ order:4; flex:1 1 100% !important; justify-content:center !important }
+  .sw-chiffres{ order:5; flex:1 1 100% }
+}
+
+/* ==================== LES DEUX COTES DE LA TABLE ====================
+   Meme grille que `swoge_blackjack.html` : les deux colonnes ne mesurent pas
+   la meme chose (208 px de navigation contre 300 px d affiches), une grille a
+   trois colonnes garde donc la colonne du milieu au centre EXACT de l ecran,
+   quelle que soit la largeur de ce qu on pose a cote. */
+.sw-corps{display:grid; grid-template-columns:minmax(208px,1fr) auto minmax(208px,1fr);
+  align-items:start; gap:14px; padding:14px; max-width:1680px; margin:0 auto}
+.sw-corps main{min-width:0}
+.sw-cote{position:sticky; top:74px; width:100%; display:flex; flex-direction:column; gap:12px; justify-self:end}
+.sw-nav{background:#FFFFFF;border:1px solid #E1E9F6;border-radius:14px;
+  padding:8px; box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05)}
+.sw-nav a{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:10px;
+  font:600 13.5px/1 'Inter',system-ui,sans-serif;color:#0B1B36}
+.sw-nav a .ic{width:20px;text-align:center;font-size:15px;opacity:.75}
+.sw-nav a:hover{background:#EEF3FB}
+.sw-nav a.on{background:#EAF1FF;color:#1B5FE0}
+.sw-nav a.on .ic{opacity:1}
+.sw-reseaux{display:flex;gap:8px;justify-content:center;padding-top:4px}
+.sw-reseaux a{width:34px;height:34px;border-radius:10px;background:#FFFFFF;border:1px solid #E1E9F6;
+  display:grid;place-items:center;font-size:14px;color:#6B7C99}
+.sw-reseaux a:hover{color:#1B5FE0;border-color:#1B5FE0}
+.uni{position:relative;border-radius:14px;overflow:hidden;min-height:258px;
+  display:flex;flex-direction:column;justify-content:flex-end;background:#0A1F44;
+  box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05)}
+.uni img,.uni .film{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  object-position:center top;border:0;background:#0A1F44}
+@media (prefers-reduced-motion:reduce){ .uni .film{display:none} }
+.uni .voile{position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(8,24,58,0) 34%,rgba(8,24,58,.88) 74%,rgba(8,24,58,.97) 100%)}
+.uni .dit{position:relative;padding:14px;text-align:center}
+.uni b{display:block;font:900 20px/1 'Inter',system-ui,sans-serif;color:#fff;letter-spacing:.4px}
+.uni i{display:block;font-style:normal;font:600 11px/1.4 'Inter',system-ui,sans-serif;
+  color:rgba(255,255,255,.76);margin:5px 0 11px}
+.uni .sw-b{width:100%;background:rgba(255,255,255,.94);color:#0A1F44;
+  display:block;text-align:center;border-radius:10px}
+.sw-lat{width:300px; position:sticky; top:74px; display:flex; flex-direction:column; gap:14px; justify-self:start}
+.sw-lat .carte{background:#FFFFFF;border:1px solid #E1E9F6;border-radius:14px;
+  box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05); overflow:hidden}
+.sw-solde{display:flex;align-items:center;gap:12px;padding:14px 16px}
+.sw-solde .ic{flex:0 0 auto;width:38px;height:38px;border-radius:11px;background:#EAF1FF;
+  display:grid;place-items:center;font-size:17px}
+.sw-solde .tx{min-width:0}
+.sw-solde .tx small{display:block;font:800 9.5px/1 'Inter',system-ui,sans-serif;
+  letter-spacing:1.1px;color:#6B7C99}
+.sw-solde .tx b{display:block;margin-top:4px;font:800 17px/1 'Inter',system-ui,sans-serif;
+  color:#0A1F44;font-variant-numeric:tabular-nums}
+.sw-lat .salon{position:relative;display:block;min-height:172px;overflow:hidden;background:#0A1F44}
+.sw-lat .salon img,.sw-lat .salon .film{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  object-position:34% 8%;border:0;background:#0A1F44}
+@media (prefers-reduced-motion:reduce){ .sw-lat .salon .film{display:none} }
+.sw-lat .salon .voile{position:absolute;inset:auto 0 0 0;height:58%;
+  background:linear-gradient(180deg,rgba(6,16,40,0) 0%,rgba(6,16,40,.86) 78%,rgba(6,16,40,.95) 100%)}
+.sw-lat .salon .dit{position:absolute;left:16px;right:16px;bottom:14px;
+  font:800 12px/1 'Inter',system-ui,sans-serif;letter-spacing:1.4px;color:#fff}
+.sw-lat .salon:hover img,.sw-lat .salon:hover .film{transform:scale(1.03)}
+.sw-lat .salon img,.sw-lat .salon .film{transition:transform .2s}
+@media (max-width:1360px){
+  .sw-cote, .sw-lat{ display:none }
+  .sw-corps{ padding:0; display:block; max-width:none }
+}
+/* ---- LA COLONNE DE GAUCHE NE GONFLE PLUS (memes deux colonnes de bord que
+   `swoge_poker.html`) ----
+ * BUG MESURE : `minmax(208px,1fr)` sur les deux colonnes de bord absorbe TOUT
+ * l'espace libre que la colonne du milieu (`auto`, calee sur le contenu du
+ * jeu) ne reclame pas — a 1920px, `.sw-cote` faisait 594px de large au lieu
+ * des ~208px voulus (documentes plus haut : « 208 px de navigation »). Des
+ * colonnes de bord FIXES, et la colonne du milieu absorbe le reste (sans
+ * effet sous 1360px : la regle juste au-dessus y cache deja `.sw-cote`). */
+.sw-corps{ grid-template-columns:230px minmax(0,1fr) 300px; }
+.sw-cote{ width:auto; max-width:230px; }
+
+/* Ce qui suit est PROPRE A CETTE PAGE, et vient donc APRES le bloc recopie :
+ * une regle posee avant lui se serait fait reprendre par le `.sw-haut{...}`
+ * de base, plus bas dans la feuille et de meme specificite. Mesure : le
+ * `gap` et la marge du telephone ne prenaient pas, et la barre restait a
+ * deux lignes. */
+/* ---- CE QUE LA PAGE AJOUTE A LA BARRE COPIEE ----
+ * Trois choses, et rien d autre : les liens de navigation (l ancienne
+ * `.sitenav` les portait), la bascule EN/FR — qui est la commande la plus
+ * utilisee de ce document et ne pouvait pas disparaitre avec la barre — et
+ * le bouton d achat, qui devient un `.sw-b` du systeme au lieu du degrade or.
+ *
+ * L ORDRE SUR TELEPHONE. Le bloc copie donne un `order` a la marque, aux
+ * chiffres et aux boutons de connexion quand la barre passe a la ligne sous
+ * 620 px. Un element SANS `order` vaut 0, donc passe AVANT la marque : sans
+ * les deux regles ci-dessous, la bascule de langue et « Buy » se retrouvaient
+ * en tete de barre, avant le nom du site. */
+.sb-ancre .nlink{
+  font:600 12.5px/1 'Inter',system-ui,sans-serif;color:#4C5E80;text-decoration:none;
+  padding:9px 10px;border-radius:9px;white-space:nowrap;
+}
+.sb-ancre .nlink:hover{color:#1B5FE0;background:#EAF1FF}
+
+/* ---- LE GRIS DE LA BARRE NE TIENT PAS LE SEUIL SUR CETTE PAGE ----
+ * Le commentaire de `:root` plus haut le dit deja, chiffres a l appui :
+ * #6B7C99 tombe a 3,8:1 une fois le calque `screen` du bloc commun applique.
+ * Mesure sur les pixels rendus a 1440 px, glyphe le plus sombre contre le
+ * blanc de la barre : #6B7C99 -> rgb(117,133,163) -> 3,72:1, et 3,37:1 sur
+ * le fond #EEF3FB de la vitrine. Sous le seuil de 4,5:1 dans les deux cas.
+ *
+ * Trois textes de la barre le portaient encore : les liens de navigation
+ * (regle ci-dessus, PROPRE a cette page — corrigee sur place), le surtitre
+ * « WHITE PAPER » et les intitules des quatre chiffres. Ces deux derniers
+ * viennent du bloc RECOPIE mot pour mot : on ne les touche pas la-bas, on
+ * les reprend ICI, apres la copie, pour que le bloc reste identique aux
+ * autres pages et qu une correction faite chez elles se reporte encore par
+ * simple copie. #4C5E80 est le `--muted` du document : rgb(89,105,141) une
+ * fois le calque applique, soit 5,48:1 sur le blanc et 4,96:1 sur #EEF3FB. */
+.sw-haut .sw-marque i{color:#4C5E80}
+.sw-haut .sw-ch small{color:#4C5E80}
+/* Ce document souligne ses liens (`a{color:var(--gold-ink)}` sans
+   `text-decoration`), ce que la barre ne veut nulle part : ni sous la
+   marque, ni sous les liens de navigation, ni sous le bouton d achat. */
+.sw-haut a{text-decoration:none}
+.sw-haut a.sw-b{display:inline-block}
+.sw-haut .langbtn{margin-left:4px;border-color:#E1E9F6}
+.sw-haut .langbtn button{padding:6px 10px;font-size:11px}
+/* ---- LA VITRINE SE CACHE VRAIMENT QUAND LE SERVEUR NE REPOND PAS ----
+ * Le script pose `bloc.hidden = true` sur son echec, mais `hidden` est une
+ * regle du navigateur (`[hidden]{display:none}`) que le `display:flex` de
+ * `.sw-chiffres`, ecrit dans la feuille, bat en specificite : la bande
+ * restait affichee avec ses quatre tirets. MESURE ici a 390 px : quatre
+ * cases « PLAYERS — », « CASINO VOLUME — » sous le titre d un white paper,
+ * soit exactement l allure d un chiffre en direct sans chiffre derriere.
+ * Une ligne, et l intention du script tient. */
+.sw-chiffres[hidden]{display:none}
+@media (max-width:640px){.sb-ancre .nlink{display:none}}
+@media (max-width:620px){
+  /* `margin-left:auto` sur la bascule mangeait toute la place restante et
+     renvoyait « Buy » a la ligne : c est le BOUTON qui va au bord droit, la
+     bascule reste contre la marque. Les trois tiennent alors sur une ligne
+     (363 px de contenu pour 390 px d ecran, mesure). */
+  .sw-haut .langbtn{ order:3; margin-left:4px }
+  .sw-haut a.sw-b{ order:4; margin-left:auto }
+  /* Tous ses liens sont caches a cette largeur ; la boite vide, elle, gardait
+     son `gap` et poussait « Buy » sur une troisieme ligne (barre mesuree a
+     149 px de haut sur un telephone de 390 px). */
+  .sw-haut nav.sb-ancre{ display:none }
+  /* Marque 144 + bascule 76 + bouton 127 = 347 px : avec le `gap` de 14 et
+     les 16 px de marge du bloc copie, on depassait de neuf pixels et « Buy »
+     tombait a la ligne. Huit et douze, et la barre tient sur une ligne a
+     390 px. Plus etroit qu un iPhone SE, elle repasse a deux lignes — et
+     c est bien ce que les regles d enroulement copiees savent faire. */
+  .sw-haut{ gap:8px; padding:10px 12px }
+}
+
 </style>
 </head>
 <body>
@@ -320,16 +580,80 @@ footer{
 document.documentElement.setAttribute("data-lang",(l==="fr"||l==="en")?l:"en");}
 catch(e){document.documentElement.setAttribute("data-lang","en");}})();
 </script>
-<div class="sitenav">
-  <a class="brand" href="index.html">$SWOGE <span>WHITE PAPER</span></a>
-  <span class="sp"></span>
-  <a class="nlink" href="index.html">Home</a>
-  <a class="nlink" href="games.html">Games</a>
-  <a class="nlink" href="swoge_staking.html">Stake</a>
-  <a class="nlink" href="launchpad.html">Launchpad</a>
+<!-- ==================== LA BARRE BLANCHE, COMME AILLEURS ====================
+     Recopiee de `swoge_casino.html`, puis reduite a ce que CETTE page possede
+     vraiment :
+
+     — PAS de pastille de solde. Elle recopie `#bal`, et ce document n a pas
+       de `#bal` : il ne lit aucun solde, aucune socket, aucun portefeuille.
+       Un « — $SWOGE » fige dans la barre d un white paper serait un chiffre
+       invente, ce que ce document passe justement quarante sections a ne pas
+       faire.
+     — PAS de « CONNECT WALLET » ni de « SIGN UP ». On ne se connecte a rien
+       depuis ici : ni `swogecompte.js`, ni `privy-swoge.js`, ni `swogecx.js`.
+       Un bouton de connexion qui ne connecte rien vaut moins que pas de
+       bouton du tout.
+     — PAS d avatar ni de `#gxMenu`. `swogeprofil.js` RECOPIE le `#menu` que
+       pose `swogecompte.js` ; sans ce `#menu`, il s arrete de lui-meme et
+       l avatar resterait un rond inerte au bout de la barre.
+     — LES QUATRE CHIFFRES restent : ils viennent du serveur, et le script se
+       cache tout seul quand la lecture echoue.
+     — LA BASCULE EN/FR reste, deplacee telle quelle : meme balise, meme
+       classe exacte `langbtn`, parce que le script de bas de page reconnait
+       ses boutons par `parentNode.className === "langbtn"`. -->
+<header class="sw-haut">
+  <a class="sw-marque" href="index.html">
+    <span class="sw-patte">&#128062;</span>
+    <span><b>SWOGE</b><i>WHITE PAPER</i></span>
+  </a>
+  <div class="sw-chiffres" id="gxChiffres" hidden>
+    <div class="sw-ch"><span class="ic">&#128100;</span><span><small>PLAYERS</small><b data-n="joueurs">&mdash;</b></span></div>
+    <div class="sw-ch"><span class="ic">&#127922;</span><span><small>CASINO VOLUME</small><b data-n="volume">&mdash;</b></span></div>
+    <div class="sw-ch"><span class="ic">&#127918;</span><span><small>ROUNDS PLAYED</small><b data-n="manches">&mdash;</b></span></div>
+    <div class="sw-ch"><span class="ic">&#127942;</span><span><small>WINNINGS PAID</small><b data-n="rendus">&mdash;</b></span></div>
+  </div>
+  <nav class="sb-ancre">
+    <a class="nlink" href="index.html">Home</a>
+    <a class="nlink" href="games.html">Games</a>
+    <a class="nlink" href="swoge_staking.html">Stake</a>
+    <a class="nlink" href="launchpad.html">Launchpad</a>
+  </nav>
   <div class="langbtn" role="group" aria-label="Language"><button type="button" data-set="en" aria-pressed="true">EN</button><button type="button" data-set="fr" aria-pressed="false">FR</button></div>
-  <a class="buy" href="https://dexscreener.com/robinhood/0x2dc0fb72d9284228046cc95910eeaabebfe48456" target="_blank" rel="noopener">Buy $SWOGE</a>
-</div>
+  <a class="sw-b sw-b-plein" href="https://dexscreener.com/robinhood/0x2dc0fb72d9284228046cc95910eeaabebfe48456" target="_blank" rel="noopener">Buy $SWOGE</a>
+</header>
+
+<!-- Les quatre chiffres de la vitrine, lus sur le serveur — meme script que
+     `swoge_casino.html`, `swoge_blackjack.html` et `swoge_spin.html`. -->
+<script>
+(function(){
+  "use strict";
+  var bloc = document.getElementById("gxChiffres");
+  if(!bloc) return;
+  function serveur(){
+    try{ var q=new URLSearchParams(location.search).get("server"); if(q)
+      return String(q).replace(/^ws/,"http"); }catch(e){}
+    return "https://web-production-220a3.up.railway.app";
+  }
+  function court(n){
+    n = Number(n) || 0;
+    var t = function(v, s){ return (Math.floor(v*10)/10).toFixed(1).replace(/\.0$/,"") + s; };
+    if(n >= 1e9) return t(n/1e9, "B");
+    if(n >= 1e6) return t(n/1e6, "M");
+    if(n >= 1e3) return t(n/1e3, "k");
+    return String(Math.floor(n));
+  }
+  fetch(serveur()+"/vitrine.json", { cache:"no-store" })
+    .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function(j){
+      [].forEach.call(bloc.querySelectorAll("b[data-n]"), function(b){
+        var v = j[b.getAttribute("data-n")];
+        b.textContent = (typeof v === "number" && isFinite(v)) ? court(v) : "\u2014";
+      });
+      bloc.hidden = false;
+    })
+    ['catch'](function(){ bloc.hidden = true; });
+})();
+</script>
 
 
 <div class="shell">

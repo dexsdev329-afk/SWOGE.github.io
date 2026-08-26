@@ -69,7 +69,7 @@ canvas{ touch-action:none; }
 <!-- La bulle de staking. Chargee tot et SANS defer : elle enveloppe WebSocket
      pour ecouter ce qui passe deja, et doit donc etre en place avant que la page
      n ouvre sa connexion. -->
-<script src="stakebubble.js?v=9fd2eb2e"></script>
+<script src="stakebubble.js?v=2de7a0e6"></script>
 <!-- ---- LES PANNEAUX DE COMPTE, ICI AUSSI ----
      DEMANDE : « aucun panneau de compte : le tiroir y applique un repli ou les
      rangees sont de simples liens ». Cette page portait bien la barre blanche
@@ -79,10 +79,10 @@ canvas{ touch-action:none; }
      adresse), depot, retrait, staking, quetes — exactement comme sur l'accueil
      et le hall. Il vient apres `stakebubble.js`, qui tient la socket, et avant
      `ethers`, dont il se sert pour signer. -->
-<script src="swogecompte.js?v=cd504287"></script>
+<script src="swogecompte.js?v=20e6134c"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <script src="swogebuy.js?v=0d5e5215"></script>
-<script src="swogeprofil.js?v=b8c90d90" defer></script>
+<script src="swogeprofil.js?v=2bff1154" defer></script>
 <style>
   /* ==================== AU CLAIR : LA PALETTE EST RETOURNEE ====================
      Meme conversion que `swoge_casino.html`, `swoge_blackjack.html` et

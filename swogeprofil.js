@@ -40,9 +40,18 @@
    * second chemin vers le meme argent. */
   function coupe(t){
     /* Le premier caractere est un emoji : il devient l'icone, le reste le mot.
-       Un emoji colle au mot ne s'aligne pas d'une ligne a l'autre. */
-    var m = String(t||"").trim().match(/^(\S+)\s+(.*)$/);
-    return m ? { ic:m[1], mot:m[2] } : { ic:"", mot:String(t||"").trim() };
+       Un emoji colle au mot ne s'aligne pas d'une ligne a l'autre.
+       Mais toutes les rangees n'ONT pas d'emoji : « Open bets », « Settled
+       bets », « Overview »... viennent du tiroir de `stakebubble.js`, pas du
+       menu de la page, et leur premier mot est un mot ordinaire. Coupe a
+       l'aveugle, il devenait l'icone — « Open » ecrase dans une case de
+       18 px prevue pour un symbole — et « bets » s'affichait colle dessus.
+       On ne coupe donc que si le premier token ne contient AUCUNE lettre :
+       un emoji n'en a jamais, un mot en a toujours. */
+    var s = String(t||"").trim();
+    var m = s.match(/^(\S+)\s+(.*)$/);
+    if(m && !/[A-Za-z]/.test(m[1])) return { ic:m[1], mot:m[2] };
+    return { ic:"", mot:s };
   }
   /* ---- LE TIROIR PORTE DEJA TOUT ----
    * `stakebubble.js` construit un tiroir de navigation qui contient SES

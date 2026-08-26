@@ -649,6 +649,15 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   .sw-cote, .sw-lat{ display:none }
   .sw-corps{ padding:0; display:block; max-width:none }
 }
+/* ---- LA COLONNE DE GAUCHE NE GONFLE PLUS (meme bug que `swoge_poker.html`
+   et `swoge_casino.html`) ----
+ * BUG MESURE : `minmax(208px,1fr)` sur les deux colonnes de bord absorbe TOUT
+ * l'espace libre que la colonne du milieu (`auto`, calee sur le contenu du
+ * jeu) ne reclame pas — a 1920px, `.sw-cote` faisait 702px de large au lieu
+ * des ~208px voulus. Des colonnes de bord FIXES, et la colonne du milieu
+ * absorbe le reste (sans effet sous 1360px : `.sw-cote` y est deja cachee). */
+.sw-corps{ grid-template-columns:230px minmax(0,1fr) 300px; }
+.sw-cote{ width:auto; max-width:230px; }
 </style>
 </head>
 <body>

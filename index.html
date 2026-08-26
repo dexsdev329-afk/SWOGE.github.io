@@ -693,8 +693,15 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px}
           <video class="film" src="media/doge_arcade.mp4" poster="img/site/doge_arcade_poster.webp"
                  muted autoplay loop playsinline disablepictureinpicture
                  aria-hidden="true"></video><div class="voile"></div>
+          <!-- ---- L ARCADE MENE A LA BORNE, PAS A LA PLACE ----
+               Meme correction que sur `games.html` : le bouton disait
+               « CONNECT WALLET FIRST » et ne faisait rien, connecte ou pas —
+               la page etant une maquette, c etait honnete mais sterile. Il
+               mene maintenant a la SALLE d arcade du monde, directement.
+               Connecte, on y arrive ; sinon, la porte de connexion s ouvre
+               d abord, via `swogecx.js`. -->
           <div class="dit"><b>ARCADE</b><i>Play. Compete. Earn.</i>
-            <button class="sw-b attente">CONNECT WALLET FIRST</button></div>
+            <a class="sw-b vif" id="gxArcade" href="nexus.html?salle=arcade">ENTER THE ARCADE</a></div>
         </article>
         <article class="uni">
           <video class="film" src="media/doge_roi.mp4" poster="img/site/doge_roi_poster.webp"
@@ -1108,7 +1115,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px}
        que de rester sur un lien mort. */
     if (typeof window.swogeEntreLeMonde === "function") window.swogeEntreLeMonde(ev);
   }
-  ["gxMonde","gxMonde2"].forEach(function(i){
+  ["gxMonde","gxMonde2","gxArcade"].forEach(function(i){
     var e = document.getElementById(i);
     if (e) e.addEventListener("click", va);
   });

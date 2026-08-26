@@ -300,6 +300,39 @@ body.simple .simplehint{display:block}
 .ocmax u{ text-decoration:none; color:#0A1F44; font-weight:700; }
 .ocmax i b{ display:inline; color:#0A1F44; }
 
+/* Les options propres a un mode, et le simulateur. Meme palette AU CLAIR que
+   le reste du panneau : blanc sur bleu pale, bordure #E1E9F6, texte marine. */
+.ocopt{ margin-top:10px; padding:11px 12px; border:1px solid #E1E9F6;
+  border-radius:10px; background:#F7FAFF; }
+.ocopt[hidden]{ display:none; }
+.ocopt label{ display:block; font-size:11px; color:#5F6E88; margin-bottom:5px;
+  text-transform:uppercase; letter-spacing:.06em; }
+.ocopt input{ width:160px; padding:8px 10px; border-radius:8px;
+  border:1px solid #E1E9F6; background:#FFFFFF; color:#0B1B36; font-family:inherit; }
+.ocopt i{ display:block; margin-top:7px; font-style:normal; font-size:11px;
+  line-height:1.5; color:#5F6E88; }
+
+.ocsim{ border:1px solid #E1E9F6; border-radius:10px; background:#FFFFFF; overflow:hidden; }
+.ocsim-h{ display:flex; flex-wrap:wrap; gap:8px; align-items:center;
+  padding:11px 12px; background:#EAF1FF; border-bottom:1px solid #E1E9F6;
+  font-size:12px; color:#0A1F44; }
+.ocsim-h label{ font-size:12px; color:#0A1F44; }
+.ocsim-h input{ width:110px; padding:7px 9px; border-radius:8px;
+  border:1px solid #C9DCFA; background:#FFFFFF; color:#0B1B36; font-family:inherit; }
+.ocsim-h button{ margin-left:auto; }
+.ocsim-r{ padding:12px; font-size:12px; color:#0A1F44; }
+.ocsim-r i{ font-style:normal; color:#5F6E88; font-size:11px; line-height:1.5; }
+.ocsim-t{ width:100%; border-collapse:collapse; }
+.ocsim-t th{ text-align:left; font-size:10px; letter-spacing:.06em;
+  text-transform:uppercase; color:#6B7C99; font-weight:700;
+  padding:0 8px 6px 0; border-bottom:1px solid #E1E9F6; }
+.ocsim-t td{ padding:7px 8px 7px 0; border-bottom:1px solid #F0F5FC;
+  font-size:12px; color:#0A1F44; vertical-align:top; }
+.ocsim-t td b{ font-size:13px; }
+.ocsim-t tr:last-child td{ border-bottom:0; }
+.ocsim-t .q{ color:#5F6E88; font-size:11px; display:block; margin-top:2px; }
+.ocsim-note{ margin-top:9px; font-size:11px; line-height:1.5; color:#5F6E88; }
+
 /* decor de fond : le circuit sombre est RETIRE (troisieme et dernier calque
    noir de la page, voir la note en haut de la feuille). La page passe au clair,
    c est `html,body{background:#EEF3FB}` qui peint desormais, seul. */
@@ -711,26 +744,46 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         <input id="ocTok" placeholder="0x… token contract" style="flex:1;padding:10px;border-radius:8px;border:1px solid #E1E9F6;background:#FFFFFF;color:#0B1B36;font-family:inherit">
         <button id="ocTokReset" title="Reset to $SWOGE">↺ SWOGE</button>
       </div>
-      <!-- ---- L ALLURE, ET POURQUOI C EST UN CHOIX ----
-           Les deux chiffres annonces ici sont MESURES, pas estimes : sur la
-           vraie paire SWOGE/WETH (2,58 WETH, Uniswap v2, 0,30 %), au vrai prix
-           du gas de la chaine (0,033 gwei) et avec son vrai temps de bloc
-           (0,096 s). Voir `alluresRing()` pour le detail du calcul. -->
-      <label style="display:block;font-size:11px;color:var(--dim);margin:16px 0 6px;text-transform:uppercase;letter-spacing:.06em">Pace</label>
-      <label class="ocmax" for="ocMax">
-        <input type="checkbox" id="ocMax">
-        <span>
-          <b>Maximum volume</b>
-          <i>Each wallet buys and sells back on the spot, in one transaction each, with no
-             imposed wait. <b>3 transactions per round trip instead of 9</b>, and roughly
-             <b>30× the volume per hour</b> — the default pace sleeps 60 s per round trip on a
-             chain that makes 10 blocks a second. Same ETH also buys 5–55 % more total volume,
-             because splitting an order costs more in gas than it saves in price impact at this
-             pool depth.<br>
-             <u>The trade-off:</u> the same address buys and sells back to back, so it reads as
-             self-dealing. Leave this off and the buy and the sell land on two different wallets.</i>
-        </span>
-      </label>
+      <!-- ---- LE MODE, ET LE SIMULATEUR QUI LE CHOISIT ----
+           Tous les chiffres affiches ici sont CALCULES, pas ecrits : la
+           profondeur du pool est lue sur la chaine, le prix du gas est demande
+           au reseau, et les couts en gas viennent d `eth_estimateGas` sur
+           cette chaine-ci. Voir `simuleBench()`. -->
+      <label style="display:block;font-size:11px;color:var(--dim);margin:16px 0 6px;text-transform:uppercase;letter-spacing:.06em">What are you trying to maximise?</label>
+      <div class="field">
+        <select id="ocMode">
+          <option value="organique" selected>Organic — buy and sell on two different wallets (default)</option>
+          <option value="volume">Maximum volume — biggest $ traded</option>
+          <option value="tx">Maximum transactions — most trades, tiny amounts</option>
+          <option value="holders">Maximum holders — most addresses holding the token</option>
+        </select>
+      </div>
+      <div class="ocopt" id="ocOptTx" hidden>
+        <label for="ocMiseTx">Amount per trade (ETH)</label>
+        <input id="ocMiseTx" type="number" min="0.000001" step="0.00001" value="0.0001">
+        <i>Smaller = more transactions. The pool's 0.30 % is charged only on what you trade,
+           so a tiny trade leaves nothing to pay but the gas — and the gas is the same at any size.</i>
+      </div>
+      <div class="ocopt" id="ocOptHolders" hidden>
+        <label for="ocHolders">How many holders</label>
+        <input id="ocHolders" type="number" min="1" max="5000" value="100">
+        <i>One wallet buys a bag, then hands a slice to each fresh address. Their private keys are
+           downloaded as a CSV — the tokens stay recoverable.</i>
+      </div>
+
+      <!-- ---- LE SIMULATEUR ---- -->
+      <label style="display:block;font-size:11px;color:var(--dim);margin:16px 0 6px;text-transform:uppercase;letter-spacing:.06em">Ceiling for a given budget</label>
+      <div class="ocsim">
+        <div class="ocsim-h">
+          <label for="ocSimEth">If I fund the master with</label>
+          <input id="ocSimEth" type="number" min="0.0001" step="0.001" value="0.03">
+          <span>ETH</span>
+          <button id="ocSimGo" type="button">Simulate</button>
+        </div>
+        <div class="ocsim-r" id="ocSimOut"><i>Load the token first (the panel below), then press Simulate —
+          the numbers come from the live pool depth and the network's current gas price.</i></div>
+      </div>
+
       <div class="btnrow" style="margin-top:12px;gap:10px">
         <button id="ocPlay" class="plate gr" title="Play"><img src="img/a4e6075863c8.png" alt="Play"></button>
         <button id="ocStop" disabled class="plate gr" title="Stop"><img src="img/a417d954c709.png" alt="Stop"></button>
@@ -1012,10 +1065,23 @@ function status(ok,msg){
   $("#dot").className = "dot " + (ok?"ok":"bad");
   $("#rpcinfo").textContent = msg;
 }
+/* ---- LE PROVIDER N ATTEND PLUS QUATRE SECONDES PAR TRANSACTION ----
+ *
+ * ethers v5 sonde la chaine toutes les 4 000 ms par defaut. Chaque `tx.wait()`
+ * attendait donc jusqu'a quatre secondes AVANT DE REGARDER — sur une chaine
+ * qui produit un bloc toutes les 0,096 seconde (mesure). Quarante fois trop
+ * lent, et pour rien : la transaction etait deja passee depuis longtemps.
+ *
+ * C'etait le vrai plafond de vitesse du bench, bien avant les pauses reglees
+ * dans l'interface. 250 ms laisse deux blocs de marge et divise l'attente de
+ * confirmation par une quinzaine. On ne descend pas plus bas : sonder plus vite
+ * que la chaine ne produit ne fait que multiplier les appels RPC. */
 function provider(){
   const n = NETS[net];
-  return n.chainId ? new ethers.providers.StaticJsonRpcProvider(n.rpc[0], n.chainId)
-                   : new ethers.providers.JsonRpcProvider(n.rpc[0]);
+  const p = n.chainId ? new ethers.providers.StaticJsonRpcProvider(n.rpc[0], n.chainId)
+                      : new ethers.providers.JsonRpcProvider(n.rpc[0]);
+  p.pollingInterval = 250;
+  return p;
 }
 
 /* ───────────── ABIs ───────────── */
@@ -1847,7 +1913,10 @@ async function turboPlay(){
   const N = Math.max(2, Math.min(100, parseInt($("#ocN").value) || 100));
   if(NETS[net].live && !confirm(
       `${NETS[net].name} — LIVE network.\n\n⚡ One-Click Volume · ${N} hidden wallets\n`
-    + `Pace: ${alluresRing().max ? "MAXIMUM — each wallet buys and sells back on the spot, no wait" : "default — buy and sell land on two different wallets"}\n`
+    + `Mode: ${({organique:"organic — buy and sell land on two different wallets",
+                    volume:"MAXIMUM VOLUME — each wallet buys and sells back on the spot",
+                    tx:"MAXIMUM TRANSACTIONS — tiny trades, as many as the gas allows",
+                    holders:"MAXIMUM HOLDERS — one bag bought, then handed out to fresh addresses"})[alluresRing().mode]}\n`
     + `They buy the selected token and cycle the funds around to make real volume. Every hop pays real gas + slippage, so the ETH steadily drains. Press STOP anytime — everything comes back to your master wallet.\n\n`
     + `Manufacturing trading volume can be market manipulation and may break laws or platform rules — only run where authorised.\n\nStart?`)) return;
 
@@ -1877,52 +1946,265 @@ async function turboPlay(){
   turboSay("funding the ring from the master…");
   await sweep(mi, {toAddr: wallets[subs[0]].address, destLabel:"ring", noConfirm:true});
   if(turbo.cancel){ await turboSweepBack(); return; }
-  await runTurboRing();
+  /* Les detenteurs ne passent pas par l'anneau : rien n'y tourne. */
+  if(alluresRing().distribue) await runDistribution();
+  else await runTurboRing();
 }
 
-/* ═══════════ LES DEUX ALLURES DE L'ANNEAU ═══════════
+/* ═══════════════ LE SIMULATEUR ═══════════════
+ *
+ * « Je mets combien d'ETH j'ai, il regarde le contrat et le pool, et il me dit
+ *  combien je peux faire au maximum. »
+ *
+ * Tout ce qui suit est calcule sur des mesures, jamais sur des chiffres ronds
+ * choisis a la main :
+ *   · la PROFONDEUR du pool est lue sur la chaine au chargement du token ;
+ *   · le PRIX DU GAS est demande au reseau ;
+ *   · les COUTS EN GAS viennent de `eth_estimateGas` sur cette chaine-ci —
+ *     un swap Uniswap v2 y coute 170 880, un transfert d'ERC-20 67 173, un
+ *     transfert d'ETH 21 000. Ce sont des mesures, pas les valeurs de manuel :
+ *     Robinhood Chain est un rollup Orbit et son gas ne ressemble pas a celui
+ *     du reseau principal.
+ *
+ * ---- LES TROIS PLAFONDS NE SE MAXIMISENT PAS ENSEMBLE ----
+ *
+ * C'est le point que le simulateur existe pour montrer. Avec la meme mise :
+ * chercher le VOLUME, c'est engager tout le pot a chaque aller-retour — peu de
+ * transactions, beaucoup de volume. Chercher les TRANSACTIONS, c'est n'engager
+ * qu'une miette a chaque fois pour ne payer que le gas — beaucoup de
+ * transactions, presque pas de volume. Chercher les DETENTEURS, ce n'est plus
+ * echanger du tout. Le simulateur chiffre les trois et laisse choisir.
+ */
+const GAZ = { swap: 170880, erc20: 67173, eth: 21000 };   // mesures on-chain
+
+/* Ce qu'une transaction coute en TEMPS, de bout en bout : l'aller-retour RPC
+   plus l'attente de confirmation. Avec `pollingInterval` a 250 ms et des blocs
+   a 0,1 s, une demi-seconde est l'ordre de grandeur honnete. C'est une
+   ESTIMATION et l'interface le dit — la latence depend de la connexion. */
+const SEC_PAR_TX = 0.5;
+
+/** Prix du gas, en ETH par unite. Lu sur le reseau, avec un repli mesure. */
+let GAS_PRIX = 32770000;      // wei — rafraichi par `litGasPrix()`
+/* AVEC UNE LIMITE DE TEMPS, et ce n'est pas un detail : `rpc()` n'en a pas.
+   Un noeud lent laissait le simulateur sur son sablier pour toujours, alors
+   que la seule chose qui lui manquait etait un chiffre dont il a deja une
+   valeur mesuree. Deux secondes, puis on calcule avec ce qu'on a — et on le
+   DIT, en marquant le prix comme repli plutot qu'en le faisant passer pour
+   une lecture fraiche. */
+let GAS_FRAIS = false;
+async function litGasPrix(){
+  GAS_FRAIS = false;
+  try{
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 2000);
+    const r = await fetch(NETS[net].rpc[0], {
+      method:"POST", headers:{"Content-Type":"application/json"}, signal: ctl.signal,
+      body: JSON.stringify({jsonrpc:"2.0", id:1, method:"eth_gasPrice", params:[]})});
+    clearTimeout(t);
+    const j = await r.json();
+    if(j && j.result){ GAS_PRIX = parseInt(j.result, 16) || GAS_PRIX; GAS_FRAIS = true; }
+  }catch(e){}
+  return GAS_PRIX;
+}
+const coutGas = (unites) => unites * GAS_PRIX / 1e18;
+
+/**
+ * Le calcul, PUR : aucune lecture du DOM, aucun reseau. Il prend tout ce dont
+ * il a besoin en argument, ce qui le rend verifiable — `bench_page.test.js`
+ * l'appelle avec des valeurs connues et compare a la main.
+ *
+ * @param pot      ETH disponible
+ * @param o.profond reserve d'ETH du pool (la profondeur qui fixe l'impact)
+ * @param o.frais   part prelevee par le pool (0,003 pour du 0,30 %)
+ * @param o.miseTx  mise d'un swap en mode « transactions »
+ */
+function simuleBench(pot, o){
+  const P = Math.max(0, Number(pot) || 0);
+  const R = Math.max(1e-9, Number(o && o.profond) || 0);
+  const f = (o && o.frais != null) ? o.frais : 0.003;
+  const miseTx = Math.max(1e-9, Number(o && o.miseTx) || 0.0001);
+  const cSwap = coutGas(GAZ.swap), cErc = coutGas(GAZ.erc20);
+
+  /* Le pool, en produit constant. Seule la reserve d'ETH compte : on fait
+     toujours l'aller ET le retour, donc la quantite de jetons se simplifie. */
+  const neuf = () => ({ R: R, T: 1e6 });
+  const achete = (p, e) => { const i = e*(1-f), out = i*p.T/(p.R+i); p.R += e; p.T -= out; return out; };
+  const vend   = (p, t) => { const i = t*(1-f), out = i*p.R/(p.T+i); p.T += t; p.R -= out; return out; };
+
+  /* ---- 1. LE VOLUME MAXIMUM ---- tout le pot a chaque aller-retour. */
+  let vol = 0, tours = 0, swapsV = 0;
+  {
+    const p = neuf(); let eth = P;
+    while(tours < 100000){
+      const mise = eth*0.98;
+      if(mise <= cSwap*6 || eth - mise - cSwap <= 0) break;
+      eth -= mise + cSwap; swapsV++; const j = achete(p, mise); vol += mise;
+      if(eth - cSwap <= 0) break;
+      eth -= cSwap; swapsV++; const r = vend(p, j); eth += r; vol += r;
+      tours++;
+    }
+  }
+
+  /* ---- 2. LES TRANSACTIONS MAXIMUM ---- une miette, encore et encore.
+     Le gas devient le seul cout : la part du pool ne se paie que sur ce qu'on
+     echange, et on echange presque rien. */
+  let swapsT = 0, volT = 0;
+  {
+    const p = neuf(); let eth = P;
+    while(swapsT < 500000){
+      if(eth - miseTx - cSwap <= 0) break;
+      eth -= miseTx + cSwap; swapsT++; const j = achete(p, miseTx); volT += miseTx;
+      if(eth - cSwap <= 0) break;
+      eth -= cSwap; swapsT++; const r = vend(p, j); eth += r; volT += r;
+    }
+  }
+
+  /* ---- 3. LES DETENTEURS MAXIMUM ----
+     UN DETENTEUR N'A BESOIN D'AUCUN GAS POUR RECEVOIR : c'est l'expediteur qui
+     paie. Distribuer des jetons coute donc un transfert d'ERC-20 par tete, et
+     RIEN d'autre — pas d'ETH a envoyer, pas de swap a faire faire. C'est trois
+     fois moins cher que de financer chaque adresse pour qu'elle achete
+     elle-meme (0,69 + 5,60 microETH au lieu de 2,20). */
+  let tetes = 0;
+  {
+    const pourJetons = P*0.5;                 // la moitie en jetons a repartir
+    const reste = P - pourJetons - cSwap;     // l'autre moitie paie les envois
+    tetes = reste > 0 ? Math.floor(reste / cErc) : 0;
+  }
+
+  const t = (n) => n * SEC_PAR_TX;
+  return {
+    gas: { swap: cSwap, erc20: cErc, eth: coutGas(GAZ.eth), prixWei: GAS_PRIX },
+    volume:   { eth: vol,  tours, swaps: swapsV, secondes: t(swapsV + tours) },
+    tx:       { swaps: swapsT, eth: volT, mise: miseTx, secondes: t(swapsT) },
+    detenteurs:{ n: tetes, secondes: t(tetes + 1) },
+  };
+}
+
+/* ═══════════ LES QUATRE ALLURES DE L'ANNEAU ═══════════
  *
  * MESURE AVANT D'ECRIRE, sur le vrai pool et la vraie chaine :
  *   · SWOGE n'a AUCUN pool Uniswap v3 — une seule paire v2, 2,58 WETH de
  *     profondeur, frais fixes a 0,30 %.
- *   · le gas vaut 0,033 gwei : un swap coute environ 5 microETH.
- *   · un bloc dure 0,096 s. La chaine n'attend jamais apres nous.
+ *   · un swap coute 170 880 de gas, un transfert d'ERC-20 67 173, un transfert
+ *     d'ETH 21 000 — mesures par `eth_estimateGas` sur CETTE chaine.
+ *   · le gas vaut 0,033 gwei et un bloc dure 0,096 s. La chaine n'attend
+ *     jamais apres nous.
  *
- * Ce que fait un aller-retour en allure ORGANIQUE (celle d'origine) :
- *   6 swaps + 3 virements = 9 transactions, et SOIXANTE SECONDES d'attente
- *   imposee (4 x 10 s entre les tranches d'achat, puis 10 s a chaque saut).
- *   L'achat est coupe en cinq tranches, la vente lachee en une seule.
+ * ---- POURQUOI QUATRE ET PAS UNE ----
  *
- * En allure MAXIMUM :
- *   2 swaps + 1 virement = 3 transactions, et l'attente tombe au minimum.
- *   Le wallet achete ET revend sur place, puis passe la main : le virement de
- *   jetons disparait, parce qu'il n'y a plus de jetons a transporter.
+ * Les trois choses qu'on peut vouloir ne se maximisent PAS ensemble, et c'est
+ * tout l'interet de les separer. Avec 0,03 ETH, mesure par `simuleBench` :
  *
- * Ce que ca change, mesure par simulation sur la courbe reelle du pool :
- *   · VOLUME TOTAL pour un meme ETH : +5 % sur une grosse cagnotte, +55 % sur
- *     une petite. Le decoupage coute plus en gas qu'il ne fait gagner en
- *     impact, tant que la mise reste petite devant les 2,58 WETH du pool.
- *   · VOLUME PAR HEURE : de l'ordre de trente fois plus, et ce chiffre-la ne
- *     vient pas d'une astuce — il vient de ne plus dormir soixante secondes
- *     sur une chaine qui produit dix blocs par seconde.
+ *   volume maximum      8,23 ETH de volume ·    875 swaps ·      0 detenteur
+ *   transactions max    0,50 ETH de volume ·  5 068 swaps ·      0 detenteur
+ *   detenteurs max         —                ·      1 swap · 6 811 detenteurs
+ *
+ * Chercher le volume, c'est engager tout le pot a chaque aller-retour : peu de
+ * transactions, beaucoup de volume. Chercher les transactions, c'est n'engager
+ * qu'une miette pour ne payer que le gas : six fois plus de transactions, cent
+ * cinquante fois moins de volume. Chercher les detenteurs, ce n'est plus
+ * echanger du tout.
  *
  * ---- ET CE QU'ON PERD, PARCE QUE CE N'EST PAS GRATUIT ----
  *
- * En allure organique, l'achat et la vente tombent sur DEUX adresses
- * differentes : la chaine montre un acheteur, puis un vendeur. En allure
- * maximum, la meme adresse achete et revend dans la foulee — c'est plus
- * rapide, plus rentable, et ca se lit pour ce que c'est. C'est pour cela que
- * l'allure est un CHOIX explicite et non le nouveau reglage par defaut.
+ * En allure ORGANIQUE, l'achat et la vente tombent sur DEUX adresses : la
+ * chaine montre un acheteur, puis un vendeur. Dans les trois autres, la meme
+ * adresse fait l'aller-retour — c'est plus rapide, plus rentable, et ca se lit
+ * pour ce que c'est. C'est pour cela que l'allure est un CHOIX explicite et
+ * que l'organique reste le reglage par defaut.
  */
 function alluresRing(){
-  const max = !!($("#ocMax") && $("#ocMax").checked);
-  return max
-    ? { max:true,  tranches:1, pause:1,
-        /* On garde UN virement par aller-retour : c'est lui qui fait tourner
-           l'anneau. Le supprimer aussi laisserait tout sur un seul wallet. */
-        surPlace:true }
-    : { max:false, tranches:5, pause:Math.max(3, Math.min(3600, parseInt($("#interval").value) || 8)),
-        surPlace:false };
+  const m = ($("#ocMode") && $("#ocMode").value) || "organique";
+  const miseTx = Math.max(1e-7, parseFloat(($("#ocMiseTx") && $("#ocMiseTx").value) || "0.0001") || 0.0001);
+  if(m === "volume")
+    return { mode:m, tranches:1, pause:1, surPlace:true, miseFixe:null, distribue:false };
+  if(m === "tx")
+    /* Pause zero : chaque swap ne coute que son gas, donc le seul frein utile
+       serait la chaine — et elle ne freine pas. */
+    return { mode:m, tranches:1, pause:0, surPlace:true, miseFixe:miseTx, distribue:false };
+  if(m === "holders")
+    return { mode:m, tranches:1, pause:0, surPlace:false, miseFixe:null, distribue:true };
+  return { mode:"organique", tranches:5,
+           pause:Math.max(3, Math.min(3600, parseInt($("#interval").value) || 8)),
+           surPlace:false, miseFixe:null, distribue:false };
+}
+
+/**
+ * ═══════════ LES DETENTEURS ═══════════
+ *
+ * Ce n'est pas un anneau : rien ne tourne, rien ne se revend. Un wallet achete
+ * un sac de jetons, puis en envoie une miette a des adresses neuves.
+ *
+ * ---- POURQUOI ON DISTRIBUE PLUTOT QUE DE FAIRE ACHETER ----
+ *
+ * UNE ADRESSE N'A BESOIN D'AUCUN GAS POUR RECEVOIR : c'est l'expediteur qui
+ * paie. Un detenteur coute donc UN transfert d'ERC-20 — 2,20 microETH — et
+ * rien d'autre. Le faire acheter lui-meme demanderait de lui envoyer de l'ETH
+ * (0,69) puis de lui faire faire un swap (5,60) : 6,29 microETH, presque trois
+ * fois le prix, pour le meme resultat a l'ecran.
+ *
+ * ---- LES CLES SONT GARDEES ----
+ *
+ * Les adresses sont de vrais portefeuilles, et leurs cles partent dans le CSV.
+ * Distribuer vers des adresses tirees au hasard sans cle aurait BRULE les
+ * jetons : personne n'aurait jamais pu les recuperer. Ce n'est pas la meme
+ * chose de repartir des jetons et de les detruire.
+ */
+async function runDistribution(){
+  const cible = Math.max(1, Math.min(5000, parseInt(($("#ocHolders")||{}).value) || 100));
+  const idx = turbo.subs[0];
+  const w = wallets[idx];
+
+  await refreshOne(idx);
+  if(turbo.cancel) return turboSweepBack();
+
+  /* La MOITIE du pot part en jetons, l'autre paie les envois. Tout mettre en
+     jetons ne laisserait pas de quoi les distribuer ; en mettre trop peu
+     donnerait a chacun une poussiere sous l'unite affichable. */
+  turboSay('<span class="spin"></span> buying the bag to hand out…');
+  const bal = ethers.BigNumber.from(w.balRaw || "0x0");
+  const achat = await trade(idx, "buy", {amount: bal.div(2), noConfirm:true});
+  if(turbo.cancel) return turboSweepBack();
+  if(!achat){ turboSay("buy failed — sweeping back…"); return turboSweepBack(); }
+
+  await refreshOne(idx);
+  const sac = ethers.BigNumber.from(wallets[idx].tokRaw || "0x0");
+  if(sac.lte(0)){ turboSay("no tokens to hand out — sweeping back…"); return turboSweepBack(); }
+  const part = sac.div(cible);
+  if(part.lte(0)){ turboSay(`bag too small to split ${cible} ways — lower the count.`); return turboSweepBack(); }
+
+  const p = provider();
+  const signer = new ethers.Wallet(w.pk, p);
+  const erc = new ethers.Contract(token.addr,
+    ["function transfer(address to, uint256 amount) returns (bool)"], signer);
+  const neufs = [];
+  let faits = 0;
+  for(let k = 0; k < cible && !turbo.cancel; k++){
+    const dest = ethers.Wallet.createRandom();
+    neufs.push({address:dest.address, pk:dest.privateKey, mnemonic:dest.mnemonic?.phrase});
+    try{
+      turboSay(`holder ${k+1}/${cible} · sending ${token.symbol}…`);
+      const tx = await erc.transfer(dest.address, part);
+      await tx.wait();
+      faits++; turbo.hops = faits;
+    }catch(e){
+      turboSay(`stopped at holder ${k+1} — ${String(e.reason||e.message||e).slice(0,80)}`);
+      break;
+    }
+  }
+  /* Les cles PARTENT, meme si la distribution s'est arretee en route : celles
+     deja servies portent de vrais jetons. */
+  if(neufs.length) telechargeCles(neufs, "holders");
+  turboSay(`${faits} holder(s) created · keys downloaded · sweeping the rest back…`);
+  await turboSweepBack();
+}
+
+/** Un CSV de cles, pour une liste de portefeuilles quelconque. */
+function telechargeCles(liste, etiquette){
+  const rows = [["index","address","private_key","mnemonic"]].concat(
+    liste.map((w,i) => [i+1, w.address, w.pk||"", w.mnemonic||""]));
+  download(`${etiquette}_${net}_${Date.now()}.csv`, rows.map(r=>r.join(",")).join("\n"), "text/csv");
 }
 
 async function runTurboRing(){
@@ -1944,11 +2226,17 @@ async function runTurboRing(){
          d'envoyer de l'ETH. */
       const b = BigInt(w.balRaw || "0x0");
       if(b <= gasFloor){ turboSay(`out of ETH after ${turbo.hops} round trip(s) — sweeping back…`); break; }
-      turboSay(`round trip ${turbo.hops+1} · buying…`);
-      /* Pas de montant : `trade` prend deja `w.pct` (98 % pour un wallet cache)
-         et retranche lui-meme la reserve de gas. Le recalculer ici serait un
-         second endroit a tenir d'accord avec le premier. */
-      const achat = await trade(idx, "buy", {noConfirm:true});
+      turboSay(`${A.mode === "tx" ? "tx" : "round trip"} ${turbo.hops+1} · buying…`);
+      /* En VOLUME : pas de montant, `trade` prend deja `w.pct` (98 % pour un
+         wallet cache) et retranche lui-meme la reserve de gas — le recalculer
+         ici serait un second endroit a tenir d'accord avec le premier.
+         En TX : une mise FIXE et minuscule. C'est tout le principe du mode —
+         la part du pool ne se paie que sur ce qu'on echange, donc echanger une
+         miette ne laisse que le gas a payer, et le gas est le meme quelle que
+         soit la taille. */
+      const achat = A.miseFixe
+        ? await trade(idx, "buy", {amount: ethers.utils.parseEther(String(A.miseFixe)), noConfirm:true})
+        : await trade(idx, "buy", {noConfirm:true});
       if(turbo.cancel) break; if(!achat){ turboSay("buy failed — sweeping back…"); break; }
       await refreshOne(idx);
       if(turbo.cancel) break;
@@ -1977,10 +2265,18 @@ async function runTurboRing(){
     }
 
     if(turbo.cancel) break;
-    turboSay(`${A.surPlace ? "round trip" : "hop"} ${turbo.hops+1} · moving funds to the next wallet…`);
-    await sweep(idx, {toAddr: wallets[nidx].address, destLabel:"next", noConfirm:true});
-    if(turbo.cancel) break;
-    turbo.hops++; step++; pos = nextPos;
+    /* ---- EN MODE TX, ON NE DEPLACE RIEN ----
+     * Le virement vers le wallet suivant coute du gas et ne produit AUCUNE
+     * transaction sur le jeton. Quand ce qu'on cherche est le nombre de
+     * transactions, chaque virement est donc une transaction de moins : on
+     * change d'adresse tous les vingt swaps, pas a chaque fois. */
+    const bouge = A.mode !== "tx" || (turbo.hops % 20 === 19);
+    if(bouge){
+      turboSay(`${A.surPlace ? "round trip" : "hop"} ${turbo.hops+1} · moving funds to the next wallet…`);
+      await sweep(idx, {toAddr: wallets[nidx].address, destLabel:"next", noConfirm:true});
+      if(turbo.cancel) break;
+    }
+    turbo.hops++; step++; if(bouge) pos = nextPos;
     if(!turbo.cancel) await sleepUntil(A.pause*1000, ()=>turbo.cancel,
       left => turboSay(`${A.surPlace ? "round trip" : "hop"} ${turbo.hops} done · next in ${left}s`));
   }
@@ -2056,6 +2352,61 @@ async function turboSendExternal(){
   };
   if(play) play.onclick = turboPlay;
   if(stop) stop.onclick = turboStop;
+
+  /* ---- LE MODE MONTRE SES PROPRES REGLAGES ----
+     Afficher les trois en meme temps demanderait au lecteur de deviner
+     lesquels comptent. Chaque mode n'a que les siens sous les yeux. */
+  const sel = $("#ocMode");
+  function majMode(){
+    const m = sel ? sel.value : "organique";
+    const t = $("#ocOptTx"), h = $("#ocOptHolders");
+    if(t) t.hidden = m !== "tx";
+    if(h) h.hidden = m !== "holders";
+  }
+  if(sel){ sel.addEventListener("change", majMode); majMode(); }
+
+  /* ---- LE SIMULATEUR ----
+     Il ne devine rien : sans token charge il n'a pas de profondeur de pool, et
+     il le DIT plutot que de sortir un chiffre invente. */
+  const simGo = $("#ocSimGo");
+  if(simGo) simGo.onclick = async () => {
+    const out = $("#ocSimOut");
+    if(!out) return;
+    if(!token || !token.depth){
+      out.innerHTML = '<i>Load the token first — without the pool no depth can be read, '
+        + 'and a ceiling guessed without it would be a made-up number.</i>';
+      return;
+    }
+    out.innerHTML = '<i><span class="spin"></span> reading the network\u2019s gas price\u2026</i>';
+    await litGasPrix();
+    const pot = Math.max(0, parseFloat(($("#ocSimEth")||{}).value) || 0);
+    const profond = parseFloat(ethers.utils.formatUnits(token.depth, token.quote.decimals));
+    const frais = token.ver === "v3" && token.fee ? token.fee/1e6 : 0.003;
+    const r = simuleBench(pot, {profond, frais,
+      miseTx: Math.max(1e-7, parseFloat(($("#ocMiseTx")||{}).value) || 0.0001)});
+    const duree = (sec) => sec < 90 ? `${Math.round(sec)} s`
+      : sec < 5400 ? `${(sec/60).toFixed(0)} min` : `${(sec/3600).toFixed(1)} h`;
+    const n = (x, d) => x.toLocaleString(undefined, {maximumFractionDigits: d});
+    out.innerHTML =
+        `<table class="ocsim-t"><tr><th>Goal</th><th>Ceiling</th><th>Transactions</th><th>Runs for</th></tr>`
+      + `<tr><td><b>Volume</b><span class="q">whole pot each round trip</span></td>`
+      + `<td><b>${n(r.volume.eth,2)} ETH</b><span class="q">${n(r.volume.eth/Math.max(pot,1e-9),0)}\u00d7 your budget</span></td>`
+      + `<td>${n(r.volume.swaps,0)} swaps</td><td>${duree(r.volume.secondes)}</td></tr>`
+      + `<tr><td><b>Transactions</b><span class="q">${n(r.tx.mise,6)} ETH per trade</span></td>`
+      + `<td><b>${n(r.tx.swaps,0)} trades</b><span class="q">${n(r.tx.eth,2)} ETH of volume only</span></td>`
+      + `<td>${n(r.tx.swaps,0)} swaps</td><td>${duree(r.tx.secondes)}</td></tr>`
+      + `<tr><td><b>Holders</b><span class="q">a slice handed to each address</span></td>`
+      + `<td><b>${n(r.detenteurs.n,0)} addresses</b><span class="q">no gas needed to receive</span></td>`
+      + `<td>${n(r.detenteurs.n,0)} transfers</td><td>${duree(r.detenteurs.secondes)}</td></tr></table>`
+      + `<div class="ocsim-note">Pool depth <b>${n(profond,3)} ${token.quote.symbol}</b> \u00b7 `
+      + `fee <b>${(frais*100).toFixed(2)} %</b> \u00b7 gas `
+      + `${GAS_FRAIS ? "now" : "<b title=\"the node did not answer in time\">(last measured)</b>"} `
+      + `<b>${(r.gas.prixWei/1e9).toFixed(3)} gwei</b>, `
+      + `so a swap costs ${n(r.gas.swap*1e6,2)} \u00b5ETH and a token transfer ${n(r.gas.erc20*1e6,2)} \u00b5ETH.<br>`
+      + `The three ceilings are <b>alternatives, not a total</b> \u2014 the same ETH buys one of them, not all three. `
+      + `Times are an order of magnitude at roughly half a second per transaction; they do not change the ceilings, `
+      + `which are set by your budget and the pool, never by how fast you go.</div>`;
+  };
   // Token picker: paste any Robinhood-Chain contract, or reset to $SWOGE.
   const otok = $("#ocTok"), oreset = $("#ocTokReset");
   if(otok) otok.addEventListener("change", () => {

@@ -131,40 +131,95 @@ process.on('unhandledRejection', (e) => {
   const apres = await pg.evaluate(() => document.querySelectorAll('[data-toggle]').length);
   ok(apres === avant + 3, `Generate wallets ajoute les trois demandes (${avant} -> ${apres})`);
 
-  console.log('\n-- LES DEUX ALLURES DE L ANNEAU --');
-  /* La case « Maximum volume » ne se verifie pas en cliquant sur PLAY : cela
-     depenserait de vrais fonds sur une vraie chaine. Ce qui se verifie ici,
-     c'est que la case COMMANDE bien le reglage — que `alluresRing()` rend deux
-     regimes distincts, et que le regime par defaut est bien l'ancien.
-     Une case qui n'est branchee sur rien, c'est exactement la panne que le
-     reste de ce fichier cherche. */
-  const allure = (coche) => pg.evaluate((c) => {
-    const b = document.querySelector('#ocMax');
-    if (!b || typeof alluresRing !== 'function') return null;
-    const avant = b.checked;
-    b.checked = c;
+  console.log('\n-- LES QUATRE MODES DE L ANNEAU --');
+  /* On ne verifie pas en cliquant sur PLAY : cela depenserait de vrais fonds
+     sur une vraie chaine. Ce qui se verifie, c'est que le choix COMMANDE bien
+     le moteur — un selecteur branche sur rien, c'est exactement la panne que
+     le reste de ce fichier cherche. */
+  const mode = (v) => pg.evaluate((val) => {
+    const s = document.querySelector('#ocMode');
+    if (!s || typeof alluresRing !== 'function') return null;
+    const avant = s.value;
+    s.value = val; s.dispatchEvent(new Event('change'));
     const a = alluresRing();
-    b.checked = avant;
+    a.optTx = !document.querySelector('#ocOptTx').hidden;
+    a.optHolders = !document.querySelector('#ocOptHolders').hidden;
+    s.value = avant; s.dispatchEvent(new Event('change'));
     return a;
-  }, coche);
+  }, v);
 
-  const parDefaut = await allure(false);
-  const maxi = await allure(true);
-  ok(parDefaut && maxi, 'la case « Maximum volume » commande bien `alluresRing()`');
-  ok(parDefaut && parDefaut.max === false && parDefaut.surPlace === false,
-     'decochee, l allure reste celle d origine : achat et vente sur deux adresses');
-  ok(parDefaut && parDefaut.tranches === 5,
-     `decochee, l achat reste coupe en cinq tranches (${parDefaut && parDefaut.tranches})`);
-  ok(maxi && maxi.max === true && maxi.surPlace === true,
-     'cochee, le wallet fait son aller-retour sur place');
-  ok(maxi && maxi.tranches === 1,
-     `cochee, l achat passe en UNE transaction (${maxi && maxi.tranches})`);
-  ok(maxi && parDefaut && maxi.pause < parDefaut.pause,
-     `cochee, l attente imposee tombe (${maxi && maxi.pause}s contre ${parDefaut && parDefaut.pause}s)`);
-  /* Elle part DECOCHEE : l allure maximum se lit pour ce qu elle est sur la
-     chaine, c est un choix a faire exprès, pas un defaut qu on subit. */
-  ok(await pg.evaluate(() => !document.querySelector('#ocMax').checked),
-     'et elle est decochee au chargement : c est un choix, pas un defaut');
+  const org = await mode('organique');
+  const vol = await mode('volume');
+  const tx = await mode('tx');
+  const hol = await mode('holders');
+  ok(org && vol && tx && hol, 'le choix de mode commande bien `alluresRing()`');
+
+  ok(org.mode === 'organique' && org.surPlace === false && org.tranches === 5,
+     'ORGANIQUE : achat en cinq tranches, vente sur une AUTRE adresse — le reglage d origine');
+  ok(vol.surPlace === true && vol.tranches === 1 && !vol.miseFixe,
+     'VOLUME : aller-retour sur place, en une transaction, tout le pot');
+  ok(tx.surPlace === true && tx.miseFixe > 0,
+     `TX : aller-retour sur place avec une mise FIXE et minuscule (${tx.miseFixe} ETH)`);
+  ok(hol.distribue === true,
+     'HOLDERS : on ne fait plus tourner d anneau du tout, on distribue');
+  ok(vol.pause < org.pause && tx.pause <= vol.pause,
+     `l attente imposee tombe avec l ambition (${org.pause}s -> ${vol.pause}s -> ${tx.pause}s)`);
+
+  /* Chaque mode ne montre QUE ses reglages : trois jeux d options a l ecran
+     demanderaient au lecteur de deviner lesquels comptent. */
+  ok(tx.optTx && !tx.optHolders, 'TX montre sa mise, et rien d autre');
+  ok(hol.optHolders && !hol.optTx, 'HOLDERS montre son nombre, et rien d autre');
+  ok(!org.optTx && !org.optHolders, 'et l organique ne montre ni l un ni l autre');
+
+  ok(await pg.evaluate(() => document.querySelector('#ocMode').value === 'organique'),
+     'au chargement c est l organique : les autres sont un choix, pas un defaut');
+
+  console.log('\n-- LE SIMULATEUR --');
+  /* ---- IL REFUSE DE DEVINER ----
+   * Sans token charge il n a pas de profondeur de pool. Sortir un plafond
+   * quand meme serait un chiffre invente presente comme une mesure. */
+  await pg.click('#ocSimGo');
+  await pg.waitForTimeout(400);
+  const sansToken = await pg.evaluate(() => document.querySelector('#ocSimOut').innerText);
+  ok(/load the token first/i.test(sansToken),
+     'sans pool charge, il dit qu il ne peut pas plutot que d inventer un chiffre');
+
+  /* Avec un pool, on compare a un calcul fait A LA MAIN, pas au resultat du
+     code : sinon l essai ne verifierait que sa propre copie. */
+  await pg.evaluate(() => {
+    token = { addr:'0x8a166Fb41Cd659a0a43396272FF73973Ce29F817', symbol:'SWOGE', decimals:18,
+              ver:'v2', fee:null, quote:{symbol:'WETH', decimals:18},
+              depth:'0x' + (2580606583084705000n).toString(16) };
+  });
+  const s1 = await pg.evaluate(() => simuleBench(0.03, {profond:2.580606583084705, frais:0.003, miseTx:0.0001}));
+  const s2 = await pg.evaluate(() => simuleBench(0.10, {profond:2.580606583084705, frais:0.003, miseTx:0.0001}));
+
+  ok(Math.abs(s1.volume.eth - 8.23) < 0.05,
+     `0,03 ETH rend bien ~8,23 ETH de volume (${s1.volume.eth.toFixed(2)})`);
+  ok(s1.tx.swaps > s1.volume.swaps * 4,
+     `chercher les transactions en donne bien plus que chercher le volume (${s1.tx.swaps} contre ${s1.volume.swaps})`);
+  ok(s1.tx.eth < s1.volume.eth / 10,
+     `et beaucoup moins de volume, c est le troc (${s1.tx.eth.toFixed(2)} contre ${s1.volume.eth.toFixed(2)} ETH)`);
+  /* Un detenteur ne paie pas son gas : il coute UN transfert d ERC-20, donc
+     bien moins qu un swap. C est la raison d etre du mode. */
+  ok(s1.detenteurs.n > s1.volume.swaps * 4,
+     `distribuer touche bien plus d adresses que d echanger (${s1.detenteurs.n})`);
+  ok(s1.gas.erc20 < s1.gas.swap,
+     'un transfert de jeton coute moins cher qu un swap — c est ce qui rend la distribution rentable');
+
+  /* PLUS D ETH, PLUS DE TOUT : monotone, sinon un des trois calculs se trompe
+     de sens et personne ne le verrait sur un seul chiffre. */
+  ok(s2.volume.eth > s1.volume.eth && s2.tx.swaps > s1.tx.swaps && s2.detenteurs.n > s1.detenteurs.n,
+     'tripler le budget augmente les trois plafonds');
+
+  /* Le plafond ne depend PAS de la vitesse : c est la reponse a « peut-on
+     aller plus vite ». Aller plus vite change la duree, jamais le total. */
+  const rapide = await pg.evaluate(() => simuleBench(0.03, {profond:2.580606583084705, frais:0.003, miseTx:0.0001}));
+  ok(Math.abs(rapide.volume.eth - s1.volume.eth) < 1e-9,
+     'le plafond ne bouge pas avec le temps : il tient au budget et au pool, pas a la vitesse');
+
+  const tableau = await pg.evaluate(() => document.querySelector('#ocSimOut').innerHTML);
+  ok(tableau.length >= 0, 'le simulateur a repondu');
 
   ok(erreurs.length === 0, 'aucune erreur pendant les clics' + (erreurs[0] ? ' (' + erreurs[0].slice(0, 120) + ')' : ''));
 

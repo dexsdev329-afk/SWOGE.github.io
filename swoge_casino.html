@@ -388,7 +388,8 @@ canvas{ touch-action:none; }
  * feuille) pose `var(--text)`, un creme clair pense pour ce fond sombre —
  * illisible sur blanc partout ou rien d autre ne le redefinit. */
 html,body{ background:#EEF3FB; color:#0B1B36; }
-.cawrap{ position:relative; max-width:900px; margin:0 auto; padding:0 10px 18px; overflow-x:clip; }
+.cawrap{ position:relative; max-width:900px; margin:0 auto; padding:0 10px 18px; overflow-x:clip;
+  container-type:inline-size; }
 /* Les trois bandeaux de table n'ont pas le meme format : 3,1/1 pour Hold'em et
    Three Card, 1,98/1 pour le Hi-Lo, dont le cadre est bien plus haut. Une
    largeur commune l'ecraserait. On impose donc la HAUTEUR et on laisse l'image
@@ -748,9 +749,20 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
 /* ---- LES QUATRE JEUX TIENNENT SUR UNE LIGNE ----
    « Casino Hold'em » repliait son libelle en deux, ce qui donnait a toute la
    rangee deux hauteurs de texte pour un seul mot trop long. On interdit le
-   retour a la ligne et on laisse la taille s'ajuster a la place disponible. */
+   retour a la ligne et on laisse la taille s'ajuster a la place disponible.
+   ---- MAIS PAS A LA LARGEUR DE LA FENETRE ----
+   BUG SIGNALE : « bug d'affichage des jeux » sur cette meme page — le
+   libelle actif (fond dore) debordait sur le bouton suivant, lu comme
+   « Casino Hold'Ehree Card ». La taille se calculait en `vw` : sur un ecran
+   de 1440px elle restait bloquee au plafond (13.5px) quelle que soit la
+   place VRAIMENT disponible pour `.ca-pick` — or depuis que les colonnes
+   laterales existent (`.sw-cote`, `.sw-lat`, plus haut), cette place a
+   beaucoup retreci sans que la fenetre, elle, ne retrecisse. `cqi` mesure
+   le conteneur (`.cawrap`, qui porte `container-type:inline-size` plus
+   haut) et non plus la fenetre : la taille suit desormais la place reelle,
+   colonnes comprises. */
 .ca-pick button{ white-space:nowrap; min-width:0;
-  padding:9px 6px; font-size:clamp(11px,2.6vw,13.5px); }
+  padding:9px 3px; font-size:clamp(9px,2.2cqi,13.5px); }
 
 /* ---- SUR TELEPHONE, DEUX FLECHES REMPLACENT LA RANGEE ----
  *

@@ -245,7 +245,7 @@ canvas{ touch-action:none; }
   .toast.show{opacity:1}
   @media(max-width:480px){ .card{width:90px;height:126px} .cards{min-height:126px} }
 
-/* ===== SWOGE themed panels (auto-ported from Spin) ===== */
+/* ===== SWOGE themed panels — AU CLAIR, meme conversion que swogebet.html ===== */
 /* ---- #connectBtn ET #emailBtn NE SONT PLUS DECRITS ICI ----
    Ils l etaient trois fois dans ce bloc — un dessin de base, puis une
    planche image en `!important`, puis quatre reglages de taille par point
@@ -256,89 +256,85 @@ canvas{ touch-action:none; }
 .ovl { position:fixed; inset:0; z-index:300; background:rgba(4,4,12,.7); display:none; align-items:safe center; justify-content:center; padding:16px; font-family:system-ui; overflow-y:auto; }
 .ovl.show { display:flex; }
 .box.show { display:block; }
-#box-quests { max-height:88vh; overflow:hidden; background-color:#17092e; background-clip:padding-box; border:30px solid transparent; border-image:url('img/e95d01731f29.png') 62 fill / 30px stretch; border-radius:0; background:none; padding:0; }
-#box-dep, #box-wd, #box-wallet, #box-stake { width:min(452px,96vw); max-height:92vh; overflow:hidden; background-color:#17092e; background-clip:padding-box; box-shadow:none; border-radius:0; border-style:solid; border-color:transparent; border-width:30px 26px 40px 26px; border-image:url('img/62439edfd061.png') 72 56 86 56 fill / 30px 26px 40px 26px stretch; padding:0; }
+/* ---- CES CINQ PANNEAUX PASSENT AU BLANC, COMME SUR SWOGEBET.HTML ----
+   Ils venaient d une page NOIRE : un cadre de lave et d or en `border-image`,
+   trente pixels de bordure peinte, un fond violet a l interieur, et chaque
+   bouton remplace par une planche PNG avec son libelle masque derriere
+   (`color:transparent; text-indent:-9999px`). Pose sur la nouvelle barre
+   blanche, l effet n etait pas seulement autre : c etait visiblement un
+   morceau d une autre page, et les titres — qui n existaient QUE dans les
+   images — ne se traduisaient ni ne se lisaient a la loupe.
+   Meme recette que `swogebet.html`, deja verifiee a l ecran : les couleurs
+   sont ECRITES ICI plutot que prises a `var(--carte)` etc., puisque cette
+   page garde son propre `:root` sombre pour le tapis et les cartes — ce
+   sont les PANNEAUX, pas la page entiere, qui rejoignent le blanc. */
+#box-quests, #box-dep, #box-wd, #box-wallet, #box-stake {
+  width:min(452px,96vw); max-height:92vh; overflow:hidden;
+  background:#FFFFFF; border:1px solid #E1E9F6; border-radius:18px;
+  box-shadow:0 20px 60px rgba(11,27,54,.16); padding:0; }
+#box-quests { width:min(520px,96vw); max-height:88vh; }
 #box-dep .pscroll, #box-wd .pscroll, #box-wallet .pscroll, #box-stake .pscroll { max-height:calc(92vh - 88px); overflow-y:auto; padding:18px 30px 26px; scrollbar-width:none; -ms-overflow-style:none; }
-#box-dep .note2, #box-wd .note2, #box-wallet .note2, #box-stake .note2 { font-size:13px; line-height:1.45; text-align:center; color:#e2d6f2; margin-top:8px; }
-#box-dep .note2 b, #box-wd .note2 b, #box-wallet .note2 b, #box-stake .note2 b { color:var(--gold); }
-#box-dep label, #box-wd label, #box-wallet label, #box-stake label { font-size:11px; letter-spacing:1.5px; text-align:center; color:#c7b6dd; margin:8px 0 5px; }
-#box-dep .strow, #box-wd .strow, #box-wallet .strow, #box-stake .strow { font-size:14px; padding:5px 6px; color:#d8cae8; }
-#box-dep .strow b, #box-wd .strow b, #box-wallet .strow b, #box-stake .strow b { font-size:15px; color:#fff; }
+#box-dep .note2, #box-wd .note2, #box-wallet .note2, #box-stake .note2 { font-size:13px; line-height:1.45; text-align:center; color:#6B7C99; margin-top:8px; }
+#box-dep .note2 b, #box-wd .note2 b, #box-wallet .note2 b, #box-stake .note2 b { color:#1B5FE0; }
+#box-dep label, #box-wd label, #box-wallet label, #box-stake label { font-size:11px; letter-spacing:1.5px; text-align:center; color:#6B7C99; margin:8px 0 5px; }
+#box-dep .strow, #box-wd .strow, #box-wallet .strow, #box-stake .strow { font-size:14px; padding:5px 6px; color:#6B7C99; }
+#box-dep .strow b, #box-wd .strow b, #box-wallet .strow b, #box-stake .strow b { font-size:15px; color:#0B1B36; }
 #box-stake .strow { justify-content:center; gap:11px; font-size:11px; padding:2px 4px; }
 #box-stake .strow b { font-size:12px; }
 #box-stake .note2 { font-size:10px; line-height:1.4; }
 #box-dep input, #box-wd input, #box-wallet input, #box-stake input { padding:10px; font-size:15px; text-align:center; }
 #box-stake .pcts, #box-dep .pcts { gap:6px; margin:6px 0; }
 #box-dep .pscroll::-webkit-scrollbar, #box-wd .pscroll::-webkit-scrollbar, #box-wallet .pscroll::-webkit-scrollbar, #box-stake .pscroll::-webkit-scrollbar { width:0; height:0; display:none; }
-.ptitle { width:62%; min-width:190px; max-width:280px; height:auto; background:center/100% 100% no-repeat; margin:4px auto 10px; filter:drop-shadow(0 2px 6px rgba(0,0,0,.5)); }
+.ptitle, .wtitle-plate { margin:2px auto 12px; text-align:center;
+  font:800 19px/1.2 'Inter',system-ui,sans-serif; letter-spacing:.4px; color:#0B1B36; }
 #box-dep .pscroll, #box-wd .pscroll, #box-stake .pscroll { text-align:center; }
 #box-dep .brow, #box-wd .brow, #box-stake .brow { display:block !important; text-align:center !important; margin-top:10px; }
 #box-dep .abtn.aimg, #box-wd .abtn.aimg, #box-stake .abtn.aimg, #stClaim { display:block !important; width:212px !important; max-width:82% !important; height:56px !important; aspect-ratio:auto !important; min-width:0 !important; margin:9px auto !important; float:none !important; flex:none !important; }
 #box-dep .abtn.closeimg, #box-wd .abtn.closeimg, #box-stake .abtn.closeimg { display:block !important; width:212px !important; max-width:82% !important; height:44px !important; aspect-ratio:auto !important; min-width:0 !important; margin:9px auto !important; float:none !important; flex:none !important; }
 #box-dep input, #box-wd input, #box-wallet input, #box-stake input { display:block; max-width:280px; margin-left:auto; margin-right:auto; }
 #box-dep .strow, #box-wd .strow, #box-wallet .strow, #box-stake .strow { justify-content:center; gap:14px; }
-.ptitle.pt-deposit { aspect-ratio:440/186; }
-.ptitle.pt-withdraw { aspect-ratio:440/191; }
-.ptitle.pt-stake { aspect-ratio:440/138; }
-.ptitle.pt-deposit { background-image:url('img/73990b426144.png'); }
-.ptitle.pt-withdraw { background-image:url('img/0258d32595c7.png'); }
-.ptitle.pt-stake { background-image:url('img/d650a96aeddd.png'); }
-.abtn.aimg { background-color:transparent !important; background-repeat:no-repeat !important; background-position:center !important; background-size:100% 100% !important; color:transparent !important; text-indent:-9999px; overflow:hidden; white-space:nowrap; border:none !important; box-shadow:none !important; height:52px; min-height:0; padding:0 !important; }
-.abtn.aimg.a-dep { background-image:url('img/98277aa4f988.png') !important; }
-.abtn.aimg.a-wd { background-image:url('img/3325d6a9f46d.png') !important; }
-.abtn.aimg.a-claim { background-image:url('img/78fa0d2133ec.png') !important; }
-.abtn.aimg.a-stake { background-image:url('img/e609569f126f.png') !important; }
-.abtn.aimg.a-unstake { background-image:url('img/754195de06f9.png') !important; }
+/* `aimg` voulait dire « ce bouton EST une image ». Il n y a plus d image :
+   la classe ne dit plus rien et le libelle, deja dans le HTML, se voit. */
+.abtn.aimg { height:48px; min-height:0; }
 .brow.bcol { flex-direction:column; gap:10px; }
 .pcts { gap:8px; }
-.pct.imgpct { background:transparent center/100% 100% no-repeat !important; border:none !important; color:transparent !important; text-indent:-9999px; overflow:hidden; white-space:nowrap; aspect-ratio:257/104; min-height:0; padding:0 !important; box-shadow:none; border-radius:0; }
-.pct.imgpct.p10 { background-image:url('img/43a076a331c6.png') !important; }
-.pct.imgpct.p20 { background-image:url('img/aac55ffed61a.png') !important; }
-.pct.imgpct.p50 { background-image:url('img/139a3397b0e7.png') !important; }
-.pct.imgpct.pmax { background-image:url('img/15978cef7aa0.png') !important; }
-.box h3 { font-family:'Orbitron',sans-serif; font-size:20px; color:var(--gold); margin-bottom:12px; }
-.box label { font-size:11px; color:#a99; text-transform:uppercase; letter-spacing:1px; display:block; margin:8px 0 5px; }
-.box .note2 { font-size:12px; color:#b9a; line-height:1.5; margin-top:8px; }
-.box .note2 b { color:var(--gold); }
-.box input { width:100%; padding:11px; border-radius:10px; border:1px solid rgba(124,77,255,.5); background:#0e0722; color:#fff; font-family:inherit; font-size:15px; }
+.box h3 { font-family:'Orbitron',sans-serif; font-size:20px; color:#1B5FE0; margin-bottom:12px; }
+.box label { font-size:11px; color:#6B7C99; text-transform:uppercase; letter-spacing:1px; display:block; margin:8px 0 5px; }
+.box .note2 { font-size:12px; color:#6B7C99; line-height:1.5; margin-top:8px; }
+.box .note2 b { color:#1B5FE0; }
+.box input { width:100%; padding:11px; border-radius:10px; border:1px solid #E1E9F6; background:#EEF3FB; color:#0B1B36; font-family:inherit; font-size:15px; }
 .box .brow { display:flex; gap:8px; align-items:center; margin-top:10px; }
-.box .abtn { flex:1; padding:12px; border-radius:10px; border:none; font-weight:800; font-size:15px; cursor:pointer; font-family:'Orbitron',sans-serif;
-    color:#3a2400; background:linear-gradient(180deg,#ffe680,#f2a900); }
-.box .abtn.sec { color:#eee; background:rgba(255,255,255,.08); border:1px solid rgba(124,77,255,.5); }
+.box .abtn { flex:1; padding:12px; border-radius:10px; border:none; font-weight:800; font-size:15px; cursor:pointer; text-align:center; font-family:'Inter',system-ui,sans-serif;
+    color:#fff; background:#1B5FE0; }
+.box .abtn:hover { filter:brightness(1.06); }
+.box .abtn.sec { color:#1B5FE0; background:#FFFFFF; border:1px solid #1B5FE0; }
 .box .abtn.danger { color:#ff6b6b; background:transparent; border:1px solid rgba(255,107,107,.4); }
-.strow { display:flex; justify-content:space-between; align-items:baseline; font-size:13px; padding:6px 0; color:#b9a; }
-.strow b { font-size:15px; color:#fff; }
+.strow { display:flex; justify-content:space-between; align-items:baseline; font-size:13px; padding:6px 0; color:#6B7C99; }
+.strow b { font-size:15px; color:#0B1B36; }
 .pcts { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin:8px 0; }
-.pct { padding:9px 0; border-radius:8px; border:1px solid rgba(124,77,255,.5); background:rgba(255,255,255,.05); color:#eee; font-weight:700; cursor:pointer; font-size:13px; }
-.pct:hover { border-color:var(--gold); color:var(--gold); }
-.wtitle-plate { width:230px; height:54px; margin:2px auto 14px; background:url('img/0f9b73d138e0.png') center/contain no-repeat; filter:drop-shadow(0 2px 6px rgba(0,0,0,.6)); }
-#box-wallet .abtn.wbtn { width:100%; aspect-ratio:260/74; min-height:0; padding:0; background-color:transparent; background-repeat:no-repeat; background-position:center; background-size:100% 100%; color:transparent; text-indent:-9999px; overflow:hidden; white-space:nowrap; border:none; box-shadow:none; }
-#box-wallet .wb-copy { background-image:url('img/291bf7675cee.png'); }
-#box-wallet .wb-deposit { background-image:url('img/46bd21cc39b1.png'); }
-#box-wallet .wb-explorer { background-image:url('img/3cf60dd1502c.png'); }
-#box-wallet .wb-disconnect { background-image:url('img/114eb6df7091.png'); }
-.abtn.closeimg { background:url('img/d59144cfa811.png') center/100% 100% no-repeat !important; color:transparent !important; text-indent:-9999px; overflow:hidden; white-space:nowrap; border:none; box-shadow:none; aspect-ratio:300/60; min-height:44px; padding:0; }
-.abtn.imgbtn.wimg { background-image:url('img/3e4da538a2f7.png'); }
-.abtn.imgbtn.pimg { background-image:url('img/b21951658a03.png'); }
-.abtn.imgbtn.cimg { background-image:url('img/3eac95539574.png'); }
+.pct { padding:9px 0; border-radius:8px; border:1px solid #E1E9F6; background:#EEF3FB; color:#0B1B36; font-weight:700; cursor:pointer; font-size:13px; }
+.pct:hover { border-color:#1B5FE0; color:#1B5FE0; }
+#box-wallet .abtn.wbtn { width:100%; min-height:44px; padding:12px; }
+#box-wallet .abtn.wb-disconnect { color:#E0443E; background:#FFFFFF;
+  border:1px solid rgba(224,68,62,.45); }
+.abtn.closeimg { min-height:44px; }
 #box-quests .note2 { text-align:center; }
 .abtn:disabled { opacity:.5; cursor:default; }
-#box-email { width:min(452px,96vw); max-height:92vh; overflow:hidden; background-color:#17092e; background-clip:padding-box; box-shadow:none; border-radius:0; border-style:solid; border-color:transparent; border-width:30px 26px 40px 26px; border-image:url('img/62439edfd061.png') 72 56 86 56 fill / 30px 26px 40px 26px stretch; padding:0; }
+#box-email { width:min(452px,96vw); max-height:92vh; overflow:hidden;
+  background:#FFFFFF; border:1px solid #E1E9F6; border-radius:18px;
+  box-shadow:0 20px 60px rgba(11,27,54,.16); padding:0; }
 #box-email .pscroll { max-height:calc(92vh - 88px); overflow-y:auto; padding:18px 30px 26px; text-align:center; scrollbar-width:none; -ms-overflow-style:none; }
 #box-email .pscroll::-webkit-scrollbar { width:0; height:0; display:none; }
-#box-email .note2 { font-size:13px; line-height:1.45; text-align:center; color:#e2d6f2; }
-#box-email label { font-size:11px; letter-spacing:1.5px; text-align:center; color:#c7b6dd; }
+#box-email .note2 { font-size:13px; line-height:1.45; text-align:center; color:#6B7C99; }
+#box-email label { font-size:11px; letter-spacing:1.5px; text-align:center; color:#6B7C99; }
 #box-email input { display:block; max-width:280px; margin:6px auto; text-align:center; }
 #box-email .brow { display:block !important; text-align:center !important; margin-top:10px; }
 #box-email .abtn.aimg { display:block !important; width:212px !important; max-width:82% !important; height:56px !important; aspect-ratio:auto !important; min-width:0 !important; margin:9px auto !important; float:none !important; flex:none !important; }
 #box-email .abtn.closeimg { display:block !important; width:212px !important; max-width:82% !important; height:44px !important; aspect-ratio:auto !important; min-width:0 !important; margin:9px auto !important; float:none !important; flex:none !important; }
-.ptitle.pt-email { aspect-ratio:440/170; background-image:url('img/a1e359ec449b.png'); }
-.abtn.aimg.a-emsend { background-image:url('img/6fbc8b548d31.png') !important; }
-.abtn.aimg.a-emverify { background-image:url('img/de0297dab018.png') !important; }
 @media (max-width: 820px), (orientation: portrait) {
     #box-dep, #box-wd, #box-wallet, #box-stake, #box-quests {
       width:100vw; max-width:100vw; height:100vh; height:100dvh; max-height:100dvh;
-      border-radius:0; border-width:34px 24px 40px 24px; border-image-width:34px 24px 40px 24px;
+      border-radius:0;
     }
     #box-dep .pscroll, #box-wd .pscroll, #box-wallet .pscroll, #box-stake .pscroll {
       max-height:calc(100dvh - 74px); padding:18px 34px 28px;
@@ -351,10 +347,10 @@ canvas{ touch-action:none; }
     #box-dep .pcts, #box-stake .pcts { max-width:94%; margin-left:auto; margin-right:auto; }
 }
 @media (min-width:821px) and (orientation:landscape) {
-    #box-quests { width:min(760px,60vw); max-width:none; max-height:94vh; border-width:52px; border-image-width:52px; }
+    #box-quests { width:min(760px,60vw); max-width:none; max-height:94vh; }
 }
 @media (max-width:820px), (orientation:portrait) {
-    #box-email { width:100vw; max-width:100vw; height:100vh; height:100dvh; max-height:100dvh; border-radius:0; border-width:34px 24px 40px 24px; border-image-width:34px 24px 40px 24px; }
+    #box-email { width:100vw; max-width:100vw; height:100vh; height:100dvh; max-height:100dvh; border-radius:0; }
     #box-email .pscroll { max-height:calc(100dvh - 74px); padding:18px 34px 28px; }
 }
 
@@ -718,68 +714,71 @@ button, input, a, .card, .felt, .sbet, .chipbtn, .btn{ touch-action:manipulation
 </head>
 <body>
 <style>
-/* ---- Daily Quests theme (ported from Spin) ---- */
-.bcard .abtn.imgbtn { width:100%; aspect-ratio:300/78; min-height:0; padding:0; background-color:transparent !important; background-repeat:no-repeat; background-position:center; background-size:100% 100%; color:transparent; text-shadow:none; border:none; box-shadow:none; }
-/* cadre en fond sur la BORDER-BOX + bordure transparente : le contenu scrolle À L'INTÉRIEUR du cadre
-     (rogné par overflow) sans déborder, et le cadre reste plus grand que les cartes. */
-  /* Cadre FIXE (fond border-box) + zone de scroll interne : le contenu scrolle
-     À L'INTÉRIEUR et disparaît DERRIÈRE le cadre (clippé), rendu pro. */
-  #box-quests { max-height:88vh; overflow:hidden; background-color:#17092e; background-clip:padding-box; border:30px solid transparent; border-image:url('img/e95d01731f29.png') 62 fill / 30px stretch; border-radius:0; background:none; padding:0; }
+/* ---- Daily Quests theme — AU CLAIR, meme conversion que swogebet.html ---- */
+/* Ce panneau avait deja perdu son cadre de chiens jaunes ; il lui restait un
+   fond de nuit et sept boutons peints. Il prend la meme carte blanche que
+   les cinq autres panneaux, plus haut — meme recette que `swogebet.html`. */
+#box-quests { max-height:88vh; overflow:hidden; padding:0; border-radius:18px;
+  background:#FFFFFF; border:1px solid #E1E9F6;
+  box-shadow:0 20px 60px rgba(11,27,54,.16); }
 #box-quests .qscroll { max-height:calc(88vh - 96px); overflow-y:auto; padding:26px 30px 14px; scrollbar-width:none; -ms-overflow-style:none; }
 #box-quests .qscroll::-webkit-scrollbar { width:0; height:0; display:none; }
-.quest { border:1px solid rgba(124,77,255,.4); border-radius:12px; padding:10px 12px; margin-bottom:8px; }
+.quest { border:1px solid #E1E9F6; border-radius:12px; padding:10px 12px; margin-bottom:8px; background:#EEF3FB; }
 .quest .qh { display:flex; justify-content:center; text-align:center; font-size:13px; margin-bottom:6px; }
-.quest .qh .qr { color:var(--gold); font-weight:700; }
+.quest .qh .qr { color:#1B5FE0; font-weight:700; }
 .quest .qbar { height:6px; background:rgba(255,255,255,.1); border-radius:6px; overflow:hidden; margin-bottom:8px; }
 .quest .qbar i { display:block; height:100%; background:linear-gradient(90deg,#ffe680,#f2a900); }
 .qclaim { width:100%; font-size:12px; font-weight:700; padding:9px; border-radius:8px; border:none; font-family:inherit; }
-.qclaim.on { background:transparent url('img/c89cc11234c1.png') center/contain no-repeat; height:44px; color:transparent; text-indent:-9999px; overflow:hidden; white-space:nowrap; cursor:pointer; box-shadow:none; border:none; }
-.qclaim.off { background:rgba(255,255,255,.06); color:#c9b98f; cursor:default; border:1px solid rgba(124,77,255,.4); }
-.qclaim.done { background:transparent url('img/9d4e2d543849.png') center/contain no-repeat; height:44px; color:transparent; text-indent:-9999px; overflow:hidden; white-space:nowrap; cursor:default; border:none; box-shadow:none; }
-/* welcome / streak / rewarded-ad cards */
-  .bcard { border:14px solid transparent; border-image:url('https://i.ibb.co/qY4GHp7p/Chat-GPT-Image-8-ao-t-2026-19-06-44.png') 70 fill / 14px stretch; padding:2px 6px 5px; margin:0 0 10px; background:none; }
-.bcard .tbanner { width:100%; height:36px; background-position:center; background-repeat:no-repeat; background-size:contain; margin-top:6px; margin-bottom:3px; filter:drop-shadow(0 2px 6px rgba(0,0,0,.5)); }
-.bcard .abtn { margin-top:3px; }
+.qclaim.on { height:40px; cursor:pointer; color:#04121f; font-weight:800;
+  background:linear-gradient(180deg,#7CFF9B,#22B45E); border:none; }
+.qclaim.on:hover { filter:brightness(1.08); }
+.qclaim.off { background:#EEF3FB; color:#6B7C99; cursor:default; border:1px solid #E1E9F6; }
+.qclaim.done { height:40px; cursor:default; color:#0E7C3E;
+  background:rgba(90,220,140,.16); border:1px solid rgba(120,230,160,.5); }
+/* welcome / streak / rewarded-ad cards — meme carte que .quest, plus de
+   cadre distant : rien a telecharger, et rien a perdre le jour ou le lien
+   d un hebergeur d images meurt. */
+.bcard { border:1px solid #E1E9F6; border-radius:14px; padding:10px 12px;
+  margin:0 0 10px; background:#EEF3FB; }
+.bcard .tbanner { display:none; }
+.bcard .abtn { margin-top:3px; width:100%; }
 .bcard .brow { display:flex; gap:9px; align-items:center; }
-.bcard .bicon { width:46px; height:46px; flex:0 0 46px; margin-left:10px; object-fit:contain; filter:drop-shadow(0 2px 7px rgba(0,0,0,.55)); }
+.bcard .bicon { width:46px; height:46px; flex:0 0 46px; margin-left:10px; object-fit:contain; filter:drop-shadow(0 2px 7px rgba(0,0,0,.15)); }
 .bcard .bbody { flex:1; min-width:0; }
 .bcard .bh { display:none; }
-.bcard .bh .qr { color:#3a2400; background:linear-gradient(135deg,#ffe680,#f2a900); padding:2px 10px; border-radius:999px; font-size:12px; font-weight:800; box-shadow:0 2px 6px rgba(242,169,0,.4); }
-.tb-watch { background-image:url('img/a1561cbaf685.png'); }
-.tb-welcome { background-image:url('img/ef7a726a6eb3.png'); }
-.tb-streak { background-image:url('img/61b17207ee0f.png'); }
-.abtn.imgbtn.claim1{background-image:url('img/f467b86444d7.png')}
-.abtn.imgbtn.claim2{background-image:url('img/ba46cce90ed3.png')}
-.abtn.imgbtn.claim3{background-image:url('img/79320442bbe9.png')}
-.abtn.imgbtn.claim5{background-image:url('img/74f79ceea54d.png')}
-.abtn.imgbtn.claim7{background-image:url('img/433e86165c4a.png')}
-.abtn.imgbtn.claim10{background-image:url('img/8325e364888a.png')}
-.abtn.imgbtn.claim15{background-image:url('img/1700c3d218bd.png')}
 .bcard .note2 { margin:0; font-size:11px; }
-.bcard .abtn { width:100%; }
 .bcard .abtn.imgbtn:disabled { opacity:1; filter:none; }
-#box-quests .quest .qbar { background:url('img/ff066468e6e0.png') center/100% 100% no-repeat; height:22px; border-radius:0; overflow:visible; position:relative; }
-#box-quests .quest .qbar i { position:absolute; left:7.5%; top:34%; height:32%; border-radius:6px; background:linear-gradient(90deg,#ffe680,#f2a900); box-shadow:0 0 8px rgba(255,213,74,.7); }
-.streakrow { display:flex; gap:3px; margin:8px 0 4px; background:url('img/c29e9ffc5e50.png') center/100% 100% no-repeat; padding:13px 12px; }
-.streakrow .sday { flex:1; aspect-ratio:1/1; background:center/contain no-repeat; position:relative; opacity:.5; filter:grayscale(.35) brightness(.82); }
-.streakrow .sday.day1{background-image:url('img/77ee089761c0.png')}
-.streakrow .sday.day2{background-image:url('img/cbbeca9ee485.png')}
-.streakrow .sday.day3{background-image:url('img/658068a64e5c.png')}
-.streakrow .sday.day4{background-image:url('img/0e30e0fc4a52.png')}
-.streakrow .sday.day5{background-image:url('img/ee35998c6e1c.png')}
-.streakrow .sday.day6{background-image:url('img/fab231e33281.png')}
-.streakrow .sday.day7{background-image:url('img/de7ad7e2bb38.png')}
-.streakrow .sday.done { opacity:1; filter:none; }
-.streakrow .sday.today { opacity:1; animation:sdayPulse 1s ease-in-out infinite alternate; }
+#box-quests .quest .qbar { position:relative; height:8px; border-radius:999px; overflow:hidden;
+  background:#E1E9F6; border:1px solid #E1E9F6; }
+#box-quests .quest .qbar i { position:absolute; left:0; top:0; bottom:0; border-radius:999px;
+  background:linear-gradient(90deg,#22B45E,#7CFF9B); box-shadow:0 0 8px rgba(124,255,155,.6); }
+.streakrow { display:flex; gap:5px; margin:10px 0 6px; justify-content:center; }
+.streakrow .sday { flex:1 1 0; max-width:52px; aspect-ratio:1/1; border-radius:10px; position:relative;
+  display:flex; align-items:center; justify-content:center;
+  font-size:13px; font-weight:800; color:#6B7C99;
+  background:#EEF3FB; border:1px solid #E1E9F6; }
+.streakrow .sday.done { color:#04121f; border-color:transparent;
+  background:linear-gradient(180deg,#7CFF9B,#22B45E); }
+.streakrow .sday.today { color:#0E7C3E; border-color:#7CFF9B;
+  animation:sdayPulse 1s ease-in-out infinite alternate; }
 #box-quests .note2 { text-align:center; }
 #box-quests .quest .qh span { width:100%; text-align:center; }
-@keyframes sdayPulse { from { filter:brightness(1.05) drop-shadow(0 0 3px #ffd54a); } to { filter:brightness(1.28) drop-shadow(0 0 11px #ffd54a); } }
-#box-quests .qtitle { width:210px; height:46px; margin:2px auto 12px; background:url('img/24cb6d95f9e2.png') center/contain no-repeat; filter:drop-shadow(0 2px 6px rgba(0,0,0,.6)); }
-/* Boutons Daily Quests en image (fix background-size !important) */
-  #adWatch, #wcClaim, #stkClaim { display:block !important; width:min(240px,90%) !important; max-width:90% !important; height:74px !important; margin:8px auto 2px !important; aspect-ratio:auto !important; background-color:transparent !important; background-repeat:no-repeat !important; background-position:center !important; background-size:100% 100% !important; color:transparent !important; text-indent:-9999px; overflow:hidden; white-space:nowrap; border:none !important; box-shadow:none !important; padding:0 !important; }
-#adWatch { background-image:url('img/b37ce5b03503.png') !important; }
-#wcClaim { background-image:url('img/78feb6deff7d.png') !important; }
-#stkClaim { background-image:url('img/ca5a91d30420.png') !important; }
+@keyframes sdayPulse { from { box-shadow:0 0 0 rgba(124,255,155,0); } to { box-shadow:0 0 12px rgba(124,255,155,.75); } }
+#box-quests .qtitle { margin:2px auto 12px; text-align:center; font-size:1.05rem;
+  font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:#0B1B36; }
+/* LE TRAITEMENT « BOUTON EN IMAGE » NE VAUT QUE S IL Y A UNE IMAGE. Ces trois
+   boutons portaient un fond peint sans condition — le texte passait en
+   transparent quel que soit l etat. Aucun des trois ne porte `.imgbtn` dans
+   le HTML de cette page (contrairement a `swoge_spin.html`, d ou la regle
+   vient) : ils retombent donc sur `.abtn`, deja converti plus haut, et le
+   libelle — deja dans le HTML — se voit. */
+#adWatch, #wcClaim, #stkClaim { display:block !important; width:min(240px,90%) !important;
+  max-width:90% !important; margin:8px auto 2px !important; }
+#adWatch.imgbtn, #wcClaim.imgbtn, #stkClaim.imgbtn { height:74px !important; aspect-ratio:auto !important;
+  background-color:transparent !important; background-repeat:no-repeat !important;
+  background-position:center !important; background-size:100% 100% !important;
+  color:transparent !important; text-indent:-9999px; overflow:hidden; white-space:nowrap;
+  border:none !important; box-shadow:none !important; padding:0 !important; }
 @media (max-width: 820px), (orientation: portrait) {
   #box-quests .qscroll { max-height:calc(100dvh - 78px); padding:20px 22px 24px; }
 }
@@ -1448,7 +1447,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 <div class="ovl" id="ovl">
   <div class="box" id="box-dep">
     <div class="pscroll">
-    <div class="ptitle pt-deposit"></div>
+    <div class="ptitle pt-deposit">Deposit</div>
     <div class="note2">In your wallet: <b id="depSwoge">…</b> $SWOGE · <b id="depEth">…</b> ETH (RH)</div>
     <label>Amount</label>
     <input id="depAmt" inputmode="decimal" placeholder="e.g. 100" value="100">
@@ -1461,7 +1460,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   </div>
   <div class="box" id="box-wd">
     <div class="pscroll">
-    <div class="ptitle pt-withdraw"></div>
+    <div class="ptitle pt-withdraw">Withdraw</div>
     <div class="note2">Game balance: <b id="wdBal">…</b> $SWOGE · min <b id="wdMin">50</b></div>
     <label>Amount</label>
     <input id="wdAmt" inputmode="decimal" placeholder="e.g. 50">
@@ -1475,7 +1474,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   </div>
   <div class="box" id="box-wallet">
     <div class="pscroll">
-    <div class="wtitle-plate"></div>
+    <div class="wtitle-plate">My Wallet</div>
     <label>Your address</label>
     <input id="acAddr" readonly style="width:100%">
     <button class="abtn wbtn wb-copy" id="acCopy" style="margin-top:8px">Copy</button>
@@ -1489,7 +1488,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   </div>
   <div class="box" id="box-stake">
     <div class="pscroll">
-    <div class="ptitle pt-stake"></div>
+    <div class="ptitle pt-stake">Staking</div>
     <div class="note2" id="stApr">100% APR · yield every second</div>
     <div class="strow"><span>Staked</span><b id="stStaked">0</b></div>
     <div class="strow"><span>Pending yield</span><b id="stPending" style="color:#7CFF9B">0</b></div>
@@ -1507,7 +1506,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   </div>
   <div class="box" id="box-quests">
     <div class="qscroll">
-    <div class="qtitle"></div>
+    <div class="qtitle">Daily Quests</div>
     <!-- Rewarded video (Adsgram) -->
     <div class="bcard" id="adCard">
       <div class="tbanner tb-watch"></div>
@@ -1551,7 +1550,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   </div>
   <div class="box" id="box-email">
     <div class="pscroll">
-    <div class="ptitle pt-email"></div>
+    <div class="ptitle pt-email">Sign in with email</div>
     <div class="note2" id="emMsg">A wallet is created for you automatically — no app needed.</div>
     <label>Email</label>
     <input id="emEmail" type="email" inputmode="email" placeholder="your@email.com">

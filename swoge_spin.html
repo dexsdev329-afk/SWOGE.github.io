@@ -97,15 +97,15 @@ canvas{ touch-action:none; }
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   :root { --gold:#ffd54a; }
+  /* ---- FOND BLANC, COMME BLACKJACK ET SPIN ----
+   * DEMANDE : « fond blanc pour spin html pareil » — le degrade violet et la
+   * photo de volcan (`#bg-still`, `#bg-layer`) sont retires, meme demarche
+   * que le fond noir retire de `swoge_blackjack.html`. La machine elle-meme
+   * (`#grid`, felt sombre) garde son propre habillage : c est la PAGE,
+   * derriere le jeu, qui rejoint le blanc. */
   body { font-family: 'Orbitron', system-ui, sans-serif; overflow: hidden; height: 100vh; width: 100vw; color: #fff;
-    background: radial-gradient(circle at 50% 30%, #7a3bd6 0%, #4a1f95 38%, #2a1160 68%, #170a33 100%); }
+    background: #EEF3FB; }
   #scene { position: fixed; inset: 0; overflow: hidden; }
-  /* fond fixe, couvre tout l'ecran, derriere le jeu. Deux cadrages : le 9:16
-     par defaut, le 16:9 en paysage, sinon cover massacre l'une des deux. */
-  #bg-still { position: fixed; inset: 0; z-index: -2; opacity: .55; pointer-events: none;
-    background: url('img/d2bb854c305f.jpg') center/cover no-repeat; }
-  @media (orientation: landscape) { #bg-still { background-image: url('img/58030f040312.jpg'); } }
-  #bg-layer { position:absolute; inset:0; background-size:cover; background-position:center; z-index:-1; display:none; }
 
   /* ===== ÉCHELLE DE JACKPOTS (haut) ===== */
   #ladder { position: absolute; top: 1vh; left: 50%; transform: translateX(-50%); display: flex; gap: .4vw; z-index: 5; width: 98vw; justify-content: center; }
@@ -308,8 +308,12 @@ canvas{ touch-action:none; }
   /* ===== BARRE DU BAS + SPIN ===== */
   #bottom { position: absolute; bottom: 2.4vh; left: 50%; transform: translateX(-50%); z-index: 5; display: flex; gap: 4vw; align-items: center; }
   .stat { text-align: center; }
-  .stat .l { font-size: 1.4vh; color: #cbb6ff; letter-spacing: 1px; }
-  .stat .n { font-size: 2.8vh; font-weight: 900; color: #fff; }
+  /* Ces deux chiffres flottent directement sur la page (pas sur le tapis
+     sombre de la machine) : leurs couleurs claires, pensees pour le fond
+     violet retire plus haut, seraient illisibles sur blanc. Meme recette
+     que le reste du site : marine/gris fonces. */
+  .stat .l { font-size: 1.4vh; color: #6B7C99; letter-spacing: 1px; }
+  .stat .n { font-size: 2.8vh; font-weight: 900; color: #0A1F44; }
   /* SPIN : image fournie (texte "SPIN" intégré) → on masque le texte HTML */
   #spin-btn { color:transparent; text-indent:-9999px; overflow:hidden; cursor:pointer;
     background:url('img/4ea7a1860657.png') center/100% 100% no-repeat;
@@ -490,8 +494,8 @@ canvas{ touch-action:none; }
   #bet-dn:hover,#bet-up:hover { filter:brightness(1.1); }
   #bet-dn:active,#bet-up:active { transform:scale(.93); }
   .bet-val { text-align:center; min-width:8vw; }
-  .bet-val .l { font-size:1.4vh; color:#cbb6ff; letter-spacing:1px; }
-  .bet-val .n { font-size:2.6vh; font-weight:900; color:var(--gold); }
+  .bet-val .l { font-size:1.4vh; color:#6B7C99; letter-spacing:1px; }
+  .bet-val .n { font-size:2.6vh; font-weight:900; color:#1B5FE0; }
   #buy-bonus span { line-height:1.15; }
   /* ---- LE SON REJOINT LA BARRE DU HAUT ----
    * Il vivait cale en fixe dans le coin haut-gauche, hors du HUD. La nouvelle
@@ -518,7 +522,6 @@ canvas{ touch-action:none; }
                 entier par son propre `top` (mesure en JS, plus bas) : ce
                 padding n a plus qu a laisser un peu de respiration sous elle. */
              padding:1.4vh 0 1.2vh; gap:.4vh; }
-    #bg-layer { position:fixed; }
 
     /* Echelle de jackpots : descendue sous le HUD, disposee 2 en haut / 3 en bas
        (grille 6 colonnes : les 2 gros jackpots en haut, les 3 autres en bas) */
@@ -840,11 +843,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 }
 </style>
 
-<!-- fond fixe (remplace la video en boucle : bien plus fluide en webview) -->
-<div id="bg-still" aria-hidden="true"></div>
-
 <div id="scene">
-  <div id="bg-layer" style="display:block;background:linear-gradient(rgba(12,5,28,.5),rgba(12,5,28,.72));opacity:1;"></div>
 
   <div id="ladder"></div>
 

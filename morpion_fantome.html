@@ -2118,9 +2118,23 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     ws.onmessage=function(ev){
       var m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
       if(m.type==="state") return;
-      if(m.type==="hello"){ loginNonce=m.loginNonce; /* Le jeton de session evite de resigner : on le presente des que le nonce est connu. Le serveur repond soit par 'auth' — connecte, sans SDK ni signature — soit par 'resumeFailed'. */ (function(){ var j=null; try{ j=localStorage.getItem("swogeSession"); }catch(e){} if(j) send({type:"resume", token:j, tgId:(typeof TG_ID!=="undefined"?TG_ID:null)}); })(); if(m.vault)VAULT=m.vault; if(m.token)TOKEN=m.token; if(m.minWithdraw)MIN_WITHDRAW=m.minWithdraw; showFair({serverSeedHash:m.serverSeedHash,nonce:0});
+      if(m.type==="hello"){ loginNonce=m.loginNonce; /* Le jeton de session evite de resigner : on le presente des que le nonce est connu. Le serveur repond soit par 'auth' — connecte, sans SDK ni signature — soit par 'resumeFailed'. */ var reprise=false;
+        (function(){ var j=null; try{ j=localStorage.getItem("swogeSession"); }catch(e){} if(j){ reprise=true; send({type:"resume", token:j, tgId:(typeof TG_ID!=="undefined"?TG_ID:null)}); } })(); if(m.vault)VAULT=m.vault; if(m.token)TOKEN=m.token; if(m.minWithdraw)MIN_WITHDRAW=m.minWithdraw; showFair({serverSeedHash:m.serverSeedHash,nonce:0});
         /* le nonce n'arrive qu'ici : on relance la session sauvegardee maintenant */
-        if(myAddr) doLogin(); }
+
+        /* ---- ON NE REDEMANDE PAS UNE SIGNATURE A QUELQU UN DE DEJA CONNECTE ----
+           DEMANDE : « si je suis deja connecte, pas besoin de me redemander une
+           connexion wallet ». `doLogin()` fait signer un message au
+           portefeuille — c'est la fenetre qui surgit. Il partait ici a CHAQUE
+           `hello`, donc a chaque ouverture de page, alors qu'une reprise de
+           session venait d'etre envoyee deux lignes plus haut et allait
+           repondre toute seule. Le joueur voyait donc une demande de signature
+           a chaque actualisation, en etant parfaitement connecte.
+           On ne le rappelle que s'il n'y avait AUCUN jeton a reprendre. La
+           reprise ratee, elle, passe deja par 'resumeFailed', juste en dessous,
+           qui relance le chemin long. Meme correctif que sur
+           `swoge_blackjack.html`, `swoge_smash.html` et `swogebet.html`. */
+        if(myAddr && !reprise) doLogin(); }
       if(m.type==="resumeFailed"){ /* jeton perime ou revoque : on l oublie et on repart du chemin long */ try{ localStorage.removeItem("swogeSession"); }catch(e){} if(typeof autoReconnect==="function") autoReconnect(); else if(myAddr) doLogin(); return; }
       else if(m.type==="auth"){ authed=true; myAddr=m.address; if(m.session){ try{ localStorage.setItem("swogeSession",m.session); }catch(e){} } setBalance(m.balance); showPlay(); if(m.fairness) showFair(m.fairness);
         send({type:"duelState"}); send({type:"duelLobby", jeu:JEU}); send({type:"duelInvites", jeu:JEU});

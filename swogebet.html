@@ -72,7 +72,7 @@ canvas{ touch-action:none; }
 <!-- La bulle de staking. Chargee tot et SANS defer : elle enveloppe WebSocket
      pour ecouter ce qui passe deja, et doit donc etre en place avant que la page
      n ouvre sa connexion. -->
-<script src="stakebubble.js?v=020a9cc2"></script>
+<script src="stakebubble.js?v=8fd146cb"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <script src="swogebuy.js?v=0d5e5215"></script>
 <script src="https://sad.adsgram.ai/js/sad.min.js" async></script>
@@ -2185,7 +2185,7 @@ main{ min-width:0; }
           </span>
           <span class="sb-chev" aria-hidden="true">&#9662;</span>
         </button>
-        <button class="sb-x" id="sbVideBt" aria-label="clear the slip">&times;</button>
+        <button class="sb-x" id="sbVideBt" aria-label="close the slip">&times;</button>
         <div class="sb-corps" id="sbCorps">
           <!-- DEUX ONGLETS DANS LE MEME PANNEAU. On construit un pari a gauche,
                on le suit a droite. Apres validation on bascule tout seul sur
@@ -2727,10 +2727,18 @@ main{ min-width:0; }
   var SB={ sports:[], matchs:[], mien:[], min:100, max:100000,
            jambesMax:8, gainMax:5000000,
            sport:"foot", panier:[], busy:false,
-           /* replie : le bulletin ancre n'a plus qu'a se pousser de cote, il ne
-              se ferme plus. L'etat vit ici et pas dans le DOM — la classe CSS
-              est posee par sbMontre, qui est le seul a decider. */
-           replie:false,
+           /* ---- REPLIE A L ARRIVEE ----
+            * Il s ouvrait deplie. En arrivant sur la page avec un pari en
+            * cours, on trouvait donc « My bets » grand ouvert par-dessus le
+            * bas du tableau, sans l avoir demande — et il fallait le replier
+            * pour voir les rencontres.
+            * Ajouter une jambe le DEPLIE (`sbOuvre` le fait) : celui qui
+            * construit un bulletin veut le voir. Celui qui arrive, non.
+            * L etat vit ici et pas dans le DOM — la classe CSS est posee par
+            * `sbMontre`, qui est le seul a decider. */
+           replie:true,
+           /* masque : la croix. Voir `sbFermeCroix`. */
+           masque:false,
            /* vue : 'slip' pour construire, 'mine' pour suivre. Le panneau est
               le meme, seul son corps change. */
            vue:'slip' };
@@ -3203,6 +3211,7 @@ main{ min-width:0; }
        sur le tableau : il veut voir ce qu'il vient de construire, meme s'il
        avait replie le panneau il y a deux clics. */
     SB.replie=false;
+    SB.masque=false;   /* la croix ne condamne pas le panneau */
     sbVue('slip');
     sbMontre();
     sbRend();
@@ -3226,7 +3235,7 @@ main{ min-width:0; }
        qu'il y a quelque chose a montrer — un bulletin en construction, ou un
        pari en cours. */
     var ouverts=(SB.mien||[]).some(function(x){ return !x.regle; });
-    var vide = !SB.panier.length && !ouverts;
+    var vide = !SB.panier.length && (!ouverts || SB.masque);
     if(!SB.panier.length && ouverts && SB.vue==='slip') sbVue('mine');
     o.hidden=vide;
     o.classList.toggle("replie", !vide && !!SB.replie);
@@ -3237,7 +3246,33 @@ main{ min-width:0; }
   }
   function sbBascule(){ SB.replie=!SB.replie; sbMontre(); }
   function sbFerme(){ sbMontre(); }
-  function sbVide(){ SB.panier=[]; SB.replie=false; sbMontre(); sbRend(); }
+  /* ---- LA CROIX FERME, ET DANS CET ORDRE ----
+   * Elle ne faisait que VIDER le bulletin. Avec un pari en cours, le panneau
+   * restait donc a l ecran apres l avoir pressee — le geste avait l air sans
+   * effet, ce qui est la pire chose qu une croix puisse faire.
+   *
+   * Deux temps, et c est voulu :
+   *   — s il reste des selections, on les retire. Un bulletin CACHE qui porte
+   *     encore de l argent est un piege : on le retrouve dix minutes plus tard
+   *     sans savoir ce qu il contient ;
+   *   — s il etait deja vide, on masque le panneau. Il revient des qu on
+   *     clique une cote, et a la prochaine visite.
+   *
+   * `masque` ne survit pas au rechargement, et c est deliberement ainsi : un
+   * pari en cours doit se rappeler a celui qui l a pose. */
+  function sbFermeCroix(){
+    if(SB.panier.length){
+      SB.panier=[]; SB.replie=true;
+      /* Le bulletin se REPEINT : `sbRend` refait la liste, les onglets et les
+         tickets, pas les jambes. Tant que le panneau disparaissait avec le
+         bulletin vide, cela ne se voyait pas ; depuis qu il reste a l ecran
+         pour montrer un pari en cours, les jambes d avant y restaient
+         accrochees derriere l onglet. Vu par l essai, pas a la lecture. */
+      sbPeintBulletin(); sbMontre(); sbRend(); return;
+    }
+    SB.masque=true; sbMontre();
+  }
+  function sbVide(){ SB.panier=[]; SB.replie=false; sbPeintBulletin(); sbMontre(); sbRend(); }
 
   function sbPeintBulletin(){
     var h="", i;
@@ -3354,7 +3389,7 @@ main{ min-width:0; }
       e.stopPropagation();
       SB.replie=false; sbVue(b.getAttribute("data-vue")); sbMontre();
     });
-    $("sbVideBt").addEventListener("click", function(e){ e.stopPropagation(); sbVide(); });
+    $("sbVideBt").addEventListener("click", function(e){ e.stopPropagation(); sbFermeCroix(); });
     $("sbJambes").addEventListener("click", function(e){
       var b=e.target.closest("button[data-ote]"); if(!b) return;
       sbOuvre(b.getAttribute("data-ote"),
@@ -3411,7 +3446,8 @@ main{ min-width:0; }
         /* Le pari est parti : le bulletin se vide, et le panneau bascule sur
            « My bets ». Le ticket qu'on vient d'envoyer reapparait la ou on
            l'a construit, au lieu de disparaitre sans laisser d'adresse. */
-        SB.busy=false; SB.panier=[]; SB.replie=false; sbVue('mine'); sbRend(); sbMontre();
+        SB.busy=false; SB.panier=[]; SB.masque=false; SB.replie=false;
+        sbVue('mine'); sbRend(); sbMontre();
         toast("✅ Bet placed · returns "+sbFmt(m.pari.rapport)+" $SWOGE");
       }
       else if(m.type==="need_deposit"){ setBalance(m.balance); busy=false; toast("Not enough $SWOGE — deposit in the Pusher"); }

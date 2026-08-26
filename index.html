@@ -859,72 +859,32 @@ a{color:inherit;text-decoration:none}
               handicap. Le tennis n'a que le vainqueur. Annoncer cent
               vingt-huit marches qu'on n'a pas est la seule sorte de mensonge
               qu'un joueur verifie en un clic. -->
+      <!-- ================== CE QU ON PROPOSE VRAIMENT ==================
+           QUATRE RENCONTRES ETAIENT ECRITES ICI, cotes comprises, jouees le 15
+           aout. L accueil annoncait donc des matchs finis a des prix qui
+           n existent plus — la seule sorte de mensonge qu un visiteur verifie
+           en un geste, et il le verifie toujours.
+           Le hall avait deja recu le vrai calendrier ; l accueil le recoit par
+           le MEME fichier, et non par une copie. Le squelette reste VIDE :
+           laisser un exemple « en attendant » ferait clignoter de fausses
+           cotes a chaque chargement, et l on finirait par les prendre pour les
+           vraies.
+           La cle du sport est ECRITE a cote du libelle, jamais devinee dans le
+           texte : celui-ci commence par une icone, donc « ⚽Football » ne
+           commence pas par « football ». -->
       <section class="carte carte-p">
         <div class="tete"><h3>SWOGE SPORTS</h3>
           <span class="ferme">CLOSES AT KICK-OFF</span></div>
-        <p class="sous">Football carries <b>six markets</b> &mdash; winner, double chance,
-          both teams to score, over/under 2.5, correct score, handicap &minus;1.5.</p>
+        <p class="sous">Real fixtures, real odds &mdash; pick a winner and
+          <b>place the bet right here</b>. Six markets on the full board.</p>
         <div class="onglets" data-groupe="sports">
-          <button class="on"><span class="ic">&#9878;</span>All Sports</button>
-          <button><span class="ic">&#9917;</span>Football</button>
-          <button><span class="ic">&#127934;</span>Tennis</button>
-          <button class="eteint"><span class="ic">&#127936;</span>NBA</button>
+          <button class="on" data-sport=""><span class="ic">&#9878;</span>All Sports</button>
+          <button data-sport="foot"><span class="ic">&#9917;</span>Football</button>
+          <button data-sport="tennis"><span class="ic">&#127934;</span>Tennis</button>
+          <button data-sport="nba"><span class="ic">&#127936;</span>NBA</button>
         </div>
-
-        <div class="match">
-          <div class="ligue">FOOTBALL &middot; CHAMPIONSHIP &middot; ENGLAND</div>
-          <div class="duel">
-            <span class="eq"><span>&#127988;</span><b>Bolton</b></span>
-            <span class="sc">15 AUG &middot; 12:30</span>
-            <span class="eq d"><b>Preston</b><span>&#127988;</span></span>
-          </div>
-          <div class="cotes">
-            <button class="on">1 <small>2.12</small></button>
-            <button>X <small>3.22</small></button>
-            <button>2 <small>3.17</small></button>
-            <span class="plus">+5</span>
-          </div>
-        </div>
-
-        <div class="match">
-          <div class="ligue">FOOTBALL &middot; CHAMPIONSHIP &middot; ENGLAND</div>
-          <div class="duel">
-            <span class="eq"><span>&#127988;</span><b>Norwich</b></span>
-            <span class="sc">15 AUG &middot; 15:00</span>
-            <span class="eq d"><b>West Brom</b><span>&#127988;</span></span>
-          </div>
-          <div class="cotes">
-            <button>1 <small>1.87</small></button>
-            <button>X <small>3.38</small></button>
-            <button>2 <small>3.73</small></button>
-            <span class="plus">+5</span>
-          </div>
-        </div>
-
-        <div class="match">
-          <div class="ligue">TENNIS &middot; CINCINNATI ATP</div>
-          <div class="duel">
-            <span class="eq"><span>&#127479;&#127480;</span><b>Djokovic N.</b></span>
-            <span class="sc">15 AUG &middot; 16:30</span>
-            <span class="eq d"><b>Tirante T. A.</b><span>&#127462;&#127479;</span></span>
-          </div>
-          <div class="cotes">
-            <button>1 <small>1.25</small></button>
-            <button>2 <small>3.80</small></button>
-          </div>
-        </div>
-
-        <div class="match">
-          <div class="ligue">TENNIS &middot; CINCINNATI ATP</div>
-          <div class="duel">
-            <span class="eq"><span>&#127482;&#127480;</span><b>Paul T.</b></span>
-            <span class="sc">15 AUG &middot; 18:00</span>
-            <span class="eq d"><b>Hurkacz H.</b><span>&#127477;&#127473;</span></span>
-          </div>
-          <div class="cotes">
-            <button>1 <small>1.53</small></button>
-            <button>2 <small>2.25</small></button>
-          </div>
+        <div id="gxSports" class="gx-liste" aria-live="polite">
+          <div class="gx-dit">Loading today&rsquo;s fixtures&hellip;</div>
         </div>
       </section>
 
@@ -1005,7 +965,7 @@ a{color:inherit;text-decoration:none}
      `ethers` vient avec : c est lui qui signe les retraits. C est le seul
      poids ajoute a l accueil, et il ne l est que parce qu on y depose. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
-<script src="stakebubble.js?v=020a9cc2"></script>
+<script src="stakebubble.js?v=8fd146cb"></script>
 <script src="swogecompte.js?v=cd504287"></script>
 <script src="swogecx.js?v=8d0516d1" defer></script>
 <!-- Le menu du compte, le meme fichier que le hall. L accueil n a pas
@@ -1015,6 +975,11 @@ a{color:inherit;text-decoration:none}
      tiroir de `stakebubble.js`, charge juste au-dessus — la meme liste, tenue
      au meme endroit, que celle du hall. -->
 <script src="swogeprofil.js?v=b8c90d90" defer></script>
+<!-- Le calendrier sportif et le pari sur place, le meme fichier que le hall.
+     Il a besoin de `stakebubble.js`, charge plus haut : c est lui qui tient la
+     socket et le jeton de session, et deux sockets voudraient dire deux
+     authentifications et deux soldes a garder d accord. -->
+<script src="swogesports.js?v=64716f27" defer></script>
 <style>
 /* ==================== LES PASTILLES DE LA BARRE, AU CLAIR ====================
  *

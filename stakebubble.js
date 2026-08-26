@@ -292,6 +292,37 @@
    * place — on l'expose plutot que d'en ecrire un second, et surtout plutot
    * que de faire voyager quelqu'un qui voulait juste deposer. */
   window.swogeConnexion = { ouvre: ouvreConnexion, ferme: fermeConnexion };
+
+  /* ==================== LE FIL, POUR LES PAGES QUI N EN OUVRENT PAS ====================
+   *
+   * L accueil et le hall n ont pas de socket a eux : ils n en avaient pas
+   * besoin tant qu ils se contentaient de MONTRER. Depuis qu on peut y poser
+   * un pari, il leur en faut une — et surtout, il ne leur en faut pas une
+   * SECONDE. Deux sockets veulent dire deux authentifications, deux soldes a
+   * tenir d accord, et le doute sur celle qui recevra la reponse.
+   *
+   * Ce fichier en tient deja une, ouverte avec le jeton de session, et il
+   * enveloppe le constructeur pour ecouter tout ce qui passe. On l ouvre donc
+   * aux pages, en lecture et en ecriture, plutot que de les laisser en ouvrir
+   * une de plus.
+   *
+   * `pret()` ne dit pas « le joueur est connecte » : il dit « il y a un fil ».
+   * C est au serveur de refuser un pari sans session — lui seul le sait
+   * vraiment, et une page qui deciderait a sa place se tromperait le jour ou
+   * la session expire sans qu elle l apprenne. */
+  var abonnes = [];
+  window.swogeFil = {
+    pret: function () { return !!(etat.socket && etat.socket.readyState === 1); },
+    envoie: function (o) { envoie(o); },
+    ecoute: function (fn) {
+      if (typeof fn !== 'function') return function () {};
+      abonnes.push(fn);
+      return function () {
+        var i = abonnes.indexOf(fn);
+        if (i >= 0) abonnes.splice(i, 1);
+      };
+    },
+  };
   function conDit(t) { if (conBoite) conBoite.querySelector('.m').textContent = t; }
 
   /* Le nonce, la signature, la session. Le serveur n'a pas d'autre porte : la
@@ -442,6 +473,18 @@
     dernierRecu = Date.now();
     try { m = JSON.parse(ev.data); } catch (e) { return; }
     if (!m || !m.type) return;
+    /* ---- LA SOCKET SE RETIENT SUR TOUT MESSAGE ----
+     * Elle ne l etait que sur `auth`, `stakeInfo` et `history` : trois types
+     * choisis parce que c est ce dont la bulle avait besoin. Une page qui
+     * veut ENVOYER quelque chose — l accueil et le hall posent maintenant des
+     * paris — se retrouvait sans fil tant qu aucun des trois n etait passe.
+     * Toute reponse identifie la socket aussi bien que ces trois-la. */
+    etat.socket = ev.target;
+    /* Et l on previent qui ecoute, AVANT de traiter : un abonne qui jette ne
+       doit pas emporter le reste. */
+    for (var iA = 0; iA < abonnes.length; iA++) {
+      try { abonnes[iA](m); } catch (eA) {}
+    }
     /* La charge d'authentification porte l'etat du staking sous `stake` ; le
        message `stakeInfo` le porte a plat. Les deux chemins existent deja, on
        lit les deux plutot que d'en imposer un nouveau. */

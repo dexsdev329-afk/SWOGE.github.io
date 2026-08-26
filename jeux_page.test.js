@@ -170,7 +170,22 @@ const servirLeSite = async () => {
      + ' « foot », et l affiche annoncait « FOOT · TEST LEAGUE »');
   ok(/TOMORROW/.test(f.quand),
      `l heure se lit en clair plutot qu en date : ${f.quand}`);
-  eq(f.lien, 'swogebet.html', 'et la rencontre entiere mene la ou l on prend le pari');
+  /* ---- LA RENCONTRE N EST PLUS UN LIEN ----
+   * Elle l etait : toute la carte menait a la page de paris, cotes comprises.
+   * Cliquer une cote emmenait donc AILLEURS, et il fallait la retrouver la-bas
+   * pour la reposer. Demande : « les gens peuvent selectionner ici sans que ca
+   * les redirige vers SWOGE Bet — peut-etre qu ils voulaient miser vite sur le
+   * match affiche a droite ».
+   * Le « +N » reste un lien, et lui seul : les cinq autres marches ne tiennent
+   * pas dans une affiche de trois lignes. */
+  eq(f.lien, null,
+     'la rencontre entiere n est plus un lien : on parie ICI, sans quitter la page');
+  eq(await p.evaluate(() =>
+       (document.querySelector('#gxSports .plus') || {}).getAttribute
+         ? document.querySelector('#gxSports .plus').getAttribute('href') : null),
+     'swogebet.html',
+     'seul « +N » mene au tableau : c est la seule chose de la carte qu on ne'
+     + ' peut pas faire ici');
   const t0 = v.matchs[1], t = t0;
   eq(t.cotes.length, 2, 'le tennis n en montre que deux — il n a pas de nul');
   eq(t.plus, null, 'et aucun marche en plus : les cinq autres sont du football');

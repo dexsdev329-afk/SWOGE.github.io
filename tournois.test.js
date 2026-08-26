@@ -246,6 +246,67 @@ const servirLeSite = async () => {
      'ouvert a la premiere venue : un sport qui s ouvre sur un titre replie'
      + ' donne l impression qu il n y a rien');
 
+  console.log('\n-- « My bets » arrive REPLIE, et la croix ferme --');
+  /* ---- CE QUI ETAIT SIGNALE ----
+   * « Sur SWOGE bet, my bet doit etre ferme de base ; verifie aussi que la
+   *   croix fonctionne pour le fermer. »
+   * Le panneau s ouvrait DEPLIE : en arrivant avec un pari en cours on le
+   * trouvait grand ouvert par-dessus le bas du tableau, sans l avoir demande.
+   * Et la croix ne faisait que VIDER le bulletin — avec un pari en cours, le
+   * panneau restait la apres l avoir pressee, ce qui est la pire chose qu une
+   * croix puisse faire. */
+  await p.click('#sbSports button[data-sp="foot"]');
+  await p.waitForTimeout(600);
+  await p.click('.sb-t:nth-of-type(1) .sb-m .sb-cotes button');
+  await p.waitForTimeout(500);
+  await p.evaluate(() => {
+    const i = document.getElementById('sbMise');
+    if (i) { i.value = '100'; i.dispatchEvent(new Event('input', { bubbles: true })); }
+  });
+  await p.waitForTimeout(300);
+  await p.click('#sbGo');
+  await p.waitForTimeout(2500);
+  ok(await p.evaluate(() => document.querySelectorAll('#sbMien .sb-p').length > 0
+                          || document.querySelectorAll('#sbVueMine .sb-p').length > 0
+                          || !!document.querySelector('#sbNbMien')),
+     'un pari est en cours');
+
+  /* On revient sur la page comme un joueur qui rouvre l onglet. */
+  await p.reload({ waitUntil: 'domcontentloaded' });
+  await p.waitForTimeout(3200);
+  const arrivee = JSON.parse(await p.evaluate(() => JSON.stringify({
+    visible: !document.getElementById('sbOvl').hidden,
+    replie: document.getElementById('sbOvl').classList.contains('replie'),
+    dit: document.getElementById('sbTete').getAttribute('aria-expanded'),
+  })));
+  ok(arrivee.visible,
+     'le panneau est la : un pari en cours doit se rappeler a celui qui l a pose');
+  ok(arrivee.replie, 'mais REPLIE — c est ce qui etait demande');
+  eq(arrivee.dit, 'false', 'et il le dit : un lecteur d ecran l annonce ferme');
+
+  await p.click('#sbVideBt');
+  await p.waitForTimeout(500);
+  ok(await p.evaluate(() => document.getElementById('sbOvl').hidden),
+     'la croix le ferme pour de bon — elle ne faisait que vider le bulletin,'
+     + ' et le panneau restait a l ecran');
+
+  /* Et il revient des qu on clique une cote : la croix ne le condamne pas. */
+  await p.click('.sb-t:nth-of-type(1) .sb-m .sb-cotes button');
+  await p.waitForTimeout(600);
+  const revenu = JSON.parse(await p.evaluate(() => JSON.stringify({
+    visible: !document.getElementById('sbOvl').hidden,
+    replie: document.getElementById('sbOvl').classList.contains('replie'),
+  })));
+  ok(revenu.visible && !revenu.replie,
+     'et il revient DEPLIE des qu on choisit une cote : celui qui construit un'
+     + ' bulletin veut le voir, celui qui arrive non');
+  /* La croix avec des selections dedans les retire d abord : un bulletin cache
+     qui porte encore de l argent est un piege. */
+  await p.click('#sbVideBt');
+  await p.waitForTimeout(500);
+  eq(await p.evaluate(() => document.querySelectorAll('#sbJambes button[data-ote]').length), 0,
+     'pressee sur un bulletin plein, elle le vide d abord');
+
   console.log('\n-- rien ne reste de l ancien rangement par journee --');
   ok(!/sb-jour/.test(fs.readFileSync(path.join(SITE, 'swogebet.html'), 'utf8')),
      'la classe du bandeau de journee de premier niveau a disparu avec lui :'

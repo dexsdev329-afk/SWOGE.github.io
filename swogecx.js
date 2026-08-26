@@ -345,4 +345,34 @@
         ['catch'](function () {});
     }
   } catch (e) {}
+
+  /* ---- LES BOUTONS SUIVENT `swogeConnecte()`, PAS SEULEMENT CE CHEMIN-CI ----
+   * Signale depuis Telegram, capture a l'appui : le solde et les jetons
+   * s'affichent en haut a droite — `stakebubble.js` a retrouve SA propre
+   * session — et « CONNECT WALLET » / « SIGN UP — EMAIL » restent quand meme
+   * affiches juste a cote.
+   * `restore()`, deux blocs plus haut, peut ne JAMAIS repondre dans
+   * l'iframe cloisonnee de Telegram : ni resolue ni rejetee, elle laisse
+   * `entre()` sans jamais l'appeler. `stakebubble.js`, lui, protege son
+   * propre `restore()` d'un delai et retrouve la session a temps.
+   * Plutot que de ne croire que son propre chemin, cette page ecoute donc
+   * `swogeConnecte()` — la meme question deja posee pour le menu du profil —
+   * et efface les boutons des qu'elle repond oui, meme si `entre()` n'a
+   * jamais ete appelee ici. Quinze secondes suffisent : c'est le temps que
+   * `stakebubble.js` se donne pour son propre restore. */
+  (function () {
+    var essais = 0;
+    var id = setInterval(function () {
+      essais++;
+      var boutons = document.querySelectorAll('.cx-wallet, .cx-mail');
+      var visibles = [].filter.call(boutons, function (b) { return !b.hidden; });
+      if (!visibles.length) { clearInterval(id); return; }
+      if (window.swogeConnecte && window.swogeConnecte()) {
+        visibles.forEach(function (b) { b.hidden = true; b.style.display = 'none'; });
+        clearInterval(id);
+        return;
+      }
+      if (essais >= 30) clearInterval(id);
+    }, 500);
+  })();
 })();

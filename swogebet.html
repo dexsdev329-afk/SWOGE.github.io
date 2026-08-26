@@ -25,6 +25,16 @@
  * ========================================================= */
 html{ -webkit-text-size-adjust:100%; }
 
+/* ---- LE DOUBLE-TAP NE ZOOME PLUS, MEME HORS DE LA LISTE CI-DESSOUS ----
+ * DEMANDE : « le rendu sur telephone de swogebet a un soucis ... trop de
+ * zoom dezoom quand on fait des double click sans faire expres ». La regle
+ * plus bas (`button, a, ... { touch-action:manipulation }`) ne couvre que
+ * les elements interactifs enumeres — une rangee de match, l espace entre
+ * deux cotes, ne le sont pas, et un double-tap qui atterrit dessus zoomait
+ * quand meme. Pose ici sur `html` entier, la meme regle vaut PARTOUT sur
+ * la page, quel que soit l endroit ou le pouce se pose. */
+html{ touch-action:manipulation; }
+
 /* ---- ON RELEVE LE NOIR, PARTOUT ----
  *
  * Les tables etaient presque entierement noires : 80 % des pixels du casino

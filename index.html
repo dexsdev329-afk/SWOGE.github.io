@@ -3,6 +3,20 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>
+/* ---- LE DOUBLE-TAP NE ZOOME PLUS ----
+ * DEMANDE : « index et games trop de zoom dezoom quand on fait des double
+ * click sans faire expres ». Deux appuis rapproches sur un lien ou un
+ * bouton — courant en scrollant vite au pouce — se lisaient comme un
+ * double-tap, et la page zoomait sans que personne ne l ait demande.
+ * `manipulation` supprime CE geste, et lui seul : le pincement pour
+ * zoomer reste possible, ce qui n aurait pas ete le cas avec un
+ * `user-scalable=no` dans le viewport (la solution courante, qui prive
+ * aussi les gens qui zooment pour lire). Pose sur `html` entier plutot
+ * que sur une liste de classes : peu importe ou le pouce atterrit —
+ * bouton, carte, simple texte — le geste ne zoome jamais par accident. */
+html{ touch-action:manipulation; }
+</style>
 <title>SWOGE WORLD</title>
 <!--
   ================== UNE BASE, ET RIEN QUE LA BASE ==================

@@ -798,6 +798,10 @@ button, input, a, .card, .felt, .sbet, .chipbtn, .btn{ touch-action:manipulation
   .hero { padding:8px 14px 0; }
   .hero p { display:none; }
   .hero h1 { font-size:clamp(20px,5.2vw,30px); }
+  /* Le pied de page respirait comme sur une page qui defile a l aise sur
+     grand ecran (40px sous le lien) — un luxe qu un telephone court n a
+     pas. Meme demande que la vitrine plus haut : tout faire rentrer. */
+  footer{ padding:14px 16px 20px; }
 }
 @media (min-width:821px) and (orientation:landscape) {
   /* colle la connexion en haut a droite, hors du plateau */
@@ -979,7 +983,17 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   nav.sb-ancre{ order:2; flex:0 0 auto; margin-left:auto }
   .menubtn, #gxProfil{ order:3 }
   .connrow{ order:4; flex:1 1 100% !important; justify-content:center !important }
-  .sw-chiffres{ order:5; flex:1 1 100% }
+  /* ---- LA VITRINE DISPARAIT ICI, PAS AILLEURS ----
+   * DEMANDE : « essaye de tout faire rentrer [au telephone], qu il n y ait
+   * pas de barre de scroll cachee ». Mesure sur telephone court (webview
+   * Telegram, 390x650) : l en-tete a elle seule pesait 165px sur 650 —
+   * un quart de l ecran — et cette troisieme rangee (PLAYERS / CASINO
+   * VOLUME / ROUNDS PLAYED / WINNINGS PAID) en valait plus du tiers a
+   * elle seule. Purement decorative — aucun bouton, aucune action —
+   * c est la premiere chose a sacrifier avant de toucher au tapis ou au
+   * plancher des commandes (`.controls`, delibere, voir plus bas).
+   * Seule cette page la retire : ce n est pas un reglage partage. */
+  .sw-chiffres{ display:none; }
 }
 </style>
 <style>

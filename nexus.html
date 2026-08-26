@@ -26,6 +26,17 @@ canvas{ touch-action:none; }
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="stakebubble.js?v=9fd2eb2e"></script>
+<!-- ---- LE COMPTE DE JEU, DANS LE MONDE AUSSI ----
+     Le tiroir se construit a partir du `#menu` de la page, et cette page n'en
+     avait pas : « My Wallet » n'y etait qu'un lien vers une autre page.
+     `swogecompte.js` fabrique le menu ET les cinq panneaux, `swogeprofil.js`
+     peint le tiroir derriere l'avatar, `swogebuy.js` pose l'estimation en
+     dollars a cote du solde. `ethers` vient avec : c'est lui qui signe les
+     retraits et les envois. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+<script src="swogecompte.js?v=cd504287"></script>
+<script src="swogebuy.js?v=0d5e5215"></script>
+<script src="swogeprofil.js?v=b8c90d90" defer></script>
 
 <style>
 html,body{ height:100%; margin:0; background:#0A1128; overscroll-behavior:none; }
@@ -2182,6 +2193,135 @@ body.nxdrag *{ cursor:grabbing !important; }
   #nxMapNom{ width:34vw; }
 }
 
+/* ==================== LA NOUVELLE BARRE, BLANCHE ====================
+   DEMANDE : « tous se qu on viens de faire a blackjack html et spin html » —
+   meme barre que `games.html`, `index.html`, `swogebet.html`,
+   `swoge_blackjack.html` et `swoge_spin.html` : marque, chiffres du serveur,
+   solde, connexion, avatar. Seule la BARRE, les panneaux de compte et le
+   fond de page passent au blanc — le tapis et les cartes gardent leur
+   propre habillage or-sur-noir, qui est celui de la TABLE et non de la
+   navigation. Couleurs ECRITES ICI, comme sur les quatre autres pages. */
+.sw-haut{
+  display:flex; align-items:center; gap:14px; padding:10px 16px;
+  background:#FFFFFF; border-bottom:1px solid #E1E9F6;
+  position:sticky; top:0; z-index:30;
+}
+.sw-marque{display:flex; align-items:center; gap:9px; flex:0 0 auto}
+nav.sb-ancre{display:flex;align-items:center;gap:12px;
+  background:none;backdrop-filter:none;padding:0;border-bottom:none;
+  position:static;z-index:auto;}
+.sw-patte{
+  width:34px;height:34px;border-radius:10px;background:#EAF1FF;
+  display:grid;place-items:center;font-size:19px;
+}
+.sw-marque b{display:block;font:800 17px/1 'Inter',system-ui,sans-serif;letter-spacing:.4px;color:#1B5FE0}
+.sw-marque i{display:block;font:700 9.5px/1.4 'Inter',system-ui,sans-serif;font-style:normal;
+  letter-spacing:2.6px;color:#6B7C99}
+.sw-chiffres{
+  flex:1 1 auto; min-width:0; display:flex; gap:8px; overflow-x:auto;
+  padding:8px 10px; background:#EEF3FB; border:1px solid #E1E9F6;
+  border-radius:12px; scrollbar-width:none;
+}
+.sw-chiffres::-webkit-scrollbar{display:none}
+/* La bande de stats ne pouvait pas se cacher : le script d'echec pose
+   `bloc.hidden = true`, mais `.sw-chiffres{display:flex}` est une regle
+   d'AUTEUR et l'emporte sur le `[hidden]{display:none}` du navigateur.
+   Quand le fetch de /vitrine.json echouait, la bande restait donc a
+   l'ecran avec ses quatre tirets — l'allure d'un compteur en direct sans
+   compteur derriere. Une ligne, et l'intention du script tient. */
+.sw-chiffres[hidden]{display:none}
+.sw-ch{display:flex;align-items:center;gap:8px;padding:0 12px;flex:0 0 auto}
+.sw-ch+.sw-ch{border-left:1px solid #E1E9F6}
+.sw-ch .ic{width:26px;height:26px;border-radius:8px;background:#EAF1FF;
+  display:grid;place-items:center;font-size:13px}
+.sw-ch small{display:block;font:700 9px/1 'Inter',system-ui,sans-serif;letter-spacing:.9px;color:#6B7C99}
+.sw-ch b{display:block;font:800 14px/1.3 'Inter',system-ui,sans-serif;color:#0A1F44}
+.sb-ancre .chip{font:800 12px/1 'Inter',system-ui,sans-serif;color:#0A1F44;
+  border:1px solid #E1E9F6;border-radius:999px;padding:9px 13px;background:#FFFFFF;
+  box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05);white-space:nowrap}
+.sb-ancre .chip b{color:#0A1F44}
+.sw-b{
+  padding:10px 16px;border-radius:10px;cursor:pointer;border:none;
+  font:700 12.5px/1 'Inter',system-ui,sans-serif;letter-spacing:.3px;white-space:nowrap;
+}
+.sw-b-plein{background:#1B5FE0;color:#fff}
+.sw-b-plein:hover{background:#1750c4}
+.sw-b-vide{background:#FFFFFF;color:#1B5FE0;border:1.5px solid #1B5FE0}
+.sw-b-vide:hover{background:#EAF1FF}
+.connrow{ position:static !important; flex:0 0 auto;
+  flex-direction:row !important; flex-wrap:nowrap !important;
+  justify-content:flex-start !important; gap:8px; padding:0 !important; }
+.connrow .sw-b{ margin:0 !important; }
+.sw-avatar{
+  width:38px;height:38px;border-radius:11px;border:1px solid #E1E9F6;
+  background:#EEF3FB;display:grid;place-items:center;font-size:16px;flex:0 0 auto;cursor:pointer;
+}
+.gx-menu{position:absolute;top:60px;right:14px;z-index:70;width:236px;
+  background:#FFFFFF;border:1px solid #E1E9F6;border-radius:14px;
+  box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05);padding:6px;display:flex;flex-direction:column;gap:1px}
+.gx-menu[hidden]{display:none}
+.gx-menu a{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:9px;
+  font:700 12px/1 'Inter',system-ui,sans-serif;color:#0B1B36;text-decoration:none}
+.gx-menu a:hover{background:#EAF1FF;color:#1B5FE0}
+.gx-menu .gx-sep{height:1px;background:#E1E9F6;margin:5px 2px}
+.gx-menu .gx-g{padding:9px 10px 4px;font:800 9px/1 'Inter',system-ui,sans-serif;
+  letter-spacing:1.1px;text-transform:uppercase;color:#6B7C99}
+.gx-menu .gx-g:first-child{padding-top:4px}
+.gx-menu{max-height:min(74vh,560px);overflow-y:auto;scrollbar-width:thin}
+.gx-menu a i{font-style:normal;font-size:14px;width:18px;text-align:center;flex:0 0 auto}
+@media(max-width:520px){ .gx-menu{right:8px;left:8px;width:auto} }
+@media (max-width:620px){
+  .sw-haut{ flex-wrap:wrap; row-gap:8px; }
+  .sw-marque{ order:1 }
+  /* ---- LA RANGEE DE PASTILLES DOIT POUVOIR SE REPLIER ----
+     `stakebubble.js` ajoute DEUX pastilles a cette rangee quand la connexion
+     s'etablit — le rendement en jeu et le nombre de joueurs — soit une seconde
+     ou deux apres l'ouverture. Mesure faite : la rangee passe de 54 a 243 px.
+     En `flex:0 0 auto` elle ne pouvait ni retrecir ni se replier : elle
+     poussait donc la ligne, le document devenait plus large que l'ecran, et
+     le telephone dezoomait toute la page pour la faire tenir — c'est l'en-tete
+     coupe en pleine largeur, deux secondes apres le chargement.
+     Elle peut desormais retrecir ET passer a la ligne. A noter : le garde-fou
+     de `stakebubble.js` ne pouvait pas s'en charger, il ne se retire que s'il
+     mesure un debordement du DOCUMENT — or ici l'en-tete l'absorbait en
+     grandissant en hauteur, sans jamais rien faire deborder. */
+  nav.sb-ancre{ order:2; flex:0 1 auto; min-width:0; margin-left:auto;
+                flex-wrap:wrap; justify-content:flex-end; row-gap:6px }
+  .menubtn, #gxProfil{ order:3 }
+  .connrow{ order:4; flex:1 1 100% !important; justify-content:center !important }
+  .sw-chiffres{ order:5; flex:1 1 100% }
+}
+
+/* ---- ICI LA BARRE FLOTTE, ELLE NE COLLE PAS ----
+   DEMANDE : « rajoute le profil, la barre, etc, tout ».
+   `.sw-haut` est `position:sticky` sur les pages qui defilent. Celle-ci ne
+   defile jamais : `#nxWrap` est `position:fixed; inset:0` et occupe tout
+   l'ecran, exactement comme `#scene` sur `swoge_spin.html`. Un element
+   `sticky` dans un document sans defilement ne colle a rien — la barre est
+   donc `fixed`, et c'est le MONDE qu'on pousse dessous, mesure en JS plus
+   bas. Meme demarche que sur le Spin et le Coin Pusher en direct. */
+/* ---- LE MENU NE SE MONTRE PAS, IL SE LIT ----
+   Sur les pages de jeu, `.menu` est masque par leur propre feuille et ne
+   s'ouvre qu'au clic du hamburger. Cette page-ci n'a pas cette feuille : la
+   liste s'affichait donc en clair sous la barre. Elle n'est pas une interface
+   — c'est la SOURCE que `swogeprofil.js` et le tiroir de `stakebubble.js`
+   recopient. Meme traitement que `swogecompte.js`, qui pose son propre menu
+   en `display:none`. Le hamburger va avec : le profil ouvre la meme liste. */
+#menu{ display:none !important; }
+#menuBtn{ display:none !important; }
+.sw-haut{ position:fixed; top:0; left:0; right:0; z-index:220; }
+/* ---- SUR TELEPHONE, LE MONDE REPREND SA PLACE ----
+   Mesure faite a 390x844 : la barre repliee montait a 249 px, soit trente
+   pour cent de l'ecran pris a un monde dans lequel on se DEPLACE. La vitrine
+   du serveur en est le plus gros poste, et c'est aussi ce qui se lit le moins
+   ici : elle s'efface sous 620 px, comme sur `swoge_blackjack.html`. Elle
+   reste entiere sur ecran large, ou la place ne manque pas. */
+@media (max-width:620px){
+  .sw-chiffres{ display:none; }
+}
+/* Le monde garde son propre habillage : c'est la surface de jeu, pas le
+   decor de page. Seule la barre rejoint le blanc. */
+
 body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed; background-color:#0A1128; }
 @media (orientation:landscape){ body{ background-image:url('img/8080b12ee3d6.jpg'); } }
 </style>
@@ -2217,6 +2357,84 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
 @keyframes plload{0%{margin-left:-26%}100%{margin-left:100%}}
 #preloader .pl-txt{width:min(46vw,180px);aspect-ratio:1.732;background:url('img/dbeab9e4c466.png') center/contain no-repeat;margin:6px auto 0}
 </style><div class="pl-box"><div class="pl-title" style="background-image:url('img/card_nx.webp')"></div><div class="pl-bar"><span class="fill"><i></i></span></div><div class="pl-txt"></div></div></div>
+
+<header class="sw-haut">
+  <a class="sw-marque" href="nexus.html" id="gxMonde">
+    <span class="sw-patte">🐾</span>
+    <span><b>SWOGE</b><i>WORLD</i></span>
+  </a>
+  <div class="sw-chiffres" id="gxChiffres" hidden>
+    <div class="sw-ch"><span class="ic">👤</span><span><small>PLAYERS</small><b data-n="joueurs">—</b></span></div>
+    <div class="sw-ch"><span class="ic">🎲</span><span><small>CASINO VOLUME</small><b data-n="volume">—</b></span></div>
+    <div class="sw-ch"><span class="ic">🎮</span><span><small>ROUNDS PLAYED</small><b data-n="manches">—</b></span></div>
+    <div class="sw-ch"><span class="ic">🏆</span><span><small>WINNINGS PAID</small><b data-n="rendus">—</b></span></div>
+  </div>
+  <nav class="sb-ancre">
+    <span class="chip"><span class="statusdot off" id="dot"></span><b id="bal">—</b> $SWOGE</span>
+  </nav>
+  <div class="connrow" id="connRow">
+    <button class="sw-b sw-b-vide" id="connectBtn">CONNECT WALLET</button>
+    <button class="sw-b sw-b-plein" id="emailBtn">SIGN UP &mdash; EMAIL</button>
+  </div>
+  <button class="sw-avatar" id="gxProfil" type="button"
+          aria-haspopup="menu" aria-expanded="false" aria-label="Account menu">👤</button>
+  <div class="gx-menu" id="gxMenu" role="menu" hidden></div>
+  <!-- Le hamburger reste, mais ne se voit plus : c est desormais le profil
+       qui ouvre la meme liste. Meme note que `swoge_blackjack.html`. -->
+  <button class="menubtn" id="menuBtn" aria-label="Menu" hidden aria-hidden="true" tabindex="-1">☰</button>
+  <!-- ---- CE MENU EST LA LISTE QUE LE TIROIR RECOPIE ----
+       Il vient de l'en-tete partage, copie depuis une page de JEU — d'ou trois
+       rangees qui n'ont aucun sens ici et qui ne repondaient a rien : « Sign
+       in » (le panneau e-mail de la page de jeu), « Sound » et « Music » (ses
+       interrupteurs). Elles sont retirees.
+       Il reste dans le DOM, masque : `swogeprofil.js` et le tiroir de
+       `stakebubble.js` s'en servent comme SOURCE de leurs rangees. A noter
+       aussi : `swogecompte.js` ne pose le sien que s'il n'en trouve aucun —
+       celui-ci lui tient donc lieu de liste, et doit dire vrai. -->
+  <div class="menu" id="menu">
+    <a href="#" data-panel="wallet">👛 My Wallet</a>
+    <a href="#" data-panel="stake">🔒 Staking</a>
+    <a href="#" data-panel="dep">💰 Deposit</a>
+    <a href="#" data-panel="wd">🏧 Withdraw</a>
+    <a href="#" data-panel="quests">🎯 Daily Quests</a>
+    <div class="msep"></div>
+    <a href="games.html">🎮 Other games</a>
+    <a href="index.html">🏠 Home</a>
+  </div>
+</header>
+
+<!-- Les quatre chiffres de la vitrine, lus sur le serveur — meme script que
+     `swoge_blackjack.html` et `swoge_spin.html`. -->
+<script>
+(function(){
+  "use strict";
+  var bloc = document.getElementById("gxChiffres");
+  if(!bloc) return;
+  function serveur(){
+    try{ var q=new URLSearchParams(location.search).get("server"); if(q)
+      return String(q).replace(/^ws/,"http"); }catch(e){}
+    return "https://web-production-220a3.up.railway.app";
+  }
+  function court(n){
+    n = Number(n) || 0;
+    var t = function(v, s){ return (Math.floor(v*10)/10).toFixed(1).replace(/\.0$/,"") + s; };
+    if(n >= 1e9) return t(n/1e9, "B");
+    if(n >= 1e6) return t(n/1e6, "M");
+    if(n >= 1e3) return t(n/1e3, "k");
+    return String(Math.floor(n));
+  }
+  fetch(serveur()+"/vitrine.json", { cache:"no-store" })
+    .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function(j){
+      [].forEach.call(bloc.querySelectorAll("b[data-n]"), function(b){
+        var v = j[b.getAttribute("data-n")];
+        b.textContent = (typeof v === "number" && isFinite(v)) ? court(v) : "—";
+      });
+      bloc.hidden = false;
+    })
+    ['catch'](function(){ bloc.hidden = true; });
+})();
+</script>
 
 <div id="nxWrap">
   <canvas id="nxCanvas"></canvas>
@@ -2830,6 +3048,41 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
         location.reload();
       })['catch'](function () {});
   } catch (e) {}
+})();
+</script>
+
+<!-- ---- LE MONDE COMMENCE SOUS LA BARRE ----
+     `#nxWrap` est `position:fixed; inset:0` : il ignore tout ce qui le
+     precede et se cale sur le bord reel de l'ecran, DERRIERE la barre. On
+     mesure donc la barre — sa hauteur change avec la largeur, elle passe sur
+     plusieurs lignes sur telephone — et on pousse le monde dessous. Idem pour
+     la barre du bas de `stakebubble.js`, ajoutee apres coup : on la guette.
+     `#nxCanvas` remplit `#nxWrap` en `width/height:100%`, il suit donc sans
+     qu'on ait a le redimensionner nous-memes. -->
+<script>
+function ajusteMonde(){
+  var h = document.querySelector(".sw-haut");
+  var w = document.getElementById("nxWrap");
+  if(!h || !w) return;
+  w.style.top = h.getBoundingClientRect().height + "px";
+  var bb = document.querySelector(".swbb");
+  w.style.bottom = bb ? bb.getBoundingClientRect().height + "px" : "0px";
+}
+window.addEventListener("load", ajusteMonde);
+window.addEventListener("resize", ajusteMonde);
+window.addEventListener("orientationchange", ajusteMonde);
+ajusteMonde();
+(function(){
+  var h = document.querySelector(".sw-haut");
+  if(h) new MutationObserver(ajusteMonde).observe(h, { childList:true, subtree:true, attributes:true });
+  /* `.swbb` n'existe pas au chargement : stakebubble.js l'ajoute une fois son
+     etat pret. On la guette, puis on la suit. */
+  var vu = null;
+  new MutationObserver(function(){
+    var bb = document.querySelector(".swbb");
+    if(bb && bb !== vu){ vu = bb; ajusteMonde();
+      new MutationObserver(ajusteMonde).observe(bb, { childList:true, subtree:true, attributes:true }); }
+  }).observe(document.body, { childList:true });
 })();
 </script>
 </body>

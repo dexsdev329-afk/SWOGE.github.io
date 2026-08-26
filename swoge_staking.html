@@ -70,8 +70,19 @@ canvas{ touch-action:none; }
      pour ecouter ce qui passe deja, et doit donc etre en place avant que la page
      n ouvre sa connexion. -->
 <script src="stakebubble.js?v=9fd2eb2e"></script>
+<!-- ---- LES PANNEAUX DE COMPTE, ICI AUSSI ----
+     DEMANDE : « aucun panneau de compte : le tiroir y applique un repli ou les
+     rangees sont de simples liens ». Cette page portait bien la barre blanche
+     et le profil, mais aucun panneau : le tiroir n'avait donc rien a emprunter
+     et « My Wallet » n'y etait qu'un lien vers une autre page. `swogecompte.js`
+     fabrique le menu ET les cinq panneaux — portefeuille (avec l'envoi vers une
+     adresse), depot, retrait, staking, quetes — exactement comme sur l'accueil
+     et le hall. Il vient apres `stakebubble.js`, qui tient la socket, et avant
+     `ethers`, dont il se sert pour signer. -->
+<script src="swogecompte.js?v=cd504287"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <script src="swogebuy.js?v=0d5e5215"></script>
+<script src="swogeprofil.js?v=b8c90d90" defer></script>
 <style>
   /* ==================== AU CLAIR : LA PALETTE EST RETOURNEE ====================
      Meme conversion que `swoge_casino.html`, `swoge_blackjack.html` et
@@ -452,12 +463,15 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     <button class="sw-b sw-b-vide" id="connectBtn">CONNECT WALLET</button>
     <button class="sw-b sw-b-plein" id="emailBtn">SIGN UP &mdash; EMAIL</button>
   </div>
-  <!-- PAS D'AVATAR NI DE TIROIR ICI, ET PAS DE `swogeprofil.js`.
-       Le tiroir du profil se CONSTRUIT a partir du `#menu` de la page — la
-       liste « My Wallet / Deposit / Withdraw / Daily Quests ». Cette page-ci
-       n'a pas de `#menu` : elle n'a ni panneaux de compte ni quetes, tout ce
-       qu'elle sait faire est deja a l'ecran, dans ses deux cartes. Un bouton
-       de profil n'aurait rien eu a ouvrir. -->
+  <!-- ---- LE PROFIL A DESORMAIS DE QUOI OUVRIR ----
+       Il n'y avait ici ni avatar ni `swogeprofil.js`, et c'etait juste : le
+       tiroir se CONSTRUIT a partir du `#menu` de la page, et cette page n'en
+       avait pas. `swogecompte.js`, ajoute en tete de fichier, fabrique
+       desormais ce menu et les cinq panneaux — le bouton a donc quelque chose
+       a montrer. -->
+  <button class="sw-avatar" id="gxProfil" type="button"
+          aria-haspopup="menu" aria-expanded="false" aria-label="Account menu">&#128100;</button>
+  <div class="gx-menu" id="gxMenu" role="menu" hidden></div>
 </header>
 
 <!-- Les quatre chiffres de la vitrine, lus sur le serveur — meme script que

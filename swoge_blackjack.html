@@ -935,6 +935,66 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 }
 </style>
 <style>
+/* ==================== LES DEUX COTES DE LA TABLE ====================
+   DEMANDE : « centre le blackjack et habille la page sur les cotes du
+   blackjack avec des paris ou autre comme les pages index, game et
+   swogebet, sur les cotes du golden blackjack ».
+
+   Le tapis est deja centre — `.wrap{max-width:680px;margin:0 auto}`, plus
+   haut — mais sur un ecran large il flotte seul au milieu d un fond noir
+   vide des deux cotes : rien n y renvoie vers le reste du site, alors que
+   les trois autres pages ont toutes une colonne de navigation a gauche.
+
+   ---- POURQUOI SEULEMENT DE LA NAVIGATION ET DES AFFICHES ----
+   Le pari EN DIRECT depuis cette carte — comme `swogesports.js` le permet
+   sur `games.html` — repose sur `window.swogeFil`, la socket que pose
+   `stakebubble.js`. Cette page a DEJA la sienne, ouverte a la main plus
+   bas dans le fichier : stakebubble.js le detecte (`#bal` existe deja
+   dans la page) et NE POSE PAS de seconde socket. `window.swogeFil`
+   resterait donc `undefined` ici, et un bouton « place bet » qui ne
+   parle a personne est pire qu une affiche qui renvoie, en un clic,
+   vers la page ou parier marche vraiment.
+   Les deux cartes ci-dessous sont donc des AFFICHES — memes videos, memes
+   destinations que sur `games.html` — pas un second pari a suivre. */
+.sw-corps{display:flex; align-items:flex-start; gap:14px; padding:14px; max-width:1680px; margin:0 auto}
+.sw-corps main{flex:1 1 auto; min-width:0}
+.sw-cote{flex:0 0 208px; position:sticky; top:74px; display:flex; flex-direction:column; gap:12px}
+.sw-nav{background:#FFFFFF;border:1px solid #E1E9F6;border-radius:14px;
+  padding:8px; box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05)}
+.sw-nav a{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:10px;
+  font:600 13.5px/1 'Inter',system-ui,sans-serif;color:#0B1B36}
+.sw-nav a .ic{width:20px;text-align:center;font-size:15px;opacity:.75}
+.sw-nav a:hover{background:#EEF3FB}
+.sw-nav a.on{background:#EAF1FF;color:#1B5FE0}
+.sw-nav a.on .ic{opacity:1}
+.sw-reseaux{display:flex;gap:8px;justify-content:center;padding-top:4px}
+.sw-reseaux a{width:34px;height:34px;border-radius:10px;background:#FFFFFF;border:1px solid #E1E9F6;
+  display:grid;place-items:center;font-size:14px;color:#6B7C99}
+.sw-reseaux a:hover{color:#1B5FE0;border-color:#1B5FE0}
+.sw-lat{flex:0 0 300px; position:sticky; top:74px; display:flex; flex-direction:column; gap:14px}
+.sw-lat .carte{background:#FFFFFF;border:1px solid #E1E9F6;border-radius:14px;
+  box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05); overflow:hidden}
+.sw-lat .salon{position:relative;display:block;min-height:172px;overflow:hidden;background:#0A1F44}
+.sw-lat .salon img,.sw-lat .salon .film{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  object-position:34% 8%;border:0;background:#0A1F44}
+@media (prefers-reduced-motion:reduce){ .sw-lat .salon .film{display:none} }
+.sw-lat .salon .voile{position:absolute;inset:auto 0 0 0;height:58%;
+  background:linear-gradient(180deg,rgba(6,16,40,0) 0%,rgba(6,16,40,.86) 78%,rgba(6,16,40,.95) 100%)}
+.sw-lat .salon .dit{position:absolute;left:16px;right:16px;bottom:14px;
+  font:800 12px/1 'Inter',system-ui,sans-serif;letter-spacing:1.4px;color:#fff}
+.sw-lat .salon:hover img,.sw-lat .salon:hover .film{transform:scale(1.03)}
+.sw-lat .salon img,.sw-lat .salon .film{transition:transform .2s}
+/* En dessous de 1360 px la table et ses deux colonnes ne tiennent plus a
+   l aise : le tapis (680 px), son perron sur telephone/tablette et deux
+   colonnes de 208+300 px se marchent dessus. Les affiches et la
+   navigation s effacent alors, et le tapis retrouve l ecran entier — ce
+   qu il avait avant cette demande, et ce qu il lui faut sur telephone. */
+@media (max-width:1360px){
+  .sw-cote, .sw-lat{ display:none }
+  .sw-corps{ padding:0; display:block; max-width:none }
+}
+</style>
+<style>
 /* ---- Melange des cartes avant la donne ---- */
 .shufflefx { position:absolute; inset:0; display:none; pointer-events:none; z-index:4; }
 .shufflefx.on { display:block; }
@@ -1173,6 +1233,25 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 })();
 </script>
 
+<div class="sw-corps">
+
+  <aside class="sw-cote">
+    <nav class="sw-nav">
+      <a href="index.html"><span class="ic">&#127968;</span>Home</a>
+      <a href="games.html" class="on"><span class="ic">&#127920;</span>Casino</a>
+      <a href="swogebet.html"><span class="ic">&#9917;</span>Sports</a>
+      <a href="whitepaper.html"><span class="ic">&#128220;</span>Docs</a>
+    </nav>
+    <div class="sw-reseaux">
+      <a href="https://x.com/SwoleDogeSwoge" target="_blank" rel="noopener"
+         title="X — @SwoleDogeSwoge">&#120143;</a>
+      <a href="https://t.me/swoleswoge" target="_blank" rel="noopener"
+         title="Telegram — t.me/swoleswoge">&#9992;</a>
+      <a href="https://dexscreener.com/robinhood/0x2dc0fb72d9284228046cc95910eeaabebfe48456"
+         target="_blank" rel="noopener" title="Dexscreener — $SWOGE chart">&#128200;</a>
+    </div>
+  </aside>
+
 <main>
   <section class="hero">
     <h1>SWOGE <span class="g">BLACKJACK</span></h1>
@@ -1288,6 +1367,25 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 
   <footer><a href="games.html">← Back to the SWOGE Arcade</a></footer>
 </main>
+
+  <aside class="sw-lat">
+    <a class="carte salon" href="swogebet.html">
+      <video class="film" src="media/doge_sport.mp4" poster="img/site/doge_sport_poster.webp"
+             muted autoplay loop playsinline disablepictureinpicture
+             aria-label="SWOGE Sports"></video>
+      <span class="voile"></span>
+      <span class="dit">SWOGE SPORTS &mdash; BET NOW &nbsp;&rarr;</span>
+    </a>
+    <a class="carte salon" href="swoge_poker.html">
+      <video class="film" src="media/poker_live.mp4" poster="img/site/poker_live_poster.webp"
+             muted autoplay loop playsinline disablepictureinpicture
+             aria-label="SWOGE Poker Live"></video>
+      <span class="voile"></span>
+      <span class="dit">ENTER THE ROOM &nbsp;&rarr;</span>
+    </a>
+  </aside>
+
+</div>
 
 <!-- account pop-ups (same shared balance as the Pusher) -->
 <div class="ovl" id="ovl">

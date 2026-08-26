@@ -86,6 +86,12 @@ a{color:inherit;text-decoration:none}
   position:sticky; top:0; z-index:30;
 }
 .sw-marque{display:flex; align-items:center; gap:9px; flex:0 0 auto}
+/* `stakebubble.js` remonte depuis `#bal` jusqu au `nav` le plus proche pour
+   savoir ou poser le solde, la bulle de staking et le compte de joueurs en
+   ligne. Sans un `nav` ici, dans l en-tete, c est le premier `nav` du
+   document qui gagne — celui de la colonne de gauche — et les trois
+   pastilles s y posent au lieu de suivre la barre du haut. */
+nav.sb-ancre{display:flex;align-items:center;gap:12px}
 .sw-patte{
   width:34px;height:34px;border-radius:10px;background:var(--bleu-clair);
   display:grid;place-items:center;font-size:19px;
@@ -513,6 +519,7 @@ a{color:inherit;text-decoration:none}
 @media (max-width:620px){
   .sw-haut{flex-wrap:wrap}
   .sw-chiffres{order:3;flex:1 1 100%}
+  nav.sb-ancre{order:4}
   .jeux{grid-template-columns:repeat(3,minmax(0,1fr))}
   .univers{grid-template-columns:minmax(0,1fr)}
   .promesses{grid-template-columns:minmax(0,1fr)}
@@ -555,6 +562,8 @@ a{color:inherit;text-decoration:none}
     <div class="sw-ch"><span class="ic">&#127942;</span><span><small>WINNINGS PAID</small><b data-n="rendus">&mdash;</b></span></div>
   </div>
   </div>
+  <!-- Ancre pour `stakebubble.js` : voir la note pres de `.sb-ancre` plus haut. -->
+  <nav class="sb-ancre"></nav>
   <button class="sw-b sw-b-vide cx-wallet">CONNECT WALLET</button>
   <button class="sw-b sw-b-plein cx-mail">SIGN UP &mdash; EMAIL</button>
   <!-- ================== LE COMPTE, UNE SEULE FOIS ==================
@@ -1023,6 +1032,15 @@ a{color:inherit;text-decoration:none}
 .swpb{ background:var(--carte) !important; border:1px solid var(--bord) !important;
   color:var(--bleu) !important; box-shadow:var(--ombre) !important; }
 .swpb:hover{ border-color:var(--bleu) !important; color:var(--nuit) !important; }
+/* ---- UN SEUL BOUTON DE PROFIL ----
+ * `stakebubble.js` pose le sien dans `.sb-ancre`, la meme barre que le solde
+ * et l en-tete a deja le sien. Deux avatars a l'ecran, qui ouvrent deux
+ * choses differentes : le doublon de trop.
+ * Il est CACHE, pas retire : c'est lui la poignee du tiroir, et le menu s'en
+ * sert pour l'ouvrir avant de choisir une rangee. Un `display:none` n'empeche
+ * pas un clic envoye par script — seulement celui du doigt, qui n'a plus
+ * besoin de lui. */
+.sb-ancre .swpb{ display:none !important; }
 
 /* ---- LE STAKING ET LES JOUEURS EN LIGNE, AU BLANC EUX AUSSI ----
    J'avais garde la bulle de staking en vert plein, au motif qu'elle est la

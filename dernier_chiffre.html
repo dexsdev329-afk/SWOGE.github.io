@@ -273,6 +273,18 @@ footer a{color:#1B5FE0}
 #box-email .brow { display:block !important; text-align:center !important; margin-top:10px; }
 #box-email .abtn.aimg { display:block !important; width:212px !important; max-width:82% !important; height:56px !important; aspect-ratio:auto !important; min-width:0 !important; margin:9px auto !important; float:none !important; flex:none !important; }
 #box-email .abtn.closeimg { display:block !important; width:212px !important; max-width:82% !important; height:44px !important; aspect-ratio:auto !important; min-width:0 !important; margin:9px auto !important; float:none !important; flex:none !important; }
+/* ---- ENVOYER VERS UNE ADRESSE, DANS MY WALLET ---- */
+.wsend{ margin-top:14px; padding-top:12px; border-top:1px solid #E1E9F6; text-align:center; }
+.wsend-t{ font:800 13px/1.2 'Inter',system-ui,sans-serif; color:#0B1B36; margin-bottom:2px; }
+.wsend-row{ display:flex; gap:8px; align-items:center; max-width:280px; margin:6px auto 0; }
+.wsend-row #sendAmt{ flex:1 1 auto; min-width:0; margin:0 !important; }
+.wsend-row #sendTok{ flex:0 0 auto; padding:10px; border-radius:10px; font-family:inherit; font-size:14px;
+  color:#0B1B36; background:#EEF3FB; border:1px solid #E1E9F6; cursor:pointer; }
+.wsend #sendTo{ font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:12.5px; }
+.wsend #sendMsg{ min-height:1em; }
+/* Le bouton suivait la largeur de son texte — soixante-six pixels — la ou
+   tous les autres boutons du panneau tiennent la colonne. */
+.wsend #sendGo{ display:block; width:100%; max-width:280px; margin:10px auto 0; }
 @media (max-width: 820px), (orientation: portrait) {
     #box-dep, #box-wd, #box-wallet, #box-stake, #box-quests {
       width:100vw; max-width:100vw; height:100vh; height:100dvh; max-height:100dvh;
@@ -1382,6 +1394,32 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     <div class="strow"><span>ETH (RH) — gas</span><b id="acEth">…</b></div>
     <button class="abtn wbtn wb-deposit" id="acDeposit" style="margin-top:8px">Deposit</button>
     <a id="acExplorer" href="#" target="_blank" rel="noopener" class="abtn wbtn wb-explorer" style="display:block;margin-top:8px;text-decoration:none">Explorer</a>
+        <!-- ---- RETIRER VERS UNE ADRESSE DE SON CHOIX ----
+         DEMANDE : « pour les connexions email faut rajouter une option pour
+         retirer, car ca retire sur le wallet du compte du jeu, mais une fois
+         que c est sur son compte faut pouvoir retirer et choisir a quelle
+         adresse ». Le retrait du jeu paie sur le portefeuille du COMPTE —
+         celui que Privy fabrique pour une connexion par e-mail. Les fonds y
+         arrivaient et y restaient : rien, dans l interface, ne permettait de
+         les envoyer ailleurs. La fonction existait pourtant deja en JS
+         (`doSend`), sur quinze pages ; son interface ne vivait que sur
+         `swoge_pusher.html`, la page que plus aucun lien n atteint. On la
+         remet donc la ou on la cherche : dans My Wallet. -->
+    <div class="wsend">
+      <div class="wsend-t">Send to another address</div>
+      <label>Recipient address</label>
+      <input id="sendTo" placeholder="0x\u2026" autocomplete="off" spellcheck="false">
+      <label>Amount</label>
+      <div class="wsend-row">
+        <input id="sendAmt" type="number" inputmode="decimal" placeholder="amount">
+        <select id="sendTok" aria-label="Token to send">
+          <option value="swoge">$SWOGE</option>
+          <option value="eth">ETH (RH)</option>
+        </select>
+      </div>
+      <button class="abtn aimg" id="sendGo">Send</button>
+      <div class="note2" id="sendMsg"></div>
+    </div>
     <button class="abtn wbtn wb-disconnect" id="acLogout" style="margin-top:8px">Disconnect</button>
     <div class="brow" style="margin-top:8px"><button class="abtn sec closeimg" data-close style="flex:1">Close</button></div>
     </div>
@@ -2302,9 +2340,54 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   function closePanel(){ ovl.classList.remove("show"); PANELS.forEach(function(b){ var el=$("box-"+b); if(el) el.classList.remove("show"); }); }
   ovl.addEventListener("click",function(e){ if(e.target===ovl) closePanel(); });
   [].forEach.call(document.querySelectorAll("[data-close]"),function(b){ b.addEventListener("click",closePanel); });
-  function needSigner(){ if(!signer){ toast("connect wallet first"); return false; } return true; }
+  /* ---- LE PORTEFEUILLE SE RECUPERE QUAND ON EN A BESOIN ----
+   * DEMANDE : « les deposit sur telephone il dit souvent reconnectez-vous a
+   * votre compte alors que je suis deja connecte ».
+   * `autoReconnect()` ne tournait QU UNE FOIS, au chargement. Sur telephone —
+   * et surtout dans le navigateur interne de Telegram — la restauration Privy
+   * expire au bout de douze secondes (voir la note dans `autoReconnect`). Le
+   * joueur reste alors connecte AU JEU, parce que le jeton de session, lui,
+   * passe : son solde s affiche, il peut jouer. Mais `signer` est resté nul,
+   * et il n y avait plus rien pour le rattraper — au premier depot il lisait
+   * donc « connect wallet first » en etant parfaitement connecte, sans aucune
+   * facon de s en sortir a part recharger la page.
+   * La restauration est desormais RETENTEE au moment ou l on en a besoin, et
+   * ce n est qu apres cet echec-la qu on redemande une connexion — celle qui
+   * correspond a SA facon de s etre connecte, e-mail ou portefeuille. */
+  var _repriseEnCours = null;
+  async function assureSigner(){
+    if(signer) return true;
+    /* Deux boutons presses coup sur coup ne doivent pas lancer deux
+       restaurations concurrentes : elles partagent la meme promesse. */
+    if(!_repriseEnCours){
+      _repriseEnCours = (async function(){
+        try{ await autoReconnect(); }catch(e){}
+        /* Privy peut tenir la session en memoire sans que `restore()` reponde
+           jamais : on la lui demande en clair avant d abandonner. */
+        try{
+          if(!signer && window.SwogePrivy && SwogePrivy.isLoggedIn && SwogePrivy.isLoggedIn()){
+            var a = SwogePrivy.getAddress();
+            if(a){
+              provider = new ethers.providers.Web3Provider(SwogePrivy.getProvider(),"any");
+              signer   = provider.getSigner();
+              myAddr   = String(a).toLowerCase();
+            }
+          }
+        }catch(e){}
+      })();
+      try{ await _repriseEnCours; } finally { _repriseEnCours = null; }
+    } else {
+      await _repriseEnCours;
+    }
+    if(signer) return true;
+    var m=null; try{ m=localStorage.getItem("swogeAuth"); }catch(e){}
+    if(m==="email"){ toast("Session expired \u2014 sign in again"); openEmailLogin(); }
+    else { toast("Connect your wallet to continue"); doConnect(); }
+    return false;
+  }
+  async function needSigner(){ return await assureSigner(); }
   async function doDeposit(){
-    if(!needSigner()) return; if(!VAULT){ toast("server has no vault set"); return; }
+    if(!(await needSigner())) return; if(!VAULT){ toast("server has no vault set"); return; }
     var s=($("depAmt").value||"").replace(",",".").trim(), amt;
     try{ amt=ethers.utils.parseUnits(s,18); }catch(e){ return toast("bad amount"); }
     if(amt.lte(0)) return toast("enter an amount");
@@ -2321,7 +2404,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     send({type:"withdraw",amount:s}); toast("requesting voucher…");
   }
   async function submitWithdraw(v){
-    if(!needSigner()) return;
+    if(!(await needSigner())) return;
     try{ var vault=new ethers.Contract(v.vault||VAULT,VAULT_ABI,signer); toast("confirm withdrawal…"); var tx=await vault.withdraw(v.cumulative,v.deadline,v.v,v.r,v.s); await tx.wait(); toast("✅ paid out to your wallet"); closePanel(); }
     catch(e){ toast("withdraw: "+String(e.reason||e.message||e).slice(0,80)); }
   }
@@ -2461,9 +2544,9 @@ function renderBonus(b){ if(!b) return; bonusData=b;
   $("acDeposit").onclick=function(){ openPanel("dep"); };
   $("acCopy").onclick=function(){ try{ navigator.clipboard.writeText(myAddr||""); toast("Address copied"); }catch(e){} };
   // ---- send $SWOGE / ETH to another address ----
-  function sendMsg(t,c){ var e=$("sendMsg"); if(!e)return; e.textContent=t; e.style.color=c==="warn"?"#F2685E":c==="ok"?"#7CFF9B":"var(--dim)"; }
+  function sendMsg(t,c){ var e=$("sendMsg"); if(!e)return; e.textContent=t; e.style.color=c==="warn"?"#E0443E":c==="ok"?"#0E7C3E":"#6B7C99"; }
   async function doSend(){
-    if(!signer){ toast("connect first"); return; }
+    if(!(await assureSigner())) return;
     var to=($("sendTo").value||"").trim(); if(!/^0x[0-9a-fA-F]{40}$/.test(to)) return sendMsg("Enter a valid 0x address","warn");
     var v=($("sendAmt").value||"").replace(",",".").trim(); if(!(parseFloat(v)>0)) return sendMsg("Enter an amount","warn");
     var tok=$("sendTok").value;

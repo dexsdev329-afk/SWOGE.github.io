@@ -2068,7 +2068,20 @@ main{ min-width:0; }
 @media (max-width:620px){
   .sw-haut{ row-gap:8px; }
   .sw-marque{ order:1 }
-  nav.sb-ancre{ order:2; flex:0 0 auto; margin-left:auto }
+  /* ---- LA RANGEE DE PASTILLES DOIT POUVOIR SE REPLIER ----
+     `stakebubble.js` ajoute DEUX pastilles a cette rangee quand la connexion
+     s'etablit — le rendement en jeu et le nombre de joueurs — soit une seconde
+     ou deux apres l'ouverture. Mesure faite : la rangee passe de 54 a 243 px.
+     En `flex:0 0 auto` elle ne pouvait ni retrecir ni se replier : elle
+     poussait donc la ligne, le document devenait plus large que l'ecran, et
+     le telephone dezoomait toute la page pour la faire tenir — c'est l'en-tete
+     coupe en pleine largeur, deux secondes apres le chargement.
+     Elle peut desormais retrecir ET passer a la ligne. A noter : le garde-fou
+     de `stakebubble.js` ne pouvait pas s'en charger, il ne se retire que s'il
+     mesure un debordement du DOCUMENT — or ici l'en-tete l'absorbait en
+     grandissant en hauteur, sans jamais rien faire deborder. */
+  nav.sb-ancre{ order:2; flex:0 1 auto; min-width:0; margin-left:auto;
+                flex-wrap:wrap; justify-content:flex-end; row-gap:6px }
   /* Le hamburger tenait la troisieme place ; c est le profil qui la prend,
      sinon il retombe sur sa propre rangee et l en-tete repasse a quatre. */
   .menubtn, #gxProfil{ order:3 }

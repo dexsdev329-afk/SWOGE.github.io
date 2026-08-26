@@ -835,6 +835,29 @@ button, input, a, .card, .felt, .sbet, .chipbtn, .btn{ touch-action:manipulation
   .sbet { width:clamp(48px,4.6vw,62px); }
   .sidebets { gap:14px; margin-bottom:8px; }
 }
+/* ---- LES 92vw DU TAPIS DATENT D AVANT LES DEUX COLONNES ----
+ * La regle juste au-dessus borne le tapis a 92% du VIEWPORT — juste, tant
+ * qu il avait l ecran pour lui seul. Depuis que `.sw-cote` (la nav, a
+ * gauche) et `.sw-lat` (les affiches, a droite) se partagent l ecran a
+ * partir de 1360px (`.sw-corps`, plus haut), 92vw deborde largement sur
+ * elles des que l ecran est assez large pour les montrer : mesure a
+ * l ecran, le tapis recouvrait « SWOGE SPORTS » a droite et poussait la
+ * colonne de gauche hors de l ecran — « on ne voit rien » sur les cotes,
+ * alors qu ils etaient bien la, juste caches dessous ou pousses dehors.
+ * A partir de ce meme seuil, le tapis se borne donc a la largeur de
+ * `.wrap` plutot qu a celle de l ecran entier : `.wrap` tient deja
+ * compte de la grille a trois colonnes, le tapis n a plus besoin de le
+ * deviner lui-meme. Une regle a part, et non fondue dans celle du
+ * dessus : elle vise un seuil DIFFERENT (1360px, pas 821px) et SANS
+ * condition de paysage — les colonnes se montrent ou se cachent sur la
+ * seule largeur (`.sw-corps`, plus haut), donc ce plafond doit suivre la
+ * meme regle plutot que d en ajouter une deuxieme, plus stricte, qui
+ * laisserait un trou en portrait large. Sans effet en portrait normal :
+ * la regle de base, `width:min(680px,100%)`, s y applique deja et
+ * respecte 100% depuis toujours. */
+@media (min-width:1360px) {
+  .felt.felt { max-width:100%; }
+}
 </style>
 <style>
 /* ==================== LA NOUVELLE BARRE, BLANCHE ====================
@@ -966,7 +989,13 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .sw-corps{display:grid; grid-template-columns:minmax(208px,1fr) auto minmax(208px,1fr);
   align-items:start; gap:14px; padding:14px; max-width:1680px; margin:0 auto}
 .sw-corps main{min-width:0}
-.sw-cote{position:sticky; top:74px; display:flex; flex-direction:column; gap:12px; justify-self:end}
+/* `width:100%` n est pas cosmetique : sans lui, ce conteneur flex n a pas de
+   largeur definie et se dimensionne sur son contenu — dont la mascotte,
+   une image dont `width:100%` n a alors rien a quoi se rapporter et retombe
+   sur sa taille native (bien plus large que la colonne). Le tout debordait
+   donc a gauche, `justify-self:end` l ancrant a droite pendant que le reste
+   partait hors ecran. */
+.sw-cote{position:sticky; top:74px; width:100%; display:flex; flex-direction:column; gap:12px; justify-self:end}
 .sw-nav{background:#FFFFFF;border:1px solid #E1E9F6;border-radius:14px;
   padding:8px; box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05)}
 .sw-nav a{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:10px;

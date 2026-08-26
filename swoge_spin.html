@@ -970,25 +970,52 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 })();
 </script>
 
-<!-- ---- `#scene` DESCEND SOUS LA BARRE ----
+<!-- ---- `#scene` DESCEND SOUS LA BARRE, ET REMONTE AU-DESSUS DE L AUTRE ----
      Cette page ne defile jamais : `#scene` reste `position:fixed`, plein
      ecran par defaut (voir la note pres de `.sw-haut`, plus haut). On lui
      donne donc un `top` egal a la hauteur REELLE de la barre — mesuree, pas
      devinee, puisque la barre change de hauteur (elle s empile sur
      telephone etroit ; la ligne de chiffres du serveur peut apparaitre
-     apres coup, une fois `vitrine.json` charge). -->
+     apres coup, une fois `vitrine.json` charge).
+
+     ---- ET LA BARRE DU BAS DE STAKEBUBBLE.JS (`.swbb`) ----
+     DEMANDE : « la barre du bas cache les boutons pour jouer sur le spin,
+     remonte les boutons et le jeu ». `stakebubble.js` pose sa propre barre
+     Play/Bets/Chests/Profile tout en bas de l'ecran, et se protege en
+     ajoutant `padding-bottom` a `body` — mais ce padding ne sert a rien
+     ici : `#scene` est `position:fixed`, il ignore le padding de `body`
+     et reste cale sur le bord reel de l'ecran, SOUS cette barre. Meme
+     remede que pour la barre du haut : on mesure `.swbb` des qu'elle
+     existe (elle est ajoutee par un script exterieur, apres coup, donc
+     jamais presente au premier rendu) et on pousse `#scene` au-dessus. -->
 <script>
 function ajusteScene(){
   var h = document.querySelector(".sw-haut");
   var s = document.getElementById("scene");
   if(!h || !s) return;
   s.style.top = h.getBoundingClientRect().height + "px";
+  var bb = document.querySelector(".swbb");
+  s.style.bottom = bb ? bb.getBoundingClientRect().height + "px" : "0px";
 }
 window.addEventListener("load", ajusteScene);
 window.addEventListener("resize", ajusteScene);
 window.addEventListener("orientationchange", ajusteScene);
 ajusteScene();
 new MutationObserver(ajusteScene).observe(document.querySelector(".sw-haut"), { childList:true, subtree:true, attributes:true });
+/* `.swbb` n'existe pas encore au chargement : stakebubble.js l'ajoute a
+   `document.body` une fois son propre etat pret. On la guette, puis on la
+   suit (elle peut regagner ou perdre une ligne selon la largeur). */
+(function(){
+  var vu = null;
+  new MutationObserver(function(){
+    var bb = document.querySelector(".swbb");
+    if(bb && bb !== vu){
+      vu = bb;
+      ajusteScene();
+      if(window.ResizeObserver) new ResizeObserver(ajusteScene).observe(bb);
+    }
+  }).observe(document.body, { childList:true });
+})();
 </script>
 
 <aside class="sw-cote">

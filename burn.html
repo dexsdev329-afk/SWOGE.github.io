@@ -258,13 +258,19 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     <div class="sw-ch"><span class="ic">🎮</span><span><small>ROUNDS PLAYED</small><b data-n="manches">—</b></span></div>
     <div class="sw-ch"><span class="ic">🏆</span><span><small>WINNINGS PAID</small><b data-n="rendus">—</b></span></div>
   </div>
-  <nav class="sb-ancre">
-    <span class="chip"><span class="statusdot off" id="dot"></span><b id="bal">—</b> $SWOGE</span>
-  </nav>
-  <div class="connrow" id="connRow">
-    <button class="sw-b sw-b-vide" id="connectBtn">CONNECT WALLET</button>
-    <button class="sw-b sw-b-plein" id="emailBtn">SIGN UP &mdash; EMAIL</button>
-  </div>
+  <!-- ---- ANCRE VIDE, ET C'EST VOULU ----
+       Cette page n'a pas de socket a elle. `stakebubble.js` decide s'il doit
+       en ouvrir une en regardant si `#bal` existe : « un solde affiche, donc
+       une page qui sait deja parler au serveur ». J'avais copie ici l'en-tete
+       d'une page de JEU, `#bal` compris — stakebubble en concluait que la page
+       se debrouillait, n'ouvrait rien, et il n'y avait alors ni solde, ni
+       staking, ni connexion. `poseConnexion()` sort lui aussi des qu'il voit
+       `#bal` : les deux boutons copies etaient morts par-dessus le marche,
+       aucun script de cette page ne les liant.
+       On laisse donc l'ancre VIDE, comme sur `index.html` et `games.html` :
+       stakebubble y pose lui-meme la pastille de solde, ou le bouton de
+       connexion tant que personne n'est entre. -->
+  <nav class="sb-ancre"></nav>
   <button class="sw-avatar" id="gxProfil" type="button"
           aria-haspopup="menu" aria-expanded="false" aria-label="Account menu">👤</button>
   <div class="gx-menu" id="gxMenu" role="menu" hidden></div>

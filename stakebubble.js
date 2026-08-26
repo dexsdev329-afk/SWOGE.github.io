@@ -128,10 +128,31 @@
     w.addEventListener('message', function (ev) {
       var m; try { m = JSON.parse(ev.data); } catch (e) { return; }
       if (m.type === 'hello') { try { w.send(JSON.stringify({ type: 'resume', token: jeton })); } catch (e) {} }
-      else if (m.type === 'auth') { etat.socket = w; poseSolde(m.balance); }
+      /* ---- LE CADENAS NE RECLAMAIT RIEN SUR LES PAGES SANS SOCKET ----
+       * DEMANDE : « sur games.html et index.html, repare le claim au niveau du
+       * cadenas du staking ; il fonctionne bien sur swogebet ».
+       * Et il fonctionnait la-bas pour une raison precise : swogebet a SA
+       * PROPRE socket, et le chemin qui l'ecoute (plus bas, `auth`/`stakeInfo`/
+       * `stakeUnstaked`) appelle `pose()` — donc `etat.mise`, `etat.tauxBps` et
+       * `etat.acquis` sont remplis, et `courant()` rend une valeur.
+       * Cette socket-ci, celle des pages qui n'en ont pas, ne lisait QUE le
+       * solde : elle ignorait `m.stake` sur `auth` et ne faisait rien de
+       * `stakeInfo`. L'etat du staking restait donc vide, `courant()` rendait
+       * zero, et `reclame()` sortait des sa premiere ligne — le clic sur le
+       * cadenas ne partait jamais. Le meme etat manquant vaut pour l'affichage
+       * du compteur : ce n'etait pas seulement le clic qui etait muet.
+       * On relaie donc ici exactement ce que relaie l'autre chemin. */
+      else if (m.type === 'auth') {
+        etat.socket = w; poseSolde(m.balance);
+        if (m.stake) pose(m.stake); else demande();
+      }
       else if (m.type === 'balance' || m.type === 'stakeInfo') {
         if (m.balance != null) poseSolde(m.balance);
+        if (m.type === 'stakeInfo') pose(m);
       }
+      /* Un desengagement change la mise : on relit plutot que de deviner —
+         meme geste que sur une page qui a sa socket. */
+      else if (m.type === 'stakeUnstaked') { etat.socket = w; demande(); }
       else if (m.type === 'resumeFailed') {
         try { localStorage.removeItem('swogeSession'); } catch (e) {}
         try { w.close(); } catch (e) {}
@@ -1078,13 +1099,42 @@
     demande();                              // on relit l'etat plutot que de le deviner
   }
 
+  var repriseClaim = false;
   function reclame() {
     if (occupe) return;
     /* On ne demande rien quand il n'y a rien : le serveur repondrait « no
        yield to claim yet », et la page afficherait une erreur pour un clic
        parfaitement raisonnable. */
     if (!(courant() > 0)) return;
-    if (!etat.socket || etat.socket.readyState !== 1) return;
+    /* ---- LE CLIC NE PART PLUS DANS LE VIDE ----
+     * DEMANDE : « repare le claim au niveau du cadenas du staking sur
+     * games.html et index.html ; il fonctionne bien sur swogebet ».
+     * Et la difference est la : swogebet a SA PROPRE socket, ouverte tant
+     * qu'on joue. Les pages sans jeu — l'accueil, le hall — dependent de la
+     * socket autonome ouverte plus haut, et `veilleSolde()` la FERME apres une
+     * minute de silence (c'est voulu : la page se reconnecte seule et le solde
+     * revient a jour). Entre cette fermeture et la reconnexion, `etat.socket`
+     * est nul : le clic sortait ici meme, sans un mot. Le cadenas paraissait
+     * donc mort alors que tout etait normal.
+     * On relance la connexion et on repart — et si vraiment rien ne revient,
+     * on le DIT, plutot que de ne rien faire. */
+    if (!etat.socket || etat.socket.readyState !== 1) {
+      if (repriseClaim) return;
+      repriseClaim = true;
+      try { connecteSeul(); } catch (e) {}
+      toast('Reconnecting\u2026');
+      var essais = 0;
+      var minuteur = setInterval(function () {
+        essais++;
+        if (etat.socket && etat.socket.readyState === 1) {
+          clearInterval(minuteur); repriseClaim = false; reclame();
+        } else if (essais > 20) {                 // dix secondes
+          clearInterval(minuteur); repriseClaim = false;
+          toast('Not connected \u2014 reload the page and try again', 'bad');
+        }
+      }, 500);
+      return;
+    }
     occupe = true;
     try { etat.socket.send('{"type":"claimStake"}'); }
     catch (e) { occupe = false; }

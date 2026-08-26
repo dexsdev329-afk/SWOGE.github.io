@@ -2977,12 +2977,9 @@ main{ min-width:0; }
 
   /* ---- L OUVERTURE DE CHAQUE TOURNOI ----
    * Elle survit aux redessins : poser une cote redessine la liste entiere, et
-   * sans cette memoire tous les tournois se refermeraient sous la main de
-   * celui qui vient d en ouvrir un.
-   * `SB_T_VU` retient les sports deja affiches une fois : c est ce qui permet
-   * d ouvrir le premier tournoi A LA PREMIERE VENUE seulement. Sans lui, un
-   * tournoi referme se rouvrirait au premier clic suivant. */
-  var SB_TOURNOIS = {}, SB_T_VU = {};
+   * sans cette memoire un tournoi ouvert par l utilisateur se refermerait
+   * des la prochaine cote posee. */
+  var SB_TOURNOIS = {};
   function sbCleTournoi(m){ return m.sport + "|" + m.competition; }
 
   /* Le prochain coup d envoi d un tournoi, ecrit court : c est le seul chiffre
@@ -3014,10 +3011,13 @@ main{ min-width:0; }
      * comparent pas ; les melanger par heure obligeait a lire vingt lignes
      * pour retrouver les six qui interessent.
      *
-     * Et rien n est deplie d office, sauf le premier — celui dont le coup
-     * d envoi est le plus proche. Une page de paris qui s ouvre sur cinquante
-     * rencontres ne se lit pas ; une page qui s ouvre sur cinq en-tetes et un
-     * tournoi ouvert se parcourt d un coup d oeil.
+     * Rien n est deplie d office, pas meme le premier. C etait le choix
+     * avant : ouvrir automatiquement le tournoi dont le coup d envoi est
+     * le plus proche. DEMANDE : « spain la liga laisse la fermee ... sinon
+     * c est super long l interface » — un tournoi comme La Liga peut a lui
+     * seul aligner assez de rencontres pour faire une page tres longue des
+     * l ouverture, meme un seul tournoi ouvert et les autres replies. Tous
+     * fermes par defaut, l utilisateur choisit lequel deplier.
      */
     var ordre=[], par={};
     for(i=0;i<l.length;i++){
@@ -3025,18 +3025,13 @@ main{ min-width:0; }
       if(!par[c]){ par[c]={ cle:c, nom:m.competition, pays:m.pays, matchs:[] }; ordre.push(par[c]); }
       par[c].matchs.push(m);
     }
-    /* Le tournoi dont on joue le plus tot passe en premier — c est ce qui
-       ferme le plus vite, donc ce qu on regarde d abord. */
+    /* Le tri par coup d envoi reste utile en soi — meme replie, le tournoi
+       qui joue le plus tot doit apparaitre en tete de liste. */
     ordre.forEach(function(t){
       t.matchs.sort(function(a,b){ return a.debut-b.debut; });
       t.tot = t.matchs[0].debut;
     });
     ordre.sort(function(a,b){ return a.tot-b.tot; });
-
-    if(!SB_T_VU[SB.sport]){
-      SB_T_VU[SB.sport]=true;
-      if(ordre.length && SB_TOURNOIS[ordre[0].cle]===undefined) SB_TOURNOIS[ordre[0].cle]=true;
-    }
 
     for(i=0;i<ordre.length;i++){
       var t=ordre[i], ouvert=!!SB_TOURNOIS[t.cle];

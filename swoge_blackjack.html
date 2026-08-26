@@ -857,6 +857,31 @@ button, input, a, .card, .felt, .sbet, .chipbtn, .btn{ touch-action:manipulation
  * respecte 100% depuis toujours. */
 @media (min-width:1360px) {
   .felt.felt { max-width:100%; }
+  /* ---- LE TAPIS A 70vh FAISAIT DEBORDER LA PAGE, PAS SEULEMENT LA TABLE ----
+   * DEMANDE : « remonte encore un peu le blackjack et les jetons de mise,
+   * il y a une barre de scroll inutile ». Mesure sur la page a 1440x900 :
+   * le tapis a lui seul faisait 630px (70vh), les commandes 279px de
+   * plancher (delibere, voir plus bas — ne pas y toucher), le pied de
+   * page 75px de plus — la somme depassait la fenetre de plus de 300px.
+   * Le tapis est le plus gros morceau, et celui que la demande nomme : il
+   * redescend a 52vh. Toujours plus grand que la mesure « telephone tenu a
+   * l horizontale » d origine (680px fixes), juste moins que 70vh. */
+  .felt.felt { height:min(52vh,520px); }
+  /* Le pied de page redit « games.html », deja dans la colonne de gauche
+     sous « Home » — redondant seulement ici, ou les deux se voient a la
+     fois. Il reste seul present sur telephone et tablette, ou la colonne
+     n existe pas et le lien du pied de page est le seul chemin retour. */
+  footer{ display:none; }
+  /* Le vrai reste du debordement n etait pas le tapis mais `.wrap`
+   * lui-meme : `padding-bottom:64px` (plus haut, reserve pour les cartes
+   * du joueur qui debordent sur petit ecran). Mesure apres la baisse du
+   * tapis ci-dessus : la page faisait encore 973px pour une fenetre de
+   * 900px, et `.wrap` a lui seul valait 64 de ces 73px en trop. Sur cet
+   * ecran large le tapis a deja sa hauteur fixe (52vh/520px, pas
+   * d aspect-ratio elastique), donc ce coussin n a plus la meme utilite ;
+   * on le reduit sans le supprimer, pour garder un peu de respiration
+   * sous les commandes. */
+  .wrap.wrap { padding-bottom:20px; }
 }
 </style>
 <style>

@@ -2336,16 +2336,20 @@ main{ min-width:0; }
     </div>
 
 
-      <div class="c4-panel c4-revanche" id="c4RevBox" hidden>
-        <div class="c4-lb">Ask for a rematch</div>
-        <div class="c4-stakes" id="c4RevStakes"></div>
-        <button class="c4-btn ghost" id="c4RevSend">Send the challenge</button>
-        <div class="c4-note">Your stake is put up now. If they don&rsquo;t answer within
-          90 seconds you get it all back.</div>
-      </div>
+      <!-- ---- LE PANNEAU DE REVANCHE ET L HISTORIQUE DE DUEL SONT PARTIS ----
+           Ils etaient ici sans une ligne de code : `c4RevBox`, `c4RevStakes`,
+           `c4RevSend` et `c4Hist` n etaient nommes NULLE PART dans le
+           JavaScript de cette page. Rien ne pouvait donc les montrer — le
+           panneau naissait `hidden` et personne ne le decachait — et son
+           bouton « Send the challenge » ne repondait a rien.
+           C est du copier-coller des pages de duel : elles portent les memes
+           identifiants AVEC leurs vingt-trois fonctions `c4*`, que cette
+           page-ci n a jamais eues (elle en comptait zero). SWOGE Bet est une
+           page de paris sportifs ; il n y a pas d adversaire a defier.
+           Du balisage mort qui a l air vivant fait croire a une fonction qui
+           n existe pas — c est ce qui a coute le panneau du bench. -->
     </div>
 
-    <div class="c4-hist" id="c4Hist"></div>
     <div class="fair" id="fair" hidden></div>
   <!-- Ce `</div>` ferme la colonne de gauche. Il y en avait DEUX ici : la
        page portait depuis longtemps une balise fermante orpheline, sans

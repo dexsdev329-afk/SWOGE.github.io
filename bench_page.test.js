@@ -131,6 +131,41 @@ process.on('unhandledRejection', (e) => {
   const apres = await pg.evaluate(() => document.querySelectorAll('[data-toggle]').length);
   ok(apres === avant + 3, `Generate wallets ajoute les trois demandes (${avant} -> ${apres})`);
 
+  console.log('\n-- LES DEUX ALLURES DE L ANNEAU --');
+  /* La case « Maximum volume » ne se verifie pas en cliquant sur PLAY : cela
+     depenserait de vrais fonds sur une vraie chaine. Ce qui se verifie ici,
+     c'est que la case COMMANDE bien le reglage — que `alluresRing()` rend deux
+     regimes distincts, et que le regime par defaut est bien l'ancien.
+     Une case qui n'est branchee sur rien, c'est exactement la panne que le
+     reste de ce fichier cherche. */
+  const allure = (coche) => pg.evaluate((c) => {
+    const b = document.querySelector('#ocMax');
+    if (!b || typeof alluresRing !== 'function') return null;
+    const avant = b.checked;
+    b.checked = c;
+    const a = alluresRing();
+    b.checked = avant;
+    return a;
+  }, coche);
+
+  const parDefaut = await allure(false);
+  const maxi = await allure(true);
+  ok(parDefaut && maxi, 'la case « Maximum volume » commande bien `alluresRing()`');
+  ok(parDefaut && parDefaut.max === false && parDefaut.surPlace === false,
+     'decochee, l allure reste celle d origine : achat et vente sur deux adresses');
+  ok(parDefaut && parDefaut.tranches === 5,
+     `decochee, l achat reste coupe en cinq tranches (${parDefaut && parDefaut.tranches})`);
+  ok(maxi && maxi.max === true && maxi.surPlace === true,
+     'cochee, le wallet fait son aller-retour sur place');
+  ok(maxi && maxi.tranches === 1,
+     `cochee, l achat passe en UNE transaction (${maxi && maxi.tranches})`);
+  ok(maxi && parDefaut && maxi.pause < parDefaut.pause,
+     `cochee, l attente imposee tombe (${maxi && maxi.pause}s contre ${parDefaut && parDefaut.pause}s)`);
+  /* Elle part DECOCHEE : l allure maximum se lit pour ce qu elle est sur la
+     chaine, c est un choix a faire exprès, pas un defaut qu on subit. */
+  ok(await pg.evaluate(() => !document.querySelector('#ocMax').checked),
+     'et elle est decochee au chargement : c est un choix, pas un defaut');
+
   ok(erreurs.length === 0, 'aucune erreur pendant les clics' + (erreurs[0] ? ' (' + erreurs[0].slice(0, 120) + ')' : ''));
 
   await nav.close();

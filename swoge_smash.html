@@ -164,15 +164,25 @@ canvas{ touch-action:none; }
     display:flex;align-items:center;gap:10px}
   .sec h2::after{content:"";flex:1;height:1px;background:var(--line)}
   .feed{display:flex;flex-direction:column;gap:7px;padding:8px 0 30px}
-  .row{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:12px;padding:9px 13px;
-    background:linear-gradient(180deg,var(--ink2),#0c0a07);animation:slidein .25s ease}
+  /* ---- LE FIL DES COUPS, AU CLAIR — ET SURTOUT : PORTEE `.feed` ----
+   * Cette regle s'appelait `.row` tout court, et `.row` ne designe pas que le
+   * fil : le panneau Daily Quests enveloppe son bouton « Close » dans un
+   * `<div class="row">`. Les deux `.box .row` declares plus bas ne redisent que
+   * `display/gap/align-items` — jamais `background` ni `border` — donc ce
+   * degrade noir-sur-or traversait le panneau BLANC et y peignait une plaque
+   * noire sous le bouton. La regle est donc portee a `.feed .row`, et le fil
+   * lui-meme passe au clair : il vit sur la page blanche, sous la gemme.
+   * Les couleurs d'etat suivent : `var(--green)` valait #7CFF9B (vert menthe)
+   * et `var(--muted)` #A08a63 (brun-or) — tous deux illisibles sur blanc. */
+  .feed .row{display:flex;align-items:center;gap:10px;border:1px solid #E1E9F6;border-radius:12px;padding:9px 13px;
+    background:#EEF3FB;animation:slidein .25s ease}
   @keyframes slidein{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
   .row .mult{font-family:'Anton',sans-serif;font-size:18px;min-width:52px}
-  .row .mult.win{color:var(--green)} .row .mult.lose{color:var(--muted)} .row .mult.big{color:var(--gold2)}
-  .row .txt{flex:1;font-size:12px;color:#cdbf9f}
+  .row .mult.win{color:#0E7C3E} .row .mult.lose{color:#6B7C99} .row .mult.big{color:#B26A00}
+  .row .txt{flex:1;font-size:12px;color:#6B7C99}
   .row .pay{font-size:12px;font-weight:700}
-  .row .pay.win{color:var(--green)} .row .pay.lose{color:var(--muted)}
-  .feed .empty{text-align:center;color:var(--muted);font-size:12px;padding:24px}
+  .row .pay.win{color:#0E7C3E} .row .pay.lose{color:#6B7C99}
+  .feed .empty{text-align:center;color:#6B7C99;font-size:12px;padding:24px}
 
   .fair{font-size:11px;color:var(--muted);text-align:center;padding:2px 0 8px;line-height:1.6;word-break:break-all}
   .fair b{color:#cdbf9f}

@@ -522,6 +522,18 @@
   var QUETES = null, BONUS = null;
   var monte = false;
 
+  /* ---- LES PANNEAUX PASSENT AU BLANC (AU CLAIR) ----
+   * Ce fichier ne sert qu'a `index.html` et `games.html`, et il PEINT lui-meme
+   * tout le panneau de compte. Les deux pages avaient donc beau porter la barre
+   * blanche et le fond clair, leurs panneaux restaient en #0E1422 sur bord or :
+   * une carte bleu nuit flottant au milieu d'une page blanche. Aucune des deux
+   * n'a de feuille a elle pour ces boites — c'est ici, et nulle part ailleurs,
+   * qu'elles se decident.
+   * A noter : `stakebubble.js` EMPRUNTE ces boites pour son tiroir, et ce
+   * tiroir est deja clair (#0B1B36 / #1B5FE0 / #F4F7FC). La boite sombre y
+   * detonnait donc deja. Meme palette que `swoge_casino.html`, ecrite en clair.
+   * Le bandeau `.swc-msg` reste sombre : les toasts le sont restes sur toutes
+   * les pages converties. */
   function style() {
     if ($('swc-css')) return;
     var c = document.createElement('style');
@@ -534,69 +546,69 @@
       'justify-content:center;padding:16px;background:rgba(4,6,12,.74);}' +
       '#ovl.show{display:flex;}' +
       '#ovl .box{display:none;width:min(420px,100%);max-height:88vh;overflow:auto;' +
-      'padding:16px;border-radius:16px;background:#0E1422;color:#EAF2FF;' +
-      'border:1px solid rgba(255,197,61,.28);box-shadow:0 24px 60px rgba(0,0,0,.6);}' +
+      'padding:16px;border-radius:18px;background:#FFFFFF;color:#0B1B36;' +
+      'border:1px solid #E1E9F6;box-shadow:0 20px 60px rgba(11,27,54,.16);}' +
       '#ovl .box.show{display:block;}' +
-      '.swc h4{margin:0 0 10px;font-size:14px;letter-spacing:.4px;color:#FFD97A;}' +
+      '.swc h4{margin:0 0 10px;font-size:14px;letter-spacing:.4px;color:#1B5FE0;}' +
       /* Dans le tiroir, la barre de retour porte deja le nom de la section :
          le titre du panneau le repetait mot pour mot, deux lignes plus bas.
          C'est la meme raison qui fait disparaitre les titres peints des
          pages de jeu quand leur boite est empruntee. */
       '#swpHote .swc h4{display:none!important;}' +
       '.swc label{display:block;margin:12px 0 5px;font-size:10.5px;letter-spacing:1px;' +
-      'text-transform:uppercase;color:#8DA0C4;}' +
+      'text-transform:uppercase;color:#6B7C99;}' +
       '.swc input{width:100%;box-sizing:border-box;padding:11px;border-radius:11px;' +
-      'font-family:inherit;font-size:15px;text-align:center;color:#EAF2FF;' +
-      'background:rgba(0,0,0,.30);border:1px solid rgba(255,255,255,.12);}' +
+      'font-family:inherit;font-size:15px;text-align:center;color:#0B1B36;' +
+      'background:#EEF3FB;border:1px solid #E1E9F6;}' +
       /* Les cartes de solde : meme forme que celles du portefeuille dans le
          tiroir, pour qu'on reconnaisse la meme chose au meme endroit. */
       '.swc-c{display:flex;align-items:center;justify-content:space-between;gap:10px;' +
-      'padding:11px 13px;margin:0 0 7px;border-radius:12px;font-size:11.5px;color:#8DA0C4;' +
-      'background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.09);}' +
-      '.swc-c b{font-size:14px;font-weight:800;color:#EAF2FF;font-variant-numeric:tabular-nums;}' +
-      '.swc-c.or{padding:14px;background:rgba(255,197,61,.07);border-color:rgba(255,197,61,.20);}' +
-      '.swc-c.or b{font-size:22px;color:#FFD97A;}' +
+      'padding:11px 13px;margin:0 0 7px;border-radius:12px;font-size:11.5px;color:#6B7C99;' +
+      'background:#EEF3FB;border:1px solid #E1E9F6;}' +
+      '.swc-c b{font-size:14px;font-weight:800;color:#0B1B36;font-variant-numeric:tabular-nums;}' +
+      '.swc-c.or{padding:14px;background:#EAF1FF;border-color:#E1E9F6;}' +
+      '.swc-c.or b{font-size:22px;color:#1B5FE0;}' +
       '.swc-adr{width:100%;box-sizing:border-box;padding:12px 8px;border-radius:11px;' +
       'text-align:center;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;' +
-      'font-size:min(11.5px,2.8vw);color:#C6D3EA;background:rgba(0,0,0,.30);' +
-      'border:1px solid rgba(255,255,255,.10);}' +
+      'font-size:min(11.5px,2.8vw);color:#0B1B36;background:#EEF3FB;' +
+      'border:1px solid #E1E9F6;}' +
       '.swc-b{display:block;width:100%;box-sizing:border-box;margin:8px 0 0;padding:12px;' +
       'border-radius:11px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:800;' +
-      'text-align:center;text-decoration:none;color:#EAF2FF;' +
-      'background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.14);}' +
-      '.swc-b.p{margin-top:14px;padding:13px;color:#231a06;border-color:transparent;' +
-      'background:linear-gradient(180deg,#F2C868,#E6A537);}' +
-      '.swc-b.g{color:#FFD97A;background:rgba(255,197,61,.10);border-color:rgba(255,197,61,.34);}' +
-      '.swc-b.d{margin-top:16px;padding:10px;font-size:11.5px;font-weight:700;color:#F2685E;' +
-      'background:transparent;border-color:rgba(242,104,94,.28);}' +
+      'text-align:center;text-decoration:none;color:#0B1B36;' +
+      'background:#FFFFFF;border:1px solid #E1E9F6;}' +
+      '.swc-b.p{margin-top:14px;padding:13px;color:#FFFFFF;border-color:transparent;' +
+      'background:#1B5FE0;}' +
+      '.swc-b.g{color:#1B5FE0;background:#EAF1FF;border-color:#1B5FE0;}' +
+      '.swc-b.d{margin-top:16px;padding:10px;font-size:11.5px;font-weight:700;color:#E0443E;' +
+      'background:transparent;border-color:rgba(224,68,62,.45);}' +
       '.swc-b[disabled]{opacity:.45;cursor:default;}' +
       '.swc-pc{display:flex;gap:6px;margin-top:8px;}' +
       '.swc-pc button{flex:1 1 0;min-width:0;padding:8px 2px;border-radius:9px;cursor:pointer;' +
-      'font-family:inherit;font-size:11.5px;font-weight:700;color:#FFD97A;' +
-      'background:rgba(255,197,61,.10);border:1px solid rgba(255,197,61,.30);}' +
-      '.swc-n{margin-top:9px;font-size:11.5px;line-height:1.5;color:#8DA0C4;text-align:left;}' +
+      'font-family:inherit;font-size:11.5px;font-weight:700;color:#0B1B36;' +
+      'background:#EEF3FB;border:1px solid #E1E9F6;}' +
+      '.swc-n{margin-top:9px;font-size:11.5px;line-height:1.5;color:#6B7C99;text-align:left;}' +
       /* Les quetes : une carte par quete, une barre, un bouton. */
       '.swc-wc{margin:0 0 10px;padding:11px 12px;border-radius:12px;text-align:left;' +
-      'background:rgba(255,197,61,.07);border:1px solid rgba(255,197,61,.20);}' +
-      '.swc-wc-t{font-size:12px;font-weight:800;color:#FFD97A;}' +
+      'background:#EAF1FF;border:1px solid #E1E9F6;}' +
+      '.swc-wc-t{font-size:12px;font-weight:800;color:#1B5FE0;}' +
       '.swc-days{display:flex;gap:5px;margin:9px 0 2px;}' +
       '.swc-d{flex:1 1 0;min-width:0;padding:6px 2px;border-radius:9px;text-align:center;' +
-      'background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);}' +
-      '.swc-d span{display:block;font-size:9.5px;color:#8DA0C4;}' +
-      '.swc-d b{display:block;font-size:10.5px;color:#C6D3EA;}' +
-      '.swc-d.ok{background:rgba(124,255,155,.10);border-color:rgba(124,255,155,.32);}' +
-      '.swc-d.ok b{color:#7CFF9B;}' +
-      '.swc-d.now{background:rgba(255,197,61,.14);border-color:rgba(255,197,61,.45);}' +
-      '.swc-d.now b{color:#FFD97A;}' +
+      'background:#EEF3FB;border:1px solid #E1E9F6;}' +
+      '.swc-d span{display:block;font-size:9.5px;color:#6B7C99;}' +
+      '.swc-d b{display:block;font-size:10.5px;color:#0B1B36;}' +
+      '.swc-d.ok{background:rgba(90,220,140,.16);border-color:rgba(120,230,160,.5);}' +
+      '.swc-d.ok b{color:#0E7C3E;}' +
+      '.swc-d.now{background:#EAF1FF;border-color:#1B5FE0;}' +
+      '.swc-d.now b{color:#1B5FE0;}' +
       '.swc-q{margin:0 0 8px;padding:11px 12px;border-radius:12px;text-align:left;' +
-      'background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.09);}' +
-      '.swc-q-h{font-size:12.5px;font-weight:700;color:#EAF2FF;}' +
+      'background:#EEF3FB;border:1px solid #E1E9F6;}' +
+      '.swc-q-h{font-size:12.5px;font-weight:700;color:#0B1B36;}' +
       '.swc-q-b{height:6px;margin:8px 0 2px;border-radius:99px;overflow:hidden;' +
-      'background:rgba(255,255,255,.08);}' +
+      'background:#E1E9F6;}' +
       '.swc-q-b i{display:block;height:100%;border-radius:99px;' +
-      'background:linear-gradient(90deg,#E6A537,#F2C868);}' +
+      'background:linear-gradient(90deg,#22B45E,#7CFF9B);}' +
       '.swc-q .swc-b{margin-top:8px;padding:9px;font-size:12px;}' +
-      '.swc-n b{color:#FFC53D;}' +
+      '.swc-n b{color:#1B5FE0;}' +
       /* Le message. Au-dessus du tiroir (9999) : il commente souvent ce qui
          vient d'y etre fait. */
       /* `--swbb-h` est la hauteur MESUREE de la barre du bas, publiee par

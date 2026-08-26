@@ -723,25 +723,22 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
    tapis retombe dans la premiere colonne. */
 .ca-main > .ca-vide{ display:none; }
 
-/* L'historique en colonne coute 640 px de largeur au tapis : on ne le sort
-   sur le cote qu'a partir du moment ou il en reste assez pour lui. */
-@media (min-width:1500px){
-  /* L'historique se met a droite du tapis. Une colonne vide de meme largeur a
-     gauche garde le tapis parfaitement CENTRE : sans elle, l'historique le
-     pousserait vers la gauche. */
-  .cawrap{ max-width:1620px; overflow:visible; }
-  .ca-main{ display:grid; grid-template-columns:300px minmax(0,1fr) 300px;
-    gap:20px; align-items:start; }
-  /* Sur grand ecran la largeur ne manque pas, c'est la HAUTEUR qui limite :
-     on dimensionne le tapis par sa hauteur et le ratio donne la largeur.
-     Les cartes et les cases etant placees en %, le rendu reste identique
-     au telephone, juste plus grand. */
-  /* la largeur decoule de la hauteur voulue ET du ratio, mais ne depasse
-     jamais la colonne : sinon le tapis pousse la page en largeur */
-  .ca-felt{ width:min(100%, calc(min(62vh,640px) * 1000 / 700)); margin:0 auto; }
-  .ca-main > .ca-vide{ display:block; }
-  .ca-hist{ margin:0; max-width:none; }
-}
+/* ---- L HISTORIQUE NE PASSE PLUS EN COLONNE SUR GRAND ECRAN ----
+ * BUG SIGNALE : le panneau d historique flottait par-dessus la colonne de
+ * droite (`.sw-lat`) et le rail de jetons — capture a l appui. Cette regle
+ * lui donnait sa propre colonne (300px fixes, plus une colonne vide de
+ * meme largeur a gauche pour garder le tapis centre) des que la fenetre
+ * depassait 1500px, MESURE SUR LA FENETRE ENTIERE. Elle date d avant les
+ * colonnes laterales (`.sw-cote`, `.sw-lat`, plus haut), qui reservent
+ * ~564px sur les cotes : passe ce seuil, il ne restait plus assez de
+ * place au centre pour les deux colonnes fixes de l historique, qui
+ * debordaient sur `.sw-lat`. Repousser le seuil plus loin ne suffit pas
+ * non plus — verifie a 2200px ET 2400px, le debordement persiste tant
+ * que `.sw-corps` (plus haut, plafonne a 1680px) ne grandit plus avec la
+ * fenetre : les deux colonnes ne peuvent plus jamais cohabiter, quelle
+ * que soit la largeur de l ecran. L historique reste donc en ligne sous
+ * le tapis a toutes les tailles — deja le cas, et deja correct, en
+ * dessous de l ancien seuil. */
 
 .ca-pick .ca-info{ flex:0 0 auto; max-width:none; width:42px; padding:9px 0;
   font-size:17px; line-height:1; }

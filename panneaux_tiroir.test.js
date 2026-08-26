@@ -206,12 +206,18 @@ function chargeLeCatalogue() {
   /* Ce que chaque rangee DOIT ouvrir, quand son nom le promet. Les autres
      n ont pas de panneau nomme : on exige seulement qu elles fassent quelque
      chose. */
+  /* ---- ON REGARDE LA BOITE, PAS LE TITRE ----
+   * La premiere version acceptait le TITRE comme preuve : « My Wallet » dans
+   * la barre suffisait. Elle a donc declare les trois pages saines pendant que
+   * l accueil montrait le profil sous CHAQUE titre — le defaut exact que
+   * l utilisateur a filme ensuite. Un titre est ce que la page AFFIRME ; la
+   * boite ouverte est ce qu elle FAIT. */
   const PROMESSES = {
-    'My Wallet': /box-wallet|wallet/i,
-    'Staking': /box-stake|staking/i,
-    'Deposit': /box-dep\b|deposit/i,
-    'Withdraw': /box-wd\b|withdraw/i,
-    'Daily Quests': /box-quests|quest/i,
+    'My Wallet': 'box-wallet',
+    'Staking': 'box-stake',
+    'Deposit': 'box-dep',
+    'Withdraw': 'box-wd',
+    'Daily Quests': 'box-quests',
   };
 
   const PAGES = ['games.html', 'index.html', 'swogebet.html'];
@@ -290,10 +296,44 @@ function chargeLeCatalogue() {
       if (!bouge) { muettes.push(r.t); continue; }
       const attendu = Object.keys(PROMESSES).find((nom) => r.t.indexOf(nom) >= 0);
       if (attendu) {
-        const trace = apres.boite + ' ' + apres.titre + ' ' + apres.liste;
-        if (!PROMESSES[attendu].test(trace)) trahies.push(`${r.t} -> ${trace.trim().slice(0, 44)}`);
+        const boites = String(apres.boite || '').split(',').filter(Boolean);
+        if (boites.indexOf(PROMESSES[attendu]) < 0) {
+          trahies.push(`${r.t} -> ${boites.join(',') || 'aucune boite'}`
+                       + ` (attendu ${PROMESSES[attendu]})`);
+        }
       }
     }
+    /* ---- ET LES RANGEES DU TIROIR LUI-MEME REPONDENT AU DOIGT ----
+     * Tout ce qui precede passe par le menu de l en-tete, qui clique la rangee
+     * PAR SCRIPT — et un clic de script ignore `pointer-events`. Une fois le
+     * tiroir ouvert, le joueur clique ses rangees pour de vrai : elles etaient
+     * mortes sur l accueil, parce que la garde de ce fichier vivait dans la
+     * feuille de la porte de connexion, posee seulement quand cette porte se
+     * construit. Quelqu un de deja connecte ne la voyait jamais se construire.
+     * On mesure donc la rangee elle-meme, et l on en presse une pour de vrai. */
+    const auDoigt = await p.evaluate(() => {
+      const b = document.querySelector('.swp .swp-t button');
+      if (!b) return null;
+      const r = b.getBoundingClientRect();
+      const dessus = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
+      return { pe: getComputedStyle(b).pointerEvents,
+               /* DANS le bouton, et non a cote : un `<span>` interieur recoit
+                  le clic et le laisse remonter, ce qui est le cas normal. Ce
+                  qu on refuse, c est que la LISTE derriere l attrape. */
+               dedans: !!(dessus && b.contains(dessus)),
+               dessus: dessus ? (dessus.tagName + '.' + (dessus.className || '')) : null };
+    });
+    ok(!!auDoigt && auDoigt.pe === 'auto',
+       `${page} : les rangees du tiroir repondent au doigt (${auDoigt && auDoigt.pe})`);
+    ok(!!auDoigt && auDoigt.dedans,
+       `${page} : et le clic tombe DANS la rangee, pas sur la liste derriere`
+       + ` elle (${auDoigt && auDoigt.dessus})`);
+    let presse = true;
+    try { await p.click('.swp .swp-t button', { timeout: 4000 }); }
+    catch (e) { presse = false; }
+    await p.waitForTimeout(500);
+    ok(presse, `${page} : et une rangee du tiroir se presse pour de vrai`);
+
     ok(muettes.length === 0,
        muettes.length
          ? `${page} : ${muettes.length} rangee(s) sans effet — ${muettes.join(' ; ')}`

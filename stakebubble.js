@@ -165,6 +165,45 @@
   var PRIVY_APP_ID = 'cmsga0yzp00a50biaf9vlzzd2';
   var conBoite = null;
 
+  /* ==================== CE QUE CE FICHIER DESSINE, IL LE REND CLIQUABLE ====================
+   *
+   * Trois pages du site portent `a[href], button{ pointer-events:none }` :
+   * elles sont des MAQUETTES, et leurs boutons gardent leur dessin sans
+   * repondre au doigt. La regle vise les elements par leur TYPE, donc elle
+   * frappe aussi tout ce que ce fichier ajoute apres coup — la porte de
+   * connexion et les rangees du tiroir.
+   *
+   * ---- ELLE ETAIT AU MAUVAIS ENDROIT ----
+   *
+   * Elle vivait dans la feuille de la PORTE DE CONNEXION, posee seulement
+   * quand cette porte se construit. Sur l accueil, quelqu un de deja connecte
+   * ne la voit jamais se construire : la garde n arrivait donc pas, et les
+   * rangees du tiroir restaient mortes sous le doigt — alors qu un clic lance
+   * par script, lui, passait. D ou un menu qui « marche » depuis l en-tete et
+   * ne repond a rien une fois le tiroir ouvert.
+   * Elle a maintenant sa feuille, posee des le chargement, sans condition.
+   *
+   * Un clic lance par script IGNORE `pointer-events` : aucun essai qui appelle
+   * `.click()` ne peut voir ce defaut. Seul un vrai pointeur le montre. */
+  (function () {
+    if (document.getElementById('swpe-css')) return;
+    var g = document.createElement('style');
+    g.id = 'swpe-css';
+    g.textContent =
+      '.swcon,.swpb,' +
+      '.swcon-ov button,.swcon-ov input,.swcon-ov a,' +
+      '.swpov button,.swpov a,.swpov input,.swpov select,.swpov textarea' +
+      '{pointer-events:auto;}' +
+      /* ---- SAUF DERRIERE UN CALQUE ENCORE FERME ----
+         Deux calques s ouvrent en fondu et se gardent d etre cliquables tant
+         qu ils sont transparents. Mais `pointer-events:none` sur un parent
+         n empeche PAS un enfant qui dit `auto` de recevoir le clic : sans ces
+         deux lignes, la regle du dessus rendrait cliquables des boutons
+         invisibles, poses en travers de l ecran. */
+      '.swb-scene:not(.on) *,.swv:not(.on) *{pointer-events:none;}';
+    (document.head || document.documentElement).appendChild(g);
+  })();
+
   function styleConnexion() {
     if (document.getElementById('swcon-css')) return;
     var c = document.createElement('style');
@@ -195,39 +234,6 @@
       'font-family:inherit;font-size:13px;color:#0B1B36;background:rgba(11,27,54,.05);' +
       'border:1px solid rgba(11,27,54,.16);}' +
       '.swcon-b .m{margin-top:10px;font-size:11.5px;line-height:1.45;color:#1B5FE0;}' +
-      /* ==================== CE QUE CE FICHIER DESSINE, IL LE REND CLIQUABLE ====================
-       *
-       * Trois pages du site portent `a[href], button{ pointer-events:none }` :
-       * elles sont des MAQUETTES, et leurs boutons gardent leur dessin sans
-       * repondre au doigt. La regle vise les elements par leur TYPE, donc elle
-       * frappe aussi tout ce que ce fichier ajoute apres coup — la porte de
-       * connexion et les rangees du tiroir.
-       *
-       * Signale : « quand je clique sur connect wallet, ca me met Connect
-       * wallet / Sign email et je n arrive pas a cliquer ». La porte s ouvrait
-       * bel et bien ; ses deux boutons etaient morts. Et le tiroir avait le
-       * meme mal : ses rangees ne repondaient qu au script.
-       *
-       * La garde est posee ICI, dans le fichier qui cree ces elements, et non
-       * dans chaque page : une page qui adopterait la regle demain serait
-       * couverte sans rien savoir. Les selecteurs portent une CLASSE, donc ils
-       * l emportent sur un selecteur de type, quel que soit l ordre des
-       * feuilles.
-       *
-       * Un clic lance par script IGNORE `pointer-events` : aucun essai qui
-       * appelle `.click()` ne pouvait voir ce defaut. Seul un vrai pointeur
-       * le montre. */
-      '.swcon,.swpb,' +
-      '.swcon-ov button,.swcon-ov input,.swcon-ov a,' +
-      '.swpov button,.swpov a,.swpov input,.swpov select,.swpov textarea' +
-      '{pointer-events:auto;}' +
-      /* ---- SAUF DERRIERE UN CALQUE ENCORE FERME ----
-         Deux calques s ouvrent en fondu et se gardent d etre cliquables tant
-         qu ils sont transparents. Mais `pointer-events:none` sur un parent
-         n empeche PAS un enfant qui dit `auto` de recevoir le clic : sans ces
-         deux lignes, la regle du dessus aurait rendu cliquables des boutons
-         invisibles, poses en travers de l ecran. */
-      '.swb-scene:not(.on) *,.swv:not(.on) *{pointer-events:none;}' +
       '.swcon-b .x{margin-top:12px;background:transparent;color:#5F6E88;font-weight:600;' +
       'font-size:11.5px;}';
     document.head.appendChild(c);
@@ -7380,6 +7386,24 @@
 
   function profRend() {
     if (!profBoite) return;
+    /* ---- UN PANNEAU DE LA PAGE EST EMPRUNTE : ON NE REPEINT PAS ----
+     *
+     * Chaque section refait `.swp-l` de fond en comble (`innerHTML = ''`).
+     * Tant que la liste ne contenait que ce que ce fichier dessine, c etait
+     * sans consequence. Depuis qu on y DEPLACE le portefeuille, le depot ou
+     * les quetes de la page, un repeint les DETRUIT — et la page ne les
+     * retrouve jamais, avec leurs champs et leurs gestionnaires.
+     *
+     * Signale sur l accueil : on ouvrait « My Wallet », le titre changeait, et
+     * le corps montrait le profil. La reponse du profil arrivait apres coup et
+     * repeignait la section courante — restee « Overview », puisque emprunter
+     * ne change pas d onglet. Le panneau du portefeuille disparaissait de la
+     * page au passage. Chaque onglet montrait donc la meme chose.
+     *
+     * La garde est ICI et non chez les quinze appelants : un appelant qu on
+     * oublierait ferait revenir le defaut, et il ne se verrait qu au moment ou
+     * une reponse tardive arrive. */
+    if (PANNEAU) return;
     if (profOnglet === 'ap') { profEnTete(); return rendApercu(); }
     if (profOnglet === 'am') { profEnTete(); return rendAmis(); }
     if (profOnglet === 'in') { profEnTete(); return rendInvite(); }

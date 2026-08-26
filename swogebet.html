@@ -2243,7 +2243,13 @@ main{ min-width:0; }
 
 
     <div class="sb-wrap">
-      <video class="sb-film" id="sbFilm" src="media/bet.mp4"
+      <!-- `width`/`height` ici ne sont pas decoratifs : sur telephone, la
+           video se mal-dimensionnait (rapport different du 912/600 prevu par
+           le CSS `aspect-ratio`). Ces deux attributs fixent le ratio pour le
+           navigateur DES la mise en page, meme quand `aspect-ratio` n'est pas
+           applique — le meme filet de securite qu'une image avec ses
+           dimensions intrinseques. -->
+      <video class="sb-film" id="sbFilm" src="media/bet.mp4" width="912" height="600"
              poster="img/site/bet_poster.webp"
              muted loop playsinline preload="none" disablepictureinpicture
              aria-label="SWOGE Betting"></video>

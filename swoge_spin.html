@@ -103,9 +103,14 @@ canvas{ touch-action:none; }
    * que le fond noir retire de `swoge_blackjack.html`. La machine elle-meme
    * (`#grid`, felt sombre) garde son propre habillage : c est la PAGE,
    * derriere le jeu, qui rejoint le blanc. */
-  body { font-family: 'Orbitron', system-ui, sans-serif; overflow: hidden; height: 100vh; width: 100vw; color: #fff;
+  body { font-family: 'Orbitron', system-ui, sans-serif; overflow: hidden; height: 100vh; height: 100dvh; width: 100vw; color: #fff;
     background: #EEF3FB; }
-  #scene { position: fixed; inset: 0; overflow: hidden; }
+  /* `height` explicite l'emporte sur le `bottom:0` d'`inset:0` (boite
+   * over-contrainte : `height` gagne) — sur Safari/webview mobile, le bas de
+   * la scene colle au bas REELLEMENT visible (barre d'adresse comprise), pas
+   * au bas du grand viewport theorique ou le bouton SPIN se retrouvait caché
+   * derriere la barre du navigateur, injoignable. */
+  #scene { position: fixed; inset: 0; height: 100vh; height: 100dvh; overflow: hidden; }
 
   /* ===== ÉCHELLE DE JACKPOTS (haut) ===== */
   #ladder { position: absolute; top: 1vh; left: 50%; transform: translateX(-50%); display: flex; gap: .4vw; z-index: 5; width: 98vw; justify-content: center; }
@@ -594,6 +599,30 @@ canvas{ touch-action:none; }
     /* --- Boutons d'action plus petits, empiles, centres (block = fiable iOS/WebKit) --- */
     /* (boutons geres par les regles de base : inline-block centre, max 220px) */
     #box-dep .pcts, #box-stake .pcts { max-width:94%; margin-left:auto; margin-right:auto; }
+  }
+
+  /* ---- ECRAN COURT (barre du navigateur mobile visible) : LA COLONNE
+     RETRECIT POUR QUE LE BOUTON SPIN RESTE ATTEIGNABLE ----
+   * DEMANDE : « spin html sur téléphone on peut même pas jouer on a pas
+   * accès au bouton du bas ». `#scene` ne defile jamais (`overflow:hidden`),
+   * donc quand jackpots + machine + barre du bas depassent la hauteur
+   * REELLEMENT visible (grand telephone, mais webview Telegram/Safari avec
+   * sa propre barre en bas), le surplus est simplement invisible ET
+   * injoignable — verifie : a 390x700 le bouton depassait de 64px sous le
+   * bas de l'ecran, a 390x600 de 36px de plus encore. La machine (jusqu'a
+   * 40vh) est le plus gros poste ; elle retrecit ici en premier. */
+  @media (max-height:760px) and (max-width:820px), (max-height:760px) and (orientation:portrait) {
+    #scene { padding:.8vh 0 .6vh; gap:.2vh; }
+    #ladder { row-gap:.2vh; }
+    .jp-plaque span { font-size:2.8vw; }
+    #machine { width:min(86vw, 32vh); margin-top:min(2.4vh, 12px); }
+    #bottom { margin-top:1.2vh; gap:.3vh 2.5vw; }
+  }
+  /* Ecran encore plus court : les deux petits jackpots (5K/100) s'effacent
+   * pour laisser le SPIN respirer — les deux gros restent visibles. */
+  @media (max-height:620px) and (max-width:820px), (max-height:620px) and (orientation:portrait) {
+    #machine { width:min(86vw, 24vh); margin-top:6px; }
+    .jp-plaque:nth-child(3), .jp-plaque:nth-child(4) { display:none; }
   }
 
   /* ===== PC / WEB (large, paysage) : SWOGE à gauche, HUD à droite, bonus dans la barre du bas ===== */

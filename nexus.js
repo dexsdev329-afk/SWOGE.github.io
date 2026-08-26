@@ -6642,8 +6642,24 @@
      * `cadres` suffit a le dire : la boucle de dessin decoupe la planche par
      * ce nombre et choisit l'image a l'horloge — il n'y a pas de compteur par
      * lieu a creer, a avancer et a oublier de remettre a zero. */
+    /* ---- ET ELLE NE GLISSE PLUS ----
+     * Signale : « il y a une fontaine, essaye de la fixer, qu'elle bouge
+     * moins ». Ce n'etait pas la cadence : c'est la PLANCHE qui est mal
+     * calee. Mesure sur les quatre cases, en alignant trois zones qui ne
+     * doivent pas bouger d'un poil — le socle fleuri, le bassin, la statue
+     * ailee : les trois derivent ensemble de 0, 2, 5 puis 7 pixels vers la
+     * gauche, avant de revenir d'un bond au bouclage. Dessinee a 340 de large
+     * pour une case de 160, cette derive vaut environ quinze pixels a
+     * l'ecran, une fois et demie par seconde — d'ou le tremblement.
+     * `recale` rend a chaque cadre sa position d'origine, celle du cadre 0.
+     * C'est une DONNEE, comme `cadres` : une autre planche mal calee se
+     * corrige en mesurant, sans toucher au code de dessin.
+     * Les valeurs ne sont pas rondes exprès : la derive reelle l'est pas non
+     * plus, et des entiers laissaient un residu d'un a deux pixels apres
+     * l'arrondi a l'echelle du rendu. Celles-ci retombent juste. */
     { cle: 'fontaine', src: 'img/nexus/tiles/obj_fontaine.webp',
-      x: CENTRE.x, y: CENTRE.y, larg: 340, haut: 544, collision: 108, cadres: 4 },
+      x: CENTRE.x, y: CENTRE.y, larg: 340, haut: 544, collision: 108, cadres: 4,
+      recale: [0, 2.35, 4.71, 7.06] },
     /* ---- DEUX PORTES AU NORD, ET C'EST UN CHOIX ----
      *
      * La porte violette etait seule au bout du chemin : on marchait dedans
@@ -6847,8 +6863,15 @@
      * `haut` suit le rapport de la planche (cases de 160 sur 256, soit 1,60) :
      * 190 de large en donnent 304. Un nombre rond l'aurait ecrasee, et une
      * image etiree ne leve aucune erreur. */
+    /* Meme defaut de calage que la fontaine, et en pire. Mesure sur le
+       SOCLE, la seule zone franchement statique — le sac de frappe, lui,
+       bouge pour de vrai et fausse toute mesure prise plus haut : sa largeur
+       ne change pas (102-103 px) mais ses deux bords glissent ensemble de
+       sept pixels par cadre, 37 puis 30 puis 23 puis 16. Vingt et un pixels
+       de translation sur la boucle, vingt-cinq a l'ecran. */
     { cle: 'boxe', src: 'img/nexus/tiles/obj_boxe.webp',
       x: CENTRE.x - 912, y: CENTRE.y + 16, larg: 190, haut: 304, cadres: 4,
+      recale: [0, 7, 14, 21],
       rayon: 130, nom: 'the map editor' },
   ];
   LIEUX.forEach(function (l) { l.img = new Image(); l.img.src = l.src; l.dwell = 0; });
@@ -15309,8 +15332,12 @@
          `cadreDeLHorloge` — la meme pour le hall et pour la ville. */
       var cw = l.img.naturalWidth / l.cadres;
       var k = cadreDeLHorloge(l.cadres);
+      /* `recale` est mesure en pixels de la PLANCHE ; le decor est dessine
+         plus grand, la correction suit donc le meme rapport. Arrondie, pour
+         ne pas rendre flou ce qu'on vient de stabiliser. */
+      var rx = l.recale ? Math.round((l.recale[k] || 0) * (l.larg / cw)) : 0;
       ctx.drawImage(l.img, k * cw, 0, cw, l.img.naturalHeight,
-                    l.x - l.larg / 2, l.y - l.haut, l.larg, l.haut);
+                    l.x - l.larg / 2 + rx, l.y - l.haut, l.larg, l.haut);
     } }; });
     pile.push({ y: joueur.y, dessine: function () {
       var cadre = joueur.anim === 'jump' ? saut.cadre : joueur.cadre;

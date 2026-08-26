@@ -3454,9 +3454,17 @@ main{ min-width:0; }
     ws.onmessage=function(ev){
       var m; try{ m=JSON.parse(ev.data); }catch(e){ return; }
       if(m.type==="state") return;
-      if(m.type==="hello"){ sbDemande(); loginNonce=m.loginNonce; /* Le jeton de session evite de resigner : on le presente des que le nonce est connu. Le serveur repond soit par 'auth' — connecte, sans SDK ni signature — soit par 'resumeFailed'. */ (function(){ var j=null; try{ j=localStorage.getItem("swogeSession"); }catch(e){} if(j) send({type:"resume", token:j, tgId:(typeof TG_ID!=="undefined"?TG_ID:null)}); })(); if(m.vault)VAULT=m.vault; if(m.token)TOKEN=m.token; if(m.minWithdraw)MIN_WITHDRAW=m.minWithdraw; showFair({serverSeedHash:m.serverSeedHash,nonce:0});
-        /* le nonce n'arrive qu'ici : on relance la session sauvegardee maintenant */
-        if(myAddr) doLogin(); }
+      if(m.type==="hello"){ sbDemande(); loginNonce=m.loginNonce; /* Le jeton de session evite de resigner : on le presente des que le nonce est connu. Le serveur repond soit par 'auth' — connecte, sans SDK ni signature — soit par 'resumeFailed'. */
+        var reprise=false;
+        (function(){ var j=null; try{ j=localStorage.getItem("swogeSession"); }catch(e){} if(j){ reprise=true; send({type:"resume", token:j, tgId:(typeof TG_ID!=="undefined"?TG_ID:null)}); } })();
+        if(m.vault)VAULT=m.vault; if(m.token)TOKEN=m.token; if(m.minWithdraw)MIN_WITHDRAW=m.minWithdraw; showFair({serverSeedHash:m.serverSeedHash,nonce:0});
+        /* le nonce n'arrive qu'ici : on relance la session sauvegardee maintenant —
+           mais seulement s'il n'y avait PAS de jeton a reprendre : sinon la
+           signature partait EN MEME TEMPS que la reprise silencieuse, et le
+           joueur revoyait sa prompt de portefeuille en arrivant sur SWOGE Bet
+           alors qu il etait deja connecte sur l accueil ou le hall. La reprise
+           rate, elle, appelle deja `doLogin()` depuis 'resumeFailed'. */
+        if(myAddr && !reprise) doLogin(); }
       if(m.type==="resumeFailed"){ /* jeton perime ou revoque : on l oublie et on repart du chemin long */ try{ localStorage.removeItem("swogeSession"); }catch(e){} if(typeof autoReconnect==="function") autoReconnect(); else if(myAddr) doLogin(); return; }
       else if(m.type==="auth"){ authed=true; myAddr=m.address; sbDemande(); if(m.session){ try{ localStorage.setItem("swogeSession",m.session); }catch(e){} } setBalance(m.balance); showPlay(); if(m.fairness) showFair(m.fairness);
         /* Il y avait ici trois demandes de duel recopiees d'une page de jeu :

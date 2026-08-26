@@ -72,7 +72,10 @@
   var ERC20_ABI = [
     'function approve(address,uint256) returns (bool)',
     'function allowance(address,address) view returns (uint256)',
-    'function balanceOf(address) view returns (uint256)'
+    'function balanceOf(address) view returns (uint256)',
+    /* Ajoute pour « Send to another address », plus bas : sans lui, le
+       contrat ne connait pas le transfert et l'envoi echoue a l'appel. */
+    'function transfer(address,uint256) returns (bool)'
   ];
   var VAULT_ABI = [
     'function deposit(uint256)',
@@ -474,7 +477,7 @@
                 try { if (window.SwogePrivy && SwogePrivy.logout) SwogePrivy.logout(); } catch (x) {}
                 window.swogeConnexion.ouvre();
               } }
-          : { texte: 'Sign in and deposit →', href: 'swoge_pusher.html#deposit' };
+          : { texte: 'Sign in and deposit →', href: 'swoge_pusher_live.html#deposit' };
         throw err;
       }
       if (typeof ethers === 'undefined') throw new Error('Chain library not loaded — reload the page');
@@ -499,6 +502,43 @@
         return { signer: new ethers.providers.Web3Provider(w.eip1193, 'any').getSigner(),
                  adresse: w.adresse };
       });
+    });
+  }
+
+  /* Envoi vers une adresse libre. Meme contrat que le `doSend` des pages de
+     jeu : on verifie l'adresse et le montant AVANT d'ouvrir le portefeuille,
+     pour ne pas faire surgir une demande de signature sur une saisie fautive.
+     `signataire()` porte deja tout le reste : reseau, reprise de session, et
+     le message d'aide quand le portefeuille ne repond pas. */
+  function envoie() {
+    var bouton = $('swcSGo');
+    var to = (($('swcSTo') || {}).value || '').trim();
+    if (!/^0x[0-9a-fA-F]{40}$/.test(to)) return dit('Enter a valid 0x address', 'ko');
+    var v = (($('swcSAmt') || {}).value || '').replace(',', '.').trim();
+    if (!(parseFloat(v) > 0)) return dit('Enter an amount', 'ko');
+    var jetonChoisi = (($('swcSTok') || {}).value || 'swoge');
+    var libelle = bouton.textContent;
+    bouton.disabled = true;
+    bouton.textContent = 'Opening your wallet\u2026';
+    dit('Opening your wallet\u2026', '', null, true);
+    signataire().then(function (w) {
+      if (jetonChoisi === 'eth') {
+        return w.signer.sendTransaction({ to: to, value: ethers.utils.parseEther(v) });
+      }
+      return new ethers.Contract(TOKEN, ERC20_ABI, w.signer)
+        .transfer(to, ethers.utils.parseUnits(v, 18));
+    }).then(function (tx) {
+      dit('Sending\u2026', '', null, true);
+      return tx.wait();
+    }).then(function () {
+      dit('\u2705 Sent ' + v + ' ' + (jetonChoisi === 'eth' ? 'ETH' : '$SWOGE'), 'ok');
+      if ($('swcSAmt')) $('swcSAmt').value = '';
+      if ($('swcSTo')) $('swcSTo').value = '';
+      litSoldesChaine();
+    })['catch'](function (e) {
+      dit(String((e && (e.reason || e.message)) || e).slice(0, 120), 'ko', e && e.sortie);
+    }).then(function () {
+      bouton.disabled = false; bouton.textContent = libelle;
     });
   }
 
@@ -582,6 +622,15 @@
       '.swc-b.d{margin-top:16px;padding:10px;font-size:11.5px;font-weight:700;color:#E0443E;' +
       'background:transparent;border-color:rgba(224,68,62,.45);}' +
       '.swc-b[disabled]{opacity:.45;cursor:default;}' +
+      /* La section d'envoi : un trait pour la detacher du reste, un titre,
+         et la ligne montant + jeton. */
+      '.swc-sep{height:1px;margin:16px 0 12px;background:#E1E9F6;}' +
+      '.swc-envt{font-size:12.5px;font-weight:800;color:#0B1B36;text-align:center;}' +
+      '.swc-envr{display:flex;gap:8px;align-items:center;}' +
+      '.swc-envr #swcSAmt{flex:1 1 auto;min-width:0;}' +
+      '.swc-envr #swcSTok{flex:0 0 auto;padding:11px;border-radius:11px;font-family:inherit;' +
+      'font-size:14px;color:#0B1B36;background:#EEF3FB;border:1px solid #E1E9F6;cursor:pointer;}' +
+      '#swcSTo{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;}' +
       '.swc-pc{display:flex;gap:6px;margin-top:8px;}' +
       '.swc-pc button{flex:1 1 0;min-width:0;padding:8px 2px;border-radius:9px;cursor:pointer;' +
       'font-family:inherit;font-size:11.5px;font-weight:700;color:#0B1B36;' +
@@ -677,6 +726,27 @@
         '<button class="swc-b g" id="swcWCopy" type="button">Copy</button>' +
         '<button class="swc-b p" id="swcWDep" type="button">Deposit</button>' +
         '<a class="swc-b" id="swcWScan" target="_blank" rel="noopener">Explorer ↗</a>' +
+        /* ---- ENVOYER VERS UNE ADRESSE DE SON CHOIX ----
+           DEMANDE : « je dois le voir sur toutes les pages, pas que sur coin
+           pusher ». Les pages de jeu portent cette section dans LEUR propre
+           panneau, que le tiroir emprunte. `index.html` et `games.html`, elles,
+           n'ont pas de panneau a elles : c'est ce fichier qui le fabrique — et
+           il ne proposait que Copy / Deposit / Explorer / Disconnect. Le retrait
+           du jeu depose sur le portefeuille du COMPTE ; sans ceci, les fonds y
+           restaient sans porte de sortie sur les deux pages les plus visitees. */
+        '<div class="swc-sep"></div>' +
+        '<div class="swc-envt">Send to another address</div>' +
+        '<label>Recipient address</label>' +
+        '<input id="swcSTo" placeholder="0x…" autocomplete="off" spellcheck="false">' +
+        '<label>Amount</label>' +
+        '<div class="swc-envr">' +
+          '<input id="swcSAmt" inputmode="decimal" placeholder="amount">' +
+          '<select id="swcSTok" aria-label="Token to send">' +
+            '<option value="swoge">$SWOGE</option>' +
+            '<option value="eth">ETH (RH)</option>' +
+          '</select>' +
+        '</div>' +
+        '<button class="swc-b p" id="swcSGo" type="button">Send</button>' +
         '<button class="swc-b d" id="swcWOut" type="button">Disconnect</button>' +
         '<button class="swc-b" data-close type="button">Close</button>' +
       '</div></div>' +
@@ -795,6 +865,7 @@
       b.textContent = 'Copied ✓';
       setTimeout(function () { b.textContent = 'Copy'; }, 1400);
     });
+    $('swcSGo').addEventListener('click', envoie);
     $('swcWDep').addEventListener('click', function () { vaVers('dep', /Deposit/i); });
     $('swcWOut').addEventListener('click', deconnecte);
     $('swcDGo').addEventListener('click', depose);

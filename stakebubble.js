@@ -3191,16 +3191,26 @@
    * la plus legere des pages qui ont tout, et le solde y est le meme
    * qu'ailleurs. Les cinq rangees mènent donc la-bas, panneau ouvert.
    */
+  /* ---- LE REPLI POINTAIT SUR UNE PAGE MORTE ----
+     Sur une page qui n'a pas ses propres panneaux de compte, le tiroir ne
+     peut rien emprunter : ces cinq rangees sont alors de simples LIENS. Ils
+     menaient a `swoge_pusher.html` — la page que plus aucun lien du site
+     n'atteint, remplacee par `swoge_pusher_live.html`. C'est ce qui faisait
+     que « My Wallet » emmenait sur l'ancien Coin Pusher au lieu d'ouvrir le
+     portefeuille sur place. La page vivante gere les cinq memes ancres
+     (#wallet, #staking, #deposit, #withdraw, #quests), verifie. */
   var COMPTE_AILLEURS = [
-    ['swoge_pusher.html#wallet',   '👛 My Wallet'],
-    ['swoge_pusher.html#staking',  '🔒 Staking'],
-    ['swoge_pusher.html#deposit',  '💰 Deposit'],
-    ['swoge_pusher.html#withdraw', '🏧 Withdraw'],
-    ['swoge_pusher.html#quests',   '🎯 Daily Quests'],
+    ['swoge_pusher_live.html#wallet',   '👛 My Wallet'],
+    ['swoge_pusher_live.html#staking',  '🔒 Staking'],
+    ['swoge_pusher_live.html#deposit',  '💰 Deposit'],
+    ['swoge_pusher_live.html#withdraw', '🏧 Withdraw'],
+    ['swoge_pusher_live.html#quests',   '🎯 Daily Quests'],
   ];
   function SECOURS_COMPTE() {
     var ici = (location.pathname.split('/').pop() || 'index.html').toLowerCase() || 'index.html';
-    if (ici === 'swoge_pusher.html') return [];      // il a les siens, en propre
+    /* Les deux coquilles du Coin Pusher ont leurs panneaux en propre : leur
+       proposer un lien vers elles-memes serait un aller-retour pour rien. */
+    if (ici === 'swoge_pusher.html' || ici === 'swoge_pusher_live.html') return [];
     var out = [];
     for (var i = 0; i < COMPTE_AILLEURS.length; i++) {
       var a = document.createElement('a');

@@ -125,7 +125,7 @@
          chargera pas. On ne fabrique pas de fausses rangees : elles
          n'ouvriraient rien, et un menu dont les lignes ne font rien est pire
          qu'un menu absent. */
-      h += '<a href="swoge_pusher.html"><i>&#128176;</i>Deposit &amp; play</a>';
+      h += '<a href="swoge_pusher_live.html"><i>&#128176;</i>Deposit &amp; play</a>';
     } else {
       h += l.map(function(r, i){
         if(r.sep) return '<div class="gx-sep"></div>';

@@ -404,11 +404,24 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
 .bowrap{ position:relative; max-width:860px; margin:0 auto; padding:0 10px 22px; overflow-x:clip;
   container-type:inline-size; }
 
+/* ---- LES ECRITURES REDEVIENNENT LISIBLES SUR LE FOND CLAIR ----
+   DEMANDE : « regarde les couleurs du boulier, essaye de rendre plus lisibles
+   les ecritures ». Ces teintes etaient calibrees pour l'ancienne page NOIRE.
+   Mesure faite sur le rendu, en rapport de contraste : les boutons 5/10/25/50
+   tombaient a 1,36:1, la mise a 1,22:1, le titre a 1,92:1, « How many grids? »
+   et le compte a rebours a 2,35:1 — sous le seuil de 4,5:1, donc illisibles.
+   Meme cause partout : des panneaux penses en « blanc translucide sur fond
+   noir » (rgba(255,255,255,.04)) qui, sur une page claire, ne se voient plus,
+   avec du texte pale dessus.
+   Les cartes VRAIMENT sombres du jeu — `.bo-pot`, `.bo-salle .bx`,
+   `.bo-best .bx` — ne sont pas touchees : leur texte pale y est correct
+   (mesure : 8,1:1 et 15,5:1). C'est le decor de la page qui change, pas la
+   table. */
 .bo-titre{ position:relative; text-align:center; margin:4px 0 8px; }
 .bo-titre h2{ font-family:'Anton',sans-serif; font-size:clamp(26px,8cqi,44px); letter-spacing:2px;
-  line-height:1; color:var(--gold); text-shadow:0 2px 0 rgba(0,0,0,.6), 0 0 26px rgba(230,165,55,.35); }
+  line-height:1; color:#0A1F44; text-shadow:none; }
 .bo-titre p{ font-size:clamp(10px,2.6cqi,12px); letter-spacing:2.2px; text-transform:uppercase;
-  color:#8FBFA4; margin-top:5px; }
+  color:#5F6E88; margin-top:5px; }
 /* ---- LE BOUTON INFO ----
    Le bareme, l'historique et la ligne d'equite verifiable pesaient ensemble
    plus haut que le boulier lui-meme : on jouait une manche de dix secondes et
@@ -463,16 +476,16 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
    de la cage parce que c'est la premiere chose a lire en arrivant. */
 .bo-phase{ display:flex; align-items:baseline; justify-content:center; gap:9px;
   max-width:460px; margin:0 auto 10px; padding:9px 14px; border-radius:12px;
-  background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09); }
-.bo-phase .k{ font-size:10.5px; letter-spacing:2px; text-transform:uppercase; color:#7FA994; }
+  background:#EEF3FB; border:1px solid #E1E9F6; }
+.bo-phase .k{ font-size:10.5px; letter-spacing:2px; text-transform:uppercase; color:#5F6E88; }
 .bo-phase b{ font-family:'Anton',sans-serif; font-size:clamp(19px,5.4cqi,26px); line-height:1;
-  letter-spacing:1px; color:#FFD97A; font-variant-numeric:tabular-nums; }
+  letter-spacing:1px; color:#0A1F44; font-variant-numeric:tabular-nums; }
 /* Les trois dernieres secondes changent de couleur ET de taille : c'est le
    moment ou il faut lever les yeux, et un chiffre qui ne fait que changer se
    rate. */
-.bo-phase b.chaud{ color:#FF8A6B; animation:boBat .5s ease-in-out infinite alternate; }
+.bo-phase b.chaud{ color:#C42B1C; animation:boBat .5s ease-in-out infinite alternate; }
 @keyframes boBat{ to{ transform:scale(1.14); } }
-.bo-phase i{ margin-left:auto; font-style:normal; font-size:11px; color:#5C7F6E; }
+.bo-phase i{ margin-left:auto; font-style:normal; font-size:11px; color:#5F6E88; }
 
 /* ---- la colonne de droite : la salle, puis ma grille ---- */
 .bo-cote{ flex:1 1 260px; min-width:0; max-width:430px; margin:0 auto;
@@ -557,19 +570,19 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
    choisir soi-meme dix numeros sur quatre-vingt-dix demandait plus de temps
    que la manche elle-meme. */
 .bo-lb{ text-align:center; margin:16px 0 7px; font-size:10.5px; letter-spacing:2.2px;
-  text-transform:uppercase; color:#7FA994; }
+  text-transform:uppercase; color:#5F6E88; }
 .bo-qte{ display:flex; gap:6px; justify-content:center; flex-wrap:wrap; max-width:470px;
   margin:0 auto; }
 .bo-qte button{ flex:0 0 auto; min-width:56px; padding:11px 13px; border-radius:12px;
   cursor:pointer; font-family:inherit; font-size:14px; font-weight:800; letter-spacing:.3px;
-  color:#C6D3EA; background:rgba(255,255,255,.045); border:1px solid rgba(255,255,255,.10); }
-.bo-qte button:hover{ background:rgba(255,255,255,.09); color:#EAF2FF; }
+  color:#0B1B36; background:#EEF3FB; border:1px solid #E1E9F6; }
+.bo-qte button:hover{ background:#EAF1FF; color:#1B5FE0; border-color:#1B5FE0; }
 .bo-qte button.on{ color:#231603; border-color:#FFD97A;
   background:linear-gradient(180deg,#FFE49A,#E6A537); box-shadow:0 0 14px rgba(230,165,55,.4); }
 .bo-qte button[disabled]{ opacity:.32; cursor:not-allowed; }
 
-.bo-mise{ text-align:center; margin:12px 0 0; font-size:12.5px; color:#8FBFA4; }
-.bo-mise b{ color:#FFD97A; font-size:clamp(16px,4.4cqi,21px); font-family:'Anton',sans-serif;
+.bo-mise{ text-align:center; margin:12px 0 0; font-size:12.5px; color:#5F6E88; }
+.bo-mise b{ color:#1B5FE0; font-size:clamp(16px,4.4cqi,21px); font-family:'Anton',sans-serif;
   letter-spacing:1px; margin:0 3px; }
 .bo-mise .deja{ color:#8CF3B6; font-weight:700; }
 .bo-jouer{ display:block; width:min(100%,320px); margin:11px auto 0; padding:15px 0;

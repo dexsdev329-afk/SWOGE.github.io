@@ -335,6 +335,11 @@ body.simple .simplehint{display:block}
 
 /* bascule Simple / Advanced */
 .modetog{ background:none !important; border:0 !important; padding:0 !important; gap:6px; display:flex; }
+/* `display:flex` ci-dessus est une regle d'AUTEUR : elle l'emporte sur le
+   `[hidden]{display:none}` du navigateur, et la bascule restait donc a
+   l'ecran malgre son attribut `hidden`. Meme piege que la bande de stats de
+   l'en-tete. Une ligne, et l'attribut tient. */
+.modetog[hidden]{ display:none !important; }
 .modetog .mt{ background:none !important; border:0 !important; padding:0 !important;
   height:clamp(30px,4.6cqi,38px); line-height:0; cursor:pointer;
   background-repeat:no-repeat !important; background-position:center !important;
@@ -646,9 +651,19 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       <img class="bn-chaine" src="img/157fa96cb61b.png" alt="Robinhood Chain 4663"><div class="eyebrow" id="eyebrow">EVM</div>
       <img class="bn-titre" src="img/5fb79acaa8f2.png" alt="Wallet Bench"><h1>Wallet <span>Bench</span></h1>
     </div>
-    <div class="modetog" id="modetog" role="group" aria-label="Interface mode">
-      <button class="mt on" data-mode="simple">Simple</button>
-      <button class="mt" data-mode="advanced">Advanced</button>
+    <!-- ---- LE MODE AVANCE EST RETIRE ----
+         DEMANDE : « pour bench wallet supprime le mode advanced et garde que
+         une barre load token car il y en a 3 et ca cree des bugs ».
+         La bascule reste dans le DOM, masquee : `applyMode` s'en sert encore
+         pour poser `body.simple`, et les preferences enregistrees peuvent
+         encore contenir `mode:"advanced"` — c'est le JS, plus bas, qui les
+         ramene desormais toujours a Simple. La grille avancee, elle, reste
+         elle aussi dans le DOM : One-Click et l'Anneau y LISENT les contrats
+         Uniswap et le token. La cacher est donc le maximum qu'on puisse
+         faire ; la supprimer casserait les deux moteurs. -->
+    <div class="modetog" id="modetog" role="group" aria-label="Interface mode" hidden aria-hidden="true">
+      <button class="mt on" data-mode="simple" tabindex="-1">Simple</button>
+      <button class="mt" data-mode="advanced" tabindex="-1">Advanced</button>
     </div>
     <div class="rpcstat"><span class="dot" id="dot"></span><span id="rpcinfo">RPC not reached</span></div>
   </div>
@@ -665,8 +680,10 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         <button id="ocGen" class="plate md" title="Generate master wallet"><img src="img/b496fdde6c48.png" alt="Generate master wallet"></button>
         <label style="font-size:11px;color:var(--dim)">Hidden wallets <input id="ocN" type="number" min="2" max="100" value="100" style="width:66px;margin-left:6px"></label>
       </div>
-      <label style="display:block;font-size:11px;color:var(--dim);margin:16px 0 6px;text-transform:uppercase;letter-spacing:.06em">Token to pump — $SWOGE by default · paste another Robinhood-Chain contract to run volume on a different coin</label>
-      <div class="btnrow" style="gap:8px;align-items:center">
+      <label class="adv" style="display:block;font-size:11px;color:var(--dim);margin:16px 0 6px;text-transform:uppercase;letter-spacing:.06em">Token to pump — $SWOGE by default · paste another Robinhood-Chain contract to run volume on a different coin</label>
+      <!-- Ce champ suit maintenant la barre du haut ; il reste dans le DOM
+           parce que One-Click le LIT au demarrage. -->
+      <div class="btnrow adv" style="gap:8px;align-items:center">
         <input id="ocTok" placeholder="0x… token contract" style="flex:1;padding:10px;border-radius:8px;border:1px solid #E1E9F6;background:#FFFFFF;color:#0B1B36;font-family:inherit">
         <button id="ocTokReset" title="Reset to $SWOGE">↺ SWOGE</button>
       </div>
@@ -710,7 +727,9 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
             <button data-ringmake="10">10</button>
             <button data-ringmake="20">20</button>
           </div>
-          <div class="field" style="margin:14px 0 0">
+          <!-- Meme chose pour l'Anneau : le champ suit la barre du haut, et
+               reste dans le DOM parce que l'Anneau le LIT. -->
+          <div class="field adv" style="margin:14px 0 0">
             <label for="ringTok">② Target contract</label>
             <input id="ringTok" placeholder="0x… token to trade" spellcheck="false">
           </div>
@@ -855,11 +874,16 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       <div class="simplehint" id="simplehint">
         <b>New here?</b> $SWOGE is already loaded. Just: <b>①</b> Generate a wallet → <b>②</b> send it some ETH → <b>③</b> set your % and hit <b>Buy</b>. Switch to <b>Advanced</b> (top right) for slippage, contracts and split orders.
       </div>
-      <div class="quicktok adv">
+      <!-- LA barre de chargement du token. Il y en avait trois — celle-ci,
+           celle du panneau Token, et le champ de chaque moteur — qui
+           pouvaient se contredire : on collait l'adresse dans l'une, un
+           moteur lisait l'autre. Celle-ci est desormais la seule visible, et
+           c'est elle qui remplit toutes les autres. -->
+      <div class="quicktok">
         <input id="tokQuick" placeholder="Token, pool, or DexScreener URL — 0x… / dexscreener.com/…" spellcheck="false">
         <button id="loadTokQuick" class="plate md" title="Load token"><img src="img/a29ebb1f14ca.png" alt="Load token"></button>
       </div>
-      <div class="note adv" id="tokQuickInfo" style="margin:0 0 14px"></div>
+      <div class="note" id="tokQuickInfo" style="margin:0 0 14px"></div>
 
       <div class="totals">
         <div class="tot"><div class="v" id="tCount">0</div><div class="k">wallets to bench</div></div>
@@ -2288,7 +2312,9 @@ function savePrefs(){
   })); }catch(e){}
 }
 function applyMode(m){
-  uiMode = (m === "advanced") ? "advanced" : "simple";
+  /* Verrouille sur Simple : le mode avance est retire de l'interface, et une
+     preference enregistree avant ce changement ne doit pas le rouvrir. */
+  uiMode = "simple";
   document.body.classList.toggle("simple", uiMode === "simple");
   document.querySelectorAll("#modetog .mt").forEach(b =>
     b.classList.toggle("on", b.dataset.mode === uiMode));
@@ -2325,9 +2351,19 @@ if(prefs){
   if(prefs.reserve) $("#reserve").value = prefs.reserve;
 }
 // quick-bar token en haut = miroir du panneau token complet
+/* Une seule barre, et elle remplit TOUS les champs que les moteurs lisent :
+   le panneau Token (`#tok`), One-Click (`#ocTok`) et l'Anneau (`#ringTok`).
+   Sans cette propagation, coller une adresse en haut laissait les deux
+   moteurs sur l'ancienne — c'est exactement le bug des trois barres. */
+function posePartout(v){
+  ["#tok","#ocTok","#ringTok"].forEach(function(sel){
+    var e=$(sel); if(e) e.value=v;
+  });
+  token = null; try{ wallets.forEach(function(w){ w.tokRaw=null; }); }catch(e){}
+}
 $("#loadTokQuick").onclick = async () => {
   const v = $("#tokQuick").value.trim();
-  if(v) $("#tok").value = v;
+  if(v) posePartout(v);
   $("#tokQuickInfo").innerHTML = '<span class="spin"></span> loading…';
   try{
     await $("#loadtok").onclick();

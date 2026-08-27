@@ -320,6 +320,9 @@
      du portefeuille : jamais la transaction elle-meme, qui attend legitimement
      que le joueur confirme et peut prendre une minute. */
   var DELAI_PORTEFEUILLE = 12000;
+  /* Le second essai : l'iframe est deja montee et chargee, elle repond en
+     quelques dizaines de millisecondes ou elle ne repondra jamais. */
+  var DELAI_RETOUR = 6000;
 
   /* ---- LE NAVIGATEUR INTERNE D'UNE APPLICATION ----
    *
@@ -382,18 +385,72 @@
     return chargePrivy;
   }
 
-  function portefeuilleEmail() {
+  /* ---- ON REVEILLE LE PORTEFEUILLE AVANT QU'ON EN AIT BESOIN ----
+   *
+   * `portefeuille()` n'etait appele que par `signataire()`, c'est-a-dire au
+   * moment EXACT ou le joueur appuie sur Deposit, Withdraw ou Send. Tout se
+   * declenchait donc d'un coup, sous son doigt : telecharger un module de
+   * 670 kilo-octets, monter l'iframe du portefeuille embarque, attendre
+   * qu'elle reponde. Sur un telephone en 4G, douze secondes n'y suffisent pas
+   * toujours — et l'on affichait « votre portefeuille n'a pas repondu ».
+   *
+   * Le reveil part maintenant a l'OUVERTURE du panneau. Entre le moment ou
+   * l'on ouvre « Withdraw » et celui ou l'on a saisi un montant puis appuye,
+   * il se passe plusieurs secondes : elles sont gratuites, autant les
+   * employer. Quand le bouton est presse, `SwogePrivy.getAddress()` repond
+   * deja et `portefeuille()` sort par son chemin court, sans rien attendre.
+   *
+   * Sans consequence s'il echoue : on ignore le resultat. Ce n'est pas une
+   * verification, c'est une mise en route. */
+  var reveilLance = false;
+  function reveilleLePortefeuille() {
+    if (reveilLance) return;
+    reveilLance = true;
+    try { portefeuille().catch(function () {}); } catch (e) {}
+  }
+
+  /* ---- POURQUOI LE PORTEFEUILLE MANQUE : ON NOTE LEQUEL DES TROIS ----
+   *
+   * Trois echecs tres differents finissaient dans la meme phrase, « votre
+   * portefeuille n'a pas repondu », et le joueur qui la lisait ne pouvait rien
+   * en faire :
+   *
+   *   'muet'    `restore()` ne repond NI oui NI rien pendant douze secondes.
+   *             C'est l'iframe du portefeuille embarque qui ne peut pas
+   *             fonctionner. La phrase etait juste dans ce cas-la, et dans
+   *             celui-la seulement.
+   *   'perime'  `restore()` repond tout de suite, et il repond NON : plus
+   *             aucune session e-mail dans ce navigateur. Rien n'a mis douze
+   *             secondes, rien ne s'est tu — la session n'existe plus. C'est
+   *             le seul cas ou « reconnectez-vous » est le bon conseil, et
+   *             c'est justement celui ou on ne le disait pas clairement.
+   *   'absent'  le module lui-meme n'a pas pu etre charge.
+   *
+   * Le motif est pose sur `POURQUOI`, lu par `signataire()` juste apres. Une
+   * variable de module plutot qu'une valeur rendue : `portefeuille()` doit
+   * pouvoir rendre `null` par quatre chemins sans qu'on reecrive sa signature
+   * a chaque fois. */
+  var POURQUOI = null;
+
+  function portefeuilleEmail(essai2) {
     return assurePrivy().then(function (P) {
-      if (!P) return null;
+      if (!P) { POURQUOI = 'absent'; return null; }
       var suite = (P.restore) ? P.restore()
                 : Promise.resolve(P.isLoggedIn && P.isLoggedIn() ? P.getAddress() : null);
       /* C'EST ICI que ca se bloquait. `restore()` peut ne jamais repondre. */
-      return avecDelai(suite, DELAI_PORTEFEUILLE, 'wallet-muet').then(function (adr) {
+      return avecDelai(suite, essai2 ? DELAI_RETOUR : DELAI_PORTEFEUILLE, 'wallet-muet').then(function (adr) {
         adr = adr || (P.getAddress && P.getAddress());
-        if (!adr) return null;
+        if (!adr) { POURQUOI = 'perime'; return null; }
+        POURQUOI = null;
         return { eip1193: P.getProvider(), adresse: adr };
       });
-    }).catch(function () { return null; });
+    }).catch(function (e) {
+      /* `avecDelai` rejette avec ce motif-la quand le delai tombe : c'est la
+         SEULE facon de distinguer un silence d'un refus, et sans elle les deux
+         se ressemblaient. */
+      POURQUOI = (e && /wallet-muet/.test(String(e.message || e))) ? 'muet' : 'absent';
+      return null;
+    });
   }
 
   function portefeuille() {
@@ -406,6 +463,27 @@
       }
       return portefeuilleEmail().then(function (w) {
         if (w) return w;
+        /* ---- ON REESSAIE UNE FOIS, ET CE N'EST PAS DE L'ESPOIR ----
+         *
+         * `restore()` monte l'iframe du portefeuille embarque, attend six
+         * cents millisecondes EN AVEUGLE, puis lui parle. Sur un telephone
+         * l'iframe n'a pas fini de charger au bout de six cents
+         * millisecondes : la demande part dans un document vide, la reponse
+         * n'arrive jamais, et notre delai de douze secondes tranche.
+         *
+         * Mais l'iframe, elle, RESTE — le module la garde. Au deuxieme appel
+         * il ne la remonte pas : elle a eu douze secondes pour charger, et
+         * elle repond. C'est pour ca que le deuxieme essai reussit la ou le
+         * premier echoue, et pourquoi se reconnecter ne changeait rien : la
+         * connexion recharge la page, l'iframe repart de zero, et l'on
+         * retombait sur la meme course perdue.
+         *
+         * Six secondes pour ce second essai et non douze : si l'iframe est
+         * chargee elle repond en quelques dizaines de millisecondes ; si elle
+         * ne peut PAS fonctionner — un navigateur qui cloisonne le stockage
+         * des tiers — rien ne la sauvera, et il ne faut pas faire attendre le
+         * joueur une seconde fois pour rien. */
+        return portefeuilleEmail(true);
         /* On ne retombe PAS sur window.ethereum : un compte email et une
            extension installee sur la meme machine sont deux adresses
            differentes, et deposer depuis la mauvaise enverrait les jetons
@@ -485,11 +563,22 @@
          * Chacun a une sortie differente, et c'est tout l'interet de les
          * distinguer. */
         var sansPortefeuille = (mode === 'wallet' && !window.ethereum);
+        /* ---- ET LA SESSION PERIMEE N'EST PAS UN SILENCE ----
+         * `restore()` a repondu tout de suite, et il a repondu NON : il n'y a
+         * plus de session e-mail dans ce navigateur. Rien n'a mis douze
+         * secondes, rien ne s'est tu. C'est le SEUL cas ou se reconnecter est
+         * le bon geste — et c'etait justement celui ou l'on disait au joueur
+         * que son portefeuille n'avait pas repondu, ce qui l'envoyait chercher
+         * une panne au lieu de le faire signer. */
+        var perime = (mode === 'email' && POURQUOI === 'perime');
         var err = new Error(!mode ? 'Sign in first'
           : sansPortefeuille
             ? 'No wallet in this browser. You signed in with a wallet, and there is '
               + 'none here — open swoleeswoge.dog inside your wallet app\'s browser, '
               + 'or sign in with your email instead.'
+          : perime
+            ? 'Your email sign-in is no longer valid in this browser — sign in again to '
+              + acte + '.'
           : app
             ? 'Your wallet did not answer. ' + app + "'s built-in browser often blocks it — "
               + 'open swoleeswoge.dog in Chrome or Safari, or sign in again.'
@@ -942,6 +1031,10 @@
       el.classList.toggle('show', b === nom);
     });
     if (nom === 'wallet' || nom === 'dep') litSoldesChaine();
+    /* Les trois panneaux qui finiront par demander une signature. On lance le
+       reveil ici, pas au chargement de la page : un joueur qui vient jouer
+       n'a aucune raison de telecharger le module du portefeuille. */
+    if (nom === 'wallet' || nom === 'dep' || nom === 'wd') reveilleLePortefeuille();
     /* On demande a chaque ouverture s'il reste un bon a encaisser. Le garder en
        memoire depuis la derniere fois ne suffirait pas : le cas qu'on veut
        couvrir est justement celui du joueur qui a recharge sa page apres avoir

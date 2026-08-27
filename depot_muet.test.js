@@ -94,6 +94,39 @@ function fauxPrivy(delai) {
   };`;
 }
 
+/* ---- L'IFRAME FROIDE, PUIS CHAUDE ----
+ *
+ * C'est la panne exacte, reproduite. `restore()` monte l'iframe du
+ * portefeuille embarque, attend six cents millisecondes EN AVEUGLE, puis lui
+ * parle. Sur un telephone l'iframe n'a pas fini de charger : la demande part
+ * dans un document vide et la reponse n'arrive jamais.
+ *
+ * Mais l'iframe RESTE — le module la garde. Le deuxieme appel ne la remonte
+ * pas, elle a eu le temps de charger, et elle repond. Ce faux portefeuille ne
+ * fait rien d'autre : il ne repond JAMAIS la premiere fois, et tout de suite
+ * la seconde. */
+function fauxPrivyFroid() {
+  return `window.SwogePrivy = {
+    init: function () {},
+    restore: function () {
+      window.__restore = (window.__restore||0)+1;
+      if (window.__restore === 1) return new Promise(function () {});
+      window.__adr = '0x2222222222222222222222222222222222222222';
+      return Promise.resolve(window.__adr);
+    },
+    getProvider: function () { return { request: function (q) {
+      if (q.method === 'eth_chainId') return Promise.resolve('0x1237');
+      if (q.method === 'net_version') return Promise.resolve('4663');
+      if (q.method === 'eth_accounts') return Promise.resolve([window.__adr]);
+      return Promise.reject(new Error('pas de chaine dans cet essai'));
+    }, on: function () {}, removeListener: function () {} }; },
+    getAddress: function () { return window.__adr || null; },
+    isLoggedIn: function () { return !!window.__adr; },
+    logout: function () {}, sendCode: function () { return Promise.resolve(); },
+    verifyCode: function () { return Promise.resolve(null); }
+  };`;
+}
+
 (async () => {
   process.env.DATA_DIR = fs.mkdtempSync('/tmp/dmuet-');
   process.env.RPC_URL = ''; process.env.ADMIN_KEY = 'k';
@@ -312,6 +345,53 @@ function fauxPrivy(delai) {
          'et il n accuse pas un portefeuille de ne pas avoir repondu');
       ok(fin.sortie, 'et il donne quand meme une sortie');
     }
+    await p.close();
+  }
+
+  // ============ 7. UNE SESSION PERIMEE N'EST PAS UN SILENCE ============
+  {
+    console.log('\n-- la session e-mail a expire --');
+    /* ---- POURQUOI CETTE SECTION EXISTE ----
+     * Trois echecs tres differents finissaient dans la meme phrase : « votre
+     * portefeuille n'a pas repondu ». Celui-ci n'a RIEN a voir avec un
+     * silence — `restore()` repond tout de suite, et il repond NON : il n'y a
+     * plus de session dans ce navigateur.
+     * C'est le seul cas ou se reconnecter est le bon geste, et c'etait
+     * justement celui ou on envoyait le joueur chercher une panne. La
+     * distinction n'est pas cosmetique : elle change ce qu'il doit faire.
+     * `restore()` rend `null` SANS ATTENDRE — c'est ce qui separe ce cas du
+     * premier, ou la promesse ne se resout jamais. */
+    const p = await jusquAuDepot(`window.SwogePrivy = {
+      init: function () {},
+      restore: function () { window.__restore = (window.__restore||0)+1;
+                             return Promise.resolve(null); },
+      getProvider: function () { return null; },
+      getAddress: function () { return null; },
+      isLoggedIn: function () { return false; },
+      logout: function () {}, sendCode: function () { return Promise.resolve(); },
+      verifyCode: function () { return Promise.resolve(null); }
+    };`, { app: false });
+    const t7 = Date.now();
+    await appuie(p, 'swcDGo');
+    let fin = null;
+    for (let i = 0; i < 60 && !fin; i++) {
+      await p.waitForTimeout(400);
+      const e = await lis(p);
+      if (!e.mort && e.texte) fin = e;
+    }
+    const mis = Date.now() - t7;
+    ok(!!fin, 'le depot aboutit a une conclusion');
+    if (fin) {
+      ok(/no longer valid/i.test(fin.texte),
+         `il dit que la session a expire : ${JSON.stringify(fin.texte.slice(0, 90))}`);
+      ok(!/did not answer/i.test(fin.texte),
+         'et il n accuse pas un portefeuille de s etre tu — il a repondu, et il a dit non');
+      ok(/to deposit/i.test(fin.texte), 'en nommant le geste qu on voulait faire');
+      ok(fin.sortie, 'avec une sortie a toucher');
+    }
+    /* ET SANS FAIRE ATTENDRE. Un refus immediat annonce en douze secondes est
+       douze secondes volees : le delai n'est la que pour ce qui se TAIT. */
+    ok(mis < 6000, `sans attendre le delai du silence (${(mis / 1000).toFixed(1)} s)`);
     await p.close();
   }
 

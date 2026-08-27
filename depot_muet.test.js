@@ -114,10 +114,15 @@ function fauxPrivy(delai) {
   const nav = await chromium.launch({ args: ['--no-sandbox', '--disable-dev-shm-usage'] });
 
   /* Un joueur, jusqu'au panneau de depot ouvert et le montant saisi. */
-  async function jusquAuDepot(privy) {
+  /* `opts.mode` : 'email' (defaut) ou 'wallet'. `opts.app` : faux pour un
+     navigateur ORDINAIRE — Safari, Chrome — au lieu du navigateur interne de
+     Telegram. Les deux comptent : ils choisissent laquelle des trois causes
+     `signataire()` doit nommer. */
+  async function jusquAuDepot(privy, opts) {
+    const o = opts || {};
     const p = await nav.newPage({ viewport: { width: 420, height: 880 } });
     await p.route('**/privy-swoge.js', (r) => r.fulfill({ status: 200, contentType: 'text/javascript', body: privy }));
-    await p.addInitScript(function () {
+    await p.addInitScript(function (o) {
       window.__s = [];
       const N = window.WebSocket;
       function C(u, pr) { const s = (pr === undefined) ? new N(u) : new N(u, pr); s.__m = [];
@@ -125,10 +130,11 @@ function fauxPrivy(delai) {
         window.__s.push(s); return s; }
       C.prototype = N.prototype; ['CONNECTING','OPEN','CLOSING','CLOSED'].forEach((k) => { C[k] = N[k]; });
       window.WebSocket = C;
-      try { localStorage.setItem('swogeAuth', 'email'); } catch (e) {}
-      /* Le navigateur interne de Telegram, sur Android. */
-      window.TelegramWebviewProxy = { postEvent: function () {} };
-    });
+      try { localStorage.setItem('swogeAuth', o.mode || 'email'); } catch (e) {}
+      /* Le navigateur interne de Telegram, sur Android. Absent quand on veut
+         eprouver un Safari ou un Chrome ordinaire. */
+      if (o.app !== false) window.TelegramWebviewProxy = { postEvent: function () {} };
+    }, o);
     await p.goto(`http://127.0.0.1:${site.port}/games.html?server=ws://127.0.0.1:${port}`,
                  { waitUntil: 'domcontentloaded' });
     await p.waitForFunction(() => window.__s.some((s) => s.__m.some((m) => m.type === 'hello')), { timeout: 30000 });
@@ -145,6 +151,25 @@ function fauxPrivy(delai) {
     return p;
   }
 
+  /* ---- ON APPUIE DANS LA PAGE, PAS AVEC LA SOURIS ----
+   *
+   * `p.click()` verifie d'abord que le point vise n'est couvert par rien.
+   * Le panneau du compte defile dans son propre `.pscroll`, et sur un ecran
+   * de 880 pixels le bouton tombe sous le pli : Playwright annonce alors que
+   * `.pscroll` intercepte le clic et abandonne au bout de trente secondes.
+   * Ce n'est pas ce que cet essai mesure — il mesure ce que le bouton REPOND
+   * quand le portefeuille se tait — et le faire dependre du pli le rendait
+   * rouge sans qu'aucun defaut ne soit en cause.
+   * On amene donc l'element a l'ecran, puis on appuie. Le gestionnaire est
+   * appele par le meme chemin qu'un vrai doigt ; seule la verification de
+   * recouvrement saute, et elle appartient a un autre essai. */
+  const appuie = (p, id) => p.evaluate((q) => {
+    const b = document.getElementById(q);
+    if (!b) throw new Error('bouton absent : ' + q);
+    b.scrollIntoView({ block: 'center' });
+    b.click();
+  }, id);
+
   const lis = (p) => p.evaluate(() => {
     const m = document.querySelector('.swc-msg');
     const b = document.getElementById('swcDGo');
@@ -158,7 +183,7 @@ function fauxPrivy(delai) {
     console.log('\n-- le portefeuille ne repond jamais (le cas signale) --');
     const p = await jusquAuDepot(fauxPrivy(null));
     const t0 = Date.now();
-    await p.click('#swcDGo');
+    await appuie(p, 'swcDGo');
 
     await p.waitForTimeout(900);
     const tot = await lis(p);
@@ -198,7 +223,7 @@ function fauxPrivy(delai) {
   {
     console.log('\n-- un portefeuille lent (2 s) mais vivant --');
     const p = await jusquAuDepot(fauxPrivy(2000));
-    await p.click('#swcDGo');
+    await appuie(p, 'swcDGo');
     let fin = null;
     for (let i = 0; i < 30 && !fin; i++) {
       await p.waitForTimeout(400);
@@ -216,6 +241,77 @@ function fauxPrivy(delai) {
     }
     const appels = await p.evaluate(() => window.__restore || 0);
     ok(appels >= 1, 'le portefeuille a bien ete sollicite (' + appels + ' fois)');
+    await p.close();
+  }
+
+  // ============ 5. LE MESSAGE NOMME CE QU'ON ALLAIT FAIRE ============
+  {
+    console.log('\n-- le message parle du bon bouton --');
+    /* ---- LA PANNE ----
+     * Le refus disait « sign in again to deposit » quel que soit le bouton
+     * appuye. Un joueur qui essayait de RETIRER lisait donc qu'il fallait se
+     * reconnecter pour deposer. Il a envoye la capture, et il avait raison de
+     * trouver ca louche : un message qui parle d'autre chose que de ce qu'on
+     * vient de faire fait douter du reste de la phrase, y compris de la partie
+     * qui etait vraie.
+     * On eprouve par l'ENVOI, qui passe par le meme `signataire()` et n'a
+     * besoin d'aucun bon signe par le serveur. */
+    const p = await jusquAuDepot(fauxPrivy(null), { app: false });
+    await p.evaluate(() => { document.querySelector('#menu a[data-panel="wallet"]').click(); });
+    await p.waitForTimeout(600);
+    await p.evaluate(() => {
+      document.getElementById('swcSTo').value = '0x1111111111111111111111111111111111111111';
+      document.getElementById('swcSAmt').value = '1';
+    });
+    await appuie(p, 'swcSGo');
+    let fin = null;
+    for (let i = 0; i < 45 && !fin; i++) {
+      await p.waitForTimeout(400);
+      const t = await p.evaluate(() => {
+        const m = document.querySelector('.swc-msg');
+        const b = document.getElementById('swcSGo');
+        return (m && getComputedStyle(m).opacity !== '0' && !(b && b.disabled))
+          ? m.textContent.trim() : '';
+      });
+      if (t) fin = t;
+    }
+    ok(!!fin, 'l envoi finit par conclure');
+    if (fin) {
+      ok(/to send/i.test(fin), `il parle de l ENVOI : ${JSON.stringify(fin.slice(0, 90))}`);
+      ok(!/to deposit/i.test(fin), 'et jamais du depot, qu on n a pas demande');
+    }
+    await p.close();
+  }
+
+  // ============ 6. « PAS DE PORTEFEUILLE » N'EST PAS « PAS DE REPONSE » ============
+  {
+    console.log('\n-- aucun portefeuille dans ce navigateur --');
+    /* ---- LA PANNE, ET C EST LA PLUS FREQUENTE SUR TELEPHONE ----
+     * Un joueur connecte PAR PORTEFEUILLE qui rouvre le site dans Safari ou
+     * Chrome n a pas de portefeuille du tout : il n y a pas d extension sur
+     * telephone, `window.ethereum` n existe pas, et rien n a ete demande a
+     * personne. Lui dire « votre portefeuille n a pas repondu » l envoie
+     * chercher une panne qui n existe pas — et le bouton « reconnectez-vous »
+     * ne peut RIEN y changer, il retombera sur « No wallet found in this
+     * browser ». C est exactement ce qui a ete rapporte : « je me suis
+     * deconnecte et reconnecte, pareil ».
+     * On ne monte AUCUN `window.ethereum` : c est tout le sujet. */
+    const p = await jusquAuDepot(fauxPrivy(null), { mode: 'wallet', app: false });
+    await appuie(p, 'swcDGo');
+    let fin = null;
+    for (let i = 0; i < 45 && !fin; i++) {
+      await p.waitForTimeout(400);
+      const e = await lis(p);
+      if (!e.mort && e.texte) fin = e;
+    }
+    ok(!!fin, 'le depot finit par conclure');
+    if (fin) {
+      ok(/no wallet in this browser/i.test(fin.texte),
+         `il dit qu il n y en a pas : ${JSON.stringify(fin.texte.slice(0, 110))}`);
+      ok(!/did not answer/i.test(fin.texte),
+         'et il n accuse pas un portefeuille de ne pas avoir repondu');
+      ok(fin.sortie, 'et il donne quand meme une sortie');
+    }
     await p.close();
   }
 

@@ -429,7 +429,15 @@
   /* Le signataire, sur la bonne chaine. On propose le changement de reseau
      plutot que de refuser : un joueur qui a MetaMask sur Ethereum ne sait pas
      forcement qu'il existe une chaine Robinhood. */
-  function signataire() {
+  /* `quoi` nomme CE QU'ON ALLAIT FAIRE — 'deposit', 'withdraw', 'send'.
+   *
+   * Le message disait « sign in again to deposit » quel que soit le bouton
+   * appuye. Un joueur qui essayait de RETIRER lisait donc qu'il fallait se
+   * reconnecter pour deposer : il a rapporte la capture, et il avait raison
+   * de trouver ca louche. Un message qui parle d'autre chose que de ce qu'on
+   * vient de faire fait douter du reste de la phrase, y compris de la partie
+   * qui etait vraie. */
+  function signataire(quoi) {
     return portefeuille().then(function (w) {
       /* « Sign in first » etait faux et deroutant pour quelqu'un qui voyait
          son pseudo et son solde a l'ecran. On distingue les deux cas. */
@@ -453,12 +461,39 @@
          * cloisonnent le stockage des sites tiers, et un portefeuille
          * embarque vit precisement dans une iframe tierce. */
         var app = dansUneApp();
-        var err = new Error(mode
-          ? (app
-             ? 'Your wallet did not answer. ' + app + "'s built-in browser often blocks it — " +
-               'open swoleeswoge.dog in Chrome or Safari, or sign in again.'
-             : 'Your wallet did not answer — sign in again to deposit')
-          : 'Sign in first');
+        var acte = quoi === 'withdraw' ? 'withdraw'
+                 : quoi === 'send' ? 'send'
+                 : quoi === 'deposit' ? 'deposit' : 'continue';
+        /* ---- TROIS CAUSES, ET UNE SEULE PHRASE LES COUVRAIT ----
+         *
+         * « Your wallet did not answer » etait faux dans le cas le plus
+         * frequent sur telephone. Un joueur connecte PAR PORTEFEUILLE
+         * (`swogeAuth = wallet`) qui rouvre le site dans Safari ou Chrome n'a
+         * tout simplement PAS de portefeuille dans ce navigateur : il n'y a
+         * pas d'extension sur telephone, `window.ethereum` n'existe pas, et
+         * `portefeuille()` rend `null` immediatement. Rien n'a ete demande a
+         * personne — il n'y avait personne a qui demander. Lui dire qu'on n'a
+         * pas eu de reponse l'envoie chercher une panne qui n'existe pas, et
+         * se reconnecter ne peut RIEN y changer : il retombera sur « No wallet
+         * found in this browser ».
+         *
+         * On separe donc les trois :
+         *   - pas de portefeuille du tout dans ce navigateur ;
+         *   - un portefeuille embarque que le navigateur d'une application
+         *     empeche de repondre ;
+         *   - un portefeuille qui a vraiment mis douze secondes sans repondre.
+         * Chacun a une sortie differente, et c'est tout l'interet de les
+         * distinguer. */
+        var sansPortefeuille = (mode === 'wallet' && !window.ethereum);
+        var err = new Error(!mode ? 'Sign in first'
+          : sansPortefeuille
+            ? 'No wallet in this browser. You signed in with a wallet, and there is '
+              + 'none here — open swoleeswoge.dog inside your wallet app\'s browser, '
+              + 'or sign in with your email instead.'
+          : app
+            ? 'Your wallet did not answer. ' + app + "'s built-in browser often blocks it — "
+              + 'open swoleeswoge.dog in Chrome or Safari, or sign in again.'
+            : 'Your wallet did not answer — sign in again to ' + acte);
         /* ON NE DEPLACE PLUS PERSONNE. La sortie envoyait sur le Coin Pusher :
            le joueur tapait « me reconnecter » depuis le hall et se retrouvait
            dans un autre jeu, loin de ce qu'il voulait faire. Le formulaire de
@@ -521,7 +556,7 @@
     bouton.disabled = true;
     bouton.textContent = 'Opening your wallet\u2026';
     dit('Opening your wallet\u2026', '', null, true);
-    signataire().then(function (w) {
+    signataire('send').then(function (w) {
       if (jetonChoisi === 'eth') {
         return w.signer.sendTransaction({ to: to, value: ethers.utils.parseEther(v) });
       }
@@ -1076,7 +1111,7 @@
     bouton.disabled = true;
     bouton.textContent = 'Opening your wallet…';
     dit('Opening your wallet…', '', null, true);
-    signataire().then(function (w) {
+    signataire('deposit').then(function (w) {
       var montant = ethers.utils.parseUnits(s, 18);
       var jeton = new ethers.Contract(TOKEN, ERC20_ABI, w.signer);
       var coffre = new ethers.Contract(VAULT, VAULT_ABI, w.signer);
@@ -1115,7 +1150,7 @@
   function envoieRetrait(v) {
     if (!v) return;
     dit('Opening your wallet…', '', null, true);
-    signataire().then(function (w) {
+    signataire('withdraw').then(function (w) {
       var coffre = new ethers.Contract(v.vault || VAULT, VAULT_ABI, w.signer);
       dit('Confirm the withdrawal in your wallet…', '', null, true);
       return coffre.withdraw(v.cumulative, v.deadline, v.v, v.r, v.s)

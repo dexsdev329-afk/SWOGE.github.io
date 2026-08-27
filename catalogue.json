@@ -1,6 +1,13 @@
 {
  "sol": [
   {
+   "cle": "arena",
+   "fichier": "img/nexus/tiles/ground_arena.webp",
+   "l": 640,
+   "h": 640,
+   "cadres": 1
+  },
+  {
    "cle": "cave",
    "fichier": "img/nexus/tiles/ground_cave.webp",
    "l": 640,
@@ -170,6 +177,13 @@
    "fichier": "img/nexus/tiles/obj_arcade_maison.webp",
    "l": 634,
    "h": 412,
+   "cadres": 1
+  },
+  {
+   "cle": "arena",
+   "fichier": "img/nexus/tiles/obj_arena.webp",
+   "l": 640,
+   "h": 640,
    "cadres": 1
   },
   {
@@ -373,6 +387,13 @@
    "fichier": "img/nexus/tiles/obj_portail.webp",
    "l": 1280,
    "h": 320,
+   "cadres": 1
+  },
+  {
+   "cle": "portail_arena",
+   "fichier": "img/nexus/tiles/obj_portail_arena.webp",
+   "l": 640,
+   "h": 256,
    "cadres": 1
   },
   {
@@ -713,6 +734,13 @@
    "fichier": "img/nexus/monstres/oracle.webp",
    "l": 512,
    "h": 512,
+   "cadres": 1
+  },
+  {
+   "cle": "orage",
+   "fichier": "img/nexus/monstres/orage.webp",
+   "l": 1024,
+   "h": 1024,
    "cadres": 1
   },
   {

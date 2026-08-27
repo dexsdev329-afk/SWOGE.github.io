@@ -843,42 +843,6 @@
     });
   }
 
-  /* Envoi vers une adresse libre. Meme contrat que le `doSend` des pages de
-     jeu : on verifie l'adresse et le montant AVANT d'ouvrir le portefeuille,
-     pour ne pas faire surgir une demande de signature sur une saisie fautive.
-     `signataire()` porte deja tout le reste : reseau, reprise de session, et
-     le message d'aide quand le portefeuille ne repond pas. */
-  function envoie() {
-    var bouton = $('swcSGo');
-    var to = (($('swcSTo') || {}).value || '').trim();
-    if (!/^0x[0-9a-fA-F]{40}$/.test(to)) return dit('Enter a valid 0x address', 'ko');
-    var v = (($('swcSAmt') || {}).value || '').replace(',', '.').trim();
-    if (!(parseFloat(v) > 0)) return dit('Enter an amount', 'ko');
-    var jetonChoisi = (($('swcSTok') || {}).value || 'swoge');
-    var libelle = bouton.textContent;
-    bouton.disabled = true;
-    bouton.textContent = 'Opening your wallet\u2026';
-    dit('Opening your wallet\u2026', '', null, true);
-    signataire('send').then(function (w) {
-      if (jetonChoisi === 'eth') {
-        return w.signer.sendTransaction({ to: to, value: ethers.utils.parseEther(v) });
-      }
-      return new ethers.Contract(TOKEN, ERC20_ABI, w.signer)
-        .transfer(to, ethers.utils.parseUnits(v, 18));
-    }).then(function (tx) {
-      dit('Sending\u2026', '', null, true);
-      return tx.wait();
-    }).then(function () {
-      dit('\u2705 Sent ' + v + ' ' + (jetonChoisi === 'eth' ? 'ETH' : '$SWOGE'), 'ok');
-      if ($('swcSAmt')) $('swcSAmt').value = '';
-      if ($('swcSTo')) $('swcSTo').value = '';
-      litSoldesChaine();
-    })['catch'](function (e) {
-      dit(String((e && (e.reason || e.message)) || e).slice(0, 120), 'ko', e && e.sortie);
-    }).then(function () {
-      bouton.disabled = false; bouton.textContent = libelle;
-    });
-  }
 
   function litSoldesChaine() {
     var lec = lecteur();
@@ -963,12 +927,7 @@
       /* La section d'envoi : un trait pour la detacher du reste, un titre,
          et la ligne montant + jeton. */
       '.swc-sep{height:1px;margin:16px 0 12px;background:#E1E9F6;}' +
-      '.swc-envt{font-size:12.5px;font-weight:800;color:#0B1B36;text-align:center;}' +
-      '.swc-envr{display:flex;gap:8px;align-items:center;}' +
-      '.swc-envr #swcSAmt{flex:1 1 auto;min-width:0;}' +
-      '.swc-envr #swcSTok{flex:0 0 auto;padding:11px;border-radius:11px;font-family:inherit;' +
       'font-size:14px;color:#0B1B36;background:#EEF3FB;border:1px solid #E1E9F6;cursor:pointer;}' +
-      '#swcSTo{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;}' +
       '.swc-pc{display:flex;gap:6px;margin-top:8px;}' +
       '.swc-pc button{flex:1 1 0;min-width:0;padding:8px 2px;border-radius:9px;cursor:pointer;' +
       'font-family:inherit;font-size:11.5px;font-weight:700;color:#0B1B36;' +
@@ -1072,19 +1031,31 @@
            il ne proposait que Copy / Deposit / Explorer / Disconnect. Le retrait
            du jeu depose sur le portefeuille du COMPTE ; sans ceci, les fonds y
            restaient sans porte de sortie sur les deux pages les plus visitees. */
-        '<div class="swc-sep"></div>' +
-        '<div class="swc-envt">Send to another address</div>' +
-        '<label>Recipient address</label>' +
-        '<input id="swcSTo" placeholder="0x…" autocomplete="off" spellcheck="false">' +
-        '<label>Amount</label>' +
-        '<div class="swc-envr">' +
-          '<input id="swcSAmt" inputmode="decimal" placeholder="amount">' +
-          '<select id="swcSTok" aria-label="Token to send">' +
-            '<option value="swoge">$SWOGE</option>' +
-            '<option value="eth">ETH (RH)</option>' +
-          '</select>' +
-        '</div>' +
-        '<button class="swc-b p" id="swcSGo" type="button">Send</button>' +
+        /* ---- L'ENVOI VERS UNE ADRESSE LIBRE EST RETIRE ----
+         *
+         * Demande apres coup, et c'est un bon retrait. Le jeu depose deja sur
+         * l'adresse DU COMPTE : le retrait n'a pas de destinataire a choisir,
+         * il va la ou le joueur est connecte. Ce formulaire ne servait donc a
+         * rien que le portefeuille du joueur ne fasse mieux — et il portait
+         * trois risques que rien ne compensait : une adresse mal recopiee
+         * envoie des jetons dans le vide, un « 0x… » colle depuis une
+         * conversation est le vecteur d'arnaque le plus banal qui soit, et
+         * c'etait la troisieme porte qui demandait une signature, donc une
+         * troisieme facon de tomber sur un portefeuille qui ne repond pas.
+         *
+         * Ce qui reste fait tout : deposer, retirer, et — depuis peu —
+         * emporter sa cle. Un joueur qui veut envoyer a quelqu'un le fait
+         * depuis son propre portefeuille, ou il voit ce qu'il signe. */
+        /* ---- LA CLE, DEPUIS LE PORTEFEUILLE AUSSI ----
+         * Le meme lien est pose dans le panneau de RETRAIT, devant le bouton
+         * qui peut ne pas repondre. Ici, il n'est pas une sortie de secours
+         * mais une PROPRIETE : c'est la page du portefeuille, et un joueur doit
+         * pouvoir emporter son adresse ailleurs sans avoir a etre bloque
+         * d'abord. Les deux endroits disent donc la meme chose autrement — l'un
+         * repare, l'autre appartient. */
+        '<a class="swc-b" id="swcWCle" href="wallet-export.html" ' +
+          'style="display:block;text-align:center;text-decoration:none">' +
+          'Export my private key</a>' +
         '<button class="swc-b d" id="swcWOut" type="button">Disconnect</button>' +
         '<button class="swc-b" data-close type="button">Close</button>' +
       '</div></div>' +
@@ -1215,7 +1186,6 @@
       b.textContent = 'Copied ✓';
       setTimeout(function () { b.textContent = 'Copy'; }, 1400);
     });
-    $('swcSGo').addEventListener('click', envoie);
     $('swcWDep').addEventListener('click', function () { vaVers('dep', /Deposit/i); });
     $('swcWOut').addEventListener('click', deconnecte);
     $('swcDGo').addEventListener('click', depose);

@@ -291,7 +291,7 @@ function fauxPrivyFroid() {
 
   // ============ 5. LE MESSAGE NOMME CE QU'ON ALLAIT FAIRE ============
   {
-    console.log('\n-- le message parle du bon bouton --');
+    console.log('\n-- chaque bouton nomme son propre geste --');
     /* ---- LA PANNE ----
      * Le refus disait « sign in again to deposit » quel que soit le bouton
      * appuye. Un joueur qui essayait de RETIRER lisait donc qu'il fallait se
@@ -299,33 +299,22 @@ function fauxPrivyFroid() {
      * trouver ca louche : un message qui parle d'autre chose que de ce qu'on
      * vient de faire fait douter du reste de la phrase, y compris de la partie
      * qui etait vraie.
-     * On eprouve par l'ENVOI, qui passe par le meme `signataire()` et n'a
-     * besoin d'aucun bon signe par le serveur. */
-    const p = await jusquAuDepot(fauxPrivy(null), { app: false });
-    await p.evaluate(() => { document.querySelector('#menu a[data-panel="wallet"]').click(); });
-    await p.waitForTimeout(600);
-    await p.evaluate(() => {
-      document.getElementById('swcSTo').value = '0x1111111111111111111111111111111111111111';
-      document.getElementById('swcSAmt').value = '1';
-    });
-    await appuie(p, 'swcSGo');
-    let fin = null;
-    for (let i = 0; i < 45 && !fin; i++) {
-      await p.waitForTimeout(400);
-      const t = await p.evaluate(() => {
-        const m = document.querySelector('.swc-msg');
-        const b = document.getElementById('swcSGo');
-        return (m && getComputedStyle(m).opacity !== '0' && !(b && b.disabled))
-          ? m.textContent.trim() : '';
-      });
-      if (t) fin = t;
-    }
-    ok(!!fin, 'l envoi finit par conclure');
-    if (fin) {
-      ok(/to send/i.test(fin), `il parle de l ENVOI : ${JSON.stringify(fin.slice(0, 90))}`);
-      ok(!/to deposit/i.test(fin), 'et jamais du depot, qu on n a pas demande');
-    }
-    await p.close();
+     *
+     * ---- ET POURQUOI CET ESSAI EST DEVENU STATIQUE ----
+     * Il appuyait sur ENVOYER, la troisieme porte qui demandait une signature.
+     * Cette porte a ete retiree — le jeu depose sur l'adresse du compte, il n'y
+     * a pas de destinataire a choisir. Le reproduire par le clic demanderait
+     * maintenant un bon signe par le serveur, ce qui deplacerait le sujet.
+     * On lit donc la SOURCE : chaque appel a `signataire` doit nommer son
+     * geste. C'est exactement le defaut — un appel qui oublie son nom retombe
+     * sur le mot par defaut — et ca se verifie sans navigateur. */
+    const src = fs.readFileSync(path.join(SITE, 'swogecompte.js'), 'utf8');
+    const appels = [...src.matchAll(/signataire\(([^)]*)\)\s*\.then/g)].map((m) => m[1].trim());
+    ok(appels.length >= 2, `il y a bien des appels a verifier (${appels.length})`);
+    const muets = appels.filter((a) => !/^'[a-z]+'$/.test(a));
+    ok(muets.length === 0,
+       muets.length ? `${muets.length} appel(s) sans geste nomme : ${muets.join(', ')}`
+                    : `les ${appels.length} appels nomment leur geste (${appels.join(', ')})`);
   }
 
   // ============ 6. « PAS DE PORTEFEUILLE » N'EST PAS « PAS DE REPONSE » ============

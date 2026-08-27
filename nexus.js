@@ -952,7 +952,7 @@
       /* Mourir dans un donjon en fait sortir : le serveur a deja remis le
          joueur dans le monde ouvert. Laisser `DONJON_C` pose ici aurait garde le
          sol de pierre et le bouton « EXIT » sur l'ecran du Nexus. */
-      DONJON_C = null; TUILES_D = null; BRAISES_C = []; PORTAILS_C = []; PORTAILS_LOIN = [];
+      DONJON_C = null; EFFETS_C = null; TUILES_D = null; BRAISES_C = []; PORTAILS_C = []; PORTAILS_LOIN = [];
       PORTAIL_PIEDS = null; PORTAIL_SIGNE = ''; peintPorte();
       POUVOIR_C = null; EFFETS_P = []; PARALYSE = 0; RALENTI = 0; BRULURE = 0; POUSSE = 0;
       VITESSE = 260; peintPouvoir();
@@ -7751,6 +7751,9 @@
   /* Le nom du donjon ou l'on se trouve, ou null dehors. Et la forme de son sol,
      tuile par tuile. */
   var DONJON_C = null, TUILES_D = null;
+  /* La famille d'effets du lieu ou l'on est, nommee par le serveur. `null`
+     dans le monde ouvert et dans tout donjon qui n'en declare pas. */
+  var EFFETS_C = null;
   var BRAISES_C = [];          // la lave a meme le sol, envoyee avec le plan
   /* ---- LES PORTES QU'ON NE VOIT PAS ENCORE ----
    * L'etat du monde ne porte que ce qui est a moins de 1400 unites. Une porte
@@ -8115,6 +8118,39 @@
     if (!IMG_ANNONCE_DJ) { IMG_ANNONCE_DJ = new Image(); IMG_ANNONCE_DJ.src = 'img/nexus/effets/annonce_donjon.webp'; }
     if (!IMG_ONDE_DJ) { IMG_ONDE_DJ = new Image(); IMG_ONDE_DJ.src = 'img/nexus/effets/onde_donjon.webp'; }
   }
+
+  /* ---- LES PLANCHES D'UNE FAMILLE D'EFFETS ----
+   *
+   * Il y avait DEUX paires de cercles : celle du monde ouvert et celle des
+   * donjons. L'arene tombait dans la seconde et heritait donc de la braise du
+   * Sanctuaire — un anneau orange au sol sous un boss de foudre.
+   *
+   * Le serveur nomme la famille (`effets`, sur le plan), la page charge
+   * `annonce_<nom>`, `onde_<nom>` et `chute_<nom>`. Elle ne DEDUIT rien de la
+   * cle du donjon : la table serait a tenir d'accord avec celle du serveur, et
+   * le premier desaccord repeindrait un donjon en silence.
+   *
+   * Chargement au PREMIER BESOIN, et une seule fois : un joueur qui n'ira
+   * jamais dans l'arene n'a aucune raison de telecharger ses trois planches,
+   * et le donjon qu'il attend passe avant elles sur la ligne. */
+  var FX_FAMILLE = {};
+  function planchesDe(nom) {
+    if (!nom) return null;
+    if (FX_FAMILLE[nom]) return FX_FAMILLE[nom];
+    var f = FX_FAMILLE[nom] = {};
+    ['annonce', 'onde', 'chute'].forEach(function (q) {
+      var i = new Image();
+      /* Pas de `onerror` qui retire la planche : `pretePlanche` mesure deja
+         `naturalWidth`, et une image en echec y reste a zero. Une famille
+         incomplete retombe donc, planche par planche, sur celle du donjon —
+         on ne perd que la couleur, jamais le cercle. Un coup de zone qui
+         frappe sans avoir ete annonce n'est pas difficile, il est arbitraire. */
+      i.src = 'img/nexus/effets/' + q + '_' + nom + '.webp';
+      f[q] = i;
+    });
+    return f;
+  }
+  function pretePlanche(img) { return !!(img && img.complete && img.naturalWidth); }
 
   /* ---- L'AURA DE RAFALE ----
    * La rafale etait le seul des trois pouvoirs sans aucun signe a l'ecran :
@@ -8717,14 +8753,21 @@
      cercle — un coup de zone qui frappe sans avoir ete annonce n'est pas
      difficile, il est arbitraire. */
   function plancheAnnonce() {
-    return (DONJON_C && IMG_ANNONCE_DJ && IMG_ANNONCE_DJ.complete &&
-            IMG_ANNONCE_DJ.naturalWidth)
+    /* La famille d'abord — c'est le seul cas ou l'on sait exactement ce que le
+       serveur veut voir. La `cle` voyage avec l'image parce que
+       `pleinDeLAnnonce` mesure le rayon peint PAR PLANCHE et le retient : deux
+       planches sous la meme cle auraient partage une mesure, et la seconde
+       aurait promis un rayon que le serveur n'applique pas. */
+    var f = planchesDe(EFFETS_C);
+    if (f && pretePlanche(f.annonce)) return { img: f.annonce, cle: EFFETS_C };
+    return (DONJON_C && pretePlanche(IMG_ANNONCE_DJ))
       ? { img: IMG_ANNONCE_DJ, cle: 'donjon' }
       : { img: IMG_ANNONCE, cle: 'monde' };
   }
   function plancheOnde() {
-    return (DONJON_C && IMG_ONDE_DJ && IMG_ONDE_DJ.complete && IMG_ONDE_DJ.naturalWidth)
-      ? IMG_ONDE_DJ : IMG_ONDE;
+    var f = planchesDe(EFFETS_C);
+    if (f && pretePlanche(f.onde)) return f.onde;
+    return (DONJON_C && pretePlanche(IMG_ONDE_DJ)) ? IMG_ONDE_DJ : IMG_ONDE;
   }
   /* Si la mesure est impossible (canvas souille), on prend une valeur assez
      BASSE pour que le cercle peint deborde quoi qu'il arrive. Se tromper vers
@@ -8826,13 +8869,28 @@
      telecharger. */
   var IMG_METEORE = null;
   function dessineMeteore(z, av, T) {
-    if (!IMG_METEORE) {
-      IMG_METEORE = new Image();
-      IMG_METEORE.src = 'img/nexus/effets/meteore.webp';
+    /* ---- CE QUI TOMBE DEPEND DU LIEU, PAS D'UNE SEULE IMAGE ----
+     * Il n'y en avait qu'une : la pierre en flammes du Sanctuaire. Le champion
+     * de l'arene fait pleuvoir lui aussi, et l'on voyait donc une meteorite de
+     * FEU descendre sur un boss de foudre. Le serveur marque la zone (`m`)
+     * sans dire de quoi elle tombe — c'est la famille d'effets du lieu qui le
+     * dit, comme pour les cercles.
+     * On retombe sur la pierre quand la famille n'en a pas : perdre la couleur
+     * vaut mieux que ne rien voir descendre, puisque c'est la chute, et elle
+     * seule, qui dit D'OU vient le coup quand sept cercles s'ouvrent
+     * ensemble. */
+    var f = planchesDe(EFFETS_C);
+    var img = (f && pretePlanche(f.chute)) ? f.chute : null;
+    if (!img) {
+      if (!IMG_METEORE) {
+        IMG_METEORE = new Image();
+        IMG_METEORE.src = 'img/nexus/effets/meteore.webp';
+      }
+      img = IMG_METEORE;
     }
     /* Rien tant qu'elle n'est pas la : le cercle suffit a jouer, et une
        exception ici arreterait le dessin de TOUT le reste de la trame. */
-    if (!IMG_METEORE.complete || !IMG_METEORE.naturalWidth) return;
+    if (!img.complete || !img.naturalWidth) return;
     /* Elle part HAUT et PETITE, elle arrive AU CENTRE et GRANDE : c'est ce
        qui donne la perspective, sans avoir a dessiner un ciel. La hauteur de
        depart vaut trois fois le diametre du cercle — assez pour qu'on la voie
@@ -8850,12 +8908,12 @@
      * moitie — une meteorite aplatie ne se lit plus comme quelque chose qui
      * tombe. Le rapport est demande a l'IMAGE et jamais ecrit ici : le jour ou
      * on la redessine plus haute, le dessin suit tout seul. */
-    var h = l * (IMG_METEORE.naturalHeight / IMG_METEORE.naturalWidth);
+    var h = l * (img.naturalHeight / img.naturalWidth);
     /* On cale le BAS de la planche, pas son centre. La planche est detouree,
        donc son bas EST le bas de la pierre : quand la chute finit, la pierre
        touche exactement le centre du cercle. Cale sur le centre, la moitie de
        la trainee serait passee sous le sol. */
-    ctx.drawImage(IMG_METEORE, z.x - l / 2, z.y - haut - h, l, h);
+    ctx.drawImage(img, z.x - l / 2, z.y - haut - h, l, h);
   }
 
   /* Ce qui reste quand la zone a frappe. L'onde n'a que quatre images : la
@@ -9864,6 +9922,9 @@
      * serveur, et le jour ou le plan gagne une salle, l'un des deux dessins
      * l'oublierait. */
     DONJON_C = m.donjon || null;
+    /* Elle arrive avec le plan, comme `mur` et `decor` : la page recoit le nom
+       des planches de zone, elle ne le deduit pas de celui du donjon. */
+    EFFETS_C = m.effets || null;
     /* Les plaques de braise viennent AVEC le plan, comme les tuiles. Le
        serveur les fait bruler a partir de cette meme liste : deux listes
        auraient fini par ne plus decrire le meme sol, et le joueur aurait pris
@@ -9969,7 +10030,7 @@
     /* On abandonne le donjon avec le monde : `realmLeave` sort de la simulation
        ou l'on etait, quelle qu'elle soit. Garder `DONJON_C` pose ici aurait
        laisse le bouton « EXIT » sur l'ecran du Nexus. */
-    DONJON_C = null; TUILES_D = null; SOLS_C = null; PORTAILS_C = []; PORTAILS_LOIN = [];
+    DONJON_C = null; EFFETS_C = null; TUILES_D = null; SOLS_C = null; PORTAILS_C = []; PORTAILS_LOIN = [];
     PORTAIL_PIEDS = null; PORTAIL_SIGNE = ''; peintPorte();
     MONSTRES_C = {}; TIRS_C = []; TIRS_M = []; DEVINES = []; DISTANTS_M = {}; TOMBES_C = []; SACS_C = [];
     ZONES_C = []; ONDES = [];

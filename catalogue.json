@@ -833,6 +833,13 @@
    "l": 640,
    "h": 640,
    "cadres": 1
+  },
+  {
+   "cle": "veilleur",
+   "fichier": "img/nexus/monstres/veilleur.webp",
+   "l": 1024,
+   "h": 1024,
+   "cadres": 1
   }
  ],
  "iso": [

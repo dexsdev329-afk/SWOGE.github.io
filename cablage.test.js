@@ -130,5 +130,62 @@ console.log('\n-- B. AUCUN CODE NE CHERCHE UN ELEMENT DISPARU --');
        : 'aucun code ne dereference un element que la page ne porte pas');
 }
 
+console.log('\n-- C. AUCUN NOM DECLARE PAR LE SERVEUR N EST SANS FICHIER --');
+{
+  /* ---- LA MEME PANNE, DE L AUTRE COTE DU RESEAU ----
+   *
+   * Un bouton que rien ne nomme ne fait rien et ne dit rien. Un NOM DE PLANCHE
+   * que le serveur envoie et dont l image n existe pas fait exactement pareil :
+   * la page demande le fichier, recoit un 404, et retombe en silence sur la
+   * planche par defaut. Rien ne casse, la console du joueur est vide, et le
+   * donjon se dessine avec le decor d un autre. C est comme ca que l arene a
+   * passe une semaine a faire tomber la meteorite de FEU du Sanctuaire sous un
+   * boss de foudre.
+   *
+   * On lit donc les noms que la table des donjons declare, et l on verifie que
+   * chacun a ses fichiers. Le depot du serveur peut etre absent — cet essai
+   * tourne aussi seul — auquel cas on saute, comme les autres.
+   *
+   * Les trois planches d une famille d effets sont exigees ENSEMBLE. Une
+   * famille a moitie livree est le pire des cas : deux cercles bleus et une
+   * pierre en flammes qui tombe au milieu, ce qui se lit comme un bug de
+   * dessin et non comme un fichier manquant. */
+  const SERVEUR = process.env.SWOGE_SERVEUR || '/home/user/swoge-pusher-server.github.io';
+  const monde = path.join(SERVEUR, 'monde.js');
+  if (!fs.existsSync(monde)) {
+    console.log('  --   depot du serveur introuvable — section sautee');
+  } else {
+    const M = require(monde);
+    const manquants = [];
+    const attendu = [];
+    for (const cle of Object.keys(M.DONJONS)) {
+      const D = M.DONJONS[cle];
+      if (D.sol) attendu.push(['sol', `img/nexus/tiles/ground_${D.sol}.webp`]);
+      if (D.mur) attendu.push(['mur', `img/nexus/tiles/mur_${D.mur}.webp`]);
+      if (D.decor) attendu.push(['decor', `img/nexus/tiles/obj_${D.decor}.webp`]);
+      if (D.effets) {
+        for (const q of ['annonce', 'onde', 'chute']) {
+          attendu.push([`effets:${D.effets}`, `img/nexus/effets/${q}_${D.effets}.webp`]);
+        }
+      }
+    }
+    /* Et le dessin de chaque projectile que le monde nomme : un `sprite`
+       inconnu ne leve rien non plus — le tir se dessine en navette grise, et
+       le joueur n apprend plus ce qui lui arrive. */
+    for (const e of Object.keys(M.MONSTRES)) {
+      const t = M.MONSTRES[e].tir;
+      if (t && t.sprite) attendu.push([`tir:${e}`, `img/nexus/tirs/${t.sprite}.webp`]);
+    }
+    for (const [quoi, f] of attendu) {
+      if (!fs.existsSync(path.join(SITE, f))) manquants.push(`${quoi} → ${f}`);
+    }
+    ok(attendu.length > 20, `il y a bien des noms a verifier (${attendu.length})`);
+    ok(manquants.length === 0,
+       manquants.length
+         ? `${manquants.length} nom(s) sans fichier : ${[...new Set(manquants)].join(' | ')}`
+         : `les ${attendu.length} noms declares ont tous leur fichier`);
+  }
+}
+
 console.log(`\ncablage.test.js — ${n} verifications, ${rates} echec(s)`);
 process.exit(rates ? 1 : 0);

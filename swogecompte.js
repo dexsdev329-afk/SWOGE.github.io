@@ -394,6 +394,36 @@
    * redonne une chance a l'echec. Et l'echec n'est plus avale : on le retient
    * pour pouvoir le NOMMER au lieu d'accuser un bloqueur de contenu. */
   var ECHEC_INIT = null;
+
+  /* ---- COMBIEN DE REQUETES SONT PARTIES CHEZ PRIVY ----
+   *
+   * Il ne me manquait qu'une donnee, et je l'ai demandee deux fois au joueur :
+   * l'onglet Reseau. C'est trop demander pour un diagnostic dont l'application
+   * dispose elle-meme.
+   *
+   * `restore()` avale toutes ses erreurs. Mais il ne peut pas cacher qu'il n'a
+   * RIEN DEMANDE : le navigateur tient la liste de ce qu'il a charge, et on la
+   * lit sans rien intercepter — pas de `fetch` enveloppe, pas de risque de
+   * casser la page pour un diagnostic.
+   *
+   * La distinction est celle qui tranche :
+   *   zero requete  le client interne n'existe pas. Rien n'a ete tente, donc
+   *                 aucun bloqueur, aucun reseau, aucun cloisonnement de
+   *                 stockage n'y est pour quoi que ce soit. C'est chez nous.
+   *   au moins une  quelque chose a ete demande et n'a pas suffi. La, et la
+   *                 seulement, le reseau ou le compte sont en cause.
+   *
+   * On ne lit ni entete ni contenu : un compteur, et c'est tout. */
+  function requetesPrivy() {
+    try {
+      if (!window.performance || !performance.getEntriesByType) return null;
+      var n = 0, e = performance.getEntriesByType('resource');
+      for (var i = 0; i < e.length; i++) {
+        if (String(e[i].name || '').indexOf('privy.io') >= 0) n++;
+      }
+      return n;
+    } catch (x) { return null; }
+  }
   function initPrivy() {
     if (!window.SwogePrivy || !window.SwogePrivy.init) return;
     try { window.SwogePrivy.init(PRIVY_APP_ID); ECHEC_INIT = null; }
@@ -461,6 +491,10 @@
    * pouvoir rendre `null` par quatre chemins sans qu'on reecrive sa signature
    * a chaque fois. */
   var POURQUOI = null;
+  /* Combien de requetes etaient parties chez Privy au moment de l'echec. On la
+     fait voyager jusqu'au message : c'est le seul chiffre qui separe « on n'a
+     rien demande » de « on a demande et ca n'a pas suffi ». */
+  var REQUETES = null;
 
   /* ---- LA SESSION EST-ELLE SEULEMENT LA ? ----
    *
@@ -518,7 +552,24 @@
       return avecDelai(suite, essai2 ? DELAI_RETOUR : DELAI_PORTEFEUILLE, 'wallet-muet').then(function (adr) {
         adr = adr || (P.getAddress && P.getAddress());
         if (!adr) {
-          POURQUOI = ECHEC_INIT ? 'init' : (jetonPrivy() ? 'refus' : 'perime');
+          /* Zero requete pendant que le module cherchait la session : son
+             client interne n'existe pas. Ce n'est ni le reseau ni le compte —
+             c'est notre module qui n'a pas demarre, et le dire evite d'envoyer
+             le joueur couper un bloqueur pour rien. */
+          var req = requetesPrivy();
+          REQUETES = req;
+          /* ---- L'ORDRE COMPTE, ET JE L'AI EU FAUX D'ABORD ----
+           * J'avais mis « zero requete » en tete. Mais quelqu'un qui ne s'est
+           * JAMAIS connecte par e-mail ici n'en fait aucune non plus — et on
+           * lui annoncait une panne de notre cote alors qu'il n'avait
+           * simplement pas de session. L'absence de jeton passe donc en
+           * premier : elle se constate sans rien interpreter, et elle a une
+           * seule reponse possible. Le compteur ne departage QUE les cas ou il
+           * y a bien une session a verifier. */
+          POURQUOI = ECHEC_INIT ? 'init'
+                   : !jetonPrivy() ? 'perime'
+                   : req === 0 ? 'init'
+                   : 'refus';
           return null;
         }
         POURQUOI = null;
@@ -670,11 +721,16 @@
               + acte + '.'
           : casse
             ? 'The email wallet could not start on this page — this one is on us, not '
-              + 'on your browser. Reload the page; if it happens again, tell us.'
+              + 'on your browser. Nothing was even asked of Privy, so no blocker or '
+              + 'network is involved. Reload the page; if it happens again, tell us '
+              + '(code W-INIT' + (REQUETES === null ? '' : '/' + REQUETES) + ').'
           : refuse
-            ? 'Your sign-in is stored here but could not be verified — something is '
-              + 'blocking it. Turn off any content blocker or VPN for swoleeswoge.dog, '
-              + 'or open the site in another browser, then try again.'
+            ? 'Your sign-in is stored here but could not be verified. '
+              + (REQUETES ? REQUETES + ' request(s) did go out, so it is the account or '
+                            + 'the network, not this page. '
+                          : '')
+              + 'Try again in a minute; if it keeps happening, tell us (code W-VERIF'
+              + (REQUETES === null ? '' : '/' + REQUETES) + ').'
           : app
             ? 'Your wallet did not answer. ' + app + "'s built-in browser often blocks it — "
               + 'open swoleeswoge.dog in Chrome or Safari, or sign in again.'

@@ -434,10 +434,16 @@ function fauxPrivyFroid() {
     }
     ok(!!fin, 'le depot aboutit a une conclusion');
     if (fin) {
-      ok(/could not be verified/i.test(fin.texte),
-         `il dit que la verification a echoue : ${JSON.stringify(fin.texte.slice(0, 100))}`);
-      ok(!/no longer valid/i.test(fin.texte),
-         'et il ne declare PAS la session morte — elle est peut-etre parfaitement bonne');
+      /* ZERO REQUETE. Le faux module ne parle a personne : aucune requete ne
+         part chez Privy, et c'est exactement ce que le compteur doit voir. Le
+         message doit donc dire que la panne est CHEZ NOUS et non accuser le
+         reseau du joueur — c'est la lecon des trois messages precedents, qui
+         l'ont tous envoye chercher au mauvais endroit. */
+      ok(/on us, not on your browser/i.test(fin.texte),
+         `aucune requete partie : il dit que c est chez nous : ${JSON.stringify(fin.texte.slice(0, 100))}`);
+      ok(/W-INIT/.test(fin.texte), 'avec un code a nous citer');
+      ok(!/content blocker|VPN/i.test(fin.texte),
+         'et il n envoie PAS couper un bloqueur alors que rien n a ete demande');
     }
     await p.close();
   }

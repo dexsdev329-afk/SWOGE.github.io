@@ -6688,6 +6688,17 @@
     { cle: 'portailPvp', src: 'img/nexus/tiles/obj_portal_pvp.webp',
       x: CENTRE.x + 210, y: CENTRE.y - 500, larg: 210, haut: 313, cadres: 4,
       rayon: 110, nom: 'the Crimson Reach', monde: 'crimson' },
+    /* ---- LA TROISIEME PORTE : L'ARENE ----
+     * Elle ne porte pas `monde` mais `donjon`, et la difference n'est pas
+     * cosmetique : les deux autres menent a des simulations PERMANENTES que
+     * tout le monde partage, celle-ci ouvre une salle INSTANCIEE, une par
+     * joueur. Y brancher `monde` aurait fait une arene unique ou le premier
+     * arrive tue le champion et ou les suivants trouvent une salle vide.
+     * C'est le LIEU qui nomme sa destination — la ligne qui declenche ne
+     * connait ni l'une ni l'autre. */
+    { cle: 'portailArene', src: 'img/nexus/tiles/obj_portail_arena.webp',
+      x: CENTRE.x + 630, y: CENTRE.y - 500, larg: 210, haut: 336, cadres: 4,
+      rayon: 110, nom: 'the Storm Arena', donjon: 'arena' },
     { cle: 'etal', src: 'img/nexus/tiles/obj_market_stall.webp',
       x: CENTRE.x - 620, y: CENTRE.y, larg: 272, haut: 350, cadres: 4,
       /* Ouvre sur les coffres, mais la meme feuille porte l'onglet
@@ -11917,11 +11928,13 @@
   var CLAIRIERE_R = 260;
   var COULOIRS = [
     { x0: CENTRE.x - 105, y0: CENTRE.y - 470, x1: CENTRE.x + 105, y1: CENTRE.y },
-    /* Le chemin du nord s'ouvre en PLACE devant les deux portes. Sans elle,
-       la porte rouge serait posee dans l'herbe a cote du chemin, et le chemin
+    /* Le chemin du nord s'ouvre en PLACE devant les TROIS portes. Sans elle,
+       les portes seraient posees dans l'herbe a cote du chemin, et le chemin
        continuerait de ne designer que la violette : le dallage est ce qui dit
-       « c'est ici qu'on va », et il doit donc mener aux deux. */
-    { x0: CENTRE.x - 360, y0: CENTRE.y - 590, x1: CENTRE.x + 360, y1: CENTRE.y - 380 },
+       « c'est ici qu'on va », et il doit donc mener aux trois. Elargie a
+       droite quand l'Arene s'est ajoutee — une porte hors du dallage est une
+       porte que personne ne trouve. */
+    { x0: CENTRE.x - 360, y0: CENTRE.y - 590, x1: CENTRE.x + 780, y1: CENTRE.y - 380 },
     { x0: CENTRE.x - 620, y0: CENTRE.y - 105, x1: CENTRE.x, y1: CENTRE.y + 105 },
     { x0: CENTRE.x, y0: CENTRE.y - 105, x1: CENTRE.x + 620, y1: CENTRE.y + 105 },
     /* Le chemin du sud, vers la table. Sans lui, la table serait posee dans
@@ -14687,6 +14700,14 @@
             if (enLigne) envoie({ type: 'realmJoin', monde: l.monde });
             l.dwell = 0; entre = true; return;
           }
+          /* Une salle instanciee. On n'envoie PAS `l.donjon` au serveur : il
+             sait quel donjon cette porte ouvre, et accepter une cle nommee par
+             le client reviendrait a lui laisser ouvrir le Sanctuaire sans
+             jamais chercher son heraut. Le client dit qu'il entre, pas ou. */
+          if (l.donjon) {
+            if (enLigne) envoie({ type: 'arenePorte' });
+            l.dwell = 0; entre = true; return;
+          }
           /* ---- UN LIEU QUI OUVRE UN PANNEAU LE NOMME DANS LA TABLE ----
            * Il y avait ici trois `if (l.cle === ...)` de suite, un par
            * panneau. La quatrieme porte — la borne d'arcade — en aurait
@@ -15959,6 +15980,7 @@
     }
     // les lieux, chacun de sa couleur
     var TEINTE = { fontaine: '#3fa9f5', portail: '#c04ce0', portailPvp: '#e0453c',
+                   portailArene: '#2f7ff5',
                    etal: '#e0a33c', coffre: '#d8d8d8', casino: '#2fa86a',
                    enseigne: '#2fa86a', petworld: '#e07b3c',
                    petworldEnseigne: '#e07b3c',

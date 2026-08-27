@@ -394,7 +394,7 @@
    "fichier": "img/nexus/tiles/obj_portail_arena.webp",
    "l": 640,
    "h": 256,
-   "cadres": 1
+   "cadres": 4
   },
   {
    "cle": "portail_cave",

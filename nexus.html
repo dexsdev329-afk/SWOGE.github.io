@@ -3073,6 +3073,23 @@ function ajusteMonde(){
   w.style.top = h.getBoundingClientRect().height + "px";
   var bb = document.querySelector(".swbb");
   w.style.bottom = bb ? bb.getBoundingClientRect().height + "px" : "0px";
+  /* ---- ET CETTE PAGE NE DEFILE PAS ----
+   * `stakebubble.js` pose `body{padding-bottom:var(--swbb-h)!important}` en
+   * montant sa barre du bas. C'est juste pour les dix-sept pages QUI
+   * DEFILENT : sans cette marge, leur dernier paragraphe finit cache sous la
+   * barre. Celle-ci ne defile jamais — le monde est un `#nxWrap` fixe qui
+   * occupe l'ecran — et la marge n'y protege donc rien du tout. Elle rendait
+   * seulement le document soixante-deux pixels plus haut que la fenetre,
+   * c'est-a-dire un ASCENSEUR sur une page ou il n'y a rien a faire defiler :
+   * une bande grise a droite, quinze pixels de jeu en moins, et une page qui
+   * bouge quand on utilise la molette pendant qu'on joue.
+   *
+   * On l'annule ICI et pas dans la feuille de la page : le style de
+   * `stakebubble.js` est injecte a l'execution, donc APRES celui-ci, et a
+   * importance egale c'est le dernier qui gagne. Une regle en ligne posee
+   * `important` passe devant les deux, et elle est reposee a chaque
+   * ajustement — donc aussi le jour ou la barre arrive apres coup. */
+  document.body.style.setProperty("padding-bottom", "0px", "important");
 }
 window.addEventListener("load", ajusteMonde);
 window.addEventListener("resize", ajusteMonde);

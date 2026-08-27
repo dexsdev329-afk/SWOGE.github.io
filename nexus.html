@@ -157,14 +157,43 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
 #nxPanneau::-webkit-scrollbar{ display:none; }
 
 /* la carte du lieu : un carre noir, comme dans le jeu d'origine */
-#nxMini{ width:100%; aspect-ratio:1; display:block; background:#000;
+/* `box-sizing` : le panneau se declare en `border-box`, mais ca ne se
+   transmet pas aux enfants. La carte prenait donc 100 % de la place PUIS
+   ajoutait son liseret d'un pixel de chaque cote — deux pixels de trop, a
+   toutes les tailles d'ecran, PC compris. Deux pixels ne se voient pas, mais
+   ils suffisent a rendre le panneau defilant sur le cote : `overflow-y:auto`
+   rend l'autre axe `auto` lui aussi, et le panneau glissait sous le doigt
+   quand on voulait seulement le faire monter. */
+#nxMini{ width:100%; aspect-ratio:1; display:block; background:#000; box-sizing:border-box;
   border:1px solid #222; image-rendering:pixelated; flex:0 0 auto; }
 
 /* le nom, precede de la vignette du personnage porte */
-.nxp-nom{ display:flex; align-items:center; gap:7px; margin-top:2px; }
+/* ---- LA LIGNE DU NOM DEBORDAIT DU PANNEAU ----
+ *
+ * Mesure sur un telephone de 390 : le panneau fait 148 pixels, dont 147
+ * utiles, et cette ligne en reclamait 176. L'ENGRENAGE DES REGLAGES finissait
+ * donc 37 pixels DEHORS, hors de l'ecran, et le trophee 4 pixels dedans a
+ * peine. Sur une tablette de 820, l'engrenage sortait encore de 15.
+ *
+ * Il n'y avait aucun ascenseur pour aller le chercher : `#nxPanneau` est en
+ * `overflow-y:auto`, ce qui rend l'autre axe `auto` lui aussi — le bouton
+ * existait, quelque part a droite, et rien a l'ecran ne disait qu'il fallait
+ * pousser le panneau de cote pour l'atteindre. Un reglage qu'on ne peut pas
+ * ouvrir n'existe pas.
+ *
+ * DEUX LIGNES, ET DANS CET ORDRE :
+ *   `min-width:0` sur le nom. Sans lui, un enfant flex refuse de descendre
+ *   sous la largeur de son texte : l'ellipsis etait ecrite et ne servait a
+ *   RIEN, puisque le nom ne retrecissait jamais. C'est lui qui repare le cas
+ *   courant — le nom se coupe, les boutons rentrent, la ligne reste unique.
+ *   `flex-wrap:wrap` en filet. Un nom tres long, ou un ecran encore plus
+ *   etroit, et les boutons passent a la ligne au lieu de sortir. Se replier
+ *   se voit ; disparaitre par la droite, non. */
+.nxp-nom{ display:flex; align-items:center; gap:7px; margin-top:2px; flex-wrap:wrap; }
 .nxp-nom img{ width:22px; height:22px; object-fit:contain; flex:0 0 auto; }
 .nxp-nom b{ font-size:16px; font-weight:700; color:#f2f2f2; letter-spacing:.3px;
-  overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  flex:1 1 auto; min-width:0; }
 
 /* les trois barres. Le libelle est DANS la barre, a gauche, comme l'original */
 .nxp-b{ position:relative; height:19px; border:1px solid #1c1c1c; background:#2a2a2a;

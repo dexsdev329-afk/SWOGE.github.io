@@ -766,26 +766,43 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px}
           </div>
           <div style="margin-top:13px"><a href="#" style="font:700 11px/1 'Inter',system-ui,sans-serif;letter-spacing:.8px;color:var(--bleu)">VIEW TOKENOMICS &nbsp;&rarr;</a></div>
         </div>
-        <div class="carte niveau">
+        <!-- ================== LE NIVEAU, SANS LE MENTIR ==================
+             Cette carte annoncait « YOUR SWOGE LEVEL / BEAST / NEXT LEVEL:
+             ALPHA », avec une jauge remplie a 62 %. Trois affirmations sur le
+             visiteur, dont on ne sait rien : il n est peut-etre meme pas
+             inscrit. Et « BEAST » comme « ALPHA » n existent nulle part dans
+             le jeu — les personnages y montent au niveau 20, et la Fame est
+             un nombre. C etait la troisieme invention de cette page, apres
+             les chiffres de la maquette et le faux classement.
+             Il reste ce qui est VRAI et ne depend de personne : le monde
+             existe, il monte jusqu au niveau vingt, et voici la porte. La
+             jauge part avec le reste — une barre a 62 % mesure quelque
+             chose, et il n y avait rien a mesurer. -->
+        <a class="carte niveau vif" href="nexus.html" id="gxMonde3">
           <img src="img/site/doge_muscle.webp" alt=""><div class="voile"></div>
           <div class="dit">
-            <small>YOUR SWOGE LEVEL</small>
-            <b>BEAST</b>
-            <div class="jauge"><i></i></div>
-            <em>NEXT LEVEL: ALPHA</em>
+            <small>SWOGE WORLD</small>
+            <b>LEVEL 20 MAX</b>
+            <em>ENTER THE WORLD &rarr;</em>
           </div>
-        </div>
+        </a>
       </section>
 
       <section class="duo">
-        <div class="carte carte-p">
-          <div class="tete"><h3>SWOGE WORLD LEADERBOARD</h3><a href="#">VIEW ALL</a></div>
-          <div class="rang"><span class="no">01</span><img src="img/site/doge_roi.webp" alt="">
-            <span class="qui"><b>SwogeKing</b><small>LEGEND</small></span><span class="xp">984,200 XP</span></div>
-          <div class="rang"><span class="no">02</span><img src="img/site/doge_arcade.webp" alt="">
-            <span class="qui"><b>DogeLord</b><small>ALPHA</small></span><span class="xp">821,300 XP</span></div>
-          <div class="rang"><span class="no">03</span><img src="img/site/doge_casino.webp" alt="">
-            <span class="qui"><b>FlonDoge</b><small>GAMMA</small></span><span class="xp">774,250 XP</span></div>
+        <!-- ================== LE CLASSEMENT, EN VRAI ==================
+             Cette carte portait trois lignes ecrites a la main : SwogeKing,
+             DogeLord, FlonDoge — LEGEND, ALPHA, GAMMA, 984 200 XP. Trois
+             joueurs qui n existent pas, une XP que personne n a gagnee, et
+             des rangs qui n existent nulle part dans le jeu : la Fame y est
+             un NOMBRE, pas un titre. C est la meme faute que les chiffres de
+             la maquette, a trente lignes d ecart, et elle se repare pareil —
+             on la lit sur le serveur, ou l on ne montre rien.
+             Les lignes sont donc VIDES ici. Le script du bas les remplit, et
+             cache la carte entiere s il n a rien a y mettre. -->
+        <div class="carte carte-p" id="gxRangCarte" hidden>
+          <div class="tete"><h3>SWOGE WORLD LEADERBOARD</h3>
+            <a class="vif" href="nexus.html" id="gxRangTout">VIEW ALL</a></div>
+          <div id="gxRangs"></div>
         </div>
         <!-- ================== LE SALON DE POKER ==================
              La carte portait « WEEKLY SWOGE RACE / $50,000 / REWARD POOL » :
@@ -1136,7 +1153,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px}
        que de rester sur un lien mort. */
     if (typeof window.swogeEntreLeMonde === "function") window.swogeEntreLeMonde(ev);
   }
-  ["gxMonde","gxMonde2","gxArcade"].forEach(function(i){
+  ["gxMonde","gxMonde2","gxArcade","gxRangTout","gxMonde3"].forEach(function(i){
     var e = document.getElementById(i);
     if (e) e.addEventListener("click", va);
   });
@@ -1164,6 +1181,50 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px}
     if(n >= 1e3) return t(n/1e3, "k");
     return String(Math.floor(n));
   }
+  /* ---- LE CLASSEMENT, LIGNE PAR LIGNE, AVEC CE QUI EXISTE ----
+   * Le serveur rend un nom, une XP, un niveau et une Fame. Pas de titre :
+   * « LEGEND » et « ALPHA » n'existent nulle part dans le jeu, la Fame y est
+   * un nombre. On montre donc le niveau et la Fame, qui sont deux choses
+   * qu'un joueur reconnait sur sa propre fiche.
+   * Les trois medailles restent : elles disent le RANG — premier, deuxieme,
+   * troisieme — et non qui est la. Une image de rang ne pretend rien sur
+   * personne. */
+  var MEDAILLES = ["img/site/doge_roi.webp", "img/site/doge_arcade.webp",
+                   "img/site/doge_casino.webp"];
+  function entier(n){ return (Math.round(Number(n)||0)).toLocaleString("en-US"); }
+  function peintRangs(liste){
+    var carte = document.getElementById("gxRangCarte");
+    var hote = document.getElementById("gxRangs");
+    if(!carte || !hote) return;
+    hote.textContent = "";
+    if(!Array.isArray(liste) || !liste.length){ carte.hidden = true; return; }
+    liste.slice(0, 3).forEach(function(r, i){
+      var ligne = document.createElement("div");
+      ligne.className = "rang";
+      var no = document.createElement("span");
+      no.className = "no"; no.textContent = "0" + (i + 1);
+      var img = document.createElement("img");
+      img.src = MEDAILLES[i] || MEDAILLES[2]; img.alt = "";
+      var qui = document.createElement("span");
+      qui.className = "qui";
+      var b = document.createElement("b");
+      /* `textContent` et non `innerHTML` : ce nom est ecrit par un joueur. */
+      b.textContent = String(r && r.nom || "");
+      var pt = document.createElement("small");
+      var bouts = [];
+      if(r && isFinite(r.niveau)) bouts.push("LEVEL " + Math.round(r.niveau));
+      if(r && isFinite(r.fame)) bouts.push(entier(r.fame) + " FAME");
+      pt.textContent = bouts.join(" \u00b7 ");
+      qui.appendChild(b); qui.appendChild(pt);
+      var xp = document.createElement("span");
+      xp.className = "xp"; xp.textContent = entier(r && r.xp) + " XP";
+      ligne.appendChild(no); ligne.appendChild(img);
+      ligne.appendChild(qui); ligne.appendChild(xp);
+      hote.appendChild(ligne);
+    });
+    carte.hidden = false;
+  }
+
   fetch(serveur()+"/vitrine.json", { cache:"no-store" })
     .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
     .then(function(j){
@@ -1172,6 +1233,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px}
         b.textContent = (typeof v === "number" && isFinite(v)) ? court(v) : "\u2014";
       });
       bloc.hidden = false;
+      peintRangs(j.classement);
     })
     ['catch'](function(){
       /* ---- ON NE REMET PAS LES CHIFFRES DE LA MAQUETTE ----
@@ -1179,6 +1241,9 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px}
        * annonce cent vingt-huit mille joueurs qu on n a pas se verifie en un
        * clic, et c est la confiance qui part avec. */
       bloc.hidden = true;
+      /* Et la carte du classement part avec, pour la meme raison : trois
+         inconnus valent mieux que trois inventions. */
+      peintRangs(null);
     });
 })();
 </script>

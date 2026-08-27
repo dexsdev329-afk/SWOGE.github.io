@@ -414,16 +414,36 @@
    *                 seulement, le reseau ou le compte sont en cause.
    *
    * On ne lit ni entete ni contenu : un compteur, et c'est tout. */
-  function requetesPrivy() {
+  /* ---- ET ON COMPTE AU FIL DE L'EAU, PAS APRES COUP ----
+   *
+   * Premiere version : `getEntriesByType('resource')` au moment de l'echec.
+   * Le tampon de ces entrees est PLAFONNE — deux cent cinquante par defaut —
+   * et une page de jeu qui charge des centaines de tuiles le remplit ; les
+   * entrees suivantes sont perdues, en silence. Le compteur rendait donc zero
+   * la ou la reponse honnete etait « je n'ai pas pu voir ».
+   *
+   * Et c'est la meme faute que les trois precedentes, sous une autre forme :
+   * confondre « je n'observe rien » avec « il ne s'est rien passe ». Un
+   * `PerformanceObserver` pose au chargement recoit chaque entree au moment ou
+   * elle arrive, sans dependre d'aucun tampon.
+   *
+   * S'il n'existe pas, on rend `null` — inconnu — et surtout PAS zero. Un
+   * chiffre qu'on n'a pas mesure ne doit jamais ressembler a un chiffre qu'on
+   * a mesure. */
+  var VU_PRIVY = null;
+  (function guettePrivy() {
     try {
-      if (!window.performance || !performance.getEntriesByType) return null;
-      var n = 0, e = performance.getEntriesByType('resource');
-      for (var i = 0; i < e.length; i++) {
-        if (String(e[i].name || '').indexOf('privy.io') >= 0) n++;
-      }
-      return n;
-    } catch (x) { return null; }
-  }
+      if (typeof PerformanceObserver === 'undefined') return;
+      VU_PRIVY = 0;
+      new PerformanceObserver(function (l) {
+        var e = l.getEntries();
+        for (var i = 0; i < e.length; i++) {
+          if (String(e[i].name || '').indexOf('privy.io') >= 0) VU_PRIVY++;
+        }
+      }).observe({ type: 'resource', buffered: true });
+    } catch (x) { VU_PRIVY = null; }
+  })();
+  function requetesPrivy() { return VU_PRIVY; }
   function initPrivy() {
     if (!window.SwogePrivy || !window.SwogePrivy.init) return;
     try { window.SwogePrivy.init(PRIVY_APP_ID); ECHEC_INIT = null; }
@@ -598,6 +618,9 @@
            *   'refus'   des requetes sont parties et n'ont pas suffi. */
           POURQUOI = ECHEC_INIT ? 'init'
                    : !peutRafraichir() ? 'perime'
+                   /* `null` veut dire « pas mesure » : on ne conclut PAS a
+                      partir de rien. Seul un zero VERITABLEMENT observe
+                      autorise a dire que rien n'est parti. */
                    : req === 0 ? 'inerte'
                    : 'refus';
           return null;
@@ -1115,6 +1138,18 @@
         '<div class="swc-n" id="swcWdAttente" style="display:none"></div>' +
         '<button class="swc-b" id="swcWdClaim" type="button" style="display:none">' +
           'Claim pending withdrawal</button>' +
+        /* ---- LA SORTIE DE SECOURS, LA OU L'ON EST BLOQUE ----
+         * Un joueur dont le portefeuille e-mail ne se restaure plus n'a AUCUN
+         * recours dans cette page : le bon l'attend, et rien ne peut le
+         * signer. `wallet-export.html` lui rend sa cle privee — apres quoi il
+         * encaisse depuis MetaMask, Phantom ou Uniswap, sans dependre de quoi
+         * que ce soit d'ici.
+         * Le lien est POSE ICI et pas seulement dans le panneau du
+         * portefeuille : c'est devant le bouton qui ne repond pas qu'on a
+         * besoin de savoir qu'une autre porte existe. */
+        '<a class="swc-b" id="swcWdCle" href="wallet-export.html" ' +
+          'style="display:block;text-align:center;text-decoration:none">' +
+          'Wallet stuck? Get your private key</a>' +
         '<button class="swc-b" data-close type="button">Close</button>' +
       '</div></div>' +
 

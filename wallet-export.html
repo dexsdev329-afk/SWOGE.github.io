@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Your private key — SWOGE</title>
+<link rel="icon" href="img/fa05d30cc698.jpg">
+<!--
+  ---- LA PAGE QUI REND SA CLE AU JOUEUR ----
+
+  Elle est VOLONTAIREMENT seule. Pas de barre du site, pas de tiroir, pas de
+  `stakebubble.js`, pas de `swogecompte.js`, aucune connexion au serveur de
+  SWOGE. Une page qui affiche une cle privee ne doit rien charger dont elle
+  n'a pas besoin : chaque script en plus est une chose de plus qui pourrait
+  la lire.
+
+  Son bundle est a elle (`privy-export.js`). `privy-swoge.js` — celui dont
+  depend tout le reste du site — n'est pas touche. Si cette page se casse,
+  elle ne casse qu'elle-meme.
+-->
+<style>
+:root{ color-scheme:light; }
+*{ box-sizing:border-box; }
+body{ margin:0; padding:28px 18px 60px; background:#EEF3FB; color:#0A1F44;
+  font-family:'Archivo',system-ui,-apple-system,sans-serif; line-height:1.55;
+  display:flex; justify-content:center; }
+main{ width:100%; max-width:520px; }
+h1{ font-size:22px; margin:0 0 4px; letter-spacing:.2px; }
+.sous{ color:#5F6E88; font-size:14px; margin:0 0 22px; }
+.carte{ background:#FFFFFF; border:1px solid #E1E9F6; border-radius:16px;
+  padding:20px 18px; box-shadow:0 6px 22px rgba(11,27,54,.06); }
+p{ margin:0 0 14px; font-size:14.5px; }
+button{ font-family:inherit; font-size:15px; font-weight:700; width:100%;
+  padding:14px; border-radius:12px; border:0; cursor:pointer; margin-bottom:10px; }
+button.p{ background:#1B5FE0; color:#fff; }
+button.p:disabled{ background:#B8C6DE; cursor:default; }
+button.s{ background:#EAF1FF; color:#1B5FE0; }
+.adr{ font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12.5px;
+  word-break:break-all; background:#EAF1FF; padding:10px 12px; border-radius:10px; }
+.ok{ color:#1B5FE0; font-weight:700; }
+.ko{ color:#B4232A; }
+.att{ color:#6B7C99; }
+.pt{ font-size:13px; color:#5F6E88; }
+.avert{ margin-top:18px; font-size:13px; color:#5F6E88;
+  border-left:3px solid #E1E9F6; padding-left:12px; }
+a{ color:#1B5FE0; }
+</style>
+</head><body>
+<main>
+  <h1>Your private key</h1>
+  <p class="sous">Take your SWOGE wallet with you.</p>
+  <div class="carte"><div id="racine"><p class="att">Loading…</p></div></div>
+  <p class="avert">
+    Your key gives full control of that address, for ever. Anyone who sees it
+    owns it. SWOGE never sees it and can never recover it for you — Privy shows
+    it to you directly, in its own window. Write it down somewhere only you can
+    reach, and never paste it into a message, a form, or a support chat.
+  </p>
+  <p class="avert">Back to <a href="games.html">the game hall</a>.</p>
+</main>
+<script src="privy-export.js" defer></script>
+</body></html>

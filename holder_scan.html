@@ -150,11 +150,39 @@ button.ghost:hover{color:var(--paper);border-color:var(--believer);filter:none}
 .vseg.n{background:var(--neutral);color:#FFFFFF}
 .vlegend{display:flex;gap:22px;flex-wrap:wrap;margin-top:12px;font-family:'Space Mono',monospace;font-size:11.5px;color:var(--dim)}
 .vlegend b{color:var(--paper);font-weight:600}
+/* Le top 10 a rejoint la legende, separe des trois classes par un filet : il
+   ne decrit pas une classe de portefeuille, il decrit la FORME du tableau. */
+.vlegend .vsep{border-left:1px solid var(--line);padding-left:22px}
+
+/* ---- LES SECTIONS QUI SE REPLIENT ----
+ * Quatre panneaux — la liste complete, l analyse d une adresse, la tendance,
+ * la methode — sont utiles mais ne sont jamais ce qu on vient chercher en
+ * arrivant. Depliees d office, elles poussaient le verdict hors de l ecran.
+ * `<details>` plutot qu un basculement en JS : c est le navigateur qui gere
+ * l ouverture, le clavier et la recherche dans la page, et une section repliee
+ * reste trouvable au Ctrl+F. Un panneau qu on code soi-meme perd les trois. */
+.pli{display:none;margin-top:22px;border:1px solid var(--line);border-radius:var(--r);
+  background:var(--panel);padding:0 16px}
+.pli[open]{padding-bottom:16px}
+.pli>summary{list-style:none;cursor:pointer;padding:14px 0;display:flex;align-items:baseline;
+  gap:12px;flex-wrap:wrap;font-family:'Space Mono',monospace;font-size:11px;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--paper);font-weight:500}
+.pli>summary::-webkit-details-marker{display:none}
+.pli>summary::after{content:"+";margin-left:auto;font-size:15px;color:var(--dim);
+  font-family:inherit;letter-spacing:0}
+.pli[open]>summary::after{content:"\2212"}
+.pli>summary:hover{color:var(--gold)}
+.pli>summary:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+/* La question a laquelle la section repond, en clair : un titre en capitales
+   espacees dit de quoi ca parle, pas ce qu on y trouvera. */
+.pli-q{font-family:inherit;font-size:11px;letter-spacing:0;text-transform:none;
+  color:var(--dim);font-weight:400}
+.pli[open]>summary{border-bottom:1px solid var(--line);margin-bottom:14px}
+/* Les titres internes de ces panneaux faisaient doublon avec leur resume. */
+.pli>h2,.pli>h3{display:none}
 .dotb{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:0}
 
 /* stat strip */
-.stats{display:none;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin-top:22px}
-@media(max-width:640px){.stats{grid-template-columns:repeat(2,1fr)}}
 .stat{background:var(--panel);padding:15px 16px}
 .stat .n{font-family:'Space Mono',monospace;font-size:23px;font-weight:600;letter-spacing:-.02em}
 .stat .k{font-family:'Space Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-top:3px}
@@ -185,9 +213,6 @@ button.ghost:hover{color:var(--paper);border-color:var(--believer);filter:none}
 .flow .out{color:var(--serpent)} .flow .in{color:var(--believer)}
 
 .note{font-family:'Space Mono',monospace;font-size:10.5px;color:var(--dim);line-height:1.7;margin-top:10px}
-.plain{display:none;margin-top:22px;background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--believer);border-radius:var(--r);padding:15px 18px}
-.plain p{margin:0;font-size:14px;line-height:1.65}
-.plain b{color:var(--believer)} .plain .warn{color:var(--serpent)}
 .filters{display:none;gap:8px;flex-wrap:wrap;margin-top:26px;align-items:center}
 .filters .lbl{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-right:2px}
 .fbtn{font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.04em;text-transform:none;background:var(--panel);color:var(--dim);border:1px solid var(--line);border-radius:20px;padding:6px 13px;cursor:pointer;font-weight:500}
@@ -250,7 +275,6 @@ footer{margin-top:44px;font-family:'Space Mono',monospace;font-size:10px;color:v
 /* ── mobile ── */
 @media(max-width:560px){
   .wrap{padding:20px 14px 70px}
-  .stats{grid-template-columns:1fr 1fr}
   .igrid{grid-template-columns:1fr 1fr}
   .holder{grid-template-columns:22px 1fr auto;gap:9px}
   .haddr{font-size:11.5px}
@@ -264,14 +288,20 @@ footer{margin-top:44px;font-family:'Space Mono',monospace;font-size:10px;color:v
   .fbtn{padding:5px 10px;font-size:10px}
   .copybar{gap:6px}
   .copybar button{width:100%}
-  .h2,h2{font-size:clamp(26px,7vw,34px)!important}
+  /* ---- CETTE REGLE FRAPPAIT LE MAUVAIS TITRE ----
+   * Elle grossissait TOUS les h2 a vingt-sept pixels sur telephone, avec un
+   * `!important`. Or cette page n'a qu'un seul h2 — l'etiquette en capitales
+   * espacees de la section Concentration, calee a onze pixels — et le grand
+   * titre du hero est un h1. Le seul effet de la regle etait donc de casser
+   * l'etiquette qu'elle n'avait aucune raison de toucher : trois lignes de
+   * capitales geantes au milieu de la page. Elle vient d'un gabarit partage
+   * ou un h2 est un titre de section ; ici, non. */
   .bar{flex-direction:column}
   .bar button{width:100%}
   .ibar{flex-direction:column}
   .ibar button{width:100%}
 }
 @media(max-width:380px){
-  .stats{grid-template-columns:1fr}
   .igrid{grid-template-columns:1fr}
 }
 
@@ -590,36 +620,31 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     <div class="vlegend" id="vlegend"></div>
   </div>
 
-  <div class="stats" id="stats"></div>
-
   <div class="section" id="secConc">
     <h2>Concentration — who holds the chart</h2>
     <p class="cap" id="concCap"></p>
     <div id="concList"></div>
-    <div class="note" id="concNote"></div>
   </div>
 
-  <div class="plain" id="plain"></div>
-
-  <div class="inspect" id="inspect">
-    <h2 style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin:0 0 4px;font-weight:500">Analyze a wallet</h2>
+  <details class="inspect pli" id="inspect">
+    <summary>Analyze a wallet<span class="pli-q">is this address holding, or has it sold?</span></summary>
     <p class="cap" style="color:var(--dim);font-size:12px;margin:0">Paste an address to see, on this token, whether it holds or has sold.</p>
     <div class="ibar">
       <input id="inspAddr" placeholder="0x… address to check" spellcheck="false">
       <button id="inspBtn">Check</button>
     </div>
     <div class="icard" id="icard"></div>
-  </div>
+  </details>
 
-  <div class="track" id="track">
-    <h2 style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin:0 0 4px;font-weight:500">Trend — since your previous scans</h2>
+  <details class="track pli" id="track">
+    <summary>Trend<span class="pli-q">how the base has moved since your previous scans</span></summary>
     <p class="cap" style="color:var(--dim);font-size:12px;margin:0 0 12px">Every scan is saved locally. The base strengthens if believer share rises scan after scan.</p>
     <div id="trackList"></div>
     <div class="tempty" id="trackEmpty"></div>
-  </div>
+  </details>
 
-  <div class="section" id="secHolders">
-    <h2>All holders</h2>
+  <details class="section pli" id="secHolders">
+    <summary>All holders<span class="pli-q">the full list, filterable and searchable</span></summary>
     <p class="cap">Every wallet classified by its history. Filter by type or search an address.</p>
     <div class="filters" id="filters">
       <span class="lbl">Show</span>
@@ -638,15 +663,15 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     <div id="holderList"></div>
     <div class="more" id="moreWrap"><button id="moreBtn">Voir plus</button></div>
     <div class="count" id="hCount"></div>
-  </div>
+  </details>
 
-  <div class="method" id="method">
-    <h3>How believer and serpent are calculated</h3>
+  <details class="method pli" id="method">
+    <summary>Method<span class="pli-q">how believer and serpent are calculated</span></summary>
     <p><b>Believer</b> — a wallet that <b>still holds tokens</b> and has held for <b>more than 2 days</b>. It stuck around through time, even if it sold a little along the way. Conviction is measured by staying, not by never touching the sell button.</p>
     <p><b>Serpent</b> — a wallet that <b>sold and no longer holds</b>, or one that sold while <b>arriving less than 2 days ago</b>. A quick in-and-out, not a believer.</p>
     <p><b>Neutral</b> — holds a bag but arrived too recently to count as a believer yet, or moved tokens between wallets without selling to the pool.</p>
     <p>This is an automatic on-chain read: it sees flows, not intentions. A “serpent” may have simply rebalanced, a “believer” may just be inactive. Read it as a signal, not a verdict.</p>
-  </div>
+  </details>
 
   <footer id="foot"></footer>
 </div>
@@ -784,7 +809,7 @@ async function scan(){
   if(!m) return setState("Paste a valid 0x… contract address", true);
   const token = m[0].toLowerCase();
   $("#run").disabled = true;
-  ["#tokenhead","#health","#verdict","#stats","#inspect","#track","#secConc","#secHolders","#method"].forEach(id=>$(id).style.display="none");
+  ["#tokenhead","#health","#verdict","#inspect","#track","#secConc","#secHolders","#method"].forEach(id=>$(id).style.display="none");
   $("#icard").style.display="none";
 
   try{
@@ -942,13 +967,14 @@ async function scan(){
     const supHeld = supB + supS + supN;   // hors pool/burn
     const supplyShares = {balB, balS, balN, balP, supB, supS, supN, supPool, supHeld};
 
-    renderPlain(info.name||sym, sym, realHolders, pctB, pctS, believers, serpents, rows, supply, dec, supplyShares);
-    renderVerdict(pctB, pctS, pctN, believers, serpents, neutrals, supplyShares);
-    renderStats(realHolders, pctB, serpents, holders.length, transfers.length, supplyShares);
-    // concentration top10 pour le score
+    /* La concentration se calcule AVANT le verdict : depuis qu'elle a rejoint
+       la legende, c'est lui qui la porte. Elle etait dite trois fois — facteur
+       de sante, chapeau de section, note sous la liste — et une page qui repete
+       trois fois le meme pourcentage donne l'impression d'en avoir trois. */
     const top10r = rows.filter(r=>r.cls!=="pool" && r.cls!=="burn" && r.cls!=="infra").slice(0,10);
     let sum10=0n; for(const r of top10r) sum10+=r.bal;
     const pct10 = supply>0n ? Number(sum10*10000n/supply)/100 : 0;
+    renderVerdict(pctB, pctS, pctN, believers, serpents, neutrals, supplyShares);
     renderHealth(supplyShares, mom24, pct10, hasTs);
     saveSnapshot(token, {at:now, supB:supplyShares.supB, supS:supplyShares.supS, supPool:supplyShares.supPool, believers, serpents, holders:realHolders});
     renderTracking(token);
@@ -974,15 +1000,6 @@ async function scan(){
   }
 }
 
-function renderPlain(name, sym, total, pctB, pctS, nb, ns, rows, supply, dec, sh){
-  const verdict = sh.supB >= sh.supS*2 ? `<b>solidly held</b>: believers weigh far more than sellers`
-                : sh.supS >= sh.supB ? `<span class="warn">fragile</span>: sellers weigh as much as or more than believers in circulation`
-                : `split`;
-  $("#plain").innerHTML = `<p>Across <b>${total}</b> real holders of $${sym}: <b>believers</b> hold <b>${sh.supB.toFixed(2)}%</b> of total supply, <b class="warn" style="color:var(--serpent)">serpents</b> hold <b style="color:var(--serpent)">${sh.supS.toFixed(2)}%</b>, and <b style="color:var(--pool)">${sh.supPool.toFixed(2)}%</b> sits in the liquidity pool or is burned. `
-    + `In real circulation (excluding the pool), it is ${verdict}.</p>`;
-  $("#plain").style.display = "block";
-}
-
 function renderVerdict(pctB, pctS, pctN, nb, ns, nn, sh){
   // barre 1 : répartition par NOMBRE de wallets
   $("#vbar").innerHTML =
@@ -1000,18 +1017,13 @@ function renderVerdict(pctB, pctS, pctN, nb, ns, nn, sh){
     `<span><span class="dotb" style="background:var(--believer)"></span><b>${nb}</b> believers · <b>${sh.supB.toFixed(2)}%</b> of supply</span>`
   + `<span><span class="dotb" style="background:var(--serpent)"></span><b>${ns}</b> serpents · <b>${sh.supS.toFixed(2)}%</b> of supply</span>`
   + `<span><span class="dotb" style="background:var(--neutral)"></span><b>${nn}</b> neutral · <b>${sh.supN.toFixed(2)}%</b></span>`
-  + `<span><span class="dotb" style="background:var(--pool)"></span>pool / burn · <b>${sh.supPool.toFixed(2)}%</b></span>`;
+  + `<span><span class="dotb" style="background:var(--pool)"></span>pool / burn · <b>${sh.supPool.toFixed(2)}%</b></span>`
+  ;
+  /* PAS de top 10 ici : les trois facteurs de sante, juste au-dessus, le disent
+     DEJA et avec une appreciation (coche ou tilde). Le repeter nu dans la
+     legende aurait remplace une repetition par une autre — l'affaire etait
+     qu'il soit dit UNE fois, a l'endroit ou il est juge. */
   $("#verdict").style.display = "block";
-}
-
-function renderStats(realHolders, pctB, serpents, totalHolders, totalTransfers, sh){
-  $("#stats").innerHTML = [
-    [`${sh.supB.toFixed(1)}%`, "believer supply", "b"],
-    [`${sh.supS.toFixed(1)}%`, "serpent supply", "s"],
-    [`${sh.supPool.toFixed(1)}%`, "in pool / burn", ""],
-    [`${sh.supHeld.toFixed(1)}%`, "in real hands", ""]
-  ].map(([n,k,c])=>`<div class="stat"><div class="n ${c}">${n}</div><div class="k">${k}</div></div>`).join("");
-  $("#stats").style.display = "grid";
 }
 
 function renderConcentration(rows, supply, dec, sym, poolSet){
@@ -1023,8 +1035,12 @@ function renderConcentration(rows, supply, dec, sym, poolSet){
   const poolBal = rows.filter(r=>poolSet.has(r.addr)).reduce((s,r)=>s+r.bal,0n);
   const pctPool = supply>0n ? Number(poolBal*10000n/supply)/100 : 0;
 
-  $("#concCap").innerHTML = `The top 10 wallets (excluding liquidity) hold <b style="color:var(--paper)">${pct10.toFixed(1)}%</b> of supply. `
-    + (pctPool>0 ? `The liquidity pool holds ${pctPool.toFixed(1)}%.` : "");
+  /* Le chapeau DECRIT la liste, il ne redit pas son chiffre : le pourcentage du
+     top 10 est deja dans les facteurs de sante, et la part du pool dans la
+     legende du verdict. Une legende de section qui recopie deux nombres deja
+     lus plus haut fait croire au lecteur qu'il en decouvre deux nouveaux. */
+  $("#concCap").innerHTML = `The ten largest wallets, liquidity and burns excluded. `
+    + `Each bar is that wallet's share of total supply.`;
   $("#concList").innerHTML = top10.map((r,i)=>{
     const pct = supply>0n ? Number(r.bal*100000n/supply)/1000 : 0;
     const w = Math.min(100, pct * (100/(Number(top10[0]? (supply>0n?Number(top10[0].bal*100000n/supply)/1000:1):1)||1)));
@@ -1038,9 +1054,6 @@ function renderConcentration(rows, supply, dec, sym, poolSet){
       <div><div class="hpct">${pct.toFixed(2)}%</div><div class="hbal">${fmtBig(r.bal.toString(),dec)} ${sym}</div></div>
     </div>`;
   }).join("");
-  $("#concNote").innerHTML = pct10 > 50
-    ? `⚠ High concentration: the top 10 exceed half the supply. A single one of these wallets selling weighs heavily on the chart.`
-    : `Moderate concentration across the top 10.`;
   $("#secConc").style.display = "block";
 }
 

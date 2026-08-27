@@ -166,7 +166,11 @@ function fauxPrivyFroid() {
       try { localStorage.setItem('swogeAuth', o.mode || 'email'); } catch (e) {}
       /* Un jeton Privy dans le stockage, comme chez un joueur qui S'EST
          connecte par e-mail et dont seule la verification echoue. */
-      if (o.jeton) { try { localStorage.setItem('privy:token', 'x'); } catch (e) {} }
+      /* Le jeton de RAFRAICHISSEMENT : c'est lui, et lui seul, qui rend une
+         session reprenable. Un jeton d'acces sans lui n'est qu'un reste. */
+      if (o.jeton) { try { localStorage.setItem('privy:refresh_token', 'x'); } catch (e) {} }
+      /* Un reste : l'acces expire survit, mais rien ne peut le renouveler. */
+      if (o.reste) { try { localStorage.setItem('privy:token', 'x'); } catch (e) {} }
       /* Ce que le module pose a son INITIALISATION, connecte ou non. Il ne
          doit JAMAIS compter pour une session : c'est le faux positif qui a
          fait annoncer un blocage a quelqu'un qui n'avait pas de session. */
@@ -390,8 +394,8 @@ function fauxPrivyFroid() {
     const mis = Date.now() - t7;
     ok(!!fin, 'le depot aboutit a une conclusion');
     if (fin) {
-      ok(/no longer valid/i.test(fin.texte),
-         `il dit que la session a expire : ${JSON.stringify(fin.texte.slice(0, 90))}`);
+      ok(/W-SESSION/.test(fin.texte),
+         `il dit que la session ne peut pas etre reprise : ${JSON.stringify(fin.texte.slice(0, 90))}`);
       ok(!/did not answer/i.test(fin.texte),
          'et il n accuse pas un portefeuille de s etre tu — il a repondu, et il a dit non');
       ok(/to deposit/i.test(fin.texte), 'en nommant le geste qu on voulait faire');
@@ -439,11 +443,14 @@ function fauxPrivyFroid() {
          message doit donc dire que la panne est CHEZ NOUS et non accuser le
          reseau du joueur — c'est la lecon des trois messages precedents, qui
          l'ont tous envoye chercher au mauvais endroit. */
-      ok(/on us, not on your browser/i.test(fin.texte),
-         `aucune requete partie : il dit que c est chez nous : ${JSON.stringify(fin.texte.slice(0, 100))}`);
-      ok(/W-INIT/.test(fin.texte), 'avec un code a nous citer');
+      /* Une session REPRENABLE, et pourtant aucune requete. Ce cas-la n'a pas
+         d'explication simple : le message doit le dire sans en inventer une —
+         c'est exactement l'erreur que j'ai commise trois fois de suite. */
+      ok(/we do not know why/i.test(fin.texte),
+         `il avoue ne pas savoir : ${JSON.stringify(fin.texte.slice(0, 100))}`);
+      ok(/W-QUIET/.test(fin.texte), 'avec un code a nous citer');
       ok(!/content blocker|VPN/i.test(fin.texte),
-         'et il n envoie PAS couper un bloqueur alors que rien n a ete demande');
+         'et il n accuse toujours aucun bloqueur');
     }
     await p.close();
   }
@@ -464,7 +471,7 @@ function fauxPrivyFroid() {
       isLoggedIn: function () { return false; },
       logout: function () {}, sendCode: function () { return Promise.resolve(); },
       verifyCode: function () { return Promise.resolve(null); }
-    };`, { app: false, config: true });
+    };`, { app: false, config: true, reste: true });
     await appuie(p, 'swcDGo');
     let fin = null;
     for (let i = 0; i < 60 && !fin; i++) {
@@ -474,10 +481,10 @@ function fauxPrivyFroid() {
     }
     ok(!!fin, 'le depot aboutit a une conclusion');
     if (fin) {
-      ok(/no longer valid/i.test(fin.texte),
+      ok(/W-SESSION/.test(fin.texte),
          `il conseille de se reconnecter : ${JSON.stringify(fin.texte.slice(0, 90))}`);
-      ok(!/blocking/i.test(fin.texte),
-         'et il n accuse AUCUN blocage — il n y a pas de session a bloquer');
+      ok(!/blocking|we do not know/i.test(fin.texte),
+         'et il n accuse AUCUN blocage, et n avoue aucune ignorance : le cas est clair');
     }
     await p.close();
   }
@@ -512,7 +519,7 @@ function fauxPrivyFroid() {
     }
     ok(!!fin, 'le depot aboutit a une conclusion');
     if (fin) {
-      ok(/on us, not on your browser/i.test(fin.texte),
+      ok(/W-BOOT/.test(fin.texte),
          `il dit que la panne est chez nous : ${JSON.stringify(fin.texte.slice(0, 100))}`);
       ok(!/content blocker|VPN/i.test(fin.texte),
          'et il n envoie PAS couper un bloqueur pour une panne qui n est pas la sienne');

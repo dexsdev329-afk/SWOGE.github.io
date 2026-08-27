@@ -542,6 +542,26 @@
     } catch (e) {}
     return false;
   }
+  /* ---- ET C'EST LE JETON DE RAFRAICHISSEMENT QUI DECIDE ----
+   *
+   * `restore()` commence par `refreshSession()`. Cette fonction lit le jeton de
+   * RAFRAICHISSEMENT dans le stockage : s'il n'y est pas, elle echoue SUR PLACE,
+   * sans une seule requete. Les autres cles — le jeton d'acces expire,
+   * l'utilisateur actif — peuvent parfaitement survivre a lui : ce sont des
+   * restes, pas une session.
+   *
+   * C'est la nuance qui m'a manque, et je l'ai payee deux fois. J'ai d'abord
+   * compte n'importe quelle cle `privy*`, puis les quatre cles de session ; les
+   * deux fois, un joueur sans session refreshable etait annonce comme bloque
+   * par quelque chose. Or « aucune requete n'est partie » ne veut PAS dire
+   * « on n'a pas pu demander » : le plus souvent, ca veut dire qu'il n'y avait
+   * rien a envoyer.
+   *
+   * Une seule cle porte la reponse. On la nomme. */
+  function peutRafraichir() {
+    try { return localStorage.getItem('privy:refresh_token') != null; }
+    catch (e) { return false; }
+  }
 
   function portefeuilleEmail(essai2) {
     return assurePrivy().then(function (P) {
@@ -566,9 +586,19 @@
            * premier : elle se constate sans rien interpreter, et elle a une
            * seule reponse possible. Le compteur ne departage QUE les cas ou il
            * y a bien une session a verifier. */
+          /* ---- QUATRE CAS, ET CHACUN A SA REPONSE ----
+           *   'init'    l'initialisation a JETE. Le module n'a pas demarre :
+           *             c'est chez nous, et rien d'autre n'a pu etre tente.
+           *   'perime'  aucun jeton de rafraichissement. La session ne peut
+           *             pas etre reprise, quoi qu'il arrive — se reconnecter
+           *             est la seule reponse, et elle marche.
+           *   'muet'    un jeton refreshable, et pourtant PAS UNE requete.
+           *             Celui-la n'a pas d'explication simple : on le dit, on
+           *             ne l'invente pas.
+           *   'refus'   des requetes sont parties et n'ont pas suffi. */
           POURQUOI = ECHEC_INIT ? 'init'
-                   : !jetonPrivy() ? 'perime'
-                   : req === 0 ? 'init'
+                   : !peutRafraichir() ? 'perime'
+                   : req === 0 ? 'inerte'
                    : 'refus';
           return null;
         }
@@ -711,19 +741,28 @@
            dans son navigateur n'y changera quoi que ce soit : c'est chez nous.
            On le dit, plutot que de lui faire couper un bloqueur pour rien. */
         var casse = (mode === 'email' && POURQUOI === 'init');
+        /* Une session reprenable, et rien n'est parti. Je n'ai pas de cause a
+           proposer, alors je n'en propose pas : le code suffit a ce qu'on
+           cherche, et une cause inventee fait chercher au mauvais endroit —
+           trois fois de suite dans cette affaire. */
+        var inerte = (mode === 'email' && POURQUOI === 'inerte');
         var err = new Error(!mode ? 'Sign in first'
           : sansPortefeuille
             ? 'No wallet in this browser. You signed in with a wallet, and there is '
               + 'none here — open swoleeswoge.dog inside your wallet app\'s browser, '
               + 'or sign in with your email instead.'
           : perime
-            ? 'Your email sign-in is no longer valid in this browser — sign in again to '
-              + acte + '.'
+            ? 'Your email session cannot be resumed in this browser — the part that '
+              + 'renews it is gone. Sign in again with your email to ' + acte
+              + ' (code W-SESSION).'
           : casse
             ? 'The email wallet could not start on this page — this one is on us, not '
-              + 'on your browser. Nothing was even asked of Privy, so no blocker or '
-              + 'network is involved. Reload the page; if it happens again, tell us '
-              + '(code W-INIT' + (REQUETES === null ? '' : '/' + REQUETES) + ').'
+              + 'on your browser. Reload the page; if it happens again, tell us '
+              + '(code W-BOOT).'
+          : inerte
+            ? 'Your wallet did not respond and nothing was sent — we do not know why '
+              + 'yet. Reload the page and try once more; if it happens again, tell us '
+              + '(code W-QUIET).'
           : refuse
             ? 'Your sign-in is stored here but could not be verified. '
               + (REQUETES ? REQUETES + ' request(s) did go out, so it is the account or '

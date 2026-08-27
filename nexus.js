@@ -14916,7 +14916,11 @@
        mille huit cents quand on en voit mille six cent quatre-vingts ment, et
        le joueur croit que le reglage ne marche plus alors qu'il est au bout. */
     if (elVueVal) {
-      var h = window.innerHeight || 640;
+      /* La HAUTEUR DU CADRE, pas celle de la fenetre : entre les deux il y a
+         les barres du haut et du bas, et c'est bien le cadre qu'on voit. Le
+         commentaire au-dessus le demandait deja — « on affiche ce qu'on
+         VOIT » — et la ligne disait autre chose. */
+      var h = (canvas.height / DPR) || window.innerHeight || 640;
       elVueVal.textContent = String(Math.round(h / zoomCourant(h)));
     }
   }
@@ -16175,13 +16179,53 @@
   // ------------------------------------------------------- le cadrage
 
   var DPR = Math.min(window.devicePixelRatio || 1, 2);
+  /*
+   * ---- LE CADRE SE MESURE SUR LE CANVAS, PAS SUR LA FENETRE ----
+   *
+   * On prenait `window.innerWidth/innerHeight`. C'etait juste tant que le jeu
+   * occupait tout l'ecran, et c'est faux depuis qu'il y a des BARRES : celle
+   * du site en haut, et celle de navigation en bas que `stakebubble.js` pose
+   * une fois le joueur connecte. `nexus.html` retire leur hauteur a `#nxWrap`,
+   * et le canvas remplit ce cadre en `width/height:100%` — sa boite CSS est
+   * donc plus COURTE que la fenetre, de cent vingt-sept pixels sur un
+   * telephone de 844.
+   *
+   * Une reserve de pixels plus grande que la boite qui l'affiche ne DEBORDE
+   * pas : le navigateur l'ecrase dedans. Le monde etait donc tasse de quinze
+   * pour cent en hauteur, et tout ce que le jeu calcule a partir de
+   * `canvas.height / DPR` — le cadrage de la camera, le zoom, la conversion
+   * d'un doigt en position du monde — se trompait d'autant. C'est ce qui a ete
+   * rapporte : « la barre du haut et du bas cache le jeu ».
+   *
+   * ---- ET C'EST UN `ResizeObserver`, PAS `resize` ----
+   *
+   * La barre du bas n'existe pas au chargement : elle arrive quand le joueur
+   * se connecte, parfois plusieurs minutes apres. `#nxWrap` retrecit a cet
+   * instant, et AUCUN evenement `resize` ne part — la fenetre, elle, n'a pas
+   * bouge. Le tassement apparaissait donc pile au moment ou l'on se connecte,
+   * sans que rien ne l'explique. On regarde la boite elle-meme : elle couvre
+   * d'un coup la barre qui arrive, la barre qui se replie sur deux lignes,
+   * l'ecran qu'on tourne et la fenetre qu'on redimensionne — un seul
+   * mecanisme, et rien a tenir d'accord avec `nexus.html`.
+   */
   function redimensionne() {
     DPR = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = Math.round(window.innerWidth * DPR);
-    canvas.height = Math.round(window.innerHeight * DPR);
+    var r = canvas.getBoundingClientRect();
+    /* Le repli sur la fenetre n'est pas une precaution de style : tant que la
+       page n'est pas posee, la boite mesure zero, et un canvas de largeur
+       nulle rendrait toutes les divisions par `vueW` infinies. */
+    var L = Math.round((r.width || window.innerWidth) * DPR);
+    var H = Math.round((r.height || window.innerHeight) * DPR);
+    if (L < 1 || H < 1) return;
+    /* On n'ecrit que si ca CHANGE : assigner `canvas.width` efface la surface,
+       et l'observateur peut se declencher plusieurs fois pour un seul
+       mouvement de barre. Sans ce garde, l'image clignoterait. */
+    if (canvas.width !== L) canvas.width = L;
+    if (canvas.height !== H) canvas.height = H;
   }
   window.addEventListener('resize', redimensionne);
   window.addEventListener('orientationchange', redimensionne);
+  if (window.ResizeObserver) new ResizeObserver(redimensionne).observe(canvas);
   redimensionne();
 
   var dernier = null;

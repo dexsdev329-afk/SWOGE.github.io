@@ -369,14 +369,44 @@
    * Privy. */
   var PRIVY_APP_ID = 'cmsga0yzp00a50biaf9vlzzd2';
   var chargePrivy = null;
+  /* ---- L'INITIALISATION EST REJOUEE, ET SON ECHEC EST RETENU ----
+   *
+   * `assurePrivy` sortait des que `window.SwogePrivy` existait, SANS s'assurer
+   * qu'il avait ete initialise. Deux facons d'y perdre le portefeuille, toutes
+   * deux muettes :
+   *
+   *   - LA COURSE. Le module pose son global a la FIN de son execution ; son
+   *     `onload`, qui appelle `init`, est une tache separee. Un autre chargeur
+   *     — le tiroir, la barre de connexion — qui regarde entre les deux voit
+   *     un module present et non initialise, et sort.
+   *   - L'ECHEC AVALE. `init` etait enveloppe dans un `try` vide. S'il jette,
+   *     `Zr` reste indefini a l'interieur du module, et TOUS les appels
+   *     suivants ressortent par ce meme raccourci sans jamais reessayer.
+   *
+   * Dans les deux cas, `restore()` trouve son client absent, rend `null` sans
+   * une requete ni une ligne de console, et le joueur lit que sa session ne
+   * peut pas etre verifiee. C'est exactement ce qui a ete decrit : « il n'y a
+   * rien dans la console », et se reconnecter n'y change rien puisque le
+   * tiroir sort par le meme raccourci.
+   *
+   * `init` est idempotent — le module garde `Zr || (Zr = ...)`. On peut donc
+   * le rejouer sans risque a chaque passage, ce qui supprime la course et
+   * redonne une chance a l'echec. Et l'echec n'est plus avale : on le retient
+   * pour pouvoir le NOMMER au lieu d'accuser un bloqueur de contenu. */
+  var ECHEC_INIT = null;
+  function initPrivy() {
+    if (!window.SwogePrivy || !window.SwogePrivy.init) return;
+    try { window.SwogePrivy.init(PRIVY_APP_ID); ECHEC_INIT = null; }
+    catch (e) { ECHEC_INIT = e; }
+  }
   function assurePrivy() {
-    if (window.SwogePrivy) return Promise.resolve(window.SwogePrivy);
+    if (window.SwogePrivy) { initPrivy(); return Promise.resolve(window.SwogePrivy); }
     if (chargePrivy) return chargePrivy;
     chargePrivy = new Promise(function (res, rej) {
       var s = document.createElement('script');
       s.src = 'privy-swoge.js';
       s.onload = function () {
-        try { window.SwogePrivy.init(PRIVY_APP_ID); } catch (e) {}
+        initPrivy();
         res(window.SwogePrivy);
       };
       s.onerror = function () { chargePrivy = null; rej(new Error('privy')); };
@@ -487,7 +517,10 @@
       /* C'EST ICI que ca se bloquait. `restore()` peut ne jamais repondre. */
       return avecDelai(suite, essai2 ? DELAI_RETOUR : DELAI_PORTEFEUILLE, 'wallet-muet').then(function (adr) {
         adr = adr || (P.getAddress && P.getAddress());
-        if (!adr) { POURQUOI = jetonPrivy() ? 'refus' : 'perime'; return null; }
+        if (!adr) {
+          POURQUOI = ECHEC_INIT ? 'init' : (jetonPrivy() ? 'refus' : 'perime');
+          return null;
+        }
         POURQUOI = null;
         return { eip1193: P.getProvider(), adresse: adr };
       });
@@ -623,6 +656,10 @@
            mur. On nomme donc ce qui bloque le plus souvent, et on propose ce
            qui a une chance — un autre navigateur, sans filtre. */
         var refuse = (mode === 'email' && POURQUOI === 'refus');
+        /* Le module n'a pas pu demarrer. Rien de ce que le joueur peut faire
+           dans son navigateur n'y changera quoi que ce soit : c'est chez nous.
+           On le dit, plutot que de lui faire couper un bloqueur pour rien. */
+        var casse = (mode === 'email' && POURQUOI === 'init');
         var err = new Error(!mode ? 'Sign in first'
           : sansPortefeuille
             ? 'No wallet in this browser. You signed in with a wallet, and there is '
@@ -631,6 +668,9 @@
           : perime
             ? 'Your email sign-in is no longer valid in this browser — sign in again to '
               + acte + '.'
+          : casse
+            ? 'The email wallet could not start on this page — this one is on us, not '
+              + 'on your browser. Reload the page; if it happens again, tell us.'
           : refuse
             ? 'Your sign-in is stored here but could not be verified — something is '
               + 'blocking it. Turn off any content blocker or VPN for swoleeswoge.dog, '

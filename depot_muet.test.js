@@ -476,6 +476,44 @@ function fauxPrivyFroid() {
     await p.close();
   }
 
+  // ============ 10. LE MODULE N'A PAS PU DEMARRER ============
+  {
+    console.log('\n-- l initialisation du portefeuille jette --');
+    /* ---- LE CAS LE PLUS SOURNOIS DES CINQ ----
+     * `init` etait enveloppe dans un `try` vide, et le chargeur sortait des
+     * que `window.SwogePrivy` existait — donc sans jamais rejouer
+     * l'initialisation. Si elle jette une fois, le client reste indefini a
+     * l'interieur du module pour toute la session : `restore()` rend `null`
+     * SANS une requete ni une ligne de console, et se reconnecter n'y change
+     * rien puisque le tiroir sort par le meme raccourci.
+     * C'est chez NOUS, pas chez le joueur : lui faire couper un bloqueur de
+     * contenu serait lui faire perdre son temps sur notre panne. */
+    const p = await jusquAuDepot(`window.SwogePrivy = {
+      init: function () { throw new Error('demarrage impossible'); },
+      restore: function () { return Promise.resolve(null); },
+      getProvider: function () { return null; },
+      getAddress: function () { return null; },
+      isLoggedIn: function () { return false; },
+      logout: function () {}, sendCode: function () { return Promise.resolve(); },
+      verifyCode: function () { return Promise.resolve(null); }
+    };`, { app: false, jeton: true });
+    await appuie(p, 'swcDGo');
+    let fin = null;
+    for (let i = 0; i < 60 && !fin; i++) {
+      await p.waitForTimeout(400);
+      const e = await lis(p);
+      if (!e.mort && e.texte) fin = e;
+    }
+    ok(!!fin, 'le depot aboutit a une conclusion');
+    if (fin) {
+      ok(/on us, not on your browser/i.test(fin.texte),
+         `il dit que la panne est chez nous : ${JSON.stringify(fin.texte.slice(0, 100))}`);
+      ok(!/content blocker|VPN/i.test(fin.texte),
+         'et il n envoie PAS couper un bloqueur pour une panne qui n est pas la sienne');
+    }
+    await p.close();
+  }
+
   await nav.close(); site.stop();
   console.log(rates ? `\ndepot_muet.test.js : ${rates} essai(s) rate(s) sur ${n}\n`
                     : `\ndepot_muet.test.js : ${n} verifications OK\n`);

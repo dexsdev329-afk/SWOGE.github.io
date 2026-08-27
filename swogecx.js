@@ -63,7 +63,17 @@
 
   var enRoute = null;
   function chargePrivy() {
-    if (window.SwogePrivy) return Promise.resolve();
+    /* On rejoue l'initialisation au lieu de sortir tout de suite : le module
+       pose son global a la FIN de son execution, et son `onload` — qui appelle
+       `init` — est une tache separee. Un chargeur qui regarde entre les deux
+       voyait un module present et NON initialise, et sortait. `init` est
+       idempotent cote module, donc le rejouer ne coute rien.
+       Voir `swogecompte.js` pour le detail : c'est le meme raccourci, et il y
+       cassait le portefeuille en silence. */
+    if (window.SwogePrivy) {
+      try { SwogePrivy.init(PRIVY); } catch (e) {}
+      return Promise.resolve();
+    }
     if (enRoute) return enRoute;
     enRoute = new Promise(function (ok, non) {
       var b = document.createElement('script');

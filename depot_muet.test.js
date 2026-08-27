@@ -394,7 +394,11 @@ function fauxPrivyFroid() {
          `il dit que la session ne peut pas etre reprise : ${JSON.stringify(fin.texte.slice(0, 90))}`);
       ok(!/did not answer/i.test(fin.texte),
          'et il n accuse pas un portefeuille de s etre tu — il a repondu, et il a dit non');
-      ok(/to deposit/i.test(fin.texte), 'en nommant le geste qu on voulait faire');
+      /* Le geste doit etre NOMME, ou qu'il soit dans la phrase : les messages
+         disent maintenant « your deposit resumes on its own » plutot que
+         « sign in again to deposit ». Ce qui compte n'a jamais ete la
+         tournure, c'est que le joueur lise le geste QU'IL vient de faire. */
+      ok(/deposit/i.test(fin.texte), 'en nommant le geste qu on voulait faire');
       ok(fin.sortie, 'avec une sortie a toucher');
     }
     /* ET SANS FAIRE ATTENDRE. Un refus immediat annonce en douze secondes est
@@ -442,8 +446,13 @@ function fauxPrivyFroid() {
       /* Une session REPRENABLE, et pourtant aucune requete. Ce cas-la n'a pas
          d'explication simple : le message doit le dire sans en inventer une —
          c'est exactement l'erreur que j'ai commise trois fois de suite. */
-      ok(/we do not know why/i.test(fin.texte),
-         `il avoue ne pas savoir : ${JSON.stringify(fin.texte.slice(0, 100))}`);
+      /* Le message doit MENER AU BOUTON, pas constater une impasse. Un joueur
+         qui lit « nous ne savons pas pourquoi » ne cherche pas la reparation
+         qui se trouve juste dessous — c'est ce qui vient d'arriver. */
+      ok(/needs unlocking/i.test(fin.texte) && /Tap Unlock below/i.test(fin.texte),
+         `il mene au bouton : ${JSON.stringify(fin.texte.slice(0, 110))}`);
+      ok(!/Reload the page/i.test(fin.texte),
+         'et il ne conseille PLUS de recharger — c est ce qui casse la session');
       ok(/W-QUIET/.test(fin.texte), 'avec un code a nous citer');
       ok(!/content blocker|VPN/i.test(fin.texte),
          'et il n accuse toujours aucun bloqueur');

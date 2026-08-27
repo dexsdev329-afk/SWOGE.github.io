@@ -875,22 +875,34 @@
               + 'or sign in with your email instead.'
           : perime
             ? 'Your email session cannot be resumed in this browser — the part that '
-              + 'renews it is gone. Sign in again with your email to ' + acte
-              + ' (code W-SESSION).'
+              + 'renews it is gone. Tap Unlock below to sign in again with an email '
+              + 'code; your ' + acte + ' resumes on its own (code W-SESSION).'
           : casse
             ? 'The email wallet could not start on this page — this one is on us, not '
               + 'on your browser. Reload the page; if it happens again, tell us '
               + '(code W-BOOT).'
           : inerte
-            ? 'Your wallet did not respond and nothing was sent — we do not know why '
-              + 'yet. Reload the page and try once more; if it happens again, tell us '
+            /* ---- LE REMEDE D'ABORD, LA CAUSE ENSUITE ----
+             * Ce message disait « nous ne savons pas pourquoi » et proposait de
+             * recharger. Depuis, on SAIT — le module de Privy exige DEUX jetons
+             * pour reprendre une session et n'en a qu'un, alors il renonce sans
+             * rien demander — et surtout on a de quoi REPARER : le bouton juste
+             * en dessous refait la connexion par code, sans recharger.
+             * Un message qui commence par « on ne sait pas » se lit comme une
+             * impasse, et le joueur ne cherche pas le bouton. Il commence donc
+             * par ce qu'il faut faire. Le rechargement, lui, est exactement ce
+             * qui a casse la session : le conseiller etait le pire de tous. */
+            ? 'Your email wallet needs unlocking — its session is half there, so it '
+              + 'gave up without asking Privy. Tap Unlock below: it takes an email '
+              + 'code, nothing reloads, and your ' + acte + ' resumes on its own '
               + '(code W-QUIET).'
           : refuse
-            ? 'Your sign-in is stored here but could not be verified. '
+            ? 'Your sign-in could not be verified. '
               + (REQUETES ? REQUETES + ' request(s) did go out, so it is the account or '
                             + 'the network, not this page. '
                           : '')
-              + 'Try again in a minute; if it keeps happening, tell us (code W-VERIF'
+              + 'Tap Unlock below to sign in again with an email code — nothing '
+              + 'reloads, and your ' + acte + ' resumes on its own (code W-VERIF'
               + (REQUETES === null ? '' : '/' + REQUETES) + ').'
           : app
             ? 'Your wallet did not answer. ' + app + "'s built-in browser often blocks it — "

@@ -9922,9 +9922,11 @@
      * serveur, et le jour ou le plan gagne une salle, l'un des deux dessins
      * l'oublierait. */
     DONJON_C = m.donjon || null;
-    /* Elle arrive avec le plan, comme `mur` et `decor` : la page recoit le nom
-       des planches de zone, elle ne le deduit pas de celui du donjon. */
-    EFFETS_C = m.effets || null;
+    /* Elles arrivent avec le plan, comme `mur` et `decor` : la page recoit le
+       nom des planches de zone, elle ne le deduit pas de celui du donjon.
+       `m.effets` est AUTRE CHOSE — la table des etats — et ce champ s'est
+       appele comme ca pendant une version. Voir server.js. */
+    EFFETS_C = m.planchesFx || null;
     /* Les plaques de braise viennent AVEC le plan, comme les tuiles. Le
        serveur les fait bruler a partir de cette meme liste : deux listes
        auraient fini par ne plus decrire le meme sol, et le joueur aurait pris

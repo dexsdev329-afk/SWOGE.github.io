@@ -163,9 +163,10 @@ console.log('\n-- C. AUCUN NOM DECLARE PAR LE SERVEUR N EST SANS FICHIER --');
       if (D.sol) attendu.push(['sol', `img/nexus/tiles/ground_${D.sol}.webp`]);
       if (D.mur) attendu.push(['mur', `img/nexus/tiles/mur_${D.mur}.webp`]);
       if (D.decor) attendu.push(['decor', `img/nexus/tiles/obj_${D.decor}.webp`]);
-      if (D.effets) {
+      if (D.planchesFx) {
         for (const q of ['annonce', 'onde', 'chute']) {
-          attendu.push([`effets:${D.effets}`, `img/nexus/effets/${q}_${D.effets}.webp`]);
+          attendu.push([`planchesFx:${D.planchesFx}`,
+                        `img/nexus/effets/${q}_${D.planchesFx}.webp`]);
         }
       }
     }

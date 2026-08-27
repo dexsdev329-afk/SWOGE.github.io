@@ -164,6 +164,9 @@ function fauxPrivyFroid() {
       C.prototype = N.prototype; ['CONNECTING','OPEN','CLOSING','CLOSED'].forEach((k) => { C[k] = N[k]; });
       window.WebSocket = C;
       try { localStorage.setItem('swogeAuth', o.mode || 'email'); } catch (e) {}
+      /* Un jeton Privy dans le stockage, comme chez un joueur qui S'EST
+         connecte par e-mail et dont seule la verification echoue. */
+      if (o.jeton) { try { localStorage.setItem('privy:token', 'x'); } catch (e) {} }
       /* Le navigateur interne de Telegram, sur Android. Absent quand on veut
          eprouver un Safari ou un Chrome ordinaire. */
       if (o.app !== false) window.TelegramWebviewProxy = { postEvent: function () {} };
@@ -392,6 +395,45 @@ function fauxPrivyFroid() {
     /* ET SANS FAIRE ATTENDRE. Un refus immediat annonce en douze secondes est
        douze secondes volees : le delai n'est la que pour ce qui se TAIT. */
     ok(mis < 6000, `sans attendre le delai du silence (${(mis / 1000).toFixed(1)} s)`);
+    await p.close();
+  }
+
+  // ============ 8. UN JETON PRESENT N'EST PAS UNE SESSION ABSENTE ============
+  {
+    console.log('\n-- le jeton est la, mais rien ne peut le verifier --');
+    /* ---- LE CAS RAPPORTE ----
+     * Le joueur lit « votre connexion e-mail n'est plus valide, reconnectez-
+     * vous » et se reconnecte : rien ne change. C'est logique si le jeton est
+     * TOUJOURS LA et que c'est sa VERIFICATION qui echoue — un bloqueur, un
+     * VPN, l'API de Privy injoignable. Se reconnecter passe par la meme API :
+     * on l'envoyait se cogner au meme mur.
+     * On ne peut pas distinguer les deux depuis `restore()`, qui avale ses
+     * erreurs et rend `null` dans les deux cas. On regarde donc si un jeton
+     * traine dans `localStorage`, ce qui est vrai dans un cas et faux dans
+     * l'autre. */
+    const p = await jusquAuDepot(`window.SwogePrivy = {
+      init: function () {},
+      restore: function () { return Promise.resolve(null); },
+      getProvider: function () { return null; },
+      getAddress: function () { return null; },
+      isLoggedIn: function () { return false; },
+      logout: function () {}, sendCode: function () { return Promise.resolve(); },
+      verifyCode: function () { return Promise.resolve(null); }
+    };`, { app: false, jeton: true });
+    await appuie(p, 'swcDGo');
+    let fin = null;
+    for (let i = 0; i < 60 && !fin; i++) {
+      await p.waitForTimeout(400);
+      const e = await lis(p);
+      if (!e.mort && e.texte) fin = e;
+    }
+    ok(!!fin, 'le depot aboutit a une conclusion');
+    if (fin) {
+      ok(/could not be verified/i.test(fin.texte),
+         `il dit que la verification a echoue : ${JSON.stringify(fin.texte.slice(0, 100))}`);
+      ok(!/no longer valid/i.test(fin.texte),
+         'et il ne declare PAS la session morte — elle est peut-etre parfaitement bonne');
+    }
     await p.close();
   }
 

@@ -432,6 +432,37 @@
    * a chaque fois. */
   var POURQUOI = null;
 
+  /* ---- LA SESSION EST-ELLE SEULEMENT LA ? ----
+   *
+   * `restore()` avale toutes ses erreurs : il essaie de rafraichir la session
+   * aupres de Privy, puis de lire l'utilisateur, et si l'un ou l'autre echoue
+   * il rend `null` sans un mot. Deux situations tres differentes finissent
+   * donc au meme endroit :
+   *
+   *   il n'y a AUCUN jeton dans ce navigateur — on ne s'y est jamais connecte
+   *   par e-mail, ou l'on s'en est deconnecte. « Reconnectez-vous » est alors
+   *   exactement le bon conseil.
+   *
+   *   le jeton EST la, et le rafraichissement a echoue quand meme. La session
+   *   n'est pas « invalide » : elle n'a pas pu etre verifiee. Un bloqueur de
+   *   contenu, un VPN, un reseau qui filtre, l'API de Privy injoignable — et
+   *   se reconnecter ne changera rien, puisque la connexion passe par la meme
+   *   API. Lui dire de se reconnecter, c'est l'envoyer se cogner au meme mur.
+   *
+   * Privy range ses jetons dans `localStorage` (on l'a verifie dans le
+   * module : sa classe de stockage est `localStorage`, rien d'autre). On
+   * regarde donc s'il y en a un, et c'est tout — on ne le lit pas, on ne
+   * l'interprete pas, on constate sa presence. */
+  function jetonPrivy() {
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k && k.indexOf('privy') === 0) return true;
+      }
+    } catch (e) {}
+    return false;
+  }
+
   function portefeuilleEmail(essai2) {
     return assurePrivy().then(function (P) {
       if (!P) { POURQUOI = 'absent'; return null; }
@@ -440,7 +471,7 @@
       /* C'EST ICI que ca se bloquait. `restore()` peut ne jamais repondre. */
       return avecDelai(suite, essai2 ? DELAI_RETOUR : DELAI_PORTEFEUILLE, 'wallet-muet').then(function (adr) {
         adr = adr || (P.getAddress && P.getAddress());
-        if (!adr) { POURQUOI = 'perime'; return null; }
+        if (!adr) { POURQUOI = jetonPrivy() ? 'refus' : 'perime'; return null; }
         POURQUOI = null;
         return { eip1193: P.getProvider(), adresse: adr };
       });
@@ -571,6 +602,11 @@
          * que son portefeuille n'avait pas repondu, ce qui l'envoyait chercher
          * une panne au lieu de le faire signer. */
         var perime = (mode === 'email' && POURQUOI === 'perime');
+        /* Le jeton est la, et il n'a pas pu etre verifie. Se reconnecter passe
+           par la MEME API : le conseil serait de l'envoyer se cogner au meme
+           mur. On nomme donc ce qui bloque le plus souvent, et on propose ce
+           qui a une chance — un autre navigateur, sans filtre. */
+        var refuse = (mode === 'email' && POURQUOI === 'refus');
         var err = new Error(!mode ? 'Sign in first'
           : sansPortefeuille
             ? 'No wallet in this browser. You signed in with a wallet, and there is '
@@ -579,6 +615,10 @@
           : perime
             ? 'Your email sign-in is no longer valid in this browser — sign in again to '
               + acte + '.'
+          : refuse
+            ? 'Your sign-in is stored here but could not be verified — something is '
+              + 'blocking it. Turn off any content blocker or VPN for swoleeswoge.dog, '
+              + 'or open the site in another browser, then try again.'
           : app
             ? 'Your wallet did not answer. ' + app + "'s built-in browser often blocks it — "
               + 'open swoleeswoge.dog in Chrome or Safari, or sign in again.'

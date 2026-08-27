@@ -699,7 +699,106 @@
    * de trouver ca louche. Un message qui parle d'autre chose que de ce qu'on
    * vient de faire fait douter du reste de la phrase, y compris de la partie
    * qui etait vraie. */
-  function signataire(quoi) {
+  /* ==================== DEVERROUILLER LE PORTEFEUILLE ====================
+   *
+   * ---- LA PANNE, ENFIN NOMMEE ----
+   *
+   * Le SDK de Privy ne renouvelle une session que si l'une de ces deux choses
+   * est vraie — c'est ecrit dans son code, pas devine :
+   *
+   *     hasRefreshCredentials(acces, rafraichissement) {
+   *       return mightHaveServerCookies()
+   *           || (typeof acces === 'string' && typeof rafraichissement === 'string');
+   *     }
+   *
+   * Sinon il journalise « missing tokens, SKIPPING REQUEST » et renonce SANS
+   * contacter personne. Voila pourquoi le compteur voyait zero requete,
+   * pourquoi la console restait vide, et pourquoi trois navigateurs
+   * echouaient a l'identique : ce n'etait ni le reseau, ni le compte, ni un
+   * bloqueur. Le module renoncait tout seul.
+   *
+   * Il lui faut DEUX jetons, et le second se lit sous une cle derivee de
+   * l'utilisateur actif. Notre stockage est du `localStorage` pur : on ne pose
+   * aucun cookie serveur, donc la premiere branche est toujours fausse chez
+   * nous — tout repose sur une paire complete.
+   *
+   * ---- ET POURQUOI SE RECONNECTER N'Y CHANGEAIT RIEN ----
+   *
+   * La connexion par e-mail REUSSIT : `verifyCode` rend un portefeuille vivant
+   * en memoire. Puis le tiroir recharge la page pour reprendre la session, et
+   * la memoire part avec. Apres le rechargement il faut reconstruire depuis le
+   * stockage — c'est-a-dire retomber sur la paire manquante. Le joueur se
+   * reconnectait correctement A CHAQUE FOIS ; le rechargement jetait le
+   * resultat a chaque fois.
+   *
+   * ---- CE QUE FAIT CE DEVERROUILLAGE ----
+   *
+   * Il refait le seul geste qui marche — code par e-mail, `verifyCode` — SANS
+   * RECHARGER. Le portefeuille revient en memoire et l'action reprend tout de
+   * suite. Il ne repare pas le stockage et ne pretend pas le faire : il rend
+   * la main au joueur, ici et maintenant, ce qu'aucun des messages precedents
+   * ne savait faire.
+   *
+   * C'est aussi pourquoi je n'ai pas retire le rechargement de la connexion :
+   * une fois qu'on peut deverrouiller sur place, il ne coute plus rien, et le
+   * retirer aurait touche le chemin par lequel TOUT LE MONDE entre — pour un
+   * benefice que celui-ci apporte deja.
+   */
+  function formulaireDeverrou(reprend) {
+    if (!boiteMsg) return;
+    boiteMsg.className = 'swc-msg on act';
+    boiteMsg.textContent = '';
+    var t = document.createElement('div');
+    t.textContent = 'Unlock your wallet — we will email you a code. '
+      + 'Nothing reloads, so you keep what you were doing.';
+    var em = document.createElement('input');
+    em.type = 'email'; em.placeholder = 'your email'; em.autocomplete = 'email';
+    var cd = document.createElement('input');
+    cd.inputMode = 'numeric'; cd.placeholder = 'code'; cd.style.display = 'none';
+    var b = document.createElement('button');
+    b.type = 'button'; b.textContent = 'Send me a code';
+    var etat = document.createElement('div');
+    [t, em, cd, b, etat].forEach(function (x) { boiteMsg.appendChild(x); });
+    [em, cd].forEach(function (x) {
+      x.style.cssText = 'display:block;width:100%;margin:8px 0;padding:10px;'
+        + 'border-radius:10px;border:1px solid #E1E9F6;font-family:inherit;font-size:14px;';
+    });
+    cd.style.display = 'none';
+    var phase = 'email';
+    b.addEventListener('click', function () {
+      var P = window.SwogePrivy;
+      if (!P) { etat.textContent = 'The wallet module is not loaded.'; return; }
+      b.disabled = true;
+      if (phase === 'email') {
+        etat.textContent = 'Sending…';
+        Promise.resolve(P.sendCode(String(em.value || '').trim())).then(function () {
+          phase = 'code'; cd.style.display = 'block'; b.textContent = 'Unlock';
+          etat.textContent = 'Code sent — check your inbox.'; cd.focus();
+        })['catch'](function (e) {
+          etat.textContent = String((e && e.message) || e).slice(0, 110);
+        }).then(function () { b.disabled = false; });
+        return;
+      }
+      etat.textContent = 'Unlocking…';
+      Promise.resolve(P.verifyCode(String(em.value || '').trim(),
+                                   String(cd.value || '').trim()))
+        .then(function () {
+          /* Le mode doit dire `email`, sinon `portefeuille()` irait chercher
+             une extension qui n'existe pas sur telephone. */
+          try { localStorage.setItem('swogeAuth', 'email'); } catch (x) {}
+          boiteMsg.className = 'swc-msg';
+          if (typeof reprend === 'function') reprend();
+        })['catch'](function (e) {
+          etat.textContent = String((e && e.message) || e).slice(0, 110);
+          b.disabled = false;
+        });
+    });
+  }
+
+  /* `reprend` : ce qu'on refera une fois le portefeuille rendu. Sans lui, le
+     joueur deverrouille puis doit retrouver son bouton et tout resaisir —
+     et c'est au moment ou il a deja essaye cinq fois. */
+  function signataire(quoi, reprend) {
     return portefeuille().then(function (w) {
       /* « Sign in first » etait faux et deroutant pour quelqu'un qui voyait
          son pseudo et son solde a l'ecran. On distingue les deux cas. */
@@ -808,6 +907,22 @@
            place, la page se rechargeait avec, et on revenait au meme mur.
            Se reconnecter commence par se DEconnecter — c'est le sens du
            bouton, et c'est ce que le joueur croyait faire. */
+        /* ---- LA SORTIE QUI MARCHE, QUAND ELLE MARCHE ----
+         * Se deconnecter puis se reconnecter rechargeait la page, et le
+         * rechargement est precisement ce qui tue le portefeuille e-mail. On
+         * propose donc le DEVERROUILLAGE SUR PLACE des qu'on est dans un cas ou
+         * il peut aider — c'est-a-dire des que le module est charge et que le
+         * compte est un compte e-mail. Il refait le seul geste qui marche, sans
+         * rien recharger, et REPREND l'action au lieu de laisser le joueur
+         * recommencer : c'est la difference entre un conseil et une reparation.
+         * Les autres cas gardent l'ancienne sortie : pour un compte
+         * portefeuille, ou quand le module n'est meme pas la, un code par
+         * e-mail ne repare rien. */
+        if (mode === 'email' && window.SwogePrivy && window.SwogePrivy.verifyCode) {
+          err.sortie = { texte: 'Unlock my wallet →',
+                         fait: function () { formulaireDeverrou(reprend); } };
+          throw err;
+        }
         err.sortie = (window.swogeConnexion && window.swogeConnexion.ouvre)
           ? { texte: 'Sign out and sign in again →', fait: function () {
                 try { localStorage.removeItem('swogeSession'); } catch (x) {}
@@ -1400,7 +1515,7 @@
     bouton.disabled = true;
     bouton.textContent = 'Opening your wallet…';
     dit('Opening your wallet…', '', null, true);
-    signataire('deposit').then(function (w) {
+    signataire('deposit', depose).then(function (w) {
       var montant = ethers.utils.parseUnits(s, 18);
       var jeton = new ethers.Contract(TOKEN, ERC20_ABI, w.signer);
       var coffre = new ethers.Contract(VAULT, VAULT_ABI, w.signer);
@@ -1439,7 +1554,7 @@
   function envoieRetrait(v) {
     if (!v) return;
     dit('Opening your wallet…', '', null, true);
-    signataire('withdraw').then(function (w) {
+    signataire('withdraw', function () { envoieRetrait(v); }).then(function (w) {
       var coffre = new ethers.Contract(v.vault || VAULT, VAULT_ABI, w.signer);
       dit('Confirm the withdrawal in your wallet…', '', null, true);
       return coffre.withdraw(v.cumulative, v.deadline, v.v, v.r, v.s)

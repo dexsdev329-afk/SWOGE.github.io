@@ -309,7 +309,14 @@ function fauxPrivyFroid() {
      * geste. C'est exactement le defaut — un appel qui oublie son nom retombe
      * sur le mot par defaut — et ca se verifie sans navigateur. */
     const src = fs.readFileSync(path.join(SITE, 'swogecompte.js'), 'utf8');
-    const appels = [...src.matchAll(/signataire\(([^)]*)\)\s*\.then/g)].map((m) => m[1].trim());
+    /* On ne capture QUE le premier argument : le second est une fonction de
+       reprise, avec ses propres parentheses, et un motif glouton s'y perdait.
+       Et on ne lit que les APPELS : la declaration et les deux mentions dans
+       les commentaires ne sont pas des appels, et les compter faisait crier
+       cet essai sur du texte. */
+    const appels = [...src.matchAll(/(?:^|[^`\w])signataire\(\s*([^,)]*)[,)]/gm)]
+      .map((m) => m[1].trim())
+      .filter((a) => a !== 'quoi' && a !== '');
     ok(appels.length >= 2, `il y a bien des appels a verifier (${appels.length})`);
     const muets = appels.filter((a) => !/^'[a-z]+'$/.test(a));
     ok(muets.length === 0,
@@ -512,6 +519,95 @@ function fauxPrivyFroid() {
          `il dit que la panne est chez nous : ${JSON.stringify(fin.texte.slice(0, 100))}`);
       ok(!/content blocker|VPN/i.test(fin.texte),
          'et il n envoie PAS couper un bloqueur pour une panne qui n est pas la sienne');
+    }
+    await p.close();
+  }
+
+  // ============ 11. LE DEVERROUILLAGE SUR PLACE, ET IL REPREND L'ACTION ============
+  {
+    console.log('\n-- le portefeuille se deverrouille sans recharger --');
+    /* ---- CE QUE CE CAS PROTEGE ----
+     * Le SDK ne renouvelle une session que s'il tient DEUX jetons ; sinon il
+     * journalise « missing tokens, skipping request » et renonce sans
+     * contacter personne. La connexion par e-mail, elle, marche toujours —
+     * mais le tiroir recharge la page juste apres, et le portefeuille vivant
+     * part avec la memoire. Le joueur se reconnectait correctement a chaque
+     * fois ; le rechargement jetait le resultat a chaque fois.
+     *
+     * Le deverrouillage refait le seul geste qui marche — code par e-mail —
+     * SANS RECHARGER, puis REPREND l'action. Les deux moities comptent : sans
+     * la reprise, le joueur deverrouille et doit tout resaisir, au moment ou
+     * il a deja essaye cinq fois. */
+    let repris = 0;
+    const p = await jusquAuDepot(`window.__code = 0;
+    window.SwogePrivy = {
+      init: function () {},
+      restore: function () { return Promise.resolve(null); },
+      sendCode: function () { window.__code++; return Promise.resolve(); },
+      verifyCode: function () {
+        window.__adr = '0x3333333333333333333333333333333333333333';
+        return Promise.resolve(window.__adr);
+      },
+      getProvider: function () { return { request: function (q) {
+        if (q.method === 'eth_chainId') return Promise.resolve('0x1237');
+        if (q.method === 'net_version') return Promise.resolve('4663');
+        if (q.method === 'eth_accounts') return Promise.resolve([window.__adr]);
+        return Promise.reject(new Error('pas de chaine dans cet essai'));
+      }, on: function () {}, removeListener: function () {} }; },
+      getAddress: function () { return window.__adr || null; },
+      isLoggedIn: function () { return !!window.__adr; },
+      logout: function () {}
+    };`, { app: false, jeton: true });
+
+    await appuie(p, 'swcDGo');
+    let vu = null;
+    for (let i = 0; i < 60 && !vu; i++) {
+      await p.waitForTimeout(400);
+      const e = await lis(p);
+      if (!e.mort && e.texte) vu = e;
+    }
+    ok(!!vu && vu.sortie, 'le refus propose une sortie a toucher');
+    const libelle = await p.evaluate(() => {
+      const b = document.querySelector('.swc-msg button, .swc-msg a');
+      return b ? b.textContent.trim() : '';
+    });
+    ok(/unlock/i.test(libelle), `et cette sortie DEVERROUILLE (${JSON.stringify(libelle)})`);
+
+    /* On la touche : le formulaire doit apparaitre SANS que la page recharge. */
+    const avant = await p.evaluate(() => performance.now());
+    await p.evaluate(() => { document.querySelector('.swc-msg button').click(); });
+    await p.waitForTimeout(500);
+    const form = await p.evaluate(() => ({
+      champs: document.querySelectorAll('.swc-msg input').length,
+      bouton: (document.querySelector('.swc-msg button') || {}).textContent || '',
+      horloge: performance.now(),
+    }));
+    ok(form.champs >= 1, `un formulaire s ouvre sur place (${form.champs} champ(s))`);
+    ok(form.horloge > avant, 'et la page n a PAS recharge — c est tout le point');
+
+    /* Le code, puis le deverrouillage : l'action doit REPARTIR toute seule. */
+    await p.evaluate(() => {
+      document.querySelector('.swc-msg input[type=email]').value = 'a@b.co';
+      document.querySelector('.swc-msg button').click();
+    });
+    await p.waitForTimeout(700);
+    const envoye = await p.evaluate(() => window.__code || 0);
+    ok(envoye >= 1, `le code est demande (${envoye})`);
+    await p.evaluate(() => {
+      const i = document.querySelectorAll('.swc-msg input');
+      i[1].value = '123456';
+      document.querySelector('.swc-msg button').click();
+    });
+    let fin = null;
+    for (let i = 0; i < 40 && !fin; i++) {
+      await p.waitForTimeout(400);
+      const e = await lis(p);
+      if (!e.mort && e.texte && !/Unlock/i.test(e.texte)) fin = e;
+    }
+    ok(!!fin, 'l action reprend toute seule apres le deverrouillage');
+    if (fin) {
+      ok(!/did not respond|could not be verified|cannot be resumed/i.test(fin.texte),
+         `et elle ne retombe pas sur le meme refus : ${JSON.stringify(fin.texte.slice(0, 80))}`);
     }
     await p.close();
   }

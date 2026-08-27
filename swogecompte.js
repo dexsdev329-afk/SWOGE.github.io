@@ -1118,7 +1118,23 @@
       /* Sans action le bandeau est traversant, pour ne jamais gener un
          geste ; des qu'il en porte une, il faut pouvoir la toucher. */
       '.swc-msg.act{pointer-events:auto;}' +
-      '.swc-msg a,.swc-msg button{display:block;width:100%;border:0;font:inherit;cursor:pointer;' +
+      /* ---- LA SORTIE DOIT SE LAISSER TOUCHER, MEME SUR UNE PAGE QUI EN
+         TIENT AUCUNE ----
+         Trois pages du site — l'accueil, `games.html`, `swogebet.html` — posent
+         « a[href], button { pointer-events:none } » pour que leurs vignettes de
+         demonstration ne promettent pas un clic qui ne mene nulle part. La
+         regle vise TOUS les boutons, et le tiroir s'en exempte lui-meme. Ce
+         bandeau, lui, est la seule piece de ce module qui vit hors du tiroir :
+         il heritait donc de l'inertie, et le bouton « Unlock my wallet » se
+         dessinait, s'annoncait, et ne repondait a aucun doigt. Rapporte deux
+         fois — « le bouton unlock my wallet fonctionne pas », puis « toujours
+         pas clickable » — et la seconde fois etait exacte : la minuterie
+         n'etait qu'une moitie du defaut.
+         Un module qui pose sa propre interface ne doit rien supposer de la
+         page qui l'accueille. Il se rend donc lui-meme touchable, et sa
+         specificite suffit a passer devant la regle de la page. */
+      '.swc-msg a,.swc-msg button{display:block;width:100%;border:0;font:inherit;' +
+      'pointer-events:auto;cursor:pointer;' +
       'margin-top:9px;padding:9px 12px;border-radius:9px;' +
       'background:#FFC53D;color:#141A24;text-decoration:none;text-align:center;' +
       'font-weight:800;font-size:12.5px;}';

@@ -670,8 +670,33 @@ function fauxPrivyFroid() {
        `et son bouton aussi (${JSON.stringify(tard.libelle)})`);
     ok(tard.touchable, 'et il se laisse encore toucher');
 
-    /* On appuie maintenant, comme un joueur qui a pris son temps. */
-    await p.evaluate(() => { document.querySelector('.swc-msg button').click(); });
+    /* ---- ON APPUIE POUR DE VRAI, ET C'EST TOUT LE POINT ----
+     * Partout ailleurs dans ce fichier on appelle `.click()` DANS la page, et
+     * c'est justifie : le bouton du panneau tombe sous le pli, et le pli
+     * appartient a un autre essai. Mais ici, c'est le doigt qu'on met en
+     * doute. `element.click()` ignore `pointer-events`, ignore ce qui
+     * recouvre, ignore le hors-champ — il aurait donc dit oui a un bouton que
+     * personne ne peut atteindre, et il l'a dit : trois pages du site posent
+     * « a[href], button { pointer-events:none } », ce bandeau vit hors du
+     * tiroir qui s'en exempte, et le bouton se dessinait sans repondre a rien.
+     * Un essai qui appelle le gestionnaire ne mesure pas ce que le joueur
+     * peut faire. Celui-la vise le pixel, comme lui. */
+    const vise = await p.evaluate(() => {
+      const b = document.querySelector('.swc-msg button');
+      const r = b.getBoundingClientRect();
+      const q = document.elementFromPoint(Math.round(r.left + r.width / 2),
+                                         Math.round(r.top + r.height / 2));
+      return { atteint: q === b || b.contains(q),
+               inerte: getComputedStyle(b).pointerEvents === 'none',
+               dedans: r.top >= 0 && r.bottom <= window.innerHeight };
+    });
+    ok(vise.dedans, 'le bouton est entierement dans l ecran');
+    ok(!vise.inerte, 'il n est pas rendu inerte par la page qui l accueille');
+    ok(vise.atteint, 'et c est bien LUI qu on touche a l endroit ou on vise');
+    let touche = 'ok';
+    try { await p.click('.swc-msg button', { timeout: 4000 }); }
+    catch (e) { touche = String(e.message).split('\n')[0]; }
+    ok(touche === 'ok', `un VRAI clic passe (${touche})`);
     await p.waitForTimeout(500);
     const ouvert = await p.evaluate(() => document.querySelectorAll('.swc-msg input').length);
     ok(ouvert >= 1, `le formulaire s ouvre apres l attente (${ouvert} champ(s))`);

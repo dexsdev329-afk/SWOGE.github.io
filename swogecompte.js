@@ -1371,10 +1371,30 @@
        jetons ou de tout ce qu'on possede, et c'est precisement le doute du
        joueur qui vient de voir son solde tomber a zero. */
     if (!oui) { l.textContent = ''; return; }
-    l.innerHTML = montant > 0
-      ? '<b>' + montant.toLocaleString('en-US') + ' $SWOGE</b> already authorized and not ' +
-        'yet claimed — it is still yours.'
-      : 'Your last withdrawal was authorized but never claimed — it is still yours.';
+    /* ---- « IL EST TOUJOURS A VOUS » NE DIT PAS OU IL EST ----
+     *
+     * Rapporte mot pour mot : « j'ai retire mais ca m'a bloque les jetons, je
+     * ne sais pas ou ». La phrase rassurait sans rien expliquer, et au moment
+     * precis ou le joueur vient de voir dix millions quitter son solde, une
+     * promesse sans lieu ne vaut rien.
+     *
+     * On dit donc CE QUI S'EST PASSE, dans l'ordre ou ca s'est passe : le
+     * solde de jeu a ete debite, les jetons n'ont pas bouge du coffre, et il
+     * ne reste qu'a les en sortir. C'est exactement ce que le serveur fait —
+     * `requestWithdraw` debite la fiche et inscrit la somme au `bonDu`, qui
+     * est compte dans ce que le coffre DOIT, pour que le surplus du
+     * proprietaire ne puisse jamais passer par-dessus.
+     *
+     * Et on dit que le bouton se represente : le bon est resigne a la demande,
+     * autant de fois qu'il faut, et le contrat ne paie que l'ecart avec ce qui
+     * est deja sorti. Reessayer ne peut donc rien couter ni rien doubler —
+     * c'est la seule chose qui transforme l'attente en patience. */
+    l.innerHTML = (montant > 0
+      ? '<b>' + montant.toLocaleString('en-US') + ' $SWOGE</b> left your game balance '
+      : 'Your last withdrawal left your game balance ')
+      + 'and is waiting in the vault, in your name. Nothing moved on-chain yet: '
+      + 'the last step is your wallet claiming it. You can retry as often as you '
+      + 'need — the vault only ever pays what has not been paid.';
   }
 
   /* Redemander le bon deja signe. Le serveur ne debite rien : il resigne le

@@ -269,7 +269,23 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px}
 .duo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
 /* Seize pixels et non dix : a dix, « 1,000,000,000 » et « 412,586,390 » se
    suivaient sans respirer et se lisaient comme un seul nombre. */
-.eco{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;text-align:center}
+/* ---- ET ILS SE CHEVAUCHAIENT ENCORE ----
+   La reparation d'avant s'attaquait a la POLICE — chasse fixe, taille reduite
+   — et laissait quatre colonnes fixes. C'etait traiter le symptome : quatre
+   colonnes dans une carte de quatre cent trente pixels en donnent
+   soixante-quinze chacune, et « 1,000,000,000 » en demande quatre-vingt-onze,
+   quelle que soit la police. Avec `white-space:nowrap`, le nombre ne pouvait
+   ni tenir ni se couper : il debordait sur son voisin, et l'on lisait
+   « 1,000,000,00099,826,711 ».
+   Le nombre de colonnes est donc decide par la PLACE, pas ecrit d'avance.
+   `auto-fit` en pose autant qu'il en tient a cent cinquante pixels : quatre
+   dans une carte large, deux quand elle est etroite, et jamais une colonne
+   plus courte que le nombre qu'elle porte. Le `min(100%, …)` est ce qui evite
+   qu'une carte plus etroite que 150px force un debordement a son tour.
+   Une requete de media n'aurait rien regle : la fenetre est large, c'est la
+   CARTE qui est etroite. */
+.eco{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));
+  gap:16px 12px;text-align:center}
 .eco div small{display:block;font:700 8.5px/1.3 'Inter',system-ui,sans-serif;letter-spacing:.7px;color:var(--gris)}
 /* ---- LES CHIFFRES SE CHEVAUCHAIENT ----
    « 1,000,000,000 » et « 412,586,390 » se touchaient dans leurs colonnes. La
@@ -544,7 +560,9 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px}
   .jeux{grid-template-columns:repeat(3,minmax(0,1fr))}
   .univers{grid-template-columns:minmax(0,1fr)}
   .promesses{grid-template-columns:minmax(0,1fr)}
-  .eco{grid-template-columns:repeat(2,minmax(0,1fr))}
+  /* `.eco` se repartit tout seul par `auto-fit` : une regle de plus ici
+     n'aurait fait que la contredire a une largeur de fenetre, alors que le
+     probleme n'a jamais ete la fenetre. */
   .heros h1{font-size:28px}
   .heros .dit{max-width:100%}
 }

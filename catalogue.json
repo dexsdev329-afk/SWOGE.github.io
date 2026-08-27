@@ -439,6 +439,27 @@
    "cadres": 4
   },
   {
+   "cle": "rocher_cendres",
+   "fichier": "img/nexus/tiles/obj_rocher_cendres.webp",
+   "l": 128,
+   "h": 128,
+   "cadres": 1
+  },
+  {
+   "cle": "rocher_neige",
+   "fichier": "img/nexus/tiles/obj_rocher_neige.webp",
+   "l": 128,
+   "h": 128,
+   "cadres": 1
+  },
+  {
+   "cle": "rocher_terre",
+   "fichier": "img/nexus/tiles/obj_rocher_terre.webp",
+   "l": 128,
+   "h": 128,
+   "cadres": 1
+  },
+  {
    "cle": "sanctuaire",
    "fichier": "img/nexus/tiles/obj_sanctuaire.webp",
    "l": 640,
@@ -457,6 +478,13 @@
    "fichier": "img/nexus/tiles/obj_sexshop_maison.webp",
    "l": 613,
    "h": 386,
+   "cadres": 1
+  },
+  {
+   "cle": "souche_marais",
+   "fichier": "img/nexus/tiles/obj_souche_marais.webp",
+   "l": 128,
+   "h": 128,
    "cadres": 1
   },
   {

@@ -152,8 +152,13 @@
       if (m.error) { mapDit(m.code === 'sansPlan' ? T('baseSansPlan') : String(m.error), true); return; }
       if (!m.carte) return;
       fermeCreation();
+      /* `pal` VOYAGE AVEC LES CASES. Sans elle, des cases en indices arrivent
+         sans leur dictionnaire : `ouvreAtelier` les ecarte une a une, et l on
+         ouvre une carte au sol entierement vide — sans une erreur nulle part.
+         Vu au rendu : soixante de cote, quatre cent quatre-vingt-huit objets,
+         et pas un seul sol. */
       ouvreAtelier({ id: null, mienne: true, nom: m.carte.nom || '',
-                     cote: m.carte.cote, mode: m.carte.mode,
+                     cote: m.carte.cote, mode: m.carte.mode, pal: m.carte.pal,
                      cases: m.carte.cases || [], objets: m.carte.objets || [] });
       return;
     }
@@ -3344,9 +3349,10 @@
       mode2d: '2D · tiles', mode25d: '2.5D · plots',
       mode2dDit: 'A grid of tiles seen from above. Grounds, walls, props, monsters.',
       mode25dDit: 'Ready-made plots seen at three quarters. Lay a ground under them.',
-      baseVide: 'Empty grid', baseVille: 'The +18 city',
+      baseVide: 'Empty grid', baseVille: 'The +18 city', baseNexus: 'The Nexus',
       baseVideDit: 'Start from nothing.',
       baseVilleDit: 'A copy of the city, yours to change. Save it and we can look at what you propose.',
+      baseNexusDit: 'A copy of the world as it stands right now — its rings, its guarded rooms, its rocks. Move what bothers you and save it.',
       baseCharge: 'Copying the city…',
       baseSansPlan: 'That place has no fixed map — dungeons are redrawn every time you enter.',
       taille: 'Size',
@@ -3443,9 +3449,10 @@
       mode2d: '2D · tuiles', mode25d: '2,5D · parcelles',
       mode2dDit: 'Une grille de tuiles vue de dessus. Sols, murs, objets, monstres.',
       mode25dDit: 'Des parcelles vues de trois quarts. Posez un sol dessous.',
-      baseVide: 'Grille vide', baseVille: 'La ville +18',
+      baseVide: 'Grille vide', baseVille: 'La ville +18', baseNexus: 'Le Nexus',
       baseVideDit: 'Partir de rien.',
       baseVilleDit: 'Une copie de la ville, a vous de la changer. Enregistrez-la et nous regarderons ce que vous proposez.',
+      baseNexusDit: 'Une copie du monde tel qu il est en ce moment — ses anneaux, ses salles gardees, ses rochers. Deplacez ce qui vous gene et enregistrez.',
       baseCharge: 'Copie de la ville en cours…',
       baseSansPlan: 'Ce lieu n a pas de carte fixe — un donjon se redessine a chaque fois qu on y entre.',
       taille: 'Taille',
@@ -3544,9 +3551,10 @@
       mode2d: '2D · baldosas', mode25d: '2,5D · parcelas',
       mode2dDit: 'Una cuadrícula de baldosas vista desde arriba. Suelos, muros, objetos, monstruos.',
       mode25dDit: 'Parcelas vistas en tres cuartos. Pon un suelo debajo.',
-      baseVide: 'Rejilla vacia', baseVille: 'La ciudad +18',
+      baseVide: 'Rejilla vacia', baseVille: 'La ciudad +18', baseNexus: 'El Nexus',
       baseVideDit: 'Empezar de cero.',
       baseVilleDit: 'Una copia de la ciudad, tuya para cambiarla. Guardala y miraremos tu propuesta.',
+      baseNexusDit: 'Una copia del mundo tal como esta ahora — sus anillos, sus salas guardadas, sus rocas. Mueve lo que te moleste y guardala.',
       baseCharge: 'Copiando la ciudad…',
       baseSansPlan: 'Ese lugar no tiene mapa fijo — las mazmorras se redibujan cada vez.',
       taille: 'Tamaño',
@@ -3646,7 +3654,7 @@
   var mapOuvert = false;
   var CATALOGUE = null;
   var IMG_CAT = {};                       // fichier -> Image, chargee une fois
-  var MAP_COTE = 48;                      // borne du serveur ; corrigee a l'ouverture d'une carte
+  var MAP_COTE = 60;                      // borne du serveur ; voir le format compact
   var MAP = null;                         // { id, nom, cote, cases: Map, mienne }
   var mapOutil = 'dessin';
   var mapChoix = null;                    // { famille, cle }
@@ -4858,7 +4866,12 @@
   /* Le plafond du SERVEUR. Ecrit ici aussi, parce que laisser dessiner
      au-dela reviendrait a laisser quelqu'un travailler une heure pour un
      refus a l'enregistrement. */
-  var MAP_CASES_MAX = 2600;
+  /* ---- ET IL A MONTE AVEC LE FORMAT COMPACT ----
+     Il valait 2600 : c'est ce qu'une carte NOMMEE peut peser sans depasser la
+     trame. Les cases voyagent maintenant en indices dans une palette — quatre
+     fois plus legeres — et le plafond suit. C'est ce qui a permis d'ouvrir le
+     Nexus, qui fait soixante de cote, soit trois mille six cents cases. */
+  var MAP_CASES_MAX = 3700;
   /* Le plafond d'objets du serveur, ecrit ici aussi pour la meme raison :
      mieux vaut arreter au geste qui deborde que refuser une heure de travail
      a l'enregistrement. */
@@ -5644,7 +5657,7 @@
       o.title = T(k.mienne ? 'aideEditer' : 'aideVisiter');
       o.addEventListener('click', function () {
         mapDit(T('charge'));
-        if (enLigne) envoie({ type: 'carteLit', id: k.id });
+        if (enLigne) envoie({ type: 'carteLit', id: k.id, pal: 1 });
       });
       r.appendChild(o);
       /* ---- ET « JOUER », QUAND LA CARTE A UN DEPART ----
@@ -5742,7 +5755,22 @@
      * dire. Un objet se POSE : plusieurs au meme endroit, chacun sur sa
      * couche. Les tenir dans la meme structure obligeait a choisir un des
      * deux comportements pour les deux. */
-    (c.cases || []).forEach(function (q) {
+    /* ---- ET ELLE PEUT ARRIVER EN INDICES ----
+     * `[c, l, iSol]`, ou `iSol` designe une entree de `pal`. On developpe ici,
+     * en un seul endroit : plus bas, rien ne sait de quelle forme la carte est
+     * venue. Une carte enregistree avant la palette arrive nommee et passe par
+     * la meme ligne — c'est ce qui permet de ne jamais mettre dehors ce qui
+     * existe deja. */
+    var palette = Array.isArray(c.pal) ? c.pal : null;
+    (c.cases || []).forEach(function (brute) {
+      var q = brute;
+      if (Array.isArray(brute)) {
+        if (!palette) return;
+        q = { c: brute[0], l: brute[1] };
+        if (brute[2] != null && brute[2] >= 0) q.s = palette[brute[2]];
+        if (brute[3] != null && brute[3] >= 0) q.o = palette[brute[3]];
+      }
+      if (!q || typeof q !== 'object') return;
       if (q.s) MAP.cases.set(q.c + ',' + q.l, { s: q.s });
       /* L'ANCIEN FORMAT : une carte enregistree avant les couches porte son
          objet dans la case. Le serveur les convertit, mais une page peut
@@ -5854,7 +5882,16 @@
       }
     }
     var bd = document.getElementById('nxMapBaseDit');
-    if (bd) bd.textContent = T(mapBaseNeuve === 'ville' ? 'baseVilleDit' : 'baseVideDit');
+    /* ---- LE TEXTE SUIT LA BASE, QUELLE QU'ELLE SOIT ----
+     * C'etait un `si` a deux branches — la ville, ou le vide. Le Nexus est
+     * arrive et serait tombe dans « le vide », en annoncant « partir de rien »
+     * au-dessus d'une copie du monde. La cle se FABRIQUE du nom de la base :
+     * un lieu de plus n'est plus qu'une ligne de texte a ecrire. */
+    if (bd) {
+      bd.textContent = mapBaseNeuve
+        ? T('base' + mapBaseNeuve.charAt(0).toUpperCase() + mapBaseNeuve.slice(1) + 'Dit')
+        : T('baseVideDit');
+    }
     /* ---- CE QU'UNE BASE FIXE ----
      * Une copie arrive avec SON cote et SON mode : les laisser reglables
      * proposerait un choix que la carte reçue va contredire. On les grise
@@ -5918,7 +5955,7 @@
       if (mapBaseNeuve) {
         if (!enLigne) { mapDit(T('horsLigne') || 'offline', true); return; }
         mapDit(T('baseCharge'));
-        envoie({ type: 'carteModele', monde: mapBaseNeuve });
+        envoie({ type: 'carteModele', monde: mapBaseNeuve, pal: 1 });
         return;
       }
       var t = document.getElementById('nxMapTaille');
@@ -6112,11 +6149,21 @@
       var nom = (elMapNom && elMapNom.value || '').trim();
       if (!nom) { mapDit(T('nomDabord'), true); return; }
       if (!enLigne) { mapDit(T('horsLigne'), true); return; }
+      /* ---- LES CASES PARTENT EN INDICES ----
+       * `{"c":59,"l":59,"s":"cendres"}` fait vingt-huit octets ; `[59,59,4]`
+       * en fait onze. Sur les trois mille six cents cases du Nexus, c'est la
+       * difference entre une carte que la socket jette et une carte qui passe
+       * quatre fois. Le serveur developpe la palette a l'arrivee, et son
+       * ancien chemin — les cases nommees — reste ouvert pour les pages qui
+       * n'ont pas recharge. */
+      var pal = [];
+      var rang = {};
       var cases = [];
       MAP.cases.forEach(function (v, k) {
         if (!v.s) return;
         var q = k.split(',');
-        cases.push({ c: Number(q[0]), l: Number(q[1]), s: v.s });
+        if (!(v.s in rang)) { rang[v.s] = pal.length; pal.push(v.s); }
+        cases.push([Number(q[0]), Number(q[1]), rang[v.s]]);
       });
       var objets = MAP.objets.map(function (o) {
         var e = { c: o.c, l: o.l, k: o.k, z: o.z };
@@ -6137,7 +6184,7 @@
       });
       mapDit(T('sauvegarde'));
       var vg = vignetteDeLaCarte();
-      var envoi = { nom: nom, cote: MAP.cote, mode: MAP.mode, cases: cases,
+      var envoi = { nom: nom, cote: MAP.cote, mode: MAP.mode, pal: pal, cases: cases,
                     objets: objets, depart: MAP.depart || null };
       if (vg) envoi.vignette = vg;
       envoie({ type: 'carteEnregistre', id: MAP.id || undefined, carte: envoi });

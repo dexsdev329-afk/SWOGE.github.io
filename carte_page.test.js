@@ -1851,6 +1851,70 @@ const servirLeSite = async () => {
   ok(!sansDepart || sansDepart.actions.indexOf('Play') < 0,
      'et pas sur une carte sans point de depart');
 
+  console.log('\n-- on part du Nexus, et on l enregistre --');
+  /* ---- CE QUE CET ESSAI TIENT ----
+   *
+   * « sur l editeur je vois pas le nexus ». Il n y etait pas : seule la ville
+   * se copiait. Le monde ouvert, lui, fait soixante cases de cote — trois
+   * mille six cents cases de sol — et l editeur etait plafonne a quarante-huit
+   * parce qu une carte voyage en UN message que la socket refuse au-dela de
+   * deux cent cinquante-six kilo-octets.
+   *
+   * Le format compact a ouvert le passage : les cases partent en indices dans
+   * une palette, quatre fois plus legeres. Ce qui se verifie ici est le
+   * CHEMIN ENTIER, parce que chaque moitie peut marcher seule et la chaine
+   * casser quand meme — une palette bien fabriquee que le serveur developpe
+   * mal rend une carte vide, sans une erreur nulle part.
+   *
+   * On part donc du Nexus, on l ouvre, on l enregistre, et on redemande au
+   * serveur ce qu il a garde. */
+  {
+    await p.click('#nxMapNouvelle');
+    await p.waitForTimeout(300);
+    const basesVues = await p.evaluate(() =>
+      [...document.querySelectorAll('#nxMapBases button[data-base]')].map((b) => b.dataset.base));
+    ok(basesVues.indexOf('nexus') >= 0,
+       `le Nexus est propose comme base (${basesVues.join(', ')})`);
+    await p.click('#nxMapBases button[data-base="nexus"]');
+    await p.waitForTimeout(200);
+    const dit = await p.evaluate(() =>
+      (document.getElementById('nxMapBaseDit') || {}).textContent || '');
+    ok(/world as it stands|copie du monde|copia del mundo/i.test(dit),
+       `et il annonce ce qu on copie : ${JSON.stringify(dit.slice(0, 60))}`);
+
+    await p.click('#nxMapCree');
+    await p.waitForTimeout(2500);
+    const ouvert = await p.evaluate(() => ({
+      atelier: !!document.querySelector('#nxMapAtelier.on'),
+      nom: (document.getElementById('nxMapNom') || {}).value || '',
+    }));
+    ok(ouvert.atelier, 'l atelier s ouvre sur la copie');
+    ok(/nexus/i.test(ouvert.nom), `elle porte son nom (${JSON.stringify(ouvert.nom)})`);
+
+    await p.fill('#nxMapNom', 'Mon Nexus');
+    await p.click('#nxMapEnregistre');
+    await p.waitForTimeout(2600);
+    const base2 = 'http://127.0.0.1:' + port;
+    const tout = await (await fetch(base2 + '/admin/cartes',
+                                    { headers: { 'x-admin-key': 'k' } })).json();
+    const mienne = (tout.cartes || []).filter((k) => k.nom === 'Mon Nexus')[0];
+    ok(!!mienne, 'le serveur l a gardee — c est la seule question qui compte');
+    if (mienne) {
+      eq(mienne.cote, 60, 'avec ses soixante cases de cote');
+      ok(mienne.cases > 3000,
+         `et son sol entier : ${mienne.cases} cases (une carte vide en aurait zero)`);
+      const une2 = await (await fetch(base2 + '/admin/cartes?id=' + mienne.id,
+                                      { headers: { 'x-admin-key': 'k' } })).json();
+      const sols = [...new Set((une2.carte.cases || []).map((q) => q.s))].sort();
+      ok(sols.length >= 4 && sols.every((x) => typeof x === 'string' && x.length > 1),
+         `et chaque case porte un NOM de sol, developpe depuis la palette : ${sols.join(', ')}`);
+      ok((une2.carte.objets || []).length > 100,
+         `avec ses rochers et les murs de ses salles (${(une2.carte.objets || []).length} objets)`);
+    }
+    await p.click('#nxMapRetour');
+    await p.waitForTimeout(1000);
+  }
+
   await p.evaluate(() => {
     const f = [...document.querySelectorAll('.nxmap-fiche')]
       .find((q) => q.querySelector('b').textContent === 'Ma carte a visiter');

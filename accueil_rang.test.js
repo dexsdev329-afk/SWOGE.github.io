@@ -165,6 +165,61 @@ const CHIFFRES = { joueurs: 12, volume: 3400, manches: 88, rendus: 2100 };
     await p.close();
   }
 
+  // ---------------- 5. LES CHIFFRES DE L'ECONOMIE TIENNENT DANS LEUR COLONNE
+  console.log('\n-- la carte $SWOGE ECONOMY, a toutes les largeurs --');
+  /* ---- CE QU'ON A VU A L'ECRAN ----
+   * « 1,000,000,00099,826,711 » : le total et le coffre colles l'un a l'autre.
+   * Quatre colonnes ecrites d'avance dans une carte de quatre cent trente
+   * pixels en donnent soixante-quinze chacune ; « 1,000,000,000 » en demande
+   * quatre-vingt-onze, et `white-space:nowrap` lui interdisait aussi bien de
+   * tenir que de se couper. Il debordait donc sur son voisin.
+   * Une reparation precedente avait change la POLICE en laissant les quatre
+   * colonnes : elle traitait le symptome, et le defaut est revenu.
+   * On mesure donc la seule chose qui compte — le texte deborde-t-il de sa
+   * boite ? — et a plusieurs largeurs, parce que la carte est etroite quand la
+   * FENETRE est large : c'est une colonne de la grille, pas la page. */
+  quoi = Object.assign({}, CHIFFRES, { classement: TROIS });
+  for (const L of [1920, 1440, 1100, 900, 700, 500, 390]) {
+    const p = await nav.newPage({ viewport: { width: L, height: 900 } });
+    await p.route('**/cdnjs.cloudflare.com/**', (r) => r.abort());
+    await p.goto(`http://127.0.0.1:${site.port}/index.html`, { waitUntil: 'domcontentloaded' });
+    await p.waitForTimeout(700);
+    const m = await p.evaluate(() => {
+      const e = document.querySelector('.eco');
+      if (!e) return null;
+      const trop = [];
+      const colle = [];
+      const rects = [];
+      [...e.children].forEach((d) => {
+        const b = d.querySelector('b');
+        if (!b) return;
+        const r = b.getBoundingClientRect();
+        rects.push({ x: r.left, y: Math.round(r.top), d: r.right, t: b.textContent });
+        if (b.scrollWidth > Math.ceil(r.width)) {
+          trop.push(b.textContent + ' +' + Math.round(b.scrollWidth - r.width));
+        }
+      });
+      /* Deux nombres de la MEME ligne qui se touchent. Ceux d'une ligne
+         differente ne se chevauchent pas, ils sont l'un sous l'autre. */
+      for (let i = 0; i < rects.length; i++) {
+        for (let j = i + 1; j < rects.length; j++) {
+          if (rects[i].y !== rects[j].y) continue;
+          if (rects[i].d > rects[j].x + 1 && rects[j].d > rects[i].x + 1) {
+            colle.push(rects[i].t + ' / ' + rects[j].t);
+          }
+        }
+      }
+      return { trop, colle, carte: Math.round(e.getBoundingClientRect().width) };
+    });
+    ok(m && m.trop.length === 0,
+       `${L}px (carte ${m ? m.carte : '?'}px) : aucun nombre ne deborde de sa colonne`
+       + (m && m.trop.length ? ` — ${m.trop.join(', ')}` : ''));
+    ok(m && m.colle.length === 0,
+       `${L}px : et aucun ne touche son voisin`
+       + (m && m.colle.length ? ` — ${m.colle.join(' | ')}` : ''));
+    await p.close();
+  }
+
   await nav.close(); site.stop();
   console.log(rates ? `\naccueil_rang.test.js : ${rates} echec(s) sur ${n}\n`
                     : `\naccueil_rang.test.js : ${n} verifications OK\n`);

@@ -2339,6 +2339,31 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 #menu{ display:none !important; }
 #menuBtn{ display:none !important; }
 .sw-haut{ position:fixed; top:0; left:0; right:0; z-index:220; }
+
+/* ---- UN VOILE OCCUPE L'AIRE LIBRE, PAS L'ECRAN ----
+ *
+ * Signale tel quel : « dans l'editeur de maps on voit pas les boutons du
+ * haut ». Ils etaient la, dessines, a leur place — sous la barre du site.
+ *
+ * `.sw-haut` est `position:fixed` avec un z-index de 220 ; les voiles de cette
+ * page vivent entre 52 et 200 et partent tous de `inset:0`. Le premier
+ * rang de l'editeur — « Nouveau projet », « Fermer », le choix de langue —
+ * tombe donc EXACTEMENT sous la barre : mesure faite, cinq boutons sur cinq
+ * inatteignables, a toutes les tailles d'ecran, celui qui FERME compris. Un
+ * outil qu'on ne peut plus quitter n'est pas un detail de cadrage.
+ *
+ * Le monde, lui, sait deja se placer : `ajusteMonde()` mesure les deux barres
+ * et pousse `#nxWrap` entre elles. Il n'y avait qu'a partager la mesure. Les
+ * voiles la lisent maintenant dans deux variables, et se posent dans la meme
+ * aire libre que le jeu.
+ *
+ * Monter les voiles PAR-DESSUS les barres aurait marche aussi, et coute plus :
+ * la barre du bas est la navigation du site, la barre du haut porte le solde.
+ * Les recouvrir pour poser un panneau, c'est reprendre au joueur deux choses
+ * qui ne genaient personne. */
+#nxShopVoile, #nxPetVoile, #nxBjVoile, #nxArcVoile, #nxReglagesVoile,
+#nxMapVoile, #nxMortVoile, #nxCoffreVoile, #nxTourVoile, #nxRangVoile{
+  top:var(--nx-haut, 0px); bottom:var(--nx-bas, 0px); }
 /* ---- SUR TELEPHONE, LE MONDE REPREND SA PLACE ----
    Mesure faite a 390x844 : la barre repliee montait a 249 px, soit trente
    pour cent de l'ecran pris a un monde dans lequel on se DEPLACE. La vitrine
@@ -3112,9 +3137,21 @@ function ajusteMonde(){
   var h = document.querySelector(".sw-haut");
   var w = document.getElementById("nxWrap");
   if(!h || !w) return;
-  w.style.top = h.getBoundingClientRect().height + "px";
+  var hh = h.getBoundingClientRect().height;
   var bb = document.querySelector(".swbb");
-  w.style.bottom = bb ? bb.getBoundingClientRect().height + "px" : "0px";
+  var hb = bb ? bb.getBoundingClientRect().height : 0;
+  w.style.top = hh + "px";
+  w.style.bottom = hb + "px";
+  /* ---- LA MEME MESURE POUR TOUT CE QUI SE POSE PAR-DESSUS ----
+   * Le monde n'est pas la seule chose a devoir tenir entre les deux barres :
+   * chaque voile de cette page part de `inset:0` et se faisait donc rogner le
+   * premier rang par la barre du haut — c'est ainsi que les boutons de
+   * l'editeur de cartes, « Fermer » compris, sont devenus intouchables.
+   * On publie donc la mesure au lieu de la garder pour `#nxWrap` : une seule
+   * source, et le jour ou la barre change de hauteur, tout suit ensemble. */
+  var R = document.documentElement.style;
+  R.setProperty("--nx-haut", hh + "px");
+  R.setProperty("--nx-bas", hb + "px");
   /* ---- ET CETTE PAGE NE DEFILE PAS ----
    * `stakebubble.js` pose `body{padding-bottom:var(--swbb-h)!important}` en
    * montant sa barre du bas. C'est juste pour les dix-sept pages QUI

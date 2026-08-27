@@ -168,6 +168,44 @@ const ECRANS = [
     ok(m.dehors.length === 0,
        m.dehors.length ? `hors de l ecran : ${m.dehors.join(', ')}`
                        : 'aucun element du panneau ne finit hors de l ecran');
+
+    /* ---- D. UN PANNEAU OUVERT N'EST PAS PEINT SOUS LA BARRE DU SITE ----
+     * Quatrieme panne de cadrage, signalee comme les trois autres : « dans
+     * l'editeur de maps on voit pas les boutons du haut ». Ils y etaient, a
+     * leur place, dessines — sous `.sw-haut`, qui est `position:fixed` avec un
+     * z-index de 220 quand les voiles de la page vivent entre 52 et 200.
+     * Cinq boutons sur cinq inatteignables, a toutes les tailles, celui qui
+     * FERME l'editeur compris.
+     * On ne mesure donc pas une hauteur : on VISE chaque bouton et on demande
+     * a la page qui repond a cet endroit. C'est la seule question qui ait la
+     * meme reponse qu'un doigt. */
+    const barre = await p.evaluate(() => {
+      const v = document.getElementById('nxMapVoile');
+      if (!v) return null;
+      v.classList.add('on');
+      const g = document.getElementById('nxMapGalerie');
+      if (g) g.classList.add('on');
+      const b = document.getElementById('nxMapBarre');
+      if (!b) return null;
+      const out = [];
+      b.querySelectorAll('button, input').forEach((el) => {
+        const r = el.getBoundingClientRect();
+        if (!r.width || !r.height) return;
+        const q = document.elementFromPoint(Math.round(r.left + r.width / 2),
+                                           Math.round(r.top + r.height / 2));
+        if (!(q === el || el.contains(q))) {
+          out.push((el.id || el.textContent || el.tagName).toString().trim().slice(0, 16)
+                   + ' <- ' + (q ? (q.id ? '#' + q.id : q.tagName.toLowerCase()) : 'rien'));
+        }
+      });
+      v.classList.remove('on');
+      if (g) g.classList.remove('on');
+      return { caches: out, combien: b.querySelectorAll('button, input').length };
+    });
+    ok(barre && barre.combien > 0, `la barre de l editeur a des boutons (${barre ? barre.combien : 0})`);
+    ok(barre && barre.caches.length === 0,
+       barre && barre.caches.length ? `recouverts : ${barre.caches.join(', ')}`
+                                    : 'et aucun n est recouvert par la barre du site');
     await p.close();
   }
 

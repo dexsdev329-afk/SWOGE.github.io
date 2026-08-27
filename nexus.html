@@ -34,7 +34,7 @@ canvas{ touch-action:none; }
      dollars a cote du solde. `ethers` vient avec : c'est lui qui signe les
      retraits et les envois. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
-<script src="swogecompte.js?v=002eb453"></script>
+<script src="swogecompte.js?v=b83dda22"></script>
 <script src="swogebuy.js?v=0d5e5215"></script>
 <script src="swogeprofil.js?v=2bff1154" defer></script>
 
@@ -2828,6 +2828,19 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
         <button type="button" data-mode="iso" data-txt="mode25d">2.5D &middot; plots</button>
       </div>
       <i id="nxMapModeDit"></i>
+      <!-- ---- PARTIR D'UN MONDE QUI EXISTE ----
+           Demande : pouvoir choisir une carte deja existante au lieu d'une
+           grille vide, la modifier, et proposer l'amelioration.
+           Il n'y a qu'un choix pour l'instant, et ce n'est pas un oubli : la
+           ville est le seul monde du jeu qui ne se retire PAS au sort. Un
+           donjon reconstruit son plan a chaque ouverture — il n'existe aucun
+           « la Fonderie » a copier. Le jour ou un deuxieme lieu devient fixe,
+           il s'ajoute ici et le code ne bouge pas. -->
+      <div class="rang" id="nxMapBases">
+        <button type="button" data-base="" class="vedette" data-txt="baseVide">Empty grid</button>
+        <button type="button" data-base="ville" data-txt="baseVille">The +18 city</button>
+      </div>
+      <i id="nxMapBaseDit"></i>
       <label class="nxmap-taille"><span data-txt="taille">Size</span>
         <input id="nxMapTaille" type="range" min="8" max="48" step="4" value="48">
         <b id="nxMapTailleDit">48 &times; 48</b>
@@ -3029,7 +3042,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
      racine ; c'est le seul endroit d'ou elle peut couvrir tout le reste. -->
 <div id="nxFiche"></div>
 
-<script src="nexus.js?v=f58f10b3" defer></script>
+<script src="nexus.js?v=b21deb39" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 
 <script>

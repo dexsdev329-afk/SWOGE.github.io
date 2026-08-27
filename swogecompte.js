@@ -142,6 +142,18 @@
      * Un message qu'on doit pouvoir TOUCHER reste plus longtemps aussi :
      * quatre secondes suffisent a lire, pas a decider puis viser. */
     if (garde) return;
+    /* ---- UNE REPARATION NE S'EFFACE PAS ----
+     * Onze secondes suffisent a lire un message et a viser un bouton. Elles ne
+     * suffisent PAS quand le bouton ouvre un formulaire qu'il faut ensuite
+     * remplir : le joueur lisait la phrase, touchait « Unlock », et la
+     * minuterie posee AVANT son geste effacait le formulaire sous ses yeux.
+     * Rapporte tel quel — « le bouton unlock my wallet fonctionne pas » — et
+     * c'etait vrai : il fonctionnait, puis le compte a rebours reprenait ce
+     * qu'il venait d'ouvrir.
+     * Une action marquee `persiste` ne s'efface donc jamais toute seule. Elle
+     * s'en va quand le joueur la resout ou qu'un autre message la remplace,
+     * ce qui est le seul moment ou l'on sait qu'il n'en a plus besoin. */
+    if (action && action.persiste) return;
     minuterieMsg = setTimeout(function () { boiteMsg.className = 'swc-msg'; },
                               action ? 11000 : 4200);
   }
@@ -746,6 +758,10 @@
    */
   function formulaireDeverrou(reprend) {
     if (!boiteMsg) return;
+    /* La minuterie du message qui nous a ouverts est peut-etre encore en
+       route : sans ce nettoyage, elle efface ce formulaire quelques secondes
+       apres qu'on l'a pose. C'est la moitie de la panne rapportee. */
+    clearTimeout(minuterieMsg);
     boiteMsg.className = 'swc-msg on act';
     boiteMsg.textContent = '';
     var t = document.createElement('div');
@@ -931,7 +947,7 @@
          * portefeuille, ou quand le module n'est meme pas la, un code par
          * e-mail ne repare rien. */
         if (mode === 'email' && window.SwogePrivy && window.SwogePrivy.verifyCode) {
-          err.sortie = { texte: 'Unlock my wallet →',
+          err.sortie = { texte: 'Unlock my wallet →', persiste: true,
                          fait: function () { formulaireDeverrou(reprend); } };
           throw err;
         }

@@ -621,6 +621,74 @@ function fauxPrivyFroid() {
     await p.close();
   }
 
+  // ============ 12. LA SORTIE ATTEND LE JOUEUR, ELLE NE S'EFFACE PAS ============
+  {
+    console.log('\n-- le bouton de deverrouillage survit a la minuterie --');
+    /* ---- CE QUE CE CAS PROTEGE ----
+     * « le bouton unlock my wallet fonctionne pas ». Il fonctionnait. Le
+     * bandeau qui le portait s'effacait tout seul au bout de onze secondes —
+     * assez pour lire la phrase, pas pour lire PUIS decider PUIS viser sur un
+     * telephone. Et quand le doigt arrivait juste avant l'echeance, la
+     * minuterie posee AVANT le geste effacait le formulaire qui venait de
+     * s'ouvrir : le joueur voyait deux champs disparaitre sous ses yeux.
+     * Les deux moities sont ici. On attend PLUS LONGTEMPS que la minuterie,
+     * deux fois, et rien ne doit bouger : une reparation attend celui qui doit
+     * la faire, aussi longtemps qu'il lui faut. */
+    const p = await jusquAuDepot(`window.__code = 0;
+    window.SwogePrivy = {
+      init: function () {},
+      restore: function () { return Promise.resolve(null); },
+      sendCode: function () { window.__code++; return Promise.resolve(); },
+      verifyCode: function () { return Promise.resolve(null); },
+      getProvider: function () { return null; },
+      getAddress: function () { return null; },
+      isLoggedIn: function () { return false; },
+      logout: function () {}
+    };`, { app: false, jeton: true });
+
+    await appuie(p, 'swcDGo');
+    let vu = null;
+    for (let i = 0; i < 60 && !vu; i++) {
+      await p.waitForTimeout(400);
+      const e = await lis(p);
+      if (!e.mort && e.texte) vu = e;
+    }
+    ok(!!vu && vu.sortie, 'le refus propose bien une sortie a toucher');
+
+    /* Onze secondes, plus une marge : la minuterie a eu tout le temps de
+       partir. Le bouton doit encore etre la, et encore visible. */
+    await p.waitForTimeout(13000);
+    const tard = await p.evaluate(() => {
+      const m = document.querySelector('.swc-msg');
+      const b = m && m.querySelector('button, a');
+      return { visible: !!(m && getComputedStyle(m).opacity !== '0'),
+               libelle: b ? b.textContent.trim() : '',
+               touchable: !!(m && getComputedStyle(m).pointerEvents !== 'none') };
+    });
+    ok(tard.visible, 'treize secondes plus tard le message est TOUJOURS la');
+    ok(/unlock/i.test(tard.libelle),
+       `et son bouton aussi (${JSON.stringify(tard.libelle)})`);
+    ok(tard.touchable, 'et il se laisse encore toucher');
+
+    /* On appuie maintenant, comme un joueur qui a pris son temps. */
+    await p.evaluate(() => { document.querySelector('.swc-msg button').click(); });
+    await p.waitForTimeout(500);
+    const ouvert = await p.evaluate(() => document.querySelectorAll('.swc-msg input').length);
+    ok(ouvert >= 1, `le formulaire s ouvre apres l attente (${ouvert} champ(s))`);
+
+    /* Et il ne doit pas disparaitre a son tour : la minuterie du message
+       precedent, si elle survivait, tomberait dans ces secondes-ci. */
+    await p.waitForTimeout(13000);
+    const reste = await p.evaluate(() => {
+      const m = document.querySelector('.swc-msg');
+      return { champs: m ? m.querySelectorAll('input').length : 0,
+               visible: !!(m && getComputedStyle(m).opacity !== '0') };
+    });
+    ok(reste.champs >= 1 && reste.visible,
+       `et il tient le temps qu on le remplisse (${reste.champs} champ(s), visible ${reste.visible})`);
+    await p.close();
+  }
+
   await nav.close(); site.stop();
   console.log(rates ? `\ndepot_muet.test.js : ${rates} essai(s) rate(s) sur ${n}\n`
                     : `\ndepot_muet.test.js : ${n} verifications OK\n`);

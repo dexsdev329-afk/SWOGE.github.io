@@ -140,6 +140,23 @@
       if (m.carte) { ouvreAtelier(m.carte); return; }
       return;
     }
+    /* ---- LA COPIE D'UN MONDE EXISTANT ----
+     * Elle arrive avec son cote, son mode, ses cases et ses objets. On l'ouvre
+     * comme UNE CARTE NEUVE — `id: null`, `mienne: true` : enregistrer creera
+     * une carte a soi, et ne touchera jamais le monde d'origine. C'est la
+     * ligne qui fait la difference entre « proposer une amelioration » et
+     * « modifier le jeu depuis un editeur ».
+     * Le nom est repris pour que la proposition se reconnaisse dans la
+     * galerie ; le joueur reste libre de le changer. */
+    if (m.type === 'carteModele') {
+      if (m.error) { mapDit(m.code === 'sansPlan' ? T('baseSansPlan') : String(m.error), true); return; }
+      if (!m.carte) return;
+      fermeCreation();
+      ouvreAtelier({ id: null, mienne: true, nom: m.carte.nom || '',
+                     cote: m.carte.cote, mode: m.carte.mode,
+                     cases: m.carte.cases || [], objets: m.carte.objets || [] });
+      return;
+    }
     if (m.type === 'skins') {
       SKINS_C = m.catalogue || SKINS_C;
       /* L'or du compte voyage AVEC le catalogue, et c'est le seul endroit d'ou
@@ -3327,6 +3344,11 @@
       mode2d: '2D · tiles', mode25d: '2.5D · plots',
       mode2dDit: 'A grid of tiles seen from above. Grounds, walls, props, monsters.',
       mode25dDit: 'Ready-made plots seen at three quarters. Lay a ground under them.',
+      baseVide: 'Empty grid', baseVille: 'The +18 city',
+      baseVideDit: 'Start from nothing.',
+      baseVilleDit: 'A copy of the city, yours to change. Save it and we can look at what you propose.',
+      baseCharge: 'Copying the city…',
+      baseSansPlan: 'That place has no fixed map — dungeons are redrawn every time you enter.',
       taille: 'Size',
       saleTitre: 'This map has changes you have not saved.',
       jette: 'Discard them', gardeLa: 'Keep editing',
@@ -3421,6 +3443,11 @@
       mode2d: '2D · tuiles', mode25d: '2,5D · parcelles',
       mode2dDit: 'Une grille de tuiles vue de dessus. Sols, murs, objets, monstres.',
       mode25dDit: 'Des parcelles vues de trois quarts. Posez un sol dessous.',
+      baseVide: 'Grille vide', baseVille: 'La ville +18',
+      baseVideDit: 'Partir de rien.',
+      baseVilleDit: 'Une copie de la ville, a vous de la changer. Enregistrez-la et nous regarderons ce que vous proposez.',
+      baseCharge: 'Copie de la ville en cours…',
+      baseSansPlan: 'Ce lieu n a pas de carte fixe — un donjon se redessine a chaque fois qu on y entre.',
       taille: 'Taille',
       saleTitre: 'Cette carte a des changements qui ne sont pas enregistrés.',
       jette: 'Les jeter', gardeLa: 'Continuer à dessiner',
@@ -3517,6 +3544,11 @@
       mode2d: '2D · baldosas', mode25d: '2,5D · parcelas',
       mode2dDit: 'Una cuadrícula de baldosas vista desde arriba. Suelos, muros, objetos, monstruos.',
       mode25dDit: 'Parcelas vistas en tres cuartos. Pon un suelo debajo.',
+      baseVide: 'Rejilla vacia', baseVille: 'La ciudad +18',
+      baseVideDit: 'Empezar de cero.',
+      baseVilleDit: 'Una copia de la ciudad, tuya para cambiarla. Guardala y miraremos tu propuesta.',
+      baseCharge: 'Copiando la ciudad…',
+      baseSansPlan: 'Ese lugar no tiene mapa fijo — las mazmorras se redibujan cada vez.',
       taille: 'Tamaño',
       saleTitre: 'Este mapa tiene cambios sin guardar.',
       jette: 'Descartarlos', gardeLa: 'Seguir dibujando',
@@ -3700,6 +3732,10 @@
     iso:  { cote: 16, familles: ['sol', 'iso'], dit: 'mode25dDit' },
   };
   var mapModeNeuf = 'plat';
+  /* Le monde dont on part, ou '' pour une grille vide. Une CHAINE et pas un
+     booleen : le jour ou un deuxieme lieu devient copiable, il n'y a rien a
+     reecrire ici — c'est deja son nom qu'on garde. */
+  var mapBaseNeuve = '';
 
   var elMapVoile = document.getElementById('nxMapVoile');
   var elMapGalerie = document.getElementById('nxMapGalerie');
@@ -5810,6 +5846,22 @@
     }
     var d = document.getElementById('nxMapModeDit');
     if (d) d.textContent = T(MAP_MODES[mapModeNeuf].dit);
+    var bas = document.getElementById('nxMapBases');
+    if (bas) {
+      var qs = bas.querySelectorAll('button[data-base]');
+      for (var j = 0; j < qs.length; j++) {
+        qs[j].classList.toggle('vedette', (qs[j].dataset.base || '') === mapBaseNeuve);
+      }
+    }
+    var bd = document.getElementById('nxMapBaseDit');
+    if (bd) bd.textContent = T(mapBaseNeuve === 'ville' ? 'baseVilleDit' : 'baseVideDit');
+    /* ---- CE QU'UNE BASE FIXE ----
+     * Une copie arrive avec SON cote et SON mode : les laisser reglables
+     * proposerait un choix que la carte reçue va contredire. On les grise
+     * plutot que de les cacher — on voit ce qui est decide pour soi. */
+    var mods2 = document.getElementById('nxMapModes');
+    if (mods2) mods2.style.opacity = mapBaseNeuve ? '.45' : '';
+    if (mods2) mods2.style.pointerEvents = mapBaseNeuve ? 'none' : '';
     var t = document.getElementById('nxMapTaille');
     var td = document.getElementById('nxMapTailleDit');
     if (t && td) td.textContent = t.value + ' \u00d7 ' + t.value;
@@ -5855,6 +5907,20 @@
     b('nxMapNouvelle', function () { ouvreCreation(); });
     b('nxMapNeuveNon', function () { fermeCreation(); });
     b('nxMapCree', function () {
+      /* ---- PARTIR D'UN MONDE : ON DEMANDE, PUIS ON OUVRE ----
+       * La copie vient du SERVEUR — c'est lui qui tient le plan de la ville et
+       * son germe. La page ne la reconstruit pas : deux generateurs finiraient
+       * par ne plus produire la meme ville, et le joueur proposerait une
+       * amelioration sur une carte que personne d'autre ne voit.
+       * On ne ferme le panneau qu'a l'arrivee : sinon un refus ou une lenteur
+       * laisserait le joueur devant une galerie, sans savoir si son geste a
+       * ete pris. */
+      if (mapBaseNeuve) {
+        if (!enLigne) { mapDit(T('horsLigne') || 'offline', true); return; }
+        mapDit(T('baseCharge'));
+        envoie({ type: 'carteModele', monde: mapBaseNeuve });
+        return;
+      }
       var t = document.getElementById('nxMapTaille');
       var cote = Math.max(4, Math.min(MAP_COTE, parseInt(t && t.value, 10) || MAP_MODES[mapModeNeuf].cote));
       fermeCreation();
@@ -5873,6 +5939,18 @@
         peintCreation();
       });
     }
+    /* Le choix de la BASE, au meme niveau que celui du mode : pose une seule
+       fois au demarrage. Glisse par erreur DANS le gestionnaire des modes, il
+       n'existait qu'apres un clic sur « 2D » ou « 2,5D » — le bouton de la
+       ville ne repondait donc pas tant qu'on n'avait pas touche autre chose,
+       et rien ne le disait. */
+    var bases = document.getElementById('nxMapBases');
+    if (bases) bases.addEventListener('click', function (ev) {
+      var q = ev.target.closest ? ev.target.closest('button[data-base]') : null;
+      if (!q) return;
+      mapBaseNeuve = q.dataset.base || '';
+      peintCreation();
+    });
     var tail = document.getElementById('nxMapTaille');
     if (tail) tail.addEventListener('input', peintCreation);
     b('nxMapOutilDessin', function () { mapOutil = 'dessin'; peintMapOutils(); });

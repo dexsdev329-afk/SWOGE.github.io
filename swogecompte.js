@@ -453,11 +453,27 @@
    * module : sa classe de stockage est `localStorage`, rien d'autre). On
    * regarde donc s'il y en a un, et c'est tout — on ne le lit pas, on ne
    * l'interprete pas, on constate sa presence. */
+  /* ---- ET « UNE CLE QUI COMMENCE PAR privy » NE VEUT RIEN DIRE ----
+   *
+   * Premiere version de ce garde : toute cle commencant par `privy`. C'etait
+   * FAUX, et je l'ai livre. Le module ecrit `privy-app-id`, `privy-client-id`
+   * et `privy-ca-id` a son INITIALISATION — c'est-a-dire sur toute page qui
+   * l'a seulement charge, connecte ou non. N'importe quel visiteur avait donc
+   * un « jeton », et le message lui annoncait qu'une session parfaitement
+   * inexistante etait bloquee par quelque chose. On envoie chercher un
+   * bloqueur de contenu a quelqu'un qui n'a simplement jamais ouvert de
+   * session : c'est le genre de conseil qui fait perdre une soiree.
+   *
+   * La liste est donc EXPLICITE, et ne contient que ce que la CONNEXION pose.
+   * L'ecrire en toutes lettres plutot qu'en prefixe est ce qui rend la
+   * distinction verifiable : on peut relire les quatre noms et dire s'ils sont
+   * les bons. */
+  var CLES_SESSION = ['privy:token', 'privy:refresh_token', 'privy:id-token',
+                      'privy:active-user'];
   function jetonPrivy() {
     try {
-      for (var i = 0; i < localStorage.length; i++) {
-        var k = localStorage.key(i);
-        if (k && k.indexOf('privy') === 0) return true;
+      for (var i = 0; i < CLES_SESSION.length; i++) {
+        if (localStorage.getItem(CLES_SESSION[i]) != null) return true;
       }
     } catch (e) {}
     return false;

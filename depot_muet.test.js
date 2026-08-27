@@ -167,6 +167,11 @@ function fauxPrivyFroid() {
       /* Un jeton Privy dans le stockage, comme chez un joueur qui S'EST
          connecte par e-mail et dont seule la verification echoue. */
       if (o.jeton) { try { localStorage.setItem('privy:token', 'x'); } catch (e) {} }
+      /* Ce que le module pose a son INITIALISATION, connecte ou non. Il ne
+         doit JAMAIS compter pour une session : c'est le faux positif qui a
+         fait annoncer un blocage a quelqu'un qui n'avait pas de session. */
+      if (o.config) { try { localStorage.setItem('privy-app-id', 'x');
+                            localStorage.setItem('privy-ca-id', 'x'); } catch (e) {} }
       /* Le navigateur interne de Telegram, sur Android. Absent quand on veut
          eprouver un Safari ou un Chrome ordinaire. */
       if (o.app !== false) window.TelegramWebviewProxy = { postEvent: function () {} };
@@ -433,6 +438,40 @@ function fauxPrivyFroid() {
          `il dit que la verification a echoue : ${JSON.stringify(fin.texte.slice(0, 100))}`);
       ok(!/no longer valid/i.test(fin.texte),
          'et il ne declare PAS la session morte — elle est peut-etre parfaitement bonne');
+    }
+    await p.close();
+  }
+
+  // ============ 9. UNE CLE DE CONFIGURATION N'EST PAS UNE SESSION ============
+  {
+    console.log('\n-- Privy a ete charge, mais on ne s est jamais connecte --');
+    /* `privy-app-id` et `privy-ca-id` sont poses des que le module
+       s'initialise, sur toute page qui l'a charge. Les compter pour une
+       session faisait annoncer « quelque chose bloque votre connexion » a
+       quelqu'un qui n'en avait tout simplement pas. Le bon conseil ici est
+       « reconnectez-vous », et c'est le seul qui marche. */
+    const p = await jusquAuDepot(`window.SwogePrivy = {
+      init: function () {},
+      restore: function () { return Promise.resolve(null); },
+      getProvider: function () { return null; },
+      getAddress: function () { return null; },
+      isLoggedIn: function () { return false; },
+      logout: function () {}, sendCode: function () { return Promise.resolve(); },
+      verifyCode: function () { return Promise.resolve(null); }
+    };`, { app: false, config: true });
+    await appuie(p, 'swcDGo');
+    let fin = null;
+    for (let i = 0; i < 60 && !fin; i++) {
+      await p.waitForTimeout(400);
+      const e = await lis(p);
+      if (!e.mort && e.texte) fin = e;
+    }
+    ok(!!fin, 'le depot aboutit a une conclusion');
+    if (fin) {
+      ok(/no longer valid/i.test(fin.texte),
+         `il conseille de se reconnecter : ${JSON.stringify(fin.texte.slice(0, 90))}`);
+      ok(!/blocking/i.test(fin.texte),
+         'et il n accuse AUCUN blocage — il n y a pas de session a bloquer');
     }
     await p.close();
   }

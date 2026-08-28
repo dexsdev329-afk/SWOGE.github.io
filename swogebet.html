@@ -913,7 +913,7 @@ html{ background-color:#0b0906;
  * milieu d'un defilement ; la ligne en `vh` reste devant pour les navigateurs
  * qui ne connaissent pas encore la seconde. Quand il mord, c'est la HAUTEUR
  * qui cede : la largeur d'un bloc ne se deduit jamais de son rapport. */
-.sb-films{ position:relative; display:block; width:100%; aspect-ratio:912/600;
+.sb-films{ position:relative; display:block; width:100%; aspect-ratio:1040/864;
   max-height:330px; overflow:hidden;
   border-radius:15px; margin:0 0 14px;
   background:var(--nuit); border:1px solid var(--line); }
@@ -922,8 +922,14 @@ html{ background-color:#0b0906;
 }
 /* Le film remplit sa boite et ne mesure plus rien lui-meme. `object-fit:cover`
    finit le travail quand le plafond a change le rapport de la boite. */
+/* `object-position` a disparu avec sa raison d etre : il remontait le cadrage
+   a 38 % parce que la boite et le film n avaient pas le meme rapport et que
+   `cover` rognait. Ils l ont maintenant — il n y a plus rien a rogner, et un
+   recadrage qui ne recadre rien se relit comme un choix, que la prochaine
+   reprise entretient. `cover` reste : il fait le travail en paysage, quand le
+   plafond en hauteur change le rapport de la boite. */
 .sb-film{ position:absolute; inset:0; display:block; width:100%; height:100%;
-  object-fit:cover; object-position:center 38%; }
+  object-fit:cover; }
 
 /* ---- `.sb-banniere` N'EXISTE PLUS ----
  * Elle portait l'affiche AVANT que la video la remplace, et sa regle est
@@ -2516,8 +2522,21 @@ main{ min-width:0; }
            le rapport d'un element qui se dimensionnait lui-meme. Il ne se
            dimensionne plus — c'est `inset:0` qui decide, et rien d'autre. -->
       <div class="sb-films">
-        <video class="sb-film" id="sbFilm" src="media/bet.mp4"
-               poster="img/site/bet_poster.webp"
+        <!-- ---- UN FILM AU FORMAT DU TELEPHONE ----
+             Le precedent etait en 912x600, soit 1,52 : sur une colonne de 390
+             il ne faisait que 225 px de haut, une bande. Celui-ci est en
+             1040x864, soit 1,20 — 284 px de haut sur le meme telephone. Le
+             rapport de la BOITE suit, sinon `object-fit:cover` rognerait le
+             film pour rien.
+
+             L affiche est celle du film precedent, recadree au nouveau
+             rapport : ce depot n a pas de decodeur H.264, on ne peut donc pas
+             en extraire la premiere image du nouveau. C est la meme affiche de
+             marque, correctement cadree, et elle s efface des que le film
+             demarre — mieux qu une boite vide pendant le chargement. A
+             remplacer par une vraie premiere image quand on en aura une. -->
+        <video class="sb-film" id="sbFilm" src="media/bet_telephone.mp4"
+               poster="img/site/bet_poster2.webp"
                muted loop playsinline preload="none" disablepictureinpicture
                aria-label="SWOGE Betting"></video>
       </div>

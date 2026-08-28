@@ -111,7 +111,19 @@ const CIBLES = [
       const el = document.querySelector('#sbFilm');
       const r = el.getBoundingClientRect();
       return { h: Math.round(r.height), fen: window.innerHeight,
-               sansPlafond: Math.round(r.width / (912 / 600)) };
+               /* Le rapport n'est pas recopie ici : il est LU sur la boite.
+                  Ecrit en dur, il fallait penser a le changer le jour ou l'on
+                  change de film — et ce jour est arrive, le bandeau des paris
+                  est passe de 912x600 a 1040x864 pour mieux remplir un
+                  telephone. Un essai qui garde une constante que la page a
+                  cessé d'avoir mesure autre chose que ce qu'il annonce. */
+               sansPlafond: (function () {
+                 const boite = el.closest('.sb-films, .haut-films') || el;
+                 const rap = getComputedStyle(boite).aspectRatio;
+                 const m = rap && rap.match(/([\d.]+)\s*\/\s*([\d.]+)/);
+                 return m ? Math.round(r.width / (parseFloat(m[1]) / parseFloat(m[2])))
+                          : Math.round(r.width);
+               })() };
     });
     ok(v.h < v.sansPlafond,
        `elle est bornee (${v.h} px au lieu de ${v.sansPlafond})`);

@@ -3895,8 +3895,20 @@
       /* Sur grand ecran il n'a rien a faire la : le hall est a un onglet. */
       '@media (min-width:981px){#swjx{display:none}}' +
       /* Et jamais par-dessus un panneau ouvert : un raccourci qui recouvre ce
-         qu'on est en train de lire n'est plus un raccourci. */
-      'body.swdrawer #swjx{display:none}';
+         qu'on est en train de lire n'est plus un raccourci.
+         ---- CETTE REGLE NE SERVAIT A RIEN ----
+         `swdrawer` n'etait pose par personne : ni ce fichier, ni
+         `swogeprofil.js`, ni aucune page. La fleche flottait donc bel et bien
+         sur le tiroir ouvert — vu au rendu, le raccourci « Hi-Lo » par-dessus
+         la ligne « Music: 1 ». On garde la regle, au cas ou la classe
+         arriverait un jour, et on en ajoute deux qui lisent l'etat REEL des
+         deux tiroirs plutot qu'une classe a poser. */
+      'body.swdrawer #swjx{display:none}' +
+      /* En regles SEPAREES : un navigateur qui ne connait pas `:has()` jette
+         le selecteur entier. Melangees a la ligne du dessus, elles
+         l'emporteraient avec elles. */
+      'body:has(#gxMenu:not([hidden])) #swjx{display:none}' +
+      'body:has(.swpov.on) #swjx{display:none}';
     document.head.appendChild(c);
 
     var b = document.createElement('button');

@@ -64,7 +64,7 @@ canvas{ touch-action:none; }
 <!-- La bulle de staking. Chargee tot et SANS defer : elle enveloppe WebSocket
      pour ecouter ce qui passe deja, et doit donc etre en place avant que la page
      n ouvre sa connexion. -->
-<script src="stakebubble.js?v=8009af04"></script>
+<script src="stakebubble.js?v=87f8cbce"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <script src="swogebuy.js?v=0d5e5215"></script>
@@ -437,8 +437,24 @@ canvas{ touch-action:none; }
    deux pistes souples absorbent tout le reste. Cette variante-ci ne pose pas
    de grille : `.sw-cote` a une largeur ECRITE de 208px, elle ne peut pas
    grandir. Mesure faite a 1920px : 208px. */
+/* ---- L EN-TETE PASSE AU-DESSUS DU CADRE DE LA BORNE ----
+   Signale : « sur le coin pusher le menu passe derriere le jeu ». Le tiroir
+   du profil s ouvre vers le bas depuis cette barre, et le biseau de la borne
+   — `#tablette`, en z-index 9000 — le recouvrait a partir de 112 px : la
+   ligne « Staking » disparaissait entierement sous la bordure, et tout le
+   reste du tiroir passait sous l ombre interieure du cadre.
+
+   Relever le z-index du TIROIR n aurait rien change : il vit dans cette
+   barre, qui est `position:fixed` avec un z-index — donc son propre contexte
+   d empilement. Un enfant n en sort pas, quel que soit son chiffre ; c est la
+   barre entiere qu il faut relever, et le tiroir suit.
+
+   9500, pas plus : au-dessus du seul element qui genait, et en dessous de
+   tout ce que le site pose par-dessus — les panneaux du profil (99999), la
+   fleche des jeux, les calques plein ecran. Le biseau commence sous la barre,
+   rien ne se recouvre a l ecran. */
 .sw-haut{
-  position:fixed; top:0; left:0; right:0; z-index:220;
+  position:fixed; top:0; left:0; right:0; z-index:9500;
   display:flex; align-items:center; gap:14px; padding:10px 16px;
   background:#FFFFFF; border-bottom:1px solid #E1E9F6;
 }

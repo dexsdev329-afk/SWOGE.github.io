@@ -876,27 +876,54 @@ html{ background-color:#0b0906;
  * La ligne en `vh` reste AVANT : un navigateur qui ne connait pas `svh` ignore
  * la seconde et garde l'ancien comportement, qui vaut mieux que pas de
  * plafond du tout. */
-.sb-film{ display:block; width:100%; height:auto; aspect-ratio:912/600;
-  /* EN PORTRAIT, AUCUN PLAFOND EN HAUTEUR D'ECRAN. La banniere fait sa
-     largeur divisee par son rapport, et rien d'autre : 225 px sur un
-     telephone de 390. Elle ne peut donc plus bouger quand la fenetre bouge,
-     et c'est verifiable — quatre hauteurs d'ecran, la meme boite. */
-  max-height:330px;
-  object-fit:cover; object-position:center 38%;
+/* ---- LA BANNIERE EST UNE BOITE, ET LE FILM VIT DEDANS ----
+ *
+ * Signale trois fois, la derniere avec deux captures du meme ecran a deux
+ * instants : la page s'ouvre juste, puis « deux secondes apres ca se remet en
+ * grand et casse tout le haut ». Sur la capture cassee, l'en-tete et la
+ * navigation s'affichent a 59 % de la largeur pendant que la banniere, elle,
+ * remplit l'ecran.
+ *
+ * Mesure prise SUR les captures, en partant de la seule largeur qu'on
+ * connaisse — l'en-tete, qui vaut la fenetre : la page est rendue a 0,59, la
+ * banniere fait 630 points de large pour une fenetre de 390, et 327 de haut,
+ * c'est-a-dire son plafond de 330. Le film avait donc pris pres du DOUBLE de
+ * la largeur de l'ecran, le document avec, et le telephone avait degonfle
+ * toute la page pour la faire tenir. C'est aussi pour ca que la banniere
+ * paraissait ecrasee : a 630 de large son rapport voudrait 415 de haut, le
+ * plafond mord, et 630/330 donne 1,92 la ou le film est en 1,52.
+ *
+ * POURQUOI LES AUTRES NE LE FONT PAS. Sur ce site, TOUS les autres films sont
+ * poses en `position:absolute; inset:0` dans une boite qui, elle, porte la
+ * taille — `.heros`, `.uni`, `.salon`, et la banniere du hall dans
+ * `.haut-films`. Un element absolu ne participe pas au dimensionnement de son
+ * parent : quoi qu'il arrive a ses dimensions propres, il ne peut pas elargir
+ * la page. `.sb-film` etait le SEUL film du site laisse dans le flux, avec sa
+ * taille propre en negociation avec la mise en page — et c'est le seul qui a
+ * ete signale. La coincidence s'arrete la.
+ *
+ * `max-width:100%`, pose au coup precedent, ne suffisait pas : il borne
+ * l'element par rapport a SON conteneur, et ne dit rien si c'est le conteneur
+ * qui suit. La boite, elle, est un bloc : sa largeur est celle de son parent,
+ * un point c'est tout. Aucune dimension du film ne peut plus la faire bouger.
+ *
+ * Le plafond en hauteur ne mord qu'en paysage, ou il sert : a 844 de large, le
+ * rapport donnerait 555 px de haut sur un ecran qui en fait 390. `svh` plutot
+ * que `vh` parce que sur iPhone `vh` se mesure barre retractee et change au
+ * milieu d'un defilement ; la ligne en `vh` reste devant pour les navigateurs
+ * qui ne connaissent pas encore la seconde. Quand il mord, c'est la HAUTEUR
+ * qui cede : la largeur d'un bloc ne se deduit jamais de son rapport. */
+.sb-films{ position:relative; display:block; width:100%; aspect-ratio:912/600;
+  max-height:330px; overflow:hidden;
   border-radius:15px; margin:0 0 14px;
   background:var(--nuit); border:1px solid var(--line); }
-/* ---- LE PLAFOND EN HAUTEUR NE SERT QU'EN PAYSAGE ----
-   La c'est utile : a 844 de large, le rapport donnerait 555 px de haut sur un
-   ecran qui en fait 390. Ailleurs il ne protegeait de rien et causait le
-   defaut.
-   `svh` plutot que `vh` : sur iPhone, `vh` se mesure sur la fenetre BARRE
-   RETRACTEE, donc il change au milieu d'un defilement. `svh` se mesure sur la
-   plus petite — celle ou toute la chrome est montree — et ne bouge jamais. La
-   ligne en `vh` reste devant pour les navigateurs qui ne connaissent pas
-   encore la seconde. */
 @media (orientation:landscape){
-  .sb-film{ max-height:min(40vh,330px); max-height:min(40svh,330px); }
+  .sb-films{ max-height:min(40vh,330px); max-height:min(40svh,330px); }
 }
+/* Le film remplit sa boite et ne mesure plus rien lui-meme. `object-fit:cover`
+   finit le travail quand le plafond a change le rapport de la boite. */
+.sb-film{ position:absolute; inset:0; display:block; width:100%; height:100%;
+  object-fit:cover; object-position:center 38%; }
 
 /* ---- `.sb-banniere` N'EXISTE PLUS ----
  * Elle portait l'affiche AVANT que la video la remplace, et sa regle est
@@ -2484,16 +2511,16 @@ main{ min-width:0; }
 
 
     <div class="sb-wrap">
-      <!-- `width`/`height` ici ne sont pas decoratifs : sur telephone, la
-           video se mal-dimensionnait (rapport different du 912/600 prevu par
-           le CSS `aspect-ratio`). Ces deux attributs fixent le ratio pour le
-           navigateur DES la mise en page, meme quand `aspect-ratio` n'est pas
-           applique — le meme filet de securite qu'une image avec ses
-           dimensions intrinseques. -->
-      <video class="sb-film" id="sbFilm" src="media/bet.mp4" width="912" height="600"
-             poster="img/site/bet_poster.webp"
-             muted loop playsinline preload="none" disablepictureinpicture
-             aria-label="SWOGE Betting"></video>
+      <!-- La boite porte la taille, le film la remplit. Les attributs
+           `width`/`height` ont disparu avec le besoin : ils servaient a fixer
+           le rapport d'un element qui se dimensionnait lui-meme. Il ne se
+           dimensionne plus — c'est `inset:0` qui decide, et rien d'autre. -->
+      <div class="sb-films">
+        <video class="sb-film" id="sbFilm" src="media/bet.mp4"
+               poster="img/site/bet_poster.webp"
+               muted loop playsinline preload="none" disablepictureinpicture
+               aria-label="SWOGE Betting"></video>
+      </div>
       <div class="sb-sports" id="sbSports"></div>
       <div id="sbDirect" hidden></div>
       <div class="sb-vide" id="sbVide" hidden></div>

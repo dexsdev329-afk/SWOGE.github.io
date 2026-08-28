@@ -1,0 +1,613 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>
+/* ================== CORRECTIFS COMMUNS ==================
+ * Bloc identique sur les vingt-cinq pages. Il se pose juste apres le viewport
+ * pour qu'aucune feuille de style de la page ne puisse le prendre de vitesse.
+ *
+ * LE DOUBLE-TAP NE ZOOME PLUS. Deux appuis rapproches sur un bouton — tirer,
+ * tirer ; miser, miser — etaient lus comme un double-tap, et la page grossissait.
+ * On jouait le coup suivant a moitie hors de l'ecran et il fallait pincer pour
+ * revenir. `manipulation` supprime CE geste, et lui seul : le pincement pour
+ * zoomer reste possible, ce qui n'aurait pas ete le cas avec un
+ * `user-scalable=no` dans le viewport — la solution courante, qui prive aussi
+ * les gens qui zooment pour lire. Les 300 ms d'attente avant que le clic parte
+ * disparaissent avec, en prime.
+ *
+ * LA SURFACE DE JEU, elle, ne doit rien laisser passer : un doigt qui glisse
+ * sur un plateau ne doit pas faire defiler la page derriere.
+ *
+ * LES CIBLES : le bouton menu tombait a 38x38 sur telephone, sous les 44 px
+ * recommandes — et c'est le seul chemin vers le depot, le retrait et le compte.
+ * ========================================================= */
+html{ -webkit-text-size-adjust:100%; }
+
+/* ---- ON RELEVE LE NOIR, PARTOUT ----
+ *
+ * Les tables etaient presque entierement noires : 80 % des pixels du casino
+ * sous le seuil du visible, 96 % au Coin Pusher, contre 58 % au hall. A cote
+ * du hall, chaque jeu paraissait eteint.
+ *
+ * Le calque est en `screen`, pas en voile blanc, et la difference est tout :
+ *
+ *   screen(a, g) = 255 - (255 - a)(255 - g) / 255
+ *
+ * Le NOIR monte a la valeur du calque, le BLANC ne bouge pas d'un cran. Les
+ * plaques peintes, les jetons et les cartes gardent donc exactement leur
+ * eclat — seuls les creux se remplissent. Un voile blanc a 5 %, lui, aurait
+ * laiteuse les cartes en meme temps.
+ *
+ * `filter: brightness()` est ecarte pour deux raisons : il MULTIPLIE, donc le
+ * noir reste noir — or c'est justement le noir qu'on veut relever — et un
+ * filtre fait de son element le repere de tout descendant en position fixe,
+ * ce qui nous a deja coute un cadre de palier de deux cents pixels sur le Spin.
+ *
+ * `pointer-events:none` : le calque couvre tout l'ecran, il ne doit rien
+ * intercepter. Verifie par un vrai clic sur la bulle de profil, avec et sans.
+ *
+ * Une seule valeur a regler ici, et elle vaut pour les vingt-six pages. */
+html::after{ content:""; position:fixed; inset:0; pointer-events:none;
+  z-index:2147483000; background:#12121a; mix-blend-mode:screen; }
+button, a, input, select, textarea, label, summary,
+[role="button"], [onclick],
+.card, .chipbtn, .btn, .tile, .sbet, .qclaim, .abtn, .pct, .chip, .sday{
+  touch-action:manipulation;
+}
+canvas{ touch-action:none; }
+.menubtn{ min-width:44px; min-height:44px; }
+</style>
+
+<title>SWOGE Agent — the desk that watches, and asks before acting</title>
+
+<!-- ==================== REFERENCEMENT ET PARTAGE ====================
+     Bloc identique sur toutes les pages, pose juste apres le titre.
+
+     L ICONE. Vingt-trois pages sur vingt-huit n en avaient aucune, et les cinq
+     qui en portaient une pointaient vers trois fichiers differents — dont un
+     qui n existe pas. C est la premiere chose qu on cherche pour retrouver un
+     onglet, et Google la montre a cote du resultat.
+
+     LE PARTAGE. Aucune page ne portait de balise Open Graph : un lien colle
+     dans Telegram, sur X ou dans Discord n affichait ni titre, ni resume, ni
+     image — juste l adresse nue. Pour un projet qui vit dans Telegram, c est
+     le lien lui-meme qui faisait le travail de vitrine, et il ne le faisait
+     pas.
+
+     L ADRESSE CANONIQUE dit au moteur quelle est LA page, quand la meme est
+     atteignable avec un `?game=`, un `#` ou un `www`. Sans elle, les deux
+     versions se font concurrence et aucune ne gagne.
+     ================================================================= -->
+<link rel="canonical" href="https://swoleeswoge.dog/swoge_agent.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="SWOGE WORLD">
+<meta property="og:locale" content="en_US">
+<meta property="og:title" content="SWOGE Agent — the desk that watches, and asks before acting">
+<meta property="og:description" content="Eight agents that read the chain and the market, and bring one decision to a human. Nothing is signed without a tap.">
+<meta property="og:url" content="https://swoleeswoge.dog/swoge_agent.html">
+<meta property="og:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@SwoleDogeSwoge">
+<meta name="twitter:title" content="SWOGE Agent — the desk that watches, and asks before acting">
+<meta name="twitter:description" content="Eight agents that read the chain and the market, and bring one decision to a human. Nothing is signed without a tap.">
+<meta name="twitter:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/site/icone-32.png">
+<link rel="apple-touch-icon" href="/img/site/icone-180.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta name="theme-color" content="#1B5FE0">
+
+<meta name="description" content="Eight agents that read the chain and the market, and bring one decision to a human. Nothing is bought, sold or signed without a tap. What is built, what is proposed, and what is refused — marked line by line.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+<!-- ---- LE COMPTE DE JEU, ICI AUSSI ----
+     DEMANDE : « rajoute le profil, la barre, etc, tout ». `stakebubble.js`
+     tient la socket et le solde, `swogecompte.js` fabrique le menu et les cinq
+     panneaux (portefeuille avec envoi, depot, retrait, staking, quetes),
+     `swogeprofil.js` peint le tiroir derriere l'avatar, `swogebuy.js` pose
+     l'estimation en dollars a cote du solde. Meme quatuor que l'accueil. -->
+<script src="stakebubble.js?v=bf92d7f9"></script>
+<script src="swogecompte.js?v=265e397a"></script>
+<script src="swogebuy.js?v=0d5e5215"></script>
+<script src="swogeprofil.js?v=2bff1154" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.13.3/dist/index.umd.js"></script>
+<style>
+/* ---- LA PAGE PASSE AU CLAIR ----
+   DEMANDE : « il manquait burn html, fais la meme chose sur ces pages ».
+   Cette page avait deja un theme clair, derriere `body.light` et un bouton
+   soleil/lune — mais il demarrait en SOMBRE, et c'etait un blanc creme a lui,
+   pas le systeme du site. Les deux sont remplaces par une palette unique :
+   celle des vingt-deux autres pages. Le bouton de bascule part avec, comme
+   sur `launchpad.html` : la barre et le profil sont ecrits en hexadecimal sans
+   variante sombre, un clic aurait donne une page a moitie blanche.
+   Le feu, lui, reste : c'est l'identite de la page. Il est seulement assombri
+   de #FF6B35 a #C2410C pour rester lisible sur blanc — le degrade du bouton
+   garde la teinte vive, son texte etant sombre. */
+:root{--cream:#0B1B36;--dim:#5F6E88;--fur:#0B1B36;--gold:#1B5FE0;--goldlite:#1B5FE0;--line:#E1E9F6;--void:#EEF3FB;--void2:#FFFFFF;--signal:#0E7C3E;--danger:#E0443E;--fire:#C2410C;--fire-vif:#FF6B35;--ink:#FFFFFF}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--void);color:var(--cream);font-family:'Archivo',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+body{min-height:100vh;background:radial-gradient(circle at 50% 0%,rgba(255,107,53,.09),transparent 45%),radial-gradient(circle at 85% 90%,rgba(27,95,224,.05),transparent 45%),var(--void)}
+a{color:var(--gold);text-decoration:none}
+.wrap{max-width:560px;margin:0 auto;padding:22px 16px 90px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.brand{display:flex;align-items:center;gap:11px}
+.brand .logo{width:44px;height:44px;border-radius:11px;border:1px solid var(--line)}
+.brand h1{font-family:'Anton',sans-serif;font-size:clamp(22px,5vw,32px);line-height:.95}
+.brand h1 span{color:var(--fire)}
+.brand .sub{font-family:'Space Mono',monospace;font-size:11px;color:var(--dim);letter-spacing:2px;text-transform:uppercase}
+nav{display:flex;gap:8px;flex-wrap:wrap}
+nav a,.walletbtn{font-family:'Space Mono',monospace;font-size:12px;padding:8px 12px;border:1px solid var(--line);border-radius:999px;color:var(--fur);cursor:pointer;background:transparent}
+nav a:hover,.walletbtn:hover{border-color:var(--gold);color:var(--gold)}
+.panel{background:var(--void2);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:16px;box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05)}
+.panel h2{font-family:'Space Mono',monospace;font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);margin-bottom:14px}
+label{display:block;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--dim);margin:0 0 6px}
+input{width:100%;font-family:'Archivo',sans-serif;font-weight:600;font-size:15px;padding:11px 12px;border-radius:10px;border:1px solid var(--line);background:var(--void);color:var(--cream);outline:none}
+input:focus{border-color:var(--fire)}
+.field{margin-bottom:13px}
+.kv{display:flex;justify-content:space-between;gap:10px;font-family:'Space Mono',monospace;font-size:13px;padding:8px 0;border-bottom:1px solid var(--line)}
+.kv .k{color:var(--dim)}.kv .v{color:var(--cream);text-align:right;word-break:break-all}
+.big{font-family:'Anton',sans-serif;font-size:clamp(26px,7vw,40px);color:var(--fire);line-height:1}
+.pcts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.pcts button{font-family:'Space Mono',monospace;font-size:12px;padding:7px 12px;border:1px solid var(--line);background:var(--void);color:var(--fur);border-radius:8px;cursor:pointer}
+.pcts button:hover,.pcts button.on{border-color:var(--fire);color:var(--fire)}
+.btn{font-family:'Archivo',sans-serif;font-weight:800;font-size:15px;padding:14px 15px;border-radius:11px;border:1px solid var(--line);background:var(--void2);color:var(--cream);cursor:pointer;transition:.15s;width:100%;display:inline-flex;align-items:center;gap:7px;justify-content:center}
+.btn.fire{background:linear-gradient(90deg,var(--fire-vif),#FFC53D);color:#3A1B05;border-color:var(--fire)}
+.btn.fire:hover{filter:brightness(1.08)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.note{font-family:'Space Mono',monospace;font-size:12px;color:var(--dim);line-height:1.6;margin-top:10px;word-break:break-word}
+.note.ok{color:var(--signal)}.note.err{color:var(--danger)}
+.prog{height:12px;border-radius:99px;background:var(--void);border:1px solid var(--line);overflow:hidden;margin:8px 0}
+.prog>span{display:block;height:100%;background:linear-gradient(90deg,var(--fire-vif),#FFC53D);width:0}
+.wpick{position:fixed;inset:0;background:rgba(11,27,54,.45);display:none;align-items:center;justify-content:center;z-index:70;padding:16px}
+.wpick.show{display:flex}
+.wpick .box{background:var(--void2);border:1px solid var(--line);border-radius:16px;padding:18px;width:min(360px,92vw)}
+.wpick h3{font-family:'Anton',sans-serif;font-size:20px;margin-bottom:14px}
+.wpick .wrow{display:flex;align-items:center;gap:12px;padding:12px 13px;border:1px solid var(--line);border-radius:11px;margin-bottom:8px;cursor:pointer;background:var(--void)}
+.wpick .wrow:hover{border-color:var(--gold)}
+.wpick .wrow img{width:28px;height:28px;border-radius:7px}
+.wpick .wrow .wdot{width:28px;height:28px;border-radius:7px;background:var(--gold);display:inline-block}
+.wpick .wrow span{font-family:'Archivo';font-weight:700;font-size:14px}
+.wpick .cancel{text-align:center;color:var(--dim);font-family:'Space Mono',monospace;font-size:12px;cursor:pointer;padding:8px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);background:var(--fire-vif);color:#3A1B05;font-family:'Archivo';font-weight:800;padding:12px 20px;border-radius:12px;opacity:0;pointer-events:none;transition:.25s;z-index:60}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.foot{margin-top:24px;text-align:center;font-family:'Space Mono',monospace;font-size:11px;color:var(--dim)}
+/* ==================== LA NOUVELLE BARRE, BLANCHE ====================
+   DEMANDE : « tous se qu on viens de faire a blackjack html et spin html » —
+   meme barre que `games.html`, `index.html`, `swogebet.html`,
+   `swoge_blackjack.html` et `swoge_spin.html` : marque, chiffres du serveur,
+   solde, connexion, avatar. Seule la BARRE, les panneaux de compte et le
+   fond de page passent au blanc — le tapis et les cartes gardent leur
+   propre habillage or-sur-noir, qui est celui de la TABLE et non de la
+   navigation. Couleurs ECRITES ICI, comme sur les quatre autres pages. */
+/* ---- LE MENU NE SE MONTRE PAS, IL SE LIT ----
+   Sur les pages de jeu, `.menu` est masque par leur propre feuille et ne
+   s'ouvre qu'au clic du hamburger. Cette page-ci n'a pas cette feuille : la
+   liste s'affichait donc en clair sous la barre. Elle n'est pas une interface
+   — c'est la SOURCE que `swogeprofil.js` et le tiroir de `stakebubble.js`
+   recopient. Meme traitement que `swogecompte.js`, qui pose son propre menu
+   en `display:none`. Le hamburger va avec : le profil ouvre la meme liste. */
+#menu{ display:none !important; }
+#menuBtn{ display:none !important; }
+.sw-haut{
+  display:flex; align-items:center; gap:14px; padding:10px 16px;
+  background:#FFFFFF; border-bottom:1px solid #E1E9F6;
+  position:sticky; top:0; z-index:30;
+}
+.sw-marque{display:flex; align-items:center; gap:9px; flex:0 0 auto}
+nav.sb-ancre{display:flex;align-items:center;gap:12px;
+  background:none;backdrop-filter:none;padding:0;border-bottom:none;
+  position:static;z-index:auto;}
+.sw-patte{
+  width:34px;height:34px;border-radius:10px;background:#EAF1FF;
+  display:grid;place-items:center;font-size:19px;
+}
+.sw-marque b{display:block;font:800 17px/1 'Inter',system-ui,sans-serif;letter-spacing:.4px;color:#1B5FE0}
+.sw-marque i{display:block;font:700 9.5px/1.4 'Inter',system-ui,sans-serif;font-style:normal;
+  letter-spacing:2.6px;color:#6B7C99}
+.sw-chiffres{
+  flex:1 1 auto; min-width:0; display:flex; gap:8px; overflow-x:auto;
+  padding:8px 10px; background:#EEF3FB; border:1px solid #E1E9F6;
+  border-radius:12px; scrollbar-width:none;
+}
+.sw-chiffres::-webkit-scrollbar{display:none}
+/* La bande de stats ne pouvait pas se cacher : le script d'echec pose
+   `bloc.hidden = true`, mais `.sw-chiffres{display:flex}` est une regle
+   d'AUTEUR et l'emporte sur le `[hidden]{display:none}` du navigateur.
+   Quand le fetch de /vitrine.json echouait, la bande restait donc a
+   l'ecran avec ses quatre tirets — l'allure d'un compteur en direct sans
+   compteur derriere. Une ligne, et l'intention du script tient. */
+.sw-chiffres[hidden]{display:none}
+.sw-ch{display:flex;align-items:center;gap:8px;padding:0 12px;flex:0 0 auto}
+.sw-ch+.sw-ch{border-left:1px solid #E1E9F6}
+.sw-ch .ic{width:26px;height:26px;border-radius:8px;background:#EAF1FF;
+  display:grid;place-items:center;font-size:13px}
+.sw-ch small{display:block;font:700 9px/1 'Inter',system-ui,sans-serif;letter-spacing:.9px;color:#6B7C99}
+.sw-ch b{display:block;font:800 14px/1.3 'Inter',system-ui,sans-serif;color:#0A1F44}
+.sb-ancre .chip{font:800 12px/1 'Inter',system-ui,sans-serif;color:#0A1F44;
+  border:1px solid #E1E9F6;border-radius:999px;padding:9px 13px;background:#FFFFFF;
+  box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05);white-space:nowrap}
+.sb-ancre .chip b{color:#0A1F44}
+.sw-b{
+  padding:10px 16px;border-radius:10px;cursor:pointer;border:none;
+  font:700 12.5px/1 'Inter',system-ui,sans-serif;letter-spacing:.3px;white-space:nowrap;
+}
+.sw-b-plein{background:#1B5FE0;color:#fff}
+.sw-b-plein:hover{background:#1750c4}
+.sw-b-vide{background:#FFFFFF;color:#1B5FE0;border:1.5px solid #1B5FE0}
+.sw-b-vide:hover{background:#EAF1FF}
+.connrow{ position:static !important; flex:0 0 auto;
+  flex-direction:row !important; flex-wrap:nowrap !important;
+  justify-content:flex-start !important; gap:8px; padding:0 !important; }
+.connrow .sw-b{ margin:0 !important; }
+.sw-avatar{
+  width:38px;height:38px;border-radius:11px;border:1px solid #E1E9F6;
+  background:#EEF3FB;display:grid;place-items:center;font-size:16px;flex:0 0 auto;cursor:pointer;
+}
+.gx-menu{position:absolute;top:60px;right:14px;z-index:70;width:236px;
+  background:#FFFFFF;border:1px solid #E1E9F6;border-radius:14px;
+  box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05);padding:6px;display:flex;flex-direction:column;gap:1px}
+.gx-menu[hidden]{display:none}
+.gx-menu a{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:9px;
+  font:700 12px/1 'Inter',system-ui,sans-serif;color:#0B1B36;text-decoration:none}
+.gx-menu a:hover{background:#EAF1FF;color:#1B5FE0}
+.gx-menu .gx-sep{height:1px;background:#E1E9F6;margin:5px 2px}
+.gx-menu .gx-g{padding:9px 10px 4px;font:800 9px/1 'Inter',system-ui,sans-serif;
+  letter-spacing:1.1px;text-transform:uppercase;color:#6B7C99}
+.gx-menu .gx-g:first-child{padding-top:4px}
+.gx-menu{max-height:min(74vh,560px);overflow-y:auto;scrollbar-width:thin}
+.gx-menu a i{font-style:normal;font-size:14px;width:18px;text-align:center;flex:0 0 auto}
+@media(max-width:520px){ .gx-menu{right:8px;left:8px;width:auto} }
+@media (max-width:620px){
+  .sw-haut{ flex-wrap:wrap; row-gap:8px; }
+  .sw-marque{ order:1 }
+  /* ---- LA RANGEE DE PASTILLES DOIT POUVOIR SE REPLIER ----
+     `stakebubble.js` ajoute DEUX pastilles a cette rangee quand la connexion
+     s'etablit — le rendement en jeu et le nombre de joueurs — soit une seconde
+     ou deux apres l'ouverture. Mesure faite : la rangee passe de 54 a 243 px.
+     En `flex:0 0 auto` elle ne pouvait ni retrecir ni se replier : elle
+     poussait donc la ligne, le document devenait plus large que l'ecran, et
+     le telephone dezoomait toute la page pour la faire tenir — c'est l'en-tete
+     coupe en pleine largeur, deux secondes apres le chargement.
+     Elle peut desormais retrecir ET passer a la ligne. A noter : le garde-fou
+     de `stakebubble.js` ne pouvait pas s'en charger, il ne se retire que s'il
+     mesure un debordement du DOCUMENT — or ici l'en-tete l'absorbait en
+     grandissant en hauteur, sans jamais rien faire deborder. */
+  nav.sb-ancre{ order:2; flex:0 1 auto; min-width:0; margin-left:auto;
+                flex-wrap:wrap; justify-content:flex-end; row-gap:6px }
+  .menubtn, #gxProfil{ order:3 }
+  /* ---- ET ELLE PEUT SE REPLIER QUAND LA LIGNE N EST PLUS ASSEZ LARGE ----
+     Les deux boutons portent `white-space:nowrap` : la paire fait 332 px que
+     rien ne peut retrecir. Sur un ecran de 320 (un iPhone en zoom d affichage,
+     un iPhone SE) il ne reste que 288 px : la rangee debordait, le telephone
+     elargissait la fenetre de mise en page a 348, et TOUTE la page se decalait
+     de 28 px — en-tete coupe a gauche, contenu sous le bord droit.
+     `wrap` ne fait rien tant que la place existe : de 350 a 620 px la rangee
+     reste sur une ligne comme avant. Le `nowrap` de la regle du dessus visait
+     une mise en page en COLONNE ; ici la direction est deja forcee en `row`,
+     donc replier ne la ramene pas. */
+  .connrow{ order:4; flex:1 1 100% !important; justify-content:center !important;
+            flex-wrap:wrap !important }
+  /* ---- ET AVANT DE SE REPLIER, ELLE SE RESSERRE ----
+     Se replier repare le decalage mais coute une rangee d en-tete. A 360 px —
+     la moitie des telephones Android — il ne manquait que quatre pixels : dix
+     de moins de chaque cote des deux boutons les rendent, et la paire reste
+     sur sa ligne comme avant. Sous 340 il n y a plus rien a gratter, et c est
+     `wrap` qui prend le relais. */
+  @media (max-width:400px){
+    .connrow .sw-b{ padding-left:11px !important; padding-right:11px !important }
+  }
+  .sw-chiffres{ order:5; flex:1 1 100% }
+}
+
+.hint{font-size:12px;color:var(--dim);line-height:1.6;font-family:'Space Mono',monospace}
+</style>
+<body>
+<header class="sw-haut">
+  <a class="sw-marque" href="nexus.html" id="gxMonde">
+    <span class="sw-patte">🐾</span>
+    <span><b>SWOGE</b><i>WORLD</i></span>
+  </a>
+  <div class="sw-chiffres" id="gxChiffres" hidden>
+    <div class="sw-ch"><span class="ic">👤</span><span><small>PLAYERS</small><b data-n="joueurs">—</b></span></div>
+    <div class="sw-ch"><span class="ic">🎲</span><span><small>CASINO VOLUME</small><b data-n="volume">—</b></span></div>
+    <div class="sw-ch"><span class="ic">🎮</span><span><small>ROUNDS PLAYED</small><b data-n="manches">—</b></span></div>
+    <div class="sw-ch"><span class="ic">🏆</span><span><small>WINNINGS PAID</small><b data-n="rendus">—</b></span></div>
+  </div>
+  <!-- ---- ANCRE VIDE, ET C'EST VOULU ----
+       Cette page n'a pas de socket a elle. `stakebubble.js` decide s'il doit
+       en ouvrir une en regardant si `#bal` existe : « un solde affiche, donc
+       une page qui sait deja parler au serveur ». J'avais copie ici l'en-tete
+       d'une page de JEU, `#bal` compris — stakebubble en concluait que la page
+       se debrouillait, n'ouvrait rien, et il n'y avait alors ni solde, ni
+       staking, ni connexion. `poseConnexion()` sort lui aussi des qu'il voit
+       `#bal` : les deux boutons copies etaient morts par-dessus le marche,
+       aucun script de cette page ne les liant.
+       On laisse donc l'ancre VIDE, comme sur `index.html` et `games.html` :
+       stakebubble y pose lui-meme la pastille de solde, ou le bouton de
+       connexion tant que personne n'est entre. -->
+  <nav class="sb-ancre"></nav>
+  <button class="sw-avatar" id="gxProfil" type="button"
+          aria-haspopup="menu" aria-expanded="false" aria-label="Account menu">👤</button>
+  <div class="gx-menu" id="gxMenu" role="menu" hidden></div>
+  <!-- Le hamburger reste, mais ne se voit plus : c est desormais le profil
+       qui ouvre la meme liste. Meme note que `swoge_blackjack.html`. -->
+  <button class="menubtn" id="menuBtn" aria-label="Menu" hidden aria-hidden="true" tabindex="-1">☰</button>
+  <!-- ---- CE MENU EST LA LISTE QUE LE TIROIR RECOPIE ----
+       Il vient de l'en-tete partage, copie depuis une page de JEU — d'ou trois
+       rangees qui n'ont aucun sens ici et qui ne repondaient a rien : « Sign
+       in » (le panneau e-mail de la page de jeu), « Sound » et « Music » (ses
+       interrupteurs). Elles sont retirees.
+       Il reste dans le DOM, masque : `swogeprofil.js` et le tiroir de
+       `stakebubble.js` s'en servent comme SOURCE de leurs rangees. A noter
+       aussi : `swogecompte.js` ne pose le sien que s'il n'en trouve aucun —
+       celui-ci lui tient donc lieu de liste, et doit dire vrai. -->
+  <div class="menu" id="menu">
+    <a href="#" data-panel="wallet">👛 My Wallet</a>
+    <a href="#" data-panel="stake">🔒 Staking</a>
+    <a href="#" data-panel="dep">💰 Deposit</a>
+    <a href="#" data-panel="wd">🏧 Withdraw</a>
+    <a href="#" data-panel="quests">🎯 Daily Quests</a>
+    <div class="msep"></div>
+    <a href="games.html">🎮 Other games</a>
+    <a href="index.html">🏠 Home</a>
+  </div>
+</header>
+
+<!-- Les quatre chiffres de la vitrine, lus sur le serveur — meme script que
+     `swoge_blackjack.html` et `swoge_spin.html`. -->
+<script>
+(function(){
+  "use strict";
+  var bloc = document.getElementById("gxChiffres");
+  if(!bloc) return;
+  function serveur(){
+    try{ var q=new URLSearchParams(location.search).get("server"); if(q)
+      return String(q).replace(/^ws/,"http"); }catch(e){}
+    return "https://web-production-220a3.up.railway.app";
+  }
+  function court(n){
+    n = Number(n) || 0;
+    var t = function(v, s){ return (Math.floor(v*10)/10).toFixed(1).replace(/\.0$/,"") + s; };
+    if(n >= 1e9) return t(n/1e9, "B");
+    if(n >= 1e6) return t(n/1e6, "M");
+    if(n >= 1e3) return t(n/1e3, "k");
+    return String(Math.floor(n));
+  }
+  fetch(serveur()+"/vitrine.json", { cache:"no-store" })
+    .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function(j){
+      [].forEach.call(bloc.querySelectorAll("b[data-n]"), function(b){
+        var v = j[b.getAttribute("data-n")];
+        b.textContent = (typeof v === "number" && isFinite(v)) ? court(v) : "—";
+      });
+      bloc.hidden = false;
+    })
+    ['catch'](function(){ bloc.hidden = true; });
+})();
+</script>
+
+<style>
+/* ================== LA PAGE DES AGENTS ==================
+ * Elle reprend la convention du white paper, et pour la meme raison : elle
+ * decrit surtout des choses qui n existent pas encore. Une page qui melange
+ * ce qui tourne et ce qui est prevu, sans le dire, se lit comme une promesse
+ * — et une promesse tenue par personne se retourne contre celui qui l a
+ * ecrite. Chaque ligne porte donc son etat.
+ * ======================================================== */
+.ag-chip{ display:inline-flex; align-items:center; gap:5px; vertical-align:middle;
+  font-family:'Space Mono',monospace; font-size:9.5px; font-weight:700;
+  letter-spacing:.1em; text-transform:uppercase; padding:2.5px 7px;
+  border-radius:3px; white-space:nowrap; }
+.ag-chip.ok  { background:rgba(14,124,62,.12);  color:#0E7C3E; }
+.ag-chip.pro { background:rgba(27,95,224,.12);  color:#1B5FE0; }
+.ag-chip.non { background:rgba(224,68,62,.12);  color:#E0443E; }
+
+.ag-legende{ display:grid; gap:8px; font-size:13px; line-height:1.55; }
+.ag-legende span:first-child{ margin-right:6px }
+
+.ag-liste{ list-style:none; display:grid; gap:12px; }
+.ag-agent{ border:1px solid var(--line); border-radius:13px; padding:14px 15px;
+  background:var(--void); }
+.ag-agent h3{ font-family:'Anton',sans-serif; font-size:17px; letter-spacing:.4px;
+  display:flex; align-items:center; gap:9px; flex-wrap:wrap; margin-bottom:9px; }
+.ag-agent h3 b{ font-family:'Space Mono',monospace; font-size:12px; color:var(--dim);
+  font-weight:700; }
+.ag-agent dl{ display:grid; grid-template-columns:auto 1fr; gap:5px 12px;
+  font-size:13.5px; line-height:1.5; }
+.ag-agent dt{ font-family:'Space Mono',monospace; font-size:10px; letter-spacing:1px;
+  text-transform:uppercase; color:var(--dim); padding-top:3px; white-space:nowrap; }
+.ag-agent dd{ margin:0 }
+.ag-agent dd.jamais{ color:#B0322D }
+@media (max-width:430px){
+  .ag-agent dl{ grid-template-columns:1fr; gap:2px }
+  .ag-agent dt{ padding-top:7px }
+}
+
+.ag-dit{ font-size:14.5px; line-height:1.62; margin-bottom:12px }
+.ag-dit:last-child{ margin-bottom:0 }
+.ag-dit strong{ font-weight:800 }
+.ag-refus{ border-left:3px solid #E0443E; padding-left:13px; }
+.ag-refus li{ margin:0 0 9px 0; font-size:14px; line-height:1.55; list-style:none }
+.ag-refus li:last-child{ margin-bottom:0 }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <img class="logo" src="img/fa05d30cc698.jpg" alt="SWOGE">
+      <div>
+        <h1>SWOGE <span>Agent</span></h1>
+        <div class="sub">Reads · Reports · Asks</div>
+      </div>
+    </div>
+    <nav>
+      <a href="whitepaper.html">← White paper</a>
+      <a href="index.html">Home</a>
+    </nav>
+  </header>
+
+  <div class="panel">
+    <h2>What this page is</h2>
+    <p class="ag-dit">A desk of eight agents. Seven of them read — the chain, the
+    market, the wallets, the noise. The eighth does not trade: it collects what the
+    other seven found and brings <strong>one</strong> decision to a human.</p>
+    <p class="ag-dit">Nothing on this desk buys, sells or signs anything on its own.
+    That is not a limitation we ran into. It is the design.</p>
+    <p class="ag-dit"><strong>Almost nothing here is built yet.</strong> This page
+    describes a plan, and every line says where it stands — the same convention as the
+    white paper. A page that mixes what runs with what is planned, without saying so,
+    reads as a promise; and a promise nobody keeps is held against whoever wrote it.</p>
+    <div class="ag-legende">
+      <div><span class="ag-chip ok">Built</span> Running in production today, verifiable.</div>
+      <div><span class="ag-chip pro">Proposed</span> Designed, not written. No date attached.</div>
+      <div><span class="ag-chip non">Refused</span> Deliberately out of scope. The reason is given.</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>The eight</h2>
+    <ol class="ag-liste">
+
+      <li class="ag-agent">
+        <h3>SEARCH <b>01</b> <span class="ag-chip pro">Proposed</span></h3>
+        <dl>
+          <dt>Reads</dt><dd>New pools and pairs on the chain, and public repositories.
+            Named sources only — a feed we cannot name is a feed we cannot check.</dd>
+          <dt>Produces</dt><dd>A list of candidates, each with the source and the
+            timestamp it was seen at.</dd>
+          <dt class="jamais">Never</dt><dd class="jamais">Ranks by "alpha". It reports what
+            it saw and when. Whether that is early is not something software can know.</dd>
+        </dl>
+      </li>
+
+      <li class="ag-agent">
+        <h3>RISK <b>02</b> <span class="ag-chip pro">Proposed</span></h3>
+        <dl>
+          <dt>Reads</dt><dd>The contract: mint authority, freeze authority, LP lock and
+            its expiry, holder concentration.</dd>
+          <dt>Produces</dt><dd>The facts, each one linked to the explorer page that
+            proves it. Not a grade.</dd>
+          <dt class="jamais">Never</dt><dd class="jamais">Says a token is safe. It can show
+            that four specific dangers are absent; it cannot show that none exists. A
+            "CLEAR" badge is a claim no audit can back, and the person who trusted it
+            is the one who pays.</dd>
+        </dl>
+      </li>
+
+      <li class="ag-agent">
+        <h3>WHALE <b>03</b> <span class="ag-chip pro">Proposed</span></h3>
+        <dl>
+          <dt>Reads</dt><dd>Public wallet movements, on addresses the user has chosen to
+            follow.</dd>
+          <dt>Produces</dt><dd>What moved, from where, when, for how much.</dd>
+          <dt class="jamais">Never</dt><dd class="jamais">Publishes a "win rate". Past
+            trades of a stranger's wallet are visible; what they mean is not, and a
+            percentage on top of a guess is still a guess wearing a number.</dd>
+        </dl>
+      </li>
+
+      <li class="ag-agent">
+        <h3>NOISE <b>04</b> <span class="ag-chip pro">Proposed</span></h3>
+        <dl>
+          <dt>Reads</dt><dd>Public mentions: account age, posting rhythm, how much of the
+            volume comes from accounts created the same week.</dd>
+          <dt>Produces</dt><dd>Those measurements, plainly.</dd>
+          <dt class="jamais">Never</dt><dd class="jamais">Splits "organic" from "paid". The
+            measurements suggest; they do not prove, and dressing them as a verdict is
+            where a tool starts lying to the person holding it.</dd>
+        </dl>
+      </li>
+
+      <li class="ag-agent">
+        <h3>WATCH <b>05</b> <span class="ag-chip pro">Proposed</span></h3>
+        <dl>
+          <dt>Reads</dt><dd>LP status and dev wallets, continuously, on the positions the
+            user holds.</dd>
+          <dt>Produces</dt><dd>An alert the second something moves — with what moved, so
+            the user can judge.</dd>
+          <dt class="jamais">Never</dt><dd class="jamais">Sells by itself. An automatic
+            exit fires on false alarms too, and it fires hardest exactly when the chain
+            is congested and the price is already gone.</dd>
+        </dl>
+      </li>
+
+      <li class="ag-agent">
+        <h3>BOOK <b>06</b> <span class="ag-chip pro">Proposed</span></h3>
+        <dl>
+          <dt>Reads</dt><dd>The user's own history: every entry, every exit, what was paid
+            in fees and slippage.</dd>
+          <dt>Produces</dt><dd>The real result, fees included. The number most desks
+            never show, because it is usually the one that hurts.</dd>
+          <dt class="jamais">Never</dt><dd class="jamais">Reports gross gains. A profit
+            that ignores fees is not a profit, it is an advertisement.</dd>
+        </dl>
+      </li>
+
+      <li class="ag-agent">
+        <h3>LOG <b>07</b> <span class="ag-chip pro">Proposed</span></h3>
+        <dl>
+          <dt>Reads</dt><dd>Everything the other agents did, and what they had in hand
+            when they did it.</dd>
+          <dt>Produces</dt><dd>A trail that can be replayed. Without it, nobody can tell
+            a good call from a lucky one.</dd>
+          <dt class="jamais">Never</dt><dd class="jamais">Gets cleared. A desk whose log
+            can be erased is a desk that grades its own homework.</dd>
+        </dl>
+      </li>
+
+      <li class="ag-agent">
+        <h3>HEAD OF DESK <b>08</b> <span class="ag-chip pro">Proposed</span></h3>
+        <dl>
+          <dt>Reads</dt><dd>The seven reports above.</dd>
+          <dt>Produces</dt><dd>One question, with the facts attached and the case
+            against stated as clearly as the case for. The user taps, or does not.</dd>
+          <dt class="jamais">Never</dt><dd class="jamais">Places an order. Not as a
+            setting, not "once you trust it". The tap is the product.</dd>
+        </dl>
+      </li>
+
+    </ol>
+  </div>
+
+  <div class="panel">
+    <h2>What this desk refuses to do</h2>
+    <ul class="ag-refus">
+      <li><span class="ag-chip non">Refused</span> <strong>Announce a daily income.</strong>
+      No figure, no range, no screenshot. Nobody can know what a stranger's capital,
+      timing and nerve will produce, and a number put on a page becomes a promise the
+      moment someone reads it.</li>
+      <li><span class="ag-chip non">Refused</span> <strong>Buy or sell without a human
+      tap.</strong> Sniping and auto-dumping are the two features that turn a tool into
+      a liability — for whoever runs it, and first of all for whoever trusted it.</li>
+      <li><span class="ag-chip non">Refused</span> <strong>Run on $SWOGE itself for the
+      team.</strong> A desk that snipes and dumps, pointed at our own token, is
+      indistinguishable from front-running our own community — whatever the intent. If
+      it is ever built, it is a tool the player runs, on the markets the player
+      chooses.</li>
+      <li><span class="ag-chip non">Refused</span> <strong>Grade a token safe.</strong>
+      Absence of four known dangers is not safety. The desk shows the facts and links
+      the proof; the judgement stays with the person who carries the loss.</li>
+    </ul>
+  </div>
+
+  <div class="panel">
+    <h2>Where it stands today</h2>
+    <p class="ag-dit">Nothing on this page is running. <span class="ag-chip pro">Proposed</span>
+    means designed and no more.</p>
+    <p class="ag-dit">What already exists on this site is the hard part of it, and it is
+    worth saying: SWOGE BET reads live fixtures and scores from named public feeds,
+    matches them to open bets, and settles them without anyone touching a button. That
+    is the same shape of machine — read a source, check it, act on a rule, leave a
+    trail. The agents above would reuse it.</p>
+    <p class="ag-dit">The model that reads and summarises is the <em>smallest</em> piece
+    of the work. The plumbing is the work.</p>
+  </div>
+</div>
+
+</body>
+</html>

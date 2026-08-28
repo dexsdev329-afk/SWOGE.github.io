@@ -309,6 +309,100 @@
     (document.head || document.documentElement).appendChild(m);
   })();
 
+  /* ================== LE PANNEAU DE DIAGNOSTIC ==================
+   * Il ne s'affiche QUE si l'adresse porte `?diag=1`. Aucun visiteur ne le
+   * verra jamais par accident, et il ne fait rien tant qu'il dort.
+   *
+   * POURQUOI IL EXISTE. Un defaut de mise en page est signale depuis un iPhone,
+   * dans le navigateur de Telegram — un moteur qu'on n'a pas ici. Trois tours
+   * de correction ont ete decides en MESURANT DES CAPTURES D'ECRAN : en
+   * comparant des largeurs en pixels d'image pour en deduire des points CSS.
+   * Ca marche, ca a permis de trouver deux vrais defauts, mais ca reste de la
+   * deduction, et une deduction peut etre juste sur le mecanisme et fausse sur
+   * le coupable.
+   *
+   * Ce panneau donne les six nombres qui tranchent, et surtout `echelle` :
+   * quand iOS n'arrive pas a faire tenir un document, il DEGONFLE toute la
+   * page, et `visualViewport.scale` le dit. En dessous de 1, la page a ete
+   * degonflee et il y a un element trop large ; a 1, le probleme est ailleurs.
+   * Le panneau nomme aussi le plus large des elements fautifs, ce qui evite
+   * d'avoir a le deviner.
+   *
+   * Il se remesure chaque seconde : le defaut apparait « deux secondes apres
+   * l'ouverture », donc une mesure unique au chargement le manquerait.
+   * ============================================================= */
+  (function () {
+    if (!/[?&]diag=1/.test(location.search)) return;
+    var boite = null;
+    function pose() {
+      if (boite) return;
+      boite = document.createElement('div');
+      boite.id = 'swdiag';
+      boite.setAttribute('style',
+        'position:fixed;top:0;left:0;right:0;z-index:2147483600;' +
+        'background:#000;color:#4ef07a;font:600 13px/1.45 ui-monospace,Menlo,monospace;' +
+        'padding:10px 12px;white-space:pre-wrap;pointer-events:none;' +
+        'max-height:48vh;overflow:hidden;border-bottom:2px solid #4ef07a;');
+      (document.body || document.documentElement).appendChild(boite);
+    }
+    function dansUnScroll(e) {
+      for (var a = e.parentElement; a; a = a.parentElement) {
+        var c = getComputedStyle(a);
+        if (c.overflowX === 'auto' || c.overflowX === 'scroll' || c.overflowX === 'hidden') return true;
+      }
+      return false;
+    }
+    function mesure() {
+      pose();
+      if (!boite) return;
+      var W = document.documentElement.clientWidth;
+      var pire = null, n = 0;
+      var tout = document.querySelectorAll('body *');
+      for (var i = 0; i < tout.length; i++) {
+        var e = tout[i];
+        if (e === boite) continue;
+        var c = getComputedStyle(e);
+        if (c.display === 'none' || c.visibility === 'hidden') continue;
+        var r = e.getBoundingClientRect();
+        if (r.width < 1) continue;
+        if (r.right > W + 1 && !dansUnScroll(e)) {
+          n++;
+          if (!pire || r.right > pire.d) {
+            pire = { n: e.tagName.toLowerCase()
+                        + (e.id ? '#' + e.id : '')
+                        + (typeof e.className === 'string' && e.className
+                           ? '.' + e.className.trim().split(/\s+/)[0] : ''),
+                     d: Math.round(r.right), l: Math.round(r.width) };
+          }
+        }
+      }
+      var vv = window.visualViewport;
+      var h = document.querySelector('.sw-haut');
+      var lignes = [
+        'document ' + document.documentElement.scrollWidth + '   ecran ' + W
+          + '   fenetre ' + window.innerWidth,
+        'echelle  ' + (vv ? Math.round(vv.scale * 1000) / 1000 : '?')
+          + '   vue ' + (vv ? Math.round(vv.width) : '?')
+          + '   ' + (vv && vv.scale < 0.995 ? '<<< LA PAGE EST DEGONFLEE' : 'page a l echelle 1'),
+        'en-tete ' + (h ? Math.round(h.getBoundingClientRect().width) : '-'),
+      ];
+      var b = document.querySelector('.sb-films') || document.querySelector('.haut-films');
+      if (b) {
+        var r2 = b.getBoundingClientRect();
+        lignes.push('banniere ' + Math.round(r2.width) + 'x' + Math.round(r2.height)
+          + '  rapport ' + (r2.height ? (r2.width / r2.height).toFixed(2) : '?'));
+      }
+      lignes.push(pire ? (n + ' element(s) trop larges. Le pire :\n  ' + pire.n
+                          + '\n  largeur ' + pire.l + ', bord droit ' + pire.d)
+                       : 'aucun element ne deborde');
+      boite.textContent = lignes.join('\n');
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', mesure);
+    } else { mesure(); }
+    setInterval(mesure, 1000);
+  })();
+
   function styleConnexion() {
     if (document.getElementById('swcon-css')) return;
     var c = document.createElement('style');

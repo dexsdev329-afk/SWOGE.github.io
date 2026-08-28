@@ -118,7 +118,7 @@ const SWOGE    = '0x8a166Fb41Cd659a0a43396272FF73973Ce29F817';
 const TRESOR   = '0x6229DDF7c8Ed3A194819aF2e68f5de2Dc31e7F30';
 const ROUTER   = '0xcaf681a66d020601342297493863e78c959e5cb2';
 const DEAD     = '0x000000000000000000000000000000000000dEaD';
-const FRAIS    = ethers.utils.parseEther('1000');                 // frais de lancement
+const FRAIS    = ethers.utils.parseEther('10000');                // frais de lancement, tranche avant deploiement
 const SLOT_SOLDES = 0;                                            // `_balances` du $SWOGE, trouve par recoupement
 
 let n = 0, echecs = 0, gazLancement = 0n;
@@ -331,7 +331,7 @@ function motif(r) {
 
   const brule = BigInt(await lire(SWOGE, ierc.encodeFunctionData('balanceOf', [DEAD])));
   const resteMoi = BigInt(await lire(SWOGE, ierc.encodeFunctionData('balanceOf', [MOI])));
-  ok(resteMoi === dot - FRAIS.toBigInt(), 'le frais de 1 000 $SWOGE a bien ete preleve');
+  ok(resteMoi === dot - FRAIS.toBigInt(), 'le frais de 10 000 $SWOGE a bien ete preleve');
   ok(brule > 0n, 'le frais est parti vers DEAD (brule), pas dans une poche');
 
   /* ---- 4. shares() AU LANCEMENT : la valeur qui a motive la retenue ---- */

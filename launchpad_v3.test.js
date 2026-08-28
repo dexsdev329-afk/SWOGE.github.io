@@ -127,7 +127,13 @@ const RPC = 'https://rpc.mainnet.chain.robinhood.com';
   await pg.waitForFunction(() => document.querySelectorAll('#list .tcard').length > 0, { timeout: 45000 })
     .catch(() => {});
   const cartes = await pg.$$eval('#list .tcard', (e) => e.length);
-  ok(cartes >= 20, `la grille montre les jetons du V2 (${cartes} cartes)`);
+  /* NOTE : un faux portefeuille a ete injecte plus haut. C'est volontaire, et
+     c'est ce qui a fait tomber ce test la premiere fois : la page LISAIT la
+     chaine a travers le portefeuille des qu'il y en avait un, et la grille se
+     vidait pour un utilisateur connecte alors qu'elle s'affichait pour un
+     visiteur. Les lectures passent desormais par le RPC. Cette ligne verrouille
+     la regression. */
+  ok(cartes >= 20, `la grille se remplit MEME avec un portefeuille connecte (${cartes} cartes)`);
   const info = await pg.textContent('#listInfo');
   ok(/\d+ launched/.test(info || ''), 'le compteur annonce un nombre de lancements : ' + info);
 
@@ -224,7 +230,7 @@ const RPC = 'https://rpc.mainnet.chain.robinhood.com';
     if (vise && un.method === 'eth_call') {
       // creationFee() -> 1000e18 ; tout le reste -> zero
       const val = String(par.data || '').startsWith('0xdce0b4e4')
-        ? '0x' + (1000n * 10n ** 18n).toString(16).padStart(64, '0')
+        ? '0x' + (10000n * 10n ** 18n).toString(16).padStart(64, '0')
         : '0x' + '0'.repeat(64);
       return r.fulfill({ status: 200, contentType: 'application/json',
         body: JSON.stringify({ jsonrpc: '2.0', id: un.id, result: val }) });
@@ -255,7 +261,7 @@ const RPC = 'https://rpc.mainnet.chain.robinhood.com';
   ok(!/not deployed/i.test(note3 || ''), 'la note ne parle plus de deploiement manquant : ' + note3);
   const f3 = (await pg3.textContent('#feeSummary')) || '';
   ok(/\$SWOGE/.test(f3), 'le frais de lancement est libelle en $SWOGE : ' + f3.slice(0, 60));
-  ok(/1\.0K|1000/.test(f3), 'le frais lu sur le contrat est affiche (1 000)');
+  ok(/10\.0K/.test(f3), 'le frais lu sur le contrat est affiche (10 000)');
   ok(/burned/i.test(f3), 'la page dit que le frais est brule');
   ok(/70% → token holders/.test(f3), 'le partage annonce est 70 % aux detenteurs');
   ok(!/creator/i.test(f3), 'aucune part n est promise au createur');

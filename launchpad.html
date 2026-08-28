@@ -846,7 +846,20 @@ if(CONTRACT_ADDRESS) $("#cfgWarn").classList.add("hidden");
 /* ---------- wallet ---------- */
 var provider=null, signer=null, account=null, rawEth=null;
 function rpcProvider(){ return new ethers.providers.StaticJsonRpcProvider(CHAIN.rpc, CHAIN.id); }
-function readFun(v){ var V=venue(v); return new ethers.Contract(V.addr, V.abi, provider || rpcProvider()); }
+/* ---------- ON LIT PAR LE RPC, ON ECRIT PAR LE PORTEFEUILLE ----------
+   Toutes les lectures passaient par « provider sinon RPC », c'est-a-dire
+   par le PORTEFEUILLE des qu'il y en avait un. C'est un piege : les
+   portefeuilles limitent severement `eth_getLogs`, et la liste des jetons est
+   batie sur un balayage depuis le bloc 0. Resultat, la grille pouvait se
+   retrouver VIDE pour un utilisateur connecte alors qu'elle s'affichait
+   parfaitement pour un visiteur — le pire des defauts, celui qui n'apparait
+   jamais quand on essaie la page sans se connecter.
+   Le noeud de la chaine est la reference pour lire ; le portefeuille ne sert
+   qu'a signer. On garde une seule instance : en creer une par appel rouvrait
+   une connexion a chaque lecture. */
+var _lecteur=null;
+function lecteur(){ return _lecteur || (_lecteur = rpcProvider()); }
+function readFun(v){ var V=venue(v); return new ethers.Contract(V.addr, V.abi, lecteur()); }
 function writeFun(v){ var V=venue(v); return new ethers.Contract(V.addr, V.abi, signer); }
 
 /* ---- multi-wallet discovery (EIP-6963): MetaMask, Rabby, Uniswap, … ---- */
@@ -1047,7 +1060,7 @@ var swogeEthCache=null;
 async function getSwogeEth(){
   if(swogeEthCache!=null) return swogeEthCache;
   try{
-    var pc=new ethers.Contract(SWOGE_WETH_PAIR, PAIR_ABI, provider||rpcProvider());
+    var pc=new ethers.Contract(SWOGE_WETH_PAIR, PAIR_ABI, lecteur());
     var r=await pc.getReserves(), t0=await pc.token0();
     var swIs0 = t0.toLowerCase()===SWOGE_TOKEN.toLowerCase();
     var rsw = swIs0?r[0]:r[1], rw = swIs0?r[1]:r[0];
@@ -1205,7 +1218,7 @@ var exploreEu=null, exploreSu=null, sortMode="new";
 /* Capitalisation en ACTIF DE COTATION, pas en ETH : un jeton V3 se cote en
    $SWOGE. `quote` vient du lanceur d'origine du jeton. */
 function mcOfToken(pool, addr, quote){
-  return (new ethers.Contract(pool, POOL_ABI, provider||rpcProvider())).slot0().then(function(s0){
+  return (new ethers.Contract(pool, POOL_ABI, lecteur())).slot0().then(function(s0){
     var sp=+s0.sqrtPriceX96.toString()/Math.pow(2,96);
     var qIs0 = quote.toLowerCase() < addr.toLowerCase();
     var price = qIs0 ? 1/(sp*sp) : sp*sp;    // actif de cotation par jeton
@@ -1242,7 +1255,7 @@ async function loadMarketCaps(rows){
 var SWAP_TOPIC="0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67";
 async function loadVolumes(rows){
   try{
-    var prov=provider||rpcProvider();
+    var prov=lecteur();
     var tip=await prov.getBlockNumber();
     var span=Math.min(tip-1, 5000);
     var b1=await prov.getBlock(tip), b0=await prov.getBlock(tip-span);
@@ -1385,7 +1398,7 @@ var MAXU128 = ethers.BigNumber.from("0xffffffffffffffffffffffffffffffff");
 async function previewFees(lpTokenId, owner){
   try{
     var own=owner||CONTRACT_ADDRESS;
-    var pm=new ethers.Contract(PM, PM_ABI, provider||rpcProvider());
+    var pm=new ethers.Contract(PM, PM_ABI, lecteur());
     var r=await pm.callStatic.collect(
       { tokenId:lpTokenId, recipient:own, amount0Max:MAXU128, amount1Max:MAXU128 },
       { from:own }                     // the launchpad owns the position
@@ -1403,7 +1416,7 @@ async function loadMine(){
   if(!account){ host.innerHTML='<div class="note">Connect your wallet to see your holdings, launches & burns.</div>'; $("#mineInfo").textContent=""; return; }
   $("#mineInfo").innerHTML='<span class="spin"></span> loading…'; host.innerHTML="";
   try{
-    var prov=provider||rpcProvider();
+    var prov=lecteur();
     var eu=await getEthUsd(), su=await getSwogeUsd(), meLow=account.toLowerCase();
     /* Chaque jeton garde son lanceur : c'est lui qui dit en quoi il se cote et
        qui a droit aux frais. */
@@ -1613,8 +1626,8 @@ var curBalWei=null;   // exact wallet balance of curToken (BigNumber), for "sell
 var sellUseMax=false; // true when the Sell field was filled by the Max button
 $("#loadTrade").onclick=function(){ var a=$("#tradeAddr").value.trim(); if(a) openTrade(a); };
 function switchTab(name){ document.querySelector('.tab[data-tab="'+name+'"]').click(); }
-function poolC(){ return new ethers.Contract(curPool, POOL_ABI, provider||rpcProvider()); }
-function quoterC(){ return new ethers.Contract(QUOTER, QUOTER_ABI, provider||rpcProvider()); }
+function poolC(){ return new ethers.Contract(curPool, POOL_ABI, lecteur()); }
+function quoterC(){ return new ethers.Contract(QUOTER, QUOTER_ABI, lecteur()); }
 function routerC(){ return new ethers.Contract(ROUTER, ROUTER_ABI, signer); }
 async function openTrade(addr){
   try{ addr=ethers.utils.getAddress(addr); }catch(e){ return toast("Bad address"); }
@@ -1700,7 +1713,7 @@ async function fetchTrades(token){
   res[1].forEach(function(l){ evs.push({bn:l.blockNumber,li:l.logIndex,tx:l.transactionHash,who:l.args.seller,type:"sell",tokens:+ethers.utils.formatEther(l.args.tokensIn),eth:+ethers.utils.formatEther(l.args.ethOut)}); });
   if(!evs.length) return [];
   evs.sort(function(a,b){ return a.bn-b.bn || a.li-b.li; });
-  var prov=provider||rpcProvider();
+  var prov=lecteur();
   var uniq={}; evs.forEach(function(e){ uniq[e.bn]=1; });
   var bns=Object.keys(uniq);
   var stamps=await Promise.all(bns.map(function(b){ return prov.getBlock(parseInt(b)).then(function(bl){return {b:b,t:bl?bl.timestamp:0};},function(){return {b:b,t:0};}); }));
@@ -1733,7 +1746,7 @@ async function fetchTradesInstant(){
       mcap:price*1e9};                                // FDV in ETH (1B supply)
   });
   evs.sort(function(a,b){ return a.bn-b.bn || a.li-b.li; });
-  var prov=provider||rpcProvider();
+  var prov=lecteur();
   var uniq={}; evs.forEach(function(e){ uniq[e.bn]=1; });
   var stamps=await Promise.all(Object.keys(uniq).map(function(b){ return prov.getBlock(parseInt(b)).then(function(bl){return {b:b,t:bl?bl.timestamp:0};},function(){return {b:b,t:0};}); }));
   var tmap={}; stamps.forEach(function(s){ tmap[s.b]=s.t; });
@@ -1860,8 +1873,8 @@ function buildBuyPcts(){
            deux cas remplirait le champ d'un montant que le portefeuille ne
            peut pas payer. */
         var V=venue(curV), bal;
-        if(V.native) bal=await (provider||rpcProvider()).getBalance(account);
-        else bal=await (new ethers.Contract(V.quote, ERC20_ABI, provider||rpcProvider())).balanceOf(account);
+        if(V.native) bal=await (lecteur()).getBalance(account);
+        else bal=await (new ethers.Contract(V.quote, ERC20_ABI, lecteur())).balanceOf(account);
         var dec = V.native ? 6 : 4;
         var s=(+ethers.utils.formatEther(bal.mul(p).div(100))).toFixed(dec).replace(/0+$/,"").replace(/\.$/,"");
         $("#buyEth").value=s||"0"; quoteBuy();
@@ -1886,7 +1899,7 @@ function buildTfBar(){
 buildTfBar();
 async function refreshTrade(){
   var fun=readFun(curV), V=venue(curV);
-  var t=new ethers.Contract(curToken, TOKEN_ABI, provider||rpcProvider());
+  var t=new ethers.Contract(curToken, TOKEN_ABI, lecteur());
   var name="",sym=""; try{ name=await t.name(); sym=await t.symbol(); }catch(e){}
   $("#tvName").textContent=name||"?"; $("#tvSym").textContent="$"+(sym||"?");
   $("#tvLogo").innerHTML=logoImg(curToken,"big");

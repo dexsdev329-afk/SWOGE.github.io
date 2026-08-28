@@ -40,24 +40,39 @@ l'interface — n'y est pas.
 | proprietaire | **aucun** — pas de `owner`, pas de setter |
 | tresor et frais | `immutable`, poses au deploiement |
 
-Le montant du frais est un parametre du constructeur. **1 000 $SWOGE** a ete
-retenu.
+LE FRAIS EST TRANCHE : **10 000 $SWOGE**, brules.
 
-CE QUE CA VAUT REELLEMENT, MESURE ET NON SUPPOSE. La paire Uniswap v2
-$SWOGE/WETH (`0x2dc0Fb72...`) donne 9,906e-9 ETH par $SWOGE, soit environ
-**0,0000297 $** a 3 000 $/ETH — donc **3 centimes** les 1 000 $SWOGE, et
-~29 700 $ de capitalisation pour le jeton entier.
+CE QUE CA VAUT, MESURE ET NON SUPPOSE. La paire Uniswap v2 $SWOGE/WETH
+(`0x2dc0Fb72...`) donne 9,906e-9 ETH par $SWOGE, soit environ **0,0000297 $**
+a 3 000 $/ETH. Les 10 000 $SWOGE coutent donc aujourd'hui **~0,30 $**.
 
-Une version precedente de ce document annoncait 0,40 $ pour ces 1 000 $SWOGE.
-C'etait faux d'un facteur treize. Le chiffre ci-dessus est lu sur la chaine ;
-il bougera, et il faut le relire avant de deployer plutot que de recopier
-celui-ci.
+Une version precedente de ce document annoncait 0,40 $ pour 1 000 $SWOGE.
+C'etait faux d'un facteur treize, et cette erreur avait fait ABANDONNER les
+10 000 $SWOGE au profit de 1 000 : au vrai prix, 10 000 coutent moins cher
+que ce qu'on croyait payer pour 1 000. Le chiffre ci-dessus est lu sur la
+chaine ; il bougera, et il faut le relire avant de deployer plutot que de
+recopier celui-ci.
 
-On vise volontairement bas — « trop cher » tue le launchpad sans reparation
-possible, « trop peu cher » ne fait qu'une liste en desordre, qui se filtre
-dans l'interface. A 3 centimes on est sous le plancher utile : le frais ne
-filtre plus rien. **C'est la ligne a revoir avant deploiement**, en visant un
-cout qui reste dissuasif pour un robot sans etre prohibitif pour une personne.
+CE QUI FILTRE UN ROBOT, CE N'EST PAS LE FRAIS. Le banc sur fork mesure un
+lancement a **6 042 022 de gaz**, soit ~**1,11 $** au prix du gaz de la
+chaine. Le gaz coute donc a lui seul pres de quatre fois le frais : personne
+n'inondera le launchpad pour 0,30 $ d'economie. Le frais ne sert pas de
+barriere anti-spam ; il sert a ce pour quoi il a ete voulu — **obliger a
+detenir du $SWOGE pour lancer, et en detruire a chaque lancement**.
+
+CE QUE CA DEVIENT SI LE $SWOGE MONTE. Le frais est immuable : il suit le prix.
+
+| prix du $SWOGE | 10 000 $SWOGE coutent |
+|---|---|
+| aujourd'hui | 0,30 $ |
+| x10 | 3 $ |
+| x100 | 30 $ |
+| x1000 | 297 $ |
+
+A x100 le jeton vaut ~3 M$ de capitalisation : 30 $ pour lancer reste payable,
+et le launchpad a alors une valeur qui le justifie. A x1000 il devient cher —
+c'est le risque assume d'un parametre qu'aucun proprietaire ne pourra
+corriger, parce qu'il n'y a pas de proprietaire.
 
 ## Ce qui a ete verifie, et comment
 
@@ -96,7 +111,7 @@ un du de zero. Il ne recupere pas les recompenses passees.
     positionManager  0x73991a25C818Bf1f1128dEAaB1492D45638DE0D3
     swoge            0x8a166Fb41Cd659a0a43396272FF73973Ce29F817
     treasury         0x6229DDF7c8Ed3A194819aF2e68f5de2Dc31e7F30
-    creationFee      1000 ether  (1 000 $SWOGE)
+    creationFee      10000 ether  (10 000 $SWOGE)   <-- TRANCHE
 
 ### Ce qui a ete verifie sur ces quatre adresses
 

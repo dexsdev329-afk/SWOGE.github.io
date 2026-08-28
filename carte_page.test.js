@@ -1936,8 +1936,8 @@ const servirLeSite = async () => {
       eq(iso.mode, 'iso', 'et elle reste en 2,5D de bout en bout');
       const u3 = await (await fetch(base3 + '/admin/cartes?id=' + iso.id,
                                     { headers: { 'x-admin-key': 'k' } })).json();
-      eq((u3.carte.objets || []).length, 21,
-         'avec les vingt et une parcelles du jeu, chacune une fois');
+      eq((u3.carte.objets || []).length, 9,
+         'avec les neuf reperes du Nexus — et aucun lieu que le jeu n a pas');
       ok(u3.carte.depart && u3.carte.depart.c === 25,
          `et son point de depart (${JSON.stringify(u3.carte.depart)}) — sans lui, pas de Play`);
       ok((u3.carte.cases || []).length > 2000,

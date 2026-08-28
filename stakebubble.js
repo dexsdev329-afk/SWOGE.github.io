@@ -7608,7 +7608,20 @@
     var c = document.createElement('style');
     c.id = 'swduels-css';
     c.textContent =
-      '.swdb{position:fixed;right:16px;bottom:16px;z-index:99998;width:56px;height:56px;' +
+      /* ---- ELLE SE POSE AU-DESSUS DE LA BARRE, PAS DESSOUS ----
+       * `bottom:16px` la mettait a seize pixels du bas de l'ECRAN, c'est-a-dire
+       * dans les soixante-deux qu'occupe la barre de navigation. Une bulle de
+       * cinquante-six pixels a moitie recouverte, sur toutes les pages du
+       * site : on voyait un demi-cercle sortir de la barre, et le clic
+       * atteignait la barre. Signale sur le Nexus, ou le demi-cercle se
+       * detache sur le jeu, mais le defaut n'a jamais eu de page a lui.
+       * `--swbb-h` est mesuree et publiee par la barre elle-meme, avec la
+       * marge de securite de l'iPhone dedans. Le repli a 0 vaut pour les pages
+       * qui n'en portent pas. C'est exactement ce que `.swtoast` fait vingt
+       * lignes plus haut — la lecon etait deja ecrite, elle n'avait pas ete
+       * appliquee ici. */
+      '.swdb{position:fixed;right:16px;bottom:calc(var(--swbb-h,0px) + 16px);' +
+      'z-index:99998;width:56px;height:56px;' +
       'border-radius:50%;cursor:pointer;border:1px solid rgba(27,95,224,.55);' +
       'background:linear-gradient(180deg,rgba(244,247,252,.96),rgba(255,255,255,.98));' +
       'color:#1B5FE0;font-family:inherit;font-size:17px;font-weight:900;letter-spacing:.5px;' +
@@ -7685,7 +7698,8 @@
       '.swdp .pied{padding:11px 14px;border-top:1px solid rgba(11,27,54,.08);' +
       'font-size:11px;line-height:1.6;color:#5F6E88;}' +
       '.swdp .pied a{color:#1B5FE0;text-decoration:none;}' +
-      '@media (max-width:520px){.swdb{width:48px;height:48px;font-size:20px;right:12px;bottom:12px;}}';
+      '@media (max-width:520px){.swdb{width:48px;height:48px;font-size:20px;right:12px;' +
+      'bottom:calc(var(--swbb-h,0px) + 12px);}}';
     document.head.appendChild(c);
   }
 

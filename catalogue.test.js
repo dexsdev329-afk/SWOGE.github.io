@@ -176,22 +176,47 @@ for (const e of animes) {
            ? `« ${nom} » pose ${orphelins.length} element(s) SANS PLANCHE : ${orphelins.join(', ')}`
            : `« ${nom} » : ses ${sols.length} sol(s) et ses ${objs.length} objet(s) ont tous leur planche`);
     }
-    /* Et la base 2,5D pose TOUTES les parcelles isometriques, chacune une
-       fois : c'est ce qu'on a promis — « tous les batiments du jeu, sur une
-       seule ile » — et une promesse qu'on ne mesure pas se defait au premier
-       ajout de planche. */
+    /* ---- ET LA BASE 2,5D N'ANNONCE AUCUN LIEU QUI N'EXISTE PAS ----
+     *
+     * Le catalogue isometrique porte vingt et une parcelles, mais onze d'entre
+     * elles — hotel, casino, villa, penthouse, piscine, ponton, jetski, les
+     * deux beach clubs, ile, nature — sont des planches pour des endroits que
+     * le jeu N'A PAS. Les poser sur une carte appelee « le Nexus » annoncerait
+     * des lieux qu'on ne peut pas visiter : c'est la meme faute que les
+     * joueurs inventes de la page d'accueil, faite avec des images.
+     *
+     * Une parcelle n'a donc le droit d'y figurer que si le jeu porte la meme
+     * chose ailleurs, sous son propre nom. La correspondance est ecrite ici,
+     * en clair : c'est une decision, pas une deduction, et elle doit se lire.
+     */
+    const REELS = {
+      iso_jardin: null,                       // le terrain, pas un lieu
+      iso_fontaine: 'fontaine',
+      iso_cinema: 'cinema_maison',
+      iso_arcade: 'arcade_maison',
+      iso_stand: 'market_stall',
+      iso_vault: 'vault_door',
+      iso_petworld: 'petworld_sign',
+      iso_portail_rouge: 'portal_pvp',
+      iso_portail_violet: 'portal_18',
+    };
     const iso = M.modeleDeMonde('nexus25');
     if (iso) {
       const poses = (iso.objets || []).map((o) => o.k);
-      const attendues = vrai.iso.map((e) => e.cle).sort();
       ok(poses.length === new Set(poses).size, 'aucune parcelle posee deux fois');
-      const manquent = attendues.filter((x) => poses.indexOf(x) < 0);
-      ok(manquent.length === 0,
-         manquent.length ? `parcelles oubliees : ${manquent.join(', ')}`
-                         : `les ${attendues.length} parcelles 2,5D du jeu sont toutes posees`);
+      const inventes = poses.filter((k) => !(k in REELS));
+      ok(inventes.length === 0,
+         inventes.length ? `elle annonce des lieux qui n existent pas : ${inventes.join(', ')}`
+                         : `ses ${poses.length} parcelles ont toutes un equivalent dans le jeu`);
+      /* Et l'equivalent doit EXISTER, lui aussi : une correspondance vers une
+         planche disparue serait une promesse tenue par personne. */
+      const perdus = poses.map((k) => REELS[k]).filter((x) => x && !par[x]);
+      ok(perdus.length === 0,
+         perdus.length ? `equivalents introuvables au catalogue : ${perdus.join(', ')}`
+                       : 'et chacun de ces equivalents est bien dans le jeu');
       const dedans = (iso.objets || []).every(
         (o) => o.c >= 0 && o.l >= 0 && o.c < iso.cote && o.l < iso.cote);
-      ok(dedans, 'et toutes tiennent dans la grille');
+      ok(dedans, 'toutes tiennent dans la grille');
       ok(iso.depart && iso.depart.c >= 0 && iso.depart.l >= 0,
          `elle porte un point de depart (${iso.depart ? iso.depart.c + ',' + iso.depart.l : 'aucun'})`
          + ' — sans lui la fiche ne propose meme pas Play');

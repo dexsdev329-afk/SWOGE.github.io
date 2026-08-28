@@ -25,7 +25,7 @@ canvas{ touch-action:none; }
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-<script src="stakebubble.js?v=d19367c8"></script>
+<script src="stakebubble.js?v=79efd096"></script>
 <!-- ---- LE COMPTE DE JEU, DANS LE MONDE AUSSI ----
      Le tiroir se construit a partir du `#menu` de la page, et cette page n'en
      avait pas : « My Wallet » n'y etait qu'un lien vers une autre page.
@@ -2364,6 +2364,20 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 #nxShopVoile, #nxPetVoile, #nxBjVoile, #nxArcVoile, #nxReglagesVoile,
 #nxMapVoile, #nxMortVoile, #nxCoffreVoile, #nxTourVoile, #nxRangVoile{
   top:var(--nx-haut, 0px); bottom:var(--nx-bas, 0px); }
+
+/* ---- ET LA BULLE « VS » NE FLOTTE PAS SUR LE JEU ----
+ *
+ * `stakebubble.js` pose une pastille ronde de duels en bas a droite, sur
+ * toutes les pages. Ailleurs elle flotte sur du texte qui defile et ne cache
+ * rien qu'on ne retrouve en poussant la page. Ici, le bas a droite est le
+ * coin du PANNEAU : l'equipement, le sac, ce sur quoi on appuie en combat.
+ * Une pastille de cinquante-six pixels posee dessus cache ce dont on a besoin
+ * au moment ou l'on en a besoin, et le Nexus n'a pas de « plus bas » ou aller
+ * la chercher — l'ecran EST le jeu.
+ *
+ * Les duels restent accessibles de partout ailleurs, y compris de la page des
+ * jeux d'ou l'on ouvre une table. On la retire d'ici, pas du site. */
+.swdb, .swdp{ display:none !important; }
 /* ---- SUR TELEPHONE, LE MONDE REPREND SA PLACE ----
    Mesure faite a 390x844 : la barre repliee montait a 249 px, soit trente
    pour cent de l'ecran pris a un monde dans lequel on se DEPLACE. La vitrine
@@ -3185,7 +3199,15 @@ ajusteMonde();
   new MutationObserver(function(){
     var bb = document.querySelector(".swbb");
     if(bb && bb !== vu){ vu = bb; ajusteMonde();
-      new MutationObserver(ajusteMonde).observe(bb, { childList:true, subtree:true, attributes:true }); }
+      new MutationObserver(ajusteMonde).observe(bb, { childList:true, subtree:true, attributes:true });
+      /* ---- ET SA HAUTEUR, QU'AUCUNE MUTATION N'ANNONCE ----
+       * Une `MutationObserver` voit des enfants et des attributs ; elle ne voit
+       * pas une HAUTEUR qui change. Or la barre grandit d'un ou deux pixels
+       * quand les polices arrivent — c'est ecrit dans `stakebubble.js`, qui
+       * remesure la sienne pour cette raison exacte. Sans ce guetteur, le
+       * monde gardait la premiere mesure et le bas du jeu passait sous la
+       * barre. */
+      if(window.ResizeObserver) new ResizeObserver(ajusteMonde).observe(bb); }
   }).observe(document.body, { childList:true });
 })();
 </script>

@@ -778,10 +778,12 @@ if(typeof ethers==="undefined"){ alert("ethers.js could not load. Reload."); ret
    jeton porte son lanceur d'origine dans `r.v` (2 ou 3), et tout ce qui
    depend du contrat passe par `venue()`. */
 var CONTRACT_ADDRESS = window.SWOGEFUN_ADDRESS || "0x4De26D120A4fF2d7c1875E6C7D611262b9cA426d";
-/* V3 : a renseigner au deploiement. Tant que c'est vide, la page reste
-   entierement fonctionnelle sur les jetons V2 et le formulaire de lancement
-   s'annonce indisponible au lieu d'echouer dans le portefeuille. */
-var V3_ADDRESS = window.SWOGEFUN_V3_ADDRESS || "";
+/* V3 deploye. Verifie sur la chaine avant branchement (voir
+   `contrats/verifier_deploiement.js`) : les quatre valeurs immuables sont
+   celles attendues, le jeton de paiement repond bien SWOGE, et le code
+   d'execution est identique octet pour octet a la reference — seuls diffèrent
+   les `immutable` inscrits dedans et les empreintes de metadonnee. */
+var V3_ADDRESS = window.SWOGEFUN_V3_ADDRESS || "0xc16388e95dbbD37A679A7d507C174C7e34C5856E";
 var CHAIN = { id:4663, hex:"0x1237", name:"Robinhood Chain", rpc:"https://rpc.mainnet.chain.robinhood.com", scan:"https://robinhoodchain.blockscout.com", sym:"ETH" };
 var WC_PROJECT_ID = "7553b1651dfa1fce5eaff2405d5f230c";  // WalletConnect (reown.com) — free
 var FUN_ABI = window.SWOGEFUN_ABI, TOKEN_ABI = window.SWOGETOKEN_ABI;

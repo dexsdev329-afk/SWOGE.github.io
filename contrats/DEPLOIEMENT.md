@@ -1,5 +1,12 @@
 # Deployer SwogeFunV3 — fiche a suivre ligne par ligne
 
+> ## DEPLOYE
+> **`0xc16388e95dbbD37A679A7d507C174C7e34C5856E`** — verifie et branche dans
+> `launchpad.html`. Cette fiche reste valable pour un redeploiement.
+>
+> Un premier deploiement (`0x88a0F742...`) est MORT : la meme adresse avait ete
+> collee dans `_positionManager` et `_swoge`. Ne l'utilise jamais.
+
 > **Ce contrat n'a pas de proprietaire et ne peut pas etre modifie.**
 > Les quatre valeurs du constructeur sont gravees pour toujours. Relis-les
 > avant de cliquer : une erreur ici ne se repare pas, elle se redeploie — et

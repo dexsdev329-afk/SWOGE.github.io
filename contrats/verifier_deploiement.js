@@ -22,7 +22,13 @@ const ATTENDU = {
   swogeTreasury:   '0x6229DDF7c8Ed3A194819aF2e68f5de2Dc31e7F30',
   creationFee:     '10000000000000000000000',              // 10 000 $SWOGE
 };
-const TAILLE_OPTIMISEE = 13475;   // octets, optimiseur actif, 200 runs
+/* Taille du bytecode D'EXECUTION, optimiseur actif, 200 runs.
+   ATTENTION AU PIEGE, il m'a fait crier au loup une fois : `eth_getCode` rend
+   le bytecode D'EXECUTION (13 018 octets), pas celui de CREATION (13 475), qui
+   contient en plus le constructeur. Comparer l'un a l'autre fait passer un
+   deploiement parfaitement optimise pour un deploiement rate. */
+const TAILLE_EXECUTION = 13018;
+const TAILLE_SANS_OPTIMISEUR = 23766;   // temoin : ce que ca donne si on oublie l'optimiseur
 
 const ABI = [
   'function positionManager() view returns (address)',
@@ -81,9 +87,18 @@ const ok  = (c, m) => { console.log((c ? '  ok    ' : '  RATE  ') + m); if (!c) 
   ok(sym === 'SWOGE', 'symbole du jeton de paiement : ' + (sym || 'illisible'));
 
   console.log('\n-- l optimiseur etait-il actif ? --');
-  ok(Math.abs(taille - TAILLE_OPTIMISEE) < 400,
-     'taille du bytecode : ' + taille + ' octets (attendu ~' + TAILLE_OPTIMISEE + ')'
-     + (taille > TAILLE_OPTIMISEE + 400 ? '   <- OPTIMISEUR DESACTIVE' : ''));
+  /* La taille d'execution est stable a l'octet pres : les variables immutable
+     sont inscrites DANS le code sans le rallonger, et la metadonnee garde la
+     meme longueur. Une taille qui s'ecarte, c'est une autre source ou d'autres
+     reglages — dans les deux cas, ce n'est pas ce qui a ete eprouve. */
+  const ecartTaille = Math.abs(taille - TAILLE_EXECUTION);
+  ok(ecartTaille <= 8,
+     'taille du bytecode d execution : ' + taille + ' octets (attendu ' + TAILLE_EXECUTION + ')'
+     + (taille > TAILLE_EXECUTION + 8
+        ? (Math.abs(taille - TAILLE_SANS_OPTIMISEUR) < 400
+           ? '   <- OPTIMISEUR DESACTIVE'
+           : '   <- source ou reglages differents de ce qui a ete eprouve')
+        : ''));
 
   /* LA PREUVE : un lancement passerait-il ? On le simule sans rien depenser.
      Un revert « swoge » ou « allowance » est NORMAL ici (le compte simule ne

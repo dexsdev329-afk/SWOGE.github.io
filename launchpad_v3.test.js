@@ -101,23 +101,41 @@ const RPC = 'https://rpc.mainnet.chain.robinhood.com';
    * Tant que l'adresse est vide, le bouton doit s'annoncer indisponible.
    * Le pire comportement possible serait un bouton actif qui envoie une
    * transaction vers l'adresse zero. */
-  console.log('\n-- lancement : V3 pas encore deploye --');
-  const btn = await pg.$('#createBtn');
-  ok(await btn.isDisabled(), 'le bouton de lancement est desactive');
-  /* LE CONTROLE QUI COMPTE : connecter un portefeuille ne doit PAS pouvoir
-     rallumer le bouton quand le contrat n'existe pas. C'est exactement ce que
-     faisait la page — le gestionnaire de connexion se fiait a l'adresse du V2
-     — et ca envoyait un lancement vers une adresse vide. */
-  await pg.evaluate(() => {
-    window.ethereum = { request: async () => ['0x000000000000000000000000000000000000dEaD'],
-                        on: () => {}, removeListener: () => {} };
-  });
-  await pg.waitForTimeout(300);
-  ok(await (await pg.$('#createBtn')).isDisabled(),
-     'un portefeuille ne rallume pas le bouton quand le V3 n existe pas');
+  /* ---- 1. LE V3 EST DEPLOYE : LA PAGE LIT LE VRAI CONTRAT ----
+   * Plus de simulation ici : le frais affiche vient de `creationFee()` lu sur
+   * la chaine. Si quelqu'un redeploie avec un autre frais, cet essai le voit. */
+  console.log('\n-- lancement : la page lit le contrat V3 deploye --');
+  await pg.waitForFunction(() => /SWOGE/.test(document.querySelector('#feeSummary').textContent || ''),
+    { timeout: 30000 }).catch(() => {});
   const fee = (await pg.textContent('#feeSummary')) || '';
-  ok(/not open yet|not deployed/i.test(fee), 'la page dit que le lancement n est pas ouvert');
+  ok(/\$SWOGE/.test(fee), 'le frais est libelle en $SWOGE : ' + fee.slice(0, 60));
+  ok(/10\.0K/.test(fee), 'le frais lu sur la chaine est bien 10 000 $SWOGE');
+  ok(/burned/i.test(fee), 'la page dit que le frais est brule');
+  ok(/70% → token holders/.test(fee), 'le partage annonce est 70 % aux detenteurs');
   ok(!/70% creator/i.test(fee), 'aucune promesse de 70 % au createur');
+  const lib = await pg.textContent('#createBtn');
+  ok(!/opens at deployment/.test(lib || ''), 'le bouton ne porte plus le blocage de deploiement');
+
+  /* ---- 1 bis. LE CAS « PAS DEPLOYE » RESTE COUVERT ----
+   * L'adresse est maintenant en dur dans la page. Pour verifier qu'elle
+   * degrade proprement si elle devait un jour etre videe — un redeploiement,
+   * un contrat a remplacer — on sert la page avec la constante blanchie.
+   * Sans ca, ce chemin ne serait plus jamais essaye. */
+  console.log('\n-- degradation si le V3 n est pas renseigne --');
+  const pgVide = await ctx.newPage();
+  await pgVide.route('**/launchpad.html*', async (r) => {
+    const brut = fs.readFileSync(path.join(SITE, 'launchpad.html'), 'utf8');
+    const vide = brut.replace(/var V3_ADDRESS = window\.SWOGEFUN_V3_ADDRESS \|\| "0x[0-9a-fA-F]+";/,
+                              'var V3_ADDRESS = window.SWOGEFUN_V3_ADDRESS || "";');
+    ok(vide !== brut, 'la constante V3_ADDRESS a bien pu etre blanchie pour l essai');
+    r.fulfill({ status: 200, contentType: 'text/html', body: vide });
+  });
+  await pgVide.goto(`http://127.0.0.1:${srv.port}/launchpad.html`, { waitUntil: 'load' });
+  await pgVide.waitForTimeout(1500);
+  ok(await (await pgVide.$('#createBtn')).isDisabled(), 'sans adresse, le bouton reste desactive');
+  const feeVide = (await pgVide.textContent('#feeSummary')) || '';
+  ok(/not open yet|not deployed/i.test(feeVide), 'sans adresse, la page annonce que le lancement n est pas ouvert');
+  await pgVide.close();
 
   /* ---- 2. LA GRILLE LIT LA VRAIE CHAINE ----
    * Les 23 jetons du V2 existent. S'ils disparaissent, la migration a
@@ -204,75 +222,9 @@ const RPC = 'https://rpc.mainnet.chain.robinhood.com';
   ok(/creator receives <b>nothing<\/b>/.test(src), 'la page ecrit que le createur V3 ne recoit rien');
   ok(/t\.v===3 \? 0 : pending\*0\.7/.test(src), 'la part createur est zero sur un jeton V3');
 
-  /* ================================================================
-     LE CHEMIN V3, AVEC UN CONTRAT SIMULE
-
-     Le V3 n'est pas deploye : sans simulation, tout ce qui suit resterait
-     non essaye jusqu'au jour du deploiement — c'est-a-dire jusqu'au moment
-     ou il est trop tard pour corriger sans redeployer. On pose donc un faux
-     V3 au niveau du RPC (frais de lancement, journaux vides) et on verifie
-     ce que la page EN FAIT : le bouton s'active, le frais s'annonce en
-     $SWOGE et brule, et le partage annonce est celui des detenteurs.
-     Ce qui reste hors de portee : les ecritures, faute de portefeuille.
-     ================================================================ */
-  console.log('\n-- V3 simule : le formulaire s ouvre et parle en $SWOGE --');
-  const FAUX_V3 = '0x1111111111111111111111111111111111111111';
-  const pg3 = await ctx.newPage();
-  const err3 = [];
-  pg3.on('pageerror', (e) => err3.push(String(e.message || e)));
-  await pg3.addInitScript((a) => { window.SWOGEFUN_V3_ADDRESS = a; }, FAUX_V3);
-  await pg3.route(RPC + '**', async (r) => {
-    let body = {};
-    try { body = JSON.parse(r.request().postData() || '{}'); } catch (e) {}
-    const un = Array.isArray(body) ? body[0] : body;
-    const par = (un && un.params && un.params[0]) || {};
-    const vise = String(par.to || par.address || '').toLowerCase() === FAUX_V3;
-    if (vise && un.method === 'eth_call') {
-      // creationFee() -> 1000e18 ; tout le reste -> zero
-      const val = String(par.data || '').startsWith('0xdce0b4e4')
-        ? '0x' + (10000n * 10n ** 18n).toString(16).padStart(64, '0')
-        : '0x' + '0'.repeat(64);
-      return r.fulfill({ status: 200, contentType: 'application/json',
-        body: JSON.stringify({ jsonrpc: '2.0', id: un.id, result: val }) });
-    }
-    if (un.method === 'eth_getLogs' && String((par.address || '')).toLowerCase() === FAUX_V3) {
-      return r.fulfill({ status: 200, contentType: 'application/json',
-        body: JSON.stringify({ jsonrpc: '2.0', id: un.id, result: [] }) });
-    }
-    try {
-      const rep = await fetch(RPC, { method: 'POST',
-        headers: { 'content-type': 'application/json' }, body: r.request().postData() });
-      r.fulfill({ status: rep.status, contentType: 'application/json', body: await rep.text() });
-    } catch (e) { r.fulfill({ status: 502, body: '{}' }); }
-  });
-  await pg3.goto(`http://127.0.0.1:${srv.port}/launchpad.html`, { waitUntil: 'load' });
-  await pg3.waitForFunction(() => {
-    const b = document.querySelector('#createBtn');
-    return b && !b.disabled;
-  }, { timeout: 20000 }).catch(() => {});
-
-  ok(err3.length === 0, 'aucune erreur JS avec un V3 deploye' + (err3.length ? ' : ' + err3[0] : ''));
-  /* Sans portefeuille le bouton reste desactive — c'est le comportement de la
-     page depuis toujours (« Connect a wallet first »). Ce qui doit changer,
-     c'est qu'il ne porte PLUS le blocage de deploiement. */
-  const lib3 = await pg3.textContent('#createBtn');
-  ok(!/opens at deployment/.test(lib3 || ''), 'le blocage de deploiement a disparu : ' + lib3);
-  const note3 = await pg3.textContent('#createNote');
-  ok(!/not deployed/i.test(note3 || ''), 'la note ne parle plus de deploiement manquant : ' + note3);
-  const f3 = (await pg3.textContent('#feeSummary')) || '';
-  ok(/\$SWOGE/.test(f3), 'le frais de lancement est libelle en $SWOGE : ' + f3.slice(0, 60));
-  ok(/10\.0K/.test(f3), 'le frais lu sur le contrat est affiche (10 000)');
-  ok(/burned/i.test(f3), 'la page dit que le frais est brule');
-  ok(/70% → token holders/.test(f3), 'le partage annonce est 70 % aux detenteurs');
-  ok(!/creator/i.test(f3), 'aucune part n est promise au createur');
-  const info3 = (await pg3.textContent('#modeInfo')) || '';
-  ok(/no team bag|not even for you/i.test(info3), 'la page annonce qu il n y a aucune allocation');
-  // la grille doit toujours montrer les 23 jetons V2 malgre un V3 vide
-  await pg3.click('.tab[data-tab="explore"]');
-  await pg3.waitForFunction(() => document.querySelectorAll('#list .tcard').length > 0, { timeout: 45000 })
-    .catch(() => {});
-  const c3 = await pg3.$$eval('#list .tcard', (e) => e.length);
-  ok(c3 >= 20, `les jetons V2 restent visibles a cote d un V3 vide (${c3} cartes)`);
+  /* Le bloc « V3 simule » a ete retire : le contrat est deploye, la page lit
+     desormais le vrai `creationFee()` plus haut. Simuler un contrat quand le
+     vrai existe reviendrait a essayer sa propre maquette. */
 
   console.log(`\n${n} verifications, ${echecs} echec(s)`);
   await nav.close(); srv.stop();

@@ -3725,7 +3725,25 @@
 
   function profBtnVisible(v) {
     if (!profMonte()) return;
-    profBtn.style.display = v ? '' : 'none';
+    /* ---- UN SEUL AVATAR A L'ECRAN ----
+     *
+     * Vingt pages posent le LEUR dans leur en-tete (`#gxProfil`). Trois
+     * seulement masquaient le notre, a la main, chacune avec sa regle et son
+     * commentaire ; les dix-sept autres montraient les deux. Ca ne se voyait
+     * pas tant que le notre portait le visage et le leur un bonhomme gris —
+     * deux choses differentes se lisent comme deux boutons. Depuis qu'ils
+     * portent le MEME visage, ce sont deux fois le meme bouton, cote a cote,
+     * avec la meme pastille : signale sur la table de Three Card, capture a
+     * l'appui.
+     *
+     * La regle descend donc ici, une fois, pour toutes les pages. Les trois
+     * qui la portaient encore ne font plus que la repeter.
+     *
+     * `display:none` et non un retrait : ce bouton reste la POIGNEE du tiroir,
+     * et le menu s'en sert pour l'ouvrir avant de choisir une rangee. Un clic
+     * envoye par script passe malgre `display:none` ; seul celui du doigt
+     * cesse, et il n'en a plus besoin. */
+    profBtn.style.display = (v && !document.getElementById('gxProfil')) ? '' : 'none';
     ajusteBientot();
     /* Le nom, le visage et la liste des visages ne viennent PAS avec
        l'authentification : on les demande des qu'on sait a qui on parle,

@@ -1970,6 +1970,21 @@ const servirLeSite = async () => {
        `et les ${(dedans.entree.tuiles || []).length} tuiles de la carte`);
     const ob = (dedans.entree.obstacles || []).find((q) => q.bat === objJ);
     ok(!!ob, `l objet pose est devenu un bloc qui porte son nom (${objJ})`);
+  /* ---- ET LE FOND, QUI COUVRE LE DEPART ----
+   * C'est le defaut signale sur le Nexus en 2,5D : « la maps affiche casiment
+   * que de l eau, on voit les batiments mais pas la maps ». L ile est le FOND
+   * de la carte, quarante-sept cases de large : elle couvre forcement le point
+   * d arrivee, et le plan la retirait alors de la liste que la page dessine.
+   * On rejoue donc une carte AVEC un fond, et l on regarde si sa planche est
+   * peinte — la seule question qui distingue « il ne bloque plus » de « il
+   * n existe plus ». */
+    {
+    const obs = (dedans.entree && dedans.entree.obstacles) || [];
+    ok(obs.length > 0,
+       `le plan porte ses blocs (${obs.length} : `
+       + `${[...new Set(obs.map((q) => q.bat))].filter(Boolean).join(', ')})`);
+    }
+
     ok(!!ob && ob.r > 0, `avec un rayon qui bloque : ${ob && ob.r}`);
     ok(dedans.entree.peuplement === undefined || !(dedans.entree.peuplement || []).length,
        'et aucune creature : une carte est un endroit ou l on marche');
@@ -1983,6 +1998,7 @@ const servirLeSite = async () => {
   ok((peints['obj_' + objJ + '.webp'] || 0) > 0,
      `et la planche de l objet est dessinee dans le monde`
      + ` (${peints['obj_' + objJ + '.webp'] || 0} fois)`);
+
 
   ok(erreurs.length === 0, 'aucune erreur de page' + (erreurs.length ? ' — ' + erreurs[0] : ''));
   await nav.close(); site.stop();

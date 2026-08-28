@@ -874,6 +874,48 @@ html{ background-color:#0b0906;
 .sb-eq .dr{ flex:none; width:1.25em; font-style:normal; font-size:1.05em; line-height:1; }
 .sb-eq span > :last-child{ overflow:hidden; text-overflow:ellipsis; }
 .sb-h{ font-size:.82rem; color:var(--muted); font-variant-numeric:tabular-nums; }
+/* ---- LE TABLEAU DU DIRECT ----
+   Il ne ressemble PAS a une ligne de pari, et c'est voulu : pas de bouton, pas
+   de cote, un fond different. Une rencontre commencee ne se parie plus, et
+   deux blocs qui se ressemblent feraient chercher le bouton qui n'existe
+   pas. */
+#sbDirect{ margin:0 0 12px; border:1px solid var(--line); border-radius:13px;
+  background:var(--ink2); overflow:hidden; }
+.sb-dt{ display:flex; align-items:center; gap:8px; padding:9px 12px;
+  border-bottom:1px solid var(--line); }
+.sb-dt b{ font:800 .72rem/1 'Inter',system-ui,sans-serif; letter-spacing:1.4px; color:#FF5A5A; }
+.sb-dt b::before{ content:''; display:inline-block; width:7px; height:7px; border-radius:50%;
+  background:#FF5A5A; margin-right:7px; vertical-align:middle;
+  animation:sbBat 1.6s ease-in-out infinite; }
+.sb-dt i{ font-style:normal; font-size:.72rem; color:var(--muted); }
+.sb-d{ display:grid; grid-template-columns:1fr auto auto; gap:12px; align-items:center;
+  padding:10px 12px; border-top:1px solid var(--line); }
+.sb-d:first-of-type{ border-top:0; }
+.sb-deq{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+.sb-deq span{ font-size:.92rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.sb-dsc{ font:800 1rem/1 'Inter',system-ui,sans-serif; font-variant-numeric:tabular-nums;
+  letter-spacing:1px; color:var(--txt); }
+.sb-d.on .sb-dsc{ color:#7CFF9B; }
+.sb-dq{ font-size:.72rem; color:var(--muted); white-space:nowrap; min-width:5ch;
+  text-align:right; }
+@media (prefers-reduced-motion:reduce){ .sb-dt b::before{ animation:none } }
+/* ---- LE DIRECT ----
+   Il prend la place de l HEURE, et c est voulu : quand une rencontre a
+   commence, l heure du coup d envoi n apprend plus rien, et le score
+   l interesse. Le point rouge ne bat que pour ce qui se joue MAINTENANT — une
+   rencontre finie garde son score, sans clignoter, sinon tout le tableau
+   semble en cours. */
+.sb-live{ display:flex; flex-direction:column; align-items:flex-end; line-height:1.2; }
+.sb-live b{ font:800 .95rem/1 'Inter',system-ui,sans-serif; color:var(--txt);
+  font-variant-numeric:tabular-nums; letter-spacing:.5px; }
+.sb-live i{ font-style:normal; font-size:.7rem; color:var(--muted); white-space:nowrap;
+  overflow:hidden; text-overflow:ellipsis; max-width:11ch; }
+.sb-live.on b{ color:#7CFF9B; }
+.sb-live.on b::before{ content:''; display:inline-block; width:6px; height:6px;
+  border-radius:50%; background:#FF5A5A; margin-right:6px; vertical-align:middle;
+  animation:sbBat 1.6s ease-in-out infinite; }
+@keyframes sbBat{ 0%,100%{ opacity:1 } 50%{ opacity:.25 } }
+@media (prefers-reduced-motion:reduce){ .sb-live.on b::before{ animation:none } }
 .sb-cotes{ grid-column:1/-1; display:grid; grid-template-columns:repeat(3,1fr); gap:7px; }
 .sb-cotes.n2{ grid-template-columns:repeat(2,1fr); }
 /* ---- LA COTE PRISE EST BLEUE, PLUS VERTE ----
@@ -2323,6 +2365,7 @@ main{ min-width:0; }
              muted loop playsinline preload="none" disablepictureinpicture
              aria-label="SWOGE Betting"></video>
       <div class="sb-sports" id="sbSports"></div>
+      <div id="sbDirect" hidden></div>
       <div class="sb-vide" id="sbVide" hidden></div>
       <div class="sb-liste" id="sbListe"></div>
 
@@ -2913,7 +2956,7 @@ main{ min-width:0; }
      un combine, ou les cotes se multiplient et ou UNE SEULE fausse fait tout
      tomber. C'est ecrit en toutes lettres au-dessus du bouton : un joueur qui
      l'apprend en perdant a raison de se sentir floue. */
-  var SB={ sports:[], matchs:[], mien:[], min:100, max:100000,
+  var SB={ sports:[], matchs:[], mien:[], reprises:{}, directs:[], min:100, max:100000,
            jambesMax:8, gainMax:5000000,
            sport:"foot", panier:[], busy:false,
            /* ---- REPLIE A L ARRIVEE ----
@@ -3081,11 +3124,24 @@ main{ min-width:0; }
       var n=0, k;
       for(k=0;k<SB.matchs.length;k++) if(SB.matchs[k].sport===sp.cle) n++;
       var dispo = sp.actif && n>0;
+      /* ---- « SOON » NE DISAIT NI QUOI NI QUAND ----
+       * Un sport sans rencontre etait grise et marque « soon » : impossible a
+       * toucher, donc impossible a comprendre. Signale tel quel — « nba
+       * affiche rien nfl aussi » — et c'etait exact : la NBA reprend le 3
+       * octobre, ce qui n'est pas une panne mais une DATE.
+       * Quand le serveur connait la date du retour, elle passe SUR la
+       * pastille, et l onglet redevient touchable pour que la phrase entiere
+       * soit lisible en dessous. Quand il ne la connait pas, rien ne change :
+       * on ne promet pas un retour qu on n a pas verifie. */
+      var retour = SB.reprises && SB.reprises[sp.cle];
+      var ouvrable = dispo || !!retour;
       h+='<button type="button" data-sp="'+sbEchappe(sp.cle)+'"'
-       + (dispo?"":" disabled")
+       + (ouvrable?"":" disabled")
        + (SB.sport===sp.cle?' class="on"':'')+'>'
        + sbEchappe(sp.nom)
-       + (dispo?'<i>'+n+'</i>':'<i class="bientot">soon</i>')+'</button>';
+       + (dispo ? '<i>'+n+'</i>'
+                : retour ? '<i class="bientot">'+sbEchappe(sbJourCourt(retour))+'</i>'
+                         : '<i class="bientot">soon</i>')+'</button>';
     }
     z.innerHTML=h;
   }
@@ -3105,12 +3161,79 @@ main{ min-width:0; }
          + " " + sbHeureCourte(t);
   }
 
+  /* Le NOM lisible d'un sport. Il vit dans le catalogue du serveur — le
+     recopier ici ferait un second endroit ou nommer les sports, et le jour ou
+     l'un s'ajoute il n'y serait pas. Repli sur la clef : « nba » vaut mieux
+     qu'un trou. */
+  function sbNomSport(cle){
+    for(var i=0;i<SB.sports.length;i++) if(SB.sports[i].cle===cle) return SB.sports[i].nom||cle;
+    return cle;
+  }
+  /* Une date de RETOUR se lit en entier : « October 3 ». « 03/10 » demande de
+     savoir dans quel sens on ecrit les dates, et la moitie du monde se
+     trompe. */
+  /* La meme date, en trois caracteres de plus qu'un mot : elle doit tenir sur
+     une pastille d'onglet a cote du nom du sport. */
+  function sbJourCourt(t){
+    var d=new Date(t);
+    if(!isFinite(d.getTime())) return "soon";
+    return SB_MOIS[d.getMonth()].slice(0,3)+" "+d.getDate();
+  }
+  function sbJourLong(t){
+    var d=new Date(t);
+    if(!isFinite(d.getTime())) return "";
+    return "on "+SB_MOIS[d.getMonth()]+" "+d.getDate();
+  }
+
+  /* ================== CE QUI SE JOUE MAINTENANT ==================
+   *
+   * DEMANDE : « comment avoir les scores en direct des matchs comme
+   * flashscore ».
+   *
+   * Il est A PART du tableau des paris, et ce n'est pas une question de mise
+   * en page : une rencontre commencee N'EST PLUS PARIABLE — le serveur ferme
+   * au coup d'envoi, et c'est ce qui empeche quelqu'un de miser en regardant
+   * le score. Elle a donc disparu du tableau au moment precis ou son score
+   * devient interessant.
+   *
+   * Ce bloc n'a aucune cote et aucun bouton. C'est un tableau d'affichage. */
+  function sbPeintDirect(){
+    var z=$("sbDirect");
+    if(!z) return;
+    var l=(SB.directs||[]).filter(function(m){ return m.sport===SB.sport; });
+    if(!l.length){ z.hidden=true; z.innerHTML=""; return; }
+    var h='<div class="sb-dt"><b>LIVE NOW</b><i>'+l.length+'</i></div>';
+    for(var i=0;i<l.length;i++){
+      var m=l[i];
+      h+='<div class="sb-d'+(m.etat==="in"?" on":"")+'">'
+       + '<div class="sb-deq"><span>'+sbEchappe(m.domicile)+'</span>'
+       + '<span>'+sbEchappe(m.exterieur)+'</span></div>'
+       + '<div class="sb-dsc">'+sbEchappe(m.score)+'</div>'
+       + '<div class="sb-dq">'+sbEchappe(m.detail||(m.fini?"Final":""))+'</div>'
+       + '</div>';
+    }
+    z.innerHTML=h; z.hidden=false;
+  }
+
   function sbPeintListe(){
     var z=$("sbListe"), h="", i;
+    sbPeintDirect();
     var l=SB.matchs.filter(function(m){ return m.sport===SB.sport; });
     $("sbVide").hidden = l.length>0;
     if(!l.length){
-      $("sbVide").textContent = "Nothing on the board for this sport yet.";
+      /* ---- UN ONGLET VIDE N EST PAS UNE PANNE, MAIS IL EN A L AIR ----
+       * « nba affiche rien nfl aussi » : c etait exact, et ce n etait pas un
+       * defaut — la NBA reprend le 3 octobre. « Nothing on the board for this
+       * sport yet » ne le disait pas : il n avouait ni pourquoi, ni jusqu a
+       * quand, et un ecran qui ne dit rien se lit comme un ecran casse.
+       * Le serveur envoie la date du retour quand il la connait. Quand il ne
+       * la connait pas, on garde l ancienne phrase : on ne promet pas un
+       * retour qu on n a pas verifie. */
+      var quand = SB.reprises && SB.reprises[SB.sport];
+      var nom = sbNomSport(SB.sport);
+      $("sbVide").textContent = quand
+        ? nom+" is out of season — the board reopens "+sbJourLong(quand)+"."
+        : "Nothing on the board for "+nom+" right now.";
       z.innerHTML=""; return;
     }
     /* ================== PAR TOURNOI, ET REPLIES ==================
@@ -3622,6 +3745,8 @@ main{ min-width:0; }
       else if(m.type==="balance"||m.type==="deposit"){ setBalance(m.balance); if(m.type==="deposit") toast("💰 Deposit credited"); }
       else if(m.type==="parisListe"){
         SB.sports=m.sports||[]; SB.matchs=m.matchs||[]; SB.mien=m.mesParis||[];
+        SB.reprises=m.reprises||SB.reprises||{};
+        SB.directs=m.directs||SB.directs||[];
         if(m.min!=null)SB.min=m.min; if(m.max!=null)SB.max=m.max;
         if(m.jambesMax)SB.jambesMax=m.jambesMax; if(m.gainMax)SB.gainMax=m.gainMax;
         var a=SB.sports.filter(function(x){return x.actif;});

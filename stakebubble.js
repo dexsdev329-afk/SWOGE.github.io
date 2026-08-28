@@ -225,6 +225,68 @@
     (document.head || document.documentElement).appendChild(g);
   })();
 
+  /* ---- SUR TELEPHONE, LA MARQUE REND SA PLACE A LA PHOTO DE PROFIL ----
+   *
+   * Signale, capture a l appui : sur l accueil et le hall, la photo de profil
+   * tombait sur une rangee A ELLE, sous la marque et les pastilles. L en-tete
+   * y faisait 228 px de haut — quatre rangees — avant meme que la page
+   * commence.
+   *
+   * La cause tient en une addition. Sur 358 px de barre utile : la marque en
+   * prend 116, les pastilles (solde, cours, joueurs en ligne) environ 240, la
+   * photo 38, plus les gouttieres. Il manque une cinquantaine de pixels, et
+   * c est la photo — le dernier element de la rangee — qui passe a la ligne.
+   *
+   * Des 116 px de la marque, 82 ne sont que le mot « SWOGE WORLD » ecrit a
+   * cote de la patte. La patte reste, elle garde le lien vers le Nexus et
+   * l identite ; le mot s efface sous 620 px. La photo remonte, l en-tete perd
+   * une rangee entiere.
+   *
+   * PAS `display:none` : le mot est le seul TEXTE de ce lien — la patte est un
+   * emoji, qu un lecteur d ecran n annonce pas comme un nom. On le sort donc
+   * du flux sans le retirer du document, la technique habituelle : le lien
+   * garde son nom accessible et ne prend plus un pixel de large.
+   *
+   * Pose ici et pas dans les vingt-quatre pages : la barre du haut est deja
+   * geree depuis ce fichier — les pastilles, la photo, le repli quand ca ne
+   * tient plus. Une regle de barre de plus a sa place au meme endroit, et une
+   * seule empreinte de cache a bouger. */
+  (function () {
+    if (document.getElementById('swmq-css')) return;
+    var m = document.createElement('style');
+    m.id = 'swmq-css';
+    m.textContent =
+      '@media (max-width:620px){' +
+      '.sw-marque>span:not(.sw-patte){position:absolute;width:1px;height:1px;' +
+      'margin:-1px;padding:0;border:0;overflow:hidden;white-space:nowrap;' +
+      'clip-path:inset(50%);}' +
+      /* La gouttiere de neuf pixels separait la patte du mot ; sans le mot,
+         elle ne separe plus rien et decale la patte du bord. */
+      '.sw-marque{gap:0;}' +
+      /* ---- ET LA RANGEE DE PASTILLES CESSE DE POUSSER LA PHOTO A LA LIGNE ----
+       * Effacer le mot ne suffisait pas : il restait six pixels de trop, et
+       * six pixels suffisent a faire passer la photo a la ligne suivante.
+       *
+       * La raison n'est pas la largeur, c'est l'ordre des operations de
+       * flexbox. Le navigateur COUPE les lignes avant de RETRECIR quoi que ce
+       * soit, et il coupe d'apres la taille naturelle de chaque element. La
+       * rangee de pastilles annonce 280 px de large ; patte + pastilles +
+       * photo = 372 pour 358 disponibles, donc la photo — derniere de la
+       * rangee — passe a la ligne. Le `flex-shrink` de la rangee ne servait a
+       * rien : il ne s'applique qu'APRES la coupure, sur une ligne dont la
+       * photo est deja partie.
+       *
+       * On lui donne donc une taille naturelle de zero. Elle ne compte plus
+       * pour la coupure, les trois elements tiennent sur la premiere ligne, et
+       * la rangee reprend ensuite toute la place restante. Ce sont les
+       * pastilles qui se replient si elles ne tiennent pas — dans leur coin, a
+       * droite — au lieu d'expulser la photo. */
+      'nav.sb-ancre{flex:1 1 0!important;min-width:0!important;' +
+      'flex-wrap:wrap!important;row-gap:6px!important;}' +
+      '}';
+    (document.head || document.documentElement).appendChild(m);
+  })();
+
   function styleConnexion() {
     if (document.getElementById('swcon-css')) return;
     var c = document.createElement('style');

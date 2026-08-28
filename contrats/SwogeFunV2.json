@@ -1,0 +1,10 @@
+{
+  "nom": "SwogeFunV2",
+  "adresse": "0x4De26D120A4fF2d7c1875E6C7D611262b9cA426d",
+  "chaine": "Robinhood Chain (4663)",
+  "compilateur": "0.8.34+commit.80d5c536",
+  "optimisation": true,
+  "runs": 200,
+  "verifie_sur": "https://robinhoodchain.blockscout.com/address/0x4De26D120A4fF2d7c1875E6C7D611262b9cA426d",
+  "recupere_le": "2026-08-28"
+}

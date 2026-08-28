@@ -2230,7 +2230,32 @@ a.match:hover .cotes button{border-color:var(--bleu)}
 /* ---- CE QUI RESTE DE L'ANCIENNE MISE EN PAGE ----
    La colonne etroite bornait tout a six cent quatre-vingts pixels : posee dans
    la coquille, elle laissait deux tiers de l'ecran vides a droite du plateau. */
-.wrap{ max-width:none; padding:0; }
+/* ---- ET SA MARGE AUTOMATIQUE S EN VA AVEC ----
+ *
+ * `.wrap` vient de l ancienne mise en page, ou elle centrait une colonne de
+ * 680 px : `max-width:680px; margin:0 auto`. On lui avait retire sa largeur
+ * maximale et son remplissage, pas sa MARGE — elle paraissait inoffensive.
+ *
+ * Elle ne l est pas. `.wrap` est devenue un element flex, et une marge
+ * automatique sur l axe transversal ANNULE l etirement : au lieu de prendre
+ * la largeur de sa colonne, la boite se dimensionne sur son contenu, et une
+ * taille de contenu ne descend jamais sous le minimum de ce qu elle porte.
+ *
+ * Tant que la liste des rencontres est vide, ce minimum est petit et rien ne
+ * se voit. Elle se remplit une a deux secondes apres l ouverture, avec de
+ * vrais noms d equipes et de tournois : `.wrap` passe alors a 428 px dans une
+ * colonne de 366, le document a 440 pour un ecran de 390, et le telephone
+ * degonfle TOUTE la page pour la faire tenir. C est l en-tete a 59 % de la
+ * largeur, deux secondes apres le chargement, signale quatre fois — et jamais
+ * reproduit, parce qu aucun essai n ouvrait cette page avec des donnees
+ * dedans.
+ *
+ * Deux autres pistes ont ete essayees et MESUREES avant celle-ci :
+ * `align-items:stretch` sur la colonne, et `min-width:0` sur ses enfants.
+ * Ni l une ni l autre ne deplace le moindre pixel — la largeur d un element
+ * flex en colonne ne se gouverne ni par l une ni par l autre quand une marge
+ * automatique a deja pris la main. Elles ont ete retirees. */
+.wrap{ max-width:none; margin:0; padding:0; }
 .c4wrap{ max-width:none; padding:0 0 22px; }
 main{ min-width:0; }
 /* ---- LA RANGEE DE CONNEXION TIENT SUR UNE LIGNE ----

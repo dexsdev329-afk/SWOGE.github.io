@@ -64,12 +64,26 @@ const servirLeSite = async () => {
   process.chdir(SERVEUR);
   const cotes = require(path.join(SERVEUR, 'cotes'));
   const DEMAIN = new Date(Date.now() + 26 * 3600 * 1000).toISOString();
+  /* « Alpha » contre « Beta » : quatre et cinq lettres. Aucun tableau ne
+     deborde avec ca, et un essai qui ne mesure que le cas facile ne mesure
+     rien. Le vrai calendrier aligne « Borussia Monchengladbach » contre
+     « Eintracht Frankfurt » et « Real Racing Club de Santander ». La seconde
+     rencontre porte donc les noms les plus longs qu on rencontre vraiment,
+     dans un tournoi au nom long lui aussi — c est ce couple-la qui casse une
+     rangee, jamais le premier. */
+  const LONG_A = 'Borussia Monchengladbach';
+  const LONG_B = 'Real Racing Club de Santander';
   const cat = {
     sports: [{ cle: 'foot', nom: 'Football', actif: true }],
     matchs: [{
       id: 'essai-page-six', sport: 'foot', competition: 'Test League',
       pays: 'England', domicile: 'Alpha', exterieur: 'Beta', debut: DEMAIN,
       marches: cotes.marchesDe('foot', 'Alpha', 'Beta'),
+    }, {
+      id: 'essai-noms-longs', sport: 'foot',
+      competition: 'Deutsche Fussball Bundesliga Zweite', pays: 'Germany',
+      domicile: LONG_A, exterieur: LONG_B, debut: DEMAIN,
+      marches: cotes.marchesDe('foot', LONG_A, LONG_B),
     }],
   };
   fs.writeFileSync(path.join(VOLUME, 'paris_catalogue.json'), JSON.stringify(cat));
@@ -141,7 +155,7 @@ const servirLeSite = async () => {
     return l ? { matchs: (l.matchs || []).length,
                  marches: Object.keys(((l.matchs || [])[0] || {}).marches || {}).sort() } : null;
   });
-  ok(!!vu && vu.matchs === 1, 'le serveur envoie la rencontre');
+  ok(!!vu && vu.matchs === 2, `le serveur envoie les rencontres (${vu && vu.matchs})`);
   eq((vu && vu.marches || []).join(','), '1n2,btts,dc,hand,ou25,score',
      'avec ses six marches');
 
@@ -159,8 +173,17 @@ const servirLeSite = async () => {
       titres: [...c.querySelectorAll('.sb-mk > b')].map((b) => b.textContent),
     };
   });
+  /* ---- IL FAUT DEPLIER LE TOURNOI D ABORD ----
+   * Cet essai cherchait `.sb-m` des l arrivee des donnees, et echouait depuis
+   * que les tournois sont REPLIES par defaut — une demande explicite : « Spain
+   * La Liga laisse-la fermee, sinon c est super long l interface ». La page
+   * avait raison, l essai etait perime, et il criait pour une raison qui n
+   * existait plus : c est ainsi qu on apprend a ne plus lire un essai rouge.
+   * On fait donc ce que fait un visiteur — on ouvre le tournoi. */
+  await p.click('.sb-t-tete');
+  await p.waitForTimeout(400);
   const replie = await carte();
-  ok(!!replie, 'la carte de la rencontre est a l ecran');
+  ok(!!replie, 'le tournoi s ouvre et la carte de la rencontre est a l ecran');
   eq(replie.cotes.length, 3, 'elle ne montre d abord que les trois cotes du resultat');
   eq(replie.cotes.map((x) => x.k).join(','), '1n2,1n2,1n2', 'toutes du marche de base');
   ok(/^\d+\.\d\d$/.test(replie.cotes[0].cote),
@@ -229,6 +252,105 @@ const servirLeSite = async () => {
      'le pari enregistre porte le marche');
   ok(pose && Math.abs(pose.pari.cote - coteBtts) < 0.001,
      `a la cote affichee (${pose && pose.pari.cote} pour ${coteBtts})`);
+
+  /* ================= LA MEME PAGE, SUR UN TELEPHONE, AVEC SES DONNEES =================
+   * L angle mort de tous les autres essais. Ceux qui ouvrent `swogebet.html`
+   * sans serveur voient une liste VIDE : ils ne mesurent donc jamais la page
+   * telle qu elle existe vraiment, avec ses tournois, ses rencontres et leurs
+   * cotes. Or c est precisement l etat signale — « ca casse deux secondes
+   * apres », c est-a-dire au moment ou les donnees arrivent.
+   *
+   * Cet essai-ci a deja un serveur qui parle. On lui demande donc la seule
+   * chose que personne ne verifiait : a 390 points de large, une fois la liste
+   * remplie et un tournoi ouvert, la page tient-elle dans l ecran. Si un nom
+   * d equipe, une cote ou une rangee de marches deborde, c est ici que ca se
+   * voit — et nulle part ailleurs. */
+  console.log('\n-- la meme page sur un telephone, liste remplie --');
+  {
+    const tel = await ctx.newPage();
+    await tel.setViewportSize({ width: 390, height: 844 });
+    await tel.goto(p.url(), { waitUntil: 'domcontentloaded' });
+    await tel.waitForTimeout(2500);
+    /* On ouvre le premier tournoi, comme un doigt le ferait. */
+    /* On ouvre TOUS les tournois, pas seulement le premier : c est le pire cas,
+       et c est celui qu un visiteur produit en trois gestes. */
+    const tetes = await tel.$$('.sb-t-tete');
+    for (const t of tetes) { try { await t.click({ timeout: 3000 }); } catch (e) {} }
+    await tel.waitForTimeout(800);
+    const m = await tel.evaluate(() => {
+      const W = document.documentElement.clientWidth;
+      /* ---- CE QUI COMPTE COMME « DEJA CONTENU » ----
+       * Seuls `auto` et `scroll` : un conteneur qui defile a le droit d'etre
+       * plus large que l'ecran, c'est sa raison d'etre.
+       *
+       * `hidden` NON, et surtout pas celui de `body`. Il ne clippe pas : sur
+       * l'element racine il se propage a la fenetre, le document reste large,
+       * et le telephone le degonfle quand meme. Le compter comme un abri
+       * faisait ecarter TOUS les elements de la page — d'ou le premier
+       * verdict, « la page deborde, 0 element fautif », qui ne nommait
+       * personne. On s'arrete donc a `body`. */
+      const dansScroll = (e) => {
+        for (let a = e.parentElement; a && a !== document.body; a = a.parentElement) {
+          const c = getComputedStyle(a);
+          if (c.overflowX === 'auto' || c.overflowX === 'scroll') return true;
+        }
+        return false;
+      };
+      const fautifs = [];
+      document.querySelectorAll('body *').forEach((e) => {
+        const c = getComputedStyle(e);
+        if (c.display === 'none' || c.visibility === 'hidden') return;
+        const r = e.getBoundingClientRect();
+        if (r.width < 1) return;
+        if (r.right > W + 1 && !dansScroll(e)) fautifs.push(e);
+      });
+      /* On ne garde que les FEUILLES du probleme. Un conteneur deborde parce
+         que son contenu deborde : le nommer, lui, envoie chercher au mauvais
+         etage. Ce qu'on veut, c'est l'element qui n'a aucun enfant fautif. */
+      const feuilles = fautifs.filter((e) => !fautifs.some((f) => f !== e && e.contains(f)));
+      const combien = fautifs.length;
+      const decris = (e) => {
+        const r = e.getBoundingClientRect();
+        return { n: e.tagName.toLowerCase() + (e.id ? '#' + e.id : '')
+                   + (typeof e.className === 'string' && e.className
+                      ? '.' + e.className.trim().split(/\s+/).join('.') : ''),
+                 d: Math.round(r.right), l: Math.round(r.width),
+                 blanc: getComputedStyle(e).whiteSpace,
+                 t: (e.textContent || '').trim().slice(0, 46) };
+      };
+      const pire = feuilles.length ? decris(feuilles[0]) : null;
+      const causes = feuilles.slice(0, 4).map(decris);
+      /* La chaine des parents, du fautif jusqu'a `body` : c'est elle qui dit
+         QUEL etage a cesse de tenir dans l'ecran, et pourquoi. Nommer la
+         feuille ne suffit pas — elle ne fait que remplir la boite qu'on lui
+         donne. */
+      const chaine = [];
+      for (let a = feuilles[0]; a && a !== document.documentElement; a = a.parentElement) {
+        const c = getComputedStyle(a);
+        chaine.push(a.tagName.toLowerCase() + (a.id ? '#' + a.id : '')
+          + (typeof a.className === 'string' && a.className
+             ? '.' + a.className.trim().split(/\s+/).join('.') : '')
+          + ' | ' + Math.round(a.getBoundingClientRect().width) + 'px'
+          + ' | ' + c.display + ' | flex:' + c.flex
+          + ' | min-w:' + c.minWidth + ' | align-self:' + c.alignSelf
+          + ' | w:' + c.width);
+      }
+      return { doc: document.documentElement.scrollWidth, ecran: W,
+               cartes: document.querySelectorAll('.sb-m').length,
+               tournois: document.querySelectorAll('.sb-t').length,
+               combien, pire, causes, chaine };
+    });
+    await tel.close();
+    ok(m.tournois > 0, `la liste est remplie sur telephone (${m.tournois} tournoi(s), ${m.cartes} carte(s))`);
+    ok(m.doc <= m.ecran,
+       m.doc <= m.ecran
+         ? `et la page tient dans l ecran (${m.doc}/${m.ecran})`
+         : `la page DEBORDE : ${m.doc} pour ${m.ecran} — ${m.combien} element(s).\n`
+           + `       A la racine du probleme :\n`
+           + (m.causes || []).slice(0, 2).map((c) => `         ${c.n}  (${c.l}px)`).join('\n')
+           + `\n       La chaine des parents :\n`
+           + (m.chaine || []).map((l) => '         ' + l).join('\n'));
+  }
 
   ok(erreurs.length === 0, 'aucune erreur de page' + (erreurs.length ? ' — ' + erreurs[0] : ''));
   console.log(`\nparis_page.test.js : ${n} verifications, ${echecs} echec(s)`);

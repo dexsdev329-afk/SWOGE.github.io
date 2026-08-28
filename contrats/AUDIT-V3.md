@@ -353,16 +353,22 @@ gestionnaire de positions, vrai $SWOGE, vraie usine Uniswap.
 | 9 | Un transfert ne fait pas echouer `onMove` et ne **cree** aucune creance | passe |
 | 10 | Anti-snipe : refuse au-dela de 5 % dans la fenetre, se relache apres | passe |
 | 11 | Relancer avec le MEME sel -> echec propre | passe |
-| 11 | Relancer avec un AUTRE sel -> passe (jamais brique) | **PAS ENCORE OBSERVE** |
+| 11 | Relancer avec un AUTRE sel -> passe (jamais brique) | passe |
 
-La derniere ligne n'est pas une reussite : elle n'a jamais ete vue au vert.
-Lors du passage ou elle a tourne, elle a echoue sur « reentrant » — un defaut
-du banc, corrige depuis (point 3 ci-dessous) ; au passage suivant, le noeud a
-elague le bloc d'ancrage avant d'y arriver. **Tant qu'elle n'est pas verte, la
-rejouabilite du lancement reste demontree par la lecture du code et par le
-seul fait que le sel entre dans l'adresse CREATE2, pas par l'execution.**
+**41 verifications, 0 echec.**
 
-**Le point A de l'audit est desormais prouve par l'execution, pas par la
+Cette derniere ligne a demande trois passages pour etre crue, et le detour
+merite d'etre garde. Au premier, elle echouait sur « reentrant » : un defaut du
+BANC, pas du contrat (point 3 ci-dessous). Au deuxieme, le noeud avait elague
+le bloc d'ancrage avant qu'on y arrive, et le banc s'arretait en cours de
+route. Elle a ete consignee comme **non observee** tant qu'elle ne l'etait pas,
+plutot que comptee comme acquise sur la foi du code. Au troisieme passage, elle
+est verte : **le correctif du brique definitif est prouve par l'execution.**
+
+**Les deux correctifs qui restaient sur parole sont prouves par l'execution :**
+le brique definitif (section 11) et le detournement des frais (sections 5 a 7).
+
+**Le point A de l'audit est lui aussi prouve par l'execution, pas par la
 lecture** : le NFT arrive bien au launchpad, donc le gestionnaire deploye
 n'appelle pas `onERC721Received`.
 
@@ -392,9 +398,12 @@ reproduiront :
 
 - **Un seul bloc, un seul chemin nominal.** Pas de temps qui passe reellement,
   pas de concurrence, pas de dizaines de portefeuilles.
-- **Le noeud n'est pas une archive.** Il elague l'etat pendant l'essai ; les
-  lectures tardives basculent sur le bloc courant. L'essai n'est donc pas
-  reproductible a l'identique, et le banc le signale quand ca arrive.
+- **Le noeud n'est pas une archive.** Il elague l'etat en deux ou trois minutes ;
+  au passage qui a rendu 41/41, **9 lectures tardives ont bascule sur le bloc
+  courant**. Les contrats concernes sont de l'infrastructure figee (le $SWOGE,
+  le gestionnaire de positions, l'usine), mais l'essai n'est PAS reproductible
+  a l'identique. Le banc le compte et le dit en fin de course au lieu de le
+  taire.
 - **Ni audit humain, ni reseau de test.** Un contrat sans proprietaire merite
   les deux.
 

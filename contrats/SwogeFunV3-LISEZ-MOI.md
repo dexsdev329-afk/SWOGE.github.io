@@ -9,9 +9,10 @@ correctifs sont appliques, les deux verifications bloquantes sont levees
 (voir `AUDIT-V3.md`).
 
 `contrats/banc_fork.js` fait desormais tourner le vrai bytecode contre le vrai
-etat de la chaine : un lancement complet passe, le pool se cree, le NFT arrive
-au launchpad, le frais brule, la retenue se remplit puis se deverse, un
-detenteur reclame. Lancer avec :
+etat de la chaine — **41 verifications, 0 echec** : un lancement complet passe,
+le pool se cree, le NFT arrive au launchpad, le frais brule, la retenue se
+remplit puis se deverse, un detenteur reclame, l'anti-snipe mord puis se
+relache, et un lancement devance se relance avec un autre sel. Lancer avec :
 
     S=<dossier des modules> NODE_PATH=$S/node_modules node contrats/banc_fork.js
 

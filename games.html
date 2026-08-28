@@ -16,6 +16,39 @@
  * que sur une liste de classes : peu importe ou le pouce atterrit —
  * bouton, carte, simple texte — le geste ne zoome jamais par accident. */
 html{ touch-action:manipulation; }
+
+/* ---- UNE VIDEO NE PEUT PLUS ETRE PLUS LARGE QUE SA PLACE ----
+ *
+ * Signale, capture a l appui : sur telephone, l en-tete de SWOGE BET et la
+ * rangee de navigation s affichent a 59 % de la largeur de l ecran, tout
+ * ratatines, pendant que la banniere et les cartes en dessous occupent bien
+ * toute la largeur. Deux echelles sur la meme page.
+ *
+ * Ce n est pas l en-tete qui a retreci : c est TOUTE LA PAGE qui a ete
+ * degonflee. Quand un element deborde en largeur, iOS ne coupe pas et ne
+ * replie pas — il reduit l echelle de la page entiere pour faire tenir le
+ * document. L en-tete, lui, fait 100 % de la FENETRE (390 px) et non du
+ * document (772 px) : degonfle du meme coup, il n occupe plus que la moitie
+ * de l ecran. Le contenu large, lui, remplit l ecran. C est exactement ce que
+ * montre la capture, et la page porte deja ce constat ailleurs :
+ * « le telephone dezoomait toute la page pour la faire tenir ».
+ *
+ * Ce qui debordait : la banniere video. `<video width="912" height="600">` —
+ * ces attributs sont des indices de presentation, c est-a-dire une largeur de
+ * 912 px si la regle d auteur qui dit `width:100%` ne s applique pas, ou si le
+ * moteur recalcule la largeur depuis `aspect-ratio` quand `max-height` mord.
+ * Mesure, la regle neutralisee : document a 772 px pour une fenetre de 390, et
+ * un en-tete qui occuperait 51 % de l ecran.
+ *
+ * Chaque `<img>` du site etait deja borne — `img{max-width:100%}`. Aucune des
+ * vingt et une pages qui portent une `<video>` ne le faisait pour elle. Le
+ * garde manquait pour un seul type de balise, et c est celui qu on a mis en
+ * pleine largeur en haut de trois pages.
+ *
+ * Pose ici, dans le bloc commun, et pas dans la regle de chaque banniere : ce
+ * n est pas une decision de mise en page, c est un plancher. Une banniere qui
+ * veut deborder devra le dire, et personne ne le veut. */
+video{ max-width:100%; }
 </style>
 <title>SWOGE Games — play with $SWOGE</title>
 <!--

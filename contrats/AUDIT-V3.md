@@ -436,6 +436,39 @@ les valeurs ont ete verifiees) et aux deux empreintes de metadonnee pres —
 celle de `SwogeToken` incrustee dans `SwogeFunV3`, et la CBOR finale. Ni l'une
 ni l'autre ne s'execute.
 
+## Verifie sur Blockscout
+
+Source publiee, en **partial match** : le code executable correspond, seule
+l'empreinte de metadonnee differe — elle n'est jamais executee. Blockscout
+refuse ensuite de remplacer un partial match par un autre, ce qui se lit
+« cannot update partially verified smart contract » : c'est un refus de
+doublon, pas un echec.
+
+Ce que ca change, concretement :
+
+    ContractName     SwogeFunV3
+    CompilerVersion  v0.8.34+commit.80d5c536
+    OptimizationUsed true
+    EVMVersion       cancun
+    ABI              publie
+    SourceCode       publie
+
+**L'ABI etant publie, les onglets Read/Write Contract fonctionnent.** N'importe
+quel detenteur peut appeler `claimRewards` directement depuis l'explorateur,
+sans passer par le site. C'etait la vraie raison de verifier : le contrat
+detient du $SWOGE qui appartient a des gens, et cet argent ne doit pas dependre
+d'une interface qui peut disparaitre. Il y a quatre fonctions d'ecriture en
+tout — `claimRewards`, `collectFees`, `createToken`, `onMove` — et aucune ne
+permet a qui que ce soit de retirer la liquidite.
+
+Un balayage de la source publiee confirme ce que l'en-tete annonce :
+**aucun** `transferOwnership`, **aucun** `selfdestruct`, **aucun**
+`delegatecall`. Les deux seules occurrences suspectes au grep s'expliquent :
+`onlyOwner` n'apparait que dans un COMMENTAIRE (celui qui explique qu'il n'y en
+a pas), et `setPool` est sur le JETON, pas sur le launchpad, verrouille deux
+fois — `msg.sender == fun` et `pool == address(0)` — donc appelable une seule
+fois, au lancement, par le launchpad seul.
+
 ## Le premier jeton, et ce qu'il prouve
 
 `Swogebet` (`0xc0aEd547...`), lance par le createur, qui a ensuite achete 66,5 %

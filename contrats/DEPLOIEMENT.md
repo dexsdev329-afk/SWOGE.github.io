@@ -4,6 +4,10 @@
 > **`0xc16388e95dbbD37A679A7d507C174C7e34C5856E`** — verifie et branche dans
 > `launchpad.html`. Cette fiche reste valable pour un redeploiement.
 >
+> **Verifie sur Blockscout** (partial match : le code correspond, seule la
+> metadonnee differe). L'ABI est publie, donc les onglets Read/Write Contract
+> fonctionnent et un detenteur peut reclamer sans passer par le site.
+>
 > Un premier deploiement (`0x88a0F742...`) est MORT : la meme adresse avait ete
 > collee dans `_positionManager` et `_swoge`. Ne l'utilise jamais.
 
@@ -213,6 +217,13 @@ main :
 
 - **Solidity (Standard JSON input)** -> televerse l'entree standard ;
 - **Sourcify** -> televerse `SwogeFunV3_metadata.json` **et** le `.sol`.
+
+### « cannot update partially verified smart contract »
+
+Ce message n'est PAS un echec : il veut dire que le contrat est **deja
+verifie** en partial match, et que Blockscout refuse de remplacer un partial
+match par un autre partial match. Il n'accepterait qu'un full match. Va voir
+l'onglet Contract : la source y est.
 
 ### Ce qu'il ne faut PAS faire
 

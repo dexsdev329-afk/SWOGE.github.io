@@ -2702,6 +2702,11 @@ function renderBonus(b){ if(!b) return; bonusData=b;
   ["click","keydown","touchstart"].forEach(function(ev){ window.addEventListener(ev,function once(){ SFX.unlock(); bgmStart(); window.removeEventListener(ev,once); }); });
 
   // ---- silent cross-page reconnect: keep the session when switching games ----
+  /* Un jeton de session en reserve veut dire qu'une reprise est en cours ou
+     va l'etre : rien a faire signer a personne tant qu'il est la. */
+  function jetonDeSession(){
+    try{ return !!localStorage.getItem("swogeSession"); }catch(e){ return false; }
+  }
   async function autoReconnect(){
     var method; try{ method=localStorage.getItem("swogeAuth"); }catch(e){}
     if(!method) return;
@@ -2712,7 +2717,22 @@ function renderBonus(b){ if(!b) return; bonusData=b;
         if(!accs||!accs.length) return;
         provider=new ethers.providers.Web3Provider(eth,"any"); signer=provider.getSigner();
         myAddr=accs[0].toLowerCase();
-        if(ws&&ws.readyState===1) doLogin();                   // else ws.onopen logs in once connected
+        /* ---- ET PAS DAVANTAGE PAR CE CHEMIN-CI ----
+           DEMANDE : « ne redemande pas de connecter son wallet si on est deja
+           connecte a la page ». Le correctif pose sur `hello` ne couvrait que
+           `hello`. Celui-ci est une COURSE, donc plus discret : `autoReconnect`
+           est lance en meme temps que `connect()`, il attend le portefeuille
+           — `eth_accounts`, une iframe Privy — et quand cette attente se
+           termine APRES l'ouverture de la socket, il appelle `doLogin()` de
+           lui-meme. C'est-a-dire une signature a faire signer, alors que la
+           reprise de session est deja partie et va repondre toute seule.
+           Selon la vitesse du portefeuille, la fenetre surgissait ou non : d'ou
+           un defaut qui revient « une fois sur deux ».
+           Le jeton en reserve est le signal, ici comme dans `hello` : s'il y en
+           a un, la reprise s'en charge. S'il est perime, `resumeFailed` l'efface
+           AVANT de rappeler `autoReconnect` — et le chemin long repart alors
+           normalement, jeton absent. */
+        if(ws&&ws.readyState===1 && !jetonDeSession()) doLogin();
       } else if(method==="email"){
         await loadPrivy();
         var addr=null;
@@ -2734,7 +2754,7 @@ function renderBonus(b){ if(!b) return; bonusData=b;
         if(!addr) return;
         provider=new ethers.providers.Web3Provider(SwogePrivy.getProvider(),"any"); signer=provider.getSigner();
         myAddr=String(addr).toLowerCase();
-        if(ws&&ws.readyState===1) doLogin();
+        if(ws&&ws.readyState===1 && !jetonDeSession()) doLogin();
       }
     }catch(e){}
   }

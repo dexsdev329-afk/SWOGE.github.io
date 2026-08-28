@@ -751,7 +751,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   // ---- WebSocket ----
   function connect(){
     try{ ws=new WebSocket(SERVER_URL); }catch(e){ setDot(false); return; }
-    ws.onopen=function(){ setDot(true); if(myAddr) doLogin(); };
+    ws.onopen=function(){ setDot(true); /* Troisieme chemin, propre a cette page : la socket qui se (r)ouvre signait des que l adresse etait connue, sans regarder si une reprise allait suivre. */ if(myAddr && !jetonDeSession()) doLogin(); };
     ws.onclose=function(){ setDot(false); authed=false; setTimeout(connect,3000); };
     ws.onerror=function(){ setDot(false); };
     ws.onmessage=function(ev){
@@ -997,6 +997,12 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   }
 
   // ---- silent cross-page reconnect ----
+  /* Un jeton de session en reserve veut dire qu'une reprise est en cours ou va
+     l'etre : rien a faire signer a personne tant qu'il est la. Meme garde que sur
+     les treize autres pages. */
+  function jetonDeSession(){
+    try{ return !!localStorage.getItem("swogeSession"); }catch(e){ return false; }
+  }
   async function autoReconnect(){
     var method; try{ method=localStorage.getItem("swogeAuth"); }catch(e){}
     if(!method) return;
@@ -1007,7 +1013,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         if(!accs||!accs.length) return;
         provider=new ethers.providers.Web3Provider(eth,"any"); signer=provider.getSigner();
         myAddr=accs[0].toLowerCase();
-        if(ws&&ws.readyState===1) doLogin();
+        if(ws&&ws.readyState===1 && !jetonDeSession()) doLogin();
       } else if(method==="email"){
         await loadPrivy();
         var addr=null;
@@ -1029,7 +1035,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         if(!addr) return;
         provider=new ethers.providers.Web3Provider(SwogePrivy.getProvider(),"any"); signer=provider.getSigner();
         myAddr=String(addr).toLowerCase();
-        if(ws&&ws.readyState===1) doLogin();
+        if(ws&&ws.readyState===1 && !jetonDeSession()) doLogin();
       }
     }catch(e){}
   }

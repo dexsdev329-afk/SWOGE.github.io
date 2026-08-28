@@ -1275,7 +1275,7 @@ function onServer(m){
     var mw=$("#minW"); if(mw) mw.textContent=MIN_WITHDRAW;
     if(m.jackpot!=null) setJackpot(m.jackpot);
     if(m.leaderboard) renderLeaderboard(m.leaderboard);
-    if(myAddr) doLogin(); // reconnected while wallet already connected
+    if(myAddr && !jetonDeSession()) doLogin(); /* ...mais pas quand un jeton attend d etre repris : la ligne du dessus vient d envoyer `resume`, et le serveur va repondre `auth` tout seul. Sans cette garde, la fenetre de signature surgissait a chaque ouverture de page pour quelqu un de parfaitement connecte. */
   }
   else if(m.type==="state"){ applyState(m); }
   if(m.type==="resumeFailed"){ /* jeton perime ou revoque : on l oublie et on repart du chemin long */ try{ localStorage.removeItem("swogeSession"); }catch(e){} if(typeof autoReconnect==="function") autoReconnect(); else if(myAddr) doLogin(); return; }
@@ -1816,6 +1816,12 @@ setInterval(function(){ /* placeholder for future presence updates */ },5000);
 
 /* ============================ BOOT ============================ */
 // Silent cross-page reconnect: keep the session when switching between games.
+/* Un jeton de session en reserve veut dire qu'une reprise est en cours ou va
+   l'etre : rien a faire signer a personne tant qu'il est la. Meme garde que sur
+   les quinze autres pages. */
+function jetonDeSession(){
+  try{ return !!localStorage.getItem("swogeSession"); }catch(e){ return false; }
+}
 async function autoReconnect(){
   var method; try{ method=localStorage.getItem("swogeAuth"); }catch(e){}
   if(!method) return;
@@ -1826,7 +1832,7 @@ async function autoReconnect(){
       if(!accs||!accs.length) return;
       rawEth=eth; provider=new ethers.providers.Web3Provider(eth,"any"); signer=provider.getSigner();
       myAddr=accs[0];
-      if(loginNonce!=null) doLogin();                        // else the hello handler logs in
+      if(loginNonce!=null && !jetonDeSession()) doLogin();  /* meme garde : la reprise s en charge */
     } else if(method==="email"){
       await loadPrivy();
       var addr=null;

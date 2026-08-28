@@ -705,6 +705,42 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   footer { padding:6px 0 8px !important; font-size:11px !important; }
 }
 </style>
+<style id="fond-decor">
+/* ================== LE DECOR, DERRIERE TOUT ==================
+ * L'affiche de Smash : deux panneaux illustres a gauche et a droite, et un
+ * MILIEU TRANSPARENT. Elle n'est pas faite pour etre regardee seule, elle est
+ * faite pour ENCADRER ce qu'on pose dedans. Le jeu vient au centre, dans le
+ * vide qu'elle laisse.
+ *
+ * POURQUOI UN CALQUE, ET SUR `html`
+ * `body` porte deja la couleur de la page, et sur quatre de ces cinq pages son
+ * `::before` sert a autre chose. Le decor se pose donc sur `html::before`, en
+ * `position:fixed` a `z-index:-1` : derriere tout le contenu, devant la couleur
+ * de fond, et immobile quand on defile.
+ *
+ * `body` passe en transparent — sinon il peindrait PAR-DESSUS le calque, un
+ * enfant en z-index automatique passant devant un frere a -1. La couleur ne
+ * disparait pas pour autant : elle est declaree sur `html,body` un peu plus
+ * haut, et c'est `html` qui continue de la porter.
+ *
+ * `position:fixed` PLUTOT QUE `background-attachment:fixed` : la seconde ne
+ * tient pas sur iOS — elle saute au defilement quand elle ne disparait pas — et
+ * elle coute cher a repeindre. La premiere donne le meme resultat partout.
+ *
+ * `pointer-events:none` : le calque couvre tout l'ecran, il ne doit intercepter
+ * ni un clic ni un glissement. Sans cette ligne, le jeu ne repondrait plus.
+ *
+ * CE QU'ON EN VOIT. L'affiche est en 16/9. Sur un ecran large elle tombe juste
+ * et ses deux panneaux encadrent la page. Sur un telephone, `cover` recadre au
+ * centre — c'est-a-dire sur le vide — et le decor ne se voit pas : c'est voulu,
+ * une illustration de bord sur une colonne de 390 px mangerait le jeu.
+ * ============================================================= */
+body{ background:transparent; }
+html::before{
+  content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
+  background:url("img/site/fond_smash.webp") center center / cover no-repeat;
+}
+</style>
 </head>
 <body>
 
@@ -1445,6 +1481,11 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   ["click","keydown","touchstart"].forEach(function(ev){ window.addEventListener(ev,function once(){ SFX.unlock(); window.removeEventListener(ev,once); }); });
 
   // ---- silent cross-page reconnect: keep the session when switching games ----
+  /* Un jeton de session en reserve veut dire qu'une reprise est en cours ou
+     va l'etre : rien a faire signer a personne tant qu'il est la. */
+  function jetonDeSession(){
+    try{ return !!localStorage.getItem("swogeSession"); }catch(e){ return false; }
+  }
   async function autoReconnect(){
     var method; try{ method=localStorage.getItem("swogeAuth"); }catch(e){}
     if(!method) return;
@@ -1455,7 +1496,22 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         if(!accs||!accs.length) return;
         provider=new ethers.providers.Web3Provider(eth,"any"); signer=provider.getSigner();
         myAddr=accs[0].toLowerCase();
-        if(ws&&ws.readyState===1) doLogin();                   // else ws.onopen logs in once connected
+        /* ---- ET PAS DAVANTAGE PAR CE CHEMIN-CI ----
+           DEMANDE : « ne redemande pas de connecter son wallet si on est deja
+           connecte a la page ». Le correctif pose sur `hello` ne couvrait que
+           `hello`. Celui-ci est une COURSE, donc plus discret : `autoReconnect`
+           est lance en meme temps que `connect()`, il attend le portefeuille
+           — `eth_accounts`, une iframe Privy — et quand cette attente se
+           termine APRES l'ouverture de la socket, il appelle `doLogin()` de
+           lui-meme. C'est-a-dire une signature a faire signer, alors que la
+           reprise de session est deja partie et va repondre toute seule.
+           Selon la vitesse du portefeuille, la fenetre surgissait ou non : d'ou
+           un defaut qui revient « une fois sur deux ».
+           Le jeton en reserve est le signal, ici comme dans `hello` : s'il y en
+           a un, la reprise s'en charge. S'il est perime, `resumeFailed` l'efface
+           AVANT de rappeler `autoReconnect` — et le chemin long repart alors
+           normalement, jeton absent. */
+        if(ws&&ws.readyState===1 && !jetonDeSession()) doLogin();
       } else if(method==="email"){
         await loadPrivy();
         var addr=null;
@@ -1477,7 +1533,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         if(!addr) return;
         provider=new ethers.providers.Web3Provider(SwogePrivy.getProvider(),"any"); signer=provider.getSigner();
         myAddr=String(addr).toLowerCase();
-        if(ws&&ws.readyState===1) doLogin();
+        if(ws&&ws.readyState===1 && !jetonDeSession()) doLogin();
       }
     }catch(e){}
   }

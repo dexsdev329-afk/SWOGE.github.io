@@ -114,6 +114,38 @@ const TYPES = { '.html': 'text/html', '.js': 'application/javascript', '.webp': 
     ok(/cadre-5\.webp/.test(v.cadre), 'avec le cadre de son palier');
     ok(v.rond === '50%', `le bouton devient rond sous un cadre rond (${v.rond})`);
 
+    /* ---- ET LA PASTILLE DE NOTIFICATIONS SURVIT ----
+     * Ce bouton porte DEUX choses : un visage, et le compte de ce qui attend.
+     * La seconde est un element, pas du texte. Ecrire le visage en
+     * `textContent` l'effacait ; tester le texte pour ne pas l'ecraser
+     * empechait le visage de se poser des qu'il y avait une notification. Les
+     * deux fautes se ressemblent et se voient au meme endroit : un bouton qui
+     * n'affiche que « 2 », ou un « 2 » qui disparait quand la photo arrive. */
+    const ensemble = await p.evaluate(() => {
+      const el = document.getElementById('gxProfil');
+      const q = document.createElement('span');
+      q.className = 'swpn'; q.textContent = '3';
+      el.appendChild(q);
+      /* On refait arriver un profil : c'est ce qui repeint. */
+      const m = { type: 'profile', profile: {
+        address: '0x1111111111111111111111111111111111111111',
+        name: 'Essai', visage: 'b3', niveau: 12, palier: 'ALPHA', palierNo: 5 } };
+      (window.__s || []).forEach((x) => {
+        try { x.dispatchEvent(new MessageEvent('message', { data: JSON.stringify(m) })); } catch (e) {}
+      });
+      return null;
+    });
+    void ensemble;
+    await p.waitForTimeout(300);
+    const apres = await p.evaluate(() => {
+      const el = document.getElementById('gxProfil');
+      return { pastille: !!el.querySelector('.swpn'),
+               compte: (el.querySelector('.swpn') || {}).textContent || '',
+               image: getComputedStyle(el).backgroundImage };
+    });
+    ok(apres.pastille, 'la pastille de notifications survit au repeint');
+    ok(/badge-3\.webp/.test(apres.image), 'et le visage est toujours la avec elle');
+
     /* ---- LA GEOMETRIE, QUI EST TOUT LE SUJET ---- */
     const ratio = v.cadreL / v.cote;
     ok(Math.abs(ratio - 1.36) < 0.02,

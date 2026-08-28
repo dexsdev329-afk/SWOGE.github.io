@@ -6628,6 +6628,15 @@
   function peintAvatarPage() {
     var el = document.getElementById('gxProfil');
     if (!el) return;
+    /* ---- LA PASTILLE N'EST PAS DU TEXTE ----
+     * Ce bouton porte deux choses : un visage, et le compte de ce qui attend.
+     * La seconde est un ELEMENT, pose par `pastilleAmis`. Ecrire `textContent`
+     * l'efface — et le tester pour ne pas ecraser revenait a ne plus poser le
+     * visage des qu'il y avait une notification. Vu au banc : un bouton qui
+     * n'affichait que « 2 », et un autre qui perdait son « 2 » en gagnant sa
+     * photo. On la met de cote et on la remet, comme le fait le bouton du
+     * tiroir a trois lignes d'ici. */
+    var pastille = el.querySelector('.swpn');
     /* ---- IL POSE SES PROPRES REGLES ----
      * Le cadre et l'avatar en image sont dessines par la feuille du tiroir,
      * qui n'est injectee qu'a l'authentification. Un message de PROFIL peut
@@ -6642,8 +6651,9 @@
     } else {
       el.classList.remove('swav-img');
       el.style.backgroundImage = '';
-      if (!el.textContent.trim()) el.textContent = (MOI && MOI.visage) || '\uD83D\uDC64';
+      el.textContent = (MOI && MOI.visage) || '\uD83D\uDC64';
     }
+    if (pastille) el.appendChild(pastille);
     poseCadre(el, (MOI && MOI.niveau !== undefined) ? MOI
       : (NIVEAU ? { niveau: NIVEAU.niveau, palierNo: NIVEAU.palierNo } : null));
   }

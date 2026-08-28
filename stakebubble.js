@@ -283,6 +283,28 @@
        * droite — au lieu d'expulser la photo. */
       'nav.sb-ancre{flex:1 1 0!important;min-width:0!important;' +
       'flex-wrap:wrap!important;row-gap:6px!important;}' +
+      /* ---- ET LE SOLDE SE RANGE A COTE DE LA PHOTO ----
+       * DEMANDE : « les soldes devraient aller a cote de la photo de profil ».
+       * Sur l'accueil et le hall, la rangee de pastilles — solde, cours,
+       * joueurs en ligne — etait posee en `order:4`, c'est-a-dire APRES la
+       * bande des chiffres du site. Elle tombait donc toute seule sur une
+       * TROISIEME rangee, sous « ROUNDS PLAYED / WINNINGS PAID », loin du
+       * compte auquel elle se rapporte. Les pages de jeu, elles, l'avaient
+       * deja en deuxieme position ; c'est l'accueil et le hall qui etaient
+       * l'exception.
+       *
+       * On fixe donc le meme ordre PARTOUT, depuis ici : la patte, puis les
+       * pastilles, puis la photo — trois choses qui parlent du compte, sur la
+       * meme ligne — et les chiffres du site en dernier, sur la leur. Rien ne
+       * bouge sur les pages de jeu, qui etaient deja dans cet ordre.
+       *
+       * `9` pour les chiffres et pas `5` : les coquilles ne numerotent pas
+       * pareil (5 ici, 3 la), et un rang eleve les met derriere toutes sans
+       * avoir a connaitre chacune. */
+      '.sw-marque{order:1!important;}' +
+      'nav.sb-ancre{order:2!important;}' +
+      '#gxProfil{order:3!important;}' +
+      '.sw-chiffres{order:9!important;}' +
       '}';
     (document.head || document.documentElement).appendChild(m);
   })();

@@ -110,9 +110,15 @@ function connecte() {
       const mot = m && m.querySelector('span:not(.sw-patte)');
       const patte = m && m.querySelector('.sw-patte');
       const pr = document.getElementById('gxProfil');
+      const pastilles = document.querySelector('nav.sb-ancre');
+      const chiffres = document.querySelector('.sw-chiffres');
+      const visible = (e) => e && !e.hidden && getComputedStyle(e).display !== 'none'
+                          && e.getBoundingClientRect().height > 1;
       const R = (e) => { const r = e.getBoundingClientRect();
                          return { x: r.left, y: r.top, w: r.width, h: r.height }; };
       return {
+        pastilles: visible(pastilles) ? R(pastilles) : null,
+        chiffres: visible(chiffres) ? R(chiffres) : null,
         mot: mot ? R(mot) : null,
         motTexte: mot ? (mot.textContent || '').replace(/\s+/g, '') : '',
         patte: patte ? R(patte) : null,
@@ -149,6 +155,27 @@ function connecte() {
                   : `${pg} : la photo est TOMBEE a la ligne (patte y=${Math.round(v.patte.y)},`
                     + ` photo y=${Math.round(v.profil.y)}), barre a ${v.barre} px`);
     ok(v.page <= v.ecran, `${pg} : et la page ne glisse pas (${v.page}/${v.ecran})`);
+
+    /* ---- ET LE SOLDE EST A COTE DE LA PHOTO ----
+     * DEMANDE : « les soldes devraient aller a cote de la photo de profil ».
+     * Sur l'accueil et le hall, la rangee de pastilles etait posee APRES la
+     * bande des chiffres du site : elle tombait sur une troisieme rangee, sous
+     * « ROUNDS PLAYED », loin du compte auquel elle se rapporte. */
+    if (!v.pastilles) { ok(false, `${pg} : la rangee de pastilles est absente`); continue; }
+    const memeQuePhoto = v.pastilles.y < v.profil.y + v.profil.h - 2
+                      && v.pastilles.y + v.pastilles.h > v.profil.y + 2;
+    ok(memeQuePhoto,
+       memeQuePhoto
+         ? `${pg} : le solde est sur la meme rangee que la photo`
+         : `${pg} : le solde est sur une AUTRE rangee que la photo`
+           + ` (pastilles y=${Math.round(v.pastilles.y)}, photo y=${Math.round(v.profil.y)})`);
+    if (v.chiffres) {
+      const apres = v.chiffres.y >= v.profil.y + v.profil.h - 2;
+      ok(apres,
+         apres ? `${pg} : et les chiffres du site passent en dessous`
+               : `${pg} : les chiffres du site sont remontes devant le compte`
+                 + ` (chiffres y=${Math.round(v.chiffres.y)})`);
+    }
   }
 
   console.log('\n-- ordinateur (1280 px) : le mot est entier --');

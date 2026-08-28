@@ -377,6 +377,23 @@ flottant est sous le plancher envoie 30 % au tresor et met 70 % de cote — elle
 ne detourne rien — et la recolte suivante, une fois le plancher franchi,
 deverse la retenue et remet `carry` a zero.
 
+## Le chiffre que le banc a donne en prime : ce que coute un lancement
+
+`createToken` consomme **6 042 022 de gaz**. Au prix du gaz mesure sur la
+chaine (~0,061 gwei) et l'ETH a 3 000 $, un lancement coute donc
+**0,00037 ETH, soit ~1,11 $**.
+
+C'est **37 fois le frais de 1 000 $SWOGE** (~0,03 $). Autrement dit : ce qui
+dissuade un robot d'inonder le launchpad, ce n'est pas le frais — c'est le
+gaz, et il le fait deja. Le frais ne sert donc pas de filtre anti-spam ; il
+sert a ce pour quoi il a ete voulu : **obliger a detenir du $SWOGE pour
+lancer, et en bruler a chaque lancement.**
+
+Ce chiffre change la question posee avant deploiement. Elle n'est pas
+« combien faut-il pour arreter un robot » — 1,11 $ de gaz s'en charge — mais
+« combien de demande et de destruction de $SWOGE veut-on par lancement, sans
+rendre le lancement prohibitif si le $SWOGE monte ». Le frais est immuable.
+
 ## Trois faux defauts que le banc a produits avant de dire vrai
 
 Un banc mal regle accuse le contrat. Les trois cas, parce qu'ils se

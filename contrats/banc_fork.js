@@ -121,7 +121,7 @@ const DEAD     = '0x000000000000000000000000000000000000dEaD';
 const FRAIS    = ethers.utils.parseEther('1000');                 // frais de lancement
 const SLOT_SOLDES = 0;                                            // `_balances` du $SWOGE, trouve par recoupement
 
-let n = 0, echecs = 0;
+let n = 0, echecs = 0, gazLancement = 0n;
 const ok = (c, m) => { if (c) { n++; console.log('  ok   ' + m); }
                        else { echecs++; console.log('  RATE ' + m); } };
 
@@ -303,6 +303,10 @@ function motif(r) {
   }
   const JETON = ethers.utils.getAddress('0x' + bytesToHex(cr.execResult.returnValue).slice(-40));
   console.log('     jeton =', JETON);
+  /* Le COUT REEL d'un lancement. C'est ce chiffre, et non le frais, qui dit
+     ce qu'un robot doit payer pour inonder le launchpad. */
+  gazLancement = cr.execResult.executionGasUsed || 0n;
+  console.log('     gaz du lancement =', gazLancement.toString());
   avancer(5n);   // la fenetre anti-snipe dure 2 blocs : on la laisse se refermer
 
   /* ---- 3. CE QUE LE LANCEMENT A REELLEMENT PRODUIT ---- */

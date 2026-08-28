@@ -1,4 +1,8 @@
-# Audit de SwogeFunV3 — VERDICT : NON DEPLOYABLE
+# Audit de SwogeFunV3 — VERDICT INITIAL : NON DEPLOYABLE
+
+> **Suite donnee.** Les defauts 1, 2 et 3 sont corriges ; le 4 est un choix
+> economique qui reste a trancher. Voir la section « Ce qui a ete corrige »
+> en fin de document. Le contrat corrige n'a PAS ete re-audite.
 
 Audit adversarial, 28 aout 2026. Huit lentilles independantes sur le contrat,
 puis trois sceptiques par trouvaille dont le travail etait de REFUTER.
@@ -153,3 +157,79 @@ telle.
 **Une verification qui repose sur une hypothese doit verifier l'hypothese.**
 Mon calcul de marge etait juste ; son hypothese — que `shares` vaut l'offre
 entiere — ne l'etait pas, et c'est la seule chose qui comptait.
+
+
+---
+
+# Ce qui a ete corrige
+
+## 1. Le brique definitif — CORRIGE
+
+`CREATE` devient `CREATE2`, avec un sel qui melange l'appelant et une valeur
+que le lanceur choisit (`LaunchParams.salt`). L'adresse du jeton depend donc du
+sel : **un lancement bloque se relance ailleurs**. Il n'y a plus d'adresse
+unique qu'un attaquant puisse empoisonner une fois pour toutes.
+
+Et pour que l'echec soit lisible plutot que cryptique, le contrat verifie
+lui-meme que le pool a bien ete amorce au prix demande :
+
+    (uint160 prixReel,,,,,,) = IUniswapV3Pool(pool).slot0();
+    require(prixReel == sqrtP, "pool deja amorce a un autre prix: relancez avec un autre salt");
+
+Sans cette ligne, un pool devance par un tiers faisait reverter le mint avec un
+message d'Uniswap incomprehensible.
+
+## 2. Le vol du pot commun — CORRIGE, en trois endroits
+
+**Le try/catch est retire.** C'etait la source. Quand `onMove` echouait, la
+correction n'etait pas neutre : elle etait OMISE, ce qui FABRIQUE une creance.
+L'invariant du V2 est restaure — soit la correction est ecrite, soit le
+transfert echoue.
+
+**Et `onMove` est rendu incapable de revertir**, ce qui est la seule facon
+honnete d'avoir les deux. Deux bornes le garantissent :
+
+- `MIN_FLOTTANT_BPS = 100` : sous 1 % de l'offre en circulation, on ne
+  distribue pas — la part va au tresor. Le diviseur n'est donc plus choisi par
+  l'attaquant.
+- `MPS_MAX = 5e49` : plafond de `magPerShare`. Verifie par le calcul —
+  `5e49 x 1e27 = 5,0e76`, sous les `5,79e76` d'`int256`. La multiplication ne
+  deborde pas et la conversion signee, qui n'est PAS verifiee par Solidity, ne
+  peut pas changer de signe. Il faudrait distribuer 1,47e18 jetons $SWOGE pour
+  atteindre ce plafond.
+
+**Chaque jeton a sa propre caisse** (`reserve[token]`). `claimRewards` ne peut
+plus payer que sur ce que CE jeton a apporte. C'est ce qui empeche un defaut
+local de devenir un vol global — et c'est une defense qui tient meme si une
+autre borne cede un jour.
+
+**`pendingRewards` ne revert plus jamais.** Deux gardes redondantes avec
+`MPS_MAX`, et c'est voulu : une fonction dont l'echec serait irreparable ne doit
+pas dependre d'un invariant pose ailleurs dans le fichier.
+
+## 3. DEAD compte deux fois — CORRIGE
+
+`shares()` soustrait desormais `DEAD`, comme `_exclu` l'excluait deja. Verifie :
+les deux fonctions excluent maintenant le meme ensemble.
+
+## 4. Le createur ne recoit rien — NON RESOLU, et c'est un choix economique
+
+La phrase fausse a ete retiree de l'en-tete et remplacee par le constat. Le
+code n'a pas change : l'offre entiere part toujours dans le pool, et
+`Inst.creator` n'est toujours relu nulle part.
+
+Rien n'est en danger — mais personne n'a de raison de lancer. A trancher :
+allocation au createur, part des frais, ou assumer le modele actuel.
+
+---
+
+# Ce qui n'a PAS ete refait
+
+**Le contrat corrige n'a pas ete re-audite.** Les correctifs ont ete verifies
+un par un, par le calcul et par lecture, mais pas par un nouveau passage
+adversarial complet. Les huit lentilles avaient trouve 44 defauts sur la
+version precedente ; il serait imprudent de supposer que celle-ci en a zero.
+
+Toujours vrai : aucune execution, aucun essai sur une chaine, aucune relecture
+humaine. Le contrat detient la liquidite pour toujours et n'a pas de
+proprietaire. **Un defaut restera definitif.**

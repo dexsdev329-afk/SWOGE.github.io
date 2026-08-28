@@ -24,9 +24,20 @@ pragma solidity ^0.8.26;
       disparait.
 
    4. 70 % AUX DETENTEURS, 30 % AU TRESOR. Le V2 donnait 70 % au createur.
-      Ici le createur ne touche rien directement — il touche sa part comme
-      detenteur, proportionnelle a ce qu'il GARDE. La regle recompense donc
-      celui qui garde, pas celui qui prend, et elle est la meme pour tous.
+
+      ATTENTION — CE POINT N'EST PAS RESOLU. Une premiere version de ce
+      commentaire affirmait que le createur « touche sa part comme detenteur,
+      proportionnelle a ce qu'il GARDE ». C'ETAIT FAUX : l'offre entiere part
+      dans le pool au lancement (voir `_launchInstant`), le createur ne recoit
+      aucun jeton, et `Inst.creator` n'est relu nulle part dans ce contrat.
+
+      En l'etat, lancer ici n'a donc AUCUNE contrepartie economique : le
+      createur paie le frais, ne recoit rien, et doit racheter son propre jeton
+      au marche comme tout le monde. Ce n'est pas un defaut de securite — rien
+      n'est en danger — mais c'est une raison suffisante pour que personne ne
+      lance. A trancher avant deploiement : allocation au createur, part des
+      frais, ou assumer que le launchpad ne s'adresse qu'a des gens qui
+      achetent leur propre jeton au marche.
 
    5. AUCUN PROPRIETAIRE. Pas de `owner`, pas de `onlyOwner`, aucun setter.
       Le tresor et le frais de lancement sont des `immutable` poses au
@@ -62,6 +73,16 @@ interface IERC20 {
     function totalSupply() external view returns (uint256);
 }
 interface ISwogeFun { function onMove(address from, address to, uint256 value) external; }
+/* On lit `slot0` pour verifier que le pool a bien ete amorce au prix qu'on a
+   demande. Un tiers peut avoir cree et initialise le pool avant nous, a un
+   prix de son choix — c'est le defaut le plus grave qu'a trouve l'audit. */
+interface IUniswapV3Pool {
+    function slot0() external view returns (
+        uint160 sqrtPriceX96, int24 tick, uint16 observationIndex,
+        uint16 observationCardinality, uint16 observationCardinalityNext,
+        uint8 feeProtocol, bool unlocked
+    );
+}
 interface INonfungiblePositionManager {
     struct MintParams {
         address token0; address token1; uint24 fee;
@@ -123,14 +144,21 @@ contract SwogeToken {
             require(balanceOf[to] <= totalSupply * SNIPE_MAX_BPS / 10000, "anti-snipe: max 5% at launch");
         }
         emit Transfer(f, to, v);
-        /* ---- ET LA COMPTABILITE NE PEUT PAS TUER LE TRANSFERT ----
-           Le V2 appelait `onMove` nu, ligne 77 : un revert dans la
-           comptabilite faisait echouer le transfert, et le jeton devenait
-           inutilisable POUR TOUJOURS — sans proprietaire, rien ne pouvait le
-           rattraper. Le chemin existait : `magPerShare * value` finit par
-           deborder. Ici l'echec est absorbe. On perd la mise a jour d'une
-           recompense ; on ne perd pas le jeton. */
-        try ISwogeFun(fun).onMove(f, to, v) {} catch {}
+        /* ---- L APPEL EST NU, ET C EST VOULU ----
+         * La premiere version l'entourait d'un `try/catch`, pour qu'un defaut
+         * de comptabilite ne puisse pas tuer un transfert. L'audit a montre que
+         * c'etait exactement l'inverse : quand `onMove` echoue, la correction
+         * n'est pas neutre, elle est OMISE. Le solde augmente sans que la
+         * creance correspondante soit annulee — on ne perd pas une recompense,
+         * on en FABRIQUE une. Et le pot etant commun, elle se paie sur les
+         * detenteurs des autres jetons.
+         *
+         * Le V2 avait raison : soit la correction est ecrite, soit le transfert
+         * echoue. On rend donc l'appel nu — et on rend `onMove` incapable de
+         * revertir, ce qui est la seule facon honnete d'avoir les deux. Voir
+         * MPS_MAX cote launchpad : le plafond garantit que la multiplication ne
+         * peut pas deborder, pour tout solde jusqu'a l'offre entiere. */
+        ISwogeFun(fun).onMove(f, to, v);
     }
 }
 
@@ -210,6 +238,29 @@ contract SwogeFunV3 {
 
     uint256 public constant TOTAL_SUPPLY = 1_000_000_000 ether;
 
+    /* ---------- LES DEUX BORNES QUI RENDENT LA COMPTABILITE SURE ----------
+     *
+     * L'audit a montre que `shares()` est une lecture LIVE des soldes, donc
+     * qu'un attaquant la ramene a quelques wei en envoyant ses jetons au pool.
+     * `magPerShare += montant * MAG / shares` explosait alors, et tout se
+     * cassait en cascade : multiplication qui deborde, conversion signee qui
+     * s'inverse, recompenses definitivement irreclamables.
+     *
+     * MIN_FLOTTANT_BPS : en dessous de 1 % de l'offre en circulation, on ne
+     * distribue pas — la part part au tresor. Sans plancher, le diviseur est
+     * choisi par l'attaquant.
+     *
+     * MPS_MAX : et meme avec le plancher, `magPerShare` ne fait que croitre.
+     * Ce plafond garantit `magPerShare * solde <= int256 max` POUR TOUT SOLDE
+     * jusqu'a l'offre entiere — c'est ce qui permet a `onMove` de ne jamais
+     * revertir, et donc a l'appel du jeton d'etre nu.
+     *   int256 max / offre entiere = 5,79e49 ; on prend 5e49, soit 1,16x de
+     *   marge. Il faudrait distribuer 1,5 milliard de fois l'offre entiere de
+     *   $SWOGE pour l'atteindre : injoignable en pratique, prouve en theorie.
+     * Au-dela, la part part au tresor plutot que de corrompre la comptabilite. */
+    uint16  public constant MIN_FLOTTANT_BPS = 100;      // 1 %
+    uint256 public constant MPS_MAX = 5e49;
+
     struct Inst { address token; address creator; address pool; uint256 lpTokenId; bool exists; }
     mapping(address => Inst) public instant;
     address[] public allTokens;
@@ -218,6 +269,15 @@ contract SwogeFunV3 {
        Comptabilite magnifiee : on ne parcourt jamais les detenteurs, on tient
        un cumul par part et une correction par personne a chaque mouvement. */
     uint256 internal constant MAG = 2**128;
+
+    /* ---------- CHAQUE JETON A SA PROPRE CAISSE ----------
+     * Sans elle, `claimRewards` puisait dans le solde $SWOGE indivis du
+     * contrat : une erreur de comptabilite sur UN jeton se payait sur les
+     * recompenses des detenteurs de tous les autres. C'est ce qui transformait
+     * un defaut local en vol global. Le total des creances d'un jeton ne peut
+     * desormais pas depasser ce que CE jeton a apporte. */
+    mapping(address => uint256) public reserve;
+
     mapping(address => uint256) public magPerShare;
     mapping(address => mapping(address => int256)) internal magCorrection;
     mapping(address => mapping(address => uint256)) public withdrawn;
@@ -242,6 +302,20 @@ contract SwogeFunV3 {
 
     struct LaunchParams {
         string name; string symbol;
+        /* ---- LE SEL REND LE LANCEMENT REJOUABLE ----
+         * Avec un CREATE ordinaire, l'adresse du prochain jeton est
+         * `keccak(rlp(launchpad, nonce))` : entierement previsible. Un tiers
+         * pouvait creer et INITIALISER le pool de cette adresse a un prix de
+         * son choix ; le mint mono-face revertait, le revert annulait
+         * l'increment du nonce, et la tentative suivante retombait sur la MEME
+         * adresse empoisonnee. Le launchpad etait mort pour toujours, pour le
+         * prix du gaz, et sans owner personne n'aurait pu le rattraper.
+         *
+         * Avec un CREATE2 dont le sel melange l'appelant et cette valeur,
+         * l'adresse change des qu'on change de sel : un lancement bloque se
+         * relance ailleurs. L'attaquant devrait empoisonner d'avance toutes les
+         * adresses possibles, ce qui n'existe pas. */
+        bytes32 salt;
         string telegram; string twitter; string website; string logo;
     }
 
@@ -261,7 +335,9 @@ contract SwogeFunV3 {
 
     /* ---------- le pool, amorce en jeton seul ---------- */
     function _launchInstant(LaunchParams calldata p) internal returns (address t) {
-        t = address(new SwogeToken(p.name, p.symbol, TOTAL_SUPPLY));
+        // CREATE2 : l'adresse depend du sel, donc un lancement bloque se relance.
+        bytes32 sel = keccak256(abi.encode(msg.sender, p.salt));
+        t = address(new SwogeToken{salt: sel}(p.name, p.symbol, TOTAL_SUPPLY));
         require(IERC20(t).approve(positionManager, TOTAL_SUPPLY), "approve");
 
         INonfungiblePositionManager.MintParams memory mp;
@@ -287,6 +363,16 @@ contract SwogeFunV3 {
 
         address pool = INonfungiblePositionManager(positionManager)
             .createAndInitializePoolIfNecessary(mp.token0, mp.token1, POOL_FEE, sqrtP);
+
+        /* ---- LE POOL DOIT ETRE AU PRIX QU'ON A DEMANDE ----
+         * `createAndInitializePoolIfNecessary` n'initialise QUE si le pool
+         * n'existe pas encore : si un tiers l'a devance, il rend le pool a SON
+         * prix, en silence. Le mint qui suit reverterait alors avec un message
+         * d'Uniswap incomprehensible. On verifie donc nous-memes, et le message
+         * dit quoi faire : relancer avec un autre sel. */
+        (uint160 prixReel,,,,,,) = IUniswapV3Pool(pool).slot0();
+        require(prixReel == sqrtP, "pool deja amorce a un autre prix: relancez avec un autre salt");
+
         SwogeToken(t).setPool(pool);   // exempter le pool de l'anti-snipe AVANT le mint
         (uint256 tokenId,,,) = INonfungiblePositionManager(positionManager).mint(mp);
 
@@ -335,16 +421,39 @@ contract SwogeFunV3 {
         Inst storage i = instant[token];
         if (!i.exists) return 0;
         uint256 total = IERC20(token).totalSupply();
-        uint256 hors  = IERC20(token).balanceOf(i.pool) + IERC20(token).balanceOf(address(this));
+        /* DEAD est retire ICI AUSSI. Il ne l'etait pas, et `_exclu` l'excluait
+           pourtant des ayants droit : sa part gonflait le diviseur sans que
+           personne puisse jamais la reclamer, et elle restait bloquee dans un
+           contrat sans fonction de retrait. Pire, `collectFees` brule vers DEAD
+           a chaque recolte : la fuite s'aggravait a chaque distribution. Le
+           commentaire d'origine affirmait que les deux exclusions etaient
+           identiques — elles ne l'etaient pas. Elles le sont maintenant. */
+        uint256 hors  = IERC20(token).balanceOf(i.pool)
+                      + IERC20(token).balanceOf(address(this))
+                      + IERC20(token).balanceOf(DEAD);
         return total > hors ? total - hors : 0;
     }
 
     function _distributeToHolders(address token, uint256 amount) internal {
         uint256 s = shares(token);
-        // Personne dehors : la part revient au tresor plutot que de rester
-        // bloquee sans ayant droit.
-        if (s == 0) { require(IERC20(swoge).transfer(swogeTreasury, amount), "swoge"); return; }
-        magPerShare[token] += amount * MAG / s;
+
+        /* ---- TROIS RAISONS DE NE PAS DISTRIBUER, ET UNE SEULE ISSUE ----
+         * 1. Personne dehors : aucun ayant droit.
+         * 2. Flottant sous le plancher : le diviseur serait choisi par
+         *    l'attaquant, et `magPerShare` exploserait.
+         * 3. Plafond atteint : au-dela, `magPerShare * solde` sortirait de
+         *    `int256` et la comptabilite se corromprait en silence.
+         * Dans les trois cas la part va au TRESOR. Elle ne reste jamais
+         * bloquee dans un contrat qui n'a pas de fonction de retrait. */
+        uint256 plancher = TOTAL_SUPPLY * MIN_FLOTTANT_BPS / 10000;
+        uint256 pas = s == 0 ? 0 : amount * MAG / s;
+        if (s < plancher || pas == 0 || magPerShare[token] + pas > MPS_MAX) {
+            require(IERC20(swoge).transfer(swogeTreasury, amount), "swoge");
+            return;
+        }
+        magPerShare[token] += pas;
+        // La caisse de CE jeton, et d'aucun autre.
+        reserve[token] += amount;
         emit HolderRewards(token, amount);
     }
 
@@ -358,6 +467,15 @@ contract SwogeFunV3 {
         if (!i.exists) return;
         uint256 mps = magPerShare[msg.sender];
         if (mps == 0) return;
+        /* ---- CETTE FONCTION NE PEUT PAS REVERTIR, ET C'EST DEMONTRABLE ----
+         * `magPerShare` est plafonne a MPS_MAX = 5e49 par `_distributeToHolders`,
+         * et `value` ne peut pas depasser l'offre, 1e27. Le produit vaut donc au
+         * plus 5e76, sous les 5,79e76 d'`int256`. La multiplication ne deborde
+         * pas, et la conversion signee — qui, elle, n'est PAS verifiee par
+         * Solidity et enroulerait en silence — ne peut pas changer de signe.
+         * C'est ce qui autorise le jeton a appeler nu : l'invariant du V2
+         * « soit la correction est ecrite, soit le transfert echoue » tient, et
+         * la seconde branche n'arrive jamais. */
         int256 delta = int256(mps * value);
         if (!_exclu(msg.sender, from)) magCorrection[msg.sender][from] += delta;
         if (!_exclu(msg.sender, to))   magCorrection[msg.sender][to]   -= delta;
@@ -368,9 +486,19 @@ contract SwogeFunV3 {
             || who == instant[token].pool || who == DEAD;
     }
 
+    /* Ne revert JAMAIS. Elle est lue par l'interface et appelee en premiere
+       ligne de `claimRewards` : si elle pouvait revertir, un detenteur perdrait
+       l'acces a ses recompenses definitivement, sans owner pour le debloquer.
+       Le garde-fou est redondant avec MPS_MAX — c'est voulu : une fonction dont
+       l'echec est irreparable ne doit pas dependre d'un invariant pose ailleurs. */
     function pendingRewards(address token, address holder) public view returns (uint256) {
         if (_exclu(token, holder)) return 0;
-        int256 acc = int256(magPerShare[token] * IERC20(token).balanceOf(holder)) + magCorrection[token][holder];
+        uint256 mps = magPerShare[token];
+        uint256 bal = IERC20(token).balanceOf(holder);
+        if (mps != 0 && bal > type(uint256).max / mps) return 0;
+        uint256 brut = mps * bal;
+        if (brut > uint256(type(int256).max)) return 0;
+        int256 acc = int256(brut) + magCorrection[token][holder];
         uint256 total = acc < 0 ? 0 : uint256(acc) / MAG;
         uint256 w = withdrawn[token][holder];
         return total > w ? total - w : 0;
@@ -380,6 +508,13 @@ contract SwogeFunV3 {
     function claimRewards(address token) external nonReentrant {
         uint256 amt = pendingRewards(token, msg.sender);
         require(amt > 0, "nothing");
+        /* La caisse de CE jeton, et rien d'autre. Sans cette ligne, une creance
+           mal calculee sur un jeton jetable se payait sur les recompenses des
+           detenteurs de tous les autres — c'est ce qui transformait un defaut
+           local en vol global. */
+        uint256 caisse = reserve[token];
+        require(amt <= caisse, "reserve");
+        reserve[token] = caisse - amt;
         withdrawn[token][msg.sender] += amt;
         require(IERC20(swoge).transfer(msg.sender, amt), "swoge");
         emit Claimed(token, msg.sender, amt);

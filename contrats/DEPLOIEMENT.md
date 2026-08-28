@@ -158,22 +158,68 @@ bousculer.**
 
 ## 5. Verifier le contrat sur Blockscout
 
-<https://robinhoodchain.blockscout.com> -> ton adresse -> **Verify & Publish**
+### Ce que « verifier » veut dire
 
-- Methode : **Solidity (Single file)**
+Blockscout ne te croit pas sur parole. Il prend le code source que tu donnes,
+**le recompile lui-meme** avec les reglages que tu declares, et compare le
+resultat au bytecode reellement deploye. S'il retombe dessus, il publie la
+source. Personne ne peut donc publier une source qui ne correspond pas au
+contrat : c'est ce qui rend la publication credible.
+
+Deux issues possibles :
+
+- **Full match** — tout correspond, y compris l'empreinte de metadonnee.
+- **Partial match** — le CODE EXECUTABLE correspond exactement, seule la
+  metadonnee de fin differe. La metadonnee est une empreinte du source et des
+  reglages ; elle n'est jamais executee. **Un partial match publie la source et
+  prouve que le code est le bon.** Pour ce que tu en attends — qu'on puisse
+  lire qu'il n'y a ni proprietaire ni setter — il suffit.
+
+### Voie A — la simple (2 minutes, partial match probable)
+
+Explorateur -> ton adresse -> onglet **Contract** -> **Verify & Publish**
+
+- Methode : **Solidity (Single file)** ou **Flattened source code**
 - Compiler : `v0.8.34+commit.80d5c536`
-- Optimization : **Yes**, 200 runs
+- Optimization : **Yes**, **200** runs
 - EVM Version : **cancun**
-- Colle le meme fichier source
-- **Arguments du constructeur encodes (ABI-encoded)** :
+- Colle le contenu de `contrats/SwogeFunV3.sol`
+- **Constructor Arguments (ABI-encoded)** :
 
 ```
 00000000000000000000000073991a25c818bf1f1128deaab1492d45638de0d30000000000000000000000008a166fb41cd659a0a43396272ff73973ce29f8170000000000000000000000006229ddf7c8ed3a194819af2e68f5de2dc31e7f3000000000000000000000000000000000000000000000021e19e0c9bab2400000
 ```
 
-Verifier n'est pas cosmetique : sans source publiee, personne ne peut
-constater qu'il n'y a **ni proprietaire, ni setter, ni porte de sortie**. Sur
-un launchpad, c'est tout l'argument.
+> Certaines versions de Blockscout cochent d'elles-memes « Try to fetch
+> constructor arguments automatically ». Si le champ existe, remplis-le quand
+> meme avec la valeur ci-dessus.
+
+### Voie B — le full match (si le partial ne te suffit pas)
+
+L'empreinte de metadonnee depend des reglages EXACTS passes au compilateur.
+Recompiler ailleurs ne les reproduit pas : c'est verifie, aucune combinaison
+essayee ici ne retombe sur les empreintes du contrat deploye. **Seul Remix
+possede l'entree exacte qui a produit ce bytecode.**
+
+Dans Remix, apres compilation, l'explorateur de fichiers contient un dossier
+**`artifacts/`** :
+
+- `SwogeFunV3_metadata.json` — la metadonnee solc, celle-la meme dont
+  l'empreinte est inscrite dans le bytecode ;
+- selon la version, un `build-info/` avec l'entree **Standard JSON** complete.
+
+Sur Blockscout, choisis alors la methode qui correspond a ce que tu as sous la
+main :
+
+- **Solidity (Standard JSON input)** -> televerse l'entree standard ;
+- **Sourcify** -> televerse `SwogeFunV3_metadata.json` **et** le `.sol`.
+
+### Ce qu'il ne faut PAS faire
+
+Ne recompile pas « a peu pres » avec d'autres reglages pour forcer un match.
+Si Blockscout refuse, c'est qu'un reglage declare ne correspond pas — corrige
+le reglage, jamais la source. Une source publiee qui ne serait pas celle du
+contrat serait pire que pas de source du tout.
 
 ---
 

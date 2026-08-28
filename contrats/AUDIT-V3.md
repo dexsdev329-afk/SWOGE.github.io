@@ -426,6 +426,43 @@ reproduiront :
 
 ---
 
+# EN PRODUCTION — le contrat a tourne pour de vrai
+
+Deploye le 29/08/2026 a **`0xc16388e95dbbD37A679A7d507C174C7e34C5856E`**.
+
+Avant branchement, le code d'execution deploye a ete compare octet pour octet a
+la reference compilee : **identique**, aux seules variables `immutable` (dont
+les valeurs ont ete verifiees) et aux deux empreintes de metadonnee pres —
+celle de `SwogeToken` incrustee dans `SwogeFunV3`, et la CBOR finale. Ni l'une
+ni l'autre ne s'execute.
+
+## Le premier jeton, et ce qu'il prouve
+
+`Swogebet` (`0xc0aEd547...`), lance par le createur, qui a ensuite achete 66,5 %
+de l'offre **au marche**, revendu et rachete : six echanges.
+
+| verifie sur la chaine | resultat |
+|---|---|
+| NFT de liquidite detenu par le launchpad | oui — liquidite bloquee |
+| Jetons recus par le createur AU LANCEMENT | **zero** |
+| Frais de 10 000 $SWOGE preleve et brule | oui |
+| `FeesCollected` | 143 937,3431 detenteurs / 61 687,4328 tresor |
+| Partage effectif | **70,00 / 30,00** |
+| `HolderRewardsDeferred` | aucun — normal, flottant a 66,5 % |
+| `Claimed` | 143 923,5941 par le detenteur |
+| `reserve` restant | 13,749 $SWOGE |
+| Solde $SWOGE du launchpad | **13,749** |
+
+**L'invariant de solvabilite tient a la decimale sur la vraie chaine :** le
+solde du contrat egale exactement `reserve`. Et le reliquat n'est pas une
+perte — il revient au second detenteur, qui possede 63 546 jetons :
+`143 937 x 63 546 / 665 255 633 = 13,75`. Le compte tombe juste.
+
+Tout le chemin economique du contrat — lancement, pool, frais, repartition,
+reclamation — a desormais tourne en production, pas seulement sur un fork.
+
+---
+
 # Etat
 
 Compile propre sous solc 0.8.34+commit.80d5c536, **0 avertissement**,

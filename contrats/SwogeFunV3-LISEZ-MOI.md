@@ -31,10 +31,23 @@ l'interface — n'y est pas.
 | tresor et frais | `immutable`, poses au deploiement |
 
 Le montant du frais est un parametre du constructeur. **1 000 $SWOGE** a ete
-retenu : 0,40 $ aujourd'hui, 4 $ si le jeton fait x10, 40 $ a x100. On vise
-volontairement bas — « trop cher » tue le launchpad sans reparation possible,
-« trop peu cher » ne fait qu'une liste en desordre, qui se filtre dans
-l'interface. Une ligne a changer avant deploiement.
+retenu.
+
+CE QUE CA VAUT REELLEMENT, MESURE ET NON SUPPOSE. La paire Uniswap v2
+$SWOGE/WETH (`0x2dc0Fb72...`) donne 9,906e-9 ETH par $SWOGE, soit environ
+**0,0000297 $** a 3 000 $/ETH — donc **3 centimes** les 1 000 $SWOGE, et
+~29 700 $ de capitalisation pour le jeton entier.
+
+Une version precedente de ce document annoncait 0,40 $ pour ces 1 000 $SWOGE.
+C'etait faux d'un facteur treize. Le chiffre ci-dessus est lu sur la chaine ;
+il bougera, et il faut le relire avant de deployer plutot que de recopier
+celui-ci.
+
+On vise volontairement bas — « trop cher » tue le launchpad sans reparation
+possible, « trop peu cher » ne fait qu'une liste en desordre, qui se filtre
+dans l'interface. A 3 centimes on est sous le plancher utile : le frais ne
+filtre plus rien. **C'est la ligne a revoir avant deploiement**, en visant un
+cout qui reste dissuasif pour un robot sans etre prohibitif pour une personne.
 
 ## Ce qui a ete verifie, et comment
 

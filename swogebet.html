@@ -2176,7 +2176,31 @@ main{ min-width:0; }
   /* Le hamburger tenait la troisieme place ; c est le profil qui la prend,
      sinon il retombe sur sa propre rangee et l en-tete repasse a quatre. */
   .menubtn, #gxProfil{ order:3 }
-  .connrow{ order:4; flex:1 1 100% !important; justify-content:center !important }
+  /* ---- ET ELLE PEUT SE REPLIER QUAND LA LIGNE N EST PLUS ASSEZ LARGE ----
+     Les deux boutons portent `white-space:nowrap` : « CONNECT WALLET » fait
+     165 px, « SIGN UP — EMAIL » 159, plus 8 de gouttiere — 332 px que rien ne
+     peut retrecir. Sur un ecran de 320 (un iPhone en zoom d affichage, un
+     iPhone SE) il ne reste que 288 px de contenu : la rangee debordait, le
+     telephone elargissait la fenetre de mise en page a 348, et TOUTE la page
+     se decalait de 28 px — la marque devenait « OGE / LD », « PLAYERS »
+     devenait « AYERS », la banniere passait sous le bord droit. C est le
+     defaut signale, et 348 - 320 = 28 le mesure exactement.
+     `wrap` ne fait rien tant que la place existe : de 350 a 620 px la rangee
+     reste sur une ligne comme avant, et en dessous elle empile les deux
+     boutons au lieu de pousser l ecran. Le `nowrap` de la regle du dessus
+     visait une mise en page en COLONNE qui s empilait toujours ; ici la
+     direction est deja forcee en `row`, donc replier ne la ramene pas. */
+  .connrow{ order:4; flex:1 1 100% !important; justify-content:center !important;
+            flex-wrap:wrap !important }
+  /* ---- ET AVANT DE SE REPLIER, ELLE SE RESSERRE ----
+     Se replier repare le decalage mais coute une rangee d en-tete. A 360 px —
+     la moitie des telephones Android — il ne manquait que quatre pixels : dix
+     de moins de chaque cote des deux boutons les rendent, et la paire reste
+     sur sa ligne comme avant. Sous 340 il n y a plus rien a gratter, et c est
+     `wrap` qui prend le relais. */
+  @media (max-width:400px){
+    .connrow .sw-b{ padding-left:11px !important; padding-right:11px !important }
+  }
   .sw-chiffres{ order:5 }
 }
 </style>

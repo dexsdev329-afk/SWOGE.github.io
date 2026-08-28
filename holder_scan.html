@@ -426,7 +426,27 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   nav.sb-ancre{ order:2; flex:0 1 auto; min-width:0; margin-left:auto;
                 flex-wrap:wrap; justify-content:flex-end; row-gap:6px }
   .menubtn, #gxProfil{ order:3 }
-  .connrow{ order:4; flex:1 1 100% !important; justify-content:center !important }
+  /* ---- ET ELLE PEUT SE REPLIER QUAND LA LIGNE N EST PLUS ASSEZ LARGE ----
+     Les deux boutons portent `white-space:nowrap` : la paire fait 332 px que
+     rien ne peut retrecir. Sur un ecran de 320 (un iPhone en zoom d affichage,
+     un iPhone SE) il ne reste que 288 px : la rangee debordait, le telephone
+     elargissait la fenetre de mise en page a 348, et TOUTE la page se decalait
+     de 28 px — en-tete coupe a gauche, contenu sous le bord droit.
+     `wrap` ne fait rien tant que la place existe : de 350 a 620 px la rangee
+     reste sur une ligne comme avant. Le `nowrap` de la regle du dessus visait
+     une mise en page en COLONNE ; ici la direction est deja forcee en `row`,
+     donc replier ne la ramene pas. */
+  .connrow{ order:4; flex:1 1 100% !important; justify-content:center !important;
+            flex-wrap:wrap !important }
+  /* ---- ET AVANT DE SE REPLIER, ELLE SE RESSERRE ----
+     Se replier repare le decalage mais coute une rangee d en-tete. A 360 px —
+     la moitie des telephones Android — il ne manquait que quatre pixels : dix
+     de moins de chaque cote des deux boutons les rendent, et la paire reste
+     sur sa ligne comme avant. Sous 340 il n y a plus rien a gratter, et c est
+     `wrap` qui prend le relais. */
+  @media (max-width:400px){
+    .connrow .sw-b{ padding-left:11px !important; padding-right:11px !important }
+  }
   .sw-chiffres{ order:5; flex:1 1 100% }
 }
 

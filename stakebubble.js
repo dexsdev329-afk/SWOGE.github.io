@@ -555,7 +555,17 @@
       etat.socket = ev.target;
       if (m.avatars) VISAGES = m.avatars;
       if (m.uploaded) { versionPhoto++; dit('Photo saved — other players see it now.', 'ok'); }
-      if (m.profile) MOI = m.profile;
+      if (m.profile) {
+        MOI = m.profile;
+        /* ---- ET ON REPEINT ----
+         * `MOI` porte la photo, le badge et le palier : c'est TOUT ce que
+         * l'avatar montre. Il n'etait repeint qu'a l'authentification et a la
+         * montee de niveau — deux moments ou `MOI` n'est pas encore arrive.
+         * Le visage apparaissait donc a l'ouverture du tiroir, et seulement
+         * la : un bouton de compte qui ne montre pas le compte tant qu'on ne
+         * l'ouvre pas. */
+        peintBouton();
+      }
       if (m.prixNom) { PRIX_NOM = m.prixNom; posePrixNom(); }
       /* Un nom unique retire 1000 $SWOGE du solde, sur-le-champ. Le serveur
          renvoie le solde a jour avec la reponse, mais chaque page lit le sien
@@ -1377,7 +1387,7 @@
       '.c4-joueur .nm .swhav ~ .pion{display:none;}' +
       '.c4-joueur.j1 .swhav{box-shadow:0 0 0 2px #FF4655;}' +
       '.c4-joueur.j2 .swhav{box-shadow:0 0 0 2px #2E7BFF;}' +
-      '.swhav.swcad::after{content:"";position:absolute;left:-24%;top:-24%;width:148%;height:148%;' +
+      '.swhav.swcad::after{content:"";position:absolute;left:-18%;top:-15.4%;width:136%;height:136%;' +
       'background:var(--cadre) center/contain no-repeat;pointer-events:none;}' +
       '.swhlv{display:inline-block;margin-top:3px;padding:1px 7px;border-radius:999px;' +
       'font-family:inherit;font-size:9.5px;font-weight:900;letter-spacing:.5px;' +
@@ -2262,8 +2272,36 @@
          a 148 % il mord sur les 18 % exterieurs de la photo — c'est ce que
          fait un vrai cadre, et c'est ce qui empeche le lisere de flotter.
          La marge laterale rend au voisin la place que le cadre lui prend. */
+      /* ---- L'AVATAR DE LA PAGE, EN IMAGE ----
+       * Les feuilles des pages le dessinent en carre arrondi avec un emoji au
+       * centre : elles n'ont jamais prevu qu'il porte une photo. On pose donc
+       * ici ce qu'il faut, et RIEN de plus — ni taille ni position, qui
+       * restent a la page. `!important` parce que sa regle a elle pose un
+       * `background` complet, raccourci qui ecraserait notre image. */
+      '.swav-img{background-size:cover !important;background-position:center !important;' +
+      'background-repeat:no-repeat !important;color:transparent !important;' +
+      'border-color:transparent !important;}' +
+      /* Un cadre est ROND. Pose sur un carre arrondi, l'anneau flotte a ses
+         quatre coins — le meme defaut que le decalage vertical, dans l'autre
+         sens. */
+      '.sw-avatar.swcad{border-radius:50% !important;}' +
       '.swcad{position:relative;overflow:visible;}' +
-      '.swcad::after{content:"";position:absolute;left:-24%;top:-24%;width:148%;height:148%;' +
+      /* ---- LA TAILLE ET LE CALAGE VIENNENT D'UNE MESURE ----
+       * Le cadre etait pose a 148 %, centre. Deux defauts, signales ensemble :
+       * « recale bien la banniere avec la photo, il y a un decalage » et
+       * « trop petite la photo ».
+       *
+       * Mesure sur les DIX cadres : leur trou fait 67,7 % de la largeur en
+       * moyenne, et son centre est 1,9 % PLUS HAUT que le centre de l'image —
+       * la banniere du bas pousse l'anneau vers le haut. Un cadre centre
+       * posait donc son trou au-dessus de la photo, toujours du meme cote.
+       *
+       * A 136 % l'anneau mord huit pour cent du diametre de la photo, ce qui
+       * est ce que fait un cadre, et son encombrement passe de 1,48 a 1,36 :
+       * la photo occupe visiblement plus de place sans grandir d'un pixel.
+       * Le decalage vers le BAS vaut 1,9 % du cadre, soit 2,6 % de l'element.
+       */
+      '.swcad::after{content:"";position:absolute;left:-18%;top:-15.4%;width:136%;height:136%;' +
       'background:var(--cadre) center/contain no-repeat;pointer-events:none;z-index:2;}' +
       '.av.swcad{margin:0 5px;border-color:transparent;}' +
       /* Le bouton de la barre : le cadre deborde de 24 % de chaque cote, il
@@ -3696,6 +3734,111 @@
       try { etat.socket.send('{"type":"profile"}'); } catch (e) {}
     }
   }
+
+  /* ==================== CHANGER DE JEU SANS REPASSER PAR LE HALL ====================
+   *
+   * DEMANDE : « une fois qu'on est sur le blackjack, ce serait bien qu'au
+   * centre sur la gauche il y ait une petite fleche qui nous fasse changer de
+   * jeu, a chaque fois un different, ca defile — comme ca les gens peuvent
+   * changer de jeu plus rapidement ».
+   *
+   * Aujourd'hui il faut revenir au hall, retrouver la rangee, faire defiler,
+   * choisir. Trois gestes et un ecran, pour une envie qui en vaut un.
+   *
+   * ---- LA LISTE N'EXISTE QU'UNE FOIS ----
+   *
+   * Elle est ECRITE ici et VERIFIEE contre la rangee de `games.html` par un
+   * essai : ce depot a paye quatre fois le prix de deux listes qui divergent,
+   * et celle-ci changerait le jour ou l'on ajoute un jeu. Les adresses sont
+   * la seule chose qui compte, et ce sont elles qu'on compare.
+   *
+   * ---- ET SEULEMENT SUR TELEPHONE ----
+   *
+   * C'est ce qui a ete demande, et c'est aussi la ou ca sert : sur un grand
+   * ecran le hall est a un onglet, et une pastille collee au bord gauche
+   * passerait devant le jeu pour rendre un service que la barre du navigateur
+   * rend deja.
+   */
+  var MAISON = [
+    { u: 'swoge_blackjack.html?table=or', n: 'Blackjack' },
+    { u: 'swoge_spin.html', n: 'Spin' },
+    { u: 'swoge_casino.html?game=holdem', n: "Hold'em" },
+    { u: 'swoge_casino.html?game=three', n: 'Three Card' },
+    { u: 'swoge_casino.html?game=mines', n: 'Mines' },
+    { u: 'swoge_casino.html?game=hilo', n: 'Hi-Lo' },
+    { u: 'plinko.html', n: 'Plinko' },
+    { u: 'swoge_smash.html', n: 'Smash' }
+  ];
+
+  /* Ou sommes-nous dans la liste ? Le fichier ET le parametre : trois de ces
+     jeux vivent dans `swoge_casino.html` et ne se distinguent que par lui. */
+  function jeuCourant() {
+    var f = (location.pathname.split('/').pop() || '').toLowerCase();
+    var q = new URLSearchParams(location.search);
+    for (var i = 0; i < MAISON.length; i++) {
+      var m = MAISON[i].u.split('?');
+      if (m[0].toLowerCase() !== f) continue;
+      if (!m[1]) return i;
+      var p = new URLSearchParams(m[1]);
+      var bon = true;
+      p.forEach(function (v, k) { if (q.get(k) !== v) bon = false; });
+      if (bon) return i;
+    }
+    return -1;
+  }
+
+  function monteFleche() {
+    if (document.getElementById('swjx')) return;
+    if (!document.body) return;
+    var i = jeuCourant();
+    if (i < 0) return;                       // on n'est pas sur un jeu de la liste
+    var precedent = MAISON[(i - 1 + MAISON.length) % MAISON.length];
+
+    var c = document.createElement('style');
+    c.id = 'swjx-css';
+    c.textContent =
+      /* Au bord gauche, a mi-hauteur — c'est ou le pouce d'une main gauche
+         tombe, et c'est ce qui a ete demande. */
+      '#swjx{position:fixed;left:0;top:50%;transform:translateY(-50%);z-index:2147481000;' +
+      'display:flex;align-items:center;gap:4px;padding:9px 9px 9px 5px;border:0;' +
+      'border-radius:0 999px 999px 0;cursor:pointer;font:800 11px/1 inherit;' +
+      'background:rgba(12,18,34,.82);color:#EAF2FF;backdrop-filter:blur(6px);' +
+      'box-shadow:0 6px 18px rgba(0,0,0,.35);' +
+      /* Trois pages du site rendent tout bouton inerte pour que leurs
+         vignettes de demonstration ne promettent rien. Celui-ci n'est pas une
+         vignette. La lecon a deja coute deux signalements. */
+      'pointer-events:auto !important;' +
+      'max-width:52vw;overflow:hidden;white-space:nowrap;}' +
+      '#swjx b{font:900 15px/1 inherit;opacity:.9;}' +
+      '#swjx span{font-weight:700;letter-spacing:.2px;opacity:.92;' +
+      'overflow:hidden;text-overflow:ellipsis;}' +
+      /* Sur grand ecran il n'a rien a faire la : le hall est a un onglet. */
+      '@media (min-width:981px){#swjx{display:none}}' +
+      /* Et jamais par-dessus un panneau ouvert : un raccourci qui recouvre ce
+         qu'on est en train de lire n'est plus un raccourci. */
+      'body.swdrawer #swjx{display:none}';
+    document.head.appendChild(c);
+
+    var b = document.createElement('button');
+    b.id = 'swjx';
+    b.type = 'button';
+    b.setAttribute('aria-label', 'Previous game: ' + precedent.n);
+    b.title = 'Previous game: ' + precedent.n;
+    b.innerHTML = '<b>\u2039</b><span></span>';
+    b.querySelector('span').textContent = precedent.n;
+    b.addEventListener('click', function () { location.href = precedent.u; });
+    document.body.appendChild(b);
+  }
+
+  /* Elle ne depend d'AUCUN compte : changer de jeu ne depense rien et ne
+     demande a personne qui l'on est. La poser derriere l'authentification
+     l'aurait rendue invisible a celui qui regarde avant de se connecter,
+     c'est-a-dire exactement celui qui cherche encore son jeu. */
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function () {
+      try { monteFleche(); } catch (e) {}
+    });
+  } else { try { monteFleche(); } catch (e) {} }
 
   /* ---------------------------------------------------------- parrainage
    *
@@ -6438,6 +6581,9 @@
      C'est la seule chose de lui qu'il voit sur chaque page, et c'est ce qui
      donne envie d'en choisir une. */
   function peintBouton() {
+    /* L'avatar de la PAGE d'abord : il existe meme quand le notre n'a pas pu
+       se poser, et c'est lui qu'on voit sur les six pages principales. */
+    peintAvatarPage();
     if (!profBtn) return;
     var pastille = profBtn.querySelector('.swpn');
     if (MOI && (MOI.photo || estBadge(MOI.visage))) {
@@ -6464,6 +6610,42 @@
     }
     titreBouton();
     if (pastille) profBtn.appendChild(pastille);
+  }
+
+  /*
+   * ---- L'AVATAR DE LA PAGE PORTE LE MEME VISAGE ----
+   *
+   * Les six pages principales posent leur propre bouton de compte
+   * (`#gxProfil`) et masquent le notre — deux avatars a l'ecran, c'etait le
+   * doublon de trop. Mais le leur restait un emoji : la photo, le badge et le
+   * cadre de palier vivaient sur celui qu'on ne voit pas. Le joueur avait donc
+   * un visage sur une page et un bonhomme gris sur les autres, sans que rien
+   * ne l'explique.
+   *
+   * On peint donc les DEUX, avec la meme matiere. Ce n'est pas un doublon de
+   * code : c'est un seul endroit qui peint, et deux boutons qui recoivent.
+   */
+  function peintAvatarPage() {
+    var el = document.getElementById('gxProfil');
+    if (!el) return;
+    /* ---- IL POSE SES PROPRES REGLES ----
+     * Le cadre et l'avatar en image sont dessines par la feuille du tiroir,
+     * qui n'est injectee qu'a l'authentification. Un message de PROFIL peut
+     * arriver avant : on peignait alors des classes que rien ne dessinait —
+     * pas d'erreur, pas de cadre, et rien pour le dire. */
+    try { profStyle(); } catch (e) {}
+    if (MOI && (MOI.photo || estBadge(MOI.visage))) {
+      el.textContent = '';
+      el.classList.add('swav-img');
+      el.style.backgroundImage = 'url("' +
+        (MOI.photo ? urlPhoto(MOI.address) : urlBadge(MOI.visage)) + '")';
+    } else {
+      el.classList.remove('swav-img');
+      el.style.backgroundImage = '';
+      if (!el.textContent.trim()) el.textContent = (MOI && MOI.visage) || '\uD83D\uDC64';
+    }
+    poseCadre(el, (MOI && MOI.niveau !== undefined) ? MOI
+      : (NIVEAU ? { niveau: NIVEAU.niveau, palierNo: NIVEAU.palierNo } : null));
   }
 
   /* UN SEUL endroit qui ecrit l'infobulle du bouton. Deux fonctions

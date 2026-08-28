@@ -66,9 +66,32 @@ un du de zero. Il ne recupere pas les recompenses passees.
 
     positionManager  0x73991a25C818Bf1f1128dEAaB1492D45638DE0D3
     swoge            0x8a166Fb41Cd659a0a43396272FF73973Ce29F817
-    treasury         a decider — IMMUABLE, aucun moyen d'en changer ensuite
+    treasury         0x6229DDF7c8Ed3A194819aF2e68f5de2Dc31e7F30
     creationFee      1000 ether  (1 000 $SWOGE)
 
-Le tresor merite un instant de reflexion : c'est la seule adresse du contrat
-qui ne pourra jamais bouger. Si ce portefeuille est perdu, les 30 % y partent
-pour toujours.
+### Ce qui a ete verifie sur ces quatre adresses
+
+Les quatre portent une somme de controle EIP-55 **valide** — verifiee par le
+calcul, pas a l'oeil. Une adresse mal recopiee mais bien formee enverrait 30 %
+de tous les frais dans le vide, definitivement ; la casse mixte d'une adresse
+Ethereum est precisement la protection contre ca, et elle ne sert que si
+quelqu'un la verifie.
+
+Le tresor est un PORTEFEUILLE, pas un contrat (`is_contract: false` sur
+l'explorateur). C'est ce qu'il faut : les jetons qui y arrivent sont
+deplacables par qui detient la cle. Un contrat sans fonction de retrait les
+aurait retenus pour toujours.
+
+### Une difference a noter
+
+Le tresor du V2 est `0xaD19cB5F485266989ED0AfE18cfAaEAc6156fc30` — une AUTRE
+adresse. Les deux launchpads paieront donc a deux endroits differents. C'est
+coherent avec la decision de repartir a neuf, mais il faut le savoir : les
+frais des jetons deja lances continueront d'aller a l'ancienne.
+
+### Le rappel qui va avec
+
+C'est la seule adresse du contrat qui ne pourra JAMAIS bouger. Pas de setter,
+pas de proprietaire, pas de proxy. Si cette cle est perdue ou compromise, les
+30 % y partent pour toujours et personne — toi compris — ne pourra rien y
+changer.

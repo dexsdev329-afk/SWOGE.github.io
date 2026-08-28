@@ -50,7 +50,14 @@ Onglet **Solidity Compiler** :
 eprouve sur un fork de la vraie chaine. En `shanghai` ou plus ancien, le
 bytecode change et n'a jamais ete essaye.
 
-Resultat attendu : **0 erreur, 0 avertissement**, ~13 475 octets.
+Resultat attendu : **0 erreur, 0 avertissement**, ~**13 475 octets**.
+
+> **L'optimiseur est sous « Advanced Configurations », replie par defaut.**
+> Deplie-le et coche-le. Sans lui le contrat fait **23 766 octets** : il passe
+> de justesse sous la limite de 24 576, mais la verification Blockscout ne
+> correspondra pas et chaque lancement coute plus de gaz. La taille est le
+> moyen le plus simple de savoir si tu as oublie —
+> **13 475 = optimise, 23 766 = pas optimise.**
 
 ---
 
@@ -71,6 +78,20 @@ _TREASURY          0x6229DDF7c8Ed3A194819aF2e68f5de2Dc31e7F30
 _CREATIONFEE       10000000000000000000000
 ```
 
+> ### LE PIEGE QUI A DEJA COUTE UN DEPLOIEMENT
+>
+> **`_POSITIONMANAGER` et `_SWOGE` sont DEUX adresses differentes.**
+> La premiere commence par `0x7399...`, la seconde par `0x8a16...`.
+>
+> Au premier essai, la meme adresse a ete collee dans les deux champs. Le
+> contrat a compile, s'est deploye, et repondait a toutes les lectures — il
+> avait l'air parfaitement sain. Mais son jeton de paiement etait le
+> gestionnaire de positions NFT : **`createToken` revertait a tous les coups,
+> pour toujours**, et il n'existe aucun setter pour reparer.
+>
+> Colle-les une par une, puis **relis les deux lignes a l'ecran** avant de
+> cliquer. Rien dans Remix ne te previendra.
+
 > `_CREATIONFEE` est en **wei** : ces 22 zeros font 10 000 $SWOGE.
 > N'ecris pas `10000`, ce serait 10 000 wei, soit un frais nul.
 
@@ -83,6 +104,27 @@ Somme de controle EIP-55 **valide** pour les trois (verifiee par le calcul).
 Sur la chaine : le gestionnaire de positions et le $SWOGE sont bien des
 **contrats**, le tresor est bien un **portefeuille** — c'est ce qu'il faut,
 un contrat sans fonction de retrait y bloquerait 30 % des frais pour toujours.
+
+---
+
+## 3 bis. VERIFIER LE DEPLOIEMENT — avant tout le reste
+
+**Ne branche rien, n'annonce rien tant que ceci n'est pas vert.**
+
+    node contrats/verifier_deploiement.js 0xTON_ADRESSE
+
+Le script relit sur la chaine les quatre valeurs immuables, verifie que
+`positionManager` et `swoge` sont bien **differents**, que le jeton de paiement
+repond bien `SWOGE` et pas autre chose, que l'optimiseur etait actif (a la
+taille du bytecode), et **simule un lancement** pour prendre un mauvais cablage
+avant qu'un utilisateur ne le fasse.
+
+Attendu :
+
+    AUCUN ECART. Ce deploiement peut etre branche dans launchpad.html.
+
+S'il affiche des ecarts, le contrat est a jeter : **il n'a pas de setter, rien
+ne se repare.** Redeploie, et reverifie.
 
 ---
 

@@ -1,4 +1,4 @@
-# Audit de SwogeFunV3 — VERDICT INITIAL : NON DEPLOYABLE
+# Audit de SwogeFunV3 — PREMIER PASSAGE : NON DEPLOYABLE (corrige depuis, voir plus bas)
 
 > **Suite donnee.** Les defauts 1, 2 et 3 sont corriges ; le 4 est un choix
 > economique qui reste a trancher. Voir la section « Ce qui a ete corrige »
@@ -212,24 +212,130 @@ pas dependre d'un invariant pose ailleurs dans le fichier.
 `shares()` soustrait desormais `DEAD`, comme `_exclu` l'excluait deja. Verifie :
 les deux fonctions excluent maintenant le meme ensemble.
 
-## 4. Le createur ne recoit rien — NON RESOLU, et c'est un choix economique
+## 4. Le createur ne recoit rien — TRANCHE : c'est le produit
 
-La phrase fausse a ete retiree de l'en-tete et remplacee par le constat. Le
-code n'a pas change : l'offre entiere part toujours dans le pool, et
-`Inst.creator` n'est toujours relu nulle part.
+La phrase fausse a ete retiree de l'en-tete. Le code n'a pas change et ne
+changera pas : l'offre entiere part dans le pool, `Inst.creator` sert a
+l'attribution et n'est relu par aucune fonction.
 
-Rien n'est en danger — mais personne n'a de raison de lancer. A trancher :
-allocation au createur, part des frais, ou assumer le modele actuel.
+Decision : **le createur ne recoit rien**, deliberement. Un launchpad ou le
+lanceur part avec un sac gratuit est un launchpad ou l'acheteur est la sortie
+de quelqu'un d'autre. L'en-tete du contrat porte maintenant ce choix et
+avertit qu'il n'existe aucun setter pour revenir dessus.
 
 ---
 
-# Ce qui n'a PAS ete refait
+# SECOND AUDIT ADVERSARIAL — VERDICT : DEPLOYABLE APRES CORRECTIFS
 
-**Le contrat corrige n'a pas ete re-audite.** Les correctifs ont ete verifies
-un par un, par le calcul et par lecture, mais pas par un nouveau passage
-adversarial complet. Les huit lentilles avaient trouve 44 defauts sur la
-version precedente ; il serait imprudent de supposer que celle-ci en a zero.
+49 agents, 0 erreur, 51 constats bruts. Les 13 constats bloquant/grave ont ete
+soumis a refutation : 8 confirmes. Les 38 constats moyens et en dessous sont
+rapportes **non verifies** — ils n'ont pas ete refutes faute de budget, et ne
+doivent pas etre lus comme valides.
 
-Toujours vrai : aucune execution, aucun essai sur une chaine, aucune relecture
-humaine. Le contrat detient la liquidite pour toujours et n'a pas de
-proprietaire. **Un defaut restera definitif.**
+## Les trois correctifs du premier audit tiennent
+
+| Correctif | Verdict | Preuve |
+|---|---|---|
+| 1. Brique definitif | **OUI** | Le nonce n'entre plus dans l'adresse (CREATE2). |
+| 2. Vol du pot commun | **OUI** | `try/catch` absent (ne subsiste qu'en commentaire) ; `onMove` = 3 SLOAD, 0 appel externe, 0 division. |
+| 3. `DEAD` compte double | **OUI** | Retire du diviseur dans `shares()`. |
+
+Sur le correctif 2, l'audit a fourni la demonstration que je n'avais pas
+ecrite : `acc = magCorrection + magPerShare x solde` est **invariant par
+transfert**, donc les deux additions de `onMove` ne peuvent pas deriver.
+
+## A — BLOQUANT (verification) : le gestionnaire de positions — **LEVE**
+
+Le contrat exige le NFT (`mp.recipient = address(this)`) sans implementer
+`onERC721Received`. Si le gestionnaire deploye utilisait `_safeMint`, **chaque
+`createToken` aurait reverti, pour toujours**.
+
+Verifie sur la source verifiee de `0x73991a25...`, ligne 156 :
+`_mint(params.recipient, (tokenId = _nextId++));` — pas `_safeMint`. Le crochet
+n'est pas appele. **Il a ete implemente quand meme** : trois lignes contre un
+contrat mort-ne irreparable.
+
+## B — BLOQUANT (verification) : le jeton $SWOGE — **LEVE**
+
+Quatre chemins critiques passent par $SWOGE sur trois hypotheses jamais
+ecrites. Source verifiee + etat on-chain (`eth_call`) de
+`0x8a166Fb4...` :
+
+| Hypothese | Mesure | Verdict |
+|---|---|---|
+| `transfer` rend un `bool` | OZ ERC20 | OK |
+| Pas de pause / blacklist / proxy | Aucune, deploye par constructeur | OK |
+| Pas de frais de transfert | `MAX_TAX_BPS` = **0**, et c'est un `immutable` | OK |
+| Les limites ne bloquent pas | `limitsEnabled` = false, sans setter qui la remette a true | OK |
+| Les transferts sont ouverts | `tradingActive` = true, drapeau a sens unique | OK |
+
+Le point decisif : les taxes ne s'appliquent que si l'emetteur ou le
+destinataire est dans `automatedMarketMakerPairs`. Cette table n'est ecrite que
+dans `createPair()`, qui est `onlyOwner` — et **`owner()` vaut `address(0)`**.
+Elle est donc figee sur une seule paire, qui n'est jamais ce launchpad. Aucun
+transfert du launchpad ne peut etre taxe, et `MAX_TAX_BPS = 0` interdit de
+toute facon au `taxWallet` d'introduire un frais. **$SWOGE se comporte comme un
+ERC20 nu et immuable.**
+
+## C — GRAVE (code) : 100 % des frais partaient au tresor — **CORRIGE**
+
+`shares()` vaut **exactement zero au lancement** (toute l'offre est dans le
+pool). Chaque jeton naissait donc sous le plancher, et 100 % de ses frais
+partaient au tresor jusqu'a ~102 000 SWOGE (~41 $) d'achats nets detenus
+simultanement — cent fois le frais de lancement. Pire : n'importe qui pouvait
+faire **repasser** `shares` sous le plancher pour le prix du gaz (position
+Uniswap mono-face hors plage) puis appeler `collectFees`, qui n'est protege par
+rien. Repetable a volonte.
+
+Correctif : **ne jamais detourner, toujours differer.** Un `mapping public
+carry` retient la part non repartissable ; le prochain appel la rajoute. La
+condition **temporaire** (plancher) est separee de la condition **terminale**
+(MPS_MAX) : seule la seconde verse au tresor. `collectFees` appelle desormais
+`_distributeToHolders` **inconditionnellement**, ce qui est le seul moyen de
+vider la retenue quand le flottant remonte.
+
+### Le correctif etait faux a sa premiere ecriture
+
+Un modele numerique du nouveau code (`carry_model.js`, 9 points de controle) a
+montre que ma premiere version **testait MPS_MAX avant le plancher**. Avec un
+flottant ramene a 1 wei, `pas` valait `montant x 2**128`, le plafond sautait, et
+la branche terminale expediait la recolte au tresor : **le contournement passait
+par le chemin cense l'empecher.** L'ordre des deux tests a ete inverse ; `pas`
+n'est plus calcule qu'avec un `s` deja superieur au plancher, ce qui le borne a
+`montant x MAG / plancher` = 3,4e40 contre un plafond de 5e49.
+
+Le modele verifie a chaque distribution la solvabilite
+(`reserve - reclame + carry == detenu`), `mps <= MPS_MAX` et l'absence de
+debordement. Il valide la **logique**, pas le bytecode.
+
+## Corrections de commentaires
+
+Trois commentaires decrivaient un contrat qui n'existe plus : l'en-tete
+annoncait encore le `try/catch` retire, `onMove` disait etre appele « en
+try/catch de son cote », et le bloc du sel decrivait un empoisonnement aveugle.
+Ce dernier est maintenant honnete sur ce que CREATE2 corrige et ce qu'il ne
+corrige pas : un attaquant qui surveille le mempool peut toujours bloquer **un**
+lancement ; ce qu'il ne peut plus faire, c'est tuer le launchpad.
+
+Dans un contrat sans proprietaire, le commentaire est la seule documentation
+qui survivra. Un commentaire faux y est un defaut.
+
+---
+
+# Etat
+
+Compile propre sous solc 0.8.34+commit.80d5c536, **0 avertissement**,
+**13 475 octets** (55 % de la limite EIP-170). Le V2 en faisait 20 560.
+
+# Ce qui n'a toujours PAS ete fait
+
+**Aucune execution sur une chaine.** Ni testnet, ni fork, ni banc d'essai
+Foundry. Le modele numerique couvre la repartition, pas l'integration Uniswap.
+
+**Les 38 constats moyens du second audit n'ont pas ete refutes.** Ils peuvent
+contenir des faux positifs comme de vrais defauts.
+
+**Aucune relecture humaine.**
+
+Le contrat detient la liquidite pour toujours et n'a pas de proprietaire.
+**Un defaut restera definitif.**

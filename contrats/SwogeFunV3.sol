@@ -25,19 +25,23 @@ pragma solidity ^0.8.26;
 
    4. 70 % AUX DETENTEURS, 30 % AU TRESOR. Le V2 donnait 70 % au createur.
 
-      ATTENTION — CE POINT N'EST PAS RESOLU. Une premiere version de ce
-      commentaire affirmait que le createur « touche sa part comme detenteur,
-      proportionnelle a ce qu'il GARDE ». C'ETAIT FAUX : l'offre entiere part
-      dans le pool au lancement (voir `_launchInstant`), le createur ne recoit
-      aucun jeton, et `Inst.creator` n'est relu nulle part dans ce contrat.
+      LE CREATEUR NE RECOIT RIEN, ET C'EST VOULU. L'offre entiere part dans le
+      pool au lancement (voir `_launchInstant`) : le createur ne recoit aucun
+      jeton, aucune part des frais, aucune allocation. Il paie le frais de
+      lancement, et s'il veut de son propre jeton il l'achete au marche comme
+      tout le monde, a la meme seconde et au meme prix.
 
-      En l'etat, lancer ici n'a donc AUCUNE contrepartie economique : le
-      createur paie le frais, ne recoit rien, et doit racheter son propre jeton
-      au marche comme tout le monde. Ce n'est pas un defaut de securite — rien
-      n'est en danger — mais c'est une raison suffisante pour que personne ne
-      lance. A trancher avant deploiement : allocation au createur, part des
-      frais, ou assumer que le launchpad ne s'adresse qu'a des gens qui
-      achetent leur propre jeton au marche.
+      Ce n'est pas un oubli, c'est le produit. Un launchpad ou le lanceur part
+      avec un sac gratuit est un launchpad ou l'acheteur est la sortie de
+      quelqu'un d'autre ; ici il n'y a personne devant lui. La contrepartie du
+      createur n'est pas un jeton, c'est un pool deja finance, une liquidite
+      qu'il ne peut pas retirer, et un contrat que personne — lui compris — ne
+      peut modifier.
+
+      `Inst.creator` est conserve pour l'attribution uniquement : il est ecrit,
+      emis dans `Created` et `LaunchedInstant`, et n'est relu par AUCUNE
+      fonction de ce contrat. Ne lui donnez pas de pouvoir plus tard sans
+      redeployer : il n'y a pas de setter.
 
    5. AUCUN PROPRIETAIRE. Pas de `owner`, pas de `onlyOwner`, aucun setter.
       Le tresor et le frais de lancement sont des `immutable` poses au
@@ -45,11 +49,22 @@ pragma solidity ^0.8.26;
       parce que ca se lit dans la source au lieu de dependre d'une
       transaction qu'il faut aller chercher.
 
-   6. `onMove` NE PEUT PLUS TUER UN JETON. Le V2 l'appelait nu depuis le
-      jeton : le moindre revert dans la comptabilite faisait echouer le
-      TRANSFERT, et le jeton etait mort pour toujours. Un chemin existait —
-      `mps * value` finit par deborder. Ici l'appel est en `try/catch` : si la
-      comptabilite casse, on perd les recompenses, pas le jeton.
+   6. `onMove` NE PEUT PLUS TUER UN JETON — PAR PREUVE, PAS PAR FILET.
+      Le V2 l'appelait nu depuis le jeton : le moindre revert dans la
+      comptabilite faisait echouer le TRANSFERT, et le jeton etait mort pour
+      toujours. Un chemin existait — `mps * value` finit par deborder.
+
+      Une version intermediaire de ce contrat entourait l'appel d'un
+      `try/catch`. C'ETAIT PIRE QUE LE MAL. Un `catch` avale le revert, donc il
+      avale aussi l'echec d'une mise a jour PARTIELLE : le solde bougeait sans
+      que la correction suive, et la creance d'un detenteur pouvait etre
+      recreee a chaque transfert. Le pot etait siphonnable.
+
+      L'appel est donc redevenu NU, et c'est `onMove` qui a ete rendu incapable
+      de revertir : trois SLOAD, aucun appel externe, aucune division, une
+      multiplication bornee par MPS_MAX et deux additions dont on demontre plus
+      bas qu'elles ne peuvent pas deborder. On ne rattrape pas une erreur, on
+      supprime le chemin qui y mene.
 
    7. LA PLAGE DE PRIX EST RECALCULEE. Le V2 partait de 1e-9 WETH par jeton.
       Le WETH vaut ~3 000 $, le $SWOGE ~0,0004 $ : garder les memes ticks
@@ -278,6 +293,25 @@ contract SwogeFunV3 {
      * desormais pas depasser ce que CE jeton a apporte. */
     mapping(address => uint256) public reserve;
 
+    /* ---------- LA RETENUE ----------
+     * Une part que `_distributeToHolders` ne peut pas encore repartir n'est
+     * PLUS detournee vers le tresor : elle attend ici, et le prochain appel la
+     * rajoute au montant a repartir.
+     *
+     * Sans cette retenue, le contrat etait pillable. `shares()` vaut EXACTEMENT
+     * ZERO au lancement — toute l'offre part dans le pool — donc chaque jeton
+     * nait sous le plancher et 100 % de ses frais partaient au tresor tant que
+     * ~102 000 SWOGE d'achats nets n'etaient pas detenus SIMULTANEMENT, soit
+     * cent fois le frais de lancement. Pire : n'importe qui pouvait faire
+     * REPASSER `shares` sous le plancher pour le prix du gaz, avec une position
+     * Uniswap mono-face hors plage, puis appeler `collectFees` — qui n'est
+     * protege par rien. L'operation etait repetable a volonte.
+     *
+     * La distinction qui corrige ca : le plancher est une condition TEMPORAIRE
+     * (le flottant remonte), le plafond MPS_MAX est TERMINALE (magPerShare ne
+     * fait que croitre). Seule la seconde justifie de donner au tresor. */
+    mapping(address => uint256) public carry;
+
     mapping(address => uint256) public magPerShare;
     mapping(address => mapping(address => int256)) internal magCorrection;
     mapping(address => mapping(address => uint256)) public withdrawn;
@@ -287,6 +321,9 @@ contract SwogeFunV3 {
     event LaunchedInstant(address indexed token, address indexed creator, address pool, uint256 lpTokenId);
     event FeesCollected(address indexed token, uint256 swogeToHolders, uint256 swogeToTreasury, uint256 tokenBurned);
     event HolderRewards(address indexed token, uint256 amount);
+    /* `enAttente` : garde pour plus tard (flottant trop faible). `auTresor` :
+       plafond MPS_MAX atteint, la part ne pourra plus jamais etre repartie. */
+    event HolderRewardsDeferred(address indexed token, uint256 enAttente, uint256 auTresor);
     event Claimed(address indexed token, address indexed holder, uint256 amount);
 
     bool private _locked;
@@ -304,17 +341,24 @@ contract SwogeFunV3 {
         string name; string symbol;
         /* ---- LE SEL REND LE LANCEMENT REJOUABLE ----
          * Avec un CREATE ordinaire, l'adresse du prochain jeton est
-         * `keccak(rlp(launchpad, nonce))` : entierement previsible. Un tiers
-         * pouvait creer et INITIALISER le pool de cette adresse a un prix de
-         * son choix ; le mint mono-face revertait, le revert annulait
-         * l'increment du nonce, et la tentative suivante retombait sur la MEME
-         * adresse empoisonnee. Le launchpad etait mort pour toujours, pour le
+         * `keccak(rlp(launchpad, nonce))` : entierement previsible, et LA MEME
+         * pour tout le monde. Un tiers pouvait calculer cette adresse, creer et
+         * INITIALISER son pool a un prix de son choix ; le mint mono-face
+         * revertait, le revert annulait l'increment du nonce, et la tentative
+         * suivante — de n'importe qui — retombait sur la MEME adresse
+         * empoisonnee. Le launchpad entier etait mort pour toujours, pour le
          * prix du gaz, et sans owner personne n'aurait pu le rattraper.
          *
          * Avec un CREATE2 dont le sel melange l'appelant et cette valeur,
-         * l'adresse change des qu'on change de sel : un lancement bloque se
-         * relance ailleurs. L'attaquant devrait empoisonner d'avance toutes les
-         * adresses possibles, ce qui n'existe pas. */
+         * l'adresse change des qu'on change de sel. Il faut etre honnete sur ce
+         * que ca corrige et ce que ca ne corrige pas : le sel etant visible
+         * dans la transaction en attente, un attaquant qui surveille le mempool
+         * peut toujours empoisonner CE lancement-la en le devancant. Ce qu'il
+         * ne peut plus faire, c'est tuer le launchpad : la victime relance avec
+         * un autre sel et passe. On a converti une brique definitive et globale
+         * en un blocage repetable et individuel — le `require` sur `slot0`
+         * juste apres garantit qu'on echoue proprement au lieu de lancer a un
+         * prix truque. */
         bytes32 salt;
         string telegram; string twitter; string website; string logo;
     }
@@ -387,6 +431,16 @@ contract SwogeFunV3 {
        revenue dans le jeton lance, elle, est BRULEE : ca evite une seconde
        comptabilite dans un contrat qu'on ne pourra jamais corriger, et ca
        profite aux memes personnes, par la rarete. */
+    /* ---------- recevoir le NFT de liquidite ----------
+       Le gestionnaire de positions deploye ici (0x73991a25...) mint avec
+       `_mint` et non `_safeMint` : verifie ligne 156 de sa source verifiee, il
+       n'appelle donc PAS ce crochet. On l'implemente quand meme. C'est trois
+       lignes, et l'alternative — se tromper — serait un contrat dont AUCUN
+       lancement ne passe, pour toujours, sans personne pour le reparer. */
+    function onERC721Received(address, address, uint256, bytes calldata) external pure returns (bytes4) {
+        return this.onERC721Received.selector;
+    }
+
     function collectFees(address token) external nonReentrant {
         Inst storage i = instant[token];
         require(i.exists, "not instant");
@@ -402,9 +456,12 @@ contract SwogeFunV3 {
         if (swogeAmt > 0) {
             toHolders  = swogeAmt * HOLDER_SHARE_BPS / 10000;
             toTreasury = swogeAmt - toHolders;
-            if (toHolders  > 0) _distributeToHolders(token, toHolders);
             if (toTreasury > 0) require(IERC20(swoge).transfer(swogeTreasury, toTreasury), "swoge");
         }
+        /* APPEL INCONDITIONNEL, meme quand la recolte est vide : c'est ce qui
+           permet de vider la retenue des que le flottant est remonte. Sans ca,
+           une part mise en attente n'aurait eu aucun moyen d'en ressortir. */
+        _distributeToHolders(token, toHolders);
         if (tokAmt > 0) IERC20(token).transfer(DEAD, tokAmt);
         emit FeesCollected(token, toHolders, toTreasury, tokAmt);
     }
@@ -435,33 +492,71 @@ contract SwogeFunV3 {
     }
 
     function _distributeToHolders(address token, uint256 amount) internal {
-        uint256 s = shares(token);
+        /* Le montant a repartir, c'est la recolte du jour PLUS tout ce qui
+           attendait. Rien ne se perd en route. */
+        uint256 montant = amount + carry[token];
+        if (montant == 0) return;
 
-        /* ---- TROIS RAISONS DE NE PAS DISTRIBUER, ET UNE SEULE ISSUE ----
-         * 1. Personne dehors : aucun ayant droit.
-         * 2. Flottant sous le plancher : le diviseur serait choisi par
-         *    l'attaquant, et `magPerShare` exploserait.
-         * 3. Plafond atteint : au-dela, `magPerShare * solde` sortirait de
-         *    `int256` et la comptabilite se corromprait en silence.
-         * Dans les trois cas la part va au TRESOR. Elle ne reste jamais
-         * bloquee dans un contrat qui n'a pas de fonction de retrait. */
+        uint256 s = shares(token);
         uint256 plancher = TOTAL_SUPPLY * MIN_FLOTTANT_BPS / 10000;
-        uint256 pas = s == 0 ? 0 : amount * MAG / s;
-        if (s < plancher || pas == 0 || magPerShare[token] + pas > MPS_MAX) {
-            require(IERC20(swoge).transfer(swogeTreasury, amount), "swoge");
+
+        /* ---- TEMPORAIRE D'ABORD, ET L'ORDRE EST LE CORRECTIF ----
+         * `s < plancher` couvre aussi `s == 0`. Les deux se resorbent des que
+         * les gens achetent : on garde la part pour les futurs detenteurs au
+         * lieu de la donner au tresor.
+         *
+         * CE TEST DOIT PASSER AVANT CELUI DU PLAFOND. Une premiere version de
+         * ce correctif calculait `pas` puis testait MPS_MAX en premier : avec
+         * un flottant ramene a 1 wei — ce qu'un attaquant fait pour le prix du
+         * gaz — `pas` valait `montant * 2**128`, le plafond sautait, et la
+         * branche TERMINALE expediait la recolte au tresor. La retenue etait
+         * contournee par le chemin meme qui devait la proteger. Ici `pas` n'est
+         * calcule qu'avec un `s` deja valide. */
+        if (s < plancher) {
+            carry[token] = montant;
+            emit HolderRewardsDeferred(token, montant, 0);
             return;
         }
+
+        // `s >= plancher > 0` : la division est sure, et `pas <= montant * MAG / plancher`.
+        uint256 pas = montant * MAG / s;
+        if (pas == 0) {                       // poussiere : on attend d'en avoir assez
+            carry[token] = montant;
+            emit HolderRewardsDeferred(token, montant, 0);
+            return;
+        }
+
+        /* ---- TERMINAL : le plafond ----
+         * `magPerShare` ne fait que croitre : une fois MPS_MAX atteint, il ne
+         * redescendra jamais. Attendre ne sert a rien, et laisser le montant
+         * dans un contrat sans fonction de retrait le bloquerait pour toujours.
+         * C'est le SEUL cas ou la part va au tresor.
+         *
+         * Avec le plancher applique en amont, `pas` ne depasse jamais
+         * 1e27 * 2**128 / 1e25 = 3,4e40 ; atteindre MPS_MAX = 5e49 demanderait
+         * ~1,5 milliard de recoltes portant CHACUNE l'offre entiere de $SWOGE.
+         * Cette branche est un filet, pas un chemin. */
+        if (magPerShare[token] + pas > MPS_MAX) {
+            carry[token] = 0;
+            require(IERC20(swoge).transfer(swogeTreasury, montant), "swoge");
+            emit HolderRewardsDeferred(token, 0, montant);
+            return;
+        }
+
+        carry[token] = 0;
         magPerShare[token] += pas;
         // La caisse de CE jeton, et d'aucun autre.
-        reserve[token] += amount;
-        emit HolderRewards(token, amount);
+        reserve[token] += montant;
+        emit HolderRewards(token, montant);
     }
 
     /* ---------- le crochet de transfert ----------
-       Appele par le jeton a chaque mouvement, en `try/catch` de son cote : un
-       revert ici ne peut pas faire echouer un transfert. Le pool et ce contrat
-       sont exclus, exactement comme dans `shares` — sinon la somme des droits
-       depasserait ce qui a ete distribue. */
+       Appele NU par le jeton a chaque mouvement : un revert ici ferait echouer
+       le transfert. C'est assume — voir le point 6 de l'en-tete : le filet a
+       ete retire parce qu'il masquait des mises a jour partielles, et cette
+       fonction a ete rendue incapable de revertir a la place. Le pool et ce
+       contrat sont exclus, exactement comme dans `shares` — sinon la somme des
+       droits depasserait ce qui a ete distribue. */
     function onMove(address from, address to, uint256 value) external {
         Inst storage i = instant[msg.sender];
         if (!i.exists) return;

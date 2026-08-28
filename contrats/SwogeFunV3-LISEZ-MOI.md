@@ -2,15 +2,20 @@
 
 ## Etat
 
-**Ecrit et compile. Ni deploye, ni eprouve sur une chaine, ni audite.**
+**Ecrit, compile, audite deux fois. Ni deploye, ni eprouve sur une chaine.**
+
+Verdict du second passage adversarial : **DEPLOYABLE APRES CORRECTIFS** — les
+correctifs sont appliques, les deux verifications bloquantes sont levees
+(voir `AUDIT-V3.md`). Toujours aucune execution reelle, aucune relecture
+humaine.
 
 Compile avec `solc 0.8.34+commit.80d5c536`, optimisation activee, 200 runs —
 exactement les reglages du V2 en production. Zero erreur, zero avertissement.
 
-    SwogeFunV3   11 807 octets   (V2 : 20 560)
-    SwogeToken    3 236 octets
+    SwogeFunV3   13 475 octets   (V2 : 20 560)
+    SwogeToken    3 240 octets
 
-43 % de code en moins que le V2, parce que le mode courbe — jamais appele par
+34 % de code en moins que le V2, parce que le mode courbe — jamais appele par
 l'interface — n'y est pas.
 
 ## Les decisions prises, et par qui
@@ -21,7 +26,7 @@ l'interface — n'y est pas.
 | paire du pool | `$SWOGE` (plus de WETH) |
 | frais de lancement | `creationFee`, **brule** — non encaisse |
 | partage des frais de trading | **70 % detenteurs / 30 % tresor** |
-| part du createur | aucune en direct : il touche comme detenteur |
+| part du createur | **aucune, et c'est voulu** — ni jeton, ni frais |
 | proprietaire | **aucun** — pas de `owner`, pas de setter |
 | tresor et frais | `immutable`, poses au deploiement |
 
@@ -38,7 +43,8 @@ l'interface. Une ligne a changer avant deploiement.
 **Par le calcul** (`mps * value`, le defaut latent du V2) : apres dix mille
 recoltes sur l'offre entiere, le produit vaut 3,4e60 pour un `int256` qui
 monte a 5,8e76 — une marge de 1,7e16. Le depassement n'est pas atteignable en
-pratique. Et s'il l'etait, le `try/catch` du jeton l'absorberait.
+pratique. Le `try/catch` a depuis ete RETIRE — il masquait des mises a jour
+partielles — et `onMove` a ete rendu incapable de revertir a la place.
 
 **Par le calcul** (plage de prix) : depart au tick -46000, soit 0,010054
 $SWOGE par jeton, dix millions de $SWOGE de capitalisation a l'ouverture.

@@ -93,27 +93,31 @@ const ECRANS = [
       deviceScaleFactor: e.tel ? 3 : 1, isMobile: e.tel, hasTouch: e.tel });
     await p.goto(`http://127.0.0.1:${site.port}/nexus.html`, { waitUntil: 'domcontentloaded' });
     await p.waitForTimeout(2600);
-    /* ---- LA BARRE DU BAS, COMME CHEZ UN JOUEUR CONNECTE ----
-     * `stakebubble.js` ne la monte qu'une fois le joueur identifie, et c'est
-     * PRECISEMENT le moment ou la panne 1 apparaissait : le cadre retrecit et
-     * aucun evenement `resize` ne part. Sans elle, cet essai mesurerait la
-     * page d'avant la connexion, c'est-a-dire pas celle qui cassait. */
-    await p.evaluate(() => {
-      if (document.querySelector('.swbb')) return;
-      const st = document.createElement('style');
-      st.textContent = '.swbb{position:fixed;left:0;right:0;bottom:0;z-index:2147482000;'
-        + 'display:flex;background:#f4f7fc;border-top:1px solid rgba(11,27,54,.10);padding:5px 4px;}'
-        + 'body{padding-bottom:var(--swbb-h)!important;}:root{--swbb-h:62px;}';
-      document.head.appendChild(st);
-      const d = document.createElement('div');
-      d.className = 'swbb';
-      d.innerHTML = '<button style="flex:1;height:52px">Play</button>'
-        + '<button style="flex:1;height:52px">Bets</button>'
-        + '<button style="flex:1;height:52px">Chests</button>'
-        + '<button style="flex:1;height:52px">Profile</button>';
-      document.body.appendChild(d);
+    /* ---- LA BARRE DU BAS N'EXISTE PLUS ----
+     * Cet essai en posait une fausse, parce que `stakebubble.js` ne la montait
+     * qu'une fois le joueur identifie — et c'etait PRECISEMENT le moment ou la
+     * panne 1 apparaissait : le cadre retrecissait et aucun `resize` ne
+     * partait.
+     * Elle est retiree du site (« ca prend de la place pour rien »). On ne
+     * simule donc plus ce qui n'existe pas : on verifie que le monde va bien
+     * JUSQU'EN BAS, ce qui est la contrepartie du retrait et se casserait
+     * aussi silencieusement — une marge oubliee, une variable restee a 62, et
+     * l'on rendrait la place sans que rien ne le dise. */
+    await p.waitForTimeout(600);
+    const bas = await p.evaluate(() => {
+      const c = document.getElementById('nxCanvas');
+      const r = c.getBoundingClientRect();
+      return { sous: Math.round(document.documentElement.clientHeight - r.bottom),
+               barre: !!document.querySelector('.swbb'),
+               varh: getComputedStyle(document.documentElement)
+                       .getPropertyValue('--swbb-h').trim(),
+               pad: getComputedStyle(document.body).paddingBottom };
     });
-    await p.waitForTimeout(1000);
+    ok(!bas.barre, 'aucune barre du bas');
+    ok(bas.sous <= 1, `et le monde descend jusqu au bord (${bas.sous} px en dessous)`);
+    ok(bas.pad === '0px' || bas.pad === '', `aucune marge volee en bas (${bas.pad})`);
+    ok(bas.varh === '0px' || bas.varh === '',
+       `et la hauteur publiee vaut zero (${bas.varh || '(vide)'})`);
 
     const m = await p.evaluate(() => {
       const de = document.documentElement;

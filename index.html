@@ -1074,7 +1074,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px}
      `ethers` vient avec : c est lui qui signe les retraits. C est le seul
      poids ajoute a l accueil, et il ne l est que parce qu on y depose. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
-<script src="stakebubble.js?v=79efd096"></script>
+<script src="stakebubble.js?v=17414fc5"></script>
 <script src="swogecompte.js?v=265e397a"></script>
 <!-- La pastille du dollar a cote du solde, le meme fichier que le hall :
      `swogebuy.js` la pose contre `#bal`, deja charge par `stakebubble.js`
@@ -1163,37 +1163,12 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px}
    noir. */
 .swppl .swdot{ box-shadow:none !important; }
 
-/* ==================== LA BARRE DU BAS ====================
- *
- * Elle vient de `stakebubble.js`, partage par dix-sept pages SOMBRES. Trois
- * choses la concernent ici.
- *
- * ---- ELLE NE FONCTIONNAIT PAS ----
- * Quatrieme fois que le meme piege se referme : `a[href], button{pointer-
- * events:none}` rend toute cette page inerte par defaut, et ses quatre
- * touches en font partie. Elles avaient leur dessin, leur libelle et leur
- * gestionnaire — tout sauf l'effet.
- *
- * ---- ELLE EST BLANCHE ----
- * Comme le reste de la page. Le fond « rgba(11,15,23,.94) » existait pour
- * une page noire.
- *
- * ---- ET ELLE NE SERT QUE SUR TELEPHONE ----
- * Elle existe parce qu'atteindre les paris depuis une table demandait trois
- * gestes et un ecran et demi de defilement. Sur un ecran large la colonne de
- * gauche est LA, en permanence, avec les memes destinations : la barre y
- * double une navigation deja visible, et mange trente pixels en bas. On
- * reprend le point de bascule de la page — celui ou la colonne cesse d'etre
- * une colonne pour devenir une rangee.
- */
-.swbb{ pointer-events:auto;
-  background:var(--carte) !important;
-  border-top:1px solid var(--bord) !important;
-  box-shadow:0 -1px 2px rgba(11,27,54,.05), 0 -8px 24px rgba(11,27,54,.04) !important; }
-.swbb button{ pointer-events:auto !important; cursor:pointer; color:var(--gris) !important; }
-.swbb button:hover, .swbb button:focus-visible{ color:var(--bleu) !important; }
-.swbb button.on, .swbb button[aria-current]{ color:var(--bleu) !important; }
-@media (min-width:981px){ .swbb{ display:none !important; } }
+/* ---- LA BARRE DU BAS N'EXISTE PLUS ----
+ * Les regles qui la repeignaient en clair vivaient ici, et le commentaire
+ * au-dessus expliquait pourquoi elle ne servait que sur telephone. Elle est
+ * retiree du site — voir `stakebubble.js`, qui dit ce que chacune de ses
+ * quatre entrees est devenue. Des regles qui ne visent plus rien se relisent
+ * comme des regles vivantes, et la prochaine personne les entretient. */
 
 
 </style>

@@ -2580,7 +2580,9 @@
        * sortait par le haut et devenait inatteignable. */
       '.swv-f{width:100%;background:#F4F7FD;border:1px solid rgba(11,27,54,.12);' +
         'border-radius:18px 18px 0 0;' +
-        'padding:18px 18px calc(var(--swbb-h,62px) + 14px);' +
+        /* Le repli valait 62 : la hauteur de la barre du bas, qui n'existe
+           plus. Il vaut zero, comme la variable. */
+        'padding:18px 18px calc(var(--swbb-h,0px) + 14px);' +
         'max-height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;' +
         'display:flex;flex-direction:column;gap:8px;transform:translateY(18px);' +
         'transition:transform .22s;position:relative;}' +
@@ -3653,170 +3655,38 @@
     }
   }
 
-  /* ==================== LA BARRE DU BAS ====================
+  /* ==================== LA BARRE DU BAS N'EXISTE PLUS ====================
    *
-   * Atteindre les paris depuis une table demandait trois gestes : ouvrir le
-   * tiroir, faire defiler 1,78 ecran, toucher. Le tiroir compte dix-neuf
-   * rangees et huit titres, et tout ce qui est sous « Shop » est sous le pli.
+   * DEMANDE : « supprime cette barre en bas du telephone et sur pc aussi, ca
+   * prend de la place pour rien ».
    *
-   * ---- pourquoi QUATRE et pas cinq ----
+   * Elle portait quatre entrees — Play, Bets, Chests, Profile — et prenait
+   * soixante-deux pixels en bas de CHAQUE page, plus la marge de securite de
+   * l'iPhone. Sur le Nexus, ou l'ecran est le jeu, c'etait autant de monde en
+   * moins.
    *
-   * Cinq entraine presque toujours un « More » qui devient un second menu, et
-   * on retombe exactement sur le probleme qu'on repare. Quatre tient sans
-   * fourre-tout.
+   * Rien n'est devenu inatteignable, et c'est ce qui a ete verifie avant de
+   * la retirer :
+   *   • PROFIL — les six pages portent leur propre avatar `#gxProfil` dans
+   *     l'en-tete. C'est meme pour ca que le bouton de ce fichier y etait
+   *     deja masque : deux avatars a l'ecran, c'etait le doublon de trop.
+   *   • PLAY et BETS — la colonne de gauche (Home, Casino, Sports, Docs) sur
+   *     les pages qui en ont une ; et sur le Nexus, le menu du compte porte
+   *     deja « Other games » et « Home ».
+   *   • CHESTS — la boutique est un onglet du tiroir. Elle passe d'un geste a
+   *     deux : c'est le seul cout de ce retrait, et il est dit ici pour que
+   *     personne n'ait a le redecouvrir.
    *
-   * ---- pourquoi le portefeuille N'Y EST PAS ----
-   *
-   * Volontairement. Un depot merite un chemin delibere ; il ne doit pas etre
-   * a un geste de distance sur un site d'argent reel.
-   *
-   * ---- pourquoi des dessins et pas des emojis ----
-   *
-   * Le menu melange deja huit emojis systeme qui ne partagent ni palette ni
-   * style et changent d'apparence selon l'appareil. Ces quatre-la sont traces,
-   * monochromes, et prennent la couleur de leur etat : c'est ce qui permet a
-   * l'onglet actif de se distinguer sans ajouter un fond.
-   *
-   * ---- une seule poignee pour le tiroir ----
-   *
-   * Le bouton du haut disparait quand la barre est posee. Deux poignees pour
-   * un seul panneau, une hors de portee du pouce et l'autre sous lui,
-   * obligent a se demander laquelle ouvre quoi — et la reponse est « la meme
-   * chose ». L'avatar et son cadre de palier DEMENAGENT ici : c'est la seule
-   * chose de son niveau qu'un joueur voit en permanence, elle ne se perd pas.
-   */
-  var barreBas = null;
-  var DESSINS = {
-    jouer: '<path d="M7 8h10a5 5 0 0 1 4.9 5.9l-.6 3A3 3 0 0 1 16.6 18l-1.4-2H8.8l-1.4 2a3 3 0 0 1-4.7-1.1l-.6-3A5 5 0 0 1 7 8Z"/>' +
-           '<path d="M7.5 11v3M6 12.5h3M16 11.6h.01M17.6 13.2h.01" stroke="#0B0F17" stroke-width="1.7" stroke-linecap="round" fill="none"/>',
-    paris: '<circle cx="12" cy="12" r="8.6"/>' +
-           '<path d="m12 7.2 3.3 2.4-1.26 3.9H9.96L8.7 9.6 12 7.2Z" fill="#0B0F17"/>' +
-           '<path d="M12 3.4v3.8M4.2 9.9l3.6 2.6M19.8 9.9l-3.6 2.6M7.6 20l1.4-4.3M16.4 20 15 15.7" stroke="#0B0F17" stroke-width="1.3" fill="none"/>',
-    coffres: '<path d="M4 10.5A3.5 3.5 0 0 1 7.5 7h9A3.5 3.5 0 0 1 20 10.5V12H4v-1.5Z"/>' +
-             '<path d="M3.6 13h16.8v4.2A2.8 2.8 0 0 1 17.6 20H6.4a2.8 2.8 0 0 1-2.8-2.8V13Z"/>' +
-             '<rect x="10.6" y="10" width="2.8" height="5" rx="1.1" fill="#0B0F17"/>',
-  };
-  function svg(cle) {
-    return '<svg viewBox="0 0 24 24" width="23" height="23" fill="currentColor" aria-hidden="true">' +
-           DESSINS[cle] + '</svg>';
-  }
-  function pageCourante() {
-    var f = (location.pathname.split('/').pop() || '').toLowerCase();
-    if (f === 'games.html' || f === '' || f === 'index.html') return 'jouer';
-    if (f === 'swogebet.html') return 'paris';
-    return null;
-  }
-  function monteBarreBas() {
-    if (barreBas) return barreBas;
-    if (!document.body) return null;
-    var css = document.createElement('style');
-    css.textContent =
-      '.swbb{position:fixed;left:0;right:0;bottom:0;z-index:2147482000;display:flex;' +
-        'background:rgba(244,247,252,.94);backdrop-filter:blur(10px);' +
-        'border-top:1px solid rgba(11,27,54,.10);' +
-        /* La barre d'accueil de l'iPhone mange les vingt derniers pixels : sans
-           cette marge, le quart des touches tombe dessus et n'arrive jamais. */
-        'padding:5px 4px calc(5px + env(safe-area-inset-bottom,0px));' +
-        /* Ceinture : quelle que soit la page, la hauteur vient du contenu. */
-        'height:auto;min-height:0;max-height:none;margin:0;align-items:stretch;}' +
-      '.swbb button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;' +
-        'padding:5px 2px 3px;background:none;border:0;font:inherit;cursor:pointer;' +
-        'color:#7A89A6;position:relative;transition:color .14s;-webkit-tap-highlight-color:transparent;}' +
-      '.swbb button:hover,.swbb button:focus-visible{color:#24406E;}' +
-      '.swbb button.on{color:#1B5FE0;}' +
-      '.swbb span{font-size:9.5px;font-weight:700;letter-spacing:.04em;}' +
-      '.swbb .av{width:23px;height:23px;border-radius:50%;border:1px solid currentColor;' +
-        'display:flex;align-items:center;justify-content:center;font-size:13px;' +
-        'background-size:cover;background-position:center;overflow:hidden;}' +
-      /* La pastille de la barre : plus haut et plus a droite que sur le bouton
-         du haut, parce que l'icone est plus petite. */
-      '.swbb .swpn{position:absolute;top:1px;right:calc(50% - 17px);}' +
-      /* Le contenu ne doit pas finir SOUS la barre. Une page qu'on ne peut pas
-         faire defiler jusqu'au bout est un defaut qu'on ne remarque que sur le
-         dernier element, donc trop tard. */
-      'body{padding-bottom:var(--swbb-h)!important;}' +
-      /* ---- LE TIROIR AUSSI PASSE SOUS LA BARRE ----
-       *
-       * La marge posee sur `body` ne protege que le flux de la page. Le tiroir
-       * est un panneau FIXE : il ne la voit pas, et sa derniere rangee finit
-       * derriere la barre meme defile a fond. Mesure avant correction :
-       * « Leaderboard » depassait de 36 px, invisible quoi qu'on fasse.
-       *
-       * Les deux conteneurs qui defilent — la liste des sections et le
-       * panneau de detail — prennent donc la meme marge, tiree de la MEME
-       * variable que la hauteur de la barre. Deux nombres ecrits a deux
-       * endroits auraient diverge au premier reglage. */
-      ':root{--swbb-h:calc(62px + env(safe-area-inset-bottom,0px));}' +
-      '.swp-t,.swp-l{padding-bottom:calc(var(--swbb-h) + 10px)!important;}' +
-      '@media (min-width:900px){.swbb{justify-content:center;gap:34px;}' +
-        '.swbb button{flex:0 0 96px;}}';
-    document.head.appendChild(css);
+   * `--swbb-h` reste PUBLIEE, a zero. Trois endroits s'en servent pour ne pas
+   * se peindre derriere elle — le bandeau de messages, la bulle de duels, et
+   * le cadrage du monde. Les laisser sans variable aurait marche par leur
+   * repli, mais un repli qui devient le cas normal est un piege pour le jour
+   * ou quelqu'un lit `var(--swbb-h, 0px)` et cherche qui la pose. */
+  try { document.documentElement.style.setProperty('--swbb-h', '0px'); } catch (e) {}
 
-    /* UN DIV, PAS UN <nav>. Les dix-huit pages ont chacune leurs regles pour
-       `nav` — c'est l'element de leur barre du haut. Un <nav> pose ici en
-       heritait : la barre est sortie a 844 px de haut, c'est-a-dire toute la
-       hauteur de l'ecran, alors que ses mesures de position disaient « en bas »
-       et que rien dans mon CSS ne parlait de hauteur. Le role est porte par
-       l'attribut, ce qui donne la meme semantique sans la cascade. */
-    barreBas = document.createElement('div');
-    barreBas.className = 'swbb';
-    barreBas.setAttribute('role', 'navigation');
-    barreBas.setAttribute('aria-label', 'Main');
-    var cour = pageCourante();
-    var lot = [
-      { k: 'jouer', t: 'Play', go: function () { location.href = 'games.html'; } },
-      { k: 'paris', t: 'Bets', go: function () { location.href = 'swogebet.html'; } },
-      /* Les coffres ouvrent le tiroir DIRECTEMENT sur la boutique : c'est le
-         seul endroit du site qui produise une emotion a l'ouverture, et il
-         etait a trois gestes. */
-      { k: 'coffres', t: 'Chests', go: function () { profOuvre(); profVa('sh'); } },
-    ];
-    lot.forEach(function (o) {
-      var b = document.createElement('button');
-      b.type = 'button';
-      b.className = (cour === o.k ? 'on' : '');
-      b.dataset.tap = o.k;
-      b.innerHTML = svg(o.k) + '<span>' + o.t + '</span>';
-      b.addEventListener('click', o.go);
-      barreBas.appendChild(b);
-    });
-
-    var bp = document.createElement('button');
-    bp.type = 'button'; bp.className = 'swbb-prof'; bp.dataset.tap = 'profil';
-    bp.innerHTML = '<span class="av"></span><span>Profile</span>';
-    bp.addEventListener('click', profOuvre);
-    barreBas.appendChild(bp);
-    document.body.appendChild(barreBas);
-
-    /* ---- LA BARRE CACHAIT TOUS LES MESSAGES ----
-     *
-     * Elle est a `z-index:2147482000`, collee en bas. Les deux couches de
-     * messages du site — le toast d'ici (100000) et le bandeau de
-     * swogecompte.js (10001) — s'affichaient a `bottom:18-26px`, c'est-a-dire
-     * DERRIERE elle. Un joueur a signale qu'appuyer sur « Deposit and play »
-     * ne faisait rien : le message partait bien, il etait peint dessous.
-     * Ni l'erreur ni la confirmation n'arrivaient jamais a l'oeil.
-     *
-     * Sa hauteur vient du contenu et de la marge de securite de l'iPhone :
-     * on ne peut pas la coder en dur. On la MESURE et on la publie, pour que
-     * les deux couches se posent au-dessus avec une seule source de verite.
-     */
-    var poseHauteur = function () {
-      var h = Math.round(barreBas.getBoundingClientRect().height) || 0;
-      document.documentElement.style.setProperty('--swbb-h', h + 'px');
-    };
-    poseHauteur();
-    if (window.ResizeObserver) new ResizeObserver(poseHauteur).observe(barreBas);
-    window.addEventListener('resize', poseHauteur);
-    /* Les polices arrivent apres : la barre grandit d'un ou deux pixels une
-       fois qu'elles sont la, et une mesure prise trop tot resterait fausse. */
-    if (document.fonts && document.fonts.ready) document.fonts.ready.then(poseHauteur).catch(function () {});
-    return barreBas;
-  }
 
   function profBtnVisible(v) {
     if (!profMonte()) return;
-    if (v) monteBarreBas();
     profBtn.style.display = v ? '' : 'none';
     ajusteBientot();
     /* Le nom, le visage et la liste des visages ne viennent PAS avec
@@ -6594,33 +6464,8 @@
     }
     titreBouton();
     if (pastille) profBtn.appendChild(pastille);
-    peintBarreBas();
   }
 
-  /* L'avatar de la barre du bas, et la disparition de celui du haut.
-     Le cadre de palier demenage avec lui : c'est la seule chose de son niveau
-     qu'un joueur voit en permanence, elle ne doit pas se perdre en route. */
-  function peintBarreBas() {
-    if (!barreBas) return;
-    var b = barreBas.querySelector('.swbb-prof');
-    var av = b && b.querySelector('.av');
-    if (!av) return;
-    if (MOI && (MOI.photo || estBadge(MOI.visage))) {
-      av.textContent = '';
-      av.style.backgroundImage = 'url("' + (MOI.photo ? urlPhoto(MOI.address) : urlBadge(MOI.visage)) + '")';
-    } else {
-      av.style.backgroundImage = '';
-      av.textContent = (MOI && MOI.visage) || '\uD83D\uDC64';
-    }
-    if (NIVEAU && NIVEAU.niveau > 0) {
-      av.style.borderColor = couleurPalier(NIVEAU.palier);
-      b.title = 'Level ' + NIVEAU.niveau + ' \u00b7 ' + NIVEAU.palier;
-    }
-    /* UNE SEULE POIGNEE. Le bouton du haut s'efface des que la barre est la :
-       deux facons d'ouvrir le meme panneau, l'une hors de portee du pouce,
-       obligent a se demander laquelle ouvre quoi. */
-    if (profBtn) profBtn.style.display = 'none';
-  }
   /* UN SEUL endroit qui ecrit l'infobulle du bouton. Deux fonctions
      l'ecrivaient chacune de leur cote : celle des amis passait apres et
      effacait le niveau a chaque fois qu'il n'y avait aucune notification —
@@ -6803,12 +6648,6 @@
   }
   /** La clef d'un element touche, ou rien s'il n'y a rien a compter. */
   function clefTap(e) {
-    var b = e.closest && e.closest('.swbb button');
-    /* La clef est POSEE sur le bouton, pas devinee dans son contenu. Ma
-       premiere version lisait le dernier <span> : sur le bouton du profil
-       c'est la PASTILLE, et la barre remontait « bar:3 » — un compteur
-       different a chaque nombre de recompenses en attente. */
-    if (b) return 'bar:' + ((b.dataset && b.dataset.tap) || 'inconnu');
     var r = e.closest && e.closest('.swp-t button');
     if (r) {
       /* La clef quand il y en a une, sinon le libelle reduit : les rangees du
@@ -7241,11 +7080,16 @@
     /* LE COMPTE VIENT DE LA LISTE, et de nulle part ailleurs. C'est la seule
        chose qui garantisse qu'on peut toujours trouver ce qu'il annonce. */
     var total = notifs().length;
-    /* La pastille suit la POIGNEE VISIBLE. Posee sur le bouton du haut alors
-       que la barre du bas l'a remplacee, elle serait allumee sur un element
-       en display:none — invisible, donc inutile, et sans que rien ne le
-       signale. */
-    var cible = barreBas && barreBas.querySelector('.swbb-prof');
+    /* ---- LA PASTILLE SUIT LA POIGNEE VISIBLE ----
+     * Elle vivait sur l'avatar de la barre du bas. La barre est partie, et une
+     * pastille posee sur un element absent — ou sur le notre, masque par les
+     * pages qui ont leur propre avatar — s'allume sans que personne ne la
+     * voie : invisible, donc inutile, et rien ne le signale.
+     * On vise donc l'avatar de la PAGE quand elle en a un (`#gxProfil`, sur
+     * les six pages principales), et le notre sinon. C'est la meme regle
+     * qu'avant, appliquee a ce qui reste. */
+    var cible = document.getElementById('gxProfil');
+    if (cible && cible.offsetParent === null) cible = null;   // present mais masque
     if (cible) {
       var q = cible.querySelector('.swpn');
       if (!total) { if (q) q.remove(); }
@@ -7615,9 +7459,9 @@
        * site : on voyait un demi-cercle sortir de la barre, et le clic
        * atteignait la barre. Signale sur le Nexus, ou le demi-cercle se
        * detache sur le jeu, mais le defaut n'a jamais eu de page a lui.
-       * `--swbb-h` est mesuree et publiee par la barre elle-meme, avec la
-       * marge de securite de l'iPhone dedans. Le repli a 0 vaut pour les pages
-       * qui n'en portent pas. C'est exactement ce que `.swtoast` fait vingt
+       * `--swbb-h` vaut zero depuis que la barre du bas est retiree, et elle
+       * reste publiee : le calcul tient sans changer, et le jour ou une barre
+       * revient, la bulle se replace toute seule. C'est exactement ce que `.swtoast` fait vingt
        * lignes plus haut — la lecon etait deja ecrite, elle n'avait pas ete
        * appliquee ici. */
       '.swdb{position:fixed;right:16px;bottom:calc(var(--swbb-h,0px) + 16px);' +

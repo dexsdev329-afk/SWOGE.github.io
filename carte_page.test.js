@@ -1911,6 +1911,39 @@ const servirLeSite = async () => {
       ok((une2.carte.objets || []).length > 100,
          `avec ses rochers et les murs de ses salles (${(une2.carte.objets || []).length} objets)`);
     }
+    /* ---- ET LA MEME CHOSE EN 2,5D ----
+     * « tu peux mettre tous les batiments du nexus sur le sol qu il a
+     * choisi ? » — c'est cette base-la. Elle part du terrain d'un joueur et
+     * pose les vingt et une parcelles du jeu autour. Ce qui se verifie ici
+     * est qu'elle traverse : le mode, les parcelles, le point de depart. */
+    await p.click('#nxMapRetour');
+    await p.waitForTimeout(900);
+    await p.click('#nxMapNouvelle');
+    await p.waitForTimeout(300);
+    await p.click('#nxMapBases button[data-base="nexus25"]');
+    await p.waitForTimeout(150);
+    await p.click('#nxMapCree');
+    await p.waitForTimeout(2200);
+    await p.fill('#nxMapNom', 'Nexus 2.5D');
+    await p.click('#nxMapEnregistre');
+    await p.waitForTimeout(2400);
+    const base3 = 'http://127.0.0.1:' + port;
+    const t3 = await (await fetch(base3 + '/admin/cartes',
+                                  { headers: { 'x-admin-key': 'k' } })).json();
+    const iso = (t3.cartes || []).filter((k) => k.nom === 'Nexus 2.5D')[0];
+    ok(!!iso, 'la base 2,5D s enregistre aussi');
+    if (iso) {
+      eq(iso.mode, 'iso', 'et elle reste en 2,5D de bout en bout');
+      const u3 = await (await fetch(base3 + '/admin/cartes?id=' + iso.id,
+                                    { headers: { 'x-admin-key': 'k' } })).json();
+      eq((u3.carte.objets || []).length, 21,
+         'avec les vingt et une parcelles du jeu, chacune une fois');
+      ok(u3.carte.depart && u3.carte.depart.c === 25,
+         `et son point de depart (${JSON.stringify(u3.carte.depart)}) — sans lui, pas de Play`);
+      ok((u3.carte.cases || []).length > 2000,
+         `et un sol sous toute la grille (${(u3.carte.cases || []).length} cases)`);
+    }
+
     await p.click('#nxMapRetour');
     await p.waitForTimeout(1000);
   }

@@ -131,4 +131,74 @@ for (const e of animes) {
      `${e.cle} : ${e.l} se divise par ${e.cadres} — sinon une tranche du voisin bave sur les bords`);
 }
 
+/* ================== LES BASES DU SERVEUR NE POSENT QUE CE QUI EXISTE ==========
+ *
+ * L'editeur propose de partir d'un monde qui existe, et c'est le SERVEUR qui
+ * dit ce qu'on y trouve. Il ne connait pas ce catalogue-ci : rien, de son
+ * cote, ne l'empeche de nommer une planche qui n'existe pas.
+ *
+ * Ce n'est pas une crainte de principe. La seule carte enregistree a ce jour
+ * portait deux elements — `iso_pas_tapis` et `iso_pont_pierre` — dont les
+ * images n'ont JAMAIS existe dans ce depot. Ils ne dessinaient rien, dans
+ * l'editeur comme dans le monde, et rien nulle part ne le disait : ni erreur,
+ * ni case vide, ni trou visible. On ne s'en apercoit qu'en regardant, et
+ * seulement si l'on sait ce qu'on cherche.
+ *
+ * On demande donc au serveur ses bases, et l'on verifie que chaque sol et
+ * chaque objet qu'elles posent a bien une planche ici.
+ */
+{
+  const path = require('path');
+  const SERVEUR = process.env.SWOGE_SERVEUR || '/home/user/swoge-pusher-server.github.io';
+  let M = null;
+  try { M = require(path.join(SERVEUR, 'monde.js')); } catch (e) { M = null; }
+  if (!M) {
+    console.log('  (serveur absent : les bases ne sont pas verifiees)');
+  } else {
+    const par = {};
+    for (const fam of Object.keys(vrai)) {
+      for (const e of vrai[fam]) (par[e.cle] = par[e.cle] || []).push(fam);
+    }
+    const salles = M.salles(Math.random);
+    const BASES = [
+      ['ville', M.modeleDeMonde('ville')],
+      ['nexus', M.modeleDeMonde('nexus', { salles, obstacles: M.obstacles(Math.random, salles) })],
+      ['nexus25', M.modeleDeMonde('nexus25')],
+    ];
+    for (const [nom, k] of BASES) {
+      ok(!!k, `la base « ${nom} » se construit`);
+      if (!k) continue;
+      const sols = [...new Set((k.cases || []).map((q) => q.s))];
+      const objs = [...new Set((k.objets || []).map((q) => q.k))];
+      const orphelins = sols.filter((x) => !par[x]).concat(objs.filter((x) => !par[x]));
+      ok(orphelins.length === 0,
+         orphelins.length
+           ? `« ${nom} » pose ${orphelins.length} element(s) SANS PLANCHE : ${orphelins.join(', ')}`
+           : `« ${nom} » : ses ${sols.length} sol(s) et ses ${objs.length} objet(s) ont tous leur planche`);
+    }
+    /* Et la base 2,5D pose TOUTES les parcelles isometriques, chacune une
+       fois : c'est ce qu'on a promis — « tous les batiments du jeu, sur une
+       seule ile » — et une promesse qu'on ne mesure pas se defait au premier
+       ajout de planche. */
+    const iso = M.modeleDeMonde('nexus25');
+    if (iso) {
+      const poses = (iso.objets || []).map((o) => o.k);
+      const attendues = vrai.iso.map((e) => e.cle).sort();
+      ok(poses.length === new Set(poses).size, 'aucune parcelle posee deux fois');
+      const manquent = attendues.filter((x) => poses.indexOf(x) < 0);
+      ok(manquent.length === 0,
+         manquent.length ? `parcelles oubliees : ${manquent.join(', ')}`
+                         : `les ${attendues.length} parcelles 2,5D du jeu sont toutes posees`);
+      const dedans = (iso.objets || []).every(
+        (o) => o.c >= 0 && o.l >= 0 && o.c < iso.cote && o.l < iso.cote);
+      ok(dedans, 'et toutes tiennent dans la grille');
+      ok(iso.depart && iso.depart.c >= 0 && iso.depart.l >= 0,
+         `elle porte un point de depart (${iso.depart ? iso.depart.c + ',' + iso.depart.l : 'aucun'})`
+         + ' — sans lui la fiche ne propose meme pas Play');
+      ok((iso.cases || []).length === iso.cote * iso.cote,
+         `et un sol sous toute la grille (${(iso.cases || []).length} cases)`);
+    }
+  }
+}
+
 console.log(`\ncatalogue.test.js : ${n} verifications OK`);

@@ -159,6 +159,10 @@
          et pas un seul sol. */
       ouvreAtelier({ id: null, mienne: true, nom: m.carte.nom || '',
                      cote: m.carte.cote, mode: m.carte.mode, pal: m.carte.pal,
+                     /* Le DEPART aussi : une base qui en porte un est jouable
+                        des l'ouverture, et sans lui la fiche ne propose meme
+                        pas « Play ». */
+                     depart: m.carte.depart || null,
                      cases: m.carte.cases || [], objets: m.carte.objets || [] });
       return;
     }
@@ -3350,9 +3354,11 @@
       mode2dDit: 'A grid of tiles seen from above. Grounds, walls, props, monsters.',
       mode25dDit: 'Ready-made plots seen at three quarters. Lay a ground under them.',
       baseVide: 'Empty grid', baseVille: 'The +18 city', baseNexus: 'The Nexus',
+      baseNexus25: 'The Nexus in 2.5D',
       baseVideDit: 'Start from nothing.',
       baseVilleDit: 'A copy of the city, yours to change. Save it and we can look at what you propose.',
       baseNexusDit: 'A copy of the world as it stands right now — its rings, its guarded rooms, its rocks. Move what bothers you and save it.',
+      baseNexus25Dit: 'The Nexus rebuilt in 2.5D parcels — every building the game has, on one island. Rearrange it and show us.',
       baseCharge: 'Copying the city…',
       baseSansPlan: 'That place has no fixed map — dungeons are redrawn every time you enter.',
       taille: 'Size',
@@ -3450,9 +3456,11 @@
       mode2dDit: 'Une grille de tuiles vue de dessus. Sols, murs, objets, monstres.',
       mode25dDit: 'Des parcelles vues de trois quarts. Posez un sol dessous.',
       baseVide: 'Grille vide', baseVille: 'La ville +18', baseNexus: 'Le Nexus',
+      baseNexus25: 'Le Nexus en 2,5D',
       baseVideDit: 'Partir de rien.',
       baseVilleDit: 'Une copie de la ville, a vous de la changer. Enregistrez-la et nous regarderons ce que vous proposez.',
       baseNexusDit: 'Une copie du monde tel qu il est en ce moment — ses anneaux, ses salles gardees, ses rochers. Deplacez ce qui vous gene et enregistrez.',
+      baseNexus25Dit: 'Le Nexus refait en parcelles 2,5D — tous les batiments du jeu, sur une seule ile. Rearrangez-la et montrez-nous.',
       baseCharge: 'Copie de la ville en cours…',
       baseSansPlan: 'Ce lieu n a pas de carte fixe — un donjon se redessine a chaque fois qu on y entre.',
       taille: 'Taille',
@@ -3552,9 +3560,11 @@
       mode2dDit: 'Una cuadrícula de baldosas vista desde arriba. Suelos, muros, objetos, monstruos.',
       mode25dDit: 'Parcelas vistas en tres cuartos. Pon un suelo debajo.',
       baseVide: 'Rejilla vacia', baseVille: 'La ciudad +18', baseNexus: 'El Nexus',
+      baseNexus25: 'El Nexus en 2,5D',
       baseVideDit: 'Empezar de cero.',
       baseVilleDit: 'Una copia de la ciudad, tuya para cambiarla. Guardala y miraremos tu propuesta.',
       baseNexusDit: 'Una copia del mundo tal como esta ahora — sus anillos, sus salas guardadas, sus rocas. Mueve lo que te moleste y guardala.',
+      baseNexus25Dit: 'El Nexus rehecho en parcelas 2,5D — todos los edificios del juego, en una sola isla. Reordenala y ensenanos.',
       baseCharge: 'Copiando la ciudad…',
       baseSansPlan: 'Ese lugar no tiene mapa fijo — las mazmorras se redibujan cada vez.',
       taille: 'Tamaño',

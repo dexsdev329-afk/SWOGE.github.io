@@ -2,12 +2,21 @@
 
 ## Etat
 
-**Ecrit, compile, audite deux fois. Ni deploye, ni eprouve sur une chaine.**
+**Ecrit, compile, audite deux fois, EPROUVE SUR UN FORK. Pas deploye.**
 
 Verdict du second passage adversarial : **DEPLOYABLE APRES CORRECTIFS** — les
 correctifs sont appliques, les deux verifications bloquantes sont levees
-(voir `AUDIT-V3.md`). Toujours aucune execution reelle, aucune relecture
-humaine.
+(voir `AUDIT-V3.md`).
+
+`contrats/banc_fork.js` fait desormais tourner le vrai bytecode contre le vrai
+etat de la chaine : un lancement complet passe, le pool se cree, le NFT arrive
+au launchpad, le frais brule, la retenue se remplit puis se deverse, un
+detenteur reclame. Lancer avec :
+
+    S=<dossier des modules> NODE_PATH=$S/node_modules node contrats/banc_fork.js
+
+Restent hors de portee : un reseau de test avec du temps qui passe et
+plusieurs portefeuilles, et une relecture humaine.
 
 Compile avec `solc 0.8.34+commit.80d5c536`, optimisation activee, 200 runs —
 exactement les reglages du V2 en production. Zero erreur, zero avertissement.
@@ -69,9 +78,9 @@ un du de zero. Il ne recupere pas les recompenses passees.
 
 ## Ce qui N'A PAS ete verifie
 
-- **Aucune execution.** Pas de reseau de test, pas de fork, pas un seul
-  lancement reel. La logique Uniswap — creation du pool, mint a sens unique,
-  `collect` — n'a jamais tourne avec `$SWOGE` en paire.
+- **Aucun reseau de test.** Le banc sur fork couvre la logique Uniswap —
+  creation du pool, mint a sens unique, `collect` — avec `$SWOGE` en paire,
+  mais a un seul bloc et sur un chemin nominal.
 - **Aucun audit.** Ce contrat n'a pas de proprietaire, pas de proxy, et
   detient la liquidite de chaque jeton lance pour toujours. **Un defaut sera
   definitif.** Il doit etre relu par quelqu'un d'autre avant deploiement.

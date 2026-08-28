@@ -322,6 +322,84 @@ qui survivra. Un commentaire faux y est un defaut.
 
 ---
 
+# BANC D'ESSAI SUR FORK — le contrat a enfin TOURNE
+
+Jusqu'ici, rien de ce qui precede n'avait execute une seule instruction EVM.
+Les bornes arithmetiques etaient demontrees, la repartition simulee, les
+sources du gestionnaire de positions et du $SWOGE relues — mais toute la
+partie Uniswap (creation du pool, amorcage, mint mono-face, reception du NFT,
+`collect`) reposait sur de la lecture. C'est justement la partie qu'on ne peut
+pas raisonner de tete : elle depend d'un gestionnaire qui est un **fork**, sur
+une chaine dont on ne controle rien.
+
+`contrats/banc_fork.js` fait tourner le vrai bytecode contre le VRAI etat de la
+chaine, via un EVM local (`@ethereumjs`) branche sur le noeud par RPC : vrai
+gestionnaire de positions, vrai $SWOGE, vraie usine Uniswap.
+
+## Ce que le banc etablit
+
+| # | Verifie | Resultat |
+|---|---|---|
+| 1 | Deploiement du launchpad | passe |
+| 2 | `createToken` de bout en bout | passe |
+| 3 | Pool cree, NFT emis et **detenu par le launchpad** | passe |
+| 3 | Offre entiere dans le pool (99,99 %), **zero jeton au createur** | passe |
+| 3 | Frais de 1 000 $SWOGE preleve et **brule vers DEAD** | passe |
+| 4 | `shares()` vaut **exactement zero** au lancement | confirme |
+| 5 | Recolte a vide : rien ne file au tresor | passe |
+| 6 | Achat sous le plancher : 30 % au tresor, **70 % EN RETENUE** | passe |
+| 7 | Achat au-dessus du plancher : **la retenue se deverse**, `carry` revient a 0 | passe |
+| 8 | `claimRewards` verse **exactement** la creance, puis zero | passe |
+| 9 | Un transfert ne fait pas echouer `onMove` et ne **cree** aucune creance | passe |
+| 10 | Anti-snipe : refuse au-dela de 5 % dans la fenetre, se relache apres | passe |
+| 11 | Relancer avec le MEME sel -> echec propre | passe |
+| 11 | Relancer avec un AUTRE sel -> passe (jamais brique) | **PAS ENCORE OBSERVE** |
+
+La derniere ligne n'est pas une reussite : elle n'a jamais ete vue au vert.
+Lors du passage ou elle a tourne, elle a echoue sur « reentrant » — un defaut
+du banc, corrige depuis (point 3 ci-dessous) ; au passage suivant, le noeud a
+elague le bloc d'ancrage avant d'y arriver. **Tant qu'elle n'est pas verte, la
+rejouabilite du lancement reste demontree par la lecture du code et par le
+seul fait que le sel entre dans l'adresse CREATE2, pas par l'execution.**
+
+**Le point A de l'audit est desormais prouve par l'execution, pas par la
+lecture** : le NFT arrive bien au launchpad, donc le gestionnaire deploye
+n'appelle pas `onERC721Received`.
+
+**Le correctif C est valide sur le chemin reel** (sections 5 a 7) : une recolte alors que le
+flottant est sous le plancher envoie 30 % au tresor et met 70 % de cote — elle
+ne detourne rien — et la recolte suivante, une fois le plancher franchi,
+deverse la retenue et remet `carry` a zero.
+
+## Trois faux defauts que le banc a produits avant de dire vrai
+
+Un banc mal regle accuse le contrat. Les trois cas, parce qu'ils se
+reproduiront :
+
+1. **Hardfork trop ancien.** Sous Shanghai, le $SWOGE deploye tombait sur
+   « invalid opcode » apres avoir brule tout le gaz. Solidity 0.8.30+ vise
+   Cancun et emet `MCOPY`. Rien a voir avec le contrat.
+2. **Le temps ne passait pas.** Un fork ne fabrique pas de blocs : la fenetre
+   anti-snipe (5 % par portefeuille, 2 blocs) ne se refermait jamais et le pool
+   rendait « TF » des qu'un acheteur depassait 5 %. La garde fonctionnait ;
+   c'est le banc qui etait fige.
+3. **Un appel rate laissait des traces.** Apres un lancement echoue, le verrou
+   de non-reentrance restait pose et le lancement SUIVANT echouait sur
+   « reentrant ». Sur une vraie chaine, une transaction ratee ne modifie rien.
+   Il a fallu encadrer chaque appel de premier niveau d'un point de reprise.
+
+## Ce que le banc ne prouve toujours pas
+
+- **Un seul bloc, un seul chemin nominal.** Pas de temps qui passe reellement,
+  pas de concurrence, pas de dizaines de portefeuilles.
+- **Le noeud n'est pas une archive.** Il elague l'etat pendant l'essai ; les
+  lectures tardives basculent sur le bloc courant. L'essai n'est donc pas
+  reproductible a l'identique, et le banc le signale quand ca arrive.
+- **Ni audit humain, ni reseau de test.** Un contrat sans proprietaire merite
+  les deux.
+
+---
+
 # Etat
 
 Compile propre sous solc 0.8.34+commit.80d5c536, **0 avertissement**,
@@ -329,8 +407,10 @@ Compile propre sous solc 0.8.34+commit.80d5c536, **0 avertissement**,
 
 # Ce qui n'a toujours PAS ete fait
 
-**Aucune execution sur une chaine.** Ni testnet, ni fork, ni banc d'essai
-Foundry. Le modele numerique couvre la repartition, pas l'integration Uniswap.
+**Aucun reseau de test.** Le banc sur fork ci-dessus couvre desormais
+l'integration Uniswap sur l'etat reel, mais a un seul bloc et sur un chemin
+nominal : pas de temps qui passe, pas de concurrence, pas de dizaines de
+portefeuilles.
 
 **Les 38 constats moyens du second audit n'ont pas ete refutes.** Ils peuvent
 contenir des faux positifs comme de vrais defauts.

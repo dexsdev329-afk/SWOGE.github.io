@@ -736,9 +736,23 @@ a.match:hover .cotes button{border-color:var(--bleu)}
  * Le second ne se telecharge qu au moment ou le premier approche de sa fin —
  * trois megaoctets demandes au chargement pour une image qu on ne voit qu a
  * la sixieme seconde, c est trois megaoctets qui retardent le reste. */
+/* ---- LE MEME PIEGE QUE LA BANNIERE DES PARIS ----
+ * Elle portait `max-height:min(40vh,340px)` a cote d'un `aspect-ratio`. Sur
+ * iPhone, `vh` se mesure sur la fenetre BARRE D'ADRESSE RETRACTEE : il change
+ * donc au milieu d'un defilement, et des que le plafond mord, la banniere se
+ * met a maigrir et a se recadrer pendant qu'on descend. Signale sur la page
+ * des paris — « la video du haut change de format » — et cette page portait la
+ * meme regle, mot pour mot.
+ * En portrait, plus de plafond en hauteur d'ecran : la largeur et le rapport
+ * suffisent, et la boite ne peut plus bouger. Il ne reste qu'en paysage, ou il
+ * sert vraiment, et en `svh` — l'unite qui se mesure sur la plus PETITE
+ * fenetre et ne bouge donc jamais. */
 .haut-films{ position:relative; display:block; width:100%; aspect-ratio:1312/688;
-  max-height:min(40vh,340px); overflow:hidden; border-radius:16px;
+  max-height:340px; overflow:hidden; border-radius:16px;
   border:1px solid var(--bord); background:var(--nuit); margin-bottom:14px }
+@media (orientation:landscape){
+  .haut-films{ max-height:min(40vh,340px); max-height:min(40svh,340px); }
+}
 .haut-film{ position:absolute; inset:0; display:block; width:100%; height:100%;
   object-fit:cover; transition:opacity .55s ease }
 .haut-film.eteint{ opacity:0 }

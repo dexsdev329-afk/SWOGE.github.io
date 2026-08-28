@@ -783,20 +783,55 @@ html{ background-color:#0b0906;
   .univers.sb-univers{ grid-template-columns:minmax(0,1fr); }
   .univers.sb-univers .uni{ min-height:196px; }
 }
+/* ---- ELLE CHANGEAIT DE FORMAT EN COURS DE ROUTE ----
+ *
+ * Signale sur telephone : « la video du haut change de format ». Elle ne
+ * changeait pas toute seule — c'est l'ECRAN qui changeait sous elle.
+ *
+ * Son plafond etait `min(40vh, 330px)`. Sur iPhone, `vh` se mesure sur la
+ * fenetre BARRE D'ADRESSE RETRACTEE : elle vaut donc une chose a l'arrivee et
+ * une autre des qu'on defile, et l'unite change AU MILIEU du geste. Tant que
+ * le plafond ne mord pas, rien ne bouge ; des que la fenetre descend sous 562
+ * pixels de haut — le navigateur de Telegram, un petit telephone, le paysage
+ * — il mord, et la banniere se met a maigrir et a se recadrer a chaque
+ * defilement. Mesure : 225 px de haut a 844 de fenetre, 224 a 560, et ca
+ * continue.
+ *
+ * `svh` est l'unite faite pour ca : elle se mesure sur la fenetre la plus
+ * PETITE, celle ou toute la chrome du navigateur est montree, et elle ne bouge
+ * donc jamais. Le plafond garde son role — empecher la banniere de manger
+ * l'ecran en paysage — sans suivre les mouvements de la barre.
+ *
+ * La ligne en `vh` reste AVANT : un navigateur qui ne connait pas `svh` ignore
+ * la seconde et garde l'ancien comportement, qui vaut mieux que pas de
+ * plafond du tout. */
 .sb-film{ display:block; width:100%; height:auto; aspect-ratio:912/600;
-  max-height:min(40vh,330px); object-fit:cover; object-position:center 38%;
+  /* EN PORTRAIT, AUCUN PLAFOND EN HAUTEUR D'ECRAN. La banniere fait sa
+     largeur divisee par son rapport, et rien d'autre : 225 px sur un
+     telephone de 390. Elle ne peut donc plus bouger quand la fenetre bouge,
+     et c'est verifiable — quatre hauteurs d'ecran, la meme boite. */
+  max-height:330px;
+  object-fit:cover; object-position:center 38%;
   border-radius:15px; margin:0 0 14px;
   background:var(--nuit); border:1px solid var(--line); }
+/* ---- LE PLAFOND EN HAUTEUR NE SERT QU'EN PAYSAGE ----
+   La c'est utile : a 844 de large, le rapport donnerait 555 px de haut sur un
+   ecran qui en fait 390. Ailleurs il ne protegeait de rien et causait le
+   defaut.
+   `svh` plutot que `vh` : sur iPhone, `vh` se mesure sur la fenetre BARRE
+   RETRACTEE, donc il change au milieu d'un defilement. `svh` se mesure sur la
+   plus petite — celle ou toute la chrome est montree — et ne bouge jamais. La
+   ligne en `vh` reste devant pour les navigateurs qui ne connaissent pas
+   encore la seconde. */
+@media (orientation:landscape){
+  .sb-film{ max-height:min(40vh,330px); max-height:min(40svh,330px); }
+}
 
-/* ---- LE FOND DE LA BANNIERE ----
-   L'image est en `contain` : elle ne remplit pas sa boite, et ce qui deborde
-   de chaque cote est le FOND de l'image elle-meme. Il etait noir a trente-cinq
-   pour cent — invisible sur une page noire, et deux bandes grises sur une page
-   claire. Vu au rendu, puis trouve en remontant l'element sous le point gris :
-   ce n'etait ni la mise en page ni l'ecran de chargement, c'etait l'image. */
-.sb-banniere{ display:block; width:100%; height:auto; max-height:min(46vh,300px);
-  object-fit:contain; border-radius:15px; margin:0 0 14px;
-  background:var(--ink2); border:1px solid var(--line); }
+/* ---- `.sb-banniere` N'EXISTE PLUS ----
+ * Elle portait l'affiche AVANT que la video la remplace, et sa regle est
+ * restee : plus une seule balise ne la porte. Une regle qui ne vise rien se
+ * relit comme vivante, et la prochaine personne l'entretient — celle-ci
+ * portait meme le recit d'un defaut repare sur un element disparu. */
 .sb-sports{ display:flex; gap:8px; margin:0 0 14px; overflow-x:auto; padding-bottom:4px; }
 .sb-sports button{ display:flex; align-items:center; gap:7px; white-space:nowrap;
   min-height:42px; padding:9px 16px; border-radius:11px; cursor:pointer; font:inherit;

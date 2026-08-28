@@ -61,6 +61,20 @@ canvas{ touch-action:none; }
 </style>
 
 <title>🎰 SWOGE Pusher LIVE — shared table</title>
+
+<!-- ==================== HORS DES MOTEURS DE RECHERCHE ====================
+     Cette page n a rien a faire dans un resultat de recherche : ancienne table, plus aucun lien ne l atteint.
+     `noindex` empeche l INDEXATION ; le `Disallow` de `robots.txt` empeche la
+     VISITE. Les deux sont necessaires et ne font pas le meme travail — une
+     page jamais visitee peut quand meme etre listee si un lien pointe vers
+     elle. L icone reste : elle sert a celui qui a l onglet ouvert.
+     ====================================================================== -->
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/site/icone-32.png">
+<link rel="apple-touch-icon" href="/img/site/icone-180.png">
+<meta name="theme-color" content="#1B5FE0">
+
 <!-- La bulle de staking. Chargee tot et SANS defer : elle enveloppe WebSocket
      pour ecouter ce qui passe deja, et doit donc etre en place avant que la page
      n ouvre sa connexion. -->

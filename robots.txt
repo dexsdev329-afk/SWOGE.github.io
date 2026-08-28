@@ -1,0 +1,23 @@
+# swoleeswoge.dog
+#
+# Tout est ouvert, sauf trois pages qui n'ont rien a faire dans un moteur de
+# recherche. `Disallow` empeche la VISITE ; c'est la balise `noindex` posee
+# dans chacune de ces pages qui empeche l'INDEXATION. Les deux sont necessaires
+# et ne font pas le meme travail : une page jamais visitee peut quand meme etre
+# listee si quelqu'un pointe vers elle.
+
+User-agent: *
+
+# La page qui affiche une cle privee. Elle ne doit jamais etre atteinte depuis
+# une recherche, meme vide, meme par accident.
+Disallow: /wallet-export.html
+
+# L'ancienne table du Coin Pusher : plus aucun lien du site ne l'atteint, et la
+# version vivante est /swoge_pusher_live.html. Deux pages au contenu identique
+# se font concurrence dans les resultats et aucune des deux ne gagne.
+Disallow: /swoge_pusher.html
+
+# Outil interne, pas une page a lire.
+Disallow: /swoge_download.html
+
+Sitemap: https://swoleeswoge.dog/sitemap.xml

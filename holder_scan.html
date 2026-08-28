@@ -1,3 +1,10 @@
+<!DOCTYPE html>
+<html lang="en">
+<!-- Cette page n avait ni doctype ni balise `html` : elle s affichait donc en
+     mode QUIRKS, ou le navigateur imite les fautes des annees 90, et elle ne
+     pouvait declarer aucune langue. Mesure faite avant de la changer : au
+     passage en mode standard, aucun de ses 139 elements ne bouge, ni a 390 ni
+     a 1280 — seule la hauteur de `body` se remet a celle de son contenu. -->
 
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -92,7 +99,47 @@ video{ max-width:100%; }
 </style>
 
 <title>Holder Scan · Robinhood Chain</title>
-<link rel="icon" href="img/fa05d30cc698.jpg">
+
+<!-- ==================== REFERENCEMENT ET PARTAGE ====================
+     Bloc identique sur toutes les pages, pose juste apres le titre.
+
+     L ICONE. Vingt-trois pages sur vingt-huit n en avaient aucune, et les cinq
+     qui en portaient une pointaient vers trois fichiers differents — dont un
+     qui n existe pas. C est la premiere chose qu on cherche pour retrouver un
+     onglet, et Google la montre a cote du resultat.
+
+     LE PARTAGE. Aucune page ne portait de balise Open Graph : un lien colle
+     dans Telegram, sur X ou dans Discord n affichait ni titre, ni resume, ni
+     image — juste l adresse nue. Pour un projet qui vit dans Telegram, c est
+     le lien lui-meme qui faisait le travail de vitrine, et il ne le faisait
+     pas.
+
+     L ADRESSE CANONIQUE dit au moteur quelle est LA page, quand la meme est
+     atteignable avec un `?game=`, un `#` ou un `www`. Sans elle, les deux
+     versions se font concurrence et aucune ne gagne.
+     ================================================================= -->
+<link rel="canonical" href="https://swoleeswoge.dog/holder_scan.html">
+<meta name="description" content="Who holds the chart, who never sold, who bit. Live read of $SWOGE holders and transfer history on Robinhood Chain, through Blockscout.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="SWOGE WORLD">
+<meta property="og:locale" content="en_US">
+<meta property="og:title" content="Holder Scan · Robinhood Chain">
+<meta property="og:description" content="Who holds the chart, who never sold, who bit. Live read of $SWOGE holders and transfer history on Robinhood Chain, through Blockscout.">
+<meta property="og:url" content="https://swoleeswoge.dog/holder_scan.html">
+<meta property="og:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@SwoleDogeSwoge">
+<meta name="twitter:title" content="Holder Scan · Robinhood Chain">
+<meta name="twitter:description" content="Who holds the chart, who never sold, who bit. Live read of $SWOGE holders and transfer history on Robinhood Chain, through Blockscout.">
+<meta name="twitter:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/site/icone-32.png">
+<link rel="apple-touch-icon" href="/img/site/icone-180.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta name="theme-color" content="#1B5FE0">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">

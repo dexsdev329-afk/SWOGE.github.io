@@ -582,7 +582,7 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
   display:flex; align-items:center; justify-content:center; padding:16px;
   opacity:0; pointer-events:none; transition:opacity .35s; }
 #nxMortVoile.on{ opacity:1; pointer-events:auto; }
-.nxmt-carte{ width:100%; max-width:520px; max-height:88vh; overflow-y:auto;
+.nxmt-carte{ width:100%; max-width:520px; max-height:88%; overflow-y:auto;
   background:#16101a; border:1px solid #3a2230; border-radius:18px;
   padding:22px 18px 18px; text-align:center;
   box-shadow:0 30px 80px rgba(0,0,0,.7);
@@ -833,7 +833,7 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
   display:flex; align-items:center; justify-content:center; padding:10px;
   opacity:0; pointer-events:none; transition:opacity .18s; }
 #nxPetVoile.on{ opacity:1; pointer-events:auto; }
-#nxPetVoile .nxcf-carte{ max-width:560px; max-height:96vh; padding:16px 16px 18px; }
+#nxPetVoile .nxcf-carte{ max-width:560px; max-height:96%; padding:16px 16px 18px; }
 .nxpw-corps{ display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
   gap:10px; margin-top:12px; max-height:60vh; overflow:auto; }
 .nxpw-f{ background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.10);
@@ -972,7 +972,7 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
   display:flex; align-items:center; justify-content:center; padding:10px;
   opacity:0; pointer-events:none; transition:opacity .18s; }
 #nxBjVoile.on{ opacity:1; pointer-events:auto; }
-#nxBjVoile .nxcf-carte{ max-width:640px; max-height:96vh; padding:16px 16px 18px; }
+#nxBjVoile .nxcf-carte{ max-width:640px; max-height:96%; padding:16px 16px 18px; }
 /* ---- LE PANNEAU EST UNE TABLE, PAS UN FORMULAIRE ----
  *
  * La premiere version peignait l'etat du serveur dans des boutons gris : tout
@@ -1096,7 +1096,7 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
   opacity:0; pointer-events:none; transition:opacity .18s,right .22s ease; }
 #nxWrap.replie ~ #nxCoffreVoile, body.nxreplie #nxCoffreVoile{ right:0; }
 #nxCoffreVoile.on{ opacity:1; pointer-events:auto; }
-.nxcf-carte{ position:relative; width:100%; max-width:560px; max-height:84vh;
+.nxcf-carte{ position:relative; width:100%; max-width:560px; max-height:84%;
   overflow-y:auto; background:#141a24; border:1px solid #2b3340; border-radius:16px;
   padding:18px 16px 16px; box-shadow:0 24px 60px rgba(0,0,0,.6);
   transform:translateY(10px); transition:transform .18s; }
@@ -1354,7 +1354,7 @@ body.nxdrag *{ cursor:grabbing !important; }
  */
 @media (max-width:820px){
   #nxCoffreVoile, #nxRangVoile{ right:0; padding:10px; }
-  #nxCoffreVoile .nxcf-carte, #nxRangVoile .nxcf-carte{ max-height:88vh; }
+  #nxCoffreVoile .nxcf-carte, #nxRangVoile .nxcf-carte{ max-height:88%; }
 }
 /* ---- LA BORNE ----
    L'ecran garde le rapport 382 x 224 de la borne d'origine. L'etirer pour
@@ -1371,7 +1371,7 @@ body.nxdrag *{ cursor:grabbing !important; }
  * poussent la carte d'un ou deux pixels au-dela de sa largeur. On coupe
  * l'horizontale et on garde la verticale : couper les deux aurait fait
  * disparaitre les boutons du bas sur un petit ecran. */
-.nxarc-carte{ max-width:860px; width:100%; max-height:96vh;
+.nxarc-carte{ max-width:860px; width:100%; max-height:96%;
   overflow-x:hidden; overflow-y:auto;
   padding:16px 16px 14px; border-color:#ff3ea5;
   box-shadow:0 0 0 1px rgba(255,62,165,.25), 0 18px 60px rgba(255,62,165,.18); }
@@ -1387,8 +1387,8 @@ body.nxdrag *{ cursor:grabbing !important; }
    sans autorisation, ou sur un mobile qui n'en veut pas. Un bouton qui ne
    fait rien se lit comme un bouton casse. */
 #nxArcVoile.geant{ padding:0; }
-#nxArcVoile.geant .nxarc-carte{ max-width:100%; width:100%; max-height:100vh;
-  height:100vh; border-radius:0; display:flex; flex-direction:column; }
+#nxArcVoile.geant .nxarc-carte{ max-width:100%; width:100%; max-height:100%;
+  height:100%; border-radius:0; display:flex; flex-direction:column; }
 #nxArcVoile.geant .nxarc-ecran{ flex:1 1 auto; aspect-ratio:auto; }
 #nxArcVoile.geant .nxarc-touches, #nxArcVoile.geant .nxarc-credit{ display:none; }
 /* En plein ecran natif, c'est l'ECRAN qui est promu : il doit alors remplir,
@@ -1687,7 +1687,7 @@ body.nxdrag *{ cursor:grabbing !important; }
   display:flex; align-items:center; justify-content:center; padding:16px;
   opacity:0; pointer-events:none; transition:opacity .18s ease; }
 #nxReglagesVoile.on{ opacity:1; pointer-events:auto; }
-.nxrp-carte{ width:100%; max-width:360px; max-height:86vh; overflow-y:auto;
+.nxrp-carte{ width:100%; max-width:360px; max-height:86%; overflow-y:auto;
   background:#131B2A; border:1px solid rgba(255,255,255,.12); border-radius:18px;
   padding:22px 20px; position:relative; transform:scale(.94); opacity:0;
   transition:transform .2s,opacity .2s; }
@@ -2441,6 +2441,30 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 #nxShopVoile, #nxPetVoile, #nxBjVoile, #nxArcVoile, #nxReglagesVoile,
 #nxMapVoile, #nxMortVoile, #nxCoffreVoile, #nxTourVoile, #nxRangVoile{
   top:var(--nx-haut, 0px); bottom:var(--nx-bas, 0px); }
+
+/* ---- ET LES CARTES SE MESURENT SUR LE VOILE, PLUS SUR L'ECRAN ----
+ *
+ * Signale par un joueur : « le menu du haut — quand on ouvre la banque ou
+ * qu'on regarde son familier — recouvre le X qui sert a fermer ».
+ *
+ * Le voile etait bien repousse sous la barre par la regle ci-dessus. La
+ * CARTE, dedans, ne l'etait pas : elle etait plafonnee en `vh`, c'est-a-dire
+ * sur l'ecran ENTIER — 96vh pour le familier, 84vh pour le coffre. Un enfant
+ * plus grand que son conteneur, centre par `align-items:center`, deborde des
+ * DEUX cotes a parts egales. Le haut de la carte passait donc au-dessus du
+ * voile, et `.nxcf-x` est en `position:absolute; top:12px` : le bouton qui
+ * ferme partait le premier, sous une barre en z-index 220.
+ *
+ * Ca ne se voyait presque pas sur un grand ecran, ou l'aire libre est proche
+ * de l'ecran entier. Dans le navigateur interne de Telegram, qui ajoute SON
+ * en-tete par-dessus, l'aire libre fond et le debordement devient franc —
+ * c'est de la que vient la capture du joueur.
+ *
+ * Le pourcentage se resout sur le voile, dont la hauteur est definie par
+ * `top` et `bottom`. La carte suit donc l'aire libre quoi qu'il arrive, sans
+ * qu'on ait a refaire l'arithmetique des deux barres a chaque endroit — et
+ * si les variables manquaient, le voile vaut l'ecran et on retombe sur
+ * l'ancien comportement. */
 
 /* ---- ET LA BULLE « VS » NE FLOTTE PAS SUR LE JEU ----
  *

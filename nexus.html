@@ -1979,6 +1979,23 @@ body.nxdrag *{ cursor:grabbing !important; }
   #nxMaison{ bottom:calc(max(16px, env(safe-area-inset-bottom)) + 70px); }
   #nxPot{ bottom:calc(max(16px, env(safe-area-inset-bottom)) + 134px); }
   #nxButinFlot{ bottom:calc(max(16px, env(safe-area-inset-bottom)) + 198px); }
+  /* ---- LE BOUTON DE REPLI ENTRE DANS LA COLONNE ----
+   * Il etait pose a `top:68%`, une fraction de la hauteur. Sur un grand ecran
+   * ca tombe au-dessus des commandes ; sur un ecran COURT — et il devient
+   * court des que l'en-tete du site et la barre du navigateur ont pris leur
+   * part — 68 % tombe EN PLEIN DEDANS. Les potions (z-index 24) et le butin
+   * (25) passaient alors par-dessus le bouton (23) : le doigt touchait une
+   * fiole, le panneau ne se repliait plus, et sur telephone il mange un tiers
+   * de l'ecran. Un joueur l'a paye d'un personnage — la mort est definitive.
+   *
+   * Mesure : sous 660px de hauteur utile, le bouton etait INTEGRALEMENT
+   * couvert. Une fraction ne peut pas eviter une colonne ancree au bas de
+   * l'ecran ; il faut l'ancrer au bas lui aussi. Il prend donc le palier
+   * suivant de la meme colonne — 198 + 56 + 8 — et passe AU-DESSUS de tout
+   * le monde en z-index, pour que plus rien ne puisse repasser devant. */
+  #nxBascule{ top:auto; transform:none; z-index:26;
+    bottom:calc(max(16px, env(safe-area-inset-bottom)) + 262px); }
+  #nxWrap.replie #nxBascule{ transform:scaleX(-1); }
 }
 
 @media (min-width:900px) and (pointer:fine){

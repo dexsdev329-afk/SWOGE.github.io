@@ -88,9 +88,15 @@ const ECRANS = [{ nom: 'iPhone SE', w: 375, h: 667 }, { nom: 'grand telephone', 
           /* le logo pousse de cote = une colonne laterale s'est elargie */
           decentre: Math.abs((L.left + L.right) / 2 - (T2.left + T2.right) / 2),
           gainDeborde: GR.bottom > T2.bottom + 1 || GR.top < T2.top - 1,
-          /* le gain est A GAUCHE du logo, la mise A DROITE : c'est la demande */
-          gainAGauche: GR.left < L.left,
-          miseADroite: MR ? MR.left >= L.right - 1 : null,
+          /* Le gain a GAUCHE, la mise a DROITE : c'est la demande d'origine, et
+             elle porte sur la BANDE, pas sur le logo. On comparait aux bords
+             du logo tant qu'il etait etroit et centre ; le bandeau du cadre
+             fourni prend toute la largeur et le gain se pose PAR-DESSUS son
+             extremite gauche. La demande n'a pas change, la geometrie si :
+             on demande donc que le centre du gain tombe dans le tiers gauche
+             de la bande et celui de la mise dans le tiers droit. */
+          gainAGauche: (GR.left + GR.right) / 2 < T2.left + T2.width / 3,
+          miseADroite: MR ? (MR.left + MR.right) / 2 > T2.left + 2 * T2.width / 3 : null,
           croix: BR ? Math.min(BR.width, BR.height) : null,
         };
       }, [c.gain, c.mise]));
@@ -111,9 +117,9 @@ const ECRANS = [{ nom: 'iPhone SE', w: 375, h: 667 }, { nom: 'grand telephone', 
        'le gain tient dans la bande, y compris la cascade a trois amas qui'
        + ' s ecrit sur trois lignes');
     ok(mesures.every((m) => m.gainAGauche),
-       'le gain est bien A GAUCHE du logo');
+       'le gain est bien dans le TIERS GAUCHE de la bande');
     ok(mesures.filter((m) => m.miseADroite !== null).every((m) => m.miseADroite),
-       'et la mise A DROITE : c est la disposition demandee, pas l inverse');
+       'et la mise dans le TIERS DROIT : c est la disposition demandee, pas l inverse');
     /* Le bouton s'appelait « clear » en 15 px de texte. Dans une colonne de
        cent pixels, cette cible-la se rate ; on l'a remplacee par un rond. */
     const croix = mesures.map((m) => m.croix).filter((x) => x !== null);

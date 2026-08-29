@@ -127,6 +127,8 @@ window.__vus = [];
     pct: document.getElementById('burnPct').textContent,
     barre: document.getElementById('burnBar').style.width,
     titre: document.getElementById('burnTitre').textContent,
+    entete: document.getElementById('titreJeton').textContent,
+    onglet: document.title,
     hint: document.getElementById('burnHint').textContent,
     lien: document.getElementById('burnLien').textContent,
     cache: document.getElementById('burnLien').hidden,
@@ -136,6 +138,9 @@ window.__vus = [];
   ok(/of \$SWOGEBET supply/.test(b.pct), "et le pourcentage se mesure sur SON offre : " + b.pct);
   ok(b.barre !== '0.5%', 'la barre a bouge — elle ne montre plus celle du SWOGE (' + b.barre + ')');
   ok(/Burn your \$SWOGEBET/.test(b.titre), 'le titre du formulaire suit : ' + b.titre);
+  /* L'en-tete est le seul endroit ou l'oeil se pose avant de cliquer. */
+  ok(b.entete === '$SWOGEBET', "l'en-tete de la page suit aussi : « Burn " + b.entete + " »");
+  ok(/Burn \$SWOGEBET/.test(b.onglet), "et l'onglet du navigateur : " + b.onglet);
   ok(/SWOGEBET/.test(b.hint), "l'avertissement aussi");
   ok(b.vus.indexOf(BET) >= 0, "le contrat interroge est bien celui du \\$SWOGEBET");
 

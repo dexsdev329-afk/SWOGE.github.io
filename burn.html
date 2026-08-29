@@ -396,7 +396,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     <div class="brand">
       <img class="logo" id="logo" src="img/fa05d30cc698.jpg" alt="SWOGE">
       <div>
-        <h1>🔥 <span>Burn</span> $SWOGE</h1>
+        <h1>🔥 <span>Burn</span> <span id="titreJeton">$SWOGE</span></h1>
         <div class="sub">Send to the void · Robinhood Chain</div>
       </div>
     </div>
@@ -648,6 +648,11 @@ document.querySelectorAll("#tokPick button").forEach(function(b){
     b.classList.add("on");
     var j=J();
     $("#burnTitre").textContent="Burn your "+j.sym;
+    /* L'EN-TETE AUSSI. Il annoncait « Burn $SWOGE » en haut d'une page qui
+       s'appretait a bruler du $SWOGEBET — le seul endroit ou l'oeil se pose
+       avant de cliquer, et le seul qui n'avait pas suivi le selecteur. */
+    $("#titreJeton").textContent=j.sym;
+    document.title="🔥 Burn "+j.sym+" — reduce the supply on Robinhood Chain";
     $("#burnHint").innerHTML="Burning sends your "+j.sym+" to a dead address (<code>0x…dEaD</code>) "
       + "that no one controls. It's <b>permanent and irreversible</b> — it reduces the circulating supply forever.";
     myBalWei=null; $("#willBurn").textContent="—"; $("#note").textContent=""; $("#note").className="note";

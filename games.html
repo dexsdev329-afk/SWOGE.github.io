@@ -763,6 +763,22 @@ a.match:hover .cotes button{border-color:var(--bleu)}
   border:1px solid var(--bord); background:var(--nuit);
   box-shadow:0 1px 2px rgba(11,27,54,.05); transition:transform .13s, box-shadow .15s, border-color .15s }
 .jc img{ width:100%; height:100%; object-fit:cover; display:block }
+/* ---- LA VIGNETTE QUI S ANIME AU SURVOL ----
+   Le film n a AUCUNE piste audio : elle a ete retiree a l encodage, pas
+   seulement coupee par `muted`. Une page ne doit pas pouvoir faire du bruit
+   parce qu une souris est passee dessus — et un attribut se retire d un coup
+   de console, un fichier sans piste, non. Le fichier livre pese 548 Ko contre
+   1,99 Mo a la source, une seule piste video dedans.
+   Il ne part pas tout seul non plus : pas d `autoplay`, `preload="none"`, et
+   l adresse attend dans `data-film` pour la meme raison que la banniere du
+   haut de page — une video CACHEE va quand meme chercher son fichier. */
+.jc .couv{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
+  display:block; opacity:0; transition:opacity .2s ease; pointer-events:none }
+.jc:hover .couv, .jc:focus-visible .couv{ opacity:1 }
+/* Sans souris — telephone, tablette — le survol n existe pas : la vignette
+   reste fixe plutot que de porter un film que rien ne declencherait jamais. */
+@media (hover:none){ .jc .couv{ display:none } }
+@media (prefers-reduced-motion:reduce){ .jc .couv{ display:none } }
 /* Le nom reste, mais SOUS le dessin et non dessus : sur les planches sombres
    de cette page, un bandeau pose par-dessus mangeait le titre peint. */
 .jc span{ position:absolute; left:0; right:0; bottom:0; padding:14px 9px 6px;
@@ -1116,11 +1132,57 @@ a.match:hover .cotes button{border-color:var(--bleu)}
              width="640" height="427" decoding="async"><span>Hi-Lo</span></a>
           <a class="jc vif" href="plinko.html" title="Plinko"><img src="img/card_pl.webp?v=2" alt="Plinko" loading="lazy"
              width="640" height="427" decoding="async"><span>Plinko</span></a>
+          <!-- L affiche au repos est l image DEJA en place : le film fourni en
+               est la version animee, image pour image. La changer ne se serait
+               pas vu et aurait coute un fichier de plus a telecharger. -->
           <a class="jc vif" href="swoge_bonanza.html" title="SWOGE Bonanza"><img src="img/card_bz.webp?v=1" alt="SWOGE Bonanza" loading="lazy"
-             width="640" height="427" decoding="async"><span>SWOGE Bonanza</span></a>
+             width="640" height="427" decoding="async"><video class="couv" data-film="media/carte_bonanza.mp4"
+             data-webm="media/carte_bonanza.webm"
+             muted loop playsinline preload="none" disablepictureinpicture aria-hidden="true"></video><span>SWOGE Bonanza</span></a>
           <a class="jc vif" href="swoge_smash.html" title="SWOGE Smash"><img src="img/card_sm.webp?v=2" alt="SWOGE Smash" loading="lazy"
              width="640" height="427" decoding="async"><span>SWOGE Smash</span></a>
         </div>
+        <script>
+        (function(){
+          /* Le film ne se telecharge qu au PREMIER survol, et il repart de
+             zero a chaque sortie : un film laisse en cours derriere une
+             affiche invisible continue de tourner et de consommer.
+             Au clavier, `focus` et `blur` font le meme travail que la souris —
+             sans quoi la vignette serait la seule chose de cette page qu on ne
+             peut pas atteindre sans pointeur. */
+          var doux = false, sansSouris = false;
+          try{
+            doux = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+            sansSouris = window.matchMedia("(hover: none)").matches;
+          }catch(e){}
+          if(doux || sansSouris) return;
+          [].forEach.call(document.querySelectorAll(".jc .couv"), function(v){
+            var carte = v.parentNode;
+            function part(){
+              if(!v.getAttribute("src")){
+                /* LE MP4 D ABORD. C est le seul format que tous les
+                   navigateurs de salon savent lire, Safari compris. Le WebM
+                   n est pas la pour faire joli : certains Chromium sont
+                   compiles SANS H.264 — le navigateur d essai de ce depot en
+                   est un — et chez eux le MP4 ne charge pas du tout
+                   (DEMUXER_ERROR_NO_SUPPORTED_STREAMS). Sans ce repli, la
+                   vignette resterait fixe chez eux, en silence. */
+                var mp4  = v.getAttribute("data-film"),
+                    webm = v.getAttribute("data-webm");
+                var sait = v.canPlayType ? v.canPlayType('video/mp4; codecs="avc1.4D401E"') : "";
+                v.src = (!sait && webm && v.canPlayType &&
+                         v.canPlayType('video/webm; codecs="vp9"')) ? webm : mp4;
+              }
+              var p = v.play(); if(p && p.catch) p.catch(function(){});
+            }
+            function arrete(){ v.pause(); try{ v.currentTime = 0; }catch(e){} }
+            carte.addEventListener("mouseenter", part);
+            carte.addEventListener("mouseleave", arrete);
+            carte.addEventListener("focus", part);
+            carte.addEventListener("blur", arrete);
+          });
+        })();
+        </script>
       </section>
       <section class="rangee">
         <div class="tete">

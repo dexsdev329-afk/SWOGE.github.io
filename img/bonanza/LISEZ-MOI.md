@@ -52,3 +52,32 @@ conversion.
   a la meme place dans l'echelle. Ils restent distinguables (le raisin montre
   ses grains, la prune est lisse), mais c'est la paire a surveiller si des
   joueurs se plaignent de mal lire la grille.
+
+
+## Les symboles ont ete recadres (et pourquoi)
+
+Les dessins sont arrives avec des marges transparentes toutes differentes :
+le raisin n'occupait que **71 %** de la largeur de son fichier, le bonbon
+vert **100 %**. A taille CSS egale, le raisin s'affichait donc un tiers plus
+petit que le bonbon d'a cote — pas un choix de design, un accident de
+decoupage, et invisible dans la feuille de style puisque la regle est la meme
+pour tous.
+
+Chaque fichier a ete recadre sur son contenu puis repose au centre d'un carre
+de 256, a **95 % du cote le plus long**.
+
+Le seuil compte : un premier passage a mesure la boite avec `getbbox()`, qui
+retient le moindre pixel a alpha 1. Les symboles portent une lueur qui
+s'eteint doucement — elle entrait dans la boite, et un symbole a large halo
+se retrouvait dessine plus petit pour que son halo tienne. Resultat mesure :
+86 % a 96 % de la case selon le symbole, la ou j'avais annonce 102 % pour
+tous. La mesure porte donc sur ce qui SE VOIT (**alpha >= 16**) et le halo
+qui depasse est coupe : il est a moins de 6 % d'opacite a cet endroit, la
+coupe ne se voit pas — un symbole visiblement plus petit que son voisin, si.
+
+Etat verifie par `anim_bonanza.test.js` : les dix symboles s'affichent entre
+**99 % et 101 %** de leur case, soit deux points d'ecart.
+
+Les originaux sont dans l'historique git. Si tu regeneres un symbole, passe-le
+par le meme recadrage avant de le poser ici, sinon il sera le seul a ne pas
+etre a la bonne taille.

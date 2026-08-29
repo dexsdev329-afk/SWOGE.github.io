@@ -505,10 +505,30 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
      qu'on doit reconnaitre en un dixieme de seconde, pas le decor. */
   background:linear-gradient(180deg,#2A1B4A9e,#160E2Ebd), url("img/bonanza/fond.webp") center/cover;
   border:1px solid rgba(255,197,61,.35); box-shadow:0 8px 28px rgba(0,0,0,.45); }
+/* `overflow:visible` : les symboles DEBORDENT legerement de leur case, comme
+   dans le jeu dont celui-ci s'inspire. C'est ce debordement qui fait la
+   difference entre une grille de vignettes et une grille de bonbons. La case
+   ne se referme que pendant la rotation, ou un symbole qui defile passerait
+   sinon par-dessus ses voisins. */
+/* La case s'efface derriere le symbole : a 4,5 % de blanc elle dessinait un
+   damier de vignettes, et un symbole qui deborde par-dessus une vignette se
+   lit comme une erreur de gabarit. A 2 % elle marque encore la grille sans
+   se disputer avec le decor. */
 .bz-c{ position:relative; aspect-ratio:1; border-radius:10px;
-  background:rgba(255,255,255,.045); display:flex; align-items:center; justify-content:center;
-  overflow:hidden; }
-.bz-c img{ width:86%; height:86%; object-fit:contain; display:block;
+  background:rgba(255,255,255,.02); display:flex; align-items:center; justify-content:center;
+  overflow:visible; }
+.bz-c.tourne{ overflow:hidden; }
+/* 106 % de la case, et les dessins ont ete recadres pour occuper 96 % de leur
+   propre fichier : le symbole rendu fait donc ~102 % de la case. Avant, 86 %
+   d'un fichier ou le raisin n'occupait que 71 % de la largeur donnait un
+   raisin a 61 % de sa case, un tiers plus petit que le bonbon vert a cote.
+   `z-index` : sans lui, ce qui deborde passe SOUS la case suivante, qui est
+   peinte apres dans l'ordre du document. */
+/* `flex:none` : la case est une boite flexible, et un enfant plus large
+   qu'elle est RETRECI par defaut (`flex-shrink:1`). Les 106 % etaient donc
+   ramenes a 100 % sans un mot — le debordement demande n'existait pas. */
+.bz-c img{ width:106%; height:106%; object-fit:contain; display:block;
+  flex:none; position:relative; z-index:1;
   transition:transform .18s ease, opacity .18s ease; }
 /* Un symbole qui vient de payer : il pulse puis part. On ne le fait pas
    disparaitre d'un coup — sans ce temps, la cascade est illisible. */
@@ -533,6 +553,47 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
 }
 @keyframes bzLueur{ 0%{ transform:scale(.3); opacity:0; } 30%{ transform:scale(1.1); opacity:1; } 100%{ transform:scale(1.7); opacity:0; } }
 .bz-c.vide img{ opacity:0; }
+
+/* ---- LES ETINCELLES ----
+   Un symbole qui saute projette des eclats de sa propre couleur. C'est ce
+   qui manquait le plus pour que la cascade se lise comme une explosion et
+   non comme un effacement : la lueur dit « ici », les eclats disent « ca a
+   eclate ». Ils vivent dans une couche a part, au-dessus de la grille, pour
+   ne rien deranger de la mise en page des cases. */
+.bz-parts{ position:absolute; inset:0; pointer-events:none; z-index:3;
+  border-radius:16px; overflow:hidden; }
+/* La taille vient du JS, proportionnelle a la case : un eclat de neuf pixels
+   fixes disparait sur un grand ecran et masque le symbole sur un petit. */
+.bz-p{ position:absolute; border-radius:50%; opacity:1;
+  transition:transform .52s cubic-bezier(.15,.7,.35,1), opacity .52s ease-out; }
+
+/* ---- LA SECOUSSE DU GROS GAIN ----
+   Reservee aux tours qui paient vingt fois la mise ou plus : une secousse
+   a chaque gain n'est plus un evenement, c'est un tic. */
+@keyframes bzSecousse{
+  0%,100%{ transform:translate3d(0,0,0); }
+  15%{ transform:translate3d(-5px,3px,0); }  30%{ transform:translate3d(5px,-3px,0); }
+  45%{ transform:translate3d(-4px,-2px,0); } 60%{ transform:translate3d(4px,2px,0); }
+  80%{ transform:translate3d(-2px,1px,0); }
+}
+.bz-grille.secousse{ animation:bzSecousse .52s ease-in-out; }
+
+/* ---- L'ATTENTE ----
+   Quand trois sucettes sont deja tombees, la quatrieme ouvre les tours
+   gratuits : les colonnes restantes ralentissent et se bordent d'or. Le
+   resultat est deja calcule et deja paye — ce ralenti ne decide de rien, il
+   donne a la derniere colonne le poids qu'elle a vraiment. */
+.bz-c.attente{ box-shadow:inset 0 0 0 2px rgba(255,197,61,.75), 0 0 18px rgba(255,197,61,.5); }
+.bz-c.attente img{ animation-duration:.2s; }
+
+/* Quelqu'un qui a demande moins de mouvement en recoit moins : les eclats,
+   la secousse et le defilement flou disparaissent, la partie reste jouable
+   et le resultat identique. */
+@media (prefers-reduced-motion:reduce){
+  .bz-p{ display:none; }
+  .bz-grille.secousse{ animation:none; }
+  .bz-c.tourne img{ animation:none; filter:none; }
+}
 
 /* ---- LA CHUTE ----
    Chaque symbole part de la position qu'il occupait AVANT, en haut, et
@@ -1197,6 +1258,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 
     <div class="bz-zone">
       <div class="bz-grille" id="bzGrille" aria-label="6 by 5 grid"></div>
+      <div class="bz-parts" id="bzParts" aria-hidden="true"></div>
       <div class="bz-voile" id="bzVoile" hidden><span id="bzVoileTxt"></span></div>
     </div>
 
@@ -1789,10 +1851,41 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   }
   function bzHasard(){ var l=bzSyms(); return l[Math.floor(Math.random()*l.length)]; }
 
+  /* ---- L'ATTENTE ----
+   * Combien de sucettes sont deja tombees a la fin de chaque colonne. Des
+   * qu'il en faut encore UNE pour ouvrir les tours gratuits, les colonnes
+   * suivantes ralentissent : c'est le moment que tout joueur de machine
+   * connait, et son absence est ce qui fait « amateur » plus surement que
+   * n'importe quel detail de dessin.
+   *
+   * Le resultat est deja calcule, deja debite et deja credite quand cette
+   * fonction commence. Le ralenti ne change RIEN — il donne a la colonne qui
+   * decide le temps qu'elle merite. Si le joueur fermait l'onglet pendant,
+   * son solde serait le meme.
+   */
+  function bzArrets(grille){
+    /* Le bareme vient du serveur a la connexion. Le repli vaut ce que vaut
+       `bzSyms` juste au-dessus : sans lui, l'attente ne se declencherait
+       jamais tant que le bareme n'est pas arrive — un defaut qui ne se
+       verrait pas en jouant, puisqu'on ne peut pas miser deconnecte, mais
+       qui rendait cette fonction inessayable. */
+    var b = BZ.bareme;
+    var scat = (b && b.scatter) || "sucette", seuil = (b && b.scattersPourTours) || 4;
+    var BASE = 420, PAS = 130, LENT = 620;
+    var t = BASE, vus = 0, arrets = [], tendus = [];
+    for(var c=0;c<6;c++){
+      var tendu = scat && vus >= seuil-1 && c > 0;
+      if(c > 0) t += tendu ? LENT : PAS;
+      arrets.push(t); tendus.push(!!tendu);
+      if(scat) for(var r=0;r<5;r++) if(grille[r*6+c] === scat) vus++;
+    }
+    return { arrets:arrets, tendus:tendus };
+  }
+
   function bzRouleaux(grille, fin){
     var cs = $("bzGrille").children;
     var DEFILE = 55;            // un symbole toutes les 55 ms : assez vite pour flouter
-    var BASE = 420, PAS = 130;  // la premiere colonne s'arrete a 420 ms, puis +130 par colonne
+    var plan = bzArrets(grille);
     var restants = 6;
 
     for(var i=0;i<30;i++){ cs[i].className="bz-c tourne"; }
@@ -1805,6 +1898,19 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
             im.src = bzImg(bzHasard());
           }
         }, DEFILE);
+        /* L'attente ne s'allume QUE lorsque la colonne precedente s'est
+           posee. Allumee au depart, elle annoncerait les tours gratuits
+           avant meme la premiere sucette : elle donnerait un resultat que le
+           joueur n'a pas encore vu tomber. */
+        if(plan.tendus[col]){
+          setTimeout(function(){
+            for(var r0=0;r0<5;r0++){
+              var c0 = cs[r0*6+col];
+              if(c0.className.indexOf("tourne") >= 0) c0.className = "bz-c tourne attente";
+            }
+            son("scatter");
+          }, plan.arrets[col-1]);
+        }
         setTimeout(function(){
           clearInterval(minuteur);
           for(var r=0;r<5;r++){
@@ -1814,7 +1920,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
           }
           son("pose");
           if(--restants === 0) setTimeout(fin, 260);
-        }, BASE + col*PAS);
+        }, plan.arrets[col]);
       })(c);
     }
   }
@@ -1849,9 +1955,112 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     return d;
   }
 
+  /* ---- LA COULEUR DE CHAQUE BONBON ----
+     MESUREE sur les dessins, pas choisie a vue : moyenne des pixels opaques
+     de chaque fichier, contour presque noir et reflets presque blancs ecartes
+     (ils tirent toute moyenne vers le gris), puis remontee a une clarte
+     commune — une moyenne est toujours plus terne que le dessin dont elle
+     sort. Des eclats verts sur une pomme rouge se verraient tout de suite ;
+     ce qui se verrait moins, et qui serait aussi faux, c'est une pasteque qui
+     projette du rouge vif alors que son dessin melange chair, ecorce et
+     blanc — d'ou l'orange ci-dessous, qui est bien ce que le fichier
+     contient. */
+  /* ---- LE GAIN MONTE, IL N'APPARAIT PAS ----
+   * Un montant qui surgit d'un coup se lit comme une etiquette ; le meme
+   * montant qui grimpe se lit comme un gain. C'est la seule raison d'etre de
+   * ce compteur, et il ne calcule rien : il part d'un chiffre du serveur et
+   * arrive a un autre chiffre du serveur, en trois cents millisecondes.
+   *
+   * `bzMonte` remplace toujours l'animation en cours : deux cascades qui se
+   * suivent de pres feraient sinon courir deux compteurs sur le meme element,
+   * et le dernier arrive gagnerait au hasard.
+   */
+  var BZ_TIC = null;
+  function bzMonte(de, a, duree, ecrit){
+    if(BZ_TIC){ cancelAnimationFrame(BZ_TIC); BZ_TIC=null; }
+    var t0 = 0;
+    function pas(t){
+      if(!t0) t0 = t;
+      var u = Math.min(1, (t-t0)/duree);
+      /* on freine a l'arrivee : un compteur a vitesse constante s'arrete net */
+      var v = 1 - Math.pow(1-u, 3);
+      ecrit(de + (a-de)*v);
+      if(u<1) BZ_TIC = requestAnimationFrame(pas); else { BZ_TIC=null; ecrit(a); }
+    }
+    BZ_TIC = requestAnimationFrame(pas);
+  }
+
+  var BZ_TEINTE = {
+    banane:"#E6AF30", bombe:"#E69D33", bonbon_bleu:"#2372E6", bonbon_vert:"#82E615",
+    bonbon_violet:"#8323E6", coeur:"#E52E21", pasteque:"#E66E39", pomme:"#E6411F",
+    prune:"#B95CE6", raisin:"#D96FE6", sucette:"#E5AC51"
+  };
+
+  /* ---- LES ECLATS ----
+   * Cinq par case qui saute, projetes au hasard autour de son centre. On les
+   * pose tous d'un coup, on lance l'animation a l'image suivante, et on vide
+   * la couche une seule fois a la fin : trente minuteurs separes pour trente
+   * cases feraient sauter l'image sur un telephone.
+   *
+   * Rien ici ne DECIDE de quoi que ce soit : c'est de la peinture posee sur
+   * un resultat deja calcule et deja paye.
+   */
+  var BZ_ECLATS = 9;
+  function bzEtincelles(grille, gagnants){
+    var couche = $("bzParts"); if(!couche) return;
+    try{ if(matchMedia("(prefers-reduced-motion: reduce)").matches) return; }catch(e){}
+    var cs = $("bzGrille").children;
+    var base = couche.getBoundingClientRect();
+    var frag = document.createDocumentFragment(), poses = [];
+    for(var i=0;i<30;i++){
+      if(!gagnants.has(grille[i])) continue;
+      var r = cs[i].getBoundingClientRect();
+      var cx = r.left - base.left + r.width/2, cy = r.top - base.top + r.height/2;
+      var teinte = BZ_TEINTE[grille[i]] || "#FFC53D";
+      var taille = Math.max(9, Math.round(r.width*0.30));
+      for(var k=0;k<BZ_ECLATS;k++){
+        var e = document.createElement("div");
+        e.className = "bz-p";
+        /* un coeur blanc dans la teinte du bonbon : la couleur seule se perd
+           sur un decor deja colore, le blanc fait le point lumineux */
+        e.style.width = taille+"px"; e.style.height = taille+"px";
+        e.style.margin = (-taille/2)+"px 0 0 "+(-taille/2)+"px";
+        e.style.left = cx+"px"; e.style.top = cy+"px";
+        e.style.background = "radial-gradient(circle at 40% 36%, #fff 0%, #fff 26%, "+teinte+" 62%, "+teinte+" 100%)";
+        e.style.boxShadow = "0 0 12px "+teinte+", 0 0 4px #fff";
+        var a = Math.random()*Math.PI*2, d = r.width*(0.45+Math.random()*0.75);
+        var t = (0.5+Math.random()*0.7).toFixed(2);
+        e.style.transform = "translate3d(0,0,0) scale("+t+")";
+        poses.push([e, Math.cos(a)*d, Math.sin(a)*d + r.width*0.30, t]);
+        frag.appendChild(e);
+      }
+    }
+    if(!poses.length) return;
+    couche.appendChild(frag);
+    /* ON FORCE LE RENDU AVANT D'ANIMER. Poser l'etat de depart et l'etat
+       d'arrivee dans le meme tour de boucle — meme separes par un
+       `requestAnimationFrame`, qui s'execute AVANT la peinture — laisse le
+       navigateur ne retenir que le dernier : la transition est alors sautee
+       et les eclats naissent deja disparus. C'est exactement ce qui se
+       passait ; on ne le voyait pas, on voyait « il n'y a pas d'eclats ».
+       La lecture de `offsetWidth` oblige a peindre l'etat de depart. */
+    void couche.offsetWidth;
+    {
+      for(var j=0;j<poses.length;j++){
+        var q = poses[j];
+        /* le second terme du Y les fait retomber : sans lui ils partent en
+           etoile parfaite, ce qui ne ressemble a rien de physique */
+        q[0].style.transform = "translate3d("+q[1].toFixed(1)+"px,"+q[2].toFixed(1)+"px,0) scale("+(q[3]*0.4).toFixed(2)+")";
+        q[0].style.opacity = "0";
+      }
+    }
+    setTimeout(function(){ couche.textContent = ""; }, 620);
+  }
+
   function bzEclate(grille, gagnants, fin){
     var cs = $("bzGrille").children;
     for(var i=0;i<30;i++) if(gagnants.has(grille[i])) cs[i].className = "bz-c eclate";
+    bzEtincelles(grille, gagnants);
     setTimeout(function(){
       for(var i2=0;i2<30;i2++) if(gagnants.has(grille[i2])) cs[i2].className = "bz-c vide";
       fin();
@@ -1893,6 +2102,18 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     }, 220 + maxi*60 + 90);
   }
 
+  /* ---- LE TOTAL COURANT ----
+   * Une cascade paie par etages, et le vrai jeu montre la somme qui GRANDIT
+   * a chaque etage plutot que le multiple du dernier. C'est ce cumul qui
+   * fait attendre l'etage suivant.
+   *
+   * Il n'invente rien : le serveur additionne exactement de la meme facon
+   * (`multiTotal += g.multi` dans `bonanza.js`), et la ligne finale est de
+   * toute facon reecrite avec le net que le serveur a paye. Si les deux
+   * divergeaient, c'est le serveur qui aurait raison — et c'est lui qui
+   * s'affiche en dernier.
+   */
+  var BZ_CUMUL = 0;
   function bzJoueEtapes(etapes, fin){
     var k = 0;
     function suivante(){
@@ -1906,8 +2127,13 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       son(k===0 ? "gain" : "cascade");
       var g = $("bzGain");
       g.style.color = "#0E6B32";
-      g.innerHTML = "<b>+" + e.multi.toFixed(2) + "×</b> <i>" +
-        e.amas.map(function(a){ return a.nombre + " " + a.symbole.replace(/_/g," "); }).join(" · ") + "</i>";
+      var avant = BZ_CUMUL * BZ.mise;
+      BZ_CUMUL += e.multi;
+      var apresC = BZ_CUMUL * BZ.mise;
+      var detail = e.amas.map(function(a){ return a.nombre + " " + a.symbole.replace(/_/g," "); }).join(" · ");
+      g.innerHTML = '<b></b> <i>' + detail + '</i>';
+      var fort = g.firstChild;
+      bzMonte(avant, apresC, 340, function(v){ fort.textContent = "+" + bzFmt(Math.round(v)) + " $SWOGE"; });
 
       /* On laisse le temps de VOIR ce qui gagne avant de le faire sauter.
          Sans cette pause, la grille change avant qu'on ait compris pourquoi. */
@@ -1931,6 +2157,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   function bzJoueTour(t){
     BZ.anime=true; bzRender();
     $("bzGain").innerHTML="";
+    BZ_CUMUL = 0;
     son("debut");
     /* Les rouleaux d'abord, sur la grille du PREMIER jet ; les cascades
        ensuite, qui repartent de cette meme grille. */
@@ -1945,6 +2172,13 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         g.innerHTML = "<b>"+(t.net>0?"+":"")+bzFmt(t.net)+" $SWOGE</b>"+
           (t.multi?" <i>"+t.multi.toFixed(2)+"×</i>":"");
         if(t.net>0) son(t.multi>=20?"gros":"gain"); else son("rien");
+        /* La secousse au meme seuil que le son de gros gain : vingt fois la
+           mise. A chaque gain elle ne serait plus un evenement mais un tic. */
+        if(t.multi>=20){
+          var gr = $("bzGrille");
+          gr.classList.remove("secousse"); void gr.offsetWidth; gr.classList.add("secousse");
+          setTimeout(function(){ gr.classList.remove("secousse"); }, 560);
+        }
         BZ.anime=false; bzRender();
       }
       if(t.scatters>=4 && t.gratuits && t.gratuits.length){
@@ -2375,7 +2609,21 @@ function renderBonus(b){ if(!b) return; bonusData=b;
   /* ---- musique de fond : deux pistes, on bascule de l'une a l'autre ----
      Elles restent en flux distant (28 et 85 Mo) : les embarquer comme les
      bruitages ferait exploser le poids de chaque page. */
-  var BGM=["https://files.catbox.moe/9lrj4x.mp3",
+  /* ---- LA MUSIQUE DE CE JEU PASSE EN PREMIER ----
+     Elle a ete fournie pour Bonanza et vit dans le depot, pas chez un
+     hebergeur tiers. Le `.ogg` d'abord : le MP3 ne sait pas boucler sans
+     trou — l'encodeur inscrit une cinquantaine de millisecondes de
+     remplissage, qui reviennent a CHAQUE tour de boucle et s'entendent comme
+     un hoquet. Le `.mp3` reste pour les navigateurs sans Vorbis.
+     Les deux pistes du site suivent : on peut toujours en changer. */
+  var BGM_JEU=(function(){
+    try{ var a=new Audio();
+      if(a.canPlayType && a.canPlayType('audio/ogg; codecs="vorbis"')) return "son/bonanza/musique.ogg";
+    }catch(e){}
+    return "son/bonanza/musique.mp3";
+  })();
+  var BGM=[BGM_JEU,
+           "https://files.catbox.moe/9lrj4x.mp3",
            "https://files.catbox.moe/oel5ah.mp3"];
   var bgm=null, bgmI=0, bgmVol=0.35;
   try{ var v=parseInt(localStorage.getItem("swogeBgm"),10); if(v>=0&&v<BGM.length) bgmI=v; }catch(e){}

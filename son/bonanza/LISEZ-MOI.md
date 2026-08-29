@@ -65,6 +65,17 @@ Pour une boucle vraiment sans couture, meme en `.ogg`, le plus sur reste
 l'API Web Audio : on charge le morceau dans un buffer et on le rejoue avec
 `loop = true`, ce qui ne depend d'aucun conteneur.
 
+**BRANCHEE DEPUIS.** `swoge_bonanza.html` la joue en premiere piste, choisie
+par `canPlayType('audio/ogg; codecs="vorbis"')` : `.ogg` quand le navigateur
+sait le lire, `.mp3` sinon. Les deux pistes du site restent derriere, on peut
+toujours en changer par le bouton du menu.
+
+Elle etait restee sur l'etagere pendant deux commits : le fichier existait,
+ce document expliquait comment le brancher, et la page continuait de jouer la
+musique generique du site. Personne ne l'aurait vu dans un essai — il a fallu
+qu'un joueur ecoute. `anim_bonanza.test.js` verifie desormais que la premiere
+piste de `BGM` est bien celle du dossier, et qu'elle se telecharge.
+
 **Ce que je ne peux pas verifier : le raccord musical.** Je n'ai aucun moyen
 d'ECOUTER ces fichiers. Je sais que les silences sont partis et que la duree
 tombe juste ; je ne sais pas si la derniere mesure enchaine bien sur la

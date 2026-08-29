@@ -1,0 +1,116 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>SWOGE Bonanza — trier les sons</title>
+<style>
+  :root{ --or:#C99A2E; --fond:#EEF3FB; --encre:#0B1B36; --gris:#5A6A86; }
+  *{ box-sizing:border-box }
+  body{ margin:0; padding:22px 16px 60px; background:var(--fond); color:var(--encre);
+        font:15px/1.6 "Space Mono",ui-monospace,SFMono-Regular,Menlo,monospace; }
+  .h{ max-width:900px; margin:0 auto 22px }
+  h1{ font-size:22px; margin:0 0 6px; letter-spacing:.5px }
+  p{ margin:0 0 10px; color:var(--gris); max-width:70ch }
+  b{ color:var(--encre) }
+  main{ max-width:900px; margin:0 auto; display:grid; gap:12px }
+  .p{ background:#fff; border:1px solid var(--or); border-radius:14px; padding:13px 15px;
+      box-shadow:0 1px 4px rgba(11,27,54,.10); display:grid; gap:9px;
+      grid-template-columns:1fr; }
+  .t{ display:flex; align-items:center; gap:12px; flex-wrap:wrap }
+  .n{ font-weight:700; font-size:16px }
+  .m{ color:var(--gris); font-size:12.5px }
+  audio{ width:100%; height:36px }
+  select{ font:inherit; font-size:13px; padding:7px 10px; border-radius:9px;
+          border:1px solid var(--or); background:#FFFDF6; color:var(--encre); width:100%; }
+  .sortie{ max-width:900px; margin:22px auto 0; background:#0B1220; color:#CFE3FF;
+           border-radius:14px; padding:14px 16px; }
+  .sortie h2{ font-size:14px; margin:0 0 8px; color:#FFC53D; letter-spacing:1px }
+  pre{ margin:0; white-space:pre-wrap; word-break:break-all; font-size:13px; line-height:1.7 }
+  .av{ background:#FFF6DF; border:1px solid var(--or); border-radius:12px; padding:11px 14px;
+       margin:0 auto 18px; max-width:900px; font-size:13.5px; color:#5A4413 }
+</style>
+
+<div class="h">
+  <h1>Trier les sons de SWOGE Bonanza</h1>
+  <p>Le fichier que tu m'as envoye contient <b>neuf pistes</b>. Je les ai
+     decoupees sur les silences et recadrees sur ce qui sonne.</p>
+  <p><b>Je ne peux pas les ecouter.</b> Tout ce que je sais d'elles, je l'ai
+     mesure : duree, niveau, brillance, forme de l'enveloppe. Ca suffit pour
+     dire qu'une piste de six secondes ne peut pas servir a marquer la pose
+     d'une colonne — ca ne suffit pas pour dire si c'est un scatter ou un gros
+     gain. Toi tu l'entends en trois secondes.</p>
+  <p>Ecoute, choisis dans la liste, et <b>renvoie-moi le bloc du bas</b>.</p>
+</div>
+
+<div class="av">
+  <b>Ce que la mesure dit deja :</b> une seule piste, la n&deg;2 (0,49 s), est
+  assez courte pour un bruitage qui se rejoue plusieurs fois par tour. Les
+  autres font de 2,5 a 36 secondes : ce sont des jingles et un lit musical,
+  pas les petits clics dont le jeu a besoin. Les cases <i>pose</i>,
+  <i>gain</i>, <i>cascade</i> et <i>bombe</i> resteront donc probablement
+  vides apres ce tri — c'est une information, pas un echec.
+</div>
+
+<main id="liste"></main>
+
+<div class="sortie">
+  <h2>A ME RENVOYER</h2>
+  <pre id="sortie">choisis au moins une piste…</pre>
+</div>
+
+<script>
+var PISTES = [
+  {n:1, d:"2,64 s", c:"-19,1 dB", b:"1 005 Hz", f:"descend",
+   note:"de loin la plus discrete du lot — 10 dB sous les autres. Un fond ou une ambiance, pas un bruitage."},
+  {n:2, d:"0,49 s", c:"-8,8 dB",  b:"398 Hz",  f:"tient",
+   note:"la seule courte, et la plus sourde. Attaque nette : un choc, un clic, une pose."},
+  {n:3, d:"2,56 s", c:"-3,8 dB",  b:"1 295 Hz", f:"MONTE",
+   note:"la seule qui monte franchement (x15 entre le debut et la fin). Un lancement, une montee."},
+  {n:4, d:"4,34 s", c:"-5,4 dB",  b:"1 574 Hz", f:"descend", note:"claire, elle retombe."},
+  {n:5, d:"6,43 s", c:"-5,6 dB",  b:"1 743 Hz", f:"descend", note:"la plus brillante du lot."},
+  {n:6, d:"8,03 s", c:"-4,0 dB",  b:"1 633 Hz", f:"tient",
+   note:"deux evenements : un a 0,9 s, un autre vers 7 s. Une annonce en deux temps."},
+  {n:7, d:"6,22 s", c:"-3,9 dB",  b:"1 651 Hz", f:"descend",
+   note:"monte jusqu'a un plateau tenu, puis retombe."},
+  {n:8, d:"35,94 s", c:"-1,1 dB", b:"1 482 Hz", f:"tient",
+   note:"enveloppe REGULIERE et repetee : c'est de la musique, pas un bruitage."},
+  {n:9, d:"12,82 s", c:"-5,5 dB", b:"1 242 Hz", f:"tient",
+   note:"deux moities presque identiques (~6,4 s chacune). Une boucle, ou deux prises."}
+];
+var CASES = [
+  ["", "— je ne sais pas / a jeter —"],
+  ["debut",    "debut de tour (a chaque SPIN)"],
+  ["pose",     "une colonne se pose (6x par tour) — il faut du TRES court"],
+  ["gain",     "un amas paie (a CHAQUE etage de cascade) — le plus joue, court"],
+  ["cascade",  "les symboles retombent (court)"],
+  ["scatter",  "une sucette tombe"],
+  ["gratuits", "les tours gratuits s'ouvrent (le moment fort)"],
+  ["bombe",    "une bombe multiplicateur"],
+  ["gros",     "gros gain (20x la mise et plus)"],
+  ["rien",     "le tour ne paie rien"],
+  ["musique",  "musique de fond (en boucle)"]
+];
+
+var l = document.getElementById("liste");
+PISTES.forEach(function(p){
+  var d = document.createElement("div"); d.className = "p";
+  var opts = CASES.map(function(c){ return '<option value="'+c[0]+'">'+c[1]+'</option>'; }).join("");
+  d.innerHTML =
+    '<div class="t"><span class="n">Piste '+p.n+'</span>'+
+    '<span class="m">'+p.d+' &middot; crete '+p.c+' &middot; brillance '+p.b+' &middot; '+p.f+'</span></div>'+
+    '<div class="m">'+p.note+'</div>'+
+    '<audio controls preload="none" src="lot/piste_'+p.n+'.mp3"></audio>'+
+    '<select data-n="'+p.n+'">'+opts+'</select>';
+  l.appendChild(d);
+});
+
+function maj(){
+  var out = [];
+  [].forEach.call(document.querySelectorAll("select"), function(s){
+    if(s.value) out.push("piste_" + s.dataset.n + " = " + s.value);
+  });
+  document.getElementById("sortie").textContent =
+    out.length ? out.join("\n") : "choisis au moins une piste…";
+}
+l.addEventListener("change", maj);
+</script>

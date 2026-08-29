@@ -1898,8 +1898,15 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 
   var SONS={};
   (function chargeSons(){
+    /* `pose` sort du lot fourni : c'est la SEULE des neuf pistes assez courte
+       pour un bruitage qui se rejoue six fois par tour (0,49 s, sourde,
+       attaque nette). Les huit autres font de 2,5 a 36 secondes — des
+       jingles et un lit musical. Les poser sur `gain` ou `cascade`, qui se
+       rejouent a chaque etage, empilerait six secondes de fanfare sur
+       elles-memes. Elles attendent une oreille : voir
+       `son/bonanza/ecouter.html`. */
     var l={ rien:"son/bonanza/spin_rien.mp3", debut:"son/bonanza/provisoire/spin_debut.mp3",
-            pose:"son/bonanza/provisoire/symbole_pose.mp3", gain:"son/bonanza/provisoire/gain.mp3",
+            pose:"son/bonanza/symbole_pose.mp3", gain:"son/bonanza/provisoire/gain.mp3",
             cascade:"son/bonanza/provisoire/cascade.mp3", scatter:"son/bonanza/provisoire/scatter.mp3",
             gratuits:"son/bonanza/provisoire/tours_gratuits.mp3", bombe:"son/bonanza/provisoire/bombe.mp3",
             gros:"son/bonanza/provisoire/gros_gain.mp3" };

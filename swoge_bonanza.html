@@ -476,7 +476,7 @@ footer a{color:#1B5FE0}
  * feuille) pose `var(--text)`, un creme clair pense pour ce fond sombre —
  * illisible sur blanc partout ou rien d autre ne le redefinit. */
 html,body{ background:#EEF3FB; color:#0B1B36; }
-.plwrap{ position:relative; max-width:760px; margin:0 auto; padding:0 10px 18px; overflow-x:clip;
+.bzwrap{ position:relative; max-width:760px; margin:0 auto; padding:0 10px 18px; overflow-x:clip;
   container-type:inline-size; }
 
 /* `cqi` et non `vw` : une fois les colonnes laterales en place (`.sw-cote`,
@@ -485,7 +485,6 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
    grossissait ces elements au-dela de leur colonne. `cqi` mesure le
    conteneur (`.plwrap`, qui porte `container-type:inline-size` plus haut). */
 .bz-titre{ display:block; height:min(22cqi,116px); width:auto; margin:2px auto 8px; }
-.bzwrap{ container-type:inline-size; }
 
 /* ---- LA GRILLE ----
    Six colonnes, cinq rangees, carrees. Le fond du jeu est POSE DESSOUS et
@@ -494,7 +493,12 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
 .bz-zone{ position:relative; width:min(100%,560px); margin:0 auto; }
 .bz-grille{ display:grid; grid-template-columns:repeat(6,1fr); gap:clamp(2px,.8cqi,6px);
   padding:clamp(6px,2cqi,14px); border-radius:16px;
-  background:linear-gradient(180deg,#2A1B4Add,#160E2Edd), url("img/bonanza/fond.webp") center/cover;
+  /* ---- LE DECOR SE VOIT ----
+     Le voile etait a 87 % : le paysage de bonbons etait paye, charge, et
+     invisible. A 62 % en haut et 74 % en bas il se lit, tout en restant assez
+     sombre sous les symboles pour qu'ils gardent leur contraste — c'est eux
+     qu'on doit reconnaitre en un dixieme de seconde, pas le decor. */
+  background:linear-gradient(180deg,#2A1B4A9e,#160E2Ebd), url("img/bonanza/fond.webp") center/cover;
   border:1px solid rgba(255,197,61,.35); box-shadow:0 8px 28px rgba(0,0,0,.45); }
 .bz-c{ position:relative; aspect-ratio:1; border-radius:10px;
   background:rgba(255,255,255,.045); display:flex; align-items:center; justify-content:center;
@@ -528,12 +532,19 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
   text-align:center; letter-spacing:1px; padding:12px; text-shadow:0 3px 0 #7a4a00; }
 .bz-voile[hidden]{ display:none; }
 
-.bz-gain{ text-align:center; font-family:"Space Mono",monospace; font-weight:700;
-  font-size:clamp(15px,4.6cqi,22px); min-height:1.5em; margin:10px 0 2px; color:#E7C97A; }
+/* ---- LA PAGE EST CLAIRE, LES COULEURS AUSSI ----
+   Tout ce bloc avait ete ecrit pour un fond sombre : de l'or et du vert pale
+   sur du #EEF3FB, c'est-a-dire illisible. Le commentaire de la feuille de
+   style prevenait deja, quelques centaines de lignes plus haut, qu'un creme
+   clair « pense pour ce fond sombre » devient illisible sur blanc partout ou
+   rien ne le redefinit. C'etait le cas ici. */
+.bz-gain{ text-align:center; font-family:"Space Mono",monospace; font-weight:800;
+  font-size:clamp(15px,4.6cqi,22px); min-height:1.5em; margin:10px 0 2px; color:#0B1B36; }
 .bz-mise{ display:inline-flex; align-items:center; gap:10px; font-family:"Space Mono",monospace;
-  font-weight:700; color:#E7C97A; background:rgba(0,0,0,.32); border:1px solid rgba(255,197,61,.35);
+  font-weight:700; color:#0B1B36; background:#fff; border:1px solid #C99A2E;
+  box-shadow:0 1px 3px rgba(11,27,54,.12);
   border-radius:999px; padding:6px 12px; }
-.bz-mise button{ background:none; border:0; color:#F2685E; font-weight:800; cursor:pointer; font-size:15px; }
+.bz-mise button{ background:none; border:0; color:#C0392B; font-weight:800; cursor:pointer; font-size:15px; }
 .bz-rail{ display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin:10px auto 6px; }
 .bz-rail button{ font-family:"Space Mono",monospace; font-weight:700; font-size:12px;
   padding:7px 11px; border-radius:999px; cursor:pointer; color:#0B1220;
@@ -545,25 +556,27 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
   background:linear-gradient(180deg,#FFE9A8,#FFC53D); box-shadow:0 5px 0 #A67A1E; }
 .bz-spin:active{ transform:translateY(3px); box-shadow:0 2px 0 #A67A1E; }
 .bz-spin:disabled{ opacity:.55; cursor:default; box-shadow:0 5px 0 #A67A1E; }
-.bz-note{ text-align:center; font-size:12px; color:#9aa4bd; min-height:1.2em; margin-top:4px; }
+.bz-note{ text-align:center; font-size:12px; color:#4A5876; min-height:1.2em; margin-top:4px; }
 
 .bz-histbtn{ display:block; margin:12px auto 0; font-family:"Space Mono",monospace;
   font-size:12px; letter-spacing:1px; text-transform:uppercase; cursor:pointer;
-  background:none; border:1px solid rgba(255,197,61,.35); color:#E7C97A;
-  border-radius:999px; padding:6px 16px; }
+  background:#fff; border:1px solid #C99A2E; color:#0B1B36; font-weight:700;
+  border-radius:999px; padding:7px 18px; box-shadow:0 1px 3px rgba(11,27,54,.12); }
 .bz-bareme,.bz-hist{ display:none; max-width:520px; margin:8px auto 0; padding:10px 12px;
-  border:1px solid rgba(255,197,61,.28); border-radius:12px; background:rgba(0,0,0,.28);
-  font-family:"Space Mono",monospace; font-size:12px; color:#cfd6e6; }
+  border:1px solid #C9D4E8; border-radius:12px; background:#fff;
+  box-shadow:0 2px 8px rgba(11,27,54,.10);
+  font-family:"Space Mono",monospace; font-size:12px; color:#0B1B36; }
 .bz-bareme.on,.bz-hist.on{ display:block; }
 .bz-bareme table{ width:100%; border-collapse:collapse; }
 .bz-bareme td,.bz-bareme th{ padding:3px 5px; text-align:right; }
 .bz-bareme td:first-child,.bz-bareme th:first-child{ text-align:left; }
-.bz-bareme th{ color:#E7C97A; font-size:10px; letter-spacing:1px; text-transform:uppercase; }
+.bz-bareme th{ color:#8A6A16; font-size:10px; letter-spacing:1px; text-transform:uppercase;
+  border-bottom:1px solid #E3E9F4; }
 .bz-bareme img{ width:20px; height:20px; vertical-align:middle; margin-right:6px; }
-.bz-hist .l{ display:flex; justify-content:space-between; padding:2px 0;
-  border-bottom:1px solid rgba(255,255,255,.06); }
-.bz-hist .g{ color:#7CFF9B; font-weight:800; }
-.bz-hist .p{ color:#F2685E; font-weight:800; }
+.bz-hist .l{ display:flex; justify-content:space-between; padding:3px 0;
+  border-bottom:1px solid #E3E9F4; }
+.bz-hist .g{ color:#0E6B32; font-weight:800; }
+.bz-hist .p{ color:#C0392B; font-weight:800; }
 
 </style>
 <style>
@@ -1759,7 +1772,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       if(!gagnants.size){ return setTimeout(suivante, 240); }
       son(k===1?"gain":"cascade");
       var g=$("bzGain");
-      g.style.color="#7CFF9B";
+      g.style.color="#0E6B32";
       g.textContent="+"+e.multi.toFixed(2)+"× ("+e.amas.map(function(a){ return a.nombre+" "+a.symbole.replace(/_/g," "); }).join(", ")+")";
       setTimeout(function(){
         var cs=$("bzGrille").children;
@@ -1788,7 +1801,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         BZ.hist.unshift({ mise:t.mise, multi:t.multi, net:t.net, gratuits:t.toursGratuits });
         if(BZ.hist.length>60) BZ.hist.pop();
         var g=$("bzGain");
-        g.style.color = t.net>0 ? "#7CFF9B" : t.net<0 ? "#F2685E" : "#E7C97A";
+        g.style.color = t.net>0 ? "#0E6B32" : t.net<0 ? "#C0392B" : "#0B1B36";
         g.textContent = (t.net>0?"+":"")+bzFmt(t.net)+" $SWOGE"+(t.multi?"  ("+t.multi.toFixed(2)+"×)":"");
         if(t.net>0) son(t.multi>=20?"gros":"gain"); else son("rien");
         BZ.anime=false; bzRender();

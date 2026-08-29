@@ -1,14 +1,66 @@
 # Sons de SWOGE BONANZA
 
-## Ce qu'il y a
+## Les huit bruitages sont SYNTHETISES, et voici pourquoi
+
+Ils venaient d'un montage envoye par le proprietaire du jeu : neuf pistes,
+decoupees sur les silences et attribuees a un creneau chacune selon leur
+profil mesure. Ca tenait debout sur le papier et ca ne tenait pas a
+l'oreille — « les sons, c'est le seul truc qui ne donne pas envie de
+jouer ». La raison est simple et ne se voyait dans aucune mesure prise une
+piste a la fois : **chaque son etait dans sa propre tonalite**. Superposes —
+et ils se superposent tout le temps, une colonne se pose pendant qu'un amas
+paie — ils frottaient.
+
+Les huit sont donc reecrits par `synth.py`, dans **une seule gamme** : do
+majeur pentatonique (do re mi sol la), la meme que la montee des cascades du
+bus audio. Une gamme sans demi-ton n'a aucun intervalle qui frotte : deux
+sons quelconques du lot, joues ensemble, sonnent juste. C'est ca l'harmonie
+ici — pas un effet, une contrainte d'ecriture.
+
+Le timbre est de la meme famille partout : attaque instantanee, decroissance
+exponentielle, partiels de bois ou de metal inharmonique (un glockenspiel,
+pas une sinusoide). Ca supporte la transposition, ce qui compte parce que le
+bus monte `pose`, `gain` et `cascade` jusqu'a une octave.
+
+`synth.py` et `synth_rien.py` sont dans ce dossier : les sons se
+regenerent a l'identique, et se modifient en changeant une note plutot qu'en
+cherchant un autre fichier.
 
 | fichier | quand | duree |
 |---|---|---|
-| `spin_rien.mp3` | fin d'un tour **sans aucune combinaison** | 0,78 s |
+| `spin_debut.mp3` | a chaque SPIN | 0,34 s |
+| `symbole_pose.mp3` | une colonne se pose (**6x par tour**) | 0,15 s |
+| `gain.mp3` | un amas paie | 0,42 s |
+| `cascade.mp3` | les etages suivants | 0,32 s |
+| `scatter.mp3` | une sucette tombe / l'attente | 0,80 s |
+| `tours_gratuits.mp3` | le bonus s'ouvre (1 tour sur 201) | 1,92 s |
+| `bombe.mp3` | une bombe multiplicateur | 0,85 s |
+| `gros_gain.mp3` | 20x la mise et plus | 1,90 s |
+| `spin_rien.mp3` | fin d'un tour **sans aucune combinaison** | 0,50 s |
 | `musique.ogg` | fond sonore, en boucle — **a utiliser en premier** | 2 min 16 |
 | `musique.mp3` | le meme, en secours pour les navigateurs sans Vorbis | 2 min 16 |
 
-## Ce qui a ete fait a l'original, et ce qui ne l'a PAS ete
+Ce que la mesure dit du changement : les nouveaux sont **5 a 20 fois plus
+tonaux** (planitude spectrale 0,005 contre 0,03 a 0,12) et bien moins
+agressifs (centroide autour de 1 100 Hz contre 1 265 a 6 978 Hz). L'ancien
+`gain` portait l'essentiel de son energie au-dessus de 5 kHz — le « tsss »
+qui fatigue au bout de dix tours.
+
+Ce qu'elle ne dit pas : si c'est agreable. `ecouter.html` met les paires
+avant/apres cote a cote pour que quelqu'un tranche a l'oreille.
+
+## Ce qui dort a cote
+
+- `echantillons/` — le lot precedent, tire du montage envoye. Garde pour
+  comparer, plus joue par la page.
+- `provisoire/` — les bouche-trous Kenney CC0 d'avant lui.
+- `lot/` — les neuf pistes du montage d'origine, **jamais ecoutees**. La
+  piste 2 est une VOIX qui dit « welcome » : elle a passe toutes mes mesures
+  et s'est jouee six fois par tour en production. Voir `ecouter.html` et le
+  controle positif de `sons_bonanza.test.js`.
+- `variantes/` — trois candidats pour le son du tour perdu (`rien.html`).
+
+## Ce qui a ete fait a la musique d'origine, et ce qui ne l'a PAS ete
 
 **Passe en mono.** Les deux canaux etaient rigoureusement identiques — meme
 crete, meme RMS au centieme de decibel pres. C'etait donc du faux stereo :

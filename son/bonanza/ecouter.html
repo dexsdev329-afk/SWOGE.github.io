@@ -2,121 +2,111 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex">
-<title>SWOGE Bonanza — trier les sons</title>
+<title>SWOGE Bonanza — les sons, avant et apres</title>
 <style>
-  :root{ --or:#C99A2E; --fond:#EEF3FB; --encre:#0B1B36; --gris:#5A6A86; }
+  :root{ --or:#C99A2E; --fond:#EEF3FB; --encre:#0B1B36; --gris:#5A6A86; --vert:#1E7B4D; }
   *{ box-sizing:border-box }
-  body{ margin:0; padding:22px 16px 60px; background:var(--fond); color:var(--encre);
+  body{ margin:0; padding:22px 16px 70px; background:var(--fond); color:var(--encre);
         font:15px/1.6 "Space Mono",ui-monospace,SFMono-Regular,Menlo,monospace; }
-  .h{ max-width:900px; margin:0 auto 22px }
-  h1{ font-size:22px; margin:0 0 6px; letter-spacing:.5px }
-  p{ margin:0 0 10px; color:var(--gris); max-width:70ch }
+  .h{ max-width:900px; margin:0 auto 20px }
+  h1{ font-size:22px; margin:0 0 8px; letter-spacing:.4px }
+  p{ margin:0 0 10px; color:var(--gris); max-width:72ch }
   b{ color:var(--encre) }
   main{ max-width:900px; margin:0 auto; display:grid; gap:12px }
   .p{ background:#fff; border:1px solid var(--or); border-radius:14px; padding:13px 15px;
-      box-shadow:0 1px 4px rgba(11,27,54,.10); display:grid; gap:9px;
-      grid-template-columns:1fr; }
-  .t{ display:flex; align-items:center; gap:12px; flex-wrap:wrap }
+      box-shadow:0 1px 4px rgba(11,27,54,.10); display:grid; gap:10px }
+  .t{ display:flex; align-items:baseline; gap:10px; flex-wrap:wrap }
   .n{ font-weight:700; font-size:16px }
   .m{ color:var(--gris); font-size:12.5px }
-  audio{ width:100%; height:36px }
-  select{ font:inherit; font-size:13px; padding:7px 10px; border-radius:9px;
-          border:1px solid var(--or); background:#FFFDF6; color:var(--encre); width:100%; }
-  .sortie{ max-width:900px; margin:22px auto 0; background:#0B1220; color:#CFE3FF;
-           border-radius:14px; padding:14px 16px; }
-  .sortie h2{ font-size:14px; margin:0 0 8px; color:#FFC53D; letter-spacing:1px }
-  pre{ margin:0; white-space:pre-wrap; word-break:break-all; font-size:13px; line-height:1.7 }
-  .av{ background:#FFF6DF; border:1px solid var(--or); border-radius:12px; padding:11px 14px;
+  .duo{ display:grid; gap:8px; grid-template-columns:1fr 1fr }
+  @media (max-width:620px){ .duo{ grid-template-columns:1fr } }
+  .c{ border:1px solid #D7E0EE; border-radius:10px; padding:9px 11px; background:#FAFCFF }
+  .c.neuf{ border-color:var(--vert); background:#F4FBF7 }
+  .lab{ font-size:11px; letter-spacing:1.4px; text-transform:uppercase; margin:0 0 6px;
+        color:var(--gris); font-weight:700 }
+  .c.neuf .lab{ color:var(--vert) }
+  audio{ width:100%; height:34px }
+  .av{ background:#FFF6DF; border:1px solid var(--or); border-radius:12px; padding:12px 15px;
        margin:0 auto 18px; max-width:900px; font-size:13.5px; color:#5A4413 }
+  table{ border-collapse:collapse; width:100%; font-size:12.5px; margin:16px auto 0; max-width:900px }
+  th,td{ text-align:right; padding:6px 9px; border-bottom:1px solid #D7E0EE }
+  th:first-child,td:first-child{ text-align:left }
+  thead th{ color:var(--gris); font-weight:400 }
 </style>
 
 <div class="h">
-  <h1>Trier les sons de SWOGE Bonanza</h1>
-  <p>Le fichier que tu m'as envoye contient <b>neuf pistes</b>. Je les ai
-     decoupees sur les silences et recadrees sur ce qui sonne.</p>
-  <p><b>Je ne peux pas les ecouter.</b> Tout ce que je sais d'elles, je l'ai
-     mesure : duree, niveau, brillance, forme de l'enveloppe. Ca suffit pour
-     dire qu'une piste de six secondes ne peut pas servir a marquer la pose
-     d'une colonne — ca ne suffit pas pour dire si c'est un scatter ou un gros
-     gain. Toi tu l'entends en trois secondes.</p>
-  <p>Ecoute, choisis dans la liste, et <b>renvoie-moi le bloc du bas</b>.</p>
+  <h1>Les sons de Bonanza, avant et apres</h1>
+  <p>« Les sons, c’est le seul truc qui ne donne pas envie de jouer. » Le moteur
+     etait casse — un seul haut-parleur pour six evenements, repare ce matin —
+     mais <b>les bruitages eux-memes n’allaient pas ensemble</b> : ils venaient
+     d’un montage, chacun dans sa tonalite, sans rien de commun.</p>
+  <p>Les huit sont <b>reecrits</b>, et tous dans <b>une seule gamme</b> : do
+     majeur pentatonique, la meme que la montee des cascades. C’est ca,
+     l’harmonie — pas un effet, une contrainte d’ecriture. Deux sons qui se
+     superposent (et ils se superposent tout le temps) ne peuvent plus frotter.</p>
+  <p><b>Je ne peux pas les entendre.</b> Ecoute les paires ci-dessous et
+     dis-moi si l’une d’elles est a revoir.</p>
 </div>
 
 <div class="av">
-  <b>Ce que la mesure ne dit PAS.</b> J'avais pose la piste 2 sur « une
-  colonne se pose » : 0,49 s, sourde, attaque nette, le profil d'un choc.
-  C'etait une VOIX qui dit « welcome », et elle se rejouait six fois par
-  tour. Une parole courte et un clic court ont le meme profil grossier ; il
-  a fallu une mesure de periodicite (0,72 a 143 Hz, une voix d'homme) pour
-  les separer &mdash; et une oreille pour s'en apercevoir.
+  <b>Ce que la mesure dit.</b> Les nouveaux sont <b>5 a 20 fois plus tonaux</b>
+  que les anciens (planitude spectrale 0,005 contre 0,03 a 0,12) et bien moins
+  agressifs (centroide 1 100 Hz contre 1 265 a 6 978 Hz). L’ancien
+  <i>gain</i> portait l’essentiel de son energie au-dessus de 5 kHz — c’est le
+  « tsss » qui fatigue au bout de dix tours.
   <br><br>
-  <b>C'est tout l'objet de cette page.</b> Aucune de ces pistes ne retourne
-  dans le jeu sans avoir ete ecoutee. Et vu leurs durees &mdash; de 2,5 a
-  36 secondes sauf la 2 &mdash; les cases <i>pose</i>, <i>gain</i>,
-  <i>cascade</i> et <i>bombe</i> resteront probablement vides apres ce tri :
-  c'est une information, pas un echec.
+  <b>Ce qu’elle ne dit pas :</b> si c’est agreable. C’est pour ca que cette page
+  existe.
 </div>
 
 <main id="liste"></main>
 
-<div class="sortie">
-  <h2>A ME RENVOYER</h2>
-  <pre id="sortie">choisis au moins une piste…</pre>
-</div>
+<table>
+  <thead><tr><th>creneau</th><th>duree avant</th><th>duree apres</th><th>planitude avant</th><th>planitude apres</th></tr></thead>
+  <tbody>
+    <tr><td>spin_debut</td><td>0,39 s</td><td>0,34 s</td><td>0,0554</td><td>souffle</td></tr>
+    <tr><td>symbole_pose</td><td>0,34 s</td><td>0,15 s</td><td>0,0580</td><td>0,0037</td></tr>
+    <tr><td>gain</td><td>0,48 s</td><td>0,42 s</td><td>0,1180</td><td>0,0061</td></tr>
+    <tr><td>cascade</td><td>0,33 s</td><td>0,32 s</td><td>0,0614</td><td>0,0061</td></tr>
+    <tr><td>scatter</td><td>0,95 s</td><td>0,80 s</td><td>0,0512</td><td>0,0065</td></tr>
+    <tr><td>tours_gratuits</td><td>1,46 s</td><td>1,92 s</td><td>0,0377</td><td>0,0047</td></tr>
+    <tr><td>bombe</td><td>0,38 s</td><td>0,85 s</td><td>0,0292</td><td>0,0533</td></tr>
+    <tr><td>gros_gain</td><td>3,58 s</td><td>1,90 s</td><td>0,0449</td><td>0,0063</td></tr>
+  </tbody>
+</table>
 
 <script>
-var PISTES = [
-  {n:1, d:"2,64 s", c:"-19,1 dB", b:"1 005 Hz", f:"descend",
-   note:"de loin la plus discrete du lot — 10 dB sous les autres. Un fond ou une ambiance, pas un bruitage."},
-  {n:2, d:"0,49 s", c:"-8,8 dB",  b:"398 Hz",  f:"tient",
-   note:"\u26a0 UNE VOIX qui dit « welcome ». Je l'avais lue comme un choc : meme profil grossier qu'un clic. Periodicite 0,72 a 143 Hz, une voix d'homme. A NE PAS remettre sur un creneau qui se repete."},
-  {n:3, d:"2,56 s", c:"-3,8 dB",  b:"1 295 Hz", f:"MONTE",
-   note:"la seule qui monte franchement (x15 entre le debut et la fin). Un lancement, une montee."},
-  {n:4, d:"4,34 s", c:"-5,4 dB",  b:"1 574 Hz", f:"descend", note:"claire, elle retombe."},
-  {n:5, d:"6,43 s", c:"-5,6 dB",  b:"1 743 Hz", f:"descend", note:"la plus brillante du lot."},
-  {n:6, d:"8,03 s", c:"-4,0 dB",  b:"1 633 Hz", f:"tient",
-   note:"deux evenements : un a 0,9 s, un autre vers 7 s. Une annonce en deux temps."},
-  {n:7, d:"6,22 s", c:"-3,9 dB",  b:"1 651 Hz", f:"descend",
-   note:"monte jusqu'a un plateau tenu, puis retombe."},
-  {n:8, d:"35,94 s", c:"-1,1 dB", b:"1 482 Hz", f:"tient",
-   note:"enveloppe REGULIERE et repetee : c'est de la musique, pas un bruitage."},
-  {n:9, d:"12,82 s", c:"-5,5 dB", b:"1 242 Hz", f:"tient",
-   note:"deux moities presque identiques (~6,4 s chacune). Une boucle, ou deux prises."}
+var SONS = [
+  {f:"spin_debut",     n:"Depart du tour",
+   d:"Un souffle qui monte, ferme par un clic de bois. Il part a chaque SPIN, donc il doit rester discret."},
+  {f:"symbole_pose",   n:"Une colonne se pose",
+   d:"SIX fois par tour, et le moteur la transpose jusqu'a l'octave : les six poses montent la gamme au lieu de repeter la meme note. Ramenee de 0,34 s a 0,15 s pour qu'elle claque au lieu de trainer."},
+  {f:"gain",           n:"Un amas paie",
+   d:"Deux notes de metal qui montent, do puis sol. Le plus joue apres la pose : il part a chaque etage de cascade, un cran plus haut a chaque fois."},
+  {f:"cascade",        n:"Les etages suivants",
+   d:"Meme famille que le gain, plus bref et plus discret — il ne doit pas le doubler."},
+  {f:"scatter",        n:"Une sucette tombe",
+   d:"Un carillon qui MONTE, et qui monte encore avec le nombre de sucettes deja a l'ecran. C'est le seul son du jeu qui doit donner envie de la suivante."},
+  {f:"tours_gratuits", n:"Le bonus s'ouvre",
+   d:"Un tour sur 201 : le seul moment du jeu qui a droit a une fanfare. Montee pentatonique puis accord tenu. Cale sur les 1,9 s du bandeau."},
+  {f:"bombe",          n:"Une bombe multiplicateur",
+   d:"Un coup sourd, puis le metal du multiplicateur par-dessus. L'ancien etait sec et court ; celui-ci pose le poids d'abord."},
+  {f:"gros_gain",      n:"Gros gain (20x et plus)",
+   d:"L'accord complet, tenu, avec une montee d'eclat derriere. L'ancien durait 3,58 s — plus longtemps que la secousse qu'il accompagne."}
 ];
-var CASES = [
-  ["", "— je ne sais pas / a jeter —"],
-  ["debut",    "debut de tour (a chaque SPIN)"],
-  ["pose",     "une colonne se pose (6x par tour) — il faut du TRES court"],
-  ["gain",     "un amas paie (a CHAQUE etage de cascade) — le plus joue, court"],
-  ["cascade",  "les symboles retombent (court)"],
-  ["scatter",  "une sucette tombe"],
-  ["gratuits", "les tours gratuits s'ouvrent (le moment fort)"],
-  ["bombe",    "une bombe multiplicateur"],
-  ["gros",     "gros gain (20x la mise et plus)"],
-  ["rien",     "le tour ne paie rien"],
-  ["musique",  "musique de fond (en boucle)"]
-];
-
 var l = document.getElementById("liste");
-PISTES.forEach(function(p){
+SONS.forEach(function(s){
   var d = document.createElement("div"); d.className = "p";
-  var opts = CASES.map(function(c){ return '<option value="'+c[0]+'">'+c[1]+'</option>'; }).join("");
   d.innerHTML =
-    '<div class="t"><span class="n">Piste '+p.n+'</span>'+
-    '<span class="m">'+p.d+' &middot; crete '+p.c+' &middot; brillance '+p.b+' &middot; '+p.f+'</span></div>'+
-    '<div class="m">'+p.note+'</div>'+
-    '<audio controls preload="none" src="lot/piste_'+p.n+'.mp3"></audio>'+
-    '<select data-n="'+p.n+'">'+opts+'</select>';
+    '<div class="t"><span class="n">' + s.n + '</span>' +
+    '<span class="m">' + s.f + '.mp3</span></div>' +
+    '<div class="m">' + s.d + '</div>' +
+    '<div class="duo">' +
+      '<div class="c"><p class="lab">avant</p>' +
+        '<audio controls preload="none" src="echantillons/' + s.f + '.mp3"></audio></div>' +
+      '<div class="c neuf"><p class="lab">apres — en place</p>' +
+        '<audio controls preload="none" src="' + s.f + '.mp3"></audio></div>' +
+    '</div>';
   l.appendChild(d);
 });
-
-function maj(){
-  var out = [];
-  [].forEach.call(document.querySelectorAll("select"), function(s){
-    if(s.value) out.push("piste_" + s.dataset.n + " = " + s.value);
-  });
-  document.getElementById("sortie").textContent =
-    out.length ? out.join("\n") : "choisis au moins une piste…";
-}
-l.addEventListener("change", maj);
 </script>

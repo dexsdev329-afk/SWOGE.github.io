@@ -106,8 +106,62 @@ function mesure(rel) {
      periodiques vers 100-150 Hz. */
   let zc = 0;
   for (let i = 1; i < N; i++) if ((x[i - 1] < 0) !== (x[i] < 0)) zc++;
+
+  /* ---- LE FLUX SPECTRAL, ET POURQUOI IL A FALLU L AJOUTER ----
+   * La periodicite seule a fini par se retourner contre nous. Elle avait
+   * ete posee pour attraper une VOIX parmi des enregistrements ; le jour ou
+   * les bruitages ont ete SYNTHETISES, elle a refuse la cascade — une note
+   * de cloche pure est evidemment plus periodique qu'une parole (0,84
+   * contre 0,72). Le critere attrapait la bonne chose pour la mauvaise
+   * raison.
+   *
+   * Ce qui separe vraiment une voix d'une note frappee, c'est que la voix
+   * BOUGE : ses formants se deplacent pendant qu'elle parle, donc la FORME
+   * de son spectre change d'une trame a l'autre. Une cloche garde sa forme
+   * et ne fait que decroitre. On mesure donc l'ecart moyen entre deux
+   * spectres consecutifs, amplitude normalisee — la decroissance ne compte
+   * pas, seule la deformation compte. Mesure sur les fichiers de ce depot :
+   *
+   *     la voix « welcome »           0,343
+   *     les notes de synthese         0,079 a 0,137
+   *     les anciens echantillons      0,506 a 0,675   (du bruit : tout bouge)
+   *
+   * La voix est donc EN SANDWICH : elle bouge plus qu'une note et moins que
+   * du bruit. C'est pour ca que le flux ne suffit pas seul et qu'il faut
+   * les trois conditions ensemble. */
+  const F = 1024, H = 512;
+  const formes = [];
+  for (let o = 0; o + F <= N; o += H) {
+    let crete = 0;
+    const w = new Array(F);
+    for (let i = 0; i < F; i++) {
+      w[i] = x[o + i] * (0.5 - 0.5 * Math.cos((2 * Math.PI * i) / F));
+      if (Math.abs(w[i]) > crete) crete = Math.abs(w[i]);
+    }
+    if (crete < 0.02) continue;
+    const m2 = new Array(F / 2);
+    let som = 0;
+    for (let k = 0; k < F / 2; k++) {
+      let re = 0, im = 0;
+      for (let i = 0; i < F; i++) {
+        const a = (-2 * Math.PI * k * i) / F;
+        re += w[i] * Math.cos(a); im += w[i] * Math.sin(a);
+      }
+      m2[k] = Math.hypot(re, im); som += m2[k];
+    }
+    if (som <= 0) continue;
+    for (let k = 0; k < F / 2; k++) m2[k] /= som;   // la forme, sans l'amplitude
+    formes.push(m2);
+  }
+  let flux = 0;
+  if (formes.length > 2) {
+    let t = 0;
+    for (let i = 1; i < formes.length; i++)
+      for (let k = 0; k < formes[i].length; k++) t += Math.abs(formes[i][k] - formes[i - 1][k]);
+    flux = t / (formes.length - 1);
+  }
   return { duree: N / sr, periodicite: best, hauteur: lag ? sr / lag : 0,
-           brillance: (zc * sr) / (2 * N) };
+           brillance: (zc * sr) / (2 * N), flux };
 }
 
 console.log('\n-- ce que la page joue --');
@@ -118,6 +172,7 @@ for (const [cle, rel] of Object.entries(sons)) {
   const c = CRENEAUX[cle];
   const drapeau = (c && m.duree > c.max) ? '  ← TROP LONG' : '';
   console.log('  ' + cle.padEnd(9) + m.duree.toFixed(2).padStart(6) + 's'
+    + '   flux ' + m.flux.toFixed(2)
     + '   periodicite ' + m.periodicite.toFixed(2)
     + '   hauteur ' + m.hauteur.toFixed(0).padStart(4) + ' Hz'
     + '   brillance ' + m.brillance.toFixed(0).padStart(4) + ' Hz'
@@ -140,8 +195,14 @@ for (const [cle, rel] of Object.entries(sons)) {
      periodique, ce qui ferait ignorer l'essai — le sort de tout controle qui
      se trompe souvent. */
   if (c && c.parTour >= 6 && m.duree >= 0.20
-      && m.periodicite > 0.55 && m.hauteur >= 100 && m.hauteur <= 255) {
-    voix.push(cle + ' (periodicite ' + m.periodicite.toFixed(2) + ' a ' + m.hauteur.toFixed(0) + ' Hz)');
+      && m.periodicite > 0.55 && m.hauteur >= 100 && m.hauteur <= 255
+      /* ...ET son spectre se deforme. Sans cette troisieme condition, une
+         note de cloche pure est refusee — elle est periodique et dans la
+         bonne fenetre de hauteur — alors qu'elle ne bouge pas du tout.
+         Seuil a 0,25 : la voix mesure 0,343, les notes 0,079 a 0,137. */
+      && m.flux > 0.25) {
+    voix.push(cle + ' (periodicite ' + m.periodicite.toFixed(2) + ' a ' + m.hauteur.toFixed(0)
+              + ' Hz, flux ' + m.flux.toFixed(2) + ')');
   }
 }
 
@@ -155,6 +216,28 @@ ok(voix.length === 0,
    'aucun son d un creneau REPETITIF ne ressemble a de la parole'
    + (voix.length ? ' — ON DIRAIT UNE VOIX : ' + voix.join(', ')
                   : ' (c est ce qui a mis « welcome » six fois par tour)'));
+
+/* ---- LE CONTROLE POSITIF : LE GARDE ATTRAPE-T-IL ENCORE UNE VOIX ? ----
+ * On vient d'ajouter une TROISIEME condition au garde parce qu'il refusait
+ * une note de cloche. Chaque condition ajoutee le rend plus permissif, et
+ * un garde qui ne refuse plus rien passe tous les essais du monde sans
+ * proteger de quoi que ce soit.
+ *
+ * On lui repasse donc le coupable connu : `lot/piste_2.mp3`, la piste qui
+ * disait « welcome » et qui est partie six fois par tour en production. Si
+ * cet essai passe au vert alors que le garde ne la voit plus, c'est l'essai
+ * qui est casse, pas le fichier. */
+const COUPABLE = 'son/bonanza/lot/piste_2.mp3';
+if (fs.existsSync(path.join(SITE, COUPABLE))) {
+  const v = mesure(COUPABLE);
+  const vue = !!v && v.duree >= 0.20 && v.periodicite > 0.55
+           && v.hauteur >= 100 && v.hauteur <= 255 && v.flux > 0.25;
+  ok(vue, 'le garde attrape TOUJOURS la voix « welcome » de piste_2'
+        + (v ? ' (periodicite ' + v.periodicite.toFixed(2) + ' a ' + v.hauteur.toFixed(0)
+             + ' Hz, flux ' + v.flux.toFixed(2) + ')' : ' — fichier illisible'));
+} else {
+  console.log('  (piste_2 absente — le controle positif du garde est saute)');
+}
 
 /* Le dossier `lot/` est une salle d'attente : rien n'en sort sans avoir ete
    ecoute. La page ne doit donc jamais y pointer. */

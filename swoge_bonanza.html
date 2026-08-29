@@ -476,7 +476,16 @@ footer a{color:#1B5FE0}
  * feuille) pose `var(--text)`, un creme clair pense pour ce fond sombre —
  * illisible sur blanc partout ou rien d autre ne le redefinit. */
 html,body{ background:#EEF3FB; color:#0B1B36; }
-.bzwrap{ position:relative; max-width:760px; margin:0 auto; padding:0 10px 18px; overflow-x:clip;
+/* ---- LE PLATEAU PROFITE DE L'ECRAN ----
+   DEFAUT SIGNALE : « le rendu du jeu est en tout petit sur PC ». Mesure : sur
+   une fenetre de 1 280 comme de 1 680, la case faisait 44 px, exactement la
+   meme chose — la page etait bridee a 760 et le cadre a 620, quelle que soit
+   la place disponible. Sur un telephone de 430 la case fait 38 : autant dire
+   qu'un grand ecran n'apportait rien.
+   Les bornes montent a 1 040 et 980. Ce qui les tient encore, ce sont les
+   deux colonnes laterales de la page — d'ou `min()` plutot qu'une valeur
+   fixe. */
+.bzwrap{ position:relative; max-width:1040px; margin:0 auto; padding:0 10px 18px; overflow-x:clip;
   container-type:inline-size; }
 
 /* `cqi` et non `vw` : une fois les colonnes laterales en place (`.sw-cote`,
@@ -519,8 +528,8 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
    coupant ce qui sort. Ce qui est coupe : une quinzaine de pixels sur le
    bord exterieur gauche et droit, la ou il n'y a que de la guirlande. Le
    coffre et le shiba restent entiers. */
-.bz-zone{ position:relative; width:min(122%,620px); margin:0 auto;
-  margin-left:max(-11%, calc((100% - 620px)/2)); aspect-ratio:1374/1145; }
+.bz-zone{ position:relative; width:min(122%,980px); margin:0 auto;
+  margin-left:max(-11%, calc((100% - 980px)/2)); aspect-ratio:1374/1145; }
 .bz-cadre{ position:absolute; inset:0; width:100%; height:100%;
   display:block; pointer-events:none; z-index:2; }
 /* ---- `minmax(0,1fr)` ET NON `1fr` ----
@@ -850,8 +859,8 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
    8 600 il fallait taper huit fois, et la valeur atteinte dependait de
    l'ordre des taps. */
 .bz-barre{ display:flex; align-items:center; justify-content:center;
-  gap:clamp(10px,3.5cqi,22px); margin:10px auto 6px;
-  position:relative; z-index:1; }
+  gap:clamp(6px,2.4cqi,16px); margin:10px auto 6px;
+  position:relative; z-index:1; flex-wrap:nowrap; }
 /* ---- LES BOUTONS SONT DES IMAGES ----
    Le mot est PEINT DANS le dessin — c'est ce qui a ete demande, et c'est ce
    qui separe un bouton de machine d'une pastille CSS. Le texte du balisage
@@ -873,9 +882,45 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
 .bz-plus{ background-image:url("img/bonanza/ui/plus.webp"); }
 
 /* La ligne du dessous : MAX d'un cote, le son de l'autre. */
-.bz-sous{ display:flex; align-items:center; justify-content:space-between;
+.bz-sous{ display:flex; align-items:center; justify-content:center;
   gap:10px; margin:2px auto 0; max-width:min(100%,560px); }
-.bz-max{ width:clamp(72px,20cqi,96px); aspect-ratio:512/302;
+/* PAYTABLE et HISTORY sur la MEME ligne : deux boutons pleine largeur l'un
+   sous l'autre coutaient cent pixels pour deux mots. */
+.bz-onglets{ display:flex; gap:clamp(8px,3cqi,18px); justify-content:center;
+  margin:12px auto 0; }
+.bz-onglets .bz-histbtn{ margin:0; flex:0 1 auto;
+  width:clamp(120px,30cqi,168px); }
+
+/* ---- L'ACHAT DU BONUS ----
+   Colle au bord gauche du plateau, dans la marge que le cadre laisse en
+   debordant. Il ne se montre qu'une fois connecte : un bouton qui annonce un
+   prix avant qu'on sache si le joueur peut le payer ne sert a rien. */
+.bz-achat{ position:absolute; left:0; top:50%; transform:translateY(-50%);
+  width:clamp(62px,17cqi,150px); padding:0; border:0; background:none;
+  cursor:pointer; z-index:4; line-height:0; container-type:inline-size; }
+.bz-achat[hidden]{ display:none; }
+.bz-achat img{ width:100%; height:auto; display:block;
+  filter:drop-shadow(0 4px 10px rgba(0,0,0,.45)); }
+.bz-achat:active{ transform:translateY(calc(-50% + 2px)); }
+.bz-achat:disabled{ opacity:.45; cursor:default; }
+.bz-achat:focus-visible{ outline:3px solid #0B62F5; outline-offset:3px; border-radius:10px; }
+/* Le prix s'ecrit DANS le bandeau vide prevu au bas du dessin. A 7,5 % il
+   tombait dessous, sur le liseré d'or : le bandeau est entre 12 et 21 % du
+   bord bas, mesure sur l'image. La taille suit la largeur du bouton, sinon
+   le chiffre deborde du bandeau sur un grand ecran. */
+/* MESURE sur l'image : le bandeau violet va de 83,4 a 89,6 % du haut, soit
+   de 10,4 a 16,6 % du bas, centre a 13,5 %. On y centre le texte —
+   `calc(13,5% - 0,5em)` pose la ligne de base pour que le chiffre tombe au
+   milieu de la bande et non dessous, ou il etait deux fois de suite.
+   `cqw` : le bouton est declare conteneur, donc la taille du chiffre suit sa
+   LARGEUR. Sans ca il gardait la meme taille sur un telephone et sur un
+   grand ecran, et debordait du bandeau sur l'un des deux. */
+.bz-achat b{ position:absolute; left:5%; right:5%; bottom:calc(13.5% - 0.5em);
+  font-family:"Anton",sans-serif; font-size:8cqw;
+  color:#fff; letter-spacing:.2px; line-height:1; white-space:nowrap;
+  overflow:hidden;
+  -webkit-text-stroke:.08em #3A0A52; paint-order:stroke fill; }
+.bz-max{ flex:0 0 auto; width:clamp(58px,16cqi,80px); aspect-ratio:512/302;
   background-image:url("img/bonanza/ui/max.webp"); }
 /* ---- LE SON REVIENT DANS LA PAGE ----
    Le socle du site est en `position:fixed` en bas a gauche : sur cette page
@@ -900,7 +945,7 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
 .bz-note{ text-align:center; font-size:12px; color:#4A5876; min-height:1.2em; margin-top:4px; }
 
 .bz-histbtn{ display:block; margin:12px auto 0;
-  width:clamp(132px,36cqi,180px); aspect-ratio:640/215; }
+  width:clamp(120px,30cqi,168px); aspect-ratio:640/215; }
 #bzBaremeBtn{ background-image:url("img/bonanza/ui/paytable.webp"); }
 #bzHistBtn{ background-image:url("img/bonanza/ui/history.webp"); }
 .bz-bareme,.bz-hist{ display:none; max-width:520px; margin:8px auto 0; padding:10px 12px;
@@ -1494,6 +1539,14 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       <div class="bz-parts" id="bzParts" aria-hidden="true"></div>
       <div class="bz-bandeau" id="bzBandeau" hidden><img alt=""><b></b></div>
       <div class="bz-voile" id="bzVoile" hidden><span id="bzVoileTxt"></span></div>
+      <!-- L'ACHAT DU BONUS
+           Il se pose dans la marge gauche, contre le cadre : c'est la seule
+           place libre, et c'est celle qu'il occupe dans les machines qui le
+           proposent. Le PRIX est calcule par le serveur et ecrit dans le
+           bandeau vide prevu au bas du dessin. -->
+      <button class="bz-achat" id="bzAchat" type="button" hidden>
+        <img src="img/bonanza/ui/buy_bonus.webp" alt="Buy bonus"><b></b>
+      </button>
     </div>
 
     <div class="bz-tete">
@@ -1511,18 +1564,20 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
          les reglages du son ramenes DANS la page au lieu de flotter dessus. -->
     <div class="bz-barre">
       <button class="bz-img bz-pas bz-moins" id="bzMoins" type="button" aria-label="Lower the bet">&minus;</button>
+      <button class="bz-img bz-max" id="bzMax" type="button">MAX</button>
       <button class="bz-img bz-spin" id="bzSpin" type="button">SPIN</button>
       <button class="bz-img bz-pas bz-plus" id="bzPlus" type="button" aria-label="Raise the bet">+</button>
     </div>
     <div class="bz-sous">
-      <button class="bz-img bz-max" id="bzMax" type="button">MAX</button>
       <div class="bz-son" id="bzSon"></div>
     </div>
     <div class="bz-note" id="bzNote"></div>
 
-    <button class="bz-img bz-histbtn" id="bzBaremeBtn" type="button" aria-expanded="false">Paytable</button>
+    <div class="bz-onglets">
+      <button class="bz-img bz-histbtn" id="bzBaremeBtn" type="button" aria-expanded="false">Paytable</button>
+      <button class="bz-img bz-histbtn" id="bzHistBtn" type="button" aria-expanded="false">History</button>
+    </div>
     <div class="bz-bareme" id="bzBareme"></div>
-    <button class="bz-img bz-histbtn" id="bzHistBtn" type="button" aria-expanded="false">History</button>
     <div class="bz-hist" id="bzHist"></div>
     <div class="fair" id="fair"></div>
   </div>
@@ -2131,7 +2186,28 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
        'Max win '+b.gainMax+'× your bet.</div>';
     e.innerHTML=h;
   }
-  function bzRender(){ bzPasMaj(); bzMiseAff(); bzHist(); $("bzSpin").disabled=BZ.anime; }
+  /* ---- LE BOUTON D'ACHAT ----
+   * Le prix vient du SERVEUR (`bareme.prixBonus`) : la page ne le calcule
+   * pas et ne le devine pas. S'il changeait cote serveur sans que la page
+   * suive, elle afficherait un prix et le serveur en debiterait un autre.
+   * Le bouton reste cache tant que le bareme n'est pas arrive.
+   */
+  function bzAchatMaj(){
+    var e=$("bzAchat"); if(!e) return;
+    var prix = BZ.bareme && BZ.bareme.prixBonus;
+    if(!prix || !authed){ e.hidden=true; return; }
+    var cout = BZ.mise * prix;
+    e.hidden=false;
+    /* `querySelector`, pas `lastChild` : entre `</b>` et `</button>` il y a
+       un retour a la ligne, donc `lastChild` est ce NOEUD DE TEXTE. Le prix
+       s'ecrivait dedans — c'est-a-dire a cote du bouton, sous l'image, au
+       lieu d'aller dans le bandeau prevu pour lui. Il s'affichait, ce qui
+       est pire que s'il avait disparu. */
+    e.querySelector("b").textContent = bzFmt(cout);
+    e.title = "Buy the bonus — " + bzFmt(cout) + " $SWOGE (" + prix + "× your bet)";
+    e.disabled = BZ.anime || !BZ.mise || cout > balance;
+  }
+  function bzRender(){ bzPasMaj(); bzMiseAff(); bzHist(); bzAchatMaj(); $("bzSpin").disabled=BZ.anime; }
 
   /* ---- L'ANIMATION NE DECIDE DE RIEN ----
      Le serveur a deja tout calcule, deja debite et deja credite. On se
@@ -2666,6 +2742,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     son("debut");
     /* Les rouleaux d'abord, sur la grille du PREMIER jet ; les cascades
        ensuite, qui repartent de cette meme grille. */
+    /* Un tour ACHETE n'a pas de jet de base : on entre directement dans les
+       tours gratuits, il n'y a donc pas de rouleaux a faire tourner. */
     var premiere = (t.base.etapes[0] && t.base.etapes[0].grille) || null;
     var suite = function(){ bzJoueEtapes(t.base.etapes, apresBase); };
     function apresBase(){
@@ -2849,6 +2927,16 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   $("bzHistBtn").addEventListener("click", function(){
     var e=$("bzHist"), on=e.classList.toggle("on");
     this.setAttribute("aria-expanded", on?"true":"false");
+  });
+  $("bzAchat").addEventListener("click", function(){
+    if(!authed){ toast("Sign in to play"); return openEmailLogin(); }
+    if(BZ.anime) return;
+    var prix = BZ.bareme && BZ.bareme.prixBonus;
+    if(!prix) return;
+    var cout = BZ.mise * prix;
+    if(BZ.mise<BZ_MIN) return toast("Minimum bet: "+bzFmt(BZ_MIN)+" $SWOGE");
+    if(balance<cout) return toast("Buying the bonus costs "+bzFmt(cout)+" $SWOGE");
+    send({type:"bonanzaAchat", bet:BZ.mise});
   });
   $("bzSpin").addEventListener("click", function(){
     if(!authed){ toast("Sign in to play"); return openEmailLogin(); }

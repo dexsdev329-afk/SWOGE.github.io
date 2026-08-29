@@ -105,6 +105,19 @@ process.on('unhandledRejection', (e) => {
   const sig = await w.signMessage(msg);
   await p.evaluate(([m, s]) => window.__s.find((x) => x.__m.some((y) => y.type === 'hello')).send(JSON.stringify({ type: 'login', message: m, signature: s })), [msg, sig]);
   await p.waitForFunction(() => window.__s.some((s) => s.__m.some((m) => m.type === 'auth')), { timeout: 15000 });
+
+  /* On credite le portefeuille d'essai. Le cadeau de bienvenue fait cent
+     jetons ; l'achat du bonus coute 73 fois la mise, soit 7 300 au minimum
+     de table. Sans ce credit, le seul controle qui coute de l'argent — le
+     solde bouge-t-il du bon montant — serait saute a chaque passage.
+     La PAGE ne le saura qu'au prochain message portant un solde : le tour
+     joue plus bas s'en charge, et le bouton d'achat s'allume ensuite.
+     `moteur` n'existe qu'a partir d'ici : il est capture au premier appel de
+     `_p`, qui a lieu pendant l'authentification. */
+  {
+    const j = moteur._p(w.address);
+    j.balance = j.balance.add(ethers.utils.parseEther('50000'));
+  }
   await p.waitForTimeout(1000);
   await p.evaluate(() => window.__s[0].send(JSON.stringify({ type: 'realmJoin' })));
   await p.waitForTimeout(1600);
@@ -279,6 +292,66 @@ process.on('unhandledRejection', (e) => {
     const signe = rep.net > 0 ? '+' : '';
     ok(aff.gain.indexOf(signe) === 0 || rep.net === 0,
        'le signe affiche correspond au net du serveur (' + rep.net + ')');
+  }
+
+  /* ================== 5. L'ACHAT DU BONUS ==================
+   * Le bouton le plus cher de la page. Deux choses doivent etre vraies, et
+   * la seconde est celle qui coute de l'argent si elle ne l'est pas :
+   *   - le prix affiche vient du SERVEUR, pas d'un chiffre recopie ;
+   *   - le solde bouge exactement du cout, puis du gain. */
+  console.log('\n-- l achat du bonus --');
+
+  const achat = await p.evaluate(() => {
+    const e = document.getElementById('bzAchat');
+    const b = e ? e.querySelector('b') : null;
+    return e ? { cache: e.hidden, prix: b ? b.textContent : null,
+                 eteint: e.disabled, titre: e.title } : null;
+  });
+  ok(!!achat, 'le bouton d achat existe');
+  if (achat) {
+    ok(/×\s*your bet/.test(achat.titre || ''),
+       'il annonce le prix en multiples de la mise : ' + JSON.stringify(achat.titre));
+    /* Le prix vient du bareme envoye a la connexion, pas de la page. */
+    const prixServeur = await p.evaluate(() => {
+      const m = window.__s.flatMap((x) => x.__m).filter((x) => x.type === 'auth').pop();
+      return m && m.bonanzaBareme ? m.bonanzaBareme.prixBonus : null;
+    });
+    ok(prixServeur > 0,
+       'et ce prix arrive du SERVEUR (' + prixServeur + '× la mise) — la page ne le calcule pas');
+
+    /* On achete pour de vrai, avec la plus petite mise possible. */
+    const soldeAvantAchat = moteur._p(w.address).balance.toString();
+    const miseAchat = await p.evaluate(() => {
+      const m = /Bet\s+([\d.]+)(k|M)?/.exec(document.getElementById('bzMise').textContent || '');
+      return m ? Math.round(parseFloat(m[1]) * (m[2] === 'M' ? 1e6 : m[2] === 'k' ? 1e3 : 1)) : null;
+    });
+    const assezRiche = await p.evaluate(() => !document.getElementById('bzAchat').disabled);
+    if (assezRiche) {
+      await p.click('#bzAchat');
+      await p.waitForFunction(() => window.__s.some((s2) => s2.__m.some(
+        (m) => m.type === 'bonanza' && m.tour && m.tour.achat)), { timeout: 30000 }).catch(() => {});
+      const r2 = await p.evaluate(() => {
+        const m = window.__s.flatMap((x) => x.__m).filter((x) => x.type === 'bonanza' && x.tour.achat).pop();
+        return m ? { cout: m.tour.cout, payout: m.tour.payout, mise: m.tour.mise,
+                     tours: m.tour.toursGratuits } : null;
+      });
+      ok(!!r2, 'le serveur repond a l achat');
+      if (r2) {
+        ok(r2.cout === r2.mise * prixServeur,
+           'le cout retenu est bien le prix fois la mise (' + r2.cout + ' = '
+           + r2.mise + ' × ' + prixServeur + ')');
+        ok(r2.tours > 0, 'et l achat donne bien des tours gratuits (' + r2.tours + ')');
+        const ethers3 = require(path.join(SERVEUR, 'node_modules', 'ethers'));
+        const attendu2 = ethers3.BigNumber.from(soldeAvantAchat)
+          .sub(ethers3.utils.parseEther(String(r2.cout)))
+          .add(ethers3.utils.parseEther(String(r2.payout)));
+        ok(moteur._p(w.address).balance.eq(attendu2),
+           'et le solde a bouge du COUT puis du gain (cout ' + r2.cout
+           + ', gain ' + r2.payout + ')');
+      }
+    } else {
+      console.log('     (solde trop court pour acheter — achat non joue)');
+    }
   }
 
   ok(erreurs.length === 0, 'aucune erreur JS' + (erreurs.length ? ' : ' + erreurs[0] : ''));

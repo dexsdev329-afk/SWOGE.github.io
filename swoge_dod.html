@@ -591,6 +591,38 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
 @keyframes ddPulse{ 0%,100%{ transform:scale(1) } 50%{ transform:scale(1.09) } }
 .dd-c.scat img{ filter:drop-shadow(0 0 10px rgba(255,214,92,.95))
                        drop-shadow(0 0 22px rgba(190,90,255,.55)); }
+/* ---- CE QUI NE PAIE PAS S'EFFACE ----
+   Les gagnants s'allumaient, mais les quinze cases gardaient la meme
+   presence : l'oeil ne trouvait pas la ligne. Baisser les perdants fait
+   plus pour la lisibilite que monter les gagnants. */
+.dd-c.terne img{ opacity:.30; filter:grayscale(.55) brightness(.72); }
+.dd-c.terne{ background:none }
+
+/* ---- UN SCATTER QUI TOMBE SE FAIT REMARQUER ----
+   Il portait une lueur FIXE : pose ou la depuis dix secondes, il avait la
+   meme allure. C'est pourtant le seul symbole qui ouvre le bonus. */
+.dd-c.pose.scat img{ animation:ddPose .28s cubic-bezier(.2,1.5,.4,1),
+                                ddScat .62s ease-out .06s 2; }
+@keyframes ddScat{
+  0%   { filter:drop-shadow(0 0 10px rgba(255,214,92,.95)) drop-shadow(0 0 22px rgba(190,90,255,.55)) }
+  40%  { filter:drop-shadow(0 0 26px rgba(255,228,140,1)) drop-shadow(0 0 46px rgba(210,120,255,.9)) brightness(1.22) }
+  100% { filter:drop-shadow(0 0 10px rgba(255,214,92,.95)) drop-shadow(0 0 22px rgba(190,90,255,.55)) }
+}
+
+/* ---- UN GROS GAIN SE SENT ----
+   Court et discret : une secousse longue devient un defaut, pas un effet. */
+.dd-zone.secousse{ animation:ddSecousse .42s cubic-bezier(.36,.07,.19,.97) both }
+@keyframes ddSecousse{
+  0%,100%{ transform:translate3d(0,0,0) }
+  15%{ transform:translate3d(-5px,2px,0) } 32%{ transform:translate3d(5px,-3px,0) }
+  50%{ transform:translate3d(-4px,-2px,0) } 68%{ transform:translate3d(3px,2px,0) }
+  85%{ transform:translate3d(-2px,0,0) }
+}
+@media (prefers-reduced-motion:reduce){
+  .dd-c.pose.scat img{ animation:none }
+  .dd-zone.secousse{ animation:none }
+  .dd-c.terne img{ opacity:.5; filter:none }
+}
 
 /* ---- LE WILD QUI S'ETIRE ----
  * Il ne vit pas dans une case : il couvre la COLONNE. Une couche a part,
@@ -1921,6 +1953,10 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     for(var i=0;i<DD_ROULEAUX*DD_RANGEES;i++) h+='<div class="dd-c" data-i="'+i+'"><img alt=""></div>';
     g.innerHTML=h;
   }
+  function ddEstScatter(s){
+    var b=DD.bareme;
+    return s===((b&&b.dead)||"dead") || s===((b&&b.deader)||"deader");
+  }
   function ddPeint(grille, gagnants){
     var g=$("ddGrille"), cs=g.children;
     var b=DD.bareme;
@@ -1928,8 +1964,12 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     for(var i=0;i<cs.length;i++){
       var c=cs[i], im=c.firstChild, s=grille[i];
       if(im.getAttribute("src")!==ddImg(s)) im.src=ddImg(s);
+      var paie = gagnants && gagnants.has(s);
       c.className="dd-c"
-        + (gagnants&&gagnants.has(s)?" gagne":"")
+        + (paie?" gagne":"")
+        /* Il n'y a de perdants que s'il y a des gagnants : hors gain, les
+           quinze cases restent a pleine presence. */
+        + ((gagnants&&gagnants.size&&!paie)?" terne":"")
         + ((s===dead||s===deader)?" scat":"");
     }
   }
@@ -1984,7 +2024,9 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
           clearInterval(minuteur);
           for(var y=0;y<DD_RANGEES;y++){
             var i2=y*DD_ROULEAUX+col, cel=cs[i2];
-            cel.className="dd-c pose";
+            /* `scat` des la pose, pas seulement au repeint : sinon le seul
+               symbole qui ouvre le bonus arrive sans rien dire. */
+            cel.className="dd-c pose"+(ddEstScatter(grille[i2])?" scat":"");
             cel.firstChild.src=ddImg(grille[i2]);
           }
           /* chaque rouleau se pose un cran plus haut que le precedent : cinq
@@ -2070,6 +2112,13 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     void e.offsetWidth;
     e.className="dd-bandeau on";
     if(multi>=50) sonDuck(2400);
+    /* Le meme seuil que le son « gros » : deux effets qui se declenchent a
+       des seuils differents donnent l'impression que l'un est en retard. */
+    if(multi>=20){
+      var z=document.querySelector(".dd-zone");
+      if(z){ z.classList.remove("secousse"); void z.offsetWidth; z.classList.add("secousse");
+             setTimeout(function(){ z.classList.remove("secousse"); }, 500); }
+    }
     setTimeout(function(){ e.className="dd-bandeau on part"; }, p.ms);
     setTimeout(function(){ e.hidden=true; e.className="dd-bandeau"; fin(); }, p.ms+340);
   }
@@ -2148,11 +2197,30 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 
   /* Ou on en est dans la serie, et le cumul. C'est ce qui manquait : douze
      tours defilaient sans que le joueur sache ni son rang ni son total. */
+  /* Le total se COMPTE plutot que de sauter. C'est la difference entre un
+     chiffre qui change et un gain qui monte — et sur une serie de dix-huit
+     tours, c'est le seul endroit ou l'oeil revient. */
+  function ddCompte(el, de, a, ms){
+    if(el._c) cancelAnimationFrame(el._c);
+    var doux=false;
+    try{ doux=matchMedia("(prefers-reduced-motion: reduce)").matches; }catch(e){}
+    if(doux || de===a || ms<=0){ el.textContent=a>0?"+"+ddExact(a)+" $SWOGE":""; return; }
+    var t0=performance.now();
+    (function pas(t){
+      var k=Math.min(1,(t-t0)/ms);
+      k = 1-Math.pow(1-k,3);                       /* freine a l'arrivee */
+      var v=Math.round(de+(a-de)*k);
+      el.textContent = v>0 ? "+"+ddExact(v)+" $SWOGE" : "";
+      if(k<1) el._c=requestAnimationFrame(pas); else el._c=0;
+    })(t0);
+  }
   function ddSerieAff(serie, detail){
     var e=$("ddSerie"); if(!e) return;
     e.hidden=false;
     e.querySelector(".c").textContent="FREE SPIN "+serie.i+" / "+serie.n;
-    e.querySelector(".t").textContent=serie.total>0 ? "+"+ddExact(serie.total)+" $SWOGE" : "";
+    var t=e.querySelector(".t");
+    ddCompte(t, serie.vu||0, serie.total, 340);
+    serie.vu=serie.total;
     $("ddGain").innerHTML='<small>FREE SPINS · '+serie.i+' / '+serie.n+'</small>'
       +'<b style="color:#0E6B32">'+(serie.total>0?"+"+ddExact(serie.total)+" $SWOGE":"—")+'</b>'
       +(detail?' <i>'+detail+'</i>':'');
@@ -2231,7 +2299,11 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       var px=(b&&b.crans&&b.crans[c]&&b.crans[c].prix)||0;
       h+='<button class="dd-a" type="button" data-cran="'+c+'" title="'+DD_ACHAT_NOM[c]+'">'
        +   '<img src="img/dod/'+DD_ACHAT_IMG[c]+'.webp" alt="'+DD_ACHAT_NOM[c]+'">'
-       +   '<b>'+(px?px+'× · '+ddFmt(Math.round(px*DD.mise))+' $SWOGE':'—')+'</b>'
+       /* Vide a la pose : `ddAchatMaj`, appele juste apres, est le SEUL
+          endroit qui ecrit un prix. Ecrire ici la meme chose autrement — et
+          c'etait le cas, avec `ddFmt` et un « $SWOGE » de trop — donne deux
+          sources pour un chiffre, qui finissent par diverger. */
+       +   '<b>—</b>'
        + '</button>';
     });
     e.innerHTML=h;

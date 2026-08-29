@@ -51,7 +51,7 @@ const SYMBOLES = ['banane', 'raisin', 'pasteque', 'prune', 'pomme',
       const i = h.lastIndexOf('})();');
       h = h.slice(0, i)
         + '\n  window.__bz={bzPoseGrille:bzPoseGrille,bzPeint:bzPeint,bzEtincelles:bzEtincelles,'
-        + 'bzArrets:bzArrets,bzMonte:bzMonte,bzValeur:bzValeur,bzRouleaux:bzRouleaux,bzScatSouligne:bzScatSouligne,bzBandeau:bzBandeau,bzPalier:bzPalier,bzBombes:bzBombes,BGM:BGM};\n' + h.slice(i);
+        + 'bzArrets:bzArrets,bzMonte:bzMonte,bzValeur:bzValeur,bzRouleaux:bzRouleaux,bzScatSouligne:bzScatSouligne,bzBandeau:bzBandeau,bzPalier:bzPalier,bzBombesPose:bzBombesPose,bzBombesRamasse:bzBombesRamasse,BGM:BGM};\n' + h.slice(i);
       r.writeHead(200, { 'content-type': 'text/html' });
       return r.end(h);
     }
@@ -493,45 +493,77 @@ const SYMBOLES = ['banane', 'raisin', 'pasteque', 'prune', 'pomme',
      'et la page garde la meme hauteur : ' + bouge.hMin + ' px du debut a la fin'
      + ' (elle passait de 985 a 1004)');
 
-  /* ---------------- 10. LES BOMBES SE VOIENT SUR LE PLATEAU ----------------
-   * DEFAUT SIGNALE : « l'animation des bombes est horrible, je ne les vois
-   * meme pas sur le terrain avec le multiple ». Elles n'existaient que dans
-   * un voile de texte pose par-dessus la grille ; le dessin `bombe.webp`
-   * dormait dans le depot.
+  /* ---------------- 10. LES BOMBES OCCUPENT UNE CASE ----------------
+   * PREMIER DEFAUT SIGNALE : « l'animation des bombes est horrible, je ne
+   * les vois meme pas sur le terrain avec le multiple ». Elles n'existaient
+   * que dans un voile de texte ; le dessin `bombe.webp` dormait dans le
+   * depot.
+   *
+   * SECOND DEFAUT, CELUI QU'ON REPARE ICI : meme dessinees, elles
+   * n'arrivaient qu'une fois TOUTES les cascades finies, sur une couche
+   * flottante, au milieu de l'ecran. « La bombe remplace une case de la
+   * grille et il faut l'effet de cascade. » Elles tombent donc maintenant
+   * SUR leur case, avant les cascades, et y restent tout le tour.
    *
    * Ce qui se verifie : elles se posent A LA CASE QUE LE SERVEUR A TIREE —
    * la page n'en choisit aucune, sinon deux joueurs rejouant la meme graine
-   * verraient deux tours differents — elles portent leur multiplicateur, et
-   * le total affiche est celui du serveur, pas une addition de la page. */
+   * verraient deux tours differents — elles portent leur multiplicateur,
+   * elles PRENNENT la place du symbole, et elles la gardent a travers les
+   * repeints de la cascade. Le total affiche est celui du serveur, pas une
+   * addition de la page. */
   console.log('\n-- les bombes multiplicateurs --');
   const LOT = [{ multi: 5, case: 3 }, { multi: 25, case: 14 },
                { multi: 100, case: 22 }, { multi: 2, case: 27 }];
   const bombes = await p.evaluate(async ([g, lot]) => {
     window.__bz.bzPoseGrille(); window.__bz.bzPeint(g, null);
     const c = document.getElementById('bzBombes');
-    let fini = false;
-    window.__bz.bzBombes(lot, 132, () => { fini = true; });
-    await new Promise((r) => setTimeout(r, 800));
     const cs = document.getElementById('bzGrille').children;
+    let posees = false;
+    window.__bz.bzBombesPose(lot, () => { posees = true; });
+    await new Promise((r) => setTimeout(r, 1200));
+
     const bs = [...c.querySelectorAll('.bz-bombe')];
     const pose = bs.map((b, k) => {
-      const r = cs[lot[k].case].getBoundingClientRect();
+      const cel = cs[lot[k].case];
+      const r = cel.getBoundingClientRect();
       const bb = b.getBoundingClientRect();
       return { multi: b.querySelector('b').textContent,
                surSaCase: Math.abs((bb.left + bb.right) / 2 - (r.left + r.right) / 2) < 3
                        && Math.abs((bb.top + bb.bottom) / 2 - (r.top + r.bottom) / 2) < 3,
                vue: parseFloat(getComputedStyle(b).opacity) > 0.8,
-               taille: bb.width, caseLarge: r.width };
+               taille: bb.width, caseLarge: r.width,
+               occupe: cel.className.indexOf('sousbombe') >= 0,
+               symboleEfface: parseFloat(getComputedStyle(cel.firstChild).opacity) < 0.3 };
     });
+
+    /* LE REPEINT DE LA CASCADE. `bzPeint` reconstruit la classe de chaque
+       case de zero : si la marque ne survit pas, le fruit se rallume sous
+       la bombe des le premier etage. C'est exactement le defaut qu'on
+       vient de reparer, et le seul essai qui l'attrape. */
+    window.__bz.bzPeint(g, null);
+    const apresRepeint = lot.map((b) => {
+      const cel = cs[b.case];
+      return cel.className.indexOf('sousbombe') >= 0
+          && parseFloat(getComputedStyle(cel.firstChild).opacity) < 0.3;
+    });
+    const bombesTiennent = c.querySelectorAll('.bz-bombe').length;
+
+    /* Le ramassage, une fois les cascades finies. */
+    let fini = false;
+    window.__bz.bzBombesRamasse(132, () => { fini = true; });
     await new Promise((r) => setTimeout(r, 500));
     const t = c.querySelector('.bz-total');
     const total = t ? { txt: t.textContent, o: parseFloat(getComputedStyle(t).opacity) } : null;
     await new Promise((r) => setTimeout(r, 1400));
-    return { pose, total, reste: c.children.length, fini };
+    const rendues = lot.every((b) => cs[b.case].className.indexOf('sousbombe') < 0
+                                  && parseFloat(getComputedStyle(cs[b.case].firstChild).opacity) > 0.8);
+    return { pose, total, reste: c.children.length, fini, posees, apresRepeint,
+             bombesTiennent, rendues };
   }, [grille, LOT]);
 
   ok(bombes.pose.length === LOT.length,
      'chaque bombe du serveur est posee (' + bombes.pose.length + '/' + LOT.length + ')');
+  ok(bombes.posees, 'la pose rappelle la suite — sans ce rappel le tour gratuit resterait bloque');
   ok(bombes.pose.every((b, k) => b.multi === String(LOT[k].multi)),
      'chacune porte SON multiplicateur : ' + bombes.pose.map((b) => b.multi).join(', '));
   ok(bombes.pose.every((b) => b.surSaCase),
@@ -542,9 +574,18 @@ const SYMBOLES = ['banane', 'raisin', 'pasteque', 'prune', 'pomme',
      'et plus grandes que la case ('
      + Math.round(bombes.pose[0].taille) + ' px pour ' + Math.round(bombes.pose[0].caseLarge)
      + ') : c est le moment fort, il ne se murmure pas');
+  ok(bombes.pose.every((b) => b.occupe),
+     'la case qu elle occupe est marquee — la bombe REMPLACE le symbole, elle ne flotte pas dessus');
+  ok(bombes.pose.every((b) => b.symboleEfface),
+     'et le symbole du dessous s efface pour de bon');
+  ok(bombes.apresRepeint.every(Boolean),
+     'la marque SURVIT au repeint de la cascade : le fruit ne se rallume pas sous la bombe');
+  ok(bombes.bombesTiennent === LOT.length,
+     'les bombes gardent leur case pendant toute la cascade (' + bombes.bombesTiennent + '/' + LOT.length + ')');
   ok(!!bombes.total && bombes.total.txt === '×132' && bombes.total.o > 0.9,
-     'le total du SERVEUR s affiche ensuite en grand : '
+     'le total du SERVEUR s affiche au ramassage : '
      + (bombes.total ? JSON.stringify(bombes.total.txt) : 'aucun'));
+  ok(bombes.rendues, 'et les cases retrouvent leur symbole une fois les bombes ramassees');
   ok(bombes.reste === 0 && bombes.fini,
      'puis tout s efface, et la suite du tour est rappelee — sans ce rappel'
      + ' les tours gratuits resteraient bloques sur les bombes');

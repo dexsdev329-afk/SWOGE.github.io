@@ -696,9 +696,14 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
 /* `container-type` sur la bombe elle-meme : sans lui, le `cqw` du
    multiplicateur se resolvait sur `.bzwrap` — 44 % de la page, soit 189 px
    de chiffre pour une bombe de 51. Il faut que l'unite parle de la BOMBE. */
+/* ---- LA BOMBE TOMBE, ELLE N'APPARAIT PAS ----
+   Elle sortait de nulle part en grossissant depuis scale(.2), au CENTRE de
+   l'ecran une fois toutes les cascades finies. On ne la voyait pas sur le
+   terrain, et rien ne la reliait au jeu. Maintenant elle tombe d'en haut
+   comme un symbole de cascade, sur SA case, et elle y reste tout le tour. */
 .bz-bombe{ position:absolute; aspect-ratio:1; container-type:inline-size;
-  transform:translate(-50%,-50%) scale(.2); opacity:0;
-  transition:transform .38s cubic-bezier(.2,1.6,.4,1), opacity .18s ease-out; }
+  transform:translate(-50%,-50%) translateY(-340%) scale(.88); opacity:0;
+  transition:transform .44s cubic-bezier(.34,1.3,.5,1), opacity .15s ease-out; }
 .bz-bombe img{ width:100%; height:100%; object-fit:contain; display:block;
   filter:drop-shadow(0 4px 10px rgba(0,0,0,.55)); }
 .bz-bombe b{ position:absolute; inset:0; display:flex; align-items:center;
@@ -706,7 +711,24 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
   font-size:42cqw; line-height:1; letter-spacing:-.03em;
   -webkit-text-stroke:.08em #3A1400; paint-order:stroke fill;
   text-shadow:0 2px 0 rgba(40,12,0,.6); }
-.bz-bombe.on{ transform:translate(-50%,-50%) scale(1); opacity:1; }
+.bz-bombe.on{ transform:translate(-50%,-50%) translateY(0) scale(1); opacity:1;
+  animation:bzBattement 1.15s ease-in-out .45s infinite; }
+/* Elle respire pendant que les cascades tournent : une bombe immobile
+   pendant six secondes redevient un decor, et c'est elle qui porte tout
+   l'enjeu du tour. */
+@keyframes bzBattement{
+  0%,100%{ filter:drop-shadow(0 4px 10px rgba(0,0,0,.55)) drop-shadow(0 0 0 rgba(255,190,60,0)); }
+  50%    { filter:drop-shadow(0 4px 10px rgba(0,0,0,.55)) drop-shadow(0 0 14px rgba(255,190,60,.85)); }
+}
+/* L'atterrissage : la case encaisse le choc. */
+.bz-c.choc{ animation:bzChoc .26s ease-out; }
+@keyframes bzChoc{ 0%{transform:none} 32%{transform:translateY(4%) scale(.94)} 100%{transform:none} }
+/* ---- LA CASE QU'ELLE OCCUPE ----
+   « la bombe remplace une case de la grille » : le symbole du dessous
+   s'efface pour de bon. Sans ca, la bombe flotte PAR-DESSUS un fruit encore
+   visible, et on ne lit plus ni l'un ni l'autre. */
+.bz-c.sousbombe img{ opacity:.14; filter:grayscale(.75); }
+.bz-c.sousbombe{ background:rgba(255,190,60,.07); box-shadow:inset 0 0 0 2px rgba(255,190,60,.30); }
 /* Le rassemblement : elles filent vers le centre avant que le total tombe. */
 .bz-bombe.file{ transition:transform .34s ease-in, opacity .34s ease-in; opacity:0; }
 /* Le total, en gros, au centre. */
@@ -2116,41 +2138,144 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
      la grille montre les symboles de l'un avec les gains de l'autre. */
   var BZ={ mise:0, chip:0, bareme:null, anime:false, hist:[], grille:null };
 
-  var SONS={};
-  (function chargeSons(){
-    /* `pose` sort du lot fourni : c'est la SEULE des neuf pistes assez courte
-       pour un bruitage qui se rejoue six fois par tour (0,49 s, sourde,
-       attaque nette). Les huit autres font de 2,5 a 36 secondes — des
-       jingles et un lit musical. Les poser sur `gain` ou `cascade`, qui se
-       rejouent a chaque etage, empilerait six secondes de fanfare sur
-       elles-memes. Elles attendent une oreille : voir
-       `son/bonanza/ecouter.html`. */
-    /* ---- `pose` EST REVENU AU PROVISOIRE, ET VOICI POURQUOI ----
-       J'y avais mis la piste 2 du lot envoye : 0,49 s, sourde, attaque
-       nette — le profil d'un choc. C'etait une VOIX qui dit « welcome ».
-       Elle se rejouait six fois par tour, une fois par colonne qui se pose :
-       « welcome welcome welcome ». Le joueur l'a entendu tout de suite ; ma
-       mesure ne pouvait pas le voir, une parole courte et un choc court ont
-       le meme profil grossier. Aucun fichier de ce lot ne retournera dans un
-       creneau sans avoir ete ECOUTE.
+  /* ==================== LE BUS AUDIO ====================
+   *
+   * CE QUI N'ALLAIT PAS. Il y avait UN seul element `Audio` par son, et
+   * `son()` le rembobinait avant de le relancer :
+   *
+   *     a.currentTime = 0; a.play();
+   *
+   * Un element audio ne joue qu'une chose a la fois. Rembobiner pendant
+   * qu'il sonne ne superpose pas la deuxieme note : ca COUPE la premiere.
+   * Les six colonnes se posent a 130 ms d'ecart et `symbole_pose` dure
+   * 390 ms — chaque pose tranchait la precedente au tiers, et au lieu de
+   * six clics on entendait un fragment de 130 ms begaye six fois. Meme
+   * chose sur la cascade : `gain` dure 520 ms et un etage de tour gratuit
+   * durait 260 ms, donc la moitie de chaque son passait a la trappe.
+   * C'est tout « ca va trop vite, les sons se coupent entre eux » : ce
+   * n'etait pas le rythme du jeu, c'etait un seul haut-parleur pour six
+   * evenements.
+   *
+   * CE QU'ON FAIT. Chaque son a maintenant PLUSIEURS voix, prises a tour
+   * de role : la deuxieme pose part sur une voix libre pendant que la
+   * premiere finit de sonner. Elles se superposent, comme sur un vrai
+   * plateau, au lieu de se trancher.
+   *
+   * ET ON LES ACCORDE. Une meme note repetee six fois est un bruit ; la
+   * meme note qui MONTE est une phrase. Chaque son peut partir transpose
+   * de quelques demi-tons (`ton`), et on monte sur une gamme PENTATONIQUE
+   * — 0, 2, 4, 7, 9, 12 — et non chromatique : le chromatique fait sirene
+   * d'alarme, le pentatonique n'a aucun intervalle qui frotte, donc ca
+   * sonne juste quel que soit l'ordre. Les colonnes qui se posent montent
+   * cette gamme, les etages de cascade aussi. C'est ce qui donne
+   * l'escalier : chaque cascade de plus est un cran plus haut que la
+   * precedente, et l'oreille compte les crans toute seule.
+   *
+   * ATTENTION `preservesPitch`. Par defaut le navigateur CONSERVE la
+   * hauteur quand on change `playbackRate` : il etire le temps sans
+   * toucher la note, et on n'entend aucune montee. Il faut le couper
+   * explicitement, sur les trois prefixes, sinon tout ce qui precede ne
+   * fait rien du tout — en silence.
+   *
+   * ENFIN, L'INTERRUPTEUR EXISTAIT ET NE SERVAIT A RIEN. Le menu a un
+   * « Sound: off » et un curseur de bruitages ; `son()` ne les lisait pas.
+   * On coupait le son, et le jeu continuait de claquer. Le niveau general
+   * de `SFX` multiplie desormais chaque depart, et zero veut dire zero.
+   */
 
-       Trois des huit sont vrais desormais. Ce qui reste en `provisoire/`
-       est du Kenney CC0 qui tient la place — voir `son/bonanza/LISEZ-MOI.md`.
-       Les durees comptent plus que le style ici : `gain` se rejoue a CHAQUE
-       etage de cascade, donc il doit rester court. */
+  /* La gamme. Au-dela du sixieme cran on ne monte plus : une pose deux
+     octaves au-dessus n'est plus un bruitage, c'est un sifflet. */
+  var SON_GAMME = [0, 2, 4, 7, 9, 12];
+  function sonTon(n){ return SON_GAMME[Math.min(n|0, SON_GAMME.length-1)]; }
+
+  /* Le melange. Ils etaient tous a .55, ce qui n'est pas un melange mais
+     une absence de choix : la pose se rejoue six fois par tour et doit
+     rester sous le gain, qui doit rester sous les tours gratuits. */
+  var SON_MIX = {
+    rien:.30, debut:.40, pose:.26, gain:.50, cascade:.44,
+    scatter:.58, gratuits:.70, bombe:.62, gros:.74
+  };
+  /* L'ecart minimum entre deux departs du MEME son. Sans lui, un tour ou
+     tout tombe en meme temps empile quatre voix identiques et ca devient
+     de la boue. Ce n'est pas la meme chose que la coupure d'avant : ici on
+     RENONCE au depart de trop, on ne tranche pas celui qui sonne. */
+  var SON_ECART = { pose:60, gain:70, cascade:70, scatter:200, bombe:80, gros:400 };
+
+  var SONS={}, SON_TOUR={}, SON_VU={};
+  var SON_VOIX = 4;
+  (function chargeSons(){
     /* Les huit sont vrais. Six viennent du montage envoye — 93 attaques
        detectees dans une minute d'enregistrement, decoupees, mesurees, et
        choisies sur le profil que leur creneau demande : du court et du sec
        pour la pose, du clair pour le gain, du sourd et du fort pour la
-       bombe. Chacun a passe le controle de parole avant d'etre pose ici. */
+       bombe. Chacun a passe le controle de parole avant d'etre pose ici —
+       la piste 2 du lot etait une VOIX qui disait « welcome », posee six
+       fois par tour sur la pose des colonnes, et aucune mesure de duree ou
+       de brillance ne pouvait le voir. */
     var l={ rien:"son/bonanza/spin_rien.mp3", debut:"son/bonanza/spin_debut.mp3",
             pose:"son/bonanza/symbole_pose.mp3", gain:"son/bonanza/gain.mp3",
             cascade:"son/bonanza/cascade.mp3", scatter:"son/bonanza/scatter.mp3",
             gratuits:"son/bonanza/tours_gratuits.mp3", bombe:"son/bonanza/bombe.mp3",
             gros:"son/bonanza/gros_gain.mp3" };
-    for(var k in l){ try{ var a=new Audio(l[k]); a.preload="auto"; a.volume=.55; SONS[k]=a; }catch(e){} }
+    for(var k in l){
+      try{
+        var voix=[];
+        for(var i=0;i<SON_VOIX;i++){
+          var a=new Audio(l[k]);
+          a.preload="auto";
+          a.volume=(SON_MIX[k]!==undefined?SON_MIX[k]:.5);
+          /* sans ces trois lignes, `playbackRate` etire le temps et ne
+             transpose RIEN : toute la montee ci-dessus serait muette */
+          try{ a.preservesPitch=false; a.mozPreservesPitch=false; a.webkitPreservesPitch=false; }catch(e2){}
+          voix.push(a);
+        }
+        SONS[k]=voix; SON_TOUR[k]=0;
+      }catch(e){}
+    }
   })();
-  function son(k){ var a=SONS[k]; if(!a) return; try{ a.currentTime=0; a.play().catch(function(){}); }catch(e){} }
+
+  /* `son("gain", {ton:2})` joue le gain deux demi-tons plus haut.
+     `ton` est un CRAN de gamme, pas un demi-ton : voir `sonTon`. */
+  function son(k, opt){
+    var voix=SONS[k]; if(!voix || !voix.length) return;
+    var maitre=1;
+    try{ if(SFX && SFX.volume) maitre=SFX.volume(); }catch(e){}
+    if(!(maitre>0)) return;                       // coupe veut dire coupe
+    opt = opt || {};
+    var t = Date.now(), ecart = SON_ECART[k]||0;
+    if(ecart && SON_VU[k] && t - SON_VU[k] < ecart) return;
+    SON_VU[k] = t;
+    var a = voix[SON_TOUR[k]];
+    SON_TOUR[k] = (SON_TOUR[k]+1) % voix.length;
+    try{
+      a.pause(); a.currentTime = 0;
+      a.volume = Math.max(0, Math.min(1, (SON_MIX[k]!==undefined?SON_MIX[k]:.5) * maitre * (opt.vol||1)));
+      var demi = (opt.ton===undefined) ? 0 : sonTon(opt.ton);
+      a.playbackRate = demi ? Math.pow(2, demi/12) : 1;
+      a.play().catch(function(){});
+    }catch(e){}
+  }
+
+  /* ---- LA MUSIQUE S'EFFACE SOUS LES GROS MOMENTS ----
+     Un jingle de tours gratuits qui joue PAR-DESSUS le lit musical, au
+     meme niveau, donne deux choses qui parlent en meme temps. On baisse la
+     musique le temps de l'annonce et on la remonte doucement : le moment
+     fort a le silence autour de lui, ce qui le rend fort. */
+  var bgmDuck=null;
+  function sonDuck(ms){
+    try{
+      if(typeof bgm === "undefined" || !bgm) return;
+      if(bgmDuck) clearTimeout(bgmDuck);
+      bgm.volume = Math.max(0, bgmVol*0.22);
+      bgmDuck = setTimeout(function(){
+        var pas = 0;
+        var m = setInterval(function(){
+          if(!bgm || ++pas>12){ clearInterval(m); if(bgm) bgm.volume=bgmVol; return; }
+          try{ bgm.volume = Math.min(bgmVol, bgm.volume + bgmVol/12); }catch(e){ clearInterval(m); }
+        }, 60);
+      }, ms||1200);
+    }catch(e){}
+  }
 
   function bzFmt(n){
     n=Number(n)||0;
@@ -2181,7 +2306,12 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
          de sa colonne. */
       c.className = "bz-c"
         + (gagnants && gagnants.has(grille[i]) ? " gagne" : "")
-        + (grille[i] === sym ? " scat" : "");
+        + (grille[i] === sym ? " scat" : "")
+        /* La case occupee par une bombe garde sa marque a TRAVERS la
+           cascade. `bzPeint` reconstruit la classe de zero a chaque etage :
+           sans cette ligne, le symbole du dessous se rallumait au premier
+           etage et la bombe se remettait a flotter par-dessus un fruit. */
+        + (BZ_BOMBES_CASES && BZ_BOMBES_CASES.has(i) ? " sousbombe" : "");
     }
   }
 
@@ -2306,7 +2436,12 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
        qui rendait cette fonction inessayable. */
     var b = BZ.bareme;
     var scat = (b && b.scatter) || "sucette", seuil = (b && b.scattersPourTours) || 4;
-    var BASE = 420, PAS = 130, LENT = 620;
+    /* PAS etait a 130 ms. Six poses a 130 ms d'ecart sur un bruitage de
+       390 ms : meme avec des voix separees, trois poses sonnent ensemble en
+       permanence et on n'entend plus une colonne se poser, on entend un
+       roulement. A 155 ms la phrase se detache, et le tour n'a rallonge que
+       d'un huitieme de seconde en tout. */
+    var BASE = 420, PAS = 155, LENT = 620;
     var t = BASE, vus = 0, arrets = [], tendus = [];
     for(var c=0;c<6;c++){
       var tendu = scat && vus >= seuil-1 && c > 0;
@@ -2326,6 +2461,16 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
    * On ne souligne que ce qui est DEJA tombe a l'ecran, colonne par colonne :
    * marquer d'avance vendrait la meche, et la page ne doit jamais en savoir
    * plus que le joueur en train de regarder. */
+  /* Combien de sucettes sont DEJA a l'ecran, colonnes 0 a `jusquA`. Sert a
+     accorder l'attente : la troisieme sucette doit sonner plus haut que la
+     deuxieme, sinon les deux annoncent la meme chose. */
+  function bzScatVus(grille, jusquA){
+    var b = BZ.bareme, sym = (b && b.scatter) || "sucette", n = 0;
+    for(var c=0;c<=jusquA && c<6;c++)
+      for(var r=0;r<5;r++) if(grille[r*6+c] === sym) n++;
+    return n;
+  }
+
   function bzScatSouligne(grille, jusquA){
     var b = BZ.bareme, sym = (b && b.scatter) || "sucette";
     var cs = $("bzGrille").children, n = 0;
@@ -2368,7 +2513,12 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
               var c0 = cs[r0*6+col];
               if(c0.className.indexOf("tourne") >= 0) c0.className = "bz-c tourne attente";
             }
-            son("scatter");
+            /* Plus il y a de sucettes DEJA tombees, plus l'attente monte
+               haut : la tension s'entend avant meme qu'on l'ait comptee.
+               On ne compte que les colonnes posees — compter la grille
+               entiere vendrait la meche d'une sucette pas encore a
+               l'ecran. */
+            son("scatter", {ton:Math.max(0, bzScatVus(grille, col-1) - 1)});
           }, plan.arrets[col-1]);
         }
         setTimeout(function(){
@@ -2378,7 +2528,9 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
             cel.className = "bz-c pose";
             cel.firstChild.src = bzImg(grille[i2]);
           }
-          son("pose");
+          /* la colonne `col` monte d'un cran : six poses = une phrase qui
+             monte, au lieu de six fois la meme note */
+          son("pose", {ton:col});
           /* la colonne vient de se poser : on recompte ce qui est visible */
           bzScatSouligne(grille, col);
           if(--restants === 0) setTimeout(fin, 260);
@@ -2691,7 +2843,12 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
    * secondes : la page n'avait pas fini de raconter le tour. Ce n'est pas un
    * defaut d'animation, c'est un rythme qui ne tient pas la repetition.
    */
-  var BZ_PAUSE = 560, BZ_PAUSE_VITE = 260;
+  /* BZ_PAUSE_VITE etait a 260 ms, pour un son de gain qui dure 520 ms :
+     l'etage suivant partait avant que le precedent ait fini de sonner. Le
+     bus audio ne les tranche plus, mais deux gains superposes en permanence
+     restent de la boue. A 350 ms chaque cran de l'escalier s'entend — dix
+     tours gratuits de trois etages ne rallongent que de trois secondes. */
+  var BZ_PAUSE = 560, BZ_PAUSE_VITE = 350;
   var BZ_CUMUL = 0;
   function bzJoueEtapes(etapes, fin, vite){
     var pause = vite ? BZ_PAUSE_VITE : BZ_PAUSE;
@@ -2704,7 +2861,10 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       if(!gagnants.size){ bzPeint(e.grille, null); k++; return setTimeout(suivante, 240); }
 
       bzPeint(e.grille, gagnants);
-      son(k===0 ? "gain" : "cascade");
+      /* L'ESCALIER. Chaque etage de cascade part un cran plus haut que le
+         precedent : c'est ce qui fait qu'une cascade de cinq se SENT plus
+         longue qu'une cascade de deux, sans qu'on ait rien affiche. */
+      son(k===0 ? "gain" : "cascade", {ton:k});
       var g = $("bzGain");
       g.style.color = "#0E6B32";
       var avant = BZ_CUMUL * BZ.mise;
@@ -2767,54 +2927,101 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     setTimeout(function(){ e.hidden = true; e.className = "bz-bandeau"; fin(); }, p.ms + 360);
   }
 
-  /* ---- LES BOMBES TOMBENT SUR LE PLATEAU ----
-   * Chaque bombe arrive a la case que le SERVEUR lui a tiree — la page n'en
-   * choisit aucune. Elles se posent l'une apres l'autre, 190 ms d'ecart,
-   * puis filent au centre ou le total s'inscrit.
+  /* ==================== LES BOMBES DU BONUS ====================
    *
-   * Le total est celui du serveur (`somme`), pas une addition de la page :
-   * si les deux divergeaient, c'est le serveur qui aurait paye.
+   * CE QUI N'ALLAIT PAS. Elles n'entraient en scene qu'une fois TOUTES les
+   * cascades du tour gratuit terminees, et sur une couche flottante : on
+   * les voyait apparaitre au milieu de l'ecran, on lisait un total, c'etait
+   * fini. Pendant tout le tour — le moment ou le joueur regarde le plus
+   * fort — elles n'existaient pas. « Je les vois meme pas sur le terrain
+   * avec le multiple, c'est ca qui donne toute l'adrenaline. »
+   *
+   * CE QU'ON FAIT MAINTENANT, EN TROIS TEMPS :
+   *
+   *   1. LA GRILLE DU TOUR GRATUIT S'AFFICHE. On la peint AVANT les
+   *      bombes, sinon elles tomberaient sur la grille du tour precedent.
+   *   2. LES BOMBES TOMBENT DESSUS, d'en haut, une par une, et PRENNENT LA
+   *      PLACE de leur case : le symbole du dessous s'efface, la case
+   *      encaisse le choc, la bombe se met a respirer. Elle est sur le
+   *      terrain, avec son multiplicateur lisible, pendant toute la suite.
+   *   3. LES CASCADES SE JOUENT AUTOUR D'ELLES. Elles ne bougent pas — la
+   *      case leur appartient jusqu'au bout du tour, comme sur le vrai jeu.
+   *      Puis elles filent au centre et le total s'inscrit.
+   *
+   * Chaque bombe arrive a la case que le SERVEUR lui a tiree ; la page n'en
+   * choisit aucune, et n'additionne rien. Deplacer leur entree en scene ne
+   * change pas un jeton du calcul : c'est le meme tour, montre autrement.
    */
-  function bzBombes(liste, total, fin){
+  var BZ_BOMBES_CASES = null;      // les cases occupees pendant le tour en cours
+  var BZ_BOMBES_VUES = [];         // les elements poses, gardes pour le ramassage
+
+  /* Elles TOMBENT sur leur case, 170 ms d'ecart, et le sol encaisse. Le son
+     monte d'un cran par bombe : trois bombes, trois notes qui montent. */
+  function bzBombesPose(liste, fin){
     var couche = $("bzBombes");
+    BZ_BOMBES_CASES = null; BZ_BOMBES_VUES = [];
     if(!couche || !liste || !liste.length) return fin();
-    var cs = $("bzGrille").children;
+    var g = $("bzGrille"), cs = g.children;
     var base = couche.getBoundingClientRect();
-    var faits = [];
     couche.textContent = "";
+    var cases = new Set();
 
     liste.forEach(function(b, k){
-      var i = (typeof b.case === "number") ? b.case : k * 7 % 30;
+      var i = (typeof b.case === "number") ? b.case : (k*7) % 30;
+      cases.add(i);
       var r = cs[i].getBoundingClientRect();
       var e = document.createElement("div");
       e.className = "bz-bombe";
-      e.style.left = (r.left - base.left + r.width/2) + "px";
-      e.style.top  = (r.top  - base.top  + r.height/2) + "px";
+      e.style.left  = (r.left - base.left + r.width/2) + "px";
+      e.style.top   = (r.top  - base.top  + r.height/2) + "px";
       e.style.width = Math.round(r.width*1.12) + "px";
       e.innerHTML = '<img src="' + bzImg("bombe") + '" alt=""><b>' + (b.multi||b) + '</b>';
       couche.appendChild(e);
-      faits.push(e);
-      setTimeout(function(){ e.className = "bz-bombe on"; son("bombe"); }, 190*k);
+      BZ_BOMBES_VUES.push(e);
+      setTimeout(function(){
+        e.className = "bz-bombe on";
+        var cel = cs[i];
+        cel.classList.add("sousbombe");
+        cel.classList.remove("choc"); void cel.offsetWidth; cel.classList.add("choc");
+        son("bombe", {ton:k});
+      }, 170*k);
     });
 
-    var pose = 190*(liste.length-1) + 380;
-    setTimeout(function(){
-      /* elles filent au centre */
-      var cx = base.width/2, cy = base.height/2;
-      faits.forEach(function(e){
-        e.className = "bz-bombe file";
-        e.style.left = cx+"px"; e.style.top = cy+"px";
-      });
-      var t = document.createElement("div");
-      t.className = "bz-total";
-      t.textContent = "\u00d7" + total;
-      couche.appendChild(t);
-      void couche.offsetWidth;
-      t.className = "bz-total on";
-      son("gros");
-      setTimeout(function(){ t.className = "bz-total part"; }, 700);
-      setTimeout(function(){ couche.textContent = ""; fin(); }, 1000);
-    }, pose);
+    BZ_BOMBES_CASES = cases;
+    setTimeout(fin, 170*(liste.length-1) + 480);
+  }
+
+  /* ---- LE RAMASSAGE ----
+   * Il arrive APRES les cascades, quand le tour a fini de payer : les
+   * bombes filent au centre et leur total s'inscrit.
+   *
+   * Le total est celui du SERVEUR (`somme`), pas une addition de la page :
+   * si les deux divergeaient, c'est le serveur qui aurait paye.
+   */
+  function bzBombesRamasse(total, fin){
+    var couche = $("bzBombes");
+    var faits = BZ_BOMBES_VUES;
+    var cases = BZ_BOMBES_CASES;
+    BZ_BOMBES_CASES = null; BZ_BOMBES_VUES = [];
+    /* on rend leurs symboles aux cases liberees */
+    if(cases){ var cs = $("bzGrille").children;
+      cases.forEach(function(i){ if(cs[i]) cs[i].classList.remove("sousbombe"); }); }
+    if(!couche || !faits.length) return fin();
+    var base = couche.getBoundingClientRect();
+    var cx = base.width/2, cy = base.height/2;
+    faits.forEach(function(e){
+      e.className = "bz-bombe file";
+      e.style.left = cx+"px"; e.style.top = cy+"px";
+    });
+    var t = document.createElement("div");
+    t.className = "bz-total";
+    t.textContent = "\u00d7" + total;
+    couche.appendChild(t);
+    void couche.offsetWidth;
+    t.className = "bz-total on";
+    son("gros"); sonDuck(1400);
+    setTimeout(function(){ t.className = "bz-total part"; }, 760);
+    setTimeout(function(){ couche.textContent = ""; fin(); }, 1060);
   }
 
   function bzVoile(txt, ms, apres){
@@ -2859,7 +3066,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         g.style.color = t.net>0 ? "#0E6B32" : t.net<0 ? "#C0392B" : "#0B1B36";
         g.innerHTML = "<b>"+(t.net>0?"+":"")+bzFmt(t.net)+" $SWOGE</b>"+
           (t.multi?" <i>"+t.multi.toFixed(2)+"×</i>":"");
-        if(t.net>0) son(t.multi>=20?"gros":"gain"); else son("rien");
+        if(t.net>0){ son(t.multi>=20?"gros":"gain"); if(t.multi>=20) sonDuck(2600); }
+        else son("rien");
         /* La secousse au meme seuil que le son de gros gain : vingt fois la
            mise. A chaque gain elle ne serait plus un evenement mais un tic. */
         if(t.multi>=20){
@@ -2872,16 +3080,25 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       if(t.scatters>=4 && t.gratuits && t.gratuits.length){
         son("scatter");
         bzVoileGratuits(t.scatters, t.gratuits.length, function(){
-          son("gratuits");
+          son("gratuits"); sonDuck(1800);
           var i=0;
           (function tourSuivant(){
             if(i>=t.gratuits.length) return finir();
             var fs=t.gratuits[i++];
-            bzJoueEtapes(fs.etapes, function(){
-              if(fs.bombes && fs.bombes.length){
-                bzBombes(fs.bombes, fs.bombe, tourSuivant);
-              } else setTimeout(tourSuivant, 160);
-            }, true);
+            /* L'ORDRE COMPTE. On peint d'abord la grille du tour gratuit,
+               sinon les bombes tomberaient sur celle du tour precedent et
+               se retrouveraient a cheval sur deux tirages. */
+            if(fs.etapes && fs.etapes[0] && fs.etapes[0].grille)
+              bzPeint(fs.etapes[0].grille, null);
+            bzBombesPose(fs.bombes, function(){
+              /* Les cascades tournent AUTOUR des bombes, qui gardent leur
+                 case. Le ramassage vient apres, quand le tour a fini de
+                 payer. */
+              bzJoueEtapes(fs.etapes, function(){
+                if(fs.bombes && fs.bombes.length) bzBombesRamasse(fs.bombe, tourSuivant);
+                else setTimeout(tourSuivant, 160);
+              }, true);
+            });
           })();
         });
       } else finir();

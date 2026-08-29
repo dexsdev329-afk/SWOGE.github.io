@@ -438,6 +438,55 @@ const SYMBOLES = ['banane', 'raisin', 'pasteque', 'prune', 'pomme',
      'puis il s en va, et il RAPPELLE : sans ce rappel la ligne finale ne'
      + ' s ecrirait jamais et le tour resterait bloque');
 
+  /* ---------------- 9. RIEN NE BOUGE PENDANT UN TOUR ----------------
+   * DEMANDE : « quand on spin il faut que le jeu soit fixe ».
+   * La grille grandissait de 18,7 px des qu'une colonne se posait — les
+   * rangees sont dimensionnees par leur contenu, et le symbole a 106 %
+   * faisait grossir sa case en repassant en `overflow:visible`. Tout ce qui
+   * est sous la grille descendait d'autant, et la page passait de 985 a
+   * 1004 px : elle sautait sous le doigt au moment precis ou l'on vise SPIN.
+   *
+   * On releve donc la boite de chaque element pendant un tour complet et on
+   * exige qu'aucune ne bouge. Un demi-pixel de tolerance pour l'arrondi. */
+  console.log('\n-- le jeu ne bouge pas pendant un tour --');
+  const bouge = await p.evaluate(async ([g]) => {
+    const CIBLES = { 'la bande du haut': '.bz-tete', 'le logo': '.bz-titre',
+                     'la grille': '#bzGrille', 'une case': '#bzGrille > :first-child',
+                     'la barre': '.bz-barre', 'SPIN': '#bzSpin', 'moins': '#bzMoins',
+                     'MAX': '.bz-max', 'PAYTABLE': '#bzBaremeBtn' };
+    const vus = {}; const hauteurs = [];
+    const lis = () => {
+      for (const [n, sel] of Object.entries(CIBLES)) {
+        const e = document.querySelector(sel); if (!e) continue;
+        const b = e.getBoundingClientRect();
+        (vus[n] = vus[n] || []).push([b.x, b.y, b.width, b.height]);
+      }
+      hauteurs.push(document.documentElement.scrollHeight);
+    };
+    const t = setInterval(lis, 40);
+    window.__bz.bzPoseGrille(); lis();
+    await new Promise((r) => window.__bz.bzRouleaux(g, r));
+    await new Promise((r) => setTimeout(r, 200));
+    clearInterval(t);
+    const ecarts = {};
+    for (const [n, v] of Object.entries(vus)) {
+      ecarts[n] = [0, 1, 2, 3].map((i) =>
+        Math.max(...v.map((a) => a[i])) - Math.min(...v.map((a) => a[i])));
+    }
+    return { ecarts, releves: hauteurs.length,
+             hMin: Math.min(...hauteurs), hMax: Math.max(...hauteurs) };
+  }, [grille]);
+
+  const remuants = Object.entries(bouge.ecarts)
+    .filter(([, e]) => e.some((d) => d > 0.5))
+    .map(([n, e]) => n + ' (' + e.map((d) => d.toFixed(1)).join('/') + ')');
+  ok(remuants.length === 0,
+     'aucun element du jeu ne bouge pendant le tour (' + bouge.releves + ' releves)'
+     + (remuants.length ? ' — BOUGE : ' + remuants.join(', ') : ''));
+  ok(bouge.hMax - bouge.hMin < 0.5,
+     'et la page garde la meme hauteur : ' + bouge.hMin + ' px du debut a la fin'
+     + ' (elle passait de 985 a 1004)');
+
   ok(erreurs.length === 0, 'aucune erreur JS' + (erreurs.length ? ' : ' + erreurs[0] : ''));
   console.log('\n' + n + ' verifications, ' + rates + ' echec(s)');
   await nav.close(); srv.close();

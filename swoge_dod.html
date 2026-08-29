@@ -621,6 +621,52 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
 .dd-bandeau.part{ transition:transform .3s ease-in, opacity .3s ease-in;
   transform:translate(-50%,-58%) scale(1.06); opacity:0 }
 .dd-bandeau img{ width:100%; display:block }
+/* ---- LE VRAI NOMBRE DE TOURS, PAR-DESSUS LE FAUX ----
+   Les deux panneaux portent leur nombre PEINT DANS L'IMAGE : « 10 FREE
+   SPINS » et « 15 FREE SPINS ». Le moteur en donne 12 et 18. Le jeu
+   annoncait donc moins de tours qu'il n'en donne, au moment precis ou le
+   joueur regarde. Le vrai nombre arrive du serveur a chaque bonus : cette
+   plaque le couvre et l'ecrit. Elle est ASSUMEE plutot que fondue dans le
+   decor — les deux banderoles n'ont pas la meme couleur (#222629 et
+   #8C1600), un faux raccord serait juste sur l'une et faux sur l'autre.
+   A retirer le jour ou les panneaux seront regeneres sans nombre. */
+.dd-bandeau .pan{ position:relative; display:block }
+/* Boite mesuree sur les DEUX panneaux, qui ne portent pas leur texte a la
+   meme hauteur : « 10 FREE SPINS » occupe 72,2 %..77,0 % de l'image et
+   « 15 FREE SPINS » 75,1 %..80,3 %. La plaque couvre 71,4 %..81,2 %, et
+   reste dans le cadre dore des deux banderoles (24,9 % et 25,6 % a gauche). */
+.dd-bandeau u{ position:absolute; left:27%; right:27%; top:71.4%; height:9.8%;
+  display:flex; align-items:center; justify-content:center; text-decoration:none;
+  background:#0B0710; border:2px solid rgba(255,196,92,.55); border-radius:8px;
+  box-shadow:inset 0 0 14px rgba(0,0,0,.9), 0 2px 10px rgba(0,0,0,.6);
+  font-family:"Anton",sans-serif; font-size:clamp(11px,2.6cqi,24px); letter-spacing:.5px;
+  color:#FFD98A; white-space:nowrap; }
+.dd-bandeau u:empty{ display:none }
+
+/* ---- OU ON EN EST DANS LA SERIE ---- */
+.dd-serie{ position:absolute; left:50%; top:19.5%; transform:translateX(-50%);
+  z-index:5; display:flex; align-items:center; gap:10px; padding:5px 14px;
+  border-radius:999px; background:rgba(8,5,14,.86);
+  border:1px solid rgba(255,196,92,.42); box-shadow:0 3px 14px rgba(0,0,0,.5);
+  font:800 clamp(10px,2.1cqi,17px)/1 'Inter',system-ui,sans-serif; white-space:nowrap }
+.dd-serie .c{ color:#CFE3FF; letter-spacing:.6px }
+.dd-serie .t{ color:#7CFF9B; font-weight:900 }
+
+/* ---- LE GAIN DU TOUR, LA OU IL TOMBE ---- */
+.dd-vole{ position:absolute; left:50%; top:52%; transform:translate(-50%,-50%);
+  z-index:5; pointer-events:none;
+  font-family:"Anton",sans-serif; font-size:clamp(20px,5.4cqi,52px); color:#fff;
+  -webkit-text-stroke:.08em #14260f; paint-order:stroke fill;
+  text-shadow:0 3px 0 rgba(8,26,10,.6), 0 0 26px rgba(150,255,170,.85);
+  animation:ddVole .78s cubic-bezier(.2,1.4,.4,1) both }
+@keyframes ddVole{
+  0%   { opacity:0; transform:translate(-50%,-30%) scale(.6) }
+  22%  { opacity:1; transform:translate(-50%,-50%) scale(1.12) }
+  38%  { transform:translate(-50%,-50%) scale(1) }
+  100% { opacity:0; transform:translate(-50%,-92%) scale(1) }
+}
+@media (prefers-reduced-motion:reduce){ .dd-vole{ animation:none } }
+
 .dd-bandeau b{ display:block; text-align:center; margin-top:-6%;
   font-family:"Anton",sans-serif; font-size:clamp(18px,4.4cqi,40px); color:#fff;
   -webkit-text-stroke:.1em #16220f; paint-order:stroke fill;
@@ -1245,7 +1291,16 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       <div class="dd-grille" id="ddGrille" aria-label="5 by 3 reels"></div>
       <div class="dd-wilds" id="ddWilds" aria-hidden="true"></div>
       <img class="dd-cadre" src="img/dod/cadre.webp" alt="">
-      <div class="dd-bandeau" id="ddBandeau" hidden><img alt=""><b></b></div>
+      <!-- L'image est enveloppee : la plaque du nombre se cale en POURCENTAGE
+           d'elle, pas de tout le bandeau. Posee sur le bandeau, elle montait
+           au-dessus de la banderole — la hauteur du <b> du montant s'ajoutait
+           a celle de l'image et faussait le repere. -->
+      <div class="dd-bandeau" id="ddBandeau" hidden><span class="pan"><img alt=""><u></u></span><b></b></div>
+      <!-- Ce qui se passe PENDANT les tours gratuits : ou on en est, et ce
+           qu'on a gagne depuis le debut de la serie. Sans ca le joueur voit
+           douze tours defiler sans jamais savoir ou il en est. -->
+      <div class="dd-serie" id="ddSerie" hidden><span class="c"></span><span class="t"></span></div>
+      <div class="dd-vole" id="ddVole" hidden></div>
     </div>
 
     <div class="dd-barre">
@@ -2006,8 +2061,11 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   function ddBandeau(multi, montant, fin){
     var p=ddPalier(multi), e=$("ddBandeau");
     if(!p||!e) return fin();
-    e.firstChild.src="img/dod/"+p.img+".webp";
-    e.lastChild.textContent="+"+ddFmt(Math.round(montant))+" $SWOGE";
+    e.querySelector("img").src="img/dod/"+p.img+".webp";
+    /* EXACT, pas abrege : c'est ce que le joueur encaisse. `ddFmt` rendait
+       « +1.1k » pour 1 080. */
+    e.querySelector("b").textContent="+"+ddExact(Math.round(montant))+" $SWOGE";
+    e.querySelector("u").textContent="";
     e.className="dd-bandeau"; e.hidden=false;
     void e.offsetWidth;
     e.className="dd-bandeau on";
@@ -2020,8 +2078,12 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   function ddVoileGratuits(mode, nb, apres){
     var e=$("ddBandeau");
     if(!e) return apres();
-    e.firstChild.src="img/dod/"+(mode==="deader"?"panneau_deader":"panneau_dead")+".webp";
-    e.lastChild.textContent="";
+    e.querySelector("img").src="img/dod/"+(mode==="deader"?"panneau_deader":"panneau_dead")+".webp";
+    e.querySelector("b").textContent="";
+    /* `nb` arrivait deja ici et n'etait pas utilise : le seul nombre que le
+       joueur lisait etait celui PEINT dans l'image — 10 la ou le moteur en
+       donne 12, 15 la ou il en donne 18. */
+    e.querySelector("u").textContent=nb+(nb>1?" FREE SPINS":" FREE SPIN");
     e.className="dd-bandeau"; e.hidden=false;
     void e.offsetWidth;
     e.className="dd-bandeau on";
@@ -2036,51 +2098,111 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
    * ne recalcule rien — si elle le faisait, elle pourrait montrer autre chose
    * que ce qui a ete paye.
    */
-  function ddMontreTour(t, vite, fin){
+  /* ---- CE QUE LE JOUEUR LIT PENDANT UN TOUR ----
+   *
+   * Trois defauts mesures en jouant un vrai bonus, pas en lisant le code :
+   *
+   * 1. Le gain restait a l'ecran quand le tour suivant ne payait RIEN. Sur
+   *    la serie `deader` mesuree, onze tours sur dix-huit ne paient pas :
+   *    « WIN +1 $SWOGE » tenait l'affiche trois secondes d'affilee pendant
+   *    des tours a zero. Le joueur lisait un gain qui n'avait pas lieu.
+   * 2. « WIN +0 $SWOGE » s'affichait pour de bon — un gain de 0,03x sur une
+   *    mise de 10 s'arrondit a zero. On n'annonce pas un gain nul.
+   * 3. Le montant se calculait sur `DD.mise`, la mise AFFICHEE, et non sur
+   *    celle du tour envoye par le serveur. Les deux coincident tant que
+   *    rien ne les separe — mais c'est la page qui doit suivre le serveur,
+   *    pas l'inverse.
+   */
+  function ddMontreTour(t, vite, fin, ctx){
+    ctx = ctx || {};
+    var mise = ctx.mise || DD.mise;
     ddPeint(t.grille, null);
     ddWilds(t.wilds, function(){
       var gagnants=new Set((t.lignes||[]).map(function(l){ return l.symbole; }));
-      if(gagnants.size){
+      var montant = Math.round((t.gain||0) * mise);
+      if(gagnants.size && montant>0){
         ddPeint(t.grille, gagnants);
         son(t.gain>=20?"gros":"gain");
         var d=(t.lignes||[]).map(function(l){ return l.rouleaux+"x "+l.symbole; }).join(" · ");
-        $("ddGain").innerHTML='<small>WIN</small><b>+'+ddFmt(Math.round(t.gain*DD.mise))+' $SWOGE</b> <i>'+d+'</i>';
+        ddVole(montant);
+        if(ctx.serie){ ctx.serie.total += montant; ddSerieAff(ctx.serie, d); }
+        else $("ddGain").innerHTML='<small>WIN</small><b>+'+ddExact(montant)+' $SWOGE</b> <i>'+d+'</i>';
+      } else {
+        /* Rien n'est tombe : on EFFACE. Laisser le gain precedent en place
+           etait le defaut n°1. */
+        if(ctx.serie) ddSerieAff(ctx.serie, "");
+        else $("ddGain").innerHTML="";
       }
       setTimeout(fin, vite?420:700);
     });
   }
 
+  /* Le gain du tour la ou il tombe, sur la grille — plutot que dans un coin
+     de l'en-tete que l'oeil ne regarde pas pendant que les rouleaux bougent. */
+  function ddVole(montant){
+    var e=$("ddVole"); if(!e) return;
+    e.textContent="+"+ddExact(montant);
+    e.hidden=false; e.style.animation="none"; void e.offsetWidth; e.style.animation="";
+    clearTimeout(e._t); e._t=setTimeout(function(){ e.hidden=true; }, 820);
+  }
+
+  /* Ou on en est dans la serie, et le cumul. C'est ce qui manquait : douze
+     tours defilaient sans que le joueur sache ni son rang ni son total. */
+  function ddSerieAff(serie, detail){
+    var e=$("ddSerie"); if(!e) return;
+    e.hidden=false;
+    e.querySelector(".c").textContent="FREE SPIN "+serie.i+" / "+serie.n;
+    e.querySelector(".t").textContent=serie.total>0 ? "+"+ddExact(serie.total)+" $SWOGE" : "";
+    $("ddGain").innerHTML='<small>FREE SPINS · '+serie.i+' / '+serie.n+'</small>'
+      +'<b style="color:#0E6B32">'+(serie.total>0?"+"+ddExact(serie.total)+" $SWOGE":"—")+'</b>'
+      +(detail?' <i>'+detail+'</i>':'');
+  }
+
   function ddJoueTour(t){
     DD.anime=true; ddRender();
     $("ddGain").innerHTML="";
+    $("ddSerie").hidden=true; $("ddVole").hidden=true;
     son("debut");
     var premiere=(t.base&&t.base.grille)||null;
 
+    /* La mise du TOUR, pas celle affichee : c'est le serveur qui dit a quel
+       montant la manche a ete jouee. */
+    var mise = t.mise || DD.mise;
+
     function apresBase(){
       function finir(){
-        ddBandeau(t.multi, t.net>0?t.net:0, function(){
+        $("ddSerie").hidden=true;
+        /* Le GAIN, pas le net. Le palier de la banniere se choisit deja sur
+           le multiple — donc sur le brut : y ecrire le net faisait dire
+           « +364 » a une banniere choisie pour un gain de 464, juste apres
+           que le compteur des tours gratuits ait affiche 464. La ligne
+           RESULT, juste dessous, porte le net. */
+        ddBandeau(t.multi, t.payout||0, function(){
           DD.hist.unshift({ mise:t.mise, multi:t.multi, net:t.net, mode:t.mode });
           if(DD.hist.length>60) DD.hist.pop();
           var g=$("ddGain");
           g.innerHTML='<small>RESULT</small><b style="color:'+(t.net>0?"#0E6B32":t.net<0?"#C0392B":"#0B1B36")+'">'
-            +(t.net>0?"+":"")+ddFmt(t.net)+' $SWOGE</b>'+(t.multi?' <i>'+t.multi.toFixed(2)+'×</i>':'');
+            +(t.net>0?"+":"")+ddExact(t.net)+' $SWOGE</b>'+(t.multi?' <i>'+t.multi.toFixed(2)+'×</i>':'');
           if(t.net>0) son(t.multi>=20?"gros":"gain"); else son("rien");
           DD.anime=false; ddRender();
         });
       }
       if(t.mode && t.gratuits && t.gratuits.tours && t.gratuits.tours.length){
-        ddVoileGratuits(t.mode, t.gratuits.tours.length, function(){
-          var i=0;
+        var n=t.gratuits.tours.length;
+        ddVoileGratuits(t.mode, n, function(){
+          var i=0, serie={ i:1, n:n, total:0 };   /* on annonce le premier tour, pas « 0 / 12 » */
+          ddSerieAff(serie, "");
           (function suivant(){
-            if(i>=t.gratuits.tours.length) return finir();
-            ddMontreTour(t.gratuits.tours[i++], true, suivant);
+            if(i>=n) return finir();
+            serie.i = i+1;
+            ddMontreTour(t.gratuits.tours[i++], true, suivant, { mise:mise, serie:serie });
           })();
         });
       } else finir();
     }
 
     if(premiere){
-      ddRouleaux(premiere, function(){ ddMontreTour(t.base, false, apresBase); });
+      ddRouleaux(premiere, function(){ ddMontreTour(t.base, false, apresBase, { mise:mise }); });
     } else {
       /* Un tour ACHETE en `dead` ou `deader` n'a pas de jet de base : on entre
          directement dans les tours gratuits. */

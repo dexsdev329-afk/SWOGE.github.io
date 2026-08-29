@@ -784,6 +784,10 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
 .dd-pas{ height:clamp(38px,7cqi,52px) }
 .dd-large{ height:clamp(34px,6cqi,46px) }
 .dd-rangee{ display:flex; align-items:center; gap:8px; flex-wrap:nowrap }
+/* Le groupe principal reste ENTIER quand la barre passe a la ligne : sans
+   `flex-wrap:nowrap` le PLUS se retrouvait seul sur la rangee suivante. */
+.dd-principal{ display:flex; align-items:center; justify-content:center;
+  gap:12px; flex-wrap:nowrap; flex:0 0 auto }
 
 /* ---- L'ECHELLE D'ACHAT ----
  * Quatre crans, du moins cher au plus cher, et les PRIX viennent du serveur.
@@ -1402,13 +1406,18 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     </div>
 
     <div class="dd-barre">
-      <div class="dd-rangee">
+      <!-- SPIN AU CENTRE, ENTRE MOINS ET PLUS. Il etait au bout d'une rangee
+           de quatre boutons, donc colle au bord droit sur telephone : c'est
+           le bouton qu'on presse cent fois, il doit tomber sous le pouce et
+           non dans un coin. MAX BET rejoint la seconde rangee, avec les deux
+           boutons qu'on presse rarement. -->
+      <div class="dd-principal">
         <button class="dd-img dd-pas" id="ddMoins" type="button" aria-label="Lower bet"><img src="img/dod/btn_moins.webp" alt=""></button>
+        <button class="dd-img dd-spin" id="ddSpin" type="button" aria-label="Spin"><img id="ddSpinImg" src="img/dod/btn_spin.webp" alt="Spin"></button>
         <button class="dd-img dd-pas" id="ddPlus"  type="button" aria-label="Raise bet"><img src="img/dod/btn_plus.webp" alt=""></button>
-        <button class="dd-img dd-pas" id="ddMax"   type="button" aria-label="Max bet"><img src="img/dod/btn_max.webp" alt=""></button>
       </div>
-      <button class="dd-img dd-spin" id="ddSpin" type="button" aria-label="Spin"><img id="ddSpinImg" src="img/dod/btn_spin.webp" alt="Spin"></button>
       <div class="dd-rangee">
+        <button class="dd-img dd-pas" id="ddMax" type="button" aria-label="Max bet"><img src="img/dod/btn_max.webp" alt=""></button>
         <button class="dd-img dd-large" id="ddPaytable" type="button"><img src="img/dod/btn_paytable.webp" alt="Paytable"></button>
         <button class="dd-img dd-large" id="ddHistory"  type="button"><img src="img/dod/btn_history.webp" alt="History"></button>
       </div>
@@ -2452,8 +2461,16 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     }
     e.innerHTML=out;
   }
+  /* La place du RESULTAT reste vide tant qu'aucun tour n'a ete joue, et
+     l'en-tete se lit alors de travers : la mise a gauche, rien a droite. On
+     y met ce qu'il faut faire, comme le fait toute machine. */
+  function ddInvite(){
+    var g=$("ddGain");
+    if(g && !g.innerHTML && !DD.anime)
+      g.innerHTML='<small>&nbsp;</small><b style="color:#8E96A8;font-weight:800">Place your bet</b>';
+  }
   function ddRender(){
-    ddMiseAff(); ddHist(); ddAchatMaj();
+    ddMiseAff(); ddHist(); ddAchatMaj(); ddInvite();
     var s=$("ddSpin"); if(s) s.disabled=DD.anime||DD.serveurConnait===false;
     var im=$("ddSpinImg");
     if(im) im.src="img/dod/"+(DD.anime?"btn_stop":"btn_spin")+".webp";

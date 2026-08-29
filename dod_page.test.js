@@ -123,6 +123,32 @@ const T = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
        + ' a ' + (100 * couv.pire).toFixed(1) + ' %) — celui de Bonanza en cache 23 %');
 
     ok(erreurs.length === 0, 'aucune erreur JS' + (erreurs.length ? ' : ' + erreurs[0] : ''));
+
+    /* ---- SPIN TOMBE SOUS LE POUCE ----
+     * Il etait au bout d'une rangee de quatre boutons, donc colle au bord
+     * droit sur telephone. C'est celui qu'on presse cent fois : il doit etre
+     * au centre, entre MOINS et PLUS. On MESURE son centre plutot que de
+     * relire l'ordre du marquage — c'est la mise en page qui decide, et elle
+     * peut passer a la ligne. */
+    const cmd = await p.evaluate(() => {
+      const c = (s) => { const e = document.querySelector(s); if (!e) return null;
+        const r = e.getBoundingClientRect();
+        return { cx: r.left + r.width / 2, cy: r.top + r.height / 2, h: r.height, w: r.width }; };
+      return { moins: c('#ddMoins'), spin: c('#ddSpin'), plus: c('#ddPlus'),
+               large: document.documentElement.clientWidth };
+    });
+    if (cmd.moins && cmd.spin && cmd.plus) {
+      const milieu = (cmd.moins.cx + cmd.plus.cx) / 2;
+      const ecart = Math.abs(cmd.spin.cx - milieu);
+      ok(ecart < 4,
+         'SPIN est centre entre MOINS et PLUS (' + ecart.toFixed(1) + ' px d ecart)');
+      ok(Math.abs(cmd.moins.cy - cmd.spin.cy) < 2 && Math.abs(cmd.plus.cy - cmd.spin.cy) < 2,
+         'et les trois sont sur la MEME rangee : le groupe ne se coupe pas en passant a la ligne');
+      ok(cmd.spin.h > cmd.moins.h,
+         'et SPIN reste le plus gros des trois (' + Math.round(cmd.spin.h) + ' px contre '
+         + Math.round(cmd.moins.h) + ')');
+    } else ok(false, 'les trois commandes principales existent');
+
     await p.close();
   }
 

@@ -5,6 +5,8 @@
 | fichier | quand | duree |
 |---|---|---|
 | `spin_rien.mp3` | fin d'un tour **sans aucune combinaison** | 0,78 s |
+| `musique.ogg` | fond sonore, en boucle — **a utiliser en premier** | 2 min 16 |
+| `musique.mp3` | le meme, en secours pour les navigateurs sans Vorbis | 2 min 16 |
 
 ## Ce qui a ete fait a l'original, et ce qui ne l'a PAS ete
 
@@ -28,6 +30,51 @@ tour et le bruitage. C'est ce qui compte pour un son d'interface.
 > d'environ 3,4 dB** sur ce fichier (-6,6 dB en WAV, -3,2 dB une fois encode
 > sans le moindre gain). Normaliser a -1 dB avant encodage donne donc un
 > fichier qui SATURE. Il faut viser plus bas et verifier APRES encodage.
+
+## La musique de fond : deux defauts corriges, un a savoir
+
+**Un trou de 4,1 secondes a chaque tour de boucle.** L'original portait 0,40 s
+de silence en tete et **3,74 s en fin**. Joue en boucle, la musique s'arretait
+donc pendant quatre secondes toutes les deux minutes vingt, puis repartait. Les
+deux bords ont ete coupes au seuil de -45 dB.
+
+**3,4 Mo pour un fond sonore**, sur un jeu qu'on ouvre au telephone. Reencode
+en 128 kb/s — largement suffisant pour une musique de fond qui sera de toute
+facon jouee bas sous les bruitages — il tient en **2,1 Mo**.
+
+**ET POURQUOI IL Y A UN `.ogg` A COTE DU `.mp3`.** Le format MP3 ne sait pas
+boucler sans trou : l'encodeur inscrit un remplissage dans le fichier, et ce
+silence revient a CHAQUE tour de boucle. Mesure sur ce morceau meme :
+
+    audio reel     2:16,54
+    musique.ogg    2:16,54     <- identique
+    musique.mp3    2:16,59     <- 50 ms de plus, ajoutees par l'encodeur
+
+Cinquante millisecondes de blanc toutes les deux minutes, c'est audible et ca
+s'entend comme un hoquet. **Charge le `.ogg` en premier**, et garde le `.mp3`
+en secours pour les rares navigateurs sans Vorbis :
+
+```html
+<audio id="fond" loop>
+  <source src="son/bonanza/musique.ogg" type="audio/ogg">
+  <source src="son/bonanza/musique.mp3" type="audio/mpeg">
+</audio>
+```
+
+Pour une boucle vraiment sans couture, meme en `.ogg`, le plus sur reste
+l'API Web Audio : on charge le morceau dans un buffer et on le rejoue avec
+`loop = true`, ce qui ne depend d'aucun conteneur.
+
+**Ce que je ne peux pas verifier : le raccord musical.** Je n'ai aucun moyen
+d'ECOUTER ces fichiers. Je sais que les silences sont partis et que la duree
+tombe juste ; je ne sais pas si la derniere mesure enchaine bien sur la
+premiere. Ca, il faut l'entendre — lance-la en boucle deux fois de suite.
+
+**A noter aussi : l'original sature deja.** Crete a -0,11 dB sur un canal et
+**+0,10 dB sur l'autre**, c'est-a-dire au-dessus du plafond. Je n'y ai pas
+touche — baisser le niveau ne repare pas une saturation deja gravee, et
+l'equilibrage se fera sur le lot complet. Mais si tu regeneres cette musique
+un jour, demande un master a -1 dB.
 
 ## Ce qui manque encore
 

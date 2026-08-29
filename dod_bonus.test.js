@@ -110,7 +110,27 @@ function graine(mode, avecTourSec) {
     await p.click('#ddSpin');
 
     const vu = [];
+    let tropGrand = false, taille = '';
     for (let i = 0; i < 400; i++) {
+      /* La classe qui rend le panneau vertical voyageait par `classList.add`
+         et se faisait effacer deux lignes plus bas par une affectation de
+         `className`. Rien ne levait : le panneau debordait simplement de
+         l'ecran. On mesure donc ce qu'il OCCUPE. */
+      const m = await p.evaluate(() => {
+        const b = document.getElementById('ddBandeau');
+        const z = document.querySelector('.dd-zone');
+        if (!b || b.hidden || !z) return null;
+        /* Seulement quand il est VU : la premiere image du cycle d'entree le
+           trouve encore transparent et pas encore mis en page, et une largeur
+           nulle a cet instant-la ne veut rien dire. */
+        if (parseFloat(getComputedStyle(b).opacity) < 0.5) return null;
+        const r = b.getBoundingClientRect(), zr = z.getBoundingClientRect();
+        return { h: Math.round(r.height), w: Math.round(r.width), zh: Math.round(zr.height) };
+      });
+      if (m && m.h > 0) {
+        if (!taille) taille = m.w + 'x' + m.h + ' dans un plateau de ' + m.zh;
+        if (m.h > m.zh * 1.05 || m.w <= 0) tropGrand = true;
+      }
       vu.push(await p.evaluate(() => {
         const g2 = document.getElementById('ddGain');
         const b = document.getElementById('ddBandeau');
@@ -130,9 +150,15 @@ function graine(mode, avecTourSec) {
     const textes = vu.map((v) => v.gain);
     const panneaux = vu.map((v) => v.panneau).filter(Boolean);
 
-    ok(panneaux.some((t) => t === attenduTours + ' FREE SPINS'),
-       `le panneau annonce ${attenduTours} tours, le VRAI nombre — l image en peint `
-       + (mode === 'dead' ? '10' : '15') + (panneaux.length ? ' (lu : ' + panneaux[0] + ')' : ' (rien lu)'));
+    /* Le nombre et les mots viennent de deux elements : on NORMALISE plutot
+       que de comparer une chaine exacte, sinon l'essai casse a la premiere
+       retouche de mise en page sans qu'aucun defaut soit apparu. */
+    const lu = panneaux.map((t) => t.replace(/\s+/g, ' ').replace(/(\d)([A-Z])/, '$1 $2').trim());
+    ok(lu.some((t) => t === attenduTours + ' FREE SPINS'),
+       `la banderole du panneau annonce ${attenduTours} tours, le nombre du SERVEUR`
+       + ' — les premiers panneaux le portaient peint dans l image, 10 et 15,'
+       + ' la ou le moteur en donne 12 et 18'
+       + (lu.length ? ' (lu : ' + lu[0] + ')' : ' (rien lu)'));
 
     ok(textes.some((t) => /FREE SPINS · 1 \/ /.test(t)) && textes.some((t) => new RegExp('· ' + attenduTours + ' / ' + attenduTours).test(t)),
        'le rang du tour est ecrit, du premier au dernier');
@@ -155,6 +181,10 @@ function graine(mode, avecTourSec) {
        'aucun montant abrege : « 1.1k » vaut vingt $SWOGE de plus que 1 080');
 
     ok(boum.length === 0, 'aucune exception pendant le bonus' + (boum.length ? ' : ' + boum[0] : ''));
+    ok(!tropGrand,
+       'et le panneau tient dans le plateau : ' + (taille || 'non mesure')
+       + ' — vertical (491x1450), cale sur la LARGEUR comme la banniere des'
+       + ' gains il ferait deux mille pixels de haut');
   }
 
   await nav.close();

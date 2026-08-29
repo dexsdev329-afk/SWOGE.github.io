@@ -653,27 +653,40 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
 .dd-bandeau.part{ transition:transform .3s ease-in, opacity .3s ease-in;
   transform:translate(-50%,-58%) scale(1.06); opacity:0 }
 .dd-bandeau img{ width:100%; display:block }
-/* ---- LE VRAI NOMBRE DE TOURS, PAR-DESSUS LE FAUX ----
-   Les deux panneaux portent leur nombre PEINT DANS L'IMAGE : « 10 FREE
-   SPINS » et « 15 FREE SPINS ». Le moteur en donne 12 et 18. Le jeu
-   annoncait donc moins de tours qu'il n'en donne, au moment precis ou le
-   joueur regarde. Le vrai nombre arrive du serveur a chaque bonus : cette
-   plaque le couvre et l'ecrit. Elle est ASSUMEE plutot que fondue dans le
-   decor — les deux banderoles n'ont pas la meme couleur (#222629 et
-   #8C1600), un faux raccord serait juste sur l'une et faux sur l'autre.
-   A retirer le jour ou les panneaux seront regeneres sans nombre. */
+/* ---- LE NOMBRE DE TOURS S'ECRIT DANS LA BANDEROLE ----
+   Les panneaux portaient leur nombre PEINT DANS L'IMAGE — « 10 FREE SPINS »
+   la ou le moteur en donne 12, « 15 » la ou il en donne 18 — et il a fallu
+   le couvrir d'une plaque. Les panneaux ont ete refaits avec leur banderole
+   VIDE : le vrai nombre, celui du serveur, s'y ecrit maintenant, et il
+   suivra tout seul le jour ou le bonus sera rereglé.
+   Creux de la banderole mesure sur les deux : 22 %..78 % en largeur,
+   66,5 %..74,1 % en hauteur — les deux panneaux sont a un demi-point l'un
+   de l'autre. */
 .dd-bandeau .pan{ position:relative; display:block }
-/* Boite mesuree sur les DEUX panneaux, qui ne portent pas leur texte a la
-   meme hauteur : « 10 FREE SPINS » occupe 72,2 %..77,0 % de l'image et
-   « 15 FREE SPINS » 75,1 %..80,3 %. La plaque couvre 71,4 %..81,2 %, et
-   reste dans le cadre dore des deux banderoles (24,9 % et 25,6 % a gauche). */
-.dd-bandeau u{ position:absolute; left:27%; right:27%; top:71.4%; height:9.8%;
-  display:flex; align-items:center; justify-content:center; text-decoration:none;
-  background:#0B0710; border:2px solid rgba(255,196,92,.55); border-radius:8px;
-  box-shadow:inset 0 0 14px rgba(0,0,0,.9), 0 2px 10px rgba(0,0,0,.6);
-  font-family:"Anton",sans-serif; font-size:clamp(11px,2.6cqi,24px); letter-spacing:.5px;
-  color:#FFD98A; white-space:nowrap; }
+.dd-bandeau u{ position:absolute; left:22%; right:22%; top:66.2%; height:8.2%;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  text-decoration:none; line-height:1;
+  /* Le conteneur, c'est la BANDEROLE — pas le panneau. Mesure sur le
+     panneau, `60cqh` donnait une police de 364 px pour un creux de 50. */
+  container-type:size; }
 .dd-bandeau u:empty{ display:none }
+.dd-bandeau u em{ font-family:"Anton",sans-serif; font-style:normal;
+  font-size:66cqh; color:#FFE9A8;
+  -webkit-text-stroke:.04em #2A1704; paint-order:stroke fill;
+  text-shadow:0 1px 0 rgba(0,0,0,.7), 0 0 12px rgba(255,196,92,.55); }
+.dd-bandeau u span{ font:800 20cqh/1 'Inter',system-ui,sans-serif;
+  letter-spacing:.13em; color:#F3E6CC; text-shadow:0 1px 2px rgba(0,0,0,.85) }
+
+/* ---- LE PANNEAU DES TOURS EST VERTICAL ----
+   L'ancien faisait 900x675, celui-ci 491x1450 : cale sur la LARGEUR comme
+   la banniere des gains, il ferait deux mille pixels de haut. C'est sa
+   HAUTEUR qui commande.
+   Et le rapport est ECRIT sur `.pan` : une image en `height:100%` ne
+   contribue pas a la largeur d'un parent en `auto`, si bien que la boite
+   faisait zero pixel de large pendant que l'image en debordait de 206. */
+.dd-bandeau.tours{ width:auto; height:94% }
+.dd-bandeau.tours .pan{ height:100%; aspect-ratio:491/1450 }
+.dd-bandeau.tours .pan img{ height:100%; width:100% }
 
 /* ---- OU ON EN EST DANS LA SERIE ---- */
 .dd-serie{ position:absolute; left:50%; top:19.5%; transform:translateX(-50%);
@@ -2103,11 +2116,12 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   function ddBandeau(multi, montant, fin){
     var p=ddPalier(multi), e=$("ddBandeau");
     if(!p||!e) return fin();
+    e.classList.remove("tours");   /* la banniere des gains reste large */
     e.querySelector("img").src="img/dod/"+p.img+".webp";
     /* EXACT, pas abrege : c'est ce que le joueur encaisse. `ddFmt` rendait
        « +1.1k » pour 1 080. */
     e.querySelector("b").textContent="+"+ddExact(Math.round(montant))+" $SWOGE";
-    e.querySelector("u").textContent="";
+    e.querySelector("u").innerHTML="";
     e.className="dd-bandeau"; e.hidden=false;
     void e.offsetWidth;
     e.className="dd-bandeau on";
@@ -2127,17 +2141,23 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   function ddVoileGratuits(mode, nb, apres){
     var e=$("ddBandeau");
     if(!e) return apres();
+    /* `tours` doit voyager AVEC chaque affectation de className : un
+       `classList.add` ici etait efface deux lignes plus bas par
+       `e.className="dd-bandeau"`, et le panneau vertical se calait sur la
+       largeur — deux mille pixels de haut, hors de l'ecran. */
+    var base="dd-bandeau tours";
     e.querySelector("img").src="img/dod/"+(mode==="deader"?"panneau_deader":"panneau_dead")+".webp";
     e.querySelector("b").textContent="";
     /* `nb` arrivait deja ici et n'etait pas utilise : le seul nombre que le
        joueur lisait etait celui PEINT dans l'image — 10 la ou le moteur en
-       donne 12, 15 la ou il en donne 18. */
-    e.querySelector("u").textContent=nb+(nb>1?" FREE SPINS":" FREE SPIN");
-    e.className="dd-bandeau"; e.hidden=false;
+       donne 12, 15 la ou il en donne 18. Il s'ecrit maintenant dans la
+       banderole, que les nouveaux panneaux laissent vide. */
+    e.querySelector("u").innerHTML='<em>'+nb+'</em><span>'+(nb>1?"FREE SPINS":"FREE SPIN")+'</span>';
+    e.className=base; e.hidden=false;
     void e.offsetWidth;
-    e.className="dd-bandeau on";
+    e.className=base+" on";
     son("gratuits"); sonDuck(1900);
-    setTimeout(function(){ e.className="dd-bandeau on part"; }, 1900);
+    setTimeout(function(){ e.className=base+" on part"; }, 1900);
     setTimeout(function(){ e.hidden=true; e.className="dd-bandeau"; apres(); }, 2240);
   }
 

@@ -76,6 +76,14 @@ touche — baisser le niveau ne repare pas une saturation deja gravee, et
 l'equilibrage se fera sur le lot complet. Mais si tu regeneres cette musique
 un jour, demande un master a -1 dB.
 
+## Les huit autres : provisoires, dans `provisoire/`
+
+Huit bruitages CC0 de Kenney y sont poses pour que le jeu puisse etre construit
+et essaye tout de suite. **Ils ne collent pas au style** — le catalogue CC0 de
+Kenney est du retro et de l'interface neutre, la ou Bonanza est sucre et ample.
+Voir `provisoire/LISEZ-MOI.md` : licence, correspondances, et ce qu'il faut
+ecouter avant de garder quoi que ce soit.
+
 ## Ce qui manque encore
 
 D'apres ce que montre la video, il faudra au minimum :

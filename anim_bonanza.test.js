@@ -51,7 +51,7 @@ const SYMBOLES = ['banane', 'raisin', 'pasteque', 'prune', 'pomme',
       const i = h.lastIndexOf('})();');
       h = h.slice(0, i)
         + '\n  window.__bz={bzPoseGrille:bzPoseGrille,bzPeint:bzPeint,bzEtincelles:bzEtincelles,'
-        + 'bzArrets:bzArrets,bzMonte:bzMonte,bzValeur:bzValeur,bzRouleaux:bzRouleaux,bzScatSouligne:bzScatSouligne,bzBandeau:bzBandeau,bzPalier:bzPalier,BGM:BGM};\n' + h.slice(i);
+        + 'bzArrets:bzArrets,bzMonte:bzMonte,bzValeur:bzValeur,bzRouleaux:bzRouleaux,bzScatSouligne:bzScatSouligne,bzBandeau:bzBandeau,bzPalier:bzPalier,bzBombes:bzBombes,BGM:BGM};\n' + h.slice(i);
       r.writeHead(200, { 'content-type': 'text/html' });
       return r.end(h);
     }
@@ -345,9 +345,14 @@ const SYMBOLES = ['banane', 'raisin', 'pasteque', 'prune', 'pomme',
     const lent = etage(560, 340, 1), vif = etage(260, 240, 0.72);
     return {
       etageBase: lent, etageVite: vif,
-      /* le pire cas courant : rouleaux + 3 etages, puis 10 tours gratuits de
-         3 etages avec une bombe a chacun */
-      grosTour: base + 3 * lent + 1500 + 10 * (3 * vif + 700),
+      /* Le tour gratuit MOYEN, pas un pire cas invente. La frequence des
+         bombes est mesuree sur le vrai moteur — 42,6 % des tours gratuits
+         n'en ont aucune, 38,4 % une, 15,9 % deux, 2,7 % trois — et leur
+         mise en scene dure 190 ms par bombe apres la premiere, plus 380 de
+         pose et 1 000 pour le total. */
+      bombes: 0.384 * 1380 + 0.159 * 1570 + 0.027 * 1760 + 0.005 * 1950,
+      grosTour: base + 3 * lent + 1500
+        + 10 * (3 * vif + (0.384 * 1380 + 0.159 * 1570 + 0.027 * 1760 + 0.005 * 1950)),
     };
   });
   console.log('     un etage : ' + duree.etageBase + ' ms en jeu de base, '
@@ -356,8 +361,9 @@ const SYMBOLES = ['banane', 'raisin', 'pasteque', 'prune', 'pomme',
      'un etage dure ' + duree.etageBase + ' ms — la video de reference en mesure'
      + ' 1500, du symbole allume a la grille repleine');
   ok(duree.grosTour < 45000,
-     'et le plus gros tour courant — dix tours gratuits de trois etages avec'
-     + ' bombe — tient en ' + Math.round(duree.grosTour / 1000) + ' s'
+     'et un gros tour gratuit — dix tours de trois etages, bombes a leur'
+     + ' frequence reelle (' + Math.round(duree.bombes) + ' ms en moyenne par tour) —'
+     + ' tient en ' + Math.round(duree.grosTour / 1000) + ' s'
      + ' (il en faisait 55 au rythme du jeu de base)');
 
   /* ---------------- 7. LES COLONNES GARDENT LA MEME LARGEUR ----------------
@@ -486,6 +492,62 @@ const SYMBOLES = ['banane', 'raisin', 'pasteque', 'prune', 'pomme',
   ok(bouge.hMax - bouge.hMin < 0.5,
      'et la page garde la meme hauteur : ' + bouge.hMin + ' px du debut a la fin'
      + ' (elle passait de 985 a 1004)');
+
+  /* ---------------- 10. LES BOMBES SE VOIENT SUR LE PLATEAU ----------------
+   * DEFAUT SIGNALE : « l'animation des bombes est horrible, je ne les vois
+   * meme pas sur le terrain avec le multiple ». Elles n'existaient que dans
+   * un voile de texte pose par-dessus la grille ; le dessin `bombe.webp`
+   * dormait dans le depot.
+   *
+   * Ce qui se verifie : elles se posent A LA CASE QUE LE SERVEUR A TIREE —
+   * la page n'en choisit aucune, sinon deux joueurs rejouant la meme graine
+   * verraient deux tours differents — elles portent leur multiplicateur, et
+   * le total affiche est celui du serveur, pas une addition de la page. */
+  console.log('\n-- les bombes multiplicateurs --');
+  const LOT = [{ multi: 5, case: 3 }, { multi: 25, case: 14 },
+               { multi: 100, case: 22 }, { multi: 2, case: 27 }];
+  const bombes = await p.evaluate(async ([g, lot]) => {
+    window.__bz.bzPoseGrille(); window.__bz.bzPeint(g, null);
+    const c = document.getElementById('bzBombes');
+    let fini = false;
+    window.__bz.bzBombes(lot, 132, () => { fini = true; });
+    await new Promise((r) => setTimeout(r, 800));
+    const cs = document.getElementById('bzGrille').children;
+    const bs = [...c.querySelectorAll('.bz-bombe')];
+    const pose = bs.map((b, k) => {
+      const r = cs[lot[k].case].getBoundingClientRect();
+      const bb = b.getBoundingClientRect();
+      return { multi: b.querySelector('b').textContent,
+               surSaCase: Math.abs((bb.left + bb.right) / 2 - (r.left + r.right) / 2) < 3
+                       && Math.abs((bb.top + bb.bottom) / 2 - (r.top + r.bottom) / 2) < 3,
+               vue: parseFloat(getComputedStyle(b).opacity) > 0.8,
+               taille: bb.width, caseLarge: r.width };
+    });
+    await new Promise((r) => setTimeout(r, 500));
+    const t = c.querySelector('.bz-total');
+    const total = t ? { txt: t.textContent, o: parseFloat(getComputedStyle(t).opacity) } : null;
+    await new Promise((r) => setTimeout(r, 1400));
+    return { pose, total, reste: c.children.length, fini };
+  }, [grille, LOT]);
+
+  ok(bombes.pose.length === LOT.length,
+     'chaque bombe du serveur est posee (' + bombes.pose.length + '/' + LOT.length + ')');
+  ok(bombes.pose.every((b, k) => b.multi === String(LOT[k].multi)),
+     'chacune porte SON multiplicateur : ' + bombes.pose.map((b) => b.multi).join(', '));
+  ok(bombes.pose.every((b) => b.surSaCase),
+     'et tombe sur LA CASE QUE LE SERVEUR a tiree — la page n en choisit aucune');
+  ok(bombes.pose.every((b) => b.vue),
+     'elles sont bien visibles a l ecran, pas seulement dans le document');
+  ok(bombes.pose.every((b) => b.taille > b.caseLarge),
+     'et plus grandes que la case ('
+     + Math.round(bombes.pose[0].taille) + ' px pour ' + Math.round(bombes.pose[0].caseLarge)
+     + ') : c est le moment fort, il ne se murmure pas');
+  ok(!!bombes.total && bombes.total.txt === '×132' && bombes.total.o > 0.9,
+     'le total du SERVEUR s affiche ensuite en grand : '
+     + (bombes.total ? JSON.stringify(bombes.total.txt) : 'aucun'));
+  ok(bombes.reste === 0 && bombes.fini,
+     'puis tout s efface, et la suite du tour est rappelee — sans ce rappel'
+     + ' les tours gratuits resteraient bloques sur les bombes');
 
   ok(erreurs.length === 0, 'aucune erreur JS' + (erreurs.length ? ' : ' + erreurs[0] : ''));
   console.log('\n' + n + ' verifications, ' + rates + ' echec(s)');

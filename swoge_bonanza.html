@@ -681,6 +681,51 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
   background:radial-gradient(circle, rgba(255,255,255,.96) 0%, rgba(233,244,255,.72) 42%, rgba(214,234,255,0) 72%);
   transition:transform .46s cubic-bezier(.2,.8,.4,1), opacity .46s ease-out; }
 
+/* ---- LES BOMBES MULTIPLICATEURS ----
+   DEFAUT SIGNALE : « l'animation des bombes est horrible, je ne les vois
+   meme pas sur le terrain avec le multiple — c'est ca qui donne toute
+   l'adrenaline ». C'etait exact : elles n'existaient que dans un voile de
+   texte, « BOMBS ×2 ×5 = ×7 », pose une seconde par-dessus la grille. Le
+   dessin `bombe.webp` etait dans le depot, inutilise.
+
+   Elles TOMBENT maintenant sur le plateau, a la place que le serveur leur a
+   tiree, avec leur multiplicateur ecrit dessus. Puis elles se rassemblent au
+   centre et le total s'affiche. C'est le moment fort des tours gratuits ;
+   il occupe l'ecran comme tel. */
+.bz-bombes{ position:absolute; inset:0; pointer-events:none; z-index:5; }
+/* `container-type` sur la bombe elle-meme : sans lui, le `cqw` du
+   multiplicateur se resolvait sur `.bzwrap` — 44 % de la page, soit 189 px
+   de chiffre pour une bombe de 51. Il faut que l'unite parle de la BOMBE. */
+.bz-bombe{ position:absolute; aspect-ratio:1; container-type:inline-size;
+  transform:translate(-50%,-50%) scale(.2); opacity:0;
+  transition:transform .38s cubic-bezier(.2,1.6,.4,1), opacity .18s ease-out; }
+.bz-bombe img{ width:100%; height:100%; object-fit:contain; display:block;
+  filter:drop-shadow(0 4px 10px rgba(0,0,0,.55)); }
+.bz-bombe b{ position:absolute; inset:0; display:flex; align-items:center;
+  justify-content:center; font-family:"Anton",sans-serif; color:#fff;
+  font-size:42cqw; line-height:1; letter-spacing:-.03em;
+  -webkit-text-stroke:.08em #3A1400; paint-order:stroke fill;
+  text-shadow:0 2px 0 rgba(40,12,0,.6); }
+.bz-bombe.on{ transform:translate(-50%,-50%) scale(1); opacity:1; }
+/* Le rassemblement : elles filent vers le centre avant que le total tombe. */
+.bz-bombe.file{ transition:transform .34s ease-in, opacity .34s ease-in; opacity:0; }
+/* Le total, en gros, au centre. */
+.bz-total{ position:absolute; left:50%; top:50%; z-index:6;
+  transform:translate(-50%,-50%) scale(.4); opacity:0;
+  font-family:"Anton",sans-serif; color:#FFD54A; white-space:nowrap;
+  font-size:clamp(30px,12cqi,84px); line-height:1;
+  -webkit-text-stroke:.07em #3A1400; paint-order:stroke fill;
+  text-shadow:0 4px 0 rgba(40,12,0,.55), 0 0 30px rgba(255,190,60,.8);
+  transition:transform .4s cubic-bezier(.2,1.7,.4,1), opacity .2s ease-out; }
+.bz-total.on{ transform:translate(-50%,-50%) scale(1); opacity:1; }
+.bz-total.part{ transition:transform .3s ease-in, opacity .3s ease-in;
+  transform:translate(-50%,-58%) scale(1.1); opacity:0; }
+@media (prefers-reduced-motion:reduce){
+  .bz-bombe,.bz-total{ transition:opacity .2s ease-out; }
+  .bz-bombe.on{ transform:translate(-50%,-50%); }
+  .bz-total.on{ transform:translate(-50%,-50%); }
+}
+
 /* ---- LA VALEUR, EN BLANC, SUR LA GRILLE ----
    Elle s'ecrit au centre de l'amas qui vient de payer, monte un peu et
    s'efface. Blanc pur cerne de sombre : elle passe sur un decor clair comme
@@ -1537,6 +1582,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
            jeu dont celui-ci s'inspire. Il ne prend pas les clics. -->
       <img class="bz-cadre" src="img/bonanza/cadre.webp" alt="SWOGE Bonanza">
       <div class="bz-parts" id="bzParts" aria-hidden="true"></div>
+      <div class="bz-bombes" id="bzBombes" aria-hidden="true"></div>
       <div class="bz-bandeau" id="bzBandeau" hidden><img alt=""><b></b></div>
       <div class="bz-voile" id="bzVoile" hidden><span id="bzVoileTxt"></span></div>
       <!-- L'ACHAT DU BONUS
@@ -2092,10 +2138,15 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
        est du Kenney CC0 qui tient la place — voir `son/bonanza/LISEZ-MOI.md`.
        Les durees comptent plus que le style ici : `gain` se rejoue a CHAQUE
        etage de cascade, donc il doit rester court. */
-    var l={ rien:"son/bonanza/spin_rien.mp3", debut:"son/bonanza/provisoire/spin_debut.mp3",
-            pose:"son/bonanza/provisoire/symbole_pose.mp3", gain:"son/bonanza/gain.mp3",
-            cascade:"son/bonanza/provisoire/cascade.mp3", scatter:"son/bonanza/provisoire/scatter.mp3",
-            gratuits:"son/bonanza/tours_gratuits.mp3", bombe:"son/bonanza/provisoire/bombe.mp3",
+    /* Les huit sont vrais. Six viennent du montage envoye — 93 attaques
+       detectees dans une minute d'enregistrement, decoupees, mesurees, et
+       choisies sur le profil que leur creneau demande : du court et du sec
+       pour la pose, du clair pour le gain, du sourd et du fort pour la
+       bombe. Chacun a passe le controle de parole avant d'etre pose ici. */
+    var l={ rien:"son/bonanza/spin_rien.mp3", debut:"son/bonanza/spin_debut.mp3",
+            pose:"son/bonanza/symbole_pose.mp3", gain:"son/bonanza/gain.mp3",
+            cascade:"son/bonanza/cascade.mp3", scatter:"son/bonanza/scatter.mp3",
+            gratuits:"son/bonanza/tours_gratuits.mp3", bombe:"son/bonanza/bombe.mp3",
             gros:"son/bonanza/gros_gain.mp3" };
     for(var k in l){ try{ var a=new Audio(l[k]); a.preload="auto"; a.volume=.55; SONS[k]=a; }catch(e){} }
   })();
@@ -2716,6 +2767,56 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     setTimeout(function(){ e.hidden = true; e.className = "bz-bandeau"; fin(); }, p.ms + 360);
   }
 
+  /* ---- LES BOMBES TOMBENT SUR LE PLATEAU ----
+   * Chaque bombe arrive a la case que le SERVEUR lui a tiree — la page n'en
+   * choisit aucune. Elles se posent l'une apres l'autre, 190 ms d'ecart,
+   * puis filent au centre ou le total s'inscrit.
+   *
+   * Le total est celui du serveur (`somme`), pas une addition de la page :
+   * si les deux divergeaient, c'est le serveur qui aurait paye.
+   */
+  function bzBombes(liste, total, fin){
+    var couche = $("bzBombes");
+    if(!couche || !liste || !liste.length) return fin();
+    var cs = $("bzGrille").children;
+    var base = couche.getBoundingClientRect();
+    var faits = [];
+    couche.textContent = "";
+
+    liste.forEach(function(b, k){
+      var i = (typeof b.case === "number") ? b.case : k * 7 % 30;
+      var r = cs[i].getBoundingClientRect();
+      var e = document.createElement("div");
+      e.className = "bz-bombe";
+      e.style.left = (r.left - base.left + r.width/2) + "px";
+      e.style.top  = (r.top  - base.top  + r.height/2) + "px";
+      e.style.width = Math.round(r.width*1.12) + "px";
+      e.innerHTML = '<img src="' + bzImg("bombe") + '" alt=""><b>' + (b.multi||b) + '</b>';
+      couche.appendChild(e);
+      faits.push(e);
+      setTimeout(function(){ e.className = "bz-bombe on"; son("bombe"); }, 190*k);
+    });
+
+    var pose = 190*(liste.length-1) + 380;
+    setTimeout(function(){
+      /* elles filent au centre */
+      var cx = base.width/2, cy = base.height/2;
+      faits.forEach(function(e){
+        e.className = "bz-bombe file";
+        e.style.left = cx+"px"; e.style.top = cy+"px";
+      });
+      var t = document.createElement("div");
+      t.className = "bz-total";
+      t.textContent = "\u00d7" + total;
+      couche.appendChild(t);
+      void couche.offsetWidth;
+      t.className = "bz-total on";
+      son("gros");
+      setTimeout(function(){ t.className = "bz-total part"; }, 700);
+      setTimeout(function(){ couche.textContent = ""; fin(); }, 1000);
+    }, pose);
+  }
+
   function bzVoile(txt, ms, apres){
     var v=$("bzVoile"); $("bzVoileTxt").textContent=txt; v.hidden=false;
     setTimeout(function(){ v.hidden=true; apres(); }, ms);
@@ -2778,8 +2879,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
             var fs=t.gratuits[i++];
             bzJoueEtapes(fs.etapes, function(){
               if(fs.bombes && fs.bombes.length){
-                son("bombe");
-                bzVoile("BOMBS ×"+fs.bombes.join(" ×")+"\n= ×"+fs.bombe, 700, tourSuivant);
+                bzBombes(fs.bombes, fs.bombe, tourSuivant);
               } else setTimeout(tourSuivant, 160);
             }, true);
           })();

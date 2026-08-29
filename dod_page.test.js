@@ -26,6 +26,8 @@
 const fs = require('fs');
 const path = require('path');
 const http = require('http');
+let WSS = null;
+try { WSS = require('/home/user/swoge-pusher-server.github.io/node_modules/ws').WebSocketServer; } catch (e) {}
 
 const SITE = __dirname;
 let chromium = null;
@@ -174,6 +176,101 @@ const T = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
    * contredisaient les prix mesures sur ce moteur. */
   ok(!/achat_(1\.5|7|99|499|\d+x)/i.test(src),
      'et aucune n est nommee par un prix — elles portent le nom du cran');
+
+  /* 6. UN SERVEUR QUI NE CONNAIT PAS CE JEU
+   *
+   * Le routeur du serveur est une chaine de `if` sur le type du message :
+   * un `dodSpin` qu'une version anterieure ne connait pas ne tombe pas en
+   * erreur, il tombe dans le VIDE. Le joueur cliquerait SPIN et il ne se
+   * passerait RIEN — ni rouleau, ni message, ni refus. C'est exactement
+   * l'etat du serveur en production tant qu'il n'est pas redeploye.
+   *
+   * Le seul signal qui distingue les deux, c'est le bareme envoye a la
+   * connexion. On monte donc un faux serveur qui salue SANS bareme, et l'on
+   * verifie que le bouton se ferme au lieu de mentir. */
+  if (WSS) {
+    console.log('');
+    const faux = new WSS({ port: 0 });
+    await new Promise((r) => faux.on('listening', r));
+    const pw = faux.address().port;
+    /* Le bareme voyage dans `auth`, pas dans `hello` : `hello` ne porte que
+     * le nonce de connexion. Un faux serveur qui s'arrete a `hello` laisse
+     * la page a l'ecran d'accueil et fait passer l'essai pour de mauvaises
+     * raisons — c'est ce qui est arrive en l'ecrivant. */
+    const salue = (c, bareme) => {
+      c.on('message', () => {});
+      c.send(JSON.stringify({ type: 'hello', loginNonce: 'n', serverSeedHash: 'h' }));
+      const a2 = { type: 'auth', address: 'ess', balance: 100000,
+                   casinoMin: 10, casinoMax: 100000 };
+      if (bareme) a2.dodBareme = bareme;
+      setTimeout(() => c.send(JSON.stringify(a2)), 60);
+    };
+    faux.on('connection', (c) => salue(c, null));
+    const p = await nav.newPage({ viewport: { width: 1400, height: 1000 } });
+    await p.goto('http://127.0.0.1:' + port + '/swoge_dod.html?server='
+                 + encodeURIComponent('ws://127.0.0.1:' + pw), { waitUntil: 'domcontentloaded' });
+    await p.waitForTimeout(2500);
+    ok(await p.$eval('#ddSpin', (b2) => b2.disabled),
+       'un serveur qui ne connait pas le jeu ferme le bouton SPIN au lieu'
+       + ' d envoyer un message qui tombera dans le vide');
+    await p.close();
+
+    /* Et le controle positif : le MEME faux serveur, mais qui salue AVEC un
+     * bareme, doit rouvrir le bouton. Sans lui, cet essai passerait aussi
+     * bien avec un bouton ferme pour toujours. */
+    faux.removeAllListeners('connection');
+    /* Le bareme d'essai a la MEME FORME que celui de `game.js:dodBareme()`.
+     * Un bareme d'essai partiel testerait un serveur qui n'existe pas — et
+     * c'est ce qui est arrive : reduit a ses seuls prix, il faisait lever
+     * `ddSyms` et masquait le vrai defaut. */
+    faux.on('connection', (c) => salue(c,
+      { rouleaux: 5, rangees: 3,
+        bas: ['j', 'q', 'k', 'a'], hauts: ['lanterne', 'pelle', 'crane'],
+        wild: 'wild', dead: 'dead', deader: 'deader',
+        crans: { wild: { prix: 1.6 }, scatter: { prix: 12.5 },
+                 dead: { prix: 36 }, deader: { prix: 108 } },
+        cransOrdre: ['wild', 'scatter', 'dead', 'deader'],
+        min: 10, max: 100000 }));
+    const p2 = await nav.newPage({ viewport: { width: 1400, height: 1000 } });
+    const boum = [];
+    p2.on('pageerror', (e) => boum.push(e.message));
+    await p2.goto('http://127.0.0.1:' + port + '/swoge_dod.html?server='
+                  + encodeURIComponent('ws://127.0.0.1:' + pw), { waitUntil: 'domcontentloaded' });
+    await p2.waitForTimeout(2500);
+    ok(!(await p2.$eval('#ddSpin', (b2) => b2.disabled)),
+       'et un serveur a jour le rouvre — sans quoi cet essai passerait avec'
+       + ' un bouton ferme pour toujours');
+    ok(boum.length === 0,
+       'et le tour de connexion complet ne leve aucune exception'
+       + (boum.length ? ' : ' + boum[0] : ''));
+    const prix = await p2.$$eval('.dd-a b', (l) => l.map((x) => x.textContent));
+    ok(prix.every((t) => /\d/.test(t)) && prix.length === 4,
+       'et les quatre prix arrivent du serveur : ' + prix.join(' | '));
+    /* La ligne « provably fair ». Elle etait tombee du <main>, et
+     * `showFair` levait alors une exception a chaque `hello` et a chaque
+     * `auth`, ce qui avortait tout le reste du traitement. */
+    /* Le prix est EXACT, non abrege : `ddFmt(1080)` rendait « 1.1k », soit
+     * vingt $SWOGE de plus que ce qui sera debite. Sur le bouton qui
+     * declenche le paiement, arrondir n'est pas une commodite d'affichage. */
+    ok(prix.some((t) => /1,080/.test(t)),
+       'le prix d achat est ECRIT EN ENTIER : « 1.1k » annoncait vingt $SWOGE'
+       + ' de plus que le debit reel');
+    /* Et a la mise maximale il atteint huit chiffres : s'il deborde de sa
+     * pastille, il se lit tronque — pire qu'arrondi. */
+    await p2.click('#ddMax');
+    await p2.waitForTimeout(300);
+    const gros = await p2.$$eval('.dd-a b', (l) => l.map((x) => ({
+      t: x.textContent, tronque: x.scrollWidth > x.clientWidth + 1 })));
+    ok(gros.every((g) => !g.tronque),
+       'et a la mise maximale il tient encore dans sa pastille : '
+       + gros.map((g) => g.t).join(' | '));
+
+    ok(/Provably fair/.test(await p2.$eval('#fair', (x) => x.textContent)),
+       'la ligne « provably fair » est ecrite : sans son element, showFair'
+       + ' levait et emportait tout le traitement de auth avec lui');
+    await p2.close();
+    faux.close();
+  }
 
   await nav.close();
   srv.close();

@@ -582,7 +582,10 @@ const servirLeSite = async () => {
       droite: b[1] ? b[1].disabled : null,
     };
   }));
-  eq(rangees.length, 6, 'les six rangees du catalogue sont la');
+  /* Cinq, et non six : la rangee « SWOGE World » a ete retiree de propos
+     delibere (585498a « Drop the SWOGE World card row on games.html »).
+     L'attente etait restee a six et echouait depuis. */
+  eq(rangees.length, 5, 'les cinq rangees du catalogue sont la');
   ok(rangees.every((r) => r.barre === 'none'),
      'AUCUNE des six ne montre de barre de defilement : c est la demande, et une'
      + ' rangee oubliee se verrait — elle serait la seule a en avoir une');

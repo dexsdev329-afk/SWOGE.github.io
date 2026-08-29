@@ -1259,6 +1259,13 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     <div class="dd-achats" id="ddAchats"></div>
 
     <div class="dd-hist" id="ddHist"></div>
+    <!-- La ligne « provably fair ». Elle etait tombee en remplacant le
+         <main> de Bonanza : `showFair` ecrivait alors dans un element nul et
+         levait une exception A CHAQUE `hello` ET A CHAQUE `auth`, ce qui
+         avortait TOUT le reste du traitement — bareme compris. Le bouton
+         SPIN restait ouvert et les prix d'achat restaient a « — » sans que
+         rien ne le dise. -->
+    <div class="fair" id="fair"></div>
   </div>
 </main>
 
@@ -1480,7 +1487,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   function fmtBal(b){ b=parseFloat(b||0); return b>=1e9?(b/1e9).toFixed(2)+"B":b>=1e6?(b/1e6).toFixed(2)+"M":b>=1000?(b/1000).toFixed(1)+"k":b.toFixed(2); }
   function setBalance(b){ balance=parseFloat(b||0); balEl.textContent=fmtBal(balance); }
   function setDot(on){ dot.className="statusdot "+(on?"on":"off"); }
-  function showFair(f){ if(f&&f.serverSeedHash) fairEl.innerHTML="Provably fair · seed hash <b>"+String(f.serverSeedHash).slice(0,16)+"…</b> · nonce <b>"+f.nonce+"</b>"; }
+  function showFair(f){ if(fairEl&&f&&f.serverSeedHash) fairEl.innerHTML="Provably fair · seed hash <b>"+String(f.serverSeedHash).slice(0,16)+"…</b> · nonce <b>"+f.nonce+"</b>"; }
 
   // ---- sound ----
   /* Les bruitages sont EMBARQUES (WAV en data URI) et non plus charges depuis
@@ -1816,6 +1823,10 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     if(Math.abs(n)>=1e3) return (n/1e3).toFixed(1)+"k";
     return String(n);
   }
+  /* Un SOLDE peut s'abreger, un PRIX non : `ddFmt(1080)` rend « 1.1k », soit
+     vingt $SWOGE de plus que ce qui sera reellement debite. Sur le bouton
+     qui declenche le paiement, on ecrit le chiffre entier. */
+  function ddExact(n){ return (Number(n)||0).toLocaleString("en-US"); }
   function ddImg(s){ return "img/dod/"+DD_FICHIER[s]+".webp"; }
   /* Le nom du fichier n'est pas le nom du symbole : le serveur parle de `j` et
      de `crane`, le dossier contient `sym_j.webp`. Une table plutot qu'une
@@ -1829,8 +1840,9 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   function ddSyms(){
     if(DD_SYMS) return DD_SYMS;
     var b=DD.bareme;
-    DD_SYMS = b ? b.bas.concat(b.hauts).concat([b.dead,b.deader])
-                : ["j","q","k","a","lanterne","pelle","crane","dead","deader"];
+    DD_SYMS = (b && b.bas && b.hauts)
+      ? b.bas.concat(b.hauts).concat([b.dead||"dead", b.deader||"deader"])
+      : ["j","q","k","a","lanterne","pelle","crane","dead","deader"];
     return DD_SYMS;
   }
   function ddHasard(){ var l=ddSyms(); return l[Math.floor(Math.random()*l.length)]; }
@@ -2110,7 +2122,10 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       var px=(b&&b.crans&&b.crans[c]&&b.crans[c].prix)||0;
       btn.disabled=btn.disabled||!px;
       var t=btn.querySelector("b");
-      if(t) t.textContent = px ? px+"× · "+ddFmt(Math.round(px*DD.mise))+" $SWOGE" : "—";
+      /* Sans « $SWOGE » : a la mise maximale le prix atteint huit chiffres,
+         et la pastille le tronquait. L'unite est deja ecrite juste au-dessus,
+         sur la mise — la repeter ici coutait la precision du montant. */
+      if(t) t.textContent = px ? px+"× · "+ddExact(Math.round(px*DD.mise)) : "—";
     });
   }
 
@@ -2149,7 +2164,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   }
   function ddRender(){
     ddMiseAff(); ddHist(); ddAchatMaj();
-    var s=$("ddSpin"); if(s) s.disabled=DD.anime;
+    var s=$("ddSpin"); if(s) s.disabled=DD.anime||DD.serveurConnait===false;
     var im=$("ddSpinImg");
     if(im) im.src="img/dod/"+(DD.anime?"btn_stop":"btn_spin")+".webp";
   }
@@ -2202,6 +2217,16 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
           var _l=ddPaliers().filter(function(v){ return v<=balance; });
           DD.mise = _l.length ? _l[0] : ddPaliers()[0];
         }
+        /* ---- CE SERVEUR CONNAIT-IL SEULEMENT CE JEU ? ----
+           Le routeur du serveur est une chaine de `if` sur le type du
+           message : un `dodSpin` qu'il ne connait pas ne tombe pas en
+           erreur, il tombe dans le VIDE. Le joueur cliquerait SPIN et il ne
+           se passerait rien — ni rouleau, ni message, ni refus. Le seul
+           signal qui distingue « serveur a jour » de « serveur d'avant ce
+           jeu », c'est le bareme envoye a la connexion : s'il n'arrive pas,
+           le serveur ne sait pas jouer, et il vaut mieux le dire que laisser
+           un bouton mort. */
+        DD.serveurConnait = !!m.dodBareme;
         if(m.dodBareme){ DD.bareme=m.dodBareme; ddBareme(); }
         ddRender(); if(m.stake) setStakeInfo(m.stake); if(m.quests) renderQuests(m.quests); if(m.bonus) renderBonus(m.bonus); if(m.welcomeGranted>0) toast("🎁 Welcome! +"+m.welcomeGranted+" $SWOGE to try"); }
       else if(m.type==="balance"||m.type==="deposit"){ setBalance(m.balance); if(m.type==="deposit") toast("💰 Deposit credited"); }
@@ -2287,6 +2312,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   }
   $("ddSpin").addEventListener("click", function(){
     if(!authed){ toast("Sign in to play"); return openEmailLogin(); }
+    if(DD.serveurConnait===false) return toast("DEAD OR DOGE isn't live on this server yet");
     if(DD.anime) return;
     if(DD.mise<DD_MIN) return toast("Minimum bet: "+ddFmt(DD_MIN)+" $SWOGE");
     if(balance<DD.mise) return toast("Not enough $SWOGE");

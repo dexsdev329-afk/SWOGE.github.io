@@ -196,7 +196,15 @@ video{ max-width:100%; }
   .wrap{max-width:680px;margin:0 auto;padding:0 16px}
   main,nav{position:relative;z-index:1}
 
-  nav{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);
+  /* ---- CETTE REGLE NE DOIT PAS ATTEINDRE LE CHROME DE LA PAGE ----
+     Sans classe, elle visait TOUS les <nav>, donc aussi `.sw-nav`, la
+     navigation de la colonne de gauche : quatre liens qui demandent 437 px
+     etaient mis en RANGEE dans une colonne de 230, et comme rien ne les
+     rognait, « Sports » et « Docs » sortaient de 216 px et se peignaient
+     par-dessus le jeu — sur six pages. `nav.sb-ancre` juste plus bas ne
+     faisait qu'annuler le degat sur UN nav : le defaut etait connu et
+     rustine au cas par cas plutot qu'a la source. */
+  nav:not(.sw-nav):not(.sb-ancre){display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--line);
     background:rgba(11,9,6,.72);backdrop-filter:blur(8px);position:sticky;top:0;z-index:5}
   .brand{font-family:'Anton',sans-serif;font-size:20px;letter-spacing:1px;color:var(--gold)}
   .brand span{color:var(--text)}

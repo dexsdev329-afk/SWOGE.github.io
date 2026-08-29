@@ -140,7 +140,16 @@ header{display:flex;align-items:center;justify-content:space-between;gap:12px;fl
 .brand h1{font-family:'Anton',sans-serif;font-size:clamp(22px,5vw,32px);line-height:.95}
 .brand h1 span{color:var(--fire)}
 .brand .sub{font-family:'Space Mono',monospace;font-size:11px;color:var(--dim);letter-spacing:2px;text-transform:uppercase}
-nav{display:flex;gap:8px;flex-wrap:wrap}
+  /* ---- CETTE REGLE NE DOIT PAS ATTEINDRE LE CHROME DE LA PAGE ----
+     Sans classe, elle visait TOUS les <nav>, donc aussi `.sw-nav`, la
+     navigation de la colonne de gauche : quatre liens qui demandent 437 px
+     etaient mis en RANGEE dans une colonne de 230, et comme rien ne les
+     rognait, « Sports » et « Docs » sortaient de 216 px et se peignaient
+     par-dessus le contenu. `nav.sb-ancre` plus bas ne faisait qu'annuler le
+     degat sur UN nav : le defaut etait rustine au cas par cas, pas a la
+     source. Le `:not()` laisse intacts les <nav> nus qui, eux, veulent bien
+     ce gabarit sombre. */
+nav:not(.sw-nav):not(.sb-ancre){display:flex;gap:8px;flex-wrap:wrap}
 nav a,.walletbtn{font-family:'Space Mono',monospace;font-size:12px;padding:8px 12px;border:1px solid var(--line);border-radius:999px;color:var(--fur);cursor:pointer;background:transparent}
 nav a:hover,.walletbtn:hover{border-color:var(--gold);color:var(--gold)}
 .panel{background:var(--void2);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:16px;box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05)}

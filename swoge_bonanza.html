@@ -506,6 +506,17 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
 .bz-c.gagne img{ animation:bzPulse .42s ease-in-out 2; }
 .bz-c.part img{ opacity:0; transform:scale(.4); }
 .bz-c.tombe img{ animation:bzTombe .26s ease-out; }
+/* ---- LES ROULEAUX ----
+   Pendant qu'une colonne tourne, les symboles defilent : on les remplace vite
+   et on les fait passer de haut en bas. Le leger flou vertical fait la
+   difference entre « ca clignote » et « ca tourne » — sans lui, l'oeil voit
+   des images qui se succedent, pas un mouvement. */
+.bz-c.tourne img{ animation:bzDefile .11s linear infinite; filter:blur(0.7px); }
+@keyframes bzDefile{ from{ transform:translateY(-108%); } to{ transform:translateY(108%); } }
+/* L'arret : la colonne se pose et rebondit une fois. C'est ce rebond qui
+   donne le sentiment que quelque chose s'est ARRETE, plutot que disparu. */
+.bz-c.pose img{ animation:bzPose .3s cubic-bezier(.2,1.5,.4,1); }
+@keyframes bzPose{ 0%{ transform:translateY(-120%); } 70%{ transform:translateY(6%); } 100%{ transform:translateY(0); } }
 @keyframes bzPulse{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.16); } }
 @keyframes bzTombe{ from{ transform:translateY(-140%); } to{ transform:translateY(0); } }
 .bz-c.gagne{ background:rgba(255,197,61,.22); box-shadow:inset 0 0 0 2px rgba(255,197,61,.6); }
@@ -1687,6 +1698,57 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
      contente de RACONTER la suite d'etapes qu'il a envoyee. Si la page
      recalculait quoi que ce soit, elle pourrait montrer autre chose que ce
      qui a ete paye. */
+  /* ---- FAIRE TOURNER LES ROULEAUX ----
+   * La grille finale est deja connue — le serveur l'a envoyee — mais l'afficher
+   * d'un coup ne ressemble a rien : on ne voit pas qu'on a joue. Chaque colonne
+   * defile donc quelques centaines de millisecondes, puis se pose, de gauche a
+   * droite. Le decalage entre colonnes est ce qui fait durer l'attente juste
+   * assez pour qu'elle soit agreable.
+   *
+   * Rien de tout ca ne DECIDE quoi que ce soit : c'est un habillage pose devant
+   * un resultat deja calcule et deja paye. Si l'animation etait interrompue,
+   * le solde serait le meme.
+   */
+  var BZ_SYMS = null;
+  function bzSyms(){
+    if(BZ_SYMS) return BZ_SYMS;
+    var b = BZ.bareme;
+    BZ_SYMS = b ? b.symboles.concat([b.scatter])
+                : ["banane","raisin","pasteque","prune","pomme","bonbon_bleu","bonbon_vert","bonbon_violet","coeur","sucette"];
+    return BZ_SYMS;
+  }
+  function bzHasard(){ var l=bzSyms(); return l[Math.floor(Math.random()*l.length)]; }
+
+  function bzRouleaux(grille, fin){
+    var cs = $("bzGrille").children;
+    var DEFILE = 55;            // un symbole toutes les 55 ms : assez vite pour flouter
+    var BASE = 420, PAS = 130;  // la premiere colonne s'arrete a 420 ms, puis +130 par colonne
+    var restants = 6;
+
+    for(var i=0;i<30;i++){ cs[i].className="bz-c tourne"; }
+
+    for(var c=0;c<6;c++){
+      (function(col){
+        var minuteur = setInterval(function(){
+          for(var r=0;r<5;r++){
+            var im = cs[r*6+col].firstChild;
+            im.src = bzImg(bzHasard());
+          }
+        }, DEFILE);
+        setTimeout(function(){
+          clearInterval(minuteur);
+          for(var r=0;r<5;r++){
+            var i2 = r*6+col, cel = cs[i2];
+            cel.className = "bz-c pose";
+            cel.firstChild.src = bzImg(grille[i2]);
+          }
+          son("pose");
+          if(--restants === 0) setTimeout(fin, 260);
+        }, BASE + col*PAS);
+      })(c);
+    }
+  }
+
   function bzJoueEtapes(etapes, fin){
     var k=0;
     function suivante(){
@@ -1717,7 +1779,11 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     BZ.anime=true; bzRender();
     $("bzGain").textContent="";
     son("debut");
-    bzJoueEtapes(t.base.etapes, function(){
+    /* Les rouleaux d'abord, sur la grille du PREMIER jet ; les cascades
+       ensuite, qui repartent de cette meme grille. */
+    var premiere = (t.base.etapes[0] && t.base.etapes[0].grille) || null;
+    var suite = function(){ bzJoueEtapes(t.base.etapes, apresBase); };
+    function apresBase(){
       function finir(){
         BZ.hist.unshift({ mise:t.mise, multi:t.multi, net:t.net, gratuits:t.toursGratuits });
         if(BZ.hist.length>60) BZ.hist.pop();
@@ -1744,7 +1810,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
           })();
         });
       } else finir();
-    });
+    }
+    if(premiere) bzRouleaux(premiere, suite); else suite();
   }
 
 

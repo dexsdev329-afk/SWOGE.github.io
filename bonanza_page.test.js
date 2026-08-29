@@ -155,7 +155,30 @@ process.on('unhandledRejection', (e) => {
   ok(/Bet/.test(miseTexte), 'la mise s affiche apres le clic : ' + JSON.stringify(miseTexte));
 
   const soldeAvant = q.balance.toString();
+
+  /* ---- LES ROULEAUX TOURNENT-ILS VRAIMENT ? ----
+   * On observe la grille pendant le tour : on veut voir des cases porter la
+   * classe `tourne`, et surtout voir les IMAGES CHANGER. Sans le second
+   * controle, une animation qui aurait perdu son minuteur passerait au vert :
+   * les cases seraient marquees « en rotation » et parfaitement immobiles. */
+  const observe = p.evaluate(() => new Promise((res) => {
+    const g = document.getElementById('bzGrille');
+    let tourne = 0, poses = 0;
+    const vues = new Set();
+    const t = setInterval(() => {
+      if (g.querySelector('.bz-c.tourne')) tourne++;
+      if (g.querySelector('.bz-c.pose')) poses++;
+      const im = g.children[0].firstChild;
+      if (im && im.getAttribute('src')) vues.add(im.getAttribute('src'));
+    }, 40);
+    setTimeout(() => { clearInterval(t); res({ tourne, poses, symbolesVus: vues.size }); }, 2600);
+  }));
   await p.click('#bzSpin');
+  const rou = await observe;
+  ok(rou.tourne > 0, `des colonnes tournent pendant le tour (${rou.tourne} releves)`);
+  ok(rou.symbolesVus > 2,
+     `la premiere case change vraiment de symbole pendant la rotation (${rou.symbolesVus} symboles vus)`);
+  ok(rou.poses > 0, `les colonnes se posent en fin de rotation (${rou.poses} releves)`);
   await p.waitForFunction(() => window.__s.some((s) => s.__m.some((m) => m.type === 'bonanza')),
                           { timeout: 20000 }).catch(() => {});
   const rep = await p.evaluate(() => {

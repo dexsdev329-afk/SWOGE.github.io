@@ -1905,11 +1905,15 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
        rejouent a chaque etage, empilerait six secondes de fanfare sur
        elles-memes. Elles attendent une oreille : voir
        `son/bonanza/ecouter.html`. */
+    /* Quatre des huit sont vrais desormais. Ce qui reste en `provisoire/`
+       est du Kenney CC0 qui tient la place — voir `son/bonanza/LISEZ-MOI.md`.
+       Les durees comptent plus que le style ici : `gain` se rejoue a CHAQUE
+       etage de cascade, donc il doit rester court. */
     var l={ rien:"son/bonanza/spin_rien.mp3", debut:"son/bonanza/provisoire/spin_debut.mp3",
-            pose:"son/bonanza/symbole_pose.mp3", gain:"son/bonanza/provisoire/gain.mp3",
+            pose:"son/bonanza/symbole_pose.mp3", gain:"son/bonanza/gain.mp3",
             cascade:"son/bonanza/provisoire/cascade.mp3", scatter:"son/bonanza/provisoire/scatter.mp3",
-            gratuits:"son/bonanza/provisoire/tours_gratuits.mp3", bombe:"son/bonanza/provisoire/bombe.mp3",
-            gros:"son/bonanza/provisoire/gros_gain.mp3" };
+            gratuits:"son/bonanza/tours_gratuits.mp3", bombe:"son/bonanza/provisoire/bombe.mp3",
+            gros:"son/bonanza/gros_gain.mp3" };
     for(var k in l){ try{ var a=new Audio(l[k]); a.preload="auto"; a.volume=.55; SONS[k]=a; }catch(e){} }
   })();
   function son(k){ var a=SONS[k]; if(!a) return; try{ a.currentTime=0; a.play().catch(function(){}); }catch(e){} }

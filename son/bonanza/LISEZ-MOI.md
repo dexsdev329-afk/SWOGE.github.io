@@ -87,7 +87,45 @@ touche — baisser le niveau ne repare pas une saturation deja gravee, et
 l'equilibrage se fera sur le lot complet. Mais si tu regeneres cette musique
 un jour, demande un master a -1 dB.
 
-## Les huit autres : provisoires, dans `provisoire/`
+## Ce qui est VRAI maintenant, et d'ou ca vient
+
+| fichier | duree | origine |
+|---|---|---|
+| `symbole_pose.mp3` | 0,49 s | lot fourni, piste 2 sur 9 |
+| `gain.mp3` | 0,60 s | **derive** de la tete de `melodic-bonus-collect` |
+| `tours_gratuits.mp3` | 1,46 s | `mixkit-melodic-bonus-collect-1938` |
+| `gros_gain.mp3` | 3,58 s | `mixkit-payout-award-1934` |
+
+Les trois derniers viennent de **Mixkit**. Queue morte coupee (0,58 s et
+0,66 s), fondu de sortie de 30 ms, **stereo conserve** — l'ecart entre les
+canaux vaut 0,57 et 0,81, c'est du vrai stereo et le passer en mono
+perdrait la largeur. Verifie APRES encodage : zero echantillon sature.
+
+`gain.mp3` est un DECOUPAGE, pas un fichier fourni : la montee et la crete
+de `melodic-bonus-collect` tiennent en 0,6 s, ce qui fait un carillon bref.
+Il fallait quelque chose de court a cet endroit — `gain` se rejoue a CHAQUE
+etage de cascade, jusqu'a dix fois sur un bon tour.
+
+### LA LICENCE MIXKIT N'A PAS PU ETRE LUE
+
+Trois tentatives, la page ne sert pas son texte. Ce que j'ai pu etablir :
+
+- la licence gratuite des BRUITAGES autorise l'usage commercial, sans
+  attribution ;
+- **une restriction nommant « CDs, DVDs, Video Games or TV & Radio
+  broadcasts » existe — mais elle porte sur la MUSIQUE Mixkit**, pas sur les
+  bruitages.
+
+Notre usage est un jeu. Si cette restriction couvre aussi les bruitages, ces
+trois fichiers ne vont pas. **A verifier a l'oeil sur `mixkit.co/license`,
+rubrique « Sound Effects Free License »** — deux minutes, dans un navigateur
+qui execute le JavaScript.
+
+Si ca coince : le paquet GDC de Sonniss couvre les memes cases, et sa
+licence, elle, a ete lue en entier (voir `OU-TROUVER.md`). Le remplacement
+est une ligne.
+
+## Les autres : provisoires, dans `provisoire/`
 
 Huit bruitages CC0 de Kenney y sont poses pour que le jeu puisse etre construit
 et essaye tout de suite. **Ils ne collent pas au style** — le catalogue CC0 de

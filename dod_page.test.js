@@ -1,0 +1,142 @@
+'use strict';
+/*
+ * LA PAGE DE DEAD OR DOGE TIENT-ELLE SON PLATEAU ?
+ *
+ * Trois pieges, et j'ai remis les pieds dans deux d'entre eux en l'ecrivant
+ * — les memes qu'a Bonanza, dans le meme ordre.
+ *
+ * 1. LES SYMBOLES SE CHEVAUCHAIENT. L'image est a `104 %` de sa case pour
+ *    deborder un peu ; a `108 %` elle faisait 117 px pour un pas vertical de
+ *    113,9, donc trois pixels de recouvrement entre deux rangees. Trois
+ *    pixels ne se voient pas sur une capture et se voient en jouant.
+ *
+ * 2. LE PLATEAU N'EXISTAIT PAS SANS SERVEUR. `ddBareme()` sortait des le
+ *    premier `if` tant que le bareme n'etait pas arrive : un visiteur non
+ *    connecte voyait quinze cases vides et aucun bouton. Tout ce qu'il faut
+ *    pour PEINDRE etait pourtant deja la.
+ *
+ * 3. LE CADRE PEUT MANGER UN SYMBOLE. Celui de Bonanza le fait — 23 % de la
+ *    case du bas derriere un coffre. Celui-ci a ete dessine avec les coins
+ *    libres, et cet essai est ce qui garantit qu'il le reste.
+ *
+ * Et un quatrieme qui n'est pas un piege mais une regle : LES PRIX D'ACHAT
+ * NE SONT PAS DANS CETTE PAGE. Ils viennent du serveur, parce qu'un prix
+ * recopie se dement le jour ou le moteur est remesure.
+ */
+const fs = require('fs');
+const path = require('path');
+const http = require('http');
+
+const SITE = __dirname;
+let chromium = null;
+try { chromium = require('playwright').chromium; } catch (e) {}
+if (!chromium) { console.log('dod_page.test.js : playwright absent — essai saute'); process.exit(0); }
+
+let n = 0, rates = 0;
+const ok = (c, m) => { n++; if (c) console.log('  ok   ' + m); else { rates++; console.log('  RATE ' + m); } };
+
+const T = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
+            '.webp':'image/webp', '.png':'image/png', '.jpg':'image/jpeg',
+            '.mp3':'audio/mpeg', '.ogg':'audio/ogg' };
+
+(async () => {
+  const srv = http.createServer((q, r) => {
+    let p = decodeURIComponent(q.url.split('?')[0]);
+    if (p === '/') p = '/index.html';
+    const f = path.join(SITE, p);
+    if (!f.startsWith(SITE) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { r.writeHead(404); return r.end(); }
+    r.writeHead(200, { 'content-type': T[path.extname(f)] || 'application/octet-stream' });
+    fs.createReadStream(f).pipe(r);
+  });
+  await new Promise((res) => srv.listen(0, res));
+  const port = srv.address().port;
+  const nav = await chromium.launch();
+
+  for (const [nom, w, h] of [['PC', 1400, 1000], ['telephone', 390, 844]]) {
+    const p = await nav.newPage({ viewport: { width: w, height: h } });
+    const erreurs = [];
+    p.on('pageerror', (e) => erreurs.push(e.message));
+    await p.goto('http://127.0.0.1:' + port + '/swoge_dod.html', { waitUntil: 'domcontentloaded' });
+    await p.waitForTimeout(2200);
+
+    console.log('\n-- ' + nom + ' --');
+
+    /* 2. LE PLATEAU SANS SERVEUR */
+    const vu = await p.evaluate(() => ({
+      cases: document.querySelectorAll('#ddGrille .dd-c').length,
+      peintes: [...document.querySelectorAll('#ddGrille img')].filter((i) => i.getAttribute('src')).length,
+      achats: document.querySelectorAll('#ddAchats .dd-a').length,
+      mise: (document.getElementById('ddMise') || {}).textContent || '',
+      spin: !!document.getElementById('ddSpin'),
+    }));
+    ok(vu.cases === 15, 'quinze cases, cinq rouleaux de trois (' + vu.cases + ')');
+    ok(vu.peintes === 15, 'toutes peintes SANS serveur : la page ne demande pas de se connecter pour exister');
+    ok(vu.achats === 4, 'les quatre crans d achat sont poses (' + vu.achats + ')');
+    ok(/\d/.test(vu.mise), 'une mise de depart est proposee : ' + vu.mise.trim());
+
+    /* 1. LE CHEVAUCHEMENT */
+    const g = await p.evaluate(() => {
+      const cs = document.getElementById('ddGrille').children;
+      const c0 = cs[0].getBoundingClientRect();
+      const im = cs[0].firstChild.getBoundingClientRect();
+      return { vu: Math.min(im.width, im.height),
+               pasH: cs[1].getBoundingClientRect().left - c0.left,
+               pasV: cs[5].getBoundingClientRect().top - c0.top };
+    });
+    ok(g.vu <= g.pasV + 0.6,
+       'les rangees ne se chevauchent pas : symbole ' + g.vu.toFixed(1)
+       + ' px pour un pas de ' + g.pasV.toFixed(1));
+    ok(g.vu <= g.pasH + 0.6,
+       'les colonnes non plus (' + g.pasH.toFixed(1) + ' px)');
+
+    /* 3. LE CADRE NE MANGE AUCUN SYMBOLE */
+    const couv = await p.evaluate(async () => {
+      const zone = document.querySelector('.dd-zone').getBoundingClientRect();
+      const cs = document.getElementById('ddGrille').children;
+      const im0 = cs[0].firstChild.getBoundingClientRect();
+      const vu = Math.min(im0.width, im0.height);
+      const img = new Image(); img.src = 'img/dod/cadre.webp';
+      await img.decode();
+      const cv = document.createElement('canvas');
+      cv.width = img.naturalWidth; cv.height = img.naturalHeight;
+      const cx = cv.getContext('2d'); cx.drawImage(img, 0, 0);
+      const d = cx.getImageData(0, 0, cv.width, cv.height).data;
+      let pire = 0, ou = -1;
+      for (let i = 0; i < cs.length; i++) {
+        const r = cs[i].getBoundingClientRect();
+        const mx = (r.left + r.right) / 2, my = (r.top + r.bottom) / 2;
+        const x0 = (mx - vu / 2 - zone.left) / zone.width, x1 = (mx + vu / 2 - zone.left) / zone.width;
+        const y0 = (my - vu / 2 - zone.top) / zone.height, y1 = (my + vu / 2 - zone.top) / zone.height;
+        let t = 0, c = 0;
+        for (let yy = Math.max(0, Math.floor(y0 * cv.height)); yy < Math.min(cv.height, Math.ceil(y1 * cv.height)); yy += 2)
+          for (let xx = Math.max(0, Math.floor(x0 * cv.width)); xx < Math.min(cv.width, Math.ceil(x1 * cv.width)); xx += 2) {
+            t++; if (d[(yy * cv.width + xx) * 4 + 3] > 60) c++;
+          }
+        if (t && c / t > pire) { pire = c / t; ou = i; }
+      }
+      return { pire, ou };
+    });
+    ok(couv.pire < 0.05,
+       'aucun symbole n est mange par le cadre (le pire est la case ' + couv.ou
+       + ' a ' + (100 * couv.pire).toFixed(1) + ' %) — celui de Bonanza en cache 23 %');
+
+    ok(erreurs.length === 0, 'aucune erreur JS' + (erreurs.length ? ' : ' + erreurs[0] : ''));
+    await p.close();
+  }
+
+  /* 4. LES PRIX NE SONT PAS DANS LA PAGE */
+  const src = fs.readFileSync(path.join(SITE, 'swoge_dod.html'), 'utf8');
+  const jeu = src.slice(src.indexOf('DD_ACHAT_IMG'), src.indexOf('function ddBareme'));
+  const durs = (jeu.match(/\b(1\.5|7|12\.5|36|99|108|499)\s*[x×]/gi) || []);
+  console.log('');
+  ok(durs.length === 0,
+     "aucun prix d achat n est ecrit en dur dans la page — ils viennent du serveur"
+     + (durs.length ? ' (trouve : ' + durs.join(', ') + ')' : ''));
+  ok(/b\.crans\[c\]\s*&&\s*b\.crans\[c\]\.prix/.test(src),
+     'et ils sont bien lus dans le bareme envoye a la connexion');
+
+  await nav.close();
+  srv.close();
+  console.log('\n' + (rates ? 'RATES : ' + rates + '/' + n : 'tout passe : ' + n + ' verifications'));
+  process.exit(rates ? 1 : 0);
+})();

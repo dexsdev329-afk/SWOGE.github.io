@@ -1227,21 +1227,91 @@ function mcOfToken(pool, addr, quote){
     return price*1e9;                        // offre = 1e9 jetons
   },function(){ return null; });
 }
+/* ================= LE DOLLAR VIENT DE LA MEME SOURCE QUE DEXSCREENER =================
+ *
+ * CE QUI N'ALLAIT PAS. La page reconstruisait le prix en dollars en DEUX
+ * SAUTS : le prix du jeton en $SWOGE (lu dans son pool), puis $SWOGE en ETH
+ * (lu dans la paire SWOGE/WETH), puis ETH en dollars (chez CoinGecko). Le
+ * calcul est juste — verifie contre DexScreener sur Swogebet, 4 435 $ contre
+ * 4 432 $, sept centiemes de pour-cent d'ecart. Mais deux sauts, c'est deux
+ * occasions d'echouer, et le troisieme depend d'un service tiers.
+ *
+ * ET QUAND CA ECHOUE, CA NE LE DIT PAS. `usdRate` rendait `null`, `mcText`
+ * retombait sur la QUANTITE BRUTE, et la carte affichait `167.26M SWOGE MC`
+ * la ou DexScreener affichait `$4.4K`. Le meme jeton, deux nombres qui n'ont
+ * rien a voir, et rien a l'ecran pour dire que l'un est en dollars et l'autre
+ * en jetons. C'est ce qui a fait dire que la capitalisation etait fausse —
+ * elle ne l'etait pas, elle etait dans une autre unite.
+ *
+ * DexScreener publie `priceUsd`, `fdv` et la liquidite pour le pool exact, en
+ * UN appel, jusqu'a trente pools a la fois, avec `access-control-allow-origin:
+ * *`. On le prend en premier : la page et DexScreener ne peuvent alors plus
+ * diverger, puisque c'est le meme chiffre. Le chemin en deux sauts reste
+ * derriere, pour un pool trop neuf pour etre indexe.
+ */
+var DEX_CHAIN="robinhood", dexCache={}, DEX_TTL=60000;
+function dexLu(pool){
+  if(!pool) return null;
+  var e=dexCache[String(pool).toLowerCase()];
+  return (e && Date.now()-e.t < DEX_TTL) ? e : null;
+}
+async function dexCharge(pools){
+  var manque=[], vus={};
+  for(var i=0;i<pools.length;i++){
+    var p=pools[i]; if(!p) continue;
+    var lc=String(p).toLowerCase();
+    if(dexLu(p) || vus[lc]) continue;
+    vus[lc]=1; manque.push(p);
+  }
+  for(var d=0; d<manque.length; d+=30){
+    var lot=manque.slice(d,d+30);
+    try{
+      var r=await fetchBorne("https://api.dexscreener.com/latest/dex/pairs/"+DEX_CHAIN+"/"+lot.join(","),{},6000);
+      var j=await r.json(), ps=(j&&j.pairs)||[];
+      for(var k=0;k<ps.length;k++){
+        var q=ps[k], a=String(q.pairAddress||"").toLowerCase();
+        if(!a) continue;
+        var fdv = (q.fdv!=null) ? +q.fdv : ((q.marketCap!=null) ? +q.marketCap : null);
+        dexCache[a]={ t:Date.now(),
+                      usd:(+q.priceUsd)||null,
+                      fdv:(isFinite(fdv)&&fdv>0)?fdv:null,
+                      liq:(q.liquidity&&+q.liquidity.usd)||null };
+      }
+    }catch(e){}
+    /* Un pool que DexScreener ne connait pas (trop neuf) doit etre marque,
+       sinon on le redemande a chaque rafraichissement pour rien. */
+    for(var m=0;m<lot.length;m++){
+      var lc2=String(lot[m]).toLowerCase();
+      if(!dexCache[lc2]) dexCache[lc2]={t:Date.now(),usd:null,fdv:null,liq:null};
+    }
+  }
+}
+
 /* Le taux qui convertit l'actif de cotation en dollars. Null tant qu'il n'est
    pas connu — on affiche alors la quantite brute, jamais un dollar invente. */
 function usdRate(v){ return v===3 ? exploreSu : exploreEu; }
-function mcUsd(r){ var t=usdRate(r.v); return (r.mcQuote!=null && t!=null) ? r.mcQuote*t : null; }
+function mcUsd(r){
+  var d=dexLu(r.pool);
+  if(d && d.fdv!=null) return d.fdv;              // le chiffre de DexScreener, tel quel
+  var t=usdRate(r.v);
+  return (r.mcQuote!=null && t!=null) ? r.mcQuote*t : null;
+}
 function volUsd(r){ var t=usdRate(r.v); return (r.vol24 && t!=null) ? r.vol24*t : 0; }
 function mcText(r){
-  if(r.mcQuote!=null){
-    var u=mcUsd(r);
-    return (u!=null ? fmtUsd(u) : fmtQty(r.mcQuote)+" "+venue(r.v).sym)+" <small>MC</small>";
-  }
+  var u=mcUsd(r);
+  if(u!=null) return fmtUsd(u)+" <small>MC</small>";
+  /* PAS DE DOLLARS : on le DIT. Afficher `167.26M SWOGE` a cote d'un `$4.4K`
+     ailleurs, c'est donner deux nombres sans dire lequel est en quoi. */
+  if(r.mcQuote!=null) return fmtQty(r.mcQuote)+" "+venue(r.v).sym+" <small>MC (pas de taux $)</small>";
   return r.mode===0 ? "on curve" : "<small class='mcpend'>…</small>";
 }
 // fetch market caps in the background with limited concurrency, update cards in place
 async function loadMarketCaps(rows){
   var pending=rows.filter(function(r){ return r.pool; }), i=0, CONC=8;
+  /* DexScreener d'abord, en un appel pour trente pools : s'il repond, le
+     calcul par la chaine ci-dessous ne sert plus qu'a remplir `mcQuote` pour
+     l'affichage en jetons. */
+  try{ await dexCharge(pending.map(function(r){ return r.pool; })); }catch(e){}
   async function worker(){
     while(i<pending.length){
       var r=pending[i++];
@@ -1976,8 +2046,24 @@ async function refreshTrade(){
     }
   }
 
-  $("#tvMcap").textContent = eu ? (fmtUsd(mcap*eu)+"  ·  "+fmtQty(mcap)+" "+QS) : (fmtQty(mcap)+" "+QS);
-  $("#tvPrice").textContent = eu ? (fmtPrice(price*eu)+"  ·  "+price.toExponential(2)+" "+QS) : (price.toExponential(3)+" "+QS);
+  /* ---- LE MEME CHIFFRE QUE DEXSCREENER, PAS UN CHIFFRE RECONSTRUIT ----
+     On tente le pool chez DexScreener : s'il le connait, on prend SON prix en
+     dollars et SA capitalisation. Sinon on garde le calcul en deux sauts.
+     L'appel est borne et son echec ne fait rien tomber. */
+  var dx=null;
+  if(curPool){ try{ await dexCharge([curPool]); dx=dexLu(curPool); }catch(e){} }
+  var mcUsdV = (dx && dx.fdv!=null) ? dx.fdv : (eu!=null ? mcap*eu : null);
+  var prUsdV = (dx && dx.usd!=null) ? dx.usd : (eu!=null ? price*eu : null);
+
+  $("#tvMcap").textContent = (mcUsdV!=null)
+    ? fmtUsd(mcUsdV)+"  ·  "+fmtQty(mcap)+" "+QS
+        + ((dx && dx.liq!=null) ? "  ·  liq "+fmtUsd(dx.liq) : "")
+    /* Sans taux, on NOMME l'unite : c'est l'absence de ce mot qui a fait lire
+       « 167.26M » comme des dollars a cote du « $4.4K » de DexScreener. */
+    : fmtQty(mcap)+" "+QS+"  (pas de taux $)";
+  $("#tvPrice").textContent = (prUsdV!=null)
+    ? fmtPrice(prUsdV)+"  ·  "+price.toExponential(2)+" "+QS
+    : price.toExponential(3)+" "+QS+"  (pas de taux $)";
   loadAndRenderChart(curToken, eu);
 
   if(account){

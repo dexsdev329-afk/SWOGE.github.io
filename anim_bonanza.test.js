@@ -51,7 +51,7 @@ const SYMBOLES = ['banane', 'raisin', 'pasteque', 'prune', 'pomme',
       const i = h.lastIndexOf('})();');
       h = h.slice(0, i)
         + '\n  window.__bz={bzPoseGrille:bzPoseGrille,bzPeint:bzPeint,bzEtincelles:bzEtincelles,'
-        + 'bzArrets:bzArrets,bzMonte:bzMonte,bzValeur:bzValeur,BGM:BGM};\n' + h.slice(i);
+        + 'bzArrets:bzArrets,bzMonte:bzMonte,bzValeur:bzValeur,bzRouleaux:bzRouleaux,bzScatSouligne:bzScatSouligne,BGM:BGM};\n' + h.slice(i);
       r.writeHead(200, { 'content-type': 'text/html' });
       return r.end(h);
     }
@@ -359,6 +359,40 @@ const SYMBOLES = ['banane', 'raisin', 'pasteque', 'prune', 'pomme',
      'et le plus gros tour courant — dix tours gratuits de trois etages avec'
      + ' bombe — tient en ' + Math.round(duree.grosTour / 1000) + ' s'
      + ' (il en faisait 55 au rythme du jeu de base)');
+
+  /* ---------------- 7. LES COLONNES GARDENT LA MEME LARGEUR ----------------
+   * DEFAUT MESURE : « le jeu agrandit la grille et la rapetisse ». Ce n'etait
+   * pas la grille — c'etait chaque COLONNE, pendant chaque tour. `1fr` vaut
+   * `minmax(auto,1fr)`, et le minimum `auto` d'une case vaut la taille de son
+   * contenu SAUF si la case a un `overflow` autre que `visible`. Les cases
+   * passent justement de `visible` (au repos) a `hidden` (en rotation) : les
+   * deux etats n'avaient donc pas le meme minimum, et chaque colonne qui se
+   * posait ecrasait celles qui tournaient encore — la derniere tombait aux
+   * deux tiers de sa taille. */
+  console.log('\n-- les colonnes ne se deforment pas --');
+  const colonnes = await p.evaluate(async ([g]) => {
+    const grille = document.getElementById('bzGrille');
+    const larg = [];
+    const lis = () => {
+      const l = [...grille.children].slice(0, 6)
+        .map((c) => +c.getBoundingClientRect().width.toFixed(2));
+      larg.push({ l, deborde: +(grille.scrollWidth - grille.clientWidth).toFixed(1) });
+    };
+    const t = setInterval(lis, 40);
+    window.__bz.bzPoseGrille();
+    await new Promise((r) => window.__bz.bzRouleaux(g, r));
+    clearInterval(t); lis();
+    return larg;
+  }, [grille]);
+  const toutes = colonnes.flatMap((r) => r.l);
+  const colMin = Math.min(...toutes), colMax = Math.max(...toutes);
+  ok(colMax - colMin < 0.5,
+     'les six colonnes gardent la MEME largeur pendant tout le tour ('
+     + colMin.toFixed(2) + '–' + colMax.toFixed(2) + ' px sur ' + colonnes.length
+     + ' releves) — elles allaient de 43,81 a 66,30');
+  ok(colonnes.every((r) => r.deborde < 1),
+     'et la grille ne deborde jamais sur elle-meme (max '
+     + Math.max(...colonnes.map((r) => r.deborde)) + ' px, il y en avait 16)');
 
   ok(erreurs.length === 0, 'aucune erreur JS' + (erreurs.length ? ' : ' + erreurs[0] : ''));
   console.log('\n' + n + ' verifications, ' + rates + ' echec(s)');

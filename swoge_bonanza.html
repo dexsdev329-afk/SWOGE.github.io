@@ -496,7 +496,30 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
    flou : les symboles doivent rester lisibles par-dessus, c'est la seule
    contrainte qui compte ici. */
 .bz-zone{ position:relative; width:min(100%,560px); margin:0 auto; }
-.bz-grille{ display:grid; grid-template-columns:repeat(6,1fr); gap:clamp(2px,.8cqi,6px);
+/* ---- `minmax(0,1fr)` ET NON `1fr` ----
+   DEFAUT MESURE : « le jeu agrandit la grille et la rapetisse ». Ce n'est pas
+   la grille — c'est chaque COLONNE, pendant chaque tour.
+   `1fr` vaut `minmax(auto,1fr)`, et le minimum `auto` d'une case de grille est
+   la taille de son contenu — SAUF si la case a un `overflow` autre que
+   `visible`, auquel cas ce minimum tombe a zero. Or les cases sont passees en
+   `overflow:visible` pour que les symboles debordent, et repassent en
+   `hidden` le temps de la rotation. Les deux etats n'ont donc pas le meme
+   minimum, et les colonnes se disputent la largeur au fur et a mesure qu'elles
+   se posent. Releve pendant un tour, colonne par colonne :
+
+       66,30  61,80  61,80  61,80  61,80  61,80
+       66,30  66,30  60,67  60,67  60,67  60,67
+       66,30  66,30  66,30  58,80  58,80  58,80
+       66,30  66,30  66,30  66,30  55,05  55,06
+       66,30  66,30  66,30  66,30  66,30  43,81   <- la derniere a 2/3
+
+   Chaque colonne qui se pose gonfle et ecrase celles qui tournent encore ; la
+   derniere finit aux deux tiers de sa taille avant de revenir d'un coup. La
+   grille debordait aussi de 16 px sur elle-meme.
+   `minmax(0,1fr)` pose le minimum a zero une bonne fois : les six colonnes
+   font la meme largeur, quel que soit leur `overflow`, et les symboles
+   debordent toujours. */
+.bz-grille{ display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:clamp(2px,.8cqi,6px);
   padding:clamp(6px,2cqi,14px); border-radius:16px;
   /* ---- LE DECOR SE VOIT ----
      Le voile etait a 87 % : le paysage de bonbons etait paye, charge, et
@@ -632,6 +655,44 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
    resultat est deja calcule et deja paye — ce ralenti ne decide de rien, il
    donne a la derniere colonne le poids qu'elle a vraiment. */
 .bz-c.attente{ box-shadow:inset 0 0 0 2px rgba(255,197,61,.75), 0 0 18px rgba(255,197,61,.5); }
+
+/* ---- LA SUCETTE SE REMARQUE ----
+   C'est le symbole qui compte : quatre d'entre elles ouvrent dix tours
+   gratuits, et les tours gratuits portent 41,5 des 96,9 points de retour du
+   jeu — mesure sur 400 000 tours. Tombee au milieu des fruits sans rien qui
+   la distingue, personne ne la voyait arriver : le joueur decouvrait le
+   bonus une fois dedans, au lieu de l'esperer pendant que les rouleaux
+   tournent. C'est pourtant cette attente-la qui fait jouer. */
+.bz-c.scat{ background:rgba(255,197,61,.14);
+  box-shadow:inset 0 0 0 2px rgba(255,197,61,.85), 0 0 22px rgba(255,120,200,.55); }
+.bz-c.scat img{ animation:bzScat 1.5s ease-in-out infinite; }
+@keyframes bzScat{ 0%,100%{ transform:scale(1) rotate(0); } 50%{ transform:scale(1.1) rotate(6deg); } }
+
+/* ---- LE COMPTEUR DE SUCETTES ----
+   Combien sont tombees, et combien il en faut. Un compteur qui n'apparait
+   que lorsqu'il y en a au moins une : affiche « 0/4 » en permanence, il
+   devient du decor et cesse d'etre lu. */
+/* Il chevauchait le bouton SPIN, pose sous la grille. Il mord maintenant le
+   BORD HAUT du cadre : c'est la place d'un compteur de machine, il ne
+   recouvre presque rien, et il est dans le regard pendant que les rouleaux
+   tournent — c'est-a-dire au moment ou il sert.
+   `-18 %` et non `-50 %` : a moitie dehors il remontait de 17 px et touchait
+   le logo. A dix-huit pour cent il depasse de cinq, ce que la marge sous le
+   logo absorbe. */
+.bz-scat{ position:absolute; left:50%; transform:translate(-50%,-18%);
+  top:0; z-index:4;
+  display:flex; align-items:center; gap:7px; white-space:nowrap;
+  font-family:"Space Mono",monospace; font-weight:800; font-size:clamp(11px,3cqi,14px);
+  color:#0B1B36; background:#fff; border:1px solid #C99A2E; border-radius:999px;
+  padding:5px 13px 5px 8px; box-shadow:0 2px 8px rgba(11,27,54,.18);
+  opacity:0; transition:opacity .2s ease, transform .2s ease; pointer-events:none; }
+.bz-scat img{ width:1.5em; height:1.5em; object-fit:contain; }
+.bz-scat.on{ opacity:1; }
+/* Au dernier cran il ne reste qu'une sucette a trouver : le compteur le dit
+   fort, parce que c'est le seul moment ou il change quelque chose. */
+.bz-scat.chaud{ background:linear-gradient(180deg,#FFF3CF,#FFC53D); border-color:#A67A1E;
+  transform:translate(-50%,-18%) scale(1.12); box-shadow:0 3px 14px rgba(255,150,60,.6); }
+@media (prefers-reduced-motion:reduce){ .bz-c.scat img{ animation:none; } }
 .bz-c.attente img{ animation-duration:.2s; }
 
 /* Quelqu'un qui a demande moins de mouvement en recoit moins : les eclats,
@@ -1342,6 +1403,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     <div class="bz-zone">
       <div class="bz-grille" id="bzGrille" aria-label="6 by 5 grid"></div>
       <div class="bz-parts" id="bzParts" aria-hidden="true"></div>
+      <div class="bz-scat" id="bzScat" aria-live="polite"></div>
       <div class="bz-voile" id="bzVoile" hidden><span id="bzVoileTxt"></span></div>
     </div>
 
@@ -1890,10 +1952,16 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   }
   function bzPeint(grille, gagnants){
     var g=$("bzGrille"), cs=g.children;
+    var b=BZ.bareme, sym=(b && b.scatter) || "sucette";
     for(var i=0;i<30;i++){
       var c=cs[i], im=c.firstChild;
       if(im.getAttribute("src")!==bzImg(grille[i])) im.src=bzImg(grille[i]);
-      c.className="bz-c"+(gagnants && gagnants.has(grille[i]) ? " gagne" : "");
+      /* Le soulignement de la sucette survit au repeint : elle reste le
+         symbole a suivre pendant toute la cascade, pas seulement a l'arrivee
+         de sa colonne. */
+      c.className = "bz-c"
+        + (gagnants && gagnants.has(grille[i]) ? " gagne" : "")
+        + (grille[i] === sym ? " scat" : "");
     }
   }
 
@@ -2008,6 +2076,42 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     return { arrets:arrets, tendus:tendus };
   }
 
+  /* ---- LE COMPTEUR DE SUCETTES ----
+   * Il ne compte pas ce que le tour VA donner : il compte ce qui est DEJA
+   * tombe a l'ecran, colonne par colonne. La nuance est tout le jeu — un
+   * compteur qui saurait d'avance vendrait la meche, et la page ne doit
+   * jamais en savoir plus que le joueur en train de regarder.
+   */
+  function bzScatMaj(n){
+    var e = $("bzScat"); if(!e) return;
+    var b = BZ.bareme, seuil = (b && b.scattersPourTours) || 4;
+    var sym = (b && b.scatter) || "sucette";
+    if(!n){ e.className = "bz-scat"; e.innerHTML = ""; return; }
+    e.innerHTML = '<img src="'+bzImg(sym)+'" alt="">'+
+      '<span>'+n+' / '+seuil+(n>=seuil ? " \u2014 FREE SPINS!" : "")+'</span>';
+    e.className = "bz-scat on" + (n >= seuil-1 ? " chaud" : "");
+  }
+
+  /* Combien de sucettes sont visibles sur la grille en ce moment, et on les
+     souligne. Les deux vont ensemble : la case qui brille et le compteur
+     doivent toujours dire le meme nombre. */
+  function bzScatSouligne(grille, jusquA){
+    var b = BZ.bareme, sym = (b && b.scatter) || "sucette";
+    var cs = $("bzGrille").children, n = 0;
+    for(var c=0;c<6;c++){
+      if(jusquA !== undefined && c > jusquA) continue;
+      for(var r=0;r<5;r++){
+        var i = r*6+c;
+        if(grille[i] === sym){
+          n++;
+          if(cs[i].className.indexOf("tourne") < 0) cs[i].className = "bz-c scat";
+        }
+      }
+    }
+    bzScatMaj(n);
+    return n;
+  }
+
   function bzRouleaux(grille, fin){
     var cs = $("bzGrille").children;
     var DEFILE = 55;            // un symbole toutes les 55 ms : assez vite pour flouter
@@ -2045,6 +2149,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
             cel.firstChild.src = bzImg(grille[i2]);
           }
           son("pose");
+          /* la colonne vient de se poser : on recompte ce qui est visible */
+          bzScatSouligne(grille, col);
           if(--restants === 0) setTimeout(fin, 260);
         }, plan.arrets[col]);
       })(c);
@@ -2392,6 +2498,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     BZ.anime=true; bzRender();
     $("bzGain").innerHTML="";
     BZ_CUMUL = 0;
+    bzScatMaj(0);
     son("debut");
     /* Les rouleaux d'abord, sur la grille du PREMIER jet ; les cascades
        ensuite, qui repartent de cette meme grille. */

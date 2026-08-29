@@ -33,6 +33,10 @@ const ok = (c, m) => { n++; if (c) console.log('  ok   ' + m); else { rates++; c
 
 const src = fs.readFileSync(path.join(SERVEUR, 'server.js'), 'utf8');
 
+/* Tout le corps est enveloppe : le controle en ligne, a la fin, est
+   asynchrone. */
+(async () => {
+
 /** Les cles d'une table ecrite en toutes lettres dans server.js. On lit le
  *  fichier plutot que de recopier la liste : une liste recopiee vieillit, et
  *  c'est precisement le genre d'oubli que cet essai existe pour attraper. */
@@ -96,5 +100,45 @@ ok(pagesMortes.length === 0,
    'et cette page existe sur le site'
    + (pagesMortes.length ? ' — MORTE : ' + pagesMortes.join(', ') : ''));
 
+/* ---- ET ELLE DOIT ETRE EN LIGNE, PAS SEULEMENT DANS LE DEPOT ----
+ * Telegram ne recoit pas le fichier : il recoit une ADRESSE, et va la
+ * chercher lui-meme. Une vignette presente dans le depot mais pas encore
+ * publiee passe tout ce qui precede et echoue quand meme dans le canal.
+ * On demande donc l'adresse que le serveur construit VRAIMENT.
+ * Sans reseau, on saute : un essai qui echoue faute de reseau apprend a ne
+ * plus le croire. */
+const mBase = /GAME_IMAGE_BASE:\s*env\('GAME_IMAGE_BASE',\s*'([^']+)'/.exec(
+  fs.readFileSync(path.join(SERVEUR, 'config.js'), 'utf8'));
+const mTirage = /const TIRAGE_VIGNETTES = (\d+)/.exec(src);
+if (mBase && mTirage && !process.env.SWOGE_SANS_RESEAU) {
+  const base = mBase[1].replace(/\/+$/, '');
+  const cles = ['bonanza'].concat(noms.filter((c) => c !== 'bonanza').slice(0, 2));
+  const vues = [];
+  for (const cle of cles) {
+    const u = `${base}/jeu-${cle}.jpg?v=${mTirage[1]}`;
+    try {
+      const r = await fetch(u, { method: 'GET', signal: AbortSignal.timeout(20000) });
+      const type = r.headers.get('content-type') || '';
+      const buf = Buffer.from(await r.arrayBuffer());
+      vues.push({ cle, code: r.status, type, taille: buf.length,
+                  jpeg: buf[0] === 0xFF && buf[1] === 0xD8 });
+    } catch (e) { vues.push({ cle, erreur: e.message }); }
+  }
+  if (vues.some((v) => v.erreur)) {
+    console.log('  --   reseau indisponible, controle en ligne saute ('
+                + vues.find((v) => v.erreur).erreur + ')');
+  } else {
+    const b = vues[0];
+    ok(b.code === 200 && b.jpeg,
+       'la vignette de Bonanza repond A L ADRESSE QUE LE SERVEUR ENVOIE'
+       + ' (HTTP ' + b.code + ', ' + b.taille + ' octets, JPEG ' + b.jpeg + ')'
+       + ' — sans ca Telegram refuse la photo et l annonce part en texte nu');
+    ok(vues.every((v) => v.code === 200 && v.jpeg),
+       'et les autres vignettes controlees aussi ('
+       + vues.map((v) => v.cle + ' ' + v.code).join(', ') + ')');
+  }
+}
+
 console.log('\n' + n + ' verifications, ' + rates + ' echec(s)');
 process.exit(rates ? 1 : 0);
+})();

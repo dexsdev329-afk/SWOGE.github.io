@@ -1,6 +1,6 @@
 'use strict';
 /*
- * LA PAGE DE DEAD OR DOGE TIENT-ELLE SON PLATEAU ?
+ * LA PAGE DE DEAD SWOGE TIENT-ELLE SON PLATEAU ?
  *
  * Trois pieges, et j'ai remis les pieds dans deux d'entre eux en l'ecrivant
  * — les memes qu'a Bonanza, dans le meme ordre.

@@ -9,7 +9,7 @@
  * navigation de la colonne de gauche : ses quatre liens, qui demandent
  * 437 px, etaient mis en RANGEE dans une colonne de 230. Rien ne les
  * rognait (`overflow:visible`), alors « Sports » et « Docs » sortaient de
- * 216 px et se peignaient PAR-DESSUS le jeu — sur DEAD OR DOGE, « BET
+ * 216 px et se peignaient PAR-DESSUS le jeu — sur DEAD SWOGE, « BET
  * 10.0k $SWOGE » s'ecrivait exactement sur le mot « Sports ».
  *
  * ---- POURQUOI IL A TENU SI LONGTEMPS ----

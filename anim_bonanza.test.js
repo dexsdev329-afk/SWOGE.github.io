@@ -51,7 +51,7 @@ const SYMBOLES = ['banane', 'raisin', 'pasteque', 'prune', 'pomme',
       const i = h.lastIndexOf('})();');
       h = h.slice(0, i)
         + '\n  window.__bz={bzPoseGrille:bzPoseGrille,bzPeint:bzPeint,bzEtincelles:bzEtincelles,'
-        + 'bzArrets:bzArrets,bzMonte:bzMonte,bzValeur:bzValeur,bzRouleaux:bzRouleaux,bzScatSouligne:bzScatSouligne,BGM:BGM};\n' + h.slice(i);
+        + 'bzArrets:bzArrets,bzMonte:bzMonte,bzValeur:bzValeur,bzRouleaux:bzRouleaux,bzScatSouligne:bzScatSouligne,bzBandeau:bzBandeau,bzPalier:bzPalier,BGM:BGM};\n' + h.slice(i);
       r.writeHead(200, { 'content-type': 'text/html' });
       return r.end(h);
     }
@@ -393,6 +393,50 @@ const SYMBOLES = ['banane', 'raisin', 'pasteque', 'prune', 'pomme',
   ok(colonnes.every((r) => r.deborde < 1),
      'et la grille ne deborde jamais sur elle-meme (max '
      + Math.max(...colonnes.map((r) => r.deborde)) + ' px, il y en avait 16)');
+
+  /* ---------------- 8. LES BANDEAUX DE GAIN ----------------
+   * Les seuils sont MESURES sur 400 000 tours du vrai moteur, pas choisis a
+   * vue : 2x tombe un tour sur 13, 10x un sur 219, 50x un sur 418, 250x un
+   * sur 3 279. Un « BIG WIN » qui sortirait un tour sur cinq ne serait plus
+   * un evenement mais un tic. */
+  console.log('\n-- les bandeaux de gain --');
+  const seuils = await p.evaluate(() => [0.5, 1.99, 2, 9.99, 10, 49.9, 50, 249, 250, 900]
+    .map((m) => { const x = window.__bz.bzPalier(m); return [m, x ? x.img : null]; }));
+  const attendu = { 0.5: null, 1.99: null, 2: 'win_nice', 9.99: 'win_nice', 10: 'win_big',
+                    49.9: 'win_big', 50: 'win_mega', 249: 'win_mega',
+                    250: 'win_epic', 900: 'win_epic' };
+  const faux = seuils.filter(([m, img]) => attendu[m] !== img);
+  ok(faux.length === 0,
+     'chaque multiple tombe dans le bon palier'
+     + (faux.length ? ' — FAUX : ' + faux.map((f) => f[0] + 'x→' + f[1]).join(', ')
+                    : ' (rien sous 2x, nice 2-10, big 10-50, mega 50-250, epic au-dela)'));
+
+  const band = await p.evaluate(async () => {
+    const e = document.getElementById('bzBandeau');
+    const avant = e.hidden;
+    let rappel = false;
+    window.__bz.bzBandeau(12, 4200, () => { rappel = true; });
+    await new Promise((r) => setTimeout(r, 450));
+    const c = getComputedStyle(e);
+    const m = /matrix\(([^)]*)\)/.exec(c.transform);
+    const v = m ? m[1].split(',').map(Number) : [1, 0, 0, 1, 0, 0];
+    const pendant = { img: (e.firstChild.getAttribute('src') || '').split('/').pop(),
+                      txt: e.lastChild.textContent, o: parseFloat(c.opacity),
+                      ech: Math.hypot(v[0], v[1]), cache: e.hidden };
+    await new Promise((r) => setTimeout(r, 2400));
+    return { avant, pendant, apres: e.hidden, rappel };
+  });
+  ok(band.avant === true, 'aucun bandeau n est a l ecran au repos');
+  ok(band.pendant.img === 'win_big.webp',
+     'un tour a 12x montre BIG WIN (' + band.pendant.img + ')');
+  ok(/^\+/.test(band.pendant.txt) && /SWOGE/.test(band.pendant.txt),
+     'et le montant paye s ecrit dessous : ' + JSON.stringify(band.pendant.txt));
+  ok(band.pendant.o > 0.9 && band.pendant.ech > 0.9,
+     'il est bien visible et a sa taille (opacite ' + band.pendant.o.toFixed(2)
+     + ', echelle ' + band.pendant.ech.toFixed(2) + ')');
+  ok(band.apres === true && band.rappel === true,
+     'puis il s en va, et il RAPPELLE : sans ce rappel la ligne finale ne'
+     + ' s ecrirait jamais et le tour resterait bloque');
 
   ok(erreurs.length === 0, 'aucune erreur JS' + (erreurs.length ? ' : ' + erreurs[0] : ''));
   console.log('\n' + n + ' verifications, ' + rates + ' echec(s)');

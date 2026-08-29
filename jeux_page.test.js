@@ -591,7 +591,13 @@ const servirLeSite = async () => {
      + ' pas encore : la meme fonction les pose toutes, il n y a pas six copies');
   const larges = rangees.filter((r) => r.deborde);
   const courtes = rangees.filter((r) => !r.deborde);
-  ok(larges.length >= 2 && courtes.length >= 2,
+  /* Il en fallait DEUX qui debordent tant que « Against the house » etait
+     une seule rangee de neuf jeux. Elle tient maintenant sur deux lignes, a
+     la demande, et rentre entiere a mille quatre cents pixels : il n'en
+     reste qu'une qui deborde. Le but de la verification — mesurer les DEUX
+     cas, celui qui deborde et celui qui rentre — tient toujours avec une
+     seule de chaque. */
+  ok(larges.length >= 1 && courtes.length >= 2,
      `a mille quatre cents pixels, ${larges.length} rangee(s) debordent et`
      + ` ${courtes.length} tiennent entieres : les deux cas sont mesures`);
   ok(larges.every((r) => r.vu),
@@ -612,8 +618,19 @@ const servirLeSite = async () => {
      encore et celles-la diraient que la demande n est plus couverte. */
   for (const nom of ['Against the house', 'Utility']) {
     const r = rangees.find((x) => x.quoi === nom);
-    ok(r && r.deborde && r.vu && r.barre === 'none',
-       `« ${nom} » — celle que la demande nomme — n a plus de barre et a bien ses fleches`);
+    /* La demande d'origine portait sur DEUX choses : plus de barre de
+       defilement, et des fleches a la place. La premiere vaut toujours, quoi
+       qu'il arrive a la rangee. La seconde n'a de sens que si la rangee
+       deborde — des fleches au-dessus d'une rangee entiere seraient deux
+       boutons qui ne font rien, ce que la feuille de style evite exprès.
+       On demande donc : jamais de barre, et des fleches EXACTEMENT quand il
+       reste quelque chose a atteindre. Ecrit ainsi, le controle survit a
+       « Against the house » passee sur deux lignes — qui rentre desormais
+       entiere sur un grand ecran — sans cesser de couvrir la demande. */
+    ok(r && r.barre === 'none' && r.vu === r.deborde,
+       `« ${nom} » — celle que la demande nomme — n a pas de barre, et ses`
+       + ` fleches sont la exactement quand elle deborde (deborde ${r && r.deborde},`
+       + ` fleches ${r && r.vu})`);
   }
 
   /* ---- ET LES FLECHES BOUGENT POUR DE VRAI ----

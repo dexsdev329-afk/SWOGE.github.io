@@ -701,6 +701,42 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
 @keyframes bzPulse{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.16); } }
 .bz-c.gagne{ background:rgba(255,197,61,.22); box-shadow:inset 0 0 0 2px rgba(255,197,61,.6); }
 
+/* ---- LES BANDEAUX DE GAIN ----
+   Quatre paliers, MESURES sur 400 000 tours du vrai moteur et non choisis au
+   jugement :
+
+       NICE WIN   >=   2x   1 tour sur 13
+       BIG WIN    >=  10x   1 tour sur 219
+       MEGA WIN   >=  50x   1 tour sur 418
+       EPIC WIN   >= 250x   1 tour sur 3 279
+
+   Un « BIG WIN » qui sortirait un tour sur cinq ne serait plus un evenement
+   mais un tic. C'est ce qui arrive quand on regle les seuils a vue au lieu
+   de regarder la distribution des gains.
+
+   Le bandeau ne cache pas la grille : il se pose PAR-DESSUS, le temps qu'on
+   le lise, puis s'en va. Le solde est deja credite quand il apparait — si le
+   joueur ferme l'onglet pendant, il a quand meme gagne. */
+.bz-bandeau{ position:absolute; left:50%; top:44%; transform:translate(-50%,-50%) scale(.4);
+  width:min(96%,520px); z-index:6; pointer-events:none; opacity:0;
+  transition:transform .42s cubic-bezier(.2,1.5,.4,1), opacity .2s ease-out; }
+.bz-bandeau img{ width:100%; height:auto; display:block;
+  filter:drop-shadow(0 10px 26px rgba(0,0,0,.5)); }
+/* Le montant s'ecrit SOUS le bandeau, pas dedans : le mot est peint dans le
+   dessin, le chiffre change a chaque tour. */
+.bz-bandeau b{ display:block; margin-top:6px; text-align:center;
+  font-family:"Anton",sans-serif; font-size:clamp(20px,7cqi,34px); color:#fff;
+  -webkit-text-stroke:.11em #2A1147; paint-order:stroke fill; letter-spacing:1px;
+  text-shadow:0 3px 0 rgba(20,10,40,.5), 0 0 20px rgba(255,255,255,.6); }
+.bz-bandeau.on{ opacity:1; transform:translate(-50%,-50%) scale(1); }
+.bz-bandeau.part{ opacity:0; transform:translate(-50%,-58%) scale(1.06);
+  transition:transform .34s ease-in, opacity .34s ease-in; }
+@media (prefers-reduced-motion:reduce){
+  .bz-bandeau{ transition:opacity .2s ease-out; transform:translate(-50%,-50%); }
+  .bz-bandeau.on{ transform:translate(-50%,-50%); }
+  .bz-bandeau.part{ transform:translate(-50%,-50%); }
+}
+
 /* Le voile des tours gratuits : il annonce, il ne cache pas longtemps. */
 .bz-voile{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
   background:rgba(11,18,32,.82); border-radius:16px; z-index:4;
@@ -744,22 +780,31 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
    l'ordre des taps. */
 .bz-barre{ display:flex; align-items:center; justify-content:center;
   gap:clamp(10px,3.5cqi,22px); margin:10px auto 6px; }
-.bz-pas{ flex:0 0 auto; width:clamp(48px,14cqi,62px); height:clamp(48px,14cqi,62px);
-  border-radius:50%; cursor:pointer; font-family:"Anton",sans-serif;
-  font-size:clamp(24px,7cqi,32px); line-height:1; color:#0B1220;
-  background:linear-gradient(180deg,#FFF3CF,#FFD873); border:2px solid #C99A2E;
-  box-shadow:0 4px 0 #A67A1E; display:flex; align-items:center; justify-content:center; }
-.bz-pas:active{ transform:translateY(3px); box-shadow:0 1px 0 #A67A1E; }
-.bz-pas:disabled{ opacity:.42; cursor:default; box-shadow:0 4px 0 #A67A1E; }
+/* ---- LES BOUTONS SONT DES IMAGES ----
+   Le mot est PEINT DANS le dessin — c'est ce qui a ete demande, et c'est ce
+   qui separe un bouton de machine d'une pastille CSS. Le texte du balisage
+   reste dans le document, masque a l'oeil mais lu a voix haute : un bouton
+   dont le nom n'existe qu'en pixels est muet pour qui n'y voit pas.
+   `background-size:contain` et une toile carree commune aux trois gros ronds
+   (SPIN, STOP, le rond vide) : ils se superposent au pixel pres, donc l'un
+   remplace l'autre sans que rien ne bouge. */
+.bz-img{ border:0; background:none; box-shadow:none; padding:0;
+  background-repeat:no-repeat; background-position:center; background-size:contain;
+  color:transparent; font-size:0; line-height:0; cursor:pointer;
+  -webkit-tap-highlight-color:transparent; }
+.bz-img:active{ transform:translateY(2px); }
+.bz-img:disabled{ opacity:.42; cursor:default; transform:none; }
+.bz-img:focus-visible{ outline:3px solid #0B62F5; outline-offset:3px; border-radius:12px; }
+
+.bz-pas{ flex:0 0 auto; width:clamp(48px,14cqi,62px); height:clamp(48px,14cqi,62px); }
+.bz-moins{ background-image:url("img/bonanza/ui/moins.webp"); }
+.bz-plus{ background-image:url("img/bonanza/ui/plus.webp"); }
 
 /* La ligne du dessous : MAX d'un cote, le son de l'autre. */
 .bz-sous{ display:flex; align-items:center; justify-content:space-between;
   gap:10px; margin:2px auto 0; max-width:min(100%,560px); }
-.bz-max{ font-family:"Space Mono",monospace; font-weight:700; font-size:12px;
-  letter-spacing:1px; padding:8px 16px; border-radius:999px; cursor:pointer;
-  color:#0B1B36; background:#fff; border:1px solid #C99A2E;
-  box-shadow:0 1px 3px rgba(11,27,54,.12); }
-.bz-max:disabled{ opacity:.45; cursor:default; }
+.bz-max{ width:clamp(72px,20cqi,96px); aspect-ratio:512/302;
+  background-image:url("img/bonanza/ui/max.webp"); }
 /* ---- LE SON REVIENT DANS LA PAGE ----
    Le socle du site est en `position:fixed` en bas a gauche : sur cette page
    il tombait exactement sur les boutons de mise et les recouvrait. On le
@@ -777,18 +822,15 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
 .bz-son .snd .v{ color:#6B5A2E; }
 .bz-son .snd input[type=range]{ width:clamp(70px,18cqi,110px); accent-color:#C99A2E; }
 
-.bz-spin{ display:block; margin:0; flex:0 1 auto; font-family:"Anton",sans-serif;
-  font-size:clamp(19px,6cqi,28px); letter-spacing:2px; color:#0B1220; cursor:pointer;
-  padding:12px clamp(22px,9cqi,44px); border-radius:999px; border:2px solid #C99A2E;
-  background:linear-gradient(180deg,#FFE9A8,#FFC53D); box-shadow:0 5px 0 #A67A1E; }
-.bz-spin:active{ transform:translateY(3px); box-shadow:0 2px 0 #A67A1E; }
-.bz-spin:disabled{ opacity:.55; cursor:default; box-shadow:0 5px 0 #A67A1E; }
+.bz-spin{ display:block; margin:0; flex:0 0 auto;
+  width:clamp(96px,28cqi,132px); aspect-ratio:1;
+  background-image:url("img/bonanza/ui/spin.webp"); }
 .bz-note{ text-align:center; font-size:12px; color:#4A5876; min-height:1.2em; margin-top:4px; }
 
-.bz-histbtn{ display:block; margin:12px auto 0; font-family:"Space Mono",monospace;
-  font-size:12px; letter-spacing:1px; text-transform:uppercase; cursor:pointer;
-  background:#fff; border:1px solid #C99A2E; color:#0B1B36; font-weight:700;
-  border-radius:999px; padding:7px 18px; box-shadow:0 1px 3px rgba(11,27,54,.12); }
+.bz-histbtn{ display:block; margin:12px auto 0;
+  width:clamp(132px,36cqi,180px); aspect-ratio:640/215; }
+#bzBaremeBtn{ background-image:url("img/bonanza/ui/paytable.webp"); }
+#bzHistBtn{ background-image:url("img/bonanza/ui/history.webp"); }
 .bz-bareme,.bz-hist{ display:none; max-width:520px; margin:8px auto 0; padding:10px 12px;
   border:1px solid #C9D4E8; border-radius:12px; background:#fff;
   box-shadow:0 2px 8px rgba(11,27,54,.10);
@@ -1379,6 +1421,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     <div class="bz-zone">
       <div class="bz-grille" id="bzGrille" aria-label="6 by 5 grid"></div>
       <div class="bz-parts" id="bzParts" aria-hidden="true"></div>
+      <div class="bz-bandeau" id="bzBandeau" hidden><img alt=""><b></b></div>
       <div class="bz-voile" id="bzVoile" hidden><span id="bzVoileTxt"></span></div>
     </div>
 
@@ -1391,19 +1434,19 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
          plus, et le gros bouton au milieu. C'est ce qui est repris ici, avec
          les reglages du son ramenes DANS la page au lieu de flotter dessus. -->
     <div class="bz-barre">
-      <button class="bz-pas" id="bzMoins" type="button" aria-label="Lower the bet">&minus;</button>
-      <button class="bz-spin" id="bzSpin" type="button">SPIN</button>
-      <button class="bz-pas" id="bzPlus" type="button" aria-label="Raise the bet">+</button>
+      <button class="bz-img bz-pas bz-moins" id="bzMoins" type="button" aria-label="Lower the bet">&minus;</button>
+      <button class="bz-img bz-spin" id="bzSpin" type="button">SPIN</button>
+      <button class="bz-img bz-pas bz-plus" id="bzPlus" type="button" aria-label="Raise the bet">+</button>
     </div>
     <div class="bz-sous">
-      <button class="bz-max" id="bzMax" type="button">MAX</button>
+      <button class="bz-img bz-max" id="bzMax" type="button">MAX</button>
       <div class="bz-son" id="bzSon"></div>
     </div>
     <div class="bz-note" id="bzNote"></div>
 
-    <button class="bz-histbtn" id="bzBaremeBtn" type="button" aria-expanded="false">Paytable</button>
+    <button class="bz-img bz-histbtn" id="bzBaremeBtn" type="button" aria-expanded="false">Paytable</button>
     <div class="bz-bareme" id="bzBareme"></div>
-    <button class="bz-histbtn" id="bzHistBtn" type="button" aria-expanded="false">History</button>
+    <button class="bz-img bz-histbtn" id="bzHistBtn" type="button" aria-expanded="false">History</button>
     <div class="bz-hist" id="bzHist"></div>
     <div class="fair" id="fair"></div>
   </div>
@@ -2473,9 +2516,61 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     suivante();
   }
 
+  /* ---- LE BANDEAU DE GAIN ----
+   * Les quatre paliers, MESURES sur 400 000 tours du vrai moteur :
+   *
+   *     NICE WIN   >=   2x   1 tour sur 13
+   *     BIG WIN    >=  10x   1 tour sur 219
+   *     MEGA WIN   >=  50x   1 tour sur 418
+   *     EPIC WIN   >= 250x   1 tour sur 3 279
+   *
+   * Le multiple vient du serveur ; on ne fait que le comparer a un seuil.
+   * Le bandeau ne DECIDE de rien : le solde est deja credite quand il
+   * apparait, et fermer l'onglet pendant qu'il est a l'ecran ne change pas
+   * un jeton.
+   */
+  var BZ_PALIERS = [
+    { seuil: 250, img: "win_epic",  ms: 2600 },
+    { seuil:  50, img: "win_mega",  ms: 2300 },
+    { seuil:  10, img: "win_big",   ms: 2000 },
+    { seuil:   2, img: "win_nice",  ms: 1500 }
+  ];
+  function bzPalier(multi){
+    for(var i=0;i<BZ_PALIERS.length;i++) if(multi >= BZ_PALIERS[i].seuil) return BZ_PALIERS[i];
+    return null;
+  }
+  function bzBandeau(multi, montant, fin){
+    var p = bzPalier(multi);
+    if(!p) return fin();
+    var e = $("bzBandeau");
+    if(!e) return fin();
+    e.firstChild.src = "img/bonanza/ui/" + p.img + ".webp";
+    e.lastChild.textContent = "+" + bzFmt(Math.round(montant)) + " $SWOGE";
+    e.className = "bz-bandeau";
+    e.hidden = false;
+    void e.offsetWidth;                       // on force le rendu de l'etat de depart
+    e.className = "bz-bandeau on";
+    setTimeout(function(){ e.className = "bz-bandeau on part"; }, p.ms);
+    setTimeout(function(){ e.hidden = true; e.className = "bz-bandeau"; fin(); }, p.ms + 360);
+  }
+
   function bzVoile(txt, ms, apres){
     var v=$("bzVoile"); $("bzVoileTxt").textContent=txt; v.hidden=false;
     setTimeout(function(){ v.hidden=true; apres(); }, ms);
+  }
+
+  /* Les tours gratuits ont leur propre panneau dessine — il n'arrive qu'un
+     tour sur 209 (mesure), c'est le seul ecran du jeu qu'on veut revoir. */
+  function bzVoileGratuits(scatters, nb, apres){
+    var e = $("bzBandeau");
+    if(!e){ return bzVoile(scatters+" SCATTERS\n"+nb+" FREE SPINS", 1500, apres); }
+    e.firstChild.src = "img/bonanza/ui/free_spins.webp";
+    e.lastChild.textContent = scatters + " SCATTERS";
+    e.className = "bz-bandeau"; e.hidden = false;
+    void e.offsetWidth;
+    e.className = "bz-bandeau on";
+    setTimeout(function(){ e.className = "bz-bandeau on part"; }, 1900);
+    setTimeout(function(){ e.hidden = true; e.className = "bz-bandeau"; apres(); }, 2260);
   }
 
   function bzJoueTour(t){
@@ -2489,6 +2584,10 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     var suite = function(){ bzJoueEtapes(t.base.etapes, apresBase); };
     function apresBase(){
       function finir(){
+        /* Le bandeau d'abord, la ligne ensuite : on annonce, puis on ecrit. */
+        bzBandeau(t.multi, t.net, ecritLeResultat);
+      }
+      function ecritLeResultat(){
         BZ.hist.unshift({ mise:t.mise, multi:t.multi, net:t.net, gratuits:t.toursGratuits });
         if(BZ.hist.length>60) BZ.hist.pop();
         var g=$("bzGain");
@@ -2507,7 +2606,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       }
       if(t.scatters>=4 && t.gratuits && t.gratuits.length){
         son("scatter");
-        bzVoile(t.scatters+" SCATTERS\n"+t.gratuits.length+" FREE SPINS", 1500, function(){
+        bzVoileGratuits(t.scatters, t.gratuits.length, function(){
           son("gratuits");
           var i=0;
           (function tourSuivant(){

@@ -714,6 +714,24 @@ a.match:hover .cotes button{border-color:var(--bleu)}
    lisent `-ms-overflow-style`, Chrome et Safari ne connaissent que le
    pseudo-element. Il en manquerait une et la barre reviendrait sur un tiers
    des navigateurs, sans qu on la voie sur le sien. */
+/* ---- LA RANGEE DE LA MAISON TIENT SUR DEUX LIGNES ----
+   DEMANDE : « against the house, mets les jeux sur deux lignes ».
+   Neuf jeux a la suite font une piste deux fois plus longue que l'ecran ;
+   la meme liste pliee en deux se parcourt deux fois moins loin, et on en
+   voit le double d'un coup d'oeil.
+   `grid-auto-flow:column` avec deux rangees : les cartes se remplissent de
+   haut en bas puis de gauche a droite. LA LIGNE DU HAUT PORTE DONC LES JEUX
+   IMPAIRS du balisage, celle du bas les pairs — ce n'est pas l'ordre de
+   lecture d'un texte, c'est celui de tous les carrousels a deux rangees, et
+   il n'y a ici aucun classement a respecter : la liste n'est ni un palmares
+   ni un ordre d'arrivee.
+   Le remplissage par colonne est ce qui garde le glissement horizontal ;
+   remplir par rangee donnerait une grille figee a cinq colonnes, illisible
+   sur un telephone. Les fleches marchent sans y toucher.
+   La largeur des cartes vient de `flex-basis`, qui ne s'applique pas a une
+   grille : on la repose en `grid-auto-columns`, a l'identique. */
+.piste.deux{ display:grid; grid-auto-flow:column; grid-template-rows:repeat(2,auto);
+  grid-auto-columns:clamp(150px, 17.5%, 178px); align-content:start; }
 .piste{ scrollbar-width:none; -ms-overflow-style:none }
 .piste::-webkit-scrollbar{ width:0; height:0; display:none }
 /* ---- LE POSTE DE FLECHES ----
@@ -1078,7 +1096,7 @@ a.match:hover .cotes button{border-color:var(--bleu)}
             <i>play on your own, any time</i></h3>
           <span class="nb">9</span>
         </div>
-        <div class="piste" role="list" aria-label="Against the house">
+        <div class="piste deux" role="list" aria-label="Against the house">
           <!-- ---- UNE SEULE TABLE DE BLACKJACK ----
                Il y en avait deux, cote a cote : la table ordinaire et la table
                d or. Meme jeu, meme page, un parametre d ecart — et deux

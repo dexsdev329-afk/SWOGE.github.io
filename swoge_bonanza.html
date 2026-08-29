@@ -484,7 +484,12 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
    elle, ne retrecisse — `vw` continuait a mesurer le viewport entier et
    grossissait ces elements au-dela de leur colonne. `cqi` mesure le
    conteneur (`.plwrap`, qui porte `container-type:inline-size` plus haut). */
-.bz-titre{ display:block; height:min(22cqi,116px); width:auto; margin:2px auto 8px; }
+/* ---- LA BANDE DU HAUT : GAIN | LOGO | MISE ----
+   `minmax(0,1fr)` et non `1fr` : sans le zero, un texte long elargit sa
+   colonne au lieu de se replier, et le logo cesse d'etre centre. */
+.bz-tete{ display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+  align-items:center; gap:clamp(4px,1.6cqi,14px); margin:2px auto 8px; }
+.bz-titre{ display:block; height:min(20cqi,108px); width:auto; margin:0; }
 
 /* ---- LA GRILLE ----
    Six colonnes, cinq rangees, carrees. Le fond du jeu est POSE DESSOUS et
@@ -563,13 +568,29 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
    style prevenait deja, quelques centaines de lignes plus haut, qu'un creme
    clair « pense pour ce fond sombre » devient illisible sur blanc partout ou
    rien ne le redefinit. C'etait le cas ici. */
-.bz-gain{ text-align:center; font-family:"Space Mono",monospace; font-weight:800;
-  font-size:clamp(15px,4.6cqi,22px); min-height:1.5em; margin:10px 0 2px; color:#0B1B36; }
-.bz-mise{ display:inline-flex; align-items:center; gap:10px; font-family:"Space Mono",monospace;
+/* Le gain occupe la colonne de gauche. Il n'a plus la largeur de la page :
+   le montant passe en grand, le detail de la cascade en petit dessous. Sans
+   cette coupe en deux, « +1.65× (10 pomme, 8 raisin) » se repliait sur
+   quatre lignes et faisait grandir la bande a chaque etape. */
+.bz-gain{ font-family:"Space Mono",monospace; font-weight:800; color:#0B1B36;
+  font-size:clamp(13px,3.6cqi,18px); line-height:1.2; text-align:left;
+  overflow-wrap:anywhere; }
+.bz-gain b{ display:block; }
+.bz-gain i{ display:block; font-style:normal; font-weight:600;
+  font-size:.72em; opacity:.78; margin-top:2px; }
+/* La mise occupe la colonne de droite. `justify-self:end` la colle au bord
+   du logo cote droit, comme le gain touche le bord gauche. */
+.bz-mise{ justify-self:end; display:inline-flex; align-items:center; gap:6px;
+  font-family:"Space Mono",monospace; font-size:clamp(11px,3cqi,14px);
   font-weight:700; color:#0B1B36; background:#fff; border:1px solid #C99A2E;
-  box-shadow:0 1px 3px rgba(11,27,54,.12);
-  border-radius:999px; padding:6px 12px; }
-.bz-mise button{ background:none; border:0; color:#C0392B; font-weight:800; cursor:pointer; font-size:15px; }
+  box-shadow:0 1px 3px rgba(11,27,54,.12); max-width:100%;
+  border-radius:999px; padding:5px 6px 5px 11px; }
+/* La croix garde une cible au doigt : « clear » en 15px dans une colonne
+   etroite se rate, un rond de 26px se touche. */
+.bz-mise button{ background:none; border:0; color:#C0392B; font-weight:800;
+  cursor:pointer; font-size:17px; line-height:1; width:26px; height:26px;
+  border-radius:50%; flex:0 0 auto; }
+.bz-mise button:hover{ background:rgba(192,57,43,.1); }
 .bz-rail{ display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin:10px auto 6px; }
 .bz-rail button{ font-family:"Space Mono",monospace; font-weight:700; font-size:12px;
   padding:7px 11px; border-radius:999px; cursor:pointer; color:#0B1220;
@@ -1163,16 +1184,22 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 <main>
 
   <div class="wrap bzwrap">
-    <img class="bz-titre" id="bzTitre" src="img/bonanza/logo.webp" alt="SWOGE Bonanza">
+    <!-- Le gain a gauche, le logo au milieu, la mise a droite. Ces deux
+         valeurs prenaient chacune une ligne entiere SOUS la grille et
+         poussaient le bouton SPIN sous le bord de l'ecran sur un telephone.
+         Rangees de part et d'autre du logo, elles ne coutent plus rien : la
+         bande fait la hauteur du logo, qui etait deja la. -->
+    <div class="bz-tete">
+      <div class="bz-gain" id="bzGain"></div>
+      <img class="bz-titre" id="bzTitre" src="img/bonanza/logo.webp" alt="SWOGE Bonanza">
+      <div class="bz-mise" id="bzMise" hidden></div>
+    </div>
 
     <div class="bz-zone">
       <div class="bz-grille" id="bzGrille" aria-label="6 by 5 grid"></div>
       <div class="bz-voile" id="bzVoile" hidden><span id="bzVoileTxt"></span></div>
     </div>
 
-    <div class="bz-gain" id="bzGain"></div>
-
-    <div style="text-align:center"><div class="bz-mise" id="bzMise" hidden></div></div>
     <div class="bz-rail" id="bzRail"></div>
     <button class="bz-spin" id="bzSpin" type="button">SPIN</button>
     <div class="bz-note" id="bzNote"></div>
@@ -1699,7 +1726,12 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     var e=$("bzMise");
     if(BZ.mise<=0){ e.hidden=true; e.innerHTML=""; return; }
     e.hidden=false;
-    e.innerHTML='<span>Bet '+bzFmt(BZ.mise)+' $SWOGE</span><button id="bzClear" type="button">clear</button>';
+    /* « $SWOGE » sort de la pastille : dans une colonne de cent pixels il la
+       faisait passer sur deux lignes, et c'est la seule monnaie de la page.
+       Il reste dit a voix haute pour qui lit la page a l'oreille. */
+    e.setAttribute("aria-label","Bet "+bzFmt(BZ.mise)+" $SWOGE");
+    e.innerHTML='<span>Bet '+bzFmt(BZ.mise)+'</span>'+
+      '<button id="bzClear" type="button" title="Clear bet" aria-label="Clear bet">×</button>';
   }
   function bzHist(){
     var h=$("bzHist");
@@ -1874,8 +1906,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       son(k===0 ? "gain" : "cascade");
       var g = $("bzGain");
       g.style.color = "#0E6B32";
-      g.textContent = "+" + e.multi.toFixed(2) + "× (" +
-        e.amas.map(function(a){ return a.nombre + " " + a.symbole.replace(/_/g," "); }).join(", ") + ")";
+      g.innerHTML = "<b>+" + e.multi.toFixed(2) + "×</b> <i>" +
+        e.amas.map(function(a){ return a.nombre + " " + a.symbole.replace(/_/g," "); }).join(" · ") + "</i>";
 
       /* On laisse le temps de VOIR ce qui gagne avant de le faire sauter.
          Sans cette pause, la grille change avant qu'on ait compris pourquoi. */
@@ -1898,7 +1930,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 
   function bzJoueTour(t){
     BZ.anime=true; bzRender();
-    $("bzGain").textContent="";
+    $("bzGain").innerHTML="";
     son("debut");
     /* Les rouleaux d'abord, sur la grille du PREMIER jet ; les cascades
        ensuite, qui repartent de cette meme grille. */
@@ -1910,7 +1942,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         if(BZ.hist.length>60) BZ.hist.pop();
         var g=$("bzGain");
         g.style.color = t.net>0 ? "#0E6B32" : t.net<0 ? "#C0392B" : "#0B1B36";
-        g.textContent = (t.net>0?"+":"")+bzFmt(t.net)+" $SWOGE"+(t.multi?"  ("+t.multi.toFixed(2)+"×)":"");
+        g.innerHTML = "<b>"+(t.net>0?"+":"")+bzFmt(t.net)+" $SWOGE</b>"+
+          (t.multi?" <i>"+t.multi.toFixed(2)+"×</i>":"");
         if(t.net>0) son(t.multi>=20?"gros":"gain"); else son("rien");
         BZ.anime=false; bzRender();
       }

@@ -78,7 +78,7 @@ const ECRANS = [{ nom: 'iPhone SE', w: 375, h: 667 }, { nom: 'grand telephone', 
         if (mi) { M.hidden = false; M.innerHTML = '<span>' + mi + '</span><button id="bzClear" type="button">×</button>'; }
         else { M.hidden = true; M.innerHTML = ''; }
         const T2 = document.querySelector('.bz-tete').getBoundingClientRect();
-        const L = document.querySelector('.bz-titre').getBoundingClientRect();
+        const L = document.querySelector('.bz-cadre').getBoundingClientRect();
         const GR = G.getBoundingClientRect();
         const MR = M.hidden ? null : M.getBoundingClientRect();
         const B = document.getElementById('bzClear');
@@ -95,7 +95,10 @@ const ECRANS = [{ nom: 'iPhone SE', w: 375, h: 667 }, { nom: 'grand telephone', 
              extremite gauche. La demande n'a pas change, la geometrie si :
              on demande donc que le centre du gain tombe dans le tiers gauche
              de la bande et celui de la mise dans le tiers droit. */
-          gainAGauche: (GR.left + GR.right) / 2 < T2.left + T2.width / 3,
+          /* On mesure le BORD GAUCHE du gain, pas le centre de sa boite : la
+             boite occupe maintenant toute la largeur disponible et son centre
+             tombe au milieu, alors que le TEXTE, lui, est cale a gauche. */
+          gainAGauche: GR.left < T2.left + T2.width / 3,
           miseADroite: MR ? (MR.left + MR.right) / 2 > T2.left + 2 * T2.width / 3 : null,
           croix: BR ? Math.min(BR.width, BR.height) : null,
         };

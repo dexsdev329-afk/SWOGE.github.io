@@ -487,37 +487,42 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
 /* ---- LA BANDE DU HAUT : GAIN | LOGO | MISE ----
    `minmax(0,1fr)` et non `1fr` : sans le zero, un texte long elargit sa
    colonne au lieu de se replier, et le logo cesse d'etre centre. */
-/* ---- LA BANDE DU HAUT ----
-   Le bandeau fourni fait 4,7 fois plus large que haut. Loge dans la colonne
-   du milieu d'une grille a trois colonnes, il reclamait sa largeur naturelle
-   et ecrasait les deux autres a ZERO : le gain se repliait alors sur une
-   colonne d'un pixel et la bande passait de 82 a 261 px de haut. Mesure, pas
-   supposition.
-   Il prend donc toute la largeur, et le gain et la mise se posent PAR-DESSUS
-   ses deux extremites — la ou il n'y a que de la guirlande. La bande ne coute
-   ainsi que la hauteur du bandeau, soit 87 px sur un telephone : cinq de plus
-   que le logo qu'elle remplace, pour un decor bien plus riche. */
-.bz-tete{ position:relative; margin:2px auto 8px; }
-/* ---- LE LOGO SEUL A LAISSE PLACE AU BANDEAU DU CADRE ----
-   Le cadre fourni est fait pour une fenetre de jeu LARGE — sa lucarne
-   transparente mesure environ trois fois plus large que haute, la ou une
-   grille de six colonnes sur cinq rangees de carres est presque carree. Il
-   ne pouvait donc pas entourer le plateau : mesure sur son alpha, l'ouverture
-   utile va de 24 a 77 % en largeur mais seulement de 38 a 68 % en hauteur,
-   et les decors des coins se referment en dessous.
-   Il est donc coupe en deux morceaux, qui sont ce qu'il a de meilleur : le
-   bandeau du haut (logo + guirlande de bonbons) remplace le logo, et le
-   socle du bas (le coffre et le shiba) se pose sous la grille.
-   La taille vient de la LARGEUR ici, pas de la hauteur : le bandeau fait
-   4,7 fois plus large que haut, le fixer par sa hauteur le ferait deborder
-   de sa colonne. */
-.bz-titre{ display:block; width:100%; height:auto; margin:0; }
+/* ---- LA LIGNE DU GAIN ET DE LA MISE ----
+   Le logo n'est plus la : il est PEINT DANS LE CADRE, en haut. Cette ligne
+   ne porte donc plus que les deux valeurs, une a chaque bout, sous le
+   plateau. Elle ne coute que sa propre hauteur — une trentaine de pixels au
+   lieu des 87 du bandeau qu'elle remplace. */
+.bz-tete{ display:flex; align-items:center; justify-content:space-between;
+  gap:10px; margin:6px auto 4px; height:42px; }
+
 
 /* ---- LA GRILLE ----
    Six colonnes, cinq rangees, carrees. Le fond du jeu est POSE DESSOUS et
    flou : les symboles doivent rester lisibles par-dessus, c'est la seule
    contrainte qui compte ici. */
-.bz-zone{ position:relative; width:min(100%,560px); margin:0 auto; }
+/* ---- LE CADRE ET SA FENETRE ----
+   Le cadre fourni fait 1374x1145, soit un rapport de 1,200 — exactement
+   celui de la grille. Sa fenetre a ete MESUREE sur son alpha : le plus grand
+   rectangle au rapport 6:5 qui tienne dans la partie transparente donne
+   615x512, mais il est bride par la tete du shiba et le coffre qui mordent
+   vers l'interieur.
+   On prend donc la fenetre VISUELLE — x de 19,7 a 81,0 %, hauteur au meme
+   rapport — et on pose le cadre PAR-DESSUS la grille : le coffre et le shiba
+   recouvrent alors les coins bas du plateau, ce qui est exactement ce que
+   fait le jeu d'origine. Un cadre pose dessous les aurait caches. */
+/* ---- LE CADRE DEBORDE UN PEU DE LA PAGE ----
+   Sa bordure est epaisse : le hublot ne fait que 72 % de sa largeur et 53 %
+   de sa hauteur. A la largeur de la page, la case tombait de 62 a 30 px —
+   les symboles rapetissaient de moitie, juste apres qu'on ait travaille a
+   les agrandir.
+   On laisse donc le cadre depasser de 22 %, `overflow-x:clip` de `.bzwrap`
+   coupant ce qui sort. Ce qui est coupe : une quinzaine de pixels sur le
+   bord exterieur gauche et droit, la ou il n'y a que de la guirlande. Le
+   coffre et le shiba restent entiers. */
+.bz-zone{ position:relative; width:min(122%,620px); margin:0 auto;
+  margin-left:max(-11%, calc((100% - 620px)/2)); aspect-ratio:1374/1145; }
+.bz-cadre{ position:absolute; inset:0; width:100%; height:100%;
+  display:block; pointer-events:none; z-index:2; }
 /* ---- `minmax(0,1fr)` ET NON `1fr` ----
    DEFAUT MESURE : « le jeu agrandit la grille et la rapetisse ». Ce n'est pas
    la grille — c'est chaque COLONNE, pendant chaque tour.
@@ -541,15 +546,32 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
    `minmax(0,1fr)` pose le minimum a zero une bonne fois : les six colonnes
    font la meme largeur, quel que soit leur `overflow`, et les symboles
    debordent toujours. */
-.bz-grille{ display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:clamp(2px,.8cqi,6px);
+/* ---- LA GRILLE DANS SA FENETRE ----
+   Mesure sur l'alpha du cadre : l'ouverture va de 14,2 a 86,0 % en largeur
+   mais de 27,2 a 79,8 % seulement en hauteur — 987 x 602 pixels, soit un
+   rapport de 1,64. La grille, elle, est a 1,20. Elle ne peut donc pas
+   remplir l'ouverture : reglee sur la hauteur, il reste 136 px de vide de
+   chaque cote, et c'est le fond de la PAGE qui se voyait a travers — deux
+   bandes blanches dans le cadre.
+   D'ou `.bz-fond`, qui couvre toute l'ouverture avec le paysage de bonbons.
+   La grille se pose au milieu, a son propre rapport.
+   Le cadre fait 1374x1145, soit 1,200 : une boite dont la largeur et la
+   hauteur valent le MEME pourcentage du cadre est donc automatiquement au
+   rapport 6:5. C'est pour ca que les deux valeurs ci-dessous sont egales. */
+.bz-fond{ position:absolute; left:13%; top:25.5%; width:74%; height:56%;
+  z-index:0; border-radius:10px; overflow:hidden;
+  background:linear-gradient(180deg,#2A1B4A9e,#160E2Ebd), url("img/bonanza/fond.webp") center/cover; }
+.bz-grille{ position:absolute; left:24%; top:27.5%; width:52%; height:52%;
+  z-index:1;
+  display:grid; grid-template-columns:repeat(6,minmax(0,1fr));
+  grid-template-rows:repeat(5,minmax(0,1fr)); gap:clamp(2px,.8cqi,6px);
   padding:clamp(6px,2cqi,14px); border-radius:16px;
   /* ---- LE DECOR SE VOIT ----
      Le voile etait a 87 % : le paysage de bonbons etait paye, charge, et
      invisible. A 62 % en haut et 74 % en bas il se lit, tout en restant assez
      sombre sous les symboles pour qu'ils gardent leur contraste — c'est eux
      qu'on doit reconnaitre en un dixieme de seconde, pas le decor. */
-  background:linear-gradient(180deg,#2A1B4A9e,#160E2Ebd), url("img/bonanza/fond.webp") center/cover;
-  border:1px solid rgba(255,197,61,.35); box-shadow:0 8px 28px rgba(0,0,0,.45); }
+  background:none; border:0; box-shadow:none; }
 /* `overflow:visible` : les symboles DEBORDENT legerement de leur case, comme
    dans le jeu dont celui-ci s'inspire. C'est ce debordement qui fait la
    difference entre une grille de vignettes et une grille de bonbons. La case
@@ -629,8 +651,10 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
 
    Les trois vivent dans une couche a part, au-dessus des cases, pour ne rien
    deranger de la mise en page. */
-.bz-parts{ position:absolute; inset:0; pointer-events:none; z-index:3;
-  border-radius:16px; overflow:hidden; }
+/* Les eclats suivent la grille et passent AU-DESSUS du cadre : sinon ils
+   disparaitraient derriere le coffre au moment ou ils sortent de la case. */
+.bz-parts{ position:absolute; left:24%; top:27.5%; width:52%; height:52%;
+  pointer-events:none; z-index:3; overflow:visible; }
 /* Les tailles viennent du JS, proportionnelles a la case : une echarde de
    neuf pixels fixes disparait sur un grand ecran et masque le symbole sur un
    petit. */
@@ -793,20 +817,23 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
 /* Posee sur la guirlande, la valeur doit tenir sur un fond charge : meme
    traitement que le montant blanc sur la grille — blanc plein, cerne sombre,
    le trait peint SOUS le remplissage. */
-.bz-gain{ position:absolute; left:0; top:50%; transform:translateY(-50%);
-  width:30%; z-index:2;
-  font-family:"Space Mono",monospace; font-weight:800; color:#fff;
-  font-size:clamp(11px,3.1cqi,15px); line-height:1.15; text-align:left;
-  overflow-wrap:anywhere;
-  -webkit-text-stroke:.14em #2A1147; paint-order:stroke fill;
-  text-shadow:0 2px 0 rgba(20,10,40,.5); }
+/* DEUX LIGNES, jamais trois. Le detail d'une cascade a trois amas —
+   « 12 bonbon violet · 10 pasteque · 9 raisin » — se repliait sinon sur
+   trois lignes et faisait grandir la ligne de 35 a 54 px : la place gagnee
+   ailleurs serait reprise ici, et le bouton SPIN redescendrait a chaque
+   cascade. Le detail est coupe par des points de suspension ; le MONTANT,
+   lui, n'est jamais coupe — c'est le seul chiffre qui compte. */
+.bz-gain{ flex:1 1 auto; min-width:0;
+  font-family:"Space Mono",monospace; font-weight:800; color:#0B1B36;
+  font-size:clamp(12px,3.3cqi,16px); line-height:1.25; text-align:left; }
+.bz-gain b{ display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.bz-gain i{ display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .bz-gain b{ display:block; }
 .bz-gain i{ display:block; font-style:normal; font-weight:600;
   font-size:.72em; opacity:.78; margin-top:2px; }
 /* La mise occupe la colonne de droite. `justify-self:end` la colle au bord
    du logo cote droit, comme le gain touche le bord gauche. */
-.bz-mise{ position:absolute; right:0; top:50%; transform:translateY(-50%); z-index:2;
-  display:inline-flex; align-items:center; gap:6px;
+.bz-mise{ flex:0 0 auto; display:inline-flex; align-items:center; gap:6px;
   font-family:"Space Mono",monospace; font-size:clamp(11px,3cqi,14px);
   font-weight:700; color:#0B1B36; background:#fff; border:1px solid #C99A2E;
   box-shadow:0 1px 3px rgba(11,27,54,.12); max-width:100%;
@@ -822,16 +849,6 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
    bas de l'ecran. Les six pastilles a additionner sont parties : pour miser
    8 600 il fallait taper huit fois, et la valeur atteinte dependait de
    l'ordre des taps. */
-/* ---- LE SOCLE ----
-   Le bas du cadre fourni : coffre a gauche, shiba a droite, vide au milieu.
-   Il se pose SOUS la grille et la barre de commande vient se poser dessus —
-   le vide du milieu est exactement la place du bouton SPIN.
-   `margin-bottom` negatif : le socle ne pousse pas la barre vers le bas, il
-   se glisse derriere. Sans ca il couterait 80 px de hauteur pour du decor,
-   et la place gagnee plus tot en remontant le gain et la mise serait reprise
-   ici. */
-.bz-socle{ display:block; width:100%; height:auto; margin:2px auto -14cqi;
-  pointer-events:none; position:relative; z-index:0; }
 .bz-barre{ display:flex; align-items:center; justify-content:center;
   gap:clamp(10px,3.5cqi,22px); margin:10px auto 6px;
   position:relative; z-index:1; }
@@ -1467,17 +1484,21 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
          poussaient le bouton SPIN sous le bord de l'ecran sur un telephone.
          Rangees de part et d'autre du logo, elles ne coutent plus rien : la
          bande fait la hauteur du logo, qui etait deja la. -->
-    <div class="bz-tete">
-      <div class="bz-gain" id="bzGain"></div>
-      <img class="bz-titre" id="bzTitre" src="img/bonanza/cadre_haut.webp" alt="SWOGE Bonanza">
-      <div class="bz-mise" id="bzMise" hidden></div>
-    </div>
-
     <div class="bz-zone">
+      <div class="bz-fond" aria-hidden="true"></div>
       <div class="bz-grille" id="bzGrille" aria-label="6 by 5 grid"></div>
+      <!-- Le cadre est POSE PAR-DESSUS la grille : c'est ce qui fait que le
+           coffre et le shiba mordent sur les coins du plateau, comme dans le
+           jeu dont celui-ci s'inspire. Il ne prend pas les clics. -->
+      <img class="bz-cadre" src="img/bonanza/cadre.webp" alt="SWOGE Bonanza">
       <div class="bz-parts" id="bzParts" aria-hidden="true"></div>
       <div class="bz-bandeau" id="bzBandeau" hidden><img alt=""><b></b></div>
       <div class="bz-voile" id="bzVoile" hidden><span id="bzVoileTxt"></span></div>
+    </div>
+
+    <div class="bz-tete">
+      <div class="bz-gain" id="bzGain"></div>
+      <div class="bz-mise" id="bzMise" hidden></div>
     </div>
 
     <!-- LA BARRE DE COMMANDE
@@ -1488,7 +1509,6 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
          Le jeu d'origine fait tenir tout ca en une ligne : moins, la mise,
          plus, et le gros bouton au milieu. C'est ce qui est repris ici, avec
          les reglages du son ramenes DANS la page au lieu de flotter dessus. -->
-    <img class="bz-socle" src="img/bonanza/cadre_bas.webp" alt="" aria-hidden="true">
     <div class="bz-barre">
       <button class="bz-img bz-pas bz-moins" id="bzMoins" type="button" aria-label="Lower the bet">&minus;</button>
       <button class="bz-img bz-spin" id="bzSpin" type="button">SPIN</button>
@@ -2368,13 +2388,23 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         var miette = k >= BZ_ECLATS;
         var e = document.createElement("div");
         e.className = "bz-p " + (miette ? "miette" : "eclat");
-        var t = Math.round(r.width * (miette ? 0.10 : 0.13) * (0.7+Math.random()*0.7));
+        /* Un plancher EN PIXELS, pas seulement une fraction de la case : depuis
+           que le cadre entoure le plateau, la case est passee de 62 a 38 px et
+           les echardes tombaient a 4 px — invisibles. Une fraction seule suit
+           la case jusqu'a disparaitre. */
+        var t = Math.max(7, Math.round(r.width * (miette ? 0.10 : 0.13) * (0.7+Math.random()*0.7)));
         e.style.width = t+"px"; e.style.height = Math.round(t*(miette?1:0.72))+"px";
         e.style.margin = (-t/2)+"px 0 0 "+(-t/2)+"px";
         e.style.left = cx+"px"; e.style.top = cy+"px";
         e.style.background = miette ? teinte : BZ_PALE[(Math.random()*BZ_PALE.length)|0];
         e.style.boxShadow = miette ? "0 0 6px "+teinte : "0 0 7px rgba(255,255,255,.9)";
-        var a = Math.random()*Math.PI*2, d = r.width*(0.40+Math.random()*0.70);
+        /* Un plancher de DISTANCE, pour la meme raison que le plancher de
+           taille : sur une case de 38 px, une echarde qui parcourt 0,40 case
+           fait 15 px et se lit a peine. En dessous de 26 px le geste ne se
+           voit plus — c'est ce qui faisait echouer l'essai par intermittence,
+           un morceau sur cent quatre restant sous le seuil de mouvement. */
+        var a = Math.random()*Math.PI*2;
+        var d = Math.max(26, r.width*(0.40+Math.random()*0.70));
         var rot = Math.round(-180+Math.random()*360);
         e.style.transform = "translate3d(0,0,0) rotate(0deg)";
         poses.push([e, Math.cos(a)*d, Math.sin(a)*d + r.width*0.34, 0, rot]);

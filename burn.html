@@ -409,15 +409,30 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     </nav>
   </header>
 
+  <!-- ---- LE CHOIX DU JETON ----
+       Deux jetons se brulent ici, et TOUT ce qui suit en depend : le solde,
+       la barre, l'offre, le bouton. Le selecteur est donc en haut, avant les
+       chiffres qu'il commande, et pas au milieu du formulaire. -->
+  <div class="panel">
+    <h2>What to burn</h2>
+    <div class="pcts" id="tokPick" style="margin-top:4px">
+      <button data-t="swoge" class="on">$SWOGE</button>
+      <button data-t="swogebet">$SWOGEBET</button>
+    </div>
+  </div>
+
   <div class="panel">
     <h2>Total burned forever 🔥</h2>
     <div class="big" id="totalBurned">—</div>
     <div class="prog"><span id="burnBar"></span></div>
     <div class="note" id="burnPct">— of supply</div>
+    <!-- Ce qu'un brulage de $SWOGEBET fait — et ne fait PAS — au $SWOGE.
+         Vide pour le $SWOGE, ou la question ne se pose pas. -->
+    <div class="note" id="burnLien" hidden></div>
   </div>
 
   <div class="panel">
-    <h2>Burn your $SWOGE</h2>
+    <h2 id="burnTitre">Burn your $SWOGE</h2>
     <div class="kv"><span class="k">Your balance</span><span class="v" id="myBal">connect wallet</span></div>
     <div class="field" style="margin-top:12px">
       <label>How much to burn (% of your balance)</label>
@@ -432,7 +447,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     <div class="kv"><span class="k">You will burn</span><span class="v" id="willBurn">—</span></div>
     <button class="btn fire" id="burnBtn" style="margin-top:14px" disabled>🔥 Burn forever</button>
     <div class="note" id="note"></div>
-    <div class="hint" style="margin-top:12px">Burning sends your $SWOGE to a dead address (<code>0x…dEaD</code>) that no one controls. It's <b>permanent and irreversible</b> — it reduces the circulating supply forever.</div>
+    <div class="hint" style="margin-top:12px" id="burnHint">Burning sends your $SWOGE to a dead address (<code>0x…dEaD</code>) that no one controls. It's <b>permanent and irreversible</b> — it reduces the circulating supply forever.</div>
   </div>
 
   <div class="foot">$SWOGE · Swole Doge 🐶 · <a href="index.html">swoleeswoge.dog</a></div>
@@ -446,6 +461,21 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 "use strict";
 if(typeof ethers==="undefined"){ alert("ethers.js could not load. Reload."); return; }
 var SWOGE = "0x8a166Fb41Cd659a0a43396272FF73973Ce29F817";     // $SWOGE token
+/* ==================== LES DEUX JETONS QU'ON PEUT BRULER ====================
+ *
+ * `pool` sert a convertir le $SWOGEBET en $SWOGE au prix du marche — pour
+ * DIRE ce que vaut ce qui a ete brule, jamais pour l'ajouter au total du
+ * $SWOGE. Voir `majLien` : c'est le point ou la page pourrait mentir, et
+ * c'est celui ou elle est la plus explicite.
+ */
+var JETONS = {
+  swoge:    { sym:"$SWOGE",    addr:SWOGE,
+              pool:null },
+  swogebet: { sym:"$SWOGEBET", addr:"0xc0aEd547862fba5D7D9Fbf3cb14204cD756c8Bea",
+              pool:"0xc12943975def537daCe9D62D4762a8250501924E" }
+};
+var jetonCle="swoge";
+function J(){ return JETONS[jetonCle]; }
 var DEAD  = "0x000000000000000000000000000000000000dEaD";     // burn address
 var CHAIN = { id:4663, hex:"0x1237", name:"Robinhood Chain", rpc:"https://rpc.mainnet.chain.robinhood.com", scan:"https://robinhoodchain.blockscout.com", sym:"ETH" };
 var WC_PROJECT_ID = "7553b1651dfa1fce5eaff2405d5f230c";
@@ -464,7 +494,21 @@ var SWOGE_LOGO="img/d65f1731a1b8.webp";
 
 var provider=null, signer=null, account=null, rawEth=null, myBalWei=null, decimals=18;
 function rpcProvider(){ return new ethers.providers.StaticJsonRpcProvider(CHAIN.rpc, CHAIN.id); }
-function token(rw){ return new ethers.Contract(SWOGE, ERC20, rw||provider||rpcProvider()); }
+function token(rw){ return new ethers.Contract(J().addr, ERC20, rw||provider||rpcProvider()); }
+var POOL_ABI=["function slot0() view returns (uint160 sqrtPriceX96,int24 tick,uint16,uint16,uint16,uint8,bool)",
+              "function token0() view returns (address)"];
+/* Le prix du jeton en $SWOGE, lu dans son pool Uniswap V3. Null si le pool ne
+   repond pas : on n'affiche alors aucune equivalence, plutot qu'une inventee. */
+async function prixEnSwoge(){
+  var j=J(); if(!j.pool) return null;
+  try{
+    var pc=new ethers.Contract(j.pool, POOL_ABI, rpcProvider());
+    var s0=await pc.slot0(), t0=await pc.token0();
+    var sp=+s0.sqrtPriceX96.toString()/Math.pow(2,96);
+    var swogeEst0 = t0.toLowerCase()===SWOGE.toLowerCase();
+    return swogeEst0 ? 1/(sp*sp) : sp*sp;      // $SWOGE par jeton
+  }catch(e){ return null; }
+}
 function fmt(x){ return (+ethers.utils.formatUnits(x, decimals)); }
 function human(n){ if(n>=1e9)return (n/1e9).toFixed(2)+"B"; if(n>=1e6)return (n/1e6).toFixed(2)+"M"; if(n>=1e3)return (n/1e3).toFixed(1)+"K"; return n.toLocaleString("en-US",{maximumFractionDigits:2}); }
 
@@ -521,33 +565,64 @@ $("#wpick").onclick=function(e){ if(e.target===$("#wpick")) $("#wpick").classLis
 
 /* ---- data ---- */
 async function refreshTotal(){
+  var j=J();
   try{
     var t=token(); var dec=await t.decimals(); decimals=dec;
     var sup=await t.totalSupply(); var dead=await t.balanceOf(DEAD);
     var burned=fmt(dead), total=fmt(sup);
-    $("#totalBurned").textContent=human(burned)+" SWOGE";
+    $("#totalBurned").textContent=human(burned)+" "+j.sym.replace("$","");
+    /* LA BARRE MESURE L'OFFRE DU JETON CHOISI, pas celle du $SWOGE. Une seule
+       barre pour deux jetons dont les offres n'ont rien a voir aurait fait
+       sauter le trait au changement de bouton, sans que rien ne l'explique. */
     var pct=total?(burned/total*100):0;
     $("#burnBar").style.width=Math.min(100,pct)+"%";
-    $("#burnPct").textContent=pct.toFixed(4)+"% of supply burned";
+    $("#burnPct").textContent=pct.toFixed(4)+"% of "+j.sym+" supply burned";
+    majLien(burned);
   }catch(e){ $("#totalBurned").textContent="—"; }
+}
+
+/* ---- CE QU'UN BRULAGE DE $SWOGEBET FAIT AU $SWOGE ----
+ *
+ * La demande etait : « si on burn du swogebet bah ca burn du swoge aussi ».
+ * VERIFIE SUR LA CHAINE, ET C'EST NON. Le transfert de $SWOGEBET appelle
+ * `onMove` sur le launchpad, qui ne touche QUE la comptabilite des
+ * recompenses : aucun $SWOGE n'est detruit, l'offre de $SWOGE ne bouge pas
+ * d'un jeton. (Verifie aussi que l'adresse morte n'accumule pas de
+ * recompenses recuperables : `pendingRewards` y rend zero.)
+ *
+ * Ce qui est VRAI, c'est que le $SWOGEBET est adosse a du $SWOGE dans son
+ * pool, donc bruler du $SWOGEBET detruit une valeur qui se COMPTE en $SWOGE.
+ * On l'affiche — et on ecrit noir sur blanc que ce n'est pas un brulage de
+ * $SWOGE. Ajouter cette equivalence au total du $SWOGE aurait donne un
+ * chiffre que la chaine dement.
+ */
+async function majLien(brules){
+  var e=$("#burnLien"), j=J();
+  if(!e) return;
+  if(jetonCle==="swoge"){ e.hidden=true; e.textContent=""; return; }
+  var px=await prixEnSwoge();
+  if(px==null || !isFinite(brules)){ e.hidden=true; return; }
+  e.hidden=false;
+  e.innerHTML = "≈ <b>"+human(brules*px)+" $SWOGE</b> of value destroyed at pool price — "
+              + "but this does <b>not</b> burn $SWOGE: its supply is unchanged.";
 }
 async function refreshBalance(){
   if(!account){ return; }
-  try{ myBalWei=await token().balanceOf(account); $("#myBal").textContent=human(fmt(myBalWei))+" SWOGE"; $("#burnBtn").disabled=false; updateWillBurn(); }
+  try{ myBalWei=await token().balanceOf(account); $("#myBal").textContent=human(fmt(myBalWei))+" "+J().sym.replace("$",""); $("#burnBtn").disabled=false; updateWillBurn(); }
   catch(e){ $("#myBal").textContent="—"; }
 }
 function pctVal(){ return Math.max(0, Math.min(100, parseFloat(($("#pct").value||"").replace(",","."))||0)); }
 function updateWillBurn(){
   if(!myBalWei){ $("#willBurn").textContent="—"; return; }
   var p=pctVal(); var amt=myBalWei.mul(Math.round(p*100)).div(10000);
-  $("#willBurn").textContent=human(fmt(amt))+" SWOGE ("+p+"%)";
+  $("#willBurn").textContent=human(fmt(amt))+" "+J().sym.replace("$","")+" ("+p+"%)";
 }
 $("#pct").addEventListener("input",function(){ if(this.value.indexOf(",")>-1) this.value=this.value.replace(/,/g,"."); document.querySelectorAll("#pcts button").forEach(function(b){b.classList.remove("on");}); updateWillBurn(); });
 document.querySelectorAll("#pcts button").forEach(function(b){ b.onclick=function(){ $("#pct").value=b.dataset.p; document.querySelectorAll("#pcts button").forEach(function(x){x.classList.remove("on");}); b.classList.add("on"); updateWillBurn(); }; });
 
 $("#burnBtn").onclick=async function(){
   if(!signer){ openWalletPicker(); return; }
-  if(!myBalWei||myBalWei.isZero()){ return toast("No SWOGE to burn"); }
+  if(!myBalWei||myBalWei.isZero()){ return toast("No "+J().sym+" to burn"); }
   var p=pctVal(); if(p<=0){ return toast("Enter a % to burn"); }
   var amt = p>=100 ? myBalWei : myBalWei.mul(Math.round(p*100)).div(10000);
   if(amt.gt(myBalWei)) amt=myBalWei;
@@ -556,11 +631,31 @@ $("#burnBtn").onclick=async function(){
   try{
     var tx=await token(signer).transfer(DEAD, amt);
     note.innerHTML='Burning… <a href="'+CHAIN.scan+'/tx/'+tx.hash+'" target="_blank">↗</a>'; await tx.wait();
-    note.className="note ok"; note.innerHTML='🔥 Burned '+human(fmt(amt))+' SWOGE forever! <a href="'+CHAIN.scan+'/tx/'+tx.hash+'" target="_blank">view tx ↗</a>';
+    note.className="note ok"; note.innerHTML='🔥 Burned '+human(fmt(amt))+' '+J().sym.replace("$","")+' forever! <a href="'+CHAIN.scan+'/tx/'+tx.hash+'" target="_blank">view tx ↗</a>';
     toast("Burned 🔥"); $("#pct").value=""; refreshBalance(); refreshTotal();
   }catch(e){ note.className="note err"; note.textContent="Failed · "+String(e.reason||e.message||e).slice(0,140); }
   finally{ btn.disabled=false; }
 };
+
+/* Changer de jeton remet TOUT a zero — solde, montant, message. Garder le
+   solde de l'ancien jeton a l'ecran une seconde de trop, c'est proposer de
+   bruler un nombre qui n'est plus le bon. */
+document.querySelectorAll("#tokPick button").forEach(function(b){
+  b.onclick=function(){
+    if(jetonCle===b.dataset.t) return;
+    jetonCle=b.dataset.t;
+    document.querySelectorAll("#tokPick button").forEach(function(x){ x.classList.remove("on"); });
+    b.classList.add("on");
+    var j=J();
+    $("#burnTitre").textContent="Burn your "+j.sym;
+    $("#burnHint").innerHTML="Burning sends your "+j.sym+" to a dead address (<code>0x…dEaD</code>) "
+      + "that no one controls. It's <b>permanent and irreversible</b> — it reduces the circulating supply forever.";
+    myBalWei=null; $("#willBurn").textContent="—"; $("#note").textContent=""; $("#note").className="note";
+    $("#myBal").textContent = account ? "…" : "connect wallet";
+    $("#totalBurned").textContent="—"; $("#burnBar").style.width="0%";
+    refreshTotal(); refreshBalance();
+  };
+});
 
 refreshTotal();
 setInterval(refreshTotal, 30000);

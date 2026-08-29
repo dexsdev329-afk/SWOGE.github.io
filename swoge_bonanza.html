@@ -668,30 +668,6 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
 .bz-c.scat img{ animation:bzScat 1.5s ease-in-out infinite; }
 @keyframes bzScat{ 0%,100%{ transform:scale(1) rotate(0); } 50%{ transform:scale(1.1) rotate(6deg); } }
 
-/* ---- LE COMPTEUR DE SUCETTES ----
-   Combien sont tombees, et combien il en faut. Un compteur qui n'apparait
-   que lorsqu'il y en a au moins une : affiche « 0/4 » en permanence, il
-   devient du decor et cesse d'etre lu. */
-/* Il chevauchait le bouton SPIN, pose sous la grille. Il mord maintenant le
-   BORD HAUT du cadre : c'est la place d'un compteur de machine, il ne
-   recouvre presque rien, et il est dans le regard pendant que les rouleaux
-   tournent — c'est-a-dire au moment ou il sert.
-   `-18 %` et non `-50 %` : a moitie dehors il remontait de 17 px et touchait
-   le logo. A dix-huit pour cent il depasse de cinq, ce que la marge sous le
-   logo absorbe. */
-.bz-scat{ position:absolute; left:50%; transform:translate(-50%,-18%);
-  top:0; z-index:4;
-  display:flex; align-items:center; gap:7px; white-space:nowrap;
-  font-family:"Space Mono",monospace; font-weight:800; font-size:clamp(11px,3cqi,14px);
-  color:#0B1B36; background:#fff; border:1px solid #C99A2E; border-radius:999px;
-  padding:5px 13px 5px 8px; box-shadow:0 2px 8px rgba(11,27,54,.18);
-  opacity:0; transition:opacity .2s ease, transform .2s ease; pointer-events:none; }
-.bz-scat img{ width:1.5em; height:1.5em; object-fit:contain; }
-.bz-scat.on{ opacity:1; }
-/* Au dernier cran il ne reste qu'une sucette a trouver : le compteur le dit
-   fort, parce que c'est le seul moment ou il change quelque chose. */
-.bz-scat.chaud{ background:linear-gradient(180deg,#FFF3CF,#FFC53D); border-color:#A67A1E;
-  transform:translate(-50%,-18%) scale(1.12); box-shadow:0 3px 14px rgba(255,150,60,.6); }
 @media (prefers-reduced-motion:reduce){ .bz-c.scat img{ animation:none; } }
 .bz-c.attente img{ animation-duration:.2s; }
 
@@ -1403,7 +1379,6 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     <div class="bz-zone">
       <div class="bz-grille" id="bzGrille" aria-label="6 by 5 grid"></div>
       <div class="bz-parts" id="bzParts" aria-hidden="true"></div>
-      <div class="bz-scat" id="bzScat" aria-live="polite"></div>
       <div class="bz-voile" id="bzVoile" hidden><span id="bzVoileTxt"></span></div>
     </div>
 
@@ -2076,25 +2051,15 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     return { arrets:arrets, tendus:tendus };
   }
 
-  /* ---- LE COMPTEUR DE SUCETTES ----
-   * Il ne compte pas ce que le tour VA donner : il compte ce qui est DEJA
-   * tombe a l'ecran, colonne par colonne. La nuance est tout le jeu — un
-   * compteur qui saurait d'avance vendrait la meche, et la page ne doit
-   * jamais en savoir plus que le joueur en train de regarder.
-   */
-  function bzScatMaj(n){
-    var e = $("bzScat"); if(!e) return;
-    var b = BZ.bareme, seuil = (b && b.scattersPourTours) || 4;
-    var sym = (b && b.scatter) || "sucette";
-    if(!n){ e.className = "bz-scat"; e.innerHTML = ""; return; }
-    e.innerHTML = '<img src="'+bzImg(sym)+'" alt="">'+
-      '<span>'+n+' / '+seuil+(n>=seuil ? " \u2014 FREE SPINS!" : "")+'</span>';
-    e.className = "bz-scat on" + (n >= seuil-1 ? " chaud" : "");
-  }
-
-  /* Combien de sucettes sont visibles sur la grille en ce moment, et on les
-     souligne. Les deux vont ensemble : la case qui brille et le compteur
-     doivent toujours dire le meme nombre. */
+  /* ---- ON SOULIGNE LES SUCETTES ----
+   * Un compteur « 3 / 4 » avait ete pose sur le bord du cadre. Retire : trois
+   * sucettes bordees d'or au milieu des fruits, ca se compte d'un coup d'oeil,
+   * et un chiffre qui redit ce que l'image montre deja n'est pas une aide,
+   * c'est du bruit sur un ecran de telephone ou chaque pixel est pris.
+   *
+   * On ne souligne que ce qui est DEJA tombe a l'ecran, colonne par colonne :
+   * marquer d'avance vendrait la meche, et la page ne doit jamais en savoir
+   * plus que le joueur en train de regarder. */
   function bzScatSouligne(grille, jusquA){
     var b = BZ.bareme, sym = (b && b.scatter) || "sucette";
     var cs = $("bzGrille").children, n = 0;
@@ -2108,7 +2073,6 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         }
       }
     }
-    bzScatMaj(n);
     return n;
   }
 
@@ -2498,7 +2462,6 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     BZ.anime=true; bzRender();
     $("bzGain").innerHTML="";
     BZ_CUMUL = 0;
-    bzScatMaj(0);
     son("debut");
     /* Les rouleaux d'abord, sur la grille du PREMIER jet ; les cascades
        ensuite, qui repartent de cette meme grille. */

@@ -18,29 +18,67 @@ La seule piste GitHub propre trouvee : **KenneyNL/Starter-Kit-Match-3**,
 CC0 — mais c'est le meme Kenney, donc le meme style que ce qui est deja
 dans `provisoire/`. Ca ne resout rien.
 
-## Les sources vraiment libres
+## Les paquets tout faits, gratuits
 
-| source | licence | commercial | attribution | remarque |
-|---|---|---|---|---|
-| **pixabay.com/sound-effects** | Pixabay License | oui | non | le plus simple ; interdit de les REVENDRE tels quels |
-| **freesound.org** (filtre CC0) | CC0 au choix | oui | non | le plus propre juridiquement ; qualite tres inegale, il faut ecouter |
-| **opengameart.org** | melange CC0 / CC-BY / GPL | selon | selon | **verifier fichier par fichier**, la licence change d'un depot a l'autre |
-| **kenney.nl** | CC0 | oui | non | deja essaye : mauvais style |
-| **mixkit.co** | « Sound Effects Free License » | ? | ? | **JE N'AI PAS PU LIRE LA LICENCE** — le texte n'est pas servi a la page. A lire avant d'en prendre un seul fichier |
+Une premiere version de ce document mettait en avant une bibliotheque a
+**300 euros**. C'etait une mauvaise reponse a la question posee : il existe
+du gratuit, professionnel, et utilisable commercialement.
 
-Deux choses a savoir sur Pixabay, parce qu'elles ne sont ecrites nulle part
-en gros : la licence ne donne **aucune garantie** — si un fichier depose la
-etait en fait sous droits, c'est pour la pomme de celui qui l'a utilise —
-et elle interdit de redistribuer les sons **tels quels**, ce qui n'est pas
-notre cas ici puisqu'ils partent noyes dans un jeu.
+### Le meilleur : le paquet GDC de Sonniss
 
-## Si tu veux le vrai son, il se paie
+`gdc.sonniss.com` — **7,5 Go de bruitages professionnels, gratuits**,
+offerts chaque annee a la GDC par une vingtaine d'editeurs (Boom Library,
+Krotos, Sound Particles et d'autres). Licence lue, pas supposee :
 
-`asoundeffect.com` vend une bibliotheque de **215 bruitages de machines a
-sous**, enregistres sur de vraies machines. C'est exactement le style
-cherche. Ce n'est pas gratuit, et je le mets ici parce qu'un lot coherent
-achete une fois coute moins de temps que huit fichiers gratuits ramasses un
-par un et jamais tout a fait accordes.
+> « Licensee may use and modify the licensed sound effects for personal and
+> commercial projects **without attribution** to the original creator. »
+
+Les jeux y sont **nommement autorises**. Deux interdictions, aucune ne nous
+gene : on ne peut pas **revendre les sons tels quels** (les livrer dans un
+jeu fini est explicitement permis), et on ne peut pas s'en servir pour
+**entrainer une intelligence artificielle**.
+
+Le defaut : c'est un fourre-tout de 7,5 Go, pas un paquet de casino. Il faut
+fouiller. Les annees precedentes sont archivees sur la meme page — il y en a
+environ 160 Go en tout.
+
+### Le plus direct : Casinowave, sur itch.io
+
+`azakaela.itch.io/casinowave-sounds` — **gratuit** (« name your own price »),
+et c'est exactement le rayon : chutes de pieces, rouleaux de machine a sous,
+jackpot, bonus, sons d'arcade gagnants.
+
+**MAIS SA LICENCE N'EST ECRITE NULLE PART** sur la page. Je l'ai cherchee,
+elle n'y est pas. Sur un site qui prend de l'argent reel, « c'etait gratuit
+sur itch » n'est pas une licence : ecris a l'auteur avant d'en poser un seul
+fichier. C'est deux minutes, et ca evite le seul genre d'ennui qui ne se
+repare pas.
+
+### Le pas cher qui vise juste : Gravity Sound
+
+`gravity-sound.itch.io/casino-slot-machine-sfx` — **170 bruitages de machine
+a sous pour ~10 $** : gains, pertes, rotations, leviers, chutes de pieces,
+bips. Ce n'est pas gratuit, mais ce n'est pas 300 euros non plus, et c'est
+le seul lot de cette liste qui couvre les huit besoins d'un coup, deja
+accorde entre eux.
+
+### Les banques a l'unite
+
+| source | licence | commercial | attribution |
+|---|---|---|---|
+| `pixabay.com/sound-effects` | Pixabay License | oui | non |
+| `freesound.org` (**filtre CC0**) | CC0 | oui | non |
+| `opengameart.org` | melange | selon | selon |
+
+Deux choses a savoir sur Pixabay, ecrites nulle part en gros : la licence ne
+donne **aucune garantie** — si un fichier depose la etait en fait sous
+droits, c'est pour la pomme de celui qui l'a utilise — et elle interdit de
+redistribuer les sons **tels quels**, ce qui ne nous gene pas puisqu'ils
+partent noyes dans un jeu.
+
+Mixkit est ecarte de la liste : la page de licence ne sert pas son texte, je
+n'ai donc pas pu lire ce qu'elle autorise. Ecrire « libre » sans l'avoir lu
+serait exactement l'erreur que ce document existe pour eviter.
 
 ## Ce qu'il faut, son par son
 

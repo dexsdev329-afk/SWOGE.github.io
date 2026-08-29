@@ -2718,7 +2718,14 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       /* Les rouleaux sont comptes a partir de zero cote serveur ; le joueur
          compte a partir de un. */
       var rl=b.rouleauxWild.map(function(r){ return r+1; });
-      h+='<h4>WILD</h4><p>The Wild lands on reel'+(rl.length>1?'s':'')+' '
+      h+='<h4>WILD</h4>';
+      /* Le Wild et les scatters ont leur vignette comme les symboles payants :
+         ce sont eux qu'il faut RECONNAITRE sur les rouleaux, et ils
+         manquaient au tableau. */
+      if(b.wild) h+='<div class="sym"><div class="sy" style="grid-column:1/-1">'
+       + '<img src="'+ddImg(b.wild)+'" alt=""><dl><div><b>Wild</b></div>'
+       + '<div><span>substitutes for every paying symbol</span></div></dl></div></div>';
+      h+='<p>The Wild lands on reel'+(rl.length>1?'s':'')+' '
        + rl.join(', ').replace(/, ([^,]*)$/, ' and $1')
        + ' only. It stands up and takes the whole reel — and the shorter it'
        + ' lands, the bigger the multiplier it carries.</p><table>';
@@ -2727,8 +2734,17 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
           h+='<tr><td>'+t.taille+' cell'+(t.taille>1?'s':'')+' tall</td><td>&times;'
            + t.multi+'</td></tr>';
         });
-      h+='</table><p class="note">A Wild substitutes for every paying symbol.'
-       + ' During free spins its multiplier stays for the whole round.</p>';
+      /* ---- LES TROIS REGLES QUI CHANGENT TOUT ----
+         Elles ne sont pas dans le bareme : ce n'est pas un nombre, c'est la
+         FORME du moteur. Elles sont donc ecrites ici — et epinglees par
+         `dod_regles.test.js`, qui les verifie sur le moteur lui-meme et
+         nomme ce paragraphe. Si le moteur change, l'essai tombe et pointe
+         cette phrase, au lieu de la laisser devenir fausse en silence. */
+      h+='</table><p class="note">A Wild substitutes for every paying symbol'
+       + ' and pays nothing on its own. When Wilds land on several reels at'
+       + ' once their multipliers are MULTIPLIED together, not added — that'
+       + ' is where the big rounds come from. The multiplier applies to the'
+       + ' whole spin, not to one line.</p>';
     }
 
     if(b.scattersPourTours && b.tours){
@@ -2739,7 +2755,25 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       if(b.tours.deader!=null)
         h+='<tr><td>'+b.scattersPourTours+' Deader scatters, anywhere</td><td>'
          + b.tours.deader+' free spins</td></tr>';
-      h+='</table><p class="note">If both land at once, the richer one opens.</p>';
+      h+='</table>';
+      /* Les scatters aussi ont leur vignette : ce sont eux qu'on guette. */
+      if(b.dead||b.deader){
+        h+='<div class="sym">';
+        [[b.dead,'Dead Scatter'],[b.deader,'Deader Scatter']].forEach(function(x){
+          if(!x[0]) return;
+          h+='<div class="sy"><img src="'+ddImg(x[0])+'" alt="">'
+           + '<dl><div><b>'+ddEch(x[1])+'</b></div>'
+           + '<div><span>anywhere on the reels</span></div></dl></div>';
+        });
+        h+='</div>';
+      }
+      h+='<p class="note">Scatters pay nothing by themselves — they open the'
+       + ' round. They count anywhere on the five reels, not on a line. If'
+       + ' both kinds land at once, the richer one opens.</p>'
+       + '<p class="note">During free spins each Wild multiplier STAYS on its'
+       + ' reel until the round ends, and a new Wild landing on a reel that'
+       + ' already holds one ADDS to it. Scatters landing during the round do'
+       + ' nothing: the bonus cannot be retriggered.</p>';
     }
 
     if(b.crans && b.cransOrdre){
@@ -2753,7 +2787,11 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       h+='</table>';
     }
 
-    h+='<h4>THE RULES</h4><table>';
+    h+='<h4>THE RULES</h4>'
+     + '<p>Symbols pay on ADJACENT reels starting from the leftmost one — a'
+     + ' symbol on reels 1, 2 and 3 pays, the same symbol on reels 1, 2 and 4'
+     + ' does not. Every position counts, so the same three reels can hold'
+     + ' several winning paths at once, and each one pays.</p><table>';
     if(b.rouleaux&&b.rangees)
       h+='<tr><td>Reels</td><td>'+b.rouleaux+' &times; '+b.rangees+'</td></tr>';
     if(b.gainMax) h+='<tr><td>Maximum win</td><td>'+ddExact(b.gainMax)+'&times; bet</td></tr>';

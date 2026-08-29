@@ -135,6 +135,46 @@ const T = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
   ok(/b\.crans\[c\]\s*&&\s*b\.crans\[c\]\.prix/.test(src),
      'et ils sont bien lus dans le bareme envoye a la connexion');
 
+  /* 5. LES QUATRE VIGNETTES D'ACHAT
+   *
+   * Elles sont decoupees d'une seule planche puis calees sur un gabarit
+   * commun. C'est ce gabarit commun qui fait que les quatre tuiles ont la
+   * meme hauteur et que le prix tombe au meme endroit sur chacune. Une
+   * planche regeneree plus tard, redecoupee sans recaler, desaligne la
+   * rangee sans lever la moindre erreur — d'ou cette mesure. */
+  const nomsCran = ['wild', 'scatter', 'dead', 'deader'];
+  const tailles = [];
+  let manque = [];
+  for (const c of nomsCran) {
+    const f = path.join(SITE, 'img', 'dod', 'achat_' + c + '.webp');
+    if (!fs.existsSync(f)) { manque.push(c); continue; }
+    const d = fs.readFileSync(f);
+    /* En-tete WEBP/VP8L ou VP8X : on lit la taille sans decodeur. */
+    let w = 0, h = 0;
+    const tag = d.slice(12, 16).toString('latin1');
+    if (tag === 'VP8X') { w = 1 + d.readUIntLE(24, 3); h = 1 + d.readUIntLE(27, 3); }
+    else if (tag === 'VP8L') {
+      const b0 = d.readUInt32LE(21);
+      w = 1 + (b0 & 0x3FFF); h = 1 + ((b0 >> 14) & 0x3FFF);
+    } else if (tag === 'VP8 ') { w = d.readUInt16LE(26) & 0x3FFF; h = d.readUInt16LE(28) & 0x3FFF; }
+    tailles.push({ c, w, h });
+  }
+  ok(manque.length === 0,
+     'les quatre vignettes d achat sont sur le disque'
+     + (manque.length ? ' (manque : ' + manque.join(', ') + ')' : ''));
+  if (tailles.length === 4) {
+    const memes = tailles.every(t => t.w === tailles[0].w && t.h === tailles[0].h);
+    ok(memes,
+       'et elles ont toutes le meme gabarit — sinon la rangee se desaligne ('
+       + tailles.map(t => t.c + ' ' + t.w + 'x' + t.h).join(', ') + ')');
+  }
+
+  /* Et aucune ne porte de prix : c'etait le defaut de la planche d'origine,
+   * ou « 1.5x BET » et « 499x BET » etaient peints dans l'image et
+   * contredisaient les prix mesures sur ce moteur. */
+  ok(!/achat_(1\.5|7|99|499|\d+x)/i.test(src),
+     'et aucune n est nommee par un prix — elles portent le nom du cran');
+
   await nav.close();
   srv.close();
   console.log('\n' + (rates ? 'RATES : ' + rates + '/' + n : 'tout passe : ' + n + ' verifications'));

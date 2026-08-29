@@ -638,16 +638,20 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
  * Les images ne les portent pas : un prix dessine dans une image se dement le
  * jour ou le moteur est remesure, et personne ne pense a refaire l'image. */
 .dd-achats{ max-width:1040px; margin:12px auto 0; padding:0 10px;
-  display:grid; gap:8px; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)) }
+  display:grid; gap:8px; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)) }
 .dd-a{ position:relative; background:none; border:0; padding:0; cursor:pointer;
-  display:block; transition:transform .12s, filter .12s }
+  display:flex; flex-direction:column; align-items:center;
+  container-type:inline-size; transition:transform .12s, filter .12s }
 .dd-a:hover{ transform:translateY(-2px) }
 .dd-a:disabled{ filter:grayscale(.6) brightness(.65); cursor:default; transform:none }
 .dd-a img{ width:100%; display:block }
-.dd-a b{ position:absolute; left:0; right:0; bottom:14%;
-  font:800 clamp(10px,2.4cqi,15px)/1 'Inter',system-ui,sans-serif; color:#fff;
-  text-align:center; letter-spacing:.4px;
-  text-shadow:0 1px 0 #000, 0 0 10px rgba(0,0,0,.9); }
+.dd-a b{ margin-top:-.95em; position:relative; z-index:2;
+  max-width:100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  font:800 clamp(10px,5.4cqi,14px)/1 'Inter',system-ui,sans-serif;
+  color:#FFD98A; letter-spacing:.3px; padding:.36em .7em; border-radius:999px;
+  background:rgba(8,5,14,.90); border:1px solid rgba(255,196,92,.38);
+  box-shadow:0 2px 8px rgba(0,0,0,.55); }
+.dd-a:disabled b{ color:#cfc7bb; border-color:rgba(255,255,255,.18) }
 
 .dd-hist{ max-width:1040px; margin:10px auto 0; padding:0 10px;
   display:flex; gap:6px; flex-wrap:wrap; font:700 11px/1 'Inter',system-ui,sans-serif }
@@ -2069,7 +2073,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
    * cette page : un prix recopie ici se dementirait le jour ou le moteur est
    * remesure, et personne ne penserait a revenir le corriger.
    */
-  var DD_ACHAT_IMG={ wild:"achat_7", scatter:"achat_scatter", dead:"achat_99", deader:"achat_499" };
+  var DD_ACHAT_IMG={ wild:"achat_wild", scatter:"achat_scatter", dead:"achat_dead", deader:"achat_deader" };
   var DD_ACHAT_NOM={ wild:"WILD DROP", scatter:"SCATTER BOOST", dead:"DEAD SPINS", deader:"DEADER SPINS" };
   var DD_CRANS_REPLI=["wild","scatter","dead","deader"];
   function ddAchats(){

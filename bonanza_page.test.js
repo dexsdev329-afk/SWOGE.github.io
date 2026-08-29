@@ -134,26 +134,75 @@ process.on('unhandledRejection', (e) => {
   const q = moteur._p(w.address);
   /* On joue PAR L'INTERFACE : `BZ` vit dans une IIFE, il n'est pas accessible
      depuis l'essai — et c'est tant mieux, un jeu d'argent n'a rien a exposer.
-     On clique donc les jetons puis SPIN, comme un joueur. */
+     On regle donc la mise au cran puis on lance, comme un joueur. */
   const soldeAff = await p.evaluate(() => {
     const e = document.getElementById('bal') || document.querySelector('[id*=bal]');
     return e ? e.textContent.trim() : '';
   });
   console.log('     (solde affiche : ' + JSON.stringify(soldeAff) + ')');
 
-  const jetons = await p.$$eval('#bzRail button:not([disabled])', (bs) =>
-    bs.map((b) => Number(b.dataset.v)));
-  ok(jetons.length > 0, 'des jetons de mise sont proposes : ' + jetons.join(', '));
-  /* Le plus GROS jeton disponible : le plus petit (5) est sous le minimum de
-     table (10), et la page a raison de refuser de l'envoyer. */
-  const MISE = jetons.length ? Math.max.apply(null, jetons) : 0;
-  if (MISE) await p.click('#bzRail button[data-v="' + MISE + '"]');
+  /* ---- LA MISE SE REGLE AU CRAN ----
+     Le tapis de six pastilles a additionner est parti : moins, plus, MAX.
+     On verifie d abord que la mise est POSEE des la connexion — avec un cran,
+     une mise a zero donnerait une barre ou rien ne repond et un SPIN qui
+     refuse, ce qui se lit comme une panne plutot que comme un ecran d accueil. */
+  const miseDepart = await p.evaluate(() => {
+    const e = document.getElementById('bzMise');
+    return e && !e.hidden ? e.textContent : '';
+  });
+  ok(/Bet/.test(miseDepart),
+     'une mise est deja posee a la connexion : ' + JSON.stringify(miseDepart));
+
+  const avantPlus = await p.evaluate(() => document.getElementById('bzMise').textContent);
+  await p.click('#bzPlus');
+  const apresPlus = await p.evaluate(() => document.getElementById('bzMise').textContent);
+  ok(apresPlus !== avantPlus,
+     'un cran de plus change la mise : ' + JSON.stringify(avantPlus) + ' -> ' + JSON.stringify(apresPlus));
+  await p.click('#bzMoins');
+  const apresMoins = await p.evaluate(() => document.getElementById('bzMise').textContent);
+  ok(apresMoins === avantPlus,
+     'et un cran de moins la ramene exactement ou elle etait : ' + JSON.stringify(apresMoins));
+
+  /* MAX prend le plus gros cran que le SOLDE permette, pas le plafond de la
+     table : un bouton qui poserait une mise impayable mene a un refus. */
+  await p.click('#bzMax');
   const miseTexte = await p.evaluate(() => {
     const e = document.getElementById('bzMise');
     return e && !e.hidden ? e.textContent : '';
   });
-  ok(/Bet/.test(miseTexte), 'la mise s affiche apres le clic : ' + JSON.stringify(miseTexte));
+  ok(/Bet/.test(miseTexte), 'MAX pose la plus grosse mise jouable : ' + JSON.stringify(miseTexte));
 
+  /* Le socle de reglage du son est en `position:fixed` sur tout le site : ici
+     il tombait pile sur les boutons de mise et les recouvrait. */
+  const sonPlace = await p.evaluate(() => {
+    const d = document.getElementById('sndDock');
+    if (!d) return { absent: true };
+    const dans = !!(document.getElementById('bzSon') && document.getElementById('bzSon').contains(d));
+    const pos = getComputedStyle(d).position;
+    const r = d.getBoundingClientRect();
+    const chevauche = (el) => {
+      const b = el.getBoundingClientRect();
+      return !(r.right < b.left || r.left > b.right || r.bottom < b.top || r.top > b.bottom);
+    };
+    return { dans, pos,
+             surSpin: chevauche(document.getElementById('bzSpin')),
+             surMoins: chevauche(document.getElementById('bzMoins')),
+             surPlus: chevauche(document.getElementById('bzPlus')) };
+  });
+  ok(!sonPlace.absent && sonPlace.dans && sonPlace.pos !== 'fixed',
+     'le reglage du son est DANS la barre du jeu, plus en flottant (position: '
+     + sonPlace.pos + ')');
+  ok(!sonPlace.surSpin && !sonPlace.surMoins && !sonPlace.surPlus,
+     'et il ne recouvre ni SPIN ni les boutons de mise — c est exactement ce'
+     + ' qu il faisait quand il etait fixe en bas a gauche');
+
+  /* Ce que la page AFFICHE avant de lancer : le serveur devra retenir
+     exactement ca, et pas un chiffre a lui. */
+  const miseEnvoyee = await p.evaluate(() => {
+    const m = /Bet\s+([\d.]+)(k|M)?/.exec(document.getElementById('bzMise').textContent || '');
+    if (!m) return null;
+    return Math.round(parseFloat(m[1]) * (m[2] === 'M' ? 1e6 : m[2] === 'k' ? 1e3 : 1));
+  });
   const soldeAvant = q.balance.toString();
 
   /* ---- LES ROULEAUX TOURNENT-ILS VRAIMENT ? ----
@@ -193,7 +242,7 @@ process.on('unhandledRejection', (e) => {
   if (rep && rep.erreur) console.log('     (le serveur refuse : ' + rep.erreur + ')');
   ok(!!rep, 'le serveur repond au spin');
   if (rep) {
-    ok(rep.mise === MISE, `la mise retenue est la bonne (${rep.mise})`);
+    ok(rep.mise === miseEnvoyee, `la mise retenue est bien celle affichee (${rep.mise})`);
     ok(rep.premiere === 30, `la grille envoyee fait 30 cases (${rep.premiere})`);
     ok(rep.etapes >= 1, `au moins une etape de cascade (${rep.etapes})`);
     ok(rep.net === rep.payout - rep.mise, 'le net est coherent avec le gain et la mise');
@@ -210,10 +259,15 @@ process.on('unhandledRejection', (e) => {
 
   /* ================== 4. LA PAGE RACONTE LA MEME CHOSE ================== */
   console.log('\n-- la page affiche ce qui a ete paye --');
+  /* On attend que la page ait FINI de raconter le tour : c'est seulement
+     alors qu'elle ecrit le net paye et la ligne d'historique. Un gros tour
+     gratuit — dix tours de trois etages — dure une bonne trentaine de
+     secondes ; l'attente etait a soixante et un tour a 158x l'a depassee.
+     L'essai accusait alors la page de ne rien afficher. */
   await p.waitForFunction(() => {
     const b = document.getElementById('bzSpin');
     return b && !b.disabled;
-  }, { timeout: 60000 }).catch(() => {});
+  }, { timeout: 180000 }).catch(() => {});
   const aff = await p.evaluate(() => {
     document.getElementById('bzHistBtn').click();
     return { gain: (document.getElementById('bzGain').textContent || '').trim(),

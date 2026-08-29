@@ -51,7 +51,7 @@ const SYMBOLES = ['banane', 'raisin', 'pasteque', 'prune', 'pomme',
       const i = h.lastIndexOf('})();');
       h = h.slice(0, i)
         + '\n  window.__bz={bzPoseGrille:bzPoseGrille,bzPeint:bzPeint,bzEtincelles:bzEtincelles,'
-        + 'bzArrets:bzArrets,bzMonte:bzMonte,BGM:BGM};\n' + h.slice(i);
+        + 'bzArrets:bzArrets,bzMonte:bzMonte,bzValeur:bzValeur,BGM:BGM};\n' + h.slice(i);
       r.writeHead(200, { 'content-type': 'text/html' });
       return r.end(h);
     }
@@ -147,38 +147,115 @@ const SYMBOLES = ['banane', 'raisin', 'pasteque', 'prune', 'pomme',
     window.__bz.bzPeint(g, new Set(['banane']));
     const couche = document.getElementById('bzParts');
     window.__bz.bzEtincelles(g, new Set(['banane']));
-    const nb = couche.children.length;
     const lis = () => [...couche.children].map((e) => {
       const c = getComputedStyle(e);
       const m = /matrix\(([^)]*)\)/.exec(c.transform);
       const v = m ? m[1].split(',').map(Number) : [1, 0, 0, 1, 0, 0];
-      return { x: v[4], y: v[5], o: parseFloat(c.opacity), w: parseFloat(c.width) };
+      return { cls: e.className, x: v[4], y: v[5],
+               ech: Math.hypot(v[0], v[1]), o: parseFloat(c.opacity),
+               w: parseFloat(c.width), fond: c.backgroundImage !== 'none' ? 'degrade' : c.backgroundColor };
     });
     const t0 = lis();
     await new Promise((r) => setTimeout(r, 260));
     const t1 = lis();
-    await new Promise((r) => setTimeout(r, 700));
-    return { nb, t0, t1, reste: couche.children.length };
+    await new Promise((r) => setTimeout(r, 800));
+    return { t0, t1, reste: couche.children.length };
   }, [grille]);
 
   const gagnants = grille.filter((s) => s === 'banane').length;
-  ok(eclats.nb === gagnants * 9,
-     'neuf eclats par case qui saute, et pas un de plus : ' + eclats.nb
-     + ' pour ' + gagnants + ' cases');
+  const iBouffee = eclats.t0.map((e, i) => [e, i]).filter(([e]) => /bouffee/.test(e.cls)).map(([, i]) => i);
+  const iVole = eclats.t0.map((e, i) => [e, i]).filter(([e]) => !/bouffee/.test(e.cls)).map(([, i]) => i);
+
+  /* Le jeu d'origine (video de reference, 42 s) ouvre une BOUFFEE blanche a
+     la place du symbole et en fait partir des echardes pales. Une bouffee par
+     case, pas une de plus : deux se superposeraient en un disque opaque. */
+  ok(iBouffee.length === gagnants,
+     'une bouffee blanche par case qui saute (' + iBouffee.length + ' pour ' + gagnants + ')');
+  ok(iVole.length === gagnants * 13,
+     'et treize morceaux qui partent avec — dix echardes pales, trois miettes'
+     + ' de la couleur du bonbon : ' + iVole.length);
+
   ok(eclats.t0.every((e) => Math.abs(e.x) < 1 && Math.abs(e.y) < 1),
-     'ils naissent TOUS a leur point de depart — si le navigateur avalait la'
-     + ' transition, ils naitraient deja arrives et on ne verrait rien');
-  const bouges = eclats.t1.filter((e, i) => Math.hypot(e.x - eclats.t0[i].x, e.y - eclats.t0[i].y) > 4).length;
-  ok(bouges === eclats.nb,
-     'et 260 ms plus tard ils ont TOUS bouge (' + bouges + '/' + eclats.nb + ')');
-  ok(eclats.t1.every((e) => e.o < eclats.t0[0].o),
-     'en s effacant : l opacite a baisse pour chacun');
-  const large = eclats.t0[0].w;
-  ok(large >= 12,
-     'chaque eclat fait au moins douze pixels (' + large.toFixed(0) + ' px pour une'
-     + ' case de ' + tailles.cell.toFixed(0) + ') : a neuf pixels fixes ils disparaissaient sur le decor');
+     'tout naît au point de depart — si le navigateur avalait la transition,'
+     + ' les eclats naitraient deja arrives et on ne verrait rien');
+
+  const bouges = iVole.filter((i) => Math.hypot(eclats.t1[i].x - eclats.t0[i].x,
+                                                eclats.t1[i].y - eclats.t0[i].y) > 4).length;
+  ok(bouges === iVole.length,
+     'et 260 ms plus tard les morceaux ont TOUS bouge (' + bouges + '/' + iVole.length + ')');
+  /* La bouffee, elle, ne se deplace pas : elle s'OUVRE sur place. */
+  ok(iBouffee.every((i) => eclats.t1[i].ech > eclats.t0[i].ech + 0.15),
+     'la bouffee ne part pas, elle s ouvre : son echelle passe de '
+     + eclats.t0[iBouffee[0]].ech.toFixed(2) + ' a ' + eclats.t1[iBouffee[0]].ech.toFixed(2));
+
+  ok(eclats.t1.every((e, i) => e.o < eclats.t0[i].o),
+     'et tout s efface : l opacite a baisse pour chacun');
+
+  /* Le blanc doit DOMINER. Un premier jet projetait des ronds de la couleur
+     du symbole : a chaque cascade la grille virait au jaune sur les bananes,
+     au violet sur les raisins. Ce n est pas ce que fait le jeu d origine. */
+  const pales = iVole.filter((i) => {
+    const c = eclats.t0[i].fond;
+    const m = /rgb\((\d+), (\d+), (\d+)\)/.exec(c);
+    return m && Math.min(+m[1], +m[2], +m[3]) > 190;
+  }).length;
+  ok(pales >= iVole.length * 0.7,
+     'et sept morceaux sur dix au moins sont blancs ou presque (' + pales + '/'
+     + iVole.length + ') : le blanc domine, la couleur du bonbon ne survit'
+     + ' qu en quelques miettes');
+
+  const large = eclats.t0[iVole[0]].w;
+  ok(large >= 6,
+     'chaque morceau fait au moins six pixels (' + large.toFixed(0) + ' px pour une'
+     + ' case de ' + tailles.cell.toFixed(0) + ')');
   ok(eclats.reste === 0,
      'et la couche est vidée apres coup : rien ne s accumule d un tour a l autre');
+
+  /* ---------------- 3 bis. LA VALEUR EN BLANC ---------------- */
+  console.log('\n-- la valeur qui s inscrit en blanc --');
+  const val = await p.evaluate(async ([g]) => {
+    const couche = document.getElementById('bzParts');
+    couche.textContent = '';
+    window.__bz.bzValeur(g, new Set(['banane']), 1234);
+    const e = couche.querySelector('.bz-val');
+    if (!e) return null;
+    const c0 = getComputedStyle(e);
+    const depart = { txt: e.textContent, couleur: c0.color, o: parseFloat(c0.opacity),
+                     px: parseFloat(c0.fontSize), ombre: c0.textShadow };
+    const r0 = e.getBoundingClientRect();
+    await new Promise((r) => setTimeout(r, 260));
+    /* On LIT tout de suite, on ne garde pas l'objet : `getComputedStyle` rend
+       une declaration VIVANTE, et la relire apres que l'element a quitte le
+       document donne une chaine vide — donc NaN. C'est ce que faisait la
+       premiere version de cet essai, et elle accusait la page. */
+    const milieu = { o: parseFloat(getComputedStyle(e).opacity) };
+    const r1 = e.getBoundingClientRect();
+    await new Promise((r) => setTimeout(r, 1200));
+    return { depart, milieu, y0: r0.top, y1: r1.top,
+             parti: !couche.querySelector('.bz-val') };
+  }, [grille]);
+
+  ok(!!val, 'une valeur est posee sur la grille');
+  if (val) {
+    /* Le montant NU, sans « $SWOGE » : « +1.2k $SWOGE » couvrait quatre
+       colonnes de la grille, la ou le jeu d origine ecrit « 0,50 $ » et rien
+       d autre. La monnaie est de toute facon la seule de la page. */
+    ok(/^\+[\d.]+[kM]?$/.test(val.depart.txt),
+       'elle porte le montant de l etape, et rien que lui : '
+       + JSON.stringify(val.depart.txt));
+    ok(val.depart.couleur === 'rgb(255, 255, 255)',
+       'elle est BLANCHE, comme dans le jeu d origine (' + val.depart.couleur + ')');
+    ok(/rgb/.test(val.depart.ombre),
+       'avec un cerne sombre : elle doit tenir sur un decor clair comme sur un'
+       + ' decor sombre');
+    ok(val.depart.px >= 15,
+       'assez grosse pour se lire d un coup d oeil (' + val.depart.px.toFixed(0) + ' px)');
+    ok(val.milieu.o > 0.5,
+       'encore visible 260 ms plus tard (' + val.milieu.o.toFixed(2) + ') : le'
+       + ' temps de la lire');
+    ok(val.parti,
+       'et elle s en va : rien ne reste sur la grille au tour suivant');
+  }
 
   /* ---------------- 4. L'ATTENTE SUR LES SUCETTES ---------------- */
   console.log('\n-- l attente avant la derniere sucette --');
@@ -209,6 +286,38 @@ const SYMBOLES = ['banane', 'raisin', 'pasteque', 'prune', 'pomme',
   ok(Math.abs(suite[suite.length - 1] - 1000) < 0.001,
      'et il finit EXACTEMENT sur le chiffre du serveur (' + suite[suite.length - 1]
      + ') : un compteur qui s arrete a 999 ferait mentir la page');
+
+  /* ---------------- 6. LE SPECTACLE NE DOIT PAS S ETERNISER ----------------
+   * Un gros tour gratuit enchaine dix tours de trois etages. Au rythme du jeu
+   * de base — 1,33 s par etage, celui qu'on a MESURE sur la video — ca fait
+   * quarante-cinq secondes pendant lesquelles le joueur n'a plus la main. Le
+   * solde, lui, est deja credite : l'attente ne lui rapporte rien, elle lui
+   * coute juste sa partie.
+   *
+   * On ne le devine pas, on l'additionne : les constantes de la page sont
+   * lues, pas recopiees. */
+  console.log('\n-- la duree du spectacle --');
+  const duree = await p.evaluate(() => {
+    /* Ce que dure un etage gagnant : la pause, l'eclatement, la chute. */
+    const etage = (pause, eclat, k) => pause + eclat + (220 + 4 * 60 + 90) * k;
+    const base = 1070 + 260;              // les rouleaux, sans attente
+    const lent = etage(560, 340, 1), vif = etage(260, 240, 0.72);
+    return {
+      etageBase: lent, etageVite: vif,
+      /* le pire cas courant : rouleaux + 3 etages, puis 10 tours gratuits de
+         3 etages avec une bombe a chacun */
+      grosTour: base + 3 * lent + 1500 + 10 * (3 * vif + 700),
+    };
+  });
+  console.log('     un etage : ' + duree.etageBase + ' ms en jeu de base, '
+              + duree.etageVite + ' ms en tours gratuits');
+  ok(Math.abs(duree.etageBase - 1500) < 350,
+     'un etage dure ' + duree.etageBase + ' ms — la video de reference en mesure'
+     + ' 1500, du symbole allume a la grille repleine');
+  ok(duree.grosTour < 45000,
+     'et le plus gros tour courant — dix tours gratuits de trois etages avec'
+     + ' bombe — tient en ' + Math.round(duree.grosTour / 1000) + ' s'
+     + ' (il en faisait 55 au rythme du jeu de base)');
 
   ok(erreurs.length === 0, 'aucune erreur JS' + (erreurs.length ? ' : ' + erreurs[0] : ''));
   console.log('\n' + n + ' verifications, ' + rates + ' echec(s)');

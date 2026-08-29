@@ -546,26 +546,61 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
   38%{ transform:scale(1.32) rotate(-5deg); opacity:1; }
   100%{ transform:scale(.18) rotate(14deg); opacity:0; }
 }
+/* Blanche et non doree : la video de reference montre un nuage blanc, pas une
+   lueur d'or. L'or etait mon invention, et il tirait tout le jeu vers le
+   jaune quel que soit le bonbon qui sautait. */
 .bz-c.eclate::after{
-  content:""; position:absolute; inset:14%; border-radius:50%; pointer-events:none;
-  background:radial-gradient(circle, rgba(255,255,255,.95) 0%, rgba(255,197,61,.7) 38%, rgba(255,197,61,0) 72%);
+  content:""; position:absolute; inset:10%; border-radius:50%; pointer-events:none;
+  background:radial-gradient(circle, rgba(255,255,255,.98) 0%, rgba(236,246,255,.78) 40%, rgba(225,240,255,0) 74%);
   animation:bzLueur .42s ease-out forwards;
 }
 @keyframes bzLueur{ 0%{ transform:scale(.3); opacity:0; } 30%{ transform:scale(1.1); opacity:1; } 100%{ transform:scale(1.7); opacity:0; } }
 .bz-c.vide img{ opacity:0; }
 
-/* ---- LES ETINCELLES ----
-   Un symbole qui saute projette des eclats de sa propre couleur. C'est ce
-   qui manquait le plus pour que la cascade se lise comme une explosion et
-   non comme un effacement : la lueur dit « ici », les eclats disent « ca a
-   eclate ». Ils vivent dans une couche a part, au-dessus de la grille, pour
-   ne rien deranger de la mise en page des cases. */
+/* ---- LE SYMBOLE SE BRISE ----
+   Repris image par image du jeu d'origine (video de reference, sequence a
+   42 s). Ce qu'on y voit n'est PAS ce que j'avais fait :
+
+     • le symbole ne projette pas des ronds de sa propre couleur. Il se brise
+       en ECHARDES anguleuses, bleu tres pale et blanches, comme du sucre
+       casse — la couleur du bonbon ne survit qu'en quelques miettes ;
+     • une BOUFFEE BLANCHE ronde s'ouvre a sa place, un nuage qui grandit et
+       se dissipe ;
+     • et la VALEUR de l'amas s'inscrit EN BLANC par-dessus la grille.
+
+   Les trois vivent dans une couche a part, au-dessus des cases, pour ne rien
+   deranger de la mise en page. */
 .bz-parts{ position:absolute; inset:0; pointer-events:none; z-index:3;
   border-radius:16px; overflow:hidden; }
-/* La taille vient du JS, proportionnelle a la case : un eclat de neuf pixels
-   fixes disparait sur un grand ecran et masque le symbole sur un petit. */
-.bz-p{ position:absolute; border-radius:50%; opacity:1;
+/* Les tailles viennent du JS, proportionnelles a la case : une echarde de
+   neuf pixels fixes disparait sur un grand ecran et masque le symbole sur un
+   petit. */
+.bz-p{ position:absolute; opacity:1;
   transition:transform .52s cubic-bezier(.15,.7,.35,1), opacity .52s ease-out; }
+/* Une echarde : un eclat anguleux, pas une bille. Le coin coupe suffit —
+   a cette taille et a cette vitesse, l'oeil lit « brise » et rien de plus. */
+.bz-p.eclat{ border-radius:2px 6px 2px 6px; }
+/* Une miette du bonbon lui-meme : quelques-unes seulement, pour que la
+   couleur d'origine reste presente sans faire du confetti. */
+.bz-p.miette{ border-radius:50%; }
+/* La bouffee : un nuage blanc qui s'ouvre a la place du symbole. C'est elle
+   qui porte l'explosion ; les echardes ne font que la border. */
+.bz-p.bouffee{ border-radius:50%;
+  background:radial-gradient(circle, rgba(255,255,255,.96) 0%, rgba(233,244,255,.72) 42%, rgba(214,234,255,0) 72%);
+  transition:transform .46s cubic-bezier(.2,.8,.4,1), opacity .46s ease-out; }
+
+/* ---- LA VALEUR, EN BLANC, SUR LA GRILLE ----
+   Elle s'ecrit au centre de l'amas qui vient de payer, monte un peu et
+   s'efface. Blanc pur cerne de sombre : elle passe sur un decor clair comme
+   sur un decor sombre, et le jeu d'origine la pose exactement ainsi. */
+.bz-val{ position:absolute; transform:translate(-50%,-50%);
+  font-family:"Anton",sans-serif; color:#fff; white-space:nowrap;
+  letter-spacing:.5px; text-shadow:0 2px 0 rgba(20,10,40,.6), 0 0 16px rgba(255,255,255,.7);
+  opacity:0; transition:transform .62s cubic-bezier(.2,.9,.3,1), opacity .16s ease-out; }
+/* Elle s'affiche vite et s'efface lentement : un fondu d'entree de six
+   dixiemes mangeait le temps de lecture, et sur la video elle est franche
+   des la premiere image de l'eclatement. */
+.bz-val.part{ transition:transform .62s cubic-bezier(.2,.9,.3,1), opacity .5s ease-in; }
 
 /* ---- LA SECOUSSE DU GROS GAIN ----
    Reservee aux tours qui paient vingt fois la mise ou plus : une secousse
@@ -652,14 +687,49 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
   cursor:pointer; font-size:17px; line-height:1; width:26px; height:26px;
   border-radius:50%; flex:0 0 auto; }
 .bz-mise button:hover{ background:rgba(192,57,43,.1); }
-.bz-rail{ display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin:10px auto 6px; }
-.bz-rail button{ font-family:"Space Mono",monospace; font-weight:700; font-size:12px;
-  padding:7px 11px; border-radius:999px; cursor:pointer; color:#0B1220;
-  background:linear-gradient(180deg,#FFE9A8,#FFC53D); border:1px solid #C99A2E; }
-.bz-rail button:disabled{ opacity:.4; cursor:default; }
-.bz-spin{ display:block; margin:8px auto 4px; font-family:"Anton",sans-serif;
+/* ---- LA BARRE DE COMMANDE ----
+   Moins, le bouton, plus — sur une seule ligne, le pouce ne quitte pas le
+   bas de l'ecran. Les six pastilles a additionner sont parties : pour miser
+   8 600 il fallait taper huit fois, et la valeur atteinte dependait de
+   l'ordre des taps. */
+.bz-barre{ display:flex; align-items:center; justify-content:center;
+  gap:clamp(10px,3.5cqi,22px); margin:10px auto 6px; }
+.bz-pas{ flex:0 0 auto; width:clamp(48px,14cqi,62px); height:clamp(48px,14cqi,62px);
+  border-radius:50%; cursor:pointer; font-family:"Anton",sans-serif;
+  font-size:clamp(24px,7cqi,32px); line-height:1; color:#0B1220;
+  background:linear-gradient(180deg,#FFF3CF,#FFD873); border:2px solid #C99A2E;
+  box-shadow:0 4px 0 #A67A1E; display:flex; align-items:center; justify-content:center; }
+.bz-pas:active{ transform:translateY(3px); box-shadow:0 1px 0 #A67A1E; }
+.bz-pas:disabled{ opacity:.42; cursor:default; box-shadow:0 4px 0 #A67A1E; }
+
+/* La ligne du dessous : MAX d'un cote, le son de l'autre. */
+.bz-sous{ display:flex; align-items:center; justify-content:space-between;
+  gap:10px; margin:2px auto 0; max-width:min(100%,560px); }
+.bz-max{ font-family:"Space Mono",monospace; font-weight:700; font-size:12px;
+  letter-spacing:1px; padding:8px 16px; border-radius:999px; cursor:pointer;
+  color:#0B1B36; background:#fff; border:1px solid #C99A2E;
+  box-shadow:0 1px 3px rgba(11,27,54,.12); }
+.bz-max:disabled{ opacity:.45; cursor:default; }
+/* ---- LE SON REVIENT DANS LA PAGE ----
+   Le socle du site est en `position:fixed` en bas a gauche : sur cette page
+   il tombait exactement sur les boutons de mise et les recouvrait. On le
+   remet dans le flux, ici, ou il ne cache rien. */
+.bz-son{ display:flex; align-items:center; gap:8px; }
+.bz-son .snd{ position:static; inset:auto; flex-direction:row; align-items:center;
+  gap:8px; z-index:auto; }
+.bz-son .snd .b{ width:38px; height:38px; font-size:16px; opacity:1;
+  border-color:#C99A2E; color:#8A6410;
+  background:linear-gradient(180deg,#FFF3CF,#FFD873);
+  box-shadow:0 1px 3px rgba(11,27,54,.18); }
+.bz-son .snd .row.off .b{ color:#9A8B70; background:#F0EFEB; border-color:#CFC7B4; }
+.bz-son .snd .p{ background:#fff; border-color:#C99A2E;
+  box-shadow:0 2px 8px rgba(11,27,54,.16); padding:5px 11px 5px 9px; }
+.bz-son .snd .v{ color:#6B5A2E; }
+.bz-son .snd input[type=range]{ width:clamp(70px,18cqi,110px); accent-color:#C99A2E; }
+
+.bz-spin{ display:block; margin:0; flex:0 1 auto; font-family:"Anton",sans-serif;
   font-size:clamp(19px,6cqi,28px); letter-spacing:2px; color:#0B1220; cursor:pointer;
-  padding:12px 44px; border-radius:999px; border:2px solid #C99A2E;
+  padding:12px clamp(22px,9cqi,44px); border-radius:999px; border:2px solid #C99A2E;
   background:linear-gradient(180deg,#FFE9A8,#FFC53D); box-shadow:0 5px 0 #A67A1E; }
 .bz-spin:active{ transform:translateY(3px); box-shadow:0 2px 0 #A67A1E; }
 .bz-spin:disabled{ opacity:.55; cursor:default; box-shadow:0 5px 0 #A67A1E; }
@@ -1262,8 +1332,23 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       <div class="bz-voile" id="bzVoile" hidden><span id="bzVoileTxt"></span></div>
     </div>
 
-    <div class="bz-rail" id="bzRail"></div>
-    <button class="bz-spin" id="bzSpin" type="button">SPIN</button>
+    <!-- LA BARRE DE COMMANDE
+         DEMANDE : « il faut une UI pour les boutons, la c'est horrible pour
+         selectionner la mise et le son ». Six pastilles a additionner pour
+         atteindre 8 600, et deux ronds de reglage du son qui flottaient
+         PAR-DESSUS ces pastilles parce qu'ils sont en position fixe.
+         Le jeu d'origine fait tenir tout ca en une ligne : moins, la mise,
+         plus, et le gros bouton au milieu. C'est ce qui est repris ici, avec
+         les reglages du son ramenes DANS la page au lieu de flotter dessus. -->
+    <div class="bz-barre">
+      <button class="bz-pas" id="bzMoins" type="button" aria-label="Lower the bet">&minus;</button>
+      <button class="bz-spin" id="bzSpin" type="button">SPIN</button>
+      <button class="bz-pas" id="bzPlus" type="button" aria-label="Raise the bet">+</button>
+    </div>
+    <div class="bz-sous">
+      <button class="bz-max" id="bzMax" type="button">MAX</button>
+      <div class="bz-son" id="bzSon"></div>
+    </div>
     <div class="bz-note" id="bzNote"></div>
 
     <button class="bz-histbtn" id="bzBaremeBtn" type="button" aria-expanded="false">Paytable</button>
@@ -1727,9 +1812,33 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
      en dessous. Avec 100/(R+2) — le premier reflexe — la bille tombait a cote
      de son godet d'un demi-pas, et c'est le genre de decalage qu'on ne voit
      qu'apres avoir joue trente billes. */
-  var BZ_CHIPS=[["c5",5],["c25",25],["c100",100],["c500",500],["c1k",1000],
-                ["c5k",5000],["c25k",25000],["c100k",100000],["c500k",500000]];
+  /* ---- L'ECHELLE DES MISES ----
+     Un cran par palier, comme sur la machine d'origine : moins et plus font
+     descendre et monter d'un cran. Les six pastilles a additionner sont
+     parties — pour miser 8 600 il fallait taper huit fois, et ce qu'on
+     obtenait dependait de l'ordre des taps.
+     L'echelle est TAILLEE aux bornes de la table, qui arrivent du serveur :
+     un cran hors bornes serait un bouton qui refuse. */
+  var BZ_ECHELLE=[10,20,50,100,200,500,1000,2000,5000,10000,20000,50000,100000,250000,500000];
   var BZ_MIN=10, BZ_MAX=10000;
+  function bzPaliers(){
+    var l=[], i;
+    for(i=0;i<BZ_ECHELLE.length;i++){
+      var v=BZ_ECHELLE[i];
+      if(v>=BZ_MIN && v<=BZ_MAX) l.push(v);
+    }
+    /* Les bornes elles-memes valent un cran : une table dont le minimum est
+       15 doit pouvoir miser 15, pas seulement 20. */
+    if(!l.length || l[0]>BZ_MIN) l.unshift(BZ_MIN);
+    if(l[l.length-1]<BZ_MAX) l.push(BZ_MAX);
+    return l;
+  }
+  /* Le cran le plus proche de la mise en cours, vers le bas. */
+  function bzCran(){
+    var l=bzPaliers(), k=0;
+    for(var i=0;i<l.length;i++) if(l[i]<=BZ.mise) k=i;
+    return k;
+  }
   var BZ_HIST_MAX=5;
 
   /* L'etat de la page. `anime` est le verrou : tant qu'une cascade se joue, on
@@ -1775,17 +1884,21 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     }
   }
 
-  function bzRail(){
-    var r=$("bzRail"), h="";
-    for(var i=0;i<BZ_CHIPS.length;i++){
-      var v=BZ_CHIPS[i][1];
-      if(v>BZ_MAX) continue;
-      h+='<button type="button" data-v="'+v+'"'+((BZ.anime||v>balance)?" disabled":"")+'>+'+bzFmt(v)+'</button>';
-    }
-    r.innerHTML=h;
+  /* L'etat des trois boutons de mise. Un bouton qui refuserait le clic une
+     fois presse est un bouton qu'il fallait eteindre avant : on eteint. */
+  function bzPasMaj(){
+    var l=bzPaliers(), k=bzCran();
+    var jouable = l.filter(function(v){ return v<=balance; });
+    var plafond = jouable.length ? jouable[jouable.length-1] : 0;
+    $("bzMoins").disabled = BZ.anime || k<=0;
+    $("bzPlus").disabled  = BZ.anime || k>=l.length-1 || l[k+1]>balance;
+    $("bzMax").disabled   = BZ.anime || !plafond || BZ.mise===plafond;
   }
   function bzMiseAff(){
     var e=$("bzMise");
+    /* Elle reste cachee tant qu'aucune mise n'est posee — c'est-a-dire
+       avant la connexion. Des qu'on joue, un cran est toujours pose et la
+       pastille ne disparait plus : rien a effacer, donc plus de « clear ». */
     if(BZ.mise<=0){ e.hidden=true; e.innerHTML=""; return; }
     e.hidden=false;
     /* « $SWOGE » sort de la pastille : dans une colonne de cent pixels il la
@@ -1823,7 +1936,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
        'Max win '+b.gainMax+'× your bet.</div>';
     e.innerHTML=h;
   }
-  function bzRender(){ bzRail(); bzMiseAff(); bzHist(); $("bzSpin").disabled=BZ.anime; }
+  function bzRender(){ bzPasMaj(); bzMiseAff(); bzHist(); $("bzSpin").disabled=BZ.anime; }
 
   /* ---- L'ANIMATION NE DECIDE DE RIEN ----
      Le serveur a deja tout calcule, deja debite et deja credite. On se
@@ -1996,42 +2109,73 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     prune:"#B95CE6", raisin:"#D96FE6", sucette:"#E5AC51"
   };
 
-  /* ---- LES ECLATS ----
-   * Cinq par case qui saute, projetes au hasard autour de son centre. On les
-   * pose tous d'un coup, on lance l'animation a l'image suivante, et on vide
-   * la couche une seule fois a la fin : trente minuteurs separes pour trente
-   * cases feraient sauter l'image sur un telephone.
+  /* ---- LE SYMBOLE SE BRISE ----
+   * Trois choses par case qui saute, dans l'ordre ou l'oeil les prend :
+   *
+   *   1. une BOUFFEE blanche s'ouvre a la place du symbole. C'est elle qui
+   *      porte l'explosion — sans elle on ne voit que des points qui volent ;
+   *   2. dix ECHARDES bleu tres pale en partent, anguleuses, comme du sucre
+   *      casse ;
+   *   3. trois MIETTES de la couleur du bonbon, et pas une de plus : elles
+   *      disent lequel vient de sauter, sans transformer la grille en
+   *      confetti.
+   *
+   * Mon premier jet projetait neuf ronds de la couleur du symbole. En
+   * revoyant la video image par image (sequence a 42 s), ce n'est pas ce que
+   * fait le jeu d'origine : le blanc domine, la couleur ne survit qu'en
+   * quelques miettes. Le detail compte parce qu'a chaque cascade la teinte
+   * dominante changeait — la grille virait au jaune sur les bananes, au
+   * violet sur les raisins. Ici elle vire au blanc, toujours.
    *
    * Rien ici ne DECIDE de quoi que ce soit : c'est de la peinture posee sur
-   * un resultat deja calcule et deja paye.
+   * un resultat deja calcule, deja debite et deja credite.
    */
-  var BZ_ECLATS = 9;
+  var BZ_ECLATS = 10, BZ_MIETTES = 3;
+  var BZ_PALE = ["#FFFFFF","#EAF4FF","#D7E9FF","#F4FAFF","#C9DFFA"];
+
+  function bzReduit(){
+    try{ return matchMedia("(prefers-reduced-motion: reduce)").matches; }catch(e){ return false; }
+  }
+
   function bzEtincelles(grille, gagnants){
-    var couche = $("bzParts"); if(!couche) return;
-    try{ if(matchMedia("(prefers-reduced-motion: reduce)").matches) return; }catch(e){}
+    var couche = $("bzParts"); if(!couche || bzReduit()) return;
     var cs = $("bzGrille").children;
     var base = couche.getBoundingClientRect();
     var frag = document.createDocumentFragment(), poses = [];
+
     for(var i=0;i<30;i++){
       if(!gagnants.has(grille[i])) continue;
       var r = cs[i].getBoundingClientRect();
       var cx = r.left - base.left + r.width/2, cy = r.top - base.top + r.height/2;
       var teinte = BZ_TEINTE[grille[i]] || "#FFC53D";
-      var taille = Math.max(9, Math.round(r.width*0.30));
-      for(var k=0;k<BZ_ECLATS;k++){
+
+      /* 1. la bouffee */
+      var b = document.createElement("div");
+      b.className = "bz-p bouffee";
+      var tb = Math.round(r.width*0.86);
+      b.style.width = tb+"px"; b.style.height = tb+"px";
+      b.style.left = cx+"px"; b.style.top = cy+"px";
+      b.style.margin = (-tb/2)+"px 0 0 "+(-tb/2)+"px";
+      b.style.transform = "translate3d(0,0,0) scale(.35)";
+      poses.push([b, 0, 0, 1.35, 0]);
+      frag.appendChild(b);
+
+      /* 2. les echardes, puis 3. les miettes */
+      var total = BZ_ECLATS + BZ_MIETTES;
+      for(var k=0;k<total;k++){
+        var miette = k >= BZ_ECLATS;
         var e = document.createElement("div");
-        e.className = "bz-p";
-        /* un coeur blanc dans la teinte du bonbon : la couleur seule se perd
-           sur un decor deja colore, le blanc fait le point lumineux */
-        e.style.width = taille+"px"; e.style.height = taille+"px";
-        e.style.margin = (-taille/2)+"px 0 0 "+(-taille/2)+"px";
+        e.className = "bz-p " + (miette ? "miette" : "eclat");
+        var t = Math.round(r.width * (miette ? 0.10 : 0.13) * (0.7+Math.random()*0.7));
+        e.style.width = t+"px"; e.style.height = Math.round(t*(miette?1:0.72))+"px";
+        e.style.margin = (-t/2)+"px 0 0 "+(-t/2)+"px";
         e.style.left = cx+"px"; e.style.top = cy+"px";
-        e.style.background = "radial-gradient(circle at 40% 36%, #fff 0%, #fff 26%, "+teinte+" 62%, "+teinte+" 100%)";
-        e.style.boxShadow = "0 0 12px "+teinte+", 0 0 4px #fff";
-        var a = Math.random()*Math.PI*2, d = r.width*(0.45+Math.random()*0.75);
-        var t = (0.5+Math.random()*0.7).toFixed(2);
-        e.style.transform = "translate3d(0,0,0) scale("+t+")";
-        poses.push([e, Math.cos(a)*d, Math.sin(a)*d + r.width*0.30, t]);
+        e.style.background = miette ? teinte : BZ_PALE[(Math.random()*BZ_PALE.length)|0];
+        e.style.boxShadow = miette ? "0 0 6px "+teinte : "0 0 7px rgba(255,255,255,.9)";
+        var a = Math.random()*Math.PI*2, d = r.width*(0.40+Math.random()*0.70);
+        var rot = Math.round(-180+Math.random()*360);
+        e.style.transform = "translate3d(0,0,0) rotate(0deg)";
+        poses.push([e, Math.cos(a)*d, Math.sin(a)*d + r.width*0.34, 0, rot]);
         frag.appendChild(e);
       }
     }
@@ -2045,29 +2189,85 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
        passait ; on ne le voyait pas, on voyait « il n'y a pas d'eclats ».
        La lecture de `offsetWidth` oblige a peindre l'etat de depart. */
     void couche.offsetWidth;
-    {
-      for(var j=0;j<poses.length;j++){
-        var q = poses[j];
-        /* le second terme du Y les fait retomber : sans lui ils partent en
+    for(var j=0;j<poses.length;j++){
+      var q = poses[j];
+      if(q[3]){                                   // la bouffee : elle s'ouvre sur place
+        q[0].style.transform = "translate3d(0,0,0) scale("+q[3]+")";
+      } else {                                    // echardes et miettes : elles partent
+        /* le second terme du Y les fait retomber : sans lui elles partent en
            etoile parfaite, ce qui ne ressemble a rien de physique */
-        q[0].style.transform = "translate3d("+q[1].toFixed(1)+"px,"+q[2].toFixed(1)+"px,0) scale("+(q[3]*0.4).toFixed(2)+")";
-        q[0].style.opacity = "0";
+        q[0].style.transform = "translate3d("+q[1].toFixed(1)+"px,"+q[2].toFixed(1)+"px,0) rotate("+q[4]+"deg)";
       }
+      q[0].style.opacity = "0";
     }
-    setTimeout(function(){ couche.textContent = ""; }, 620);
+    setTimeout(function(){ couche.textContent = ""; }, 660);
   }
 
-  function bzEclate(grille, gagnants, fin){
+  /* ---- LA VALEUR DE L'AMAS, EN BLANC, SUR LA GRILLE ----
+   * DEMANDE : « quand on a par exemple 8/10 fruits ca fait une animation, il
+   * se casse et ca affiche en blanc la valeur ». C'est bien ce que fait le
+   * jeu d'origine : le montant s'inscrit au centre des cases qui viennent de
+   * payer, monte de quelques pixels et s'efface.
+   *
+   * Le montant vient du serveur : `etape.multi` est le multiple de la mise
+   * que CETTE etape a paye, et la mise est celle qu'il a retenue. On
+   * n'additionne rien qu'il n'ait pas additionne lui-meme.
+   */
+  function bzValeur(grille, gagnants, montant){
+    var couche = $("bzParts"); if(!couche) return;
+    var cs = $("bzGrille").children;
+    var base = couche.getBoundingClientRect();
+    /* au centre de gravite de l'amas : au milieu de la grille, la valeur
+       tomberait souvent loin des cases qui ont paye */
+    var sx=0, sy=0, n=0, larg=0;
+    for(var i=0;i<30;i++){
+      if(!gagnants.has(grille[i])) continue;
+      var r = cs[i].getBoundingClientRect();
+      sx += r.left - base.left + r.width/2;
+      sy += r.top - base.top + r.height/2;
+      larg = r.width; n++;
+    }
+    if(!n) return;
+    var v = document.createElement("div");
+    v.className = "bz-val";
+    /* Le montant NU. « +1.3k $SWOGE » couvrait quatre colonnes ; le jeu
+       d'origine ecrit « 0,50 $ » et rien d'autre. La monnaie est de toute
+       facon la seule de la page, et le total, lui, la porte a gauche du
+       logo. */
+    v.textContent = "+" + bzFmt(Math.round(montant));
+    v.style.left = (sx/n)+"px"; v.style.top = (sy/n)+"px";
+    v.style.fontSize = Math.max(18, Math.round(larg*0.72))+"px";
+    v.style.transform = "translate(-50%,-50%) scale(.6)";
+    couche.appendChild(v);
+    if(bzReduit()){ v.style.opacity="1"; v.style.transform="translate(-50%,-50%) scale(1)";
+                    setTimeout(function(){ if(v.parentNode) v.parentNode.removeChild(v); }, 900); return; }
+    void couche.offsetWidth;
+    v.style.opacity = "1";
+    v.style.transform = "translate(-50%,-50%) scale(1)";
+    setTimeout(function(){
+      v.className = "bz-val part";
+      v.style.opacity = "0";
+      v.style.transform = "translate(-50%,-140%) scale(1.06)";
+    }, 520);
+    setTimeout(function(){ if(v.parentNode) v.parentNode.removeChild(v); }, 1180);
+  }
+
+  function bzEclate(grille, gagnants, montant, fin, vite){
     var cs = $("bzGrille").children;
     for(var i=0;i<30;i++) if(gagnants.has(grille[i])) cs[i].className = "bz-c eclate";
     bzEtincelles(grille, gagnants);
+    bzValeur(grille, gagnants, montant);
     setTimeout(function(){
       for(var i2=0;i2<30;i2++) if(gagnants.has(grille[i2])) cs[i2].className = "bz-c vide";
       fin();
-    }, 340);
+    }, vite ? 240 : 340);
   }
 
-  function bzTombe(avant, gagnants, apres, fin){
+  /* `k` resserre la chute sans la deformer : en tours gratuits tout va plus
+     vite, mais une case qui tombe de quatre rangees met toujours plus
+     longtemps qu'une qui en tombe d'une. */
+  function bzTombe(avant, gagnants, apres, fin, vite){
+    var k2 = vite ? 0.72 : 1;
     var cs = $("bzGrille").children, pas = bzPas(), d = bzChutes(avant, gagnants);
     var maxi = 0;
     for(var i=0;i<30;i++) if(d[i]>maxi) maxi = d[i];
@@ -2091,7 +2291,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       /* Plus la chute est longue, plus elle dure : une case qui tombe de
          quatre rangees a la meme vitesse qu'une qui en tombe d'une donnerait
          une grille qui se reassemble d'un bloc, sans poids. */
-      c2.style.setProperty("--d", (0.20 + d[k]*0.055).toFixed(3) + "s");
+      c2.style.setProperty("--d", ((0.20 + d[k]*0.055)*k2).toFixed(3) + "s");
       c2.firstChild.style.transition = "";
       c2.firstChild.style.transform = "";
     }
@@ -2099,7 +2299,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     setTimeout(function(){
       for(var m=0;m<30;m++){ cs[m].className="bz-c"; cs[m].firstChild.style.transform=""; cs[m].style.removeProperty("--d"); }
       fin();
-    }, 220 + maxi*60 + 90);
+    }, (220 + maxi*60 + 90)*k2);
   }
 
   /* ---- LE TOTAL COURANT ----
@@ -2113,8 +2313,27 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
    * divergeaient, c'est le serveur qui aurait raison — et c'est lui qui
    * s'affiche en dernier.
    */
+  /* ---- LE RYTHME, MESURE SUR LA VIDEO ----
+   * Sequence de reference a 42 s, relevee image par image a 30 im/s :
+   *
+   *     0 -> 500 ms   les symboles gagnants restent en place
+   *   ~670 ms         ils ont saute ; bouffee blanche et valeur en blanc
+   *  ~1170 ms         les nouveaux symboles arrivent par le haut
+   *  ~1500 ms         la grille est pleine, la valeur s'efface
+   *
+   * Soit une seconde et demie par etage. Nos 560 + 340 + ~430 tombent a
+   * 1,33 s : le meme rythme, un cheveu plus vif.
+   *
+   * EN TOURS GRATUITS, ON ACCELERE. Dix tours gratuits a trois etages chacun
+   * font quarante-cinq secondes de spectacle au rythme du jeu de base, et
+   * l'essai de bout en bout l'a montre en depassant son attente de soixante
+   * secondes : la page n'avait pas fini de raconter le tour. Ce n'est pas un
+   * defaut d'animation, c'est un rythme qui ne tient pas la repetition.
+   */
+  var BZ_PAUSE = 560, BZ_PAUSE_VITE = 260;
   var BZ_CUMUL = 0;
-  function bzJoueEtapes(etapes, fin){
+  function bzJoueEtapes(etapes, fin, vite){
+    var pause = vite ? BZ_PAUSE_VITE : BZ_PAUSE;
     var k = 0;
     function suivante(){
       if(k >= etapes.length) return fin();
@@ -2138,13 +2357,13 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       /* On laisse le temps de VOIR ce qui gagne avant de le faire sauter.
          Sans cette pause, la grille change avant qu'on ait compris pourquoi. */
       setTimeout(function(){
-        bzEclate(e.grille, gagnants, function(){
+        bzEclate(e.grille, gagnants, e.multi * BZ.mise, function(){
           var apres = etapes[k+1] ? etapes[k+1].grille : null;
           k++;
           if(!apres) return suivante();
-          bzTombe(e.grille, gagnants, apres, suivante);
-        });
-      }, 560);
+          bzTombe(e.grille, gagnants, apres, suivante, vite);
+        }, vite);
+      }, pause);
     }
     suivante();
   }
@@ -2192,9 +2411,9 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
             bzJoueEtapes(fs.etapes, function(){
               if(fs.bombes && fs.bombes.length){
                 son("bombe");
-                bzVoile("BOMBS ×"+fs.bombes.join(" ×")+"\n= ×"+fs.bombe, 1100, tourSuivant);
-              } else setTimeout(tourSuivant, 200);
-            });
+                bzVoile("BOMBS ×"+fs.bombes.join(" ×")+"\n= ×"+fs.bombe, 700, tourSuivant);
+              } else setTimeout(tourSuivant, 160);
+            }, true);
           })();
         });
       } else finir();
@@ -2232,6 +2451,15 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       else if(m.type==="auth"){ authed=true; myAddr=m.address; if(m.session){ try{ localStorage.setItem("swogeSession",m.session); }catch(e){} } setBalance(m.balance); showPlay(); if(m.fairness) showFair(m.fairness); 
         if(m.casinoMin) BZ_MIN=m.casinoMin;
         if(m.casinoMax) BZ_MAX=m.casinoMax;
+        /* Une mise posee d'entree. Avec l'ancien tapis de jetons, partir de
+           zero avait un sens : on empilait. Avec un cran, une mise a zero
+           donne une barre ou « moins » et « plus » ne repondent pas et ou
+           SPIN refuse — l'ecran d'accueil du jeu ressemblerait a une panne.
+           On prend le plus petit cran que le solde permette. */
+        if(BZ.mise<=0){
+          var _l=bzPaliers().filter(function(v){ return v<=balance; });
+          BZ.mise = _l.length ? _l[0] : bzPaliers()[0];
+        }
         if(m.bonanzaBareme){ BZ.bareme=m.bonanzaBareme; bzBareme(); }
         bzRender(); if(m.stake) setStakeInfo(m.stake); if(m.quests) renderQuests(m.quests); if(m.bonus) renderBonus(m.bonus); if(m.welcomeGranted>0) toast("🎁 Welcome! +"+m.welcomeGranted+" $SWOGE to try"); }
       else if(m.type==="balance"||m.type==="deposit"){ setBalance(m.balance); if(m.type==="deposit") toast("💰 Deposit credited"); }
@@ -2303,15 +2531,21 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   function showPlay(){ connectBtn.style.display="none"; var eb=$("emailBtn"); if(eb)eb.style.display="none"; var cr=$("connRow"); if(cr)cr.style.display="none"; var ms=$("mnSignIn"); if(ms)ms.style.display="none"; }
 
 
-  $("bzRail").addEventListener("click", function(e){
-    var b=e.target.closest("button[data-v]"); if(!b||b.disabled) return;
+  function bzBouge(sens){
     if(BZ.anime) return;
-    var v=Number(b.dataset.v);
-    BZ.chip=v;
-    var m=BZ.mise+v;
-    if(m>BZ_MAX) return toast("Table maximum: "+bzFmt(BZ_MAX)+" $SWOGE");
-    if(m>balance) return toast("Not enough $SWOGE");
-    BZ.mise=m; if(SFX.chip) SFX.chip(); bzRender();
+    var l=bzPaliers(), k=bzCran()+sens;
+    if(k<0) return;
+    if(k>l.length-1) return toast("Table maximum: "+bzFmt(BZ_MAX)+" $SWOGE");
+    if(l[k]>balance) return toast("Not enough $SWOGE");
+    BZ.mise=l[k]; if(SFX.chip) SFX.chip(); bzRender();
+  }
+  $("bzMoins").addEventListener("click", function(){ bzBouge(-1); });
+  $("bzPlus").addEventListener("click", function(){ bzBouge(1); });
+  $("bzMax").addEventListener("click", function(){
+    if(BZ.anime) return;
+    var l=bzPaliers().filter(function(v){ return v<=balance; });
+    if(!l.length) return toast("Not enough $SWOGE");
+    BZ.mise=l[l.length-1]; if(SFX.chip) SFX.chip(); bzRender();
   });
   $("bzMise").addEventListener("click", function(e){
     if(!e.target.closest("#bzClear")) return;
@@ -2660,6 +2894,24 @@ function renderBonus(b){ if(!b) return; bonusData=b;
     if(b) b.addEventListener("click",function(e){ e.preventDefault(); bgmSuivant(); });
     majMusique(); })();
   ["click","keydown","touchstart"].forEach(function(ev){ window.addEventListener(ev,function once(){ SFX.unlock(); bgmStart(); window.removeEventListener(ev,once); }); });
+
+  /* ---- LE SOCLE DU SON DESCEND DANS LA PAGE ----
+     Il est en `position:fixed` en bas a gauche sur tout le site. Ici il
+     tombait pile sur les boutons de mise et les recouvrait — c'est la moitie
+     de « c'est horrible pour selectionner la mise et le son ». On le DEPLACE
+     dans la barre du jeu plutot que de le cacher : ses reglages restent
+     entiers, ils cessent seulement de flotter par-dessus le plateau.
+     Si le socle n'existait pas, la ligne reste vide et rien ne casse. */
+  /* On attend la fin du document, pour la meme raison que les curseurs
+     ci-dessus : le socle est pose avant </body>, donc APRES ce script. Le
+     chercher tout de suite ne renvoie rien — et c'est exactement ce que ma
+     premiere version faisait, silencieusement : elle ne deplacait rien et le
+     socle continuait de flotter sur les boutons de mise. Le commentaire qui
+     prevenait etait deja dans ce fichier, deux cents lignes plus haut. */
+  document.addEventListener("DOMContentLoaded", function(){
+    var dock=document.getElementById("sndDock"), place=document.getElementById("bzSon");
+    if(dock && place) place.appendChild(dock);
+  });
 
   // ---- silent cross-page reconnect: keep the session when switching games ----
   /* Un jeton de session en reserve veut dire qu'une reprise est en cours ou

@@ -717,6 +717,59 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
   -webkit-text-stroke:.1em #16220f; paint-order:stroke fill;
   text-shadow:0 3px 0 rgba(10,26,12,.55), 0 0 22px rgba(180,255,190,.6); }
 
+/* ==================== L'ECRAN D'INFORMATION ====================
+ * Tout ce qu'il montre vient du BAREME DU SERVEUR — les gains par symbole,
+ * les rouleaux du Wild, ses tailles et ses multiplicateurs, le nombre de
+ * scatters qui declenche, le nombre de tours, le plafond, les bornes de
+ * mise, les prix d'achat. Rien n'est ecrit ici : une regle recopiee dans la
+ * page se dement au premier reglage du moteur, et c'est l'affichage qui a
+ * tort juste avant que le joueur mise dessus.
+ */
+.dd-info{ position:fixed; inset:0; z-index:60; display:flex;
+  align-items:center; justify-content:center; padding:14px;
+  background:rgba(6,4,10,.82); backdrop-filter:blur(3px) }
+/* `display:flex` BAT l'attribut `hidden`, dont la valeur par defaut n'est
+   qu'un `display:none` de la feuille du navigateur. Sans cette ligne la
+   feuille reste invisible mais COUVRE TOUT L'ECRAN et avale chaque clic :
+   plus un seul bouton du jeu ne repond. Trouve par un essai qui n'arrivait
+   pas a cliquer sur PAYTABLE. */
+.dd-info[hidden]{ display:none }
+.dd-info-b{ width:min(720px,100%); max-height:92%; display:flex; flex-direction:column;
+  background:#0C0912; border:1px solid rgba(255,196,92,.30); border-radius:16px;
+  box-shadow:0 24px 70px rgba(0,0,0,.7); overflow:hidden;
+  container-type:inline-size }
+.dd-info-h{ display:flex; align-items:center; justify-content:space-between;
+  gap:12px; padding:12px 14px; border-bottom:1px solid rgba(255,196,92,.22);
+  background:linear-gradient(180deg,rgba(255,196,92,.10),rgba(255,196,92,0)) }
+.dd-info-h b{ font-family:"Anton",sans-serif; font-size:clamp(15px,3.4cqi,22px);
+  letter-spacing:1px; color:#FFD98A }
+.dd-info-h button{ background:rgba(255,255,255,.06); color:#F3E6CC;
+  border:1px solid rgba(255,255,255,.18); border-radius:10px;
+  width:38px; height:38px; font-size:22px; line-height:1; cursor:pointer;
+  flex:0 0 auto }
+.dd-info-h button:hover{ background:rgba(255,255,255,.13) }
+.dd-info-c{ overflow-y:auto; -webkit-overflow-scrolling:touch; padding:14px;
+  color:#E8E2D6; font:400 13.5px/1.5 'Inter',system-ui,sans-serif }
+.dd-info-c h4{ margin:18px 0 8px; font-family:"Anton",sans-serif;
+  font-size:clamp(13px,2.8cqi,17px); letter-spacing:.9px; color:#7CFF9B }
+.dd-info-c h4:first-child{ margin-top:0 }
+.dd-info-c p{ margin:0 0 8px; color:#CFC7B8 }
+.dd-info-c .sym{ display:grid; gap:8px;
+  grid-template-columns:repeat(auto-fill,minmax(148px,1fr)) }
+.dd-info-c .sy{ display:flex; align-items:center; gap:9px; padding:7px;
+  background:rgba(255,255,255,.035); border:1px solid rgba(255,255,255,.07);
+  border-radius:10px }
+.dd-info-c .sy img{ width:46px; height:46px; object-fit:contain; flex:0 0 auto }
+.dd-info-c .sy dl{ margin:0; font:700 12px/1.35 'Inter',system-ui,sans-serif;
+  font-variant-numeric:tabular-nums }
+.dd-info-c .sy dl span{ color:#8E8677; font-weight:600 }
+.dd-info-c .sy dl b{ color:#FFD98A }
+.dd-info-c table{ width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums }
+.dd-info-c td{ padding:6px 8px; border-top:1px solid rgba(255,255,255,.07) }
+.dd-info-c tr:first-child td{ border-top:0 }
+.dd-info-c td:last-child{ text-align:right; color:#FFD98A; font-weight:800 }
+.dd-info-c .note{ color:#8E8677; font-size:12px }
+
 /* ---- LA BARRE DE COMMANDE ---- */
 .dd-barre{ max-width:1040px; margin:12px auto 0; padding:0 10px;
   display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap }
@@ -1367,6 +1420,21 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     <div class="dd-achats" id="ddAchats"></div>
 
     <div class="dd-hist" id="ddHist"></div>
+
+    <!-- L'ECRAN D'INFORMATION. Les deux boutons PAYTABLE et HISTORY ne
+         faisaient rien : ils affichaient « Paytable coming ». Une seule
+         feuille sert aux deux — meme boite, meme fermeture, un contenu
+         different — parce que deux panneaux qui se ressemblent finissent
+         par diverger sur la fermeture, le defilement ou la touche Echap. -->
+    <div class="dd-info" id="ddInfo" hidden>
+      <div class="dd-info-b" role="dialog" aria-modal="true" aria-labelledby="ddInfoT">
+        <div class="dd-info-h">
+          <b id="ddInfoT">PAYTABLE</b>
+          <button type="button" id="ddInfoX" aria-label="Close">&times;</button>
+        </div>
+        <div class="dd-info-c" id="ddInfoC"></div>
+      </div>
+    </div>
     <!-- La ligne « provably fair ». Elle etait tombee en remplacant le
          <main> de Bonanza : `showFair` ecrivait alors dans un element nul et
          levait une exception A CHAQUE `hello` ET A CHAQUE `auth`, ce qui
@@ -2550,8 +2618,175 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   });
   /* Les deux tableaux ne sont pas encore ecrits : on le DIT plutot que de
      poser un bouton qui ne fait rien. */
-  $("ddPaytable").addEventListener("click", function(){ toast("Paytable coming"); });
-  $("ddHistory").addEventListener("click",  function(){ toast("History coming"); });
+  /* ==================== L'ECRAN D'INFORMATION ====================
+   * Les deux boutons repondaient « Paytable coming ». Ils ouvrent maintenant
+   * la meme feuille, avec deux contenus.
+   *
+   * TOUT vient de `DD.bareme`, donc du serveur : les gains par symbole, les
+   * rouleaux du Wild, ses tailles et ses multiplicateurs, combien de
+   * scatters declenchent, combien de tours ils donnent, le plafond, les
+   * bornes de mise, les prix d'achat. Sans bareme la feuille le DIT plutot
+   * que d'inventer des regles de repli — une regle fausse lue avant de miser
+   * est pire qu'une regle absente.
+   */
+  var DD_NOM_SYM={ j:"J", q:"Q", k:"K", a:"A", lanterne:"Lantern",
+                   pelle:"Shovel", crane:"Doge Skull", wild:"Wild",
+                   dead:"Dead Scatter", deader:"Deader Scatter" };
+  function ddEch(t){ return String(t).replace(/[&<>"]/g, function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
+
+  function ddInfoOuvre(quoi){
+    var e=$("ddInfo"), t=$("ddInfoT"), c=$("ddInfoC");
+    if(!e) return;
+    t.textContent = quoi==="hist" ? "HISTORY" : "PAYTABLE";
+    c.innerHTML = quoi==="hist" ? ddInfoHist() : ddInfoBareme();
+    c.scrollTop=0;
+    e.hidden=false;
+    $("ddInfoX").focus();
+  }
+  function ddInfoFerme(){ var e=$("ddInfo"); if(e) e.hidden=true; }
+
+  function ddInfoHist(){
+    if(!DD.hist.length)
+      return '<p>No rounds yet. Your spins will be listed here — bet, multiplier,'
+           + ' and which bonus opened, most recent first.</p>';
+    var h='<table>';
+    for(var i=0;i<DD.hist.length;i++){
+      var x=DD.hist[i];
+      var net=(x.net>0?"+":"")+ddExact(x.net)+" $SWOGE";
+      h+='<tr><td>'+ddExact(x.mise)+' $SWOGE'
+        + (x.mode?' <span class="note">· '+(x.mode==="deader"?"DEADER":"DEAD")+' SPINS</span>':'')
+        + '</td><td style="color:'+(x.net>0?"#7CFF9B":x.net<0?"#FF9B8E":"#CFC7B8")+'">'
+        + net+' · '+x.multi.toFixed(2)+'×</td></tr>';
+    }
+    return h+'</table><p class="note">The last '+DD.hist.length
+         + ' round(s) of this session. They are kept in the page only — reload and'
+         + ' the list starts over. Every round stays verifiable through the seed'
+         + ' hash shown under the reels.</p>';
+  }
+
+  function ddInfoBareme(){
+    var b=DD.bareme;
+    if(!b) return '<p>The paytable comes from the server, and the server has not'
+                + ' answered yet. Nothing is written into this page: a rule copied'
+                + ' here would go stale the day the game is retuned, and you would'
+                + ' read the wrong one right before betting.</p>';
+
+    var mise=DD.mise||1;
+    var h='';
+
+    h+='<h4>HOW TO PLAY</h4>'
+     + '<p>Set your bet with the &minus; and + buttons, or MAX BET, then press SPIN.'
+     + ' Five reels, three rows. Symbols pay from the leftmost reel to the right,'
+     + ' on adjacent reels — the more reels a symbol covers, the more it pays.</p>';
+
+    /* Les gains, en multiples de la mise ET en $SWOGE a la mise courante :
+       « 0.30x » ne dit rien tant qu'on ne l'a pas converti soi-meme. */
+    var ordre=(b.bas||[]).concat(b.hauts||[]);
+    if(b.bareme && ordre.length){
+      h+='<h4>SYMBOLS &mdash; PER '+ddExact(mise)+' $SWOGE BET</h4><div class="sym">';
+      /* du plus riche au plus pauvre : c'est ce qu'on cherche en ouvrant. */
+      ordre.slice().sort(function(x,y){
+        return ((b.bareme[y]||{})[5]||0)-((b.bareme[x]||{})[5]||0); })
+      .forEach(function(sy){
+        var p=b.bareme[sy]; if(!p) return;
+        h+='<div class="sy"><img src="'+ddImg(sy)+'" alt=""><dl>'
+         + '<div><b>'+ddEch(DD_NOM_SYM[sy]||sy)+'</b></div>';
+        [5,4,3].forEach(function(n){
+          if(p[n]==null) return;
+          h+='<div><span>'+n+'&times;</span> '+p[n].toFixed(2)+'&times; · <b>'
+           + ddExact(Math.round(p[n]*mise))+'</b></div>';
+        });
+        h+='</dl></div>';
+      });
+      h+='</div>';
+      /* Le gain d'une manche est arrondi VERS LE BAS au $SWOGE : a la mise la
+         plus basse, les plus petits gains tombent donc reellement a zero. Ca
+         se voit dans le tableau ci-dessus, ou certains montants valent 0 — on
+         l'explique plutot que de le masquer, et la phrase n'apparait que
+         quand elle s'applique vraiment a la mise courante. */
+      var zero=ordre.some(function(sy){
+        var p2=b.bareme[sy]; if(!p2) return false;
+        return [3,4,5].some(function(n){ return p2[n]!=null && Math.round(p2[n]*mise)===0; });
+      });
+      if(zero) h+='<p class="note">Wins are rounded down to whole $SWOGE. At a '
+        + ddExact(mise)+' $SWOGE bet the smallest combinations above come to 0 —'
+        + ' raise your bet and they pay.</p>';
+    }
+
+    if(b.taillesWild && b.taillesWild.length && b.rouleauxWild){
+      /* Les rouleaux sont comptes a partir de zero cote serveur ; le joueur
+         compte a partir de un. */
+      var rl=b.rouleauxWild.map(function(r){ return r+1; });
+      h+='<h4>WILD</h4><p>The Wild lands on reel'+(rl.length>1?'s':'')+' '
+       + rl.join(', ').replace(/, ([^,]*)$/, ' and $1')
+       + ' only. It stands up and takes the whole reel — and the shorter it'
+       + ' lands, the bigger the multiplier it carries.</p><table>';
+      b.taillesWild.slice().sort(function(x,y){ return y.multi-x.multi; })
+        .forEach(function(t){
+          h+='<tr><td>'+t.taille+' cell'+(t.taille>1?'s':'')+' tall</td><td>&times;'
+           + t.multi+'</td></tr>';
+        });
+      h+='</table><p class="note">A Wild substitutes for every paying symbol.'
+       + ' During free spins its multiplier stays for the whole round.</p>';
+    }
+
+    if(b.scattersPourTours && b.tours){
+      h+='<h4>FREE SPINS</h4><table>';
+      if(b.tours.dead!=null)
+        h+='<tr><td>'+b.scattersPourTours+' Dead scatters, anywhere</td><td>'
+         + b.tours.dead+' free spins</td></tr>';
+      if(b.tours.deader!=null)
+        h+='<tr><td>'+b.scattersPourTours+' Deader scatters, anywhere</td><td>'
+         + b.tours.deader+' free spins</td></tr>';
+      h+='</table><p class="note">If both land at once, the richer one opens.</p>';
+    }
+
+    if(b.crans && b.cransOrdre){
+      h+='<h4>BUY A BONUS &mdash; AT '+ddExact(mise)+' $SWOGE BET</h4><table>';
+      b.cransOrdre.forEach(function(k){
+        var cr=b.crans[k]; if(!cr) return;
+        h+='<tr><td>'+ddEch(DD_ACHAT_NOM[k]||k)
+         + (cr.quoi?' <span class="note">· '+ddEch(cr.quoi)+'</span>':'')
+         + '</td><td>'+cr.prix+'&times; · '+ddExact(Math.round(cr.prix*mise))+'</td></tr>';
+      });
+      h+='</table>';
+    }
+
+    h+='<h4>THE RULES</h4><table>';
+    if(b.rouleaux&&b.rangees)
+      h+='<tr><td>Reels</td><td>'+b.rouleaux+' &times; '+b.rangees+'</td></tr>';
+    if(b.gainMax) h+='<tr><td>Maximum win</td><td>'+ddExact(b.gainMax)+'&times; bet</td></tr>';
+    if(b.min) h+='<tr><td>Minimum bet</td><td>'+ddExact(b.min)+' $SWOGE</td></tr>';
+    if(b.max) h+='<tr><td>Maximum bet</td><td>'+ddExact(b.max)+' $SWOGE</td></tr>';
+    if(b.rtp) h+='<tr><td>Return to player</td><td>'+b.rtp.toFixed(2)+' %</td></tr>';
+    if(b.bonusUnSur) h+='<tr><td>Bonus frequency</td><td>1 in '+ddExact(b.bonusUnSur)+'</td></tr>';
+    h+='</table>';
+    if(b.rtp){
+      h+='<p class="note">The return figure is MEASURED on this engine'
+       + (b.rtpIc?' (&plusmn;'+b.rtpIc.toFixed(2)+' points, 95% confidence)':'')
+       + (b.rtpN?', over '+ddExact(b.rtpN)+' simulated rounds':'')
+       + ' — not copied from the game that inspired this one. It is a long-run'
+       + ' average: any single session can land far from it.</p>';
+    }
+    h+='<p class="note">Every round is decided by the server before the reels'
+     + ' move. The animation only tells you what already happened — interrupt it'
+     + ' and your balance is the same. The seed hash under the reels lets you'
+     + ' check it.</p>';
+    return h;
+  }
+
+  $("ddPaytable").addEventListener("click", function(){ ddInfoOuvre("bareme"); });
+  $("ddHistory").addEventListener("click",  function(){ ddInfoOuvre("hist"); });
+  $("ddInfoX").addEventListener("click", ddInfoFerme);
+  /* Le fond ferme, mais PAS un clic parti de l'interieur : on relache souvent
+     le bouton hors du panneau apres avoir selectionne du texte, et la feuille
+     se fermait sous les doigts. */
+  $("ddInfo").addEventListener("mousedown", function(ev){ this._ext = (ev.target===this); });
+  $("ddInfo").addEventListener("click", function(ev){ if(ev.target===this && this._ext) ddInfoFerme(); });
+  document.addEventListener("keydown", function(ev){
+    if(ev.key==="Escape" && !$("ddInfo").hidden) ddInfoFerme();
+  });
   connectBtn.addEventListener("click",doConnect);
   (function(){ var b=$("emailBtn"); if(b) b.addEventListener("click",openEmailLogin); })();
   $("emSend").addEventListener("click",async function(){

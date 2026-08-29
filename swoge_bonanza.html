@@ -508,8 +508,34 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
 /* Un symbole qui vient de payer : il pulse puis part. On ne le fait pas
    disparaitre d'un coup — sans ce temps, la cascade est illisible. */
 .bz-c.gagne img{ animation:bzPulse .42s ease-in-out 2; }
-.bz-c.part img{ opacity:0; transform:scale(.4); }
-.bz-c.tombe img{ animation:bzTombe .26s ease-out; }
+
+/* ---- L'ECLATEMENT ----
+   Le symbole gonfle d'un coup puis se retire en tournant legerement. Le
+   gonflement AVANT la disparition est ce qui fait lire « il a explose »
+   plutot que « il s'est efface » : sans lui, l'oeil ne voit qu'un trou
+   apparaitre. La lueur derriere marque l'endroit une fraction de seconde de
+   plus que le symbole lui-meme, le temps que le regard y arrive. */
+.bz-c.eclate img{ animation:bzEclate .34s cubic-bezier(.3,-0.6,.7,1.4) forwards; }
+@keyframes bzEclate{
+  0%{ transform:scale(1) rotate(0); opacity:1; }
+  38%{ transform:scale(1.32) rotate(-5deg); opacity:1; }
+  100%{ transform:scale(.18) rotate(14deg); opacity:0; }
+}
+.bz-c.eclate::after{
+  content:""; position:absolute; inset:14%; border-radius:50%; pointer-events:none;
+  background:radial-gradient(circle, rgba(255,255,255,.95) 0%, rgba(255,197,61,.7) 38%, rgba(255,197,61,0) 72%);
+  animation:bzLueur .42s ease-out forwards;
+}
+@keyframes bzLueur{ 0%{ transform:scale(.3); opacity:0; } 30%{ transform:scale(1.1); opacity:1; } 100%{ transform:scale(1.7); opacity:0; } }
+.bz-c.vide img{ opacity:0; }
+
+/* ---- LA CHUTE ----
+   Chaque symbole part de la position qu'il occupait AVANT, en haut, et
+   descend jusqu'a la sienne. Ce n'est pas un effet : le decalage de depart est
+   calcule case par case a partir de la regle du serveur, donc ce qu'on voit
+   tomber est exactement ce qui est tombe. Le rebond final vient de la courbe,
+   pas d'une seconde animation. */
+.bz-c.chute img{ transition:transform var(--d,.34s) cubic-bezier(.34,1.28,.5,1); }
 /* ---- LES ROULEAUX ----
    Pendant qu'une colonne tourne, les symboles defilent : on les remplace vite
    et on les fait passer de haut en bas. Le leger flou vertical fait la
@@ -522,7 +548,6 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
 .bz-c.pose img{ animation:bzPose .3s cubic-bezier(.2,1.5,.4,1); }
 @keyframes bzPose{ 0%{ transform:translateY(-120%); } 70%{ transform:translateY(6%); } 100%{ transform:translateY(0); } }
 @keyframes bzPulse{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.16); } }
-@keyframes bzTombe{ from{ transform:translateY(-140%); } to{ transform:translateY(0); } }
 .bz-c.gagne{ background:rgba(255,197,61,.22); box-shadow:inset 0 0 0 2px rgba(255,197,61,.6); }
 
 /* Le voile des tours gratuits : il annonce, il ne cache pas longtemps. */
@@ -1762,23 +1787,106 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     }
   }
 
+  /* ---- LE PAS D'UNE RANGEE, MESURE ----
+   * On ne le calcule pas depuis le CSS : la grille est en `gap` fluide et en
+   * `cqi`, donc sa valeur change avec la largeur de l'ecran. On mesure l'ecart
+   * reel entre deux rangees, une fois par cascade. */
+  function bzPas(){
+    var cs = $("bzGrille").children;
+    return cs[6].getBoundingClientRect().top - cs[0].getBoundingClientRect().top;
+  }
+
+  /* ---- QUI VIENT D'OU ----
+   * Reproduit exactement `faitTomber` du serveur : par colonne, les survivants
+   * gardent leur ordre et se reempilent en bas, les nouveaux entrent par le
+   * haut. On en tire, pour chaque case d'arrivee, DE COMBIEN DE RANGEES elle
+   * tombe. Si cette regle divergeait de celle du serveur, l'animation
+   * montrerait une chute qui n'a pas eu lieu. */
+  function bzChutes(avant, gagnants){
+    var d = new Array(30).fill(0);
+    for(var c=0;c<6;c++){
+      var survivants=[];                       // rangees d'origine, du bas vers le haut
+      for(var r=4;r>=0;r--){ if(!gagnants.has(avant[r*6+c])) survivants.push(r); }
+      for(var k=0;k<survivants.length;k++){
+        var arrivee = 4-k;
+        d[arrivee*6+c] = arrivee - survivants[k];
+      }
+      var neufs = 5 - survivants.length;       // ils descendent tous du meme bloc
+      for(var r2=0;r2<neufs;r2++) d[r2*6+c] = neufs;
+    }
+    return d;
+  }
+
+  function bzEclate(grille, gagnants, fin){
+    var cs = $("bzGrille").children;
+    for(var i=0;i<30;i++) if(gagnants.has(grille[i])) cs[i].className = "bz-c eclate";
+    setTimeout(function(){
+      for(var i2=0;i2<30;i2++) if(gagnants.has(grille[i2])) cs[i2].className = "bz-c vide";
+      fin();
+    }, 340);
+  }
+
+  function bzTombe(avant, gagnants, apres, fin){
+    var cs = $("bzGrille").children, pas = bzPas(), d = bzChutes(avant, gagnants);
+    var maxi = 0;
+    for(var i=0;i<30;i++) if(d[i]>maxi) maxi = d[i];
+
+    /* On pose la grille d'arrivee EN HAUT de sa chute, sans transition, puis on
+       la laisse descendre. Poser d'abord et animer ensuite est le seul ordre
+       qui evite de voir la grille finale une image avant qu'elle ne tombe. */
+    for(var j=0;j<30;j++){
+      var cel = cs[j], im = cel.firstChild;
+      cel.className = "bz-c";
+      im.style.transition = "none";
+      im.src = bzImg(apres[j]);
+      im.style.transform = d[j] ? "translateY(" + (-d[j]*pas) + "px)" : "";
+    }
+    void $("bzGrille").offsetHeight;           // on force le rendu avant d'animer
+
+    for(var k=0;k<30;k++){
+      var c2 = cs[k];
+      if(!d[k]) continue;
+      c2.className = "bz-c chute";
+      /* Plus la chute est longue, plus elle dure : une case qui tombe de
+         quatre rangees a la meme vitesse qu'une qui en tombe d'une donnerait
+         une grille qui se reassemble d'un bloc, sans poids. */
+      c2.style.setProperty("--d", (0.20 + d[k]*0.055).toFixed(3) + "s");
+      c2.firstChild.style.transition = "";
+      c2.firstChild.style.transform = "";
+    }
+    son("pose");
+    setTimeout(function(){
+      for(var m=0;m<30;m++){ cs[m].className="bz-c"; cs[m].firstChild.style.transform=""; cs[m].style.removeProperty("--d"); }
+      fin();
+    }, 220 + maxi*60 + 90);
+  }
+
   function bzJoueEtapes(etapes, fin){
-    var k=0;
+    var k = 0;
     function suivante(){
-      if(k>=etapes.length) return fin();
-      var e=etapes[k++];
-      var gagnants=new Set((e.amas||[]).map(function(a){ return a.symbole; }));
-      bzPeint(e.grille, gagnants.size?gagnants:null);
-      if(!gagnants.size){ return setTimeout(suivante, 240); }
-      son(k===1?"gain":"cascade");
-      var g=$("bzGain");
-      g.style.color="#0E6B32";
-      g.textContent="+"+e.multi.toFixed(2)+"× ("+e.amas.map(function(a){ return a.nombre+" "+a.symbole.replace(/_/g," "); }).join(", ")+")";
+      if(k >= etapes.length) return fin();
+      var e = etapes[k];
+      var gagnants = new Set((e.amas||[]).map(function(a){ return a.symbole; }));
+
+      if(!gagnants.size){ bzPeint(e.grille, null); k++; return setTimeout(suivante, 240); }
+
+      bzPeint(e.grille, gagnants);
+      son(k===0 ? "gain" : "cascade");
+      var g = $("bzGain");
+      g.style.color = "#0E6B32";
+      g.textContent = "+" + e.multi.toFixed(2) + "× (" +
+        e.amas.map(function(a){ return a.nombre + " " + a.symbole.replace(/_/g," "); }).join(", ") + ")";
+
+      /* On laisse le temps de VOIR ce qui gagne avant de le faire sauter.
+         Sans cette pause, la grille change avant qu'on ait compris pourquoi. */
       setTimeout(function(){
-        var cs=$("bzGrille").children;
-        for(var i=0;i<30;i++) if(gagnants.has(e.grille[i])) cs[i].classList.add("part");
-        setTimeout(suivante, 220);
-      }, 620);
+        bzEclate(e.grille, gagnants, function(){
+          var apres = etapes[k+1] ? etapes[k+1].grille : null;
+          k++;
+          if(!apres) return suivante();
+          bzTombe(e.grille, gagnants, apres, suivante);
+        });
+      }, 560);
     }
     suivante();
   }

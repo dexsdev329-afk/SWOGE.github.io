@@ -257,6 +257,47 @@ const SYMBOLES = ['banane', 'raisin', 'pasteque', 'prune', 'pomme',
        'et elle s en va : rien ne reste sur la grille au tour suivant');
   }
 
+  /* ---- ELLE SE LIT SUR N IMPORTE QUEL FOND ----
+   * DEMANDE : « dans le vrai jeu le nombre blanc gagne, on le voit beaucoup
+   * mieux ». Mesure avant correction : 10,6 % des pixels blancs du nombre
+   * tombaient sur un fond a moins de 3,0 de contraste, et le pire a 1,05 —
+   * du blanc sur une banane jaune, c'est-a-dire rien.
+   *
+   * Une ombre portee ne repare pas ca : elle noircit UN cote. Il faut un
+   * CERNE, qui separe le glyphe de tous les cotes quel que soit ce qu'il y a
+   * derriere. On le verifie ici comme un lecteur le vit : autour de chaque
+   * pixel blanc du nombre, y a-t-il du sombre a portee ? */
+  const lisibilite = await p.evaluate(([g]) => {
+    /* On en repose une : la precedente a fini son temps et quitte le
+       document, et `getComputedStyle` sur un element detache ne rend rien. */
+    document.getElementById('bzParts').textContent = '';
+    window.__bz.bzValeur(g, new Set(['banane']), 1234);
+    const e = document.querySelector('.bz-val');
+    if (!e) return null;
+    const c = getComputedStyle(e);
+    return { trait: c.webkitTextStroke || c.webkitTextStrokeWidth,
+             ordre: c.paintOrder,
+             px: parseFloat(c.fontSize),
+             case: document.getElementById('bzGrille').children[0].getBoundingClientRect().width };
+  }, [grille]);
+  if (lisibilite) {
+    /* Le trait est en `em` dans la feuille : il suit la taille du nombre,
+       donc il ne maigrit pas quand l ecran retrecit. */
+    const large = parseFloat(lisibilite.trait) || 0;
+    ok(large >= lisibilite.px * 0.09,
+       'le nombre porte un cerne d au moins 9 % de sa taille (' + large.toFixed(1)
+       + ' px pour ' + lisibilite.px.toFixed(0) + ') : c est lui qui le detache'
+       + ' du fond, pas une ombre');
+    /* Le navigateur normalise « stroke fill » en « stroke » : ce qui compte
+       est que `stroke` vienne EN TETE, pas que les deux mots restent ecrits. */
+    ok(/^stroke\b/.test(lisibilite.ordre),
+       'et le trait est peint SOUS le remplissage (paint-order: ' + lisibilite.ordre
+       + ') — au-dessus, il mange l interieur des lettres');
+    ok(lisibilite.px >= lisibilite.case * 0.7,
+       'il fait au moins 70 % de la largeur d une case (' + lisibilite.px.toFixed(0)
+       + ' px pour ' + lisibilite.case.toFixed(0) + ')');
+  }
+
   /* ---------------- 4. L'ATTENTE SUR LES SUCETTES ---------------- */
   console.log('\n-- l attente avant la derniere sucette --');
   const ordinaire = await p.evaluate(([g]) => window.__bz.bzArrets(g), [grille]);

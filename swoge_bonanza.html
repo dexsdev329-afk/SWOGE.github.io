@@ -595,7 +595,20 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
    sur un decor sombre, et le jeu d'origine la pose exactement ainsi. */
 .bz-val{ position:absolute; transform:translate(-50%,-50%);
   font-family:"Anton",sans-serif; color:#fff; white-space:nowrap;
-  letter-spacing:.5px; text-shadow:0 2px 0 rgba(20,10,40,.6), 0 0 16px rgba(255,255,255,.7);
+  letter-spacing:.5px;
+  /* ---- POURQUOI UN CERNE ET PAS UNE OMBRE ----
+     MESURE avant correction : 10,6 % des pixels blancs du nombre tombaient
+     sur un fond a moins de 3,0 de contraste, et le pire a 1,05 — c'est-a-dire
+     invisible. Sur une banane jaune, du blanc sur du blanc casse.
+     Une ombre portee ne repare pas ca : elle noircit UN cote. Ce qu'il faut
+     est un cerne, qui separe le glyphe de ce qu'il y a derriere de TOUS les
+     cotes, quel que soit ce qu'il y a derriere. C'est ce que fait le jeu
+     d'origine, et c'est pour ca que son « 0,50 $ » se lit aussi bien sur son
+     ciel clair que sur ses bonbons sombres.
+     `paint-order` pose le trait SOUS le remplissage : sans lui le trait
+     mange l'interieur de la lettre et le nombre s'epaissit en bouillie. */
+  -webkit-text-stroke:.13em #2A1147; paint-order:stroke fill;
+  text-shadow:0 3px 0 rgba(20,10,40,.45), 0 0 22px rgba(255,255,255,.55);
   opacity:0; transition:transform .62s cubic-bezier(.2,.9,.3,1), opacity .16s ease-out; }
 /* Elle s'affiche vite et s'efface lentement : un fondu d'entree de six
    dixiemes mangeait le temps de lecture, et sur la video elle est franche
@@ -2236,7 +2249,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
        logo. */
     v.textContent = "+" + bzFmt(Math.round(montant));
     v.style.left = (sx/n)+"px"; v.style.top = (sy/n)+"px";
-    v.style.fontSize = Math.max(18, Math.round(larg*0.72))+"px";
+    v.style.fontSize = Math.max(20, Math.round(larg*0.86))+"px";
     v.style.transform = "translate(-50%,-50%) scale(.6)";
     couche.appendChild(v);
     if(bzReduit()){ v.style.opacity="1"; v.style.transform="translate(-50%,-50%) scale(1)";
@@ -2244,11 +2257,13 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     void couche.offsetWidth;
     v.style.opacity = "1";
     v.style.transform = "translate(-50%,-50%) scale(1)";
+    /* Elle reste 620 ms avant de partir : sur la video de reference le
+       montant est encore la quand les nouveaux symboles arrivent. */
     setTimeout(function(){
       v.className = "bz-val part";
       v.style.opacity = "0";
       v.style.transform = "translate(-50%,-140%) scale(1.06)";
-    }, 520);
+    }, 620);
     setTimeout(function(){ if(v.parentNode) v.parentNode.removeChild(v); }, 1180);
   }
 

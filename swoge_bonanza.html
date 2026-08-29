@@ -570,11 +570,44 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
 .bz-fond{ position:absolute; left:13%; top:25.5%; width:74%; height:56%;
   z-index:0; border-radius:10px; overflow:hidden;
   background:linear-gradient(180deg,#2A1B4A9e,#160E2Ebd), url("img/bonanza/fond.webp") center/cover; }
-.bz-grille{ position:absolute; left:24%; top:27.5%; width:52%; height:52%;
+/* ---- CE QUI PLAFONNE LA TAILLE DES SYMBOLES ----
+ *
+ * Ce n'est pas le panneau violet, c'est LE DESSIN DU CADRE. Il est pose
+ * PAR-DESSUS la grille (z-index 2 contre 1), et son coffre en bas a gauche
+ * et son shiba en bas a droite mordent sur la fenetre. Mesure de son canal
+ * alpha : la fenetre est franche de 31 % a 63 % de la hauteur, puis se
+ * referme — a 73 % il ne reste que 48 % de largeur libre, a 77 % plus que
+ * 38 %, et en dessous de 80 % elle est bouchee.
+ *
+ * Une grille de 6 x 5 cases CARREES est donc prise en tenaille : elargir la
+ * grille grossit les cases, mais la rallonge d'autant vers le bas, ou le
+ * coffre attend. Mesure de la case du bas a gauche, cachee par le cadre :
+ *
+ *     grille a 50 %  ->  symbole 78,4 px  ->  13 % de la case cachee
+ *     grille a 52 %  ->  symbole 81,9 px  ->  23 %
+ *     grille a 54 %  ->  symbole 85,4 px  ->  44 %
+ *     grille a 56 %  ->  symbole 88,8 px  ->  67 %
+ *
+ * On tient 52 % : 81,9 px de symbole pour 23 % de coin mordu, contre 79,8 px
+ * pour 36 % dans la version precedente — plus gros ET moins mange.
+ *
+ * DEUX PIEGES, tombes dans les deux avant d'arriver ici. (1) Elargir sans
+ * rallonger : la case reste carree par `aspect-ratio`, mais le pas des
+ * rangees, lui, suit la hauteur de la grille. Mettre 58 % de large pour 40 %
+ * de haut donne des symboles de 92 px avec un pas de 68 : les fruits se
+ * rentrent dedans. La hauteur DOIT valoir 5 cases + 4 ecarts + 2 marges,
+ * soit ici 52,2 % pour 52 % de large. (2) Optimiser la couverture seule
+ * recompense exactement cette erreur, puisque tasser les rangees rapproche
+ * la grille du haut. Il faut mesurer le chevauchement en meme temps.
+ *
+ * Le vrai plafond est donc le cadre lui-meme : un cadre dont la fenetre
+ * descendrait plus bas sans coffre ni chien dans les coins rendrait tout de
+ * suite une dizaine de pixels par symbole. */
+.bz-grille{ position:absolute; left:24%; top:25%; width:52%; height:52.2%;
   z-index:1;
   display:grid; grid-template-columns:repeat(6,minmax(0,1fr));
   grid-template-rows:repeat(5,minmax(0,1fr)); gap:clamp(2px,.8cqi,6px);
-  padding:clamp(6px,2cqi,14px); border-radius:16px;
+  padding:clamp(3px,1.1cqi,8px); border-radius:16px;
   /* ---- LE DECOR SE VOIT ----
      Le voile etait a 87 % : le paysage de bonbons etait paye, charge, et
      invisible. A 62 % en haut et 74 % en bas il se lit, tout en restant assez
@@ -790,7 +823,11 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
    gratuits : les colonnes restantes ralentissent et se bordent d'or. Le
    resultat est deja calcule et deja paye — ce ralenti ne decide de rien, il
    donne a la derniere colonne le poids qu'elle a vraiment. */
-.bz-c.attente{ box-shadow:inset 0 0 0 2px rgba(255,197,61,.75), 0 0 18px rgba(255,197,61,.5); }
+/* La colonne sous tension : une nappe chaude sur toute sa hauteur plutot
+   qu'un liseré par case — c'est la COLONNE qui retient son souffle, pas
+   trente cases independantes. */
+.bz-c.attente{ background:linear-gradient(180deg, rgba(255,197,61,.20), rgba(255,140,205,.16));
+  box-shadow:0 0 26px rgba(255,197,61,.45); }
 
 /* ---- LA SUCETTE SE REMARQUE ----
    C'est le symbole qui compte : quatre d'entre elles ouvrent dix tours
@@ -799,10 +836,25 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
    la distingue, personne ne la voyait arriver : le joueur decouvrait le
    bonus une fois dedans, au lieu de l'esperer pendant que les rouleaux
    tournent. C'est pourtant cette attente-la qui fait jouer. */
-.bz-c.scat{ background:rgba(255,197,61,.14);
-  box-shadow:inset 0 0 0 2px rgba(255,197,61,.85), 0 0 22px rgba(255,120,200,.55); }
-.bz-c.scat img{ animation:bzScat 1.5s ease-in-out infinite; }
-@keyframes bzScat{ 0%,100%{ transform:scale(1) rotate(0); } 50%{ transform:scale(1.1) rotate(6deg); } }
+/* ---- LA SUCETTE NE SE MET PLUS DANS UNE BOITE ----
+   C'etait un liseré de 2 px sur une case carrée : ca dessine la CASE, pas le
+   symbole, et ca ressemble a un cadre de mise au point plus qu'a un jeu.
+   Le symbole le plus important du jeu — celui qui ouvre les tours gratuits —
+   merite mieux qu'un rectangle. On le fait RAYONNER : une lueur ronde posee
+   derriere lui, et un halo sur le dessin lui-meme, qui respirent ensemble. */
+.bz-c.scat{ background:none; box-shadow:none; }
+.bz-c.scat::before{ content:""; position:absolute; left:50%; top:50%;
+  width:132%; aspect-ratio:1; transform:translate(-50%,-50%);
+  border-radius:50%; z-index:0; pointer-events:none;
+  background:radial-gradient(circle, rgba(255,210,84,.58) 0%,
+                                     rgba(255,132,205,.32) 44%,
+                                     rgba(255,132,205,0) 71%);
+  animation:bzLueur 1.5s ease-in-out infinite; }
+.bz-c.scat img{ animation:bzScat 1.5s ease-in-out infinite;
+  filter:drop-shadow(0 0 9px rgba(255,214,92,.95)) drop-shadow(0 0 22px rgba(255,124,200,.55)); }
+@keyframes bzScat{ 0%,100%{ transform:scale(1) rotate(0); } 50%{ transform:scale(1.12) rotate(6deg); } }
+@keyframes bzLueur{ 0%,100%{ opacity:.6;  transform:translate(-50%,-50%) scale(.93); }
+                    50%    { opacity:1;   transform:translate(-50%,-50%) scale(1.09); } }
 
 @media (prefers-reduced-motion:reduce){ .bz-c.scat img{ animation:none; } }
 .bz-c.attente img{ animation-duration:.2s; }
@@ -835,7 +887,12 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
 .bz-c.pose img{ animation:bzPose .3s cubic-bezier(.2,1.5,.4,1); }
 @keyframes bzPose{ 0%{ transform:translateY(-120%); } 70%{ transform:translateY(6%); } 100%{ transform:translateY(0); } }
 @keyframes bzPulse{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.16); } }
-.bz-c.gagne{ background:rgba(255,197,61,.22); box-shadow:inset 0 0 0 2px rgba(255,197,61,.6); }
+/* Meme raison que la sucette : l'amas qui paie s'allume, il ne se met pas
+   dans un cadre. La lueur suit la forme du fruit, le liseré suivait la case. */
+.bz-c.gagne{ background:radial-gradient(circle at 50% 50%,
+               rgba(255,214,92,.30) 0%, rgba(255,214,92,.10) 52%, rgba(255,214,92,0) 72%);
+  box-shadow:none; }
+.bz-c.gagne img{ filter:drop-shadow(0 0 10px rgba(255,236,150,.95)); }
 
 /* ---- LES BANDEAUX DE GAIN ----
    Quatre paliers, MESURES sur 400 000 tours du vrai moteur et non choisis au

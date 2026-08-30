@@ -49,16 +49,24 @@ const BAREME = { rouleaux: dod.ROULEAUX, rangees: dod.RANGEES, bas: dod.BAS, hau
   wild: dod.WILD, dead: dod.DEAD, deader: dod.DEADER, rouleauxWild: dod.ROULEAUX_WILD,
   bareme: dod.BAREME, taillesWild: dod.TAILLES_WILD, scattersPourTours: dod.SCATTERS_POUR_TOURS,
   tours: dod.TOURS, gainMax: dod.GAIN_MAX, crans: dod.CRANS, cransOrdre: dod.CRANS_ORDRE,
+  croissance: dod.CROISSANCE, plafondRouleau: dod.PLAFOND_ROULEAU,
+  deuxScattersWild: dod.DEUX_SCATTERS_WILD, surclasseTours: dod.SURCLASSE_TOURS,
   min: 10, max: 100000 };
 
 /* On CHERCHE les graines plutot que de les ecrire : un nonce fige serait faux
    le jour ou les poids du moteur bougent, et l'essai testerait un tour
    ordinaire en croyant tester un bonus. */
-function graine(mode, avecTourSec) {
-  for (let i = 1; i < 60000; i++) {
+function graine(mode, avecTourSec, surclasse) {
+  for (let i = 1; i < 200000; i++) {
     const r = dod.joue({ serverSeed: 's', clientSeed: 'c:dod', nonce: i, mise: MISE });
     if (r.mode !== mode) continue;
     if (avecTourSec && !r.gratuits.tours.some((t) => !t.gain)) continue;
+    /* `surclasse` : true exige une serie qui passe en Deader en cours de
+       route, false en exige une qui n'y passe pas. Sans ce filtre l'essai
+       tirait au hasard l'une ou l'autre et son attente sur le nombre de
+       tours tombait juste une fois sur deux. */
+    if (surclasse === true && !r.gratuits.surclasse) continue;
+    if (surclasse === false && r.gratuits.surclasse) continue;
     return { nonce: i, tour: r };
   }
   return null;
@@ -78,7 +86,11 @@ function graine(mode, avecTourSec) {
   const nav = await chromium.launch();
 
   for (const mode of ['dead', 'deader']) {
-    const g = graine(mode, true);
+    /* Pas de surclassement ici : ce bloc verifie le decompte NOMINAL, et une
+       serie qui gagne deux tours en cours de route le ferait echouer sans
+       qu'aucun defaut d'affichage existe. Le surclassement a son propre
+       bloc, plus bas. */
+    const g = graine(mode, true, false);
     console.log('\n-- ' + mode.toUpperCase() + ' --');
     if (!g) { ok(false, 'une graine ouvrant ' + mode + ' avec au moins un tour a zero'); continue; }
     const attenduTours = dod.TOURS[mode];
@@ -185,6 +197,108 @@ function graine(mode, avecTourSec) {
        'et le panneau tient dans le plateau : ' + (taille || 'non mesure')
        + ' — vertical (491x1450), cale sur la LARGEUR comme la banniere des'
        + ' gains il ferait deux mille pixels de haut');
+  }
+
+  /* ============ CE QUE LES TROIS MECANIQUES DOIVENT SE VOIR ============
+   *
+   * Un multiplicateur qui double a chaque tour ne vaut rien s il est
+   * invisible : le joueur constate un gros gain a la fin sans savoir d ou il
+   * vient, et la meilleure idee du mode gratuit ne lui parvient jamais.
+   * On joue donc une serie SURCLASSEE — elle porte les trois a la fois — et
+   * on regarde ce que la page montre, image par image.
+   */
+  {
+    console.log('\n-- ce que le joueur VOIT du multiplicateur et du surclassement --');
+    const g = graine('dead', false, true);
+    if (!g) { ok(false, 'une graine ouvrant Dead Spins et surclassee en Deader'); }
+    else {
+      const faux = new WSS({ port: 0 });
+      await new Promise((r) => faux.on('listening', r));
+      faux.on('connection', (c) => {
+        c.send(JSON.stringify({ type: 'hello', loginNonce: 'n', serverSeedHash: 'h' }));
+        setTimeout(() => c.send(JSON.stringify({ type: 'auth', address: 'e', balance: 1e9,
+          casinoMin: 10, casinoMax: 100000, dodBareme: BAREME })), 50);
+        c.on('message', (d) => {
+          let m; try { m = JSON.parse(d); } catch (e) { return; }
+          if (m.type === 'dodSpin') c.send(JSON.stringify({ type: 'dod', tour: g.tour,
+            balance: '1000000000', fairness: { serverSeedHash: 'h', nonce: 1 } }));
+        });
+      });
+      const p = await nav.newPage({ viewport: { width: 1400, height: 1000 } });
+      const boum = [];
+      p.on('pageerror', (e) => boum.push(e.message));
+      await p.goto('http://127.0.0.1:' + port + '/swoge_dod.html?server='
+                   + encodeURIComponent('ws://127.0.0.1:' + faux.address().port),
+                   { waitUntil: 'domcontentloaded' });
+      await p.waitForTimeout(2400);
+      await p.click('#ddSpin');
+
+      const vues = [];
+      let annonce = null, hors = null;
+      for (let i = 0; i < 420; i++) {
+        const e = await p.evaluate(() => {
+          const m = document.getElementById('ddMultis');
+          const a = document.querySelector('.dd-annonce');
+          const z = document.querySelector('.dd-zone').getBoundingClientRect();
+          const f = document.querySelector('.dd-fond').getBoundingClientRect();
+          const out = { chips: null, dehors: null, annonce: null, rang: '' };
+          const s = document.querySelector('#ddSerie .c');
+          out.rang = s ? s.textContent : '';
+          if (m && !m.hidden) {
+            out.chips = [...m.children].map((x) => x.textContent);
+            const r = m.getBoundingClientRect();
+            /* Le bandeau doit tenir DANS le fond du plateau : pose trop bas
+               il flottait sur la bande blanche sous le cadre. */
+            if (r.bottom > f.bottom + 1 || r.top < f.top) out.dehors = {
+              bas: +(100 * (r.bottom - z.top) / z.height).toFixed(1),
+              fond: +(100 * (f.bottom - z.top) / z.height).toFixed(1) };
+          }
+          if (a && parseFloat(getComputedStyle(a).opacity) > 0.6) {
+            const r = a.getBoundingClientRect();
+            out.annonce = { texte: a.textContent, l: Math.round(r.width), h: Math.round(r.height),
+              dedans: r.top >= z.top && r.bottom <= z.bottom };
+          }
+          return out;
+        });
+        if (e.chips) vues.push(e.chips.slice());
+        if (e.dehors && !hors) hors = e.dehors;
+        if (e.annonce && !annonce) annonce = e.annonce;
+        await p.waitForTimeout(60);
+      }
+
+      /* 1. Les pastilles apparaissent, et elles GRANDISSENT. */
+      const nombres = vues.map((v) => v.map((t) => Number((t || '').replace('×', '')) || 0));
+      ok(nombres.some((v) => v.some((x) => x > 0)),
+         'les multiplicateurs tenus s affichent sous leurs rouleaux pendant la serie');
+      let monte = null;
+      for (let k = 1; k < nombres.length && !monte; k++)
+        for (let r = 0; r < nombres[k].length; r++)
+          if (nombres[k - 1][r] > 0 && nombres[k][r] > nombres[k - 1][r])
+            monte = '×' + nombres[k - 1][r] + ' → ×' + nombres[k][r];
+      ok(!!monte, 'et le joueur les VOIT grandir' + (monte ? ' (' + monte + ')' : ''));
+      const plafond = Math.max(dod.PLAFOND_ROULEAU[dod.DEAD], dod.PLAFOND_ROULEAU[dod.DEADER]);
+      ok(!nombres.some((v) => v.some((x) => x > plafond)),
+         'aucune pastille n annonce plus que le plafond du rouleau (×' + plafond + ')');
+      ok(!hors, 'le bandeau des multiplicateurs tient dans le plateau'
+         + (hors ? ' — il descend a ' + hors.bas + ' % quand le fond finit a ' + hors.fond + ' %' : ''));
+
+      /* 2. Le surclassement s annonce. */
+      ok(!!annonce, 'le surclassement en Deader Spins est ANNONCE sur le plateau'
+         + (annonce ? ' : « ' + annonce.texte + ' »' : ' — rien ne s affiche'));
+      if (annonce) {
+        ok(annonce.dedans && annonce.l > 100 && annonce.h > 20,
+           'et il est lisible, dans le plateau (' + annonce.l + '×' + annonce.h + ')');
+        ok(/DEADER/.test(annonce.texte) && annonce.texte.indexOf('+' + dod.SURCLASSE_TOURS) >= 0,
+           'il dit ce qui change ET ce qu il rapporte : Deader, et +' + dod.SURCLASSE_TOURS + ' tours');
+      }
+
+      /* 3. Le decompte suit les tours gagnes, et ne les annonce pas d avance. */
+      ok(g.tour.toursGratuits === dod.TOURS[dod.DEAD] + dod.SURCLASSE_TOURS,
+         'la serie surclassee dure bien ' + g.tour.toursGratuits + ' tours');
+      ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
+      await p.close();
+      faux.close();
+    }
   }
 
   await nav.close();

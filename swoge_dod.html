@@ -688,6 +688,61 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
 .dd-bandeau.tours .pan{ height:100%; aspect-ratio:491/1450 }
 .dd-bandeau.tours .pan img{ height:100%; width:100% }
 
+/* ---- LES MULTIPLICATEURS TENUS, SOUS LEURS ROULEAUX ----
+ *
+ * Sans eux la mecanique est INVISIBLE. Un multiplicateur qui double a chaque
+ * tour ne se sent que si on le voit doubler : sinon le joueur constate un
+ * gros gain a la fin sans savoir d'ou il vient, et la meilleure idee du mode
+ * gratuit ne lui parvient jamais.
+ * Cales sur la MEME boite que la grille, colonne par colonne — un decalage
+ * d'un pour cent et la pastille ne designe plus son rouleau.
+ *
+ * Mesure dans le navigateur plutot que devinee : la derniere rangee de cases
+ * finit a 78,4 % et le fond du plateau a 83 %. Le bandeau tient donc dans ces
+ * 4,6 points. Pose a 79,6 % sur 7,4 il debordait sous le cadre, la ou l'image
+ * est transparente — les pastilles flottaient sur une bande blanche. */
+.dd-multis{ position:absolute; left:19.5%; top:78.8%; width:61%; height:3.9%;
+  z-index:5; display:grid; grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:clamp(2px,.7cqi,6px); padding:0 clamp(2px,.8cqi,7px);
+  pointer-events:none }
+.dd-multis[hidden]{ display:none }
+.dd-multis i{ display:flex; align-items:center; justify-content:center;
+  font:900 clamp(9px,2.2cqi,19px)/1 'Inter',system-ui,sans-serif; font-style:normal;
+  border-radius:999px; color:#0B0710; background:transparent }
+.dd-multis i.tenu{ background:linear-gradient(180deg,#FFD679,#E9A62B);
+  box-shadow:0 2px 10px rgba(233,166,43,.5), inset 0 1px 0 rgba(255,255,255,.6) }
+.dd-multis i.grandit{ animation:ddGrandit .46s cubic-bezier(.2,1.5,.4,1) both }
+@keyframes ddGrandit{
+  0%   { transform:scale(1) }
+  45%  { transform:scale(1.42); filter:brightness(1.5) }
+  100% { transform:scale(1) }
+}
+@media (prefers-reduced-motion:reduce){ .dd-multis i.grandit{ animation:none } }
+
+/* ---- LE SURCLASSEMENT ----
+   Il arrive au milieu de la serie et change tout : il lui faut son propre
+   moment, sinon deux tours de plus passent pour un decompte casse. */
+.dd-annonce{ position:absolute; left:50%; top:44%; transform:translate(-50%,-50%);
+  z-index:7; pointer-events:none; text-align:center;
+  font-family:"Anton",sans-serif; font-size:clamp(17px,4.6cqi,44px); color:#FFE9A8;
+  -webkit-text-stroke:.06em #2A0A0A; paint-order:stroke fill;
+  text-shadow:0 3px 0 rgba(40,4,4,.7), 0 0 30px rgba(255,120,80,.9);
+  animation:ddAnnonce 1.5s cubic-bezier(.2,1.3,.4,1) both }
+.dd-annonce small{ display:block; font:800 .42em/1.3 'Inter',system-ui,sans-serif;
+  letter-spacing:.16em; color:#FFC98A; -webkit-text-stroke:0; text-shadow:0 2px 4px rgba(0,0,0,.8) }
+@keyframes ddAnnonce{
+  0%   { opacity:0; transform:translate(-50%,-50%) scale(.5) }
+  16%  { opacity:1; transform:translate(-50%,-50%) scale(1.14) }
+  28%  { transform:translate(-50%,-50%) scale(1) }
+  82%  { opacity:1 }
+  100% { opacity:0; transform:translate(-50%,-62%) scale(1) }
+}
+@media (prefers-reduced-motion:reduce){ .dd-annonce{ animation:none } }
+
+/* Un scatter change en Wild garde une trace : sans elle, deux scatters
+   disparaissent et deux Wilds apparaissent sans que rien ne les relie. */
+.dd-c.venu{ box-shadow:0 0 0 2px rgba(255,214,121,.95), 0 0 18px rgba(255,196,92,.8) }
+
 /* ---- OU ON EN EST DANS LA SERIE ---- */
 .dd-serie{ position:absolute; left:50%; top:19.5%; transform:translateX(-50%);
   z-index:5; display:flex; align-items:center; gap:10px; padding:5px 14px;
@@ -1402,6 +1457,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
            qu'on a gagne depuis le debut de la serie. Sans ca le joueur voit
            douze tours defiler sans jamais savoir ou il en est. -->
       <div class="dd-serie" id="ddSerie" hidden><span class="c"></span><span class="t"></span></div>
+      <div class="dd-multis" id="ddMultis" hidden></div>
       <div class="dd-vole" id="ddVole" hidden></div>
     </div>
 
@@ -2047,7 +2103,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     var b=DD.bareme;
     return s===((b&&b.dead)||"dead") || s===((b&&b.deader)||"deader");
   }
-  function ddPeint(grille, gagnants){
+  function ddPeint(grille, gagnants, venus){
     var g=$("ddGrille"), cs=g.children;
     var b=DD.bareme;
     var dead=(b&&b.dead)||"dead", deader=(b&&b.deader)||"deader";
@@ -2060,7 +2116,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         /* Il n'y a de perdants que s'il y a des gagnants : hors gain, les
            quinze cases restent a pleine presence. */
         + ((gagnants&&gagnants.size&&!paie)?" terne":"")
-        + ((s===dead||s===deader)?" scat":"");
+        + ((s===dead||s===deader)?" scat":"")
+        + ((venus && venus.indexOf(i)>=0)?" venu":"");
     }
   }
 
@@ -2262,12 +2319,13 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   function ddMontreTour(t, vite, fin, ctx){
     ctx = ctx || {};
     var mise = ctx.mise || DD.mise;
-    ddPeint(t.grille, null);
+    ddPeint(t.grille, null, t.convertis);
+    if(ctx.serie) ddMultis(t.multis, ctx.avantMultis);
     ddWilds(t.wilds, function(){
       var gagnants=new Set((t.lignes||[]).map(function(l){ return l.symbole; }));
       var montant = Math.round((t.gain||0) * mise);
       if(gagnants.size && montant>0){
-        ddPeint(t.grille, gagnants);
+        ddPeint(t.grille, gagnants, t.convertis);
         son(t.gain>=20?"gros":"gain");
         var d=(t.lignes||[]).map(function(l){ return l.rouleaux+"x "+l.symbole; }).join(" · ");
         ddVole(montant);
@@ -2281,6 +2339,39 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       }
       setTimeout(fin, vite?420:700);
     });
+  }
+
+  /* ---- LES MULTIPLICATEURS TENUS ----
+     `avant` sert a savoir lesquels ont GRANDI depuis le tour precedent : sans
+     cette comparaison la pastille change de chiffre sans que l'oeil le
+     remarque, et c'est justement ce qu'on veut lui montrer. */
+  function ddMultis(multis, avant){
+    var e=$("ddMultis"); if(!e) return;
+    if(!multis){ e.hidden=true; e.innerHTML=""; return; }
+    if(e.children.length!==multis.length){
+      var h=""; for(var k=0;k<multis.length;k++) h+="<i></i>";
+      e.innerHTML=h;
+    }
+    e.hidden=false;
+    for(var r=0;r<multis.length;r++){
+      var c=e.children[r], v=multis[r]||0;
+      var pousse = avant && v>(avant[r]||0) && (avant[r]||0)>0;
+      c.textContent = v>0 ? "×"+v : "";
+      c.className = v>0 ? "tenu" : "";
+      if(pousse){ void c.offsetWidth; c.className="tenu grandit"; }
+    }
+  }
+
+  /* Le surclassement a son propre instant : DEAD SPINS devient DEADER au
+     milieu de la serie, et deux tours s'ajoutent. */
+  function ddAnnonce(gros, petit, apres){
+    var z=$("ddZone")||document.querySelector(".dd-zone");
+    if(!z){ if(apres) apres(); return; }
+    var e=document.createElement("div");
+    e.className="dd-annonce";
+    e.innerHTML=ddEch(gros)+(petit?'<small>'+ddEch(petit)+'</small>':'');
+    z.appendChild(e);
+    setTimeout(function(){ if(e.parentNode) e.parentNode.removeChild(e); if(apres) apres(); }, 1500);
   }
 
   /* Le gain du tour la ou il tombe, sur la grille — plutot que dans un coin
@@ -2327,6 +2418,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     DD.anime=true; ddRender();
     $("ddGain").innerHTML="";
     $("ddSerie").hidden=true; $("ddVole").hidden=true;
+    ddMultis(null);
     son("debut");
     var premiere=(t.base&&t.base.grille)||null;
 
@@ -2337,6 +2429,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     function apresBase(){
       function finir(){
         $("ddSerie").hidden=true;
+        ddMultis(null);
         /* Le GAIN, pas le net. Le palier de la banniere se choisit deja sur
            le multiple — donc sur le brut : y ecrire le net faisait dire
            « +364 » a une banniere choisie pour un gain de 464, juste apres
@@ -2354,13 +2447,36 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       }
       if(t.mode && t.gratuits && t.gratuits.tours && t.gratuits.tours.length){
         var n=t.gratuits.tours.length;
-        ddVoileGratuits(t.mode, n, function(){
-          var i=0, serie={ i:1, n:n, total:0 };   /* on annonce le premier tour, pas « 0 / 12 » */
+        /* ---- LE NOMBRE ANNONCE N'EST PAS LE NOMBRE FINAL ----
+           `tours.length` vaut deja 14 quand la serie a ete surclassee en
+           cours de route. L'ecrire au depart eventerait la surprise et ferait
+           lire « 1 / 14 » a un joueur a qui le panneau vient de promettre 12.
+           On part donc du compte du BAREME, et les deux tours s'ajoutent au
+           moment ou ils sont gagnes. */
+        var b=DD.bareme, nDepart=(b&&b.tours&&b.tours[t.mode]) || n;
+        if(nDepart>n) nDepart=n;
+        ddVoileGratuits(t.mode, nDepart, function(){
+          var i=0, serie={ i:1, n:nDepart, total:0 };
+          var ctx={ mise:mise, serie:serie, avantMultis:null };
           ddSerieAff(serie, "");
           (function suivant(){
-            if(i>=n) return finir();
-            serie.i = i+1;
-            ddMontreTour(t.gratuits.tours[i++], true, suivant, { mise:mise, serie:serie });
+            if(i>=n){ return finir(); }
+            var tour=t.gratuits.tours[i++];
+            serie.i = i;
+            ddMontreTour(tour, true, function(){
+              ctx.avantMultis = tour.multis ? tour.multis.slice() : null;
+              /* Le surclassement s'annonce APRES son tour : c'est ce tour-la
+                 qui a fait tomber le scatter, et il faut l'avoir vu. */
+              if(tour.surclasse){
+                serie.n = Math.min(n, serie.n + ((b && b.surclasseTours) || 2));
+                ddSerieAff(serie, "");
+                son("gratuits"); sonDuck(1500);
+                return ddAnnonce("DEADER SPINS",
+                  "+" + ((b && b.surclasseTours) || 2) + " SPINS · MULTIPLIERS NOW ×"
+                  + ((b && b.croissance && b.croissance.deader) || 3) + " PER SPIN", suivant);
+              }
+              suivant();
+            }, ctx);
           })();
         });
       } else finir();
@@ -2759,9 +2875,16 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
          cette phrase, au lieu de la laisser devenir fausse en silence. */
       h+='</table><p class="note">A Wild substitutes for every paying symbol'
        + ' and pays nothing on its own. When Wilds land on several reels at'
-       + ' once their multipliers are MULTIPLIED together, not added — that'
-       + ' is where the big rounds come from. The multiplier applies to the'
-       + ' whole spin, not to one line.</p>';
+       + ' once their multipliers are ADDED together, and the total applies to'
+       + ' the whole spin, not to one line.</p>';
+      /* Deux scatters seuls : c'est une regle du JEU DE BASE, pas du bonus,
+         et elle se lit ici parce que c'est ici qu'on parle des Wilds. Le
+         nombre vient du serveur — l'ecrire a la main serait le figer. */
+      if(b.deuxScattersWild)
+        h+='<p class="note">And when exactly '+b.deuxScattersWild+' scatters land'
+         + ' — too few to open the round — they TURN INTO WILDS where they'
+         + ' stand, on any reel. The near miss pays instead of paying'
+         + ' nothing.</p>';
     }
 
     if(b.scattersPourTours && b.tours){
@@ -2789,8 +2912,23 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
        + ' both kinds land at once, the richer one opens.</p>'
        + '<p class="note">During free spins each Wild multiplier STAYS on its'
        + ' reel until the round ends, and a new Wild landing on a reel that'
-       + ' already holds one ADDS to it. Scatters landing during the round do'
-       + ' nothing: the bonus cannot be retriggered.</p>';
+       + ' already holds one ADDS to it.</p>';
+      /* LA regle qui change tout, et la seule que le joueur doit avoir lue
+         avant son premier bonus : ce qui colle GRANDIT tout seul. */
+      if(b.croissance && b.plafondRouleau){
+        h+='<p class="note">&mdash; and it does not just sit there. At every'
+         + ' free spin it GROWS on its own: <b>&times;'+b.croissance.dead
+         + '</b> a spin in Dead Spins, <b>&times;'+b.croissance.deader
+         + '</b> a spin in Deader Spins, up to &times;'+b.plafondRouleau.dead
+         + ' and &times;'+b.plafondRouleau.deader+' per reel. A &times;2 taken'
+         + ' early is worth &times;'+b.plafondRouleau.dead
+         + ' before the round is out.</p>';
+      }
+      if(b.surclasseTours)
+        h+='<p class="note">A Deader Scatter on the LAST reel during Dead Spins'
+         + ' turns the rest of the round into Deader Spins — faster growth, a'
+         + ' higher ceiling — and adds '+b.surclasseTours+' spins. Once per'
+         + ' round. Nothing else retriggers the bonus.</p>';
     }
 
     if(b.crans && b.cransOrdre){
@@ -2811,7 +2949,10 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
      + ' several winning paths at once, and each one pays.</p><table>';
     if(b.rouleaux&&b.rangees)
       h+='<tr><td>Reels</td><td>'+b.rouleaux+' &times; '+b.rangees+'</td></tr>';
-    if(b.gainMax) h+='<tr><td>Maximum win</td><td>'+ddExact(b.gainMax)+'&times; bet</td></tr>';
+    if(b.gainMax) h+='<tr><td>Win cap</td><td>'+ddExact(b.gainMax)+'&times; bet</td></tr>';
+    /* Le plafond seul se lit comme une promesse. Le plus gros gain REELLEMENT
+       vu pendant la mesure du retour dit ce que le jeu fait vraiment. */
+    if(b.gainVu) h+='<tr><td>Biggest win measured</td><td>'+ddExact(b.gainVu)+'&times; bet</td></tr>';
     if(b.min) h+='<tr><td>Minimum bet</td><td>'+ddExact(b.min)+' $SWOGE</td></tr>';
     if(b.max) h+='<tr><td>Maximum bet</td><td>'+ddExact(b.max)+' $SWOGE</td></tr>';
     if(b.rtp) h+='<tr><td>Return to player</td><td>'+b.rtp.toFixed(2)+' %</td></tr>';
@@ -2823,6 +2964,13 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
        + (b.rtpN?', over '+ddExact(b.rtpN)+' simulated rounds':'')
        + ' — not copied from the game that inspired this one. It is a long-run'
        + ' average: any single session can land far from it.</p>';
+    }
+    if(b.gainVu && b.gainMax){
+      h+='<p class="note">The win cap is what this game will never pay beyond,'
+       + ' not a prize to expect. Across '
+       + (b.gainVuTours?ddExact(b.gainVuTours)+' measured rounds':'the measurement')
+       + ' it was never reached: the biggest win seen was '+ddExact(b.gainVu)
+       + '&times; the bet.</p>';
     }
     h+='<p class="note">Every round is decided by the server before the reels'
      + ' move. The animation only tells you what already happened — interrupt it'

@@ -13609,6 +13609,15 @@
      tire. L'etat se garde d'une visite a l'autre, comme le repli du panneau. */
   var elAuto = document.getElementById('nxAuto');
   var elAutoBtn = document.getElementById('nxAutoBtn');
+  /* ---- ET UNE TROISIEME COMMANDE, SOUS LE POUCE ----
+   * « Est-ce qu'on peut avoir un bouton auto-fire, pour ne pas avoir a ouvrir
+   * l'inventaire et les reglages pour l'activer ? » Le reglage etait au bout
+   * de trois gestes, et sur telephone le panneau est justement REPLIE pendant
+   * qu'on se bat — c'est-a-dire au seul moment ou l'on veut y toucher.
+   * Elle passe par `basculeAuto`, comme les deux autres : trois etats a tenir
+   * d'accord a la main finiraient par se contredire, et le joueur verrait
+   * « OFF » pendant que ca tire. */
+  var elAutoTac = document.getElementById('nxAutoTac');
   var CLE_AUTO = 'swogeNexusAuto';
   function peintAuto() {
     if (elAuto) elAuto.classList.toggle('on', tireur.auto);
@@ -13616,6 +13625,16 @@
       elAutoBtn.classList.toggle('on', tireur.auto);
       elAutoBtn.textContent = tireur.auto ? 'ON' : 'OFF';
       elAutoBtn.setAttribute('aria-pressed', tireur.auto ? 'true' : 'false');
+    }
+    /* Le bouton du pouce dit SON etat. Un interrupteur qui a la meme tete dans
+       les deux cas oblige a regarder ailleurs pour savoir ce qu'on vient de
+       faire — et en combat, ce qu'on regarde ailleurs, on ne le regarde pas.
+       `.on` decide s'il est A L'ECRAN, `.actif` s'il est ALLUME : les melanger
+       ferait disparaitre le bouton des qu'on eteint le tir, c'est-a-dire au
+       moment precis ou il faut pouvoir le rallumer. */
+    if (elAutoTac) {
+      elAutoTac.classList.toggle('actif', tireur.auto);
+      elAutoTac.setAttribute('aria-pressed', tireur.auto ? 'true' : 'false');
     }
   }
   function basculeAuto() {
@@ -13636,6 +13655,15 @@
     tireur.auto = (choixAuto === null) ? TACTILE : (choixAuto === '1');
   } catch (e) { tireur.auto = TACTILE; }
   if (elAutoBtn) elAutoBtn.addEventListener('click', basculeAuto);
+  if (elAutoTac) elAutoTac.addEventListener('click', function (ev) {
+    ev.preventDefault();
+    debloqueSon();
+    basculeAuto();
+    /* On le DIT, en toutes lettres et au milieu de l'ecran : le bouton est en
+       bas, l'oeil est sur le personnage, et un changement de couleur a
+       quarante centimetres du regard ne se voit pas. */
+    flotte(tireur.auto ? 'AUTO-FIRE ON' : 'AUTO-FIRE OFF');
+  });
   peintAuto();
 
   /* ---- les commandes de l'auto-Nexus ----
@@ -14305,6 +14333,10 @@
       if (!montre) { elVise.classList.remove('presse'); elVise.classList.remove('main'); }
     }
     if (elMaison) elMaison.classList.toggle('on', montre);
+    /* Le bouton du tir automatique suit la meme regle que la zone de tir : il
+       n'a de sens que la ou l'on tire. Allume dans le Nexus, il proposerait de
+       regler quelque chose qui n'y sert a rien. */
+    if (elAutoTac) elAutoTac.classList.toggle('on', montre);
     peintPotionsTactiles();
   }
 

@@ -1740,6 +1740,25 @@ const T = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
        'un jeton qu on ne detient pas n est PAS ecrit sur l appareil : le chercher'
        + ' pour voir son prix ne doit rien laisser derriere');
 
+    /* ---- ET IL NE S AFFICHE PAS DANS LA LISTE DES SOLDES ----
+     * « J'ai un token dans mon wallet, j'en ai pas, il est encore affiche car
+     * je l'avais add et pas achete. » Une liste de soldes ou la plupart des
+     * lignes sont a zero cesse d'etre une liste de soldes. Il reste dans les
+     * listes de l'echange : c'est justement la qu'on va pour en acheter. */
+    const zero = await page.evaluate(() => ({
+      liste: [].map.call(document.querySelectorAll('#acJetons [data-jeton]'), (b) => b.dataset.cle
+        || b.getAttribute('data-jeton')),
+      note: (document.getElementById('jtNote').textContent || '').replace(/\s+/g, ' ').trim(),
+      dansEchange: [].slice.call(document.getElementById('swVers').options).map((o) => o.value),
+    }));
+    console.log('   a zero : ' + JSON.stringify(zero.liste) + ' | ' + zero.note.slice(0, 90));
+    ok(!zero.liste.some((c) => /^x0x/.test(String(c))),
+       'un jeton ajoute dont le solde est ZERO ne figure pas dans la liste des soldes');
+    ok(/not shown/.test(zero.note),
+       'et la page DIT qu il est cache — disparaitre sans un mot se lit comme une perte');
+    ok(zero.dansEchange.some((c) => /^x0x/.test(String(c))),
+       'mais il reste dans la liste de l echange : c est la qu on va pour en acheter');
+
     /* ---- MAIS EN DETENIR, OUI ----
      * Le jour ou le solde n'est plus zero, le jeton a sa place dans la liste :
      * on l'a achete. On repond donc un solde, on relit, et l'on regarde ce qui
@@ -1755,6 +1774,13 @@ const T = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
        && g2[0].pool.ver === 'v3' && g2[0].pool.fee === 10000,
        'des qu on en detient, il est garde sur l appareil AVEC sa piscine — la'
        + ' retrouver a chaque ouverture couterait cinq lectures de chaine');
+    /* Et il REPARAIT dans la liste : c'est l'autre moitie de la regle. Sans
+       elle, « on cache les zeros » pourrait cacher aussi ce qu'on detient. */
+    const tenuListe = await page.evaluate(() =>
+      [].map.call(document.querySelectorAll('#acJetons [data-jeton]'),
+        (b) => b.getAttribute('data-jeton')));
+    ok(tenuListe.some((c) => /^x0x/.test(String(c))),
+       'et il reparait dans la liste des soldes des qu on en detient');
 
     /* ---- ET IL SE RETIRE ---- */
     await page.evaluate(() => document.getElementById('swVersB').click());
@@ -1836,8 +1862,20 @@ const T = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
                liens: [].map.call(document.querySelectorAll('.wl-nav a'),
                  (a) => a.getAttribute('href') + (a.classList.contains('on') ? '*' : '')),
                reseaux: document.querySelectorAll('.wl-reseaux a').length,
-               prix: [].map.call(document.querySelectorAll('.wl-cote.droite .wl-rang b'),
-                 (b) => b.textContent.trim()) };
+               /* ---- LA COLONNE DE DROITE DIT OU DEPENSER ----
+                * Elle a d'abord porte les prix, le reseau et un paragraphe sur
+                * ce que fait ce portefeuille. Reponse du joueur : « ça on s'en
+                * fout — mets des éléments pour aller sur SWOGE World, une
+                * table de blackjack, des trucs où on peut dépenser ses sous,
+                * pas des stats. » Les prix sont deja sur l'ecran d'a cote et
+                * l'adresse du noeud est dans les reglages ; ce qui manque a
+                * cote d'un solde, c'est ou le depenser.
+                * On verifie les DESTINATIONS, pas la decoration : un lien qui
+                * ne mene nulle part apprend a ne plus cliquer. */
+               vers: [].map.call(document.querySelectorAll('.wl-cote.droite a'),
+                 (a) => a.getAttribute('href')),
+               films: document.querySelectorAll('.wl-cote.droite video[src],'
+                 + ' .wl-cote.droite img[src]').length };
     });
     console.log('   colonnes : ' + JSON.stringify(col));
     ok(col.gauche && col.droite, 'sur ordinateur, les deux colonnes sont la');
@@ -1845,11 +1883,21 @@ const T = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
        'le menu de gauche est celui du site, dans le meme ordre, et « Wallet » y est'
        + ' marque page courante (' + col.liens.join(', ') + ')');
     ok(col.reseaux === 3, 'les trois liens du site sont sous le menu');
-    /* Le faux noeud ne rend pas de prix : la colonne doit donc afficher des
-       tirets, JAMAIS des zeros. C est la meme regle que partout ici. */
-    ok(col.prix.length > 0 && col.prix.slice(0, 3).every((x) => x === '\u2014'),
-       'un prix non lu s ecrit « — » dans la colonne, jamais zero ('
-       + col.prix.slice(0, 3).join(' ') + ')');
+    ok(col.vers.indexOf('nexus.html') >= 0,
+       'la colonne de droite mene a SWOGE World');
+    ok(col.vers.some((h) => /swoge_blackjack\.html/.test(h)),
+       'a une table de blackjack');
+    ok(col.vers.indexOf('games.html') >= 0, 'et au reste des jeux');
+    ok(col.films >= 3, 'chacune montre le lieu, film ou affiche (' + col.films + ')');
+    /* Et ces pages EXISTENT. Une carte qui mene a un 404 est pire qu'une carte
+       absente : elle promet un endroit ou depenser, et elle renvoie une erreur.
+       Le serveur de l'essai sert le vrai dossier — on le lui demande. */
+    for (const h of col.vers) {
+      const chemin = h.split('?')[0];
+      const r = await page.evaluate((u) => fetch(u, { method: 'GET' })
+        .then((x) => x.status).catch(() => 0), 'http://127.0.0.1:' + port + '/' + chemin);
+      ok(r === 200, 'et ' + chemin + ' existe vraiment (' + r + ')');
+    }
 
     /* ---- ET ELLES DISPARAISSENT SUR TELEPHONE ----
      * L ecran EST le portefeuille : il n y a pas de place a cote, et une

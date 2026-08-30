@@ -1798,6 +1798,44 @@ body.nxdrag *{ cursor:grabbing !important; }
   color:#7CFF9B; font:800 11px/1.3 'Space Mono',monospace; letter-spacing:.5px; }
 #nxAuto.on{ display:block; }
 
+/* ---- LE TIR AUTOMATIQUE, SOUS LE POUCE ----
+ *
+ * ---- POURQUOI IL A FALLU L'AJOUTER ----
+ *
+ * « Est-ce qu'on peut avoir un bouton auto-fire, pour ne pas avoir a ouvrir
+ * l'inventaire et les reglages pour l'activer ? » Le reglage existait, et il
+ * etait au bout de trois gestes : ouvrir le panneau, descendre jusqu'aux
+ * commandes, trouver la bascule. Sur telephone le panneau est justement
+ * REPLIE pendant qu'on se bat — c'est-a-dire au seul moment ou l'on veut
+ * changer d'avis sur le tir automatique.
+ *
+ * ---- ET POURQUOI PAS EN HAUT, LA OU EST LE TEMOIN ----
+ *
+ * Le joueur a entoure le temoin `AUTO-FIRE` : c'est la qu'il l'a cherche.
+ * Mais le haut de l'ecran ne se touche pas d'une main — c'est la regle de
+ * cette page, et le bouton de pouvoir en est deja descendu pour cette raison
+ * exacte. Le temoin reste donc ce qu'il est, une chose qu'on LIT, et le
+ * bouton rejoint la colonne du bas, avec tout ce qui se touche.
+ *
+ * ---- IL DIT SON ETAT, SINON C'EST UN INTERRUPTEUR AVEUGLE ----
+ *
+ * Eteint il est gris et creux ; allume il est vert et plein, comme le temoin.
+ * Un bouton qui a la meme tete dans les deux cas oblige a regarder AILLEURS
+ * pour savoir ce qu'on vient de faire — et ce qu'on regarde ailleurs, en
+ * combat, on ne le regarde pas.
+ */
+#nxAutoTac{ position:absolute; z-index:24; display:none;
+  align-items:center; gap:7px; cursor:pointer; user-select:none;
+  padding:7px 12px; border-radius:14px; height:38px; box-sizing:border-box;
+  background:rgba(14,18,26,.86); border:1px solid rgba(255,255,255,.22);
+  color:#9FB0C9; font:800 11px/1.3 'Space Mono',monospace; letter-spacing:.5px;
+  touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
+#nxAutoTac.on{ display:flex; }
+#nxAutoTac i{ font-style:normal; font-size:13px; line-height:1 }
+#nxAutoTac.actif{ background:rgba(12,40,20,.88); border-color:rgba(124,255,155,.55);
+  color:#7CFF9B; }
+#nxAutoTac:active{ transform:scale(.96); }
+
 /* ---- LE POUVOIR DU FRUIT ----
  * Un bouton, pas seulement un temoin : sur telephone il n'y a pas de barre
  * d'espace, et une attaque speciale qu'on ne peut declencher qu'au clavier
@@ -2024,13 +2062,14 @@ body.nxdrag *{ cursor:grabbing !important; }
    * une pression qu'on reprend a l'instant, et que le tir automatique tient
    * tout seul entre-temps. Le pouce qui vise peut etre derange ; celui qui
    * marche, non. */
-  #nxPow, #nxMaison, #nxPot{ top:auto; right:auto;
+  #nxPow, #nxMaison, #nxPot, #nxAutoTac{ top:auto; right:auto;
     left:calc(50% - var(--nxp) / 2); transform:translateX(6px);
     z-index:24; transition:left .22s ease; }
   #nxButinFlot{ left:calc(50% - var(--nxp) / 2); justify-content:flex-start;
     flex-wrap:wrap; }
   #nxWrap.replie #nxPow, #nxWrap.replie #nxMaison,
-  #nxWrap.replie #nxPot, #nxWrap.replie #nxButinFlot{ left:50%; }
+  #nxWrap.replie #nxPot, #nxWrap.replie #nxButinFlot,
+  #nxWrap.replie #nxAutoTac{ left:50%; }
   /* Une colonne, du plus utilise au moins utilise en montant. Les hauteurs se
      suivent sans se chevaucher : 38 + 54 + 52 + 56 de haut pour des paliers a
      6, 70, 134 et 198. */
@@ -2038,6 +2077,10 @@ body.nxdrag *{ cursor:grabbing !important; }
   #nxMaison{ bottom:calc(max(16px, env(safe-area-inset-bottom)) + 70px); }
   #nxPot{ bottom:calc(max(16px, env(safe-area-inset-bottom)) + 134px); }
   #nxButinFlot{ bottom:calc(max(16px, env(safe-area-inset-bottom)) + 198px); }
+  /* Le plus haut de la colonne, parce que c'est le moins presse : on le touche
+     entre deux combats, pas pendant. Le sac au sol garde sa place au-dessous —
+     il ne dure qu'une minute, et celui-la ne peut pas attendre. */
+  #nxAutoTac{ bottom:calc(max(16px, env(safe-area-inset-bottom)) + 262px); }
   /* ---- LE BOUTON DE REPLI ENTRE DANS LA COLONNE ----
    * Il etait pose a `top:68%`, une fraction de la hauteur. Sur un grand ecran
    * ca tombe au-dessus des commandes ; sur un ecran COURT — et il devient
@@ -2675,6 +2718,11 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
   <canvas id="nxCanvas"></canvas>
   <div id="nxSolde"></div>
   <div id="nxAuto">⌖ AUTO-FIRE</div>
+  <!-- ---- ET LE MEME REGLAGE, SOUS LE POUCE ----
+       Le temoin ci-dessus se LIT ; celui-ci se TOUCHE. Voir le commentaire de
+       `#nxAutoTac` dans la feuille de style. -->
+  <button id="nxAutoTac" type="button" aria-pressed="false"
+          aria-label="Auto-fire"><i>⌖</i><b>AUTO</b></button>
   <div id="nxVise" aria-hidden="true"><i></i><u></u></div>
   <button id="nxMaison" type="button" aria-label="Back to Nexus">&#127968;</button>
   <!-- ---- LE SAC AU SOL, AU DOIGT ----
@@ -3263,7 +3311,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
      racine ; c'est le seul endroit d'ou elle peut couvrir tout le reste. -->
 <div id="nxFiche"></div>
 
-<script src="nexus.js?v=beaf6386" defer></script>
+<script src="nexus.js?v=1dd236b0" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 
 <script>

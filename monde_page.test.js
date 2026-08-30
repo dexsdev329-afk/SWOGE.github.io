@@ -1612,6 +1612,111 @@ process.on('unhandledRejection', (e) => {
        `et il tient entierement a l'ecran (${boutons.maison.y}+${boutons.maison.h} sur ${boutons.hauteur})`);
   }
 
+  /* ================== LE TIR AUTOMATIQUE, SOUS LE POUCE ==================
+   *
+   * « Est-ce qu'on peut avoir un bouton auto-fire, pour ne pas avoir a ouvrir
+   * l'inventaire et les reglages pour l'activer ? » Le reglage existait, au
+   * bout de trois gestes — ouvrir le panneau, descendre, trouver la bascule —
+   * et sur telephone le panneau est justement REPLIE pendant qu'on se bat.
+   *
+   * Ce qui se mesure ici n'est pas « un bouton existe ». C'est :
+   *   - qu'il est ATTEIGNABLE : dans le tiers du bas, hors de la moitie qui
+   *     fait marcher, et que le doigt pose dessus l'atteint VRAIMENT — les
+   *     deux zones de jeu couvrent tout l'ecran, et un z-index mal choisi le
+   *     rendrait visible et mort ;
+   *   - qu'il COMMANDE le meme reglage que les deux autres surfaces. Trois
+   *     etats tenus a la main finiraient par se contredire, et le joueur
+   *     lirait « OFF » pendant que ca tire ;
+   *   - qu'il reste a l'ecran quand le tir est ETEINT. C'est le piege exact :
+   *     un bouton qui disparait avec le reglage qu'il commande ne peut plus le
+   *     rallumer.
+   */
+  console.log('\n-- le tir automatique, sous le pouce --');
+  {
+    const boite = await t.evaluate(() => {
+      const e = document.getElementById('nxAutoTac');
+      if (!e) return null;
+      const q = e.getBoundingClientRect();
+      const pad = document.getElementById('nxPad').getBoundingClientRect();
+      const sous = document.elementFromPoint(q.x + q.width / 2, q.y + q.height / 2);
+      const chevauche = (id) => { const o = document.getElementById(id);
+        if (!o) return false; const r = o.getBoundingClientRect();
+        if (!r.width || !r.height) return false;
+        return q.x < r.right && q.x + q.width > r.left
+            && q.y < r.bottom && q.y + q.height > r.top; };
+      return { vu: q.width > 0 && q.height > 0,
+               x: Math.round(q.x), y: Math.round(q.y),
+               w: Math.round(q.width), h: Math.round(q.height),
+               finDuPave: Math.round(pad.x + pad.width), hauteur: window.innerHeight,
+               recu: sous ? (sous.closest('#nxAutoTac') ? 'ok' : ('#' + (sous.id || sous.tagName))) : 'rien',
+               surPow: chevauche('nxPow'), surMaison: chevauche('nxMaison'),
+               surPot: chevauche('nxPot'), surButin: chevauche('nxButinFlot') };
+    });
+    console.log('   ' + JSON.stringify(boite));
+    ok(boite && boite.vu, 'le bouton du tir automatique est a l ecran dans le monde');
+    if (boite && boite.vu) {
+      ok(boite.x >= boite.finDuPave,
+         `il est hors de la zone qui fait marcher (${boite.x} contre ${boite.finDuPave})`);
+      ok(boite.y > boite.hauteur * 0.5,
+         `et dans la moitie basse, a portee du pouce (${boite.y} sur ${boite.hauteur})`);
+      ok(boite.y + boite.h < boite.hauteur,
+         `il tient entierement a l ecran (${boite.y}+${boite.h})`);
+      /* Le seul essai qui attraperait un z-index mal choisi : on demande au
+         navigateur QUI recoit le doigt a cet endroit precis. */
+      ok(boite.recu === 'ok',
+         `le doigt pose dessus l atteint, pas la zone de jeu (${boite.recu})`);
+      ok(!boite.surPow && !boite.surMaison && !boite.surPot && !boite.surButin,
+         'et il ne se marche pas dessus avec les autres boutons de la colonne');
+    }
+
+    /* ---- IL COMMANDE LE MEME REGLAGE QUE LES DEUX AUTRES ----
+     * On lit les TROIS surfaces apres chaque appui : le bouton lui-meme, le
+     * temoin sur la scene, et la bascule des reglages. Une seule qui ne suit
+     * pas, et le joueur lit un etat qui n'est pas celui du jeu. */
+    const etat = () => t.evaluate(() => ({
+      bouton: document.getElementById('nxAutoTac').classList.contains('actif'),
+      aria: document.getElementById('nxAutoTac').getAttribute('aria-pressed'),
+      aLEcran: document.getElementById('nxAutoTac').classList.contains('on'),
+      temoin: document.getElementById('nxAuto').classList.contains('on'),
+      reglage: document.getElementById('nxAutoBtn').textContent.trim(),
+      garde: (() => { try { return localStorage.getItem('swogeNexusAuto'); } catch (e) { return null; } })(),
+    }));
+    const av = await etat();
+    await t.evaluate(() => document.getElementById('nxAutoTac').click());
+    await t.waitForTimeout(250);
+    const ap = await etat();
+    console.log('   avant : ' + JSON.stringify(av));
+    console.log('   apres : ' + JSON.stringify(ap));
+    ok(ap.bouton !== av.bouton, 'un appui change le reglage');
+    ok(ap.bouton === ap.temoin && ap.bouton === (ap.reglage === 'ON'),
+       `les trois surfaces disent la MEME chose (bouton ${ap.bouton}, temoin ${ap.temoin},`
+       + ` reglage ${ap.reglage})`);
+    ok(ap.aria === (ap.bouton ? 'true' : 'false'),
+       'et il le dit aussi a qui ne voit pas les couleurs');
+    ok(ap.garde === (ap.bouton ? '1' : '0'),
+       `le choix est garde pour la prochaine visite (${ap.garde})`);
+    /* ---- LE PIEGE ----
+     * `.on` decide s il est A L ECRAN, `.actif` s il est ALLUME. Les melanger
+     * ferait disparaitre le bouton des qu on eteint le tir — au moment precis
+     * ou il faut pouvoir le rallumer. */
+    ok(ap.aLEcran, 'et il reste a l ecran quel que soit l etat du reglage');
+    /* On le remet dans son etat d avant : les blocs suivants tirent. */
+    await t.evaluate(() => document.getElementById('nxAutoTac').click());
+    await t.waitForTimeout(200);
+    const fin = await etat();
+    ok(fin.bouton === av.bouton, 'un second appui le remet comme il etait');
+
+    /* ---- ET IL N EXISTE PAS DANS LE NEXUS ----
+     * Allume la ou l on ne tire pas, il proposerait de regler quelque chose
+     * qui n y sert a rien. Meme regle que la zone de tir. */
+    const auNexus = await p.evaluate(() => {
+      const e = document.getElementById('nxAutoTac');
+      return e ? e.getBoundingClientRect().width : -1;
+    });
+    ok(auNexus === 0,
+       `a la souris il ne s affiche pas : le clavier et les reglages suffisent (${auNexus})`);
+  }
+
   /* ---- LE SAC AU SOL, HORS DU PANNEAU ----
    * Le cas qui comptait : panneau REPLIE — la facon normale de jouer sur
    * telephone — et un sac sous les pieds. La grille du panneau est alors
@@ -2023,10 +2128,19 @@ process.on('unhandledRejection', (e) => {
    * qu'elle est cassee, mais parce qu'il n'y avait plus personne a soigner.
    * L'essai lisait « trente images sous la barre : 0 demande » d'un reglage
    * qui marche, et seulement les fois ou un lime avait eu le personnage. */
-  const vifF = await assureVivant(t);
-  if (vifF) await t.waitForTimeout(800);
-  ok(!vifF || vifF.ok, 'la page tactile est vivante avant de regarder la fiole'
-     + (vifF ? ' (relance apres une mort)' : ''));
+  /* ---- DANS LE MONDE, ET PAS SEULEMENT VIVANT ----
+   * `assureVivant` ne regarde que le voile de mort. Or un joueur n'existe
+   * qu'UNE fois par adresse : chaque `realmJoin` de la page souris SORT
+   * celle-ci du monde, sans la tuer. `verifieFiole` refuse alors net
+   * (`SCENE !== 'monde'`), et l'essai lisait « zero demande » d'un reglage qui
+   * marche — c'est ce qui l'a fait tomber deux fois de suite.
+   * On se remet donc dans le monde, comme le fait chaque bloc qui en a besoin,
+   * et l'on DIT si l'on n'y est pas arrive : sans ce temoin, tout ce qui suit
+   * mesurerait un fantome. */
+  const vifF = await rejoins(t);
+  await t.waitForTimeout(800);
+  ok(vifF && vifF.ok, 'la page tactile est dans le monde avant de regarder la fiole'
+     + (vifF && vifF.mort ? ' (relance apres une mort)' : ''));
   /* La pile de fioles est la NOTRE pendant tout ce bloc. */
   await t.evaluate(() => { window.__retient = 'potionBoit'; });
   const pousseFrames = (n) => t.evaluate(async (k) => {
@@ -2071,11 +2185,59 @@ process.on('unhandledRejection', (e) => {
   ok(pvMax > 0, `la vie maximale est connue (${pvMax})`);
   const avantBas = await bues();
   await t.evaluate((v) => { window.__pv = v; }, Math.max(1, Math.round(pvMax * 0.30)));
-  await pousseFrames(30);
+  /* ---- ON ATTEND LA PREMIERE GORGEE, ON NE COMPTE PAS LES IMAGES ----
+   * C'etait « trente images, donc une demande ». Troisieme fois que cette
+   * page se fait prendre par la meme illusion : une image n'est pas un
+   * soixantieme de seconde ici. La vie basse ne parvient a la page qu'avec un
+   * message du serveur, et sous charge trente images passent avant lui —
+   * mesure, la premiere gorgee est arrivee au bout de 4,6 secondes. L'essai
+   * lisait « zero demande » d'un reglage qui marche.
+   * On attend donc la CHOSE, bornee par l'horloge, puis on verifie qu'il n'en
+   * est parti QU'UNE : c'est cela, la propriete — pas la vitesse du banc.
+   *
+   * ---- ET L'ATTENTE EST LARGE, PARCE QUE CE DELAI-LA EST CELUI DU BANC ----
+   * La vie basse est INJECTEE par l'essai : elle ne parvient a la page qu'en se
+   * raccrochant a un etat du vrai serveur. Le temoin ci-dessus l'a montre — la
+   * page lisait encore 284 pv sur 350 au moment ou l'on venait d'en poser 105.
+   * Releve sur trois executions : la premiere gorgee arrive entre quatre et
+   * huit secondes apres l'injection, et les suivantes se suivent a la seconde
+   * exacte, ce qui est la cadence attendue.
+   * Douze secondes, donc. Ce n'est pas de la tolerance, c'est reconnaitre que
+   * ce delai appartient au banc et non au jeu. Une gorgee par image en aurait
+   * fait cent avant la premiere seconde : c'est cela qu'on attrape ici, et
+   * aucune attente longue ne peut le cacher. */
+  /* ---- LE TEMOIN, AVANT DE MESURER ----
+   * « Zero demande » a trois causes possibles et l'essai ne les distinguait
+   * pas : la fiole eteinte, une vie qui n'est jamais descendue, ou une pile
+   * vide. Sans ce releve on relance quinze minutes pour deviner. */
+  const av = await t.evaluate(() => {
+    const e = window.__s[0].__m.filter((m) => m.type === 'realmEtat' && m.moi).pop();
+    return { hp: (document.getElementById('nxHp') || {}).textContent,
+             jauge: (document.getElementById('nxHpJauge') || {}).style
+                    ? document.getElementById('nxHpJauge').style.width : null,
+             bascule: (document.getElementById('nxFioleBtn') || {}).textContent,
+             seuil: (document.getElementById('nxFiolePct') || {}).value,
+             pvInjecte: window.__pv,
+             duServeur: e ? { pv: e.moi.pv, pvMax: e.moi.pvMax } : null,
+             fioles: [].map.call(document.querySelectorAll('#nxPot [data-pot]'),
+               (b) => b.dataset.pot + '=' + b.querySelector('b').textContent) };
+  });
+  console.log('   avant la mesure : ' + JSON.stringify(av));
+
+  const boucle = t.evaluate(async () => {
+    const t0 = performance.now();
+    while (performance.now() - t0 < 12000) {
+      window.__pousse();
+      await new Promise((f) => requestAnimationFrame(f));
+      if (window.__s[0].__out.filter((m) => m.type === 'potionBoit').length) break;
+    }
+  });
+  await boucle;
   const apresBas = await bues();
-  console.log(`   30 images sous la barre : ${apresBas - avantBas} demande(s)`);
+  console.log(`   premiere gorgee : ${apresBas - avantBas} demande(s)`);
   ok(apresBas === avantBas + 1,
-     `trente images sous la barre n envoient qu UNE demande (${apresBas - avantBas}) — une par image aurait vide la pile`);
+     `sous la barre, il part UNE demande et une seule (${apresBas - avantBas}) —`
+     + ' une par image aurait vide la pile');
 
   /* ---- LA CADENCE, MESUREE SUR L ECART REEL ----
    * La reponse revient en quelques millisecondes : sans cadence, la garde
@@ -2271,11 +2433,33 @@ process.on('unhandledRejection', (e) => {
 
     /* Et une potion qu'on n'a PAS ne part pas au serveur : une demande qui
        sera refusee est une demande de trop au moment ou le reseau compte. */
+    /* ---- ON REPOSE LA PILE JUSTE AVANT, ET L'ON VERIFIE QU'ELLE A PRIS ----
+     * Le vrai serveur renvoie la VRAIE pile de fioles a chaque etat, et une
+     * mort suivie d'une relance en redonne. La liste injectee plus haut — mana
+     * a zero — avait donc pu etre remplacee entre-temps : la touche E partait
+     * alors a bon droit, et l'essai accusait la page de demander une potion
+     * qu'elle n'a pas. C'est ce qui l'a fait tomber une fois sur trois.
+     * On repose la pile, on ATTEND que la fiole de mana soit grisee — c'est
+     * l'etat qu'on veut mesurer — et l'on ne conclut que si elle l'est. */
+    await p.evaluate(() => {
+      window.__s[0].dispatchEvent(new MessageEvent('message', { data: JSON.stringify({
+        type: 'potionBue', cle: 'vie', quoi: 'hp', soigne: 100, reste: 3,
+        potions: [
+          { cle: 'vie', nom: 'Health Potion', quoi: 'hp', soigne: 100, image: 'potion_rouge', max: 99, quantite: 3 },
+          { cle: 'mana', nom: 'Magic Potion', quoi: 'mp', soigne: 100, image: 'potion_bleue', max: 99, quantite: 0 },
+        ],
+      }) }));
+    });
+    const videPrete = await attend(p, () => {
+      const b = document.querySelector('#nxPotions [data-pot="mana"], #nxPot [data-pot="mana"]');
+      return !!(b && b.disabled);
+    }, null, 'la fiole de mana grisee', 4000);
+    ok(videPrete, 'la fiole qu on n a pas est bien grisee avant de mesurer');
     const avantVide = await p.evaluate(() => window.__s[0].__out.filter((m) => m.type === 'potionBoit').length);
     await p.keyboard.press('KeyE');
     await p.waitForTimeout(300);
     const apresVide = await p.evaluate(() => window.__s[0].__out.filter((m) => m.type === 'potionBoit').length);
-    ok(apresVide === avantVide, 'une potion qu on n a pas ne part pas au serveur');
+    if (videPrete) ok(apresVide === avantVide, 'une potion qu on n a pas ne part pas au serveur');
 
     /* Le retour au Nexus a quitte E pour R — sinon les deux se marcheraient
        dessus, et boire ferait sortir du monde. */

@@ -712,6 +712,30 @@ body{
   font-size:14px; color:var(--doux); text-decoration:none;
 }
 .wl-reseaux a:hover{ color:var(--accent); border-color:var(--accent) }
+/* ---- LES CARTES « OU JOUER » ----
+ * Une image ou un film, un voile pour que le texte reste lisible quelle que
+ * soit l'image, et le nom dessus. Elles sont hautes de 108 pixels : assez pour
+ * qu'on reconnaisse le lieu, assez peu pour que les trois tiennent a cote du
+ * telephone sans le faire paraitre petit. */
+.wl-vers{ position:relative; display:block; height:108px; border-radius:var(--rayon);
+  overflow:hidden; border:1px solid var(--bord); text-decoration:none;
+  background:var(--carte2); }
+.wl-vers img, .wl-vers video{ position:absolute; inset:0; width:100%; height:100%;
+  object-fit:cover; display:block; }
+.wl-vers .voile{ position:absolute; inset:0;
+  background:linear-gradient(180deg, rgba(4,10,24,0) 28%, rgba(4,10,24,.82) 100%); }
+.wl-vers .dit{ position:absolute; left:12px; right:12px; bottom:10px; display:block; }
+.wl-vers .dit b{ display:block; font:800 13px/1.2 'Archivo',sans-serif;
+  letter-spacing:.6px; color:#fff; text-shadow:0 1px 4px rgba(0,0,0,.6) }
+.wl-vers .dit i{ display:block; font:400 10.5px/1.35 'Archivo',sans-serif;
+  font-style:normal; color:rgba(255,255,255,.82); margin-top:2px }
+.wl-vers:hover{ border-color:var(--accent) }
+.wl-vers:hover .dit b{ text-decoration:underline }
+.wl-tous{ display:block; text-align:center; padding:11px;
+  border-radius:var(--rayon); border:1px solid var(--bord); background:var(--carte);
+  font:800 12px/1 'Archivo',sans-serif; color:var(--accent); text-decoration:none }
+.wl-tous:hover{ border-color:var(--accent) }
+
 .wl-bloc{ background:var(--carte); border:1px solid var(--bord);
   border-radius:var(--rayon); padding:12px 14px }
 .wl-bloc h3{ margin:0 0 8px; font:800 11px/1 'Archivo',sans-serif;
@@ -1208,27 +1232,35 @@ body{
      chiffre finiraient par diverger, et c'est toujours celui qu'on ne regarde
      pas qui reste faux.
      Un prix non lu s'ecrit « — », comme partout ici : jamais zero. -->
-<aside class="wl-cote droite" aria-label="Details">
-  <div class="wl-bloc">
-    <h3>Prices</h3>
-    <div class="wl-rang"><span id="cvEthNom">ETH (RH)</span><b id="cvEth">—</b></div>
-    <div class="wl-rang"><span>SWOGE</span><b id="cvSwoge">—</b></div>
-    <div class="wl-rang"><span>SWOGEBET</span><b id="cvBet">—</b></div>
-    <p class="wl-mini" id="cvPrixNote">Read from Dexscreener. A dash means the price could not be
-      read — not that it is zero.</p>
-  </div>
-  <div class="wl-bloc">
-    <h3>Network</h3>
-    <div class="wl-rang"><span>Chain</span><b>Robinhood Chain</b></div>
-    <div class="wl-rang"><span>Chain ID</span><b>4663</b></div>
-    <div class="wl-rang"><span>RPC</span><b id="cvRpc" class="wl-mono">—</b></div>
-  </div>
-  <div class="wl-bloc">
-    <h3>This wallet</h3>
-    <p class="wl-mini">Robinhood Chain only, because that is where $SWOGE and $SWOGEBET live.
-      Send, receive and swap; the casino vault is one tap from the home screen.</p>
-    <a class="wl-lien" href="games.html">&larr; Back to the arcade</a>
-  </div>
+<aside class="wl-cote droite" aria-label="Where to play">
+  <!-- ================== OU DEPENSER ==================
+       Elle a d'abord porte les prix, le reseau et un paragraphe sur ce que
+       fait ce portefeuille. Reponse du joueur : « ça on s'en fout — mets des
+       éléments pour aller sur SWOGE World, une table de blackjack, des trucs
+       où on peut dépenser ses sous, pas des stats. » Il a raison : les prix
+       sont deja sur l'ecran, l'adresse du noeud est dans les reglages, et
+       personne n'ouvre son portefeuille pour lire une adresse de RPC. Ce qui
+       manque a cote d'un solde, c'est OU LE DEPENSER.
+       Les trois destinations existent, et ce sont celles du site : meme
+       video, meme affiche, memes liens que `games.html`. -->
+  <a class="wl-vers monde" href="nexus.html">
+    <video src="media/monde_carte.mp4" poster="img/site/monde_carte_poster.webp"
+           muted autoplay loop playsinline disablepictureinpicture
+           aria-hidden="true"></video>
+    <span class="voile"></span>
+    <span class="dit"><b>SWOGE WORLD</b><i>Meet. Explore. Own.</i></span>
+  </a>
+  <a class="wl-vers" href="swoge_blackjack.html?table=or">
+    <img src="img/site/jeu_blackjack.webp" alt="" loading="lazy">
+    <span class="voile"></span>
+    <span class="dit"><b>BLACKJACK</b><i>Live tables, $SWOGE stakes</i></span>
+  </a>
+  <a class="wl-vers" href="swoge_pusher_live.html">
+    <img src="img/site/jeu_crazytime.webp" alt="" loading="lazy">
+    <span class="voile"></span>
+    <span class="dit"><b>COIN PUSHER</b><i>The live table</i></span>
+  </a>
+  <a class="wl-tous" href="games.html">All games &rarr;</a>
 </aside>
 
 </div>
@@ -2441,34 +2473,7 @@ function valeur(cle){
   return null;
 }
 
-/* ---- LA COLONNE DE DROITE SE PEINT ICI ----
- * Au meme moment et depuis les MEMES variables que l'ecran du telephone. Deux
- * rendus du meme chiffre, peints a deux endroits, finissent par diverger — et
- * c'est toujours celui qu'on ne regarde pas qui reste faux. Un prix non lu
- * s'ecrit « — », jamais zero : un zero affiche dit au joueur que son jeton ne
- * vaut plus rien.
- * La colonne n'existe qu'au-dela de 1060 pixels ; en dessous, ces elements
- * sont la mais invisibles, et les peindre ne coute que trois affectations. */
-function peintColonne(){
-  var e = $('cvEth'); if(!e) return;
-  /* ---- LE MEME FORMAT QUE LA FICHE DU JETON ----
-   * `usd()` arrondit a deux decimales : bon pour de l'ether a deux mille
-   * dollars, ruineux pour le $SWOGE, qui vaut deux cent-millieme de dollar et
-   * s'ecrirait « $0.00 ». Ce n'est pas un arrondi, c'est une affirmation
-   * fausse — le joueur lit que son jeton ne vaut plus rien. Trois chiffres
-   * SIGNIFICATIFS, exactement comme `fiPrix` le fait deja. */
-  e.textContent = (ethUsd === null || ethUsd === undefined) ? '—' : (usd(ethUsd) || '—');
-  var w = $('cvSwoge');
-  if(w) w.textContent = prixUsd ? '$' + prixUsd.toPrecision(3) : '—';
-  var b = $('cvBet');
-  if(b) b.textContent = (prixUsd && tauxBet) ? '$' + (tauxBet * prixUsd).toPrecision(3) : '—';
-  var n = $('cvEthNom'); if(n) n.textContent = ETH_AFF;
-  var r = $('cvRpc');
-  if(r) r.textContent = CHAINE.rpc.replace(/^https:\/\//, '');
-}
-
 function peintAccueil(){
-  peintColonne();
   /* le total */
   var total=0, complet=true;
   for(var i=0;i<JETONS.length;i++){
@@ -2498,9 +2503,28 @@ function peintAccueil(){
   }
 
   /* les jetons */
-  var h='';
+  var h='', caches=0;
   for(var k=0;k<JETONS.length;k++){
     var j=JETONS[k], s=soldes[j.cle], v=valeur(j.cle);
+    /* ---- UN JETON QU'ON NE DETIENT PAS N'A RIEN A FAIRE DANS LA LISTE ----
+     *
+     * « J'ai un token dans mon wallet, j'en ai pas, il est encore affiche car
+     * je l'avais add et pas achete. » Chercher un contrat pour voir son prix
+     * laissait une ligne a zero pour toujours, et une liste de soldes ou la
+     * plupart des lignes sont a zero cesse d'etre une liste de soldes.
+     *
+     * TROIS conditions, et les trois comptent :
+     *   - `perso` : les trois jetons de la maison restent, meme a zero. Ils
+     *     sont ce que ce portefeuille EST ; les cacher donnerait un ecran vide
+     *     a qui vient d'arriver, et il ne saurait pas quoi y mettre.
+     *   - un solde REELLEMENT lu : `null` veut dire « la chaine n'a pas
+     *     repondu », pas « zero ». Cacher sur une lecture ratee ferait
+     *     disparaitre un jeton qu'on detient, le temps d'une panne de reseau —
+     *     et c'est exactement le genre de disparition qui fait peur.
+     *   - et ce solde vaut zero.
+     * Il reste dans les listes de l'echange : c'est justement la qu'on va pour
+     * en acheter. */
+    if(j.perso && s !== null && s !== undefined && s.isZero()){ caches++; continue; }
     /* Les trois jetons ont leur piece. Le repli n'est plus un « Ξ » : ce
        signe EST celui de l'ether de la chaine principale, et le laisser sous
        un nom qui dit justement le contraire aurait defait tout le travail de
@@ -2519,9 +2543,18 @@ function peintAccueil(){
   $('jtListe').innerHTML  = h;
   peintEnCours();
   peintCasino();
-  $('jtNote').textContent = prixUsd===null && moi
+  /* ---- ON LE DIT, PLUTOT QUE DE LAISSER CROIRE A UNE PERTE ----
+     Un jeton qui disparait sans un mot se lit comme un defaut, ou pire comme
+     un vol. Une ligne suffit, et elle ne s'affiche que s'il y a vraiment
+     quelque chose de cache. */
+  var note = prixUsd===null && moi
     ? 'Dollar values are unavailable right now — the market feed did not answer. Your balances above are read straight from the chain and are correct.'
     : '';
+  if(caches) note = (note ? note + ' ' : '')
+    + caches + (caches===1 ? ' token you added is not shown: you hold none of it.'
+                           : ' tokens you added are not shown: you hold none of them.')
+    + ' They are still in the swap list — that is where you would buy some.';
+  $('jtNote').textContent = note;
   majCompte();
 }
 

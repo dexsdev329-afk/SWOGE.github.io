@@ -130,9 +130,26 @@ body{
   justify-content:center; cursor:pointer; font-size:16px; flex:0 0 auto; padding:0;
 }
 .wl-tete .rond:hover{ border-color:var(--violet) }
-.wl-tete .marque{ display:flex; align-items:center; gap:9px; flex:1 }
-.wl-tete .marque img{ width:30px; height:30px; border-radius:50% }
-.wl-tete .marque b{ font:800 17px/1 'Archivo',sans-serif }
+.wl-tete .marque{ display:flex; align-items:center; gap:9px; flex:1; min-width:0;
+  background:none; border:0; padding:0; color:var(--texte); font:inherit;
+  cursor:pointer; text-align:left }
+.wl-tete .marque:focus-visible{ outline:2px solid var(--violet); outline-offset:3px; border-radius:10px }
+.wl-tete .marque img{ width:34px; height:34px; border-radius:50%; flex:0 0 auto;
+  object-fit:cover; background:#1B1626; border:1px solid var(--bord) }
+/* Sans photo, un rond neutre — pas le logo du $SWOGE. Mettre une piece a la
+   place d'un visage, c'est la meme erreur que la fiche du jeton faisait pour
+   l'ETH : montrer autre chose plutot que rien. */
+.wl-tete .marque img.vide{ visibility:hidden }
+.wl-tete .marque{ position:relative }
+.wl-tete .marque img.vide + .qui::before{
+  content:''; position:absolute; left:0; top:50%; transform:translateY(-50%);
+  width:34px; height:34px; border-radius:50%;
+  background:linear-gradient(160deg,#4B4463,#2E2A3D); border:1px solid var(--bord) }
+.wl-tete .marque .qui{ min-width:0 }
+.wl-tete .marque b{ display:block; font:800 15px/1.15 'Archivo',sans-serif;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.wl-tete .marque small{ display:block; font:400 11px/1.3 'Space Mono',monospace;
+  color:var(--doux); margin-top:2px }
 
 /* le corps defilant */
 .wl-corps{ flex:1 1 auto; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch;
@@ -417,8 +434,15 @@ body{
   <!-- ============ ACCUEIL ============ -->
   <section class="wl-ecran on" id="ecAccueil">
     <div class="wl-tete">
-      <div class="marque"><img src="img/wallet/tok_swoge.webp" alt=""><b>SWOGE</b></div>
+      <!-- Le joueur, pas la marque. Il sait sur quel site il est ; ce qu'il
+           veut voir en haut a gauche, c'est LUI — sa photo et son nom, comme
+           partout ailleurs sur le site. -->
+      <button class="marque" id="acMoi" type="button" aria-label="Account">
+        <img id="acPhoto" src="img/wallet/tok_swoge.webp" alt="">
+        <span class="qui"><b id="acNom">Not connected</b><small id="acAdr">—</small></span>
+      </button>
       <button class="rond" id="btRafraichir" type="button" aria-label="Refresh">&#8635;</button>
+      <button class="rond" id="btReglages" type="button" aria-label="Settings">&#9881;</button>
     </div>
     <div class="wl-corps">
       <div class="wl-carte wl-total">
@@ -435,15 +459,6 @@ body{
         <button type="button" data-va="ecSwap"><span class="bulle">&#8646;</span><span class="t">SWAP</span></button>
       </div>
 
-      <div class="wl-carte" id="acEco">
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
-          <div>
-            <b style="font:800 14px/1.2 'Archivo',sans-serif">Swoge Ecosystem</b>
-            <div class="wl-note" style="margin-top:5px">Two tokens, one chain. $SWOGE is the ecosystem token;
-              $SWOGEBET is the betting token, and it only trades against $SWOGE.</div>
-          </div>
-        </div>
-      </div>
     </div>
   </section>
 
@@ -863,6 +878,13 @@ var ethUsd  = null;        // dollars par ETH, ou null si inconnu
 var tauxBet = null;        // $SWOGE par $SWOGEBET, lu sur la piscine v3
 var PRIVY_APP_ID = 'cmsga0yzp00a50biaf9vlzzd2';
 
+/* ---- LE PROFIL DU JOUEUR ----
+ * La photo et le nom vivent sur le serveur du casino, pas sur la chaine.
+ * Les deux sont publics — ils s'affichent deja a la table et dans les
+ * classements — et se lisent par adresse, sans session : cette page n'en a
+ * aucune, elle ne parle qu'a la chaine. */
+var SERVEUR = 'https://web-production-220a3.up.railway.app';
+
 /* ---- UNE LECTURE QUI N'ARRIVE PAS DOIT LE DIRE ----
  * Un RPC lent ne rejette pas : il ATTEND. Sans borne, le devis reste a
  * « — » pour toujours et le `catch` ne se declenche jamais — mesure en
@@ -1213,8 +1235,10 @@ function peintAccueil(){
     if(v===null) complet=false; else total+=v;
   }
   $('acTotal').textContent = moi ? (complet ? usd(total) : (total>0 ? usd(total) : '—')) : '—';
+  /* L'adresse est maintenant en haut, sous le nom : la repeter ici n'ajoute
+     rien et vole la place de ce qui compte — savoir si le total est complet. */
   $('acSous').textContent = !moi ? 'Not connected'
-    : (complet ? court(moi) : court(moi)+' · some prices unavailable');
+    : (complet ? '' : 'Some prices unavailable — this total is partial');
 
   /* les jetons */
   var h='';
@@ -1247,6 +1271,45 @@ document.addEventListener('click', function(ev){
   if(b) ficheJeton(b.dataset.jeton);
 });
 
+/* ---- ON N'INVENTE PAS UNE IDENTITE ----
+ *
+ * Si le serveur ne repond pas, on ne fabrique pas un nom : on montre
+ * l'adresse abregee, qui est vraie de toute facon. Et la photo par defaut
+ * n'est PAS le logo du $SWOGE — ce serait afficher une piece a la place
+ * d'un visage, la meme erreur que la fiche du jeton faisait avec l'ETH.
+ * Un rond neutre aux initiales de l'adresse ne pretend rien. */
+function peintProfil(){
+  var ph=$('acPhoto'), nm=$('acNom'), ad=$('acAdr');
+  if(!ph) return;
+  if(!moi){
+    ph.removeAttribute('src'); ph.classList.add('vide');
+    nm.textContent='Not connected';
+    ad.textContent='Tap to sign in';
+    return;
+  }
+  ad.textContent = court(moi);
+  /* En attendant la reponse, l'adresse abregee : jamais un nom vide, jamais
+     un nom devine. */
+  if(nm.textContent==='Not connected' || !nm.textContent) nm.textContent = court(moi);
+
+  /* La photo : 404 si le joueur n'en a pas, et c'est un cas NORMAL. */
+  var url = SERVEUR + '/avatar/' + moi;
+  var essai = new Image();
+  essai.onload  = function(){ ph.src = url; ph.classList.remove('vide'); };
+  essai.onerror = function(){ ph.removeAttribute('src'); ph.classList.add('vide'); };
+  essai.src = url;
+
+  borne(fetch(SERVEUR + '/nom/' + moi, { cache:'no-store' }), 6000, 'nom')
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(j){
+      /* `choisi` faux veut dire que le serveur n'a fait que raccourcir
+         l'adresse : autant montrer la notre, deja formatee. */
+      if(j && j.choisi && j.nom) nm.textContent = j.nom;
+      else nm.textContent = court(moi);
+    })
+    .catch(function(){ nm.textContent = court(moi); });
+}
+
 function majCompte(){
   $('cpEtat').textContent = moi ? 'Connected' : 'Not connected';
   $('cpEtat').classList.toggle('on', !!moi);
@@ -1258,6 +1321,7 @@ function majCompte(){
   $('cpDevise').textContent  = ETH_AFF;
   $('cpDevise2').textContent = ETH_AFF;
   $('hReseau').classList.toggle('on', !!moi);
+  peintProfil();
 }
 
 /* ==================== RECEVOIR ====================
@@ -1277,6 +1341,14 @@ function peintRecevoir(){
   q.innerHTML='<div style="color:#111;font:700 11px/1.5 monospace;word-break:break-all;text-align:center;padding:6px">'
     + moi + '</div>';
 }
+/* L'en-tete mene au compte : c'est la que vivent l'adresse, la methode de
+   connexion, le reseau et la deconnexion. */
+$('acMoi').addEventListener('click', function(){
+  if(!moi) return ouvreConnexion();
+  va('ecCompte');
+});
+$('btReglages').addEventListener('click', function(){ va('ecCompte'); });
+
 $('reCopier').addEventListener('click', async function(){
   if(!moi) return toast('Not connected');
   try{ await navigator.clipboard.writeText(moi); toast('Address copied'); }

@@ -287,11 +287,18 @@ const T = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
     };
     await recharge();
     const branche = await page.evaluate(() => ({
+      /* L'adresse a quitte cette ligne pour l'en-tete : c'est donc le NOM
+         affiche en haut qui dit si la connexion a pris. */
+      nom: document.getElementById('acNom').textContent,
       sous: document.getElementById('acSous').textContent,
       lignes: [...document.querySelectorAll('#acJetons .wl-jeton')].map((e) => e.textContent.trim()),
     }));
-    ok(!/Not connected/.test(branche.sous),
-       'le faux portefeuille d extension se branche tout seul (« ' + branche.sous + ' »)');
+    ok(branche.nom !== 'Not connected' && branche.nom.length > 0,
+       'le faux portefeuille d extension se branche tout seul, et l en-tete porte le joueur'
+       + ' (« ' + branche.nom + ' »)');
+    ok(branche.sous.indexOf('0x') < 0,
+       'et l adresse ne s ecrit plus DEUX fois : elle est en haut, sous le nom, pas aussi'
+       + ' sous le total (« ' + branche.sous + ' »)');
     ok(branche.lignes.some((l) => l.indexOf('1,234.57') >= 0),
        'et la page lit ses soldes par son vrai chemin : ' + (branche.lignes[1] || '(rien)'));
 

@@ -292,7 +292,59 @@ body{
   font-variant-numeric:tabular-nums }
 .wl-total .sous{ margin-top:7px; font:700 12px/1 'Space Mono',monospace; color:var(--doux) }
 
-.wl-jetons{ display:flex; flex-direction:column; gap:8px }
+/* ---- L'ILLUSTRATION DE LA CARTE DU TOTAL ----
+ * Un portefeuille dessine, et les DEUX VRAIES pieces posees dessus — les
+ * memes fichiers que la liste juste dessous. Rien a telecharger, et rien qui
+ * pretende exister sans exister.
+ * Elle est en `position:absolute` et sous le texte dans l'ordre de pile : le
+ * total doit rester lisible meme si l'image ne charge pas, et surtout meme si
+ * le nombre est long. */
+.wl-total{ position:relative; overflow:hidden }
+.wl-illu{ position:absolute; right:-6px; top:50%; transform:translateY(-50%);
+  width:132px; height:106px; pointer-events:none; opacity:.95 }
+.wl-illu svg{ position:absolute; right:8px; bottom:6px; width:118px; height:94px }
+.wl-illu img{ position:absolute; border-radius:50%; object-fit:contain;
+  box-shadow:0 4px 12px rgba(11,27,54,.28) }
+.wl-illu .p1{ width:42px; height:42px; right:52px; top:6px }
+.wl-illu .p2{ width:34px; height:34px; right:22px; top:16px }
+:root{ --illu1:#8FBAF6; --illu2:#5B94E8; --illu3:#F5B301 }
+:root[data-theme="sombre"]{ --illu1:#4B3E7A; --illu2:#6D28D9; --illu3:#E8B44A }
+/* Le total garde sa place : sans cette marge le nombre passerait SOUS le
+   dessin des que le solde depasse six chiffres. */
+.wl-total small, .wl-total b, .wl-total .eth, .wl-total .sous{
+  position:relative; max-width:calc(100% - 118px) }
+
+/* ---- LA CARTE DE L'ADRESSE ---- */
+.wl-adrcarte{ margin-top:10px }
+.wl-adrcarte[hidden]{ display:none }
+.wl-adrcarte .ligne{ display:flex; align-items:center; gap:9px }
+.wl-adrcarte .champ{ flex:1 1 auto; min-width:0; display:flex; align-items:center;
+  justify-content:space-between; gap:10px; cursor:pointer;
+  padding:12px 13px; border-radius:12px; border:1px solid var(--bord);
+  background:var(--nuit); color:var(--texte);
+  font:700 13px/1 'Space Mono',monospace }
+.wl-adrcarte .champ:hover{ border-color:var(--accent) }
+.wl-adrcarte .champ i{ font-style:normal; font-size:14px; color:var(--accent) }
+.wl-adrcarte .qr{ flex:0 0 auto; width:46px; height:46px; border-radius:12px;
+  border:1px solid var(--bord); background:var(--nuit); color:var(--accent);
+  font-size:20px; cursor:pointer; display:grid; place-items:center }
+.wl-adrcarte .qr:hover{ border-color:var(--accent) }
+
+/* ---- LES JETONS, DANS UNE SEULE CARTE ----
+ * Ils etaient huit cartes empilees avec un espace entre chacune : sur un
+ * telephone, huit ombres portees valent une liste qui bouge. Une carte, des
+ * filets, et un chevron par rangee — celui-la dit qu'on peut ouvrir la fiche,
+ * ce que rien n'annoncait. */
+.wl-jetons{ display:flex; flex-direction:column;
+  background:var(--carte); border:1px solid var(--bord);
+  border-radius:var(--rayon); overflow:hidden }
+.wl-jetons:empty{ display:none }
+.wl-jetons .wl-jeton{ border:0; border-radius:0; background:none }
+.wl-jetons .wl-jeton + .wl-jeton{ border-top:1px solid var(--bord) }
+.wl-jetons .wl-jeton::after{ content:'\203A'; flex:0 0 auto; margin-left:2px;
+  color:var(--doux); font:400 19px/1 'Archivo',sans-serif }
+.wl-jetons .wl-jeton:hover{ background:var(--nuit) }
+
 .wl-jeton{
   display:flex; align-items:center; gap:12px; width:100%; text-align:left;
   background:var(--carte); border:1px solid var(--bord); border-radius:var(--rayon);
@@ -318,18 +370,25 @@ body{
   color:var(--doux); font-variant-numeric:tabular-nums }
 .wl-total .eth[hidden]{ display:none }
 
-.wl-actions{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:14px 0 4px }
+/* ---- LES TROIS GESTES, DANS UNE SEULE CARTE ----
+ * Trois boutons flottants sur le fond de la page se lisaient comme trois
+ * choses sans rapport. Dans une carte, separes par un filet, ils se lisent
+ * comme ce qu'ils sont : les trois choses qu'on peut faire de son solde. */
+.wl-actions{ display:grid; grid-template-columns:repeat(3,1fr); gap:0;
+  padding:12px 4px; margin:10px 0 0 }
 .wl-actions button{
-  background:none; border:0; cursor:pointer; color:var(--texte); font:inherit;
+  background:none; border:0; cursor:pointer; color:var(--accent); font:inherit;
   display:flex; flex-direction:column; align-items:center; gap:7px;
 }
+.wl-actions button + button{ border-left:1px solid var(--bord) }
+.wl-actions span.t{ font:700 12px/1 'Archivo',sans-serif; letter-spacing:.2px;
+  color:var(--accent) }
 .wl-actions .bulle{
   width:50px; height:50px; border-radius:50%;
   background:var(--bulleFond); color:var(--bulleTx);
   display:flex; align-items:center; justify-content:center; font-size:19px;
   box-shadow:var(--bulleOmbre);
 }
-.wl-actions span.t{ font:700 11px/1 'Archivo',sans-serif; letter-spacing:.4px }
 
 .wl-b{
   width:100%; padding:15px; border-radius:14px; border:0; cursor:pointer;
@@ -802,13 +861,38 @@ body{
            partout ailleurs sur le site. -->
       <button class="marque" id="acMoi" type="button" aria-label="Account">
         <img id="acPhoto" src="img/wallet/tok_swoge.webp" alt="">
-        <span class="qui"><b id="acNom">Not connected</b><small id="acAdr">—</small></span>
+        <span class="qui"><b id="acNom">Not connected</b><small id="acRole">Manage your assets</small></span>
       </button>
       <button class="rond" id="btRafraichir" type="button" aria-label="Refresh">&#8635;</button>
       <button class="rond" id="btReglages" type="button" aria-label="Settings">&#9881;</button>
     </div>
     <div class="wl-corps">
       <div class="wl-carte wl-total">
+        <!-- ---- L'ILLUSTRATION ----
+             Elle est faite des VRAIES pieces du portefeuille — celles-la
+             memes qui servent dans la liste juste dessous — posees sur un
+             portefeuille dessine. Aucun fichier a telecharger, aucune image
+             de banque d'images : ce qu'on voit ici existe deja dans la page.
+             `aria-hidden` : elle ne raconte rien qu'un lecteur d'ecran ait
+             besoin d'entendre, et le total est juste a cote. -->
+        <span class="wl-illu" aria-hidden="true">
+          <svg viewBox="0 0 120 96" fill="none">
+            <rect x="14" y="26" width="96" height="62" rx="16" fill="var(--illu1)"/>
+            <rect x="14" y="26" width="96" height="62" rx="16" fill="url(#wlG)"/>
+            <path d="M14 42h96" stroke="var(--illu2)" stroke-width="2" opacity=".45"/>
+            <rect x="78" y="50" width="34" height="20" rx="10" fill="var(--illu2)"/>
+            <circle cx="95" cy="60" r="4.5" fill="var(--illu3)"/>
+            <defs>
+              <linearGradient id="wlG" x1="14" y1="26" x2="110" y2="88"
+                              gradientUnits="userSpaceOnUse">
+                <stop stop-color="#fff" stop-opacity=".28"/>
+                <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+          </svg>
+          <img class="p1" src="img/wallet/tok_swoge.webp" alt="">
+          <img class="p2" src="img/wallet/tok_eth.webp" alt="">
+        </span>
         <small>TOTAL BALANCE</small>
         <b id="acTotal">—</b>
         <!-- ---- LE MEME TOTAL, DANS LA MONNAIE DE LA CHAINE ----
@@ -831,6 +915,17 @@ body{
         <span class="fl" aria-hidden="true">&rsaquo;</span>
       </button>
 
+      <!-- ---- LES TROIS GESTES, JUSTE SOUS LE TOTAL ----
+           Ils etaient tout en bas, apres la liste des jetons : sur un
+           telephone il fallait defiler pour envoyer. On lit son solde, et la
+           chose suivante qu'on veut faire est d'en faire quelque chose. -->
+      <div class="wl-carte wl-actions">
+        <button type="button" data-va="ecEnvoyer"><span class="bulle">&uarr;</span><span class="t">Send</span></button>
+        <button type="button" data-va="ecRecevoir"><span class="bulle">&darr;</span><span class="t">Receive</span></button>
+        <button type="button" data-va="ecSwap"><span class="bulle">&#8646;</span><span class="t">Swap</span></button>
+      </div>
+
+      <div class="wl-titre">ASSETS</div>
       <div class="wl-jetons" id="acJetons"></div>
 
       <!-- ---- LE SOLDE DU JEU ----
@@ -843,10 +938,23 @@ body{
         <span class="val"><b id="acCasinoVal">—</b><small id="acCasinoPied">tap to open</small></span>
       </button>
 
-      <div class="wl-actions">
-        <button type="button" data-va="ecEnvoyer"><span class="bulle">&uarr;</span><span class="t">SEND</span></button>
-        <button type="button" data-va="ecRecevoir"><span class="bulle">&darr;</span><span class="t">RECEIVE</span></button>
-        <button type="button" data-va="ecSwap"><span class="bulle">&#8646;</span><span class="t">SWAP</span></button>
+      <!-- ---- L'ADRESSE, ENFIN QUELQUE PART ----
+           Elle vivait en petit sous le nom, ou personne ne la copie parce que
+           rien ne dit qu'on peut. Elle a sa carte : le mot en toutes lettres,
+           l'adresse abregee, un bouton qui COPIE et un autre qui ouvre le QR.
+           Elle ne s'ecrit qu'ICI — deux adresses a l'ecran, et l'on finit par
+           en copier une qu'on n'a pas regardee. -->
+      <div class="wl-carte wl-adrcarte" id="acAdrCarte" hidden>
+        <div class="wl-titre" style="margin:0 0 8px">YOUR WALLET ADDRESS</div>
+        <div class="ligne">
+          <button type="button" class="champ" id="acAdrCopie">
+            <span id="acAdr">—</span>
+            <i aria-hidden="true">&#128203;</i>
+          </button>
+          <button type="button" class="qr" data-va="ecRecevoir" aria-label="Show QR code">
+            &#9635;
+          </button>
+        </div>
       </div>
 
     </div>
@@ -2572,14 +2680,22 @@ document.addEventListener('click', function(ev){
  * Un rond neutre aux initiales de l'adresse ne pretend rien. */
 function peintProfil(){
   var ph=$('acPhoto'), nm=$('acNom'), ad=$('acAdr');
+  var rl=$('acRole'), ca=$('acAdrCarte');
   if(!ph) return;
   if(!moi){
     ph.removeAttribute('src'); ph.classList.add('vide');
     nm.textContent='Not connected';
-    ad.textContent='Tap to sign in';
+    if(rl) rl.textContent='Tap to sign in';
+    /* ---- PAS D'ADRESSE QUAND IL N'Y EN A PAS ----
+       Une carte « YOUR WALLET ADDRESS » vide, avec un bouton « copier » qui
+       ne copie rien, promet quelque chose qui n'existe pas encore. */
+    if(ca) ca.hidden = true;
+    if(ad) ad.textContent='—';
     return;
   }
-  ad.textContent = court(moi);
+  if(rl) rl.textContent='Manage your assets';
+  if(ca) ca.hidden = false;
+  if(ad) ad.textContent = court(moi);
   /* En attendant la reponse, l'adresse abregee : jamais un nom vide, jamais
      un nom devine. */
   if(nm.textContent==='Not connected' || !nm.textContent) nm.textContent = court(moi);
@@ -3192,11 +3308,18 @@ $('acMoi').addEventListener('click', function(){
 });
 $('btReglages').addEventListener('click', function(){ va('ecCompte'); });
 
-$('reCopier').addEventListener('click', async function(){
+/* ---- COPIER L'ADRESSE ----
+ * Deux boutons, un seul geste : celui de l'ecran « Receive » et celui de la
+ * carte de l'accueil. Ecrire la copie deux fois, c'est deux endroits ou
+ * oublier de dire qu'elle a echoue — et une copie ratee qui se tait fait
+ * coller une adresse d'avant. */
+async function copieAdresse(){
   if(!moi) return toast('Not connected');
   try{ await navigator.clipboard.writeText(moi); toast('Address copied'); }
-  catch(e){ toast('Could not copy — select the address above'); }
-});
+  catch(e){ toast('Could not copy — open Receive and select the address'); }
+}
+$('reCopier').addEventListener('click', copieAdresse);
+if($('acAdrCopie')) $('acAdrCopie').addEventListener('click', copieAdresse);
 
 /* ==================== LE CHOIX D'UN JETON ====================
  *

@@ -304,6 +304,60 @@ const T = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
     ok(branche.lignes.some((l) => l.indexOf('1,234.57') >= 0),
        'et la page lit ses soldes par son vrai chemin : ' + (branche.lignes[1] || '(rien)'));
 
+    /* ---- LA MISE EN PAGE DE L'ACCUEIL ----
+     *
+     * Elle suit la maquette qu'on nous a envoyee, et ce qui s'y joue n'est pas
+     * decoratif :
+     *   - les trois gestes remontent SOUS le total. Ils etaient tout en bas,
+     *     apres la liste des jetons : sur un telephone il fallait defiler pour
+     *     envoyer. On lit son solde, et la chose suivante qu'on veut faire est
+     *     d'en faire quelque chose.
+     *   - l'adresse a enfin une carte. Elle vivait en petit sous le nom, ou
+     *     personne ne la copie parce que rien ne dit qu'on peut.
+     */
+    const page1 = await page.evaluate(() => {
+      const corps = document.querySelector('#ecAccueil .wl-corps');
+      const rang = (sel) => { const e = corps.querySelector(sel);
+        return e ? [].indexOf.call(corps.children, e.closest('#ecAccueil .wl-corps > *')) : -1; };
+      const ad = document.getElementById('acAdrCarte');
+      const ill = document.querySelector('.wl-illu');
+      return { actions: rang('.wl-actions'), jetons: rang('#acJetons'),
+               adresse: rang('#acAdrCarte'),
+               carteVue: !!(ad && !ad.hidden),
+               ecrite: (document.getElementById('acAdr').textContent || '').trim(),
+               qr: !!document.querySelector('#acAdrCarte .qr[data-va="ecRecevoir"]'),
+               /* Les deux pieces du dessin sont les VRAIES : on verifie
+                  qu'elles ont charge, pas seulement qu'elles sont demandees.
+                  Une illustration a trous vaut moins que pas d'illustration. */
+               pieces: ill ? [].map.call(ill.querySelectorAll('img'),
+                 (i) => i.getAttribute('src') + (i.naturalWidth > 0 ? '' : ' MANQUE')) : [] };
+    });
+    console.log('   accueil : ' + JSON.stringify(page1));
+    ok(page1.actions >= 0 && page1.jetons > page1.actions,
+       `les trois gestes sont AU-DESSUS de la liste des jetons (${page1.actions} avant ${page1.jetons})`);
+    ok(page1.adresse > page1.jetons, 'et la carte de l adresse ferme l ecran');
+    ok(page1.carteVue, 'connecte, la carte de l adresse est la');
+    ok(/^0x.{4}\u2026.{4}$/.test(page1.ecrite),
+       `elle montre l adresse abregee (${page1.ecrite})`);
+    ok(page1.qr, 'et un bouton ouvre le QR — c est l autre facon de la donner');
+    ok(page1.pieces.length === 2 && page1.pieces.every((x) => !/MANQUE/.test(x)),
+       'le dessin du portefeuille porte les DEUX vraies pieces, chargees ('
+       + page1.pieces.join(', ') + ')');
+
+    /* ---- ET LE BOUTON COPIE L'ADRESSE ENTIERE ----
+     * C'est le seul defaut qui coute de l'argent ici : la carte AFFICHE une
+     * adresse abregee, et copier ce qu'elle affiche donnerait une adresse
+     * tronquee — collee quelque part, les fonds partent nulle part. */
+    await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
+      .catch(() => {});
+    await page.evaluate(() => { window.__copie = null;
+      navigator.clipboard.writeText = (t) => { window.__copie = t; return Promise.resolve(); }; });
+    await page.click('#acAdrCopie');
+    await page.waitForTimeout(300);
+    const copie = await page.evaluate(() => window.__copie);
+    ok(copie && copie.length === 42 && copie.toLowerCase() === MOI.toLowerCase(),
+       `le bouton copie l adresse ENTIERE, pas celle qui est affichee (${copie})`);
+
     const clic = async (id) => {
       await page.evaluate(() => { document.getElementById('toast').textContent = ''; });
       await page.click('#' + id);

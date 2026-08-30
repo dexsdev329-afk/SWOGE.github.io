@@ -556,7 +556,7 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
 /* Le fond de la fenetre. Le cadre porte deja son ciel et sa pelouse : on ne
    met ici qu'un aplat clair, un rien plus large que l'ouverture MESUREE
    (x 16,4 %..83,9 %, y 37,5 %..75,8 %) pour qu'aucun liseré n'apparaisse. */
-.ch-fond{ position:absolute; left:15.4%; top:36.5%; width:69.2%; height:40%;
+.ch-fond{ position:absolute; left:15.4%; top:33.5%; width:69.2%; height:44.3%;
   z-index:0; border-radius:6px;
   background:linear-gradient(180deg,#BFE3FF,#8FCBF5); }
 
@@ -565,7 +565,17 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
    une zone de 1536 — plus larges que hautes, parce que l'ouverture de ce
    cadre a un rapport de 2,65 quand une grille 5x3 de cases carrees en
    demanderait 1,67. Le symbole reste carre et centre dans sa case. */
-.ch-grille{ position:absolute; left:16.4%; top:37.5%; width:67.5%; height:38.3%;
+/* ---- LES ROULEAUX PASSENT DERRIERE LE CADRE ----
+   La grille deborde de la fenetre : 3 points en haut, 1 en bas. Le cadre est
+   dessine PAR-DESSUS (z-index 3), donc les rangees extremes se glissent
+   dessous, comme sur une vraie machine.
+   Le debordement n'est pas choisi a l'oeil : pour chaque valeur on a mesure
+   quelle PART DU SYMBOLE le cadre recouvre vraiment, case par case. A 3 %
+   en haut et 1 % en bas, le pire symbole est cache a 2,4 % et fait 144 px
+   au lieu de 131 — dix pour cent de plus. A 4 % en haut il passe a 8,5 %
+   de recouvrement : la limite est la, et elle est asymetrique parce que la
+   palissade remonte plus haut que l'arche ne descend. */
+.ch-grille{ position:absolute; left:16.4%; top:34.5%; width:67.5%; height:42.3%;
   z-index:1;
   display:grid; grid-template-columns:repeat(5,minmax(0,1fr));
   grid-template-rows:repeat(3,minmax(0,1fr));

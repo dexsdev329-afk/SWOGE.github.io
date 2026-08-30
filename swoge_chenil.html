@@ -683,14 +683,7 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
 .ch-bandeau.part{ transition:transform .3s ease-in, opacity .3s ease-in;
   transform:translate(-50%,-58%) scale(1.06); opacity:0 }
 .ch-bandeau img{ width:100%; display:block }
-/* Sans image peinte, la banniere se dessine : un cartouche de bois et d'or,
-   le palier au-dessus du montant. */
-.ch-bandeau.sansImage .pan{ padding:18px 26px 14px; border-radius:18px;
-  background:linear-gradient(180deg,#C8442E,#9C2E1C);
-  border:4px solid #E8B44A; box-shadow:0 8px 26px rgba(0,0,0,.45) }
-.ch-bandeau.sansImage u{ position:static; height:auto; container-type:normal }
-.ch-bandeau.sansImage u em{ font-size:clamp(18px,4.6cqi,40px); color:#FFF3D6 }
-.ch-bandeau.sansImage b{ margin-top:2px }
+
 /* ---- LE NOMBRE DE TOURS S'ECRIT DANS LA BANDEROLE ----
    Les panneaux portaient leur nombre PEINT DANS L'IMAGE — « 10 FREE SPINS »
    la ou le moteur en donne 12, « 15 » la ou il en donne 18 — et il a fallu
@@ -700,7 +693,12 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
    Creux de la banderole mesure sur les deux : 22 %..78 % en largeur,
    66,5 %..74,1 % en hauteur — les deux panneaux sont a un demi-point l'un
    de l'autre. */
-.ch-bandeau .pan{ position:relative; display:block }
+/* `inline-size`, PAS `size` : `container-type:size` confine les DEUX axes,
+   donc l'enveloppe cessait de tirer sa hauteur de l'image et s'effondrait a
+   740x0. La plaque du montant, calee en pourcentage de cette hauteur, faisait
+   alors zero pixel — et sa police, exprimee en `cqh`, valait 0px. Le montant
+   etait bien ecrit, il etait juste invisible. */
+.ch-bandeau .pan{ position:relative; display:block; container-type:inline-size }
 .ch-bandeau u{ position:absolute; left:35.2%; right:35.8%; top:71.1%; height:13.3%;
   display:flex; flex-direction:column; align-items:center; justify-content:center;
   text-decoration:none; line-height:1; container-type:size; }
@@ -740,10 +738,13 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
 }
 @media (prefers-reduced-motion:reduce){ .ch-vole{ animation:none } }
 
-.ch-bandeau b{ display:block; text-align:center; margin-top:-6%;
-  font-family:"Anton",sans-serif; font-size:clamp(18px,4.4cqi,40px); color:#fff;
-  -webkit-text-stroke:.1em #16220f; paint-order:stroke fill;
-  text-shadow:0 3px 0 rgba(10,26,12,.55), 0 0 22px rgba(180,255,190,.6); }
+/* Centre MESURE sur les quatre bannieres : 52,8 %, 53,4 %, 54,8 % et 55,4 %.
+   La boite est donc centree a 54 % et non a 50 % — la plaque n'est pas au
+   milieu de l'image, le chien de gauche la pousse. */
+.ch-bandeau b{ position:absolute; left:34%; right:26%; top:70.5%; height:18.5%;
+  display:flex; align-items:center; justify-content:center;
+  font-family:"Anton",sans-serif; font-size:4.6cqw; line-height:1; color:#6B3410;
+  text-shadow:0 1px 0 rgba(255,238,200,.6); white-space:nowrap; }
 
 /* ==================== L'ECRAN D'INFORMATION ====================
  * Tout ce qu'il montre vient du BAREME DU SERVEUR — les gains par symbole,
@@ -807,26 +808,11 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
 .ch-img:active{ transform:translateY(1px) scale(.98) }
 .ch-img:disabled{ filter:grayscale(.7) brightness(.6); cursor:default; transform:none }
 .ch-img img{ display:block; height:100%; width:auto }
-/* ---- LES BOUTONS SONT DESSINES, PAS PEINTS ----
-   Les six boutons de ce jeu n'existent pas encore en image. Reprendre ceux
-   de DEAD SWOGE — pierre gothique verte — sur un plateau ensoleille serait
-   pire qu'un bouton sobre. Ceux-ci reprennent le bois et l'or du cadre, et
-   se remplaceront par les images le jour ou elles arriveront. */
-.ch-img{ font-family:"Anton",sans-serif; letter-spacing:.6px; color:#FFF3D6;
-  background:linear-gradient(180deg,#C8442E,#9C2E1C);
-  border:3px solid #E8B44A; border-radius:12px;
-  box-shadow:0 3px 0 #7A2214, 0 5px 14px rgba(0,0,0,.28);
-  text-shadow:0 2px 0 rgba(90,20,10,.75); padding:0 14px; }
-.ch-img:active{ box-shadow:0 1px 0 #7A2214, 0 2px 8px rgba(0,0,0,.28) }
-.ch-pas{ height:clamp(38px,7cqi,52px); min-width:clamp(48px,9cqi,68px);
-  font-size:clamp(15px,3cqi,22px) }
-.ch-large{ height:clamp(38px,7cqi,52px); font-size:clamp(12px,2.3cqi,17px) }
-.ch-spin{ height:clamp(72px,15cqi,104px); width:clamp(72px,15cqi,104px);
-  border-radius:50%; font-size:clamp(16px,3.4cqi,26px); padding:0;
-  background:radial-gradient(circle at 50% 34%,#F5D06A,#D89B22 62%,#A96F12);
-  border-color:#FFF0C4; color:#5A2B00; text-shadow:0 2px 0 rgba(255,240,196,.7);
-  box-shadow:0 4px 0 #8A5A0E, 0 8px 20px rgba(0,0,0,.3) }
-.ch-img:disabled{ filter:grayscale(.6) brightness(.8); cursor:default }
+.ch-img:disabled{ filter:grayscale(.7) brightness(.6); cursor:default; transform:none }
+.ch-pas{ height:clamp(38px,7cqi,52px) }
+.ch-large{ height:clamp(38px,7cqi,52px) }
+.ch-spin{ height:clamp(72px,15cqi,104px); width:clamp(72px,15cqi,104px) }
+.ch-spin img{ width:100%; height:100% }
 .ch-spin{ height:clamp(72px,15cqi,104px); width:clamp(72px,15cqi,104px) }
 .ch-spin img{ width:100%; height:100% }
 .ch-pas{ height:clamp(38px,7cqi,52px) }
@@ -1444,7 +1430,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
            d'elle, pas de tout le bandeau. Posee sur le bandeau, elle montait
            au-dessus de la banderole — la hauteur du <b> du montant s'ajoutait
            a celle de l'image et faussait le repere. -->
-      <div class="ch-bandeau" id="chBandeau" hidden><span class="pan"><img alt=""><u></u></span><b></b></div>
+      <div class="ch-bandeau" id="chBandeau" hidden><span class="pan"><img alt=""><u></u><b></b></span></div>
       <!-- Ce qui se passe PENDANT les tours gratuits : ou on en est, et ce
            qu'on a gagne depuis le debut de la serie. Sans ca le joueur voit
            douze tours defiler sans jamais savoir ou il en est. -->
@@ -1459,14 +1445,14 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
            non dans un coin. MAX BET rejoint la seconde rangee, avec les deux
            boutons qu'on presse rarement. -->
       <div class="ch-principal">
-        <button class="ch-img ch-pas" id="chMoins" type="button" aria-label="Lower bet">&minus;</button>
-        <button class="ch-img ch-spin" id="chSpin" type="button" aria-label="Spin"><span id="chSpinTxt">SPIN</span></button>
-        <button class="ch-img ch-pas" id="chPlus"  type="button" aria-label="Raise bet">+</button>
+        <button class="ch-img ch-pas" id="chMoins" type="button" aria-label="Lower bet"><img src="img/chenil/btn_moins.webp" alt="Lower bet"></button>
+        <button class="ch-img ch-spin" id="chSpin" type="button" aria-label="Spin"><img id="chSpinImg" src="img/chenil/btn_spin.webp" alt="Spin"></button>
+        <button class="ch-img ch-pas" id="chPlus"  type="button" aria-label="Raise bet"><img src="img/chenil/btn_plus.webp" alt="Raise bet"></button>
       </div>
       <div class="ch-rangee">
-        <button class="ch-img ch-pas" id="chMax" type="button" aria-label="Max bet">MAX BET</button>
-        <button class="ch-img ch-large" id="chPaytable" type="button">PAYTABLE</button>
-        <button class="ch-img ch-large" id="chHistory"  type="button">HISTORY</button>
+        <button class="ch-img ch-pas" id="chMax" type="button" aria-label="Max bet"><img src="img/chenil/btn_max.webp" alt="Max bet"></button>
+        <button class="ch-img ch-large" id="chPaytable" type="button"><img src="img/chenil/btn_paytable.webp" alt="Paytable"></button>
+        <button class="ch-img ch-large" id="chHistory"  type="button"><img src="img/chenil/btn_history.webp" alt="History"></button>
       </div>
       <div class="ch-son" id="chSon"></div>
     </div>
@@ -2219,13 +2205,14 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     var p=chPalier(multi), e=$("chBandeau");
     if(!p||!e) return fin();
     e.classList.remove("tours");   /* la banniere des gains reste large */
-    /* Les quatre bannieres peintes n'existent pas encore pour ce jeu. On
-       affiche le PALIER en clair plutot qu'une image cassee — et le jour ou
-       elles arrivent, la ligne d'en dessous suffit. */
     var im=e.querySelector("img");
-    im.removeAttribute("src"); im.hidden=true;
-    e.classList.add("sansImage");
-    e.querySelector("u").innerHTML='<em>'+p.nom+'</em>';
+    im.hidden=false; im.src="img/chenil/"+p.img+".webp";
+    e.classList.remove("sansImage");
+    /* Le montant s'ecrit dans la PLAQUE VIERGE de la banniere, mesuree sur
+       les quatre : x 33 %..73 %, y 70,5 %..89 % de l'image. Elles ont ete
+       generees vides expres — c'est ce qui permet au jeu d'y ecrire le vrai
+       chiffre au lieu d'en peindre un qui se dementirait. */
+    e.querySelector("u").innerHTML="";
     /* EXACT, pas abrege : c'est ce que le joueur encaisse. `chFmt` rendait
        « +1.1k » pour 1 080. */
     e.querySelector("b").textContent="+"+chExact(Math.round(montant))+" $SWOGE";
@@ -2461,8 +2448,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   function chRender(){
     chMiseAff(); chHist(); chAchatMaj(); chInvite();
     var s=$("chSpin"); if(s) s.disabled=CH.anime||CH.serveurConnait===false;
-    var im=$("chSpinTxt");
-    if(im) im.textContent = CH.anime ? "STOP" : "SPIN";
+    var im=$("chSpinImg");
+    if(im) im.src="img/chenil/"+(CH.anime?"btn_stop":"btn_spin")+".webp";
   }
   function chBouge(sens){
     if(CH.anime) return;

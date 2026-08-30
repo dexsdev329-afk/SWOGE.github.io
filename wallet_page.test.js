@@ -326,11 +326,14 @@ const T = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
                carteVue: !!(ad && !ad.hidden),
                ecrite: (document.getElementById('acAdr').textContent || '').trim(),
                qr: !!document.querySelector('#acAdrCarte .qr[data-va="ecRecevoir"]'),
-               /* Les deux pieces du dessin sont les VRAIES : on verifie
-                  qu'elles ont charge, pas seulement qu'elles sont demandees.
-                  Une illustration a trous vaut moins que pas d'illustration. */
-               pieces: ill ? [].map.call(ill.querySelectorAll('img'),
-                 (i) => i.getAttribute('src') + (i.naturalWidth > 0 ? '' : ' MANQUE')) : [] };
+               /* L'illustration a CHARGE, pas seulement ete demandee. Une
+                  image absente laisse un trou muet : `naturalWidth` a zero est
+                  la seule facon de le savoir depuis la page. */
+               dessin: ill ? ill.getAttribute('src') + (ill.naturalWidth > 0 ? '' : ' MANQUE') : 'absent',
+               /* Et elle ne mange pas la place du nombre : le solde et le
+                  dessin se partagent la carte, ils ne se superposent pas. */
+               large: ill ? Math.round(ill.getBoundingClientRect().width) : 0,
+               placeDuTotal: Math.round(document.getElementById('acTotal').getBoundingClientRect().width) };
     });
     console.log('   accueil : ' + JSON.stringify(page1));
     ok(page1.actions >= 0 && page1.jetons > page1.actions,
@@ -340,9 +343,11 @@ const T = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
     ok(/^0x.{4}\u2026.{4}$/.test(page1.ecrite),
        `elle montre l adresse abregee (${page1.ecrite})`);
     ok(page1.qr, 'et un bouton ouvre le QR — c est l autre facon de la donner');
-    ok(page1.pieces.length === 2 && page1.pieces.every((x) => !/MANQUE/.test(x)),
-       'le dessin du portefeuille porte les DEUX vraies pieces, chargees ('
-       + page1.pieces.join(', ') + ')');
+    ok(!/MANQUE|absent/.test(page1.dessin),
+       'le dessin du portefeuille est la, et il a CHARGE (' + page1.dessin + ')');
+    ok(page1.large > 60 && page1.placeDuTotal > 120,
+       `il tient a droite du solde sans lui prendre sa place (dessin ${page1.large},`
+       + ` total ${page1.placeDuTotal})`);
 
     /* ---- ET LE BOUTON COPIE L'ADRESSE ENTIERE ----
      * C'est le seul defaut qui coute de l'argent ici : la carte AFFICHE une

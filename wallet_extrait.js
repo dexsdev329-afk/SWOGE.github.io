@@ -52,6 +52,42 @@ function code(chemin) {
   ].join('\n\n');
 }
 
+/* L'ENCODEUR QR, sorti de la page et rendu appelable.
+ * Meme principe : c'est le code de la page qui tourne, pas une copie. */
+function qr(chemin) {
+  const src = fs.readFileSync(chemin, 'utf8');
+  const morceaux = [
+    ligne(src, /var QR_TAILLE\s*=[^;]+;/),
+    bloc(src, 'function qrCorps('),
+    ligne(src, /var QRC\s*=\s*qrCorps\(\);/),
+    bloc(src, 'function qrMul('),
+    bloc(src, 'function qrGenerateur('),
+    bloc(src, 'function qrReste('),
+    bloc(src, 'function qrOctets('),
+    bloc(src, 'function qrCodets('),
+    bloc(src, 'function qrEntrelace('),
+    bloc(src, 'function qrMasque('),
+    bloc(src, 'function qrTrame('),
+    bloc(src, 'function qrFormat('),
+    bloc(src, 'function qrPoseFormat('),
+    ligne(src, /var QR_N3\s*=\s*\[[^\]]+\];/),
+    bloc(src, 'function qrCherche('),
+    bloc(src, 'function qrClair('),
+    bloc(src, 'function qrRegle3('),
+    bloc(src, 'function qrPenalite('),
+    bloc(src, 'function qrMatrice('),
+  ].join('\n\n');
+  const c = vm.createContext({ console });
+  vm.runInContext(morceaux, c);
+  return {
+    code: morceaux,
+    matrice(txt) { c.__t = txt; return vm.runInContext('qrMatrice(__t)', c); },
+    lignes(txt) { const m = this.matrice(txt); return m && m.map((r) => r.join('')); },
+    get TAILLE() { return c.QR_TAILLE; },
+    get CAPACITE() { return c.QR_DONNEES - 2; },
+  };
+}
+
 /* Rend un bac a sable ou ce code TOURNE, avec de quoi l'appeler. */
 function bac(chemin, ethers) {
   const c = vm.createContext({ ethers, moi: null, console });
@@ -78,4 +114,4 @@ function trouveEthers() {
   return null;
 }
 
-module.exports = { code, bac, trouveEthers };
+module.exports = { code, bac, qr, trouveEthers };

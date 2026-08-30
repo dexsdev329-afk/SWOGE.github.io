@@ -965,6 +965,390 @@ const T = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
        'et le zoom VOLONTAIRE reste possible : la balise viewport ne le bride pas (' + vp + ')');
   }
 
+  /* ---- LE QR DU RECEIVE ----
+   *
+   * L essai lit les PIXELS du canvas, pas une variable : c est ce que
+   * l appareil photo verra. La matrice attendue vient de `segno`, la meme
+   * reference que `wallet_qr.test.js` — ici on verifie qu elle arrive
+   * INTACTE jusqu a l ecran, marge comprise.
+   */
+  console.log('\n-- le QR du Receive --');
+  {
+    const MOI = '0x00000000000000000000000000000000000a11ce';
+    const REF = JSON.parse(fs.readFileSync(path.join(SITE, 'wallet_qr.prouve.json'), 'utf8'));
+    const page = await nav.newPage({ viewport: { width: 390, height: 844 } });
+    const boum = [];
+    page.on('pageerror', (e) => boum.push(e.message));
+    await page.addInitScript(([moi]) => {
+      try { localStorage.setItem('swogeAuth', 'wallet'); } catch (e) {}
+      window.ethereum = { isMetaMask: true, on: () => {}, removeListener: () => {},
+        request: async (a) => {
+          if (a.method === 'eth_accounts' || a.method === 'eth_requestAccounts') return [moi];
+          if (a.method === 'eth_chainId') return '0x1237';
+          if (a.method === 'net_version') return '4663';
+          return null; } };
+    }, [MOI]);
+    await page.route('**/ethers*.umd.min.js', (r) => r.fulfill({
+      contentType: 'text/javascript', body: fs.readFileSync(ETHERS, 'utf8') }));
+    await page.route('**/api.dexscreener.com/**', (r) => r.abort());
+    await page.route('**/avatar/**', (r) => r.fulfill({ status: 404, body: '' }));
+    await page.route('**/nom/**', (r) => r.abort());
+    await page.route('**/rpc.mainnet.chain.robinhood.com/**', (r) => r.abort());
+    await page.goto('http://127.0.0.1:' + port + '/swoge_wallet.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(2400);
+    await page.evaluate(() => document.querySelector('[data-va="ecRecevoir"]').click());
+    await page.waitForTimeout(400);
+
+    const lu = await page.evaluate(() => {
+      const c = document.querySelector('#reQr canvas');
+      if (!c) return { absent: true, secours: document.getElementById('reQr').textContent.trim() };
+      const g = c.getContext('2d');
+      const M = 4, T = 33, pas = c.width / (T + 2 * M);
+      const noir = (px, py) => {
+        const d = g.getImageData(Math.round(px), Math.round(py), 1, 1).data;
+        return d[0] < 128 ? '1' : '0';
+      };
+      const lignes = [];
+      for (let y = 0; y < T; y++) {
+        let l = '';
+        for (let x = 0; x < T; x++) l += noir((x + M) * pas + pas / 2, (y + M) * pas + pas / 2);
+        lignes.push(l);
+      }
+      /* La marge claire : quatre modules tout autour. Sans elle beaucoup
+         de lecteurs ne trouvent simplement pas le symbole. */
+      let marge = true;
+      for (let i = 0; i < c.width; i += 3) {
+        if (noir(i, pas * 1.5) === '1' || noir(i, c.height - pas * 1.5) === '1') marge = false;
+        if (noir(pas * 1.5, i) === '1' || noir(c.width - pas * 1.5, i) === '1') marge = false;
+      }
+      const r = c.getBoundingClientRect();
+      return { lignes, marge, l: Math.round(r.width), h: Math.round(r.height),
+               etiquette: c.getAttribute('aria-label') || '' };
+    });
+
+    ok(!lu.absent, 'le Receive dessine un vrai QR, pas seulement l adresse en clair'
+       + (lu.absent ? ' — replis : « ' + lu.secours + ' »' : ''));
+    if (!lu.absent) {
+      let ecarts = 0;
+      for (let y = 0; y < 33; y++) for (let x = 0; x < 33; x++)
+        if (lu.lignes[y][x] !== REF.exemple.matrice[y][x]) ecarts++;
+      ok(ecarts === 0,
+         'et les pixels a l ecran rendent EXACTEMENT la matrice de reference ('
+         + ecarts + ' module' + (ecarts > 1 ? 's' : '') + ' d ecart)');
+      ok(lu.marge, 'la marge claire de quatre modules est bien la — sans elle, beaucoup de lecteurs ne voient pas le symbole');
+      ok(lu.l > 100 && Math.abs(lu.l - lu.h) <= 2,
+         'il est carre et assez grand pour etre photographie (' + lu.l + ' x ' + lu.h + ')');
+      /* ---- LA MISE A L ECHELLE NE DOIT PAS AVALER DE MODULE ----
+         Le canvas est plus grand que sa place a l ecran : c est le navigateur
+         qui le reduit. Tant qu il reste plusieurs pixels par module, aucune
+         ligne ne peut disparaitre a la reduction. (Verifie aussi a la main :
+         une capture d ecran du telephone, passee au decodeur d OpenCV, rend
+         l adresse exacte.) */
+      const parModule = lu.l / 41;
+      ok(parModule >= 4,
+         'et chaque module garde ' + parModule.toFixed(1) + ' pixels a l ecran — sous 4, la'
+         + ' reduction du navigateur pourrait en avaler un et le symbole deviendrait illisible');
+      ok(lu.etiquette.toLowerCase().indexOf(MOI) >= 0,
+         'et il porte son adresse en texte, pour qui ne peut pas le voir');
+    }
+    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
+    await page.close();
+  }
+
+  /* ---- CE QUI EST EN VOL SURVIT AU RECHARGEMENT ----
+   *
+   * Le vrai chemin : le bouton Send, le vrai signataire, la vraie
+   * transaction. Puis on RECHARGE la page au milieu de l attente — c est
+   * le moment exact ou tout se perdait.
+   */
+  console.log('\n-- une transaction en vol --');
+  {
+    const MOI = '0x00000000000000000000000000000000000a11ce';
+    const VERS = '0x00000000000000000000000000000000000b0b0b';
+    const HASH = '0x' + 'ab'.repeat(32);
+    const enMot = (v) => '0x' + BigInt(v).toString(16).padStart(64, '0');
+    let recu = null;                       /* la chaine n a encore rien mine */
+
+    const page = await nav.newPage({ viewport: { width: 390, height: 844 } });
+    const boum = [];
+    page.on('pageerror', (e) => boum.push(e.message));
+    await page.addInitScript(([moi, vers, hash]) => {
+      try { localStorage.setItem('swogeAuth', 'wallet'); } catch (e) {}
+      window.ethereum = { isMetaMask: true, on: () => {}, removeListener: () => {},
+        request: async (a) => {
+          const M = { eth_accounts: [moi], eth_requestAccounts: [moi], eth_chainId: '0x1237',
+                      net_version: '4663', wallet_switchEthereumChain: null,
+                      eth_gasPrice: '0x7fe1f0', eth_estimateGas: '0x5208',
+                      eth_getTransactionCount: '0x1', eth_blockNumber: '0x2f7ce78' };
+          if (a.method === 'eth_sendTransaction') return hash;
+          if (a.method === 'eth_getTransactionByHash') return {
+            hash, from: moi, to: vers, value: '0x1', gas: '0x5208', gasPrice: '0x7fe1f0',
+            nonce: '0x1', input: '0x', blockHash: null, blockNumber: null,
+            transactionIndex: null, chainId: '0x1237',
+            v: '0x0', r: '0x' + '0'.repeat(64), s: '0x' + '0'.repeat(64) };
+          if (a.method in M) return M[a.method];
+          return null; } };
+    }, [MOI, VERS, HASH]);
+    await page.route('**/ethers*.umd.min.js', (r) => r.fulfill({
+      contentType: 'text/javascript', body: fs.readFileSync(ETHERS, 'utf8') }));
+    await page.route('**/api.dexscreener.com/**', (r) => r.fulfill({
+      contentType: 'application/json', body: '{"pairs":[]}' }));
+    await page.route('**/avatar/**', (r) => r.fulfill({ status: 404, body: '' }));
+    await page.route('**/nom/**', (r) => r.abort());
+    await page.route('**/rpc.mainnet.chain.robinhood.com/**', async (r) => {
+      const q = JSON.parse(r.request().postData() || '{}');
+      const un = (m) => {
+        if (m.method === 'eth_chainId') return '0x1237';
+        if (m.method === 'net_version') return '4663';
+        if (m.method === 'eth_blockNumber') return '0x2f7ce78';
+        if (m.method === 'eth_getLogs') return [];
+        if (m.method === 'eth_gasPrice') return enMot(134102000n);
+        if (m.method === 'eth_getBalance') return enMot(5000000000000000n);
+        if (m.method === 'eth_getTransactionReceipt') return recu;
+        if (m.method === 'eth_call') return enMot(1234567890123456789012n);
+        return null;
+      };
+      const rep = (m) => { const v = un(m);
+        return v === null ? { jsonrpc: '2.0', id: m.id, error: { code: -32000, message: 'nope' } }
+                          : { jsonrpc: '2.0', id: m.id, result: v }; };
+      const c = JSON.parse(r.request().postData() || '{}');
+      await r.fulfill({ contentType: 'application/json',
+                        body: JSON.stringify(Array.isArray(c) ? c.map(rep) : rep(c)) });
+    });
+
+    const charge = async () => {
+      await page.goto('http://127.0.0.1:' + port + '/swoge_wallet.html', { waitUntil: 'domcontentloaded' });
+      await page.waitForTimeout(2600);
+    };
+    await charge();
+    await page.evaluate(() => document.querySelector('[data-va="ecEnvoyer"]').click());
+    await page.waitForTimeout(300);
+    await page.fill('#enDest', VERS);
+    await page.fill('#enMontant', '0.001');
+    await page.evaluate(() => document.getElementById('enPartir').click());
+    await page.waitForTimeout(2200);
+
+    const bande = async () => page.evaluate(() => {
+      const e = document.getElementById('acEnCours');
+      return { vu: !e.hidden, t: document.getElementById('acEnCoursT').textContent,
+               s: document.getElementById('acEnCoursS').textContent };
+    });
+    await page.evaluate(() => document.querySelector('#pied button').click());
+    await page.waitForTimeout(200);
+    const b1 = await bande();
+    ok(b1.vu && /1 transaction/.test(b1.t),
+       'l accueil annonce la transaction en vol (« ' + b1.t + ' »)');
+    ok(/0\.001/.test(b1.s) && /0x0000/.test(b1.s),
+       'et il dit LAQUELLE — montant et destinataire (« ' + b1.s + ' »)');
+
+    /* ---- LE RECHARGEMENT ---- */
+    await charge();
+    const b2 = await bande();
+    ok(b2.vu && /1 transaction/.test(b2.t),
+       'apres un rechargement en pleine attente, elle est TOUJOURS la — c est ce qui se perdait');
+    ok(/0\.001/.test(b2.s),
+       'avec son montant, relu du telephone et non de la chaine (« ' + b2.s + ' »)');
+
+    const j = await page.evaluate(() => JSON.parse(localStorage.getItem('swogeTx:0x00000000000000000000000000000000000a11ce') || '[]'));
+    ok(j.length === 1 && j[0].etat === 'attente' && j[0].cle === 'eth',
+       'le journal la garde « en attente » : une lecture qui n aboutit pas ne la declare pas echouee');
+
+    /* ---- ET QUAND LA CHAINE FINIT PAR REPONDRE ---- */
+    recu = { transactionHash: HASH, blockHash: '0x' + '11'.repeat(32), blockNumber: '0x2f7ce78',
+             transactionIndex: '0x0', from: MOI, to: VERS, gasUsed: '0x5208',
+             cumulativeGasUsed: '0x5208', contractAddress: null, logs: [],
+             logsBloom: '0x' + '0'.repeat(512), status: '0x1', type: '0x0',
+             effectiveGasPrice: '0x7fe1f0' };
+    await charge();
+    await page.waitForTimeout(2600);
+    const b3 = await bande();
+    ok(!b3.vu, 'et une fois la transaction minee, le bandeau disparait tout seul');
+    const j2 = await page.evaluate(() => JSON.parse(localStorage.getItem('swogeTx:0x00000000000000000000000000000000000a11ce') || '[]'));
+    ok(j2.length === 1 && j2[0].etat === 'reussi', 'le journal la marque reussie (' + (j2[0] || {}).etat + ')');
+
+    /* ---- ET ELLE SE RELIT DANS ACTIVITY ----
+       Un envoi d ETH (RH) n emet aucun evenement : sans le journal, il
+       n apparaitrait NULLE PART. */
+    await page.evaluate(() => document.querySelector('[data-va="ecActivite"]').click());
+    await page.waitForTimeout(2500);
+    const rangs = await page.evaluate(() => [...document.querySelectorAll('#acvCorps .wl-jeton')]
+      .map((e) => e.textContent.replace(/\s+/g, ' ').trim()));
+    const envoi = rangs.filter((l) => /^Sent/.test(l));
+    ok(envoi.length === 1 && /0\.001/.test(envoi[0]),
+       'l envoi natif se retrouve dans Activity, ou la chaine seule ne le rendrait jamais ('
+       + (envoi[0] || 'aucune ligne') + ')');
+    ok(envoi.length === 1 && /from this device/i.test(envoi[0]),
+       'et LA LIGNE ELLE-MEME dit d ou elle vient — sinon on la croirait lue sur la chaine,'
+       + ' et on la chercherait en vain depuis un autre appareil');
+    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
+    await page.close();
+  }
+
+  /* ---- UN ECHANGE N EST PAS DEUX VIREMENTS ----
+   *
+   * Vu des evenements seuls, un echange se lisait « Sent 1 SWOGE to
+   * 0x2Dc0… » puis « Received 5 SWOGEBET from 0x2Dc0… » : le joueur voyait
+   * ses jetons partir chez un inconnu.
+   */
+  console.log('\n-- Activity lit un echange --');
+  {
+    const MOI = '0x00000000000000000000000000000000000a11ce';
+    const POOL = '0x2dc0fb72d9284228046cc95910eeaabebfe48456';
+    const SWOGE = '0x8a166fb41cd659a0a43396272ff73973ce29f817';
+    const SWOGEBET = '0xc0aed547862fba5d7d9fbf3cb14204cd756c8bea';
+    const WETH = '0x0bd7d308f8e1639fab988df18a8011f41eacad73';
+    const ROUTER = '0xcaf681a66d020601342297493863e78c959e5cb2';
+    const TR = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+    const DEP = '0xe1fffcc4923d04b559f4d29a8bfc6cda04eb5b0d3c460751c2402c5c5cc9109c';
+    const enMot = (v) => '0x' + BigInt(v).toString(16).padStart(64, '0');
+    const H1 = '0x' + '11'.repeat(32), H2 = '0x' + '22'.repeat(32);
+    const log = (adr, de, vers, v, h, bloc) => ({
+      address: adr, topics: [TR, enMot(BigInt(de)), enMot(BigInt(vers))], data: enMot(v),
+      blockNumber: '0x' + bloc.toString(16), transactionHash: h, transactionIndex: '0x0',
+      blockHash: '0x' + '99'.repeat(32), logIndex: '0x0', removed: false });
+
+    const page = await nav.newPage({ viewport: { width: 390, height: 844 } });
+    const boum = [];
+    page.on('pageerror', (e) => boum.push(e.message));
+    await page.addInitScript(([moi]) => {
+      try { localStorage.setItem('swogeAuth', 'wallet'); } catch (e) {}
+      window.ethereum = { isMetaMask: true, on: () => {}, removeListener: () => {},
+        request: async (a) => {
+          if (a.method === 'eth_accounts' || a.method === 'eth_requestAccounts') return [moi];
+          if (a.method === 'eth_chainId') return '0x1237';
+          if (a.method === 'net_version') return '4663';
+          return null; } };
+    }, [MOI]);
+    await page.route('**/ethers*.umd.min.js', (r) => r.fulfill({
+      contentType: 'text/javascript', body: fs.readFileSync(ETHERS, 'utf8') }));
+    await page.route('**/api.dexscreener.com/**', (r) => r.abort());
+    await page.route('**/avatar/**', (r) => r.fulfill({ status: 404, body: '' }));
+    await page.route('**/nom/**', (r) => r.abort());
+    await page.route('**/rpc.mainnet.chain.robinhood.com/**', async (r) => {
+      const q = JSON.parse(r.request().postData() || '{}');
+      const un = (m) => {
+        if (m.method === 'eth_chainId') return '0x1237';
+        if (m.method === 'net_version') return '4663';
+        if (m.method === 'eth_blockNumber') return '0x2f7ce78';
+        if (m.method === 'eth_gasPrice') return enMot(134102000n);
+        if (m.method === 'eth_getBalance') return enMot(5000000000000000n);
+        if (m.method === 'eth_call') return enMot(0n);
+        if (m.method === 'eth_getLogs') {
+          const f = m.params[0], a = String(f.address || '').toLowerCase();
+          const sortant = f.topics[1] !== null && f.topics[1] !== undefined;
+          /* H1 : SWOGE contre SWOGEBET, un seul aller-retour dans la meme
+             transaction. H2 : achat paye en ETH (RH), ou seul le SWOGE
+             entrant laisse un evenement. */
+          if (a === SWOGE && sortant) return [log(SWOGE, MOI, POOL, 1000000000000000000n, H1, 49925000)];
+          if (a === SWOGEBET && !sortant) return [log(SWOGEBET, POOL, MOI, 5000000000000000000n, H1, 49925000)];
+          if (a === SWOGE && !sortant) return [log(SWOGE, POOL, MOI, 400000000000000000000n, H2, 49924000)];
+          return [];
+        }
+        if (m.method === 'eth_getTransactionReceipt') {
+          const h = m.params[0];
+          if (h === H1) return { transactionHash: H1, blockHash: '0x' + '99'.repeat(32),
+            blockNumber: '0x2f9d5c8', transactionIndex: '0x0', from: MOI, to: ROUTER,
+            gasUsed: '0x5208', cumulativeGasUsed: '0x5208', contractAddress: null,
+            logs: [], logsBloom: '0x' + '0'.repeat(512), status: '0x1', type: '0x0',
+            effectiveGasPrice: '0x7fe1f0' };
+          if (h === H2) return { transactionHash: H2, blockHash: '0x' + '99'.repeat(32),
+            blockNumber: '0x2f9d1e0', transactionIndex: '0x0', from: MOI, to: ROUTER,
+            gasUsed: '0x5208', cumulativeGasUsed: '0x5208', contractAddress: null,
+            /* Le routeur emballe l ether : c est CE journal qui porte le
+               montant paye, faute de transfert natif. */
+            logs: [{ address: WETH, topics: [DEP, enMot(BigInt(ROUTER))],
+                     data: enMot(50000000000000000n), blockNumber: '0x2f9d1e0',
+                     transactionHash: H2, transactionIndex: '0x0',
+                     blockHash: '0x' + '99'.repeat(32), logIndex: '0x0', removed: false }],
+            logsBloom: '0x' + '0'.repeat(512), status: '0x1', type: '0x0',
+            effectiveGasPrice: '0x7fe1f0' };
+          return null;
+        }
+        return null;
+      };
+      const rep = (m) => { const v = un(m);
+        return v === null ? { jsonrpc: '2.0', id: m.id, error: { code: -32000, message: 'nope' } }
+                          : { jsonrpc: '2.0', id: m.id, result: v }; };
+      await r.fulfill({ contentType: 'application/json',
+                        body: JSON.stringify(Array.isArray(q) ? q.map(rep) : rep(q)) });
+    });
+    await page.goto('http://127.0.0.1:' + port + '/swoge_wallet.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(2400);
+    await page.evaluate(() => document.querySelector('[data-va="ecActivite"]').click());
+    await page.waitForTimeout(3000);
+    const lignes = await page.evaluate(() => [...document.querySelectorAll('#acvCorps .wl-jeton')]
+      .map((e) => e.textContent.replace(/\s+/g, ' ').trim()));
+
+    const ech = lignes.filter((l) => /^Swapped/.test(l));
+    ok(ech.length === 2, 'les deux transactions sont lues comme des ECHANGES, pas comme quatre virements ('
+       + ech.length + ')');
+    ok(!lignes.some((l) => /^Sent/.test(l)),
+       'et plus aucune ligne ne dit « Sent » vers la piscine — c est ce qui faisait croire au joueur que ses jetons partaient chez un inconnu');
+    ok(ech.some((l) => /1 SWOGE/.test(l) && /SWOGEBET/.test(l) && /\+5/.test(l)),
+       'le sens et les deux montants y sont : 1 SWOGE donne, 5 SWOGEBET recus ('
+       + (ech[0] || '') + ')');
+    ok(ech.some((l) => /0\.05 ETH \(RH\)/.test(l)),
+       'et l achat paye en ETH (RH) retrouve son montant, lu sur l emballage du routeur ('
+       + (ech[1] || '') + ')');
+    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
+    await page.close();
+  }
+
+  /* ---- SE SOUVENIR DU COURRIEL ---- */
+  console.log('\n-- le courriel retenu --');
+  {
+    const page = await nav.newPage({ viewport: { width: 390, height: 844 } });
+    const boum = [];
+    page.on('pageerror', (e) => boum.push(e.message));
+    await page.route('**/privy-swoge.js', (r) => r.fulfill({
+      contentType: 'text/javascript', body: `
+      window.__code=null;
+      window.SwogePrivy={ init(){}, sendCode:async(e)=>{ window.__code=e; },
+        verifyCode:async()=>null, logout:async()=>{}, restore:async()=>null,
+        getProvider:()=>null, getAddress:()=>null, isLoggedIn:()=>false };` }));
+    await page.route('**/ethers*.umd.min.js', (r) => r.fulfill({
+      contentType: 'text/javascript', body: fs.readFileSync(ETHERS, 'utf8') }));
+    await page.route('**/api.dexscreener.com/**', (r) => r.abort());
+    await page.route('**/rpc.mainnet.chain.robinhood.com/**', (r) => r.abort());
+    const charge = async () => {
+      await page.goto('http://127.0.0.1:' + port + '/swoge_wallet.html', { waitUntil: 'domcontentloaded' });
+      await page.waitForTimeout(1800);
+    };
+    await charge();
+    const ouvre = async () => {
+      await page.evaluate(() => document.getElementById('acMoi').click());
+      await page.waitForTimeout(500);
+    };
+    await ouvre();
+    ok(await page.evaluate(() => document.getElementById('cnRetenir') !== null),
+       'la feuille de connexion propose de retenir le courriel');
+    await page.fill('#cnEmail', 'joueur@exemple.fr');
+    await page.evaluate(() => document.getElementById('cnEnvoyer').click());
+    await page.waitForTimeout(900);
+    ok(await page.evaluate(() => window.__code) === 'joueur@exemple.fr',
+       'le code part bien a l adresse tapee');
+
+    await charge();
+    await ouvre();
+    const pre = await page.evaluate(() => document.getElementById('cnEmail').value);
+    ok(pre === 'joueur@exemple.fr',
+       'et au rechargement il est deja rempli — plus besoin de le retaper sur un telephone ('
+       + pre + ')');
+
+    /* ---- ET LA CASE LE RETIRE AUSSI BIEN QU ELLE LE GARDE ---- */
+    await page.evaluate(() => { document.getElementById('cnRetenir').checked = false; });
+    await page.evaluate(() => document.getElementById('cnEnvoyer').click());
+    await page.waitForTimeout(900);
+    ok(await page.evaluate(() => localStorage.getItem('swogeEmail')) === null,
+       'decochee, elle EFFACE ce qui etait garde — sinon la case ne voudrait rien dire');
+    await charge();
+    await ouvre();
+    ok(await page.evaluate(() => document.getElementById('cnEmail').value) === '',
+       'et le champ revient vide');
+    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
+    await page.close();
+  }
+
   await nav.close();
   srv.close();
   console.log('\n' + (rates ? 'RATES : ' + rates + '/' + n : 'tout passe : ' + n + ' verifications'));

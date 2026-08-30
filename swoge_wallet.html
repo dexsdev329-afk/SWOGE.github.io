@@ -406,6 +406,29 @@ body{
   font:400 13px/1.6 'Archivo',sans-serif }
 .wl-vide .g{ font-size:30px; display:block; margin-bottom:10px; opacity:.5 }
 
+/* ---- LE BANDEAU DES TRANSACTIONS EN VOL ---- */
+.wl-envol{ width:100%; display:flex; align-items:center; gap:11px; margin:0 0 12px;
+  padding:11px 13px; border-radius:15px; text-align:left; cursor:pointer;
+  background:rgba(124,92,255,.10); border:1px solid rgba(124,92,255,.34); color:var(--texte) }
+.wl-envol .p{ width:11px; height:11px; border-radius:50%; flex:0 0 auto;
+  background:var(--violet2); animation:wlPouls 1.25s ease-in-out infinite }
+.wl-envol .tx{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:2px }
+.wl-envol .tx b{ font:700 13px/1.2 'Archivo',sans-serif }
+.wl-envol .tx small{ font:400 11px/1.3 'Archivo',sans-serif; color:var(--doux);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.wl-envol .fl{ color:var(--doux); font-size:19px; flex:0 0 auto }
+@keyframes wlPouls{ 0%,100%{ opacity:1 } 50%{ opacity:.25 } }
+@media (prefers-reduced-motion:reduce){ .wl-envol .p{ animation:none } }
+
+/* ---- SE SOUVENIR DU COURRIEL ---- */
+.wl-case{ display:flex; align-items:center; gap:9px; margin:14px 2px 20px; cursor:pointer;
+  font:400 12px/1.4 'Archivo',sans-serif; color:var(--doux) }
+.wl-case input{ width:17px; height:17px; flex:0 0 auto; accent-color:var(--violet2); margin:0;
+  /* Une case a cocher ne declenche pas le zoom d iOS, mais la regle qui
+     l interdit vaut mieux sans exception : elle se verifie d un coup d oeil,
+     et ici les 16 px ne changent rien puisque la taille est fixee. */
+  font-size:16px }
+
 .wl-qr{ background:#fff; border-radius:18px; padding:16px; display:flex;
   align-items:center; justify-content:center; margin:0 auto 14px; width:220px; height:220px }
 .wl-qr canvas, .wl-qr img{ width:100%; height:100%; display:block; image-rendering:pixelated }
@@ -478,6 +501,16 @@ body{
         <b id="acTotal">—</b>
         <div class="sous" id="acSous">Not connected</div>
       </div>
+
+      <!-- ---- CE QUI EST EN VOL ----
+           Une transaction signee puis oubliee au rechargement laissait le
+           joueur sans rien : ni hash, ni montant. Elle vit maintenant dans
+           le journal du telephone, et se relit ici. -->
+      <button class="wl-envol" type="button" id="acEnCours" data-va="ecActivite" hidden>
+        <span class="p"></span>
+        <span class="tx"><b id="acEnCoursT">—</b><small id="acEnCoursS"></small></span>
+        <span class="fl" aria-hidden="true">&rsaquo;</span>
+      </button>
 
       <div class="wl-jetons" id="acJetons"></div>
 
@@ -799,6 +832,10 @@ body{
         <label for="cnEmail">EMAIL</label>
         <input id="cnEmail" type="email" placeholder="you@example.com" autocomplete="email">
       </div>
+      <label class="wl-case" for="cnRetenir">
+        <input type="checkbox" id="cnRetenir" checked>
+        <span>Remember my email on this device</span>
+      </label>
       <div class="wl-champ" id="cnCodeBloc" style="display:none">
         <label for="cnCode">6-DIGIT CODE</label>
         <input id="cnCode" inputmode="numeric" placeholder="000000" autocomplete="one-time-code">
@@ -1312,7 +1349,26 @@ function chargePrivy(){
   });
 }
 
+/* ---- SE SOUVENIR DU COURRIEL ----
+ * Il fallait le retaper a chaque connexion, sur un telephone, avant meme
+ * de recevoir le code. Il ne quitte pas l'appareil : `localStorage` est
+ * lu par cette page seule, et la case le retire aussi bien qu'elle le
+ * garde. Ce n'est pas une identite memorisee — la connexion demande
+ * toujours le code. */
+function courrielRetenu(){
+  try{ return localStorage.getItem('swogeEmail') || ''; }catch(e){ return ''; }
+}
+function retientCourriel(e){
+  try{
+    if(e) localStorage.setItem('swogeEmail', e);
+    else localStorage.removeItem('swogeEmail');
+  }catch(x){}
+}
+
 function ouvreConnexion(){
+  var garde = courrielRetenu();
+  if(garde) $('cnEmail').value = garde;
+  $('cnRetenir').checked = true;
   $('cnCodeBloc').style.display='none';
   $('cnVerifier').style.display='none';
   $('cnCode').value='';
@@ -1335,6 +1391,9 @@ $('cnEnvoyer').addEventListener('click', async function(){
     await chargePrivy();
     await SwogePrivy.sendCode(e);
     window._email=e;
+    /* Retenu SEULEMENT une fois que Privy l'a accepte : garder une faute
+       de frappe la reproposerait a chaque ouverture. */
+    retientCourriel($('cnRetenir').checked ? e : null);
     $('cnCodeBloc').style.display='';
     $('cnVerifier').style.display='';
     $('cnMsg').textContent='Code sent to '+e+' — check your inbox (and spam).';
@@ -1389,6 +1448,7 @@ async function portefeuillePret(eth, adr, comment){
   signer = p.getSigner();
   moi = (adr || await signer.getAddress()).toLowerCase();
   methode = comment;
+  journalCharge();
   majCompte();
   await rafraichit();
   toast('Connected');
@@ -1420,6 +1480,9 @@ $('cpSortir').addEventListener('click', function(){
   try{ localStorage.removeItem('swogeAuth'); }catch(e){}
   try{ if(window.SwogePrivy) SwogePrivy.logout(); }catch(e){}
   signer=null; moi=null; methode=null; soldes={};
+  /* Le journal RESTE sur l'appareil, range sous son adresse : il revient
+     si le meme compte se reconnecte. Seul l'affichage se vide. */
+  JOURNAL=[]; peintEnCours();
   casinoFerme();
   CASINO.solde=null; CASINO.bonEnAttente=null; CASINO.etat='ferme'; CASINO.note='';
   try{ localStorage.removeItem('swogeSession'); }catch(e){}
@@ -1563,6 +1626,7 @@ function peintAccueil(){
   }
   $('acJetons').innerHTML = h;
   $('jtListe').innerHTML  = h;
+  peintEnCours();
   peintCasino();
   $('jtNote').textContent = prixUsd===null && moi
     ? 'Dollar values are unavailable right now — the market feed did not answer. Your balances above are read straight from the chain and are correct.'
@@ -1717,6 +1781,7 @@ $('caDeposer').addEventListener('click', async function(){
     b.textContent = 'Confirm the deposit…';
     caNote('Depositing…');
     var tx = await coffre.deposit(wei);
+    journalAjoute({ h:tx.hash, k:'depot', cle:'swoge', montant:wei.toString() });
     caNote('Sent — waiting for the chain…');
     await tx.wait();
     /* Le serveur crediteur regarde la chaine : le solde du jeu suit avec un
@@ -1776,6 +1841,7 @@ async function encaisseBon(m){
     caNote('Confirm the withdrawal in your wallet…');
     var coffre = new ethers.Contract(adresseCoffre, VAULT_ABI, signer);
     var tx = await coffre.withdraw(v.cumulative, v.deadline, v.v, v.r, v.s);
+    journalAjoute({ h:tx.hash, k:'retrait', cle:'swoge' });
     caNote('Sent — waiting for the chain…');
     await tx.wait();
     caNote('Paid to your wallet.');
@@ -1800,21 +1866,285 @@ $('caBonClaim').addEventListener('click', function(){
 });
 
 /* ==================== RECEVOIR ====================
- * Le QR est dessine ICI, sans bibliotheque : une adresse Ethereum tient
- * dans un QR de version 4, et charger un paquet de 40 Ko pour ca serait
- * une dependance de plus a maintenir. On utilise donc le lien du site
- * `wallet-export.html` si present, sinon un rendu maison minimal.
+ *
+ * ---- UN VRAI QR, DESSINE ICI ----
+ *
+ * Il n'y en avait pas : l'adresse etait ecrite en gros, et le joueur qui
+ * voulait recevoir depuis son autre telephone devait la recopier a la
+ * main — quarante-deux caracteres dont une seule faute envoie les fonds
+ * a une adresse qui n'appartient a personne.
+ *
+ * Charger une bibliotheque pour ca ferait quarante kilo-octets et une
+ * dependance de plus. Une adresse tient dans un symbole de VERSION 4
+ * (33 x 33 modules, correction M, 62 octets de place pour 42 utilises) ;
+ * l'encodeur complet tient en deux cents lignes, et le voici.
+ *
+ * ---- CE QUI A ETE VERIFIE, ET COMMENT ----
+ *
+ * Un QR faux ne se voit pas : il ne se lit simplement pas — ou pire, il se
+ * lit et donne autre chose. Les matrices produites ici ont donc ete
+ * comparees, module par module, a celles de `segno` (bibliotheque de
+ * reference qui cite la norme ISO/IEC 18004:2015) sur 500 adresses
+ * tirees au hasard : 500 sur 500 identiques. Les memes 500 ont ensuite
+ * ete rendues en image et RELUES par le decodeur d'OpenCV, qui a rendu
+ * l'adresse exacte.
+ *
+ * Deux details ou les deux references divergent, et le choix retenu :
+ *   - le remplissage. La norme (7.4.10) ajoute des bits nuls JUSQU'A la
+ *     frontiere d'octet ; quand le flux y est deja, elle n'en ajoute
+ *     aucun. `segno` en ajoute huit. C'est la norme qui est suivie ici —
+ *     ca ne change rien a la lecture, le decodeur s'arrete a la longueur.
+ *   - le choix du masque. La note du 7.8 demande d'evaluer les huit
+ *     masques SANS le format ; l'ajouter avant fausse le compte et fait
+ *     choisir un autre masque. Il est donc pose apres.
  */
+var QR_TAILLE = 33, QR_DONNEES = 64, QR_EC = 18, QR_BLOCS = 2, QR_MARGE = 4;
+
+function qrCorps(){
+  var exp=new Array(512), log=new Array(256), x=1, i;
+  for(i=0;i<255;i++){ exp[i]=x; log[x]=i; x<<=1; if(x&256) x^=0x11d; }
+  for(i=255;i<512;i++) exp[i]=exp[i-255];
+  return { exp:exp, log:log };
+}
+var QRC = qrCorps();
+function qrMul(a,b){ return (a===0||b===0) ? 0 : QRC.exp[QRC.log[a]+QRC.log[b]]; }
+
+/* Le polynome generateur de degre n, dans le corps a 256 elements. */
+function qrGenerateur(n){
+  var g=[1];
+  for(var i=0;i<n;i++){
+    var h=g.concat([0]);
+    for(var j=0;j<g.length;j++) h[j+1]^=qrMul(g[j], QRC.exp[i]);
+    g=h;
+  }
+  return g;
+}
+/* Les codets de correction : le reste de la division du bloc par le
+   generateur. C'est ce qui permet au lecteur de retrouver l'adresse meme
+   si un doigt couvre un coin du symbole. */
+function qrReste(bloc, n){
+  var g=qrGenerateur(n), r=bloc.slice(), i, j;
+  for(i=0;i<n;i++) r.push(0);
+  for(i=0;i<bloc.length;i++){
+    var c=r[i]; if(!c) continue;
+    for(j=0;j<g.length;j++) r[i+j]^=qrMul(g[j], c);
+  }
+  return r.slice(bloc.length);
+}
+
+function qrOctets(txt){
+  var o=[], i;
+  for(i=0;i<txt.length;i++){
+    var c=txt.charCodeAt(i);
+    if(c<128) o.push(c);
+    else if(c<2048){ o.push(192|(c>>6), 128|(c&63)); }
+    else { o.push(224|(c>>12), 128|((c>>6)&63), 128|(c&63)); }
+  }
+  return o;
+}
+
+function qrCodets(txt){
+  var d=qrOctets(txt), i;
+  if(d.length > QR_DONNEES-2) return null;      /* 62 octets, pas un de plus */
+  var bits=[];
+  var pousse=function(v,n){ for(var k=n-1;k>=0;k--) bits.push((v>>k)&1); };
+  pousse(4,4);                                   /* mode « octets » */
+  pousse(d.length,8);                            /* longueur, 8 bits en version 1 a 9 */
+  for(i=0;i<d.length;i++) pousse(d[i],8);
+  pousse(0, Math.min(4, QR_DONNEES*8 - bits.length));
+  while(bits.length % 8) bits.push(0);
+  var c=[];
+  for(i=0;i<bits.length;i+=8){ var v=0; for(var j=0;j<8;j++) v=(v<<1)|bits[i+j]; c.push(v); }
+  var bourre=[0xEC,0x11], k=0;
+  while(c.length < QR_DONNEES) c.push(bourre[k++ % 2]);
+  return c;
+}
+
+/* Deux blocs de 32, entrelaces : un octet de l'un, un octet de l'autre.
+   C'est ce qui fait qu'une eraflure abime un peu des deux plutot que
+   beaucoup d'un seul. */
+function qrEntrelace(codets){
+  var t=QR_DONNEES/QR_BLOCS, blocs=[], ecs=[], b, i, out=[];
+  for(b=0;b<QR_BLOCS;b++){
+    var s=codets.slice(b*t,(b+1)*t);
+    blocs.push(s); ecs.push(qrReste(s, QR_EC));
+  }
+  for(i=0;i<t;i++) for(b=0;b<QR_BLOCS;b++) out.push(blocs[b][i]);
+  for(i=0;i<QR_EC;i++) for(b=0;b<QR_BLOCS;b++) out.push(ecs[b][i]);
+  return out;
+}
+
+function qrMasque(n,y,x){
+  switch(n){
+    case 0: return (x+y)%2===0;
+    case 1: return y%2===0;
+    case 2: return x%3===0;
+    case 3: return (x+y)%3===0;
+    case 4: return (Math.floor(x/3)+Math.floor(y/2))%2===0;
+    case 5: return (x*y)%2+(x*y)%3===0;
+    case 6: return ((x*y)%2+(x*y)%3)%2===0;
+    default: return ((x+y)%2+(x*y)%3)%2===0;
+  }
+}
+
+/* Les motifs fixes : les trois yeux, leurs separateurs, les deux lignes
+   de synchronisation, et l'unique motif d'alignement de la version 4. */
+function qrTrame(){
+  var T=QR_TAILLE, m=[], f=[], y, x, i;
+  for(y=0;y<T;y++){ m.push([]); f.push([]); for(x=0;x<T;x++){ m[y].push(0); f[y].push(0); } }
+  var pose=function(y,x,v){ if(y<0||x<0||y>=T||x>=T) return; m[y][x]=v; f[y][x]=1; };
+  var oeil=function(oy,ox){
+    for(var dy=-1;dy<=7;dy++) for(var dx=-1;dx<=7;dx++){
+      var d=Math.max(Math.abs(dy-3), Math.abs(dx-3));
+      pose(oy+dy, ox+dx, (d!==2 && d!==4) ? 1 : 0);
+    }
+  };
+  oeil(0,0); oeil(0,T-7); oeil(T-7,0);
+  for(i=8;i<T-8;i++){ pose(6,i, i%2===0?1:0); pose(i,6, i%2===0?1:0); }
+  for(var dy=-2;dy<=2;dy++) for(var dx=-2;dx<=2;dx++)
+    pose(T-7+dy, T-7+dx, Math.max(Math.abs(dy),Math.abs(dx))!==1 ? 1 : 0);
+  return { m:m, f:f };
+}
+
+/* Le format : niveau de correction et masque, protege par un code BCH
+   puis brouille. Il est ecrit DEUX fois, a deux endroits du symbole. */
+function qrFormat(masque){
+  var bits=(0<<3)|masque, d=bits<<10, i;
+  for(i=14;i>=10;i--) if((d>>i)&1) d^=0x537<<(i-10);
+  return ((bits<<10)|d)^0x5412;
+}
+function qrPoseFormat(masque, m, T){
+  var bits=qrFormat(masque), i;
+  var b=function(i){ return (bits>>i)&1; };
+  for(i=0;i<=5;i++) m[i][8]=b(i);
+  m[7][8]=b(6); m[8][8]=b(7); m[8][7]=b(8);
+  for(i=9;i<15;i++) m[8][14-i]=b(i);
+  for(i=0;i<8;i++) m[8][T-1-i]=b(i);
+  for(i=8;i<15;i++) m[T-15+i][8]=b(i);
+  m[T-8][8]=1;                                   /* le module toujours sombre */
+}
+
+/* La penalite du tableau 11 de la norme : quatre regles, et le masque
+   retenu est celui qui en recolte le moins. */
+var QR_N3=[1,0,1,1,1,0,1];
+function qrCherche(seq, dep){
+  for(var i=dep;i+7<=seq.length;i++){
+    var ok=true;
+    for(var k=0;k<7;k++) if(seq[i+k]!==QR_N3[k]){ ok=false; break; }
+    if(ok) return i;
+  }
+  return -1;
+}
+function qrClair(seq,a,b){
+  for(var i=Math.max(a,0);i<Math.min(b,seq.length);i++) if(seq[i]) return false;
+  return true;
+}
+function qrRegle3(seq){
+  var T=seq.length, s=0, i=qrCherche(seq,0);
+  while(i!==-1){
+    var apres=i+7;
+    if(i===0 || i===T-7 || qrClair(seq,i-4,i) || qrClair(seq,apres,apres+4)) s+=40;
+    else apres=i+4;
+    i=qrCherche(seq,apres);
+  }
+  return s;
+}
+function qrPenalite(m){
+  var T=QR_TAILLE, s=0, y, x, c, n;
+  for(y=0;y<T;y++){
+    var col=[]; for(x=0;x<T;x++) col.push(m[x][y]);
+    s+=qrRegle3(m[y]); s+=qrRegle3(col);
+  }
+  for(y=0;y<T;y++){
+    c=m[y][0]; n=1;
+    for(x=1;x<T;x++){ if(m[y][x]===c) n++; else { if(n>=5) s+=n-2; c=m[y][x]; n=1; } }
+    if(n>=5) s+=n-2;
+  }
+  for(x=0;x<T;x++){
+    c=m[0][x]; n=1;
+    for(y=1;y<T;y++){ if(m[y][x]===c) n++; else { if(n>=5) s+=n-2; c=m[y][x]; n=1; } }
+    if(n>=5) s+=n-2;
+  }
+  for(y=0;y<T-1;y++) for(x=0;x<T-1;x++){
+    var v=m[y][x];
+    if(m[y][x+1]===v && m[y+1][x]===v && m[y+1][x+1]===v) s+=3;
+  }
+  var noirs=0;
+  for(y=0;y<T;y++) for(x=0;x<T;x++) noirs+=m[y][x];
+  s += 10*Math.floor(Math.abs(noirs*100/(T*T)-50)/5);
+  return s;
+}
+
+function qrMatrice(txt){
+  var codets=qrCodets(txt); if(!codets) return null;
+  var flux=qrEntrelace(codets), T=QR_TAILLE, base=qrTrame(), res=base.f, i;
+  /* La zone du format est reservee AVANT le placement : le module toujours
+     sombre en fait partie, et l'oublier decalait tout le flux d'un bit. */
+  for(i=0;i<=8;i++){ if(i!==6){ res[8][i]=1; res[i][8]=1; } }
+  for(i=0;i<8;i++) res[8][T-1-i]=1;
+  for(i=T-8;i<T;i++) res[i][8]=1;
+
+  var meilleure=null, gagnante=null, masque=0;
+  for(var k=0;k<8;k++){
+    var m=[], y;
+    for(y=0;y<T;y++) m.push(base.m[y].slice());
+    var bit=0;
+    for(var droite=T-1; droite>=1; droite-=2){
+      if(droite===6) droite=5;
+      for(var vert=0;vert<T;vert++) for(var j=0;j<2;j++){
+        var x=droite-j, monte=((droite+1)&2)===0, yy=monte ? (T-1-vert) : vert;
+        if(res[yy][x]){ continue; }
+        var v=0;
+        if(bit < flux.length*8) v=(flux[bit>>3]>>(7-(bit&7)))&1;
+        bit++;
+        m[yy][x]=qrMasque(k,yy,x) ? (v^1) : v;
+      }
+    }
+    var p=qrPenalite(m);
+    if(meilleure===null || p<meilleure){ meilleure=p; gagnante=m; masque=k; }
+  }
+  qrPoseFormat(masque, gagnante, T);
+  return gagnante;
+}
+
+/* ---- CE QUE LE SYMBOLE CONTIENT ----
+ * L'adresse NUE, rien d'autre. Un lien `ethereum:` porterait le numero de
+ * la chaine, ce qui serait plus precis — mais tous les lecteurs ne le
+ * comprennent pas, et un QR qu'une application sur trois refuse ne sert a
+ * rien. La phrase sous le code dit le reseau, elle. */
 function peintRecevoir(){
   $('reAdr').textContent = moi || 'Not connected';
   var q=$('reQr');
-  if(!moi){ q.innerHTML='<div style="color:#666;font:700 12px/1.4 sans-serif;text-align:center">Sign in to<br>get an address</div>'; return; }
-  /* Un QR complet demanderait une bibliotheque ; plutot que d'en charger
-     une ou d'en dessiner un faux, on montre l'adresse en gros et on offre
-     la copie. Un faux QR serait pire que pas de QR : il enverrait des
-     fonds nulle part. */
-  q.innerHTML='<div style="color:#111;font:700 11px/1.5 monospace;word-break:break-all;text-align:center;padding:6px">'
-    + moi + '</div>';
+  q.innerHTML='';
+  if(!moi){
+    q.innerHTML='<div style="color:#666;font:700 12px/1.4 sans-serif;text-align:center">Sign in to<br>get an address</div>';
+    return;
+  }
+  var m=null;
+  try{ m=qrMatrice(moi); }catch(e){ m=null; }
+  if(!m){
+    /* Jamais de faux code : plutot l'adresse en clair, qui au moins se
+       recopie. Un carre de pixels qui ne veut rien dire ferait envoyer
+       des fonds nulle part. */
+    q.innerHTML='<div style="color:#111;font:700 11px/1.5 monospace;word-break:break-all;text-align:center;padding:6px">'
+      + moi + '</div>';
+    return;
+  }
+  var T=QR_TAILLE, tout=T+2*QR_MARGE, pas=10;
+  var c=document.createElement('canvas');
+  c.width=c.height=tout*pas;
+  c.setAttribute('role','img');
+  c.setAttribute('aria-label','QR code of your address '+moi);
+  /* La marge claire de quatre modules fait partie du symbole : sans elle,
+     beaucoup de lecteurs ne le trouvent pas du tout. */
+  var g=c.getContext('2d');
+  g.fillStyle='#fff'; g.fillRect(0,0,c.width,c.height);
+  g.fillStyle='#000';
+  for(var y=0;y<T;y++) for(var x=0;x<T;x++)
+    if(m[y][x]) g.fillRect((x+QR_MARGE)*pas, (y+QR_MARGE)*pas, pas, pas);
+  q.appendChild(c);
+  /* De quoi relire la matrice depuis un essai, sans exposer d'API. */
+  c.dataset.qr = m.map(function(r){ return r.join(''); }).join('|');
 }
 /* ==================== PLUSIEURS COMPTES ====================
  *
@@ -1885,6 +2215,9 @@ async function basculeCompte(n){
     casinoFerme();
     CASINO.solde = null; CASINO.bonEnAttente = null; CASINO.etat='ferme'; CASINO.note='';
     generation++;
+    /* Le journal est range par adresse : il suit la bascule, sinon le
+       nouveau compte heriterait des transactions de l'ancien. */
+    journalCharge();
     majCompte(); peintComptes(); peintAccueil(); peintRecevoir();
     await rafraichit();
     toast('Now using account ' + (n + 1));
@@ -2224,6 +2557,9 @@ $('enPartir').addEventListener('click', async function(){
     var tx = j.natif
       ? await signer.sendTransaction({ to:dest, value:wei })
       : await erc(j.adr, true).transfer(dest, wei);
+    /* Inscrit AVANT l'attente : c'est justement pendant l'attente que
+       l'onglet se ferme. */
+    journalAjoute({ h:tx.hash, k:'envoi', cle:j.cle, montant:wei.toString(), vers:dest });
     $('enNote').textContent='Sent — waiting for the chain…';
     await tx.wait();
     $('enNote').innerHTML='Done. <a href="'+CHAINE.scan+'/tx/'+tx.hash+'" target="_blank" rel="noopener" style="color:var(--violet2)">View transaction</a>';
@@ -2432,6 +2768,7 @@ async function assureAutorisation(jeton, entree, dis){
   if(deja.gte(entree)) return;
   dis('Allowing the router to spend your ' + jeton.sym + ' — one signature first…');
   var tx = await c.approve(ROUTER02, entree);
+  journalAjoute({ h:tx.hash, k:'autorisation', cle:jeton.cle, montant:entree.toString() });
   dis('Allowance sent — waiting for the chain…');
   await tx.wait();
 }
@@ -2486,6 +2823,7 @@ $('swPartir').addEventListener('click', async function(){
     var morceaux = morceauxDe(de, vers, entree, mini);
     dis('Confirm the swap in your wallet…');
     var tx = await routeur.multicall(echeance, morceaux, jd.natif ? { value: entree } : {});
+    journalAjoute({ h:tx.hash, k:'echange', cle:jd.cle, montant:entree.toString(), cleV:jv.cle });
     dis('Swapping — waiting for the chain…');
     await tx.wait();
 
@@ -2502,6 +2840,107 @@ $('swPartir').addEventListener('click', async function(){
   b.disabled = false;
 });
 
+/* ==================== LE JOURNAL DE CE TELEPHONE ====================
+ *
+ * ---- CE QUI SE PERDAIT AU RECHARGEMENT ----
+ *
+ * Une transaction en vol ne vivait que dans une variable et dans une
+ * phrase a l'ecran. Fermer l'onglet effacait les deux : le portefeuille
+ * ne savait plus qu'un envoi etait parti, et le joueur qui revenait
+ * n'avait plus rien — ni le hash, ni le montant, ni meme la certitude
+ * d'avoir signe.
+ *
+ * ---- ET CE QUE LA CHAINE NE PEUT PAS RENDRE ----
+ *
+ * Un envoi d'ETH (RH) n'emet AUCUN evenement. Aucune relecture ne le
+ * retrouve apres coup, sur cette page ni ailleurs. Ce journal est donc la
+ * seule trace qui existe des envois natifs faits d'ici — raison de plus
+ * pour qu'il survive a un rechargement.
+ *
+ * ---- CE QU'IL N'EST PAS ----
+ *
+ * Il ne remplace pas la chaine : elle reste la source. Une entree dit ce
+ * que CE telephone a signe, et son etat est relu sur la chaine a chaque
+ * ouverture. Une lecture ratee la laisse « en attente » — jamais
+ * « echouee », qui serait une affirmation qu'on n'a pas.
+ *
+ * Il est range par adresse : deux comptes du meme telephone ne melangent
+ * pas leurs transactions.
+ */
+var JOURNAL = [];
+var JOURNAL_MAX = 40;
+
+function journalCle(a){ return 'swogeTx:' + String(a||'').toLowerCase(); }
+
+function journalCharge(){
+  JOURNAL = [];
+  if(!moi) { peintEnCours(); return; }
+  try{
+    var t = JSON.parse(localStorage.getItem(journalCle(moi)) || '[]');
+    if(Object.prototype.toString.call(t) === '[object Array]') JOURNAL = t;
+  }catch(e){ JOURNAL = []; }
+  peintEnCours();
+  /* Ce qui etait en vol au moment de la fermeture est repris ici. */
+  for(var i=0;i<JOURNAL.length;i++)
+    if(JOURNAL[i].etat === 'attente') journalSuit(JOURNAL[i].h);
+}
+function journalSauve(){
+  if(!moi) return;
+  try{ localStorage.setItem(journalCle(moi), JSON.stringify(JOURNAL.slice(0, JOURNAL_MAX))); }catch(e){}
+}
+function journalAjoute(e){
+  if(!moi || !e || !e.h) return;
+  e.h = String(e.h);
+  e.t = Date.now();
+  e.etat = 'attente';
+  JOURNAL.unshift(e);
+  if(JOURNAL.length > JOURNAL_MAX) JOURNAL = JOURNAL.slice(0, JOURNAL_MAX);
+  journalSauve(); peintEnCours();
+  journalSuit(e.h);
+}
+function journalEtat(h, etat, bloc){
+  var chg=false;
+  for(var i=0;i<JOURNAL.length;i++) if(JOURNAL[i].h === h){
+    JOURNAL[i].etat = etat;
+    if(bloc) JOURNAL[i].bloc = bloc;
+    chg=true;
+  }
+  if(chg){ journalSauve(); peintEnCours(); }
+}
+/* Attendre le recu, sans jamais conclure d'un echec de lecture. */
+async function journalSuit(h){
+  var cible = moi, g = generation;
+  try{
+    var r = await lec().waitForTransaction(h, 1, 180000);
+    if(cible !== moi || g !== generation) return;
+    journalEtat(h, (r && r.status === 0) ? 'echoue' : 'reussi', r && r.blockNumber);
+  }catch(e){ /* toujours « en attente » : on ne sait pas, on ne dit rien */ }
+}
+
+function journalPhrase(e){
+  var j = e.cle ? J(e.cle) : null, jv = e.cleV ? J(e.cleV) : null;
+  var m  = function(v, k){ var x=J(k); return nombre(v===undefined||v===null?null:ethers.BigNumber.from(v), x?x.dec:18) + ' ' + (x?x.sym:''); };
+  if(e.k === 'echange' && j && jv) return 'Swapping ' + m(e.montant,e.cle) + ' for ' + (jv?jv.sym:'');
+  if(e.k === 'autorisation')       return 'Allowing the router to spend your ' + (j?j.sym:'token');
+  if(e.k === 'depot')              return 'Depositing ' + m(e.montant,'swoge') + ' into the casino';
+  if(e.k === 'retrait')            return 'Claiming your casino withdrawal';
+  return 'Sending ' + m(e.montant, e.cle) + ' to ' + court(e.vers);
+}
+
+/* Le bandeau d'accueil : il ne s'affiche que s'il y a vraiment quelque
+   chose en vol, et il survit au rechargement puisque le journal aussi. */
+function peintEnCours(){
+  var e = $('acEnCours'); if(!e) return;
+  var n = 0, premier = null;
+  for(var i=0;i<JOURNAL.length;i++) if(JOURNAL[i].etat === 'attente'){ n++; if(!premier) premier = JOURNAL[i]; }
+  e.hidden = !(n && moi);
+  if(!n || !moi) return;
+  $('acEnCoursT').textContent = n === 1 ? '1 transaction in flight' : n + ' transactions in flight';
+  var p = '';
+  try{ p = journalPhrase(premier); }catch(x){ p = 'Waiting for the chain…'; }
+  $('acEnCoursS').textContent = p + (n > 1 ? ' — and ' + (n-1) + ' more' : '');
+}
+
 /* ==================== ACTIVITE ====================
  *
  * Lue au RPC, pas chez l'explorateur : l'API Blockscout de cette chaine
@@ -2512,8 +2951,26 @@ $('swPartir').addEventListener('click', async function(){
  * blocs » ne remonterait qu'a DEUX HEURES — et le joueur lirait « aucune
  * transaction » en croyant que c'est vrai. Trente jours font vingt-six
  * millions de blocs, et le noeud les accepte en une requete.
+ *
+ * ---- UN ECHANGE N'EST PAS DEUX VIREMENTS ----
+ *
+ * Vu depuis les evenements seuls, un echange ressemble a un envoi vers une
+ * adresse inconnue suivi d'une reception depuis une autre : le joueur qui
+ * relisait sa liste voyait ses jetons PARTIR chez un inconnu. Les
+ * transferts sont donc regroupes par transaction, et une transaction ou
+ * l'on donne un jeton et recoit l'autre se lit pour ce qu'elle est.
+ *
+ * Le cote ETH d'un echange ne passe pas par un transfert : le routeur
+ * emballe l'ether en WETH (`Deposit`) ou le deballe (`Withdrawal`). Ces
+ * deux evenements-la, eux, existent — c'est par eux qu'un achat paye en
+ * ETH (RH) retrouve son montant. Le recu de la transaction les porte, et
+ * c'est la seule lecture supplementaire qui soit faite.
  */
 var FENETRE = 26000000;
+var SUJET_DEPOT   = null;   /* WETH : de l'ether devient du WETH */
+var SUJET_RETRAIT = null;   /* WETH : et redevient de l'ether */
+
+function nettoieAdresse(sujet){ return '0x' + String(sujet).slice(26).toLowerCase(); }
 
 async function chargeActivite(){
   var c=$('acvCorps');
@@ -2523,6 +2980,10 @@ async function chargeActivite(){
     var p=lec();
     var bloc=await p.getBlockNumber();
     var sujet=ethers.utils.id('Transfer(address,address,uint256)');
+    if(!SUJET_DEPOT){
+      SUJET_DEPOT   = ethers.utils.id('Deposit(address,uint256)');
+      SUJET_RETRAIT = ethers.utils.id('Withdrawal(address,uint256)');
+    }
     var qui=ethers.utils.hexZeroPad(moi, 32);
     var debut=Math.max(0, bloc-FENETRE);
     var lots=[];
@@ -2536,34 +2997,53 @@ async function chargeActivite(){
     }
     var tout=[].concat.apply([], await borne(Promise.all(lots), 25000, 'history'));
     tout.sort(function(a,b){ return b.log.blockNumber - a.log.blockNumber; });
-    if(!tout.length){
+
+    /* ---- REGROUPER PAR TRANSACTION ---- */
+    var ordre=[], parHash={};
+    for(i=0;i<tout.length;i++){
+      var h=tout[i].log.transactionHash;
+      if(!parHash[h]){ parHash[h]={ h:h, bloc:tout[i].log.blockNumber, dedans:[], dehors:[] }; ordre.push(parHash[h]); }
+      (tout[i].sortant ? parHash[h].dehors : parHash[h].dedans).push(tout[i]);
+    }
+
+    /* ---- LES RECUS, POUR LE COTE ETH DES ECHANGES ----
+       Une seule lecture par transaction affichee, et un echec la laisse
+       simplement sans jambe ETH : la ligne retombe alors sur ce qui est
+       certain. */
+    var vus = ordre.slice(0, 60);
+    await borne(Promise.all(vus.map(function(g){
+      return p.getTransactionReceipt(g.h).then(function(r){ g.bordereau=r; })['catch'](function(){});
+    })), 20000, 'receipts')['catch'](function(){});
+
+    for(i=0;i<vus.length;i++) classeGroupe(vus[i]);
+
+    /* ---- CE QUE LA CHAINE NE PEUT PAS DIRE, LE JOURNAL LE SAIT ---- */
+    var rangs = [];
+    for(i=0;i<vus.length;i++) rangs.push({ bloc:vus[i].bloc, t:0, g:vus[i] });
+    for(i=0;i<JOURNAL.length;i++){
+      var e=JOURNAL[i];
+      if(parHash[e.h]) continue;                       /* deja lu sur la chaine */
+      rangs.push({ bloc: e.bloc || (bloc + 1), t: e.t || 0, e: e });
+    }
+    rangs.sort(function(a,b){ return (b.bloc - a.bloc) || (b.t - a.t); });
+
+    if(!rangs.length){
       c.innerHTML='<div class="wl-vide"><span class="g">&#9675;</span>'
-        + 'No $SWOGE or $SWOGEBET transfers in the last 30 days.'
-        + '<br>'+ETH_AFF+' movements are not listed here — the native coin leaves no'
-        + ' transfer event to read, so an empty list does not mean nothing moved.</div>';
+        + 'No transfers found in the last 30 days.'
+        + '<br>A plain '+ETH_AFF+' send leaves no event on the chain, so an empty list'
+        + ' does not mean nothing moved.</div>';
       return;
     }
-    var h='';
-    for(var k=0;k<Math.min(tout.length, 60);k++){
-      var t=tout[k];
-      var v=ethers.BigNumber.from(t.log.data);
-      var autre='0x'+t.log.topics[t.sortant?2:1].slice(26);
-      h+='<div class="wl-jeton" style="cursor:default">'
-       +   '<img src="'+t.j.logo+'" alt="">'
-       +   '<span class="nom"><b>'+(t.sortant?'Sent':'Received')+'</b>'
-       +     '<small>'+(t.sortant?'To ':'From ')+court(autre)+'</small></span>'
-       +   '<span class="val"><b style="color:'+(t.sortant?'var(--rouge)':'var(--vert)')+'">'
-       +     (t.sortant?'−':'+')+nombre(v,18)+'</b><small>'+t.j.sym+'</small></span>'
-       + '</div>';
-    }
-    if(tout.length>60) h+='<p class="wl-note">Showing the 60 most recent of '+tout.length+' transfers.</p>';
-    /* La liste ne peut pas etre complete, et se taire la-dessus la ferait
-       passer pour l'historique entier : un joueur qui vient d'envoyer de
-       l'ETH RH ne le trouverait pas et croirait son envoi perdu. */
-    h+='<p class="wl-note">$SWOGE and $SWOGEBET only. '+ETH_AFF+' moves without leaving a'
-     + ' transfer event, so it cannot be read back this way — check the explorer from the'
-     + ' Account screen for those.</p>';
-    c.innerHTML=h;
+
+    var h2='';
+    for(var k=0;k<rangs.length && k<60;k++)
+      h2 += rangs[k].g ? ligneGroupe(rangs[k].g) : ligneJournal(rangs[k].e);
+    if(ordre.length>60) h2+='<p class="wl-note">Showing the 60 most recent of '+ordre.length+' transactions.</p>';
+    h2+='<p class="wl-note">$SWOGE and $SWOGEBET are read from the chain, and swaps paid in '
+      + ETH_AFF+' are recognised from the same transactions. A plain '+ETH_AFF+' send emits no'
+      + ' event at all: it shows here only if this device sent it. From another wallet, use the'
+      + ' explorer link on the Account screen.</p>';
+    c.innerHTML=h2;
   }catch(e){
     /* « Impossible de lire » et non « aucune transaction ». Les deux ne
        veulent pas dire la meme chose, et confondre les deux ferait croire
@@ -2572,6 +3052,90 @@ async function chargeActivite(){
       + (estTimeout(e) ? 'The chain did not answer within 25 seconds.' : 'Could not read your history from the chain just now.')
       + '<br>This does <b>not</b> mean you have no transfers — the read failed. Try again.</div>';
   }
+}
+
+/* Ce que la transaction a coute au joueur, et ce qu'elle lui a rendu. */
+function classeGroupe(g){
+  var eth = J('eth');
+  var paye = g.dehors.length ? { j:g.dehors[0].j, v:ethers.BigNumber.from(g.dehors[0].log.data) } : null;
+  var recu = g.dedans.length ? { j:g.dedans[0].j, v:ethers.BigNumber.from(g.dedans[0].log.data) } : null;
+  g.autre = paye ? nettoieAdresse(g.dehors[0].log.topics[2]) : (recu ? nettoieAdresse(g.dedans[0].log.topics[1]) : null);
+
+  var r = g.bordereau;
+  if(r && r.from && String(r.from).toLowerCase() === moi && r.logs){
+    var w = WETH.toLowerCase();
+    for(var i=0;i<r.logs.length;i++){
+      var l=r.logs[i];
+      if(String(l.address).toLowerCase() !== w || !l.topics || !l.topics.length) continue;
+      /* Emballe : l'ether du joueur est entre dans l'echange. */
+      if(l.topics[0] === SUJET_DEPOT && !paye)   paye = { j:eth, v:ethers.BigNumber.from(l.data) };
+      /* Deballe : l'ether ressort de l'echange vers le joueur. */
+      if(l.topics[0] === SUJET_RETRAIT && !recu) recu = { j:eth, v:ethers.BigNumber.from(l.data) };
+    }
+  }
+  g.paye = paye; g.percu = recu;
+  g.echange = !!(paye && recu && paye.j.cle !== recu.j.cle);
+}
+
+function ligneGroupe(g){
+  if(g.echange){
+    return '<div class="wl-jeton" style="cursor:default">'
+     +   '<img src="'+g.percu.j.logo+'" alt="">'
+     +   '<span class="nom"><b>Swapped</b><small>'
+     +     nombre(g.paye.v, g.paye.j.dec)+' '+g.paye.j.sym+' &rarr; '+g.percu.j.sym+'</small></span>'
+     +   '<span class="val"><b style="color:var(--vert)">+'+nombre(g.percu.v, g.percu.j.dec)+'</b>'
+     +     '<small>'+g.percu.j.sym+'</small></span>'
+     + '</div>';
+  }
+  var l=[], i;
+  for(i=0;i<g.dehors.length;i++) l.push(ligneTransfert(g.dehors[i], true));
+  for(i=0;i<g.dedans.length;i++) l.push(ligneTransfert(g.dedans[i], false));
+  return l.join('');
+}
+function ligneTransfert(t, sortant){
+  var v=ethers.BigNumber.from(t.log.data);
+  var autre=nettoieAdresse(t.log.topics[sortant?2:1]);
+  return '<div class="wl-jeton" style="cursor:default">'
+   +   '<img src="'+t.j.logo+'" alt="">'
+   +   '<span class="nom"><b>'+(sortant?'Sent':'Received')+'</b>'
+   +     '<small>'+(sortant?'To ':'From ')+court(autre)+'</small></span>'
+   +   '<span class="val"><b style="color:'+(sortant?'var(--rouge)':'var(--vert)')+'">'
+   +     (sortant?'−':'+')+nombre(v, t.j.dec)+'</b><small>'+t.j.sym+'</small></span>'
+   + '</div>';
+}
+
+/* Une ligne du journal : elle porte toujours d'ou elle vient, pour qu'on
+   ne la confonde pas avec une lecture de chaine. */
+function ligneJournal(e){
+  var j = J(e.cle) || J('eth');
+  var att = e.etat === 'attente', rate = e.etat === 'echoue';
+  var titre = e.k === 'echange' ? 'Swapped'
+            : e.k === 'autorisation' ? 'Allowance'
+            : e.k === 'depot' ? 'Casino deposit'
+            : e.k === 'retrait' ? 'Casino withdrawal'
+            : 'Sent';
+  /* ---- D OU VIENT CETTE LIGNE ----
+     Elle n'a pas ete lue sur la chaine : elle existe parce que CE
+     telephone l'a inscrite. Sans le dire, elle se lirait comme les
+     autres — et le joueur croirait la retrouver depuis un autre
+     appareil, ou elle n'apparaitra jamais. */
+  var sous = (e.k === 'envoi' ? 'To ' + court(e.vers) + ' · ' : '') + 'from this device';
+  if(att)  sous = 'Waiting for the chain — sent from this device';
+  if(rate) sous = 'The chain rejected it — nothing moved';
+  var v = null;
+  try{ v = e.montant ? ethers.BigNumber.from(e.montant) : null; }catch(x){ v = null; }
+  /* Une autorisation ne bouge pas d'argent : lui mettre un signe la ferait
+     lire comme un envoi de tout le montant autorise. */
+  var signe = e.k === 'autorisation' ? '' : (e.k === 'retrait' ? '+' : '−');
+  var val = v === null ? '—' : signe + nombre(v, j.dec);
+  var couleur = (att || rate || e.k === 'autorisation') ? 'var(--doux)'
+              : e.k === 'retrait' ? 'var(--vert)' : 'var(--rouge)';
+  return '<div class="wl-jeton" style="cursor:default'+(att?';opacity:.75':'')+'">'
+   +   (j.logo ? '<img src="'+j.logo+'" alt="">' : '<span class="wl-eth">'+j.sym.slice(0,2)+'</span>')
+   +   '<span class="nom"><b>'+titre+(att?' …':'')+'</b><small>'+sous+'</small></span>'
+   +   '<span class="val"><b style="color:'+couleur+(rate?';text-decoration:line-through':'')+'">'+val+'</b>'
+   +     '<small>'+j.sym+'</small></span>'
+   + '</div>';
 }
 $('btActRelire').addEventListener('click', chargeActivite);
 

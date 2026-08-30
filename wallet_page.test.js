@@ -1126,6 +1126,10 @@ const T = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
     await page.fill('#enDest', VERS);
     await page.fill('#enMontant', '0.001');
     await page.evaluate(() => document.getElementById('enPartir').click());
+    await page.waitForTimeout(400);
+    /* La revue est active par defaut : elle s intercale ici. Le bloc qui
+       suit l essaie pour elle-meme ; ici on la traverse. */
+    await page.evaluate(() => document.getElementById('rvOk').click());
     await page.waitForTimeout(2200);
 
     const bande = async () => page.evaluate(() => {
@@ -1345,6 +1349,155 @@ const T = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
     await ouvre();
     ok(await page.evaluate(() => document.getElementById('cnEmail').value) === '',
        'et le champ revient vide');
+    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
+    await page.close();
+  }
+
+  /* ---- « REVIEW » NE MONTRAIT RIEN ----
+   *
+   * Le bouton s appelait Review et envoyait la demande de signature
+   * directement. L essai le prend par les deux bouts : avec la revue, RIEN
+   * ne part avant la confirmation ; sans elle, un seul clic suffit — et le
+   * bouton change de nom, parce qu il ferait sinon la meme promesse vide.
+   */
+  console.log('\n-- la revue avant signature --');
+  {
+    const MOI = '0x00000000000000000000000000000000000a11ce';
+    const VERS = '0x1111111111111111111111111111111111111111';
+    const HASH = '0x' + 'cd'.repeat(32);
+    const enMot = (v) => '0x' + BigInt(v).toString(16).padStart(64, '0');
+
+    const page = await nav.newPage({ viewport: { width: 390, height: 844 } });
+    const boum = [];
+    page.on('pageerror', (e) => boum.push(e.message));
+    await page.addInitScript(([moi, vers, hash]) => {
+      try { localStorage.setItem('swogeAuth', 'wallet'); } catch (e) {}
+      window.__envois = 0;
+      window.ethereum = { isMetaMask: true, on: () => {}, removeListener: () => {},
+        request: async (a) => {
+          const M = { eth_accounts: [moi], eth_requestAccounts: [moi], eth_chainId: '0x1237',
+                      net_version: '4663', wallet_switchEthereumChain: null,
+                      eth_gasPrice: '0x7fe1f0', eth_estimateGas: '0x5208',
+                      eth_getTransactionCount: '0x1', eth_blockNumber: '0x2f7ce78' };
+          if (a.method === 'eth_sendTransaction') { window.__envois++; return hash; }
+          if (a.method === 'eth_getTransactionByHash') return {
+            hash, from: moi, to: vers, value: '0x1', gas: '0x5208', gasPrice: '0x7fe1f0',
+            nonce: '0x1', input: '0x', blockHash: null, blockNumber: null,
+            transactionIndex: null, chainId: '0x1237',
+            v: '0x0', r: '0x' + '0'.repeat(64), s: '0x' + '0'.repeat(64) };
+          if (a.method in M) return M[a.method];
+          return null; } };
+    }, [MOI, VERS, HASH]);
+    await page.route('**/ethers*.umd.min.js', (r) => r.fulfill({
+      contentType: 'text/javascript', body: fs.readFileSync(ETHERS, 'utf8') }));
+    await page.route('**/api.dexscreener.com/**', (r) => r.abort());
+    await page.route('**/avatar/**', (r) => r.fulfill({ status: 404, body: '' }));
+    await page.route('**/nom/**', (r) => r.abort());
+    await page.route('**/rpc.mainnet.chain.robinhood.com/**', async (r) => {
+      const q = JSON.parse(r.request().postData() || '{}');
+      const un = (m) => {
+        if (m.method === 'eth_chainId') return '0x1237';
+        if (m.method === 'net_version') return '4663';
+        if (m.method === 'eth_blockNumber') return '0x2f7ce78';
+        if (m.method === 'eth_getLogs') return [];
+        if (m.method === 'eth_gasPrice') return enMot(134102000n);
+        if (m.method === 'eth_getBalance') return enMot(5000000000000000n);
+        if (m.method === 'eth_getTransactionReceipt') return null;
+        if (m.method === 'eth_call') return enMot(1234567890123456789012n);
+        return null;
+      };
+      const rep = (m) => { const v = un(m);
+        return v === null ? { jsonrpc: '2.0', id: m.id, error: { code: -32000, message: 'nope' } }
+                          : { jsonrpc: '2.0', id: m.id, result: v }; };
+      await r.fulfill({ contentType: 'application/json',
+                        body: JSON.stringify(Array.isArray(q) ? q.map(rep) : rep(q)) });
+    });
+    const charge = async () => {
+      await page.goto('http://127.0.0.1:' + port + '/swoge_wallet.html', { waitUntil: 'domcontentloaded' });
+      await page.waitForTimeout(2600);
+    };
+    const remplit = async () => {
+      await page.evaluate(() => document.querySelector('[data-va="ecEnvoyer"]').click());
+      await page.waitForTimeout(300);
+      await page.fill('#enDest', VERS);
+      await page.fill('#enMontant', '0.001');
+    };
+    await charge();
+
+    /* ---- PAR DEFAUT, ELLE EST LA ---- */
+    ok(await page.evaluate(() => document.getElementById('enPartir').textContent.trim()) === 'Review',
+       'sans rien regler, le bouton s appelle « Review »');
+    await remplit();
+    await page.evaluate(() => document.getElementById('enPartir').click());
+    await page.waitForTimeout(700);
+    const rv = await page.evaluate(() => {
+      const v = document.getElementById('voileRevue');
+      return { vu: !v.hidden, montant: document.getElementById('rvMontant').textContent,
+               dest: document.getElementById('rvDest').textContent.replace(/\s+/g, ''),
+               reste: document.getElementById('rvReste').textContent,
+               envois: window.__envois };
+    });
+    ok(rv.vu, 'et il OUVRE une revue au lieu de signer — c est ce que le mot promettait');
+    ok(rv.envois === 0,
+       'rien n est parti au portefeuille : ' + rv.envois + ' demande(s) de signature');
+    ok(/0\.001/.test(rv.montant) && /ETH \(RH\)/.test(rv.montant),
+       'la revue montre le montant ET le jeton (« ' + rv.montant + ' ») — la feuille de'
+       + ' signature du portefeuille, elle, ne montre ni l un ni l autre');
+    ok(rv.dest.toLowerCase() === VERS.toLowerCase(),
+       'et l adresse ENTIERE, pas abregee : c est au milieu qu une adresse echangee se cache');
+    ok(/0\.004/.test(rv.reste), 'avec ce qu il restera apres (« ' + rv.reste + ' »)');
+
+    /* ---- ET « GO BACK » NE SIGNE RIEN ---- */
+    await page.evaluate(() => document.getElementById('rvNon').click());
+    await page.waitForTimeout(300);
+    const apres = await page.evaluate(() => ({
+      vu: !document.getElementById('voileRevue').hidden, envois: window.__envois,
+      montant: document.getElementById('enMontant').value }));
+    ok(!apres.vu && apres.envois === 0, 'revenir en arriere ne signe rien');
+    ok(apres.montant === '0.001', 'et ne vide pas ce qui etait tape — sinon on n ose plus reculer');
+
+    /* ---- CONFIRMER SIGNE, UNE FOIS ---- */
+    await page.evaluate(() => document.getElementById('enPartir').click());
+    await page.waitForTimeout(400);
+    await page.evaluate(() => document.getElementById('rvOk').click());
+    await page.waitForTimeout(1800);
+    ok(await page.evaluate(() => window.__envois) === 1,
+       'confirmer signe, et une seule fois');
+
+    /* ---- LE REGLAGE ----
+       On RECHARGE d abord : l envoi precedent attend toujours son recu — le
+       faux noeud n en rend aucun — et le bouton reste desactive tant qu une
+       transaction est en vol. C est voulu, pas un defaut a contourner :
+       deux envois lances a la suite sans savoir si le premier est passe,
+       c est le double envoi. */
+    await charge();
+    await page.evaluate(() => document.querySelector('[data-va="ecCompte"]').click());
+    await page.waitForTimeout(300);
+    ok(await page.evaluate(() => document.getElementById('cpRevue').checked) === true,
+       'le reglage du compte la montre active');
+    await page.evaluate(() => { const c = document.getElementById('cpRevue');
+      c.checked = false; c.dispatchEvent(new Event('change', { bubbles: true })); });
+    await page.waitForTimeout(300);
+    ok(await page.evaluate(() => document.getElementById('enPartir').textContent.trim()) === 'Send',
+       'decochee, le bouton s appelle « Send » — il ferait sinon la meme promesse vide qu avant');
+
+    await remplit();
+    await page.evaluate(() => document.getElementById('enPartir').click());
+    await page.waitForTimeout(1800);
+    const direct = await page.evaluate(() => ({ envois: window.__envois,
+      vu: !document.getElementById('voileRevue').hidden }));
+    ok(!direct.vu && direct.envois === 1,
+       'et un seul clic envoie, sans feuille : c est le chemin rapide, assume');
+
+    /* ---- ET LE REGLAGE SURVIT AU RECHARGEMENT ---- */
+    await charge();
+    ok(await page.evaluate(() => document.getElementById('enPartir').textContent.trim()) === 'Send',
+       'le choix tient apres un rechargement — sinon il faudrait le refaire chaque fois');
+    await page.evaluate(() => { const c = document.getElementById('cpRevue');
+      c.checked = true; c.dispatchEvent(new Event('change', { bubbles: true })); });
+    await charge();
+    ok(await page.evaluate(() => document.getElementById('enPartir').textContent.trim()) === 'Review',
+       'et se remet dans l autre sens');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.close();
   }

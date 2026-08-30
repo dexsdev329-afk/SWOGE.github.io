@@ -698,7 +698,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         <h2>Trade</h2>
         <div class="two">
           <div>
-            <div class="field"><label id="buyLbl">Buy — ETH to spend</label><input id="buyEth" inputmode="decimal" placeholder="0.1"></div>
+            <div class="field"><label id="buyLbl">Buy — ETH (RH) to spend</label><input id="buyEth" inputmode="decimal" placeholder="0.1"></div>
             <div id="buyPcts" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"></div>
             <div class="note" id="buyQuote" style="margin-top:6px"></div>
             <button class="btn buy full" id="buyBtn" style="margin-top:8px">Buy</button>
@@ -1925,7 +1925,7 @@ function renderTrades(){
   }).join("");
   el.innerHTML='<table style="width:100%;border-collapse:collapse;font-size:12px">'+
     '<thead><tr style="color:#6B7C99;text-align:left;position:sticky;top:0;background:#FFFFFF">'+
-    '<th style="padding:5px 6px">Type</th><th style="padding:5px 6px">'+(eu?"$":"ETH")+'</th><th style="padding:5px 6px">Tokens</th><th style="padding:5px 6px">Wallet</th><th style="padding:5px 6px">Time</th><th></th></tr></thead>'+
+    '<th style="padding:5px 6px">Type</th><th style="padding:5px 6px">'+(eu?"$":"ETH (RH)")+'</th><th style="padding:5px 6px">Tokens</th><th style="padding:5px 6px">Wallet</th><th style="padding:5px 6px">Time</th><th></th></tr></thead>'+
     '<tbody>'+rows+'</tbody></table>';
 }
 
@@ -2042,7 +2042,7 @@ async function refreshTrade(){
       var isHolders = c.feeMode===1;
       $("#tvRewardRow").style.display=isHolders?"flex":"none";
       $("#claimBtn").style.display=isHolders?"block":"none";
-      if(isHolders){ var pend=await fun.pendingRewards(curToken,account); $("#tvReward").textContent=(+ethers.utils.formatEther(pend)).toFixed(6)+" ETH"; }
+      if(isHolders){ var pend=await fun.pendingRewards(curToken,account); $("#tvReward").textContent=(+ethers.utils.formatEther(pend)).toFixed(6)+" ETH (RH)"; }
     }
   }
 
@@ -2084,7 +2084,7 @@ async function quoteBuy(){
       $("#buyQuote").textContent="≈ "+(+ethers.utils.formatEther(qi.amountOut)).toLocaleString("en-US")+" tokens (Uniswap, 1% fee incl.)";
     }else{
       var q=await readFun(curV).quoteBuy(curToken, ethers.utils.parseEther(raw));
-      $("#buyQuote").textContent="≈ "+(+ethers.utils.formatEther(q.tokensOut)).toLocaleString("en-US")+" tokens (fee "+(+ethers.utils.formatEther(q.fee)).toFixed(6)+" ETH)";
+      $("#buyQuote").textContent="≈ "+(+ethers.utils.formatEther(q.tokensOut)).toLocaleString("en-US")+" tokens (fee "+(+ethers.utils.formatEther(q.fee)).toFixed(6)+" ETH (RH))";
     }
   }catch(e){ $("#buyQuote").textContent=""; }
 }
@@ -2111,13 +2111,13 @@ async function quoteSell(){
       $("#sellQuote").textContent="≈ "+fmtQty(+ethers.utils.formatEther(qi.amountOut))+" "+curSym()+" (Uniswap, 1% fee incl.)";
     }else{
       var q=await readFun(curV).quoteSell(curToken, amt);
-      $("#sellQuote").textContent="≈ "+(+ethers.utils.formatEther(q.ethOut)).toFixed(6)+" ETH (fee "+(+ethers.utils.formatEther(q.fee)).toFixed(6)+")";
+      $("#sellQuote").textContent="≈ "+(+ethers.utils.formatEther(q.ethOut)).toFixed(6)+" ETH (RH) (fee "+(+ethers.utils.formatEther(q.fee)).toFixed(6)+")";
     }
   }catch(e){ $("#sellQuote").textContent=""; }
 }
 $("#buyBtn").onclick=async function(){
   if(!signer){ openWalletPicker(); return; }
-  var raw=amtStr("#buyEth"); if(!parseFloat(raw)) return toast("Enter an ETH amount");
+  var raw=amtStr("#buyEth"); if(!parseFloat(raw)) return toast("Enter an ETH (RH) amount");
   var note=$("#tradeNote"); note.className="note"; note.textContent="Confirm in your wallet…";
   try{
     var wei=ethers.utils.parseEther(raw);

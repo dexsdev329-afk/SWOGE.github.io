@@ -5,14 +5,32 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>SWOGE Wallet — your keys on Robinhood Chain</title>
 <meta name="description" content="SWOGE Wallet — hold, send and swap $SWOGE and $SWOGEBET on Robinhood Chain. Balances read live on-chain; nothing is written into the page.">
+<!-- ---- LA PAGE EST MAINTENANT DANS LE MENU DE TOUT LE SITE ----
+     Tant qu'on n'y arrivait que par une vignette du hall, ses manques de
+     referencement ne coutaient rien. Elle est desormais liee depuis chaque
+     page : sans adresse canonique elle se dedouble au moindre `?` ou `#`,
+     et sans `og:url` un partage ne sait pas vers quoi pointer. Le bloc est
+     celui des autres pages, mot pour mot. -->
+<link rel="canonical" href="https://swoleeswoge.dog/swoge_wallet.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="SWOGE WORLD">
+<meta property="og:locale" content="en_US">
 <meta property="og:title" content="SWOGE Wallet">
 <meta property="og:description" content="Hold, send and swap $SWOGE and $SWOGEBET on Robinhood Chain.">
-<meta property="og:image" content="https://swoleeswoge.dog/img/wallet/tok_swoge.webp">
+<meta property="og:url" content="https://swoleeswoge.dog/swoge_wallet.html">
+<meta property="og:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@SwoleDogeSwoge">
 <meta name="twitter:title" content="SWOGE Wallet">
 <meta name="twitter:description" content="Hold, send and swap $SWOGE and $SWOGEBET on Robinhood Chain.">
-<meta name="twitter:image" content="https://swoleeswoge.dog/img/wallet/tok_swoge.webp">
-<link rel="icon" href="img/wallet/tok_swoge.webp">
+<meta name="twitter:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/site/icone-32.png">
+<link rel="apple-touch-icon" href="/img/site/icone-180.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta name="theme-color" content="#1B5FE0">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -456,6 +474,13 @@ body{
 .wl-etiq.on{ color:var(--vert); border-color:rgba(52,211,153,.4) }
 
 .wl-mono{ font:400 12px/1.5 'Space Mono',monospace; word-break:break-all; color:var(--doux) }
+/* ---- L'ADRESSE, LISIBLE PAR GROUPES ----
+   Quarante caracteres d'affilee ne se relisent pas : l'oeil glisse, et
+   c'est au milieu qu'une adresse echangee se cache. Par quatre, on la
+   compare vraiment. */
+.wl-adr{ font:700 14px/1.9 'Space Mono',monospace; color:var(--texte);
+  word-break:break-all; display:flex; flex-wrap:wrap; gap:0 8px }
+.wl-adr b{ font-weight:700; color:var(--violet2) }
 .wl-sep{ height:1px; background:var(--bord); margin:14px 0 }
 .wl-titre{ font:800 12px/1 'Archivo',sans-serif; letter-spacing:1.2px;
   color:var(--doux); margin:16px 0 9px }
@@ -780,6 +805,22 @@ body{
           it into a message, a form, or a support chat.</p>
       </div>
 
+      <!-- ---- LE BOUTON DISAIT « REVIEW » ET NE MONTRAIT RIEN ----
+           Il envoyait la demande de signature directement. Le mot promettait
+           un ecran qui n'existait pas, et l'ecran de signature du
+           portefeuille ne montre ni le symbole du jeton ni le reseau.
+           La revue existe maintenant ; et parce que valider deux fois lasse,
+           elle se coupe ici. Coupee, le bouton s'appelle « Send » : le mot
+           dit alors ce qu'il fait. -->
+      <div class="wl-titre">SIGNING</div>
+      <div class="wl-carte" style="padding:4px 14px">
+        <label class="wl-case" for="cpRevue" style="margin:12px 0">
+          <input type="checkbox" id="cpRevue" checked>
+          <span>Review a send before signing it</span>
+        </label>
+      </div>
+      <p class="wl-note" id="cpRevueNote"></p>
+
       <div class="wl-titre">SESSION</div>
       <button class="wl-b vide" id="cpExplorer" type="button">View on explorer</button>
       <div style="height:10px"></div>
@@ -847,6 +888,31 @@ body{
       <button class="wl-b vide" id="cnExtension" type="button">Use a browser wallet</button>
       <div style="height:8px"></div>
       <button class="wl-b vide" id="cnFermer" type="button">Cancel</button>
+    </div>
+  </div>
+
+  <!-- la revue avant signature -->
+  <div class="wl-voile" id="voileRevue" hidden>
+    <div class="wl-feuille">
+      <h2>Check before you send</h2>
+      <p class="wl-note">Once signed, this cannot be undone and no one can reverse it.</p>
+      <div style="height:14px"></div>
+      <div class="wl-carte">
+        <div class="wl-rang"><span>You send</span><b id="rvMontant">—</b></div>
+        <div class="wl-rang"><span>Network</span><b>Robinhood Chain</b></div>
+        <div class="wl-rang"><span>Network fee</span><b id="rvFrais">—</b></div>
+        <div class="wl-rang"><span>Left after</span><b id="rvReste">—</b></div>
+      </div>
+      <div class="wl-champ" style="margin:0">
+        <label>TO THIS ADDRESS</label>
+        <div class="wl-adr" id="rvDest">—</div>
+      </div>
+      <p class="wl-note" id="rvNote">Read it in groups of four, from both ends. An address that is
+        one character wrong belongs to nobody, and the coins stay there for ever.</p>
+      <div style="height:14px"></div>
+      <button class="wl-b" id="rvOk" type="button">Sign and send</button>
+      <div style="height:8px"></div>
+      <button class="wl-b vide" id="rvNon" type="button">Go back</button>
     </div>
   </div>
 
@@ -2481,6 +2547,7 @@ function majEnvoyer(){
   var j=J($('enJeton').value)||JETONS[0];
   var s=soldes[j.cle];
   $('enSolde').textContent = (s===null||s===undefined) ? '—' : nombre(s,j.dec)+' '+j.sym;
+  majRevue();
   litFrais();
 }
 $('enJeton').addEventListener('change', majEnvoyer);
@@ -2538,7 +2605,119 @@ async function litFrais(){
   }catch(e){ $('enFrais').textContent='—'; }
 }
 
-$('enPartir').addEventListener('click', async function(){
+/* ==================== LA REVUE AVANT SIGNATURE ====================
+ *
+ * ---- LE BOUTON MENTAIT ----
+ *
+ * Il s'appelait « Review » et envoyait la demande de signature sans rien
+ * montrer. Le mot promet un ecran ou l'on VERIFIE ; il n'y en avait pas.
+ * Et la feuille de signature du portefeuille ne comble pas le trou : elle
+ * montre une adresse de contrat et des donnees brutes, pas « 1 234 SWOGE
+ * vers cette adresse-la, sur ce reseau-la ». Un jeton pour un autre, ou un
+ * montant a un zero pres, ne s'y voit pas.
+ *
+ * ---- ET POURQUOI ELLE SE COUPE ----
+ *
+ * Valider deux fois lasse, et un joueur qui envoie dix fois par jour finit
+ * par confirmer sans lire — auquel cas la revue ne protege plus rien et
+ * coute un clic. Elle s'enleve donc dans les reglages du compte. Ce qui ne
+ * s'enleve PAS, c'est la franchise du bouton : sans revue il s'appelle
+ * « Send », parce que c'est ce qu'il fait.
+ *
+ * Le reglage vit sur l'appareil. Absent, la revue est ACTIVE : un
+ * portefeuille neuf, ou un joueur qui n'a jamais ouvert les reglages,
+ * protege par defaut.
+ */
+function revueActive(){
+  try{ return localStorage.getItem('swogeRevue') !== '0'; }catch(e){ return true; }
+}
+function revueRegle(v){
+  try{ localStorage.setItem('swogeRevue', v ? '1' : '0'); }catch(e){}
+  majRevue();
+}
+function majRevue(){
+  var a = revueActive();
+  var c = $('cpRevue'); if(c) c.checked = a;
+  /* Le bouton dit ce qu'il fait, dans les deux cas. */
+  var b = $('enPartir'); if(b) b.textContent = a ? 'Review' : 'Send';
+  var n = $('cpRevueNote');
+  if(n) n.textContent = a
+    ? 'One extra tap: the amount, the token, the network and the full address are shown before'
+      + ' your wallet asks for a signature. The signing prompt itself does not show them.'
+    : 'One tap sends. Nothing is checked for you beyond the address being well formed — and a'
+      + ' well-formed address can still be the wrong one.';
+}
+
+/* Par groupes de quatre, avec le debut et la fin en couleur : c'est le
+   milieu qu'on saute, et c'est la qu'une adresse echangee se cache. */
+function adresseEnGroupes(a){
+  var t = String(a), h = '';
+  h += '<b>' + t.slice(0,6) + '</b>';
+  var reste = t.slice(6, -4);
+  for(var i=0;i<reste.length;i+=4) h += '<span>' + reste.slice(i, i+4) + '</span>';
+  h += '<b>' + t.slice(-4) + '</b>';
+  return h;
+}
+
+var REVUE = null;      /* ce qui attend d'etre signe */
+
+function ouvreRevue(j, dest, wei){
+  REVUE = { j:j, dest:dest, wei:wei };
+  $('rvMontant').textContent = nombre(wei, j.dec) + ' ' + j.sym;
+  $('rvDest').innerHTML = adresseEnGroupes(dest);
+  $('rvFrais').textContent = $('enFrais').textContent;
+  /* ---- CE QU'IL RESTERA ----
+     Calcule seulement si le solde EST connu. Un « 0 » affiche parce qu'une
+     lecture a rate serait le pire mensonge possible juste avant de signer. */
+  var s = soldes[j.cle];
+  $('rvReste').textContent = (s === null || s === undefined)
+    ? 'unknown — balance not read'
+    : (s.gte(wei) ? nombre(s.sub(wei), j.dec) + ' ' + j.sym : 'more than you hold');
+  $('voileRevue').hidden = false;
+  $('rvNon').focus();
+}
+function fermeRevue(){ $('voileRevue').hidden = true; REVUE = null; }
+$('rvNon').addEventListener('click', fermeRevue);
+$('voileRevue').addEventListener('click', function(ev){ if(ev.target===this) fermeRevue(); });
+$('rvOk').addEventListener('click', function(){
+  var r = REVUE; if(!r) return;
+  fermeRevue();
+  envoieMaintenant(r.j, r.dest, r.wei);
+});
+$('cpRevue').addEventListener('change', function(){
+  revueRegle(this.checked);
+  toast(this.checked ? 'Sends will be reviewed' : 'Sends will go straight to signing');
+});
+
+/* ---- L'ENVOI LUI-MEME ----
+   Une seule fonction, appelee par les deux chemins : avec revue et sans.
+   Deux copies auraient diverge des la premiere correction — et c'est le
+   code qui deplace l'argent. */
+async function envoieMaintenant(j, dest, wei){
+  var b = $('enPartir'), note = $('enNote');
+  b.disabled = true;
+  note.className = 'wl-note';
+  note.textContent = 'Waiting for your signature…';
+  try{
+    await assureChaine();
+    var tx = j.natif
+      ? await signer.sendTransaction({ to:dest, value:wei })
+      : await erc(j.adr, true).transfer(dest, wei);
+    /* Inscrit AVANT l'attente : c'est justement pendant l'attente que
+       l'onglet se ferme. */
+    journalAjoute({ h:tx.hash, k:'envoi', cle:j.cle, montant:wei.toString(), vers:dest });
+    note.textContent='Sent — waiting for the chain…';
+    await tx.wait();
+    note.innerHTML='Done. <a href="'+CHAINE.scan+'/tx/'+tx.hash+'" target="_blank" rel="noopener" style="color:var(--violet2)">View transaction</a>';
+    $('enMontant').value=''; rafraichit();
+  }catch(err){
+    note.className='wl-note grave';
+    note.textContent = pourquoiRefus(err);
+  }
+  b.disabled = false;
+}
+
+$('enPartir').addEventListener('click', function(){
   if(!moi) return ouvreConnexion();
   var j=J($('enJeton').value);
   var dest=$('enDest').value.trim();
@@ -2549,26 +2728,8 @@ $('enPartir').addEventListener('click', async function(){
   try{ wei = ethers.utils.parseUnits(m, j.dec); }catch(e){ return toast('Amount not understood'); }
   var s=soldes[j.cle];
   if(s && wei.gt(s)) return toast('More than your balance');
-  this.disabled=true;
-  $('enNote').className='wl-note';
-  $('enNote').textContent='Waiting for your signature…';
-  try{
-    await assureChaine();
-    var tx = j.natif
-      ? await signer.sendTransaction({ to:dest, value:wei })
-      : await erc(j.adr, true).transfer(dest, wei);
-    /* Inscrit AVANT l'attente : c'est justement pendant l'attente que
-       l'onglet se ferme. */
-    journalAjoute({ h:tx.hash, k:'envoi', cle:j.cle, montant:wei.toString(), vers:dest });
-    $('enNote').textContent='Sent — waiting for the chain…';
-    await tx.wait();
-    $('enNote').innerHTML='Done. <a href="'+CHAINE.scan+'/tx/'+tx.hash+'" target="_blank" rel="noopener" style="color:var(--violet2)">View transaction</a>';
-    $('enMontant').value=''; rafraichit();
-  }catch(err){
-    $('enNote').className='wl-note grave';
-    $('enNote').textContent = pourquoiRefus(err);
-  }
-  this.disabled=false;
+  if(revueActive()) return ouvreRevue(j, dest, wei);
+  envoieMaintenant(j, dest, wei);
 });
 
 /* ==================== SWAP ====================
@@ -3192,6 +3353,7 @@ remplitChoix($('swDe'));
 remplitChoix($('swVers'));
 valPick($('swDe'), 'eth'); valPick($('swVers'), 'swogebet');
 peintAccueil();
+majRevue();
 lisPrix().then(peintAccueil);
 reprend();
 

@@ -125,8 +125,8 @@
     var eEth = $('cxEth'), eSw = $('cxSwoge');
     var pose = function (e, nom, val) { e.innerHTML = '<b>' + val + '</b> ' + nom; };
     fournisseur.request({ method: 'eth_getBalance', params: [adresse, 'latest'] })
-      .then(function (h) { pose(eEth, 'ETH', enClair(h, 18, 4)); })
-      ['catch'](function () { eEth.textContent = 'ETH \u2014'; });
+      .then(function (h) { pose(eEth, 'ETH (RH)', enClair(h, 18, 4)); })
+      ['catch'](function () { eEth.textContent = 'ETH (RH) \u2014'; });
     /* `balanceOf(address)` : les quatre octets du selecteur, puis l'adresse
        calee a droite sur trente-deux octets. Un appel en lecture, rien de
        signe, rien qui coute. */

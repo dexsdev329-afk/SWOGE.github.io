@@ -1424,7 +1424,7 @@ async function inspectWallet(){
     + (daysHeld!=null ? `<div class="icell"><div class="k">holding for</div><div class="v">${daysHeld} day${daysHeld!==1?"s":""}</div></div>` : "")
     + (nInOther||nOutOther ? `<div class="icell"><div class="k">non-pool transfers</div><div class="v">${nInOther+nOutOther}</div></div>` : "")
     + `</div>`
-    + `<div class="note" style="margin-top:12px">"Bought" and "sold" count swaps with the pool. Amounts are token quantities — profit in ETH/USD isn't shown, since the transfer log records how many tokens moved, not the price at each swap.</div>`
+    + `<div class="note" style="margin-top:12px">"Bought" and "sold" count swaps with the pool. Amounts are token quantities — profit in ETH (RH) or dollars is not shown, since the transfer log records how many tokens moved, not the price at each swap.</div>`
     + `<div class="ilink"><a href="https://robinhoodchain.blockscout.com/address/${a}?tab=token_transfers" target="_blank" rel="noopener">view all ${tr.length} transfers on the explorer ↗</a></div>`;
   }catch(e){
     card.className="icard x";

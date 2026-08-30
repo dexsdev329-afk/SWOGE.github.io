@@ -227,7 +227,7 @@ canvas{ touch-action:none; }
 
   <div class="callout danger">
     <span class="h">⚠️ Read this first</span>
-    The Bench sends <b>real, irreversible transactions</b> on <b>Robinhood Chain (mainnet)</b> with real ETH gas and real slippage. Always test with a <b>tiny amount first</b>. Manufacturing trading volume can violate exchange/platform rules and local laws — only run it where you are authorised, and never with money you can't lose.
+    The Bench sends <b>real, irreversible transactions</b> on <b>Robinhood Chain (mainnet)</b> with real ETH (RH) gas and real slippage. Always test with a <b>tiny amount first</b>. Manufacturing trading volume can violate exchange/platform rules and local laws — only run it where you are authorised, and never with money you can't lose.
   </div>
 
   <div class="toc">
@@ -252,11 +252,11 @@ canvas{ touch-action:none; }
     <ul>
       <li>You hold <b>one visible master wallet</b>. That's the only wallet you fund and the only one you cash out from.</li>
       <li>When you press <b>PLAY</b>, the Bench creates <b>N hidden wallets</b> (default 100) in the background.</li>
-      <li>The first hidden wallet buys the <b>selected token</b> (<b>$SWOGE</b> by default, or any Robinhood-Chain coin you paste in) with ~98% of its ETH, split into <b>5 slices</b> (so it looks like several natural trades).</li>
-      <li>It then <b>transfers everything</b> (ETH + tokens) to the next hidden wallet, which <b>sells</b>, then passes on to the next, which <b>buys</b>… and so on around the ring.</li>
+      <li>The first hidden wallet buys the <b>selected token</b> (<b>$SWOGE</b> by default, or any Robinhood-Chain coin you paste in) with ~98% of its ETH (RH), split into <b>5 slices</b> (so it looks like several natural trades).</li>
+      <li>It then <b>transfers everything</b> (ETH (RH) + tokens) to the next hidden wallet, which <b>sells</b>, then passes on to the next, which <b>buys</b>… and so on around the ring.</li>
       <li>Every hop is a <b>real on-chain buy or sell on Uniswap</b> — real trading volume on the $SWOGE chart.</li>
-      <li>The loop runs quietly in the background until you press <b>STOP</b> or the ETH is spent on gas.</li>
-      <li><b>STOP</b> sweeps every hidden wallet — ETH <em>and</em> $SWOGE tokens — back to your master wallet.</li>
+      <li>The loop runs quietly in the background until you press <b>STOP</b> or the ETH (RH) is spent on gas.</li>
+      <li><b>STOP</b> sweeps every hidden wallet — ETH (RH) <em>and</em> $SWOGE tokens — back to your master wallet.</li>
     </ul>
     <div class="callout">
       <span class="h">In one line</span>
@@ -270,13 +270,13 @@ canvas{ touch-action:none; }
     <div class="tw"><table>
       <tr><th>Item</th><th>Details</th></tr>
       <tr><td><b>A browser</b></td><td>The Bench is a single HTML page — nothing to install. Open <code>swoge_bench.html</code>.</td></tr>
-      <tr><td><b>Robinhood-Chain ETH</b></td><td>The gas + trading fuel. Sent to the <b>master wallet address</b> the Bench generates. Start small.</td></tr>
+      <tr><td><b>ETH (RH)</b></td><td>The gas + trading fuel. Sent to the <b>master wallet address</b> the Bench generates. Start small.</td></tr>
       <tr><td><b>A place to keep the CSV</b></td><td>PLAY downloads a CSV of all hidden-wallet private keys. Keep it safe — it's your only recovery if a page closes mid-run.</td></tr>
       <tr><td><b>An external wallet (optional)</b></td><td>Where you cash out at the end (MetaMask, Rabby, an exchange deposit address, etc.).</td></tr>
     </table></div>
     <div class="callout">
-      <span class="h">💡 How much ETH?</span>
-      Each hop costs gas + a little slippage. More ETH = more hops = more volume before it drains. Do one small test run first, watch how fast it burns, then size your real run from that.
+      <span class="h">💡 How much ETH (RH)?</span>
+      Each hop costs gas + a little slippage. More ETH (RH) = more hops = more volume before it drains. Do one small test run first, watch how fast it burns, then size your real run from that.
     </div>
   </section>
 
@@ -293,8 +293,8 @@ canvas{ touch-action:none; }
         Press <kbd>Generate master wallet</kbd>. A fresh wallet address appears. This is the only wallet you'll fund and the only one you cash out from. Tap the address to copy it.
       </li>
       <li>
-        <b>Send it ETH</b>
-        From your own wallet or exchange, send <b>Robinhood-Chain ETH</b> to that master address. Wait for the balance on the Bench to update.
+        <b>Send it ETH (RH)</b>
+        From your own wallet or exchange, send <b>ETH (RH)</b> to that master address. Wait for the balance on the Bench to update.
       </li>
       <li>
         <b>Set the number of hidden wallets</b>
@@ -314,7 +314,7 @@ canvas{ touch-action:none; }
       </li>
       <li>
         <b>Press STOP when done</b>
-        Hit <kbd>■ STOP</kbd>. The Bench sweeps all ETH and $SWOGE from every hidden wallet back to your master wallet.
+        Hit <kbd>■ STOP</kbd>. The Bench sweeps all ETH (RH) and $SWOGE from every hidden wallet back to your master wallet.
       </li>
       <li>
         <b>Cash out</b>
@@ -360,7 +360,7 @@ canvas{ touch-action:none; }
     </ol>
     <div class="callout">
       <span class="h">Requirements for the token</span>
-      It must have a live <b>Uniswap pool paired with WETH</b> on Robinhood Chain (that's how the wallets buy in ETH). If it's only paired with another token, buying in ETH isn't possible and PLAY will report it. Always paste a contract you've verified on the explorer.
+      It must have a live <b>Uniswap pool paired with WETH</b> on Robinhood Chain (that's how the wallets buy in ETH (RH)). If it's only paired with another token, buying in ETH (RH) isn't possible and PLAY will report it. Always paste a contract you've verified on the explorer.
     </div>
     <div class="callout danger">
       <span class="h">Same risks apply</span>
@@ -375,7 +375,7 @@ canvas{ touch-action:none; }
     <ol>
       <li>In the <b>Cash out</b> row, paste your external address (must be a valid <code>0x…</code> 40-hex address).</li>
       <li>Press <kbd>Send →</kbd>.</li>
-      <li>The Bench sends the master wallet's <b>$SWOGE tokens first, then the ETH</b> (keeping just enough to pay gas) to your address.</li>
+      <li>The Bench sends the master wallet's <b>$SWOGE tokens first, then the ETH (RH)</b> (keeping just enough to pay gas) to your address.</li>
     </ol>
     <div class="callout">
       <span class="h">Order of operations</span>
@@ -398,8 +398,8 @@ canvas{ touch-action:none; }
     </table></div>
     <h3>Ring defaults</h3>
     <ul>
-      <li>Buy size: <b>98%</b> of the wallet's ETH, split into <b>5 slices</b>.</li>
-      <li>Slippage: <b>5%</b> · Gas reserve kept: <b>0.0005 ETH</b> · Pause between slices: <b>10 s</b>.</li>
+      <li>Buy size: <b>98%</b> of the wallet's ETH (RH), split into <b>5 slices</b>.</li>
+      <li>Slippage: <b>5%</b> · Gas reserve kept: <b>0.0005 ETH (RH)</b> · Pause between slices: <b>10 s</b>.</li>
     </ul>
     <p class="callout">Robinhood Chain is an Orbit rollup, so the real transaction cost includes an L1 data fee — the Bench adds a margin when sweeping so a sweep doesn't fail for being a few wei short.</p>
   </section>
@@ -410,8 +410,8 @@ canvas{ touch-action:none; }
     <div class="tw"><table>
       <tr><th>Symptom</th><th>What to do</th></tr>
       <tr><td>RPC not reached / no balance</td><td>Check your connection; the network is fixed to Robinhood Chain. Refresh and re-open the master wallet.</td></tr>
-      <tr><td>PLAY does nothing</td><td>The master wallet needs ETH first. Confirm the balance shows on the Bench before PLAY.</td></tr>
-      <tr><td>A hop failed / “transaction didn't go through”</td><td>Usually not enough ETH for gas on that wallet. Press STOP to sweep back, top up the master, run again.</td></tr>
+      <tr><td>PLAY does nothing</td><td>The master wallet needs ETH (RH) first. Confirm the balance shows on the Bench before PLAY.</td></tr>
+      <tr><td>A hop failed / “transaction didn't go through”</td><td>Usually not enough ETH (RH) for gas on that wallet. Press STOP to sweep back, top up the master, run again.</td></tr>
       <tr><td>Tab closed mid-run</td><td>Re-open the Bench; funds are in the hidden wallets. Import their keys from the CSV to recover, or re-run and STOP.</td></tr>
       <tr><td>STOP left tokens somewhere</td><td>Import that wallet's private key (from the CSV) into MetaMask/Rabby and send manually.</td></tr>
     </table></div>
@@ -439,11 +439,11 @@ canvas{ touch-action:none; }
     </details>
     <details>
       <summary>Can I pump a coin other than $SWOGE?</summary>
-      <div class="a">Yes. Paste any Robinhood-Chain token contract into <b>Token to pump</b> before pressing PLAY. It needs a live Uniswap pool paired with WETH so the wallets can buy in ETH. Press <b>↺ SWOGE</b> to switch back to the default.</div>
+      <div class="a">Yes. Paste any Robinhood-Chain token contract into <b>Token to pump</b> before pressing PLAY. It needs a live Uniswap pool paired with WETH so the wallets can buy in ETH (RH). Press <b>↺ SWOGE</b> to switch back to the default.</div>
     </details>
     <details>
       <summary>What happens to my money if I press STOP?</summary>
-      <div class="a">Every hidden wallet is swept — both ETH and $SWOGE tokens — back to your <b>master wallet</b>. Then use Cash out to move it off the Bench.</div>
+      <div class="a">Every hidden wallet is swept — both ETH (RH) and $SWOGE tokens — back to your <b>master wallet</b>. Then use Cash out to move it off the Bench.</div>
     </details>
     <details>
       <summary>Why 98% and 5 slices?</summary>

@@ -554,7 +554,7 @@
       '<div class="swb-b plie" id="swbCorps">' +
         '<div class="swb-d" id="swbDev">' +
           onglet('swoge', '$SWOGE', '…') +
-          onglet('eth', 'ETH · RH', '…') +
+          onglet('eth', 'ETH (RH)', '…') +
         '</div>' +
         '<div class="swb-r"><input id="swbAmt" inputmode="decimal" placeholder="0">' +
         '<b id="swbUnite">$SWOGE</b></div>' +
@@ -712,13 +712,13 @@
     if (devise === 'eth') {
       reserveGaz().then(function (gaz) {
         var utile = dispo.sub(gaz);
-        if (utile.lte(0)) { dis('Not enough ETH once the gas reserve is set aside.'); return; }
+        if (utile.lte(0)) { dis('Not enough ETH (RH) once the gas reserve is set aside.'); return; }
         champ.value = trim(ethers.utils.formatEther(utile.mul(pc).div(100)), 6);
         rafraichitCote();
       });
       return;
     }
-    if (dispo.lte(0)) { dis('No $SWOGE in your wallet — switch to ETH, or bring funds from another chain.'); return; }
+    if (dispo.lte(0)) { dis('No $SWOGE in your wallet — switch to ETH (RH), or bring funds from another chain.'); return; }
     champ.value = trim(ethers.utils.formatUnits(dispo.mul(pc).div(100), 18), 6);
     rafraichitCote();
   }
@@ -990,7 +990,7 @@
           if (jeton !== prixJeton || !j) return ditPrix('');
           var g = [];
           if (j.dollarsEnvoi != null) g.push('≈ <b>' + dollars(j.dollarsEnvoi) + '</b>');
-          if (j.recoit != null) g.push('you get ≈ <b>' + trim(String(j.recoit), 6) + ' ETH</b>' +
+          if (j.recoit != null) g.push('you get ≈ <b>' + trim(String(j.recoit), 6) + ' ETH (RH)</b>' +
                                        (j.dollars != null ? ' (' + dollars(j.dollars) + ')' : ''));
           ditPrix(g.join('<span class="sep">·</span>'));
         });
@@ -1083,7 +1083,7 @@
           if (!e) { clearInterval(suivi); suivi = null; return; }
           if (j.fini) {
             clearInterval(suivi); suivi = null;
-            e.innerHTML = '✅ Sent through — your ETH is on its way to your address.';
+            e.innerHTML = '✅ Sent through — your ETH (RH) is on its way to your address.';
           } else if (j.statut && j.statut !== 'unknown' && j.statut !== 'waiting') {
             e.textContent = 'Status: ' + j.statut;
           }
@@ -1133,7 +1133,7 @@
             var utile = b.sub(gaz);
             if (utile.gt(0)) champ.value = trim(ethers.utils.formatEther(utile), 6);
             annonce = '✅ ' + trim(ethers.utils.formatEther(arrive), 6) +
-                      ' ETH just landed on Robinhood Chain — the amount is filled in.';
+                      ' ETH (RH) just landed — the amount is filled in.';
             rafraichitCote();
           });
         }).catch(function () {});
@@ -1193,7 +1193,7 @@
       }).then(function (solde) {
         return reserveGaz().then(function (gaz) {
           if (solde.lt(montant.add(gaz)))
-            throw new Error('Not enough ETH — leave a little for gas on top of the amount.');
+            throw new Error('Not enough ETH (RH) — leave a little for gas on top of the amount.');
         });
       }).then(function () {
         /* On redemande le prix MAINTENANT. Celui qu'affiche l'ecran peut
@@ -1210,7 +1210,7 @@
           var routeur = new ethers.Contract(ROUTER, ROUTER_ABI, signataire);
           var date = Math.floor(Date.now() / 1000) + 600;
           dis('Confirm in your wallet… ' + trim(ethers.utils.formatEther(montant), 6) +
-              ' ETH → ≈ ' + fmtBig(c.sortieN) + ' $SWOGE');
+              ' ETH (RH) → ≈ ' + fmtBig(c.sortieN) + ' $SWOGE');
           return routeur.swapExactETHForTokensSupportingFeeOnTransferTokens(
             mini, [WETH, SWOGE], w.adresse, date, { value: montant }
           );

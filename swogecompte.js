@@ -1158,6 +1158,11 @@
       '<a href="#" data-panel="quests">🎯 Daily Quests</a>' +
       '<div class="msep"></div>' +
       (ici === 'games.html' ? '' : '<a href="games.html">🎮 Other games</a>') +
+      /* Le portefeuille est une DESTINATION, pas un panneau : il vit dans le
+         second paquet, avec le hall et l'accueil. Le panneau « My Wallet »
+         plus haut montre le solde ; celui-ci ouvre la page ou l'on envoie,
+         echange et recoit. */
+      (ici === 'swoge_wallet.html' ? '' : '<a href="swoge_wallet.html">🪙 SWOGE Wallet</a>') +
       '<a href="index.html">🏠 Home</a>';
     (document.body || document.documentElement).appendChild(m);
     m.addEventListener('click', function (e) {

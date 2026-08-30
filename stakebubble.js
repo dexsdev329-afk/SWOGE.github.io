@@ -3449,6 +3449,11 @@
    */
   var AILLEURS = [
     ['games.html', '\uD83C\uDFAE Other games'],
+    /* Le portefeuille etait une page qu'on ne trouvait QUE depuis le hall des
+       jeux, dans la rangee « Utility », derriere une vignette. Depuis une
+       table, aucun chemin n'y menait — alors que c'est de la, en pleine
+       partie, qu'on veut aller voir son solde ou envoyer ses gains. */
+    ['swoge_wallet.html', '\uD83E\uDE99 SWOGE Wallet'],
     ['index.html', '\uD83C\uDFE0 Home'],
   ];
   /* ---- LE COMPTE, SUR UNE PAGE QUI N'EN A PAS ----

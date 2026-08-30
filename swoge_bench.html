@@ -860,7 +860,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         </select>
       </div>
       <div class="ocopt" id="ocOptTx" hidden>
-        <label for="ocMiseTx">Amount per trade (ETH)</label>
+        <label for="ocMiseTx">Amount per trade (ETH (RH))</label>
         <input id="ocMiseTx" type="number" min="0.000001" step="0.00001" value="0.0001">
         <i>Smaller = more transactions. The pool's 0.30 % is charged only on what you trade,
            so a tiny trade leaves nothing to pay but the gas — and the gas is the same at any size.</i>
@@ -1014,7 +1014,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
               <input id="slip" type="number" min="0.1" max="50" step="0.1" value="5">
             </div>
             <div class="field" style="margin:0">
-              <label for="reserve">Gas kept (ETH)</label>
+              <label for="reserve">Gas kept (ETH (RH))</label>
               <input id="reserve" value="0.0005">
             </div>
           </div>
@@ -1058,7 +1058,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 
     <div>
       <div class="simplehint" id="simplehint">
-        <b>New here?</b> $SWOGE is already loaded. Just: <b>①</b> Generate a wallet → <b>②</b> send it some ETH → <b>③</b> set your % and hit <b>Buy</b>. Switch to <b>Advanced</b> (top right) for slippage, contracts and split orders.
+        <b>New here?</b> $SWOGE is already loaded. Just: <b>①</b> Generate a wallet → <b>②</b> send it some ETH (RH) → <b>③</b> set your % and hit <b>Buy</b>. Switch to <b>Advanced</b> (top right) for slippage, contracts and split orders.
       </div>
       <!-- LA barre de chargement du token. Il y en avait trois — celle-ci,
            celle du panneau Token, et le champ de chaque moteur — qui
@@ -1125,7 +1125,11 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 <script>
 /* ───────────── réseaux ───────────── */
 const NETS = {
-  rhMainnet:{name:"Robinhood Chain",sym:"ETH",chainId:4663,live:true,rpc:["https://rpc.mainnet.chain.robinhood.com"],scan:"https://robinhoodchain.blockscout.com/address/",
+  /* `sym` est ce que la CHAINE declare ; `symAff` ce que le joueur LIT.
+     « ETH » tout court se confond avec l'ether du reseau principal, et ici
+     un solde mal lu se traduit par un envoi vers la mauvaise chaine. Le
+     site porte « ETH (RH) » partout ailleurs. */
+  rhMainnet:{name:"Robinhood Chain",sym:"ETH",symAff:"ETH (RH)",chainId:4663,live:true,rpc:["https://rpc.mainnet.chain.robinhood.com"],scan:"https://robinhoodchain.blockscout.com/address/",
     faucets:[["Blockscout","https://robinhoodchain.blockscout.com"],["Uniswap deployments","https://developers.uniswap.org/docs/protocols/v3/deployments/v3-robinhood-chain-deployments"]],
     // published by Uniswap for chain 4663 — re-verify on the explorer before any large amount
     dex:{router:"0xcaf681a66d020601342297493863e78c959e5cb2",
@@ -1258,7 +1262,7 @@ function render(){
   wallets.forEach(w => { if(w.pct == null) w.pct = 25; });
   $("#empty").style.display = wallets.length ? "none" : "block";
   $("#tCount").textContent = wallets.filter(w=>!w.hidden&&!w.master).length;
-  $("#tSym").textContent = `total ${n.sym}`;
+  $("#tSym").textContent = `total ${n.symAff || n.sym}`;
 
   let sum = 0n;
   for(const w of wallets) if(w.balRaw){ try{ sum += BigInt(w.balRaw); }catch{} }
@@ -1285,7 +1289,7 @@ function render(){
         </div>
         <div class="bal">
           <div class="n ${pos?"pos":"zero"}">${bal}</div>
-          <div class="u">${n.sym}</div>
+          <div class="u">${n.symAff || n.sym}</div>
         </div>
       </div>
       ${sweepRow(w,i)}
@@ -1324,7 +1328,7 @@ function sweepRow(w,i){
       ${w.destSel==="ext"
         ? `<input class="mini" data-destaddr="${i}" value="${w.destAddr||""}" placeholder="0x…" style="flex:2;min-width:180px;font-family:'Space Mono',monospace">`
         : ""}
-      <button class="mini" data-sweep="${i}" ${dis}>empty (token + ETH)</button>
+      <button class="mini" data-sweep="${i}" ${dis}>empty (token + ETH (RH))</button>
     </div>`;
 }
 function tradeBar(w,i){
@@ -1334,7 +1338,7 @@ function tradeBar(w,i){
   const why = !NETS[net].dex ? "This network has no Uniswap contracts configured — switch to Robinhood Chain"
             : !dex           ? "Click « Verify contracts » in the Uniswap v3 panel"
             : !token         ? "Load a token to enable orders"
-            : !token.nativeQuote ? `Pool paired with ${token.quote.symbol}: achat en ETH natif ne s'applique pas ici`
+            : !token.nativeQuote ? `Pool paired with ${token.quote.symbol} — buying in native ETH (RH) does not apply here`
             : null;
   const off = why || w.busy ? "disabled" : "";
   return `<div class="trade">
@@ -1500,7 +1504,7 @@ $("#loadtok").onclick = async () => {
     info.innerHTML = `${t.symbol}/${t.quote.symbol} · Uniswap ${t.ver}${tier}<br>`
       + `token ${t.addr}<br>`
       + `depth ${fmtUnits(t.depth, t.quote.decimals, 4)} ${t.quote.symbol}`
-      + (t.nativeQuote ? "" : `<br>⚠ paired with ${t.quote.symbol}, not WETH — buying in ETH not possible`);
+      + (t.nativeQuote ? "" : `<br>⚠ paired with ${t.quote.symbol}, not WETH — buying in ETH (RH) not possible`);
   };
   try{
     const A = ethers.utils.getAddress(m[0]);
@@ -1610,7 +1614,7 @@ async function trade(i, side, opts = {}){
       const reserve = ethers.utils.parseEther(($("#reserve").value || "0.0005").replace(",","."));
       amountIn = opts.amount || bal.mul(w.pct).div(100);
       if(bal.sub(amountIn).lt(reserve)) amountIn = bal.sub(reserve);
-      if(amountIn.lte(0)) throw new Error("ETH balance insufficient once the gas reserve is set aside");
+      if(amountIn.lte(0)) throw new Error("ETH (RH) balance insufficient once the gas reserve is set aside");
     } else {
       amountIn = opts.amount || ethers.BigNumber.from(w.tokRaw || "0x0").mul(w.pct).div(100);
       if(amountIn.gt(ethers.BigNumber.from(w.tokRaw || "0x0"))) amountIn = ethers.BigNumber.from(w.tokRaw || "0x0");
@@ -1631,10 +1635,10 @@ async function trade(i, side, opts = {}){
       expected = amts[amts.length - 1];
     }
     const minOut = expected.mul(10000 - bps).div(10000);
-    const fmtIn  = side === "buy" ? ethers.utils.formatEther(amountIn) + " ETH"
+    const fmtIn  = side === "buy" ? ethers.utils.formatEther(amountIn) + " ETH (RH)"
                                   : ethers.utils.formatUnits(amountIn, token.decimals) + " " + token.symbol;
     const fmtOut = side === "buy" ? ethers.utils.formatUnits(minOut, token.decimals) + " " + token.symbol
-                                  : ethers.utils.formatEther(minOut) + " ETH";
+                                  : ethers.utils.formatEther(minOut) + " ETH (RH)";
     setStatus(i, `${fmtIn} → min ${fmtOut}`);
 
     /* approbation si on vend — pinnée sur `nonce`, puis on avance le nonce
@@ -1729,14 +1733,14 @@ async function sweep(i, opts = {}){
   if(token && w.tokRaw && BigInt(w.tokRaw) > 0n)
     parts.push(`${fmtUnits(w.tokRaw, token.decimals, 4)} ${token.symbol}`);
   const ethBal = BigInt(w.balRaw || "0x0");
-  if(ethBal > 0n) parts.push(`~${fmtUnits(w.balRaw,18,6)} ETH (moins le gas)`);
+  if(ethBal > 0n) parts.push(`~${fmtUnits(w.balRaw,18,6)} ETH (RH), less gas`);
   if(!parts.length){ if(opts.noConfirm) return true; return toast("This wallet is already empty"); }
   if(NETS[net].live && !opts.noConfirm && wantConfirm() && !confirm(
       `${NETS[net].name} — live network.\n\n`
     + `Vider le wallet ${i+1} vers ${destLabel}\n`
     + `${to}\n\n`
     + parts.map(x=>"• "+x).join("\n")
-    + `\n\nToken first, then ETH. Irreversible. Confirm?`)) return;
+    + `\n\nToken first, then ETH (RH). Irreversible. Confirm?`)) return;
 
   w.busy = true; let swept = false;
   try{
@@ -1760,7 +1764,7 @@ async function sweep(i, opts = {}){
        le vrai coût du transfert, puis on l'itère jusqu'à ce que value+gas tienne. */
     const bal = await p.getBalance(w.address);
     if(bal.gt(0)){
-      setStatus(i, "estimating ETH gas…");
+      setStatus(i, "estimating ETH (RH) gas…");
       let fee;
       try{ const fd = await p.getFeeData(); fee = fd.maxFeePerGas || fd.gasPrice; }
       catch(e){ fee = await p.getGasPrice(); }
@@ -1774,7 +1778,7 @@ async function sweep(i, opts = {}){
       let send = bal.sub(cost);
 
       if(send.gt(0)){
-        setStatus(i, `envoi ${ethers.utils.formatEther(send)} ETH…`);
+        setStatus(i, `sending ${ethers.utils.formatEther(send)} ETH (RH)…`);
         let tx;
         try{
           tx = await signer.sendTransaction({to, value:send, gasLimit: gasUnits.mul(2)});
@@ -1783,16 +1787,16 @@ async function sweep(i, opts = {}){
           const msg = String(err.reason||err.message||err).toLowerCase();
           if(msg.includes("insufficient") || msg.includes("funds") || msg.includes("balance")){
             send = bal.sub(cost.mul(2));
-            if(send.lte(0)) throw new Error("ETH balance too low to cover Orbit gas");
-            setStatus(i, `retry · sending ${ethers.utils.formatEther(send)} ETH…`);
+            if(send.lte(0)) throw new Error("ETH (RH) balance too low to cover Orbit gas");
+            setStatus(i, `retry · sending ${ethers.utils.formatEther(send)} ETH (RH)…`);
             tx = await signer.sendTransaction({to, value:send, gasLimit: gasUnits.mul(2)});
           } else throw err;
         }
         const url = NETS[net].scan.replace("/address/","/tx/") + tx.hash;
-        setStatus(i, `ETH en cours · <a href="${url}" target="_blank" rel="noopener">↗</a>`);
+        setStatus(i, `ETH (RH) on its way · <a href="${url}" target="_blank" rel="noopener">↗</a>`);
         await tx.wait();
       } else {
-        setStatus(i, `ETH balance (${ethers.utils.formatEther(bal)}) too low to cover Orbit gas (~${ethers.utils.formatEther(cost)}) — token seul transféré`);
+        setStatus(i, `ETH (RH) balance (${ethers.utils.formatEther(bal)}) too low to cover Orbit gas (~${ethers.utils.formatEther(cost)}) — token transferred on its own`);
       }
     }
     setStatus(i, `consolidated to ${destLabel}`);
@@ -1856,7 +1860,7 @@ async function runPlan(i, side, opts){
   const per = total.div(slices);
   if(per.lte(0)){ toast("Slices too small — reduce their count"); return false; }
 
-  const unit = side === "buy" ? "ETH" : token.symbol;
+  const unit = side === "buy" ? "ETH (RH)" : token.symbol;
   const fmtT = side === "buy" ? ethers.utils.formatEther(total) : ethers.utils.formatUnits(total, token.decimals);
   const fmtP = side === "buy" ? ethers.utils.formatEther(per)   : ethers.utils.formatUnits(per, token.decimals);
   const dur  = Math.round((slices - 1) * interval / 60);
@@ -1976,17 +1980,17 @@ function turboSay(m){ const e=$("#ocStatus"); if(e) e.innerHTML = m; }
 function renderMaster(){
   const el = $("#ocMaster"); if(!el) return;
   const mi = masterIdx(); const gen = $("#ocGen");
-  if(mi < 0){ el.innerHTML = '<div class="note">No master wallet yet — generate one, then send it ETH.</div>'; if(gen) gen.style.display=""; return; }
+  if(mi < 0){ el.innerHTML = '<div class="note">No master wallet yet — generate one, then send it ETH (RH).</div>'; if(gen) gen.style.display=""; return; }
   if(gen) gen.style.display = "none";
   const w = wallets[mi];
   const bal = w.balRaw != null ? fmtUnits(w.balRaw,18,6) : "—";
   el.innerHTML =
       `<div class="mw">`
-    + `<div class="mw-h"><b>Master wallet</b><span>send Robinhood-Chain ETH to this address</span></div>`
+    + `<div class="mw-h"><b>Master wallet</b><span>send ETH (RH) to this address</span></div>`
     + `<div class="mw-addr"><code>${w.address}</code>`
     + `<button class="mini" data-copy="${w.address}">copy</button>`
     + `<a class="mini ghost" href="${NETS[net].scan}${w.address}" target="_blank" rel="noopener">explorer ↗</a></div>`
-    + `<div class="mw-bal"><i>balance</i><b>${bal} ${NETS[net].sym}</b>`
+    + `<div class="mw-bal"><i>balance</i><b>${bal} ${NETS[net].symAff || NETS[net].sym}</b>`
     + `<button class="mini" id="ocRefresh">refresh</button></div>`
     + `</div>`
     + `<div class="keyline" style="margin-top:8px"><span class="tag">private key</span>`
@@ -2010,7 +2014,7 @@ async function turboPlay(){
   await refreshOne(mi); renderMaster();
   const reserve = BigInt(ethers.utils.parseEther(($("#reserve").value || "0.0005").replace(",",".")).toString());
   const bal = BigInt(wallets[mi].balRaw || "0x0");
-  if(bal <= reserve * 3n){ turboSay("Send some ETH to the master wallet first."); return; }
+  if(bal <= reserve * 3n){ turboSay("Send some ETH (RH) to the master wallet first."); return; }
   const N = Math.max(2, Math.min(100, parseInt($("#ocN").value) || 100));
   if(NETS[net].live && !confirm(
       `${NETS[net].name} — LIVE network.\n\n⚡ One-Click Volume · ${N} hidden wallets\n`
@@ -2018,7 +2022,7 @@ async function turboPlay(){
                     volume:"MAXIMUM VOLUME — each wallet buys and sells back on the spot",
                     tx:"MAXIMUM TRANSACTIONS — tiny trades, as many as the gas allows",
                     holders:"MAXIMUM HOLDERS — one bag bought, then handed out to fresh addresses"})[alluresRing().mode]}\n`
-    + `They buy the selected token and cycle the funds around to make real volume. Every hop pays real gas + slippage, so the ETH steadily drains. Press STOP anytime — everything comes back to your master wallet.\n\n`
+    + `They buy the selected token and cycle the funds around to make real volume. Every hop pays real gas + slippage, so the ETH (RH) steadily drains. Press STOP anytime — everything comes back to your master wallet.\n\n`
     + `Manufacturing trading volume can be market manipulation and may break laws or platform rules — only run where authorised.\n\nStart?`)) return;
 
   // Which token to pump? $SWOGE by default, or whatever contract the streamer pasted.
@@ -2326,7 +2330,7 @@ async function runTurboRing(){
          plus cher des trois — approuver et transferer un jeton coute plus que
          d'envoyer de l'ETH. */
       const b = BigInt(w.balRaw || "0x0");
-      if(b <= gasFloor){ turboSay(`out of ETH after ${turbo.hops} round trip(s) — sweeping back…`); break; }
+      if(b <= gasFloor){ turboSay(`out of ETH (RH) after ${turbo.hops} round trip(s) — sweeping back…`); break; }
       turboSay(`${A.mode === "tx" ? "tx" : "round trip"} ${turbo.hops+1} · buying…`);
       /* En VOLUME : pas de montant, `trade` prend deja `w.pct` (98 % pour un
          wallet cache) et retranche lui-meme la reserve de gas — le recalculer
@@ -2351,14 +2355,14 @@ async function runTurboRing(){
       const side = step % 2 === 0 ? "buy" : "sell";
       if(side === "buy"){
         const b = BigInt(w.balRaw || "0x0");
-        if(b <= gasFloor){ turboSay(`out of ETH after ${turbo.hops} hop(s) — sweeping back…`); break; }
+        if(b <= gasFloor){ turboSay(`out of ETH (RH) after ${turbo.hops} hop(s) — sweeping back…`); break; }
         turboSay(`hop ${turbo.hops+1} · a wallet buys $SWOGE ×${A.tranches}…`);
         const ok = await runPlan(idx, "buy", {silent:true, slices:A.tranches, pct:98, cancelFn:()=>turbo.cancel});
         if(turbo.cancel) break; if(!ok){ turboSay("buy failed — sweeping back…"); break; }
       } else {
         const amt = ethers.BigNumber.from(w.tokRaw || "0x0");
         if(amt.gt(0)){
-          turboSay(`hop ${turbo.hops+1} · selling $SWOGE back to ETH…`);
+          turboSay(`hop ${turbo.hops+1} · selling $SWOGE back to ETH (RH)…`);
           const sold = await trade(idx, "sell", {amount: amt, noConfirm:true});
           if(turbo.cancel) break; if(!sold){ turboSay("sell failed — sweeping back…"); break; }
         }
@@ -2449,7 +2453,7 @@ async function turboSendExternal(){
     const w = ethers.Wallet.createRandom();
     wallets.push({address:w.address, pk:w.privateKey, mnemonic:w.mnemonic?.phrase, watch:false, hidden:false, master:true, revealed:false, pct:98, balRaw:null, nonce:null, tokRaw:null, busy:false, status:""});
     autoSave(); render(); renderMaster(); refreshOne(wallets.length-1).then(renderMaster);
-    toast("Master wallet created — send it ETH");
+    toast("Master wallet created — send it ETH (RH)");
   };
   if(play) play.onclick = turboPlay;
   if(stop) stop.onclick = turboStop;
@@ -2491,10 +2495,10 @@ async function turboSendExternal(){
     out.innerHTML =
         `<table class="ocsim-t"><tr><th>Goal</th><th>Ceiling</th><th>Transactions</th><th>Runs for</th></tr>`
       + `<tr><td><b>Volume</b><span class="q">whole pot each round trip</span></td>`
-      + `<td><b>${n(r.volume.eth,2)} ETH</b><span class="q">${n(r.volume.eth/Math.max(pot,1e-9),0)}\u00d7 your budget</span></td>`
+      + `<td><b>${n(r.volume.eth,2)} ETH (RH)</b><span class="q">${n(r.volume.eth/Math.max(pot,1e-9),0)}\u00d7 your budget</span></td>`
       + `<td>${n(r.volume.swaps,0)} swaps</td><td>${duree(r.volume.secondes)}</td></tr>`
-      + `<tr><td><b>Transactions</b><span class="q">${n(r.tx.mise,6)} ETH per trade</span></td>`
-      + `<td><b>${n(r.tx.swaps,0)} trades</b><span class="q">${n(r.tx.eth,2)} ETH of volume only</span></td>`
+      + `<tr><td><b>Transactions</b><span class="q">${n(r.tx.mise,6)} ETH (RH) per trade</span></td>`
+      + `<td><b>${n(r.tx.swaps,0)} trades</b><span class="q">${n(r.tx.eth,2)} ETH (RH) of volume only</span></td>`
       + `<td>${n(r.tx.swaps,0)} swaps</td><td>${duree(r.tx.secondes)}</td></tr>`
       + `<tr><td><b>Holders</b><span class="q">a slice handed to each address</span></td>`
       + `<td><b>${n(r.detenteurs.n,0)} addresses</b><span class="q">no gas needed to receive</span></td>`
@@ -2504,7 +2508,7 @@ async function turboSendExternal(){
       + `${GAS_FRAIS ? "now" : "<b title=\"the node did not answer in time\">(last measured)</b>"} `
       + `<b>${(r.gas.prixWei/1e9).toFixed(3)} gwei</b>, `
       + `so a swap costs ${n(r.gas.swap*1e6,2)} \u00b5ETH and a token transfer ${n(r.gas.erc20*1e6,2)} \u00b5ETH.<br>`
-      + `The three ceilings are <b>alternatives, not a total</b> \u2014 the same ETH buys one of them, not all three. `
+      + `The three ceilings are <b>alternatives, not a total</b> \u2014 the same ETH (RH) buys one of them, not all three. `
       + `Times are an order of magnitude at roughly half a second per transaction; they do not change the ceilings, `
       + `which are set by your budget and the pool, never by how fast you go.</div>`;
   };

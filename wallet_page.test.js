@@ -28,7 +28,11 @@ let n = 0, rates = 0;
 const ok = (c, m) => { n++; if (c) console.log('  ok   ' + m); else { rates++; console.log('  RATE ' + m); } };
 
 const T = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
-            '.webp':'image/webp', '.png':'image/png' };
+            '.webp':'image/webp', '.png':'image/png', '.jpg':'image/jpeg',
+            /* Sans le bon type, le navigateur refuse de jouer le film et
+               l'essai lirait « l'animation ne passe pas » d'un serveur mal
+               regle. */
+            '.mp4':'video/mp4', '.webm':'video/webm' };
 
 (async () => {
   const srv = http.createServer((q, r) => {
@@ -2077,6 +2081,120 @@ const T = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
     await p2.close();
 
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
+    await page.close();
+  }
+
+  /* 13. L ANIMATION D OUVERTURE, ET LE FOND D ECRAN
+   *
+   * ---- CE QU ON MESURE, ET POURQUOI ----
+   *
+   * Une animation devant un portefeuille est une taxe : on ouvre cette page
+   * pour voir un solde, souvent en dix secondes entre deux choses, et on la
+   * paierait a CHAQUE visite. Ce qui se verifie ici n est donc pas qu elle
+   * est jolie — c est qu elle ne coute rien a qui n en veut pas :
+   *
+   *   - le portefeuille est PEINT derriere, pendant qu elle passe ;
+   *   - elle ne repasse pas deux fois dans la meme session ;
+   *   - un appui la passe ;
+   *   - et qui demande moins de mouvement ne la voit pas — ni ne TELECHARGE
+   *     le film. Quatre cent vingt-sept kilo-octets pour un decor qu on ne
+   *     verra pas, c est de l argent que le joueur paie sans le savoir.
+   */
+  console.log('\n-- l animation d ouverture --');
+  {
+    const boum = [];
+    const page = await nav.newPage({ viewport: { width: 390, height: 844 } });
+    page.on('pageerror', (e) => boum.push(String(e).slice(0, 160)));
+    const films = [];
+    page.on('request', (r) => { if (/wallet_intro\.(mp4|webm)/.test(r.url())) films.push(r.url()); });
+    await page.goto('http://127.0.0.1:' + port + '/swoge_wallet.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(900);
+
+    const debut = await page.evaluate(() => {
+      const i = document.getElementById('wlIntro');
+      const t = document.getElementById('tel').getBoundingClientRect();
+      return { vu: !i.hidden,
+               couvre: (() => { const r = i.getBoundingClientRect();
+                 return Math.round(r.width) >= window.innerWidth && Math.round(r.height) >= window.innerHeight; })(),
+               passe: !!document.getElementById('wlIntroPasse'),
+               /* Le portefeuille existe DEJA derriere : c est toute la regle. */
+               derriere: Math.round(t.height) > 300,
+               ecran: (document.querySelector('.wl-ecran.on') || {}).id };
+    });
+    console.log('   ' + JSON.stringify(debut));
+    ok(debut.vu, 'a la premiere ouverture, l animation est la');
+    ok(debut.couvre, 'et elle prend tout l ecran du telephone');
+    ok(debut.passe, 'avec un bouton qui dit qu on peut la passer');
+    ok(debut.derriere && debut.ecran === 'ecAccueil',
+       'le portefeuille est deja peint DERRIERE — elle ne retarde rien');
+
+    /* ---- UN APPUI LA PASSE ---- */
+    await page.evaluate(() => document.getElementById('wlIntro').click());
+    await page.waitForTimeout(700);
+    ok(await page.evaluate(() => document.getElementById('wlIntro').hidden),
+       'un appui la passe, sans attendre la fin du film');
+
+    /* ---- ET ELLE NE REVIENT PAS DANS LA MEME SESSION ----
+     * Un film qu on a deja vu et qu on ne peut pas eviter devient une porte
+     * fermee. Revenir de l ecran d envoi ne doit pas le rejouer. */
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(900);
+    ok(await page.evaluate(() => document.getElementById('wlIntro').hidden),
+       'et elle ne repasse pas a la visite suivante de la meme session');
+    ok(films.length > 0, `le film a bien ete demande une fois (${films.length})`);
+    await page.close();
+  }
+
+  /* ---- QUI DEMANDE MOINS DE MOUVEMENT NE PAIE PAS LE FILM ----
+   * La source est posee EN SCRIPT, jamais dans la balise : sans quoi le
+   * fichier partirait meme quand on a decide de ne pas le montrer. */
+  {
+    const page = await nav.newPage({ viewport: { width: 390, height: 844 },
+                                     reducedMotion: 'reduce' });
+    const films = [];
+    page.on('request', (r) => { if (/wallet_intro\.(mp4|webm)/.test(r.url())) films.push(r.url()); });
+    await page.goto('http://127.0.0.1:' + port + '/swoge_wallet.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(1400);
+    const calme = await page.evaluate(() => ({
+      cache: document.getElementById('wlIntro').hidden,
+      ecran: (document.querySelector('.wl-ecran.on') || {}).id }));
+    ok(calme.cache && calme.ecran === 'ecAccueil',
+       'mouvement reduit : pas d animation, le portefeuille tout de suite');
+    ok(films.length === 0,
+       `et le film n est meme pas TELECHARGE (${films.length} requete) — 427 ko epargnes`);
+    await page.close();
+  }
+
+  /* ---- LE FOND D ECRAN ----
+   * Il passe DERRIERE les cartes. Pose par-dessus il etait magnifique et il
+   * voilait le texte : « TOTAL BALANCE » se lisait a travers une nappe bleue.
+   * Un decor qui rend un solde moins lisible n est pas un decor. */
+  console.log('\n-- le fond d ecran --');
+  {
+    const page = await nav.newPage({ viewport: { width: 390, height: 844 } });
+    await page.addInitScript(() => { try { sessionStorage.setItem('swogeWalletIntroVue', '1'); } catch (e) {} });
+    await page.goto('http://127.0.0.1:' + port + '/swoge_wallet.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(1600);
+    const f = await page.evaluate(() => {
+      const c = document.querySelector('.wl-cadre');
+      if (!c) return { absent: true };
+      const s = getComputedStyle(c);
+      const r = c.getBoundingClientRect();
+      /* La question qui compte : au milieu d une carte, qui recoit le doigt ?
+         Si c est le decor, toute la page est morte — c est le defaut qui a
+         rendu un ecran de jeu entier inutilisable ailleurs dans ce depot. */
+      const carte = document.querySelector('#ecAccueil .wl-carte').getBoundingClientRect();
+      const sous = document.elementFromPoint(carte.x + carte.width / 2, carte.y + carte.height / 2);
+      return { charge: c.naturalWidth > 0, doigt: s.pointerEvents,
+               large: Math.round(r.width), haut: Math.round(r.height),
+               recu: sous ? (sous.classList.contains('wl-cadre') ? 'le decor' : 'la carte') : 'rien' };
+    });
+    console.log('   ' + JSON.stringify(f));
+    ok(!f.absent && f.charge, 'le fond d ecran est la, et il a CHARGE');
+    ok(f.doigt === 'none', `il ne prend jamais le doigt (${f.doigt})`);
+    ok(f.recu === 'la carte',
+       `et il passe derriere : au milieu d une carte, c est la carte qui recoit le doigt (${f.recu})`);
+    ok(f.large >= 380 && f.haut > 600, `il couvre le cadre (${f.large} x ${f.haut})`);
     await page.close();
   }
 

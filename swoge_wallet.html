@@ -703,9 +703,13 @@ body{
   border-top:1px solid var(--bord); padding:20px 18px calc(20px + env(safe-area-inset-bottom)) }
 .wl-feuille h2{ margin:0 0 6px; font:800 18px/1.2 'Archivo',sans-serif }
 
+/* Un FOND, et pas seulement un contour : depuis que le decor passe derriere
+   les ecrans, cette pastille etait la seule chose posee a meme le fond, et
+   une volute bleue lui traversait le nom du reseau. Une carte opaque la
+   decoupe, comme toutes les autres. */
 .wl-etiq{ display:inline-flex; align-items:center; gap:6px; padding:5px 10px;
   border-radius:999px; font:700 10px/1 'Archivo',sans-serif; letter-spacing:.6px;
-  border:1px solid var(--bord); color:var(--doux) }
+  border:1px solid var(--bord); background:var(--carte); color:var(--doux) }
 .wl-etiq.on{ color:var(--vert); border-color:rgba(52,211,153,.4) }
 
 .wl-mono{ font:400 12px/1.5 'Space Mono',monospace; word-break:break-all; color:var(--doux) }
@@ -721,6 +725,84 @@ body{
    ecran qui en compte trois, valent une rangee de jetons. */
 .wl-titre{ font:800 12px/1 'Archivo',sans-serif; letter-spacing:1.2px;
   color:var(--doux); margin:10px 0 7px }
+
+/* ---- L'ENERGIE SUR LES BORDS DE L'ECRAN ----
+ *
+ * Une image a fond transparent — du bleu et des pieces d'or qui lechent les
+ * quatre bords, le centre vide. Elle est posee PAR-DESSUS, jamais dessous :
+ * dessous, les cartes du portefeuille la recouvriraient entierement et il ne
+ * resterait qu'un liseret dans la marge de seize pixels.
+ *
+ * `mix-blend-mode:screen` : le noir de l'image devient invisible et seule la
+ * lumiere s'ajoute. C'est ce qui la fait tenir sur les DEUX tenues sans
+ * retouche — sur fond clair elle se pose a peine, sur fond sombre elle brille.
+ * Un simple `opacity` aurait grise tout ce qui passe dessous.
+ *
+ * `pointer-events:none`, et pas seulement pour la forme : sans lui, un decor
+ * pose sur toute la surface avalerait chaque appui de la page. C'est le defaut
+ * qui a rendu un ecran de jeu entier inutilisable ailleurs dans ce depot.
+ *
+ * Son `z-index` la met au-dessus des cartes et SOUS les listes qui s'ouvrent
+ * (30) : une liste de jetons doit se lire sans voile.
+ */
+.wl-cadre{
+  position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
+  pointer-events:none; z-index:0; opacity:.55;
+}
+/* ---- IL PASSE DERRIERE, ET C'EST TOUT LE POINT ----
+ * Pose PAR-DESSUS il etait magnifique et il voilait le texte : « TOTAL
+ * BALANCE » et « Robinhood Chain » se lisaient a travers une nappe bleue. Un
+ * decor qui rend un solde moins lisible n'est pas un decor, c'est un defaut.
+ * En dessous, les cartes — opaques dans les deux tenues — le decoupent
+ * proprement : il ne se voit que dans les marges et sous la liste, la ou il
+ * n'y a rien a lire. C'est exactement la place d'un fond d'ecran.
+ *
+ * ---- ET LE MELANGE CHANGE AVEC LA TENUE ----
+ * `screen` ne peut qu'ECLAIRCIR : sur le fond presque blanc de la tenue
+ * claire il ne fait rigoureusement rien — mesure faite, le cadre y etait
+ * invisible. Il est fait pour le fond sombre, ou il n'y a que de la lumiere a
+ * ajouter. */
+:root[data-theme="sombre"] .wl-cadre{ mix-blend-mode:screen; opacity:.7 }
+/* Qui demande moins d'effets en recoit moins : ce n'est pas une animation,
+   mais c'est du bruit visuel, et il se calme. */
+@media (prefers-reduced-motion:reduce){ .wl-cadre{ opacity:.28 } }
+
+/* ==================== L'ANIMATION D'OUVERTURE ====================
+ *
+ * ---- CE QU'ELLE NE DOIT JAMAIS FAIRE ----
+ *
+ * Retarder le portefeuille. On ouvre cette page pour voir un solde, souvent en
+ * dix secondes entre deux choses ; une animation qui se met en travers est une
+ * taxe, et on la paie a CHAQUE visite.
+ *
+ * Elle est donc construite a l'envers de l'habitude : la page se charge et lit
+ * la chaine normalement, DERRIERE ; le film est pose par-dessus et s'efface
+ * tout seul. S'il n'est pas pret en une seconde, il ne passe pas du tout et le
+ * telechargement est coupe net — sur un reseau lent, quatre cent quatre-vingts
+ * kilo-octets pour un decor, c'est de l'argent que le joueur paie sans le
+ * savoir.
+ *
+ * Une fois par session, jamais deux. Et le fond est le meme blanc que celui du
+ * film, pour qu'on ne voie pas ou finit l'image et ou commence l'ecran.
+ */
+#wlIntro{
+  position:fixed; inset:0; z-index:2147483200; background:#FDFDFD;
+  display:flex; align-items:center; justify-content:center;
+  transition:opacity .45s ease;
+}
+#wlIntro[hidden]{ display:none }
+#wlIntro.part{ opacity:0 }
+#wlIntro video{ width:100%; height:100%; object-fit:contain; display:block }
+/* Le bouton dit qu'on peut passer. Sans lui, la seule facon de le savoir est
+   d'essayer de toucher l'ecran — et d'attendre six secondes en attendant. */
+#wlIntro .passe{
+  position:absolute; right:max(14px, env(safe-area-inset-right));
+  top:calc(max(14px, env(safe-area-inset-top)) + 4px);
+  padding:9px 15px; min-height:40px; border-radius:999px; cursor:pointer;
+  border:1px solid rgba(11,27,54,.18); background:rgba(255,255,255,.86);
+  color:#0B1B36; font:800 12px/1 'Archivo',sans-serif; letter-spacing:.5px;
+}
+#wlIntro .passe:hover{ border-color:#1B5FE0; color:#1B5FE0 }
 
 /* ==================== LES DEUX COLONNES, SUR GRAND ECRAN ====================
  *
@@ -853,6 +935,17 @@ body{
   <a class="wl-retour" href="games.html">&larr; Back to the arcade</a>
 </header>
 
+<!-- ================== L'ANIMATION D'OUVERTURE ==================
+     Elle est POSEE PAR-DESSUS, et la page se charge derriere : voir la feuille
+     de style. `hidden` au depart — c'est le script qui la leve, et seulement
+     s'il peut la tenir. Une page sans script n'a alors pas d'ecran noir a
+     traverser pour arriver a son solde. -->
+<div id="wlIntro" hidden>
+  <video id="wlIntroFilm" muted playsinline preload="auto" disablepictureinpicture
+         poster="img/wallet/wallet_intro_poster.webp" aria-hidden="true"></video>
+  <button type="button" class="passe" id="wlIntroPasse">SKIP</button>
+</div>
+
 <div class="wl-page">
 
 <!-- ================== LA COLONNE DE GAUCHE ==================
@@ -880,6 +973,13 @@ body{
 </aside>
 
 <div class="wl-tel" id="tel">
+
+  <!-- ---- LE CADRE LUMINEUX ----
+       Voir la feuille de style. Il ne prend jamais le doigt, et il ne porte
+       aucune information : c'est un decor, et il doit pouvoir disparaitre sans
+       que rien ne manque. -->
+  <img class="wl-cadre" src="img/wallet/wallet_cadre.webp" alt="" aria-hidden="true"
+       decoding="async">
 
   <div class="wl-etat">
     <span id="hHeure">—</span>
@@ -3918,6 +4018,82 @@ function tenueRegle(t){
   poseTenue(t);
 }
 poseTenue(tenueChoisie());
+
+/* ==================== L'ANIMATION D'OUVERTURE ====================
+ *
+ * ---- LA REGLE, EN UNE PHRASE ----
+ *
+ * Elle ne retarde jamais le portefeuille. Tout ce qui suit n'est qu'une facon
+ * de tenir cette phrase.
+ *
+ *  - Elle ne passe QU'UNE FOIS par session. Revenir de l'ecran d'envoi ne la
+ *    rejoue pas ; un film qu'on a deja vu et qu'on ne peut pas eviter devient
+ *    une porte fermee.
+ *  - Elle ne passe pas du tout si le film n'est pas PRET en une seconde. Et
+ *    dans ce cas on COUPE le telechargement : quatre cent quatre-vingts
+ *    kilo-octets pour un decor qu'on ne verra pas, c'est de l'argent que le
+ *    joueur paie sans le savoir. `removeAttribute('src')` puis `load()` — vider
+ *    `src` avec une chaine vide fait, sur certains navigateurs, recharger LA
+ *    PAGE comme source.
+ *  - Un appui n'importe ou la passe, et le bouton le dit.
+ *  - Elle s'arrete d'elle-meme au bout du film, et de toute facon apres huit
+ *    secondes : un film qui ne finit jamais — decodeur bloque, onglet mis en
+ *    veille — ne doit pas emmurer la page.
+ *  - Et qui demande moins de mouvement ne la voit pas.
+ *
+ * La source est posee EN SCRIPT, jamais dans la balise : sans script — ou avec
+ * un `prefers-reduced-motion` — le fichier n'est pas meme demande.
+ */
+(function(){
+  var v = $('wlIntroFilm'), boite = $('wlIntro');
+  if(!v || !boite) return;
+  var CLE = 'swogeWalletIntroVue';
+  var fini = false, minuteur = null, garde = null;
+
+  function ferme(){
+    if(fini) return; fini = true;
+    clearTimeout(minuteur); clearTimeout(garde);
+    boite.classList.add('part');
+    try{ v.pause(); }catch(e){}
+    /* On coupe le telechargement pour de bon. `src=''` ferait, sur certains
+       navigateurs, reprendre l'URL de LA PAGE comme source video. */
+    try{ v.removeAttribute('src'); v.load(); }catch(e){}
+    setTimeout(function(){ boite.hidden = true; }, 480);
+  }
+
+  var deja = false;
+  try{ deja = sessionStorage.getItem(CLE) === '1'; }catch(e){ deja = true; }
+  var calme = false;
+  try{ calme = window.matchMedia('(prefers-reduced-motion: reduce)').matches; }catch(e){}
+  if(deja || calme) return;
+  try{ sessionStorage.setItem(CLE, '1'); }catch(e){}
+
+  boite.hidden = false;
+  v.addEventListener('ended', ferme);
+  v.addEventListener('error', ferme);
+  boite.addEventListener('click', ferme);
+  /* Huit secondes : le film en fait six. Ce n'est pas une duree choisie, c'est
+     un garde-fou contre un film qui ne finirait jamais. */
+  minuteur = setTimeout(ferme, 8000);
+  /* Une seconde pour etre pret, sinon on renonce. */
+  garde = setTimeout(function(){ if(v.readyState < 3) ferme(); }, 1000);
+  /* ---- LE WEBM D'ABORD, QUAND LE NAVIGATEUR SAIT LE LIRE ----
+   * Quatre cent vingt-sept kilo-octets contre quatre cent quatre-vingt-un, et
+   * surtout : c'est le seul des deux qu'un Chromium sans decodeur proprietaire
+   * sache jouer — donc le seul qu'un banc d'essai puisse verifier. Le MP4
+   * reste pour Safari et l'iPhone, qui ne lisent pas le VP9 partout.
+   * On DEMANDE au navigateur au lieu de deviner d'apres son nom. */
+  var peutWebm = false;
+  try{ peutWebm = !!(v.canPlayType && v.canPlayType('video/webm; codecs="vp9"')); }catch(e){}
+  v.src = peutWebm ? 'media/wallet_intro.webm' : 'media/wallet_intro.mp4';
+  var joue = v.play();
+  if(joue && joue['catch']) joue['catch'](ferme);
+})();
+if($('wlIntroPasse')) $('wlIntroPasse').addEventListener('click', function(ev){
+  ev.stopPropagation();
+  var b = $('wlIntro'); if(b) b.click();
+});
+
 document.addEventListener('change', function(ev){
   if(ev.target && ev.target.id === 'cpSombre')
     tenueRegle(ev.target.checked ? 'sombre' : 'clair');

@@ -568,6 +568,76 @@ const T = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
     await page.close();
   }
 
+  /* 7 bis. LA CLE NE S OFFRE QU A QUI ELLE APPARTIENT
+   *
+   * Un portefeuille d extension garde sa propre cle : cette page ne la
+   * detient pas et ne peut pas la montrer. Proposer le bouton dans ce
+   * cas-la promettrait quelque chose d impossible — et sur un ecran qui
+   * parle de cles privees, une promesse creuse est le pire endroit ou en
+   * faire une.
+   */
+  console.log('\n-- la cle privee, et a qui on la propose --');
+  {
+    const MOI = '0x00000000000000000000000000000000000a11ce';
+    const enMot = (v) => '0x' + BigInt(v).toString(16).padStart(64, '0');
+    for (const cas of [{ nom: 'extension', auth: 'wallet', attendu: false },
+                       { nom: 'pas connecte', auth: null, attendu: false }]) {
+      const page = await nav.newPage({ viewport: { width: 390, height: 844 } });
+      await page.addInitScript(([moi, a]) => {
+        if (a) { try { localStorage.setItem('swogeAuth', a); } catch (e) {} }
+        window.ethereum = { isMetaMask: true, on: () => {}, removeListener: () => {},
+          request: async (q) => {
+            if (q.method === 'eth_accounts' || q.method === 'eth_requestAccounts') return [moi];
+            if (q.method === 'eth_chainId') return '0x1237';
+            if (q.method === 'net_version') return '4663';
+            return null; } };
+      }, [MOI, cas.auth]);
+      await page.route('**/ethers*.umd.min.js', (r) => r.fulfill({
+        contentType: 'text/javascript', body: fs.readFileSync(ETHERS, 'utf8') }));
+      await page.route('**/api.dexscreener.com/**', (r) => r.abort());
+      await page.route('**/avatar/**', (r) => r.fulfill({ status: 404, body: '' }));
+      await page.route('**/nom/**', (r) => r.abort());
+      await page.route('**/rpc.mainnet.chain.robinhood.com/**', async (r) => {
+        const q = JSON.parse(r.request().postData() || '{}');
+        const seul = !Array.isArray(q); const arr = seul ? [q] : q;
+        const un = (m) => {
+          if (m.method === 'eth_getBalance') return enMot(5000000000000000n);
+          if (m.method === 'eth_chainId') return '0x1237';
+          if (m.method === 'net_version') return '4663';
+          if (m.method === 'eth_blockNumber') return '0x2f7ce78';
+          if (m.method === 'eth_getLogs') return [];
+          if (m.method === 'eth_gasPrice') return enMot(134102000n);
+          if (m.method === 'eth_call') return enMot(0n);
+          return null; };
+        const out = arr.map((m) => ({ jsonrpc: '2.0', id: m.id, result: un(m) }));
+        await r.fulfill({ contentType: 'application/json',
+          body: JSON.stringify(seul ? out[0] : out) });
+      });
+      await page.goto('http://127.0.0.1:' + port + '/swoge_wallet.html',
+                      { waitUntil: 'domcontentloaded' });
+      await page.waitForTimeout(2400);
+      await page.evaluate(() => {
+        const b = document.querySelector('[data-va="ecCompte"]'); if (b) b.click(); });
+      await page.waitForTimeout(250);
+      const m = await page.evaluate(() => ({
+        methode: document.getElementById('cpMethode').textContent,
+        offerte: !document.getElementById('cpBlocCle').hidden,
+      }));
+      ok(m.offerte === cas.attendu,
+         cas.nom + ' (« ' + m.methode + ' ») : la cle '
+         + (cas.attendu ? 'est proposee' : 'n est PAS proposee — cette page ne la detient pas'));
+      await page.close();
+    }
+    /* Et le chemin y mene vraiment : la page qui montre la cle existe. */
+    ok(fs.existsSync(path.join(SITE, 'wallet-export.html')),
+       'la page qui montre la cle existe bien sur le disque — un bouton qui ouvre'
+       + ' une page absente serait pire que pas de bouton');
+    const src = fs.readFileSync(path.join(SITE, 'swoge_wallet.html'), 'utf8');
+    ok(/window\.open\('wallet-export\.html'/.test(src),
+       'et on l OUVRE plutot que de l incorporer : elle charge son propre paquet Privy,'
+       + ' et deux paquets sur la meme page se marchent dessus');
+  }
+
   /* 8. SUR UN TELEPHONE : PAS DE ZOOM, ET LES ONGLETS SONT LA
    *
    * Deux defauts qui ne se voient pas sur un ecran d ordinateur :

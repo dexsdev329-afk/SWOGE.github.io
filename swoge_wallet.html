@@ -630,6 +630,20 @@ body{
         $SWOGE and $SWOGEBET live. No other network is offered — showing one you cannot use
         would only invite a loss.</p>
 
+      <!-- ---- LA CLE ----
+           Elle n'est proposee QU'AUX portefeuilles crees par courriel : un
+           portefeuille d'extension garde sa propre cle, que cette page ne
+           detient pas et ne peut donc pas montrer. Offrir le bouton dans ce
+           cas-la promettrait quelque chose d'impossible. -->
+      <div class="wl-titre" id="cpTitreCle" hidden>YOUR KEY</div>
+      <div id="cpBlocCle" hidden>
+        <button class="wl-b vide" id="cpCle" type="button">Show my private key</button>
+        <p class="wl-note">Your key gives full control of this address, for ever. Anyone who sees it
+          owns it. SWOGE never sees it and can never recover it for you — Privy shows it to you
+          directly, in its own window. Write it down somewhere only you can reach, and never paste
+          it into a message, a form, or a support chat.</p>
+      </div>
+
       <div class="wl-titre">SESSION</div>
       <button class="wl-b vide" id="cpExplorer" type="button">View on explorer</button>
       <div style="height:10px"></div>
@@ -1129,6 +1143,13 @@ $('cpSortir').addEventListener('click', function(){
   signer=null; moi=null; methode=null; soldes={};
   majCompte(); peintAccueil(); toast('Disconnected');
 });
+/* La page qui montre la cle existe deja et vit a part — elle charge son
+   propre paquet Privy, et deux paquets sur la meme page se marchent dessus.
+   On l'OUVRE donc, on ne l'incorpore pas. */
+$('cpCle').addEventListener('click', function(){
+  window.open('wallet-export.html', '_blank', 'noopener');
+});
+
 $('cpExplorer').addEventListener('click', function(){
   if(!moi) return toast('Not connected');
   window.open(CHAINE.scan+'/address/'+moi, '_blank', 'noopener');
@@ -1318,6 +1339,11 @@ function majCompte(){
   $('cpRpc').textContent = CHAINE.rpc.replace(/^https:\/\//,'');
   /* Le nom affiche de la piece native est ecrit UNE fois, dans `ETH_AFF`.
      Le recopier dans le HTML le figerait le jour ou il change. */
+  /* Le bouton de la cle n'apparait que pour un portefeuille cree par
+     courriel : c'est le seul dont Privy detienne la cle. */
+  var parCourriel = methode === 'email';
+  $('cpTitreCle').hidden = !parCourriel;
+  $('cpBlocCle').hidden  = !parCourriel;
   $('cpDevise').textContent  = ETH_AFF;
   $('cpDevise2').textContent = ETH_AFF;
   $('hReseau').classList.toggle('on', !!moi);

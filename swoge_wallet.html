@@ -2778,6 +2778,14 @@ function routeDe(de, vers){
   if(de==='swoge'    && vers==='swogebet') return ['v3'];
   if(de==='swogebet' && vers==='swoge')    return ['v3'];
   if(de==='swoge'    && vers==='eth')      return ['v2'];
+  /* ---- LE RETOUR MANQUAIT ----
+   * On savait acheter du $SWOGEBET avec de l'ETH — deux sauts, une
+   * transaction — et on refusait de le revendre. La page disait meme
+   * pourquoi : « pas de piscine contre l'ETH ». C'est vrai d'une paire
+   * DIRECTE, et ca ne l'a jamais empeche dans l'autre sens : le detour par le
+   * $SWOGE marche aussi bien a l'endroit qu'a l'envers. Un portefeuille qui
+   * laisse entrer et pas sortir est un piege, meme involontaire. */
+  if(de==='swogebet' && vers==='eth')      return ['v3','v2'];
   return null;
 }
 
@@ -2787,13 +2795,25 @@ async function devis(){
   var r=routeDe(de,vers);
   $('swRoute').textContent = !r ? 'no route'
     : (r.length===1 ? (r[0]==='v2'?'Uniswap v2':'Uniswap v3 · 1%')
-                    : 'v2 then v3 — one transaction');
+                    : (r[0]==='v2' ? 'v2 then v3 — one transaction'
+                                   : 'v3 then v2 — one transaction'));
   if(!r){
     $('swRecu').textContent='—';
     $('swImpact').textContent='—';
     $('swMini').textContent='—';
     $('swNote').className='wl-note grave';
-    $('swNote').textContent='$SWOGEBET has no pool against '+ETH_AFF+' — it only trades against $SWOGE. Pick another pair.';
+    /* ---- CE MESSAGE A ETE FAUX PENDANT TOUT CE TEMPS ----
+     * Il disait « $SWOGEBET n'a pas de piscine contre l'ETH — il ne
+     * s'echange que contre du $SWOGE », et le joueur en concluait que la
+     * chaine l'interdisait. La chaine n'interdisait rien : le portefeuille
+     * ne connaissait pas le chemin, qu'il empruntait pourtant deja dans
+     * l'autre sens. Un message qui explique une limite inexistante est pire
+     * qu'un refus sec — il fait renoncer.
+     * Les six paires se font desormais. Ce qui reste ici est le meme jeton
+     * des deux cotes. */
+    $('swNote').textContent = (de === vers)
+      ? 'Pick two different tokens.'
+      : 'No route between those two right now.';
     return;
   }
   $('swNote').className='wl-note'; $('swNote').textContent='';
@@ -2870,6 +2890,17 @@ async function simuleRoute(de, vers, entree){
           * parseFloat(ethers.utils.formatEther(entree));
   }
 
+  /* Le second saut du $SWOGEBET vers l'ETH : le $SWOGE qu'on vient d'obtenir
+     repasse en v2. Le taux marginal se multiplie a celui du premier saut —
+     c'est ce qui rend l'impact du chemin ENTIER, et non d'une moitie. */
+  if(de==='swogebet' && vers==='eth'){
+    var avant = parseFloat(ethers.utils.formatEther(sortie));
+    var pt3 = (await v2.getAmountsOut(pouce, [SWOGE, WETH]))[1];
+    sortie = (await v2.getAmountsOut(sortie, [SWOGE, WETH]))[1];
+    ideal = (ideal===null ? avant : ideal)
+          * (parseFloat(ethers.utils.formatEther(pt3)) / 0.0001);
+  }
+
   var recu = parseFloat(ethers.utils.formatEther(sortie));
   var impact = (ideal && ideal>0) ? Math.max(0, 100*(1 - recu/ideal)) : null;
   return { sortie:sortie, impact:impact };
@@ -2911,6 +2942,27 @@ function morceauxDe(de, vers, entree, mini){
 
   if(de==='swoge' && vers==='eth')
     return [ i.encodeFunctionData('swapExactTokensForTokens', [entree, 0, [SWOGE, WETH], ADDRESS_THIS]),
+             i.encodeFunctionData('unwrapWETH9', [mini, moi]) ];
+
+  /* ---- TROIS MORCEAUX, UNE TRANSACTION ----
+   *
+   * v3 pour aller au $SWOGE, v2 pour aller au WETH, puis on deballe. Le
+   * $SWOGE et le WETH intermediaires ne touchent jamais le portefeuille :
+   * `ADDRESS_THIS` les laisse au routeur d'un morceau a l'autre.
+   *
+   * ---- `amountIn: 0` VEUT DIRE « TOUT CE QUE TU AS » ----
+   * Le montant de $SWOGE qui sortira du premier saut ne se connait pas a
+   * l'avance : le devis n'est pas le prix du bloc ou l'on signe. Ecrire le
+   * chiffre du devis laisserait la difference au routeur — perdue, sans un
+   * mot. `0` est la constante `CONTRACT_BALANCE` du SwapRouter02 : il prend
+   * son solde entier, quel qu'il soit.
+   *
+   * Le minimum ne porte que sur le DERNIER morceau, comme partout ailleurs
+   * ici : c'est le seul montant que le joueur recoit vraiment. */
+  if(de==='swogebet' && vers==='eth')
+    return [ i.encodeFunctionData('exactInputSingle', [{ tokenIn:SWOGEBET, tokenOut:SWOGE, fee:FRAIS_V3,
+               recipient:ADDRESS_THIS, amountIn:entree, amountOutMinimum:0, sqrtPriceLimitX96:0 }]),
+             i.encodeFunctionData('swapExactTokensForTokens', [0, 0, [SWOGE, WETH], ADDRESS_THIS]),
              i.encodeFunctionData('unwrapWETH9', [mini, moi]) ];
 
   return null;

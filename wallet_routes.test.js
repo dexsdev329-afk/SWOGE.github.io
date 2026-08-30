@@ -59,8 +59,16 @@ for (const r of prouve.routes) {
   let pareil = rendu.length === r.morceaux.length;
   for (let i = 0; i < r.morceaux.length && pareil; i++) pareil = rendu[i] === r.morceaux[i];
   ok(pareil, nom + ' : octet pour octet la transaction qui a rendu '
-     + (+ethers.utils.formatEther(r.recu)).toLocaleString('fr-FR', { maximumFractionDigits: 4 })
-     + ' pour ' + r.gaz + ' de gaz');
+     + (+ethers.utils.formatEther(r.recu)).toLocaleString('fr-FR', { maximumFractionDigits: 6 })
+     + ' pour ' + r.gaz + ' de gaz'
+     + (r.methode ? ' (' + r.methode + ')' : ''));
+  /* Une route prouvee par simulation porte en plus la preuve NEGATIVE : un
+     minimum place au-dessus du devis doit faire echouer l echange, sinon le
+     champ ne protege de rien. */
+  if (r.refuseAuDessus !== undefined)
+    ok(r.refuseAuDessus === true,
+       nom + ' : et un minimum place 1 % au-dessus du devis la fait ECHOUER —'
+       + ' preuve que le champ est lu');
 }
 
 /* ==================== 2. LE MINIMUM N EST JAMAIS ZERO ==================== */
@@ -81,7 +89,7 @@ ok(mini.gt(0) && mini.lt(mille),
 const marque = ethers.BigNumber.from('777777777777777777777');
 const enHex = marque.toHexString().slice(2).padStart(64, '0');
 for (const [de, vers] of [['eth', 'swoge'], ['eth', 'swogebet'], ['swoge', 'swogebet'],
-                          ['swogebet', 'swoge'], ['swoge', 'eth']]) {
+                          ['swogebet', 'swoge'], ['swoge', 'eth'], ['swogebet', 'eth']]) {
   B.pourQui('0x00000000000000000000000000000000000a11ce');
   const m = morceauxDe(de, vers, mille, marque);
   const dernier = m[m.length - 1];
@@ -93,13 +101,37 @@ for (const [de, vers] of [['eth', 'swoge'], ['eth', 'swogebet'], ['swoge', 'swog
   }
 }
 
-/* ==================== 3. AUCUNE ROUTE INVENTEE ==================== */
-console.log('\n-- les paires qui n existent pas --');
+/* ==================== 3. LES SIX PAIRES SE FONT ====================
+ *
+ * ---- CE QUE CET ESSAI AFFIRMAIT, ET QUI ETAIT FAUX ----
+ *
+ * Il exigeait ici que `$SWOGEBET → ETH` ne rende RIEN, et le justifiait
+ * ainsi : « verifie sur la chaine, ce jeton n a de piscine avec l ETH a
+ * aucun palier de frais, ni en v2 ni en v3 ». La mesure etait juste. La
+ * CONCLUSION ne l'etait pas : pas de paire directe ne veut pas dire pas de
+ * route. Le portefeuille empruntait deja le detour par le $SWOGE dans
+ * l'autre sens — ETH vers $SWOGEBET, deux sauts, une transaction — et
+ * refusait le retour en expliquant au joueur une limite qui n'existait pas.
+ *
+ * Un portefeuille qui laisse entrer et pas sortir est un piege, meme
+ * involontaire. Le proprietaire l'a vu en faisant l'echange dans un autre
+ * portefeuille, capture a l'appui.
+ *
+ * L'essai garde donc l'inverse : les six paires rendent une transaction, et
+ * seule la meme des deux cotes n'en rend pas. */
+console.log('\n-- les six paires --');
 B.pourQui('0x00000000000000000000000000000000000a11ce');
-ok(morceauxDe('swogebet', 'eth', mille, mini) === null,
-   '$SWOGEBET → ETH ne rend rien : verifie sur la chaine, ce jeton n a de piscine avec l ETH'
-   + ' a aucun palier de frais, ni en v2 ni en v3');
-ok(morceauxDe('eth', 'eth', mille, mini) === null, 'ETH → ETH ne rend rien non plus');
+const PAIRES = [['eth', 'swoge'], ['eth', 'swogebet'], ['swoge', 'eth'],
+                ['swoge', 'swogebet'], ['swogebet', 'swoge'], ['swogebet', 'eth']];
+let toutes = 0;
+for (const [de, vers] of PAIRES) if (morceauxDe(de, vers, mille, mini)) toutes++;
+ok(toutes === PAIRES.length,
+   'les six paires rendent une transaction (' + toutes + '/' + PAIRES.length + ') —'
+   + ' aucun jeton n entre sans pouvoir ressortir');
+ok((morceauxDe('swogebet', 'eth', mille, mini) || []).length === 3,
+   '$SWOGEBET → ETH passe par trois morceaux : v3 vers le $SWOGE, v2 vers le WETH, puis on deballe');
+for (const c of ['eth', 'swoge', 'swogebet'])
+  ok(morceauxDe(c, c, mille, mini) === null, c + ' → ' + c + ' ne rend rien');
 
 /* ==================== 4. LE BOUTON N EST PLUS INERTE ==================== */
 console.log('\n-- l echange est bien arme --');
@@ -122,9 +154,12 @@ ok(/simuleRoute\(de, vers, entree\), 12000, 'quote'\)/.test(src),
 
 /* ==================== 5. LE MAX GARDE DE QUOI PAYER ==================== */
 console.log('\n-- ce que « MAX » garde en arriere --');
-ok(B.GAZ_ECHANGE >= 290140,
+/* La plus longue n'est plus celle de deux sauts : `$SWOGEBET → ETH` en fait
+   trois et consomme 308 556 unites, mesure sur la chaine reelle. Le chiffre
+   ecrit ici etait 290 140 — celui de la route d'avant. */
+ok(B.GAZ_ECHANGE >= 308556,
    'la reserve de gaz de l echange (' + B.GAZ_ECHANGE + ') couvre la route la plus longue,'
-   + ' mesuree a 290 140 unites sur le fork');
+   + ' mesuree a 308 556 unites pour les trois morceaux de $SWOGEBET → ETH');
 ok(B.GAZ_ENVOI >= 21000,
    'celle de l envoi (' + B.GAZ_ENVOI + ') couvre les 21 000 d un virement d ETH');
 ok(/if\(!j\.natif\) return \{ montant:s \};/.test(src),

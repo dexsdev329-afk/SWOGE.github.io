@@ -283,7 +283,7 @@ body{
 /* ---- LES BLOCS ---- */
 .wl-carte{
   background:var(--carte); border:1px solid var(--bord); border-radius:var(--rayon);
-  padding:16px; margin-bottom:12px;
+  padding:16px; margin-bottom:8px;
 }
 .wl-total{ text-align:left }
 .wl-total small{ display:block; font:700 11px/1 'Archivo',sans-serif; color:var(--doux);
@@ -303,7 +303,7 @@ body{
  * Elle etait taillee sur son texte : cent pixels de haut, et la couronne du
  * chien passait dessous — `overflow:hidden` la coupait net. Une illustration
  * decapitee se lit comme une image cassee, pas comme un cadrage. */
-.wl-total{ position:relative; overflow:hidden; min-height:126px;
+.wl-total{ position:relative; overflow:hidden; min-height:114px;
   display:flex; flex-direction:column; justify-content:center }
 .wl-illu{ position:absolute; right:-2px; top:50%; transform:translateY(-50%);
   width:124px; height:auto; pointer-events:none; display:block }
@@ -322,19 +322,32 @@ body{
 }
 
 /* ---- LA CARTE DE L'ADRESSE ---- */
-.wl-adrcarte{ margin-top:10px }
+/* ---- ELLE A MAIGRI POUR QUE L'ECRAN TIENNE ----
+ * Mesure sur un telephone de 390 x 844, connecte, trois jetons et le coffre :
+ * l'accueil demandait 722 pixels pour 643 de haut. Il DEFILAIT, et un ecran
+ * d'accueil qui bouge donne l'impression que la page n'est pas finie.
+ * Cette carte etait la plus grosse depense evitable — cent vingt-deux pixels
+ * pour une ligne de texte. Le titre passe en petit, les marges se resserrent.
+ * Ce qui NE bouge pas : les deux boutons gardent quarante-quatre pixels. C'est
+ * la borne au-dessous de laquelle un pouce touche a cote, et un bouton
+ * « copier » rate sur une adresse est exactement le geste qu'on ne peut pas
+ * rater. */
+/* Elle FERME l'ecran : la marge du bas d'une carte qui n'a rien apres elle
+   est douze pixels de defilement pour rien. */
+.wl-adrcarte{ margin:8px 0 0; padding:10px 12px }
 .wl-adrcarte[hidden]{ display:none }
-.wl-adrcarte .ligne{ display:flex; align-items:center; gap:9px }
-.wl-adrcarte .champ{ flex:1 1 auto; min-width:0; display:flex; align-items:center;
+.wl-adrcarte .ligne{ display:flex; align-items:center; gap:8px }
+.wl-adrcarte .champ{ flex:1 1 auto; min-width:0; height:44px;
+  display:flex; align-items:center;
   justify-content:space-between; gap:10px; cursor:pointer;
-  padding:12px 13px; border-radius:12px; border:1px solid var(--bord);
+  padding:0 12px; border-radius:12px; border:1px solid var(--bord);
   background:var(--nuit); color:var(--texte);
   font:700 13px/1 'Space Mono',monospace }
 .wl-adrcarte .champ:hover{ border-color:var(--accent) }
 .wl-adrcarte .champ i{ font-style:normal; font-size:14px; color:var(--accent) }
-.wl-adrcarte .qr{ flex:0 0 auto; width:46px; height:46px; border-radius:12px;
+.wl-adrcarte .qr{ flex:0 0 auto; width:44px; height:44px; border-radius:12px;
   border:1px solid var(--bord); background:var(--nuit); color:var(--accent);
-  font-size:20px; cursor:pointer; display:grid; place-items:center }
+  font-size:19px; cursor:pointer; display:grid; place-items:center }
 .wl-adrcarte .qr:hover{ border-color:var(--accent) }
 
 /* ---- LES JETONS, DANS UNE SEULE CARTE ----
@@ -355,7 +368,7 @@ body{
 .wl-jeton{
   display:flex; align-items:center; gap:12px; width:100%; text-align:left;
   background:var(--carte); border:1px solid var(--bord); border-radius:var(--rayon);
-  padding:12px 14px; cursor:pointer; color:var(--texte); font:inherit;
+  padding:10px 14px; cursor:pointer; color:var(--texte); font:inherit;
 }
 .wl-jeton:hover{ border-color:var(--accent) }
 .wl-jeton img{ width:38px; height:38px; border-radius:50%; flex:0 0 auto; object-fit:contain }
@@ -382,7 +395,7 @@ body{
  * choses sans rapport. Dans une carte, separes par un filet, ils se lisent
  * comme ce qu'ils sont : les trois choses qu'on peut faire de son solde. */
 .wl-actions{ display:grid; grid-template-columns:repeat(3,1fr); gap:0;
-  padding:12px 4px; margin:10px 0 0 }
+  padding:10px 4px; margin:8px 0 0 }
 .wl-actions button{
   background:none; border:0; cursor:pointer; color:var(--accent); font:inherit;
   display:flex; flex-direction:column; align-items:center; gap:7px;
@@ -391,7 +404,7 @@ body{
 .wl-actions span.t{ font:700 12px/1 'Archivo',sans-serif; letter-spacing:.2px;
   color:var(--accent) }
 .wl-actions .bulle{
-  width:50px; height:50px; border-radius:50%;
+  width:46px; height:46px; border-radius:50%;
   background:var(--bulleFond); color:var(--bulleTx);
   display:flex; align-items:center; justify-content:center; font-size:19px;
   box-shadow:var(--bulleOmbre);
@@ -646,6 +659,17 @@ body{
 .wl-envol .tx small{ font:400 11px/1.3 'Archivo',sans-serif; color:var(--doux);
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
 .wl-envol .fl{ color:var(--doux); font-size:19px; flex:0 0 auto }
+/* ---- ET IL DISPARAIT VRAIMENT QUAND IL N'Y A RIEN EN VOL ----
+ *
+ * `peintEnCours` posait bien `hidden`, et `display:flex` le BATTAIT — la
+ * meme regle de priorite qui avait rendu un ecran « cache » bloquant, et que
+ * le commentaire des `.wl-ecran` decrit deja. Le resultat n'etait pas
+ * seulement cinquante-huit pixels perdus en haut de l'accueil : la barre
+ * restait la, avec son point qui pulse et son tiret, a annoncer une
+ * transaction en cours quand il n'y en avait AUCUNE. C'est la chose que cette
+ * page ne doit jamais faire — affirmer quelque chose de faux — et elle le
+ * faisait sur son ecran d'accueil, tout le temps. */
+.wl-envol[hidden]{ display:none }
 @keyframes wlPouls{ 0%,100%{ opacity:1 } 50%{ opacity:.25 } }
 @media (prefers-reduced-motion:reduce){ .wl-envol .p{ animation:none } }
 
@@ -693,8 +717,10 @@ body{
   word-break:break-all; display:flex; flex-wrap:wrap; gap:0 8px }
 .wl-adr b{ font-weight:700; color:var(--accent2) }
 .wl-sep{ height:1px; background:var(--bord); margin:14px 0 }
+/* Les marges se resserrent : seize pixels au-dessus de chaque titre, sur un
+   ecran qui en compte trois, valent une rangee de jetons. */
 .wl-titre{ font:800 12px/1 'Archivo',sans-serif; letter-spacing:1.2px;
-  color:var(--doux); margin:16px 0 9px }
+  color:var(--doux); margin:10px 0 7px }
 
 /* ==================== LES DEUX COLONNES, SUR GRAND ECRAN ====================
  *
@@ -944,7 +970,7 @@ body{
            Elle ne s'ecrit qu'ICI — deux adresses a l'ecran, et l'on finit par
            en copier une qu'on n'a pas regardee. -->
       <div class="wl-carte wl-adrcarte" id="acAdrCarte" hidden>
-        <div class="wl-titre" style="margin:0 0 8px">YOUR WALLET ADDRESS</div>
+        <div class="wl-titre" style="margin:0 0 6px;font-size:10px">YOUR WALLET ADDRESS</div>
         <div class="ligne">
           <button type="button" class="champ" id="acAdrCopie">
             <span id="acAdr">—</span>

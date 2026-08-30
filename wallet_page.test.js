@@ -349,6 +349,70 @@ const T = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
        `il tient a droite du solde sans lui prendre sa place (dessin ${page1.large},`
        + ` total ${page1.placeDuTotal})`);
 
+    /* ---- L'ACCUEIL TIENT SANS DEFILER ----
+     *
+     * « Tu peux rétrécir un peu le rectangle pour que ce soit fixe, la page
+     * home du wallet. » Mesure sur 390 x 844 : l'accueil demandait 785 pixels
+     * pour 643 de haut. Un ecran d'accueil qui bouge donne l'impression que la
+     * page n'est pas finie.
+     *
+     * Ce qu'on garde ici est la HAUTEUR, pas une valeur de style : les marges
+     * se resserrent avec le temps, et c'est le total qui compte. Trois jetons
+     * — les trois de la maison — plus le coffre du casino, c'est ce que voit
+     * un joueur qui n'a rien ajoute. */
+    const tenue = await page.evaluate(() => {
+      const c = document.querySelector('#ecAccueil .wl-corps');
+      return { defile: c.scrollHeight - c.clientHeight,
+               visible: c.clientHeight, contenu: c.scrollHeight,
+               jetons: document.querySelectorAll('#acJetons .wl-jeton').length };
+    });
+    console.log('   hauteur : ' + JSON.stringify(tenue));
+    ok(tenue.defile <= 0,
+       `l accueil tient sans defiler avec ${tenue.jetons} jeton(s) : `
+       + `${tenue.contenu} px de contenu pour ${tenue.visible} de haut`);
+
+    /* ---- LA BARRE « EN VOL » DISPARAIT VRAIMENT ----
+     * `peintEnCours` posait `hidden`, et `display:flex` le BATTAIT — la meme
+     * regle de priorite qui avait rendu un ecran « cache » bloquant. La barre
+     * restait donc a l ecran, avec son point qui pulse, a annoncer une
+     * transaction en cours quand il n y en avait AUCUNE. Cinquante-huit
+     * pixels perdus, et surtout une phrase fausse sur l ecran d accueil.
+     * On ne lit pas l attribut : on demande au navigateur si ca se VOIT. */
+    const envol = await page.evaluate(() => {
+      const e = document.getElementById('acEnCours');
+      return { attribut: e.hasAttribute('hidden'),
+               vu: e.getBoundingClientRect().height > 0,
+               affichage: getComputedStyle(e).display };
+    });
+    console.log('   en vol : ' + JSON.stringify(envol));
+    ok(envol.attribut && !envol.vu,
+       `rien en vol : la barre est posee « hidden » ET ne se voit pas`
+       + ` (${envol.affichage})`);
+
+    /* ---- ET ELLE REVIENT QUAND IL Y A VRAIMENT QUELQUE CHOSE ----
+     * Sans cette moitie, « on ne la voit jamais » passerait pour une
+     * reparation alors que ce serait le defaut inverse. */
+    await page.evaluate((moi) => {
+      const cle = 'swogeTx:' + moi.toLowerCase();
+      localStorage.setItem(cle, JSON.stringify([{ h: '0x' + '1'.repeat(64), k: 'envoi',
+        cle: 'eth', montant: '1000000000000000', etat: 'attente', t: Date.now() }]));
+    }, MOI);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(2600);
+    const envol2 = await page.evaluate(() => {
+      const e = document.getElementById('acEnCours');
+      return { vu: e.getBoundingClientRect().height > 0,
+               txt: (document.getElementById('acEnCoursT').textContent || '').trim() };
+    });
+    console.log('   en vol (une transaction) : ' + JSON.stringify(envol2));
+    ok(envol2.vu && /in flight/.test(envol2.txt),
+       `une transaction en vol la fait revenir (« ${envol2.txt} »)`);
+    await page.evaluate((moi) => {
+      localStorage.removeItem('swogeTx:' + moi.toLowerCase());
+    }, MOI);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(2600);
+
     /* ---- ET LE BOUTON COPIE L'ADRESSE ENTIERE ----
      * C'est le seul defaut qui coute de l'argent ici : la carte AFFICHE une
      * adresse abregee, et copier ce qu'elle affiche donnerait une adresse

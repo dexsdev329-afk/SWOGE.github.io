@@ -104,6 +104,67 @@ function qr(chemin) {
   };
 }
 
+/* ---- LE CHEMIN v4, SORTI DE LA PAGE ----
+ * Meme principe que partout ici : ce sont les fonctions DE LA PAGE qui
+ * tournent contre la vraie chaine. Une copie ecrite pour l'essai prouverait
+ * seulement que la copie marche — et c'est justement l'encodage qui est
+ * delicat : cinq champs, un ordre impose, et un tuple de routeur qui a change
+ * entre deux versions. */
+function v4(chemin, ethers, fournisseur) {
+  const src = fs.readFileSync(chemin, 'utf8');
+  const morceaux = [
+    ligne(src, /var WETH\s*=\s*'[^']+';/),
+    ligne(src, /var PM4\s*=\s*'[^']+';/),
+    ligne(src, /var QUOTEUR4\s*=\s*'[^']+';/),
+    ligne(src, /var ETAT4\s*=\s*'[^']+';/),
+    ligne(src, /var ROUTEUR4\s*=\s*'[^']+';/),
+    ligne(src, /var PERMIT2\s*=\s*'[^']+';/),
+    ligne(src, /var ETH4\s*=\s*'[^']+';/),
+    ligne(src, /var MAX_V4\s*=\s*\d+;/),
+    ligne(src, /var FENETRE_V4\s*=\s*\d+;/),
+    ligne(src, /var Q4_ABI\s*=\s*\[[^\]]+\];/),
+    ligne(src, /var ETAT4_ABI\s*=\s*\[[^\]]+\];/),
+    ligne(src, /var UR_ABI\s*=[^;]+;/),
+    tableau(src, 'var PERMIT2_ABI = ['),
+    ligne(src, /var CLE4_T\s*=\s*'[^']+';/),
+    ligne(src, /var SWAP4_T\s*=[^;]+;/),
+    ligne(src, /var V4_SWAP\s*=\s*'[^']+';/),
+    ligne(src, /var ACTES4\s*=\s*'[^']+';/),
+    ligne(src, /var SUJET_INIT\s*=\s*null;/),
+    bloc(src, 'function idV4('),
+    bloc(src, 'function corpsV4('),
+    ligne(src, /var DEX_CACHE\s*=\s*\{\};/),
+    bloc(src, 'async function dexPaires('),
+    bloc(src, 'async function datesDexV4('),
+    bloc(src, 'async function piscinesV4('),
+    bloc(src, 'async function devisV4('),
+  ].join('\n\n');
+  const c = vm.createContext({
+    ethers, console, Promise, setTimeout, Date, Math, Number, Object, String, JSON,
+    /* Dexscreener sert d'INDEX : il dit ou regarder, la chaine dit quoi. */
+    fetch: (...a) => fetch(...a),
+    /* Les deux services que la page se rend a elle-meme. On les fournit tels
+       quels : ce qu'on met a l'essai est ce qui se trouve entre. */
+    lec: () => fournisseur,
+    borne: (pr, ms, quoi) => Promise.race([pr,
+      new Promise((_, rej) => setTimeout(() => rej(new Error('timeout:' + (quoi || 'read'))), ms || 9000))]),
+  });
+  vm.runInContext(morceaux, c);
+  return {
+    code: morceaux,
+    get ROUTEUR4() { return c.ROUTEUR4; },
+    get PERMIT2()  { return c.PERMIT2; },
+    get QUOTEUR4() { return c.QUOTEUR4; },
+    get PM4()      { return c.PM4; },
+    idV4(k)        { c.__k = k; return vm.runInContext('idV4(__k)', c); },
+    corpsV4(k, z, e, m) { c.__a = [k, z, e, m];
+      return vm.runInContext('corpsV4(__a[0],__a[1],__a[2],__a[3])', c); },
+    piscinesV4(adr) { c.__a = adr; return vm.runInContext('piscinesV4(__a)', c); },
+    devisV4(cles, adr, versJ, entree) { c.__a = [cles, adr, versJ, entree];
+      return vm.runInContext('devisV4(__a[0],__a[1],__a[2],__a[3])', c); },
+  };
+}
+
 /* Rend un bac a sable ou ce code TOURNE, avec de quoi l'appeler. */
 function bac(chemin, ethers) {
   const c = vm.createContext({ ethers, moi: null, console });
@@ -137,4 +198,4 @@ function trouveEthers() {
   return null;
 }
 
-module.exports = { code, bac, qr, trouveEthers };
+module.exports = { code, bac, qr, v4, trouveEthers };

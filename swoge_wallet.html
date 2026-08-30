@@ -1015,6 +1015,107 @@ var FRAIS_V3 = 10000;                                          // 1 %
    sans que le $SWOGE intermediaire touche le portefeuille. */
 var ADDRESS_THIS = '0x0000000000000000000000000000000000000002';
 
+/* ==================== UNISWAP v4 ====================
+ *
+ * ---- POURQUOI IL A FALLU L'AJOUTER ----
+ *
+ * Un joueur a colle `0x1aBeea…0872` (COPPERCAT) dans la recherche et a lu
+ * « No Uniswap pool against ETH (RH), in v2 or v3, at any fee tier. » Cette
+ * phrase etait VRAIE et elle etait TROMPEUSE : le jeton s'echange tres bien,
+ * il a fait plus d'un million de dollars de volume en vingt-quatre heures —
+ * mais en v4, contre l'ETH NATIF, avec un hook. Ce portefeuille ne
+ * connaissait que les fabriques v2 et v3, alors il ne voyait rien.
+ *
+ * Ce n'est pas un cas isole. Releve sur la chaine : plus de dix mille
+ * echanges v4 en quinze minutes. Sur le Robinhood Chain, la v4 EST le lieu
+ * ou l'on echange ; nos deux fabriques etaient l'exception, pas la regle.
+ *
+ * ---- CE QUI CHANGE, ET POURQUOI ON NE POUVAIT PAS FAIRE AUTREMENT ----
+ *
+ * En v4 il n'y a plus de fabrique a interroger : les piscines vivent DANS un
+ * contrat unique, et leur identite est la somme de cinq champs — les deux
+ * jetons, les frais, le pas de tick et le HOOK. On ne peut donc pas deviner
+ * une piscine, il faut la trouver : on lit les evenements `Initialize`, dont
+ * les deux jetons sont indexes. Mesure : douze piscines pour ce seul jeton,
+ * trouvees depuis le bloc zero en six cent treize millisecondes.
+ *
+ * ---- ET DOUZE PISCINES, C'EST UN PIEGE ----
+ *
+ * Sur ces douze, une porte des frais de 0 % et le vrai volume. Les autres
+ * demandent 89 %, 91 %, 95 %. Ce ne sont pas des piscines peu profondes,
+ * comme le `FOX` a neuf wei : ce sont des pieges, et en choisir une prendrait
+ * quatre-vingt-quinze pour cent de ce que le joueur envoie. Aucune lecture de
+ * profondeur ne les distingue — seul le DEVIS le fait, parce qu'il passe par
+ * les frais ET par le hook. On les devise donc toutes, a chaque fois, et l'on
+ * garde celle qui rend le plus. C'est la seule regle qui ne peut pas se
+ * tromper.
+ *
+ * ---- CE QUI A ETE VERIFIE SUR LA CHAINE, PAS SUPPOSE ----
+ *
+ *   - l'identifiant de la piscine se recalcule au bit pres depuis les cinq
+ *     champs lus dans l'evenement ;
+ *   - 0,01 ETH rend 3 457 878,71 COPPERCAT au devis, et l'appel au routeur
+ *     PASSE avec ce montant exact en minimum, ECHOUE a +1 % ;
+ *   - 1 000 000 COPPERCAT rend 0,00281123 ETH, meme epreuve, meme resultat,
+ *     et l'appel echoue net si l'autorisation Permit2 manque.
+ */
+var PM4      = '0x8366a39CC670B4001A1121B8F6A443A643e40951';   // PoolManager v4
+var QUOTEUR4 = '0x8dc178efb8111bb0973dd9d722ebeff267c98f94';   // V4Quoter
+var ETAT4    = '0xf3334192d15450cdd385c8b70e03f9a6bd9e673b';   // StateView
+/* Universal Router 2.1.1 — la seule version deployee sur cette chaine, d'apres
+   la table d'adresses d'Uniswap ET d'apres la chaine elle-meme : c'est
+   l'adresse qui repond a `execute(bytes,bytes[],uint256)` sur les echanges v4
+   qu'on y observe, et son `poolManager()` rend bien le PoolManager ci-dessus. */
+var ROUTEUR4 = '0x8876789976dEcBfCbBbe364623C63652db8C0904';
+var PERMIT2  = '0x000000000022D473030F116dDEE9F6B43aC78BA3';
+/* L'ETH NATIF, en v4, n'est pas le WETH : c'est l'adresse zero. C'est
+   precisement ce qui rendait le jeton invisible — on ne cherchait que le
+   WETH. */
+var ETH4 = '0x0000000000000000000000000000000000000000';
+var MAX_V4 = 8;            // au plus huit piscines gardees par jeton
+/* Un million de blocs : la plus grande fenetre a laquelle ce noeud reponde.
+   Mesure — un million rend en 1,2 s, cinq millions rendent « log query timed
+   out ». Ce n'est pas un reglage de confort, c'est la limite du serveur. */
+var FENETRE_V4 = 1000000;
+
+var Q4_ABI = ['function quoteExactInputSingle(((address currency0,address currency1,uint24 fee,int24 tickSpacing,address hooks) poolKey,bool zeroForOne,uint128 exactAmount,bytes hookData)) returns (uint256 amountOut,uint256 gasEstimate)'];
+var ETAT4_ABI = ['function getLiquidity(bytes32 poolId) view returns (uint128)'];
+var UR_ABI = ['function execute(bytes commands,bytes[] inputs,uint256 deadline) payable'];
+var PERMIT2_ABI = [
+  'function allowance(address,address,address) view returns (uint160 amount,uint48 expiration,uint48 nonce)',
+  'function approve(address token,address spender,uint160 amount,uint48 expiration)'
+];
+/* Le tuple d'echange du routeur 2.1.1 porte un champ de plus que celui de la
+   2.0 — `minHopPriceX36`, un plancher de prix par saut. On met zero : le
+   minimum de sortie protege deja le joueur, et un second garde-fou mal
+   compris refuserait des echanges valables.
+   L'encodage 2.0 PASSE aussi nos epreuves, et c'est un accident : avec un
+   `hookData` vide, le mot de decalage se relit comme un `minHopPriceX36` de
+   256, et le `hookData` retombe sur zero. Il cesserait de marcher des qu'un
+   hook demanderait des donnees. On ecrit donc la forme juste. */
+var CLE4_T = '(address,address,uint24,int24,address)';
+var SWAP4_T = '(' + CLE4_T + ',bool,uint128,uint128,uint256,bytes)';
+var V4_SWAP = '0x10';                  // la commande du routeur
+var ACTES4  = '0x060c0f';              // SWAP_EXACT_IN_SINGLE, SETTLE_ALL, TAKE_ALL
+var SUJET_INIT = null;                 // le sujet de l'evenement `Initialize`, calcule une fois
+
+/** L'identifiant d'une piscine v4 : la somme de ses cinq champs. Verifie
+    contre l'identifiant que Dexscreener publie — ils coincident au bit pres. */
+function idV4(k){
+  return ethers.utils.keccak256(
+    ethers.utils.defaultAbiCoder.encode([CLE4_T], [k]));
+}
+/** Le corps d'un echange v4, pret pour `execute`. Une seule forme sert les
+    deux sens : c'est `zeroForOne` qui dit lequel. */
+function corpsV4(k, zeroVersUn, entree, mini){
+  var A = ethers.utils.defaultAbiCoder;
+  return A.encode(['bytes','bytes[]'], [ACTES4, [
+    A.encode([SWAP4_T], [[k, zeroVersUn, entree, mini, 0, '0x']]),
+    A.encode(['address','uint256'], [zeroVersUn ? k[0] : k[1], entree]),
+    A.encode(['address','uint256'], [zeroVersUn ? k[1] : k[0], mini])
+  ]]);
+}
+
 /* ---- LA TOLERANCE N'EST JAMAIS ZERO ----
  *
  * `amountOutMinimum` a zero veut dire « accepte n'importe quel montant,
@@ -1122,14 +1223,18 @@ function chargePerso(){
     if(J(persoCle(j.adr))) continue;
     JETONS.push({ cle:persoCle(j.adr), sym:String(j.sym||'?').slice(0,12),
                   nom:String(j.nom||'').slice(0,40), adr:j.adr, dec:j.dec|0,
-                  logo:j.logo || null, perso:true, pool:j.pool || null });
+                  logo:j.logo || null, perso:true, pool:j.pool || null,
+                  /* Les clefs v4 se gardent en entier : les retrouver demande
+                     de relire les evenements du PoolManager depuis le bloc
+                     zero, et on ne fait pas ca a chaque ouverture. */
+                  v4: (Object.prototype.toString.call(j.v4) === '[object Array]') ? j.v4 : [] });
   }
 }
 function sauvePerso(){
   var l = [];
   for(var i=0;i<JETONS.length;i++){
     var j = JETONS[i]; if(!j.perso) continue;
-    l.push({ adr:j.adr, sym:j.sym, nom:j.nom, dec:j.dec, logo:j.logo, pool:j.pool });
+    l.push({ adr:j.adr, sym:j.sym, nom:j.nom, dec:j.dec, logo:j.logo, pool:j.pool, v4:j.v4 || [] });
   }
   try{ localStorage.setItem(CLE_PERSO, JSON.stringify(l)); }catch(e){}
 }
@@ -1188,10 +1293,202 @@ async function chercheJeton(brut){
   fonds.sort(function(a,b){ return b.fond.gt(a.fond) ? 1 : (b.fond.lt(a.fond) ? -1 : 0); });
   var pool = fonds[0] || null;
 
+  /* ---- ET LES PISCINES v4 ----
+   * Cherchees meme quand une v2 ou une v3 existe : sur cette chaine la v4
+   * porte l'essentiel du volume, et se contenter d'une vieille piscine parce
+   * qu'elle a repondu la premiere donnerait un prix nettement moins bon. Ce
+   * qui departage reste le DEVIS, pas la version. */
+  var cles4 = await piscinesV4(adr);
+
+  if(!pool && !cles4.length)
+    return { deja:false, adr:adr, sym:sym, nom:nom, dec:dec, pool:null, v4:[],
+             fond:null, logo: await logoDe(adr) };
+
   return { deja:false, adr:adr, sym:sym, nom:nom, dec:dec,
            pool: pool ? { ver:pool.ver, fee:pool.fee, adr:pool.adr } : null,
+           v4: cles4,
            fond: pool ? pool.fond : null,
            logo: await logoDe(adr) };
+}
+
+/* ---- TROUVER LES PISCINES v4 D'UN JETON ----
+ *
+ * Il n'y a pas de fabrique a interroger : une piscine v4 n'existe que par les
+ * cinq champs de sa clef, et le HOOK en fait partie — donc rien ne se devine.
+ * On lit les evenements `Initialize` du PoolManager, dont les deux jetons sont
+ * INDEXES : la chaine fait le tri, pas nous.
+ *
+ * ---- MAIS ON NE PEUT PAS LIRE TOUTE L'HISTOIRE ----
+ *
+ * Mesure sur ce noeud : une fenetre d'un million de blocs repond en 1,2 s ;
+ * cinq millions rendent « log query timed out ». La chaine en compte
+ * cinquante millions — deux mois a un dixieme de seconde le bloc. Lancer les
+ * cinquante et une requetes en parallele ne marche pas non plus : vingt-trois
+ * ont ete refusees, et le lot ou dormaient les piscines en faisait partie.
+ * C'est le pire cas possible : une recherche PARTIELLE qui ne le dit pas
+ * pourrait rater la bonne piscine et ne laisser que les pieges.
+ *
+ * ---- ALORS ON DEMANDE OU CHERCHER, ET ON VERIFIE SUR LA CHAINE ----
+ *
+ * Dexscreener sait quelles paires existent et QUAND elles ont ete creees.
+ * On s'en sert comme d'un index — « regarde par la » — et de rien d'autre :
+ * la clef, l'identifiant, la liquidite et le devis se lisent tous sur la
+ * chaine. Un index faux ou incomplet nous ferait rater une piscine ; il ne
+ * peut pas nous en faire inventer une, parce que l'identifiant recalcule
+ * depuis les cinq champs lus dans l'evenement doit tomber juste.
+ *
+ * On ajoute toujours le dernier million de blocs : une piscine ouverte il y a
+ * dix minutes n'est indexee nulle part encore, et c'est justement le genre de
+ * jeton qu'on vient coller ici.
+ */
+async function piscinesV4(adr){
+  if(!SUJET_INIT) SUJET_INIT = ethers.utils.id(
+    'Initialize(bytes32,address,address,uint24,int24,address,uint160,int24)');
+  var p = lec();
+  var mot = function(a){ return ethers.utils.hexZeroPad(a, 32); };
+  var paires = [[ETH4, adr], [WETH, adr]].map(function(x){
+    return (x[0].toLowerCase() < x[1].toLowerCase()) ? x : [x[1], x[0]];
+  });
+
+  var tete;
+  try{ tete = await borne(p.getBlockNumber(), 9000, 'tete'); }catch(e){ return []; }
+  var fenetres = [[Math.max(0, tete - FENETRE_V4), tete]];
+
+  /* Le temps d'un bloc se MESURE, il ne s'ecrit pas en dur : une chaine peut
+     changer de cadence, et une constante perimee viserait a cote. */
+  var parBloc = null;
+  try{
+    var recul = Math.min(tete, 500000);
+    var b1 = await borne(p.getBlock(tete), 9000, 'b1');
+    var b0 = await borne(p.getBlock(tete - recul), 9000, 'b0');
+    if(b1 && b0 && recul > 0) parBloc = (b1.timestamp - b0.timestamp) / recul;
+  }catch(e){}
+
+  if(parBloc > 0){
+    var dates = await datesDexV4(adr);
+    for(var d=0; d<dates.length; d++){
+      var bloc = tete - Math.round((Math.floor(Date.now()/1000) - dates[d]) / parBloc);
+      var a = Math.max(0, bloc - FENETRE_V4/2), b = Math.min(tete, bloc + FENETRE_V4/2);
+      if(a > tete) continue;
+      var couvert = false;
+      for(var f=0; f<fenetres.length; f++)
+        if(a >= fenetres[f][0] && b <= fenetres[f][1]) couvert = true;
+      if(!couvert) fenetres.push([a, b]);
+      if(fenetres.length >= 4) break;      /* on borne le travail, toujours */
+    }
+  }
+
+  /* Les fenetres se lisent l'une APRES l'autre : en parallele le noeud en
+     refuse la moitie, et une moitie manquante ne se voit pas. */
+  var brut = [];
+  for(var w=0; w<fenetres.length; w++){
+    for(var q=0; q<paires.length; q++){
+      try{
+        var l = await borne(p.getLogs({ address:PM4,
+          fromBlock:fenetres[w][0], toBlock:fenetres[w][1],
+          topics:[SUJET_INIT, null, mot(paires[q][0]), mot(paires[q][1])] }), 20000, 'v4logs');
+        brut = brut.concat(l);
+      }catch(e){}
+    }
+  }
+  if(!brut.length) return [];
+
+  var A = ethers.utils.defaultAbiCoder, cles = [], vus = {};
+  for(var k=0;k<brut.length;k++){
+    var g = brut[k];
+    if(vus[g.topics[1]]) continue;
+    vus[g.topics[1]] = 1;
+    try{
+      var dd = A.decode(['uint24','int24','address','uint160','int24'], g.data);
+      var cle = [ethers.utils.getAddress('0x' + g.topics[2].slice(26)),
+                 ethers.utils.getAddress('0x' + g.topics[3].slice(26)),
+                 Number(dd[0]), Number(dd[1]), ethers.utils.getAddress(dd[2])];
+      /* ---- L'IDENTIFIANT DOIT TOMBER JUSTE ----
+         Il se recalcule depuis les cinq champs. S'il ne rend pas celui que la
+         chaine a indexe, c'est notre lecture qui est fausse — et une clef
+         fausse enverrait l'echange dans une piscine que personne n'a devisee.
+         On la jette plutot que de la garder « au cas ou ». */
+      if(idV4(cle) !== g.topics[1]) continue;
+      cles.push(cle);
+    }catch(e){}
+  }
+  if(!cles.length) return [];
+
+  /* La liquidite ecarte les piscines ouvertes et jamais remplies : elles ne
+     coutent rien a lire et un devis sur une piscine vide ne dit rien. Elle
+     n'ecarte PAS les pieges — une piscine a 95 % de frais peut etre pleine.
+     Ceux-la, seul le devis les voit. */
+  var etat = new ethers.Contract(ETAT4, ETAT4_ABI, p);
+  var vivantes;
+  try{
+    vivantes = await borne(Promise.all(cles.map(function(c){
+      return etat.getLiquidity(idV4(c)).then(function(l){ return { k:c, l:l }; })
+        ['catch'](function(){ return { k:c, l:ethers.constants.Zero }; });
+    })), 20000, 'v4liq');
+  }catch(e){ return cles.slice(0, MAX_V4); }
+  vivantes = vivantes.filter(function(x){ return x.l && !x.l.isZero(); });
+  vivantes.sort(function(a,b){ return b.l.gt(a.l) ? 1 : (b.l.lt(a.l) ? -1 : 0); });
+  return vivantes.slice(0, MAX_V4).map(function(x){ return x.k; });
+}
+
+/* Les dates de creation des paires, telles que Dexscreener les connait. Elles
+   ne servent qu'a VISER une fenetre de blocs — aucune decision d'echange n'en
+   depend. Une reponse absente rend un tableau vide, et la recherche se limite
+   alors au dernier million de blocs : moins large, jamais faux. */
+async function datesDexV4(adr){
+  var j = await dexPaires(adr);
+  if(!j) return [];
+  var l = [], vus = {};
+  for(var i=0;i<j.length;i++){
+    var t = Math.floor((j[i].pairCreatedAt || 0) / 1000);
+    if(!t) continue;
+    var seau = Math.floor(t / 86400);
+    if(vus[seau]) continue;
+    vus[seau] = 1; l.push(t);
+  }
+  return l;
+}
+
+/* Un seul appel a Dexscreener par jeton : le logo et les dates de paires
+   viennent de la meme reponse, et la demander deux fois ferait deux allers
+   pour la meme phrase. */
+var DEX_CACHE = {};
+async function dexPaires(adr){
+  var c = String(adr).toLowerCase();
+  if(DEX_CACHE[c] !== undefined) return DEX_CACHE[c];
+  try{
+    var r = await borne(fetch('https://api.dexscreener.com/latest/dex/tokens/' + adr,
+                              { cache:'no-store' }), 7000, 'dex');
+    if(!r.ok){ DEX_CACHE[c] = null; return null; }
+    var j = await r.json();
+    DEX_CACHE[c] = (j && j.pairs) || [];
+  }catch(e){ DEX_CACHE[c] = null; }
+  return DEX_CACHE[c];
+}
+
+/* ---- LE DEVIS v4 : TOUTES LES PISCINES, ET LA MEILLEURE GAGNE ----
+ * On ne choisit pas une piscine a l'avance. Douze piscines existent pour le
+ * COPPERCAT, une seule est honnete, et rien d'autre que le devis ne le dit —
+ * il passe par les frais ET par le hook, qui prend sa part APRES l'echange.
+ * Rendre `null` veut dire « aucune ne repond », jamais « zero ». */
+async function devisV4(cles, jetonAdr, versLeJeton, entree){
+  if(!cles || !cles.length) return null;
+  var q = new ethers.Contract(QUOTEUR4, Q4_ABI, lec());
+  var essais = cles.map(function(k){
+    /* `zeroForOne` se lit sur la clef, pas sur l'intention : c'est l'ordre des
+       deux jetons dans la piscine qui decide, et il depend de leur adresse. */
+    var jetonEst1 = (k[1].toLowerCase() === jetonAdr.toLowerCase());
+    var zvu = versLeJeton ? jetonEst1 : !jetonEst1;
+    return q.callStatic.quoteExactInputSingle(
+      { poolKey:{ currency0:k[0], currency1:k[1], fee:k[2], tickSpacing:k[3], hooks:k[4] },
+        zeroForOne:zvu, exactAmount:entree, hookData:'0x' })
+      .then(function(r){ return { k:k, zvu:zvu, out:(r.amountOut || r[0]) }; })
+      ['catch'](function(){ return null; });
+  });
+  var rep = (await Promise.all(essais)).filter(function(x){ return x && x.out && !x.out.isZero(); });
+  if(!rep.length) return null;
+  rep.sort(function(a,b){ return b.out.gt(a.out) ? 1 : (b.out.lt(a.out) ? -1 : 0); });
+  return rep[0];
 }
 
 /* Le logo vient de Dexscreener quand il y en a un. Il n'y en a pas toujours —
@@ -1199,11 +1496,11 @@ async function chercheJeton(brut){
    une image generique ferait passer un jeton inconnu pour un jeton range. */
 async function logoDe(adr){
   try{
-    var r = await borne(fetch('https://api.dexscreener.com/latest/dex/tokens/' + adr,
-                              { cache:'no-store' }), 7000, 'logo');
-    if(!r.ok) return null;
-    var j = await r.json();
-    var l = (j && j.pairs) || [];
+    /* Le meme appel que celui qui sert a viser les fenetres de blocs : deux
+       requetes pour la meme phrase seraient deux fois plus d'attente pour le
+       joueur, et deux occasions de tomber. */
+    var l = await dexPaires(adr);
+    if(!l) return null;
     for(var i=0;i<l.length;i++){
       var b = l[i].baseToken || {}, im = (l[i].info || {}).imageUrl;
       if(im && b.address && String(b.address).toLowerCase() === adr.toLowerCase()) return im;
@@ -1215,7 +1512,7 @@ async function logoDe(adr){
 function ajouteJeton(t){
   if(J(persoCle(t.adr))) return J(persoCle(t.adr));
   var j = { cle:persoCle(t.adr), sym:t.sym, nom:t.nom, adr:t.adr, dec:t.dec,
-            logo:t.logo || null, perso:true, pool:t.pool };
+            logo:t.logo || null, perso:true, pool:t.pool, v4:t.v4 || [] };
   JETONS.push(j); sauvePerso();
   return j;
 }
@@ -2656,27 +2953,43 @@ async function chercheDansPick(w, adr){
     ditPick(w, '<b>' + ech(t.jeton.sym) + '</b> is already in the list.');
     return;
   }
-  if(!t.pool){
+  if(!t.pool && !(t.v4 && t.v4.length)){
     /* ---- ON DIT CE QUI MANQUE, PAS « IMPOSSIBLE » ----
        Le jeton existe, il est lisible, et il a peut-etre une piscine contre
        un autre jeton. Ce portefeuille ne sait router que par l'ETH (RH) :
-       c'est SA limite, et c'est ce qu'il faut ecrire. */
+       c'est SA limite, et c'est ce qu'il faut ecrire.
+       ---- ET IL FAUT DIRE OU L'ON A CHERCHE ----
+       La phrase d'avant s'arretait a « v2 ou v3 ». Elle etait vraie et elle a
+       fait renoncer un joueur devant un jeton qui s'echangeait tres bien, en
+       v4. On nomme donc les trois versions : si le message revient
+       maintenant, c'est qu'il n'y a vraiment rien. */
     ditPick(w, '<b>' + ech(t.sym) + '</b> — ' + ech(t.nom) + '<br>'
-      + 'No Uniswap pool against ' + ETH_AFF + ', in v2 or v3, at any fee tier. '
+      + 'No Uniswap pool against ' + ETH_AFF + ' — v2, v3 or v4, at any fee tier. '
       + 'This wallet only routes through ' + ETH_AFF + ', so it cannot trade it.'
       + '<span class="adr">' + ech(t.adr) + '</span>', 'grave');
     return;
   }
-  var vide = t.fond && t.fond.isZero();
+  var vide = t.pool && t.fond && t.fond.isZero();
   var img = t.logo ? '<img src="' + ech(t.logo) + '" alt="" style="width:30px;height:30px;'
                    + 'border-radius:50%;vertical-align:middle;margin-right:7px">'
                    : '<span class="ini" style="display:inline-grid;vertical-align:middle;'
                    + 'margin-right:7px">' + ech((t.sym||'?').slice(0,3).toUpperCase()) + '</span>';
-  var pool = t.pool.ver === 'v2' ? 'Uniswap v2'
-           : 'Uniswap v3 · ' + (t.pool.fee/10000) + ' %';
+  /* ---- CE QU'ON ANNONCE, ET CE QU'ON NE PEUT PAS ANNONCER ----
+   * Pour une piscine v2 ou v3, la profondeur se lit d'un coup : c'est le solde
+   * de WETH du contrat. Une piscine v4 ne detient rien — tout dort dans le
+   * PoolManager, melange a toutes les autres — donc ce chiffre n'existe pas au
+   * meme endroit et on ne l'invente pas. On dit COMBIEN de piscines on a
+   * trouvees, ce qui est vrai et ce qui compte : c'est parmi elles que le
+   * devis choisira, et une seule est souvent honnete. */
+  var pool = (t.v4 && t.v4.length)
+    ? ('Uniswap v4 · ' + t.v4.length + ' pool' + (t.v4.length > 1 ? 's' : ''))
+    : (t.pool.ver === 'v2' ? 'Uniswap v2' : 'Uniswap v3 · ' + (t.pool.fee/10000) + ' %');
+  var prof = (t.v4 && t.v4.length)
+    ? ' — the best-paying one is picked at quote time'
+    : ' · <span class="prof">' + nombre(t.fond, 18) + ' ' + ETH_AFF + '</span> in the pool';
   ditPick(w,
     img + '<b>' + ech(t.sym) + '</b> — ' + ech(t.nom) + '<br>'
-    + pool + ' · <span class="prof">' + nombre(t.fond, 18) + ' ' + ETH_AFF + '</span> in the pool'
+    + pool + prof
     + (vide ? ' — <b>the pool is empty</b>, nothing can be traded' : '')
     + '<span class="adr">' + ech(t.adr) + '</span>'
     + '<button type="button" class="wl-b" style="margin-top:9px;padding:10px"'
@@ -3160,8 +3473,16 @@ function routeDe(de, vers){
   /* Un jeton ajoute par le joueur : sa piscine est contre l'ETH (RH), et
      c'est le seul chemin que ce portefeuille connaisse pour lui. */
   var jd = J(de), jv = J(vers);
-  if(de === 'eth'   && jv && jv.perso && jv.pool) return [jv.pool.ver];
-  if(vers === 'eth' && jd && jd.perso && jd.pool) return [jd.pool.ver];
+  /* ---- LA v4 D'ABORD ----
+   * Elle porte l'essentiel du volume sur cette chaine, et pour beaucoup de
+   * jetons c'est le SEUL endroit ou ils s'echangent. Quand les deux existent,
+   * c'est quand meme le devis qui tranche : `simuleRoute` compare, et la
+   * route affichee suit ce qu'il a choisi. */
+  var pj = (de === 'eth') ? jv : ((vers === 'eth') ? jd : null);
+  if(pj && pj.perso){
+    if(pj.v4 && pj.v4.length) return ['v4'];
+    if(pj.pool) return [pj.pool.ver];
+  }
   return null;
 }
 
@@ -3170,7 +3491,8 @@ async function devis(){
   var m=($('swMontant').value||'').trim().replace(',','.');
   var r=routeDe(de,vers);
   $('swRoute').textContent = !r ? 'no route'
-    : (r.length===1 ? (r[0]==='v2'?'Uniswap v2':'Uniswap v3 · 1%')
+    : (r.length===1 ? (r[0]==='v2' ? 'Uniswap v2'
+                       : (r[0]==='v4' ? 'Uniswap v4' : 'Uniswap v3 · 1%'))
                     : (r[0]==='v2' ? 'v2 then v3 — one transaction'
                                    : 'v3 then v2 — one transaction'));
   if(!r){
@@ -3209,6 +3531,16 @@ async function devis(){
     var entree = ethers.utils.parseUnits(m, 18);
     var out = await borne(simuleRoute(de, vers, entree), 9000, 'quote');
     var dS = J(vers).dec;
+    /* ---- L'ETIQUETTE SUIT LE DEVIS, PAS L'INVERSE ----
+     * `routeDe` dit qu'un chemin existe ; c'est le devis qui dit LEQUEL a
+     * gagne entre la v4 et l'ancienne piscine. Ecrire « Uniswap v4 » avant de
+     * comparer aurait annonce une route qu'on n'emprunte pas toujours. */
+    if(out.v4 !== undefined && (J(de).perso || J(vers).perso)){
+      var pjE = J(de).perso ? J(de) : J(vers);
+      $('swRoute').textContent = out.v4 ? 'Uniswap v4'
+        : (pjE.pool && pjE.pool.ver === 'v2' ? 'Uniswap v2'
+           : 'Uniswap v3 · ' + ((pjE.pool ? pjE.pool.fee : 0)/10000) + ' %');
+    }
     $('swRecu').textContent = nombre(out.sortie,dS)+' '+J(vers).sym;
     /* Ce que le joueur lit ici est EXACTEMENT ce que la transaction
        imposera au routeur — pas une estimation d'ecran a cote du code. */
@@ -3249,28 +3581,73 @@ async function simuleRoute(de, vers, entree){
    * un taux marginal faux d'un facteur mille milliards. Cette branche
    * s'ecrit donc a part, avec les decimales de CHAQUE cote. */
   var pj = (J(de) && J(de).perso) ? J(de) : ((J(vers) && J(vers).perso) ? J(vers) : null);
-  if(pj && pj.pool){
-    var decE = (de === 'eth') ? 18 : pj.dec;
-    var decS = (vers === 'eth') ? 18 : pj.dec;
-    var A  = (de === 'eth') ? WETH : pj.adr;
-    var Bq = (vers === 'eth') ? WETH : pj.adr;
-    var pce = ethers.utils.parseUnits('0.0001', decE);
-    var sP, mP;
-    if(pj.pool.ver === 'v2'){
-      sP = (await v2.getAmountsOut(entree, [A, Bq]))[1];
-      mP = (await v2.getAmountsOut(pce, [A, Bq]))[1];
-    } else {
-      var q1 = await q.callStatic.quoteExactInputSingle(
-        { tokenIn:A, tokenOut:Bq, amountIn:entree, fee:pj.pool.fee, sqrtPriceLimitX96:0 });
-      sP = q1.amountOut || q1[0];
-      var q2 = await q.callStatic.quoteExactInputSingle(
-        { tokenIn:A, tokenOut:Bq, amountIn:pce, fee:pj.pool.fee, sqrtPriceLimitX96:0 });
-      mP = q2.amountOut || q2[0];
+
+  /* ---- LES DEUX MARCHES, ET LE MEILLEUR GAGNE ----
+   *
+   * Un jeton ajoute peut vivre en v2, en v3, en v4, ou dans plusieurs a la
+   * fois. Choisir la version d'avance serait choisir a la place du joueur :
+   * on devise ce qui existe et l'on garde le montant le plus grand. C'est la
+   * meme regle qu'entre deux piscines v4, pour la meme raison — rien d'autre
+   * que le devis ne dit ce qu'un echange rendra vraiment, parce que lui seul
+   * passe par les frais et par les hooks.
+   *
+   * Un cote qui echoue ne fait pas echouer l'autre : c'est justement le cas
+   * frequent — beaucoup de jetons de cette chaine n'ont QUE de la v4. */
+  if(pj && (de === 'eth' || vers === 'eth')){
+    var versJ = (vers !== 'eth');
+    var dE = versJ ? 18 : pj.dec;
+    var dS = versJ ? pj.dec : 18;
+    var pcv = ethers.utils.parseUnits('0.0001', dE);
+
+    /* --- la v4 : toutes ses piscines, la meilleure gagne --- */
+    var g4 = null;
+    if(pj.v4 && pj.v4.length){
+      try{ g4 = await devisV4(pj.v4, pj.adr, versJ, entree); }catch(e){ g4 = null; }
     }
-    var idP = parseFloat(ethers.utils.formatUnits(mP, decS)) / 0.0001
-            * parseFloat(ethers.utils.formatUnits(entree, decE));
-    var rcP = parseFloat(ethers.utils.formatUnits(sP, decS));
-    return { sortie:sP, impact:(idP > 0 ? Math.max(0, 100*(1 - rcP/idP)) : null) };
+
+    /* --- la v2 ou la v3, si le jeton en a une --- */
+    var s23 = null, m23 = null;
+    if(pj.pool){
+      var A  = versJ ? WETH : pj.adr;
+      var Bq = versJ ? pj.adr : WETH;
+      try{
+        if(pj.pool.ver === 'v2'){
+          s23 = (await v2.getAmountsOut(entree, [A, Bq]))[1];
+          m23 = (await v2.getAmountsOut(pcv, [A, Bq]))[1];
+        } else {
+          var q1 = await q.callStatic.quoteExactInputSingle(
+            { tokenIn:A, tokenOut:Bq, amountIn:entree, fee:pj.pool.fee, sqrtPriceLimitX96:0 });
+          s23 = q1.amountOut || q1[0];
+          var q2 = await q.callStatic.quoteExactInputSingle(
+            { tokenIn:A, tokenOut:Bq, amountIn:pcv, fee:pj.pool.fee, sqrtPriceLimitX96:0 });
+          m23 = q2.amountOut || q2[0];
+        }
+      }catch(e){ s23 = null; }
+    }
+
+    var prendV4 = g4 && (!s23 || s23.isZero() || g4.out.gt(s23));
+    if(!prendV4 && (!s23 || s23.isZero())){
+      if(g4) prendV4 = true;
+      else throw new Error('No pool answered a quote for that amount.');
+    }
+
+    var sP, mP, gagne = null;
+    if(prendV4){
+      sP = g4.out; gagne = g4;
+      var gp = await devisV4([g4.k], pj.adr, versJ, pcv);
+      mP = gp ? gp.out : null;
+    } else { sP = s23; mP = m23; }
+
+    /* Le prix marginal se prend SUR LA MEME PISCINE que l'echange : le
+       comparer a celui d'un autre marche melangerait deux prix et rendrait un
+       impact invente. */
+    var idP = (mP && !mP.isZero())
+      ? parseFloat(ethers.utils.formatUnits(mP, dS)) / 0.0001
+        * parseFloat(ethers.utils.formatUnits(entree, dE))
+      : null;
+    var rcP = parseFloat(ethers.utils.formatUnits(sP, dS));
+    return { sortie:sP, v4:gagne,
+             impact:(idP && idP > 0 ? Math.max(0, 100*(1 - rcP/idP)) : null) };
   }
 
   /* Le prix marginal se prend sur un tout petit montant : c'est lui qui
@@ -3425,6 +3802,44 @@ async function assureAutorisation(jeton, entree, dis){
   await tx.wait();
 }
 
+/* ---- L'AUTORISATION EN v4 : DEUX ETAGES, ET C'EST NORMAL ----
+ *
+ * Le routeur universel ne prend jamais un jeton directement : il passe par
+ * Permit2. Il faut donc autoriser DEUX fois, et une seule des deux se voit
+ * dans les explorateurs habituels :
+ *
+ *   1. le jeton autorise Permit2 a le deplacer — l'`approve` ERC-20 usuel ;
+ *   2. Permit2 autorise le ROUTEUR, pour ce jeton, ce montant, et jusqu'a une
+ *      date.
+ *
+ * Sauter la seconde donne un refus net et muet : verifie sur la chaine, le
+ * meme appel qui passe avec les deux autorisations echoue sans elles.
+ *
+ * Comme pour l'autre routeur, on autorise LE MONTANT EXACT et rien de plus.
+ * Une autorisation illimitee survivrait a l'echange ; celle-ci meurt avec.
+ * L'echeance est courte pour la meme raison — une heure suffit largement a
+ * signer l'echange qui suit, et laisse peu de prise si l'on s'arrete la. */
+async function assureAutorisationV4(jeton, entree, dis){
+  var c = erc(jeton.adr, true);
+  var deja = await borne(c.allowance(moi, PERMIT2), 12000, 'allowance');
+  if(deja.lt(entree)){
+    dis('Allowing Permit2 to move your ' + jeton.sym + ' — first of two signatures…');
+    var t1 = await c.approve(PERMIT2, entree);
+    journalAjoute({ h:t1.hash, k:'autorisation', cle:jeton.cle, montant:entree.toString() });
+    dis('Allowance sent — waiting for the chain…');
+    await t1.wait();
+  }
+  var p2 = new ethers.Contract(PERMIT2, PERMIT2_ABI, signer);
+  var a2 = await borne(p2.allowance(moi, jeton.adr, ROUTEUR4), 12000, 'permit2');
+  var maintenant = Math.floor(Date.now() / 1000);
+  if(a2 && a2.amount && a2.amount.gte(entree) && Number(a2.expiration) > maintenant + 60) return;
+  dis('Allowing the router to spend your ' + jeton.sym + ' — second signature…');
+  var t2 = await p2.approve(jeton.adr, ROUTEUR4, entree, maintenant + 3600);
+  journalAjoute({ h:t2.hash, k:'autorisation', cle:jeton.cle, montant:entree.toString() });
+  dis('Allowance sent — waiting for the chain…');
+  await t2.wait();
+}
+
 $('swPartir').addEventListener('click', async function(){
   if(!moi) return ouvreConnexion();
   if(ethersManquant()) return;
@@ -3461,7 +3876,9 @@ $('swPartir').addEventListener('click', async function(){
     $('swRecu').textContent = nombre(frais.sortie, jv.dec) + ' ' + jv.sym;
     $('swMini').textContent = nombre(mini, jv.dec) + ' ' + jv.sym;
 
-    if(!jd.natif) await assureAutorisation(jd, entree, dis);
+    var enV4 = !!frais.v4;
+    if(!jd.natif) await (enV4 ? assureAutorisationV4(jd, entree, dis)
+                              : assureAutorisation(jd, entree, dis));
 
     /* ---- L'ECHEANCE SE PREND SUR LE BLOC COURANT ----
      * Elle est lue maintenant, jamais retenue d'avant : a un dixieme de
@@ -3471,10 +3888,23 @@ $('swPartir').addEventListener('click', async function(){
     var bloc = await borne(lec().getBlock('latest'), 12000, 'block');
     var echeance = ethers.BigNumber.from(bloc.timestamp + 900);   // un quart d'heure
 
-    var routeur = new ethers.Contract(ROUTER02, R02_ABI, signer);
-    var morceaux = morceauxDe(de, vers, entree, mini);
-    dis('Confirm the swap in your wallet…');
-    var tx = await routeur.multicall(echeance, morceaux, jd.natif ? { value: entree } : {});
+    var tx;
+    if(enV4){
+      /* ---- LA PISCINE QU'ON SIGNE EST CELLE QU'ON A DEVISEE ----
+       * Pas une seconde recherche : entre le devis et la signature, une
+       * autre piscine pourrait rendre davantage, et le joueur signerait
+       * alors autre chose que le montant qu'il vient de lire. `simuleRoute`
+       * rend sa clef gagnante, et c'est elle qui part. */
+      var ur = new ethers.Contract(ROUTEUR4, UR_ABI, signer);
+      var corps = corpsV4(frais.v4.k, frais.v4.zvu, entree, mini);
+      dis('Confirm the swap in your wallet…');
+      tx = await ur.execute(V4_SWAP, [corps], echeance, jd.natif ? { value: entree } : {});
+    } else {
+      var routeur = new ethers.Contract(ROUTER02, R02_ABI, signer);
+      var morceaux = morceauxDe(de, vers, entree, mini);
+      dis('Confirm the swap in your wallet…');
+      tx = await routeur.multicall(echeance, morceaux, jd.natif ? { value: entree } : {});
+    }
     journalAjoute({ h:tx.hash, k:'echange', cle:jd.cle, montant:entree.toString(), cleV:jv.cle });
     dis('Swapping — waiting for the chain…');
     await tx.wait();

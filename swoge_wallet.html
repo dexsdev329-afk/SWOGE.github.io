@@ -358,6 +358,25 @@ body{
 .wl-lab{ display:block; font:700 11px/1 'Archivo',sans-serif; color:var(--doux);
   letter-spacing:1px; margin-bottom:7px }
 
+/* ---- LA LISTE DES COMPTES ---- */
+.wl-cpt{
+  width:100%; display:flex; align-items:center; gap:11px; text-align:left;
+  background:var(--carte2); border:1px solid var(--bord); border-radius:12px;
+  padding:11px 12px; color:var(--texte); font:inherit; cursor:pointer; margin-bottom:8px;
+}
+.wl-cpt:hover{ border-color:var(--violet) }
+.wl-cpt.on{ border-color:var(--violet); background:rgba(139,92,246,.14) }
+.wl-cpt .num{ flex:0 0 auto; width:30px; height:30px; border-radius:50%;
+  background:linear-gradient(160deg,#4B4463,#2E2A3D); color:#DCD7EC;
+  display:flex; align-items:center; justify-content:center;
+  font:800 13px/1 'Archivo',sans-serif }
+.wl-cpt.on .num{ background:linear-gradient(160deg,#FFD679,#E9A62B); color:#0B0710 }
+.wl-cpt .tx{ flex:1 1 auto; min-width:0 }
+.wl-cpt .tx b{ display:block; font:800 13px/1.2 'Archivo',sans-serif }
+.wl-cpt .tx small{ display:block; font:400 11px/1.3 'Space Mono',monospace;
+  color:var(--doux); margin-top:2px }
+.wl-cpt .coche{ flex:0 0 auto; color:var(--violet2); font-size:13px; font-weight:800 }
+
 .wl-note{ font:400 12px/1.5 'Archivo',sans-serif; color:var(--doux); margin:8px 0 0 }
 .wl-note.alerte{ color:var(--or) }
 .wl-note.grave{ color:var(--rouge) }
@@ -635,6 +654,18 @@ body{
            portefeuille d'extension garde sa propre cle, que cette page ne
            detient pas et ne peut donc pas montrer. Offrir le bouton dans ce
            cas-la promettrait quelque chose d'impossible. -->
+      <!-- ---- PLUSIEURS COMPTES ----
+           Seulement pour un portefeuille cree par courriel : une extension
+           gere ses propres comptes, et cette page n'a pas a s'en meler. -->
+      <div class="wl-titre" id="cpTitreComptes" hidden>MY ACCOUNTS</div>
+      <div id="cpComptes" hidden>
+        <div id="cpListe"></div>
+        <button class="wl-b vide" id="cpAjoute" type="button">Add an account</button>
+        <p class="wl-note" id="cpNoteComptes">Every account here comes from the same recovery as the
+          first one — they are derived from it, the way a browser wallet derives its accounts. One
+          recovery brings them all back.</p>
+      </div>
+
       <div class="wl-titre" id="cpTitreCle" hidden>YOUR KEY</div>
       <div id="cpBlocCle" hidden>
         <button class="wl-b vide" id="cpCle" type="button">Show my private key</button>
@@ -890,6 +921,9 @@ var soldes  = {};          // cle -> BigNumber
 var prixUsd = null;        // dollars par SWOGE, ou null si inconnu
 var ethUsd  = null;        // dollars par ETH, ou null si inconnu
 var tauxBet = null;        // $SWOGE par $SWOGEBET, lu sur la piscine v3
+/* Le numero du compte en cours d'affichage. Il change a chaque bascule, et
+   sert a jeter les reponses asynchrones d'un compte qu'on ne regarde plus. */
+var generation = 0;
 var PRIVY_APP_ID = 'cmsga0yzp00a50biaf9vlzzd2';
 
 /* ---- LE PROFIL DU JOUEUR ----
@@ -1313,22 +1347,31 @@ function peintProfil(){
      un nom devine. */
   if(nm.textContent==='Not connected' || !nm.textContent) nm.textContent = court(moi);
 
+  /* ---- UNE REPONSE EN RETARD NE DOIT PAS ECRIRE SUR LE COMPTE SUIVANT ----
+     Les deux lectures ci-dessous sont asynchrones. Si le joueur bascule de
+     compte pendant qu'elles voyagent, elles reviennent et posent le nom et
+     la photo du compte PRECEDENT sur l'en-tete du nouveau. On marque donc le
+     tour, et on jette ce qui revient d'un tour perime. */
+  var g = generation, cible = moi;
+  var aJour = function(){ return g === generation && cible === moi; };
+
   /* La photo : 404 si le joueur n'en a pas, et c'est un cas NORMAL. */
   var url = SERVEUR + '/avatar/' + moi;
   var essai = new Image();
-  essai.onload  = function(){ ph.src = url; ph.classList.remove('vide'); };
-  essai.onerror = function(){ ph.removeAttribute('src'); ph.classList.add('vide'); };
+  essai.onload  = function(){ if(aJour()){ ph.src = url; ph.classList.remove('vide'); } };
+  essai.onerror = function(){ if(aJour()){ ph.removeAttribute('src'); ph.classList.add('vide'); } };
   essai.src = url;
 
   borne(fetch(SERVEUR + '/nom/' + moi, { cache:'no-store' }), 6000, 'nom')
     .then(function(r){ return r.ok ? r.json() : null; })
     .then(function(j){
+      if(!aJour()) return;
       /* `choisi` faux veut dire que le serveur n'a fait que raccourcir
          l'adresse : autant montrer la notre, deja formatee. */
       if(j && j.choisi && j.nom) nm.textContent = j.nom;
       else nm.textContent = court(moi);
     })
-    .catch(function(){ nm.textContent = court(moi); });
+    .catch(function(){ if(aJour()) nm.textContent = court(moi); });
 }
 
 function majCompte(){
@@ -1344,6 +1387,7 @@ function majCompte(){
   var parCourriel = methode === 'email';
   $('cpTitreCle').hidden = !parCourriel;
   $('cpBlocCle').hidden  = !parCourriel;
+  peintComptes();
   $('cpDevise').textContent  = ETH_AFF;
   $('cpDevise2').textContent = ETH_AFF;
   $('hReseau').classList.toggle('on', !!moi);
@@ -1367,6 +1411,111 @@ function peintRecevoir(){
   q.innerHTML='<div style="color:#111;font:700 11px/1.5 monospace;word-break:break-all;text-align:center;padding:6px">'
     + moi + '</div>';
 }
+/* ==================== PLUSIEURS COMPTES ====================
+ *
+ * Les comptes supplementaires sont DERIVES du premier, a la maniere d'un
+ * Phantom ou d'un MetaMask : meme graine, index suivant. Une seule
+ * recuperation les rend tous — c'est ce qui rend l'ecran honnete a proposer.
+ *
+ * ---- CE QUI DOIT SUIVRE UNE BASCULE ----
+ *
+ * `signer` est le seul qui puisse coûter de l'argent, et c'est le plus
+ * discret : `provider.getSigner()` ne prend AUCUNE adresse, il est lie au
+ * compte par defaut de son fournisseur. Changer `moi` sans refaire le
+ * fournisseur laisserait donc la signature sur l'ancien compte — le joueur
+ * regarderait un solde et signerait depuis un autre. On refait la chaine
+ * entiere : fournisseur, signataire, adresse.
+ *
+ * `soldes` est mute en place et n'est jamais recree : sans remise a zero, le
+ * nouveau compte afficherait les soldes de l'ancien jusqu'a la fin de la
+ * lecture. On le vide AVANT, pour que l'ecran dise « — » — inconnu — plutot
+ * qu'un chiffre qui appartient a quelqu'un d'autre.
+ *
+ * Ce qui NE doit PAS bouger : `lecteur` (le fournisseur en lecture de la
+ * chaine), et les prix (`prixUsd`, `ethUsd`, `tauxBet`). Les effacer ferait
+ * clignoter « no price » a chaque bascule sans rien corriger.
+ */
+function comptesPrivy(){
+  if(methode !== 'email' || !window.SwogePrivy || !SwogePrivy.comptes) return [];
+  try{ return SwogePrivy.comptes() || []; }catch(e){ return []; }
+}
+
+function peintComptes(){
+  var l = comptesPrivy();
+  var montre = methode === 'email' && l.length > 0;
+  $('cpTitreComptes').hidden = !montre;
+  $('cpComptes').hidden = !montre;
+  if(!montre) return;
+  var actif = null;
+  try{ actif = SwogePrivy.indexCompte(); }catch(e){}
+  var h='';
+  for(var i=0;i<l.length;i++){
+    var c=l[i], ici = c.adresse && moi && c.adresse.toLowerCase() === moi;
+    h += '<button type="button" class="wl-cpt'+(ici?' on':'')+'" data-compte="'+c.index+'">'
+       +   '<span class="num">'+(c.index+1)+'</span>'
+       +   '<span class="tx"><b>Account '+(c.index+1)+'</b><small>'+court(c.adresse)+'</small></span>'
+       +   (ici ? '<span class="coche">IN USE</span>' : '')
+       + '</button>';
+  }
+  $('cpListe').innerHTML = h;
+}
+
+/* ---- LA BASCULE ----
+   Tout ce qui depend du compte est refait, et dans cet ordre : on efface
+   d'abord, on lit ensuite. L'inverse laisserait une fenetre pendant laquelle
+   l'ecran montre l'ancien solde sous la nouvelle adresse. */
+async function basculeCompte(n){
+  if(methode !== 'email') return;
+  var b = $('cpAjoute'); if(b) b.disabled = true;
+  try{
+    var adr = await borne(SwogePrivy.choisitCompte(n), 15000, 'compte');
+    var p = new ethers.providers.Web3Provider(SwogePrivy.getProvider(), 'any');
+    signer = p.getSigner();
+    moi = String(adr).toLowerCase();
+    soldes = {};                       /* inconnu, pas zero */
+    generation++;
+    majCompte(); peintComptes(); peintAccueil(); peintRecevoir();
+    await rafraichit();
+    toast('Now using account ' + (n + 1));
+  }catch(e){
+    toast(pourquoiRefus(e));
+  }
+  if(b) b.disabled = false;
+}
+
+document.addEventListener('click', function(ev){
+  var c = ev.target.closest('[data-compte]');
+  if(c) basculeCompte(Number(c.dataset.compte));
+});
+
+$('cpAjoute').addEventListener('click', async function(){
+  if(methode !== 'email') return;
+  this.disabled = true;
+  var avant = this.textContent;
+  this.textContent = 'Creating…';
+  try{
+    var n = await borne(SwogePrivy.ajouteCompte(), 25000, 'ajout');
+    peintComptes();
+    toast('Account ' + (n + 1) + ' created');
+    await basculeCompte(n);
+  }catch(e){
+    /* ---- ON DIT CE QUE PRIVY A REPONDU ----
+     * Le refus peut venir de leur cadre (un `type` et un message rediges
+     * la-bas) ou de leur API. Rien dans le paquet ne permet de le prevoir,
+     * donc on ne grise pas le bouton a l'avance : on essaie, et on RAPPORTE.
+     * Un « failed » generique enverrait chercher au mauvais endroit. */
+    var t = (e && (e.type || e.code)) ? ' (' + (e.type || e.code) + ')' : '';
+    $('cpNoteComptes').textContent =
+      'Could not add an account' + t + ': ' + ((e && e.message) || 'no reason given')
+      + '. Additional accounts have to be enabled for this app on Privy\'s side — '
+      + 'your existing account is untouched.';
+    $('cpNoteComptes').className = 'wl-note grave';
+    toast('Could not add an account');
+  }
+  this.textContent = avant;
+  this.disabled = false;
+});
+
 /* L'en-tete mene au compte : c'est la que vivent l'adresse, la methode de
    connexion, le reseau et la deconnexion. */
 $('acMoi').addEventListener('click', function(){

@@ -638,6 +638,131 @@ const T = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
        + ' et deux paquets sur la meme page se marchent dessus');
   }
 
+  /* 7 ter. PLUSIEURS COMPTES — ET LE SIGNATAIRE QUI DOIT SUIVRE
+   *
+   * Les comptes supplementaires sont derives du premier, a la maniere d un
+   * Phantom : meme graine, index suivant.
+   *
+   * LE DANGER de cet ecran tient en une ligne : `provider.getSigner()` ne
+   * prend AUCUNE adresse — il est lie au compte par defaut de SON
+   * fournisseur. Changer l adresse affichee sans refaire le fournisseur
+   * laisserait donc la signature sur l ancien compte : le joueur regarderait
+   * un solde et signerait depuis un autre. On le verifie par le SOLDE, qui
+   * est lu a la chaine pour l adresse active — s il suit, c est que toute la
+   * chaine a suivi.
+   *
+   * Privy est entierement remplace ici : on essaie l ecran, pas leur reseau.
+   */
+  console.log('\n-- plusieurs comptes --');
+  {
+    const A0 = '0x00000000000000000000000000000000000a0000';
+    const A1 = '0x00000000000000000000000000000000000a1111';
+    const enMot = (v) => '0x' + BigInt(v).toString(16).padStart(64, '0');
+    /* Deux soldes DIFFERENTS : c est ce qui rend la bascule verifiable. */
+    const SOLDES = { [A0]: 7000000000000000n, [A1]: 2000000000000000n };
+
+    const page = await nav.newPage({ viewport: { width: 390, height: 844 } });
+    const boum = [];
+    page.on('pageerror', (e) => boum.push(e.message));
+    await page.route('**/privy-swoge.js', (r) => r.fulfill({
+      contentType: 'text/javascript', body: `
+      var comptes=[{adresse:'${A0}',index:0},{adresse:'${A1}',index:1}];
+      var actif=0, refuse=false;
+      function prov(i){ return { on(){}, removeListener(){}, request: async a=>{
+        if(a.method==='eth_accounts'||a.method==='eth_requestAccounts') return [comptes[i].adresse];
+        if(a.method==='eth_chainId') return '0x1237';
+        if(a.method==='net_version') return '4663';
+        return null; } }; }
+      window.__refuseAjout=function(){ refuse=true; };
+      window.SwogePrivy={
+        init(){}, sendCode:async()=>{}, verifyCode:async()=>comptes[0].adresse,
+        logout:async()=>{}, restore:async()=>comptes[actif].adresse,
+        getProvider:()=>prov(actif), getAddress:()=>comptes[actif].adresse,
+        isLoggedIn:()=>true,
+        comptes:()=>comptes.slice(),
+        indexCompte:()=>comptes[actif].index,
+        choisitCompte:async n=>{ actif=comptes.findIndex(c=>c.index===n); return comptes[actif].adresse; },
+        ajouteCompte:async()=>{ if(refuse){ var e=new Error('additional wallets are not enabled for this app');
+          e.type='invalid_request_arguments'; throw e; }
+          comptes.push({adresse:'0x00000000000000000000000000000000000a2222',index:2}); return 2; },
+      };` }));
+    await page.addInitScript(() => { try { localStorage.setItem('swogeAuth', 'email'); } catch (e) {} });
+    await page.route('**/ethers*.umd.min.js', (r) => r.fulfill({
+      contentType: 'text/javascript', body: fs.readFileSync(ETHERS, 'utf8') }));
+    await page.route('**/api.dexscreener.com/**', (r) => r.abort());
+    await page.route('**/avatar/**', (r) => r.fulfill({ status: 404, body: '' }));
+    await page.route('**/nom/**', (r) => r.abort());
+    await page.route('**/rpc.mainnet.chain.robinhood.com/**', async (r) => {
+      const q = JSON.parse(r.request().postData() || '{}');
+      const seul = !Array.isArray(q); const arr = seul ? [q] : q;
+      const un = (m) => {
+        if (m.method === 'eth_getBalance') {
+          const a = String(m.params[0] || '').toLowerCase();
+          return enMot(SOLDES[a] !== undefined ? SOLDES[a] : 0n);
+        }
+        if (m.method === 'eth_chainId') return '0x1237';
+        if (m.method === 'net_version') return '4663';
+        if (m.method === 'eth_blockNumber') return '0x2f7ce78';
+        if (m.method === 'eth_getLogs') return [];
+        if (m.method === 'eth_gasPrice') return enMot(134102000n);
+        if (m.method === 'eth_call') return enMot(0n);
+        return null; };
+      const out = arr.map((m) => ({ jsonrpc: '2.0', id: m.id, result: un(m) }));
+      await r.fulfill({ contentType: 'application/json',
+        body: JSON.stringify(seul ? out[0] : out) });
+    });
+    await page.goto('http://127.0.0.1:' + port + '/swoge_wallet.html',
+                    { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(2800);
+    await page.evaluate(() => document.querySelector('[data-va="ecCompte"]').click());
+    await page.waitForTimeout(400);
+
+    const etat = () => page.evaluate(() => ({
+      n: document.querySelectorAll('#cpListe .wl-cpt').length,
+      actif: (document.querySelector('#cpListe .wl-cpt.on') || {}).textContent || '',
+      adr: document.getElementById('cpAdr').textContent,
+      solde: (document.querySelector('#acJetons .wl-jeton .val b') || {}).textContent || '',
+    }));
+
+    let e = await etat();
+    ok(e.n === 2, 'les deux comptes sont listes (' + e.n + ')');
+    ok(e.actif.indexOf('0x0000…0000') >= 0, 'et le premier est marque en service');
+
+    await page.click('#cpListe .wl-cpt[data-compte="1"]');
+    await page.waitForTimeout(1800);
+    e = await etat();
+    ok(e.actif.indexOf('0x0000…1111') >= 0, 'apres la bascule, c est le second qui est en service');
+    ok(e.adr === '0x0000…1111', 'et l ecran Compte porte la nouvelle adresse (' + e.adr + ')');
+
+    /* LA verification qui compte : le solde vient de la chaine, pour
+       l adresse active. S il a change, c est que le fournisseur, le
+       signataire et l adresse ont TOUS suivi — pas seulement l affichage. */
+    await page.evaluate(() => document.querySelector('[data-va="ecAccueil"]').click());
+    await page.waitForTimeout(900);
+    e = await etat();
+    ok(e.solde === '0.002',
+       'et le solde est celui du NOUVEAU compte, relu a la chaine (' + e.solde + ' au lieu de 0.007)'
+       + ' — c est la preuve que le fournisseur a ete refait : `getSigner()` ne prend aucune adresse,'
+       + ' il suit son fournisseur, donc un fournisseur non refait aurait signe depuis l ancien compte');
+
+    /* Un refus de creation doit se DIRE, avec ce que Privy a repondu. */
+    await page.evaluate(() => { window.__refuseAjout();
+      document.querySelector('[data-va="ecCompte"]').click(); });
+    await page.waitForTimeout(300);
+    await page.click('#cpAjoute');
+    await page.waitForTimeout(1400);
+    const note = await page.evaluate(() =>
+      document.getElementById('cpNoteComptes').textContent);
+    ok(/invalid_request_arguments/.test(note) && /not enabled for this app/.test(note),
+       'un refus rapporte le type ET le message de Privy, pas un « failed » generique :'
+       + ' « ' + note.slice(0, 90) + ' »');
+    ok(/untouched/.test(note),
+       'et il dit que le compte existant n a pas bouge — c est la premiere inquietude');
+
+    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
+    await page.close();
+  }
+
   /* 8. SUR UN TELEPHONE : PAS DE ZOOM, ET LES ONGLETS SONT LA
    *
    * Deux defauts qui ne se voient pas sur un ecran d ordinateur :

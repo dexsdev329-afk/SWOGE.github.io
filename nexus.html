@@ -191,7 +191,22 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
   z-index:22; display:flex; flex-direction:column; gap:6px;
   padding:8px 8px calc(8px + env(safe-area-inset-bottom));
   padding-top:calc(8px + env(safe-area-inset-top));
-  background:#3f3f3f; border-left:1px solid #222; overflow-y:auto;
+  background:#3f3f3f; border-left:1px solid #222;
+  /* ---- IL NE GLISSE PLUS DE COTE ----
+   * `overflow-y:auto` rend l'autre axe `auto` LUI AUSSI : c'est ecrit deux
+   * fois plus haut, et ca s'est vu en vrai. Un joueur nous a envoye son
+   * ecran, le panneau pousse de vingt pixels a gauche et coince la : il lisait
+   * « T - 106 » pour « ATT - 106 » et « P 825 » pour « HP 825 ».
+   * Il ne s'agit pas d'un debordement de deux pixels comme la derniere fois.
+   * Son telephone AGRANDIT LE TEXTE — le reglage d'accessibilite d'Android,
+   * que la vue web de Telegram applique — et la grille des six attributs, en
+   * deux colonnes qui refusaient de retrecir, sortait franchement du panneau.
+   * Deux reparations, pas une : la grille se replie maintenant en une colonne
+   * quand deux ne tiennent pas (voir `.nxp-stats`), et l'axe horizontal est
+   * FERME ici pour que plus rien ne puisse pousser le panneau de cote.
+   * Fermer l'axe seul aurait cache l'engrenage des reglages au lieu de le
+   * deplacer — c'est pour ca que l'essai verifie que rien ne deborde. */
+  overflow-x:hidden; overflow-y:auto;
   font-family:'Archivo',system-ui,sans-serif; color:#dcdcdc;
   scrollbar-width:none; }
 #nxPanneau::-webkit-scrollbar{ display:none; }
@@ -384,9 +399,21 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
 /* les six attributs, deux colonnes — la valeur passe au vert des qu'un
    objet l'augmente, et le bonus est dit a cote : c'est la seule facon de
    voir ce qu'un equipement apporte vraiment */
-.nxp-stats{ display:grid; grid-template-columns:1fr 1fr; gap:1px 8px;
+/* ---- DEUX COLONNES SI ELLES TIENNENT, UNE SINON ----
+ * C'etait une grille `1fr 1fr`. Une colonne `1fr` ne descend jamais sous le
+ * contenu qu'elle porte, et le contenu est en `white-space:nowrap` : la
+ * grille ne retrecissait pas, elle DEBORDAIT. Sur un telephone dont le
+ * reglage systeme agrandit le texte, « DEF - 108 (+43) » demande une
+ * centaine de pixels, deux colonnes en demandent deux cents, et le panneau
+ * n'en a que cent soixante-deux. Le joueur pouvait alors le pousser de cote
+ * — et il y restait.
+ * On passe en `flex` : une ligne porte deux attributs quand ils tiennent, un
+ * seul quand ils ne tiennent pas. Se replier se VOIT ; deborder ne se voit
+ * pas, ca se decouvre en poussant le panneau du doigt. */
+.nxp-stats{ display:flex; flex-wrap:wrap; gap:1px 8px;
   padding:3px 2px; flex:0 0 auto; }
-.nxp-st{ font-size:10.5px; color:#9a9a9a; white-space:nowrap; }
+.nxp-st{ flex:1 1 calc(50% - 8px); min-width:max-content;
+  font-size:10.5px; color:#9a9a9a; white-space:nowrap; }
 .nxp-st b{ font-weight:700; color:#e8e8e8; }
 .nxp-st.up b{ color:#63d13f; }
 .nxp-st u{ text-decoration:none; color:#63d13f; font-weight:700; }
@@ -423,6 +450,32 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
   text-shadow:0 1px 1px #000, 0 -1px 1px #000, 1px 0 1px #000, -1px 0 1px #000; }
 .nxp-c{ position:relative; aspect-ratio:1; background:#2b3340; border:1px solid #171b22;
   display:flex; align-items:center; justify-content:center; }
+/* ---- UNE POIGNEE NE FAIT PAS DEFILER ----
+ *
+ * C'est LE defaut qui rendait le lacher impossible au doigt, et il valait
+ * pour toutes les cibles a la fois — le sol, le coffre, l'equipement.
+ *
+ * Le panneau defile (`overflow-y:auto`). Un doigt qui se pose sur une case et
+ * part vers la gauche est donc, pour le navigateur, un geste de DEFILEMENT
+ * possible : il le donne au panneau, et il envoie un `pointercancel` a la
+ * page. Notre glissement s'arretait la, sans un mot, et la piece avait l'air
+ * de retourner dans le sac — elle n'en etait jamais sortie. Le joueur, lui,
+ * voyait le panneau bouger : « le panneau bouge, il devrait etre fixe ».
+ *
+ * `preventDefault()` sur le `pointerdown` ne repare pas ca : ce n'est pas lui
+ * qui decide du defilement. Seul `touch-action` le decide, et il est lu quand
+ * le doigt SE POSE. La page mettait `touch-action:none` sur le corps au debut
+ * du glissement (`body.nxdrag`) — trop tard d'une image pour le geste qu'il
+ * devait proteger, et c'est justement celui-la qui comptait.
+ *
+ * La regle est donc STATIQUE, et posee sur les elements qui DEMARRENT
+ * vraiment un glissement — les quatre branches du `pointerdown` de
+ * `nexus.js`, pas son filtre d'entree. Ce filtre attrape aussi les lignes de
+ * la boutique, qui portent un `data-item` sans etre des poignees : leur
+ * fermer le defilement aurait rendu le rayon impossible a parcourir, pour
+ * proteger un geste qui n'y existe pas. */
+[data-sac], [data-butin],
+[data-slot][data-item], .nxcf-i[data-item]{ touch-action:none; }
 .nxp-c img{ width:78%; height:78%; object-fit:contain; }
 .nxp-c.vide{ background:#333; }
 .nxp-c u{ text-decoration:none; font:700 15px/1 'Archivo',system-ui,sans-serif; color:#4d4d4d; }
@@ -1272,7 +1325,13 @@ body{ font-family:'Archivo',system-ui,sans-serif; }
   background-image:url('img/nexus/objets/potions_stat.webp');
   background-repeat:no-repeat; background-size:800% 100%;
   image-rendering:pixelated; }
-/* Pendant le geste, rien ne se selectionne ni ne defile sous les doigts. */
+/* Pendant le geste, rien ne se selectionne ni ne defile sous les doigts.
+   ---- MAIS IL NE PROTEGE PAS LE GESTE QUI LE POSE ----
+   `touch-action` est lu quand le doigt SE POSE ; cette classe, elle, arrive
+   pendant le `pointerdown`, une image trop tard pour le glissement qu'elle
+   ouvre. C'est la regle statique sur les poignees (voir `.nxp-c`, plus haut)
+   qui fait le travail. Celle-ci reste pour tout le RESTE de la page pendant
+   qu'on tient une piece — et pour dire, ici, pourquoi elle ne suffisait pas. */
 body.nxdrag{ user-select:none; -webkit-user-select:none; touch-action:none; }
 body.nxdrag #nxSac, body.nxdrag #nxEquip{ outline:1px dashed rgba(255,197,61,.5);
   outline-offset:2px; border-radius:8px; }

@@ -1828,6 +1828,14 @@ process.on('unhandledRejection', (e) => {
     const x = Math.round(jeu * part), y = Math.round(window.innerHeight * 0.5);
     const sous = document.elementFromPoint(x, y);
     return { sx: q.x + q.width / 2, sy: q.y + q.height / 2, x, y,
+             /* ---- ET CE QUE LA CASE LAISSE FAIRE AU DOIGT ----
+              * On le lit ICI, sur la case qu'on s'apprete a attraper, plutot
+              * que dans un bloc a part : le relever ailleurs demandait de
+              * remettre une piece dans le sac, donc de relancer un
+              * personnage mort — ce qui lui rendait ses potions et faisait
+              * tomber, quarante lignes plus bas, un essai qui ne parle pas
+              * du tout de glissement. Une mesure ne doit rien deranger. */
+             prise: getComputedStyle(c).touchAction,
              touche: sous ? ('#' + (sous.id || sous.className || sous.tagName)) : 'rien' };
   }, part); }
 
@@ -1851,7 +1859,23 @@ process.on('unhandledRejection', (e) => {
     if (!dedans) continue;
     ok(!!geste, `on trouve la case et l aire de jeu pour ${cote.nom}`);
     if (!geste) continue;
-    console.log(`   ${cote.nom} : le doigt en (${geste.x},${geste.y}) touche ${geste.touche}`);
+    console.log(`   ${cote.nom} : le doigt en (${geste.x},${geste.y}) touche ${geste.touche}`
+                + ` — la case rend touch-action:${geste.prise}`);
+    /* ---- UNE POIGNEE NE FAIT PAS DEFILER ----
+     * Le second defaut du lacher au doigt, et le plus discret des deux : le
+     * panneau defile (`overflow-y:auto`), donc un doigt qui part d'une case
+     * vers la gauche est un geste de defilement POSSIBLE. Le navigateur le
+     * donne au panneau et envoie un `pointercancel` a la page ; le glissement
+     * s'arrete sans un mot, la piece a l'air de retourner dans le sac, et le
+     * joueur voit le panneau bouger. C'est mot pour mot ce qu'on nous a
+     * ecrit : « ca ne fonctionne pas et le panneau bouge ».
+     * `preventDefault()` ne decide pas du defilement — `touch-action` seul le
+     * decide, et il est lu quand le doigt SE POSE. La page le mettait sur le
+     * corps au debut du glissement : une image trop tard, precisement pour le
+     * geste qu'il devait proteger. La regle est donc statique sur la case, et
+     * c'est le style CALCULE qu'on lit, pas la feuille de style. */
+    ok(geste.prise === 'none',
+       `la case ne se laisse pas voler par le defilement du panneau (${geste.prise})`);
     /* Le voile de mort se reconnait ici aussi : s'il est revenu entre-temps,
        ce n'est pas le sol qu'on vise et le depot ne peut pas partir. */
     ok(!/nxMortVoile|nxmt/.test(geste.touche),
@@ -1869,6 +1893,103 @@ process.on('unhandledRejection', (e) => {
        `lacher sur ${cote.nom} JETTE la piece par terre — sinon elle a l air de revenir dans le sac`);
     ok(jete && jete.item === PIECE.id, `et c est bien celle qu on tenait (${jete && jete.item})`);
   }
+  await t.evaluate(() => { document.getElementById('nxWrap').classList.add('replie'); });
+  await t.waitForTimeout(300);
+
+  /* ================== LE PANNEAU NE GLISSE PAS DE COTE ==================
+   *
+   * Un joueur nous a envoye son ecran : le panneau pousse d'une vingtaine de
+   * pixels vers la gauche et COINCE la. Il lisait « T - 106 » pour
+   * « ATT - 106 » et « P 825 » pour « HP 825 ». Deux choses s'additionnaient :
+   *
+   *   - la grille des six attributs, en `1fr 1fr` avec un contenu en
+   *     `nowrap`, ne pouvait pas retrecir : elle DEBORDAIT ;
+   *   - `overflow-y:auto` rend l'autre axe `auto` lui aussi, donc ce
+   *     debordement devenait un defilement horizontal — et un panneau pousse
+   *     de cote y reste.
+   *
+   * ---- SON TELEPHONE AGRANDIT LE TEXTE ----
+   * C'est le reglage d'accessibilite d'Android, que la vue web de Telegram
+   * applique a toute la page. Nos essais tournaient a la taille de reference
+   * et ne voyaient rien. On le REPRODUIT ici : `-webkit-text-size-adjust`
+   * multiplie les tailles calculees exactement comme lui — mesure faite,
+   * 10,5 px deviennent 12,6 px a 120 % et 15,75 px a 150 %.
+   *
+   * ---- ET SUR LA MEME PAGE ----
+   * On REDIMENSIONNE la page tactile au lieu d'en ouvrir d'autres : un joueur
+   * n'existe qu'une fois par adresse, et trois pages de plus sortaient
+   * celle-ci du monde — les blocs suivants se plaignaient alors de choses qui
+   * marchent (« la fiole automatique ne boit pas »). L'ecran mesure 360, le
+   * cas le plus dur : le panneau n'y fait que 148. */
+  console.log('\n-- le panneau ne glisse pas de cote --');
+  await t.evaluate(() => { document.getElementById('nxWrap').classList.remove('replie'); });
+  await t.setViewportSize({ width: 360, height: 780 });
+  await t.waitForTimeout(400);
+  for (const zoom of [100, 120, 150]) {
+    await t.evaluate((z) => {
+      let st = document.getElementById('__zoom');
+      if (!st) { st = document.createElement('style'); st.id = '__zoom';
+                 document.documentElement.appendChild(st); }
+      st.textContent = 'html{-webkit-text-size-adjust:' + z + '%;}';
+    }, zoom);
+    await t.waitForTimeout(350);
+    const mes = await t.evaluate(() => {
+      const pan = document.getElementById('nxPanneau');
+      const st = getComputedStyle(pan);
+      /* On POUSSE le panneau, au lieu de lire un style : c'est le geste du
+         joueur, et c'est lui qui l'a laisse coince. Un axe ferme revient a
+         zero ; un axe ouvert garde la valeur. */
+      pan.scrollLeft = 999;
+      const pousse = pan.scrollLeft;
+      pan.scrollLeft = 0;
+      /* Et QUI deborde, pas seulement de combien : « le panneau deborde de
+         30 px » ne dit pas quoi reparer. */
+      const dedans = pan.getBoundingClientRect();
+      const trop = [].filter.call(pan.querySelectorAll('*'), (e) => {
+        const r = e.getBoundingClientRect();
+        return r.width > 0 && r.right > dedans.right + 1;
+      }).map((e) => (e.id || e.className || e.tagName) + ' +'
+                    + Math.round(e.getBoundingClientRect().right - dedans.right));
+      const st1 = pan.querySelector('.nxp-st');
+      return { largeur: Math.round(dedans.width), pousse, axe: st.overflowX,
+               trop: trop.slice(0, 6),
+               police: st1 ? getComputedStyle(st1).fontSize : null };
+    });
+    console.log(`   x${zoom} % : ` + JSON.stringify(mes));
+    ok(mes.pousse === 0,
+       `a x${zoom} % le panneau ne se pousse pas de cote (il est reste a ${mes.pousse})`);
+    ok(mes.trop.length === 0,
+       `a x${zoom} % rien ne sort du panneau${mes.trop.length ? ' : ' + mes.trop.join(', ') : ''}`);
+    /* Le temoin de la reproduction : si le zoom n'agissait pas, les trois
+       tours mesureraient la meme chose et ne prouveraient rien. */
+    if (zoom === 150) {
+      ok(mes.police && parseFloat(mes.police) > 12,
+         `et le texte a VRAIMENT grossi (${mes.police}) — sinon l essai ne prouve rien`);
+    }
+  }
+  await t.evaluate(() => {
+    const st = document.getElementById('__zoom'); if (st) st.remove();
+  });
+  await t.setViewportSize({ width: 412, height: 880 });
+  await t.waitForTimeout(400);
+
+  console.log('\n-- et la boutique defile toujours --');
+  /* Le selecteur des poignees ne mord pas sur la BOUTIQUE, qui porte un `data-item`
+     sans etre une poignee : lui fermer le defilement rendrait son rayon
+     impossible a parcourir, pour proteger un geste qui n'y existe pas. Son
+     rayon n'est pas peint dans le monde, alors on pose le cas — c'est le
+     selecteur qu'on met a l'essai, et il se juge sur une balise. */
+  const rayon = await t.evaluate(() => {
+    const faux = document.createElement('div');
+    faux.setAttribute('data-msg', 'achete');
+    faux.setAttribute('data-item', '1');
+    document.body.appendChild(faux);
+    const v = getComputedStyle(faux).touchAction;
+    faux.remove();
+    return v;
+  });
+  ok(rayon !== 'none', `une ligne de boutique defile toujours (${rayon})`);
+  /* Le panneau retrouve l'etat ou les blocs suivants l'attendent. */
   await t.evaluate(() => { document.getElementById('nxWrap').classList.add('replie'); });
   await t.waitForTimeout(300);
 
@@ -1895,6 +2016,17 @@ process.on('unhandledRejection', (e) => {
     ],
   });
   const bues = () => t.evaluate(() => window.__s[0].__out.filter((m) => m.type === 'potionBoit').length);
+  /* ---- VIVANT D'ABORD ----
+   * Tout ce bloc regarde la BARRE DE VIE, et la barre d'un mort ne bouge
+   * plus : `window.__pv` ne se raccroche qu'a un `realmEtat` qui porte un
+   * `moi`, et il n'y en a plus. La fiole ne buvait donc pas — non parce
+   * qu'elle est cassee, mais parce qu'il n'y avait plus personne a soigner.
+   * L'essai lisait « trente images sous la barre : 0 demande » d'un reglage
+   * qui marche, et seulement les fois ou un lime avait eu le personnage. */
+  const vifF = await assureVivant(t);
+  if (vifF) await t.waitForTimeout(800);
+  ok(!vifF || vifF.ok, 'la page tactile est vivante avant de regarder la fiole'
+     + (vifF ? ' (relance apres une mort)' : ''));
   /* La pile de fioles est la NOTRE pendant tout ce bloc. */
   await t.evaluate(() => { window.__retient = 'potionBoit'; });
   const pousseFrames = (n) => t.evaluate(async (k) => {

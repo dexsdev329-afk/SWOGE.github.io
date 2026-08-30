@@ -798,6 +798,20 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
 .ch-info-c tr:first-child td{ border-top:0 }
 .ch-info-c td:last-child{ text-align:right; color:#FFD98A; font-weight:800 }
 .ch-info-c .note{ color:#8E8677; font-size:12px }
+/* ---- LES VINGT LIGNES, DESSINEES ----
+   Ecrites, elles font vingt suites de chiffres que personne ne lit. La
+   grille 5x3 se reconnait d un coup d oeil, et c est exactement ce que le
+   joueur voit sur les rouleaux. */
+.ch-info-c .lignes{ display:grid; gap:8px;
+  grid-template-columns:repeat(auto-fill,minmax(84px,1fr)) }
+.ch-info-c .lg{ padding:6px; border-radius:9px; text-align:center;
+  background:rgba(255,255,255,.035); border:1px solid rgba(255,255,255,.07) }
+.ch-info-c .lg b{ display:block; color:#8E8677; font:700 10px/1 'Archivo',sans-serif;
+  letter-spacing:.6px; margin-bottom:5px }
+.ch-info-c .lg i{ display:grid; grid-template-columns:repeat(5,1fr); gap:2px }
+.ch-info-c .lg u{ display:block; aspect-ratio:1; border-radius:2px; text-decoration:none;
+  background:rgba(255,255,255,.07) }
+.ch-info-c .lg u.on{ background:#7CFF9B }
 
 /* ---- LA BARRE DE COMMANDE ---- */
 .ch-barre{ max-width:1040px; margin:12px auto 0; padding:0 10px;
@@ -2622,9 +2636,18 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
    * que d'inventer des regles de repli — une regle fausse lue avant de miser
    * est pire qu'une regle absente.
    */
-  var CH_NOM_SYM={ j:"J", q:"Q", k:"K", a:"A", lanterne:"Lantern",
-                   pelle:"Shovel", crane:"Doge Skull", wild:"Wild",
-                   dead:"Dead Scatter", deader:"Deader Scatter" };
+  /* ---- LES NOMS SONT CEUX DE CE JEU, PAS DE L'AUTRE ----
+   * La table etait celle de DEAD SWOGE — `lanterne`, `pelle`, `crane`. Aucune
+   * de ses cles n'existe ici, donc la feuille affichait les cles brutes du
+   * moteur : « dix », « noeud », « collier ». Le joueur lisait du francais
+   * technique sous des images de chiens.
+   *
+   * Chaque nom designe ce qu'on VOIT sur la vignette — l'etoile au cou, le
+   * noeud rose, le collier a pointes — pour qu'on retrouve la ligne du
+   * tableau en regardant les rouleaux. */
+  var CH_NOM_SYM={ dix:"10", j:"J", q:"Q", k:"K", a:"A",
+                   beagle:"Beagle", etoile:"Star Pup", noeud:"Bow Pup",
+                   collier:"Spiked Collar", wild:"Wild", bonus:"Bonus" };
   function chEch(t){ return String(t).replace(/[&<>"]/g, function(c){
     return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
 
@@ -2666,19 +2689,30 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
                 + ' read the wrong one right before betting.</p>';
 
     var mise=CH.mise||1;
+    var nLignes=(b.lignes||[]).length;
     var h='';
 
+    /* ---- CE JEU PAIE SUR DES LIGNES, PAS EN « WAYS » ----
+     * Cette feuille etait celle de DEAD SWOGE, recopiee. Elle annoncait
+     * « chaque position compte, les memes trois rouleaux peuvent porter
+     * plusieurs chemins gagnants a la fois » — la description exacte des
+     * 243 chemins de l'autre table. Ici il y a VINGT LIGNES fixes, et un
+     * symbole hors ligne ne paie rien. C'est la difference entre esperer
+     * un gain et savoir pourquoi il n'est pas venu.
+     *
+     * Le nombre de lignes n'est pas ecrit dans la page : il se compte sur
+     * `b.lignes`, qui vient du serveur avec le trace de chacune. */
     h+='<h4>HOW TO PLAY</h4>'
      + '<p>Set your bet with the &minus; and + buttons, or MAX BET, then press SPIN.'
-     + ' Five reels, three rows. Symbols pay from the leftmost reel to the right,'
-     + ' on adjacent reels — the more reels a symbol covers, the more it pays.</p>';
+     + ' Five reels, three rows'
+     + (nLignes ? ', and <b>'+nLignes+' fixed lines</b>' : '')
+     + '. A win runs from the leftmost reel to the right, on adjacent reels,'
+     + ' <b>along one of those lines</b> — three or more of the same symbol.'
+     + ' A symbol that sits off the line pays nothing.</p>';
 
-    /* Les gains, en multiples de la mise ET en $SWOGE a la mise courante :
-       « 0.30x » ne dit rien tant qu'on ne l'a pas converti soi-meme. */
     var ordre=(b.bas||[]).concat(b.hauts||[]);
     if(b.bareme && ordre.length){
-      h+='<h4>SYMBOLS &mdash; PER '+chExact(mise)+' $SWOGE BET</h4><div class="sym">';
-      /* du plus riche au plus pauvre : c'est ce qu'on cherche en ouvrant. */
+      h+='<h4>SYMBOLS &mdash; PER '+chExact(mise)+' $SWOGE BET, ON ONE LINE</h4><div class="sym">';
       ordre.slice().sort(function(x,y){
         return ((b.bareme[y]||{})[5]||0)-((b.bareme[x]||{})[5]||0); })
       .forEach(function(sy){
@@ -2693,11 +2727,6 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         h+='</dl></div>';
       });
       h+='</div>';
-      /* Le gain d'une manche est arrondi VERS LE BAS au $SWOGE : a la mise la
-         plus basse, les plus petits gains tombent donc reellement a zero. Ca
-         se voit dans le tableau ci-dessus, ou certains montants valent 0 — on
-         l'explique plutot que de le masquer, et la phrase n'apparait que
-         quand elle s'applique vraiment a la mise courante. */
       var zero=ordre.some(function(sy){
         var p2=b.bareme[sy]; if(!p2) return false;
         return [3,4,5].some(function(n){ return p2[n]!=null && Math.round(p2[n]*mise)===0; });
@@ -2705,88 +2734,109 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       if(zero) h+='<p class="note">Wins are rounded down to whole $SWOGE. At a '
         + chExact(mise)+' $SWOGE bet the smallest combinations above come to 0 —'
         + ' raise your bet and they pay.</p>';
+      h+='<p class="note">Those figures are multiples of your WHOLE bet, for one'
+       + ' line. Several lines can win on the same spin, and they add up.</p>';
     }
 
-    if(b.taillesWild && b.taillesWild.length && b.rouleauxWild){
-      /* Les rouleaux sont comptes a partir de zero cote serveur ; le joueur
-         compte a partir de un. */
+    /* ---- LE WILD PREND UNE CASE, PAS UN ROULEAU ----
+     * L'ancienne feuille decrivait celui de DEAD SWOGE : un Wild debout qui
+     * prend toute la colonne, avec un multiplicateur d'autant plus gros
+     * qu'il est court. Rien de tout ca ici. Et surtout, elle disait que les
+     * multiplicateurs se MULTIPLIENT — ils s'ADDITIONNENT sur cette table.
+     * Un joueur qui compte sur x2 fois x3 attend 6 la ou il en aura 5. */
+    if(b.wild && b.rouleauxWild && b.rouleauxWild.length){
       var rl=b.rouleauxWild.map(function(r){ return r+1; });
-      h+='<h4>WILD</h4>';
-      /* Le Wild et les scatters ont leur vignette comme les symboles payants :
-         ce sont eux qu'il faut RECONNAITRE sur les rouleaux, et ils
-         manquaient au tableau. */
-      if(b.wild) h+='<div class="sym"><div class="sy" style="grid-column:1/-1">'
+      h+='<h4>WILD</h4>'
+       + '<div class="sym"><div class="sy" style="grid-column:1/-1">'
        + '<img src="'+chImg(b.wild)+'" alt=""><dl><div><b>Wild</b></div>'
-       + '<div><span>substitutes for every paying symbol</span></div></dl></div></div>';
-      h+='<p>The Wild lands on reel'+(rl.length>1?'s':'')+' '
+       + '<div><span>substitutes for every paying symbol</span></div></dl></div></div>'
+       + '<p>The Wild lands on reel'+(rl.length>1?'s':'')+' '
        + rl.join(', ').replace(/, ([^,]*)$/, ' and $1')
-       + ' only. It stands up and takes the whole reel — and the shorter it'
-       + ' lands, the bigger the multiplier it carries.</p><table>';
-      b.taillesWild.slice().sort(function(x,y){ return y.multi-x.multi; })
-        .forEach(function(t){
-          h+='<tr><td>'+t.taille+' cell'+(t.taille>1?'s':'')+' tall</td><td>&times;'
-           + t.multi+'</td></tr>';
-        });
-      /* ---- LES TROIS REGLES QUI CHANGENT TOUT ----
-         Elles ne sont pas dans le bareme : ce n'est pas un nombre, c'est la
-         FORME du moteur. Elles sont donc ecrites ici — et epinglees par
-         `dod_regles.test.js`, qui les verifie sur le moteur lui-meme et
-         nomme ce paragraphe. Si le moteur change, l'essai tombe et pointe
-         cette phrase, au lieu de la laisser devenir fausse en silence. */
-      h+='</table><p class="note">A Wild substitutes for every paying symbol'
-       + ' and pays nothing on its own. When Wilds land on several reels at'
-       + ' once their multipliers are MULTIPLIED together, not added — that'
-       + ' is where the big rounds come from. The multiplier applies to the'
-       + ' whole spin, not to one line.</p>';
-    }
-
-    if(b.scattersPourTours && b.tours){
-      h+='<h4>FREE SPINS</h4><table>';
-      if(b.tours.dead!=null)
-        h+='<tr><td>'+b.scattersPourTours+' Dead scatters, anywhere</td><td>'
-         + b.tours.dead+' free spins</td></tr>';
-      if(b.tours.deader!=null)
-        h+='<tr><td>'+b.scattersPourTours+' Deader scatters, anywhere</td><td>'
-         + b.tours.deader+' free spins</td></tr>';
-      h+='</table>';
-      /* Les scatters aussi ont leur vignette : ce sont eux qu'on guette. */
-      if(b.dead||b.deader){
-        h+='<div class="sym">';
-        [[b.dead,'Dead Scatter'],[b.deader,'Deader Scatter']].forEach(function(x){
-          if(!x[0]) return;
-          h+='<div class="sy"><img src="'+chImg(x[0])+'" alt="">'
-           + '<dl><div><b>'+chEch(x[1])+'</b></div>'
-           + '<div><span>anywhere on the reels</span></div></dl></div>';
-        });
-        h+='</div>';
+       + ' only, and it takes <b>one cell</b> — not the whole reel. It stands in'
+       + ' for every paying symbol and pays nothing on its own.</p>';
+      if(b.multisWild && b.multisWild.length){
+        var somme=0;
+        b.multisWild.forEach(function(m){ somme += (m.poids||0); });
+        h+='<table>';
+        b.multisWild.slice().sort(function(x,y){ return y.multi-x.multi; })
+          .forEach(function(m){
+            h+='<tr><td>&times;'+m.multi+'</td><td>'
+             + (somme ? Math.round(m.poids*100/somme)+' %' : '&mdash;')+'</td></tr>';
+          });
+        h+='</table><p class="note">Every Wild that lands carries a multiplier, drawn'
+         + ' at those odds. All the Wilds on one reel carry the same one.</p>';
       }
-      h+='<p class="note">Scatters pay nothing by themselves — they open the'
-       + ' round. They count anywhere on the five reels, not on a line. If'
-       + ' both kinds land at once, the richer one opens.</p>'
-       + '<p class="note">During free spins each Wild multiplier STAYS on its'
-       + ' reel until the round ends, and a new Wild landing on a reel that'
-       + ' already holds one ADDS to it. Scatters landing during the round do'
-       + ' nothing: the bonus cannot be retriggered.</p>';
+      h+='<p class="note">When a winning line crosses more than one Wild, their'
+       + ' multipliers are <b>ADDED</b>, not multiplied: &times;2 and &times;3 on'
+       + ' the same line make &times;5, not &times;6. Only the Wilds the line'
+       + ' actually runs through count — a Wild sitting elsewhere on the reel'
+       + ' does nothing for that line.</p>';
     }
 
-    if(b.crans && b.cransOrdre){
-      h+='<h4>BUY A BONUS &mdash; AT '+chExact(mise)+' $SWOGE BET</h4><table>';
-      b.cransOrdre.forEach(function(k){
-        var cr=b.crans[k]; if(!cr) return;
-        h+='<tr><td>'+chEch(CH_ACHAT_NOM[k]||k)
-         + (cr.quoi?' <span class="note">· '+chEch(cr.quoi)+'</span>':'')
-         + '</td><td>'+cr.prix+'&times; · '+chExact(Math.round(cr.prix*mise))+'</td></tr>';
-      });
+    /* ---- LE BONUS ----
+     * Il PAIE en plus d'ouvrir la serie, ce que l'ancienne feuille ne disait
+     * nulle part, et le nombre de tours se TIRE au lieu d'etre fixe. */
+    if(b.bonus && b.bonusPourTours){
+      h+='<h4>FREE SPINS</h4>'
+       + '<div class="sym"><div class="sy" style="grid-column:1/-1">'
+       + '<img src="'+chImg(b.bonus)+'" alt=""><dl><div><b>Bonus</b></div>'
+       + '<div><span>anywhere on the reels — no line needed</span></div></dl></div></div>';
+      if(b.rouleauxBonus && b.rouleauxBonus.length){
+        var rb=b.rouleauxBonus.map(function(r){ return r+1; });
+        h+='<p>The Bonus lands on reel'+(rb.length>1?'s':'')+' '
+         + rb.join(', ').replace(/, ([^,]*)$/, ' and $1')+' only.</p>';
+      }
+      h+='<table><tr><td>'+b.bonusPourTours+' Bonus, anywhere</td><td>free spins'
+       + (b.bonusPaie!=null ? ' + '+b.bonusPaie+'&times; bet' : '')+'</td></tr>';
+      /* Le nombre de tours n'est pas fixe : il se tire. Les bornes et la
+         moyenne se CALCULENT sur le tirage envoye par le serveur — les
+         ecrire en dur ferait mentir la feuille au premier reglage. */
+      if(b.casesTirage && b.tirageTours && b.tirageTours.length){
+        var mini=null, maxi=null, poids=0, moy=0;
+        b.tirageTours.forEach(function(t){
+          if(mini===null || t.n<mini) mini=t.n;
+          if(maxi===null || t.n>maxi) maxi=t.n;
+          poids += (t.poids||0); moy += t.n*(t.poids||0);
+        });
+        moy = poids ? (moy/poids)*b.casesTirage : 0;
+        h+='<tr><td>How many</td><td>'+(mini*b.casesTirage)+' to '+(maxi*b.casesTirage)
+         + ' &middot; '+moy.toFixed(1)+' on average</td></tr>';
+      }
       h+='</table>';
+      if(b.bonusPaie!=null)
+        h+='<p class="note">The Bonus symbols PAY as well as opening the round:'
+         + ' '+b.bonusPourTours+' of them are worth '+b.bonusPaie+'&times; your bet'
+         + ' — '+chExact(Math.round(b.bonusPaie*mise))+' $SWOGE at this bet — on top'
+         + ' of the free spins.</p>';
+      h+='<p class="note">During the round every Wild that lands <b>STAYS in its'
+       + ' cell</b>, with its multiplier, until the round ends. A Wild falling on a'
+       + ' cell that already holds one adds nothing — that cell is already taken.'
+       + ' The Bonus symbol does not drop during free spins at all, so the round'
+       + ' cannot be retriggered.</p>';
     }
 
-    h+='<h4>THE RULES</h4>'
-     + '<p>Symbols pay on ADJACENT reels starting from the leftmost one — a'
-     + ' symbol on reels 1, 2 and 3 pays, the same symbol on reels 1, 2 and 4'
-     + ' does not. Every position counts, so the same three reels can hold'
-     + ' several winning paths at once, and each one pays.</p><table>';
+    /* ---- LES LIGNES, DESSINEES ----
+     * Elles arrivent du serveur : pour chaque ligne, la rangee visitee sur
+     * chacun des cinq rouleaux. Vingt suites de chiffres ne se lisent pas ;
+     * vingt petites grilles, si. */
+    if(b.lignes && b.lignes.length && b.rouleaux && b.rangees){
+      h+='<h4>THE '+b.lignes.length+' LINES</h4><div class="lignes">';
+      b.lignes.forEach(function(l, i){
+        h+='<div class="lg"><b>'+(i+1)+'</b><i>';
+        for(var y=0;y<b.rangees;y++)
+          for(var r=0;r<b.rouleaux;r++)
+            h+='<u class="'+(l[r]===y?'on':'')+'" style="grid-row:'+(y+1)+';grid-column:'+(r+1)+'"></u>';
+        h+='</i></div>';
+      });
+      h+='</div><p class="note">Reels run left to right; each square is one'
+       + ' position on the grid. A win must sit on the lit squares of one line,'
+       + ' starting from the leftmost reel.</p>';
+    }
+
+    h+='<h4>THE RULES</h4><table>';
     if(b.rouleaux&&b.rangees)
       h+='<tr><td>Reels</td><td>'+b.rouleaux+' &times; '+b.rangees+'</td></tr>';
+    if(nLignes) h+='<tr><td>Lines</td><td>'+nLignes+', fixed</td></tr>';
     if(b.gainMax) h+='<tr><td>Maximum win</td><td>'+chExact(b.gainMax)+'&times; bet</td></tr>';
     if(b.min) h+='<tr><td>Minimum bet</td><td>'+chExact(b.min)+' $SWOGE</td></tr>';
     if(b.max) h+='<tr><td>Maximum bet</td><td>'+chExact(b.max)+' $SWOGE</td></tr>';

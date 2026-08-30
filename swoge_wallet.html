@@ -353,10 +353,18 @@ body{
 
 /* La liste couvre la carte : posee dans le flux, elle pousserait le solde
    et le bouton vers le bas a chaque ouverture. */
+/* ---- ELLE NE PEUT PLUS SORTIR DU CADRE ----
+   Avec trois jetons et rien d'autre, la liste tenait toujours. Elle porte
+   maintenant une barre de recherche, un panneau de resultat et les jetons
+   ajoutes : sans plafond elle depasse le bas de `#tel`, qui est en
+   `overflow:hidden` — et ce qui en sort n'est pas seulement invisible, il est
+   INCHOISISSABLE. On plafonne et on fait defiler ; la barre de recherche est
+   collante, elle reste donc en vue pendant qu'on defile. */
 .wl-pick-l{
   position:absolute; left:0; right:0; top:calc(100% + 6px); z-index:30;
   background:#191324; border:1px solid var(--violet);
   border-radius:12px; padding:5px; box-shadow:0 14px 34px rgba(0,0,0,.55);
+  max-height:min(46vh, 320px); overflow-y:auto; overscroll-behavior:contain;
 }
 .wl-pick-l[hidden]{ display:none }
 /* Retournee vers le haut quand elle sortirait du cadre par le bas. */
@@ -366,6 +374,28 @@ body{
   padding:9px 8px; border-radius:9px; border:0; background:none;
   color:var(--texte); font:inherit; cursor:pointer;
 }
+/* ---- LA BARRE DE RECHERCHE, EN TETE DE LISTE ---- */
+.wl-pick-q{ position:sticky; top:0; z-index:2; background:var(--carte);
+  padding:8px 8px 6px; border-bottom:1px solid var(--bord) }
+.wl-pick-q input{ width:100%; box-sizing:border-box; padding:10px 11px; border-radius:10px;
+  border:1px solid var(--bord); background:var(--fond); color:var(--texte);
+  font:400 16px/1.2 'Space Mono',monospace }
+.wl-pick-q input:focus{ outline:none; border-color:var(--violet) }
+.wl-pick-r{ margin-top:7px; font:400 11.5px/1.45 'Archivo',sans-serif; color:var(--doux) }
+.wl-pick-r[hidden]{ display:none }
+.wl-pick-r.grave{ color:var(--rouge) }
+.wl-pick-r .adr{ font:400 10.5px/1.5 'Space Mono',monospace; word-break:break-all;
+  color:var(--doux); display:block; margin-top:3px }
+.wl-pick-r .prof{ color:var(--vert) }
+/* Les initiales, quand le jeton n'a pas d'image. Un rond generique ferait
+   passer un jeton inconnu pour un jeton range. */
+.wl-pick-o .ini, .wl-pick-b .ini, .wl-pick-r .ini{ width:30px; height:30px; border-radius:50%;
+  flex:0 0 auto; display:grid; place-items:center; background:var(--fond);
+  border:1px solid var(--bord); color:var(--doux);
+  font:800 11px/1 'Archivo',sans-serif; letter-spacing:.3px }
+.wl-pick-o .x{ flex:0 0 auto; width:26px; height:26px; border-radius:8px; display:grid;
+  place-items:center; color:var(--doux); font-size:15px; margin-left:2px }
+.wl-pick-o .x:hover{ background:rgba(248,113,113,.18); color:var(--rouge) }
 .wl-pick-o:hover, .wl-pick-o.actif{ background:rgba(139,92,246,.18) }
 .wl-pick-o[aria-selected="true"]{ background:rgba(139,92,246,.28) }
 .wl-pick-o .sol{ flex:0 0 auto; text-align:right;
@@ -1044,6 +1074,152 @@ var JETONS = [
 ];
 function J(cle){ for(var i=0;i<JETONS.length;i++) if(JETONS[i].cle===cle) return JETONS[i]; return null; }
 
+/* ==================== LES JETONS QU'ON AJOUTE SOI-MEME ====================
+ *
+ * Il y a plus de mille quatre cents jetons avec une piscine sur cette
+ * chaine, et ce portefeuille en connaissait trois. Coller un contrat et
+ * pouvoir l'echanger, c'est la difference entre un portefeuille et une
+ * vitrine.
+ *
+ * ---- ON CHERCHE PAR CONTRAT, JAMAIS PAR NOM ----
+ *
+ * Ce n'est pas une facilite qu'on refuse, c'est un piege qu'on evite. Releve
+ * sur la chaine, en listant les piscines : VINGT jetons differents portent le
+ * symbole « AU », quinze portent « NTF », cinq « HEEBOO », trois « SHIT ».
+ * Il en existe un qui s'appelle « this is a rug ». Un champ de recherche par
+ * nom afficherait vingt lignes identiques et laisserait le joueur en choisir
+ * une au hasard — sur une page qui sert a signer des transactions, c'est une
+ * fonctionnalite qui coute de l'argent.
+ *
+ * L'adresse, elle, ne se confond avec rien. Elle est donc la seule entree, et
+ * elle reste AFFICHEE en entier sur le jeton ajoute.
+ *
+ * ---- CE QUE LA PAGE PROMET, ET CE QU'ELLE NE PROMET PAS ----
+ *
+ * Elle lit le nom, le symbole et les decimales SUR LE CONTRAT, et trouve la
+ * piscine la plus profonde contre l'ETH (RH). Elle ne dit rien de la
+ * qualite du jeton : un jeton qu'on achete peut etre impossible a revendre,
+ * et aucune lecture faite ici ne permet de le savoir a l'avance. Le
+ * portefeuille le DIT plutot que de laisser croire a une verification.
+ */
+var F3 = '0x1f7d7550b1b028f7571e69a784071f0205fd2efa';   /* fabrique Uniswap v3 */
+var F2 = '0x8bceaa40b9acdfaedf85adf4ff01f5ad6517937f';   /* fabrique Uniswap v2 */
+var F3_ABI = ['function getPool(address,address,uint24) view returns (address)'];
+var F2_ABI = ['function getPair(address,address) view returns (address)'];
+var PALIERS = [100, 500, 3000, 10000];
+var CLE_PERSO = 'swogeJetons';
+var ZERO_ADR = '0x0000000000000000000000000000000000000000';
+
+function persoCle(adr){ return 'x' + String(adr).toLowerCase(); }
+
+function chargePerso(){
+  var l = [];
+  try{ l = JSON.parse(localStorage.getItem(CLE_PERSO) || '[]'); }catch(e){ l = []; }
+  if(Object.prototype.toString.call(l) !== '[object Array]') return;
+  for(var i=0;i<l.length;i++){
+    var j = l[i];
+    if(!j || !j.adr || !ethers.utils.isAddress(String(j.adr).toLowerCase())) continue;
+    if(J(persoCle(j.adr))) continue;
+    JETONS.push({ cle:persoCle(j.adr), sym:String(j.sym||'?').slice(0,12),
+                  nom:String(j.nom||'').slice(0,40), adr:j.adr, dec:j.dec|0,
+                  logo:j.logo || null, perso:true, pool:j.pool || null });
+  }
+}
+function sauvePerso(){
+  var l = [];
+  for(var i=0;i<JETONS.length;i++){
+    var j = JETONS[i]; if(!j.perso) continue;
+    l.push({ adr:j.adr, sym:j.sym, nom:j.nom, dec:j.dec, logo:j.logo, pool:j.pool });
+  }
+  try{ localStorage.setItem(CLE_PERSO, JSON.stringify(l)); }catch(e){}
+}
+function oublieJeton(cle){
+  for(var i=0;i<JETONS.length;i++) if(JETONS[i].cle===cle && JETONS[i].perso){
+    JETONS.splice(i,1); delete soldes[cle]; sauvePerso(); return true;
+  }
+  return false;
+}
+
+/* ---- LA PISCINE LA PLUS PROFONDE, PAS LA PREMIERE TROUVEE ----
+ *
+ * Un meme jeton a souvent plusieurs piscines contre l'ETH (RH). Releve sur
+ * `FOX` : celle a 0,3 % contient NEUF WEI, celle a 1 % contient cinquante et
+ * un ethers. Prendre la premiere qui repond donnerait un devis absurde et un
+ * echange qui vide le portefeuille pour rien. On les mesure toutes et on
+ * garde la plus profonde. */
+async function chercheJeton(brut){
+  var adr = String(brut||'').trim();
+  if(!ethers.utils.isAddress(adr)) throw new Error('That is not a contract address.');
+  adr = ethers.utils.getAddress(adr);
+  if(adr.toLowerCase() === WETH.toLowerCase())
+    throw new Error('That is WETH itself — use ' + ETH_AFF + '.');
+  for(var i=0;i<JETONS.length;i++)
+    if(JETONS[i].adr && JETONS[i].adr.toLowerCase() === adr.toLowerCase())
+      return { deja:true, jeton:JETONS[i] };
+
+  var p = lec();
+  var c = new ethers.Contract(adr, ERC20_ABI.concat([
+    'function name() view returns (string)',
+    'function symbol() view returns (string)',
+    'function decimals() view returns (uint8)']), p);
+  var sym, nom, dec;
+  try{
+    var r = await borne(Promise.all([c.symbol(), c.name(), c.decimals()]), 12000, 'token');
+    sym = String(r[0]).slice(0,12); nom = String(r[1]).slice(0,40); dec = r[2]|0;
+  }catch(e){
+    throw new Error('Nothing at that address answers like a token on ' + CHAINE.nom + '.');
+  }
+
+  /* Toutes les piscines contre l'ETH (RH), mesurees. */
+  var f3 = new ethers.Contract(F3, F3_ABI, p), f2 = new ethers.Contract(F2, F2_ABI, p);
+  var w = erc(WETH);
+  var essais = PALIERS.map(function(fee){
+    return f3.getPool(adr, WETH, fee).then(function(a){ return { ver:'v3', fee:fee, adr:a }; })
+      ['catch'](function(){ return null; });
+  });
+  essais.push(f2.getPair(adr, WETH).then(function(a){ return { ver:'v2', fee:null, adr:a }; })
+    ['catch'](function(){ return null; }));
+  var trouves = (await borne(Promise.all(essais), 15000, 'pools'))
+    .filter(function(x){ return x && x.adr && x.adr !== ZERO_ADR; });
+  var fonds = await borne(Promise.all(trouves.map(function(x){
+    return w.balanceOf(x.adr).then(function(b){ x.fond = b; return x; })
+      ['catch'](function(){ x.fond = ethers.constants.Zero; return x; });
+  })), 15000, 'depth');
+  fonds.sort(function(a,b){ return b.fond.gt(a.fond) ? 1 : (b.fond.lt(a.fond) ? -1 : 0); });
+  var pool = fonds[0] || null;
+
+  return { deja:false, adr:adr, sym:sym, nom:nom, dec:dec,
+           pool: pool ? { ver:pool.ver, fee:pool.fee, adr:pool.adr } : null,
+           fond: pool ? pool.fond : null,
+           logo: await logoDe(adr) };
+}
+
+/* Le logo vient de Dexscreener quand il y en a un. Il n'y en a pas toujours —
+   le $SWOGEBET n'en a aucun — et dans ce cas on montre les initiales. Poser
+   une image generique ferait passer un jeton inconnu pour un jeton range. */
+async function logoDe(adr){
+  try{
+    var r = await borne(fetch('https://api.dexscreener.com/latest/dex/tokens/' + adr,
+                              { cache:'no-store' }), 7000, 'logo');
+    if(!r.ok) return null;
+    var j = await r.json();
+    var l = (j && j.pairs) || [];
+    for(var i=0;i<l.length;i++){
+      var b = l[i].baseToken || {}, im = (l[i].info || {}).imageUrl;
+      if(im && b.address && String(b.address).toLowerCase() === adr.toLowerCase()) return im;
+    }
+  }catch(e){}
+  return null;
+}
+
+function ajouteJeton(t){
+  if(J(persoCle(t.adr))) return J(persoCle(t.adr));
+  var j = { cle:persoCle(t.adr), sym:t.sym, nom:t.nom, adr:t.adr, dec:t.dec,
+            logo:t.logo || null, perso:true, pool:t.pool };
+  JETONS.push(j); sauvePerso();
+  return j;
+}
+
 var ERC20_ABI = [
   'function balanceOf(address) view returns (uint256)',
   'function decimals() view returns (uint8)',
@@ -1663,6 +1839,13 @@ function peintAccueil(){
   /* le total */
   var total=0, complet=true;
   for(var i=0;i<JETONS.length;i++){
+    /* ---- UN JETON AJOUTE N'A PAS DE PRIX, ET CE N'EST PAS UNE PANNE ----
+       Ce portefeuille ne cote que ses trois jetons. Compter un jeton ajoute
+       comme « prix indisponible » ferait dire au total qu'il est partiel a
+       cause d'une lecture ratee, alors que rien n'a rate : on ne cherche
+       simplement pas le prix des jetons qu'on ne connait pas. Son solde
+       reste affiche, sans valeur en dollars. */
+    if(JETONS[i].perso) continue;
     var v = valeur(JETONS[i].cle);
     if(v===null) complet=false; else total+=v;
   }
@@ -2371,6 +2554,11 @@ function peintPick(sel){
 
   var im = b.querySelector('img');
   if(j.logo){ im.src = j.logo; im.hidden = false; } else { im.removeAttribute('src'); im.hidden = true; }
+  var ini = b.querySelector('.ini');
+  if(!j.logo){
+    if(!ini){ ini = document.createElement('span'); ini.className='ini'; b.insertBefore(ini, im.nextSibling); }
+    ini.textContent = initialesDe(j); ini.hidden = false;
+  } else if(ini) ini.hidden = true;
   b.querySelector('.tx b').textContent = j.sym;
   b.querySelector('.tx small').textContent = j.nom;
 
@@ -2384,13 +2572,121 @@ function peintPick(sel){
     var aff = !moi ? '' : (sd===null || sd===undefined ? '—' : nombre(sd, x.dec));
     h += '<button type="button" class="wl-pick-o" role="option" data-cle="'+k+'"'
        +   ' aria-selected="'+(k===sel.value?'true':'false')+'">'
-       +   (x.logo ? '<img src="'+x.logo+'" alt="">' : '')
-       +   '<span class="tx"><b>'+x.sym+'</b><small>'+x.nom+'</small></span>'
+       +   (x.logo ? '<img src="'+ech(x.logo)+'" alt="">'
+                   : '<span class="ini">'+ech(initialesDe(x))+'</span>')
+       +   '<span class="tx"><b>'+ech(x.sym)+'</b><small>'+ech(x.nom)+'</small></span>'
        +   (aff ? '<span class="sol">'+aff+'</span>' : '')
+       +   (x.perso ? '<span class="x" data-oublie="'+x.cle+'" title="Remove this token">&times;</span>' : '')
        + '</button>';
   }
-  l.innerHTML = h;
+  /* ---- LA BARRE DE RECHERCHE SURVIT AU REPEINT ----
+     `peintPick` est rappele a chaque changement de valeur et a chaque
+     ouverture. Reecrire toute la liste effacerait ce que le joueur est en
+     train de taper — au milieu d'une adresse de quarante-deux caracteres. */
+  var q = l.querySelector('.wl-pick-q');
+  if(!q){
+    q = document.createElement('div');
+    q.className = 'wl-pick-q';
+    q.innerHTML = '<input type="text" spellcheck="false" autocomplete="off"'
+      + ' placeholder="Paste a token address…"'
+      + ' aria-label="Find a token by its contract address">'
+      + '<div class="wl-pick-r" hidden></div>';
+    l.appendChild(q);
+  }
+  var vieux = l.querySelectorAll('.wl-pick-o');
+  for(var v=0; v<vieux.length; v++) vieux[v].parentNode.removeChild(vieux[v]);
+  l.insertAdjacentHTML('beforeend', h);
+  filtrePick(w);
 }
+
+/* Les initiales servent de repli quand il n'y a pas d'image. */
+function initialesDe(j){
+  var t = String(j.sym || '?').replace(/[^A-Za-z0-9]/g, '');
+  return (t.slice(0,3) || '?').toUpperCase();
+}
+function ech(t){
+  return String(t).replace(/[&<>"]/g, function(c){
+    return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]; });
+}
+
+/* ---- CE QUE FAIT LA BARRE, SELON CE QU'ON Y MET ----
+ * Du texte : elle filtre la liste, comme on cherche parmi ce qu'on a deja.
+ * Une ADRESSE : elle va la lire sur la chaine. Les deux gestes sont
+ * differents et n'ont pas a etre expliques — ce qu'on colle decide. */
+function filtrePick(w){
+  var l = w.querySelector('.wl-pick-l');
+  var e = l.querySelector('.wl-pick-q input'); if(!e) return;
+  var t = (e.value || '').trim().toLowerCase();
+  var opts = l.querySelectorAll('.wl-pick-o');
+  var vus = 0;
+  for(var i=0;i<opts.length;i++){
+    var cle = opts[i].dataset.cle, x = J(cle);
+    var ok = !t || !x || (x.sym + ' ' + x.nom + ' ' + (x.adr||'')).toLowerCase().indexOf(t) >= 0;
+    opts[i].hidden = !ok;
+    if(ok) vus++;
+  }
+  if(t && !vus && !ethers.utils.isAddress(t)) ditPick(w, 'Nothing here matches that.', false);
+}
+
+/* Le resultat de la recherche, sous la barre. */
+function ditPick(w, html, cliquable){
+  var r = w.querySelector('.wl-pick-r'); if(!r) return;
+  r.hidden = false;
+  r.className = 'wl-pick-r' + (cliquable === 'grave' ? ' grave' : '');
+  r.innerHTML = html;
+}
+function taisPick(w){
+  var r = w.querySelector('.wl-pick-r'); if(!r) return;
+  r.hidden = true; r.innerHTML = ''; r.className = 'wl-pick-r';
+}
+
+var CHERCHE = 0;
+async function chercheDansPick(w, adr){
+  var n = ++CHERCHE;
+  ditPick(w, 'Reading the contract on ' + CHAINE.nom + '…');
+  var t;
+  try{ t = await chercheJeton(adr); }
+  catch(e){
+    if(n !== CHERCHE) return;
+    ditPick(w, ech(e.message || 'Could not read that address.'), 'grave');
+    return;
+  }
+  if(n !== CHERCHE) return;                    /* une frappe plus recente a pris la main */
+  if(t.deja){
+    ditPick(w, '<b>' + ech(t.jeton.sym) + '</b> is already in the list.');
+    return;
+  }
+  if(!t.pool){
+    /* ---- ON DIT CE QUI MANQUE, PAS « IMPOSSIBLE » ----
+       Le jeton existe, il est lisible, et il a peut-etre une piscine contre
+       un autre jeton. Ce portefeuille ne sait router que par l'ETH (RH) :
+       c'est SA limite, et c'est ce qu'il faut ecrire. */
+    ditPick(w, '<b>' + ech(t.sym) + '</b> — ' + ech(t.nom) + '<br>'
+      + 'No Uniswap pool against ' + ETH_AFF + ', in v2 or v3, at any fee tier. '
+      + 'This wallet only routes through ' + ETH_AFF + ', so it cannot trade it.'
+      + '<span class="adr">' + ech(t.adr) + '</span>', 'grave');
+    return;
+  }
+  var vide = t.fond && t.fond.isZero();
+  var img = t.logo ? '<img src="' + ech(t.logo) + '" alt="" style="width:30px;height:30px;'
+                   + 'border-radius:50%;vertical-align:middle;margin-right:7px">'
+                   : '<span class="ini" style="display:inline-grid;vertical-align:middle;'
+                   + 'margin-right:7px">' + ech((t.sym||'?').slice(0,3).toUpperCase()) + '</span>';
+  var pool = t.pool.ver === 'v2' ? 'Uniswap v2'
+           : 'Uniswap v3 · ' + (t.pool.fee/10000) + ' %';
+  ditPick(w,
+    img + '<b>' + ech(t.sym) + '</b> — ' + ech(t.nom) + '<br>'
+    + pool + ' · <span class="prof">' + nombre(t.fond, 18) + ' ' + ETH_AFF + '</span> in the pool'
+    + (vide ? ' — <b>the pool is empty</b>, nothing can be traded' : '')
+    + '<span class="adr">' + ech(t.adr) + '</span>'
+    + '<button type="button" class="wl-b" style="margin-top:9px;padding:10px"'
+    + ' data-ajoute="' + ech(t.adr) + '">Add ' + ech(t.sym) + ' to this wallet</button>'
+    + '<span class="adr">Anyone can deploy a token. This wallet reads the name, the symbol and'
+    + ' the pool from the chain — it does not vouch for what the token does. A token you buy'
+    + ' can turn out to be impossible to sell.</span>');
+  DERNIER_TROUVE = t;
+}
+var DERNIER_TROUVE = null;
 
 function ouvrePick(w, ouvrir){
   var b = w.querySelector('.wl-pick-b'), l = w.querySelector('.wl-pick-l');
@@ -2464,7 +2760,68 @@ function choisitPick(sel, cle){
   sel.dispatchEvent(new Event('change', { bubbles:true }));
 }
 
+/* La frappe : filtre, ou lit la chaine si c'est une adresse. */
+document.addEventListener('input', function(ev){
+  var q = ev.target.closest && ev.target.closest('.wl-pick-q');
+  if(!q) return;
+  var w = q.closest('.wl-pick');
+  var t = (ev.target.value || '').trim();
+  taisPick(w);
+  filtrePick(w);
+  if(ethers && ethers.utils && ethers.utils.isAddress(t)) chercheDansPick(w, t);
+  else if(t.length > 6 && /^0x[0-9a-fA-F]*$/.test(t))
+    ditPick(w, 'An address has 42 characters — this one has ' + t.length + '.');
+});
+
 document.addEventListener('click', function(ev){
+  /* ---- AJOUTER ---- */
+  var aj = ev.target.closest && ev.target.closest('[data-ajoute]');
+  if(aj){
+    ev.preventDefault();
+    var w0 = aj.closest('.wl-pick');
+    var t0 = DERNIER_TROUVE;
+    if(!t0 || t0.adr !== aj.dataset.ajoute) return;
+    var neuf = ajouteJeton(t0);
+    /* Les DEUX listes de l'echange se refont : le jeton doit pouvoir servir
+       des deux cotes, et l'envoi le connait aussi. */
+    remplitChoix($('swDe')); remplitChoix($('swVers'));
+    remplitChoix($('enJeton'));
+    var sel0 = document.getElementById(w0.dataset.pour);
+    var q0 = w0.querySelector('.wl-pick-q input'); if(q0) q0.value = '';
+    taisPick(w0);
+    /* L'autre cote doit rester l'ETH (RH) : c'est le seul chemin qu'on ait
+       pour ce jeton, et laisser deux inconnus face a face donnerait « no
+       route » juste apres l'avoir ajoute. */
+    var autre = document.getElementById(w0.dataset.pour === 'swDe' ? 'swVers' : 'swDe');
+    if(autre && autre.id !== 'enJeton' && J(autre.value) && J(autre.value).perso)
+      choisitPick(autre, 'eth');
+    choisitPick(sel0, neuf.cle);
+    ouvrePick(w0, false);
+    rafraichit();
+    toast(neuf.sym + ' added');
+    return;
+  }
+  /* ---- OUBLIER ---- */
+  var ou = ev.target.closest && ev.target.closest('[data-oublie]');
+  if(ou){
+    ev.preventDefault(); ev.stopPropagation();
+    var w1 = ou.closest('.wl-pick');
+    var cle1 = ou.dataset.oublie, j1 = J(cle1);
+    if(!j1) return;
+    oublieJeton(cle1);
+    ['swDe','swVers','enJeton'].forEach(function(id){
+      var e = $(id); if(!e) return;
+      var perdu = e.value === cle1;
+      remplitChoix(e);
+      if(perdu) choisitPick(e, 'eth');
+    });
+    if(w1) peintPick(document.getElementById(w1.dataset.pour));
+    toast(j1.sym + ' removed');
+    return;
+  }
+  /* Un clic DANS la barre de recherche ne doit pas refermer la liste. */
+  if(ev.target.closest && ev.target.closest('.wl-pick-q')) return;
+
   var o = ev.target.closest('.wl-pick-o');
   if(o){
     var w = o.closest('.wl-pick');
@@ -2490,6 +2847,16 @@ document.addEventListener('click', function(ev){
 document.addEventListener('keydown', function(ev){
   var w = ev.target.closest && ev.target.closest('.wl-pick');
   if(!w) return;
+  /* Dans la barre de recherche, les touches appartiennent au champ : les
+     fleches deplacent le curseur, les lettres s'ecrivent. Seule Echap
+     referme. Sans ce garde, taper une adresse ferait sauter la selection de
+     jeton a chaque caractere. */
+  if(ev.target.closest('.wl-pick-q')){
+    if(ev.key === 'Escape'){
+      ouvrePick(w, false); w.querySelector('.wl-pick-b').focus(); ev.preventDefault();
+    }
+    return;
+  }
   var l = w.querySelector('.wl-pick-l');
   var ouvert = w.classList.contains('ouvert');
   var k = ev.key;
@@ -2505,7 +2872,11 @@ document.addEventListener('keydown', function(ev){
     }
     return;
   }
-  var opts = [].slice.call(l.children);
+  /* Les options, et rien d'autre : la barre de recherche est un enfant de la
+     liste, et la compter comme une option ferait « choisir » un champ de
+     saisie a la touche Entree. Les lignes masquees par le filtre n'en sont
+     pas non plus. */
+  var opts = [].slice.call(l.querySelectorAll('.wl-pick-o')).filter(function(x){ return !x.hidden; });
   if(!opts.length) return;
   var i = opts.findIndex(function(x){ return x.classList.contains('actif'); });
   if(i < 0) i = 0;
@@ -2786,6 +3157,11 @@ function routeDe(de, vers){
    * $SWOGE marche aussi bien a l'endroit qu'a l'envers. Un portefeuille qui
    * laisse entrer et pas sortir est un piege, meme involontaire. */
   if(de==='swogebet' && vers==='eth')      return ['v3','v2'];
+  /* Un jeton ajoute par le joueur : sa piscine est contre l'ETH (RH), et
+     c'est le seul chemin que ce portefeuille connaisse pour lui. */
+  var jd = J(de), jv = J(vers);
+  if(de === 'eth'   && jv && jv.perso && jv.pool) return [jv.pool.ver];
+  if(vers === 'eth' && jd && jd.perso && jd.pool) return [jd.pool.ver];
   return null;
 }
 
@@ -2816,7 +3192,15 @@ async function devis(){
       : 'No route between those two right now.';
     return;
   }
-  $('swNote').className='wl-note'; $('swNote').textContent='';
+  $('swNote').className='wl-note';
+  /* ---- LE RAPPEL RESTE TANT QUE LE JETON EST CHOISI ----
+     Il ne s'agit pas d'un avertissement a l'ajout, qu'on oublie en trois
+     secondes : c'est au moment de signer qu'il compte. */
+  var pj0 = (J(de) && J(de).perso) ? J(de) : ((J(vers) && J(vers).perso) ? J(vers) : null);
+  $('swNote').textContent = pj0
+    ? pj0.sym + ' is a token you added yourself. This wallet reads its name and its pool from'
+      + ' the chain and nothing more — it does not vouch for it. ' + pj0.adr
+    : '';
   if(!(parseFloat(m)>0)){
     $('swRecu').textContent='—'; $('swImpact').textContent='—'; $('swMini').textContent='—'; return;
   }
@@ -2824,10 +3208,11 @@ async function devis(){
   try{
     var entree = ethers.utils.parseUnits(m, 18);
     var out = await borne(simuleRoute(de, vers, entree), 9000, 'quote');
-    $('swRecu').textContent = nombre(out.sortie,18)+' '+J(vers).sym;
+    var dS = J(vers).dec;
+    $('swRecu').textContent = nombre(out.sortie,dS)+' '+J(vers).sym;
     /* Ce que le joueur lit ici est EXACTEMENT ce que la transaction
        imposera au routeur — pas une estimation d'ecran a cote du code. */
-    $('swMini').textContent = nombre(moinsTolerance(out.sortie),18)+' '+J(vers).sym;
+    $('swMini').textContent = nombre(moinsTolerance(out.sortie),dS)+' '+J(vers).sym;
     var imp = out.impact;
     $('swImpact').textContent = (imp===null) ? '—' : imp.toFixed(2)+' %';
     if(imp!==null && imp>=10){
@@ -2857,6 +3242,36 @@ async function simuleRoute(de, vers, entree){
   var v2=new ethers.Contract(V2ROUTER, V2_ABI, p);
   var q =new ethers.Contract(QUOTER, QUOTER_ABI, p);
   var sortie=entree, ideal=null;
+
+  /* ---- UN JETON AJOUTE : SES DECIMALES NE SONT PAS FORCEMENT DIX-HUIT ----
+   * Tout le reste de cette fonction travaille en `formatEther`, ce qui va
+   * pour les trois jetons de la maison. Un jeton a six decimales y donnerait
+   * un taux marginal faux d'un facteur mille milliards. Cette branche
+   * s'ecrit donc a part, avec les decimales de CHAQUE cote. */
+  var pj = (J(de) && J(de).perso) ? J(de) : ((J(vers) && J(vers).perso) ? J(vers) : null);
+  if(pj && pj.pool){
+    var decE = (de === 'eth') ? 18 : pj.dec;
+    var decS = (vers === 'eth') ? 18 : pj.dec;
+    var A  = (de === 'eth') ? WETH : pj.adr;
+    var Bq = (vers === 'eth') ? WETH : pj.adr;
+    var pce = ethers.utils.parseUnits('0.0001', decE);
+    var sP, mP;
+    if(pj.pool.ver === 'v2'){
+      sP = (await v2.getAmountsOut(entree, [A, Bq]))[1];
+      mP = (await v2.getAmountsOut(pce, [A, Bq]))[1];
+    } else {
+      var q1 = await q.callStatic.quoteExactInputSingle(
+        { tokenIn:A, tokenOut:Bq, amountIn:entree, fee:pj.pool.fee, sqrtPriceLimitX96:0 });
+      sP = q1.amountOut || q1[0];
+      var q2 = await q.callStatic.quoteExactInputSingle(
+        { tokenIn:A, tokenOut:Bq, amountIn:pce, fee:pj.pool.fee, sqrtPriceLimitX96:0 });
+      mP = q2.amountOut || q2[0];
+    }
+    var idP = parseFloat(ethers.utils.formatUnits(mP, decS)) / 0.0001
+            * parseFloat(ethers.utils.formatUnits(entree, decE));
+    var rcP = parseFloat(ethers.utils.formatUnits(sP, decS));
+    return { sortie:sP, impact:(idP > 0 ? Math.max(0, 100*(1 - rcP/idP)) : null) };
+  }
 
   /* Le prix marginal se prend sur un tout petit montant : c'est lui qui
      dit ce que l'echange VAUDRAIT sans impact. */
@@ -2965,6 +3380,30 @@ function morceauxDe(de, vers, entree, mini){
              i.encodeFunctionData('swapExactTokensForTokens', [0, 0, [SWOGE, WETH], ADDRESS_THIS]),
              i.encodeFunctionData('unwrapWETH9', [mini, moi]) ];
 
+  /* ---- LES JETONS AJOUTES PAR LE JOUEUR ----
+   * Une seule piscine, contre l'ETH (RH), en v2 ou en v3 selon celle qui
+   * est la plus profonde. A l'achat le routeur emballe lui-meme l'ether
+   * envoye avec la transaction ; a la vente il faut le deballer, d'ou le
+   * second morceau — sinon le joueur recevrait du WETH, un jeton que ce
+   * portefeuille ne montre meme pas. */
+  var jd2 = J(de), jv2 = J(vers);
+  if(de === 'eth' && jv2 && jv2.perso && jv2.pool){
+    if(jv2.pool.ver === 'v2')
+      return [ i.encodeFunctionData('swapExactTokensForTokens', [entree, mini, [WETH, jv2.adr], moi]) ];
+    return [ i.encodeFunctionData('exactInputSingle', [{ tokenIn:WETH, tokenOut:jv2.adr,
+               fee:jv2.pool.fee, recipient:moi, amountIn:entree, amountOutMinimum:mini,
+               sqrtPriceLimitX96:0 }]) ];
+  }
+  if(vers === 'eth' && jd2 && jd2.perso && jd2.pool){
+    if(jd2.pool.ver === 'v2')
+      return [ i.encodeFunctionData('swapExactTokensForTokens', [entree, 0, [jd2.adr, WETH], ADDRESS_THIS]),
+               i.encodeFunctionData('unwrapWETH9', [mini, moi]) ];
+    return [ i.encodeFunctionData('exactInputSingle', [{ tokenIn:jd2.adr, tokenOut:WETH,
+               fee:jd2.pool.fee, recipient:ADDRESS_THIS, amountIn:entree, amountOutMinimum:0,
+               sqrtPriceLimitX96:0 }]),
+             i.encodeFunctionData('unwrapWETH9', [mini, moi]) ];
+  }
+
   return null;
 }
 
@@ -3019,8 +3458,8 @@ $('swPartir').addEventListener('click', async function(){
     var mini  = moinsTolerance(frais.sortie);
     if(mini.isZero())
       throw new Error('The pool quotes nothing for that amount — try a larger one.');
-    $('swRecu').textContent = nombre(frais.sortie,18) + ' ' + jv.sym;
-    $('swMini').textContent = nombre(mini,18) + ' ' + jv.sym;
+    $('swRecu').textContent = nombre(frais.sortie, jv.dec) + ' ' + jv.sym;
+    $('swMini').textContent = nombre(mini, jv.dec) + ' ' + jv.sym;
 
     if(!jd.natif) await assureAutorisation(jd, entree, dis);
 
@@ -3404,6 +3843,11 @@ remplitChoix($('enJeton'));
 remplitChoix($('swDe'));
 remplitChoix($('swVers'));
 valPick($('swDe'), 'eth'); valPick($('swVers'), 'swogebet');
+/* Les jetons ajoutes par le joueur entrent dans `JETONS` AVANT le premier
+   affichage : les listes de choix se remplissent a la demande, mais les
+   soldes se lisent sur `JETONS` en entier, et un jeton arrive apres coup
+   resterait sans solde jusqu'au prochain rafraichissement. */
+chargePerso();
 peintAccueil();
 majRevue();
 lisPrix().then(peintAccueil);

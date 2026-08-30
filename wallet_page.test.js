@@ -553,9 +553,17 @@ const T = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
          document.querySelector('.wl-pick[data-pour="swDe"] .wl-pick-l').hidden),
        'Echap referme sans rien changer');
 
-    /* -- un seul menu ouvert a la fois -- */
+    /* -- un seul menu ouvert a la fois --
+     * On appelle `.click()` au lieu de le POINTER : depuis que la liste porte
+     * une barre de recherche, elle est plus haute que les cent soixante-trois
+     * pixels qui separent les deux boutons et recouvre le second. Un pointeur
+     * y toucherait une option de la PREMIERE liste — ce qu'un joueur ne peut
+     * pas faire, puisqu'il voit la liste ouverte devant lui et ne vise pas un
+     * bouton cache dessous. Ce qu'on veut mesurer ici est le gestionnaire :
+     * ouvrir l'un ferme l'autre. */
     await page.click('#swDeB'); await page.waitForTimeout(150);
-    await page.click('#swVersB'); await page.waitForTimeout(200);
+    await page.evaluate(() => document.getElementById('swVersB').click());
+    await page.waitForTimeout(200);
     ok(await page.evaluate(() =>
          document.querySelectorAll('.wl-pick.ouvert').length === 1),
        'un seul menu ouvert a la fois — deux superposes, on clique dans celui qu on ne regarde pas');
@@ -1498,6 +1506,201 @@ const T = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
     await charge();
     ok(await page.evaluate(() => document.getElementById('enPartir').textContent.trim()) === 'Review',
        'et se remet dans l autre sens');
+    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
+    await page.close();
+  }
+
+  /* ---- COLLER UN CONTRAT, ET VOIR LE JETON ----
+   *
+   * Il y a plus de mille quatre cents jetons avec une piscine sur cette
+   * chaine, et ce portefeuille en connaissait trois.
+   *
+   * Le noeud est faux ici, et il le faut : un essai qui interroge la vraie
+   * chaine mesure aussi son humeur du jour. Ce qu'on verifie est le
+   * RAISONNEMENT de la page — lire le contrat, choisir la piscine, ne rien
+   * inventer quand il n'y a rien.
+   */
+  console.log('\n-- coller un contrat dans l echange --');
+  {
+    const MOI = '0x00000000000000000000000000000000000a11ce';
+    const TOK = '0x1111111111111111111111111111111111111111';
+    const MUET = '0x2222222222222222222222222222222222222222';
+    const P_PROFOND = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';   /* v3 1 %  : 12 ETH */
+    const P_VIDE    = '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';   /* v3 0,3 % : 9 wei */
+    const enMot = (v) => '0x' + BigInt(v).toString(16).padStart(64, '0');
+    const chaine = (t) => {
+      const b = Buffer.from(t, 'utf8').toString('hex');
+      return '0x' + (32).toString(16).padStart(64, '0') + t.length.toString(16).padStart(64, '0')
+           + b.padEnd(64, '0');
+    };
+    const page = await nav.newPage({ viewport: { width: 390, height: 844 } });
+    const boum = [];
+    page.on('pageerror', (e) => boum.push(e.message));
+    await page.addInitScript(([moi]) => {
+      try { localStorage.setItem('swogeAuth', 'wallet');
+            localStorage.removeItem('swogeJetons'); } catch (e) {}
+      window.ethereum = { isMetaMask: true, on: () => {}, removeListener: () => {},
+        request: async (a) => {
+          if (a.method === 'eth_accounts' || a.method === 'eth_requestAccounts') return [moi];
+          if (a.method === 'eth_chainId') return '0x1237';
+          if (a.method === 'net_version') return '4663';
+          return null; } };
+    }, [MOI]);
+    await page.route('**/ethers*.umd.min.js', (r) => r.fulfill({
+      contentType: 'text/javascript', body: fs.readFileSync(ETHERS, 'utf8') }));
+    await page.route('**/avatar/**', (r) => r.fulfill({ status: 404, body: '' }));
+    await page.route('**/nom/**', (r) => r.abort());
+    /* ---- L ORDRE DES ROUTES COMPTE, ET IL EST A L ENVERS ----
+       Playwright essaie la DERNIERE route posee en premier. La regle large
+       doit donc etre posee AVANT la precise, sinon c'est elle qui repond a
+       tout — l'essai a d'abord echoue comme ca, en concluant que le logo ne
+       remontait pas alors que la page allait tres bien le chercher. */
+    await page.route('**/api.dexscreener.com/**', (r) => r.fulfill({
+      contentType: 'application/json', body: '{"pairs":[]}' }));
+    /* Dexscreener rend une image pour ce jeton-la. Le $SWOGEBET, lui, n'en a
+       aucune dans la vraie vie — c'est pour ca que le repli existe. */
+    await page.route('**/api.dexscreener.com/latest/dex/tokens/**', (r) => r.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ pairs: [{ baseToken: { address: TOK },
+                                       info: { imageUrl: 'https://exemple.test/x.png' } }] }) }));
+    await page.route('https://exemple.test/**', (r) => r.fulfill({ status: 404, body: '' }));
+    await page.route('**/rpc.mainnet.chain.robinhood.com/**', async (r) => {
+      const q = JSON.parse(r.request().postData() || '{}');
+      const un = (m) => {
+        if (m.method === 'eth_chainId') return '0x1237';
+        if (m.method === 'net_version') return '4663';
+        if (m.method === 'eth_blockNumber') return '0x2f7ce78';
+        if (m.method === 'eth_getLogs') return [];
+        if (m.method === 'eth_gasPrice') return enMot(134102000n);
+        if (m.method === 'eth_getBalance') return enMot(5000000000000000n);
+        if (m.method !== 'eth_call') return null;
+        const d = (m.params[0].data || '').toLowerCase();
+        const to = (m.params[0].to || '').toLowerCase();
+        const sel = d.slice(0, 10);
+        const arg = (n) => '0x' + d.slice(10 + n * 64 + 24, 10 + (n + 1) * 64);
+        /* la fabrique v3 : deux paliers repondent, de profondeurs tres
+           differentes — c'est le coeur du choix */
+        if (sel === '0x1698ee82') {
+          if (arg(0) !== TOK.toLowerCase() && arg(1) !== TOK.toLowerCase()) return enMot(0n);
+          const fee = parseInt(d.slice(10 + 2 * 64), 16);
+          if (fee === 10000) return enMot(BigInt(P_PROFOND));
+          if (fee === 3000) return enMot(BigInt(P_VIDE));
+          return enMot(0n);
+        }
+        if (sel === '0xe6a43905') return enMot(0n);                 /* aucune paire v2 */
+        if (sel === '0x70a08231') {                                  /* balanceOf */
+          const qui = arg(0);
+          if (qui === P_PROFOND.toLowerCase()) return enMot(12245000000000000000n);
+          if (qui === P_VIDE.toLowerCase()) return enMot(9n);
+          return enMot(1234567890123456789012n);
+        }
+        if (to === MUET.toLowerCase()) return null;                  /* rien ne repond */
+        if (to === TOK.toLowerCase()) {
+          if (sel === '0x95d89b41') return chaine('RVH');
+          if (sel === '0x06fdde03') return chaine('Ravenhood');
+          if (sel === '0x313ce567') return enMot(18n);
+        }
+        return enMot(0n);
+      };
+      const rep = (m) => { const v = un(m);
+        return v === null ? { jsonrpc: '2.0', id: m.id, error: { code: -32000, message: 'nope' } }
+                          : { jsonrpc: '2.0', id: m.id, result: v }; };
+      await r.fulfill({ contentType: 'application/json',
+                        body: JSON.stringify(Array.isArray(q) ? q.map(rep) : rep(q)) });
+    });
+    await page.goto('http://127.0.0.1:' + port + '/swoge_wallet.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(2600);
+    await page.evaluate(() => document.querySelector('[data-va="ecSwap"]').click());
+    await page.waitForTimeout(400);
+    await page.evaluate(() => document.getElementById('swVersB').click());
+    await page.waitForTimeout(300);
+
+    const CH = '.wl-pick[data-pour="swVers"] .wl-pick-q input';
+    const lit = () => page.evaluate(() => {
+      const r = document.querySelector('.wl-pick[data-pour="swVers"] .wl-pick-r');
+      return { vu: !r.hidden, grave: r.classList.contains('grave'),
+               txt: (r.textContent || '').replace(/\s+/g, ' ').trim(),
+               ajout: !!r.querySelector('[data-ajoute]'), img: !!r.querySelector('img') };
+    });
+
+    /* ---- LA LISTE SE FILTRE ---- */
+    await page.fill(CH, 'swogeb');
+    await page.waitForTimeout(300);
+    const filtre = await page.evaluate(() => [].slice
+      .call(document.querySelectorAll('.wl-pick[data-pour="swVers"] .wl-pick-o'))
+      .filter((x) => !x.hidden).map((x) => x.dataset.cle));
+    ok(filtre.length === 1 && filtre[0] === 'swogebet',
+       'du texte filtre ce qu on a deja (' + filtre.join(', ') + ')');
+
+    /* ---- UNE ADRESSE TRONQUEE LE DIT, ET NE PART PAS LIRE LA CHAINE ---- */
+    await page.fill(CH, '0x111111111111');
+    await page.waitForTimeout(400);
+    const court = await lit();
+    ok(/42 characters/.test(court.txt) && !court.ajout,
+       'une adresse trop courte est signalee, pas envoyee a la chaine (« ' + court.txt + ' »)');
+
+    /* ---- UNE ADRESSE QUI NE REPOND PAS N INVENTE RIEN ---- */
+    await page.fill(CH, MUET);
+    await page.waitForTimeout(2500);
+    const muet = await lit();
+    ok(muet.grave && /answers like a token/.test(muet.txt) && !muet.ajout,
+       'une adresse qui ne repond pas ne devient pas un jeton (« ' + muet.txt.slice(0, 70) + ' »)');
+
+    /* ---- ET LE VRAI JETON ---- */
+    await page.fill(CH, TOK);
+    await page.waitForTimeout(3000);
+    const t = await lit();
+    console.log('   ' + t.txt.slice(0, 150));
+    ok(/RVH/.test(t.txt) && /Ravenhood/.test(t.txt),
+       'le symbole et le nom sont LUS SUR LE CONTRAT, pas devines');
+    ok(/12\.245/.test(t.txt),
+       'la piscine la plus PROFONDE gagne : 12,245 et non les neuf wei du palier a 0,3 %'
+       + ' — prendre la premiere qui repond donnerait un devis absurde');
+    ok(/1 %/.test(t.txt), 'et son palier est dit');
+    ok(t.txt.toLowerCase().indexOf(TOK.toLowerCase()) >= 0,
+       'l adresse reste affichee en entier : sur cette chaine vingt jetons partagent'
+       + ' le symbole « AU », c est la seule chose qui les distingue');
+    ok(/does not vouch/.test(t.txt),
+       'et la page dit qu elle ne se porte garante de rien');
+    ok(t.img, 'l image du jeton vient de Dexscreener quand il y en a une');
+    ok(t.ajout, 'un bouton propose de l ajouter');
+
+    /* ---- L AJOUT ---- */
+    await page.evaluate(() => document.querySelector('[data-ajoute]').click());
+    await page.waitForTimeout(1200);
+    const apres = await page.evaluate(() => ({
+      vers: document.getElementById('swVers').value,
+      titre: document.querySelector('#swVersB .tx b').textContent,
+      note: (document.getElementById('swNote').textContent || '').replace(/\s+/g, ' '),
+      garde: localStorage.getItem('swogeJetons'),
+      dansEnvoi: [].slice.call(document.getElementById('enJeton').options).map((o) => o.value),
+    }));
+    ok(apres.titre === 'RVH', 'il est choisi tout de suite : on l a cherche pour s en servir');
+    ok(/RVH is a token you added yourself/.test(apres.note)
+       && apres.note.toLowerCase().indexOf(TOK.toLowerCase()) >= 0,
+       'le rappel reste SOUS LE BOUTON tant qu il est choisi — c est au moment de signer'
+       + ' qu il compte, pas trois secondes apres l avoir ajoute');
+    ok(apres.dansEnvoi.indexOf(apres.vers) >= 0,
+       'et il entre aussi dans la liste de l envoi : un jeton qu on detient doit pouvoir partir');
+    let g = null; try { g = JSON.parse(apres.garde || 'null'); } catch (e) {}
+    ok(g && g.length === 1 && g[0].sym === 'RVH' && g[0].pool.ver === 'v3' && g[0].pool.fee === 10000,
+       'il est garde sur l appareil, avec SA piscine — la retrouver a chaque ouverture'
+       + ' couterait cinq lectures de chaine');
+
+    /* ---- ET IL SE RETIRE ---- */
+    await page.evaluate(() => document.getElementById('swVersB').click());
+    await page.waitForTimeout(300);
+    await page.evaluate(() => {
+      const x = document.querySelector('.wl-pick[data-pour="swVers"] [data-oublie]');
+      if (x) x.click();
+    });
+    await page.waitForTimeout(600);
+    const fin = await page.evaluate(() => ({
+      garde: localStorage.getItem('swogeJetons'),
+      vers: document.getElementById('swVers').value,
+    }));
+    ok(fin.garde === '[]' && fin.vers === 'eth',
+       'le retirer le retire pour de bon, et l echange retombe sur un jeton connu');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.close();
   }

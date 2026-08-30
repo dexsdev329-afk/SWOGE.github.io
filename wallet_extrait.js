@@ -24,6 +24,16 @@ function bloc(src, entete) {
   }
   throw new Error('accolades non fermees : ' + entete);
 }
+/* `bloc` compte les accolades ; un tableau se ferme sur `];`. Employer l'un
+   pour l'autre coupe la declaration a la premiere accolade fermante, au
+   milieu du premier element. */
+function tableau(src, entete) {
+  const d = src.indexOf(entete);
+  if (d < 0) throw new Error('introuvable dans la page : ' + entete);
+  const f = src.indexOf('\n];', d);
+  if (f < 0) throw new Error('tableau non ferme : ' + entete);
+  return src.slice(d, f + 3);
+}
 function ligne(src, re) {
   const m = src.match(re);
   if (!m) throw new Error('constante introuvable dans la page : ' + re);
@@ -43,6 +53,12 @@ function code(chemin) {
     ligne(src, /var ROUTER02\s*=\s*'[^']+';/),
     ligne(src, /var FRAIS_V3\s*=\s*\d+;/),
     ligne(src, /var ADDRESS_THIS\s*=\s*'[^']+';/),
+    /* `morceauxDe` interroge `J()` pour savoir si un jeton a ete ajoute par le
+       joueur : sans la liste ni la fonction, les routes personnalisees
+       rendraient toujours `null` et l'essai passerait en ne mesurant rien. */
+    ligne(src, /var ETH_AFF\s*=\s*'[^']+';/),
+    tableau(src, 'var JETONS = ['),
+    bloc(src, 'function J(cle)'),
     ligne(src, /var TOLERANCE\s*=\s*[\d.]+;/),
     ligne(src, /var GAZ_ECHANGE\s*=\s*\d+;/),
     ligne(src, /var GAZ_ENVOI\s*=\s*\d+;/),
@@ -98,6 +114,13 @@ function bac(chemin, ethers) {
     get GAZ_ECHANGE() { return c.GAZ_ECHANGE; },
     get GAZ_ENVOI()   { return c.GAZ_ENVOI; },
     pourQui(adr) { c.moi = adr; },
+    /* Un jeton ajoute par le joueur, pose dans la liste du bac a sable. */
+    ajoutePerso(j) {
+      c.__j = j;
+      vm.runInContext('JETONS.push(__j)', c);
+      return j.cle;
+    },
+    videPerso() { vm.runInContext('for(var i=JETONS.length-1;i>=0;i--) if(JETONS[i].perso) JETONS.splice(i,1);', c); },
     morceauxDe(de, vers, entree, mini) {
       c.__a = [de, vers, entree, mini];
       return vm.runInContext('morceauxDe(__a[0],__a[1],__a[2],__a[3])', c);

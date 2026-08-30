@@ -50,6 +50,11 @@ console.log('   journal du bloc ' + prouve.bloc + ', ' + prouve.routes.length + 
 
 for (const r of prouve.routes) {
   B.pourQui(r.moi);
+  /* Une route vers un jeton AJOUTE par le joueur : il faut le remettre dans
+     la liste du bac a sable, sinon `morceauxDe` ne le reconnait pas et rend
+     `null` — l'essai passerait en ne mesurant rien. */
+  B.videPerso();
+  if (r.perso) B.ajoutePerso(r.perso);
   const rendu = morceauxDe(r.de, r.vers, ethers.BigNumber.from(r.entree),
                                           ethers.BigNumber.from(r.mini));
   const nom = r.de + ' → ' + r.vers;
@@ -60,7 +65,7 @@ for (const r of prouve.routes) {
   for (let i = 0; i < r.morceaux.length && pareil; i++) pareil = rendu[i] === r.morceaux[i];
   ok(pareil, nom + ' : octet pour octet la transaction qui a rendu '
      + (+ethers.utils.formatEther(r.recu)).toLocaleString('fr-FR', { maximumFractionDigits: 6 })
-     + ' pour ' + r.gaz + ' de gaz'
+     + (r.gaz ? ' pour ' + r.gaz + ' de gaz' : '')
      + (r.methode ? ' (' + r.methode + ')' : ''));
   /* Une route prouvee par simulation porte en plus la preuve NEGATIVE : un
      minimum place au-dessus du devis doit faire echouer l echange, sinon le
@@ -130,6 +135,61 @@ ok(toutes === PAIRES.length,
    + ' aucun jeton n entre sans pouvoir ressortir');
 ok((morceauxDe('swogebet', 'eth', mille, mini) || []).length === 3,
    '$SWOGEBET → ETH passe par trois morceaux : v3 vers le $SWOGE, v2 vers le WETH, puis on deballe');
+
+/* ==================== 3 bis. LES JETONS AJOUTES PAR LE JOUEUR ====================
+ *
+ * Il y a plus de mille quatre cents jetons avec une piscine sur cette chaine.
+ * Coller un contrat et pouvoir l'echanger, c'est la difference entre un
+ * portefeuille et une vitrine.
+ *
+ * La branche v3 est PROUVEE plus haut, dans les deux sens, par simulation sur
+ * la chaine reelle. La branche v2, elle, n'a aucun jeton recent ou la mesurer
+ * — releve : plus aucune paire v2/WETH creee depuis des mois n'a de fonds.
+ * Alors on la prouve autrement, et c'est meme plus fort qu'une simulation de
+ * plus : on donne au chemin « jeton ajoute en v2 » l'adresse du $SWOGE, et on
+ * exige les MEMES OCTETS que la route $SWOGE, qui a deja tourne sur un fork.
+ * Si les deux coincident, la branche v2 produit exactement une transaction
+ * dont on sait qu'elle s'execute. */
+console.log('\n-- un jeton ajoute, route en v2 --');
+B.videPerso();
+const SWOGE_ADR = (/var SWOGE\s*=\s*'([^']+)'/.exec(src) || [])[1];
+ok(!!SWOGE_ADR, 'l adresse du $SWOGE se lit dans la page');
+const faux = B.ajoutePerso({ cle: 'xswoge', sym: 'SWOGE', nom: 'Swole Doge', adr: SWOGE_ADR,
+                             dec: 18, perso: true, pool: { ver: 'v2', fee: null } });
+B.pourQui('0x00000000000000000000000000000000000a11ce');
+const refA = prouve.routes.filter((r) => r.de === 'eth' && r.vers === 'swoge')[0];
+const refV = prouve.routes.filter((r) => r.de === 'swoge' && r.vers === 'eth')[0];
+if (refA) {
+  const a = morceauxDe('eth', faux, ethers.BigNumber.from(refA.entree), ethers.BigNumber.from(refA.mini));
+  ok(a && a.length === refA.morceaux.length && a.every((x, k) => x === refA.morceaux[k]),
+     'acheter un jeton ajoute en v2 rend EXACTEMENT les octets de la route ETH → $SWOGE,'
+     + ' executee sur le fork');
+}
+if (refV) {
+  const v = morceauxDe(faux, 'eth', ethers.BigNumber.from(refV.entree), ethers.BigNumber.from(refV.mini));
+  ok(v && v.length === refV.morceaux.length && v.every((x, k) => x === refV.morceaux[k]),
+     'et le revendre rend ceux de $SWOGE → ETH — deballage compris');
+}
+B.videPerso();
+B.pourQui('0x00000000000000000000000000000000000a11ce');
+
+/* Sans piscine, pas de route : mieux vaut ne rien rendre qu'une transaction
+   qui echouera au moment de la signature. */
+const sansPiscine = B.ajoutePerso({ cle: 'xrien', sym: 'RIEN', nom: 'sans piscine',
+  adr: '0x00000000000000000000000000000000deadbeef', dec: 18, perso: true, pool: null });
+ok(morceauxDe('eth', sansPiscine, mille, mini) === null,
+   'un jeton ajoute SANS piscine ne rend aucune transaction');
+ok(morceauxDe(sansPiscine, 'eth', mille, mini) === null, 'ni dans l autre sens');
+/* Et jamais entre deux jetons ajoutes : le portefeuille ne route que par
+   l ETH (RH), et pretendre le contraire enverrait une transaction perdue. */
+const autre = B.ajoutePerso({ cle: 'xautre', sym: 'AUTRE', nom: 'autre',
+  adr: '0x00000000000000000000000000000000cafebabe', dec: 18, perso: true,
+  pool: { ver: 'v3', fee: 3000 } });
+ok(morceauxDe(sansPiscine, autre, mille, mini) === null
+   && morceauxDe(autre, 'swoge', mille, mini) === null,
+   'et aucune route entre un jeton ajoute et autre chose que l ETH (RH)');
+B.videPerso();
+B.pourQui('0x00000000000000000000000000000000000a11ce');
 for (const c of ['eth', 'swoge', 'swogebet'])
   ok(morceauxDe(c, c, mille, mini) === null, c + ' → ' + c + ' ne rend rien');
 

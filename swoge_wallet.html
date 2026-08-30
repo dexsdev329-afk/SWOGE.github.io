@@ -179,7 +179,7 @@ body{
 .wl-eth{ width:38px; height:38px; border-radius:50%; flex:0 0 auto;
   background:linear-gradient(160deg,#4B4463,#2E2A3D); color:#DCD7EC;
   display:flex; align-items:center; justify-content:center;
-  font:700 19px/1 'Archivo',sans-serif }
+  font:800 13px/1 'Archivo',sans-serif; letter-spacing:.5px }
 .wl-jeton .nom{ flex:1; min-width:0 }
 .wl-jeton .nom b{ display:block; font:800 14px/1.2 'Archivo',sans-serif }
 .wl-jeton .nom small{ display:block; font:400 12px/1.3 'Space Mono',monospace;
@@ -237,6 +237,70 @@ body{
 .wl-max:hover{ background:rgba(139,92,246,.28) }
 .wl-max:active{ transform:translateY(1px) }
 .wl-champ input::placeholder{ color:#5F5872 }
+
+/* ==================== LE CHOIX D'UN JETON ====================
+ *
+ * Un `<select>` natif ne sait pas montrer d'image. Il affichait donc
+ * « ETH — Ether » en texte, a cote d'un ecran d'accueil ou les trois jetons
+ * ont leur piece : on choisissait a l'aveugle ce qu'on venait de
+ * reconnaitre a l'oeil.
+ *
+ * ---- LE `<select>` RESTE, CACHE ----
+ *
+ * Cette page signe de vraies transactions. Tout le code de l'envoi et de
+ * l'echange lit `.value`, ecoute `change`, remplit `.options` — quinze
+ * endroits. Remplacer l'element aurait demande de tous les reecrire, sur le
+ * chemin ou passe l'argent. Le `<select>` reste donc la source de verite et
+ * ne bouge pas ; ce qu'on voit n'est qu'un miroir qui ecrit dedans et
+ * declenche `change` comme l'aurait fait un clic.
+ */
+.wl-pick{ position:relative }
+.wl-cache{ position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+  overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0 }
+.wl-pick-b{
+  width:100%; display:flex; align-items:center; gap:11px; text-align:left;
+  padding:11px 12px; border-radius:12px; border:1px solid var(--bord);
+  background:var(--carte2); color:var(--texte); font:inherit; cursor:pointer;
+}
+.wl-pick-b:hover{ border-color:var(--violet) }
+.wl-pick-b:focus-visible{ outline:2px solid var(--violet); outline-offset:1px }
+.wl-pick-b img, .wl-pick-o img{ width:30px; height:30px; border-radius:50%;
+  flex:0 0 auto; object-fit:contain; background:#1B1626 }
+.wl-pick-b .tx, .wl-pick-o .tx{ flex:1 1 auto; min-width:0 }
+.wl-pick-b .tx b, .wl-pick-o .tx b{ display:block;
+  font:800 14px/1.2 'Archivo',sans-serif; letter-spacing:.2px }
+.wl-pick-b .tx small, .wl-pick-o .tx small{ display:block;
+  font:400 11px/1.3 'Space Mono',monospace; color:var(--doux); margin-top:2px;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.wl-pick-b .fl{ flex:0 0 auto; color:var(--doux); font-size:11px;
+  transition:transform .16s }
+.wl-pick.ouvert .wl-pick-b .fl{ transform:rotate(180deg) }
+.wl-pick.ouvert .wl-pick-b{ border-color:var(--violet) }
+
+/* La liste couvre la carte : posee dans le flux, elle pousserait le solde
+   et le bouton vers le bas a chaque ouverture. */
+.wl-pick-l{
+  position:absolute; left:0; right:0; top:calc(100% + 6px); z-index:30;
+  background:#191324; border:1px solid var(--violet);
+  border-radius:12px; padding:5px; box-shadow:0 14px 34px rgba(0,0,0,.55);
+}
+.wl-pick-l[hidden]{ display:none }
+/* Retournee vers le haut quand elle sortirait du cadre par le bas. */
+.wl-pick.haut .wl-pick-l{ top:auto; bottom:calc(100% + 6px) }
+.wl-pick-o{
+  width:100%; display:flex; align-items:center; gap:11px; text-align:left;
+  padding:9px 8px; border-radius:9px; border:0; background:none;
+  color:var(--texte); font:inherit; cursor:pointer;
+}
+.wl-pick-o:hover, .wl-pick-o.actif{ background:rgba(139,92,246,.18) }
+.wl-pick-o[aria-selected="true"]{ background:rgba(139,92,246,.28) }
+.wl-pick-o .sol{ flex:0 0 auto; text-align:right;
+  font:700 12px/1.2 'Space Mono',monospace; font-variant-numeric:tabular-nums;
+  color:var(--doux) }
+/* L'etiquette n'est plus un `<label for>` : elle designe un bouton, pas un
+   champ de formulaire. */
+.wl-lab{ display:block; font:700 11px/1 'Archivo',sans-serif; color:var(--doux);
+  letter-spacing:1px; margin-bottom:7px }
 
 .wl-note{ font:400 12px/1.5 'Archivo',sans-serif; color:var(--doux); margin:8px 0 0 }
 .wl-note.alerte{ color:var(--or) }
@@ -366,8 +430,17 @@ body{
     <div class="wl-corps">
       <div class="wl-carte">
         <div class="wl-champ">
-          <label for="enJeton">YOU SEND</label>
-          <select id="enJeton"></select>
+          <span class="wl-lab" id="enJetonL">YOU SEND</span>
+          <div class="wl-pick" data-pour="enJeton">
+            <button type="button" class="wl-pick-b" id="enJetonB"
+                    aria-haspopup="listbox" aria-expanded="false"
+                    aria-labelledby="enJetonL enJetonB">
+              <img alt=""><span class="tx"><b>—</b><small></small></span>
+              <span class="fl" aria-hidden="true">&#9660;</span>
+            </button>
+            <div class="wl-pick-l" role="listbox" aria-labelledby="enJetonL" hidden></div>
+          </div>
+          <select id="enJeton" class="wl-cache" tabindex="-1" aria-hidden="true"></select>
         </div>
         <div class="wl-champ wl-avecmax">
           <label for="enMontant">AMOUNT</label>
@@ -418,8 +491,17 @@ body{
     <div class="wl-corps">
       <div class="wl-carte">
         <div class="wl-champ">
-          <label for="swDe">YOU PAY</label>
-          <select id="swDe"></select>
+          <span class="wl-lab" id="swDeL">YOU PAY</span>
+          <div class="wl-pick" data-pour="swDe">
+            <button type="button" class="wl-pick-b" id="swDeB"
+                    aria-haspopup="listbox" aria-expanded="false"
+                    aria-labelledby="swDeL swDeB">
+              <img alt=""><span class="tx"><b>—</b><small></small></span>
+              <span class="fl" aria-hidden="true">&#9660;</span>
+            </button>
+            <div class="wl-pick-l" role="listbox" aria-labelledby="swDeL" hidden></div>
+          </div>
+          <select id="swDe" class="wl-cache" tabindex="-1" aria-hidden="true"></select>
         </div>
         <div class="wl-champ wl-avecmax" style="margin:0">
           <input id="swMontant" inputmode="decimal" placeholder="0.0" autocomplete="off">
@@ -429,8 +511,17 @@ body{
       </div>
       <div class="wl-carte">
         <div class="wl-champ">
-          <label for="swVers">YOU RECEIVE</label>
-          <select id="swVers"></select>
+          <span class="wl-lab" id="swVersL">YOU RECEIVE</span>
+          <div class="wl-pick" data-pour="swVers">
+            <button type="button" class="wl-pick-b" id="swVersB"
+                    aria-haspopup="listbox" aria-expanded="false"
+                    aria-labelledby="swVersL swVersB">
+              <img alt=""><span class="tx"><b>—</b><small></small></span>
+              <span class="fl" aria-hidden="true">&#9660;</span>
+            </button>
+            <div class="wl-pick-l" role="listbox" aria-labelledby="swVersL" hidden></div>
+          </div>
+          <select id="swVers" class="wl-cache" tabindex="-1" aria-hidden="true"></select>
         </div>
         <div class="wl-total" style="padding:2px 0">
           <b id="swRecu" style="font-size:24px">—</b>
@@ -471,9 +562,16 @@ body{
       <div class="wl-carte">
         <div class="wl-rang"><span>Chain</span><b>Robinhood Chain</b></div>
         <div class="wl-rang"><span>Chain ID</span><b>4663</b></div>
-        <div class="wl-rang"><span>Currency</span><b>ETH</b></div>
+        <div class="wl-rang"><span>Currency</span><b id="cpDevise">—</b></div>
         <div class="wl-rang"><span>RPC</span><b id="cpRpc">—</b></div>
       </div>
+      <p class="wl-note"><b id="cpDevise2">—</b> is the coin that pays gas here. It is ether, and
+        the chain's own symbol for it really is <b>ETH</b> — but it is <b>not the same balance</b>
+        as ether on Ethereum mainnet: a different network holds different funds. This wallet writes
+        the chain into the name so the two are never taken for one.</p>
+      <p class="wl-note">Elsewhere it will still read <b>ETH</b>: your browser wallet, the block
+        explorer and the add-network prompt all use the chain's own symbol, and this page cannot
+        rename what they show. Same coin, shorter name.</p>
       <p class="wl-note">This wallet is <b>Robinhood Chain only</b>, because that is where
         $SWOGE and $SWOGEBET live. No other network is offered — showing one you cannot use
         would only invite a loss.</p>
@@ -562,6 +660,38 @@ var CHAINE = { id:4663, hex:'0x1237', nom:'Robinhood Chain',
                rpc:'https://rpc.mainnet.chain.robinhood.com',
                scan:'https://robinhoodchain.blockscout.com', sym:'ETH' };
 
+/* ---- « ETH » TOUT COURT SE CONFOND AVEC L'AUTRE ----
+ *
+ * La piece native de cette chaine EST de l'ether, et son symbole officiel
+ * est bien `ETH` — c'est celui que `wallet_addEthereumChain` doit recevoir,
+ * et `CHAINE.sym` ne bouge pas d'un caractere.
+ *
+ * Mais un joueur qui lit « 0,004 ETH » ici et « 0,3 ETH » dans MetaMask
+ * croit voir le meme solde a deux endroits. Ce sont deux reseaux, donc deux
+ * soldes. Ce qui est AFFICHE porte donc la chaine.
+ *
+ * ---- LA FORME EST CELLE DE LA MAISON, PAS UNE NOUVELLE ----
+ *
+ * Le site avait deja tranche, et ecrit pourquoi : voir `swogebuy.js`, juste
+ * au-dessus de `$('swbUnite')`. « ETH (RH) » y sert 65 fois dans 22 fichiers
+ * — chaque panneau de depot, chaque ligne de gaz, chaque choix de jeton — et
+ * l'ether du reseau principal porte le miroir, « ETH (mainnet) », pour
+ * qu'aucun des deux ne reste nu. Ce portefeuille etait la derniere page a
+ * dire « ETH » tout court.
+ *
+ * Les parentheses ne sont pas un detail de style. « ETH RH » se lit comme un
+ * ticker en deux mots — l'oeil y voit un AUTRE jeton, ce qui serait faux.
+ * Entre parentheses, c'est la grammaire habituelle du « meme actif, precise
+ * par l'endroit ou il se trouve », et c'est exactement ce qui est vrai ici.
+ * (« rhETH » ou « ETH.rh » seraient pires encore : ils annoncent un jeton
+ * enveloppe ou synthetique, et celui-ci n'est ni l'un ni l'autre.)
+ *
+ * Deux symboles, et il faut savoir lequel on manipule :
+ *   CHAINE.sym  — ce que la chaine declare. Protocole. Jamais retouche.
+ *   ETH_AFF     — ce que le joueur lit. Nulle part ailleurs.
+ */
+var ETH_AFF = 'ETH (RH)';
+
 var WETH     = '0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73';
 var SWOGE    = '0x8a166Fb41Cd659a0a43396272FF73973Ce29F817';
 var SWOGEBET = '0xc0aEd547862fba5D7D9Fbf3cb14204cD756c8Bea';
@@ -627,8 +757,12 @@ function moinsTolerance(bn){
  * portefeuille qui affiche un jeton inexistant apprend a son proprietaire
  * a ne plus le croire. */
 var JETONS = [
-  { cle:'eth',      sym:'ETH',       nom:'Ether',        adr:null,     dec:18,
-    logo:null,                             natif:true },
+  { cle:'eth',      sym:ETH_AFF,     nom:'Ether on Robinhood Chain', adr:null, dec:18,
+    /* Il n'en avait pas : il etait dessine en CSS, un « Ξ » dans un rond
+       gris. A cote de deux vraies pieces de 512 px il se lisait comme un
+       trou — et c'est celui qu'il faut reconnaitre le plus vite, puisque
+       c'est lui qui paie le gaz. */
+    logo:'img/wallet/tok_eth.webp',        natif:true },
   { cle:'swoge',    sym:'SWOGE',     nom:'Swole Doge',   adr:SWOGE,    dec:18,
     logo:'img/wallet/tok_swoge.webp' },
   { cle:'swogebet', sym:'SWOGEBET',  nom:'Swogebet',     adr:SWOGEBET, dec:18,
@@ -755,7 +889,7 @@ function pourquoiRefus(err){
   if(/Transaction too old|EXPIRED/i.test(t))
     return 'The transaction sat unsigned for too long and expired. Nothing was spent — start it again.';
   if(/insufficient funds/i.test(t))
-    return 'Not enough ETH to pay the network fee. Leave a little ETH aside, or use MAX, which already does.';
+    return 'Not enough '+ETH_AFF+' to pay the network fee. Leave a little aside, or use MAX, which already does.';
   return t || 'The transaction was refused.';
 }
 
@@ -1014,11 +1148,13 @@ function peintAccueil(){
   var h='';
   for(var k=0;k<JETONS.length;k++){
     var j=JETONS[k], s=soldes[j.cle], v=valeur(j.cle);
-    /* L'ETH n'a pas de logo dans le dossier : on le dessine. Le `#` d'une
-       couleur doit etre encode UNE SEULE FOIS — ecrit `%23` puis passe a
-       `encodeURIComponent`, il devient `%2523` et le SVG rend un rond noir. */
+    /* Les trois jetons ont leur piece. Le repli n'est plus un « Ξ » : ce
+       signe EST celui de l'ether de la chaine principale, et le laisser sous
+       un nom qui dit justement le contraire aurait defait tout le travail de
+       la ligne du dessus. Il ne reste qu'un rond avec les initiales — un
+       repli qui n'affirme rien. */
     var logo = j.logo ? '<img src="'+j.logo+'" alt="">'
-      : '<span class="wl-eth">Ξ</span>';
+      : '<span class="wl-eth">'+j.sym.slice(0,2)+'</span>';
     h += '<button class="wl-jeton" type="button" data-jeton="'+j.cle+'">'
        +   logo
        +   '<span class="nom"><b>'+j.sym+'</b><small>'+j.nom+'</small></span>'
@@ -1045,6 +1181,10 @@ function majCompte(){
   $('cpAdr').textContent = moi ? court(moi) : '—';
   $('cpMethode').textContent = methode==='email' ? 'Email' : methode==='wallet' ? 'Browser wallet' : '—';
   $('cpRpc').textContent = CHAINE.rpc.replace(/^https:\/\//,'');
+  /* Le nom affiche de la piece native est ecrit UNE fois, dans `ETH_AFF`.
+     Le recopier dans le HTML le figerait le jour ou il change. */
+  $('cpDevise').textContent  = ETH_AFF;
+  $('cpDevise2').textContent = ETH_AFF;
   $('hReseau').classList.toggle('on', !!moi);
 }
 
@@ -1071,7 +1211,14 @@ $('reCopier').addEventListener('click', async function(){
   catch(e){ toast('Could not copy — select the address above'); }
 });
 
-/* ==================== ENVOYER ==================== */
+/* ==================== LE CHOIX D'UN JETON ====================
+ *
+ * Voir la note dans la feuille de style : le `<select>` reste la source de
+ * verite et ne bouge pas, on lui pose un miroir par-dessus qui sait montrer
+ * les pieces. Ecrire dans le miroir ecrit dans le `<select>` et declenche
+ * `change` — donc tout le code de l'envoi et de l'echange continue de
+ * fonctionner sans qu'une ligne y soit touchee.
+ */
 function remplitChoix(sel, exclure){
   var h='';
   for(var i=0;i<JETONS.length;i++){
@@ -1079,7 +1226,193 @@ function remplitChoix(sel, exclure){
     h+='<option value="'+JETONS[i].cle+'">'+JETONS[i].sym+' — '+JETONS[i].nom+'</option>';
   }
   sel.innerHTML=h;
+  peintPick(sel);
 }
+
+function pickDe(sel){
+  return document.querySelector('.wl-pick[data-pour="'+sel.id+'"]');
+}
+
+/* Le miroir se redessine depuis le `<select>` : ses options, sa valeur. Il
+   n'a pas d'etat a lui, donc il ne peut pas diverger. */
+function peintPick(sel){
+  var w = pickDe(sel); if(!w) return;
+  var b = w.querySelector('.wl-pick-b'), l = w.querySelector('.wl-pick-l');
+  var j = J(sel.value) || JETONS[0];
+
+  var im = b.querySelector('img');
+  if(j.logo){ im.src = j.logo; im.hidden = false; } else { im.removeAttribute('src'); im.hidden = true; }
+  b.querySelector('.tx b').textContent = j.sym;
+  b.querySelector('.tx small').textContent = j.nom;
+
+  var h = '';
+  for(var i=0;i<sel.options.length;i++){
+    var k = sel.options[i].value, x = J(k); if(!x) continue;
+    /* Le solde AIDE a choisir : c'est la question qu'on se pose en ouvrant
+       cette liste. Mais un solde jamais lu vaut « — », jamais « 0 » —
+       montrer zero, c'est dire au joueur qu'il n'a plus rien. */
+    var sd = soldes[k];
+    var aff = !moi ? '' : (sd===null || sd===undefined ? '—' : nombre(sd, x.dec));
+    h += '<button type="button" class="wl-pick-o" role="option" data-cle="'+k+'"'
+       +   ' aria-selected="'+(k===sel.value?'true':'false')+'">'
+       +   (x.logo ? '<img src="'+x.logo+'" alt="">' : '')
+       +   '<span class="tx"><b>'+x.sym+'</b><small>'+x.nom+'</small></span>'
+       +   (aff ? '<span class="sol">'+aff+'</span>' : '')
+       + '</button>';
+  }
+  l.innerHTML = h;
+}
+
+function ouvrePick(w, ouvrir){
+  var b = w.querySelector('.wl-pick-b'), l = w.querySelector('.wl-pick-l');
+  /* Un seul ouvert a la fois : deux listes superposees se recouvrent et on
+     clique dans celle qu'on ne regarde pas. */
+  if(ouvrir){
+    var tous = document.querySelectorAll('.wl-pick.ouvert');
+    for(var i=0;i<tous.length;i++) if(tous[i]!==w) ouvrePick(tous[i], false);
+    peintPick(document.getElementById(w.dataset.pour));
+  }
+  w.classList.toggle('ouvert', !!ouvrir);
+  l.hidden = !ouvrir;
+  b.setAttribute('aria-expanded', ouvrir ? 'true' : 'false');
+  if(ouvrir){
+    var choisi = l.querySelector('[aria-selected="true"]') || l.firstElementChild;
+    if(choisi) choisi.classList.add('actif');
+    /* ---- LE CADRE DU TELEPHONE COUPE ----
+     * `#tel` est en `overflow:hidden` : une liste qui depasse par le bas
+     * n'est pas seulement moche, elle est INATTEIGNABLE — le dernier jeton
+     * ne peut plus etre choisi. On mesure a l'OUVERTURE, jamais au
+     * remplissage : au demarrage l'ecran est encore `display:none` et toutes
+     * les mesures valent zero. */
+    w.classList.remove('haut');
+    var tel = document.getElementById('tel');
+    if(tel){
+      var rl = l.getBoundingClientRect(), rt = tel.getBoundingClientRect();
+      if(rl.bottom > rt.bottom - 8) w.classList.add('haut');
+    }
+  } else {
+    var a = l.querySelectorAll('.actif');
+    for(var k=0;k<a.length;k++) a[k].classList.remove('actif');
+  }
+}
+
+/* On CHANGE la valeur par le `<select>`, et on declenche `change` a la main :
+   une affectation de `.value` n'en emet pas, et c'est cet evenement que le
+   devis, le solde et les frais ecoutent. */
+/* ---- UNE AFFECTATION DE `.value` N'EMET RIEN, ET C'EST LE VRAI DANGER ----
+ *
+ * `sel.value = 'eth'` ne declenche aucun evenement. Un `<select>` natif se
+ * redessine tout seul ; un miroir, non. Il continuerait donc d'annoncer le
+ * jeton precedent pendant que le devis, l'encodage de la transaction et la
+ * signature emploieraient le nouveau — le joueur lirait « YOU RECEIVE :
+ * SWOGEBET » en signant un echange vers le $SWOGE.
+ *
+ * Trois endroits ecrivent la valeur en dur : le demarrage, l'ouverture de
+ * l'ecran d'echange, et la correction automatique quand on choisit deux fois
+ * le meme jeton. Les compter et les corriger un par un, c'est en oublier un
+ * le jour ou un quatrieme apparait.
+ *
+ * On accroche donc le miroir a la PROPRIETE elle-meme : n'importe quelle
+ * ecriture de `.value`, d'ou qu'elle vienne — cette page, un essai, du code
+ * ecrit demain — repeint. La desynchronisation devient impossible plutot que
+ * simplement evitee. */
+function accrochePick(sel){
+  var proto = Object.getPrototypeOf(sel);
+  var d = Object.getOwnPropertyDescriptor(proto, 'value');
+  if(!d || !d.set) return;                      /* navigateur trop ancien : on laisse tel quel */
+  Object.defineProperty(sel, 'value', {
+    configurable: true,
+    get: function(){ return d.get.call(this); },
+    set: function(v){ d.set.call(this, v); peintPick(this); }
+  });
+}
+function valPick(sel, cle){ sel.value = cle; }
+
+function choisitPick(sel, cle){
+  if(sel.value === cle){ peintPick(sel); return; }
+  sel.value = cle;
+  peintPick(sel);
+  sel.dispatchEvent(new Event('change', { bubbles:true }));
+}
+
+document.addEventListener('click', function(ev){
+  var o = ev.target.closest('.wl-pick-o');
+  if(o){
+    var w = o.closest('.wl-pick');
+    var sel = document.getElementById(w.dataset.pour);
+    choisitPick(sel, o.dataset.cle);
+    ouvrePick(w, false);
+    w.querySelector('.wl-pick-b').focus();
+    return;
+  }
+  var b = ev.target.closest('.wl-pick-b');
+  if(b){
+    var w2 = b.closest('.wl-pick');
+    ouvrePick(w2, !w2.classList.contains('ouvert'));
+    return;
+  }
+  /* Un clic ailleurs referme : sans ca la liste reste ouverte par-dessus le
+     bouton d'envoi, et le clic suivant tombe dessus. */
+  var ouverts = document.querySelectorAll('.wl-pick.ouvert');
+  for(var i=0;i<ouverts.length;i++) ouvrePick(ouverts[i], false);
+});
+
+/* Au clavier : le miroir doit se conduire comme le `<select>` qu'il cache. */
+document.addEventListener('keydown', function(ev){
+  var w = ev.target.closest && ev.target.closest('.wl-pick');
+  if(!w) return;
+  var l = w.querySelector('.wl-pick-l');
+  var ouvert = w.classList.contains('ouvert');
+  var k = ev.key;
+
+  if(k === 'Escape'){
+    if(!ouvert) return;
+    ouvrePick(w, false); w.querySelector('.wl-pick-b').focus();
+    ev.preventDefault(); return;
+  }
+  if(!ouvert){
+    if(k === 'ArrowDown' || k === 'ArrowUp' || k === 'Enter' || k === ' '){
+      ouvrePick(w, true); ev.preventDefault();
+    }
+    return;
+  }
+  var opts = [].slice.call(l.children);
+  if(!opts.length) return;
+  var i = opts.findIndex(function(x){ return x.classList.contains('actif'); });
+  if(i < 0) i = 0;
+
+  if(k === 'ArrowDown' || k === 'ArrowUp' || k === 'Home' || k === 'End'){
+    opts[i].classList.remove('actif');
+    i = k === 'Home' ? 0
+      : k === 'End'  ? opts.length - 1
+      : (i + (k === 'ArrowDown' ? 1 : opts.length - 1)) % opts.length;
+    opts[i].classList.add('actif');
+    ev.preventDefault();
+  } else if(k.length === 1 && /[a-z0-9]/i.test(k)){
+    /* La frappe d'une lettre saute au jeton suivant qui commence par elle —
+       un `<select>` le fait, et c'est ainsi qu'on choisit vite au clavier.
+       On repart de l'option SUIVANTE pour que « s » alterne $SWOGE et
+       $SWOGEBET au lieu de rester sur le premier. */
+    var deb = k.toLowerCase();
+    for(var n=1; n<=opts.length; n++){
+      var c = opts[(i + n) % opts.length];
+      var t = (c.querySelector('.tx b') || {}).textContent || '';
+      if(t.toLowerCase().indexOf(deb) === 0){
+        opts[i].classList.remove('actif');
+        c.classList.add('actif');
+        ev.preventDefault();
+        break;
+      }
+    }
+  } else if(k === 'Enter' || k === ' '){
+    var sel = document.getElementById(w.dataset.pour);
+    choisitPick(sel, opts[i].dataset.cle);
+    ouvrePick(w, false); w.querySelector('.wl-pick-b').focus();
+    ev.preventDefault();
+  }
+});
+
+/* ==================== ENVOYER ==================== */
 function majEnvoyer(){
   if(!$('enJeton').options.length) remplitChoix($('enJeton'));
   var j=J($('enJeton').value)||JETONS[0];
@@ -1113,7 +1446,7 @@ async function calculeMax(cle, unitesGaz){
   var reserve = g.mul(unitesGaz);
   var reste = s.sub(reserve);
   if(reste.lte(0))
-    return { erreur:'Your whole ETH balance is smaller than the network fee this would cost.' };
+    return { erreur:'Your whole '+ETH_AFF+' balance is smaller than the network fee this would cost.' };
   return { montant:reste, reserve:reserve };
 }
 
@@ -1122,7 +1455,7 @@ $('enMax').addEventListener('click', async function(){
   var r = await calculeMax(cle, GAZ_ENVOI);
   if(r.erreur) return toast(r.erreur);
   $('enMontant').value = ethers.utils.formatUnits(r.montant, J(cle).dec);
-  if(r.reserve) toast('Kept ' + nombre(r.reserve,18) + ' ETH back for the network fee');
+  if(r.reserve) toast('Kept ' + nombre(r.reserve,18) + ' ' + ETH_AFF + ' back for the network fee');
 });
 
 $('swMax').addEventListener('click', async function(){
@@ -1130,7 +1463,7 @@ $('swMax').addEventListener('click', async function(){
   var r = await calculeMax(cle, GAZ_ECHANGE);
   if(r.erreur) return toast(r.erreur);
   $('swMontant').value = ethers.utils.formatUnits(r.montant, J(cle).dec);
-  if(r.reserve) toast('Kept ' + nombre(r.reserve,18) + ' ETH back for the network fee');
+  if(r.reserve) toast('Kept ' + nombre(r.reserve,18) + ' ' + ETH_AFF + ' back for the network fee');
   devis();
 });
 
@@ -1138,7 +1471,7 @@ async function litFrais(){
   try{
     var g = await lec().getGasPrice();
     var u = ethers.BigNumber.from(21000 * ($('enJeton').value==='eth' ? 1 : 3));
-    $('enFrais').textContent = '≈ '+nombre(g.mul(u),18)+' ETH';
+    $('enFrais').textContent = '≈ '+nombre(g.mul(u),18)+' '+ETH_AFF;
   }catch(e){ $('enFrais').textContent='—'; }
 }
 
@@ -1197,7 +1530,7 @@ function majSwap(){
   if(!$('swDe').options.length){
     remplitChoix($('swDe'));
     remplitChoix($('swVers'));
-    $('swDe').value='eth'; $('swVers').value='swogebet';
+    valPick($('swDe'), 'eth'); valPick($('swVers'), 'swogebet');
   }
   var j=J($('swDe').value);
   var s=soldes[j.cle];
@@ -1206,7 +1539,7 @@ function majSwap(){
 }
 $('swDe').addEventListener('change', function(){
   if($('swVers').value===$('swDe').value)
-    $('swVers').value = $('swDe').value==='eth' ? 'swoge' : 'eth';
+    valPick($('swVers'), $('swDe').value==='eth' ? 'swoge' : 'eth');
   majSwap();
 });
 $('swVers').addEventListener('change', devis);
@@ -1233,7 +1566,7 @@ async function devis(){
     $('swImpact').textContent='—';
     $('swMini').textContent='—';
     $('swNote').className='wl-note grave';
-    $('swNote').textContent='$SWOGEBET has no pool against ETH — it only trades against $SWOGE. Pick another pair.';
+    $('swNote').textContent='$SWOGEBET has no pool against '+ETH_AFF+' — it only trades against $SWOGE. Pick another pair.';
     return;
   }
   $('swNote').className='wl-note'; $('swNote').textContent='';
@@ -1475,7 +1808,10 @@ async function chargeActivite(){
     var tout=[].concat.apply([], await borne(Promise.all(lots), 25000, 'history'));
     tout.sort(function(a,b){ return b.log.blockNumber - a.log.blockNumber; });
     if(!tout.length){
-      c.innerHTML='<div class="wl-vide"><span class="g">&#9675;</span>No $SWOGE or $SWOGEBET transfers in the last 30 days.</div>';
+      c.innerHTML='<div class="wl-vide"><span class="g">&#9675;</span>'
+        + 'No $SWOGE or $SWOGEBET transfers in the last 30 days.'
+        + '<br>'+ETH_AFF+' movements are not listed here — the native coin leaves no'
+        + ' transfer event to read, so an empty list does not mean nothing moved.</div>';
       return;
     }
     var h='';
@@ -1492,6 +1828,12 @@ async function chargeActivite(){
        + '</div>';
     }
     if(tout.length>60) h+='<p class="wl-note">Showing the 60 most recent of '+tout.length+' transfers.</p>';
+    /* La liste ne peut pas etre complete, et se taire la-dessus la ferait
+       passer pour l'historique entier : un joueur qui vient d'envoyer de
+       l'ETH RH ne le trouverait pas et croirait son envoi perdu. */
+    h+='<p class="wl-note">$SWOGE and $SWOGEBET only. '+ETH_AFF+' moves without leaving a'
+     + ' transfer event, so it cannot be read back this way — check the explorer from the'
+     + ' Account screen for those.</p>';
     c.innerHTML=h;
   }catch(e){
     /* « Impossible de lire » et non « aucune transaction ». Les deux ne
@@ -1509,7 +1851,12 @@ async function ficheJeton(cle){
   var j=J(cle); if(!j) return;
   $('fiTitre').textContent=j.sym;
   $('fiNom').textContent=j.nom;
-  $('fiLogo').src=j.logo||'img/wallet/tok_swoge.webp';
+  /* PAS de repli sur le logo du $SWOGE : l'ETH n'ayant pas d'image, sa
+     fiche affichait une piece SWOGE — le mauvais jeton sur la page d'un
+     vrai solde. Chaque jeton a le sien maintenant, et s'il venait a
+     manquer, mieux vaut rien qu'un autre. */
+  var im=$('fiLogo');
+  if(j.logo){ im.src=j.logo; im.hidden=false; } else { im.removeAttribute('src'); im.hidden=true; }
   $('fiSolde').textContent = moi ? nombre(soldes[cle], j.dec)+' '+j.sym : '—';
   var v=valeur(cle);
   $('fiValeur').textContent = v===null ? (moi?'price unavailable':'—') : usd(v);
@@ -1519,7 +1866,7 @@ async function ficheJeton(cle){
   $('fiMcap').textContent = cle==='swoge' && window._fdv ? usd(window._fdv) : '—';
   $('fiLiq').textContent  = cle==='swoge' && window._liq ? usd(window._liq) : '—';
   $('fiNote').textContent = cle==='swogebet'
-    ? '$SWOGEBET trades only against $SWOGE. Buying it with ETH goes through $SWOGE automatically, in a single transaction.'
+    ? '$SWOGEBET trades only against $SWOGE. Buying it with '+ETH_AFF+' goes through $SWOGE automatically, in a single transaction.'
     : (cle==='swoge' ? 'The ecosystem token. Everything on the site settles in $SWOGE.' : '');
   va('ecJeton');
 }
@@ -1542,10 +1889,11 @@ if(ethersManquant()){
 }
 
 poseTolerance();
+['enJeton','swDe','swVers'].forEach(function(id){ var s=$(id); if(s) accrochePick(s); });
 remplitChoix($('enJeton'));
 remplitChoix($('swDe'));
 remplitChoix($('swVers'));
-$('swDe').value='eth'; $('swVers').value='swogebet';
+valPick($('swDe'), 'eth'); valPick($('swVers'), 'swogebet');
 peintAccueil();
 lisPrix().then(peintAccueil);
 reprend();

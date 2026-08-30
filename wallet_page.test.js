@@ -112,8 +112,30 @@ const T = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
     const syms = await p.evaluate(() =>
       [...document.querySelectorAll('#acJetons .wl-jeton .nom b')].map((x) => x.textContent));
     ok(syms.length === 3 && syms.indexOf('SWOGE') >= 0 && syms.indexOf('SWOGEBET') >= 0
-       && syms.indexOf('ETH') >= 0,
-       'trois lignes seulement : ETH, SWOGE, SWOGEBET (' + syms.join(', ') + ')');
+       && syms.indexOf('ETH (RH)') >= 0,
+       'trois lignes seulement : ETH (RH), SWOGE, SWOGEBET (' + syms.join(', ') + ')');
+    /* ---- « ETH » TOUT COURT NE DOIT PLUS SE LIRE COMME UN SOLDE ----
+       Le joueur a deux soldes d'ether : celui-ci et celui de la chaine
+       principale, dans son autre portefeuille. Les deux ecrits « ETH », il
+       croit voir le meme a deux endroits. */
+    ok(!syms.some((x) => x === 'ETH'),
+       'et aucune ne s appelle « ETH » tout court — c est la confusion qu on cherche a eviter');
+    const logos = await p.evaluate(() =>
+      [...document.querySelectorAll('#acJetons .wl-jeton')].map((r) => {
+        const im = r.querySelector('img');
+        return { sym: r.querySelector('.nom b').textContent,
+                 src: im ? im.getAttribute('src') : null,
+                 charge: im ? (im.naturalWidth > 0) : false };
+      }));
+    ok(logos.every((x) => x.src && x.charge),
+       'les trois jetons ont une piece qui CHARGE vraiment : '
+       + logos.map((x) => x.sym + ' ' + (x.charge ? 'ok' : 'MANQUE ' + x.src)).join(', '));
+    /* L'ETH empruntait le logo du $SWOGE sur sa fiche : le mauvais jeton sur
+       la page d'un vrai solde. */
+    const parSym = {}; logos.forEach((x) => (parSym[x.sym] = x.src));
+    ok(new Set(logos.map((x) => x.src)).size === 3,
+       'et trois pieces DIFFERENTES — aucune n emprunte celle d une autre ('
+       + Object.keys(parSym).map((k) => k + '=' + String(parSym[k]).split('/').pop()).join(', ') + ')');
     for (const faux of ['SWOCHIP', 'SWOPOOL', 'SWOXP', 'Solana']) {
       ok(t.indexOf(faux) < 0,
          'aucune trace de « ' + faux +' » — la maquette en montrait, il n existe pas');
@@ -369,6 +391,173 @@ const T = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
        'et un doigt pose dessus touche le bouton, pas la case (' + geo.touche + ')');
 
     ok(boum.length === 0, 'aucune exception pendant tout ca' + (boum.length ? ' : ' + boum[0] : ''));
+    await page.close();
+  }
+
+  /* 7. LE CHOIX D UN JETON MONTRE SA PIECE — SANS TOUCHER AU CHEMIN DE L ARGENT
+   *
+   * Un `<select>` natif ne sait pas afficher d image : on choisissait en
+   * texte ce qu on venait de reconnaitre a l oeil sur l accueil. Le miroir
+   * pose par-dessus montre les pieces, mais TOUT le code de l envoi et de
+   * l echange lit encore le `<select>` cache. Ce qui doit tenir :
+   *
+   *   - `.value` rend toujours la CLE ('eth', 'swoge', 'swogebet'). Deux
+   *     endroits signent des transactions a partir d elle.
+   *   - une ecriture NUE de `.value` — sans evenement — repeint quand meme.
+   *     Sinon le bouton annonce un jeton et la signature en emploie un autre.
+   *   - `change` part encore, et depuis l element lui-meme.
+   *   - la liste ne sort pas du cadre du telephone, qui coupe.
+   */
+  console.log('\n-- choisir un jeton, et voir sa piece --');
+  {
+    const MOI = '0x00000000000000000000000000000000000a11ce';
+    const enMot = (v) => '0x' + BigInt(v).toString(16).padStart(64, '0');
+    const etat = { eth: 4938654000000000n, swoge: 1234567890123456789012n,
+                   swogebet: 98765000000000000000n, gaz: 134102000n };
+    const page = await nav.newPage({ viewport: { width: 1280, height: 1000 } });
+    const boum = [];
+    page.on('pageerror', (e) => boum.push(e.message));
+    await page.addInitScript(([moi]) => {
+      try { localStorage.setItem('swogeAuth', 'wallet'); } catch (e) {}
+      window.ethereum = { isMetaMask: true, on: () => {}, removeListener: () => {},
+        request: async (a) => {
+          if (a.method === 'eth_accounts' || a.method === 'eth_requestAccounts') return [moi];
+          if (a.method === 'eth_chainId') return '0x1237';
+          if (a.method === 'net_version') return '4663';
+          return null; } };
+    }, [MOI]);
+    await page.route('**/ethers*.umd.min.js', (r) => r.fulfill({
+      contentType: 'text/javascript', body: fs.readFileSync(ETHERS, 'utf8') }));
+    await page.route('**/api.dexscreener.com/**', (r) => r.fulfill({
+      contentType: 'application/json', body: '{"pairs":[]}' }));
+    await page.route('**/rpc.mainnet.chain.robinhood.com/**', async (r) => {
+      const q = JSON.parse(r.request().postData() || '{}');
+      const un = (m) => {
+        if (m.method === 'eth_chainId') return '0x1237';
+        if (m.method === 'net_version') return '4663';
+        if (m.method === 'eth_blockNumber') return '0x2f7ce78';
+        if (m.method === 'eth_getLogs') return [];
+        if (m.method === 'eth_gasPrice') return enMot(etat.gaz);
+        if (m.method === 'eth_getBalance') return enMot(etat.eth);
+        if (m.method === 'eth_call') {
+          const d = (m.params[0].data || '').toLowerCase();
+          const a = (m.params[0].to || '').toLowerCase();
+          if (d.slice(0, 10) === '0x70a08231')
+            return enMot(a.indexOf('8a166fb4') > 0 ? etat.swoge : etat.swogebet);
+          return enMot(0n);
+        }
+        return null;
+      };
+      const rep = (m) => { const v = un(m);
+        return v === null ? { jsonrpc: '2.0', id: m.id, error: { code: -32000, message: 'nope' } }
+                          : { jsonrpc: '2.0', id: m.id, result: v }; };
+      await r.fulfill({ contentType: 'application/json',
+        body: JSON.stringify(Array.isArray(q) ? q.map(rep) : rep(q)) });
+    });
+    await page.goto('http://127.0.0.1:' + port + '/swoge_wallet.html',
+                    { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(2600);
+
+    const bouton = (id) => page.evaluate((i) =>
+      document.querySelector('.wl-pick[data-pour="' + i + '"] .wl-pick-b .tx b').textContent, id);
+
+    /* -- les pieces sont bien dans la liste, pas seulement sur l accueil -- */
+    await page.evaluate(() => document.querySelector('[data-va="ecEnvoyer"]').click());
+    await page.waitForTimeout(250);
+    await page.click('#enJetonB');
+    await page.waitForTimeout(250);
+    const lignes = await page.evaluate(() =>
+      [...document.querySelectorAll('.wl-pick[data-pour="enJeton"] .wl-pick-o')].map((o) => {
+        const im = o.querySelector('img');
+        return { sym: o.querySelector('.tx b').textContent,
+                 logo: im ? im.getAttribute('src') : null,
+                 charge: im ? im.naturalWidth > 0 : false };
+      }));
+    ok(lignes.length === 3, 'la liste du Send propose les trois jetons (' + lignes.length + ')');
+    ok(lignes.every((x) => x.logo && x.charge),
+       'et chacun y montre SA piece, chargee : '
+       + lignes.map((x) => x.sym + (x.charge ? '' : ' MANQUE')).join(', '));
+    ok(new Set(lignes.map((x) => x.logo)).size === 3,
+       'trois pieces differentes — aucune n emprunte celle d une autre');
+
+    /* -- le cadre du telephone coupe : la liste doit tenir dedans -- */
+    const cadre = await page.evaluate(() => {
+      const l = document.querySelector('.wl-pick[data-pour="enJeton"] .wl-pick-l');
+      const t = document.getElementById('tel');
+      const rl = l.getBoundingClientRect(), rt = t.getBoundingClientRect();
+      return { dedans: rl.top >= rt.top - 1 && rl.bottom <= rt.bottom + 1
+                     && rl.left >= rt.left - 1 && rl.right <= rt.right + 1,
+               bas: Math.round(rl.bottom), cadre: Math.round(rt.bottom) };
+    });
+    ok(cadre.dedans,
+       'la liste ouverte tient dans le cadre du telephone — `#tel` est en overflow:hidden,'
+       + ' ce qui en sort n est pas seulement invisible, il est INCHOISISSABLE'
+       + (cadre.dedans ? '' : ' (bas ' + cadre.bas + ' pour un cadre a ' + cadre.cadre + ')'));
+
+    /* -- choisir a la souris ecrit la CLE, pas le symbole -- */
+    await page.click('.wl-pick[data-pour="enJeton"] .wl-pick-o[data-cle="swoge"]');
+    await page.waitForTimeout(300);
+    const apres = await page.evaluate(() => ({
+      val: document.getElementById('enJeton').value,
+      solde: document.getElementById('enSolde').textContent }));
+    ok(apres.val === 'swoge',
+       '`.value` rend la CLE du jeton, jamais son symbole — deux transactions se'
+       + ' signent a partir d elle (' + apres.val + ')');
+    ok(await bouton('enJeton') === 'SWOGE', 'et le bouton suit le choix');
+    ok(/SWOGE/.test(apres.solde) && !/ETH/.test(apres.solde),
+       'le `change` est bien parti : la ligne Balance a suivi (' + apres.solde + ')');
+
+    /* -- UNE ECRITURE NUE DE .value REPEINT -- */
+    await page.evaluate(() => document.querySelector('[data-va="ecSwap"]').click());
+    await page.waitForTimeout(300);
+    const nu = await page.evaluate(() => {
+      /* Ni evenement, ni passage par le miroir : exactement ce que fait la
+         page elle-meme a trois endroits, et ce que font les essais. */
+      document.getElementById('swVers').value = 'swoge';
+      return { val: document.getElementById('swVers').value,
+               bouton: document.querySelector('.wl-pick[data-pour="swVers"] .wl-pick-b .tx b').textContent };
+    });
+    ok(nu.val === 'swoge' && nu.bouton === 'SWOGE',
+       'une ecriture NUE de `.value` repeint le miroir (' + nu.bouton + ') — sans ca le joueur'
+       + ' lirait un jeton et en signerait un autre');
+
+    /* -- au clavier, comme un vrai select -- */
+    await page.focus('#swDeB');
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(200);
+    const ouvert = await page.evaluate(() =>
+      !document.querySelector('.wl-pick[data-pour="swDe"] .wl-pick-l').hidden);
+    ok(ouvert, 'Entree ouvre la liste au clavier');
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(300);
+    ok(await page.evaluate(() => document.getElementById('swDe').value) !== 'eth',
+       'Fleche bas puis Entree change le jeton');
+    ok(await page.evaluate(() =>
+         document.activeElement && document.activeElement.id === 'swDeB'),
+       'et le focus revient sur le bouton — sinon la tabulation repart du haut de la page');
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(150);
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(200);
+    ok(await page.evaluate(() =>
+         document.querySelector('.wl-pick[data-pour="swDe"] .wl-pick-l').hidden),
+       'Echap referme sans rien changer');
+
+    /* -- un seul menu ouvert a la fois -- */
+    await page.click('#swDeB'); await page.waitForTimeout(150);
+    await page.click('#swVersB'); await page.waitForTimeout(200);
+    ok(await page.evaluate(() =>
+         document.querySelectorAll('.wl-pick.ouvert').length === 1),
+       'un seul menu ouvert a la fois — deux superposes, on clique dans celui qu on ne regarde pas');
+
+    /* -- le `<select>` cache ne prend pas le focus au passage -- */
+    ok(await page.evaluate(() =>
+         [...document.querySelectorAll('select')].every((s) => s.tabIndex === -1)),
+       'le `<select>` garde la valeur mais sort de la tabulation : sinon on tabule deux fois'
+       + ' sur le meme choix');
+
+    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.close();
   }
 

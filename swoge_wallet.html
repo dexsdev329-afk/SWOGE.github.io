@@ -31,6 +31,15 @@
 <link rel="apple-touch-icon" href="/img/site/icone-180.png">
 <link rel="manifest" href="/site.webmanifest">
 <meta name="theme-color" content="#1B5FE0">
+<!-- ---- LA TENUE SE POSE AVANT LE PREMIER DESSIN ----
+     Trois lignes dans l'en-tete, et pas dans le script de la page : celui-ci
+     s'execute apres le rendu, et qui a choisi la tenue sombre verrait un
+     eclair blanc a chaque ouverture. Claire par defaut — c'est celle du reste
+     du site. -->
+<script>
+  try{ if(localStorage.getItem('swogeWalletTenue') === 'sombre')
+         document.documentElement.setAttribute('data-theme','sombre'); }catch(e){}
+</script>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -64,19 +73,79 @@
  * L'ecosysteme, c'est $SWOGE et $SWOGEBET. Rien d'autre n'existe.
  * ================================================================== */
 
+/* ==================== LES DEUX TENUES ====================
+ *
+ * ---- POURQUOI LE CLAIR EST LA TENUE PAR DEFAUT ----
+ *
+ * Le reste du site est clair et bleu — `index.html`, `games.html`,
+ * `swogebet.html` partagent les memes six couleurs depuis toujours. Ce
+ * portefeuille etait le seul ecran sombre et violet de la maison : on quittait
+ * l'arcade et l'on changeait de site. Il porte maintenant la MEME palette, et
+ * c'est elle qu'on voit en arrivant.
+ *
+ * La tenue sombre reste, parce qu'elle plait et qu'un portefeuille se consulte
+ * aussi la nuit. Elle se choisit dans les reglages, et le choix se garde.
+ *
+ * ---- LES NOMS DISENT LEUR ROLE, PLUS LEUR COULEUR ----
+ *
+ * `--violet` est devenu `--accent`. Une variable nommee d'apres sa teinte
+ * ment des qu'on la reteinte : « violet: bleu » se lit deux fois avant d'etre
+ * compris, et quelqu'un finit par ecrire du violet en dur a cote pour
+ * « reparer ».
+ *
+ * Chaque couleur est definie ICI, dans `:root`, et redefinie SEULEMENT dans le
+ * bloc sombre. Une couleur qui n'existerait que dans l'un des deux blocs
+ * laisserait un texte d'une tenue sur le fond de l'autre — le defaut le plus
+ * facile a produire et le plus difficile a voir, puisqu'on ne regarde jamais
+ * les deux en meme temps.
+ */
 :root{
+  /* La tenue CLAIRE : les six couleurs de `index.html`, mot pour mot. */
+  --nuit:#EEF3FB; --carte:#FFFFFF; --carte2:#F5F8FE; --bord:#E1E9F6;
+  --texte:#0B1B36; --doux:#6B7C99; --or:#F5B301;
+  --accent:#1B5FE0; --accent2:#4A83EA;
+  --vert:#12A150; --rouge:#E0443E;
+  --rayon:16px;
+  /* Le decor de la page derriere le telephone. */
+  --decor:radial-gradient(1100px 700px at 50% -10%, #DDE8FA 0%, rgba(221,232,250,0) 60%);
+  --decor2:#EEF3FB;
+  /* La coque du telephone : deux anneaux et une ombre portee. */
+  --coque1:#FFFFFF; --coque2:#DCE6F7; --ombre:0 24px 60px rgba(11,27,54,.16);
+  /* Les pastilles grises (jetons sans image, compteurs eteints). */
+  --puce1:#F2F6FD; --puce2:#E4ECFA; --puceTx:#41527A;
+  --accentF:#1447B8;              /* le bord fonce des boutons pleins */
+  --marque:#1B5FE0;               /* la couleur de la barre du navigateur */
+  /* Les voiles : l'accent en transparence, pour les survols et les choix. */
+  --voile:rgba(27,95,224,.10); --voile2:rgba(27,95,224,.18);
+  --ombreA:0 5px 14px rgba(27,95,224,.16); --ombreB:0 8px 20px rgba(27,95,224,.20);
+  --pied:rgba(255,255,255,.96);
+  /* ---- LES TROIS RONDS D'ACTION ----
+     Pleins et violets sur fond sombre, ils deviennent PALES et bleus sur fond
+     clair : trois disques satures au milieu d'une page blanche tirent l'oeil
+     plus fort que le solde, qui est ce qu'on vient lire. */
+  --bulleFond:#E4EDFD; --bulleTx:#1B5FE0; --bulleOmbre:0 3px 10px rgba(27,95,224,.14);
+}
+:root[data-theme="sombre"]{
   --nuit:#0B0A0F; --carte:#15131C; --carte2:#1D1A26; --bord:#2A2635;
   --texte:#EDEAF3; --doux:#9A93AC; --or:#E8B44A;
-  --violet:#8B5CF6; --violet2:#A78BFA;
+  --accent:#8B5CF6; --accent2:#A78BFA;
   --vert:#34D399; --rouge:#F87171;
-  --rayon:16px;
+  --decor:radial-gradient(1100px 700px at 50% -10%, #241E37 0%, rgba(36,30,55,0) 60%);
+  --decor2:#08070C;
+  --coque1:#100E17; --coque2:#2B2638; --ombre:0 40px 90px rgba(0,0,0,.6);
+  --puce1:#4B4463; --puce2:#2E2A3D; --puceTx:#DCD7EC;
+  --accentF:#6D28D9;
+  --marque:#15131C;
+  --voile:rgba(139,92,246,.18); --voile2:rgba(139,92,246,.28);
+  --ombreA:0 6px 18px rgba(139,92,246,.35); --ombreB:0 8px 22px rgba(139,92,246,.30);
+  --pied:rgba(11,10,15,.96);
+  --bulleFond:linear-gradient(160deg,#8B5CF6,#6D28D9); --bulleTx:#fff;
+  --bulleOmbre:0 6px 18px rgba(139,92,246,.35);
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
 body{
-  background:
-    radial-gradient(1100px 700px at 50% -10%, #241E37 0%, rgba(36,30,55,0) 60%),
-    #08070C;
+  background: var(--decor), var(--decor2);
   color:var(--texte);
   font:400 15px/1.45 'Archivo',system-ui,-apple-system,sans-serif;
   min-height:100dvh;
@@ -102,7 +171,7 @@ body{
   font:700 12px/1 'Archivo',sans-serif; color:var(--doux); text-decoration:none;
   border:1px solid var(--bord); border-radius:999px; padding:8px 13px;
 }
-.wl-retour:hover{ color:var(--texte); border-color:var(--violet) }
+.wl-retour:hover{ color:var(--texte); border-color:var(--accent) }
 
 /* ==================== LE TELEPHONE ====================
  * Taille logique fixe : 390 x 844, celle d'un telephone courant. Sur un
@@ -114,7 +183,7 @@ body{
   position:relative; width:390px; height:844px; max-width:100vw;
   background:var(--nuit); border-radius:38px; overflow:hidden;
   border:1px solid var(--bord);
-  box-shadow:0 0 0 10px #100E17, 0 0 0 11px #2B2638, 0 40px 90px rgba(0,0,0,.6);
+  box-shadow:0 0 0 10px var(--coque1), 0 0 0 11px var(--coque2), var(--ombre);
   display:flex; flex-direction:column; flex:0 0 auto;
 }
 @media (max-width:520px){
@@ -147,13 +216,13 @@ body{
   background:var(--carte); color:var(--texte); display:flex; align-items:center;
   justify-content:center; cursor:pointer; font-size:16px; flex:0 0 auto; padding:0;
 }
-.wl-tete .rond:hover{ border-color:var(--violet) }
+.wl-tete .rond:hover{ border-color:var(--accent) }
 .wl-tete .marque{ display:flex; align-items:center; gap:9px; flex:1; min-width:0;
   background:none; border:0; padding:0; color:var(--texte); font:inherit;
   cursor:pointer; text-align:left }
-.wl-tete .marque:focus-visible{ outline:2px solid var(--violet); outline-offset:3px; border-radius:10px }
+.wl-tete .marque:focus-visible{ outline:2px solid var(--accent); outline-offset:3px; border-radius:10px }
 .wl-tete .marque img{ width:34px; height:34px; border-radius:50%; flex:0 0 auto;
-  object-fit:cover; background:#1B1626; border:1px solid var(--bord) }
+  object-fit:cover; background:var(--carte2); border:1px solid var(--bord) }
 /* Sans photo, un rond neutre — pas le logo du $SWOGE. Mettre une piece a la
    place d'un visage, c'est la meme erreur que la fiche du jeton faisait pour
    l'ETH : montrer autre chose plutot que rien. */
@@ -162,7 +231,7 @@ body{
 .wl-tete .marque img.vide + .qui::before{
   content:''; position:absolute; left:0; top:50%; transform:translateY(-50%);
   width:34px; height:34px; border-radius:50%;
-  background:linear-gradient(160deg,#4B4463,#2E2A3D); border:1px solid var(--bord) }
+  background:linear-gradient(160deg,var(--puce1),var(--puce2)); border:1px solid var(--bord) }
 .wl-tete .marque .qui{ min-width:0 }
 .wl-tete .marque b{ display:block; font:800 15px/1.15 'Archivo',sans-serif;
   overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
@@ -177,7 +246,7 @@ body{
 /* la barre d'onglets */
 .wl-pied{
   flex:0 0 auto; display:grid; grid-template-columns:repeat(5,1fr);
-  border-top:1px solid var(--bord); background:rgba(11,10,15,.96);
+  border-top:1px solid var(--bord); background:var(--pied);
   padding:8px 4px calc(10px + env(safe-area-inset-bottom));
 }
 .wl-pied button{
@@ -186,7 +255,7 @@ body{
   font:700 10px/1 'Archivo',sans-serif; padding:4px 0; letter-spacing:.3px;
 }
 .wl-pied button .g{ font-size:17px; line-height:1 }
-.wl-pied button.on{ color:var(--violet2) }
+.wl-pied button.on{ color:var(--accent2) }
 
 /* ---- LES ECRANS ----
    Un seul est visible a la fois. `hidden` seul ne suffirait pas : la regle
@@ -229,10 +298,10 @@ body{
   background:var(--carte); border:1px solid var(--bord); border-radius:var(--rayon);
   padding:12px 14px; cursor:pointer; color:var(--texte); font:inherit;
 }
-.wl-jeton:hover{ border-color:var(--violet) }
+.wl-jeton:hover{ border-color:var(--accent) }
 .wl-jeton img{ width:38px; height:38px; border-radius:50%; flex:0 0 auto; object-fit:contain }
 .wl-eth{ width:38px; height:38px; border-radius:50%; flex:0 0 auto;
-  background:linear-gradient(160deg,#4B4463,#2E2A3D); color:#DCD7EC;
+  background:linear-gradient(160deg,var(--puce1),var(--puce2)); color:var(--puceTx);
   display:flex; align-items:center; justify-content:center;
   font:800 13px/1 'Archivo',sans-serif; letter-spacing:.5px }
 .wl-jeton .nom{ flex:1; min-width:0 }
@@ -245,6 +314,10 @@ body{
 .wl-jeton .val small{ display:block; font:400 11px/1.3 'Space Mono',monospace;
   color:var(--doux); margin-top:3px }
 
+.wl-total .eth{ margin-top:5px; font:600 12.5px/1.3 'Space Mono',monospace;
+  color:var(--doux); font-variant-numeric:tabular-nums }
+.wl-total .eth[hidden]{ display:none }
+
 .wl-actions{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:14px 0 4px }
 .wl-actions button{
   background:none; border:0; cursor:pointer; color:var(--texte); font:inherit;
@@ -252,17 +325,17 @@ body{
 }
 .wl-actions .bulle{
   width:50px; height:50px; border-radius:50%;
-  background:linear-gradient(160deg,var(--violet),#6D28D9);
+  background:var(--bulleFond); color:var(--bulleTx);
   display:flex; align-items:center; justify-content:center; font-size:19px;
-  box-shadow:0 6px 18px rgba(139,92,246,.35);
+  box-shadow:var(--bulleOmbre);
 }
 .wl-actions span.t{ font:700 11px/1 'Archivo',sans-serif; letter-spacing:.4px }
 
 .wl-b{
   width:100%; padding:15px; border-radius:14px; border:0; cursor:pointer;
   font:800 14px/1 'Archivo',sans-serif; letter-spacing:.4px;
-  background:linear-gradient(160deg,var(--violet),#7C3AED); color:#fff;
-  box-shadow:0 8px 22px rgba(139,92,246,.3);
+  background:linear-gradient(160deg,var(--accent),var(--accentF)); color:#fff;
+  box-shadow:var(--ombreB);
 }
 .wl-b:disabled{ opacity:.45; cursor:default; box-shadow:none }
 .wl-b.vide{ background:none; border:1px solid var(--bord); color:var(--texte); box-shadow:none }
@@ -295,7 +368,7 @@ body{
    * lui interdire.) */
   font:400 16px/1 'Space Mono',monospace;
 }
-.wl-champ input:focus, .wl-champ select:focus{ outline:2px solid var(--violet); outline-offset:1px }
+.wl-champ input:focus, .wl-champ select:focus{ outline:2px solid var(--accent); outline-offset:1px }
 /* ---- LE BOUTON MAX ----
    Pose DANS le champ, a droite. Il ne remplit pas betement le solde quand
    il s'agit d'ETH : il faut de quoi payer le gaz, sinon la transaction
@@ -304,13 +377,13 @@ body{
 .wl-avecmax input{ padding-right:66px }
 .wl-max{
   position:absolute; right:8px; bottom:8px; height:30px; padding:0 11px;
-  border-radius:9px; border:1px solid rgba(139,92,246,.5);
-  background:rgba(139,92,246,.16); color:var(--violet2);
+  border-radius:9px; border:1px solid var(--accent);
+  background:var(--voile); color:var(--accent);
   font:800 11px/1 'Archivo',sans-serif; letter-spacing:.6px; cursor:pointer;
 }
-.wl-max:hover{ background:rgba(139,92,246,.28) }
+.wl-max:hover{ background:var(--voile2) }
 .wl-max:active{ transform:translateY(1px) }
-.wl-champ input::placeholder{ color:#5F5872 }
+.wl-champ input::placeholder{ color:var(--doux) }
 
 /* ==================== LE CHOIX D'UN JETON ====================
  *
@@ -336,10 +409,10 @@ body{
   padding:11px 12px; border-radius:12px; border:1px solid var(--bord);
   background:var(--carte2); color:var(--texte); font:inherit; cursor:pointer;
 }
-.wl-pick-b:hover{ border-color:var(--violet) }
-.wl-pick-b:focus-visible{ outline:2px solid var(--violet); outline-offset:1px }
+.wl-pick-b:hover{ border-color:var(--accent) }
+.wl-pick-b:focus-visible{ outline:2px solid var(--accent); outline-offset:1px }
 .wl-pick-b img, .wl-pick-o img{ width:30px; height:30px; border-radius:50%;
-  flex:0 0 auto; object-fit:contain; background:#1B1626 }
+  flex:0 0 auto; object-fit:contain; background:var(--carte2) }
 .wl-pick-b .tx, .wl-pick-o .tx{ flex:1 1 auto; min-width:0 }
 .wl-pick-b .tx b, .wl-pick-o .tx b{ display:block;
   font:800 14px/1.2 'Archivo',sans-serif; letter-spacing:.2px }
@@ -349,7 +422,7 @@ body{
 .wl-pick-b .fl{ flex:0 0 auto; color:var(--doux); font-size:11px;
   transition:transform .16s }
 .wl-pick.ouvert .wl-pick-b .fl{ transform:rotate(180deg) }
-.wl-pick.ouvert .wl-pick-b{ border-color:var(--violet) }
+.wl-pick.ouvert .wl-pick-b{ border-color:var(--accent) }
 
 /* La liste couvre la carte : posee dans le flux, elle pousserait le solde
    et le bouton vers le bas a chaque ouverture. */
@@ -362,7 +435,7 @@ body{
    collante, elle reste donc en vue pendant qu'on defile. */
 .wl-pick-l{
   position:absolute; left:0; right:0; top:calc(100% + 6px); z-index:30;
-  background:#191324; border:1px solid var(--violet);
+  background:var(--carte); border:1px solid var(--accent);
   border-radius:12px; padding:5px; box-shadow:0 14px 34px rgba(0,0,0,.55);
   max-height:min(46vh, 320px); overflow-y:auto; overscroll-behavior:contain;
   /* ---- ELLE DEFILE, ELLE NE LE MONTRE PAS ----
@@ -387,7 +460,7 @@ body{
 .wl-pick-q input{ width:100%; box-sizing:border-box; padding:10px 11px; border-radius:10px;
   border:1px solid var(--bord); background:var(--fond); color:var(--texte);
   font:400 16px/1.2 'Space Mono',monospace }
-.wl-pick-q input:focus{ outline:none; border-color:var(--violet) }
+.wl-pick-q input:focus{ outline:none; border-color:var(--accent) }
 .wl-pick-r{ margin-top:7px; font:400 11.5px/1.45 'Archivo',sans-serif; color:var(--doux) }
 .wl-pick-r[hidden]{ display:none }
 .wl-pick-r.grave{ color:var(--rouge) }
@@ -411,7 +484,7 @@ body{
 .wl-pick-r .rang{ width:100%; display:flex; align-items:center; gap:10px;
   text-align:left; padding:9px 8px; border-radius:9px; border:0; background:none;
   color:var(--texte); font:inherit; cursor:pointer }
-.wl-pick-r .rang:hover, .wl-pick-r .rang:focus-visible{ background:rgba(139,92,246,.18);
+.wl-pick-r .rang:hover, .wl-pick-r .rang:focus-visible{ background:var(--voile);
   outline:none }
 .wl-pick-r .rang .tx{ flex:1 1 auto; min-width:0 }
 .wl-pick-r .rang .tx b{ display:block; font:800 13px/1.25 'Archivo',sans-serif;
@@ -424,7 +497,7 @@ body{
   display:grid; place-items:center; border:1px solid var(--bord);
   background:var(--fond); color:var(--doux); cursor:pointer;
   font:800 12px/1 'Archivo',sans-serif }
-.wl-pick-r .info:hover{ border-color:var(--violet); color:var(--texte) }
+.wl-pick-r .info:hover{ border-color:var(--accent); color:var(--texte) }
 .wl-pick-r .dit{ margin:6px 2px 2px; padding:9px 10px; border-radius:10px;
   background:var(--fond); border:1px solid var(--bord);
   font:400 11px/1.5 'Archivo',sans-serif; color:var(--doux) }
@@ -438,8 +511,8 @@ body{
 .wl-pick-o .x{ flex:0 0 auto; width:26px; height:26px; border-radius:8px; display:grid;
   place-items:center; color:var(--doux); font-size:15px; margin-left:2px }
 .wl-pick-o .x:hover{ background:rgba(248,113,113,.18); color:var(--rouge) }
-.wl-pick-o:hover, .wl-pick-o.actif{ background:rgba(139,92,246,.18) }
-.wl-pick-o[aria-selected="true"]{ background:rgba(139,92,246,.28) }
+.wl-pick-o:hover, .wl-pick-o.actif{ background:var(--voile) }
+.wl-pick-o[aria-selected="true"]{ background:var(--voile2) }
 .wl-pick-o .sol{ flex:0 0 auto; text-align:right;
   font:700 12px/1.2 'Space Mono',monospace; font-variant-numeric:tabular-nums;
   color:var(--doux) }
@@ -454,10 +527,10 @@ body{
   background:var(--carte2); border:1px solid var(--bord); border-radius:12px;
   padding:11px 12px; color:var(--texte); font:inherit; cursor:pointer; margin-bottom:8px;
 }
-.wl-cpt:hover{ border-color:var(--violet) }
-.wl-cpt.on{ border-color:var(--violet); background:rgba(139,92,246,.14) }
+.wl-cpt:hover{ border-color:var(--accent) }
+.wl-cpt.on{ border-color:var(--accent); background:var(--voile) }
 .wl-cpt .num{ flex:0 0 auto; width:30px; height:30px; border-radius:50%;
-  background:linear-gradient(160deg,#4B4463,#2E2A3D); color:#DCD7EC;
+  background:linear-gradient(160deg,var(--puce1),var(--puce2)); color:var(--puceTx);
   display:flex; align-items:center; justify-content:center;
   font:800 13px/1 'Archivo',sans-serif }
 .wl-cpt.on .num{ background:linear-gradient(160deg,#FFD679,#E9A62B); color:#0B0710 }
@@ -465,7 +538,7 @@ body{
 .wl-cpt .tx b{ display:block; font:800 13px/1.2 'Archivo',sans-serif }
 .wl-cpt .tx small{ display:block; font:400 11px/1.3 'Space Mono',monospace;
   color:var(--doux); margin-top:2px }
-.wl-cpt .coche{ flex:0 0 auto; color:var(--violet2); font-size:13px; font-weight:800 }
+.wl-cpt .coche{ flex:0 0 auto; color:var(--accent2); font-size:13px; font-weight:800 }
 
 /* ---- LA LIGNE DU CASINO, SUR L'ACCUEIL ----
    Elle ressemble a une ligne de jeton parce que c'en est une : c'est du
@@ -499,9 +572,9 @@ body{
 /* ---- LE BANDEAU DES TRANSACTIONS EN VOL ---- */
 .wl-envol{ width:100%; display:flex; align-items:center; gap:11px; margin:0 0 12px;
   padding:11px 13px; border-radius:15px; text-align:left; cursor:pointer;
-  background:rgba(124,92,255,.10); border:1px solid rgba(124,92,255,.34); color:var(--texte) }
+  background:var(--voile); border:1px solid var(--accent); color:var(--texte) }
 .wl-envol .p{ width:11px; height:11px; border-radius:50%; flex:0 0 auto;
-  background:var(--violet2); animation:wlPouls 1.25s ease-in-out infinite }
+  background:var(--accent2); animation:wlPouls 1.25s ease-in-out infinite }
 .wl-envol .tx{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; gap:2px }
 .wl-envol .tx b{ font:700 13px/1.2 'Archivo',sans-serif }
 .wl-envol .tx small{ font:400 11px/1.3 'Archivo',sans-serif; color:var(--doux);
@@ -513,7 +586,7 @@ body{
 /* ---- SE SOUVENIR DU COURRIEL ---- */
 .wl-case{ display:flex; align-items:center; gap:9px; margin:14px 2px 20px; cursor:pointer;
   font:400 12px/1.4 'Archivo',sans-serif; color:var(--doux) }
-.wl-case input{ width:17px; height:17px; flex:0 0 auto; accent-color:var(--violet2); margin:0;
+.wl-case input{ width:17px; height:17px; flex:0 0 auto; accent-color:var(--accent2); margin:0;
   /* Une case a cocher ne declenche pas le zoom d iOS, mais la regle qui
      l interdit vaut mieux sans exception : elle se verifie d un coup d oeil,
      et ici les 16 px ne changent rien puisque la taille est fixee. */
@@ -525,7 +598,7 @@ body{
 
 .wl-toast{
   position:absolute; left:50%; bottom:88px; transform:translateX(-50%) translateY(10px);
-  background:#241F33; border:1px solid var(--bord); color:var(--texte);
+  background:var(--carte2); border:1px solid var(--bord); color:var(--texte);
   padding:11px 16px; border-radius:12px; font:700 12px/1.3 'Archivo',sans-serif;
   max-width:86%; text-align:center; opacity:0; pointer-events:none;
   transition:opacity .2s, transform .2s; z-index:40;
@@ -552,10 +625,102 @@ body{
    compare vraiment. */
 .wl-adr{ font:700 14px/1.9 'Space Mono',monospace; color:var(--texte);
   word-break:break-all; display:flex; flex-wrap:wrap; gap:0 8px }
-.wl-adr b{ font-weight:700; color:var(--violet2) }
+.wl-adr b{ font-weight:700; color:var(--accent2) }
 .wl-sep{ height:1px; background:var(--bord); margin:14px 0 }
 .wl-titre{ font:800 12px/1 'Archivo',sans-serif; letter-spacing:1.2px;
   color:var(--doux); margin:16px 0 9px }
+
+/* ==================== LES DEUX COLONNES, SUR GRAND ECRAN ====================
+ *
+ * ---- POURQUOI ELLES EXISTENT ----
+ *
+ * Sur ordinateur, le portefeuille etait un telephone de trois cent quatre-
+ * vingt-dix pixels pose au milieu d'une page vide. Ce n'est pas seulement
+ * disgracieux : le menu du site — Home, Casino, Sports, Docs — disparaissait
+ * completement, alors qu'il est present sur toutes les autres pages. On
+ * arrivait dans le portefeuille et l'on avait quitte le site.
+ *
+ * ---- ET POURQUOI SEULEMENT LA ----
+ *
+ * Sur telephone, l'ecran EST le portefeuille : il n'y a pas de place a cote,
+ * et une colonne repliee sous le cadre allongerait la page sans rien apporter.
+ * Le seuil est a 1060 pixels — la somme des trois largeurs plus leurs
+ * espaces — et non « ordinateur » : c'est la PLACE qui decide, pas l'appareil.
+ *
+ * `position:sticky` : le cadre du telephone fait 844 pixels de haut, plus que
+ * beaucoup d'ecrans d'ordinateur. Sans cela les colonnes partent vers le haut
+ * des qu'on defile, et le menu s'en va au moment ou l'on en aurait besoin.
+ */
+/* ---- PAS DE MARGE TANT QU'IL N'Y A PAS DE COLONNES ----
+ * Le cadre du telephone ne retrecit pas (`flex:0 0 auto`) : quatorze pixels de
+ * marge de chaque cote le poussaient donc HORS de l'ecran sur un telephone de
+ * trois cent quatre-vingt-dix, et `overflow-x:hidden` en coupait vingt-huit.
+ * Mesure : 362 pixels visibles au lieu de 390 — et la liste ouverte sortait du
+ * cadre, donc devenait inchoisissable. La marge n'arrive qu'avec les colonnes,
+ * c'est-a-dire quand il y a la place. */
+/* ---- L'ENVELOPPE N'EXISTE QUE QUAND LES COLONNES EXISTENT ----
+ *
+ * (Elle s'appelle `wl-page`, et non `wl-corps` : ce nom-la existe DEJA, sur le
+ * corps defilant de chaque ecran, a l'interieur du telephone. La regle
+ * `display:contents` s'appliquait donc aussi a lui, et l'ecran d'envoi sortait
+ * du cadre par la gauche — la liste des jetons devenait inchoisissable. Un nom
+ * pris deux fois ne se voit pas dans une feuille de style ; il se voit a
+ * l'ecran, ailleurs, et plus tard.)
+ *
+ * `display:contents` : sous 1060 pixels, ce `<div>` disparait de la mise en
+ * page et le cadre du telephone redevient un enfant direct du `<body>`,
+ * exactement comme avant. Ce n'est pas une coquetterie.
+ *
+ * Sous 520 pixels, le cadre est `flex:1 1 auto` et prend LA HAUTEUR QUI
+ * RESTE — celle de son parent flex. Enveloppe dans une rangee de hauteur
+ * automatique, cette hauteur devenait celle de son contenu : mesure, 345
+ * pixels au lieu de 844. Le portefeuille s'affichait dans un tiers d'ecran.
+ *
+ * Les colonnes, elles, sont en `display:none` a cette taille : elles ne
+ * reapparaissent dans le flux qu'avec la rangee, au-dessus du seuil. */
+.wl-page{ display:contents }
+.wl-cote{ display:none }
+@media (min-width:1060px){
+  .wl-page{
+    display:flex; width:100%; align-items:flex-start; justify-content:center;
+    gap:18px; padding:0 14px 18px;
+  }
+  .wl-cote{
+    display:flex; flex-direction:column; gap:12px;
+    position:sticky; top:14px; flex:0 0 auto;
+  }
+  .wl-cote.gauche{ width:208px }
+  .wl-cote.droite{ width:268px }
+}
+.wl-nav{ background:var(--carte); border:1px solid var(--bord);
+  border-radius:var(--rayon); padding:8px }
+.wl-nav a{
+  display:flex; align-items:center; gap:11px; padding:11px 12px; border-radius:10px;
+  font:600 13.5px/1 'Archivo',system-ui,sans-serif; color:var(--texte);
+  text-decoration:none;
+}
+.wl-nav a .ic{ width:20px; text-align:center; font-size:15px; opacity:.75 }
+.wl-nav a:hover{ background:var(--nuit) }
+/* La page courante se marque, et reste cliquable : une entree « ici » qu'on
+   ne peut pas cliquer se lit comme desactivee. */
+.wl-nav a.on{ background:var(--carte2); color:var(--accent) }
+.wl-nav a.on .ic{ opacity:1 }
+.wl-reseaux{ display:flex; gap:8px; justify-content:center }
+.wl-reseaux a{
+  width:34px; height:34px; border-radius:10px; background:var(--carte);
+  border:1px solid var(--bord); display:grid; place-items:center;
+  font-size:14px; color:var(--doux); text-decoration:none;
+}
+.wl-reseaux a:hover{ color:var(--accent); border-color:var(--accent) }
+.wl-bloc{ background:var(--carte); border:1px solid var(--bord);
+  border-radius:var(--rayon); padding:12px 14px }
+.wl-bloc h3{ margin:0 0 8px; font:800 11px/1 'Archivo',sans-serif;
+  letter-spacing:1.2px; color:var(--doux); text-transform:uppercase }
+.wl-bloc .wl-rang{ padding:8px 0 }
+.wl-mini{ margin:9px 0 0; font:400 10.5px/1.5 'Archivo',sans-serif; color:var(--doux) }
+.wl-lien{ display:inline-block; margin-top:10px; font:700 12px/1 'Archivo',sans-serif;
+  color:var(--accent); text-decoration:none }
+.wl-lien:hover{ text-decoration:underline }
 
 @media (prefers-reduced-motion:reduce){
   .wl-toast{ transition:none }
@@ -571,6 +736,32 @@ body{
   </a>
   <a class="wl-retour" href="games.html">&larr; Back to the arcade</a>
 </header>
+
+<div class="wl-page">
+
+<!-- ================== LA COLONNE DE GAUCHE ==================
+     Le meme menu que le reste du site — memes destinations, meme ordre, memes
+     pictogrammes. Il n'apparait qu'au-dessus de 1060 pixels : sur telephone
+     l'ecran EST le portefeuille, et une colonne de plus n'y tiendrait pas.
+     « Wallet » y porte la marque de page courante, comme ailleurs : une
+     entree marquee « ici » reste cliquable, sinon elle se lit desactivee. -->
+<aside class="wl-cote gauche" aria-label="Site">
+  <nav class="wl-nav">
+    <a href="index.html"><span class="ic">&#127968;</span>Home</a>
+    <a href="games.html"><span class="ic">&#127920;</span>Casino</a>
+    <a href="swogebet.html"><span class="ic">&#9917;</span>Sports</a>
+    <a href="swoge_wallet.html" class="on"><span class="ic">&#129433;</span>Wallet</a>
+    <a href="whitepaper.html"><span class="ic">&#128220;</span>Docs</a>
+  </nav>
+  <div class="wl-reseaux">
+    <a href="https://x.com/SwoleDogeSwoge" target="_blank" rel="noopener"
+       title="X — @SwoleDogeSwoge">&#120143;</a>
+    <a href="https://t.me/swoleswoge" target="_blank" rel="noopener"
+       title="Telegram — t.me/swoleswoge">&#9992;</a>
+    <a href="https://dexscreener.com/robinhood/0x2dc0fb72d9284228046cc95910eeaabebfe48456"
+       target="_blank" rel="noopener" title="Dexscreener — $SWOGE chart">&#128200;</a>
+  </div>
+</aside>
 
 <div class="wl-tel" id="tel">
 
@@ -596,6 +787,13 @@ body{
       <div class="wl-carte wl-total">
         <small>TOTAL BALANCE</small>
         <b id="acTotal">—</b>
+        <!-- ---- LE MEME TOTAL, DANS LA MONNAIE DE LA CHAINE ----
+             Ce n'est pas un chiffre de plus a croire sur parole : c'est le
+             total en dollars divise par le prix de l'ether, les deux deja lus.
+             Il disparait des que l'un des deux manque — un « environ » calcule
+             sur un prix inconnu serait une invention, et c'est le genre de
+             chiffre qu'on lit sans le verifier. -->
+        <div class="eth" id="acTotalEth" hidden></div>
         <div class="sous" id="acSous">Not connected</div>
       </div>
 
@@ -884,6 +1082,18 @@ body{
            La revue existe maintenant ; et parce que valider deux fois lasse,
            elle se coupe ici. Coupee, le bouton s'appelle « Send » : le mot
            dit alors ce qu'il fait. -->
+      <!-- ---- LA TENUE ----
+           Claire par defaut, parce que le reste du site l'est : on quittait
+           l'arcade et l'on changeait de site. La sombre reste, parce qu'un
+           portefeuille se consulte aussi la nuit. -->
+      <div class="wl-titre">APPEARANCE</div>
+      <div class="wl-carte" style="padding:4px 14px">
+        <label class="wl-case" for="cpSombre" style="margin:12px 0">
+          <input type="checkbox" id="cpSombre">
+          <span>Dark theme</span>
+        </label>
+      </div>
+
       <div class="wl-titre">SIGNING</div>
       <div class="wl-carte" style="padding:4px 14px">
         <label class="wl-case" for="cpRevue" style="margin:12px 0">
@@ -989,6 +1199,38 @@ body{
   </div>
 
   <div class="wl-toast" id="toast"></div>
+</div>
+
+<!-- ================== LA COLONNE DE DROITE ==================
+     Elle ne montre RIEN qui ne soit deja lu ailleurs dans la page : les deux
+     prix viennent de `lisPrix`, et ils sont peints par `peintAccueil`, au meme
+     moment et depuis les memes variables que l'ecran. Deux rendus du meme
+     chiffre finiraient par diverger, et c'est toujours celui qu'on ne regarde
+     pas qui reste faux.
+     Un prix non lu s'ecrit « — », comme partout ici : jamais zero. -->
+<aside class="wl-cote droite" aria-label="Details">
+  <div class="wl-bloc">
+    <h3>Prices</h3>
+    <div class="wl-rang"><span id="cvEthNom">ETH (RH)</span><b id="cvEth">—</b></div>
+    <div class="wl-rang"><span>SWOGE</span><b id="cvSwoge">—</b></div>
+    <div class="wl-rang"><span>SWOGEBET</span><b id="cvBet">—</b></div>
+    <p class="wl-mini" id="cvPrixNote">Read from Dexscreener. A dash means the price could not be
+      read — not that it is zero.</p>
+  </div>
+  <div class="wl-bloc">
+    <h3>Network</h3>
+    <div class="wl-rang"><span>Chain</span><b>Robinhood Chain</b></div>
+    <div class="wl-rang"><span>Chain ID</span><b>4663</b></div>
+    <div class="wl-rang"><span>RPC</span><b id="cvRpc" class="wl-mono">—</b></div>
+  </div>
+  <div class="wl-bloc">
+    <h3>This wallet</h3>
+    <p class="wl-mini">Robinhood Chain only, because that is where $SWOGE and $SWOGEBET live.
+      Send, receive and swap; the casino vault is one tap from the home screen.</p>
+    <a class="wl-lien" href="games.html">&larr; Back to the arcade</a>
+  </div>
+</aside>
+
 </div>
 
 <script>
@@ -2199,7 +2441,34 @@ function valeur(cle){
   return null;
 }
 
+/* ---- LA COLONNE DE DROITE SE PEINT ICI ----
+ * Au meme moment et depuis les MEMES variables que l'ecran du telephone. Deux
+ * rendus du meme chiffre, peints a deux endroits, finissent par diverger — et
+ * c'est toujours celui qu'on ne regarde pas qui reste faux. Un prix non lu
+ * s'ecrit « — », jamais zero : un zero affiche dit au joueur que son jeton ne
+ * vaut plus rien.
+ * La colonne n'existe qu'au-dela de 1060 pixels ; en dessous, ces elements
+ * sont la mais invisibles, et les peindre ne coute que trois affectations. */
+function peintColonne(){
+  var e = $('cvEth'); if(!e) return;
+  /* ---- LE MEME FORMAT QUE LA FICHE DU JETON ----
+   * `usd()` arrondit a deux decimales : bon pour de l'ether a deux mille
+   * dollars, ruineux pour le $SWOGE, qui vaut deux cent-millieme de dollar et
+   * s'ecrirait « $0.00 ». Ce n'est pas un arrondi, c'est une affirmation
+   * fausse — le joueur lit que son jeton ne vaut plus rien. Trois chiffres
+   * SIGNIFICATIFS, exactement comme `fiPrix` le fait deja. */
+  e.textContent = (ethUsd === null || ethUsd === undefined) ? '—' : (usd(ethUsd) || '—');
+  var w = $('cvSwoge');
+  if(w) w.textContent = prixUsd ? '$' + prixUsd.toPrecision(3) : '—';
+  var b = $('cvBet');
+  if(b) b.textContent = (prixUsd && tauxBet) ? '$' + (tauxBet * prixUsd).toPrecision(3) : '—';
+  var n = $('cvEthNom'); if(n) n.textContent = ETH_AFF;
+  var r = $('cvRpc');
+  if(r) r.textContent = CHAINE.rpc.replace(/^https:\/\//, '');
+}
+
 function peintAccueil(){
+  peintColonne();
   /* le total */
   var total=0, complet=true;
   for(var i=0;i<JETONS.length;i++){
@@ -2218,6 +2487,15 @@ function peintAccueil(){
      rien et vole la place de ce qui compte — savoir si le total est complet. */
   $('acSous').textContent = !moi ? 'Not connected'
     : (complet ? '' : 'Some prices unavailable — this total is partial');
+  /* L'equivalent en ETH (RH) : il n'apparait que si les DEUX moities existent
+     — un total complet et un prix de l'ether. Sinon il ne s'affiche pas du
+     tout, plutot que d'ecrire un « environ » qui n'approche rien. */
+  var te = $('acTotalEth');
+  if(te){
+    var possible = moi && complet && total > 0 && ethUsd;
+    te.hidden = !possible;
+    if(possible) te.textContent = '\u2248 ' + (total / ethUsd).toFixed(4) + ' ' + ETH_AFF;
+  }
 
   /* les jetons */
   var h='';
@@ -3417,6 +3695,53 @@ async function litFrais(){
  * portefeuille neuf, ou un joueur qui n'a jamais ouvert les reglages,
  * protege par defaut.
  */
+/* ==================== LA TENUE ====================
+ *
+ * ---- CLAIRE PAR DEFAUT ----
+ *
+ * Le reste du site est clair et bleu depuis toujours. Ce portefeuille etait le
+ * seul ecran sombre et violet de la maison : on quittait l'arcade et l'on
+ * changeait de site. La tenue sombre reste, parce qu'elle plait et qu'un
+ * portefeuille se consulte aussi la nuit — mais ce n'est plus celle qu'on
+ * trouve en arrivant.
+ *
+ * ---- ELLE SE POSE AVANT LE PREMIER DESSIN ----
+ *
+ * Le petit script du `<head>` la lit et la marque sur `<html>` AVANT que la
+ * page se peigne. Le faire ici, apres le chargement, ferait un eclair blanc
+ * chez qui a choisi le sombre — un dixieme de seconde, mais dans le noir, et
+ * a chaque ouverture.
+ */
+var CLE_TENUE = 'swogeWalletTenue';
+function tenueChoisie(){
+  try{ return localStorage.getItem(CLE_TENUE) === 'sombre' ? 'sombre' : 'clair'; }
+  catch(e){ return 'clair'; }
+}
+function poseTenue(t){
+  var sombre = (t === 'sombre');
+  if(sombre) document.documentElement.setAttribute('data-theme', 'sombre');
+  else document.documentElement.removeAttribute('data-theme');
+  /* La barre du navigateur suit : sur telephone elle borde l'ecran, et une
+     barre sombre au-dessus d'une page claire se lit comme un bandeau reste
+     d'une autre page. On la lit sur la feuille plutot que de l'ecrire deux
+     fois — une seule verite pour la meme couleur. */
+  var m = document.querySelector('meta[name="theme-color"]');
+  if(m){
+    var c = getComputedStyle(document.documentElement).getPropertyValue('--marque');
+    if(c && c.trim()) m.setAttribute('content', c.trim());
+  }
+  var b = $('cpSombre'); if(b) b.checked = sombre;
+}
+function tenueRegle(t){
+  try{ localStorage.setItem(CLE_TENUE, t); }catch(e){}
+  poseTenue(t);
+}
+poseTenue(tenueChoisie());
+document.addEventListener('change', function(ev){
+  if(ev.target && ev.target.id === 'cpSombre')
+    tenueRegle(ev.target.checked ? 'sombre' : 'clair');
+});
+
 function revueActive(){
   try{ return localStorage.getItem('swogeRevue') !== '0'; }catch(e){ return true; }
 }
@@ -3497,7 +3822,7 @@ async function envoieMaintenant(j, dest, wei){
     journalAjoute({ h:tx.hash, k:'envoi', cle:j.cle, montant:wei.toString(), vers:dest });
     note.textContent='Sent — waiting for the chain…';
     await tx.wait();
-    note.innerHTML='Done. <a href="'+CHAINE.scan+'/tx/'+tx.hash+'" target="_blank" rel="noopener" style="color:var(--violet2)">View transaction</a>';
+    note.innerHTML='Done. <a href="'+CHAINE.scan+'/tx/'+tx.hash+'" target="_blank" rel="noopener" style="color:var(--accent2)">View transaction</a>';
     $('enMontant').value=''; rafraichit();
   }catch(err){
     note.className='wl-note grave';
@@ -4016,7 +4341,7 @@ $('swPartir').addEventListener('click', async function(){
 
     note.className = 'wl-note';
     note.innerHTML = 'Done. <a href="' + CHAINE.scan + '/tx/' + tx.hash
-      + '" target="_blank" rel="noopener" style="color:var(--violet2)">View transaction</a>';
+      + '" target="_blank" rel="noopener" style="color:var(--accent2)">View transaction</a>';
     $('swMontant').value = '';
     $('swRecu').textContent = '—'; $('swImpact').textContent = '—'; $('swMini').textContent = '—';
     rafraichit();

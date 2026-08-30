@@ -1774,6 +1774,141 @@ const T = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
     await page.close();
   }
 
+  /* 12. LA TENUE, ET LES DEUX COLONNES
+   *
+   * ---- POURQUOI LE CLAIR EST PAR DEFAUT ----
+   * Le reste du site est clair et bleu depuis toujours. Ce portefeuille etait
+   * le seul ecran sombre et violet de la maison : on quittait l'arcade et l'on
+   * changeait de site. Ce qui se mesure ici n'est pas « une couleur plait » —
+   * c'est que la tenue par defaut est bien la claire, que le choix se GARDE, et
+   * qu'il est pose AVANT le premier dessin (sinon celui qui a choisi le sombre
+   * prend un eclair blanc a chaque ouverture).
+   *
+   * ---- ET POURQUOI ON MESURE LES COULEURS CALCULEES ----
+   * Une couleur definie seulement dans l'un des deux blocs laisse un texte
+   * d'une tenue sur le fond de l'autre. C'est le defaut le plus facile a
+   * produire et le plus difficile a voir, puisqu'on ne regarde jamais les deux
+   * en meme temps. On demande donc au navigateur, dans les deux tenues, ce
+   * qu'il applique vraiment.
+   */
+  console.log('\n-- la tenue, et les deux colonnes --');
+  {
+    const boum = [];
+    const page = await nav.newPage({ viewport: { width: 1280, height: 1000 } });
+    page.on('pageerror', (e) => boum.push(String(e).slice(0, 160)));
+    await page.goto('http://127.0.0.1:' + port + '/swoge_wallet.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(1200);
+
+    const lu = () => page.evaluate(() => {
+      const r = getComputedStyle(document.documentElement);
+      const cs = getComputedStyle(document.body);
+      return { marque: document.documentElement.getAttribute('data-theme'),
+               fond: cs.backgroundColor, texte: cs.color,
+               carte: r.getPropertyValue('--carte').trim(),
+               accent: r.getPropertyValue('--accent').trim(),
+               meta: (document.querySelector('meta[name="theme-color"]') || {}).content,
+               garde: localStorage.getItem('swogeWalletTenue') };
+    });
+
+    const clair = await lu();
+    console.log('   clair : ' + JSON.stringify(clair));
+    ok(clair.marque === null,
+       'a la premiere ouverture, aucune marque de tenue : c est la claire, celle du site');
+    ok(clair.carte === '#FFFFFF' && clair.accent === '#1B5FE0',
+       'et ses couleurs sont celles d index.html, mot pour mot (' + clair.carte
+       + ', ' + clair.accent + ')');
+    /* Le texte doit etre SOMBRE sur un fond CLAIR. On ne juge pas la teinte, on
+       juge le contraste : c est la seule chose qui rende une page lisible. */
+    const lum = (c) => { const m = String(c).match(/\d+/g);
+      return m ? (0.2126 * m[0] + 0.7152 * m[1] + 0.0722 * m[2]) / 255 : null; };
+    ok(lum(clair.fond) > 0.8 && lum(clair.texte) < 0.3,
+       'texte sombre sur fond clair (' + clair.fond + ' / ' + clair.texte + ')');
+
+    /* ---- LES DEUX COLONNES ----
+     * Elles portent le menu du site. Ce qu'on verifie n'est pas qu'elles
+     * existent : c est qu'elles menent aux memes pages que le menu des autres
+     * ecrans, et que l entree du portefeuille s y reconnait. Un menu qui
+     * differe d une page a l autre apprend a ne plus le lire. */
+    const col = await page.evaluate(() => {
+      const g = document.querySelector('.wl-cote.gauche'), d = document.querySelector('.wl-cote.droite');
+      const vu = (e) => !!(e && e.getBoundingClientRect().width > 0);
+      return { gauche: vu(g), droite: vu(d),
+               liens: [].map.call(document.querySelectorAll('.wl-nav a'),
+                 (a) => a.getAttribute('href') + (a.classList.contains('on') ? '*' : '')),
+               reseaux: document.querySelectorAll('.wl-reseaux a').length,
+               prix: [].map.call(document.querySelectorAll('.wl-cote.droite .wl-rang b'),
+                 (b) => b.textContent.trim()) };
+    });
+    console.log('   colonnes : ' + JSON.stringify(col));
+    ok(col.gauche && col.droite, 'sur ordinateur, les deux colonnes sont la');
+    ok(col.liens.join(',') === 'index.html,games.html,swogebet.html,swoge_wallet.html*,whitepaper.html',
+       'le menu de gauche est celui du site, dans le meme ordre, et « Wallet » y est'
+       + ' marque page courante (' + col.liens.join(', ') + ')');
+    ok(col.reseaux === 3, 'les trois liens du site sont sous le menu');
+    /* Le faux noeud ne rend pas de prix : la colonne doit donc afficher des
+       tirets, JAMAIS des zeros. C est la meme regle que partout ici. */
+    ok(col.prix.length > 0 && col.prix.slice(0, 3).every((x) => x === '\u2014'),
+       'un prix non lu s ecrit « — » dans la colonne, jamais zero ('
+       + col.prix.slice(0, 3).join(' ') + ')');
+
+    /* ---- ET ELLES DISPARAISSENT SUR TELEPHONE ----
+     * L ecran EST le portefeuille : il n y a pas de place a cote, et une
+     * colonne repliee dessous allongerait la page sans rien apporter. */
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(400);
+    const petit = await page.evaluate(() => {
+      const g = document.querySelector('.wl-cote.gauche');
+      const t = document.getElementById('tel').getBoundingClientRect();
+      return { colonne: g.getBoundingClientRect().width,
+               cadre: Math.round(t.width), hauteur: Math.round(t.height),
+               deborde: document.documentElement.scrollWidth > window.innerWidth + 1 };
+    });
+    console.log('   telephone : ' + JSON.stringify(petit));
+    ok(petit.colonne === 0, 'sur telephone les colonnes disparaissent');
+    ok(petit.cadre === 390,
+       'et le cadre reprend toute la largeur (' + petit.cadre + ')');
+    /* Le piege exact rencontre en chemin : enveloppe dans une rangee, le cadre
+       prenait la hauteur de son CONTENU — 345 pixels au lieu de 844, le
+       portefeuille dans un tiers d ecran. */
+    ok(petit.hauteur > 700,
+       'et toute la hauteur (' + petit.hauteur + ') — enveloppe dans une rangee, il'
+       + ' prenait celle de son contenu');
+    ok(!petit.deborde, 'la page ne deborde pas horizontalement');
+
+    /* ---- LA TENUE SOMBRE SE CHOISIT, ET ELLE SE GARDE ---- */
+    await page.evaluate(() => {
+      document.querySelector('[data-va="ecCompte"]').click();
+      const c = document.getElementById('cpSombre');
+      c.checked = true; c.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    await page.waitForTimeout(300);
+    const sombre = await lu();
+    console.log('   sombre : ' + JSON.stringify(sombre));
+    ok(sombre.marque === 'sombre' && sombre.garde === 'sombre',
+       'la case allume la tenue sombre, et le choix est garde');
+    ok(lum(sombre.fond) < 0.2 && lum(sombre.texte) > 0.8,
+       'texte clair sur fond sombre (' + sombre.fond + ' / ' + sombre.texte + ')');
+    ok(sombre.meta && sombre.meta !== clair.meta,
+       'la barre du navigateur suit la tenue (' + clair.meta + ' -> ' + sombre.meta + ')');
+
+    /* ---- ET ELLE EST POSEE AVANT LE PREMIER DESSIN ----
+     * Trois lignes dans l en-tete, pas dans le script de la page : celui-ci
+     * s execute apres le rendu, et qui a choisi le sombre verrait un eclair
+     * blanc a chaque ouverture. On le mesure sur une page NEUVE, au tout
+     * premier instant ou le document existe. */
+    const p2 = await nav.newPage({ viewport: { width: 390, height: 844 } });
+    await p2.addInitScript(() => { try { localStorage.setItem('swogeWalletTenue', 'sombre'); } catch (e) {} });
+    await p2.goto('http://127.0.0.1:' + port + '/swoge_wallet.html', { waitUntil: 'commit' });
+    const tot = await p2.evaluate(() => document.documentElement.getAttribute('data-theme'))
+      .catch(() => null);
+    ok(tot === 'sombre',
+       'la tenue gardee est deja posee au premier instant du document (' + tot + ')');
+    await p2.close();
+
+    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
+    await page.close();
+  }
+
   await nav.close();
   srv.close();
   console.log('\n' + (rates ? 'RATES : ' + rates + '/' + n : 'tout passe : ' + n + ' verifications'));

@@ -1564,6 +1564,11 @@ const T = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
       body: JSON.stringify({ pairs: [{ baseToken: { address: TOK },
                                        info: { imageUrl: 'https://exemple.test/x.png' } }] }) }));
     await page.route('https://exemple.test/**', (r) => r.fulfill({ status: 404, body: '' }));
+    /* ---- ON DECIDE, DEPUIS ICI, SI LE JOUEUR EN DETIENT ----
+     * Le faux noeud rendait un solde a tout le monde. Il faut pouvoir dire
+     * « zero » pour mesurer ce qui se passe quand on cherche un jeton sans
+     * l'acheter, puis « quelque chose » pour mesurer l'autre moitie. */
+    let tientRVH = false;
     await page.route('**/rpc.mainnet.chain.robinhood.com/**', async (r) => {
       const q = JSON.parse(r.request().postData() || '{}');
       const un = (m) => {
@@ -1592,6 +1597,10 @@ const T = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
           const qui = arg(0);
           if (qui === P_PROFOND.toLowerCase()) return enMot(12245000000000000000n);
           if (qui === P_VIDE.toLowerCase()) return enMot(9n);
+          /* Le solde du JOUEUR sur le jeton cherche : zero tant qu'il ne l'a pas
+             achete. Les lectures de profondeur, elles, portent sur le WETH et
+             passent par les deux lignes au-dessus. */
+          if (to === TOK.toLowerCase()) return enMot(tientRVH ? 4200000000000000000n : 0n);
           return enMot(1234567890123456789012n);
         }
         if (to === MUET.toLowerCase()) return null;                  /* rien ne repond */
@@ -1618,9 +1627,21 @@ const T = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
     const CH = '.wl-pick[data-pour="swVers"] .wl-pick-q input';
     const lit = () => page.evaluate(() => {
       const r = document.querySelector('.wl-pick[data-pour="swVers"] .wl-pick-r');
+      /* ---- CE QU'ON LIT EST CE QUI EST VU ----
+       * `textContent` rend AUSSI le texte cache : la mise en garde rangee
+       * derriere le « i » y figurait, et l'essai concluait qu'elle s'etalait
+       * toujours dans la rangee. On retire donc ce qui est cache avant de
+       * lire — sinon « range » et « affiche » se mesurent pareil. */
+      const vis = r.cloneNode(true);
+      [].slice.call(vis.querySelectorAll('[data-dit]')).forEach((x) => x.remove());
       return { vu: !r.hidden, grave: r.classList.contains('grave'),
-               txt: (r.textContent || '').replace(/\s+/g, ' ').trim(),
-               ajout: !!r.querySelector('[data-ajoute]'), img: !!r.querySelector('img') };
+               txt: (vis.textContent || '').replace(/\s+/g, ' ').trim(),
+               ajout: !!r.querySelector('[data-choisit]'), img: !!r.querySelector('img'),
+               /* Ce que le « i » cache : on le lit a part, parce que ce qui
+                  compte est justement qu'il ne soit PAS dans la rangee. */
+               info: !!r.querySelector('[data-info]'),
+               cache: (() => { const d = r.querySelector('[data-dit]');
+                 return d ? { ferme: d.hidden, txt: (d.textContent || '').replace(/\s+/g, ' ').trim() } : null; })() };
     });
 
     /* ---- LA LISTE SE FILTRE ---- */
@@ -1657,16 +1678,40 @@ const T = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
        'la piscine la plus PROFONDE gagne : 12,245 et non les neuf wei du palier a 0,3 %'
        + ' — prendre la premiere qui repond donnerait un devis absurde');
     ok(/1 %/.test(t.txt), 'et son palier est dit');
-    ok(t.txt.toLowerCase().indexOf(TOK.toLowerCase()) >= 0,
-       'l adresse reste affichee en entier : sur cette chaine vingt jetons partagent'
-       + ' le symbole « AU », c est la seule chose qui les distingue');
-    ok(/does not vouch/.test(t.txt),
-       'et la page dit qu elle ne se porte garante de rien');
     ok(t.img, 'l image du jeton vient de Dexscreener quand il y en a une');
-    ok(t.ajout, 'un bouton propose de l ajouter');
+    ok(t.ajout, 'la rangee elle-meme se touche — plus de bouton « ajouter » a viser');
 
-    /* ---- L AJOUT ---- */
-    await page.evaluate(() => document.querySelector('[data-ajoute]').click());
+    /* ---- CE QUI EST RANGE DERRIERE LE « i » ----
+     * La rangee portait un paragraphe de mise en garde et l'adresse en entier.
+     * Dans un panneau de deux cent quarante pixels, cela poussait la liste
+     * au-dela de sa hauteur et faisait apparaitre une barre de defilement pour
+     * du texte que personne ne relit a chaque recherche. Ce n'est pas SUPPRIME
+     * — l'adresse est la seule chose qui distingue vingt jetons nommes « AU »,
+     * et la mise en garde compte — c'est RANGE, et l'essai verifie les deux
+     * moities : absent de la rangee, present derriere le bouton. */
+    ok(t.info, 'un bouton « i » accompagne la rangee');
+    ok(t.cache && t.cache.ferme, 'et ce qu il porte est ferme au depart');
+    ok(t.txt.toLowerCase().indexOf(TOK.toLowerCase()) < 0,
+       'l adresse en entier ne s etale plus dans la rangee');
+    ok(!/does not vouch/.test(t.txt), 'ni la mise en garde');
+    await page.evaluate(() => document.querySelector('[data-info]').click());
+    await page.waitForTimeout(200);
+    const ouvert = await lit();
+    ok(ouvert.cache && !ouvert.cache.ferme, 'le « i » l ouvre');
+    ok(ouvert.cache && /does not vouch/.test(ouvert.cache.txt),
+       'et la page dit alors qu elle ne se porte garante de rien');
+    ok(ouvert.cache && ouvert.cache.txt.toLowerCase().indexOf(TOK.toLowerCase()) >= 0,
+       'avec l adresse EN ENTIER : sur cette chaine vingt jetons partagent le symbole'
+       + ' « AU », c est la seule chose qui les distingue');
+    /* Et il ne choisit pas le jeton au passage : un doigt sur le « i » doit
+       ouvrir le texte, pas engager un echange. */
+    ok(await page.evaluate(() => document.getElementById('swVers').value) !== 'x' + TOK.toLowerCase(),
+       'et le toucher n a PAS choisi le jeton — le « i » informe, il n engage rien');
+    await page.evaluate(() => document.querySelector('[data-info]').click());
+    await page.waitForTimeout(150);
+
+    /* ---- ON TOUCHE LA RANGEE : LE JETON EST CHOISI ---- */
+    await page.evaluate(() => document.querySelector('[data-choisit]').click());
     await page.waitForTimeout(1200);
     const apres = await page.evaluate(() => ({
       vers: document.getElementById('swVers').value,
@@ -1676,16 +1721,40 @@ const T = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
       dansEnvoi: [].slice.call(document.getElementById('enJeton').options).map((o) => o.value),
     }));
     ok(apres.titre === 'RVH', 'il est choisi tout de suite : on l a cherche pour s en servir');
-    ok(/RVH is a token you added yourself/.test(apres.note)
+    ok(/RVH is a token you pasted in yourself/.test(apres.note)
        && apres.note.toLowerCase().indexOf(TOK.toLowerCase()) >= 0,
        'le rappel reste SOUS LE BOUTON tant qu il est choisi — c est au moment de signer'
-       + ' qu il compte, pas trois secondes apres l avoir ajoute');
+       + ' qu il compte, pas trois secondes apres l avoir choisi');
     ok(apres.dansEnvoi.indexOf(apres.vers) >= 0,
        'et il entre aussi dans la liste de l envoi : un jeton qu on detient doit pouvoir partir');
+
+    /* ---- CHOISIR N EST PAS RANGER ----
+     * « Je l'ai ajoute, je l'ai pas achete, au final il est quand meme dans mon
+     * wallet. » C'etait vrai : toucher le bouton ecrivait le jeton sur
+     * l'appareil pour toujours. Chercher un contrat pour VOIR son prix laissait
+     * une ligne de plus a chaque essai.
+     * Le solde de ce jeton est zero dans ce banc d'essai — le faux noeud rend
+     * zero pour tout ce qu'il ne connait pas — donc rien ne doit etre ecrit. */
     let g = null; try { g = JSON.parse(apres.garde || 'null'); } catch (e) {}
-    ok(g && g.length === 1 && g[0].sym === 'RVH' && g[0].pool.ver === 'v3' && g[0].pool.fee === 10000,
-       'il est garde sur l appareil, avec SA piscine — la retrouver a chaque ouverture'
-       + ' couterait cinq lectures de chaine');
+    ok(!g || !g.length,
+       'un jeton qu on ne detient pas n est PAS ecrit sur l appareil : le chercher'
+       + ' pour voir son prix ne doit rien laisser derriere');
+
+    /* ---- MAIS EN DETENIR, OUI ----
+     * Le jour ou le solde n'est plus zero, le jeton a sa place dans la liste :
+     * on l'a achete. On repond donc un solde, on relit, et l'on regarde ce qui
+     * est ecrit. Sans cette moitie, l'essai ne prouverait que la moitie de la
+     * regle — et « rien n'est jamais garde » serait un defaut, pas une
+     * reparation. */
+    tientRVH = true;
+    await page.evaluate(() => document.getElementById('btRafraichir').click());
+    await page.waitForTimeout(2000);
+    const tenu = await page.evaluate(() => localStorage.getItem('swogeJetons'));
+    let g2 = null; try { g2 = JSON.parse(tenu || 'null'); } catch (e) {}
+    ok(g2 && g2.length === 1 && g2[0].sym === 'RVH'
+       && g2[0].pool.ver === 'v3' && g2[0].pool.fee === 10000,
+       'des qu on en detient, il est garde sur l appareil AVEC sa piscine — la'
+       + ' retrouver a chaque ouverture couterait cinq lectures de chaine');
 
     /* ---- ET IL SE RETIRE ---- */
     await page.evaluate(() => document.getElementById('swVersB').click());

@@ -365,7 +365,14 @@ body{
   background:#191324; border:1px solid var(--violet);
   border-radius:12px; padding:5px; box-shadow:0 14px 34px rgba(0,0,0,.55);
   max-height:min(46vh, 320px); overflow-y:auto; overscroll-behavior:contain;
+  /* ---- ELLE DEFILE, ELLE NE LE MONTRE PAS ----
+   * La barre grise posee sur un panneau de deux cent quarante pixels de large
+   * mange de la place et se lit comme un defaut d'affichage. Le doigt fait
+   * defiler sans elle ; le panneau du jeu emploie deja exactement ces deux
+   * lignes. */
+  scrollbar-width:none;
 }
+.wl-pick-l::-webkit-scrollbar{ display:none }
 .wl-pick-l[hidden]{ display:none }
 /* Retournee vers le haut quand elle sortirait du cadre par le bas. */
 .wl-pick.haut .wl-pick-l{ top:auto; bottom:calc(100% + 6px) }
@@ -387,6 +394,41 @@ body{
 .wl-pick-r .adr{ font:400 10.5px/1.5 'Space Mono',monospace; word-break:break-all;
   color:var(--doux); display:block; margin-top:3px }
 .wl-pick-r .prof{ color:var(--vert) }
+/* ---- LE RESULTAT EST UNE RANGEE, PAS UN FORMULAIRE ----
+ *
+ * Il portait un paragraphe de mise en garde, l'adresse en entier et un bouton
+ * « Add X to this wallet ». Trois defauts d'un coup :
+ *   - la mise en garde, longue, poussait la liste au-dela de sa hauteur et
+ *     faisait apparaitre une barre de defilement dans un panneau minuscule ;
+ *   - « ajouter » est un geste que personne ne demande. Dans les autres
+ *     portefeuilles on colle un contrat, on TOUCHE le jeton, on echange ;
+ *   - et ce geste RANGEAIT le jeton pour toujours. Un joueur nous l'a dit :
+ *     « je l'ai ajoute, je l'ai pas achete, au final il est quand meme dans
+ *     mon wallet ».
+ * La rangee se touche donc comme n'importe quelle autre, et ce qu'il fallait
+ * lire tient derriere un « i ». Le texte n'est pas supprime — il compte au
+ * moment de signer — il est RANGE. */
+.wl-pick-r .rang{ width:100%; display:flex; align-items:center; gap:10px;
+  text-align:left; padding:9px 8px; border-radius:9px; border:0; background:none;
+  color:var(--texte); font:inherit; cursor:pointer }
+.wl-pick-r .rang:hover, .wl-pick-r .rang:focus-visible{ background:rgba(139,92,246,.18);
+  outline:none }
+.wl-pick-r .rang .tx{ flex:1 1 auto; min-width:0 }
+.wl-pick-r .rang .tx b{ display:block; font:800 13px/1.25 'Archivo',sans-serif;
+  color:var(--texte); overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.wl-pick-r .rang .tx span{ display:block; font:400 10.5px/1.4 'Archivo',sans-serif;
+  color:var(--doux); overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+/* Le « i » : assez grand pour un pouce, et clairement a part de la rangee —
+   le toucher ne doit pas choisir le jeton par megarde. */
+.wl-pick-r .info{ flex:0 0 auto; width:30px; height:30px; border-radius:50%;
+  display:grid; place-items:center; border:1px solid var(--bord);
+  background:var(--fond); color:var(--doux); cursor:pointer;
+  font:800 12px/1 'Archivo',sans-serif }
+.wl-pick-r .info:hover{ border-color:var(--violet); color:var(--texte) }
+.wl-pick-r .dit{ margin:6px 2px 2px; padding:9px 10px; border-radius:10px;
+  background:var(--fond); border:1px solid var(--bord);
+  font:400 11px/1.5 'Archivo',sans-serif; color:var(--doux) }
+.wl-pick-r .dit[hidden]{ display:none }
 /* Les initiales, quand le jeton n'a pas d'image. Un rond generique ferait
    passer un jeton inconnu pour un jeton range. */
 .wl-pick-o .ini, .wl-pick-b .ini, .wl-pick-r .ini{ width:30px; height:30px; border-radius:50%;
@@ -1233,7 +1275,7 @@ function chargePerso(){
 function sauvePerso(){
   var l = [];
   for(var i=0;i<JETONS.length;i++){
-    var j = JETONS[i]; if(!j.perso) continue;
+    var j = JETONS[i]; if(!j.perso || j.provisoire) continue;
     l.push({ adr:j.adr, sym:j.sym, nom:j.nom, dec:j.dec, logo:j.logo, pool:j.pool, v4:j.v4 || [] });
   }
   try{ localStorage.setItem(CLE_PERSO, JSON.stringify(l)); }catch(e){}
@@ -1511,10 +1553,34 @@ async function logoDe(adr){
 
 function ajouteJeton(t){
   if(J(persoCle(t.adr))) return J(persoCle(t.adr));
+  /* ---- ON LE CONNAIT, ON NE LE RANGE PAS ENCORE ----
+   * Toucher un resultat de recherche veut dire « je veux l'echanger », pas
+   * « garde-le pour toujours ». Un joueur nous l'a dit : « je l'ai ajoute, je
+   * l'ai pas achete, au final il est quand meme dans mon wallet ».
+   * Le jeton entre donc dans la liste de CETTE SESSION — il faut bien qu'il y
+   * soit pour etre devise et signe — mais il n'est ecrit sur l'appareil que
+   * le jour ou le joueur en detient. C'est `rafraichit` qui le constate : un
+   * solde superieur a zero, et il reste. Sinon un rechargement l'oublie, ce
+   * qui est exactement ce qui s'est passe. */
   var j = { cle:persoCle(t.adr), sym:t.sym, nom:t.nom, adr:t.adr, dec:t.dec,
-            logo:t.logo || null, perso:true, pool:t.pool, v4:t.v4 || [] };
-  JETONS.push(j); sauvePerso();
+            logo:t.logo || null, perso:true, provisoire:true, pool:t.pool, v4:t.v4 || [] };
+  JETONS.push(j);
   return j;
+}
+
+/* Un jeton provisoire dont on detient quelque chose cesse de l'etre : on l'a
+   achete, il a sa place dans la liste. L'inverse n'est pas vrai — un jeton
+   qu'on a range et revendu en entier reste range, parce que l'effacer serait
+   decider a la place du joueur, et le bouton « oublier » existe pour ca. */
+function rangeCeQuOnDetient(){
+  var change = false;
+  for(var i=0;i<JETONS.length;i++){
+    var j = JETONS[i];
+    if(!j.provisoire) continue;
+    var s = soldes[j.cle];
+    if(s && !s.isZero()){ delete j.provisoire; change = true; }
+  }
+  if(change) sauvePerso();
 }
 
 var ERC20_ABI = [
@@ -2057,6 +2123,7 @@ async function rafraichit(){
     }catch(e){ soldes[j.cle] = null; rate++; }
   });
   await Promise.all(taches);
+  rangeCeQuOnDetient();
   await lisPrix();
   peintAccueil();
   /* On DIT quand une lecture a echoue. Un solde absent s'affiche « — »,
@@ -2985,18 +3052,39 @@ async function chercheDansPick(w, adr){
     ? ('Uniswap v4 · ' + t.v4.length + ' pool' + (t.v4.length > 1 ? 's' : ''))
     : (t.pool.ver === 'v2' ? 'Uniswap v2' : 'Uniswap v3 · ' + (t.pool.fee/10000) + ' %');
   var prof = (t.v4 && t.v4.length)
-    ? ' — the best-paying one is picked at quote time'
-    : ' · <span class="prof">' + nombre(t.fond, 18) + ' ' + ETH_AFF + '</span> in the pool';
+    ? ' · best-paying pool picked at quote time'
+    : ' · ' + nombre(t.fond, 18) + ' ' + ETH_AFF + ' in the pool';
+  /* ---- UNE RANGEE QU'ON TOUCHE, ET UN « i » ----
+   * Ce qui reste a l'ecran est ce qu'on lit d'un coup d'oeil : la piece, le
+   * symbole, le nom, et ou ca s'echange. Le reste — l'adresse en entier et la
+   * mise en garde — vit derriere le « i ». Il n'est pas supprime : c'est au
+   * moment de signer qu'il compte, et l'ecran de l'echange le redit. */
   ditPick(w,
-    img + '<b>' + ech(t.sym) + '</b> — ' + ech(t.nom) + '<br>'
-    + pool + prof
-    + (vide ? ' — <b>the pool is empty</b>, nothing can be traded' : '')
-    + '<span class="adr">' + ech(t.adr) + '</span>'
-    + '<button type="button" class="wl-b" style="margin-top:9px;padding:10px"'
-    + ' data-ajoute="' + ech(t.adr) + '">Add ' + ech(t.sym) + ' to this wallet</button>'
-    + '<span class="adr">Anyone can deploy a token. This wallet reads the name, the symbol and'
-    + ' the pool from the chain — it does not vouch for what the token does. A token you buy'
-    + ' can turn out to be impossible to sell.</span>');
+    '<button type="button" class="rang" data-choisit="' + ech(t.adr) + '">'
+    + img
+    + '<span class="tx"><b>' + ech(t.sym) + '</b>'
+    + '<span>' + ech(t.nom) + '</span>'
+    + '<span class="prof">' + pool + prof
+    + (vide ? ' — pool is empty' : '') + '</span></span>'
+    + '</button>'
+    + '<button type="button" class="info" data-info="1" aria-expanded="false"'
+    + ' aria-label="About this token" title="About this token">i</button>'
+    + '<div class="dit" data-dit hidden>'
+    + 'Anyone can deploy a token. This wallet reads the name, the symbol and the pool from'
+    + ' the chain — it does not vouch for what the token does. A token you buy can turn out'
+    + ' to be impossible to sell.'
+    + '<span class="adr">' + ech(t.adr) + '</span></div>');
+  /* La rangee et le « i » sont cote a cote : la rangee prend la place, le
+     bouton reste a droite. */
+  var rr = w.querySelector('.wl-pick-r');
+  if(rr){
+    var b1 = rr.querySelector('.rang'), b2 = rr.querySelector('.info');
+    if(b1 && b2){
+      var lig = document.createElement('div');
+      lig.style.cssText = 'display:flex;align-items:center;gap:6px';
+      rr.insertBefore(lig, b1); lig.appendChild(b1); lig.appendChild(b2);
+    }
+  }
   DERNIER_TROUVE = t;
 }
 var DERNIER_TROUVE = null;
@@ -3087,13 +3175,28 @@ document.addEventListener('input', function(ev){
 });
 
 document.addEventListener('click', function(ev){
-  /* ---- AJOUTER ---- */
-  var aj = ev.target.closest && ev.target.closest('[data-ajoute]');
+  /* ---- LE « i » DU RESULTAT ----
+   * Il ouvre et referme la mise en garde. Il est traite AVANT la rangee :
+   * sans cela, un doigt un peu large sur le bouton choisirait le jeton. */
+  var inf = ev.target.closest && ev.target.closest('[data-info]');
+  if(inf){
+    ev.preventDefault(); ev.stopPropagation();
+    var boite = inf.closest('.wl-pick-r');
+    var dit = boite && boite.querySelector('[data-dit]');
+    if(dit){ dit.hidden = !dit.hidden; inf.setAttribute('aria-expanded', dit.hidden ? 'false' : 'true'); }
+    return;
+  }
+  /* ---- CHOISIR LE JETON TROUVE ----
+   * Le geste des autres portefeuilles : on colle un contrat, on touche le
+   * jeton, on echange. Il n'y a plus de bouton « ajouter » — le jeton entre
+   * dans la liste de la session et n'est ecrit sur l'appareil que si le
+   * joueur finit par en detenir. */
+  var aj = ev.target.closest && ev.target.closest('[data-choisit]');
   if(aj){
     ev.preventDefault();
     var w0 = aj.closest('.wl-pick');
     var t0 = DERNIER_TROUVE;
-    if(!t0 || t0.adr !== aj.dataset.ajoute) return;
+    if(!t0 || t0.adr !== aj.dataset.choisit) return;
     var neuf = ajouteJeton(t0);
     /* Les DEUX listes de l'echange se refont : le jeton doit pouvoir servir
        des deux cotes, et l'envoi le connait aussi. */
@@ -3111,7 +3214,9 @@ document.addEventListener('click', function(ev){
     choisitPick(sel0, neuf.cle);
     ouvrePick(w0, false);
     rafraichit();
-    toast(neuf.sym + ' added');
+    /* On ne dit plus « added » : rien n'a ete range. Le jeton est CHOISI, et
+       le mot doit dire ce qui vient de se passer. */
+    toast(neuf.sym + ' selected');
     return;
   }
   /* ---- OUBLIER ---- */
@@ -3520,8 +3625,8 @@ async function devis(){
      secondes : c'est au moment de signer qu'il compte. */
   var pj0 = (J(de) && J(de).perso) ? J(de) : ((J(vers) && J(vers).perso) ? J(vers) : null);
   $('swNote').textContent = pj0
-    ? pj0.sym + ' is a token you added yourself. This wallet reads its name and its pool from'
-      + ' the chain and nothing more — it does not vouch for it. ' + pj0.adr
+    ? pj0.sym + ' is a token you pasted in yourself. This wallet reads its name and its pool'
+      + ' from the chain and nothing more — it does not vouch for it. ' + pj0.adr
     : '';
   if(!(parseFloat(m)>0)){
     $('swRecu').textContent='—'; $('swImpact').textContent='—'; $('swMini').textContent='—'; return;

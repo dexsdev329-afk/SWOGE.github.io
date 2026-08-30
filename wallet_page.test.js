@@ -186,6 +186,192 @@ const T = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
        + ' il attend, et le tiret resterait sans explication');
   }
 
+  /* 6. LE BOUTON « MAX » */
+  console.log('\n-- le bouton MAX --');
+  {
+    /* ---- ON NE TRICHE PAS AVEC L'INTERIEUR DE LA PAGE ----
+     *
+     * Son script est une fermeture en mode strict : ni `soldes` ni
+     * `calculeMax` n'existent sur `window`, et les poser depuis l'essai
+     * ne ferait que creer des jumeaux que la page ignore — l'essai
+     * passerait en ne mesurant rien.
+     *
+     * On lui donne donc une CHAINE, pas des variables : un faux
+     * portefeuille d'extension et un faux noeud. La page se connecte,
+     * lit ses soldes et remplit son MAX par son vrai chemin. */
+    const MOI = '0x00000000000000000000000000000000000a11ce';
+    const enMot = (v) => '0x' + BigInt(v).toString(16).padStart(64, '0');
+    let etat = { eth: 5000000000000000n, swoge: 1234567890123456789012n,
+                 swogebet: 0n, gaz: 134102000n, muet: null };
+
+    const page = await nav.newPage({ viewport: { width: 1280, height: 1000 } });
+    const boum = [];
+    page.on('pageerror', (e) => boum.push(e.message));
+    await page.addInitScript(([moi]) => {
+      try { localStorage.setItem('swogeAuth', 'wallet'); } catch (e) {}
+      window.ethereum = {
+        isMetaMask: true,
+        request: async (a) => {
+          if (a.method === 'eth_accounts' || a.method === 'eth_requestAccounts') return [moi];
+          if (a.method === 'eth_chainId') return '0x1237';
+          if (a.method === 'net_version') return '4663';
+          if (a.method === 'wallet_switchEthereumChain') return null;
+          return null;
+        },
+        on: () => {}, removeListener: () => {},
+      };
+    }, [MOI]);
+    await page.route('**/ethers*.umd.min.js', (r) => r.fulfill({
+      contentType: 'text/javascript', body: fs.readFileSync(ETHERS, 'utf8') }));
+    /* Le prix en dollars vient de dexscreener : hors sujet ici, et une
+       attente de sept secondes a chaque rafraichissement. */
+    await page.route('**/api.dexscreener.com/**', (r) => r.fulfill({
+      contentType: 'application/json', body: '{"pairs":[]}' }));
+    await page.route('**/rpc.mainnet.chain.robinhood.com/**', async (r) => {
+      const q = JSON.parse(r.request().postData() || '{}');
+      const un = (m) => {
+        if (m.method === 'eth_chainId') return '0x1237';
+        if (m.method === 'net_version') return '4663';
+        if (m.method === 'eth_blockNumber') return '0x2f7ce78';
+        if (m.method === 'eth_getLogs') return [];
+        if (m.method === 'eth_gasPrice') {
+          if (etat.muet === 'gaz') return null;      // le noeud ne repond rien d utile
+          return enMot(etat.gaz);
+        }
+        if (m.method === 'eth_getBalance')
+          return etat.eth === null ? null : enMot(etat.eth);
+        if (m.method === 'eth_call') {
+          const d = (m.params[0].data || '').toLowerCase();
+          const a = (m.params[0].to || '').toLowerCase();
+          if (d.slice(0, 10) === '0x70a08231') {           // balanceOf
+            const v = a.indexOf('8a166fb4') > 0 ? etat.swoge : etat.swogebet;
+            return v === null ? null : enMot(v);
+          }
+          return enMot(0n);
+        }
+        return null;
+      };
+      const rep = (m) => { const v = un(m);
+        return v === null ? { jsonrpc: '2.0', id: m.id, error: { code: -32000, message: 'nope' } }
+                          : { jsonrpc: '2.0', id: m.id, result: v }; };
+      const corps = Array.isArray(q) ? q.map(rep) : rep(q);
+      await r.fulfill({ contentType: 'application/json', body: JSON.stringify(corps) });
+    });
+
+    const recharge = async () => {
+      await page.goto('http://127.0.0.1:' + port + '/swoge_wallet.html',
+                      { waitUntil: 'domcontentloaded' });
+      await page.waitForTimeout(2600);
+    };
+    await recharge();
+    const branche = await page.evaluate(() => ({
+      sous: document.getElementById('acSous').textContent,
+      lignes: [...document.querySelectorAll('#acJetons .wl-jeton')].map((e) => e.textContent.trim()),
+    }));
+    ok(!/Not connected/.test(branche.sous),
+       'le faux portefeuille d extension se branche tout seul (« ' + branche.sous + ' »)');
+    ok(branche.lignes.some((l) => l.indexOf('1,234.57') >= 0),
+       'et la page lit ses soldes par son vrai chemin : ' + (branche.lignes[1] || '(rien)'));
+
+    const clic = async (id) => {
+      await page.evaluate(() => { document.getElementById('toast').textContent = ''; });
+      await page.click('#' + id);
+      await page.waitForTimeout(500);
+      return page.evaluate(() => ({
+        swap: document.getElementById('swMontant').value,
+        envoi: document.getElementById('enMontant').value,
+        toast: document.getElementById('toast').textContent }));
+    };
+    const versSwap = (de) => page.evaluate((d) => {
+      document.querySelector('[data-va="ecSwap"]').click();
+      document.getElementById('swMontant').value = '';
+      const s = document.getElementById('swDe');
+      s.value = d; s.dispatchEvent(new Event('change'));
+    }, de);
+
+    const RESERVE = 134102000n * 450000n;
+
+    /* -- un jeton : tout le solde, au wei pres -- */
+    await versSwap('swoge');
+    let r = await clic('swMax');
+    ok(r.swap === '1234.567890123456789012',
+       'sur un jeton, MAX ecrit le solde ENTIER au wei pres (« ' + r.swap + ' »)');
+
+    /* -- l ETH garde de quoi payer la transaction -- */
+    await versSwap('eth');
+    r = await clic('swMax');
+    ok(r.swap !== '0.005',
+       'sur l ETH, MAX n ecrit PAS le solde entier — sinon la transaction ne peut plus se payer');
+    /* Le montant se relit en wei, pas en flottant : `parseFloat` perd les
+       derniers chiffres et la difference mesuree ne vaudrait plus rien. */
+    const enWei = (t) => { const m = String(t).split('.');
+      return BigInt(m[0]) * (10n ** 18n) + BigInt(((m[1] || '') + '0'.repeat(18)).slice(0, 18)); };
+    const ecrit = enWei(r.swap);
+    ok(5000000000000000n - ecrit === RESERVE,
+       'il garde exactement le prix du gaz fois les 450 000 unites mesurees sur fork ('
+       + (Number(RESERVE) / 1e18).toFixed(9) + ' ETH)');
+    ok(/Kept .* back for the network fee/.test(r.toast),
+       'et il le DIT, au lieu de laisser croire a un arrondi : « ' + r.toast + ' »');
+
+    /* -- ce que MAX ecrit se redevise tout seul -- */
+    const mini = await page.evaluate(() => document.getElementById('swMini').textContent);
+    ok(mini !== '', 'la ligne du minimum recu existe et suit le montant');
+
+    /* -- un solde plus petit que le frais -- */
+    etat.eth = 1000n; await recharge(); await versSwap('eth');
+    r = await clic('swMax');
+    ok(r.swap === '', 'quand le solde ne couvre meme pas le frais, MAX ne remplit rien');
+    ok(/smaller than the network fee/i.test(r.toast), 'et il explique pourquoi : « ' + r.toast + ' »');
+
+    /* -- un solde JAMAIS LU n est pas un solde nul -- */
+    etat.eth = null; etat.swoge = null; etat.swogebet = null;
+    await recharge(); await versSwap('eth');
+    r = await clic('swMax');
+    ok(r.swap === '', 'un solde que la chaine n a pas rendu ne remplit rien');
+    ok(/unknown, not zero/i.test(r.toast),
+       'et la page dit « inconnu », jamais « zero » : « ' + r.toast + ' »');
+
+    /* -- le prix du gaz illisible : on ne devine pas une reserve -- */
+    etat.eth = 5000000000000000n; etat.swoge = 777000000000000000000n; etat.swogebet = 0n;
+    etat.muet = 'gaz';
+    await recharge(); await versSwap('eth');
+    r = await clic('swMax');
+    ok(r.swap === '',
+       'si le prix du gaz ne se lit pas, MAX ne remplit rien : deviner une reserve, c est vider un solde');
+    ok(/gas price/i.test(r.toast), 'et il dit ce qui a manque : « ' + r.toast + ' »');
+    etat.muet = null;
+
+    /* -- le meme bouton sur l ecran d envoi -- */
+    await recharge();
+    await page.evaluate(() => {
+      const b = document.querySelector('[data-va="ecEnvoyer"]');
+      if (b) b.click();
+      document.getElementById('enMontant').value = '';
+      const s = document.getElementById('enJeton');
+      s.value = 'swoge'; s.dispatchEvent(new Event('change'));
+    });
+    await page.waitForTimeout(300);
+    r = await clic('enMax');
+    ok(r.envoi === '777.0', 'l ecran d envoi a le meme bouton, et il marche aussi (« ' + r.envoi + ' »)');
+
+    /* -- le bouton tient DANS la case, et c est bien lui qu on touche -- */
+    const geo = await page.evaluate(() => {
+      const b = document.getElementById('enMax').getBoundingClientRect();
+      const c = document.getElementById('enMontant').getBoundingClientRect();
+      const sur = document.elementFromPoint(Math.round(b.left + b.width / 2),
+                                            Math.round(b.top + b.height / 2));
+      return { dedans: b.left >= c.left - 1 && b.right <= c.right + 1
+                     && b.top >= c.top - 1 && b.bottom <= c.bottom + 1,
+               touche: sur ? sur.id : null };
+    });
+    ok(geo.dedans, 'MAX tient dans la case du montant, sans deborder');
+    ok(geo.touche === 'enMax',
+       'et un doigt pose dessus touche le bouton, pas la case (' + geo.touche + ')');
+
+    ok(boum.length === 0, 'aucune exception pendant tout ca' + (boum.length ? ' : ' + boum[0] : ''));
+    await page.close();
+  }
+
   await nav.close();
   srv.close();
   console.log('\n' + (rates ? 'RATES : ' + rates + '/' + n : 'tout passe : ' + n + ' verifications'));

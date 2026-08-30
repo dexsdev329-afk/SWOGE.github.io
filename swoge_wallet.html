@@ -222,6 +222,20 @@ body{
   font:400 14px/1 'Space Mono',monospace;
 }
 .wl-champ input:focus, .wl-champ select:focus{ outline:2px solid var(--violet); outline-offset:1px }
+/* ---- LE BOUTON MAX ----
+   Pose DANS le champ, a droite. Il ne remplit pas betement le solde quand
+   il s'agit d'ETH : il faut de quoi payer le gaz, sinon la transaction
+   qu'on vient de composer ne peut pas partir. */
+.wl-avecmax{ position:relative }
+.wl-avecmax input{ padding-right:66px }
+.wl-max{
+  position:absolute; right:8px; bottom:8px; height:30px; padding:0 11px;
+  border-radius:9px; border:1px solid rgba(139,92,246,.5);
+  background:rgba(139,92,246,.16); color:var(--violet2);
+  font:800 11px/1 'Archivo',sans-serif; letter-spacing:.6px; cursor:pointer;
+}
+.wl-max:hover{ background:rgba(139,92,246,.28) }
+.wl-max:active{ transform:translateY(1px) }
 .wl-champ input::placeholder{ color:#5F5872 }
 
 .wl-note{ font:400 12px/1.5 'Archivo',sans-serif; color:var(--doux); margin:8px 0 0 }
@@ -233,7 +247,12 @@ body{
 .wl-rang:first-child{ border-top:0 }
 .wl-rang span{ color:var(--doux) }
 .wl-rang b{ font:700 13px/1.3 'Space Mono',monospace; font-variant-numeric:tabular-nums;
-  text-align:right; word-break:break-all }
+  text-align:right; min-width:0; overflow-wrap:anywhere }
+/* `word-break:break-all` coupait « (−0.5 %) » entre le 0 et le point :
+   une valeur qui se brise au milieu d'un nombre se lit de travers.
+   `anywhere` ne casse que ce qui ne rentre VRAIMENT pas. */
+.wl-rang span i{ display:block; font-style:normal; font-size:11px;
+  opacity:.62; letter-spacing:.02em; margin-top:2px }
 
 .wl-vide{ text-align:center; padding:38px 20px; color:var(--doux);
   font:400 13px/1.6 'Archivo',sans-serif }
@@ -350,9 +369,10 @@ body{
           <label for="enJeton">YOU SEND</label>
           <select id="enJeton"></select>
         </div>
-        <div class="wl-champ">
+        <div class="wl-champ wl-avecmax">
           <label for="enMontant">AMOUNT</label>
           <input id="enMontant" inputmode="decimal" placeholder="0.0" autocomplete="off">
+          <button type="button" class="wl-max" id="enMax">MAX</button>
         </div>
         <div class="wl-rang"><span>Balance</span><b id="enSolde">—</b></div>
       </div>
@@ -401,8 +421,9 @@ body{
           <label for="swDe">YOU PAY</label>
           <select id="swDe"></select>
         </div>
-        <div class="wl-champ" style="margin:0">
+        <div class="wl-champ wl-avecmax" style="margin:0">
           <input id="swMontant" inputmode="decimal" placeholder="0.0" autocomplete="off">
+          <button type="button" class="wl-max" id="swMax">MAX</button>
         </div>
         <div class="wl-rang"><span>Balance</span><b id="swSolde">—</b></div>
       </div>
@@ -416,6 +437,7 @@ body{
         </div>
         <div class="wl-rang"><span>Route</span><b id="swRoute">—</b></div>
         <div class="wl-rang"><span>Price impact</span><b id="swImpact">—</b></div>
+        <div class="wl-rang"><span>Minimum received<i id="swTol"></i></span><b id="swMini">—</b></div>
       </div>
       <button class="wl-b" id="swPartir" type="button">Swap</button>
       <p class="wl-note" id="swNote"></p>
@@ -559,6 +581,46 @@ var FRAIS_V3 = 10000;                                          // 1 %
    sans que le $SWOGE intermediaire touche le portefeuille. */
 var ADDRESS_THIS = '0x0000000000000000000000000000000000000002';
 
+/* ---- LA TOLERANCE N'EST JAMAIS ZERO ----
+ *
+ * `amountOutMinimum` a zero veut dire « accepte n'importe quel montant,
+ * meme un ». C'est la porte ouverte au sandwich : un observateur voit
+ * l'echange arriver, pousse le prix devant, laisse passer, et remet le
+ * prix en place — le joueur paie la difference. Le champ existe pour
+ * refuser ca, et il n'est utile que rempli.
+ *
+ * Un demi pour cent est etroit sur une piscine profonde et large sur
+ * celle-ci ; ce qui protege vraiment ici, c'est l'IMPACT affiche
+ * au-dessus, qui dit combien l'echange coute A LUI SEUL. La tolerance ne
+ * couvre que ce qui bouge ENTRE la signature et le bloc.
+ *
+ * Verifie sur un fork de la chaine : un minimum place un pour cent
+ * au-dessus du devis fait ECHOUER l'echange. Le champ est donc bien lu,
+ * et le remplir protege pour de bon. */
+var TOLERANCE = 0.5;
+
+/* ---- CE QU'UN « MAX » DOIT GARDER ----
+ *
+ * Vider le solde d'ETH jusqu'au dernier wei donne une transaction que
+ * son propre auteur ne peut plus payer : elle est refusee, et le joueur
+ * ne comprend pas pourquoi son « max » ne passe pas.
+ * Les chiffres viennent d'une mesure sur fork, pas d'une estimation :
+ * la route la plus longue (ETH -> $SWOGE -> $SWOGEBET, deux protocoles
+ * en une transaction) consomme 290 140 unites ; un envoi d'ETH nu en
+ * consomme 21 000. On garde de quoi payer environ une fois et demie. */
+var GAZ_ECHANGE = 450000;
+var GAZ_ENVOI   = 60000;
+
+/* La tolerance ne s'ecrit qu'une fois. Un « 0,5 % » tape en dur dans le
+   HTML mentirait le jour ou la constante change. */
+function poseTolerance(){
+  var e = document.getElementById('swTol');
+  if(e) e.textContent = 'at most −' + TOLERANCE + ' % below';
+}
+function moinsTolerance(bn){
+  return bn.mul(Math.round((100 - TOLERANCE) * 100)).div(10000);
+}
+
 /* ---- L'ECOSYSTEME, EN ENTIER ----
  * Deux jetons. Pas trois, pas cinq. La maquette d'origine en montrait
  * cinq — SWOCHIP, SWOPOOL, SWOXP — qui n'existent sur aucune chaine. Un
@@ -592,7 +654,11 @@ var QUOTER_ABI = ['function quoteExactInputSingle((address tokenIn,address token
 var R02_ABI = [
   'function multicall(uint256 deadline, bytes[] data) payable returns (bytes[])',
   'function swapExactTokensForTokens(uint256 amountIn,uint256 amountOutMin,address[] path,address to) payable returns (uint256)',
-  'function exactInputSingle((address tokenIn,address tokenOut,uint24 fee,address recipient,uint256 amountIn,uint256 amountOutMinimum,uint160 sqrtPriceLimitX96)) payable returns (uint256)'
+  'function exactInputSingle((address tokenIn,address tokenOut,uint24 fee,address recipient,uint256 amountIn,uint256 amountOutMinimum,uint160 sqrtPriceLimitX96)) payable returns (uint256)',
+  /* Vendre du $SWOGE rend du WETH, pas de l'ETH : la paire v2 ne connait
+     que le jeton emballe. Sans ce deuxieme morceau, le joueur recevrait
+     un jeton qu'il ne verrait meme pas dans ce portefeuille. */
+  'function unwrapWETH9(uint256 amountMinimum, address recipient) payable'
 ];
 
 /* ==================== L'ETAT ==================== */
@@ -653,6 +719,45 @@ function toast(t){
   clearTimeout(e._t); e._t=setTimeout(function(){ e.classList.remove('on'); }, 2600);
 }
 function court(a){ return a ? a.slice(0,6)+'…'+a.slice(-4) : '—'; }
+
+/* ---- SIGNER SUR LA MAUVAISE CHAINE COUTE L'ARGENT ----
+ *
+ * La chaine est choisie a la connexion, mais rien n'empeche le joueur de
+ * la changer ensuite dans son extension. Un echange signe ailleurs
+ * envoie de l'ETH a l'adresse du routeur SUR CETTE AUTRE CHAINE — ou il
+ * n'y a peut-etre aucun contrat, et l'argent ne revient pas.
+ * On le verifie donc juste avant chaque signature, pas seulement au
+ * branchement. */
+async function assureChaine(){
+  var id = await borne(signer.getChainId(), 9000, 'chainId');
+  if(id === CHAINE.id) return;
+  var eth = signer.provider && signer.provider.provider;
+  if(!eth || !eth.request) throw new Error('Your wallet is on another network. Switch it to '+CHAINE.nom+' and try again.');
+  await basculeChaine(eth);
+  var apres = await borne(signer.getChainId(), 9000, 'chainId');
+  if(apres !== CHAINE.id) throw new Error('Your wallet is still on another network. Switch it to '+CHAINE.nom+' and try again.');
+}
+
+/* Une transaction refusee doit dire POURQUOI dans les mots du joueur.
+   « execution reverted » ne lui apprend rien ; « le prix a bouge de plus
+   de 0,5 % » lui dit quoi faire. */
+function pourquoiRefus(err){
+  if(estTimeout(err)) return 'The chain did not answer in time. Nothing was sent.';
+  var t = String((err && (err.reason
+    || (err.data && err.data.message)
+    || (err.error && err.error.message)
+    || err.message)) || '');
+  if(/user rejected|ACTION_REJECTED|User denied|4001/i.test(t))
+    return 'You cancelled the signature — nothing was sent, and nothing was spent.';
+  if(/Too little received|INSUFFICIENT_OUTPUT_AMOUNT|STF|Too much requested/i.test(t))
+    return 'The price moved by more than '+TOLERANCE+' % between your signature and the block, '
+         + 'so the swap was refused and your funds stayed where they were. Try again.';
+  if(/Transaction too old|EXPIRED/i.test(t))
+    return 'The transaction sat unsigned for too long and expired. Nothing was spent — start it again.';
+  if(/insufficient funds/i.test(t))
+    return 'Not enough ETH to pay the network fee. Leave a little ETH aside, or use MAX, which already does.';
+  return t || 'The transaction was refused.';
+}
 
 /* Un montant de jeton s'ecrit EN ENTIER jusqu'a ce qu'il devienne illisible.
    Abreger un solde a « 1.2M » quand il vaut 1 234 567 cache la difference
@@ -984,6 +1089,51 @@ function majEnvoyer(){
 }
 $('enJeton').addEventListener('change', majEnvoyer);
 
+/* ---- CE QUE « MAX » MET DANS LA CASE ----
+ *
+ * Pour un jeton : tout le solde, au wei pres. Rien ne le retient.
+ *
+ * Pour l'ETH : tout SAUF de quoi payer la transaction. Un « max » qui
+ * ecrit le solde entier fabrique une transaction que le joueur ne peut
+ * plus payer — elle est refusee, et le bouton passe pour casse.
+ * La reserve est le prix du gaz LU MAINTENANT multiplie par la
+ * consommation MESUREE sur fork, pas un chiffre rond choisi de tete.
+ *
+ * Et si le prix du gaz ne se lit pas, on n'invente pas de reserve : on
+ * le dit et on ne remplit rien. Deviner ici, c'est vider un solde. */
+async function calculeMax(cle, unitesGaz){
+  var j = J(cle), s = soldes[cle];
+  if(s === null || s === undefined)
+    return { erreur:'Your balance has not been read yet — reload it first. It is unknown, not zero.' };
+  if(s.isZero()) return { erreur:'Nothing to spend: that balance is zero.' };
+  if(!j.natif) return { montant:s };
+  var g;
+  try{ g = await borne(lec().getGasPrice(), 9000, 'gasPrice'); }
+  catch(e){ return { erreur:'Could not read the gas price, so MAX cannot tell how much to keep back for the fee. Type an amount instead.' }; }
+  var reserve = g.mul(unitesGaz);
+  var reste = s.sub(reserve);
+  if(reste.lte(0))
+    return { erreur:'Your whole ETH balance is smaller than the network fee this would cost.' };
+  return { montant:reste, reserve:reserve };
+}
+
+$('enMax').addEventListener('click', async function(){
+  var cle = $('enJeton').value;
+  var r = await calculeMax(cle, GAZ_ENVOI);
+  if(r.erreur) return toast(r.erreur);
+  $('enMontant').value = ethers.utils.formatUnits(r.montant, J(cle).dec);
+  if(r.reserve) toast('Kept ' + nombre(r.reserve,18) + ' ETH back for the network fee');
+});
+
+$('swMax').addEventListener('click', async function(){
+  var cle = $('swDe').value;
+  var r = await calculeMax(cle, GAZ_ECHANGE);
+  if(r.erreur) return toast(r.erreur);
+  $('swMontant').value = ethers.utils.formatUnits(r.montant, J(cle).dec);
+  if(r.reserve) toast('Kept ' + nombre(r.reserve,18) + ' ETH back for the network fee');
+  devis();
+});
+
 async function litFrais(){
   try{
     var g = await lec().getGasPrice();
@@ -1003,8 +1153,11 @@ $('enPartir').addEventListener('click', async function(){
   try{ wei = ethers.utils.parseUnits(m, j.dec); }catch(e){ return toast('Amount not understood'); }
   var s=soldes[j.cle];
   if(s && wei.gt(s)) return toast('More than your balance');
-  this.disabled=true; $('enNote').textContent='Waiting for your signature…';
+  this.disabled=true;
+  $('enNote').className='wl-note';
+  $('enNote').textContent='Waiting for your signature…';
   try{
+    await assureChaine();
     var tx = j.natif
       ? await signer.sendTransaction({ to:dest, value:wei })
       : await erc(j.adr, true).transfer(dest, wei);
@@ -1014,7 +1167,7 @@ $('enPartir').addEventListener('click', async function(){
     $('enMontant').value=''; rafraichit();
   }catch(err){
     $('enNote').className='wl-note grave';
-    $('enNote').textContent = (err && (err.reason||err.message)) || 'Transaction refused';
+    $('enNote').textContent = pourquoiRefus(err);
   }
   this.disabled=false;
 });
@@ -1078,17 +1231,23 @@ async function devis(){
   if(!r){
     $('swRecu').textContent='—';
     $('swImpact').textContent='—';
+    $('swMini').textContent='—';
     $('swNote').className='wl-note grave';
     $('swNote').textContent='$SWOGEBET has no pool against ETH — it only trades against $SWOGE. Pick another pair.';
     return;
   }
   $('swNote').className='wl-note'; $('swNote').textContent='';
-  if(!(parseFloat(m)>0)){ $('swRecu').textContent='—'; $('swImpact').textContent='—'; return; }
+  if(!(parseFloat(m)>0)){
+    $('swRecu').textContent='—'; $('swImpact').textContent='—'; $('swMini').textContent='—'; return;
+  }
 
   try{
     var entree = ethers.utils.parseUnits(m, 18);
     var out = await borne(simuleRoute(de, vers, entree), 9000, 'quote');
     $('swRecu').textContent = nombre(out.sortie,18)+' '+J(vers).sym;
+    /* Ce que le joueur lit ici est EXACTEMENT ce que la transaction
+       imposera au routeur — pas une estimation d'ecran a cote du code. */
+    $('swMini').textContent = nombre(moinsTolerance(out.sortie),18)+' '+J(vers).sym;
     var imp = out.impact;
     $('swImpact').textContent = (imp===null) ? '—' : imp.toFixed(2)+' %';
     if(imp!==null && imp>=10){
@@ -1099,7 +1258,7 @@ async function devis(){
       $('swNote').textContent='Price impact '+imp.toFixed(1)+' % — the pool is shallow, so larger trades cost more.';
     }
   }catch(e){
-    $('swRecu').textContent='—'; $('swImpact').textContent='—';
+    $('swRecu').textContent='—'; $('swImpact').textContent='—'; $('swMini').textContent='—';
     $('swNote').className='wl-note grave';
     /* Quelle que soit la CAUSE — attente depassee ou refus net — le joueur
        doit lire la meme chose : la lecture a echoue, ce n'est pas un prix
@@ -1157,10 +1316,128 @@ async function simuleRoute(de, vers, entree){
   return { sortie:sortie, impact:impact };
 }
 
-$('swPartir').addEventListener('click', function(){
+/* ---- LES MORCEAUX DE LA TRANSACTION ----
+ *
+ * Chacune de ces cinq formes a ete EXECUTEE sur un fork de la chaine,
+ * contre l'etat reel du routeur, des paires et des piscines — pas
+ * seulement devisee. Les cinq rendent au wei pres ce que le devis
+ * annonce (ecart mesure : 0,0000 %).
+ *
+ * Les deux cas a deux morceaux se lisent ainsi : le premier saut livre
+ * a `ADDRESS_THIS`, c'est-a-dire au routeur lui-meme, et le second
+ * reprend ce solde (`amountIn: 0` veut dire « tout ce que tu tiens »).
+ * Le jeton intermediaire ne touche jamais le portefeuille du joueur, et
+ * les deux echanges vivent ou meurent ensemble.
+ *
+ * Le minimum ne se pose que sur le DERNIER morceau : c'est lui qui
+ * decide ce que le joueur recoit. Le poser aussi sur le premier ferait
+ * echouer l'echange sur un mouvement interne qui ne le concerne pas. */
+function morceauxDe(de, vers, entree, mini){
+  var i = new ethers.utils.Interface(R02_ABI);
+  if(de==='eth' && vers==='swoge')
+    return [ i.encodeFunctionData('swapExactTokensForTokens', [entree, mini, [WETH, SWOGE], moi]) ];
+
+  if(de==='eth' && vers==='swogebet')
+    return [ i.encodeFunctionData('swapExactTokensForTokens', [entree, 0, [WETH, SWOGE], ADDRESS_THIS]),
+             i.encodeFunctionData('exactInputSingle', [{ tokenIn:SWOGE, tokenOut:SWOGEBET, fee:FRAIS_V3,
+               recipient:moi, amountIn:0, amountOutMinimum:mini, sqrtPriceLimitX96:0 }]) ];
+
+  if(de==='swoge' && vers==='swogebet')
+    return [ i.encodeFunctionData('exactInputSingle', [{ tokenIn:SWOGE, tokenOut:SWOGEBET, fee:FRAIS_V3,
+               recipient:moi, amountIn:entree, amountOutMinimum:mini, sqrtPriceLimitX96:0 }]) ];
+
+  if(de==='swogebet' && vers==='swoge')
+    return [ i.encodeFunctionData('exactInputSingle', [{ tokenIn:SWOGEBET, tokenOut:SWOGE, fee:FRAIS_V3,
+               recipient:moi, amountIn:entree, amountOutMinimum:mini, sqrtPriceLimitX96:0 }]) ];
+
+  if(de==='swoge' && vers==='eth')
+    return [ i.encodeFunctionData('swapExactTokensForTokens', [entree, 0, [SWOGE, WETH], ADDRESS_THIS]),
+             i.encodeFunctionData('unwrapWETH9', [mini, moi]) ];
+
+  return null;
+}
+
+/* ---- L'AUTORISATION ----
+ *
+ * Verifie sur fork : sans elle, une route qui part d'un jeton echoue net
+ * (`STF`). Elle n'est demandee que si celle qui existe deja ne suffit
+ * pas, et elle porte SUR LE MONTANT EXACT — pas sur l'infini. Une
+ * autorisation illimitee survit a la transaction et laisse le routeur
+ * puiser plus tard ; ici elle meurt avec l'echange. */
+async function assureAutorisation(jeton, entree, dis){
+  var c = erc(jeton.adr, true);
+  var deja = await borne(c.allowance(moi, ROUTER02), 12000, 'allowance');
+  if(deja.gte(entree)) return;
+  dis('Allowing the router to spend your ' + jeton.sym + ' — one signature first…');
+  var tx = await c.approve(ROUTER02, entree);
+  dis('Allowance sent — waiting for the chain…');
+  await tx.wait();
+}
+
+$('swPartir').addEventListener('click', async function(){
   if(!moi) return ouvreConnexion();
-  $('swNote').className='wl-note alerte';
-  $('swNote').textContent='Swapping from this wallet is not switched on yet — the quote above is live and correct, but the send button is deliberately inert until the route has been tested with real funds. Use the Buy panel in the arcade meanwhile.';
+  if(ethersManquant()) return;
+
+  var de = $('swDe').value, vers = $('swVers').value;
+  var jd = J(de), jv = J(vers);
+  var t = ($('swMontant').value || '').trim().replace(',', '.');
+  if(!routeDe(de, vers)) return;
+  if(!(parseFloat(t) > 0)) return toast('Enter an amount');
+
+  var entree;
+  try{ entree = ethers.utils.parseUnits(t, jd.dec); }
+  catch(e){ return toast('That amount is not a number this wallet can read'); }
+  var solde = soldes[jd.cle];
+  if(solde && entree.gt(solde)) return toast('That is more ' + jd.sym + ' than you hold');
+
+  var b = this, note = $('swNote');
+  var dis = function(txt){ note.className='wl-note'; note.textContent = txt; };
+  b.disabled = true;
+  try{
+    await assureChaine();
+
+    /* ---- ON NE SIGNE PAS UN DEVIS PERIME ----
+     * Le devis a l'ecran peut dater de plusieurs minutes ; le prix, lui,
+     * bouge a chaque bloc — et un bloc dure un dixieme de seconde ici.
+     * Le minimum qui part dans la transaction est calcule sur un devis
+     * pris A L'INSTANT, et l'ecran est remis a jour avec, pour que le
+     * joueur signe ce qu'il lit. */
+    dis('Checking the price right now…');
+    var frais = await borne(simuleRoute(de, vers, entree), 12000, 'quote');
+    var mini  = moinsTolerance(frais.sortie);
+    if(mini.isZero())
+      throw new Error('The pool quotes nothing for that amount — try a larger one.');
+    $('swRecu').textContent = nombre(frais.sortie,18) + ' ' + jv.sym;
+    $('swMini').textContent = nombre(mini,18) + ' ' + jv.sym;
+
+    if(!jd.natif) await assureAutorisation(jd, entree, dis);
+
+    /* ---- L'ECHEANCE SE PREND SUR LE BLOC COURANT ----
+     * Elle est lue maintenant, jamais retenue d'avant : a un dixieme de
+     * seconde le bloc, une valeur gardee quelques minutes est deja
+     * perimee, et le routeur repond « Transaction too old » sans que
+     * rien n'explique pourquoi. */
+    var bloc = await borne(lec().getBlock('latest'), 12000, 'block');
+    var echeance = ethers.BigNumber.from(bloc.timestamp + 900);   // un quart d'heure
+
+    var routeur = new ethers.Contract(ROUTER02, R02_ABI, signer);
+    var morceaux = morceauxDe(de, vers, entree, mini);
+    dis('Confirm the swap in your wallet…');
+    var tx = await routeur.multicall(echeance, morceaux, jd.natif ? { value: entree } : {});
+    dis('Swapping — waiting for the chain…');
+    await tx.wait();
+
+    note.className = 'wl-note';
+    note.innerHTML = 'Done. <a href="' + CHAINE.scan + '/tx/' + tx.hash
+      + '" target="_blank" rel="noopener" style="color:var(--violet2)">View transaction</a>';
+    $('swMontant').value = '';
+    $('swRecu').textContent = '—'; $('swImpact').textContent = '—'; $('swMini').textContent = '—';
+    rafraichit();
+  }catch(err){
+    note.className = 'wl-note grave';
+    note.textContent = pourquoiRefus(err);
+  }
+  b.disabled = false;
 });
 
 /* ==================== ACTIVITE ====================
@@ -1264,6 +1541,7 @@ if(ethersManquant()){
   return;
 }
 
+poseTolerance();
 remplitChoix($('enJeton'));
 remplitChoix($('swDe'));
 remplitChoix($('swVers'));

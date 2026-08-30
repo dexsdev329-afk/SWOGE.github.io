@@ -612,6 +612,9 @@
       peintLigneFamilier();
     }
     if (m.type === 'potionBue') {
+      /* La gorgee est arrivee : la fiole automatique peut en envoyer une
+         autre si la vie est toujours basse. */
+      FIOLE.envoyee = 0;
       POTIONS_C = m.potions || POTIONS_C;
       if (m.pv !== null && m.pv !== undefined) { VIE.pv = m.pv; moiMonde.pv = m.pv; }
       if (m.mp !== null && m.mp !== undefined) { VIE.mp = m.mp; peintPouvoir(); }
@@ -7109,6 +7112,88 @@
     try { localStorage.setItem(CLE_REPLI, JSON.stringify({ actif: REPLI.actif, seuil: REPLI.seuil })); } catch (e) {}
   }
 
+  /* ---- LA FIOLE AUTOMATIQUE ----
+   *
+   * Boire marchait deja en courant : la touche, le bouton du panneau et la
+   * fiole au doigt passent tous par `boitPotion`, et aucun n'arrete le
+   * personnage. Ce qui manquait, c'est de ne pas avoir a y PENSER. Au pouce,
+   * la main qui tient le manche n'est pas celle qui peut viser une fiole de
+   * trente pixels pendant qu'on fuit — et c'est exactement le moment ou l'on
+   * boit.
+   *
+   * ---- UN SEUL CHEMIN, ENCORE ----
+   *
+   * Ceci n'envoie pas sa propre demande : ca appelle `boitPotion`, comme les
+   * trois autres commandes. Une quatrieme copie aurait fini par ne plus
+   * verifier les memes choses, et celle qu'on oublie est toujours celle qui
+   * sert en mourant.
+   *
+   * ---- DEUX GARDE-FOUS, ET POURQUOI ----
+   *
+   * Une potion coute dix $SWOGE. Envoyer une demande PAR IMAGE viderait
+   * quatre-vingt-dix-neuf fioles en deux secondes — c'est le meme genre de
+   * defaut qu'un bouton qui signe deux fois, en moins visible.
+   *
+   *   `envoyee`   une gorgee est partie et n'a pas encore de reponse. On
+   *               attend. Au-dela de `FIOLE_ATTENTE` on considere le message
+   *               perdu, sinon un paquet tombe eteindrait la fiole pour
+   *               toujours sans rien dire.
+   *   `prochaine` une gorgee par seconde au plus. La reponse revient en
+   *               cinquante millisecondes ; sans cadence, l'attente ci-dessus
+   *               ne freinerait rien du tout.
+   *
+   * Le seuil ne PROTEGE PAS, pour la meme raison que le repli : il s'ecoule
+   * au moins une image entre le passage sous la barre et la gorgee. Le
+   * panneau le dit.
+   */
+  var FIOLE = { actif: false, seuil: 40, envoyee: 0, prochaine: 0, prevenu: false };
+  var CLE_FIOLE = 'swogeNexusFiole';
+  var FIOLE_CADENCE = 1000;      // une gorgee par seconde, au plus
+  var FIOLE_ATTENTE = 2500;      // au-dela, la reponse est perdue
+  try {
+    var brutF = JSON.parse(localStorage.getItem(CLE_FIOLE) || 'null');
+    if (brutF && typeof brutF === 'object') {
+      FIOLE.actif = !!brutF.actif;
+      FIOLE.seuil = Math.max(10, Math.min(90, Number(brutF.seuil) || 40));
+    }
+  } catch (e) {}
+  function sauveFiole() {
+    try { localStorage.setItem(CLE_FIOLE, JSON.stringify({ actif: FIOLE.actif, seuil: FIOLE.seuil })); } catch (e) {}
+  }
+  /* La pile de fioles de vie, telle que le serveur l'a envoyee. Une seule
+     source : celle que peignent deja le panneau et les boutons au doigt. */
+  function fioleDeVie() {
+    var l = POTIONS_C || [];
+    for (var i = 0; i < l.length; i++) if (l[i] && l[i].cle === 'vie') return l[i];
+    return null;
+  }
+  function verifieFiole() {
+    if (!FIOLE.actif) return;
+    var t = Date.now();
+    if (FIOLE.envoyee && t - FIOLE.envoyee > FIOLE_ATTENTE) FIOLE.envoyee = 0;
+    if (FIOLE.envoyee || t < FIOLE.prochaine) return;
+    /* Hors du monde, `boitPotion` refuse et la potion serait perdue : on ne
+       la lui propose meme pas. */
+    if (SCENE !== 'monde' || !enLigne) return;
+    if (!(VIE.max > 0) || VIE.pv <= 0) return;
+    /* Jamais une gorgee pour rien : a pleine vie le serveur soignerait
+       jusqu'au plafond, c'est-a-dire de zero, et debiterait quand meme. */
+    if (VIE.pv >= VIE.max) return;
+    if (partVie() * 100 > FIOLE.seuil) { FIOLE.prevenu = false; return; }
+    var f = fioleDeVie();
+    if (!f || !f.quantite) {
+      /* UNE FOIS, pas a chaque image. Le filet vient de lacher et il faut le
+         savoir — mais un message par image couvrirait l'ecran au moment
+         precis ou l'on a besoin de voir les monstres. */
+      if (!FIOLE.prevenu) { FIOLE.prevenu = true; flotte('AUTO-POTION: FLASK EMPTY'); }
+      return;
+    }
+    FIOLE.prevenu = false;
+    FIOLE.envoyee = t;
+    FIOLE.prochaine = t + FIOLE_CADENCE;
+    boitPotion('vie');
+  }
+
   /** Rentrer au Nexus, d'ou qu'on soit. Rend `true` si on a bouge. */
   function retourNexus(raison) {
     /* ---- ON RESSORT D'ABORD DE LA PIECE, ENSUITE DU MONDE ----
@@ -13568,6 +13653,37 @@
   });
   peintRepli();
 
+  /* ---- les commandes de la fiole automatique ----
+     Meme forme que l'auto-Nexus, exprès : deux reglages qui regardent la
+     meme barre de vie doivent se regler de la meme facon. */
+  var elFioleBtn = document.getElementById('nxFioleBtn');
+  var elFiolePct = document.getElementById('nxFiolePct');
+  var elFioleVal = document.getElementById('nxFioleVal');
+  var elFioleLigne = document.getElementById('nxFioleLigne');
+  function peintFiole() {
+    if (elFioleBtn) {
+      elFioleBtn.classList.toggle('on', FIOLE.actif);
+      elFioleBtn.textContent = FIOLE.actif ? 'ON' : 'OFF';
+      elFioleBtn.setAttribute('aria-pressed', FIOLE.actif ? 'true' : 'false');
+    }
+    if (elFiolePct) elFiolePct.value = String(FIOLE.seuil);
+    if (elFioleVal) elFioleVal.textContent = FIOLE.seuil + '%';
+    if (elFioleLigne) elFioleLigne.classList.toggle('off', !FIOLE.actif);
+  }
+  if (elFioleBtn) elFioleBtn.addEventListener('click', function () {
+    FIOLE.actif = !FIOLE.actif;
+    /* On repart d'une pile non annoncee : activer l'option alors qu'on est
+       deja a sec doit le redire, sinon le joueur croit avoir un filet. */
+    FIOLE.prevenu = false;
+    sauveFiole(); peintFiole();
+  });
+  if (elFiolePct) elFiolePct.addEventListener('input', function () {
+    FIOLE.seuil = Math.max(10, Math.min(90, Number(elFiolePct.value) || 40));
+    FIOLE.prevenu = false;
+    sauveFiole(); peintFiole();
+  });
+  peintFiole();
+
 
   /** L'ennemi le plus proche, en coordonnees monde — ou `null`. Il n'y en a
       aucun aujourd'hui : les autres JOUEURS n'en sont pas, on ne se tire pas
@@ -14591,6 +14707,10 @@
        perdre sa vie n'importe ou, et un controle qui ne tourne que dans un
        lieu serait une protection qui s'eteint sans prevenir. */
     verifieRepli();
+    /* Meme raison, et au meme endroit : on peut tomber bas n'importe ou, et
+       une fiole qui ne veillerait que dans une scene serait une protection
+       qui s'eteint sans prevenir. */
+    verifieFiole();
 
     /* ---- DANS LE MONDE ----
        Les bornes sont celles de la carte, la position part au serveur, et on

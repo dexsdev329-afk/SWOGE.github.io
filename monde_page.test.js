@@ -141,7 +141,18 @@ process.on('unhandledRejection', (e) => {
         /* AVEC L'HEURE. « du clic au projectile peint : 857 ms » ne dit pas ou
            sont passees les 857 ms : la page n'a-t-elle pas demande, ou n'a-t-elle
            pas dessine ? Sans horodatage il faut relancer et deviner. */
-        s.send = function (d) { try { const o = JSON.parse(d); o.__t = performance.now(); s.__out.push(o); } catch (x) {} return env(d); };
+        /* ---- ET ON PEUT RETENIR UN MESSAGE ----
+           Le vrai serveur est au bout du fil. Pour essayer la fiole
+           automatique il faut une pile de potions qu'on choisit — or chaque
+           `potionBoit` qui PART lui fait renvoyer la vraie pile, qui ecrase la
+           notre au milieu de l'essai. On enregistre donc la demande, ce qui
+           est tout ce qu'on mesure, et on ne la transmet pas. */
+        s.send = function (d) {
+          let o = null;
+          try { o = JSON.parse(d); o.__t = performance.now(); s.__out.push(o); } catch (x) {}
+          if (o && window.__retient && o.type === window.__retient) return;
+          return env(d);
+        };
         /* ---- L'INJECTION SE RECOLLE APRES CHAQUE ETAT REEL ----
          * Le vrai serveur envoie son etat dix fois par seconde et il n'a pas
          * nos sacs. Reinjecter au rythme d'une minuterie fait une COURSE : la
@@ -152,7 +163,14 @@ process.on('unhandledRejection', (e) => {
          * traite AVANT celui qui l'a declenche. */
         s.addEventListener('message', (e) => {
           const rien = (!window.__sacs || !window.__sacs.length)
-                    && (!window.__zones || !window.__zones.length);
+                    && (!window.__zones || !window.__zones.length)
+                    /* ---- ET LA VIE ----
+                       Le vrai serveur nous renvoie a pleine vie dix fois par
+                       seconde. Pour essayer quoi que ce soit qui REGARDE la
+                       vie, il faut la rabaisser par le meme chemin — une
+                       minuterie a part ferait la meme course que pour les
+                       sacs, et l'essai passerait une fois sur deux. */
+                    && !(window.__pv > 0);
           if (window.__rejoue || rien) return;
           let m; try { m = JSON.parse(e.data); } catch (x) { return; }
           if (m.type !== 'realmEtat') return;
@@ -164,6 +182,7 @@ process.on('unhandledRejection', (e) => {
                meme raison : le vrai serveur n'en a pas au moment ou l'on
                regarde, et une minuterie a part ferait la course avec lui. */
             if (window.__zones && window.__zones.length) plus.zones = window.__zones;
+            if (window.__pv > 0 && plus.moi) plus.moi = { ...plus.moi, pv: window.__pv };
             s.dispatchEvent(new MessageEvent('message', { data: JSON.stringify(plus) }));
             window.__rejoue = false;
           }, 0);
@@ -1754,6 +1773,159 @@ process.on('unhandledRejection', (e) => {
   await t.waitForTimeout(250);
   const apresVideT = await t.evaluate(() => window.__s[0].__out.filter((m) => m.type === 'potionBoit').length);
   ok(apresVideT === apresT, 'et la fiole grisee ne demande rien');
+
+  /* ================== LA FIOLE AUTOMATIQUE ==================
+   *
+   * Boire marchait deja en courant : trois commandes, aucune n'arrete le
+   * personnage. Ce qui manquait, c'est de ne pas avoir a y penser — au pouce,
+   * la main qui tient le manche n'est pas celle qui peut viser une fiole
+   * pendant qu'on fuit.
+   *
+   * ---- CE QUE CET ESSAI SURVEILLE VRAIMENT ----
+   *
+   * Pas « est-ce que ca boit ». Une potion coute dix $SWOGE, et le defaut qui
+   * couterait de l'argent est une demande PAR IMAGE : quatre-vingt-dix-neuf
+   * fioles videes en deux secondes, a soixante images par seconde. On mesure
+   * donc surtout ce qui NE part pas.
+   */
+  console.log('\n-- la fiole automatique --');
+  const pot = (n) => ({
+    type: 'potionBue', cle: 'vie', quoi: 'hp', soigne: 100, reste: n,
+    potions: [
+      { cle: 'vie', nom: 'Health Potion', quoi: 'hp', soigne: 100, image: 'potion_rouge', max: 99, quantite: n },
+      { cle: 'mana', nom: 'Magic Potion', quoi: 'mp', soigne: 100, image: 'potion_bleue', max: 99, quantite: 0 },
+    ],
+  });
+  const bues = () => t.evaluate(() => window.__s[0].__out.filter((m) => m.type === 'potionBoit').length);
+  /* La pile de fioles est la NOTRE pendant tout ce bloc. */
+  await t.evaluate(() => { window.__retient = 'potionBoit'; });
+  const pousseFrames = (n) => t.evaluate(async (k) => {
+    for (let i = 0; i < k; i++) { window.__pousse(); await new Promise((f) => requestAnimationFrame(f)); }
+  }, n);
+
+  /* Le reglage existe, et il est dans les MEMES commandes que l'auto-Nexus :
+     deux options qui regardent la meme barre doivent se regler au meme
+     endroit et de la meme facon. */
+  const commandes = await t.evaluate(() => {
+    const b = document.getElementById('nxFioleBtn');
+    const s = document.getElementById('nxFiolePct');
+    return b && s ? { etat: b.textContent.trim(), min: s.min, max: s.max, val: s.value,
+                      grise: document.getElementById('nxFioleLigne').classList.contains('off') } : null;
+  });
+  console.log('   ' + JSON.stringify(commandes));
+  ok(commandes, 'les reglages portent une bascule et un curseur pour la fiole automatique');
+  ok(commandes && commandes.etat === 'OFF', 'eteinte par defaut : elle depense l argent du joueur, elle ne s allume pas toute seule');
+  ok(commandes && commandes.grise, 'et le curseur est grise tant qu elle est eteinte — sinon on croit regler quelque chose d actif');
+
+  /* On la met en marche a 50 %, et on remplit la pile. */
+  await t.evaluate((m) => {
+    window.__s[0].dispatchEvent(new MessageEvent('message', { data: JSON.stringify(m) }));
+    const s = document.getElementById('nxFiolePct');
+    s.value = '50'; s.dispatchEvent(new Event('input', { bubbles: true }));
+    document.getElementById('nxFioleBtn').click();
+  }, pot(9));
+  await t.waitForTimeout(200);
+  ok(await t.evaluate(() => document.getElementById('nxFioleBtn').textContent.trim()) === 'ON',
+     'la bascule s allume');
+
+  /* ---- AU-DESSUS DE LA BARRE, ELLE NE TOUCHE A RIEN ---- */
+  const avantHaut = await bues();
+  await pousseFrames(20);
+  ok((await bues()) === avantHaut, 'a pleine vie elle ne boit pas — une gorgee pour rien serait dix $SWOGE jetes');
+
+  /* ---- SOUS LA BARRE : UNE SEULE GORGEE, PAS UNE PAR IMAGE ---- */
+  const pvMax = await t.evaluate(() => {
+    const e = window.__s[0].__m.filter((m) => m.type === 'realmEtat' && m.moi).pop();
+    return e ? e.moi.pvMax : 0;
+  });
+  ok(pvMax > 0, `la vie maximale est connue (${pvMax})`);
+  const avantBas = await bues();
+  await t.evaluate((v) => { window.__pv = v; }, Math.max(1, Math.round(pvMax * 0.30)));
+  await pousseFrames(30);
+  const apresBas = await bues();
+  console.log(`   30 images sous la barre : ${apresBas - avantBas} demande(s)`);
+  ok(apresBas === avantBas + 1,
+     `trente images sous la barre n envoient qu UNE demande (${apresBas - avantBas}) — une par image aurait vide la pile`);
+
+  /* ---- LA CADENCE, MESUREE SUR L ECART REEL ----
+   * La reponse revient en quelques millisecondes : sans cadence, la garde
+   * « une gorgee en vol » ne freinerait rien du tout, et l on boirait vingt
+   * fois par seconde.
+   *
+   * DEUX ESSAIS QUI ONT MESURE AUTRE CHOSE, avant celui-ci :
+   *
+   *   1. « repondre, pousser vingt images, exiger aucune seconde gorgee. »
+   *      Trente images et cinq allers-retours vers la page prennent a eux
+   *      seuls plus de neuf cents millisecondes : la seconde etait deja
+   *      passee au moment de regarder. On mesurait la lenteur du banc.
+   *   2. « quatre-vingt-dix images, donc une seconde et demie, donc une seule
+   *      gorgee de plus. » Faux aussi : une image n'est pas un seizieme de
+   *      seconde ici. Mesure — les quatre-vingt-dix images ont pris plus de
+   *      trois secondes, et TROIS gorgees etaient le comportement JUSTE.
+   *
+   * On borne donc la boucle par l'HORLOGE de la page, et on juge sur les
+   * ECARTS entre demandes, horodatees a l'envoi. C'est la seule chose que la
+   * cadence promet, et la seule qui ne depende d'aucune latence. */
+  await t.evaluate((m) => {
+    window.__s[0].dispatchEvent(new MessageEvent('message', { data: JSON.stringify(m) }));
+  }, pot(8));
+  const cadence = await t.evaluate(async () => {
+    const s = window.__s[0];
+    const t0 = performance.now();
+    /* On repond a chaque gorgee : sans reponse, la garde « une en vol » ferait
+       tout le travail et la cadence ne serait jamais mise a l'epreuve. */
+    let vues = s.__out.filter((m) => m.type === 'potionBoit').length;
+    while (performance.now() - t0 < 2600) {
+      window.__pousse();
+      const n = s.__out.filter((m) => m.type === 'potionBoit').length;
+      if (n > vues) {
+        vues = n;
+        s.dispatchEvent(new MessageEvent('message', { data: JSON.stringify({
+          type: 'potionBue', cle: 'vie', quoi: 'hp', soigne: 100, reste: 8,
+          potions: [
+            { cle: 'vie', nom: 'Health Potion', quoi: 'hp', soigne: 100, image: 'potion_rouge', max: 99, quantite: 8 },
+            { cle: 'mana', nom: 'Magic Potion', quoi: 'mp', soigne: 100, image: 'potion_bleue', max: 99, quantite: 0 },
+          ],
+        }) }));
+      }
+      await new Promise((f) => requestAnimationFrame(f));
+    }
+    const l = s.__out.filter((m) => m.type === 'potionBoit').map((m) => m.__t);
+    const ecarts = [];
+    for (let i = 1; i < l.length; i++) ecarts.push(Math.round(l[i] - l[i - 1]));
+    return { duree: Math.round(performance.now() - t0), n: l.length, ecarts };
+  });
+  console.log(`   ${cadence.duree} ms sous la barre, ${cadence.n} gorgees, ecarts ${JSON.stringify(cadence.ecarts)}`);
+  const pire = cadence.ecarts.length ? Math.min.apply(null, cadence.ecarts) : null;
+  ok(cadence.ecarts.length > 0, 'elle boit tant que la vie reste basse — c est ce qu on lui demande');
+  ok(pire !== null && pire >= 950,
+     `et jamais deux gorgees a moins d une seconde (la plus rapprochee : ${pire} ms)`);
+  /* Le vrai defaut qu'on cherche : une demande par image. En deux secondes et
+     demie a soixante images par seconde, cela ferait cent cinquante gorgees. */
+  ok(cadence.n <= Math.ceil(cadence.duree / 1000) + 2,
+     `${cadence.n} gorgees en ${cadence.duree} ms — une par image en aurait fait plus de cent`);
+
+  /* ---- LA PILE VIDE SE DIT, UNE FOIS ----
+     Le filet vient de lacher. Un joueur qui ne l apprend pas continue de se
+     battre en croyant etre couvert ; un message par image lui couvrirait
+     l ecran au moment ou il a besoin de voir les monstres. */
+  await t.evaluate((m) => {
+    window.__s[0].dispatchEvent(new MessageEvent('message', { data: JSON.stringify(m) }));
+  }, pot(0));
+  await t.waitForTimeout(1200);
+  const avantVideA = await bues();
+  await pousseFrames(30);
+  ok((await bues()) === avantVideA, 'la pile vide, elle ne demande plus rien');
+
+  /* ---- ET ELLE SE SOUVIENT ----
+     Un reglage qu il faut refaire a chaque visite n en est pas un. */
+  const garde = await t.evaluate(() => {
+    try { return JSON.parse(localStorage.getItem('swogeNexusFiole') || 'null'); } catch (e) { return null; }
+  });
+  console.log('   garde : ' + JSON.stringify(garde));
+  ok(garde && garde.actif === true && garde.seuil === 50,
+     'le choix et le seuil sont gardes pour la prochaine visite');
+  await t.evaluate(() => { window.__pv = 0; window.__retient = null; });
 
   /* Et a la SOURIS elle n'existe pas : le panneau y est toujours ouvert, et il
      faut les deux grilles cote a cote pour glisser de l'une a l'autre. */

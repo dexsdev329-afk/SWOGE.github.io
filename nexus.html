@@ -65,7 +65,7 @@ canvas{ touch-action:none; }
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-<script src="stakebubble.js?v=bf92d7f9"></script>
+<script src="stakebubble.js?v=8587907e"></script>
 <!-- ---- LE COMPTE DE JEU, DANS LE MONDE AUSSI ----
      Le tiroir se construit a partir du `#menu` de la page, et cette page n'en
      avait pas : « My Wallet » n'y etait qu'un lien vers une autre page.
@@ -74,8 +74,8 @@ canvas{ touch-action:none; }
      dollars a cote du solde. `ethers` vient avec : c'est lui qui signe les
      retraits et les envois. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
-<script src="swogecompte.js?v=265e397a"></script>
-<script src="swogebuy.js?v=0d5e5215"></script>
+<script src="swogecompte.js?v=f1d89c7a"></script>
+<script src="swogebuy.js?v=9d7c39e5"></script>
 <script src="swogeprofil.js?v=2bff1154" defer></script>
 
 <style>
@@ -3154,6 +3154,21 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
              aria-label="Auto-Nexus health threshold">
       <b id="nxEscVal">35%</b>
     </div>
+    <!-- ---- LA FIOLE AUTOMATIQUE ----
+         Boire marchait deja en courant — la touche, le bouton du panneau et
+         la fiole au doigt sont trois chemins vers la meme demande, et aucun
+         n'arrete le personnage. Ce qui manquait, c'est de ne pas avoir a y
+         penser : au pouce, la main qui tient le manche n'est pas celle qui
+         peut viser une fiole de trente pixels pendant qu'on fuit. -->
+    <div class="nxrp-ligne">
+      <span class="nxrp-nom">Auto-potion<i class="nxrp-sous">drinks a Health Potion when your HP falls under the mark</i></span>
+      <button class="nxrp-bascule" id="nxFioleBtn" type="button" aria-pressed="false">OFF</button>
+    </div>
+    <div class="nxrp-ligne nxrp-glisse" id="nxFioleLigne">
+      <input id="nxFiolePct" type="range" min="10" max="90" step="5" value="40"
+             aria-label="Auto-potion health threshold">
+      <b id="nxFioleVal">40%</b>
+    </div>
     <!-- ---- COMBIEN DE MONDE ON VOIT ----
          Le reglage etait un chiffre en dur, et « je veux voir plus loin » n'a
          pas de bonne reponse universelle : plus large montre les creatures
@@ -3173,6 +3188,10 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
     <div class="nxrp-garde">Auto-Nexus is not a safety net. At least one frame passes between
       your HP crossing the mark and the warp — a hit that takes everything at once, or a lag
       spike, still kills you. Set it high if you are unsure.</div>
+    <div class="nxrp-garde">Auto-potion drinks at most one flask per second, and it will keep
+      drinking until you are back above the mark or the stack is empty — a Health Potion restores
+      100 HP, so on a big character that can be several in a row. It says so on screen when the
+      last one is gone; from then on nothing is watching your HP but you.</div>
     <button class="nxrp-reset" type="button">Reset to defaults</button>
   </div>
 </div>
@@ -3185,7 +3204,7 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
      racine ; c'est le seul endroit d'ou elle peut couvrir tout le reste. -->
 <div id="nxFiche"></div>
 
-<script src="nexus.js?v=43594b8e" defer></script>
+<script src="nexus.js?v=0afa6d65" defer></script>
 <script>window.addEventListener('load',function(){setTimeout(function(){var p=document.getElementById('preloader');if(p){p.classList.add('done');setTimeout(function(){p.style.display='none';},700);}},450);});setTimeout(function(){var p=document.getElementById('preloader');if(p&&!p.classList.contains('done')){p.classList.add('done');}},9000);</script>
 
 <script>

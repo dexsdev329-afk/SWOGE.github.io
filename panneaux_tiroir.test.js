@@ -275,9 +275,23 @@ function chargeLeCatalogue() {
        * rangee — un decalage d un cran. Un essai qui accuse a tort coute plus
        * cher qu un essai absent : on va chercher la ligne par ce qu elle DIT,
        * comme le ferait celui qui la lit. */
+      /* ---- ET PAR TOUT CE QU ELLE DIT, PAS PAR UN MORCEAU ----
+       * La version d avant retirait l emoji (`replace(/^\S+/, '')`) et
+       * cherchait le reste comme SOUS-CHAINE. Les rangees ne mettent pas
+       * d espace apres leur emoji : « 👛My Wallet » perdait donc « 👛My » en
+       * entier et ne cherchait plus que « Wallet ». Le jour ou une seconde
+       * rangee a porte ce mot — « 🪙SWOGE Wallet », le portefeuille de chaine
+       * ajoute au menu de toutes les pages — `.first()` a pris l autre, et
+       * l essai a rapporte que « My Wallet » changeait de page. C etait vrai :
+       * ce n etait pas la rangee qu il croyait cliquer.
+       * On retrouve donc la rangee par son texte ENTIER, celui-la meme qu on a
+       * releve, et l on dit franchement quand elle a disparu entre-temps. */
       let clique = true;
       try {
-        const cible = p.locator('#gxMenu a').filter({ hasText: r.t.replace(/^\S+/, '').trim() || r.t }).first();
+        const rang = await p.evaluate((txt) => [...document.querySelectorAll('#gxMenu a')]
+          .findIndex((a) => (a.textContent || '').trim() === txt), r.t);
+        if (rang < 0) throw new Error('rangee introuvable : ' + r.t);
+        const cible = p.locator('#gxMenu a').nth(rang);
         await cible.scrollIntoViewIfNeeded({ timeout: 3000 });
         await cible.click({ timeout: 4000 });
       } catch (e) { clique = false; }
@@ -285,10 +299,13 @@ function chargeLeCatalogue() {
       const apres = await ecran();
       const bouge = JSON.stringify(avant) !== JSON.stringify(apres);
       if (!clique) { muettes.push(r.t + ' (clic refuse)'); continue; }
-      /* « Home » et « Other games » MENENT ailleurs : c est leur travail, et
-         l on revient. Tout le reste doit ouvrir quelque chose SUR PLACE. */
+      /* « Home », « Other games » et « SWOGE Wallet » MENENT ailleurs : c est
+         leur travail, et l on revient. Le portefeuille de chaine est une PAGE,
+         pas un panneau — « My Wallet » montre le solde du compte sur place,
+         celui-ci ouvre l ecran ou l on envoie, echange et recoit. Tout le
+         reste doit ouvrir quelque chose SUR PLACE. */
       if (apres.adresse !== avant.adresse) {
-        if (!/home|other games|accueil/i.test(r.t)) {
+        if (!/home|other games|accueil|swoge wallet/i.test(r.t)) {
           muettes.push(`${r.t} (a change de page : ${apres.adresse})`);
         }
         continue;

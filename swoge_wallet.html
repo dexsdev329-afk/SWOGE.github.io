@@ -100,11 +100,16 @@ body{
   display:flex; flex-direction:column; flex:0 0 auto;
 }
 @media (max-width:520px){
-  body{ padding:0 }
+  /* `100dvh - 50px` : le 50 etait la hauteur SUPPOSEE de l'en-tete. Mesuree,
+     elle en fait 51, et le cadre depassait d'un pixel — assez pour que la
+     page defile verticalement alors qu'elle est censee tenir d'un bloc.
+     On laisse donc le cadre PRENDRE ce qui reste, sans chiffre a deviner. */
+  body{ padding:0; height:100dvh; overflow:hidden }
   .wl-haut{ padding:8px 12px }
-  .wl-tel{ width:100vw; height:calc(100dvh - 50px); border-radius:0;
-           border:0; box-shadow:none }
+  .wl-tel{ width:100vw; height:auto; flex:1 1 auto; min-height:0;
+           border-radius:0; border:0; box-shadow:none }
 }
+
 
 /* la barre d'etat, purement decorative sur ordinateur */
 .wl-etat{
@@ -130,7 +135,7 @@ body{
 .wl-tete .marque b{ font:800 17px/1 'Archivo',sans-serif }
 
 /* le corps defilant */
-.wl-corps{ flex:1 1 auto; overflow-y:auto; -webkit-overflow-scrolling:touch;
+.wl-corps{ flex:1 1 auto; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch;
   padding:0 16px 16px; scrollbar-width:none }
 .wl-corps::-webkit-scrollbar{ display:none }
 
@@ -153,7 +158,22 @@ body{
    d'affichage le battrait, et l'ecran cache resterait a l'ecran en avalant
    les clics. C'est le defaut qui a rendu DEAD SWOGE injouable pendant un
    commit — on ne le refait pas. */
-.wl-ecran{ display:none; flex-direction:column; height:100%; }
+/* ---- `height:100%` POUSSAIT LA BARRE D'ONGLETS DEHORS ----
+ *
+ * Chaque ecran reclamait la hauteur ENTIERE du cadre. Il ne restait donc
+ * rien pour la barre d'etat au-dessus ni pour les onglets en dessous, et
+ * comme `.wl-tel` est en `overflow:hidden`, ce qui depassait etait
+ * simplement coupe. Mesure sur un telephone de 667 px de haut : les onglets
+ * tombaient QUATRE-VINGT-DIX PIXELS sous le bord — Home, Tokens, Swap,
+ * Activity et Account devenaient inatteignables. Sur un grand telephone il
+ * y avait juste assez de mou pour que ca passe, donc le defaut ne se voyait
+ * que sur les petits.
+ *
+ * L'ecran PARTAGE maintenant la hauteur au lieu de la prendre. Et
+ * `min-height:0` est indispensable des deux cotes : sans lui un element
+ * flexible refuse de retrecir sous la hauteur de son contenu, et le corps
+ * defilant repousserait les onglets exactement comme avant. */
+.wl-ecran{ display:none; flex-direction:column; flex:1 1 auto; min-height:0 }
 .wl-ecran.on{ display:flex }
 
 /* ---- LES BLOCS ---- */
@@ -219,7 +239,26 @@ body{
 .wl-champ input, .wl-champ select{
   width:100%; padding:13px 14px; border-radius:12px; border:1px solid var(--bord);
   background:var(--carte2); color:var(--texte);
-  font:400 14px/1 'Space Mono',monospace;
+  /* ---- SEIZE PIXELS, ET CE N'EST PAS UN CHOIX DE STYLE ----
+   *
+   * Safari sur iOS agrandit AUTOMATIQUEMENT la page des qu'on touche un champ
+   * dont la police fait moins de seize pixels, et il ne redezoome pas en
+   * sortant. Le cadre du telephone etant en `overflow:hidden`, on se retrouve
+   * coince dans une page trop grande dont les bords sont coupes.
+   *
+   * Les cinq champs etaient a 14 : montant, adresse, montant d'echange,
+   * courriel et code.
+   *
+   * Sans condition, et volontairement. `@media (pointer:coarse)` aurait vise
+   * juste les appareils tactiles — mais je ne peux pas VERIFIER ici que la
+   * regle se declenche sur le telephone du joueur, et une correction de zoom
+   * qu'on ne sait pas mesurer n'en est pas une. Deux pixels de plus sur
+   * ordinateur coutent moins cher qu'un doute.
+   *
+   * (`maximum-scale=1` dans la balise viewport aurait marche aussi — et aurait
+   * empeche le joueur d'agrandir la page LUI-MEME. Ce n'est pas a nous de le
+   * lui interdire.) */
+  font:400 16px/1 'Space Mono',monospace;
 }
 .wl-champ input:focus, .wl-champ select:focus{ outline:2px solid var(--violet); outline-offset:1px }
 /* ---- LE BOUTON MAX ----
@@ -821,6 +860,7 @@ var methode = null;        // 'email' | 'wallet'
 var soldes  = {};          // cle -> BigNumber
 var prixUsd = null;        // dollars par SWOGE, ou null si inconnu
 var ethUsd  = null;        // dollars par ETH, ou null si inconnu
+var tauxBet = null;        // $SWOGE par $SWOGEBET, lu sur la piscine v3
 var PRIVY_APP_ID = 'cmsga0yzp00a50biaf9vlzzd2';
 
 /* ---- UNE LECTURE QUI N'ARRIVE PAS DOIT LE DIRE ----
@@ -1118,6 +1158,24 @@ async function lisPrix(){
       window._fdv = paire.fdv;
     }
   }catch(e){ prixUsd = null; ethUsd = null; }
+
+  /* ---- LE TAUX DU $SWOGEBET SE DEMANDE A LA CHAINE ----
+   *
+   * On pose la question qu'on veut vraiment poser : « combien de $SWOGE
+   * vaut UN $SWOGEBET ». En demandant l'autre sens il faudrait inverser le
+   * resultat a la main, et c'est exactement l'inversion qui manquait.
+   *
+   * Un jeton entier plutot qu'une miette : sur une piscine qui tient plus
+   * de cent millions de jetons, l'impact d'un seul est nul, et un montant
+   * trop petit se perd dans l'arrondi du devis. */
+  try{
+    var qc = new ethers.Contract(QUOTER, QUOTER_ABI, lec());
+    var r2 = await borne(qc.callStatic.quoteExactInputSingle({
+      tokenIn:SWOGEBET, tokenOut:SWOGE, amountIn:ethers.utils.parseUnits('1',18),
+      fee:FRAIS_V3, sqrtPriceLimitX96:0 }), 8000, 'tauxBet');
+    var v2 = r2.amountOut || r2[0];
+    tauxBet = v2 && !v2.isZero() ? parseFloat(ethers.utils.formatEther(v2)) : null;
+  }catch(e){ tauxBet = null; }
 }
 
 /* Ce que vaut un solde, ou `null` si on ne sait pas. */
@@ -1127,9 +1185,23 @@ function valeur(cle){
   var n = parseFloat(ethers.utils.formatUnits(s, 18));
   if(cle==='eth')   return ethUsd  ? n*ethUsd  : null;
   if(cle==='swoge') return prixUsd ? n*prixUsd : null;
-  /* Le $SWOGEBET n'a pas de paire en dollars : son prix passe par le
-     $SWOGE. On ne l'estime que si les deux maillons sont connus. */
-  if(cle==='swogebet') return (prixUsd && window._tauxBet) ? n*window._tauxBet*prixUsd : null;
+  /* ---- LE $SWOGEBET ETAIT VALORISE A L'ENVERS ----
+   *
+   * Son prix passe forcement par le $SWOGE : il n'a aucune paire en
+   * dollars. Mais le taux employe ici etait `_tauxBet`, pose au passage par
+   * la fonction de devis, et qui vaut le nombre de $SWOGEBET obtenus POUR
+   * UN $SWOGE. Pour valoriser des $SWOGEBET il faut l'inverse.
+   *
+   * Mesure sur la chaine : 1 $SWOGE donne 1,81 $SWOGEBET, donc un
+   * $SWOGEBET vaut 0,55 $SWOGE. La page multipliait par 1,81 au lieu de
+   * 0,55 — le solde s'affichait TROIS FOIS ET DEMIE trop haut.
+   *
+   * Et le taux ne se posait que si le joueur avait ouvert l'ecran d'echange
+   * et demande un devis : sur l'accueil, au chargement, il n'existait pas.
+   * Un prix qui depend de l'ecran qu'on a visite avant n'est pas un prix.
+   *
+   * On le lit donc DANS LE BON SENS et au chargement — voir `lisPrix`. */
+  if(cle==='swogebet') return (prixUsd && tauxBet) ? n*tauxBet*prixUsd : null;
   return null;
 }
 
@@ -1632,7 +1704,6 @@ async function simuleRoute(de, vers, entree){
     var rp = await q.callStatic.quoteExactInputSingle(
       { tokenIn:SWOGE, tokenOut:SWOGEBET, amountIn:pouce, fee:FRAIS_V3, sqrtPriceLimitX96:0 });
     var taux = parseFloat(ethers.utils.formatEther(rp.amountOut || rp[0])) / 0.0001;
-    window._tauxBet = taux;
     ideal = (ideal===null ? av : ideal) * taux;
   } else if(de==='swogebet'){
     var r2 = await q.callStatic.quoteExactInputSingle(
@@ -1862,7 +1933,11 @@ async function ficheJeton(cle){
   $('fiValeur').textContent = v===null ? (moi?'price unavailable':'—') : usd(v);
   $('fiAdr').textContent = j.adr ? j.adr : 'native coin';
   $('fiPrix').textContent = cle==='swoge' && prixUsd ? '$'+prixUsd.toPrecision(3)
-    : cle==='eth' && ethUsd ? usd(ethUsd) : '—';
+    : cle==='eth' && ethUsd ? usd(ethUsd)
+    /* Le $SWOGEBET a maintenant un prix, et il est juste : il vaut son taux
+       en $SWOGE fois le prix du $SWOGE. */
+    : cle==='swogebet' && prixUsd && tauxBet ? '$'+(tauxBet*prixUsd).toPrecision(3)
+    : '—';
   $('fiMcap').textContent = cle==='swoge' && window._fdv ? usd(window._fdv) : '—';
   $('fiLiq').textContent  = cle==='swoge' && window._liq ? usd(window._liq) : '—';
   $('fiNote').textContent = cle==='swogebet'

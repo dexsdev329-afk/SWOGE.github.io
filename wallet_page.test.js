@@ -561,6 +561,75 @@ const T = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
     await page.close();
   }
 
+  /* 8. SUR UN TELEPHONE : PAS DE ZOOM, ET LES ONGLETS SONT LA
+   *
+   * Deux defauts qui ne se voient pas sur un ecran d ordinateur :
+   *
+   *   - Safari sur iOS agrandit la page des qu on touche un champ dont la
+   *     police fait moins de SEIZE pixels, et ne redezoome pas en sortant.
+   *     Le cadre etant en `overflow:hidden`, on reste coince dans une page
+   *     trop grande dont les bords sont coupes.
+   *
+   *   - `.wl-ecran` reclamait `height:100%` du cadre. Il ne restait rien
+   *     pour la barre d onglets, et `overflow:hidden` la coupait purement et
+   *     simplement : sur un telephone de 667 px de haut elle tombait
+   *     quatre-vingt-dix pixels sous le bord. Home, Tokens, Swap, Activity
+   *     et Account devenaient inatteignables — et sur un grand telephone il
+   *     y avait juste assez de mou pour que rien ne paraisse.
+   *
+   * On mesure donc sur QUATRE tailles, dont deux courtes : le defaut ne se
+   * revelait que la.
+   */
+  console.log('\n-- sur un telephone --');
+  {
+    const TAILLES = [
+      { nom: 'iPhone SE', w: 375, h: 667 },
+      { nom: 'iPhone 12', w: 390, h: 844 },
+      { nom: 'Pixel 5',   w: 393, h: 851 },
+      { nom: '320 px',    w: 320, h: 568 },
+    ];
+    for (const d of TAILLES) {
+      const ctx = await nav.newContext({ viewport: { width: d.w, height: d.h },
+                                         isMobile: true, hasTouch: true });
+      const pg = await ctx.newPage();
+      await pg.route('**/ethers*.umd.min.js', (r) => r.fulfill({
+        contentType: 'text/javascript', body: fs.readFileSync(ETHERS, 'utf8') }));
+      await pg.route('**/rpc.mainnet.chain.robinhood.com/**', (r) => r.abort());
+      await pg.route('**/api.dexscreener.com/**', (r) => r.abort());
+      await pg.goto('http://127.0.0.1:' + port + '/swoge_wallet.html',
+                    { waitUntil: 'domcontentloaded' });
+      await pg.waitForTimeout(1600);
+      const m = await pg.evaluate(() => {
+        const pied = document.getElementById('pied').getBoundingClientRect();
+        const petits = [...document.querySelectorAll('input, select, textarea')]
+          .map((e) => ({ id: e.id || e.tagName, px: parseFloat(getComputedStyle(e).fontSize) }))
+          .filter((x) => x.px < 16);
+        return {
+          ongletsDedans: pied.bottom <= innerHeight + 1 && pied.top >= 0,
+          ongletsBas: Math.round(pied.bottom), vueH: innerHeight,
+          horiz: document.documentElement.scrollWidth > innerWidth + 1,
+          petits,
+        };
+      });
+      ok(m.petits.length === 0,
+         d.nom + ' : aucun champ sous 16 px — c est ce seuil qui declenche le zoom d iOS'
+         + (m.petits.length ? ' (' + m.petits.map((x) => x.id + ' ' + x.px + 'px').join(', ') + ')' : ''));
+      ok(m.ongletsDedans,
+         d.nom + ' : la barre d onglets tient dans l ecran'
+         + (m.ongletsDedans ? '' : ' — elle finit a ' + m.ongletsBas + ' pour une vue de ' + m.vueH
+                                 + ', donc coupee et inatteignable'));
+      ok(!m.horiz, d.nom + ' : rien ne deborde sur le cote');
+      await ctx.close();
+    }
+    /* La balise viewport ne doit pas interdire au joueur d agrandir la page
+       lui-meme : c est une facon de supprimer le zoom qui coute
+       l accessibilite a ceux qui en ont besoin. */
+    const src = fs.readFileSync(path.join(SITE, 'swoge_wallet.html'), 'utf8');
+    const vp = (/<meta name="viewport"[^>]*>/.exec(src) || [''])[0];
+    ok(!/maximum-scale|user-scalable\s*=\s*no/.test(vp),
+       'et le zoom VOLONTAIRE reste possible : la balise viewport ne le bride pas (' + vp + ')');
+  }
+
   await nav.close();
   srv.close();
   console.log('\n' + (rates ? 'RATES : ' + rates + '/' + n : 'tout passe : ' + n + ' verifications'));

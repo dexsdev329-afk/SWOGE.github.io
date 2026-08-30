@@ -818,7 +818,7 @@ var ERC20_ABI=["function balanceOf(address) view returns (uint256)","function al
    emballe et deballe), un jeton V3 se paie en $SWOGE, qui est un ERC20 ordinaire
    et demande donc une autorisation avant l'achat. */
 var VEN = {
-  2:{ id:2, addr:CONTRACT_ADDRESS, abi:FUN_ABI,    quote:WETH,        sym:"ETH",   native:true,  curve:true,
+  2:{ id:2, addr:CONTRACT_ADDRESS, abi:FUN_ABI,    quote:WETH,        sym:"ETH (RH)",   native:true,  curve:true,
       part:"70% creator / 30% SWOGE" },
   3:{ id:3, addr:V3_ADDRESS,       abi:FUN_V3_ABI, quote:SWOGE_TOKEN, sym:"SWOGE", native:false, curve:false,
       part:"70% holders / 30% SWOGE treasury" }
@@ -1361,10 +1361,10 @@ function renderTrending(){
   panel.style.display="block"; strip.innerHTML="";
   var tot=withVol.reduce(function(s,r){ return s+(r.vol24||0); },0);
   var totEl=$("#trendTotVol");
-  if(totEl) totEl.innerHTML='📊 Total 24h volume · <b>'+(exploreEu?fmtUsd(tot*exploreEu):tot.toFixed(3)+" ETH")+'</b>';
+  if(totEl) totEl.innerHTML='📊 Total 24h volume · <b>'+(exploreEu?fmtUsd(tot*exploreEu):tot.toFixed(3)+" ETH (RH)")+'</b>';
   top.forEach(function(r,i){
     var d=document.createElement("div"); d.className="trend-card"; d.setAttribute("data-addr",r.addr);
-    var volTxt = exploreEu ? fmtUsd(r.vol24*exploreEu) : r.vol24.toFixed(3)+" ETH";
+    var volTxt = exploreEu ? fmtUsd(r.vol24*exploreEu) : r.vol24.toFixed(3)+" ETH (RH)";
     d.innerHTML=thumbHTML(r.addr,r.sym)
       +'<div class="tnm">'+esc(r.name||"?")+'</div>'
       +'<div class="tsy">$'+esc(r.sym||"?")+'</div>'

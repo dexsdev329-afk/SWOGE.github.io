@@ -2218,7 +2218,7 @@ function renderBonus(b){ if(!b) return; bonusData=b;
       var tx;
       if(tok==="eth"){ tx=await signer.sendTransaction({to:to,value:ethers.utils.parseEther(v)}); }
       else { var c=new ethers.Contract(TOKEN,ERC20_ABI,signer); tx=await c.transfer(to,ethers.utils.parseUnits(v,18)); }
-      sendMsg("Sending…"); await tx.wait(); sendMsg("✅ Sent "+v+" "+(tok==="eth"?"ETH":"$SWOGE"),"ok");
+      sendMsg("Sending…"); await tx.wait(); sendMsg("✅ Sent "+v+" "+(tok==="eth"?"ETH (RH)":"$SWOGE"),"ok");
       $("sendAmt").value=""; $("sendTo").value=""; loadWalletBalances();
     }catch(e){ sendMsg("Failed: "+String(e.reason||e.message||e).slice(0,110),"warn"); }
   }

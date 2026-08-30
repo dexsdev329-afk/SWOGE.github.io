@@ -266,7 +266,7 @@ canvas{ touch-action:none; }
     <button class="btn" id="mnStake" style="width:100%;margin-bottom:8px">🔒 Staking</button>
     <button class="btn" id="mnDeposit" style="width:100%;margin-bottom:8px">💰 Deposit</button>
     <button class="btn" id="mnWithdraw" style="width:100%;margin-bottom:8px">🏧 Withdraw</button>
-    <button class="btn ghost" id="mnBridge" style="width:100%;margin-bottom:8px">🌉 Bridge ETH → Robinhood</button>
+    <button class="btn ghost" id="mnBridge" style="width:100%;margin-bottom:8px">🌉 Bridge ETH (mainnet) → Robinhood</button>
     <button class="btn ghost" id="mnSwap" style="width:100%;margin-bottom:8px">💱 Buy / Sell $SWOGE</button>
     <button class="btn ghost" id="mnQuests" style="width:100%;margin-bottom:8px">🎯 Daily Quests</button>
     <button class="btn ghost" id="mnGames" style="width:100%;margin-bottom:8px">🎮 Other Games</button>
@@ -279,7 +279,7 @@ canvas{ touch-action:none; }
   </div>
   <div class="box" id="depBox">
     <h3>💰 Deposit $SWOGE</h3>
-    <div class="note" style="margin-bottom:10px">In your wallet: <b id="depSwoge" style="color:#E6A537">…</b> $SWOGE · <b id="depEth" style="color:#E6A537">…</b> ETH</div>
+    <div class="note" style="margin-bottom:10px">In your wallet: <b id="depSwoge" style="color:#E6A537">…</b> $SWOGE · <b id="depEth" style="color:#E6A537">…</b> ETH (RH)</div>
     <label>Amount to deposit</label>
     <input id="depAmt" inputmode="decimal" placeholder="e.g. 100" value="100">
     <div class="row">
@@ -862,7 +862,7 @@ async function doSend(){
     var tx;
     if(tok==="eth"){ tx=await signer.sendTransaction({to:to,value:ethers.utils.parseEther(v)}); }
     else { var c=new ethers.Contract(TOKEN,ERC20_ABI,signer); tx=await c.transfer(to,ethers.utils.parseUnits(v,18)); }
-    sendMsg("Sending…"); await tx.wait(); sendMsg("✅ Sent "+v+" "+(tok==="eth"?"ETH":"$SWOGE"),"ok");
+    sendMsg("Sending…"); await tx.wait(); sendMsg("✅ Sent "+v+" "+(tok==="eth"?"ETH (RH)":"$SWOGE"),"ok");
     $("#sendAmt").value=""; $("#sendTo").value=""; loadWalletBalances();
   }catch(e){ sendMsg("Failed: "+String(e.reason||e.message||e).slice(0,110),"warn"); }
 }

@@ -166,7 +166,9 @@ const RPC = 'https://rpc.mainnet.chain.robinhood.com';
   const tok = ((await pg.textContent('#tvAddr')) || '').trim().split(/\s/)[0];
   await pg.evaluate((t) => { window.__tok = t; }, tok);
   const lbl = await pg.textContent('#buyLbl');
-  eq((lbl || '').trim(), 'Buy — ETH to spend', 'le libelle d achat porte ETH pour un jeton V2');
+  eq((lbl || '').trim(), 'Buy — ETH (RH) to spend',
+     'le libelle d achat porte ETH (RH) pour un jeton V2 : « ETH » tout court se confond'
+     + ' avec l ether du reseau principal, que le joueur detient aussi');
   const collecte = await pg.textContent('#tvCollectBtn');
   ok(/70% creator/.test(collecte || ''), 'le partage V2 annonce est celui du V2 : ' + collecte);
   const badge = await pg.textContent('#tvBadge');

@@ -377,6 +377,15 @@ body{
   color:var(--doux); margin-top:2px }
 .wl-cpt .coche{ flex:0 0 auto; color:var(--violet2); font-size:13px; font-weight:800 }
 
+/* ---- LA LIGNE DU CASINO, SUR L'ACCUEIL ----
+   Elle ressemble a une ligne de jeton parce que c'en est une : c'est du
+   $SWOGE, juste range ailleurs. Le liseré dore la distingue de la chaine. */
+.wl-casino{ border-color:rgba(233,166,43,.45) }
+.wl-casino .num{ flex:0 0 auto; width:38px; height:38px; border-radius:50%;
+  background:linear-gradient(160deg,#FFD679,#E9A62B); color:#0B0710;
+  display:flex; align-items:center; justify-content:center; font-size:18px }
+.wl-casino .fl{ flex:0 0 auto; color:var(--doux); font-size:12px }
+
 .wl-note{ font:400 12px/1.5 'Archivo',sans-serif; color:var(--doux); margin:8px 0 0 }
 .wl-note.alerte{ color:var(--or) }
 .wl-note.grave{ color:var(--rouge) }
@@ -471,6 +480,16 @@ body{
       </div>
 
       <div class="wl-jetons" id="acJetons"></div>
+
+      <!-- ---- LE SOLDE DU JEU ----
+           Le $SWOGE mis au coffre du casino n'est pas sur la chaine : sans
+           cette ligne, un joueur qui en a mis y voyait son solde de chaine et
+           pouvait croire le reste perdu. -->
+      <button class="wl-jeton wl-casino" type="button" id="acCasino" data-va="ecCasino">
+        <span class="num">🎰</span>
+        <span class="nom"><b>Casino balance</b><small id="acCasinoSous">In the game vault</small></span>
+        <span class="val"><b id="acCasinoVal">—</b><small id="acCasinoPied">tap to open</small></span>
+      </button>
 
       <div class="wl-actions">
         <button type="button" data-va="ecEnvoyer"><span class="bulle">&uarr;</span><span class="t">SEND</span></button>
@@ -605,6 +624,59 @@ body{
       </div>
       <button class="wl-b" id="swPartir" type="button">Swap</button>
       <p class="wl-note" id="swNote"></p>
+    </div>
+  </section>
+
+  <!-- ============ CASINO ============ -->
+  <section class="wl-ecran" id="ecCasino">
+    <div class="wl-tete">
+      <button class="rond" type="button" data-va="ecAccueil" aria-label="Back">&larr;</button>
+      <h1>Casino</h1>
+    </div>
+    <div class="wl-corps">
+      <div class="wl-carte wl-total">
+        <small>IN THE GAME VAULT</small>
+        <b id="caSolde">—</b>
+        <div class="sous" id="caEtat">Not connected</div>
+      </div>
+
+      <!-- ---- LE BON NON ENCAISSE ----
+           Le retrait DEBITE le solde du jeu avant que la transaction parte.
+           Si elle echoue, le joueur voit son chiffre tomber et croit avoir
+           perdu. Le bon est cumulatif — le contrat paiera l'ecart — mais
+           personne ne peut le deviner. Alors on le dit, et on offre le
+           bouton. -->
+      <div class="wl-carte" id="caBonBloc" hidden style="border-color:rgba(233,166,43,.5)">
+        <div class="wl-rang"><span>Waiting to be claimed</span><b id="caBonMontant">—</b></div>
+        <button class="wl-b" id="caBonClaim" type="button">Claim it now</button>
+        <p class="wl-note">This withdrawal was already taken out of your game balance but never
+          landed on-chain — a refused signature, a failed transaction, a closed tab.
+          <b>Nothing is lost</b>: the voucher is cumulative, so claiming it now pays exactly what
+          you are owed.</p>
+      </div>
+
+      <div class="wl-titre">DEPOSIT</div>
+      <div class="wl-carte">
+        <div class="wl-champ wl-avecmax" style="margin:0">
+          <input id="caDepMontant" inputmode="decimal" placeholder="0.0" autocomplete="off">
+          <button type="button" class="wl-max" id="caDepMax">MAX</button>
+        </div>
+        <div class="wl-rang"><span>In your wallet</span><b id="caDepSolde">—</b></div>
+      </div>
+      <button class="wl-b" id="caDeposer" type="button">Deposit to play</button>
+      <p class="wl-note">Moves $SWOGE from <b>this wallet</b> into your game balance. It stays
+        yours — you can pull it back out whenever you like.</p>
+
+      <div class="wl-titre">WITHDRAW</div>
+      <div class="wl-carte">
+        <div class="wl-champ wl-avecmax" style="margin:0">
+          <input id="caRetMontant" inputmode="decimal" placeholder="0.0" autocomplete="off">
+          <button type="button" class="wl-max" id="caRetMax">MAX</button>
+        </div>
+        <div class="wl-rang"><span>Minimum</span><b id="caRetMin">—</b></div>
+      </div>
+      <button class="wl-b vide" id="caRetirer" type="button">Withdraw to my wallet</button>
+      <p class="wl-note" id="caNote"></p>
     </div>
   </section>
 
@@ -932,6 +1004,173 @@ var PRIVY_APP_ID = 'cmsga0yzp00a50biaf9vlzzd2';
  * classements — et se lisent par adresse, sans session : cette page n'en a
  * aucune, elle ne parle qu'a la chaine. */
 var SERVEUR = 'https://web-production-220a3.up.railway.app';
+var SOCKET  = 'wss://web-production-220a3.up.railway.app';
+
+/* ==================== LE COFFRE DU CASINO ====================
+ *
+ * ---- POURQUOI CETTE PAGE DOIT LE MONTRER ----
+ *
+ * Il y a DEUX soldes de $SWOGE : celui de la chaine, que ce portefeuille
+ * lisait deja, et celui du coffre du jeu, qu'il ignorait completement. Un
+ * joueur qui a cinquante mille jetons en jeu ouvrait son portefeuille, voyait
+ * son solde de chaine, et pouvait croire le reste perdu.
+ *
+ * ---- ON NE FAIT PAS SIGNER POUR RIEN ----
+ *
+ * Le serveur accepte deux entrees : une signature, ou un jeton de session
+ * garde par les autres pages du site. On essaie TOUJOURS le jeton d'abord.
+ * Ouvrir le portefeuille du joueur juste pour lui afficher un chiffre serait
+ * lui demander un effort — et une confirmation inquietante — pour une simple
+ * lecture.
+ *
+ * Et on ne se connecte pas au chargement : seulement quand le joueur regarde
+ * le casino. Une page de portefeuille n'a pas a tenir une socket ouverte pour
+ * afficher des soldes de chaine.
+ */
+var CASINO = {
+  ws: null, etat: 'ferme',   // ferme | ouvre | pret | refuse
+  solde: null,               // en $SWOGE, ou null = INCONNU (jamais zero)
+  vault: null, jeton: null, minRetrait: null,
+  bonEnAttente: null,        // un retrait autorise mais pas encaisse
+  nonce: null, note: '',
+};
+
+function casinoJeton(){ try{ return localStorage.getItem('swogeSession') || null; }catch(e){ return null; } }
+function casinoGardeJeton(t){ try{ if(t) localStorage.setItem('swogeSession', t); }catch(e){} }
+
+function casinoEnvoie(m){
+  if(CASINO.ws && CASINO.ws.readyState === 1){ CASINO.ws.send(JSON.stringify(m)); return true; }
+  return false;
+}
+
+/* Une seule socket, et elle se ferme quand on quitte l'ecran. */
+function casinoOuvre(surPret){
+  if(CASINO.ws && (CASINO.ws.readyState === 0 || CASINO.ws.readyState === 1)){
+    if(CASINO.etat === 'pret' && surPret) surPret();
+    return;
+  }
+  CASINO.etat = 'ouvre'; peintCasino();
+  var ws;
+  try{ ws = new WebSocket(SOCKET); }
+  catch(e){ CASINO.etat='refuse'; CASINO.note='Could not reach the game server.'; peintCasino(); return; }
+  CASINO.ws = ws;
+
+  /* Une socket qui n'aboutit pas ne rejette pas : elle attend. Sans borne, le
+     panneau resterait sur « connecting… » indefiniment — le meme piege que le
+     RPC lent, et la meme reponse. */
+  var minuteur = setTimeout(function(){
+    if(CASINO.etat !== 'pret'){
+      CASINO.etat='refuse';
+      CASINO.note='The game server did not answer in time. Your game balance is unknown — not zero.';
+      try{ ws.close(); }catch(e){}
+      peintCasino();
+    }
+  }, 12000);
+
+  ws.onmessage = function(ev){
+    var m; try{ m = JSON.parse(ev.data); }catch(e){ return; }
+
+    if(m.type === 'hello'){
+      CASINO.nonce = m.loginNonce;
+      /* ---- UNE ADRESSE DE COFFRE MALFORMEE DONNE UN MESSAGE ABSURDE ----
+         `ethers` prend ce qui n'est pas une adresse pour un nom ENS, et
+         repond « network does not support ENS » — un message qui envoie
+         chercher a mille lieues du vrai probleme. On verifie donc tout de
+         suite.
+         MAIS on met en minuscules AVANT de verifier : `isAddress` valide
+         aussi la somme de controle des adresses en casse mixte, et une somme
+         fausse dans la CONFIGURATION du serveur couperait les depots pour
+         tout le monde. Pour une adresse saisie par un joueur, refuser est la
+         bonne reponse ; pour une adresse d'exploitation, non. */
+      var vc = m.vault ? String(m.vault).toLowerCase() : null;
+      CASINO.vault = (vc && ethers.utils.isAddress(vc)) ? vc : null;
+      if(m.vault && !CASINO.vault)
+        CASINO.note = 'The game server gave an unusable vault address — deposits and withdrawals are off.';
+      CASINO.jeton = m.token || null;
+      CASINO.minRetrait = (m.minWithdraw !== undefined && m.minWithdraw !== null)
+        ? Number(m.minWithdraw) : null;
+      /* Le jeton d'abord : il evite d'ouvrir le portefeuille. */
+      var t = casinoJeton();
+      if(t) casinoEnvoie({ type:'resume', token:t });
+      else casinoDemandeSignature();
+      return;
+    }
+    if(m.type === 'resumeFailed'){ casinoDemandeSignature(); return; }
+
+    if(m.type === 'auth'){
+      clearTimeout(minuteur);
+      /* Le serveur peut repondre pour une AUTRE adresse que celle affichee —
+         un jeton de session garde d'un compte precedent, par exemple. On
+         refuse plutot que de montrer le solde de quelqu'un d'autre. */
+      if(m.address && moi && String(m.address).toLowerCase() !== moi){
+        CASINO.etat='refuse';
+        CASINO.note='That saved session belongs to another address. Sign in again to see this account\'s game balance.';
+        try{ localStorage.removeItem('swogeSession'); }catch(e){}
+        peintCasino(); return;
+      }
+      CASINO.etat = 'pret'; CASINO.note='';
+      if(m.session) casinoGardeJeton(m.session);
+      if(m.balance !== undefined) CASINO.solde = parseFloat(m.balance);
+      peintCasino(); peintAccueil();
+      /* Y a-t-il un bon non encaisse ? Cette route ne signe rien. */
+      casinoEnvoie({ type:'withdrawPending' });
+      if(surPret) surPret();
+      return;
+    }
+    if(m.type === 'balance' && m.balance !== undefined){
+      CASINO.solde = parseFloat(m.balance); peintCasino(); peintAccueil(); return;
+    }
+    if(m.type === 'bonAttente'){
+      var v = parseFloat(m.montant || '0');
+      CASINO.bonEnAttente = v > 0 ? v : null;
+      peintCasino(); return;
+    }
+    if(m.type === 'voucher'){ encaisseBon(m); return; }
+    if(m.type === 'error'){
+      CASINO.note = String(m.error || 'refused');
+      peintCasino(); return;
+    }
+    /* Le solde voyage avec beaucoup de messages du jeu : on le prend partout
+       ou il passe, c'est ce qui garde le chiffre frais sans rien demander. */
+    if(m.balance !== undefined && m.balance !== null){
+      CASINO.solde = parseFloat(m.balance); peintCasino(); peintAccueil();
+    }
+  };
+  ws.onclose = function(){
+    clearTimeout(minuteur);
+    if(CASINO.etat === 'ouvre'){
+      CASINO.etat='refuse';
+      CASINO.note='Lost the link to the game server. Your game balance is unknown — not zero.';
+      peintCasino();
+    }
+  };
+  ws.onerror = function(){ /* `onclose` suit et porte le message */ };
+}
+
+function casinoFerme(){
+  try{ if(CASINO.ws) CASINO.ws.close(); }catch(e){}
+  CASINO.ws = null;
+  if(CASINO.etat !== 'refuse') CASINO.etat = 'ferme';
+}
+
+/* La signature, demandee SEULEMENT si le jeton n'a pas suffi. */
+async function casinoDemandeSignature(){
+  if(!signer || !moi){
+    CASINO.etat='refuse'; CASINO.note='Connect a wallet first.'; peintCasino(); return;
+  }
+  CASINO.note = 'Sign in your wallet to read your game balance…'; peintCasino();
+  try{
+    var msg = 'SWOGE Pusher login\nnonce: ' + CASINO.nonce;
+    var sig = await signer.signMessage(msg);
+    casinoEnvoie({ type:'login', message:msg, signature:sig });
+  }catch(e){
+    CASINO.etat='refuse';
+    CASINO.note = /user rejected|denied|4001/i.test(String(e && (e.message||e)))
+      ? 'You cancelled the signature — your game balance stays unknown.'
+      : 'Could not sign in to the game server.';
+    peintCasino();
+  }
+}
 
 /* ---- UNE LECTURE QUI N'ARRIVE PAS DOIT LE DIRE ----
  * Un RPC lent ne rejette pas : il ATTEND. Sans borne, le devis reste a
@@ -1036,6 +1275,12 @@ function va(id){
   if(id==='ecActivite') chargeActivite();
   if(id==='ecSwap')     majSwap();
   if(id==='ecEnvoyer')  majEnvoyer();
+  /* ---- LA SOCKET NE VIT QUE SUR CET ECRAN ----
+     Une page de portefeuille n'a pas a tenir une liaison ouverte pour
+     afficher des soldes de chaine. On l'ouvre en entrant, on la ferme en
+     sortant — et le dernier solde lu reste affiche sur l'accueil. */
+  if(id==='ecCasino'){ peintCasino(); if(moi) casinoOuvre(); }
+  else if(CASINO.ws) casinoFerme();
 }
 document.addEventListener('click', function(ev){
   var b = ev.target.closest('[data-va]');
@@ -1175,6 +1420,9 @@ $('cpSortir').addEventListener('click', function(){
   try{ localStorage.removeItem('swogeAuth'); }catch(e){}
   try{ if(window.SwogePrivy) SwogePrivy.logout(); }catch(e){}
   signer=null; moi=null; methode=null; soldes={};
+  casinoFerme();
+  CASINO.solde=null; CASINO.bonEnAttente=null; CASINO.etat='ferme'; CASINO.note='';
+  try{ localStorage.removeItem('swogeSession'); }catch(e){}
   majCompte(); peintAccueil(); toast('Disconnected');
 });
 /* La page qui montre la cle existe deja et vit a part — elle charge son
@@ -1315,6 +1563,7 @@ function peintAccueil(){
   }
   $('acJetons').innerHTML = h;
   $('jtListe').innerHTML  = h;
+  peintCasino();
   $('jtNote').textContent = prixUsd===null && moi
     ? 'Dollar values are unavailable right now — the market feed did not answer. Your balances above are read straight from the chain and are correct.'
     : '';
@@ -1393,6 +1642,162 @@ function majCompte(){
   $('hReseau').classList.toggle('on', !!moi);
   peintProfil();
 }
+
+var VAULT_ABI = [
+  'function deposit(uint256)',
+  'function withdraw(uint256 cumulative,uint256 deadline,uint8 v,bytes32 r,bytes32 s)'
+];
+
+function caNote(t, classe){
+  var e = $('caNote'); if(!e) return;
+  e.textContent = t || ''; e.className = 'wl-note' + (classe ? ' ' + classe : '');
+}
+
+function peintCasino(){
+  var pret = CASINO.etat === 'pret';
+  /* ---- INCONNU N'EST PAS ZERO ----
+     Tant que le serveur n'a pas repondu, on ne montre pas « 0 » : sur un
+     solde, ce chiffre-la se lit comme « tu n'as plus rien ». */
+  var aff = (pret && CASINO.solde !== null) ? nombre(ethers.utils.parseUnits(String(CASINO.solde),18),18) : '—';
+  var el = $('caSolde'); if(el) el.textContent = aff + (aff === '—' ? '' : ' $SWOGE');
+  var ac = $('acCasinoVal'); if(ac) ac.textContent = aff;
+
+  var etat = $('caEtat');
+  if(etat) etat.textContent = !moi ? 'Not connected'
+    : CASINO.etat === 'ouvre' ? 'Reading your game balance…'
+    : CASINO.etat === 'refuse' ? (CASINO.note || 'Unknown — the server did not answer')
+    : CASINO.note || (CASINO.solde === null ? 'Unknown' : 'Live from the game server');
+
+  var pied = $('acCasinoPied');
+  if(pied) pied.textContent = !moi ? '—'
+    : CASINO.etat === 'refuse' ? 'unknown' : (pret ? 'tap to open' : 'tap to open');
+
+  var sw = soldes.swoge;
+  var ds = $('caDepSolde');
+  if(ds) ds.textContent = (sw === null || sw === undefined) ? '—' : nombre(sw,18) + ' $SWOGE';
+  var mn = $('caRetMin');
+  if(mn) mn.textContent = CASINO.minRetrait === null ? '—' : ddNombre(CASINO.minRetrait) + ' $SWOGE';
+
+  var bb = $('caBonBloc');
+  if(bb){
+    bb.hidden = !CASINO.bonEnAttente;
+    if(CASINO.bonEnAttente) $('caBonMontant').textContent = ddNombre(CASINO.bonEnAttente) + ' $SWOGE';
+  }
+  var d = $('caDeposer'), r = $('caRetirer');
+  if(d) d.disabled = !moi;
+  if(r) r.disabled = !pret;
+}
+function ddNombre(n){ return (Number(n)||0).toLocaleString('en-US',{maximumFractionDigits:2}); }
+
+/* ---- LE DEPOT ----
+ * Deux transactions la premiere fois : autoriser le coffre, puis deposer.
+ * L'autorisation est illimitee et demandee UNE SEULE FOIS — c'est ce que
+ * font deja les autres pages du site, et la redemander a chaque depot
+ * ferait payer deux fois le gaz a chaque fois. */
+$('caDeposer').addEventListener('click', async function(){
+  if(!moi) return ouvreConnexion();
+  if(!CASINO.vault) { caNote('No usable vault address from the game server — deposits are off.', 'grave'); return; }
+  var t = ($('caDepMontant').value||'').trim().replace(',','.');
+  if(!(parseFloat(t) > 0)) return toast('Enter an amount');
+  var wei; try{ wei = ethers.utils.parseUnits(t, 18); }catch(e){ return toast('Amount not understood'); }
+  if(soldes.swoge && wei.gt(soldes.swoge)) return toast('More $SWOGE than you hold');
+
+  var b = this; b.disabled = true; var lib = b.textContent;
+  try{
+    await assureChaine();
+    var jeton = erc(SWOGE, true);
+    var coffre = new ethers.Contract(CASINO.vault, VAULT_ABI, signer);
+    var acc = await borne(jeton.allowance(moi, CASINO.vault), 12000, 'allowance');
+    if(acc.lt(wei)){
+      b.textContent = 'Approve in your wallet…';
+      caNote('Approve $SWOGE for the vault — asked once, not on every deposit.');
+      var ta = await jeton.approve(CASINO.vault, ethers.constants.MaxUint256);
+      await ta.wait();
+    }
+    b.textContent = 'Confirm the deposit…';
+    caNote('Depositing…');
+    var tx = await coffre.deposit(wei);
+    caNote('Sent — waiting for the chain…');
+    await tx.wait();
+    /* Le serveur crediteur regarde la chaine : le solde du jeu suit avec un
+       peu de retard, ce n'est pas une erreur. */
+    caNote('Deposited. Your game balance updates as soon as the server sees it.');
+    $('caDepMontant').value='';
+    rafraichit();
+    setTimeout(function(){ casinoEnvoie({ type:'balance' }); }, 3000);
+  }catch(e){ caNote(pourquoiRefus(e), 'grave'); }
+  b.textContent = lib; b.disabled = false;
+});
+
+$('caDepMax').addEventListener('click', function(){
+  var s = soldes.swoge;
+  if(s === null || s === undefined) return toast('Your $SWOGE balance has not been read yet — it is unknown, not zero.');
+  if(s.isZero()) return toast('No $SWOGE in this wallet to deposit.');
+  $('caDepMontant').value = ethers.utils.formatUnits(s, 18);
+});
+$('caRetMax').addEventListener('click', function(){
+  if(CASINO.solde === null) return toast('Your game balance is unknown right now.');
+  $('caRetMontant').value = String(CASINO.solde);
+});
+
+/* ---- LE RETRAIT ----
+ * Il se termine SUR LA CHAINE : le serveur signe un bon, le joueur
+ * l'encaisse depuis son propre portefeuille. Le solde du jeu est debite
+ * AVANT — d'ou le bloc de secours plus haut si l'encaissement echoue. */
+$('caRetirer').addEventListener('click', function(){
+  if(CASINO.etat !== 'pret') return;
+  var t = ($('caRetMontant').value||'').trim().replace(',','.');
+  var v = parseFloat(t);
+  if(!(v > 0)) return toast('Enter an amount');
+  if(CASINO.minRetrait !== null && v < CASINO.minRetrait)
+    return caNote('Minimum withdrawal is ' + ddNombre(CASINO.minRetrait) + ' $SWOGE.', 'alerte');
+  if(CASINO.solde !== null && v > CASINO.solde)
+    return caNote('More than your game balance.', 'alerte');
+  caNote('Asking the server for a voucher…');
+  if(!casinoEnvoie({ type:'withdraw', amount: t }))
+    caNote('Not connected to the game server — try again in a moment.', 'grave');
+});
+
+/* Le bon arrive du serveur : on l'encaisse. */
+async function encaisseBon(m){
+  var v = m.voucher || m;
+  if(!v) return;
+  if(m.balance !== undefined) CASINO.solde = parseFloat(m.balance);
+  var vr = m.vault ? String(m.vault).toLowerCase() : null;
+  var adresseCoffre = (vr && ethers.utils.isAddress(vr)) ? vr : CASINO.vault;
+  peintCasino();
+  if(!adresseCoffre){
+    caNote('No usable vault address — the withdrawal is still yours, claim it once the server '
+         + 'gives a valid one.', 'grave');
+    return;
+  }
+  try{
+    await assureChaine();
+    caNote('Confirm the withdrawal in your wallet…');
+    var coffre = new ethers.Contract(adresseCoffre, VAULT_ABI, signer);
+    var tx = await coffre.withdraw(v.cumulative, v.deadline, v.v, v.r, v.s);
+    caNote('Sent — waiting for the chain…');
+    await tx.wait();
+    caNote('Paid to your wallet.');
+    CASINO.bonEnAttente = null;
+    $('caRetMontant').value='';
+    peintCasino(); rafraichit();
+    casinoEnvoie({ type:'withdrawPending' });
+  }catch(e){
+    /* ---- LE MOMENT OU LE JOUEUR CROIT AVOIR PERDU ----
+       Son solde de jeu vient de tomber et sa transaction a echoue. Le bon
+       est cumulatif : le contrat paiera l'ecart au prochain encaissement.
+       On le DIT, et on laisse le bouton. */
+    caNote(pourquoiRefus(e) + ' — nothing is lost: the voucher is still yours and can be claimed below.', 'grave');
+    casinoEnvoie({ type:'withdrawPending' });
+  }
+}
+
+$('caBonClaim').addEventListener('click', function(){
+  caNote('Asking the server to re-sign your voucher…');
+  if(!casinoEnvoie({ type:'withdrawVoucher' }))
+    caNote('Not connected to the game server — try again in a moment.', 'grave');
+});
 
 /* ==================== RECEVOIR ====================
  * Le QR est dessine ICI, sans bibliotheque : une adresse Ethereum tient
@@ -1473,6 +1878,12 @@ async function basculeCompte(n){
     signer = p.getSigner();
     moi = String(adr).toLowerCase();
     soldes = {};                       /* inconnu, pas zero */
+    /* ---- LE SOLDE DU JEU APPARTIENT A UNE ADRESSE ----
+       Le garder d'un compte a l'autre afficherait le solde de jeu du
+       precedent sous la nouvelle adresse. On coupe la liaison et on oublie :
+       « inconnu » se relira tout seul si le joueur ouvre l'ecran. */
+    casinoFerme();
+    CASINO.solde = null; CASINO.bonEnAttente = null; CASINO.etat='ferme'; CASINO.note='';
     generation++;
     majCompte(); peintComptes(); peintAccueil(); peintRecevoir();
     await rafraichit();

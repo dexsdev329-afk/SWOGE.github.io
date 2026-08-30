@@ -18,9 +18,11 @@ const http = require('http');
 
 const SITE = __dirname;
 const ETHERS = '/home/user/swoge-pusher-server.github.io/node_modules/ethers/dist/ethers.umd.min.js';
-let chromium = null;
+let chromium = null, WSS = null;
+/* Le faux serveur de jeu : `ws` vit dans le depot du serveur, comme `ethers`. */
+try { WSS = require('/home/user/swoge-pusher-server.github.io/node_modules/ws').WebSocketServer; } catch (e) {}
 try { chromium = require('playwright').chromium; } catch (e) {}
-if (!chromium) { console.log('wallet_page.test.js : playwright absent — essai saute'); process.exit(0); }
+if (!chromium || !WSS) { console.log('wallet_page.test.js : playwright ou ws absent — essai saute'); process.exit(0); }
 
 let n = 0, rates = 0;
 const ok = (c, m) => { n++; if (c) console.log('  ok   ' + m); else { rates++; console.log('  RATE ' + m); } };
@@ -761,6 +763,137 @@ const T = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
 
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.close();
+  }
+
+  /* 7 quater. LE SOLDE DU CASINO
+   *
+   * Il y a DEUX soldes de $SWOGE : celui de la chaine et celui du coffre du
+   * jeu. Le portefeuille n en montrait qu un — un joueur qui avait mis son
+   * $SWOGE au coffre pouvait croire le reste perdu.
+   *
+   * Ce qui compte ici, et qui n est pas evident :
+   *
+   *   - « inconnu » n est pas « zero ». Tant que le serveur n a pas repondu,
+   *     la ligne affiche un tiret. Un zero sur un solde se lit comme « tu n as
+   *     plus rien ».
+   *   - LE RETRAIT DEBITE AVANT LA TRANSACTION. Si l encaissement echoue, le
+   *     joueur voit son chiffre tomber ET sa transaction rater : c est le
+   *     moment exact ou il croit avoir perdu. Le bon est cumulatif, donc rien
+   *     n est perdu — mais il faut le DIRE et laisser le bouton.
+   */
+  console.log('\n-- le solde du casino --');
+  {
+    const MOI = '0x00000000000000000000000000000000000a11ce';
+    const VAULT = '0x00000000000000000000000000000000000fa111';
+    const enMot = (v) => '0x' + BigInt(v).toString(16).padStart(64, '0');
+    const jeu = new WSS({ port: 0 });
+    await new Promise((r) => jeu.on('listening', r));
+    let bon = 0;
+    jeu.on('connection', (c) => {
+      c.send(JSON.stringify({ type: 'hello', loginNonce: 'abc', vault: VAULT,
+        token: '0x8a166Fb41Cd659a0a43396272FF73973Ce29F817', minWithdraw: 50, chainId: 4663 }));
+      c.on('message', (d) => {
+        let m; try { m = JSON.parse(d); } catch (e) { return; }
+        if (m.type === 'login' || m.type === 'resume')
+          c.send(JSON.stringify({ type: 'auth', address: MOI, balance: '50000', session: 'jeton' }));
+        if (m.type === 'withdrawPending')
+          c.send(JSON.stringify({ type: 'bonAttente', montant: String(bon) }));
+        if (m.type === 'withdraw') {
+          bon = Number(m.amount);
+          c.send(JSON.stringify({ type: 'voucher', vault: VAULT, balance: String(50000 - bon),
+            voucher: { cumulative: '1000000000000000000000', deadline: '99999999999', v: 27,
+                       r: '0x' + '11'.repeat(32), s: '0x' + '22'.repeat(32) } }));
+        }
+      });
+    });
+
+    const page = await nav.newPage({ viewport: { width: 390, height: 844 } });
+    const boum = [];
+    page.on('pageerror', (e) => boum.push(e.message));
+    await page.addInitScript(([moi, ws]) => {
+      try { localStorage.setItem('swogeAuth', 'wallet'); } catch (e) {}
+      const O = window.WebSocket;
+      /* On detourne la socket du jeu vers le faux serveur, sans toucher a la page. */
+      window.WebSocket = function (u) { return new O(String(u).indexOf('railway') >= 0 ? ws : u); };
+      window.ethereum = { isMetaMask: true, on: () => {}, removeListener: () => {},
+        request: async (a) => {
+          if (a.method === 'eth_accounts' || a.method === 'eth_requestAccounts') return [moi];
+          if (a.method === 'eth_chainId') return '0x1237';
+          if (a.method === 'net_version') return '4663';
+          if (a.method === 'personal_sign') return '0x' + 'ab'.repeat(65);
+          return null; } };
+    }, [MOI, 'ws://127.0.0.1:' + jeu.address().port]);
+    await page.route('**/ethers*.umd.min.js', (r) => r.fulfill({
+      contentType: 'text/javascript', body: fs.readFileSync(ETHERS, 'utf8') }));
+    await page.route('**/api.dexscreener.com/**', (r) => r.abort());
+    await page.route('**/avatar/**', (r) => r.fulfill({ status: 404, body: '' }));
+    await page.route('**/nom/**', (r) => r.abort());
+    await page.route('**/rpc.mainnet.chain.robinhood.com/**', async (r) => {
+      const q = JSON.parse(r.request().postData() || '{}');
+      const seul = !Array.isArray(q); const arr = seul ? [q] : q;
+      const un = (m) => {
+        if (m.method === 'eth_getBalance') return enMot(5000000000000000n);
+        if (m.method === 'eth_chainId') return '0x1237';
+        if (m.method === 'net_version') return '4663';
+        if (m.method === 'eth_blockNumber') return '0x2f7ce78';
+        if (m.method === 'eth_getLogs') return [];
+        if (m.method === 'eth_gasPrice') return enMot(134102000n);
+        if (m.method === 'eth_call') return enMot(1234000000000000000000n);
+        return null; };
+      const out = arr.map((m) => ({ jsonrpc: '2.0', id: m.id, result: un(m) }));
+      await r.fulfill({ contentType: 'application/json',
+        body: JSON.stringify(seul ? out[0] : out) });
+    });
+    await page.goto('http://127.0.0.1:' + port + '/swoge_wallet.html',
+                    { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(2600);
+
+    ok(await page.evaluate(() => document.getElementById('acCasinoVal').textContent) === '—',
+       'avant d avoir lu le serveur, la ligne du casino dit « — » et non « 0 »'
+       + ' — un zero sur un solde se lit comme « tu n as plus rien »');
+
+    await page.click('#acCasino');
+    await page.waitForTimeout(2400);
+    const vu = await page.evaluate(() => ({
+      solde: document.getElementById('caSolde').textContent,
+      etat: document.getElementById('caEtat').textContent,
+      min: document.getElementById('caRetMin').textContent,
+      wallet: document.getElementById('caDepSolde').textContent,
+      accueil: document.getElementById('acCasinoVal').textContent,
+    }));
+    ok(/50,000/.test(vu.solde), 'le solde du coffre s affiche (' + vu.solde + ')');
+    ok(/50 \$SWOGE/.test(vu.min), 'le minimum de retrait vient du SERVEUR, pas de la page ('
+       + vu.min + ')');
+    ok(/1,234/.test(vu.wallet), 'et le solde de CHAINE est rappele en face, pour savoir quoi deposer');
+    ok(/50,000/.test(vu.accueil), 'la ligne de l accueil suit aussi (' + vu.accueil + ')');
+
+    /* Le retrait : la transaction va echouer, le coffre n est pas un vrai
+       contrat. C est exactement le cas qu on veut voir. */
+    await page.fill('#caRetMontant', '100');
+    await page.click('#caRetirer');
+    await page.waitForTimeout(2600);
+    const apres = await page.evaluate(() => ({
+      note: document.getElementById('caNote').textContent,
+      bonVisible: !document.getElementById('caBonBloc').hidden,
+      bon: document.getElementById('caBonMontant').textContent,
+    }));
+    ok(/nothing is lost/i.test(apres.note),
+       'un encaissement rate DIT que rien n est perdu — c est le moment exact ou le joueur'
+       + ' voit son solde tomber et sa transaction rater');
+    ok(apres.bonVisible, 'et le bon reste reclamable');
+    ok(/100/.test(apres.bon), 'avec le bon montant (' + apres.bon + ')');
+
+    /* Un montant sous le minimum ne part pas. */
+    await page.fill('#caRetMontant', '5');
+    await page.click('#caRetirer');
+    await page.waitForTimeout(500);
+    ok(/Minimum withdrawal is 50/.test(
+         await page.evaluate(() => document.getElementById('caNote').textContent)),
+       'sous le minimum du serveur, la demande ne part pas');
+
+    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
+    await page.close();
+    jeu.close();
   }
 
   /* 8. SUR UN TELEPHONE : PAS DE ZOOM, ET LES ONGLETS SONT LA

@@ -1774,6 +1774,104 @@ process.on('unhandledRejection', (e) => {
   const apresVideT = await t.evaluate(() => window.__s[0].__out.filter((m) => m.type === 'potionBoit').length);
   ok(apresVideT === apresT, 'et la fiole grisee ne demande rien');
 
+  /* ================== JETER PAR TERRE, AU DOIGT ==================
+   *
+   * « Sur telephone quand on drop un item il se met dans le sac ; je voulais
+   * le lacher par terre et c'est impossible. » Le geste existait, l'essai qui
+   * le garde existait — a LA SOURIS. Et a la souris il ne pouvait pas tomber :
+   * le manche et la zone de tir y sont en `display:none`, donc le pointeur
+   * touchait le canvas et la remontee trouvait le sol.
+   *
+   * Au doigt, ces deux zones couvrent l'aire de jeu en entier. Elles sont
+   * transparentes — `opacity:0`, rien de peint — mais elles PRENNENT les
+   * evenements, c'est tout leur role : `elementFromPoint` rendait l'une des
+   * deux, jamais le canvas, la remontee ne trouvait rien, et le lacher sortait
+   * sans un mot. La piece semblait revenir dans le sac : elle n'en etait
+   * jamais sortie.
+   *
+   * On mesure donc les DEUX moities, parce que ce sont deux elements
+   * differents et qu'en reconnaitre un seul aurait laisse la moitie de l'ecran
+   * muette — la moitie droite pour un droitier, celle ou le pouce se pose
+   * justement le plus. Et l'on ecrit CE QUE le doigt touche a cet endroit :
+   * sans ce temoin, le jour ou une troisieme zone apparaitra, l'essai tombera
+   * en disant « le depot ne part pas » sans dire sur quoi le doigt a atterri. */
+  console.log('\n-- jeter par terre, au doigt --');
+  await t.evaluate(() => { document.getElementById('nxWrap').classList.remove('replie'); });
+  await t.waitForTimeout(350);
+  /* Le voile de mort couvre tout l'ecran, y compris les deux zones : lache
+     dessus, rien ne part, et l'essai lirait « le depot ne marche pas » d'un
+     geste qui marche. */
+  await assureVivant(t);
+  await t.waitForTimeout(400);
+  /* Pas de sac sous les pieds : c'est le cas qui compte. On jette par terre,
+     le serveur cree le sac. */
+  await t.evaluate(() => { window.__sacs = []; });
+
+  const remetLaPieceT = async () => {
+    await assureVivant(t);
+    sacDuJoueur.sac = {}; sacDuJoueur.sac[PIECE.id] = 1;
+    sacDuJoueur.sacCases = null;
+    await t.evaluate(() => window.__s[0].send(JSON.stringify({ type: 'equipable' })));
+    return attend(t, (id) => !!document.querySelector('#nxSac .nxp-c[data-sac="' + id + '"]'),
+                  PIECE.id, 'la piece dans le sac de la page tactile');
+  };
+
+  async function mesureLeGeste(part) { return t.evaluate((part) => {
+    const c = document.querySelector('#nxSac .nxp-c[data-sac]');
+    const pan = document.getElementById('nxPanneau');
+    if (!c || !pan) return null;
+    const q = c.getBoundingClientRect();
+    /* Le milieu de l'AIRE DE JEU, pas de la fenetre : le panneau en mange
+       cent soixante-dix, et viser le milieu de l'ecran serait viser le
+       panneau. */
+    const jeu = pan.getBoundingClientRect().x;
+    const x = Math.round(jeu * part), y = Math.round(window.innerHeight * 0.5);
+    const sous = document.elementFromPoint(x, y);
+    return { sx: q.x + q.width / 2, sy: q.y + q.height / 2, x, y,
+             touche: sous ? ('#' + (sous.id || sous.className || sous.tagName)) : 'rien' };
+  }, part); }
+
+  for (const cote of [{ nom: 'la moitie GAUCHE (celle qui fait marcher)', part: 0.25 },
+                      { nom: 'la moitie DROITE (celle qui tire)', part: 0.75 }]) {
+    /* ---- ON REMET LA PIECE, ET L'ON MESURE DANS LA FOULEE ----
+     * Le premier lacher DEPOSE vraiment : le serveur sort la piece du sac et
+     * le redit a la page. On la remet, la case reapparait — puis un etat du
+     * serveur arrivait entre l'attente et la mesure, la case disparaissait, et
+     * la lecture rendait `null`. L'essai disait alors « on ne trouve pas la
+     * case » d'un sac qui en avait une une milliseconde plus tot.
+     * On refait donc les deux ensemble, jusqu'a trois fois : ce qu'on mesure
+     * est le LACHER, pas la vitesse a laquelle deux messages se croisent. */
+    let geste = null, dedans = false;
+    for (let essai = 0; essai < 3 && !geste; essai++) {
+      dedans = await remetLaPieceT();
+      if (!dedans) continue;
+      geste = await mesureLeGeste(cote.part);
+    }
+    ok(dedans, `la piece est dans le sac avant de viser ${cote.nom}`);
+    if (!dedans) continue;
+    ok(!!geste, `on trouve la case et l aire de jeu pour ${cote.nom}`);
+    if (!geste) continue;
+    console.log(`   ${cote.nom} : le doigt en (${geste.x},${geste.y}) touche ${geste.touche}`);
+    /* Le voile de mort se reconnait ici aussi : s'il est revenu entre-temps,
+       ce n'est pas le sol qu'on vise et le depot ne peut pas partir. */
+    ok(!/nxMortVoile|nxmt/.test(geste.touche),
+       `et ce n est pas un voile de mort (${geste.touche})`);
+    const avant = await t.evaluate(() => window.__s[0].__out.filter((m) => m.type === 'realmDepose').length);
+    await t.mouse.move(geste.sx, geste.sy);
+    await t.mouse.down();
+    await t.mouse.move(geste.x, geste.y, { steps: 10 });
+    await t.mouse.up();
+    await attend(t, (n) => window.__s[0].__out.filter((m) => m.type === 'realmDepose').length > n,
+                 avant, 'la demande de depot au doigt', 3000);
+    const apres = await t.evaluate(() => window.__s[0].__out.filter((m) => m.type === 'realmDepose').length);
+    const jete = await t.evaluate(() => window.__s[0].__out.filter((m) => m.type === 'realmDepose').pop());
+    ok(apres === avant + 1,
+       `lacher sur ${cote.nom} JETTE la piece par terre — sinon elle a l air de revenir dans le sac`);
+    ok(jete && jete.item === PIECE.id, `et c est bien celle qu on tenait (${jete && jete.item})`);
+  }
+  await t.evaluate(() => { document.getElementById('nxWrap').classList.add('replie'); });
+  await t.waitForTimeout(300);
+
   /* ================== LA FIOLE AUTOMATIQUE ==================
    *
    * Boire marchait deja en courant : trois commandes, aucune n'arrete le

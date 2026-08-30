@@ -1598,7 +1598,23 @@
        * quelque chose que la ou quelque chose etait deja tombe.
        * Le serveur, lui, savait le faire depuis le debut : `depose` cree un
        * sac s'il n'en trouve pas. Il ne manquait que le geste. */
-      if (el.tagName === 'CANVAS' && (SCENE === 'monde' || SCENE === 'nexus')) {
+      /* ---- ET LE SOL, C'EST AUSSI CE QUI LE RECOUVRE ----
+       * Au DOIGT, le canvas n'est jamais ce que le pointeur touche. Deux
+       * surfaces invisibles couvrent l'aire de jeu en entier : `#nxPad` a
+       * gauche, qui fait marcher, et `#nxVise` a droite, qui tire. Elles sont
+       * transparentes (`opacity:0`, rien de peint) mais elles PRENNENT les
+       * evenements — c'est tout leur role — et `elementFromPoint` rendait donc
+       * l'une des deux, jamais le canvas. La remontee ne trouvait plus rien,
+       * `lachePrise` sortait sans un mot, et la piece revenait dans le sac.
+       * C'est exactement ce qu'un joueur nous a decrit : « je le pose par
+       * terre et il retourne dans le sac ». A la souris le defaut n'existait
+       * pas — les deux zones y sont en `display:none` — et l'essai qui jette
+       * une piece au milieu de la scene passait depuis toujours.
+       * On ne peut pas les rendre transparentes aux clics : sans leurs
+       * evenements il n'y a plus ni marche ni tir. On les reconnait donc pour
+       * ce qu'elles sont — la surface de jeu, vue du doigt. */
+      if ((el.tagName === 'CANVAS' || el.id === 'nxPad' || el.id === 'nxVise')
+          && (SCENE === 'monde' || SCENE === 'nexus')) {
         return { quoi: 'sol' };
       }
       el = el.parentElement;

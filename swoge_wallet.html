@@ -1,0 +1,1284 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>SWOGE Wallet — your keys on Robinhood Chain</title>
+<meta name="description" content="SWOGE Wallet — hold, send and swap $SWOGE and $SWOGEBET on Robinhood Chain. Balances read live on-chain; nothing is written into the page.">
+<meta property="og:title" content="SWOGE Wallet">
+<meta property="og:description" content="Hold, send and swap $SWOGE and $SWOGEBET on Robinhood Chain.">
+<meta property="og:image" content="https://swoleeswoge.dog/img/wallet/tok_swoge.webp">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="SWOGE Wallet">
+<meta name="twitter:description" content="Hold, send and swap $SWOGE and $SWOGEBET on Robinhood Chain.">
+<meta name="twitter:image" content="https://swoleeswoge.dog/img/wallet/tok_swoge.webp">
+<link rel="icon" href="img/wallet/tok_swoge.webp">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<!-- Les MEMES polices que le reste du site : Anton, Archivo, Space Mono.
+     Jamais Inter — je l'avais suppose, et la relecture du chrome existant
+     m'a montre que c'etait faux. -->
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+<!-- ethers v5 en global, comme sur toutes les pages qui touchent a la chaine.
+     Il doit etre la AVANT tout appel a la chaine. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+
+<style>
+/* ==================================================================
+ * SWOGE WALLET
+ *
+ * Une application de portefeuille posee DANS UN TELEPHONE, sur une page
+ * web. Le cadre fait la meme taille partout : sur telephone il remplit
+ * l'ecran, sur ordinateur il reste un telephone au milieu de la page.
+ * C'est la demande, et c'est aussi ce qui rend l'ensemble tenable — une
+ * seule mise en page a dessiner, a tester et a corriger.
+ *
+ * ---- CE QUE CETTE PAGE NE FERA JAMAIS ----
+ *
+ * Elle n'ecrit aucun chiffre. Aucun solde, aucun prix, aucun nombre de
+ * detenteurs, aucune transaction. Tout est LU sur la chaine, et quand la
+ * lecture echoue elle dit « impossible de lire » — pas « rien ». Les deux
+ * ne veulent pas dire la meme chose, et la seconde serait un mensonge :
+ * un joueur qui voit « aucune transaction » croit son historique vide.
+ *
+ * L'ecosysteme, c'est $SWOGE et $SWOGEBET. Rien d'autre n'existe.
+ * ================================================================== */
+
+:root{
+  --nuit:#0B0A0F; --carte:#15131C; --carte2:#1D1A26; --bord:#2A2635;
+  --texte:#EDEAF3; --doux:#9A93AC; --or:#E8B44A;
+  --violet:#8B5CF6; --violet2:#A78BFA;
+  --vert:#34D399; --rouge:#F87171;
+  --rayon:16px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:
+    radial-gradient(1100px 700px at 50% -10%, #241E37 0%, rgba(36,30,55,0) 60%),
+    #08070C;
+  color:var(--texte);
+  font:400 15px/1.45 'Archivo',system-ui,-apple-system,sans-serif;
+  min-height:100dvh;
+  display:flex; flex-direction:column; align-items:center;
+  padding:0; overflow-x:hidden;
+}
+
+/* ---- LE BANDEAU DU SITE ----
+   Reduit au minimum : ce n'est pas une page de jeu, c'est une application.
+   Il ne sert qu'a revenir au site. */
+.wl-haut{
+  width:100%; display:flex; align-items:center; justify-content:space-between;
+  gap:12px; padding:10px 16px; flex:0 0 auto;
+}
+.wl-marque{
+  display:flex; align-items:center; gap:9px; text-decoration:none; color:var(--texte);
+}
+.wl-marque img{ width:30px; height:30px; border-radius:50%; display:block }
+.wl-marque b{ font:800 15px/1 'Archivo',sans-serif; letter-spacing:.4px }
+.wl-marque i{ display:block; font:400 10px/1 'Space Mono',monospace; color:var(--doux);
+  font-style:normal; letter-spacing:1.4px; margin-top:3px }
+.wl-retour{
+  font:700 12px/1 'Archivo',sans-serif; color:var(--doux); text-decoration:none;
+  border:1px solid var(--bord); border-radius:999px; padding:8px 13px;
+}
+.wl-retour:hover{ color:var(--texte); border-color:var(--violet) }
+
+/* ==================== LE TELEPHONE ====================
+ * Taille logique fixe : 390 x 844, celle d'un telephone courant. Sur un
+ * ecran plus petit on ne retrecit pas le contenu, on laisse le cadre
+ * remplir l'ecran — un texte mis a l'echelle devient illisible bien avant
+ * de devenir petit.
+ */
+.wl-tel{
+  position:relative; width:390px; height:844px; max-width:100vw;
+  background:var(--nuit); border-radius:38px; overflow:hidden;
+  border:1px solid var(--bord);
+  box-shadow:0 0 0 10px #100E17, 0 0 0 11px #2B2638, 0 40px 90px rgba(0,0,0,.6);
+  display:flex; flex-direction:column; flex:0 0 auto;
+}
+@media (max-width:520px){
+  body{ padding:0 }
+  .wl-haut{ padding:8px 12px }
+  .wl-tel{ width:100vw; height:calc(100dvh - 50px); border-radius:0;
+           border:0; box-shadow:none }
+}
+
+/* la barre d'etat, purement decorative sur ordinateur */
+.wl-etat{
+  flex:0 0 auto; display:flex; align-items:center; justify-content:space-between;
+  padding:12px 20px 4px; font:700 12px/1 'Archivo',sans-serif; color:var(--texte);
+}
+.wl-etat .ic{ display:flex; gap:5px; opacity:.85; font-size:11px }
+
+/* l'en-tete de chaque ecran */
+.wl-tete{
+  flex:0 0 auto; display:flex; align-items:center; gap:12px;
+  padding:8px 18px 12px; min-height:46px;
+}
+.wl-tete h1{ margin:0; font:800 19px/1 'Archivo',sans-serif; letter-spacing:.2px; flex:1 }
+.wl-tete .rond{
+  width:34px; height:34px; border-radius:12px; border:1px solid var(--bord);
+  background:var(--carte); color:var(--texte); display:flex; align-items:center;
+  justify-content:center; cursor:pointer; font-size:16px; flex:0 0 auto; padding:0;
+}
+.wl-tete .rond:hover{ border-color:var(--violet) }
+.wl-tete .marque{ display:flex; align-items:center; gap:9px; flex:1 }
+.wl-tete .marque img{ width:30px; height:30px; border-radius:50% }
+.wl-tete .marque b{ font:800 17px/1 'Archivo',sans-serif }
+
+/* le corps defilant */
+.wl-corps{ flex:1 1 auto; overflow-y:auto; -webkit-overflow-scrolling:touch;
+  padding:0 16px 16px; scrollbar-width:none }
+.wl-corps::-webkit-scrollbar{ display:none }
+
+/* la barre d'onglets */
+.wl-pied{
+  flex:0 0 auto; display:grid; grid-template-columns:repeat(5,1fr);
+  border-top:1px solid var(--bord); background:rgba(11,10,15,.96);
+  padding:8px 4px calc(10px + env(safe-area-inset-bottom));
+}
+.wl-pied button{
+  background:none; border:0; cursor:pointer; color:var(--doux);
+  display:flex; flex-direction:column; align-items:center; gap:4px;
+  font:700 10px/1 'Archivo',sans-serif; padding:4px 0; letter-spacing:.3px;
+}
+.wl-pied button .g{ font-size:17px; line-height:1 }
+.wl-pied button.on{ color:var(--violet2) }
+
+/* ---- LES ECRANS ----
+   Un seul est visible a la fois. `hidden` seul ne suffirait pas : la regle
+   d'affichage le battrait, et l'ecran cache resterait a l'ecran en avalant
+   les clics. C'est le defaut qui a rendu DEAD SWOGE injouable pendant un
+   commit — on ne le refait pas. */
+.wl-ecran{ display:none; flex-direction:column; height:100%; }
+.wl-ecran.on{ display:flex }
+
+/* ---- LES BLOCS ---- */
+.wl-carte{
+  background:var(--carte); border:1px solid var(--bord); border-radius:var(--rayon);
+  padding:16px; margin-bottom:12px;
+}
+.wl-total{ text-align:left }
+.wl-total small{ display:block; font:700 11px/1 'Archivo',sans-serif; color:var(--doux);
+  letter-spacing:1px; margin-bottom:8px }
+.wl-total b{ display:block; font:800 34px/1 'Archivo',sans-serif; letter-spacing:-.5px;
+  font-variant-numeric:tabular-nums }
+.wl-total .sous{ margin-top:7px; font:700 12px/1 'Space Mono',monospace; color:var(--doux) }
+
+.wl-jetons{ display:flex; flex-direction:column; gap:8px }
+.wl-jeton{
+  display:flex; align-items:center; gap:12px; width:100%; text-align:left;
+  background:var(--carte); border:1px solid var(--bord); border-radius:var(--rayon);
+  padding:12px 14px; cursor:pointer; color:var(--texte); font:inherit;
+}
+.wl-jeton:hover{ border-color:var(--violet) }
+.wl-jeton img{ width:38px; height:38px; border-radius:50%; flex:0 0 auto; object-fit:contain }
+.wl-eth{ width:38px; height:38px; border-radius:50%; flex:0 0 auto;
+  background:linear-gradient(160deg,#4B4463,#2E2A3D); color:#DCD7EC;
+  display:flex; align-items:center; justify-content:center;
+  font:700 19px/1 'Archivo',sans-serif }
+.wl-jeton .nom{ flex:1; min-width:0 }
+.wl-jeton .nom b{ display:block; font:800 14px/1.2 'Archivo',sans-serif }
+.wl-jeton .nom small{ display:block; font:400 12px/1.3 'Space Mono',monospace;
+  color:var(--doux); margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.wl-jeton .val{ text-align:right; flex:0 0 auto }
+.wl-jeton .val b{ display:block; font:800 14px/1.2 'Archivo',sans-serif;
+  font-variant-numeric:tabular-nums }
+.wl-jeton .val small{ display:block; font:400 11px/1.3 'Space Mono',monospace;
+  color:var(--doux); margin-top:3px }
+
+.wl-actions{ display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:14px 0 4px }
+.wl-actions button{
+  background:none; border:0; cursor:pointer; color:var(--texte); font:inherit;
+  display:flex; flex-direction:column; align-items:center; gap:7px;
+}
+.wl-actions .bulle{
+  width:50px; height:50px; border-radius:50%;
+  background:linear-gradient(160deg,var(--violet),#6D28D9);
+  display:flex; align-items:center; justify-content:center; font-size:19px;
+  box-shadow:0 6px 18px rgba(139,92,246,.35);
+}
+.wl-actions span.t{ font:700 11px/1 'Archivo',sans-serif; letter-spacing:.4px }
+
+.wl-b{
+  width:100%; padding:15px; border-radius:14px; border:0; cursor:pointer;
+  font:800 14px/1 'Archivo',sans-serif; letter-spacing:.4px;
+  background:linear-gradient(160deg,var(--violet),#7C3AED); color:#fff;
+  box-shadow:0 8px 22px rgba(139,92,246,.3);
+}
+.wl-b:disabled{ opacity:.45; cursor:default; box-shadow:none }
+.wl-b.vide{ background:none; border:1px solid var(--bord); color:var(--texte); box-shadow:none }
+.wl-b.rouge{ background:none; border:1px solid rgba(248,113,113,.45); color:var(--rouge); box-shadow:none }
+
+.wl-champ{ margin-bottom:12px }
+.wl-champ label{ display:block; font:700 11px/1 'Archivo',sans-serif; color:var(--doux);
+  letter-spacing:1px; margin-bottom:7px }
+.wl-champ input, .wl-champ select{
+  width:100%; padding:13px 14px; border-radius:12px; border:1px solid var(--bord);
+  background:var(--carte2); color:var(--texte);
+  font:400 14px/1 'Space Mono',monospace;
+}
+.wl-champ input:focus, .wl-champ select:focus{ outline:2px solid var(--violet); outline-offset:1px }
+.wl-champ input::placeholder{ color:#5F5872 }
+
+.wl-note{ font:400 12px/1.5 'Archivo',sans-serif; color:var(--doux); margin:8px 0 0 }
+.wl-note.alerte{ color:var(--or) }
+.wl-note.grave{ color:var(--rouge) }
+
+.wl-rang{ display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:11px 0; border-top:1px solid var(--bord); font:400 13px/1.3 'Archivo',sans-serif }
+.wl-rang:first-child{ border-top:0 }
+.wl-rang span{ color:var(--doux) }
+.wl-rang b{ font:700 13px/1.3 'Space Mono',monospace; font-variant-numeric:tabular-nums;
+  text-align:right; word-break:break-all }
+
+.wl-vide{ text-align:center; padding:38px 20px; color:var(--doux);
+  font:400 13px/1.6 'Archivo',sans-serif }
+.wl-vide .g{ font-size:30px; display:block; margin-bottom:10px; opacity:.5 }
+
+.wl-qr{ background:#fff; border-radius:18px; padding:16px; display:flex;
+  align-items:center; justify-content:center; margin:0 auto 14px; width:220px; height:220px }
+.wl-qr canvas, .wl-qr img{ width:100%; height:100%; display:block; image-rendering:pixelated }
+
+.wl-toast{
+  position:absolute; left:50%; bottom:88px; transform:translateX(-50%) translateY(10px);
+  background:#241F33; border:1px solid var(--bord); color:var(--texte);
+  padding:11px 16px; border-radius:12px; font:700 12px/1.3 'Archivo',sans-serif;
+  max-width:86%; text-align:center; opacity:0; pointer-events:none;
+  transition:opacity .2s, transform .2s; z-index:40;
+}
+.wl-toast.on{ opacity:1; transform:translateX(-50%) translateY(0) }
+
+/* la feuille de connexion */
+.wl-voile{ position:absolute; inset:0; background:rgba(6,5,10,.82); z-index:50;
+  display:flex; align-items:flex-end; justify-content:center; }
+.wl-voile[hidden]{ display:none }
+.wl-feuille{ width:100%; background:var(--carte); border-radius:22px 22px 0 0;
+  border-top:1px solid var(--bord); padding:20px 18px calc(20px + env(safe-area-inset-bottom)) }
+.wl-feuille h2{ margin:0 0 6px; font:800 18px/1.2 'Archivo',sans-serif }
+
+.wl-etiq{ display:inline-flex; align-items:center; gap:6px; padding:5px 10px;
+  border-radius:999px; font:700 10px/1 'Archivo',sans-serif; letter-spacing:.6px;
+  border:1px solid var(--bord); color:var(--doux) }
+.wl-etiq.on{ color:var(--vert); border-color:rgba(52,211,153,.4) }
+
+.wl-mono{ font:400 12px/1.5 'Space Mono',monospace; word-break:break-all; color:var(--doux) }
+.wl-sep{ height:1px; background:var(--bord); margin:14px 0 }
+.wl-titre{ font:800 12px/1 'Archivo',sans-serif; letter-spacing:1.2px;
+  color:var(--doux); margin:16px 0 9px }
+
+@media (prefers-reduced-motion:reduce){
+  .wl-toast{ transition:none }
+}
+</style>
+</head>
+<body>
+
+<header class="wl-haut">
+  <a class="wl-marque" href="index.html">
+    <img src="img/wallet/tok_swoge.webp" alt="">
+    <span><b>SWOGE</b><i>WALLET</i></span>
+  </a>
+  <a class="wl-retour" href="games.html">&larr; Back to the arcade</a>
+</header>
+
+<div class="wl-tel" id="tel">
+
+  <div class="wl-etat">
+    <span id="hHeure">—</span>
+    <span class="ic"><span id="hReseau" class="wl-etiq">Robinhood Chain</span></span>
+  </div>
+
+  <!-- ============ ACCUEIL ============ -->
+  <section class="wl-ecran on" id="ecAccueil">
+    <div class="wl-tete">
+      <div class="marque"><img src="img/wallet/tok_swoge.webp" alt=""><b>SWOGE</b></div>
+      <button class="rond" id="btRafraichir" type="button" aria-label="Refresh">&#8635;</button>
+    </div>
+    <div class="wl-corps">
+      <div class="wl-carte wl-total">
+        <small>TOTAL BALANCE</small>
+        <b id="acTotal">—</b>
+        <div class="sous" id="acSous">Not connected</div>
+      </div>
+
+      <div class="wl-jetons" id="acJetons"></div>
+
+      <div class="wl-actions">
+        <button type="button" data-va="ecEnvoyer"><span class="bulle">&uarr;</span><span class="t">SEND</span></button>
+        <button type="button" data-va="ecRecevoir"><span class="bulle">&darr;</span><span class="t">RECEIVE</span></button>
+        <button type="button" data-va="ecSwap"><span class="bulle">&#8646;</span><span class="t">SWAP</span></button>
+      </div>
+
+      <div class="wl-carte" id="acEco">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+          <div>
+            <b style="font:800 14px/1.2 'Archivo',sans-serif">Swoge Ecosystem</b>
+            <div class="wl-note" style="margin-top:5px">Two tokens, one chain. $SWOGE is the ecosystem token;
+              $SWOGEBET is the betting token, and it only trades against $SWOGE.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ JETONS ============ -->
+  <section class="wl-ecran" id="ecJetons">
+    <div class="wl-tete">
+      <h1>Tokens</h1>
+      <button class="rond" type="button" data-va="ecAccueil" aria-label="Close">&times;</button>
+    </div>
+    <div class="wl-corps">
+      <div class="wl-titre">MY TOKENS</div>
+      <div class="wl-jetons" id="jtListe"></div>
+      <div class="wl-note" id="jtNote"></div>
+    </div>
+  </section>
+
+  <!-- ============ ENVOYER ============ -->
+  <section class="wl-ecran" id="ecEnvoyer">
+    <div class="wl-tete">
+      <button class="rond" type="button" data-va="ecAccueil" aria-label="Back">&larr;</button>
+      <h1>Send</h1>
+    </div>
+    <div class="wl-corps">
+      <div class="wl-carte">
+        <div class="wl-champ">
+          <label for="enJeton">YOU SEND</label>
+          <select id="enJeton"></select>
+        </div>
+        <div class="wl-champ">
+          <label for="enMontant">AMOUNT</label>
+          <input id="enMontant" inputmode="decimal" placeholder="0.0" autocomplete="off">
+        </div>
+        <div class="wl-rang"><span>Balance</span><b id="enSolde">—</b></div>
+      </div>
+      <div class="wl-carte">
+        <div class="wl-champ">
+          <label for="enDest">TO</label>
+          <input id="enDest" placeholder="0x…" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="wl-rang"><span>Network</span><b>Robinhood Chain</b></div>
+        <div class="wl-rang"><span>Network fee</span><b id="enFrais">—</b></div>
+      </div>
+      <button class="wl-b" id="enPartir" type="button">Review</button>
+      <p class="wl-note" id="enNote"></p>
+    </div>
+  </section>
+
+  <!-- ============ RECEVOIR ============ -->
+  <section class="wl-ecran" id="ecRecevoir">
+    <div class="wl-tete">
+      <button class="rond" type="button" data-va="ecAccueil" aria-label="Back">&larr;</button>
+      <h1>Receive</h1>
+    </div>
+    <div class="wl-corps">
+      <div class="wl-qr" id="reQr"></div>
+      <div class="wl-carte">
+        <div class="wl-champ" style="margin:0">
+          <label>YOUR ADDRESS</label>
+          <div class="wl-mono" id="reAdr" style="color:var(--texte)">—</div>
+        </div>
+      </div>
+      <button class="wl-b" id="reCopier" type="button">Copy address</button>
+      <p class="wl-note">Only send assets on <b>Robinhood Chain</b> to this address.
+        Anything sent on another network is lost — that is true of every wallet, not just this one.</p>
+    </div>
+  </section>
+
+  <!-- ============ SWAP ============ -->
+  <section class="wl-ecran" id="ecSwap">
+    <div class="wl-tete">
+      <button class="rond" type="button" data-va="ecAccueil" aria-label="Back">&larr;</button>
+      <h1>Swap</h1>
+    </div>
+    <div class="wl-corps">
+      <div class="wl-carte">
+        <div class="wl-champ">
+          <label for="swDe">YOU PAY</label>
+          <select id="swDe"></select>
+        </div>
+        <div class="wl-champ" style="margin:0">
+          <input id="swMontant" inputmode="decimal" placeholder="0.0" autocomplete="off">
+        </div>
+        <div class="wl-rang"><span>Balance</span><b id="swSolde">—</b></div>
+      </div>
+      <div class="wl-carte">
+        <div class="wl-champ">
+          <label for="swVers">YOU RECEIVE</label>
+          <select id="swVers"></select>
+        </div>
+        <div class="wl-total" style="padding:2px 0">
+          <b id="swRecu" style="font-size:24px">—</b>
+        </div>
+        <div class="wl-rang"><span>Route</span><b id="swRoute">—</b></div>
+        <div class="wl-rang"><span>Price impact</span><b id="swImpact">—</b></div>
+      </div>
+      <button class="wl-b" id="swPartir" type="button">Swap</button>
+      <p class="wl-note" id="swNote"></p>
+    </div>
+  </section>
+
+  <!-- ============ ACTIVITE ============ -->
+  <section class="wl-ecran" id="ecActivite">
+    <div class="wl-tete">
+      <h1>Activity</h1>
+      <button class="rond" id="btActRelire" type="button" aria-label="Reload">&#8635;</button>
+    </div>
+    <div class="wl-corps" id="acvCorps">
+      <div class="wl-vide"><span class="g">&#9202;</span>Connect a wallet to see your transfers.</div>
+    </div>
+  </section>
+
+  <!-- ============ COMPTE ============ -->
+  <section class="wl-ecran" id="ecCompte">
+    <div class="wl-tete">
+      <h1>Account</h1>
+    </div>
+    <div class="wl-corps">
+      <div class="wl-carte" id="cpCarte">
+        <div class="wl-rang"><span>Status</span><b><span class="wl-etiq" id="cpEtat">Not connected</span></b></div>
+        <div class="wl-rang"><span>Address</span><b id="cpAdr">—</b></div>
+        <div class="wl-rang"><span>Signed in with</span><b id="cpMethode">—</b></div>
+      </div>
+
+      <div class="wl-titre">NETWORK</div>
+      <div class="wl-carte">
+        <div class="wl-rang"><span>Chain</span><b>Robinhood Chain</b></div>
+        <div class="wl-rang"><span>Chain ID</span><b>4663</b></div>
+        <div class="wl-rang"><span>Currency</span><b>ETH</b></div>
+        <div class="wl-rang"><span>RPC</span><b id="cpRpc">—</b></div>
+      </div>
+      <p class="wl-note">This wallet is <b>Robinhood Chain only</b>, because that is where
+        $SWOGE and $SWOGEBET live. No other network is offered — showing one you cannot use
+        would only invite a loss.</p>
+
+      <div class="wl-titre">SESSION</div>
+      <button class="wl-b vide" id="cpExplorer" type="button">View on explorer</button>
+      <div style="height:10px"></div>
+      <button class="wl-b rouge" id="cpSortir" type="button">Disconnect</button>
+    </div>
+  </section>
+
+  <!-- ============ FICHE D'UN JETON ============ -->
+  <section class="wl-ecran" id="ecJeton">
+    <div class="wl-tete">
+      <button class="rond" type="button" data-va="ecJetons" aria-label="Back">&larr;</button>
+      <h1 id="fiTitre">Token</h1>
+    </div>
+    <div class="wl-corps">
+      <div class="wl-carte" style="text-align:center">
+        <img id="fiLogo" src="" alt="" style="width:66px;height:66px;border-radius:50%;object-fit:contain">
+        <div style="font:800 17px/1.2 'Archivo',sans-serif;margin-top:10px" id="fiNom">—</div>
+        <div class="wl-total" style="margin-top:14px">
+          <b id="fiSolde">—</b>
+          <div class="sous" id="fiValeur">—</div>
+        </div>
+      </div>
+      <div class="wl-carte">
+        <div class="wl-rang"><span>Price</span><b id="fiPrix">—</b></div>
+        <div class="wl-rang"><span>Market cap</span><b id="fiMcap">—</b></div>
+        <div class="wl-rang"><span>Liquidity</span><b id="fiLiq">—</b></div>
+        <div class="wl-rang"><span>Contract</span><b id="fiAdr" class="wl-mono">—</b></div>
+      </div>
+      <p class="wl-note" id="fiNote"></p>
+      <button class="wl-b" id="fiSwap" type="button">Swap this token</button>
+    </div>
+  </section>
+
+  <!-- la barre d'onglets -->
+  <nav class="wl-pied" id="pied">
+    <button type="button" data-va="ecAccueil"  class="on"><span class="g">&#9750;</span>Home</button>
+    <button type="button" data-va="ecJetons"><span class="g">&#9673;</span>Tokens</button>
+    <button type="button" data-va="ecSwap"><span class="g">&#8646;</span>Swap</button>
+    <button type="button" data-va="ecActivite"><span class="g">&#9202;</span>Activity</button>
+    <button type="button" data-va="ecCompte"><span class="g">&#9737;</span>Account</button>
+  </nav>
+
+  <!-- la feuille de connexion -->
+  <div class="wl-voile" id="voile" hidden>
+    <div class="wl-feuille">
+      <h2>Sign in</h2>
+      <p class="wl-note" id="cnMsg">A wallet is created for you automatically — no app needed.</p>
+      <div style="height:14px"></div>
+      <div class="wl-champ">
+        <label for="cnEmail">EMAIL</label>
+        <input id="cnEmail" type="email" placeholder="you@example.com" autocomplete="email">
+      </div>
+      <div class="wl-champ" id="cnCodeBloc" style="display:none">
+        <label for="cnCode">6-DIGIT CODE</label>
+        <input id="cnCode" inputmode="numeric" placeholder="000000" autocomplete="one-time-code">
+      </div>
+      <button class="wl-b" id="cnEnvoyer" type="button">Send code</button>
+      <div style="height:8px"></div>
+      <button class="wl-b vide" id="cnVerifier" type="button" style="display:none">Verify</button>
+      <div class="wl-sep"></div>
+      <button class="wl-b vide" id="cnExtension" type="button">Use a browser wallet</button>
+      <div style="height:8px"></div>
+      <button class="wl-b vide" id="cnFermer" type="button">Cancel</button>
+    </div>
+  </div>
+
+  <div class="wl-toast" id="toast"></div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+/* ==================== LA CHAINE ET LES JETONS ====================
+ *
+ * Toutes ces valeurs sont celles que le reste du site emploie deja —
+ * `burn.html`, `swoge_bench.html`, `swogebuy.js`. Elles ne sont pas
+ * recopiees de memoire : elles ont ete relues dans ces fichiers, et
+ * verifiees sur la chaine (nom, symbole, decimales, offre).
+ */
+var CHAINE = { id:4663, hex:'0x1237', nom:'Robinhood Chain',
+               rpc:'https://rpc.mainnet.chain.robinhood.com',
+               scan:'https://robinhoodchain.blockscout.com', sym:'ETH' };
+
+var WETH     = '0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73';
+var SWOGE    = '0x8a166Fb41Cd659a0a43396272FF73973Ce29F817';
+var SWOGEBET = '0xc0aEd547862fba5D7D9Fbf3cb14204cD756c8Bea';
+
+/* Le routeur est un SwapRouter02 : il sait faire du v2 ET du v3, et il
+   porte `multicall`. C'est ce qui permet d'acheter du $SWOGEBET avec de
+   l'ETH en UNE transaction — verifie en simulant l'appel sur la chaine. */
+var ROUTER02 = '0xcaf681a66d020601342297493863e78c959e5cb2';
+var QUOTER   = '0x33e885ed0ec9bf04ecfb19341582aadcb4c8a9e7';
+var V2ROUTER = '0x89e5db8b5aa49aa85ac63f691524311aeb649eba';
+var PAIRE_V2 = '0x2Dc0fb72d9284228046CC95910eEAaBeBfe48456';   // SWOGE / WETH
+var POOL_V3  = '0xc12943975def537daCe9D62D4762a8250501924E';   // SWOGEBET / SWOGE
+var FRAIS_V3 = 10000;                                          // 1 %
+
+/* `ADDRESS_THIS` dit au routeur de GARDER le produit du premier saut au
+   lieu de le rendre au joueur. C'est ce qui enchaine les deux echanges
+   sans que le $SWOGE intermediaire touche le portefeuille. */
+var ADDRESS_THIS = '0x0000000000000000000000000000000000000002';
+
+/* ---- L'ECOSYSTEME, EN ENTIER ----
+ * Deux jetons. Pas trois, pas cinq. La maquette d'origine en montrait
+ * cinq — SWOCHIP, SWOPOOL, SWOXP — qui n'existent sur aucune chaine. Un
+ * portefeuille qui affiche un jeton inexistant apprend a son proprietaire
+ * a ne plus le croire. */
+var JETONS = [
+  { cle:'eth',      sym:'ETH',       nom:'Ether',        adr:null,     dec:18,
+    logo:null,                             natif:true },
+  { cle:'swoge',    sym:'SWOGE',     nom:'Swole Doge',   adr:SWOGE,    dec:18,
+    logo:'img/wallet/tok_swoge.webp' },
+  { cle:'swogebet', sym:'SWOGEBET',  nom:'Swogebet',     adr:SWOGEBET, dec:18,
+    logo:'img/wallet/tok_swogebet.webp' }
+];
+function J(cle){ for(var i=0;i<JETONS.length;i++) if(JETONS[i].cle===cle) return JETONS[i]; return null; }
+
+var ERC20_ABI = [
+  'function balanceOf(address) view returns (uint256)',
+  'function decimals() view returns (uint8)',
+  'function symbol() view returns (string)',
+  'function totalSupply() view returns (uint256)',
+  'function transfer(address,uint256) returns (bool)',
+  'function allowance(address,address) view returns (uint256)',
+  'function approve(address,uint256) returns (bool)'
+];
+var V2_ABI = ['function getAmountsOut(uint256,address[]) view returns (uint256[])'];
+var PAIRE_ABI = [
+  'function getReserves() view returns (uint112,uint112,uint32)',
+  'function token0() view returns (address)'
+];
+var QUOTER_ABI = ['function quoteExactInputSingle((address tokenIn,address tokenOut,uint256 amountIn,uint24 fee,uint160 sqrtPriceLimitX96)) returns (uint256 amountOut,uint160,uint32,uint256)'];
+var R02_ABI = [
+  'function multicall(uint256 deadline, bytes[] data) payable returns (bytes[])',
+  'function swapExactTokensForTokens(uint256 amountIn,uint256 amountOutMin,address[] path,address to) payable returns (uint256)',
+  'function exactInputSingle((address tokenIn,address tokenOut,uint24 fee,address recipient,uint256 amountIn,uint256 amountOutMinimum,uint160 sqrtPriceLimitX96)) payable returns (uint256)'
+];
+
+/* ==================== L'ETAT ==================== */
+var $ = function(id){ return document.getElementById(id); };
+
+/* ---- SANS ETHERS, LA PAGE NE PEUT RIEN LIRE ----
+ * Le paquet vient d'un CDN. S'il ne charge pas — reseau coupe, blocage,
+ * extension trop zelee — toutes les lectures de chaine echouent en
+ * silence et la page reste a « — » pour toujours, sans jamais dire
+ * pourquoi. Le joueur croit alors que son solde est vide.
+ * On le CONSTATE au demarrage et on l'ecrit. */
+function ethersManquant(){ return typeof window.ethers === 'undefined'; }
+function crieSansEthers(){
+  var e=$('acSous'); if(e) e.textContent='Could not load the chain library';
+  var t=$('acTotal'); if(t) t.textContent='—';
+  var n=$('jtNote');
+  if(n) n.textContent='This page could not load its chain library from the CDN, so it cannot read anything on-chain. '
+    + 'Your balances are NOT zero — they are unknown. Reload, or check whether an extension is blocking cdnjs.cloudflare.com.';
+  var c=$('acvCorps');
+  if(c) c.innerHTML='<div class="wl-vide"><span class="g">&#9888;</span>The chain library did not load, so nothing can be read.</div>';
+}
+var lecteur = null;        // provider en lecture seule, toujours disponible
+var signer  = null;        // present seulement une fois connecte
+var moi     = null;        // l'adresse du joueur
+var methode = null;        // 'email' | 'wallet'
+var soldes  = {};          // cle -> BigNumber
+var prixUsd = null;        // dollars par SWOGE, ou null si inconnu
+var ethUsd  = null;        // dollars par ETH, ou null si inconnu
+var PRIVY_APP_ID = 'cmsga0yzp00a50biaf9vlzzd2';
+
+/* ---- UNE LECTURE QUI N'ARRIVE PAS DOIT LE DIRE ----
+ * Un RPC lent ne rejette pas : il ATTEND. Sans borne, le devis reste a
+ * « — » pour toujours et le `catch` ne se declenche jamais — mesure en
+ * coupant le reseau : ni resultat, ni message, ni erreur en console. La
+ * page semble cassee alors qu'elle patiente.
+ * Toute lecture de chaine passe donc par ici. */
+function borne(promesse, ms, quoi){
+  return Promise.race([
+    promesse,
+    new Promise(function(_, rej){
+      setTimeout(function(){ rej(new Error('timeout:'+(quoi||'read'))); }, ms||9000);
+    })
+  ]);
+}
+function estTimeout(e){ return e && /^timeout:/.test(String(e.message||'')); }
+
+function lec(){
+  if(!lecteur) lecteur = new ethers.providers.StaticJsonRpcProvider(CHAINE.rpc, CHAINE.id);
+  return lecteur;
+}
+function erc(adr, avecSigner){
+  return new ethers.Contract(adr, ERC20_ABI, avecSigner && signer ? signer : lec());
+}
+
+/* ==================== L'AFFICHAGE ==================== */
+function toast(t){
+  var e=$('toast'); e.textContent=t; e.classList.add('on');
+  clearTimeout(e._t); e._t=setTimeout(function(){ e.classList.remove('on'); }, 2600);
+}
+function court(a){ return a ? a.slice(0,6)+'…'+a.slice(-4) : '—'; }
+
+/* Un montant de jeton s'ecrit EN ENTIER jusqu'a ce qu'il devienne illisible.
+   Abreger un solde a « 1.2M » quand il vaut 1 234 567 cache la difference
+   entre deux transactions. */
+function nombre(x, dec){
+  if(x===null || x===undefined) return '—';
+  var n = typeof x==='number' ? x : parseFloat(ethers.utils.formatUnits(x, dec||18));
+  if(!isFinite(n)) return '—';
+  if(n===0) return '0';
+  if(n < 0.000001) return '<0.000001';
+  var d = n<1 ? 6 : (n<1000 ? 4 : 2);
+  return n.toLocaleString('en-US', { maximumFractionDigits:d });
+}
+function usd(v){
+  if(v===null || v===undefined || !isFinite(v)) return null;
+  return '$'+v.toLocaleString('en-US',{ minimumFractionDigits:2, maximumFractionDigits:2 });
+}
+
+/* ---- LA NAVIGATION ----
+   `.on` et non l'attribut `hidden` : la regle d'affichage des ecrans est
+   `display:flex`, qui BAT `hidden`. Un ecran « cache » resterait par-dessus
+   la page et avalerait tous les clics — c'est exactement ce qui a rendu la
+   feuille d'information de DEAD SWOGE invisible ET bloquante. */
+function va(id){
+  var l = document.querySelectorAll('.wl-ecran');
+  for(var i=0;i<l.length;i++) l[i].classList.toggle('on', l[i].id===id);
+  var b = document.querySelectorAll('#pied button');
+  for(var k=0;k<b.length;k++) b[k].classList.toggle('on', b[k].dataset.va===id);
+  var c = $(id) && $(id).querySelector('.wl-corps');
+  if(c) c.scrollTop = 0;
+  if(id==='ecRecevoir') peintRecevoir();
+  if(id==='ecActivite') chargeActivite();
+  if(id==='ecSwap')     majSwap();
+  if(id==='ecEnvoyer')  majEnvoyer();
+}
+document.addEventListener('click', function(ev){
+  var b = ev.target.closest('[data-va]');
+  if(b){ va(b.dataset.va); }
+});
+
+/* ==================== LA CONNEXION ====================
+ *
+ * Deux chemins, comme partout ailleurs sur le site :
+ *  - l'e-mail, qui cree un portefeuille embarque via Privy et n'exige
+ *    aucune application ;
+ *  - le portefeuille du navigateur.
+ *
+ * La METHODE est retenue dans `swogeAuth`, exactement comme sur les pages
+ * de jeu : c'est elle qui permet de se reconnecter sans rien demander.
+ */
+var privyCharge = false;
+function chargePrivy(){
+  return new Promise(function(res, rej){
+    /* Garde indispensable : le SDK peut deja etre la, charge par un autre
+       script de la page. Sans ce test on l'injecte une seconde fois. */
+    if(window.SwogePrivy){ try{ SwogePrivy.init(PRIVY_APP_ID); }catch(e){} privyCharge=true; return res(); }
+    if(privyCharge) return res();
+    var s=document.createElement('script');
+    s.src='privy-swoge.js';
+    s.onload=function(){ privyCharge=true; try{ SwogePrivy.init(PRIVY_APP_ID); }catch(e){} res(); };
+    s.onerror=function(){ rej(new Error('load failed')); };
+    document.head.appendChild(s);
+  });
+}
+
+function ouvreConnexion(){
+  $('cnCodeBloc').style.display='none';
+  $('cnVerifier').style.display='none';
+  $('cnCode').value='';
+  $('cnMsg').textContent='A wallet is created for you automatically — no app needed.';
+  $('voile').hidden=false;
+  chargePrivy()['catch'](function(){
+    $('cnMsg').textContent="Couldn't load email sign-in — check your connection and reopen this panel.";
+  });
+}
+function fermeConnexion(){ $('voile').hidden=true; }
+
+$('cnFermer').addEventListener('click', fermeConnexion);
+$('voile').addEventListener('click', function(ev){ if(ev.target===this) fermeConnexion(); });
+
+$('cnEnvoyer').addEventListener('click', async function(){
+  var e=$('cnEmail').value.trim();
+  if(!/.+@.+\..+/.test(e)) return toast('Enter a valid email');
+  this.disabled=true; $('cnMsg').textContent='Sending code…';
+  try{
+    await chargePrivy();
+    await SwogePrivy.sendCode(e);
+    window._email=e;
+    $('cnCodeBloc').style.display='';
+    $('cnVerifier').style.display='';
+    $('cnMsg').textContent='Code sent to '+e+' — check your inbox (and spam).';
+  }catch(err){ $('cnMsg').textContent='Could not send the code: '+(err.message||err); }
+  this.disabled=false;
+});
+
+$('cnVerifier').addEventListener('click', async function(){
+  var c=$('cnCode').value.trim();
+  if(c.length<4) return toast('Enter the code');
+  this.disabled=true; $('cnMsg').textContent='Verifying and creating your wallet…';
+  try{
+    await SwogePrivy.verifyCode(window._email, c);
+    try{ localStorage.setItem('swogeAuth','email'); }catch(e){}
+    fermeConnexion();
+    await portefeuillePret(SwogePrivy.getProvider(), SwogePrivy.getAddress(), 'email');
+  }catch(err){ $('cnMsg').textContent='That code did not work: '+(err.message||err); }
+  this.disabled=false;
+});
+
+$('cnExtension').addEventListener('click', async function(){
+  if(!window.ethereum) return toast('No browser wallet found here');
+  try{
+    var comptes = await window.ethereum.request({ method:'eth_requestAccounts' });
+    await basculeChaine(window.ethereum);
+    fermeConnexion();
+    try{ localStorage.setItem('swogeAuth','wallet'); }catch(e){}
+    await portefeuillePret(window.ethereum, comptes[0], 'wallet');
+  }catch(err){ toast(err.message||'Connection refused'); }
+});
+
+/* La chaine peut etre inconnue du portefeuille : on essaie d'y basculer,
+   et si elle n'existe pas on l'AJOUTE. L'ordre compte — `switch` d'abord,
+   `add` seulement sur l'erreur 4902 ; l'inverse redemanderait l'ajout a
+   chaque connexion a un portefeuille qui la connait deja. */
+async function basculeChaine(eth){
+  try{
+    await eth.request({ method:'wallet_switchEthereumChain', params:[{ chainId:CHAINE.hex }] });
+  }catch(err){
+    if(err && (err.code===4902 || (err.data && err.data.originalError && err.data.originalError.code===4902))){
+      await eth.request({ method:'wallet_addEthereumChain', params:[{
+        chainId:CHAINE.hex, chainName:CHAINE.nom,
+        nativeCurrency:{ name:'Ether', symbol:CHAINE.sym, decimals:18 },
+        rpcUrls:[CHAINE.rpc], blockExplorerUrls:[CHAINE.scan]
+      }]});
+    } else throw err;
+  }
+}
+
+async function portefeuillePret(eth, adr, comment){
+  var p = new ethers.providers.Web3Provider(eth, 'any');
+  signer = p.getSigner();
+  moi = (adr || await signer.getAddress()).toLowerCase();
+  methode = comment;
+  majCompte();
+  await rafraichit();
+  toast('Connected');
+}
+
+/* Reconnexion silencieuse au chargement, si une methode est memorisee. */
+async function reprend(){
+  var m=null; try{ m=localStorage.getItem('swogeAuth'); }catch(e){}
+  if(m==='wallet' && window.ethereum){
+    try{
+      var c = await window.ethereum.request({ method:'eth_accounts' });
+      if(c && c.length) await portefeuillePret(window.ethereum, c[0], 'wallet');
+    }catch(e){}
+  } else if(m==='email'){
+    try{
+      await chargePrivy();
+      /* Le rappel du portefeuille embarque passe par une iframe qui, dans
+         certains navigateurs integres, ne repond JAMAIS. On abandonne au
+         bout de douze secondes plutot que de laisser la page en attente. */
+      var abandon = new Promise(function(r){ setTimeout(function(){ r(false); }, 12000); });
+      var ok = await Promise.race([ SwogePrivy.restore().then(function(){ return true; })['catch'](function(){ return false; }), abandon ]);
+      if(ok && SwogePrivy.isLoggedIn())
+        await portefeuillePret(SwogePrivy.getProvider(), SwogePrivy.getAddress(), 'email');
+    }catch(e){}
+  }
+}
+
+$('cpSortir').addEventListener('click', function(){
+  try{ localStorage.removeItem('swogeAuth'); }catch(e){}
+  try{ if(window.SwogePrivy) SwogePrivy.logout(); }catch(e){}
+  signer=null; moi=null; methode=null; soldes={};
+  majCompte(); peintAccueil(); toast('Disconnected');
+});
+$('cpExplorer').addEventListener('click', function(){
+  if(!moi) return toast('Not connected');
+  window.open(CHAINE.scan+'/address/'+moi, '_blank', 'noopener');
+});
+
+/* ==================== LES SOLDES ====================
+ *
+ * Une seule passe, tous les jetons en parallele. Chaque lecture qui echoue
+ * laisse son jeton a `null` — et `null` s'affiche « — », jamais « 0 ».
+ * Afficher zero pour une lecture ratee, c'est dire au joueur qu'il n'a
+ * plus rien.
+ */
+async function rafraichit(){
+  if(!moi){ peintAccueil(); return; }
+  var p = lec();
+  var rate = 0;
+  var taches = JETONS.map(async function(j){
+    try{
+      soldes[j.cle] = await borne(
+        j.natif ? p.getBalance(moi) : erc(j.adr).balanceOf(moi), 9000, 'balance');
+    }catch(e){ soldes[j.cle] = null; rate++; }
+  });
+  await Promise.all(taches);
+  await lisPrix();
+  peintAccueil();
+  /* On DIT quand une lecture a echoue. Un solde absent s'affiche « — »,
+     mais sans un mot le joueur lit ce tiret comme « zero ». */
+  if(rate) toast(rate===JETONS.length
+    ? 'The chain did not answer — balances unknown, not zero'
+    : rate+' balance(s) could not be read');
+}
+$('btRafraichir').addEventListener('click', function(){ toast('Refreshing…'); rafraichit(); });
+
+/* ---- LES PRIX ----
+ * Le taux ETH et le prix du $SWOGE viennent de DexScreener, comme sur le
+ * launchpad. S'ils ne repondent pas, `prixUsd` reste `null` et la page
+ * n'affiche AUCUN dollar — elle ne fabrique pas un taux de repli. */
+async function lisPrix(){
+  try{
+    var r = await borne(fetch('https://api.dexscreener.com/latest/dex/pairs/robinhood/'+PAIRE_V2,
+                        { cache:'no-store' }), 7000, 'price');
+    var d = await r.json();
+    var paire = d && d.pairs && d.pairs[0];
+    if(paire){
+      prixUsd = paire.priceUsd ? parseFloat(paire.priceUsd) : null;
+      var natif = paire.priceNative ? parseFloat(paire.priceNative) : null;   // SWOGE par ETH
+      if(prixUsd && natif) ethUsd = prixUsd / natif;
+      window._liq = paire.liquidity && paire.liquidity.usd;
+      window._fdv = paire.fdv;
+    }
+  }catch(e){ prixUsd = null; ethUsd = null; }
+}
+
+/* Ce que vaut un solde, ou `null` si on ne sait pas. */
+function valeur(cle){
+  var s = soldes[cle];
+  if(s===null || s===undefined) return null;
+  var n = parseFloat(ethers.utils.formatUnits(s, 18));
+  if(cle==='eth')   return ethUsd  ? n*ethUsd  : null;
+  if(cle==='swoge') return prixUsd ? n*prixUsd : null;
+  /* Le $SWOGEBET n'a pas de paire en dollars : son prix passe par le
+     $SWOGE. On ne l'estime que si les deux maillons sont connus. */
+  if(cle==='swogebet') return (prixUsd && window._tauxBet) ? n*window._tauxBet*prixUsd : null;
+  return null;
+}
+
+function peintAccueil(){
+  /* le total */
+  var total=0, complet=true;
+  for(var i=0;i<JETONS.length;i++){
+    var v = valeur(JETONS[i].cle);
+    if(v===null) complet=false; else total+=v;
+  }
+  $('acTotal').textContent = moi ? (complet ? usd(total) : (total>0 ? usd(total) : '—')) : '—';
+  $('acSous').textContent = !moi ? 'Not connected'
+    : (complet ? court(moi) : court(moi)+' · some prices unavailable');
+
+  /* les jetons */
+  var h='';
+  for(var k=0;k<JETONS.length;k++){
+    var j=JETONS[k], s=soldes[j.cle], v=valeur(j.cle);
+    /* L'ETH n'a pas de logo dans le dossier : on le dessine. Le `#` d'une
+       couleur doit etre encode UNE SEULE FOIS — ecrit `%23` puis passe a
+       `encodeURIComponent`, il devient `%2523` et le SVG rend un rond noir. */
+    var logo = j.logo ? '<img src="'+j.logo+'" alt="">'
+      : '<span class="wl-eth">Ξ</span>';
+    h += '<button class="wl-jeton" type="button" data-jeton="'+j.cle+'">'
+       +   logo
+       +   '<span class="nom"><b>'+j.sym+'</b><small>'+j.nom+'</small></span>'
+       +   '<span class="val"><b>'+(moi ? (s===null||s===undefined ? '—' : nombre(s,j.dec)) : '—')+'</b>'
+       +     '<small>'+(v===null ? (moi?'no price':'—') : usd(v))+'</small></span>'
+       + '</button>';
+  }
+  $('acJetons').innerHTML = h;
+  $('jtListe').innerHTML  = h;
+  $('jtNote').textContent = prixUsd===null && moi
+    ? 'Dollar values are unavailable right now — the market feed did not answer. Your balances above are read straight from the chain and are correct.'
+    : '';
+  majCompte();
+}
+
+document.addEventListener('click', function(ev){
+  var b = ev.target.closest('[data-jeton]');
+  if(b) ficheJeton(b.dataset.jeton);
+});
+
+function majCompte(){
+  $('cpEtat').textContent = moi ? 'Connected' : 'Not connected';
+  $('cpEtat').classList.toggle('on', !!moi);
+  $('cpAdr').textContent = moi ? court(moi) : '—';
+  $('cpMethode').textContent = methode==='email' ? 'Email' : methode==='wallet' ? 'Browser wallet' : '—';
+  $('cpRpc').textContent = CHAINE.rpc.replace(/^https:\/\//,'');
+  $('hReseau').classList.toggle('on', !!moi);
+}
+
+/* ==================== RECEVOIR ====================
+ * Le QR est dessine ICI, sans bibliotheque : une adresse Ethereum tient
+ * dans un QR de version 4, et charger un paquet de 40 Ko pour ca serait
+ * une dependance de plus a maintenir. On utilise donc le lien du site
+ * `wallet-export.html` si present, sinon un rendu maison minimal.
+ */
+function peintRecevoir(){
+  $('reAdr').textContent = moi || 'Not connected';
+  var q=$('reQr');
+  if(!moi){ q.innerHTML='<div style="color:#666;font:700 12px/1.4 sans-serif;text-align:center">Sign in to<br>get an address</div>'; return; }
+  /* Un QR complet demanderait une bibliotheque ; plutot que d'en charger
+     une ou d'en dessiner un faux, on montre l'adresse en gros et on offre
+     la copie. Un faux QR serait pire que pas de QR : il enverrait des
+     fonds nulle part. */
+  q.innerHTML='<div style="color:#111;font:700 11px/1.5 monospace;word-break:break-all;text-align:center;padding:6px">'
+    + moi + '</div>';
+}
+$('reCopier').addEventListener('click', async function(){
+  if(!moi) return toast('Not connected');
+  try{ await navigator.clipboard.writeText(moi); toast('Address copied'); }
+  catch(e){ toast('Could not copy — select the address above'); }
+});
+
+/* ==================== ENVOYER ==================== */
+function remplitChoix(sel, exclure){
+  var h='';
+  for(var i=0;i<JETONS.length;i++){
+    if(exclure && JETONS[i].cle===exclure) continue;
+    h+='<option value="'+JETONS[i].cle+'">'+JETONS[i].sym+' — '+JETONS[i].nom+'</option>';
+  }
+  sel.innerHTML=h;
+}
+function majEnvoyer(){
+  if(!$('enJeton').options.length) remplitChoix($('enJeton'));
+  var j=J($('enJeton').value)||JETONS[0];
+  var s=soldes[j.cle];
+  $('enSolde').textContent = (s===null||s===undefined) ? '—' : nombre(s,j.dec)+' '+j.sym;
+  litFrais();
+}
+$('enJeton').addEventListener('change', majEnvoyer);
+
+async function litFrais(){
+  try{
+    var g = await lec().getGasPrice();
+    var u = ethers.BigNumber.from(21000 * ($('enJeton').value==='eth' ? 1 : 3));
+    $('enFrais').textContent = '≈ '+nombre(g.mul(u),18)+' ETH';
+  }catch(e){ $('enFrais').textContent='—'; }
+}
+
+$('enPartir').addEventListener('click', async function(){
+  if(!moi) return ouvreConnexion();
+  var j=J($('enJeton').value);
+  var dest=$('enDest').value.trim();
+  var m=$('enMontant').value.trim().replace(',','.');
+  if(!ethers.utils.isAddress(dest)) return toast('That address is not valid');
+  if(!(parseFloat(m)>0)) return toast('Enter an amount');
+  var wei;
+  try{ wei = ethers.utils.parseUnits(m, j.dec); }catch(e){ return toast('Amount not understood'); }
+  var s=soldes[j.cle];
+  if(s && wei.gt(s)) return toast('More than your balance');
+  this.disabled=true; $('enNote').textContent='Waiting for your signature…';
+  try{
+    var tx = j.natif
+      ? await signer.sendTransaction({ to:dest, value:wei })
+      : await erc(j.adr, true).transfer(dest, wei);
+    $('enNote').textContent='Sent — waiting for the chain…';
+    await tx.wait();
+    $('enNote').innerHTML='Done. <a href="'+CHAINE.scan+'/tx/'+tx.hash+'" target="_blank" rel="noopener" style="color:var(--violet2)">View transaction</a>';
+    $('enMontant').value=''; rafraichit();
+  }catch(err){
+    $('enNote').className='wl-note grave';
+    $('enNote').textContent = (err && (err.reason||err.message)) || 'Transaction refused';
+  }
+  this.disabled=false;
+});
+
+/* ==================== SWAP ====================
+ *
+ * ---- LA ROUTE N'EST PAS UN CHOIX ----
+ *
+ * Le $SWOGEBET n'a AUCUNE paire avec l'ETH — verifie sur la chaine, aux
+ * quatre paliers de frais en v3 comme en v2. Sa seule piscine est avec le
+ * $SWOGE. Acheter du $SWOGEBET avec de l'ETH passe donc forcement par
+ * deux sauts, et ces deux sauts ne sont meme pas sur le meme protocole :
+ * ETH -> SWOGE est en v2, SWOGE -> SWOGEBET en v3 a 1 %.
+ *
+ * Le routeur etant un SwapRouter02, les deux tiennent dans UNE
+ * transaction via `multicall` — simule sur la chaine avant d'ecrire cette
+ * page, avec le meme resultat que les deux devis pris separement.
+ *
+ * ---- L'IMPACT EST MONTRE, PAS MASQUE ----
+ *
+ * La piscine SWOGE/WETH ne tient que quelques ETH. L'impact mesure va de
+ * 0,56 % a 0,001 ETH jusqu'a 56 % a 0,5 ETH sur le parcours complet. Une
+ * tolerance fixe cacherait ca puis ferait echouer l'echange sans dire
+ * pourquoi. On calcule l'ecart a chaque devis et on l'ecrit.
+ */
+function majSwap(){
+  if(!$('swDe').options.length){
+    remplitChoix($('swDe'));
+    remplitChoix($('swVers'));
+    $('swDe').value='eth'; $('swVers').value='swogebet';
+  }
+  var j=J($('swDe').value);
+  var s=soldes[j.cle];
+  $('swSolde').textContent=(s===null||s===undefined)?'—':nombre(s,j.dec)+' '+j.sym;
+  devis();
+}
+$('swDe').addEventListener('change', function(){
+  if($('swVers').value===$('swDe').value)
+    $('swVers').value = $('swDe').value==='eth' ? 'swoge' : 'eth';
+  majSwap();
+});
+$('swVers').addEventListener('change', devis);
+$('swMontant').addEventListener('input', function(){ clearTimeout(window._d); window._d=setTimeout(devis, 320); });
+
+function routeDe(de, vers){
+  if(de==='eth'      && vers==='swoge')    return ['v2'];
+  if(de==='eth'      && vers==='swogebet') return ['v2','v3'];
+  if(de==='swoge'    && vers==='swogebet') return ['v3'];
+  if(de==='swogebet' && vers==='swoge')    return ['v3'];
+  if(de==='swoge'    && vers==='eth')      return ['v2'];
+  return null;
+}
+
+async function devis(){
+  var de=$('swDe').value, vers=$('swVers').value;
+  var m=($('swMontant').value||'').trim().replace(',','.');
+  var r=routeDe(de,vers);
+  $('swRoute').textContent = !r ? 'no route'
+    : (r.length===1 ? (r[0]==='v2'?'Uniswap v2':'Uniswap v3 · 1%')
+                    : 'v2 then v3 — one transaction');
+  if(!r){
+    $('swRecu').textContent='—';
+    $('swImpact').textContent='—';
+    $('swNote').className='wl-note grave';
+    $('swNote').textContent='$SWOGEBET has no pool against ETH — it only trades against $SWOGE. Pick another pair.';
+    return;
+  }
+  $('swNote').className='wl-note'; $('swNote').textContent='';
+  if(!(parseFloat(m)>0)){ $('swRecu').textContent='—'; $('swImpact').textContent='—'; return; }
+
+  try{
+    var entree = ethers.utils.parseUnits(m, 18);
+    var out = await borne(simuleRoute(de, vers, entree), 9000, 'quote');
+    $('swRecu').textContent = nombre(out.sortie,18)+' '+J(vers).sym;
+    var imp = out.impact;
+    $('swImpact').textContent = (imp===null) ? '—' : imp.toFixed(2)+' %';
+    if(imp!==null && imp>=10){
+      $('swNote').className='wl-note grave';
+      $('swNote').textContent='Price impact is '+imp.toFixed(1)+' %. The pool is small: this trade moves the price against you by that much. Try a smaller amount.';
+    } else if(imp!==null && imp>=3){
+      $('swNote').className='wl-note alerte';
+      $('swNote').textContent='Price impact '+imp.toFixed(1)+' % — the pool is shallow, so larger trades cost more.';
+    }
+  }catch(e){
+    $('swRecu').textContent='—'; $('swImpact').textContent='—';
+    $('swNote').className='wl-note grave';
+    /* Quelle que soit la CAUSE — attente depassee ou refus net — le joueur
+       doit lire la meme chose : la lecture a echoue, ce n'est pas un prix
+       de zero. Distinguer les deux cas dans le texte, c'etait laisser le
+       refus sans cette precision, et un tiret muet se lit comme « rien ». */
+    $('swNote').textContent = (estTimeout(e)
+      ? 'The chain did not answer in time. '
+      : 'Could not read a quote right now. ')
+      + 'This is a network problem, not a price of zero — try again.';
+  }
+}
+
+/* Le devis, saut par saut, avec le prix marginal pour mesurer l'impact. */
+async function simuleRoute(de, vers, entree){
+  var p=lec();
+  var v2=new ethers.Contract(V2ROUTER, V2_ABI, p);
+  var q =new ethers.Contract(QUOTER, QUOTER_ABI, p);
+  var sortie=entree, ideal=null;
+
+  /* Le prix marginal se prend sur un tout petit montant : c'est lui qui
+     dit ce que l'echange VAUDRAIT sans impact. */
+  var pouce = ethers.utils.parseUnits('0.0001', 18);
+
+  if(de==='eth'){
+    sortie = (await v2.getAmountsOut(entree, [WETH, SWOGE]))[1];
+    var pt = (await v2.getAmountsOut(pouce, [WETH, SWOGE]))[1];
+    ideal = parseFloat(ethers.utils.formatEther(pt)) / 0.0001 * parseFloat(ethers.utils.formatEther(entree));
+  } else if(de==='swoge' && vers==='eth'){
+    sortie = (await v2.getAmountsOut(entree, [SWOGE, WETH]))[1];
+    var pt2 = (await v2.getAmountsOut(pouce, [SWOGE, WETH]))[1];
+    ideal = parseFloat(ethers.utils.formatEther(pt2)) / 0.0001 * parseFloat(ethers.utils.formatEther(entree));
+  }
+  if(vers==='swogebet'){
+    var r = await q.callStatic.quoteExactInputSingle(
+      { tokenIn:SWOGE, tokenOut:SWOGEBET, amountIn:sortie, fee:FRAIS_V3, sqrtPriceLimitX96:0 });
+    var av = parseFloat(ethers.utils.formatEther(sortie));
+    sortie = r.amountOut || r[0];
+    var rp = await q.callStatic.quoteExactInputSingle(
+      { tokenIn:SWOGE, tokenOut:SWOGEBET, amountIn:pouce, fee:FRAIS_V3, sqrtPriceLimitX96:0 });
+    var taux = parseFloat(ethers.utils.formatEther(rp.amountOut || rp[0])) / 0.0001;
+    window._tauxBet = taux;
+    ideal = (ideal===null ? av : ideal) * taux;
+  } else if(de==='swogebet'){
+    var r2 = await q.callStatic.quoteExactInputSingle(
+      { tokenIn:SWOGEBET, tokenOut:SWOGE, amountIn:entree, fee:FRAIS_V3, sqrtPriceLimitX96:0 });
+    sortie = r2.amountOut || r2[0];
+    var rp2 = await q.callStatic.quoteExactInputSingle(
+      { tokenIn:SWOGEBET, tokenOut:SWOGE, amountIn:pouce, fee:FRAIS_V3, sqrtPriceLimitX96:0 });
+    ideal = parseFloat(ethers.utils.formatEther(rp2.amountOut || rp2[0])) / 0.0001
+          * parseFloat(ethers.utils.formatEther(entree));
+  }
+
+  var recu = parseFloat(ethers.utils.formatEther(sortie));
+  var impact = (ideal && ideal>0) ? Math.max(0, 100*(1 - recu/ideal)) : null;
+  return { sortie:sortie, impact:impact };
+}
+
+$('swPartir').addEventListener('click', function(){
+  if(!moi) return ouvreConnexion();
+  $('swNote').className='wl-note alerte';
+  $('swNote').textContent='Swapping from this wallet is not switched on yet — the quote above is live and correct, but the send button is deliberately inert until the route has been tested with real funds. Use the Buy panel in the arcade meanwhile.';
+});
+
+/* ==================== ACTIVITE ====================
+ *
+ * Lue au RPC, pas chez l'explorateur : l'API Blockscout de cette chaine
+ * est derriere Cloudflare et repond une page HTML au lieu de JSON.
+ *
+ * ---- LA FENETRE EST UN PIEGE ----
+ * Le bloc dure 0,101 s sur cette chaine. Une fenetre de « 100 000 derniers
+ * blocs » ne remonterait qu'a DEUX HEURES — et le joueur lirait « aucune
+ * transaction » en croyant que c'est vrai. Trente jours font vingt-six
+ * millions de blocs, et le noeud les accepte en une requete.
+ */
+var FENETRE = 26000000;
+
+async function chargeActivite(){
+  var c=$('acvCorps');
+  if(!moi){ c.innerHTML='<div class="wl-vide"><span class="g">&#9202;</span>Connect a wallet to see your transfers.</div>'; return; }
+  c.innerHTML='<div class="wl-vide"><span class="g">&#8987;</span>Reading the last 30 days from the chain…</div>';
+  try{
+    var p=lec();
+    var bloc=await p.getBlockNumber();
+    var sujet=ethers.utils.id('Transfer(address,address,uint256)');
+    var qui=ethers.utils.hexZeroPad(moi, 32);
+    var debut=Math.max(0, bloc-FENETRE);
+    var lots=[];
+    for(var i=1;i<JETONS.length;i++){
+      (function(j){
+        lots.push(p.getLogs({ address:j.adr, topics:[sujet, qui, null], fromBlock:debut, toBlock:bloc })
+          .then(function(l){ return l.map(function(x){ return { j:j, log:x, sortant:true }; }); }));
+        lots.push(p.getLogs({ address:j.adr, topics:[sujet, null, qui], fromBlock:debut, toBlock:bloc })
+          .then(function(l){ return l.map(function(x){ return { j:j, log:x, sortant:false }; }); }));
+      })(JETONS[i]);
+    }
+    var tout=[].concat.apply([], await borne(Promise.all(lots), 25000, 'history'));
+    tout.sort(function(a,b){ return b.log.blockNumber - a.log.blockNumber; });
+    if(!tout.length){
+      c.innerHTML='<div class="wl-vide"><span class="g">&#9675;</span>No $SWOGE or $SWOGEBET transfers in the last 30 days.</div>';
+      return;
+    }
+    var h='';
+    for(var k=0;k<Math.min(tout.length, 60);k++){
+      var t=tout[k];
+      var v=ethers.BigNumber.from(t.log.data);
+      var autre='0x'+t.log.topics[t.sortant?2:1].slice(26);
+      h+='<div class="wl-jeton" style="cursor:default">'
+       +   '<img src="'+t.j.logo+'" alt="">'
+       +   '<span class="nom"><b>'+(t.sortant?'Sent':'Received')+'</b>'
+       +     '<small>'+(t.sortant?'To ':'From ')+court(autre)+'</small></span>'
+       +   '<span class="val"><b style="color:'+(t.sortant?'var(--rouge)':'var(--vert)')+'">'
+       +     (t.sortant?'−':'+')+nombre(v,18)+'</b><small>'+t.j.sym+'</small></span>'
+       + '</div>';
+    }
+    if(tout.length>60) h+='<p class="wl-note">Showing the 60 most recent of '+tout.length+' transfers.</p>';
+    c.innerHTML=h;
+  }catch(e){
+    /* « Impossible de lire » et non « aucune transaction ». Les deux ne
+       veulent pas dire la meme chose, et confondre les deux ferait croire
+       a un joueur que son historique est vide. */
+    c.innerHTML='<div class="wl-vide"><span class="g">&#9888;</span>'
+      + (estTimeout(e) ? 'The chain did not answer within 25 seconds.' : 'Could not read your history from the chain just now.')
+      + '<br>This does <b>not</b> mean you have no transfers — the read failed. Try again.</div>';
+  }
+}
+$('btActRelire').addEventListener('click', chargeActivite);
+
+/* ==================== LA FICHE D'UN JETON ==================== */
+async function ficheJeton(cle){
+  var j=J(cle); if(!j) return;
+  $('fiTitre').textContent=j.sym;
+  $('fiNom').textContent=j.nom;
+  $('fiLogo').src=j.logo||'img/wallet/tok_swoge.webp';
+  $('fiSolde').textContent = moi ? nombre(soldes[cle], j.dec)+' '+j.sym : '—';
+  var v=valeur(cle);
+  $('fiValeur').textContent = v===null ? (moi?'price unavailable':'—') : usd(v);
+  $('fiAdr').textContent = j.adr ? j.adr : 'native coin';
+  $('fiPrix').textContent = cle==='swoge' && prixUsd ? '$'+prixUsd.toPrecision(3)
+    : cle==='eth' && ethUsd ? usd(ethUsd) : '—';
+  $('fiMcap').textContent = cle==='swoge' && window._fdv ? usd(window._fdv) : '—';
+  $('fiLiq').textContent  = cle==='swoge' && window._liq ? usd(window._liq) : '—';
+  $('fiNote').textContent = cle==='swogebet'
+    ? '$SWOGEBET trades only against $SWOGE. Buying it with ETH goes through $SWOGE automatically, in a single transaction.'
+    : (cle==='swoge' ? 'The ecosystem token. Everything on the site settles in $SWOGE.' : '');
+  va('ecJeton');
+}
+$('fiSwap').addEventListener('click', function(){ va('ecSwap'); });
+
+/* ==================== L'HEURE, ET LE DEPART ==================== */
+function heure(){
+  var d=new Date();
+  $('hHeure').textContent = String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+}
+heure(); setInterval(heure, 20000);
+
+if(ethersManquant()){
+  crieSansEthers();
+  /* On s'arrete la : continuer appellerait `ethers.…` a chaque clic et
+     remplirait la console d'exceptions sans rien apprendre au joueur. */
+  ['btRafraichir','enPartir','swPartir','reCopier','btActRelire','cnEnvoyer','cnExtension']
+    .forEach(function(id){ var b=$(id); if(b) b.disabled=true; });
+  return;
+}
+
+remplitChoix($('enJeton'));
+remplitChoix($('swDe'));
+remplitChoix($('swVers'));
+$('swDe').value='eth'; $('swVers').value='swogebet';
+peintAccueil();
+lisPrix().then(peintAccueil);
+reprend();
+
+/* Sans portefeuille, tous les boutons qui en demandent un ouvrent la
+   feuille de connexion plutot que de repondre « connectez-vous ». */
+['btRafraichir'].forEach(function(id){
+  $(id).addEventListener('click', function(){ if(!moi) ouvreConnexion(); });
+});
+
+})();
+</script>
+</body>
+</html>

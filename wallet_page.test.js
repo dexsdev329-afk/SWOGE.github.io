@@ -168,11 +168,28 @@ function servir(q, r, f, type) {
       while ((c = w.nextNode())) out += c.nodeValue + ' ';
       return out;
     });
-    const syms = await p.evaluate(() =>
+    /* ---- CETTE REGLE A CHANGE D ECRAN, PAS DE MOTIF ----
+     * Elle comptait quatre lignes sur l ACCUEIL : les trois de la chaine plus
+     * l ETH d Ethereum. L accueil annonce pourtant la Robinhood Chain et un
+     * total qui ne compte qu elle : une ligne d ailleurs posee dessous
+     * n entrait dans aucun des deux. Elle a donc demenage dans « Tokens »,
+     * qui est fait pour tout ce qu on detient, ou qu on le detienne. Ce qui
+     * se verifie est inchange : les deux ether coexistent, et rien ne permet
+     * de les confondre. */
+    const surAcc = await p.evaluate(() =>
       [...document.querySelectorAll('#acJetons .wl-jeton .nom b')].map((x) => x.textContent));
-    ok(syms.length === 4 && syms.indexOf('SWOGE') >= 0 && syms.indexOf('SWOGEBET') >= 0
+    ok(surAcc.length === 3 && surAcc.indexOf('SWOGE') >= 0 && surAcc.indexOf('SWOGEBET') >= 0
+       && surAcc.indexOf('ETH (RH)') >= 0,
+       'l accueil montre les trois jetons de la chaine, et eux seuls ('
+       + surAcc.join(', ') + ')');
+    await p.evaluate(() => {
+      const b = document.querySelector('#pied button[data-va="ecJetons"]'); if (b) b.click(); });
+    await p.waitForTimeout(300);
+    const syms = await p.evaluate(() =>
+      [...document.querySelectorAll('#jtListe .wl-jeton .nom b')].map((x) => x.textContent));
+    ok(syms.length >= 4 && syms.indexOf('SWOGE') >= 0 && syms.indexOf('SWOGEBET') >= 0
        && syms.indexOf('ETH (RH)') >= 0 && syms.indexOf('ETH') >= 0,
-       'quatre lignes : les trois de la chaine, plus l ETH d Ethereum ('
+       '« Tokens » les montre tous, l ETH d Ethereum compris ('
        + syms.join(', ') + ')');
     /* ---- LES DEUX ETHER SE DISTINGUENT ----
      * Depuis le pont, le portefeuille tient de l ether sur DEUX chaines. Deux
@@ -180,23 +197,25 @@ function servir(q, r, f, type) {
      * laquelle est laquelle : le nom le dit, et la piece aussi — un joueur qui
      * lit vite ne lit pas le nom. */
     const ethers2 = await p.evaluate(() =>
-      [...document.querySelectorAll('#acJetons .wl-jeton')]
+      [...document.querySelectorAll('#jtListe .wl-jeton')]
         .map((r) => ({ sym: r.querySelector('.nom b').textContent,
                        nom: (r.querySelector('.nom small') || {}).textContent || '',
                        img: (r.querySelector('img') || {}).getAttribute
                             ? r.querySelector('img').getAttribute('src') : null }))
         .filter((x) => /ETH/.test(x.sym)));
     console.log('   les deux ether : ' + JSON.stringify(ethers2));
-    ok(ethers2.length === 2, 'il y a bien DEUX lignes d ether (' + ethers2.length + ')');
+    ok(ethers2.length >= 2, 'il y a bien plusieurs lignes d ether (' + ethers2.length + ')');
     /* Et l une SOUS l autre : deux fois le meme actif se comparent d un coup
        d oeil quand ils se touchent, pas quand deux jetons les separent. */
     ok(syms[0] === 'ETH (RH)' && syms[1] === 'ETH',
-       'et l ETH d Ethereum est juste sous l ETH (RH) (' + syms.join(', ') + ')');
-    ok(ethers2.every((x) => /Robinhood|Ethereum/.test(x.nom)),
+       'et l ETH d Ethereum est juste sous l ETH (RH) (' + syms.slice(0, 4).join(', ') + ')');
+    /* Sept chaines peuvent porter de l ether maintenant : ce qui compte n est
+       pas LAQUELLE, c est que chacune le DISE. */
+    ok(ethers2.every((x) => / on \S/.test(x.nom)),
        'et chacune DIT sur quelle chaine elle est ('
        + ethers2.map((x) => x.sym + ' = ' + x.nom).join(' | ') + ')');
-    ok(new Set(ethers2.map((x) => x.img)).size === 2,
-       'avec deux pieces differentes — le nom seul ne se lit pas assez vite ('
+    ok(new Set(ethers2.map((x) => x.img)).size === ethers2.length,
+       'chacune avec SA piece — le nom seul ne se lit pas assez vite ('
        + ethers2.map((x) => String(x.img).split('/').pop()).join(', ') + ')');
     /* ---- « ETH » TOUT COURT NE DOIT PLUS SE LIRE COMME UN SOLDE ----
        Le joueur a deux soldes d'ether : celui-ci et celui de la chaine
@@ -3041,13 +3060,19 @@ function servir(q, r, f, type) {
      * et la seule chose qu on puisse en faire ici, c est le faire passer. Elle
      * mene donc au pont, et elle l ECRIT, au lieu de mener a une fiche qui
      * n apprendrait rien. */
-    await page.evaluate(() => document.querySelector('[data-va="ecAccueil"]').click());
+    /* ---- ET C EST DANS « TOKENS », PAS SUR L ACCUEIL ----
+     * L accueil annonce la Robinhood Chain et un total qui ne compte qu elle.
+     * Une ligne d une autre chaine posee dessous n entrait dans aucun des
+     * deux : elle se lisait comme un solde d ici qui manquerait au total.
+     * « affiche pas eth base sur la page home mais dans token ». */
+    await page.evaluate(() => {
+      const b = document.querySelector('#pied button[data-va="ecJetons"]'); if (b) b.click(); });
     await page.waitForTimeout(500);
     const ligne = await page.evaluate(() => {
-      const r = [...document.querySelectorAll('#acJetons .wl-jeton')]
+      const r = [...document.querySelectorAll('#jtListe .wl-jeton')]
         .find((x) => x.querySelector('.nom b').textContent === 'ETH');
       if (!r) return null;
-      const toutes = [...document.querySelectorAll('#acJetons .wl-jeton')].map((x) => ({
+      const toutes = [...document.querySelectorAll('#jtListe .wl-jeton')].map((x) => ({
         sym: x.querySelector('.nom b').textContent,
         nom: x.querySelector('.nom small').textContent,
         pont: x.dataset.pont || null }));
@@ -3078,7 +3103,7 @@ function servir(q, r, f, type) {
        + dehors.map((x) => x.nom.replace(/^.* on /, '') + ':' + x.pont).join(', ') + ')');
     /* Et le tap y va VRAIMENT, dans le bon sens : deposer, pas retirer. */
     await page.evaluate(() => {
-      const r = [...document.querySelectorAll('#acJetons .wl-jeton')]
+      const r = [...document.querySelectorAll('#jtListe .wl-jeton')]
         .find((x) => x.querySelector('.nom b').textContent === 'ETH');
       r.click();
     });
@@ -3474,6 +3499,33 @@ function servir(q, r, f, type) {
        'chaque « ETH » dit SUR QUELLE CHAINE il se trouve ('
        + ethiques.map((x) => x.nom).join(' / ') + ')');
 
+    /* ---- ET L ACCUEIL, LUI, RESTE CELUI D UNE SEULE CHAINE ----
+     * « affiche pas eth base sur la page home mais dans token ». Il annonce
+     * la Robinhood Chain et un total qui ne compte qu elle : une ligne d une
+     * autre chaine posee dessous n entre dans aucun des deux, et se lit comme
+     * un solde d ici qui manquerait au total. */
+    await page.evaluate(() => {
+      const b = document.querySelector('#pied button[data-va="ecAccueil"]'); if (b) b.click(); });
+    await page.waitForTimeout(300);
+    const surAccueil = await page.evaluate(() =>
+      [...document.querySelectorAll('#acJetons .wl-jeton')].map((b) => ({
+        sym: b.querySelector('.nom b').textContent,
+        nom: b.querySelector('.nom small').textContent })));
+    console.log('   accueil : ' + JSON.stringify(surAccueil.map((x) => x.nom)));
+    ok(!surAccueil.some((x) => /on (Ethereum|Base|Arbitrum|Optimism|BNB|Polygon|Avalanche)/.test(x.nom)),
+       'l accueil ne montre AUCUNE ligne d une autre chaine ('
+       + surAccueil.map((x) => x.sym).join(', ') + ')');
+    ok(surAccueil.length >= 3 && surAccueil.some((x) => /Robinhood Chain/.test(x.nom)),
+       'mais bien celles d ici (' + surAccueil.length + ' lignes)');
+    /* Et l ecran Tokens, lui, les a : sinon la ligne n aurait pas ete deplacee,
+       elle aurait ete perdue — le defaut d origine, une seconde fois. */
+    const surTokens = (await listeJetons()).map((x) => x.nom);
+    ok(surTokens.some((x) => /on Base/.test(x)),
+       'et « Tokens » les garde toutes (' + surTokens.length + ' lignes)');
+    ok(surTokens.length > surAccueil.length,
+       'la liste de Tokens est la plus longue des deux ('
+       + surTokens.length + ' contre ' + surAccueil.length + ')');
+
     /* ---- ET UNE CHAINE VIDE NE TIENT PAS UNE LIGNE VIDE ----
      * L inverse du defaut, et il compte autant : sept chaines a zero
      * noieraient les trois jetons de la maison. Cachees, mais DITES. */
@@ -3770,6 +3822,70 @@ function servir(q, r, f, type) {
         value: { writeText: async () => {} } });
     });
 
+    /* ---- ET ELLE A SA LIGNE DANS « TOKENS », MEME A ZERO ----
+     *
+     * « solana affiche le aussi meme si tu en as 0 pour le moment. »
+     * C est une exception assumee a la regle qui cache les lignes vides :
+     * celle-la sert a se debarrasser de jetons qu on n a pas demandes, alors
+     * qu une adresse Solana, on l a creee expres. La cacher parce qu elle est
+     * vide ferait douter de son existence le jour ou l on veut justement s en
+     * servir pour RECEVOIR. */
+    await page.evaluate(() => {
+      const b = document.querySelector('#pied button[data-va="ecJetons"]'); if (b) b.click(); });
+    await page.waitForTimeout(700);
+    const ligneSol = await page.evaluate(() => {
+      const b = document.querySelector('#jtListe [data-sol]');
+      if (!b) return null;
+      const im = b.querySelector('img');
+      return { sym: b.querySelector('.nom b').textContent,
+               nom: b.querySelector('.nom small').textContent,
+               val: b.querySelector('.val b').textContent,
+               logo: im ? im.getAttribute('src') : null,
+               charge: im ? im.naturalWidth > 0 : false,
+               surAccueil: !!document.querySelector('#acJetons [data-sol]') };
+    });
+    console.log('   la ligne SOL : ' + JSON.stringify(ligneSol));
+    ok(!!ligneSol, 'l adresse Solana a sa ligne dans « Tokens »');
+    ok(!!ligneSol && /^1\.2345$/.test(ligneSol.val),
+       'avec le solde lu sur la chaine Solana (' + (ligneSol || {}).val + ')');
+    ok(!!ligneSol && ligneSol.charge,
+       'et sa piece a elle, chargee (' + String((ligneSol || {}).logo).split('/').pop() + ')');
+    ok(!!ligneSol && !ligneSol.surAccueil,
+       'mais pas sur l accueil : le SOL n est meme pas sur une chaine EVM');
+
+    /* Elle mene au compte : c est la que vivent l adresse entiere et le
+       bouton qui la copie. Elle n a pas de fiche a elle — ni marche, ni
+       contrat a montrer ici. */
+    await page.evaluate(() => document.querySelector('#jtListe [data-sol]').click());
+    await page.waitForTimeout(500);
+    const apresSol = await page.evaluate(() => (document.querySelector('.wl-ecran.on') || {}).id);
+    ok(apresSol === 'ecCompte',
+       'et un appui dessus mene au compte, ou vit l adresse (' + apresSol + ')');
+
+    /* ---- UN SOLDE A ZERO NE LA FAIT PAS DISPARAITRE ---- */
+    await page.route('**/solana-rpc.publicnode.com/**', (r) => r.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, result: { value: 0 } }) }));
+    await page.evaluate(() => {
+      const b = document.querySelector('#pied button[data-va="ecCompte"]'); if (b) b.click(); });
+    await page.waitForTimeout(400);
+    /* On force une relecture en changeant d adresse connue : le garde interne
+       n en lance qu une par adresse, et c est voulu. */
+    await page.evaluate(() => {
+      const b = document.querySelector('#pied button[data-va="ecAccueil"]'); if (b) b.click(); });
+    await page.waitForTimeout(300);
+    await page.click('#btRafraichir');
+    await page.waitForTimeout(2500);
+    await page.evaluate(() => {
+      const b = document.querySelector('#pied button[data-va="ecJetons"]'); if (b) b.click(); });
+    await page.waitForTimeout(500);
+    const aZero = await page.evaluate(() => {
+      const b = document.querySelector('#jtListe [data-sol]');
+      return b ? b.querySelector('.val b').textContent : null;
+    });
+    ok(aZero !== null, 'la ligne SOL reste la meme quand le solde est nul ('
+       + aZero + ')');
+
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.close();
   }
@@ -3778,6 +3894,102 @@ function servir(q, r, f, type) {
    * Il passe DERRIERE les cartes. Pose par-dessus il etait magnifique et il
    * voilait le texte : « TOTAL BALANCE » se lisait a travers une nappe bleue.
    * Un decor qui rend un solde moins lisible n est pas un decor. */
+  /* ==================== UNE SEULE SORTIE, ET ELLE EST SOUS LE POUCE ====================
+   *
+   * Chaque ecran portait une sortie en haut — une croix ou une fleche vers
+   * l accueil — alors que la barre d onglets du bas sort deja de n importe
+   * lequel. Deux sorties pour un meme ecran, c est une de trop : celle du haut
+   * demandait au pouce de traverser le telephone pour faire ce que celle du
+   * bas fait sous lui, et elle prenait la place du titre. Elles sont retirees.
+   *
+   * Ce qui se mesure ici n est pas leur absence — ca, ce serait une regle qui
+   * se contente d elle-meme. C est que rien n ENFERME : sur les dix ecrans, la
+   * barre du bas doit etre a l ecran, et un appui dessus doit vraiment
+   * changer d ecran. Une sortie retiree sans que l autre soit prouvee, c est
+   * un joueur coince dans le pont avec son argent.
+   */
+  console.log('\n-- la sortie de chaque ecran --');
+  {
+    const page = await nav.newPage({ viewport: { width: 390, height: 844 } });
+    const boum = [];
+    page.on('pageerror', (e) => boum.push(String(e).slice(0, 180)));
+    await page.addInitScript(() => {
+      try { sessionStorage.setItem('swogeWalletIntroVue', '1'); } catch (e) {}
+    });
+    await page.route('**/ethers*.umd.min.js', (r) => r.fulfill({
+      contentType: 'text/javascript', body: fs.readFileSync(ETHERS, 'utf8') }));
+    await page.route('**/api.dexscreener.com/**', (r) => r.fulfill({
+      contentType: 'application/json', body: '{"pairs":[]}' }));
+    await page.goto('http://127.0.0.1:' + port + '/swoge_wallet.html',
+                    { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(2200);
+
+    const etat = await page.evaluate(() => {
+      const out = [];
+      const ecrans = [...document.querySelectorAll('.wl-ecran')].map((s) => s.id);
+      for (const id of ecrans) {
+        document.querySelectorAll('.wl-ecran').forEach((s) => s.classList.toggle('on', s.id === id));
+        const t = document.querySelector('#' + id + ' .wl-tete');
+        /* Une SORTIE, pas une action : un bouton de l en-tete qui change
+           d ecran. Relire les soldes ou ouvrir les reglages n en est pas une. */
+        const sorties = t ? [...t.querySelectorAll('button[data-va]')].map((b) => b.dataset.va) : [];
+        const p = document.getElementById('pied');
+        const q = p ? p.getBoundingClientRect() : null;
+        out.push({ id, sorties,
+                   pied: !!q && q.height > 0 && q.bottom <= innerHeight + 1 && !p.hidden,
+                   onglets: p ? [...p.querySelectorAll('button[data-va]')].length : 0 });
+      }
+      return out;
+    });
+    console.log('   ' + etat.map((x) => x.id + (x.sorties.length ? ' SORTIE-HAUT' : '')
+                                     + (x.pied ? '' : ' SANS-PIED')).join(', '));
+    ok(etat.length >= 8, etat.length + ' ecrans releves');
+    const avecHaut = etat.filter((x) => x.sorties.length);
+    ok(avecHaut.length === 0,
+       avecHaut.length === 0
+         ? 'aucun ecran ne porte plus de sortie en haut — la barre du bas suffit'
+         : 'il en reste : ' + avecHaut.map((x) => x.id).join(', '));
+    const sansPied = etat.filter((x) => !x.pied);
+    ok(sansPied.length === 0,
+       sansPied.length === 0
+         ? 'et les ' + etat.length + ' ecrans ont la barre du bas A L ECRAN'
+         : 'ENFERME : ' + sansPied.map((x) => x.id).join(', ') + ' n a aucune sortie');
+    ok(etat.every((x) => x.onglets >= 4),
+       'avec ses onglets, sur chacun (' + etat[0].onglets + ')');
+
+    /* Et elle MARCHE : un onglet doit vraiment ramener. Une barre presente
+       mais inerte serait la meme prison, en moins visible. */
+    await page.evaluate(() => {
+      document.querySelectorAll('.wl-ecran').forEach((s) => s.classList.remove('on'));
+      const b = document.querySelector('#pied button[data-va="ecSwap"]'); if (b) b.click();
+    });
+    await page.waitForTimeout(400);
+    const depuisPont = await page.evaluate(() => {
+      const b = document.querySelector('#pied button[data-va="ecAccueil"]');
+      const avant = (document.querySelector('.wl-ecran.on') || {}).id;
+      if (b) b.click();
+      return { avant, apres: (document.querySelector('.wl-ecran.on') || {}).id };
+    });
+    ok(depuisPont.avant === 'ecSwap' && depuisPont.apres === 'ecAccueil',
+       'et un appui sur « Home » ramene vraiment (' + depuisPont.avant + ' -> '
+       + depuisPont.apres + ')');
+
+    /* Le titre reprend la place laissee : un en-tete vide se remarquerait. */
+    const titre = await page.evaluate(() => {
+      document.querySelectorAll('.wl-ecran').forEach((s) => s.classList.toggle('on', s.id === 'ecSwap'));
+      const h = document.querySelector('#ecSwap .wl-tete h1');
+      const t = document.querySelector('#ecSwap .wl-tete');
+      return h && t ? { x: Math.round(h.getBoundingClientRect().left - t.getBoundingClientRect().left),
+                        txt: h.textContent } : null;
+    });
+    ok(!!titre && titre.x <= 20,
+       'et le titre reprend la place du bouton retire, au bord de l en-tete ('
+       + (titre || {}).txt + ' a ' + (titre || {}).x + ' px)');
+
+    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
+    await page.close();
+  }
+
   console.log('\n-- le fond d ecran --');
   {
     const page = await nav.newPage({ viewport: { width: 390, height: 844 } });

@@ -68,7 +68,7 @@
      A savoir : cela ne sauve pas la page DEJA en cache chez quelqu'un, qui ne
      contient pas ces lignes. Ce garde-fou vaut a partir de celle-ci. -->
 <script>
-var MARQUE_PAGE = '1d96ae59';
+var MARQUE_PAGE = 'f7997998';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -315,7 +315,23 @@ body{
 }
 .wl-etat .ic{ display:flex; gap:5px; opacity:.85; font-size:11px }
 
-/* l'en-tete de chaque ecran */
+/* ---- L'EN-TETE DE CHAQUE ECRAN, ET CE QU'ELLE N'A PLUS ----
+ *
+ * Elle portait une sortie : une croix ou une fleche, en haut, qui ramenait a
+ * l'accueil. Elle a ete retiree partout. La barre d'onglets du bas est
+ * presente sur les DIX ecrans, et ses cinq boutons — Home, Tokens, Swap,
+ * Activity, Account — sortent de n'importe lequel d'un seul geste. Deux
+ * sorties pour un meme ecran, c'est une de trop : celle du haut demandait au
+ * pouce de traverser le telephone pour faire ce que celle du bas fait sous
+ * lui, et elle prenait la place du titre.
+ *
+ * Ce qui reste en haut n'est pas une sortie mais une ACTION propre a l'ecran
+ * — relire les soldes, ouvrir les reglages, recharger l'historique. Le
+ * dessin `.rond` reste donc pour elles.
+ *
+ * Avant de retirer quoi que ce soit, la presence de la barre du bas a ete
+ * mesuree sur les dix ecrans, un par un : sans elle, retirer la sortie du
+ * haut aurait enferme le joueur dans l'ecran. L'essai la remesure. */
 .wl-tete{
   flex:0 0 auto; display:flex; align-items:center; gap:12px;
   padding:8px 18px 12px; min-height:46px;
@@ -1314,7 +1330,6 @@ body{
   <section class="wl-ecran" id="ecJetons">
     <div class="wl-tete">
       <h1>Tokens</h1>
-      <button class="rond" type="button" data-va="ecAccueil" aria-label="Close">&times;</button>
     </div>
     <div class="wl-corps">
       <div class="wl-titre">MY TOKENS</div>
@@ -1326,7 +1341,6 @@ body{
   <!-- ============ ENVOYER ============ -->
   <section class="wl-ecran" id="ecEnvoyer">
     <div class="wl-tete">
-      <button class="rond" type="button" data-va="ecAccueil" aria-label="Back">&larr;</button>
       <h1>Send</h1>
     </div>
     <div class="wl-corps">
@@ -1367,7 +1381,6 @@ body{
   <!-- ============ RECEVOIR ============ -->
   <section class="wl-ecran" id="ecRecevoir">
     <div class="wl-tete">
-      <button class="rond" type="button" data-va="ecAccueil" aria-label="Back">&larr;</button>
       <h1>Receive</h1>
     </div>
     <div class="wl-corps">
@@ -1387,7 +1400,6 @@ body{
   <!-- ============ SWAP ============ -->
   <section class="wl-ecran" id="ecSwap">
     <div class="wl-tete">
-      <button class="rond" type="button" data-va="ecAccueil" aria-label="Back">&larr;</button>
       <h1>Swap</h1>
     </div>
     <div class="wl-corps">
@@ -1465,7 +1477,6 @@ body{
   <section class="wl-ecran" id="ecPont">
     <div class="wl-tete">
       <h1>Bridge</h1>
-      <button class="rond" type="button" data-va="ecAccueil" aria-label="Close">&times;</button>
     </div>
     <div class="wl-corps">
       <div class="wl-carte">
@@ -1504,7 +1515,6 @@ body{
   <!-- ============ CASINO ============ -->
   <section class="wl-ecran" id="ecCasino">
     <div class="wl-tete">
-      <button class="rond" type="button" data-va="ecAccueil" aria-label="Back">&larr;</button>
       <h1>Casino</h1>
     </div>
     <div class="wl-corps">
@@ -1674,7 +1684,6 @@ body{
   <!-- ============ FICHE D'UN JETON ============ -->
   <section class="wl-ecran" id="ecJeton">
     <div class="wl-tete">
-      <button class="rond" type="button" data-va="ecJetons" aria-label="Back">&larr;</button>
       <h1 id="fiTitre">Token</h1>
     </div>
     <div class="wl-corps">
@@ -3235,6 +3244,36 @@ function valeur(cle){
   return null;
 }
 
+/* ---- LA LIGNE SOLANA ----
+ *
+ * Elle vit dans « Tokens » et nulle part ailleurs : l'accueil est celui de la
+ * Robinhood Chain, et le SOL n'est meme pas sur une chaine EVM — il n'a ni la
+ * meme adresse, ni la meme courbe.
+ *
+ * Elle s'affiche DES QU'UNE ADRESSE EXISTE, y compris a zero. C'est une
+ * exception assumee a la regle du dessus (« un jeton qu'on ne detient pas n'a
+ * rien a faire dans la liste ») : celle-la sert a se debarrasser de lignes
+ * qu'on n'a pas demandees, alors qu'une adresse Solana, on l'a creee expres.
+ * La cacher parce qu'elle est vide ferait douter de son existence le jour ou
+ * l'on veut justement s'en servir pour RECEVOIR.
+ *
+ * Pas de valeur en dollars : cette page ne cote pas le SOL, et ecrire un
+ * chiffre qu'on n'a pas lu serait l'inventer. */
+function ligneSolana(){
+  if(!solAdr) return '';
+  var v = (solSolde === undefined) ? '…'
+        : (solSolde === null)      ? 'unknown'
+        : solEnSol(solSolde);
+  return '<button class="wl-jeton" type="button" data-sol="1">'
+    + '<img src="img/wallet/ch/solana.webp" alt="">'
+    + '<span class="nom"><b>SOL</b><small>Solana</small></span>'
+    + '<span class="val"><b>' + v + '</b>'
+    +   '<small>' + (moi ? 'no price' : '—') + '</small>'
+    +   '<span class="versPont">ADDRESS &rarr;</span>'
+    + '</span>'
+    + '</button>';
+}
+
 function peintAccueil(){
   /* le total */
   var total=0, complet=true;
@@ -3271,8 +3310,20 @@ function peintAccueil(){
     if(possible) te.textContent = '\u2248 ' + (total / ethUsd).toFixed(4) + ' ' + ETH_AFF;
   }
 
-  /* les jetons */
-  var h='', caches=0, vides=0;
+  /* ---- LES JETONS, ET DEUX LISTES PLUTOT QU'UNE ----
+   *
+   * L'accueil ne montre QUE la Robinhood Chain. Juste au-dessus de sa liste,
+   * une pastille annonce cette chaine et un total qui ne compte qu'elle : une
+   * ligne « ETH on Base » posee dessous n'entrait dans aucun des deux, et se
+   * lisait comme un solde d'ici qui manquerait au total. L'ecran « Tokens »,
+   * lui, est fait pour tout ce que le portefeuille detient, ou qu'il le
+   * detienne — c'est la que les chaines du pont ont leur place, et la Solana
+   * avec elles.
+   *
+   * Une seule boucle, deux chaines de caracteres : les lignes sont ecrites une
+   * fois et rangees dans l'une, dans l'autre, ou dans les deux. */
+  litAdrSolana();
+  var h='', hAcc='', caches=0, vides=0;
   for(var k=0;k<JETONS.length;k++){
     var j=JETONS[k], s=soldes[j.cle], v=valeur(j.cle);
     /* ---- UN JETON QU'ON NE DETIENT PAS N'A RIEN A FAIRE DANS LA LISTE ----
@@ -3322,7 +3373,7 @@ function peintAccueil(){
        n'apprendrait rien (pas de contrat, pas de marche ici) et couterait un
        geste de plus avant le seul geste possible. */
     var ailleurs = j.chaine && j.chaine !== CHAINE.id;
-    h += '<button class="wl-jeton" type="button" data-jeton="'+j.cle+'"'
+    var ligne = '<button class="wl-jeton" type="button" data-jeton="'+j.cle+'"'
        +   (ailleurs ? ' data-pont="'+j.chaine+'"' : '') + '>'
        +   logo
        +   '<span class="nom"><b>'+j.sym+'</b><small>'+j.nom+'</small></span>'
@@ -3331,9 +3382,11 @@ function peintAccueil(){
        +     (ailleurs ? '<span class="versPont">BRIDGE &rarr;</span>' : '')
        +   '</span>'
        + '</button>';
+    if(!j.chaine || j.chaine === CHAINE.id) hAcc += ligne;
+    h += ligne;
   }
-  $('acJetons').innerHTML = h;
-  $('jtListe').innerHTML  = h;
+  $('acJetons').innerHTML = hAcc;
+  $('jtListe').innerHTML  = h + ligneSolana();
   peintEnCours();
   peintCasino();
   /* ---- ON LE DIT, PLUTOT QUE DE LAISSER CROIRE A UNE PERTE ----
@@ -3353,6 +3406,14 @@ function peintAccueil(){
   $('jtNote').textContent = note;
   majCompte();
 }
+
+/* La ligne Solana mene au compte : c'est la que vivent l'adresse entiere, le
+   bouton qui la copie et ce que la page promet — ou ne promet pas — a son
+   sujet. Elle n'a pas de fiche a elle : il n'y a ici ni marche ni contrat. */
+document.addEventListener('click', function(ev){
+  var sol = ev.target.closest('[data-sol]');
+  if(sol){ va('ecCompte'); return; }
+});
 
 document.addEventListener('click', function(ev){
   var b = ev.target.closest('[data-jeton]');
@@ -6466,9 +6527,17 @@ function solEnSol(lamports){
   return (n === 0) ? '0' : n.toFixed(n < 1 ? 6 : 4).replace(/0+$/,'').replace(/\.$/,'');
 }
 
+/* Le solde est GARDE, pas seulement ecrit : la ligne SOL de « My tokens » le
+   relit sans redemander a la chaine. `undefined` = pas encore lu, `null` =
+   lecture ratee, un nombre = lu. Les trois se disent differemment, et
+   confondre les deux premiers avec zero ferait croire un compte vide. */
+var solSolde, solLuPour = null, solEnLecture = false;
+
 async function soldeSolana(adr){
-  var e = $('cpSolSolde'); if(!e) return;
-  e.textContent = '…';
+  if(!adr) return;
+  solEnLecture = true;
+  var e = $('cpSolSolde');
+  if(e && solSolde === undefined) e.textContent = '…';
   try{
     var r = await borne(fetch(SOL_RPC, { method:'POST',
       headers:{ 'content-type':'application/json' },
@@ -6479,8 +6548,38 @@ async function soldeSolana(adr){
     /* Jamais zero sur une lecture ratee : `null` et `0` ne veulent pas dire
        la meme chose, et les confondre ferait croire un solde vide. */
     if(v === undefined || v === null) throw new Error('vide');
-    e.textContent = solEnSol(v) + ' SOL';
-  }catch(x){ e.textContent = 'unknown'; }
+    solSolde = Number(v);
+  }catch(x){ solSolde = null; }
+  solLuPour = adr; solEnLecture = false;
+  ecritSoldeSolana();
+  peintAccueil();          /* la ligne SOL de « My tokens » suit */
+}
+function ecritSoldeSolana(){
+  var e = $('cpSolSolde'); if(!e) return;
+  e.textContent = (solSolde === undefined) ? '…'
+                : (solSolde === null) ? 'unknown'
+                : solEnSol(solSolde) + ' SOL';
+}
+/* Une seule lecture par adresse, et jamais deux a la fois : sans ce garde,
+   `soldeSolana` repeint, le dessin relance la lecture, et la page tourne. */
+function assureSoldeSolana(){
+  if(!solAdr || solEnLecture || solLuPour === solAdr) return;
+  soldeSolana(solAdr);
+}
+
+/* ---- L'ADRESSE, LUE A PART ----
+ * La liste des jetons se peint AVANT l'ecran du compte, et elle a besoin de
+ * savoir si une adresse Solana existe. Elle etait relevee au milieu de
+ * `peintSolana`, donc trop tard : la ligne SOL n'apparaissait qu'au deuxieme
+ * dessin. Elle se lit maintenant toute seule, des deux endroits. */
+function litAdrSolana(){
+  if(!(moi && methode === 'email' && window.SwogePrivy && SwogePrivy.solana)){
+    solAdr = null; return null;
+  }
+  var l = [];
+  try{ l = SwogePrivy.solana() || []; }catch(e){ l = []; }
+  solAdr = l.length ? l[0].adresse : null;
+  return solAdr;
 }
 
 function peintSolana(){
@@ -6493,9 +6592,7 @@ function peintSolana(){
   t.hidden = c.hidden = b.hidden = cp.hidden = note.hidden = !possible;
   if(!possible){ solAdr = null; return; }
 
-  var l = [];
-  try{ l = SwogePrivy.solana() || []; }catch(e){ l = []; }
-  solAdr = l.length ? l[0].adresse : null;
+  litAdrSolana();
 
   c.hidden = !solAdr; cp.hidden = !solAdr;
   b.hidden = !!solAdr;
@@ -6507,7 +6604,8 @@ function peintSolana(){
     note.textContent = 'Same login, a different curve — so a different address. '
       + 'You can receive SOL here. This wallet does not send or bridge from Solana yet, '
       + 'so do not send anything you need back today.';
-    soldeSolana(solAdr);
+    ecritSoldeSolana();
+    assureSoldeSolana();
   } else {
     note.textContent = 'Your email account can also hold a Solana address, derived from the '
       + 'same seed. It is created once, and it is not your ' + CHAINE.nom + ' address.';

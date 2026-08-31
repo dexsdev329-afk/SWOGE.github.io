@@ -182,16 +182,22 @@ function servir(q, r, f, type) {
       const g = c.getContext('2d');
       g.drawImage(im, 0, 0, 128, 128);
       const d = g.getImageData(0, 0, 128, 128).data;
-      let vert = 0, violet = 0, vus = 0;
+      let vert = 0, violet = 0, vus = 0, mur = 0;
       for (let i = 0; i < d.length; i += 4) {
         const [r, v, b, a] = [d[i], d[i+1], d[i+2], d[i+3]];
         if (a <= 128) continue;
         vus++;
         if (v > r + 40 && v > b + 40) vert++;
         if (b > v + 30 && r > v + 15) violet++;
+        /* Le mur gris-vert sur lequel l enseigne est photographiee. */
+        const L = (r + v + b) / 3, mn = Math.min(r, v, b), mx = Math.max(r, v, b);
+        if (L > 50 && L < 130 && v >= r && v >= b && mx - mn < 32) mur++;
       }
+      const coin = (x, y) => d[(y * 128 + x) * 4 + 3];
       return { src: im.getAttribute('src'), vus,
-               vert: +(100*vert/16384).toFixed(2), violet: +(100*violet/16384).toFixed(2) };
+               coins: [coin(2, 2), coin(125, 2), coin(2, 125), coin(125, 125)],
+               vert: +(100*vert/16384).toFixed(2), violet: +(100*violet/16384).toFixed(2),
+               mur: +(100*mur/16384).toFixed(2) };
     });
     console.log('   piece ETH (RH) : ' + JSON.stringify(teintes));
     /* Sans ce garde, une piece qui ne se dessine pas rendrait zero partout et
@@ -202,6 +208,24 @@ function servir(q, r, f, type) {
        'elle porte le vert de Robinhood (' + teintes.vert + ' %) — le losange violet seul ne disait pas la chaine');
     ok(teintes.violet > 3,
        'et le violet de l Ethereum (' + teintes.violet + ' %) — c est bien de l ether qu il s agit');
+
+    /* ---- ET ELLE EST RONDE, PARCE QU ON A GARDE SA TRANSPARENCE ----
+     *
+     * L image livree porte deja son canal alpha : 76 % de sa surface est
+     * transparente et l enseigne y est detouree, liston noir compris. Je l ai
+     * convertie en RGB — ce qui jette l alpha et fait apparaitre les pixels
+     * caches DESSOUS : un mur gris-vert. J ai alors redecoupe un cercle a la
+     * main autour de ce faux mur, en coupant a ras du neon. Il n y avait rien
+     * a decouper.
+     *
+     * Ces deux mesures disent exactement cela, et rien d autre ne les ferait
+     * tomber : l alpha jete, les coins passent de 0 a 255 et le mur de
+     * 0,15 % a 58 % de la piece. */
+    ok(teintes.coins.every((a) => a < 10),
+       'et ses quatre coins sont transparents (' + teintes.coins.join(', ')
+       + ') : c est une piece ronde, pas une photo carree');
+    ok(teintes.mur < 3,
+       'aucun mur gris-vert autour d elle (' + teintes.mur + ' %) — 58 % si l on jette son alpha');
     for (const faux of ['SWOCHIP', 'SWOPOOL', 'SWOXP', 'Solana']) {
       ok(t.indexOf(faux) < 0,
          'aucune trace de « ' + faux +' » — la maquette en montrait, il n existe pas');

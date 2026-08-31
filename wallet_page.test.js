@@ -274,10 +274,31 @@ function servir(q, r, f, type) {
        + ') : c est une piece ronde, pas une photo carree');
     ok(teintes.mur < 3,
        'aucun mur gris-vert autour d elle (' + teintes.mur + ' %) — 58 % si l on jette son alpha');
-    for (const faux of ['SWOCHIP', 'SWOPOOL', 'SWOXP', 'Solana']) {
+    /* ---- LA MAQUETTE MONTRAIT DES JETONS QUI N EXISTAIENT PAS ----
+     *
+     * SWOCHIP, SWOPOOL, SWOXP : aucun n a jamais eu d adresse sur aucune
+     * chaine. Un portefeuille qui affiche un jeton inexistant apprend a son
+     * proprietaire a ne plus le croire, et cette regle veille dessus.
+     *
+     * « Solana » figurait dans cette liste, pour la meme raison — la maquette
+     * en montrait et il n y en avait pas. Il en existe un maintenant : une
+     * vraie adresse, sur une vraie chaine, creee par le compte du joueur. Le
+     * retirer de la liste n est donc pas un assouplissement, c est le fait
+     * qui a change. Ce que la regle protege — ne rien montrer qui n existe
+     * pas — est desormais mesure ailleurs : l ecran Solana est verifie de
+     * bout en bout dans « l adresse solana ». */
+    for (const faux of ['SWOCHIP', 'SWOPOOL', 'SWOXP']) {
       ok(t.indexOf(faux) < 0,
          'aucune trace de « ' + faux +' » — la maquette en montrait, il n existe pas');
     }
+    /* Et la LISTE DES SOLDES ne parle pas de Solana : cette adresse vit dans
+       « Account ». On interroge donc la liste elle-meme — la sonde de texte
+       ci-dessus lit toute la page, ecrans caches compris, et y trouverait le
+       titre « SOLANA » de l ecran Account sans rien prouver. */
+    const listeTx = await p.evaluate(() =>
+      (document.getElementById('acJetons') || {}).textContent || '');
+    ok(listeTx.indexOf('Solana') < 0 && listeTx.indexOf('SOL') < 0,
+       'et la liste des soldes ne parle pas de Solana : cette adresse vit dans Account');
     await p.close();
   }
 
@@ -2896,6 +2917,17 @@ function servir(q, r, f, type) {
       }; });
     const etatFaux = () => page.evaluate(() => window.__w);
     const etatRelais = async () => w.dernierDevis;
+    /* Choisir une chaine a l un des deux bouts, comme le ferait un doigt. */
+    const choisitPont = async (bout, nom) => {
+      await page.evaluate((b) => document.getElementById(b === 'de' ? 'poDeJ' : 'poVersJ').click(), bout);
+      await page.waitForTimeout(500);
+      await page.evaluate((x) => {
+        const b = [...document.querySelectorAll('#poChL button')]
+          .find((e) => e.querySelector('b').textContent === x);
+        if (b) b.click();
+      }, nom);
+      await page.waitForTimeout(700);
+    };
 
     await page.goto('http://127.0.0.1:' + port + '/swoge_wallet.html', { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(2600);
@@ -2957,12 +2989,14 @@ function servir(q, r, f, type) {
     await page.waitForTimeout(900);
     const arrive = await page.evaluate(() => ({
       ecran: (document.querySelector('.wl-ecran.on') || {}).id,
-      sens: (document.querySelector('#poSens button.on') || {}).textContent,
+      sens: (document.querySelector('#poDeJ small') || {}).textContent + ' -> '
+          + ((document.querySelector('#poVersJ small') || {}).textContent || ''),
       de: (document.querySelector('#poDeJ small') || {}).textContent || '' }));
     console.log('   apres le tap : ' + JSON.stringify(arrive));
     ok(arrive.ecran === 'ecPont', 'un tap dessus ouvre le pont (' + arrive.ecran + ')');
-    ok(arrive.sens === 'Deposit' && /Ethereum/i.test(arrive.de),
-       'et deja dans le bon sens : depuis Ethereum (' + arrive.sens + ' — ' + arrive.de + ')');
+    ok(/^Ethereum -> Robinhood Chain$/.test(arrive.sens || ''),
+       'et deja dans le bon sens : d Ethereum vers la Robinhood Chain ('
+       + arrive.sens + ')');
 
     /* ---- ON CHOISIT LA CHAINE D OU L ON VIENT ----
      *
@@ -2995,8 +3029,12 @@ function servir(q, r, f, type) {
        'et chacune dit SA monnaie : toutes ne sont pas en ether ('
        + [...new Set(chaines.liste.map((x) => x.sym))].join(', ') + ')');
     /* Aucune ne doit etre la Robinhood Chain : c est l autre bout, toujours. */
-    ok(!chaines.liste.some((x) => /Robinhood/.test(x.nom)),
-       'la Robinhood Chain n y figure pas — elle est l autre bout, pas un choix');
+    /* ---- LA REGLE A CHANGE : LES DEUX BOUTS SE CHOISISSENT ----
+     * Elle disait « la Robinhood Chain n y figure pas — elle est l autre bout ».
+     * C etait vrai quand un bouton imposait le sens. Depuis qu on choisit les
+     * deux extremites, l exclure empecherait d inverser le pont. */
+    ok(chaines.liste.some((x) => /Robinhood/.test(x.nom)),
+       'la Robinhood Chain y figure aussi : les deux bouts se choisissent');
 
     /* ---- ET LE CHOIX VA JUSQU AU BOUT ---- */
     await page.evaluate(() => {
@@ -3030,13 +3068,7 @@ function servir(q, r, f, type) {
        'et la transaction part de Base (' + (fb.envoyees[0] || {}).surLaChaine + ')');
 
     /* On revient a Ethereum pour la suite des mesures. */
-    await page.evaluate(() => {
-      document.getElementById('poDeJ').click();
-      const b = [...document.querySelectorAll('#poChL button')]
-        .find((x) => x.querySelector('b').textContent === 'Ethereum');
-      b.click();
-    });
-    await page.waitForTimeout(900);
+    await choisitPont('de', 'Ethereum');
     await page.fill('#poMontant', '');
     await page.waitForTimeout(600);
 
@@ -3052,8 +3084,12 @@ function servir(q, r, f, type) {
        + m.frais + ' / ' + m.gaz + ')');
     ok(/s$|min$/.test(m.temps), 'et le temps annonce est la (' + m.temps + ')');
 
-    /* ---- ON CHANGE DE SENS ---- */
-    await page.evaluate(() => document.querySelector('#poSens button[data-sens="retrait"]').click());
+    /* ---- ON CHANGE DE SENS, EN CHOISISSANT LES DEUX BOUTS ----
+     * Il y avait deux boutons, « Deposit » et « Withdraw ». Mais dans les deux
+     * cas c est le meme geste : porter des fonds d une chaine a une autre. Le
+     * sens ne merite pas un reglage a lui — il se DEDUIT de ce qu on choisit,
+     * et choisir la Robinhood Chain a gauche suffit a inverser le pont. */
+    await choisitPont('de', 'Robinhood Chain');
     await page.waitForTimeout(1200);
     m = await lit();
     ok(/Robinhood/i.test(m.de) && /Ethereum/i.test(m.vers),
@@ -3098,8 +3134,8 @@ function servir(q, r, f, type) {
 
     /* ---- LE DEPOT, LUI, DOIT BASCULER ---- */
     await page.evaluate(() => { window.__w.bascules = []; window.__w.envoyees = []; });
-    await page.evaluate(() => document.querySelector('#poSens button[data-sens="depot"]').click());
-    await page.waitForTimeout(1000);
+    await choisitPont('de', 'Ethereum');
+    await page.waitForTimeout(600);
     await page.fill('#poMontant', '0.05');
     await page.waitForTimeout(1200);
     await page.click('#poPartir');
@@ -3271,9 +3307,9 @@ function servir(q, r, f, type) {
 
     /* ---- UN SOLDE NON LU NE REMPLIT RIEN ---- */
     w.soldeL1 = null;
-    await page.evaluate(() => document.querySelector('#poSens button[data-sens="retrait"]').click());
-    await page.waitForTimeout(500);
-    await page.evaluate(() => document.querySelector('#poSens button[data-sens="depot"]').click());
+    await choisitPont('de', 'Robinhood Chain');
+    await page.waitForTimeout(400);
+    await choisitPont('de', 'Ethereum');
     await page.waitForTimeout(4000);
     m = await lit();
     ok(/unknown/i.test(m.solde), 'un solde que la chaine n a pas rendu s ecrit « inconnu » ('
@@ -3288,6 +3324,124 @@ function servir(q, r, f, type) {
 
     ok(boum.length === 0, 'aucune exception pendant tout le pont'
        + (boum.length ? ' : ' + boum[0] : ''));
+    await page.close();
+  }
+
+  /* ==================== L ADRESSE SOLANA ====================
+   *
+   * Privy ne peut pas tourner ici : il lui faut ses serveurs et une vraie
+   * connexion. On joue donc SON ENVELOPPE — la surface exacte que la page
+   * appelle — et l on mesure ce que la page en FAIT. Ce n est pas Privy qu on
+   * verifie, c est nous.
+   *
+   * Ce qui compte le plus n est pas que l adresse s affiche : c est qu on ne
+   * puisse pas la confondre avec l adresse EVM, et que la page ne promette
+   * pas un envoi qu elle ne sait pas faire.
+   */
+  console.log('\n-- l adresse solana --');
+  {
+    const MOI = '0x00000000000000000000000000000000000a11ce';
+    const SOL = 'So1anaAddre55Exemp1eXXXXXXXXXXXXXXXXXXXXXXX';
+    const page = await nav.newPage({ viewport: { width: 390, height: 900 } });
+    const boum = [];
+    page.on('pageerror', (e) => boum.push(String(e).slice(0, 180)));
+    await page.addInitScript(([moi, sol]) => {
+      try { localStorage.setItem('swogeAuth', 'email');
+            sessionStorage.setItem('swogeWalletIntroVue', '1'); } catch (e) {}
+      /* L enveloppe de Privy, jouee : meme surface, reponses connues. */
+      let solanas = [];
+      window.__sol = { creations: 0 };
+      window.SwogePrivy = {
+        init: () => {}, sendCode: async () => {}, verifyCode: async () => moi,
+        logout: async () => {}, restore: async () => moi,
+        getProvider: () => window.ethereum, getAddress: () => moi, isLoggedIn: () => true,
+        comptes: () => [{ adresse: moi, index: 0 }],
+        choisitCompte: async () => moi, ajouteCompte: async () => moi, indexCompte: () => 0,
+        solana: () => solanas,
+        creeSolana: async () => { window.__sol.creations++; solanas = [{ adresse: sol, index: 0 }]; return sol; },
+      };
+      window.ethereum = {
+        isMetaMask: true,
+        request: async (a) => {
+          if (a.method === 'eth_accounts' || a.method === 'eth_requestAccounts') return [moi];
+          if (a.method === 'eth_chainId') return '0x1237';
+          if (a.method === 'net_version') return '4663';
+          return null;
+        }, on: () => {}, removeListener: () => {},
+      };
+    }, [MOI, SOL]);
+    await page.route('**/ethers*.umd.min.js', (r) => r.fulfill({
+      contentType: 'text/javascript', body: fs.readFileSync(ETHERS, 'utf8') }));
+    await page.route('**/privy-swoge.js', (r) => r.fulfill({
+      contentType: 'text/javascript', body: '/* joue par l essai */' }));
+    await page.route('**/api.dexscreener.com/**', (r) => r.fulfill({
+      contentType: 'application/json', body: '{"pairs":[]}' }));
+    await page.route(/rpc\.mainnet\.chain\.robinhood\.com|ethereum-rpc|eth\.drpc/, (r) => r.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, result: '0x' + (0).toString(16).padStart(64, '0') }) }));
+    let solLu = 0;
+    await page.route('**/solana-rpc.publicnode.com/**', (r) => {
+      solLu++;
+      return r.fulfill({ contentType: 'application/json',
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, result: { value: 1234500000 } }) });
+    });
+
+    await page.goto('http://127.0.0.1:' + port + '/swoge_wallet.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(2600);
+    const versCompte = async () => {
+      await page.evaluate(() => {
+        const b = document.querySelector('#pied button[data-va="ecCompte"]');
+        if (b) b.click();
+      });
+      await page.waitForTimeout(700);
+    };
+    const lit = () => page.evaluate(() => {
+      const vu = (id) => { const e = document.getElementById(id);
+        return e ? !e.hidden && e.getBoundingClientRect().height > 0 : false; };
+      const tx = (id) => (document.getElementById(id) || {}).textContent || '';
+      return { titre: vu('cpTitreSol'), carte: vu('cpSolCarte'),
+               creer: vu('cpSolCreer'), copier: vu('cpSolCopie'),
+               adr: tx('cpSolAdr'), solde: tx('cpSolSolde'),
+               note: tx('cpSolNote'), evm: tx('cpAdr'),
+               creations: 0 };
+    });
+    await versCompte();
+    let m = await lit();
+    console.log('   avant creation : ' + JSON.stringify({ creer: m.creer, carte: m.carte, note: m.note.slice(0, 60) }));
+    ok(m.titre && m.creer && !m.carte,
+       'sans adresse Solana, la page propose de la creer et ne montre pas de carte vide');
+    ok(/same seed|Solana/i.test(m.note), 'et elle explique de quoi il s agit');
+
+    /* ---- ON LA CREE ---- */
+    await page.click('#cpSolCreer');
+    await page.waitForTimeout(2000);
+    m = await lit();
+    const n = await page.evaluate(() => window.__sol.creations);
+    console.log('   apres creation : ' + JSON.stringify({ adr: m.adr, solde: m.solde, creations: n }));
+    ok(n === 1, 'un appui cree l adresse UNE fois (' + n + ')');
+    ok(m.carte && !m.creer, 'la carte remplace le bouton');
+    ok(m.adr !== '—' && m.adr.length > 4, 'et l adresse s affiche (' + m.adr + ')');
+
+    /* ---- ELLE NE RESSEMBLE PAS A L ADRESSE EVM ----
+     * C est la mesure qui compte le plus : deux adresses du meme compte, sur
+     * deux courbes. Les confondre enverrait des fonds nulle part. */
+    ok(!/^0x/i.test(m.adr) && m.adr !== m.evm,
+       'elle ne commence pas par 0x et differe de l adresse EVM ('
+       + m.adr + ' contre ' + m.evm + ')');
+
+    /* ---- LE SOLDE EST LU, ET DANS LA BONNE UNITE ----
+     * Un lamport vaut un milliardieme de SOL : se tromper d un facteur mille
+     * afficherait un solde faux sans que rien ne le signale. */
+    ok(solLu > 0, 'le solde est vraiment demande a la chaine Solana (' + solLu + ' lecture)');
+    ok(/^1\.2345\s*SOL$/.test(m.solde.trim()),
+       '1 234 500 000 lamports s ecrivent 1,2345 SOL (« ' + m.solde.trim() + ' »)');
+
+    /* ---- ET LA PAGE NE PROMET PAS CE QU ELLE NE SAIT PAS FAIRE ---- */
+    ok(/does not send or bridge/i.test(m.note),
+       'elle dit qu elle ne sait pas encore envoyer depuis Solana : « '
+       + m.note.slice(-90) + ' »');
+
+    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.close();
   }
 

@@ -134,7 +134,53 @@ function PW_index(){
   for(var i=0;i<l.length;i++) if(l[i].address === tm) return l[i].wallet_index;
   return null;
 }
-window.SwogePrivy={init:PE,sendCode:CE,verifyCode:NE,logout:ME,restore:LE,getProvider:()=>em,getAddress:()=>tm,isLoggedIn:()=>!!em,comptes:PW_liste,choisitCompte:PW_choisit,ajouteCompte:PW_ajoute,indexCompte:PW_index};})();
+
+/* ==================== L'ADRESSE SOLANA ====================
+ *
+ * ---- CE QUE J'AVAIS DIT, ET QUI ETAIT FAUX ----
+ *
+ * J'ai annonce deux fois qu'un portefeuille Solana demanderait de
+ * RECONSTRUIRE ce paquet. Je m'etais fie a une recherche de `@solana`,
+ * `ed25519` et `bs58` : aucun n'est ici. Mais ce sont les dependances de
+ * `web3.js`, pas celles de Privy — le portefeuille embarque signe DANS SON
+ * IFRAME, la page n'a donc jamais besoin de ces bibliotheques.
+ *
+ * Le paquet contient en realite tout ce qu'il faut, et depuis toujours :
+ * `createSolana`, `getSolanaProvider`, `SolanaProvider` et le canal
+ * `privy:solana-wallet:rpc`. Ce qui manquait n'etait pas le code : c'est que
+ * l'enveloppe ne l'appelait pas.
+ *
+ * ---- CE QUE CELA AJOUTE ----
+ *
+ * Meme compte, meme connexion par courriel, meme graine — mais une SECONDE
+ * adresse, sur une autre courbe. Elle ne ressemble en rien a l'adresse EVM,
+ * et c'est voulu : ce sont deux adresses differentes, et les confondre
+ * enverrait des fonds nulle part.
+ */
+function PW_solana(){
+  /* `s1` rend les comptes embarques de type « solana », deja tries par
+     index — la meme fonction dont le SDK se sert lui-meme. */
+  try{ return ur ? s1(ur).map(function(w){ return { adresse:w.address, index:w.wallet_index }; }) : []; }
+  catch(e){ return []; }
+}
+async function PW_creeSolana(){
+  if(!Zr || !ur) return null;
+  var deja = null;
+  try{ deja = i1(ur); }catch(e){}
+  if(deja && deja.address) return deja.address;
+  /* L'iframe d'abord : sans elle le mandataire n'existe pas et la creation
+     echoue sur « Embedded wallet proxy not initialized ». */
+  await RE();
+  var compteEvm = null;
+  try{ compteEvm = Ks(ur) || undefined; }catch(e){}
+  var r = await Zr.embeddedWallet.createSolana({ ethereumAccount: compteEvm });
+  if(r && r.user) ur = r.user;
+  var w = null;
+  try{ w = i1(ur); }catch(e){}
+  return w ? w.address : null;
+}
+
+window.SwogePrivy={init:PE,sendCode:CE,verifyCode:NE,logout:ME,restore:LE,getProvider:()=>em,getAddress:()=>tm,isLoggedIn:()=>!!em,comptes:PW_liste,choisitCompte:PW_choisit,ajouteCompte:PW_ajoute,indexCompte:PW_index,solana:PW_solana,creeSolana:PW_creeSolana};})();
 /*! Bundled license information:
 
 @noble/hashes/esm/utils.js:

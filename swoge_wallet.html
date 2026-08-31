@@ -68,7 +68,7 @@
      A savoir : cela ne sauve pas la page DEJA en cache chez quelqu'un, qui ne
      contient pas ces lignes. Ce garde-fou vaut a partir de celle-ci. -->
 <script>
-var MARQUE_PAGE = '4749caa9';
+var MARQUE_PAGE = 'f9dd3419';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -1457,11 +1457,6 @@ body{
       <button class="rond" type="button" data-va="ecAccueil" aria-label="Close">&times;</button>
     </div>
     <div class="wl-corps">
-      <div class="wl-sens" id="poSens" role="group" aria-label="Direction">
-        <button type="button" class="on" data-sens="depot">Deposit</button>
-        <button type="button" data-sens="retrait">Withdraw</button>
-      </div>
-
       <div class="wl-carte">
         <div class="wl-titre" id="poDeT" style="margin:0 0 7px">YOU SEND</div>
         <div class="wl-pontJ" id="poDeJ"><img alt=""><span class="tx"><b></b><small></small></span></div>
@@ -1585,9 +1580,9 @@ body{
       <p class="wl-note">Elsewhere it will still read <b>ETH</b>: your browser wallet, the block
         explorer and the add-network prompt all use the chain's own symbol, and this page cannot
         rename what they show. Same coin, shorter name.</p>
-      <p class="wl-note">This wallet is <b>Robinhood Chain only</b>, because that is where
-        $SWOGE and $SWOGEBET live. No other network is offered — showing one you cannot use
-        would only invite a loss.</p>
+      <p class="wl-note">Everything you <b>hold, swap and play with</b> lives on Robinhood Chain —
+        that is where $SWOGE and $SWOGEBET are. The bridge reaches seven other chains, but only to
+        move funds in and out: nothing else here is offered on a network you cannot use.</p>
 
       <!-- ---- LA CLE ----
            Elle n'est proposee QU'AUX portefeuilles crees par courriel : un
@@ -1597,6 +1592,21 @@ body{
       <!-- ---- PLUSIEURS COMPTES ----
            Seulement pour un portefeuille cree par courriel : une extension
            gere ses propres comptes, et cette page n'a pas a s'en meler. -->
+      <!-- ---- L'ADRESSE SOLANA ----
+           Meme compte, meme connexion par courriel, meme graine — mais une
+           SECONDE adresse, sur une autre courbe. Elle ne ressemble en rien a
+           l'adresse EVM, et c'est voulu : les confondre enverrait des fonds
+           nulle part. Elle n'est proposee qu'aux portefeuilles crees par
+           courriel : une extension gere ses propres adresses. -->
+      <div class="wl-titre" id="cpTitreSol" hidden>SOLANA</div>
+      <div class="wl-carte" id="cpSolCarte" hidden>
+        <div class="wl-rang"><span>Address</span><b id="cpSolAdr" class="wl-mono">&mdash;</b></div>
+        <div class="wl-rang"><span>Balance</span><b id="cpSolSolde">&mdash;</b></div>
+      </div>
+      <button class="wl-b vide" id="cpSolCopie" type="button" hidden>Copy Solana address</button>
+      <button class="wl-b vide" id="cpSolCreer" type="button" hidden>Create a Solana address</button>
+      <p class="wl-note" id="cpSolNote" hidden></p>
+
       <div class="wl-titre" id="cpTitreComptes" hidden>MY ACCOUNTS</div>
       <div id="cpComptes" hidden>
         <div id="cpListe"></div>
@@ -3311,8 +3321,8 @@ document.addEventListener('click', function(ev){
   if(b.dataset.pont){
     /* Cette ligne EST celle d'Ethereum : le pont doit s'ouvrir sur elle, pas
        sur la derniere chaine choisie. */
-    sensPont = 'depot'; chainePont = L1.id;
-    try{ localStorage.setItem('swogePontChaine', String(L1.id)); }catch(e){}
+    pontDeId = L1.id; pontVersId = CHAINE.id;
+    gardePont();
     va('ecPont'); return;
   }
   ficheJeton(b.dataset.jeton);
@@ -3388,6 +3398,7 @@ function majCompte(){
   $('cpTitreCle').hidden = !parCourriel;
   $('cpBlocCle').hidden  = !parCourriel;
   peintComptes();
+  peintSolana();
   $('cpDevise').textContent  = ETH_AFF;
   $('cpDevise2').textContent = ETH_AFF;
   $('hReseau').classList.toggle('on', !!moi);
@@ -5728,7 +5739,9 @@ async function ficheJeton(cle){
   va('ecJeton');
 }
 $('fiSwap').addEventListener('click', function(){
-  if(this.dataset.vers === 'ecPont'){ sensPont = 'depot'; }
+  if(this.dataset.vers === 'ecPont'){
+    pontDeId = L1.id; pontVersId = CHAINE.id; gardePont();
+  }
   va(this.dataset.vers || 'ecSwap');
 });
 
@@ -5773,8 +5786,20 @@ var ZERO_ADR = '0x0000000000000000000000000000000000000000';
    (mesure : -0,32 % a l'aller et -0,70 % au retour sur 0,005 ETH, mais -15 %
    et -28 % sur 0,0001). */
 var IMPACT_PONT = 1;
-var sensPont = 'depot';
-var chainePont = L1.id;                 /* l'autre bout du pont, choisi par le joueur */
+/* ---- DEUX EXTREMITES, PAS UN SENS ----
+ *
+ * Il y avait deux boutons, « Deposit » et « Withdraw ». Mais dans les deux cas
+ * c'est le meme geste : porter des fonds d'une chaine a une autre. Le sens ne
+ * merite donc pas un reglage a lui — il se DEDUIT de ce qu'on choisit aux deux
+ * bouts, et l'on n'a plus a se demander lequel des deux boutons correspond a
+ * ce qu'on veut faire.
+ *
+ * La Robinhood Chain n'est plus imposee d'un cote. Elle reste ce que le pont
+ * propose par defaut, parce que c'est la que vit le jeu — mais l'imposer
+ * empechait un joueur d'amener ses fonds de Base a Arbitrum en passant par
+ * ici, alors que le relayeur le fait tres bien. */
+var pontDeId   = L1.id;
+var pontVersId = CHAINE.id;
 var devisJeton = 0;
 var LECTEURS = {}, RANG_RPC = {};
 
@@ -5798,9 +5823,20 @@ function relaiChaine(c){
   return false;
 }
 function relaiL1(){ return relaiChaine(L1); }
-function autrePont(){ return chainePar(chainePont) || L1; }
-function pontDe(){   return sensPont === 'depot' ? autrePont() : CHAINE; }
-function pontVers(){ return sensPont === 'depot' ? CHAINE : autrePont(); }
+/* La Robinhood Chain decrite comme les autres, pour que les deux bouts se
+   choisissent dans la meme liste. Son RPC est une chaine de caracteres la ou
+   les autres en ont un tableau : on l'enveloppe une fois ici plutot que de
+   tester partout ailleurs. */
+var CHAINE_RH = { id:CHAINE.id, nom:CHAINE.nom, sym:ETH_AFF,
+  logo:'img/wallet/tok_eth.webp', rpc:[CHAINE.rpc], scan:CHAINE.scan };
+function toutesChaines(){ return [CHAINE_RH].concat(CHAINES_PONT); }
+function chaineDuPont(id){
+  var l = toutesChaines();
+  for(var i=0;i<l.length;i++) if(l[i].id === id) return l[i];
+  return CHAINE_RH;
+}
+function pontDe(){   return chaineDuPont(pontDeId); }
+function pontVers(){ return chaineDuPont(pontVersId); }
 function lecPont(c){ return c.id === CHAINE.id ? lec() : lecChaine(c); }
 
 /* ---- LE DEVIS ----
@@ -5858,8 +5894,6 @@ function videPont(){
 }
 
 function peintSensPont(){
-  var l = document.querySelectorAll('#poSens button');
-  for(var i=0;i<l.length;i++) l[i].classList.toggle('on', l[i].dataset.sens === sensPont);
   var de = pontDe(), vers = pontVers();
   $('poDeT').textContent   = 'YOU SEND';
   $('poVersT').textContent = 'YOU RECEIVE';
@@ -5867,11 +5901,10 @@ function peintSensPont(){
      jour ou l'une des deux change de dessin, les deux endroits suivent. */
   posePiecePont($('poDeJ'),   de);
   posePiecePont($('poVersJ'), vers);
-  /* Un seul des deux cotes se choisit : l'autre est toujours la Robinhood
-     Chain, puisque c'est la que vit le jeu. Rendre les deux choisissables
-     laisserait composer un pont qui ne mene pas au casino. */
-  marqueChoix($('poDeJ'),   de.id   !== CHAINE.id);
-  marqueChoix($('poVersJ'), vers.id !== CHAINE.id);
+  /* Les DEUX se choisissent. Le sens n'est plus un reglage : il est ce que
+     ces deux choix disent. */
+  marqueChoix($('poDeJ'),   true);
+  marqueChoix($('poVersJ'), true);
 }
 function marqueChoix(boite, oui){
   if(!boite) return;
@@ -5886,24 +5919,26 @@ function marqueChoix(boite, oui){
 }
 
 /* ---- CHOISIR LA CHAINE ---- */
+var boutChoisi = 'de';                  /* quel bout du pont on est en train de choisir */
 function peintChoixChaine(){
   var c = $('poChL'); if(!c) return;
+  var l = toutesChaines(), courant = (boutChoisi === 'de') ? pontDeId : pontVersId;
   var h = '';
-  for(var i=0;i<CHAINES_PONT.length;i++){
-    var x = CHAINES_PONT[i];
-    h += '<button type="button" data-ch="'+x.id+'"'+(x.id===chainePont?' class="on"':'')+'>'
+  for(var i=0;i<l.length;i++){
+    var x = l[i];
+    h += '<button type="button" data-ch="'+x.id+'"'+(x.id===courant?' class="on"':'')+'>'
        +   '<img src="'+x.logo+'" alt="">'
        +   '<span><b>'+x.nom+'</b><small>'+x.sym+'</small></span>'
        + '</button>';
   }
   c.innerHTML = h;
-  $('poChTitre').textContent = sensPont === 'depot'
+  $('poChTitre').textContent = (boutChoisi === 'de')
     ? 'Pick the chain your funds are on.'
     : 'Pick the chain to send them to.';
   var t = $('poVoile').querySelector('h2');
-  if(t) t.textContent = sensPont === 'depot' ? 'Bridge from' : 'Bridge to';
+  if(t) t.textContent = (boutChoisi === 'de') ? 'Bridge from' : 'Bridge to';
 }
-function ouvreChoixChaine(){ peintChoixChaine(); $('poVoile').hidden = false; }
+function ouvreChoixChaine(bout){ boutChoisi = bout || 'de'; peintChoixChaine(); $('poVoile').hidden = false; }
 function fermeChoixChaine(){ $('poVoile').hidden = true; }
 if($('poChFermer')) $('poChFermer').addEventListener('click', fermeChoixChaine);
 if($('poVoile')) $('poVoile').addEventListener('click', function(ev){
@@ -5912,12 +5947,24 @@ if($('poVoile')) $('poVoile').addEventListener('click', function(ev){
   if(!b) return;
   var id = parseInt(b.dataset.ch, 10);
   fermeChoixChaine();
-  if(id === chainePont) return;
-  chainePont = id;
-  try{ localStorage.setItem('swogePontChaine', String(id)); }catch(e){}
+  if(boutChoisi === 'de'){
+    if(id === pontDeId) return;
+    /* Choisir des deux cotes la meme chaine ne veut rien dire : plutot que de
+       refuser, on ECHANGE — c'est le geste que le joueur voulait faire. */
+    if(id === pontVersId) pontVersId = pontDeId;
+    pontDeId = id;
+  } else {
+    if(id === pontVersId) return;
+    if(id === pontDeId) pontDeId = pontVersId;
+    pontVersId = id;
+  }
+  gardePont();
   videPont(); $('poNote').textContent = '';
   majPont();
 });
+function gardePont(){
+  try{ localStorage.setItem('swogePont', pontDeId + ':' + pontVersId); }catch(e){}
+}
 function posePiecePont(boite, c){
   if(!boite) return;
   /* La piece de la CHAINE. La Robinhood Chain garde celle de son ether, qui
@@ -6203,8 +6250,11 @@ function majPont(){
   /* Le choix se garde : qui vient de Base y revient, et le retaper a chaque
      ouverture serait le lui faire oublier. */
   try{
-    var g = parseInt(localStorage.getItem('swogePontChaine') || '', 10);
-    if(g && chainePar(g)) chainePont = g;
+    var g = (localStorage.getItem('swogePont') || '').split(':');
+    var a = parseInt(g[0], 10), b2 = parseInt(g[1], 10);
+    if(a && b2 && a !== b2 && chaineDuPont(a).id === a && chaineDuPont(b2).id === b2){
+      pontDeId = a; pontVersId = b2;
+    }
   }catch(e){}
   peintSensPont();
   poseDetailPont((function(){ try{ return localStorage.getItem(CLE_PONT_DETAIL) === '1'; }catch(e){ return false; } })(), false);
@@ -6215,16 +6265,8 @@ function majPont(){
 ['poDeJ','poVersJ'].forEach(function(id){
   var b = $(id);
   if(b) b.addEventListener('click', function(){
-    if(this.classList.contains('choix')) ouvreChoixChaine();
+    ouvreChoixChaine(id === 'poDeJ' ? 'de' : 'vers');
   });
-});
-if($('poSens')) $('poSens').addEventListener('click', function(ev){
-  var b = ev.target.closest('button[data-sens]');
-  if(!b || b.dataset.sens === sensPont) return;
-  sensPont = b.dataset.sens;
-  videPont();
-  $('poNote').textContent = '';
-  majPont();
 });
 if($('poPlusB')) $('poPlusB').addEventListener('click', function(){
   poseDetailPont($('poPlus').hidden, true);
@@ -6234,6 +6276,113 @@ if($('poMontant')) $('poMontant').addEventListener('input', function(){
 });
 if($('poMax'))    $('poMax').addEventListener('click', maxPont);
 if($('poPartir')) $('poPartir').addEventListener('click', partPont);
+
+
+
+/* ==================== L'ADRESSE SOLANA ====================
+ *
+ * ---- CE QUE J'AVAIS DIT, ET QUI ETAIT FAUX ----
+ *
+ * J'ai annonce deux fois qu'une adresse Solana demanderait de RECONSTRUIRE le
+ * paquet Privy. Je m'etais fie a une recherche de `@solana`, `ed25519` et
+ * `bs58` : aucun n'y est. Mais ce sont les dependances de `web3.js`, pas
+ * celles de Privy — le portefeuille embarque signe DANS SON IFRAME, la page
+ * n'a donc jamais besoin de ces bibliotheques. Le paquet contient en realite
+ * `createSolana`, `getSolanaProvider` et le canal `privy:solana-wallet:rpc`,
+ * et depuis toujours. Ce qui manquait n'etait pas le code, c'est que
+ * l'enveloppe ne l'appelait pas.
+ *
+ * ---- CE QUE CET ECRAN FAIT, ET CE QU'IL NE FAIT PAS ----
+ *
+ * Il cree l'adresse, la montre, la copie, et lit son solde. Il ne SIGNE rien :
+ * envoyer ou ponter depuis Solana demande le fournisseur Solana et une route
+ * a part, et promettre un bouton qui n'aboutit pas serait pire que de ne rien
+ * proposer. La page le dit en toutes lettres.
+ */
+var SOL_RPC = 'https://solana-rpc.publicnode.com';
+var solAdr = null, solEnCours = false;
+
+/* Neuf decimales : un lamport est un milliardieme de SOL. Se tromper d'un
+   facteur mille afficherait un solde faux sans que rien ne le signale. */
+function solEnSol(lamports){
+  var n = Number(lamports) / 1e9;
+  return (n === 0) ? '0' : n.toFixed(n < 1 ? 6 : 4).replace(/0+$/,'').replace(/\.$/,'');
+}
+
+async function soldeSolana(adr){
+  var e = $('cpSolSolde'); if(!e) return;
+  e.textContent = '…';
+  try{
+    var r = await borne(fetch(SOL_RPC, { method:'POST',
+      headers:{ 'content-type':'application/json' },
+      body: JSON.stringify({ jsonrpc:'2.0', id:1, method:'getBalance', params:[adr] }) }),
+      12000, 'solde solana');
+    var j = await r.json();
+    var v = j && j.result && j.result.value;
+    /* Jamais zero sur une lecture ratee : `null` et `0` ne veulent pas dire
+       la meme chose, et les confondre ferait croire un solde vide. */
+    if(v === undefined || v === null) throw new Error('vide');
+    e.textContent = solEnSol(v) + ' SOL';
+  }catch(x){ e.textContent = 'unknown'; }
+}
+
+function peintSolana(){
+  var t = $('cpTitreSol'), c = $('cpSolCarte'), b = $('cpSolCreer'),
+      cp = $('cpSolCopie'), note = $('cpSolNote');
+  if(!t) return;
+  /* Seulement pour un portefeuille cree par courriel : une extension gere ses
+     propres adresses, et cette page n'a pas a s'en meler. */
+  var possible = moi && methode === 'email' && window.SwogePrivy && SwogePrivy.solana;
+  t.hidden = c.hidden = b.hidden = cp.hidden = note.hidden = !possible;
+  if(!possible){ solAdr = null; return; }
+
+  var l = [];
+  try{ l = SwogePrivy.solana() || []; }catch(e){ l = []; }
+  solAdr = l.length ? l[0].adresse : null;
+
+  c.hidden = !solAdr; cp.hidden = !solAdr;
+  b.hidden = !!solAdr;
+  note.hidden = false;
+  if(solAdr){
+    $('cpSolAdr').textContent = court(solAdr);
+    note.textContent = 'Same login, a different curve — so a different address. '
+      + 'You can receive SOL here. This wallet does not send or bridge from Solana yet, '
+      + 'so do not send anything you need back today.';
+    soldeSolana(solAdr);
+  } else {
+    note.textContent = 'Your email account can also hold a Solana address, derived from the '
+      + 'same seed. It is created once, and it is not your ' + CHAINE.nom + ' address.';
+  }
+}
+
+if($('cpSolCreer')) $('cpSolCreer').addEventListener('click', async function(){
+  if(solEnCours) return;
+  var b = this, note = $('cpSolNote');
+  solEnCours = true; b.disabled = true;
+  note.hidden = false; note.className = 'wl-note';
+  note.textContent = 'Creating your Solana address…';
+  try{
+    var a = await borne(SwogePrivy.creeSolana(), 45000, 'solana');
+    if(!a) throw new Error('no address');
+    peintSolana();
+    toast('Solana address created');
+  }catch(e){
+    note.className = 'wl-note grave';
+    note.textContent = estTimeout(e)
+      ? 'Privy did not answer in time. Nothing was created — try again.'
+      : 'Could not create the Solana address: ' + ((e && e.message) || 'unknown error');
+  }
+  solEnCours = false; b.disabled = false;
+});
+
+if($('cpSolCopie')) $('cpSolCopie').addEventListener('click', function(){
+  /* L'adresse ENTIERE, pas celle qui est affichee : la version abregee ne
+     designe aucun compte, et la coller ferait perdre les fonds. */
+  if(!solAdr) return;
+  navigator.clipboard.writeText(solAdr)
+    .then(function(){ toast('Solana address copied'); })
+    ['catch'](function(){ toast('Could not copy — select the address by hand'); });
+});
 
 
 heure(); setInterval(heure, 20000);

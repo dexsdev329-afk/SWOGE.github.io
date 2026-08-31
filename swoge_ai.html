@@ -13,7 +13,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
-var MARQUE_PAGE = 'aac39c74';
+var MARQUE_PAGE = '949d4c7e';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -249,7 +249,6 @@ var MARQUE_PAGE = 'aac39c74';
       <button class="btn" id="refresh" title="Relire GeckoTerminal + GoPlus maintenant">🔄 Live</button>
       <button class="btn" id="pause">⏸ Pause</button>
       <button class="btn on" id="speed">1×</button>
-      <button class="btn" id="oublier" title="Effacer la memoire et repartir de zero">🧠 Reset</button>
     </div>
     <a class="retour" href="games.html">&larr; Arcade</a>
   </header>
@@ -303,14 +302,15 @@ var MARQUE_PAGE = 'aac39c74';
 
       <div class="foot" id="foot">
         <b>Ce qui est reel :</b> les tokens, les pools, les prix, la securite du contrat, la
-        concentration et l'age viennent de GeckoTerminal et de GoPlus sur la chaine 4663.
+        concentration et l'age viennent de GeckoTerminal, de GoPlus, de DexScreener et des blocs
+        de la chaine 4663 eux-memes.
         <b>Ce qui ne l'est pas :</b> aucune transaction n'est signee. Une position est ouverte au
-        prix reel du moment et fermee au prix reel d'un relevé plus tard — c'est du papier, pas une
+        prix reel du moment et fermee au prix reel d'un releve plus tard — c'est du papier, pas une
         execution, et un vrai achat paierait en plus le gaz et le glissement.
-        <b>Quand l'onglet est ferme, rien ne tourne :</b> a la reouverture, les positions se
-        reglent au prix reel de l'instant, sur le temps reellement ecoule. Rien n'est invente pour
-        combler l'absence.
-        <b>Tout est garde sur cet appareil</b> et nulle part ailleurs. NFA.
+        <b>Ca tourne sur le serveur, en continu :</b> la colonie ne s'arrete pas quand vous fermez
+        l'onglet, et tout le monde voit le meme etat. Cette page ne calcule rien : elle demande et
+        elle affiche.
+        <b>Quand une lecture echoue, c'est ecrit</b> — et rien n'est invente pour combler. NFA.
       </div>
     </aside>
   </div>
@@ -321,31 +321,40 @@ var MARQUE_PAGE = 'aac39c74';
 const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /* ==========================================================================
- * SWOGE AI — LA COLONIE QUI APPREND
+ * SWOGE AI — LA COLONIE, VUE DEPUIS LA PAGE
  *
- * Trois exigences, et elles se tiennent :
+ * « Faut que ça soit live tout le temps, ça tourne 24/24 même quand on est
+ * pas sur la page, tout le monde voit la même chose. »
  *
- *   1. « que les agents s'ameliorent au fur et a mesure des donnees »
- *      Ils gardent ce qui a MARCHE, trait par trait, et s'en servent pour
- *      noter le suivant. Pas un modele qui devine : une moyenne de gains
- *      REELS par caracteristique, ponderee par le nombre de fois ou on l'a
- *      vue. Trois exemples ne font pas une loi, et la page l'ecrit.
+ * Les trois demandes n'en font qu'une, et elle interdisait ce que cette page
+ * faisait. Elle CALCULAIT : elle lisait la chaine elle-meme, notait, ouvrait
+ * ses positions, et gardait tout dans le stockage local du navigateur. Donc
+ * chaque visiteur avait SA tresorerie, SES positions, SES lecons — deux
+ * personnes cote a cote lisaient deux colonies differentes en croyant lire la
+ * meme — et fermer l'onglet arretait la sienne.
  *
- *   2. « que le logiciel tourne tout le temps »
- *      Tant que l'onglet est ouvert, il relit la chaine et regle ce qui est
- *      du. Quand il est ferme, RIEN ne tourne — et c'est dit. A la
- *      reouverture, une position se regle au prix reel de l'instant, sur le
- *      temps reellement ecoule. Fabriquer une nuit de profits pour faire
- *      joli serait le seul vrai defaut possible ici.
+ * Le moteur est parti sur le serveur (`ai_colonie.js`). Il y tourne en
+ * permanence, il ecrit son etat sur le disque, et il le sert sur
+ * `/ai/colonie`. Cette page ne decide plus de rien : elle DEMANDE et elle
+ * AFFICHE. Tout le monde lit le meme fichier, donc tout le monde voit la meme
+ * chose, y compris quelqu'un qui ouvre la page pour la premiere fois au
+ * milieu de la nuit.
  *
- *   3. « que les donnees restent sauvegardees »
- *      Tresorerie, positions, historique, memoire : tout tient dans le
- *      stockage local, sous une version. Une memoire ecrite par une version
- *      plus ancienne est relue, jamais devinee.
+ * ---- CE QUE LES BOTS REPRESENTENT ----
  *
- * Et le but : gagner de l'argent. Ce qui veut dire, ici, mesurer honnetement
- * si la methode en gagne — un chiffre flatteur qu'on ne peut pas reproduire
- * ne vaut rien.
+ * Ils ne decident plus : ils REJOUENT. Chaque jeton que le serveur a examine
+ * porte sa note et, s'il a ete refuse, la raison ecrite du refus. Le bot
+ * s'arrete donc chez l'agent a qui cette raison appartient — le Warden pour
+ * un contrat piege, le Whale-Watch pour la concentration, l'Oracle pour une
+ * note trop basse. Ce qui marche a l'ecran est ce qui s'est passe sur le
+ * serveur, et rien d'autre. Un bot qui ouvrirait une position que le serveur
+ * n'a pas ouverte serait une jolie animation qui ment.
+ *
+ * ---- CE QUI N'EST JAMAIS FABRIQUE ----
+ *
+ * Si le serveur ne repond pas, la page le DIT et n'affiche rien d'autre : pas
+ * de tresorerie a $1,000 qui aurait l'air normale, pas de position, pas de
+ * pick. Une lecture ratee vaut « inconnu », jamais « zero ».
  * ======================================================================== */
 
 /* ============================ MONDE ============================ */
@@ -376,97 +385,30 @@ const AGENTS = [
 const TREASURY = {x:500, y:395};
 const idx = {}; AGENTS.forEach((a,i)=>idx[a.key]=i);
 
-/* ============================ ETAT PERSISTANT ============================ */
-const CLE_ETAT = "swogeAiColonie";
-const VERSION_ETAT = 1;
-const DEPART = 1000;          /* la tresorerie papier de depart */
-const MISE = 50;              /* ce qu'une position engage */
-/* La tenue par defaut, en minutes. Ce n'est plus une loi : le Closer
-   l'apprend de ses propres trajectoires et peut la changer. */
-const TENUE_DEFAUT_MIN = 20;
 
-function etatNeuf(){
-  return { v:VERSION_ETAT, tresor:DEPART, trades:0, gains:0, meilleur:0, meilleurSym:"",
-           courbe:[DEPART], flux:[], positions:[], memoire:{}, compteurs:{},
-           vus:{}, maj:0, ouvertures:0 };
-}
-let ETAT = etatNeuf();
+/* ============================ LA VUE DU SERVEUR ============================
+ * Une seule source, et elle est distante. `VUE` est le dernier etat recu ;
+ * tant qu'il n'y en a pas, il vaut `null` — et `null` s'affiche comme une
+ * absence, pas comme un zero.
+ * ======================================================================== */
+const SERVEUR = "https://web-production-220a3.up.railway.app";
+const CADENCE_DEMANDE = 20000;   /* on redemande toutes les 20 s ; le serveur, lui, tourne a son rythme */
 
-function chargeEtat(){
-  let brut = null;
-  try{ brut = JSON.parse(localStorage.getItem(CLE_ETAT) || "null"); }catch(e){ brut = null; }
-  if(!brut || typeof brut !== "object") return;
-  /* ---- UNE MEMOIRE PLUS ANCIENNE SE RELIT, ELLE NE SE DEVINE PAS ----
-     Le jour ou la forme change, on complete les champs manquants avec ceux
-     d'un etat neuf plutot que de tout jeter : jeter, ce serait effacer des
-     semaines d'apprentissage a chaque correction de la page. */
-  const n = etatNeuf();
-  for(const k in n) if(!(k in brut)) brut[k] = n[k];
-  if(!Array.isArray(brut.courbe) || !brut.courbe.length) brut.courbe = [DEPART];
-  if(!Array.isArray(brut.flux)) brut.flux = [];
-  if(!Array.isArray(brut.positions)) brut.positions = [];
-  if(typeof brut.memoire !== "object" || !brut.memoire) brut.memoire = {};
-  if(typeof brut.vus !== "object" || !brut.vus) brut.vus = {};
-  if(typeof brut.compteurs !== "object" || !brut.compteurs) brut.compteurs = {};
-  brut.v = VERSION_ETAT;
-  ETAT = brut;
-}
-let sauveEnAttente = 0, dernierSauve = 0;
-const SAUVE_MAX = 3000;   /* au-dela, on ecrit meme si ca n'arrete pas de bouger */
-function sauve(){
-  /* ---- UN REGROUPEMENT SANS PLAFOND N'ECRIT JAMAIS ----
-   * Cette fonction repoussait son ecriture d'une seconde a CHAQUE appel.
-   * Tant que la colonie travaille — et elle travaille sans arret — l'appel
-   * suivant arrivait avant la seconde, et rien n'etait jamais ecrit. Mesure
-   * faite : six positions ouvertes a l'ecran, zero dans le stockage. C'est
-   * exactement la promesse qu'on ne peut pas manquer ici : ce qui est gagne
-   * doit survivre a la fermeture de l'onglet.
-   * On garde donc le regroupement, avec un plafond : au bout de trois
-   * secondes, on ecrit, quoi qu'il arrive. */
-  const attente = Date.now() - dernierSauve;
-  if(attente >= SAUVE_MAX){ ecritEtat(); return; }
-  clearTimeout(sauveEnAttente);
-  sauveEnAttente = setTimeout(ecritEtat, Math.min(1000, SAUVE_MAX - attente));
-}
-function ecritEtat(){
-  clearTimeout(sauveEnAttente);
-  dernierSauve = Date.now();
-  (function(){
-    try{
-      /* On borne ce qui grossit sans fin : la courbe, le fil, les tokens vus. */
-      if(ETAT.courbe.length > 400) ETAT.courbe = ETAT.courbe.slice(-400);
-      if(ETAT.flux.length > 60)    ETAT.flux   = ETAT.flux.slice(0, 60);
-      const cle = Object.keys(ETAT.vus);
-      if(cle.length > 400){
-        const vieux = cle.sort((a,b)=>ETAT.vus[a]-ETAT.vus[b]).slice(0, cle.length-400);
-        for(const k of vieux) delete ETAT.vus[k];
-      }
-      localStorage.setItem(CLE_ETAT, JSON.stringify(ETAT));
-    }catch(e){ /* stockage plein ou refuse : la page continue, sans garder */ }
-  })();
-}
-/* Et une derniere fois quand la page part : un onglet ferme entre deux
-   ecritures perdrait les dernieres secondes — dont, parfois, une position
-   qui vient de s'ouvrir. */
-window.addEventListener("pagehide", ecritEtat);
-document.addEventListener("visibilitychange", function(){
-  if(document.visibilityState === "hidden") ecritEtat();
-});
-chargeEtat();
+let VUE = null;                  /* le dernier etat recu, ou null */
+let RECU = 0;                    /* l'instant de la reception, pour dire l'age */
+let ERREUR_RESEAU = null;        /* ce qui a empeche la lecture, en toutes lettres */
+let shownBal = 0;
 
-let balance = ETAT.tresor, shownBal = ETAT.tresor;
-let profit = ETAT.tresor - DEPART;
-let trades = ETAT.trades, gains = ETAT.gains, best = ETAT.meilleur, bestSym = ETAT.meilleurSym;
-let spark = ETAT.courbe.slice();
+/* Les raccourcis de lecture. Chacun rend une ABSENCE quand la vue manque —
+   jamais une valeur de remplissage. */
+const vTresor    = () => VUE ? VUE.tresor : null;
+const vDepart    = () => VUE ? VUE.depart : 1000;
+const vTrades    = () => VUE ? VUE.trades : 0;
+const vGains     = () => VUE ? VUE.gains : 0;
+const vPositions = () => (VUE && VUE.positions) || [];
+const vCandidats = () => (VUE && VUE.candidats) || [];
+const vCourbe    = () => (VUE && VUE.courbe && VUE.courbe.length) ? VUE.courbe : null;
 
-/* ============================ DONNEES REELLES ============================ */
-/* Un instantane sert d'amorce pour que l'ecran ne soit pas vide avant la
-   premiere lecture. Il porte SA date, et la pastille du haut dit son age :
-   une donnee vieille reste une donnee vraie, tant qu'on ne la fait pas
-   passer pour fraiche. Les prix, eux, ne sont PAS dedans — c'est voulu :
-   une position ne s'ouvre qu'avec un prix relu a l'instant. */
-let REAL = { ts:0, tokens:[] };
-let rhOrder = [];
 
 const nn = v => { const x = parseFloat(v); return isNaN(x) ? 0 : x; };
 const fmtMC = v => v>=1e9?"$"+(v/1e9).toFixed(1)+"B" : v>=1e6?"$"+(v/1e6).toFixed(1)+"M"
@@ -499,335 +441,9 @@ function ilYA(ms){
  * apprend quelles pressions acheteuses ont paye, le Closer apprend combien
  * de temps il aurait fallu tenir. Chacun repond de ce qu'il regarde.
  * ================================================================== */
-function tranche(v, seuils, noms){
-  for(let i=0;i<seuils.length;i++) if(v < seuils[i]) return noms[i];
-  return noms[noms.length-1];
-}
-function ratioSur(a, b){ return b>0 ? a/b : (a>0 ? 99 : 1); }
 
-/* Les traits, ranges par agent. Tout vient d'une lecture : rien n'est
-   estime, et un champ qu'on n'a pas lu porte un « ? » plutot qu'une valeur
-   par defaut qui se melerait aux vraies. */
-function traitsDe(t){
-  const g = t.g || {}, x = t.tx || {}, v = t.vol || {};
-  const d = t.dex || {}, c = t.chaine || {};
-  const age = ageJours(t.created);
-  const h1 = x.h1 || {}, h6 = x.h6 || {}, h24 = x.h24 || {};
-  const press1  = ratioSur(h1.buys||0, h1.sells||0);
-  const uniq1   = (h1.buyers||0) + (h1.sellers||0);
-  /* L'acceleration : le volume d'une heure compare a la moyenne horaire des
-     six dernieres. Au-dessus de un, il se passe quelque chose maintenant. */
-  const accel   = ratioSur(v.h1||0, (v.h6||0)/6);
-  const tour    = t.liq>0 ? (v.h24||0)/t.liq : 0;
-  return {
-    scout: {
-      src:  t.feed==="new_pools" ? "pool neuf" : "pool tendance",
-      /* En MINUTES tant que le jeton est jeune : « moins d'un jour » ne
-         distingue plus rien quand tout le flux a moins d'une heure. */
-      age:  t.minutes === null || t.minutes === undefined ? "age ?"
-            : t.minutes < 10 ? "ne de <10 min"
-            : t.minutes < 30 ? "10-30 min"
-            : t.minutes < 120 ? "30 min-2 h"
-            : t.minutes < 1440 ? "2-24 h"
-            : tranche(age, [7,30], ["1-7 j","7-30 j",">30 j"]),
-      liq:  tranche(t.liq||0, [1e4,5e4,25e4,1e6], ["liq<10k","liq 10-50k","liq 50-250k","liq 250k-1M","liq>1M"]),
-      /* Combien de pools portent ce jeton. Une liquidite eparpillee sur six
-         pools ne se vend pas comme une liquidite concentree — et DexScreener
-         est le seul a les lister tous. */
-      pools: !d.vu ? "pools ?" : tranche(d.pools, [2,4,8], ["1 pool","2-3 pools","4-7 pools",">=8 pools"])
-    },
-    warden: {
-      /* « ? » n'est pas un defaut d'ecriture : c'est une case a part entiere,
-         et l'Oracle apprendra ce que valent les jetons sur lesquels on ne
-         savait rien. C'est peut-etre la lecon la plus utile de toutes. */
-      taxe: !g.taxeSue ? "taxe inconnue" : ((g.buyTax+g.sellTax)===0 ? "aucune taxe"
-             : (g.buyTax+g.sellTax)<=10 ? "taxe <=10%" : "taxe >10%"),
-      code: !g.codeSu ? "code inconnu" : (g.unverified ? "code non verifie" : "code verifie"),
-      pouv: !g.have ? "pouvoirs ?" :
-            (g.mintable && g.proxy) ? "mint + proxy" : g.mintable ? "emission possible"
-            : g.proxy ? "contrat proxy" : "aucun pouvoir",
-      lp:   !g.have ? "lp ?" : tranche(g.lp||0, [1,50,90], ["lp libre","lp <50% bloquee","lp 50-90%","lp >90% bloquee"])
-    },
-    whale: {
-      /* Calculee par nous dans les blocs quand la chaine a repondu — c'est
-         la seule source qui sache quoi que ce soit d'un jeton de sept
-         minutes, et elle est exacte. */
-      top: (c.vu && c.top !== null && c.top !== undefined)
-           ? tranche(c.top, [5,15,30,50], ["top <5%","top 5-15%","top 15-30%","top 30-50%","top >50%"])
-           : (g.topSu ? tranche(g.top||0, [5,15,30,50], ["top <5%","top 5-15%","top 15-30%","top 30-50%","top >50%"])
-                      : "concentration inconnue"),
-      det: (c.vu && c.porteurs !== null && c.porteurs !== undefined)
-           ? tranche(c.porteurs, [10,30,100,500], ["<10 porteurs","10-30","30-100","100-500",">500 porteurs"])
-           : (g.detSue ? tranche(g.holders||0, [100,1e3,1e4], ["<100 det","100-1k det","1k-10k det",">10k det"])
-                       : "porteurs inconnus"),
-      brule: (c.vu && c.brule !== null && c.brule !== undefined)
-             ? tranche(c.brule, [1,50,90], ["rien brule","<50% brule","50-90% brule",">90% brule"])
-             : "brule inconnu",
-      /* ---- CELLE-LA VIENT DES BLOCS, PAS D'UN SERVICE ----
-         Des destinataires DISTINCTS sur les quarante dernieres minutes. Un
-         volume que trois adresses se renvoient n'en produit aucun ; des gens
-         qui arrivent vraiment, si. Personne ne peut la maquiller. */
-      arriv: !c.vu ? "arrivees ?" : tranche(c.recepteurs, [5,25,100], ["<5 arrivees","5-25","25-100",">100 arrivees"]),
-      remue: !c.vu ? "remue ?" : tranche(c.transferts, [20,100,500], ["chaine calme","20-100 transferts","100-500",">500 transferts"])
-    },
-    whisper: {
-      tour:  tranche(tour, [0.5,2,8], ["vol/liq <0.5","vol/liq 0.5-2","vol/liq 2-8","vol/liq >8"]),
-      press: tranche(press1, [0.8,1.05,1.5], ["vendeurs devant","equilibre","acheteurs devant","achats massifs"]),
-      uniq:  tranche(uniq1, [20,100,500], ["<20 traders/h","20-100/h","100-500/h",">500/h"]),
-      accel: tranche(accel, [0.6,1.2,3], ["ca retombe","stable","ca accelere","explosion"]),
-      /* Deux services qui lisent la meme chaine doivent trouver le meme
-         prix. Un ecart ne dit pas lequel se trompe : il dit que le marche
-         est mince ou qu'il bouge trop vite pour qu'on s'y fie. */
-      accord: t.ecart===null || t.ecart===undefined ? "une seule source"
-              : tranche(t.ecart, [0.5,2,6], ["prix concordants","ecart <2%","ecart 2-6%","ecart >6%"]),
-      vitrine: !d.vu ? "vitrine ?" : (d.socials>=3 ? "socials fournis" : d.socials>0 ? "quelques socials" : "aucun social")
-    },
-    oracle: {
-      mc:    tranche(t.mc||0, [1e6,1e7,5e7,2e8], ["mc <1M","mc 1-10M","mc 10-50M","mc 50-200M","mc >200M"]),
-      elan:  tranche(t.ch_h1||0, [-5,0,5,20], ["1h <-5%","1h -5-0%","1h 0-5%","1h 5-20%","1h >20%"]),
-      elan6: tranche(t.ch_h6||0, [-15,0,15,60], ["6h <-15%","6h -15-0%","6h 0-15%","6h 15-60%","6h >60%"]),
-      vola:  t.vola===null || t.vola===undefined ? "vola ?"
-             : tranche(t.vola, [2,5,12], ["calme","vola 2-5%","vola 5-12%","vola >12%"])
-    }
-  };
-}
-/* Le Closer, lui, n'apprend pas d'un token : il apprend d'une DUREE. Sa
-   case est le temps de tenue, et sa lecon se tire de la trajectoire reelle
-   de la position — les prix qu'on a vraiment releves pendant qu'elle etait
-   ouverte. */
-const TENUES = [5,10,20,40,80,160];    /* minutes */
-function trancheTenue(min){
-  let best = TENUES[0];
-  for(const t of TENUES) if(min >= t) best = t;
-  return best+" min";
-}
+/* ============================ L'ANIMATION ============================ */
 
-/* ---- LA MEMOIRE : PAR AGENT, ET LISIBLE A L'OEIL ----
- * Une case par valeur de trait : `n` observations, `s` la somme des
- * rendements REELS en pourcent. Rien d'autre. On peut la relire dans le
- * stockage local et la comprendre — c'est exactement ce qu'on veut d'une
- * memoire qui decide de l'argent. */
-/* ---- LIRE NE DOIT PAS ECRIRE ----
- * Cette fonction CREAIT la case au passage, et elle est appelee a chaque
- * notation d'un token — donc pour des dizaines de traits jamais observes.
- * La memoire se remplissait de cases a zero observation : du poids inutile
- * dans le stockage, et surtout un tableau de bord ou l'on ne distingue plus
- * ce qui a ete appris de ce qui a seulement ete regarde.
- * Deux fonctions, donc : une qui lit, une qui ecrit. */
-function memLit(agent, trait, valeur){
-  const m = ETAT.memoire;
-  return (m[agent] && m[agent][trait] && m[agent][trait][valeur]) || null;
-}
-function memCase(agent, trait, valeur){
-  const m = ETAT.memoire;
-  if(!m[agent]) m[agent] = {};
-  if(!m[agent][trait]) m[agent][trait] = {};
-  if(!m[agent][trait][valeur]) m[agent][trait][valeur] = { n:0, s:0 };
-  return m[agent][trait][valeur];
-}
-const CONFIANCE_K = 6;   /* a six observations, on croit la moitie de ce qu'on lit */
-function confiance(n){ return n / (n + CONFIANCE_K); }
-
-/* Ce que la memoire d'UN agent ajoute au score. Borne deux fois : par case,
-   et au total. Un agent ne doit pas pouvoir emporter la decision a lui seul
-   sur trois coups de chance — c'est ainsi qu'on sur-apprend. */
-function ajustementAgent(agent, cases){
-  if(!cases) return 0;
-  let somme = 0, vus = 0;
-  for(const k in cases){
-    const c = memLit(agent, k, cases[k]);
-    if(!c || !c.n) continue;
-    somme += confiance(c.n) * Math.max(-30, Math.min(30, c.s/c.n));
-    vus++;
-  }
-  if(!vus) return 0;
-  return Math.max(-12, Math.min(12, somme * 0.45));
-}
-function apprendAgent(agent, cases, rendement){
-  if(!cases) return;
-  const r = Math.max(-95, Math.min(300, rendement));
-  for(const k in cases){ const c = memCase(agent, k, cases[k]); c.n++; c.s += r; }
-}
-/* Les lecons lisibles d'un agent : les cases les plus SURES, pas les plus
-   extremes. Une case a deux observations et +80 % n'apprend rien a
-   personne, et l'afficher en tete ferait croire a une regle. */
-function leconsDe(agent, max){
-  const m = (ETAT.memoire||{})[agent] || {};
-  const out = [];
-  for(const trait in m)
-    for(const val in m[trait]){
-      const c = m[trait][val];
-      if(c.n < 2) continue;
-      const moy = c.s/c.n;
-      out.push({ quoi:val, n:c.n, moyenne:moy, poids:confiance(c.n)*Math.abs(moy) });
-    }
-  out.sort((a,b)=>b.poids-a.poids);
-  return out.slice(0, max||3);
-}
-function nObs(agent){
-  const m = (ETAT.memoire||{})[agent] || {};
-  let n = 0;
-  for(const t in m) for(const v in m[t]) n = Math.max(n, m[t][v].n);
-  return n;
-}
-/* La tenue que le Closer a apprise. Tant qu'il n'a pas de quoi trancher, il
-   garde la valeur par defaut — vingt minutes — et le dit. */
-function tenueApprise(){
-  const m = (ETAT.memoire||{}).closer || {};
-  const cases = m.tenue || {};
-  let best = null;
-  for(const v in cases){
-    const c = cases[v];
-    if(c.n < 3) continue;
-    const note = confiance(c.n) * (c.s/c.n);
-    if(!best || note > best.note) best = { v, note, moy:c.s/c.n, n:c.n };
-  }
-  if(!best) return { min:TENUE_DEFAUT_MIN, appris:false };
-  const min = parseInt(best.v, 10) || TENUE_DEFAUT_MIN;
-  return { min, appris:true, moy:best.moy, n:best.n };
-}
-
-/* ============================ LE SCORE ============================ */
-/* ==================== NOTER UN JETON QUI VIENT DE NAITRE ====================
- *
- * L'ancienne note mesurait la QUALITE ETABLIE : des detenteurs, une
- * capitalisation, un volume sur vingt-quatre heures. Un jeton de sept minutes
- * n'a rien de tout cela — et la note le punissait pour ca. Elle ne pouvait
- * donc jamais en retenir un, et les meilleurs picks etaient invariablement
- * des valeurs a deux cents millions. Ce n'est pas ce qu'on cherche.
- *
- * Ce qui EXISTE a sept minutes, et qu'on peut lire :
- *
- *   la liquidite du pool          — combien on peut sortir, et a quel prix
- *   la part du plus gros porteur  — calculee par nous, dans les blocs
- *   le nombre de porteurs reels   — idem, et personne d'autre ne l'a
- *   ce qui est parti en fumee     — ce qui ne pourra plus etre vendu
- *   les achats contre les ventes  — la seule demande observable
- *   les acheteurs distincts       — des gens, ou une adresse qui se repond
- *   le mouvement depuis la naissance
- *
- * Et ce qui n'existe PAS ne rapporte rien. C'est la regle qui manquait : un
- * champ que le service n'a pas rendu vaut « inconnu », jamais « bon ».
- *
- * Le seuil reste haut et la mise reste petite, pour une raison qu'il faut
- * dire : sur des jetons de quelques minutes, la plupart ne survivent pas.
- * Cette page n'est pas une facon de gagner de l'argent a coup sur — c'est
- * une facon de MESURER, honnetement, si une methode en gagne.
- */
-function scoreBase(t){
-  const g = t.g || {}, ch = t.chaine || {}, x = t.tx || {}, v = t.vol || {};
-  const h1 = x.h1 || {}, m5 = x.m5 || {};
-  const neuf = (t.minutes !== null && t.minutes !== undefined && t.minutes < 180);
-  let s = 30;                       /* on part au milieu : l'inconnu ne monte ni ne descend */
-
-  /* ---- LA LIQUIDITE : COMBIEN ON PEUT SORTIR ---- */
-  s += t.liq>=1e5 ? 16 : t.liq>=25e3 ? 13 : t.liq>=8e3 ? 9 : t.liq>=3e3 ? 5 : t.liq>=1e3 ? 1 : -6;
-
-  /* ---- LA CONCENTRATION, LUE DANS LES BLOCS ----
-   * C'est la mesure de risque numero un sur un jeton neuf, et la seule que
-   * l'on obtienne tout de suite. Une adresse qui tient la moitie du
-   * circulant peut tout vendre dans la minute. */
-  const top = (ch.vu && ch.top !== null && ch.top !== undefined) ? ch.top
-            : (g.topSu ? g.top : null);
-  if(top === null) s -= 4;                          /* inconnu : on retire, on n'ajoute pas */
-  else s += top<5 ? 14 : top<15 ? 9 : top<30 ? 2 : top<50 ? -10 : -26;
-
-  /* ---- COMBIEN DE PORTEURS REELS ---- */
-  const det = (ch.vu && ch.porteurs !== null && ch.porteurs !== undefined) ? ch.porteurs
-            : (g.detSue ? g.holders : null);
-  if(det === null) s -= 3;
-  else if(neuf) s += det>=120 ? 12 : det>=50 ? 9 : det>=20 ? 5 : det>=8 ? 1 : -6;
-  else s += det>=2e4 ? 12 : det>=3e3 ? 9 : det>=500 ? 5 : det>=100 ? 2 : -4;
-
-  /* ---- CE QUI NE POURRA PLUS ETRE VENDU ---- */
-  if(ch.vu && ch.brule !== null && ch.brule !== undefined)
-    s += ch.brule>=90 ? 8 : ch.brule>=50 ? 5 : ch.brule>=10 ? 2 : 0;
-
-  /* ---- LA DEMANDE, TELLE QU'ELLE SE VOIT ----
-   * Sur un jeton neuf, la fenetre d'une heure EST toute sa vie. Des
-   * acheteurs distincts valent bien plus qu'un volume : trois adresses qui
-   * se renvoient un jeton produisent du volume et aucune demande. */
-  const ach = (h1.buys||0), ven = (h1.sells||0), uniq = (h1.buyers||0);
-  if(ach + ven > 0){
-    const r = ach / Math.max(1, ven);
-    s += r>=2 ? 8 : r>=1.3 ? 5 : r>=0.9 ? 1 : r>=0.6 ? -3 : -8;
-  } else s -= 4;                                    /* aucun echange : personne n'en veut */
-  s += uniq>=60 ? 9 : uniq>=25 ? 6 : uniq>=10 ? 3 : uniq>=3 ? 0 : -5;
-
-  /* ---- LE CONTRAT, QUAND ON SAIT ----
-   * Chaque drapeau ne compte que si le service a repondu dessus. Un champ
-   * absent ne vaut ni bien ni mal : il vaut zero. */
-  if(g.taxeSue) s += (g.buyTax+g.sellTax)===0 ? 6 : (g.buyTax+g.sellTax)<=10 ? 2 : -14;
-  if(g.codeSu)  s += g.unverified ? -8 : 5;
-  if(g.have){
-    if(g.proxy) s -= 6;
-    if(g.mintable) s -= 8;                          /* pouvoir d'emettre = pouvoir de diluer */
-    if(g.slipMod) s -= 8;
-    if(g.cooldown) s -= 5;
-    if(g.lp >= 50) s += 5;
-  }
-
-  /* ---- LE MOUVEMENT ----
-   * Sur cinq minutes pour un jeton neuf : c'est la seule fenetre qui ait
-   * encore un sens quand il en a sept. */
-  const el = neuf ? (t.ch_m5||0) : (t.ch_h1||0);
-  s += Math.max(-8, Math.min(10, el * (neuf ? 0.25 : 0.4)));
-
-  return s;
-}
-
-const SEUIL = 55;
-function analyse(t){
-  const g = t.g||{}, ch = t.chaine||{}; let secReject = null;
-  if(g.have){
-    if(g.honeypot) secReject = "honeypot";
-    else if(g.cannotBuy) secReject = "achat impossible";
-    else if(g.ownerBal) secReject = "le proprietaire reecrit les soldes";
-    else if(g.selfd) secReject = "auto-destruction";
-    else if(g.perslip) secReject = "taxe par portefeuille";
-    else if(g.hpSame) secReject = "createur deja honeypot";
-    else if(g.pausable) secReject = "transferts suspendables";
-    else if(g.sellTax>10) secReject = "taxe vente "+g.sellTax+"%";
-    else if(g.buyTax>15) secReject = "taxe achat "+g.buyTax+"%";
-  }
-  /* ---- LE REFUS QUI COMPTE SUR UN JETON NEUF ----
-   * GoPlus ne sait rien avant des heures ; la chaine, elle, sait tout de
-   * suite. La concentration mesuree dans les blocs prend donc le pas — et
-   * c'est elle qui protege vraiment, parce qu'elle est disponible au moment
-   * ou la decision se prend. */
-  const topVu = (ch.vu && ch.top !== null && ch.top !== undefined) ? ch.top
-              : (g.topSu ? g.top : null);
-  const concReject = (topVu !== null && topVu >= 50)
-    ? ("un porteur tient " + topVu.toFixed(0) + "% du circulant") : null;
-  const tr = traitsDe(t);
-  const base = scoreBase(t);
-  /* Chaque agent apporte SA part. La somme est le score, et le detail reste
-     lisible : on peut dire quel agent a fait pencher la balance. */
-  const parts = {};
-  let adj = 0;
-  for(const a of ["scout","warden","whale","whisper","oracle"]){
-    parts[a] = ajustementAgent(a, tr[a]);
-    adj += parts[a];
-  }
-  adj = Math.max(-30, Math.min(30, adj));
-  const score = Math.max(0, Math.min(100, Math.round(base + adj)));
-  return { secReject, concReject, traits:tr, parts, base:Math.round(base), adj:Math.round(adj), score,
-           /* Le prix est la condition qui ne se negocie pas : sans prix relu,
-              on ne sait pas a quoi on achete, donc on n'achete pas. */
-           achete: !secReject && !concReject && score>=SEUIL && t.prix>0 };
-}
-
-function prochainToken(){
-  const toks = (REAL && REAL.tokens) || [];
-  if(!toks.length) return null;
-  if(!rhOrder.length){
-    rhOrder = [...toks.keys()];
-    for(let i=rhOrder.length-1;i>0;i--){ const j=Math.random()*(i+1)|0; [rhOrder[i],rhOrder[j]]=[rhOrder[j],rhOrder[i]]; }
-  }
-  return toks[rhOrder.pop()];
-}
-
-/* ============================ SIMULATION ============================ */
 let running = true, speed = 1;
 const inbox = AGENTS.map(()=>[]);
 const flying = new Set();
@@ -836,31 +452,56 @@ const bots = AGENTS.map((a,i)=>({ i, x:a.house.x, y:a.house.y+34, hx:a.house.x, 
 const orbs = [];
 const floats = [];
 
-function nouveauToken(){
-  const r = prochainToken(); if(!r) return null;
-  const a = analyse(r);
-  return { rec:r, sym:r.sym, adr:r.addr, mc:r.mc, liq:r.liq, g:r.g, ch:r.ch_h1||0, pool:r.pool,
-           prix:r.prix||0, an:a, score:a.score, stage:0, done:new Array(6).fill(0),
-           id:Math.random().toString(36).slice(2,7) };
+
+/* ---- LES JETONS QUI ENTRENT DANS LE VILLAGE SONT CEUX DU SERVEUR ----
+ * Un par candidat examine, et une seule fois chacun : `vus` retient ce qui a
+ * deja traverse, sinon chaque redemande relancerait les memes jetons en
+ * boucle et l'ecran raconterait dix fois un travail fait une fois.
+ * `refus` est la raison ecrite par le serveur ; `agentRefus` dit a qui elle
+ * appartient, et c'est la que le bot s'arretera. */
+const vus = new Set();
+const file = [];
+
+function agentRefus(c){
+  if(!c.refus) return -1;
+  const r = String(c.refus);
+  /* Les libelles viennent de `analyse()` cote serveur. Le Warden repond du
+     contrat, le Whale-Watch de qui detient, l'Oracle de la note. */
+  if(/honeypot|achat impossible|proprietaire|auto-destruction|taxe|createur|suspendables/.test(r)) return idx.warden;
+  if(/porteur|garde/.test(r)) return idx.whale;
+  return idx.oracle;
+}
+
+function verseCandidats(){
+  for(const c of vCandidats()){
+    const cle = c.pool || c.addr;
+    if(!cle || vus.has(cle)) continue;
+    vus.add(cle);
+    file.push({ sym:c.sym, adr:c.addr, pool:c.pool, mc:c.mc, liq:c.liq, minutes:c.minutes,
+                score:c.score, base:c.base, adj:c.adj, refus:c.refus, stop:agentRefus(c),
+                porteurs:c.porteurs, top:c.top, chaineVue:c.chaineVue, goplusSait:c.goplusSait,
+                stage:0, done:new Array(6).fill(0), id:Math.random().toString(36).slice(2,7) });
+  }
+  /* On borne : le serveur en examine six par tour, mais une page laissee
+     ouverte une nuit en accumulerait des centaines. */
+  while(file.length > 40) file.shift();
+  if(vus.size > 600){ const g = [...vus].slice(0, 300); for(const k of g) vus.delete(k); }
 }
 
 let spawnT = 0;
 function peutNaitre(dt){
   spawnT -= dt*speed;
-  if(spawnT>0 || flying.size >= 4) return;
+  purgeRefus();
+  /* Les refus qui finissent de s'afficher ne prennent pas la place des jetons
+     encore en vol : sinon quatre refus a l'ecran arreteraient le pipeline. */
+  let enVol = 0; for(const t of flying) if(!t.expire) enVol++;
+  if(spawnT>0 || enVol >= 4 || !file.length) return;
   spawnT = 1.7 + Math.random()*1.4;
-  const t = nouveauToken();
-  if(!t) return;
+  const t = file.shift();
   flying.add(t);
   inbox[idx.scout].push(t);
   orbAt(t, idx.scout);
-  compte("scout");
   peintFlux();
-}
-
-function compte(k, n){
-  ETAT.compteurs[k] = (ETAT.compteurs[k]||0) + (n||1);
-  sauve();
 }
 
 function step(dt){
@@ -886,27 +527,25 @@ function step(dt){
   for(let i=floats.length-1;i>=0;i--){ const f=floats[i]; f.y-=18*dt; f.life-=dt; if(f.life<=0) floats.splice(i,1); }
 }
 
+/* ---- LE BOT REJOUE LA DECISION, IL NE LA PREND PAS ----
+ * Le serveur a deja tranche. Le bot marche jusqu'a l'agent a qui la raison du
+ * refus appartient, s'y arrete, et affiche cette raison telle qu'elle a ete
+ * ecrite. S'il n'y a pas de refus, le jeton va jusqu'au Closer — parce que le
+ * serveur, lui, a ouvert la position. */
 function resout(b){
   const t = b.carry, A = AGENTS[b.i];
   t.done[b.i] = 1;
-  if(A.key==="warden"){
-    if(t.an.secReject){ compte("wardenBloque"); return rejette(b, t.an.secReject); }
-    compte("wardenOk");
+  if(t.stop === b.i){
+    const doux = A.key === "oracle";
+    return rejette(b, t.refus || "ecarte", doux);
   }
-  if(A.key==="whale"){
-    if(t.an.concReject){ compte("whaleBloque"); return rejette(b, t.an.concReject); }
-    compte("whaleOk");
+  if(A.key === "oracle" && !t.refus) ajoutePick(t);
+  if(A.key === "closer"){
+    /* Le serveur a ouvert la position ; ici on ne fait que le montrer. */
+    b.carry = null; flying.delete(t); peintFlux();
+    spawnFloat(AGENTS[b.i].house.x, AGENTS[b.i].house.y+6, "achete $"+(VUE?VUE.mise:50), "up");
+    return rentre(b);
   }
-  if(A.key==="whisper"){ compte("whisper"); }
-  if(A.key==="oracle"){
-    compte("oracle");
-    if(!t.an.achete){
-      const pourquoi = !t.prix ? "prix non lu" : "score "+t.score;
-      return rejette(b, pourquoi, true);
-    }
-    ajoutePick(t);
-  }
-  if(A.key==="closer") return ouvrePosition(b);
   porteVers(b, b.i+1);
 }
 
@@ -920,11 +559,28 @@ function porteVers(b, suivant){
     rentre(b);
   };
 }
+/* ---- UN REFUS DOIT SE VOIR, ET DIRE POURQUOI ----
+ * Le jeton refuse disparaissait du panneau a l'instant meme ou il etait
+ * refuse : la pastille rouge prevue pour ca n'etait jamais affichee, et le
+ * lecteur voyait des jetons entrer puis s'evanouir sans raison. Or le refus
+ * EST le travail de la colonie — cinq jetons sur six sont ecartes, et c'est
+ * la seule chose qui explique pourquoi la tresorerie ne bouge pas.
+ * Il reste donc quelques secondes, avec la raison ecrite par le serveur. */
+const AFFICHE_REFUS_MS = 7000;
 function rejette(b, raison, doux){
   const t = b.carry; b.carry = null; t.done[b.i] = 2;
-  flying.delete(t); peintFlux();
+  t.rejete = raison; t.doux = !!doux; t.expire = Date.now() + AFFICHE_REFUS_MS;
+  peintFlux();
   spawnFloat(AGENTS[b.i].house.x, AGENTS[b.i].house.y+6, (doux?"passe · ":"✕ ")+raison, doux?"n":"dn");
   rentre(b);
+}
+/* Et il finit par partir : sans cela, une page ouverte une nuit accumulerait
+   tous les refus de la nuit dans une liste qui ne se lit plus. */
+function purgeRefus(){
+  const now = Date.now();
+  let bouge = false;
+  for(const t of flying) if(t.expire && t.expire <= now){ flying.delete(t); bouge = true; }
+  if(bouge) peintFlux();
 }
 function moveTo(b, tx, ty, sp){
   const dx=tx-b.x, dy=ty-b.y, d=Math.hypot(dx,dy);
@@ -942,117 +598,8 @@ function orbAt(t, houseIdx){
 function removeOrb(t){ const i = orbs.findIndex(o=>o.t===t); if(i>=0) orbs.splice(i,1); }
 function spawnFloat(x,y,txt,cls){ floats.push({x,y,txt,cls,life:1.4}); }
 
-/* ============================ LES POSITIONS ============================
- * Elles sont la seule chose qui touche a l'argent, et donc la seule ou
- * l'honnetete se joue. Une position retient le prix REEL du moment ou elle
- * s'ouvre et l'instant ou elle s'ouvre. Elle se ferme au prix REEL d'un
- * releve plus tard. Entre les deux, il ne se passe rien qu'on invente.
- * ====================================================================== */
-function ouvrePosition(b){
-  const t = b.carry; b.carry = null;
-  if(!(t.prix > 0)){ rentre(b); flying.delete(t); peintFlux(); return; }
-  /* Une seule position par token a la fois : en empiler trois sur le meme
-     contrat, c'est mesurer trois fois la meme chose et croire qu'on a
-     appris trois fois. */
-  if(ETAT.positions.some(p=>p.adr===t.adr)){ rentre(b); flying.delete(t); peintFlux(); return; }
-  const tenue = tenueApprise();
-  const p = { sym:t.sym, adr:t.adr, pool:t.pool, prix0:t.prix, t0:Date.now(),
-              mise:MISE, traits:t.an.traits, score:t.score, mc:t.mc,
-              /* La duree que le Closer a apprise, gravee AVEC la position :
-                 s'il change d'avis demain, celle-ci garde la sienne, sinon
-                 la lecon qu'on en tirera ne dirait rien. */
-              tenueMin:tenue.min,
-              /* Les prix releves pendant qu'elle est ouverte. C'est cette
-                 trace qui apprend au Closer combien de temps il fallait
-                 tenir — sans elle, il ne saurait jamais que vingt minutes
-                 valaient mieux que quatre-vingts. */
-              traj:[] };
-  ETAT.positions.push(p);
-  ETAT.ouvertures++;
-  compte("closer");
-  ajouteFlux({ sym:t.sym, pool:t.pool, tag:"open", txt:"OUVERT · $"+MISE, cls:"n", t:Date.now() });
-  spawnFloat(AGENTS[b.i].house.x, AGENTS[b.i].house.y+6, "ACHAT $"+t.sym, "n");
-  flying.delete(t); peintFlux(); peintPositions(); sauve();
-  rentre(b);
-}
-
-/* Ferme au prix donne — qui vient TOUJOURS d'une lecture, jamais d'un
-   calcul. Rend le rendement en pourcent. */
-function fermePosition(p, prix, quand){
-  const rendement = (prix - p.prix0) / p.prix0 * 100;
-  const pnl = p.mise * rendement / 100;
-  balance += pnl; profit = balance - DEPART;
-  trades++; if(pnl > 0) gains++;
-  const mult = 1 + rendement/100;
-  if(mult > best){ best = mult; bestSym = p.sym; }
-  /* ---- ET C'EST ICI QUE L'ORACLE APPREND ----
-     Sur le rendement REEL, pas sur une intention. Une lecon tiree d'un
-     resultat invente serait pire qu'aucune lecon : elle se propagerait a
-     tous les tokens qui partagent le trait. */
-  for(const a of ["scout","warden","whale","whisper","oracle"])
-    apprendAgent(a, p.traits[a], rendement);
-  /* ---- ET LE CLOSER APPREND LA DUREE ----
-     Pour chaque point de la trajectoire, on inscrit ce qu'aurait donne une
-     sortie A CE MOMENT-LA. Ce ne sont pas des rendements imagines : chacun
-     est la difference entre deux prix qu'on a vraiment lus. */
-  const vus = {};
-  for(const pt of (p.traj||[])){
-    const cle = trancheTenue(pt.dt/60000);
-    if(vus[cle]) continue;            /* une seule lecon par tranche et par position */
-    vus[cle] = 1;
-    apprendAgent("closer", { tenue:cle }, pt.r);
-  }
-  const cleFin = trancheTenue((quand - p.t0)/60000);
-  if(!vus[cleFin]) apprendAgent("closer", { tenue:cleFin }, rendement);
-  const up = pnl >= 0;
-  ajouteFlux({ sym:p.sym, pool:p.pool, tag:up?"buy":"cut",
-               txt:(up?"+":"")+"$"+pnl.toFixed(2)+"  ·  "+(rendement>=0?"+":"")+rendement.toFixed(1)+"%",
-               cls:up?"up":"dn", t:quand||Date.now(), tenue:(quand||Date.now())-p.t0 });
-  if(Math.abs(pnl) > 0.02)
-    spawnFloat(TREASURY.x+(Math.random()*60-30), TREASURY.y-10, (up?"+":"")+"$"+pnl.toFixed(0), up?"up":"dn");
-  spark.push(balance);
-  ETAT.tresor = balance; ETAT.trades = trades; ETAT.gains = gains;
-  ETAT.meilleur = best; ETAT.meilleurSym = bestSym; ETAT.courbe = spark;
-  sauve();
-}
-
-/* Regle ce qui est du, avec les prix qu'on vient de lire. Appelee apres
-   CHAQUE lecture — au chargement comme en cours de route. C'est elle qui
-   fait que « ferme depuis hier » ne perd rien : la position attendait un
-   prix, elle en a un. */
-function reglePositions(prixParAdr, forceTout){
-  if(!ETAT.positions.length) return 0;
-  const maintenant = Date.now();
-  let fermees = 0;
-  ETAT.positions = ETAT.positions.filter(function(p){
-    const prix = prixParAdr[p.adr];
-    if(!(prix > 0)) return true;                       /* pas de prix : on attend */
-    /* ---- ON INSCRIT LE POINT AVANT DE DECIDER ----
-       Meme si la position reste ouverte : c'est cette suite de vrais prix
-       qui apprendra au Closer ou etait le bon moment de sortir. */
-    const dt = maintenant - p.t0;
-    const r = (prix - p.prix0)/p.prix0*100;
-    if(!p.traj) p.traj = [];
-    if(p.traj.length < 40) p.traj.push({ dt, r:Math.round(r*100)/100 });
-    const tenueMs = (p.tenueMin || TENUE_DEFAUT_MIN) * 60000;
-    if(dt < tenueMs && !forceTout) return true;
-    fermePosition(p, prix, maintenant);
-    fermees++;
-    return false;
-  });
-  if(fermees){ peintPositions(); peintStats(); peintFlux(); peintAppris(); dessineCourbe(); }
-  return fermees;
-}
-/* La valeur latente d'une position, au dernier prix connu. Elle n'entre PAS
-   dans la tresorerie : tant que ce n'est pas ferme, ce n'est pas gagne. */
-const dernierPrix = {};
-function latent(p){
-  const prix = dernierPrix[p.adr];
-  if(!(prix > 0)) return null;
-  return { r:(prix - p.prix0)/p.prix0*100, pnl:p.mise*((prix - p.prix0)/p.prix0) };
-}
-
 /* ============================ RENDU (canvas) ============================ */
+
 function drawBG(){
   const g = ctx.createLinearGradient(0,0,0,H);
   g.addColorStop(0,"#74c94f"); g.addColorStop(1,"#5aa838");
@@ -1210,31 +757,40 @@ const echappe = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",
 const status = AGENTS.map(()=>({cls:"idle",txt:"au repos"}));
 function setStatus(i,cls,txt){ status[i]={cls,txt}; peintAgents(); }
 
+/* Les compteurs, les lecons et la tenue viennent tous du serveur : c'est LUI
+   qui a vu les jetons et ferme les positions. La page ne tient aucun compte
+   parallele — deux comptes finissent toujours par diverger, et celui qui est
+   faux est celui qu'on regarde. */
 function scoreAgent(k){
-  const c = ETAT.compteurs;
+  if(!VUE) return "en attente du serveur";
+  const c = VUE.compteurs || {};
   if(k==="scout")   return (c.scout||0)+" tokens vus";
   if(k==="warden")  return (c.wardenBloque||0)+" bloques · "+(c.wardenOk||0)+" laisses passer";
   if(k==="whale")   return (c.whaleBloque||0)+" bloques · "+(c.whaleOk||0)+" laisses passer";
   if(k==="whisper") return (c.whisper||0)+" mesures";
-  if(k==="oracle")  return trades+" trades appris · seuil "+SEUIL;
+  if(k==="oracle")  return VUE.trades+" trades appris · seuil "+VUE.seuil;
   if(k==="closer"){
-    const tn = tenueApprise();
-    return (ETAT.ouvertures||0)+" ouvertures · tenue "+tn.min+" min"+(tn.appris?" (apprise)":" (defaut)");
+    const t = VUE.tenue || {};
+    return (VUE.ouvertures||0)+" ouvertures · tenue "+(t.min||0)+" min"+(t.appris?" (apprise)":" (defaut)");
   }
   return "";
 }
 /* ---- CE QUE CET AGENT-LA A APPRIS ----
- * Une ligne par agent, sous sa mission : sa meilleure lecon, avec le nombre
- * d'observations. C'est ce qui rend l'amelioration VISIBLE plutot que
- * promise — et le nombre d'observations est la, pour qu'on ne prenne pas
- * deux coups de chance pour une regle. */
+ * Le serveur publie, par agent, ses meilleures lecons AVEC le nombre
+ * d'observations. Ce nombre n'est pas decoratif : sans lui, deux coups de
+ * chance ressemblent a une regle. */
+const CONFIANCE_K = 6;
+const confiance = n => n / (n + CONFIANCE_K);
+function agentVue(k){ return (VUE && VUE.agents && VUE.agents[k]) || { obs:0, lecons:[] }; }
 function apprisAgent(k){
-  const n = nObs(k);
-  if(!n) return "n'a encore rien appris";
-  const l = leconsDe(k, 1)[0];
-  if(!l) return n+" obs · pas encore de tendance nette";
+  if(!VUE) return "—";
+  const a = agentVue(k);
+  if(!a.obs) return "n'a encore rien appris";
+  const l = a.lecons[0];
+  if(!l) return a.obs+" obs · pas encore de tendance nette";
   return (l.moyenne>=0?"+":"") + l.moyenne.toFixed(1) + "% sur « " + l.quoi + " » (" + l.n + " obs)";
 }
+
 function peintAgents(){
   $("agents").innerHTML = AGENTS.map((a,i)=>`
     <div class="agent">
@@ -1251,14 +807,30 @@ function peintAgents(){
 function peintFlux(){
   const arr = [...flying];
   $("flowcount").textContent = arr.length+" token"+(arr.length!==1?"s":"");
-  if(!arr.length){ $("flow").innerHTML = '<div class="empty">En attente de nouveaux tokens…</div>'; return; }
+  if(!arr.length){
+    $("flow").innerHTML = '<div class="empty">'
+      + (VUE ? "En attente du prochain tour du serveur…" : "En attente du serveur…") + '</div>';
+    return;
+  }
   $("flow").innerHTML = arr.map(t=>{
     const dots = t.done.map(d=>`<span class="sd ${d===1?"on":d===2?"rej":""}"></span>`).join("");
-    const det = t.g && t.g.holders ? " · "+fmtN(t.g.holders)+" det" : "";
+    if(t.rejete) return `<div class="tok" style="opacity:.72">
+      <span class="sym">$${echappe(t.sym)}</span>
+      <span class="badge rh">RH</span>
+      <span class="meta" style="color:${t.doux?"var(--muted)":"var(--loss)"}">${t.doux?"":"✕ "}${echappe(t.rejete)}</span>
+      <span class="stages">${dots}</span>
+    </div>`;
+    /* Ce qui est affiche ici a ete LU sur la chaine par le serveur. Quand il
+       n'a pas su lire, on ecrit « ? » — pas un zero, qui se lirait comme un
+       fait. */
+    const det = t.chaineVue
+      ? " · " + (t.porteurs === null ? "porteurs ?" : fmtN(t.porteurs)+" porteurs")
+      : " · chaine non lue";
+    const age = t.minutes === null || t.minutes === undefined ? "" : " · "+t.minutes+"min";
     return `<div class="tok">
       <span class="sym">$${echappe(t.sym)}</span>
       <span class="badge rh">RH</span>
-      <span class="meta">${fmtMC(t.mc)}${det}</span>
+      <span class="meta">${fmtMC(t.mc)}${det}${age}</span>
       <span class="stages">${dots}</span>
     </div>`;
   }).join("");
@@ -1266,8 +838,15 @@ function peintFlux(){
 const picks = [];
 function ajoutePick(t){
   if(picks.find(p=>p.pool===t.pool)) return;
-  picks.push({sym:t.sym, score:Math.round(t.score), base:t.an.base, adj:t.an.adj, mc:t.mc, pool:t.pool});
+  picks.push({sym:t.sym, score:Math.round(t.score||0), base:t.base, adj:t.adj, mc:t.mc, pool:t.pool});
   picks.sort((a,b)=>b.score-a.score); if(picks.length>7) picks.pop();
+  peintPicks();
+}
+function peintPicks(){
+  if(!picks.length){
+    $("picks").innerHTML = '<div class="empty">Aucun signal valide pour l\'instant…</div>';
+    return;
+  }
   $("picks").innerHTML = picks.map((p,i)=>`
     <a class="pick" href="https://dexscreener.com/robinhood/${encodeURIComponent(p.pool)}" target="_blank" rel="noopener">
       <span class="rank">${i+1}</span>
@@ -1278,14 +857,14 @@ function ajoutePick(t){
       <span class="score">${p.score}</span>
     </a>`).join("");
 }
-function ajouteFlux(e){
-  ETAT.flux.unshift(e);
-  if(ETAT.flux.length > 60) ETAT.flux.pop();
-  peintFluxTrades(); sauve();
-}
 function peintFluxTrades(){
-  if(!ETAT.flux.length){ $("feed").innerHTML = '<div class="empty">Aucun trade encore…</div>'; return; }
-  $("feed").innerHTML = ETAT.flux.slice(0,10).map(e=>{
+  const flux = (VUE && VUE.flux) || [];
+  if(!flux.length){
+    $("feed").innerHTML = '<div class="empty">'
+      + (VUE ? "Aucun trade encore…" : "En attente du serveur…") + '</div>';
+    return;
+  }
+  $("feed").innerHTML = flux.slice(0,10).map(e=>{
     const lbl = e.tag==="buy" ? "GAIN" : e.tag==="cut" ? "PERTE" : "OUVERT";
     const sym = e.pool
       ? `<a class="sym symlink" href="https://dexscreener.com/robinhood/${encodeURIComponent(e.pool)}" target="_blank" rel="noopener">$${echappe(e.sym)}</a>`
@@ -1295,16 +874,24 @@ function peintFluxTrades(){
   }).join("");
 }
 function peintPositions(){
-  $("poscount").textContent = ETAT.positions.length;
-  if(!ETAT.positions.length){
-    $("positions").innerHTML = '<div class="empty">Aucune position ouverte.</div>';
+  const pos = vPositions();
+  $("poscount").textContent = VUE ? pos.length : "—";
+  if(!VUE){
+    $("positions").innerHTML = '<div class="empty">En attente du serveur — rien n\'est affiche tant que rien n\'est lu.</div>';
     return;
   }
-  $("positions").innerHTML = ETAT.positions.map(p=>{
-    const l = latent(p);
-    const val = l===null ? '<span class="pnl n">prix non relu</span>'
-      : `<span class="pnl ${l.r>=0?"up":"dn"}">${l.r>=0?"+":""}${l.r.toFixed(1)}% · ${l.pnl>=0?"+":""}$${l.pnl.toFixed(2)}</span>`;
-    const reste = Math.max(0, (p.tenueMin||TENUE_DEFAUT_MIN)*60000 - (Date.now()-p.t0));
+  if(!pos.length){ $("positions").innerHTML = '<div class="empty">Aucune position ouverte.</div>'; return; }
+  $("positions").innerHTML = pos.map(p=>{
+    /* `latent` est calcule par le serveur a partir du dernier prix qu'il a
+       RELU. Quand il n'en a pas, il envoie `null` — et on l'ecrit. */
+    const val = p.latent === null || p.latent === undefined
+      ? '<span class="pnl n">prix non relu</span>'
+      : `<span class="pnl ${p.latent>=0?"up":"dn"}">${p.latent>=0?"+":""}${p.latent.toFixed(1)}% · ${p.latent>=0?"+":"–"}$${Math.abs(VUE.mise*p.latent/100).toFixed(2)}</span>`;
+    /* Le temps restant avance entre deux reponses : on part de l'age que le
+       serveur a envoye et on y ajoute ce qui s'est ecoule depuis, plutot que
+       de laisser un compte a rebours fige. */
+    const ouverte = p.ouverteDepuis + (Date.now() - RECU);
+    const reste = Math.max(0, p.tenueMin*60000 - ouverte);
     return `<div class="pos">
       <span class="sym">$${echappe(p.sym)}</span>
       <span class="quand">${reste>0 ? "regle dans "+ilYA(reste) : "en attente d'un prix"}</span>
@@ -1313,14 +900,15 @@ function peintPositions(){
   }).join("");
 }
 function peintAppris(){
-  $("apprisN").textContent = trades+" trade"+(trades!==1?"s":"");
+  const n = vTrades();
+  $("apprisN").textContent = n+" trade"+(n!==1?"s":"");
   const bloc = [];
   for(const a of AGENTS){
-    const l = leconsDe(a.key, 2);
+    const l = agentVue(a.key).lecons || [];
     if(!l.length) continue;
     bloc.push('<div class="leçon" style="border-top:0;padding-bottom:2px">'
       + '<span class="quoi" style="color:'+a.color+'">'+a.emoji+' '+a.name+'</span></div>');
-    for(const x of l){
+    for(const x of l.slice(0,2)){
       const bon = x.moyenne >= 0;
       bloc.push('<div class="leçon">'
         + '<span class="quoi">'+echappe(x.quoi)+'</span>'
@@ -1339,11 +927,18 @@ function peintAppris(){
   $("appris").innerHTML = bloc.join("");
 }
 function peintStats(){
+  if(!VUE){
+    $("s-profit").textContent = "—"; $("s-profit").style.color = "var(--muted)";
+    $("s-trades").textContent = "—"; $("s-best").textContent = "—";
+    $("wr").textContent = "win —";
+    peintAgents(); return;
+  }
+  const profit = VUE.tresor - VUE.depart;
   $("s-profit").textContent = (profit>=0?"+":"–")+"$"+Math.abs(profit).toFixed(0);
   $("s-profit").style.color = profit>=0 ? "var(--gain)" : "var(--loss)";
-  $("s-trades").textContent = trades;
-  $("s-best").textContent = best>0 ? best.toFixed(2)+"×" : "—";
-  $("wr").textContent = "win "+(trades ? Math.round(gains/trades*100) : 0)+"%";
+  $("s-trades").textContent = VUE.trades;
+  $("s-best").textContent = VUE.meilleur>0 ? VUE.meilleur.toFixed(2)+"×" : "—";
+  $("wr").textContent = "win "+(VUE.trades ? Math.round(VUE.gains/VUE.trades*100) : 0)+"%";
   peintAgents();
 }
 function dessineCourbe(){
@@ -1351,6 +946,15 @@ function dessineCourbe(){
   const w = c.clientWidth||260, h = 52;
   c.width = w*dpr; c.height = h*dpr; x.setTransform(dpr,0,0,dpr,0,0);
   x.clearRect(0,0,w,h);
+  const spark = vCourbe();
+  /* Pas de courbe tant qu'il n'y a pas de tresorerie relue : une ligne plate
+     tracee sur une valeur par defaut ressemble a une colonie qui n'a rien
+     gagne, alors qu'on ne sait simplement pas. */
+  if(!spark){
+    x.fillStyle = "rgba(255,255,255,.28)"; x.font = "11px system-ui, sans-serif";
+    x.fillText("pas encore de donnee", 6, h/2+4);
+    return;
+  }
   const lo = Math.min(...spark), hi = Math.max(...spark), rng = (hi-lo)||1;
   const X = i => i/(spark.length-1||1)*w, Y = v => h-6-((v-lo)/rng)*(h-14);
   x.strokeStyle="rgba(255,255,255,.06)"; x.lineWidth=1;
@@ -1366,531 +970,106 @@ function dessineCourbe(){
   x.fillStyle="rgba(255,206,74,.25)"; x.beginPath(); x.arc(ex,ey,6,0,7); x.fill();
 }
 
-/* ============================ LECTURE DE LA CHAINE ============================ */
-const GT = "https://api.geckoterminal.com/api/v2/networks/robinhood";
-const ENTETES = { "Accept":"application/json;version=20230302" };
-const GOPLUS_TTL = 6*3600*1000;   /* la securite d'un contrat ne change pas toutes les minutes */
-const CADENCE = 150000;           /* on relit toutes les deux minutes et demie */
-/* Au-dela, ce n'est plus un jeton neuf. Six heures : assez large pour ne pas
-   rater un pool cree en pleine nuit, assez etroit pour que « neuf » veuille
-   encore dire quelque chose. */
-const AGE_MAX_MIN = 360;
-const goplusCache = {};
-let enLecture = false, echecs = 0;
+/* ==========================================================================
+ * LA DEMANDE AU SERVEUR
+ *
+ * C'est le seul echange reseau de la page. Elle ne lit plus GeckoTerminal, ni
+ * GoPlus, ni la chaine : le serveur les a lus une fois, pour tout le monde.
+ * Six visiteurs ne font plus six fois les memes appels — ce qui, sur des
+ * services gratuits qui coupent, etait aussi la raison pour laquelle la page
+ * finissait par ne plus rien lire du tout.
+ * ======================================================================== */
+async function demande(manuel){
+  if(demande._enCours) return;
+  demande._enCours = true;
+  if(manuel) dis("Demande au serveur…");
+  try{
+    const r = await fetch(SERVEUR + "/ai/colonie", { cache:"no-store" });
+    if(!r.ok) throw new Error("HTTP " + r.status);
+    const v = await r.json();
+    if(!v || typeof v.tresor !== "number") throw new Error("reponse illisible");
+    VUE = v; RECU = Date.now(); ERREUR_RESEAU = null;
+    if(!shownBal) shownBal = v.tresor;
+    verseCandidats();
+    peintStats(); peintPositions(); peintAppris(); peintFluxTrades();
+    peintFlux(); dessineCourbe(); pastille(); majPouls();
+    /* ---- LE SERVEUR PEUT REPONDRE PARFAITEMENT ET N'AVOIR RIEN LU ----
+     * Sa vue porte alors `erreur`, et les chiffres qu'elle contient sont
+     * vrais mais dates. La phrase de fond etait ecrite une fois au chargement
+     * et ne bougeait plus : l'ecran affichait « la colonie tourne » pendant
+     * que le serveur echouait a lire depuis vingt minutes. Elle est donc
+     * refaite a chaque reponse — sauf si un message est en train d'etre
+     * montre, qu'il ne faut pas ecraser. */
+    if(manuel) dis(phraseFond());
+    else if(!dis._t) $("stagetag").textContent = phraseFond();
+  }catch(e){
+    /* ---- ON LE DIT, ON NE COMBLE PAS ----
+     * Sans reponse, la page garde ce qu'elle avait deja recu — c'est vrai, et
+     * la pastille en donne l'age — mais elle n'invente pas la suite. Si elle
+     * n'avait rien, elle n'affiche rien. */
+    ERREUR_RESEAU = String((e && e.message) || e).slice(0, 120);
+    pastille(); majPouls();
+    dis("Le serveur n'a pas repondu (" + ERREUR_RESEAU + "). Rien n'est invente pour combler : "
+      + (VUE ? "ce qui est affiche date de la derniere reponse." : "l'ecran reste vide."), true);
+  }finally{ demande._enCours = false; }
+}
 
+/* ---- LA PASTILLE DIT CE QU'ELLE SAIT, ET SON AGE ----
+ * Deux ages differents, et il faut les deux : celui de notre derniere reponse,
+ * et celui du dernier TOUR du serveur. Un serveur vivant dont les lectures de
+ * chaine echouent depuis vingt minutes repondrait sinon « LIVE » avec des
+ * chiffres immobiles. */
 function pastille(){
   const el = $("stamp"); if(!el) return;
-  if(!REAL.ts){ el.textContent = "● aucune donnee lue"; el.className = "chip data mort"; return; }
-  const age = Date.now() - REAL.ts;
-  const d = new Date(REAL.ts);
+  if(!VUE){
+    el.textContent = ERREUR_RESEAU ? "● serveur injoignable" : "● en attente du serveur";
+    el.className = "chip data mort"; return;
+  }
+  const src = VUE.maj || VUE.dernierTour || 0;
+  if(!src){ el.textContent = "● serveur demarre, aucun tour termine"; el.className = "chip data stale"; return; }
+  const age = Date.now() - RECU + (RECU - src);
+  const d = new Date(src);
   const hh = String(d.getHours()).padStart(2,"0"), mm = String(d.getMinutes()).padStart(2,"0");
-  el.textContent = "● "+REAL.tokens.length+" tokens · lus a "+hh+":"+mm+" ("+ilYA(age)+")";
-  el.className = "chip data" + (age > 15*60*1000 ? " stale" : "");
+  const n = (VUE.candidats || []).length;
+  el.textContent = "● " + n + " tokens · serveur a " + hh + ":" + mm + " (" + ilYA(Math.max(0, age)) + ")"
+    + (VUE.erreur ? " · lecture en echec" : "");
+  el.className = "chip data" + ((age > 15*60*1000 || VUE.erreur) ? " stale" : "");
 }
 function dis(msg, alerte){
   const el = $("stagetag"); if(!el) return;
   el.textContent = msg;
   el.classList.toggle("toast-note", !!alerte);
   clearTimeout(dis._t);
-  dis._t = setTimeout(()=>{ el.textContent = phraseFond(); el.classList.remove("toast-note"); }, 8000);
+  dis._t = setTimeout(()=>{
+    dis._t = 0; el.textContent = phraseFond(); el.classList.remove("toast-note");
+  }, 8000);
 }
 function phraseFond(){
-  if(!REAL.ts) return "Aucune donnee lue pour l'instant — les agents attendent la chaine.";
-  return "Les agents analysent les jetons qui viennent de naitre 🚶 · "
-       + ETAT.positions.length + " position(s) ouverte(s) · relecture toutes les 2-3 min";
-}
-
-async function lisPools(){
-  const pools = new Map(), toks = new Map();
-  /* ---- CE QU'ON VIENT CHERCHER : DU NEUF ----
-   * Le but est d'analyser les jetons qui viennent de naitre. Le flux
-   * « nouveaux pools » en rend vingt par page, tous ages de quelques minutes
-   * — mesure : entre six et huit minutes au moment d'ecrire ceci. Trois
-   * pages, et RIEN d'autre.
-   *
-   * Le flux des tendances a ete essaye a cote, comme point de comparaison.
-   * Il ne servait a rien et nuisait : une valeur etablie occupait une place
-   * dans le pipeline, et pouvait finir en position — alors que ce n'est pas
-   * ce qu'on vient chercher. Une source qu'on lit sans jamais en apprendre
-   * quoi que ce soit est un appel de moins a faire. */
-  for(const [fp, page] of [["new_pools",1],["new_pools",2],["new_pools",3]]){
-    const r = await fetch(GT+"/"+fp+"?include=base_token&page="+page, { headers:ENTETES });
-    if(!r.ok) continue;
-    const d = await r.json();
-    for(const inc of (d.included||[])) if(inc.type==="token") toks.set(inc.id, inc.attributes);
-    for(const p of (d.data||[])){
-      const a = p.attributes;
-      const bt = p.relationships && p.relationships.base_token && p.relationships.base_token.data;
-      const t = bt && toks.get(bt.id);
-      if(!t || !t.address) continue;
-      const addr = String(t.address).toLowerCase();
-      const c = {
-        addr, sym:(t.symbol||"?").toUpperCase().slice(0,10), name:(t.name||"").slice(0,24),
-        pool:a.address, feed:fp,
-        /* L'age en MINUTES : sur un jeton de sept minutes, l'age en jours ne
-           distingue plus rien, et c'est justement la variable qui compte. */
-        minutes: a.pool_created_at ? (Date.now() - Date.parse(a.pool_created_at))/60000 : null,
-        /* LE PRIX : c'est lui qui autorise une position. Sans lui, l'Oracle
-           refuse — on ne sait pas a quoi on achete. */
-        prix: nn(a.base_token_price_usd),
-        mc: nn(a.market_cap_usd) || nn(a.fdv_usd),
-        liq: nn(a.reserve_in_usd),
-        vol24: nn(a.volume_usd && a.volume_usd.h24),
-        /* Les achats, les ventes et les traders DISTINCTS par fenetre. Ils
-           sont dans la meme reponse : ne pas les prendre, c'etait jeter la
-           moitie de ce que le service donne. */
-        tx: a.transactions || {},
-        vol: { m5:nn(a.volume_usd&&a.volume_usd.m5), h1:nn(a.volume_usd&&a.volume_usd.h1),
-               h6:nn(a.volume_usd&&a.volume_usd.h6), h24:nn(a.volume_usd&&a.volume_usd.h24) },
-        created: a.pool_created_at || null,
-        ch_m5: nn(a.price_change_percentage && a.price_change_percentage.m5),
-        ch_h1: nn(a.price_change_percentage && a.price_change_percentage.h1),
-        ch_h6: nn(a.price_change_percentage && a.price_change_percentage.h6),
-        ch_h24: nn(a.price_change_percentage && a.price_change_percentage.h24)
-      };
-      const prev = pools.get(addr);
-      if(!prev || c.liq > prev.liq) pools.set(addr, c);
-    }
-    await new Promise(x=>setTimeout(x, 650));
-  }
-  return [...pools.values()];
-}
-/* ============================ LES AUTRES SOURCES ============================
- *
- * Quatre services gratuits repondent pour la chaine 4663, et chacun dit
- * quelque chose que les autres ne disent pas. On les a essayes un par un
- * avant d'ecrire cette page : Blockscout est derriere un mur Cloudflare et
- * honeypot.is ne connait pas cette chaine — ils ne sont donc pas ici, et
- * pas non plus dans les promesses.
- *
- *   GeckoTerminal : les pools, les chandelles, les derniers echanges.
- *   DexScreener   : un SECOND avis sur le prix, tous les pools d'un jeton,
- *                   et l'existence de reseaux sociaux.
- *   GoPlus        : la securite du contrat.
- *   La chaine     : les transferts eux-memes. C'est la seule source qui ne
- *                   depend de personne — quand elle contredit les autres,
- *                   c'est elle qui a raison.
- *
- * Chaque source a son cache : sans lui, vingt tokens x quatre services a
- * chaque relecture nous ferait couper en une heure. Et chaque appel qui
- * echoue laisse un champ ABSENT, jamais une valeur par defaut : un « ? »
- * se voit dans les traits, un faux zero se melerait aux vrais.
- * ========================================================================= */
-const CACHE = { ohlcv:{}, dex:{}, chaine:{} };
-const TTL_OHLCV = 30*60*1000, TTL_DEX = 10*60*1000, TTL_CHAINE = 10*60*1000;
-const RPC_RH = "https://rpc.mainnet.chain.robinhood.com";
-const SUJET_TRANSFERT = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
-
-function frais(cache, cle, ttl){
-  const c = cache[cle];
-  return (c && (Date.now()-c.t) < ttl) ? c.v : null;
-}
-function garde(cache, cle, v){ cache[cle] = { t:Date.now(), v }; return v; }
-
-/* ---- LES CHANDELLES : LA VOLATILITE REELLE ----
- * Vingt-quatre bougies de quinze minutes, soit six heures. L'ecart-type des
- * variations d'une bougie a l'autre dit si le prix respire ou s'il saute.
- * Un token calme et un token qui fait ±20 % par quart d'heure ne se jouent
- * pas pareil, et c'est invisible sur une variation 1h. */
-async function lisOhlcv(pool){
-  const c = frais(CACHE.ohlcv, pool, TTL_OHLCV); if(c !== null) return c;
-  try{
-    const r = await fetch(GT+"/pools/"+pool+"/ohlcv/minute?aggregate=15&limit=24", { headers:ENTETES });
-    if(!r.ok) throw new Error("ohlcv "+r.status);
-    const j = await r.json();
-    const l = ((j.data||{}).attributes||{}).ohlcv_list || [];
-    if(l.length < 4) return garde(CACHE.ohlcv, pool, { vola:null, bougies:l.length });
-    /* Les bougies arrivent du plus recent au plus ancien : on les remet dans
-       l'ordre du temps, sinon les variations sont a l'envers. */
-    const fermes = l.map(x=>nn(x[4])).reverse().filter(x=>x>0);
-    const rets = [];
-    for(let i=1;i<fermes.length;i++) rets.push((fermes[i]-fermes[i-1])/fermes[i-1]*100);
-    if(!rets.length) return garde(CACHE.ohlcv, pool, { vola:null, bougies:l.length });
-    const moy = rets.reduce((a,b)=>a+b,0)/rets.length;
-    const va = Math.sqrt(rets.reduce((a,b)=>a+(b-moy)*(b-moy),0)/rets.length);
-    return garde(CACHE.ohlcv, pool, { vola:Math.round(va*100)/100, bougies:l.length });
-  }catch(e){ return garde(CACHE.ohlcv, pool, { vola:null, bougies:0 }); }
-}
-
-/* ---- DEXSCREENER : LE SECOND AVIS ----
- * Deux services qui lisent la meme chaine doivent trouver le meme prix. Un
- * ecart de plusieurs pour cent ne veut pas dire que l'un se trompe : il veut
- * dire que le marche est mince ou qu'il bouge trop vite pour qu'on puisse
- * s'y fier — et c'est exactement ce qu'un agent doit savoir avant d'entrer.
- * Il donne aussi TOUS les pools d'un jeton, et l'existence de reseaux
- * sociaux : une liquidite eparpillee sur six pools ne se vend pas comme une
- * liquidite concentree. */
-async function lisDex(addr){
-  const c = frais(CACHE.dex, addr, TTL_DEX); if(c !== null) return c;
-  try{
-    const r = await fetch("https://api.dexscreener.com/latest/dex/tokens/"+addr);
-    if(!r.ok) throw new Error("dex "+r.status);
-    const j = await r.json();
-    const paires = (j.pairs||[]).filter(x=>String(x.chainId||"").toLowerCase()==="robinhood");
-    if(!paires.length) return garde(CACHE.dex, addr, { vu:false });
-    paires.sort((a,b)=> nn(b.liquidity&&b.liquidity.usd) - nn(a.liquidity&&a.liquidity.usd));
-    const p0 = paires[0], info = p0.info || {};
-    const soc = (info.socials||[]).length + (info.websites||[]).length;
-    return garde(CACHE.dex, addr, {
-      vu:true, prix:nn(p0.priceUsd), pools:paires.length,
-      liqTotale: paires.reduce((a,b)=>a+nn(b.liquidity&&b.liquidity.usd),0),
-      socials:soc, image:!!info.imageUrl,
-      cree: p0.pairCreatedAt || null
-    });
-  }catch(e){ return garde(CACHE.dex, addr, { vu:false }); }
-}
-
-/* ---- LA CHAINE ELLE-MEME ----
- * Les transferts du jeton sur les derniers blocs. On compte les
- * DESTINATAIRES DISTINCTS : c'est la seule mesure qui dise si des gens
- * arrivent vraiment, par opposition a un volume que quelques adresses se
- * renvoient. Aucun service ne peut la maquiller — elle est dans les blocs.
- *
- * Mille deux cents blocs : sur une chaine a environ deux secondes le bloc,
- * cela fait a peu pres quarante minutes. Assez pour compter, assez peu pour
- * qu'un noeud public reponde sans refuser la plage. */
-/* ---- COMBIEN DE BLOCS, ET LA MESURE QUI CORRIGE LE COMMENTAIRE ----
- *
- * Cette constante valait 1200, avec un commentaire qui promettait « environ
- * quarante minutes, sur une chaine a deux secondes le bloc ». Mesure faite
- * sur la chaine : 0,101 seconde le bloc. Dix par seconde. Les 1200 blocs
- * couvraient donc DEUX MINUTES, pas quarante — et sur un jeton de sept
- * minutes, deux minutes de recul ne disent presque rien.
- *
- * Un chiffre commente est un chiffre qu'on croit sur parole. Celui-ci se
- * calcule : une heure de chaine, au temps de bloc mesure. Et pour un jeton
- * qui vient de naitre, on remonte a SA naissance plutot qu'a une heure
- * arbitraire — le noeud accepte des plages de deux cent mille blocs, verifie
- * avant d'ecrire cette ligne, et l'histoire complete d'un jeton de sept
- * minutes tient en dix-neuf transferts. */
-const BLOC_SECONDES = 0.101;
-const BLOCS_HEURE = Math.round(3600 / BLOC_SECONDES);      /* ~35 600 */
-const BLOCS_PLAFOND = 200000;                              /* la plage que le noeud accepte */
-
-/* ---- LE NOEUD PUBLIC COUPE, ET IL FAUT LE PRENDRE AU SERIEUX ----
- *
- * Mesure faite sur six jetons a la file : QUATRE refus « Too Many
- * Requests ». Un noeud public gratuit accepte quelques lectures de journaux
- * par minute, pas dix. Sans ce garde, la lecture de la chaine — la seule
- * source qui sache quelque chose d'un jeton de sept minutes — echoue sur la
- * majorite d'entre eux, et l'ecran affiche « inconnu » partout sans dire
- * pourquoi.
- *
- * On espace donc nos propres appels — plus efficace que de reprendre apres
- * coup, et ca menage un service qu'on ne paie pas — avec UNE reprise apres
- * pause. Deux reprises sur un noeud qui refuse, c'est se faire couper plus
- * longtemps. Et un echec reste un echec : il rend « inconnu », que la note
- * PENALISE. L'ignorance ne rapporte jamais de points ici. */
-let _rpcDernier = 0;
-async function rpc(methode, params, reprise){
-  const depuis = Date.now() - _rpcDernier;
-  if(depuis < 900) await new Promise(x => setTimeout(x, 900 - depuis));
-  _rpcDernier = Date.now();
-  const r = await fetch(RPC_RH, { method:"POST", headers:{ "content-type":"application/json" },
-    body: JSON.stringify({ jsonrpc:"2.0", id:1, method:methode, params:params||[] }) });
-  let j = null;
-  try{ j = await r.json(); }catch(e){ j = null; }
-  const coupe = r.status === 429 || (j && j.error && (j.error.code === 429
-    || /too many|rate/i.test(String(j.error.message||""))));
-  if(coupe && !reprise){
-    await new Promise(x => setTimeout(x, 2500));
-    return rpc(methode, params, true);
-  }
-  if(!r.ok) throw new Error("rpc "+r.status);
-  if(!j) throw new Error("rpc : reponse illisible");
-  if(j.error) throw new Error(j.error.message||"rpc");
-  return j.result;
-}
-
-let _bloc = { n:0, t:0 };
-async function blocCourant(){
-  if(_bloc.n && (Date.now()-_bloc.t) < 5000) return _bloc.n;
-  const n = parseInt(await rpc("eth_blockNumber"), 16);
-  _bloc = { n, t:Date.now() };
-  return n;
-}
-
-const ZERO = "0x0000000000000000000000000000000000000000";
-const MORT = "0x000000000000000000000000000000000000dead";
-
-/* ---- CE QUE LA CHAINE SAIT D'UN JETON NEUF, ET QUE PERSONNE D'AUTRE NE SAIT ----
- *
- * Sur un jeton de sept minutes, GoPlus rend sept champs vides : il n'a pas
- * encore indexe. Les blocs, eux, contiennent DEJA tout. On refait donc le
- * calcul nous-memes, a partir des transferts :
- *
- *   - qui detient quoi, en soldant les entrees et les sorties par adresse ;
- *   - la part du plus gros porteur, hors pool et hors adresses mortes —
- *     c'est la mesure de risque numero un sur un jeton neuf ;
- *   - combien d'adresses distinctes en detiennent vraiment ;
- *   - ce qui est parti en fumee (0x0 et 0x…dead), qui ne peut plus vendre.
- *
- * Ce n'est pas une estimation : c'est la somme des transferts, et elle est
- * exacte. Quand elle contredit un service, c'est elle qui a raison.
- */
-async function lisChaine(addr, minutes){
-  const c = frais(CACHE.chaine, addr, TTL_CHAINE); if(c !== null) return c;
-  try{
-    const bloc = await blocCourant();
-    /* Assez loin pour couvrir toute la vie du jeton quand il est jeune, une
-       heure sinon. Une plage trop courte donnerait une concentration fausse :
-       on verrait des ventes sans les achats qui les precedent. */
-    const voulu = (minutes > 0 && minutes < 300)
-      ? Math.ceil(minutes * 60 / BLOC_SECONDES) + 6000
-      : BLOCS_HEURE;
-    const large = Math.min(BLOCS_PLAFOND, voulu);
-    const debut = Math.max(0, bloc - large);
-    const logs = await rpc("eth_getLogs", [{
-      address: addr, topics:[SUJET_TRANSFERT],
-      fromBlock:"0x"+debut.toString(16), toBlock:"0x"+bloc.toString(16) }]);
-
-    const solde = {}, recus = {}, emis = {};
-    let brules = 0, total = 0;
-    const adr = (t) => ("0x" + String(t||"").slice(26)).toLowerCase();
-    /* ---- LA VALEUR N'EST PAS TOUJOURS DANS LES DONNEES ----
-     * `Transfer(address,address,uint256)` laisse le montant hors index, donc
-     * dans `data`. Mais rien n'oblige un contrat a suivre : certains
-     * INDEXENT le montant, et il arrive alors dans `topics[3]` avec un
-     * `data` vide. Ne lire que `data` rendait zero pour tout le monde — et
-     * donc « zero porteur », qui n'est pas une lecture ratee mais une
-     * CONCLUSION FAUSSE : la page en tirait une penalite de score sur un
-     * jeton qui pouvait etre parfaitement reparti. Mesure : trois des six
-     * jetons regardes tombaient dedans. */
-    let lu = 0;
-    for(const l of (logs||[])){
-      const de = adr(l.topics[1]), vers = adr(l.topics[2]);
-      const brut = (l.data && l.data !== "0x") ? l.data
-                 : (l.topics.length > 3 ? l.topics[3] : null);
-      let v = 0;
-      if(brut){ try{ v = Number(BigInt(brut)); lu++; }catch(e){ v = 0; } }
-      if(!isFinite(v)) v = 0;
-      solde[de] = (solde[de] || 0) - v;
-      solde[vers] = (solde[vers] || 0) + v;
-      recus[vers] = 1; emis[de] = 1;
-      if(de === ZERO) total += v;                 /* frappe */
-      if(vers === ZERO || vers === MORT) brules += v;
-    }
-    /* Le pool ne « detient » pas : il fait le marche. Le compter comme un
-       gros porteur ferait passer chaque jeton pour un jeton concentre. */
-    const pool = String((CACHE.poolDe && CACHE.poolDe[addr]) || "").toLowerCase();
-    let circulant = 0, plusGros = 0, porteurs = 0;
-    for(const a in solde){
-      if(a === ZERO || a === MORT || a === pool) continue;
-      const v = solde[a];
-      if(v <= 0) continue;
-      circulant += v; porteurs++;
-      if(v > plusGros) plusGros = v;
-    }
-    /* Aucun montant lisible : on ne SAIT pas qui detient quoi. On le dit,
-       plutot que de rendre zero porteur — ce serait une conclusion tiree
-       d'un champ qu'on n'a pas su lire. */
-    const su = lu > 0;
-    const top = (su && circulant > 0) ? (plusGros / circulant * 100) : null;
-    return garde(CACHE.chaine, addr, {
-      vu:true, montantsLus:su, transferts:(logs||[]).length,
-      recepteurs:Object.keys(recus).length, emetteurs:Object.keys(emis).length,
-      porteurs: su ? porteurs : null,
-      top: top===null ? null : Math.round(top*10)/10,
-      brule: (su && total>0) ? Math.round(brules/total*1000)/10 : null,
-      blocs:large
-    });
-  }catch(e){ return garde(CACHE.chaine, addr, { vu:false }); }
-}
-
-/* Les trois d'un coup, pour un token. On ne les demande QUE pour ceux qui
-   valent le detour : vingt tokens fois trois services a chaque relecture,
-   c'est la coupure assuree. */
-async function enrichis(t){
-  const [o, d, ch] = await Promise.all([
-    lisOhlcv(t.pool), lisDex(t.addr), lisChaine(t.addr, t.minutes) ]);
-  t.vola = o.vola;
-  t.dex = d;
-  t.chaine = ch;
-  /* L'ecart entre deux sources qui lisent la meme chaine. Il ne dit pas
-     laquelle a tort : il dit a quel point le prix est stable. */
-  t.ecart = (d.vu && d.prix>0 && t.prix>0) ? Math.abs(d.prix - t.prix)/t.prix*100 : null;
-  t.enrichi = true;
-}
-
-async function lisGoplus(t){
-  /* Garde en cache six heures : sans cela, chaque relecture refait vingt
-     appels pour des reponses identiques, et le service nous coupe. */
-  const c = goplusCache[t.addr];
-  if(c && (Date.now()-c.t) < GOPLUS_TTL){ t.g = c.g; return; }
-  let info = {};
-  try{
-    const r = await fetch("https://api.gopluslabs.io/api/v1/token_security/4663?contract_addresses="+t.addr);
-    const j = await r.json();
-    info = (j.result||{})[t.addr] || {};
-  }catch(e){ info = {}; }
-  const hs = info.holders || [];
-  let top = 0;
-  for(const h of hs){
-    const p = nn(h.percent)*100;
-    if(Number(h.is_contract)===1 || Number(h.is_locked)===1) continue;
-    const tg = (h.tag||"").toLowerCase();
-    if(/lock|burn|null/.test(tg)) continue;
-    if(p > top) top = p;
-  }
-  const lp = (info.lp_holders||[]).reduce((s,h)=>
-    s + ((Number(h.is_locked)===1 || /lock|burn|null/i.test(h.tag||"")) ? nn(h.percent)*100 : 0), 0);
-  /* ---- « IL A REPONDU » N'EST PAS « IL SAIT » ----
-   *
-   * C'etait le defaut le plus dangereux de cette page, et il visait
-   * exactement les jetons qu'on veut analyser. Sur un jeton de sept minutes,
-   * GoPlus rend SEPT champs : deux taxes vides, une adresse de proprietaire,
-   * rien d'autre. Pas de honeypot, pas de detenteurs, pas de code verifie.
-   *
-   * `have` valait « il y a des clefs » — donc vrai. Et tout le reste se
-   * lisait comme une bonne nouvelle : pas de drapeau honeypot valait « pas
-   * un honeypot », zero detenteur valait « aucune concentration » (+14),
-   * taxes absentes valait « aucune taxe » (+10), et `is_open_source`
-   * manquant valait « code verifie » (+6). Trente points d'IGNORANCE
-   * comptes comme de la surete, sur la classe de jetons ou le risque de
-   * fuite est le plus grand.
-   *
-   * `have` exige maintenant que le service ait vraiment repondu sur ce qu'on
-   * lui demande. Sinon tout passe en « inconnu », et l'inconnu ne rapporte
-   * jamais de points. */
-  const su = (x) => x === "1";
-  const sait = (info.is_honeypot !== undefined) || (info.holder_count !== undefined)
-               || (info.is_open_source !== undefined);
-  t.g = {
-    have: sait,
-    honeypot: su(info.is_honeypot),
-    /* Une taxe qu'on n'a pas lue n'est pas une taxe de zero. */
-    taxeSue: info.buy_tax !== undefined && info.buy_tax !== "",
-    buyTax: Math.round(nn(info.buy_tax)*100), sellTax: Math.round(nn(info.sell_tax)*100),
-    detSue: info.holder_count !== undefined,
-    holders: parseInt(info.holder_count)||0,
-    /* Et zero gros porteur, quand la liste est vide, veut dire qu'on n'a pas
-       la liste — pas que la detention est parfaitement repartie. */
-    topSu: (hs && hs.length > 0),
-    top: Math.round(top*10)/10, lp: Math.round(lp),
-    cannotBuy: info.cannot_buy==="1", pausable: info.transfer_pausable==="1",
-    ownerBal: info.owner_change_balance==="1", selfd: info.selfdestruct==="1",
-    perslip: info.personal_slippage_modifiable==="1", hpSame: info.honeypot_with_same_creator==="1",
-    slipMod: info.slippage_modifiable==="1", cooldown: info.trading_cooldown==="1",
-    proxy: su(info.is_proxy),
-    codeSu: info.is_open_source !== undefined,
-    unverified: info.is_open_source === "0",
-    mintable: su(info.is_mintable)
-  };
-  goplusCache[t.addr] = { t:Date.now(), g:t.g };
-}
-
-async function lisTout(manuel){
-  if(enLecture) return;
-  enLecture = true;
-  const btn = $("refresh");
-  if(manuel){ btn.textContent = "⏳ …"; btn.disabled = true; }
-  try{
-    /* ---- LE FILTRE ET LE TRI DECIDENT DE CE QU'ON REGARDE ----
-     *
-     * Ils triaient par volume sur vingt-quatre heures. Sur un jeton de sept
-     * minutes, ce volume n'existe pas : le tri remontait donc les valeurs
-     * etablies — un jeton a deux cents millions et quatre-vingt-dix mille
-     * detenteurs — et le neuf ne passait jamais. On trie par AGE.
-     *
-     * Le plancher de liquidite reste, mais bas et pour une raison precise :
-     * en dessous de quelques centaines de dollars, une position de cinquante
-     * dollars deplace le prix a elle seule, et le rendement mesure ne serait
-     * pas celui du marche mais celui de notre propre passage. On ecarte
-     * aussi les liquidites NEGATIVES — releve tel quel sur la chaine, c'est
-     * une lecture cassee, pas un pool pauvre. */
-    /* ---- ET RIEN DE VIEUX N'ENTRE ----
-     * Le flux peut rendre un pool ancien — un jeton relance, un pool
-     * secondaire cree tard sur un jeton de six mois. La borne d'age le tient
-     * dehors : le but est d'analyser du NEUF, et un seul jeton etabli dans
-     * le pipeline suffit a fausser ce que les agents apprennent. */
-    let liste = (await lisPools())
-      .filter(t => t.liq >= 500 && t.prix > 0)
-      .filter(t => t.minutes !== null && t.minutes !== undefined && t.minutes <= AGE_MAX_MIN)
-      .sort((a,b) => (a.minutes === null ? 1e9 : a.minutes) - (b.minutes === null ? 1e9 : b.minutes))
-      .slice(0, 20);
-    if(!liste.length) throw new Error("aucun jeton neuf assez liquide en ce moment");
-    /* Le pool est retenu pour que la lecture de la chaine sache l'ecarter du
-       calcul des porteurs : il fait le marche, il ne detient pas. */
-    CACHE.poolDe = CACHE.poolDe || {};
-    for(const t of liste) CACHE.poolDe[t.addr] = t.pool;
-
-    /* ---- LES PRIX D'ABORD, LES POSITIONS ENSUITE ----
-       On regle avant de repartir : une position due depuis hier se ferme au
-       prix qu'on vient de lire, pas au suivant. */
-    const prix = {};
-    for(const t of liste){ if(t.prix>0){ prix[t.addr] = t.prix; dernierPrix[t.addr] = t.prix; } }
-    const fermees = reglePositions(prix, false);
-
-    let n = 0;
-    for(const t of liste){
-      await lisGoplus(t);
-      if(manuel){ btn.textContent = "⏳ "+(++n)+"/"+liste.length; }
-      await new Promise(x=>setTimeout(x, 320));
-    }
-    /* ---- ET LE DETAIL, POUR CEUX QUI LE MERITENT ----
-     * Chandelles, second avis et lecture directe de la chaine coutent trois
-     * appels par token. Les demander pour les vingt a chaque tour nous
-     * ferait couper en une heure ; on les demande donc pour les huit qui
-     * passent deja la note de base — ce sont les seuls qui peuvent finir en
-     * position, et donc les seuls dont le detail change quelque chose.
-     * Les caches font le reste : rien n'est redemande avant son heure. */
-    /* Les plus JEUNES, pas les mieux notes : la note de base ne sait rien dire
-       d'un jeton de sept minutes, et c'est precisement la lecture de la
-       chaine qui va le lui apprendre. Les trier par note reviendrait a
-       n'enrichir que ce qu'on croit deja connaitre. */
-    /* Six, pas dix : chacun coute une lecture de journaux sur un noeud public
-       qui coupe au-dela de quelques-unes par minute. Mieux vaut six jetons
-       vraiment lus que dix « inconnus ». */
-    const candidats = liste.slice(0, 6);
-    for(const t of candidats){
-      if(manuel) btn.textContent = "🔎 "+t.sym;
-      await enrichis(t);
-      await new Promise(x=>setTimeout(x, 400));
-    }
-    REAL = { ts:Date.now(), tokens:liste };
-    ETAT.maj = REAL.ts;
-    for(const t of liste) ETAT.vus[t.addr] = REAL.ts;
-    rhOrder = [];
-    echecs = 0;
-    pastille(); sauve();
-    /* La phrase de fond raconte l'etat courant : la laisser sur « aucune
-       donnee lue » apres une lecture reussie ferait mentir l'ecran. */
-    $("stagetag").textContent = phraseFond();
-    $("stagetag").classList.remove("toast-note");
-    if(manuel) dis("Lecture faite · "+liste.length+" tokens · "+candidats.length+" analyses en detail"
-      +(fermees?" · "+fermees+" position(s) reglee(s)":""));
-    else if(fermees) dis(fermees+" position(s) reglee(s) au prix reel");
-    peintPositions();
-  }catch(e){
-    echecs++;
-    pastille();
-    dis("Lecture impossible ("+(e && e.message ? e.message : "reseau")+"). "
-      + "Rien n'est invente pour combler : les agents attendent la prochaine tentative.", true);
-  }
-  if(manuel){ btn.textContent = "🔄 Live"; btn.disabled = false; }
-  enLecture = false;
-  majPouls();
+  if(!VUE) return "En attente du serveur — rien n'est affiche tant que rien n'est lu.";
+  if(VUE.erreur) return "Le serveur tourne mais sa derniere lecture a echoue : " + VUE.erreur;
+  return "La colonie tourne sur le serveur, en continu 🚶 · " + VUE.positions.length
+       + " position(s) ouverte(s) · tout le monde voit le meme etat";
 }
 function majPouls(){
   const p = $("pouls"), tx = $("poulsTx");
-  const vivant = REAL.ts && (Date.now()-REAL.ts) < 15*60*1000;
+  /* « LIVE » veut dire : le serveur a fini un tour recemment. Pas : la page a
+     reussi a le joindre. Les deux se ressemblent a l'ecran et ne veulent pas
+     dire la meme chose. */
+  const src = VUE ? (VUE.dernierTour || 0) : 0;
+  const vivant = src && (Date.now() - RECU + (RECU - src)) < 15*60*1000 && !ERREUR_RESEAU;
   p.classList.toggle("off", !vivant);
-  tx.textContent = vivant ? "LIVE" : (REAL.ts ? "PERIME" : "HORS LIGNE");
+  tx.textContent = vivant ? "LIVE" : (VUE ? "PERIME" : "HORS LIGNE");
 }
 
-/* ---- LA BOUCLE DE LECTURE ----
- * Elle ne tourne QUE quand la page est visible : marteler l'API depuis un
- * onglet oublie au fond du navigateur ne sert personne, et nous ferait
- * couper. En revenant, on relit tout de suite si la derniere lecture date. */
+/* La page redemande a intervalle regulier, et seulement si elle est visible :
+   marteler le serveur depuis un onglet oublie ne sert personne. En revenant,
+   on redemande tout de suite. */
 setInterval(function(){
   if(document.visibilityState === "hidden") return;
-  if(Date.now() - (REAL.ts||0) < CADENCE) return;
-  lisTout(false);
-}, 20000);
+  demande(false);
+}, CADENCE_DEMANDE);
 document.addEventListener("visibilitychange", function(){
-  if(document.visibilityState !== "visible") return;
-  majPouls();
-  if(Date.now() - (REAL.ts||0) > CADENCE) lisTout(false);
+  if(document.visibilityState === "visible") demande(false);
 });
 
 /* ============================ BOUCLE ============================ */
@@ -1898,11 +1077,18 @@ let last = performance.now();
 function loop(now){
   const dt = Math.min(0.05, (now-last)/1000); last = now; t_now = now/1000;
   if(running){ peutNaitre(dt); step(dt); }
-  shownBal += (balance-shownBal)*Math.min(1, dt*6);
-  $("bal").textContent = "$"+Math.round(shownBal).toLocaleString("en-US");
-  const d = balance - DEPART;
-  $("delta").textContent = (d>=0?"+":"–")+"$"+Math.abs(d).toFixed(2);
-  $("delta").style.color = d>=0 ? "var(--gain)" : "var(--loss)";
+  if(VUE){
+    shownBal += (VUE.tresor - shownBal)*Math.min(1, dt*6);
+    $("bal").textContent = "$"+Math.round(shownBal).toLocaleString("en-US");
+    const d = VUE.tresor - VUE.depart;
+    $("delta").textContent = (d>=0?"+":"–")+"$"+Math.abs(d).toFixed(2);
+    $("delta").style.color = d>=0 ? "var(--gain)" : "var(--loss)";
+  }else{
+    /* Tant que rien n'est lu, on n'ecrit pas « $1,000 » : ce chiffre a l'air
+       d'une tresorerie a son point de depart, alors que c'est une ignorance. */
+    $("bal").textContent = "—";
+    $("delta").textContent = "";
+  }
   render();
   requestAnimationFrame(loop);
 }
@@ -1912,43 +1098,25 @@ $("pause").addEventListener("click", function(){
   running = !running;
   this.textContent = running ? "⏸ Pause" : "▶ Reprendre";
   this.classList.toggle("on", !running);
-  dis(running ? phraseFond() : "En pause — la lecture de la chaine continue, les agents ne bougent plus.");
+  /* La pause n'arrete que l'animation. Le serveur, lui, continue — et c'est
+     tout l'objet du deplacement : ce bouton n'a plus prise sur la colonie. */
+  dis(running ? phraseFond() : "En pause — seule l'animation s'arrete. La colonie continue de tourner sur le serveur.");
 });
 const VITESSES = [1,2,4]; let vi = 0;
 $("speed").addEventListener("click", function(){
   vi = (vi+1) % VITESSES.length; speed = VITESSES[vi]; this.textContent = speed+"×";
 });
-$("refresh").addEventListener("click", ()=>lisTout(true));
-$("oublier").addEventListener("click", function(){
-  /* ---- ON DEMANDE, PARCE QUE C'EST IRREVERSIBLE ----
-     Effacer la memoire, c'est jeter tout ce que les agents ont appris. Un
-     bouton qui le fait d'un seul geste finit toujours par etre touche par
-     accident. */
-  const n = trades;
-  if(!confirm("Effacer la memoire des agents ?\n\n"+n+" trade(s) appris, "
-    + ETAT.positions.length+" position(s) ouverte(s) et la tresorerie repartiront de zero.\n"
-    + "C'est definitif.")) return;
-  try{ localStorage.removeItem(CLE_ETAT); }catch(e){}
-  ETAT = etatNeuf();
-  balance = shownBal = DEPART; profit = 0; trades = 0; gains = 0; best = 0; bestSym = "";
-  spark = [DEPART]; picks.length = 0;
-  $("picks").innerHTML = '<div class="empty">Aucun signal valide pour l\'instant…</div>';
-  peintStats(); peintPositions(); peintAppris(); peintFluxTrades(); dessineCourbe(); sauve();
-  dis("Memoire effacee. Les agents repartent de zero.");
-});
+$("refresh").addEventListener("click", ()=>demande(true));
 
-/* Le compte a rebours d'une position et sa valeur latente bougent avec le
-   temps, pas avec les images : une seconde suffit, et cela evite de refaire
-   ce bloc soixante fois par seconde pour rien. */
-setInterval(function(){ if(document.visibilityState !== "hidden"){ peintPositions(); pastille(); } }, 1000);
+/* Le compte a rebours d'une position et l'age de la pastille bougent avec le
+   temps, pas avec les images : une seconde suffit. */
+setInterval(function(){ if(document.visibilityState !== "hidden"){ peintPositions(); pastille(); majPouls(); } }, 1000);
 
 /* ============================ DEPART ============================ */
 peintAgents(); peintStats(); peintPositions(); peintAppris(); peintFluxTrades();
-dessineCourbe(); pastille(); majPouls();
+peintPicks(); peintFlux(); dessineCourbe(); pastille(); majPouls();
 $("stagetag").textContent = phraseFond();
 requestAnimationFrame(loop);
-/* La premiere lecture part tout de suite : c'est elle qui donne les prix, et
-   sans prix il ne peut y avoir ni position ouverte ni position reglee. */
-lisTout(false);
+demande(false);
 </script>
 </html>

@@ -13,7 +13,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
-var MARQUE_PAGE = '949d4c7e';
+var MARQUE_PAGE = '9c95e6f0';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -197,6 +197,48 @@ var MARQUE_PAGE = '949d4c7e';
   .pos .sym{font-family:"JetBrains Mono",monospace;font-weight:700;min-width:78px}
 
   /* ce que l'oracle a appris */
+  /* ---- L'ADRESSE DU CONTRAT, COPIABLE ----
+     « Qu'on voie le contrat, qu'on puisse le copier-coller, de la crypto en
+     trade en cours. » Elle est en entier et selectionnable : sur un telephone,
+     `navigator.clipboard` peut ne pas exister, et un bouton qui ne fait rien
+     est pire qu'un texte qu'on selectionne a la main. */
+  .adr{display:flex;align-items:center;gap:6px;margin:2px 0 6px 0;padding:4px 6px;
+       background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:6px}
+  .adr code{font-family:"JetBrains Mono",monospace;font-size:10.5px;color:var(--ink-faint);
+            user-select:all;-webkit-user-select:all;word-break:break-all;line-height:1.35}
+  .adr button{flex:0 0 auto;font:inherit;font-size:10px;padding:3px 7px;border-radius:5px;cursor:pointer;
+              background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--ink)}
+  .adr button.ok{background:rgba(53,224,127,.16);border-color:rgba(53,224,127,.4);color:var(--gain)}
+  .posbloc+.posbloc{border-top:1px dashed rgba(255,255,255,.07);margin-top:6px;padding-top:6px}
+  .mini{font-size:10.5px;color:var(--ink-faint);font-family:"JetBrains Mono",monospace;
+        display:flex;gap:8px;flex-wrap:wrap}
+  .mini b{color:var(--ink);font-weight:700}
+  .banq{display:flex;flex-direction:column;gap:6px;font-size:12px}
+  .banq .ligne{display:flex;align-items:center;gap:8px}
+  .banq .ligne .k{color:var(--ink-faint);font-size:11px}
+  .banq .ligne .v{margin-left:auto;font-family:"JetBrains Mono",monospace;font-weight:700}
+  .barres{display:flex;flex-direction:column;gap:3px;margin-top:4px}
+  .barre{display:flex;align-items:center;gap:7px;font-size:11px}
+  .barre .nm{font-family:"JetBrains Mono",monospace;min-width:70px}
+  .barre .bg{flex:1;height:5px;border-radius:3px;background:rgba(255,255,255,.07);overflow:hidden}
+  .barre .bg i{display:block;height:100%;border-radius:3px}
+  .barre .val{font-family:"JetBrains Mono",monospace;min-width:52px;text-align:right}
+  .evt{display:flex;gap:8px;padding:6px 0;font-size:11.5px;line-height:1.45}
+  .evt+.evt{border-top:1px dashed rgba(255,255,255,.05)}
+  .evt .pill{flex:0 0 auto;font-size:9.5px;padding:2px 6px;border-radius:20px;height:fit-content;
+             text-transform:uppercase;letter-spacing:.04em;font-weight:700}
+  .evt .pill.naissance{background:rgba(53,224,127,.15);color:var(--gain)}
+  .evt .pill.retrait{background:rgba(255,96,96,.15);color:var(--loss)}
+  .evt .pill.ordre{background:rgba(255,206,74,.15);color:var(--gold)}
+  .srv{display:flex;align-items:center;gap:8px;padding:5px 0;font-size:11.5px}
+  .srv+.srv{border-top:1px dashed rgba(255,255,255,.05)}
+  .srv .nm{flex:1;min-width:0}
+  .srv .nm em{display:block;font-style:normal;font-size:10px;color:var(--ink-faint)}
+  .srv .n{font-family:"JetBrains Mono",monospace;font-size:10.5px;white-space:nowrap}
+  .srv .n.ko{color:var(--loss)}
+  .horsservice{margin-top:8px;padding-top:8px;border-top:1px dashed rgba(255,255,255,.08);
+               font-size:11px;color:var(--ink-faint);line-height:1.5}
+  .horsservice b{color:var(--ink)}
   .leçon{display:flex;align-items:center;gap:9px;padding:6px 0;font-size:12px}
   .leçon+.leçon{border-top:1px dashed rgba(255,255,255,.05)}
   .leçon .quoi{font-family:"JetBrains Mono",monospace;font-size:11.5px}
@@ -234,7 +276,7 @@ var MARQUE_PAGE = '949d4c7e';
       <div class="logo">🤖</div>
       <div>
         <h1>SWOGE AI · Colonie</h1>
-        <p>Six agents · vrais tokens Robinhood Chain · ils apprennent de leurs trades</p>
+        <p id="soustitre">Des agents qui s'organisent seuls · vrais tokens Robinhood Chain · ils apprennent de leurs trades</p>
       </div>
     </div>
     <span class="chip rh">● ROBINHOOD · 4663</span>
@@ -276,6 +318,16 @@ var MARQUE_PAGE = '949d4c7e';
       </div>
 
       <div class="card">
+        <h2>Banquier <span class="count" id="banqMethode">—</span></h2>
+        <div id="banque" class="banq"><div class="empty">En attente du serveur…</div></div>
+      </div>
+
+      <div class="card">
+        <h2>Surveillance <span class="count" id="survN">0</span></h2>
+        <div id="surveillance"><div class="empty">Rien sous surveillance pour l'instant.</div></div>
+      </div>
+
+      <div class="card">
         <h2>Pipeline en vol <span class="count" id="flowcount">0 tokens</span></h2>
         <div class="flow" id="flow"><div class="empty">En attente de nouveaux tokens…</div></div>
       </div>
@@ -288,6 +340,18 @@ var MARQUE_PAGE = '949d4c7e';
       <div class="card">
         <h2>Ce que l'Oracle a appris <span class="count" id="apprisN">0 trade</span></h2>
         <div id="appris"><div class="empty">Rien encore. Chaque position fermee lui apprend quelque chose ; en dessous d'une poignee de trades, il ne pretend rien.</div></div>
+      </div>
+
+      <div class="card">
+        <h2>La colonie se reorganise <span class="count" id="structN">0</span></h2>
+        <div id="structure"><div class="empty">Rien n'a encore change dans la structure. Les agents
+          ne se multiplient pas pour faire joli : il leur faut une case qu'ils mesurent comme
+          inutilisable, et ca prend des dizaines de positions fermees.</div></div>
+      </div>
+
+      <div class="card">
+        <h2>Ce qui est lu <span class="count" id="srvN">—</span></h2>
+        <div id="services"><div class="empty">En attente du serveur…</div></div>
       </div>
 
       <div class="card">
@@ -310,6 +374,11 @@ var MARQUE_PAGE = '949d4c7e';
         <b>Ca tourne sur le serveur, en continu :</b> la colonie ne s'arrete pas quand vous fermez
         l'onglet, et tout le monde voit le meme etat. Cette page ne calcule rien : elle demande et
         elle affiche.
+        <b>Les agents changent leur propre structure :</b> ils reordonnent leurs controles sur le
+        taux de refus qu'ils ont mesure, et un agent dont une case ne predit rien engendre un
+        specialiste qui la recoupe — qui est retire s'il ne fait pas mieux. Ce qu'ils ne peuvent pas
+        changer : les controles de securite et les bornes de mise, qui sont dans le code. Un systeme
+        qui peut apprendre a lever sa propre garde l'apprend toujours, et exactement une fois.
         <b>Quand une lecture echoue, c'est ecrit</b> — et rien n'est invente pour combler. NFA.
       </div>
     </aside>
@@ -368,22 +437,62 @@ function fit(){
 }
 window.addEventListener("resize", fit); fit();
 
-const AGENTS = [
-  {key:"scout",   name:"Scout",      emoji:"🛰️", color:"#3d7bd6", house:{x:170,y:190},
-   mission:"Scanne la Robinhood Chain pour les paires fraiches"},
-  {key:"warden",  name:"Warden",     emoji:"🛡️", color:"#9b6cf0", house:{x:500,y:165},
-   mission:"Controle honeypot & contrat (GoPlus)"},
-  {key:"whale",   name:"Whale-Watch",emoji:"🐋", color:"#e8552d", house:{x:830,y:190},
-   mission:"Repere la concentration des gros porteurs"},
-  {key:"whisper", name:"Whisper",    emoji:"📡", color:"#1fb7a8", house:{x:170,y:600},
-   mission:"Mesure le volume contre la liquidite"},
-  {key:"oracle",  name:"Oracle",     emoji:"🔮", color:"#f2b21e", house:{x:500,y:625},
-   mission:"Note, apprend de chaque trade ferme, tranche"},
-  {key:"closer",  name:"Closer",     emoji:"💰", color:"#e83e8c", house:{x:830,y:600},
-   mission:"Ouvre au prix reel, ferme au prix reel"},
-];
+/* ==========================================================================
+ * LE VILLAGE SE CONSTRUIT DEPUIS LE ROSTER DU SERVEUR
+ *
+ * « S'ils ont besoin de plus d'agents ils peuvent s'auto-développer, se
+ *   multiplier, ou plus de maisons. »
+ *
+ * Il y avait six maisons ecrites en dur, a six coordonnees choisies a la main.
+ * Un septieme agent n'aurait eu nulle part ou habiter — et un agent ne depend
+ * pas d'une place libre sur un dessin pour exister. Les maisons sont donc
+ * POSEES : autant qu'il y a d'agents, sur un anneau autour de la tresorerie.
+ * La page ne sait pas combien il y en aura, et c'est exactement ce qu'il faut.
+ * ======================================================================== */
 const TREASURY = {x:500, y:395};
-const idx = {}; AGENTS.forEach((a,i)=>idx[a.key]=i);
+let AGENTS = [];
+let idx = {};
+
+/* Les agents du depart, pour que l'ecran ne soit pas vide avant la premiere
+   reponse. Ils seront remplaces par ceux du serveur des qu'elle arrive. */
+const ROSTER_AMORCE = [
+  {key:"scout",   nom:"Scout",       emoji:"🛰️", couleur:"#3d7bd6", role:"source"},
+  {key:"warden",  nom:"Warden",      emoji:"🛡️", couleur:"#9b6cf0", role:"garde"},
+  {key:"whale",   nom:"Whale-Watch", emoji:"🐋", couleur:"#e8552d", role:"garde"},
+  {key:"whisper", nom:"Whisper",     emoji:"📡", couleur:"#1fb7a8", role:"garde"},
+  {key:"oracle",  nom:"Oracle",      emoji:"🔮", couleur:"#f2b21e", role:"note"},
+  {key:"banquier",nom:"Banquier",    emoji:"🏦", couleur:"#5ad1a0", role:"banque"},
+  {key:"closer",  nom:"Closer",      emoji:"💰", couleur:"#e83e8c", role:"execution"},
+];
+
+/* L'ordre dans lequel un jeton traverse le village. Il suit celui du serveur :
+   les gardes dans l'ordre QU'IL a mesure, puis les specialistes qui affinent
+   la note, puis l'Oracle qui tranche, puis le Banquier qui dit combien, puis
+   le Closer qui ouvre. Un ordre invente ici raconterait un autre trajet que
+   celui qui a vraiment eu lieu. */
+const RANG = { source:0, garde:1, specialiste:2, note:3, banque:4, execution:5 };
+function batitVillage(roster){
+  const l = (roster && roster.length ? roster : ROSTER_AMORCE).slice();
+  l.sort((a,b)=>{
+    const ra = RANG[a.role] === undefined ? 9 : RANG[a.role];
+    const rb = RANG[b.role] === undefined ? 9 : RANG[b.role];
+    return ra !== rb ? ra - rb : (a.ordre||0) - (b.ordre||0);
+  });
+  const n = l.length;
+  AGENTS = l.map((a,i)=>{
+    /* Un anneau, en partant du haut. Les rayons sont pris pour qu'une maison
+       reste entiere dans le cadre, quel que soit le nombre d'agents. */
+    const ang = -Math.PI/2 + i * 2*Math.PI/n;
+    return Object.assign({}, a, {
+      name: a.nom || a.key,
+      color: a.couleur || "#8aa",
+      house: { x: Math.round(TREASURY.x + 350*Math.cos(ang)),
+               y: Math.round(TREASURY.y + 232*Math.sin(ang)) },
+    });
+  });
+  idx = {}; AGENTS.forEach((a,i)=>idx[a.key]=i);
+}
+batitVillage(null);
 
 
 /* ============================ LA VUE DU SERVEUR ============================
@@ -445,11 +554,31 @@ function ilYA(ms){
 /* ============================ L'ANIMATION ============================ */
 
 let running = true, speed = 1;
-const inbox = AGENTS.map(()=>[]);
+let inbox = [];
 const flying = new Set();
-const bots = AGENTS.map((a,i)=>({ i, x:a.house.x, y:a.house.y+34, hx:a.house.x, hy:a.house.y+34,
-                                  state:"home", carry:null, target:null, then:null, busy:0, bob:0, face:1, walk:false }));
+let bots = [];
 const orbs = [];
+/* Quand la colonie change de forme — un specialiste nait, un autre est retire,
+   l'ordre des gardes bouge — le village se refait. Ce qui etait en vol est
+   lache : il vaut mieux perdre une animation en cours que montrer un trajet
+   qui n'existe plus. */
+function poseLesBots(){
+  inbox = AGENTS.map(()=>[]);
+  bots = AGENTS.map((a,i)=>({ i, x:a.house.x, y:a.house.y+34, hx:a.house.x, hy:a.house.y+34,
+                              state:"home", carry:null, target:null, then:null, busy:0, bob:0, face:1, walk:false }));
+  status = AGENTS.map(()=>({cls:"idle",txt:"au repos"}));
+  flying.clear(); orbs.length = 0;
+}
+let empreinteRoster = "";
+function majVillage(roster){
+  const e = (roster||[]).map(a=>a.key+":"+(a.ordre||0)).join("|");
+  if(e === empreinteRoster) return false;
+  empreinteRoster = e;
+  batitVillage(roster);
+  poseLesBots();
+  peintAgents();
+  return true;
+}
 const floats = [];
 
 
@@ -462,14 +591,21 @@ const floats = [];
 const vus = new Set();
 const file = [];
 
+/* ---- QUI A REFUSE ----
+ * Le serveur le DIT maintenant : chaque candidat porte `quiRefuse`, la cle de
+ * l'agent qui a pose le veto. La page devinait auparavant en relisant la
+ * phrase du refus — ca marchait, et ca serait devenu faux au premier libelle
+ * qui change, sans que rien ne le signale. On ne garde la lecture de la phrase
+ * que pour une reponse ancienne, qui ne porte pas encore la cle. */
 function agentRefus(c){
   if(!c.refus) return -1;
+  if(c.quiRefuse && idx[c.quiRefuse] !== undefined) return idx[c.quiRefuse];
   const r = String(c.refus);
-  /* Les libelles viennent de `analyse()` cote serveur. Le Warden repond du
-     contrat, le Whale-Watch de qui detient, l'Oracle de la note. */
-  if(/honeypot|achat impossible|proprietaire|auto-destruction|taxe|createur|suspendables/.test(r)) return idx.warden;
-  if(/porteur|garde/.test(r)) return idx.whale;
-  return idx.oracle;
+  if(/honeypot|achat impossible|proprietaire|auto-destruction|taxe|createur|suspendables/.test(r))
+    return idx.warden === undefined ? -1 : idx.warden;
+  if(/portefeuille fait|acheteur identifiable/.test(r)) return idx.whisper === undefined ? -1 : idx.whisper;
+  if(/porteur|garde/.test(r)) return idx.whale === undefined ? -1 : idx.whale;
+  return idx.oracle === undefined ? -1 : idx.oracle;
 }
 
 function verseCandidats(){
@@ -478,9 +614,12 @@ function verseCandidats(){
     if(!cle || vus.has(cle)) continue;
     vus.add(cle);
     file.push({ sym:c.sym, adr:c.addr, pool:c.pool, mc:c.mc, liq:c.liq, minutes:c.minutes,
-                score:c.score, base:c.base, adj:c.adj, refus:c.refus, stop:agentRefus(c),
+                score:c.score, base:c.base, adj:c.adj, refus:c.refus, quiRefuse:c.quiRefuse,
+                stop:agentRefus(c), origine:c.origine, appels:c.appels,
                 porteurs:c.porteurs, top:c.top, chaineVue:c.chaineVue, goplusSait:c.goplusSait,
-                stage:0, done:new Array(6).fill(0), id:Math.random().toString(36).slice(2,7) });
+                acheteurs:c.acheteurs, partDuPlusGros:c.partDuPlusGros, tradesVus:c.tradesVus,
+                stage:0, done:new Array(AGENTS.length).fill(0),
+                id:Math.random().toString(36).slice(2,7) });
   }
   /* On borne : le serveur en examine six par tour, mais une page laissee
      ouverte une nuit en accumulerait des centaines. */
@@ -540,10 +679,19 @@ function resout(b){
     return rejette(b, t.refus || "ecarte", doux);
   }
   if(A.key === "oracle" && !t.refus) ajoutePick(t);
-  if(A.key === "closer"){
+  if(A.role === "banque"){
+    /* Le Banquier ne dit pas oui : il dit COMBIEN. La mise affichee est celle
+       que le serveur a reellement posee sur ce jeton quand il l'a ouvert —
+       sinon on afficherait un chiffre plausible, ce qui est le contraire. */
+    const p = VUE && (VUE.positions||[]).find(x=>x.sym === t.sym);
+    const m = p ? p.mise : (VUE && VUE.banque && VUE.banque.prochaine ? VUE.banque.prochaine.mise : null);
+    if(m !== null && m !== undefined)
+      spawnFloat(AGENTS[b.i].house.x, AGENTS[b.i].house.y+6, "$"+Number(m).toFixed(2), "n");
+  }
+  if(A.role === "execution" || b.i >= AGENTS.length-1){
     /* Le serveur a ouvert la position ; ici on ne fait que le montrer. */
     b.carry = null; flying.delete(t); peintFlux();
-    spawnFloat(AGENTS[b.i].house.x, AGENTS[b.i].house.y+6, "achete $"+(VUE?VUE.mise:50), "up");
+    spawnFloat(AGENTS[b.i].house.x, AGENTS[b.i].house.y+6, "ouvert", "up");
     return rentre(b);
   }
   porteVers(b, b.i+1);
@@ -754,26 +902,42 @@ function roundRect(x,y,w,h,r){
 /* ============================ HUD ============================ */
 const $ = id => document.getElementById(id);
 const echappe = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-const status = AGENTS.map(()=>({cls:"idle",txt:"au repos"}));
+let status = AGENTS.map(()=>({cls:"idle",txt:"au repos"}));
 function setStatus(i,cls,txt){ status[i]={cls,txt}; peintAgents(); }
 
 /* Les compteurs, les lecons et la tenue viennent tous du serveur : c'est LUI
    qui a vu les jetons et ferme les positions. La page ne tient aucun compte
    parallele — deux comptes finissent toujours par diverger, et celui qui est
    faux est celui qu'on regarde. */
+/* La fiche d'un agent au roster du serveur, ou `null` s'il n'y est pas encore
+   — la page peut afficher des agents d'amorce avant la premiere reponse. */
+function fiche(k){ return (VUE && (VUE.roster||[]).find(a=>a.key===k)) || null; }
+
+/* ---- CE QUE FAIT CET AGENT-LA ----
+ * Ecrit depuis le roster : un specialiste ne hier a droit a la meme ligne que
+ * le Scout, sans qu'on ait rien a ajouter ici. C'est la meme raison qui fait
+ * que le village pose ses maisons tout seul. */
 function scoreAgent(k){
   if(!VUE) return "en attente du serveur";
-  const c = VUE.compteurs || {};
-  if(k==="scout")   return (c.scout||0)+" tokens vus";
-  if(k==="warden")  return (c.wardenBloque||0)+" bloques · "+(c.wardenOk||0)+" laisses passer";
-  if(k==="whale")   return (c.whaleBloque||0)+" bloques · "+(c.whaleOk||0)+" laisses passer";
-  if(k==="whisper") return (c.whisper||0)+" mesures";
+  const c = VUE.compteurs || {}, f = fiche(k);
+  if(k==="scout")   return (c.scout||0)+" tokens vus · "+VUE.connus+" connus, "+VUE.bannis+" bannis";
   if(k==="oracle")  return VUE.trades+" trades appris · seuil "+VUE.seuil;
-  if(k==="closer"){
+  if(f && f.role==="banque"){
+    const b = VUE.banque || {};
+    return (VUE.ouvertures||0)+" mises posees · methode "+(b.methode||"?")+(b.appris?" (apprise)":" (defaut)");
+  }
+  if(f && f.role==="execution"){
     const t = VUE.tenue || {};
     return (VUE.ouvertures||0)+" ouvertures · tenue "+(t.min||0)+" min"+(t.appris?" (apprise)":" (defaut)");
   }
-  return "";
+  if(f && f.role==="garde"){
+    const taux = f.vus ? Math.round(f.bloques/f.vus*100) : null;
+    return (f.bloques||0)+" bloques sur "+(f.vus||0)+" vus"
+         + (taux===null?"":" ("+taux+"%)") + " · "+f.cout+" appel"+(f.cout>1?"s":"");
+  }
+  if(f && f.role==="specialiste")
+    return "ne "+ilYA(Date.now()-(f.ne||Date.now()))+" plus tot · affine, ne refuse jamais";
+  return f ? f.traits.join(" · ") : "";
 }
 /* ---- CE QUE CET AGENT-LA A APPRIS ----
  * Le serveur publie, par agent, ses meilleures lecons AVEC le nombre
@@ -792,17 +956,24 @@ function apprisAgent(k){
 }
 
 function peintAgents(){
-  $("agents").innerHTML = AGENTS.map((a,i)=>`
+  $("agents").innerHTML = AGENTS.map((a,i)=>{
+    const f = fiche(a.key);
+    /* Un specialiste dit de qui il descend. Sans ca, un nom nouveau apparait
+       un jour dans la liste sans que personne sache d'ou il sort. */
+    const nid = f && f.parent ? ` <span class="quand">issu de ${echappe(f.parent)}</span>` : "";
+    const mission = (f && f.mission) || a.mission || "";
+    return `
     <div class="agent">
       <div class="ava" style="background:${a.color}22;color:${a.color}">${a.emoji}</div>
       <div style="min-width:0">
-        <div class="nm" style="color:${a.color}">${a.name}</div>
-        <div class="ms">${a.mission}</div>
+        <div class="nm" style="color:${a.color}">${echappe(a.name)}${nid}</div>
+        <div class="ms">${echappe(mission)}</div>
         <div class="sc">${echappe(scoreAgent(a.key))}</div>
         <div class="sc" style="color:${a.color}bb">🧠 ${echappe(apprisAgent(a.key))}</div>
       </div>
-      <div class="st"><span class="stpill ${status[i].cls}">${echappe(status[i].txt)}</span></div>
-    </div>`).join("");
+      <div class="st"><span class="stpill ${(status[i]||{}).cls||"idle"}">${echappe((status[i]||{}).txt||"au repos")}</span></div>
+    </div>`;
+  }).join("");
 }
 function peintFlux(){
   const arr = [...flying];
@@ -873,6 +1044,43 @@ function peintFluxTrades(){
     return `<div class="tr">${sym}<span class="tag ${e.tag}">${lbl}</span>${quand}<span class="pnl ${e.cls}">${echappe(e.txt)}</span></div>`;
   }).join("");
 }
+/* ---- COPIER UN TEXTE, MEME QUAND LE PRESSE-PAPIER N'EXISTE PAS ----
+ * Dans la vue web de Telegram, `navigator.clipboard` est absent et son appel
+ * jette AVANT de rendre une promesse — un `.catch()` ne s'execute donc jamais,
+ * et le bouton ne fait rien sans rien dire. C'est exactement le defaut deja
+ * corrige dans le portefeuille. On essaie, on retombe sur la selection, et
+ * l'adresse reste selectionnable a la main quoi qu'il arrive. */
+function copieTexte(txt, bouton){
+  let ok = false;
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(txt); ok = true;
+    }
+  }catch(e){ ok = false; }
+  if(!ok){
+    try{
+      const z = document.createElement("textarea");
+      z.value = txt; z.setAttribute("readonly","");
+      z.style.position="fixed"; z.style.opacity="0";
+      document.body.appendChild(z); z.select(); z.setSelectionRange(0, txt.length);
+      ok = document.execCommand("copy");
+      document.body.removeChild(z);
+    }catch(e){ ok = false; }
+  }
+  if(bouton){
+    bouton.textContent = ok ? "copie ✓" : "selectionnez";
+    bouton.classList.toggle("ok", ok);
+    clearTimeout(bouton._t);
+    bouton._t = setTimeout(()=>{ bouton.textContent = "copier"; bouton.classList.remove("ok"); }, 1800);
+  }
+  return ok;
+}
+document.addEventListener("click", function(e){
+  const b = e.target.closest && e.target.closest("[data-copie]");
+  if(!b) return;
+  copieTexte(b.getAttribute("data-copie"), b);
+});
+
 function peintPositions(){
   const pos = vPositions();
   $("poscount").textContent = VUE ? pos.length : "—";
@@ -886,19 +1094,150 @@ function peintPositions(){
        RELU. Quand il n'en a pas, il envoie `null` — et on l'ecrit. */
     const val = p.latent === null || p.latent === undefined
       ? '<span class="pnl n">prix non relu</span>'
-      : `<span class="pnl ${p.latent>=0?"up":"dn"}">${p.latent>=0?"+":""}${p.latent.toFixed(1)}% · ${p.latent>=0?"+":"–"}$${Math.abs(VUE.mise*p.latent/100).toFixed(2)}</span>`;
+      : `<span class="pnl ${p.latent>=0?"up":"dn"}">${p.latent>=0?"+":""}${p.latent.toFixed(1)}% · ${p.gainLatent>=0?"+":"–"}$${Math.abs(p.gainLatent).toFixed(2)}</span>`;
     /* Le temps restant avance entre deux reponses : on part de l'age que le
        serveur a envoye et on y ajoute ce qui s'est ecoule depuis, plutot que
        de laisser un compte a rebours fige. */
     const ouverte = p.ouverteDepuis + (Date.now() - RECU);
     const reste = Math.max(0, p.tenueMin*60000 - ouverte);
-    return `<div class="pos">
-      <span class="sym">$${echappe(p.sym)}</span>
-      <span class="quand">${reste>0 ? "regle dans "+ilYA(reste) : "en attente d'un prix"}</span>
-      ${val}
+    /* ---- L'ADRESSE DU CONTRAT ----
+       En entier. Tronquee, elle ne sert a rien : on ne peut ni la coller dans
+       un explorateur, ni la comparer a celle qu'on a sous les yeux ailleurs —
+       et c'est justement en la comparant qu'on evite d'acheter le faux jeton
+       qui porte le meme nom. */
+    const adr = p.adr ? `<div class="adr">
+        <code>${echappe(p.adr)}</code>
+        <button type="button" data-copie="${echappe(p.adr)}">copier</button>
+      </div>` : '';
+    const mise = p.mise === undefined ? '' :
+      `<span class="mini"><b>$${Number(p.mise).toFixed(2)}</b> mise · ${echappe(p.methode||"?")}${p.origine?" · vu par "+echappe(p.origine):""}</span>`;
+    return `<div class="posbloc">
+      <div class="pos">
+        <span class="sym">$${echappe(p.sym)}</span>
+        <span class="quand">${reste>0 ? "regle dans "+ilYA(reste) : "en attente d'un prix"}</span>
+        ${val}
+      </div>
+      ${adr}
+      ${mise}
     </div>`;
   }).join("");
 }
+
+/* ---- LE BANQUIER ----
+ * On affiche sa methode, son regime, ce qui est engage, et les bornes qu'il ne
+ * peut pas franchir. Ces bornes sont la partie qui compte : une page qui
+ * montre une methode d'apprentissage sans montrer ses garde-fous laisse croire
+ * qu'il n'y en a pas. */
+function peintBanque(){
+  const b = VUE && VUE.banque;
+  if(!b){ $("banque").innerHTML = '<div class="empty">En attente du serveur…</div>';
+          $("banqMethode").textContent = "—"; return; }
+  $("banqMethode").textContent = b.methode + (b.appris ? " (apprise)" : " (defaut)");
+  const p = b.prochaine;
+  const serie = b.serie > 0 ? b.serie+" gagnantes d'affilee"
+              : b.serie < 0 ? (-b.serie)+" perdantes d'affilee" : "aucune serie";
+  const lignes = [
+    ['Regime de caisse', echappe(b.regime)],
+    ['Serie en cours', echappe(serie)],
+    ['Engage maintenant', '$'+Number(b.engage).toFixed(2)],
+    ['Plus haut atteint', '$'+Number(b.pic).toFixed(2)],
+  ];
+  let html = lignes.map(l=>`<div class="ligne"><span class="k">${l[0]}</span><span class="v">${l[1]}</span></div>`).join("");
+  if(b.arret){
+    html += `<div class="empty" style="color:var(--loss);font-style:normal">⛔ ${echappe(b.arret)}</div>`;
+  }else if(p){
+    html += `<div class="ligne"><span class="k">Prochaine mise</span><span class="v">$${Number(p.mise).toFixed(2)}</span></div>`
+         +  `<div class="mini">${echappe(p.raison)}</div>`;
+  }
+  html += `<div class="mini" style="margin-top:2px">Bornes : <b>${Math.round(b.partMax*100)}%</b> par jeton ·
+           <b>${Math.round(b.expoMax*100)}%</b> engages au total · plancher <b>$${b.plancher}</b> ·
+           mise mini <b>$${b.miseMin}</b></div>`;
+  /* Le releve de chaque methode, par regime. C'est ce qui rend « il apprend »
+     verifiable : sans le nombre d'observations, une moyenne ne dit rien. */
+  if(b.releve && b.releve.length){
+    const max = Math.max(1, ...b.releve.map(m=>Math.max(...m.par.map(x=>Math.abs(x.moyenne)))));
+    html += '<div class="barres">' + b.releve.map(m=>m.par.map(x=>{
+      const bon = x.moyenne >= 0;
+      return `<div class="barre">
+        <span class="nm">${echappe(m.methode)}</span>
+        <span class="bg"><i style="width:${Math.min(100, Math.abs(x.moyenne)/max*100)}%;background:${bon?"var(--gain)":"var(--loss)"}"></i></span>
+        <span class="val" style="color:${bon?"var(--gain)":"var(--loss)"}">${bon?"+":""}${x.moyenne.toFixed(1)}%</span>
+        <span class="quand">${x.n} obs</span>
+      </div>`;
+    }).join("")).join("") + '</div>';
+  }else{
+    html += '<div class="empty">Aucune methode n\'a encore de releve : il faut des positions fermees pour comparer, et il en garde le compte.</div>';
+  }
+  $("banque").innerHTML = html;
+}
+
+/* ---- LA SURVEILLANCE ----
+ * Ceux qu'on a deja juges et qu'on garde a l'oeil, avec la raison du dernier
+ * refus. Les bannis n'y sont pas : ils ne reviendront jamais, et une liste qui
+ * melange les deux ne sert a rien. */
+function peintSurveillance(){
+  const l = (VUE && VUE.surveillance) || [];
+  $("survN").textContent = VUE ? (l.length + " · " + VUE.bannis + " bannis") : "—";
+  if(!VUE){ $("surveillance").innerHTML = '<div class="empty">En attente du serveur…</div>'; return; }
+  if(!l.length){
+    $("surveillance").innerHTML = '<div class="empty">Rien sous surveillance. Un jeton y entre quand '
+      + 'il a frole le seuil sans l\'atteindre : il n\'est pas re-analyse en boucle, il est repris '
+      + 'quand un signal gratuit bouge — la liquidite, le prix — ou apres un long moment.</div>';
+    return;
+  }
+  $("surveillance").innerHTML = l.map(x=>`<div class="tok">
+    <span class="sym">$${echappe(x.sym)}</span>
+    <span class="meta">${x.vu} examen${x.vu>1?"s":""} · ${echappe(String(x.verdict||"—")).slice(0,34)}</span>
+    <span class="pnl n" style="font-size:12px">${x.meilleure===null||x.meilleure===undefined?"—":x.meilleure}</span>
+  </div>`).join("");
+}
+
+/* ---- CE QUE LA COLONIE A CHANGE A ELLE-MEME ----
+ * Sans ce panneau, « les agents s'auto-developpent » est une phrase que
+ * personne ne peut verifier. Chaque ligne porte la mesure qui l'a decidee. */
+function peintStructure(){
+  const l = (VUE && VUE.journalStructure) || [];
+  $("structN").textContent = VUE ? l.length : "—";
+  if(!l.length) return;
+  $("structure").innerHTML = l.map(e=>{
+    const ch = (e.chiffres||[]).map(c=>Object.keys(c).map(k=>k+" "+c[k]).join(" ")).join(" · ");
+    return `<div class="evt">
+      <span class="pill ${echappe(e.quoi)}">${echappe(e.quoi)}</span>
+      <span>${echappe(e.txt)}${ch?`<span class="mini" style="margin-top:3px">${echappe(ch)}</span>`:""}</span>
+      <span class="quand" style="margin-left:auto">${ilYA(Date.now()-e.t)}</span>
+    </div>`;
+  }).join("");
+}
+
+/* ---- LES SERVICES ----
+ * Ceux qui repondent, avec leur releve ; et ceux qui ne repondront pas, avec
+ * la raison mesuree. Une source absente sans explication laisse croire qu'on
+ * n'y a pas pense. */
+function peintServices(){
+  const l = (VUE && VUE.services) || [];
+  $("srvN").textContent = VUE ? l.filter(s=>s.essais).length + "/" + l.length : "—";
+  /* Le nombre d'agents est ecrit depuis le roster, jamais en dur : il change. */
+  const st = $("soustitre");
+  if(st && VUE) st.textContent = (VUE.roster||[]).length + " agents · vrais tokens Robinhood Chain · "
+    + "ils s'organisent et apprennent de leurs trades";
+  if(!VUE){ $("services").innerHTML = '<div class="empty">En attente du serveur…</div>'; return; }
+  let html = l.map(s=>{
+    const jamais = !s.essais;
+    const ko = s.essais && s.reussites < s.essais;
+    return `<div class="srv">
+      <span class="nm">${echappe(s.nom)}<em>${echappe(s.quoi)}</em></span>
+      <span class="n ${ko?"ko":""}">${jamais ? "pas encore" : s.reussites+"/"+s.essais}</span>
+    </div>` + (s.dernierEchec ? `<div class="mini" style="color:var(--loss);margin:-2px 0 4px 0">dernier echec : ${echappe(s.dernierEchec)}</div>` : "");
+  }).join("");
+  const hs = (VUE && VUE.horsService) || {};
+  const cles = Object.keys(hs);
+  if(cles.length){
+    html += '<div class="horsservice"><b>Essayes, et inutilisables ici :</b><br>'
+          + cles.map(k=>echappe(hs[k])).join("<br>") + '</div>';
+  }
+  $("services").innerHTML = html;
+}
+
 function peintAppris(){
   const n = vTrades();
   $("apprisN").textContent = n+" trade"+(n!==1?"s":"");
@@ -990,9 +1329,13 @@ async function demande(manuel){
     if(!v || typeof v.tresor !== "number") throw new Error("reponse illisible");
     VUE = v; RECU = Date.now(); ERREUR_RESEAU = null;
     if(!shownBal) shownBal = v.tresor;
+    /* La structure d'abord : si un agent est ne ou a ete retire, le village
+       change de forme avant qu'un seul jeton n'y entre. */
+    majVillage(v.roster);
     verseCandidats();
     peintStats(); peintPositions(); peintAppris(); peintFluxTrades();
-    peintFlux(); dessineCourbe(); pastille(); majPouls();
+    peintFlux(); peintBanque(); peintSurveillance(); peintStructure(); peintServices();
+    dessineCourbe(); pastille(); majPouls();
     /* ---- LE SERVEUR PEUT REPONDRE PARFAITEMENT ET N'AVOIR RIEN LU ----
      * Sa vue porte alors `erreur`, et les chiffres qu'elle contient sont
      * vrais mais dates. La phrase de fond etait ecrite une fois au chargement
@@ -1113,8 +1456,10 @@ $("refresh").addEventListener("click", ()=>demande(true));
 setInterval(function(){ if(document.visibilityState !== "hidden"){ peintPositions(); pastille(); majPouls(); } }, 1000);
 
 /* ============================ DEPART ============================ */
+poseLesBots();
 peintAgents(); peintStats(); peintPositions(); peintAppris(); peintFluxTrades();
-peintPicks(); peintFlux(); dessineCourbe(); pastille(); majPouls();
+peintPicks(); peintFlux(); peintBanque(); peintSurveillance(); peintStructure(); peintServices();
+dessineCourbe(); pastille(); majPouls();
 $("stagetag").textContent = phraseFond();
 requestAnimationFrame(loop);
 demande(false);

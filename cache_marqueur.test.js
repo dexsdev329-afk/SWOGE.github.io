@@ -51,6 +51,20 @@ const empreinte = (f) =>
  * dont le marqueur a ete remis a blanc. */
 const NEUTRE = "var MARQUE_PAGE = '________';";
 const RE_PAGE = /var MARQUE_PAGE = '([0-9a-f]{8})';/;
+/* ---- ET LE MARQUEUR D'UN MEDIA ----
+ * Un film ou une affiche a sa PROPRE adresse : la page peut se remplacer
+ * toute seule, un navigateur qui a deja telecharge le fichier ne le redemande
+ * pas, et une correction d'image reste invisible. Arrive deux fois ici. Le
+ * marqueur est l'empreinte des fichiers CONCATENES, dans l'ordre ou la page
+ * les nomme — il change des que l'un d'eux change. */
+const RE_FILM = /var MARQUE_FILM = '([0-9a-f]{8})';/;
+const FILMS = ['media/wallet_intro.webm', 'media/wallet_intro.mp4',
+               'img/wallet/wallet_intro_poster.webp'];
+const empreinteFilms = () => {
+  const h = crypto.createHash('md5');
+  for (const f of FILMS) h.update(fs.readFileSync(path.join(SITE, f)));
+  return h.digest('hex').slice(0, 8);
+};
 const empreintePage = (f) => {
   const src = fs.readFileSync(path.join(SITE, f), 'utf8');
   return crypto.createHash('md5')
@@ -104,6 +118,25 @@ for (const a of autoversionnees) {
        ? `${a.page} : ${attendu}`
        : `${a.page} : marqueur perime — ecrire ${attendu} (au lieu de ${a.marque}),`
          + ' dans la page ET dans version.json');
+}
+
+console.log('\n-- et le film porte l empreinte de ses fichiers --');
+{
+  const src = fs.readFileSync(path.join(SITE, 'swoge_wallet.html'), 'utf8');
+  const m = RE_FILM.exec(src);
+  ok(!!m, 'le portefeuille porte un marqueur de film');
+  if (m) {
+    const attendu = empreinteFilms();
+    ok(m[1] === attendu,
+       m[1] === attendu
+         ? `le film et son affiche portent ${attendu}`
+         : `marqueur du film perime — ecrire ${attendu} (au lieu de ${m[1]})`);
+    /* Un marqueur qui ne sert a rien ne protege rien : on verifie qu'il est
+       bien COLLE aux adresses, et pas seulement declare. */
+    ok(/wallet_intro\.(webm|mp4)'\s*\)\s*\+\s*'\?v='\s*\+\s*MARQUE_FILM/.test(src)
+       || /\?v=' \+ MARQUE_FILM/.test(src),
+       'et il est bien accroche a l adresse du film, pas seulement declare');
+  }
 }
 
 console.log('\n-- et le meme script porte la meme marque partout --');

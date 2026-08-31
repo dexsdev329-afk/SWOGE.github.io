@@ -68,7 +68,7 @@
      A savoir : cela ne sauve pas la page DEJA en cache chez quelqu'un, qui ne
      contient pas ces lignes. Ce garde-fou vaut a partir de celle-ci. -->
 <script>
-var MARQUE_PAGE = 'f5df926e';
+var MARQUE_PAGE = '341b1d63';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -4447,9 +4447,13 @@ poseTenue(tenueChoisie());
  * La source est posee EN SCRIPT, jamais dans la balise : sans script — ou avec
  * un `prefers-reduced-motion` — le fichier n'est pas meme demande.
  */
+var MARQUE_FILM = 'fb1b0e5a';
 (function(){
   var v = $('wlIntroFilm'), boite = $('wlIntro');
   if(!v || !boite) return;
+  /* L'affiche aussi : elle montre la premiere image du film, et une affiche
+     d'avant sous un film d'apres, c'est un raccord qui saute aux yeux. */
+  try{ v.setAttribute('poster', 'img/wallet/wallet_intro_poster.webp?v=' + MARQUE_FILM); }catch(e){}
   var CLE = 'swogeWalletIntroVue';
   var fini = false, minuteur = null, garde = null;
 
@@ -4489,7 +4493,12 @@ poseTenue(tenueChoisie());
    * On DEMANDE au navigateur au lieu de deviner d'apres son nom. */
   var peutWebm = false;
   try{ peutWebm = !!(v.canPlayType && v.canPlayType('video/webm; codecs="vp9"')); }catch(e){}
-  v.src = peutWebm ? 'media/wallet_intro.webm' : 'media/wallet_intro.mp4';
+  /* ---- LE FILM PORTE SON EMPREINTE ----
+     La page se remplace toute seule quand elle vieillit, mais le film a sa
+     PROPRE adresse : un navigateur qui l'a deja telecharge ne le redemande
+     pas, et une correction d'image reste invisible. Deja vu deux fois ici.
+     Le marqueur change quand le fichier change, donc l'adresse aussi. */
+  v.src = (peutWebm ? 'media/wallet_intro.webm' : 'media/wallet_intro.mp4') + '?v=' + MARQUE_FILM;
   var joue = v.play();
   if(joue && joue['catch']) joue['catch'](ferme);
 })();

@@ -68,7 +68,7 @@
      A savoir : cela ne sauve pas la page DEJA en cache chez quelqu'un, qui ne
      contient pas ces lignes. Ce garde-fou vaut a partir de celle-ci. -->
 <script>
-var MARQUE_PAGE = '4be65dcc';
+var MARQUE_PAGE = '6cfab8e2';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -5310,7 +5310,7 @@ function journalCharge(){
   peintEnCours();
   /* Ce qui etait en vol au moment de la fermeture est repris ici. */
   for(var i=0;i<JOURNAL.length;i++)
-    if(JOURNAL[i].etat === 'attente') journalSuit(JOURNAL[i].h);
+    if(JOURNAL[i].etat === 'attente') journalSuit(JOURNAL[i].h, JOURNAL[i].sur);
 }
 function journalSauve(){
   if(!moi) return;
@@ -5324,7 +5324,7 @@ function journalAjoute(e){
   JOURNAL.unshift(e);
   if(JOURNAL.length > JOURNAL_MAX) JOURNAL = JOURNAL.slice(0, JOURNAL_MAX);
   journalSauve(); peintEnCours();
-  journalSuit(e.h);
+  journalSuit(e.h, e.sur);
 }
 function journalEtat(h, etat, bloc){
   var chg=false;
@@ -5336,10 +5336,16 @@ function journalEtat(h, etat, bloc){
   if(chg){ journalSauve(); peintEnCours(); }
 }
 /* Attendre le recu, sans jamais conclure d'un echec de lecture. */
-async function journalSuit(h){
+async function journalSuit(h, surLaChaine){
   var cible = moi, g = generation;
   try{
-    var r = await lec().waitForTransaction(h, 1, 180000);
+    /* ---- UNE TRANSACTION DE PONT N'EST PAS SUR CETTE CHAINE ----
+       Le depart d'un depot est mine SUR ETHEREUM. L'attendre sur la Robinhood
+       Chain ne l'y trouve jamais : l'entree resterait « en attente » pour
+       toujours, et le bandeau d'accueil annoncerait une transaction en vol
+       qui a en realite abouti depuis longtemps. */
+    var pr = (surLaChaine === L1.id) ? lecL1() : lec();
+    var r = await pr.waitForTransaction(h, 1, 180000);
     if(cible !== moi || g !== generation) return;
     journalEtat(h, (r && r.status === 0) ? 'echoue' : 'reussi', r && r.blockNumber);
   }catch(e){ /* toujours « en attente » : on ne sait pas, on ne dit rien */ }
@@ -5352,6 +5358,7 @@ function journalPhrase(e){
   if(e.k === 'autorisation')       return 'Allowing the router to spend your ' + (j?j.sym:'token');
   if(e.k === 'depot')              return 'Depositing ' + m(e.montant,'swoge') + ' into the casino';
   if(e.k === 'retrait')            return 'Claiming your casino withdrawal';
+  if(e.k === 'pont')               return 'Bridging ' + m(e.montant, e.cle) + ' to ' + (e.versNom || 'the other chain');
   return 'Sending ' + m(e.montant, e.cle) + ' to ' + court(e.vers);
 }
 
@@ -5415,7 +5422,16 @@ async function chargeActivite(){
     var qui=ethers.utils.hexZeroPad(moi, 32);
     var debut=Math.max(0, bloc-FENETRE);
     var lots=[];
-    for(var i=1;i<JETONS.length;i++){
+    /* ---- ON CHOISIT PAR CE QUE LE JETON EST, PAS PAR SON RANG ----
+       La boucle partait de l'indice 1 pour sauter la monnaie native, qui
+       n'emet aucun evenement. Le jour ou l'ETH d'Ethereum s'est glisse en
+       deuxieme position, ce rang a cesse de vouloir dire quelque chose : on
+       aurait interroge `getLogs` avec une adresse nulle — c'est-a-dire TOUS
+       les contrats de la chaine. On filtre donc sur ce qui compte : avoir une
+       adresse de contrat, et etre sur CETTE chaine. */
+    for(var i=0;i<JETONS.length;i++){
+      if(!JETONS[i].adr) continue;
+      if(JETONS[i].chaine && JETONS[i].chaine !== CHAINE.id) continue;
       (function(j){
         lots.push(p.getLogs({ address:j.adr, topics:[sujet, qui, null], fromBlock:debut, toBlock:bloc })
           .then(function(l){ return l.map(function(x){ return { j:j, log:x, sortant:true }; }); }));
@@ -5541,6 +5557,7 @@ function ligneJournal(e){
             : e.k === 'autorisation' ? 'Allowance'
             : e.k === 'depot' ? 'Casino deposit'
             : e.k === 'retrait' ? 'Casino withdrawal'
+            : e.k === 'pont' ? 'Bridged to ' + (e.versNom || 'the other chain')
             : 'Sent';
   /* ---- D OU VIENT CETTE LIGNE ----
      Elle n'a pas ete lue sur la chaine : elle existe parce que CE
@@ -5548,7 +5565,18 @@ function ligneJournal(e){
      autres — et le joueur croirait la retrouver depuis un autre
      appareil, ou elle n'apparaitra jamais. */
   var sous = (e.k === 'envoi' ? 'To ' + court(e.vers) + ' · ' : '') + 'from this device';
-  if(att)  sous = 'Waiting for the chain — sent from this device';
+  /* ---- UN PONT A DEUX COTES, ET LA LIGNE DOIT LE DIRE ----
+     Ce qu'on a signe est parti d'une chaine ; ce qu'on a recu est arrive sur
+     l'autre. Un montant seul, sans dire d'ou a ou, ne se relit pas six mois
+     plus tard. */
+  if(e.k === 'pont'){
+    var recu = null;
+    try{ recu = e.recu ? nombre(ethers.BigNumber.from(e.recu), 18) : null; }catch(x){}
+    sous = 'From ' + (e.deNom || '?') + (recu ? ' · received ' + recu : '');
+  }
+  if(att)  sous = e.k === 'pont'
+    ? 'Waiting for ' + (e.deNom || 'the chain') + ' — sent from this device'
+    : 'Waiting for the chain — sent from this device';
   if(rate) sous = 'The chain rejected it — nothing moved';
   var v = null;
   try{ v = e.montant ? ethers.BigNumber.from(e.montant) : null; }catch(x){ v = null; }
@@ -5910,6 +5938,17 @@ async function partPont(){
     var envoi = { to: r.tx.to, value: ethers.BigNumber.from(r.tx.value || '0') };
     if(r.tx.data && r.tx.data !== '0x') envoi.data = r.tx.data;
     var tx = await signer.sendTransaction(envoi);
+
+    /* ---- LA TRACE, POUR QUE L'ECRAN « ACTIVITY » LA MONTRE ----
+       Un pont ne laisse AUCUN evenement lisible sur la chaine d'arrivee : ce
+       qui arrive est de l'ether natif, et l'ether natif n'emet rien. Sans
+       cette inscription, un transfert de plusieurs centaines de dollars ne
+       laisserait aucune trace dans l'historique.
+       `sur` dit sur QUELLE chaine la transaction a ete signee : c'est ce qui
+       permet de l'attendre au bon endroit et d'ouvrir le bon explorateur. */
+    journalAjoute({ h:tx.hash, k:'pont', cle:(de.id === L1.id ? 'ethL1' : 'eth'),
+                    montant:entree.toString(), recu:r.recu.toString(),
+                    sur:de.id, versNom:vers.nom, deNom:de.nom });
 
     dis('Sent — waiting for ' + de.nom + '…');
     await tx.wait();

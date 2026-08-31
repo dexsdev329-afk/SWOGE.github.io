@@ -3017,6 +3017,74 @@ function servir(q, r, f, type) {
        'et la transaction part bien depuis Ethereum (' + (f.envoyees[0] || {}).surLaChaine
        + (f.envoyees.length ? '' : ') — la page a dit : « ' + m.note.slice(0, 80) + ' »') + ')');
 
+    /* ---- ET IL LAISSE UNE TRACE DANS L HISTORIQUE ----
+     *
+     * Un pont n emet AUCUN evenement lisible sur la chaine d arrivee : ce qui
+     * arrive est de l ether natif, et l ether natif n emet rien. Sans une
+     * inscription faite par la page, un transfert de plusieurs centaines de
+     * dollars ne laisserait donc aucune trace dans « Activity ». On verifie
+     * les DEUX sens, parce qu ils partent de deux chaines differentes. */
+    await page.evaluate(() => {
+      const b = document.querySelector('#pied button[data-va="ecActivite"]');
+      if (b) b.click();
+    });
+    await page.waitForTimeout(2500);
+    const trace = await page.evaluate(() => {
+      const l = [...document.querySelectorAll('#acvCorps .wl-jeton')].map((r) => ({
+        titre: r.querySelector('.nom b').textContent.trim(),
+        sous: r.querySelector('.nom small').textContent.trim(),
+        val: r.querySelector('.val b').textContent.trim(),
+        piece: (r.querySelector('img') || {}).getAttribute
+               ? r.querySelector('img').getAttribute('src') : null }));
+      let brut = null;
+      /* La cle du journal porte l'adresse : on la retrouve plutot que de la
+         recopier — un nom recopie cesse d'etre vrai au premier changement. */
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (/^swogeTx:/.test(k)) { brut = JSON.parse(localStorage.getItem(k) || '[]'); break; }
+        }
+      } catch (e) {}
+      return { lignes: l.filter((x) => /Bridge/i.test(x.titre)),
+               journal: (brut || []).filter((x) => x.k === 'pont')
+                 .map((x) => ({ sur: x.sur, de: x.deNom, vers: x.versNom })) };
+    });
+    console.log('   traces du pont : ' + JSON.stringify(trace));
+    ok(trace.lignes.length === 2,
+       'les DEUX passages du pont sont dans l historique (' + trace.lignes.length + ')');
+    ok(trace.lignes.some((x) => /Bridged to Robinhood Chain/.test(x.titre))
+       && trace.lignes.some((x) => /Bridged to Ethereum/.test(x.titre)),
+       'chacun dit vers OU il est alle (' + trace.lignes.map((x) => x.titre).join(' | ') + ')');
+    /* Chaque ligne nomme SA chaine de depart — sous la forme « From X » une
+       fois posee, « Waiting for X » tant qu elle ne l est pas. Les deux
+       disent la meme chose, et c est cela qu on verifie : celle qui va vers
+       la Robinhood Chain part d Ethereum, et reciproquement. */
+    const versRH = trace.lignes.find((x) => /Bridged to Robinhood/.test(x.titre)) || {};
+    const versL1 = trace.lignes.find((x) => /Bridged to Ethereum/.test(x.titre)) || {};
+    ok(/Ethereum/.test(versRH.sous || '') && /Robinhood/.test(versL1.sous || ''),
+       'et chacune dit d ou elle part (' + [versRH.sous, versL1.sous]
+         .map((x) => String(x).slice(0, 42)).join(' | ') + ')');
+    /* La piece aussi : celle de la chaine de DEPART, pas une au hasard. */
+    ok(/tok_eth_l1/.test(versRH.piece || '') && /tok_eth\.webp/.test(versL1.piece || ''),
+       'avec la piece de la chaine de depart ('
+       + [versRH.piece, versL1.piece].map((x) => String(x).split('/').pop()).join(' | ') + ')');
+    ok(/^−/.test(versRH.val || '') && /^−/.test(versL1.val || ''),
+       'et le montant compte comme un depart (' + versRH.val + ' | ' + versL1.val + ')');
+    /* ---- ET SUR QUELLE CHAINE LA TRANSACTION A ETE SIGNEE ----
+     * Sans cela, le depot serait attendu sur la Robinhood Chain alors qu il
+     * est mine sur Ethereum : il resterait « en attente » pour toujours, et le
+     * bandeau d accueil annoncerait une transaction en vol deja arrivee. */
+    ok(trace.journal.length === 2
+       && trace.journal.some((x) => x.sur === 1) && trace.journal.some((x) => x.sur === 4663),
+       'et chaque trace retient SA chaine de depart, pour etre attendue au bon'
+       + ' endroit (' + JSON.stringify(trace.journal.map((x) => x.sur)) + ')');
+    await page.evaluate(() => {
+      const b = document.querySelector('#pied button[data-va="ecAccueil"]');
+      if (b) b.click();
+    });
+    await page.waitForTimeout(400);
+    await ouvrePont();
+
     /* ---- UN RELAYEUR QUI N A PAS ENCORE PAYE NE DIT PAS « ARRIVE » ----
      * C est le defaut le plus couteux possible ici : annoncer l argent arrive
      * alors qu il ne l est pas. La transaction de depart peut etre minee sans

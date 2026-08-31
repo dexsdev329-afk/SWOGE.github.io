@@ -44,10 +44,10 @@ const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'applic
    * signature avant de se recharger — donc l'instrument comptait mal. Le
    * serveur, lui, ne peut pas se tromper sur le nombre de fois qu'on lui a
    * demande la page, et c'est exactement ce que vit le joueur. */
-  let demandes = 0;
+  let demandes = 0, guette = '/nexus.html';
   const srv = http.createServer((q, r) => {
     const nom = decodeURIComponent(q.url.split('?')[0]);
-    if (nom === '/nexus.html') demandes++;
+    if (nom === guette) demandes++;
     if (nom === '/version.json' && manifesteServi) {
       r.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
       r.end(manifesteServi);
@@ -61,7 +61,7 @@ const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'applic
     });
   });
   await new Promise((r) => srv.listen(0, '127.0.0.1', r));
-  const base = `http://127.0.0.1:${srv.address().port}/nexus.html`;
+  const racine = `http://127.0.0.1:${srv.address().port}`;
 
   const nav = await chromium.launch({ args: ['--no-sandbox', '--disable-dev-shm-usage'] });
 
@@ -69,17 +69,21 @@ const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'applic
      representer le site des le prochain changement de script. */
   const vrai = JSON.parse(fs.readFileSync(path.join(SITE, 'version.json'), 'utf8'));
 
-  const compteLesChargements = async (manifeste, ms) => {
+  const compteLesChargements = async (manifeste, ms, page, cle) => {
     manifesteServi = manifeste;
+    guette = '/' + (page || 'nexus.html');
     demandes = 0;
     const ctx = await nav.newContext({ viewport: { width: 390, height: 780 },
-                                       hasTouch: true, isMobile: true });
+                                       hasTouch: true, isMobile: true,
+                                       /* Le portefeuille joue un film a l'ouverture : six secondes
+                                          de decodage qui n'ont rien a voir avec ce qu'on mesure. */
+                                       reducedMotion: 'reduce' });
     const p = await ctx.newPage();
-    await p.goto(base, { waitUntil: 'load' });
+    await p.goto(racine + guette, { waitUntil: 'load' });
     await p.waitForTimeout(ms);
-    const memoire = await p.evaluate(() => {
-      try { return sessionStorage.getItem('swogeRelanceCache'); } catch (e) { return null; }
-    });
+    const memoire = await p.evaluate((k) => {
+      try { return sessionStorage.getItem(k); } catch (e) { return null; }
+    }, cle || 'swogeRelanceCache');
     await ctx.close();
     return { charges: demandes, memoire };
   };
@@ -111,6 +115,37 @@ const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.json': 'applic
   console.log('   ' + JSON.stringify(c));
   ok(c.charges === 2,
      `elle s arrete apres UNE relance, meme si rien ne s arrange (${c.charges} chargements)`);
+
+  /* ==================== ET LA PAGE QUI SE VERSIONNE ELLE-MEME ====================
+   *
+   * Le portefeuille n'a aucun `script.js?v=` : tout son code est ecrit dedans.
+   * Il porte donc sa PROPRE empreinte, et le mecanisme ci-dessus ne s'y
+   * applique pas — c'est un second chemin, qui merite les memes trois
+   * mesures. Sans elles, il pourrait ne rien faire du tout sans que personne
+   * ne s'en apercoive : c'est exactement le defaut qui a coute le plus cher
+   * ici, et c'est lui qui a laisse le proprietaire devant une page d'avant
+   * pendant que le correctif etait deja servi. */
+  const PAGE = 'swoge_wallet.html';
+  const CLE = 'swogeRelancePage:/' + PAGE;
+  console.log(`\n-- ${PAGE} : le manifeste est a jour, on ne recharge pas --`);
+  const d = await compteLesChargements(JSON.stringify(vrai), 2500, PAGE, CLE);
+  console.log('   ' + JSON.stringify(d));
+  ok(d.charges === 1, `la page se charge UNE fois et reste (${d.charges})`);
+  ok(!d.memoire, 'et rien n a ete note : il n y avait rien a rattraper');
+
+  console.log(`\n-- ${PAGE} : le manifeste a change, la page se remplace --`);
+  const perime2 = Object.assign({}, vrai, { [PAGE]: '00000000' });
+  const e = await compteLesChargements(JSON.stringify(perime2), 4000, PAGE, CLE);
+  console.log('   ' + JSON.stringify(e));
+  ok(e.charges >= 2, `la page perimee se recharge (${e.charges} chargements)`);
+  ok(!!e.memoire && /^[0-9a-f]{8}$/.test(e.memoire),
+     `et elle note l empreinte d ou elle venait (${e.memoire})`);
+
+  console.log(`\n-- ${PAGE} : et elle ne tourne PAS en boucle --`);
+  const f = await compteLesChargements(JSON.stringify(perime2), 9000, PAGE, CLE);
+  console.log('   ' + JSON.stringify(f));
+  ok(f.charges === 2,
+     `elle s arrete apres UNE relance, meme si rien ne s arrange (${f.charges} chargements)`);
 
   await nav.close();
   srv.close();

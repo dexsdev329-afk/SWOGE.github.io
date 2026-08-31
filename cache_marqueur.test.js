@@ -44,14 +44,30 @@ const SITE = __dirname;
 const empreinte = (f) =>
   crypto.createHash('md5').update(fs.readFileSync(path.join(SITE, f))).digest('hex').slice(0, 8);
 
+/* ---- ET L'EMPREINTE D'UNE PAGE QUI SE VERSIONNE ELLE-MEME ----
+ * Une page dont TOUT le code est ecrit dedans ne porte aucun `script.js?v=`,
+ * donc rien ne la protege du cache. Elle porte alors sa propre empreinte.
+ * Celle-ci ne peut pas dependre d'elle-meme : on la calcule sur le fichier
+ * dont le marqueur a ete remis a blanc. */
+const NEUTRE = "var MARQUE_PAGE = '________';";
+const RE_PAGE = /var MARQUE_PAGE = '([0-9a-f]{8})';/;
+const empreintePage = (f) => {
+  const src = fs.readFileSync(path.join(SITE, f), 'utf8');
+  return crypto.createHash('md5')
+               .update(src.replace(RE_PAGE, NEUTRE), 'utf8').digest('hex').slice(0, 8);
+};
+
 /* Les couples releves dans les pages, jamais recopies ici. */
 const pages = fs.readdirSync(SITE).filter((f) => f.endsWith('.html'));
 const trouves = [];
+const autoversionnees = [];
 for (const p of pages) {
   const src = fs.readFileSync(path.join(SITE, p), 'utf8');
   for (const m of src.matchAll(/([A-Za-z0-9_]+\.js)\?v=([0-9a-z]+)/g)) {
     trouves.push({ page: p, script: m[1], marque: m[2] });
   }
+  const mp = RE_PAGE.exec(src);
+  if (mp) autoversionnees.push({ page: p, marque: mp[1] });
 }
 
 console.log('-- ce que les pages declarent --');
@@ -75,6 +91,19 @@ for (const s of scripts) {
        ? `${s} : ${portes.length} page(s) portent ${attendu}`
        : `${s} : ${mauvais.length} page(s) portent un marqueur perime — ` +
          `ecrire ${attendu} dans ${[...new Set(mauvais.map((t) => t.page))].join(', ')}`);
+}
+
+console.log('\n-- une page qui se versionne elle-meme porte SON empreinte --');
+ok(autoversionnees.length > 0,
+   `${autoversionnees.length} page(s) portent leur propre empreinte : `
+   + autoversionnees.map((a) => a.page).join(', '));
+for (const a of autoversionnees) {
+  const attendu = empreintePage(a.page);
+  ok(a.marque === attendu,
+     a.marque === attendu
+       ? `${a.page} : ${attendu}`
+       : `${a.page} : marqueur perime — ecrire ${attendu} (au lieu de ${a.marque}),`
+         + ' dans la page ET dans version.json');
 }
 
 console.log('\n-- et le meme script porte la meme marque partout --');
@@ -109,6 +138,9 @@ if (!fs.existsSync(FV)) {
   if (manifeste) {
     const attendu = {};
     for (const s of scripts) if (fs.existsSync(path.join(SITE, s))) attendu[s] = empreinte(s);
+    /* Une page qui se versionne elle-meme n'est pas une entree orpheline :
+       c'est elle que le manifeste sert a perimer. */
+    for (const a of autoversionnees) attendu[a.page] = empreintePage(a.page);
     const faux = Object.keys(attendu).filter((s) => manifeste[s] !== attendu[s]);
     ok(faux.length === 0,
        faux.length === 0

@@ -41,6 +41,58 @@
          document.documentElement.setAttribute('data-theme','sombre'); }catch(e){}
 </script>
 
+<!-- ==================== UNE PAGE PERIMEE SE REMPLACE ====================
+
+     ---- CE QUI EST ARRIVE ----
+
+     Le detail de l'echange a ete replie derriere un « + », pousse, deploye,
+     et verifie octet par octet sur le domaine : le fichier servi par
+     swoleeswoge.dog etait identique a celui du depot. Le proprietaire, lui,
+     voyait toujours les trois lignes depliees — dans le navigateur integre
+     d'une messagerie, qui garde une page bien plus longtemps qu'un
+     navigateur ordinaire. Du travail fait, correct, et invisible.
+
+     ---- POURQUOI CETTE PAGE N'ETAIT PAS COUVERTE ----
+
+     Le site a deja ce garde-fou : chaque page redemande `version.json` et se
+     recharge une fois si ses marqueurs ont vieilli. Mais il repose sur les
+     `script.js?v=...` que la page porte — or TOUT le code de ce portefeuille
+     est ecrit dans la page. Aucun marqueur, donc aucune protection : c'etait
+     la seule page du site que rien ne rafraichissait.
+
+     Elle porte donc sa PROPRE empreinte, et `cache_marqueur.test.js` la
+     recalcule a chaque passage : un marqueur oublie fait tomber l'essai, qui
+     donne la valeur a ecrire. Le mecanisme est ecrit ICI, en clair, et non
+     dans un fichier a part — celui-la serait sujet au meme cache.
+
+     A savoir : cela ne sauve pas la page DEJA en cache chez quelqu'un, qui ne
+     contient pas ces lignes. Ce garde-fou vaut a partir de celle-ci. -->
+<script>
+var MARQUE_PAGE = '8888f14a';
+(function(){
+  try{
+    if(!window.fetch || !window.sessionStorage) return;
+    /* La cle porte le chemin : deux pages perimees ne doivent pas s'effacer
+       leur souvenir l'une l'autre, sinon chacune se rechargerait a chaque
+       aller-retour. */
+    var CLE = 'swogeRelancePage:' + location.pathname;
+    if(sessionStorage.getItem(CLE) === MARQUE_PAGE) return;
+    var moi = location.pathname.split('/').pop() || 'index.html';
+    fetch('version.json', { cache: 'no-store' })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(vrai){
+        if(!vrai || !vrai[moi] || vrai[moi] === MARQUE_PAGE) return;
+        /* On note AVANT de recharger : la page qui revient lira ce souvenir.
+           Sans lui, un deploiement a moitie fait — page toujours servie d'un
+           cache — la ferait tourner en boucle, ce qui est bien pire que le
+           defaut d'origine. */
+        sessionStorage.setItem(CLE, MARQUE_PAGE);
+        location.reload();
+      })['catch'](function(){});
+  }catch(e){}
+})();
+</script>
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <!-- Les MEMES polices que le reste du site : Anton, Archivo, Space Mono.

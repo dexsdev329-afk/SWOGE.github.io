@@ -138,15 +138,55 @@ function servir(q, r, f, type) {
     });
     const syms = await p.evaluate(() =>
       [...document.querySelectorAll('#acJetons .wl-jeton .nom b')].map((x) => x.textContent));
-    ok(syms.length === 3 && syms.indexOf('SWOGE') >= 0 && syms.indexOf('SWOGEBET') >= 0
-       && syms.indexOf('ETH (RH)') >= 0,
-       'trois lignes seulement : ETH (RH), SWOGE, SWOGEBET (' + syms.join(', ') + ')');
+    ok(syms.length === 4 && syms.indexOf('SWOGE') >= 0 && syms.indexOf('SWOGEBET') >= 0
+       && syms.indexOf('ETH (RH)') >= 0 && syms.indexOf('ETH') >= 0,
+       'quatre lignes : les trois de la chaine, plus l ETH d Ethereum ('
+       + syms.join(', ') + ')');
+    /* ---- LES DEUX ETHER SE DISTINGUENT ----
+     * Depuis le pont, le portefeuille tient de l ether sur DEUX chaines. Deux
+     * lignes qui s appellent toutes deux « ether » ne valent que si l on voit
+     * laquelle est laquelle : le nom le dit, et la piece aussi — un joueur qui
+     * lit vite ne lit pas le nom. */
+    const ethers2 = await p.evaluate(() =>
+      [...document.querySelectorAll('#acJetons .wl-jeton')]
+        .map((r) => ({ sym: r.querySelector('.nom b').textContent,
+                       nom: (r.querySelector('.nom small') || {}).textContent || '',
+                       img: (r.querySelector('img') || {}).getAttribute
+                            ? r.querySelector('img').getAttribute('src') : null }))
+        .filter((x) => /ETH/.test(x.sym)));
+    console.log('   les deux ether : ' + JSON.stringify(ethers2));
+    ok(ethers2.length === 2, 'il y a bien DEUX lignes d ether (' + ethers2.length + ')');
+    ok(ethers2.every((x) => /Robinhood|Ethereum/.test(x.nom)),
+       'et chacune DIT sur quelle chaine elle est ('
+       + ethers2.map((x) => x.sym + ' = ' + x.nom).join(' | ') + ')');
+    ok(new Set(ethers2.map((x) => x.img)).size === 2,
+       'avec deux pieces differentes — le nom seul ne se lit pas assez vite ('
+       + ethers2.map((x) => String(x.img).split('/').pop()).join(', ') + ')');
     /* ---- « ETH » TOUT COURT NE DOIT PLUS SE LIRE COMME UN SOLDE ----
        Le joueur a deux soldes d'ether : celui-ci et celui de la chaine
        principale, dans son autre portefeuille. Les deux ecrits « ETH », il
        croit voir le meme a deux endroits. */
-    ok(!syms.some((x) => x === 'ETH'),
-       'et aucune ne s appelle « ETH » tout court — c est la confusion qu on cherche a eviter');
+    /* ---- LA REGLE A CHANGE PARCE QUE LA SITUATION A CHANGE ----
+     *
+     * Elle disait : « aucune ligne ne doit s appeler ETH tout court ». Elle
+     * valait quand une SEULE ligne d ether existait — l appeler « ETH » aurait
+     * laissé croire qu il s agissait de l ether d Ethereum, qui n etait nulle
+     * part. Depuis le pont, l ether d Ethereum est bel et bien la, et refuser
+     * de l appeler par son nom serait l invention inverse.
+     *
+     * Ce qu il fallait protéger, ce n est pas le nom : c est qu on ne puisse
+     * pas confondre les deux. La regle devient donc celle-la — une ligne
+     * nommee « ETH » n existe QUE si sa chaine est ecrite sur la meme ligne,
+     * et qu une autre ligne, distincte, porte l autre ether. */
+    const rangsEth = await p.evaluate(() =>
+      [...document.querySelectorAll('#acJetons .wl-jeton')]
+        .map((r) => ({ sym: r.querySelector('.nom b').textContent,
+                       nom: (r.querySelector('.nom small') || {}).textContent || '' }))
+        .filter((x) => /^ETH/.test(x.sym)));
+    ok(rangsEth.every((x) => /Ethereum|Robinhood/.test(x.nom)),
+       'aucune ligne « ETH » ne se presente sans dire SA chaine — c est la'
+       + ' confusion qu on cherche a eviter ('
+       + rangsEth.map((x) => x.sym + ' : ' + x.nom).join(' | ') + ')');
     const logos = await p.evaluate(() =>
       [...document.querySelectorAll('#acJetons .wl-jeton')].map((r) => {
         const im = r.querySelector('img');
@@ -160,8 +200,8 @@ function servir(q, r, f, type) {
     /* L'ETH empruntait le logo du $SWOGE sur sa fiche : le mauvais jeton sur
        la page d'un vrai solde. */
     const parSym = {}; logos.forEach((x) => (parSym[x.sym] = x.src));
-    ok(new Set(logos.map((x) => x.src)).size === 3,
-       'et trois pieces DIFFERENTES — aucune n emprunte celle d une autre ('
+    ok(new Set(logos.map((x) => x.src)).size === logos.length,
+       'et autant de pieces DIFFERENTES que de lignes — aucune n emprunte celle d une autre ('
        + Object.keys(parSym).map((k) => k + '=' + String(parSym[k]).split('/').pop()).join(', ') + ')');
 
     /* ---- ET LA PIECE DE L ETH DIT DE QUELLE CHAINE IL S AGIT ----
@@ -177,7 +217,11 @@ function servir(q, r, f, type) {
      * ce qui compte — le vert de Robinhood est-il la ? L ancienne piece en
      * avait 0,00 %, celle-ci 23 %. */
     const teintes = await p.evaluate(async () => {
-      const im = document.querySelector('#acJetons .wl-jeton img');
+      /* La ligne de l ETH (RH), pas « la premiere image » : depuis le pont il
+         y a deux lignes d ether, et la premiere n est pas forcement la sienne. */
+      const rang = [...document.querySelectorAll('#acJetons .wl-jeton')]
+        .find((r) => r.querySelector('.nom b').textContent === 'ETH (RH)');
+      const im = rang.querySelector('img');
       const c = document.createElement('canvas'); c.width = c.height = 128;
       const g = c.getContext('2d');
       g.drawImage(im, 0, 0, 128, 128);
@@ -780,6 +824,14 @@ function servir(q, r, f, type) {
                  charge: im ? im.naturalWidth > 0 : false };
       }));
     ok(lignes.length === 3, 'la liste du Send propose les trois jetons (' + lignes.length + ')');
+    /* ---- ET PAS CELUI QUI VIT SUR UNE AUTRE CHAINE ----
+     * L ETH d Ethereum est desormais VISIBLE dans les soldes, mais le contrat
+     * d envoi et le routeur sont sur la Robinhood Chain. Le proposer ici
+     * serait proposer une transaction qui ne peut pas exister — et l echec
+     * arriverait apres la signature. */
+    ok(!lignes.some((x) => x.sym === 'ETH'),
+       'et JAMAIS l ETH d Ethereum : on ne peut pas l envoyer depuis cette chaine ('
+       + lignes.map((x) => x.sym).join(', ') + ')');
     ok(lignes.every((x) => x.logo && x.charge),
        'et chacun y montre SA piece, chargee : '
        + lignes.map((x) => x.sym + (x.charge ? '' : ' MANQUE')).join(', '));

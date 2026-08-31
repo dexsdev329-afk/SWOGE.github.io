@@ -68,7 +68,7 @@
      A savoir : cela ne sauve pas la page DEJA en cache chez quelqu'un, qui ne
      contient pas ces lignes. Ce garde-fou vaut a partir de celle-ci. -->
 <script>
-var MARQUE_PAGE = '341b1d63';
+var MARQUE_PAGE = '47da863d';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -1803,6 +1803,17 @@ var CHAINE = { id:4663, hex:'0x1237', nom:'Robinhood Chain',
  */
 var ETH_AFF = 'ETH (RH)';
 
+/* ---- ET L'AUTRE ETH, CELUI D'ETHEREUM ----
+ * Le portefeuille en connait deux depuis qu'il fait le pont. Celui-ci se
+ * declare ici, avec la chaine dont il vient, et non au milieu du pont : la
+ * liste des jetons a besoin de lui bien avant.
+ * Deux fournisseurs : le premier repond, le second existe pour le jour ou il
+ * ne repond plus. Tous deux verifies avec l'en-tete CORS qu'un navigateur
+ * exige — sans elle la lecture echoue en silence depuis une page web. */
+var L1 = { id:1, hex:'0x1', nom:'Ethereum', sym:'ETH',
+  rpc:['https://ethereum-rpc.publicnode.com', 'https://eth.drpc.org'],
+  scan:'https://etherscan.io' };
+
 var WETH     = '0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73';
 var SWOGE    = '0x8a166Fb41Cd659a0a43396272FF73973Ce29F817';
 var SWOGEBET = '0xc0aEd547862fba5D7D9Fbf3cb14204cD756c8Bea';
@@ -1978,7 +1989,19 @@ var JETONS = [
   { cle:'swoge',    sym:'SWOGE',     nom:'Swole Doge',   adr:SWOGE,    dec:18,
     logo:'img/wallet/tok_swoge.webp' },
   { cle:'swogebet', sym:'SWOGEBET',  nom:'Swogebet',     adr:SWOGEBET, dec:18,
-    logo:'img/wallet/tok_swogebet.webp' }
+    logo:'img/wallet/tok_swogebet.webp' },
+  /* ---- L'ETH D'ETHEREUM, VISIBLE LUI AUSSI ----
+   *
+   * Depuis que le portefeuille fait le pont, il tient l'ETH du joueur sur DEUX
+   * chaines. N'en montrer qu'un revenait a dire que l'autre n'existe pas :
+   * on ouvrait le pont pour deposer sans savoir ce qu'on avait a deposer.
+   *
+   * Il porte l'ANCIENNE piece — le losange violet nu — et l'autre garde
+   * l'enseigne Robinhood. Deux dessins nettement differents pour deux lignes
+   * qui s'appellent toutes deux « ether » : c'est la meme precaution que le
+   * « (RH) » du nom, et elle se voit de plus loin. */
+  { cle:'ethL1',    sym:'ETH',       nom:'Ether on Ethereum', adr:null, dec:18,
+    logo:'img/wallet/tok_eth_l1.webp', natif:true, chaine:1 }
 ];
 function J(cle){ for(var i=0;i<JETONS.length;i++) if(JETONS[i].cle===cle) return JETONS[i]; return null; }
 
@@ -2878,7 +2901,7 @@ $('cpExplorer').addEventListener('click', function(){
  * Afficher zero pour une lecture ratee, c'est dire au joueur qu'il n'a
  * plus rien.
  */
-var enLecture = false;          /* une passe a la fois : elles se doubleraient */
+var enLecture = false, enLectureAilleurs = false, tourLecture = 0;          /* une passe a la fois : elles se doubleraient */
 var derniereLecture = 0;        /* quand la derniere a FINI */
 
 /**
@@ -2904,33 +2927,69 @@ async function rafraichit(discret){
      par-dessus la plus recente. */
   if(enLecture) return;
   enLecture = true;
-  var p = lec();
   var rate = 0;
-  var taches = JETONS.map(async function(j){
-    try{
-      soldes[j.cle] = await borne(
-        j.natif ? p.getBalance(moi) : erc(j.adr).balanceOf(moi), 9000, 'balance');
-    }catch(e){ if(!discret) soldes[j.cle] = null; rate++; }
-  });
-  /* `finally` : un drapeau reste a `true` apres une exception ne se voit pas —
-     il ne casse rien, il ARRETE simplement toute relecture, pour toujours, et
-     le portefeuille se fige sur des chiffres qui vieillissent en silence. */
+  var tour = ++tourLecture, qui = moi;
+  /* Un jeton dit maintenant de QUELLE chaine il vient. Lire tout le monde sur
+     la Robinhood Chain rendrait un solde d'Ethereum a zero — et zero est
+     precisement ce qu'on ne doit jamais inventer.
+     Le TOUR : une lecture partie pour l'ancien compte revient parfois apres
+     que le joueur en a change. Sans ce garde, elle poserait le solde du
+     compte precedent sur l'ecran du nouveau. */
+  var lis = function(j){
+    var pr = (j.chaine === L1.id) ? lecL1() : lec();
+    return borne(j.natif ? pr.getBalance(qui) : erc(j.adr).balanceOf(qui), 9000, 'balance')
+      .then(function(b){ if(tour === tourLecture) soldes[j.cle] = b; })
+      ['catch'](function(){ if(tour === tourLecture && !discret) soldes[j.cle] = null; rate++; });
+  };
+  var dUneAutre = function(j){ return !!j.chaine && j.chaine !== CHAINE.id; };
+  var ici     = JETONS.filter(function(j){ return !dUneAutre(j); });
+  var ailleurs = JETONS.filter(dUneAutre);
+
+  /* ---- UNE CHAINE MUETTE NE DOIT PAS FIGER L'AUTRE ----
+   * Toutes les lectures partaient ensemble et l'ecran n'etait peint qu'apres
+   * la derniere. Le jour ou l'on a ajoute Ethereum, un RPC lent la-bas gelait
+   * donc les soldes de la Robinhood Chain pendant NEUF SECONDES — mesure faite,
+   * huit essais sont tombes dessus. On peint des que la chaine du portefeuille
+   * a repondu, et l'on repeint quand l'autre arrive.
+   *
+   * `finally` : un drapeau reste a `true` apres une exception ne se voit pas —
+   * il ne casse rien, il ARRETE simplement toute relecture, pour toujours, et
+   * le portefeuille se fige sur des chiffres qui vieillissent en silence. */
   try{
-    await Promise.all(taches);
+    await Promise.all(ici.map(lis));
     rangeCeQuOnDetient();
     await lisPrix();
     peintAccueil();
+    /* On DIT quand une lecture a echoue, et on le dit MAINTENANT — attendre
+       l'autre chaine retarderait le message de neuf secondes. Un solde absent
+       s'affiche « — », mais sans un mot le joueur lit ce tiret comme « zero ».
+       Une passe automatique se tait : un message toutes les trente secondes
+       n'apprend rien et couvre l'ecran. */
+    if(rate && !discret) toast(rate===ici.length
+      ? 'The chain did not answer — balances unknown, not zero'
+      : rate+' balance(s) could not be read');
   } finally {
     enLecture = false;
     derniereLecture = Date.now();
   }
-  /* On DIT quand une lecture a echoue. Un solde absent s'affiche « — »,
-     mais sans un mot le joueur lit ce tiret comme « zero ».
-     Une passe automatique se tait : un message toutes les trente secondes
-     n'apprend rien et couvre l'ecran. */
-  if(rate && !discret) toast(rate===JETONS.length
-    ? 'The chain did not answer — balances unknown, not zero'
-    : rate+' balance(s) could not be read');
+
+  /* ---- ET L'AUTRE CHAINE NE TIENT PAS LE VERROU ----
+   * Elle etait lue AVANT de rendre `enLecture`. Un RPC muet la-bas gardait
+   * donc le verrou neuf secondes, et pendant ces neuf secondes toute nouvelle
+   * demande de lecture — changement de compte, retour sur la page, appui sur
+   * le bouton — repartait aussitot sans rien lire, en silence. Mesure faite :
+   * sept essais tombaient dessus, et le joueur, lui, aurait vu le solde de
+   * son ancien compte.
+   * Elle se lit donc DETACHEE, avec son propre verrou, et ne repeint que si
+   * le tour est encore le sien. Son echec ne merite pas de message : sa ligne
+   * porte deja « — », et le joueur n'est pas venu ici pour elle. */
+  if(ailleurs.length && !enLectureAilleurs){
+    enLectureAilleurs = true;
+    Promise.all(ailleurs.map(lis)).then(function(){
+      enLectureAilleurs = false;
+      if(tour === tourLecture) peintAccueil();
+    }, function(){ enLectureAilleurs = false; });
+  }
 }
 $('btRafraichir').addEventListener('click', function(){ toast('Refreshing…'); rafraichit(); });
 
@@ -3018,7 +3077,8 @@ function valeur(cle){
   var s = soldes[cle];
   if(s===null || s===undefined) return null;
   var n = parseFloat(ethers.utils.formatUnits(s, 18));
-  if(cle==='eth')   return ethUsd  ? n*ethUsd  : null;
+  /* Le meme actif des deux cotes du pont, donc le meme prix. */
+  if(cle==='eth' || cle==='ethL1') return ethUsd ? n*ethUsd : null;
   if(cle==='swoge') return prixUsd ? n*prixUsd : null;
   /* ---- LE $SWOGEBET ETAIT VALORISE A L'ENVERS ----
    *
@@ -3051,6 +3111,13 @@ function peintAccueil(){
        simplement pas le prix des jetons qu'on ne connait pas. Son solde
        reste affiche, sans valeur en dollars. */
     if(JETONS[i].perso) continue;
+    /* ---- ET IL NE MELANGE PAS DEUX CHAINES ----
+       Juste au-dessus de ce total, une pastille annonce « Robinhood Chain ».
+       Y additionner en silence un solde d'Ethereum ferait dire a ce nombre
+       autre chose que ce que l'ecran promet — et une lecture ratee la-bas
+       rendrait « partiel » un total qui ne l'est pas. La ligne de l'ETH
+       d'Ethereum porte sa propre valeur en dollars, elle. */
+    if(JETONS[i].chaine && JETONS[i].chaine !== CHAINE.id) continue;
     var v = valeur(JETONS[i].cle);
     if(v===null) complet=false; else total+=v;
   }
@@ -3861,6 +3928,12 @@ function remplitChoix(sel, exclure){
   var h='';
   for(var i=0;i<JETONS.length;i++){
     if(exclure && JETONS[i].cle===exclure) continue;
+    /* ---- CE QUI VIT AILLEURS NE S'ECHANGE PAS ICI ----
+       Le routeur, la piscine et le contrat d'envoi sont sur la Robinhood
+       Chain. Proposer l'ETH d'Ethereum dans ces listes serait proposer une
+       transaction qui ne peut pas exister — et l'echec arriverait apres la
+       signature. Pour le faire passer, il y a le pont. */
+    if(JETONS[i].chaine && JETONS[i].chaine !== CHAINE.id) continue;
     h+='<option value="'+JETONS[i].cle+'">'+JETONS[i].sym+' — '+JETONS[i].nom+'</option>';
   }
   sel.innerHTML=h;
@@ -5484,10 +5557,25 @@ async function ficheJeton(cle){
   $('fiLiq').textContent  = cle==='swoge' && window._liq ? usd(window._liq) : '—';
   $('fiNote').textContent = cle==='swogebet'
     ? '$SWOGEBET trades only against $SWOGE. Buying it with '+ETH_AFF+' goes through $SWOGE automatically, in a single transaction.'
-    : (cle==='swoge' ? 'The ecosystem token. Everything on the site settles in $SWOGE.' : '');
+    : (cle==='swoge' ? 'The ecosystem token. Everything on the site settles in $SWOGE.'
+    /* ---- ET CELUI D'ETHEREUM DIT CE QU'ON PEUT EN FAIRE ----
+       Rien ne s'echange avec lui ici : le routeur est sur l'autre chaine.
+       Le bouton doit donc mener au pont, et non a un ecran d'echange qui ne
+       le proposerait meme pas dans sa liste — un bouton qui ouvre un ecran
+       ou l'on ne trouve pas ce qu'on cherche est pire que pas de bouton. */
+    : (cle==='ethL1' ? 'This is your ether on Ethereum, not on Robinhood Chain. '
+       + 'Nothing on this site trades against it — bridge it over first.' : ''));
+  var bs = $('fiSwap');
+  if(bs){
+    bs.textContent = (cle === 'ethL1') ? 'Bridge to ' + CHAINE.nom : 'Swap this token';
+    bs.dataset.vers = (cle === 'ethL1') ? 'ecPont' : 'ecSwap';
+  }
   va('ecJeton');
 }
-$('fiSwap').addEventListener('click', function(){ va('ecSwap'); });
+$('fiSwap').addEventListener('click', function(){
+  if(this.dataset.vers === 'ecPont'){ sensPont = 'depot'; }
+  va(this.dataset.vers || 'ecSwap');
+});
 
 /* ==================== L'HEURE, ET LE DEPART ==================== */
 function heure(){
@@ -5524,12 +5612,6 @@ function heure(){
  * L'ETH, et rien d'autre. Pas de jetons, pas d'autres chaines : chacun serait
  * une route de plus a verifier, et une facon de plus de se tromper de piece.
  */
-var L1 = { id:1, hex:'0x1', nom:'Ethereum', sym:'ETH',
-  /* Deux fournisseurs : le premier repond, le second existe pour le jour ou il
-     ne repond plus. Tous deux verifies avec l'en-tete CORS qu'un navigateur
-     exige — sans elle la lecture echoue en silence depuis une page web. */
-  rpc:['https://ethereum-rpc.publicnode.com', 'https://eth.drpc.org'],
-  scan:'https://etherscan.io' };
 var RELAY = 'https://api.relay.link';
 var ZERO_ADR = '0x0000000000000000000000000000000000000000';
 /* Au-dela, on previent : sous 0,005 ETH le pont prend une part qui se voit

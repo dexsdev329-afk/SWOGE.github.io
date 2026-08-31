@@ -842,8 +842,13 @@ body{
  * Une fois par session, jamais deux. Et le fond est le meme blanc que celui du
  * film, pour qu'on ne voie pas ou finit l'image et ou commence l'ecran.
  */
+/* ---- LE MEME BLANC QUE LE FILM ----
+   Le film est en 540 x 822 et l'ecran ne l'est pas : `object-fit:contain`
+   laisse donc deux bandes de chaque cote. Le fond du film etant desormais du
+   blanc PUR, la boite doit l'etre aussi — a #FDFDFD la couture se voyait en
+   biais sur un ecran bien regle. */
 #wlIntro{
-  position:fixed; inset:0; z-index:2147483200; background:#FDFDFD;
+  position:fixed; inset:0; z-index:2147483200; background:#FFFFFF;
   display:flex; align-items:center; justify-content:center;
   transition:opacity .45s ease;
 }
@@ -4305,10 +4310,11 @@ poseTenue(tenueChoisie());
   /* Une seconde pour etre pret, sinon on renonce. */
   garde = setTimeout(function(){ if(v.readyState < 3) ferme(); }, 1000);
   /* ---- LE WEBM D'ABORD, QUAND LE NAVIGATEUR SAIT LE LIRE ----
-   * Quatre cent vingt-sept kilo-octets contre quatre cent quatre-vingt-un, et
-   * surtout : c'est le seul des deux qu'un Chromium sans decodeur proprietaire
-   * sache jouer — donc le seul qu'un banc d'essai puisse verifier. Le MP4
-   * reste pour Safari et l'iPhone, qui ne lisent pas le VP9 partout.
+   * Non pour sa taille — il est meme un peu plus gros que le MP4, cinq cent
+   * trente-six kilo-octets contre cinq cent sept — mais parce que c'est le
+   * seul des deux qu'un Chromium sans decodeur proprietaire sache jouer, donc
+   * le seul qu'un banc d'essai puisse verifier. Le MP4 reste pour Safari et
+   * l'iPhone, qui ne lisent pas le VP9 partout.
    * On DEMANDE au navigateur au lieu de deviner d'apres son nom. */
   var peutWebm = false;
   try{ peutWebm = !!(v.canPlayType && v.canPlayType('video/webm; codecs="vp9"')); }catch(e){}

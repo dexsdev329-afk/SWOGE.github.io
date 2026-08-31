@@ -34,14 +34,35 @@ const T = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
                regle. */
             '.mp4':'video/mp4', '.webm':'video/webm' };
 
+/* ---- LE SERVEUR D'ESSAI SAIT REPONDRE A « Range » ----
+ * Sans ca le navigateur ne peut pas se DEPLACER dans un film : `seekable`
+ * reste vide, `currentTime = 3` est ignore SANS ERREUR, et l'on croit mesurer
+ * la troisieme seconde alors qu'on regarde l'image zero. C'est arrive ici :
+ * l'essai du fond annonçait « plus de damier » sur un film qui en etait
+ * couvert, parce que ses premieres images, elles, etaient blanches. Le vrai
+ * serveur du site repond a `Range` ; celui de l'essai doit lui ressembler. */
+function servir(q, r, f, type) {
+  const t = fs.statSync(f).size;
+  const m = /^bytes=(\d*)-(\d*)$/.exec(q.headers.range || '');
+  if (m) {
+    const d = m[1] ? parseInt(m[1], 10) : 0;
+    const fin = m[2] ? parseInt(m[2], 10) : t - 1;
+    r.writeHead(206, { 'content-type': type, 'accept-ranges': 'bytes',
+                       'content-range': 'bytes ' + d + '-' + fin + '/' + t,
+                       'content-length': fin - d + 1 });
+    return fs.createReadStream(f, { start: d, end: fin }).pipe(r);
+  }
+  r.writeHead(200, { 'content-type': type, 'accept-ranges': 'bytes', 'content-length': t });
+  fs.createReadStream(f).pipe(r);
+}
+
 (async () => {
   const srv = http.createServer((q, r) => {
     let p = decodeURIComponent(q.url.split('?')[0]);
     if (p === '/') p = '/index.html';
     const f = path.join(SITE, p);
     if (!f.startsWith(SITE) || !fs.existsSync(f) || fs.statSync(f).isDirectory()) { r.writeHead(404); return r.end(); }
-    r.writeHead(200, { 'content-type': T[path.extname(f)] || 'application/octet-stream' });
-    fs.createReadStream(f).pipe(r);
+    servir(q, r, f, T[path.extname(f)] || 'application/octet-stream');
   });
   await new Promise((res) => srv.listen(0, res));
   const port = srv.address().port;
@@ -142,6 +163,45 @@ const T = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
     ok(new Set(logos.map((x) => x.src)).size === 3,
        'et trois pieces DIFFERENTES — aucune n emprunte celle d une autre ('
        + Object.keys(parSym).map((k) => k + '=' + String(parSym[k]).split('/').pop()).join(', ') + ')');
+
+    /* ---- ET LA PIECE DE L ETH DIT DE QUELLE CHAINE IL S AGIT ----
+     *
+     * Ce jeton n est pas l ether de la chaine principale : c est celui de la
+     * chaine Robinhood, et le joueur en a souvent des deux. Un losange
+     * violet tout seul ne les distingue pas — c est le meme dessin des deux
+     * cotes, et c est exactement la confusion que le nom « ETH (RH) » sert
+     * deja a eviter. La piece porte donc les DEUX marques.
+     *
+     * On ne compare pas un fichier a une empreinte : recadrer l image la
+     * changerait sans rien casser, et l essai crierait pour rien. On mesure
+     * ce qui compte — le vert de Robinhood est-il la ? L ancienne piece en
+     * avait 0,00 %, celle-ci 23 %. */
+    const teintes = await p.evaluate(async () => {
+      const im = document.querySelector('#acJetons .wl-jeton img');
+      const c = document.createElement('canvas'); c.width = c.height = 128;
+      const g = c.getContext('2d');
+      g.drawImage(im, 0, 0, 128, 128);
+      const d = g.getImageData(0, 0, 128, 128).data;
+      let vert = 0, violet = 0, vus = 0;
+      for (let i = 0; i < d.length; i += 4) {
+        const [r, v, b, a] = [d[i], d[i+1], d[i+2], d[i+3]];
+        if (a <= 128) continue;
+        vus++;
+        if (v > r + 40 && v > b + 40) vert++;
+        if (b > v + 30 && r > v + 15) violet++;
+      }
+      return { src: im.getAttribute('src'), vus,
+               vert: +(100*vert/16384).toFixed(2), violet: +(100*violet/16384).toFixed(2) };
+    });
+    console.log('   piece ETH (RH) : ' + JSON.stringify(teintes));
+    /* Sans ce garde, une piece qui ne se dessine pas rendrait zero partout et
+       les deux mesures suivantes passeraient en ne mesurant rien. */
+    ok(teintes.vus > 8000,
+       'la piece de l ETH (RH) se dessine vraiment (' + teintes.vus + ' pixels opaques sur 16 384)');
+    ok(teintes.vert > 8,
+       'elle porte le vert de Robinhood (' + teintes.vert + ' %) — le losange violet seul ne disait pas la chaine');
+    ok(teintes.violet > 3,
+       'et le violet de l Ethereum (' + teintes.violet + ' %) — c est bien de l ether qu il s agit');
     for (const faux of ['SWOCHIP', 'SWOPOOL', 'SWOXP', 'Solana']) {
       ok(t.indexOf(faux) < 0,
          'aucune trace de « ' + faux +' » — la maquette en montrait, il n existe pas');
@@ -2342,7 +2402,7 @@ const T = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
    *   - elle ne repasse pas deux fois dans la meme session ;
    *   - un appui la passe ;
    *   - et qui demande moins de mouvement ne la voit pas — ni ne TELECHARGE
-   *     le film. Quatre cent vingt-sept kilo-octets pour un decor qu on ne
+   *     le film. Cinq cent trente-six kilo-octets pour un decor qu on ne
    *     verra pas, c est de l argent que le joueur paie sans le savoir.
    */
   console.log('\n-- l animation d ouverture --');
@@ -2372,6 +2432,71 @@ const T = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
     ok(debut.passe, 'avec un bouton qui dit qu on peut la passer');
     ok(debut.derriere && debut.ecran === 'ecAccueil',
        'le portefeuille est deja peint DERRIERE — elle ne retarde rien');
+
+    /* ---- ET LE FOND DERRIERE LUI EST VRAIMENT BLANC ----
+     *
+     * Le film n avait pas ete mal decoupe : il avait ete APLATI sur le damier
+     * gris que les editeurs dessinent pour figurer la transparence. La grille
+     * etait donc DANS les pixels — 243 contre 255 — et en plein ecran sur un
+     * telephone elle se voyait tout de suite.
+     *
+     * On ne mesure pas un coin choisi d avance : le chien bouge, les effets
+     * passent, et un point sur (20, 20) finirait par tomber sur autre chose.
+     * On mesure le DEFAUT lui-meme, sur toute l image — la part de pixels
+     * clairs, neutres, mais PAS blancs. Le damier en donnait un quart de
+     * l image ; il en reste l ecran blanc du telephone que le chien tient,
+     * qui, lui, doit rester.
+     */
+    const fond = await page.evaluate(async () => {
+      /* On ouvre le film DANS UN ELEMENT A NOUS, au lieu de se servir de
+         celui de l ecran d ouverture : celui-la se ferme au bout d une
+         seconde s il n est pas pret, et sa fermeture RETIRE la source. On
+         mesurerait alors un element vide en croyant regarder le film. */
+      const v = document.createElement('video');
+      v.muted = true; v.playsInline = true; v.preload = 'auto';
+      v.src = 'media/wallet_intro.webm';
+      document.body.appendChild(v);
+      await new Promise((f) => { v.addEventListener('canplaythrough', f, { once: true });
+                                 v.addEventListener('error', f, { once: true });
+                                 setTimeout(f, 15000); });
+      if (!v.videoWidth) { v.remove(); return { large: 0 }; }
+      /* Trois secondes : le damier ne s installait qu au bout de deux, les
+         premieres images etaient blanches MEME AVANT la correction. */
+      await new Promise((f) => { v.addEventListener('seeked', f, { once: true });
+                                 v.currentTime = 3.0; setTimeout(f, 8000); });
+      const c = document.createElement('canvas');
+      c.width = v.videoWidth; c.height = v.videoHeight;
+      c.getContext('2d').drawImage(v, 0, 0);
+      const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+      let gris = 0, blanc = 0;
+      const n = c.width * c.height;
+      for (let i = 0; i < d.length; i += 4) {
+        const mn = Math.min(d[i], d[i+1], d[i+2]), mx = Math.max(d[i], d[i+1], d[i+2]);
+        if (mn >= 236 && mx <= 252 && mx - mn <= 8) gris++;
+        if (mn >= 253) blanc++;
+      }
+      const t = +v.currentTime.toFixed(2);
+      v.remove();
+      return { large: c.width, haut: c.height, t: t,
+               gris: +(100*gris/n).toFixed(2), blanc: +(100*blanc/n).toFixed(2) };
+    });
+    console.log('   fond du film : ' + JSON.stringify(fond));
+    /* Sans ce garde, un film qui ne decode pas rendrait « 0 % de gris » et
+       l essai declarerait le damier disparu sans avoir rien regarde. */
+    ok(fond.large === 540 && fond.haut === 822,
+       'le film se decode vraiment (' + fond.large + ' x ' + fond.haut + ')');
+    ok(Math.abs(fond.t - 3.0) < 0.3,
+       'et c est bien la troisieme seconde qu on regarde (t = ' + fond.t + ' s) — avant deux'
+       + ' secondes le fond etait blanc meme sans la correction');
+    /* Les deux seuils sont poses ENTRE les deux films, mesures sur le meme
+       banc a la meme seconde : l ancien rendait 23,83 % de gris et 11,19 % de
+       blanc franc, le nouveau 0,99 % et 35,65 %. Chacun des deux echoue donc
+       sur l ancien fichier — c est ce qui fait qu ils mesurent quelque chose. */
+    ok(fond.blanc > 25,
+       'et il est bien pose sur du blanc : ' + fond.blanc + ' % de l image l est franchement'
+       + ' (11,19 % avant)');
+    ok(fond.gris < 8,
+       'plus de damier derriere lui : ' + fond.gris + ' % de gris clair, contre 23,83 % avant');
 
     /* ---- UN APPUI LA PASSE ---- */
     await page.evaluate(() => document.getElementById('wlIntro').click());

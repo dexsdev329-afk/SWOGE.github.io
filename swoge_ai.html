@@ -13,7 +13,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
-var MARQUE_PAGE = 'a9859954';
+var MARQUE_PAGE = 'aac39c74';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -522,7 +522,14 @@ function traitsDe(t){
   return {
     scout: {
       src:  t.feed==="new_pools" ? "pool neuf" : "pool tendance",
-      age:  age===null ? "age ?" : tranche(age, [1,7,30], ["age<1j","age 1-7j","age 7-30j","age>30j"]),
+      /* En MINUTES tant que le jeton est jeune : « moins d'un jour » ne
+         distingue plus rien quand tout le flux a moins d'une heure. */
+      age:  t.minutes === null || t.minutes === undefined ? "age ?"
+            : t.minutes < 10 ? "ne de <10 min"
+            : t.minutes < 30 ? "10-30 min"
+            : t.minutes < 120 ? "30 min-2 h"
+            : t.minutes < 1440 ? "2-24 h"
+            : tranche(age, [7,30], ["1-7 j","7-30 j",">30 j"]),
       liq:  tranche(t.liq||0, [1e4,5e4,25e4,1e6], ["liq<10k","liq 10-50k","liq 50-250k","liq 250k-1M","liq>1M"]),
       /* Combien de pools portent ce jeton. Une liquidite eparpillee sur six
          pools ne se vend pas comme une liquidite concentree — et DexScreener
@@ -530,17 +537,32 @@ function traitsDe(t){
       pools: !d.vu ? "pools ?" : tranche(d.pools, [2,4,8], ["1 pool","2-3 pools","4-7 pools",">=8 pools"])
     },
     warden: {
-      taxe: !g.have ? "taxe ?" : ((g.buyTax+g.sellTax)===0 ? "aucune taxe"
+      /* « ? » n'est pas un defaut d'ecriture : c'est une case a part entiere,
+         et l'Oracle apprendra ce que valent les jetons sur lesquels on ne
+         savait rien. C'est peut-etre la lecon la plus utile de toutes. */
+      taxe: !g.taxeSue ? "taxe inconnue" : ((g.buyTax+g.sellTax)===0 ? "aucune taxe"
              : (g.buyTax+g.sellTax)<=10 ? "taxe <=10%" : "taxe >10%"),
-      code: !g.have ? "code ?" : (g.unverified ? "code non verifie" : "code verifie"),
+      code: !g.codeSu ? "code inconnu" : (g.unverified ? "code non verifie" : "code verifie"),
       pouv: !g.have ? "pouvoirs ?" :
             (g.mintable && g.proxy) ? "mint + proxy" : g.mintable ? "emission possible"
             : g.proxy ? "contrat proxy" : "aucun pouvoir",
       lp:   !g.have ? "lp ?" : tranche(g.lp||0, [1,50,90], ["lp libre","lp <50% bloquee","lp 50-90%","lp >90% bloquee"])
     },
     whale: {
-      top: !g.have ? "top ?" : tranche(g.top||0, [1,5,15,30], ["top <1%","top 1-5%","top 5-15%","top 15-30%","top >30%"]),
-      det: !g.have ? "det ?" : tranche(g.holders||0, [100,1e3,1e4], ["<100 det","100-1k det","1k-10k det",">10k det"]),
+      /* Calculee par nous dans les blocs quand la chaine a repondu — c'est
+         la seule source qui sache quoi que ce soit d'un jeton de sept
+         minutes, et elle est exacte. */
+      top: (c.vu && c.top !== null && c.top !== undefined)
+           ? tranche(c.top, [5,15,30,50], ["top <5%","top 5-15%","top 15-30%","top 30-50%","top >50%"])
+           : (g.topSu ? tranche(g.top||0, [5,15,30,50], ["top <5%","top 5-15%","top 15-30%","top 30-50%","top >50%"])
+                      : "concentration inconnue"),
+      det: (c.vu && c.porteurs !== null && c.porteurs !== undefined)
+           ? tranche(c.porteurs, [10,30,100,500], ["<10 porteurs","10-30","30-100","100-500",">500 porteurs"])
+           : (g.detSue ? tranche(g.holders||0, [100,1e3,1e4], ["<100 det","100-1k det","1k-10k det",">10k det"])
+                       : "porteurs inconnus"),
+      brule: (c.vu && c.brule !== null && c.brule !== undefined)
+             ? tranche(c.brule, [1,50,90], ["rien brule","<50% brule","50-90% brule",">90% brule"])
+             : "brule inconnu",
       /* ---- CELLE-LA VIENT DES BLOCS, PAS D'UN SERVICE ----
          Des destinataires DISTINCTS sur les quarante dernieres minutes. Un
          volume que trois adresses se renvoient n'en produit aucun ; des gens
@@ -666,25 +688,97 @@ function tenueApprise(){
 }
 
 /* ============================ LE SCORE ============================ */
+/* ==================== NOTER UN JETON QUI VIENT DE NAITRE ====================
+ *
+ * L'ancienne note mesurait la QUALITE ETABLIE : des detenteurs, une
+ * capitalisation, un volume sur vingt-quatre heures. Un jeton de sept minutes
+ * n'a rien de tout cela — et la note le punissait pour ca. Elle ne pouvait
+ * donc jamais en retenir un, et les meilleurs picks etaient invariablement
+ * des valeurs a deux cents millions. Ce n'est pas ce qu'on cherche.
+ *
+ * Ce qui EXISTE a sept minutes, et qu'on peut lire :
+ *
+ *   la liquidite du pool          — combien on peut sortir, et a quel prix
+ *   la part du plus gros porteur  — calculee par nous, dans les blocs
+ *   le nombre de porteurs reels   — idem, et personne d'autre ne l'a
+ *   ce qui est parti en fumee     — ce qui ne pourra plus etre vendu
+ *   les achats contre les ventes  — la seule demande observable
+ *   les acheteurs distincts       — des gens, ou une adresse qui se repond
+ *   le mouvement depuis la naissance
+ *
+ * Et ce qui n'existe PAS ne rapporte rien. C'est la regle qui manquait : un
+ * champ que le service n'a pas rendu vaut « inconnu », jamais « bon ».
+ *
+ * Le seuil reste haut et la mise reste petite, pour une raison qu'il faut
+ * dire : sur des jetons de quelques minutes, la plupart ne survivent pas.
+ * Cette page n'est pas une facon de gagner de l'argent a coup sur — c'est
+ * une facon de MESURER, honnetement, si une methode en gagne.
+ */
 function scoreBase(t){
-  const g = t.g||{}; let s = 0;
-  s += t.liq>=1e5?26 : t.liq>=25e3?20 : t.liq>=8e3?12 : t.liq>=2e3?6 : 2;
+  const g = t.g || {}, ch = t.chaine || {}, x = t.tx || {}, v = t.vol || {};
+  const h1 = x.h1 || {}, m5 = x.m5 || {};
+  const neuf = (t.minutes !== null && t.minutes !== undefined && t.minutes < 180);
+  let s = 30;                       /* on part au milieu : l'inconnu ne monte ni ne descend */
+
+  /* ---- LA LIQUIDITE : COMBIEN ON PEUT SORTIR ---- */
+  s += t.liq>=1e5 ? 16 : t.liq>=25e3 ? 13 : t.liq>=8e3 ? 9 : t.liq>=3e3 ? 5 : t.liq>=1e3 ? 1 : -6;
+
+  /* ---- LA CONCENTRATION, LUE DANS LES BLOCS ----
+   * C'est la mesure de risque numero un sur un jeton neuf, et la seule que
+   * l'on obtienne tout de suite. Une adresse qui tient la moitie du
+   * circulant peut tout vendre dans la minute. */
+  const top = (ch.vu && ch.top !== null && ch.top !== undefined) ? ch.top
+            : (g.topSu ? g.top : null);
+  if(top === null) s -= 4;                          /* inconnu : on retire, on n'ajoute pas */
+  else s += top<5 ? 14 : top<15 ? 9 : top<30 ? 2 : top<50 ? -10 : -26;
+
+  /* ---- COMBIEN DE PORTEURS REELS ---- */
+  const det = (ch.vu && ch.porteurs !== null && ch.porteurs !== undefined) ? ch.porteurs
+            : (g.detSue ? g.holders : null);
+  if(det === null) s -= 3;
+  else if(neuf) s += det>=120 ? 12 : det>=50 ? 9 : det>=20 ? 5 : det>=8 ? 1 : -6;
+  else s += det>=2e4 ? 12 : det>=3e3 ? 9 : det>=500 ? 5 : det>=100 ? 2 : -4;
+
+  /* ---- CE QUI NE POURRA PLUS ETRE VENDU ---- */
+  if(ch.vu && ch.brule !== null && ch.brule !== undefined)
+    s += ch.brule>=90 ? 8 : ch.brule>=50 ? 5 : ch.brule>=10 ? 2 : 0;
+
+  /* ---- LA DEMANDE, TELLE QU'ELLE SE VOIT ----
+   * Sur un jeton neuf, la fenetre d'une heure EST toute sa vie. Des
+   * acheteurs distincts valent bien plus qu'un volume : trois adresses qui
+   * se renvoient un jeton produisent du volume et aucune demande. */
+  const ach = (h1.buys||0), ven = (h1.sells||0), uniq = (h1.buyers||0);
+  if(ach + ven > 0){
+    const r = ach / Math.max(1, ven);
+    s += r>=2 ? 8 : r>=1.3 ? 5 : r>=0.9 ? 1 : r>=0.6 ? -3 : -8;
+  } else s -= 4;                                    /* aucun echange : personne n'en veut */
+  s += uniq>=60 ? 9 : uniq>=25 ? 6 : uniq>=10 ? 3 : uniq>=3 ? 0 : -5;
+
+  /* ---- LE CONTRAT, QUAND ON SAIT ----
+   * Chaque drapeau ne compte que si le service a repondu dessus. Un champ
+   * absent ne vaut ni bien ni mal : il vaut zero. */
+  if(g.taxeSue) s += (g.buyTax+g.sellTax)===0 ? 6 : (g.buyTax+g.sellTax)<=10 ? 2 : -14;
+  if(g.codeSu)  s += g.unverified ? -8 : 5;
   if(g.have){
-    s += g.holders>=2e4?16 : g.holders>=3e3?12 : g.holders>=500?7 : g.holders>=100?3 : 0;
-    s += g.top<5?14 : g.top<15?9 : g.top<30?4 : g.top<50?-4 : -20;
-    s += (g.buyTax+g.sellTax)===0?10 : (g.buyTax+g.sellTax)<=10?5 : -12;
-    s += g.unverified?-8:6;
-    if(g.proxy) s-=6; if(g.mintable) s-=5; if(g.slipMod) s-=8; if(g.cooldown) s-=6;
-    s += g.lp>=50?8:0;
-  } else s -= 8;
-  const mc = t.mc||0;
-  s += mc<=1e6?12 : mc<=1e7?7 : mc<=5e7?2 : mc<=1e8?-4 : -10;
-  s += Math.max(-6, Math.min(12, (t.ch_h1||0)*0.4));
+    if(g.proxy) s -= 6;
+    if(g.mintable) s -= 8;                          /* pouvoir d'emettre = pouvoir de diluer */
+    if(g.slipMod) s -= 8;
+    if(g.cooldown) s -= 5;
+    if(g.lp >= 50) s += 5;
+  }
+
+  /* ---- LE MOUVEMENT ----
+   * Sur cinq minutes pour un jeton neuf : c'est la seule fenetre qui ait
+   * encore un sens quand il en a sept. */
+  const el = neuf ? (t.ch_m5||0) : (t.ch_h1||0);
+  s += Math.max(-8, Math.min(10, el * (neuf ? 0.25 : 0.4)));
+
   return s;
 }
+
 const SEUIL = 55;
 function analyse(t){
-  const g = t.g||{}; let secReject = null;
+  const g = t.g||{}, ch = t.chaine||{}; let secReject = null;
   if(g.have){
     if(g.honeypot) secReject = "honeypot";
     else if(g.cannotBuy) secReject = "achat impossible";
@@ -696,7 +790,15 @@ function analyse(t){
     else if(g.sellTax>10) secReject = "taxe vente "+g.sellTax+"%";
     else if(g.buyTax>15) secReject = "taxe achat "+g.buyTax+"%";
   }
-  const concReject = (g.have && g.top>=50) ? ("gros porteur "+g.top+"%") : null;
+  /* ---- LE REFUS QUI COMPTE SUR UN JETON NEUF ----
+   * GoPlus ne sait rien avant des heures ; la chaine, elle, sait tout de
+   * suite. La concentration mesuree dans les blocs prend donc le pas — et
+   * c'est elle qui protege vraiment, parce qu'elle est disponible au moment
+   * ou la decision se prend. */
+  const topVu = (ch.vu && ch.top !== null && ch.top !== undefined) ? ch.top
+              : (g.topSu ? g.top : null);
+  const concReject = (topVu !== null && topVu >= 50)
+    ? ("un porteur tient " + topVu.toFixed(0) + "% du circulant") : null;
   const tr = traitsDe(t);
   const base = scoreBase(t);
   /* Chaque agent apporte SA part. La somme est le score, et le detail reste
@@ -1269,6 +1371,10 @@ const GT = "https://api.geckoterminal.com/api/v2/networks/robinhood";
 const ENTETES = { "Accept":"application/json;version=20230302" };
 const GOPLUS_TTL = 6*3600*1000;   /* la securite d'un contrat ne change pas toutes les minutes */
 const CADENCE = 150000;           /* on relit toutes les deux minutes et demie */
+/* Au-dela, ce n'est plus un jeton neuf. Six heures : assez large pour ne pas
+   rater un pool cree en pleine nuit, assez etroit pour que « neuf » veuille
+   encore dire quelque chose. */
+const AGE_MAX_MIN = 360;
 const goplusCache = {};
 let enLecture = false, echecs = 0;
 
@@ -1290,13 +1396,24 @@ function dis(msg, alerte){
 }
 function phraseFond(){
   if(!REAL.ts) return "Aucune donnee lue pour l'instant — les agents attendent la chaine.";
-  return "Les agents lisent les vrais tokens de la chaine 🚶 · "
+  return "Les agents analysent les jetons qui viennent de naitre 🚶 · "
        + ETAT.positions.length + " position(s) ouverte(s) · relecture toutes les 2-3 min";
 }
 
 async function lisPools(){
   const pools = new Map(), toks = new Map();
-  for(const [fp, page] of [["trending_pools",1],["new_pools",1],["new_pools",2]]){
+  /* ---- CE QU'ON VIENT CHERCHER : DU NEUF ----
+   * Le but est d'analyser les jetons qui viennent de naitre. Le flux
+   * « nouveaux pools » en rend vingt par page, tous ages de quelques minutes
+   * — mesure : entre six et huit minutes au moment d'ecrire ceci. Trois
+   * pages, et RIEN d'autre.
+   *
+   * Le flux des tendances a ete essaye a cote, comme point de comparaison.
+   * Il ne servait a rien et nuisait : une valeur etablie occupait une place
+   * dans le pipeline, et pouvait finir en position — alors que ce n'est pas
+   * ce qu'on vient chercher. Une source qu'on lit sans jamais en apprendre
+   * quoi que ce soit est un appel de moins a faire. */
+  for(const [fp, page] of [["new_pools",1],["new_pools",2],["new_pools",3]]){
     const r = await fetch(GT+"/"+fp+"?include=base_token&page="+page, { headers:ENTETES });
     if(!r.ok) continue;
     const d = await r.json();
@@ -1310,6 +1427,9 @@ async function lisPools(){
       const c = {
         addr, sym:(t.symbol||"?").toUpperCase().slice(0,10), name:(t.name||"").slice(0,24),
         pool:a.address, feed:fp,
+        /* L'age en MINUTES : sur un jeton de sept minutes, l'age en jours ne
+           distingue plus rien, et c'est justement la variable qui compte. */
+        minutes: a.pool_created_at ? (Date.now() - Date.parse(a.pool_created_at))/60000 : null,
         /* LE PRIX : c'est lui qui autorise une position. Sans lui, l'Oracle
            refuse — on ne sait pas a quoi on achete. */
         prix: nn(a.base_token_price_usd),
@@ -1429,33 +1549,150 @@ async function lisDex(addr){
  * Mille deux cents blocs : sur une chaine a environ deux secondes le bloc,
  * cela fait a peu pres quarante minutes. Assez pour compter, assez peu pour
  * qu'un noeud public reponde sans refuser la plage. */
-const BLOCS_REGARDES = 1200;
-async function rpc(methode, params){
+/* ---- COMBIEN DE BLOCS, ET LA MESURE QUI CORRIGE LE COMMENTAIRE ----
+ *
+ * Cette constante valait 1200, avec un commentaire qui promettait « environ
+ * quarante minutes, sur une chaine a deux secondes le bloc ». Mesure faite
+ * sur la chaine : 0,101 seconde le bloc. Dix par seconde. Les 1200 blocs
+ * couvraient donc DEUX MINUTES, pas quarante — et sur un jeton de sept
+ * minutes, deux minutes de recul ne disent presque rien.
+ *
+ * Un chiffre commente est un chiffre qu'on croit sur parole. Celui-ci se
+ * calcule : une heure de chaine, au temps de bloc mesure. Et pour un jeton
+ * qui vient de naitre, on remonte a SA naissance plutot qu'a une heure
+ * arbitraire — le noeud accepte des plages de deux cent mille blocs, verifie
+ * avant d'ecrire cette ligne, et l'histoire complete d'un jeton de sept
+ * minutes tient en dix-neuf transferts. */
+const BLOC_SECONDES = 0.101;
+const BLOCS_HEURE = Math.round(3600 / BLOC_SECONDES);      /* ~35 600 */
+const BLOCS_PLAFOND = 200000;                              /* la plage que le noeud accepte */
+
+/* ---- LE NOEUD PUBLIC COUPE, ET IL FAUT LE PRENDRE AU SERIEUX ----
+ *
+ * Mesure faite sur six jetons a la file : QUATRE refus « Too Many
+ * Requests ». Un noeud public gratuit accepte quelques lectures de journaux
+ * par minute, pas dix. Sans ce garde, la lecture de la chaine — la seule
+ * source qui sache quelque chose d'un jeton de sept minutes — echoue sur la
+ * majorite d'entre eux, et l'ecran affiche « inconnu » partout sans dire
+ * pourquoi.
+ *
+ * On espace donc nos propres appels — plus efficace que de reprendre apres
+ * coup, et ca menage un service qu'on ne paie pas — avec UNE reprise apres
+ * pause. Deux reprises sur un noeud qui refuse, c'est se faire couper plus
+ * longtemps. Et un echec reste un echec : il rend « inconnu », que la note
+ * PENALISE. L'ignorance ne rapporte jamais de points ici. */
+let _rpcDernier = 0;
+async function rpc(methode, params, reprise){
+  const depuis = Date.now() - _rpcDernier;
+  if(depuis < 900) await new Promise(x => setTimeout(x, 900 - depuis));
+  _rpcDernier = Date.now();
   const r = await fetch(RPC_RH, { method:"POST", headers:{ "content-type":"application/json" },
     body: JSON.stringify({ jsonrpc:"2.0", id:1, method:methode, params:params||[] }) });
+  let j = null;
+  try{ j = await r.json(); }catch(e){ j = null; }
+  const coupe = r.status === 429 || (j && j.error && (j.error.code === 429
+    || /too many|rate/i.test(String(j.error.message||""))));
+  if(coupe && !reprise){
+    await new Promise(x => setTimeout(x, 2500));
+    return rpc(methode, params, true);
+  }
   if(!r.ok) throw new Error("rpc "+r.status);
-  const j = await r.json();
+  if(!j) throw new Error("rpc : reponse illisible");
   if(j.error) throw new Error(j.error.message||"rpc");
   return j.result;
 }
-async function lisChaine(addr){
+
+let _bloc = { n:0, t:0 };
+async function blocCourant(){
+  if(_bloc.n && (Date.now()-_bloc.t) < 5000) return _bloc.n;
+  const n = parseInt(await rpc("eth_blockNumber"), 16);
+  _bloc = { n, t:Date.now() };
+  return n;
+}
+
+const ZERO = "0x0000000000000000000000000000000000000000";
+const MORT = "0x000000000000000000000000000000000000dead";
+
+/* ---- CE QUE LA CHAINE SAIT D'UN JETON NEUF, ET QUE PERSONNE D'AUTRE NE SAIT ----
+ *
+ * Sur un jeton de sept minutes, GoPlus rend sept champs vides : il n'a pas
+ * encore indexe. Les blocs, eux, contiennent DEJA tout. On refait donc le
+ * calcul nous-memes, a partir des transferts :
+ *
+ *   - qui detient quoi, en soldant les entrees et les sorties par adresse ;
+ *   - la part du plus gros porteur, hors pool et hors adresses mortes —
+ *     c'est la mesure de risque numero un sur un jeton neuf ;
+ *   - combien d'adresses distinctes en detiennent vraiment ;
+ *   - ce qui est parti en fumee (0x0 et 0x…dead), qui ne peut plus vendre.
+ *
+ * Ce n'est pas une estimation : c'est la somme des transferts, et elle est
+ * exacte. Quand elle contredit un service, c'est elle qui a raison.
+ */
+async function lisChaine(addr, minutes){
   const c = frais(CACHE.chaine, addr, TTL_CHAINE); if(c !== null) return c;
   try{
-    const bloc = parseInt(await rpc("eth_blockNumber"), 16);
-    const debut = Math.max(0, bloc - BLOCS_REGARDES);
+    const bloc = await blocCourant();
+    /* Assez loin pour couvrir toute la vie du jeton quand il est jeune, une
+       heure sinon. Une plage trop courte donnerait une concentration fausse :
+       on verrait des ventes sans les achats qui les precedent. */
+    const voulu = (minutes > 0 && minutes < 300)
+      ? Math.ceil(minutes * 60 / BLOC_SECONDES) + 6000
+      : BLOCS_HEURE;
+    const large = Math.min(BLOCS_PLAFOND, voulu);
+    const debut = Math.max(0, bloc - large);
     const logs = await rpc("eth_getLogs", [{
       address: addr, topics:[SUJET_TRANSFERT],
       fromBlock:"0x"+debut.toString(16), toBlock:"0x"+bloc.toString(16) }]);
-    const recus = {}, envoyes = {};
+
+    const solde = {}, recus = {}, emis = {};
+    let brules = 0, total = 0;
+    const adr = (t) => ("0x" + String(t||"").slice(26)).toLowerCase();
+    /* ---- LA VALEUR N'EST PAS TOUJOURS DANS LES DONNEES ----
+     * `Transfer(address,address,uint256)` laisse le montant hors index, donc
+     * dans `data`. Mais rien n'oblige un contrat a suivre : certains
+     * INDEXENT le montant, et il arrive alors dans `topics[3]` avec un
+     * `data` vide. Ne lire que `data` rendait zero pour tout le monde — et
+     * donc « zero porteur », qui n'est pas une lecture ratee mais une
+     * CONCLUSION FAUSSE : la page en tirait une penalite de score sur un
+     * jeton qui pouvait etre parfaitement reparti. Mesure : trois des six
+     * jetons regardes tombaient dedans. */
+    let lu = 0;
     for(const l of (logs||[])){
-      const de = "0x"+String(l.topics[1]||"").slice(26);
-      const vers = "0x"+String(l.topics[2]||"").slice(26);
-      recus[vers] = 1; envoyes[de] = 1;
+      const de = adr(l.topics[1]), vers = adr(l.topics[2]);
+      const brut = (l.data && l.data !== "0x") ? l.data
+                 : (l.topics.length > 3 ? l.topics[3] : null);
+      let v = 0;
+      if(brut){ try{ v = Number(BigInt(brut)); lu++; }catch(e){ v = 0; } }
+      if(!isFinite(v)) v = 0;
+      solde[de] = (solde[de] || 0) - v;
+      solde[vers] = (solde[vers] || 0) + v;
+      recus[vers] = 1; emis[de] = 1;
+      if(de === ZERO) total += v;                 /* frappe */
+      if(vers === ZERO || vers === MORT) brules += v;
     }
+    /* Le pool ne « detient » pas : il fait le marche. Le compter comme un
+       gros porteur ferait passer chaque jeton pour un jeton concentre. */
+    const pool = String((CACHE.poolDe && CACHE.poolDe[addr]) || "").toLowerCase();
+    let circulant = 0, plusGros = 0, porteurs = 0;
+    for(const a in solde){
+      if(a === ZERO || a === MORT || a === pool) continue;
+      const v = solde[a];
+      if(v <= 0) continue;
+      circulant += v; porteurs++;
+      if(v > plusGros) plusGros = v;
+    }
+    /* Aucun montant lisible : on ne SAIT pas qui detient quoi. On le dit,
+       plutot que de rendre zero porteur — ce serait une conclusion tiree
+       d'un champ qu'on n'a pas su lire. */
+    const su = lu > 0;
+    const top = (su && circulant > 0) ? (plusGros / circulant * 100) : null;
     return garde(CACHE.chaine, addr, {
-      vu:true, transferts:(logs||[]).length,
-      recepteurs:Object.keys(recus).length, emetteurs:Object.keys(envoyes).length,
-      blocs:BLOCS_REGARDES
+      vu:true, montantsLus:su, transferts:(logs||[]).length,
+      recepteurs:Object.keys(recus).length, emetteurs:Object.keys(emis).length,
+      porteurs: su ? porteurs : null,
+      top: top===null ? null : Math.round(top*10)/10,
+      brule: (su && total>0) ? Math.round(brules/total*1000)/10 : null,
+      blocs:large
     });
   }catch(e){ return garde(CACHE.chaine, addr, { vu:false }); }
 }
@@ -1464,7 +1701,8 @@ async function lisChaine(addr){
    valent le detour : vingt tokens fois trois services a chaque relecture,
    c'est la coupure assuree. */
 async function enrichis(t){
-  const [o, d, ch] = await Promise.all([ lisOhlcv(t.pool), lisDex(t.addr), lisChaine(t.addr) ]);
+  const [o, d, ch] = await Promise.all([
+    lisOhlcv(t.pool), lisDex(t.addr), lisChaine(t.addr, t.minutes) ]);
   t.vola = o.vola;
   t.dex = d;
   t.chaine = ch;
@@ -1496,16 +1734,47 @@ async function lisGoplus(t){
   }
   const lp = (info.lp_holders||[]).reduce((s,h)=>
     s + ((Number(h.is_locked)===1 || /lock|burn|null/i.test(h.tag||"")) ? nn(h.percent)*100 : 0), 0);
+  /* ---- « IL A REPONDU » N'EST PAS « IL SAIT » ----
+   *
+   * C'etait le defaut le plus dangereux de cette page, et il visait
+   * exactement les jetons qu'on veut analyser. Sur un jeton de sept minutes,
+   * GoPlus rend SEPT champs : deux taxes vides, une adresse de proprietaire,
+   * rien d'autre. Pas de honeypot, pas de detenteurs, pas de code verifie.
+   *
+   * `have` valait « il y a des clefs » — donc vrai. Et tout le reste se
+   * lisait comme une bonne nouvelle : pas de drapeau honeypot valait « pas
+   * un honeypot », zero detenteur valait « aucune concentration » (+14),
+   * taxes absentes valait « aucune taxe » (+10), et `is_open_source`
+   * manquant valait « code verifie » (+6). Trente points d'IGNORANCE
+   * comptes comme de la surete, sur la classe de jetons ou le risque de
+   * fuite est le plus grand.
+   *
+   * `have` exige maintenant que le service ait vraiment repondu sur ce qu'on
+   * lui demande. Sinon tout passe en « inconnu », et l'inconnu ne rapporte
+   * jamais de points. */
+  const su = (x) => x === "1";
+  const sait = (info.is_honeypot !== undefined) || (info.holder_count !== undefined)
+               || (info.is_open_source !== undefined);
   t.g = {
-    have: !!Object.keys(info).length,
-    honeypot: info.is_honeypot==="1",
+    have: sait,
+    honeypot: su(info.is_honeypot),
+    /* Une taxe qu'on n'a pas lue n'est pas une taxe de zero. */
+    taxeSue: info.buy_tax !== undefined && info.buy_tax !== "",
     buyTax: Math.round(nn(info.buy_tax)*100), sellTax: Math.round(nn(info.sell_tax)*100),
-    holders: parseInt(info.holder_count)||0, top: Math.round(top*10)/10, lp: Math.round(lp),
+    detSue: info.holder_count !== undefined,
+    holders: parseInt(info.holder_count)||0,
+    /* Et zero gros porteur, quand la liste est vide, veut dire qu'on n'a pas
+       la liste — pas que la detention est parfaitement repartie. */
+    topSu: (hs && hs.length > 0),
+    top: Math.round(top*10)/10, lp: Math.round(lp),
     cannotBuy: info.cannot_buy==="1", pausable: info.transfer_pausable==="1",
     ownerBal: info.owner_change_balance==="1", selfd: info.selfdestruct==="1",
     perslip: info.personal_slippage_modifiable==="1", hpSame: info.honeypot_with_same_creator==="1",
     slipMod: info.slippage_modifiable==="1", cooldown: info.trading_cooldown==="1",
-    proxy: info.is_proxy==="1", unverified: info.is_open_source==="0", mintable: info.is_mintable==="1"
+    proxy: su(info.is_proxy),
+    codeSu: info.is_open_source !== undefined,
+    unverified: info.is_open_source === "0",
+    mintable: su(info.is_mintable)
   };
   goplusCache[t.addr] = { t:Date.now(), g:t.g };
 }
@@ -1516,8 +1785,34 @@ async function lisTout(manuel){
   const btn = $("refresh");
   if(manuel){ btn.textContent = "⏳ …"; btn.disabled = true; }
   try{
-    let liste = (await lisPools()).filter(t=>t.liq > 800).sort((a,b)=>b.vol24-a.vol24).slice(0, 20);
-    if(!liste.length) throw new Error("aucun pool");
+    /* ---- LE FILTRE ET LE TRI DECIDENT DE CE QU'ON REGARDE ----
+     *
+     * Ils triaient par volume sur vingt-quatre heures. Sur un jeton de sept
+     * minutes, ce volume n'existe pas : le tri remontait donc les valeurs
+     * etablies — un jeton a deux cents millions et quatre-vingt-dix mille
+     * detenteurs — et le neuf ne passait jamais. On trie par AGE.
+     *
+     * Le plancher de liquidite reste, mais bas et pour une raison precise :
+     * en dessous de quelques centaines de dollars, une position de cinquante
+     * dollars deplace le prix a elle seule, et le rendement mesure ne serait
+     * pas celui du marche mais celui de notre propre passage. On ecarte
+     * aussi les liquidites NEGATIVES — releve tel quel sur la chaine, c'est
+     * une lecture cassee, pas un pool pauvre. */
+    /* ---- ET RIEN DE VIEUX N'ENTRE ----
+     * Le flux peut rendre un pool ancien — un jeton relance, un pool
+     * secondaire cree tard sur un jeton de six mois. La borne d'age le tient
+     * dehors : le but est d'analyser du NEUF, et un seul jeton etabli dans
+     * le pipeline suffit a fausser ce que les agents apprennent. */
+    let liste = (await lisPools())
+      .filter(t => t.liq >= 500 && t.prix > 0)
+      .filter(t => t.minutes !== null && t.minutes !== undefined && t.minutes <= AGE_MAX_MIN)
+      .sort((a,b) => (a.minutes === null ? 1e9 : a.minutes) - (b.minutes === null ? 1e9 : b.minutes))
+      .slice(0, 20);
+    if(!liste.length) throw new Error("aucun jeton neuf assez liquide en ce moment");
+    /* Le pool est retenu pour que la lecture de la chaine sache l'ecarter du
+       calcul des porteurs : il fait le marche, il ne detient pas. */
+    CACHE.poolDe = CACHE.poolDe || {};
+    for(const t of liste) CACHE.poolDe[t.addr] = t.pool;
 
     /* ---- LES PRIX D'ABORD, LES POSITIONS ENSUITE ----
        On regle avant de repartir : une position due depuis hier se ferme au
@@ -1539,11 +1834,18 @@ async function lisTout(manuel){
      * passent deja la note de base — ce sont les seuls qui peuvent finir en
      * position, et donc les seuls dont le detail change quelque chose.
      * Les caches font le reste : rien n'est redemande avant son heure. */
-    const candidats = liste.slice().sort((a,b)=>scoreBase(b)-scoreBase(a)).slice(0, 8);
+    /* Les plus JEUNES, pas les mieux notes : la note de base ne sait rien dire
+       d'un jeton de sept minutes, et c'est precisement la lecture de la
+       chaine qui va le lui apprendre. Les trier par note reviendrait a
+       n'enrichir que ce qu'on croit deja connaitre. */
+    /* Six, pas dix : chacun coute une lecture de journaux sur un noeud public
+       qui coupe au-dela de quelques-unes par minute. Mieux vaut six jetons
+       vraiment lus que dix « inconnus ». */
+    const candidats = liste.slice(0, 6);
     for(const t of candidats){
       if(manuel) btn.textContent = "🔎 "+t.sym;
       await enrichis(t);
-      await new Promise(x=>setTimeout(x, 260));
+      await new Promise(x=>setTimeout(x, 400));
     }
     REAL = { ts:Date.now(), tokens:liste };
     ETAT.maj = REAL.ts;

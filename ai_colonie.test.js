@@ -46,7 +46,11 @@ function poolsFaux(prix, suffixe){
       market_cap_usd: String(2_000_000 * (i + 1)),
       fdv_usd: String(2_000_000 * (i + 1)),
       reserve_in_usd: String(120_000 + i * 40_000),
-      pool_created_at: '2026-07-0' + ((i % 8) + 1) + 'T10:00:00Z',
+      /* ---- LE BANC DOIT VIEILLIR AVEC LA PAGE ----
+         Ces pools dataient de plusieurs mois. La page ne regarde plus que le
+         neuf : un banc qui sert du vieux ne mesure plus rien. Quelques
+         minutes, comme le vrai flux. */
+      pool_created_at: new Date(Date.now() - (5 + i) * 60000).toISOString().replace(/\.\d+Z$/, 'Z'),
       volume_usd: { m5:'900', m15:'3000', m30:'7000', h1:'40000', h6:'180000', h24:'900000' },
       transactions: { m5:{buys:4,sells:3,buyers:4,sellers:3}, h1:{buys:110,sells:80,buyers:60,sellers:40},
                       h6:{buys:600,sells:520,buyers:210,sellers:180}, h24:{buys:2200,sells:2100,buyers:800,sellers:700} },
@@ -63,6 +67,44 @@ function poolsFaux(prix, suffixe){
   }
   return JSON.stringify({ data, included });
 }
+const SUJET = '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
+/* Des pools de sept minutes : peu de liquidite, pas d historique, un prix.
+   C'est exactement ce que rend le vrai flux « nouveaux pools ». */
+function poolsNeufs(){
+  const il = (m) => new Date(Date.now() - m*60000).toISOString().replace(/\.\d+Z$/, 'Z');
+  const data = [], included = [];
+  for (let i = 0; i < 6; i++) {
+    data.push({ id:'p'+i, type:'pool', attributes:{
+      address:'0x' + ('a'+i).repeat(20).slice(0,40), name:'NEUF'+i+' / WETH',
+      base_token_price_usd:'0.0000042', market_cap_usd:'', fdv_usd:'41000',
+      reserve_in_usd:String(4000 + i*300), pool_created_at: il(6 + i),
+      volume_usd:{ m5:'900', h1:'1200', h6:'1200', h24:'1200' },
+      transactions:{ m5:{buys:4,sells:1,buyers:4,sellers:1}, h1:{buys:9,sells:3,buyers:8,sellers:3},
+                     h6:{buys:9,sells:3,buyers:8,sellers:3}, h24:{buys:9,sells:3,buyers:8,sellers:3} },
+      price_change_percentage:{ m5:'6.0', h1:'6.0', h6:'6.0', h24:'6.0' } },
+      relationships:{ base_token:{ data:{ id:'t'+i } } } });
+    included.push({ id:'t'+i, type:'token',
+      attributes:{ address:'0x' + ('c'+i).repeat(20).slice(0,40), symbol:'NEUF'+i, name:'Neuf '+i } });
+  }
+  return JSON.stringify({ data, included });
+}
+/* Et une valeur etablie : grosse liquidite, gros volume, des mois d age.
+   Si le tri est mauvais, c'est elle qui remonte. */
+function poolsVieux(){
+  return JSON.stringify({
+    data:[{ id:'pv', type:'pool', attributes:{
+      address:'0x' + 'f'.repeat(40), name:'VIEUX / WETH',
+      base_token_price_usd:'1.5', market_cap_usd:'210000000', fdv_usd:'210000000',
+      reserve_in_usd:'2700000', pool_created_at:'2026-07-01T19:38:42Z',
+      volume_usd:{ m5:'9000', h1:'90000', h6:'500000', h24:'22000000' },
+      transactions:{ m5:{buys:40,sells:30,buyers:35,sellers:28}, h1:{buys:400,sells:380,buyers:300,sellers:280},
+                     h6:{buys:2000,sells:1900,buyers:900,sellers:850}, h24:{buys:9000,sells:8800,buyers:3000,sellers:2900} },
+      price_change_percentage:{ m5:'1.2', h1:'2.7', h6:'10.5', h24:'-8.2' } },
+      relationships:{ base_token:{ data:{ id:'tv' } } } }],
+    included:[{ id:'tv', type:'token',
+      attributes:{ address:'0x' + 'e'.repeat(40), symbol:'VIEUX', name:'Valeur etablie' } }] });
+}
+
 const GOPLUS_PROPRE = (adr) => JSON.stringify({ code:1, result:{ [adr]: {
   is_honeypot:'0', buy_tax:'0', sell_tax:'0', holder_count:'12000',
   is_open_source:'1', is_proxy:'0', is_mintable:'0', transfer_pausable:'0',
@@ -325,7 +367,124 @@ const etatDe = (page) => page.evaluate(() => JSON.parse(localStorage.getItem('sw
     await deux.page.close(); await ctx.close();
   }
 
-  /* ==================== 5. UN PIEGE EST BLOQUE ==================== */
+  /* ==================== 5. C'EST DU NEUF QUE L'ON REGARDE ====================
+   *
+   * « Mais le but est d'analyser des nouveaux tokens. »
+   *
+   * La page triait par volume sur vingt-quatre heures. Un jeton de sept
+   * minutes n'en a pas : le tri remontait donc les valeurs etablies — deux
+   * cents millions de capitalisation, quatre-vingt-dix mille detenteurs — et
+   * le neuf ne passait jamais la porte. Et la note punissait ce qui n'a pas
+   * d'histoire, donc aucun jeton neuf n'atteignait le seuil.
+   *
+   * Ce qui se mesure ici : le flux demande, l'ordre du tri, et surtout que
+   * l'IGNORANCE ne rapporte pas de points. Sur un jeton de sept minutes,
+   * GoPlus rend sept champs vides ; les lire comme « pas de honeypot, aucune
+   * concentration, aucune taxe, code verifie » donnait trente points de
+   * surete a un jeton dont on ne savait rien. C'est la faute la plus chere
+   * possible, et elle visait exactement la classe de jetons qu'on vient
+   * chercher.
+   */
+  console.log('\n-- c est du neuf que l on regarde --');
+  {
+    const demandes = [];
+    const ctx = await nav.newContext({ viewport:{ width:1280, height:900 } });
+    const page = await ctx.newPage();
+    const boum = [];
+    page.on('pageerror', e => boum.push(String(e).slice(0, 200)));
+    let logsDemandes = 0;
+    await page.route('**/api.geckoterminal.com/**', r => {
+      const u = r.request().url();
+      demandes.push(u.replace(/^.*networks\/robinhood\//, '').replace(/[?&]include.*$/, ''));
+      if (/ohlcv/.test(u)) return r.fulfill({ contentType:'application/json', body:OHLCV });
+      /* Le flux « nouveaux » rend des jetons de quelques minutes, le flux
+         « tendances » des valeurs etablies. Si la page trie mal, elle
+         retiendra les secondes. */
+      return r.fulfill({ contentType:'application/json',
+        body: /new_pools/.test(u) ? poolsNeufs() : poolsVieux() });
+    });
+    /* GoPlus comme il repond VRAIMENT sur un jeton de sept minutes : sept
+       champs, dont deux taxes vides. Rien d'autre. */
+    await page.route('**/api.gopluslabs.io/**', r => {
+      const adr = ((r.request().url().match(/contract_addresses=([^&]+)/)||[])[1]||'').toLowerCase();
+      return r.fulfill({ contentType:'application/json', body: JSON.stringify({ code:1,
+        result:{ [adr]: { buy_tax:'', sell_tax:'', owner_address:'0x'+'1'.repeat(40),
+                          holders:[], lp_holders:[] } } }) });
+    });
+    await page.route('**/api.dexscreener.com/**', r =>
+      r.fulfill({ contentType:'application/json', body:DEXS }));
+    await page.route('**/rpc.mainnet.chain.robinhood.com/**', r => {
+      const q = JSON.parse(r.request().postData() || '{}');
+      if (q.method === 'eth_blockNumber')
+        return r.fulfill({ contentType:'application/json',
+          body:JSON.stringify({jsonrpc:'2.0',id:1,result:'0x30c0964'}) });
+      if (q.method === 'eth_getLogs') {
+        logsDemandes++;
+        /* Une adresse qui tient TOUT le circulant : la forme exacte d'un
+           jeton dont le createur peut sortir en une transaction. Aucun
+           service ne le sait a sept minutes ; les blocs, si. */
+        const gros = '0x' + '0'.repeat(24) + 'a'.repeat(40);
+        const petit = '0x' + '0'.repeat(24) + 'b'.repeat(40);
+        const zero = '0x' + '0'.repeat(64);
+        const val = (n) => '0x' + n.toString(16).padStart(64, '0');
+        return r.fulfill({ contentType:'application/json', body:JSON.stringify({ jsonrpc:'2.0', id:1,
+          result:[
+            { topics:[SUJET, zero, gros], data:val(1000000) },     /* frappe vers le gros */
+            { topics:[SUJET, gros, petit], data:val(20000) },      /* une miette a un autre */
+          ] }) });
+      }
+      return r.fulfill({ contentType:'application/json',
+        body:JSON.stringify({jsonrpc:'2.0',id:1,result:null}) });
+    });
+    await page.goto('http://127.0.0.1:' + port + '/' + PAGE, { waitUntil:'domcontentloaded' });
+    await page.waitForTimeout(600);
+    await page.click('#speed'); await page.click('#speed');
+    await page.waitForTimeout(26000);
+
+    console.log('   flux demandes : ' + JSON.stringify([...new Set(demandes)]));
+    ok(demandes.some(d => /^new_pools/.test(d)),
+       'la page demande bien le flux des NOUVEAUX pools');
+    /* Et RIEN d'autre : le flux des tendances a ete essaye comme point de
+       comparaison, il occupait une place dans le pipeline et pouvait finir
+       en position. Une source qu'on lit sans jamais en apprendre quoi que ce
+       soit est un appel de moins a faire. */
+    ok(!demandes.some(d => /^trending/.test(d)),
+       'et elle ne demande PLUS les tendances : ce n est pas ce qu on vient chercher');
+
+    /* ---- LA CHAINE EST VRAIMENT INTERROGEE ----
+     * Sur un jeton de sept minutes, c'est la seule source qui sache quelque
+     * chose. Un jour, un remaniement a fait disparaitre la fonction qui
+     * l'appelle : tout tombait en « inconnu », et rien ne le disait. */
+    ok(logsDemandes >= 1,
+       'les transferts sont vraiment lus dans les blocs (' + logsDemandes + ' lectures)');
+
+    const vu = await page.evaluate(() =>
+      [...document.querySelectorAll('#flow .tok, #jtListe .wl-jeton')].map(x => x.textContent));
+    const pipeline = await page.evaluate(() =>
+      [...document.querySelectorAll('#flow .tok .sym')].map(x => x.textContent));
+    console.log('   dans le pipeline : ' + JSON.stringify(pipeline));
+    ok(!pipeline.some(x => /VIEUX/.test(x)),
+       'ce qui traverse la colonie n est pas une valeur etablie ('
+       + pipeline.join(', ') + ')');
+
+    /* ---- ET L IGNORANCE NE RAPPORTE PAS DE POINTS ----
+     * Le jeton du banc est concentre a 98 % sur une adresse — lisible dans
+     * les blocs — et GoPlus n en sait rien. Il ne doit PAS finir en
+     * position. */
+    const e = await etatDe(page);
+    const pos = ((e||{}).positions||[]);
+    const bloques = ((e||{}).compteurs||{}).whaleBloque || 0;
+    console.log('   positions : ' + pos.length + ' · bloques par le Whale : ' + bloques);
+    ok(pos.length === 0,
+       'un jeton dont UNE adresse tient tout le circulant ne finit pas en position');
+    ok(bloques >= 1,
+       'et c est le Whale qui l arrete, sur la concentration lue dans les blocs ('
+       + bloques + ')');
+    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
+    await page.close(); await ctx.close();
+  }
+
+  /* ==================== 6. UN PIEGE EST BLOQUE ==================== */
   console.log('\n-- un honeypot ne passe pas --');
   {
     const { page, boum } = await ouvre(nav, port, { prix:1, piege:true });

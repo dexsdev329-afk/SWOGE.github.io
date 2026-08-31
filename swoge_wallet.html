@@ -68,7 +68,7 @@
      A savoir : cela ne sauve pas la page DEJA en cache chez quelqu'un, qui ne
      contient pas ces lignes. Ce garde-fou vaut a partir de celle-ci. -->
 <script>
-var MARQUE_PAGE = '3895f100';
+var MARQUE_PAGE = '4f6086e7';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -718,6 +718,9 @@ body{
    un menu qui ne s'ouvre pas sans le dire passe pour casse. */
 .wl-pick.fige .wl-pick-b{ cursor:default; opacity:.75 }
 .wl-pick.fige .fl{ visibility:hidden }
+/* Une porte a sens unique se dit en gris, pas en couleur d'action : elle
+   n'invite a rien, elle previent. */
+.versPont.sansSortie{ background:none; border:1px solid var(--bord); color:var(--doux) }
 
 /* ==================== LE CHOIX D'UN JETON ====================
  *
@@ -1520,7 +1523,25 @@ body{
         <div class="wl-rang"><span>Balance</span><b id="swSolde">—</b></div>
       </div>
       <div class="wl-carte">
-        <div class="wl-champ">
+        <!-- ---- LA CHAINE D'ARRIVEE ----
+             Le relayeur depose ou l'on veut : ici, sur Base, sur BNB, sur
+             Solana. Ce que cette page sait faire ENSUITE differe pourtant
+             d'une chaine a l'autre, et c'est ce qu'il faut dire avant, pas
+             apres — voir la note sous le bouton. -->
+        <button type="button" class="wl-rang wl-detail" id="swVersChB"
+                aria-haspopup="dialog">
+          <span>To</span>
+          <b class="wl-chn"><img id="swVersChImg" alt=""><span id="swVersChNom">&mdash;</span></b>
+          <i aria-hidden="true">&#9662;</i>
+        </button>
+        <!-- Sur une autre chaine, cette page ne tient aucune liste de jetons :
+             on colle un contrat, et c'est le RELAYEUR qui dit ce que c'est.
+             Inventer un nom ou des decimales ici serait inventer un solde. -->
+        <div class="wl-champ" id="swVersAdrChamp" hidden>
+          <label for="swVersAdr">TOKEN CONTRACT (leave empty for the chain's own coin)</label>
+          <input id="swVersAdr" placeholder="0x… or a Solana mint" autocomplete="off" spellcheck="false">
+        </div>
+        <div class="wl-champ" id="swVersChamp">
           <span class="wl-lab" id="swVersL">YOU RECEIVE</span>
           <div class="wl-pick" data-pour="swVers">
             <button type="button" class="wl-pick-b" id="swVersB"
@@ -1556,6 +1577,12 @@ body{
           <div class="wl-rang" id="swTempsR" hidden><span>Arrives in</span><b id="swTemps">—</b></div>
         </div>
       </div>
+      <!-- ---- CE QUE LA PAGE SAURA FAIRE ENSUITE ----
+           Elle n'apparait que pour une arrivee ailleurs, et elle dit la
+           verite entiere : ce qu'on pourra voir, ce qu'on pourra revendre, et
+           ce qu'on ne pourra pas. Un achat dont on ne peut pas sortir n'est
+           pas un achat, c'est un don. -->
+      <p class="wl-note" id="swSortie" hidden></p>
       <button class="wl-b" id="swPartir" type="button">Swap</button>
       <p class="wl-note" id="swNote"></p>
     </div>
@@ -2318,6 +2345,93 @@ function chargePerso(){
                   v4: (Object.prototype.toString.call(j.v4) === '[object Array]') ? j.v4 : [] });
   }
 }
+/* ==================== CE QU'ON DETIENT SUR UNE AUTRE CHAINE ====================
+ *
+ * Un jeton achete sur BNB, sur Base ou sur Solana n'existait nulle part dans
+ * cette page : ni solde, ni ligne, ni moyen de le revendre. C'est exactement
+ * le defaut qu'on a deja paye une fois avec l'ETH parti sur Base — on
+ * ouvrait une porte d'entree sans porte de sortie.
+ *
+ * Un jeton distant se retient donc sur le disque, avec SA chaine. Il entre
+ * dans la liste tout seul quand on vient d'en acheter un : c'est le moment
+ * ou l'on sait tout de lui — son contrat, son symbole, ses decimales, dits
+ * par le relayeur qui vient de le livrer.
+ *
+ * La cle porte la chaine ET le contrat : le meme symbole existe sur cinq
+ * chaines a la fois, et deux lignes qui se confondraient feraient signer une
+ * vente sur la mauvaise.
+ */
+var CLE_DISTANTS = 'swogeJetonsDistants';
+function cleDistante(idChaine, adr){ return 'd' + idChaine + '-' + String(adr).toLowerCase(); }
+
+function chargeDistants(){
+  var l = [];
+  try{ l = JSON.parse(localStorage.getItem(CLE_DISTANTS) || '[]'); }catch(e){ l = []; }
+  if(Object.prototype.toString.call(l) !== '[object Array]') return;
+  for(var i=0;i<l.length;i++){
+    var d = l[i];
+    if(!d || !d.adr || !d.chaine || !chaineConnue(d.chaine)) continue;
+    if(d.chaine === CHAINE.id) continue;          /* ici, ce sont les jetons « perso » */
+    var c = cleDistante(d.chaine, d.adr);
+    if(J(c)) continue;
+    JETONS.push({ cle:c, sym:String(d.sym||'?').slice(0,12),
+                  nom:String(d.nom||'').slice(0,48), adr:d.adr, dec:d.dec|0,
+                  logo:d.logo || chaineDuPont(d.chaine).logo,
+                  chaine:d.chaine, distant:true });
+  }
+}
+function sauveDistants(){
+  var l = [];
+  for(var i=0;i<JETONS.length;i++){
+    var j = JETONS[i]; if(!j.distant) continue;
+    l.push({ adr:j.adr, sym:j.sym, nom:j.nom, dec:j.dec, logo:j.logo, chaine:j.chaine });
+  }
+  try{ localStorage.setItem(CLE_DISTANTS, JSON.stringify(l.slice(0, 40))); }catch(e){}
+}
+/* Rend le jeton, qu'il vienne d'etre ajoute ou qu'il fut deja la. */
+function ajouteDistant(idChaine, adr, sym, nom, dec, logo){
+  if(!adr || !chaineConnue(idChaine) || idChaine === CHAINE.id) return null;
+  var c = cleDistante(idChaine, adr), deja = J(c);
+  if(deja) return deja;
+  var ch = chaineDuPont(idChaine);
+  var j = { cle:c, sym:String(sym||'?').slice(0,12),
+            nom:String(nom || ((sym||'Token') + ' on ' + ch.nom)).slice(0,48),
+            adr:adr, dec:(dec|0) || 18, logo:logo || ch.logo,
+            chaine:idChaine, distant:true };
+  JETONS.push(j); sauveDistants();
+  return j;
+}
+function oublieDistant(cle){
+  for(var i=0;i<JETONS.length;i++) if(JETONS[i].cle===cle && JETONS[i].distant){
+    JETONS.splice(i,1); delete soldes[cle]; sauveDistants(); return true;
+  }
+  return false;
+}
+
+/* ---- LE SOLDE D'UN JETON SPL ----
+ * Solana ne tient pas les soldes dans le contrat du jeton mais dans un
+ * compte separe par proprietaire. Aucun compte ne veut dire aucun jeton — et
+ * c'est un VRAI zero, pas une lecture ratee : les deux se distinguent ici,
+ * parce que les confondre est la faute qui revient le plus souvent dans
+ * cette page. */
+async function soldeSpl(mint, dec){
+  if(!solAdr) throw new Error('pas d adresse solana');
+  var r = await borne(fetch(SOL_RPC, { method:'POST',
+    headers:{ 'content-type':'application/json' },
+    body: JSON.stringify({ jsonrpc:'2.0', id:1, method:'getTokenAccountsByOwner',
+      params:[solAdr, { mint:mint }, { encoding:'jsonParsed' }] }) }), 12000, 'spl');
+  var j = await r.json();
+  var v = j && j.result && j.result.value;
+  if(!v) throw new Error('lecture spl');
+  var t = ethers.BigNumber.from(0);
+  for(var i=0;i<v.length;i++){
+    var a = v[i] && v[i].account && v[i].account.data && v[i].account.data.parsed
+          && v[i].account.data.parsed.info && v[i].account.data.parsed.info.tokenAmount;
+    if(a && a.amount) t = t.add(ethers.BigNumber.from(String(a.amount)));
+  }
+  return t;
+}
+
 function sauvePerso(){
   var l = [];
   for(var i=0;i<JETONS.length;i++){
@@ -2880,8 +2994,12 @@ function lec(){
   if(!lecteur) lecteur = new ethers.providers.StaticJsonRpcProvider(CHAINE.rpc, CHAINE.id);
   return lecteur;
 }
-function erc(adr, avecSigner){
-  return new ethers.Contract(adr, ERC20_ABI, avecSigner && signer ? signer : lec());
+/* `fournisseur` : le lecteur d'une AUTRE chaine. Sans lui, un jeton de Base
+   se lisait sur la Robinhood Chain, ou son contrat n'existe pas — et un
+   contrat absent rend zero, ce qu'on ne doit jamais afficher. */
+function erc(adr, avecSigner, fournisseur){
+  return new ethers.Contract(adr, ERC20_ABI,
+    avecSigner && signer ? signer : (fournisseur || lec()));
 }
 
 /* ==================== L'AFFICHAGE ==================== */
@@ -3196,9 +3314,14 @@ async function rafraichit(discret){
   var lis = function(j){
     /* N'IMPORTE quelle chaine, pas seulement Ethereum : depuis que le pont
        en dessert sept, lire tout le reste sur la Robinhood Chain rendrait un
-       solde de Base a zero — et zero est ce qu'on n'invente jamais. */
+       solde de Base a zero — et zero est ce qu'on n'invente jamais.
+       Et Solana n'a pas de fournisseur facon Ethereum : son solde se demande
+       autrement, mais il se range au meme endroit. */
     var pr = j.chaine ? lecPont(chaineDuPont(j.chaine)) : lec();
-    return borne(j.natif ? pr.getBalance(qui) : erc(j.adr).balanceOf(qui), 9000, 'balance')
+    var lu = (j.chaine === SOL_CHAINE) ? soldeSpl(j.adr, j.dec)
+           : j.natif ? pr.getBalance(qui)
+           : erc(j.adr, false, pr).balanceOf(qui);
+    return borne(lu, 12000, 'balance')
       .then(function(b){ if(tour === tourLecture) soldes[j.cle] = b; })
       ['catch'](function(){ if(tour === tourLecture && !discret) soldes[j.cle] = null; rate++; });
   };
@@ -3474,6 +3597,10 @@ function peintAccueil(){
      * raison : on ne cache QUE sur un solde reellement lu. `null` veut dire
      * « la chaine n'a pas repondu » — cacher la-dessus ferait disparaitre
      * l'argent du joueur le temps d'une panne de reseau. */
+    /* Un jeton distant suit la meme regle que ceux qu'on ajoute soi-meme :
+       il disparait quand on n'en detient plus — mais seulement sur un solde
+       REELLEMENT lu. */
+    if(j.distant && s !== null && s !== undefined && s.isZero()){ caches++; continue; }
     if(j.pont){
       /* Trois etats, trois traitements, et il n'y en a pas un de trop :
            - pas encore lu (`undefined`) : on ne sait RIEN, donc on ne montre
@@ -3495,13 +3622,24 @@ function peintAccueil(){
        n'apprendrait rien (pas de contrat, pas de marche ici) et couterait un
        geste de plus avant le seul geste possible. */
     var ailleurs = j.chaine && j.chaine !== CHAINE.id;
+    /* ---- LA SORTIE, SUR LA LIGNE MEME ----
+     * Une ligne qui montre un solde sans dire comment en sortir, c'est ce qui
+     * a coute cher la derniere fois. Un jeton distant sur une chaine EVM mene
+     * donc a l'ecran d'achat, pret a le VENDRE. Sur Solana il n'y a pas de
+     * sortie a proposer : on ne signe pas la-bas, et la ligne le dit au lieu
+     * de promettre un geste qui echouerait. */
+    var vendable = j.distant && j.chaine !== SOL_CHAINE;
+    var sansSortie = j.distant && j.chaine === SOL_CHAINE;
     var ligne = '<button class="wl-jeton" type="button" data-jeton="'+j.cle+'"'
-       +   (ailleurs ? ' data-pont="'+j.chaine+'"' : '') + '>'
+       +   (vendable ? ' data-vendre="'+j.cle+'"'
+            : (ailleurs && !j.distant ? ' data-pont="'+j.chaine+'"' : '')) + '>'
        +   logo
        +   '<span class="nom"><b>'+j.sym+'</b><small>'+j.nom+'</small></span>'
        +   '<span class="val"><b>'+(moi ? (s===null||s===undefined ? (j.pont ? 'unknown' : '—') : nombre(s,j.dec)) : '—')+'</b>'
        +     '<small>'+(v===null ? (moi?'no price':'—') : usd(v))+'</small>'
-       +     (ailleurs ? '<span class="versPont">BRIDGE &rarr;</span>' : '')
+       +     (vendable ? '<span class="versPont">SELL &rarr;</span>'
+              : sansSortie ? '<span class="versPont sansSortie">ONE WAY</span>'
+              : (ailleurs ? '<span class="versPont">BRIDGE &rarr;</span>' : ''))
        +   '</span>'
        + '</button>';
     if(!j.chaine || j.chaine === CHAINE.id) hAcc += ligne;
@@ -3540,6 +3678,30 @@ document.addEventListener('click', function(ev){
   var sol = ev.target.closest('[data-sol]');
   if(sol){ va('ecCompte'); return; }
 });
+
+/* ---- VENDRE CE QU'ON DETIENT AILLEURS ----
+   L'ecran d'achat s'ouvre deja pose sur la bonne chaine et le bon jeton :
+   la sortie ne demande pas de le rechoisir a la main, ce qui est justement
+   le moment ou l'on se trompe de ligne. */
+document.addEventListener('click', function(ev){
+  var b = ev.target.closest && ev.target.closest('[data-vendre]');
+  if(!b) return;
+  ev.stopPropagation();
+  var j = J(b.dataset.vendre); if(!j) return;
+  swChaineId = j.chaine;
+  /* Vendre, c'est RENTRER : l'arrivee repasse ici, quelle qu'ait ete la
+     derniere destination choisie. Laisser une arrivee lointaine ferait
+     revendre vers une chaine ou l'on ne voulait pas aller. */
+  swVersChaineId = CHAINE.id;
+  if($('swVersAdr')) $('swVersAdr').value = '';
+  gardeSwChaine();
+  remplitChoix($('swDe'));
+  valPick($('swDe'), j.cle);
+  if($('swVers').value === j.cle) valPick($('swVers'), 'eth');
+  videSwap();
+  va('ecSwap');
+  majSwap();
+}, true);
 
 document.addEventListener('click', function(ev){
   var b = ev.target.closest('[data-jeton]');
@@ -4355,8 +4517,20 @@ function remplitChoix(sel, exclure){
    * Chain, et c'est la que vivent le $SWOGE et les autres. */
   var payeAilleurs = (sel.id === 'swDe') && swDistant();
   if(payeAilleurs){
-    var cn = cleDeChaine(swChaineId), jn = J(cn);
-    sel.innerHTML = jn ? '<option value="'+cn+'">'+jn.sym+' — '+jn.nom+'</option>' : '';
+    /* La piece native de la chaine, PLUS ce qu'on y detient : c'est la
+       porte de sortie d'un jeton achete la-bas. Sans elle on refait le
+       defaut de l'ETH parti sur Base — une entree sans sortie. */
+    var cn = cleDeChaine(swChaineId), jn = J(cn), hh = '';
+    if(jn) hh += '<option value="'+cn+'">'+jn.sym+' — '+jn.nom+'</option>';
+    for(var d=0;d<JETONS.length;d++){
+      var jd2 = JETONS[d];
+      if(!jd2.distant || jd2.chaine !== swChaineId) continue;
+      hh += '<option value="'+jd2.cle+'">'+jd2.sym+' — '+jd2.nom+'</option>';
+    }
+    sel.innerHTML = hh;
+    if(avant){
+      for(var q2=0;q2<sel.options.length;q2++) if(sel.options[q2].value === avant){ sel.value = avant; break; }
+    }
     peintPick(sel);
     return;
   }
@@ -5406,6 +5580,7 @@ function majSwap(){
     valPick($('swDe'), 'eth'); valPick($('swVers'), 'swogebet');
   }
   peintSwChaine();
+  peintSortie();
   /* ---- L'ECRAN CHANGE DE SENS SELON LA CHAINE ----
    * D'ici, c'est un echange : deux jetons a choisir, un impact de piscine, la
    * tolerance. D'ailleurs, c'est un achat en une transaction : la piece
@@ -5413,16 +5588,26 @@ function majSwap(){
    * pont. Le dire dans les etiquettes evite de faire lire un chiffre pour un
    * autre. */
   var loin = swDistant();
+  var ailleursDe = swChaineId !== CHAINE.id;
+  var ailleursVers = swVersChaineId !== CHAINE.id;
   var picDe = document.querySelector('.wl-pick[data-pour="swDe"]');
-  if(picDe) picDe.classList.toggle('fige', loin);
-  var bDe = $('swDeB'); if(bDe) bDe.disabled = loin;
-  var lab = $('swDeL'); if(lab) lab.textContent = loin ? 'YOU PAY (on ' + swChaine().nom + ')' : 'YOU PAY';
+  /* Fige seulement s'il n'y a VRAIMENT qu'un choix : depuis qu'on peut y
+     detenir des jetons, une chaine lointaine en propose parfois plusieurs. */
+  var unSeul = ailleursDe && $('swDe').options.length <= 1;
+  if(picDe) picDe.classList.toggle('fige', unSeul);
+  var bDe = $('swDeB'); if(bDe) bDe.disabled = unSeul;
+  var lab = $('swDeL'); if(lab) lab.textContent = ailleursDe ? 'YOU PAY (on ' + swChaine().nom + ')' : 'YOU PAY';
+  /* L'arrivee : ici on choisit dans une liste, ailleurs on colle un contrat
+     — cette page ne tient aucune liste de jetons pour les autres chaines, et
+     en inventer une afficherait des noms que personne n'a verifies. */
+  var ca = $('swVersAdrChamp'); if(ca) ca.hidden = !ailleursVers;
+  var cv = $('swVersChamp');    if(cv) cv.hidden = ailleursVers;
   var it = $('swImpactT'); if(it) it.textContent = loin ? 'Total cost' : 'Price impact';
   var tr = $('swTempsR'); if(tr) tr.hidden = !loin;
   var bt = $('swPartir'); if(bt) bt.textContent = loin ? 'Buy' : 'Swap';
   /* La piece payee suit la chaine : sans ca, le solde affiche serait celui
      d'un jeton qui n'existe pas la-bas. */
-  if(loin && $('swDe').value !== cleDeChaine(swChaineId)){
+  if(ailleursDe && !(J($('swDe').value) || {}).chaine){
     remplitChoix($('swDe'));
     remplitChoix($('swVers'), $('swDe').value);
   }
@@ -5518,45 +5703,73 @@ function videSwap(){
  * pas ecrire par-dessus une plus recente. */
 async function devisDistant(){
   var mien = ++devisJeton;
-  var c = swChaine(), jv = J($('swVers').value);
+  var cDe = swChaine(), cVers = swVersChaine();
+  var jd = J($('swDe').value);
   var note = $('swNote');
   note.className = 'wl-note';
-  $('swRoute').textContent = 'Relay — bridge and swap, one transaction';
+  $('swRoute').textContent = 'Relay — one transaction';
   var m = ($('swMontant').value || '').trim().replace(',', '.');
-  if(!jv){ videSwap(); return; }
+  var monnaieVers = swMonnaieVers();
+  /* Une adresse a moitie tapee n'est pas une erreur du joueur, c'est un
+     etat normal pendant la frappe : on ne crie pas, on attend. */
+  if(swVersChaineId !== CHAINE.id && monnaieVers && !adresseJetonValide(monnaieVers, cVers)){
+    videSwap();
+    note.textContent = 'That does not look like a ' + cVers.nom + ' token address yet.';
+    return;
+  }
+  if(!jd){ videSwap(); return; }
   if(!(parseFloat(m) > 0)){ videSwap(); note.textContent = ''; return; }
   if(!moi){ videSwap(); note.textContent = 'Sign in first — the swap pays into your own address.'; return; }
+  if(cVers.svm && !solAdr){
+    videSwap();
+    note.className = 'wl-note grave';
+    note.textContent = 'You have no Solana address yet — create it on the Account screen first. '
+      + 'Without it there is nowhere on Solana to pay you.';
+    return;
+  }
   var entree;
-  try{ entree = ethers.utils.parseUnits(m, 18); }
+  try{ entree = ethers.utils.parseUnits(m, jd.dec); }
   catch(e){ videSwap(); note.textContent = 'That amount is not a number this wallet can read.'; return; }
 
   $('swRecu').textContent = '…';
   try{
-    var q = await relaiDevis(c.id, CHAINE.id, entree, jv.adr);
+    var q = await relaiDevis(cDe.id, cVers.id, entree, monnaieVers, swMonnaieDe());
     if(mien !== devisJeton) return;
     var r = litPont(q);
-    $('swRecu').textContent = nombre(r.recu, jv.dec) + ' ' + jv.sym;
-    $('swMini').textContent = nombre(r.mini, jv.dec) + ' ' + jv.sym;
+    /* Le symbole et les decimales viennent du RELAYEUR quand on ne connait
+       pas le jeton : c'est lui qui vient de le coter. */
+    var sym = (r.sortie && r.sortie.symbol) || '?';
+    var dec = (r.sortie && r.sortie.decimals !== undefined) ? r.sortie.decimals : 18;
+    if(swVersChaineId === CHAINE.id){
+      var jv0 = J($('swVers').value);
+      if(jv0){ sym = jv0.sym; dec = jv0.dec; }
+    }
+    _swSortie = { sym:sym, dec:dec, adr:monnaieVers, chaine:cVers.id };
+    $('swRecu').textContent = nombre(r.recu, dec) + ' ' + sym;
+    $('swMini').textContent = nombre(r.mini, dec) + ' ' + sym;
     var perte = Math.abs(r.impact);
     $('swImpact').textContent = perte.toFixed(2) + ' %';
+    var deuxGestes = r.etapes.length > 1
+      ? ' It takes two signatures: an allowance, then the transfer.' : '';
     /* ---- CE POURCENTAGE N'EST PAS CELUI DE LA PISCINE SEULE ----
-     * Il contient le pont ET l'echange. Le presenter comme un « price
-     * impact » ordinaire ferait croire a une piscine bien plus profonde
-     * qu'elle n'est — ou bien plus mauvaise, selon le montant. On le nomme. */
+     * Il contient le passage d'une chaine a l'autre ET l'echange. Le
+     * presenter comme un « price impact » ordinaire ferait juger une piscine
+     * sur un chiffre qui n'est pas le sien. */
     if(perte >= 10){
       note.className = 'wl-note grave';
-      note.textContent = 'This costs ' + perte.toFixed(1) + ' % in all — the bridge fee plus the '
-        + 'price impact of the swap. The fee is nearly fixed, so it weighs much more on a small '
-        + 'amount: paying more at once costs proportionally less.';
+      note.textContent = 'This costs ' + perte.toFixed(1) + ' % in all — the relayer\'s fee plus the '
+        + 'price impact. The fee is nearly fixed, so it weighs much more on a small amount: '
+        + 'paying more at once costs proportionally less.' + deuxGestes;
       poseDetail(true, false);
     } else if(perte >= 3){
       note.className = 'wl-note alerte';
-      note.textContent = 'Total cost ' + perte.toFixed(1) + ' % — the bridge fee plus the swap\'s '
-        + 'price impact. A larger amount carries the fixed fee better.';
+      note.textContent = 'Total cost ' + perte.toFixed(1) + ' % — the relayer\'s fee plus the price '
+        + 'impact. A larger amount carries the fixed fee better.' + deuxGestes;
       poseDetail(true, false);
     } else {
-      note.textContent = 'One transaction, signed on ' + c.nom + '. A market maker pays you here '
-        + 'from its own funds, then settles later — for those few seconds you are trusting it.';
+      note.textContent = 'One transaction, signed on ' + cDe.nom + '. A market maker pays you on '
+        + cVers.nom + ' from its own funds, then settles later — for those few seconds you are '
+        + 'trusting it.' + deuxGestes;
     }
     var t = $('swTemps'); if(t) t.textContent = secondesEnMots(r.secondes);
   }catch(e){
@@ -5568,18 +5781,50 @@ async function devisDistant(){
        dans un message maison ferait chercher au joueur un probleme qui
        n'existe pas. */
     note.textContent = ((e && e.message) || 'The relayer did not quote that amount.')
-      + ' Below a certain size the fixed fee eats the whole trade — try a larger amount,'
-      + ' or bridge first and swap here.';
+      + ' Below a certain size the fixed fee eats the whole trade — try a larger amount.';
+  }
+}
+/* Ce que le dernier devis a dit du jeton d'arrivee : garde pour l'inscrire
+   dans la liste une fois l'achat abouti. */
+var _swSortie = null;
+
+/* ---- CE QU'ON POURRA FAIRE DE CE JETON, DIT AVANT ----
+ *
+ * C'est la note la plus importante de cet ecran. Acheter est facile partout ;
+ * sortir ne l'est pas. Cette page sait signer sur les huit chaines EVM et
+ * nulle part ailleurs — alors elle le dit AVANT, pas au moment ou le joueur
+ * cherche a revendre. On a deja paye une fois pour avoir ouvert une porte
+ * d'entree sans porte de sortie. */
+function peintSortie(){
+  var e = $('swSortie'); if(!e) return;
+  var c = swVersChaine();
+  if(c.id === CHAINE.id){ e.hidden = true; return; }
+  e.hidden = false;
+  if(c.svm){
+    e.className = 'wl-note grave';
+    e.textContent = 'One way. This wallet can receive on Solana and show you the balance, but it '
+      + 'cannot sign there yet — so it cannot sell this back or send it anywhere. To get out you '
+      + 'would need another Solana wallet, using the private key from the Account screen. '
+      + 'Do not buy here what you may need back soon.';
+  } else {
+    e.className = 'wl-note alerte';
+    e.textContent = 'You will see this token under Tokens, and you can sell it back from here — '
+      + 'pick ' + c.nom + ' on the paying side. Nothing else: this wallet does not swap inside '
+      + c.nom + ', it only goes through the relayer.';
   }
 }
 
 /* La rangee « From » de l'echange : la piece et le nom de la chaine. */
 function peintSwChaine(){
-  var c = swChaine(), im = $('swChaineImg'), n = $('swChaineNom');
-  if(!n) return;
-  var src = (c.id === CHAINE.id) ? (J('eth') || {}).logo : c.logo;
-  if(im){ if(src){ im.src = src; im.hidden = false; } else im.hidden = true; }
-  n.textContent = c.nom;
+  var pose = function(c, idIm, idNom){
+    var im = $(idIm), n = $(idNom);
+    if(!n) return;
+    var src = (c.id === CHAINE.id) ? (J('eth') || {}).logo : c.logo;
+    if(im){ if(src){ im.src = src; im.hidden = false; } else im.hidden = true; }
+    n.textContent = c.nom;
+  };
+  pose(swChaine(),     'swChaineImg',   'swChaineNom');
+  pose(swVersChaine(), 'swVersChImg',   'swVersChNom');
 }
 
 async function devis(){
@@ -5949,16 +6194,22 @@ async function assureAutorisationV4(jeton, entree, dis){
 async function achatDistant(b){
   var note = $('swNote');
   var dis = function(txt, grave){ note.className = 'wl-note' + (grave ? ' grave' : ''); note.textContent = txt; };
-  var c = swChaine(), jv = J($('swVers').value);
-  if(!jv) return;
+  var cDe = swChaine(), cVers = swVersChaine();
+  var jd = J($('swDe').value);
+  if(!jd) return;
+  var monnaieVers = swMonnaieVers();
+  if(swVersChaineId !== CHAINE.id && monnaieVers && !adresseJetonValide(monnaieVers, cVers))
+    return toast('That is not a valid ' + cVers.nom + ' token address');
+  if(cVers.svm && !solAdr)
+    return toast('Create your Solana address first — there is nowhere to pay you');
   var t = ($('swMontant').value || '').trim().replace(',', '.');
   if(!(parseFloat(t) > 0)) return toast('Enter an amount');
   var entree;
-  try{ entree = ethers.utils.parseUnits(t, 18); }
+  try{ entree = ethers.utils.parseUnits(t, jd.dec); }
   catch(e){ return toast('That amount is not a number this wallet can read'); }
-  var solde = soldes[cleDeChaine(c.id)];
+  var solde = soldes[jd.cle];
   if(solde && entree.gt(solde))
-    return toast('That is more ' + ETH_AFF_DE(c) + ' than you hold on ' + c.nom);
+    return toast('That is more ' + jd.sym + ' than you hold on ' + cDe.nom);
 
   b.disabled = true;
   try{
@@ -5966,46 +6217,70 @@ async function achatDistant(b){
        l'instant, et l'ecran est remis a jour avec — le joueur signe ce
        qu'il lit. */
     dis('Getting a fresh quote…');
-    var q = await relaiDevis(c.id, CHAINE.id, entree, jv.adr);
+    var q = await relaiDevis(cDe.id, cVers.id, entree, monnaieVers, swMonnaieDe());
     var r = litPont(q);
-    if(!r.tx || !r.tx.to) throw new Error('The relayer returned no transaction to sign.');
-    $('swRecu').textContent = nombre(r.recu, jv.dec) + ' ' + jv.sym;
-    $('swMini').textContent = nombre(r.mini, jv.dec) + ' ' + jv.sym;
+    if(!r.etapes.length) throw new Error('The relayer returned no transaction to sign.');
+    var sym = (r.sortie && r.sortie.symbol) || '?';
+    var dec = (r.sortie && r.sortie.decimals !== undefined) ? r.sortie.decimals : 18;
+    if(swVersChaineId === CHAINE.id){
+      var jv0 = J($('swVers').value);
+      if(jv0){ sym = jv0.sym; dec = jv0.dec; }
+    }
+    $('swRecu').textContent = nombre(r.recu, dec) + ' ' + sym;
+    $('swMini').textContent = nombre(r.mini, dec) + ' ' + sym;
     if($('swTemps')) $('swTemps').textContent = secondesEnMots(r.secondes);
 
-    await assureChaineId(c.id, c.nom);
+    await assureChaineId(cDe.id, cDe.nom);
 
-    dis('Confirm the purchase in your wallet…');
-    var envoi = { to: r.tx.to, value: ethers.BigNumber.from(r.tx.value || '0') };
-    if(r.tx.data && r.tx.data !== '0x') envoi.data = r.tx.data;
-    var tx = await signer.sendTransaction(envoi);
+    /* ---- CHAQUE ETAPE, DANS L'ORDRE ----
+       Payer avec un jeton commence par une autorisation. Elle se signe et
+       s'ATTEND avant la suivante : envoyer le depot pendant que
+       l'autorisation n'est pas minee le ferait echouer. */
+    var tx = null;
+    for(var k=0;k<r.etapes.length;k++){
+      var et = r.etapes[k];
+      dis(r.etapes.length > 1
+        ? 'Signature ' + (k+1) + ' of ' + r.etapes.length + ' — '
+          + (et.id === 'approve' ? 'allowing the relayer to take your ' + jd.sym : 'the transfer')
+          + '…'
+        : 'Confirm the purchase in your wallet…');
+      var envoi = { to: et.data.to, value: ethers.BigNumber.from(et.data.value || '0') };
+      if(et.data.data && et.data.data !== '0x') envoi.data = et.data.data;
+      tx = await signer.sendTransaction(envoi);
+      await lecPont(cDe).waitForTransaction(tx.hash, 1, 180000);
+    }
 
-    /* Inscrit AVANT l'attente, et avec la chaine de depart : ce qui arrive
-       ici est un jeton pose par le relayeur, sans transfert signe par nous —
-       sans cette trace, l'achat n'apparaitrait nulle part. */
-    journalAjoute({ h:tx.hash, k:'achat', cle:cleDeChaine(c.id), cleV:jv.cle,
+    /* Inscrit avec la chaine de depart : ce qui arrive est pose par le
+       relayeur, sans transfert signe par nous — sans cette trace, l'achat
+       n'apparaitrait NULLE PART. */
+    journalAjoute({ h:tx.hash, k:'achat', cle:jd.cle,
+                    cleV:(swVersChaineId === CHAINE.id ? $('swVers').value : null),
                     montant:entree.toString(), recu:r.recu.toString(),
-                    sur:c.id, deNom:c.nom,
-                    logo:(J(cleDeChaine(c.id)) || c).logo,
-                    sym:ETH_AFF_DE(c), symRecu:jv.sym });
-
-    dis('Sent — waiting for ' + c.nom + '…');
-    await lecPont(c).waitForTransaction(tx.hash, 1, 180000);
+                    sur:cDe.id, deNom:cDe.nom, versNom:cVers.nom,
+                    logo:jd.logo, sym:jd.sym, symRecu:sym, decRecu:dec });
 
     var fini = r.suivi ? await suitPont(r.suivi, dis) : true;
     if(fini === true){
-      dis('Done — ' + nombre(r.recu, jv.dec) + ' ' + jv.sym + ' arrived on ' + CHAINE.nom + '.');
+      dis('Done — ' + nombre(r.recu, dec) + ' ' + sym + ' arrived on ' + cVers.nom + '.');
+      /* ---- ET IL ENTRE DANS LA LISTE ----
+         Un jeton achete sur une autre chaine qui n'apparait nulle part, c'est
+         le defaut qu'on vient de corriger. Il s'inscrit ici, avec ce que le
+         relayeur en a dit — et sa ligne montrera son solde des la prochaine
+         lecture. */
+      if(swVersChaineId !== CHAINE.id && monnaieVers){
+        ajouteDistant(cVers.id, monnaieVers, sym, sym + ' on ' + cVers.nom, dec, null);
+      }
       $('swMontant').value = '';
       videSwap();
       await rafraichit();
     } else if(fini === 'refund'){
-      dis('The relayer could not fill this one and refunded you on ' + c.nom
+      dis('The relayer could not fill this one and refunded you on ' + cDe.nom
         + '. Nothing was lost beyond the network fee.', true);
     } else if(fini === 'failure'){
-      dis('The relayer reported a failure. Check ' + c.scan + ' for your transaction '
+      dis('The relayer reported a failure. Check ' + cDe.scan + ' for your transaction '
         + 'before trying again.', true);
     } else {
-      dis('Your transaction is confirmed on ' + c.nom + ', but the relayer has not reported '
+      dis('Your transaction is confirmed on ' + cDe.nom + ', but the relayer has not reported '
         + 'paying you yet. It is not lost — it is not yet confirmed. Reopen this screen '
         + 'in a minute.', true);
     }
@@ -6421,6 +6696,13 @@ function lienTx(h, idChaine){
   var c = chaineDuPont(idChaine || CHAINE.id);
   return (c.scan || CHAINE.scan) + '/tx/' + h;
 }
+/* Le jeton, pas la transaction : c'est ce qu'on veut voir d'une ligne de
+   solde. Solscan nomme cela un « token », les explorateurs EVM une
+   « address ». */
+function lienJeton(adr, idChaine){
+  var c = chaineDuPont(idChaine || CHAINE.id);
+  return (c.scan || CHAINE.scan) + (c.svm ? '/token/' : '/address/') + adr;
+}
 function ouvreTx(h, idChaine){
   if(!h) return;
   window.open(lienTx(h, idChaine), '_blank', 'noopener');
@@ -6640,15 +6922,50 @@ function relaiL1(){ return relaiChaine(L1); }
    tester partout ailleurs. */
 var CHAINE_RH = { id:CHAINE.id, nom:CHAINE.nom, sym:ETH_AFF,
   logo:'img/wallet/tok_eth.webp', rpc:[CHAINE.rpc], scan:CHAINE.scan };
+/* ---- SOLANA : ON PEUT Y RECEVOIR, PAS Y SIGNER ----
+ *
+ * Elle n'est pas dans la liste des chaines de DEPART, et ce n'est pas un
+ * oubli : ce portefeuille sait signer sur les huit chaines EVM, qui
+ * partagent une adresse et une courbe. Solana en a une autre — la
+ * transaction s'y construit autrement, et cette page ne sait pas encore le
+ * faire. On peut donc y recevoir un jeton et le VOIR ; on ne peut ni le
+ * renvoyer ni le revendre d'ici. La porte est a sens unique, et tout ce qui
+ * la propose doit le dire avant, pas apres.
+ *
+ * L'identifiant est celui que Relay emploie pour Solana : le reutiliser
+ * evite une table de correspondance de plus. */
+var SOL_CHAINE = 792703809;
+var CHAINE_SOL = { id:SOL_CHAINE, nom:'Solana', sym:'SOL',
+  logo:'img/wallet/ch/solana.webp', rpc:['https://solana-rpc.publicnode.com'],
+  scan:'https://solscan.io', svm:true };
+
+/* Les chaines ou l'on peut SIGNER — c'est ce que le pont et le depart d'un
+   achat proposent. */
 function toutesChaines(){ return [CHAINE_RH].concat(CHAINES_PONT); }
+/* Et celles ou l'on peut RECEVOIR, qui en comptent une de plus. */
+function chainesArrivee(){ return toutesChaines().concat([CHAINE_SOL]); }
 function chaineDuPont(id){
-  var l = toutesChaines();
+  var l = chainesArrivee();
   for(var i=0;i<l.length;i++) if(l[i].id === id) return l[i];
   return CHAINE_RH;
 }
+/* Vrai seulement pour une chaine que l'on connait VRAIMENT : `chaineDuPont`
+   retombe sur la Robinhood Chain quand elle ne trouve pas, ce qui est
+   pratique pour peindre et dangereux pour decider. */
+function chaineConnue(id){
+  var l = chainesArrivee();
+  for(var i=0;i<l.length;i++) if(l[i].id === id) return true;
+  return false;
+}
 function pontDe(){   return chaineDuPont(pontDeId); }
 function pontVers(){ return chaineDuPont(pontVersId); }
-function lecPont(c){ return c.id === CHAINE.id ? lec() : lecChaine(c); }
+/* Rend `null` pour Solana : il n'y a pas de fournisseur JSON-RPC facon
+   Ethereum a lui donner, et rendre un lecteur qui ne marche pas ferait
+   echouer la lecture bien plus loin, sans dire pourquoi. */
+function lecPont(c){
+  if(!c || c.svm) return null;
+  return c.id === CHAINE.id ? lec() : lecChaine(c);
+}
 /* La chaine sur laquelle un jeton VIT. Sans champ `chaine`, c'est celle du
    portefeuille : les trois jetons de la maison n'en ont jamais bouge. */
 function chaineDuJeton(j){ return chaineDuPont((j && j.chaine) || CHAINE.id); }
@@ -6696,15 +7013,20 @@ for(var iCh = 1; iCh < CHAINES_PONT.length; iCh++){
 /* `monnaieVers` : l'adresse du jeton a recevoir, ou rien pour la piece
    native. C'est ce seul champ qui transforme un pont en achat — le relayeur
    ponte ET echange dans la meme transaction. */
-async function relaiDevis(deId, versId, montant, monnaieVers){
+async function relaiDevis(deId, versId, montant, monnaieVers, monnaieDe){
   var rep;
   try{
     rep = await borne(fetch(RELAY + '/quote', {
       method:'POST', headers:{ 'content-type':'application/json' },
       body: JSON.stringify({
-        user: moi, recipient: moi,
+        user: moi,
+        /* Le destinataire N'EST PAS toujours l'adresse EVM : sur Solana c'est
+           l'autre adresse du meme compte. Y envoyer un `0x…` deposerait chez
+           personne. */
+        recipient: (chaineDuPont(versId).svm ? solAdr : moi) || moi,
         originChainId: deId, destinationChainId: versId,
-        originCurrency: ZERO_ADR, destinationCurrency: monnaieVers || ZERO_ADR,
+        originCurrency: monnaieDe || ZERO_ADR,
+        destinationCurrency: monnaieVers || ZERO_ADR,
         amount: montant.toString(), tradeType:'EXACT_INPUT' })
     }), 15000, 'relay');
   }catch(e){
@@ -6719,8 +7041,28 @@ async function relaiDevis(deId, versId, montant, monnaieVers){
   return j;
 }
 
+/* ---- UN ACHAT PEUT DEMANDER DEUX SIGNATURES ----
+ * Payer avec un JETON (et non la piece native) commence par une
+ * autorisation : le relayeur doit pouvoir le prendre. Relay la rend comme
+ * une etape de plus, avant le depot. N'en signer qu'une laissait la vente
+ * echouer au deuxieme geste, sans que rien ne l'ait annonce. */
+function etapesPont(q){
+  var l = [], st = q.steps || [];
+  for(var i=0;i<st.length;i++){
+    if(st[i].kind && st[i].kind !== 'transaction') continue;
+    var it = st[i].items || [];
+    for(var k=0;k<it.length;k++){
+      if(it[k] && it[k].data && it[k].data.to)
+        l.push({ id:st[i].id || 'step', data:it[k].data,
+                 suivi:(it[k].check && it[k].check.endpoint) || null });
+    }
+  }
+  return l;
+}
+
 function litPont(q){
   var d = q.details, f = q.fees || {};
+  var et = etapesPont(q);
   var it = ((q.steps && q.steps[0] && q.steps[0].items && q.steps[0].items[0]) || {});
   return {
     recu:    ethers.BigNumber.from(d.currencyOut.amount),
@@ -6730,7 +7072,14 @@ function litPont(q){
     secondes: d.timeEstimate,
     impact:  parseFloat((d.totalImpact && d.totalImpact.percent) || '0'),
     tx:      it.data || null,
-    suivi:   (it.check && it.check.endpoint) || null
+    etapes:  et,
+    /* Le suivi est celui de la DERNIERE etape : c'est elle qui depose. */
+    suivi:   (et.length ? et[et.length-1].suivi : null)
+             || (it.check && it.check.endpoint) || null,
+    /* Ce que le relayeur dit du jeton livre : son symbole et ses decimales.
+       C'est la seule source honnete quand on colle un contrat qu'on ne
+       connait pas — les deviner afficherait un solde faux. */
+    sortie:  (d.currencyOut && d.currencyOut.currency) || null
   };
 }
 
@@ -6795,16 +7144,48 @@ var boutChoisi = 'de';                  /* 'de' | 'vers' pour le pont, 'swap' po
  * decider quoi en faire garde ce chemin-la.
  */
 var swChaineId = CHAINE.id;
+var swVersChaineId = CHAINE.id;
 function swChaine(){ return chaineDuPont(swChaineId); }
-function swDistant(){ return swChaineId !== CHAINE.id; }
+function swVersChaine(){ return chaineDuPont(swVersChaineId); }
+/* « Distant » veut dire : ce n'est plus un echange local, c'est le relayeur
+   qui fait le travail. Vrai des que l'un des deux bouts n'est pas ici. */
+function swDistant(){ return swChaineId !== CHAINE.id || swVersChaineId !== CHAINE.id; }
 function gardeSwChaine(){
-  try{ localStorage.setItem('swogeSwapChaine', String(swChaineId)); }catch(e){}
+  try{
+    localStorage.setItem('swogeSwapChaine', String(swChaineId));
+    localStorage.setItem('swogeSwapVers',   String(swVersChaineId));
+  }catch(e){}
+}
+
+/* ---- UNE ADRESSE DE JETON, SUR DEUX FAMILLES DE CHAINES ----
+ * En EVM c'est vingt octets en hexadecimal ; sur Solana c'est une cle
+ * publique en base58. Les accepter toutes les deux sans les distinguer
+ * laisserait partir une adresse EVM vers Solana, ou elle ne designe rien. */
+function adresseJetonValide(a, c){
+  a = String(a || '').trim();
+  if(!a) return false;
+  if(c && c.svm) return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(a);
+  try{ return ethers.utils.isAddress(a); }catch(e){ return false; }
+}
+/* Ce qu'on veut RECEVOIR : rien du tout pour la piece native, l'adresse
+   collee pour une autre chaine, le contrat du jeton choisi pour ici. */
+function swMonnaieVers(){
+  if(swVersChaineId === CHAINE.id){ var j = J($('swVers').value); return j ? j.adr : null; }
+  var a = ($('swVersAdr') && $('swVersAdr').value || '').trim();
+  return a || null;
+}
+function swMonnaieDe(){
+  var j = J($('swDe').value);
+  return j ? j.adr : null;
 }
 function peintChoixChaine(){
   var c = $('poChL'); if(!c) return;
-  var l = toutesChaines();
-  var courant = (boutChoisi === 'swap') ? swChaineId
-              : (boutChoisi === 'de')   ? pontDeId : pontVersId;
+  /* L'arrivee d'un achat peut etre Solana ; un bout de pont, non — on ne
+     sait pas y signer, et proposer un depart de la-bas serait une impasse. */
+  var l = (boutChoisi === 'swapVers') ? chainesArrivee() : toutesChaines();
+  var courant = (boutChoisi === 'swap')     ? swChaineId
+              : (boutChoisi === 'swapVers') ? swVersChaineId
+              : (boutChoisi === 'de')       ? pontDeId : pontVersId;
   var h = '';
   for(var i=0;i<l.length;i++){
     var x = l[i];
@@ -6814,6 +7195,13 @@ function peintChoixChaine(){
        + '</button>';
   }
   c.innerHTML = h;
+  if(boutChoisi === 'swapVers'){
+    $('poChTitre').textContent = 'Pick the chain to receive on. This wallet can only SELL back '
+      + 'from the eight EVM chains — on Solana it can receive and show, nothing more.';
+    var t2 = $('poVoile').querySelector('h2');
+    if(t2) t2.textContent = 'Receive on';
+    return;
+  }
   $('poChTitre').textContent = (boutChoisi === 'vers')
     ? 'Pick the chain to send them to.'
     : (boutChoisi === 'swap')
@@ -6833,13 +7221,22 @@ if($('poVoile')) $('poVoile').addEventListener('click', function(ev){
   if(!b) return;
   var id = parseInt(b.dataset.ch, 10);
   fermeChoixChaine();
-  if(boutChoisi === 'swap'){
-    if(id === swChaineId) return;
-    swChaineId = id; gardeSwChaine();
-    /* La liste des jetons a payer change avec la chaine : ailleurs, il n'y a
-       que sa piece native. */
-    remplitChoix($('swDe')); remplitChoix($('swVers'), $('swDe').value);
+  if(boutChoisi === 'swap' || boutChoisi === 'swapVers'){
+    if(boutChoisi === 'swap'){
+      if(id === swChaineId) return;
+      swChaineId = id;
+      /* La liste des jetons a payer change avec la chaine. */
+      remplitChoix($('swDe')); remplitChoix($('swVers'), $('swDe').value);
+    } else {
+      if(id === swVersChaineId) return;
+      swVersChaineId = id;
+      /* Le contrat colle appartenait a l'ancienne chaine : le garder ferait
+         demander un jeton qui n'existe pas la ou l'on va. */
+      if($('swVersAdr')) $('swVersAdr').value = '';
+    }
+    gardeSwChaine();
     videSwap();
+    $('swNote').textContent = '';
     majSwap();
     return;
   }
@@ -7184,12 +7581,24 @@ if($('poMax'))    $('poMax').addEventListener('click', maxPont);
 if($('swChaineB')) $('swChaineB').addEventListener('click', function(){
   ouvreChoixChaine('swap');
 });
+if($('swVersChB')) $('swVersChB').addEventListener('click', function(){
+  ouvreChoixChaine('swapVers');
+});
+/* Coller un contrat recote, comme taper un montant : rien n'attend qu'on
+   valide. */
+if($('swVersAdr')) $('swVersAdr').addEventListener('input', function(){
+  clearTimeout(window._d); window._d = setTimeout(devis, 420);
+});
 /* Retenue d'une fois sur l'autre : qui paie toujours depuis Base ne le
    rechoisit pas a chaque visite. Relue par `chaineDuPont`, qui retombe sur
    la Robinhood Chain si l'identifiant garde ne correspond a rien. */
 try{
   var _sc = parseInt(localStorage.getItem('swogeSwapChaine'), 10);
-  if(_sc && chaineDuPont(_sc).id === _sc) swChaineId = _sc;
+  /* Le DEPART doit etre une chaine ou l'on sait signer : Solana gardee la
+     par une version precedente bloquerait l'ecran sur une impasse. */
+  if(_sc && chaineDuPont(_sc).id === _sc && !chaineDuPont(_sc).svm) swChaineId = _sc;
+  var _sv = parseInt(localStorage.getItem('swogeSwapVers'), 10);
+  if(_sv && chaineDuPont(_sv).id === _sv) swVersChaineId = _sv;
 }catch(e){}
 peintSwChaine();
 if($('poPartir')) $('poPartir').addEventListener('click', partPont);
@@ -7216,7 +7625,7 @@ if($('poPartir')) $('poPartir').addEventListener('click', partPont);
  * a part, et promettre un bouton qui n'aboutit pas serait pire que de ne rien
  * proposer. La page le dit en toutes lettres.
  */
-var SOL_RPC = 'https://solana-rpc.publicnode.com';
+var SOL_RPC = CHAINE_SOL.rpc[0];   /* ecrit une seule fois, dans CHAINE_SOL */
 var solAdr = null, solEnCours = false;
 
 /* Neuf decimales : un lamport est un milliardieme de SOL. Se tromper d'un
@@ -7375,6 +7784,8 @@ valPick($('swDe'), 'eth'); valPick($('swVers'), 'swogebet');
    soldes se lisent sur `JETONS` en entier, et un jeton arrive apres coup
    resterait sans solde jusqu'au prochain rafraichissement. */
 chargePerso();
+/* Et ceux qu'on detient AILLEURS, pour la meme raison. */
+chargeDistants();
 peintAccueil();
 majRevue();
 lisPrix().then(peintAccueil);

@@ -3958,7 +3958,8 @@ function servir(q, r, f, type) {
         logout: async () => {}, restore: async () => moi, getProvider: () => window.ethereum,
         getAddress: () => moi, isLoggedIn: () => true, comptes: () => [{ adresse: moi, index: 0 }],
         choisitCompte: async () => moi, ajouteCompte: async () => moi, indexCompte: () => 0,
-        solana: () => [], creeSolana: async () => null };
+        solana: () => [{ adresse: 'So1anaAddre55Exemp1eXXXXXXXXXXXXXXXXXXXXXXX', index: 0 }],
+        creeSolana: async () => 'So1anaAddre55Exemp1eXXXXXXXXXXXXXXXXXXXXXXX' };
       window.ethereum = { isMetaMask: true, request: async (a) => {
         const W = window.__w;
         if (a.method === 'eth_accounts' || a.method === 'eth_requestAccounts') return [moi];
@@ -4005,7 +4006,9 @@ function servir(q, r, f, type) {
         if (m.method === 'eth_blockNumber') return '0x10';
         if (m.method === 'eth_gasPrice') return mot(1000000n);
         if (m.method === 'eth_getBalance') return mot(2000000000000000000n);
-        if (m.method === 'eth_call') return mot(0n);
+        /* Sur la Robinhood Chain, rien ; ailleurs, cinq cents jetons — c est
+           ce qui rend la ligne d un jeton distant visible. */
+        if (m.method === 'eth_call') return rh ? mot(0n) : mot(500000000000000000000n);
         if (m.method === 'eth_getLogs') return [];
         if (m.method === 'eth_getTransactionReceipt') return { transactionHash: m.params[0],
           transactionIndex: '0x0', blockHash: '0x' + '11'.repeat(32), blockNumber: '0x10',
@@ -4017,27 +4020,51 @@ function servir(q, r, f, type) {
       await r.fulfill({ contentType: 'application/json',
         body: JSON.stringify(Array.isArray(q) ? q.map(rep) : rep(q)) });
     });
+    await page.route('**/solana-rpc.publicnode.com/**', async (r) => {
+      const q = JSON.parse(r.request().postData() || '{}');
+      if (q.method === 'getTokenAccountsByOwner')
+        return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ jsonrpc: '2.0', id: 1,
+          result: { value: [{ account: { data: { parsed: { info: {
+            tokenAmount: { amount: '4200000000', decimals: 5 } } } } } }] } }) });
+      return r.fulfill({ contentType: 'application/json',
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, result: { value: 0 } }) });
+    });
     await page.route('**/api.relay.link/**', async (r) => {
       const u = r.request().url();
       if (u.indexOf('/intents/status') >= 0)
         return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ status: 'success' }) });
       const c = JSON.parse(r.request().postData() || '{}');
       w.devis = { de: c.originChainId, vers: c.destinationChainId,
-                  cur: c.destinationCurrency, montant: c.amount };
+                  cur: c.destinationCurrency, curDe: c.originCurrency,
+                  dest: c.recipient, montant: c.amount };
       const dedans = BigInt(c.amount);
       const sortie = dedans * 100000000n / 1000000n;
       await r.fulfill({ contentType: 'application/json', body: JSON.stringify({
         requestId: '0xfeed',
-        steps: [{ id: 'deposit', kind: 'transaction', items: [{
+        /* Payer avec un JETON commence par une autorisation : Relay la rend
+           comme une etape de plus. Le banc la joue pour que la page prouve
+           qu elle signe les DEUX. */
+        steps: (c.originCurrency && c.originCurrency !== '0x0000000000000000000000000000000000000000'
+          ? [{ id: 'approve', kind: 'transaction', items: [{
+              data: { to: c.originCurrency, value: '0', data: '0x095ea7b3',
+                      chainId: c.originChainId } }] }]
+          : []).concat([{ id: 'deposit', kind: 'transaction', items: [{
           data: { to: '0x4cd00e387622c35bddb9b4c962c136462338bc31', value: c.amount,
                   data: '0x49290c1c', chainId: c.originChainId },
-          check: { endpoint: '/intents/status?requestId=0xfeed', method: 'GET' } }] }],
+          check: { endpoint: '/intents/status?requestId=0xfeed', method: 'GET' } }] }]),
         fees: { gas: { amount: '40000000000000' }, relayer: { amount: '30000000000000' } },
         details: { timeEstimate: 2, totalImpact: { percent: '-3.17' },
                    currencyIn: { amount: c.amount, amountFormatted: '0' },
                    currencyOut: { amount: String(sortie),
                                   minimumAmount: String(sortie * 98n / 100n),
-                                  amountFormatted: '0' } } }) });
+                                  amountFormatted: '0',
+                                  /* Ce que le relayeur dit du jeton livre : la seule
+                                     source honnete pour un contrat colle que cette
+                                     page ne connait pas. */
+                                  currency: { chainId: c.destinationChainId,
+                                              address: c.destinationCurrency,
+                                              symbol: c.destinationChainId === 792703809 ? 'BONK' : 'DEGEN',
+                                              decimals: 5 } } } }) });
     });
     await page.goto('http://127.0.0.1:' + port + '/swoge_wallet.html',
                     { waitUntil: 'domcontentloaded' });
@@ -4129,7 +4156,11 @@ function servir(q, r, f, type) {
        'le cout n est plus intitule « price impact » : il contient aussi le pont ('
        + m.impactT + ')');
     ok(/3\.17/.test(m.impact), 'et il vaut ce que le relayeur annonce (' + m.impact + ')');
-    ok(/bridge fee/i.test(m.note),
+    /* Le mot a change avec la fonction : le meme chemin sert maintenant a
+       acheter SUR une autre chaine, ou « bridge » ne decrirait plus rien.
+       Ce qui compte est inchange : la note doit dire que le chiffre contient
+       les FRAIS DU RELAYEUR et pas seulement l impact de piscine. */
+    ok(/(relayer|bridge)[^.]*fee/i.test(m.note),
        'la note l explique en toutes lettres : « ' + m.note.slice(0, 80) + ' »');
 
     /* ---- ET LA SIGNATURE PART DE LA-BAS ----
@@ -4163,6 +4194,206 @@ function servir(q, r, f, type) {
     ok(!!tr, 'l achat est dans l historique');
     ok(!!tr && /SWOGE/.test(tr.t), 'en disant CE QU on a achete (' + (tr || {}).t + ')');
     ok(!!tr && /Base/.test(tr.s), 'et d ou on l a paye (' + (tr || {}).s + ')');
+
+    /* ==================== ACHETER **VERS** UNE AUTRE CHAINE ====================
+     *
+     * « Est-ce que je peux acheter des memecoins BNB ou des memecoins
+     * Solana ? » Oui — mesure prise sur le vrai relayeur avant de coder :
+     * FLOKI sur BNB −2,63 %, DEGEN sur Base −0,41 %, BONK sur Solana +0,09 %.
+     *
+     * Mais acheter est facile partout ; SORTIR ne l est pas, et c est la
+     * seule chose qui compte vraiment ici. Ce portefeuille signe sur les huit
+     * chaines EVM et nulle part ailleurs. Ce qui se mesure donc :
+     *   - la page DIT ce qu on pourra faire du jeton, avant l achat ;
+     *   - elle demande au relayeur le bon contrat sur la bonne chaine, et
+     *     fait payer sur l ADRESSE SOLANA quand l arrivee est Solana — y
+     *     envoyer un « 0x… » deposerait chez personne ;
+     *   - le jeton achete entre dans la liste et son solde se lit vraiment ;
+     *   - et celui qui vit sur une chaine EVM se revend d un geste.
+     */
+    console.log('\n   -- acheter vers une autre chaine --');
+    await page.evaluate(() => document.querySelector('#pied [data-va="ecSwap"]').click());
+    await page.waitForTimeout(500);
+    /* On repart d ici : c est le cas ordinaire, payer avec son ETH (RH). */
+    await page.click('#swChaineB');
+    await page.waitForTimeout(400);
+    await page.evaluate(() => {
+      const b = [...document.querySelectorAll('#poChL [data-ch]')].find((x) => /Robinhood/.test(x.textContent));
+      b.click(); });
+    await page.waitForTimeout(600);
+
+    await page.click('#swVersChB');
+    await page.waitForTimeout(400);
+    const arrivees = await page.evaluate(() =>
+      [...document.querySelectorAll('#poChL [data-ch]')].map((b) => b.dataset.ch));
+    console.log('   arrivees : ' + JSON.stringify(arrivees));
+    /* ---- SOLANA EST UNE ARRIVEE, PAS UN DEPART ----
+     * On ne sait pas y signer : la proposer comme chaine de depart serait
+     * une impasse, et l y trouver comme arrivee est exactement ce qu on veut. */
+    ok(arrivees.indexOf('792703809') >= 0,
+       'Solana est proposee A L ARRIVEE (' + arrivees.length + ' chaines)');
+    ok(listeCh.indexOf('792703809') < 0,
+       'et JAMAIS au depart : on ne sait pas y signer, ce serait une impasse');
+
+    await page.evaluate(() => {
+      const b = [...document.querySelectorAll('#poChL [data-ch]')].find((x) => /Solana/.test(x.textContent));
+      b.click(); });
+    await page.waitForTimeout(700);
+    const versSol = await page.evaluate(() => ({
+      vers: (document.getElementById('swVersChNom') || {}).textContent,
+      champ: !document.getElementById('swVersAdrChamp').hidden,
+      picker: !document.getElementById('swVersChamp').hidden,
+      sortie: (document.getElementById('swSortie') || {}).textContent,
+      sortieVue: !document.getElementById('swSortie').hidden,
+      grave: (document.getElementById('swSortie') || {}).className }));
+    console.log('   vers Solana : ' + JSON.stringify({ vers: versSol.vers, champ: versSol.champ,
+      picker: versSol.picker, sortie: versSol.sortie.slice(0, 70) }));
+    ok(versSol.champ && !versSol.picker,
+       'sur une autre chaine on COLLE un contrat : cette page ne tient aucune liste de jetons '
+       + 'la-bas, et en inventer une afficherait des noms que personne n a verifies');
+    /* ---- LA PHRASE LA PLUS IMPORTANTE DE CET ECRAN ---- */
+    ok(versSol.sortieVue && /one way/i.test(versSol.sortie),
+       'la page dit AVANT que la porte est a sens unique : « '
+       + versSol.sortie.slice(0, 60) + ' »');
+    ok(/cannot sign|cannot sell/i.test(versSol.sortie),
+       'et pourquoi — elle ne sait pas signer la-bas');
+    ok(/grave/.test(versSol.grave),
+       'en rouge, pas en note discrete : c est un avertissement, pas un detail');
+
+    await page.fill('#swVersAdr', 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263');
+    await page.fill('#swMontant', '0.02');
+    await page.waitForTimeout(1800);
+    const dSol = await page.evaluate(() => ({
+      recu: (document.getElementById('swRecu') || {}).textContent }));
+    console.log('   devis Solana : ' + JSON.stringify(dSol) + ' / demande : ' + JSON.stringify(w.devis));
+    ok(w.devis.vers === 792703809 && w.devis.cur === 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263',
+       'le relayeur est interroge vers Solana, avec le MINT colle ('
+       + w.devis.cur + ')');
+    /* ---- ET IL PAIE SUR LA BONNE ADRESSE ----
+     * C est la mesure qui evite de perdre les fonds : un « 0x… » envoye sur
+     * Solana ne designe aucun compte. */
+    ok(/^So1ana/.test(String(w.devis.dest)),
+       'et il paie sur l adresse SOLANA du compte, pas sur l adresse EVM ('
+       + w.devis.dest + ')');
+    ok(/BONK/.test(dSol.recu),
+       'ce qui s affiche porte le nom que le relayeur donne au jeton ('
+       + dSol.recu + ')');
+
+    await page.click('#swPartir');
+    await page.waitForTimeout(4500);
+    const finSol = await page.evaluate(() => ({
+      note: document.getElementById('swNote').textContent,
+      stock: JSON.parse(localStorage.getItem('swogeJetonsDistants') || '[]') }));
+    console.log('   apres achat : ' + JSON.stringify({ note: finSol.note.slice(0, 50),
+      stock: finSol.stock.map((x) => x.sym + '@' + x.chaine) }));
+    ok(/arrived on Solana/i.test(finSol.note), 'la page dit ou c est arrive');
+    /* ---- ET IL ENTRE DANS LA LISTE ----
+     * Un jeton achete ailleurs qui n apparait nulle part, c est le defaut
+     * qu on vient de payer une fois avec l ETH parti sur Base. */
+    ok(finSol.stock.length === 1 && finSol.stock[0].chaine === 792703809
+       && finSol.stock[0].sym === 'BONK',
+       'le jeton achete est retenu, avec SA chaine ('
+       + JSON.stringify(finSol.stock.map((x) => x.sym + ' @ ' + x.chaine)) + ')');
+    ok(finSol.stock[0].dec === 5,
+       'et ses decimales telles que le relayeur les a dites — les deviner '
+       + 'afficherait un solde faux (' + finSol.stock[0].dec + ')');
+
+    /* ---- ON LE VOIT, ET SON SOLDE EST VRAIMENT LU ---- */
+    await page.evaluate(() => document.querySelector('#pied [data-va="ecJetons"]').click());
+    await page.waitForTimeout(3500);
+    const avecBonk = await page.evaluate(() =>
+      [...document.querySelectorAll('#jtListe .wl-jeton')].map((b) => ({
+        sym: b.querySelector('.nom b').textContent,
+        nom: b.querySelector('.nom small').textContent,
+        val: b.querySelector('.val b').textContent,
+        badge: (b.querySelector('.versPont') || {}).textContent || '',
+        vendre: b.dataset.vendre || '' })));
+    const bonk = avecBonk.filter((x) => x.sym === 'BONK')[0];
+    console.log('   la ligne BONK : ' + JSON.stringify(bonk));
+    ok(!!bonk, 'il a sa ligne dans « Tokens »');
+    /* 4 200 000 000 unites a cinq decimales = 42 000 jetons. Se tromper de
+       decimales afficherait un solde mille fois faux sans rien signaler. */
+    ok(!!bonk && /42,?000/.test(bonk.val),
+       'avec le solde REELLEMENT lu sur Solana, aux bonnes decimales ('
+       + (bonk || {}).val + ')');
+    ok(!!bonk && /one way/i.test(bonk.badge),
+       'et la ligne repete que la sortie n existe pas (« ' + (bonk || {}).badge + ' »)');
+    ok(!!bonk && !bonk.vendre,
+       'elle ne propose donc AUCUN geste de vente — promettre un geste qui echouerait '
+       + 'serait pire que de ne rien proposer');
+
+    /* ==================== ET CE QU'ON DETIENT SUR UNE CHAINE EVM SE REVEND ====================
+     * C est l autre moitie de la demande : d abord lire ce qu on detient
+     * ailleurs pour que la sortie existe, ensuite seulement ouvrir l achat. */
+    await page.evaluate(() => {
+      const l = JSON.parse(localStorage.getItem('swogeJetonsDistants') || '[]');
+      l.push({ adr: '0x4ed4E862860beD51a9570b96d89aF5E1B0Efefed', sym: 'DEGEN',
+               nom: 'DEGEN on Base', dec: 18, chaine: 8453 });
+      localStorage.setItem('swogeJetonsDistants', JSON.stringify(l));
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(3000);
+    await page.evaluate(() => document.querySelector('#pied [data-va="ecJetons"]').click());
+    await page.waitForTimeout(3000);
+    const avecDegen = await page.evaluate(() =>
+      [...document.querySelectorAll('#jtListe .wl-jeton')].map((b) => ({
+        sym: b.querySelector('.nom b').textContent,
+        val: b.querySelector('.val b').textContent,
+        badge: (b.querySelector('.versPont') || {}).textContent || '',
+        vendre: b.dataset.vendre || '' })));
+    const dg = avecDegen.filter((x) => x.sym === 'DEGEN')[0];
+    console.log('   la ligne DEGEN : ' + JSON.stringify(dg));
+    ok(!!dg, 'un jeton detenu sur Base a sa ligne');
+    ok(!!dg && /500/.test(dg.val),
+       'avec son solde lu SUR BASE, pas ici — ou son contrat n existe pas ('
+       + (dg || {}).val + ')');
+    ok(!!dg && /sell/i.test(dg.badge) && !!dg.vendre,
+       'et la sortie est sur la ligne meme (« ' + (dg || {}).badge + ' »)');
+
+    await page.evaluate(() => {
+      const b = [...document.querySelectorAll('#jtListe .wl-jeton')].find((x) => /DEGEN/.test(x.textContent));
+      b.click(); });
+    await page.waitForTimeout(1500);
+    const pret = await page.evaluate(() => ({
+      ecran: (document.querySelector('.wl-ecran.on') || {}).id,
+      de: (document.getElementById('swDe') || {}).value,
+      chaine: (document.getElementById('swChaineNom') || {}).textContent,
+      vers: (document.getElementById('swVersChNom') || {}).textContent }));
+    console.log('   apres le tap : ' + JSON.stringify(pret));
+    ok(pret.ecran === 'ecSwap' && /Base/.test(pret.chaine) && /^d8453-/.test(pret.de),
+       'un tap ouvre l echange DEJA pose sur la bonne chaine et le bon jeton — rechoisir a la '
+       + 'main est justement le moment ou l on se trompe de ligne');
+    /* Vendre, c est RENTRER : laisser une arrivee lointaine ferait revendre
+       vers une chaine ou l on ne voulait pas aller. */
+    ok(/Robinhood/.test(pret.vers),
+       'et l arrivee repasse ici, quelle qu ait ete la derniere destination ('
+       + pret.vers + ')');
+
+    await page.evaluate(() => { window.__w.bascules = []; window.__w.envoyees = []; });
+    await page.fill('#swMontant', '100');
+    await page.waitForTimeout(1600);
+    await page.click('#swPartir');
+    await page.waitForTimeout(5000);
+    const fv = await page.evaluate(() => ({ bascules: window.__w.bascules,
+      envoyees: window.__w.envoyees.map((x) => ({ sur: x.sur, to: String(x.to || '').toLowerCase() })),
+      note: document.getElementById('swNote').textContent }));
+    console.log('   vente : ' + JSON.stringify(fv) + ' / devis : '
+      + JSON.stringify({ de: w.devis.de, curDe: w.devis.curDe }));
+    ok(String(w.devis.curDe).toLowerCase() === '0x4ed4e862860bed51a9570b96d89af5e1b0efefed',
+       'le relayeur est paye AVEC le jeton, pas avec l ether (' + w.devis.curDe + ')');
+    /* ---- DEUX SIGNATURES, ET LA PREMIERE EST L AUTORISATION ----
+     * N en signer qu une laissait la vente echouer au deuxieme geste, sans
+     * que rien ne l ait annonce. */
+    ok(fv.envoyees.length === 2,
+       'deux signatures partent : l autorisation, puis le transfert ('
+       + fv.envoyees.length + ')');
+    ok(fv.envoyees.length === 2
+       && fv.envoyees[0].to === '0x4ed4e862860bed51a9570b96d89af5e1b0efefed',
+       'la premiere va au CONTRAT du jeton — c est l autorisation ('
+       + JSON.stringify(fv.envoyees.map((x) => x.to.slice(0, 10))) + ')');
+    ok(fv.envoyees.every((x) => x.sur === '0x2105'),
+       'et les deux sont signees sur Base (' + JSON.stringify(fv.envoyees.map((x) => x.sur)) + ')');
+    ok(/arrived on/i.test(fv.note), 'la vente aboutit (« ' + fv.note.slice(0, 50) + ' »)');
 
     /* ---- LE CHOIX SE RETIENT ---- */
     await page.reload({ waitUntil: 'domcontentloaded' });

@@ -2574,6 +2574,56 @@ function servir(q, r, f, type) {
     await page.close();
   }
 
+  /* ---- LA CONNEXION S OUVRE-T-ELLE VRAIMENT, SUR UN PORTABLE ? ----
+   *
+   * « Sur PC quand j ai clique sur connexion il ne m a pas propose le mail ;
+   * sur telephone oui. » Le formulaire etait pourtant le meme aux deux
+   * endroits — c est la MESURE qui l a montre : le cadre du telephone faisait
+   * 844 pixels de haut quelle que soit la fenetre, et la feuille de connexion
+   * s ouvre contre son bord INFERIEUR. Sur un portable de 650 pixels, le
+   * cadre en depassait 249 : on cliquait, la feuille s ouvrait bel et bien —
+   * sous le bord de l ecran. La barre d onglets etait hors champ avec elle,
+   * des que la fenetre descendait sous 900 pixels.
+   *
+   * Ce qui se verifie ici n est donc pas « le champ existe » : il a toujours
+   * existe. C est qu il est ATTEIGNABLE, avec tout ce qui l accompagne, sans
+   * avoir a deviner qu il faut faire defiler la page. */
+  console.log('\n-- se connecter depuis un portable --');
+  for (const [w, h] of [[1440, 900], [1440, 760], [1366, 650], [1280, 600], [820, 700]]) {
+    const page = await nav.newPage({ viewport: { width: w, height: h } });
+    await page.addInitScript(() => { try { sessionStorage.setItem('swogeWalletIntroVue', '1'); } catch (e) {} });
+    await page.goto('http://127.0.0.1:' + port + '/swoge_wallet.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(1800);
+    /* Le meme geste que le joueur, a la souris : « Tap to sign in ». */
+    const cible = await page.evaluate(() => {
+      const r = document.getElementById('acNom').getBoundingClientRect();
+      return { x: Math.round(r.x + r.width / 2), y: Math.round(r.y + r.height / 2) };
+    });
+    await page.mouse.click(cible.x, cible.y);
+    await page.waitForTimeout(600);
+    const m = await page.evaluate(() => {
+      const dedans = (id) => { const r = document.getElementById(id).getBoundingClientRect();
+        return r.top >= -1 && r.bottom <= window.innerHeight + 1 && r.width > 0; };
+      const doc = document.documentElement;
+      return { vue: !document.getElementById('voile').hidden,
+               hors: ['cnEmail', 'cnEnvoyer', 'cnExtension', 'cnFermer', 'pied'].filter((i) => !dedans(i)),
+               telBas: Math.round(document.getElementById('tel').getBoundingClientRect().bottom),
+               fenetre: window.innerHeight,
+               defile: doc.scrollHeight > doc.clientHeight + 1 };
+    });
+    console.log(`   ${w}x${h} : ` + JSON.stringify(m));
+    ok(m.vue, `${w}x${h} : le formulaire s ouvre`);
+    ok(m.hors.length === 0,
+       m.hors.length === 0
+         ? `${w}x${h} : le courriel, « Send code », « Use a browser wallet », « Cancel »`
+           + ' et la barre d onglets sont TOUS dans la fenetre'
+         : `${w}x${h} : hors de l ecran — ${m.hors.join(', ')}`);
+    ok(m.telBas <= m.fenetre,
+       `${w}x${h} : le cadre s arrete a ${m.telBas}, dans une fenetre de ${m.fenetre}`);
+    ok(!m.defile, `${w}x${h} : et il n y a rien a faire defiler pour y arriver`);
+    await page.close();
+  }
+
   /* ---- LE FOND D ECRAN ----
    * Il passe DERRIERE les cartes. Pose par-dessus il etait magnifique et il
    * voilait le texte : « TOTAL BALANCE » se lisait a travers une nappe bleue.

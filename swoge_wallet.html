@@ -68,7 +68,7 @@
      A savoir : cela ne sauve pas la page DEJA en cache chez quelqu'un, qui ne
      contient pas ces lignes. Ce garde-fou vaut a partir de celle-ci. -->
 <script>
-var MARQUE_PAGE = '86fbb0a5';
+var MARQUE_PAGE = 'e7b81455';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -273,6 +273,28 @@ body{
   border:1px solid var(--bord);
   box-shadow:0 0 0 10px var(--coque1), 0 0 0 11px var(--coque2), var(--ombre);
   display:flex; flex-direction:column; flex:0 0 auto;
+}
+/* ---- ET AU-DESSUS, IL TIENT DANS LA FENETRE ----
+ *
+ * Le cadre faisait 844 pixels de haut, quelle que soit la fenetre. Sur un
+ * portable de 760 il en depassait 139, de 650 il en depassait 249 — et ce qui
+ * depassait, c'est le BAS : la barre d'onglets (Home, Tokens, Swap, Activity,
+ * Account) et, par-dessus tout, la feuille de connexion, qui s'ouvre contre
+ * le bord inferieur. On cliquait « Tap to sign in » et il ne se passait rien
+ * de visible : le formulaire s'etait bien ouvert, sous le bord de l'ecran.
+ * Mesure faite a cinq hauteurs, la barre d'onglets etait hors champ des que
+ * la fenetre descendait sous 900 pixels — c'est-a-dire sur presque tous les
+ * portables.
+ *
+ * 73 = 55 d'en-tete + 18 de marge basse. Ce sont des MESURES, pas des
+ * suppositions — le meme chiffre suppose a 50 au lieu de 51 a deja coute un
+ * defilement parasite ici. `wallet_page.test.js` refait la mesure a cinq
+ * hauteurs de fenetre et tombe si le cadre repasse sous le bord.
+ *
+ * Le cadre plus court ne rogne rien : ses ecrans defilent a l'interieur,
+ * exactement comme sur un telephone qui aurait un plus petit ecran. */
+@media (min-width:521px){
+  .wl-tel{ max-height:calc(100dvh - 73px) }
 }
 @media (max-width:520px){
   /* `100dvh - 50px` : le 50 etait la hauteur SUPPOSEE de l'en-tete. Mesuree,
@@ -808,8 +830,12 @@ body{
 .wl-voile{ position:absolute; inset:0; background:rgba(6,5,10,.82); z-index:50;
   display:flex; align-items:flex-end; justify-content:center; }
 .wl-voile[hidden]{ display:none }
+/* `max-height` + defilement : sur une fenetre tres basse le cadre se reduit
+   a moins que la feuille, et `#tel` etant en `overflow:hidden`, ce qui
+   depasse n'est pas seulement invisible — il est INATTEIGNABLE. */
 .wl-feuille{ width:100%; background:var(--carte); border-radius:22px 22px 0 0;
-  border-top:1px solid var(--bord); padding:20px 18px calc(20px + env(safe-area-inset-bottom)) }
+  border-top:1px solid var(--bord); padding:20px 18px calc(20px + env(safe-area-inset-bottom));
+  max-height:100%; overflow-y:auto; -webkit-overflow-scrolling:touch }
 .wl-feuille h2{ margin:0 0 6px; font:800 18px/1.2 'Archivo',sans-serif }
 
 /* Un FOND, et pas seulement un contour : depuis que le decor passe derriere

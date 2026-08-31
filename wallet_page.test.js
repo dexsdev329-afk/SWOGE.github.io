@@ -3078,6 +3078,22 @@ function servir(q, r, f, type) {
     ok(/Kept .* back for the network fee/.test(m.note),
        'et il le DIT : « ' + m.note.slice(0, 70) + ' »');
 
+    /* ---- ET IL N EFFACE PAS L AVERTISSEMENT ----
+     * Vu en vrai, sur une capture : solde 0,0008 ETH, MAX en propose 0,000787
+     * pour en recevoir 0,000771 — DEUX POUR CENT perdus. Le devis avait bien
+     * pose l avertissement, et la phrase sur le frais de reseau l a recouvert.
+     * Des deux messages, c est l avertissement qui compte : il dit qu on perd
+     * de l argent, l autre dit qu on nous en a garde. */
+    w.soldeL1 = 2000000000000000n;              // 0,002 ETH : le frais fixe y pese 1,5 %
+    await page.click('#poMax');
+    await page.waitForTimeout(3500);
+    m = await lit();
+    console.log('   max sur petit solde : « ' + m.note.slice(0, 120) + ' »');
+    ok(/loses [\d.]+ %/.test(m.note),
+       'sur un petit solde, MAX laisse l avertissement en place');
+    ok(/Kept .* back for the network fee/.test(m.note),
+       'et ajoute le sien dessous, au lieu de le remplacer');
+
     /* ---- UN SOLDE NON LU NE REMPLIT RIEN ---- */
     w.soldeL1 = null;
     await page.evaluate(() => document.querySelector('#poSens button[data-sens="retrait"]').click());

@@ -68,7 +68,7 @@
      A savoir : cela ne sauve pas la page DEJA en cache chez quelqu'un, qui ne
      contient pas ces lignes. Ce garde-fou vaut a partir de celle-ci. -->
 <script>
-var MARQUE_PAGE = 'ad720ce8';
+var MARQUE_PAGE = '4be65dcc';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -5974,8 +5974,20 @@ async function maxPont(){
        demi-seconde plus tard par la note du devis, et le joueur ne savait
        jamais qu'on lui avait garde de quoi payer le reseau. */
     await devisPont();
-    note.className = 'wl-note';
-    note.textContent = 'Kept ' + nombre(reserve, 18) + ' ' + ETH_AFF_DE(de) + ' back for the network fee.';
+    var garde = 'Kept ' + nombre(reserve, 18) + ' ' + ETH_AFF_DE(de) + ' back for the network fee.';
+    /* ---- ET IL N'EFFACE PAS L'AVERTISSEMENT ----
+     * Vu en vrai : sur un solde de 0,0008 ETH, MAX en a propose 0,000787 pour
+     * en recevoir 0,000771 — deux pour cent perdus. Le devis avait bien pose
+     * l'avertissement ; la phrase sur le frais de reseau l'a recouvert, et le
+     * joueur n'a lu que celle-la. Or des deux, c'est l'avertissement qui
+     * compte : il dit qu'il perd de l'argent, l'autre dit qu'on lui en a garde.
+     * On ecrit donc SOUS lui, sans le remplacer. */
+    if(/grave/.test(note.className) && note.textContent){
+      note.textContent = note.textContent + ' ' + garde;
+    } else {
+      note.className = 'wl-note';
+      note.textContent = garde;
+    }
   }catch(e){
     note.className = 'wl-note grave';
     note.textContent = (e && e.message) || 'Could not work out a maximum.';

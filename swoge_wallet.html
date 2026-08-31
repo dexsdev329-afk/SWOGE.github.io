@@ -338,14 +338,22 @@ body{
 /* ---- LA CARTE FAIT LA HAUTEUR DU DESSIN ----
  * Elle etait taillee sur son texte : cent pixels de haut, et la couronne du
  * chien passait dessous — `overflow:hidden` la coupait net. Une illustration
- * decapitee se lit comme une image cassee, pas comme un cadrage. */
-.wl-total{ position:relative; overflow:hidden; min-height:114px;
+ * decapitee se lit comme une image cassee, pas comme un cadrage.
+ *
+ * ---- ET SEULEMENT CELLE DE L'ACCUEIL ----
+ * `.wl-total` sert aussi au montant recu de l'echange et au coffre du casino,
+ * qui n'ont pas de dessin. Sans le `#ecAccueil`, ils heritaient des cent
+ * quatorze pixels de haut ET de la place reservee a l'image : l'ecran
+ * d'echange montrait un grand trou blanc au-dessus du montant, et le coffre
+ * ecrivait son titre sur 78 % de la largeur pour rien. */
+#ecAccueil .wl-total{ position:relative; overflow:hidden; min-height:114px;
   display:flex; flex-direction:column; justify-content:center }
 .wl-illu{ position:absolute; right:-2px; top:50%; transform:translateY(-50%);
   width:124px; height:auto; pointer-events:none; display:block }
 /* Le total garde sa place : sans cette marge le nombre passerait SOUS le
    dessin des que le solde depasse six chiffres. */
-.wl-total small, .wl-total b, .wl-total .eth, .wl-total .sous{
+#ecAccueil .wl-total small, #ecAccueil .wl-total b,
+#ecAccueil .wl-total .eth, #ecAccueil .wl-total .sous{
   position:relative; max-width:calc(100% - 112px) }
 /* ---- ET IL RESTE DE LA PLACE POUR LE NOMBRE ----
    Sur un cadre etroit, cent dix-huit pixels de dessin plus un solde a sept
@@ -353,7 +361,8 @@ body{
    a la ligne au milieu. Le dessin cede — c'est lui le decor. */
 @media (max-width:400px){
   .wl-illu{ width:96px }
-  .wl-total small, .wl-total b, .wl-total .eth, .wl-total .sous{
+  #ecAccueil .wl-total small, #ecAccueil .wl-total b,
+  #ecAccueil .wl-total .eth, #ecAccueil .wl-total .sous{
     max-width:calc(100% - 92px) }
 }
 
@@ -671,6 +680,18 @@ body{
 .wl-rang{ display:flex; align-items:center; justify-content:space-between; gap:12px;
   padding:11px 0; border-top:1px solid var(--bord); font:400 13px/1.3 'Archivo',sans-serif }
 .wl-rang:first-child{ border-top:0 }
+/* La rangee qui se replie est un bouton : meme dessin que les autres, plus le
+   signe a droite. `width:100%` et `text-align:left` parce qu'un `<button>`
+   centre son contenu et retrecit sur lui-meme. */
+.wl-detail{ width:100%; text-align:left; cursor:pointer; font:inherit;
+  border-left:0; border-right:0; border-bottom:0; background:none;
+  color:var(--texte) }
+.wl-detail i{ font-style:normal; flex:0 0 auto; width:22px; height:22px;
+  border-radius:50%; display:grid; place-items:center;
+  border:1px solid var(--bord); color:var(--doux);
+  font:700 13px/1 'Archivo',sans-serif }
+.wl-detail:hover i{ border-color:var(--accent); color:var(--accent) }
+#swPlus[hidden]{ display:none }
 .wl-rang span{ color:var(--doux) }
 .wl-rang b{ font:700 13px/1.3 'Space Mono',monospace; font-variant-numeric:tabular-nums;
   text-align:right; min-width:0; overflow-wrap:anywhere }
@@ -1252,9 +1273,22 @@ body{
         <div class="wl-total" style="padding:2px 0">
           <b id="swRecu" style="font-size:24px">—</b>
         </div>
-        <div class="wl-rang"><span>Route</span><b id="swRoute">—</b></div>
-        <div class="wl-rang"><span>Price impact</span><b id="swImpact">—</b></div>
-        <div class="wl-rang"><span>Minimum received<i id="swTol"></i></span><b id="swMini">—</b></div>
+        <!-- ---- LE DETAIL SE REPLIE ----
+             Trois lignes de chiffres sous un montant, sur un ecran de
+             telephone, poussaient le bouton « Swap » hors de vue : il fallait
+             defiler pour echanger. La route reste — c'est elle qu'on lit d'un
+             coup d'oeil — et les deux autres passent derriere un « + ».
+             La rangee ENTIERE est le bouton : viser un « + » de douze pixels
+             au pouce, c'est le rater. -->
+        <button type="button" class="wl-rang wl-detail" id="swPlusB"
+                aria-expanded="false" aria-controls="swPlus">
+          <span>Route</span><b id="swRoute">—</b>
+          <i aria-hidden="true">+</i>
+        </button>
+        <div id="swPlus" hidden>
+          <div class="wl-rang"><span>Price impact</span><b id="swImpact">—</b></div>
+          <div class="wl-rang"><span>Minimum received<i id="swTol"></i></span><b id="swMini">—</b></div>
+        </div>
       </div>
       <button class="wl-b" id="swPartir" type="button">Swap</button>
       <p class="wl-note" id="swNote"></p>
@@ -4436,6 +4470,39 @@ $('swDe').addEventListener('change', function(){
 $('swVers').addEventListener('change', devis);
 $('swMontant').addEventListener('input', function(){ clearTimeout(window._d); window._d=setTimeout(devis, 320); });
 
+/* ==================== LE DETAIL DE L'ECHANGE ====================
+ *
+ * Trois lignes de chiffres sous le montant recu poussaient le bouton « Swap »
+ * hors de vue sur un telephone : il fallait defiler pour echanger. La route
+ * reste — c'est elle qu'on lit d'un coup d'oeil — et l'impact et le minimum
+ * passent derriere un « + ». Le choix se garde : qui les veut ouverts ne doit
+ * pas les rouvrir a chaque echange.
+ *
+ * ---- MAIS ILS S'OUVRENT TOUT SEULS QUAND ILS COMPTENT ----
+ *
+ * Un impact de prix est une information ennuyeuse a 0,3 % et une alerte a
+ * 12 % : replier la seconde parce que la premiere encombre serait cacher
+ * exactement ce qu'il fallait montrer. Au-dela du seuil ou la page previent
+ * deja, le detail s'ouvre de lui-meme — et il ne se referme pas tout seul, ce
+ * qui serait reprendre une information qu'on vient de donner.
+ */
+var CLE_DETAIL = 'swogeSwapDetail';
+function detailOuvert(){
+  try{ return localStorage.getItem(CLE_DETAIL) === '1'; }catch(e){ return false; }
+}
+function poseDetail(v, garde){
+  var b = $('swPlusB'), d = $('swPlus');
+  if(!b || !d) return;
+  d.hidden = !v;
+  b.setAttribute('aria-expanded', v ? 'true' : 'false');
+  var i = b.querySelector('i'); if(i) i.textContent = v ? '\u2212' : '+';
+  if(garde){ try{ localStorage.setItem(CLE_DETAIL, v ? '1' : '0'); }catch(e){} }
+}
+if($('swPlusB')) $('swPlusB').addEventListener('click', function(){
+  poseDetail($('swPlus').hidden, true);
+});
+poseDetail(detailOuvert(), false);
+
 function routeDe(de, vers){
   if(de==='eth'      && vers==='swoge')    return ['v2'];
   if(de==='eth'      && vers==='swogebet') return ['v2','v3'];
@@ -4527,6 +4594,11 @@ async function devis(){
     $('swMini').textContent = nombre(moinsTolerance(out.sortie),dS)+' '+J(vers).sym;
     var imp = out.impact;
     $('swImpact').textContent = (imp===null) ? '—' : imp.toFixed(2)+' %';
+    /* ---- L'IMPACT FORT OUVRE LE DETAIL ----
+       Sans ca, le chiffre qui justifie l'avertissement serait replie au moment
+       precis ou l'on veut le lire. On n'enregistre PAS ce choix : c'est une
+       ouverture pour CETTE cotation, pas un reglage du joueur. */
+    if(imp!==null && imp>=3) poseDetail(true, false);
     if(imp!==null && imp>=10){
       $('swNote').className='wl-note grave';
       $('swNote').textContent='Price impact is '+imp.toFixed(1)+' %. The pool is small: this trade moves the price against you by that much. Try a smaller amount.';

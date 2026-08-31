@@ -275,6 +275,22 @@ const T = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
             const v = a.indexOf('8a166fb4') > 0 ? etat.swoge : etat.swogebet;
             return v === null ? null : enMot(v);
           }
+          /* ---- UNE PAIRE v2 QUI BOUGE VRAIMENT ----
+           * `getAmountsOut`, avec un taux qui DEPEND du montant : mille jetons
+           * par ether pour la sonde de 0,0001, sept cents pour un ether entier.
+           * L'impact sort donc a 30 %, un chiffre stable qu'on peut affirmer.
+           * Sans ca le faux noeud rendait zero, le devis n'existait pas, et la
+           * regle « un impact fort ouvre le detail » n'etait mesuree par rien —
+           * l'essai se contentait de dire qu'il ne pouvait rien conclure. */
+          if (d.slice(0, 10) === '0xd06ca61f') {           // getAmountsOut
+            const dedans = BigInt('0x' + d.slice(10, 74));
+            const petit = dedans <= 1000000000000000n;     // 0,001 et moins
+            const sortie = dedans * (petit ? 1000n : 700n);
+            return '0x' + (32n).toString(16).padStart(64, '0')
+                        + (2n).toString(16).padStart(64, '0')
+                        + dedans.toString(16).padStart(64, '0')
+                        + sortie.toString(16).padStart(64, '0');
+          }
           return enMot(0n);
         }
         return null;
@@ -440,12 +456,19 @@ const T = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
         envoi: document.getElementById('enMontant').value,
         toast: document.getElementById('toast').textContent }));
     };
-    const versSwap = (de) => page.evaluate((d) => {
+    /* `vers` est facultatif : sans lui on garde la destination que la page
+       s'est donnee. La preciser compte pour l'impact — la route par defaut
+       (eth -> swoge -> swogebet) passe par le quoteur v3, que ce faux noeud
+       ne sait pas jouer ; son second saut rendrait zero et l'impact du chemin
+       ENTIER serait « — » alors meme que le premier saut bouge de 30 %. */
+    const versSwap = (de, vers) => page.evaluate(([d, v]) => {
       document.querySelector('[data-va="ecSwap"]').click();
       document.getElementById('swMontant').value = '';
       const s = document.getElementById('swDe');
       s.value = d; s.dispatchEvent(new Event('change'));
-    }, de);
+      if (v) { const t = document.getElementById('swVers');
+               t.value = v; t.dispatchEvent(new Event('change')); }
+    }, [de, vers]);
 
     const RESERVE = 134102000n * 450000n;
 
@@ -474,6 +497,69 @@ const T = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
     /* -- ce que MAX ecrit se redevise tout seul -- */
     const mini = await page.evaluate(() => document.getElementById('swMini').textContent);
     ok(mini !== '', 'la ligne du minimum recu existe et suit le montant');
+
+    /* ---- LE DETAIL SE REPLIE, ET IL S OUVRE QUAND IL COMPTE ----
+     *
+     * Trois lignes de chiffres sous le montant recu poussaient le bouton
+     * « Swap » hors de vue sur un telephone : il fallait defiler pour
+     * echanger. La route reste — c est elle qu on lit d un coup d oeil — et
+     * les deux autres passent derriere un « + ».
+     *
+     * Ce qui se mesure ici n est pas le pliage : c est que le pliage ne CACHE
+     * jamais ce qu on doit voir. Un impact de prix est ennuyeux a 0,3 % et
+     * c est une alerte a 12 % ; replier la seconde parce que la premiere
+     * encombre, ce serait cacher exactement ce qu il fallait montrer. */
+    const detail = () => page.evaluate(() => {
+      const d = document.getElementById('swPlus'), b = document.getElementById('swPlusB');
+      return { ouvert: !d.hidden, aria: b.getAttribute('aria-expanded'),
+               signe: b.querySelector('i').textContent.trim(),
+               route: document.getElementById('swRoute').getBoundingClientRect().height > 0,
+               garde: (() => { try { return localStorage.getItem('swogeSwapDetail'); }
+                               catch (e) { return null; } })() };
+    });
+    let d = await detail();
+    console.log('   detail : ' + JSON.stringify(d));
+    ok(!d.ouvert && d.aria === 'false', 'le detail est replie par defaut');
+    ok(d.route, 'mais la route, elle, reste visible — c est ce qu on lit d un coup d oeil');
+    ok(d.signe === '+', 'et le signe dit qu il y a quelque chose dessous');
+
+    await page.click('#swPlusB');
+    await page.waitForTimeout(250);
+    d = await detail();
+    ok(d.ouvert && d.aria === 'true' && d.signe === '\u2212',
+       'le « + » l ouvre, et devient un « − »');
+    ok(d.garde === '1', 'le choix est garde : qui les veut ouverts ne les rouvre pas a chaque fois');
+    await page.click('#swPlusB');
+    await page.waitForTimeout(250);
+    d = await detail();
+    ok(!d.ouvert && d.garde === '0', 'et se referme, garde aussi');
+
+    /* ---- UN IMPACT FORT L OUVRE TOUT SEUL ----
+     * On demande un montant assez gros pour bouger le prix. Le seuil est
+     * celui ou la page previent deja — au-dela, le chiffre qui justifie
+     * l avertissement ne doit pas etre replie. */
+    await versSwap('eth', 'swoge');
+    await page.fill('#swMontant', '1');
+    await page.waitForTimeout(2200);
+    const fort = await page.evaluate(() => ({
+      impact: document.getElementById('swImpact').textContent.trim(),
+      ouvert: !document.getElementById('swPlus').hidden,
+      garde: (() => { try { return localStorage.getItem('swogeSwapDetail'); }
+                      catch (e) { return null; } })() }));
+    console.log('   impact fort : ' + JSON.stringify(fort));
+    const pct = parseFloat(fort.impact);
+    ok(isFinite(pct) && pct >= 3,
+       `la paire du banc rend bien un impact fort (${fort.impact}) — sans lui,`
+       + ' cette regle ne serait mesuree par rien');
+    ok(fort.ouvert, `un impact de ${fort.impact} ouvre le detail tout seul`);
+    /* Et il n ECRIT PAS ce choix : c est une ouverture pour CETTE cotation,
+       pas un reglage que le joueur aurait demande. Sans cette ligne, un seul
+       gros echange replierait le detail pour toujours — ou le laisserait
+       ouvert pour toujours, ce qui est le meme defaut a l envers. */
+    ok(fort.garde === '0',
+       'sans enregistrer ce choix — c est cette cotation-la qui l a ouvert, pas le joueur');
+    await page.fill('#swMontant', '');
+    await page.waitForTimeout(400);
 
     /* -- un solde plus petit que le frais -- */
     etat.eth = 1000n; await recharge(); await versSwap('eth');

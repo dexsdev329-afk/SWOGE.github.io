@@ -865,6 +865,52 @@ const T = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
     ok(e.n === 2, 'les deux comptes sont listes (' + e.n + ')');
     ok(e.actif.indexOf('0x0000…0000') >= 0, 'et le premier est marque en service');
 
+    /* ---- ET LE MEME CHOIX, EN HAUT DE LA PAGE ----
+     * Il vivait au fond de l ecran « Account », a trois gestes. Changer de
+     * compte, quand on en a plusieurs, est un geste de tous les jours, pas un
+     * reglage. Il lit la MEME liste et passe par la MEME bascule : deux
+     * chemins vers un changement de compte finiraient par ne plus faire
+     * exactement la meme chose, et celui qu on oublie est celui qui laisse le
+     * signataire sur l ancienne adresse. */
+    const haut = () => page.evaluate(() => {
+      const b = document.getElementById('acChoix');
+      return { vu: !b.hidden, nom: document.getElementById('acChoixNom').textContent.trim(),
+               ouvert: !document.getElementById('acChoixL').hidden,
+               lignes: [].map.call(document.querySelectorAll('#acChoixL [data-compte]'),
+                 (x) => x.dataset.compte),
+               ajout: !!document.querySelector('#acChoixL [data-va="ecCompte"]') };
+    });
+    let h = await haut();
+    console.log('   en haut : ' + JSON.stringify(h));
+    ok(h.vu, 'le choix du compte est en haut de la page, a cote de la marque');
+    ok(h.nom === 'Account 1', `il porte le compte en service (« ${h.nom} »)`);
+    await page.click('#acChoixB');
+    await page.waitForTimeout(250);
+    h = await haut();
+    ok(h.ouvert, 'le chevron ouvre la liste');
+    ok(h.lignes.join(',') === '0,1', `elle porte les deux comptes (${h.lignes.join(', ')})`);
+    ok(h.ajout, 'et de quoi en ajouter un, qui mene a l ecran qui sait le faire');
+    /* On bascule DEPUIS LE HAUT, et l on verifie par le solde — la seule
+       preuve que le fournisseur et le signataire ont suivi, pas seulement
+       l affichage. */
+    await page.click('#acChoixL [data-compte="1"]');
+    await page.waitForTimeout(1800);
+    h = await haut();
+    ok(!h.ouvert, 'choisir referme la liste');
+    ok(h.nom === 'Account 2', `et le haut de page suit (« ${h.nom} »)`);
+    const soldeHaut = await page.evaluate(() =>
+      (document.querySelector('#acJetons .wl-jeton .val b') || {}).textContent || '');
+    ok(soldeHaut === '0.002',
+       `le solde a suivi la bascule faite depuis le haut (${soldeHaut})`);
+    /* On revient au premier pour la suite du bloc, qui l attend. */
+    await page.click('#acChoixL [data-compte="0"]').catch(async () => {
+      await page.click('#acChoixB'); await page.waitForTimeout(200);
+      await page.click('#acChoixL [data-compte="0"]');
+    });
+    await page.waitForTimeout(1800);
+    await page.evaluate(() => document.querySelector('[data-va="ecCompte"]').click());
+    await page.waitForTimeout(400);
+
     await page.click('#cpListe .wl-cpt[data-compte="1"]');
     await page.waitForTimeout(1800);
     e = await etat();
@@ -2079,6 +2125,119 @@ const T = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css',
     ok(tot === 'sombre',
        'la tenue gardee est deja posee au premier instant du document (' + tot + ')');
     await p2.close();
+
+    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
+    await page.close();
+  }
+
+  /* 12 bis. LES SOLDES SE RELISENT TOUT SEULS
+   *
+   * « Il y a un bouton pour rafraichir les soldes, pourquoi ce n est pas
+   * automatique ? » Ce n en etait pas une decision : rien n avait jamais ete
+   * ecrit pour relire. Les soldes se lisaient a la connexion et apres une
+   * transaction, un point. Un joueur qui recevait un envoi pendant qu il
+   * regardait son ecran ne le voyait jamais arriver.
+   *
+   * Ce qui se mesure ici n est pas la minuterie — attendre trente secondes
+   * dans un essai, c est mesurer une horloge. C est le CHEMIN qui compte, et
+   * il est le meme : revenir sur la page relit, et le fait sans un mot.
+   */
+  console.log('\n-- les soldes se relisent tout seuls --');
+  {
+    const MOI = '0x00000000000000000000000000000000000a11ce';
+    const enMot = (v) => '0x' + BigInt(v).toString(16).padStart(64, '0');
+    let solde = 5000000000000000n;   /* 0,005 */
+    let muet = false, lectures = 0;
+    const page = await nav.newPage({ viewport: { width: 390, height: 844 } });
+    const boum = [];
+    page.on('pageerror', (e) => boum.push(String(e).slice(0, 160)));
+    await page.addInitScript((moi) => {
+      try { localStorage.setItem('swogeAuth', 'wallet'); } catch (e) {}
+      try { sessionStorage.setItem('swogeWalletIntroVue', '1'); } catch (e) {}
+      window.ethereum = { isMetaMask: true, on: () => {}, removeListener: () => {},
+        request: async (q) => {
+          if (q.method === 'eth_accounts' || q.method === 'eth_requestAccounts') return [moi];
+          if (q.method === 'eth_chainId') return '0x1237';
+          return null; } };
+    }, MOI);
+    await page.route('**/ethers*.umd.min.js', (r) => r.fulfill({
+      contentType: 'text/javascript', body: fs.readFileSync(ETHERS, 'utf8') }));
+    await page.route('**/api.dexscreener.com/**', (r) => r.abort());
+    await page.route('**/avatar/**', (r) => r.fulfill({ status: 404, body: '' }));
+    await page.route('**/nom/**', (r) => r.abort());
+    await page.route('**/rpc.mainnet.chain.robinhood.com/**', async (r) => {
+      const q = JSON.parse(r.request().postData() || '{}');
+      const seul = !Array.isArray(q); const arr = seul ? [q] : q;
+      const un = (m) => {
+        if (m.method === 'eth_getBalance') { lectures++; return muet ? null : enMot(solde); }
+        if (m.method === 'eth_chainId') return '0x1237';
+        if (m.method === 'net_version') return '4663';
+        if (m.method === 'eth_blockNumber') return '0x2f7ce78';
+        if (m.method === 'eth_getLogs') return [];
+        if (m.method === 'eth_gasPrice') return enMot(134102000n);
+        if (m.method === 'eth_call') return enMot(0n);
+        return null; };
+      const out = arr.map((m) => { const v = un(m);
+        return v === null ? { jsonrpc: '2.0', id: m.id, error: { code: -32000, message: 'nope' } }
+                          : { jsonrpc: '2.0', id: m.id, result: v }; });
+      await r.fulfill({ contentType: 'application/json',
+        body: JSON.stringify(seul ? out[0] : out) });
+    });
+    await page.goto('http://127.0.0.1:' + port + '/swoge_wallet.html',
+                    { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(2800);
+
+    const lu = () => page.evaluate(() =>
+      (document.querySelector('#acJetons .wl-jeton .val b') || {}).textContent || '');
+    ok((await lu()) === '0.005', `le solde de depart est lu (${await lu()})`);
+
+    /* ---- REVENIR SUR LA PAGE RELIT ----
+     * C est le moment ou le chiffre a le plus de chances d avoir bouge. On
+     * change le solde a la source SANS toucher au bouton.
+     * ON ATTEND LE REPOS D ABORD : une relecture est refusee dans les dix
+     * secondes qui suivent la precedente — sinon un aller-retour entre deux
+     * onglets declencherait une passe a chaque fois. La page vient de lire au
+     * chargement ; sans cette attente on mesurerait le garde-fou et l on
+     * conclurait que la relecture ne marche pas. */
+    solde = 9000000000000000n;
+    await page.waitForTimeout(10500);
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await page.waitForTimeout(1600);
+    const apres = await lu();
+    ok(apres === '0.009',
+       `revenir sur la page relit le solde, sans toucher au bouton (${apres})`);
+
+    /* ---- ET UNE PASSE AUTOMATIQUE NE VIDE PAS UN SOLDE ----
+     * C est la moitie qui compte. Une lecture ratee laisse « — », et c est
+     * juste quand le joueur vient d appuyer : il a demande, on lui repond.
+     * Toutes les trente secondes, c est l inverse — un creux de reseau
+     * effacerait le solde a l ecran sans que personne n ait rien demande, et
+     * le joueur verrait son portefeuille se vider en le regardant. */
+    muet = true;
+    await page.evaluate(() => { document.getElementById('toast').textContent = ''; });
+    /* Le repos de dix secondes empeche une seconde passe tout de suite : on
+       attend qu il soit passe, sinon on mesurerait le garde-fou. */
+    await page.waitForTimeout(10500);
+    await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await page.waitForTimeout(1600);
+    const garde = await lu();
+    const bruit = await page.evaluate(() => document.getElementById('toast').textContent.trim());
+    console.log(`   apres une lecture ratee : « ${garde} », message « ${bruit} »`);
+    ok(garde === '0.009',
+       `une passe automatique qui echoue GARDE la derniere valeur lue (${garde})`);
+    ok(!bruit, 'et elle se tait — un message toutes les trente secondes couvre l ecran');
+
+    /* ---- LE BOUTON, LUI, PARLE ----
+     * Le joueur a demande : il a droit a une reponse, et au tiret qui va avec.
+     * Sans cette moitie, « on garde la derniere valeur » deviendrait un
+     * mensonge poli qui cacherait une chaine muette. */
+    await page.click('#btRafraichir');
+    await page.waitForTimeout(1800);
+    const apresBouton = await lu();
+    const ditBouton = await page.evaluate(() => document.getElementById('toast').textContent.trim());
+    console.log(`   apres le bouton : « ${apresBouton} », message « ${ditBouton} »`);
+    ok(apresBouton === '—' && /unknown|not read|could not/i.test(ditBouton),
+       `le bouton, lui, dit que la chaine n a pas repondu (« ${ditBouton} »)`);
 
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.close();

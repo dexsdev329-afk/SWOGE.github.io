@@ -173,6 +173,42 @@ body{
 }
 .wl-retour:hover{ color:var(--texte); border-color:var(--accent) }
 
+/* ---- LE CHOIX DU COMPTE ----
+ * Un nom, un chevron, et la liste dessous. Il prend la place qui reste entre
+ * la marque et le retour a l'arcade — donc il retrecit avant eux, et son nom
+ * se coupe plutot que de pousser le bouton du retour hors de l'ecran. */
+.wl-choix{ position:relative; flex:0 1 auto; min-width:0 }
+.wl-choix[hidden]{ display:none }
+.wl-choix-b{ display:flex; align-items:center; gap:6px; max-width:100%;
+  padding:8px 12px; border-radius:999px; cursor:pointer;
+  border:1px solid var(--bord); background:var(--carte); color:var(--texte);
+  font:800 12px/1 'Archivo',sans-serif; letter-spacing:.3px }
+.wl-choix-b b{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
+.wl-choix-b i{ font-style:normal; font-size:10px; color:var(--doux); flex:0 0 auto }
+.wl-choix-b:hover{ border-color:var(--accent) }
+.wl-choix.ouvert .wl-choix-b{ border-color:var(--accent) }
+.wl-choix-l{ position:absolute; left:0; top:calc(100% + 6px); z-index:60;
+  min-width:212px; max-height:min(52vh, 340px); overflow-y:auto;
+  scrollbar-width:none;
+  background:var(--carte); border:1px solid var(--accent); border-radius:12px;
+  padding:5px; box-shadow:0 14px 34px rgba(0,0,0,.35) }
+.wl-choix-l::-webkit-scrollbar{ display:none }
+.wl-choix-l[hidden]{ display:none }
+.wl-choix-l button{ width:100%; display:flex; align-items:center; gap:10px;
+  text-align:left; padding:9px 9px; border-radius:9px; border:0; background:none;
+  color:var(--texte); font:inherit; cursor:pointer }
+.wl-choix-l button:hover{ background:var(--voile) }
+.wl-choix-l .num{ flex:0 0 auto; width:26px; height:26px; border-radius:50%;
+  display:grid; place-items:center; background:var(--nuit); color:var(--doux);
+  font:800 11px/1 'Archivo',sans-serif }
+.wl-choix-l button.on .num{ background:var(--accent); color:#fff }
+.wl-choix-l .tx{ flex:1 1 auto; min-width:0 }
+.wl-choix-l .tx b{ display:block; font:700 12.5px/1.2 'Archivo',sans-serif }
+.wl-choix-l .tx small{ display:block; font:400 10.5px/1.3 'Space Mono',monospace;
+  color:var(--doux); margin-top:2px }
+.wl-choix-l .sep{ height:1px; background:var(--bord); margin:5px 2px }
+.wl-choix-l .plus{ color:var(--accent); font:700 12px/1 'Archivo',sans-serif }
+
 /* ==================== LE TELEPHONE ====================
  * Taille logique fixe : 390 x 844, celle d'un telephone courant. Sur un
  * ecran plus petit on ne retrecit pas le contenu, on laisse le cadre
@@ -932,6 +968,19 @@ body{
     <img src="img/wallet/tok_swoge.webp" alt="">
     <span><b>SWOGE</b><i>WALLET</i></span>
   </a>
+  <!-- ---- LE CHOIX DU COMPTE, EN HAUT ----
+       Il vivait au fond de l'ecran « Account », a trois gestes. Un joueur qui
+       a plusieurs portefeuilles change de compte souvent — c'est un geste de
+       tous les jours, pas un reglage. Il n'apparait QUE s'il y a vraiment
+       plusieurs comptes a choisir : un chevron qui n'ouvre qu'une seule ligne
+       promet un choix qui n'existe pas. -->
+  <div class="wl-choix" id="acChoix" hidden>
+    <button type="button" class="wl-choix-b" id="acChoixB"
+            aria-haspopup="menu" aria-expanded="false">
+      <b id="acChoixNom">Account</b><i aria-hidden="true">&#9662;</i>
+    </button>
+    <div class="wl-choix-l" id="acChoixL" role="menu" hidden></div>
+  </div>
   <a class="wl-retour" href="games.html">&larr; Back to the arcade</a>
 </header>
 
@@ -2619,27 +2668,102 @@ $('cpExplorer').addEventListener('click', function(){
  * Afficher zero pour une lecture ratee, c'est dire au joueur qu'il n'a
  * plus rien.
  */
-async function rafraichit(){
+var enLecture = false;          /* une passe a la fois : elles se doubleraient */
+var derniereLecture = 0;        /* quand la derniere a FINI */
+
+/**
+ * `discret` : une passe automatique. Elle ne parle pas, et surtout elle ne
+ * VIDE PAS un solde qu'elle n'a pas su relire.
+ *
+ * ---- POURQUOI LES DEUX SE COMPORTENT DIFFEREMMENT ----
+ *
+ * Une lecture ratee laisse `null`, et `null` s'affiche « — ». C'est juste
+ * quand le joueur vient d'appuyer sur le bouton : il a demande, on lui repond
+ * « je n'ai pas pu », et le mot qui suit le dit.
+ *
+ * Toutes les trente secondes, c'est l'inverse : un creux de reseau effacerait
+ * le solde a l'ecran, sans que personne n'ait rien demande, et le joueur
+ * verrait son portefeuille se vider en le regardant. Une passe automatique
+ * GARDE donc la derniere valeur lue — qui est une vraie valeur, lue sur la
+ * chaine, pas une invention — et se tait.
+ */
+async function rafraichit(discret){
   if(!moi){ peintAccueil(); return; }
+  /* Chaque passe est une lecture par jeton. Deux passes qui se croisent, ce
+     sont deux fois les appels pour un seul resultat, et la plus lente ecrit
+     par-dessus la plus recente. */
+  if(enLecture) return;
+  enLecture = true;
   var p = lec();
   var rate = 0;
   var taches = JETONS.map(async function(j){
     try{
       soldes[j.cle] = await borne(
         j.natif ? p.getBalance(moi) : erc(j.adr).balanceOf(moi), 9000, 'balance');
-    }catch(e){ soldes[j.cle] = null; rate++; }
+    }catch(e){ if(!discret) soldes[j.cle] = null; rate++; }
   });
-  await Promise.all(taches);
-  rangeCeQuOnDetient();
-  await lisPrix();
-  peintAccueil();
+  /* `finally` : un drapeau reste a `true` apres une exception ne se voit pas —
+     il ne casse rien, il ARRETE simplement toute relecture, pour toujours, et
+     le portefeuille se fige sur des chiffres qui vieillissent en silence. */
+  try{
+    await Promise.all(taches);
+    rangeCeQuOnDetient();
+    await lisPrix();
+    peintAccueil();
+  } finally {
+    enLecture = false;
+    derniereLecture = Date.now();
+  }
   /* On DIT quand une lecture a echoue. Un solde absent s'affiche « — »,
-     mais sans un mot le joueur lit ce tiret comme « zero ». */
-  if(rate) toast(rate===JETONS.length
+     mais sans un mot le joueur lit ce tiret comme « zero ».
+     Une passe automatique se tait : un message toutes les trente secondes
+     n'apprend rien et couvre l'ecran. */
+  if(rate && !discret) toast(rate===JETONS.length
     ? 'The chain did not answer — balances unknown, not zero'
     : rate+' balance(s) could not be read');
 }
 $('btRafraichir').addEventListener('click', function(){ toast('Refreshing…'); rafraichit(); });
+
+/* ==================== LES SOLDES SE RELISENT TOUT SEULS ====================
+ *
+ * ---- POURQUOI IL Y AVAIT UN BOUTON, ET RIEN D'AUTRE ----
+ *
+ * Ce n'etait pas une decision : rien n'avait jamais ete ecrit pour relire. Les
+ * soldes se lisaient a la connexion et apres une transaction, et c'est tout.
+ * Un joueur qui recevait un envoi pendant qu'il regardait son ecran ne le
+ * voyait jamais arriver — il fallait qu'il pense a appuyer.
+ *
+ * ---- POURQUOI CE N'EST PAS UN SIMPLE `setInterval` ----
+ *
+ * Une passe, c'est une lecture de chaine PAR JETON. Laissee libre, elle
+ * tournerait dans un onglet oublie au fond du navigateur pendant des heures :
+ * la batterie du telephone et le noeud RPC paient les deux.
+ *
+ *   - rien ne part quand la page n'est pas VISIBLE ;
+ *   - on relit tout de suite en REVENANT sur la page, parce que c'est le
+ *     moment ou le chiffre a le plus de chances d'avoir bouge — mais pas si
+ *     l'on vient de relire, sinon un aller-retour entre deux onglets
+ *     declencherait une passe a chaque fois ;
+ *   - jamais deux passes a la fois.
+ *
+ * Le bouton reste : il dit ce qui se passe, et il sert quand on veut forcer
+ * la lecture sans attendre trente secondes.
+ */
+var CADENCE_SOLDES = 30000;     /* la demi-minute : assez pour voir arriver un
+                                   envoi, assez peu pour ne pas marteler */
+var REPOS_SOLDES = 10000;       /* on ne relit pas deux fois en dix secondes */
+
+function pageVisible(){
+  try{ return document.visibilityState !== 'hidden'; }catch(e){ return true; }
+}
+function relitSiUtile(){
+  if(!moi || !pageVisible()) return;
+  if(Date.now() - derniereLecture < REPOS_SOLDES) return;
+  rafraichit(true);
+}
+setInterval(function(){ if(pageVisible()) rafraichit(true); }, CADENCE_SOLDES);
+document.addEventListener('visibilitychange', relitSiUtile);
+window.addEventListener('focus', relitSiUtile);
 
 /* ---- LES PRIX ----
  * Le taux ETH et le prix du $SWOGE viennent de DexScreener, comme sur le
@@ -3358,7 +3482,75 @@ function peintComptes(){
        + '</button>';
   }
   $('cpListe').innerHTML = h;
+  peintChoixCompte();
 }
+
+/* ---- LE MEME CHOIX, EN HAUT DE LA PAGE ----
+ *
+ * Il lit la MEME liste et passe par la MEME bascule que l'ecran « Account » :
+ * deux chemins vers un changement de compte finiraient par ne plus faire
+ * exactement la meme chose, et celui qu'on oublie est celui qui laisse le
+ * signataire sur l'ancienne adresse — le joueur regarderait un solde et
+ * signerait depuis un autre compte.
+ *
+ * Il n'apparait qu'a partir de DEUX comptes : un chevron qui n'ouvre qu'une
+ * seule ligne promet un choix qui n'existe pas. Avec un seul compte, « Add an
+ * account » vit deja dans l'ecran des reglages, a sa place.
+ */
+function peintChoixCompte(){
+  var boite = $('acChoix'); if(!boite) return;
+  var l = comptesPrivy();
+  var montre = methode === 'email' && l.length > 1 && !!moi;
+  boite.hidden = !montre;
+  if(!montre){ fermeChoixCompte(); return; }
+  var nom = 'Account';
+  var h = '';
+  for(var i=0;i<l.length;i++){
+    var c = l[i], ici = c.adresse && moi && c.adresse.toLowerCase() === moi;
+    if(ici) nom = 'Account ' + (c.index + 1);
+    h += '<button type="button" class="' + (ici ? 'on' : '') + '" role="menuitem"'
+       +   ' data-compte="' + c.index + '">'
+       +   '<span class="num">' + (c.index + 1) + '</span>'
+       +   '<span class="tx"><b>Account ' + (c.index + 1) + '</b>'
+       +     '<small>' + court(c.adresse) + '</small></span>'
+       + '</button>';
+  }
+  /* « En ajouter un » mene a l'ecran qui sait le faire, il ne le refait pas
+     ici : la creation demande une reponse du fournisseur et sait echouer, et
+     un menu deroulant n'est pas l'endroit ou lire un refus. */
+  h += '<div class="sep"></div>'
+     + '<button type="button" role="menuitem" data-va="ecCompte" data-ferme-choix="1">'
+     +   '<span class="num">+</span><span class="tx"><span class="plus">Add an account</span></span>'
+     + '</button>';
+  $('acChoixL').innerHTML = h;
+  $('acChoixNom').textContent = nom;
+}
+
+function fermeChoixCompte(){
+  var b = $('acChoix'); if(!b) return;
+  b.classList.remove('ouvert');
+  var l = $('acChoixL'); if(l) l.hidden = true;
+  var t = $('acChoixB'); if(t) t.setAttribute('aria-expanded', 'false');
+}
+function ouvreChoixCompte(){
+  var b = $('acChoix'); if(!b || b.hidden) return;
+  b.classList.add('ouvert');
+  $('acChoixL').hidden = false;
+  $('acChoixB').setAttribute('aria-expanded', 'true');
+}
+if($('acChoixB')) $('acChoixB').addEventListener('click', function(ev){
+  ev.stopPropagation();
+  if($('acChoixL').hidden) ouvreChoixCompte(); else fermeChoixCompte();
+});
+/* Un menu qui ne se referme pas ailleurs reste ouvert par-dessus l'ecran
+   suivant, et le doigt tombe dedans au lieu de tomber sur la page. */
+document.addEventListener('click', function(ev){
+  if($('acChoix') && !$('acChoix').contains(ev.target)) fermeChoixCompte();
+  else if(ev.target.closest && ev.target.closest('[data-ferme-choix]')) fermeChoixCompte();
+});
+document.addEventListener('keydown', function(ev){
+  if(ev.key === 'Escape') fermeChoixCompte();
+});
 
 /* ---- LA BASCULE ----
    Tout ce qui depend du compte est refait, et dans cet ordre : on efface
@@ -3384,6 +3576,7 @@ async function basculeCompte(n){
        nouveau compte heriterait des transactions de l'ancien. */
     journalCharge();
     majCompte(); peintComptes(); peintAccueil(); peintRecevoir();
+    fermeChoixCompte();
     await rafraichit();
     toast('Now using account ' + (n + 1));
   }catch(e){

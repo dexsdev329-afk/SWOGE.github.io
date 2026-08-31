@@ -1,0 +1,1652 @@
+<!DOCTYPE html>
+<html lang="fr">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>SWOGE AI — la colonie qui apprend</title>
+<meta name="description" content="Six agents lisent les vrais tokens de la Robinhood Chain, notent ce qu'ils voient, prennent des positions papier au prix reel, et apprennent de ce qui a vraiment marche. Tout est garde sur l'appareil.">
+<link rel="canonical" href="https://swoleeswoge.dog/swoge_ai.html">
+
+<script>
+/* ---- LA PAGE SE REMPLACE ELLE-MEME QUAND ELLE CHANGE ----
+ * Tout son code est ecrit dedans : aucun `script.js?v=` ne la protege du
+ * cache. Elle porte donc sa propre empreinte, et redemande `version.json`
+ * une fois par session pour savoir si le serveur en a une plus recente.
+ * Sans ca, un joueur garde des semaines une version corrigee depuis
+ * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
+var MARQUE_PAGE = 'a9859954';
+(function(){
+  try{
+    if(!window.fetch || !window.sessionStorage) return;
+    var CLE = 'swogeRelancePage:' + location.pathname;
+    if(sessionStorage.getItem(CLE) === MARQUE_PAGE) return;
+    var moi = location.pathname.split('/').pop() || 'index.html';
+    fetch('version.json', { cache: 'no-store' })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(vrai){
+        if(!vrai || !vrai[moi] || vrai[moi] === MARQUE_PAGE) return;
+        sessionStorage.setItem(CLE, MARQUE_PAGE);
+        location.reload();
+      })['catch'](function(){});
+  }catch(e){}
+})();
+</script>
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+  /* SWOGE AI — un seul monde assume : village au soleil, HUD en verre sombre.
+     Chaque couleur est posee en clair, pour que la page tienne sur n'importe
+     quel fond. */
+  :root{
+    --hud:#0f1d18; --hud-2:#16271f; --hud-3:#1d3529; --line:#264a3a;
+    --ink:#eaf6ee; --ink-dim:#9fbcaa; --ink-faint:#6d8b79;
+    --gold:#ffce4a; --gold-dk:#e0a92a;
+    --gain:#35e07f; --loss:#ff6060; --warn:#ffb038;
+    --rh:#00c805;
+    --radius:16px;
+  }
+  *{box-sizing:border-box}
+  html{ -webkit-text-size-adjust:100%; }
+  html,body{height:100%}
+  body{
+    margin:0; background:
+      radial-gradient(1200px 700px at 30% -10%, #12271d 0%, transparent 60%),
+      linear-gradient(180deg,#0c1712,#0a130f);
+    color:var(--ink);
+    font-family:"Outfit",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;
+    overflow:hidden;
+  }
+  .app{ height:100vh; height:100dvh; overflow:hidden; }
+
+  /* ---------- barre du haut ---------- */
+  header.bar{
+    display:flex; align-items:center; gap:18px; padding:12px 18px;
+    background:linear-gradient(180deg,var(--hud-2),var(--hud));
+    border-bottom:1px solid var(--line);
+    flex-wrap:nowrap; flex:none; min-height:66px; width:100%;
+  }
+  .brand{display:flex; align-items:center; gap:12px; flex:none}
+  .logo{
+    width:38px;height:38px;border-radius:11px;flex:none;
+    background:radial-gradient(circle at 32% 28%,#7ee0a0,#1fae63 60%,#0f7a41);
+    box-shadow:inset 0 0 0 2px rgba(255,255,255,.18),0 4px 14px rgba(31,174,99,.35);
+    display:grid;place-items:center; font-size:20px;
+  }
+  .brand h1{
+    font-family:"Fredoka",sans-serif; font-weight:600; font-size:22px;
+    margin:0; letter-spacing:.3px; line-height:1; white-space:nowrap;
+  }
+  .brand p{margin:2px 0 0; font-size:11.5px; color:var(--ink-dim); letter-spacing:.4px}
+  .chip{
+    font-size:11px; font-weight:600; padding:3px 8px; border-radius:999px;
+    display:inline-flex; align-items:center; gap:5px; letter-spacing:.3px; flex:none;
+  }
+  .chip.rh{color:#7bff86; background:rgba(0,200,5,.13); box-shadow:inset 0 0 0 1px rgba(0,200,5,.35)}
+  .chip.data{color:var(--gold); background:rgba(255,206,74,.12); box-shadow:inset 0 0 0 1px rgba(255,206,74,.3)}
+  .chip.data.stale{color:var(--warn); box-shadow:inset 0 0 0 1px rgba(255,176,56,.4)}
+  .chip.data.mort{color:var(--loss); box-shadow:inset 0 0 0 1px rgba(255,96,96,.4)}
+  .spacer{flex:1 1 auto}
+  .treasury{
+    text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:1px;
+    padding-right:4px; flex:none;
+  }
+  .treasury .lbl{font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--ink-faint)}
+  .treasury .val{
+    font-family:"JetBrains Mono",monospace; font-weight:700; font-size:26px; color:var(--gold);
+    line-height:1; font-variant-numeric:tabular-nums; text-shadow:0 0 18px rgba(255,206,74,.25);
+  }
+  .treasury .delta{font-family:"JetBrains Mono",monospace; font-size:12px; font-weight:500}
+  .live{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-dim);letter-spacing:.5px;margin-left:auto;flex:none}
+  .dot-live{width:8px;height:8px;border-radius:50%;background:var(--gain);box-shadow:0 0 0 0 rgba(53,224,127,.6);animation:pulse 1.8s infinite}
+  .dot-live.off{background:var(--ink-faint);animation:none}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(53,224,127,.55)}70%{box-shadow:0 0 0 8px rgba(53,224,127,0)}100%{box-shadow:0 0 0 0 rgba(53,224,127,0)}}
+  .controls{display:flex;gap:6px;flex:none}
+  .btn{
+    font-family:"Outfit",sans-serif; font-weight:600; font-size:12.5px; color:var(--ink);
+    background:var(--hud-3); border:1px solid var(--line); border-radius:9px;
+    padding:7px 11px; cursor:pointer; transition:.15s; letter-spacing:.3px;
+    touch-action:manipulation;
+  }
+  .btn:hover{background:#24483a; border-color:#356b52}
+  .btn.on{color:#0b1a13; background:var(--gain); border-color:var(--gain)}
+  .btn:disabled{opacity:.55; cursor:default}
+  .btn:focus-visible{outline:2px solid var(--gold); outline-offset:2px}
+  .retour{color:var(--ink-dim);text-decoration:none;font-size:12.5px;font-weight:600;flex:none}
+  .retour:hover{color:var(--gold)}
+
+  /* ---------- partage principal ---------- */
+  .main{height:calc(100dvh - 67px); display:grid; grid-template-columns:1.55fr 1fr; min-height:0}
+  .stage{position:relative; min-height:0; overflow:hidden; background:#0a130f}
+  #village{display:block; width:100%; height:100%}
+  .stage-tag{
+    position:absolute; left:14px; bottom:12px; right:14px; font-size:11px; color:rgba(255,255,255,.72);
+    background:rgba(9,20,14,.55); backdrop-filter:blur(4px); padding:6px 10px; border-radius:8px;
+    letter-spacing:.3px; pointer-events:none; box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);
+    line-height:1.45;
+  }
+  .toast-note{color:var(--warn)!important}
+
+  /* ---------- HUD de droite ---------- */
+  .panel{
+    background:linear-gradient(180deg,var(--hud-2),var(--hud));
+    border-left:1px solid var(--line);
+    display:flex; flex-direction:column; min-height:0; overflow-y:auto;
+  }
+  .panel::-webkit-scrollbar{width:9px}
+  .panel::-webkit-scrollbar-thumb{background:#22423383;border-radius:9px;border:2px solid transparent;background-clip:padding-box}
+  .card{padding:14px 16px; border-bottom:1px solid var(--line)}
+  .card h2{
+    font-family:"Outfit",sans-serif; font-weight:600; font-size:11px; letter-spacing:1.6px;
+    text-transform:uppercase; color:var(--ink-faint); margin:0 0 11px; display:flex; align-items:center; gap:8px;
+  }
+  .card h2 .count{margin-left:auto;color:var(--ink-dim);font-weight:500;letter-spacing:.5px;text-transform:none}
+
+  .agent{display:flex; align-items:center; gap:11px; padding:7px 0}
+  .agent + .agent{border-top:1px dashed rgba(255,255,255,.05)}
+  .ava{width:30px;height:30px;border-radius:9px;flex:none;display:grid;place-items:center;font-size:15px;
+       box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.16)}
+  .agent .nm{font-weight:600; font-size:13.5px; font-family:"Fredoka",sans-serif; letter-spacing:.2px}
+  .agent .ms{font-size:11px; color:var(--ink-dim); line-height:1.25}
+  .agent .sc{font-size:10.5px; color:var(--ink-faint); font-family:"JetBrains Mono",monospace; margin-top:2px}
+  .agent .st{margin-left:auto; text-align:right; flex:none}
+  .stpill{font-size:10px; font-weight:600; padding:2px 7px; border-radius:999px; font-family:"JetBrains Mono",monospace;
+          letter-spacing:.2px; white-space:nowrap}
+  .stpill.idle{color:var(--ink-faint); background:rgba(255,255,255,.05)}
+  .stpill.work{color:#0b1a13; background:var(--gold)}
+  .stpill.walk{color:#04140c; background:var(--gain)}
+
+  .flow{display:flex;flex-direction:column;gap:8px}
+  .tok{display:flex;align-items:center;gap:9px;background:rgba(255,255,255,.03);border:1px solid var(--line);
+       border-radius:11px;padding:8px 10px}
+  .tok .sym{font-family:"JetBrains Mono",monospace;font-weight:700;font-size:13px}
+  .badge{font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:6px;letter-spacing:.4px;font-family:"JetBrains Mono",monospace}
+  .badge.rh{color:#04140c;background:var(--rh)}
+  .stages{display:flex;gap:4px;margin-left:auto}
+  .sd{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.12);transition:.3s}
+  .sd.on{background:var(--gain);box-shadow:0 0 7px rgba(53,224,127,.7)}
+  .sd.rej{background:var(--loss);box-shadow:0 0 7px rgba(255,96,96,.6)}
+  .meta{font-size:10.5px;color:var(--ink-faint);font-family:"JetBrains Mono",monospace;margin-left:2px}
+  .empty{font-size:12px;color:var(--ink-faint);padding:6px 0;font-style:italic;line-height:1.5}
+
+  .pick{display:flex;align-items:center;gap:9px;text-decoration:none;color:inherit;cursor:pointer;
+        border-radius:8px;padding:6px;margin:0 -6px;transition:background .12s}
+  .pick+.pick{border-top:1px dashed rgba(255,255,255,.05)}
+  .pick:hover{background:rgba(255,255,255,.04)}
+  .rank{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--ink-faint);width:16px;flex:none}
+  .pick .sym{font-family:"JetBrains Mono",monospace;font-weight:700;font-size:13px}
+  .pick .meta2{font-family:"JetBrains Mono",monospace;font-size:10.5px;color:var(--ink-faint);white-space:nowrap}
+  .score{margin-left:auto;font-family:"JetBrains Mono",monospace;font-weight:700;font-size:13px;color:var(--gold)}
+  .pbar{height:5px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden;flex:1 1 50px;max-width:80px}
+  .pbar > i{display:block;height:100%;background:linear-gradient(90deg,var(--gold-dk),var(--gold));border-radius:4px}
+  .symlink{color:inherit;text-decoration:none} .symlink:hover{color:var(--gold)}
+
+  .feed{display:flex;flex-direction:column;gap:0}
+  .tr{display:flex;align-items:center;gap:8px;padding:6px 0;font-size:12.5px}
+  .tr+.tr{border-top:1px dashed rgba(255,255,255,.05)}
+  .tr .sym{font-family:"JetBrains Mono",monospace;font-weight:700;min-width:78px}
+  .tag{font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:6px;letter-spacing:.4px;font-family:"JetBrains Mono",monospace}
+  .tag.open{color:#04140c;background:#9fe6c0} .tag.buy{color:#04140c;background:var(--gain)}
+  .tag.cut{color:#2a0d0d;background:#ff9b9b}
+  .pnl{margin-left:auto;font-family:"JetBrains Mono",monospace;font-weight:700;font-variant-numeric:tabular-nums}
+  .pnl.up{color:var(--gain)} .pnl.dn{color:var(--loss)} .pnl.n{color:var(--ink-dim)}
+  .quand{font-size:10px;color:var(--ink-faint);font-family:"JetBrains Mono",monospace}
+
+  /* positions ouvertes */
+  .pos{display:flex;align-items:center;gap:8px;padding:7px 0;font-size:12.5px}
+  .pos+.pos{border-top:1px dashed rgba(255,255,255,.05)}
+  .pos .sym{font-family:"JetBrains Mono",monospace;font-weight:700;min-width:78px}
+
+  /* ce que l'oracle a appris */
+  .leçon{display:flex;align-items:center;gap:9px;padding:6px 0;font-size:12px}
+  .leçon+.leçon{border-top:1px dashed rgba(255,255,255,.05)}
+  .leçon .quoi{font-family:"JetBrains Mono",monospace;font-size:11.5px}
+  .leçon .n{margin-left:auto;font-size:10px;color:var(--ink-faint);font-family:"JetBrains Mono",monospace;white-space:nowrap}
+  .leçon .eff{font-family:"JetBrains Mono",monospace;font-weight:700;font-size:12px;min-width:56px;text-align:right}
+
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
+  .stat{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:11px;padding:9px 10px}
+  .stat .n{font-family:"JetBrains Mono",monospace;font-weight:700;font-size:17px;line-height:1;font-variant-numeric:tabular-nums}
+  .stat .k{font-size:10px;color:var(--ink-faint);letter-spacing:.5px;margin-top:4px;text-transform:uppercase}
+  #spark{display:block;width:100%;height:52px}
+
+  .foot{padding:11px 16px;font-size:10.5px;color:var(--ink-faint);text-align:left;letter-spacing:.2px;line-height:1.6}
+  .foot b{color:var(--ink-dim);font-weight:600}
+
+  @media (max-width:880px){
+    body{overflow:auto}
+    .app{height:auto;min-height:100dvh;overflow:visible}
+    .main{grid-template-columns:1fr;height:auto}
+    .stage{height:52vh;min-height:320px}
+    .panel{border-left:none;border-top:1px solid var(--line)}
+    .treasury .val{font-size:22px}
+    header.bar{flex-wrap:wrap; row-gap:9px; min-height:0}
+    .spacer{display:none}
+    .brand{flex:1 1 100%}
+    .live{margin-left:0}
+    .treasury{margin-left:auto}
+  }
+  @media (prefers-reduced-motion:reduce){ .dot-live{animation:none} }
+</style>
+
+<div class="app">
+  <header class="bar">
+    <div class="brand">
+      <div class="logo">🤖</div>
+      <div>
+        <h1>SWOGE AI · Colonie</h1>
+        <p>Six agents · vrais tokens Robinhood Chain · ils apprennent de leurs trades</p>
+      </div>
+    </div>
+    <span class="chip rh">● ROBINHOOD · 4663</span>
+    <span class="chip data" id="stamp">● en attente de donnees</span>
+    <div class="live"><span class="dot-live" id="pouls"></span> <span id="poulsTx">LIVE</span></div>
+    <div class="treasury">
+      <span class="lbl">Papier · prix reels</span>
+      <span class="val" id="bal">$1,000</span>
+      <span class="delta" id="delta">+$0.00</span>
+    </div>
+    <div class="controls">
+      <button class="btn" id="refresh" title="Relire GeckoTerminal + GoPlus maintenant">🔄 Live</button>
+      <button class="btn" id="pause">⏸ Pause</button>
+      <button class="btn on" id="speed">1×</button>
+      <button class="btn" id="oublier" title="Effacer la memoire et repartir de zero">🧠 Reset</button>
+    </div>
+    <a class="retour" href="games.html">&larr; Arcade</a>
+  </header>
+
+  <div class="main">
+    <div class="stage">
+      <canvas id="village"></canvas>
+      <div class="stage-tag" id="stagetag">Les agents lisent les vrais tokens de la chaine 🚶</div>
+    </div>
+
+    <aside class="panel">
+      <div class="card">
+        <h2>Tresorerie <span class="count" id="wr">win 0%</span></h2>
+        <div class="stats">
+          <div class="stat"><div class="n" id="s-profit" style="color:var(--gain)">+$0</div><div class="k">Profit</div></div>
+          <div class="stat"><div class="n" id="s-trades">0</div><div class="k">Trades</div></div>
+          <div class="stat"><div class="n" id="s-best" style="color:var(--gold)">—</div><div class="k">Meilleur</div></div>
+        </div>
+        <canvas id="spark"></canvas>
+      </div>
+
+      <div class="card">
+        <h2>Positions ouvertes <span class="count" id="poscount">0</span></h2>
+        <div id="positions"><div class="empty">Aucune position ouverte.</div></div>
+      </div>
+
+      <div class="card">
+        <h2>Pipeline en vol <span class="count" id="flowcount">0 tokens</span></h2>
+        <div class="flow" id="flow"><div class="empty">En attente de nouveaux tokens…</div></div>
+      </div>
+
+      <div class="card">
+        <h2>Agents · missions</h2>
+        <div id="agents"></div>
+      </div>
+
+      <div class="card">
+        <h2>Ce que l'Oracle a appris <span class="count" id="apprisN">0 trade</span></h2>
+        <div id="appris"><div class="empty">Rien encore. Chaque position fermee lui apprend quelque chose ; en dessous d'une poignee de trades, il ne pretend rien.</div></div>
+      </div>
+
+      <div class="card">
+        <h2>Meilleurs picks <span class="count">score</span></h2>
+        <div id="picks"><div class="empty">Aucun signal valide pour l'instant…</div></div>
+      </div>
+
+      <div class="card">
+        <h2>Trades en direct</h2>
+        <div class="feed" id="feed"><div class="empty">Aucun trade encore…</div></div>
+      </div>
+
+      <div class="foot" id="foot">
+        <b>Ce qui est reel :</b> les tokens, les pools, les prix, la securite du contrat, la
+        concentration et l'age viennent de GeckoTerminal et de GoPlus sur la chaine 4663.
+        <b>Ce qui ne l'est pas :</b> aucune transaction n'est signee. Une position est ouverte au
+        prix reel du moment et fermee au prix reel d'un relevé plus tard — c'est du papier, pas une
+        execution, et un vrai achat paierait en plus le gaz et le glissement.
+        <b>Quand l'onglet est ferme, rien ne tourne :</b> a la reouverture, les positions se
+        reglent au prix reel de l'instant, sur le temps reellement ecoule. Rien n'est invente pour
+        combler l'absence.
+        <b>Tout est garde sur cet appareil</b> et nulle part ailleurs. NFA.
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+"use strict";
+const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* ==========================================================================
+ * SWOGE AI — LA COLONIE QUI APPREND
+ *
+ * Trois exigences, et elles se tiennent :
+ *
+ *   1. « que les agents s'ameliorent au fur et a mesure des donnees »
+ *      Ils gardent ce qui a MARCHE, trait par trait, et s'en servent pour
+ *      noter le suivant. Pas un modele qui devine : une moyenne de gains
+ *      REELS par caracteristique, ponderee par le nombre de fois ou on l'a
+ *      vue. Trois exemples ne font pas une loi, et la page l'ecrit.
+ *
+ *   2. « que le logiciel tourne tout le temps »
+ *      Tant que l'onglet est ouvert, il relit la chaine et regle ce qui est
+ *      du. Quand il est ferme, RIEN ne tourne — et c'est dit. A la
+ *      reouverture, une position se regle au prix reel de l'instant, sur le
+ *      temps reellement ecoule. Fabriquer une nuit de profits pour faire
+ *      joli serait le seul vrai defaut possible ici.
+ *
+ *   3. « que les donnees restent sauvegardees »
+ *      Tresorerie, positions, historique, memoire : tout tient dans le
+ *      stockage local, sous une version. Une memoire ecrite par une version
+ *      plus ancienne est relue, jamais devinee.
+ *
+ * Et le but : gagner de l'argent. Ce qui veut dire, ici, mesurer honnetement
+ * si la methode en gagne — un chiffre flatteur qu'on ne peut pas reproduire
+ * ne vaut rien.
+ * ======================================================================== */
+
+/* ============================ MONDE ============================ */
+const W = 1000, H = 760;
+const cv = document.getElementById("village"), ctx = cv.getContext("2d");
+let dpr = Math.min(2, window.devicePixelRatio || 1);
+function fit(){
+  const r = cv.getBoundingClientRect();
+  dpr = Math.min(2, window.devicePixelRatio || 1);
+  cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
+}
+window.addEventListener("resize", fit); fit();
+
+const AGENTS = [
+  {key:"scout",   name:"Scout",      emoji:"🛰️", color:"#3d7bd6", house:{x:170,y:190},
+   mission:"Scanne la Robinhood Chain pour les paires fraiches"},
+  {key:"warden",  name:"Warden",     emoji:"🛡️", color:"#9b6cf0", house:{x:500,y:165},
+   mission:"Controle honeypot & contrat (GoPlus)"},
+  {key:"whale",   name:"Whale-Watch",emoji:"🐋", color:"#e8552d", house:{x:830,y:190},
+   mission:"Repere la concentration des gros porteurs"},
+  {key:"whisper", name:"Whisper",    emoji:"📡", color:"#1fb7a8", house:{x:170,y:600},
+   mission:"Mesure le volume contre la liquidite"},
+  {key:"oracle",  name:"Oracle",     emoji:"🔮", color:"#f2b21e", house:{x:500,y:625},
+   mission:"Note, apprend de chaque trade ferme, tranche"},
+  {key:"closer",  name:"Closer",     emoji:"💰", color:"#e83e8c", house:{x:830,y:600},
+   mission:"Ouvre au prix reel, ferme au prix reel"},
+];
+const TREASURY = {x:500, y:395};
+const idx = {}; AGENTS.forEach((a,i)=>idx[a.key]=i);
+
+/* ============================ ETAT PERSISTANT ============================ */
+const CLE_ETAT = "swogeAiColonie";
+const VERSION_ETAT = 1;
+const DEPART = 1000;          /* la tresorerie papier de depart */
+const MISE = 50;              /* ce qu'une position engage */
+/* La tenue par defaut, en minutes. Ce n'est plus une loi : le Closer
+   l'apprend de ses propres trajectoires et peut la changer. */
+const TENUE_DEFAUT_MIN = 20;
+
+function etatNeuf(){
+  return { v:VERSION_ETAT, tresor:DEPART, trades:0, gains:0, meilleur:0, meilleurSym:"",
+           courbe:[DEPART], flux:[], positions:[], memoire:{}, compteurs:{},
+           vus:{}, maj:0, ouvertures:0 };
+}
+let ETAT = etatNeuf();
+
+function chargeEtat(){
+  let brut = null;
+  try{ brut = JSON.parse(localStorage.getItem(CLE_ETAT) || "null"); }catch(e){ brut = null; }
+  if(!brut || typeof brut !== "object") return;
+  /* ---- UNE MEMOIRE PLUS ANCIENNE SE RELIT, ELLE NE SE DEVINE PAS ----
+     Le jour ou la forme change, on complete les champs manquants avec ceux
+     d'un etat neuf plutot que de tout jeter : jeter, ce serait effacer des
+     semaines d'apprentissage a chaque correction de la page. */
+  const n = etatNeuf();
+  for(const k in n) if(!(k in brut)) brut[k] = n[k];
+  if(!Array.isArray(brut.courbe) || !brut.courbe.length) brut.courbe = [DEPART];
+  if(!Array.isArray(brut.flux)) brut.flux = [];
+  if(!Array.isArray(brut.positions)) brut.positions = [];
+  if(typeof brut.memoire !== "object" || !brut.memoire) brut.memoire = {};
+  if(typeof brut.vus !== "object" || !brut.vus) brut.vus = {};
+  if(typeof brut.compteurs !== "object" || !brut.compteurs) brut.compteurs = {};
+  brut.v = VERSION_ETAT;
+  ETAT = brut;
+}
+let sauveEnAttente = 0, dernierSauve = 0;
+const SAUVE_MAX = 3000;   /* au-dela, on ecrit meme si ca n'arrete pas de bouger */
+function sauve(){
+  /* ---- UN REGROUPEMENT SANS PLAFOND N'ECRIT JAMAIS ----
+   * Cette fonction repoussait son ecriture d'une seconde a CHAQUE appel.
+   * Tant que la colonie travaille — et elle travaille sans arret — l'appel
+   * suivant arrivait avant la seconde, et rien n'etait jamais ecrit. Mesure
+   * faite : six positions ouvertes a l'ecran, zero dans le stockage. C'est
+   * exactement la promesse qu'on ne peut pas manquer ici : ce qui est gagne
+   * doit survivre a la fermeture de l'onglet.
+   * On garde donc le regroupement, avec un plafond : au bout de trois
+   * secondes, on ecrit, quoi qu'il arrive. */
+  const attente = Date.now() - dernierSauve;
+  if(attente >= SAUVE_MAX){ ecritEtat(); return; }
+  clearTimeout(sauveEnAttente);
+  sauveEnAttente = setTimeout(ecritEtat, Math.min(1000, SAUVE_MAX - attente));
+}
+function ecritEtat(){
+  clearTimeout(sauveEnAttente);
+  dernierSauve = Date.now();
+  (function(){
+    try{
+      /* On borne ce qui grossit sans fin : la courbe, le fil, les tokens vus. */
+      if(ETAT.courbe.length > 400) ETAT.courbe = ETAT.courbe.slice(-400);
+      if(ETAT.flux.length > 60)    ETAT.flux   = ETAT.flux.slice(0, 60);
+      const cle = Object.keys(ETAT.vus);
+      if(cle.length > 400){
+        const vieux = cle.sort((a,b)=>ETAT.vus[a]-ETAT.vus[b]).slice(0, cle.length-400);
+        for(const k of vieux) delete ETAT.vus[k];
+      }
+      localStorage.setItem(CLE_ETAT, JSON.stringify(ETAT));
+    }catch(e){ /* stockage plein ou refuse : la page continue, sans garder */ }
+  })();
+}
+/* Et une derniere fois quand la page part : un onglet ferme entre deux
+   ecritures perdrait les dernieres secondes — dont, parfois, une position
+   qui vient de s'ouvrir. */
+window.addEventListener("pagehide", ecritEtat);
+document.addEventListener("visibilitychange", function(){
+  if(document.visibilityState === "hidden") ecritEtat();
+});
+chargeEtat();
+
+let balance = ETAT.tresor, shownBal = ETAT.tresor;
+let profit = ETAT.tresor - DEPART;
+let trades = ETAT.trades, gains = ETAT.gains, best = ETAT.meilleur, bestSym = ETAT.meilleurSym;
+let spark = ETAT.courbe.slice();
+
+/* ============================ DONNEES REELLES ============================ */
+/* Un instantane sert d'amorce pour que l'ecran ne soit pas vide avant la
+   premiere lecture. Il porte SA date, et la pastille du haut dit son age :
+   une donnee vieille reste une donnee vraie, tant qu'on ne la fait pas
+   passer pour fraiche. Les prix, eux, ne sont PAS dedans — c'est voulu :
+   une position ne s'ouvre qu'avec un prix relu a l'instant. */
+let REAL = { ts:0, tokens:[] };
+let rhOrder = [];
+
+const nn = v => { const x = parseFloat(v); return isNaN(x) ? 0 : x; };
+const fmtMC = v => v>=1e9?"$"+(v/1e9).toFixed(1)+"B" : v>=1e6?"$"+(v/1e6).toFixed(1)+"M"
+                 : v>=1e3?"$"+(v/1e3).toFixed(0)+"k" : "$"+Math.round(v||0);
+const fmtN = n => n>=1000 ? (n/1000).toFixed(1)+"k" : String(n);
+function ageJours(iso){
+  const t = Date.parse(iso||"");
+  if(!t) return null;
+  return (Date.now()-t)/86400000;
+}
+function ilYA(ms){
+  const s = Math.max(0, Math.round(ms/1000));
+  if(s < 90) return s+"s";
+  const m = Math.round(s/60);
+  if(m < 90) return m+"min";
+  const h = Math.round(m/60);
+  return h < 48 ? h+"h" : Math.round(h/24)+"j";
+}
+
+/* ============================ CE QUE CHAQUE AGENT REGARDE ============================
+ *
+ * Un trait, c'est une CASE — pas une valeur. Un contrat precis ne s'apprend
+ * pas : il n'y en a qu'un, on ne le reverra jamais. Une tranche de
+ * liquidite, une pression acheteuse, une volatilite : on les revoit cent
+ * fois, et c'est la seule chose dont une moyenne veuille dire quelque chose.
+ *
+ * Chaque agent possede SES traits, et sa propre memoire. C'est ce qui fait
+ * qu'ils s'ameliorent tous, et pas seulement l'Oracle : le Warden apprend
+ * quels drapeaux de contrat ont VRAIMENT precede des pertes, le Whisper
+ * apprend quelles pressions acheteuses ont paye, le Closer apprend combien
+ * de temps il aurait fallu tenir. Chacun repond de ce qu'il regarde.
+ * ================================================================== */
+function tranche(v, seuils, noms){
+  for(let i=0;i<seuils.length;i++) if(v < seuils[i]) return noms[i];
+  return noms[noms.length-1];
+}
+function ratioSur(a, b){ return b>0 ? a/b : (a>0 ? 99 : 1); }
+
+/* Les traits, ranges par agent. Tout vient d'une lecture : rien n'est
+   estime, et un champ qu'on n'a pas lu porte un « ? » plutot qu'une valeur
+   par defaut qui se melerait aux vraies. */
+function traitsDe(t){
+  const g = t.g || {}, x = t.tx || {}, v = t.vol || {};
+  const d = t.dex || {}, c = t.chaine || {};
+  const age = ageJours(t.created);
+  const h1 = x.h1 || {}, h6 = x.h6 || {}, h24 = x.h24 || {};
+  const press1  = ratioSur(h1.buys||0, h1.sells||0);
+  const uniq1   = (h1.buyers||0) + (h1.sellers||0);
+  /* L'acceleration : le volume d'une heure compare a la moyenne horaire des
+     six dernieres. Au-dessus de un, il se passe quelque chose maintenant. */
+  const accel   = ratioSur(v.h1||0, (v.h6||0)/6);
+  const tour    = t.liq>0 ? (v.h24||0)/t.liq : 0;
+  return {
+    scout: {
+      src:  t.feed==="new_pools" ? "pool neuf" : "pool tendance",
+      age:  age===null ? "age ?" : tranche(age, [1,7,30], ["age<1j","age 1-7j","age 7-30j","age>30j"]),
+      liq:  tranche(t.liq||0, [1e4,5e4,25e4,1e6], ["liq<10k","liq 10-50k","liq 50-250k","liq 250k-1M","liq>1M"]),
+      /* Combien de pools portent ce jeton. Une liquidite eparpillee sur six
+         pools ne se vend pas comme une liquidite concentree — et DexScreener
+         est le seul a les lister tous. */
+      pools: !d.vu ? "pools ?" : tranche(d.pools, [2,4,8], ["1 pool","2-3 pools","4-7 pools",">=8 pools"])
+    },
+    warden: {
+      taxe: !g.have ? "taxe ?" : ((g.buyTax+g.sellTax)===0 ? "aucune taxe"
+             : (g.buyTax+g.sellTax)<=10 ? "taxe <=10%" : "taxe >10%"),
+      code: !g.have ? "code ?" : (g.unverified ? "code non verifie" : "code verifie"),
+      pouv: !g.have ? "pouvoirs ?" :
+            (g.mintable && g.proxy) ? "mint + proxy" : g.mintable ? "emission possible"
+            : g.proxy ? "contrat proxy" : "aucun pouvoir",
+      lp:   !g.have ? "lp ?" : tranche(g.lp||0, [1,50,90], ["lp libre","lp <50% bloquee","lp 50-90%","lp >90% bloquee"])
+    },
+    whale: {
+      top: !g.have ? "top ?" : tranche(g.top||0, [1,5,15,30], ["top <1%","top 1-5%","top 5-15%","top 15-30%","top >30%"]),
+      det: !g.have ? "det ?" : tranche(g.holders||0, [100,1e3,1e4], ["<100 det","100-1k det","1k-10k det",">10k det"]),
+      /* ---- CELLE-LA VIENT DES BLOCS, PAS D'UN SERVICE ----
+         Des destinataires DISTINCTS sur les quarante dernieres minutes. Un
+         volume que trois adresses se renvoient n'en produit aucun ; des gens
+         qui arrivent vraiment, si. Personne ne peut la maquiller. */
+      arriv: !c.vu ? "arrivees ?" : tranche(c.recepteurs, [5,25,100], ["<5 arrivees","5-25","25-100",">100 arrivees"]),
+      remue: !c.vu ? "remue ?" : tranche(c.transferts, [20,100,500], ["chaine calme","20-100 transferts","100-500",">500 transferts"])
+    },
+    whisper: {
+      tour:  tranche(tour, [0.5,2,8], ["vol/liq <0.5","vol/liq 0.5-2","vol/liq 2-8","vol/liq >8"]),
+      press: tranche(press1, [0.8,1.05,1.5], ["vendeurs devant","equilibre","acheteurs devant","achats massifs"]),
+      uniq:  tranche(uniq1, [20,100,500], ["<20 traders/h","20-100/h","100-500/h",">500/h"]),
+      accel: tranche(accel, [0.6,1.2,3], ["ca retombe","stable","ca accelere","explosion"]),
+      /* Deux services qui lisent la meme chaine doivent trouver le meme
+         prix. Un ecart ne dit pas lequel se trompe : il dit que le marche
+         est mince ou qu'il bouge trop vite pour qu'on s'y fie. */
+      accord: t.ecart===null || t.ecart===undefined ? "une seule source"
+              : tranche(t.ecart, [0.5,2,6], ["prix concordants","ecart <2%","ecart 2-6%","ecart >6%"]),
+      vitrine: !d.vu ? "vitrine ?" : (d.socials>=3 ? "socials fournis" : d.socials>0 ? "quelques socials" : "aucun social")
+    },
+    oracle: {
+      mc:    tranche(t.mc||0, [1e6,1e7,5e7,2e8], ["mc <1M","mc 1-10M","mc 10-50M","mc 50-200M","mc >200M"]),
+      elan:  tranche(t.ch_h1||0, [-5,0,5,20], ["1h <-5%","1h -5-0%","1h 0-5%","1h 5-20%","1h >20%"]),
+      elan6: tranche(t.ch_h6||0, [-15,0,15,60], ["6h <-15%","6h -15-0%","6h 0-15%","6h 15-60%","6h >60%"]),
+      vola:  t.vola===null || t.vola===undefined ? "vola ?"
+             : tranche(t.vola, [2,5,12], ["calme","vola 2-5%","vola 5-12%","vola >12%"])
+    }
+  };
+}
+/* Le Closer, lui, n'apprend pas d'un token : il apprend d'une DUREE. Sa
+   case est le temps de tenue, et sa lecon se tire de la trajectoire reelle
+   de la position — les prix qu'on a vraiment releves pendant qu'elle etait
+   ouverte. */
+const TENUES = [5,10,20,40,80,160];    /* minutes */
+function trancheTenue(min){
+  let best = TENUES[0];
+  for(const t of TENUES) if(min >= t) best = t;
+  return best+" min";
+}
+
+/* ---- LA MEMOIRE : PAR AGENT, ET LISIBLE A L'OEIL ----
+ * Une case par valeur de trait : `n` observations, `s` la somme des
+ * rendements REELS en pourcent. Rien d'autre. On peut la relire dans le
+ * stockage local et la comprendre — c'est exactement ce qu'on veut d'une
+ * memoire qui decide de l'argent. */
+/* ---- LIRE NE DOIT PAS ECRIRE ----
+ * Cette fonction CREAIT la case au passage, et elle est appelee a chaque
+ * notation d'un token — donc pour des dizaines de traits jamais observes.
+ * La memoire se remplissait de cases a zero observation : du poids inutile
+ * dans le stockage, et surtout un tableau de bord ou l'on ne distingue plus
+ * ce qui a ete appris de ce qui a seulement ete regarde.
+ * Deux fonctions, donc : une qui lit, une qui ecrit. */
+function memLit(agent, trait, valeur){
+  const m = ETAT.memoire;
+  return (m[agent] && m[agent][trait] && m[agent][trait][valeur]) || null;
+}
+function memCase(agent, trait, valeur){
+  const m = ETAT.memoire;
+  if(!m[agent]) m[agent] = {};
+  if(!m[agent][trait]) m[agent][trait] = {};
+  if(!m[agent][trait][valeur]) m[agent][trait][valeur] = { n:0, s:0 };
+  return m[agent][trait][valeur];
+}
+const CONFIANCE_K = 6;   /* a six observations, on croit la moitie de ce qu'on lit */
+function confiance(n){ return n / (n + CONFIANCE_K); }
+
+/* Ce que la memoire d'UN agent ajoute au score. Borne deux fois : par case,
+   et au total. Un agent ne doit pas pouvoir emporter la decision a lui seul
+   sur trois coups de chance — c'est ainsi qu'on sur-apprend. */
+function ajustementAgent(agent, cases){
+  if(!cases) return 0;
+  let somme = 0, vus = 0;
+  for(const k in cases){
+    const c = memLit(agent, k, cases[k]);
+    if(!c || !c.n) continue;
+    somme += confiance(c.n) * Math.max(-30, Math.min(30, c.s/c.n));
+    vus++;
+  }
+  if(!vus) return 0;
+  return Math.max(-12, Math.min(12, somme * 0.45));
+}
+function apprendAgent(agent, cases, rendement){
+  if(!cases) return;
+  const r = Math.max(-95, Math.min(300, rendement));
+  for(const k in cases){ const c = memCase(agent, k, cases[k]); c.n++; c.s += r; }
+}
+/* Les lecons lisibles d'un agent : les cases les plus SURES, pas les plus
+   extremes. Une case a deux observations et +80 % n'apprend rien a
+   personne, et l'afficher en tete ferait croire a une regle. */
+function leconsDe(agent, max){
+  const m = (ETAT.memoire||{})[agent] || {};
+  const out = [];
+  for(const trait in m)
+    for(const val in m[trait]){
+      const c = m[trait][val];
+      if(c.n < 2) continue;
+      const moy = c.s/c.n;
+      out.push({ quoi:val, n:c.n, moyenne:moy, poids:confiance(c.n)*Math.abs(moy) });
+    }
+  out.sort((a,b)=>b.poids-a.poids);
+  return out.slice(0, max||3);
+}
+function nObs(agent){
+  const m = (ETAT.memoire||{})[agent] || {};
+  let n = 0;
+  for(const t in m) for(const v in m[t]) n = Math.max(n, m[t][v].n);
+  return n;
+}
+/* La tenue que le Closer a apprise. Tant qu'il n'a pas de quoi trancher, il
+   garde la valeur par defaut — vingt minutes — et le dit. */
+function tenueApprise(){
+  const m = (ETAT.memoire||{}).closer || {};
+  const cases = m.tenue || {};
+  let best = null;
+  for(const v in cases){
+    const c = cases[v];
+    if(c.n < 3) continue;
+    const note = confiance(c.n) * (c.s/c.n);
+    if(!best || note > best.note) best = { v, note, moy:c.s/c.n, n:c.n };
+  }
+  if(!best) return { min:TENUE_DEFAUT_MIN, appris:false };
+  const min = parseInt(best.v, 10) || TENUE_DEFAUT_MIN;
+  return { min, appris:true, moy:best.moy, n:best.n };
+}
+
+/* ============================ LE SCORE ============================ */
+function scoreBase(t){
+  const g = t.g||{}; let s = 0;
+  s += t.liq>=1e5?26 : t.liq>=25e3?20 : t.liq>=8e3?12 : t.liq>=2e3?6 : 2;
+  if(g.have){
+    s += g.holders>=2e4?16 : g.holders>=3e3?12 : g.holders>=500?7 : g.holders>=100?3 : 0;
+    s += g.top<5?14 : g.top<15?9 : g.top<30?4 : g.top<50?-4 : -20;
+    s += (g.buyTax+g.sellTax)===0?10 : (g.buyTax+g.sellTax)<=10?5 : -12;
+    s += g.unverified?-8:6;
+    if(g.proxy) s-=6; if(g.mintable) s-=5; if(g.slipMod) s-=8; if(g.cooldown) s-=6;
+    s += g.lp>=50?8:0;
+  } else s -= 8;
+  const mc = t.mc||0;
+  s += mc<=1e6?12 : mc<=1e7?7 : mc<=5e7?2 : mc<=1e8?-4 : -10;
+  s += Math.max(-6, Math.min(12, (t.ch_h1||0)*0.4));
+  return s;
+}
+const SEUIL = 55;
+function analyse(t){
+  const g = t.g||{}; let secReject = null;
+  if(g.have){
+    if(g.honeypot) secReject = "honeypot";
+    else if(g.cannotBuy) secReject = "achat impossible";
+    else if(g.ownerBal) secReject = "le proprietaire reecrit les soldes";
+    else if(g.selfd) secReject = "auto-destruction";
+    else if(g.perslip) secReject = "taxe par portefeuille";
+    else if(g.hpSame) secReject = "createur deja honeypot";
+    else if(g.pausable) secReject = "transferts suspendables";
+    else if(g.sellTax>10) secReject = "taxe vente "+g.sellTax+"%";
+    else if(g.buyTax>15) secReject = "taxe achat "+g.buyTax+"%";
+  }
+  const concReject = (g.have && g.top>=50) ? ("gros porteur "+g.top+"%") : null;
+  const tr = traitsDe(t);
+  const base = scoreBase(t);
+  /* Chaque agent apporte SA part. La somme est le score, et le detail reste
+     lisible : on peut dire quel agent a fait pencher la balance. */
+  const parts = {};
+  let adj = 0;
+  for(const a of ["scout","warden","whale","whisper","oracle"]){
+    parts[a] = ajustementAgent(a, tr[a]);
+    adj += parts[a];
+  }
+  adj = Math.max(-30, Math.min(30, adj));
+  const score = Math.max(0, Math.min(100, Math.round(base + adj)));
+  return { secReject, concReject, traits:tr, parts, base:Math.round(base), adj:Math.round(adj), score,
+           /* Le prix est la condition qui ne se negocie pas : sans prix relu,
+              on ne sait pas a quoi on achete, donc on n'achete pas. */
+           achete: !secReject && !concReject && score>=SEUIL && t.prix>0 };
+}
+
+function prochainToken(){
+  const toks = (REAL && REAL.tokens) || [];
+  if(!toks.length) return null;
+  if(!rhOrder.length){
+    rhOrder = [...toks.keys()];
+    for(let i=rhOrder.length-1;i>0;i--){ const j=Math.random()*(i+1)|0; [rhOrder[i],rhOrder[j]]=[rhOrder[j],rhOrder[i]]; }
+  }
+  return toks[rhOrder.pop()];
+}
+
+/* ============================ SIMULATION ============================ */
+let running = true, speed = 1;
+const inbox = AGENTS.map(()=>[]);
+const flying = new Set();
+const bots = AGENTS.map((a,i)=>({ i, x:a.house.x, y:a.house.y+34, hx:a.house.x, hy:a.house.y+34,
+                                  state:"home", carry:null, target:null, then:null, busy:0, bob:0, face:1, walk:false }));
+const orbs = [];
+const floats = [];
+
+function nouveauToken(){
+  const r = prochainToken(); if(!r) return null;
+  const a = analyse(r);
+  return { rec:r, sym:r.sym, adr:r.addr, mc:r.mc, liq:r.liq, g:r.g, ch:r.ch_h1||0, pool:r.pool,
+           prix:r.prix||0, an:a, score:a.score, stage:0, done:new Array(6).fill(0),
+           id:Math.random().toString(36).slice(2,7) };
+}
+
+let spawnT = 0;
+function peutNaitre(dt){
+  spawnT -= dt*speed;
+  if(spawnT>0 || flying.size >= 4) return;
+  spawnT = 1.7 + Math.random()*1.4;
+  const t = nouveauToken();
+  if(!t) return;
+  flying.add(t);
+  inbox[idx.scout].push(t);
+  orbAt(t, idx.scout);
+  compte("scout");
+  peintFlux();
+}
+
+function compte(k, n){
+  ETAT.compteurs[k] = (ETAT.compteurs[k]||0) + (n||1);
+  sauve();
+}
+
+function step(dt){
+  const sp = dt*speed;
+  for(const b of bots){
+    const A = AGENTS[b.i];
+    if(b.state==="home"){
+      b.bob += dt*4;
+      if(b.busy>0){
+        b.busy -= sp;
+        if(b.busy<=0) resout(b);
+      } else if(inbox[b.i].length){
+        b.carry = inbox[b.i].shift(); removeOrb(b.carry);
+        b.busy = RM?0.01:(0.3 + Math.random()*0.4);
+        setStatus(b.i,"work", A.key==="scout"?"scan…" : A.key==="closer"?"achat…" : "controle…");
+      } else setStatus(b.i,"idle","au repos");
+    } else if(b.state==="walk"){
+      const fini = moveTo(b, b.target.x, b.target.y, (RM?9999:335)*sp);
+      b.bob += dt*14; b.walk = true;
+      if(fini){ b.walk=false; (b.then||(()=>{}))(); }
+    }
+  }
+  for(let i=floats.length-1;i>=0;i--){ const f=floats[i]; f.y-=18*dt; f.life-=dt; if(f.life<=0) floats.splice(i,1); }
+}
+
+function resout(b){
+  const t = b.carry, A = AGENTS[b.i];
+  t.done[b.i] = 1;
+  if(A.key==="warden"){
+    if(t.an.secReject){ compte("wardenBloque"); return rejette(b, t.an.secReject); }
+    compte("wardenOk");
+  }
+  if(A.key==="whale"){
+    if(t.an.concReject){ compte("whaleBloque"); return rejette(b, t.an.concReject); }
+    compte("whaleOk");
+  }
+  if(A.key==="whisper"){ compte("whisper"); }
+  if(A.key==="oracle"){
+    compte("oracle");
+    if(!t.an.achete){
+      const pourquoi = !t.prix ? "prix non lu" : "score "+t.score;
+      return rejette(b, pourquoi, true);
+    }
+    ajoutePick(t);
+  }
+  if(A.key==="closer") return ouvrePosition(b);
+  porteVers(b, b.i+1);
+}
+
+function porteVers(b, suivant){
+  const cible = AGENTS[suivant].house;
+  setStatus(b.i,"walk","→ "+AGENTS[suivant].name.split("-")[0]);
+  b.state="walk"; b.target={x:cible.x, y:cible.y+34}; b.face = cible.x>=b.x?1:-1;
+  b.then = ()=>{
+    const t = b.carry; b.carry = null;
+    inbox[suivant].push(t); t.stage = suivant; orbAt(t, suivant); peintFlux();
+    rentre(b);
+  };
+}
+function rejette(b, raison, doux){
+  const t = b.carry; b.carry = null; t.done[b.i] = 2;
+  flying.delete(t); peintFlux();
+  spawnFloat(AGENTS[b.i].house.x, AGENTS[b.i].house.y+6, (doux?"passe · ":"✕ ")+raison, doux?"n":"dn");
+  rentre(b);
+}
+function moveTo(b, tx, ty, sp){
+  const dx=tx-b.x, dy=ty-b.y, d=Math.hypot(dx,dy);
+  if(d<=sp){ b.x=tx; b.y=ty; return true; }
+  b.x += dx/d*sp; b.y += dy/d*sp; b.face = dx>=0?1:-1; return false;
+}
+function rentre(b){
+  b.state="walk"; b.target={x:b.hx, y:b.hy}; setStatus(b.i,"walk","→ maison");
+  b.then = ()=>{ b.state="home"; b.busy=0; setStatus(b.i,"idle","au repos"); };
+}
+function orbAt(t, houseIdx){
+  const h = AGENTS[houseIdx].house, n = inbox[houseIdx].length;
+  orbs.push({t, x:h.x + (n-1)*16 - 14, y:h.y-40, hi:houseIdx});
+}
+function removeOrb(t){ const i = orbs.findIndex(o=>o.t===t); if(i>=0) orbs.splice(i,1); }
+function spawnFloat(x,y,txt,cls){ floats.push({x,y,txt,cls,life:1.4}); }
+
+/* ============================ LES POSITIONS ============================
+ * Elles sont la seule chose qui touche a l'argent, et donc la seule ou
+ * l'honnetete se joue. Une position retient le prix REEL du moment ou elle
+ * s'ouvre et l'instant ou elle s'ouvre. Elle se ferme au prix REEL d'un
+ * releve plus tard. Entre les deux, il ne se passe rien qu'on invente.
+ * ====================================================================== */
+function ouvrePosition(b){
+  const t = b.carry; b.carry = null;
+  if(!(t.prix > 0)){ rentre(b); flying.delete(t); peintFlux(); return; }
+  /* Une seule position par token a la fois : en empiler trois sur le meme
+     contrat, c'est mesurer trois fois la meme chose et croire qu'on a
+     appris trois fois. */
+  if(ETAT.positions.some(p=>p.adr===t.adr)){ rentre(b); flying.delete(t); peintFlux(); return; }
+  const tenue = tenueApprise();
+  const p = { sym:t.sym, adr:t.adr, pool:t.pool, prix0:t.prix, t0:Date.now(),
+              mise:MISE, traits:t.an.traits, score:t.score, mc:t.mc,
+              /* La duree que le Closer a apprise, gravee AVEC la position :
+                 s'il change d'avis demain, celle-ci garde la sienne, sinon
+                 la lecon qu'on en tirera ne dirait rien. */
+              tenueMin:tenue.min,
+              /* Les prix releves pendant qu'elle est ouverte. C'est cette
+                 trace qui apprend au Closer combien de temps il fallait
+                 tenir — sans elle, il ne saurait jamais que vingt minutes
+                 valaient mieux que quatre-vingts. */
+              traj:[] };
+  ETAT.positions.push(p);
+  ETAT.ouvertures++;
+  compte("closer");
+  ajouteFlux({ sym:t.sym, pool:t.pool, tag:"open", txt:"OUVERT · $"+MISE, cls:"n", t:Date.now() });
+  spawnFloat(AGENTS[b.i].house.x, AGENTS[b.i].house.y+6, "ACHAT $"+t.sym, "n");
+  flying.delete(t); peintFlux(); peintPositions(); sauve();
+  rentre(b);
+}
+
+/* Ferme au prix donne — qui vient TOUJOURS d'une lecture, jamais d'un
+   calcul. Rend le rendement en pourcent. */
+function fermePosition(p, prix, quand){
+  const rendement = (prix - p.prix0) / p.prix0 * 100;
+  const pnl = p.mise * rendement / 100;
+  balance += pnl; profit = balance - DEPART;
+  trades++; if(pnl > 0) gains++;
+  const mult = 1 + rendement/100;
+  if(mult > best){ best = mult; bestSym = p.sym; }
+  /* ---- ET C'EST ICI QUE L'ORACLE APPREND ----
+     Sur le rendement REEL, pas sur une intention. Une lecon tiree d'un
+     resultat invente serait pire qu'aucune lecon : elle se propagerait a
+     tous les tokens qui partagent le trait. */
+  for(const a of ["scout","warden","whale","whisper","oracle"])
+    apprendAgent(a, p.traits[a], rendement);
+  /* ---- ET LE CLOSER APPREND LA DUREE ----
+     Pour chaque point de la trajectoire, on inscrit ce qu'aurait donne une
+     sortie A CE MOMENT-LA. Ce ne sont pas des rendements imagines : chacun
+     est la difference entre deux prix qu'on a vraiment lus. */
+  const vus = {};
+  for(const pt of (p.traj||[])){
+    const cle = trancheTenue(pt.dt/60000);
+    if(vus[cle]) continue;            /* une seule lecon par tranche et par position */
+    vus[cle] = 1;
+    apprendAgent("closer", { tenue:cle }, pt.r);
+  }
+  const cleFin = trancheTenue((quand - p.t0)/60000);
+  if(!vus[cleFin]) apprendAgent("closer", { tenue:cleFin }, rendement);
+  const up = pnl >= 0;
+  ajouteFlux({ sym:p.sym, pool:p.pool, tag:up?"buy":"cut",
+               txt:(up?"+":"")+"$"+pnl.toFixed(2)+"  ·  "+(rendement>=0?"+":"")+rendement.toFixed(1)+"%",
+               cls:up?"up":"dn", t:quand||Date.now(), tenue:(quand||Date.now())-p.t0 });
+  if(Math.abs(pnl) > 0.02)
+    spawnFloat(TREASURY.x+(Math.random()*60-30), TREASURY.y-10, (up?"+":"")+"$"+pnl.toFixed(0), up?"up":"dn");
+  spark.push(balance);
+  ETAT.tresor = balance; ETAT.trades = trades; ETAT.gains = gains;
+  ETAT.meilleur = best; ETAT.meilleurSym = bestSym; ETAT.courbe = spark;
+  sauve();
+}
+
+/* Regle ce qui est du, avec les prix qu'on vient de lire. Appelee apres
+   CHAQUE lecture — au chargement comme en cours de route. C'est elle qui
+   fait que « ferme depuis hier » ne perd rien : la position attendait un
+   prix, elle en a un. */
+function reglePositions(prixParAdr, forceTout){
+  if(!ETAT.positions.length) return 0;
+  const maintenant = Date.now();
+  let fermees = 0;
+  ETAT.positions = ETAT.positions.filter(function(p){
+    const prix = prixParAdr[p.adr];
+    if(!(prix > 0)) return true;                       /* pas de prix : on attend */
+    /* ---- ON INSCRIT LE POINT AVANT DE DECIDER ----
+       Meme si la position reste ouverte : c'est cette suite de vrais prix
+       qui apprendra au Closer ou etait le bon moment de sortir. */
+    const dt = maintenant - p.t0;
+    const r = (prix - p.prix0)/p.prix0*100;
+    if(!p.traj) p.traj = [];
+    if(p.traj.length < 40) p.traj.push({ dt, r:Math.round(r*100)/100 });
+    const tenueMs = (p.tenueMin || TENUE_DEFAUT_MIN) * 60000;
+    if(dt < tenueMs && !forceTout) return true;
+    fermePosition(p, prix, maintenant);
+    fermees++;
+    return false;
+  });
+  if(fermees){ peintPositions(); peintStats(); peintFlux(); peintAppris(); dessineCourbe(); }
+  return fermees;
+}
+/* La valeur latente d'une position, au dernier prix connu. Elle n'entre PAS
+   dans la tresorerie : tant que ce n'est pas ferme, ce n'est pas gagne. */
+const dernierPrix = {};
+function latent(p){
+  const prix = dernierPrix[p.adr];
+  if(!(prix > 0)) return null;
+  return { r:(prix - p.prix0)/p.prix0*100, pnl:p.mise*((prix - p.prix0)/p.prix0) };
+}
+
+/* ============================ RENDU (canvas) ============================ */
+function drawBG(){
+  const g = ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,"#74c94f"); g.addColorStop(1,"#5aa838");
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  ctx.save();
+  for(let i=0;i<70;i++){
+    const x=(i*137.5)%W, y=(i*211.3)%H, r=18+(i*53%40);
+    ctx.globalAlpha=0.06; ctx.fillStyle= i%2? "#3f8a2c":"#8fd968";
+    ctx.beginPath(); ctx.ellipse(x,y,r,r*0.7,0,0,7); ctx.fill();
+  }
+  ctx.globalAlpha=1; ctx.restore();
+  ctx.fillStyle="#2f96cf"; ctx.beginPath(); ctx.ellipse(905,470,80,52,0,0,7); ctx.fill();
+  ctx.fillStyle="#57b6e6"; ctx.beginPath(); ctx.ellipse(895,462,60,38,0,0,7); ctx.fill();
+  ctx.strokeStyle="#4a7f2e"; ctx.lineWidth=6; ctx.beginPath(); ctx.ellipse(905,470,84,56,0,0,7); ctx.stroke();
+  tree(70,470); tree(60,300); rock(300,720); rock(720,720); rock(940,690);
+  flower(360,300); flower(640,470); flower(250,520);
+}
+function tree(x,y){
+  ctx.fillStyle="rgba(0,0,0,.12)"; ctx.beginPath(); ctx.ellipse(x,y+30,34,12,0,0,7); ctx.fill();
+  ctx.fillStyle="#7a4a24"; ctx.fillRect(x-7,y+2,14,32);
+  ctx.fillStyle="#3f8f34"; ctx.beginPath(); ctx.arc(x,y-8,30,0,7); ctx.arc(x-22,y+6,22,0,7); ctx.arc(x+22,y+6,22,0,7); ctx.fill();
+  ctx.fillStyle="#54ad45"; ctx.beginPath(); ctx.arc(x-6,y-14,20,0,7); ctx.fill();
+}
+function rock(x,y){
+  ctx.fillStyle="#9aa3ac"; ctx.beginPath(); ctx.ellipse(x,y,26,18,0,0,7); ctx.fill();
+  ctx.fillStyle="#b7bfc6"; ctx.beginPath(); ctx.ellipse(x-5,y-5,15,10,0,0,7); ctx.fill();
+}
+function flower(x,y){
+  ctx.fillStyle="#ffd23f";
+  for(let a=0;a<5;a++){ const an=a/5*6.28; ctx.beginPath(); ctx.arc(x+Math.cos(an)*4,y+Math.sin(an)*4,3,0,7); ctx.fill(); }
+  ctx.fillStyle="#ff8ec7"; ctx.beginPath(); ctx.arc(x,y,2.4,0,7); ctx.fill();
+}
+function drawPaths(){
+  ctx.lineCap="round";
+  for(const a of AGENTS){
+    ctx.strokeStyle="#cda869"; ctx.lineWidth=26;
+    ctx.beginPath(); ctx.moveTo(TREASURY.x,TREASURY.y); ctx.lineTo(a.house.x,a.house.y+30); ctx.stroke();
+    ctx.strokeStyle="#e0c184"; ctx.lineWidth=18;
+    ctx.beginPath(); ctx.moveTo(TREASURY.x,TREASURY.y); ctx.lineTo(a.house.x,a.house.y+30); ctx.stroke();
+  }
+}
+function drawHouse(a){
+  const {x,y} = a.house;
+  ctx.fillStyle="rgba(0,0,0,.14)"; ctx.beginPath(); ctx.ellipse(x,y+44,52,15,0,0,7); ctx.fill();
+  ctx.fillStyle="#efe6d2"; roundRect(x-42,y-6,84,52,7); ctx.fill();
+  ctx.strokeStyle="#00000018"; ctx.lineWidth=2; ctx.stroke();
+  ctx.fillStyle=a.color; ctx.beginPath();
+  ctx.moveTo(x-52,y-2); ctx.lineTo(x,y-46); ctx.lineTo(x+52,y-2); ctx.closePath(); ctx.fill();
+  ctx.fillStyle="rgba(255,255,255,.16)"; ctx.beginPath();
+  ctx.moveTo(x-52,y-2); ctx.lineTo(x,y-46); ctx.lineTo(x-30,y-2); ctx.closePath(); ctx.fill();
+  ctx.fillStyle="#b7ac93"; ctx.fillRect(x+22,y-40,12,16);
+  ctx.fillStyle="#8a5a30"; roundRect(x-11,y+14,22,32,5); ctx.fill();
+  ctx.fillStyle="#a86e3d"; roundRect(x-8,y+18,16,26,4); ctx.fill();
+  ctx.fillStyle="#8fd3ef"; ctx.beginPath(); ctx.arc(x-24,y+16,7,0,7); ctx.fill();
+  ctx.strokeStyle="#c9a24a"; ctx.lineWidth=2; ctx.stroke();
+  ctx.fillStyle="rgba(9,20,14,.62)"; roundRect(x-46,y-70,92,20,7); ctx.fill();
+  ctx.fillStyle="#fff"; ctx.font="600 13px Fredoka, sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText(a.emoji+" "+a.name, x, y-59);
+}
+function drawTreasury(){
+  const {x,y} = TREASURY;
+  ctx.fillStyle="rgba(0,0,0,.18)"; ctx.beginPath(); ctx.ellipse(x,y+30,60,18,0,0,7); ctx.fill();
+  ctx.fillStyle="#e7cd8f"; ctx.beginPath(); ctx.ellipse(x,y+6,66,42,0,0,7); ctx.fill();
+  ctx.strokeStyle="#caa657"; ctx.lineWidth=4; ctx.stroke();
+  ctx.fillStyle="#7a4a24"; roundRect(x-30,y-16,60,36,6); ctx.fill();
+  ctx.fillStyle="#5f3818"; roundRect(x-30,y-16,60,13,6); ctx.fill();
+  ctx.fillStyle="#ffce4a"; roundRect(x-26,y+2,52,14,3); ctx.fill();
+  for(let i=0;i<7;i++){
+    ctx.fillStyle = i%2?"#ffd95e":"#f0b52e";
+    ctx.beginPath(); ctx.arc(x-20+i*7+((i*13)%5), y+20+((i*7)%6), 5,0,7); ctx.fill();
+  }
+  const pulse = RM?1:(1+Math.sin(t_now*3)*0.04);
+  ctx.strokeStyle="rgba(255,206,74,.55)"; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.ellipse(x,y+6,70*pulse,46*pulse,0,0,7); ctx.stroke();
+  ctx.fillStyle="rgba(9,20,14,.66)"; roundRect(x-40,y-46,80,20,7); ctx.fill();
+  ctx.fillStyle="#ffce4a"; ctx.font="700 13px Fredoka, sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText("🏦 Tresor", x, y-35);
+}
+function drawOrb(x,y,sym,scale){
+  scale = scale||1;
+  const c = "#00c805";
+  ctx.save(); ctx.translate(x,y);
+  ctx.shadowColor=c; ctx.shadowBlur=14;
+  ctx.fillStyle=c; ctx.beginPath(); ctx.arc(0,0,9*scale,0,7); ctx.fill();
+  ctx.shadowBlur=0; ctx.fillStyle="rgba(255,255,255,.7)"; ctx.beginPath(); ctx.arc(-3*scale,-3*scale,3*scale,0,7); ctx.fill();
+  if(sym){
+    ctx.fillStyle="rgba(9,20,14,.72)"; ctx.font="700 9px 'JetBrains Mono',monospace";
+    ctx.textAlign="center"; ctx.textBaseline="middle";
+    const w = ctx.measureText(sym).width+8; roundRect(-w/2,11,w,13,4); ctx.fill();
+    ctx.fillStyle="#fff"; ctx.fillText(sym,0,18);
+  }
+  ctx.restore();
+}
+function drawBot(b){
+  const A = AGENTS[b.i];
+  const bob = b.walk? Math.abs(Math.sin(b.bob))*3 : Math.sin(b.bob)*1.2;
+  const x = b.x, y = b.y - bob;
+  ctx.fillStyle="rgba(0,0,0,.18)"; ctx.beginPath(); ctx.ellipse(b.x, b.y+9, 12,4,0,0,7); ctx.fill();
+  const sw = b.walk? Math.sin(b.bob)*3 : 0;
+  ctx.fillStyle="#2c3a44";
+  ctx.fillRect(x-6+sw, y+2, 4,9); ctx.fillRect(x+2-sw, y+2, 4,9);
+  ctx.fillStyle=A.color; roundRect(x-10,y-9,20,16,5); ctx.fill();
+  ctx.fillStyle="rgba(255,255,255,.18)"; roundRect(x-10,y-9,20,6,5); ctx.fill();
+  ctx.fillStyle=A.color; ctx.fillRect(x-13,y-6,4,10); ctx.fillRect(x+9,y-6,4,10);
+  ctx.fillStyle="#dfe8ee"; roundRect(x-9,y-24,18,15,5); ctx.fill();
+  ctx.fillStyle="#0f1d18"; roundRect(x-6,y-21,12,9,3); ctx.fill();
+  ctx.fillStyle=A.color; const ex = b.face*1.5;
+  ctx.beginPath(); ctx.arc(x-2+ex,y-16,1.6,0,7); ctx.arc(x+2+ex,y-16,1.6,0,7); ctx.fill();
+  ctx.strokeStyle="#cfd8de"; ctx.lineWidth=1.6; ctx.beginPath(); ctx.moveTo(x,y-24); ctx.lineTo(x,y-30); ctx.stroke();
+  ctx.fillStyle = b.busy>0? "#ffce4a" : A.color; ctx.beginPath(); ctx.arc(x,y-31,2.4,0,7); ctx.fill();
+  if(b.busy>0 && !RM){
+    ctx.fillStyle="rgba(255,206,74,.9)";
+    for(let i=0;i<3;i++){ const a=t_now*4+i*2; ctx.beginPath(); ctx.arc(x+Math.cos(a)*14, y-16+Math.sin(a)*8, 1.4,0,7); ctx.fill(); }
+  }
+  if(b.carry) drawOrb(x, y-40, b.carry.sym, 0.9);
+}
+let t_now = 0;
+function render(){
+  const rw = cv.width/dpr, rh = cv.height/dpr;
+  const s = Math.min(rw/W, rh/H);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  /* ---- LES BANDES NOIRES ETAIENT LAIDES ----
+     Le village garde ses proportions, donc il reste de la place au-dessus
+     et en dessous sur un ecran large. Peinte en noir, cette place se lisait
+     comme un bug d'affichage ; peinte de l'herbe du village, elle disparait. */
+  ctx.fillStyle = "#5aa838"; ctx.fillRect(0,0,rw,rh);
+  ctx.save();
+  ctx.translate((rw - W*s)/2, (rh - H*s)/2); ctx.scale(s,s);
+  drawBG(); drawPaths();
+  const items = [];
+  AGENTS.forEach(a=>items.push({y:a.house.y, f:()=>drawHouse(a)}));
+  items.push({y:TREASURY.y, f:drawTreasury});
+  orbs.forEach(o=>items.push({y:o.y+50, f:()=>drawOrb(o.x,o.y,o.t.sym,0.85)}));
+  bots.forEach(b=>items.push({y:b.y, f:()=>drawBot(b)}));
+  items.sort((a,b)=>a.y-b.y).forEach(it=>it.f());
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  for(const f of floats){
+    ctx.globalAlpha = Math.max(0, Math.min(1, f.life));
+    ctx.font="700 15px 'JetBrains Mono',monospace";
+    ctx.fillStyle = f.cls==="up"?"#35e07f" : f.cls==="dn"?"#ff6060" : "#cfe0d5";
+    ctx.fillText(f.txt, f.x, f.y);
+  }
+  ctx.globalAlpha=1;
+  ctx.restore();
+}
+function roundRect(x,y,w,h,r){
+  ctx.beginPath(); ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
+}
+
+/* ============================ HUD ============================ */
+const $ = id => document.getElementById(id);
+const echappe = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const status = AGENTS.map(()=>({cls:"idle",txt:"au repos"}));
+function setStatus(i,cls,txt){ status[i]={cls,txt}; peintAgents(); }
+
+function scoreAgent(k){
+  const c = ETAT.compteurs;
+  if(k==="scout")   return (c.scout||0)+" tokens vus";
+  if(k==="warden")  return (c.wardenBloque||0)+" bloques · "+(c.wardenOk||0)+" laisses passer";
+  if(k==="whale")   return (c.whaleBloque||0)+" bloques · "+(c.whaleOk||0)+" laisses passer";
+  if(k==="whisper") return (c.whisper||0)+" mesures";
+  if(k==="oracle")  return trades+" trades appris · seuil "+SEUIL;
+  if(k==="closer"){
+    const tn = tenueApprise();
+    return (ETAT.ouvertures||0)+" ouvertures · tenue "+tn.min+" min"+(tn.appris?" (apprise)":" (defaut)");
+  }
+  return "";
+}
+/* ---- CE QUE CET AGENT-LA A APPRIS ----
+ * Une ligne par agent, sous sa mission : sa meilleure lecon, avec le nombre
+ * d'observations. C'est ce qui rend l'amelioration VISIBLE plutot que
+ * promise — et le nombre d'observations est la, pour qu'on ne prenne pas
+ * deux coups de chance pour une regle. */
+function apprisAgent(k){
+  const n = nObs(k);
+  if(!n) return "n'a encore rien appris";
+  const l = leconsDe(k, 1)[0];
+  if(!l) return n+" obs · pas encore de tendance nette";
+  return (l.moyenne>=0?"+":"") + l.moyenne.toFixed(1) + "% sur « " + l.quoi + " » (" + l.n + " obs)";
+}
+function peintAgents(){
+  $("agents").innerHTML = AGENTS.map((a,i)=>`
+    <div class="agent">
+      <div class="ava" style="background:${a.color}22;color:${a.color}">${a.emoji}</div>
+      <div style="min-width:0">
+        <div class="nm" style="color:${a.color}">${a.name}</div>
+        <div class="ms">${a.mission}</div>
+        <div class="sc">${echappe(scoreAgent(a.key))}</div>
+        <div class="sc" style="color:${a.color}bb">🧠 ${echappe(apprisAgent(a.key))}</div>
+      </div>
+      <div class="st"><span class="stpill ${status[i].cls}">${echappe(status[i].txt)}</span></div>
+    </div>`).join("");
+}
+function peintFlux(){
+  const arr = [...flying];
+  $("flowcount").textContent = arr.length+" token"+(arr.length!==1?"s":"");
+  if(!arr.length){ $("flow").innerHTML = '<div class="empty">En attente de nouveaux tokens…</div>'; return; }
+  $("flow").innerHTML = arr.map(t=>{
+    const dots = t.done.map(d=>`<span class="sd ${d===1?"on":d===2?"rej":""}"></span>`).join("");
+    const det = t.g && t.g.holders ? " · "+fmtN(t.g.holders)+" det" : "";
+    return `<div class="tok">
+      <span class="sym">$${echappe(t.sym)}</span>
+      <span class="badge rh">RH</span>
+      <span class="meta">${fmtMC(t.mc)}${det}</span>
+      <span class="stages">${dots}</span>
+    </div>`;
+  }).join("");
+}
+const picks = [];
+function ajoutePick(t){
+  if(picks.find(p=>p.pool===t.pool)) return;
+  picks.push({sym:t.sym, score:Math.round(t.score), base:t.an.base, adj:t.an.adj, mc:t.mc, pool:t.pool});
+  picks.sort((a,b)=>b.score-a.score); if(picks.length>7) picks.pop();
+  $("picks").innerHTML = picks.map((p,i)=>`
+    <a class="pick" href="https://dexscreener.com/robinhood/${encodeURIComponent(p.pool)}" target="_blank" rel="noopener">
+      <span class="rank">${i+1}</span>
+      <span class="sym">$${echappe(p.sym)}</span>
+      <span class="badge rh">RH</span>
+      <span class="meta2">${fmtMC(p.mc)}${p.adj?" · "+(p.adj>0?"+":"")+p.adj+" appris":""}</span>
+      <span class="pbar"><i style="width:${Math.min(100,p.score)}%"></i></span>
+      <span class="score">${p.score}</span>
+    </a>`).join("");
+}
+function ajouteFlux(e){
+  ETAT.flux.unshift(e);
+  if(ETAT.flux.length > 60) ETAT.flux.pop();
+  peintFluxTrades(); sauve();
+}
+function peintFluxTrades(){
+  if(!ETAT.flux.length){ $("feed").innerHTML = '<div class="empty">Aucun trade encore…</div>'; return; }
+  $("feed").innerHTML = ETAT.flux.slice(0,10).map(e=>{
+    const lbl = e.tag==="buy" ? "GAIN" : e.tag==="cut" ? "PERTE" : "OUVERT";
+    const sym = e.pool
+      ? `<a class="sym symlink" href="https://dexscreener.com/robinhood/${encodeURIComponent(e.pool)}" target="_blank" rel="noopener">$${echappe(e.sym)}</a>`
+      : `<span class="sym">$${echappe(e.sym)}</span>`;
+    const quand = e.t ? `<span class="quand">${ilYA(Date.now()-e.t)}</span>` : "";
+    return `<div class="tr">${sym}<span class="tag ${e.tag}">${lbl}</span>${quand}<span class="pnl ${e.cls}">${echappe(e.txt)}</span></div>`;
+  }).join("");
+}
+function peintPositions(){
+  $("poscount").textContent = ETAT.positions.length;
+  if(!ETAT.positions.length){
+    $("positions").innerHTML = '<div class="empty">Aucune position ouverte.</div>';
+    return;
+  }
+  $("positions").innerHTML = ETAT.positions.map(p=>{
+    const l = latent(p);
+    const val = l===null ? '<span class="pnl n">prix non relu</span>'
+      : `<span class="pnl ${l.r>=0?"up":"dn"}">${l.r>=0?"+":""}${l.r.toFixed(1)}% · ${l.pnl>=0?"+":""}$${l.pnl.toFixed(2)}</span>`;
+    const reste = Math.max(0, (p.tenueMin||TENUE_DEFAUT_MIN)*60000 - (Date.now()-p.t0));
+    return `<div class="pos">
+      <span class="sym">$${echappe(p.sym)}</span>
+      <span class="quand">${reste>0 ? "regle dans "+ilYA(reste) : "en attente d'un prix"}</span>
+      ${val}
+    </div>`;
+  }).join("");
+}
+function peintAppris(){
+  $("apprisN").textContent = trades+" trade"+(trades!==1?"s":"");
+  const bloc = [];
+  for(const a of AGENTS){
+    const l = leconsDe(a.key, 2);
+    if(!l.length) continue;
+    bloc.push('<div class="leçon" style="border-top:0;padding-bottom:2px">'
+      + '<span class="quoi" style="color:'+a.color+'">'+a.emoji+' '+a.name+'</span></div>');
+    for(const x of l){
+      const bon = x.moyenne >= 0;
+      bloc.push('<div class="leçon">'
+        + '<span class="quoi">'+echappe(x.quoi)+'</span>'
+        + '<span class="eff" style="color:'+(bon?"var(--gain)":"var(--loss)")+'">'
+        + (bon?"+":"")+x.moyenne.toFixed(1)+'%</span>'
+        + '<span class="n">'+x.n+' obs · confiance '+Math.round(confiance(x.n)*100)+'%</span>'
+        + '</div>');
+    }
+  }
+  if(!bloc.length){
+    $("appris").innerHTML = '<div class="empty">Rien encore. Chaque position fermee apprend quelque chose '
+      + 'a CHACUN des six agents — sur ce qu\'il regarde, lui. En dessous de deux observations sur une '
+      + 'meme case, rien ne s\'affiche : deux coups de chance ne font pas une regle.</div>';
+    return;
+  }
+  $("appris").innerHTML = bloc.join("");
+}
+function peintStats(){
+  $("s-profit").textContent = (profit>=0?"+":"–")+"$"+Math.abs(profit).toFixed(0);
+  $("s-profit").style.color = profit>=0 ? "var(--gain)" : "var(--loss)";
+  $("s-trades").textContent = trades;
+  $("s-best").textContent = best>0 ? best.toFixed(2)+"×" : "—";
+  $("wr").textContent = "win "+(trades ? Math.round(gains/trades*100) : 0)+"%";
+  peintAgents();
+}
+function dessineCourbe(){
+  const c = $("spark"), x = c.getContext("2d");
+  const w = c.clientWidth||260, h = 52;
+  c.width = w*dpr; c.height = h*dpr; x.setTransform(dpr,0,0,dpr,0,0);
+  x.clearRect(0,0,w,h);
+  const lo = Math.min(...spark), hi = Math.max(...spark), rng = (hi-lo)||1;
+  const X = i => i/(spark.length-1||1)*w, Y = v => h-6-((v-lo)/rng)*(h-14);
+  x.strokeStyle="rgba(255,255,255,.06)"; x.lineWidth=1;
+  for(let i=1;i<3;i++){ x.beginPath(); x.moveTo(0,h/3*i); x.lineTo(w,h/3*i); x.stroke(); }
+  const grad = x.createLinearGradient(0,0,0,h);
+  grad.addColorStop(0,"rgba(255,206,74,.35)"); grad.addColorStop(1,"rgba(255,206,74,0)");
+  x.beginPath(); x.moveTo(0,h); spark.forEach((v,i)=>x.lineTo(X(i),Y(v))); x.lineTo(w,h); x.closePath();
+  x.fillStyle=grad; x.fill();
+  x.beginPath(); spark.forEach((v,i)=> i ? x.lineTo(X(i),Y(v)) : x.moveTo(X(i),Y(v)));
+  x.strokeStyle="#ffce4a"; x.lineWidth=2; x.stroke();
+  const ex = X(spark.length-1), ey = Y(spark[spark.length-1]);
+  x.fillStyle="#ffce4a"; x.beginPath(); x.arc(ex,ey,3.2,0,7); x.fill();
+  x.fillStyle="rgba(255,206,74,.25)"; x.beginPath(); x.arc(ex,ey,6,0,7); x.fill();
+}
+
+/* ============================ LECTURE DE LA CHAINE ============================ */
+const GT = "https://api.geckoterminal.com/api/v2/networks/robinhood";
+const ENTETES = { "Accept":"application/json;version=20230302" };
+const GOPLUS_TTL = 6*3600*1000;   /* la securite d'un contrat ne change pas toutes les minutes */
+const CADENCE = 150000;           /* on relit toutes les deux minutes et demie */
+const goplusCache = {};
+let enLecture = false, echecs = 0;
+
+function pastille(){
+  const el = $("stamp"); if(!el) return;
+  if(!REAL.ts){ el.textContent = "● aucune donnee lue"; el.className = "chip data mort"; return; }
+  const age = Date.now() - REAL.ts;
+  const d = new Date(REAL.ts);
+  const hh = String(d.getHours()).padStart(2,"0"), mm = String(d.getMinutes()).padStart(2,"0");
+  el.textContent = "● "+REAL.tokens.length+" tokens · lus a "+hh+":"+mm+" ("+ilYA(age)+")";
+  el.className = "chip data" + (age > 15*60*1000 ? " stale" : "");
+}
+function dis(msg, alerte){
+  const el = $("stagetag"); if(!el) return;
+  el.textContent = msg;
+  el.classList.toggle("toast-note", !!alerte);
+  clearTimeout(dis._t);
+  dis._t = setTimeout(()=>{ el.textContent = phraseFond(); el.classList.remove("toast-note"); }, 8000);
+}
+function phraseFond(){
+  if(!REAL.ts) return "Aucune donnee lue pour l'instant — les agents attendent la chaine.";
+  return "Les agents lisent les vrais tokens de la chaine 🚶 · "
+       + ETAT.positions.length + " position(s) ouverte(s) · relecture toutes les 2-3 min";
+}
+
+async function lisPools(){
+  const pools = new Map(), toks = new Map();
+  for(const [fp, page] of [["trending_pools",1],["new_pools",1],["new_pools",2]]){
+    const r = await fetch(GT+"/"+fp+"?include=base_token&page="+page, { headers:ENTETES });
+    if(!r.ok) continue;
+    const d = await r.json();
+    for(const inc of (d.included||[])) if(inc.type==="token") toks.set(inc.id, inc.attributes);
+    for(const p of (d.data||[])){
+      const a = p.attributes;
+      const bt = p.relationships && p.relationships.base_token && p.relationships.base_token.data;
+      const t = bt && toks.get(bt.id);
+      if(!t || !t.address) continue;
+      const addr = String(t.address).toLowerCase();
+      const c = {
+        addr, sym:(t.symbol||"?").toUpperCase().slice(0,10), name:(t.name||"").slice(0,24),
+        pool:a.address, feed:fp,
+        /* LE PRIX : c'est lui qui autorise une position. Sans lui, l'Oracle
+           refuse — on ne sait pas a quoi on achete. */
+        prix: nn(a.base_token_price_usd),
+        mc: nn(a.market_cap_usd) || nn(a.fdv_usd),
+        liq: nn(a.reserve_in_usd),
+        vol24: nn(a.volume_usd && a.volume_usd.h24),
+        /* Les achats, les ventes et les traders DISTINCTS par fenetre. Ils
+           sont dans la meme reponse : ne pas les prendre, c'etait jeter la
+           moitie de ce que le service donne. */
+        tx: a.transactions || {},
+        vol: { m5:nn(a.volume_usd&&a.volume_usd.m5), h1:nn(a.volume_usd&&a.volume_usd.h1),
+               h6:nn(a.volume_usd&&a.volume_usd.h6), h24:nn(a.volume_usd&&a.volume_usd.h24) },
+        created: a.pool_created_at || null,
+        ch_m5: nn(a.price_change_percentage && a.price_change_percentage.m5),
+        ch_h1: nn(a.price_change_percentage && a.price_change_percentage.h1),
+        ch_h6: nn(a.price_change_percentage && a.price_change_percentage.h6),
+        ch_h24: nn(a.price_change_percentage && a.price_change_percentage.h24)
+      };
+      const prev = pools.get(addr);
+      if(!prev || c.liq > prev.liq) pools.set(addr, c);
+    }
+    await new Promise(x=>setTimeout(x, 650));
+  }
+  return [...pools.values()];
+}
+/* ============================ LES AUTRES SOURCES ============================
+ *
+ * Quatre services gratuits repondent pour la chaine 4663, et chacun dit
+ * quelque chose que les autres ne disent pas. On les a essayes un par un
+ * avant d'ecrire cette page : Blockscout est derriere un mur Cloudflare et
+ * honeypot.is ne connait pas cette chaine — ils ne sont donc pas ici, et
+ * pas non plus dans les promesses.
+ *
+ *   GeckoTerminal : les pools, les chandelles, les derniers echanges.
+ *   DexScreener   : un SECOND avis sur le prix, tous les pools d'un jeton,
+ *                   et l'existence de reseaux sociaux.
+ *   GoPlus        : la securite du contrat.
+ *   La chaine     : les transferts eux-memes. C'est la seule source qui ne
+ *                   depend de personne — quand elle contredit les autres,
+ *                   c'est elle qui a raison.
+ *
+ * Chaque source a son cache : sans lui, vingt tokens x quatre services a
+ * chaque relecture nous ferait couper en une heure. Et chaque appel qui
+ * echoue laisse un champ ABSENT, jamais une valeur par defaut : un « ? »
+ * se voit dans les traits, un faux zero se melerait aux vrais.
+ * ========================================================================= */
+const CACHE = { ohlcv:{}, dex:{}, chaine:{} };
+const TTL_OHLCV = 30*60*1000, TTL_DEX = 10*60*1000, TTL_CHAINE = 10*60*1000;
+const RPC_RH = "https://rpc.mainnet.chain.robinhood.com";
+const SUJET_TRANSFERT = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+
+function frais(cache, cle, ttl){
+  const c = cache[cle];
+  return (c && (Date.now()-c.t) < ttl) ? c.v : null;
+}
+function garde(cache, cle, v){ cache[cle] = { t:Date.now(), v }; return v; }
+
+/* ---- LES CHANDELLES : LA VOLATILITE REELLE ----
+ * Vingt-quatre bougies de quinze minutes, soit six heures. L'ecart-type des
+ * variations d'une bougie a l'autre dit si le prix respire ou s'il saute.
+ * Un token calme et un token qui fait ±20 % par quart d'heure ne se jouent
+ * pas pareil, et c'est invisible sur une variation 1h. */
+async function lisOhlcv(pool){
+  const c = frais(CACHE.ohlcv, pool, TTL_OHLCV); if(c !== null) return c;
+  try{
+    const r = await fetch(GT+"/pools/"+pool+"/ohlcv/minute?aggregate=15&limit=24", { headers:ENTETES });
+    if(!r.ok) throw new Error("ohlcv "+r.status);
+    const j = await r.json();
+    const l = ((j.data||{}).attributes||{}).ohlcv_list || [];
+    if(l.length < 4) return garde(CACHE.ohlcv, pool, { vola:null, bougies:l.length });
+    /* Les bougies arrivent du plus recent au plus ancien : on les remet dans
+       l'ordre du temps, sinon les variations sont a l'envers. */
+    const fermes = l.map(x=>nn(x[4])).reverse().filter(x=>x>0);
+    const rets = [];
+    for(let i=1;i<fermes.length;i++) rets.push((fermes[i]-fermes[i-1])/fermes[i-1]*100);
+    if(!rets.length) return garde(CACHE.ohlcv, pool, { vola:null, bougies:l.length });
+    const moy = rets.reduce((a,b)=>a+b,0)/rets.length;
+    const va = Math.sqrt(rets.reduce((a,b)=>a+(b-moy)*(b-moy),0)/rets.length);
+    return garde(CACHE.ohlcv, pool, { vola:Math.round(va*100)/100, bougies:l.length });
+  }catch(e){ return garde(CACHE.ohlcv, pool, { vola:null, bougies:0 }); }
+}
+
+/* ---- DEXSCREENER : LE SECOND AVIS ----
+ * Deux services qui lisent la meme chaine doivent trouver le meme prix. Un
+ * ecart de plusieurs pour cent ne veut pas dire que l'un se trompe : il veut
+ * dire que le marche est mince ou qu'il bouge trop vite pour qu'on puisse
+ * s'y fier — et c'est exactement ce qu'un agent doit savoir avant d'entrer.
+ * Il donne aussi TOUS les pools d'un jeton, et l'existence de reseaux
+ * sociaux : une liquidite eparpillee sur six pools ne se vend pas comme une
+ * liquidite concentree. */
+async function lisDex(addr){
+  const c = frais(CACHE.dex, addr, TTL_DEX); if(c !== null) return c;
+  try{
+    const r = await fetch("https://api.dexscreener.com/latest/dex/tokens/"+addr);
+    if(!r.ok) throw new Error("dex "+r.status);
+    const j = await r.json();
+    const paires = (j.pairs||[]).filter(x=>String(x.chainId||"").toLowerCase()==="robinhood");
+    if(!paires.length) return garde(CACHE.dex, addr, { vu:false });
+    paires.sort((a,b)=> nn(b.liquidity&&b.liquidity.usd) - nn(a.liquidity&&a.liquidity.usd));
+    const p0 = paires[0], info = p0.info || {};
+    const soc = (info.socials||[]).length + (info.websites||[]).length;
+    return garde(CACHE.dex, addr, {
+      vu:true, prix:nn(p0.priceUsd), pools:paires.length,
+      liqTotale: paires.reduce((a,b)=>a+nn(b.liquidity&&b.liquidity.usd),0),
+      socials:soc, image:!!info.imageUrl,
+      cree: p0.pairCreatedAt || null
+    });
+  }catch(e){ return garde(CACHE.dex, addr, { vu:false }); }
+}
+
+/* ---- LA CHAINE ELLE-MEME ----
+ * Les transferts du jeton sur les derniers blocs. On compte les
+ * DESTINATAIRES DISTINCTS : c'est la seule mesure qui dise si des gens
+ * arrivent vraiment, par opposition a un volume que quelques adresses se
+ * renvoient. Aucun service ne peut la maquiller — elle est dans les blocs.
+ *
+ * Mille deux cents blocs : sur une chaine a environ deux secondes le bloc,
+ * cela fait a peu pres quarante minutes. Assez pour compter, assez peu pour
+ * qu'un noeud public reponde sans refuser la plage. */
+const BLOCS_REGARDES = 1200;
+async function rpc(methode, params){
+  const r = await fetch(RPC_RH, { method:"POST", headers:{ "content-type":"application/json" },
+    body: JSON.stringify({ jsonrpc:"2.0", id:1, method:methode, params:params||[] }) });
+  if(!r.ok) throw new Error("rpc "+r.status);
+  const j = await r.json();
+  if(j.error) throw new Error(j.error.message||"rpc");
+  return j.result;
+}
+async function lisChaine(addr){
+  const c = frais(CACHE.chaine, addr, TTL_CHAINE); if(c !== null) return c;
+  try{
+    const bloc = parseInt(await rpc("eth_blockNumber"), 16);
+    const debut = Math.max(0, bloc - BLOCS_REGARDES);
+    const logs = await rpc("eth_getLogs", [{
+      address: addr, topics:[SUJET_TRANSFERT],
+      fromBlock:"0x"+debut.toString(16), toBlock:"0x"+bloc.toString(16) }]);
+    const recus = {}, envoyes = {};
+    for(const l of (logs||[])){
+      const de = "0x"+String(l.topics[1]||"").slice(26);
+      const vers = "0x"+String(l.topics[2]||"").slice(26);
+      recus[vers] = 1; envoyes[de] = 1;
+    }
+    return garde(CACHE.chaine, addr, {
+      vu:true, transferts:(logs||[]).length,
+      recepteurs:Object.keys(recus).length, emetteurs:Object.keys(envoyes).length,
+      blocs:BLOCS_REGARDES
+    });
+  }catch(e){ return garde(CACHE.chaine, addr, { vu:false }); }
+}
+
+/* Les trois d'un coup, pour un token. On ne les demande QUE pour ceux qui
+   valent le detour : vingt tokens fois trois services a chaque relecture,
+   c'est la coupure assuree. */
+async function enrichis(t){
+  const [o, d, ch] = await Promise.all([ lisOhlcv(t.pool), lisDex(t.addr), lisChaine(t.addr) ]);
+  t.vola = o.vola;
+  t.dex = d;
+  t.chaine = ch;
+  /* L'ecart entre deux sources qui lisent la meme chaine. Il ne dit pas
+     laquelle a tort : il dit a quel point le prix est stable. */
+  t.ecart = (d.vu && d.prix>0 && t.prix>0) ? Math.abs(d.prix - t.prix)/t.prix*100 : null;
+  t.enrichi = true;
+}
+
+async function lisGoplus(t){
+  /* Garde en cache six heures : sans cela, chaque relecture refait vingt
+     appels pour des reponses identiques, et le service nous coupe. */
+  const c = goplusCache[t.addr];
+  if(c && (Date.now()-c.t) < GOPLUS_TTL){ t.g = c.g; return; }
+  let info = {};
+  try{
+    const r = await fetch("https://api.gopluslabs.io/api/v1/token_security/4663?contract_addresses="+t.addr);
+    const j = await r.json();
+    info = (j.result||{})[t.addr] || {};
+  }catch(e){ info = {}; }
+  const hs = info.holders || [];
+  let top = 0;
+  for(const h of hs){
+    const p = nn(h.percent)*100;
+    if(Number(h.is_contract)===1 || Number(h.is_locked)===1) continue;
+    const tg = (h.tag||"").toLowerCase();
+    if(/lock|burn|null/.test(tg)) continue;
+    if(p > top) top = p;
+  }
+  const lp = (info.lp_holders||[]).reduce((s,h)=>
+    s + ((Number(h.is_locked)===1 || /lock|burn|null/i.test(h.tag||"")) ? nn(h.percent)*100 : 0), 0);
+  t.g = {
+    have: !!Object.keys(info).length,
+    honeypot: info.is_honeypot==="1",
+    buyTax: Math.round(nn(info.buy_tax)*100), sellTax: Math.round(nn(info.sell_tax)*100),
+    holders: parseInt(info.holder_count)||0, top: Math.round(top*10)/10, lp: Math.round(lp),
+    cannotBuy: info.cannot_buy==="1", pausable: info.transfer_pausable==="1",
+    ownerBal: info.owner_change_balance==="1", selfd: info.selfdestruct==="1",
+    perslip: info.personal_slippage_modifiable==="1", hpSame: info.honeypot_with_same_creator==="1",
+    slipMod: info.slippage_modifiable==="1", cooldown: info.trading_cooldown==="1",
+    proxy: info.is_proxy==="1", unverified: info.is_open_source==="0", mintable: info.is_mintable==="1"
+  };
+  goplusCache[t.addr] = { t:Date.now(), g:t.g };
+}
+
+async function lisTout(manuel){
+  if(enLecture) return;
+  enLecture = true;
+  const btn = $("refresh");
+  if(manuel){ btn.textContent = "⏳ …"; btn.disabled = true; }
+  try{
+    let liste = (await lisPools()).filter(t=>t.liq > 800).sort((a,b)=>b.vol24-a.vol24).slice(0, 20);
+    if(!liste.length) throw new Error("aucun pool");
+
+    /* ---- LES PRIX D'ABORD, LES POSITIONS ENSUITE ----
+       On regle avant de repartir : une position due depuis hier se ferme au
+       prix qu'on vient de lire, pas au suivant. */
+    const prix = {};
+    for(const t of liste){ if(t.prix>0){ prix[t.addr] = t.prix; dernierPrix[t.addr] = t.prix; } }
+    const fermees = reglePositions(prix, false);
+
+    let n = 0;
+    for(const t of liste){
+      await lisGoplus(t);
+      if(manuel){ btn.textContent = "⏳ "+(++n)+"/"+liste.length; }
+      await new Promise(x=>setTimeout(x, 320));
+    }
+    /* ---- ET LE DETAIL, POUR CEUX QUI LE MERITENT ----
+     * Chandelles, second avis et lecture directe de la chaine coutent trois
+     * appels par token. Les demander pour les vingt a chaque tour nous
+     * ferait couper en une heure ; on les demande donc pour les huit qui
+     * passent deja la note de base — ce sont les seuls qui peuvent finir en
+     * position, et donc les seuls dont le detail change quelque chose.
+     * Les caches font le reste : rien n'est redemande avant son heure. */
+    const candidats = liste.slice().sort((a,b)=>scoreBase(b)-scoreBase(a)).slice(0, 8);
+    for(const t of candidats){
+      if(manuel) btn.textContent = "🔎 "+t.sym;
+      await enrichis(t);
+      await new Promise(x=>setTimeout(x, 260));
+    }
+    REAL = { ts:Date.now(), tokens:liste };
+    ETAT.maj = REAL.ts;
+    for(const t of liste) ETAT.vus[t.addr] = REAL.ts;
+    rhOrder = [];
+    echecs = 0;
+    pastille(); sauve();
+    /* La phrase de fond raconte l'etat courant : la laisser sur « aucune
+       donnee lue » apres une lecture reussie ferait mentir l'ecran. */
+    $("stagetag").textContent = phraseFond();
+    $("stagetag").classList.remove("toast-note");
+    if(manuel) dis("Lecture faite · "+liste.length+" tokens · "+candidats.length+" analyses en detail"
+      +(fermees?" · "+fermees+" position(s) reglee(s)":""));
+    else if(fermees) dis(fermees+" position(s) reglee(s) au prix reel");
+    peintPositions();
+  }catch(e){
+    echecs++;
+    pastille();
+    dis("Lecture impossible ("+(e && e.message ? e.message : "reseau")+"). "
+      + "Rien n'est invente pour combler : les agents attendent la prochaine tentative.", true);
+  }
+  if(manuel){ btn.textContent = "🔄 Live"; btn.disabled = false; }
+  enLecture = false;
+  majPouls();
+}
+function majPouls(){
+  const p = $("pouls"), tx = $("poulsTx");
+  const vivant = REAL.ts && (Date.now()-REAL.ts) < 15*60*1000;
+  p.classList.toggle("off", !vivant);
+  tx.textContent = vivant ? "LIVE" : (REAL.ts ? "PERIME" : "HORS LIGNE");
+}
+
+/* ---- LA BOUCLE DE LECTURE ----
+ * Elle ne tourne QUE quand la page est visible : marteler l'API depuis un
+ * onglet oublie au fond du navigateur ne sert personne, et nous ferait
+ * couper. En revenant, on relit tout de suite si la derniere lecture date. */
+setInterval(function(){
+  if(document.visibilityState === "hidden") return;
+  if(Date.now() - (REAL.ts||0) < CADENCE) return;
+  lisTout(false);
+}, 20000);
+document.addEventListener("visibilitychange", function(){
+  if(document.visibilityState !== "visible") return;
+  majPouls();
+  if(Date.now() - (REAL.ts||0) > CADENCE) lisTout(false);
+});
+
+/* ============================ BOUCLE ============================ */
+let last = performance.now();
+function loop(now){
+  const dt = Math.min(0.05, (now-last)/1000); last = now; t_now = now/1000;
+  if(running){ peutNaitre(dt); step(dt); }
+  shownBal += (balance-shownBal)*Math.min(1, dt*6);
+  $("bal").textContent = "$"+Math.round(shownBal).toLocaleString("en-US");
+  const d = balance - DEPART;
+  $("delta").textContent = (d>=0?"+":"–")+"$"+Math.abs(d).toFixed(2);
+  $("delta").style.color = d>=0 ? "var(--gain)" : "var(--loss)";
+  render();
+  requestAnimationFrame(loop);
+}
+
+/* ============================ COMMANDES ============================ */
+$("pause").addEventListener("click", function(){
+  running = !running;
+  this.textContent = running ? "⏸ Pause" : "▶ Reprendre";
+  this.classList.toggle("on", !running);
+  dis(running ? phraseFond() : "En pause — la lecture de la chaine continue, les agents ne bougent plus.");
+});
+const VITESSES = [1,2,4]; let vi = 0;
+$("speed").addEventListener("click", function(){
+  vi = (vi+1) % VITESSES.length; speed = VITESSES[vi]; this.textContent = speed+"×";
+});
+$("refresh").addEventListener("click", ()=>lisTout(true));
+$("oublier").addEventListener("click", function(){
+  /* ---- ON DEMANDE, PARCE QUE C'EST IRREVERSIBLE ----
+     Effacer la memoire, c'est jeter tout ce que les agents ont appris. Un
+     bouton qui le fait d'un seul geste finit toujours par etre touche par
+     accident. */
+  const n = trades;
+  if(!confirm("Effacer la memoire des agents ?\n\n"+n+" trade(s) appris, "
+    + ETAT.positions.length+" position(s) ouverte(s) et la tresorerie repartiront de zero.\n"
+    + "C'est definitif.")) return;
+  try{ localStorage.removeItem(CLE_ETAT); }catch(e){}
+  ETAT = etatNeuf();
+  balance = shownBal = DEPART; profit = 0; trades = 0; gains = 0; best = 0; bestSym = "";
+  spark = [DEPART]; picks.length = 0;
+  $("picks").innerHTML = '<div class="empty">Aucun signal valide pour l\'instant…</div>';
+  peintStats(); peintPositions(); peintAppris(); peintFluxTrades(); dessineCourbe(); sauve();
+  dis("Memoire effacee. Les agents repartent de zero.");
+});
+
+/* Le compte a rebours d'une position et sa valeur latente bougent avec le
+   temps, pas avec les images : une seconde suffit, et cela evite de refaire
+   ce bloc soixante fois par seconde pour rien. */
+setInterval(function(){ if(document.visibilityState !== "hidden"){ peintPositions(); pastille(); } }, 1000);
+
+/* ============================ DEPART ============================ */
+peintAgents(); peintStats(); peintPositions(); peintAppris(); peintFluxTrades();
+dessineCourbe(); pastille(); majPouls();
+$("stagetag").textContent = phraseFond();
+requestAnimationFrame(loop);
+/* La premiere lecture part tout de suite : c'est elle qui donne les prix, et
+   sans prix il ne peut y avoir ni position ouverte ni position reglee. */
+lisTout(false);
+</script>
+</html>

@@ -68,7 +68,7 @@
      A savoir : cela ne sauve pas la page DEJA en cache chez quelqu'un, qui ne
      contient pas ces lignes. Ce garde-fou vaut a partir de celle-ci. -->
 <script>
-var MARQUE_PAGE = 'f7997998';
+var MARQUE_PAGE = 'c2147d4f';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -653,6 +653,62 @@ body{
 .wl-max:hover{ background:var(--voile2) }
 .wl-max:active{ transform:translateY(1px) }
 .wl-champ input::placeholder{ color:var(--doux) }
+
+/* ==================== TROP, ET ON LE VOIT ====================
+ *
+ * « Parfois il y a beaucoup de 0, compliqué de choisir. » Un montant qui
+ * depasse le solde ne se voyait qu'au moment d'envoyer, dans un message
+ * fugace — apres avoir compte les zeros deux fois. Il se voit maintenant des
+ * la frappe : le champ rougit, et la ligne du solde avec lui, pour que l'oeil
+ * fasse le rapprochement sans avoir a lire.
+ *
+ * Le rouge ne bloque rien : on peut vouloir taper le montant avant de
+ * recharger un solde. C'est un avertissement, pas une barriere. */
+.wl-champ input.trop{ border-color:var(--rouge); color:var(--rouge) }
+.wl-champ input.trop:focus{ outline-color:var(--rouge) }
+.wl-rang.trop b, .wl-rang.trop span{ color:var(--rouge) }
+
+/* ==================== LE CURSEUR DE POURCENTAGE ====================
+ *
+ * Il n'y avait que MAX : tout, ou un nombre a taper au chiffre pres. Entre
+ * les deux — la moitie, le quart — il fallait compter des decimales a la
+ * main, et c'est exactement la que l'on se trompe d'un facteur dix.
+ *
+ * A 100 %, il ne pose PAS le solde entier : il passe par le meme calcul que
+ * MAX, qui garde de quoi payer le reseau. Un curseur pousse a fond qui
+ * fabrique une transaction impayable serait pire que pas de curseur. */
+.wl-glis{ display:flex; align-items:center; gap:10px; margin:9px 0 2px }
+.wl-glis input[type=range]{
+  flex:1 1 auto; width:auto; min-width:0; height:26px; padding:0; margin:0;
+  border:0; background:none; -webkit-appearance:none; appearance:none;
+  cursor:pointer;
+  /* Seize pixels, comme tous les champs de cette page. Une barre n'ouvre
+     jamais de clavier, donc iOS ne zoomerait pas dessus — mais la regle qui
+     nous protege du zoom compte les champs SANS distinguer lesquels, et une
+     exception qu'il faut expliquer a l'essai est une exception de trop. */
+  font-size:16px }
+.wl-glis input[type=range]:focus{ outline:none }
+.wl-glis input[type=range]:focus-visible{ outline:2px solid var(--accent); outline-offset:2px;
+  border-radius:8px }
+.wl-glis input[type=range]::-webkit-slider-runnable-track{
+  height:6px; border-radius:999px;
+  background:linear-gradient(90deg,var(--accent) var(--part,0%),var(--bord) var(--part,0%)) }
+.wl-glis input[type=range]::-moz-range-track{
+  height:6px; border-radius:999px;
+  background:linear-gradient(90deg,var(--accent) var(--part,0%),var(--bord) var(--part,0%)) }
+/* Vingt-deux pixels : sous ce diametre le pouce rate la poignee et fait
+   glisser la page a la place. */
+.wl-glis input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none; appearance:none; width:22px; height:22px; margin-top:-8px;
+  border-radius:50%; background:var(--texte); border:2px solid var(--accent);
+  box-shadow:0 1px 3px rgba(0,0,0,.35) }
+.wl-glis input[type=range]::-moz-range-thumb{
+  width:22px; height:22px; border-radius:50%; background:var(--texte);
+  border:2px solid var(--accent); box-shadow:0 1px 3px rgba(0,0,0,.35) }
+.wl-glis .pc{ flex:0 0 auto; min-width:44px; text-align:right;
+  font:700 12px/1 'Space Mono',monospace; font-variant-numeric:tabular-nums;
+  color:var(--doux) }
+.wl-glis[data-off="1"]{ opacity:.45 }
 
 /* ==================== LE CHOIX D'UN JETON ====================
  *
@@ -1363,6 +1419,11 @@ body{
           <input id="enMontant" inputmode="decimal" placeholder="0.0" autocomplete="off">
           <button type="button" class="wl-max" id="enMax">MAX</button>
         </div>
+        <div class="wl-glis" data-pour="enMontant">
+          <input type="range" min="0" max="100" step="1" value="0"
+                 aria-label="Share of your balance">
+          <span class="pc">0 %</span>
+        </div>
         <div class="wl-rang"><span>Balance</span><b id="enSolde">—</b></div>
       </div>
       <div class="wl-carte">
@@ -1420,6 +1481,11 @@ body{
         <div class="wl-champ wl-avecmax" style="margin:0">
           <input id="swMontant" inputmode="decimal" placeholder="0.0" autocomplete="off">
           <button type="button" class="wl-max" id="swMax">MAX</button>
+        </div>
+        <div class="wl-glis" data-pour="swMontant">
+          <input type="range" min="0" max="100" step="1" value="0"
+                 aria-label="Share of your balance">
+          <span class="pc">0 %</span>
         </div>
         <div class="wl-rang"><span>Balance</span><b id="swSolde">—</b></div>
       </div>
@@ -1486,6 +1552,11 @@ body{
           <input id="poMontant" inputmode="decimal" placeholder="0.0" autocomplete="off">
           <button type="button" class="wl-max" id="poMax">MAX</button>
         </div>
+        <div class="wl-glis" data-pour="poMontant">
+          <input type="range" min="0" max="100" step="1" value="0"
+                 aria-label="Share of your balance">
+          <span class="pc">0 %</span>
+        </div>
         <div class="wl-rang"><span id="poSoldeT">Balance</span><b id="poSolde">&mdash;</b></div>
       </div>
 
@@ -1545,6 +1616,11 @@ body{
           <input id="caDepMontant" inputmode="decimal" placeholder="0.0" autocomplete="off">
           <button type="button" class="wl-max" id="caDepMax">MAX</button>
         </div>
+        <div class="wl-glis" data-pour="caDepMontant">
+          <input type="range" min="0" max="100" step="1" value="0"
+                 aria-label="Share of your balance">
+          <span class="pc">0 %</span>
+        </div>
         <div class="wl-rang"><span>In your wallet</span><b id="caDepSolde">—</b></div>
       </div>
       <button class="wl-b" id="caDeposer" type="button">Deposit to play</button>
@@ -1556,6 +1632,11 @@ body{
         <div class="wl-champ wl-avecmax" style="margin:0">
           <input id="caRetMontant" inputmode="decimal" placeholder="0.0" autocomplete="off">
           <button type="button" class="wl-max" id="caRetMax">MAX</button>
+        </div>
+        <div class="wl-glis" data-pour="caRetMontant">
+          <input type="range" min="0" max="100" step="1" value="0"
+                 aria-label="Share of your balance">
+          <span class="pc">0 %</span>
         </div>
         <div class="wl-rang"><span>Minimum</span><b id="caRetMin">—</b></div>
       </div>
@@ -2092,6 +2173,14 @@ var TOLERANCE = 0.5;
  * la route la plus longue (ETH -> $SWOGE -> $SWOGEBET, deux protocoles
  * en une transaction) consomme 290 140 unites ; un envoi d'ETH nu en
  * consomme 21 000. On garde de quoi payer environ une fois et demie. */
+/* ---- CHAQUE CHAMP DE MONTANT ET SON « TOUT » ----
+ * Rempli plus bas, sous chaque bouton MAX, et lu par le curseur de
+ * pourcentage quand on le pousse a fond. Declare ICI, avant tout le monde :
+ * les boutons du casino s'y inscrivent bien avant que le bloc des montants
+ * ne soit atteint, et une table encore `undefined` a ce moment-la aurait
+ * casse la page au chargement. */
+var MAX_DU_CHAMP = {};
+
 var GAZ_ECHANGE = 450000;
 var GAZ_ENVOI   = 60000;
 
@@ -3404,6 +3493,10 @@ function peintAccueil(){
                            : ' tokens you added are not shown: you hold none of them.')
     + ' They are still in the swap list — that is where you would buy some.';
   $('jtNote').textContent = note;
+  /* Les soldes viennent d'etre repeints : ce qui etait rouge peut ne plus
+     l'etre, et une poignee de curseur posee sur l'ancien solde designerait
+     maintenant un autre montant. */
+  ['enMontant','swMontant','caDepMontant','caRetMontant'].forEach(majMontant);
   majCompte();
 }
 
@@ -3594,16 +3687,22 @@ $('caDeposer').addEventListener('click', async function(){
   b.textContent = lib; b.disabled = false;
 });
 
-$('caDepMax').addEventListener('click', function(){
+MAX_DU_CHAMP.caDepMontant = function(){
   var s = soldes.swoge;
   if(s === null || s === undefined) return toast('Your $SWOGE balance has not been read yet — it is unknown, not zero.');
   if(s.isZero()) return toast('No $SWOGE in this wallet to deposit.');
   $('caDepMontant').value = ethers.utils.formatUnits(s, 18);
-});
-$('caRetMax').addEventListener('click', function(){
+  DERNIER_MAX.caDepMontant = $('caDepMontant').value;
+  majMontant('caDepMontant');
+};
+$('caDepMax').addEventListener('click', function(){ MAX_DU_CHAMP.caDepMontant(); });
+MAX_DU_CHAMP.caRetMontant = function(){
   if(CASINO.solde === null) return toast('Your game balance is unknown right now.');
   $('caRetMontant').value = String(CASINO.solde);
-});
+  DERNIER_MAX.caRetMontant = $('caRetMontant').value;
+  majMontant('caRetMontant');
+};
+$('caRetMax').addEventListener('click', function(){ MAX_DU_CHAMP.caRetMontant(); });
 
 /* ---- LE RETRAIT ----
  * Il se termine SUR LA CHAINE : le serveur signe un bon, le joueur
@@ -4654,6 +4753,9 @@ function majEnvoyer(){
      pas la meme d'une chaine a l'autre. */
   var c = chaineDuJeton(j);
   if($('enReseau')) $('enReseau').textContent = c.nom;
+  /* Le solde qui borne le champ vient de CHANGER : ce qui etait rouge peut
+     ne plus l'etre, et la poignee du curseur n'est plus au bon endroit. */
+  majMontant('enMontant');
   majRevue();
   litFrais();
 }
@@ -4691,22 +4793,186 @@ async function calculeMax(cle, unitesGaz){
   return { montant:reste, reserve:reserve, sym:j.sym };
 }
 
-$('enMax').addEventListener('click', async function(){
+MAX_DU_CHAMP.enMontant = async function(){
   var cle = $('enJeton').value;
   var r = await calculeMax(cle, GAZ_ENVOI);
   if(r.erreur) return toast(r.erreur);
   $('enMontant').value = ethers.utils.formatUnits(r.montant, J(cle).dec);
+  DERNIER_MAX.enMontant = $('enMontant').value;
   if(r.reserve) toast('Kept ' + nombre(r.reserve,18) + ' ' + (r.sym||ETH_AFF) + ' back for the network fee');
-});
+  majMontant('enMontant'); apresMontant('enMontant');
+};
+$('enMax').addEventListener('click', function(){ MAX_DU_CHAMP.enMontant(); });
 
-$('swMax').addEventListener('click', async function(){
+MAX_DU_CHAMP.swMontant = async function(){
   var cle = $('swDe').value;
   var r = await calculeMax(cle, GAZ_ECHANGE);
   if(r.erreur) return toast(r.erreur);
   $('swMontant').value = ethers.utils.formatUnits(r.montant, J(cle).dec);
-  if(r.reserve) toast('Kept ' + nombre(r.reserve,18) + ' ' + ETH_AFF + ' back for the network fee');
+  DERNIER_MAX.swMontant = $('swMontant').value;
+  if(r.reserve) toast('Kept ' + nombre(r.reserve,18) + ' ' + (r.sym||ETH_AFF) + ' back for the network fee');
+  majMontant('swMontant');
   devis();
-});
+};
+$('swMax').addEventListener('click', function(){ MAX_DU_CHAMP.swMontant(); });
+
+/* ==================== LES MONTANTS ====================
+ *
+ * Cinq champs demandent un montant : envoyer, echanger, ponter, deposer au
+ * casino, en retirer. Ils avaient chacun leur MAX et rien d'autre. Trois
+ * defauts, tous signales par le meme joueur, et tous les trois du meme
+ * ressort — le champ ne disait rien tant qu'on n'avait pas fini :
+ *
+ *   « faudrait que ça affiche en rouge dès qu'on dépasse le montant qu'on
+ *     possède car parfois il y a beaucoup de 0, compliqué de choisir »
+ *   « ça serait bien d'avoir une barre slide pour définir combien de pour
+ *     cent on achète ou vend ou dépose, car on a que le bouton max »
+ *   « parfois on écrit un chiffre, je suis obligé d'appuyer sur entrée pour
+ *     qu'il reconnaisse que j'ai écrit un chiffre »
+ *
+ * Le troisieme est le plus grave, et c'est celui qu'on regarde en premier :
+ * `enMontant`, `caDepMontant` et `caRetMontant` n'avaient AUCUN ecouteur.
+ * Rien ne se mettait a jour pendant la frappe — ni le frais, ni ce qui
+ * resterait — et il fallait un autre geste (valider, changer de champ) pour
+ * que l'ecran bouge. Les cinq champs ecoutent maintenant `input`, qui part a
+ * chaque caractere, au collage, et meme quand c'est le curseur qui ecrit.
+ *
+ * Tout passe par une seule table : un champ, son solde, son MAX, et ce qu'il
+ * faut relancer apres. Ecrire cinq fois la meme chose, c'est quatre endroits
+ * ou l'oublier.
+ */
+var pontSolde;      /* le solde de la chaine de depart du pont, garde ici :
+                       l'ecran ne le montrait qu'en toutes lettres */
+
+/* Le solde qui borne un champ. Rend `{v, dec, sym}` ou `v` vaut `null` /
+   `undefined` quand il n'est pas connu — et alors on ne colore rien et le
+   curseur ne remplit rien. Deviner un solde pour pouvoir dessiner une barre,
+   c'est ecrire un montant que le joueur n'a pas. */
+function soldeDuChamp(id){
+  var j, s;
+  if(id === 'enMontant'){
+    j = J(($('enJeton')||{}).value) || JETONS[0]; s = soldes[j.cle];
+    return { v:s, dec:j.dec, sym:j.sym };
+  }
+  if(id === 'swMontant'){
+    j = J(($('swDe')||{}).value) || JETONS[0]; s = soldes[j.cle];
+    return { v:s, dec:j.dec, sym:j.sym };
+  }
+  if(id === 'poMontant'){
+    return { v:pontSolde, dec:18, sym:ETH_AFF_DE(pontDe()) };
+  }
+  if(id === 'caDepMontant'){
+    return { v:soldes.swoge, dec:18, sym:'SWOGE' };
+  }
+  if(id === 'caRetMontant'){
+    var c = (typeof CASINO !== 'undefined') ? CASINO.solde : null;
+    if(c === null || c === undefined) return { v:c, dec:18, sym:'SWOGE' };
+    var b = null;
+    try{ b = ethers.utils.parseUnits(String(c), 18); }catch(e){ b = null; }
+    return { v:b, dec:18, sym:'SWOGE' };
+  }
+  return { v:undefined, dec:18, sym:'' };
+}
+
+/* La rangee « Balance » qui suit le champ : elle rougit avec lui, pour que
+   l'oeil fasse le rapprochement sans avoir a lire. */
+var RANG_SOLDE = { enMontant:'enSolde', swMontant:'swSolde', poMontant:'poSolde',
+                   caDepMontant:'caDepSolde', caRetMontant:null };
+
+function marqueTrop(id){
+  var e = $(id); if(!e) return false;
+  var s = soldeDuChamp(id);
+  var t = (e.value || '').trim().replace(',', '.');
+  var trop = false;
+  if(t && parseFloat(t) > 0 && s.v !== null && s.v !== undefined){
+    try{ trop = ethers.utils.parseUnits(t, s.dec).gt(s.v); }catch(x){ trop = false; }
+  }
+  e.classList.toggle('trop', trop);
+  var r = RANG_SOLDE[id] && $(RANG_SOLDE[id]);
+  if(r && r.parentNode) r.parentNode.classList.toggle('trop', trop);
+  return trop;
+}
+
+/* Le curseur suit ce qui est ecrit : taper « la moitie » a la main doit
+   poser la poignee au milieu, sinon les deux se contredisent a l'ecran. */
+function suitCurseur(id){
+  var w = document.querySelector('.wl-glis[data-pour="' + id + '"]');
+  if(!w) return;
+  var g = w.querySelector('input[type=range]'), pc = w.querySelector('.pc');
+  var e = $(id), s = soldeDuChamp(id);
+  var connu = s.v !== null && s.v !== undefined && !s.v.isZero();
+  w.dataset.off = connu ? '' : '1';
+  if(g) g.disabled = !connu;
+  var part = 0;
+  if(connu){
+    var t = (e.value || '').trim().replace(',', '.');
+    if(t && parseFloat(t) > 0){
+      try{
+        var m = ethers.utils.parseUnits(t, s.dec);
+        /* En centiemes, en entiers : `Number()` sur un wei perdrait de la
+           precision bien avant d'arriver au pourcentage. */
+        var q = m.mul(100).div(s.v);
+        part = Math.min(100, q.toNumber());
+      }catch(x){ part = 0; }
+    }
+  }
+  /* ---- « MAX » N'EST PAS TOUJOURS CENT POUR CENT, ET LA POIGNEE LE SAIT ----
+   * Pour une piece native, MAX garde de quoi payer le reseau : il ecrit donc
+   * un poil MOINS que le solde. La poignee poussee a fond retombait aussitot
+   * a 99 %, comme si le geste avait rate. Tant que la case contient tout
+   * juste ce que MAX y a mis, elle reste au bout — et le compteur dit
+   * « MAX » plutot qu'un pourcentage qui mentirait dans les deux sens. */
+  var auMax = connu && DERNIER_MAX[id] !== undefined && e.value === DERNIER_MAX[id];
+  if(auMax) part = 100;
+  if(g){ g.value = String(part); g.style.setProperty('--part', part + '%'); }
+  if(pc) pc.textContent = auMax ? 'MAX' : (part + ' %');
+}
+/* Ce que MAX a ecrit dans chaque champ, tel quel : le comparer a la case dit
+   si le joueur y a touche depuis. */
+var DERNIER_MAX = {};
+
+function majMontant(id){ marqueTrop(id); suitCurseur(id); }
+
+/* Ce qu'il faut relancer quand le montant change. Chaque ecran garde SON
+   rythme : un devis se debouncera, un frais se relit tout de suite. */
+function apresMontant(id){
+  if(id === 'swMontant'){ clearTimeout(window._d);  window._d  = setTimeout(devis, 320); }
+  if(id === 'poMontant'){ clearTimeout(window._dp); window._dp = setTimeout(devisPont, 420); }
+  if(id === 'enMontant'){ litFrais(); }
+}
+
+/* 100 % passe par le MAX du champ : lui seul sait garder de quoi payer le
+   reseau. En dessous, une simple proportion du solde. */
+async function poseParCurseur(id, part){
+  var w = document.querySelector('.wl-glis[data-pour="' + id + '"]');
+  var pc = w && w.querySelector('.pc');
+  var g  = w && w.querySelector('input[type=range]');
+  if(g) g.style.setProperty('--part', part + '%');
+  if(pc) pc.textContent = part + ' %';
+  var e = $(id); if(!e) return;
+  var s = soldeDuChamp(id);
+  if(s.v === null || s.v === undefined){
+    toast('That balance has not been read yet — it is unknown, not zero.');
+    return;
+  }
+  if(part === 0){ e.value = ''; majMontant(id); apresMontant(id); return; }
+  if(part === 100){ if(MAX_DU_CHAMP[id]) await MAX_DU_CHAMP[id](); majMontant(id); return; }
+  e.value = ethers.utils.formatUnits(s.v.mul(part).div(100), s.dec);
+  majMontant(id);
+  apresMontant(id);
+}
+
+function accrocheMontant(id){
+  var e = $(id); if(!e) return;
+  /* `input` et pas `change` : `change` n'arrive qu'a la sortie du champ, et
+     c'est tout le defaut — le joueur tapait, rien ne bougeait, il appuyait
+     sur Entree pour que l'ecran se reveille. */
+  e.addEventListener('input', function(){ majMontant(id); apresMontant(id); });
+  var w = document.querySelector('.wl-glis[data-pour="' + id + '"]');
+  var g = w && w.querySelector('input[type=range]');
+  if(g) g.addEventListener('input', function(){ poseParCurseur(id, parseInt(this.value, 10) || 0); });
+  majMontant(id);
+}
 
 async function litFrais(){
   var j = J($('enJeton').value) || JETONS[0], c = chaineDuJeton(j);
@@ -5030,6 +5296,7 @@ function majSwap(){
   var j=J($('swDe').value);
   var s=soldes[j.cle];
   $('swSolde').textContent=(s===null||s===undefined)?'—':nombre(s,j.dec)+' '+j.sym;
+  majMontant('swMontant');
   devis();
 }
 $('swDe').addEventListener('change', function(){
@@ -6204,11 +6471,15 @@ async function soldePont(){
     try{
       var b = await borne(lecPont(c).getBalance(moi), 12000, 'balance');
       $('poSolde').textContent = nombre(b, 18) + ' ' + ETH_AFF_DE(c);
+      /* Garde pour le curseur et pour le rouge : l'ecran ne le montrait qu'en
+         toutes lettres, et une chaine de caracteres ne se compare pas. */
+      pontSolde = b; majMontant('poMontant');
       return b;
     }catch(e){
       if(c.id !== CHAINE.id && relaiChaine(c)) continue;
       /* Jamais zero : un solde non lu n'est pas un solde nul. */
       $('poSolde').textContent = 'unknown';
+      pontSolde = null; majMontant('poMontant');
       return null;
     }
   }
@@ -6439,6 +6710,8 @@ async function maxPont(){
       return;
     }
     $('poMontant').value = ethers.utils.formatUnits(solde.sub(reserve), 18);
+    DERNIER_MAX.poMontant = $('poMontant').value;
+    majMontant('poMontant');
     /* Le devis d'abord, le message ENSUITE : ecrit avant, il etait efface une
        demi-seconde plus tard par la note du devis, et le joueur ne savait
        jamais qu'on lui avait garde de quoi payer le reseau. */
@@ -6489,9 +6762,9 @@ function majPont(){
 if($('poPlusB')) $('poPlusB').addEventListener('click', function(){
   poseDetailPont($('poPlus').hidden, true);
 });
-if($('poMontant')) $('poMontant').addEventListener('input', function(){
-  clearTimeout(window._dp); window._dp = setTimeout(devisPont, 420);
-});
+/* L'ecouteur du champ est pose par `accrocheMontant`, avec les quatre
+   autres : un seul endroit ou dire ce qu'un montant declenche. */
+MAX_DU_CHAMP.poMontant = maxPont;
 if($('poMax'))    $('poMax').addEventListener('click', maxPont);
 if($('poPartir')) $('poPartir').addEventListener('click', partPont);
 
@@ -6665,6 +6938,9 @@ if(ethersManquant()){
 poseTolerance();
 ['enJeton','swDe','swVers'].forEach(function(id){ var s=$(id); if(s) accrochePick(s); });
 remplitChoix($('enJeton'));
+/* Les cinq champs de montant : rouge des la frappe, curseur de pourcentage,
+   et plus une seule mise a jour qui attende qu'on appuie sur Entree. */
+['enMontant','swMontant','poMontant','caDepMontant','caRetMontant'].forEach(accrocheMontant);
 remplitChoix($('swDe'));
 remplitChoix($('swVers'));
 valPick($('swDe'), 'eth'); valPick($('swVers'), 'swogebet');

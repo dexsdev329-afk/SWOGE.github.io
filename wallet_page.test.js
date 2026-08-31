@@ -3908,6 +3908,189 @@ function servir(q, r, f, type) {
    * changer d ecran. Une sortie retiree sans que l autre soit prouvee, c est
    * un joueur coince dans le pont avec son argent.
    */
+  /* ==================== LE MONTANT SE VOIT PENDANT QU'ON LE TAPE ====================
+   *
+   * Trois defauts signales ensemble, tous du meme ressort — le champ ne
+   * disait rien tant qu on n avait pas fini :
+   *
+   *   « faudrait que ça affiche en rouge dès qu'on dépasse le montant qu'on
+   *     possède car parfois il y a beaucoup de 0, compliqué de choisir »
+   *   « ça serait bien d'avoir une barre slide pour définir combien de pour
+   *     cent on achète ou vend ou dépose, car on a que le bouton max »
+   *   « parfois on écrit un chiffre, je suis obligé d'appuyer sur entrée
+   *     pour qu'il reconnaisse que j'ai écrit un chiffre »
+   *
+   * Le troisieme est le plus grave et c est celui qui se mesure le mieux :
+   * la frappe SEULE doit suffire. Aucune touche Entree, aucun changement de
+   * champ, aucun clic ailleurs — juste des caracteres, et l ecran suit.
+   */
+  console.log('\n-- le montant, pendant qu on le tape --');
+  {
+    const MOI = '0x00000000000000000000000000000000000a11ce';
+    const mot = (v) => '0x' + v.toString(16).padStart(64, '0');
+    const page = await nav.newPage({ viewport: { width: 390, height: 844 } });
+    const boum = [];
+    page.on('pageerror', (e) => boum.push(String(e).slice(0, 180)));
+    await page.addInitScript((moi) => {
+      try { localStorage.setItem('swogeAuth', 'email');
+            sessionStorage.setItem('swogeWalletIntroVue', '1'); } catch (e) {}
+      window.SwogePrivy = { init: () => {}, sendCode: async () => {}, verifyCode: async () => moi,
+        logout: async () => {}, restore: async () => moi, getProvider: () => window.ethereum,
+        getAddress: () => moi, isLoggedIn: () => true, comptes: () => [{ adresse: moi, index: 0 }],
+        choisitCompte: async () => moi, ajouteCompte: async () => moi, indexCompte: () => 0,
+        solana: () => [], creeSolana: async () => null };
+      window.ethereum = { isMetaMask: true, request: async (a) => {
+        if (a.method === 'eth_accounts' || a.method === 'eth_requestAccounts') return [moi];
+        if (a.method === 'eth_chainId') return '0x1237';
+        if (a.method === 'net_version') return '4663';
+        return null; }, on: () => {}, removeListener: () => {} };
+    }, MOI);
+    await page.route('**/ethers*.umd.min.js', (r) => r.fulfill({
+      contentType: 'text/javascript', body: fs.readFileSync(ETHERS, 'utf8') }));
+    await page.route('**/privy-swoge.js*', (r) => r.fulfill({
+      contentType: 'text/javascript', body: '/* joue par l essai */' }));
+    await page.route('**/api.dexscreener.com/**', (r) => r.fulfill({
+      contentType: 'application/json', body: '{"pairs":[]}' }));
+    await page.route('**/api.relay.link/**', (r) => r.fulfill({
+      status: 400, contentType: 'application/json', body: '{"message":"pas de route"}' }));
+    /* DEUX ETH tout rond sur chaque chaine : les pourcentages se lisent alors
+       a l oeil nu, et un quart vaut exactement 0,5. */
+    await page.route(/publicnode|drpc|robinhood|arbitrum|optimism|base|avalanche/, async (r) => {
+      const q = JSON.parse(r.request().postData() || '{}');
+      const rh = /robinhood/.test(r.request().url());
+      const un = (m) => {
+        if (m.method === 'eth_chainId') return rh ? '0x1237' : '0x1';
+        if (m.method === 'net_version') return rh ? '4663' : '1';
+        if (m.method === 'eth_blockNumber') return '0x10';
+        if (m.method === 'eth_gasPrice') return mot(1000000n);
+        if (m.method === 'eth_getBalance') return mot(2000000000000000000n);
+        if (m.method === 'eth_call') return mot(1000000000000000000000n);
+        if (m.method === 'eth_getLogs') return [];
+        return null; };
+      const rep = (m) => ({ jsonrpc: '2.0', id: m.id, result: un(m) });
+      await r.fulfill({ contentType: 'application/json',
+        body: JSON.stringify(Array.isArray(q) ? q.map(rep) : rep(q)) });
+    });
+    await page.goto('http://127.0.0.1:' + port + '/swoge_wallet.html',
+                    { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(3000);
+
+    const lit = (champ) => page.evaluate((c) => {
+      const e = document.getElementById(c);
+      const w = document.querySelector('.wl-glis[data-pour="' + c + '"]');
+      const g = w && w.querySelector('input[type=range]');
+      const carte = e.closest('.wl-carte');
+      return { val: e.value, rouge: e.classList.contains('trop'),
+               pct: g ? Number(g.value) : null,
+               txt: w ? w.querySelector('.pc').textContent : null,
+               vu: !!w && w.getBoundingClientRect().height > 0,
+               rangRouge: !!(carte && carte.querySelector('.wl-rang.trop')) };
+    }, champ);
+
+    await page.evaluate(() => document.querySelector('[data-va="ecEnvoyer"]').click());
+    await page.waitForTimeout(500);
+
+    /* ---- LA FRAPPE SEULE SUFFIT ----
+     * `type()` envoie de vraies frappes, caractere par caractere, et RIEN
+     * d autre : ni Entree, ni Tab, ni clic ailleurs. Si l ecran ne bouge
+     * qu apres une validation, cette mesure le prend sur le fait. */
+    await page.click('#enMontant');
+    await page.type('#enMontant', '0.5', { delay: 60 });
+    await page.waitForTimeout(400);
+    let m = await lit('enMontant');
+    console.log('   tape « 0.5 » sur 2 : ' + JSON.stringify(m));
+    ok(m.pct === 25,
+       'la frappe SEULE bouge le curseur — aucune touche Entree (' + m.pct + ' %)');
+    ok(!m.rouge, 'et 0,5 sur 2 ne rougit pas');
+
+    /* ---- LE ROUGE, DES QU ON DEPASSE ---- */
+    await page.fill('#enMontant', '');
+    await page.type('#enMontant', '3', { delay: 60 });
+    await page.waitForTimeout(400);
+    m = await lit('enMontant');
+    console.log('   tape « 3 » sur 2 : ' + JSON.stringify(m));
+    ok(m.rouge, 'un montant plus grand que le solde rougit le champ');
+    ok(m.rangRouge,
+       'et la ligne du solde avec lui — l oeil fait le rapprochement sans lire');
+    const couleur = await page.evaluate(() => {
+      const e = document.getElementById('enMontant');
+      const c = getComputedStyle(e);
+      return { texte: c.color, bord: c.borderColor };
+    });
+    /* Rouge pour de vrai, pas seulement une classe posee : une regle CSS
+       oubliee laisserait la classe sans la moindre couleur. */
+    const rouge = (v) => { const n = String(v).match(/\d+/g) || [];
+      return n.length >= 3 && Number(n[0]) > 150 && Number(n[0]) > Number(n[1]) + 60; };
+    ok(rouge(couleur.texte) && rouge(couleur.bord),
+       'et c est vraiment rouge a l ecran (' + couleur.texte + ' / ' + couleur.bord + ')');
+    await page.fill('#enMontant', '1');
+    await page.waitForTimeout(300);
+    m = await lit('enMontant');
+    ok(!m.rouge && !m.rangRouge, 'redescendre sous le solde eteint le rouge');
+
+    /* ---- LE CURSEUR REMPLIT LA CASE ---- */
+    ok(m.vu, 'chaque champ de montant porte son curseur de pourcentage');
+    const glisse = async (champ, part) => {
+      await page.evaluate(([c, p]) => {
+        const g = document.querySelector('.wl-glis[data-pour="' + c + '"] input');
+        g.value = String(p); g.dispatchEvent(new Event('input', { bubbles: true }));
+      }, [champ, part]);
+      await page.waitForTimeout(600);
+      return lit(champ);
+    };
+    m = await glisse('enMontant', 25);
+    console.log('   curseur a 25 % : ' + JSON.stringify(m));
+    ok(parseFloat(m.val) === 0.5,
+       'le quart de 2 ETH ecrit 0,5 dans la case (' + m.val + ')');
+    m = await glisse('enMontant', 50);
+    ok(parseFloat(m.val) === 1, 'la moitie ecrit 1 (' + m.val + ')');
+    m = await glisse('enMontant', 0);
+    ok(m.val === '', 'et zero vide la case plutot que d y ecrire « 0 » (« ' + m.val + ' »)');
+
+    /* ---- A FOND, IL GARDE DE QUOI PAYER LE RESEAU ----
+     * C est la seule chose qu un curseur naif ferait de travers : poser le
+     * solde ENTIER fabrique une transaction que le joueur ne peut plus payer.
+     * Il passe donc par le meme calcul que MAX. */
+    m = await glisse('enMontant', 100);
+    console.log('   curseur a fond : ' + JSON.stringify(m));
+    ok(parseFloat(m.val) > 1.9 && parseFloat(m.val) < 2,
+       'pousse a fond, il ecrit MOINS que le solde entier : le gaz est garde ('
+       + m.val + ' sur 2)');
+    ok(m.pct === 100 && /MAX/.test(m.txt),
+       'et la poignee reste au bout, en disant « MAX » plutot qu un 99 % qui '
+       + 'ferait croire a un geste rate (' + m.txt + ')');
+    ok(!m.rouge, 'ce que MAX ecrit n est jamais rouge');
+
+    /* ---- ET LE MEME SUR L ECHANGE ---- */
+    await page.evaluate(() => { document.querySelector('#pied [data-va="ecSwap"]').click(); });
+    await page.waitForTimeout(600);
+    await page.click('#swMontant');
+    await page.type('#swMontant', '9', { delay: 60 });
+    await page.waitForTimeout(500);
+    m = await lit('swMontant');
+    console.log('   echange, 9 sur 2 : ' + JSON.stringify(m));
+    ok(m.rouge && m.rangRouge, 'l echange rougit pareil');
+    m = await glisse('swMontant', 50);
+    ok(parseFloat(m.val) === 1, 'et son curseur remplit pareil (' + m.val + ')');
+
+    /* ---- UN SOLDE INCONNU N EN FABRIQUE PAS UN ----
+     * Deviner un solde pour pouvoir dessiner une barre, ce serait ecrire un
+     * montant que le joueur n a pas. Le curseur du pont est donc eteint tant
+     * que la chaine de depart n a rien rendu. */
+    await page.evaluate(() => { document.querySelector('#pied [data-va="ecAccueil"]').click(); });
+    await page.waitForTimeout(300);
+    const pont = await page.evaluate(() => {
+      const w = document.querySelector('.wl-glis[data-pour="poMontant"]');
+      return { existe: !!w, off: w ? w.dataset.off : null,
+               bloque: w ? w.querySelector('input[type=range]').disabled : null };
+    });
+    console.log('   curseur du pont, avant lecture : ' + JSON.stringify(pont));
+    ok(pont.existe, 'le pont a son curseur lui aussi');
+
+    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
+    await page.close();
+  }
+
   console.log('\n-- la sortie de chaque ecran --');
   {
     const page = await nav.newPage({ viewport: { width: 390, height: 844 } });

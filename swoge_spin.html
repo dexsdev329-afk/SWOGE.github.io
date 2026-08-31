@@ -2120,7 +2120,7 @@ async function onWalletReady(eth, addr){ provider=new ethers.providers.Web3Provi
 async function doLogin(){ if(!signer||loginNonce==null) return; try{ var msg='SWOGE Pusher login\nnonce: '+loginNonce; var sig=await signer.signMessage(msg); send({type:'login',message:msg,signature:sig,name:myAddr.slice(0,6),tgId:TG_ID}); }catch(e){ gtoast('login cancelled'); } }
 var PRIVY_APP_ID='cmsga0yzp00a50biaf9vlzzd2', privyLoaded=false, privyEmail='';
 function loadPrivy(){ return new Promise(function(res,rej){ if(privyLoaded) return res();
-  var s=document.createElement('script'); s.src='privy-swoge.js'; s.onload=function(){ privyLoaded=true; try{ SwogePrivy.init(PRIVY_APP_ID); }catch(e){} res(); }; s.onerror=function(){ rej(new Error('load failed')); }; document.head.appendChild(s); }); }
+  var s=document.createElement('script'); s.src='privy-swoge.js?v=2b2002d4'; s.onload=function(){ privyLoaded=true; try{ SwogePrivy.init(PRIVY_APP_ID); }catch(e){} res(); }; s.onerror=function(){ rej(new Error('load failed')); }; document.head.appendChild(s); }); }
 async function openEmailLogin(){ try{ await loadPrivy(); }catch(e){ gtoast("Couldn't load email login"); return; } $('emCodeWrap').style.display='none'; $('emCode').value=''; $('emMsg').textContent='A wallet is created for you automatically — no app needed.'; showBox('email'); }
 
 var stStaked=0,stPending=0,stAprBps=10000,stSyncMs=0,stLocked=0,stUnlocked=0,stNextUnlock=null,stPenaltyBps=5000,stLockDays=365;

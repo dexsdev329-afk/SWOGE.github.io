@@ -50,6 +50,33 @@ const FICHIER = path.join(SITE, 'privy-swoge.js');
   ok(!!ch && ch[1].split(',').length >= 2,
      'avec Ethereum en second, pour que le depot du pont puisse se signer');
 
+  /* ---- TOUTES LES CHAINES DU PONT, ET C EST LE DEFAUT QUI A COUTE ----
+   *
+   * Le pont s est ouvert a sept chaines pendant que ce paquet n en declarait
+   * que deux. Un joueur a donc pu envoyer son ETH (RH) vers Base — la
+   * signature partait d ici, elle marchait — puis n a plus jamais pu le
+   * ramener : le retour se signe SUR BASE, et le portefeuille embarque
+   * repondait « UnsupportedChainId ». L argent etait sur la chaine, visible
+   * sur l explorateur, et hors d atteinte depuis cette page.
+   *
+   * Cet essai lit la liste des chaines du pont DANS LA PAGE, il ne la
+   * recopie pas : le jour ou une huitieme chaine s ajoute la-bas, c est ici
+   * que la brique manque, et il le dit avant qu un joueur ne la trouve.
+   */
+  const page = fs.readFileSync(path.join(__dirname, 'swoge_wallet.html'), 'utf8');
+  const bloc = /var CHAINES_PONT = \[([\s\S]*?)\n\];/.exec(page);
+  ok(!!bloc, 'la page declare ses chaines de pont');
+  const idsPont = bloc ? [...bloc[1].matchAll(/\bid:(\d+)/g)].map((m) => Number(m[1])) : [];
+  ok(idsPont.length >= 7, `le pont dessert ${idsPont.length} chaines`);
+  const idsPaquet = [...src.matchAll(/\{id:(\d+),name:"/g)].map((m) => Number(m[1]));
+  const absentes = idsPont.filter((i) => idsPaquet.indexOf(i) < 0);
+  ok(absentes.length === 0,
+     absentes.length === 0
+       ? `le paquet sait signer sur les ${idsPont.length} chaines du pont`
+       : 'le portefeuille par courriel NE PEUT PAS signer sur : ' + absentes.join(', ')
+         + ' — un joueur qui y envoie ses fonds ne pourra pas les ramener');
+  ok(idsPaquet.indexOf(4663) >= 0, 'et la Robinhood Chain en fait toujours partie');
+
   /* La capacite Solana. Elle etait la depuis toujours ; ce qui manquait, c'est
      qu'on l'appelle. Un paquet re-livre sans elle casserait l'ecran Solana au
      moment ou un joueur appuie, pas avant. */

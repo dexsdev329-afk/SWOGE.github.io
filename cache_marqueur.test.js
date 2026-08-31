@@ -77,7 +77,11 @@ const trouves = [];
 const autoversionnees = [];
 for (const p of pages) {
   const src = fs.readFileSync(path.join(SITE, p), 'utf8');
-  for (const m of src.matchAll(/([A-Za-z0-9_]+\.js)\?v=([0-9a-z]+)/g)) {
+  /* Le tiret compte : `privy-swoge.js` en porte un, et c'est LE fichier
+     qu'un navigateur ne doit pas servir perime — il decide sur quelles
+     chaines le portefeuille sait signer. Sans le tiret dans cette classe,
+     il passait sous le nez de tout cet essai. */
+  for (const m of src.matchAll(/([A-Za-z0-9_-]+\.js)\?v=([0-9a-z]+)/g)) {
     trouves.push({ page: p, script: m[1], marque: m[2] });
   }
   const mp = RE_PAGE.exec(src);

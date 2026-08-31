@@ -24,6 +24,19 @@ try { WSS = require('/home/user/swoge-pusher-server.github.io/node_modules/ws').
 try { chromium = require('playwright').chromium; } catch (e) {}
 if (!chromium || !WSS) { console.log('wallet_page.test.js : playwright ou ws absent — essai saute'); process.exit(0); }
 
+/* ---- COMBIEN DE JETONS LE PORTEFEUILLE CONNAIT-IL ? ----
+ * Releve DANS LA PAGE, jamais recopie ici : les trois de la maison plus l ETH
+ * d Ethereum sont ecrits a la main, et une ligne s ajoute pour chaque chaine
+ * du pont. Le jour ou une huitieme chaine arrive, ce nombre suit tout seul —
+ * un chiffre en dur ferait echouer un essai qui n a rien vu de faux. */
+const SRC_PAGE = fs.readFileSync(path.join(SITE, 'swoge_wallet.html'), 'utf8');
+const JETONS_ECRITS = ((/var JETONS = \[([\s\S]*?)\n\];/.exec(SRC_PAGE) || ['', ''])[1]
+                       .match(/\{ cle:'/g) || []).length;
+const IDS_PONT = [...((/var CHAINES_PONT = \[([\s\S]*?)\n\];/.exec(SRC_PAGE) || ['', ''])[1])
+                   .matchAll(/\bid:(\d+)/g)].map((m) => Number(m[1]));
+/* moins un : Ethereum est deja ecrit a la main, sous le nom `ethL1`. */
+const JETONS_ATTENDUS = JETONS_ECRITS + IDS_PONT.length - 1;
+
 let n = 0, rates = 0;
 const ok = (c, m) => { n++; if (c) console.log('  ok   ' + m); else { rates++; console.log('  RATE ' + m); } };
 
@@ -67,6 +80,25 @@ function servir(q, r, f, type) {
   await new Promise((res) => srv.listen(0, res));
   const port = srv.address().port;
   const nav = await chromium.launch();
+
+  /* ---- AUCUNE LECTURE NE PART SUR LE VRAI RESEAU ----
+   * Depuis que le portefeuille lit le solde des sept chaines du pont, chaque
+   * page ouverte ici appelait sept RPC publics pour de vrai : neuf secondes
+   * d attente par chaine muette, un banc qui depend d Internet, et des essais
+   * qui echouent selon l heure. Le filet est pose sur CHAQUE page des sa
+   * naissance ; un bloc qui joue vraiment une chaine pose sa propre route
+   * apres, et Playwright donne la main a la derniere posee. */
+  const CHAINES_HORS_BANC =
+    /(base-rpc|mainnet\.base|arbitrum-one-rpc|arb1\.arbitrum|optimism-rpc|mainnet\.optimism|bsc-rpc|polygon-bor-rpc|avalanche-c-chain-rpc|solana-rpc)/;
+  const _newPage = nav.newPage.bind(nav);
+  nav.newPage = async (o) => {
+    const p = await _newPage(o);
+    await p.route(CHAINES_HORS_BANC, (r) => r.fulfill({
+      status: 500, contentType: 'application/json',
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1,
+                             error: { code: -32000, message: 'banc: chaine non jouee' } }) }));
+    return p;
+  };
 
   const ouvre = async (opts) => {
     opts = opts || {};
@@ -848,20 +880,55 @@ function servir(q, r, f, type) {
                  logo: im ? im.getAttribute('src') : null,
                  charge: im ? im.naturalWidth > 0 : false };
       }));
-    ok(lignes.length === 3, 'la liste du Send propose les trois jetons (' + lignes.length + ')');
-    /* ---- ET PAS CELUI QUI VIT SUR UNE AUTRE CHAINE ----
-     * L ETH d Ethereum est desormais VISIBLE dans les soldes, mais le contrat
-     * d envoi et le routeur sont sur la Robinhood Chain. Le proposer ici
-     * serait proposer une transaction qui ne peut pas exister — et l echec
-     * arriverait apres la signature. */
-    ok(!lignes.some((x) => x.sym === 'ETH'),
-       'et JAMAIS l ETH d Ethereum : on ne peut pas l envoyer depuis cette chaine ('
-       + lignes.map((x) => x.sym).join(', ') + ')');
+    /* ---- CETTE REGLE A CHANGE DE CAMP, ET VOICI POURQUOI ----
+     *
+     * Elle disait : « la liste du Send propose les trois jetons, et JAMAIS
+     * l ETH d une autre chaine — on ne peut pas l envoyer depuis ici ». Cette
+     * phrase etait vraie tant que le portefeuille ne savait signer que sur la
+     * Robinhood Chain. Elle a cesse de l etre le jour ou le pont s est ouvert
+     * a sept chaines : un joueur a envoye son ETH (RH) vers Base, l a vu
+     * partir, et ne l a plus retrouve NULLE PART — « quand je fais envoyer je
+     * les vois pas non plus ». La liste vide n etait pas une protection,
+     * c etait une impasse.
+     *
+     * Ce qu il faut garder de la regle d origine, c est son motif : ne jamais
+     * proposer une transaction qui ne peut pas exister. Elle vaut donc
+     * toujours — mais pour l ECHANGE, dont le routeur et les piscines sont
+     * bien, eux, sur la seule Robinhood Chain. Elle est verifiee plus bas.
+     */
+    ok(lignes.length === JETONS_ATTENDUS,
+       'la liste du Send propose TOUT ce que le portefeuille sait envoyer, les '
+       + 'chaines du pont comprises (' + lignes.length + ')');
     ok(lignes.every((x) => x.logo && x.charge),
        'et chacun y montre SA piece, chargee : '
        + lignes.map((x) => x.sym + (x.charge ? '' : ' MANQUE')).join(', '));
-    ok(new Set(lignes.map((x) => x.logo)).size === 3,
-       'trois pieces differentes — aucune n emprunte celle d une autre');
+    /* Trois lignes s appellent « ETH » — sur la Robinhood Chain, sur Base, sur
+       Ethereum. C est la piece qui les separe a l oeil. Deux qui partageraient
+       le meme dessin feraient signer un envoi sur la mauvaise chaine. */
+    ok(new Set(lignes.map((x) => x.logo)).size === lignes.length,
+       lignes.length + ' pieces differentes — aucune n emprunte celle d une autre');
+
+    /* ---- L ECHANGE, LUI, RESTE SUR SA CHAINE ---- */
+    await page.keyboard.press('Escape');
+    await page.evaluate(() => document.querySelector('[data-va="ecAccueil"]').click());
+    await page.waitForTimeout(200);
+    await page.evaluate(() => document.querySelector('[data-va="ecSwap"]').click());
+    await page.waitForTimeout(250);
+    const swLignes = await page.evaluate(() =>
+      [...document.querySelectorAll('#swDe option')].map((o) => o.value));
+    ok(swLignes.length > 0 && swLignes.every((c) => c === 'eth' || c.slice(0, 2) !== 'ch'),
+       'la liste de l echange ne propose AUCUNE chaine du pont : le routeur est '
+       + 'ici, et l echec arriverait apres la signature (' + swLignes.join(', ') + ')');
+    ok(swLignes.indexOf('ethL1') < 0,
+       'ni l ETH d Ethereum, pour la meme raison');
+    await page.evaluate(() => document.querySelector('[data-va="ecAccueil"]').click());
+    await page.waitForTimeout(150);
+    await page.evaluate(() => document.querySelector('[data-va="ecEnvoyer"]').click());
+    await page.waitForTimeout(200);
+    /* On rouvre la liste : la mesure qui suit porte sur une liste OUVERTE, et
+       une liste fermee la ferait passer sans rien voir. */
+    await page.click('#enJetonB');
+    await page.waitForTimeout(250);
 
     /* -- le cadre du telephone coupe : la liste doit tenir dedans -- */
     const cadre = await page.evaluate(() => {
@@ -1048,7 +1115,7 @@ function servir(q, r, f, type) {
     const page = await nav.newPage({ viewport: { width: 390, height: 844 } });
     const boum = [];
     page.on('pageerror', (e) => boum.push(e.message));
-    await page.route('**/privy-swoge.js', (r) => r.fulfill({
+    await page.route('**/privy-swoge.js*', (r) => r.fulfill({
       contentType: 'text/javascript', body: `
       var comptes=[{adresse:'${A0}',index:0},{adresse:'${A1}',index:1}];
       var actif=0, refuse=false;
@@ -1732,7 +1799,7 @@ function servir(q, r, f, type) {
     const page = await nav.newPage({ viewport: { width: 390, height: 844 } });
     const boum = [];
     page.on('pageerror', (e) => boum.push(e.message));
-    await page.route('**/privy-swoge.js', (r) => r.fulfill({
+    await page.route('**/privy-swoge.js*', (r) => r.fulfill({
       contentType: 'text/javascript', body: `
       window.__code=null;
       window.SwogePrivy={ init(){}, sendCode:async(e)=>{ window.__code=e; },
@@ -2847,6 +2914,16 @@ function servir(q, r, f, type) {
         if (m.method === 'net_version') return String(idc);
         if (m.method === 'eth_blockNumber') return '0x18ac99b';
         if (m.method === 'eth_getBalance') return w.soldeL1 === null ? null : enMot(w.soldeL1);
+        if (m.method === 'eth_gasPrice') return enMot(120000000n);
+        /* Le recu, sur la chaine de depart : sans lui, un envoi parti de Base
+           n aboutit jamais ici et la page ne saurait pas quoi en dire. */
+        if (m.method === 'eth_getTransactionReceipt')
+          return { transactionHash: m.params[0], transactionIndex: '0x0',
+                   blockHash: '0x' + '11'.repeat(32), blockNumber: '0x18ac99b',
+                   from: MOI, to: MOI, contractAddress: null,
+                   cumulativeGasUsed: '0x5208', gasUsed: '0x5208',
+                   effectiveGasPrice: '0x3b9aca00', logs: [],
+                   logsBloom: '0x' + '00'.repeat(256), status: '0x1', type: '0x0' };
         return null;
       };
       const rep = (m) => { const v = un(m);
@@ -2970,16 +3047,35 @@ function servir(q, r, f, type) {
       const r = [...document.querySelectorAll('#acJetons .wl-jeton')]
         .find((x) => x.querySelector('.nom b').textContent === 'ETH');
       if (!r) return null;
-      return { pont: r.dataset.pont === '1',
-               dit: (r.querySelector('.versPont') || {}).textContent || '',
-               autres: [...document.querySelectorAll('#acJetons .wl-jeton[data-pont]')].length };
+      const toutes = [...document.querySelectorAll('#acJetons .wl-jeton')].map((x) => ({
+        sym: x.querySelector('.nom b').textContent,
+        nom: x.querySelector('.nom small').textContent,
+        pont: x.dataset.pont || null }));
+      return { pont: r.dataset.pont, toutes: toutes,
+               dit: (r.querySelector('.versPont') || {}).textContent || '' };
     });
     console.log('   la ligne de l ETH : ' + JSON.stringify(ligne));
-    ok(!!ligne && ligne.pont, 'la ligne de l ETH d Ethereum mene au pont');
+    ok(!!ligne && ligne.pont === '1', 'la ligne de l ETH d Ethereum mene au pont');
     ok(!!ligne && /BRIDGE/.test(ligne.dit),
        'et elle le dit sur la ligne meme (« ' + (ligne || {}).dit + ' »)');
-    ok(!!ligne && ligne.autres === 1,
-       'elle seule — les jetons de la chaine gardent leur fiche (' + (ligne || {}).autres + ')');
+    /* ---- CETTE REGLE COMPTAIT LES LIGNES ; ELLE COMPTE MAINTENANT LEUR SENS ----
+     * Elle disait « elle seule », parce qu une seule ligne vivait ailleurs.
+     * Sept y vivent depuis que le pont s est ouvert, et un joueur en a fait
+     * les frais : son ETH parti sur Base n avait plus de ligne du tout. Ce
+     * qu il fallait garder du test, c est son motif — une ligne mene au pont
+     * SI ET SEULEMENT SI elle vit sur une autre chaine ; celles d ici gardent
+     * leur fiche, ou il y a un marche et un contrat a montrer. */
+    const maison = (ligne || { toutes: [] }).toutes.filter((x) => /Robinhood Chain|Swole Doge|Swogebet/.test(x.nom));
+    const dehors = (ligne || { toutes: [] }).toutes.filter((x) => !/Robinhood Chain|Swole Doge|Swogebet/.test(x.nom));
+    ok(maison.length >= 3 && maison.every((x) => !x.pont),
+       'les jetons de la chaine gardent leur fiche (' + maison.map((x) => x.sym).join(', ') + ')');
+    ok(dehors.length >= 1 && dehors.every((x) => x.pont && x.pont !== '1' || x.pont === '1'),
+       'et chaque ligne d ailleurs mene au pont (' + dehors.length + ')');
+    /* Et elle y mene SUR SA CHAINE : sans cela, un appui sur la ligne de Base
+       ouvrirait le pont sur Ethereum, et le joueur rechoisirait a la main. */
+    ok(dehors.every((x) => /^\d+$/.test(String(x.pont))),
+       'chacune portant l identifiant de SA chaine ('
+       + dehors.map((x) => x.nom.replace(/^.* on /, '') + ':' + x.pont).join(', ') + ')');
     /* Et le tap y va VRAIMENT, dans le bon sens : deposer, pas retirer. */
     await page.evaluate(() => {
       const r = [...document.querySelectorAll('#acJetons .wl-jeton')]
@@ -3203,7 +3299,12 @@ function servir(q, r, f, type) {
     /* La vignette est celle de la CHAINE de depart, pas celle d un jeton :
        depuis qu on peut venir de sept chaines, la liste des jetons n en
        connait plus qu une. */
-    ok(/ch\/ethereum/.test(versRH.piece || '') && /tok_eth\.webp/.test(versL1.piece || ''),
+    /* Elle vient desormais de la LISTE DES JETONS, qui connait les sept
+       chaines : la trace d un depart d Ethereum porte exactement la piece que
+       « My tokens » montre pour ce meme solde. Deux ecrans qui montrent le
+       meme avoir avec deux dessins differents, c est un doute de plus au
+       moment ou l on cherche justement a se rassurer. */
+    ok(/tok_eth_l1\.webp/.test(versRH.piece || '') && /tok_eth\.webp/.test(versL1.piece || ''),
        'avec la vignette de la chaine de depart ('
        + [versRH.piece, versL1.piece].map((x) => String(x).split('/').pop()).join(' | ') + ')');
     const depuisBase = trace.lignes.find((x) => /From Base|Waiting for Base/.test(x.sous));
@@ -3322,6 +3423,160 @@ function servir(q, r, f, type) {
     ok(/unknown, not zero/i.test(m.note), 'en disant que c est inconnu, pas nul : « '
        + m.note.slice(0, 70) + ' »');
 
+    /* ==================== CE QUI EST PARTI PAR LE PONT SE RETROUVE ====================
+     *
+     * Le defaut, mot pour mot : « j ai swap eth rh en base sa a fonctionner
+     * mais j arrive pas a reconvertir mes base en eth ou eth rh via bridge et
+     * je vois pas mapparaitre mes base dans my token j aimerai les envoyer
+     * sur une autre addresse mais quand je fais envoyer je les vois pas non
+     * plus ».
+     *
+     * Trois portes fermees d un coup sur de l argent qui existait bel et bien
+     * sur la chaine. Le pont savait l envoyer et rien ne savait le ramener :
+     * c est le pire defaut qu un portefeuille puisse avoir, et il etait de
+     * notre fait. Les trois portes sont mesurees ici, une par une.
+     */
+    console.log('\n   -- ce qui est parti sur Base se retrouve --');
+    /* Le code de la page vit dans sa propre portee : `rafraichit()` n est pas
+       joignable depuis ici, et l appeler ne faisait RIEN — en silence. On
+       passe par le bouton, comme un joueur. */
+    const relit = async () => {
+      await page.evaluate(() => document.querySelector('[data-va="ecAccueil"]').click());
+      await page.waitForTimeout(200);
+      await page.click('#btRafraichir');
+    };
+    w.soldeL1 = 300000000000000000n;            // 0,3 ETH sur chaque chaine du banc
+    await page.evaluate(() => document.querySelector('[data-va="ecAccueil"]').click());
+    await page.waitForTimeout(300);
+    await relit();
+    await page.waitForTimeout(4000);
+
+    /* ---- PORTE 1 : LA LIGNE EXISTE DANS « MY TOKENS » ---- */
+    const listeJetons = () => page.evaluate(() =>
+      [...document.querySelectorAll('#jtListe .wl-jeton')].map((b) => ({
+        cle: b.dataset.jeton, pont: b.dataset.pont || null,
+        sym: b.querySelector('.nom b').textContent,
+        nom: b.querySelector('.nom small').textContent,
+        val: b.querySelector('.val b').textContent })));
+    let lj = await listeJetons();
+    console.log('   my tokens : ' + JSON.stringify(lj.map((x) => x.sym + ' ' + x.val)));
+    const base = lj.filter((x) => /Base/.test(x.nom))[0];
+    ok(!!base, 'l ETH detenu sur Base a SA ligne dans My Tokens');
+    ok(!!base && /0\.3/.test(base.val),
+       'et elle porte le solde lu sur Base, pas celui d ici (' + (base || {}).val + ')');
+    ok(!!base && base.pont === '8453',
+       'un appui dessus ouvre le pont SUR BASE, pas sur la derniere chaine choisie ('
+       + (base || {}).pont + ')');
+    /* Deux lignes s appellent « ETH ». Ce qui les separe, c est le nom de la
+       chaine — sans lui, un joueur enverrait de l un en croyant tenir l autre. */
+    const ethiques = lj.filter((x) => x.sym === 'ETH');
+    ok(ethiques.length >= 2 && new Set(ethiques.map((x) => x.nom)).size === ethiques.length,
+       'chaque « ETH » dit SUR QUELLE CHAINE il se trouve ('
+       + ethiques.map((x) => x.nom).join(' / ') + ')');
+
+    /* ---- ET UNE CHAINE VIDE NE TIENT PAS UNE LIGNE VIDE ----
+     * L inverse du defaut, et il compte autant : sept chaines a zero
+     * noieraient les trois jetons de la maison. Cachees, mais DITES. */
+    w.soldeL1 = 0n;
+    await relit();
+    await page.waitForTimeout(4000);
+    lj = await listeJetons();
+    const note = await page.evaluate(() => document.getElementById('jtNote').textContent);
+    console.log('   a zero partout : ' + JSON.stringify(lj.map((x) => x.sym)) + ' / ' + note.slice(0, 80));
+    ok(!lj.some((x) => /on (Base|Arbitrum|Optimism|BNB|Polygon|Avalanche)/.test(x.nom)),
+       'une chaine ou l on ne detient rien ne tient pas de ligne');
+    ok(/read as zero/i.test(note),
+       'mais la page le DIT — une ligne qui manque sans explication se lit comme une perte : « '
+       + note.slice(0, 90) + ' »');
+
+    /* ---- ET UNE LECTURE RATEE NE FAIT DISPARAITRE PERSONNE ----
+     * C est la meme discipline que partout ailleurs : `null` veut dire « la
+     * chaine n a pas repondu », jamais « zero ». Cacher la-dessus ferait
+     * disparaitre l argent du joueur le temps d une panne de reseau. */
+    w.soldeL1 = null;
+    await relit();
+    await page.waitForTimeout(6000);
+    lj = await listeJetons();
+    const muettes = lj.filter((x) => /on (Base|Arbitrum|Optimism)/.test(x.nom));
+    console.log('   chaines muettes : ' + JSON.stringify(muettes.map((x) => x.nom + ' ' + x.val)));
+    ok(muettes.length >= 1,
+       'une chaine qui n a pas repondu garde sa ligne (' + muettes.length + ')');
+    ok(muettes.every((x) => /unknown/i.test(x.val)),
+       'et elle dit « inconnu », jamais « 0 » ('
+       + muettes.map((x) => x.val).join(', ') + ')');
+
+    /* ---- PORTE 2 : ON PEUT L ENVOYER AILLEURS ----
+     * « j aimerai les envoyer sur une autre addresse mais quand je fais
+     * envoyer je les vois pas non plus. » */
+    w.soldeL1 = 300000000000000000n;
+    await relit();
+    await page.waitForTimeout(4000);
+    await page.evaluate(() => document.querySelector('[data-va="ecEnvoyer"]').click());
+    await page.waitForTimeout(400);
+    const dansEnvoi = await page.evaluate(() =>
+      [...document.querySelectorAll('#enJeton option')].map((o) => o.value));
+    ok(dansEnvoi.indexOf('ch8453') >= 0,
+       'l ETH de Base est proposé dans l ecran Send (' + dansEnvoi.join(', ') + ')');
+
+    await page.evaluate(() => { window.__w.bascules = []; window.__w.envoyees = []; });
+    await page.evaluate(() => {
+      const s = document.getElementById('enJeton');
+      s.value = 'ch8453'; s.dispatchEvent(new Event('change'));
+    });
+    await page.waitForTimeout(1200);
+    const ecranEnvoi = await page.evaluate(() => ({
+      reseau: (document.getElementById('enReseau') || {}).textContent,
+      solde: (document.getElementById('enSolde') || {}).textContent,
+      frais: (document.getElementById('enFrais') || {}).textContent }));
+    console.log('   envoi depuis Base : ' + JSON.stringify(ecranEnvoi));
+    ok(/Base/.test(ecranEnvoi.reseau),
+       'l ecran d envoi annonce BASE, pas « Robinhood Chain » ecrit en dur ('
+       + ecranEnvoi.reseau + ')');
+    ok(/0\.3/.test(ecranEnvoi.solde),
+       'et le solde qu il montre est celui de Base (' + ecranEnvoi.solde + ')');
+
+    await page.fill('#enDest', '0x000000000000000000000000000000000000dEaD');
+    await page.fill('#enMontant', '0.01');
+    await page.click('#enPartir');
+    await page.waitForTimeout(600);
+    /* La revue s ouvre : elle doit dire la meme chaine que l ecran d avant. */
+    const revue = await page.evaluate(() => ({
+      ouverte: !document.getElementById('voileRevue').hidden,
+      reseau: (document.getElementById('rvReseau') || {}).textContent }));
+    ok(revue.ouverte && /Base/.test(revue.reseau),
+       'la revue avant signature annonce Base elle aussi (' + revue.reseau + ')');
+    /* La revue peut etre coupee dans les reglages : on ne la force pas, on
+       signe par le chemin que la page a ouvert. */
+    if (revue.ouverte) await page.click('#rvOk');
+    await page.waitForTimeout(3000);
+    const fenv = await page.evaluate(() => ({
+      bascules: window.__w.bascules, envoyees: window.__w.envoyees,
+      note: document.getElementById('enNote').textContent,
+      lien: (document.querySelector('#enNote a') || {}).href || '' }));
+    console.log('   signature : ' + JSON.stringify({ bascules: fenv.bascules,
+      envoyees: fenv.envoyees.length, note: fenv.note.slice(0, 60) }));
+    /* ---- C EST LA MESURE QUI COMPTE LE PLUS ----
+     * Signer un envoi d ETH de Base pendant que le portefeuille est reste sur
+     * la Robinhood Chain enverrait la transaction SUR LA MAUVAISE CHAINE —
+     * au mieux elle echoue, au pire elle depense un solde qu on ne voulait
+     * pas toucher. 0x2105 = 8453. */
+    ok(fenv.bascules.length === 1 && fenv.bascules[0] === '0x2105',
+       'le portefeuille bascule SUR BASE avant de signer ('
+       + JSON.stringify(fenv.bascules) + ')');
+    ok(fenv.envoyees.length === 1 && fenv.envoyees[0].surLaChaine === '0x2105',
+       'et la transaction part bien de la (' + JSON.stringify(
+         fenv.envoyees.map((x) => x.surLaChaine)) + ')');
+    ok(/basescan/i.test(fenv.lien),
+       'le lien « View transaction » mene a l explorateur de Base, pas a celui d ici ('
+       + (fenv.lien || 'aucun') + ')');
+
+    /* ---- PORTE 3 : ET LE PONT SAIT REVENIR DE BASE ----
+     * Elle est deja mesuree plus haut (« signe depuis Base »), mais elle ne
+     * tenait qu a une chose que ce banc ne peut pas voir : le paquet Privy
+     * doit DECLARER Base, sinon le portefeuille par courriel repond
+     * « UnsupportedChainId » et l argent reste ou il est. C est
+     * `privy_paquet.test.js` qui garde cette moitie-la. */
+
     ok(boum.length === 0, 'aucune exception pendant tout le pont'
        + (boum.length ? ' : ' + boum[0] : ''));
     await page.close();
@@ -3372,7 +3627,7 @@ function servir(q, r, f, type) {
     }, [MOI, SOL]);
     await page.route('**/ethers*.umd.min.js', (r) => r.fulfill({
       contentType: 'text/javascript', body: fs.readFileSync(ETHERS, 'utf8') }));
-    await page.route('**/privy-swoge.js', (r) => r.fulfill({
+    await page.route('**/privy-swoge.js*', (r) => r.fulfill({
       contentType: 'text/javascript', body: '/* joue par l essai */' }));
     await page.route('**/api.dexscreener.com/**', (r) => r.fulfill({
       contentType: 'application/json', body: '{"pairs":[]}' }));
@@ -3440,6 +3695,80 @@ function servir(q, r, f, type) {
     ok(/does not send or bridge/i.test(m.note),
        'elle dit qu elle ne sait pas encore envoyer depuis Solana : « '
        + m.note.slice(-90) + ' »');
+
+    /* ---- L ADRESSE EST ECRITE EN ENTIER ----
+     * Une adresse abregee ne designe AUCUN compte. Tant que le bouton copie
+     * marche on ne s en apercoit pas ; le jour ou il ne marche pas, c est la
+     * seule chose qui reste au joueur. Elle doit donc etre entiere et
+     * selectionnable d un seul geste. */
+    ok(m.adr.trim() === SOL,
+       'l adresse affichee est l adresse ENTIERE, pas une version abregee ('
+       + m.adr.trim() + ')');
+    const choix = await page.evaluate(() => {
+      const e = document.getElementById('cpSolAdr'); const g = getComputedStyle(e);
+      return { sel: g.userSelect || g.webkitUserSelect, large: e.getBoundingClientRect().width };
+    });
+    ok(choix.sel === 'all',
+       'et un seul appui la selectionne en entier (user-select: ' + choix.sel + ')');
+
+    /* ---- LA COPIE, QUAND LE PRESSE-PAPIER EXISTE ---- */
+    const capte = () => page.evaluate(() => (document.getElementById('toast') || {}).textContent || '');
+    await page.evaluate(() => {
+      window.__cp = { moderne: null, vieux: null, rendu: true };
+      Object.defineProperty(navigator, 'clipboard', { configurable: true,
+        value: { writeText: async (t) => { window.__cp.moderne = t; } } });
+    });
+    await page.click('#cpSolCopie');
+    await page.waitForTimeout(300);
+    let c = await page.evaluate(() => window.__cp);
+    ok(c.moderne === SOL, 'le bouton copie l adresse ENTIERE (' + c.moderne + ')');
+    ok(/copied/i.test(await capte()), 'et le dit');
+
+    /* ---- LA COPIE QUAND LE PRESSE-PAPIER N EXISTE PAS ----
+     * C est le cas de la webview de Telegram : `navigator.clipboard` est
+     * ABSENT, donc l ancien code levait AVANT de rendre une promesse et le
+     * `.catch()` ne voyait jamais rien — le bouton se taisait, et le joueur
+     * n avait aucun moyen d obtenir son adresse. */
+    await page.evaluate(() => {
+      window.__cp = { moderne: null, vieux: null, rendu: true };
+      Object.defineProperty(navigator, 'clipboard', { configurable: true, value: undefined });
+      document.execCommand = function () {
+        const z = document.activeElement;
+        window.__cp.vieux = z && z.tagName === 'TEXTAREA' ? z.value : null;
+        return window.__cp.rendu;
+      };
+    });
+    await page.evaluate(() => { document.getElementById('toast').textContent = ''; });
+    await page.click('#cpSolCopie');
+    await page.waitForTimeout(300);
+    c = await page.evaluate(() => window.__cp);
+    ok(c.vieux === SOL,
+       'sans navigator.clipboard, le repli copie quand meme l adresse entiere ('
+       + c.vieux + ')');
+    ok(/copied/i.test(await capte()), 'et le dit');
+    ok((await page.evaluate(() => document.querySelectorAll('textarea').length)) === 0,
+       'le champ pose pour la copie est retire ensuite');
+
+    /* ---- ET SI LES DEUX ECHOUENT, ELLE NE MENT PAS ----
+     * Dire « copie » sans l avoir fait ferait coller l adresse d avant :
+     * dans le meilleur des cas rien, dans le pire les fonds d un autre. */
+    await page.evaluate(() => {
+      window.__cp.rendu = false;
+      document.getElementById('toast').textContent = '';
+    });
+    await page.click('#cpSolCopie');
+    await page.waitForTimeout(300);
+    const dit = await capte();
+    ok(/could not copy/i.test(dit) && !/^Solana address copied/.test(dit),
+       'copie impossible : la page le DIT au lieu de pretendre le contraire (« '
+       + dit + ' »)');
+    ok(/tap the address|select/i.test(dit), 'et elle dit quoi faire a la place');
+
+    /* Le presse-papier est rendu a la page pour la suite. */
+    await page.evaluate(() => {
+      Object.defineProperty(navigator, 'clipboard', { configurable: true,
+        value: { writeText: async () => {} } });
+    });
 
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.close();

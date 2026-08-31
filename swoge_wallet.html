@@ -68,7 +68,7 @@
      A savoir : cela ne sauve pas la page DEJA en cache chez quelqu'un, qui ne
      contient pas ces lignes. Ce garde-fou vaut a partir de celle-ci. -->
 <script>
-var MARQUE_PAGE = 'f9dd3419';
+var MARQUE_PAGE = '1d96ae59';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -903,6 +903,17 @@ body{
 .wl-etiq.on{ color:var(--vert); border-color:rgba(52,211,153,.4) }
 
 .wl-mono{ font:400 12px/1.5 'Space Mono',monospace; word-break:break-all; color:var(--doux) }
+/* ---- UNE ADRESSE QUE L'ON PEUT PRENDRE A LA MAIN ----
+   Le presse-papier n'est pas garanti : dans la webview de Telegram
+   `navigator.clipboard` peut manquer, et un bouton qui ne fait rien laisse
+   le joueur sans aucune issue. Alors l'adresse est ecrite EN ENTIER, sous
+   son etiquette, et `user-select:all` la selectionne d'un seul geste : un
+   appui long puis « copier » suffit. Une adresse abregee, elle, ne designe
+   aucun compte — la coller ferait perdre les fonds. */
+.wl-empile{ display:block }
+.wl-empile span{ display:block }
+.wl-choisir{ display:block; text-align:left; margin-top:5px; cursor:text;
+  user-select:all; -webkit-user-select:all; -moz-user-select:all }
 /* ---- L'ADRESSE, LISIBLE PAR GROUPES ----
    Quarante caracteres d'affilee ne se relisent pas : l'oeil glisse, et
    c'est au milieu qu'une adresse echangee se cache. Par quatre, on la
@@ -1345,7 +1356,7 @@ body{
           <label for="enDest">TO</label>
           <input id="enDest" placeholder="0x…" autocomplete="off" spellcheck="false">
         </div>
-        <div class="wl-rang"><span>Network</span><b>Robinhood Chain</b></div>
+        <div class="wl-rang"><span>Network</span><b id="enReseau">Robinhood Chain</b></div>
         <div class="wl-rang"><span>Network fee</span><b id="enFrais">—</b></div>
       </div>
       <button class="wl-b" id="enPartir" type="button">Review</button>
@@ -1600,7 +1611,7 @@ body{
            courriel : une extension gere ses propres adresses. -->
       <div class="wl-titre" id="cpTitreSol" hidden>SOLANA</div>
       <div class="wl-carte" id="cpSolCarte" hidden>
-        <div class="wl-rang"><span>Address</span><b id="cpSolAdr" class="wl-mono">&mdash;</b></div>
+        <div class="wl-rang wl-empile"><span>Address</span><b id="cpSolAdr" class="wl-mono wl-choisir">&mdash;</b></div>
         <div class="wl-rang"><span>Balance</span><b id="cpSolSolde">&mdash;</b></div>
       </div>
       <button class="wl-b vide" id="cpSolCopie" type="button" hidden>Copy Solana address</button>
@@ -1743,7 +1754,7 @@ body{
       <div style="height:14px"></div>
       <div class="wl-carte">
         <div class="wl-rang"><span>You send</span><b id="rvMontant">—</b></div>
-        <div class="wl-rang"><span>Network</span><b>Robinhood Chain</b></div>
+        <div class="wl-rang"><span>Network</span><b id="rvReseau">Robinhood Chain</b></div>
         <div class="wl-rang"><span>Network fee</span><b id="rvFrais">—</b></div>
         <div class="wl-rang"><span>Left after</span><b id="rvReste">—</b></div>
       </div>
@@ -2852,7 +2863,7 @@ function chargePrivy(){
     if(window.SwogePrivy){ try{ SwogePrivy.init(PRIVY_APP_ID); }catch(e){} privyCharge=true; return res(); }
     if(privyCharge) return res();
     var s=document.createElement('script');
-    s.src='privy-swoge.js';
+    s.src='privy-swoge.js?v=2b2002d4';
     s.onload=function(){ privyCharge=true; try{ SwogePrivy.init(PRIVY_APP_ID); }catch(e){} res(); };
     s.onerror=function(){ rej(new Error('load failed')); };
     document.head.appendChild(s);
@@ -3052,7 +3063,10 @@ async function rafraichit(discret){
      que le joueur en a change. Sans ce garde, elle poserait le solde du
      compte precedent sur l'ecran du nouveau. */
   var lis = function(j){
-    var pr = (j.chaine === L1.id) ? lecL1() : lec();
+    /* N'IMPORTE quelle chaine, pas seulement Ethereum : depuis que le pont
+       en dessert sept, lire tout le reste sur la Robinhood Chain rendrait un
+       solde de Base a zero — et zero est ce qu'on n'invente jamais. */
+    var pr = j.chaine ? lecPont(chaineDuPont(j.chaine)) : lec();
     return borne(j.natif ? pr.getBalance(qui) : erc(j.adr).balanceOf(qui), 9000, 'balance')
       .then(function(b){ if(tour === tourLecture) soldes[j.cle] = b; })
       ['catch'](function(){ if(tour === tourLecture && !discret) soldes[j.cle] = null; rate++; });
@@ -3195,6 +3209,11 @@ function valeur(cle){
   var n = parseFloat(ethers.utils.formatUnits(s, 18));
   /* Le meme actif des deux cotes du pont, donc le meme prix. */
   if(cle==='eth' || cle==='ethL1') return ethUsd ? n*ethUsd : null;
+  /* Sur Base, Arbitrum et Optimism c'est le MEME ether : meme prix. Sur BNB,
+     Polygon et Avalanche c'est une autre monnaie, dont cette page ne connait
+     pas le cours — elle ecrit « no price » plutot qu'un chiffre invente. */
+  if(cle.slice(0,2)==='ch'){ var jc = J(cle);
+    return (jc && jc.sym==='ETH' && ethUsd) ? n*ethUsd : null; }
   if(cle==='swoge') return prixUsd ? n*prixUsd : null;
   /* ---- LE $SWOGEBET ETAIT VALORISE A L'ENVERS ----
    *
@@ -3253,7 +3272,7 @@ function peintAccueil(){
   }
 
   /* les jetons */
-  var h='', caches=0;
+  var h='', caches=0, vides=0;
   for(var k=0;k<JETONS.length;k++){
     var j=JETONS[k], s=soldes[j.cle], v=valeur(j.cle);
     /* ---- UN JETON QU'ON NE DETIENT PAS N'A RIEN A FAIRE DANS LA LISTE ----
@@ -3275,6 +3294,23 @@ function peintAccueil(){
      * Il reste dans les listes de l'echange : c'est justement la qu'on va pour
      * en acheter. */
     if(j.perso && s !== null && s !== undefined && s.isZero()){ caches++; continue; }
+    /* ---- LES SEPT CHAINES DU PONT NE TIENNENT PAS SEPT LIGNES VIDES ----
+     * Elles existent pour qu'un solde parti par le pont se retrouve. Tant
+     * qu'il n'y a rien dessus, les afficher noierait les trois jetons de la
+     * maison sous six zeros. Meme regle que ci-dessus, et pour la meme
+     * raison : on ne cache QUE sur un solde reellement lu. `null` veut dire
+     * « la chaine n'a pas repondu » — cacher la-dessus ferait disparaitre
+     * l'argent du joueur le temps d'une panne de reseau. */
+    if(j.pont){
+      /* Trois etats, trois traitements, et il n'y en a pas un de trop :
+           - pas encore lu (`undefined`) : on ne sait RIEN, donc on ne montre
+             ni ligne ni zero. Elle apparaitra des que la chaine aura repondu.
+           - lu, et vide : cachee, et comptee dans la note ci-dessous.
+           - lu et non vide, OU lecture ratee (`null`) : montree. Une panne de
+             reseau ne doit jamais faire disparaitre de l'argent de l'ecran. */
+      if(s === undefined) continue;
+      if(s !== null && s.isZero()){ vides++; continue; }
+    }
     /* Les trois jetons ont leur piece. Le repli n'est plus un « Ξ » : ce
        signe EST celui de l'ether de la chaine principale, et le laisser sous
        un nom qui dit justement le contraire aurait defait tout le travail de
@@ -3287,10 +3323,10 @@ function peintAccueil(){
        geste de plus avant le seul geste possible. */
     var ailleurs = j.chaine && j.chaine !== CHAINE.id;
     h += '<button class="wl-jeton" type="button" data-jeton="'+j.cle+'"'
-       +   (ailleurs ? ' data-pont="1"' : '') + '>'
+       +   (ailleurs ? ' data-pont="'+j.chaine+'"' : '') + '>'
        +   logo
        +   '<span class="nom"><b>'+j.sym+'</b><small>'+j.nom+'</small></span>'
-       +   '<span class="val"><b>'+(moi ? (s===null||s===undefined ? '—' : nombre(s,j.dec)) : '—')+'</b>'
+       +   '<span class="val"><b>'+(moi ? (s===null||s===undefined ? (j.pont ? 'unknown' : '—') : nombre(s,j.dec)) : '—')+'</b>'
        +     '<small>'+(v===null ? (moi?'no price':'—') : usd(v))+'</small>'
        +     (ailleurs ? '<span class="versPont">BRIDGE &rarr;</span>' : '')
        +   '</span>'
@@ -3307,6 +3343,9 @@ function peintAccueil(){
   var note = prixUsd===null && moi
     ? 'Dollar values are unavailable right now — the market feed did not answer. Your balances above are read straight from the chain and are correct.'
     : '';
+  if(vides) note = (note ? note + ' ' : '')
+    + 'Chains where you hold nothing are not listed: ' + vides + ' of them read as zero just now. '
+    + 'Bridge something there and the line appears.';
   if(caches) note = (note ? note + ' ' : '')
     + caches + (caches===1 ? ' token you added is not shown: you hold none of it.'
                            : ' tokens you added are not shown: you hold none of them.')
@@ -3319,9 +3358,11 @@ document.addEventListener('click', function(ev){
   var b = ev.target.closest('[data-jeton]');
   if(!b) return;
   if(b.dataset.pont){
-    /* Cette ligne EST celle d'Ethereum : le pont doit s'ouvrir sur elle, pas
-       sur la derniere chaine choisie. */
-    pontDeId = L1.id; pontVersId = CHAINE.id;
+    /* Le pont s'ouvre SUR LA CHAINE DE CETTE LIGNE, pas sur la derniere
+       choisie : on a appuye sur ce solde-la pour le ramener, et devoir
+       rechoisir la chaine juste apres serait un geste pour rien. */
+    var idc = parseInt(b.dataset.pont, 10);
+    pontDeId = idc; pontVersId = (idc === CHAINE.id) ? L1.id : CHAINE.id;
     gardePont();
     va('ecPont'); return;
   }
@@ -4040,10 +4081,42 @@ $('btReglages').addEventListener('click', function(){ va('ecCompte'); });
  * carte de l'accueil. Ecrire la copie deux fois, c'est deux endroits ou
  * oublier de dire qu'elle a echoue — et une copie ratee qui se tait fait
  * coller une adresse d'avant. */
+/* `navigator.clipboard` n'est pas acquis : dans une webview (Telegram) il
+ * peut etre ABSENT — et alors `navigator.clipboard.writeText(...)` leve tout
+ * de suite, avant meme de rendre une promesse, si bien qu'un `.catch()` ne
+ * voit rien passer et que le bouton se tait. D'ou deux gestes : le moderne,
+ * puis le vieux `execCommand` sur un champ pose une fraction de seconde.
+ * Rend vrai seulement si la copie a REELLEMENT eu lieu : dire « copie » sans
+ * l'avoir fait ferait coller une adresse d'avant. */
+async function copieTexte(t){
+  if(!t) return false;
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      await navigator.clipboard.writeText(t);
+      return true;
+    }
+  }catch(e){}
+  try{
+    var z = document.createElement('textarea');
+    z.value = t;
+    z.setAttribute('readonly','');
+    /* Hors de l'ecran mais dans la page : un champ `display:none` ne se
+       selectionne pas, et sur iOS une position non fixee fait sauter la vue. */
+    z.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;'
+      + 'padding:0;border:0;opacity:0;pointer-events:none';
+    document.body.appendChild(z);
+    z.focus(); z.select();
+    try{ z.setSelectionRange(0, t.length); }catch(e){}
+    var fait = document.execCommand('copy');
+    document.body.removeChild(z);
+    return !!fait;
+  }catch(e){ return false; }
+}
+
 async function copieAdresse(){
   if(!moi) return toast('Not connected');
-  try{ await navigator.clipboard.writeText(moi); toast('Address copied'); }
-  catch(e){ toast('Could not copy — open Receive and select the address'); }
+  if(await copieTexte(moi)) toast('Address copied');
+  else toast('Could not copy — open Receive and select the address');
 }
 $('reCopier').addEventListener('click', copieAdresse);
 if($('acAdrCopie')) $('acAdrCopie').addEventListener('click', copieAdresse);
@@ -4058,15 +4131,25 @@ if($('acAdrCopie')) $('acAdrCopie').addEventListener('click', copieAdresse);
  */
 function remplitChoix(sel, exclure){
   var h='';
+  /* ---- CE QUI VIT AILLEURS NE S'ECHANGE PAS ICI, MAIS S'ENVOIE ----
+   *
+   * Le routeur, la piscine et le contrat du casino sont sur la Robinhood
+   * Chain : proposer l'ETH de Base dans la liste d'un ECHANGE serait proposer
+   * une transaction qui ne peut pas exister, et l'echec arriverait apres la
+   * signature. Pour le faire passer, il y a le pont.
+   *
+   * Un ENVOI, lui, n'a besoin de rien d'autre que de la chaine ou l'argent se
+   * trouve. L'exclure de cette liste-la, c'est ce qui laissait un joueur voir
+   * son solde sur Base sans aucun moyen de le bouger : « quand je fais
+   * envoyer je les vois pas non plus ». Le portefeuille signe maintenant sur
+   * les sept chaines, alors la liste de l'envoi les montre toutes.
+   */
+  var envoi = (sel.id === 'enJeton');
   for(var i=0;i<JETONS.length;i++){
     if(exclure && JETONS[i].cle===exclure) continue;
-    /* ---- CE QUI VIT AILLEURS NE S'ECHANGE PAS ICI ----
-       Le routeur, la piscine et le contrat d'envoi sont sur la Robinhood
-       Chain. Proposer l'ETH d'Ethereum dans ces listes serait proposer une
-       transaction qui ne peut pas exister — et l'echec arriverait apres la
-       signature. Pour le faire passer, il y a le pont. */
-    if(JETONS[i].chaine && JETONS[i].chaine !== CHAINE.id) continue;
-    h+='<option value="'+JETONS[i].cle+'">'+JETONS[i].sym+' — '+JETONS[i].nom+'</option>';
+    if(JETONS[i].chaine && JETONS[i].chaine !== CHAINE.id && !envoi) continue;
+    var nomJ = JETONS[i].sym+' — '+JETONS[i].nom;
+    h+='<option value="'+JETONS[i].cle+'">'+nomJ+'</option>';
   }
   sel.innerHTML=h;
   peintPick(sel);
@@ -4503,6 +4586,13 @@ function majEnvoyer(){
   var j=J($('enJeton').value)||JETONS[0];
   var s=soldes[j.cle];
   $('enSolde').textContent = (s===null||s===undefined) ? '—' : nombre(s,j.dec)+' '+j.sym;
+  /* ---- LE RESEAU EST ECRIT, ET IL CHANGE ----
+     Il disait « Robinhood Chain » en dur. Depuis que l'envoi sait partir de
+     sept chaines, cette ligne figee aurait fait croire a un joueur qui envoie
+     son ETH de Base qu'il l'envoie d'ici — et une adresse de contrat n'est
+     pas la meme d'une chaine a l'autre. */
+  var c = chaineDuJeton(j);
+  if($('enReseau')) $('enReseau').textContent = c.nom;
   majRevue();
   litFrais();
 }
@@ -4526,14 +4616,18 @@ async function calculeMax(cle, unitesGaz){
     return { erreur:'Your balance has not been read yet — reload it first. It is unknown, not zero.' };
   if(s.isZero()) return { erreur:'Nothing to spend: that balance is zero.' };
   if(!j.natif) return { montant:s };
-  var g;
-  try{ g = await borne(lec().getGasPrice(), 9000, 'gasPrice'); }
+  /* Le gaz se lit SUR LA CHAINE DU JETON. Le prix du gaz sur la Robinhood
+     Chain n'a rien a voir avec celui d'Ethereum ou de Polygon : garder la
+     mauvaise reserve ferait une transaction impayable, ou en retiendrait
+     mille fois trop. */
+  var cj = chaineDuJeton(j), g;
+  try{ g = await borne(lecPont(cj).getGasPrice(), 9000, 'gasPrice'); }
   catch(e){ return { erreur:'Could not read the gas price, so MAX cannot tell how much to keep back for the fee. Type an amount instead.' }; }
   var reserve = g.mul(unitesGaz);
   var reste = s.sub(reserve);
   if(reste.lte(0))
-    return { erreur:'Your whole '+ETH_AFF+' balance is smaller than the network fee this would cost.' };
-  return { montant:reste, reserve:reserve };
+    return { erreur:'Your whole '+j.sym+' balance is smaller than the network fee this would cost.' };
+  return { montant:reste, reserve:reserve, sym:j.sym };
 }
 
 $('enMax').addEventListener('click', async function(){
@@ -4541,7 +4635,7 @@ $('enMax').addEventListener('click', async function(){
   var r = await calculeMax(cle, GAZ_ENVOI);
   if(r.erreur) return toast(r.erreur);
   $('enMontant').value = ethers.utils.formatUnits(r.montant, J(cle).dec);
-  if(r.reserve) toast('Kept ' + nombre(r.reserve,18) + ' ' + ETH_AFF + ' back for the network fee');
+  if(r.reserve) toast('Kept ' + nombre(r.reserve,18) + ' ' + (r.sym||ETH_AFF) + ' back for the network fee');
 });
 
 $('swMax').addEventListener('click', async function(){
@@ -4554,10 +4648,13 @@ $('swMax').addEventListener('click', async function(){
 });
 
 async function litFrais(){
+  var j = J($('enJeton').value) || JETONS[0], c = chaineDuJeton(j);
   try{
-    var g = await lec().getGasPrice();
-    var u = ethers.BigNumber.from(21000 * ($('enJeton').value==='eth' ? 1 : 3));
-    $('enFrais').textContent = '≈ '+nombre(g.mul(u),18)+' '+ETH_AFF;
+    var g = await borne(lecPont(c).getGasPrice(), 9000, 'gasPrice');
+    var u = ethers.BigNumber.from(21000 * (j.natif ? 1 : 3));
+    /* La monnaie du gaz est celle de LA CHAINE, pas celle du jeton envoye :
+       sur Polygon on paie en POL meme si l'on envoie autre chose. */
+    $('enFrais').textContent = '≈ '+nombre(g.mul(u),18)+' '+ETH_AFF_DE(c);
   }catch(e){ $('enFrais').textContent='—'; }
 }
 
@@ -4755,6 +4852,7 @@ function ouvreRevue(j, dest, wei){
   $('rvMontant').textContent = nombre(wei, j.dec) + ' ' + j.sym;
   $('rvDest').innerHTML = adresseEnGroupes(dest);
   $('rvFrais').textContent = $('enFrais').textContent;
+  if($('rvReseau')) $('rvReseau').textContent = chaineDuJeton(j).nom;
   /* ---- CE QU'IL RESTERA ----
      Calcule seulement si le solde EST connu. Un « 0 » affiche parce qu'une
      lecture a rate serait le pire mensonge possible juste avant de signer. */
@@ -4787,17 +4885,37 @@ async function envoieMaintenant(j, dest, wei){
   b.disabled = true;
   note.className = 'wl-note';
   note.textContent = 'Waiting for your signature…';
+  /* ---- ON SIGNE SUR LA CHAINE OU L'ARGENT SE TROUVE ----
+     `assureChaine` ne connaissait que la Robinhood Chain. Signer un envoi
+     d'ETH de Base pendant que le portefeuille est reste ici enverrait la
+     transaction SUR LA MAUVAISE CHAINE — au mieux elle echoue, au pire elle
+     depense un solde que le joueur ne voulait pas toucher. */
+  var c = chaineDuJeton(j);
   try{
-    await assureChaine();
+    await assureChaineId(c.id, c.nom);
     var tx = j.natif
       ? await signer.sendTransaction({ to:dest, value:wei })
       : await erc(j.adr, true).transfer(dest, wei);
     /* Inscrit AVANT l'attente : c'est justement pendant l'attente que
        l'onglet se ferme. */
-    journalAjoute({ h:tx.hash, k:'envoi', cle:j.cle, montant:wei.toString(), vers:dest });
+    journalAjoute({ h:tx.hash, k:'envoi', cle:j.cle, montant:wei.toString(), vers:dest,
+                    sur:c.id, deNom:c.nom });
     note.textContent='Sent — waiting for the chain…';
-    await tx.wait();
-    note.innerHTML='Done. <a href="'+CHAINE.scan+'/tx/'+tx.hash+'" target="_blank" rel="noopener" style="color:var(--accent2)">View transaction</a>';
+    var lien = '<a href="'+c.scan+'/tx/'+tx.hash+'" target="_blank" rel="noopener"'
+             + ' style="color:var(--accent2)">View transaction</a>';
+    /* ---- UNE TRANSACTION PARTIE N'EST JAMAIS UN REFUS ----
+     * Elle est attendue sur SA chaine — l'attendre ici ne la trouverait
+     * jamais. Mais si cette attente echoue (un RPC muet, un delai depasse),
+     * la transaction est deja signee et diffusee : la ranger avec les erreurs
+     * ferait lire « refuse » a un joueur dont l'argent est bel et bien parti,
+     * et il la renverrait. On dit ce qu'on sait, et on donne le lien. */
+    try{
+      await lecPont(c).waitForTransaction(tx.hash, 1, 180000);
+      note.innerHTML = 'Done. ' + lien;
+    }catch(x){
+      note.innerHTML = 'Sent. ' + c.nom + ' has not confirmed it here yet — it is not lost, '
+        + 'and it is not a refusal. ' + lien;
+    }
     $('enMontant').value=''; rafraichit();
   }catch(err){
     note.className='wl-note grave';
@@ -5441,7 +5559,7 @@ async function journalSuit(h, surLaChaine){
        Chain ne l'y trouve jamais : l'entree resterait « en attente » pour
        toujours, et le bandeau d'accueil annoncerait une transaction en vol
        qui a en realite abouti depuis longtemps. */
-    var pr = (surLaChaine === L1.id) ? lecL1() : lec();
+    var pr = surLaChaine ? lecPont(chaineDuPont(surLaChaine)) : lec();
     var r = await pr.waitForTransaction(h, 1, 180000);
     if(cible !== moi || g !== generation) return;
     journalEtat(h, (r && r.status === 0) ? 'echoue' : 'reussi', r && r.blockNumber);
@@ -5838,6 +5956,45 @@ function chaineDuPont(id){
 function pontDe(){   return chaineDuPont(pontDeId); }
 function pontVers(){ return chaineDuPont(pontVersId); }
 function lecPont(c){ return c.id === CHAINE.id ? lec() : lecChaine(c); }
+/* La chaine sur laquelle un jeton VIT. Sans champ `chaine`, c'est celle du
+   portefeuille : les trois jetons de la maison n'en ont jamais bouge. */
+function chaineDuJeton(j){ return chaineDuPont((j && j.chaine) || CHAINE.id); }
+/* Et l'inverse : la cle du jeton natif d'une chaine. Le journal s'en sert
+   pour retrouver le symbole et les decimales d'une trace vieille de plusieurs
+   jours ; ces cles sont donc gravees et ne changent plus. */
+function cleDeChaine(id){
+  if(id === CHAINE.id) return 'eth';
+  if(id === L1.id)     return 'ethL1';
+  return 'ch' + id;
+}
+
+/* ==================== CE QUE L'ON DETIENT AILLEURS ====================
+ *
+ * ---- LE PONT POUVAIT SORTIR L'ARGENT SANS QUE RIEN NE LE MONTRE ----
+ *
+ * Le pont s'est ouvert a sept chaines ; la liste des jetons, elle, n'en
+ * connaissait que deux. Un joueur qui envoyait son ETH (RH) vers Base le
+ * voyait quitter la Robinhood Chain — et ne le retrouvait NULLE PART : ni
+ * dans « My tokens », ni dans l'envoi, ni sur l'accueil. Le solde d'arrivee
+ * existait bel et bien sur la chaine, mais cette page ne le lisait pas, donc
+ * pour le joueur il avait disparu. C'est le pire defaut qu'un portefeuille
+ * puisse avoir, et il etait de notre fait.
+ *
+ * Chaque chaine du pont a donc sa ligne. Elle porte la piece de la CHAINE,
+ * pas celle de l'ether : ce n'est pas le meme actif que l'ETH (RH), et deux
+ * lignes identiques inviteraient a les confondre.
+ *
+ * La cle est derivee de l'identifiant de chaine — `ch8453` — et ne bougera
+ * plus : le journal des transactions la garde sur le disque du joueur.
+ */
+for(var iCh = 1; iCh < CHAINES_PONT.length; iCh++){
+  (function(c){
+    var ether = c.sym === 'ETH';
+    JETONS.push({ cle:'ch' + c.id, sym:c.sym,
+      nom:(ether ? 'Ether' : c.sym) + ' on ' + c.nom,
+      adr:null, dec:18, logo:c.logo, natif:true, chaine:c.id, pont:true });
+  })(CHAINES_PONT[iCh]);
+}
 
 /* ---- LE DEVIS ----
  * Il vient de Relay, en direct, jamais garde : le taux depend du montant et
@@ -6153,13 +6310,13 @@ async function partPont(){
        laisserait aucune trace dans l'historique.
        `sur` dit sur QUELLE chaine la transaction a ete signee : c'est ce qui
        permet de l'attendre au bon endroit et d'ouvrir le bon explorateur. */
-    journalAjoute({ h:tx.hash, k:'pont', cle:(de.id === CHAINE.id ? 'eth' : 'ethL1'),
+    journalAjoute({ h:tx.hash, k:'pont', cle:cleDeChaine(de.id),
                     montant:entree.toString(), recu:r.recu.toString(),
                     sur:de.id, versNom:vers.nom, deNom:de.nom,
                     /* La piece et le symbole de la chaine de DEPART : depuis
                        qu'on peut venir de sept chaines, la liste des jetons
                        n'en connait plus qu'une. */
-                    logo:(de.id === CHAINE.id ? (J('eth')||{}).logo : de.logo),
+                    logo:(J(cleDeChaine(de.id)) || de).logo,
                     sym:ETH_AFF_DE(de), symRecu:ETH_AFF_DE(vers) });
 
     dis('Sent — waiting for ' + de.nom + '…');
@@ -6344,7 +6501,9 @@ function peintSolana(){
   b.hidden = !!solAdr;
   note.hidden = false;
   if(solAdr){
-    $('cpSolAdr').textContent = court(solAdr);
+    /* Entiere, pas abregee : c'est la seule forme que l'on peut copier a la
+       main si le presse-papier fait defaut. */
+    $('cpSolAdr').textContent = solAdr;
     note.textContent = 'Same login, a different curve — so a different address. '
       + 'You can receive SOL here. This wallet does not send or bridge from Solana yet, '
       + 'so do not send anything you need back today.';
@@ -6375,13 +6534,22 @@ if($('cpSolCreer')) $('cpSolCreer').addEventListener('click', async function(){
   solEnCours = false; b.disabled = false;
 });
 
-if($('cpSolCopie')) $('cpSolCopie').addEventListener('click', function(){
-  /* L'adresse ENTIERE, pas celle qui est affichee : la version abregee ne
-     designe aucun compte, et la coller ferait perdre les fonds. */
+if($('cpSolCopie')) $('cpSolCopie').addEventListener('click', async function(){
+  /* L'adresse ENTIERE, celle de la variable : c'est aussi celle qui est
+     affichee depuis qu'elle tient sur plusieurs lignes. */
   if(!solAdr) return;
-  navigator.clipboard.writeText(solAdr)
-    .then(function(){ toast('Solana address copied'); })
-    ['catch'](function(){ toast('Could not copy — select the address by hand'); });
+  if(await copieTexte(solAdr)) toast('Solana address copied');
+  else toast('Could not copy — tap the address above to select it');
+});
+
+/* Dernier recours, et le seul qui ne depende de rien : un appui sur l'adresse
+   la selectionne en entier, et le menu du systeme fait le reste. */
+if($('cpSolAdr')) $('cpSolAdr').addEventListener('click', function(){
+  if(!solAdr) return;
+  try{
+    var r = document.createRange(); r.selectNodeContents(this);
+    var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+  }catch(e){}
 });
 
 

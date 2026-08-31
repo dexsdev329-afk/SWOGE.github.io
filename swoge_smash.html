@@ -1212,7 +1212,7 @@ html::before{
   var PRIVY_APP_ID="cmsga0yzp00a50biaf9vlzzd2", privyLoaded=false, privyEmail="";
   function loadPrivy(){ return new Promise(function(res,rej){
     if(privyLoaded) return res();
-    var s=document.createElement("script"); s.src="privy-swoge.js";
+    var s=document.createElement("script"); s.src="privy-swoge.js?v=2b2002d4";
     s.onload=function(){ privyLoaded=true; try{ SwogePrivy.init(PRIVY_APP_ID); }catch(e){} res(); };
     s.onerror=function(){ rej(new Error("load failed")); };
     document.head.appendChild(s);

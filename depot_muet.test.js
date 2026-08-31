@@ -154,7 +154,7 @@ function fauxPrivyFroid() {
   async function jusquAuDepot(privy, opts) {
     const o = opts || {};
     const p = await nav.newPage({ viewport: { width: 420, height: 880 } });
-    await p.route('**/privy-swoge.js', (r) => r.fulfill({ status: 200, contentType: 'text/javascript', body: privy }));
+    await p.route('**/privy-swoge.js*', (r) => r.fulfill({ status: 200, contentType: 'text/javascript', body: privy }));
     await p.addInitScript(function (o) {
       window.__s = [];
       const N = window.WebSocket;

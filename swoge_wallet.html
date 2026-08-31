@@ -68,7 +68,7 @@
      A savoir : cela ne sauve pas la page DEJA en cache chez quelqu'un, qui ne
      contient pas ces lignes. Ce garde-fou vaut a partir de celle-ci. -->
 <script>
-var MARQUE_PAGE = 'c2147d4f';
+var MARQUE_PAGE = '3895f100';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -709,6 +709,15 @@ body{
   font:700 12px/1 'Space Mono',monospace; font-variant-numeric:tabular-nums;
   color:var(--doux) }
 .wl-glis[data-off="1"]{ opacity:.45 }
+
+/* La chaine de depart de l'echange : meme rangee que le detail repliable,
+   avec sa piece. */
+.wl-chn{ display:flex; align-items:center; gap:8px }
+.wl-chn img{ width:22px; height:22px; border-radius:50%; flex:0 0 auto }
+/* Payer d'ailleurs n'offre qu'une piece : le choix est FIGE, et il se voit —
+   un menu qui ne s'ouvre pas sans le dire passe pour casse. */
+.wl-pick.fige .wl-pick-b{ cursor:default; opacity:.75 }
+.wl-pick.fige .fl{ visibility:hidden }
 
 /* ==================== LE CHOIX D'UN JETON ====================
  *
@@ -1434,6 +1443,15 @@ body{
         <div class="wl-rang"><span>Network</span><b id="enReseau">Robinhood Chain</b></div>
         <div class="wl-rang"><span>Network fee</span><b id="enFrais">—</b></div>
       </div>
+      <!-- ---- POURQUOI LE SOL N'EST PAS DANS LA LISTE ----
+           « Quand je suis dans Send je vois pas mon Solana à sélectionner,
+           c'est normal ? » Oui — et une absence sans un mot se lit comme une
+           panne. Cette page sait signer sur les huit chaines EVM, qui
+           partagent une meme adresse et une meme courbe. Solana en a une
+           autre : la transaction s'y construit autrement, et ce portefeuille
+           ne sait pas encore le faire. On le DIT, plutot que de laisser
+           chercher. La ligne n'apparait que si une adresse Solana existe. -->
+      <p class="wl-note" id="enSolNote" hidden></p>
       <button class="wl-b" id="enPartir" type="button">Review</button>
       <p class="wl-note" id="enNote"></p>
     </div>
@@ -1465,6 +1483,18 @@ body{
     </div>
     <div class="wl-corps">
       <div class="wl-carte">
+        <!-- ---- LA CHAINE DE DEPART ----
+             Le pont et l'echange faisaient deux voyages la ou le relayeur
+             n'en demande qu'un : il ponte ET echange dans la meme
+             transaction, signee sur la chaine de depart, et le jeton arrive
+             ici. Le pont reste entier a cote, pour qui prefere voir son ether
+             arriver avant de decider quoi en faire. -->
+        <button type="button" class="wl-rang wl-detail" id="swChaineB"
+                aria-haspopup="dialog">
+          <span>From</span>
+          <b class="wl-chn"><img id="swChaineImg" alt=""><span id="swChaineNom">&mdash;</span></b>
+          <i aria-hidden="true">&#9662;</i>
+        </button>
         <div class="wl-champ">
           <span class="wl-lab" id="swDeL">YOU PAY</span>
           <div class="wl-pick" data-pour="swDe">
@@ -1519,8 +1549,11 @@ body{
           <i aria-hidden="true">+</i>
         </button>
         <div id="swPlus" hidden>
-          <div class="wl-rang"><span>Price impact</span><b id="swImpact">—</b></div>
+          <div class="wl-rang"><span id="swImpactT">Price impact</span><b id="swImpact">—</b></div>
           <div class="wl-rang"><span>Minimum received<i id="swTol"></i></span><b id="swMini">—</b></div>
+          <!-- Seulement quand on paie d'ailleurs : ici l'echange est dans le
+               bloc suivant, il n'y a pas de delai a annoncer. -->
+          <div class="wl-rang" id="swTempsR" hidden><span>Arrives in</span><b id="swTemps">—</b></div>
         </div>
       </div>
       <button class="wl-b" id="swPartir" type="button">Swap</button>
@@ -4289,7 +4322,14 @@ if($('acAdrCopie')) $('acAdrCopie').addEventListener('click', copieAdresse);
  * `change` — donc tout le code de l'envoi et de l'echange continue de
  * fonctionner sans qu'une ligne y soit touchee.
  */
+/* ---- REMPLIR NE DOIT PAS DECHOISIR ----
+ * Changer la chaine de depart refait les deux listes, et un `<select>`
+ * reconstruit retombe sur sa premiere option. Le joueur qui avait choisi
+ * $SWOGE se retrouvait a acheter de l'ether sans que rien ne le dise — et le
+ * devis affiche, lui, etait juste : c'est le pire cas, un ecran coherent
+ * avec le mauvais jeton. On garde donc le choix quand il existe encore. */
 function remplitChoix(sel, exclure){
+  var avant = sel.value;
   var h='';
   /* ---- CE QUI VIT AILLEURS NE S'ECHANGE PAS ICI, MAIS S'ENVOIE ----
    *
@@ -4305,6 +4345,21 @@ function remplitChoix(sel, exclure){
    * les sept chaines, alors la liste de l'envoi les montre toutes.
    */
   var envoi = (sel.id === 'enJeton');
+  /* ---- ET CE QU'ON PAIE DEPUIS UNE AUTRE CHAINE ----
+   * Quand l'echange part d'ailleurs, la seule chose qu'on puisse y payer est
+   * la piece native de cette chaine-la : le relayeur prend de l'ether sur
+   * Base, pas du $SWOGE qui n'y existe pas. La liste n'en propose donc
+   * qu'une — la verrouiller en n'y mettant rien d'autre vaut mieux que
+   * laisser choisir puis refuser apres coup.
+   * L'arrivee, elle, est toujours ICI : le relayeur depose sur la Robinhood
+   * Chain, et c'est la que vivent le $SWOGE et les autres. */
+  var payeAilleurs = (sel.id === 'swDe') && swDistant();
+  if(payeAilleurs){
+    var cn = cleDeChaine(swChaineId), jn = J(cn);
+    sel.innerHTML = jn ? '<option value="'+cn+'">'+jn.sym+' — '+jn.nom+'</option>' : '';
+    peintPick(sel);
+    return;
+  }
   for(var i=0;i<JETONS.length;i++){
     if(exclure && JETONS[i].cle===exclure) continue;
     if(JETONS[i].chaine && JETONS[i].chaine !== CHAINE.id && !envoi) continue;
@@ -4312,6 +4367,9 @@ function remplitChoix(sel, exclure){
     h+='<option value="'+JETONS[i].cle+'">'+nomJ+'</option>';
   }
   sel.innerHTML=h;
+  if(avant){
+    for(var q=0;q<sel.options.length;q++) if(sel.options[q].value === avant){ sel.value = avant; break; }
+  }
   peintPick(sel);
 }
 
@@ -4756,6 +4814,13 @@ function majEnvoyer(){
   /* Le solde qui borne le champ vient de CHANGER : ce qui etait rouge peut
      ne plus l'etre, et la poignee du curseur n'est plus au bon endroit. */
   majMontant('enMontant');
+  var ns = $('enSolNote');
+  if(ns){
+    ns.hidden = !solAdr;
+    if(solAdr) ns.textContent = 'Your SOL is not in this list. This screen signs on the eight EVM '
+      + 'chains, which share one address; Solana uses another curve and this wallet cannot build '
+      + 'a transaction there yet. You can receive SOL — the address is on the Account screen.';
+  }
   majRevue();
   litFrais();
 }
@@ -4805,6 +4870,13 @@ MAX_DU_CHAMP.enMontant = async function(){
 $('enMax').addEventListener('click', function(){ MAX_DU_CHAMP.enMontant(); });
 
 MAX_DU_CHAMP.swMontant = async function(){
+  /* ---- D'AILLEURS, C'EST LE RELAYEUR QUI DIT LE COUT ----
+     `calculeMax` garde de quoi payer 450 000 unites de gaz : c'est le prix
+     d'un echange ICI, et sur Ethereum cela retiendrait bien plus que
+     necessaire pour une transaction qui n'en consomme que trente mille. On
+     reprend donc le meme calcul que le pont : le gaz que RELAY annonce pour
+     cette transaction-la, double. */
+  if(swDistant()) return maxDistant();
   var cle = $('swDe').value;
   var r = await calculeMax(cle, GAZ_ECHANGE);
   if(r.erreur) return toast(r.erreur);
@@ -4815,6 +4887,46 @@ MAX_DU_CHAMP.swMontant = async function(){
   devis();
 };
 $('swMax').addEventListener('click', function(){ MAX_DU_CHAMP.swMontant(); });
+
+async function maxDistant(){
+  var note = $('swNote'), c = swChaine(), jv = J($('swVers').value);
+  var solde = soldes[cleDeChaine(c.id)];
+  if(solde === null || solde === undefined){
+    note.className = 'wl-note grave';
+    note.textContent = 'Your ' + ETH_AFF_DE(c) + ' balance on ' + c.nom + ' has not been read yet'
+      + ' — it is unknown, not zero.';
+    return;
+  }
+  if(solde.isZero()){
+    note.className = 'wl-note';
+    note.textContent = 'Nothing to spend on ' + c.nom + '.';
+    return;
+  }
+  clearTimeout(window._d);
+  try{
+    var q = await relaiDevis(c.id, CHAINE.id, solde, jv && jv.adr);
+    var reserve = litPont(q).gaz.mul(2);
+    if(solde.lte(reserve)){
+      note.className = 'wl-note grave';
+      note.textContent = 'Your whole ' + ETH_AFF_DE(c) + ' balance is smaller than the network'
+        + ' fee this would cost.';
+      return;
+    }
+    $('swMontant').value = ethers.utils.formatUnits(solde.sub(reserve), 18);
+    DERNIER_MAX.swMontant = $('swMontant').value;
+    majMontant('swMontant');
+    var garde = 'Kept ' + nombre(reserve, 18) + ' ' + ETH_AFF_DE(c) + ' back for the network fee.';
+    await devisDistant();
+    /* Le devis vient d'ecrire sa note : on ajoute la notre DESSOUS plutot que
+       de l'effacer — l'avertissement de cout est celui qui compte. */
+    if(/grave|alerte/.test(note.className) && note.textContent){
+      note.textContent = note.textContent + ' ' + garde;
+    } else { note.className = 'wl-note'; note.textContent = garde; }
+  }catch(e){
+    note.className = 'wl-note grave';
+    note.textContent = (e && e.message) || 'The relayer did not quote that amount.';
+  }
+}
 
 /* ==================== LES MONTANTS ====================
  *
@@ -5293,7 +5405,28 @@ function majSwap(){
     remplitChoix($('swVers'));
     valPick($('swDe'), 'eth'); valPick($('swVers'), 'swogebet');
   }
-  var j=J($('swDe').value);
+  peintSwChaine();
+  /* ---- L'ECRAN CHANGE DE SENS SELON LA CHAINE ----
+   * D'ici, c'est un echange : deux jetons a choisir, un impact de piscine, la
+   * tolerance. D'ailleurs, c'est un achat en une transaction : la piece
+   * payee est imposee par la chaine, et le cout affiche contient AUSSI le
+   * pont. Le dire dans les etiquettes evite de faire lire un chiffre pour un
+   * autre. */
+  var loin = swDistant();
+  var picDe = document.querySelector('.wl-pick[data-pour="swDe"]');
+  if(picDe) picDe.classList.toggle('fige', loin);
+  var bDe = $('swDeB'); if(bDe) bDe.disabled = loin;
+  var lab = $('swDeL'); if(lab) lab.textContent = loin ? 'YOU PAY (on ' + swChaine().nom + ')' : 'YOU PAY';
+  var it = $('swImpactT'); if(it) it.textContent = loin ? 'Total cost' : 'Price impact';
+  var tr = $('swTempsR'); if(tr) tr.hidden = !loin;
+  var bt = $('swPartir'); if(bt) bt.textContent = loin ? 'Buy' : 'Swap';
+  /* La piece payee suit la chaine : sans ca, le solde affiche serait celui
+     d'un jeton qui n'existe pas la-bas. */
+  if(loin && $('swDe').value !== cleDeChaine(swChaineId)){
+    remplitChoix($('swDe'));
+    remplitChoix($('swVers'), $('swDe').value);
+  }
+  var j=J($('swDe').value) || JETONS[0];
   var s=soldes[j.cle];
   $('swSolde').textContent=(s===null||s===undefined)?'—':nombre(s,j.dec)+' '+j.sym;
   majMontant('swMontant');
@@ -5370,7 +5503,87 @@ function routeDe(de, vers){
   return null;
 }
 
+function videSwap(){
+  ['swRecu','swImpact','swMini'].forEach(function(id){
+    var e = $(id); if(e) e.textContent = '—';
+  });
+}
+
+/* ---- LE DEVIS QUAND ON PAIE D'AILLEURS ----
+ * Il ne vient plus de la chaine mais du relayeur, et il est TOUJOURS pris en
+ * direct : son taux depend de ses stocks, un devis d'il y a deux minutes
+ * n'est plus un devis.
+ * Le compteur `devisJeton` est celui du pont, et c'est voulu : les deux
+ * ecrans ne cotent jamais en meme temps, et une reponse en retard ne doit
+ * pas ecrire par-dessus une plus recente. */
+async function devisDistant(){
+  var mien = ++devisJeton;
+  var c = swChaine(), jv = J($('swVers').value);
+  var note = $('swNote');
+  note.className = 'wl-note';
+  $('swRoute').textContent = 'Relay — bridge and swap, one transaction';
+  var m = ($('swMontant').value || '').trim().replace(',', '.');
+  if(!jv){ videSwap(); return; }
+  if(!(parseFloat(m) > 0)){ videSwap(); note.textContent = ''; return; }
+  if(!moi){ videSwap(); note.textContent = 'Sign in first — the swap pays into your own address.'; return; }
+  var entree;
+  try{ entree = ethers.utils.parseUnits(m, 18); }
+  catch(e){ videSwap(); note.textContent = 'That amount is not a number this wallet can read.'; return; }
+
+  $('swRecu').textContent = '…';
+  try{
+    var q = await relaiDevis(c.id, CHAINE.id, entree, jv.adr);
+    if(mien !== devisJeton) return;
+    var r = litPont(q);
+    $('swRecu').textContent = nombre(r.recu, jv.dec) + ' ' + jv.sym;
+    $('swMini').textContent = nombre(r.mini, jv.dec) + ' ' + jv.sym;
+    var perte = Math.abs(r.impact);
+    $('swImpact').textContent = perte.toFixed(2) + ' %';
+    /* ---- CE POURCENTAGE N'EST PAS CELUI DE LA PISCINE SEULE ----
+     * Il contient le pont ET l'echange. Le presenter comme un « price
+     * impact » ordinaire ferait croire a une piscine bien plus profonde
+     * qu'elle n'est — ou bien plus mauvaise, selon le montant. On le nomme. */
+    if(perte >= 10){
+      note.className = 'wl-note grave';
+      note.textContent = 'This costs ' + perte.toFixed(1) + ' % in all — the bridge fee plus the '
+        + 'price impact of the swap. The fee is nearly fixed, so it weighs much more on a small '
+        + 'amount: paying more at once costs proportionally less.';
+      poseDetail(true, false);
+    } else if(perte >= 3){
+      note.className = 'wl-note alerte';
+      note.textContent = 'Total cost ' + perte.toFixed(1) + ' % — the bridge fee plus the swap\'s '
+        + 'price impact. A larger amount carries the fixed fee better.';
+      poseDetail(true, false);
+    } else {
+      note.textContent = 'One transaction, signed on ' + c.nom + '. A market maker pays you here '
+        + 'from its own funds, then settles later — for those few seconds you are trusting it.';
+    }
+    var t = $('swTemps'); if(t) t.textContent = secondesEnMots(r.secondes);
+  }catch(e){
+    if(mien !== devisJeton) return;
+    videSwap();
+    note.className = 'wl-note grave';
+    /* Le refus du relayeur est recopie tel quel : « no routes found » et
+       « amount too low » ne veulent pas dire la meme chose, et les fondre
+       dans un message maison ferait chercher au joueur un probleme qui
+       n'existe pas. */
+    note.textContent = ((e && e.message) || 'The relayer did not quote that amount.')
+      + ' Below a certain size the fixed fee eats the whole trade — try a larger amount,'
+      + ' or bridge first and swap here.';
+  }
+}
+
+/* La rangee « From » de l'echange : la piece et le nom de la chaine. */
+function peintSwChaine(){
+  var c = swChaine(), im = $('swChaineImg'), n = $('swChaineNom');
+  if(!n) return;
+  var src = (c.id === CHAINE.id) ? (J('eth') || {}).logo : c.logo;
+  if(im){ if(src){ im.src = src; im.hidden = false; } else im.hidden = true; }
+  n.textContent = c.nom;
+}
+
 async function devis(){
+  if(swDistant()) return devisDistant();
   var de=$('swDe').value, vers=$('swVers').value;
   var m=($('swMontant').value||'').trim().replace(',','.');
   var r=routeDe(de,vers);
@@ -5729,9 +5942,83 @@ async function assureAutorisationV4(jeton, entree, dis){
   await t2.wait();
 }
 
+/* ---- ACHETER DEPUIS UNE AUTRE CHAINE ----
+ * La transaction est celle que le relayeur rend : on ne la fabrique pas, on
+ * la signe. Elle part sur la chaine de DEPART — s'y tromper enverrait de
+ * l'ether au contrat du relayeur sur une chaine ou il n'existe pas. */
+async function achatDistant(b){
+  var note = $('swNote');
+  var dis = function(txt, grave){ note.className = 'wl-note' + (grave ? ' grave' : ''); note.textContent = txt; };
+  var c = swChaine(), jv = J($('swVers').value);
+  if(!jv) return;
+  var t = ($('swMontant').value || '').trim().replace(',', '.');
+  if(!(parseFloat(t) > 0)) return toast('Enter an amount');
+  var entree;
+  try{ entree = ethers.utils.parseUnits(t, 18); }
+  catch(e){ return toast('That amount is not a number this wallet can read'); }
+  var solde = soldes[cleDeChaine(c.id)];
+  if(solde && entree.gt(solde))
+    return toast('That is more ' + ETH_AFF_DE(c) + ' than you hold on ' + c.nom);
+
+  b.disabled = true;
+  try{
+    /* Le devis de l'ecran peut dater ; celui qu'on signe est pris a
+       l'instant, et l'ecran est remis a jour avec — le joueur signe ce
+       qu'il lit. */
+    dis('Getting a fresh quote…');
+    var q = await relaiDevis(c.id, CHAINE.id, entree, jv.adr);
+    var r = litPont(q);
+    if(!r.tx || !r.tx.to) throw new Error('The relayer returned no transaction to sign.');
+    $('swRecu').textContent = nombre(r.recu, jv.dec) + ' ' + jv.sym;
+    $('swMini').textContent = nombre(r.mini, jv.dec) + ' ' + jv.sym;
+    if($('swTemps')) $('swTemps').textContent = secondesEnMots(r.secondes);
+
+    await assureChaineId(c.id, c.nom);
+
+    dis('Confirm the purchase in your wallet…');
+    var envoi = { to: r.tx.to, value: ethers.BigNumber.from(r.tx.value || '0') };
+    if(r.tx.data && r.tx.data !== '0x') envoi.data = r.tx.data;
+    var tx = await signer.sendTransaction(envoi);
+
+    /* Inscrit AVANT l'attente, et avec la chaine de depart : ce qui arrive
+       ici est un jeton pose par le relayeur, sans transfert signe par nous —
+       sans cette trace, l'achat n'apparaitrait nulle part. */
+    journalAjoute({ h:tx.hash, k:'achat', cle:cleDeChaine(c.id), cleV:jv.cle,
+                    montant:entree.toString(), recu:r.recu.toString(),
+                    sur:c.id, deNom:c.nom,
+                    logo:(J(cleDeChaine(c.id)) || c).logo,
+                    sym:ETH_AFF_DE(c), symRecu:jv.sym });
+
+    dis('Sent — waiting for ' + c.nom + '…');
+    await lecPont(c).waitForTransaction(tx.hash, 1, 180000);
+
+    var fini = r.suivi ? await suitPont(r.suivi, dis) : true;
+    if(fini === true){
+      dis('Done — ' + nombre(r.recu, jv.dec) + ' ' + jv.sym + ' arrived on ' + CHAINE.nom + '.');
+      $('swMontant').value = '';
+      videSwap();
+      await rafraichit();
+    } else if(fini === 'refund'){
+      dis('The relayer could not fill this one and refunded you on ' + c.nom
+        + '. Nothing was lost beyond the network fee.', true);
+    } else if(fini === 'failure'){
+      dis('The relayer reported a failure. Check ' + c.scan + ' for your transaction '
+        + 'before trying again.', true);
+    } else {
+      dis('Your transaction is confirmed on ' + c.nom + ', but the relayer has not reported '
+        + 'paying you yet. It is not lost — it is not yet confirmed. Reopen this screen '
+        + 'in a minute.', true);
+    }
+  }catch(e){
+    dis(pourquoiRefus(e), true);
+  }
+  b.disabled = false;
+}
+
 $('swPartir').addEventListener('click', async function(){
   if(!moi) return ouvreConnexion();
   if(ethersManquant()) return;
+  if(swDistant()) return achatDistant(this);
 
   var de = $('swDe').value, vers = $('swVers').value;
   var jd = J(de), jv = J(vers);
@@ -5881,13 +6168,34 @@ function journalEtat(h, etat, bloc){
 /* Attendre le recu, sans jamais conclure d'un echec de lecture. */
 async function journalSuit(h, surLaChaine){
   var cible = moi, g = generation;
+  /* ---- UNE TRANSACTION DE PONT N'EST PAS SUR CETTE CHAINE ----
+     Le depart d'un depot est mine SUR SA CHAINE. L'attendre sur la Robinhood
+     Chain ne l'y trouve jamais : l'entree resterait « en attente » pour
+     toujours, et le bandeau d'accueil annoncerait une transaction en vol qui
+     a en realite abouti depuis longtemps. */
+  var pr = surLaChaine ? lecPont(chaineDuPont(surLaChaine)) : lec();
+  /* ---- ON DEMANDE LE RECU AVANT D'ATTENDRE ----
+   *
+   * « J'ai fait plusieurs bridges qui ont fonctionné et dans Activity il me
+   * dit que c'est en attente alors que j'ai déjà reçu. »
+   *
+   * `waitForTransaction` ECOUTE les blocs a venir. Pour une transaction
+   * minee il y a une heure — celle qu'on retrouve au rechargement de la
+   * page — il n'y a plus rien a ecouter : selon le noeud, l'attente se
+   * termine par un delai depasse, et l'entree restait « en attente » a
+   * jamais alors que l'argent etait arrive depuis longtemps. Un historique
+   * qui ment sur ce point-la est pire que pas d'historique : le joueur
+   * renvoie. On demande donc D'ABORD le recu, qui est une question sur le
+   * PASSE ; l'attente ne sert que si la reponse est « pas encore ». */
   try{
-    /* ---- UNE TRANSACTION DE PONT N'EST PAS SUR CETTE CHAINE ----
-       Le depart d'un depot est mine SUR ETHEREUM. L'attendre sur la Robinhood
-       Chain ne l'y trouve jamais : l'entree resterait « en attente » pour
-       toujours, et le bandeau d'accueil annoncerait une transaction en vol
-       qui a en realite abouti depuis longtemps. */
-    var pr = surLaChaine ? lecPont(chaineDuPont(surLaChaine)) : lec();
+    var d = await borne(pr.getTransactionReceipt(h), 12000, 'recu');
+    if(cible !== moi || g !== generation) return;
+    if(d && d.blockNumber){
+      journalEtat(h, (d.status === 0) ? 'echoue' : 'reussi', d.blockNumber);
+      return;
+    }
+  }catch(e){ /* le noeud n'a pas repondu : on tente l'attente ci-dessous */ }
+  try{
     var r = await pr.waitForTransaction(h, 1, 180000);
     if(cible !== moi || g !== generation) return;
     journalEtat(h, (r && r.status === 0) ? 'echoue' : 'reussi', r && r.blockNumber);
@@ -5901,6 +6209,12 @@ function journalPhrase(e){
   if(e.k === 'autorisation')       return 'Allowing the router to spend your ' + (j?j.sym:'token');
   if(e.k === 'depot')              return 'Depositing ' + m(e.montant,'swoge') + ' into the casino';
   if(e.k === 'retrait')            return 'Claiming your casino withdrawal';
+  if(e.k === 'achat'){
+    var qa = '—';
+    try{ qa = nombre(ethers.BigNumber.from(e.montant), 18) + (e.sym ? ' ' + e.sym : ''); }catch(x){}
+    return 'Buying ' + (e.symRecu || (jv ? jv.sym : 'a token')) + ' with ' + qa
+         + ' from ' + (e.deNom || 'another chain');
+  }
   if(e.k === 'pont'){
     var q = '—';
     try{ q = nombre(ethers.BigNumber.from(e.montant), 18) + (e.sym ? ' ' + e.sym : ''); }catch(x){}
@@ -5954,7 +6268,17 @@ var SUJET_RETRAIT = null;   /* WETH : et redevient de l'ether */
 
 function nettoieAdresse(sujet){ return '0x' + String(sujet).slice(26).toLowerCase(); }
 
+/* Les entrees encore « en attente » sont reprises a chaque ouverture de
+   l'historique, et plus seulement au chargement de la page : c'est
+   precisement l'ecran ou l'on vient verifier, et une reprise qui n'a lieu
+   qu'une fois par session laisse un « en attente » perime a l'ecran. */
+function reprendEnVol(){
+  for(var i=0;i<JOURNAL.length;i++)
+    if(JOURNAL[i].etat === 'attente') journalSuit(JOURNAL[i].h, JOURNAL[i].sur);
+}
+
 async function chargeActivite(){
+  reprendEnVol();
   var c=$('acvCorps');
   if(!moi){ c.innerHTML='<div class="wl-vide"><span class="g">&#9202;</span>Connect a wallet to see your transfers.</div>'; return; }
   c.innerHTML='<div class="wl-vide"><span class="g">&#8987;</span>Reading the last 30 days from the chain…</div>';
@@ -6070,7 +6394,7 @@ function classeGroupe(g){
 
 function ligneGroupe(g){
   if(g.echange){
-    return '<div class="wl-jeton" style="cursor:default">'
+    return '<div class="wl-jeton wl-tx" data-tx="'+g.h+'" role="button" tabindex="0">'
      +   '<img src="'+g.percu.j.logo+'" alt="">'
      +   '<span class="nom"><b>Swapped</b><small>'
      +     nombre(g.paye.v, g.paye.j.dec)+' '+g.paye.j.sym+' &rarr; '+g.percu.j.sym+'</small></span>'
@@ -6083,10 +6407,29 @@ function ligneGroupe(g){
   for(i=0;i<g.dedans.length;i++) l.push(ligneTransfert(g.dedans[i], false));
   return l.join('');
 }
+/* ---- UNE LIGNE D'HISTORIQUE MENE A SA TRANSACTION ----
+ *
+ * « Ça serait bien, si je clique sur une transaction, que ça ouvre la
+ * blockchain concernée avec le lien de la transaction. »
+ *
+ * SA chaine, et pas celle-ci : un pont ou un achat est signe ailleurs, et
+ * l'ouvrir sur le mauvais explorateur donne un « transaction not found » qui
+ * fait peur pour rien. Ce qui vient d'une lecture de la Robinhood Chain
+ * ouvre celle-ci ; ce qui vient du journal ouvre la chaine ou il a ete
+ * signe. */
+function lienTx(h, idChaine){
+  var c = chaineDuPont(idChaine || CHAINE.id);
+  return (c.scan || CHAINE.scan) + '/tx/' + h;
+}
+function ouvreTx(h, idChaine){
+  if(!h) return;
+  window.open(lienTx(h, idChaine), '_blank', 'noopener');
+}
+
 function ligneTransfert(t, sortant){
   var v=ethers.BigNumber.from(t.log.data);
   var autre=nettoieAdresse(t.log.topics[sortant?2:1]);
-  return '<div class="wl-jeton" style="cursor:default">'
+  return '<div class="wl-jeton wl-tx" data-tx="'+t.log.transactionHash+'" role="button" tabindex="0">'
    +   '<img src="'+t.j.logo+'" alt="">'
    +   '<span class="nom"><b>'+(sortant?'Sent':'Received')+'</b>'
    +     '<small>'+(sortant?'To ':'From ')+court(autre)+'</small></span>'
@@ -6105,6 +6448,7 @@ function ligneJournal(e){
             : e.k === 'depot' ? 'Casino deposit'
             : e.k === 'retrait' ? 'Casino withdrawal'
             : e.k === 'pont' ? 'Bridged to ' + (e.versNom || 'the other chain')
+            : e.k === 'achat' ? 'Bought ' + (e.symRecu || 'a token')
             : 'Sent';
   /* ---- D OU VIENT CETTE LIGNE ----
      Elle n'a pas ete lue sur la chaine : elle existe parce que CE
@@ -6116,13 +6460,18 @@ function ligneJournal(e){
      Ce qu'on a signe est parti d'une chaine ; ce qu'on a recu est arrive sur
      l'autre. Un montant seul, sans dire d'ou a ou, ne se relit pas six mois
      plus tard. */
-  if(e.k === 'pont'){
+  if(e.k === 'pont' || e.k === 'achat'){
+    /* Un achat lointain se lit comme un pont : ce qu'on a paye est parti
+       d'une chaine, ce qu'on a recu est arrive ici. Les decimales sont
+       celles du jeton RECU — dix-huit pour de l'ether, pas forcement pour
+       le reste. */
+    var jvR = e.cleV ? J(e.cleV) : null;
     var recu = null;
-    try{ recu = e.recu ? nombre(ethers.BigNumber.from(e.recu), 18) : null; }catch(x){}
+    try{ recu = e.recu ? nombre(ethers.BigNumber.from(e.recu), jvR ? jvR.dec : 18) : null; }catch(x){}
     sous = 'From ' + (e.deNom || '?')
          + (recu ? ' · received ' + recu + (e.symRecu ? ' ' + e.symRecu : '') : '');
   }
-  if(att)  sous = e.k === 'pont'
+  if(att)  sous = (e.k === 'pont' || e.k === 'achat')
     ? 'Waiting for ' + (e.deNom || 'the chain') + ' — sent from this device'
     : 'Waiting for the chain — sent from this device';
   if(rate) sous = 'The chain rejected it — nothing moved';
@@ -6135,7 +6484,8 @@ function ligneJournal(e){
   var couleur = (att || rate || e.k === 'autorisation') ? 'var(--doux)'
               : e.k === 'retrait' ? 'var(--vert)' : 'var(--rouge)';
   var piece = e.logo || j.logo, sigle = e.sym || j.sym;
-  return '<div class="wl-jeton" style="cursor:default'+(att?';opacity:.75':'')+'">'
+  return '<div class="wl-jeton wl-tx" data-tx="'+e.h+'" data-ch="'+(e.sur||CHAINE.id)+'"'
+   +     ' role="button" tabindex="0"'+(att?' style="opacity:.75"':'')+'>'
    +   (piece ? '<img src="'+piece+'" alt="">' : '<span class="wl-eth">'+sigle.slice(0,2)+'</span>')
    +   '<span class="nom"><b>'+titre+(att?' …':'')+'</b><small>'+sous+'</small></span>'
    +   '<span class="val"><b style="color:'+couleur+(rate?';text-decoration:line-through':'')+'">'+val+'</b>'
@@ -6143,6 +6493,21 @@ function ligneJournal(e){
    + '</div>';
 }
 $('btActRelire').addEventListener('click', chargeActivite);
+
+/* Le clic est delegue : les lignes sont refaites a chaque lecture, et
+   raccrocher un ecouteur sur chacune en oublierait une. */
+document.addEventListener('click', function(ev){
+  var l = ev.target.closest && ev.target.closest('.wl-tx[data-tx]');
+  if(!l) return;
+  ouvreTx(l.dataset.tx, parseInt(l.dataset.ch, 10) || CHAINE.id);
+});
+document.addEventListener('keydown', function(ev){
+  if(ev.key !== 'Enter' && ev.key !== ' ') return;
+  var l = ev.target.closest && ev.target.closest('.wl-tx[data-tx]');
+  if(!l) return;
+  ev.preventDefault();
+  ouvreTx(l.dataset.tx, parseInt(l.dataset.ch, 10) || CHAINE.id);
+});
 
 /* ==================== LA FICHE D'UN JETON ==================== */
 async function ficheJeton(cle){
@@ -6328,7 +6693,10 @@ for(var iCh = 1; iCh < CHAINES_PONT.length; iCh++){
  * Il vient de Relay, en direct, jamais garde : le taux depend du montant et
  * de l'etat des stocks du relayeur. Un devis d'il y a deux minutes n'est plus
  * un devis, c'est un souvenir. */
-async function relaiDevis(deId, versId, montant){
+/* `monnaieVers` : l'adresse du jeton a recevoir, ou rien pour la piece
+   native. C'est ce seul champ qui transforme un pont en achat — le relayeur
+   ponte ET echange dans la meme transaction. */
+async function relaiDevis(deId, versId, montant, monnaieVers){
   var rep;
   try{
     rep = await borne(fetch(RELAY + '/quote', {
@@ -6336,7 +6704,7 @@ async function relaiDevis(deId, versId, montant){
       body: JSON.stringify({
         user: moi, recipient: moi,
         originChainId: deId, destinationChainId: versId,
-        originCurrency: ZERO_ADR, destinationCurrency: ZERO_ADR,
+        originCurrency: ZERO_ADR, destinationCurrency: monnaieVers || ZERO_ADR,
         amount: montant.toString(), tradeType:'EXACT_INPUT' })
     }), 15000, 'relay');
   }catch(e){
@@ -6404,10 +6772,39 @@ function marqueChoix(boite, oui){
 }
 
 /* ---- CHOISIR LA CHAINE ---- */
-var boutChoisi = 'de';                  /* quel bout du pont on est en train de choisir */
+var boutChoisi = 'de';                  /* 'de' | 'vers' pour le pont, 'swap' pour l'echange */
+
+/* ==================== ACHETER DEPUIS UNE AUTRE CHAINE ====================
+ *
+ * « Est-ce qu'on peut acheter direct avec de l'ETH, ou du Base, ou de
+ * l'Arbitrum… en mode ça bridge en fond puis ça swap ? »
+ *
+ * Oui, et en UNE transaction : le relayeur accepte une monnaie de sortie
+ * quelconque sur la chaine d'arrivee. Mesure faite avant d'ecrire une ligne,
+ * pour 0,01 ETH vers le $SWOGE : Ethereum −3,18 %, Base −3,17 %, Arbitrum
+ * −3,18 %, Optimism −3,17 %, BNB −7,79 %. Ce n'est pas un surcout du
+ * raccourci — c'est le pont (~0,2 %) plus l'impact du meme echange sur la
+ * piscine, qu'on paierait de toute facon en deux gestes.
+ *
+ * Deux refus mesures, et la page les dit tels quels quand ils arrivent :
+ * Polygon ne route pas en dessous d'une dizaine de dollars, Avalanche pas en
+ * dessous d'environ deux AVAX. Ce sont les frais fixes qui ecrasent les
+ * petits montants, exactement comme sur le pont.
+ *
+ * Le pont reste entier a cote : qui prefere voir son ether arriver avant de
+ * decider quoi en faire garde ce chemin-la.
+ */
+var swChaineId = CHAINE.id;
+function swChaine(){ return chaineDuPont(swChaineId); }
+function swDistant(){ return swChaineId !== CHAINE.id; }
+function gardeSwChaine(){
+  try{ localStorage.setItem('swogeSwapChaine', String(swChaineId)); }catch(e){}
+}
 function peintChoixChaine(){
   var c = $('poChL'); if(!c) return;
-  var l = toutesChaines(), courant = (boutChoisi === 'de') ? pontDeId : pontVersId;
+  var l = toutesChaines();
+  var courant = (boutChoisi === 'swap') ? swChaineId
+              : (boutChoisi === 'de')   ? pontDeId : pontVersId;
   var h = '';
   for(var i=0;i<l.length;i++){
     var x = l[i];
@@ -6417,11 +6814,15 @@ function peintChoixChaine(){
        + '</button>';
   }
   c.innerHTML = h;
-  $('poChTitre').textContent = (boutChoisi === 'de')
-    ? 'Pick the chain your funds are on.'
-    : 'Pick the chain to send them to.';
+  $('poChTitre').textContent = (boutChoisi === 'vers')
+    ? 'Pick the chain to send them to.'
+    : (boutChoisi === 'swap')
+      ? 'Pick the chain you are paying from. Anywhere but here, the relayer bridges'
+        + ' and swaps in one transaction.'
+      : 'Pick the chain your funds are on.';
   var t = $('poVoile').querySelector('h2');
-  if(t) t.textContent = (boutChoisi === 'de') ? 'Bridge from' : 'Bridge to';
+  if(t) t.textContent = (boutChoisi === 'swap') ? 'Pay from'
+                      : (boutChoisi === 'de') ? 'Bridge from' : 'Bridge to';
 }
 function ouvreChoixChaine(bout){ boutChoisi = bout || 'de'; peintChoixChaine(); $('poVoile').hidden = false; }
 function fermeChoixChaine(){ $('poVoile').hidden = true; }
@@ -6432,6 +6833,16 @@ if($('poVoile')) $('poVoile').addEventListener('click', function(ev){
   if(!b) return;
   var id = parseInt(b.dataset.ch, 10);
   fermeChoixChaine();
+  if(boutChoisi === 'swap'){
+    if(id === swChaineId) return;
+    swChaineId = id; gardeSwChaine();
+    /* La liste des jetons a payer change avec la chaine : ailleurs, il n'y a
+       que sa piece native. */
+    remplitChoix($('swDe')); remplitChoix($('swVers'), $('swDe').value);
+    videSwap();
+    majSwap();
+    return;
+  }
   if(boutChoisi === 'de'){
     if(id === pontDeId) return;
     /* Choisir des deux cotes la meme chaine ne veut rien dire : plutot que de
@@ -6766,6 +7177,21 @@ if($('poPlusB')) $('poPlusB').addEventListener('click', function(){
    autres : un seul endroit ou dire ce qu'un montant declenche. */
 MAX_DU_CHAMP.poMontant = maxPont;
 if($('poMax'))    $('poMax').addEventListener('click', maxPont);
+
+/* ---- LA CHAINE DE DEPART DE L'ECHANGE ----
+   Elle se choisit dans la MEME feuille que celle du pont : deux listes de
+   chaines a tenir a jour, ce serait une de trop. */
+if($('swChaineB')) $('swChaineB').addEventListener('click', function(){
+  ouvreChoixChaine('swap');
+});
+/* Retenue d'une fois sur l'autre : qui paie toujours depuis Base ne le
+   rechoisit pas a chaque visite. Relue par `chaineDuPont`, qui retombe sur
+   la Robinhood Chain si l'identifiant garde ne correspond a rien. */
+try{
+  var _sc = parseInt(localStorage.getItem('swogeSwapChaine'), 10);
+  if(_sc && chaineDuPont(_sc).id === _sc) swChaineId = _sc;
+}catch(e){}
+peintSwChaine();
 if($('poPartir')) $('poPartir').addEventListener('click', partPont);
 
 

@@ -3924,6 +3924,260 @@ function servir(q, r, f, type) {
    * la frappe SEULE doit suffire. Aucune touche Entree, aucun changement de
    * champ, aucun clic ailleurs — juste des caracteres, et l ecran suit.
    */
+  /* ==================== ACHETER DEPUIS UNE AUTRE CHAINE ====================
+   *
+   * « De base on achète du SWOGE avec de l'ETH RH, mais est-ce qu'on pourrait
+   * en acheter direct avec de l'ETH, ou du Base, ou de l'Arbitrum… en mode ça
+   * bridge en fond puis ça swap ? »
+   *
+   * Oui, et en UNE transaction : le relayeur accepte une monnaie de sortie
+   * quelconque sur la chaine d arrivee. Ce qui se mesure ici n est pas qu il
+   * sache le faire — c est son affaire — mais que la page lui demande la
+   * BONNE chose et signe au BON endroit :
+   *
+   *   - la monnaie de sortie demandee est le contrat du jeton choisi, pas
+   *     l ether ni un jeton voisin ;
+   *   - la signature part de la chaine de DEPART, pas d ici ;
+   *   - l ecran dit qu on achete et non qu on echange, et le cout affiche est
+   *     nomme pour ce qu il est — le pont EN PLUS de l impact.
+   */
+  console.log('\n-- acheter depuis une autre chaine --');
+  {
+    const MOI = '0x00000000000000000000000000000000000a11ce';
+    const HASH = '0x' + 'ab'.repeat(32);
+    const mot = (v) => '0x' + v.toString(16).padStart(64, '0');
+    const w = { devis: null };
+    const page = await nav.newPage({ viewport: { width: 390, height: 900 } });
+    const boum = [];
+    page.on('pageerror', (e) => boum.push(String(e).slice(0, 180)));
+    await page.addInitScript(([moi, hash]) => {
+      try { localStorage.setItem('swogeAuth', 'email');
+            sessionStorage.setItem('swogeWalletIntroVue', '1'); } catch (e) {}
+      window.__w = { chaine: '0x1237', bascules: [], envoyees: [] };
+      window.SwogePrivy = { init: () => {}, sendCode: async () => {}, verifyCode: async () => moi,
+        logout: async () => {}, restore: async () => moi, getProvider: () => window.ethereum,
+        getAddress: () => moi, isLoggedIn: () => true, comptes: () => [{ adresse: moi, index: 0 }],
+        choisitCompte: async () => moi, ajouteCompte: async () => moi, indexCompte: () => 0,
+        solana: () => [], creeSolana: async () => null };
+      window.ethereum = { isMetaMask: true, request: async (a) => {
+        const W = window.__w;
+        if (a.method === 'eth_accounts' || a.method === 'eth_requestAccounts') return [moi];
+        if (a.method === 'eth_chainId') return W.chaine;
+        if (a.method === 'net_version') return String(parseInt(W.chaine, 16));
+        if (a.method === 'wallet_switchEthereumChain') {
+          W.bascules.push(a.params[0].chainId); W.chaine = a.params[0].chainId; return null; }
+        if (a.method === 'eth_sendTransaction') {
+          W.envoyees.push(Object.assign({ sur: W.chaine }, a.params[0])); return hash; }
+        if (a.method === 'eth_estimateGas') return '0x7ed0';
+        if (a.method === 'eth_getTransactionCount') return '0x0';
+        if (a.method === 'eth_gasPrice') return '0xf4240';
+        if (a.method === 'eth_blockNumber') return '0x10';
+        if (a.method === 'eth_getTransactionByHash') return { hash, blockHash: '0x' + '11'.repeat(32),
+          blockNumber: '0x10', transactionIndex: '0x0', from: moi, to: moi, value: '0x0',
+          gas: '0x5208', gasPrice: '0xf4240', nonce: '0x0', input: '0x',
+          r: '0x' + '11'.repeat(32), s: '0x' + '22'.repeat(32), v: '0x1b', type: '0x0' };
+        if (a.method === 'eth_getTransactionReceipt') return { transactionHash: hash,
+          transactionIndex: '0x0', blockHash: '0x' + '11'.repeat(32), blockNumber: '0x10',
+          from: moi, to: moi, contractAddress: null, cumulativeGasUsed: '0x5208', gasUsed: '0x5208',
+          effectiveGasPrice: '0x3b9aca00', logs: [], logsBloom: '0x' + '00'.repeat(256),
+          status: '0x1', type: '0x0' };
+        if (a.method === 'eth_getBlockByNumber') return { number: '0x10', hash: '0x' + '11'.repeat(32),
+          parentHash: '0x' + '22'.repeat(32), timestamp: '0x66000000', transactions: [],
+          baseFeePerGas: '0x1', gasLimit: '0x1c9c380', gasUsed: '0x0', miner: moi, difficulty: '0x0',
+          extraData: '0x', nonce: '0x0', sha3Uncles: '0x' + '00'.repeat(32),
+          logsBloom: '0x' + '00'.repeat(256), transactionsRoot: '0x' + '00'.repeat(32),
+          stateRoot: '0x' + '00'.repeat(32), receiptsRoot: '0x' + '00'.repeat(32),
+          uncles: [], size: '0x0' };
+        return null; }, on: () => {}, removeListener: () => {} };
+    }, [MOI, HASH]);
+    await page.route('**/ethers*.umd.min.js', (r) => r.fulfill({
+      contentType: 'text/javascript', body: fs.readFileSync(ETHERS, 'utf8') }));
+    await page.route('**/privy-swoge.js*', (r) => r.fulfill({
+      contentType: 'text/javascript', body: '/* joue par l essai */' }));
+    await page.route('**/api.dexscreener.com/**', (r) => r.fulfill({
+      contentType: 'application/json', body: '{"pairs":[]}' }));
+    await page.route(/publicnode|drpc|robinhood|arbitrum|optimism|base-rpc|mainnet\.base/, async (r) => {
+      const q = JSON.parse(r.request().postData() || '{}');
+      const rh = /robinhood/.test(r.request().url());
+      const un = (m) => {
+        if (m.method === 'eth_chainId') return rh ? '0x1237' : '0x2105';
+        if (m.method === 'net_version') return rh ? '4663' : '8453';
+        if (m.method === 'eth_blockNumber') return '0x10';
+        if (m.method === 'eth_gasPrice') return mot(1000000n);
+        if (m.method === 'eth_getBalance') return mot(2000000000000000000n);
+        if (m.method === 'eth_call') return mot(0n);
+        if (m.method === 'eth_getLogs') return [];
+        if (m.method === 'eth_getTransactionReceipt') return { transactionHash: m.params[0],
+          transactionIndex: '0x0', blockHash: '0x' + '11'.repeat(32), blockNumber: '0x10',
+          from: '0x' + '0'.repeat(40), to: '0x' + '0'.repeat(40), contractAddress: null,
+          cumulativeGasUsed: '0x5208', gasUsed: '0x5208', effectiveGasPrice: '0x3b9aca00',
+          logs: [], logsBloom: '0x' + '00'.repeat(256), status: '0x1', type: '0x0' };
+        return null; };
+      const rep = (m) => ({ jsonrpc: '2.0', id: m.id, result: un(m) });
+      await r.fulfill({ contentType: 'application/json',
+        body: JSON.stringify(Array.isArray(q) ? q.map(rep) : rep(q)) });
+    });
+    await page.route('**/api.relay.link/**', async (r) => {
+      const u = r.request().url();
+      if (u.indexOf('/intents/status') >= 0)
+        return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ status: 'success' }) });
+      const c = JSON.parse(r.request().postData() || '{}');
+      w.devis = { de: c.originChainId, vers: c.destinationChainId,
+                  cur: c.destinationCurrency, montant: c.amount };
+      const dedans = BigInt(c.amount);
+      const sortie = dedans * 100000000n / 1000000n;
+      await r.fulfill({ contentType: 'application/json', body: JSON.stringify({
+        requestId: '0xfeed',
+        steps: [{ id: 'deposit', kind: 'transaction', items: [{
+          data: { to: '0x4cd00e387622c35bddb9b4c962c136462338bc31', value: c.amount,
+                  data: '0x49290c1c', chainId: c.originChainId },
+          check: { endpoint: '/intents/status?requestId=0xfeed', method: 'GET' } }] }],
+        fees: { gas: { amount: '40000000000000' }, relayer: { amount: '30000000000000' } },
+        details: { timeEstimate: 2, totalImpact: { percent: '-3.17' },
+                   currencyIn: { amount: c.amount, amountFormatted: '0' },
+                   currencyOut: { amount: String(sortie),
+                                  minimumAmount: String(sortie * 98n / 100n),
+                                  amountFormatted: '0' } } }) });
+    });
+    await page.goto('http://127.0.0.1:' + port + '/swoge_wallet.html',
+                    { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(3000);
+    await page.evaluate(() => document.querySelector('#pied [data-va="ecSwap"]').click());
+    await page.waitForTimeout(600);
+
+    const lit = () => page.evaluate(() => ({
+      chaine: (document.getElementById('swChaineNom') || {}).textContent,
+      lab: (document.getElementById('swDeL') || {}).textContent,
+      paye: (document.querySelector('.wl-pick[data-pour="swDe"] .tx b') || {}).textContent,
+      fige: !!document.querySelector('.wl-pick[data-pour="swDe"].fige'),
+      options: [...document.querySelectorAll('#swDe option')].map((o) => o.value),
+      vers: (document.getElementById('swVers') || {}).value,
+      solde: (document.getElementById('swSolde') || {}).textContent,
+      recu: (document.getElementById('swRecu') || {}).textContent,
+      route: (document.getElementById('swRoute') || {}).textContent,
+      impactT: (document.getElementById('swImpactT') || {}).textContent,
+      impact: (document.getElementById('swImpact') || {}).textContent,
+      mini: (document.getElementById('swMini') || {}).textContent,
+      temps: (document.getElementById('swTemps') || {}).textContent,
+      tempsVu: !document.getElementById('swTempsR').hidden,
+      bouton: (document.getElementById('swPartir') || {}).textContent,
+      note: (document.getElementById('swNote') || {}).textContent }));
+
+    /* ---- D ICI, RIEN NE CHANGE ----
+     * L echange local est le chemin de tous les jours : le casser pour
+     * gagner un raccourci serait un mauvais marche. */
+    let m = await lit();
+    console.log('   depuis ici : ' + JSON.stringify({ chaine: m.chaine, route: m.route, bouton: m.bouton }));
+    ok(/Robinhood/.test(m.chaine), 'l echange s ouvre sur la Robinhood Chain, comme avant');
+    ok(/Uniswap|then/.test(m.route),
+       'et il cote toujours sur les piscines d ici (' + m.route + ')');
+    ok(m.bouton === 'Swap' && !m.fige,
+       'le bouton dit « Swap » et les deux jetons se choisissent');
+
+    /* ---- ON CHOISIT UNE AUTRE CHAINE ---- */
+    await page.click('#swChaineB');
+    await page.waitForTimeout(400);
+    const listeCh = await page.evaluate(() =>
+      [...document.querySelectorAll('#poChL [data-ch]')].map((b) => b.dataset.ch));
+    ok(listeCh.length >= 8,
+       'la meme feuille que le pont sert a choisir la chaine (' + listeCh.length + ' chaines)');
+    await page.evaluate(() => {
+      const b = [...document.querySelectorAll('#poChL [data-ch]')].find((x) => /Base/.test(x.textContent));
+      b.click();
+    });
+    await page.waitForTimeout(800);
+    m = await lit();
+    console.log('   depuis Base : ' + JSON.stringify({ lab: m.lab, paye: m.paye, options: m.options,
+      route: m.route, bouton: m.bouton, impactT: m.impactT, solde: m.solde }));
+    ok(m.bouton === 'Buy', 'l ecran devient un ACHAT, pas un echange (« ' + m.bouton + ' »)');
+    ok(/Base/.test(m.lab), 'et il dit sur quelle chaine on paie (« ' + m.lab + ' »)');
+    /* ---- ON NE PROPOSE PAS UN JETON QUI N EXISTE PAS LA-BAS ----
+     * Le relayeur prend de l ether sur Base, pas du $SWOGE qui n y est pas.
+     * Laisser choisir puis refuser apres coup, c est un piege. */
+    ok(m.options.length === 1 && m.options[0] === 'ch8453',
+       'la piece a payer est celle de la chaine, et elle seule ('
+       + m.options.join(', ') + ')');
+    ok(m.fige, 'le choix est visiblement fige — un menu qui ne s ouvre pas passe pour casse');
+    ok(/2 ETH/.test(m.solde), 'et le solde montre est celui de Base (' + m.solde + ')');
+    ok(m.tempsVu, 'une ligne annonce le delai d arrivee, qui n existe pas sur un echange local');
+
+    /* ---- LE DEVIS DEMANDE LE BON JETON ----
+     * C est LA mesure qui compte : si la monnaie de sortie demandee n est pas
+     * le contrat du jeton choisi, le joueur signerait un achat d autre chose
+     * en lisant un ecran parfaitement coherent. */
+    await page.evaluate(() => { const sel = document.getElementById('swVers');
+      sel.value = 'swoge'; sel.dispatchEvent(new Event('change')); });
+    await page.waitForTimeout(400);
+    await page.fill('#swMontant', '0.01');
+    await page.waitForTimeout(1600);
+    m = await lit();
+    console.log('   devis : ' + JSON.stringify({ recu: m.recu, impact: m.impact, temps: m.temps })
+      + ' / demande : ' + JSON.stringify(w.devis));
+    ok(!!w.devis && w.devis.de === 8453 && w.devis.vers === 4663,
+       'le relayeur est interroge DE Base VERS la Robinhood Chain ('
+       + JSON.stringify(w.devis && { de: w.devis.de, vers: w.devis.vers }) + ')');
+    ok(!!w.devis && /^0x8a166Fb41Cd659a0a43396272FF73973Ce29F817$/i.test(w.devis.cur),
+       'et la monnaie de sortie demandee est le CONTRAT du $SWOGE, pas l ether ('
+       + (w.devis || {}).cur + ')');
+    ok(/SWOGE/.test(m.recu) && !/ETH/.test(m.recu),
+       'ce qui s affiche est bien du $SWOGE (' + m.recu + ')');
+    ok(/SWOGE/.test(m.mini), 'et le minimum garanti aussi (' + m.mini + ')');
+    /* ---- LE COUT EST NOMME POUR CE QU IL EST ----
+     * Il contient le pont EN PLUS de l impact de piscine. L appeler « price
+     * impact » ferait juger la piscine sur un chiffre qui n est pas le sien. */
+    ok(/Total cost/i.test(m.impactT),
+       'le cout n est plus intitule « price impact » : il contient aussi le pont ('
+       + m.impactT + ')');
+    ok(/3\.17/.test(m.impact), 'et il vaut ce que le relayeur annonce (' + m.impact + ')');
+    ok(/bridge fee/i.test(m.note),
+       'la note l explique en toutes lettres : « ' + m.note.slice(0, 80) + ' »');
+
+    /* ---- ET LA SIGNATURE PART DE LA-BAS ----
+     * Signer ici enverrait de l ether au contrat du relayeur SUR LA
+     * ROBINHOOD CHAIN, ou il n existe pas. 0x2105 = 8453. */
+    await page.click('#swPartir');
+    await page.waitForTimeout(4000);
+    const f = await page.evaluate(() => ({ bascules: window.__w.bascules,
+      envoyees: window.__w.envoyees.map((x) => x.sur),
+      note: document.getElementById('swNote').textContent }));
+    console.log('   achat : ' + JSON.stringify(f));
+    ok(f.bascules.length === 1 && f.bascules[0] === '0x2105',
+       'le portefeuille bascule SUR BASE avant de signer (' + JSON.stringify(f.bascules) + ')');
+    ok(f.envoyees.length === 1 && f.envoyees[0] === '0x2105',
+       'et la transaction part bien de la (' + JSON.stringify(f.envoyees) + ')');
+    ok(/arrived on/i.test(f.note),
+       'la page dit que c est arrive, une fois le relayeur confirme : « '
+       + f.note.slice(0, 70) + ' »');
+
+    /* ---- ET L ACHAT LAISSE UNE TRACE ----
+     * Ce qui arrive ici est pose par le relayeur, sans transfert signe par
+     * nous : sans cette inscription, l achat n apparaitrait NULLE PART. */
+    await page.evaluate(() => document.querySelector('#pied [data-va="ecActivite"]').click());
+    await page.waitForTimeout(2500);
+    const act = await page.evaluate(() =>
+      [...document.querySelectorAll('#acvCorps .wl-jeton')].map((b) => ({
+        t: b.querySelector('.nom b').textContent,
+        s: b.querySelector('.nom small').textContent })));
+    console.log('   activity : ' + JSON.stringify(act.slice(0, 2)));
+    const tr = act.filter((x) => /Bought/.test(x.t))[0];
+    ok(!!tr, 'l achat est dans l historique');
+    ok(!!tr && /SWOGE/.test(tr.t), 'en disant CE QU on a achete (' + (tr || {}).t + ')');
+    ok(!!tr && /Base/.test(tr.s), 'et d ou on l a paye (' + (tr || {}).s + ')');
+
+    /* ---- LE CHOIX SE RETIENT ---- */
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(2800);
+    await page.evaluate(() => document.querySelector('#pied [data-va="ecSwap"]').click());
+    await page.waitForTimeout(600);
+    const apres = await page.evaluate(() => (document.getElementById('swChaineNom') || {}).textContent);
+    ok(/Base/.test(apres),
+       'la chaine choisie tient apres un rechargement — qui paie toujours depuis Base ne le '
+       + 'rechoisit pas a chaque visite (' + apres + ')');
+
+    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
+    await page.close();
+  }
+
   console.log('\n-- le montant, pendant qu on le tape --');
   {
     const MOI = '0x00000000000000000000000000000000000a11ce';

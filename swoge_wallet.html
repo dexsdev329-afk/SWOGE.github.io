@@ -68,7 +68,7 @@
      A savoir : cela ne sauve pas la page DEJA en cache chez quelqu'un, qui ne
      contient pas ces lignes. Ce garde-fou vaut a partir de celle-ci. -->
 <script>
-var MARQUE_PAGE = '6cfab8e2';
+var MARQUE_PAGE = '4749caa9';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -554,6 +554,25 @@ body{
 .wl-pontJ .tx{ display:flex; flex-direction:column; gap:2px; min-width:0 }
 .wl-pontJ .tx b{ font:800 14px/1.1 'Archivo',sans-serif }
 .wl-pontJ .tx small{ font:400 11.5px/1.2 'Space Mono',monospace; color:var(--doux) }
+/* Le cote qui n'est pas la Robinhood Chain se CHOISIT : il a l'air d'un
+   bouton, sans quoi personne ne devine qu'il en est un. */
+.wl-pontJ.choix{ width:100%; text-align:left; cursor:pointer; font:inherit;
+  color:var(--texte); background:var(--nuit); border:1px solid var(--bord);
+  border-radius:12px; padding:8px 10px }
+.wl-pontJ.choix:hover{ border-color:var(--accent) }
+.wl-pontJ .fl{ margin-left:auto; color:var(--doux); font-size:12px; flex:0 0 auto }
+/* La liste des chaines : une feuille, comme la connexion. */
+.wl-chl{ display:flex; flex-direction:column; gap:2px; max-height:52vh; overflow-y:auto }
+.wl-chl button{
+  display:flex; align-items:center; gap:11px; width:100%; text-align:left;
+  padding:10px; border:0; border-radius:12px; background:none; cursor:pointer;
+  color:var(--texte); font:inherit;
+}
+.wl-chl button:hover{ background:var(--nuit) }
+.wl-chl button.on{ background:var(--carte2) }
+.wl-chl img{ width:30px; height:30px; border-radius:50%; flex:0 0 auto }
+.wl-chl b{ font:700 13.5px/1.1 'Archivo',sans-serif }
+.wl-chl small{ display:block; font:400 11px/1.2 'Space Mono',monospace; color:var(--doux) }
 
 .wl-sens{ display:grid; grid-template-columns:1fr 1fr; gap:6px; padding:5px;
   background:var(--carte); border:1px solid var(--bord); border-radius:14px;
@@ -1694,6 +1713,18 @@ body{
     </div>
   </div>
 
+  <!-- la liste des chaines du pont -->
+  <div class="wl-voile" id="poVoile" hidden>
+    <div class="wl-feuille">
+      <h2>Bridge from</h2>
+      <p class="wl-note" id="poChTitre">Pick the chain your funds are on.</p>
+      <div style="height:10px"></div>
+      <div class="wl-chl" id="poChL"></div>
+      <div style="height:8px"></div>
+      <button class="wl-b vide" type="button" id="poChFermer">Cancel</button>
+    </div>
+  </div>
+
   <!-- la revue avant signature -->
   <div class="wl-voile" id="voileRevue" hidden>
     <div class="wl-feuille">
@@ -1824,16 +1855,65 @@ var CHAINE = { id:4663, hex:'0x1237', nom:'Robinhood Chain',
  */
 var ETH_AFF = 'ETH (RH)';
 
-/* ---- ET L'AUTRE ETH, CELUI D'ETHEREUM ----
- * Le portefeuille en connait deux depuis qu'il fait le pont. Celui-ci se
- * declare ici, avec la chaine dont il vient, et non au milieu du pont : la
- * liste des jetons a besoin de lui bien avant.
- * Deux fournisseurs : le premier repond, le second existe pour le jour ou il
- * ne repond plus. Tous deux verifies avec l'en-tete CORS qu'un navigateur
- * exige — sans elle la lecture echoue en silence depuis une page web. */
-var L1 = { id:1, hex:'0x1', nom:'Ethereum', sym:'ETH',
-  rpc:['https://ethereum-rpc.publicnode.com', 'https://eth.drpc.org'],
-  scan:'https://etherscan.io' };
+/* ---- LES CHAINES D'OU L'ON PEUT VENIR ----
+ *
+ * Le pont n'allait qu'entre Ethereum et la Robinhood Chain. Or sur les
+ * soixante-deux chaines que le relayeur dessert, CINQUANTE-QUATRE sont des
+ * chaines EVM : notre chemin de signature les couvre deja toutes — meme
+ * `ethers`, meme signataire, meme bascule de reseau. Les ouvrir n'est donc pas
+ * une architecture, c'est ce tableau.
+ *
+ * Chacune a ete essayee, dans les DEUX sens, avant d'entrer ici : une route
+ * qui existe sur le papier et qui refuse le premier devis ne vaut rien.
+ * Mesures sur environ vingt-cinq dollars, vers la Robinhood Chain puis
+ * retour :
+ *
+ *     Ethereum   -0,17 %  /  -0,32 %
+ *     Base       -0,18 %  /  -0,18 %
+ *     Arbitrum   -0,18 %  /  -0,19 %
+ *     Optimism   -0,18 %  /  -0,18 %
+ *     BNB        -0,93 %  /  -1,13 %
+ *     Polygon    -0,71 %  /  -1,00 %
+ *     Avalanche  -1,08 %  /  -0,63 %
+ *
+ * Les quatre premieres sont en ether des deux cotes : c'est un simple
+ * transport. Les trois dernieres changent d'actif au passage — c'est un
+ * echange, et cela se paie. La page affiche le chiffre a chaque devis, elle
+ * ne demande a personne de se souvenir de ce tableau.
+ *
+ * Deux fournisseurs par chaine : le premier repond, le second existe pour le
+ * jour ou il ne repond plus. Tous verifies avec l'en-tete CORS qu'un
+ * navigateur exige — sans elle la lecture echoue en silence depuis une page. */
+var CHAINES_PONT = [
+  { id:1,     nom:'Ethereum',  sym:'ETH',  logo:'img/wallet/ch/ethereum.webp',
+    rpc:['https://ethereum-rpc.publicnode.com', 'https://eth.drpc.org'],
+    scan:'https://etherscan.io' },
+  { id:8453,  nom:'Base',      sym:'ETH',  logo:'img/wallet/ch/base.webp',
+    rpc:['https://base-rpc.publicnode.com', 'https://mainnet.base.org'],
+    scan:'https://basescan.org' },
+  { id:42161, nom:'Arbitrum',  sym:'ETH',  logo:'img/wallet/ch/arbitrum.webp',
+    rpc:['https://arbitrum-one-rpc.publicnode.com', 'https://arb1.arbitrum.io/rpc'],
+    scan:'https://arbiscan.io' },
+  { id:10,    nom:'Optimism',  sym:'ETH',  logo:'img/wallet/ch/optimism.webp',
+    rpc:['https://optimism-rpc.publicnode.com', 'https://mainnet.optimism.io'],
+    scan:'https://optimistic.etherscan.io' },
+  { id:56,    nom:'BNB Chain', sym:'BNB',  logo:'img/wallet/ch/bnb.webp',
+    rpc:['https://bsc-rpc.publicnode.com'],
+    scan:'https://bscscan.com' },
+  { id:137,   nom:'Polygon',   sym:'POL',  logo:'img/wallet/ch/polygon.webp',
+    rpc:['https://polygon-bor-rpc.publicnode.com'],
+    scan:'https://polygonscan.com' },
+  { id:43114, nom:'Avalanche', sym:'AVAX', logo:'img/wallet/ch/avalanche.webp',
+    rpc:['https://avalanche-c-chain-rpc.publicnode.com'],
+    scan:'https://snowtrace.io' }
+];
+function chainePar(id){
+  for(var i=0;i<CHAINES_PONT.length;i++) if(CHAINES_PONT[i].id === id) return CHAINES_PONT[i];
+  return null;
+}
+/* Ethereum garde un nom a lui : c'est la chaine du jeton « ETH » de la liste
+   des soldes, et plusieurs endroits la designent nommement. */
+var L1 = CHAINES_PONT[0];
 
 var WETH     = '0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73';
 var SWOGE    = '0x8a166Fb41Cd659a0a43396272FF73973Ce29F817';
@@ -3228,7 +3308,13 @@ function peintAccueil(){
 document.addEventListener('click', function(ev){
   var b = ev.target.closest('[data-jeton]');
   if(!b) return;
-  if(b.dataset.pont){ sensPont = 'depot'; va('ecPont'); return; }
+  if(b.dataset.pont){
+    /* Cette ligne EST celle d'Ethereum : le pont doit s'ouvrir sur elle, pas
+       sur la derniere chaine choisie. */
+    sensPont = 'depot'; chainePont = L1.id;
+    try{ localStorage.setItem('swogePontChaine', String(L1.id)); }catch(e){}
+    va('ecPont'); return;
+  }
   ficheJeton(b.dataset.jeton);
 });
 
@@ -5358,7 +5444,11 @@ function journalPhrase(e){
   if(e.k === 'autorisation')       return 'Allowing the router to spend your ' + (j?j.sym:'token');
   if(e.k === 'depot')              return 'Depositing ' + m(e.montant,'swoge') + ' into the casino';
   if(e.k === 'retrait')            return 'Claiming your casino withdrawal';
-  if(e.k === 'pont')               return 'Bridging ' + m(e.montant, e.cle) + ' to ' + (e.versNom || 'the other chain');
+  if(e.k === 'pont'){
+    var q = '—';
+    try{ q = nombre(ethers.BigNumber.from(e.montant), 18) + (e.sym ? ' ' + e.sym : ''); }catch(x){}
+    return 'Bridging ' + q + ' to ' + (e.versNom || 'the other chain');
+  }
   return 'Sending ' + m(e.montant, e.cle) + ' to ' + court(e.vers);
 }
 
@@ -5572,7 +5662,8 @@ function ligneJournal(e){
   if(e.k === 'pont'){
     var recu = null;
     try{ recu = e.recu ? nombre(ethers.BigNumber.from(e.recu), 18) : null; }catch(x){}
-    sous = 'From ' + (e.deNom || '?') + (recu ? ' · received ' + recu : '');
+    sous = 'From ' + (e.deNom || '?')
+         + (recu ? ' · received ' + recu + (e.symRecu ? ' ' + e.symRecu : '') : '');
   }
   if(att)  sous = e.k === 'pont'
     ? 'Waiting for ' + (e.deNom || 'the chain') + ' — sent from this device'
@@ -5586,11 +5677,12 @@ function ligneJournal(e){
   var val = v === null ? '—' : signe + nombre(v, j.dec);
   var couleur = (att || rate || e.k === 'autorisation') ? 'var(--doux)'
               : e.k === 'retrait' ? 'var(--vert)' : 'var(--rouge)';
+  var piece = e.logo || j.logo, sigle = e.sym || j.sym;
   return '<div class="wl-jeton" style="cursor:default'+(att?';opacity:.75':'')+'">'
-   +   (j.logo ? '<img src="'+j.logo+'" alt="">' : '<span class="wl-eth">'+j.sym.slice(0,2)+'</span>')
+   +   (piece ? '<img src="'+piece+'" alt="">' : '<span class="wl-eth">'+sigle.slice(0,2)+'</span>')
    +   '<span class="nom"><b>'+titre+(att?' …':'')+'</b><small>'+sous+'</small></span>'
    +   '<span class="val"><b style="color:'+couleur+(rate?';text-decoration:line-through':'')+'">'+val+'</b>'
-   +     '<small>'+j.sym+'</small></span>'
+   +     '<small>'+sigle+'</small></span>'
    + '</div>';
 }
 $('btActRelire').addEventListener('click', chargeActivite);
@@ -5682,23 +5774,34 @@ var ZERO_ADR = '0x0000000000000000000000000000000000000000';
    et -28 % sur 0,0001). */
 var IMPACT_PONT = 1;
 var sensPont = 'depot';
-var lecteurL1 = null, iRpcL1 = 0, devisJeton = 0;
+var chainePont = L1.id;                 /* l'autre bout du pont, choisi par le joueur */
+var devisJeton = 0;
+var LECTEURS = {}, RANG_RPC = {};
 
-function lecL1(){
-  if(!lecteurL1)
-    lecteurL1 = new ethers.providers.StaticJsonRpcProvider(L1.rpc[iRpcL1], L1.id);
-  return lecteurL1;
+/* Un lecteur par chaine, garde d'un appel a l'autre : en refabriquer un a
+   chaque devis rouvrirait une connexion pour rien. */
+function lecChaine(c){
+  var k = String(c.id);
+  if(!LECTEURS[k]){
+    var i = RANG_RPC[k] || 0;
+    LECTEURS[k] = new ethers.providers.StaticJsonRpcProvider(c.rpc[i], c.id);
+  }
+  return LECTEURS[k];
 }
+function lecL1(){ return lecChaine(L1); }
 /* Le second fournisseur n'existe que s'il sert : on n'y passe qu'apres un
    echec, et une seule fois — boucler entre deux RPC muets ferait attendre le
    joueur deux fois plus longtemps pour la meme reponse. */
-function relaiL1(){
-  if(iRpcL1 + 1 < L1.rpc.length){ iRpcL1++; lecteurL1 = null; return true; }
+function relaiChaine(c){
+  var k = String(c.id), i = RANG_RPC[k] || 0;
+  if(i + 1 < c.rpc.length){ RANG_RPC[k] = i + 1; delete LECTEURS[k]; return true; }
   return false;
 }
-function pontDe(){   return sensPont === 'depot' ? L1 : CHAINE; }
-function pontVers(){ return sensPont === 'depot' ? CHAINE : L1; }
-function lecPont(c){ return c.id === L1.id ? lecL1() : lec(); }
+function relaiL1(){ return relaiChaine(L1); }
+function autrePont(){ return chainePar(chainePont) || L1; }
+function pontDe(){   return sensPont === 'depot' ? autrePont() : CHAINE; }
+function pontVers(){ return sensPont === 'depot' ? CHAINE : autrePont(); }
+function lecPont(c){ return c.id === CHAINE.id ? lec() : lecChaine(c); }
 
 /* ---- LE DEVIS ----
  * Il vient de Relay, en direct, jamais garde : le taux depend du montant et
@@ -5764,14 +5867,65 @@ function peintSensPont(){
      jour ou l'une des deux change de dessin, les deux endroits suivent. */
   posePiecePont($('poDeJ'),   de);
   posePiecePont($('poVersJ'), vers);
+  /* Un seul des deux cotes se choisit : l'autre est toujours la Robinhood
+     Chain, puisque c'est la que vit le jeu. Rendre les deux choisissables
+     laisserait composer un pont qui ne mene pas au casino. */
+  marqueChoix($('poDeJ'),   de.id   !== CHAINE.id);
+  marqueChoix($('poVersJ'), vers.id !== CHAINE.id);
 }
+function marqueChoix(boite, oui){
+  if(!boite) return;
+  boite.classList.toggle('choix', !!oui);
+  var f = boite.querySelector('.fl');
+  if(oui && !f){
+    f = document.createElement('i');
+    f.className = 'fl'; f.setAttribute('aria-hidden','true');
+    f.textContent = '\u25BE';
+    boite.appendChild(f);
+  } else if(!oui && f) f.remove();
+}
+
+/* ---- CHOISIR LA CHAINE ---- */
+function peintChoixChaine(){
+  var c = $('poChL'); if(!c) return;
+  var h = '';
+  for(var i=0;i<CHAINES_PONT.length;i++){
+    var x = CHAINES_PONT[i];
+    h += '<button type="button" data-ch="'+x.id+'"'+(x.id===chainePont?' class="on"':'')+'>'
+       +   '<img src="'+x.logo+'" alt="">'
+       +   '<span><b>'+x.nom+'</b><small>'+x.sym+'</small></span>'
+       + '</button>';
+  }
+  c.innerHTML = h;
+  $('poChTitre').textContent = sensPont === 'depot'
+    ? 'Pick the chain your funds are on.'
+    : 'Pick the chain to send them to.';
+  var t = $('poVoile').querySelector('h2');
+  if(t) t.textContent = sensPont === 'depot' ? 'Bridge from' : 'Bridge to';
+}
+function ouvreChoixChaine(){ peintChoixChaine(); $('poVoile').hidden = false; }
+function fermeChoixChaine(){ $('poVoile').hidden = true; }
+if($('poChFermer')) $('poChFermer').addEventListener('click', fermeChoixChaine);
+if($('poVoile')) $('poVoile').addEventListener('click', function(ev){
+  if(ev.target === this) return fermeChoixChaine();
+  var b = ev.target.closest && ev.target.closest('[data-ch]');
+  if(!b) return;
+  var id = parseInt(b.dataset.ch, 10);
+  fermeChoixChaine();
+  if(id === chainePont) return;
+  chainePont = id;
+  try{ localStorage.setItem('swogePontChaine', String(id)); }catch(e){}
+  videPont(); $('poNote').textContent = '';
+  majPont();
+});
 function posePiecePont(boite, c){
   if(!boite) return;
-  var j = J(c.id === L1.id ? 'ethL1' : 'eth');
+  /* La piece de la CHAINE. La Robinhood Chain garde celle de son ether, qui
+     porte deja son enseigne ; les autres portent la leur. */
+  var src = (c.id === CHAINE.id) ? (J('eth') || {}).logo : c.logo;
   var im = boite.querySelector('img');
-  if(j && j.logo){ im.src = j.logo; im.hidden = false; }
-  else im.hidden = true;
-  boite.querySelector('b').textContent = j ? j.sym : c.sym;
+  if(src){ im.src = src; im.hidden = false; } else im.hidden = true;
+  boite.querySelector('b').textContent = ETH_AFF_DE(c);
   boite.querySelector('small').textContent = c.nom;
 }
 
@@ -5787,7 +5941,7 @@ async function soldePont(){
       $('poSolde').textContent = nombre(b, 18) + ' ' + ETH_AFF_DE(c);
       return b;
     }catch(e){
-      if(c.id === L1.id && relaiL1()) continue;
+      if(c.id !== CHAINE.id && relaiChaine(c)) continue;
       /* Jamais zero : un solde non lu n'est pas un solde nul. */
       $('poSolde').textContent = 'unknown';
       return null;
@@ -5795,7 +5949,10 @@ async function soldePont(){
   }
   return null;
 }
-function ETH_AFF_DE(c){ return c.id === L1.id ? 'ETH' : ETH_AFF; }
+/* Chaque chaine a sa monnaie : de l'ether sur quatre d'entre elles, mais du
+   BNB, du POL ou de l'AVAX sur les autres. Ecrire « ETH » partout ferait lire
+   au joueur qu'il envoie de l'ether alors qu'il envoie autre chose. */
+function ETH_AFF_DE(c){ return c.id === CHAINE.id ? ETH_AFF : (c.sym || 'ETH'); }
 
 async function devisPont(){
   var mien = ++devisJeton;
@@ -5862,11 +6019,14 @@ async function assureChaineId(id, nom){
     await eth.request({ method:'wallet_switchEthereumChain', params:[{ chainId: '0x' + id.toString(16) }] });
   }catch(err){
     if(err && (err.code === 4902 || /Unrecognized chain/i.test(String(err.message || '')))){
+      var cc = (id === CHAINE.id) ? { sym:CHAINE.sym, rpc:[CHAINE.rpc], scan:CHAINE.scan }
+                                  : chainePar(id);
+      if(!cc) throw err;
       await eth.request({ method:'wallet_addEthereumChain', params:[{
         chainId:'0x' + id.toString(16), chainName:nom,
-        nativeCurrency:{ name:'Ether', symbol:'ETH', decimals:18 },
-        rpcUrls: id === L1.id ? [L1.rpc[0]] : [CHAINE.rpc],
-        blockExplorerUrls:[ id === L1.id ? L1.scan : CHAINE.scan ] }] });
+        nativeCurrency:{ name:cc.sym || 'Ether', symbol:cc.sym || 'ETH', decimals:18 },
+        rpcUrls:[cc.rpc[0]],
+        blockExplorerUrls:[cc.scan] }] });
     } else if(/UnsupportedChainId|does not support the requested chain/i.test(String((err && err.message) || ''))){
       throw new Error('Your email wallet cannot sign on ' + nom + ' yet. '
         + 'Use a browser wallet for this direction, or bridge the other way.');
@@ -5946,9 +6106,14 @@ async function partPont(){
        laisserait aucune trace dans l'historique.
        `sur` dit sur QUELLE chaine la transaction a ete signee : c'est ce qui
        permet de l'attendre au bon endroit et d'ouvrir le bon explorateur. */
-    journalAjoute({ h:tx.hash, k:'pont', cle:(de.id === L1.id ? 'ethL1' : 'eth'),
+    journalAjoute({ h:tx.hash, k:'pont', cle:(de.id === CHAINE.id ? 'eth' : 'ethL1'),
                     montant:entree.toString(), recu:r.recu.toString(),
-                    sur:de.id, versNom:vers.nom, deNom:de.nom });
+                    sur:de.id, versNom:vers.nom, deNom:de.nom,
+                    /* La piece et le symbole de la chaine de DEPART : depuis
+                       qu'on peut venir de sept chaines, la liste des jetons
+                       n'en connait plus qu'une. */
+                    logo:(de.id === CHAINE.id ? (J('eth')||{}).logo : de.logo),
+                    sym:ETH_AFF_DE(de), symRecu:ETH_AFF_DE(vers) });
 
     dis('Sent — waiting for ' + de.nom + '…');
     await tx.wait();
@@ -6035,12 +6200,24 @@ async function maxPont(){
 }
 
 function majPont(){
+  /* Le choix se garde : qui vient de Base y revient, et le retaper a chaque
+     ouverture serait le lui faire oublier. */
+  try{
+    var g = parseInt(localStorage.getItem('swogePontChaine') || '', 10);
+    if(g && chainePar(g)) chainePont = g;
+  }catch(e){}
   peintSensPont();
   poseDetailPont((function(){ try{ return localStorage.getItem(CLE_PONT_DETAIL) === '1'; }catch(e){ return false; } })(), false);
   soldePont();
   devisPont();
 }
 
+['poDeJ','poVersJ'].forEach(function(id){
+  var b = $(id);
+  if(b) b.addEventListener('click', function(){
+    if(this.classList.contains('choix')) ouvreChoixChaine();
+  });
+});
 if($('poSens')) $('poSens').addEventListener('click', function(ev){
   var b = ev.target.closest('button[data-sens]');
   if(!b || b.dataset.sens === sensPont) return;

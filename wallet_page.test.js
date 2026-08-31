@@ -2810,11 +2810,20 @@ function servir(q, r, f, type) {
       await r.fulfill({ contentType: 'application/json', body: JSON.stringify(corps) });
     });
     /* Ethereum */
-    await page.route(/(ethereum-rpc\.publicnode\.com|eth\.drpc\.org)/, async (r) => {
+    /* Sept chaines d origine desormais : le banc les joue toutes, sinon un
+       repli partirait sur le vrai reseau et l ecran resterait sur « … ». */
+    await page.route(/(ethereum-rpc|eth\.drpc|base-rpc|mainnet\.base|arbitrum-one-rpc|arb1\.arbitrum|optimism-rpc|mainnet\.optimism|bsc-rpc|polygon-bor-rpc|avalanche-c-chain-rpc)/, async (r) => {
       const q = JSON.parse(r.request().postData() || '{}');
+      const u = r.request().url();
+      const idc = /base-rpc|mainnet\.base/.test(u) ? 8453
+                : /arbitrum-one-rpc|arb1\.arbitrum/.test(u) ? 42161
+                : /optimism-rpc|mainnet\.optimism/.test(u) ? 10
+                : /bsc-rpc/.test(u) ? 56
+                : /polygon-bor-rpc/.test(u) ? 137
+                : /avalanche-c-chain-rpc/.test(u) ? 43114 : 1;
       const un = (m) => {
-        if (m.method === 'eth_chainId') return '0x1';
-        if (m.method === 'net_version') return '1';
+        if (m.method === 'eth_chainId') return '0x' + idc.toString(16);
+        if (m.method === 'net_version') return String(idc);
         if (m.method === 'eth_blockNumber') return '0x18ac99b';
         if (m.method === 'eth_getBalance') return w.soldeL1 === null ? null : enMot(w.soldeL1);
         return null;
@@ -2834,6 +2843,7 @@ function servir(q, r, f, type) {
         return r.fulfill({ status: 400, contentType: 'application/json',
                            body: JSON.stringify({ message: 'No route for that amount.' }) });
       const c = JSON.parse(r.request().postData() || '{}');
+      w.dernierDevis = { de: c.originChainId, vers: c.destinationChainId };
       const dedans = BigInt(c.amount);
       /* Les frais sont presque FIXES : c est ce qui fait qu un petit montant
          perd un gros pourcentage, et c est exactement la regle qu on veut
@@ -2885,6 +2895,7 @@ function servir(q, r, f, type) {
       montant: document.getElementById('poMontant').value,
       }; });
     const etatFaux = () => page.evaluate(() => window.__w);
+    const etatRelais = async () => w.dernierDevis;
 
     await page.goto('http://127.0.0.1:' + port + '/swoge_wallet.html', { waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(2600);
@@ -2953,6 +2964,82 @@ function servir(q, r, f, type) {
     ok(arrive.sens === 'Deposit' && /Ethereum/i.test(arrive.de),
        'et deja dans le bon sens : depuis Ethereum (' + arrive.sens + ' — ' + arrive.de + ')');
 
+    /* ---- ON CHOISIT LA CHAINE D OU L ON VIENT ----
+     *
+     * Cinquante-quatre des soixante-deux chaines du relayeur sont des chaines
+     * EVM : notre chemin de signature les couvre deja. Ce qui se mesure ici
+     * n est donc pas qu une liste existe — c est que le choix aille VRAIMENT
+     * jusqu au devis et jusqu a la chaine sur laquelle on signe. Se tromper la
+     * envoie de l argent au contrat du relayeur sur une chaine ou il n est
+     * pas. */
+    await page.evaluate(() => document.getElementById('poDeJ').click());
+    /* On OUVRE, puis on mesure. Lire `naturalWidth` dans le meme souffle que
+       le clic reviendrait a demander si une image est chargee avant que le
+       navigateur ait eu le temps de la demander — l essai echouerait sur son
+       propre empressement, pas sur un defaut. */
+    await page.waitForTimeout(900);
+    const chaines = await page.evaluate(() => ({
+      ouvert: !document.getElementById('poVoile').hidden,
+      liste: [...document.querySelectorAll('#poChL button')].map((b) => ({
+        nom: b.querySelector('b').textContent,
+        sym: b.querySelector('small').textContent,
+        logo: b.querySelector('img').getAttribute('src'),
+        charge: b.querySelector('img').naturalWidth > 0 })) }));
+    console.log('   chaines : ' + JSON.stringify(chaines.liste.map((x) => x.nom + '/' + x.sym)));
+    ok(chaines.ouvert, 'le bloc de la chaine s ouvre sur une liste');
+    ok(chaines.liste.length >= 7,
+       'qui propose les grandes chaines EVM (' + chaines.liste.length + ')');
+    ok(chaines.liste.every((x) => x.charge),
+       'chacune avec sa vignette, chargee — pas un carre vide');
+    ok(chaines.liste.some((x) => x.sym === 'BNB') && chaines.liste.some((x) => x.sym === 'ETH'),
+       'et chacune dit SA monnaie : toutes ne sont pas en ether ('
+       + [...new Set(chaines.liste.map((x) => x.sym))].join(', ') + ')');
+    /* Aucune ne doit etre la Robinhood Chain : c est l autre bout, toujours. */
+    ok(!chaines.liste.some((x) => /Robinhood/.test(x.nom)),
+       'la Robinhood Chain n y figure pas — elle est l autre bout, pas un choix');
+
+    /* ---- ET LE CHOIX VA JUSQU AU BOUT ---- */
+    await page.evaluate(() => {
+      const b = [...document.querySelectorAll('#poChL button')]
+        .find((x) => x.querySelector('b').textContent === 'Base');
+      b.click();
+    });
+    await page.waitForTimeout(900);
+    await page.fill('#poMontant', '0.03');
+    await page.waitForTimeout(1400);
+    let mb = await lit();
+    console.log('   sur Base : ' + JSON.stringify({ de: mb.pDe, devis: await page.evaluate(() => null) }));
+    ok(mb.pDe.chaine === 'Base', 'le devis se fait depuis Base (' + mb.pDe.chaine + ')');
+    ok(/base\.webp/.test(mb.pDe.logo || ''),
+       'avec la vignette de Base (' + String(mb.pDe.logo).split('/').pop() + ')');
+    const demande = await etatRelais();
+    ok(demande && demande.de === 8453 && demande.vers === 4663,
+       'et le relayeur a bien ete interroge de 8453 vers 4663 (' + JSON.stringify(demande) + ')');
+
+    /* La signature doit partir de Base, pas d Ethereum. */
+    await page.evaluate(() => { window.__w.bascules = []; window.__w.envoyees = []; });
+    await page.click('#poPartir');
+    await page.waitForTimeout(9000);
+    const fb = await etatFaux();
+    console.log('   signe depuis Base : ' + JSON.stringify({ bascules: fb.bascules,
+                 chaine: (fb.envoyees[0] || {}).surLaChaine }));
+    ok(fb.bascules.length === 1 && fb.bascules[0] === '0x2105',
+       'le portefeuille bascule sur Base (0x2105) avant de signer ('
+       + JSON.stringify(fb.bascules) + ')');
+    ok(fb.envoyees.length === 1 && fb.envoyees[0].surLaChaine === '0x2105',
+       'et la transaction part de Base (' + (fb.envoyees[0] || {}).surLaChaine + ')');
+
+    /* On revient a Ethereum pour la suite des mesures. */
+    await page.evaluate(() => {
+      document.getElementById('poDeJ').click();
+      const b = [...document.querySelectorAll('#poChL button')]
+        .find((x) => x.querySelector('b').textContent === 'Ethereum');
+      b.click();
+    });
+    await page.waitForTimeout(900);
+    await page.fill('#poMontant', '');
+    await page.waitForTimeout(600);
+
     /* ---- LE DEVIS ---- */
     await page.fill('#poMontant', '0.1');
     await page.waitForTimeout(1200);
@@ -2981,6 +3068,9 @@ function servir(q, r, f, type) {
      * signer la transaction du relayeur sur la mauvaise chaine. */
     await page.fill('#poMontant', '0.01');
     await page.waitForTimeout(1200);
+    /* Ardoise propre : le passage par Base, plus haut, a laisse sa bascule et
+       sa transaction. Sans cette remise a zero, on mesurerait les siennes. */
+    await page.evaluate(() => { window.__w.bascules = []; window.__w.envoyees = []; });
     await page.click('#poPartir');
     await page.waitForTimeout(6000);
     let f = await etatFaux();
@@ -2991,8 +3081,16 @@ function servir(q, r, f, type) {
        + (f.envoyees.length ? '' : ') — la page a dit : « ' + m.note.slice(0, 80) + ' »') + ')');
     ok(f.envoyees.length === 1 && f.envoyees[0].surLaChaine === '0x1237',
        'et elle est signee SUR LA ROBINHOOD CHAIN (' + (f.envoyees[0] || {}).surLaChaine + ')');
-    ok(f.bascules.length === 0,
-       'sans aucune bascule de chaine — on y etait deja (' + JSON.stringify(f.bascules) + ')');
+    /* ---- LA REGLE A CHANGE PARCE QUE LE PONT A PLUSIEURS ORIGINES ----
+     * Elle disait « aucune bascule — on y etait deja ». C etait vrai quand le
+     * portefeuille etait toujours sur la Robinhood Chain. Maintenant qu on
+     * peut venir de Base, revenir EST necessaire, et l interdire ferait
+     * signer le retrait sur Base — la ou le contrat du relayeur n existe pas.
+     * Ce qu il fallait proteger n est donc pas l absence de bascule : c est
+     * qu aucune bascule ne mene AILLEURS que sur la Robinhood Chain. */
+    ok(f.bascules.every((x) => x === '0x1237'),
+       'et si le portefeuille bascule, c est vers la Robinhood Chain et nulle part'
+       + ' ailleurs (' + JSON.stringify(f.bascules) + ')');
     ok(((f.envoyees[0] || {}).to || '').toLowerCase() === '0x4cd00e387622c35bddb9b4c962c136462338bc31',
        'elle va au contrat que le devis a donne, pas a une adresse ecrite en dur');
     ok(/arrived on Ethereum/i.test(m.note), 'et la page ne dit « arrive » qu apres le relayeur : « '
@@ -3050,8 +3148,9 @@ function servir(q, r, f, type) {
                  .map((x) => ({ sur: x.sur, de: x.deNom, vers: x.versNom })) };
     });
     console.log('   traces du pont : ' + JSON.stringify(trace));
-    ok(trace.lignes.length === 2,
-       'les DEUX passages du pont sont dans l historique (' + trace.lignes.length + ')');
+    ok(trace.lignes.length === 3,
+       'les TROIS passages du pont sont dans l historique — Ethereum, Base et le'
+       + ' retour (' + trace.lignes.length + ')');
     ok(trace.lignes.some((x) => /Bridged to Robinhood Chain/.test(x.titre))
        && trace.lignes.some((x) => /Bridged to Ethereum/.test(x.titre)),
        'chacun dit vers OU il est alle (' + trace.lignes.map((x) => x.titre).join(' | ') + ')');
@@ -3065,17 +3164,25 @@ function servir(q, r, f, type) {
        'et chacune dit d ou elle part (' + [versRH.sous, versL1.sous]
          .map((x) => String(x).slice(0, 42)).join(' | ') + ')');
     /* La piece aussi : celle de la chaine de DEPART, pas une au hasard. */
-    ok(/tok_eth_l1/.test(versRH.piece || '') && /tok_eth\.webp/.test(versL1.piece || ''),
-       'avec la piece de la chaine de depart ('
+    /* La vignette est celle de la CHAINE de depart, pas celle d un jeton :
+       depuis qu on peut venir de sept chaines, la liste des jetons n en
+       connait plus qu une. */
+    ok(/ch\/ethereum/.test(versRH.piece || '') && /tok_eth\.webp/.test(versL1.piece || ''),
+       'avec la vignette de la chaine de depart ('
        + [versRH.piece, versL1.piece].map((x) => String(x).split('/').pop()).join(' | ') + ')');
+    const depuisBase = trace.lignes.find((x) => /From Base|Waiting for Base/.test(x.sous));
+    ok(!!depuisBase && /ch\/base/.test(depuisBase.piece || ''),
+       'et celui parti de Base porte la sienne ('
+       + String((depuisBase || {}).piece).split('/').pop() + ')');
     ok(/^−/.test(versRH.val || '') && /^−/.test(versL1.val || ''),
        'et le montant compte comme un depart (' + versRH.val + ' | ' + versL1.val + ')');
     /* ---- ET SUR QUELLE CHAINE LA TRANSACTION A ETE SIGNEE ----
      * Sans cela, le depot serait attendu sur la Robinhood Chain alors qu il
      * est mine sur Ethereum : il resterait « en attente » pour toujours, et le
      * bandeau d accueil annoncerait une transaction en vol deja arrivee. */
-    ok(trace.journal.length === 2
-       && trace.journal.some((x) => x.sur === 1) && trace.journal.some((x) => x.sur === 4663),
+    ok(trace.journal.length === 3
+       && trace.journal.some((x) => x.sur === 1) && trace.journal.some((x) => x.sur === 4663)
+       && trace.journal.some((x) => x.sur === 8453),
        'et chaque trace retient SA chaine de depart, pour etre attendue au bon'
        + ' endroit (' + JSON.stringify(trace.journal.map((x) => x.sur)) + ')');
     await page.evaluate(() => {

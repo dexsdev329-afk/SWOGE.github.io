@@ -68,7 +68,7 @@
      A savoir : cela ne sauve pas la page DEJA en cache chez quelqu'un, qui ne
      contient pas ces lignes. Ce garde-fou vaut a partir de celle-ci. -->
 <script>
-var MARQUE_PAGE = 'e7b81455';
+var MARQUE_PAGE = 'f5df926e';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -513,21 +513,38 @@ body{
  * Trois boutons flottants sur le fond de la page se lisaient comme trois
  * choses sans rapport. Dans une carte, separes par un filet, ils se lisent
  * comme ce qu'ils sont : les trois choses qu'on peut faire de son solde. */
-.wl-actions{ display:grid; grid-template-columns:repeat(3,1fr); gap:0;
-  padding:10px 4px; margin:8px 0 0 }
+/* Quatre gestes depuis que le pont existe : la bulle se resserre pour que
+   les libelles tiennent sans passer a la ligne sur un cadre de 390. */
+.wl-actions{ display:grid; grid-template-columns:repeat(4,1fr); gap:0;
+  padding:10px 2px; margin:8px 0 0 }
 .wl-actions button{
   background:none; border:0; cursor:pointer; color:var(--accent); font:inherit;
   display:flex; flex-direction:column; align-items:center; gap:7px;
 }
 .wl-actions button + button{ border-left:1px solid var(--bord) }
-.wl-actions span.t{ font:700 12px/1 'Archivo',sans-serif; letter-spacing:.2px;
-  color:var(--accent) }
+.wl-actions span.t{ font:700 11.5px/1 'Archivo',sans-serif; letter-spacing:.1px;
+  color:var(--accent); white-space:nowrap }
 .wl-actions .bulle{
-  width:46px; height:46px; border-radius:50%;
+  width:42px; height:42px; border-radius:50%;
   background:var(--bulleFond); color:var(--bulleTx);
   display:flex; align-items:center; justify-content:center; font-size:19px;
   box-shadow:var(--bulleOmbre);
 }
+
+/* ---- LE SENS DU PONT ----
+   Deux boutons plutot qu'un interrupteur : « Deposit / Withdraw » se lit d'un
+   coup, alors qu'une fleche qui se retourne demande de se rappeler dans quel
+   etat on l'a laissee. Celui qui est actif est ECRIT, pas seulement colore —
+   la couleur seule ne se voit pas de tous les yeux. */
+.wl-sens{ display:grid; grid-template-columns:1fr 1fr; gap:6px; padding:5px;
+  background:var(--carte); border:1px solid var(--bord); border-radius:14px;
+  margin:0 0 12px }
+.wl-sens button{
+  padding:11px 8px; border-radius:10px; border:0; cursor:pointer;
+  background:none; color:var(--doux);
+  font:800 12.5px/1 'Archivo',sans-serif; letter-spacing:.3px;
+}
+.wl-sens button.on{ background:var(--accent); color:#fff }
 
 .wl-b{
   width:100%; padding:15px; border-radius:14px; border:0; cursor:pointer;
@@ -1206,6 +1223,7 @@ body{
         <button type="button" data-va="ecEnvoyer"><span class="bulle">&uarr;</span><span class="t">Send</span></button>
         <button type="button" data-va="ecRecevoir"><span class="bulle">&darr;</span><span class="t">Receive</span></button>
         <button type="button" data-va="ecSwap"><span class="bulle">&#8646;</span><span class="t">Swap</span></button>
+        <button type="button" data-va="ecPont"><span class="bulle">&#8693;</span><span class="t">Bridge</span></button>
       </div>
 
       <div class="wl-titre">ASSETS</div>
@@ -1380,6 +1398,60 @@ body{
       </div>
       <button class="wl-b" id="swPartir" type="button">Swap</button>
       <p class="wl-note" id="swNote"></p>
+    </div>
+  </section>
+
+  <!-- ============ LE PONT ============
+       ETH d'Ethereum vers la Robinhood Chain, et retour. Rien d'autre : pas
+       de jetons, pas d'autres chaines. Le pont CANONIQUE de la chaine met
+       6 j 8 h au retour — c'est la periode de contestation d'un rollup
+       optimiste, le temps qu'Ethereum laisse a quiconque pour prouver que
+       l'etat annonce est faux. On passe donc par un pont a LIQUIDITE : un
+       teneur de marche paie tout de suite avec son propre stock et attend
+       les six jours a notre place. Mesure faite : 2 s a l'aller, 7,5 s au
+       retour, pour 0,04 a 0,16 % sur 0,05 ETH.
+       Ce que cela change : pendant ces quelques secondes, on fait confiance
+       au relayeur. La page le DIT, au lieu de laisser croire que la chaine
+       elle-meme est devenue rapide. -->
+  <section class="wl-ecran" id="ecPont">
+    <div class="wl-tete">
+      <h1>Bridge</h1>
+      <button class="rond" type="button" data-va="ecAccueil" aria-label="Close">&times;</button>
+    </div>
+    <div class="wl-corps">
+      <div class="wl-sens" id="poSens" role="group" aria-label="Direction">
+        <button type="button" class="on" data-sens="depot">Deposit</button>
+        <button type="button" data-sens="retrait">Withdraw</button>
+      </div>
+
+      <div class="wl-carte">
+        <div class="wl-titre" id="poDeT" style="margin:0 0 7px">YOU SEND</div>
+        <div class="wl-champ wl-avecmax" style="margin:0">
+          <input id="poMontant" inputmode="decimal" placeholder="0.0" autocomplete="off">
+          <button type="button" class="wl-max" id="poMax">MAX</button>
+        </div>
+        <div class="wl-rang"><span id="poSoldeT">Balance</span><b id="poSolde">&mdash;</b></div>
+      </div>
+
+      <div class="wl-carte">
+        <div class="wl-titre" id="poVersT" style="margin:0 0 7px">YOU RECEIVE</div>
+        <div class="wl-total" style="padding:2px 0">
+          <b id="poRecu" style="font-size:24px">&mdash;</b>
+        </div>
+        <button type="button" class="wl-rang wl-detail" id="poPlusB"
+                aria-expanded="false" aria-controls="poPlus">
+          <span>Arrives in</span><b id="poTemps">&mdash;</b>
+          <i aria-hidden="true">+</i>
+        </button>
+        <div id="poPlus" hidden>
+          <div class="wl-rang"><span>Bridge fee</span><b id="poFrais">&mdash;</b></div>
+          <div class="wl-rang"><span>Network fee</span><b id="poGaz">&mdash;</b></div>
+          <div class="wl-rang"><span>Minimum received</span><b id="poMini">&mdash;</b></div>
+        </div>
+      </div>
+
+      <button class="wl-b" id="poPartir" type="button">Bridge</button>
+      <p class="wl-note" id="poNote"></p>
     </div>
   </section>
 
@@ -2610,6 +2682,7 @@ function va(id){
   if(id==='ecActivite') chargeActivite();
   if(id==='ecSwap')     majSwap();
   if(id==='ecEnvoyer')  majEnvoyer();
+  if(id==='ecPont')     majPont();
   /* ---- LA SOCKET NE VIT QUE SUR CET ECRAN ----
      Une page de portefeuille n'a pas a tenir une liaison ouverte pour
      afficher des soldes de chaine. On l'ouvre en entrant, on la ferme en
@@ -5412,13 +5485,397 @@ function heure(){
   var d=new Date();
   $('hHeure').textContent = String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
 }
+
+/* ==================== LE PONT : ETH  <->  ETH (RH) ====================
+ *
+ * ---- POURQUOI PAS LE PONT OFFICIEL ----
+ *
+ * La Robinhood Chain est un rollup optimiste pose sur Ethereum (verifie : le
+ * precompile ArbSys repond, et le `l1BlockNumber` de la chaine suit le bloc
+ * d'Ethereum a une unite pres). Son pont canonique fonctionne, mais le RETOUR
+ * met 6 j 8 h : c'est la periode de contestation, le temps qu'Ethereum laisse
+ * a quiconque pour prouver que l'etat annonce est faux. Ce n'est pas une
+ * lenteur technique, c'est le prix de ne faire confiance a personne. Chiffre
+ * qui le confirme : la chaine compte 1 682 messages sortants depuis sa
+ * creation — personne ne retire par la.
+ *
+ * ---- CE QU'ON FAIT A LA PLACE ----
+ *
+ * Un pont a LIQUIDITE. Un teneur de marche detient de l'ETH des deux cotes :
+ * il paie tout de suite avec son propre stock, et c'est LUI qui attend les six
+ * jours. On ne fait que lui acheter son attente. Mesure faite sur 0,05 ETH :
+ * 2 s a l'aller pour 0,04 %, 7,5 s au retour pour 0,16 %.
+ *
+ * Ce que cela change, et que la page DIT : pendant ces quelques secondes, on
+ * fait confiance au relayeur. Laisser croire que la chaine elle-meme est
+ * devenue rapide serait mentir sur ce qu'on prend comme risque.
+ *
+ * ---- CE QUI EST VOLONTAIREMENT ABSENT ----
+ *
+ * L'ETH, et rien d'autre. Pas de jetons, pas d'autres chaines : chacun serait
+ * une route de plus a verifier, et une facon de plus de se tromper de piece.
+ */
+var L1 = { id:1, hex:'0x1', nom:'Ethereum', sym:'ETH',
+  /* Deux fournisseurs : le premier repond, le second existe pour le jour ou il
+     ne repond plus. Tous deux verifies avec l'en-tete CORS qu'un navigateur
+     exige — sans elle la lecture echoue en silence depuis une page web. */
+  rpc:['https://ethereum-rpc.publicnode.com', 'https://eth.drpc.org'],
+  scan:'https://etherscan.io' };
+var RELAY = 'https://api.relay.link';
+var ZERO_ADR = '0x0000000000000000000000000000000000000000';
+/* Au-dela, on previent : sous 0,005 ETH le pont prend une part qui se voit
+   (mesure : -0,32 % a l'aller et -0,70 % au retour sur 0,005 ETH, mais -15 %
+   et -28 % sur 0,0001). */
+var IMPACT_PONT = 1;
+var sensPont = 'depot';
+var lecteurL1 = null, iRpcL1 = 0, devisJeton = 0;
+
+function lecL1(){
+  if(!lecteurL1)
+    lecteurL1 = new ethers.providers.StaticJsonRpcProvider(L1.rpc[iRpcL1], L1.id);
+  return lecteurL1;
+}
+/* Le second fournisseur n'existe que s'il sert : on n'y passe qu'apres un
+   echec, et une seule fois — boucler entre deux RPC muets ferait attendre le
+   joueur deux fois plus longtemps pour la meme reponse. */
+function relaiL1(){
+  if(iRpcL1 + 1 < L1.rpc.length){ iRpcL1++; lecteurL1 = null; return true; }
+  return false;
+}
+function pontDe(){   return sensPont === 'depot' ? L1 : CHAINE; }
+function pontVers(){ return sensPont === 'depot' ? CHAINE : L1; }
+function lecPont(c){ return c.id === L1.id ? lecL1() : lec(); }
+
+/* ---- LE DEVIS ----
+ * Il vient de Relay, en direct, jamais garde : le taux depend du montant et
+ * de l'etat des stocks du relayeur. Un devis d'il y a deux minutes n'est plus
+ * un devis, c'est un souvenir. */
+async function relaiDevis(deId, versId, montant){
+  var rep;
+  try{
+    rep = await borne(fetch(RELAY + '/quote', {
+      method:'POST', headers:{ 'content-type':'application/json' },
+      body: JSON.stringify({
+        user: moi, recipient: moi,
+        originChainId: deId, destinationChainId: versId,
+        originCurrency: ZERO_ADR, destinationCurrency: ZERO_ADR,
+        amount: montant.toString(), tradeType:'EXACT_INPUT' })
+    }), 15000, 'relay');
+  }catch(e){
+    throw new Error(estTimeout(e)
+      ? 'The bridge did not answer in time. Nothing was sent.'
+      : 'Could not reach the bridge. This is a network problem, not a price of zero.');
+  }
+  var j = null;
+  try{ j = await rep.json(); }catch(e){}
+  if(!rep.ok || !j || !j.details)
+    throw new Error((j && (j.message || j.errorCode)) || 'The bridge did not quote that amount.');
+  return j;
+}
+
+function litPont(q){
+  var d = q.details, f = q.fees || {};
+  var it = ((q.steps && q.steps[0] && q.steps[0].items && q.steps[0].items[0]) || {});
+  return {
+    recu:    ethers.BigNumber.from(d.currencyOut.amount),
+    mini:    ethers.BigNumber.from(d.currencyOut.minimumAmount || d.currencyOut.amount),
+    gaz:     ethers.BigNumber.from((f.gas && f.gas.amount) || '0'),
+    relais:  ethers.BigNumber.from((f.relayer && f.relayer.amount) || '0'),
+    secondes: d.timeEstimate,
+    impact:  parseFloat((d.totalImpact && d.totalImpact.percent) || '0'),
+    tx:      it.data || null,
+    suivi:   (it.check && it.check.endpoint) || null
+  };
+}
+
+function secondesEnMots(s){
+  if(s === null || s === undefined) return '—';
+  if(s < 60) return '~' + Math.max(1, Math.round(s)) + ' s';
+  return '~' + Math.round(s / 60) + ' min';
+}
+
+function videPont(){
+  ['poRecu','poFrais','poGaz','poMini','poTemps'].forEach(function(id){
+    var e = $(id); if(e) e.textContent = '—';
+  });
+}
+
+function peintSensPont(){
+  var l = document.querySelectorAll('#poSens button');
+  for(var i=0;i<l.length;i++) l[i].classList.toggle('on', l[i].dataset.sens === sensPont);
+  var de = pontDe(), vers = pontVers();
+  $('poDeT').textContent   = 'YOU SEND — ' + de.nom.toUpperCase();
+  $('poVersT').textContent = 'YOU RECEIVE — ' + vers.nom.toUpperCase();
+}
+
+/* Le solde se lit SUR LA CHAINE DE DEPART, jamais recopie de l'accueil :
+   l'accueil ne connait que la Robinhood Chain. */
+async function soldePont(){
+  if(!moi){ $('poSolde').textContent = '—'; return null; }
+  var c = pontDe();
+  $('poSolde').textContent = '…';
+  for(var essai = 0; essai < 2; essai++){
+    try{
+      var b = await borne(lecPont(c).getBalance(moi), 12000, 'balance');
+      $('poSolde').textContent = nombre(b, 18) + ' ' + ETH_AFF_DE(c);
+      return b;
+    }catch(e){
+      if(c.id === L1.id && relaiL1()) continue;
+      /* Jamais zero : un solde non lu n'est pas un solde nul. */
+      $('poSolde').textContent = 'unknown';
+      return null;
+    }
+  }
+  return null;
+}
+function ETH_AFF_DE(c){ return c.id === L1.id ? 'ETH' : ETH_AFF; }
+
+async function devisPont(){
+  var mien = ++devisJeton;
+  var note = $('poNote'); note.className = 'wl-note';
+  var t = ($('poMontant').value || '').trim().replace(',', '.');
+  if(!(parseFloat(t) > 0)){ videPont(); note.textContent = ''; return; }
+  if(!moi){ videPont(); note.textContent = 'Sign in first — the bridge sends to your own address.'; return; }
+  var entree;
+  try{ entree = ethers.utils.parseUnits(t, 18); }
+  catch(e){ videPont(); note.textContent = 'That amount is not a number this wallet can read.'; return; }
+
+  $('poRecu').textContent = '…';
+  var de = pontDe(), vers = pontVers();
+  try{
+    var q = await relaiDevis(de.id, vers.id, entree);
+    if(mien !== devisJeton) return;              // un devis plus recent est parti
+    var r = litPont(q);
+    $('poRecu').textContent  = nombre(r.recu, 18) + ' ' + ETH_AFF_DE(vers);
+    $('poMini').textContent  = nombre(r.mini, 18) + ' ' + ETH_AFF_DE(vers);
+    $('poFrais').textContent = nombre(r.relais, 18) + ' ' + ETH_AFF_DE(de);
+    $('poGaz').textContent   = nombre(r.gaz, 18) + ' ' + ETH_AFF_DE(de);
+    $('poTemps').textContent = secondesEnMots(r.secondes);
+    var perte = Math.abs(r.impact);
+    if(perte >= IMPACT_PONT){
+      note.className = 'wl-note grave';
+      note.textContent = 'This amount loses ' + perte.toFixed(2) + ' % to the bridge. '
+        + 'The fee is nearly fixed, so it weighs much more on a small amount — '
+        + 'bridging more at once costs proportionally less.';
+      poseDetailPont(true, false);
+    } else {
+      note.textContent = 'A market maker pays you on ' + vers.nom
+        + ' from its own funds, then settles later. For those few seconds you are trusting it.';
+    }
+  }catch(e){
+    if(mien !== devisJeton) return;
+    videPont();
+    note.className = 'wl-note grave';
+    note.textContent = (e && e.message) || 'The bridge did not quote that amount.';
+  }
+}
+
+/* ---- LE DETAIL SE REPLIE, COMME SUR L'ECHANGE ---- */
+var CLE_PONT_DETAIL = 'swogePontDetail';
+function poseDetailPont(v, garde){
+  var b = $('poPlusB'), d = $('poPlus');
+  if(!b || !d) return;
+  d.hidden = !v;
+  b.setAttribute('aria-expanded', v ? 'true' : 'false');
+  var i = b.querySelector('i'); if(i) i.textContent = v ? '−' : '+';
+  if(garde){ try{ localStorage.setItem(CLE_PONT_DETAIL, v ? '1' : '0'); }catch(e){} }
+}
+
+/* ---- SIGNER SUR LA BONNE CHAINE ----
+ * `assureChaine` ne connaissait qu'une destination. Le pont en a deux, et se
+ * tromper ici envoie de l'ETH au contrat du relayeur SUR L'AUTRE CHAINE, ou
+ * il n'existe pas. */
+async function assureChaineId(id, nom){
+  var a = await borne(signer.getChainId(), 9000, 'chainId');
+  if(a === id) return;
+  var eth = signer.provider && signer.provider.provider;
+  if(!eth || !eth.request)
+    throw new Error('Your wallet is on another network. Switch it to ' + nom + ' and try again.');
+  try{
+    await eth.request({ method:'wallet_switchEthereumChain', params:[{ chainId: '0x' + id.toString(16) }] });
+  }catch(err){
+    if(err && (err.code === 4902 || /Unrecognized chain/i.test(String(err.message || '')))){
+      await eth.request({ method:'wallet_addEthereumChain', params:[{
+        chainId:'0x' + id.toString(16), chainName:nom,
+        nativeCurrency:{ name:'Ether', symbol:'ETH', decimals:18 },
+        rpcUrls: id === L1.id ? [L1.rpc[0]] : [CHAINE.rpc],
+        blockExplorerUrls:[ id === L1.id ? L1.scan : CHAINE.scan ] }] });
+    } else if(/UnsupportedChainId|does not support the requested chain/i.test(String((err && err.message) || ''))){
+      throw new Error('Your email wallet cannot sign on ' + nom + ' yet. '
+        + 'Use a browser wallet for this direction, or bridge the other way.');
+    } else throw err;
+  }
+  /* ---- LA BASCULE NE SE VOIT PAS TOUT DE SUITE ----
+     `wallet_switchEthereumChain` rend la main avant que le fournisseur ait
+     propage sa nouvelle chaine — c'est vrai des portefeuilles reels comme du
+     banc d'essai. Relire une seule fois faisait echouer un depot parfaitement
+     valide sur « votre portefeuille est encore sur un autre reseau », alors
+     que la bascule avait bel et bien eu lieu. On relit donc pendant trois
+     secondes, et l'on n'abandonne que si elle n'arrive jamais. */
+  for(var essai = 0; essai < 12; essai++){
+    var apres = await borne(signer.getChainId(), 9000, 'chainId');
+    if(apres === id) return;
+    await new Promise(function(r){ setTimeout(r, 250); });
+  }
+  throw new Error('Your wallet is still on another network. Switch it to ' + nom + ' and try again.');
+}
+
+/* ---- ON ATTEND QUE LE RELAYEUR AIT VRAIMENT PAYE ----
+ * La transaction de depart peut etre minee sans que l'autre cote soit servi.
+ * S'arreter a `tx.wait()` annoncerait « c'est arrive » avant que ce soit vrai. */
+async function suitPont(chemin, dis){
+  var fin = Date.now() + 180000;                 // trois minutes, large
+  while(Date.now() < fin){
+    await new Promise(function(r){ setTimeout(r, 2500); });
+    var j = null;
+    try{
+      var rep = await borne(fetch(RELAY + chemin), 12000, 'status');
+      j = await rep.json();
+    }catch(e){ continue; }                        // un sondage manque ne prouve rien
+    var st = (j && j.status) || 'unknown';
+    if(st === 'success') return true;
+    if(st === 'failure' || st === 'refund') return st;
+    dis('Bridging — the relayer is paying you…');
+  }
+  return 'lent';
+}
+
+async function partPont(){
+  var b = $('poPartir'), note = $('poNote');
+  var dis = function(txt, grave){ note.className = 'wl-note' + (grave ? ' grave' : ''); note.textContent = txt; };
+  if(!moi) return ouvreConnexion();
+  var t = ($('poMontant').value || '').trim().replace(',', '.');
+  if(!(parseFloat(t) > 0)) return toast('Enter an amount');
+  var entree;
+  try{ entree = ethers.utils.parseUnits(t, 18); }
+  catch(e){ return toast('That amount is not a number this wallet can read'); }
+
+  var de = pontDe(), vers = pontVers();
+  b.disabled = true;
+  try{
+    /* ---- ON NE SIGNE PAS UN DEVIS PERIME ----
+       Celui de l'ecran peut dater ; le taux du relayeur, lui, bouge avec ses
+       stocks. On en reprend un a l'instant et on remet l'ecran a jour, pour
+       que le joueur signe ce qu'il lit. */
+    dis('Getting a fresh quote…');
+    var q = await relaiDevis(de.id, vers.id, entree);
+    var r = litPont(q);
+    if(!r.tx || !r.tx.to) throw new Error('The bridge returned no transaction to sign.');
+    $('poRecu').textContent  = nombre(r.recu, 18) + ' ' + ETH_AFF_DE(vers);
+    $('poMini').textContent  = nombre(r.mini, 18) + ' ' + ETH_AFF_DE(vers);
+    $('poTemps').textContent = secondesEnMots(r.secondes);
+
+    await assureChaineId(de.id, de.nom);
+
+    dis('Confirm the transfer in your wallet…');
+    var envoi = { to: r.tx.to, value: ethers.BigNumber.from(r.tx.value || '0') };
+    if(r.tx.data && r.tx.data !== '0x') envoi.data = r.tx.data;
+    var tx = await signer.sendTransaction(envoi);
+
+    dis('Sent — waiting for ' + de.nom + '…');
+    await tx.wait();
+
+    var fini = r.suivi ? await suitPont(r.suivi, dis) : true;
+    if(fini === true){
+      dis('Done — ' + nombre(r.recu, 18) + ' ' + ETH_AFF_DE(vers) + ' arrived on ' + vers.nom + '.');
+      $('poMontant').value = '';
+      videPont();
+      await rafraichit();
+      soldePont();
+    } else if(fini === 'refund'){
+      dis('The relayer could not fill this one and refunded you on ' + de.nom
+        + '. Nothing was lost beyond the network fee.', true);
+    } else if(fini === 'failure'){
+      dis('The bridge reported a failure. Your funds were not taken — check '
+        + de.scan + ' for your transaction before trying again.', true);
+    } else {
+      dis('Your transaction is confirmed on ' + de.nom + ', but the relayer has not '
+        + 'reported paying you yet. It is not lost — it is not yet confirmed. '
+        + 'Reopen this screen in a minute.', true);
+    }
+  }catch(e){
+    dis(pourquoiRefus(e), true);
+  }
+  b.disabled = false;
+}
+
+/* ---- MAX : on garde de quoi payer le reseau ----
+ * La reserve n'est pas devinee : c'est le cout de gaz que RELAY annonce pour
+ * cette transaction-la, double. Deviner une reserve, c'est vider un solde. */
+async function maxPont(){
+  var b = $('poMax'), note = $('poNote');
+  if(!moi) return ouvreConnexion();
+  /* Un devis en attente effacerait le message qu'on s'apprete a ecrire : qui
+     vide la case puis touche MAX voyait sa reserve gardee sans qu'on le lui
+     dise. On annule celui qui dort avant de commencer. */
+  clearTimeout(window._dp);
+  b.disabled = true;
+  try{
+    var solde = await soldePont();
+    if(solde === null){
+      note.className = 'wl-note grave';
+      note.textContent = 'Your balance has not been read yet — reload it first. It is unknown, not zero.';
+      return;
+    }
+    if(solde.isZero()){
+      note.className = 'wl-note';
+      note.textContent = 'Nothing to bridge on ' + pontDe().nom + '.';
+      return;
+    }
+    var de = pontDe(), vers = pontVers();
+    var q = await relaiDevis(de.id, vers.id, solde);
+    var reserve = litPont(q).gaz.mul(2);
+    if(solde.lte(reserve)){
+      note.className = 'wl-note grave';
+      note.textContent = 'Your whole ' + ETH_AFF_DE(de) + ' balance is smaller than the network fee this would cost.';
+      return;
+    }
+    $('poMontant').value = ethers.utils.formatUnits(solde.sub(reserve), 18);
+    /* Le devis d'abord, le message ENSUITE : ecrit avant, il etait efface une
+       demi-seconde plus tard par la note du devis, et le joueur ne savait
+       jamais qu'on lui avait garde de quoi payer le reseau. */
+    await devisPont();
+    note.className = 'wl-note';
+    note.textContent = 'Kept ' + nombre(reserve, 18) + ' ' + ETH_AFF_DE(de) + ' back for the network fee.';
+  }catch(e){
+    note.className = 'wl-note grave';
+    note.textContent = (e && e.message) || 'Could not work out a maximum.';
+  }
+  b.disabled = false;
+}
+
+function majPont(){
+  peintSensPont();
+  poseDetailPont((function(){ try{ return localStorage.getItem(CLE_PONT_DETAIL) === '1'; }catch(e){ return false; } })(), false);
+  soldePont();
+  devisPont();
+}
+
+if($('poSens')) $('poSens').addEventListener('click', function(ev){
+  var b = ev.target.closest('button[data-sens]');
+  if(!b || b.dataset.sens === sensPont) return;
+  sensPont = b.dataset.sens;
+  videPont();
+  $('poNote').textContent = '';
+  majPont();
+});
+if($('poPlusB')) $('poPlusB').addEventListener('click', function(){
+  poseDetailPont($('poPlus').hidden, true);
+});
+if($('poMontant')) $('poMontant').addEventListener('input', function(){
+  clearTimeout(window._dp); window._dp = setTimeout(devisPont, 420);
+});
+if($('poMax'))    $('poMax').addEventListener('click', maxPont);
+if($('poPartir')) $('poPartir').addEventListener('click', partPont);
+
+
 heure(); setInterval(heure, 20000);
 
 if(ethersManquant()){
   crieSansEthers();
   /* On s'arrete la : continuer appellerait `ethers.…` a chaque clic et
      remplirait la console d'exceptions sans rien apprendre au joueur. */
-  ['btRafraichir','enPartir','swPartir','reCopier','btActRelire','cnEnvoyer','cnExtension']
+  ['btRafraichir','enPartir','swPartir','reCopier','btActRelire','cnEnvoyer','cnExtension','poPartir','poMax']
     .forEach(function(id){ var b=$(id); if(b) b.disabled=true; });
   return;
 }

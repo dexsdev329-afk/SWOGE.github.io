@@ -2648,6 +2648,338 @@ function servir(q, r, f, type) {
     await page.close();
   }
 
+  /* ==================== LE PONT ====================
+   *
+   * ETH d Ethereum vers la Robinhood Chain, et retour. C est le seul ecran de
+   * ce portefeuille qui fasse signer sur DEUX chaines, et se tromper de
+   * chaine y envoie de l ETH au contrat du relayeur la ou il n existe pas.
+   * C est donc la premiere chose mesuree ici, avant meme les montants.
+   *
+   * Le relayeur est joue par un faux service : ses reponses sont ecrites ici,
+   * donc connues, donc verifiables. On ne mesure pas Relay — on mesure ce que
+   * la page FAIT de ce que Relay repond.
+   */
+  console.log('\n-- le pont --');
+  {
+    const MOI = '0x00000000000000000000000000000000000a11ce';
+    const enMot = (v) => '0x' + BigInt(v).toString(16).padStart(64, '0');
+    /* L etat du faux monde, pilote depuis l essai. */
+    const w = { chaine: '0x1237', soldeL1: 300000000000000000n, soldeRH: 40000000000000000n,
+                bascules: [], envoyees: [], devisRefuse: false, statut: 'success',
+                gaz: 20000000000000n, recu: null };
+
+    const page = await nav.newPage({ viewport: { width: 390, height: 844 } });
+    const boum = [];
+    page.on('pageerror', (e) => boum.push(String(e).slice(0, 200)));
+    await page.addInitScript(([moi]) => {
+      try { localStorage.setItem('swogeAuth', 'wallet');
+            sessionStorage.setItem('swogeWalletIntroVue', '1'); } catch (e) {}
+      window.__w = { chaine: '0x1237', bascules: [], envoyees: [] };
+      const HASH = '0x' + 'ab'.repeat(32);
+      window.ethereum = {
+        isMetaMask: true,
+        request: async (a) => {
+          const w = window.__w;
+          if (a.method === 'eth_accounts' || a.method === 'eth_requestAccounts') return [moi];
+          if (a.method === 'eth_chainId') return w.chaine;
+          if (a.method === 'net_version') return String(parseInt(w.chaine, 16));
+          if (a.method === 'wallet_switchEthereumChain') {
+            w.bascules.push(a.params[0].chainId); w.chaine = a.params[0].chainId; return null;
+          }
+          if (a.method === 'wallet_addEthereumChain') return null;
+          /* Avant d'envoyer, ethers interroge le portefeuille : nonce, gaz,
+             estimation. Un `null` a l'une de ces questions fait echouer
+             l'envoi sur « bad result from backend » — ce qui ressemble a un
+             defaut de la page alors que c'est le banc qui est muet. */
+          if (a.method === 'eth_getTransactionCount') return '0x0';
+          if (a.method === 'eth_gasPrice') return '0x3b9aca00';
+          if (a.method === 'eth_maxPriorityFeePerGas') return '0x3b9aca00';
+          if (a.method === 'eth_estimateGas') return '0x5208';
+          if (a.method === 'eth_call') return '0x';
+          if (a.method === 'eth_sendTransaction') {
+            w.envoyees.push(Object.assign({ surLaChaine: w.chaine }, a.params[0]));
+            return HASH;
+          }
+          if (a.method === 'eth_getTransactionByHash') {
+            const t = w.envoyees[w.envoyees.length - 1] || {};
+            return { hash: HASH, blockHash: '0x' + '11'.repeat(32), blockNumber: '0x10',
+                     transactionIndex: '0x0', from: moi, to: t.to || moi,
+                     value: t.value || '0x0', gas: '0x5208', gasPrice: '0x3b9aca00',
+                     nonce: '0x0', input: t.data || '0x',
+                     r: '0x' + '11'.repeat(32), s: '0x' + '22'.repeat(32), v: '0x1b',
+                     type: '0x0' };
+          }
+          if (a.method === 'eth_getTransactionReceipt') {
+            const t = w.envoyees[w.envoyees.length - 1] || {};
+            return { transactionHash: HASH, transactionIndex: '0x0',
+                     blockHash: '0x' + '11'.repeat(32), blockNumber: '0x10',
+                     from: moi, to: t.to || moi, contractAddress: null,
+                     cumulativeGasUsed: '0x5208', gasUsed: '0x5208',
+                     effectiveGasPrice: '0x3b9aca00', logs: [],
+                     logsBloom: '0x' + '00'.repeat(512), status: '0x1', type: '0x0' };
+          }
+          if (a.method === 'eth_blockNumber') return '0x10';
+          if (a.method === 'eth_getBlockByNumber')
+            return { number: '0x10', hash: '0x' + '11'.repeat(32), parentHash: '0x' + '22'.repeat(32),
+                     timestamp: '0x66000000', transactions: [], baseFeePerGas: '0x1', gasLimit: '0x1c9c380',
+                     gasUsed: '0x0', miner: moi, difficulty: '0x0', extraData: '0x', nonce: '0x0',
+                     sha3Uncles: '0x' + '00'.repeat(32), logsBloom: '0x' + '00'.repeat(256),
+                     transactionsRoot: '0x' + '00'.repeat(32), stateRoot: '0x' + '00'.repeat(32),
+                     receiptsRoot: '0x' + '00'.repeat(32), uncles: [], size: '0x0' };
+          if (a.method === 'eth_getBalance') return '0x' + (0n).toString(16);
+          return null;
+        },
+        on: () => {}, removeListener: () => {},
+      };
+    }, [MOI]);
+    await page.route('**/ethers*.umd.min.js', (r) => r.fulfill({
+      contentType: 'text/javascript', body: fs.readFileSync(ETHERS, 'utf8') }));
+    await page.route('**/api.dexscreener.com/**', (r) => r.fulfill({
+      contentType: 'application/json', body: '{"pairs":[]}' }));
+    /* La Robinhood Chain */
+    await page.route('**/rpc.mainnet.chain.robinhood.com/**', async (r) => {
+      const q = JSON.parse(r.request().postData() || '{}');
+      const un = (m) => {
+        if (m.method === 'eth_chainId') return '0x1237';
+        if (m.method === 'net_version') return '4663';
+        if (m.method === 'eth_blockNumber') return '0x2f7ce78';
+        if (m.method === 'eth_getLogs') return [];
+        if (m.method === 'eth_gasPrice') return enMot(134102000n);
+        if (m.method === 'eth_getBalance') return enMot(w.soldeRH);
+        if (m.method === 'eth_call') return enMot(0n);
+        return null;
+      };
+      const rep = (m) => ({ jsonrpc: '2.0', id: m.id, result: un(m) });
+      const corps = Array.isArray(q) ? q.map(rep) : rep(q);
+      await r.fulfill({ contentType: 'application/json', body: JSON.stringify(corps) });
+    });
+    /* Ethereum */
+    await page.route(/(ethereum-rpc\.publicnode\.com|eth\.drpc\.org)/, async (r) => {
+      const q = JSON.parse(r.request().postData() || '{}');
+      const un = (m) => {
+        if (m.method === 'eth_chainId') return '0x1';
+        if (m.method === 'net_version') return '1';
+        if (m.method === 'eth_blockNumber') return '0x18ac99b';
+        if (m.method === 'eth_getBalance') return w.soldeL1 === null ? null : enMot(w.soldeL1);
+        return null;
+      };
+      const rep = (m) => { const v = un(m);
+        return v === null ? { jsonrpc: '2.0', id: m.id, error: { code: -32000, message: 'nope' } }
+                          : { jsonrpc: '2.0', id: m.id, result: v }; };
+      const corps = Array.isArray(q) ? q.map(rep) : rep(q);
+      await r.fulfill({ contentType: 'application/json', body: JSON.stringify(corps) });
+    });
+    /* Le relayeur */
+    await page.route('**/api.relay.link/**', async (r) => {
+      const u = r.request().url();
+      if (u.indexOf('/intents/status') >= 0)
+        return r.fulfill({ contentType: 'application/json', body: JSON.stringify({ status: w.statut }) });
+      if (w.devisRefuse)
+        return r.fulfill({ status: 400, contentType: 'application/json',
+                           body: JSON.stringify({ message: 'No route for that amount.' }) });
+      const c = JSON.parse(r.request().postData() || '{}');
+      const dedans = BigInt(c.amount);
+      /* Les frais sont presque FIXES : c est ce qui fait qu un petit montant
+         perd un gros pourcentage, et c est exactement la regle qu on veut
+         mesurer plus bas. */
+      const fixe = 30000000000000n;
+      const sortie = dedans > fixe ? dedans - fixe : 1n;
+      w.recu = sortie;
+      const pc = -(100 * Number(fixe) / Number(dedans));
+      await r.fulfill({ contentType: 'application/json', body: JSON.stringify({
+        requestId: '0xfeed', protocol: 'relay',
+        steps: [{ id: 'deposit', kind: 'transaction', items: [{
+          data: { to: '0x4cd00e387622c35bddb9b4c962c136462338bc31',
+                  value: c.amount, data: '0x49290c1c', chainId: c.originChainId },
+          check: { endpoint: '/intents/status?requestId=0xfeed', method: 'GET' } }] }],
+        fees: { gas: { amount: String(w.gaz) }, relayer: { amount: String(fixe) } },
+        details: { timeEstimate: c.originChainId === 1 ? 2 : 8,
+                   totalImpact: { percent: pc.toFixed(2) },
+                   currencyIn:  { amount: c.amount, amountFormatted: '0' },
+                   currencyOut: { amount: String(sortie),
+                                  minimumAmount: String(sortie * 98n / 100n),
+                                  amountFormatted: '0' } } }) });
+    });
+
+    const ouvrePont = async () => {
+      await page.evaluate(() => document.querySelector('[data-va="ecPont"]').click());
+      await page.waitForTimeout(700);
+    };
+    const lit = () => page.evaluate(() => ({
+      ecran: (document.querySelector('.wl-ecran.on') || {}).id,
+      de: document.getElementById('poDeT').textContent,
+      vers: document.getElementById('poVersT').textContent,
+      solde: document.getElementById('poSolde').textContent,
+      recu: document.getElementById('poRecu').textContent,
+      mini: document.getElementById('poMini').textContent,
+      frais: document.getElementById('poFrais').textContent,
+      gaz: document.getElementById('poGaz').textContent,
+      temps: document.getElementById('poTemps').textContent,
+      note: document.getElementById('poNote').textContent,
+      montant: document.getElementById('poMontant').value,
+    }));
+    const etatFaux = () => page.evaluate(() => window.__w);
+
+    await page.goto('http://127.0.0.1:' + port + '/swoge_wallet.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(2600);
+
+    /* ---- IL EXISTE, ET IL S OUVRE ---- */
+    const geste = await page.evaluate(() =>
+      [...document.querySelectorAll('.wl-actions button')].map((b) => b.textContent.trim()));
+    ok(geste.length === 4 && geste.some((t) => /Bridge/.test(t)),
+       'un quatrieme geste sur l accueil ouvre le pont (' + geste.join(', ') + ')');
+    await ouvrePont();
+    let m = await lit();
+    ok(m.ecran === 'ecPont', 'et il ouvre bien l ecran du pont');
+    ok(/ETHEREUM/.test(m.de) && /ROBINHOOD/.test(m.vers),
+       'par defaut on DEPOSE : d Ethereum vers la Robinhood Chain (' + m.de + ' -> ' + m.vers + ')');
+    ok(/0\.3/.test(m.solde), 'et le solde lu est celui d ETHEREUM, pas celui de l accueil (' + m.solde + ')');
+
+    /* ---- LE DEVIS ---- */
+    await page.fill('#poMontant', '0.1');
+    await page.waitForTimeout(1200);
+    m = await lit();
+    console.log('   depot : ' + JSON.stringify({ recu: m.recu, mini: m.mini, frais: m.frais, temps: m.temps }));
+    ok(/^0\.09997/.test(m.recu), 'le montant recu vient du devis, au wei pres (' + m.recu + ')');
+    ok(m.mini !== '—' && m.mini !== m.recu,
+       'le MINIMUM garanti est ecrit a part (' + m.mini + ') — c est lui qui est promis');
+    ok(m.frais !== '—' && m.gaz !== '—', 'les frais du relayeur et du reseau sont separes ('
+       + m.frais + ' / ' + m.gaz + ')');
+    ok(/s$|min$/.test(m.temps), 'et le temps annonce est la (' + m.temps + ')');
+
+    /* ---- ON CHANGE DE SENS ---- */
+    await page.evaluate(() => document.querySelector('#poSens button[data-sens="retrait"]').click());
+    await page.waitForTimeout(1200);
+    m = await lit();
+    ok(/ROBINHOOD/.test(m.de) && /ETHEREUM/.test(m.vers),
+       'le sens s inverse vraiment (' + m.de + ' -> ' + m.vers + ')');
+    ok(/0\.04/.test(m.solde), 'et le solde affiche devient celui de la Robinhood Chain (' + m.solde + ')');
+
+    /* ---- LA CHAINE SUR LAQUELLE ON SIGNE ----
+     * Le retrait part de la Robinhood Chain : le portefeuille y est deja, il
+     * ne doit basculer NULLE PART. Une bascule inutile vers Ethereum ferait
+     * signer la transaction du relayeur sur la mauvaise chaine. */
+    await page.fill('#poMontant', '0.01');
+    await page.waitForTimeout(1200);
+    await page.click('#poPartir');
+    await page.waitForTimeout(6000);
+    let f = await etatFaux();
+    m = await lit();
+    console.log('   retrait : ' + JSON.stringify({ bascules: f.bascules, envoyees: f.envoyees.length,
+                 chaine: (f.envoyees[0] || {}).surLaChaine, note: m.note.slice(0, 60) }));
+    ok(f.envoyees.length === 1, 'le retrait envoie UNE transaction (' + f.envoyees.length
+       + (f.envoyees.length ? '' : ') — la page a dit : « ' + m.note.slice(0, 80) + ' »') + ')');
+    ok(f.envoyees.length === 1 && f.envoyees[0].surLaChaine === '0x1237',
+       'et elle est signee SUR LA ROBINHOOD CHAIN (' + (f.envoyees[0] || {}).surLaChaine + ')');
+    ok(f.bascules.length === 0,
+       'sans aucune bascule de chaine — on y etait deja (' + JSON.stringify(f.bascules) + ')');
+    ok(((f.envoyees[0] || {}).to || '').toLowerCase() === '0x4cd00e387622c35bddb9b4c962c136462338bc31',
+       'elle va au contrat que le devis a donne, pas a une adresse ecrite en dur');
+    ok(/arrived on Ethereum/i.test(m.note), 'et la page ne dit « arrive » qu apres le relayeur : « '
+       + m.note.slice(0, 70) + ' »');
+
+    /* ---- LE DEPOT, LUI, DOIT BASCULER ---- */
+    await page.evaluate(() => { window.__w.bascules = []; window.__w.envoyees = []; });
+    await page.evaluate(() => document.querySelector('#poSens button[data-sens="depot"]').click());
+    await page.waitForTimeout(1000);
+    await page.fill('#poMontant', '0.05');
+    await page.waitForTimeout(1200);
+    await page.click('#poPartir');
+    await page.waitForTimeout(9000);
+    f = await etatFaux();
+    m = await lit();
+    console.log('   depot signe : ' + JSON.stringify({ bascules: f.bascules,
+                 chaine: (f.envoyees[0] || {}).surLaChaine, note: m.note.slice(0, 70) }));
+    ok(f.bascules.length === 1 && f.bascules[0] === '0x1',
+       'le depot bascule le portefeuille sur Ethereum AVANT de signer ('
+       + JSON.stringify(f.bascules) + ')');
+    ok(f.envoyees.length === 1 && f.envoyees[0].surLaChaine === '0x1',
+       'et la transaction part bien depuis Ethereum (' + (f.envoyees[0] || {}).surLaChaine
+       + (f.envoyees.length ? '' : ') — la page a dit : « ' + m.note.slice(0, 80) + ' »') + ')');
+
+    /* ---- UN RELAYEUR QUI N A PAS ENCORE PAYE NE DIT PAS « ARRIVE » ----
+     * C est le defaut le plus couteux possible ici : annoncer l argent arrive
+     * alors qu il ne l est pas. La transaction de depart peut etre minee sans
+     * que l autre cote soit servi. */
+    w.statut = 'pending';
+    await page.evaluate(() => { window.__w.bascules = []; window.__w.envoyees = []; });
+    await page.fill('#poMontant', '0.02');
+    await page.waitForTimeout(1200);
+    await page.click('#poPartir');
+    await page.waitForTimeout(9000);
+    m = await lit();
+    console.log('   en attente : « ' + m.note.slice(0, 90) + ' »');
+    ok(!/arrived/i.test(m.note),
+       'tant que le relayeur n a pas paye, la page ne dit PAS que c est arrive');
+    ok(/not lost|not yet|relayer/i.test(m.note),
+       'elle dit ou en est la transaction : « ' + m.note.slice(0, 80) + ' »');
+    w.statut = 'success';
+    /* Le sondage du transfert precedent tourne encore et reecrit la note
+       toutes les deux secondes et demie : il ecraserait les messages qu'on
+       veut lire ensuite. On repart d'une page neuve. */
+    await page.goto('http://127.0.0.1:' + port + '/swoge_wallet.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(2600);
+    await ouvrePont();
+
+    /* ---- UN DEVIS QUI ECHOUE N AFFICHE JAMAIS ZERO ---- */
+    w.devisRefuse = true;
+    await page.fill('#poMontant', '');
+    await page.waitForTimeout(600);
+    await page.fill('#poMontant', '0.07');
+    await page.waitForTimeout(1500);
+    m = await lit();
+    console.log('   devis refuse : ' + JSON.stringify({ recu: m.recu, note: m.note.slice(0, 60) }));
+    ok(m.recu !== '0' && !/^0(\.0+)?\s/.test(m.recu),
+       'un devis refuse n ecrit jamais zero (« ' + m.recu + ' »)');
+    ok(m.note.length > 10, 'et il DIT pourquoi : « ' + m.note.slice(0, 70) + ' »');
+    w.devisRefuse = false;
+
+    /* ---- UN PETIT MONTANT EST PREVENU ----
+     * Les frais sont presque fixes : ils pesent donc enormement sur un petit
+     * montant. Mesure sur le vrai pont : -0,32 % sur 0,005 ETH mais -15,58 %
+     * sur 0,0001. Ne rien dire, c est laisser le joueur payer 15 % sans le
+     * savoir. */
+    await page.fill('#poMontant', '0.00005');
+    await page.waitForTimeout(1500);
+    m = await lit();
+    const ouvert = await page.evaluate(() => !document.getElementById('poPlus').hidden);
+    console.log('   petit montant : ' + JSON.stringify({ note: m.note.slice(0, 60), ouvert }));
+    ok(/loses|%/.test(m.note), 'un montant trop petit est PREVENU : « ' + m.note.slice(0, 80) + ' »');
+    ok(ouvert, 'et le detail s ouvre tout seul, pour qu on voie le chiffre qui le justifie');
+
+    /* ---- MAX GARDE DE QUOI PAYER LE RESEAU ---- */
+    await page.click('#poMax');
+    await page.waitForTimeout(2500);
+    m = await lit();
+    console.log('   max : ' + JSON.stringify({ montant: m.montant, note: m.note.slice(0, 60) }));
+    const ecrit = m.montant ? BigInt(Math.round(parseFloat(m.montant) * 1e6)) : 0n;
+    ok(ecrit > 0n && ecrit < 300000n,
+       'MAX ecrit moins que le solde entier : il garde le frais de reseau (' + m.montant + ')');
+    ok(/Kept .* back for the network fee/.test(m.note),
+       'et il le DIT : « ' + m.note.slice(0, 70) + ' »');
+
+    /* ---- UN SOLDE NON LU NE REMPLIT RIEN ---- */
+    w.soldeL1 = null;
+    await page.evaluate(() => document.querySelector('#poSens button[data-sens="retrait"]').click());
+    await page.waitForTimeout(500);
+    await page.evaluate(() => document.querySelector('#poSens button[data-sens="depot"]').click());
+    await page.waitForTimeout(4000);
+    m = await lit();
+    ok(/unknown/i.test(m.solde), 'un solde que la chaine n a pas rendu s ecrit « inconnu » ('
+       + m.solde + ')');
+    await page.fill('#poMontant', '');
+    await page.click('#poMax');
+    await page.waitForTimeout(4000);
+    m = await lit();
+    ok(!m.montant, 'et MAX ne remplit rien dessus (« ' + m.montant + ' »)');
+    ok(/unknown, not zero/i.test(m.note), 'en disant que c est inconnu, pas nul : « '
+       + m.note.slice(0, 70) + ' »');
+
+    ok(boum.length === 0, 'aucune exception pendant tout le pont'
+       + (boum.length ? ' : ' + boum[0] : ''));
+    await page.close();
+  }
+
   /* ---- LE FOND D ECRAN ----
    * Il passe DERRIERE les cartes. Pose par-dessus il etait magnifique et il
    * voilait le texte : « TOTAL BALANCE » se lisait a travers une nappe bleue.

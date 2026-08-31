@@ -68,7 +68,7 @@
      A savoir : cela ne sauve pas la page DEJA en cache chez quelqu'un, qui ne
      contient pas ces lignes. Ce garde-fou vaut a partir de celle-ci. -->
 <script>
-var MARQUE_PAGE = '47da863d';
+var MARQUE_PAGE = 'ad720ce8';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -505,6 +505,14 @@ body{
 .wl-jeton .val small{ display:block; font:400 11px/1.3 'Space Mono',monospace;
   color:var(--doux); margin-top:3px }
 
+/* ---- LA LIGNE QUI MENE AU PONT ----
+   L'ETH d'Ethereum ne s'echange pas ici et ne s'envoie pas d'ici : la seule
+   chose qu'on puisse en faire depuis ce portefeuille, c'est le faire passer.
+   Sa ligne le DIT, et c'est la ou on le voit qu'on veut pouvoir le faire —
+   pas trois ecrans plus loin. */
+.wl-jeton .versPont{ display:block; margin-top:3px; color:var(--accent);
+  font:800 10.5px/1.2 'Archivo',sans-serif; letter-spacing:.4px }
+
 .wl-total .eth{ margin-top:5px; font:600 12.5px/1.3 'Space Mono',monospace;
   color:var(--doux); font-variant-numeric:tabular-nums }
 .wl-total .eth[hidden]{ display:none }
@@ -536,6 +544,17 @@ body{
    coup, alors qu'une fleche qui se retourne demande de se rappeler dans quel
    etat on l'a laissee. Celui qui est actif est ECRIT, pas seulement colore —
    la couleur seule ne se voit pas de tous les yeux. */
+/* ---- LE PONT MONTRE LES DEUX PIECES ----
+   Deux cartes qui ne disaient que « YOU SEND — ETHEREUM » en petites
+   capitales. On deplace de l'argent entre deux chaines : voir les deux pieces
+   l'une au-dessus de l'autre dit d'un coup d'oeil dans quel sens on va, et
+   c'est justement la seule chose qu'on puisse se tromper ici. */
+.wl-pontJ{ display:flex; align-items:center; gap:10px; margin:0 0 10px }
+.wl-pontJ img{ width:34px; height:34px; border-radius:50%; flex:0 0 auto; display:block }
+.wl-pontJ .tx{ display:flex; flex-direction:column; gap:2px; min-width:0 }
+.wl-pontJ .tx b{ font:800 14px/1.1 'Archivo',sans-serif }
+.wl-pontJ .tx small{ font:400 11.5px/1.2 'Space Mono',monospace; color:var(--doux) }
+
 .wl-sens{ display:grid; grid-template-columns:1fr 1fr; gap:6px; padding:5px;
   background:var(--carte); border:1px solid var(--bord); border-radius:14px;
   margin:0 0 12px }
@@ -1426,6 +1445,7 @@ body{
 
       <div class="wl-carte">
         <div class="wl-titre" id="poDeT" style="margin:0 0 7px">YOU SEND</div>
+        <div class="wl-pontJ" id="poDeJ"><img alt=""><span class="tx"><b></b><small></small></span></div>
         <div class="wl-champ wl-avecmax" style="margin:0">
           <input id="poMontant" inputmode="decimal" placeholder="0.0" autocomplete="off">
           <button type="button" class="wl-max" id="poMax">MAX</button>
@@ -1435,6 +1455,7 @@ body{
 
       <div class="wl-carte">
         <div class="wl-titre" id="poVersT" style="margin:0 0 7px">YOU RECEIVE</div>
+        <div class="wl-pontJ" id="poVersJ"><img alt=""><span class="tx"><b></b><small></small></span></div>
         <div class="wl-total" style="padding:2px 0">
           <b id="poRecu" style="font-size:24px">&mdash;</b>
         </div>
@@ -1986,10 +2007,6 @@ var JETONS = [
        trou — et c'est celui qu'il faut reconnaitre le plus vite, puisque
        c'est lui qui paie le gaz. */
     logo:'img/wallet/tok_eth.webp',        natif:true },
-  { cle:'swoge',    sym:'SWOGE',     nom:'Swole Doge',   adr:SWOGE,    dec:18,
-    logo:'img/wallet/tok_swoge.webp' },
-  { cle:'swogebet', sym:'SWOGEBET',  nom:'Swogebet',     adr:SWOGEBET, dec:18,
-    logo:'img/wallet/tok_swogebet.webp' },
   /* ---- L'ETH D'ETHEREUM, VISIBLE LUI AUSSI ----
    *
    * Depuis que le portefeuille fait le pont, il tient l'ETH du joueur sur DEUX
@@ -1999,9 +2016,18 @@ var JETONS = [
    * Il porte l'ANCIENNE piece — le losange violet nu — et l'autre garde
    * l'enseigne Robinhood. Deux dessins nettement differents pour deux lignes
    * qui s'appellent toutes deux « ether » : c'est la meme precaution que le
-   * « (RH) » du nom, et elle se voit de plus loin. */
+   * « (RH) » du nom, et elle se voit de plus loin.
+   *
+   * Et il se range JUSTE SOUS lui : deux fois le meme actif, l'un au-dessus
+   * de l'autre, se comparent d'un coup d'oeil. Separes par deux autres
+   * jetons, il faut les chercher. */
   { cle:'ethL1',    sym:'ETH',       nom:'Ether on Ethereum', adr:null, dec:18,
-    logo:'img/wallet/tok_eth_l1.webp', natif:true, chaine:1 }
+    logo:'img/wallet/tok_eth_l1.webp', natif:true, chaine:1 },
+
+  { cle:'swoge',    sym:'SWOGE',     nom:'Swole Doge',   adr:SWOGE,    dec:18,
+    logo:'img/wallet/tok_swoge.webp' },
+  { cle:'swogebet', sym:'SWOGEBET',  nom:'Swogebet',     adr:SWOGEBET, dec:18,
+    logo:'img/wallet/tok_swogebet.webp' }
 ];
 function J(cle){ for(var i=0;i<JETONS.length;i++) if(JETONS[i].cle===cle) return JETONS[i]; return null; }
 
@@ -3166,11 +3192,18 @@ function peintAccueil(){
        repli qui n'affirme rien. */
     var logo = j.logo ? '<img src="'+j.logo+'" alt="">'
       : '<span class="wl-eth">'+j.sym.slice(0,2)+'</span>';
-    h += '<button class="wl-jeton" type="button" data-jeton="'+j.cle+'">'
+    /* Une ligne d'une AUTRE chaine mene au pont, pas a sa fiche : sa fiche
+       n'apprendrait rien (pas de contrat, pas de marche ici) et couterait un
+       geste de plus avant le seul geste possible. */
+    var ailleurs = j.chaine && j.chaine !== CHAINE.id;
+    h += '<button class="wl-jeton" type="button" data-jeton="'+j.cle+'"'
+       +   (ailleurs ? ' data-pont="1"' : '') + '>'
        +   logo
        +   '<span class="nom"><b>'+j.sym+'</b><small>'+j.nom+'</small></span>'
        +   '<span class="val"><b>'+(moi ? (s===null||s===undefined ? '—' : nombre(s,j.dec)) : '—')+'</b>'
-       +     '<small>'+(v===null ? (moi?'no price':'—') : usd(v))+'</small></span>'
+       +     '<small>'+(v===null ? (moi?'no price':'—') : usd(v))+'</small>'
+       +     (ailleurs ? '<span class="versPont">BRIDGE &rarr;</span>' : '')
+       +   '</span>'
        + '</button>';
   }
   $('acJetons').innerHTML = h;
@@ -3194,7 +3227,9 @@ function peintAccueil(){
 
 document.addEventListener('click', function(ev){
   var b = ev.target.closest('[data-jeton]');
-  if(b) ficheJeton(b.dataset.jeton);
+  if(!b) return;
+  if(b.dataset.pont){ sensPont = 'depot'; va('ecPont'); return; }
+  ficheJeton(b.dataset.jeton);
 });
 
 /* ---- ON N'INVENTE PAS UNE IDENTITE ----
@@ -5695,8 +5730,21 @@ function peintSensPont(){
   var l = document.querySelectorAll('#poSens button');
   for(var i=0;i<l.length;i++) l[i].classList.toggle('on', l[i].dataset.sens === sensPont);
   var de = pontDe(), vers = pontVers();
-  $('poDeT').textContent   = 'YOU SEND — ' + de.nom.toUpperCase();
-  $('poVersT').textContent = 'YOU RECEIVE — ' + vers.nom.toUpperCase();
+  $('poDeT').textContent   = 'YOU SEND';
+  $('poVersT').textContent = 'YOU RECEIVE';
+  /* La piece vient de la LISTE DES JETONS, pas d'un chemin recopie ici : le
+     jour ou l'une des deux change de dessin, les deux endroits suivent. */
+  posePiecePont($('poDeJ'),   de);
+  posePiecePont($('poVersJ'), vers);
+}
+function posePiecePont(boite, c){
+  if(!boite) return;
+  var j = J(c.id === L1.id ? 'ethL1' : 'eth');
+  var im = boite.querySelector('img');
+  if(j && j.logo){ im.src = j.logo; im.hidden = false; }
+  else im.hidden = true;
+  boite.querySelector('b').textContent = j ? j.sym : c.sym;
+  boite.querySelector('small').textContent = c.nom;
 }
 
 /* Le solde se lit SUR LA CHAINE DE DEPART, jamais recopie de l'accueil :

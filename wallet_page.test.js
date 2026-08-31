@@ -156,6 +156,10 @@ function servir(q, r, f, type) {
         .filter((x) => /ETH/.test(x.sym)));
     console.log('   les deux ether : ' + JSON.stringify(ethers2));
     ok(ethers2.length === 2, 'il y a bien DEUX lignes d ether (' + ethers2.length + ')');
+    /* Et l une SOUS l autre : deux fois le meme actif se comparent d un coup
+       d oeil quand ils se touchent, pas quand deux jetons les separent. */
+    ok(syms[0] === 'ETH (RH)' && syms[1] === 'ETH',
+       'et l ETH d Ethereum est juste sous l ETH (RH) (' + syms.join(', ') + ')');
     ok(ethers2.every((x) => /Robinhood|Ethereum/.test(x.nom)),
        'et chacune DIT sur quelle chaine elle est ('
        + ethers2.map((x) => x.sym + ' = ' + x.nom).join(' | ') + ')');
@@ -2857,10 +2861,20 @@ function servir(q, r, f, type) {
       await page.evaluate(() => document.querySelector('[data-va="ecPont"]').click());
       await page.waitForTimeout(700);
     };
-    const lit = () => page.evaluate(() => ({
+    const lit = () => page.evaluate(() => {
+      const piece = (id) => {
+        const b = document.getElementById(id); if (!b) return {};
+        const im = b.querySelector('img');
+        return { sym: b.querySelector('b').textContent,
+                 chaine: b.querySelector('small').textContent,
+                 logo: im && !im.hidden ? im.getAttribute('src') : null,
+                 charge: im ? im.naturalWidth > 0 : false };
+      };
+      return {
       ecran: (document.querySelector('.wl-ecran.on') || {}).id,
-      de: document.getElementById('poDeT').textContent,
-      vers: document.getElementById('poVersT').textContent,
+      pDe: piece('poDeJ'), pVers: piece('poVersJ'),
+      de: document.getElementById('poDeT').textContent + ' ' + piece('poDeJ').chaine,
+      vers: document.getElementById('poVersT').textContent + ' ' + piece('poVersJ').chaine,
       solde: document.getElementById('poSolde').textContent,
       recu: document.getElementById('poRecu').textContent,
       mini: document.getElementById('poMini').textContent,
@@ -2869,7 +2883,7 @@ function servir(q, r, f, type) {
       temps: document.getElementById('poTemps').textContent,
       note: document.getElementById('poNote').textContent,
       montant: document.getElementById('poMontant').value,
-    }));
+      }; });
     const etatFaux = () => page.evaluate(() => window.__w);
 
     await page.goto('http://127.0.0.1:' + port + '/swoge_wallet.html', { waitUntil: 'domcontentloaded' });
@@ -2883,9 +2897,61 @@ function servir(q, r, f, type) {
     await ouvrePont();
     let m = await lit();
     ok(m.ecran === 'ecPont', 'et il ouvre bien l ecran du pont');
-    ok(/ETHEREUM/.test(m.de) && /ROBINHOOD/.test(m.vers),
+    ok(/Ethereum/i.test(m.de) && /Robinhood/i.test(m.vers),
        'par defaut on DEPOSE : d Ethereum vers la Robinhood Chain (' + m.de + ' -> ' + m.vers + ')');
+    /* ---- ET LES DEUX PIECES SONT LA ----
+     * On deplace de l argent entre deux chaines : voir les deux pieces l une
+     * au-dessus de l autre dit d un coup d oeil dans quel sens on va, et le
+     * sens est justement la seule chose qu on puisse confondre ici. */
+    console.log('   les deux pieces : ' + JSON.stringify([m.pDe, m.pVers]));
+    ok(m.pDe.charge && m.pVers.charge,
+       'les deux pieces se dessinent vraiment sur l ecran du pont');
+    ok(m.pDe.logo !== m.pVers.logo,
+       'et ce sont DEUX pieces differentes (' + String(m.pDe.logo).split('/').pop()
+       + ' / ' + String(m.pVers.logo).split('/').pop() + ')');
+    ok(m.pDe.sym === 'ETH' && m.pVers.sym === 'ETH (RH)',
+       'chacune nommee : ' + m.pDe.sym + ' -> ' + m.pVers.sym);
     ok(/0\.3/.test(m.solde), 'et le solde lu est celui d ETHEREUM, pas celui de l accueil (' + m.solde + ')');
+
+    /* ---- ON PART DE LA OU L ON VOIT SON ETH ----
+     *
+     * « Un bouton bridge la ou tu as ton ETH. » Le geste de l accueil existait
+     * deja, mais il demande de savoir qu il existe. La ligne de l ETH
+     * d Ethereum, elle, est exactement l endroit ou l on constate qu on en a —
+     * et la seule chose qu on puisse en faire ici, c est le faire passer. Elle
+     * mene donc au pont, et elle l ECRIT, au lieu de mener a une fiche qui
+     * n apprendrait rien. */
+    await page.evaluate(() => document.querySelector('[data-va="ecAccueil"]').click());
+    await page.waitForTimeout(500);
+    const ligne = await page.evaluate(() => {
+      const r = [...document.querySelectorAll('#acJetons .wl-jeton')]
+        .find((x) => x.querySelector('.nom b').textContent === 'ETH');
+      if (!r) return null;
+      return { pont: r.dataset.pont === '1',
+               dit: (r.querySelector('.versPont') || {}).textContent || '',
+               autres: [...document.querySelectorAll('#acJetons .wl-jeton[data-pont]')].length };
+    });
+    console.log('   la ligne de l ETH : ' + JSON.stringify(ligne));
+    ok(!!ligne && ligne.pont, 'la ligne de l ETH d Ethereum mene au pont');
+    ok(!!ligne && /BRIDGE/.test(ligne.dit),
+       'et elle le dit sur la ligne meme (« ' + (ligne || {}).dit + ' »)');
+    ok(!!ligne && ligne.autres === 1,
+       'elle seule — les jetons de la chaine gardent leur fiche (' + (ligne || {}).autres + ')');
+    /* Et le tap y va VRAIMENT, dans le bon sens : deposer, pas retirer. */
+    await page.evaluate(() => {
+      const r = [...document.querySelectorAll('#acJetons .wl-jeton')]
+        .find((x) => x.querySelector('.nom b').textContent === 'ETH');
+      r.click();
+    });
+    await page.waitForTimeout(900);
+    const arrive = await page.evaluate(() => ({
+      ecran: (document.querySelector('.wl-ecran.on') || {}).id,
+      sens: (document.querySelector('#poSens button.on') || {}).textContent,
+      de: (document.querySelector('#poDeJ small') || {}).textContent || '' }));
+    console.log('   apres le tap : ' + JSON.stringify(arrive));
+    ok(arrive.ecran === 'ecPont', 'un tap dessus ouvre le pont (' + arrive.ecran + ')');
+    ok(arrive.sens === 'Deposit' && /Ethereum/i.test(arrive.de),
+       'et deja dans le bon sens : depuis Ethereum (' + arrive.sens + ' — ' + arrive.de + ')');
 
     /* ---- LE DEVIS ---- */
     await page.fill('#poMontant', '0.1');
@@ -2903,8 +2969,10 @@ function servir(q, r, f, type) {
     await page.evaluate(() => document.querySelector('#poSens button[data-sens="retrait"]').click());
     await page.waitForTimeout(1200);
     m = await lit();
-    ok(/ROBINHOOD/.test(m.de) && /ETHEREUM/.test(m.vers),
+    ok(/Robinhood/i.test(m.de) && /Ethereum/i.test(m.vers),
        'le sens s inverse vraiment (' + m.de + ' -> ' + m.vers + ')');
+    ok(m.pDe.sym === 'ETH (RH)' && m.pVers.sym === 'ETH',
+       'et les deux pieces ont echange leur place (' + m.pDe.sym + ' -> ' + m.pVers.sym + ')');
     ok(/0\.04/.test(m.solde), 'et le solde affiche devient celui de la Robinhood Chain (' + m.solde + ')');
 
     /* ---- LA CHAINE SUR LAQUELLE ON SIGNE ----

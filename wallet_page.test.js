@@ -2531,7 +2531,46 @@ function servir(q, r, f, type) {
     ok(calme.cache && calme.ecran === 'ecAccueil',
        'mouvement reduit : pas d animation, le portefeuille tout de suite');
     ok(films.length === 0,
-       `et le film n est meme pas TELECHARGE (${films.length} requete) — 427 ko epargnes`);
+       `et le film n est meme pas TELECHARGE (${films.length} requete) — 536 ko epargnes`);
+    await page.close();
+  }
+
+  /* ---- SUR ORDINATEUR, ELLE S OUVRE DANS LE TELEPHONE ----
+   *
+   * Elle etait posee a la racine du corps, en `position:fixed` : sur un ecran
+   * de 1440 pixels, elle en noircissait 1440 pour annoncer une application qui
+   * en fait 390. Le portefeuille est ici un telephone POSE SUR UNE PAGE, avec
+   * le menu du site a gauche et les jeux a droite ; l ouverture doit se jouer
+   * dans l appareil, pas devant tout l ecran.
+   *
+   * Ce qui se mesure n est pas « elle est plus petite » — c est qu elle tient
+   * DANS le cadre et que ce qui l entoure reste visible. */
+  console.log('\n-- l animation, sur grand ecran --');
+  {
+    const page = await nav.newPage({ viewport: { width: 1440, height: 900 } });
+    await page.goto('http://127.0.0.1:' + port + '/swoge_wallet.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(1200);
+    const pc = await page.evaluate(() => {
+      const i = document.getElementById('wlIntro');
+      const r = i.getBoundingClientRect();
+      const t = document.getElementById('tel').getBoundingClientRect();
+      const g = document.querySelector('.wl-cote.gauche').getBoundingClientRect();
+      const d = document.querySelector('.wl-cote.droite').getBoundingClientRect();
+      return { vu: !i.hidden, pos: getComputedStyle(i).position,
+               dansLeCadre: r.left >= t.left - 2 && r.right <= t.right + 2
+                         && r.top >= t.top - 2 && r.bottom <= t.bottom + 2,
+               large: Math.round(r.width), largeCadre: Math.round(t.width),
+               ecran: window.innerWidth,
+               gauche: Math.round(g.width), droite: Math.round(d.width) };
+    });
+    console.log('   ' + JSON.stringify(pc));
+    ok(pc.vu, 'sur grand ecran l animation passe quand meme');
+    ok(pc.pos === 'absolute' && pc.dansLeCadre,
+       'mais elle tient DANS le cadre du telephone, elle ne prend plus l ecran');
+    ok(pc.large <= pc.largeCadre + 2 && pc.large < pc.ecran / 2,
+       `elle fait ${pc.large} px de large, pas ${pc.ecran}`);
+    ok(pc.gauche > 100 && pc.droite > 100,
+       `et les deux colonnes restent visibles autour (${pc.gauche} et ${pc.droite} px)`);
     await page.close();
   }
 

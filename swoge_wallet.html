@@ -68,7 +68,7 @@
      A savoir : cela ne sauve pas la page DEJA en cache chez quelqu'un, qui ne
      contient pas ces lignes. Ce garde-fou vaut a partir de celle-ci. -->
 <script>
-var MARQUE_PAGE = '8888f14a';
+var MARQUE_PAGE = '86fbb0a5';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -899,10 +899,21 @@ body{
    laisse donc deux bandes de chaque cote. Le fond du film etant desormais du
    blanc PUR, la boite doit l'etre aussi — a #FDFDFD la couture se voyait en
    biais sur un ecran bien regle. */
+/* ---- SUR TELEPHONE ELLE PREND L'ECRAN, AILLEURS ELLE PREND LE CADRE ----
+   Sous 520 pixels le cadre remplit deja la fenetre, mais il commence SOUS
+   l'en-tete du site : en `absolute` le film laisserait la barre « SWOGE
+   WALLET » visible au-dessus de lui, ce qui n'est plus une ouverture en plein
+   ecran. On garde donc `fixed` la, et `absolute` des que le telephone
+   redevient un objet pose sur une page. `fixed` sur un descendant s'echappe
+   bien de `overflow:hidden` : seule une transformation sur un ancetre le
+   retiendrait, et `.wl-tel` n'en porte pas. */
 #wlIntro{
   position:fixed; inset:0; z-index:2147483200; background:#FFFFFF;
   display:flex; align-items:center; justify-content:center;
   transition:opacity .45s ease;
+}
+@media (min-width:521px){
+  #wlIntro{ position:absolute }
 }
 #wlIntro[hidden]{ display:none }
 #wlIntro.part{ opacity:0 }
@@ -1067,12 +1078,6 @@ body{
      de style. `hidden` au depart — c'est le script qui la leve, et seulement
      s'il peut la tenir. Une page sans script n'a alors pas d'ecran noir a
      traverser pour arriver a son solde. -->
-<div id="wlIntro" hidden>
-  <video id="wlIntroFilm" muted playsinline preload="auto" disablepictureinpicture
-         poster="img/wallet/wallet_intro_poster.webp" aria-hidden="true"></video>
-  <button type="button" class="passe" id="wlIntroPasse">SKIP</button>
-</div>
-
 <div class="wl-page">
 
 <!-- ================== LA COLONNE DE GAUCHE ==================
@@ -1596,6 +1601,21 @@ body{
   </div>
 
   <div class="wl-toast" id="toast"></div>
+
+  <!-- ---- ELLE VIT DANS LE CADRE, PAS DANS LA PAGE ----
+       Elle etait posee a la racine du corps, en `position:fixed`. Sur
+       telephone cela ne se voyait pas : le cadre EST l'ecran. Sur ordinateur,
+       ou le portefeuille est un telephone pose au milieu d'une page, elle
+       noircissait les 1920 pixels de l'ecran pour annoncer une application
+       qui en fait 390. Elle est donc DANS le cadre — le film s'ouvre au
+       centre du telephone, et les deux colonnes restent visibles autour.
+       `#tel` est en `position:relative` et `overflow:hidden` : elle s'y cale
+       toute seule et se fait arrondir les coins par le cadre. -->
+  <div id="wlIntro" hidden>
+    <video id="wlIntroFilm" muted playsinline preload="auto" disablepictureinpicture
+           poster="img/wallet/wallet_intro_poster.webp" aria-hidden="true"></video>
+    <button type="button" class="passe" id="wlIntroPasse">SKIP</button>
+  </div>
 </div>
 
 <!-- ================== LA COLONNE DE DROITE ==================

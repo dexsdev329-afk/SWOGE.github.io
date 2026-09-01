@@ -927,7 +927,20 @@ function servir(q, r, f, type) {
     ok(new Set(lignes.map((x) => x.logo)).size === lignes.length,
        lignes.length + ' pieces differentes — aucune n emprunte celle d une autre');
 
-    /* ---- L ECHANGE, LUI, RESTE SUR SA CHAINE ---- */
+    /* ---- L ECHANGE PROPOSE LES AUTRES CHAINES, ET LES SUIT ----
+     *
+     * Cette liste s arretait a la Robinhood Chain, et la raison ecrite ici
+     * etait : « le routeur est ici, l echec arriverait apres la signature ».
+     * Elle etait vraie avant le relayeur. Elle ne l est plus : payer depuis
+     * Base est un chemin que cette page sait faire — il est mesure plus bas,
+     * de bout en bout, jusqu a la note « arrived on ». Ce qui restait n etait
+     * donc plus une protection mais l effet d une liste rangee par chaine, qui
+     * obligeait a annoncer la chaine avant de choisir le jeton.
+     *
+     * Ce qu il faut verifier a la place, c est l INVARIANT : le jeton qui paie
+     * et la chaine de depart ne se contredisent jamais. Tant qu il tient, une
+     * ligne de Base construit la transaction du relayeur, pas un echange local
+     * impossible. */
     await page.keyboard.press('Escape');
     await page.evaluate(() => document.querySelector('[data-va="ecAccueil"]').click());
     await page.waitForTimeout(200);
@@ -935,11 +948,28 @@ function servir(q, r, f, type) {
     await page.waitForTimeout(250);
     const swLignes = await page.evaluate(() =>
       [...document.querySelectorAll('#swDe option')].map((o) => o.value));
-    ok(swLignes.length > 0 && swLignes.every((c) => c === 'eth' || c.slice(0, 2) !== 'ch'),
-       'la liste de l echange ne propose AUCUNE chaine du pont : le routeur est '
-       + 'ici, et l echec arriverait apres la signature (' + swLignes.join(', ') + ')');
-    ok(swLignes.indexOf('ethL1') < 0,
-       'ni l ETH d Ethereum, pour la meme raison');
+    ok(swLignes.indexOf('ch8453') >= 0 && swLignes.indexOf('ethL1') >= 0,
+       'la liste de l echange porte les autres chaines : on choisit le jeton, pas la chaine '
+       + '(' + swLignes.join(', ') + ')');
+    ok(swLignes.indexOf('eth') >= 0 && swLignes.indexOf('swoge') >= 0,
+       'sans rien perdre de ce qui vit ici');
+    const suit = await page.evaluate(async () => {
+      const s = document.getElementById('swDe');
+      s.value = 'ch8453';
+      s.dispatchEvent(new Event('change', { bubbles: true }));
+      await new Promise((r) => setTimeout(r, 500));
+      return { de: s.value, ch: (document.getElementById('swChaineNom') || {}).textContent };
+    });
+    console.log('   une ligne de Base : ' + JSON.stringify(suit));
+    ok(suit.de === 'ch8453' && /Base/.test(suit.ch),
+       'et la chaine de depart SUIT le jeton : sans ca, l ecran serait coherent avec le '
+       + 'mauvais jeton, et le devis, lui, serait juste (' + suit.ch + ')');
+    await page.evaluate(async () => {
+      const s = document.getElementById('swDe');
+      s.value = 'eth';
+      s.dispatchEvent(new Event('change', { bubbles: true }));
+      await new Promise((r) => setTimeout(r, 400));
+    });
     await page.evaluate(() => document.querySelector('[data-va="ecAccueil"]').click());
     await page.waitForTimeout(150);
     await page.evaluate(() => document.querySelector('[data-va="ecEnvoyer"]').click());
@@ -4077,6 +4107,7 @@ function servir(q, r, f, type) {
       lab: (document.getElementById('swDeL') || {}).textContent,
       paye: (document.querySelector('.wl-pick[data-pour="swDe"] .tx b') || {}).textContent,
       fige: !!document.querySelector('.wl-pick[data-pour="swDe"].fige'),
+      de: (document.getElementById('swDe') || {}).value,
       options: [...document.querySelectorAll('#swDe option')].map((o) => o.value),
       vers: (document.getElementById('swVers') || {}).value,
       solde: (document.getElementById('swSolde') || {}).textContent,
@@ -4118,13 +4149,38 @@ function servir(q, r, f, type) {
       route: m.route, bouton: m.bouton, impactT: m.impactT, solde: m.solde }));
     ok(m.bouton === 'Buy', 'l ecran devient un ACHAT, pas un echange (« ' + m.bouton + ' »)');
     ok(/Base/.test(m.lab), 'et il dit sur quelle chaine on paie (« ' + m.lab + ' »)');
-    /* ---- ON NE PROPOSE PAS UN JETON QUI N EXISTE PAS LA-BAS ----
+    /* ---- ON NE PAIE JAMAIS UN JETON QUI N EXISTE PAS LA-BAS ----
+     *
      * Le relayeur prend de l ether sur Base, pas du $SWOGE qui n y est pas.
-     * Laisser choisir puis refuser apres coup, c est un piege. */
-    ok(m.options.length === 1 && m.options[0] === 'ch8453',
-       'la piece a payer est celle de la chaine, et elle seule ('
-       + m.options.join(', ') + ')');
-    ok(m.fige, 'le choix est visiblement fige — un menu qui ne s ouvre pas passe pour casse');
+     * La garantie tenait par une liste reduite a une seule ligne, et le champ
+     * etait fige. Elle tient maintenant autrement : la liste les porte tous,
+     * mais choisir en DEPLACE la chaine — donc rien n est jamais choisi puis
+     * refuse apres coup, ce qui etait le piege a eviter.
+     *
+     * Le champ n est donc plus fige : c est justement par la qu on part
+     * d ailleurs sans avoir a trouver le bouton du haut. */
+    ok(m.paye === 'ETH' && m.de === 'ch8453',
+       'choisir Base a repose la piece a payer sur celle de Base (' + m.de + ')');
+    ok(!m.fige, 'et le champ reste ouvert : c est par la qu on choisit un jeton d ailleurs');
+    const retour = await page.evaluate(async () => {
+      const s = document.getElementById('swDe');
+      s.value = 'swoge';
+      s.dispatchEvent(new Event('change', { bubbles: true }));
+      await new Promise((r) => setTimeout(r, 600));
+      return { de: s.value, ch: (document.getElementById('swChaineNom') || {}).textContent };
+    });
+    console.log('   on choisit $SWOGE depuis Base : ' + JSON.stringify(retour));
+    ok(retour.de === 'swoge' && /Robinhood/.test(retour.ch),
+       'et prendre $SWOGE pendant qu on partait de Base ramene le depart ICI, ou il existe : '
+       + 'aucun choix n est accepte puis refuse plus tard (' + retour.ch + ')');
+    /* On remet Base pour la suite, qui mesure l achat depuis la-bas. */
+    await page.click('#swChaineB');
+    await page.waitForTimeout(400);
+    await page.evaluate(() => {
+      const b = [...document.querySelectorAll('#poChL [data-ch]')].find((x) => /Base/.test(x.textContent));
+      b.click(); });
+    await page.waitForTimeout(800);
+    m = await lit();
     ok(/2 ETH/.test(m.solde), 'et le solde montre est celui de Base (' + m.solde + ')');
     ok(m.tempsVu, 'une ligne annonce le delai d arrivee, qui n existe pas sur un echange local');
 
@@ -4404,6 +4460,95 @@ function servir(q, r, f, type) {
     ok(/Base/.test(apres),
        'la chaine choisie tient apres un rechargement — qui paie toujours depuis Base ne le '
        + 'rechoisit pas a chaque visite (' + apres + ')');
+
+    /* ================= LE JETON CHOISI DIT SA CHAINE =================
+     *
+     * « Le wallet devrait etre plus intelligent : quand je suis dans swap,
+     *   reconnaitre la chaine du jeton selectionne. »
+     *
+     * Il fallait d abord annoncer la chaine, ensuite choisir le jeton : la
+     * liste ne montrait que ce qui vit sur la chaine deja selectionnee. Qui
+     * detient du DEGEN sur Base ouvrait l echange, ne le voyait pas, et
+     * n avait aucune raison de deviner qu un bouton en haut de l ecran le
+     * ferait apparaitre.
+     *
+     * Ce qui se mesure ici, dans les deux sens :
+     *   - la liste qui paie porte les jetons de TOUTES les chaines ;
+     *   - en choisir un pose la chaine de depart tout seul ;
+     *   - choisir une chaine repose le jeton, pour qu ils ne se contredisent
+     *     jamais — un ecran coherent avec le mauvais jeton est le pire cas
+     *     possible ici, puisque le devis, lui, serait juste ;
+     *   - et Solana reste hors de cette liste : on ne sait pas y signer.
+     */
+    console.log('\n   -- le jeton choisi dit sa chaine --');
+    /* On se repose ici avant de mesurer : le depart doit VENIR du jeton. */
+    await page.click('#swChaineB');
+    await page.waitForTimeout(400);
+    await page.evaluate(() => {
+      const b = [...document.querySelectorAll('#poChL [data-ch]')].find((x) => /Robinhood/.test(x.textContent));
+      b.click(); });
+    await page.waitForTimeout(700);
+
+    await page.click('#swDeB');
+    await page.waitForTimeout(300);
+    const liste = await page.evaluate(() =>
+      [...document.querySelectorAll('.wl-pick[data-pour="swDe"] .wl-pick-o')].map((o) => ({
+        cle: o.dataset.cle,
+        sym: o.querySelector('.tx b').textContent,
+        ch: (o.querySelector('.wl-chp b') || {}).textContent || '' })));
+    console.log('   ce qu on peut payer : ' + JSON.stringify(liste.map((x) => x.sym + (x.ch ? '@' + x.ch : ''))));
+    ok(liste.some((x) => x.cle === 'd8453-0x4ed4e862860bed51a9570b96d89af5e1b0efefed'.toLowerCase()
+                      || /^d8453-/.test(x.cle)),
+       'le DEGEN detenu sur Base est DANS la liste qui paie, sans avoir eu a changer de chaine '
+       + 'd abord (' + liste.length + ' lignes)');
+    ok(liste.some((x) => x.cle === 'swoge') && liste.some((x) => x.cle === 'eth'),
+       'et ce qui vit ici y est toujours');
+    /* La pastille : le nom porte deja la chaine, mais un nom se coupe et
+       c est le bout de droite qui saute. */
+    const dg2 = liste.filter((x) => /^d8453-/.test(x.cle))[0];
+    ok(!!dg2 && /Base/.test(dg2.ch),
+       'chaque ligne d ailleurs porte sa chaine en clair (« ' + (dg2 || {}).ch + ' »)');
+    ok(!liste.some((x) => /^d792703809-/.test(x.cle)),
+       'et rien de Solana : cette page ne sait pas y signer, proposer d y payer serait '
+       + 'promettre un geste qui echouerait apres coup');
+
+    /* ---- ON CHOISIT LE JETON. LA CHAINE SUIT. ---- */
+    await page.evaluate(() => {
+      const o = [...document.querySelectorAll('.wl-pick[data-pour="swDe"] .wl-pick-o')]
+        .find((x) => /^d8453-/.test(x.dataset.cle));
+      o.click(); });
+    await page.waitForTimeout(900);
+    const suivi = await page.evaluate(() => ({
+      de: (document.getElementById('swDe') || {}).value,
+      chaine: (document.getElementById('swChaineNom') || {}).textContent,
+      lab: (document.getElementById('swDeL') || {}).textContent,
+      solde: (document.getElementById('swSolde') || {}).textContent }));
+    console.log('   apres le choix : ' + JSON.stringify(suivi));
+    ok(/^d8453-/.test(suivi.de) && /Base/.test(suivi.chaine),
+       'choisir le jeton a POSE la chaine : le bouton « From » n est plus une question, '
+       + 'c est ce que le jeton a dit (' + suivi.chaine + ')');
+    ok(/Base/.test(suivi.lab),
+       'et l etiquette du champ le repete la ou on tape le montant (« ' + suivi.lab + ' »)');
+    ok(/500/.test(suivi.solde),
+       'le solde affiche est celui du jeton SUR SA CHAINE (' + suivi.solde + ')');
+
+    /* ---- ET DANS L AUTRE SENS ----
+     * Le bouton reste, pour qui prefere partir de la chaine. Il doit alors
+     * reposer le jeton : laisser le DEGEN de Base sous un depart Robinhood
+     * ferait un ecran coherent avec le mauvais jeton. */
+    await page.click('#swChaineB');
+    await page.waitForTimeout(400);
+    await page.evaluate(() => {
+      const b = [...document.querySelectorAll('#poChL [data-ch]')].find((x) => /Robinhood/.test(x.textContent));
+      b.click(); });
+    await page.waitForTimeout(900);
+    const recale = await page.evaluate(() => ({
+      de: (document.getElementById('swDe') || {}).value,
+      chaine: (document.getElementById('swChaineNom') || {}).textContent }));
+    console.log('   apres avoir repose la chaine : ' + JSON.stringify(recale));
+    ok(/Robinhood/.test(recale.chaine) && recale.de === 'eth',
+       'choisir une chaine repose le jeton : les deux ne peuvent pas se contredire ('
+       + recale.de + ' sur ' + recale.chaine + ')');
 
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.close();

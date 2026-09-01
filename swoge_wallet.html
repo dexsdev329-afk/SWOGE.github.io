@@ -850,6 +850,14 @@ body{
 .wl-pick-o .x:hover{ background:rgba(248,113,113,.18); color:var(--rouge) }
 .wl-pick-o:hover, .wl-pick-o.actif{ background:var(--voile) }
 .wl-pick-o[aria-selected="true"]{ background:var(--voile2) }
+/* La pastille de chaine, sur les lignes qui ne vivent pas ici. */
+.wl-chp{ flex:0 0 auto; display:inline-flex; align-items:center; gap:5px;
+  padding:3px 7px 3px 4px; border-radius:999px; border:1px solid var(--bord);
+  background:var(--fond); max-width:104px }
+.wl-chp img{ width:14px !important; height:14px !important; border-radius:50%;
+  flex:0 0 auto; object-fit:contain }
+.wl-chp b{ font:700 10px/1 'Archivo',sans-serif; color:var(--doux);
+  letter-spacing:.2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap }
 .wl-pick-o .sol{ flex:0 0 auto; text-align:right;
   font:700 12px/1.2 'Space Mono',monospace; font-variant-numeric:tabular-nums;
   color:var(--doux) }
@@ -4515,28 +4523,31 @@ function remplitChoix(sel, exclure){
    * laisser choisir puis refuser apres coup.
    * L'arrivee, elle, est toujours ICI : le relayeur depose sur la Robinhood
    * Chain, et c'est la que vivent le $SWOGE et les autres. */
-  var payeAilleurs = (sel.id === 'swDe') && swDistant();
-  if(payeAilleurs){
-    /* La piece native de la chaine, PLUS ce qu'on y detient : c'est la
-       porte de sortie d'un jeton achete la-bas. Sans elle on refait le
-       defaut de l'ETH parti sur Base — une entree sans sortie. */
-    var cn = cleDeChaine(swChaineId), jn = J(cn), hh = '';
-    if(jn) hh += '<option value="'+cn+'">'+jn.sym+' — '+jn.nom+'</option>';
-    for(var d=0;d<JETONS.length;d++){
-      var jd2 = JETONS[d];
-      if(!jd2.distant || jd2.chaine !== swChaineId) continue;
-      hh += '<option value="'+jd2.cle+'">'+jd2.sym+' — '+jd2.nom+'</option>';
-    }
-    sel.innerHTML = hh;
-    if(avant){
-      for(var q2=0;q2<sel.options.length;q2++) if(sel.options[q2].value === avant){ sel.value = avant; break; }
-    }
-    peintPick(sel);
-    return;
-  }
+  /* ---- ET LE COTE QUI PAIE MONTRE TOUT CE QU'ON PEUT PAYER ----
+   *
+   * Il fallait d'abord choisir la chaine, ensuite le jeton : la liste ne
+   * montrait que ce qui vit sur la chaine deja selectionnee. Un joueur qui
+   * detient du DEGEN sur Base ouvrait l'echange, ne le voyait pas, et n'avait
+   * aucune raison de deviner qu'il devait toucher un bouton « From » en haut
+   * de l'ecran pour le faire apparaitre. On lui demandait de savoir ce qu'il
+   * venait demander a la page.
+   *
+   * C'est l'inverse maintenant : la liste porte tout ce avec quoi on peut
+   * payer, ou que ce soit, et c'est le JETON CHOISI QUI DIT SA CHAINE — le
+   * bouton « From » suit tout seul (voir le `change` de `swDe`). Le bouton
+   * reste : il sert a qui veut d'abord se poser sur une chaine, et il rend
+   * alors la selection coherente en sens inverse.
+   *
+   * Une seule exclusion, et elle est reelle : Solana. Cette page ne sait pas
+   * y SIGNER — elle n'y sait que recevoir et lire. Proposer d'y payer serait
+   * promettre un geste qui echouerait apres coup, ce qui est pire que de ne
+   * pas le proposer. */
+  var paie = (sel.id === 'swDe');
   for(var i=0;i<JETONS.length;i++){
     if(exclure && JETONS[i].cle===exclure) continue;
-    if(JETONS[i].chaine && JETONS[i].chaine !== CHAINE.id && !envoi) continue;
+    var ch = JETONS[i].chaine;
+    if(ch && ch !== CHAINE.id && !envoi && !paie) continue;
+    if(paie && ch === SOL_CHAINE) continue;
     var nomJ = JETONS[i].sym+' — '+JETONS[i].nom;
     h+='<option value="'+JETONS[i].cle+'">'+nomJ+'</option>';
   }
@@ -4581,6 +4592,7 @@ function peintPick(sel){
        +   (x.logo ? '<img src="'+ech(x.logo)+'" alt="">'
                    : '<span class="ini">'+ech(initialesDe(x))+'</span>')
        +   '<span class="tx"><b>'+ech(x.sym)+'</b><small>'+ech(x.nom)+'</small></span>'
+       +   pastilleChaine(x)
        +   (aff ? '<span class="sol">'+aff+'</span>' : '')
        +   (x.perso ? '<span class="x" data-oublie="'+x.cle+'" title="Remove this token">&times;</span>' : '')
        + '</button>';
@@ -4603,6 +4615,23 @@ function peintPick(sel){
   for(var v=0; v<vieux.length; v++) vieux[v].parentNode.removeChild(vieux[v]);
   l.insertAdjacentHTML('beforeend', h);
   filtrePick(w);
+}
+
+/* ---- LA CHAINE, LISIBLE SANS AVOIR A LIRE ----
+ * Le nom du jeton la porte deja — « DEGEN on Base » — mais un nom se coupe
+ * quand il est long, et c'est justement le bout de droite qui saute. La
+ * pastille, elle, tient toujours : c'est ce qui permet de reconnaitre la
+ * chaine d'un coup d'oeil dans une liste qui les melange maintenant toutes.
+ * Rien pour la Robinhood Chain : c'est la maison, et l'annoter reviendrait a
+ * marquer toutes les lignes pour en distinguer trois. */
+function pastilleChaine(x){
+  var id = x.chaine || CHAINE.id;
+  if(id === CHAINE.id) return '';
+  var c = chaineDuPont(id);
+  return '<span class="wl-chp" title="' + ech(c.nom) + '">'
+       +   '<img src="' + ech(c.logo) + '" alt="">'
+       +   '<b>' + ech(c.nom) + '</b>'
+       + '</span>';
 }
 
 /* Les initiales servent de repli quand il n'y a pas d'image. */
@@ -5573,6 +5602,38 @@ $('enPartir').addEventListener('click', function(){
  * tolerance fixe cacherait ca puis ferait echouer l'echange sans dire
  * pourquoi. On calcule l'ecart a chaque devis et on l'ecrit.
  */
+/* ---- LES DEUX SENS DE LA MEME REGLE ----
+ *
+ * Le jeton et la chaine de depart ne peuvent pas se contredire : payer du
+ * DEGEN « depuis Ethereum » n'est pas une transaction, c'est un ecran
+ * coherent avec le mauvais jeton — et le devis, lui, serait juste. C'est le
+ * pire cas possible sur cet ecran.
+ *
+ * Choisir un jeton pose donc sa chaine (voir le `change` de `swDe`), et
+ * choisir une chaine repose le jeton : celui-ci, s'il vit deja la-bas ; la
+ * piece de la chaine sinon. Le meme accord est refait a chaque `majSwap`,
+ * parce qu'un troisieme chemin y mene sans passer par ni l'un ni l'autre —
+ * l'ouverture de la page, ou la chaine revient du disque pendant que la liste
+ * des jetons retombe sur sa premiere ligne.
+ *
+ * On ne declenche pas `change` ici : ce serait rappeler le `change` qui nous
+ * a appeles. `valPick` ecrit la valeur, `peintPick` remet le miroir d'accord
+ * avec elle, et `majSwap` fait le reste. */
+function accordeSwDe(){
+  var sel = $('swDe'); if(!sel || !sel.options.length) return false;
+  var j = J(sel.value);
+  if(j && (j.chaine || CHAINE.id) === swChaineId) return false;
+  var vise = cleDeChaine(swChaineId);
+  /* Un jeton DETENU la-bas vaut mieux que la piece de la chaine quand c'est
+     lui qu'on regardait : mais on n'a rien pour le deviner ici, donc on pose
+     la piece native — la seule qui existe a coup sur sur toutes. */
+  if(!J(vise)) return false;
+  valPick(sel, vise);
+  peintPick(sel);
+  remplitChoix($('swVers'), sel.value);
+  return true;
+}
+
 function majSwap(){
   if(!$('swDe').options.length){
     remplitChoix($('swDe'));
@@ -5590,12 +5651,13 @@ function majSwap(){
   var loin = swDistant();
   var ailleursDe = swChaineId !== CHAINE.id;
   var ailleursVers = swVersChaineId !== CHAINE.id;
+  /* La liste qui paie porte maintenant TOUTES les chaines : elle n'est jamais
+     reduite a un seul choix, donc plus rien a figer. Le champ reste ouvert,
+     et c'est justement ce qui permet de partir d'ailleurs sans passer par le
+     bouton du haut. */
   var picDe = document.querySelector('.wl-pick[data-pour="swDe"]');
-  /* Fige seulement s'il n'y a VRAIMENT qu'un choix : depuis qu'on peut y
-     detenir des jetons, une chaine lointaine en propose parfois plusieurs. */
-  var unSeul = ailleursDe && $('swDe').options.length <= 1;
-  if(picDe) picDe.classList.toggle('fige', unSeul);
-  var bDe = $('swDeB'); if(bDe) bDe.disabled = unSeul;
+  if(picDe) picDe.classList.remove('fige');
+  var bDe = $('swDeB'); if(bDe) bDe.disabled = false;
   var lab = $('swDeL'); if(lab) lab.textContent = ailleursDe ? 'YOU PAY (on ' + swChaine().nom + ')' : 'YOU PAY';
   /* L'arrivee : ici on choisit dans une liste, ailleurs on colle un contrat
      — cette page ne tient aucune liste de jetons pour les autres chaines, et
@@ -5606,18 +5668,48 @@ function majSwap(){
   var tr = $('swTempsR'); if(tr) tr.hidden = !loin;
   var bt = $('swPartir'); if(bt) bt.textContent = loin ? 'Buy' : 'Swap';
   /* La piece payee suit la chaine : sans ca, le solde affiche serait celui
-     d'un jeton qui n'existe pas la-bas. */
-  if(ailleursDe && !(J($('swDe').value) || {}).chaine){
-    remplitChoix($('swDe'));
-    remplitChoix($('swVers'), $('swDe').value);
-  }
+     d'un jeton qui n'existe pas la-bas. Le cas se produit au demarrage — la
+     chaine revient du disque, le jeton retombe sur celui du haut de liste —
+     et quand on choisit une chaine a la main. */
+  accordeSwDe();
   var j=J($('swDe').value) || JETONS[0];
   var s=soldes[j.cle];
   $('swSolde').textContent=(s===null||s===undefined)?'—':nombre(s,j.dec)+' '+j.sym;
   majMontant('swMontant');
   devis();
 }
+/* ---- LE JETON CHOISI DIT SA CHAINE ----
+ *
+ * « Le wallet devrait etre plus intelligent : quand je suis dans swap,
+ *   reconnaitre la chaine du jeton selectionne. »
+ *
+ * Il n'y a rien a deviner ici — chaque jeton PORTE sa chaine, elle est ecrite
+ * dans sa fiche depuis le jour ou on l'a ajoute. On la lisait pour le solde,
+ * pour l'envoi, pour la ligne « sell » ; l'echange, lui, demandait quand meme
+ * qu'on la redise a la main. Choisir du DEGEN et devoir ensuite annoncer
+ * « c'est sur Base » a une page qui le sait deja est exactement le genre de
+ * geste ou l'on se trompe de ligne.
+ *
+ * Le bouton « From » n'est donc plus une question posee au joueur : c'est un
+ * affichage de ce que le jeton a dit. Il reste cliquable pour qui prefere
+ * partir de la chaine — voir la feuille de choix, qui recale alors le jeton.
+ *
+ * Le devis est jete au passage : il chiffrait un depart d'ailleurs. Le garder
+ * a l'ecran une seconde de plus montrerait un prix qui n'est plus celui de ce
+ * qu'on s'apprete a signer, et c'est la seule chose que cet ecran ne doit
+ * jamais faire. */
 $('swDe').addEventListener('change', function(){
+  var j = J($('swDe').value);
+  var ch = (j && j.chaine) || CHAINE.id;
+  if(ch !== swChaineId){
+    swChaineId = ch;
+    gardeSwChaine();
+    videSwap();
+    $('swNote').textContent = '';
+    /* L'arrivee garde sa liste : elle ne depend que de SA chaine a elle. On
+       lui retire seulement le jeton qui vient d'etre choisi en face. */
+    remplitChoix($('swVers'), $('swDe').value);
+  }
   if($('swVers').value===$('swDe').value)
     valPick($('swVers'), $('swDe').value==='eth' ? 'swoge' : 'eth');
   majSwap();
@@ -6269,6 +6361,10 @@ async function achatDistant(b){
          lecture. */
       if(swVersChaineId !== CHAINE.id && monnaieVers){
         ajouteDistant(cVers.id, monnaieVers, sym, sym + ' on ' + cVers.nom, dec, null);
+        /* Et il entre AUSSI dans la liste qui paie, tout de suite : c'est avec
+           lui qu'on ressortira, et attendre un rechargement pour pouvoir le
+           revendre serait la meme porte sans sortie, un cran plus loin. */
+        remplitChoix($('swDe'));
       }
       $('swMontant').value = '';
       videSwap();
@@ -7225,8 +7321,10 @@ if($('poVoile')) $('poVoile').addEventListener('click', function(ev){
     if(boutChoisi === 'swap'){
       if(id === swChaineId) return;
       swChaineId = id;
-      /* La liste des jetons a payer change avec la chaine. */
-      remplitChoix($('swDe')); remplitChoix($('swVers'), $('swDe').value);
+      /* La liste ne change plus avec la chaine — elle les porte toutes. C'est
+         le JETON CHOISI qu'il faut recaler, et seulement s'il ne vit pas la
+         ou l'on vient de dire qu'on paie. */
+      accordeSwDe();
     } else {
       if(id === swVersChaineId) return;
       swVersChaineId = id;
@@ -7776,16 +7874,21 @@ remplitChoix($('enJeton'));
 /* Les cinq champs de montant : rouge des la frappe, curseur de pourcentage,
    et plus une seule mise a jour qui attende qu'on appuie sur Entree. */
 ['enMontant','swMontant','poMontant','caDepMontant','caRetMontant'].forEach(accrocheMontant);
-remplitChoix($('swDe'));
-remplitChoix($('swVers'));
-valPick($('swDe'), 'eth'); valPick($('swVers'), 'swogebet');
 /* Les jetons ajoutes par le joueur entrent dans `JETONS` AVANT le premier
-   affichage : les listes de choix se remplissent a la demande, mais les
-   soldes se lisent sur `JETONS` en entier, et un jeton arrive apres coup
-   resterait sans solde jusqu'au prochain rafraichissement. */
+   affichage : les soldes se lisent sur `JETONS` en entier, et un jeton arrive
+   apres coup resterait sans solde jusqu'au prochain rafraichissement. */
 chargePerso();
 /* Et ceux qu'on detient AILLEURS, pour la meme raison. */
 chargeDistants();
+/* ---- ET LES LISTES SE REMPLISSENT APRES, PAS AVANT ----
+   Elles etaient construites d'abord, et les deux chargements arrivaient
+   ensuite : ce qui vit ailleurs n'entrait donc jamais dans la liste qui paie,
+   celle-ci n'etant refaite que si elle est vide. Le jeton detenu sur Base
+   etait bien dans `JETONS`, bien affiche dans « My tokens », et introuvable
+   au moment de le depenser. */
+remplitChoix($('swDe'));
+remplitChoix($('swVers'));
+valPick($('swDe'), 'eth'); valPick($('swVers'), 'swogebet');
 peintAccueil();
 majRevue();
 lisPrix().then(peintAccueil);

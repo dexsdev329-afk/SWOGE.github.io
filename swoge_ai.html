@@ -13,7 +13,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
-var MARQUE_PAGE = '9c95e6f0';
+var MARQUE_PAGE = '13984877';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -209,6 +209,20 @@ var MARQUE_PAGE = '9c95e6f0';
   .adr button{flex:0 0 auto;font:inherit;font-size:10px;padding:3px 7px;border-radius:5px;cursor:pointer;
               background:rgba(255,255,255,.06);border:1px solid var(--line);color:var(--ink)}
   .adr button.ok{background:rgba(53,224,127,.16);border-color:rgba(53,224,127,.4);color:var(--gain)}
+  .liens{display:flex;gap:6px;flex-wrap:wrap;margin:3px 0 2px 0}
+  .lienpetit{font-size:10px;padding:2px 7px;border-radius:20px;text-decoration:none;
+             background:rgba(255,255,255,.05);border:1px solid var(--line);color:var(--ink)}
+  .lienpetit:hover{background:rgba(255,255,255,.09)}
+  .lienpetit.muet{color:var(--ink-faint);border-style:dashed}
+  .alerte{display:flex;gap:8px;padding:7px 0;font-size:11.5px;line-height:1.5}
+  .alerte+.alerte{border-top:1px dashed rgba(255,255,255,.05)}
+  .alerte .pill{flex:0 0 auto;font-size:9.5px;padding:2px 6px;border-radius:20px;height:fit-content;
+                text-transform:uppercase;letter-spacing:.04em;font-weight:700}
+  .alerte .pill.haute{background:rgba(255,96,96,.16);color:var(--loss)}
+  .alerte .pill.moyenne{background:rgba(255,206,74,.16);color:var(--gold)}
+  .alerte .pill.basse{background:rgba(255,255,255,.07);color:var(--ink-faint)}
+  .alerte b{display:block;margin-bottom:2px}
+  .alerte .faire{display:block;margin-top:3px;color:var(--ink-faint);font-style:italic}
   .posbloc+.posbloc{border-top:1px dashed rgba(255,255,255,.07);margin-top:6px;padding-top:6px}
   .mini{font-size:10.5px;color:var(--ink-faint);font-family:"JetBrains Mono",monospace;
         display:flex;gap:8px;flex-wrap:wrap}
@@ -302,6 +316,11 @@ var MARQUE_PAGE = '9c95e6f0';
     </div>
 
     <aside class="panel">
+      <div class="card" id="carteAlertes" hidden>
+        <h2>Ce dont la colonie a besoin <span class="count" id="alerteN">0</span></h2>
+        <div id="alertes"></div>
+      </div>
+
       <div class="card">
         <h2>Tresorerie <span class="count" id="wr">win 0%</span></h2>
         <div class="stats">
@@ -360,7 +379,7 @@ var MARQUE_PAGE = '9c95e6f0';
       </div>
 
       <div class="card">
-        <h2>Trades en direct</h2>
+        <h2>Positions fermees <span class="count" id="fermN">—</span></h2>
         <div class="feed" id="feed"><div class="empty">Aucun trade encore…</div></div>
       </div>
 
@@ -1028,20 +1047,32 @@ function peintPicks(){
       <span class="score">${p.score}</span>
     </a>`).join("");
 }
+/* ---- « POURQUOI IL Y A TRADES EN DIRECT ET POSITIONS ? RETIRE TRADES EN
+ *      DIRECT SI C'EST LA MEME CHOSE. » ----
+ * Ce n'etait pas tout a fait la meme chose, et c'est justement le probleme :
+ * le fil melangeait les OUVERTURES — deja listees juste au-dessus, avec plus
+ * de detail — et les RESULTATS, qu'on ne voit nulle part ailleurs. La moitie
+ * du panneau repetait donc le panneau precedent, et l'autre moitie, la seule
+ * qui apportait quelque chose, se trouvait noyee dedans.
+ * On garde ce qui est fini : gains, pertes, coupes, prolongations. */
 function peintFluxTrades(){
-  const flux = (VUE && VUE.flux) || [];
+  const flux = ((VUE && VUE.flux) || []).filter(e => e.tag !== "open" || /PROLONGEE/.test(e.txt||""));
   if(!flux.length){
     $("feed").innerHTML = '<div class="empty">'
-      + (VUE ? "Aucun trade encore…" : "En attente du serveur…") + '</div>';
+      + (VUE ? "Aucune position fermee encore. Les positions en cours sont juste au-dessus." : "En attente du serveur…") + '</div>';
     return;
   }
   $("feed").innerHTML = flux.slice(0,10).map(e=>{
-    const lbl = e.tag==="buy" ? "GAIN" : e.tag==="cut" ? "PERTE" : "OUVERT";
+    const lbl = e.tag==="buy" ? "GAIN" : e.tag==="cut" ? "PERTE" : "TENUE";
     const sym = e.pool
       ? `<a class="sym symlink" href="https://dexscreener.com/robinhood/${encodeURIComponent(e.pool)}" target="_blank" rel="noopener">$${echappe(e.sym)}</a>`
       : `<span class="sym">$${echappe(e.sym)}</span>`;
     const quand = e.t ? `<span class="quand">${ilYA(Date.now()-e.t)}</span>` : "";
-    return `<div class="tr">${sym}<span class="tag ${e.tag}">${lbl}</span>${quand}<span class="pnl ${e.cls}">${echappe(e.txt)}</span></div>`;
+    /* Qui a ferme : le Closer au terme, ou la Sentinelle avant. Sans ca, une
+       coupe precoce ressemble a une fermeture ordinaire, et le travail de la
+       Sentinelle est invisible — donc invérifiable. */
+    const par = e.par && e.par !== "closer" ? `<span class="quand">par ${echappe(e.par)}</span>` : "";
+    return `<div class="tr">${sym}<span class="tag ${e.tag}">${lbl}</span>${quand}${par}<span class="pnl ${e.cls}">${echappe(e.txt)}</span></div>`;
   }).join("");
 }
 /* ---- COPIER UN TEXTE, MEME QUAND LE PRESSE-PAPIER N'EXISTE PAS ----
@@ -1109,8 +1140,25 @@ function peintPositions(){
         <code>${echappe(p.adr)}</code>
         <button type="button" data-copie="${echappe(p.adr)}">copier</button>
       </div>` : '';
+    /* ---- CE QU'ON A PAYE, ET A QUELLE TAILLE ----
+       « Position ouverte, on doit voir le market cap d'achat. » Sans lui, un
+       +40 % ne veut rien dire : quarante pour cent depuis une capitalisation de
+       vingt mille et depuis une de deux millions ne sont pas le meme evenement,
+       et ne se reproduisent pas de la meme facon. */
+    const mc = (p.mcAchat === null || p.mcAchat === undefined)
+      ? '' : ` · achete a ${fmtMC(p.mcAchat)} de cap.`;
     const mise = p.mise === undefined ? '' :
-      `<span class="mini"><b>$${Number(p.mise).toFixed(2)}</b> mise · ${echappe(p.methode||"?")}${p.origine?" · vu par "+echappe(p.origine):""}</span>`;
+      `<span class="mini"><b>$${Number(p.mise).toFixed(2)}</b> mise · ${echappe(p.methode||"?")}${mc}${p.origine?" · vu par "+echappe(p.origine):""}${p.prolonge?" · prolongee "+p.prolonge+"×":""}</span>`;
+    /* Le lien vers le graphique, et les reseaux quand il y en a. On ne fabrique
+       jamais un lien social : s'il n'y en a pas, on le DIT — un jeton sans
+       aucune presence est une information, pas un manque d'affichage. */
+    const chart = p.pool
+      ? `<a class="lienpetit" href="https://dexscreener.com/robinhood/${encodeURIComponent(p.pool)}" target="_blank" rel="noopener">graphique ↗</a>`
+      : '';
+    const liens = (p.liens && p.liens.length)
+      ? p.liens.map(l=>`<a class="lienpetit" href="${echappe(l.url)}" target="_blank" rel="noopener">${echappe(l.type)} ↗</a>`).join("")
+      : (p.liens === null ? '<span class="lienpetit muet">reseaux non lus</span>'
+                          : '<span class="lienpetit muet">aucun reseau</span>');
     return `<div class="posbloc">
       <div class="pos">
         <span class="sym">$${echappe(p.sym)}</span>
@@ -1119,6 +1167,7 @@ function peintPositions(){
       </div>
       ${adr}
       ${mise}
+      <div class="liens">${chart}${liens}</div>
     </div>`;
   }).join("");
 }
@@ -1209,6 +1258,28 @@ function peintStructure(){
   }).join("");
 }
 
+/* ---- CE DONT LA COLONIE A BESOIN ----
+ * « Doit aussi être intelligent et me donner des alertes s'ils ont besoin de
+ *   choses supplémentaires pour être plus performants. »
+ * Chaque alerte porte le chiffre qui la justifie ET ce qu'il faudrait faire.
+ * Une demande sans son chiffre est une demande qu'on ne peut pas refuser
+ * intelligemment ; une demande sans son remede n'est qu'une plainte. */
+function peintAlertes(){
+  const l = (VUE && VUE.alertes) || [];
+  const carte = $("carteAlertes");
+  if(!carte) return;
+  carte.hidden = !l.length;
+  $("alerteN").textContent = l.length;
+  if(!l.length) return;
+  const rang = { haute:0, moyenne:1, basse:2 };
+  l.slice().sort((a,b)=>(rang[a.gravite]||9)-(rang[b.gravite]||9));
+  $("alertes").innerHTML = l.map(a=>`<div class="alerte">
+    <span class="pill ${echappe(a.gravite)}">${echappe(a.gravite)}</span>
+    <span><b>${echappe(a.quoi)}</b>${echappe(a.pourquoi)}
+      <span class="faire">→ ${echappe(a.quoiFaire)}</span></span>
+  </div>`).join("");
+}
+
 /* ---- LES SERVICES ----
  * Ceux qui repondent, avec leur releve ; et ceux qui ne repondront pas, avec
  * la raison mesuree. Une source absente sans explication laisse croire qu'on
@@ -1216,6 +1287,9 @@ function peintStructure(){
 function peintServices(){
   const l = (VUE && VUE.services) || [];
   $("srvN").textContent = VUE ? l.filter(s=>s.essais).length + "/" + l.length : "—";
+  const f = $("fermN");
+  if(f) f.textContent = VUE ? (VUE.trades + " · seuil " + VUE.seuil
+    + (VUE.seuil !== VUE.seuilDepart ? " (etait " + VUE.seuilDepart + ")" : "")) : "—";
   /* Le nombre d'agents est ecrit depuis le roster, jamais en dur : il change. */
   const st = $("soustitre");
   if(st && VUE) st.textContent = (VUE.roster||[]).length + " agents · vrais tokens Robinhood Chain · "
@@ -1335,6 +1409,7 @@ async function demande(manuel){
     verseCandidats();
     peintStats(); peintPositions(); peintAppris(); peintFluxTrades();
     peintFlux(); peintBanque(); peintSurveillance(); peintStructure(); peintServices();
+    peintAlertes();
     dessineCourbe(); pastille(); majPouls();
     /* ---- LE SERVEUR PEUT REPONDRE PARFAITEMENT ET N'AVOIR RIEN LU ----
      * Sa vue porte alors `erreur`, et les chiffres qu'elle contient sont
@@ -1459,6 +1534,7 @@ setInterval(function(){ if(document.visibilityState !== "hidden"){ peintPosition
 poseLesBots();
 peintAgents(); peintStats(); peintPositions(); peintAppris(); peintFluxTrades();
 peintPicks(); peintFlux(); peintBanque(); peintSurveillance(); peintStructure(); peintServices();
+peintAlertes();
 dessineCourbe(); pastille(); majPouls();
 $("stagetag").textContent = phraseFond();
 requestAnimationFrame(loop);

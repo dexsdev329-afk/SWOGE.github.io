@@ -61,19 +61,29 @@ function vueFausse(o) {
     trades: 9, gains: 6, meilleur: 1.42, meilleurSym: 'PEPO', ouvertures: 11,
     courbe: [1000, 1012, 995, 1040, 1102, 1187.5],
     flux: [
-      { sym: 'PEPO', pool: '0xpool1', tag: 'buy', txt: '+$21.00  ·  +42.0%', cls: 'up', t: now - 60000 },
-      { sym: 'DUMP', pool: '0xpool2', tag: 'cut', txt: '-$8.50  ·  -17.0%', cls: 'dn', t: now - 300000 },
+      { sym: 'PEPO', pool: '0xpool1', tag: 'buy', txt: '+$21.00  ·  +42.0%', cls: 'up',
+        t: now - 60000, par: 'closer' },
+      { sym: 'DUMP', pool: '0xpool2', tag: 'cut',
+        txt: '-$8.50  ·  -17.0%  ·  coupe : la piscine est passee de $40000 a $9000',
+        cls: 'dn', t: now - 300000, par: 'sentinelle' },
+      /* Une ouverture : elle est deja listee dans « positions ouvertes », avec
+         plus de detail. Le fil ne doit pas la repeter. */
+      { sym: 'NOVA', pool: '0xpool3', tag: 'open', txt: 'OUVERT · $35.00 · part', cls: 'n',
+        t: now - 400000 },
     ],
     positions: [
       { sym: 'NOVA', adr: ADR_NOVA, pool: '0xpool3', minutes: 4, score: 71, ouverteDepuis: 300000,
         tenueMin: 20, latent: 6.4, gainLatent: 2.24, mise: 35, methode: 'part',
         regime: 'autour du depart', raisonMise: 'methode part en regime « autour du depart »',
-        origine: 'profils' },
+        origine: 'profils', mcAchat: 310000, prolonge: 1, prixVu: now - 30000,
+        liens: [{ type: 'twitter', url: 'https://x.com/nova' },
+                { type: 'site', url: 'https://nova.example' }] },
       /* Une position dont le prix n'a pas ete relu : le serveur envoie `null`,
          et la page doit l'ECRIRE au lieu d'afficher 0 %. */
       { sym: 'MUET', adr: ADR_MUET, pool: '0xpool4', minutes: 9, score: 63, ouverteDepuis: 60000,
         tenueMin: 20, latent: null, gainLatent: null, mise: 30, methode: 'part',
-        regime: 'autour du depart', origine: 'pools' },
+        regime: 'autour du depart', origine: 'pools', mcAchat: 45000, prolonge: 0,
+        prixVu: now - 40 * 60000, liens: [] },
     ],
     candidats: o.candidats || [
       { sym: 'NOVA', addr: '0xa1', pool: '0xpool3', minutes: 4, liq: 24000, mc: 310000, prix: 0.004,
@@ -194,7 +204,18 @@ function vueFausse(o) {
       blockscout: 'Blockscout robinhood — challenge Cloudflare sur l\'API comme sur les pages.',
       honeypotis: 'honeypot.is — ne connait pas la chaine 4663.',
     },
-    seuil: 55, ageMax: 360,
+    seuil: o.seuil || 55, seuilDepart: 55, ageMax: 360,
+    derniers: [4.2, -3.1, 8.0, -1.2, 12.4],
+    conseiller: o.conseiller || { actif: false, modele: 'claude-haiku-4-5-20251001',
+                                  poids: 8, parTour: 3, rendus: 0 },
+    alertes: o.alertes === undefined ? [
+      { gravite: 'haute', quoi: 'Les noeuds de la chaine refusent 34 % des lectures',
+        pourquoi: '41 refus sur 120 appels. Chaque refus rend « inconnu » un jeton qu\'on aurait pu juger.',
+        quoiFaire: 'Un acces RPC dedie a la chaine 4663 leverait la limite.' },
+      { gravite: 'moyenne', quoi: 'Le Conseiller est eteint : aucune cle Anthropic',
+        pourquoi: 'Les agents jugent sur des regles et sur ce qu\'ils ont mesure.',
+        quoiFaire: 'Poser ANTHROPIC_API_KEY dans les variables Railway. Une seule cle suffit.' },
+    ] : o.alertes,
   };
 }
 
@@ -240,12 +261,17 @@ const lit = (page) => page.evaluate(() => ({
   wr: (document.getElementById('wr') || {}).textContent,
   positions: [...document.querySelectorAll('#positions .pos')].map((p) => p.textContent.replace(/\s+/g, ' ').trim()),
   positionsTxt: (document.getElementById('positions') || {}).textContent.replace(/\s+/g, ' ').trim(),
-  feed: [...document.querySelectorAll('#feed .tr')].map((p) => p.textContent.replace(/\s+/g, ' ').trim()),
   appris: (document.getElementById('appris') || {}).textContent.replace(/\s+/g, ' ').trim(),
   flow: (document.getElementById('flow') || {}).textContent.replace(/\s+/g, ' ').trim(),
   agents: [...document.querySelectorAll('#agents .agent')].map((a) =>
     [...a.querySelectorAll('.sc')].map((x) => x.textContent.trim())),
   foot: (document.getElementById('foot') || {}).textContent.replace(/\s+/g, ' ').trim(),
+  feed: [...document.querySelectorAll('#feed .tr')].map((p) => p.textContent.replace(/\s+/g, ' ').trim()),
+  liens: [...document.querySelectorAll('#positions .liens a')].map((a) => a.textContent.trim() + '→' + a.href),
+  alertes: (document.getElementById('alertes') || {}).textContent.replace(/\s+/g, ' ').trim(),
+  alerteN: (document.getElementById('alerteN') || {}).textContent,
+  alerteCachee: !!(document.getElementById('carteAlertes') || {}).hidden,
+  fermN: (document.getElementById('fermN') || {}).textContent,
   maisons: [...document.querySelectorAll('#agents .agent')].length,
   adresses: [...document.querySelectorAll('#positions .adr code')].map((c) => c.textContent.trim()),
   boutonsCopie: [...document.querySelectorAll('#positions .adr button')].length,
@@ -467,6 +493,99 @@ async function panneaux() {
   await page.context().close();
 }
 
+
+/* ==========================================================================
+ * 13. LA CAPITALISATION D'ACHAT, LE GRAPHIQUE, LES RESEAUX
+ *
+ * « Position ouverte, on doit voir le market cap d'achat. » « Affiche le lien
+ *   DexScreener des positions ouvertes, le contrat, les réseaux s'il y en a. »
+ * ==========================================================================*/
+async function ficheDeLaPosition() {
+  console.log('\n-- ce qu on voit d une position en cours --');
+  const { page, boum } = await ouvre(nav, port, {});
+  const v = await lit(page);
+  const pos = await page.evaluate(() =>
+    [...document.querySelectorAll('#positions .posbloc')].map((x) => x.textContent.replace(/\s+/g, ' ').trim()));
+  console.log('   ' + pos[0]);
+  /* ---- POURQUOI LA CAPITALISATION COMPTE ----
+   * Un +40 % depuis une capitalisation de vingt mille et un +40 % depuis deux
+   * millions ne sont pas le meme evenement, et ne se reproduisent pas de la
+   * meme facon. Sans elle, le chiffre de gain ne se compare a rien. */
+  ok(/achete a \$310k de cap/.test(pos[0]),
+     'la capitalisation AU MOMENT DE L ACHAT est affichee (310k)');
+  ok(/achete a \$45k de cap/.test(pos[1]), 'sur chaque position, pas seulement la premiere');
+  ok(/prolongee 1×/.test(pos[0]), 'et le fait que le Promoteur l ait gardee une fois de plus');
+
+  console.log('   ' + JSON.stringify(v.liens));
+  const chart = v.liens.filter((l) => /graphique/.test(l));
+  ok(chart.length === 2, 'chaque position porte le lien vers son graphique DexScreener');
+  ok(/dexscreener\.com\/robinhood\/0xpool3/.test(chart[0]),
+     'sur la bonne chaine et le bon pool : ' + chart[0].split('→')[1]);
+  ok(v.liens.some((l) => /twitter/.test(l) && /x\.com\/nova/.test(l)),
+     'les reseaux sont la quand il y en a');
+  /* Et quand il n'y en a pas, on l'ECRIT : un jeton sans aucune presence est
+     une information, pas un defaut d'affichage. */
+  const pas = await page.evaluate(() =>
+    [...document.querySelectorAll('#positions .lienpetit.muet')].map((x) => x.textContent.trim()));
+  console.log('   sans reseau : ' + JSON.stringify(pas));
+  ok(pas.indexOf('aucun reseau') >= 0,
+     'et quand il n y en a pas, c est ecrit plutot que laisse vide');
+  ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
+  await page.context().close();
+}
+
+/* ==========================================================================
+ * 14. LE FIL NE REPETE PLUS LES POSITIONS
+ *
+ * « Pourquoi il y a trades en direct et positions ? Retire trades en direct si
+ *   c'est la même chose. »
+ * ==========================================================================*/
+async function filSansDoublon() {
+  console.log('\n-- le fil ne redit pas ce qui est deja au-dessus --');
+  const { page, boum } = await ouvre(nav, port, {});
+  const v = await lit(page);
+  console.log('   ' + JSON.stringify(v.feed));
+  ok(v.feed.length === 2, 'seules les positions FERMEES y figurent (' + v.feed.length + ')');
+  ok(!v.feed.some((f) => /OUVERT/.test(f)),
+     'l ouverture de $NOVA n y est plus : elle est deja listee juste au-dessus, avec plus de detail');
+  ok(v.feed.some((f) => /GAIN/.test(f)) && v.feed.some((f) => /PERTE/.test(f)),
+     'et les resultats, eux, ne sont visibles nulle part ailleurs');
+  /* Une coupe de la Sentinelle doit se distinguer d'une fermeture au terme,
+     sinon son travail est invisible — donc invérifiable. */
+  ok(v.feed.some((f) => /par sentinelle/.test(f)),
+     'une coupe precoce dit qui l a decidee : « ' + (v.feed.find((f) => /sentinelle/.test(f)) || '') + ' »');
+  ok(/seuil 55/.test(v.fermN), 'et l en-tete porte le seuil d entree du moment (' + v.fermN + ')');
+  ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
+  await page.context().close();
+}
+
+/* ==========================================================================
+ * 15. CE DONT LA COLONIE A BESOIN
+ * ==========================================================================*/
+async function panneauAlertes() {
+  console.log('\n-- les alertes --');
+  {
+    const { page, boum } = await ouvre(nav, port, {});
+    const v = await lit(page);
+    console.log('   ' + v.alerteN + ' · ' + v.alertes.slice(0, 120));
+    ok(!v.alerteCachee, 'la carte apparait quand il y a quelque chose a demander');
+    ok(v.alerteN === '2', 'les deux alertes sont comptees');
+    ok(/34 % des lectures/.test(v.alertes),
+       'chacune porte le CHIFFRE qui la justifie : une demande sans son chiffre ne peut pas '
+       + 'etre refusee intelligemment');
+    ok(/acces RPC dedie/.test(v.alertes) && /ANTHROPIC_API_KEY/.test(v.alertes),
+       'et ce qu il faudrait faire, precisement');
+    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
+    await page.context().close();
+  }
+  {
+    const { page } = await ouvre(nav, port, { vue: vueFausse({ alertes: [] }) });
+    const v = await lit(page);
+    ok(v.alerteCachee, 'et elle disparait quand la colonie n a besoin de rien');
+    await page.context().close();
+  }
+}
+
 (async () => {
   if (!chromium) { console.log('playwright absent — essai ignore'); return; }
   const srv = http.createServer((q, r) => {
@@ -641,6 +760,9 @@ async function panneaux() {
   await contrat();
   await banquierEcran();
   await panneaux();
+  await ficheDeLaPosition();
+  await filSansDoublon();
+  await panneauAlertes();
 
   /* ======================================================================
    * 5. LES BOTS REJOUENT LA DECISION, ILS NE LA PRENNENT PAS

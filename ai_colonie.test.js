@@ -210,6 +210,19 @@ function vueFausse(o) {
              { nom: '20-60 min', vus: 1 }, { nom: '1-6 h', vus: 0 }],
     suites: [{ sym: 'MONTE', rSortie: 42, echeance: now + 600000 }],
     ombres: { enAttente: 34, jugees: 218 },
+    horizons: [5, 15, 30, 60, 120], horizonRef: 30, jalons: 914,
+    traits: [
+      { trait: 'liq', obs: 210, valeurs: 4, separation: 2.4, ecartValeurs: 51.2,
+        meilleure: { quoi: 'liq>100k', moyenne: 21.4, n: 38 },
+        pire: { quoi: 'liq<1k', moyenne: -29.8, n: 61 } },
+      { trait: 'top', obs: 198, valeurs: 5, separation: 1.9, ecartValeurs: 44.0,
+        meilleure: { quoi: 'top <5%', moyenne: 15.2, n: 44 },
+        pire: { quoi: 'top >50%', moyenne: -28.8, n: 72 } },
+      /* Celui-la ne separe rien : toutes ses valeurs rendent la meme chose. */
+      { trait: 'vola', obs: 120, valeurs: 4, separation: 0.08, ecartValeurs: 1.4,
+        meilleure: { quoi: 'calme', moyenne: 2.1, n: 30 },
+        pire: { quoi: 'vola >12%', moyenne: 0.7, n: 34 } },
+    ],
     audit: o.audit === undefined ? [
       /* Un veto qui coute : un jeton ecarte sur trois est monte. */
       { cle: 'oracle · note trop basse', n: 96, moyenne: -4.2, montes: 31, effondres: 22, partMontes: 32 },
@@ -284,6 +297,8 @@ const lit = (page) => page.evaluate(() => ({
   alerteCachee: !!(document.getElementById('carteAlertes') || {}).hidden,
   fermN: (document.getElementById('fermN') || {}).textContent,
   audit: (document.getElementById('audit') || {}).textContent.replace(/\s+/g, ' ').trim(),
+  traits: (document.getElementById('traits') || {}).textContent.replace(/\s+/g, ' ').trim(),
+  traitsN: (document.getElementById('traitsN') || {}).textContent,
   auditN: (document.getElementById('auditN') || {}).textContent,
   maisons: [...document.querySelectorAll('#agents .agent')].length,
   adresses: [...document.querySelectorAll('#positions .adr code')].map((c) => c.textContent.trim()),
@@ -646,6 +661,19 @@ async function auditDesVetos() {
      'les deux se distinguent d un coup d oeil, sans avoir a lire les chiffres');
   ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
   await page.context().close();
+
+  console.log('\n-- et quel trait separe vraiment --');
+  console.log('   ' + v.traitsN);
+  ok(/3 traits/.test(v.traitsN) && /914 relev/.test(v.traitsN),
+     'le nombre de traits classes et de relevés est affiche (' + v.traitsN + ')');
+  ok(/liq>100k \+21\.4%/.test(v.traits) && /liq<1k -29\.8%/.test(v.traits),
+     'chaque trait montre sa meilleure et sa pire valeur, avec leurs effectifs');
+  ok(v.traits.indexOf('liq') < v.traits.indexOf('vola'),
+     'et le classement met en tete celui qui separe : liq avant vola');
+  ok(/relu a 5, 15, 30, 60, 120 minutes/.test(v.traits),
+     'la page dit a quelles echeances chaque jeton est relu');
+  ok(/ne separe rien, et dilue/.test(v.traits),
+     'et explique pourquoi le bas de liste compte : un trait qui ne separe rien dilue les autres');
 
   const b = await ouvre(nav, port, { vue: vueFausse({ audit: [] }) });
   const w = await lit(b.page);

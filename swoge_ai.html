@@ -166,6 +166,12 @@ var MARQUE_PAGE = '6be83767';
   .sd.on{background:var(--gain);box-shadow:0 0 7px rgba(53,224,127,.7)}
   .sd.rej{background:var(--loss);box-shadow:0 0 7px rgba(255,96,96,.6)}
   .meta{font-size:10.5px;color:var(--ink-faint);font-family:"JetBrains Mono",monospace;margin-left:2px}
+  /* Le verdict de l'epreuve de sortie, dans la ligne du jeton : vert quand le
+     contrat laisse passer, rouge quand il refuse, gris quand on n'a pas pu
+     demander — trois etats, parce que « pas testable » n'est ni l'un ni l'autre. */
+  .meta .ok{color:var(--gain)}
+  .meta .rej{color:var(--loss)}
+  .meta .muet{color:var(--ink-faint);opacity:.75;border-bottom:1px dashed currentColor;cursor:help}
   .empty{font-size:12px;color:var(--ink-faint);padding:6px 0;font-style:italic;line-height:1.5}
 
   .pick{display:flex;align-items:center;gap:9px;text-decoration:none;color:inherit;cursor:pointer;
@@ -500,10 +506,17 @@ const ROSTER_AMORCE = [
 
 /* L'ordre dans lequel un jeton traverse le village. Il suit celui du serveur :
    les gardes dans l'ordre QU'IL a mesure, puis les specialistes qui affinent
-   la note, puis l'Oracle qui tranche, puis le Banquier qui dit combien, puis
-   le Closer qui ouvre. Un ordre invente ici raconterait un autre trajet que
-   celui qui a vraiment eu lieu. */
-const RANG = { source:0, garde:1, specialiste:2, note:3, banque:4, execution:5 };
+   la note, puis l'Oracle qui tranche, puis le Cobaye qui tente la sortie, puis
+   le Banquier qui dit combien, puis le Closer qui ouvre. Un ordre invente ici
+   raconterait un autre trajet que celui qui a vraiment eu lieu.
+
+   Le Cobaye est entre l'Oracle et le Banquier parce que c'est la que le
+   serveur le joue : « avant le gros achat », donc apres que tout le reste a
+   dit oui, et avant qu'un centime soit engage. Un role que cette table ne
+   connait pas finit en bout de file — ce qui aurait mis le Cobaye APRES le
+   Closer, c'est-a-dire apres l'achat : l'ecran aurait montre l'inverse de ce
+   qui se passe. */
+const RANG = { source:0, garde:1, specialiste:2, note:3, epreuve:4, banque:5, execution:6 };
 function batitVillage(roster){
   const l = (roster && roster.length ? roster : ROSTER_AMORCE).slice();
   l.sort((a,b)=>{
@@ -650,6 +663,7 @@ function verseCandidats(){
                 score:c.score, base:c.base, adj:c.adj, refus:c.refus, quiRefuse:c.quiRefuse,
                 stop:agentRefus(c), origine:c.origine, appels:c.appels,
                 porteurs:c.porteurs, top:c.top, chaineVue:c.chaineVue, goplusSait:c.goplusSait,
+                epreuve:c.epreuve || null,
                 acheteurs:c.acheteurs, partDuPlusGros:c.partDuPlusGros, tradesVus:c.tradesVus,
                 stage:0, done:new Array(AGENTS.length).fill(0),
                 id:Math.random().toString(36).slice(2,7) });
@@ -712,6 +726,18 @@ function resout(b){
     return rejette(b, t.refus || "ecarte", doux);
   }
   if(A.key === "oracle" && !t.refus) ajoutePick(t);
+  /* ---- CE QUE LE COBAYE A OBTENU DU CONTRAT ----
+   * Il ne dit pas oui : il dit combien de detenteurs ont pu sortir. Le chiffre
+   * monte au-dessus de sa maison, comme la mise au-dessus de celle du
+   * Banquier — et quand le noeud n'a pas repondu, c'est « non testable » qui
+   * monte, en gris, parce qu'une epreuve qu'on n'a pas pu jouer n'est pas une
+   * epreuve reussie. */
+  if(A.role === "epreuve" && t.epreuve){
+    const e = t.epreuve;
+    spawnFloat(AGENTS[b.i].house.x, AGENTS[b.i].house.y+6,
+      e.teste ? "sortie "+(e.essais-e.refus)+"/"+e.essais : "non testable",
+      e.teste ? "up" : "n");
+  }
   if(A.role === "banque"){
     /* Le Banquier ne dit pas oui : il dit COMBIEN. La mise affichee est celle
        que le serveur a reellement posee sur ce jeton quand il l'a ouvert —
@@ -1040,10 +1066,24 @@ function peintFlux(){
       ? " · " + (t.porteurs === null ? "porteurs ?" : fmtN(t.porteurs)+" porteurs")
       : " · chaine non lue";
     const age = t.minutes === null || t.minutes === undefined ? "" : " · "+t.minutes+"min";
+    /* ---- L'EPREUVE DE SORTIE ----
+     * Le Cobaye demande au contrat, sans rien signer ni depenser, ce qu'il
+     * ferait si un vrai detenteur envoyait le jeton vers la piscine. Le
+     * resultat s'ecrit ici avec ses chiffres — « 3/3 » veut dire trois
+     * detenteurs interroges, trois passages — parce qu'un « teste ✓ » nu se
+     * lirait comme une garantie de pouvoir vendre, ce qu'il n'est pas : c'est
+     * le transfert qui est simule, pas l'echange entier. Et quand le noeud
+     * n'a pas repondu, on ecrit « non testable » plutot que rien : une
+     * epreuve qu'on n'a pas pu jouer n'est pas une epreuve reussie. */
+    const e = t.epreuve;
+    const sortie = !e ? ""
+      : !e.teste ? ` · <span class="muet" title="${echappe(e.raison||"")}">sortie non testable</span>`
+      : e.passe ? ` · <span class="ok" title="Le contrat laisse ${e.essais - e.refus} detenteur(s) sur ${e.essais} envoyer le jeton vers la piscine. C'est le transfert qui est simule, pas l'echange complet.">sortie ${e.essais - e.refus}/${e.essais}</span>`
+      : ` · <span class="rej">sortie bloquee ${e.refus}/${e.essais}</span>`;
     return `<div class="tok">
       <span class="sym">$${echappe(t.sym)}</span>
       <span class="badge rh">RH</span>
-      <span class="meta">${fmtMC(t.mc)}${det}${age}</span>
+      <span class="meta">${fmtMC(t.mc)}${det}${age}${sortie}</span>
       <span class="stages">${dots}</span>
     </div>`;
   }).join("");

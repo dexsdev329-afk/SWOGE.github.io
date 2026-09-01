@@ -90,7 +90,21 @@ function vueFausse(o) {
         ch_m5: 9, score: 71, base: 68, adj: 3, refus: null, quiRefuse: null, origine: 'profils', appels: 4,
         acheteurs: 22, partDuPlusGros: 12, tradesVus: true,
         porteurs: 143, top: 3.2, chaineVue: true, montantsLus: true, personne: false,
-        transferts: 812, goplusSait: false },
+        transferts: 812, goplusSait: false,
+        /* Le Cobaye a demande au contrat, pour trois vrais detenteurs, ce
+           qu'il ferait d'un envoi vers la piscine : trois fois oui. */
+        epreuve: { teste: true, essais: 3, refus: 0, passe: true } },
+      /* ---- LE PIEGE QUE PERSONNE D'AUTRE NE VOIT ----
+       * GoPlus le dit propre, la chaine le dit bien reparti, les compteurs
+       * disent qu'on achete. Seule la tentative de sortie le trahit. */
+      { sym: 'MIEL', addr: '0xa7', pool: '0xpoolA', minutes: 7, liq: 31000, mc: 260000, prix: 0.006,
+        ch_m5: 14, score: 74, base: 74, adj: 0, quiRefuse: 'cobaye', origine: 'pools', appels: 6,
+        refus: 'la sortie est bloquee : 3/3 detenteurs ne peuvent pas envoyer le jeton vers la piscine',
+        acheteurs: 31, partDuPlusGros: 9, tradesVus: true,
+        porteurs: 210, top: 4.1, chaineVue: true, montantsLus: true, personne: false,
+        transferts: 940, goplusSait: true,
+        epreuve: { teste: true, essais: 3, refus: 3, passe: false,
+                   raison: 'le transfert rend false' } },
       { sym: 'PIEGE', addr: '0xa2', pool: '0xpool5', minutes: 6, liq: 9000, mc: 80000, prix: 0.001,
         ch_m5: 2, score: 0, base: 12, adj: 0, refus: 'honeypot', quiRefuse: 'warden', origine: 'pools', appels: 1,
         acheteurs: null, partDuPlusGros: null, tradesVus: false,
@@ -117,7 +131,9 @@ function vueFausse(o) {
         ch_m5: 3, score: 38, base: 38, adj: 0, refus: 'note trop basse', quiRefuse: 'oracle', origine: 'pools', appels: 3,
         acheteurs: null, partDuPlusGros: null, tradesVus: false,
         porteurs: null, top: null, chaineVue: false, montantsLus: false, personne: false,
-        transferts: null, goplusSait: false },
+        transferts: null, goplusSait: false,
+        /* Le noeud n'a pas repondu : « pas testable » n'est pas « propre ». */
+        epreuve: { teste: false, raison: 'le noeud n\'a pas repondu (rpc 429)' } },
     ],
     compteurs: { scout: 240, wardenBloque: 31, wardenOk: 209, whaleBloque: 44, whaleOk: 165,
                  whisper: 165, oracle: 165, closer: 11 },
@@ -147,9 +163,15 @@ function vueFausse(o) {
         mission: 'Recoupe « top 15-30% » par age', traits: ['top×age'], cout: 1, vus: 0, bloques: 0 },
       { key: 'oracle', nom: 'Oracle', emoji: '🔮', couleur: '#f2b21e', role: 'note', ordre: 4,
         mission: 'Note et tranche', traits: ['mc', 'elan', 'vola'], cout: 2, vus: 41, bloques: 12 },
-      { key: 'banquier', nom: 'Banquier', emoji: '🏦', couleur: '#5ad1a0', role: 'banque', ordre: 5,
+      /* ---- LE COBAYE ----
+       * « Un bot dans le village avant le gros achat. » Il vient apres
+       * l'Oracle : son epreuve coute des appels et ne sert que sur un jeton
+       * qui a deja tout passe. */
+      { key: 'cobaye', nom: 'Cobaye', emoji: '🐹', couleur: '#c9a227', role: 'epreuve', ordre: 5,
+        mission: 'Tente la sortie', traits: ['sortie'], cout: 1, vus: 29, bloques: 4 },
+      { key: 'banquier', nom: 'Banquier', emoji: '🏦', couleur: '#5ad1a0', role: 'banque', ordre: 6,
         mission: 'Choisit la mise', traits: ['methode'], cout: 0, vus: 0, bloques: 0 },
-      { key: 'closer', nom: 'Closer', emoji: '💰', couleur: '#e83e8c', role: 'execution', ordre: 6,
+      { key: 'closer', nom: 'Closer', emoji: '💰', couleur: '#e83e8c', role: 'execution', ordre: 7,
         mission: 'Ouvre et ferme', traits: ['tenue'], cout: 0, vus: 0, bloques: 0 },
     ],
     ordreRevu: now - 600000,
@@ -332,8 +354,9 @@ async function maisons() {
     const { page, boum } = await ouvre(nav, port, {});
     const v = await lit(page);
     console.log('   maisons : ' + v.maisons + ' · sous-titre : « ' + v.soustitre + ' »');
-    ok(v.maisons === 8, 'huit agents au serveur → huit maisons a l ecran (' + v.maisons + ')');
-    ok(/8 agents/.test(v.soustitre),
+    const N = vueFausse().roster.length;
+    ok(v.maisons === N, N + ' agents au serveur → ' + N + ' maisons a l ecran (' + v.maisons + ')');
+    ok(new RegExp('\\b' + N + ' agents').test(v.soustitre),
        'et le nombre est ecrit depuis le roster, jamais en dur : « ' + v.soustitre + ' »');
 
     /* Le specialiste ne de la colonie doit dire de qui il descend : sinon un
@@ -360,6 +383,16 @@ async function maisons() {
        'les gardes suivent l ordre QUE LE SERVEUR a mesure (whale avant warden), pas celui du code');
     ok(parcours[parcours.length - 1] === 'closer' && parcours[parcours.length - 2] === 'banquier',
        'et la fin est Banquier puis Closer : deux agents ouvrent une position, pas un');
+    /* ---- LE COBAYE EST ENTRE L ORACLE ET LE BANQUIER ----
+     * C est la que le serveur le joue : apres que tout le reste a dit oui, et
+     * avant qu un centime soit engage. La table des rangs de la page ne
+     * connaissait pas son role et le poussait en bout de file — donc APRES le
+     * Closer, c est-a-dire apres l achat. L ecran aurait montre l inverse de
+     * ce qui se passe, et « avant le gros achat » serait devenu « apres ». */
+    ok(parcours.indexOf('cobaye') > parcours.indexOf('oracle')
+       && parcours.indexOf('cobaye') < parcours.indexOf('banquier'),
+       'et le Cobaye tente la sortie apres l Oracle et AVANT le Banquier : c est la que le '
+       + 'serveur le joue (' + parcours.join(' → ') + ')');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.context().close();
   }
@@ -376,9 +409,12 @@ async function maisons() {
     await page.waitForTimeout(200);
     const ap = (await lit(page)).maisons;
     console.log('   ' + av + ' maisons → ' + ap);
-    ok(av === 8 && ap === 7, 'un specialiste retire, et le village a une maison de moins');
+    const N = vueFausse().roster.length;
+    ok(av === N && ap === N - 1, 'un specialiste retire, et le village a une maison de moins ('
+       + av + ' → ' + ap + ')');
     const bots = await page.evaluate(() => bots.length + '/' + AGENTS.length);
-    ok(bots === '7/7', 'les habitants suivent : ' + bots + ' — aucun bot ne reste sans maison');
+    ok(bots === (N - 1) + '/' + (N - 1),
+       'les habitants suivent : ' + bots + ' — aucun bot ne reste sans maison');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.context().close();
   }
@@ -960,6 +996,85 @@ async function auditDesVetos() {
   }
 
   /* ======================================================================
+   * 5 bis. LE VERDICT DE L EPREUVE DE SORTIE
+   *
+   * « Un bot dans le village avant le gros achat : il teste avec un centime
+   *   un achat et une vente pour pas se faire honeypot. »
+   *
+   * Le serveur ne signe rien — il DEMANDE au contrat, par eth_call, ce qu'il
+   * ferait si un vrai detenteur envoyait le jeton vers la piscine. Ce que la
+   * page doit montrer, c'est le resultat AVEC SES CHIFFRES, et surtout les
+   * trois etats distincts : passe, bloque, pas testable. Un « teste ✓ » nu se
+   * lirait comme une garantie de pouvoir vendre — ce que cette epreuve n'est
+   * pas, puisqu'elle simule le transfert et non l'echange entier.
+   * ==================================================================== */
+  console.log('\n-- l epreuve de sortie, a l ecran --');
+  {
+    const { page, boum } = await ouvre(nav, port, {});
+    await page.click('#speed'); await page.click('#speed');   /* 4x */
+    /* ---- ON CUMULE AU LIEU DE PHOTOGRAPHIER ----
+     * Le panneau ne montre que ce qui est EN VOL : un jeton y entre, traverse,
+     * puis sort. Une seule photo n en attrape donc qu une partie, et laquelle
+     * depend de l instant — un essai qui se lit differemment a chaque passage
+     * ne mesure plus la page, il mesure sa propre chance. On releve donc a
+     * repetition et on garde ce qu on a vu. */
+    const l = {};
+    let miel = null, titre = null;
+    for (let i = 0; i < 160; i++) {
+      await page.waitForTimeout(300);
+      const r = await page.evaluate(() => {
+        const out = { metas: {}, miel: null, titre: null };
+        for (const t of document.querySelectorAll('#flow .tok')) {
+          const m = t.querySelector('.meta');
+          const s = t.querySelector('.sym');
+          if (s && m) out.metas[s.textContent.replace('$', '')] = m.textContent.trim();
+          if (/MIEL/.test(t.textContent)) {
+            const d = [...t.querySelectorAll('.sd')];
+            const k = d.findIndex((x) => x.classList.contains('rej'));
+            if (k >= 0) out.miel = { i: k, txt: t.textContent.replace(/\s+/g, ' ').trim() };
+          }
+        }
+        for (const x of document.querySelectorAll('#flow .meta .ok'))
+          if (/sortie/.test(x.textContent)) out.titre = x.getAttribute('title');
+        return out;
+      });
+      Object.assign(l, r.metas);
+      if (r.miel) miel = r.miel;
+      if (r.titre) titre = r.titre;
+      if (l.NOVA && l.INCONNU && miel && titre) break;
+    }
+    console.log('   ' + JSON.stringify(l));
+    ok(/sortie 3\/3/.test(l.NOVA || ''),
+       'un jeton dont la sortie a ete testee porte ses CHIFFRES, pas une coche : « '
+       + (l.NOVA || '') + ' »');
+    ok(/sortie non testable/.test(l.INCONNU || ''),
+       'et quand le noeud n a pas repondu, c est ecrit — une epreuve qu on n a pas pu jouer '
+       + 'n est pas une epreuve reussie : « ' + (l.INCONNU || '') + ' »');
+
+    /* La limite de l'epreuve est portee par la page elle-meme, au survol : ce
+       qui est simule, c'est le transfert, pas l'echange complet. */
+    console.log('   au survol : ' + titre);
+    ok(!!titre && /pas l.echange complet/.test(titre),
+       'et ce que l epreuve NE prouve pas est ecrit la ou on la lit');
+
+    /* Et le piege s'arrete CHEZ LE COBAYE : c'est le seul agent qui pouvait le
+       voir, puisque tous les autres l'avaient laisse passer. */
+    const iCob = await page.evaluate(() => AGENTS.findIndex((a) => a.key === 'cobaye'));
+    console.log('   $MIEL : ' + JSON.stringify(miel) + ' · le Cobaye est en ' + iCob);
+    ok(miel && miel.i === iCob,
+       'le jeton dont la sortie est bloquee est rejete CHEZ LE COBAYE, apres que tous les '
+       + 'autres gardes l aient laisse passer');
+    ok(miel && /sortie est bloquee/.test(miel.txt),
+       'et la raison exacte est affichee, avec ses chiffres : « ' + (miel && miel.txt) + ' »');
+    const iOr = await page.evaluate(() => AGENTS.findIndex((a) => a.key === 'oracle'));
+    ok(iCob > iOr,
+       'le Cobaye est place apres l Oracle (' + iCob + ' contre ' + iOr + ') : son epreuve coute '
+       + 'des appels et ne sert que sur un jeton qu on s apprete a acheter');
+    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
+    await page.context().close();
+  }
+
+  /* ======================================================================
    * 6. CE QUI EST LU ET CE QUI NE L EST PAS
    * ==================================================================== */
   console.log('\n-- « non lu » ne s ecrit pas « zero » --');
@@ -982,7 +1097,10 @@ async function auditDesVetos() {
     const tous = Object.values(vu || {}).join(' | ');
     ok(/chaine non lue/.test(tous) || Object.keys(vu || {}).length < 6,
        'un jeton dont la chaine n a pas repondu porte « chaine non lue »');
-    ok(!/0 porteurs/.test(tous) || /VIDE/.test(Object.keys(vu || {}).join()),
+    /* Le zero doit etre un nombre entier, pas la fin d un autre : « 210
+       porteurs » contient « 0 porteurs », et l essai passait ou ratait selon
+       les chiffres du banc plutot que selon ce que la page ecrit. */
+    ok(!/(?:^|\D)0 porteurs/.test(tous) || /VIDE/.test(Object.keys(vu || {}).join()),
        'et « 0 porteurs » n est ecrit que quand c est ce que la chaine a dit');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.context().close();

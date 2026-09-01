@@ -13,7 +13,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
-var MARQUE_PAGE = '7a2c8b79';
+var MARQUE_PAGE = '6be83767';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -1146,8 +1146,14 @@ function peintPositions(){
   $("positions").innerHTML = pos.map(p=>{
     /* `latent` est calcule par le serveur a partir du dernier prix qu'il a
        RELU. Quand il n'en a pas, il envoie `null` — et on l'ecrit. */
+    /* ---- « PRIX NON RELU » NE DISAIT PAS ASSEZ ----
+     * Le mot est juste — le dernier prix connu a plus de douze minutes, donc
+     * ce n'est plus une cotation — mais il ne dit pas DEPUIS QUAND, et sans ce
+     * chiffre on ne peut pas savoir s'il s'agit d'un tour manque ou d'un jeton
+     * sorti des flux depuis une heure. Les deux ne se lisent pas pareil. */
+    const vieux = p.prixVu ? ilYA(Date.now() - p.prixVu) : null;
     const val = p.latent === null || p.latent === undefined
-      ? '<span class="pnl n">prix non relu</span>'
+      ? '<span class="pnl n">' + (vieux ? 'dernier prix il y a ' + vieux : 'aucun prix lu') + '</span>'
       : `<span class="pnl ${p.latent>=0?"up":"dn"}">${p.latent>=0?"+":""}${p.latent.toFixed(1)}% · ${p.gainLatent>=0?"+":"–"}$${Math.abs(p.gainLatent).toFixed(2)}</span>`;
     /* Le temps restant avance entre deux reponses : on part de l'age que le
        serveur a envoye et on y ajoute ce qui s'est ecoule depuis, plutot que
@@ -1175,8 +1181,17 @@ function peintPositions(){
     /* Le lien vers le graphique, et les reseaux quand il y en a. On ne fabrique
        jamais un lien social : s'il n'y en a pas, on le DIT — un jeton sans
        aucune presence est une information, pas un manque d'affichage. */
+    /* ---- UN LIEN QU'ON SAIT MORT NE S'OFFRE PAS ----
+     * On pointait toujours vers DexScreener, alors qu'il ne connait qu'un
+     * jeton sur douze a deux minutes : le lien ouvrait une page vide, et rien
+     * ne prevenait. GeckoTerminal, lui, est la source d'ou vient le pool — sa
+     * page existe forcement. On y renvoie toujours, et on n'ajoute DexScreener
+     * que si on a la preuve qu'il connait la paire. */
     const chart = p.pool
-      ? `<a class="lienpetit" href="https://dexscreener.com/robinhood/${encodeURIComponent(p.pool)}" target="_blank" rel="noopener">graphique ↗</a>`
+      ? `<a class="lienpetit" href="https://www.geckoterminal.com/robinhood/pools/${encodeURIComponent(p.pool)}" target="_blank" rel="noopener">graphique ↗</a>`
+        + (p.dexVu
+            ? `<a class="lienpetit" href="https://dexscreener.com/robinhood/${encodeURIComponent(p.pool)}" target="_blank" rel="noopener">dexscreener ↗</a>`
+            : `<span class="lienpetit muet">pas encore sur DexScreener</span>`)
       : '';
     const liens = (p.liens && p.liens.length)
       ? p.liens.map(l=>`<a class="lienpetit" href="${echappe(l.url)}" target="_blank" rel="noopener">${echappe(l.type)} ↗</a>`).join("")
@@ -1221,6 +1236,10 @@ function peintBanque(){
     html += `<div class="ligne"><span class="k">Prochaine mise</span><span class="v">$${Number(p.mise).toFixed(2)}</span></div>`
          +  `<div class="mini">${echappe(p.raison)}</div>`;
   }
+  const ex = (VUE && VUE.sociauxExiges) || [];
+  html += `<div class="mini" style="margin-top:2px">Presence exigee : ${ex.length
+    ? "<b>"+ex.map(echappe).join("</b>, <b>")+"</b> et une paire connue de DexScreener"
+    : "<b>aucune</b>"}</div>`;
   html += `<div class="mini" style="margin-top:2px">Bornes : <b>${Math.round(b.partMax*100)}%</b> par jeton ·
            <b>${Math.round(b.expoMax*100)}%</b> engages au total · plancher <b>$${b.plancher}</b> ·
            mise mini <b>$${b.miseMin}</b></div>`;

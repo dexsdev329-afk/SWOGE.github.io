@@ -75,7 +75,7 @@ function vueFausse(o) {
       { sym: 'NOVA', adr: ADR_NOVA, pool: '0xpool3', minutes: 4, score: 71, ouverteDepuis: 300000,
         tenueMin: 20, latent: 6.4, gainLatent: 2.24, mise: 35, methode: 'part',
         regime: 'autour du depart', raisonMise: 'methode part en regime « autour du depart »',
-        origine: 'profils', mcAchat: 310000, prolonge: 1, prixVu: now - 30000,
+        origine: 'profils', mcAchat: 310000, prolonge: 1, prixVu: now - 30000, dexVu: true,
         liens: [{ type: 'twitter', url: 'https://x.com/nova' },
                 { type: 'site', url: 'https://nova.example' }] },
       /* Une position dont le prix n'a pas ete relu : le serveur envoie `null`,
@@ -83,7 +83,7 @@ function vueFausse(o) {
       { sym: 'MUET', adr: ADR_MUET, pool: '0xpool4', minutes: 9, score: 63, ouverteDepuis: 60000,
         tenueMin: 20, latent: null, gainLatent: null, mise: 30, methode: 'part',
         regime: 'autour du depart', origine: 'pools', mcAchat: 45000, prolonge: 0,
-        prixVu: now - 40 * 60000, liens: [] },
+        prixVu: now - 40 * 60000, liens: [], dexVu: false },
     ],
     candidats: o.candidats || [
       { sym: 'NOVA', addr: '0xa1', pool: '0xpool3', minutes: 4, liq: 24000, mc: 310000, prix: 0.004,
@@ -205,6 +205,7 @@ function vueFausse(o) {
       honeypotis: 'honeypot.is — ne connait pas la chaine 4663.',
     },
     seuil: o.seuil || 55, seuilDepart: 55, ageMax: 360,
+    sociauxExiges: o.sociauxExiges === undefined ? ['site', 'twitter', 'telegram'] : o.sociauxExiges,
     derniers: [4.2, -3.1, 8.0, -1.2, 12.4],
     bandes: [{ nom: '0-5 min', vus: 3 }, { nom: '5-20 min', vus: 2 },
              { nom: '20-60 min', vus: 1 }, { nom: '1-6 h', vus: 0 }],
@@ -461,7 +462,10 @@ async function banquierEcran() {
      * garde-fous laisse croire qu il n y en a pas. */
     ok(/8% par jeton/.test(v.banque.replace(/\s/g, ' ')) || /8%/.test(v.banque),
        'les bornes qu il ne peut pas franchir sont ecrites : ' + (v.banque.match(/Bornes[^]{0,90}/) || [''])[0]);
-    ok(/plancher/.test(v.banque), 'y compris le plancher sous lequel il arrete d ouvrir');
+      ok(/plancher/.test(v.banque), 'y compris le plancher sous lequel il arrete d ouvrir');
+    ok(/Presence exigee/.test(v.banque) && /telegram/.test(v.banque),
+       'et la presence exigee d un projet est affichee : « '
+       + (v.banque.match(/Presence exigee[^B]*/) || [''])[0].trim() + ' »');
 
     /* Le releve de chaque methode, AVEC le nombre d observations. */
     ok(/12 obs/.test(v.banque) && /9 obs/.test(v.banque),
@@ -557,10 +561,25 @@ async function ficheDeLaPosition() {
   ok(/prolongee 1×/.test(pos[0]), 'et le fait que le Promoteur l ait gardee une fois de plus');
 
   console.log('   ' + JSON.stringify(v.liens));
+  /* ---- UN LIEN QU'ON SAIT MORT NE S'OFFRE PAS ----
+   * On pointait toujours vers DexScreener, qui ne connait qu'un jeton sur
+   * douze a deux minutes : le lien ouvrait une page vide et rien ne
+   * prevenait. GeckoTerminal est la source d'ou vient le pool — sa page
+   * existe forcement. */
   const chart = v.liens.filter((l) => /graphique/.test(l));
-  ok(chart.length === 2, 'chaque position porte le lien vers son graphique DexScreener');
-  ok(/dexscreener\.com\/robinhood\/0xpool3/.test(chart[0]),
-     'sur la bonne chaine et le bon pool : ' + chart[0].split('→')[1]);
+  ok(chart.length === 2, 'chaque position porte un lien vers son graphique');
+  ok(/geckoterminal\.com\/robinhood\/pools\/0xpool3/.test(chart[0]),
+     'et il pointe vers la source d ou vient le pool, donc une page qui existe : '
+     + chart[0].split('→')[1]);
+  const ds = v.liens.filter((l) => /dexscreener/.test(l));
+  ok(ds.length === 1 && /0xpool3/.test(ds[0]),
+     'DexScreener n est ajoute que pour la position dont on SAIT qu il connait la paire');
+  const muets = await page.evaluate(() =>
+    [...document.querySelectorAll('#positions .lienpetit.muet')].map((x) => x.textContent.trim()));
+  console.log('   ' + JSON.stringify(muets));
+  ok(muets.indexOf('pas encore sur DexScreener') >= 0,
+     'et pour l autre, on le DIT plutot que d offrir un lien mort — « token not found » au bout '
+     + 'd un lien qu on a soi-meme propose est pire qu une absence de lien');
   ok(v.liens.some((l) => /twitter/.test(l) && /x\.com\/nova/.test(l)),
      'les reseaux sont la quand il y en a');
   /* Et quand il n'y en a pas, on l'ECRIT : un jeton sans aucune presence est
@@ -747,8 +766,15 @@ async function auditDesVetos() {
        'avec leur valeur latente calculee par le serveur (' + v.positions[0] + ')');
     /* Le serveur a envoye `latent: null` : il n'a pas relu de prix. La page ne
        doit pas en faire un 0 %, qui se lirait comme « ca ne bouge pas ». */
-    ok(/prix non relu/.test(v.positions[1]),
-       'et celle dont le prix n a pas ete relu le DIT (' + v.positions[1] + ')');
+    /* ---- « PRIX NON RELU » NE DISAIT PAS ASSEZ ----
+     * Le mot etait juste, mais il ne disait pas DEPUIS QUAND — et sans ce
+     * chiffre, un tour manque et un jeton sorti des flux depuis une heure se
+     * ressemblent, alors qu'ils ne veulent pas dire la meme chose. */
+    console.log('   ' + v.positions[1]);
+    ok(/dernier prix il y a 40min/.test(v.positions[1]),
+       'celle dont le prix est perime dit depuis QUAND (' + v.positions[1] + ')');
+    ok(!/\+0\.0%/.test(v.positions[1]),
+       'et surtout pas « +0,0 % », qui ferait passer un prix d entree pour une cotation');
     ok(v.feed.length === 2 && /PEPO/.test(v.feed[0]), 'le fil des trades vient du serveur aussi');
     ok(/LIVE/.test(v.pouls), 'le pouls est vert : le serveur a fini un tour recemment');
     ok(/serveur a \d\d:\d\d/.test(v.stamp), 'et la pastille porte l heure du SERVEUR (« ' + v.stamp + ' »)');

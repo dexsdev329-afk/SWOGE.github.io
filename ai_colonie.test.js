@@ -206,6 +206,9 @@ function vueFausse(o) {
     },
     seuil: o.seuil || 55, seuilDepart: 55, ageMax: 360,
     derniers: [4.2, -3.1, 8.0, -1.2, 12.4],
+    bandes: [{ nom: '0-5 min', vus: 3 }, { nom: '5-20 min', vus: 2 },
+             { nom: '20-60 min', vus: 1 }, { nom: '1-6 h', vus: 0 }],
+    suites: [{ sym: 'MONTE', rSortie: 42, echeance: now + 600000 }],
     conseiller: o.conseiller || { actif: false, modele: 'claude-haiku-4-5-20251001',
                                   poids: 8, parTour: 3, rendus: 0 },
     alertes: o.alertes === undefined ? [
@@ -279,6 +282,7 @@ const lit = (page) => page.evaluate(() => ({
   banqMethode: (document.getElementById('banqMethode') || {}).textContent,
   surveillance: (document.getElementById('surveillance') || {}).textContent.replace(/\s+/g, ' ').trim(),
   survN: (document.getElementById('survN') || {}).textContent,
+  flowcount: (document.getElementById('flowcount') || {}).textContent,
   structure: (document.getElementById('structure') || {}).textContent.replace(/\s+/g, ' ').trim(),
   services: (document.getElementById('services') || {}).textContent.replace(/\s+/g, ' ').trim(),
   soustitre: (document.getElementById('soustitre') || {}).textContent,
@@ -469,6 +473,17 @@ async function panneaux() {
      'avec le nombre de fois ou ils ont ete examines — c est le chiffre qui montre qu on ne les rejuge pas en boucle');
   ok(/37 bannis/.test(v.survN),
      'et les bannis sont comptes a part : ils ne reviendront jamais (' + v.survN + ')');
+
+  console.log('\n-- ou elle a regarde, et ce qu elle n a pas encore juge --');
+  console.log('   ' + v.flowcount);
+  ok(/0-5 min ×3/.test(v.flowcount) && /20-60 min ×1/.test(v.flowcount),
+     'la repartition par age est affichee : sans ce compte, « elle regarde partout » est une phrase');
+  ok(!/1-6 h/.test(v.flowcount), 'et une bande ou elle n a rien vu n est pas listee comme si elle l avait vue');
+  console.log('   ' + (v.surveillance.match(/\d+ sortie[^—]*/) || ['(rien)'])[0]);
+  ok(/1 sortie\(s\) en attente/.test(v.surveillance) && /MONTE a \+42%/.test(v.surveillance),
+     'les gains pris mais pas encore juges sont montres : une question ouverte s affiche, sinon la '
+     + 'lecon a l air de sortir de nulle part quand elle arrive');
+  ok(/ce que garder aurait donne/.test(v.surveillance), 'avec ce qu on attend pour trancher');
 
   console.log('\n-- ce que la colonie a change a elle-meme --');
   console.log('   ' + v.structure.slice(0, 150));

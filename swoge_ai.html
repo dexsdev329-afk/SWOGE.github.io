@@ -13,7 +13,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
-var MARQUE_PAGE = '13984877';
+var MARQUE_PAGE = 'a60b9ab0';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -996,7 +996,16 @@ function peintAgents(){
 }
 function peintFlux(){
   const arr = [...flying];
-  $("flowcount").textContent = arr.length+" token"+(arr.length!==1?"s":"");
+  /* ---- OU LA COLONIE A REGARDE ----
+   * Elle triait par « le plus jeune d'abord » et ne voyait donc que des jetons
+   * de deux minutes — l'age ou elle est le plus aveugle. Afficher la
+   * repartition est ce qui rend le changement verifiable : sans ce compte,
+   * « elle regarde partout » est une phrase. */
+  const b = (VUE && VUE.bandes) || [];
+  const vus = b.reduce((a,x)=>a+x.vus, 0);
+  $("flowcount").textContent = vus
+    ? b.filter(x=>x.vus).map(x=>x.nom+" ×"+x.vus).join(" · ")
+    : arr.length+" token"+(arr.length!==1?"s":"");
   if(!arr.length){
     $("flow").innerHTML = '<div class="empty">'
       + (VUE ? "En attente du prochain tour du serveur…" : "En attente du serveur…") + '</div>';
@@ -1228,13 +1237,23 @@ function peintSurveillance(){
   const l = (VUE && VUE.surveillance) || [];
   $("survN").textContent = VUE ? (l.length + " · " + VUE.bannis + " bannis") : "—";
   if(!VUE){ $("surveillance").innerHTML = '<div class="empty">En attente du serveur…</div>'; return; }
-  if(!l.length){
+  if(!l.length && !((VUE && VUE.suites) || []).length){
     $("surveillance").innerHTML = '<div class="empty">Rien sous surveillance. Un jeton y entre quand '
       + 'il a frole le seuil sans l\'atteindre : il n\'est pas re-analyse en boucle, il est repris '
       + 'quand un signal gratuit bouge — la liquidite, le prix — ou apres un long moment.</div>';
     return;
   }
-  $("surveillance").innerHTML = l.map(x=>`<div class="tok">
+  /* ---- CE QU'ON A VENDU, ET QU'ON N'A PAS ENCORE JUGE ----
+   * La Sentinelle prend un gain avant l'echeance, puis on REVIENT voir ce que
+   * garder aurait donne. Entre les deux, la question est ouverte — et une
+   * question ouverte s'affiche, sinon la lecon a l'air de sortir de nulle
+   * part quand elle arrive. */
+  const su = (VUE && VUE.suites) || [];
+  const attente = su.length ? '<div class="mini" style="margin-bottom:6px">'
+    + su.length + ' sortie(s) en attente de jugement : '
+    + su.map(x=>echappe(x.sym)+" a "+(x.rSortie>=0?"+":"")+x.rSortie.toFixed(0)+"%").join(" · ")
+    + ' — on revient voir a l\'echeance ce que garder aurait donne</div>' : '';
+  $("surveillance").innerHTML = attente + l.map(x=>`<div class="tok">
     <span class="sym">$${echappe(x.sym)}</span>
     <span class="meta">${x.vu} examen${x.vu>1?"s":""} · ${echappe(String(x.verdict||"—")).slice(0,34)}</span>
     <span class="pnl n" style="font-size:12px">${x.meilleure===null||x.meilleure===undefined?"—":x.meilleure}</span>

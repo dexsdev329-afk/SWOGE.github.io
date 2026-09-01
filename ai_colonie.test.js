@@ -209,6 +209,14 @@ function vueFausse(o) {
     bandes: [{ nom: '0-5 min', vus: 3 }, { nom: '5-20 min', vus: 2 },
              { nom: '20-60 min', vus: 1 }, { nom: '1-6 h', vus: 0 }],
     suites: [{ sym: 'MONTE', rSortie: 42, echeance: now + 600000 }],
+    ombres: { enAttente: 34, jugees: 218 },
+    audit: o.audit === undefined ? [
+      /* Un veto qui coute : un jeton ecarte sur trois est monte. */
+      { cle: 'oracle · note trop basse', n: 96, moyenne: -4.2, montes: 31, effondres: 22, partMontes: 32 },
+      /* Un veto qui protege. */
+      { cle: 'whale · un porteur tient 90% du circulant', n: 140, moyenne: -38.5,
+        montes: 7, effondres: 96, partMontes: 5 },
+    ] : o.audit,
     conseiller: o.conseiller || { actif: false, modele: 'claude-haiku-4-5-20251001',
                                   poids: 8, parTour: 3, rendus: 0 },
     alertes: o.alertes === undefined ? [
@@ -275,6 +283,8 @@ const lit = (page) => page.evaluate(() => ({
   alerteN: (document.getElementById('alerteN') || {}).textContent,
   alerteCachee: !!(document.getElementById('carteAlertes') || {}).hidden,
   fermN: (document.getElementById('fermN') || {}).textContent,
+  audit: (document.getElementById('audit') || {}).textContent.replace(/\s+/g, ' ').trim(),
+  auditN: (document.getElementById('auditN') || {}).textContent,
   maisons: [...document.querySelectorAll('#agents .agent')].length,
   adresses: [...document.querySelectorAll('#positions .adr code')].map((c) => c.textContent.trim()),
   boutonsCopie: [...document.querySelectorAll('#positions .adr button')].length,
@@ -601,6 +611,49 @@ async function panneauAlertes() {
   }
 }
 
+
+/* ==========================================================================
+ * 16. CE QUE DEVIENNENT LES JETONS REFUSES
+ *
+ * C'est la seule partie de l'ecran qui juge les REGLES plutot que les jetons.
+ * Les agents n'apprenaient que des jetons achetes — donc de ceux qui avaient
+ * passe tous les vetos — et ne pouvaient donc pas savoir si ces vetos
+ * protegeaient. Maintenant chaque jeton analyse est resuivi.
+ * ==========================================================================*/
+async function auditDesVetos() {
+  console.log('\n-- l audit des refus --');
+  const { page, boum } = await ouvre(nav, port, {});
+  const v = await lit(page);
+  console.log('   ' + v.auditN);
+  ok(/218 suivis/.test(v.auditN) && /34 en cours/.test(v.auditN),
+     'le compte des jetons resuivis est affiche (' + v.auditN + ')');
+  ok(/un porteur tient 90%/.test(v.audit) && /note trop basse/.test(v.audit),
+     'chaque raison de refus a sa ligne');
+  ok(/140 jeton\(s\) suivis/.test(v.audit) && /96 effondre\(s\)/.test(v.audit),
+     'avec ce que les ecartes ont VRAIMENT fait : ' + (v.audit.match(/140[^·]*·[^·]*/) || [''])[0]);
+
+  /* ---- LE CHIFFRE QUI COMPTE ----
+   * Pas la moyenne : la part de ceux qui sont MONTES malgre le refus. Une
+   * moyenne negative peut cacher un sur cinq qui a fait dix fois. */
+  ok(/32% montes/.test(v.audit) && /5% montes/.test(v.audit),
+     'la part des ecartes qui sont montes est en tete de chaque ligne');
+  ok(/ce refus coute plus qu'il ne protege/.test(v.audit),
+     'et un veto dont un jeton ecarte sur quatre est monte est SIGNALE comme un cout');
+  const cout = await page.evaluate(() =>
+    [...document.querySelectorAll('#audit .pill')].map((p) => p.textContent.trim() + ':' + p.className));
+  console.log('   ' + JSON.stringify(cout));
+  ok(/retrait/.test(cout[0]) && /naissance/.test(cout[1]),
+     'les deux se distinguent d un coup d oeil, sans avoir a lire les chiffres');
+  ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
+  await page.context().close();
+
+  const b = await ouvre(nav, port, { vue: vueFausse({ audit: [] }) });
+  const w = await lit(b.page);
+  ok(/est resuivi jusqu'a l'echeance/.test(w.audit),
+     'et sans releve, la carte explique ce qu on attend plutot que de rester vide');
+  await b.page.context().close();
+}
+
 (async () => {
   if (!chromium) { console.log('playwright absent — essai ignore'); return; }
   const srv = http.createServer((q, r) => {
@@ -778,6 +831,7 @@ async function panneauAlertes() {
   await ficheDeLaPosition();
   await filSansDoublon();
   await panneauAlertes();
+  await auditDesVetos();
 
   /* ======================================================================
    * 5. LES BOTS REJOUENT LA DECISION, ILS NE LA PRENNENT PAS

@@ -13,7 +13,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
-var MARQUE_PAGE = 'a60b9ab0';
+var MARQUE_PAGE = 'c1697cab';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -359,6 +359,13 @@ var MARQUE_PAGE = 'a60b9ab0';
       <div class="card">
         <h2>Ce que l'Oracle a appris <span class="count" id="apprisN">0 trade</span></h2>
         <div id="appris"><div class="empty">Rien encore. Chaque position fermee lui apprend quelque chose ; en dessous d'une poignee de trades, il ne pretend rien.</div></div>
+      </div>
+
+      <div class="card">
+        <h2>Ce que deviennent les refuses <span class="count" id="auditN">—</span></h2>
+        <div id="audit"><div class="empty">Rien encore. Chaque jeton analyse — achete ou refuse —
+          est resuivi jusqu'a l'echeance, puis son prix est relu. C'est ce qui permet de savoir si
+          un veto protege vraiment, ou s'il ecarte surtout des gagnants.</div></div>
       </div>
 
       <div class="card">
@@ -1277,6 +1284,38 @@ function peintStructure(){
   }).join("");
 }
 
+/* ---- CE QUE DEVIENNENT LES JETONS REFUSES ----
+ * C'est l'information la plus utile de tout l'ecran, et la seule qui juge les
+ * REGLES plutot que les jetons. Les agents n'apprenaient que des jetons
+ * achetes — donc de ceux qui avaient passe tous les vetos : ils ne pouvaient
+ * pas savoir si ces vetos protegeaient. Maintenant chaque jeton analyse est
+ * resuivi, et on voit ce que chaque raison de refus a vraiment ecarte.
+ *
+ * Un veto dont les refuses s'effondrent est une protection. Un veto dont les
+ * refuses montent est un cout — et il faut pouvoir le lire d'un coup d'oeil,
+ * pas le deduire. */
+function peintAudit(){
+  const l = (VUE && VUE.audit) || [];
+  const o = (VUE && VUE.ombres) || { enAttente:0, jugees:0 };
+  $("auditN").textContent = VUE ? (o.jugees + " suivis · " + o.enAttente + " en cours") : "—";
+  if(!l.length) return;
+  $("audit").innerHTML = l.map(x=>{
+    /* Le chiffre qui compte n'est pas la moyenne : c'est la part de ceux qui
+       sont MONTES malgre le refus. Une moyenne negative peut cacher un sur
+       cinq qui a fait dix fois. */
+    const cher = x.partMontes >= 25;
+    return `<div class="evt">
+      <span class="pill ${cher?"retrait":"naissance"}">${x.partMontes}% montes</span>
+      <span><b>${echappe(x.cle)}</b>
+        <span class="mini">${x.n} jeton(s) suivis · ${x.montes} monte(s) de +20% ou plus ·
+          ${x.effondres} effondre(s) · moyenne ${x.moyenne>=0?"+":""}${x.moyenne}%</span>
+        ${cher ? '<span class="faire" style="color:var(--loss)">un jeton ecarte sur quatre est monte : '
+                 + 'ce refus coute plus qu\'il ne protege</span>' : ''}
+      </span>
+    </div>`;
+  }).join("");
+}
+
 /* ---- CE DONT LA COLONIE A BESOIN ----
  * « Doit aussi être intelligent et me donner des alertes s'ils ont besoin de
  *   choses supplémentaires pour être plus performants. »
@@ -1428,7 +1467,7 @@ async function demande(manuel){
     verseCandidats();
     peintStats(); peintPositions(); peintAppris(); peintFluxTrades();
     peintFlux(); peintBanque(); peintSurveillance(); peintStructure(); peintServices();
-    peintAlertes();
+    peintAlertes(); peintAudit();
     dessineCourbe(); pastille(); majPouls();
     /* ---- LE SERVEUR PEUT REPONDRE PARFAITEMENT ET N'AVOIR RIEN LU ----
      * Sa vue porte alors `erreur`, et les chiffres qu'elle contient sont
@@ -1553,7 +1592,7 @@ setInterval(function(){ if(document.visibilityState !== "hidden"){ peintPosition
 poseLesBots();
 peintAgents(); peintStats(); peintPositions(); peintAppris(); peintFluxTrades();
 peintPicks(); peintFlux(); peintBanque(); peintSurveillance(); peintStructure(); peintServices();
-peintAlertes();
+peintAlertes(); peintAudit();
 dessineCourbe(); pastille(); majPouls();
 $("stagetag").textContent = phraseFond();
 requestAnimationFrame(loop);

@@ -170,6 +170,8 @@ var MARQUE_PAGE = '6be83767';
      contrat laisse passer, rouge quand il refuse, gris quand on n'a pas pu
      demander — trois etats, parce que « pas testable » n'est ni l'un ni l'autre. */
   .meta .ok{color:var(--gain)}
+  /* Ce qui a deja ete encaisse sur une position encore ouverte. */
+  .mini.pris{color:var(--gain)}
   .meta .rej{color:var(--loss)}
   .meta .muet{color:var(--ink-faint);opacity:.75;border-bottom:1px dashed currentColor;cursor:help}
   .empty{font-size:12px;color:var(--ink-faint);padding:6px 0;font-style:italic;line-height:1.5}
@@ -466,7 +468,11 @@ const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
  * ======================================================================== */
 
 /* ============================ MONDE ============================ */
-const W = 1000, H = 760;
+/* La largeur du monde est fixe ; sa HAUTEUR suit le nombre de rangees. Fixee
+   a 760 quoi qu'il arrive, elle laissait un tiers d'herbe vide sous un village
+   de deux rangees — de la place perdue sur un ecran ou tout compte. */
+const W = 1000;
+let H = 606;
 const cv = document.getElementById("village"), ctx = cv.getContext("2d");
 let dpr = Math.min(2, window.devicePixelRatio || 1);
 function fit(){
@@ -488,7 +494,55 @@ window.addEventListener("resize", fit); fit();
  * POSEES : autant qu'il y a d'agents, sur un anneau autour de la tresorerie.
  * La page ne sait pas combien il y en aura, et c'est exactement ce qu'il faut.
  * ======================================================================== */
-const TREASURY = {x:500, y:395};
+/* ---- LE VILLAGE EST UNE CHAINE, PAS UN ROND ----
+ *
+ * Neuf maisons posees en cercle autour du tresor : c'etait joli et ca ne
+ * disait rien. Un jeton traverse les agents DANS UN ORDRE — le Scout, puis les
+ * gardes, puis l'Oracle, puis le Cobaye, puis le Banquier, puis le Closer — et
+ * cet ordre est tout ce qu'il y a a comprendre. Sur un anneau, il est
+ * invisible : rien ne dit par ou commencer ni ou l'on va.
+ *
+ * On le deplie donc de gauche a droite, en serpentin, avec le numero de chaque
+ * etape sur sa maison et le tresor au bout. On lit alors la page comme une
+ * phrase : le jeton entre a gauche, passe devant chacun, et soit il tombe en
+ * route — la pastille rouge dit chez qui — soit il arrive au tresor.
+ *
+ * Le tresor n'est plus au centre : il est A LA FIN. C'est la seule position
+ * qui raconte quelque chose de vrai.
+ */
+/* Trois par rangee, pas cinq : la scene est HAUTE — le village occupe la
+   colonne de gauche d'un ecran de bureau et toute la largeur d'un telephone —
+   et cinq de front donnaient un monde tres large, donc reduit a une bande
+   mince une fois mis a l'echelle, avec de l'herbe vide au-dessus et en
+   dessous. Trois colonnes et plus de rangees remplissent le cadre. */
+const RANGEE = 3;                  /* maisons par rangee avant de repartir */
+const COL_X = [196, 500, 804];
+const PAS_Y = 208;                 /* de quoi loger l'etiquette, la maison, le chien */
+let ligneY = [190, 398];           /* recalcule : autant de rangees qu'il en faut */
+let TREASURY = {x:834, y:398};     /* recalcule a chaque fois qu'on batit */
+let ENTREE = {x:34, y:190};        /* la ou les jetons entrent dans le village */
+
+/* ---- LES RANGEES SUIVENT LE NOMBRE D'AGENTS ----
+ * La colonie en gagne et en perd. Trois rangees ecrites en dur laisseraient un
+ * tiers de l'ecran vide a neuf agents, et deborderaient a seize. On calcule
+ * donc combien il en faut, et on les CENTRE : le village occupe la scene au
+ * lieu de flotter en haut. */
+function poseLesRangees(nStops){
+  const n = Math.max(1, Math.ceil(nStops / RANGEE));
+  const haut = (n - 1) * PAS_Y;
+  H = haut + 250;                               /* le monde fait la taille du village */
+  const y0 = Math.round((H - haut) / 2) - 10;   /* -10 : la place de l'etiquette */
+  ligneY = [];
+  for (let i = 0; i < n; i++) ligneY.push(y0 + i * PAS_Y);
+}
+/* La place n° i sur le serpentin : rangee paire de gauche a droite, rangee
+   impaire de droite a gauche, pour que la route ne se croise jamais. */
+function placeChaine(i){
+  const li = Math.min(ligneY.length - 1, Math.floor(i / RANGEE));
+  let ci = i % RANGEE;
+  if (li % 2 === 1) ci = RANGEE - 1 - ci;
+  return { x: COL_X[ci], y: ligneY[li] };
+}
 let AGENTS = [];
 let idx = {};
 
@@ -524,18 +578,18 @@ function batitVillage(roster){
     const rb = RANG[b.role] === undefined ? 9 : RANG[b.role];
     return ra !== rb ? ra - rb : (a.ordre||0) - (b.ordre||0);
   });
-  const n = l.length;
-  AGENTS = l.map((a,i)=>{
-    /* Un anneau, en partant du haut. Les rayons sont pris pour qu'une maison
-       reste entiere dans le cadre, quel que soit le nombre d'agents. */
-    const ang = -Math.PI/2 + i * 2*Math.PI/n;
-    return Object.assign({}, a, {
-      name: a.nom || a.key,
-      color: a.couleur || "#8aa",
-      house: { x: Math.round(TREASURY.x + 350*Math.cos(ang)),
-               y: Math.round(TREASURY.y + 232*Math.sin(ang)) },
-    });
-  });
+  poseLesRangees(l.length + 1);      /* +1 : le tresor occupe la place suivante */
+  AGENTS = l.map((a,i)=>Object.assign({}, a, {
+    name: a.nom || a.key,
+    color: a.couleur || "#8aa",
+    rang: i + 1,                     /* son numero d'etape, ecrit sur sa maison */
+    house: placeChaine(i),
+  }));
+  /* Le tresor prend la place SUIVANTE : il est le bout de la chaine, pas son
+     centre. Quand la colonie gagne ou perd un agent, il se decale avec elle. */
+  TREASURY = placeChaine(AGENTS.length);
+  const p0 = AGENTS.length ? AGENTS[0].house : placeChaine(0);
+  ENTREE = { x: 26, y: p0.y };
   idx = {}; AGENTS.forEach((a,i)=>idx[a.key]=i);
 }
 batitVillage(null);
@@ -839,14 +893,51 @@ function flower(x,y){
   for(let a=0;a<5;a++){ const an=a/5*6.28; ctx.beginPath(); ctx.arc(x+Math.cos(an)*4,y+Math.sin(an)*4,3,0,7); ctx.fill(); }
   ctx.fillStyle="#ff8ec7"; ctx.beginPath(); ctx.arc(x,y,2.4,0,7); ctx.fill();
 }
-function drawPaths(){
-  ctx.lineCap="round";
-  for(const a of AGENTS){
-    ctx.strokeStyle="#cda869"; ctx.lineWidth=26;
-    ctx.beginPath(); ctx.moveTo(TREASURY.x,TREASURY.y); ctx.lineTo(a.house.x,a.house.y+30); ctx.stroke();
-    ctx.strokeStyle="#e0c184"; ctx.lineWidth=18;
-    ctx.beginPath(); ctx.moveTo(TREASURY.x,TREASURY.y); ctx.lineTo(a.house.x,a.house.y+30); ctx.stroke();
+/* ---- UNE SEULE ROUTE, QUI PASSE PARTOUT DANS L'ORDRE ----
+ * Elle entre a gauche, longe chaque maison a son tour, redescend d'une rangee
+ * quand elle arrive au bord, et finit au tresor. C'est litteralement le trajet
+ * que fait un jeton — donc la seule route qu'on ait le droit de dessiner. */
+function cheminDuVillage(){
+  const pts = [{x:ENTREE.x, y:ENTREE.y+30}];
+  for(const a of AGENTS) pts.push({x:a.house.x, y:a.house.y+30});
+  pts.push({x:TREASURY.x, y:TREASURY.y+30});
+  return pts;
+}
+function traceChemin(pts){
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  for(let i=1;i<pts.length;i++){
+    const a = pts[i-1], b = pts[i];
+    /* Un changement de rangee : on descend a l'equerre, jamais en diagonale —
+       une diagonale a travers le village ferait douter de l'ordre. En
+       serpentin la colonne ne change pas d'une rangee a l'autre, donc c'est
+       une simple descente ; le detour par le bord n'est fait que si les deux
+       bouts ne sont pas alignes. */
+    if(Math.abs(b.y - a.y) > 60){
+      if(Math.abs(b.x - a.x) > 8){
+        const bord = (a.x > W/2) ? W - 52 : 52;
+        ctx.lineTo(bord, a.y);
+        ctx.lineTo(bord, b.y);
+      } else {
+        ctx.lineTo(a.x, b.y);
+      }
+    }
+    ctx.lineTo(b.x, b.y);
   }
+  ctx.stroke();
+}
+function drawPaths(){
+  ctx.lineCap="round"; ctx.lineJoin="round";
+  const pts = cheminDuVillage();
+  ctx.strokeStyle="#cda869"; ctx.lineWidth=30; traceChemin(pts);
+  ctx.strokeStyle="#e0c184"; ctx.lineWidth=22; traceChemin(pts);
+  /* La porte d'entree : sans elle, on ne sait pas par quel bout commencer.
+     Au-DESSUS de la route, pas dessus — pose sur la chaussee, le libelle se
+     lisait comme un panneau tombe. */
+  ctx.fillStyle="rgba(9,20,14,.62)"; roundRect(ENTREE.x-16, ENTREE.y-4, 130, 22, 7); ctx.fill();
+  ctx.fillStyle="#cfe0d5"; ctx.font="600 12px Fredoka, sans-serif";
+  ctx.textAlign="left"; ctx.textBaseline="middle";
+  ctx.fillText("Jetons neufs →", ENTREE.x-6, ENTREE.y+7);
 }
 function drawHouse(a){
   const {x,y} = a.house;
@@ -865,6 +956,13 @@ function drawHouse(a){
   ctx.fillStyle="rgba(9,20,14,.62)"; roundRect(x-46,y-70,92,20,7); ctx.fill();
   ctx.fillStyle="#fff"; ctx.font="600 13px Fredoka, sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
   ctx.fillText(a.emoji+" "+a.name, x, y-59);
+  /* ---- SON NUMERO D'ETAPE ----
+   * L'ordre est ce qu'il y a a comprendre, et il change : la colonie se
+   * reorganise sur ce qu'elle mesure. Un chiffre sur la maison le dit sans
+   * qu'on ait a suivre la route du doigt. */
+  ctx.fillStyle=a.color; ctx.beginPath(); ctx.arc(x-46, y-60, 12, 0, 7); ctx.fill();
+  ctx.fillStyle="rgba(255,255,255,.9)"; ctx.font="700 12px Fredoka, sans-serif";
+  ctx.fillText(String(a.rang || ""), x-46, y-59);
 }
 function drawTreasury(){
   const {x,y} = TREASURY;
@@ -900,28 +998,99 @@ function drawOrb(x,y,sym,scale){
   }
   ctx.restore();
 }
+/* ---- LES HABITANTS SONT DES SHIBAS ----
+ *
+ * « Ça devrait pas être des robots mais des petits chiens, des shibas. »
+ *
+ * Ils gardent ce qui les distinguait : la couleur de leur agent. Elle n'est
+ * plus la carrosserie, elle est le FOULARD — c'est ce qu'on repere le plus
+ * vite sur un animal, et ca laisse les chiens se ressembler entre eux, ce
+ * qu'ils doivent faire pour se lire comme une meute plutot que comme neuf
+ * machines repeintes.
+ *
+ * Le pelage est celui d'un shiba : roux dessus, creme sur le museau, la
+ * poitrine, le bas des pattes et le dessous de la queue — c'est ce contraste
+ * en deux tons qui fait qu'on reconnait la race a cette taille-la, bien plus
+ * que la silhouette. La queue est enroulee sur le dos ; sans elle, un shiba
+ * de vingt pixels est un renard.
+ */
+const SHIBA_ROUX = "#d98b3a", SHIBA_SOMBRE = "#b06f26", SHIBA_CREME = "#f6e7cf";
 function drawBot(b){
   const A = AGENTS[b.i];
-  const bob = b.walk? Math.abs(Math.sin(b.bob))*3 : Math.sin(b.bob)*1.2;
+  const bob = b.walk? Math.abs(Math.sin(b.bob))*2.4 : Math.sin(b.bob)*1;
   const x = b.x, y = b.y - bob;
+  const f = b.face < 0 ? -1 : 1;            /* le sens du regard */
   ctx.fillStyle="rgba(0,0,0,.18)"; ctx.beginPath(); ctx.ellipse(b.x, b.y+9, 12,4,0,0,7); ctx.fill();
-  const sw = b.walk? Math.sin(b.bob)*3 : 0;
-  ctx.fillStyle="#2c3a44";
-  ctx.fillRect(x-6+sw, y+2, 4,9); ctx.fillRect(x+2-sw, y+2, 4,9);
-  ctx.fillStyle=A.color; roundRect(x-10,y-9,20,16,5); ctx.fill();
-  ctx.fillStyle="rgba(255,255,255,.18)"; roundRect(x-10,y-9,20,6,5); ctx.fill();
-  ctx.fillStyle=A.color; ctx.fillRect(x-13,y-6,4,10); ctx.fillRect(x+9,y-6,4,10);
-  ctx.fillStyle="#dfe8ee"; roundRect(x-9,y-24,18,15,5); ctx.fill();
-  ctx.fillStyle="#0f1d18"; roundRect(x-6,y-21,12,9,3); ctx.fill();
-  ctx.fillStyle=A.color; const ex = b.face*1.5;
-  ctx.beginPath(); ctx.arc(x-2+ex,y-16,1.6,0,7); ctx.arc(x+2+ex,y-16,1.6,0,7); ctx.fill();
-  ctx.strokeStyle="#cfd8de"; ctx.lineWidth=1.6; ctx.beginPath(); ctx.moveTo(x,y-24); ctx.lineTo(x,y-30); ctx.stroke();
-  ctx.fillStyle = b.busy>0? "#ffce4a" : A.color; ctx.beginPath(); ctx.arc(x,y-31,2.4,0,7); ctx.fill();
-  if(b.busy>0 && !RM){
-    ctx.fillStyle="rgba(255,206,74,.9)";
-    for(let i=0;i<3;i++){ const a=t_now*4+i*2; ctx.beginPath(); ctx.arc(x+Math.cos(a)*14, y-16+Math.sin(a)*8, 1.4,0,7); ctx.fill(); }
+
+  /* ---- LES PATTES ----
+     Quatre, decalees deux a deux : c'est ce decalage qui fait la marche. */
+  const sw = b.walk? Math.sin(b.bob)*2.6 : 0;
+  ctx.fillStyle = SHIBA_SOMBRE;
+  ctx.fillRect(x-7+sw, y+1, 3.4, 8); ctx.fillRect(x+3.6-sw, y+1, 3.4, 8);
+  ctx.fillStyle = SHIBA_ROUX;
+  ctx.fillRect(x-5-sw, y+1, 3.4, 8); ctx.fillRect(x+1.6+sw, y+1, 3.4, 8);
+  /* Les chaussettes creme, en bas des pattes. */
+  ctx.fillStyle = SHIBA_CREME;
+  ctx.fillRect(x-7+sw, y+6, 3.4, 3); ctx.fillRect(x+3.6-sw, y+6, 3.4, 3);
+  ctx.fillRect(x-5-sw, y+6, 3.4, 3); ctx.fillRect(x+1.6+sw, y+6, 3.4, 3);
+
+  /* ---- LA QUEUE ENROULEE ----
+     Elle bat quand il marche. Elle est derriere lui, donc du cote oppose au
+     regard. */
+  const qx = x - f*9, tw = b.walk ? Math.sin(b.bob*1.6)*0.35 : Math.sin(t_now*2)*0.15;
+  ctx.strokeStyle = SHIBA_ROUX; ctx.lineWidth = 4.6; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.arc(qx, y-8, 5.2, 0.4+tw, 4.4+tw, false); ctx.stroke();
+  ctx.strokeStyle = SHIBA_CREME; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(qx, y-8, 5.2, 0.9+tw, 3.6+tw, false); ctx.stroke();
+
+  /* ---- LE CORPS ---- */
+  ctx.fillStyle = SHIBA_ROUX; roundRect(x-8, y-9, 16, 12, 5); ctx.fill();
+  ctx.fillStyle = SHIBA_CREME; roundRect(x-6+f*1, y-3, 12, 6, 3); ctx.fill();
+
+  /* ---- LE FOULARD, QUI DIT DE QUEL AGENT IL EST ---- */
+  ctx.fillStyle = A.color; roundRect(x-8, y-12, 16, 5, 2.4); ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(x+f*2, y-8); ctx.lineTo(x+f*6, y-2); ctx.lineTo(x+f*1, y-4); ctx.closePath(); ctx.fill();
+
+  /* ---- LA TETE ----
+     Les oreilles d'abord, pour qu'elles passent derriere le crane. */
+  const hx = x + f*2.5, hy = y-19;
+  ctx.fillStyle = SHIBA_ROUX;
+  ctx.beginPath(); ctx.moveTo(hx-6.5, hy-3); ctx.lineTo(hx-4.4, hy-10.5); ctx.lineTo(hx-1.4, hy-4.4); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(hx+6.5, hy-3); ctx.lineTo(hx+4.4, hy-10.5); ctx.lineTo(hx+1.4, hy-4.4); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = SHIBA_SOMBRE;
+  ctx.beginPath(); ctx.moveTo(hx-5.4, hy-4); ctx.lineTo(hx-4.4, hy-8.6); ctx.lineTo(hx-2.6, hy-4.8); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(hx+5.4, hy-4); ctx.lineTo(hx+4.4, hy-8.6); ctx.lineTo(hx+2.6, hy-4.8); ctx.closePath(); ctx.fill();
+
+  ctx.fillStyle = SHIBA_ROUX;
+  ctx.beginPath(); ctx.ellipse(hx, hy, 7.6, 6.8, 0, 0, 7); ctx.fill();
+  /* Le masque creme : joues, museau, sourcils. C'est lui qui fait le shiba. */
+  ctx.fillStyle = SHIBA_CREME;
+  ctx.beginPath(); ctx.ellipse(hx, hy+2.6, 5.4, 3.6, 0, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(hx-4.6, hy+0.6, 2.2, 2.6, 0, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(hx+4.6, hy+0.6, 2.2, 2.6, 0, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(hx-2.8, hy-3.4, 1.5, 1.1, 0, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(hx+2.8, hy-3.4, 1.5, 1.1, 0, 0, 7); ctx.fill();
+  /* Les yeux, et le nez. */
+  ctx.fillStyle = "#2a1c10";
+  ctx.beginPath(); ctx.arc(hx-2.6+f*0.5, hy-0.6, 1.5, 0, 7); ctx.arc(hx+2.6+f*0.5, hy-0.6, 1.5, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(hx+f*0.6, hy+2.4, 1.7, 1.3, 0, 0, 7); ctx.fill();
+  /* Un eclat dans l'oeil : sans lui le regard est mort a cette taille. */
+  ctx.fillStyle = "rgba(255,255,255,.85)";
+  ctx.beginPath(); ctx.arc(hx-3.1+f*0.5, hy-1.2, .5, 0, 7); ctx.arc(hx+2.1+f*0.5, hy-1.2, .5, 0, 7); ctx.fill();
+
+  /* ---- IL TRAVAILLE ----
+     La langue sort et les oreilles s'agitent : c'est le meme signal que la
+     diode d'avant, dit dans la langue d'un chien. */
+  if(b.busy>0){
+    ctx.fillStyle = "#e2657a";
+    roundRect(hx+f*0.4-1.4, hy+3.2, 2.8, 3.4 + Math.sin(t_now*9)*0.8, 1.3); ctx.fill();
+    if(!RM){
+      ctx.fillStyle="rgba(255,206,74,.9)";
+      for(let i=0;i<3;i++){ const a=t_now*4+i*2; ctx.beginPath(); ctx.arc(hx+Math.cos(a)*13, hy+Math.sin(a)*8, 1.4,0,7); ctx.fill(); }
+    }
   }
-  if(b.carry) drawOrb(x, y-40, b.carry.sym, 0.9);
+  if(b.carry) drawOrb(x, y-38, b.carry.sym, 0.9);
 }
 let t_now = 0;
 function render(){
@@ -1216,8 +1385,21 @@ function peintPositions(){
        et ne se reproduisent pas de la meme facon. */
     const mc = (p.mcAchat === null || p.mcAchat === undefined)
       ? '' : ` · achete a ${fmtMC(p.mcAchat)} de cap.`;
+    /* ---- CE QUI A DEJA ETE PRIS, ET CE QUI COURT ENCORE ----
+     * La position ne sort plus d'un bloc : elle vend par paliers et laisse le
+     * reste courir. Sans ces deux chiffres, une position a +8 % qui a deja
+     * encaisse 70 % de son gain se lit comme une petite affaire, et le latent
+     * affiche porterait sur une mise qu'on n'a plus en jeu. */
+    const parts = (p.reste !== undefined && p.reste < 0.999)
+      ? `<span class="mini pris">${Math.round((1-p.reste)*100)} % vendu`
+        + (p.encaisse ? ` · ${p.encaisse>=0?"+":"–"}$${Math.abs(p.encaisse).toFixed(2)} encaisse` : '')
+        + ` · ${Math.round(p.reste*100)} % court encore</span>` : '';
+    /* Le plus haut atteint : c'est lui que l'arret suiveur surveille, donc
+       c'est lui qui explique une fermeture qu'on n'aurait pas comprise. */
+    const haut = (p.hautR !== null && p.hautR !== undefined && p.hautR > 0)
+      ? `<span class="mini">plus haut vu +${p.hautR.toFixed(1)} %</span>` : '';
     const mise = p.mise === undefined ? '' :
-      `<span class="mini"><b>$${Number(p.mise).toFixed(2)}</b> mise · ${echappe(p.methode||"?")}${mc}${p.origine?" · vu par "+echappe(p.origine):""}${p.prolonge?" · prolongee "+p.prolonge+"×":""}${p.tenueRaison?" · "+echappe(p.tenueRaison):""}</span>`;
+      `<span class="mini"><b>$${Number(p.mise).toFixed(2)}</b> mise · ${echappe(p.methode||"?")}${mc}${p.origine?" · vu par "+echappe(p.origine):""}${p.prolonge?" · prolongee "+p.prolonge+"×":""}${p.tenueRaison?" · "+echappe(p.tenueRaison):""}</span>` + parts + haut;
     /* Le lien vers le graphique, et les reseaux quand il y en a. On ne fabrique
        jamais un lien social : s'il n'y en a pas, on le DIT — un jeton sans
        aucune presence est une information, pas un manque d'affichage. */

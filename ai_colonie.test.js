@@ -76,6 +76,9 @@ function vueFausse(o) {
         tenueMin: 20, latent: 6.4, gainLatent: 2.24, mise: 35, methode: 'part',
         regime: 'autour du depart', raisonMise: 'methode part en regime « autour du depart »',
         origine: 'profils', mcAchat: 310000, prolonge: 1, prixVu: now - 30000, dexVu: true,
+        /* Elle est sortie par paliers : 70 % vendus en route, 30 % courent
+           encore, et le plus haut vu est ce que l'arret suiveur surveille. */
+        reste: 0.3, encaisse: 12.4, paliers: 2, hautR: 62.5,
         liens: [{ type: 'twitter', url: 'https://x.com/nova' },
                 { type: 'site', url: 'https://nova.example' }] },
       /* Une position dont le prix n'a pas ete relu : le serveur envoie `null`,
@@ -369,9 +372,17 @@ async function maisons() {
 
     /* Les maisons sont posees sur un anneau : aucune ne doit sortir du cadre,
        quel que soit le nombre d agents. */
+    /* ---- LES BORNES SUIVENT LE MONDE, ELLES NE SONT PLUS RECOPIEES ----
+     * Elles etaient ecrites en dur pour un monde de 1000 x 760. La hauteur
+     * suit maintenant le nombre de rangees, et un essai qui garde les anciens
+     * chiffres mesure un cadre qui n'existe plus. On demande donc a la page sa
+     * taille, et on y ajoute l'encombrement REEL d'une maison : l'etiquette
+     * monte a 70 au-dessus du point, l'ombre descend a 50 en dessous, et le
+     * toit deborde de 52 de chaque cote. */
     const dehors = await page.evaluate(() =>
-      AGENTS.filter((a) => a.house.x < 120 || a.house.x > 880 || a.house.y < 130 || a.house.y > 660)
-            .map((a) => a.key));
+      AGENTS.filter((a) => a.house.x - 52 < 0 || a.house.x + 52 > W
+                        || a.house.y - 70 < 0 || a.house.y + 50 > H)
+            .map((a) => a.key + '@' + a.house.x + ',' + a.house.y));
     ok(dehors.length === 0,
        'aucune maison ne sort du cadre' + (dehors.length ? ' : ' + dehors.join(', ') : ''));
 
@@ -474,6 +485,22 @@ async function contrat() {
   ok(/\$35\.00 mise/.test(pos[0]), 'la mise reellement engagee est affichee ($35.00)');
   ok(/part/.test(pos[0]), 'avec la methode qui l a decidee');
   ok(/vu par profils/.test(pos[0]), 'et le flux qui a trouve le jeton');
+
+  /* ---- CE QUI A DEJA ETE PRIS, ET CE QUI COURT ENCORE ----
+   * La position ne sort plus d un bloc : elle vend par paliers et laisse le
+   * reste courir. Sans ces chiffres, une position a +6 % qui a deja encaisse
+   * 70 % de son gain se lit comme une petite affaire — et le latent affiche
+   * porterait sur une mise qu on n a plus en jeu. */
+  console.log('   ' + pos[0].slice(0, 200));
+  ok(/70 % vendu/.test(pos[0]),
+     'la part deja vendue en route est ecrite (70 %)');
+  ok(/\+\$12\.40 encaisse/.test(pos[0]),
+     'avec ce qu elle a rapporte, qui est deja dans la tresorerie');
+  ok(/30 % court encore/.test(pos[0]),
+     'et ce qui reste en jeu : c est cette part-la que le latent chiffre');
+  ok(/plus haut vu \+62\.5 %/.test(pos[0]),
+     'le plus haut atteint est affiche : c est lui que l arret suiveur surveille, donc lui '
+     + 'qui expliquera une fermeture qu on n aurait pas comprise');
   await page.context().close();
 }
 
@@ -991,6 +1018,72 @@ async function auditDesVetos() {
       + ' · le Warden est en ' + iWarden);
     ok(pos === iWarden,
        'le jeton piege est rejete CHEZ LE WARDEN, a la place que le serveur lui donne aujourd hui');
+    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
+    await page.context().close();
+  }
+
+  /* ======================================================================
+   * 4 ter. LE VILLAGE EST UNE CHAINE, ET SES HABITANTS SONT DES SHIBAS
+   *
+   * « Ça devrait pas être des robots mais des petits chiens, des shibas. Refais
+   *   le graphique aussi, ça devrait être plus simple à comprendre pour les
+   *   utilisateurs. »
+   *
+   * Neuf maisons en cercle autour du tresor, c'etait joli et ca ne disait
+   * rien. Un jeton traverse les agents DANS UN ORDRE, et cet ordre est tout ce
+   * qu'il y a a comprendre — sur un anneau il est invisible, rien ne dit par
+   * ou commencer ni ou l'on va. Deplie de gauche a droite, avec le numero de
+   * chaque etape et le tresor au bout, la page se lit comme une phrase.
+   * ==================================================================== */
+  console.log('\n-- le village se lit de gauche a droite --');
+  {
+    const { page, boum } = await ouvre(nav, port, {});
+    const v = await page.evaluate(() => ({
+      maisons: AGENTS.map((a) => ({ key: a.key, rang: a.rang, x: a.house.x, y: a.house.y })),
+      tresor: TREASURY, entree: ENTREE, H: H, W: W,
+    }));
+    console.log('   ' + JSON.stringify(v.maisons.map((m) => m.rang + ':' + m.key)));
+    ok(v.maisons.every((m, i) => m.rang === i + 1),
+       'chaque maison porte son NUMERO d etape, dans l ordre du parcours');
+    /* La premiere rangee va de gauche a droite. C'est le sens de lecture, et
+       c'est le seul qui n'ait pas besoin d'etre explique. */
+    const r1 = v.maisons.filter((m) => m.y === v.maisons[0].y);
+    ok(r1.length > 1 && r1.every((m, i) => i === 0 || m.x > r1[i-1].x),
+       'la premiere rangee va de gauche a droite (' + r1.map((m) => m.rang).join(' → ') + ')');
+    /* Et la suivante repart en sens inverse : un serpentin, pour que la route
+       ne traverse jamais le village en diagonale. */
+    const ys = [...new Set(v.maisons.map((m) => m.y))];
+    ok(ys.length > 1, 'et il y a plusieurs rangees (' + ys.length + ')');
+    const r2 = v.maisons.filter((m) => m.y === ys[1]);
+    ok(r2.length > 1 && r2.every((m, i) => i === 0 || m.x < r2[i-1].x),
+       'la deuxieme repart en sens inverse : un serpentin, pas un retour a la ligne qui '
+       + 'ferait traverser tout l ecran (' + r2.map((m) => m.rang).join(' → ') + ')');
+    /* Le tresor est A LA FIN, pas au centre : c'est la seule position qui
+       raconte quelque chose de vrai. */
+    const dernier = v.maisons[v.maisons.length - 1];
+    console.log('   tresor : ' + JSON.stringify(v.tresor) + ' · derniere maison : '
+      + JSON.stringify({ x: dernier.x, y: dernier.y }));
+    ok(v.tresor.y >= dernier.y,
+       'le tresor est apres la derniere maison, pas au milieu du village');
+    ok(v.entree.x < v.maisons[0].x,
+       'et l entree est avant la premiere : on sait par quel bout commencer');
+    /* Le monde suit le nombre de rangees : fige, il laissait un tiers d herbe
+       vide sous un village de deux rangees. */
+    ok(v.H < 900 && v.H > 300,
+       'la hauteur du monde suit le village (' + v.H + ') au lieu d etre figee');
+
+    /* ---- ET LES HABITANTS SONT DES CHIENS ----
+     * On ne peut pas lire un canvas ; on lit ce qui le dessine. La couleur de
+     * l agent n est plus la carrosserie, elle est le foulard — c est ce qu on
+     * repere le plus vite sur un animal, et ca laisse les chiens se ressembler
+     * entre eux, ce qu ils doivent faire pour se lire comme une meute. */
+    const src = require('fs').readFileSync(require('path').join(SITE, PAGE), 'utf8');
+    ok(/SHIBA_ROUX|SHIBA_CREME/.test(src), 'le pelage du shiba est nomme dans le code');
+    ok(/queue/i.test(src) && /oreille/i.test(src),
+       'avec la queue enroulee et les oreilles pointues : sans elles, un shiba de vingt '
+       + 'pixels est un renard');
+    ok(!/roundRect\(x-9,y-24,18,15,5\)/.test(src),
+       'et la tete carree du robot a disparu');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.context().close();
   }

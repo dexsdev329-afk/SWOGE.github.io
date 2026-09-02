@@ -1621,6 +1621,18 @@ body{
       <h1>Volume bench</h1>
     </div>
     <div class="wl-corps">
+      <!-- ---- OU EST « PLAY » ? ----
+           « Le volume bench sur le wallet est-il utilisable ? Je ne vois pas
+             de bouton play et stop. »
+           Question legitime, et c'etait un defaut de l'ecran, pas du code :
+           il s'appelle « Volume bench » et ne contient aucun bouton pour le
+           lancer. Le moteur vit sur la page du banc — deliberement, deux
+           copies d'un code qui deplace de l'argent finissent par diverger —
+           mais rien ne le DISAIT en haut, la ou on cherche le bouton.
+           On le dit maintenant en premier, et les trois etapes sont
+           numerotees pour qu'on voie tout de suite ou l'on en est. -->
+      <p class="wl-note"><b>This is the setup. &#9654; PLAY and &#9632; STOP live on the bench
+        itself</b> — the last button below opens it, carrying everything you set here.</p>
       <p class="wl-note">It spins up hidden wallets that buy a token and pass the funds around,
         making real on-chain volume. Every hop pays real gas and slippage, so the ETH (RH)
         drains steadily. Press STOP on the bench and everything comes back to the master.</p>
@@ -1629,13 +1641,24 @@ body{
 
       <div class="wl-carte">
         <div class="wl-champ">
-          <label for="bcMode">WHAT ARE YOU TRYING TO MAXIMISE?</label>
+          <label for="bcMode">1 &middot; WHAT ARE YOU TRYING TO MAXIMISE?</label>
+          <!-- ---- UN LIBELLE COURT, ET L'EXPLICATION EN DESSOUS ----
+               Les quatre choix portaient leur explication DANS l'option :
+               « Organic — buy and sell on two different wallets ». Sur
+               telephone, la liste ouverte est dessinee par le systeme, pas
+               par nous : on ne peut ni la mettre en forme ni la faire tenir,
+               et ces lignes-la sortaient de l'ecran. Signale depuis un
+               telephone.
+               Le nom seul dans la liste, donc, et ce qu'il fait juste en
+               dessous — qui a l'avantage de rester lisible une fois la liste
+               refermee, ce que l'option ne faisait pas. -->
           <select id="bcMode">
-            <option value="organique" selected>Organic — buy and sell on two different wallets</option>
-            <option value="volume">Maximum volume — biggest $ traded</option>
-            <option value="tx">Maximum transactions — most trades, tiny amounts</option>
-            <option value="holders">Maximum holders — most addresses holding the token</option>
+            <option value="organique" selected>Organic</option>
+            <option value="volume">Volume</option>
+            <option value="tx">Transactions</option>
+            <option value="holders">Holders</option>
           </select>
+          <p class="wl-note" id="bcModeQuoi" style="margin:7px 0 0"></p>
         </div>
         <div class="wl-champ">
           <label for="bcN">HIDDEN WALLETS</label>
@@ -1653,7 +1676,7 @@ body{
            les deux, parce qu'un navigateur peut refuser le fichier et qu'un
            appareil peut etre efface. -->
       <div class="wl-carte" id="bcCarteMaster">
-        <div class="wl-rang"><span>Master wallet</span><b id="bcEtat">not created yet</b></div>
+        <div class="wl-rang"><span>2 &middot; Master wallet</span><b id="bcEtat">not created yet</b></div>
         <div class="wl-champ" id="bcAdrChamp" hidden style="margin:10px 0 0">
           <label>ITS ADDRESS — this is where the ETH (RH) goes</label>
           <div class="wl-mono wl-choisir" id="bcAdr" style="color:var(--texte)">—</div>
@@ -1671,7 +1694,7 @@ body{
 
       <div class="wl-carte" id="bcCarteFonds" hidden>
         <div class="wl-champ wl-avecmax">
-          <label for="bcMontant">SEND FROM THIS WALLET</label>
+          <label for="bcMontant">3 &middot; SEND FROM THIS WALLET</label>
           <input id="bcMontant" inputmode="decimal" placeholder="0.0" autocomplete="off">
           <button type="button" class="wl-max" id="bcMax">MAX</button>
         </div>
@@ -1685,9 +1708,10 @@ body{
       <button class="wl-b" id="bcFinance" type="button" hidden>Fund the master</button>
       <p class="wl-note" id="bcNote"></p>
 
-      <button class="wl-b vide" id="bcOuvre" type="button">Open the bench &rarr;</button>
-      <p class="wl-note">The bench runs the ring itself — one engine, not two. It picks up the
-        master and these options on its own when it opens.</p>
+      <button class="wl-b" id="bcOuvre" type="button">4 &middot; Open the bench &mdash; &#9654; PLAY is there</button>
+      <p class="wl-note">The bench runs the ring itself — one engine, not two, because two copies
+        of code that moves money end up disagreeing. It picks up the master wallet and these
+        options on its own when it opens.</p>
     </div>
   </section>
 
@@ -5946,7 +5970,27 @@ function bancFichierCle(adr, cle){
   }catch(e){ return false; }
 }
 
+/* Ce que fait chaque mode, en une ligne. Elles vivent ici et pas dans les
+   options : une liste deroulante ne montre qu'une ligne a la fois, et sur
+   telephone c'est le systeme qui la dessine. */
+var BANC_QUOI = {
+  organique: 'Buys on one wallet and sells on another, around a ring. Reads like two people '
+           + 'trading — not one wallet talking to itself.',
+  volume:    'Trades the largest amount the pool will take, every hop. Most dollars moved, '
+           + 'fewest trades.',
+  tx:        'Many tiny trades instead of a few large ones. Highest trade count, and the '
+           + 'priciest: gas costs the same at any size.',
+  holders:   'One wallet buys a bag and hands a slice to each new address. Raises the holder '
+           + 'count, not the volume — and each address is a real key, saved before anything is sent.',
+};
+function majBancQuoi(){
+  var e = $('bcModeQuoi'), m = $('bcMode');
+  if(e && m) e.textContent = BANC_QUOI[m.value] || '';
+}
+if($('bcMode')) $('bcMode').addEventListener('change', majBancQuoi);
+
 async function majBanc(){
+  majBancQuoi();
   var m = bancLitFilet();
   var mm = (m && Array.isArray(m.l)) ? m.l.filter(function(x){ return x && x.m; })[0] : null;
   bcMaster = mm ? { adr: mm.a, cle: mm.k } : null;
@@ -7067,6 +7111,34 @@ function journalSauve(){
   if(!moi) return;
   try{ localStorage.setItem(journalCle(moi), JSON.stringify(JOURNAL.slice(0, JOURNAL_MAX))); }catch(e){}
 }
+/* ---- LA CHAINE N'EST PLUS A DECLARER, ELLE EST LUE ----
+ *
+ * « J'ai fait ça, ça a réussi, et il y a encore marqué en attente dans
+ *   l'historique. » — avec le lien vers une transaction Base, minee.
+ *
+ * `journalSuit` cherche le recu sur la chaine que l'entree DECLARE, et
+ * retombe sur la Robinhood Chain quand elle n'en declare aucune. Or sur onze
+ * appels, quatre ne la declaraient pas — dont les AUTORISATIONS, qui
+ * precedent chaque achat depuis une autre chaine et sont donc signees sur
+ * Base ou Ethereum. On cherchait leur recu sur la Robinhood Chain, ou il
+ * n'existe evidemment pas : l'entree restait « en attente » pour toujours,
+ * alors que la transaction avait abouti en quinze secondes.
+ *
+ * Le corriger aux quatre endroits aurait repare CES quatre-la. Le douzieme
+ * appel, ecrit demain, aurait recommence — c'est une chose qu'on doit penser
+ * a ecrire, et sur laquelle rien ne rappelle a l'ordre : l'entree s'affiche
+ * normalement, elle ne se resout simplement jamais.
+ *
+ * On la LIT donc, ici, une fois pour toutes. `journalAjoute` est toujours
+ * appele juste apres l'envoi, donc la chaine du signataire EST celle de la
+ * transaction. C'est une lecture, pas une supposition — et le seul cas ou
+ * elle manque est celui ou il n'y a pas de signataire, c'est-a-dire aucune
+ * transaction a suivre.
+ *
+ * La lecture est asynchrone et l'entree, elle, doit s'afficher tout de suite :
+ * on l'ajoute d'abord, on la suit quand la chaine est connue. Une entree
+ * declarant deja sa chaine garde la sienne — le pont sait mieux que nous sur
+ * quelle chaine part son depart. */
 function journalAjoute(e){
   if(!moi || !e || !e.h) return;
   e.h = String(e.h);
@@ -7075,7 +7147,21 @@ function journalAjoute(e){
   JOURNAL.unshift(e);
   if(JOURNAL.length > JOURNAL_MAX) JOURNAL = JOURNAL.slice(0, JOURNAL_MAX);
   journalSauve(); peintEnCours();
-  journalSuit(e.h, e.sur);
+  if(e.sur !== undefined && e.sur !== null){ journalSuit(e.h, e.sur); return; }
+  if(!signer){ journalSuit(e.h, null); return; }
+  var h = e.h;
+  Promise.resolve()
+    .then(function(){ return signer.getChainId(); })
+    .then(function(id){
+      if(!isFinite(id)) return journalSuit(h, null);
+      /* On l'ECRIT dans l'entree : sans ca, un rechargement de page relancerait
+         le suivi sans la chaine, et l'entree repartirait « en attente » pour
+         toujours — le bug d'origine, une visite plus tard. */
+      for(var i=0;i<JOURNAL.length;i++) if(JOURNAL[i].h === h) JOURNAL[i].sur = id;
+      journalSauve();
+      journalSuit(h, id);
+    })
+    ['catch'](function(){ journalSuit(h, null); });
 }
 function journalEtat(h, etat, bloc){
   var chg=false;
@@ -7086,9 +7172,53 @@ function journalEtat(h, etat, bloc){
   }
   if(chg){ journalSauve(); peintEnCours(); }
 }
+/* ---- ET CELLES QUI SONT DEJA SUR L'APPAREIL, SANS CHAINE ----
+ *
+ * Lire la chaine sur le signataire repare les entrees A VENIR. Celles qui
+ * dorment deja dans le journal, elles, ont ete ecrites sans chaine — ce sont
+ * exactement celles qui sont bloquees « en attente », et un rechargement les
+ * relancait sur la Robinhood Chain, indefiniment. Les laisser ainsi aurait
+ * repare le bug pour les prochains et abandonne ceux qui l'ont subi.
+ *
+ * Une empreinte de transaction est unique en pratique : la chaine qui en a le
+ * recu EST la chaine ou elle vit. On demande donc a toutes celles qu'on
+ * connait, en parallele, et on prend celle qui repond. Ce n'est pas une
+ * supposition, c'est une recherche — et la difference compte, parce qu'une
+ * supposition fausse remettrait l'entree en attente sur une autre chaine.
+ *
+ * Cela ne coute que pour les entrees SANS chaine, c'est-a-dire les anciennes,
+ * et une seule fois : la chaine trouvee est ecrite dans le journal. */
+async function chercheLeRecuPartout(h){
+  var l = chainesArrivee().filter(function(c){ return c && !c.svm; });
+  var essais = l.map(function(c){
+    var pr = null;
+    try{ pr = lecPont(c); }catch(e){ pr = null; }
+    if(!pr) return Promise.resolve(null);
+    return borne(pr.getTransactionReceipt(h), 12000, 'recu')
+      .then(function(d){ return (d && d.blockNumber) ? { d: d, id: c.id } : null; })
+      ['catch'](function(){ return null; });
+  });
+  var tout = await Promise.all(essais);
+  for(var i=0;i<tout.length;i++) if(tout[i]) return tout[i];
+  return null;
+}
+
 /* Attendre le recu, sans jamais conclure d'un echec de lecture. */
 async function journalSuit(h, surLaChaine){
   var cible = moi, g = generation;
+  if(surLaChaine === undefined || surLaChaine === null){
+    var trouve = await chercheLeRecuPartout(h);
+    if(cible !== moi || g !== generation) return;
+    if(trouve){
+      /* On ECRIT la chaine : la prochaine visite n'aura plus a chercher. */
+      for(var k=0;k<JOURNAL.length;k++) if(JOURNAL[k].h === h) JOURNAL[k].sur = trouve.id;
+      journalSauve();
+      journalEtat(h, (trouve.d.status === 0) ? 'echoue' : 'reussi', trouve.d.blockNumber);
+      return;
+    }
+    /* Aucune chaine ne la connait : elle est peut-etre encore en vol. On
+       poursuit avec le comportement d'origine plutot que de conclure. */
+  }
   /* ---- UNE TRANSACTION DE PONT N'EST PAS SUR CETTE CHAINE ----
      Le depart d'un depot est mine SUR SA CHAINE. L'attendre sur la Robinhood
      Chain ne l'y trouve jamais : l'entree resterait « en attente » pour

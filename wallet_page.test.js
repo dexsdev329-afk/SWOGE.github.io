@@ -5233,6 +5233,138 @@ function servir(q, r, f, type) {
     await page.close();
   }
 
+  /* ==========================================================================
+   * UNE TRANSACTION SUR UNE AUTRE CHAINE NE RESTE PLUS « EN ATTENTE »
+   *
+   * « J'ai fait ça, ça a réussi, et il y a encore marqué en attente dans
+   *   l'historique. » — avec le lien vers une transaction Base, minee.
+   *
+   * `journalSuit` cherche le recu sur la chaine que l'entree DECLARE, et
+   * retombe sur la Robinhood Chain quand elle n'en declare aucune. Sur onze
+   * appels a `journalAjoute`, quatre ne la declaraient pas — dont les
+   * AUTORISATIONS, qui precedent chaque achat depuis une autre chaine et sont
+   * donc signees sur Base. On cherchait leur recu sur la Robinhood Chain, ou
+   * il n'existe evidemment pas : l'entree restait « en attente » pour
+   * toujours alors que la transaction avait abouti en quinze secondes.
+   *
+   * Ce qui est verifie ici, c'est la reparation de FOND : la chaine n'est
+   * plus a declarer, elle est LUE sur le signataire. Une entree ecrite sans
+   * chaine — le cas exact du bug — doit donc se resoudre quand meme, et la
+   * chaine doit etre ECRITE dans le journal pour qu'un rechargement ne
+   * reparte pas de zero.
+   * ====================================================================== */
+  {
+    console.log('\n-- une transaction signee sur une autre chaine se resout --');
+    const MOI = '0x00000000000000000000000000000000000a11ce';
+    const H = '0x' + 'ba5e'.repeat(16);
+    const page = await nav.newPage({ viewport: { width: 1280, height: 1000 } });
+    const boum = [];
+    page.on('pageerror', (e) => boum.push(e.message));
+    await page.addInitScript(([moi, h]) => {
+      try { localStorage.setItem('swogeAuth', 'wallet'); } catch (e) {}
+      /* Une entree DEJA en attente, sans chaine declaree : c'est exactement
+         ce que le bug laissait sur l'appareil. */
+      try {
+        localStorage.setItem('swogeTx:' + moi.toLowerCase(), JSON.stringify([{
+          h, k: 'autorisation', cle: 'eth', montant: '1000000000000000',
+          etat: 'attente', t: Date.now() - 60000 }]));
+      } catch (e) {}
+      /* Le portefeuille est sur BASE, comme au moment de l'autorisation. */
+      window.ethereum = {
+        isMetaMask: true,
+        request: async (a) => {
+          if (a.method === 'eth_accounts' || a.method === 'eth_requestAccounts') return [moi];
+          if (a.method === 'eth_chainId') return '0x2105';       // 8453, Base
+          if (a.method === 'net_version') return '8453';
+          return null;
+        },
+        on: () => {}, removeListener: () => {},
+      };
+    }, [MOI, H]);
+    await page.route('**/ethers*.umd.min.js', (r) => r.fulfill({
+      contentType: 'text/javascript', body: fs.readFileSync(ETHERS, 'utf8') }));
+    await page.route('**/api.dexscreener.com/**', (r) => r.fulfill({
+      contentType: 'application/json', body: '{"pairs":[]}' }));
+    const enMot = (v) => '0x' + BigInt(v).toString(16).padStart(64, '0');
+    /* ---- LA ROBINHOOD CHAIN NE CONNAIT PAS CETTE TRANSACTION ----
+     * Et c'est le coeur du bug : elle repond « aucun recu », pour toujours. */
+    let rhVu = 0;
+    await page.route('**/rpc.mainnet.chain.robinhood.com/**', (r) => {
+      const q = JSON.parse(r.request().postData() || '{}');
+      const un = (m) => {
+        if (m.method === 'eth_getTransactionReceipt') { rhVu++; return null; }
+        if (m.method === 'eth_chainId') return '0x1237';
+        if (m.method === 'net_version') return '4663';
+        if (m.method === 'eth_blockNumber') return '0x2f7ce78';
+        if (m.method === 'eth_getLogs') return [];
+        if (m.method === 'eth_gasPrice') return enMot(134102000n);
+        if (m.method === 'eth_getBalance') return enMot(5000000000000000n);
+        if (m.method === 'eth_call') return enMot(1000000000000000000000n);
+        return null;
+      };
+      const rep = (m) => ({ jsonrpc: '2.0', id: m.id, result: un(m) });
+      return r.fulfill({ contentType: 'application/json',
+                         body: JSON.stringify(Array.isArray(q) ? q.map(rep) : rep(q)) });
+    });
+    /* ---- ET LES AUTRES CHAINES REPONDENT « JE NE CONNAIS PAS » ----
+     * Sans elles, `chercheLeRecuPartout` attendrait douze secondes par chaine
+     * sur des noeuds injoignables, et l'essai mesurerait sa propre patience
+     * plutot que la recherche. */
+    await page.route(/publicnode\.com|drpc\.org|llamarpc|ankr/, (r) => {
+      const q = JSON.parse(r.request().postData() || '{}');
+      const rep = (m) => ({ jsonrpc: '2.0', id: m.id, result: null });
+      return r.fulfill({ contentType: 'application/json',
+                         body: JSON.stringify(Array.isArray(q) ? q.map(rep) : rep(q)) });
+    });
+    /* Base, elle, l'a minee — c'est la verite de la chaine. Cette route est
+       posee APRES celle qui couvre publicnode : Playwright donne la main a la
+       DERNIERE posee, et `base-rpc.publicnode.com` tombe dans les deux. */
+    let baseVu = 0;
+    await page.route(/base-rpc|mainnet\.base/, (r) => {
+      const q = JSON.parse(r.request().postData() || '{}');
+      const un = (m) => {
+        if (m.method === 'eth_getTransactionReceipt') {
+          baseVu++;
+          return { transactionHash: H, blockNumber: '0x1312d00', status: '0x1',
+                   logs: [], gasUsed: '0x5208', cumulativeGasUsed: '0x5208',
+                   blockHash: '0x' + '2'.repeat(64), transactionIndex: '0x0',
+                   from: MOI, to: MOI, contractAddress: null, logsBloom: '0x' + '0'.repeat(512),
+                   type: '0x2', effectiveGasPrice: '0x1' };
+        }
+        if (m.method === 'eth_chainId') return '0x2105';
+        if (m.method === 'net_version') return '8453';
+        if (m.method === 'eth_blockNumber') return '0x1312d00';
+        if (m.method === 'eth_getBalance') return enMot(0n);
+        if (m.method === 'eth_call') return enMot(0n);
+        return null;
+      };
+      const rep = (m) => ({ jsonrpc: '2.0', id: m.id, result: un(m) });
+      return r.fulfill({ contentType: 'application/json',
+                         body: JSON.stringify(Array.isArray(q) ? q.map(rep) : rep(q)) });
+    });
+    await page.goto('http://127.0.0.1:' + port + '/swoge_wallet.html',
+                    { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(4000);
+
+    const j = await page.evaluate((moi) => {
+      try { return JSON.parse(localStorage.getItem('swogeTx:' + moi.toLowerCase()) || '[]'); }
+      catch (e) { return []; }
+    }, MOI);
+    const e = j[0] || {};
+    console.log('   ' + JSON.stringify({ etat: e.etat, sur: e.sur, base: baseVu }));
+    ok(baseVu > 0,
+       'le recu est demande a BASE, la chaine ou la transaction a ete signee ('
+       + baseVu + ' demande(s))');
+    ok(e.sur === 8453,
+       'et la chaine est ECRITE dans le journal (' + e.sur + ') : un rechargement ne repart '
+       + 'plus sans elle, ce qui ramenait le bug une visite plus tard');
+    ok(e.etat === 'reussi',
+       'l entree passe a « reussi » (« ' + e.etat + ' ») — elle restait « en attente » pour '
+       + 'toujours alors que la transaction avait abouti');
+    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
+    await page.close();
+  }
+
   await nav.close();
   srv.close();
   console.log('\n' + (rates ? 'RATES : ' + rates + '/' + n : 'tout passe : ' + n + ' verifications'));

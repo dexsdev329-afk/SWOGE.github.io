@@ -742,6 +742,139 @@ async function panneauAlertes() {
    * risque exact de tout fermer par defaut. On verifie donc les deux, plus le
    * fait que le choix d'ouvrir survit au rechargement : sinon chaque visite
    * redemanderait le meme clic. */
+  /* ---- LA BARRE DU HAUT EST CELLE DU SITE ----
+   *
+   * « Le menu de SWOGE AI et la barre en haut doivent etre pareils que Home ;
+   *   il manque des choses dans la barre en haut. »
+   *
+   * Deux manques, et les deux etaient invisibles a la lecture :
+   *
+   *   1. Le bloc des quatre chiffres etait dans le balisage, `hidden`, et RIEN
+   *      ne le remplissait. Sur les vingt-neuf pages qui portent cette barre,
+   *      celle-ci etait la SEULE sans son remplisseur — la barre s'ouvrait
+   *      donc avec un trou la ou les autres annoncent joueurs, volume,
+   *      manches et gains.
+   *
+   *   2. « CONNECT WALLET » et « SIGN UP — EMAIL » etaient peints et branches
+   *      sur rien : aucun gestionnaire ici, aucun dans les fichiers charges.
+   *      Un bouton inerte a exactement l'air d'un bouton qui marche, et c'est
+   *      la panne que ce depot documente comme la pire de toutes.
+   *
+   * On verifie donc ce que l'oeil ne peut pas verifier : que le remplisseur
+   * existe ET aboutit, et que le clic PRODUIT quelque chose. */
+  console.log('\n-- la barre du haut, comme sur les autres pages --');
+  {
+    const ctx = await nav.newContext({ viewport: { width: 1280, height: 900 } });
+    const page = await ctx.newPage();
+    const boum = [];
+    page.on('pageerror', (e) => boum.push(String(e).slice(0, 160)));
+    await page.route(/geckoterminal|gopluslabs|dexscreener|rpc\.mainnet|honeypot\.is|blockscout/,
+                     (r) => r.abort());
+    await page.route(/\/ai\/colonie/, (r) => r.fulfill({
+      contentType: 'application/json', body: JSON.stringify(vueFausse()) }));
+    /* Le serveur de la vitrine rend quatre nombres ; on les choisit pour que
+       l'arrondi soit VERIFIABLE : 4 799 999 doit s'ecrire « 4.7M » et non
+       « 4.8M » — annoncer plus que la verite sur un volume est le defaut que
+       ce format existe pour eviter. */
+    await page.route(/vitrine\.json/, (r) => r.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({ joueurs: 1284, volume: 4799999, manches: 98123, rendus: 3210000 }) }));
+    await page.goto('http://127.0.0.1:' + port + '/' + PAGE, { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(2200);
+
+    const b = await page.evaluate(() => {
+      const bloc = document.getElementById('gxChiffres');
+      return {
+        vu: bloc ? !bloc.hidden : null,
+        titres: [...document.querySelectorAll('#gxChiffres small')].map((x) => x.textContent),
+        valeurs: [...document.querySelectorAll('#gxChiffres b[data-n]')].map((x) => x.textContent),
+        marque: !!document.querySelector('.sw-marque'),
+        avatar: !!document.getElementById('gxProfil'),
+        ancre: !!document.querySelector('.sb-ancre'),
+      };
+    });
+    console.log('   ' + JSON.stringify(b));
+    ok(b.vu === true, 'les quatre chiffres apparaissent : le bloc n est plus un trou dans la barre');
+    ok(b.titres.join(',') === 'PLAYERS,CASINO VOLUME,ROUNDS PLAYED,WINNINGS PAID',
+       'et ce sont les memes quatre que sur les autres pages (' + b.titres.join(' · ') + ')');
+    ok(b.valeurs.join(',') === '1.2k,4.7M,98.1k,3.2M',
+       'ils portent les nombres du serveur, arrondis vers le BAS ('
+       + b.valeurs.join(' · ') + ') — « 4.8M » annoncerait de l argent qui n a pas ete joue');
+    ok(b.marque && b.avatar && b.ancre,
+       'la marque, l avatar et l ancre de la bulle sont la, comme ailleurs');
+
+    /* ---- ET LE BOUTON REPOND ----
+     * On ne juge pas ce qu'il ouvre : on verifie qu'il PRODUIT quelque chose.
+     * Avant, le clic ne changeait rien du tout, nulle part. */
+    const avant = await page.evaluate(() => ({
+      dit: document.getElementById('stagetag').textContent,
+      ouvert: document.querySelectorAll('.on').length,
+    }));
+    await page.click('#connectBtn');
+    await page.waitForTimeout(500);
+    const apres = await page.evaluate(() => ({
+      dit: document.getElementById('stagetag').textContent,
+      ouvert: document.querySelectorAll('.on').length,
+    }));
+    console.log('   clic : ' + avant.ouvert + ' -> ' + apres.ouvert + ' element(s) ouvert(s)');
+    ok(apres.ouvert > avant.ouvert || apres.dit !== avant.dit,
+       'CONNECT WALLET fait quelque chose — il etait peint et branche sur rien');
+    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
+    await ctx.close();
+  }
+
+  /* ---- ET LE MENU DE GAUCHE SE VOIT VRAIMENT ----
+   *
+   * Le balisage etait bon depuis le debut : six entrees, dans l'ordre de
+   * l'accueil. Il ne se DESSINAIT pas. Une regle `@media (max-width:1360px)`
+   * mettait `.sw-cote` a `display:none` — donc a 1280 px, une largeur
+   * d'ordinateur portable tout a fait ordinaire, l'accueil montrait sa
+   * colonne et cette page-ci n'en montrait aucune. On pouvait relire le HTML
+   * dix fois sans rien voir : c'est la feuille de style qui l'effacait.
+   *
+   * L'accueil ne cache jamais le sien, il le couche en rangee. On verifie
+   * donc la seule chose qui compte : a chaque largeur, les six entrees sont
+   * VISIBLES et une d'elles emmene vraiment quelque part. Compter les balises
+   * n'aurait rien vu — c'etait deja le cas quand le menu etait invisible. */
+  console.log('\n-- le menu de gauche se voit a toutes les largeurs --');
+  for (const large of [1920, 1280, 900, 390]) {
+    const ctx = await nav.newContext({ viewport: { width: large, height: 900 } });
+    const page = await ctx.newPage();
+    await page.route(/geckoterminal|gopluslabs|dexscreener|rpc\.mainnet|honeypot\.is|blockscout/,
+                     (r) => r.abort());
+    await page.route(/\/ai\/colonie/, (r) => r.fulfill({
+      contentType: 'application/json', body: JSON.stringify(vueFausse()) }));
+    await page.route(/vitrine\.json/, (r) => r.fulfill({
+      contentType: 'application/json', body: '{}' }));
+    await page.goto('http://127.0.0.1:' + port + '/' + PAGE, { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(1100);
+    const v = await page.evaluate(() => {
+      const a = [...document.querySelectorAll('.sw-nav a')];
+      return {
+        liens: a.map((x) => x.getAttribute('href')),
+        vus: a.filter((x) => x.getBoundingClientRect().width > 0).length,
+        deborde: document.documentElement.scrollWidth > window.innerWidth + 1,
+      };
+    });
+    ok(v.vus === 6,
+       large + 'px : les six entrees se voient (' + v.vus + '/6)');
+    ok(v.liens.join(',') === 'index.html,games.html,swogebet.html,swoge_wallet.html,'
+         + 'swoge_ai.html,whitepaper.html',
+       large + 'px : et ce sont celles de l accueil, dans le meme ordre');
+    ok(!v.deborde, large + 'px : et rien ne deborde sur le cote');
+    /* Visible ne suffit pas : un lien qu'on ne peut pas atteindre est un lien
+       mort avec une belle apparence. */
+    let arrive = 'rien';
+    try {
+      await page.click('.sw-nav a[href="swoge_wallet.html"]', { timeout: 5000 });
+      await page.waitForTimeout(700);
+      arrive = page.url().split('/').pop();
+    } catch (e) { arrive = 'clic impossible'; }
+    ok(arrive === 'swoge_wallet.html',
+       large + 'px : et un clic emmene vraiment sur la page (' + arrive + ')');
+    await ctx.close();
+  }
+
   console.log('\n-- la colonne repliee --');
   {
     const { page, boum } = await ouvre(nav, port, {});
@@ -892,7 +1025,10 @@ async function auditDesVetos() {
     ok(!v.delta, 'ni la variation, qui n aurait aucun sens sans point de depart lu');
     ok(v.trades === '—' && v.best === '—' && v.wr === 'win —',
        'ni les trades, ni le meilleur, ni le taux de reussite');
-    ok(v.pouls === 'HORS LIGNE', 'le pouls le dit (' + v.pouls + ')');
+    /* La page ouvre en ANGLAIS : le pouls le dit donc en anglais. Il etait
+       ecrit en francais en dur, a cote de panneaux anglais, exactement la ou
+       l'oeil se pose quand quelque chose ne va pas. */
+    ok(v.pouls === 'OFFLINE', 'le pouls le dit, dans la langue de la page (' + v.pouls + ')');
     ok(/mort/.test(v.stampCls), 'la pastille est en rouge et dit qu elle n a rien (« ' + v.stamp + ' »)');
     ok(/serveur/i.test(v.tag), 'et la page l ECRIT en toutes lettres : « ' + v.tag.slice(0, 90) + ' »');
     ok(/invente/i.test(v.tag), 'en disant qu elle n invente rien pour combler');
@@ -1380,7 +1516,7 @@ async function auditDesVetos() {
     const { page, boum } = await ouvre(nav, port, { casse: true });
     const v = await lit(page);
     ok(v.bal === '—', 'un 502 ne devient pas une tresorerie (' + v.bal + ')');
-    ok(/HORS LIGNE/.test(v.pouls), 'le pouls le dit');
+    ok(/OFFLINE/.test(v.pouls), 'le pouls le dit (' + v.pouls + ')');
     ok(/502/.test(v.tag), 'et le code de l erreur est ecrit, pas masque (« ' + v.tag.slice(0, 70) + ' »)');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.context().close();

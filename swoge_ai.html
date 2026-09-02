@@ -560,9 +560,35 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   font:800 12px/1 'Inter',system-ui,sans-serif;letter-spacing:1.4px;color:#fff}
 .sw-lat .salon:hover img,.sw-lat .salon:hover .film{transform:scale(1.03)}
 .sw-lat .salon img,.sw-lat .salon .film{transition:transform .2s}
+/* ---- SOUS 1360 px, LE MENU CHANGE DE FORME — IL NE DISPARAIT PAS ----
+ *
+ * « Le menu de SWOGE AI doit etre pareil que Home. »
+ *
+ * Mesure : a 1280 px — une largeur d'ordinateur portable tout a fait
+ * ordinaire — `.sw-cote` calculait `display:none` ici, alors que l'accueil
+ * affichait sa colonne de 208 px. Le menu etait bien dans le balisage, avec
+ * ses six bonnes entrees dans le bon ordre ; il ne se DESSINAIT simplement
+ * pas. On pouvait relire le HTML dix fois sans le voir.
+ *
+ * L'accueil ne cache jamais le sien : sous 980 px il le couche en RANGEE,
+ * qui defile horizontalement. On fait pareil, au point de rupture de cette
+ * page-ci. `.sw-lat` — les vignettes video — reste cache : c'est de la
+ * decoration propre a cette page, et l'accueil n'en a pas. */
 @media (max-width:1360px){
-  .sw-cote, .sw-lat{ display:none }
+  .sw-lat{ display:none }
   .sw-corps{ padding:0; display:block; max-width:none }
+  /* `.sw-corps .sw-cote` et non `.sw-cote` : la regle qui borne la colonne a
+     230 px pour la mise en page a trois colonnes est ECRITE PLUS BAS dans le
+     fichier, donc a specificite egale c'est elle qui gagnait — la rangee
+     restait large de 230 px et le menu defilait dans un timbre-poste. */
+  .sw-corps .sw-cote{ position:static; width:100%; max-width:none;
+            flex-direction:row; flex-wrap:wrap; align-items:center;
+            padding:10px 12px 0; }
+  .sw-cote .sw-nav{ flex:1 1 100%; display:flex; overflow-x:auto;
+                    scrollbar-width:none; }
+  .sw-cote .sw-nav::-webkit-scrollbar{ display:none }
+  .sw-cote .sw-nav a{ flex:0 0 auto }
+  .sw-reseaux{ padding-top:0 }
 }
 /* ---- LA COLONNE DE GAUCHE NE GONFLE PLUS (meme bug que `swoge_poker.html`
    et `swoge_casino.html`) ----
@@ -699,6 +725,48 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     <a href="index.html">&#127968; Home</a>
   </div>
 </header>
+
+<!-- ---- LES QUATRE CHIFFRES DE LA BARRE ----
+     Ce bloc existait dans le balisage, `hidden`, et RIEN ne le remplissait :
+     sur les vingt-neuf pages qui portent la barre, celle-ci etait la seule
+     sans son remplisseur. La barre s'ouvrait donc avec un trou la ou les
+     autres pages annoncent joueurs, volume, manches et gains — « il manque
+     des choses dans la barre en haut », et c'etait exactement ca.
+     Il reste `hidden` tant que le serveur n'a pas repondu : quatre tirets
+     alignes valent mieux que quatre zeros, qui se liraient comme un site
+     ou personne ne joue. -->
+<script>
+(function(){
+  "use strict";
+  var bloc = document.getElementById("gxChiffres");
+  if(!bloc) return;
+  function serveur(){
+    try{ var q=new URLSearchParams(location.search).get("server"); if(q)
+      return String(q).replace(/^ws/,"http"); }catch(e){}
+    return "https://web-production-220a3.up.railway.app";
+  }
+  /* Sans arrondir vers le HAUT : « 4.8M » pour 4 799 999 annoncerait de
+     l'argent qui n'a pas ete joue. */
+  function court(n){
+    n = Number(n) || 0;
+    var t = function(v, s){ return (Math.floor(v*10)/10).toFixed(1).replace(/\.0$/,"") + s; };
+    if(n >= 1e9) return t(n/1e9, "B");
+    if(n >= 1e6) return t(n/1e6, "M");
+    if(n >= 1e3) return t(n/1e3, "k");
+    return String(Math.floor(n));
+  }
+  fetch(serveur()+"/vitrine.json", { cache:"no-store" })
+    .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function(j){
+      [].forEach.call(bloc.querySelectorAll("b[data-n]"), function(b){
+        var v = j[b.getAttribute("data-n")];
+        b.textContent = (typeof v === "number" && isFinite(v)) ? court(v) : "\u2014";
+      });
+      bloc.hidden = false;
+    })
+    ['catch'](function(){ bloc.hidden = true; });
+})();
+</script>
 
 <div class="sw-corps">
 
@@ -2303,7 +2371,14 @@ async function demande(manuel){
 function pastille(){
   const el = $("stamp"); if(!el) return;
   if(!VUE){
-    el.textContent = ERREUR_RESEAU ? "● serveur injoignable" : "● en attente du serveur";
+    /* Ces deux phrases etaient ecrites en francais en dur, sur une page dont
+       la langue par defaut est l'anglais : elles s'affichaient donc en
+       francais a cote de panneaux anglais, exactement la ou l'oeil se pose
+       en premier quand quelque chose ne va pas. Elles suivent la langue,
+       comme le reste. */
+    el.textContent = ERREUR_RESEAU
+      ? (LANGUE === "fr" ? "● serveur injoignable" : "● server unreachable")
+      : (LANGUE === "fr" ? "● en attente du serveur" : "● waiting for the server");
     el.className = "chip data mort"; return;
   }
   const src = VUE.maj || VUE.dernierTour || 0;
@@ -2339,7 +2414,9 @@ function majPouls(){
   const src = VUE ? (VUE.dernierTour || 0) : 0;
   const vivant = src && (Date.now() - RECU + (RECU - src)) < 15*60*1000 && !ERREUR_RESEAU;
   p.classList.toggle("off", !vivant);
-  tx.textContent = vivant ? "LIVE" : (VUE ? "PERIME" : "HORS LIGNE");
+  tx.textContent = vivant ? "LIVE"
+    : (VUE ? (LANGUE === "fr" ? "PERIME" : "STALE")
+           : (LANGUE === "fr" ? "HORS LIGNE" : "OFFLINE"));
 }
 
 /* La page redemande a intervalle regulier, et seulement si elle est visible :
@@ -2527,6 +2604,60 @@ poseLesPlis();
 /* Le compte a rebours d'une position et l'age de la pastille bougent avec le
    temps, pas avec les images : une seconde suffit. */
 setInterval(function(){ if(document.visibilityState !== "hidden"){ peintPositions(); pastille(); majPouls(); } }, 1000);
+
+/* ==================== LA CONNEXION DE LA BARRE ====================
+ *
+ * « CONNECT WALLET » et « SIGN UP — EMAIL » etaient PEINTS et branches sur
+ * rien : aucun gestionnaire dans cette page, aucun dans les fichiers qu'elle
+ * charge. On cliquait, il ne se passait rien, et rien ne le disait. C'est la
+ * panne que ce depot documente ailleurs comme la pire de toutes — un bouton
+ * inerte a exactement l'air d'un bouton qui marche.
+ *
+ * On n'ecrit pas ici un second formulaire de connexion : `stakebubble.js`,
+ * deja charge par cette page, en porte un et l'expose sous
+ * `window.swogeConnexion`. Deux formulaires finiraient par ne plus se
+ * comporter pareil, et c'est celui-la que les autres pages ouvrent.
+ *
+ * Le lien « Sign in » du tiroir ouvre le meme : deux entrees vers le meme
+ * geste doivent mener au meme endroit.
+ */
+(function connexionDeLaBarre(){
+  function ouvre(ev){
+    if(ev) ev.preventDefault();
+    if(window.swogeConnexion && typeof window.swogeConnexion.ouvre === "function"){
+      window.swogeConnexion.ouvre();
+      return;
+    }
+    /* Sans le fichier partage, on le DIT plutot que de ne rien faire : un
+       clic sans reponse se lit comme un site casse. `dis()` est le seul
+       moyen d'ecrire a l'utilisateur sur cette page — elle n'a pas de
+       `toast()`, et en appeler un ferait echouer le clic en silence, ce qui
+       est precisement le defaut qu'on repare. */
+    dis("Connection is still loading — try again in a second.", true);
+  }
+  ["connectBtn", "emailBtn", "mnSignIn"].forEach(function(id){
+    var b = $(id);
+    if(b) b.addEventListener("click", ouvre);
+  });
+
+  /* ---- ET UNE FOIS ENTRE, LES BOUTONS S'EFFACENT ----
+   * Sinon « CONNECT WALLET » reste affiche a cote de son propre solde, ce
+   * qui a deja ete signale sur les autres pages, capture a l'appui. On ecoute
+   * la meme question que le menu du profil — `swogeConnecte()` — plutot que
+   * de suivre notre propre chemin : la bulle retrouve parfois la session
+   * sans passer par ici. */
+  var essais = 0;
+  var id = setInterval(function(){
+    essais++;
+    var dedans = (typeof window.swogeConnecte === "function") && window.swogeConnecte();
+    if(dedans){
+      var r = $("connRow"); if(r) r.style.display = "none";
+      var m = $("mnSignIn"); if(m) m.style.display = "none";
+      clearInterval(id);
+    }
+    if(essais > 30) clearInterval(id);   /* quinze secondes, comme ailleurs */
+  }, 500);
+})();
 
 /* ============================ DEPART ============================ */
 poseLesBots();

@@ -1418,6 +1418,13 @@ body{
                personne ne controle. Il vit maintenant la ou l'on tient ses
                jetons, avec les quatre autres. -->
           <button type="button" data-va="ecBruler"><span class="bulle">&#128293;</span><span class="t">Burn</span></button>
+          <!-- ---- LE BANC ----
+               Il vit sur sa propre page depuis toujours, et il y reste : c'est
+               lui qui tient le moteur — le routeur, les swaps, l'anneau, la
+               reprise des fonds. Ce qui manquait etait AVANT : creer le master
+               et l'alimenter demandait de recopier une adresse a la main dans
+               un autre portefeuille. Ici, le portefeuille signe deja. -->
+          <button type="button" data-va="ecBanc"><span class="bulle">&#128202;</span><span class="t">Bench</span></button>
         </div>
         <button type="button" class="wl-fleche d" id="acFlecheD" hidden
                 data-fl="&#8250;" aria-label="More actions"></button>
@@ -1584,6 +1591,102 @@ body{
       <p class="wl-note" id="brNote"></p>
       <p class="wl-note">The full burn ledger &mdash; total burned and its share of supply &mdash;
         lives on <a href="burn.html" style="color:var(--accent2)">the burn page</a>.</p>
+    </div>
+  </section>
+
+  <!-- ============ LE BANC ============
+       « Rajoute le wallet bench dans le wallet SWOGE. Ca cree un wallet master
+         ou on envoie de l'ETH RH ; avant, on choisit nos options. »
+
+       ---- CE QUI EST ICI, ET CE QUI RESTE LA-BAS ----
+
+       Le moteur du banc — le routeur Uniswap, les swaps, l'anneau qui fait
+       tourner les fonds, la reprise a l'arret — vit sur `swoge_bench.html`. Il
+       y reste. Le recopier ici ferait DEUX moteurs qui bougent de l'argent, et
+       deux copies d'un moteur pareil, l'une des deux derive en silence : c'est
+       la maniere la plus sure de perdre des fonds sans que personne ne voie
+       quand ca a commence.
+
+       Ce qui manquait, c'est tout ce qui vient AVANT, et ca appartient au
+       portefeuille : choisir ce qu'on veut faire, creer le master, et le
+       remplir. Le remplir demandait jusqu'ici de recopier une adresse a la
+       main dans un autre portefeuille — c'est exactement la qu'on se trompe et
+       que l'argent part chez personne. Ici, la signature est deja a portee.
+
+       Le master et les options sont ensuite RELUS par le banc au chargement :
+       meme origine, meme stockage local, rien ne transite par un serveur. -->
+  <section class="wl-ecran" id="ecBanc">
+    <div class="wl-tete">
+      <h1>Volume bench</h1>
+    </div>
+    <div class="wl-corps">
+      <p class="wl-note">It spins up hidden wallets that buy a token and pass the funds around,
+        making real on-chain volume. Every hop pays real gas and slippage, so the ETH (RH)
+        drains steadily. Press STOP on the bench and everything comes back to the master.</p>
+      <p class="wl-note grave">Manufacturing trading volume can be market manipulation and may
+        break laws or platform rules. Only run it where you are authorised to.</p>
+
+      <div class="wl-carte">
+        <div class="wl-champ">
+          <label for="bcMode">WHAT ARE YOU TRYING TO MAXIMISE?</label>
+          <select id="bcMode">
+            <option value="organique" selected>Organic — buy and sell on two different wallets</option>
+            <option value="volume">Maximum volume — biggest $ traded</option>
+            <option value="tx">Maximum transactions — most trades, tiny amounts</option>
+            <option value="holders">Maximum holders — most addresses holding the token</option>
+          </select>
+        </div>
+        <div class="wl-champ">
+          <label for="bcN">HIDDEN WALLETS</label>
+          <input id="bcN" type="number" min="2" max="100" value="100" inputmode="numeric">
+        </div>
+        <div class="wl-champ" style="margin:0">
+          <label for="bcTok">TOKEN — $SWOGE unless you paste another Robinhood-Chain contract</label>
+          <input id="bcTok" placeholder="0x…" autocomplete="off" spellcheck="false">
+        </div>
+      </div>
+
+      <!-- ---- LE MASTER ----
+           Une cle creee dans le navigateur. Elle tient l'argent entre deux
+           parties, donc elle est ecrite sur l'appareil ET proposee en fichier :
+           les deux, parce qu'un navigateur peut refuser le fichier et qu'un
+           appareil peut etre efface. -->
+      <div class="wl-carte" id="bcCarteMaster">
+        <div class="wl-rang"><span>Master wallet</span><b id="bcEtat">not created yet</b></div>
+        <div class="wl-champ" id="bcAdrChamp" hidden style="margin:10px 0 0">
+          <label>ITS ADDRESS — this is where the ETH (RH) goes</label>
+          <div class="wl-mono wl-choisir" id="bcAdr" style="color:var(--texte)">—</div>
+          <!-- Financer depuis ce portefeuille tient en une signature, mais on
+               peut aussi vouloir envoyer depuis un echange : alors il faut
+               pouvoir copier l'adresse sans la relire chiffre par chiffre. -->
+          <button class="wl-b vide" id="bcCopier" type="button" style="margin-top:8px">Copy address</button>
+        </div>
+        <div class="wl-rang" id="bcSoldeRang" hidden><span>Its balance</span><b id="bcSolde">—</b></div>
+      </div>
+      <div class="wl-champ" style="margin:0">
+        <button class="wl-b vide" id="bcCreer" type="button">Create the master wallet</button>
+      </div>
+      <p class="wl-note" id="bcNoteCle"></p>
+
+      <div class="wl-carte" id="bcCarteFonds" hidden>
+        <div class="wl-champ wl-avecmax">
+          <label for="bcMontant">SEND FROM THIS WALLET</label>
+          <input id="bcMontant" inputmode="decimal" placeholder="0.0" autocomplete="off">
+          <button type="button" class="wl-max" id="bcMax">MAX</button>
+        </div>
+        <div class="wl-glis" data-pour="bcMontant">
+          <input type="range" min="0" max="100" step="1" value="0"
+                 aria-label="Share of your balance">
+          <span class="pc">0 %</span>
+        </div>
+        <div class="wl-rang"><span>Your balance</span><b id="bcMien">—</b></div>
+      </div>
+      <button class="wl-b" id="bcFinance" type="button" hidden>Fund the master</button>
+      <p class="wl-note" id="bcNote"></p>
+
+      <button class="wl-b vide" id="bcOuvre" type="button">Open the bench &rarr;</button>
+      <p class="wl-note">The bench runs the ring itself — one engine, not two. It picks up the
+        master and these options on its own when it opens.</p>
     </div>
   </section>
 
@@ -3209,6 +3312,7 @@ function va(id){
   if(id==='ecSwap')     majSwap();
   if(id==='ecEnvoyer')  majEnvoyer();
   if(id==='ecBruler')   majBruler();
+  if(id==='ecBanc')     majBanc();
   if(id==='ecPont')     majPont();
   /* ---- LA SOCKET NE VIT QUE SUR CET ECRAN ----
      Une page de portefeuille n'a pas a tenir une liaison ouverte pour
@@ -3795,7 +3899,7 @@ function peintAccueil(){
   /* Les soldes viennent d'etre repeints : ce qui etait rouge peut ne plus
      l'etre, et une poignee de curseur posee sur l'ancien solde designerait
      maintenant un autre montant. */
-  ['enMontant','swMontant','brMontant','caDepMontant','caRetMontant'].forEach(majMontant);
+  ['enMontant','swMontant','brMontant','bcMontant','caDepMontant','caRetMontant'].forEach(majMontant);
   majCompte();
 }
 
@@ -5296,6 +5400,16 @@ function soldeDuChamp(id){
   if(id === 'poMontant'){
     return { v:pontSolde, dec:18, sym:ETH_AFF_DE(pontDe()) };
   }
+  /* Bruler et financer le banc ont un curseur eux aussi. Sans ces deux
+     lignes il restait gris et bloque a 0 % : `soldeDuChamp` rendait
+     « inconnu », et un curseur qui ne repond jamais passe pour casse. */
+  if(id === 'brMontant'){
+    j = J(($('brJeton')||{}).value) || JETONS[0]; s = soldes[j.cle];
+    return { v:s, dec:j.dec, sym:j.sym };
+  }
+  if(id === 'bcMontant'){
+    return { v:soldes.eth, dec:18, sym:ETH_AFF };
+  }
   if(id === 'caDepMontant'){
     return { v:soldes.swoge, dec:18, sym:'SWOGE' };
   }
@@ -5312,6 +5426,7 @@ function soldeDuChamp(id){
 /* La rangee « Balance » qui suit le champ : elle rougit avec lui, pour que
    l'oeil fasse le rapprochement sans avoir a lire. */
 var RANG_SOLDE = { enMontant:'enSolde', swMontant:'swSolde', poMontant:'poSolde',
+                   brMontant:'brSolde', bcMontant:'bcMien',
                    caDepMontant:'caDepSolde', caRetMontant:null };
 
 function marqueTrop(id){
@@ -5709,6 +5824,177 @@ async function envoieMaintenant(j, dest, wei, geste){
   }
   b.disabled = false;
 }
+
+/* ==================== LE BANC ====================
+ *
+ * Ce qui se fait ici : choisir, creer le master, le remplir. Ce qui se fait
+ * la-bas : tout le reste. Voir la note de l'ecran.
+ *
+ * ---- LA CLE DU MASTER EST ECRITE SUR L'APPAREIL ----
+ *
+ * Elle doit l'etre : le banc est une AUTRE page, et il ne peut la reprendre
+ * que par le stockage local — meme origine, rien qui transite par un serveur.
+ * Elle est ecrite dans le filet du banc, celui-la meme qu'il relit au
+ * demarrage, et sous la forme qu'il attend.
+ *
+ * En clair, donc, et la page le dit. C'est un choix, pas un oubli : ce master
+ * tient de l'argent pendant une partie, et l'alternative — ne rien ecrire —
+ * ne le rendrait pas plus sur, elle le rendrait irrecuperable au premier
+ * rechargement. Le fichier est propose en plus, parce qu'un appareil s'efface.
+ */
+var BANC_FILET = 'wallet_bench_secours_v1';
+var BANC_PLAN  = 'wallet_bench_plan_v1';
+var bcMaster = null;              /* { adr, cle } */
+
+function bancLitFilet(){
+  try{ return JSON.parse(localStorage.getItem(BANC_FILET) || 'null'); }catch(e){ return null; }
+}
+/* On AJOUTE au filet, on ne le remplace pas : le banc y garde aussi les cent
+   wallets de l'anneau, et les ecraser les rendrait tous inaccessibles.
+   Un ancien master ne disparait pas non plus — il perd son drapeau et reste
+   dans la liste. `masterIdx()` prend le premier, donc le nouveau gagne ; mais
+   si l'ancien tenait encore de l'ETH, sa cle est toujours la et le banc peut
+   la balayer. Effacer une cle qui tient de l'argent, c'est perdre l'argent. */
+function bancEcritMaster(adr, cle){
+  var m = bancLitFilet();
+  var l = (m && Array.isArray(m.l)) ? m.l.filter(function(x){ return x && x.a && x.k; }) : [];
+  l = l.map(function(x){ return { a: x.a, k: x.k, h: !!x.h, m: false }; })
+       .filter(function(x){ return String(x.a).toLowerCase() !== String(adr).toLowerCase(); });
+  l.unshift({ a: adr, k: cle, h: false, m: true });
+  try{ localStorage.setItem(BANC_FILET, JSON.stringify({ t: Date.now(), n: l.length, l: l })); }
+  catch(e){ return false; }
+  return true;
+}
+function bancEcritPlan(){
+  try{
+    localStorage.setItem(BANC_PLAN, JSON.stringify({
+      t: Date.now(),
+      mode: ($('bcMode') && $('bcMode').value) || 'organique',
+      n: Math.max(2, Math.min(100, parseInt(($('bcN')||{}).value, 10) || 100)),
+      tok: (($('bcTok')||{}).value || '').trim(),
+    }));
+  }catch(e){}
+}
+
+function bancFichierCle(adr, cle){
+  try{
+    var csv = 'index,address,privateKey\r\n"1","' + adr + '","' + cle + '"';
+    var b = new Blob([csv], { type:'text/csv' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(b);
+    a.download = 'swoge-bench-master.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 4000);
+    return true;
+  }catch(e){ return false; }
+}
+
+async function majBanc(){
+  var m = bancLitFilet();
+  var mm = (m && Array.isArray(m.l)) ? m.l.filter(function(x){ return x && x.m; })[0] : null;
+  bcMaster = mm ? { adr: mm.a, cle: mm.k } : null;
+
+  $('bcEtat').textContent = bcMaster ? 'ready' : 'not created yet';
+  $('bcAdrChamp').hidden = !bcMaster;
+  $('bcSoldeRang').hidden = !bcMaster;
+  $('bcCarteFonds').hidden = !bcMaster;
+  $('bcFinance').hidden = !bcMaster;
+  var b = $('bcCreer'); if(b) b.hidden = !!bcMaster;
+  if(bcMaster) $('bcAdr').textContent = bcMaster.adr;
+
+  $('bcNoteCle').textContent = bcMaster
+    ? 'Its private key is kept on this device so the bench can pick it up — in the clear. That is '
+      + 'what makes it recoverable after a reload; it also means anyone with access to this '
+      + 'browser profile can read it. A CSV copy was offered when it was created.'
+    : '';
+
+  /* Le solde du portefeuille, pour le curseur ; et celui du master, relu. */
+  var mien = soldes.eth;
+  $('bcMien').textContent = (mien === null || mien === undefined) ? '—'
+    : nombre(mien, 18) + ' ' + ETH_AFF;
+  majMontant('bcMontant');
+  if(bcMaster){
+    $('bcSolde').textContent = '…';
+    try{
+      var bal = await lec().getBalance(bcMaster.adr);
+      $('bcSolde').textContent = nombre(bal, 18) + ' ' + ETH_AFF;
+    }catch(e){ $('bcSolde').textContent = 'unknown — not read'; }
+  }
+}
+
+if($('bcCreer')) $('bcCreer').addEventListener('click', function(){
+  if(bcMaster) return;
+  var w = ethers.Wallet.createRandom();
+  if(!bancEcritMaster(w.address, w.privateKey))
+    return toast('This browser blocks local storage — the bench could not pick it up');
+  bancFichierCle(w.address, w.privateKey);
+  bancEcritPlan();
+  majBanc();
+  toast('Master wallet created — its key was downloaded');
+});
+
+MAX_DU_CHAMP.bcMontant = async function(){
+  var r = await calculeMax('eth', GAZ_ENVOI);
+  if(r.erreur) return toast(r.erreur);
+  $('bcMontant').value = ethers.utils.formatUnits(r.montant, 18);
+  DERNIER_MAX.bcMontant = $('bcMontant').value;
+  if(r.reserve) toast('Kept ' + nombre(r.reserve,18) + ' ' + ETH_AFF + ' back for the network fee');
+  majMontant('bcMontant'); apresMontant('bcMontant');
+};
+if($('bcMax')) $('bcMax').addEventListener('click', function(){ MAX_DU_CHAMP.bcMontant(); });
+
+if($('bcFinance')) $('bcFinance').addEventListener('click', async function(){
+  if(!moi) return ouvreConnexion();
+  if(!bcMaster) return toast('Create the master wallet first');
+  var note = $('bcNote'), b = this;
+  var brut = ($('bcMontant').value || '').trim().replace(',', '.');
+  if(!(parseFloat(brut) > 0)) return toast('Enter an amount');
+  var wei;
+  try{ wei = ethers.utils.parseEther(brut); }catch(e){ return toast('Amount not understood'); }
+  var sd = soldes.eth;
+  if(sd && wei.gt(sd)) return toast('More than your balance');
+  b.disabled = true;
+  note.className = 'wl-note';
+  note.textContent = 'Waiting for your signature…';
+  try{
+    await assureChaineId(CHAINE.id, CHAINE.nom);
+    var tx = await signer.sendTransaction({ to: bcMaster.adr, value: wei });
+    journalAjoute({ h:tx.hash, k:'envoi', cle:'eth', montant:wei.toString(), vers:bcMaster.adr,
+                    sur:CHAINE.id, deNom:CHAINE.nom });
+    var lien = '<a href="' + CHAINE.scan + '/tx/' + tx.hash + '" target="_blank" rel="noopener"'
+             + ' style="color:var(--accent2)">View transaction</a>';
+    note.textContent = 'Sent — waiting for the chain…';
+    try{
+      await lec().waitForTransaction(tx.hash, 1, 180000);
+      note.innerHTML = 'The master wallet is funded. ' + lien;
+    }catch(x){
+      note.innerHTML = 'Sent. The chain has not confirmed it here yet — it is not lost, and it is '
+        + 'not a refusal. ' + lien;
+    }
+    $('bcMontant').value = '';
+    await rafraichit();
+    majBanc();
+  }catch(err){
+    note.className = 'wl-note grave';
+    note.textContent = pourquoiRefus(err);
+  }
+  b.disabled = false;
+});
+
+if($('bcCopier')) $('bcCopier').addEventListener('click', async function(){
+  if(!bcMaster) return;
+  if(await copieTexte(bcMaster.adr)) toast('Master address copied');
+});
+
+if($('bcOuvre')) $('bcOuvre').addEventListener('click', function(){
+  bancEcritPlan();
+  /* Un bloqueur de fenetres rend `null`, et le bouton semblait alors mort :
+     on partait en se disant que la page etait cassee. S'il refuse, on y va
+     dans cet onglet-ci plutot que de ne rien faire. */
+  var w = null;
+  try{ w = window.open('swoge_bench.html', '_blank', 'noopener'); }catch(e){}
+  if(!w){ location.href = 'swoge_bench.html'; }
+});
 
 /* ==================== BRULER ====================
  *
@@ -8119,7 +8405,7 @@ remplitChoix($('enJeton'));
 
 /* Les cinq champs de montant : rouge des la frappe, curseur de pourcentage,
    et plus une seule mise a jour qui attende qu'on appuie sur Entree. */
-['enMontant','swMontant','poMontant','brMontant','caDepMontant','caRetMontant'].forEach(accrocheMontant);
+['enMontant','swMontant','poMontant','brMontant','bcMontant','caDepMontant','caRetMontant'].forEach(accrocheMontant);
 /* Les jetons ajoutes par le joueur entrent dans `JETONS` AVANT le premier
    affichage : les soldes se lisent sur `JETONS` en entier, et un jeton arrive
    apres coup resterait sans solde jusqu'au prochain rafraichissement. */

@@ -1058,11 +1058,23 @@ function servir(q, r, f, type) {
          document.querySelectorAll('.wl-pick.ouvert').length === 1),
        'un seul menu ouvert a la fois — deux superposes, on clique dans celui qu on ne regarde pas');
 
-    /* -- le `<select>` cache ne prend pas le focus au passage -- */
+    /* -- le `<select>` cache ne prend pas le focus au passage --
+     * La verification porte sur les MIROIRS (`.wl-cache`), pas sur tous les
+     * `<select>` de la page. L'ecran du banc en a un vrai, visible, qu'on
+     * choisit a la souris ou au clavier : lui sortir la tabulation le rendrait
+     * inatteignable sans souris. La regle n'a jamais ete « aucun select ne se
+     * tabule » — c'etait « on ne tabule pas deux fois sur le meme choix ». */
     ok(await page.evaluate(() =>
-         [...document.querySelectorAll('select')].every((s) => s.tabIndex === -1)),
+         [...document.querySelectorAll('select.wl-cache')].every((s) => s.tabIndex === -1)),
        'le `<select>` garde la valeur mais sort de la tabulation : sinon on tabule deux fois'
        + ' sur le meme choix');
+
+    /* Et le revers, qui compte autant : un `<select>` qu'on VOIT doit se
+       tabuler. Un reglage atteignable seulement a la souris n'est pas un
+       reglage pour tout le monde. */
+    ok(await page.evaluate(() =>
+         [...document.querySelectorAll('select:not(.wl-cache)')].every((s) => s.tabIndex >= 0)),
+       'et celui qu on voit, lui, reste atteignable au clavier');
 
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.close();
@@ -4833,9 +4845,17 @@ function servir(q, r, f, type) {
                dCache: document.getElementById('acFlecheD').hidden };
     });
     console.log('   ' + JSON.stringify(rang));
-    ok(rang.gestes.length === 5 && rang.gestes.indexOf('ecBruler') >= 0,
-       'la rangee porte cinq gestes, dont Burn (' + rang.gestes.join(', ') + ')');
-    ok(rang.deborde, 'et elle deborde : cinq libelles ne tiennent pas dans la largeur de quatre');
+    /* La rangee est la liste des gestes que le portefeuille SAIT faire, et
+       elle grandit. Ce qui est verifie ici n'est pas un compte fige mais un
+       contrat : les six gestes attendus sont la, dans l'ordre, et le dernier
+       arrive a la suite au lieu de s'inserer au milieu — le glissement des
+       icones sous le doigt de quelqu'un qui vise le meme bouton chaque jour
+       est un vrai defaut. */
+    ok(JSON.stringify(rang.gestes) === JSON.stringify(
+         ['ecEnvoyer', 'ecRecevoir', 'ecSwap', 'ecPont', 'ecBruler', 'ecBanc']),
+       'la rangee porte les six gestes, dans l ordre, Burn puis Bench a la suite ('
+       + rang.gestes.join(', ') + ')');
+    ok(rang.deborde, 'et elle deborde : six libelles ne tiennent pas dans la largeur de quatre');
     ok(rang.gCache && !rang.dCache,
        'au repos, seule la fleche de DROITE se voit : il n y a rien a gauche, et une fleche qui '
        + 'ne fait rien apprend a ne plus la toucher');

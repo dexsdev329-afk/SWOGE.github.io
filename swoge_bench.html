@@ -3238,6 +3238,51 @@ $("#tokQuick").addEventListener("keydown", e => { if(e.key==="Enter") $("#loadTo
   if(repris) toast(repris + " wallet" + (repris>1?"s":"") + " recovered from this device");
 })();
 
+/* ---- CE QUE LE PORTEFEUILLE A CHOISI ----
+ * `swoge_wallet.html` laisse regler le mode, le nombre de wallets et le jeton
+ * AVANT d'ouvrir cette page, puis les depose ici. Meme origine, meme appareil,
+ * rien qui transite par un serveur.
+ *
+ * On l'applique UNE fois, puis on l'efface. Sinon un reglage change ici serait
+ * remis a l'ancien au rechargement suivant, et l'utilisateur verrait la page
+ * defaire son propre choix sans rien dire.
+ *
+ * On applique par `dispatchEvent('change')` et pas seulement en posant la
+ * valeur : les panneaux du mode et la propagation du jeton vers `#tok` sont
+ * accroches a cet evenement. Poser la valeur en silence afficherait le bon
+ * mode avec les reglages d'un autre. */
+(function reprendLePlan(){
+  var PLAN = "wallet_bench_plan_v1", p = null;
+  try{ p = JSON.parse(localStorage.getItem(PLAN) || "null"); }catch(e){ return; }
+  if(!p) return;
+  try{ localStorage.removeItem(PLAN); }catch(e){}
+
+  var dit = [];
+  var sel = $("#ocMode");
+  if(sel && p.mode){
+    var ok = Array.prototype.some.call(sel.options, function(o){ return o.value === p.mode; });
+    if(ok && sel.value !== p.mode){
+      sel.value = p.mode;
+      sel.dispatchEvent(new Event("change"));
+      dit.push(sel.options[sel.selectedIndex].text.split(" — ")[0].toLowerCase());
+    }
+  }
+  var n = parseInt(p.n, 10);
+  if($("#ocN") && isFinite(n) && n >= 2 && n <= 100){
+    $("#ocN").value = n;
+    dit.push(n + " wallets");
+  }
+  var tok = (p.tok || "").trim();
+  if(tok && /^0x[0-9a-fA-F]{40}$/.test(tok)){
+    if($("#ocTok")){ $("#ocTok").value = tok; $("#ocTok").dispatchEvent(new Event("change")); }
+    if($("#tok")) $("#tok").value = tok;
+    if($("#tokQuick")) $("#tokQuick").value = tok;
+    token = null; try{ wallets.forEach(function(w){ w.tokRaw = null; }); }catch(e){}
+    dit.push(tok.slice(0,6) + "…" + tok.slice(-4));
+  }
+  if(dit.length) turboSay("Carried over from your wallet: " + dit.join(" · ") + ". Change anything here — this page keeps what you set from now on.");
+})();
+
 render(); vaultInfo(); majSecours(); renderMaster();
 
 // auto-chargement : les contrats Uniswap de Robinhood Chain sont connus,

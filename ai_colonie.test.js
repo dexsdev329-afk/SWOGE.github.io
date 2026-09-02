@@ -762,7 +762,10 @@ async function auditDesVetos() {
 
   const b = await ouvre(nav, port, { vue: vueFausse({ audit: [] }) });
   const w = await lit(b.page);
-  ok(/est resuivi jusqu'a l'echeance/.test(w.audit),
+  /* La page est en anglais par defaut depuis qu'elle a rejoint le site : on
+     cherche donc la phrase telle qu'elle est ECRITE dans le HTML, pas sa
+     traduction. Le francais vit dans une table et se verifie ailleurs. */
+  ok(/followed to its deadline/.test(w.audit),
      'et sans releve, la carte explique ce qu on attend plutot que de rester vide');
   await b.page.context().close();
 }
@@ -921,8 +924,14 @@ async function auditDesVetos() {
     ok(va.appris === vb.appris, 'et les memes lecons — une seule colonie, pas deux');
 
     /* ---- ET LE STOCKAGE LOCAL N EST PLUS UNE SOURCE ----
-     * Avant, tout etait la-dedans. Si quoi que ce soit d'affiche en venait
-     * encore, l'effacer changerait l'ecran. */
+     * Avant, tout etait la-dedans : la tresorerie, les positions, les lecons.
+     * Si quoi que ce soit d AFFICHE en venait encore, l effacer changerait
+     * l ecran.
+     *
+     * Ce qui a le droit d y etre, ce sont les PREFERENCES de celui qui
+     * regarde — sa langue, les panneaux qu il a replies. Elles ne sont l etat
+     * de personne d autre, elles ne voyagent pas d un visiteur a l autre, et
+     * les interdire obligerait a rechoisir sa langue a chaque visite. */
     const stock = await a.page.evaluate(() => {
       const out = {};
       for (let i = 0; i < localStorage.length; i++) {
@@ -932,11 +941,19 @@ async function auditDesVetos() {
       return out;
     });
     console.log('   stockage local : ' + JSON.stringify(stock));
-    ok(Object.keys(stock).length === 0,
-       'la page n ecrit plus rien sous son ancienne cle : l etat n est plus a elle');
+    const PREFS = ['swogeAiLangue', 'swogeAiPanneaux'];
+    const intrus = Object.keys(stock).filter((k) => PREFS.indexOf(k) < 0);
+    ok(intrus.length === 0,
+       intrus.length === 0
+         ? 'rien d autre que les preferences de lecture n est ecrit ici : l etat de la colonie '
+           + 'n est plus a la page'
+         : 'il reste : ' + intrus.join(', '));
+    /* Et l effacer ne change rien a ce qui est affiche : la page redemande
+       tout au serveur. On ne clique plus « Live » — ce bouton n existe plus,
+       il ne commandait que l animation — on attend le rafraichissement. */
     await a.page.evaluate(() => { try { localStorage.clear(); } catch (e) {} });
-    await a.page.click('#refresh');
-    await a.page.waitForTimeout(500);
+    await a.page.evaluate(() => { if (typeof demande === 'function') demande(true); });
+    await a.page.waitForTimeout(700);
     const apres = await lit(a.page);
     ok(apres.bal === va.bal && apres.trades === va.trades,
        'et effacer le stockage local ne change rien a ce qui est affiche');
@@ -1002,7 +1019,8 @@ async function auditDesVetos() {
 
     /* Et de bout en bout : le jeton refuse porte une pastille de rejet a la
        place de l'agent qui l'a refuse, pas ailleurs. */
-    await page.click('#speed'); await page.click('#speed');   /* 4x : le banc n attend pas une minute */
+    /* Le multiplicateur de vitesse est parti — il ne pressait que l animation,
+       pas la colonie. Le banc attend donc le temps qu il faut. */
     let pos = null;
     for (let i = 0; i < 60 && pos === null; i++) {
       await page.waitForTimeout(500);
@@ -1107,7 +1125,7 @@ async function auditDesVetos() {
   console.log('\n-- l epreuve de sortie, a l ecran --');
   {
     const { page, boum } = await ouvre(nav, port, {});
-    await page.click('#speed'); await page.click('#speed');   /* 4x */
+
     /* ---- ON CUMULE AU LIEU DE PHOTOGRAPHIER ----
      * Le panneau ne montre que ce qui est EN VOL : un jeton y entre, traverse,
      * puis sort. Une seule photo n en attrape donc qu une partie, et laquelle
@@ -1176,7 +1194,7 @@ async function auditDesVetos() {
   console.log('\n-- « non lu » ne s ecrit pas « zero » --');
   {
     const { page, boum } = await ouvre(nav, port, {});
-    await page.click('#speed'); await page.click('#speed');
+
     let vu = null;
     for (let i = 0; i < 40 && !vu; i++) {
       await page.waitForTimeout(400);
@@ -1209,13 +1227,34 @@ async function auditDesVetos() {
   {
     const { page, boum } = await ouvre(nav, port, {});
     const v = await lit(page);
-    ok(/aucune transaction n'est signee/i.test(v.foot) && /papier/i.test(v.foot),
-       'elle dit que rien n est signe et que la tresorerie est du papier');
-    ok(/tourne sur le serveur/i.test(v.foot) && /meme etat/i.test(v.foot),
-       'elle dit que ca tourne sur le serveur et que tout le monde voit le meme etat');
+    /* ---- LES DEUX LANGUES DISENT LA MEME CHOSE ----
+     * La page s'ouvre en anglais ; le francais est une table. Un aveu qui ne
+     * survivrait qu'a une seule des deux serait pire qu'aucun aveu : on
+     * verifie donc les MEMES quatre phrases dans les deux, en basculant la
+     * langue comme le ferait le drapeau. */
+    const promesses = [
+      [/no transaction is signed/i, /paper/i, 'nothing is signed, and the treasury is paper'],
+      [/runs on the server/i, /same state/i, 'it runs on the server and everyone sees the same state'],
+      [/gas and slippage/i, /gas and slippage/i, 'a real buy would also pay gas and slippage'],
+    ];
+    for (const [a1, a2, quoi] of promesses)
+      ok(a1.test(v.foot) && a2.test(v.foot), 'en anglais, elle dit que ' + quoi);
     ok(!/onglet est ferme, rien ne tourne/i.test(v.foot) && !/garde sur cet appareil/i.test(v.foot),
        'et elle ne promet plus le contraire, qui etait vrai de l ancienne version');
-    ok(/gaz et le glissement/i.test(v.foot), 'et qu un vrai achat paierait en plus le gaz et le glissement');
+
+    const fr = await page.evaluate(() => {
+      poseLangue('fr');
+      return (document.getElementById('foot') || {}).textContent || '';
+    });
+    const fPromesses = [
+      [/aucune transaction n'est sign/i, 'rien n est signe'],
+      [/tourne sur le serveur/i, 'ca tourne sur le serveur'],
+      [/m[eê]me [eé]tat/i, 'tout le monde voit le meme etat'],
+      [/gaz et le glissement/i, 'un vrai achat paierait le gaz et le glissement'],
+    ];
+    for (const [rx, quoi] of fPromesses)
+      ok(rx.test(fr), 'et en francais aussi : ' + quoi);
+    await page.evaluate(() => poseLangue('en'));
 
     /* ---- LE BOUTON QUI DEVAIT PARTIR ----
      * Il effacait le stockage local. Sur un etat PARTAGE, le meme geste
@@ -1224,13 +1263,20 @@ async function auditDesVetos() {
     const reset = await page.evaluate(() => !!document.getElementById('oublier'));
     ok(!reset, 'le bouton « Reset » n existe plus : sur un etat partage, il effacerait celui de tout le monde');
 
-    /* La pause n'arrete plus la colonie : elle n'arrete que l'animation, et
-       il faut que ce soit dit, sinon elle promet un pouvoir qu'elle n'a pas. */
-    await page.click('#pause');
-    const tag = await page.evaluate(() => document.getElementById('stagetag').textContent);
-    console.log('   pause → « ' + tag + ' »');
-    ok(/animation/i.test(tag) && /serveur/i.test(tag),
-       'et la pause dit qu elle n arrete que l animation');
+    /* ---- ET LES TROIS QUI ONT SUIVI ----
+     * « Live », « Pause » et le multiplicateur de vitesse ne commandaient plus
+     * rien depuis que le moteur est sur le serveur : le premier redemandait un
+     * etat que la page redemande deja seule, le deuxieme arretait l animation
+     * pendant que la colonie continuait de trader, le troisieme changeait la
+     * vitesse des chiens. Un bouton qui a l air de commander une machine et
+     * qui ne commande qu un dessin anime est pire que pas de bouton : on croit
+     * avoir mis la colonie en pause. */
+    const morts = await page.evaluate(() => ['refresh', 'pause', 'speed']
+      .filter((id) => !!document.getElementById(id)));
+    ok(morts.length === 0,
+       morts.length === 0
+         ? 'les trois commandes qui ne commandaient que l animation ont disparu'
+         : 'il en reste : ' + morts.join(', '));
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.context().close();
   }

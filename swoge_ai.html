@@ -144,8 +144,28 @@ var MARQUE_PAGE = '6be83767';
   .btn.on{color:#0b1a13; background:var(--gain); border-color:var(--gain)}
   .btn:disabled{opacity:.55; cursor:default}
   .btn:focus-visible{outline:2px solid var(--gold); outline-offset:2px}
+  .drapeau{ font-size:16px; line-height:1; padding:5px 9px; flex:none }
   .retour{color:var(--ink-dim);text-decoration:none;font-size:12.5px;font-weight:600;flex:none}
   .retour:hover{color:var(--gold)}
+
+  /* ---------- la bande de tete ----------
+     Pleine largeur, sous le titre de la tablette. Le profit est deux fois
+     plus gros que le reste : c'est LE chiffre, les autres l'expliquent. */
+  .bandeau{
+    display:flex; align-items:stretch; gap:0; flex:none;
+    border-bottom:1px solid var(--line); background:var(--hud-3);
+    overflow-x:auto; scrollbar-width:none;
+  }
+  .bandeau::-webkit-scrollbar{ display:none }
+  .b-item{ flex:1 1 0; min-width:82px; padding:9px 12px; text-align:center;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px }
+  .b-item + .b-item{ border-left:1px solid var(--line) }
+  .b-item b{ font-family:"JetBrains Mono",monospace; font-weight:700; font-size:17px;
+    line-height:1.1; font-variant-numeric:tabular-nums; color:var(--ink) }
+  .b-item i{ font-style:normal; font-size:9.5px; letter-spacing:1.1px; text-transform:uppercase;
+    color:var(--ink-dim); white-space:nowrap }
+  .b-gros b{ font-size:24px }
+  @media (max-width:560px){ .b-item{ min-width:70px; padding:8px } .b-gros b{ font-size:19px } }
 
   /* ---------- partage principal ---------- */
   .main{height:calc(100dvh - 67px); display:grid; grid-template-columns:1.55fr 1fr; min-height:0}
@@ -169,12 +189,42 @@ var MARQUE_PAGE = '6be83767';
   }
   .panel::-webkit-scrollbar{width:9px}
   .panel::-webkit-scrollbar-thumb{background:#22423383;border-radius:9px;border:2px solid transparent;background-clip:padding-box}
+  /* ---------- LES PANNEAUX SE REPLIENT ----------
+   *
+   * « Faudrait réduire pas mal de panneaux dans SWOGE AI, qu'on peut rouvrir
+   *   mais mieux organiser les données : un utilisateur, là, il y a trop de
+   *   données affichées. Ça peut se faire en arrière-plan sans afficher
+   *   autant d'infos. »
+   *
+   * Treize panneaux ouverts en meme temps, ca ne se lit pas : ca se subit. Et
+   * ce n'est pas le meme public — la separation des traits, l'audit des vetos
+   * et le journal de structure sont des instruments pour comprendre POURQUOI
+   * la colonie fait ce qu'elle fait ; on les ouvre quand on se pose la
+   * question, pas en permanence.
+   *
+   * Rien n'est retire : ce qui est replie continue d'etre calcule et repeint,
+   * et se rouvre d'un geste. Le choix est garde d'une visite a l'autre — qui
+   * ouvre l'audit tous les jours ne le rouvre pas tous les jours. */
   .card{padding:14px 16px; border-bottom:1px solid var(--line)}
   .card h2{
     font-family:"Outfit",sans-serif; font-weight:600; font-size:11px; letter-spacing:1.6px;
     text-transform:uppercase; color:var(--ink-faint); margin:0 0 11px; display:flex; align-items:center; gap:8px;
+    cursor:pointer; user-select:none;
   }
   .card h2 .count{margin-left:auto;color:var(--ink-dim);font-weight:500;letter-spacing:.5px;text-transform:none}
+  /* Le chevron dit l'etat ET le geste. Un panneau replie sans marque se lit
+     comme un panneau vide, et l'on croit la donnee perdue. */
+  .card h2::after{
+    /* En CSS un caractere s'echappe `\25BE`, pas `\u25BE` : la seconde forme
+       n'est pas une echappement, c'est le texte « u25BE », et c'est ce qui
+       s'ecrivait a cote de chaque titre. */
+    content:"\25BE"; font-size:10px; color:var(--ink-faint); margin-left:6px;
+    transition:transform .15s; flex:none;
+  }
+  .card.plie h2{ margin-bottom:0 }
+  .card.plie h2::after{ transform:rotate(-90deg) }
+  .card.plie > *:not(h2){ display:none !important }
+  .card h2:hover{ color:var(--ink-dim) }
 
   .agent{display:flex; align-items:center; gap:11px; padding:7px 0}
   .agent + .agent{border-top:1px dashed rgba(11,27,54,.05)}
@@ -672,133 +722,144 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       <div class="logo">🤖</div>
       <div>
         <h1>SWOGE AI · Colonie</h1>
-        <p id="soustitre">Des agents qui s'organisent seuls · vrais tokens Robinhood Chain · ils apprennent de leurs trades</p>
+        <p id="soustitre" data-t="sousTitre">Agents that organise themselves &middot; real Robinhood Chain tokens &middot; they learn from their trades</p>
       </div>
     </div>
+    <!-- ---- LA LANGUE ----
+         « SWOGE AI par defaut en anglais, mais y'a un drapeau en haut, on peut
+           mettre francais comme langue aussi. »
+         Le site entier est en anglais ; cette page etait la seule en francais.
+         L'anglais devient donc le defaut, et le drapeau bascule — le choix se
+         garde d'une visite a l'autre. Ce qui reste en francais, ce sont les
+         mots que la COLONIE ecrit elle-meme (les raisons de refus, le journal
+         de structure) : ils viennent du serveur avec leurs chiffres dedans, et
+         les retraduire ici les inventerait. -->
+    <button class="btn drapeau" id="langue" type="button" title="Français / English">🇬🇧</button>
     <span class="chip rh">● ROBINHOOD · 4663</span>
     <span class="chip data" id="stamp">● en attente de donnees</span>
     <div class="live"><span class="dot-live" id="pouls"></span> <span id="poulsTx">LIVE</span></div>
     <div class="treasury">
-      <span class="lbl">Papier · prix reels</span>
+      <span class="lbl" data-t="papier">Paper &middot; real prices</span>
       <span class="val" id="aiBal">$1,000</span>
       <span class="delta" id="delta">+$0.00</span>
     </div>
-    <div class="controls">
-      <button class="btn" id="refresh" title="Relire GeckoTerminal + GoPlus maintenant">🔄 Live</button>
-      <button class="btn" id="pause">⏸ Pause</button>
-      <button class="btn on" id="speed">1×</button>
-    </div>
+    <!-- ---- TROIS BOUTONS QUI NE COMMANDAIENT PLUS RIEN ----
+         « Live, pause et multiplicateur de vitesse ne servent pas sur SWOGE
+           AI, supprime-les. »
+
+         Vrai, et depuis le jour ou le moteur est parti sur le serveur. « Live »
+         redemandait l'etat — la page le redemande deja toute seule ; « Pause »
+         n'arretait que l'animation pendant que la colonie continuait de
+         trader ; « 1x / 2x / 4x » ne changeait que la vitesse des chiens.
+         Trois boutons qui ont l'air de commander une machine et qui ne
+         commandent qu'un dessin animé : c'est pire que pas de boutons, parce
+         qu'on croit avoir mis la colonie en pause. -->
     <!-- Le retour vers l'arcade vivait ici parce que la page n'avait aucune
          navigation. Elle a maintenant celle du site, a gauche, et deux liens
          qui font la meme chose au meme moment font hesiter sur la difference
          entre les deux — il n'y en a aucune. -->
   </header>
 
+  <!-- ==================== CE QU'ON VIENT VOIR ====================
+       « Tresorerie, win, profit, trades, meilleur : faut le voir en haut de la
+         tablette ou en dessous du village. Trop loin, c'est la premiere chose
+         qu'on veut voir. »
+
+       C'etait la quatrieme carte de la colonne de droite, sous les alertes :
+       il fallait chercher, sur un ecran ou tout se ressemble, le seul chiffre
+       pour lequel on ouvre la page. Il est maintenant en bande pleine largeur
+       juste sous le titre, avant le village — donc avant tout le reste, et
+       sans defiler. -->
+  <div class="bandeau" id="bandeau">
+    <div class="b-item b-gros">
+      <b id="s-profit">+$0</b><i data-t="profit">Profit</i>
+    </div>
+    <div class="b-item"><b id="s-wr">0%</b><i data-t="taux">Win rate</i></div>
+    <div class="b-item"><b id="s-trades">0</b><i data-t="trades">Trades</i></div>
+    <div class="b-item"><b id="s-best">—</b><i data-t="meilleur">Best</i></div>
+    <div class="b-item b-pos"><b id="s-pos">0</b><i data-t="ouvertes">Open</i></div>
+  </div>
+
   <div class="main">
     <div class="stage">
       <canvas id="village"></canvas>
-      <div class="stage-tag" id="stagetag">Les agents lisent les vrais tokens de la chaine 🚶</div>
+      <div class="stage-tag" id="stagetag">The agents are reading real tokens from the chain 🚶</div>
     </div>
 
     <aside class="panel">
-      <div class="card" id="carteAlertes" hidden>
-        <h2>Ce dont la colonie a besoin <span class="count" id="alerteN">0</span></h2>
+      <div class="card" data-pan="alertes" id="carteAlertes" hidden>
+        <h2><span data-t="tAlertes">What the colony needs</span> <span class="count" id="alerteN">0</span></h2>
         <div id="alertes"></div>
       </div>
 
-      <div class="card">
-        <h2>Tresorerie <span class="count" id="wr">win 0%</span></h2>
-        <div class="stats">
-          <div class="stat"><div class="n" id="s-profit" style="color:var(--gain)">+$0</div><div class="k">Profit</div></div>
-          <div class="stat"><div class="n" id="s-trades">0</div><div class="k">Trades</div></div>
-          <div class="stat"><div class="n" id="s-best" style="color:var(--gold)">—</div><div class="k">Meilleur</div></div>
-        </div>
+      <!-- Les quatre chiffres sont montes dans la bande. Il reste la courbe,
+           qui raconte autre chose : la forme du chemin, pas son bout. -->
+      <div class="card" data-pan="courbe">
+        <h2><span data-t="tCourbe">Treasury over time</span> <span class="count" id="wr">win 0%</span></h2>
         <canvas id="spark"></canvas>
       </div>
 
-      <div class="card">
-        <h2>Positions ouvertes <span class="count" id="poscount">0</span></h2>
-        <div id="positions"><div class="empty">Aucune position ouverte.</div></div>
+      <div class="card" data-pan="positions">
+        <h2><span data-t="tPositions">Open positions</span> <span class="count" id="poscount">0</span></h2>
+        <div id="positions"><div class="empty" data-t="vPositions">No open position.</div></div>
       </div>
 
-      <div class="card">
-        <h2>Banquier <span class="count" id="banqMethode">—</span></h2>
-        <div id="banque" class="banq"><div class="empty">En attente du serveur…</div></div>
+      <div class="card" data-pan="banque">
+        <h2><span data-t="tBanque">Banker</span> <span class="count" id="banqMethode">—</span></h2>
+        <div id="banque" class="banq"><div class="empty" data-t="vServeur">Waiting for the server…</div></div>
       </div>
 
-      <div class="card">
-        <h2>Surveillance <span class="count" id="survN">0</span></h2>
-        <div id="surveillance"><div class="empty">Rien sous surveillance pour l'instant.</div></div>
+      <div class="card" data-pan="surveillance">
+        <h2><span data-t="tSurv">Watchlist</span> <span class="count" id="survN">0</span></h2>
+        <div id="surveillance"><div class="empty" data-t="vSurv">Nothing on the watchlist yet.</div></div>
       </div>
 
-      <div class="card">
-        <h2>Pipeline en vol <span class="count" id="flowcount">0 tokens</span></h2>
-        <div class="flow" id="flow"><div class="empty">En attente de nouveaux tokens…</div></div>
+      <div class="card" data-pan="pipeline">
+        <h2><span data-t="tPipe">Tokens in flight</span> <span class="count" id="flowcount">0 tokens</span></h2>
+        <div class="flow" id="flow"><div class="empty" data-t="vPipe">Waiting for new tokens…</div></div>
       </div>
 
-      <div class="card">
-        <h2>Agents · missions</h2>
+      <div class="card" data-pan="agents">
+        <h2><span data-t="tAgents">Agents &middot; what each one does</span></h2>
         <div id="agents"></div>
       </div>
 
-      <div class="card">
-        <h2>Ce que l'Oracle a appris <span class="count" id="apprisN">0 trade</span></h2>
-        <div id="appris"><div class="empty">Rien encore. Chaque position fermee lui apprend quelque chose ; en dessous d'une poignee de trades, il ne pretend rien.</div></div>
+      <div class="card" data-pan="appris">
+        <h2><span data-t="tAppris">What the Oracle has learned</span> <span class="count" id="apprisN">0 trade</span></h2>
+        <div id="appris"><div class="empty" data-t="vAppris">Nothing yet. Every closed position teaches it something; below a handful of trades it claims nothing.</div></div>
       </div>
 
-      <div class="card">
-        <h2>Ce qui separe vraiment <span class="count" id="traitsN">—</span></h2>
-        <div id="traits"><div class="empty">Rien encore. Une vingtaine de caracteristiques sont
-          relevees sur chaque jeton, et rien ne dit lesquelles servent tant qu'on n'a pas vu
-          assez de jetons finir. Ce tableau les classe par leur pouvoir de separation mesure.</div></div>
+      <div class="card" data-pan="traits">
+        <h2><span data-t="tTraits">Which signals actually separate</span> <span class="count" id="traitsN">—</span></h2>
+        <div id="traits"><div class="empty" data-t="vTraits">Nothing yet. About twenty signals are read on every token, and nothing says which ones matter until enough tokens have run their course. This table ranks them by measured separating power.</div></div>
       </div>
 
-      <div class="card">
-        <h2>Ce que deviennent les refuses <span class="count" id="auditN">—</span></h2>
-        <div id="audit"><div class="empty">Rien encore. Chaque jeton analyse — achete ou refuse —
-          est resuivi jusqu'a l'echeance, puis son prix est relu. C'est ce qui permet de savoir si
-          un veto protege vraiment, ou s'il ecarte surtout des gagnants.</div></div>
+      <div class="card" data-pan="audit">
+        <h2><span data-t="tAudit">What happens to the rejected ones</span> <span class="count" id="auditN">—</span></h2>
+        <div id="audit"><div class="empty" data-t="vAudit">Nothing yet. Every token analysed — bought or rejected — is followed to its deadline and priced again. That is what tells us whether a veto really protects, or mostly turns away winners.</div></div>
       </div>
 
-      <div class="card">
-        <h2>La colonie se reorganise <span class="count" id="structN">0</span></h2>
-        <div id="structure"><div class="empty">Rien n'a encore change dans la structure. Les agents
-          ne se multiplient pas pour faire joli : il leur faut une case qu'ils mesurent comme
-          inutilisable, et ca prend des dizaines de positions fermees.</div></div>
+      <div class="card" data-pan="structure">
+        <h2><span data-t="tStruct">The colony reorganises itself</span> <span class="count" id="structN">0</span></h2>
+        <div id="structure"><div class="empty" data-t="vStruct">Nothing has changed in the structure yet. The agents do not multiply for show: one of them needs a bucket it has measured as useless, and that takes dozens of closed positions.</div></div>
       </div>
 
-      <div class="card">
-        <h2>Ce qui est lu <span class="count" id="srvN">—</span></h2>
-        <div id="services"><div class="empty">En attente du serveur…</div></div>
+      <div class="card" data-pan="services">
+        <h2><span data-t="tServices">What is being read</span> <span class="count" id="srvN">—</span></h2>
+        <div id="services"><div class="empty" data-t="vServeur">Waiting for the server…</div></div>
       </div>
 
-      <div class="card">
-        <h2>Meilleurs picks <span class="count">score</span></h2>
-        <div id="picks"><div class="empty">Aucun signal valide pour l'instant…</div></div>
+      <div class="card" data-pan="picks">
+        <h2><span data-t="tPicks">Top picks</span> <span class="count">score</span></h2>
+        <div id="picks"><div class="empty" data-t="vPicks">No valid signal right now…</div></div>
       </div>
 
-      <div class="card">
-        <h2>Positions fermees <span class="count" id="fermN">—</span></h2>
-        <div class="feed" id="feed"><div class="empty">Aucun trade encore…</div></div>
+      <div class="card" data-pan="fermees">
+        <h2><span data-t="tFermees">Closed positions</span> <span class="count" id="fermN">—</span></h2>
+        <div class="feed" id="feed"><div class="empty" data-t="vFeed">No trade yet…</div></div>
       </div>
 
-      <div class="foot" id="foot">
-        <b>Ce qui est reel :</b> les tokens, les pools, les prix, la securite du contrat, la
-        concentration et l'age viennent de GeckoTerminal, de GoPlus, de DexScreener et des blocs
-        de la chaine 4663 eux-memes.
-        <b>Ce qui ne l'est pas :</b> aucune transaction n'est signee. Une position est ouverte au
-        prix reel du moment et fermee au prix reel d'un releve plus tard — c'est du papier, pas une
-        execution, et un vrai achat paierait en plus le gaz et le glissement.
-        <b>Ca tourne sur le serveur, en continu :</b> la colonie ne s'arrete pas quand vous fermez
-        l'onglet, et tout le monde voit le meme etat. Cette page ne calcule rien : elle demande et
-        elle affiche.
-        <b>Les agents changent leur propre structure :</b> ils reordonnent leurs controles sur le
-        taux de refus qu'ils ont mesure, et un agent dont une case ne predit rien engendre un
-        specialiste qui la recoupe — qui est retire s'il ne fait pas mieux. Ce qu'ils ne peuvent pas
-        changer : les controles de securite et les bornes de mise, qui sont dans le code. Un systeme
-        qui peut apprendre a lever sa propre garde l'apprend toujours, et exactement une fois.
-        <b>Quand une lecture echoue, c'est ecrit</b> — et rien n'est invente pour combler. NFA.
-      </div>
+      <div class="foot" id="foot" data-t="pied"><b>What is real:</b> the tokens, the pools, the prices, the contract safety checks, the holder concentration and the age all come from GeckoTerminal, GoPlus, DexScreener and the blocks of chain 4663 themselves. <b>What is not:</b> no transaction is signed. A position opens at the real price of the moment and closes at the real price of a later reading — that is paper, not execution, and a real buy would also pay gas and slippage. <b>It runs on the server, continuously:</b> the colony does not stop when you close the tab, and everyone sees the same state. This page computes nothing: it asks, and it shows. <b>The agents change their own structure:</b> they reorder their checks on the rejection rates they measured, and an agent whose bucket predicts nothing spawns a specialist that cross-checks it — removed if it does no better. What they cannot change: the safety checks and the stake limits, which live in the code. A system that can learn to lower its own guard always learns it, exactly once. <b>When a reading fails, it is written</b> — and nothing is invented to fill the gap. NFA.</div>
     </aside>
   </div>
       </div>
@@ -2059,11 +2120,16 @@ function peintServices(){
   const f = $("fermN");
   if(f) f.textContent = VUE ? (VUE.trades + " · seuil " + VUE.seuil
     + (VUE.seuil !== VUE.seuilDepart ? " (etait " + VUE.seuilDepart + ")" : "")) : "—";
-  /* Le nombre d'agents est ecrit depuis le roster, jamais en dur : il change. */
+  /* Le nombre d'agents est ecrit depuis le roster, jamais en dur : il change.
+     Et la phrase suit la langue choisie — elle etait recopiee ici en francais,
+     donc elle repassait en francais a chaque rafraichissement, par-dessus la
+     bascule. C'est le genre de defaut qui ne se voit qu'apres coup : la page
+     s'ouvre en anglais et se retraduit toute seule deux secondes plus tard. */
   const st = $("soustitre");
-  if(st && VUE) st.textContent = (VUE.roster||[]).length + " agents · vrais tokens Robinhood Chain · "
-    + "ils s'organisent et apprennent de leurs trades";
-  if(!VUE){ $("services").innerHTML = '<div class="empty">En attente du serveur…</div>'; return; }
+  if(st && VUE) st.textContent = (VUE.roster||[]).length + " " + (LANGUE === "fr"
+    ? "agents · vrais jetons Robinhood Chain · ils s'organisent et apprennent de leurs trades"
+    : "agents · real Robinhood Chain tokens · they organise themselves and learn from their trades");
+  if(!VUE){ $("services").innerHTML = '<div class="empty">' + tr("vServeur") + '</div>'; return; }
   let html = l.map(s=>{
     const jamais = !s.essais;
     const ko = s.essais && s.reussites < s.essais;
@@ -2109,9 +2175,12 @@ function peintAppris(){
   $("appris").innerHTML = bloc.join("");
 }
 function peintStats(){
+  /* Rien de lu, rien d'ecrit : un « 0 % » sur une lecture qui n'a pas eu lieu
+     se lit comme une colonie qui ne gagne jamais. */
   if(!VUE){
-    $("s-profit").textContent = "—"; $("s-profit").style.color = "var(--muted)";
+    $("s-profit").textContent = "—"; $("s-profit").style.color = "var(--ink-dim)";
     $("s-trades").textContent = "—"; $("s-best").textContent = "—";
+    $("s-wr").textContent = "—"; $("s-pos").textContent = "—";
     $("wr").textContent = "win —";
     peintAgents(); return;
   }
@@ -2120,7 +2189,11 @@ function peintStats(){
   $("s-profit").style.color = profit>=0 ? "var(--gain)" : "var(--loss)";
   $("s-trades").textContent = VUE.trades;
   $("s-best").textContent = VUE.meilleur>0 ? VUE.meilleur.toFixed(2)+"×" : "—";
-  $("wr").textContent = "win "+(VUE.trades ? Math.round(VUE.gains/VUE.trades*100) : 0)+"%";
+  $("s-best").style.color = VUE.meilleur>1 ? "var(--gain)" : "var(--ink)";
+  const wr = VUE.trades ? Math.round(VUE.gains/VUE.trades*100) : 0;
+  $("s-wr").textContent = VUE.trades ? wr+"%" : "—";
+  $("s-pos").textContent = (VUE.positions||[]).length;
+  $("wr").textContent = "win "+wr+"%";
   peintAgents();
 }
 function dessineCourbe(){
@@ -2282,20 +2355,144 @@ function loop(now){
   requestAnimationFrame(loop);
 }
 
-/* ============================ COMMANDES ============================ */
-$("pause").addEventListener("click", function(){
-  running = !running;
-  this.textContent = running ? "⏸ Pause" : "▶ Reprendre";
-  this.classList.toggle("on", !running);
-  /* La pause n'arrete que l'animation. Le serveur, lui, continue — et c'est
-     tout l'objet du deplacement : ce bouton n'a plus prise sur la colonie. */
-  dis(running ? phraseFond() : "En pause — seule l'animation s'arrete. La colonie continue de tourner sur le serveur.");
+/* Les trois commandes sont parties : elles ne commandaient que l'animation.
+   `running` et `speed` restent, en constantes — la boucle de rendu les lit,
+   et les retirer demanderait de la reecrire pour ne rien gagner. */
+
+/* ==================== LES PANNEAUX ====================
+ *
+ * Quatre ouverts au depart : ce dont la colonie a besoin, ses positions, ce
+ * qu'elle regarde en ce moment, et sa courbe. Le reste se replie — ce sont des
+ * instruments pour comprendre POURQUOI elle fait ce qu'elle fait, et l'on
+ * ouvre un instrument quand on se pose la question.
+ *
+ * Ce qui est replie continue d'etre calcule et repeint : le pli est une
+ * question d'attention, pas de travail. Et le choix se garde d'une visite a
+ * l'autre. */
+/* ==================== DEUX LANGUES ====================
+ *
+ * L'anglais est ecrit dans le HTML : c'est la langue par defaut, et c'est
+ * celle qu'on voit si ce script ne tourne pas. Le francais vit ici, dans une
+ * table — l'inverse aurait fait de l'anglais une traduction, donc la version
+ * qui prend du retard.
+ *
+ * Ce que cette table NE contient pas : les mots de la colonie. « pas encore
+ * verifiable sur DexScreener (2 min) », « 3/3 detenteurs ne peuvent pas
+ * envoyer le jeton vers la piscine » — ils viennent du serveur avec leurs
+ * chiffres dedans. Les retraduire ici serait les reecrire, et une phrase
+ * reecrite n'est plus ce que la colonie a dit.
+ */
+const FR = {
+  tAlertes:"Ce dont la colonie a besoin", tCourbe:"Trésorerie dans le temps",
+  tPositions:"Positions ouvertes", vPositions:"Aucune position ouverte.",
+  tBanque:"Banquier", vServeur:"En attente du serveur…",
+  tSurv:"Surveillance", vSurv:"Rien sous surveillance pour l'instant.",
+  tPipe:"Jetons en vol", vPipe:"En attente de nouveaux jetons…",
+  tAgents:"Agents · ce que chacun fait",
+  tAppris:"Ce que l'Oracle a appris",
+  vAppris:"Rien encore. Chaque position fermée lui apprend quelque chose ; en dessous d'une poignée de trades, il ne prétend rien.",
+  tTraits:"Ce qui sépare vraiment",
+  vTraits:"Rien encore. Une vingtaine de caractéristiques sont relevées sur chaque jeton, et rien ne dit lesquelles servent tant qu'on n'a pas vu assez de jetons finir. Ce tableau les classe par leur pouvoir de séparation mesuré.",
+  tAudit:"Ce que deviennent les refusés",
+  vAudit:"Rien encore. Chaque jeton analysé — acheté ou refusé — est resuivi jusqu'à l'échéance, puis son prix est relu. C'est ce qui permet de savoir si un veto protège vraiment, ou s'il écarte surtout des gagnants.",
+  tStruct:"La colonie se réorganise",
+  vStruct:"Rien n'a encore changé dans la structure. Les agents ne se multiplient pas pour faire joli : il leur faut une case qu'ils mesurent comme inutilisable, et ça prend des dizaines de positions fermées.",
+  tServices:"Ce qui est lu", tPicks:"Meilleurs signaux", vPicks:"Aucun signal valide pour l'instant…",
+  tFermees:"Positions fermées", vFeed:"Aucun trade encore…",
+  sousTitre:"Des agents qui s'organisent seuls · vrais jetons Robinhood Chain · ils apprennent de leurs trades",
+  papier:"Papier · prix réels",
+  profit:"Profit", taux:"Taux de gain", trades:"Trades", meilleur:"Meilleur", ouvertes:"Ouvertes",
+  pied:"<b>Ce qui est réel :</b> les jetons, les pools, les prix, la sécurité du contrat, la concentration et l'âge viennent de GeckoTerminal, de GoPlus, de DexScreener et des blocs de la chaîne 4663 eux-mêmes. <b>Ce qui ne l'est pas :</b> aucune transaction n'est signée. Une position est ouverte au prix réel du moment et fermée au prix réel d'un relevé plus tard — c'est du papier, pas une exécution, et un vrai achat paierait en plus le gaz et le glissement. <b>Ça tourne sur le serveur, en continu :</b> la colonie ne s'arrête pas quand vous fermez l'onglet, et tout le monde voit le même état. Cette page ne calcule rien : elle demande et elle affiche. <b>Les agents changent leur propre structure :</b> ils réordonnent leurs contrôles sur le taux de refus qu'ils ont mesuré, et un agent dont une case ne prédit rien engendre un spécialiste qui la recoupe — qui est retiré s'il ne fait pas mieux. Ce qu'ils ne peuvent pas changer : les contrôles de sécurité et les bornes de mise, qui sont dans le code. Un système qui peut apprendre à lever sa propre garde l'apprend toujours, et exactement une fois. <b>Quand une lecture échoue, c'est écrit</b> — et rien n'est inventé pour combler. NFA.",
+};
+/* Pour les textes ecrits par le script — ceux qui ne peuvent pas porter un
+   `data-t` parce qu'ils sont fabriques a la volee. */
+function tr(k){ return (LANGUE === "fr" && FR[k] !== undefined) ? FR[k] : (EN[k] !== undefined ? EN[k] : k); }
+const CLE_LANGUE = "swogeAiLangue";
+let LANGUE = "en";
+/* L'anglais du HTML est releve UNE FOIS au demarrage : c'est lui la source,
+   et le recopier dans la table le condamnerait a diverger. */
+const EN = {};
+function releveAnglais(){
+  document.querySelectorAll("[data-t]").forEach(e => {
+    if(!(e.dataset.t in EN)) EN[e.dataset.t] = e.innerHTML;
+  });
+}
+function poseLangue(l){
+  LANGUE = (l === "fr") ? "fr" : "en";
+  try{ localStorage.setItem(CLE_LANGUE, LANGUE); }catch(e){}
+  const src = LANGUE === "fr" ? FR : EN;
+  document.querySelectorAll("[data-t]").forEach(e => {
+    const v = src[e.dataset.t];
+    if(v !== undefined) e.innerHTML = v;
+  });
+  const b = document.getElementById("langue");
+  /* Le drapeau montre la langue OU L'ON EST, pas celle vers laquelle on irait :
+     un bouton qui affiche sa destination se lit a l'envers une fois sur deux. */
+  if(b){ b.textContent = LANGUE === "fr" ? "🇫🇷" : "🇬🇧"; b.title = LANGUE === "fr" ? "English" : "Français"; }
+  document.documentElement.lang = LANGUE;
+}
+(function(){
+  releveAnglais();
+  let l = "en";
+  try{ l = localStorage.getItem(CLE_LANGUE) || "en"; }catch(e){}
+  poseLangue(l);
+  const b = document.getElementById("langue");
+  if(b) b.addEventListener("click", () => poseLangue(LANGUE === "fr" ? "en" : "fr"));
+})();
+
+const PANNEAUX_OUVERTS = ["alertes", "positions", "pipeline", "courbe"];
+const CLE_PANNEAUX = "swogeAiPanneaux";
+
+function litPlis(){
+  try{
+    const v = JSON.parse(localStorage.getItem(CLE_PANNEAUX) || "null");
+    if(v && typeof v === "object") return v;
+  }catch(e){}
+  return null;
+}
+function ecritPlis(){
+  try{
+    const o = {};
+    document.querySelectorAll(".card[data-pan]").forEach(c => { o[c.dataset.pan] = c.classList.contains("plie"); });
+    localStorage.setItem(CLE_PANNEAUX, JSON.stringify(o));
+  }catch(e){}
+}
+function poseLesPlis(){
+  const garde = litPlis();
+  document.querySelectorAll(".card[data-pan]").forEach(c => {
+    const k = c.dataset.pan;
+    const plie = garde && Object.prototype.hasOwnProperty.call(garde, k)
+      ? !!garde[k] : PANNEAUX_OUVERTS.indexOf(k) < 0;
+    c.classList.toggle("plie", plie);
+    const h = c.querySelector("h2");
+    if(h){
+      h.setAttribute("role", "button");
+      h.setAttribute("tabindex", "0");
+      h.setAttribute("aria-expanded", plie ? "false" : "true");
+    }
+  });
+}
+function basculePanneau(c){
+  if(!c) return;
+  c.classList.toggle("plie");
+  const h = c.querySelector("h2");
+  if(h) h.setAttribute("aria-expanded", c.classList.contains("plie") ? "false" : "true");
+  ecritPlis();
+}
+document.addEventListener("click", function(ev){
+  const h = ev.target.closest && ev.target.closest(".card[data-pan] > h2");
+  if(h) basculePanneau(h.parentElement);
 });
-const VITESSES = [1,2,4]; let vi = 0;
-$("speed").addEventListener("click", function(){
-  vi = (vi+1) % VITESSES.length; speed = VITESSES[vi]; this.textContent = speed+"×";
+/* Au clavier aussi : un panneau qu'on ne peut ouvrir qu'a la souris est un
+   panneau ferme pour qui n'en a pas. */
+document.addEventListener("keydown", function(ev){
+  if(ev.key !== "Enter" && ev.key !== " ") return;
+  const h = ev.target.closest && ev.target.closest(".card[data-pan] > h2");
+  if(!h) return;
+  ev.preventDefault();
+  basculePanneau(h.parentElement);
 });
-$("refresh").addEventListener("click", ()=>demande(true));
+poseLesPlis();
 
 /* Le compte a rebours d'une position et l'age de la pastille bougent avec le
    temps, pas avec les images : une seconde suffit. */

@@ -320,6 +320,11 @@ button.sell:hover{background:#FADFDD}
   background:#FFFFFF;white-space:nowrap}
 .mw-addr a.mini:hover{border-color:var(--signal);color:var(--signal)}
 .note.ok{color:var(--signal)}
+/* Deux tons de plus : « garde en clair » n'est pas une reussite, et « rien
+   n'est garde » n'est pas un simple avertissement. Une note qui a trois etats
+   et une seule couleur les fait lire pareil. */
+.note.warn{color:#e8b33a}
+.note.bad{color:#ff6b6b}
 
 .toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,14px);background:#FFFFFF;border:1px solid var(--signal);color:var(--paper);box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05);font-family:'Space Mono',monospace;font-size:11.5px;padding:9px 16px;border-radius:var(--r);opacity:0;pointer-events:none;transition:.18s;z-index:9;max-width:80vw;text-align:center}
 .toast.on{opacity:1;transform:translate(-50%,0)}
@@ -835,6 +840,35 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     <div class="pad">
       <div class="note">Generate a master wallet, send it <b>ETH (RH)</b>, then press <b>PLAY</b>. It spins up hidden wallets that buy <b>$SWOGE</b> and pass the funds around to make real on-chain volume — all in the background. Press <b>STOP</b> and everything — ETH (RH) and tokens — is swept back to your master wallet.</div>
       <div id="ocMaster" style="margin-top:12px"></div>
+
+      <!-- ==================== ALIMENTER SANS COPIER-COLLER ====================
+           « J'aimerais que le master wallet, ça soit possible d'utiliser son
+             compte email ou de connecter son wallet. Tu penses que c'est
+             possible ? »
+
+           En partie, et c'est la partie qui compte. Le master ne PEUT PAS
+           etre le compte connecte : l'anneau signe des centaines de fois sans
+           personne devant l'ecran, et un portefeuille de navigateur demande
+           une confirmation a chaque fois. Cent fenetres a cliquer, ce n'est
+           pas une fonction, c'est une punition.
+
+           Ce qui est faisable et utile : la SEULE signature qui compte, celle
+           qui remplit le master. Se connecter, taper un montant, signer une
+           fois. Plus d'adresse a recopier a la main dans MetaMask — et c'est
+           exactement la ou l'on se trompe et ou l'argent part chez personne.
+           Le retour se fait deja par « Cash out », et l'adresse du compte
+           connecte s'y inscrit toute seule. -->
+      <label style="display:block;font-size:11px;color:var(--dim);margin:16px 0 6px;text-transform:uppercase;letter-spacing:.06em">Fund the master — from your own account, one signature</label>
+      <div class="btnrow" id="ocFundRow" style="gap:8px;align-items:center;flex-wrap:wrap">
+        <button id="ocCxWallet" class="ghost">Connect wallet</button>
+        <button id="ocCxEmail" class="ghost">Sign in with email</button>
+        <input id="ocFundAmt" type="number" min="0.0001" step="0.001" value="0.03"
+               style="width:110px;padding:10px;border-radius:8px;border:1px solid #E1E9F6;background:#FFFFFF;color:#0B1B36;font-family:inherit">
+        <span style="font-size:11px;color:var(--dim)">ETH (RH)</span>
+        <button id="ocFund" disabled>Send to master →</button>
+      </div>
+      <div class="note" id="ocCxNote">Not connected. You can also just send ETH (RH) to the address above from anywhere.</div>
+
       <div class="btnrow" style="margin-top:12px;align-items:center;gap:12px">
         <button id="ocGen" class="plate md" title="Generate master wallet"><img src="img/b496fdde6c48.png" alt="Generate master wallet"></button>
         <label style="font-size:11px;color:var(--dim)">Hidden wallets <input id="ocN" type="number" min="2" max="100" value="100" style="width:66px;margin-left:6px"></label>
@@ -894,6 +928,15 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       <div class="btnrow" style="gap:8px;align-items:center">
         <input id="ocExt" placeholder="0x your external wallet…" style="flex:1;padding:10px;border-radius:8px;border:1px solid #E1E9F6;background:#FFFFFF;color:#0B1B36;font-family:inherit">
         <button id="ocSend">Send →</button>
+      </div>
+      <!-- ---- OU SONT LES CLES, ET COMMENT EN GARDER UNE COPIE ----
+           Le fichier part tout seul a la creation ; un navigateur peut le
+           refuser, et cette ligne dit alors ce qui reste sur l'appareil. Le
+           bouton repropose le fichier a tout moment : un secours qu'on ne
+           peut demander qu'une fois n'est pas un secours. -->
+      <div class="note" id="ocSecours" style="margin-top:12px">No wallet on this device yet.</div>
+      <div class="row" style="margin-top:8px">
+        <button id="ocBackup" class="ghost">Backup keys (.csv)</button>
       </div>
       <div class="note" id="ocStatus" style="margin-top:12px">Idle.</div>
       <div class="note" style="margin-top:8px;color:var(--danger)">⚠️ Real funds on a live chain — test with a tiny amount first. Manufacturing trading volume may break platform rules or local laws; only run it where you are authorised.</div>
@@ -1125,6 +1168,10 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 
 <script>
 /* ───────────── réseaux ───────────── */
+/* Le meme identifiant que le reste du site : c'est le meme compte, et un
+   second identifiant creerait un second compte pour la meme personne. */
+const PRIVY_APP_ID = 'cmsga0yzp00a50biaf9vlzzd2';
+
 const NETS = {
   /* `sym` est ce que la CHAINE declare ; `symAff` ce que le joueur LIT.
      « ETH » tout court se confond avec l'ether du reseau principal, et ici
@@ -2000,6 +2047,9 @@ function renderMaster(){
     + `<button class="mini" data-copy="${w.pk}">copy</button></div>`;
   const r=$("#ocRefresh"); if(r) r.onclick=async()=>{ await refreshOne(mi); renderMaster(); };
   const s=$("#ocShow"); if(s) s.onclick=()=>{ w.revealed=!w.revealed; renderMaster(); };
+  /* Le bouton « Send to master » n'a de sens qu'une fois le master cree :
+     l'activer avant laisserait signer un envoi vers rien. */
+  if(typeof cxMaj === "function") cxMaj();
 }
 document.addEventListener("click", e=>{
   const b = e.target.closest("#oneClick [data-copy]"); if(!b) return;
@@ -2390,21 +2440,145 @@ async function runTurboRing(){
 }
 
 
+/* ═══════════ LE RETOUR DES FONDS ═══════════
+ *
+ * ---- LE DEFAUT SIGNALE ----
+ *
+ * « Quand on stop, parfois les jetons sont dans un wallet et l'ETH dans un
+ *   autre. Du coup ca renvoie l'ETH au master mais les jetons restent bloques,
+ *   car y'a pas d'ETH dans le wallet. »
+ *
+ * C'est exactement ce qui se passait, et la cause tient en une phrase : un
+ * transfert d'ERC-20 SE PAIE EN ETH. Un wallet de l'anneau qui finit son tour
+ * avec des jetons mais sans gas ne peut plus rien envoyer — et l'ancienne
+ * boucle appelait `sweep` dessus, le transfert echouait faute de fonds,
+ * l'erreur etait avalee par un `catch` vide, et l'ecran annoncait quand meme
+ * « Done — funds returned to the master wallet ».
+ *
+ * Deux fautes, et la seconde est la pire : les jetons restaient la, et rien ne
+ * le disait. Un solde bloque qu'on croit rendu ne se cherche jamais.
+ *
+ * ---- CE QUI EST FAIT MAINTENANT ----
+ *
+ * On regarde d'abord OU EST QUOI. Un tour de lecture sur tous les wallets de
+ * l'anneau, et l'on sait pour chacun ce qu'il tient en jetons et en ETH.
+ *
+ * Ensuite on RAVITAILLE : chaque wallet qui porte des jetons sans de quoi
+ * payer leur transfert recoit juste ce qu'il faut de gas — depuis le master
+ * s'il en a, sinon depuis un wallet de l'anneau qui en a de reste. C'est le
+ * seul ordre qui marche : envoyer le gas AVANT de vider, jamais apres.
+ *
+ * Puis on vide, jetons d'abord et ETH ensuite. Et l'on recommence tant que
+ * quelque chose bouge — un ravitaillement peut echouer au premier tour parce
+ * que le master etait encore en train d'etre rempli par un autre.
+ *
+ * ---- ET CE QUI RESTE EST DIT ----
+ *
+ * Si a la fin il reste des jetons quelque part, l'ecran le NOMME, avec le
+ * nombre de wallets concernes et le geste qui les debloque. « Done » sur un
+ * solde bloque est le pire message possible.
+ */
+
+/* Ce qu'un transfert d'ERC-20 coute ici, avec de la marge. `GAZ.erc20` est une
+   mesure faite sur cette chaine ; on triple pour couvrir la part L1 d'un
+   rollup Orbit, qui varie d'un bloc a l'autre. Envoyer trop peu de gas serait
+   payer un transfert pour rien. */
+async function gazPourUnTransfert(){
+  const p = provider();
+  let fee;
+  try{ const fd = await p.getFeeData(); fee = fd.maxFeePerGas || fd.gasPrice; }
+  catch(e){ fee = await p.getGasPrice(); }
+  return ethers.BigNumber.from(GAZ.erc20).mul(fee).mul(3);
+}
+
+/* Envoie du gas a un wallet de l'anneau, depuis la meilleure source
+   disponible. Rend `true` si le gas est arrive. */
+async function ravitaille(idx, besoin, sources){
+  const cible = wallets[idx];
+  for(const si of sources){
+    if(si === idx) continue;
+    const s = wallets[si]; if(!s || s.watch) continue;
+    let solde;
+    try{ solde = await provider().getBalance(s.address); }catch(e){ continue; }
+    /* La source doit pouvoir payer SON propre transfert en plus du don. */
+    const garde = besoin.div(2);
+    if(solde.lte(besoin.add(garde))) continue;
+    try{
+      setStatus(idx, "receiving gas to move its tokens…");
+      const sig = new ethers.Wallet(s.pk, provider());
+      const tx = await sig.sendTransaction({ to: cible.address, value: besoin });
+      await tx.wait();
+      await refreshOne(idx);
+      return true;
+    }catch(e){ /* source suivante */ }
+  }
+  return false;
+}
+
 async function turboSweepBack(){
   if(!turbo) return;
   const master = wallets[turbo.master];
-  turboSay('<span class="spin"></span> returning all funds to the master wallet…');
+  const bloques = [];
+  turboSay('<span class="spin"></span> reading every ring wallet — where are the tokens, where is the gas…');
+
+  /* 1. OU EST QUOI. Sans cette lecture on ravitaille a l'aveugle. */
+  for(const idx of turbo.subs){ if(wallets[idx]) { try{ await refreshOne(idx); }catch(e){} } }
+
+  let besoin;
+  try{ besoin = await gazPourUnTransfert(); }
+  catch(e){ besoin = ethers.BigNumber.from("300000000000000"); }
+
+  /* 2. RAVITAILLER, PUIS VIDER. Deux passes : la premiere libere du gas en
+     vidant les wallets qui en ont, la seconde s'en sert. */
+  for(let passe = 0; passe < 2; passe++){
+    for(const idx of turbo.subs){
+      const w = wallets[idx]; if(!w) continue;
+      if(turbo.cancelDur) break;
+      try{ await refreshOne(idx); }catch(e){}
+      const tok = (token && w.tokRaw) ? BigInt(w.tokRaw) : 0n;
+      const eth = BigInt(w.balRaw || "0x0");
+      if(tok === 0n && eth === 0n) continue;
+
+      /* Des jetons sans de quoi payer leur transfert : c'est LE cas du bug. */
+      if(tok > 0n && ethers.BigNumber.from(w.balRaw || "0x0").lt(besoin)){
+        turboSay('<span class="spin"></span> wallet ' + (idx+1)
+          + ' holds tokens but no gas — sending it just enough to move them…');
+        const sources = [turbo.master].concat(turbo.subs);
+        const ok = await ravitaille(idx, besoin, sources);
+        if(!ok){ bloques.push(idx); continue; }
+      }
+      try{ await sweep(idx, {toAddr: master.address, destLabel:"master", noConfirm:true}); }
+      catch(e){ /* on note plus bas ce qui reste vraiment */ }
+    }
+  }
+
+  /* 3. CE QUI RESTE VRAIMENT, relu et non deduit. */
+  let resteTok = 0, resteEth = 0;
   for(const idx of turbo.subs){
     const w = wallets[idx]; if(!w) continue;
     try{ await refreshOne(idx); }catch(e){}
-    const hasTok = token && w.tokRaw && BigInt(w.tokRaw) > 0n;
-    const hasEth = BigInt(w.balRaw || "0x0") > 0n;
-    if(hasTok || hasEth){ try{ await sweep(idx, {toAddr: master.address, destLabel:"master", noConfirm:true}); }catch(e){} }
+    if(token && w.tokRaw && BigInt(w.tokRaw) > 0n) resteTok++;
+    if(BigInt(w.balRaw || "0x0") > 0n) resteEth++;
   }
+
   turbo.running = false;
   $("#ocPlay").disabled = false; $("#ocStop").disabled = true;
-  turboSay(`Done — funds returned to the master wallet after ${turbo.hops} hop(s). You can PLAY again.`);
   try{ await refreshOne(turbo.master); }catch(e){}
+
+  if(resteTok){
+    turboSay('<b>' + resteTok + ' wallet' + (resteTok>1?"s":"") + ' still hold'
+      + (resteTok>1?"":"s") + ' ' + (token ? token.symbol : "tokens") + '.</b> '
+      + 'Moving an ERC-20 costs gas, and those wallets have none — the ring could not spare '
+      + 'any. Send a little ETH (RH) to the master wallet and press <b>STOP</b> again: it will '
+      + 'refuel them and bring everything back. Nothing is lost — the keys are yours.');
+  } else if(resteEth){
+    turboSay('Tokens are back. ' + resteEth + ' wallet' + (resteEth>1?"s":"")
+      + ' still hold' + (resteEth>1?"":"s") + ' dust too small to cover its own transfer fee — '
+      + 'that is normal, and it is written here rather than swept under the rug.');
+  } else {
+    turboSay('Done — everything is back on the master wallet after ' + turbo.hops
+      + ' hop(s). You can PLAY again.');
+  }
   renderMaster(); autoSave();
 }
 
@@ -2415,19 +2589,228 @@ function turboStop(){
   if(!turbo.running) turboSweepBack();
 }
 
+/* ═══════════ LES CLES NE PEUVENT PLUS SE PERDRE EN SILENCE ═══════════
+ *
+ * ---- LE DEFAUT SIGNALE ----
+ *
+ * « Une personne n'a pas appuye sur oui pour telecharger le fichier qui
+ *   enregistre ses wallets. Ca ne devrait meme pas demander : au lancement, ca
+ *   les telecharge tout seul. »
+ *
+ * Le telechargement partait bien tout seul — mais un navigateur peut le
+ * refuser, et surtout RIEN d'autre ne gardait ces cles. `autoSave()` ne fait
+ * quelque chose que si un coffre chiffre a deja ete cree avec une phrase de
+ * passe ; sans coffre, il ne fait rien du tout, en silence. Un rafraichissement
+ * de la page, et cent cles privees tenant de l'argent disparaissaient.
+ *
+ * On ne peut pas retirer la question du navigateur : elle ne nous appartient
+ * pas. Ce qu'on peut, et ce qu'il fallait faire, c'est que la refuser ne coute
+ * plus rien.
+ *
+ * ---- CE QUI EST FAIT ----
+ *
+ * Les cles de l'anneau sont ECRITES sur l'appareil des leur creation, coffre
+ * ou pas. Quand un coffre existe, elles y vont chiffrees comme le reste. Quand
+ * il n'y en a pas, elles vont dans un filet de secours EN CLAIR — et la page
+ * le dit dans ces mots-la, avec le geste pour le chiffrer.
+ *
+ * Ce choix se discute, alors il est ecrit : des cles en clair sur l'appareil
+ * sont lisibles par qui a acces au profil du navigateur. Mais ce sont des
+ * wallets jetables, remplis pour quelques minutes depuis le master, et
+ * l'alternative n'etait pas « plus sur » — c'etait « perdu a coup sur au
+ * premier rechargement ». Entre un risque conditionnel et une perte certaine,
+ * on choisit, et on le dit.
+ */
+const SECOURS_KEY = "wallet_bench_secours_v1";
+
+function ecritSecours(){
+  if(!storageOK()) return;
+  try{
+    const l = wallets.filter(w => w.pk).map(w => ({ a:w.address, k:w.pk, h:!!w.hidden, m:!!w.master }));
+    /* ---- VIDER LE BANC VIDE AUSSI LE FILET ----
+     * Sinon « Bring back to zero » effacerait l'ecran et le rechargement
+     * ferait revenir les memes wallets : le joueur croirait avoir tout efface
+     * et ses cles seraient toujours la. Un effacement qui n'efface pas est
+     * pire qu'un effacement refuse. */
+    if(!l.length){ oublieSecours(); return; }
+    localStorage.setItem(SECOURS_KEY, JSON.stringify({ t: Date.now(), n: l.length, l }));
+  }catch(e){}
+}
+function litSecours(){
+  try{ return JSON.parse(localStorage.getItem(SECOURS_KEY) || "null"); }catch(e){ return null; }
+}
+function oublieSecours(){ try{ localStorage.removeItem(SECOURS_KEY); }catch(e){} }
+
+/* Ce que la page dit du filet, et il faut que ce soit exact : annoncer un
+   secours qui n'existe pas est pire que ne rien annoncer. */
+function majSecours(){
+  const el = $("#ocSecours"); if(!el) return;
+  const m = litSecours();
+  if(!storageOK()){
+    el.className = "note bad";
+    el.innerHTML = "This browser blocks local storage, so <b>nothing is kept here</b>. "
+      + "The keys CSV your browser offered is the only copy — if you dismissed it, press "
+      + "<b>Backup keys</b> below before funding anything.";
+    return;
+  }
+  if(!m){ el.className = "note"; el.textContent = "No wallet on this device yet."; return; }
+  const quand = new Date(m.t).toLocaleString();
+  el.className = vaultPass ? "note ok" : "note warn";
+  el.innerHTML = vaultPass
+    ? `<b>${m.n} key${m.n>1?"s":""} kept on this device</b>, encrypted in your vault · ${quand}. `
+      + `A refused download costs nothing.`
+    : `<b>${m.n} key${m.n>1?"s":""} kept on this device — in the clear</b> · ${quand}. `
+      + `They survive a reload, which is what matters most here. To encrypt them, set a `
+      + `passphrase in the <b>Vault</b> panel. Anyone with access to this browser profile can `
+      + `read them until you do.`;
+}
+
+/* Le telechargement part tout seul ; s'il est refuse, ce bouton le repropose,
+   et il reste a l'ecran. Un secours qu'on ne peut demander qu'une fois n'est
+   pas un secours. */
 function downloadKeysCSV(indices){
   try{
-    const rows = [["index","address","privateKey"]].concat(
-      indices.map((idx,k)=>[k+1, wallets[idx].address, wallets[idx].pk]));
+    const src = (indices && indices.length)
+      ? indices.map((idx,k)=>[k+1, wallets[idx].address, wallets[idx].pk])
+      : wallets.filter(w=>w.pk).map((w,k)=>[k+1, w.address, w.pk]);
+    if(!src.length){ toast("No key to save yet"); return; }
+    const rows = [["index","address","privateKey"]].concat(src);
     const csv = rows.map(r=>r.map(x=>`"${String(x).replace(/"/g,'""')}"`).join(",")).join("\r\n");
     const blob = new Blob([csv], {type:"text/csv"});
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "swoge-oneclick-keys-" + indices.length + "-wallets.csv";
+    a.download = "swoge-keys-" + src.length + "-wallets.csv";
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(()=>URL.revokeObjectURL(a.href), 4000);
-    toast("Private keys CSV downloaded — keep it safe");
+    toast("Keys CSV downloaded — keep it safe");
   }catch(e){ toast("Could not build the keys CSV"); }
+}
+
+/* ═══════════ SE CONNECTER POUR ALIMENTER LE MASTER ═══════════
+ *
+ * Deux chemins, les memes que partout ailleurs sur le site : le portefeuille
+ * du navigateur, ou le compte courriel (Privy, qui rend un fournisseur
+ * EIP-1193 comme un autre — c'est deja ce que fait `swoge_wallet.html`).
+ *
+ * ---- CE QUE CE COMPTE FAIT, ET CE QU'IL NE FAIT PAS ----
+ *
+ * Il envoie de l'ETH (RH) au master, une fois, en signant une fois. Il n'EST
+ * pas le master : l'anneau signe des centaines de fois sans personne devant
+ * l'ecran, et aucun de ces deux chemins ne signe sans confirmation. Le dire
+ * ici plutot que de le laisser decouvrir a la centieme fenetre.
+ */
+let cxProvider = null, cxAdresse = null, cxComment = null;
+
+function cxDit(txt, cls){
+  const e = $("#ocCxNote"); if(!e) return;
+  e.className = "note" + (cls ? " " + cls : "");
+  e.innerHTML = txt;
+}
+function cxMaj(){
+  const b = $("#ocFund");
+  if(b) b.disabled = !cxAdresse || masterIdx() < 0;
+  if(!cxAdresse){
+    cxDit("Not connected. You can also just send ETH (RH) to the address above from anywhere.");
+    return;
+  }
+  const court = cxAdresse.slice(0,6) + "…" + cxAdresse.slice(-4);
+  cxDit(`Connected by ${cxComment} — <b>${court}</b>. One signature sends the amount to the `
+    + `master wallet. This account is <b>not</b> the master: the ring signs hundreds of times on `
+    + `its own, and a browser wallet asks every single time.`
+    + (masterIdx() < 0 ? " Generate the master wallet first." : ""), "ok");
+  /* Le retour va la d'ou l'argent vient : c'est presque toujours ce qu'on
+     veut, et ca reste modifiable. */
+  const ext = $("#ocExt");
+  if(ext && !ext.value.trim()) ext.value = cxAdresse;
+}
+
+async function cxBascule(eth){
+  const hex = "0x" + NETS[net].chainId.toString(16);
+  try{ await eth.request({ method:"wallet_switchEthereumChain", params:[{ chainId:hex }] }); }
+  catch(err){
+    if(err && (err.code === 4902 || (err.data && err.data.originalError && err.data.originalError.code === 4902))){
+      await eth.request({ method:"wallet_addEthereumChain", params:[{
+        chainId:hex, chainName:NETS[net].name,
+        nativeCurrency:{ name:"Ether", symbol:NETS[net].sym, decimals:18 },
+        rpcUrls:[NETS[net].rpc[0]], blockExplorerUrls:[NETS[net].scan.replace("/address/","")]
+      }]});
+    } else throw err;
+  }
+}
+
+async function cxWallet(){
+  if(!window.ethereum) return cxDit("No browser wallet found here. Install one, or send ETH (RH) "
+    + "to the address above from anywhere.", "warn");
+  try{
+    const c = await window.ethereum.request({ method:"eth_requestAccounts" });
+    await cxBascule(window.ethereum);
+    cxProvider = window.ethereum; cxAdresse = ethers.utils.getAddress(c[0]); cxComment = "wallet";
+    cxMaj();
+  }catch(e){ cxDit("Connection refused or cancelled.", "warn"); }
+}
+
+let cxPrivyCharge = false;
+function cxChargePrivy(){
+  return new Promise((res, rej) => {
+    if(window.SwogePrivy){ try{ SwogePrivy.init(PRIVY_APP_ID); }catch(e){} return res(); }
+    if(cxPrivyCharge) return res();
+    const sc = document.createElement("script");
+    sc.src = "privy-swoge.js?v=2b2002d4";
+    sc.onload = () => { cxPrivyCharge = true; try{ SwogePrivy.init(PRIVY_APP_ID); }catch(e){} res(); };
+    sc.onerror = () => rej(new Error("load failed"));
+    document.head.appendChild(sc);
+  });
+}
+
+async function cxEmail(){
+  cxDit('<span class="spin"></span> loading the email sign-in…');
+  try{ await cxChargePrivy(); }
+  catch(e){ return cxDit("Could not load the email sign-in.", "bad"); }
+  try{
+    /* Deja connecte ailleurs sur le site : on n'en redemande pas. */
+    try{ await SwogePrivy.restore(); }catch(e){}
+    if(!SwogePrivy.isLoggedIn()){
+      const mail = prompt("Your email address:");
+      if(!mail) return cxMaj();
+      await SwogePrivy.sendCode(mail.trim());
+      const code = prompt("The 6-digit code we just sent you:");
+      if(!code) return cxMaj();
+      await SwogePrivy.verifyCode(mail.trim(), code.trim());
+    }
+    cxProvider = SwogePrivy.getProvider();
+    cxAdresse = ethers.utils.getAddress(SwogePrivy.getAddress());
+    cxComment = "email";
+    try{ await cxBascule(cxProvider); }catch(e){}
+    cxMaj();
+  }catch(e){ cxDit("Sign-in failed: " + (e && e.message ? e.message : "unknown"), "bad"); }
+}
+
+async function cxAlimente(){
+  const mi = masterIdx();
+  if(mi < 0) return toast("Generate the master wallet first");
+  if(!cxProvider || !cxAdresse) return toast("Connect an account first");
+  const brut = ($("#ocFundAmt").value || "").replace(",", ".");
+  const montant = parseFloat(brut);
+  if(!(montant > 0)) return toast("Enter an amount");
+  let val;
+  try{ val = ethers.utils.parseEther(String(brut)); }catch(e){ return toast("Amount not understood"); }
+  cxDit('<span class="spin"></span> waiting for your signature…');
+  try{
+    await cxBascule(cxProvider);
+    const p = new ethers.providers.Web3Provider(cxProvider, "any");
+    const sg = p.getSigner();
+    const tx = await sg.sendTransaction({ to: wallets[mi].address, value: val });
+    const url = NETS[net].scan.replace("/address/","/tx/") + tx.hash;
+    cxDit(`Sent — waiting for the chain… <a href="${url}" target="_blank" rel="noopener">↗</a>`);
+    await tx.wait();
+    cxDit(`<b>${brut} ${NETS[net].symAff || NETS[net].sym} is on the master wallet.</b> `
+      + `<a href="${url}" target="_blank" rel="noopener">↗</a>`, "ok");
+    await refreshOne(mi); renderMaster();
+  }catch(e){
+    const m = String((e && (e.reason || e.message)) || e);
+    cxDit(/user rejected|denied/i.test(m) ? "You cancelled the signature — nothing was sent."
+                                          : "Refused: " + m.slice(0, 140), "warn");
+  }
 }
 
 async function turboSendExternal(){
@@ -2447,13 +2830,22 @@ async function turboSendExternal(){
 (function(){
   const gen = $("#ocGen"), play = $("#ocPlay"), stop = $("#ocStop"), send = $("#ocSend");
   if(send) send.onclick = turboSendExternal;
+  const bk = $("#ocBackup");
+  if(bk) bk.onclick = () => downloadKeysCSV(null);   // null : tout ce qu'on tient
+  const cw = $("#ocCxWallet"); if(cw) cw.onclick = cxWallet;
+  const ce = $("#ocCxEmail");  if(ce) ce.onclick = cxEmail;
+  const cf = $("#ocFund");     if(cf) cf.onclick = cxAlimente;
   if(gen) gen.onclick = () => {
     if(masterIdx() >= 0) return;
     if(typeof ethers === "undefined") return toast("ethers.js failed to load");
     if(NETS[net].live && !confirm(`${NETS[net].name} is a live network.\n\nA browser-generated key should only hold what you're about to play with. Generate the master wallet?`)) return;
     const w = ethers.Wallet.createRandom();
     wallets.push({address:w.address, pk:w.privateKey, mnemonic:w.mnemonic?.phrase, watch:false, hidden:false, master:true, revealed:false, pct:98, balRaw:null, nonce:null, tokRaw:null, busy:false, status:""});
-    autoSave(); render(); renderMaster(); refreshOne(wallets.length-1).then(renderMaster);
+    ecritSecours(); autoSave(); majSecours();
+    render(); renderMaster(); refreshOne(wallets.length-1).then(renderMaster);
+    /* Le master aussi part en fichier, sans qu'on le demande : c'est LUI qui
+       tient l'argent entre deux parties. */
+    downloadKeysCSV([wallets.length-1]);
     toast("Master wallet created — send it ETH (RH)");
   };
   if(play) play.onclick = turboPlay;
@@ -2562,6 +2954,11 @@ async function saveVault(password){
   }));
 }
 async function autoSave(){
+  /* Le filet AVANT le coffre, et sans condition : il est le seul a marcher
+     quand aucune phrase de passe n'a ete posee, c'est-a-dire au moment ou
+     l'on vient de creer cent cles et ou l'on n'a encore rien range. */
+  ecritSecours();
+  if(typeof majSecours === "function") majSecours();
   if(!vaultPass || !storageOK() || !cryptoOK()) return;
   try{ await saveVault(vaultPass); vaultInfo(); }catch(e){}
 }
@@ -2820,7 +3217,28 @@ $("#loadTokQuick").onclick = async () => {
 };
 $("#tokQuick").addEventListener("keydown", e => { if(e.key==="Enter") $("#loadTokQuick").click(); });
 
-render(); vaultInfo();
+/* ---- LE FILET SE RELIT AU DEMARRAGE ----
+ * Sans cette reprise, l'ecriture ne servirait a rien : les cles seraient sur
+ * l'appareil et la page repartirait vide. On ne reprend QUE ce qui manque —
+ * un coffre deja ouvert a la priorite, c'est la meme cle sous une meilleure
+ * garde. */
+(function repriseSecours(){
+  const m = litSecours();
+  if(!m || !m.l || !m.l.length) return;
+  const connus = new Set(wallets.map(w => String(w.address).toLowerCase()));
+  let repris = 0;
+  for(const e of m.l){
+    if(!e || !e.k || !e.a) continue;
+    if(connus.has(String(e.a).toLowerCase())) continue;
+    wallets.push({address:e.a, pk:e.k, mnemonic:null, watch:false, hidden:!!e.h,
+                  master:!!e.m, revealed:false, pct:98, balRaw:null, nonce:null,
+                  tokRaw:null, busy:false, status:""});
+    repris++;
+  }
+  if(repris) toast(repris + " wallet" + (repris>1?"s":"") + " recovered from this device");
+})();
+
+render(); vaultInfo(); majSecours(); renderMaster();
 
 // auto-chargement : les contrats Uniswap de Robinhood Chain sont connus,
 // on les vérifie puis on charge le token par défaut, sans clic manuel

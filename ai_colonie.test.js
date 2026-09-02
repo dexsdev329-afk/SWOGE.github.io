@@ -465,10 +465,31 @@ async function contrat() {
     Object.defineProperty(navigator, 'clipboard', { get() { throw new Error('absent'); },
                                                     configurable: true });
   });
-  const avant = await page.evaluate(() => document.querySelector('#positions .adr button').textContent);
-  await page.click('#positions .adr button');
-  await page.waitForTimeout(150);
-  const apres = await page.evaluate(() => document.querySelector('#positions .adr button').textContent);
+  /* ---- ET IL FAUT OUVRIR LE PANNEAU POUR L'ATTEINDRE ----
+   * Depuis que la colonne part entierement repliee, le contenu d'un panneau
+   * ferme est `display:none` : Playwright ne peut pas cliquer dessus, et un
+   * lecteur non plus. Ce n'est pas un defaut a contourner, c'est le
+   * comportement voulu — on l'ouvre donc comme le ferait quelqu'un, par son
+   * titre, ce qui verifie au passage que le geste marche. */
+  await page.evaluate(() => {
+    const c = document.querySelector('.card[data-pan="positions"]');
+    if (c && c.classList.contains('plie')) c.querySelector('h2').click();
+  });
+  await page.waitForTimeout(120);
+  /* ---- LE CLIC ET LA LECTURE DANS LE MEME SOUFFLE ----
+   * `#positions` est repeint chaque seconde. Cliquer, attendre, puis relire
+   * laissait un repaint passer entre les deux : le bouton avait bien repondu,
+   * mais on interrogeait ensuite un bouton NEUF, qui n'avait rien vu. L'essai
+   * echouait une fois sur trois selon la phase de l'horloge — et pour une
+   * raison qui n'avait rien a voir avec ce qu'il mesure. Tout dans un seul
+   * `evaluate` : le JavaScript est a un seul fil, aucun repaint ne s'y
+   * glisse. */
+  const [avant, apres] = await page.evaluate(() => {
+    const b = document.querySelector('#positions .adr button');
+    const a = b.textContent;
+    b.click();
+    return [a, b.textContent];
+  });
   console.log('   sans presse-papier : « ' + avant + ' » → « ' + apres + ' »');
   ok(apres !== avant,
      'meme sans presse-papier, le bouton REPOND quelque chose (« ' + apres + ' »)');
@@ -709,6 +730,76 @@ async function panneauAlertes() {
     ok(v.alerteCachee, 'et elle disparait quand la colonie n a besoin de rien');
     await page.context().close();
   }
+
+  /* ---- LA COLONNE EST REPLIEE, ET « CE QU IL LUI FAUT » EST EN BAS ----
+   *
+   * « Met le tout en bas comme bloque et tous les blocs sont fermes de base,
+   *   faut cliquer sur le petit bouton pour les ouvrir. »
+   *
+   * Deux choses a tenir, et elles se defont facilement l'une sans l'autre :
+   * un panneau qu'on ajoute en oubliant qu'il part replie s'ouvre tout seul,
+   * et un panneau replie SANS bouton visible est un panneau perdu — c'est le
+   * risque exact de tout fermer par defaut. On verifie donc les deux, plus le
+   * fait que le choix d'ouvrir survit au rechargement : sinon chaque visite
+   * redemanderait le meme clic. */
+  console.log('\n-- la colonne repliee --');
+  {
+    const { page, boum } = await ouvre(nav, port, {});
+    const p = await page.evaluate(() => {
+      const c = [...document.querySelectorAll('.card[data-pan]')];
+      const h = c[0].querySelector('h2');
+      const ap = getComputedStyle(h, '::after');
+      return {
+        pans: c.map((x) => x.dataset.pan),
+        ouverts: c.filter((x) => !x.classList.contains('plie')).map((x) => x.dataset.pan),
+        /* Le compteur reste lisible replie : c'est lui qui dit ce qu'il y a
+           dedans, et donc s'il vaut la peine d'etre ouvert. On compte ceux qui
+           EN ONT un — « Agents » n'en a pas, et n'en a pas besoin : la liste
+           des agents ne varie pas d'une seconde a l'autre. Exiger un compteur
+           partout aurait force un chiffre creux sur ce panneau-la. */
+        avecCompteur: c.filter((x) => x.querySelector('h2 .count')).length,
+        compteursVus: c.filter((x) => {
+          const n = x.querySelector('h2 .count');
+          return n && n.offsetParent !== null;
+        }).length,
+        bouton: { w: ap.width, fond: ap.backgroundColor, contenu: ap.content },
+        curseur: getComputedStyle(h).cursor,
+      };
+    });
+    console.log('   ' + JSON.stringify(p.bouton) + ' · ouverts : ' + JSON.stringify(p.ouverts));
+    ok(p.ouverts.length === 0, 'aucun panneau n est ouvert au depart ('
+       + (p.ouverts.join(', ') || 'aucun') + ')');
+    ok(p.pans[p.pans.length - 1] === 'alertes',
+       'et « ce dont la colonie a besoin » est le dernier bloc de la colonne');
+    ok(p.avecCompteur >= p.pans.length - 1 && p.compteursVus === p.avecCompteur,
+       'chaque titre qui a un compteur le garde sous les yeux : replie ne veut pas dire muet ('
+       + p.compteursVus + '/' + p.avecCompteur + ' sur ' + p.pans.length + ' panneaux)');
+    /* Le chevron n'est pas qu'un caractere : il porte une pastille, donc il a
+       une largeur et un fond. Sans ca il ne se lit pas comme un bouton — et
+       quand tout est ferme, c'est la seule chose qui dit que ca s'ouvre. */
+    ok(parseFloat(p.bouton.w) >= 14 && !/^rgba\(0, 0, 0, 0\)$/.test(p.bouton.fond),
+       'le petit bouton se voit vraiment : une pastille, pas un caractere gris ('
+       + p.bouton.w + ', ' + p.bouton.fond + ')');
+    ok(p.curseur === 'pointer', 'et le titre entier se clique');
+
+    /* On l'ouvre, on recharge : il doit etre reste ouvert. */
+    await page.evaluate(() => document.querySelector('.card[data-pan="positions"] h2').click());
+    await page.waitForTimeout(120);
+    const ouvert = await page.evaluate(() =>
+      !document.querySelector('.card[data-pan="positions"]').classList.contains('plie'));
+    ok(ouvert, 'un clic sur le titre ouvre le panneau');
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(700);
+    const apres = await page.evaluate(() => ({
+      pos: !document.querySelector('.card[data-pan="positions"]').classList.contains('plie'),
+      autres: [...document.querySelectorAll('.card[data-pan]')]
+        .filter((x) => x.dataset.pan !== 'positions' && !x.classList.contains('plie')).length,
+    }));
+    ok(apres.pos && apres.autres === 0,
+       'et il reste ouvert a la visite suivante, lui seul — le choix est garde, pas devine');
+    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
+    await page.context().close();
+  }
 }
 
 
@@ -941,7 +1032,7 @@ async function auditDesVetos() {
       return out;
     });
     console.log('   stockage local : ' + JSON.stringify(stock));
-    const PREFS = ['swogeAiLangue', 'swogeAiPanneaux'];
+    const PREFS = ['swogeAiLangue', 'swogeAiPanneaux2'];
     const intrus = Object.keys(stock).filter((k) => PREFS.indexOf(k) < 0);
     ok(intrus.length === 0,
        intrus.length === 0

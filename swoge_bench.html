@@ -388,6 +388,52 @@ body.simple .simplehint{display:block}
 
 /* Les options propres a un mode, et le simulateur. Meme palette AU CLAIR que
    le reste du panneau : blanc sur bleu pale, bordure #E1E9F6, texte marine. */
+/* ---- LES QUATRE TUILES DE MODE ----
+   Une grille qui se replie a une colonne quand le panneau retrecit : a deux
+   colonnes sur 300 px, le texte de chaque tuile tomberait a trois mots par
+   ligne et on ne comparerait plus rien. Le bouton radio natif est cache mais
+   TOUJOURS focusable — c'est lui qui porte le clavier et les fleches, et le
+   remplacer par un `div` aurait coute exactement ca. */
+.ocmodes{ display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:8px; }
+.ocmode{ display:block; cursor:pointer; }
+.ocmode input{ position:absolute; opacity:0; width:0; height:0; }
+.oc-cadre{
+  display:block; padding:11px 12px; border-radius:10px;
+  border:1px solid #E1E9F6; background:#FFFFFF; height:100%;
+  transition:border-color .12s, background .12s, box-shadow .12s;
+}
+.ocmode:hover .oc-cadre{ border-color:#B9CDF2; background:#FBFCFF; }
+.ocmode input:checked + .oc-cadre{
+  border-color:#1B5FE0; background:#F2F7FF; box-shadow:inset 0 0 0 1px #1B5FE0;
+}
+/* Le focus clavier se voit : sans anneau visible, tabuler dans ce groupe
+   deplacerait la selection sans qu'on sache ou l'on est. */
+.ocmode input:focus-visible + .oc-cadre{ outline:2px solid #1B5FE0; outline-offset:2px; }
+.oc-cadre b{
+  display:flex; align-items:center; gap:7px;
+  font-family:'Anton',sans-serif; font-weight:400; font-size:13.5px;
+  letter-spacing:.03em; color:#0B1B36; text-transform:uppercase;
+}
+.ocmode input:checked + .oc-cadre b{ color:#1B5FE0; }
+.oc-tag{
+  font-family:'Space Mono',monospace; font-style:normal; font-size:9px;
+  letter-spacing:.06em; text-transform:uppercase; color:#5F6E88;
+  border:1px solid #E1E9F6; border-radius:999px; padding:1px 6px; background:#F7FAFF;
+}
+.oc-quoi{ display:block; margin-top:6px; font-size:12px; line-height:1.45; color:#0B1B36; }
+.oc-cout{ display:block; margin-top:4px; font-size:11px; line-height:1.45; color:#5F6E88; }
+/* Le `<select>` reste la pour le moteur, mais il sort du regard ET de la
+   tabulation : le laisser tabulable ferait passer deux fois sur le meme
+   choix, une fois invisible. */
+/* `padding` et `border` viennent de la regle `input,select` plus haut, et une
+   largeur de 1 px avec vingt de rembourrage fait toujours vingt-trois pixels
+   a l'ecran : la boite mesure le border-box, pas le contenu. Il faut donc les
+   remettre a zero explicitement, sinon ce `<select>` « cache » reste visible
+   comme une petite barre grise sous les tuiles. */
+.oc-cache{ position:absolute; width:1px; height:1px; overflow:hidden;
+  padding:0; border:0; margin:-1px;
+  clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap; }
+
 .ocopt{ margin-top:10px; padding:11px 12px; border:1px solid #E1E9F6;
   border-radius:10px; background:#F7FAFF; }
 .ocopt[hidden]{ display:none; }
@@ -788,6 +834,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       <a href="index.html"><span class="ic">&#127968;</span>Home</a>
       <a href="games.html"><span class="ic">&#127920;</span>Casino</a>
       <a href="swogebet.html"><span class="ic">&#9917;</span>Sports</a>
+      <a href="swoge_wallet.html"><span class="ic">&#129433;</span>Wallet</a>
       <a href="swoge_ai.html"><span class="ic">&#129302;</span>SWOGE AI</a>
       <a href="whitepaper.html"><span class="ic">&#128220;</span>Docs</a>
     </nav>
@@ -885,27 +932,80 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
            profondeur du pool est lue sur la chaine, le prix du gas est demande
            au reseau, et les couts en gas viennent d `eth_estimateGas` sur
            cette chaine-ci. Voir `simuleBench()`. -->
+      <!-- ---- QUATRE CHOIX QU'ON PEUT COMPARER D'UN COUP D'OEIL ----
+           C'etait une liste deroulante. Trois defauts, et ils tiennent tous
+           au meme fait : une liste deroulante ne montre qu'UNE ligne.
+             — pour comparer quatre modes il fallait les ouvrir, les lire de
+               haut en bas, en choisir un, puis rouvrir pour relire les autres ;
+             — chaque mode devait donc tenir sa description en une ligne, d'ou
+               « biggest $ traded », qui ne dit pas ce que la machine FAIT ;
+             — et la liste ouverte est dessinee par le systeme, pas par nous :
+               aucune de ces lignes ne pouvait etre mise en forme.
+           Quatre tuiles, donc, toutes visibles, chacune avec ce qu'elle fait et
+           ce qu'elle coute. Le `<select>` reste dans la page, cache : c'est lui
+           que le moteur lit et que le portefeuille remplit, et le remplacer
+           aurait demande de changer cinq endroits qui n'ont rien a se dire. -->
       <label style="display:block;font-size:11px;color:var(--dim);margin:16px 0 6px;text-transform:uppercase;letter-spacing:.06em">What are you trying to maximise?</label>
-      <div class="field">
-        <select id="ocMode">
-          <option value="organique" selected>Organic — buy and sell on two different wallets (default)</option>
-          <option value="volume">Maximum volume — biggest $ traded</option>
-          <option value="tx">Maximum transactions — most trades, tiny amounts</option>
-          <option value="holders">Maximum holders — most addresses holding the token</option>
-        </select>
+      <select id="ocMode" class="oc-cache" tabindex="-1" aria-hidden="true">
+        <option value="organique" selected>Organic</option>
+        <option value="volume">Volume</option>
+        <option value="tx">Transactions</option>
+        <option value="holders">Holders</option>
+      </select>
+      <div class="ocmodes" role="radiogroup" aria-label="What are you trying to maximise?">
+        <label class="ocmode">
+          <input type="radio" name="ocmode" value="organique" checked>
+          <span class="oc-cadre">
+            <b>Organic <i class="oc-tag">default</i></b>
+            <span class="oc-quoi">Buys on one wallet, sells on another, around a ring.</span>
+            <span class="oc-cout">Reads like two people trading — not one wallet talking to itself.</span>
+          </span>
+        </label>
+        <label class="ocmode">
+          <input type="radio" name="ocmode" value="volume">
+          <span class="oc-cadre">
+            <b>Volume</b>
+            <span class="oc-quoi">Trades the largest amount the pool will take, every hop.</span>
+            <span class="oc-cout">Most dollars moved, fewest trades. The pool’s 0.30 % is what drains you.</span>
+          </span>
+        </label>
+        <label class="ocmode">
+          <input type="radio" name="ocmode" value="tx">
+          <span class="oc-cadre">
+            <b>Transactions</b>
+            <span class="oc-quoi">Many tiny trades instead of a few large ones.</span>
+            <span class="oc-cout">Highest trade count, and the priciest: gas costs the same at any size.</span>
+          </span>
+        </label>
+        <label class="ocmode">
+          <input type="radio" name="ocmode" value="holders">
+          <span class="oc-cadre">
+            <b>Holders</b>
+            <span class="oc-quoi">One wallet buys a bag and hands a slice to each new address.</span>
+            <span class="oc-cout">Raises the holder count, not the volume. Each address is a real key.</span>
+          </span>
+        </label>
       </div>
       <div class="ocopt" id="ocOptTx" hidden>
         <label for="ocMiseTx">Amount per trade (ETH (RH))</label>
         <input id="ocMiseTx" type="number" min="0.000001" step="0.00001" value="0.0001">
-        <i>Smaller = more transactions. The pool's 0.30 % is charged only on what you trade,
+        <i>Smaller = more transactions. The pool’s 0.30 % is charged only on what you trade,
            so a tiny trade leaves nothing to pay but the gas — and the gas is the same at any size.</i>
       </div>
       <div class="ocopt" id="ocOptHolders" hidden>
         <label for="ocHolders">How many holders</label>
         <input id="ocHolders" type="number" min="1" max="5000" value="100">
-        <i>One wallet buys a bag, then hands a slice to each fresh address. Their private keys are
-           downloaded as a CSV — the tokens stay recoverable.</i>
+        <!-- ---- CE CHIFFRE N'EST PAS LE NOMBRE DE WALLETS CACHES ----
+             Il a ete lu comme tel, et c'est comprehensible : les deux champs
+             se suivent. Mais ce sont des adresses NEUVES, creees pour
+             l'occasion, et on peut en demander cinq mille avec un anneau de
+             cent. Le dire ici evite de le decouvrir en cherchant des cles. -->
+        <i><b>These are brand-new addresses</b>, not the hidden wallets above — you can ask for more
+           of them than the ring has. Their keys are saved on this device <b>and</b> downloaded as a
+           CSV <b>before the first token is sent</b>, so whatever gets sent stays recoverable. STOP
+           does not sweep them back: a holder that sold would not be a holder.</i>
       </div>
+      <div class="note" id="ocPorteurs" hidden></div>
 
       <!-- ---- LE SIMULATEUR ---- -->
       <label style="display:block;font-size:11px;color:var(--dim);margin:16px 0 6px;text-transform:uppercase;letter-spacing:.06em">Ceiling for a given budget</label>
@@ -2307,6 +2407,76 @@ function alluresRing(){
  * jetons : personne n'aurait jamais pu les recuperer. Ce n'est pas la meme
  * chose de repartir des jetons et de les detruire.
  */
+/* ---- LES CLES DES PORTEURS EXISTENT AVANT LES JETONS, PAS APRES ----
+ *
+ * « Maximum holders, on peut mettre plus de wallets qu'on en genere, du coup
+ *   on n'a pas toutes les cles. »
+ *
+ * C'etait vrai, et c'etait pire que ca. Les adresses des porteurs ne sont pas
+ * les wallets caches de l'anneau : ce sont des adresses NEUVES, creees ici, et
+ * on peut en demander cinq mille quand l'anneau n'en compte que cent. Elles
+ * n'entraient donc ni dans le filet de secours, ni dans le coffre, ni dans
+ * l'export — leur seule trace etait un CSV ecrit A LA FIN de la boucle.
+ *
+ * Ce qui veut dire : fermer l'onglet au 300e envoi sur 5 000, ou refuser le
+ * telechargement, et trois cents adresses tiennent de vrais jetons dont plus
+ * personne n'a la cle. Pas bloques — perdus.
+ *
+ * On inverse donc l'ordre. Les cles sont creees toutes ensemble, ecrites sur
+ * l'appareil et proposees en fichier AVANT qu'un seul jeton bouge. Un envoi
+ * peut echouer, l'onglet peut se fermer, le courant peut sauter : ce qui a ete
+ * envoye est toujours recuperable, parce que la cle etait la avant.
+ *
+ * Elles ont leur propre rangement, `PORTEURS_KEY`, et pas le filet de
+ * l'anneau : `ecritSecours()` reecrit ce dernier depuis `wallets` a chaque
+ * sauvegarde, et y ranger les porteurs les aurait effaces au tour suivant. */
+const PORTEURS_KEY = "wallet_bench_porteurs_v1";
+
+function litPorteurs(){
+  try{ return JSON.parse(localStorage.getItem(PORTEURS_KEY) || "null"); }catch(e){ return null; }
+}
+function ecritPorteurs(liste, jeton){
+  if(!storageOK()) return false;
+  try{
+    const d = litPorteurs();
+    const l = (d && Array.isArray(d.l)) ? d.l : [];
+    const connus = new Set(l.map(x => String(x.a).toLowerCase()));
+    for(const w of liste){
+      if(connus.has(String(w.address).toLowerCase())) continue;
+      l.push({ a: w.address, k: w.pk, t: jeton || "" });
+    }
+    localStorage.setItem(PORTEURS_KEY, JSON.stringify({ t: Date.now(), n: l.length, l }));
+    return true;
+  }catch(e){ return false; }
+}
+/* Ce que la page dit des porteurs gardes. Comme pour l'anneau : annoncer un
+   secours qui n'existe pas est pire que ne rien annoncer. */
+function majPorteurs(){
+  const el = $("#ocPorteurs"); if(!el) return;
+  const d = litPorteurs();
+  if(!d || !d.l || !d.l.length){ el.hidden = true; return; }
+  el.hidden = false;
+  el.className = "note warn";
+  el.innerHTML = `<b>${d.l.length} holder key${d.l.length>1?"s":""} kept on this device</b> from a `
+    + `previous run. They are separate addresses — they are not swept back by STOP, and they are `
+    + `not in the wallets export. `
+    + `<button class="mini" id="ocPorteursCSV" type="button">Download them</button> `
+    + `<button class="mini ghost" id="ocPorteursNon" type="button">Forget them</button>`;
+  const a = $("#ocPorteursCSV");
+  if(a) a.onclick = () => {
+    const rows = [["index","address","private_key","token"]].concat(
+      d.l.map((x,i) => [i+1, x.a, x.k, x.t || ""]));
+    download(`holders_kept_${net}_${Date.now()}.csv`, rows.map(r=>r.join(",")).join("\n"), "text/csv");
+  };
+  const n = $("#ocPorteursNon");
+  if(n) n.onclick = () => {
+    if(!confirm("Forget " + d.l.length + " holder key(s)?\n\nIf any of those addresses still holds "
+      + "tokens, this is the last copy of the only key that can move them. Download them first.")) return;
+    try{ localStorage.removeItem(PORTEURS_KEY); }catch(e){}
+    majPorteurs();
+  };
+}
+
 async function runDistribution(){
   const cible = Math.max(1, Math.min(5000, parseInt(($("#ocHolders")||{}).value) || 100));
   const idx = turbo.subs[0];
@@ -2334,14 +2504,33 @@ async function runDistribution(){
   const signer = new ethers.Wallet(w.pk, p);
   const erc = new ethers.Contract(token.addr,
     ["function transfer(address to, uint256 amount) returns (bool)"], signer);
+
+  /* ---- TOUTES LES CLES D'ABORD, LES JETONS ENSUITE ---- */
+  turboSay(`<span class="spin"></span> creating ${cible} holder key(s) and saving them…`);
   const neufs = [];
-  let faits = 0;
-  for(let k = 0; k < cible && !turbo.cancel; k++){
+  for(let k = 0; k < cible; k++){
     const dest = ethers.Wallet.createRandom();
     neufs.push({address:dest.address, pk:dest.privateKey, mnemonic:dest.mnemonic?.phrase});
+  }
+  const garde = ecritPorteurs(neufs, token.symbol || token.addr);
+  telechargeCles(neufs, "holders");
+  majPorteurs();
+  /* Si NI l'appareil NI le fichier n'ont pu garder les cles, on ne distribue
+     pas. Envoyer des jetons a des adresses dont la cle n'existe nulle part,
+     ce n'est pas repartir des jetons — c'est les detruire, et sans le dire. */
+  if(!garde && !confirm("This browser blocks local storage, so the only copy of these "
+      + cible + " keys is the CSV your browser was just offered.\n\nIf you did not save it, the "
+      + "tokens sent to those addresses are gone for good — nobody will ever hold their keys.\n\n"
+      + "Continue anyway?")){
+    turboSay("stopped before sending anything — no key could be kept.");
+    return turboSweepBack();
+  }
+
+  let faits = 0;
+  for(let k = 0; k < cible && !turbo.cancel; k++){
     try{
-      turboSay(`holder ${k+1}/${cible} · sending ${token.symbol}…`);
-      const tx = await erc.transfer(dest.address, part);
+      turboSay(`holder ${k+1}/${cible} · sending ${token.symbol}… <i>(keys already saved)</i>`);
+      const tx = await erc.transfer(neufs[k].address, part);
       await tx.wait();
       faits++; turbo.hops = faits;
     }catch(e){
@@ -2349,10 +2538,7 @@ async function runDistribution(){
       break;
     }
   }
-  /* Les cles PARTENT, meme si la distribution s'est arretee en route : celles
-     deja servies portent de vrais jetons. */
-  if(neufs.length) telechargeCles(neufs, "holders");
-  turboSay(`${faits} holder(s) created · keys downloaded · sweeping the rest back…`);
+  turboSay(`${faits} holder(s) created · keys were saved before the first send · sweeping the rest back…`);
   await turboSweepBack();
 }
 
@@ -2860,8 +3046,27 @@ async function turboSendExternal(){
     const t = $("#ocOptTx"), h = $("#ocOptHolders");
     if(t) t.hidden = m !== "tx";
     if(h) h.hidden = m !== "holders";
+    /* Les tuiles suivent le `<select>`, et pas l'inverse : lui seul est lu par
+       le moteur, et c'est lui que le portefeuille remplit en deposant son
+       plan. Si les tuiles etaient la verite, un mode arrive du portefeuille
+       s'afficherait sans etre selectionne nulle part. */
+    document.querySelectorAll('.ocmode input[name="ocmode"]').forEach(function(r){
+      r.checked = (r.value === m);
+    });
+    if(m === "holders") majPorteurs();
   }
-  if(sel){ sel.addEventListener("change", majMode); majMode(); }
+  if(sel){ sel.addEventListener("change", majMode); }
+  /* Et le clic sur une tuile ecrit dans le `<select>` puis declenche son
+     `change` : tout ce qui ecoute deja ce champ continue de fonctionner sans
+     rien savoir des tuiles. */
+  document.querySelectorAll('.ocmode input[name="ocmode"]').forEach(function(r){
+    r.addEventListener("change", function(){
+      if(!this.checked || !sel) return;
+      sel.value = this.value;
+      sel.dispatchEvent(new Event("change"));
+    });
+  });
+  if(sel) majMode();
 
   /* ---- LE SIMULATEUR ----
      Il ne devine rien : sans token charge il n'a pas de profondeur de pool, et
@@ -3283,7 +3488,7 @@ $("#tokQuick").addEventListener("keydown", e => { if(e.key==="Enter") $("#loadTo
   if(dit.length) turboSay("Carried over from your wallet: " + dit.join(" · ") + ". Change anything here — this page keeps what you set from now on.");
 })();
 
-render(); vaultInfo(); majSecours(); renderMaster();
+render(); vaultInfo(); majSecours(); majPorteurs(); renderMaster();
 
 // auto-chargement : les contrats Uniswap de Robinhood Chain sont connus,
 // on les vérifie puis on charge le token par défaut, sans clic manuel

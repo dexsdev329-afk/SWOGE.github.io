@@ -213,18 +213,25 @@ var MARQUE_PAGE = '6be83767';
   }
   .card h2 .count{margin-left:auto;color:var(--ink-dim);font-weight:500;letter-spacing:.5px;text-transform:none}
   /* Le chevron dit l'etat ET le geste. Un panneau replie sans marque se lit
-     comme un panneau vide, et l'on croit la donnee perdue. */
+     comme un panneau vide, et l'on croit la donnee perdue.
+     Maintenant que TOUT part replie, il est la seule chose qui dit « ceci
+     s'ouvre » : un simple caractere gris ne le disait pas assez, alors il
+     porte sa pastille et se lit comme le petit bouton qu'il est. */
   .card h2::after{
     /* En CSS un caractere s'echappe `\25BE`, pas `\u25BE` : la seconde forme
        n'est pas une echappement, c'est le texte « u25BE », et c'est ce qui
        s'ecrivait a cote de chaque titre. */
-    content:"\25BE"; font-size:10px; color:var(--ink-faint); margin-left:6px;
-    transition:transform .15s; flex:none;
+    content:"\25BE"; font-size:10px; line-height:18px; text-align:center;
+    color:var(--bleu); margin-left:8px; flex:none;
+    width:18px; height:18px; border-radius:50%;
+    background:rgba(27,95,224,.08); border:1px solid rgba(27,95,224,.16);
+    transition:transform .15s, background .15s;
   }
   .card.plie h2{ margin-bottom:0 }
   .card.plie h2::after{ transform:rotate(-90deg) }
   .card.plie > *:not(h2){ display:none !important }
   .card h2:hover{ color:var(--ink-dim) }
+  .card h2:hover::after{ background:rgba(27,95,224,.16) }
 
   .agent{display:flex; align-items:center; gap:11px; padding:7px 0}
   .agent + .agent{border-top:1px dashed rgba(11,27,54,.05)}
@@ -701,6 +708,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       <a href="index.html"><span class="ic">&#127968;</span>Home</a>
       <a href="games.html"><span class="ic">&#127920;</span>Casino</a>
       <a href="swogebet.html"><span class="ic">&#9917;</span>Sports</a>
+      <a href="swoge_wallet.html"><span class="ic">&#129433;</span>Wallet</a>
       <a href="swoge_ai.html" class="on"><span class="ic">&#129302;</span>SWOGE AI</a>
       <a href="whitepaper.html"><span class="ic">&#128220;</span>Docs</a>
     </nav>
@@ -709,8 +717,12 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
          title="X — @SwoleDogeSwoge">&#120143;</a>
       <a href="https://t.me/swoleswoge" target="_blank" rel="noopener"
          title="Telegram — t.me/swoleswoge">&#9992;</a>
-      <a href="https://dexscreener.com/robinhood/0x8a166fb41cd659a0a43396272ff73973ce29f817"
-         target="_blank" rel="noopener" title="Dexscreener — $SWOGE">&#128200;</a>
+      <!-- La paire est celle des vingt-huit autres pages. Celle qui etait
+           ecrite ici, `0x8a16...`, ne l'etait nulle part ailleurs : un lien
+           qui mene a un autre graphique sur une seule page du site est pire
+           qu'un lien mort, on ne sait pas lequel des deux ment. -->
+      <a href="https://dexscreener.com/robinhood/0x2dc0fb72d9284228046cc95910eeaabebfe48456"
+         target="_blank" rel="noopener" title="Dexscreener — $SWOGE chart">&#128200;</a>
     </div>
   </aside>
 
@@ -787,11 +799,6 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     </div>
 
     <aside class="panel">
-      <div class="card" data-pan="alertes" id="carteAlertes" hidden>
-        <h2><span data-t="tAlertes">What the colony needs</span> <span class="count" id="alerteN">0</span></h2>
-        <div id="alertes"></div>
-      </div>
-
       <!-- Les quatre chiffres sont montes dans la bande. Il reste la courbe,
            qui raconte autre chose : la forme du chemin, pas son bout. -->
       <div class="card" data-pan="courbe">
@@ -857,6 +864,18 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       <div class="card" data-pan="fermees">
         <h2><span data-t="tFermees">Closed positions</span> <span class="count" id="fermN">—</span></h2>
         <div class="feed" id="feed"><div class="empty" data-t="vFeed">No trade yet…</div></div>
+      </div>
+
+      <!-- ---- CE DONT LA COLONIE A BESOIN, TOUT EN BAS ----
+           Ce panneau ne parle pas de ce que la colonie FAIT, il parle de ce
+           qui lui manque : c'est une note de maintenance, pas une donnee de
+           marche. En tete de colonne il poussait les positions et le pipeline
+           vers le bas a chaque alerte, et le regard tombait sur une plainte
+           avant de tomber sur les trades. Il reste visible — il s'ouvre d'un
+           clic comme les autres, et son compteur se lit replie. -->
+      <div class="card" data-pan="alertes" id="carteAlertes" hidden>
+        <h2><span data-t="tAlertes">What the colony needs</span> <span class="count" id="alerteN">0</span></h2>
+        <div id="alertes"></div>
       </div>
 
       <div class="foot" id="foot" data-t="pied"><b>What is real:</b> the tokens, the pools, the prices, the contract safety checks, the holder concentration and the age all come from GeckoTerminal, GoPlus, DexScreener and the blocks of chain 4663 themselves. <b>What is not:</b> no transaction is signed. A position opens at the real price of the moment and closes at the real price of a later reading — that is paper, not execution, and a real buy would also pay gas and slippage. <b>It runs on the server, continuously:</b> the colony does not stop when you close the tab, and everyone sees the same state. This page computes nothing: it asks, and it shows. <b>The agents change their own structure:</b> they reorder their checks on the rejection rates they measured, and an agent whose bucket predicts nothing spawns a specialist that cross-checks it — removed if it does no better. What they cannot change: the safety checks and the stake limits, which live in the code. A system that can learn to lower its own guard always learns it, exactly once. <b>When a reading fails, it is written</b> — and nothing is invented to fill the gap. NFA.</div>
@@ -2361,10 +2380,12 @@ function loop(now){
 
 /* ==================== LES PANNEAUX ====================
  *
- * Quatre ouverts au depart : ce dont la colonie a besoin, ses positions, ce
- * qu'elle regarde en ce moment, et sa courbe. Le reste se replie — ce sont des
- * instruments pour comprendre POURQUOI elle fait ce qu'elle fait, et l'on
- * ouvre un instrument quand on se pose la question.
+ * Tous replies au depart. Ce sont des instruments pour comprendre POURQUOI
+ * la colonie fait ce qu'elle fait, et l'on ouvre un instrument quand on se
+ * pose la question — pas quinze a la fois. Ce qui compte vraiment est deja
+ * hors des panneaux : la tresorerie et les quatre chiffres sont dans la
+ * bande, le village est a l'ecran. Et chaque titre garde son compteur, donc
+ * on voit ce qu'il y a dedans sans l'ouvrir.
  *
  * Ce qui est replie continue d'etre calcule et repeint : le pli est une
  * question d'attention, pas de travail. Et le choix se garde d'une visite a
@@ -2440,8 +2461,17 @@ function poseLangue(l){
   if(b) b.addEventListener("click", () => poseLangue(LANGUE === "fr" ? "en" : "fr"));
 })();
 
-const PANNEAUX_OUVERTS = ["alertes", "positions", "pipeline", "courbe"];
-const CLE_PANNEAUX = "swogeAiPanneaux";
+/* ---- TOUT EST REPLIE AU DEPART ----
+ * « Faut cliquer sur le petit bouton pour les ouvrir. » Les titres restent
+ * tous a l'ecran avec leur compteur — combien de positions, combien de
+ * jetons, combien d'alertes — donc on voit d'un coup d'oeil ce qui vaut la
+ * peine d'etre ouvert, sans faire defiler quinze panneaux deplies.
+ *
+ * La cle a change de nom : les visiteurs d'hier ont un pli enregistre sous
+ * l'ancienne, et l'honorer leur aurait laisse la page telle qu'avant. Une
+ * fois ce nouveau depart pris, leurs propres choix sont a nouveau gardes. */
+const PANNEAUX_OUVERTS = [];
+const CLE_PANNEAUX = "swogeAiPanneaux2";
 
 function litPlis(){
   try{

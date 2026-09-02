@@ -1321,6 +1321,7 @@ body{
     <a href="games.html"><span class="ic">&#127920;</span>Casino</a>
     <a href="swogebet.html"><span class="ic">&#9917;</span>Sports</a>
     <a href="swoge_wallet.html" class="on"><span class="ic">&#129433;</span>Wallet</a>
+    <a href="swoge_ai.html"><span class="ic">&#129302;</span>SWOGE AI</a>
     <a href="whitepaper.html"><span class="ic">&#128220;</span>Docs</a>
   </nav>
   <div class="wl-reseaux">
@@ -3456,13 +3457,52 @@ async function portefeuillePret(eth, adr, comment){
   toast('Connected');
 }
 
+/* ---- ATTENDRE QUE L'EXTENSION SOIT LA ----
+ *
+ * `reprend()` s'executait a la fin du script et lisait `window.ethereum` a cet
+ * instant precis. Une extension qui s'injecte un peu apres — c'est le cas au
+ * reveil de l'onglet, et de plusieurs portefeuilles qui passent par
+ * EIP-6963 — n'existait donc pas encore, et la reconnexion ne se faisait
+ * jamais. Sans un mot : la page s'ouvrait simplement deconnectee.
+ *
+ * On l'attend, brievement, des deux facons que les portefeuilles connaissent :
+ * l'evenement `ethereum#initialized`, et un sondage court pour ceux qui ne
+ * l'emettent pas. Deux secondes au plus — au-dela il n'y a pas d'extension,
+ * et faire patienter plus longtemps quelqu'un qui n'en a pas serait ridicule. */
+function attendEthereum(ms){
+  return new Promise(function(resolve){
+    if(window.ethereum) return resolve(window.ethereum);
+    var fini = false, t0 = Date.now();
+    function fait(){ if(fini) return; fini = true; clearInterval(id);
+      window.removeEventListener('ethereum#initialized', fait); resolve(window.ethereum || null); }
+    window.addEventListener('ethereum#initialized', fait, { once:true });
+    var id = setInterval(function(){
+      if(window.ethereum || Date.now() - t0 > (ms || 2000)) fait();
+    }, 90);
+  });
+}
+
+/* ---- ET SI ELLE EST VERROUILLEE, LE DIRE ----
+ * MetaMask verrouille rend `eth_accounts` = [] alors que le site est TOUJOURS
+ * autorise. La page retombait donc sur « Connect wallet », et il fallait
+ * recliquer a chaque rafraichissement — signale sur PC. Ce n'est pas une
+ * session perdue, c'est un portefeuille ferme : on le dit, et on se rebranche
+ * tout seul des qu'il s'ouvre, par `accountsChanged`. */
+var VERROUILLE = false;
+/* Les libelles qui ne sont PAS un nom : ce sont des etats, et le nom du compte
+   doit pouvoir les remplacer des qu'il existe. */
+var EN_ATTENTE_NOM = ['Not connected', 'Wallet locked'];
+
 /* Reconnexion silencieuse au chargement, si une methode est memorisee. */
 async function reprend(){
   var m=null; try{ m=localStorage.getItem('swogeAuth'); }catch(e){}
-  if(m==='wallet' && window.ethereum){
+  if(m==='wallet'){
+    var eth = await attendEthereum(2000);
+    if(!eth) return;
     try{
-      var c = await window.ethereum.request({ method:'eth_accounts' });
-      if(c && c.length) await portefeuillePret(window.ethereum, c[0], 'wallet');
+      var c = await eth.request({ method:'eth_accounts' });
+      if(c && c.length) await portefeuillePret(eth, c[0], 'wallet');
+      else { VERROUILLE = true; majCompte(); peintAccueil(); }
     }catch(e){}
   } else if(m==='email'){
     try{
@@ -3775,7 +3815,9 @@ function peintAccueil(){
   $('acTotal').textContent = moi ? (complet ? usd(total) : (total>0 ? usd(total) : '—')) : '—';
   /* L'adresse est maintenant en haut, sous le nom : la repeter ici n'ajoute
      rien et vole la place de ce qui compte — savoir si le total est complet. */
-  $('acSous').textContent = !moi ? 'Not connected'
+  $('acSous').textContent = !moi
+    ? (VERROUILLE ? 'Your browser wallet is locked — open it and this reconnects on its own'
+                  : 'Not connected')
     : (complet ? '' : 'Some prices unavailable — this total is partial');
   /* L'equivalent en ETH (RH) : il n'apparait que si les DEUX moities existent
      — un total complet et un prix de l'ether. Sinon il ne s'affiche pas du
@@ -3963,8 +4005,17 @@ function peintProfil(){
   if(!ph) return;
   if(!moi){
     ph.removeAttribute('src'); ph.classList.add('vide');
-    nm.textContent='Not connected';
-    if(rl) rl.textContent='Tap to sign in';
+    /* ---- VERROUILLE N'EST PAS DECONNECTE ----
+       Un portefeuille ferme rend zero compte, exactement comme un site jamais
+       autorise. Dire « Not connected · Tap to sign in » envoyait donc refaire
+       une connexion qui n'avait jamais ete perdue — et c'est ce qu'on refaisait
+       a chaque rafraichissement. Le vrai geste est ailleurs : ouvrir son
+       extension. Des qu'elle s'ouvre, `accountsChanged` nous rebranche sans
+       qu'on touche a rien. */
+    nm.textContent = VERROUILLE ? 'Wallet locked' : 'Not connected';
+    if(rl) rl.textContent = VERROUILLE
+      ? 'Unlock your browser wallet — you stay signed in'
+      : 'Tap to sign in';
     /* ---- PAS D'ADRESSE QUAND IL N'Y EN A PAS ----
        Une carte « YOUR WALLET ADDRESS » vide, avec un bouton « copier » qui
        ne copie rien, promet quelque chose qui n'existe pas encore. */
@@ -3976,8 +4027,14 @@ function peintProfil(){
   if(ca) ca.hidden = false;
   if(ad) ad.textContent = court(moi);
   /* En attendant la reponse, l'adresse abregee : jamais un nom vide, jamais
-     un nom devine. */
-  if(nm.textContent==='Not connected' || !nm.textContent) nm.textContent = court(moi);
+     un nom devine.
+     La liste des libelles a remplacer est ecrite une fois : elle en comptait
+     un seul, et le jour ou « Wallet locked » est apparu, deverrouiller son
+     portefeuille laissait ce mot-la en haut de l'ecran d'un compte pourtant
+     reconnecte. Un etat qui n'est plus vrai et qui reste affiche est pire
+     qu'un champ vide. */
+  if(EN_ATTENTE_NOM.indexOf(nm.textContent) >= 0 || !nm.textContent)
+    nm.textContent = court(moi);
 
   /* ---- UNE REPONSE EN RETARD NE DOIT PAS ECRIRE SUR LE COMPTE SUIVANT ----
      Les deux lectures ci-dessous sont asynchrones. Si le joueur bascule de
@@ -4007,7 +4064,7 @@ function peintProfil(){
 }
 
 function majCompte(){
-  $('cpEtat').textContent = moi ? 'Connected' : 'Not connected';
+  $('cpEtat').textContent = moi ? 'Connected' : (VERROUILLE ? 'Wallet locked' : 'Not connected');
   $('cpEtat').classList.toggle('on', !!moi);
   $('cpAdr').textContent = moi ? court(moi) : '—';
   $('cpMethode').textContent = methode==='email' ? 'Email' : methode==='wallet' ? 'Browser wallet' : '—';
@@ -8425,6 +8482,38 @@ peintAccueil();
 majRevue();
 lisPrix().then(peintAccueil);
 reprend();
+
+/* ---- LE PORTEFEUILLE QUI S'OUVRE NOUS LE DIT : IL FAUT L'ECOUTER ----
+ * Personne n'ecoutait `accountsChanged`. Deverrouiller MetaMask, ou changer
+ * de compte dedans, ne changeait donc rien a l'ecran tant qu'on n'avait pas
+ * recharge — et recharger sur un portefeuille verrouille ramenait au meme
+ * point. C'est la boucle exacte qui a ete signalee : « a chaque
+ * actualisation, il est oblige de se reconnecter ».
+ * `chainChanged` aussi : un changement de reseau dans l'extension laissait la
+ * page lire les soldes sur la mauvaise chaine. */
+(function ecouteLePortefeuille(){
+  attendEthereum(4000).then(function(eth){
+    if(!eth || !eth.on) return;
+    eth.on('accountsChanged', function(c){
+      var m=null; try{ m=localStorage.getItem('swogeAuth'); }catch(e){}
+      if(m !== 'wallet') return;
+      if(c && c.length){
+        VERROUILLE = false;
+        /* Compte change OU portefeuille deverrouille : dans les deux cas ce
+           qui est a l'ecran appartient a quelqu'un d'autre. On repart de la
+           nouvelle adresse plutot que de melanger les deux. */
+        portefeuillePret(eth, c[0], 'wallet')['catch'](function(){});
+      }else{
+        /* Verrouille, pas deconnecte : on garde la methode memorisee, sinon
+           le simple fait de verrouiller son portefeuille effacerait la
+           session et il faudrait tout refaire. */
+        VERROUILLE = true; signer = null; moi = null; soldes = {};
+        majCompte(); peintAccueil();
+      }
+    });
+    eth.on('chainChanged', function(){ if(moi) rafraichit(); });
+  });
+})();
 
 /* Sans portefeuille, tous les boutons qui en demandent un ouvrent la
    feuille de connexion plutot que de repondre « connectez-vous ». */

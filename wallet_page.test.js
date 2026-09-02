@@ -2427,7 +2427,16 @@ function servir(q, r, f, type) {
     });
     console.log('   colonnes : ' + JSON.stringify(col));
     ok(col.gauche && col.droite, 'sur ordinateur, les deux colonnes sont la');
-    ok(col.liens.join(',') === 'index.html,games.html,swogebet.html,swoge_wallet.html*,whitepaper.html',
+    /* ---- LE MENU DU SITE, ET PAS UNE COPIE QUI DERIVE ----
+     * Cette liste etait recopiee ici a cinq entrees, et « SWOGE AI » manquait
+     * — sur la page du portefeuille precisement. Ce n'est pas un oubli isole :
+     * vingt et une pages avaient perdu « Wallet » de la meme facon. Un menu
+     * partage recopie a la main dans chaque page derive toujours, et chaque
+     * copie a l'air correcte tant qu'on ne les met pas cote a cote.
+     * La liste attendue est donc ecrite UNE fois, comme le contrat du site,
+     * et c'est elle qu'il faut relire le jour ou cet essai echoue. */
+    ok(col.liens.join(',') === 'index.html,games.html,swogebet.html,swoge_wallet.html*,'
+         + 'swoge_ai.html,whitepaper.html',
        'le menu de gauche est celui du site, dans le meme ordre, et « Wallet » y est'
        + ' marque page courante (' + col.liens.join(', ') + ')');
     ok(col.reseaux === 3, 'les trois liens du site sont sous le menu');
@@ -5055,6 +5064,172 @@ function servir(q, r, f, type) {
     ok(f.recu === 'la carte',
        `et il passe derriere : au milieu d une carte, c est la carte qui recoit le doigt (${f.recu})`);
     ok(f.large >= 380 && f.haut > 600, `il couvre le cadre (${f.large} x ${f.haut})`);
+    await page.close();
+  }
+
+  /* ==========================================================================
+   * LE PORTEFEUILLE VERROUILLE, ET LA RECONNEXION QU'ON NE DEVRAIT PAS REFAIRE
+   *
+   * « A chaque actualisation sur PC, il est oblige de se reconnecter. »
+   *
+   * Reproduit ici, et la cause n'etait pas la session : elle etait toujours la.
+   * MetaMask verrouille rend `eth_accounts` = [] alors que le site reste
+   * autorise. La page en concluait « pas connecte », affichait « Tap to sign
+   * in », et personne n'ecoutait `accountsChanged` — donc deverrouiller ne
+   * changeait rien non plus. Il fallait recliquer. A chaque fois.
+   *
+   * Trois choses sont verifiees, et les trois manquaient :
+   *   1. verrouille se DIT verrouille, et pas « pas connecte » — le geste a
+   *      faire n'est pas le meme ;
+   *   2. la methode memorisee n'est pas effacee — sinon verrouiller son
+   *      portefeuille une fois suffirait a perdre la session pour de bon ;
+   *   3. deverrouiller rebranche TOUT SEUL, sans un clic.
+   * ====================================================================== */
+  {
+    console.log('\n-- le portefeuille verrouille --');
+    const MOI = '0x00000000000000000000000000000000000a11ce';
+    const page = await nav.newPage({ viewport: { width: 1280, height: 1000 } });
+    const boum = [];
+    page.on('pageerror', (e) => boum.push(e.message));
+    await page.addInitScript(([moi]) => {
+      try { localStorage.setItem('swogeAuth', 'wallet'); } catch (e) {}
+      window.__ecoutes = {};
+      window.__verrou = true;                 // l extension est fermee
+      window.ethereum = {
+        isMetaMask: true,
+        request: async (a) => {
+          /* Verrouille : la liste est VIDE, mais le site reste autorise. */
+          if (a.method === 'eth_accounts') return window.__verrou ? [] : [moi];
+          if (a.method === 'eth_requestAccounts') return [moi];
+          if (a.method === 'eth_chainId') return '0x1237';
+          if (a.method === 'net_version') return '4663';
+          if (a.method === 'wallet_switchEthereumChain') return null;
+          return null;
+        },
+        on: (ev, fn) => { (window.__ecoutes[ev] = window.__ecoutes[ev] || []).push(fn); },
+        removeListener: () => {},
+      };
+      /* Ce que fait l'utilisateur : il ouvre son extension. */
+      window.__deverrouille = () => {
+        window.__verrou = false;
+        (window.__ecoutes.accountsChanged || []).forEach((f) => f([moi]));
+      };
+    }, [MOI]);
+    await page.route('**/ethers*.umd.min.js', (r) => r.fulfill({
+      contentType: 'text/javascript', body: fs.readFileSync(ETHERS, 'utf8') }));
+    await page.route('**/api.dexscreener.com/**', (r) => r.fulfill({
+      contentType: 'application/json', body: '{"pairs":[]}' }));
+    await page.route('**/rpc.mainnet.chain.robinhood.com/**', (r) => {
+      const q = JSON.parse(r.request().postData() || '{}');
+      const enMot = (v) => '0x' + BigInt(v).toString(16).padStart(64, '0');
+      const un = (m) => {
+        if (m.method === 'eth_chainId') return '0x1237';
+        if (m.method === 'net_version') return '4663';
+        if (m.method === 'eth_blockNumber') return '0x2f7ce78';
+        if (m.method === 'eth_getLogs') return [];
+        if (m.method === 'eth_gasPrice') return enMot(134102000n);
+        if (m.method === 'eth_getBalance') return enMot(5000000000000000n);
+        if (m.method === 'eth_call') return enMot(1000000000000000000000n);
+        return null;
+      };
+      const rep = (m) => ({ jsonrpc: '2.0', id: m.id, result: un(m) });
+      return r.fulfill({ contentType: 'application/json',
+                         body: JSON.stringify(Array.isArray(q) ? q.map(rep) : rep(q)) });
+    });
+    await page.goto('http://127.0.0.1:' + port + '/swoge_wallet.html',
+                    { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(2600);
+
+    const ferme = await page.evaluate(() => ({
+      nom: document.getElementById('acNom').textContent.trim(),
+      role: (document.getElementById('acRole') || {}).textContent.trim(),
+      sous: document.getElementById('acSous').textContent.trim(),
+      auth: localStorage.getItem('swogeAuth'),
+      ecoute: !!(window.__ecoutes.accountsChanged || []).length,
+    }));
+    console.log('   ' + JSON.stringify(ferme));
+    ok(/lock/i.test(ferme.nom),
+       'un portefeuille verrouille se dit verrouille, pas « pas connecte » (« ' + ferme.nom + ' »)');
+    ok(/unlock/i.test(ferme.role) || /unlock/i.test(ferme.sous),
+       'et la page dit le geste a faire : ouvrir son extension, pas se reconnecter');
+    ok(ferme.auth === 'wallet',
+       'la methode memorisee N EST PAS effacee : verrouiller n est pas se deconnecter');
+    ok(ferme.ecoute, 'la page ecoute `accountsChanged` — sans ca, deverrouiller ne servirait a rien');
+
+    /* Il ouvre son extension. Rien d autre. */
+    await page.evaluate(() => window.__deverrouille());
+    await page.waitForTimeout(1800);
+    const ouvert = await page.evaluate(() => ({
+      nom: document.getElementById('acNom').textContent.trim(),
+      etat: document.getElementById('cpEtat').textContent.trim(),
+      adr: (document.getElementById('acAdr') || {}).textContent.trim(),
+    }));
+    console.log('   ' + JSON.stringify(ouvert));
+    ok(!/lock|not connected/i.test(ouvert.nom) && ouvert.adr !== '—',
+       'deverrouiller rebranche TOUT SEUL, sans un clic (« ' + ouvert.nom + ' »)');
+    ok(ouvert.etat === 'Connected', 'et le compte se dit connecte (« ' + ouvert.etat + ' »)');
+    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
+    await page.close();
+  }
+
+  /* ---- ET UNE EXTENSION QUI S'INJECTE EN RETARD ----
+   * `reprend()` lisait `window.ethereum` a un instant precis. Une extension
+   * arrivee cent millisecondes plus tard n'existait pas encore, et la
+   * reconnexion ne se faisait jamais — sans un mot. */
+  {
+    console.log('\n-- l extension arrive en retard --');
+    const MOI = '0x00000000000000000000000000000000000a11ce';
+    const page = await nav.newPage({ viewport: { width: 1280, height: 1000 } });
+    const boum = [];
+    page.on('pageerror', (e) => boum.push(e.message));
+    await page.addInitScript(([moi]) => {
+      try { localStorage.setItem('swogeAuth', 'wallet'); } catch (e) {}
+      setTimeout(() => {
+        window.ethereum = {
+          isMetaMask: true,
+          request: async (a) => {
+            if (a.method === 'eth_accounts' || a.method === 'eth_requestAccounts') return [moi];
+            if (a.method === 'eth_chainId') return '0x1237';
+            if (a.method === 'net_version') return '4663';
+            return null;
+          },
+          on: () => {}, removeListener: () => {},
+        };
+        window.dispatchEvent(new Event('ethereum#initialized'));
+      }, 700);
+    }, [MOI]);
+    await page.route('**/ethers*.umd.min.js', (r) => r.fulfill({
+      contentType: 'text/javascript', body: fs.readFileSync(ETHERS, 'utf8') }));
+    await page.route('**/api.dexscreener.com/**', (r) => r.fulfill({
+      contentType: 'application/json', body: '{"pairs":[]}' }));
+    await page.route('**/rpc.mainnet.chain.robinhood.com/**', (r) => {
+      const q = JSON.parse(r.request().postData() || '{}');
+      const enMot = (v) => '0x' + BigInt(v).toString(16).padStart(64, '0');
+      const un = (m) => {
+        if (m.method === 'eth_chainId') return '0x1237';
+        if (m.method === 'net_version') return '4663';
+        if (m.method === 'eth_blockNumber') return '0x2f7ce78';
+        if (m.method === 'eth_getLogs') return [];
+        if (m.method === 'eth_gasPrice') return enMot(134102000n);
+        if (m.method === 'eth_getBalance') return enMot(5000000000000000n);
+        if (m.method === 'eth_call') return enMot(1000000000000000000000n);
+        return null;
+      };
+      const rep = (m) => ({ jsonrpc: '2.0', id: m.id, result: un(m) });
+      return r.fulfill({ contentType: 'application/json',
+                         body: JSON.stringify(Array.isArray(q) ? q.map(rep) : rep(q)) });
+    });
+    await page.goto('http://127.0.0.1:' + port + '/swoge_wallet.html',
+                    { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(3200);
+    const v = await page.evaluate(() => ({
+      etat: document.getElementById('cpEtat').textContent.trim(),
+      adr: (document.getElementById('acAdr') || {}).textContent.trim(),
+    }));
+    console.log('   ' + JSON.stringify(v));
+    ok(v.etat === 'Connected' && v.adr !== '—',
+       'la page attend l extension au lieu de conclure qu il n y en a pas (« ' + v.etat + ' »)');
+    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.close();
   }
 

@@ -174,6 +174,121 @@ process.on('unhandledRejection', (e) => {
   ok(await pg.evaluate(() => document.querySelector('#ocMode').value === 'organique'),
      'au chargement c est l organique : les autres sont un choix, pas un defaut');
 
+  /* ---- LES QUATRE TUILES ----
+   * La liste deroulante est devenue quatre tuiles visibles en meme temps. Le
+   * `<select>` reste la, cache : c'est lui que le moteur lit et que le
+   * portefeuille remplit. Deux verites pour un meme choix, c'est exactement
+   * ce qui se desynchronise — on verifie donc que le clic sur une tuile
+   * ARRIVE bien dans le `<select>`, et que le `<select>` rempli d'ailleurs
+   * coche bien la tuile. */
+  console.log('\n-- les quatre tuiles de mode --');
+  {
+    const t = await pg.evaluate(() => {
+      const r = [...document.querySelectorAll('.ocmode input[name="ocmode"]')];
+      const sel = document.querySelector('#ocMode');
+      return {
+        n: r.length,
+        valeurs: r.map((x) => x.value),
+        vus: r.filter((x) => x.closest('.ocmode').getBoundingClientRect().width > 0).length,
+        coche: (r.find((x) => x.checked) || {}).value,
+        selVu: sel.getBoundingClientRect().width > 1,
+        selTab: sel.tabIndex,
+        /* Chaque tuile dit ce que la machine FAIT, pas seulement son nom :
+           c'etait tout le defaut de la liste, ou chaque mode devait tenir sa
+           description en une ligne. */
+        avecTexte: [...document.querySelectorAll('.ocmode .oc-quoi')]
+          .filter((e) => e.textContent.trim().length > 30).length,
+      };
+    });
+    console.log('   ' + JSON.stringify(t));
+    ok(t.n === 4 && t.valeurs.join(',') === 'organique,volume,tx,holders',
+       'les quatre modes sont des tuiles, dans l ordre (' + t.valeurs.join(', ') + ')');
+    ok(t.vus === 4, 'et les quatre se voient EN MEME TEMPS : c est ce qui permet de les comparer');
+    ok(t.coche === 'organique', 'celle du mode courant est cochee');
+    ok(t.avecTexte === 4, 'chacune dit ce que la machine fait, pas seulement son nom');
+    ok(!t.selVu && t.selTab === -1,
+       'le `<select>` reste pour le moteur mais sort du regard ET de la tabulation');
+
+    /* Le clic d'un vrai utilisateur, pas un `dispatchEvent` sur le select.
+       On vise la TUILE, pas le bouton radio : le radio est volontairement
+       hors du regard, et c'est le label entier qui se clique — c'est aussi
+       ce que fait un doigt sur telephone. */
+    await pg.click('.ocmode:has(input[value="holders"])');
+    await pg.waitForTimeout(150);
+    const apresClic = await pg.evaluate(() => ({
+      sel: document.querySelector('#ocMode').value,
+      holders: !document.querySelector('#ocOptHolders').hidden,
+      tx: !document.querySelector('#ocOptTx').hidden,
+    }));
+    ok(apresClic.sel === 'holders',
+       'cliquer une tuile ecrit dans le `<select>` que le moteur lit (' + apresClic.sel + ')');
+    ok(apresClic.holders && !apresClic.tx, 'et n ouvre que les reglages de CE mode');
+
+    /* Et l'inverse : le portefeuille depose un mode dans le `<select>`. */
+    await pg.evaluate(() => {
+      const s = document.querySelector('#ocMode');
+      s.value = 'tx'; s.dispatchEvent(new Event('change'));
+    });
+    await pg.waitForTimeout(120);
+    const inverse = await pg.evaluate(() =>
+      (([...document.querySelectorAll('.ocmode input')].find((x) => x.checked)) || {}).value);
+    ok(inverse === 'tx',
+       'un mode pose dans le `<select>` — ce que fait le portefeuille — coche la bonne tuile ('
+       + inverse + ')');
+
+    await pg.evaluate(() => {
+      const s = document.querySelector('#ocMode');
+      s.value = 'organique'; s.dispatchEvent(new Event('change'));
+    });
+  }
+
+  /* ---- ET CE QUE LE MODE « HOLDERS » PROMET SUR SES CLES ----
+   * Les adresses des porteurs ne sont pas les wallets caches : ce sont des
+   * adresses neuves, et on peut en demander plus que l'anneau n'en compte.
+   * Leurs cles etaient ecrites A LA FIN de la distribution — fermer l'onglet
+   * en route perdait celles deja servies. La page doit dire les deux choses
+   * qui evitent ca : que ce ne sont pas les memes adresses, et que les cles
+   * existent AVANT le premier envoi. */
+  console.log('\n-- les cles des porteurs --');
+  {
+    const dit = await pg.evaluate(() =>
+      document.querySelector('#ocOptHolders i').textContent.replace(/\s+/g, ' ').trim());
+    console.log('   ' + dit.slice(0, 150));
+    ok(/brand-new addresses|not the hidden wallets/i.test(dit),
+       'la page dit que ce ne sont PAS les wallets caches — c est la confusion qui a ete signalee');
+    ok(/more of them than the ring/i.test(dit),
+       'et qu on peut en demander plus que l anneau n en compte');
+    ok(/before the first token is sent/i.test(dit),
+       'et que les cles sont gardees AVANT le premier envoi, pas apres');
+
+    /* Des cles gardees d'une session precedente doivent se voir et se
+       reprendre : elles ne sont dans aucun export, et STOP ne les balaie pas. */
+    await pg.evaluate(() => {
+      localStorage.setItem('wallet_bench_porteurs_v1', JSON.stringify({
+        t: 1, n: 2, l: [{ a: '0x' + 'ab'.repeat(20), k: '0x' + '11'.repeat(32), t: 'SWOGE' },
+                        { a: '0x' + 'cd'.repeat(20), k: '0x' + '22'.repeat(32), t: 'SWOGE' }] }));
+    });
+    await pg.reload({ waitUntil: 'domcontentloaded' });
+    await pg.waitForTimeout(1500);
+    await pg.evaluate(() => {
+      const s = document.querySelector('#ocMode');
+      s.value = 'holders'; s.dispatchEvent(new Event('change'));
+    });
+    await pg.waitForTimeout(200);
+    const repris = await pg.evaluate(() => {
+      const e = document.querySelector('#ocPorteurs');
+      return { vu: e && !e.hidden, txt: e ? e.textContent.replace(/\s+/g, ' ').trim() : '',
+               csv: !!document.querySelector('#ocPorteursCSV') };
+    });
+    console.log('   ' + JSON.stringify(repris).slice(0, 200));
+    ok(repris.vu && /2 holder key/i.test(repris.txt),
+       'les cles de porteurs gardees sur l appareil sont annoncees (' + repris.txt.slice(0, 60) + ')');
+    ok(repris.csv, 'et on peut les retelecharger : un secours qu on ne peut demander qu une fois n en est pas un');
+    ok(/not swept back|not in the wallets export/i.test(repris.txt),
+       'la page dit aussi ce qu elles ne sont PAS : ni balayees par STOP, ni dans l export');
+    await pg.evaluate(() => { try { localStorage.removeItem('wallet_bench_porteurs_v1'); } catch (e) {} });
+  }
+
   console.log('\n-- LE SIMULATEUR --');
   /* ---- IL REFUSE DE DEVINER ----
    * Sans token charge il n a pas de profondeur de pool. Sortir un plafond

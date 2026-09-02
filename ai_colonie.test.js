@@ -298,7 +298,10 @@ async function ouvre(nav, port, opts) {
 }
 
 const lit = (page) => page.evaluate(() => ({
-  bal: (document.getElementById('bal') || {}).textContent,
+  /* La tresorerie de la colonie, pas le solde $SWOGE de la barre
+     partagee : les deux vivaient sous le meme identifiant, et la barre du
+     site a ete posee sur cette page. */
+  bal: (document.getElementById('aiBal') || {}).textContent,
   delta: (document.getElementById('delta') || {}).textContent,
   stamp: (document.getElementById('stamp') || {}).textContent,
   stampCls: (document.getElementById('stamp') || {}).className,

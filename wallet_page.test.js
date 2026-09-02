@@ -3061,8 +3061,12 @@ function servir(q, r, f, type) {
     /* ---- IL EXISTE, ET IL S OUVRE ---- */
     const geste = await page.evaluate(() =>
       [...document.querySelectorAll('.wl-actions button')].map((b) => b.textContent.trim()));
-    ok(geste.length === 4 && geste.some((t) => /Bridge/.test(t)),
-       'un quatrieme geste sur l accueil ouvre le pont (' + geste.join(', ') + ')');
+    /* Le compte est ecrit dans la page, pas ici : la rangee en a gagne un
+       cinquieme le jour ou Burn est arrive, et un nombre en dur aurait fait
+       echouer un essai qui n avait rien vu de faux. Ce qui compte, c est que
+       le geste du pont y soit. */
+    ok(geste.some((t) => /Bridge/.test(t)),
+       'le geste du pont est sur l accueil, parmi les ' + geste.length + ' (' + geste.join(', ') + ')');
     await ouvrePont();
     let m = await lit();
     ok(m.ecran === 'ecPont', 'et il ouvre bien l ecran du pont');
@@ -4716,6 +4720,208 @@ function servir(q, r, f, type) {
     });
     console.log('   curseur du pont, avant lecture : ' + JSON.stringify(pont));
     ok(pont.existe, 'le pont a son curseur lui aussi');
+
+    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
+    await page.close();
+  }
+
+  /* ==================== BRULER ====================
+   *
+   * « Rajoute une petite fleche tout a gauche, et rajoute le burn dans le
+   *   wallet. On a deja burn.html donc on sait comment faire. »
+   *
+   * Le geste existait sur sa page : un transfert vers une adresse dont
+   * personne n'a la cle. Il vit maintenant la ou l'on tient ses jetons.
+   *
+   * Ce qui se mesure ici, et pourquoi :
+   *   - la rangee porte CINQ gestes et glisse, parce que cinq libelles ne
+   *     tiennent pas dans la largeur de quatre sur un cadre de 390 ;
+   *   - les fleches ne s'affichent que s'il reste quelque chose de leur cote,
+   *     et elles font vraiment defiler — sur un ordinateur sans ecran tactile
+   *     c'est le SEUL moyen d'atteindre le cinquieme ;
+   *   - la liste ne propose que ce que ce projet brule. L'ether n'y est pas :
+   *     l'envoyer a l'adresse morte ne reduit l'offre de rien, ca ne fait que
+   *     perdre de l'argent, et un geste inutile ET definitif est un piege ;
+   *   - la confirmation n'est PAS sautable, meme quand le joueur a coupe la
+   *     revue des envois : on envoie souvent, on ne brule pas dix fois par
+   *     jour, et ca ne se rattrape jamais ;
+   *   - et la transaction part vers `0x…dEaD`, sur la bonne chaine.
+   */
+  console.log('\n-- bruler depuis le portefeuille --');
+  {
+    const MOI = '0x00000000000000000000000000000000000a11ce';
+    const MORTE = '0x000000000000000000000000000000000000dead';
+    const enMot = (v) => '0x' + BigInt(v).toString(16).padStart(64, '0');
+    const page = await nav.newPage({ viewport: { width: 390, height: 844 } });
+    const boum = [];
+    page.on('pageerror', (e) => boum.push(String(e).slice(0, 200)));
+    await page.addInitScript(([moi]) => {
+      try { localStorage.setItem('swogeAuth', 'wallet');
+            /* La revue des envois est COUPEE : c'est le cas qui compte. */
+            localStorage.setItem('swogeRevue', '0');
+            sessionStorage.setItem('swogeWalletIntroVue', '1'); } catch (e) {}
+      window.__w = { chaine: '0x1237', bascules: [], envoyees: [] };
+      const HASH = '0x' + 'cd'.repeat(32);
+      window.ethereum = {
+        isMetaMask: true,
+        request: async (a) => {
+          const w = window.__w;
+          if (a.method === 'eth_accounts' || a.method === 'eth_requestAccounts') return [moi];
+          if (a.method === 'eth_chainId') return w.chaine;
+          if (a.method === 'net_version') return String(parseInt(w.chaine, 16));
+          if (a.method === 'wallet_switchEthereumChain') {
+            w.bascules.push(a.params[0].chainId); w.chaine = a.params[0].chainId; return null;
+          }
+          if (a.method === 'wallet_addEthereumChain') return null;
+          if (a.method === 'eth_getTransactionCount') return '0x0';
+          if (a.method === 'eth_gasPrice') return '0x3b9aca00';
+          if (a.method === 'eth_maxPriorityFeePerGas') return '0x3b9aca00';
+          if (a.method === 'eth_estimateGas') return '0x5208';
+          if (a.method === 'eth_call') return '0x';
+          if (a.method === 'eth_sendTransaction') {
+            w.envoyees.push(Object.assign({ surLaChaine: w.chaine }, a.params[0]));
+            return HASH;
+          }
+          if (a.method === 'eth_getTransactionReceipt') {
+            const t = w.envoyees[w.envoyees.length - 1] || {};
+            return { transactionHash: HASH, transactionIndex: '0x0',
+                     blockHash: '0x' + '11'.repeat(32), blockNumber: '0x10',
+                     from: moi, to: t.to || moi, contractAddress: null,
+                     cumulativeGasUsed: '0x5208', gasUsed: '0x5208',
+                     effectiveGasPrice: '0x3b9aca00', logs: [],
+                     logsBloom: '0x' + '00'.repeat(512), status: '0x1', type: '0x0' };
+          }
+          if (a.method === 'eth_blockNumber') return '0x10';
+          if (a.method === 'eth_getBalance') return '0x0';
+          return null;
+        },
+        on: () => {}, removeListener: () => {},
+      };
+    }, [MOI]);
+    await page.route('**/ethers*.umd.min.js', (r) => r.fulfill({
+      contentType: 'text/javascript', body: fs.readFileSync(ETHERS, 'utf8') }));
+    await page.route('**/api.dexscreener.com/**', (r) => r.fulfill({
+      contentType: 'application/json', body: '{"pairs":[]}' }));
+    /* Un solde de $SWOGE a bruler : sans lui, le bouton refuserait pour
+       « more than your balance » et l'essai mesurerait ce refus-la. */
+    await page.route('**/rpc.mainnet.chain.robinhood.com/**', async (r) => {
+      const q = JSON.parse(r.request().postData() || '{}');
+      const un = (m) => {
+        if (m.method === 'eth_chainId') return '0x1237';
+        if (m.method === 'net_version') return '4663';
+        if (m.method === 'eth_blockNumber') return '0x2f7ce78';
+        if (m.method === 'eth_getLogs') return [];
+        if (m.method === 'eth_gasPrice') return enMot(134102000n);
+        if (m.method === 'eth_getBalance') return enMot(50000000000000000n);
+        if (m.method === 'eth_call') return enMot(1000000000000000000000n);
+        return null;
+      };
+      const rep = (m) => ({ jsonrpc: '2.0', id: m.id, result: un(m) });
+      const corps = Array.isArray(q) ? q.map(rep) : rep(q);
+      await r.fulfill({ contentType: 'application/json', body: JSON.stringify(corps) });
+    });
+    await page.goto('http://127.0.0.1:' + port + '/swoge_wallet.html',
+                    { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(3000);
+
+    /* ---- LA RANGEE ---- */
+    const rang = await page.evaluate(() => {
+      const r = document.getElementById('acActions');
+      return { gestes: [...r.querySelectorAll('button[data-va]')].map((b) => b.dataset.va),
+               deborde: r.scrollWidth > r.clientWidth + 1,
+               gCache: document.getElementById('acFlecheG').hidden,
+               dCache: document.getElementById('acFlecheD').hidden };
+    });
+    console.log('   ' + JSON.stringify(rang));
+    ok(rang.gestes.length === 5 && rang.gestes.indexOf('ecBruler') >= 0,
+       'la rangee porte cinq gestes, dont Burn (' + rang.gestes.join(', ') + ')');
+    ok(rang.deborde, 'et elle deborde : cinq libelles ne tiennent pas dans la largeur de quatre');
+    ok(rang.gCache && !rang.dCache,
+       'au repos, seule la fleche de DROITE se voit : il n y a rien a gauche, et une fleche qui '
+       + 'ne fait rien apprend a ne plus la toucher');
+
+    /* Elle doit VRAIMENT faire defiler : c est le seul moyen d atteindre le
+       cinquieme geste sans ecran tactile ni molette horizontale. */
+    const apres = await page.evaluate(async () => {
+      document.getElementById('acFlecheD').click();
+      await new Promise((r) => setTimeout(r, 700));
+      const r = document.getElementById('acActions');
+      return { x: r.scrollLeft, g: document.getElementById('acFlecheG').hidden };
+    });
+    console.log('   apres un appui a droite : ' + JSON.stringify(apres));
+    ok(apres.x > 0, 'un appui sur la fleche fait defiler la rangee (' + apres.x + ' px)');
+    ok(!apres.g, 'et celle de gauche apparait alors : il y a maintenant quelque chose derriere');
+
+    /* ---- LA LISTE DE CE QU ON PEUT BRULER ---- */
+    await page.evaluate(() => document.querySelector('[data-va="ecBruler"]').click());
+    await page.waitForTimeout(700);
+    const liste = await page.evaluate(() => ({
+      ecran: (document.querySelector('.wl-ecran.on') || {}).id,
+      cles: [...document.querySelectorAll('#brJeton option')].map((o) => o.value),
+      adr: (document.getElementById('brAdr') || {}).textContent,
+    }));
+    console.log('   ' + JSON.stringify(liste));
+    ok(liste.ecran === 'ecBruler', 'le geste ouvre son ecran');
+    ok(liste.cles.join(',') === 'swoge,swogebet',
+       'et il ne propose que ce que ce projet brule (' + liste.cles.join(', ') + ') : envoyer de '
+       + 'l ether a l adresse morte ne reduit l offre de rien, ca ne fait que perdre de l argent');
+    ok(String(liste.adr).toLowerCase() === MORTE,
+       'l adresse est ECRITE en entier, pas a saisir : un champ pre-rempli inviterait a le '
+       + 'modifier, et une adresse morte changee d un caractere devient celle de quelqu un');
+
+    /* ---- LA CONFIRMATION N EST PAS SAUTABLE ----
+     * `swogeRevue` est a « 0 » : un envoi partirait droit a la signature. */
+    const revue = await page.evaluate(() => ({
+      envoi: document.getElementById('enPartir').textContent,
+      brule: document.getElementById('brPartir').textContent,
+    }));
+    console.log('   boutons : envoi « ' + revue.envoi + ' » · burn « ' + revue.brule + ' »');
+    ok(/Send/.test(revue.envoi),
+       'la revue des envois est bien coupee — le bouton d envoi dit « ' + revue.envoi + ' »');
+
+    await page.fill('#brMontant', '250');
+    await page.waitForTimeout(400);
+    await page.click('#brPartir');
+    await page.waitForTimeout(700);
+    const feuille = await page.evaluate(() => ({
+      ouverte: !document.getElementById('voileRevue').hidden,
+      titre: (document.getElementById('rvTitre') || {}).textContent,
+      quoi: (document.getElementById('rvQuoi') || {}).textContent,
+      ok: (document.getElementById('rvOk') || {}).textContent,
+      montant: (document.getElementById('rvMontant') || {}).textContent,
+      dest: (document.getElementById('rvDest') || {}).textContent,
+    }));
+    console.log('   ' + JSON.stringify(feuille));
+    ok(feuille.ouverte,
+       'bruler ouvre la confirmation MEME quand la revue des envois est coupee : ca ne se '
+       + 'rattrape pas, et on ne le fait pas dix fois par jour');
+    ok(/burn/i.test(feuille.titre) && /You burn/.test(feuille.quoi),
+       'et elle dit « bruler », pas « envoyer » : « ' + feuille.quoi + ' » devant une adresse '
+       + 'morte laisserait croire qu on peut la rappeler');
+    ok(/Burn forever/.test(feuille.ok), 'le bouton dit ce qu il fait : « ' + feuille.ok + ' »');
+    ok(/250/.test(feuille.montant) && /SWOGE/.test(feuille.montant),
+       'le montant et le jeton sont repetes (' + feuille.montant + ')');
+    ok(String(feuille.dest).replace(/\s/g, '').toLowerCase() === MORTE,
+       'avec l adresse morte, en entier');
+
+    /* ---- ET LA TRANSACTION PART VERS L ADRESSE MORTE ---- */
+    await page.evaluate(() => { window.__w.envoyees = []; window.__w.bascules = []; });
+    await page.click('#rvOk');
+    await page.waitForTimeout(4000);
+    const env = await page.evaluate(() => window.__w.envoyees.map(
+      (x) => ({ to: String(x.to || '').toLowerCase(), data: String(x.data || ''),
+                sur: x.surLaChaine })));
+    console.log('   signee : ' + JSON.stringify(env));
+    ok(env.length === 1, 'une transaction part (' + env.length + ')');
+    /* Elle va au CONTRAT du jeton — c est un `transfer` — et c est dans ses
+       donnees que l adresse morte apparait. Verifier `to` suffirait pour un
+       envoi d ether ; pour un jeton ce serait mesurer le mauvais champ. */
+    ok(env.length === 1 && env[0].data.indexOf('a9059cbb') === 2,
+       'c est un transfer(address,uint256) (' + env[0].data.slice(0, 10) + ')');
+    ok(env.length === 1 && env[0].data.toLowerCase().indexOf(MORTE.slice(2)) > 0,
+       'et son destinataire est l adresse morte, lue dans les donnees signees');
+    ok(env.length === 1 && env[0].sur === '0x1237',
+       'signee sur la Robinhood Chain (' + (env[0] || {}).sur + ')');
 
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.close();

@@ -537,15 +537,60 @@ body{
  * Trois boutons flottants sur le fond de la page se lisaient comme trois
  * choses sans rapport. Dans une carte, separes par un filet, ils se lisent
  * comme ce qu'ils sont : les trois choses qu'on peut faire de son solde. */
-/* Quatre gestes depuis que le pont existe : la bulle se resserre pour que
-   les libelles tiennent sans passer a la ligne sur un cadre de 390. */
-.wl-actions{ display:grid; grid-template-columns:repeat(4,1fr); gap:0;
-  padding:10px 2px; margin:8px 0 0 }
+/* ---- CINQ GESTES DANS LA LARGEUR DE QUATRE ----
+ *
+ * Ils tenaient a quatre sur un cadre de 390 px, chacun dans son quart. Le
+ * cinquieme — Burn — ne rentre pas : en cinq colonnes egales, « Receive » et
+ * « Bridge » passent a la ligne ou se coupent, et un libelle coupe est un
+ * bouton qu'on n'ose plus toucher.
+ *
+ * La rangee glisse donc. Chaque geste garde SA largeur — le quart de l'ecran,
+ * celle qu'il avait — et l'on fait defiler pour atteindre le dernier. Le
+ * cinquieme depasse volontairement du bord : c'est ce depassement qui dit
+ * qu'il y a une suite, avant meme qu'on lise la fleche.
+ *
+ * La barre de defilement, elle, est cachee : sur un telephone elle n'existe
+ * pas, et sur un ordinateur elle ajouterait une regle grise sous des boutons
+ * qui n'en demandent pas. Ce sont les fleches qui portent l'information, et
+ * elles ne s'affichent QUE s'il reste quelque chose de ce cote-la. */
+.wl-actions-cadre{ position:relative; margin:8px 0 0 }
+.wl-actions{ display:flex; gap:0; padding:10px 2px; margin:0;
+  overflow-x:auto; scroll-behavior:smooth; scroll-snap-type:x proximity;
+  scrollbar-width:none; -ms-overflow-style:none; overscroll-behavior-x:contain }
+.wl-actions::-webkit-scrollbar{ display:none }
 .wl-actions button{
   background:none; border:0; cursor:pointer; color:var(--accent); font:inherit;
   display:flex; flex-direction:column; align-items:center; gap:7px;
+  /* Un peu moins du quart : le cinquieme geste depasse alors du bord, et
+     c'est ce bout de bulle qui dit qu'il y a une suite — avant meme qu'on
+     lise la fleche. Une rangee qui s'arrete pile au bord ne se distingue pas
+     d'une rangee complete. */
+  flex:0 0 22.5%; scroll-snap-align:center;
 }
 .wl-actions button + button{ border-left:1px solid var(--bord) }
+/* ---- LES DEUX FLECHES ----
+ * Posees SUR la rangee, avec un degrade qui fond vers le fond de la carte :
+ * sans ce fondu, un libelle passe dessous et l'on lit « Bri▸ ». Elles sont
+ * cliquables — sur un ordinateur sans ecran tactile, c'est le seul moyen
+ * d'atteindre le cinquieme geste sans molette horizontale. */
+.wl-fleche{
+  position:absolute; top:0; bottom:0; width:40px; border:0; cursor:pointer;
+  display:flex; align-items:center; padding:0; z-index:2;
+  color:var(--accent); font-size:15px; line-height:1;
+}
+.wl-fleche[hidden]{ display:none }
+/* Une pastille, pas un simple caractere : a cette taille un chevron nu se lit
+   comme une virgule mal placee, et l'on ne pense pas a le toucher. */
+.wl-fleche::before{
+  content:attr(data-fl); width:26px; height:26px; border-radius:50%;
+  background:var(--carte); box-shadow:var(--bulleOmbre), 0 0 0 1px var(--bord) inset;
+  display:flex; align-items:center; justify-content:center;
+}
+.wl-fleche.g{ left:0;  justify-content:flex-start; padding-left:2px;
+  background:linear-gradient(90deg,var(--carte) 42%,transparent) }
+.wl-fleche.d{ right:0; justify-content:flex-end; padding-right:2px;
+  background:linear-gradient(270deg,var(--carte) 42%,transparent) }
+.wl-fleche:focus-visible{ outline:2px solid var(--accent); outline-offset:-2px; border-radius:8px }
 .wl-actions span.t{ font:700 11.5px/1 'Archivo',sans-serif; letter-spacing:.1px;
   color:var(--accent); white-space:nowrap }
 .wl-actions .bulle{
@@ -1360,11 +1405,22 @@ body{
            Ils etaient tout en bas, apres la liste des jetons : sur un
            telephone il fallait defiler pour envoyer. On lit son solde, et la
            chose suivante qu'on veut faire est d'en faire quelque chose. -->
-      <div class="wl-carte wl-actions">
-        <button type="button" data-va="ecEnvoyer"><span class="bulle">&uarr;</span><span class="t">Send</span></button>
-        <button type="button" data-va="ecRecevoir"><span class="bulle">&darr;</span><span class="t">Receive</span></button>
-        <button type="button" data-va="ecSwap"><span class="bulle">&#8646;</span><span class="t">Swap</span></button>
-        <button type="button" data-va="ecPont"><span class="bulle">&#8693;</span><span class="t">Bridge</span></button>
+      <div class="wl-carte wl-actions-cadre">
+        <button type="button" class="wl-fleche g" id="acFlecheG" hidden
+                data-fl="&#8249;" aria-label="Previous actions"></button>
+        <div class="wl-actions" id="acActions">
+          <button type="button" data-va="ecEnvoyer"><span class="bulle">&uarr;</span><span class="t">Send</span></button>
+          <button type="button" data-va="ecRecevoir"><span class="bulle">&darr;</span><span class="t">Receive</span></button>
+          <button type="button" data-va="ecSwap"><span class="bulle">&#8646;</span><span class="t">Swap</span></button>
+          <button type="button" data-va="ecPont"><span class="bulle">&#8693;</span><span class="t">Bridge</span></button>
+          <!-- ---- BRULER ----
+               Le geste existe deja sur `burn.html` : envoyer a une adresse que
+               personne ne controle. Il vit maintenant la ou l'on tient ses
+               jetons, avec les quatre autres. -->
+          <button type="button" data-va="ecBruler"><span class="bulle">&#128293;</span><span class="t">Burn</span></button>
+        </div>
+        <button type="button" class="wl-fleche d" id="acFlecheD" hidden
+                data-fl="&#8250;" aria-label="More actions"></button>
       </div>
 
       <div class="wl-titre">ASSETS</div>
@@ -1465,6 +1521,69 @@ body{
       <p class="wl-note" id="enSolNote" hidden></p>
       <button class="wl-b" id="enPartir" type="button">Review</button>
       <p class="wl-note" id="enNote"></p>
+    </div>
+  </section>
+
+  <!-- ============ BRULER ============
+       Le meme geste que `burn.html`, dans le portefeuille : un transfert vers
+       une adresse dont personne n'a la cle. La page dediee reste — elle porte
+       le total brule et sa part de l'offre — mais bruler depuis la page ou
+       l'on tient ses jetons evite l'aller-retour, et c'est la qu'on decide.
+
+       Le dessin est celui du Send, volontairement : c'est un envoi. Ce qui
+       change est ce qui doit changer — le destinataire n'est pas a saisir, il
+       est ECRIT et il est le meme pour tout le monde ; et le bouton dit ce
+       qu'il fait sans metaphore. -->
+  <section class="wl-ecran" id="ecBruler">
+    <div class="wl-tete">
+      <h1>Burn</h1>
+    </div>
+    <div class="wl-corps">
+      <div class="wl-carte">
+        <div class="wl-champ">
+          <span class="wl-lab" id="brJetonL">YOU BURN</span>
+          <div class="wl-pick" data-pour="brJeton">
+            <button type="button" class="wl-pick-b" id="brJetonB"
+                    aria-haspopup="listbox" aria-expanded="false"
+                    aria-labelledby="brJetonL brJetonB">
+              <img alt=""><span class="tx"><b>&mdash;</b><small></small></span>
+              <span class="fl" aria-hidden="true">&#9660;</span>
+            </button>
+            <div class="wl-pick-l" role="listbox" aria-labelledby="brJetonL" hidden></div>
+          </div>
+          <select id="brJeton" class="wl-cache" tabindex="-1" aria-hidden="true"></select>
+        </div>
+        <div class="wl-champ wl-avecmax">
+          <label for="brMontant">AMOUNT</label>
+          <input id="brMontant" inputmode="decimal" placeholder="0.0" autocomplete="off">
+          <button type="button" class="wl-max" id="brMax">MAX</button>
+        </div>
+        <div class="wl-glis" data-pour="brMontant">
+          <input type="range" min="0" max="100" step="1" value="0"
+                 aria-label="Share of your balance">
+          <span class="pc">0 %</span>
+        </div>
+        <div class="wl-rang"><span>Balance</span><b id="brSolde">&mdash;</b></div>
+      </div>
+      <div class="wl-carte">
+        <!-- ---- L'ADRESSE EST MONTREE, PAS DEMANDEE ----
+             Un champ « TO » pre-rempli inviterait a le modifier, et une adresse
+             morte modifiee d'un caractere devient l'adresse de quelqu'un.
+             Celle-ci est fixe, en entier, et copiable pour qui veut la
+             verifier ailleurs. -->
+        <div class="wl-champ" style="margin:0 0 10px">
+          <label>SENT TO &mdash; DEAD ADDRESS</label>
+          <div class="wl-mono" id="brAdr" style="color:var(--texte)">0x000000000000000000000000000000000000dEaD</div>
+        </div>
+        <div class="wl-rang"><span>Network</span><b id="brReseau">Robinhood Chain</b></div>
+      </div>
+      <p class="wl-note grave">Burning is <b>permanent and irreversible</b>. The tokens go to an
+        address nobody holds the key to &mdash; no one can send them back, and no support can
+        undo it. It reduces the circulating supply forever.</p>
+      <button class="wl-b" id="brPartir" type="button">Review burn</button>
+      <p class="wl-note" id="brNote"></p>
+      <p class="wl-note">The full burn ledger &mdash; total burned and its share of supply &mdash;
+        lives on <a href="burn.html" style="color:var(--accent2)">the burn page</a>.</p>
     </div>
   </section>
 
@@ -1907,11 +2026,11 @@ body{
   <!-- la revue avant signature -->
   <div class="wl-voile" id="voileRevue" hidden>
     <div class="wl-feuille">
-      <h2>Check before you send</h2>
-      <p class="wl-note">Once signed, this cannot be undone and no one can reverse it.</p>
+      <h2 id="rvTitre">Check before you send</h2>
+      <p class="wl-note" id="rvAvant">Once signed, this cannot be undone and no one can reverse it.</p>
       <div style="height:14px"></div>
       <div class="wl-carte">
-        <div class="wl-rang"><span>You send</span><b id="rvMontant">—</b></div>
+        <div class="wl-rang"><span id="rvQuoi">You send</span><b id="rvMontant">—</b></div>
         <div class="wl-rang"><span>Network</span><b id="rvReseau">Robinhood Chain</b></div>
         <div class="wl-rang"><span>Network fee</span><b id="rvFrais">—</b></div>
         <div class="wl-rang"><span>Left after</span><b id="rvReste">—</b></div>
@@ -3089,6 +3208,7 @@ function va(id){
   if(id==='ecActivite') chargeActivite();
   if(id==='ecSwap')     majSwap();
   if(id==='ecEnvoyer')  majEnvoyer();
+  if(id==='ecBruler')   majBruler();
   if(id==='ecPont')     majPont();
   /* ---- LA SOCKET NE VIT QUE SUR CET ECRAN ----
      Une page de portefeuille n'a pas a tenir une liaison ouverte pour
@@ -3675,7 +3795,7 @@ function peintAccueil(){
   /* Les soldes viennent d'etre repeints : ce qui etait rouge peut ne plus
      l'etre, et une poignee de curseur posee sur l'ancien solde designerait
      maintenant un autre montant. */
-  ['enMontant','swMontant','caDepMontant','caRetMontant'].forEach(majMontant);
+  ['enMontant','swMontant','brMontant','caDepMontant','caRetMontant'].forEach(majMontant);
   majCompte();
 }
 
@@ -5489,8 +5609,27 @@ function adresseEnGroupes(a){
 
 var REVUE = null;      /* ce qui attend d'etre signe */
 
-function ouvreRevue(j, dest, wei){
-  REVUE = { j:j, dest:dest, wei:wei };
+/* ---- LA MEME REVUE POUR LES DEUX GESTES ----
+ * Envoyer et bruler sont la meme transaction : un transfert. Ce qui change
+ * est le mot, et il doit changer — « You send » devant une adresse morte
+ * laisserait croire qu'on peut la rappeler. Une seconde feuille recopiee
+ * aurait deux verites a tenir d'accord ; celle-ci n'en a qu'une. */
+function ouvreRevue(j, dest, wei, geste){
+  var brule = geste === 'brule';
+  REVUE = { j:j, dest:dest, wei:wei, geste:geste || 'envoi' };
+  $('rvTitre').textContent = brule ? 'Check before you burn' : 'Check before you send';
+  $('rvQuoi').textContent  = brule ? 'You burn' : 'You send';
+  $('rvOk').textContent    = brule ? '\uD83D\uDD25 Burn forever' : 'Sign and send';
+  $('rvAvant').textContent = brule
+    ? 'These tokens go to an address nobody holds the key to. Once signed they are gone for '
+      + 'good — no one can send them back, and no support can undo it.'
+    : 'Once signed, this cannot be undone and no one can reverse it.';
+  var nt = $('rvNote');
+  if(nt) nt.textContent = brule
+    ? 'This is the dead address, and it is the same for everyone. It is shown here so you can '
+      + 'check it against the one on the burn page before you sign.'
+    : 'Read it in groups of four, from both ends. An address that is one character wrong belongs '
+      + 'to nobody, and the coins stay there for ever.';
   $('rvMontant').textContent = nombre(wei, j.dec) + ' ' + j.sym;
   $('rvDest').innerHTML = adresseEnGroupes(dest);
   $('rvFrais').textContent = $('enFrais').textContent;
@@ -5511,7 +5650,7 @@ $('voileRevue').addEventListener('click', function(ev){ if(ev.target===this) fer
 $('rvOk').addEventListener('click', function(){
   var r = REVUE; if(!r) return;
   fermeRevue();
-  envoieMaintenant(r.j, r.dest, r.wei);
+  envoieMaintenant(r.j, r.dest, r.wei, r.geste);
 });
 $('cpRevue').addEventListener('change', function(){
   revueRegle(this.checked);
@@ -5522,8 +5661,13 @@ $('cpRevue').addEventListener('change', function(){
    Une seule fonction, appelee par les deux chemins : avec revue et sans.
    Deux copies auraient diverge des la premiere correction — et c'est le
    code qui deplace l'argent. */
-async function envoieMaintenant(j, dest, wei){
-  var b = $('enPartir'), note = $('enNote');
+async function envoieMaintenant(j, dest, wei, geste){
+  /* Bruler EST un envoi : meme transaction, meme signature, meme attente.
+     Seuls le bouton qu'on desactive, la ligne ou l'on ecrit et le mot du
+     journal changent — les recopier dans une seconde fonction ferait deux
+     chemins a corriger le jour ou l'attente change. */
+  var brule = geste === 'brule';
+  var b = $(brule ? 'brPartir' : 'enPartir'), note = $(brule ? 'brNote' : 'enNote');
   b.disabled = true;
   note.className = 'wl-note';
   note.textContent = 'Waiting for your signature…';
@@ -5540,9 +5684,9 @@ async function envoieMaintenant(j, dest, wei){
       : await erc(j.adr, true).transfer(dest, wei);
     /* Inscrit AVANT l'attente : c'est justement pendant l'attente que
        l'onglet se ferme. */
-    journalAjoute({ h:tx.hash, k:'envoi', cle:j.cle, montant:wei.toString(), vers:dest,
-                    sur:c.id, deNom:c.nom });
-    note.textContent='Sent — waiting for the chain…';
+    journalAjoute({ h:tx.hash, k:brule ? 'burn' : 'envoi', cle:j.cle, montant:wei.toString(),
+                    vers:dest, sur:c.id, deNom:c.nom });
+    note.textContent = brule ? 'Burning — waiting for the chain…' : 'Sent — waiting for the chain…';
     var lien = '<a href="'+c.scan+'/tx/'+tx.hash+'" target="_blank" rel="noopener"'
              + ' style="color:var(--accent2)">View transaction</a>';
     /* ---- UNE TRANSACTION PARTIE N'EST JAMAIS UN REFUS ----
@@ -5553,18 +5697,81 @@ async function envoieMaintenant(j, dest, wei){
      * et il la renverrait. On dit ce qu'on sait, et on donne le lien. */
     try{
       await lecPont(c).waitForTransaction(tx.hash, 1, 180000);
-      note.innerHTML = 'Done. ' + lien;
+      note.innerHTML = (brule ? 'Burned forever. ' : 'Done. ') + lien;
     }catch(x){
-      note.innerHTML = 'Sent. ' + c.nom + ' has not confirmed it here yet — it is not lost, '
-        + 'and it is not a refusal. ' + lien;
+      note.innerHTML = (brule ? 'Signed and broadcast. ' : 'Sent. ') + c.nom
+        + ' has not confirmed it here yet — it is not lost, and it is not a refusal. ' + lien;
     }
-    $('enMontant').value=''; rafraichit();
+    $(brule ? 'brMontant' : 'enMontant').value=''; rafraichit();
   }catch(err){
     note.className='wl-note grave';
     note.textContent = pourquoiRefus(err);
   }
   b.disabled = false;
 }
+
+/* ==================== BRULER ====================
+ *
+ * ---- DEUX JETONS, ET PAS TROIS ----
+ *
+ * `burn.html` brule le $SWOGE et le $SWOGEBET, et c'est ce que ce projet
+ * brule. Offrir la liste entiere ferait apparaitre l'ether dans une case
+ * « bruler » : envoyer de l'ETH a l'adresse morte ne reduit l'offre de rien
+ * du tout, ca ne fait que perdre de l'argent. Une liste qui propose un geste
+ * inutile et definitif n'est pas une liberte, c'est un piege.
+ *
+ * ---- ET LA REVUE N'EST PAS OPTIONNELLE ICI ----
+ *
+ * L'envoi laisse le choix de sauter la confirmation : on envoie souvent, et a
+ * des adresses qu'on connait. Bruler ne se rattrape pas, et l'on ne le fait
+ * pas dix fois par jour. La feuille s'ouvre toujours.
+ */
+var ADR_MORTE = '0x000000000000000000000000000000000000dEaD';
+var BRULABLES = ['swoge', 'swogebet'];
+
+function majBruler(){
+  var sel = $('brJeton');
+  if(!sel.options.length){
+    var h = '';
+    for(var i=0;i<JETONS.length;i++){
+      if(BRULABLES.indexOf(JETONS[i].cle) < 0) continue;
+      h += '<option value="'+JETONS[i].cle+'">'+JETONS[i].sym+' — '+JETONS[i].nom+'</option>';
+    }
+    sel.innerHTML = h;
+    peintPick(sel);
+  }
+  var j = J(sel.value) || J('swoge');
+  var sd = soldes[j.cle];
+  $('brSolde').textContent = (sd===null||sd===undefined) ? '—' : nombre(sd,j.dec)+' '+j.sym;
+  if($('brReseau')) $('brReseau').textContent = chaineDuJeton(j).nom;
+  majMontant('brMontant');
+}
+$('brJeton').addEventListener('change', majBruler);
+
+/* Tout le solde : bruler n'a pas de gaz a garder de cote sur ce jeton-la,
+   c'est l'ether qui paie le reseau. Le meme calcul que l'envoi s'en charge. */
+MAX_DU_CHAMP.brMontant = async function(){
+  var cle = $('brJeton').value;
+  var r = await calculeMax(cle, GAZ_ENVOI);
+  if(r.erreur) return toast(r.erreur);
+  $('brMontant').value = ethers.utils.formatUnits(r.montant, J(cle).dec);
+  DERNIER_MAX.brMontant = $('brMontant').value;
+  majMontant('brMontant'); apresMontant('brMontant');
+};
+$('brMax').addEventListener('click', function(){ MAX_DU_CHAMP.brMontant(); });
+
+$('brPartir').addEventListener('click', function(){
+  if(!moi) return ouvreConnexion();
+  var j = J($('brJeton').value);
+  if(!j) return toast('Pick a token to burn');
+  var m = $('brMontant').value.trim().replace(',','.');
+  if(!(parseFloat(m)>0)) return toast('Enter an amount');
+  var wei;
+  try{ wei = ethers.utils.parseUnits(m, j.dec); }catch(e){ return toast('Amount not understood'); }
+  var sd = soldes[j.cle];
+  if(sd && wei.gt(sd)) return toast('More than your balance');
+  ouvreRevue(j, ADR_MORTE, wei, 'brule');
+});
 
 $('enPartir').addEventListener('click', function(){
   if(!moi) return ouvreConnexion();
@@ -7869,11 +8076,50 @@ if(ethersManquant()){
 }
 
 poseTolerance();
-['enJeton','swDe','swVers'].forEach(function(id){ var s=$(id); if(s) accrochePick(s); });
+['enJeton','swDe','swVers','brJeton'].forEach(function(id){ var s=$(id); if(s) accrochePick(s); });
 remplitChoix($('enJeton'));
+/* ==================== LA RANGEE DES GESTES GLISSE ====================
+ *
+ * Cinq gestes dans la largeur de quatre. Les deux fleches ne sont pas des
+ * decorations : sur un ordinateur sans ecran tactile, une rangee qui deborde
+ * sans molette horizontale n'a AUCUN moyen d'etre atteinte — le cinquieme
+ * bouton existerait sans exister.
+ *
+ * Chacune ne s'affiche que s'il reste vraiment quelque chose de son cote. Une
+ * fleche toujours visible qui ne fait rien apprend a ne plus la toucher, et
+ * c'est alors celle qui compte qu'on ne touche plus.
+ *
+ * La marge d'un pixel absorbe les arrondis de mise a l'echelle : sans elle,
+ * une rangee arrivee au bout se croit encore defilable a un demi-pixel pres,
+ * et la fleche reste allumee pour rien. */
+(function(){
+  var r = $('acActions'), g = $('acFlecheG'), d = $('acFlecheD');
+  if(!r || !g || !d) return;
+  function maj(){
+    var reste = r.scrollWidth - r.clientWidth;
+    g.hidden = r.scrollLeft <= 1;
+    d.hidden = r.scrollLeft >= reste - 1;
+  }
+  /* Un geste par appui : on avance d'une largeur de bouton, pas d'un ecran —
+     c'est un bouton qu'on cherche, pas une page. */
+  function pousse(sens){
+    var b = r.querySelector('button');
+    r.scrollBy({ left: sens * (b ? b.offsetWidth : 80), behavior: 'smooth' });
+  }
+  g.addEventListener('click', function(){ pousse(-1); });
+  d.addEventListener('click', function(){ pousse(1); });
+  r.addEventListener('scroll', maj, { passive:true });
+  window.addEventListener('resize', maj);
+  /* Et au premier affichage : la carte peut etre encore pliee quand ce code
+     tourne, donc on remesure une fois la mise en page posee. */
+  maj();
+  requestAnimationFrame(maj);
+  setTimeout(maj, 300);
+})();
+
 /* Les cinq champs de montant : rouge des la frappe, curseur de pourcentage,
    et plus une seule mise a jour qui attende qu'on appuie sur Entree. */
-['enMontant','swMontant','poMontant','caDepMontant','caRetMontant'].forEach(accrocheMontant);
+['enMontant','swMontant','poMontant','brMontant','caDepMontant','caRetMontant'].forEach(accrocheMontant);
 /* Les jetons ajoutes par le joueur entrent dans `JETONS` AVANT le premier
    affichage : les soldes se lisent sur `JETONS` en entier, et un jeton arrive
    apres coup resterait sans solde jusqu'au prochain rafraichissement. */

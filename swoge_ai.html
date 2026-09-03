@@ -1761,13 +1761,29 @@ function scoreAgent(k){
 const CONFIANCE_K = 6;
 const confiance = n => n / (n + CONFIANCE_K);
 function agentVue(k){ return (VUE && VUE.agents && VUE.agents[k]) || { obs:0, lecons:[] }; }
+/* ---- UNE CASE « INCONNU » N'EST PAS UNE LECON SUR LE JETON ----
+ * Le releve du serveur montrait ceci, en tete du Warden :
+ *   « code inconnu »  488 obs  +20,0 %
+ *   « pouvoirs ? »    488 obs  +20,0 %
+ * Les memes chiffres, parce que ses trois traits sortent du meme appel a
+ * GoPlus : quand il se tait, les trois repondent « inconnu » ensemble. La
+ * moyenne est positive parce que c'est celle de tout ce que la colonie
+ * regarde — pas une qualite des jetons illisibles.
+ * Le serveur ne leur donne plus de points ; l'ecran, lui, les affichait en
+ * vert, en tete, comme la meilleure lecon de l'agent. On les garde — c'est
+ * une mesure vraie — mais on ne les met plus en titre quand une lecon
+ * REELLE existe, et elles portent le mot qui dit ce qu'elles jugent. */
+function nombreObs(n){ return Math.round(n || 0); }
 function apprisAgent(k){
   if(!VUE) return "—";
   const a = agentVue(k);
   if(!a.obs) return "n'a encore rien appris";
-  const l = a.lecons[0];
+  const lues = (a.lecons||[]).filter(x => !x.nonLue);
+  const l = lues[0] || a.lecons[0];
   if(!l) return a.obs+" obs · pas encore de tendance nette";
-  return (l.moyenne>=0?"+":"") + l.moyenne.toFixed(1) + "% sur « " + l.quoi + " » (" + l.n + " obs)";
+  const dit = (l.moyenne>=0?"+":"") + l.moyenne.toFixed(1) + "% sur « " + l.quoi + " » ("
+            + nombreObs(l.n) + " obs)";
+  return l.nonLue ? dit + " — mais c'est une lecture ratee, pas un trait du jeton" : dit;
 }
 
 function peintAgents(){
@@ -1812,7 +1828,7 @@ function peintFlux(){
     if(t.rejete) return `<div class="tok" style="opacity:.72">
       <span class="sym">$${echappe(t.sym)}</span>
       <span class="badge rh">RH</span>
-      <span class="meta" style="color:${t.doux?"var(--muted)":"var(--loss)"}">${t.doux?"":"✕ "}${echappe(t.rejete)}</span>
+      <span class="meta" style="color:${t.doux?"var(--ink-dim)":"var(--loss)"}">${t.doux?"":"✕ "}${echappe(t.rejete)}</span>
       <span class="stages">${dots}</span>
     </div>`;
     /* Ce qui est affiche ici a ete LU sur la chaine par le serveur. Quand il
@@ -2253,11 +2269,17 @@ function peintAppris(){
       + '<span class="quoi" style="color:'+a.color+'">'+a.emoji+' '+a.name+'</span></div>');
     for(const x of l.slice(0,2)){
       const bon = x.moyenne >= 0;
+      /* Une case non lue n'est jamais peinte en vert : elle ne dit rien de
+         bon sur le jeton, elle dit que la lecture a echoue. La couleur est
+         la premiere chose qu'on lit, avant le mot. */
+      const teinte = x.nonLue ? "var(--ink-dim)" : (bon?"var(--gain)":"var(--loss)");
       bloc.push('<div class="leçon">'
-        + '<span class="quoi">'+echappe(x.quoi)+'</span>'
-        + '<span class="eff" style="color:'+(bon?"var(--gain)":"var(--loss)")+'">'
+        + '<span class="quoi">'+echappe(x.quoi)
+        + (x.nonLue ? ' <i style="opacity:.7;font-style:normal">— lecture ratee, pas le jeton</i>' : '')
+        + '</span>'
+        + '<span class="eff" style="color:'+teinte+'">'
         + (bon?"+":"")+x.moyenne.toFixed(1)+'%</span>'
-        + '<span class="n">'+x.n+' obs · confiance '+Math.round(confiance(x.n)*100)+'%</span>'
+        + '<span class="n">'+nombreObs(x.n)+' obs · confiance '+Math.round(confiance(x.n)*100)+'%</span>'
         + '</div>');
     }
   }

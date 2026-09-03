@@ -142,7 +142,12 @@ function vueFausse(o) {
                  whisper: 165, oracle: 165, closer: 11 },
     agents: {
       scout:   { obs: 9, lecons: [{ quoi: 'ne de <10 min', n: 9, moyenne: 4.1 }] },
-      warden:  { obs: 9, lecons: [{ quoi: 'code inconnu', n: 9, moyenne: -2.2 }] },
+      /* Le Warden porte le cas reel : sa meilleure case par le poids est une
+         LECTURE RATEE (GoPlus s'est tu), pas un trait du jeton, et elle a bien
+         rendu. Sur le serveur c'etait « code inconnu, 488 obs, +20,0 % » en
+         tete de sa fiche, peint en vert. */
+      warden:  { obs: 9, lecons: [{ quoi: 'code inconnu', n: 9, moyenne: 7.4, nonLue: true },
+                                  { quoi: 'aucune taxe', n: 5, moyenne: -2.2 }] },
       whale:   { obs: 9, lecons: [{ quoi: 'top <5%', n: 7, moyenne: 8.3 }] },
       whisper: { obs: 9, lecons: [{ quoi: 'acheteurs devant', n: 6, moyenne: 5.5 }] },
       oracle:  { obs: 9, lecons: [{ quoi: 'mc 50-500k', n: 8, moyenne: 3.9 }] },
@@ -315,6 +320,7 @@ const lit = (page) => page.evaluate(() => ({
   positions: [...document.querySelectorAll('#positions .pos')].map((p) => p.textContent.replace(/\s+/g, ' ').trim()),
   positionsTxt: (document.getElementById('positions') || {}).textContent.replace(/\s+/g, ' ').trim(),
   appris: (document.getElementById('appris') || {}).textContent.replace(/\s+/g, ' ').trim(),
+  apprisHtml: (document.getElementById('appris') || {}).innerHTML || '',
   flow: (document.getElementById('flow') || {}).textContent.replace(/\s+/g, ' ').trim(),
   agents: [...document.querySelectorAll('#agents .agent')].map((a) =>
     [...a.querySelectorAll('.sc')].map((x) => x.textContent.trim())),
@@ -1127,6 +1133,25 @@ async function auditDesVetos() {
     ok(sansLecon.length > 0,
        'un agent ne il y a une heure n a rien appris, et il l ecrit plutot que de faire semblant');
     ok(/confiance/.test(v.appris), 'et le detail publie la confiance qui va avec le nombre d observations');
+
+    /* ---- UNE LECTURE RATEE N'EST PAS UNE LECON SUR LE JETON ----
+     * Le releve du serveur montrait, en tete du Warden : « code inconnu,
+     * 488 obs, +20,0 % », en vert, comme sa meilleure lecon. Ses trois traits
+     * sortent du meme appel a GoPlus, silencieux 3 114 fois sur 3 237 : quand
+     * il se tait, les trois disent « inconnu » ensemble, et la moyenne est
+     * positive parce que c'est celle de TOUT ce que la colonie regarde.
+     * Le serveur ne leur donne plus de points. L'ecran, lui, doit cesser de
+     * les presenter comme un bon signe — sinon la correction est invisible la
+     * ou elle se lit. */
+    const wardenDit = lecons.find((l) => /code inconnu|aucune taxe/.test(l)) || '';
+    console.log('   Warden : ' + wardenDit);
+    ok(/aucune taxe/.test(wardenDit),
+       'la fiche du Warden met en titre sa lecon REELLE, pas sa lecture ratee — meme si celle-ci '
+       + 'est mieux observee et mieux notee (« ' + wardenDit + ' »)');
+    ok(/lecture ratee/.test(v.appris),
+       'et dans le detail, la case non lue est NOMMEE comme telle : « lecture ratee, pas le jeton »');
+    ok(!/var\(--gain\)[^<]*code inconnu/.test(v.apprisHtml || ''),
+       'elle n est pas peinte en vert : la couleur se lit avant le mot');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.context().close();
   }

@@ -7913,6 +7913,8 @@
       'font-size:24px;line-height:1;display:flex;align-items:center;justify-content:center;' +
       'box-shadow:0 8px 24px rgba(11,27,54,0.18);transition:transform .15s,border-color .15s;}' +
       '.swwb:hover{transform:translateY(-2px);border-color:#FFC53D;}' +
+      '.swwb img{width:44px;height:44px;object-fit:contain;display:block;pointer-events:none;}' +
+      '@media (max-width:520px){.swwb img{width:38px;height:38px;}}' +
       /* ---- LE PORTEFEUILLE S'OUVRE PAR-DESSUS LA PAGE ----
        * « Le bouton a cote de VS ne devait pas faire une redirection au
        *   wallet mais l'ouvrir en grand ecran sur la page, sans la quitter
@@ -7924,14 +7926,18 @@
        * par-dessus. Il s'arrete au-dessus des deux bulles (84 px = 16 de
        * marge + 56 de bulle + 12 d'ecart), qui restent donc visibles — c'est
        * la bulle qui le range. Z-INDEX sous les bulles, au-dessus du reste. */
+      /* ---- RIEN QUI PUISSE FIGER SAFARI ----
+       * Ni fondu d'opacite, ni glissement : sur iPhone, le cadre restait
+       * grise et sourd au doigt — un cadre pose dans un element en cours de
+       * transition y garde son premier rendu. `overflow:auto` avec le
+       * defilement tactile est la recette connue pour qu'un cadre defile
+       * sous le doigt sur iOS. */
       '.swwo{position:fixed;right:16px;bottom:calc(var(--swbb-h,0px) + 84px);z-index:99997;' +
       'width:min(390px,calc(100vw - 32px));height:min(780px,calc(100vh - var(--swbb-h,0px) - 100px));' +
-      'border-radius:24px;overflow:hidden;background:#F4F7FC;border:1px solid rgba(27,95,224,.35);' +
-      'box-shadow:0 20px 60px rgba(11,27,54,.28);display:none;' +
-      'transform:translateY(12px);opacity:0;transition:transform .18s ease-out,opacity .18s ease-out;}' +
+      'border-radius:24px;overflow:auto;-webkit-overflow-scrolling:touch;background:#F4F7FC;' +
+      'border:1px solid rgba(27,95,224,.35);box-shadow:0 20px 60px rgba(11,27,54,.28);display:none;}' +
       '.swwo.on{display:block;}' +
-      '.swwo.vu{transform:translateY(0);opacity:1;}' +
-      '.swwo iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:block;background:#fff;z-index:1;}' +
+      '.swwo iframe{width:100%;height:100%;border:0;display:block;background:#fff;}' +
       /* `pointer-events:auto` en force : certaines pages eteignent les
          evenements de leurs boutons sous un voile, et la croix heritait de
          cette regle — le cadre recevait le clic a sa place. */
@@ -8029,7 +8035,11 @@
     try { return window.top !== window.self; } catch (e) { return true; }
   }
 
-  /* Le rond du portefeuille, a gauche de « VS ». Voir la note du style. */
+  /* Le rond du portefeuille, a gauche de « VS ». Voir la note du style.
+     Il porte l'illustration du portefeuille — la meme que la page du
+     portefeuille montre sous « Total balance » — et non un emoji : on doit
+     reconnaitre d'un coup d'oeil que c'est le meme objet. */
+  var WALLET_ICONE = '<img src="img/wallet/illu_wallet.webp" alt="" draggable="false">';
   var walletBtn = null, walletVoile = null, walletCadre = null, walletOuvert = false;
   function walletMonte() {
     if (walletBtn || !document.body) return;
@@ -8041,7 +8051,7 @@
     walletBtn.title = 'Open your wallet';
     walletBtn.setAttribute('aria-label', 'Open your wallet');
     walletBtn.setAttribute('aria-expanded', 'false');
-    walletBtn.innerHTML = '\uD83D\uDC5B';
+    walletBtn.innerHTML = WALLET_ICONE;
     walletBtn.addEventListener('click', function () { walletBascule(); });
     document.body.appendChild(walletBtn);
   }
@@ -8074,12 +8084,9 @@
     /* L'adresse du cadre n'est posee qu'a l'ouverture, et une seule fois. */
     if (walletOuvert && !walletCadre.getAttribute('src')) walletCadre.src = 'swoge_wallet.html';
     voile.classList.toggle('on', walletOuvert);
-    /* Deux temps pour l'animation : `display` d'abord, la transition ensuite. */
-    if (walletOuvert) requestAnimationFrame(function () { voile.classList.add('vu'); });
-    else voile.classList.remove('vu');
     document.documentElement.classList.toggle('swwo-on', walletOuvert);
     walletBtn.setAttribute('aria-expanded', walletOuvert ? 'true' : 'false');
-    walletBtn.innerHTML = walletOuvert ? '\u2715' : '\uD83D\uDC5B';
+    walletBtn.innerHTML = walletOuvert ? '\u2715' : WALLET_ICONE;
     walletBtn.title = walletOuvert ? 'Close the wallet' : 'Open your wallet';
     walletBtn.setAttribute('aria-label', walletBtn.title);
     /* Le clavier reste a la page hote : c'est elle qui ecoute Echap. Donner

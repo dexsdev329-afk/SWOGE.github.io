@@ -68,7 +68,7 @@
      A savoir : cela ne sauve pas la page DEJA en cache chez quelqu'un, qui ne
      contient pas ces lignes. Ce garde-fou vaut a partir de celle-ci. -->
 <script>
-var MARQUE_PAGE = '3cf26532';
+var MARQUE_PAGE = 'ed2b96a8';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -524,7 +524,7 @@ body{
   padding:10px 14px; cursor:pointer; color:var(--texte); font:inherit;
 }
 .wl-jeton:hover{ border-color:var(--accent) }
-html.wl-cadre .wl-retour{ display:none }
+html.wl-encadre .wl-retour{ display:none }
 .wl-jeton img{ width:38px; height:38px; border-radius:50%; flex:0 0 auto; object-fit:contain }
 .wl-eth{ width:38px; height:38px; border-radius:50%; flex:0 0 auto;
   background:linear-gradient(160deg,var(--puce1),var(--puce2)); color:var(--puceTx);
@@ -1483,7 +1483,10 @@ a.sg-logo:focus-visible{ outline:2px solid var(--accent); outline-offset:2px }
        Le rond en bas de chaque page ouvre ce portefeuille dans un cadre
        par-dessus la page ou l'on joue. La croix du voile est la sortie ;
        « Back to the arcade » y chargerait le hall DANS le cadre. -->
-  <script>try{ if(window.top !== window.self) document.documentElement.classList.add('wl-cadre'); }catch(e){ document.documentElement.classList.add('wl-cadre'); }</script>
+  <!-- `wl-encadre`, et surtout pas `wl-cadre` : ce nom-la est celui de l'image du
+       cadre decoratif, a 55 % d'opacite et sourde au pointeur. Pose sur <html>,
+       il grisait tout le portefeuille et le rendait intouchable sur iPhone. -->
+  <script>try{ if(window.top !== window.self) document.documentElement.classList.add('wl-encadre'); }catch(e){ document.documentElement.classList.add('wl-encadre'); }</script>
 </header>
 
 <!-- ================== L'ANIMATION D'OUVERTURE ==================
@@ -6219,6 +6222,10 @@ var MARQUE_FILM = 'fb1b0e5a';
   try{ deja = sessionStorage.getItem(CLE) === '1'; }catch(e){ deja = true; }
   var calme = false;
   try{ calme = window.matchMedia('(prefers-reduced-motion: reduce)').matches; }catch(e){}
+  /* Dans le cadre pose par le rond d'une autre page, pas de film : on vient
+     voir un solde en pleine partie, et un voile de plus par-dessus un cadre
+     est justement ce qui restait grise sur iPhone. */
+  if(document.documentElement.classList.contains('wl-encadre')) return;
   if(deja || calme) return;
   try{ sessionStorage.setItem(CLE, '1'); }catch(e){}
 

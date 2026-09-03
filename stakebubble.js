@@ -7915,20 +7915,27 @@
        *   ni changer d'URL. » Un voile plein ecran porte la page du
        *   portefeuille dans un cadre de notre propre domaine ; la partie en
        *   cours, la socket, le defilement restent derriere, intacts. */
-      '.swwo{position:fixed;inset:0;z-index:100000;background:#F4F7FC;display:none;}' +
+      /* Un TELEPHONE pose en bas a droite, comme le bulletin de la page des
+       * paris : la page reste visible et vivante autour, le panneau flotte
+       * par-dessus. Il s'arrete au-dessus des deux bulles (84 px = 16 de
+       * marge + 56 de bulle + 12 d'ecart), qui restent donc visibles — c'est
+       * la bulle qui le range. Z-INDEX sous les bulles, au-dessus du reste. */
+      '.swwo{position:fixed;right:16px;bottom:calc(var(--swbb-h,0px) + 84px);z-index:99997;' +
+      'width:min(390px,calc(100vw - 32px));height:min(780px,calc(100vh - var(--swbb-h,0px) - 100px));' +
+      'border-radius:24px;overflow:hidden;background:#F4F7FC;border:1px solid rgba(27,95,224,.35);' +
+      'box-shadow:0 20px 60px rgba(11,27,54,.28);display:none;' +
+      'transform:translateY(12px);opacity:0;transition:transform .18s ease-out,opacity .18s ease-out;}' +
       '.swwo.on{display:block;}' +
+      '.swwo.vu{transform:translateY(0);opacity:1;}' +
       '.swwo iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:block;background:#fff;z-index:1;}' +
       /* `pointer-events:auto` en force : certaines pages eteignent les
          evenements de leurs boutons sous un voile, et la croix heritait de
          cette regle — le cadre recevait le clic a sa place. */
       /* ---- ET C'EST LA BULLE QUI LE RANGE ----
-       * « Puis on peut le re-ranger dans la bulle. » Pendant que le
-       * portefeuille est ouvert, la bulle passe au-dessus du voile et monte
-       * en haut a droite, en croix : le meme rond ouvre et referme. En bas,
-       * elle recouvrirait les onglets du portefeuille. */
-      'html.swwo-on .swwb{top:calc(10px + env(safe-area-inset-top,0px));right:10px;bottom:auto;' +
-      'z-index:100001;width:44px;height:44px;font-size:20px;color:#0B1B36;pointer-events:auto!important;}' +
-      'html.swwo-on,html.swwo-on body{overflow:hidden!important;}' +
+       * « Puis on peut le re-ranger dans la bulle. » La bulle ne bouge pas :
+       * elle reste sous le panneau, en croix tant qu'il est ouvert. Le meme
+       * rond ouvre et referme. */
+      'html.swwo-on .swwb{color:#0B1B36;border-color:#FFC53D;pointer-events:auto!important;}' +
       '.swdb .swdn{position:absolute;top:-3px;right:-3px;min-width:20px;height:20px;padding:0 5px;' +
       'border-radius:999px;display:flex;align-items:center;justify-content:center;' +
       'font-family:inherit;font-size:11px;font-weight:900;color:#07101F;background:#16D97F;' +
@@ -8001,7 +8008,11 @@
       '@media (max-width:520px){.swdb{width:48px;height:48px;font-size:20px;right:12px;' +
       'bottom:calc(var(--swbb-h,0px) + 12px);}' +
       '.swwb{width:48px;height:48px;font-size:21px;right:calc(12px + 48px + 10px);' +
-      'bottom:calc(var(--swbb-h,0px) + 12px);}}';
+      'bottom:calc(var(--swbb-h,0px) + 12px);}' +
+      /* Sur un telephone, le panneau prend la largeur et s'arrete au-dessus
+         des bulles (12 + 48 + 10 = 70 px), comme le bulletin des paris. */
+      '.swwo{right:8px;left:8px;width:auto;bottom:calc(var(--swbb-h,0px) + 70px);' +
+      'height:auto;top:calc(8px + env(safe-area-inset-top,0px));border-radius:20px;}}';
     document.head.appendChild(c);
   }
 
@@ -8059,6 +8070,9 @@
     /* L'adresse du cadre n'est posee qu'a l'ouverture, et une seule fois. */
     if (walletOuvert && !walletCadre.getAttribute('src')) walletCadre.src = 'swoge_wallet.html';
     voile.classList.toggle('on', walletOuvert);
+    /* Deux temps pour l'animation : `display` d'abord, la transition ensuite. */
+    if (walletOuvert) requestAnimationFrame(function () { voile.classList.add('vu'); });
+    else voile.classList.remove('vu');
     document.documentElement.classList.toggle('swwo-on', walletOuvert);
     walletBtn.setAttribute('aria-expanded', walletOuvert ? 'true' : 'false');
     walletBtn.innerHTML = walletOuvert ? '\u2715' : '\uD83D\uDC5B';

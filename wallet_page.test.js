@@ -1345,17 +1345,21 @@ function servir(q, r, f, type) {
   {
     const MOI = '0x00000000000000000000000000000000000a11ce';
     const VAULT = '0x00000000000000000000000000000000000fa111';
+    const BET_VAULT = '0x00000000000000000000000000000000000fa222';
+    const SWOGEBET = '0xc0aed547862fba5d7d9fbf3cb14204cd756c8bea';
     const enMot = (v) => '0x' + BigInt(v).toString(16).padStart(64, '0');
     const jeu = new WSS({ port: 0 });
     await new Promise((r) => jeu.on('listening', r));
     let bon = 0;
     jeu.on('connection', (c) => {
       c.send(JSON.stringify({ type: 'hello', loginNonce: 'abc', vault: VAULT,
-        token: '0x8a166Fb41Cd659a0a43396272FF73973Ce29F817', minWithdraw: 50, chainId: 4663 }));
+        token: '0x8a166Fb41Cd659a0a43396272FF73973Ce29F817', minWithdraw: 50, chainId: 4663,
+        betVault: BET_VAULT, betToken: SWOGEBET, betMinWithdraw: 50 }));
       c.on('message', (d) => {
         let m; try { m = JSON.parse(d); } catch (e) { return; }
         if (m.type === 'login' || m.type === 'resume')
-          c.send(JSON.stringify({ type: 'auth', address: MOI, balance: '50000', session: 'jeton' }));
+          c.send(JSON.stringify({ type: 'auth', address: MOI, balance: '50000', betBalance: '1000',
+                                  session: 'jeton' }));
         if (m.type === 'withdrawPending')
           c.send(JSON.stringify({ type: 'bonAttente', montant: String(bon) }));
         if (m.type === 'withdraw') {
@@ -1398,7 +1402,12 @@ function servir(q, r, f, type) {
         if (m.method === 'eth_blockNumber') return '0x2f7ce78';
         if (m.method === 'eth_getLogs') return [];
         if (m.method === 'eth_gasPrice') return enMot(134102000n);
-        if (m.method === 'eth_call') return enMot(1234000000000000000000n);
+        if (m.method === 'eth_call') {
+          /* Le $SWOGEBET du portefeuille vaut 1 000, le reste 1 234 : deux
+             chiffres differents, pour voir lequel le champ regarde. */
+          const a = ((m.params && m.params[0] && m.params[0].to) || '').toLowerCase();
+          return enMot(a === SWOGEBET ? 1000000000000000000000n : 1234000000000000000000n);
+        }
         return null; };
       const out = arr.map((m) => ({ jsonrpc: '2.0', id: m.id, result: un(m) }));
       await r.fulfill({ contentType: 'application/json',
@@ -1450,6 +1459,56 @@ function servir(q, r, f, type) {
     ok(/Minimum withdrawal is 50/.test(
          await page.evaluate(() => document.getElementById('caNote').textContent)),
        'sous le minimum du serveur, la demande ne part pas');
+
+    /* ---- L ONGLET DES PARIS REGARDE SES PROPRES SOLDES ----
+       « C est juste la barre pour mettre les SWOGEBET qui fonctionne pas. »
+       Le depot en $SWOGEBET se mesurait contre le $SWOGE du portefeuille, et
+       le retrait contre le solde casino : la poignee et le rouge racontaient
+       l autre coffre. Ici le portefeuille tient 1 000 $SWOGEBET (1 234 $SWOGE)
+       et le solde des paris est de 1 000 (50 000 au casino). */
+    await page.click('#caOnglets button[data-coffre="bet"]');
+    await page.waitForTimeout(400);
+    const mesure = async (id, v) => {
+      await page.fill('#' + id, v);
+      await page.waitForTimeout(150);
+      return page.evaluate((id) => {
+        const w = document.querySelector('.wl-glis[data-pour="' + id + '"]');
+        return { rouge: document.getElementById(id).classList.contains('trop'),
+                 part: Number(w.querySelector('input[type=range]').value),
+                 pc: w.querySelector('.pc').textContent,
+                 off: w.dataset.off === '1' || w.querySelector('input[type=range]').disabled };
+      }, id);
+    };
+    const bet = await page.evaluate(() => ({
+      solde: document.getElementById('caSolde').textContent,
+      wallet: document.getElementById('caDepSolde').textContent,
+    }));
+    ok(/1,000 \$SWOGEBET/.test(bet.solde), 'l onglet des paris montre le solde des PARIS (' + bet.solde + ')');
+    ok(/1,000 \$SWOGEBET/.test(bet.wallet), 'et le $SWOGEBET du portefeuille en face (' + bet.wallet + ')');
+    let d = await mesure('caDepMontant', '500');
+    ok(!d.off && d.part === 50 && !d.rouge,
+       'deposer 500 $SWOGEBET sur 1 000 : la barre est a 50 % et le champ n est pas rouge ('
+       + d.pc + (d.rouge ? ', rouge' : '') + (d.off ? ', barre eteinte' : '') + ')');
+    d = await mesure('caDepMontant', '1100');
+    ok(d.rouge, 'deposer 1 100 rougit : c est plus de $SWOGEBET qu on n en tient — meme si on a 1 234 $SWOGE');
+    let r = await mesure('caRetMontant', '500');
+    ok(!r.off && r.part === 50 && !r.rouge,
+       'retirer 500 sur 1 000 de solde des paris : la barre est a 50 % (' + r.pc + ')');
+    r = await mesure('caRetMontant', '20000');
+    ok(r.rouge, 'retirer 20 000 rougit : le solde des PARIS est de 1 000, pas les 50 000 du casino');
+    /* La poignee sait aussi ecrire le montant, contre le bon solde. */
+    await page.evaluate(() => {
+      const g = document.querySelector('.wl-glis[data-pour="caDepMontant"] input[type=range]');
+      g.value = '25'; g.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await page.waitForTimeout(150);
+    ok(/^250(\.0+)?$/.test(await page.evaluate(() => document.getElementById('caDepMontant').value)),
+       'la poignee a 25 % ecrit 250 $SWOGEBET, le quart de ce que le portefeuille tient');
+    /* Retour a l onglet casino : la meme poignee mesure a nouveau le $SWOGE. */
+    await page.click('#caOnglets button[data-coffre="swoge"]');
+    await page.waitForTimeout(300);
+    d = await mesure('caDepMontant', '1100');
+    ok(!d.rouge, 'de retour sur le casino, 1 100 n est plus rouge : on tient 1 234 $SWOGE');
 
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.close();

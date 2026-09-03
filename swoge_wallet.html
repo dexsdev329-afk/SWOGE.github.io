@@ -68,7 +68,7 @@
      A savoir : cela ne sauve pas la page DEJA en cache chez quelqu'un, qui ne
      contient pas ces lignes. Ce garde-fou vaut a partir de celle-ci. -->
 <script>
-var MARQUE_PAGE = '35f6c740';
+var MARQUE_PAGE = '6ab1f822';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -4563,6 +4563,10 @@ function peintCasino(){
      solde, plutot que de laisser un bouton qui enverrait des jetons nulle part. */
   if(C.bet && pret && !CASINO.betVault && !CASINO.note && etat)
     etat.textContent = 'The $SWOGEBET vault is not deployed yet — bets cannot be funded for now.';
+  /* Le solde regarde vient peut-etre de changer (autre onglet, reponse du
+     serveur) : la barre et le rouge des deux champs se remesurent contre
+     lui, sinon ils gardent l'avis de l'ancien coffre. */
+  if(typeof majMontant === 'function') ['caDepMontant','caRetMontant'].forEach(majMontant);
 }
 function ddNombre(n){ return (Number(n)||0).toLocaleString('en-US',{maximumFractionDigits:2}); }
 /* Choisir le coffre. Les champs se vident : un montant tape pour l'un n'a
@@ -5929,15 +5933,23 @@ function soldeDuChamp(id){
   if(id === 'bcMontant'){
     return { v:soldes.eth, dec:18, sym:ETH_AFF };
   }
+  /* ---- LE COFFRE CHOISI, PAS TOUJOURS LE $SWOGE ----
+     L'ecran Casino a deux onglets. Le depot en $SWOGEBET se mesurait ici
+     contre le $SWOGE du portefeuille, et le retrait contre le solde casino :
+     un joueur qui n'avait que du $SWOGEBET voyait sa barre grise a 0 % et
+     son champ rougir alors qu'il tenait mille jetons. Le champ regarde le
+     meme coffre que le bouton. */
   if(id === 'caDepMontant'){
-    return { v:soldes.swoge, dec:18, sym:'SWOGE' };
+    var CD = (typeof caCoffre === 'function') ? caCoffre() : { cle:'swoge', sym:'$SWOGE' };
+    return { v:soldes[CD.cle], dec:18, sym:CD.sym };
   }
   if(id === 'caRetMontant'){
-    var c = (typeof CASINO !== 'undefined') ? CASINO.solde : null;
-    if(c === null || c === undefined) return { v:c, dec:18, sym:'SWOGE' };
+    var CR = (typeof caCoffre === 'function') ? caCoffre() : { solde:null, sym:'$SWOGE' };
+    var c = (typeof CASINO !== 'undefined') ? CR.solde : null;
+    if(c === null || c === undefined) return { v:c, dec:18, sym:CR.sym };
     var b = null;
     try{ b = ethers.utils.parseUnits(String(c), 18); }catch(e){ b = null; }
-    return { v:b, dec:18, sym:'SWOGE' };
+    return { v:b, dec:18, sym:CR.sym };
   }
   return { v:undefined, dec:18, sym:'' };
 }

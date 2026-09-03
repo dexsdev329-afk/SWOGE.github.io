@@ -141,7 +141,7 @@ function vueFausse(o) {
     compteurs: { scout: 240, wardenBloque: 31, wardenOk: 209, whaleBloque: 44, whaleOk: 165,
                  whisper: 165, oracle: 165, closer: 11 },
     agents: {
-      scout:   { obs: 9, lecons: [{ quoi: 'ne de <10 min', n: 9, moyenne: 4.1 }] },
+      scout:   { obs: 9, lecons: [{ quoi: 'born <10 min ago', n: 9, moyenne: 4.1 }] },
       /* Le Warden porte le cas reel : sa meilleure case par le poids est une
          LECTURE RATEE (GoPlus s'est tu), pas un trait du jeton, et elle a bien
          rendu. Sur le serveur c'etait « code inconnu, 488 obs, +20,0 % » en
@@ -150,7 +150,7 @@ function vueFausse(o) {
                                   { quoi: 'no tax', n: 5, moyenne: -2.2 }] },
       whale:   { obs: 9, lecons: [{ quoi: 'top <5%', n: 7, moyenne: 8.3 }] },
       whisper: { obs: 9, lecons: [{ quoi: 'buyers ahead', n: 6, moyenne: 5.5 }] },
-      oracle:  { obs: 9, lecons: [{ quoi: 'mc 50-500k', n: 8, moyenne: 3.9 }] },
+      oracle:  { obs: 9, lecons: [{ quoi: 'cap $50-500k', n: 8, moyenne: 3.9 }] },
       closer:  { obs: 14, lecons: [{ quoi: '20 min', n: 14, moyenne: 2.7 }] },
     },
     tenue: { min: 20, appris: true, moy: 2.7, n: 14 },
@@ -176,7 +176,7 @@ function vueFausse(o) {
        * l'Oracle : son epreuve coute des appels et ne sert que sur un jeton
        * qui a deja tout passe. */
       { key: 'cobaye', nom: 'Test Subject', emoji: '🐹', couleur: '#c9a227', role: 'epreuve', ordre: 5,
-        mission: 'Simulates the sale on chain', traits: ['sortie'], cout: 1, vus: 29, bloques: 4 },
+        mission: 'Simulates the sale on chain', traits: ['cobaye'], cout: 1, vus: 29, bloques: 4 },
       { key: 'banquier', nom: 'Banker', emoji: '🏦', couleur: '#5ad1a0', role: 'banque', ordre: 6,
         mission: 'Sizes the stake', traits: ['methode'], cout: 0, vus: 0, bloques: 0 },
       { key: 'closer', nom: 'Closer', emoji: '💰', couleur: '#e83e8c', role: 'execution', ordre: 7,
@@ -572,7 +572,7 @@ async function banquierEcran() {
       { vue: vueFausse({ arret: 'treasury below the $100 floor: we stop opening' }) });
     const v = await lit(page);
     console.log('   ' + (v.banque.match(/⛔[^]{0,70}/) || [''])[0]);
-    ok(/plancher/.test(v.banque),
+    ok(/floor/.test(v.banque),
        'l arret est affiche avec sa raison, pas comme une panne');
     ok(!/Next stake/.test(v.banque),
        'et aucune « prochaine mise » n est proposee : il n y en a pas');
@@ -611,7 +611,7 @@ async function panneaux() {
   console.log('   ' + v.structure.slice(0, 150));
   ok(/naissance/.test(v.structure) && /ordre/.test(v.structure),
      'les deux gestes sont au journal : une naissance et un changement d ordre');
-  ok(/ecart type de 42 points/.test(v.structure),
+  ok(/standard deviation of 42 points/.test(v.structure),
      'la naissance porte la MESURE qui l a decidee, pas une formule');
   ok(/refus 79%/.test(v.structure),
      'et le changement d ordre porte les taux de refus mesures');
@@ -670,7 +670,7 @@ async function ficheDeLaPosition() {
   const muets = await page.evaluate(() =>
     [...document.querySelectorAll('#positions .lienpetit.muet')].map((x) => x.textContent.trim()));
   console.log('   ' + JSON.stringify(muets));
-  ok(muets.indexOf('pas encore sur DexScreener') >= 0,
+  ok(muets.indexOf('not on DexScreener yet') >= 0,
      'et pour l autre, on le DIT plutot que d offrir un lien mort — « token not found » au bout '
      + 'd un lien qu on a soi-meme propose est pire qu une absence de lien');
   ok(v.liens.some((l) => /twitter/.test(l) && /x\.com\/nova/.test(l)),
@@ -680,7 +680,7 @@ async function ficheDeLaPosition() {
   const pas = await page.evaluate(() =>
     [...document.querySelectorAll('#positions .lienpetit.muet')].map((x) => x.textContent.trim()));
   console.log('   sans reseau : ' + JSON.stringify(pas));
-  ok(pas.indexOf('aucun reseau') >= 0,
+  ok(pas.indexOf('no socials') >= 0,
      'et quand il n y en a pas, c est ecrit plutot que laisse vide');
   ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
   await page.context().close();
@@ -881,23 +881,43 @@ async function panneauAlertes() {
     await ctx.close();
   }
 
-  console.log('\n-- la colonne repliee --');
+  console.log('\n-- les trois onglets, et la colonne repliee --');
   {
+    /* ---- CE QUE CETTE SECTION MESURE MAINTENANT ----
+     * Elle mesurait « tout est replie ». Ce n'etait pas le but, c'etait le
+     * moyen : le but est qu'on sache OU REGARDER. Treize titres identiques a
+     * la file, tous fermes, ne le disent pas mieux que treize ouverts — ils
+     * demandent seulement treize decisions au lieu d'une.
+     *
+     * Les panneaux sont donc ranges en trois groupes, par la question a
+     * laquelle ils repondent, et un seul groupe est montre a la fois. Ce qui
+     * est mesure ici : qu'un groupe ne soit jamais vide, que rien ne soit
+     * PERDU en route, que le compteur d'un panneau replie reste lisible, et
+     * que les deux choix — l'onglet et le pli — soient gardes. */
     const { page, boum } = await ouvre(nav, port, {});
     const p = await page.evaluate(() => {
       const c = [...document.querySelectorAll('.card[data-pan]')];
       const h = c[0].querySelector('h2');
       const ap = getComputedStyle(h, '::after');
+      const grp = [...document.querySelectorAll('.grp[data-grp]')];
+      const visible = grp.filter((g) => !g.hidden);
+      const dedans = visible.length ? [...visible[0].querySelectorAll('.card[data-pan]')] : [];
       return {
         pans: c.map((x) => x.dataset.pan),
-        ouverts: c.filter((x) => !x.classList.contains('plie')).map((x) => x.dataset.pan),
+        groupes: grp.map((g) => g.dataset.grp),
+        montres: visible.map((g) => g.dataset.grp),
+        onglets: [...document.querySelectorAll('.onglet[data-grp]')].map((b) => b.dataset.grp),
+        choisi: (document.querySelector('.onglet[aria-selected="true"]') || {}).dataset,
+        /* Par groupe : combien de panneaux y sont ouverts. Un onglet dont les
+           quatre titres sont replies se lit comme un onglet vide. */
+        ouvertsParGroupe: grp.map((g) => [...g.querySelectorAll('.card[data-pan]')]
+          .filter((x) => !x.classList.contains('plie')).length),
         /* Le compteur reste lisible replie : c'est lui qui dit ce qu'il y a
-           dedans, et donc s'il vaut la peine d'etre ouvert. On compte ceux qui
-           EN ONT un — « Agents » n'en a pas, et n'en a pas besoin : la liste
-           des agents ne varie pas d'une seconde a l'autre. Exiger un compteur
-           partout aurait force un chiffre creux sur ce panneau-la. */
-        avecCompteur: c.filter((x) => x.querySelector('h2 .count')).length,
-        compteursVus: c.filter((x) => {
+           dedans, donc s'il vaut la peine d'etre ouvert. On ne compte que le
+           groupe MONTRE — un panneau d'un autre onglet n'a pas de boite, et
+           « invisible » y voudrait dire « pas a l'ecran », pas « muet ». */
+        avecCompteur: dedans.filter((x) => x.querySelector('h2 .count')).length,
+        compteursVus: dedans.filter((x) => {
           const n = x.querySelector('h2 .count');
           return n && n.offsetParent !== null;
         }).length,
@@ -905,37 +925,70 @@ async function panneauAlertes() {
         curseur: getComputedStyle(h).cursor,
       };
     });
-    console.log('   ' + JSON.stringify(p.bouton) + ' · ouverts : ' + JSON.stringify(p.ouverts));
-    ok(p.ouverts.length === 0, 'aucun panneau n est ouvert au depart ('
-       + (p.ouverts.join(', ') || 'aucun') + ')');
+    console.log('   ' + JSON.stringify({ groupes: p.groupes, montre: p.montres,
+                                         ouvertsParGroupe: p.ouvertsParGroupe }));
+    ok(p.onglets.length === p.groupes.length && p.groupes.length === 3,
+       'trois onglets, trois groupes, et un bouton pour chacun');
+    ok(p.montres.length === 1 && p.choisi && p.choisi.grp === p.montres[0],
+       'un seul groupe est montre a la fois, et c est celui que l onglet marque comme choisi ('
+       + p.montres.join(', ') + ')');
+    /* ---- RIEN N'EST PERDU EN CHEMIN ----
+     * C'est la seule chose qui rendrait le rangement pire que la file : un
+     * panneau qui n'est dans aucun groupe n'est plus atteignable du tout. */
+    const dansUnGroupe = await page.evaluate(() =>
+      [...document.querySelectorAll('.card[data-pan]')].filter((x) => x.closest('.grp')).length);
+    ok(dansUnGroupe === p.pans.length,
+       'les ' + p.pans.length + ' panneaux sont tous dans un groupe : ranger n est pas retirer');
+    ok(p.ouvertsParGroupe.every((n) => n === 1),
+       'et chaque groupe s ouvre sur UN panneau deja deplie : un onglet dont tout est replie se '
+       + 'lit comme un onglet vide (' + p.ouvertsParGroupe.join('/') + ')');
     ok(p.pans[p.pans.length - 1] === 'alertes',
        'et « ce dont la colonie a besoin » est le dernier bloc de la colonne');
-    ok(p.avecCompteur >= p.pans.length - 1 && p.compteursVus === p.avecCompteur,
+    ok(p.avecCompteur >= 3 && p.compteursVus === p.avecCompteur,
        'chaque titre qui a un compteur le garde sous les yeux : replie ne veut pas dire muet ('
-       + p.compteursVus + '/' + p.avecCompteur + ' sur ' + p.pans.length + ' panneaux)');
+       + p.compteursVus + '/' + p.avecCompteur + ' dans l onglet montre)');
     /* Le chevron n'est pas qu'un caractere : il porte une pastille, donc il a
-       une largeur et un fond. Sans ca il ne se lit pas comme un bouton — et
-       quand tout est ferme, c'est la seule chose qui dit que ca s'ouvre. */
+       une largeur et un fond. Sans ca il ne se lit pas comme un bouton. */
     ok(parseFloat(p.bouton.w) >= 14 && !/^rgba\(0, 0, 0, 0\)$/.test(p.bouton.fond),
        'le petit bouton se voit vraiment : une pastille, pas un caractere gris ('
        + p.bouton.w + ', ' + p.bouton.fond + ')');
     ok(p.curseur === 'pointer', 'et le titre entier se clique');
 
-    /* On l'ouvre, on recharge : il doit etre reste ouvert. */
-    await page.evaluate(() => document.querySelector('.card[data-pan="positions"] h2').click());
+    /* ---- ON OUVRE UN PANNEAU REPLIE, ET IL RESTE OUVERT ----
+     * On prend celui que la page a laisse ferme : cliquer sur celui qui est
+     * deja ouvert le FERMERAIT, et l'essai mesurerait alors le contraire de ce
+     * qu'il annonce. */
+    const cible = await page.evaluate(() => {
+      const g = [...document.querySelectorAll('.grp[data-grp]')].find((x) => !x.hidden);
+      const c = [...g.querySelectorAll('.card[data-pan]')].find((x) => x.classList.contains('plie'));
+      c.querySelector('h2').click();
+      return c.dataset.pan;
+    });
     await page.waitForTimeout(120);
-    const ouvert = await page.evaluate(() =>
-      !document.querySelector('.card[data-pan="positions"]').classList.contains('plie'));
-    ok(ouvert, 'un clic sur le titre ouvre le panneau');
+    const ouvert = await page.evaluate((k) =>
+      !document.querySelector('.card[data-pan="' + k + '"]').classList.contains('plie'), cible);
+    ok(ouvert, 'un clic sur un titre replie ouvre le panneau (' + cible + ')');
+
+    /* ---- ET LES DEUX CHOIX SURVIVENT A LA VISITE SUIVANTE ----
+     * L'onglet aussi : quelqu'un qui vient pour l'audit des vetos ne veut pas
+     * le rechercher chaque fois. */
+    await page.evaluate(() => {
+      const b = [...document.querySelectorAll('.onglet[data-grp]')].pop();
+      b.click();
+    });
+    await page.waitForTimeout(80);
+    const vise = await page.evaluate(() =>
+      (document.querySelector('.onglet[aria-selected="true"]') || {}).dataset.grp);
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(700);
-    const apres = await page.evaluate(() => ({
-      pos: !document.querySelector('.card[data-pan="positions"]').classList.contains('plie'),
-      autres: [...document.querySelectorAll('.card[data-pan]')]
-        .filter((x) => x.dataset.pan !== 'positions' && !x.classList.contains('plie')).length,
-    }));
-    ok(apres.pos && apres.autres === 0,
-       'et il reste ouvert a la visite suivante, lui seul — le choix est garde, pas devine');
+    const apres = await page.evaluate((k) => ({
+      pan: !document.querySelector('.card[data-pan="' + k + '"]').classList.contains('plie'),
+      onglet: (document.querySelector('.onglet[aria-selected="true"]') || {}).dataset.grp,
+    }), cible);
+    console.log('   apres rechargement : ' + JSON.stringify(apres));
+    ok(apres.pan, 'et il est toujours ouvert a la visite suivante : le choix est garde, pas devine');
+    ok(apres.onglet === vise,
+       'l onglet choisi aussi (' + apres.onglet + ') — sinon on rechoisit sa question a chaque visite');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.context().close();
   }
@@ -1193,7 +1246,9 @@ async function auditDesVetos() {
       return out;
     });
     console.log('   stockage local : ' + JSON.stringify(stock));
-    const PREFS = ['swogeAiLangue', 'swogeAiPanneaux2'];
+    /* L onglet ouvert et les panneaux replies sont des preferences de LECTURE,
+       au meme titre que la langue : elles ne sont l etat de personne d autre. */
+    const PREFS = ['swogeAiLangue', 'swogeAiPanneaux3', 'swogeAiOnglet'];
     const intrus = Object.keys(stock).filter((k) => PREFS.indexOf(k) < 0);
     ok(intrus.length === 0,
        intrus.length === 0
@@ -1430,7 +1485,7 @@ async function auditDesVetos() {
     ok(miel && miel.i === iCob,
        'le jeton dont la sortie est bloquee est rejete CHEZ LE COBAYE, apres que tous les '
        + 'autres gardes l aient laisse passer');
-    ok(miel && /sortie est bloquee/.test(miel.txt),
+    ok(miel && /the exit is blocked/.test(miel.txt),
        'et la raison exacte est affichee, avec ses chiffres : « ' + (miel && miel.txt) + ' »');
     const iOr = await page.evaluate(() => AGENTS.findIndex((a) => a.key === 'oracle'));
     ok(iCob > iOr,

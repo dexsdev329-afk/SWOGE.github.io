@@ -13,7 +13,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
-var MARQUE_PAGE = 'f7edca23';
+var MARQUE_PAGE = 'fa48a0a1';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -1464,6 +1464,8 @@ const PHRASES = {
                       + 'rien ne s\'affiche : deux coups de chance ne font pas une regle.'],
   pasDeDonnee:  ['no data yet', 'pas encore de donnee'],
   appris:       [' learned', ' appris'],
+  meilleureLecon:[(pc, quoi, n) => pc + '% on « ' + quoi + ' » (' + n + ' obs)',
+                 (pc, quoi, n) => pc + '% sur « ' + quoi + ' » (' + n + ' obs)'],
   tagGain:      ['GAIN', 'GAIN'],
   tagPerte:     ['LOSS', 'PERTE'],
   tagTenue:     ['HELD', 'TENUE'],
@@ -2040,8 +2042,8 @@ function apprisAgent(k){
   const lues = (a.lecons||[]).filter(x => !x.nonLue);
   const l = lues[0] || a.lecons[0];
   if(!l) return ph("pasDeTendance", a.obs);
-  const dit = (l.moyenne>=0?"+":"") + l.moyenne.toFixed(1) + "% sur « " + l.quoi + " » ("
-            + nombreObs(l.n) + " obs)";
+  const dit = ph("meilleureLecon", (l.moyenne>=0?"+":"") + l.moyenne.toFixed(1),
+                 l.quoi, nombreObs(l.n));
   return l.nonLue ? dit + ph("lectureRatee") : dit;
 }
 

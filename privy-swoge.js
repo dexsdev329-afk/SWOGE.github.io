@@ -1,3 +1,119 @@
+/* ==================== BUFFER, LE MINIMUM QUE CE PAQUET RECLAME ====================
+ *
+ * DEMANDE : « qu'on puisse acheter des jetons de Solana » — donc signer sur
+ * Solana.
+ *
+ * Le gestionnaire Solana de ce paquet fait `Buffer.from(...)` et
+ * `.toString("base64")`. Or `Buffer` n'existe NI dans ce paquet, NI dans
+ * `@solana/web3.js`, NI dans un navigateur : mesure faite dans un Chromium
+ * reel, `typeof Buffer` rend « undefined ». Sans lui, la signature Solana
+ * leve `ReferenceError: Buffer is not defined` — au moment EXACT ou l'argent
+ * bouge, apres que l'utilisateur a valide. C'est la pire seconde possible
+ * pour une panne.
+ *
+ * ---- POURQUOI QUARANTE LIGNES ET PAS LE PAQUET `buffer` ----
+ *
+ * Parce que la surface reclamee est ENTIEREMENT enumerable, et qu'elle tient
+ * en trois appels. Releve exhaustif sur ce fichier :
+ *
+ *     Buffer.from(e, "utf8")              → e1, chemin EVM
+ *     Buffer.from(Uint8Array.from(e))
+ *     Buffer.from(tx.message.serialize()) → chemin Solana
+ *     Buffer.from(sig, "base64")          → chemin Solana
+ *     .toString("hex")                    → Xf, chemin EVM
+ *     .toString("base64")                 → chemin Solana
+ *
+ * (Les trois « Buffer.isView » du releve brut sont en fait
+ * `ArrayBuffer.isView` — le motif attrapait la fin du mot.)
+ *
+ * Cinquante kilo-octets de paquet tiers sur une page qui signe des
+ * transactions, contre quarante lignes qu'on peut relire en entier : sur du
+ * code qui deplace de l'argent, ce qu'on peut AUDITER vaut mieux que ce qui
+ * est populaire.
+ *
+ * ---- CE QU'IL EST, ET CE QU'IL N'EST PAS ----
+ *
+ * C'est un `Uint8Array` — pas une imitation. `addSignature` de web3.js attend
+ * exactement ca, et un objet qui « ressemble » aurait echoue la. Il ne
+ * pretend pas etre le `Buffer` de Node : il porte les deux encodages
+ * demandes, et rien d'autre. Un encodage inconnu leve, plutot que de rendre
+ * quelque chose de faux en silence.
+ *
+ * Et il ne remplace jamais un `Buffer` deja present : une extension ou une
+ * page hote peut en avoir pose un vrai, qui en sait plus que celui-ci. */
+(function(){
+  if (typeof globalThis === 'undefined' || globalThis.Buffer) return;
+
+  var B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+
+  function versB64(u8){
+    var s = '', i;
+    for (i = 0; i + 2 < u8.length; i += 3){
+      var n = (u8[i] << 16) | (u8[i + 1] << 8) | u8[i + 2];
+      s += B64[(n >> 18) & 63] + B64[(n >> 12) & 63] + B64[(n >> 6) & 63] + B64[n & 63];
+    }
+    var r = u8.length - i;
+    if (r === 1){
+      var a = u8[i] << 16;
+      s += B64[(a >> 18) & 63] + B64[(a >> 12) & 63] + '==';
+    } else if (r === 2){
+      var b = (u8[i] << 16) | (u8[i + 1] << 8);
+      s += B64[(b >> 18) & 63] + B64[(b >> 12) & 63] + B64[(b >> 6) & 63] + '=';
+    }
+    return s;
+  }
+  function depuisB64(str){
+    var c = String(str).replace(/[^A-Za-z0-9+/]/g, ''), n = c.length;
+    var pleins = (n * 3) >> 2, out = new Uint8Array(pleins), o = 0, tampon = 0, bits = 0;
+    for (var i = 0; i < n; i++){
+      tampon = (tampon << 6) | B64.indexOf(c[i]); bits += 6;
+      if (bits >= 8){ bits -= 8; out[o++] = (tampon >> bits) & 255; }
+    }
+    return out.subarray(0, o);
+  }
+
+  function Tampon(){}
+  Tampon.prototype = Object.create(Uint8Array.prototype);
+
+  function enrobe(u8){
+    /* `toString` est pose sur l'instance : redefinir celui de Uint8Array.prototype
+       changerait le comportement de TOUT le reste de la page. */
+    u8.toString = function(enc){
+      if (enc === 'base64') return versB64(this);
+      if (enc === 'hex'){
+        var s = '';
+        for (var i = 0; i < this.length; i++) s += (this[i] < 16 ? '0' : '') + this[i].toString(16);
+        return s;
+      }
+      if (enc === 'utf8' || enc === 'utf-8' || enc === undefined)
+        return new TextDecoder().decode(this);
+      throw new Error('Buffer.toString: encodage non gere — ' + enc);
+    };
+    return u8;
+  }
+
+  globalThis.Buffer = {
+    from: function(x, enc){
+      if (typeof x === 'string'){
+        if (enc === 'base64') return enrobe(depuisB64(x));
+        if (enc === 'hex'){
+          var h = x.replace(/^0x/, ''), u = new Uint8Array(h.length >> 1);
+          for (var i = 0; i < u.length; i++) u[i] = parseInt(h.substr(i * 2, 2), 16);
+          return enrobe(u);
+        }
+        if (enc === undefined || enc === 'utf8' || enc === 'utf-8')
+          return enrobe(new TextEncoder().encode(x));
+        throw new Error('Buffer.from: encodage non gere — ' + enc);
+      }
+      if (x instanceof Uint8Array) return enrobe(new Uint8Array(x));
+      if (x && typeof x.length === 'number') return enrobe(Uint8Array.from(x));
+      throw new Error('Buffer.from: entree non geree');
+    },
+    isBuffer: function(x){ return x instanceof Uint8Array; },
+    alloc: function(n){ return enrobe(new Uint8Array(n)); },
+  };
+})();
+
 (()=>{var Ew=Object.create;var om=Object.defineProperty;var Tw=Object.getOwnPropertyDescriptor;var Iw=Object.getOwnPropertyNames;var kw=Object.getPrototypeOf,Sw=Object.prototype.hasOwnProperty;var k=(e,t,r)=>()=>{if(r)throw r[0];try{return e&&(t=e(e=0)),t}catch(n){throw r=[n],n}};var sm=(e,t)=>()=>{try{return t||e((t={exports:{}}).exports,t),t.exports}catch(r){throw t=0,r}},jt=(e,t)=>{for(var r in t)om(e,r,{get:t[r],enumerable:!0})},Pw=(e,t,r,n)=>{if(t&&typeof t=="object"||typeof t=="function")for(let o of Iw(t))!Sw.call(e,o)&&o!==r&&om(e,o,{get:()=>t[o],enumerable:!(n=Tw(t,o))||n.enumerable});return e};var im=(e,t,r)=>(r=e!=null?Ew(kw(e)):{},Pw(t||!e||!e.__esModule?om(r,"default",{value:e,enumerable:!0}):r,e));var _2=sm((YE,vm)=>{"use strict";var n8=Object.prototype.hasOwnProperty,at="~";function uc(){}Object.create&&(uc.prototype=Object.create(null),new uc().__proto__||(at=!1));function o8(e,t,r){this.fn=e,this.context=t,this.once=r||!1}function v2(e,t,r,n,o){if(typeof r!="function")throw new TypeError("The listener must be a function");var s=new o8(r,n||e,o),i=at?at+t:t;return e._events[i]?e._events[i].fn?e._events[i]=[e._events[i],s]:e._events[i].push(s):(e._events[i]=s,e._eventsCount++),e}function Fd(e,t){--e._eventsCount===0?e._events=new uc:delete e._events[t]}function qe(){this._events=new uc,this._eventsCount=0}qe.prototype.eventNames=function(){var t=[],r,n;if(this._eventsCount===0)return t;for(n in r=this._events)n8.call(r,n)&&t.push(at?n.slice(1):n);return Object.getOwnPropertySymbols?t.concat(Object.getOwnPropertySymbols(r)):t};qe.prototype.listeners=function(t){var r=at?at+t:t,n=this._events[r];if(!n)return[];if(n.fn)return[n.fn];for(var o=0,s=n.length,i=new Array(s);o<s;o++)i[o]=n[o].fn;return i};qe.prototype.listenerCount=function(t){var r=at?at+t:t,n=this._events[r];return n?n.fn?1:n.length:0};qe.prototype.emit=function(t,r,n,o,s,i){var a=at?at+t:t;if(!this._events[a])return!1;var c=this._events[a],d=arguments.length,u,p;if(c.fn){switch(c.once&&this.removeListener(t,c.fn,void 0,!0),d){case 1:return c.fn.call(c.context),!0;case 2:return c.fn.call(c.context,r),!0;case 3:return c.fn.call(c.context,r,n),!0;case 4:return c.fn.call(c.context,r,n,o),!0;case 5:return c.fn.call(c.context,r,n,o,s),!0;case 6:return c.fn.call(c.context,r,n,o,s,i),!0}for(p=1,u=new Array(d-1);p<d;p++)u[p-1]=arguments[p];c.fn.apply(c.context,u)}else{var f=c.length,l;for(p=0;p<f;p++)switch(c[p].once&&this.removeListener(t,c[p].fn,void 0,!0),d){case 1:c[p].fn.call(c[p].context);break;case 2:c[p].fn.call(c[p].context,r);break;case 3:c[p].fn.call(c[p].context,r,n);break;case 4:c[p].fn.call(c[p].context,r,n,o);break;default:if(!u)for(l=1,u=new Array(d-1);l<d;l++)u[l-1]=arguments[l];c[p].fn.apply(c[p].context,u)}}return!0};qe.prototype.on=function(t,r,n){return v2(this,t,r,n,!1)};qe.prototype.once=function(t,r,n){return v2(this,t,r,n,!0)};qe.prototype.removeListener=function(t,r,n,o){var s=at?at+t:t;if(!this._events[s])return this;if(!r)return Fd(this,s),this;var i=this._events[s];if(i.fn)i.fn===r&&(!o||i.once)&&(!n||i.context===n)&&Fd(this,s);else{for(var a=0,c=[],d=i.length;a<d;a++)(i[a].fn!==r||o&&!i[a].once||n&&i[a].context!==n)&&c.push(i[a]);c.length?this._events[s]=c.length===1?c[0]:c:Fd(this,s)}return this};qe.prototype.removeAllListeners=function(t){var r;return t?(r=at?at+t:t,this._events[r]&&Fd(this,r)):(this._events=new uc,this._eventsCount=0),this};qe.prototype.off=qe.prototype.removeListener;qe.prototype.addListener=qe.prototype.on;qe.prefixed=at;qe.EventEmitter=qe;typeof vm<"u"&&(vm.exports=qe)});var A2,E2=k(()=>{A2="1.2.3"});var $e,Xs=k(()=>{E2();$e=class e extends Error{constructor(t,r={}){let n=r.cause instanceof e?r.cause.details:r.cause?.message?r.cause.message:r.details,o=r.cause instanceof e&&r.cause.docsPath||r.docsPath,s=[t||"An error occurred.","",...r.metaMessages?[...r.metaMessages,""]:[],...o?[`Docs: https://abitype.dev${o}`]:[],...n?[`Details: ${n}`]:[],`Version: abitype@${A2}`].join(`
 `);super(s),Object.defineProperty(this,"details",{enumerable:!0,configurable:!0,writable:!0,value:void 0}),Object.defineProperty(this,"docsPath",{enumerable:!0,configurable:!0,writable:!0,value:void 0}),Object.defineProperty(this,"metaMessages",{enumerable:!0,configurable:!0,writable:!0,value:void 0}),Object.defineProperty(this,"shortMessage",{enumerable:!0,configurable:!0,writable:!0,value:void 0}),Object.defineProperty(this,"name",{enumerable:!0,configurable:!0,writable:!0,value:"AbiTypeError"}),r.cause&&(this.cause=r.cause),this.details=n,this.docsPath=o,this.metaMessages=r.metaMessages,this.shortMessage=t}}});function Nt(e,t){return e.exec(t)?.groups}var _m,$m,jd,pc=k(()=>{_m=/^bytes([1-9]|1[0-9]|2[0-9]|3[0-2])?$/,$m=/^u?int(8|16|24|32|40|48|56|64|72|80|88|96|104|112|120|128|136|144|152|160|168|176|184|192|200|208|216|224|232|240|248|256)?$/,jd=/^\(.+?\).*?$/});function Gd(e){let t=e.type;if(T2.test(e.type)&&"components"in e){t="(";let r=e.components.length;for(let o=0;o<r;o++){let s=e.components[o];t+=Gd(s),o<r-1&&(t+=", ")}let n=Nt(T2,e.type);return t+=`)${n?.array||""}`,Gd({...e,type:t})}return"indexed"in e&&e.indexed&&(t=`${t} indexed`),e.name?`${t} ${e.name}`:t}var T2,I2=k(()=>{pc();T2=/^tuple(?<array>(\[(\d*)\])*)$/});function Jr(e){let t="",r=e.length;for(let n=0;n<r;n++){let o=e[n];t+=Gd(o),n!==r-1&&(t+=", ")}return t}var Am=k(()=>{I2()});function jo(e){return e.type==="function"?`function ${e.name}(${Jr(e.inputs)})${e.stateMutability&&e.stateMutability!=="nonpayable"?` ${e.stateMutability}`:""}${e.outputs?.length?` returns (${Jr(e.outputs)})`:""}`:e.type==="event"?`event ${e.name}(${Jr(e.inputs)})`:e.type==="error"?`error ${e.name}(${Jr(e.inputs)})`:e.type==="constructor"?`constructor(${Jr(e.inputs)})${e.stateMutability==="payable"?" payable":""}`:e.type==="fallback"?`fallback() external${e.stateMutability==="payable"?" payable":""}`:"receive() external payable"}var k2=k(()=>{Am()});function P2(e){return S2.test(e)}function C2(e){return Nt(S2,e)}function B2(e){return R2.test(e)}function N2(e){return Nt(R2,e)}function O2(e){return M2.test(e)}function U2(e){return Nt(M2,e)}function Wn(e){return H2.test(e)}function z2(e){return Nt(H2,e)}function F2(e){return L2.test(e)}function D2(e){return Nt(L2,e)}function G2(e){return j2.test(e)}function V2(e){return Nt(j2,e)}function K2(e){return s8.test(e)}var S2,R2,M2,H2,L2,j2,s8,Em,W2,Vd,Qs=k(()=>{pc();S2=/^error (?<name>[a-zA-Z$_][a-zA-Z0-9$_]*)\((?<parameters>.*?)\)$/;R2=/^event (?<name>[a-zA-Z$_][a-zA-Z0-9$_]*)\((?<parameters>.*?)\)$/;M2=/^function (?<name>[a-zA-Z$_][a-zA-Z0-9$_]*)\((?<parameters>.*?)\)(?: (?<scope>external|public{1}))?(?: (?<stateMutability>pure|view|nonpayable|payable{1}))?(?: returns\s?\((?<returns>.*?)\))?$/;H2=/^struct (?<name>[a-zA-Z$_][a-zA-Z0-9$_]*) \{(?<properties>.*?)\}$/;L2=/^constructor\((?<parameters>.*?)\)(?:\s(?<stateMutability>payable{1}))?$/;j2=/^fallback\(\) external(?:\s(?<stateMutability>payable{1}))?$/;s8=/^receive\(\) external payable$/;Em=new Set(["memory","indexed","storage","calldata"]),W2=new Set(["indexed"]),Vd=new Set(["calldata","memory","storage"])});var Kd,Wd,qd,Zd=k(()=>{Xs();Kd=class extends $e{constructor({signature:t}){super("Failed to parse ABI item.",{details:`parseAbiItem(${JSON.stringify(t,null,2)})`,docsPath:"/api/human#parseabiitem-1"}),Object.defineProperty(this,"name",{enumerable:!0,configurable:!0,writable:!0,value:"InvalidAbiItemError"})}},Wd=class extends $e{constructor({type:t}){super("Unknown type.",{metaMessages:[`Type "${t}" is not a valid ABI type. Perhaps you forgot to include a struct signature?`]}),Object.defineProperty(this,"name",{enumerable:!0,configurable:!0,writable:!0,value:"UnknownTypeError"})}},qd=class extends $e{constructor({type:t}){super("Unknown type.",{metaMessages:[`Type "${t}" is not a valid ABI type.`]}),Object.defineProperty(this,"name",{enumerable:!0,configurable:!0,writable:!0,value:"UnknownSolidityTypeError"})}}});var Jd,Yd,Xd,Qd,eu,tu,ru=k(()=>{Xs();Jd=class extends $e{constructor({params:t}){super("Failed to parse ABI parameters.",{details:`parseAbiParameters(${JSON.stringify(t,null,2)})`,docsPath:"/api/human#parseabiparameters-1"}),Object.defineProperty(this,"name",{enumerable:!0,configurable:!0,writable:!0,value:"InvalidAbiParametersError"})}},Yd=class extends $e{constructor({param:t}){super("Invalid ABI parameter.",{details:t}),Object.defineProperty(this,"name",{enumerable:!0,configurable:!0,writable:!0,value:"InvalidParameterError"})}},Xd=class extends $e{constructor({param:t,name:r}){super("Invalid ABI parameter.",{details:t,metaMessages:[`"${r}" is a protected Solidity keyword. More info: https://docs.soliditylang.org/en/latest/cheatsheet.html`]}),Object.defineProperty(this,"name",{enumerable:!0,configurable:!0,writable:!0,value:"SolidityProtectedKeywordError"})}},Qd=class extends $e{constructor({param:t,type:r,modifier:n}){super("Invalid ABI parameter.",{details:t,metaMessages:[`Modifier "${n}" not allowed${r?` in "${r}" type`:""}.`]}),Object.defineProperty(this,"name",{enumerable:!0,configurable:!0,writable:!0,value:"InvalidModifierError"})}},eu=class extends $e{constructor({param:t,type:r,modifier:n}){super("Invalid ABI parameter.",{details:t,metaMessages:[`Modifier "${n}" not allowed${r?` in "${r}" type`:""}.`,`Data location can only be specified for array, struct, or mapping types, but "${n}" was given.`]}),Object.defineProperty(this,"name",{enumerable:!0,configurable:!0,writable:!0,value:"InvalidFunctionModifierError"})}},tu=class extends $e{constructor({abiParameter:t}){super("Invalid ABI parameter.",{details:JSON.stringify(t,null,2),metaMessages:["ABI parameter type is invalid."]}),Object.defineProperty(this,"name",{enumerable:!0,configurable:!0,writable:!0,value:"InvalidAbiTypeParameterError"})}}});var Tr,nu,ou,Tm=k(()=>{Xs();Tr=class extends $e{constructor({signature:t,type:r}){super(`Invalid ${r} signature.`,{details:t}),Object.defineProperty(this,"name",{enumerable:!0,configurable:!0,writable:!0,value:"InvalidSignatureError"})}},nu=class extends $e{constructor({signature:t}){super("Unknown signature.",{details:t}),Object.defineProperty(this,"name",{enumerable:!0,configurable:!0,writable:!0,value:"UnknownSignatureError"})}},ou=class extends $e{constructor({signature:t}){super("Invalid struct signature.",{details:t,metaMessages:["No properties exist."]}),Object.defineProperty(this,"name",{enumerable:!0,configurable:!0,writable:!0,value:"InvalidStructSignatureError"})}}});var su,q2=k(()=>{Xs();su=class extends $e{constructor({type:t}){super("Circular reference detected.",{metaMessages:[`Struct "${t}" is a circular reference.`]}),Object.defineProperty(this,"name",{enumerable:!0,configurable:!0,writable:!0,value:"CircularReferenceError"})}}});var iu,Z2=k(()=>{Xs();iu=class extends $e{constructor({current:t,depth:r}){super("Unbalanced parentheses.",{metaMessages:[`"${t.trim()}" has too many ${r>0?"opening":"closing"} parentheses.`],details:`Depth "${r}"`}),Object.defineProperty(this,"name",{enumerable:!0,configurable:!0,writable:!0,value:"InvalidParenthesisError"})}}});function J2(e,t,r){let n="";if(r)for(let o of Object.entries(r)){if(!o)continue;let s="";for(let i of o[1])s+=`[${i.type}${i.name?`:${i.name}`:""}]`;n+=`(${o[0]}{${s}})`}return t?`${t}:${e}${n}`:`${e}${n}`}var au,Y2=k(()=>{au=new Map([["address",{type:"address"}],["bool",{type:"bool"}],["bytes",{type:"bytes"}],["bytes32",{type:"bytes32"}],["int",{type:"int256"}],["int256",{type:"int256"}],["string",{type:"string"}],["uint",{type:"uint256"}],["uint8",{type:"uint8"}],["uint16",{type:"uint16"}],["uint24",{type:"uint24"}],["uint32",{type:"uint32"}],["uint64",{type:"uint64"}],["uint96",{type:"uint96"}],["uint112",{type:"uint112"}],["uint160",{type:"uint160"}],["uint192",{type:"uint192"}],["uint256",{type:"uint256"}],["address owner",{type:"address",name:"owner"}],["address to",{type:"address",name:"to"}],["bool approved",{type:"bool",name:"approved"}],["bytes _data",{type:"bytes",name:"_data"}],["bytes data",{type:"bytes",name:"data"}],["bytes signature",{type:"bytes",name:"signature"}],["bytes32 hash",{type:"bytes32",name:"hash"}],["bytes32 r",{type:"bytes32",name:"r"}],["bytes32 root",{type:"bytes32",name:"root"}],["bytes32 s",{type:"bytes32",name:"s"}],["string name",{type:"string",name:"name"}],["string symbol",{type:"string",name:"symbol"}],["string tokenURI",{type:"string",name:"tokenURI"}],["uint tokenId",{type:"uint256",name:"tokenId"}],["uint8 v",{type:"uint8",name:"v"}],["uint256 balance",{type:"uint256",name:"balance"}],["uint256 tokenId",{type:"uint256",name:"tokenId"}],["uint256 value",{type:"uint256",name:"value"}],["event:address indexed from",{type:"address",name:"from",indexed:!0}],["event:address indexed to",{type:"address",name:"to",indexed:!0}],["event:uint indexed tokenId",{type:"uint256",name:"tokenId",indexed:!0}],["event:uint256 indexed tokenId",{type:"uint256",name:"tokenId",indexed:!0}]])});function lc(e,t={}){if(O2(e))return i8(e,t);if(B2(e))return a8(e,t);if(P2(e))return c8(e,t);if(F2(e))return d8(e,t);if(G2(e))return u8(e);if(K2(e))return{type:"receive",stateMutability:"payable"};throw new nu({signature:e})}function i8(e,t={}){let r=U2(e);if(!r)throw new Tr({signature:e,type:"function"});let n=ht(r.parameters),o=[],s=n.length;for(let a=0;a<s;a++)o.push(lr(n[a],{modifiers:Vd,structs:t,type:"function"}));let i=[];if(r.returns){let a=ht(r.returns),c=a.length;for(let d=0;d<c;d++)i.push(lr(a[d],{modifiers:Vd,structs:t,type:"function"}))}return{name:r.name,type:"function",stateMutability:r.stateMutability??"nonpayable",inputs:o,outputs:i}}function a8(e,t={}){let r=N2(e);if(!r)throw new Tr({signature:e,type:"event"});let n=ht(r.parameters),o=[],s=n.length;for(let i=0;i<s;i++)o.push(lr(n[i],{modifiers:W2,structs:t,type:"event"}));return{name:r.name,type:"event",inputs:o}}function c8(e,t={}){let r=C2(e);if(!r)throw new Tr({signature:e,type:"error"});let n=ht(r.parameters),o=[],s=n.length;for(let i=0;i<s;i++)o.push(lr(n[i],{structs:t,type:"error"}));return{name:r.name,type:"error",inputs:o}}function d8(e,t={}){let r=D2(e);if(!r)throw new Tr({signature:e,type:"constructor"});let n=ht(r.parameters),o=[],s=n.length;for(let i=0;i<s;i++)o.push(lr(n[i],{structs:t,type:"constructor"}));return{type:"constructor",stateMutability:r.stateMutability??"nonpayable",inputs:o}}function u8(e){let t=V2(e);if(!t)throw new Tr({signature:e,type:"fallback"});return{type:"fallback",stateMutability:t.stateMutability??"nonpayable"}}function lr(e,t){let r=J2(e,t?.type,t?.structs);if(au.has(r))return au.get(r);let n=jd.test(e),o=Nt(n?l8:p8,e);if(!o)throw new Yd({param:e});if(o.name&&y8(o.name))throw new Xd({param:e,name:o.name});let s=o.name?{name:o.name}:{},i=o.modifier==="indexed"?{indexed:!0}:{},a=t?.structs??{},c,d={};if(n){c="tuple";let p=ht(o.type),f=[],l=p.length;for(let m=0;m<l;m++)f.push(lr(p[m],{structs:a}));d={components:f}}else if(o.type in a)c="tuple",d={components:a[o.type]};else if(f8.test(o.type))c=`${o.type}256`;else if(o.type==="address payable")c="address";else if(c=o.type,t?.type!=="struct"&&!Im(c))throw new qd({type:c});if(o.modifier){if(!t?.modifiers?.has?.(o.modifier))throw new Qd({param:e,type:t?.type,modifier:o.modifier});if(Vd.has(o.modifier)&&!h8(c,!!o.array))throw new eu({param:e,type:t?.type,modifier:o.modifier})}let u={type:`${c}${o.array??""}`,...s,...i,...d};return au.set(r,u),u}function ht(e,t=[],r="",n=0){let o=e.trim().length;for(let s=0;s<o;s++){let i=e[s],a=e.slice(s+1);switch(i){case",":return n===0?ht(a,[...t,r.trim()]):ht(a,t,`${r}${i}`,n);case"(":return ht(a,t,`${r}${i}`,n+1);case")":return ht(a,t,`${r}${i}`,n-1);default:return ht(a,t,`${r}${i}`,n)}}if(r==="")return t;if(n!==0)throw new iu({current:r,depth:n});return t.push(r.trim()),t}function Im(e){return e==="address"||e==="bool"||e==="function"||e==="string"||_m.test(e)||$m.test(e)}function y8(e){return e==="address"||e==="bool"||e==="function"||e==="string"||e==="tuple"||_m.test(e)||$m.test(e)||m8.test(e)}function h8(e,t){return t||e==="bytes"||e==="string"||e==="tuple"}var p8,l8,f8,m8,ei=k(()=>{pc();Zd();ru();Tm();Z2();Y2();Qs();p8=/^(?<type>[a-zA-Z$_][a-zA-Z0-9$_]*(?:\spayable)?)(?<array>(?:\[\d*?\])+?)?(?:\s(?<modifier>calldata|indexed|memory|storage{1}))?(?:\s(?<name>[a-zA-Z$_][a-zA-Z0-9$_]*))?$/,l8=/^\((?<type>.+?)\)(?<array>(?:\[\d*?\])+?)?(?:\s(?<modifier>calldata|indexed|memory|storage{1}))?(?:\s(?<name>[a-zA-Z$_][a-zA-Z0-9$_]*))?$/,f8=/^u?int$/;m8=/^(?:after|alias|anonymous|apply|auto|byte|calldata|case|catch|constant|copyof|default|defined|error|event|external|false|final|function|immutable|implements|in|indexed|inline|internal|let|mapping|match|memory|mutable|null|of|override|partial|private|promise|public|pure|reference|relocatable|return|returns|sizeof|static|storage|struct|super|supports|switch|this|true|try|typedef|typeof|var|view|virtual)$/});function ti(e){let t={},r=e.length;for(let i=0;i<r;i++){let a=e[i];if(!Wn(a))continue;let c=z2(a);if(!c)throw new Tr({signature:a,type:"struct"});let d=c.properties.split(";"),u=[],p=d.length;for(let f=0;f<p;f++){let m=d[f].trim();if(!m)continue;let b=lr(m,{type:"struct"});u.push(b)}if(!u.length)throw new ou({signature:a});t[c.name]=u}let n={},o=Object.entries(t),s=o.length;for(let i=0;i<s;i++){let[a,c]=o[i];n[a]=X2(c,t)}return n}function X2(e=[],t={},r=new Set){let n=[],o=e.length;for(let s=0;s<o;s++){let i=e[s];if(jd.test(i.type))n.push(i);else{let c=Nt(b8,i.type);if(!c?.type)throw new tu({abiParameter:i});let{array:d,type:u}=c;if(u in t){if(r.has(u))throw new su({type:u});n.push({...i,type:`tuple${d??""}`,components:X2(t[u],t,new Set([...r,u]))})}else if(Im(u))n.push(i);else throw new Wd({type:u})}}return n}var b8,cu=k(()=>{pc();Zd();ru();Tm();q2();Qs();ei();b8=/^(?<type>[a-zA-Z$_][a-zA-Z0-9$_]*)(?<array>(?:\[\d*?\])+?)?$/});function du(e){let t=ti(e),r=[],n=e.length;for(let o=0;o<n;o++){let s=e[o];Wn(s)||r.push(lc(s,t))}return r}var Q2=k(()=>{Qs();cu();ei()});function uu(e){let t;if(typeof e=="string")t=lc(e);else{let r=ti(e),n=e.length;for(let o=0;o<n;o++){let s=e[o];if(!Wn(s)){t=lc(s,r);break}}}if(!t)throw new Kd({signature:e});return t}var eb=k(()=>{Zd();Qs();cu();ei()});function pu(e){let t=[];if(typeof e=="string"){let r=ht(e),n=r.length;for(let o=0;o<n;o++)t.push(lr(r[o],{modifiers:Em}))}else{let r=ti(e),n=e.length;for(let o=0;o<n;o++){let s=e[o];if(Wn(s))continue;let i=ht(s),a=i.length;for(let c=0;c<a;c++)t.push(lr(i[c],{modifiers:Em,structs:r}))}}if(t.length===0)throw new Jd({params:e});return t}var tb=k(()=>{ru();Qs();cu();ei();ei()});var fc=k(()=>{k2();Am();Q2();eb();tb()});function Ce(e,{includeName:t=!1}={}){if(e.type!=="function"&&e.type!=="event"&&e.type!=="error")throw new lu(e.type);return`${e.name}(${mc(e.inputs,{includeName:t})})`}function mc(e,{includeName:t=!1}={}){return e?e.map(r=>g8(r,{includeName:t})).join(t?", ":","):""}function g8(e,{includeName:t}){return e.type.startsWith("tuple")?`(${mc(e.components,{includeName:t})})${e.type.slice(5)}`:e.type+(t&&e.name?` ${e.name}`:"")}var Yr=k(()=>{Ae()});function we(e,{strict:t=!0}={}){return!e||typeof e!="string"?!1:t?/^0x[0-9a-fA-F]*$/.test(e):e.startsWith("0x")}var Gt=k(()=>{});function ie(e){return we(e,{strict:!1})?Math.ceil((e.length-2)/2):e.length}var bt=k(()=>{Gt()});var km,nb=k(()=>{km="2.55.5"});function ob(e,t){return t?.(e)?e:e&&typeof e=="object"&&"cause"in e&&e.cause!==void 0?ob(e.cause,t):t?null:e}var Sm,$,re=k(()=>{nb();Sm={getDocsUrl:({docsBaseUrl:e,docsPath:t="",docsSlug:r})=>t?`${e??"https://viem.sh"}${t}${r?`#${r}`:""}`:void 0,version:`viem@${km}`},$=class e extends Error{constructor(t,r={}){let n=r.cause instanceof e?r.cause.details:r.cause?.message?r.cause.message:r.details,o=r.cause instanceof e&&r.cause.docsPath||r.docsPath,s=Sm.getDocsUrl?.({...r,docsPath:o}),i=[t||"An error occurred.","",...r.metaMessages?[...r.metaMessages,""]:[],...s?[`Docs: ${s}`]:[],...n?[`Details: ${n}`]:[],...Sm.version?[`Version: ${Sm.version}`]:[]].join(`
 `);super(i,r.cause?{cause:r.cause}:void 0),Object.defineProperty(this,"details",{enumerable:!0,configurable:!0,writable:!0,value:void 0}),Object.defineProperty(this,"docsPath",{enumerable:!0,configurable:!0,writable:!0,value:void 0}),Object.defineProperty(this,"metaMessages",{enumerable:!0,configurable:!0,writable:!0,value:void 0}),Object.defineProperty(this,"shortMessage",{enumerable:!0,configurable:!0,writable:!0,value:void 0}),Object.defineProperty(this,"version",{enumerable:!0,configurable:!0,writable:!0,value:void 0}),Object.defineProperty(this,"name",{enumerable:!0,configurable:!0,writable:!0,value:"BaseError"}),this.details=n,this.docsPath=o,this.metaMessages=r.metaMessages,this.name=r.name??this.name,this.shortMessage=t,this.version=km}walk(t){return ob(this,t)}}});var fu,yc,ri,Vt,mu,yu,hu,bu,hc,ni,gu,xu,bc,fr,oi,wu,vu,_u,Xr,qn,$u,Au,si,lu,Ae=k(()=>{Yr();bt();re();fu=class extends ${constructor({docsPath:t}){super(["A constructor was not found on the ABI.","Make sure you are using the correct ABI and that the constructor exists on it."].join(`
@@ -180,7 +296,50 @@ async function PW_creeSolana(){
   return w ? w.address : null;
 }
 
-window.SwogePrivy={init:PE,sendCode:CE,verifyCode:NE,logout:ME,restore:LE,getProvider:()=>em,getAddress:()=>tm,isLoggedIn:()=>!!em,comptes:PW_liste,choisitCompte:PW_choisit,ajouteCompte:PW_ajoute,indexCompte:PW_index,solana:PW_solana,creeSolana:PW_creeSolana};})();
+
+/* ==================== SIGNER SUR SOLANA ====================
+ *
+ * DEMANDE : « on peut pas acheter des jetons Solana sur la chaine Solana ? »
+ *
+ * L'enveloppe savait CREER une adresse Solana et la LIRE. Elle ne savait pas
+ * signer avec — pas parce que le paquet ne sait pas, mais parce que rien ici
+ * ne l'appelait. `getSolanaProvider` est dans le SDK depuis le debut.
+ *
+ * Trois pieges, et ils sont tous les trois silencieux si on se trompe :
+ *
+ *   1. `getSolanaProvider` prend ses arguments un par un, alors que
+ *      `getEthereumProvider` prend un OBJET. Lui passer `{wallet, entropyId}`
+ *      rend un fournisseur construit sur `undefined`, sans erreur, qui
+ *      echouera seulement au moment de signer.
+ *
+ *   2. L'entropie n'est PAS celle du portefeuille Solana. `mw` rend celle du
+ *      portefeuille ETHEREUM (`Ks(user) ?? i1(user)`), et c'est correct :
+ *      l'adresse Solana est derivee de la meme graine — c'est exactement ce
+ *      que fait `createSolana({ethereumAccount})` a la creation. Passer
+ *      l'adresse Solana comme entropie demanderait une graine qui n'existe
+ *      pas.
+ *
+ *   3. Sans l'iframe (`RE()`), le mandataire n'existe pas et l'appel echoue
+ *      sur « Embedded wallet proxy not initialized ». Meme piege qu'a la
+ *      creation.
+ *
+ * Ce que le fournisseur rendu sait faire : `request({ method:
+ * 'signAndSendTransaction', params: { transaction, connection } })`. La
+ * transaction doit etre un objet `@solana/web3.js` — le paquet appelle
+ * `serializeMessage()` dessus — pas une chaine base64. */
+async function PW_solanaProvider(){
+  if(!Zr || !ur) return null;
+  var w = null;
+  try{ w = i1(ur); }catch(e){}
+  if(!w) return null;              /* pas d'adresse Solana : rien a signer */
+  await RE();
+  var e2 = null;
+  try{ e2 = mw(ur, w); }catch(e){}
+  if(!e2) return null;
+  return await Zr.embeddedWallet.getSolanaProvider(w, e2.entropyId, e2.entropyIdVerifier);
+}
+
+window.SwogePrivy={init:PE,sendCode:CE,verifyCode:NE,logout:ME,restore:LE,getProvider:()=>em,getAddress:()=>tm,isLoggedIn:()=>!!em,comptes:PW_liste,choisitCompte:PW_choisit,ajouteCompte:PW_ajoute,indexCompte:PW_index,solana:PW_solana,creeSolana:PW_creeSolana,solanaProvider:PW_solanaProvider};})();
 /*! Bundled license information:
 
 @noble/hashes/esm/utils.js:

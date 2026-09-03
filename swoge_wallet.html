@@ -1040,6 +1040,11 @@ body{
 .wl-etiq.on{ color:var(--vert); border-color:rgba(52,211,153,.4) }
 
 .wl-mono{ font:400 12px/1.5 'Space Mono',monospace; word-break:break-all; color:var(--doux) }
+/* La barre de ce qui a deja brule. Elle vient de `burn.html` ; sa largeur est
+   posee en JavaScript depuis une lecture de chaine, jamais en dur. */
+.wl-barre{ height:8px; border-radius:999px; background:var(--bord); overflow:hidden; margin-top:9px }
+.wl-barre span{ display:block; height:100%; width:0; border-radius:999px;
+  background:linear-gradient(90deg,#F97316,#EF4444); transition:width .4s }
 /* ---- UNE ADRESSE QUE L'ON PEUT PRENDRE A LA MAIN ----
    Le presse-papier n'est pas garanti : dans la webview de Telegram
    `navigator.clipboard` peut manquer, et un bouton qui ne fait rien laisse
@@ -1585,13 +1590,30 @@ body{
         </div>
         <div class="wl-rang"><span>Network</span><b id="brReseau">Robinhood Chain</b></div>
       </div>
+      <!-- ---- CE QUI A DEJA BRULE ----
+           Repris de `burn.html`, qui portait ce compteur et que cet ecran
+           remplace. Ce n'est pas une decoration : c'est le seul endroit du
+           site qui dise combien de jetons ont ete detruits, et il se lit sur
+           la chaine — le solde de l'adresse morte, sur l'offre totale. Rien
+           n'est ecrit en dur, et une lecture ratee dit « inconnu ». -->
+      <div class="wl-carte">
+        <div class="wl-rang"><span>Already burned</span><b id="brTotal">&mdash;</b></div>
+        <div class="wl-barre"><span id="brBarre"></span></div>
+        <p class="wl-note" id="brPct" style="margin:8px 0 0">&mdash;</p>
+        <!-- ---- ET LA PHRASE QUI DIT CE QUE CA NE FAIT PAS ----
+             Verifie sur la chaine, et c'est la raison d'etre de cette
+             ligne : bruler du $SWOGEBET appelle `onMove` sur le launchpad,
+             qui ne touche QUE la comptabilite des recompenses. Aucun $SWOGE
+             n'est detruit. La croyance inverse circulait ; l'ecrire dans un
+             total aurait donne un chiffre que la chaine dement. La barre
+             mesure donc l'offre DU jeton choisi, et rien d'autre. -->
+        <p class="wl-note" id="brAutre" hidden style="margin:8px 0 0"></p>
+      </div>
       <p class="wl-note grave">Burning is <b>permanent and irreversible</b>. The tokens go to an
         address nobody holds the key to &mdash; no one can send them back, and no support can
         undo it. It reduces the circulating supply forever.</p>
       <button class="wl-b" id="brPartir" type="button">Review burn</button>
       <p class="wl-note" id="brNote"></p>
-      <p class="wl-note">The full burn ledger &mdash; total burned and its share of supply &mdash;
-        lives on <a href="burn.html" style="color:var(--accent2)">the burn page</a>.</p>
     </div>
   </section>
 
@@ -6132,6 +6154,47 @@ function majBruler(){
   $('brSolde').textContent = (sd===null||sd===undefined) ? '—' : nombre(sd,j.dec)+' '+j.sym;
   if($('brReseau')) $('brReseau').textContent = chaineDuJeton(j).nom;
   majMontant('brMontant');
+  litCeQuiABrule(j);
+}
+
+/* ---- COMBIEN A DEJA BRULE, LU SUR LA CHAINE ----
+ * Le solde de l'adresse morte, rapporte a l'offre totale. Deux lectures, et
+ * aucune valeur de repli : si la chaine ne repond pas, on ecrit « unknown »
+ * et la barre reste a zero. Un pourcentage invente sur un compteur de
+ * destruction serait exactement le genre de chiffre que ce site s'interdit. */
+var BRULE_EN_COURS = 0;
+async function litCeQuiABrule(j){
+  var t = $('brTotal'), b = $('brBarre'), p = $('brPct'), a = $('brAutre');
+  if(!t) return;
+  var mien = ++BRULE_EN_COURS;
+  t.textContent = '…'; if(b) b.style.width = '0%';
+  /* La phrase du $SWOGEBET ne depend d'aucune lecture : elle est vraie ou
+     elle ne l'est pas, et elle l'est. On la pose tout de suite. */
+  if(a){
+    a.hidden = (j.cle !== 'swogebet');
+    a.innerHTML = 'Burning $SWOGEBET does <b>not</b> destroy any $SWOGE. The transfer notifies '
+      + 'the launchpad, which only updates reward accounting — the $SWOGE supply does not move. '
+      + 'This bar measures the supply of the token you picked.';
+  }
+  try{
+    var c = erc(j.adr, false, lecPont(chaineDuJeton(j)));
+    var r = await borne(Promise.all([c.totalSupply(), c.balanceOf(ADR_MORTE)]), 12000, 'brule');
+    if(mien !== BRULE_EN_COURS) return;      /* une autre lecture a pris la main */
+    var sup = r[0], mort = r[1];
+    t.textContent = nombre(mort, j.dec) + ' ' + j.sym;
+    if(sup && !sup.isZero()){
+      /* En centiemes de millieme, en entiers : `Number()` sur un wei perdrait
+         la precision bien avant d'arriver au pourcentage. */
+      var q = mort.mul(1000000).div(sup).toNumber() / 10000;
+      if(b) b.style.width = Math.min(100, q) + '%';
+      if(p) p.textContent = q.toFixed(4) + ' % of the ' + j.sym + ' supply burned';
+    }else if(p) p.textContent = 'Total supply unknown — the percentage cannot be worked out.';
+  }catch(e){
+    if(mien !== BRULE_EN_COURS) return;
+    t.textContent = 'unknown';
+    if(b) b.style.width = '0%';
+    if(p) p.textContent = 'The chain did not answer — this is unknown, not zero.';
+  }
 }
 $('brJeton').addEventListener('change', majBruler);
 
@@ -8610,6 +8673,24 @@ remplitChoix($('swVers'));
 valPick($('swDe'), 'eth'); valPick($('swVers'), 'swogebet');
 peintAccueil();
 majRevue();
+/* ---- ARRIVER DIRECTEMENT SUR UN ECRAN ----
+ * `burn.html` a disparu ; ce qui pointait dessus pointe maintenant vers
+ * `swoge_wallet.html#ecBruler`. Sans cette reprise, ces liens ouvraient le
+ * portefeuille sur l'accueil : ils promettaient un ecran et en montraient un
+ * autre, ce qui est pire qu'un lien mort — on croit s'etre trompe de clic.
+ * On ne joue QUE des identifiants d'ecran connus : un fragment invente ne
+ * doit pas pouvoir ouvrir autre chose. */
+(function ecranDepuisLAdresse(){
+  function va_hash(){
+    var h = (location.hash || '').replace(/^#/, '');
+    if(!h) return;
+    var e = document.getElementById(h);
+    if(e && e.classList.contains('wl-ecran')) va(h);
+  }
+  va_hash();
+  window.addEventListener('hashchange', va_hash);
+})();
+
 lisPrix().then(peintAccueil);
 reprend();
 

@@ -562,7 +562,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       <!-- Les deux liens que portait l ancien <nav> de la page reviennent
            ici, ou vit desormais la navigation. -->
       <a href="launchpad.html" class="on"><span class="ic">&#128640;</span>Launchpad</a>
-      <a href="burn.html"><span class="ic">&#128293;</span>Burn</a>
+      <a href="swoge_wallet.html#ecBruler"><span class="ic">&#128293;</span>Burn</a>
       <a href="swoge_wallet.html"><span class="ic">&#129433;</span>Wallet</a>
       <a href="swoge_ai.html"><span class="ic">&#129302;</span>SWOGE AI</a>
       <a href="whitepaper.html"><span class="ic">&#128220;</span>Docs</a>
@@ -1610,8 +1610,8 @@ async function loadMine(){
       var blogs=await prov.getLogs({address:SWOGE_TOKEN, topics:[TRANSFER_TOPIC, padMe, padDead], fromBlock:0, toBlock:"latest"});
       var totalBurn=blogs.reduce(function(s,l){ return s+(+ethers.utils.formatEther(ethers.BigNumber.from(l.data))); },0);
       burnHtml+='<div class="kv" style="border:0"><span class="k">You burned</span><span class="v" style="color:#C2410C;font-size:15px">'+fmtNum(totalBurn)+' SWOGE</span></div>'
-        +'<div class="note">'+blogs.length+' burn'+(blogs.length===1?"":"s")+' · <a href="burn.html">Burn more 🔥</a></div>';
-    }catch(e){ burnHtml+='<div class="note">Could not load burns. <a href="burn.html">Burn page 🔥</a></div>'; }
+        +'<div class="note">'+blogs.length+' burn'+(blogs.length===1?"":"s")+' · <a href="swoge_wallet.html#ecBruler">Burn more 🔥</a></div>';
+    }catch(e){ burnHtml+='<div class="note">Could not load burns. <a href="swoge_wallet.html#ecBruler">Burn page 🔥</a></div>'; }
     burnHtml+='</div>';
 
     $("#mineInfo").textContent="";

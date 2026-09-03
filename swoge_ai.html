@@ -13,7 +13,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
-var MARQUE_PAGE = '9b34944d';
+var MARQUE_PAGE = 'd383aa33';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -1365,10 +1365,16 @@ const PHRASES = {
   sortieNonTestable:['exit not testable', 'sortie non testable'],
   sortieOk:     [(p, n) => 'exit ' + p + '/' + n, (p, n) => 'sortie ' + p + '/' + n],
   sortieBloquee:[(r, n) => 'exit blocked ' + r + '/' + n, (r, n) => 'sortie bloquee ' + r + '/' + n],
-  sortieAide:   [(p, n) => 'The contract lets ' + p + ' of ' + n + ' holder(s) send the token to the '
-                      + 'pool. It is the transfer that is simulated, not the full swap.',
-                 (p, n) => 'Le contrat laisse ' + p + ' detenteur(s) sur ' + n + ' envoyer le jeton '
-                      + 'vers la piscine. C\'est le transfert qui est simule, pas l\'echange complet.'],
+  /* `via` dit A QUI le transfert a ete essaye : la piscine quand c'est une
+     adresse, sinon le teneur de marche lu dans les transferts (un pool
+     Uniswap V4 n'a pas d'adresse), sinon le plus gros porteur. Le serveur
+     l'ecrit en anglais ; la version francaise le traduit ici. */
+  sortieAide:   [(p, n, via) => 'The contract lets ' + p + ' of ' + n + ' holder(s) send the token to the '
+                      + (via || 'pool') + '. It is the transfer that is simulated, not the full swap.',
+                 (p, n, via) => 'Le contrat laisse ' + p + ' detenteur(s) sur ' + n + ' envoyer le jeton '
+                      + 'vers ' + viaFr(via) + '. C\'est le transfert qui est simule, pas l\'echange complet.'],
+  sortieBloqueeAide:[(r, n, via) => r + ' of ' + n + ' holder(s) cannot send the token to the ' + (via || 'pool') + '.',
+                 (r, n, via) => r + ' detenteur(s) sur ' + n + ' ne peuvent pas envoyer le jeton vers ' + viaFr(via) + '.'],
 
   /* --- les positions --- */
   pasFerme:     ['No closed position yet. The open ones are just above.',
@@ -1440,6 +1446,9 @@ const PHRASES = {
                       + 'ses valeurs a l\'echeance de ' + ref + ' min : un trait en bas de liste ne '
                       + 'separe rien, et dilue ceux du haut.'],
   auditN:       [(j, e) => j + ' followed · ' + e + ' running', (j, e) => j + ' suivis · ' + e + ' en cours'],
+  /* Les ombres que les flux ne cotaient plus et que le serveur est alle relire
+     a l'adresse : sans elles, on n'apprenait que des survivants. */
+  auditRelues:  [(r) => r + ' re-read at the deadline', (r) => r + ' relues a l\'echeance'],
   montes:       [(p) => p + '% went up', (p) => p + '% montes'],
   auditDetail:  [(n, m, e, moy) => n + ' token(s) followed · ' + m + ' up by +20% or more · '
                       + e + ' collapsed · average ' + moy + '%',
@@ -1478,6 +1487,12 @@ const PHRASES = {
 };
 /* Les phrases fabriquees suivent la langue choisie, comme les titres. Une
    entree manquante rend sa cle : visible a l'ecran, donc corrigee. */
+/* La cible de l'epreuve de sortie, en francais. Le serveur la nomme en anglais
+   (`pool`, `market maker`, `largest holder`) ; sans cible connue, c'est la
+   piscine, comme avant. */
+function viaFr(via){
+  return { "market maker": "le teneur de marche", "largest holder": "le plus gros porteur" }[via] || "la piscine";
+}
 function ph(k){
   const e = PHRASES[k];
   if(!e) return k;
@@ -2116,8 +2131,8 @@ function peintFlux(){
     const e = t.epreuve;
     const sortie = !e ? ""
       : !e.teste ? ` · <span class="muet" title="${echappe(e.raison||"")}">${echappe(ph("sortieNonTestable"))}</span>`
-      : e.passe ? ` · <span class="ok" title="${echappe(ph("sortieAide", e.essais - e.refus, e.essais))}">${echappe(ph("sortieOk", e.essais - e.refus, e.essais))}</span>`
-      : ` · <span class="rej">${echappe(ph("sortieBloquee", e.refus, e.essais))}</span>`;
+      : e.passe ? ` · <span class="ok" title="${echappe(ph("sortieAide", e.essais - e.refus, e.essais, e.via))}">${echappe(ph("sortieOk", e.essais - e.refus, e.essais))}</span>`
+      : ` · <span class="rej" title="${echappe(ph("sortieBloqueeAide", e.refus, e.essais, e.via))}">${echappe(ph("sortieBloquee", e.refus, e.essais))}</span>`;
     return `<div class="tok">
       <span class="sym">$${echappe(t.sym)}</span>
       <span class="badge rh">RH</span>
@@ -2446,7 +2461,9 @@ function peintTraits(){
 function peintAudit(){
   const l = (VUE && VUE.audit) || [];
   const o = (VUE && VUE.ombres) || { enAttente:0, jugees:0 };
-  $("auditN").textContent = VUE ? ph("auditN", o.jugees, o.enAttente) : "—";
+  $("auditN").textContent = VUE
+    ? ph("auditN", o.jugees, o.enAttente) + (o.relues ? " · " + ph("auditRelues", o.relues) : "")
+    : "—";
   if(!l.length) return;
   $("audit").innerHTML = l.map(x=>{
     /* Le chiffre qui compte n'est pas la moyenne : c'est la part de ceux qui

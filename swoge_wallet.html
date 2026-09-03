@@ -68,7 +68,7 @@
      A savoir : cela ne sauve pas la page DEJA en cache chez quelqu'un, qui ne
      contient pas ces lignes. Ce garde-fou vaut a partir de celle-ci. -->
 <script>
-var MARQUE_PAGE = '6ab1f822';
+var MARQUE_PAGE = 'aa4fceec';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -963,6 +963,13 @@ body{
   background:linear-gradient(160deg,#FFD679,#E9A62B); color:#0B0710;
   display:flex; align-items:center; justify-content:center; font-size:18px }
 .wl-casino .fl{ flex:0 0 auto; color:var(--doux); font-size:12px }
+/* Deux soldes, l'un sous l'autre, et la colonne des chiffres a le droit de
+   prendre la place : le libelle « Casino balance » cede avant les nombres. */
+.wl-casino .nom{ flex:1 1 0; min-width:0 }
+.wl-casino .nom b{ white-space:normal }
+.wl-casino .val{ flex:0 0 auto; max-width:72%; min-width:0 }
+.wl-casino .val b span{ display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }
+.wl-casino .val b span + span{ margin-top:2px }
 
 .wl-note{ font:400 12px/1.5 'Archivo',sans-serif; color:var(--doux); margin:8px 0 0 }
 
@@ -4525,8 +4532,18 @@ function peintCasino(){
      seulement son $SWOGE croirait le reste perdu. */
   var ac = $('acCasinoVal');
   if(ac){
-    var affBet = f(CASINO.betSolde);
-    ac.textContent = aff + (affBet === '—' && aff === '—' ? '' : ' $SWOGE · ' + affBet + ' $SWOGEBET');
+    /* L'UN SOUS L'AUTRE. Sur une seule ligne, deux soldes a neuf chiffres
+       debordaient de la carte et le second se lisait « 100,291,000 $SWO ».
+       Et c'est le solde CASINO en premier, quel que soit l'onglet ouvert
+       sur l'ecran suivant : la ligne du compte ne change pas d'avis. */
+    var affSw = f(CASINO.solde), affBet = f(CASINO.betSolde);
+    ac.textContent = '';
+    if(affSw === '—' && affBet === '—') ac.textContent = '—';
+    else {
+      var l1 = document.createElement('span'); l1.textContent = affSw + ' $SWOGE';
+      var l2 = document.createElement('span'); l2.textContent = affBet + ' $SWOGEBET';
+      ac.appendChild(l1); ac.appendChild(l2);
+    }
   }
   var sous = $('acCasinoSous'); if(sous) sous.textContent = 'Casino in $SWOGE · bets in $SWOGEBET';
   [].forEach.call(document.querySelectorAll('#caOnglets button'), function(b){

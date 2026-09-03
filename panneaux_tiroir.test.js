@@ -244,8 +244,11 @@ function chargeLeCatalogue() {
     const rangees = await p.evaluate(() => [...document.querySelectorAll('#gxMenu a')]
       .map((a, i) => ({ i: i, t: (a.textContent || '').trim() })));
     ok(rangees.length >= 10, `${page} : le menu du profil porte ${rangees.length} rangees`);
-    ok(rangees.some((r) => /Wallet/i.test(r.t)) && rangees.some((r) => /Leaderboard/i.test(r.t)),
-       `${page} : dont celles que la demande nomme, du portefeuille au classement`);
+    /* La rangee « Wallet » n y est PLUS, et c est voulu : « faudrait le
+       retirer de toutes les pages, on est cense l ouvrir depuis le petit
+       bouton rond en bas ». Le rond `.swwb` est le seul chemin. */
+    ok(!rangees.some((r) => /Wallet/i.test(r.t)) && rangees.some((r) => /Leaderboard/i.test(r.t)),
+       `${page} : le classement y est, et aucune rangee « Wallet » — le portefeuille s ouvre par le rond en bas`);
 
     const muettes = [], trahies = [];
     for (const r of rangees) {

@@ -2,3 +2,8 @@
 # Le cache de Python : il naît en lançant planches.py, il ne regarde personne.
 __pycache__/
 *.pyc
+
+# Playwright, installe a la demande pour faire tourner les essais de page.
+# Les navigateurs eux-memes vivent ailleurs (PLAYWRIGHT_BROWSERS_PATH) ; ce
+# dossier ne contient que le paquet, et il pese plus que tout le site.
+node_modules/

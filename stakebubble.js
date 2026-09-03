@@ -7921,11 +7921,13 @@
       /* `pointer-events:auto` en force : certaines pages eteignent les
          evenements de leurs boutons sous un voile, et la croix heritait de
          cette regle — le cadre recevait le clic a sa place. */
-      '.swwo-x{position:absolute;top:calc(10px + env(safe-area-inset-top,0px));right:10px;z-index:2;pointer-events:auto!important;' +
-      'width:40px;height:40px;border-radius:50%;cursor:pointer;font-size:20px;line-height:1;' +
-      'border:1px solid rgba(27,95,224,.45);background:rgba(255,255,255,.96);color:#0B1B36;' +
-      'display:flex;align-items:center;justify-content:center;box-shadow:0 6px 18px rgba(11,27,54,.18);}' +
-      '.swwo-x:hover{border-color:#FFC53D;}' +
+      /* ---- ET C'EST LA BULLE QUI LE RANGE ----
+       * « Puis on peut le re-ranger dans la bulle. » Pendant que le
+       * portefeuille est ouvert, la bulle passe au-dessus du voile et monte
+       * en haut a droite, en croix : le meme rond ouvre et referme. En bas,
+       * elle recouvrirait les onglets du portefeuille. */
+      'html.swwo-on .swwb{top:calc(10px + env(safe-area-inset-top,0px));right:10px;bottom:auto;' +
+      'z-index:100001;width:44px;height:44px;font-size:20px;color:#0B1B36;pointer-events:auto!important;}' +
       'html.swwo-on,html.swwo-on body{overflow:hidden!important;}' +
       '.swdb .swdn{position:absolute;top:-3px;right:-3px;min-width:20px;height:20px;padding:0 5px;' +
       'border-radius:999px;display:flex;align-items:center;justify-content:center;' +
@@ -8040,16 +8042,10 @@
     walletVoile.className = 'swwo';
     walletVoile.setAttribute('role', 'dialog');
     walletVoile.setAttribute('aria-label', 'Your wallet');
-    var x = document.createElement('button');
-    x.type = 'button'; x.className = 'swwo-x';
-    x.title = 'Close the wallet'; x.setAttribute('aria-label', 'Close the wallet');
-    x.innerHTML = '\u2715';
-    x.addEventListener('click', function () { walletBascule(false); });
     walletCadre = document.createElement('iframe');
     walletCadre.title = 'SWOGE Wallet';
     walletCadre.setAttribute('allow', 'clipboard-write; clipboard-read; camera');
     walletVoile.appendChild(walletCadre);
-    walletVoile.appendChild(x);
     document.body.appendChild(walletVoile);
     document.addEventListener('keydown', function (e) {
       if (walletOuvert && (e.key === 'Escape' || e.key === 'Esc')) walletBascule(false);
@@ -8065,6 +8061,9 @@
     voile.classList.toggle('on', walletOuvert);
     document.documentElement.classList.toggle('swwo-on', walletOuvert);
     walletBtn.setAttribute('aria-expanded', walletOuvert ? 'true' : 'false');
+    walletBtn.innerHTML = walletOuvert ? '\u2715' : '\uD83D\uDC5B';
+    walletBtn.title = walletOuvert ? 'Close the wallet' : 'Open your wallet';
+    walletBtn.setAttribute('aria-label', walletBtn.title);
     /* Le clavier reste a la page hote : c'est elle qui ecoute Echap. Donner
        le foyer au cadre l'emmenerait dans le portefeuille, et Echap n'y
        fermerait plus rien. */

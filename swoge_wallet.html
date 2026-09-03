@@ -6637,6 +6637,204 @@ window.addEventListener('message', function(ev){
  *     la cotation, la revue avant signature et le calcul de l'impact. Un
  *     second chemin d'achat finirait par ne plus coter comme le premier.
  */
+/* ==========================================================================
+ * ECHANGER SUR SOLANA
+ *
+ * « Quand je vais dans swap, dans From je peux choisir Solana, le jeton
+ *   Solana ou mon memecoin Solana a vendre, et de l'autre cote ca met la
+ *   blockchain Solana dans To. »
+ *
+ * ACHETER un jeton Solana marchait deja : le relayeur ponte et echange en une
+ * transaction et depose sur l'adresse Solana. Ce qui manquait, c'est de PAYER
+ * depuis Solana — donc de signer dessus, donc de pouvoir revendre.
+ *
+ * ---- CE QUI TRANSITE, ET CE QUI NE TRANSITE PAS ----
+ *
+ * La route vient de Jupiter, qui rend une transaction DEJA CONSTRUITE. Cette
+ * page ne compose aucune instruction Solana elle-meme : elle ne saurait pas
+ * le faire mieux, et une instruction mal formee ne se voit pas — elle se
+ * signe. La cle, elle, ne sort jamais de l'iframe Privy : on lui donne une
+ * transaction, elle rend la meme avec une signature.
+ *
+ * ---- LES DECIMALES NE SONT JAMAIS DEVINEES ----
+ *
+ * Un jeton Solana peut avoir 0, 6 ou 9 decimales. Se tromper d'un facteur
+ * mille sur un montant n'affiche pas une erreur : ca vend mille fois trop.
+ * Elles sont donc lues sur la chaine (`getTokenSupply`), jamais supposees, et
+ * quand la lecture echoue on ne cote pas.
+ *
+ * ---- ET UN DEVIS SOLANA PERIME EN UNE MINUTE ----
+ *
+ * Le blockhash d'une transaction Solana expire en une soixantaine de
+ * secondes. Un devis lu, relu a l'ecran, puis signe trois minutes plus tard
+ * part avec un blockhash mort : le reseau refuse, et rien n'explique
+ * pourquoi. La transaction est donc reconstruite JUSTE avant la signature,
+ * jamais celle qui a servi a afficher le prix.
+ * ========================================================================== */
+
+/* Le moteur Solana n'est charge que si on en a besoin : 460 Ko que la
+   quasi-totalite des visites n'ouvrira jamais. Meme raison que pour Privy.
+   Le fichier est depose dans le depot plutot que pris sur un CDN — une page
+   qui signe des transactions ne devrait pas dependre d'un tiers au moment ou
+   elle signe. Source : @solana/web3.js 1.98.0, lib/index.iife.min.js,
+   sha256 89c3d6c27cae93882d78153ef7f23c8d50f53f5e3f0b72666bb909c6a4dc9fac */
+var SOL_W3 = null, SOL_W3_EN_COURS = null;
+function chargeSolW3(){
+  if(SOL_W3) return Promise.resolve(SOL_W3);
+  if(SOL_W3_EN_COURS) return SOL_W3_EN_COURS;
+  SOL_W3_EN_COURS = new Promise(function(res, rej){
+    var sc = document.createElement('script');
+    sc.src = 'solana-web3.min.js';
+    sc.onload = function(){
+      SOL_W3 = window.solanaWeb3 || null;
+      if(SOL_W3 && SOL_W3.VersionedTransaction) return res(SOL_W3);
+      rej(new Error('The Solana engine loaded but is not usable. Nothing was sent.'));
+    };
+    sc.onerror = function(){
+      SOL_W3_EN_COURS = null;
+      rej(new Error('The Solana engine could not be loaded. This is a network problem, '
+                  + 'not a price of zero — nothing was sent.'));
+    };
+    document.head.appendChild(sc);
+  });
+  return SOL_W3_EN_COURS;
+}
+
+var JUP = 'https://lite-api.jup.ag/swap/v1';
+var SOL_NATIF = 'So11111111111111111111111111111111111111112';   /* wSOL */
+
+/* Un appel JSON-RPC Solana. La page en fait deja pour les soldes ; on garde
+   la meme porte plutot que d'ouvrir une seconde façon de parler a la chaine. */
+async function solRpc(methode, params){
+  var dernier = null;
+  for(var i = 0; i < CHAINE_SOL.rpc.length; i++){
+    try{
+      var r = await borne(fetch(CHAINE_SOL.rpc[i], {
+        method:'POST', headers:{ 'content-type':'application/json' },
+        body: JSON.stringify({ jsonrpc:'2.0', id:1, method:methode, params:params || [] })
+      }), 15000, 'solana');
+      var j = await r.json();
+      /* Un noeud qui REFUSE la methode n'est pas un noeud en panne : on passe
+         au suivant plutot que de rendre l'erreur du premier. C'est ce qui
+         faisait echouer la lecture des soldes SPL sans jamais essayer
+         ailleurs. */
+      if(j && j.error){ dernier = new Error(j.error.message || 'Solana refused that read'); continue; }
+      return j ? j.result : null;
+    }catch(e){ dernier = e; }
+  }
+  throw dernier || new Error('No Solana node answered.');
+}
+
+/* Les decimales d'un mint, LUES. Mises en cache : elles ne changent jamais. */
+var SOL_DEC = {}, SOL_NOM = {};
+/* Jupiter d'abord : c'est LUI qui construira la route, donc ses decimales
+   sont celles avec lesquelles le montant sera calcule. Prendre le symbole
+   ailleurs et le montant ici, c'est se donner deux verites pour un seul
+   nombre. La chaine reste en second, quand Jupiter ne connait pas le jeton. */
+async function solJeton(mint){
+  if(mint === SOL_NATIF) return { dec:9, sym:'SOL', nom:'Solana' };
+  if(SOL_DEC[mint] !== undefined) return { dec:SOL_DEC[mint], sym:SOL_NOM[mint] || '?', nom:'' };
+  try{
+    var r = await borne(fetch('https://lite-api.jup.ag/tokens/v2/search?query='
+      + encodeURIComponent(mint), { cache:'no-store' }), 12000, 'jupiter');
+    var l = await r.json();
+    var t = Array.isArray(l) ? l.filter(function(x){ return x && x.id === mint; })[0] : null;
+    if(t && t.decimals >= 0){
+      SOL_DEC[mint] = t.decimals; SOL_NOM[mint] = t.symbol || '?';
+      return { dec:t.decimals, sym:t.symbol || '?', nom:t.name || '' };
+    }
+  }catch(e){}
+  var s2 = await solRpc('getTokenSupply', [mint]);
+  var d = s2 && s2.value && s2.value.decimals;
+  if(!(d >= 0 && d <= 18))
+    throw new Error('Could not read that token\'s decimals on Solana. Without them any amount '
+                  + 'would be wrong by a factor of a thousand, so nothing is quoted.');
+  SOL_DEC[mint] = d; SOL_NOM[mint] = '?';
+  return { dec:d, sym:'?', nom:'' };
+}
+async function solDecimales(mint){ return (await solJeton(mint)).dec; }
+
+/* Le devis. On ne fabrique aucun prix : ce qui n'est pas rendu n'est pas
+   affiche, et une route absente se dit « no route », jamais « 0 ». */
+async function jupDevis(deMint, versMint, brut, slipBps){
+  var u = JUP + '/quote?inputMint=' + encodeURIComponent(deMint)
+        + '&outputMint=' + encodeURIComponent(versMint)
+        + '&amount=' + String(brut)
+        + '&slippageBps=' + (slipBps || 100);
+  var r;
+  try{ r = await borne(fetch(u, { cache:'no-store' }), 15000, 'jupiter'); }
+  catch(e){
+    throw new Error(estTimeout(e)
+      ? 'Jupiter did not answer in time. Nothing was sent.'
+      : 'Could not reach Jupiter. This is a network problem, not a price of zero.');
+  }
+  var j = null;
+  try{ j = await r.json(); }catch(e){}
+  if(!r.ok || !j || !j.outAmount)
+    throw new Error((j && (j.error || j.errorCode)) || 'No route for that amount.');
+  return j;
+}
+
+/* La transaction, construite par Jupiter POUR notre adresse. Reconstruite
+   juste avant de signer — voir l'echeance du blockhash, en tete. */
+async function jupTransaction(devis, adr){
+  var r = await borne(fetch(JUP + '/swap', {
+    method:'POST', headers:{ 'content-type':'application/json' },
+    body: JSON.stringify({
+      quoteResponse: devis,
+      userPublicKey: adr,
+      wrapAndUnwrapSol: true,
+      dynamicComputeUnitLimit: true,
+      dynamicSlippage: false,
+    })
+  }), 20000, 'jupiter');
+  var j = null;
+  try{ j = await r.json(); }catch(e){}
+  if(!r.ok || !j || !j.swapTransaction)
+    throw new Error((j && (j.error || j.message)) || 'Jupiter could not build that swap.');
+  return j.swapTransaction;
+}
+
+/* ---- SIGNER, PUIS ENVOYER ----
+ *
+ * Deux etapes separees, et c'est voulu. Privy sait faire les deux d'un coup
+ * (`signAndSendTransaction`), mais il faudrait alors lui confier l'envoi et
+ * on ne saurait plus quel noeud a servi ni quelle signature est partie. Ici
+ * on demande une SIGNATURE, et on envoie soi-meme sur le noeud qu'on connait
+ * — celui qui sert deja les soldes.
+ *
+ * `signTransaction` rend `{signedTransaction}` : la meme transaction, avec la
+ * signature posee dessus. */
+async function solSigneEtEnvoie(txB64){
+  var w3 = await chargeSolW3();
+  var brut;
+  try{ brut = Buffer.from(txB64, 'base64'); }
+  catch(e){ throw new Error('Jupiter returned something this wallet could not read.'); }
+  var tx = w3.VersionedTransaction.deserialize(brut);
+
+  var prov = null;
+  try{ prov = await SwogePrivy.solanaProvider(); }catch(e){}
+  if(!prov)
+    throw new Error('This wallet cannot sign on Solana for this account. Signing on Solana needs '
+                  + 'the email account, which holds the Solana address — a browser extension '
+                  + 'manages its own.');
+
+  var rep = await prov.request({ method:'signTransaction', params:{ transaction: tx } });
+  var signee = (rep && rep.signedTransaction) || rep;
+  if(!signee || !signee.serialize)
+    throw new Error('The signature came back in a shape this wallet does not understand. '
+                  + 'Nothing was sent.');
+
+  /* On envoie ce qui a ete SIGNE, pas ce qu'on avait construit : si les deux
+     differaient, c'est la signee qui est valide. */
+  var sig = await solRpc('sendTransaction', [
+    Buffer.from(signee.serialize()).toString('base64'),
+    { encoding:'base64', skipPreflight:false, maxRetries:3 }
+  ]);
+  if(!sig) throw new Error('Solana accepted nothing back. Nothing is confirmed.');
+  return sig;
+}
+
 var SIGNAUX_URL = 'https://web-production-220a3.up.railway.app/ai/colonie';
 var SIGNAUX = null, SIGNAUX_T = 0;
 
@@ -8440,8 +8638,26 @@ var CHAINE_RH = { id:CHAINE.id, nom:CHAINE.nom, sym:ETH_AFF,
  * L'identifiant est celui que Relay emploie pour Solana : le reutiliser
  * evite une table de correspondance de plus. */
 var SOL_CHAINE = 792703809;
+/* ---- DEUX NOEUDS, ET CE N'EST PAS DU CONFORT ----
+ *
+ * `solana-rpc.publicnode.com` sert `getBalance` sans limite, et REFUSE tout
+ * ce qui demande un index : « Indexed requests require a personal token ».
+ * Mesure faite :
+ *
+ *     getBalance              → repond
+ *     getTokenAccountsByOwner → refuse      ← les soldes de jetons SPL
+ *     getTokenSupply          → refuse      ← les decimales
+ *
+ * Or c'est exactement `getTokenAccountsByOwner` que cette page appelle pour
+ * lire un solde SPL. Ce chemin-la ne marchait donc pas, et l'ecran disait
+ * « unknown » — ce qui etait honnete, et ce qui cachait la cause.
+ *
+ * Le noeud de la fondation Solana sert les deux. Il est plus lent et plus
+ * limite en debit, donc il vient en SECOND : on garde le rapide pour ce
+ * qu'il sait faire, et on retombe sur l'autre pour le reste. */
 var CHAINE_SOL = { id:SOL_CHAINE, nom:'Solana', sym:'SOL',
-  logo:'img/wallet/ch/solana.webp', rpc:['https://solana-rpc.publicnode.com'],
+  logo:'img/wallet/ch/solana.webp',
+  rpc:['https://solana-rpc.publicnode.com', 'https://api.mainnet-beta.solana.com'],
   scan:'https://solscan.io', svm:true };
 
 /* Les chaines ou l'on peut SIGNER — c'est ce que le pont et le depart d'un

@@ -169,6 +169,83 @@ function shimSeul() {
      'avec l entropie du portefeuille ETHEREUM, dont l adresse Solana est derivee — demander '
      + 'celle de l adresse Solana reclamerait une graine qui n existe pas');
 
+  /* ==================== LE CHEMIN REEL, SAUF LA SIGNATURE ====================
+   *
+   * Ce qui suit parle a Jupiter et a la chaine Solana pour de vrai. Sans
+   * reseau, l'essai se tait plutot que d'echouer : un essai rouge parce que
+   * le CI n'a pas Internet apprend a ignorer le rouge.
+   *
+   * Ce qui est prouve ici : les decimales sont LUES, la cotation vient de
+   * dehors, la transaction est construite par Jupiter, et `@solana/web3.js`
+   * plus le shim savent en faire EXACTEMENT les deux operations que le
+   * gestionnaire Privy effectue — `message.serialize()` pour ce qui sera
+   * signe, `serialize()` pour ce qui sera envoye.
+   *
+   * Ce qui n'est PAS prouve, et il faut le dire : la signature elle-meme. Elle
+   * demande une session Privy reelle et du SOL reel. Ce dernier saut se
+   * verifie avec un petit montant, pas dans un essai. */
+  console.log('\n-- le chemin reel jusqu a la transaction signable --');
+  const SOL_MINT = 'So11111111111111111111111111111111111111112';
+  const BONK = 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263';
+  const NOEUD = 'https://api.mainnet-beta.solana.com';
+  let dehors = true, dec = null, devis = null, txB64 = null;
+  try {
+    const r = await fetch(NOEUD, { method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'getTokenSupply', params: [BONK] }) });
+    const j = await r.json();
+    dec = j && j.result && j.result.value && j.result.value.decimals;
+    const q = await (await fetch('https://lite-api.jup.ag/swap/v1/quote?inputMint=' + BONK
+      + '&outputMint=' + SOL_MINT + '&amount=100000000000&slippageBps=100')).json();
+    if (q && q.outAmount) devis = q;
+    if (devis) {
+      const sw = await (await fetch('https://lite-api.jup.ag/swap/v1/swap', { method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ quoteResponse: devis, wrapAndUnwrapSol: true,
+          dynamicComputeUnitLimit: true,
+          userPublicKey: '9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM' }) })).json();
+      txB64 = sw && sw.swapTransaction;
+    }
+  } catch (e) { /* pas de reseau */ }
+  dehors = !(dec >= 0 && devis && txB64);
+
+  if (dehors) {
+    console.log('   Jupiter ou la chaine Solana injoignables — cette partie est sautee');
+  } else {
+    ok(dec === 5,
+       'les decimales de BONK sont LUES sur la chaine (' + dec + '), pas supposees : se tromper '
+       + 'de facteur mille sur un montant n affiche pas une erreur, ca vend mille fois trop');
+    ok(devis.outAmount > 0 && devis.routePlan && devis.routePlan.length > 0,
+       'Jupiter cote la vente et dit par ou elle passe (' + devis.routePlan.length + ' saut(s), '
+       + 'impact ' + Number(devis.priceImpactPct).toFixed(4) + ' %)');
+    ok(typeof txB64 === 'string' && txB64.length > 200,
+       'et il rend une transaction DEJA CONSTRUITE (' + txB64.length + ' caracteres) : cette page '
+       + 'ne compose aucune instruction Solana elle-meme — une instruction mal formee ne se voit '
+       + 'pas, elle se signe');
+
+    /* Le vrai bundle, dans un vrai navigateur, avec le shim. */
+    await pg2.addScriptTag({ path: path.join(__dirname, 'solana-web3.min.js') });
+    const lu = await pg2.evaluate((b64) => {
+      const tx = solanaWeb3.VersionedTransaction.deserialize(Buffer.from(b64, 'base64'));
+      return {
+        type: tx.constructor.name,
+        comptes: tx.message.staticAccountKeys.length,
+        instructions: tx.message.compiledInstructions.length,
+        /* les DEUX operations que le gestionnaire Privy effectue */
+        pourSigner: Buffer.from(tx.message.serialize()).toString('base64').length,
+        pourEnvoyer: (() => { try { return tx.serialize().length; } catch (e) { return 'ECHEC'; } })(),
+      };
+    }, txB64);
+    console.log('   ' + JSON.stringify(lu));
+    ok(lu.type === 'VersionedTransaction' && lu.instructions > 0,
+       'le moteur Solana vendore la deserialise (' + lu.comptes + ' comptes, ' + lu.instructions
+       + ' instructions)');
+    ok(lu.pourSigner > 0,
+       '`message.serialize()` puis base64 rend ce que Privy signera (' + lu.pourSigner
+       + ' caracteres) — c est l operation exacte de son gestionnaire, et elle passe par le shim');
+    ok(lu.pourEnvoyer !== 'ECHEC' && lu.pourEnvoyer > 0,
+       'et `serialize()` rend ce qui partira sur le reseau (' + lu.pourEnvoyer + ' octets)');
+  }
+
   ok(boum.length === 0, 'aucune exception' + (boum[0] ? ' : ' + boum[0].slice(0, 120) : ''));
 
   await nav.close();

@@ -380,6 +380,111 @@ body.encastre main{padding:0}
 body.encastre .wrap{max-width:none;padding:0;margin:0}
 body.encastre .masthead{margin:0 0 10px;justify-content:flex-end}
 body.encastre .grid{display:block}
+
+/* ---- ET TOUT SON PROPRE FORMULAIRE ----
+ *
+ * DEMANDE : « retire un maximum d'information inutile, on ne sait pas quoi
+ * faire tellement il y a de choses sur la page bench du wallet ».
+ *
+ * En chargeant cette page dans le portefeuille, l'ecran se retrouvait avec
+ * DEUX formulaires du meme reglage : les quatre etapes du portefeuille, puis,
+ * juste dessous, les tuiles de mode, le champ « hidden wallets », le champ du
+ * jeton, la ligne de financement, le simulateur, le cash-out et la sauvegarde
+ * des cles de ce panneau-ci. Tout etait deja rempli par le relais. On lisait
+ * donc la meme question deux fois, avec deux reponses qui pouvaient differer.
+ *
+ * Ce qui reste ici est ce qu'on ne peut obtenir NULLE PART ailleurs :
+ * PLAY, STOP, l'etat du moteur, l'avertissement, et la liste des
+ * portefeuilles avec leurs soldes — la seule chose qui dise ce que la machine
+ * est en train de faire.
+ *
+ * `display:none` et pas une suppression : le moteur LIT tous ces champs au
+ * demarrage (le mode, le nombre, le jeton, les contrats Uniswap). Les retirer
+ * casserait One-Click. C'est deja vrai de la grille avancee, et ca vaut ici. */
+body.encastre .panel#oneClick > h2,
+body.encastre #oneClick .pad > .note:first-of-type,
+body.encastre #ocMaster,
+body.encastre #ocFundRow,
+body.encastre #ocCxNote,
+body.encastre #ocGen,
+body.encastre #ocN,
+body.encastre .ocmodes,
+body.encastre .ocsim,
+body.encastre #ocExt,
+body.encastre #ocSend,
+body.encastre #ocBackup,
+body.encastre #ocSecours,
+body.encastre .quicktok,
+body.encastre #tokQuickInfo{display:none}
+/* Les libelles de section de One-Click : ils titrent des champs qui viennent
+   de partir. Un titre sans son champ est pire qu'aucun des deux.
+   `!important` parce qu'ils portent `style="display:block"` dans le HTML, et
+   un style en ligne bat n'importe quel selecteur : sans lui, les trois titres
+   restaient seuls a l'ecran au-dessus du vide. */
+body.encastre #oneClick .pad > label{display:none !important}
+body.encastre #oneClick .pad > .btnrow{display:none !important}
+/* `#ocRun` porte un identifiant plutot qu'un `:has(#ocPlay)` : la regle qui
+   REND visible le seul bouton de l'ecran ne doit pas dependre d'un selecteur
+   qu'un navigateur un peu ancien ignore en silence. */
+body.encastre #oneClick .pad > #ocRun{display:flex !important}
+body.encastre .panel#oneClick{border:0;margin:0}
+body.encastre #oneClick .pad{padding:0}
+/* PLAY et STOP sont le sujet de l'ecran : ils prennent la largeur et la
+   hauteur d'un doigt, au lieu d'etre deux vignettes au milieu d'un formulaire. */
+body.encastre #ocPlay,body.encastre #ocStop{flex:1 1 0;min-height:56px}
+body.encastre #ocPlay img,body.encastre #ocStop img{height:26px}
+
+/* ==================== ET SI LE PORTEFEUILLE EST EN TENUE SOMBRE ====================
+ *
+ * Cette page est claire, exprès et a la source : son second jeu de variables a
+ * ete retire pour qu'il ne reste qu'une seule verite (voir tout en haut). On ne
+ * le remet pas. Mais posee dans un portefeuille en tenue sombre, elle devenait
+ * une dalle blanche au milieu de l'ecran — la chose la plus voyante de la page,
+ * et elle ne dit rien.
+ *
+ * Ce qui suit ne recree donc PAS un theme : ca repeint le sous-ensemble qui est
+ * encore a l'ecran une fois le formulaire cache — le panneau, le champ du mode,
+ * les notes, les totaux, les lignes de portefeuille et leurs boutons. Rien
+ * d'autre n'est atteignable dans un cadre, donc rien d'autre n'est repeint.
+ *
+ * Les couleurs sont celles du portefeuille, pas des nouvelles : meme carte,
+ * meme bordure, meme texte, meme accent. Deux palettes voisines mais
+ * differentes se voient plus qu'une seule franche.
+ *
+ * Les plaques peintes (PLAY, STOP) ne bougent pas : elles sont decoupees sur
+ * fond transparent et leur or sur bleu nuit se pose mieux sur sombre que sur
+ * blanc. */
+html.nuit body.encastre{
+  --ink:#15131C; --panel:#15131C; --panel-2:#1D1A26; --line:#2A2635;
+  --paper:#EDEAF3; --dim:#9A93AC; --signal:#A78BFA; --alert:#A78BFA;
+  --gold:#A78BFA; --cream:#EDEAF3; --danger:#FF6B66;
+  background:transparent; color:#EDEAF3;
+}
+html.nuit body.encastre .warn{
+  background:#221C33; border-color:#2A2635; color:#EDEAF3;
+}
+html.nuit body.encastre .ocopt{ background:#1D1A26; border-color:#2A2635 }
+html.nuit body.encastre .ocopt label,
+html.nuit body.encastre .ocopt i{ color:#9A93AC }
+html.nuit body.encastre .ocopt input{
+  background:#15131C; border-color:#2A2635; color:#EDEAF3;
+}
+html.nuit body.encastre .keyline{ background:#1D1A26 }
+/* `html` peint son propre fond clair, et il ressortait en bandes entre les
+   sections — c'est lui qu'on voyait, pas la page. Transparent, c'est le fond
+   du cadre, donc celui du portefeuille, qui passe : une seule surface au lieu
+   de deux qui se disputent. La classe n'est posee QUE dans un cadre, donc la
+   page ouverte seule n'est pas touchee. */
+html.nuit{ background:transparent }
+/* Un bouton fantome sur fond sombre : sans fond a lui, il empruntait le clair
+   d'en dessous et son texte disparaissait dedans. */
+html.nuit body.encastre button:hover{ background:#241F31; border-color:#A78BFA }
+html.nuit body.encastre button.ghost{ background:transparent; color:#EDEAF3 }
+html.nuit body.encastre button.primary{ color:#15131C }
+html.nuit body.encastre button.sell{
+  background:#33191B; border-color:#5A2B2E; color:#FF8A85;
+}
+html.nuit body.encastre button.sell:hover{ background:#41201F }
 /* one-click only: hide the mode toggle and the whole advanced grid (kept in the
    DOM, display:none, so One-Click can still read the DEX/token/exec inputs) */
 /* grille avancee rouverte : la bascule Simple / Advanced reprend la main */
@@ -808,10 +913,19 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
  * partagent deja le meme `localStorage` puisque c'est la meme origine. */
 (function(){
   "use strict";
-  var dedans = false;
-  try{ dedans = new URLSearchParams(location.search).get("dans") === "wallet"; }catch(e){}
+  var dedans = false, nuit = false;
+  try{
+    var q = new URLSearchParams(location.search);
+    dedans = q.get("dans") === "wallet";
+    nuit = q.get("tenue") === "sombre";
+  }catch(e){}
   if(!dedans) return;
   document.documentElement.classList.add("encastre-html");
+  /* La tenue vient du portefeuille et pas d'ici : c'est LUI qui la connait, et
+     deux pages qui decident chacune de leur cote finiraient par ne pas etre
+     d'accord. S'il la change en cours de route, il pose la classe lui-meme —
+     meme origine, il atteint ce document. */
+  if(nuit) document.documentElement.classList.add("nuit");
   function pose(){ document.body.classList.add("encastre"); }
   if(document.body) pose(); else document.addEventListener("DOMContentLoaded", pose);
 
@@ -1100,7 +1214,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
           the numbers come from the live pool depth and the network's current gas price.</i></div>
       </div>
 
-      <div class="btnrow" style="margin-top:12px;gap:10px">
+      <div class="btnrow" id="ocRun" style="margin-top:12px;gap:10px">
         <button id="ocPlay" class="plate gr" title="Play"><img src="img/a4e6075863c8.png" alt="Play"></button>
         <button id="ocStop" disabled class="plate gr" title="Stop"><img src="img/a417d954c709.png" alt="Stop"></button>
       </div>
@@ -3565,7 +3679,14 @@ $("#tokQuick").addEventListener("keydown", e => { if(e.key==="Enter") $("#loadTo
     token = null; try{ wallets.forEach(function(w){ w.tokRaw = null; }); }catch(e){}
     dit.push(tok.slice(0,6) + "…" + tok.slice(-4));
   }
-  if(dit.length) turboSay("Carried over from your wallet: " + dit.join(" · ") + ". Change anything here — this page keeps what you set from now on.");
+  /* ---- LE MESSAGE DOIT DIRE LA VERITE DE L'ECRAN OU IL S'AFFICHE ----
+     Dans le portefeuille, les reglages de CETTE page sont caches : ils ont
+     tous ete poses la-haut. Dire « change anything here » y serait faux, et
+     ferait chercher des champs qui ne sont plus a l'ecran. */
+  var encadre = document.body.classList.contains("encastre");
+  if(dit.length) turboSay(encadre
+    ? "Set in your wallet: " + dit.join(" · ") + ". Change it in the steps above; this panel only runs it."
+    : "Carried over from your wallet: " + dit.join(" · ") + ". Change anything here — this page keeps what you set from now on.");
 })();
 
 render(); vaultInfo(); majSecours(); majPorteurs(); renderMaster();

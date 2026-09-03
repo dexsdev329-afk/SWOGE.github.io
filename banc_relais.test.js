@@ -125,12 +125,58 @@ const JETON = '0x1111111111111111111111111111111111111111';
   ok(await pg.evaluate(() => getComputedStyle(document.getElementById('ecBanc')).display) !== 'none',
      'et il ouvre l ecran du banc');
 
-  console.log('\n-- on choisit les options AVANT --');
+  /* ---- UNE ETAPE A LA FOIS ----
+   * DEMANDE : « on ne sait pas quoi faire tellement il y a de choses ». Ce qui
+   * est verifie n'est pas qu'il y ait moins de reglages, c'est qu'il n'y en
+   * ait qu'UN d'ouvert : c'est ca qui dit par ou commencer. */
+  console.log('\n-- une seule etape est ouverte a la fois --');
+  const pas = () => pg.evaluate(() => ['bcPas1', 'bcPas2', 'bcPas3', 'bcPas4']
+    .filter((k) => (document.getElementById(k) || {}).open));
+  const p0 = await pas();
+  console.log('   ouvertes : ' + JSON.stringify(p0));
+  ok(p0.length === 1 && p0[0] === 'bcPas1',
+     'a l ouverture, seule l etape 1 est depliee (' + JSON.stringify(p0) + ') : il y a exactement '
+     + 'une chose a faire, et elle est a l ecran');
+
+  console.log('\n-- on choisit un mode, et le nombre de wallets suit tout seul --');
+  /* DEMANDE : « le nombre de wallets cachés est auto selon l'option ». On le
+     choisit donc comme un humain le ferait — en touchant la tuile — et on
+     verifie que le champ se remplit sans que personne l'ait tape. */
+  const auto = await pg.evaluate(() => {
+    const out = {};
+    for (const v of ['organique', 'volume', 'tx', 'holders']) {
+      document.querySelector('input[name="bcmode"][value="' + v + '"]').click();
+      out[v] = document.getElementById('bcN').value;
+    }
+    return out;
+  });
+  console.log('   ' + JSON.stringify(auto));
+  ok(Object.values(auto).every((n) => parseInt(n, 10) >= 2 && parseInt(n, 10) <= 100),
+     'chaque mode pose lui-meme un nombre de portefeuilles tenable (' + JSON.stringify(auto) + ')');
+  ok(new Set(Object.values(auto)).size > 1,
+     'et ce n est pas le meme pour tous : le chiffre DECOULE du mode, sinon le rendre automatique '
+     + 'ne serait qu une facon de le cacher');
+  const dits = await pg.evaluate(() => [...document.querySelectorAll('.wl-tuile-c .n')]
+    .map((e) => e.textContent.trim()));
+  ok(dits.length === 4 && dits.every((t) => /^\d+ wallets$/.test(t)),
+     'et chaque tuile ECRIT son chiffre : ce nombre change ce que la machine fait et ce qu elle '
+     + 'coute, on cesse de le demander, on ne le cache pas');
+
   await pg.evaluate((jeton) => {
-    document.getElementById('bcMode').value = 'volume';
-    document.getElementById('bcN').value = '7';
+    document.querySelector('input[name="bcmode"][value="volume"]').click();
     document.getElementById('bcTok').value = jeton;
   }, JETON);
+  /* Le nombre n'est plus tape : il DECOULE du mode. On lit donc ce que le mode
+     a pose, et c'est lui qu'on suivra jusque dans le banc. */
+  const N_VOLUME = await pg.evaluate(() => document.getElementById('bcN').value);
+  const p1 = await pas();
+  console.log('   apres le choix, ouvertes : ' + JSON.stringify(p1));
+  ok(p1.length === 1 && p1[0] === 'bcPas2',
+     'choisir replie l etape 1 et ouvre la suivante (' + JSON.stringify(p1) + ') : on ne cherche '
+     + 'pas ou cliquer ensuite');
+  ok(await pg.evaluate(() => document.getElementById('bcVu1').textContent.trim()) !== '',
+     'et l etape repliee garde une ligne qui dit ce qui a ete choisi ('
+     + (await pg.evaluate(() => document.getElementById('bcVu1').textContent.trim())) + ')');
 
   console.log('\n-- creer le maitre --');
   ok(await pg.evaluate(() => document.getElementById('bcCreer').hidden) === false,
@@ -148,8 +194,10 @@ const JETON = '0x1111111111111111111111111111111111111111';
   ok(/^0x[0-9a-fA-F]{40}$/.test(adrEcran), 'l adresse du maitre est affichee (' + adrEcran.slice(0, 10) + '…)');
   ok(await pg.evaluate(() => document.getElementById('bcCreer').hidden) === true,
      'et le bouton s efface : il n y a qu un maitre');
-  ok(await pg.evaluate(() => document.getElementById('bcCarteFonds').hidden) === false,
-     'la carte « envoyer au maitre » apparait seulement une fois le maitre cree');
+  const p2 = await pas();
+  console.log('   apres la creation, ouvertes : ' + JSON.stringify(p2));
+  ok(p2.length === 1 && p2[0] === 'bcPas3',
+     'et l ecran passe tout seul a « send it ETH (RH) » (' + JSON.stringify(p2) + ')');
 
   console.log('\n-- le filet partage n a rien perdu --');
   const filet = await pg.evaluate(() => JSON.parse(localStorage.getItem('wallet_bench_secours_v1')));
@@ -163,8 +211,9 @@ const JETON = '0x1111111111111111111111111111111111111111';
   ok(filet && /^0x[0-9a-fA-F]{64}$/.test(filet.l[0].k), 'la cle du maitre est une vraie cle');
 
   const plan = await pg.evaluate(() => JSON.parse(localStorage.getItem('wallet_bench_plan_v1')));
-  ok(plan && plan.mode === 'volume' && plan.n === 7 && plan.tok === JETON,
-     'le plan depose dit le mode, le nombre et le jeton');
+  console.log('   plan : ' + JSON.stringify(plan));
+  ok(plan && plan.mode === 'volume' && plan.n === parseInt(N_VOLUME, 10) && plan.tok === JETON,
+     'le plan depose dit le mode, le nombre DEDUIT du mode (' + N_VOLUME + ') et le jeton');
 
   ok(boum.length === 0, 'aucune erreur dans le portefeuille'
      + (boum[0] ? ' (' + boum[0].slice(0, 120) + ')' : ''));
@@ -204,11 +253,15 @@ const JETON = '0x1111111111111111111111111111111111111111';
      'le banc montre EXACTEMENT le maitre cree dans le portefeuille');
   ok(vuBanc.genCache, 'il ne propose plus d en generer un autre');
   ok(vuBanc.mode === 'volume', 'le mode choisi est arrive (' + vuBanc.mode + ')');
-  ok(vuBanc.n === '7', 'le nombre de wallets aussi (' + vuBanc.n + ')');
+  ok(vuBanc.n === N_VOLUME,
+     'le nombre pose par le mode arrive tel quel dans le moteur (' + vuBanc.n + ') : personne ne '
+     + 'l a tape, et pourtant c est bien lui qui pilotera l anneau');
   ok(vuBanc.ocTok.toLowerCase() === JETON, 'le jeton est dans One-Click');
   ok(vuBanc.tok.toLowerCase() === JETON && vuBanc.quick.toLowerCase() === JETON,
      'et dans les deux autres champs que les moteurs lisent — pas seulement dans celui qu on voit');
   ok(/carried over/i.test(vuBanc.dit), 'la page DIT que ces reglages viennent du portefeuille');
+  ok(/change anything here/i.test(vuBanc.dit),
+     'et, ouverte seule, elle invite bien a les changer ici : c est le cas, ses champs sont la');
   ok(vuBanc.plan === null, 'le plan est consomme : il ne se rejouera pas');
 
   /* Le mode montre ses propres reglages : poser la valeur sans declencher
@@ -277,10 +330,11 @@ const JETON = '0x1111111111111111111111111111111111111111';
 
   const JETON2 = '0x2222222222222222222222222222222222222222';
   await pg.evaluate((j) => {
-    document.getElementById('bcMode').value = 'tx';
-    document.getElementById('bcN').value = '9';
+    document.querySelector('input[name="bcmode"][value="tx"]').click();
     document.getElementById('bcTok').value = j;
+    document.getElementById('bcPas4').open = true;
   }, JETON2);
+  const N_TX = await pg.evaluate(() => document.getElementById('bcN').value);
 
   const ongletsAvant = ctx.pages().length;
   await pg.click('#bcOuvre');
@@ -330,15 +384,51 @@ const JETON = '0x1111111111111111111111111111111111111111';
       };
     });
     ok(dedans.encastre, 'le banc se sait dans un cadre');
+    /* ---- ET IL NE DIT PAS DE CHANGER CE QU'IL A CACHE ----
+     * Ouvert seul, il ecrit « change anything here » — c'est vrai. Dans le
+     * cadre, ses champs sont caches, et la meme phrase enverrait chercher des
+     * reglages qui ne sont plus a l'ecran. Un message faux coute plus cher
+     * qu'un message absent. */
+    const dit = await fr.evaluate(() => (document.getElementById('ocStatus') || {}).textContent || '');
+    console.log('   il dit : ' + dit.trim().slice(0, 110));
+    ok(!/change anything here/i.test(dit),
+       'il n invite pas a changer ici des reglages qu il vient de cacher');
+    ok(/steps above/i.test(dit),
+       'il renvoie aux etapes du portefeuille, la ou ces reglages sont vraiment (« '
+       + dit.trim().slice(0, 80) + ' »)');
     ok(dedans.play === true && dedans.stop === true,
        'PLAY et STOP sont VISIBLES sans quitter le portefeuille — c est toute la demande');
     ok(dedans.oc === true, 'le panneau One-Click entier est la, pas seulement ses deux boutons');
     ok(dedans.rangs, 'et la liste des portefeuilles avec leurs soldes : sans elle, on ne voit pas ce que le moteur fait');
     ok(dedans.barre && dedans.cote && dedans.pied,
        'le banc a retire SA barre du haut, SA colonne et SON pied : le portefeuille porte deja les siens');
-    ok(dedans.mode === 'tx' && dedans.n === '9' && (dedans.tok || '').toLowerCase() === JETON2,
+    /* ---- ET SON PROPRE FORMULAIRE ----
+     * C'est la plainte, mot pour mot : « on ne sait pas quoi faire tellement il
+     * y a de choses ». L'ecran posait DEUX fois la meme question — les quatre
+     * etapes du portefeuille, puis les tuiles de mode, le nombre, le jeton, le
+     * financement et le simulateur de ce panneau-ci, tous deja remplis par le
+     * relais. Deux formulaires du meme reglage peuvent se contredire. */
+    const doubles = await fr.evaluate(() => {
+      const vu = (sel) => {
+        const e = document.querySelector(sel);
+        if (!e) return false;
+        const r = e.getBoundingClientRect();
+        return getComputedStyle(e).display !== 'none' && r.width > 0 && r.height > 0;
+      };
+      return { modes: vu('.ocmodes'), n: vu('#ocN'), tok: vu('.quicktok'),
+               fonds: vu('#ocFundRow'), sim: vu('.ocsim'), sortie: vu('#ocExt'),
+               maitre: vu('#ocMaster') };
+    });
+    console.log('   doublons encore visibles : ' + JSON.stringify(doubles));
+    ok(Object.values(doubles).every((x) => x === false),
+       'aucun reglage n est pose deux fois : le mode, le nombre, le jeton, le financement, le '
+       + 'simulateur et la sortie sont ceux du portefeuille, pas ceux du cadre');
+    ok(dedans.mode === 'tx' && dedans.n === N_TX && (dedans.tok || '').toLowerCase() === JETON2,
        'et les reglages faits juste au-dessus sont arrives dans le moteur ('
        + dedans.mode + ' · ' + dedans.n + ' · ' + String(dedans.tok).slice(0, 8) + '…)');
+    ok(N_TX !== N_VOLUME,
+       'avec un autre nombre de portefeuilles que le mode precedent (' + N_TX + ' contre '
+       + N_VOLUME + ') : changer de mode change vraiment l anneau, pas seulement son etiquette');
 
     const h = await pg.evaluate(() => {
       const c = document.getElementById('bcCadre');
@@ -354,6 +444,44 @@ const JETON = '0x1111111111111111111111111111111111111111';
     const b = document.getElementById('bcOnglet');
     return !!b && b.offsetParent !== null;
   }), 'la porte de secours reste : un cadre peut etre bloque, et STOP ne doit jamais devenir inatteignable');
+
+  /* ---- ET LE MOTEUR PORTE LA TENUE DU PORTEFEUILLE ----
+   * La page du banc est claire, exprès et a la source. Posee dans un
+   * portefeuille en tenue sombre, elle devenait une dalle blanche au milieu de
+   * l'ecran — la chose la plus voyante de la page, et elle ne dit rien.
+   * On ne verifie pas une couleur precise (elle changera) mais le FAIT : le
+   * fond du panneau doit etre sombre quand le portefeuille l'est, et suivre
+   * quand on bascule en cours de route. */
+  console.log('\n-- la tenue passe la frontiere du cadre --');
+  const clair = await pg.frames().find((f) => /dans=wallet/.test(f.url()))
+    .evaluate(() => getComputedStyle(document.querySelector('#oneClick')).backgroundColor);
+  /* On bascule par la CASE du reglage, pas en posant l'attribut a la main :
+     le script de la page est encapsule, ses fonctions ne sont pas globales, et
+     surtout c'est ce chemin-la qu'un utilisateur emprunte. Un essai qui
+     contourne l'interface ne prouve pas que l'interface marche. */
+  await pg.evaluate(() => {
+    const c = document.getElementById('cpSombre');
+    if (c && !c.checked) c.click();
+  });
+  await pg.waitForTimeout(600);
+  ok(await pg.evaluate(() => document.documentElement.getAttribute('data-theme')) === 'sombre',
+     'la case du reglage fait bien passer le portefeuille en tenue sombre');
+  const fr2 = pg.frames().find((f) => /dans=wallet/.test(f.url()));
+  const nuit = await fr2.evaluate(() => ({
+    classe: document.documentElement.classList.contains('nuit'),
+    fond: getComputedStyle(document.querySelector('#oneClick')).backgroundColor,
+  }));
+  console.log('   clair : ' + clair + ' · sombre : ' + nuit.fond);
+  ok(nuit.classe, 'basculer la tenue du portefeuille la pose aussi dans le cadre');
+  ok(nuit.fond !== clair,
+     'et le panneau du moteur change vraiment de fond (' + clair + ' → ' + nuit.fond + ')');
+  const clarte = (c) => {
+    const m = String(c).match(/(\d+), *(\d+), *(\d+)/);
+    return m ? (+m[1] * 0.299 + +m[2] * 0.587 + +m[3] * 0.114) : null;
+  };
+  ok(clarte(nuit.fond) !== null && clarte(nuit.fond) < 80,
+     'il devient SOMBRE, pas juste different (clarte ' + Math.round(clarte(nuit.fond)) + '/255) : '
+     + 'une dalle blanche dans un portefeuille sombre est la premiere chose qu on voit');
 
   /* UN seul moteur : le portefeuille ne doit pas avoir gagne sa propre copie
      de PLAY dans son propre document. */

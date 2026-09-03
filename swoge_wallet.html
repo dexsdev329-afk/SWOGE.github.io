@@ -374,6 +374,7 @@ body{
   flex:0 0 auto; display:grid; grid-template-columns:repeat(5,1fr);
   border-top:1px solid var(--bord); background:var(--pied);
   padding:8px 4px calc(10px + env(safe-area-inset-bottom));
+  position:relative; z-index:1;   /* devant le cadre decoratif — voir .wl-ecran */
 }
 .wl-pied button{
   background:none; border:0; cursor:pointer; color:var(--doux);
@@ -403,7 +404,20 @@ body{
  * `min-height:0` est indispensable des deux cotes : sans lui un element
  * flexible refuse de retrecir sous la hauteur de son contenu, et le corps
  * defilant repousserait les onglets exactement comme avant. */
-.wl-ecran{ display:none; flex-direction:column; flex:1 1 auto; min-height:0 }
+/* ---- ET IL PASSE VRAIMENT DERRIERE ----
+ * Le commentaire du cadre decoratif dit « en dessous, les cartes le decoupent
+ * proprement ». Ce n'etait pas le cas, et la regle de peinture de CSS explique
+ * pourquoi : un element POSITIONNE en `z-index:0` est peint APRES le fond des
+ * blocs non positionnes. Les cartes n'ont pas de `position`, donc le cadre —
+ * a 55 % — passait par-dessus elles. On le voyait : des pieces d'or et des
+ * flammes bleues sur le fond blanc des cartes, sur les libelles, et jusque sur
+ * le texte de la barre d'onglets.
+ * `position:relative; z-index:1` sur l'ecran et sur la barre remet l'ordre que
+ * le commentaire decrivait. Le cadre ne disparait pas : l'ecran n'a pas de
+ * fond, donc il se voit toujours dans les marges et entre les cartes — la ou
+ * il n'y a rien a lire, ce qui etait l'intention. */
+.wl-ecran{ display:none; flex-direction:column; flex:1 1 auto; min-height:0;
+  position:relative; z-index:1 }
 .wl-ecran.on{ display:flex }
 
 /* ---- LES BLOCS ---- */
@@ -784,8 +798,15 @@ body{
  * declenche `change` comme l'aurait fait un clic.
  */
 .wl-pick{ position:relative }
+/* `font-size:16px` ici et pas seulement sur les champs visibles : sous ce
+   seuil, iOS zoome a la mise au foyer. Les champs caches de cette page sont
+   la VRAIE valeur — le `select` des jetons, le mode et le nombre du banc — et
+   un script peut leur donner le foyer. Le porter par `.wl-cache` couvre aussi
+   ceux qu'on ajoutera : ceux du banc etaient hors d'un `.wl-champ`, donc hors
+   de la regle qui le posait, et c'est l'essai qui l'a dit. */
 .wl-cache{ position:absolute; width:1px; height:1px; padding:0; margin:-1px;
-  overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0 }
+  overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; border:0;
+  font-size:16px }
 .wl-pick-b{
   width:100%; display:flex; align-items:center; gap:11px; text-align:left;
   padding:11px 12px; border-radius:12px; border:1px solid var(--bord);
@@ -941,6 +962,94 @@ body{
 
 .wl-note{ font:400 12px/1.5 'Archivo',sans-serif; color:var(--doux); margin:8px 0 0 }
 
+/* ==================== LES ETAPES DU BANC ====================
+ *
+ * Une etape ouverte a la fois, le reste replie sur une ligne. C'est le seul
+ * moyen d'avoir, sur un telephone, exactement UNE chose a faire a l'ecran.
+ *
+ * `<details>` plutot que du JS : le repli, le clavier, l'annonce aux lecteurs
+ * d'ecran et le triangle sont deja la, gratuitement et correctement. Le JS ne
+ * fait qu'ouvrir la suivante ; sans lui la page reste utilisable, ce qui
+ * n'aurait pas ete vrai d'un accordeon fait a la main.
+ *
+ * La barre de titre fait 52 px de haut : c'est un doigt, pas un curseur. */
+.wl-pas{
+  background:var(--carte); border:1px solid var(--bord); border-radius:var(--rayon);
+  margin-bottom:10px; overflow:hidden;
+}
+.wl-pas > summary{
+  display:flex; align-items:center; gap:11px; padding:15px 16px; cursor:pointer;
+  list-style:none; min-height:52px; box-sizing:border-box;
+}
+.wl-pas > summary::-webkit-details-marker{ display:none }
+.wl-pas-n{
+  flex:0 0 auto; width:23px; height:23px; border-radius:50%;
+  background:var(--carte2); color:var(--doux); border:1px solid var(--bord);
+  font:800 12px/23px 'Archivo',sans-serif; text-align:center;
+}
+.wl-pas[open] .wl-pas-n{ background:var(--accent); color:#fff; border-color:var(--accent) }
+.wl-pas-t{ flex:1 1 auto; min-width:0; font:700 14px/1.3 'Archivo',sans-serif; color:var(--texte) }
+/* ---- LA LIGNE REPLIEE NE SE COUPE PAS ----
+ * Elle disait « Transactions · 2… » : le nombre de portefeuilles, qui est
+ * justement ce que l'etape repliee sert a montrer, tombait dans les points de
+ * suspension. Une ligne de resume tronquee est pire qu'aucune ligne — on croit
+ * savoir. Elle passe donc a la ligne plutot que de se couper. */
+.wl-pas-v{
+  flex:0 1 auto; min-width:0; font:700 11px/1.35 'Space Mono',monospace; color:var(--doux);
+  text-align:right; white-space:normal; word-break:break-word;
+}
+/* Le chevron : il tourne, donc il dit dans quel sens ca va s'ouvrir. */
+.wl-pas > summary::after{
+  content:''; flex:0 0 auto; width:7px; height:7px; margin-left:2px;
+  border-right:2px solid var(--doux); border-bottom:2px solid var(--doux);
+  transform:rotate(45deg) translate(-2px,-2px); transition:transform .16s;
+}
+.wl-pas[open] > summary::after{ transform:rotate(-135deg) translate(-2px,-2px) }
+.wl-pas[open] .wl-pas-v{ display:none }
+.wl-pas-c{ padding:0 16px 16px }
+.wl-pas-c > .wl-b{ margin-top:12px }
+
+/* ---- LES QUATRE MODES, TOUS VISIBLES ----
+ * C'etait une liste deroulante, et c'est elle qui « s'etendait » : sur
+ * telephone le systeme la dessine par-dessus l'ecran, et comparer quatre
+ * choix en n'en voyant qu'un n'est pas comparer. Quatre tuiles, donc, chacune
+ * avec ce qu'elle fait ET le nombre de portefeuilles qu'elle implique. */
+.wl-tuiles{ display:grid; gap:8px }
+.wl-tuile{ display:block; cursor:pointer }
+/* 16 px, comme tous les champs de cette page : sous ce seuil, iOS ZOOME a la
+   mise au foyer, et une tuile choisie au doigt ferait sauter l'ecran. Le bouton
+   radio est invisible, mais il recoit bien le foyer quand on touche sa tuile. */
+.wl-tuile input{ position:absolute; opacity:0; pointer-events:none; font-size:16px }
+.wl-tuile-c{
+  display:block; padding:12px 13px; border:1px solid var(--bord); border-radius:13px;
+  background:var(--carte2); transition:border-color .14s, background .14s;
+}
+.wl-tuile-c b{ display:block; font:800 13px/1.3 'Archivo',sans-serif; color:var(--texte) }
+.wl-tuile-c b i{
+  font:800 9px/1 'Archivo',sans-serif; font-style:normal; letter-spacing:.7px;
+  text-transform:uppercase; color:var(--doux); border:1px solid var(--bord);
+  border-radius:5px; padding:3px 5px; margin-left:6px; vertical-align:1px;
+}
+.wl-tuile-c .q{ display:block; margin-top:5px; font:400 12px/1.5 'Archivo',sans-serif; color:var(--doux) }
+/* La pastille du nombre : meme forme que « DEFAULT », couleur de l'accent —
+   c'est le seul chiffre de la tuile, et c'est celui qu'on compare. */
+.wl-tuile-c b em.n{
+  font:800 9px/1 'Space Mono',monospace; font-style:normal; letter-spacing:.4px;
+  color:var(--accent); border:1px solid var(--accent); border-radius:5px;
+  padding:3px 5px; margin-left:4px; vertical-align:1px;
+}
+.wl-tuile input:checked + .wl-tuile-c{ border-color:var(--accent); background:var(--carte) }
+.wl-tuile input:checked + .wl-tuile-c b{ color:var(--accent) }
+.wl-tuile input:focus-visible + .wl-tuile-c{ outline:2px solid var(--accent); outline-offset:2px }
+
+/* Ce qu'on ouvre une fois sur vingt : le jeton. Replie, pas supprime. */
+.wl-repli{ margin-top:12px }
+.wl-repli > summary{
+  list-style:none; cursor:pointer; font:700 12px/1 'Archivo',sans-serif;
+  color:var(--accent); padding:6px 0;
+}
+.wl-repli > summary::-webkit-details-marker{ display:none }
+
 /* ---- LE CADRE DU MOTEUR ----
    Il n'a PAS de hauteur fixe : le banc renvoie la sienne et on la pose ici.
    Une hauteur fixe donnerait un cadre qui defile dans une page qui defile,
@@ -948,7 +1057,7 @@ body{
    n'est qu'un plancher, le temps que la premiere mesure arrive. */
 .wl-banc{ margin-top:16px }
 .wl-banc iframe{ display:block; width:100%; min-height:460px; border:0;
-  border-radius:16px; background:#F4F7FD; color-scheme:light }
+  border-radius:16px; background:var(--carte) }
 .wl-note.alerte{ color:var(--or) }
 .wl-note.grave{ color:var(--rouge) }
 
@@ -1719,129 +1828,202 @@ body{
        chargee dans un cadre au bas de cet ecran, sans sa barre ni son titre.
        PLAY et STOP sont donc dans le portefeuille, sans qu'il existe une
        seconde copie du code qui signe. -->
+  <!-- ==================== LE BANC, UNE ETAPE A LA FOIS ====================
+       DEMANDE : « le menu s'etend une fois qu'on a fait des selections. Retire
+       un maximum d'information inutile, on ne sait pas quoi faire tellement il
+       y a de choses. Il faudrait : choisir une option, le nombre de wallets
+       cachés est auto selon l'option, generate le master wallet, envoyer les
+       ETH (RH) la-bas, puis play. Reflechis a comment organiser sur le
+       telephone pour que ce soit simple a utiliser, et beaucoup au design. »
+
+       Le defaut n'etait pas le nombre de reglages, c'etait qu'ils etaient TOUS
+       ouverts en meme temps. Un ecran qui montre quatre etapes depliees ne dit
+       pas par ou commencer ; il montre une liste de choses a faire, et sur un
+       telephone cette liste fait trois ecrans de haut.
+
+       Donc : UNE etape ouverte a la fois. Celle qui est faite se replie et ne
+       garde qu'une ligne — ce qu'on a choisi. La suivante s'ouvre toute seule.
+       A tout moment il y a exactement une chose a faire, et elle est a
+       l'ecran.
+
+       Ce qui est PARTI de l'ecran :
+         — le champ « hidden wallets ». Il est deduit du mode, et le nombre est
+           MONTRE dans la tuile : on ne cache pas un chiffre qui change ce que
+           la machine fait, on cesse juste de le demander.
+         — les trois paragraphes d'explication en tete. Ils disaient ce que le
+           banc fait, en haut, avant qu'on ait rien choisi — c'est-a-dire au
+           moment ou ils ne servent a rien. Ce qu'ils disaient de vrai est
+           reparti dans les tuiles, la ou ca aide a choisir.
+         — la liste deroulante du mode. C'est elle qui « s'etendait » : sur
+           telephone c'est le systeme qui la dessine, elle recouvre l'ecran, et
+           on ne peut pas comparer quatre choix en n'en voyant qu'un.
+         — le champ du jeton, replie derriere une ligne. $SWOGE par defaut ;
+           en changer est un cas sur vingt.
+
+       Ce qui RESTE dans le DOM, cache : `#bcMode`, `#bcN` et `#bcTok`. Ce sont
+       eux que `bancEcritPlan()` lit et que le banc reprend. Les tuiles les
+       remplissent. Les remplacer aurait demande de changer le relais des deux
+       cotes pour ne rien gagner. -->
   <section class="wl-ecran" id="ecBanc">
     <div class="wl-tete">
       <h1>Volume bench</h1>
     </div>
     <div class="wl-corps">
-      <!-- ---- OU EST « PLAY » ? ----
-           « Le volume bench sur le wallet est-il utilisable ? Je ne vois pas
-             de bouton play et stop. »
-           Question legitime, et c'etait un defaut de l'ecran, pas du code :
-           il s'appelle « Volume bench » et ne contient aucun bouton pour le
-           lancer. Le moteur vit sur la page du banc — deliberement, deux
-           copies d'un code qui deplace de l'argent finissent par diverger —
-           mais rien ne le DISAIT en haut, la ou on cherche le bouton.
-           On le dit maintenant en premier, et les trois etapes sont
-           numerotees pour qu'on voie tout de suite ou l'on en est. -->
-      <p class="wl-note"><b>This is the setup. &#9654; PLAY and &#9632; STOP appear at the bottom
-        of this screen</b> once step 4 loads the engine — you no longer leave the wallet.</p>
-      <p class="wl-note">It spins up hidden wallets that buy a token and pass the funds around,
-        making real on-chain volume. Every hop pays real gas and slippage, so the ETH (RH)
-        drains steadily. Press STOP on the bench and everything comes back to the master.</p>
-      <p class="wl-note grave">Manufacturing trading volume can be market manipulation and may
-        break laws or platform rules. Only run it where you are authorised to.</p>
 
-      <div class="wl-carte">
-        <div class="wl-champ">
-          <label for="bcMode">1 &middot; WHAT ARE YOU TRYING TO MAXIMISE?</label>
-          <!-- ---- UN LIBELLE COURT, ET L'EXPLICATION EN DESSOUS ----
-               Les quatre choix portaient leur explication DANS l'option :
-               « Organic — buy and sell on two different wallets ». Sur
-               telephone, la liste ouverte est dessinee par le systeme, pas
-               par nous : on ne peut ni la mettre en forme ni la faire tenir,
-               et ces lignes-la sortaient de l'ecran. Signale depuis un
-               telephone.
-               Le nom seul dans la liste, donc, et ce qu'il fait juste en
-               dessous — qui a l'avantage de rester lisible une fois la liste
-               refermee, ce que l'option ne faisait pas. -->
-          <select id="bcMode">
+      <!-- ---- 1 · LE MODE ---- -->
+      <details class="wl-pas" id="bcPas1" open>
+        <summary>
+          <span class="wl-pas-n">1</span>
+          <span class="wl-pas-t">What to maximise</span>
+          <b class="wl-pas-v" id="bcVu1">Organic</b>
+        </summary>
+        <div class="wl-pas-c">
+          <!-- Le `select` reste : c'est LUI que le moteur lit et que le relais
+               remplit. Les tuiles le pilotent. -->
+          <select id="bcMode" class="wl-cache" tabindex="-1" aria-hidden="true">
             <option value="organique" selected>Organic</option>
             <option value="volume">Volume</option>
             <option value="tx">Transactions</option>
             <option value="holders">Holders</option>
           </select>
-          <p class="wl-note" id="bcModeQuoi" style="margin:7px 0 0"></p>
+          <input id="bcN" class="wl-cache" tabindex="-1" aria-hidden="true" value="12" readonly>
+          <div class="wl-tuiles" role="radiogroup" aria-label="What are you maximising?">
+            <!-- ---- LE NOMBRE EST UNE PASTILLE, PAS UN PARAGRAPHE ----
+                 Il etait en fin de tuile, dans deux lignes de prose. Quatre
+                 tuiles de trois lignes, c'est deux ecrans de telephone avant
+                 d'atteindre l'etape 2. La pastille le met la ou l'oeil compare
+                 — sur la meme ligne que le nom — et la raison tient derriere le
+                 tiret, en une phrase. -->
+            <label class="wl-tuile">
+              <input type="radio" name="bcmode" value="organique" checked>
+              <span class="wl-tuile-c">
+                <b>Organic <i>default</i> <em class="n">12 wallets</em></b>
+                <span class="q">Buys on one wallet, sells on another, around a ring &mdash; enough
+                  addresses that no two keep pairing up.</span>
+              </span>
+            </label>
+            <label class="wl-tuile">
+              <input type="radio" name="bcmode" value="volume">
+              <span class="wl-tuile-c">
+                <b>Volume <em class="n">4 wallets</em></b>
+                <span class="q">Trades the largest amount the pool will take, every hop. More
+                  wallets would only cut the same money into smaller trades.</span>
+              </span>
+            </label>
+            <label class="wl-tuile">
+              <input type="radio" name="bcmode" value="tx">
+              <span class="wl-tuile-c">
+                <b>Transactions <em class="n">20 wallets</em></b>
+                <span class="q">Many tiny trades instead of a few large ones, spread so the count
+                  does not come from one address. Gas makes this the priciest mode.</span>
+              </span>
+            </label>
+            <label class="wl-tuile">
+              <input type="radio" name="bcmode" value="holders">
+              <span class="wl-tuile-c">
+                <b>Holders <em class="n">8 wallets</em></b>
+                <span class="q">One wallet buys a bag and hands a slice to each new address. The
+                  ring only feeds it; the holders are brand-new keys.</span>
+              </span>
+            </label>
+          </div>
+          <!-- ---- LE JETON, REPLIE ----
+               $SWOGE dans dix-neuf cas sur vingt. Laisser le champ ouvert
+               faisait poser la question a tout le monde pour la reponse d'un
+               seul. -->
+          <details class="wl-repli">
+            <summary>Run it on another token</summary>
+            <div class="wl-champ" style="margin:8px 0 0">
+              <label for="bcTok">ROBINHOOD-CHAIN CONTRACT &mdash; leave empty for $SWOGE</label>
+              <input id="bcTok" placeholder="0x…" autocomplete="off" spellcheck="false">
+            </div>
+          </details>
         </div>
-        <div class="wl-champ">
-          <label for="bcN">HIDDEN WALLETS</label>
-          <input id="bcN" type="number" min="2" max="100" value="100" inputmode="numeric">
-        </div>
-        <div class="wl-champ" style="margin:0">
-          <label for="bcTok">TOKEN — $SWOGE unless you paste another Robinhood-Chain contract</label>
-          <input id="bcTok" placeholder="0x…" autocomplete="off" spellcheck="false">
-        </div>
-      </div>
+      </details>
 
-      <!-- ---- LE MASTER ----
+      <!-- ---- 2 · LE MASTER ----
            Une cle creee dans le navigateur. Elle tient l'argent entre deux
            parties, donc elle est ecrite sur l'appareil ET proposee en fichier :
            les deux, parce qu'un navigateur peut refuser le fichier et qu'un
            appareil peut etre efface. -->
-      <div class="wl-carte" id="bcCarteMaster">
-        <div class="wl-rang"><span>2 &middot; Master wallet</span><b id="bcEtat">not created yet</b></div>
-        <div class="wl-champ" id="bcAdrChamp" hidden style="margin:10px 0 0">
-          <label>ITS ADDRESS — this is where the ETH (RH) goes</label>
-          <div class="wl-mono wl-choisir" id="bcAdr" style="color:var(--texte)">—</div>
-          <!-- Financer depuis ce portefeuille tient en une signature, mais on
-               peut aussi vouloir envoyer depuis un echange : alors il faut
-               pouvoir copier l'adresse sans la relire chiffre par chiffre. -->
-          <button class="wl-b vide" id="bcCopier" type="button" style="margin-top:8px">Copy address</button>
+      <details class="wl-pas" id="bcPas2">
+        <summary>
+          <span class="wl-pas-n">2</span>
+          <span class="wl-pas-t">Master wallet</span>
+          <b class="wl-pas-v" id="bcEtat">not created</b>
+        </summary>
+        <div class="wl-pas-c">
+          <div class="wl-champ" id="bcAdrChamp" hidden style="margin:0">
+            <label>ITS ADDRESS &mdash; this is where the ETH (RH) goes</label>
+            <div class="wl-mono wl-choisir" id="bcAdr" style="color:var(--texte)">&mdash;</div>
+            <button class="wl-b vide" id="bcCopier" type="button" style="margin-top:8px">Copy address</button>
+          </div>
+          <div class="wl-rang" id="bcSoldeRang" hidden><span>Its balance</span><b id="bcSolde">&mdash;</b></div>
+          <button class="wl-b" id="bcCreer" type="button">Create the master wallet</button>
+          <p class="wl-note" id="bcNoteCle">Its private key is saved on this device and offered as a
+            file the moment it is created &mdash; a browser can refuse the file, and a device can be
+            wiped, so it is both.</p>
         </div>
-        <div class="wl-rang" id="bcSoldeRang" hidden><span>Its balance</span><b id="bcSolde">—</b></div>
-      </div>
-      <div class="wl-champ" style="margin:0">
-        <button class="wl-b vide" id="bcCreer" type="button">Create the master wallet</button>
-      </div>
-      <p class="wl-note" id="bcNoteCle"></p>
+      </details>
 
-      <div class="wl-carte" id="bcCarteFonds" hidden>
-        <div class="wl-champ wl-avecmax">
-          <label for="bcMontant">3 &middot; SEND FROM THIS WALLET</label>
-          <input id="bcMontant" inputmode="decimal" placeholder="0.0" autocomplete="off">
-          <button type="button" class="wl-max" id="bcMax">MAX</button>
+      <!-- ---- 3 · LE REMPLIR ---- -->
+      <details class="wl-pas" id="bcPas3">
+        <summary>
+          <span class="wl-pas-n">3</span>
+          <span class="wl-pas-t">Fund it</span>
+          <b class="wl-pas-v" id="bcVu3">&mdash;</b>
+        </summary>
+        <div class="wl-pas-c">
+          <div class="wl-champ wl-avecmax" style="margin:0">
+            <label for="bcMontant">AMOUNT</label>
+            <input id="bcMontant" inputmode="decimal" placeholder="0.0" autocomplete="off">
+            <button type="button" class="wl-max" id="bcMax">MAX</button>
+          </div>
+          <div class="wl-glis" data-pour="bcMontant">
+            <input type="range" min="0" max="100" step="1" value="0"
+                   aria-label="Share of your balance">
+            <span class="pc">0 %</span>
+          </div>
+          <div class="wl-rang"><span>Your balance</span><b id="bcMien">&mdash;</b></div>
+          <button class="wl-b" id="bcFinance" type="button">Fund the master</button>
+          <p class="wl-note" id="bcNote">Every hop pays real gas and slippage, so this drains
+            steadily. STOP sweeps whatever is left back to the master.</p>
         </div>
-        <div class="wl-glis" data-pour="bcMontant">
-          <input type="range" min="0" max="100" step="1" value="0"
-                 aria-label="Share of your balance">
-          <span class="pc">0 %</span>
-        </div>
-        <div class="wl-rang"><span>Your balance</span><b id="bcMien">—</b></div>
-      </div>
-      <button class="wl-b" id="bcFinance" type="button" hidden>Fund the master</button>
-      <p class="wl-note" id="bcNote"></p>
+      </details>
 
-      <button class="wl-b" id="bcOuvre" type="button">4 &middot; Load the engine &mdash; &#9654; PLAY appears below</button>
-      <p class="wl-note" id="bcOuvreNote">One engine, not two: two copies of code that moves money end
-        up disagreeing. This is that same engine, running inside this screen instead of another
-        tab. It picks up the master wallet and the options above on its own.</p>
+      <!-- ---- 4 · TOURNER ---- -->
+      <details class="wl-pas" id="bcPas4">
+        <summary>
+          <span class="wl-pas-n">4</span>
+          <span class="wl-pas-t">Run</span>
+          <b class="wl-pas-v" id="bcVu4">&mdash;</b>
+        </summary>
+        <div class="wl-pas-c">
+          <button class="wl-b" id="bcOuvre" type="button">&#9654; Start the engine</button>
+          <p class="wl-note" id="bcOuvreNote">PLAY and STOP appear right below, in the wallet.
+            One engine, not two: two copies of code that moves money end up disagreeing.</p>
+          <p class="wl-note grave">Manufacturing trading volume can be market manipulation and may
+            break laws or platform rules. Only run it where you are authorised to.</p>
+        </div>
+      </details>
 
       <!-- ==================== LE MOTEUR, DANS L'ECRAN ====================
-           DEMANDE : « une seule page, plus de banc a part — oui ».
-           Et avant elle : « je ne vois pas de bouton play et stop », parce
-           qu'ils vivaient dans un autre onglet.
-
-           Ce qui est fait, et ce qui ne l'est PAS :
-
-           On ne RECOPIE pas le moteur ici. Ce sont deux mille deux cents
-           lignes qui signent des transactions, balaient les fonds au STOP et
-           tiennent les cles des portefeuilles caches. Deux copies d'un code
-           pareil divergent — c'est deja ecrit trois lignes plus haut, et ce
-           n'est pas une formule : la copie qui recoit la correction et celle
-           qui ne la recoit pas perdent de l'argent reel.
+           On ne RECOPIE pas le moteur ici. Ce sont deux mille deux cents lignes
+           qui signent des transactions, balaient les fonds au STOP et tiennent
+           les cles des portefeuilles caches. Deux copies d'un code pareil
+           divergent, et la copie qui rate une correction perd de l'argent reel.
 
            On CHARGE la page du banc dans cet ecran. Meme origine, meme
-           appareil, meme `localStorage` : le plan et les cles passent par la
-           ou ils passaient deja, rien de neuf ne transite. Le banc, lui,
-           enleve sa barre du haut, son titre et son pied de page quand il se
-           voit dans un cadre (`?dans=wallet`), et renvoie sa hauteur pour
-           qu'on ne se retrouve pas a faire defiler dans un cadre qui defile
-           lui-meme — sur telephone, c'est la premiere chose qui casse.
+           appareil, meme `localStorage` : le plan et les cles passent par ou ils
+           passaient deja. Le banc, avec `?dans=wallet`, enleve sa barre, son
+           titre, son pied — et desormais tout son propre formulaire, puisque
+           les quatre etapes au-dessus l'ont deja rempli. Il ne reste que ce
+           qu'on ne peut pas obtenir ailleurs : PLAY, STOP, l'etat, et la liste
+           des portefeuilles avec leurs soldes.
 
-           Il ne se charge qu'au clic. Toujours present, il ferait payer a
-           chaque ouverture du portefeuille — sur telephone, en donnees
-           mobiles — une page de trois mille cinq cents lignes que la
-           plupart des visites n'ouvriront jamais. -->
+           Il ne se charge qu'au clic : toujours present, il ferait payer a
+           chaque ouverture du portefeuille une page de trois mille cinq cents
+           lignes que la plupart des visites n'ouvriront jamais. -->
       <div class="wl-banc" id="bcCadreBoite" hidden>
         <div class="wl-rang" style="padding:0 0 8px">
           <span>The engine</span>
@@ -5814,6 +5996,20 @@ function poseTenue(t){
     if(c && c.trim()) m.setAttribute('content', c.trim());
   }
   var b = $('cpSombre'); if(b) b.checked = sombre;
+
+  /* ---- ET LE MOTEUR SUIT ----
+   * Le banc est charge dans un cadre, meme origine : on atteint son document
+   * et on lui pose la meme tenue. Sans ca, changer de tenue laissait au milieu
+   * de l'ecran une dalle restee dans l'autre — et c'est justement la chose la
+   * plus voyante de la page.
+   * En `try` parce que le cadre peut n'etre pas encore charge : ce n'est alors
+   * pas une panne, c'est le cas normal, et il lira la tenue dans son adresse
+   * au chargement. */
+  try{
+    var cad = $('bcCadre');
+    if(cad && cad.contentDocument && cad.contentDocument.documentElement)
+      cad.contentDocument.documentElement.classList.toggle('nuit', !!sombre);
+  }catch(e){}
 }
 function tenueRegle(t){
   try{ localStorage.setItem(CLE_TENUE, t); }catch(e){}
@@ -6109,36 +6305,88 @@ function bancFichierCle(adr, cle){
   }catch(e){ return false; }
 }
 
-/* Ce que fait chaque mode, en une ligne. Elles vivent ici et pas dans les
-   options : une liste deroulante ne montre qu'une ligne a la fois, et sur
-   telephone c'est le systeme qui la dessine. */
-var BANC_QUOI = {
-  organique: 'Buys on one wallet and sells on another, around a ring. Reads like two people '
-           + 'trading — not one wallet talking to itself.',
-  volume:    'Trades the largest amount the pool will take, every hop. Most dollars moved, '
-           + 'fewest trades.',
-  tx:        'Many tiny trades instead of a few large ones. Highest trade count, and the '
-           + 'priciest: gas costs the same at any size.',
-  holders:   'One wallet buys a bag and hands a slice to each new address. Raises the holder '
-           + 'count, not the volume — and each address is a real key, saved before anything is sent.',
-};
-function majBancQuoi(){
-  var e = $('bcModeQuoi'), m = $('bcMode');
-  if(e && m) e.textContent = BANC_QUOI[m.value] || '';
+/* ==================== UNE ETAPE A LA FOIS ====================
+ *
+ * DEMANDE : « on ne sait pas quoi faire tellement il y a de choses ».
+ *
+ * Le nombre de reglages n'etait pas le probleme ; c'est qu'ils etaient tous
+ * ouverts en meme temps. Ici il y a toujours EXACTEMENT une etape ouverte.
+ * Celle qui est faite se replie sur une ligne — ce qu'on a choisi — et la
+ * suivante s'ouvre.
+ *
+ * On n'ouvre jamais de force une etape que l'utilisateur vient de replier a
+ * la main : `bancPas()` n'avance que sur un evenement (choix, creation,
+ * envoi), pas a chaque repeinture. Un ecran qui rouvre ce qu'on vient de
+ * fermer se lit comme un ecran casse. */
+var BANC_PAS = ['bcPas1', 'bcPas2', 'bcPas3', 'bcPas4'];
+/* ---- ON SE PLACE UNE FOIS, PAS A CHAQUE REPEINTURE ----
+ * En revenant sur l'ecran avec un master deja rempli, tout etait replie sauf
+ * l'etape 1 : il fallait redescendre chercher « Run » a la main, alors que les
+ * trois premieres etaient faites depuis longtemps. On ouvre donc l'etape utile
+ * en ARRIVANT — et une seule fois par chargement, sinon la lecture du solde,
+ * qui repasse toutes les quelques secondes, rouvrirait sans arret l'etape que
+ * l'utilisateur vient de replier. Un ecran qui defait ce qu'on vient de faire
+ * se lit comme un ecran casse. */
+var BANC_PLACE = false;
+function bancPas(id){
+  for(var i=0;i<BANC_PAS.length;i++){
+    var e = $(BANC_PAS[i]);
+    if(e) e.open = (BANC_PAS[i] === id);
+  }
+  var c = $(id);
+  if(c && c.scrollIntoView) try{ c.scrollIntoView({ behavior:'smooth', block:'nearest' }); }catch(e){}
 }
-if($('bcMode')) $('bcMode').addEventListener('change', majBancQuoi);
+
+/* ---- LE NOMBRE DE PORTEFEUILLES CACHES EST DEDUIT DU MODE ----
+ *
+ * DEMANDE : « le nombre de wallets cachés est auto selon l'option choisie ».
+ *
+ * C'etait un champ a cent par defaut, et cent portefeuilles, c'est cent
+ * virements de gaz avant le premier echange. On ne le demande plus. Mais on ne
+ * le CACHE pas non plus : chaque tuile ecrit son chiffre et la raison, parce
+ * que ce nombre change ce que la machine fait et ce qu'elle coute.
+ *
+ * Ces quatre valeurs sont un choix, pas une mesure — elles decoulent de ce que
+ * chaque mode cherche :
+ *   organique : assez d'adresses pour qu'aucune paire ne se reponde sans arret ;
+ *   volume    : peu, sinon le meme argent est coupe en echanges plus petits,
+ *               ce qui est l'inverse du but ;
+ *   tx        : beaucoup, pour que le compte ne vienne pas d'une seule adresse ;
+ *   holders   : peu, l'anneau ne fait que nourrir le distributeur — les
+ *               porteurs sont des adresses neuves, comptees ailleurs.
+ * Le champ `#bcN` reste dans le DOM : c'est lui que le relais lit. */
+var BANC_N = { organique: 12, volume: 4, tx: 20, holders: 8 };
+var BANC_NOM = { organique: 'Organic', volume: 'Volume', tx: 'Transactions', holders: 'Holders' };
+
+function bancMode(){ var m = $('bcMode'); return (m && m.value) || 'organique'; }
+function bancPoseMode(v, parLutilisateur){
+  var m = $('bcMode');
+  if(!m || !BANC_N[v]) return;
+  m.value = v;
+  var n = $('bcN'); if(n) n.value = String(BANC_N[v]);
+  var vu = $('bcVu1');
+  if(vu) vu.textContent = BANC_NOM[v] + ' · ' + BANC_N[v] + ' wallets';
+  var r = document.querySelector('input[name="bcmode"][value="' + v + '"]');
+  if(r) r.checked = true;
+  bancEcritPlan();
+  /* On n'avance que si c'est l'utilisateur qui vient de choisir : sinon la
+     repeinture d'ouverture d'ecran sauterait l'etape 1 sans qu'il l'ait vue. */
+  if(parLutilisateur) bancPas(bcMaster ? 'bcPas3' : 'bcPas2');
+}
+Array.prototype.forEach.call(document.querySelectorAll('input[name="bcmode"]'), function(r){
+  r.addEventListener('change', function(){ if(r.checked) bancPoseMode(r.value, true); });
+});
 
 async function majBanc(){
-  majBancQuoi();
   var m = bancLitFilet();
   var mm = (m && Array.isArray(m.l)) ? m.l.filter(function(x){ return x && x.m; })[0] : null;
   bcMaster = mm ? { adr: mm.a, cle: mm.k } : null;
 
-  $('bcEtat').textContent = bcMaster ? 'ready' : 'not created yet';
+  bancPoseMode(bancMode(), false);
+
+  $('bcEtat').textContent = bcMaster ? 'ready' : 'not created';
   $('bcAdrChamp').hidden = !bcMaster;
   $('bcSoldeRang').hidden = !bcMaster;
-  $('bcCarteFonds').hidden = !bcMaster;
-  $('bcFinance').hidden = !bcMaster;
   var b = $('bcCreer'); if(b) b.hidden = !!bcMaster;
   if(bcMaster) $('bcAdr').textContent = bcMaster.adr;
 
@@ -6146,19 +6394,44 @@ async function majBanc(){
     ? 'Its private key is kept on this device so the bench can pick it up — in the clear. That is '
       + 'what makes it recoverable after a reload; it also means anyone with access to this '
       + 'browser profile can read it. A CSV copy was offered when it was created.'
-    : '';
+    : 'Its private key is saved on this device and offered as a file the moment it is created — a '
+      + 'browser can refuse the file, and a device can be wiped, so it is both.';
 
   /* Le solde du portefeuille, pour le curseur ; et celui du master, relu. */
   var mien = soldes.eth;
   $('bcMien').textContent = (mien === null || mien === undefined) ? '—'
     : nombre(mien, 18) + ' ' + ETH_AFF;
   majMontant('bcMontant');
+  var garni = null;   /* le master a-t-il recu quelque chose ? null = pas lu */
   if(bcMaster){
     $('bcSolde').textContent = '…';
     try{
       var bal = await lec().getBalance(bcMaster.adr);
-      $('bcSolde').textContent = nombre(bal, 18) + ' ' + ETH_AFF;
-    }catch(e){ $('bcSolde').textContent = 'unknown — not read'; }
+      garni = !!(bal && bal.gt && bal.gt(0));
+      var dit = nombre(bal, 18) + ' ' + ETH_AFF;
+      $('bcSolde').textContent = dit;
+      /* L'etape 3 se resume par ce que le master a VRAIMENT recu, relu sur la
+         chaine — pas par ce qu'on a tape dans le champ. Un envoi peut echouer,
+         et la ligne repliee serait alors un mensonge tranquille. */
+      if($('bcVu3')) $('bcVu3').textContent = dit;
+      if($('bcVu4')) $('bcVu4').textContent = garni ? 'ready' : 'fund it first';
+    }catch(e){
+      $('bcSolde').textContent = 'unknown — not read';
+      if($('bcVu3')) $('bcVu3').textContent = 'unknown';
+      if($('bcVu4')) $('bcVu4').textContent = 'unknown';
+    }
+  } else {
+    if($('bcVu3')) $('bcVu3').textContent = '—';
+    if($('bcVu4')) $('bcVu4').textContent = '—';
+  }
+
+  if(!BANC_PLACE){
+    BANC_PLACE = true;
+    /* On se place sur ce qui est VRAI : le solde qu'on vient de relire sur la
+       chaine, pas le texte qu'on vient d'ecrire a l'ecran. Un master cree mais
+       vide renvoie a l'etape 3, pas a « Run » ; et une lecture ratee (`null`)
+       n'envoie nulle part — on ne devine pas qu'il est garni. */
+    bancPas(!bcMaster ? 'bcPas1' : (garni === true ? 'bcPas4' : 'bcPas3'));
   }
 }
 
@@ -6170,6 +6443,7 @@ if($('bcCreer')) $('bcCreer').addEventListener('click', function(){
   bancFichierCle(w.address, w.privateKey);
   bancEcritPlan();
   majBanc();
+  bancPas('bcPas3');
   toast('Master wallet created — its key was downloaded');
 });
 
@@ -6213,7 +6487,11 @@ if($('bcFinance')) $('bcFinance').addEventListener('click', async function(){
     }
     $('bcMontant').value = '';
     await rafraichit();
-    majBanc();
+    await majBanc();
+    /* On n'avance qu'apres avoir RELU le solde du master : passer a « run »
+       sur la seule foi d'une transaction envoyee ferait proposer PLAY a un
+       master vide si la chaine l'a refusee. */
+    bancPas('bcPas4');
   }catch(err){
     note.className = 'wl-note grave';
     note.textContent = pourquoiRefus(err);
@@ -6256,7 +6534,10 @@ function bancMonte(){
   if(!boite || !cadre) return false;
   bancEcritPlan();
   boite.hidden = false;
-  if(!cadre.getAttribute('src')) cadre.setAttribute('src', BANC_SRC + '?dans=wallet');
+  if(!cadre.getAttribute('src')){
+    var nuit = document.documentElement.getAttribute('data-theme') === 'sombre';
+    cadre.setAttribute('src', BANC_SRC + '?dans=wallet' + (nuit ? '&tenue=sombre' : ''));
+  }
   var n = $('bcOuvreNote');
   if(n) n.textContent = 'The engine is below. PLAY and STOP are its own buttons — this screen '
     + 'does not sign anything for it.';

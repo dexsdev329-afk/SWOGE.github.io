@@ -1,13 +1,13 @@
 {
   "entrainement.js": "87321c80",
   "nexus.js": "1dd236b0",
-  "privy-swoge.js": "2b2002d4",
+  "privy-swoge.js": "c662549f",
   "stakebubble.js": "8587907e",
-  "swoge_ai.html": "6be83767",
-  "swoge_wallet.html": "4f6086e7",
   "swogebuy.js": "9d7c39e5",
   "swogecompte.js": "f1d89c7a",
   "swogecx.js": "3ba0a8ea",
   "swogeprofil.js": "2bff1154",
-  "swogesports.js": "64716f27"
+  "swogesports.js": "64716f27",
+  "swoge_ai.html": "f7edca23",
+  "swoge_wallet.html": "206a6882"
 }

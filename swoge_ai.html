@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>SWOGE AI — la colonie qui apprend</title>
-<meta name="description" content="Six agents lisent les vrais tokens de la Robinhood Chain, notent ce qu'ils voient, prennent des positions papier au prix reel, et apprennent de ce qui a vraiment marche. Tout est garde sur l'appareil.">
+<title>SWOGE AI — the colony that learns</title>
+<meta name="description" content="Agents read real Robinhood Chain tokens, score what they see, take paper positions at the real price, and learn from what actually worked. It runs on the server, continuously, and everyone sees the same state.">
 <link rel="canonical" href="https://swoleeswoge.dog/swoge_ai.html">
 
 <script>
@@ -13,7 +13,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
-var MARQUE_PAGE = '6be83767';
+var MARQUE_PAGE = 'f7edca23';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -126,7 +126,7 @@ var MARQUE_PAGE = '6be83767';
   .treasury .lbl{font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--ink-faint)}
   .treasury .val{
     font-family:"JetBrains Mono",monospace; font-weight:700; font-size:26px; color:var(--gold);
-    line-height:1; font-variant-numeric:tabular-nums; text-shadow:0 0 18px rgba(255,206,74,.25);
+    line-height:1; font-variant-numeric:tabular-nums;
   }
   .treasury .delta{font-family:"JetBrains Mono",monospace; font-size:12px; font-weight:500}
   .live{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--ink-dim);letter-spacing:.5px;margin-left:auto;flex:none}
@@ -168,7 +168,10 @@ var MARQUE_PAGE = '6be83767';
   @media (max-width:560px){ .b-item{ min-width:70px; padding:8px } .b-gros b{ font-size:19px } }
 
   /* ---------- partage principal ---------- */
-  .main{height:calc(100dvh - 67px); display:grid; grid-template-columns:1.55fr 1fr; min-height:0}
+  /* Le village prenait 60 % de la largeur pour une animation, et laissait 40 %
+     a tout ce qui se lit. La colonne de droite gagne de la place : c'est elle
+     qu'on vient regarder, et le canvas se redimensionne tout seul. */
+  .main{height:calc(100dvh - 67px); display:grid; grid-template-columns:1.25fr 1fr; min-height:0}
   /* L'herbe du village : le canvas la repeint, mais la couleur de repli
      doit etre celle du monde et non un carre noir pendant le premier trait. */
   .stage{position:relative; min-height:0; overflow:hidden; background:#5aa838}
@@ -205,13 +208,61 @@ var MARQUE_PAGE = '6be83767';
    * Rien n'est retire : ce qui est replie continue d'etre calcule et repeint,
    * et se rouvre d'un geste. Le choix est garde d'une visite a l'autre — qui
    * ouvre l'audit tous les jours ne le rouvre pas tous les jours. */
+  /* ---------- LES TROIS ONGLETS ----------
+   * Ils tiennent en haut de la colonne et ne defilent pas avec elle : on
+   * change de question sans avoir a remonter. Le point sur « Proof » n'est
+   * pas decoratif — il ne s'allume que quand la colonie a une demande a
+   * faire, c'est-a-dire la seule fois ou il faut aller voir. */
+  .onglets{
+    position:sticky; top:0; z-index:3; display:flex; gap:4px; padding:8px 10px;
+    background:var(--hud); border-bottom:1px solid var(--line);
+  }
+  .onglet{
+    flex:1 1 0; font-family:"Outfit",sans-serif; font-weight:600; font-size:12px;
+    letter-spacing:.4px; color:var(--ink-dim); background:transparent;
+    border:1px solid transparent; border-radius:9px; padding:7px 6px; cursor:pointer;
+    transition:.15s; position:relative; white-space:nowrap;
+  }
+  .onglet:hover{ color:var(--ink); background:var(--hud-3) }
+  .onglet[aria-selected="true"]{
+    color:#fff; background:var(--bleu); border-color:var(--bleu);
+    box-shadow:0 2px 10px rgba(27,95,224,.22);
+  }
+  /* La pastille est dessinee par le CSS, pas posee dans le bouton : le bouton
+     porte un `data-t`, et changer de langue reecrit son contenu — un noeud
+     ajoute a la main y disparaitrait a la premiere bascule. */
+  .onglet.demande::after{
+    content:""; width:7px; height:7px; border-radius:50%; background:var(--loss);
+    position:absolute; top:5px; right:7px;
+  }
+  .onglet.demande[aria-selected="true"]::after{ box-shadow:0 0 0 2px var(--bleu) }
+  @media (max-width:420px){
+    .onglets{ padding:7px 8px; gap:3px }
+    .onglet{ font-size:11px; letter-spacing:0; padding:7px 4px }
+  }
+  .grp[hidden]{ display:none }
+  .grp > .card:last-child{ border-bottom:none }
+
   .card{padding:14px 16px; border-bottom:1px solid var(--line)}
   .card h2{
     font-family:"Outfit",sans-serif; font-weight:600; font-size:11px; letter-spacing:1.6px;
     text-transform:uppercase; color:var(--ink-faint); margin:0 0 11px; display:flex; align-items:center; gap:8px;
     cursor:pointer; user-select:none;
   }
-  .card h2 .count{margin-left:auto;color:var(--ink-dim);font-weight:500;letter-spacing:.5px;text-transform:none}
+  .card h2 .count{
+    margin-left:auto; color:var(--ink-dim); font-weight:600; letter-spacing:.2px;
+    text-transform:none; font-size:10.5px; font-family:"JetBrains Mono",monospace;
+    font-variant-numeric:tabular-nums; background:var(--hud-3);
+    border:1px solid var(--line); border-radius:999px; padding:2px 8px;
+    max-width:58%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  /* ---- ON VOIT LEQUEL EST OUVERT SANS LIRE ----
+   * Quatre titres identiques dont un seul est deplie : le chevron le dit, mais
+   * il fait dix pixels. Le titre ouvert prend l'encre pleine et son panneau un
+   * filet bleu sur le bord — deux signaux de plus, tous les deux visibles de
+   * loin, pour la meme information. */
+  .card:not(.plie){ box-shadow:inset 3px 0 0 -1px var(--bleu) }
+  .card:not(.plie) h2{ color:var(--ink) }
   /* Le chevron dit l'etat ET le geste. Un panneau replie sans marque se lit
      comme un panneau vide, et l'on croit la donnee perdue.
      Maintenant que TOUT part replie, il est la seule chose qui dit « ceci
@@ -875,83 +926,85 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     </div>
 
     <aside class="panel">
-      <!-- Les quatre chiffres sont montes dans la bande. Il reste la courbe,
-           qui raconte autre chose : la forme du chemin, pas son bout. -->
-      <div class="card" data-pan="courbe">
-        <h2><span data-t="tCourbe">Treasury over time</span> <span class="count" id="wr">win 0%</span></h2>
-        <canvas id="spark"></canvas>
+
+      <!-- ---- TROIS GROUPES, PAS TREIZE PANNEAUX ----
+           « Un utilisateur, la, il y a trop de donnees affichees. » Replier les
+           panneaux ne suffisait pas : treize titres identiques a la file, c'est
+           encore treize decisions a prendre avant de savoir ou regarder, et rien
+           ne dit lesquels vont ensemble. Ils sont maintenant ranges par la
+           QUESTION a laquelle ils repondent — ce qui se passe maintenant, qui
+           fait quoi, et est-ce que tout ca marche — et on n'en voit qu'une a la
+           fois. Rien n'est retire : les trois onglets portent les memes treize
+           panneaux, et chacun se replie comme avant. -->
+      <nav class="onglets" id="onglets" role="tablist">
+        <button type="button" class="onglet" role="tab" data-grp="live" data-t="oLive">Live</button>
+        <button type="button" class="onglet" role="tab" data-grp="colonie" data-t="oColonie">The colony</button>
+        <button type="button" class="onglet" role="tab" data-grp="preuve" data-t="oPreuve">Proof</button>
+      </nav>
+
+      <div class="grp" data-grp="live">
+        <div class="card" data-pan="positions">
+          <h2><span data-t="tPositions">Open positions</span> <span class="count" id="poscount">0</span></h2>
+          <div id="positions"><div class="empty" data-t="vPositions">No open position.</div></div>
+        </div>
+        <div class="card" data-pan="pipeline">
+          <h2><span data-t="tPipe">Tokens in flight</span> <span class="count" id="flowcount">0 tokens</span></h2>
+          <div class="flow" id="flow"><div class="empty" data-t="vPipe">Waiting for new tokens…</div></div>
+        </div>
+        <div class="card" data-pan="courbe">
+          <h2><span data-t="tCourbe">Treasury over time</span> <span class="count" id="wr">win 0%</span></h2>
+          <canvas id="spark"></canvas>
+        </div>
+        <div class="card" data-pan="picks">
+          <h2><span data-t="tPicks">Top picks</span> <span class="count">score</span></h2>
+          <div id="picks"><div class="empty" data-t="vPicks">No valid signal right now…</div></div>
+        </div>
+        <div class="card" data-pan="surveillance">
+          <h2><span data-t="tSurv">Watchlist</span> <span class="count" id="survN">0</span></h2>
+          <div id="surveillance"><div class="empty" data-t="vSurv">Nothing on the watchlist yet.</div></div>
+        </div>
+        <div class="card" data-pan="fermees">
+          <h2><span data-t="tFermees">Closed positions</span> <span class="count" id="fermN">—</span></h2>
+          <div class="feed" id="feed"><div class="empty" data-t="vFeed">No trade yet…</div></div>
+        </div>
       </div>
 
-      <div class="card" data-pan="positions">
-        <h2><span data-t="tPositions">Open positions</span> <span class="count" id="poscount">0</span></h2>
-        <div id="positions"><div class="empty" data-t="vPositions">No open position.</div></div>
+      <div class="grp" data-grp="colonie">
+        <div class="card" data-pan="agents">
+          <h2><span data-t="tAgents">Agents &middot; what each one does</span></h2>
+          <div id="agents"></div>
+        </div>
+        <div class="card" data-pan="banque">
+          <h2><span data-t="tBanque">Banker</span> <span class="count" id="banqMethode">—</span></h2>
+          <div id="banque" class="banq"><div class="empty" data-t="vServeur">Waiting for the server…</div></div>
+        </div>
+        <div class="card" data-pan="appris">
+          <h2><span data-t="tAppris">What the Oracle has learned</span> <span class="count" id="apprisN">0 trade</span></h2>
+          <div id="appris"><div class="empty" data-t="vAppris">Nothing yet. Every closed position teaches it something; below a handful of trades it claims nothing.</div></div>
+        </div>
+        <div class="card" data-pan="structure">
+          <h2><span data-t="tStruct">The colony reorganises itself</span> <span class="count" id="structN">0</span></h2>
+          <div id="structure"><div class="empty" data-t="vStruct">Nothing has changed in the structure yet. The agents do not multiply for show: one of them needs a bucket it has measured as useless, and that takes dozens of closed positions.</div></div>
+        </div>
       </div>
 
-      <div class="card" data-pan="banque">
-        <h2><span data-t="tBanque">Banker</span> <span class="count" id="banqMethode">—</span></h2>
-        <div id="banque" class="banq"><div class="empty" data-t="vServeur">Waiting for the server…</div></div>
-      </div>
-
-      <div class="card" data-pan="surveillance">
-        <h2><span data-t="tSurv">Watchlist</span> <span class="count" id="survN">0</span></h2>
-        <div id="surveillance"><div class="empty" data-t="vSurv">Nothing on the watchlist yet.</div></div>
-      </div>
-
-      <div class="card" data-pan="pipeline">
-        <h2><span data-t="tPipe">Tokens in flight</span> <span class="count" id="flowcount">0 tokens</span></h2>
-        <div class="flow" id="flow"><div class="empty" data-t="vPipe">Waiting for new tokens…</div></div>
-      </div>
-
-      <div class="card" data-pan="agents">
-        <h2><span data-t="tAgents">Agents &middot; what each one does</span></h2>
-        <div id="agents"></div>
-      </div>
-
-      <div class="card" data-pan="appris">
-        <h2><span data-t="tAppris">What the Oracle has learned</span> <span class="count" id="apprisN">0 trade</span></h2>
-        <div id="appris"><div class="empty" data-t="vAppris">Nothing yet. Every closed position teaches it something; below a handful of trades it claims nothing.</div></div>
-      </div>
-
-      <div class="card" data-pan="traits">
-        <h2><span data-t="tTraits">Which signals actually separate</span> <span class="count" id="traitsN">—</span></h2>
-        <div id="traits"><div class="empty" data-t="vTraits">Nothing yet. About twenty signals are read on every token, and nothing says which ones matter until enough tokens have run their course. This table ranks them by measured separating power.</div></div>
-      </div>
-
-      <div class="card" data-pan="audit">
-        <h2><span data-t="tAudit">What happens to the rejected ones</span> <span class="count" id="auditN">—</span></h2>
-        <div id="audit"><div class="empty" data-t="vAudit">Nothing yet. Every token analysed — bought or rejected — is followed to its deadline and priced again. That is what tells us whether a veto really protects, or mostly turns away winners.</div></div>
-      </div>
-
-      <div class="card" data-pan="structure">
-        <h2><span data-t="tStruct">The colony reorganises itself</span> <span class="count" id="structN">0</span></h2>
-        <div id="structure"><div class="empty" data-t="vStruct">Nothing has changed in the structure yet. The agents do not multiply for show: one of them needs a bucket it has measured as useless, and that takes dozens of closed positions.</div></div>
-      </div>
-
-      <div class="card" data-pan="services">
-        <h2><span data-t="tServices">What is being read</span> <span class="count" id="srvN">—</span></h2>
-        <div id="services"><div class="empty" data-t="vServeur">Waiting for the server…</div></div>
-      </div>
-
-      <div class="card" data-pan="picks">
-        <h2><span data-t="tPicks">Top picks</span> <span class="count">score</span></h2>
-        <div id="picks"><div class="empty" data-t="vPicks">No valid signal right now…</div></div>
-      </div>
-
-      <div class="card" data-pan="fermees">
-        <h2><span data-t="tFermees">Closed positions</span> <span class="count" id="fermN">—</span></h2>
-        <div class="feed" id="feed"><div class="empty" data-t="vFeed">No trade yet…</div></div>
-      </div>
-
-      <!-- ---- CE DONT LA COLONIE A BESOIN, TOUT EN BAS ----
-           Ce panneau ne parle pas de ce que la colonie FAIT, il parle de ce
-           qui lui manque : c'est une note de maintenance, pas une donnee de
-           marche. En tete de colonne il poussait les positions et le pipeline
-           vers le bas a chaque alerte, et le regard tombait sur une plainte
-           avant de tomber sur les trades. Il reste visible — il s'ouvre d'un
-           clic comme les autres, et son compteur se lit replie. -->
-      <div class="card" data-pan="alertes" id="carteAlertes" hidden>
-        <h2><span data-t="tAlertes">What the colony needs</span> <span class="count" id="alerteN">0</span></h2>
-        <div id="alertes"></div>
+      <div class="grp" data-grp="preuve">
+        <div class="card" data-pan="traits">
+          <h2><span data-t="tTraits">Which signals actually separate</span> <span class="count" id="traitsN">—</span></h2>
+          <div id="traits"><div class="empty" data-t="vTraits">Nothing yet. About twenty signals are read on every token, and nothing says which ones matter until enough tokens have run their course. This table ranks them by measured separating power.</div></div>
+        </div>
+        <div class="card" data-pan="audit">
+          <h2><span data-t="tAudit">What happens to the rejected ones</span> <span class="count" id="auditN">—</span></h2>
+          <div id="audit"><div class="empty" data-t="vAudit">Nothing yet. Every token analysed — bought or rejected — is followed to its deadline and priced again. That is what tells us whether a veto really protects, or mostly turns away winners.</div></div>
+        </div>
+        <div class="card" data-pan="services">
+          <h2><span data-t="tServices">What is being read</span> <span class="count" id="srvN">—</span></h2>
+          <div id="services"><div class="empty" data-t="vServeur">Waiting for the server…</div></div>
+        </div>
+        <div class="card" data-pan="alertes" id="carteAlertes" hidden>
+          <h2><span data-t="tAlertes">What the colony needs</span> <span class="count" id="alerteN">0</span></h2>
+          <div id="alertes"></div>
+        </div>
       </div>
 
       <div class="foot" id="foot" data-t="pied"><b>What is real:</b> the tokens, the pools, the prices, the contract safety checks, the holder concentration and the age all come from GeckoTerminal, GoPlus, DexScreener and the blocks of chain 4663 themselves. <b>What is not:</b> no transaction is signed. A position opens at the real price of the moment and closes at the real price of a later reading — that is paper, not execution, and a real buy would also pay gas and slippage. <b>It runs on the server, continuously:</b> the colony does not stop when you close the tab, and everyone sees the same state. This page computes nothing: it asks, and it shows. <b>The agents change their own structure:</b> they reorder their checks on the rejection rates they measured, and an agent whose bucket predicts nothing spawns a specialist that cross-checks it — removed if it does no better. What they cannot change: the safety checks and the stake limits, which live in the code. A system that can learn to lower its own guard always learns it, exactly once. <b>When a reading fails, it is written</b> — and nothing is invented to fill the gap. NFA.</div>
@@ -1224,6 +1277,207 @@ function ilYA(ms){
   return h < 48 ? h+"h" : Math.round(h/24)+"j";
 }
 
+/* La langue choisie, gardee d'une visite a l'autre. Declaree ici parce que
+   `ph()`, juste dessous, la lit — et il sert des les premieres lignes.
+   L'anglais est la valeur de depart : c'est la langue ecrite dans le HTML. */
+const CLE_LANGUE = "swogeAiLangue";
+let LANGUE = "en";
+
+/* ==================== LES PHRASES QUE LE SCRIPT FABRIQUE ====================
+ *
+ * « Beaucoup trop de mots anglais et francais melanges. »
+ *
+ * Le HTML de cette page etait deja en anglais, et sa table `FR` traduisait
+ * ses titres. Mais tout ce que le script ECRIT — « au repos », « aucun prix
+ * lu », « 12 bloques sur 340 vus » — etait en dur, en francais. La page
+ * s'ouvrait donc en anglais et se remplissait en francais : le pire des deux,
+ * parce que les mots melanges se lisent plus mal que n'importe laquelle des
+ * deux langues seule.
+ *
+ * Ces phrases ne peuvent pas vivre dans le HTML : elles portent des chiffres.
+ * Elles vivent donc ici, les deux langues cote a cote — l'anglais d'abord,
+ * comme partout ailleurs sur la page. Une entree est un texte, ou une
+ * fonction quand la phrase a des trous.
+ *
+ * Ce qui n'est PAS ici : les mots de la colonie. « exit blocked 3/3 »,
+ * « pool $1-5k », les raisons de refus, les missions des agents — ils
+ * viennent du serveur, deja ecrits, avec leurs chiffres dedans. Les
+ * retraduire ici serait les reecrire, et une phrase reecrite n'est plus ce
+ * que la colonie a dit.
+ * ======================================================================== */
+const PHRASES = {
+  repos:        ['idle', 'au repos'],
+  maison:       ['→ home', '→ maison'],
+  scan:         ['scan…', 'scan…'],
+  achat:        ['buy…', 'achat…'],
+  controle:     ['check…', 'controle…'],
+  ouvert:       ['opened', 'ouvert'],
+  attendServeur:['Waiting for the server…', 'En attente du serveur…'],
+  attendTour:   ['Waiting for the next server turn…', 'En attente du prochain tour du serveur…'],
+  demandeEnCours:['Asking the server…', 'Demande au serveur…'],
+  illisible:    ['unreadable response', 'reponse illisible'],
+  vide:         ['Waiting for the server — nothing is shown until something is read.',
+                 'En attente du serveur — rien n\'est affiche tant que rien n\'est lu.'],
+  enPanne:      ['● server unreachable', '● serveur injoignable'],
+  enAttente:    ['● waiting for the server', '● en attente du serveur'],
+  demarre:      ['● server started, no turn finished yet', '● serveur demarre, aucun tour termine'],
+  lectureKo:    [' · read failed', ' · lecture en echec'],
+  serveurA:     [(n, hh, mm, age) => '● ' + n + ' tokens · server at ' + hh + ':' + mm + ' (' + age + ')',
+                 (n, hh, mm, age) => '● ' + n + ' tokens · serveur a ' + hh + ':' + mm + ' (' + age + ')'],
+  fondErreur:   [(e) => 'The server is running but its last read failed: ' + e,
+                 (e) => 'Le serveur tourne mais sa derniere lecture a echoue : ' + e],
+  fondVivant:   [(n) => 'The colony runs on the server, continuously 🚶 · ' + n
+                      + ' open position(s) · everyone sees the same state',
+                 (n) => 'La colonie tourne sur le serveur, en continu 🚶 · ' + n
+                      + ' position(s) ouverte(s) · tout le monde voit le meme etat'],
+  pasRepondu:   [(e, garde) => 'The server did not answer (' + e + '). Nothing is invented to fill '
+                      + 'the gap: ' + (garde ? 'what is shown is from the last answer.' : 'the screen stays empty.'),
+                 (e, garde) => 'Le serveur n\'a pas repondu (' + e + '). Rien n\'est invente pour '
+                      + 'combler : ' + (garde ? 'ce qui est affiche date de la derniere reponse.' : 'l\'ecran reste vide.')],
+
+  /* --- ce que fait et ce qu'a appris chaque agent --- */
+  rienAppris:   ['has learned nothing yet', 'n\'a encore rien appris'],
+  pasDeTendance:[(n) => n + ' obs · no clear trend yet', (n) => n + ' obs · pas encore de tendance nette'],
+  lectureRatee: [' — but that is a failed read, not a trait of the token',
+                 ' — mais c\'est une lecture ratee, pas un trait du jeton'],
+  ratee:        ['— failed read, not the token', '— lecture ratee, pas le jeton'],
+  obsConfiance: [(n, c) => n + ' obs · confidence ' + c + '%', (n, c) => n + ' obs · confiance ' + c + '%'],
+  issuDe:       [(p) => 'from ' + p, (p) => 'issu de ' + p],
+  scoutFait:    [(v, c, b) => v + ' tokens seen · ' + c + ' known, ' + b + ' banned',
+                 (v, c, b) => v + ' jetons vus · ' + c + ' connus, ' + b + ' bannis'],
+  oracleFait:   [(t, s) => t + ' trades learned · threshold ' + s,
+                 (t, s) => t + ' trades appris · seuil ' + s],
+  banqueFait:   [(o, m, a) => o + ' stakes sized · method ' + m + (a ? ' (learned)' : ' (default)'),
+                 (o, m, a) => o + ' mises posees · methode ' + m + (a ? ' (apprise)' : ' (defaut)')],
+  closerFait:   [(o, min, a) => o + ' opens · hold ' + min + ' min' + (a ? ' (learned)' : ' (default)'),
+                 (o, min, a) => o + ' ouvertures · tenue ' + min + ' min' + (a ? ' (apprise)' : ' (defaut)')],
+  gardeFait:    [(b, v, taux, c) => b + ' blocked out of ' + v + ' seen'
+                      + (taux === null ? '' : ' (' + taux + '%)') + ' · ' + c + ' call' + (c > 1 ? 's' : ''),
+                 (b, v, taux, c) => b + ' bloques sur ' + v + ' vus'
+                      + (taux === null ? '' : ' (' + taux + '%)') + ' · ' + c + ' appel' + (c > 1 ? 's' : '')],
+  specFait:     [(a) => 'born ' + a + ' ago · refines, never refuses',
+                 (a) => 'ne ' + a + ' plus tot · affine, ne refuse jamais'],
+
+  /* --- les jetons en vol --- */
+  porteursInc:  [' · holders ?', ' · porteurs ?'],
+  porteurs:     [(n) => ' · ' + n + ' holders', (n) => ' · ' + n + ' porteurs'],
+  chaineNonLue: [' · chain not read', ' · chaine non lue'],
+  sortieNonTestable:['exit not testable', 'sortie non testable'],
+  sortieOk:     [(p, n) => 'exit ' + p + '/' + n, (p, n) => 'sortie ' + p + '/' + n],
+  sortieBloquee:[(r, n) => 'exit blocked ' + r + '/' + n, (r, n) => 'sortie bloquee ' + r + '/' + n],
+  sortieAide:   [(p, n) => 'The contract lets ' + p + ' of ' + n + ' holder(s) send the token to the '
+                      + 'pool. It is the transfer that is simulated, not the full swap.',
+                 (p, n) => 'Le contrat laisse ' + p + ' detenteur(s) sur ' + n + ' envoyer le jeton '
+                      + 'vers la piscine. C\'est le transfert qui est simule, pas l\'echange complet.'],
+
+  /* --- les positions --- */
+  pasFerme:     ['No closed position yet. The open ones are just above.',
+                 'Aucune position fermee encore. Les positions en cours sont juste au-dessus.'],
+  dernierPrix:  [(a) => 'last price ' + a + ' ago', (a) => 'dernier prix il y a ' + a],
+  aucunPrix:    ['no price read', 'aucun prix lu'],
+  copier:       ['copy', 'copier'],
+  copie:        ['copied ✓', 'copie ✓'],
+  selectionnez: ['select it', 'selectionnez'],
+  acheteA:      [(mc) => ' · bought at ' + mc + ' cap', (mc) => ' · achete a ' + mc + ' de cap.'],
+  vendu:        [(p) => p + '% sold', (p) => p + ' % vendu'],
+  encaisse:     [(m) => ' · ' + m + ' banked', (m) => ' · ' + m + ' encaisse'],
+  courtEncore:  [(p) => ' · ' + p + '% still running', (p) => ' · ' + p + ' % court encore'],
+  plusHaut:     [(r) => 'peak seen +' + r + '%', (r) => 'plus haut vu +' + r + ' %'],
+  miseMot:      [' staked · ', ' mise · '],
+  vuPar:        [(o) => ' · spotted by ' + o, (o) => ' · vu par ' + o],
+  prolongee:    [(n) => ' · extended ' + n + '×', (n) => ' · prolongee ' + n + '×'],
+  graphique:    ['chart ↗', 'graphique ↗'],
+  pasDex:       ['not on DexScreener yet', 'pas encore sur DexScreener'],
+  reseauxNonLus:['socials not read', 'reseaux non lus'],
+  aucunReseau:  ['no socials', 'aucun reseau'],
+  regleDans:    [(a) => 'settles in ' + a, (a) => 'regle dans ' + a],
+  attendPrix:   ['waiting for a price', 'en attente d\'un prix'],
+
+  /* --- le banquier --- */
+  apprise:      [' (learned)', ' (apprise)'],
+  defaut:       [' (default)', ' (defaut)'],
+  serieGagne:   [(n) => n + ' wins in a row', (n) => n + ' gagnantes d\'affilee'],
+  seriePerd:    [(n) => n + ' losses in a row', (n) => n + ' perdantes d\'affilee'],
+  serieAucune:  ['no streak', 'aucune serie'],
+  regime:       ['Cash regime', 'Regime de caisse'],
+  serieEnCours: ['Current streak', 'Serie en cours'],
+  engage:       ['Committed now', 'Engage maintenant'],
+  pic:          ['Peak reached', 'Plus haut atteint'],
+  prochaineMise:['Next stake', 'Prochaine mise'],
+  presenceExigee:[(l) => 'Presence required: ' + l, (l) => 'Presence exigee : ' + l],
+  etPaireDex:   [' and a pair DexScreener knows', ' et une paire connue de DexScreener'],
+  aucuneP:      ['none', 'aucune'],
+  bornes:       [(part, expo, plancher, mini) => 'Limits: <b>' + part + '%</b> per token · <b>'
+                      + expo + '%</b> committed in total · floor <b>$' + plancher
+                      + '</b> · min stake <b>$' + mini + '</b>',
+                 (part, expo, plancher, mini) => 'Bornes : <b>' + part + '%</b> par jeton · <b>'
+                      + expo + '%</b> engages au total · plancher <b>$' + plancher
+                      + '</b> · mise mini <b>$' + mini + '</b>'],
+  pasDeReleve:  ['No method has a record yet: comparing takes closed positions, and it keeps the count.',
+                 'Aucune methode n\'a encore de releve : il faut des positions fermees pour comparer, '
+                      + 'et il en garde le compte.'],
+
+  /* --- la surveillance --- */
+  survN:        [(l, b) => l + ' · ' + b + ' banned', (l, b) => l + ' · ' + b + ' bannis'],
+  survVide:     ['Nothing on the watchlist. A token lands here when it came close to the threshold '
+                      + 'without reaching it: it is not re-analysed in a loop, it is picked up again '
+                      + 'when a free signal moves — liquidity, price — or after a long while.',
+                 'Rien sous surveillance. Un jeton y entre quand il a frole le seuil sans l\'atteindre : '
+                      + 'il n\'est pas re-analyse en boucle, il est repris quand un signal gratuit '
+                      + 'bouge — la liquidite, le prix — ou apres un long moment.'],
+  sortiesAttente:[(n, l) => n + ' exit(s) awaiting judgement: ' + l
+                      + ' — we come back at the deadline to see what holding would have given',
+                 (n, l) => n + ' sortie(s) en attente de jugement : ' + l
+                      + ' — on revient voir a l\'echeance ce que garder aurait donne'],
+  examens:      [(n) => n + ' look' + (n > 1 ? 's' : ''), (n) => n + ' examen' + (n > 1 ? 's' : '')],
+
+  /* --- les traits, l'audit, les services --- */
+  traitsN:      [(n, j) => n + ' traits · ' + j + ' readings', (n, j) => n + ' traits · ' + j + ' relevés'],
+  traitsPied:   [(h, ref) => 'Every analysed token is re-read at ' + h + ' minutes. The ranking '
+                      + 'compares its values at the ' + ref + ' min deadline: a trait at the bottom '
+                      + 'separates nothing, and dilutes the ones above.',
+                 (h, ref) => 'Chaque jeton analyse est relu a ' + h + ' minutes. Le classement compare '
+                      + 'ses valeurs a l\'echeance de ' + ref + ' min : un trait en bas de liste ne '
+                      + 'separe rien, et dilue ceux du haut.'],
+  auditN:       [(j, e) => j + ' followed · ' + e + ' running', (j, e) => j + ' suivis · ' + e + ' en cours'],
+  montes:       [(p) => p + '% went up', (p) => p + '% montes'],
+  auditDetail:  [(n, m, e, moy) => n + ' token(s) followed · ' + m + ' up by +20% or more · '
+                      + e + ' collapsed · average ' + moy + '%',
+                 (n, m, e, moy) => n + ' jeton(s) suivis · ' + m + ' monte(s) de +20% ou plus · '
+                      + e + ' effondre(s) · moyenne ' + moy + '%'],
+  auditCher:    ['one rejected token in four went up: this refusal costs more than it protects',
+                 'un jeton ecarte sur quatre est monte : ce refus coute plus qu\'il ne protege'],
+  pasEncore:    ['not yet', 'pas encore'],
+  dernierEchec: [(e) => 'last failure: ' + e, (e) => 'dernier echec : ' + e],
+  horsService:  ['Tried, and unusable here:', 'Essayes, et inutilisables ici :'],
+  fermN:        [(t, s, dep) => t + ' · threshold ' + s + (s !== dep ? ' (was ' + dep + ')' : ''),
+                 (t, s, dep) => t + ' · seuil ' + s + (s !== dep ? ' (etait ' + dep + ')' : '')],
+  sousTitre:    [(n) => n + ' agents · real Robinhood Chain tokens · they organise themselves and '
+                      + 'learn from their trades',
+                 (n) => n + ' agents · vrais jetons Robinhood Chain · ils s\'organisent et apprennent '
+                      + 'de leurs trades'],
+  apprisVide:   ['Nothing yet. Every closed position teaches something to EACH of the agents — about '
+                      + 'what that one looks at. Below two observations on the same bucket nothing is '
+                      + 'shown: two strokes of luck do not make a rule.',
+                 'Rien encore. Chaque position fermee apprend quelque chose a CHACUN des agents — sur '
+                      + 'ce qu\'il regarde, lui. En dessous de deux observations sur une meme case, '
+                      + 'rien ne s\'affiche : deux coups de chance ne font pas une regle.'],
+  pasDeDonnee:  ['no data yet', 'pas encore de donnee'],
+  appris:       [' learned', ' appris'],
+  tagGain:      ['GAIN', 'GAIN'],
+  tagPerte:     ['LOSS', 'PERTE'],
+  tagTenue:     ['HELD', 'TENUE'],
+  parQui:       [(q) => 'by ' + q, (q) => 'par ' + q],
+};
+/* Les phrases fabriquees suivent la langue choisie, comme les titres. Une
+   entree manquante rend sa cle : visible a l'ecran, donc corrigee. */
+function ph(k){
+  const e = PHRASES[k];
+  if(!e) return k;
+  const v = e[LANGUE === "fr" ? 1 : 0];
+  return typeof v === "function" ? v.apply(null, [].slice.call(arguments, 1)) : v;
+}
+
 /* ============================ CE QUE CHAQUE AGENT REGARDE ============================
  *
  * Un trait, c'est une CASE — pas une valeur. Un contrat precis ne s'apprend
@@ -1253,7 +1507,7 @@ function poseLesBots(){
   inbox = AGENTS.map(()=>[]);
   bots = AGENTS.map((a,i)=>({ i, x:a.house.x, y:a.house.y+34, hx:a.house.x, hy:a.house.y+34,
                               state:"home", carry:null, target:null, then:null, busy:0, bob:0, face:1, walk:false }));
-  status = AGENTS.map(()=>({cls:"idle",txt:"au repos"}));
+  status = AGENTS.map(()=>({cls:"idle",txt:ph("repos")}));
   flying.clear(); orbs.length = 0;
 }
 let empreinteRoster = "";
@@ -1287,11 +1541,17 @@ const file = [];
 function agentRefus(c){
   if(!c.refus) return -1;
   if(c.quiRefuse && idx[c.quiRefuse] !== undefined) return idx[c.quiRefuse];
+  /* Les deux vocabulaires sont reconnus : le serveur ecrit en anglais depuis
+     la bascule, et un etat relu d'avant porte encore les phrases francaises.
+     Un seul des deux jeux suffirait a renvoyer TOUS les refus vers l'Oracle —
+     l'agent par defaut — c'est-a-dire a montrer un trajet faux sans qu'une
+     seule erreur ne soit levee. */
   const r = String(c.refus);
-  if(/honeypot|achat impossible|proprietaire|auto-destruction|taxe|createur|suspendables/.test(r))
+  if(/honeypot|cannot buy|rewrite balances|self-destruct|tax|paused|creator|achat impossible|proprietaire|auto-destruction|taxe|createur|suspendables/.test(r))
     return idx.warden === undefined ? -1 : idx.warden;
-  if(/portefeuille fait|acheteur identifiable/.test(r)) return idx.whisper === undefined ? -1 : idx.whisper;
-  if(/porteur|garde/.test(r)) return idx.whale === undefined ? -1 : idx.whale;
+  if(/single wallet makes|identifiable buyer|portefeuille fait|acheteur identifiable/.test(r))
+    return idx.whisper === undefined ? -1 : idx.whisper;
+  if(/holder holds|holds it|porteur|garde/.test(r)) return idx.whale === undefined ? -1 : idx.whale;
   return idx.oracle === undefined ? -1 : idx.oracle;
 }
 
@@ -1343,8 +1603,8 @@ function step(dt){
       } else if(inbox[b.i].length){
         b.carry = inbox[b.i].shift(); removeOrb(b.carry);
         b.busy = RM?0.01:(0.3 + Math.random()*0.4);
-        setStatus(b.i,"work", A.key==="scout"?"scan…" : A.key==="closer"?"achat…" : "controle…");
-      } else setStatus(b.i,"idle","au repos");
+        setStatus(b.i,"work", A.key==="scout"?ph("scan") : A.key==="closer"?ph("achat") : ph("controle"));
+      } else setStatus(b.i,"idle",ph("repos"));
     } else if(b.state==="walk"){
       const fini = moveTo(b, b.target.x, b.target.y, (RM?9999:335)*sp);
       b.bob += dt*14; b.walk = true;
@@ -1376,7 +1636,7 @@ function resout(b){
   if(A.role === "epreuve" && t.epreuve){
     const e = t.epreuve;
     spawnFloat(AGENTS[b.i].house.x, AGENTS[b.i].house.y+6,
-      e.teste ? "sortie "+(e.essais-e.refus)+"/"+e.essais : "non testable",
+      e.teste ? ph("sortieOk", e.essais-e.refus, e.essais) : ph("sortieNonTestable"),
       e.teste ? "up" : "n");
   }
   if(A.role === "banque"){
@@ -1391,7 +1651,7 @@ function resout(b){
   if(A.role === "execution" || b.i >= AGENTS.length-1){
     /* Le serveur a ouvert la position ; ici on ne fait que le montrer. */
     b.carry = null; flying.delete(t); peintFlux();
-    spawnFloat(AGENTS[b.i].house.x, AGENTS[b.i].house.y+6, "ouvert", "up");
+    spawnFloat(AGENTS[b.i].house.x, AGENTS[b.i].house.y+6, ph("ouvert"), "up");
     return rentre(b);
   }
   porteVers(b, b.i+1);
@@ -1419,7 +1679,7 @@ function rejette(b, raison, doux){
   const t = b.carry; b.carry = null; t.done[b.i] = 2;
   t.rejete = raison; t.doux = !!doux; t.expire = Date.now() + AFFICHE_REFUS_MS;
   peintFlux();
-  spawnFloat(AGENTS[b.i].house.x, AGENTS[b.i].house.y+6, (doux?"passe · ":"✕ ")+raison, doux?"n":"dn");
+  spawnFloat(AGENTS[b.i].house.x, AGENTS[b.i].house.y+6, (doux?"pass · ":"✕ ")+raison, doux?"n":"dn");
   rentre(b);
 }
 /* Et il finit par partir : sans cela, une page ouverte une nuit accumulerait
@@ -1436,8 +1696,8 @@ function moveTo(b, tx, ty, sp){
   b.x += dx/d*sp; b.y += dy/d*sp; b.face = dx>=0?1:-1; return false;
 }
 function rentre(b){
-  b.state="walk"; b.target={x:b.hx, y:b.hy}; setStatus(b.i,"walk","→ maison");
-  b.then = ()=>{ b.state="home"; b.busy=0; setStatus(b.i,"idle","au repos"); };
+  b.state="walk"; b.target={x:b.hx, y:b.hy}; setStatus(b.i,"walk",ph("maison"));
+  b.then = ()=>{ b.state="home"; b.busy=0; setStatus(b.i,"idle",ph("repos")); };
 }
 function orbAt(t, houseIdx){
   const h = AGENTS[houseIdx].house, n = inbox[houseIdx].length;
@@ -1717,7 +1977,7 @@ function roundRect(x,y,w,h,r){
 /* ============================ HUD ============================ */
 const $ = id => document.getElementById(id);
 const echappe = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-let status = AGENTS.map(()=>({cls:"idle",txt:"au repos"}));
+let status = AGENTS.map(()=>({cls:"idle",txt:ph("repos")}));
 function setStatus(i,cls,txt){ status[i]={cls,txt}; peintAgents(); }
 
 /* Les compteurs, les lecons et la tenue viennent tous du serveur : c'est LUI
@@ -1733,25 +1993,24 @@ function fiche(k){ return (VUE && (VUE.roster||[]).find(a=>a.key===k)) || null; 
  * le Scout, sans qu'on ait rien a ajouter ici. C'est la meme raison qui fait
  * que le village pose ses maisons tout seul. */
 function scoreAgent(k){
-  if(!VUE) return "en attente du serveur";
+  if(!VUE) return ph("attendServeur");
   const c = VUE.compteurs || {}, f = fiche(k);
-  if(k==="scout")   return (c.scout||0)+" tokens vus · "+VUE.connus+" connus, "+VUE.bannis+" bannis";
-  if(k==="oracle")  return VUE.trades+" trades appris · seuil "+VUE.seuil;
+  if(k==="scout")   return ph("scoutFait", c.scout||0, VUE.connus, VUE.bannis);
+  if(k==="oracle")  return ph("oracleFait", VUE.trades, VUE.seuil);
   if(f && f.role==="banque"){
     const b = VUE.banque || {};
-    return (VUE.ouvertures||0)+" mises posees · methode "+(b.methode||"?")+(b.appris?" (apprise)":" (defaut)");
+    return ph("banqueFait", VUE.ouvertures||0, b.methode||"?", !!b.appris);
   }
   if(f && f.role==="execution"){
     const t = VUE.tenue || {};
-    return (VUE.ouvertures||0)+" ouvertures · tenue "+(t.min||0)+" min"+(t.appris?" (apprise)":" (defaut)");
+    return ph("closerFait", VUE.ouvertures||0, t.min||0, !!t.appris);
   }
   if(f && f.role==="garde"){
     const taux = f.vus ? Math.round(f.bloques/f.vus*100) : null;
-    return (f.bloques||0)+" bloques sur "+(f.vus||0)+" vus"
-         + (taux===null?"":" ("+taux+"%)") + " · "+f.cout+" appel"+(f.cout>1?"s":"");
+    return ph("gardeFait", f.bloques||0, f.vus||0, taux, f.cout);
   }
   if(f && f.role==="specialiste")
-    return "ne "+ilYA(Date.now()-(f.ne||Date.now()))+" plus tot · affine, ne refuse jamais";
+    return ph("specFait", ilYA(Date.now()-(f.ne||Date.now())));
   return f ? f.traits.join(" · ") : "";
 }
 /* ---- CE QUE CET AGENT-LA A APPRIS ----
@@ -1777,13 +2036,13 @@ function nombreObs(n){ return Math.round(n || 0); }
 function apprisAgent(k){
   if(!VUE) return "—";
   const a = agentVue(k);
-  if(!a.obs) return "n'a encore rien appris";
+  if(!a.obs) return ph("rienAppris");
   const lues = (a.lecons||[]).filter(x => !x.nonLue);
   const l = lues[0] || a.lecons[0];
-  if(!l) return a.obs+" obs · pas encore de tendance nette";
+  if(!l) return ph("pasDeTendance", a.obs);
   const dit = (l.moyenne>=0?"+":"") + l.moyenne.toFixed(1) + "% sur « " + l.quoi + " » ("
             + nombreObs(l.n) + " obs)";
-  return l.nonLue ? dit + " — mais c'est une lecture ratee, pas un trait du jeton" : dit;
+  return l.nonLue ? dit + ph("lectureRatee") : dit;
 }
 
 function peintAgents(){
@@ -1791,7 +2050,7 @@ function peintAgents(){
     const f = fiche(a.key);
     /* Un specialiste dit de qui il descend. Sans ca, un nom nouveau apparait
        un jour dans la liste sans que personne sache d'ou il sort. */
-    const nid = f && f.parent ? ` <span class="quand">issu de ${echappe(f.parent)}</span>` : "";
+    const nid = f && f.parent ? ` <span class="quand">${echappe(ph("issuDe", f.parent))}</span>` : "";
     const mission = (f && f.mission) || a.mission || "";
     return `
     <div class="agent">
@@ -1802,7 +2061,7 @@ function peintAgents(){
         <div class="sc">${echappe(scoreAgent(a.key))}</div>
         <div class="sc" style="color:${a.color}bb">🧠 ${echappe(apprisAgent(a.key))}</div>
       </div>
-      <div class="st"><span class="stpill ${(status[i]||{}).cls||"idle"}">${echappe((status[i]||{}).txt||"au repos")}</span></div>
+      <div class="st"><span class="stpill ${(status[i]||{}).cls||"idle"}">${echappe((status[i]||{}).txt||ph("repos"))}</span></div>
     </div>`;
   }).join("");
 }
@@ -1820,7 +2079,7 @@ function peintFlux(){
     : arr.length+" token"+(arr.length!==1?"s":"");
   if(!arr.length){
     $("flow").innerHTML = '<div class="empty">'
-      + (VUE ? "En attente du prochain tour du serveur…" : "En attente du serveur…") + '</div>';
+      + (VUE ? ph("attendTour") : ph("attendServeur")) + '</div>';
     return;
   }
   $("flow").innerHTML = arr.map(t=>{
@@ -1835,8 +2094,8 @@ function peintFlux(){
        n'a pas su lire, on ecrit « ? » — pas un zero, qui se lirait comme un
        fait. */
     const det = t.chaineVue
-      ? " · " + (t.porteurs === null ? "porteurs ?" : fmtN(t.porteurs)+" porteurs")
-      : " · chaine non lue";
+      ? (t.porteurs === null ? ph("porteursInc") : ph("porteurs", fmtN(t.porteurs)))
+      : ph("chaineNonLue");
     const age = t.minutes === null || t.minutes === undefined ? "" : " · "+t.minutes+"min";
     /* ---- L'EPREUVE DE SORTIE ----
      * Le Cobaye demande au contrat, sans rien signer ni depenser, ce qu'il
@@ -1849,9 +2108,9 @@ function peintFlux(){
      * epreuve qu'on n'a pas pu jouer n'est pas une epreuve reussie. */
     const e = t.epreuve;
     const sortie = !e ? ""
-      : !e.teste ? ` · <span class="muet" title="${echappe(e.raison||"")}">sortie non testable</span>`
-      : e.passe ? ` · <span class="ok" title="Le contrat laisse ${e.essais - e.refus} detenteur(s) sur ${e.essais} envoyer le jeton vers la piscine. C'est le transfert qui est simule, pas l'echange complet.">sortie ${e.essais - e.refus}/${e.essais}</span>`
-      : ` · <span class="rej">sortie bloquee ${e.refus}/${e.essais}</span>`;
+      : !e.teste ? ` · <span class="muet" title="${echappe(e.raison||"")}">${echappe(ph("sortieNonTestable"))}</span>`
+      : e.passe ? ` · <span class="ok" title="${echappe(ph("sortieAide", e.essais - e.refus, e.essais))}">${echappe(ph("sortieOk", e.essais - e.refus, e.essais))}</span>`
+      : ` · <span class="rej">${echappe(ph("sortieBloquee", e.refus, e.essais))}</span>`;
     return `<div class="tok">
       <span class="sym">$${echappe(t.sym)}</span>
       <span class="badge rh">RH</span>
@@ -1869,7 +2128,7 @@ function ajoutePick(t){
 }
 function peintPicks(){
   if(!picks.length){
-    $("picks").innerHTML = '<div class="empty">Aucun signal valide pour l\'instant…</div>';
+    $("picks").innerHTML = '<div class="empty">' + tr("vPicks") + '</div>';
     return;
   }
   $("picks").innerHTML = picks.map((p,i)=>`
@@ -1877,7 +2136,7 @@ function peintPicks(){
       <span class="rank">${i+1}</span>
       <span class="sym">$${echappe(p.sym)}</span>
       <span class="badge rh">RH</span>
-      <span class="meta2">${fmtMC(p.mc)}${p.adj?" · "+(p.adj>0?"+":"")+p.adj+" appris":""}</span>
+      <span class="meta2">${fmtMC(p.mc)}${p.adj?" · "+(p.adj>0?"+":"")+p.adj+ph("appris"):""}</span>
       <span class="pbar"><i style="width:${Math.min(100,p.score)}%"></i></span>
       <span class="score">${p.score}</span>
     </a>`).join("");
@@ -1891,14 +2150,18 @@ function peintPicks(){
  * qui apportait quelque chose, se trouvait noyee dedans.
  * On garde ce qui est fini : gains, pertes, coupes, prolongations. */
 function peintFluxTrades(){
-  const flux = ((VUE && VUE.flux) || []).filter(e => e.tag !== "open" || /PROLONGEE/.test(e.txt||""));
+  /* Le serveur ecrit « EXTENDED · … » depuis qu'il parle anglais. L'ancienne
+     forme reste acceptee : un etat relu d'avant la bascule porte encore des
+     lignes « PROLONGEE », et les faire disparaitre du fil serait perdre des
+     evenements vrais pour une question de vocabulaire. */
+  const flux = ((VUE && VUE.flux) || []).filter(e => e.tag !== "open" || /EXTENDED|PROLONGEE/.test(e.txt||""));
   if(!flux.length){
     $("feed").innerHTML = '<div class="empty">'
-      + (VUE ? "Aucune position fermee encore. Les positions en cours sont juste au-dessus." : "En attente du serveur…") + '</div>';
+      + (VUE ? ph("pasFerme") : ph("attendServeur")) + '</div>';
     return;
   }
   $("feed").innerHTML = flux.slice(0,10).map(e=>{
-    const lbl = e.tag==="buy" ? "GAIN" : e.tag==="cut" ? "PERTE" : "TENUE";
+    const lbl = e.tag==="buy" ? ph("tagGain") : e.tag==="cut" ? ph("tagPerte") : ph("tagTenue");
     const sym = e.pool
       ? `<a class="sym symlink" href="https://dexscreener.com/robinhood/${encodeURIComponent(e.pool)}" target="_blank" rel="noopener">$${echappe(e.sym)}</a>`
       : `<span class="sym">$${echappe(e.sym)}</span>`;
@@ -1906,7 +2169,7 @@ function peintFluxTrades(){
     /* Qui a ferme : le Closer au terme, ou la Sentinelle avant. Sans ca, une
        coupe precoce ressemble a une fermeture ordinaire, et le travail de la
        Sentinelle est invisible — donc invérifiable. */
-    const par = e.par && e.par !== "closer" ? `<span class="quand">par ${echappe(e.par)}</span>` : "";
+    const par = e.par && e.par !== "closer" ? `<span class="quand">${echappe(ph("parQui", e.par))}</span>` : "";
     return `<div class="tr">${sym}<span class="tag ${e.tag}">${lbl}</span>${quand}${par}<span class="pnl ${e.cls}">${echappe(e.txt)}</span></div>`;
   }).join("");
 }
@@ -1934,10 +2197,10 @@ function copieTexte(txt, bouton){
     }catch(e){ ok = false; }
   }
   if(bouton){
-    bouton.textContent = ok ? "copie ✓" : "selectionnez";
+    bouton.textContent = ok ? ph("copie") : ph("selectionnez");
     bouton.classList.toggle("ok", ok);
     clearTimeout(bouton._t);
-    bouton._t = setTimeout(()=>{ bouton.textContent = "copier"; bouton.classList.remove("ok"); }, 1800);
+    bouton._t = setTimeout(()=>{ bouton.textContent = ph("copier"); bouton.classList.remove("ok"); }, 1800);
   }
   return ok;
 }
@@ -1951,10 +2214,10 @@ function peintPositions(){
   const pos = vPositions();
   $("poscount").textContent = VUE ? pos.length : "—";
   if(!VUE){
-    $("positions").innerHTML = '<div class="empty">En attente du serveur — rien n\'est affiche tant que rien n\'est lu.</div>';
+    $("positions").innerHTML = '<div class="empty">' + ph("vide") + '</div>';
     return;
   }
-  if(!pos.length){ $("positions").innerHTML = '<div class="empty">Aucune position ouverte.</div>'; return; }
+  if(!pos.length){ $("positions").innerHTML = '<div class="empty">' + tr("vPositions") + '</div>'; return; }
   $("positions").innerHTML = pos.map(p=>{
     /* `latent` est calcule par le serveur a partir du dernier prix qu'il a
        RELU. Quand il n'en a pas, il envoie `null` — et on l'ecrit. */
@@ -1965,7 +2228,7 @@ function peintPositions(){
      * sorti des flux depuis une heure. Les deux ne se lisent pas pareil. */
     const vieux = p.prixVu ? ilYA(Date.now() - p.prixVu) : null;
     const val = p.latent === null || p.latent === undefined
-      ? '<span class="pnl n">' + (vieux ? 'dernier prix il y a ' + vieux : 'aucun prix lu') + '</span>'
+      ? '<span class="pnl n">' + (vieux ? ph("dernierPrix", vieux) : ph("aucunPrix")) + '</span>'
       : `<span class="pnl ${p.latent>=0?"up":"dn"}">${p.latent>=0?"+":""}${p.latent.toFixed(1)}% · ${p.gainLatent>=0?"+":"–"}$${Math.abs(p.gainLatent).toFixed(2)}</span>`;
     /* Le temps restant avance entre deux reponses : on part de l'age que le
        serveur a envoye et on y ajoute ce qui s'est ecoule depuis, plutot que
@@ -1979,7 +2242,7 @@ function peintPositions(){
        qui porte le meme nom. */
     const adr = p.adr ? `<div class="adr">
         <code>${echappe(p.adr)}</code>
-        <button type="button" data-copie="${echappe(p.adr)}">copier</button>
+        <button type="button" data-copie="${echappe(p.adr)}">${echappe(ph("copier"))}</button>
       </div>` : '';
     /* ---- CE QU'ON A PAYE, ET A QUELLE TAILLE ----
        « Position ouverte, on doit voir le market cap d'achat. » Sans lui, un
@@ -1987,22 +2250,22 @@ function peintPositions(){
        vingt mille et depuis une de deux millions ne sont pas le meme evenement,
        et ne se reproduisent pas de la meme facon. */
     const mc = (p.mcAchat === null || p.mcAchat === undefined)
-      ? '' : ` · achete a ${fmtMC(p.mcAchat)} de cap.`;
+      ? '' : echappe(ph("acheteA", fmtMC(p.mcAchat)));
     /* ---- CE QUI A DEJA ETE PRIS, ET CE QUI COURT ENCORE ----
      * La position ne sort plus d'un bloc : elle vend par paliers et laisse le
      * reste courir. Sans ces deux chiffres, une position a +8 % qui a deja
      * encaisse 70 % de son gain se lit comme une petite affaire, et le latent
      * affiche porterait sur une mise qu'on n'a plus en jeu. */
     const parts = (p.reste !== undefined && p.reste < 0.999)
-      ? `<span class="mini pris">${Math.round((1-p.reste)*100)} % vendu`
-        + (p.encaisse ? ` · ${p.encaisse>=0?"+":"–"}$${Math.abs(p.encaisse).toFixed(2)} encaisse` : '')
-        + ` · ${Math.round(p.reste*100)} % court encore</span>` : '';
+      ? `<span class="mini pris">${echappe(ph("vendu", Math.round((1-p.reste)*100)))}`
+        + (p.encaisse ? echappe(ph("encaisse", (p.encaisse>=0?"+":"–")+"$"+Math.abs(p.encaisse).toFixed(2))) : '')
+        + `${echappe(ph("courtEncore", Math.round(p.reste*100)))}</span>` : '';
     /* Le plus haut atteint : c'est lui que l'arret suiveur surveille, donc
        c'est lui qui explique une fermeture qu'on n'aurait pas comprise. */
     const haut = (p.hautR !== null && p.hautR !== undefined && p.hautR > 0)
-      ? `<span class="mini">plus haut vu +${p.hautR.toFixed(1)} %</span>` : '';
+      ? `<span class="mini">${echappe(ph("plusHaut", p.hautR.toFixed(1)))}</span>` : '';
     const mise = p.mise === undefined ? '' :
-      `<span class="mini"><b>$${Number(p.mise).toFixed(2)}</b> mise · ${echappe(p.methode||"?")}${mc}${p.origine?" · vu par "+echappe(p.origine):""}${p.prolonge?" · prolongee "+p.prolonge+"×":""}${p.tenueRaison?" · "+echappe(p.tenueRaison):""}</span>` + parts + haut;
+      `<span class="mini"><b>$${Number(p.mise).toFixed(2)}</b>${echappe(ph("miseMot"))}${echappe(p.methode||"?")}${mc}${p.origine?echappe(ph("vuPar", p.origine)):""}${p.prolonge?echappe(ph("prolongee", p.prolonge)):""}${p.tenueRaison?" · "+echappe(p.tenueRaison):""}</span>` + parts + haut;
     /* Le lien vers le graphique, et les reseaux quand il y en a. On ne fabrique
        jamais un lien social : s'il n'y en a pas, on le DIT — un jeton sans
        aucune presence est une information, pas un manque d'affichage. */
@@ -2013,19 +2276,19 @@ function peintPositions(){
      * page existe forcement. On y renvoie toujours, et on n'ajoute DexScreener
      * que si on a la preuve qu'il connait la paire. */
     const chart = p.pool
-      ? `<a class="lienpetit" href="https://www.geckoterminal.com/robinhood/pools/${encodeURIComponent(p.pool)}" target="_blank" rel="noopener">graphique ↗</a>`
+      ? `<a class="lienpetit" href="https://www.geckoterminal.com/robinhood/pools/${encodeURIComponent(p.pool)}" target="_blank" rel="noopener">${echappe(ph("graphique"))}</a>`
         + (p.dexVu
             ? `<a class="lienpetit" href="https://dexscreener.com/robinhood/${encodeURIComponent(p.pool)}" target="_blank" rel="noopener">dexscreener ↗</a>`
-            : `<span class="lienpetit muet">pas encore sur DexScreener</span>`)
+            : `<span class="lienpetit muet">${echappe(ph("pasDex"))}</span>`)
       : '';
     const liens = (p.liens && p.liens.length)
       ? p.liens.map(l=>`<a class="lienpetit" href="${echappe(l.url)}" target="_blank" rel="noopener">${echappe(l.type)} ↗</a>`).join("")
-      : (p.liens === null ? '<span class="lienpetit muet">reseaux non lus</span>'
-                          : '<span class="lienpetit muet">aucun reseau</span>');
+      : (p.liens === null ? '<span class="lienpetit muet">' + ph("reseauxNonLus") + '</span>'
+                          : '<span class="lienpetit muet">' + ph("aucunReseau") + '</span>');
     return `<div class="posbloc">
       <div class="pos">
         <span class="sym">$${echappe(p.sym)}</span>
-        <span class="quand">${reste>0 ? "regle dans "+ilYA(reste) : "en attente d'un prix"}</span>
+        <span class="quand">${echappe(reste>0 ? ph("regleDans", ilYA(reste)) : ph("attendPrix"))}</span>
         ${val}
       </div>
       ${adr}
@@ -2042,32 +2305,31 @@ function peintPositions(){
  * qu'il n'y en a pas. */
 function peintBanque(){
   const b = VUE && VUE.banque;
-  if(!b){ $("banque").innerHTML = '<div class="empty">En attente du serveur…</div>';
+  if(!b){ $("banque").innerHTML = '<div class="empty">' + tr("vServeur") + '</div>';
           $("banqMethode").textContent = "—"; return; }
-  $("banqMethode").textContent = b.methode + (b.appris ? " (apprise)" : " (defaut)");
+  $("banqMethode").textContent = b.methode + ph(b.appris ? "apprise" : "defaut");
   const p = b.prochaine;
-  const serie = b.serie > 0 ? b.serie+" gagnantes d'affilee"
-              : b.serie < 0 ? (-b.serie)+" perdantes d'affilee" : "aucune serie";
+  const serie = b.serie > 0 ? ph("serieGagne", b.serie)
+              : b.serie < 0 ? ph("seriePerd", -b.serie) : ph("serieAucune");
   const lignes = [
-    ['Regime de caisse', echappe(b.regime)],
-    ['Serie en cours', echappe(serie)],
-    ['Engage maintenant', '$'+Number(b.engage).toFixed(2)],
-    ['Plus haut atteint', '$'+Number(b.pic).toFixed(2)],
+    [ph('regime'), echappe(b.regime)],
+    [ph('serieEnCours'), echappe(serie)],
+    [ph('engage'), '$'+Number(b.engage).toFixed(2)],
+    [ph('pic'), '$'+Number(b.pic).toFixed(2)],
   ];
   let html = lignes.map(l=>`<div class="ligne"><span class="k">${l[0]}</span><span class="v">${l[1]}</span></div>`).join("");
   if(b.arret){
     html += `<div class="empty" style="color:var(--loss);font-style:normal">⛔ ${echappe(b.arret)}</div>`;
   }else if(p){
-    html += `<div class="ligne"><span class="k">Prochaine mise</span><span class="v">$${Number(p.mise).toFixed(2)}</span></div>`
+    html += `<div class="ligne"><span class="k">${echappe(ph("prochaineMise"))}</span><span class="v">$${Number(p.mise).toFixed(2)}</span></div>`
          +  `<div class="mini">${echappe(p.raison)}</div>`;
   }
   const ex = (VUE && VUE.sociauxExiges) || [];
-  html += `<div class="mini" style="margin-top:2px">Presence exigee : ${ex.length
-    ? "<b>"+ex.map(echappe).join("</b>, <b>")+"</b> et une paire connue de DexScreener"
-    : "<b>aucune</b>"}</div>`;
-  html += `<div class="mini" style="margin-top:2px">Bornes : <b>${Math.round(b.partMax*100)}%</b> par jeton ·
-           <b>${Math.round(b.expoMax*100)}%</b> engages au total · plancher <b>$${b.plancher}</b> ·
-           mise mini <b>$${b.miseMin}</b></div>`;
+  html += `<div class="mini" style="margin-top:2px">${ph("presenceExigee", ex.length
+    ? "<b>"+ex.map(echappe).join("</b>, <b>")+"</b>" + ph("etPaireDex")
+    : "<b>"+ph("aucuneP")+"</b>")}</div>`;
+  html += `<div class="mini" style="margin-top:2px">${ph("bornes", Math.round(b.partMax*100),
+           Math.round(b.expoMax*100), b.plancher, b.miseMin)}</div>`;
   /* Le releve de chaque methode, par regime. C'est ce qui rend « il apprend »
      verifiable : sans le nombre d'observations, une moyenne ne dit rien. */
   if(b.releve && b.releve.length){
@@ -2082,7 +2344,7 @@ function peintBanque(){
       </div>`;
     }).join("")).join("") + '</div>';
   }else{
-    html += '<div class="empty">Aucune methode n\'a encore de releve : il faut des positions fermees pour comparer, et il en garde le compte.</div>';
+    html += '<div class="empty">' + ph("pasDeReleve") + '</div>';
   }
   $("banque").innerHTML = html;
 }
@@ -2093,12 +2355,10 @@ function peintBanque(){
  * melange les deux ne sert a rien. */
 function peintSurveillance(){
   const l = (VUE && VUE.surveillance) || [];
-  $("survN").textContent = VUE ? (l.length + " · " + VUE.bannis + " bannis") : "—";
-  if(!VUE){ $("surveillance").innerHTML = '<div class="empty">En attente du serveur…</div>'; return; }
+  $("survN").textContent = VUE ? ph("survN", l.length, VUE.bannis) : "—";
+  if(!VUE){ $("surveillance").innerHTML = '<div class="empty">' + tr("vServeur") + '</div>'; return; }
   if(!l.length && !((VUE && VUE.suites) || []).length){
-    $("surveillance").innerHTML = '<div class="empty">Rien sous surveillance. Un jeton y entre quand '
-      + 'il a frole le seuil sans l\'atteindre : il n\'est pas re-analyse en boucle, il est repris '
-      + 'quand un signal gratuit bouge — la liquidite, le prix — ou apres un long moment.</div>';
+    $("surveillance").innerHTML = '<div class="empty">' + ph("survVide") + '</div>';
     return;
   }
   /* ---- CE QU'ON A VENDU, ET QU'ON N'A PAS ENCORE JUGE ----
@@ -2108,12 +2368,12 @@ function peintSurveillance(){
    * part quand elle arrive. */
   const su = (VUE && VUE.suites) || [];
   const attente = su.length ? '<div class="mini" style="margin-bottom:6px">'
-    + su.length + ' sortie(s) en attente de jugement : '
-    + su.map(x=>echappe(x.sym)+" a "+(x.rSortie>=0?"+":"")+x.rSortie.toFixed(0)+"%").join(" · ")
-    + ' — on revient voir a l\'echeance ce que garder aurait donne</div>' : '';
+    + ph("sortiesAttente", su.length,
+         su.map(x=>echappe(x.sym)+" at "+(x.rSortie>=0?"+":"")+x.rSortie.toFixed(0)+"%").join(" · "))
+    + '</div>' : '';
   $("surveillance").innerHTML = attente + l.map(x=>`<div class="tok">
     <span class="sym">$${echappe(x.sym)}</span>
-    <span class="meta">${x.vu} examen${x.vu>1?"s":""} · ${echappe(String(x.verdict||"—")).slice(0,34)}</span>
+    <span class="meta">${echappe(ph("examens", x.vu))} · ${echappe(String(x.verdict||"—")).slice(0,34)}</span>
     <span class="pnl n" style="font-size:12px">${x.meilleure===null||x.meilleure===undefined?"—":x.meilleure}</span>
   </div>`).join("");
 }
@@ -2145,7 +2405,7 @@ function peintStructure(){
 function peintTraits(){
   const l = (VUE && VUE.traits) || [];
   const j = (VUE && VUE.jalons) || 0;
-  $("traitsN").textContent = VUE ? (l.length + " traits · " + j + " relevés") : "—";
+  $("traitsN").textContent = VUE ? ph("traitsN", l.length, j) : "—";
   if(!l.length) return;
   const max = Math.max(1, ...l.map(t=>t.separation));
   $("traits").innerHTML = l.map(t=>`
@@ -2161,10 +2421,9 @@ function peintTraits(){
       </span>
       <span class="val">${t.separation}</span>
     </div>`).join("")
-    + '<div class="mini" style="margin-top:6px;color:var(--ink-faint)">Chaque jeton analyse est '
-    + 'relu a ' + ((VUE && VUE.horizons) || []).join(', ') + ' minutes. Le classement compare ses '
-    + 'valeurs a l\'echeance de ' + ((VUE && VUE.horizonRef) || 30) + ' min : un trait en bas de '
-    + 'liste ne separe rien, et dilue ceux du haut.</div>';
+    + '<div class="mini" style="margin-top:6px;color:var(--ink-faint)">'
+    + ph("traitsPied", ((VUE && VUE.horizons) || []).join(', '), (VUE && VUE.horizonRef) || 30)
+    + '</div>';
 }
 
 /* ---- CE QUE DEVIENNENT LES JETONS REFUSES ----
@@ -2180,7 +2439,7 @@ function peintTraits(){
 function peintAudit(){
   const l = (VUE && VUE.audit) || [];
   const o = (VUE && VUE.ombres) || { enAttente:0, jugees:0 };
-  $("auditN").textContent = VUE ? (o.jugees + " suivis · " + o.enAttente + " en cours") : "—";
+  $("auditN").textContent = VUE ? ph("auditN", o.jugees, o.enAttente) : "—";
   if(!l.length) return;
   $("audit").innerHTML = l.map(x=>{
     /* Le chiffre qui compte n'est pas la moyenne : c'est la part de ceux qui
@@ -2188,12 +2447,11 @@ function peintAudit(){
        cinq qui a fait dix fois. */
     const cher = x.partMontes >= 25;
     return `<div class="evt">
-      <span class="pill ${cher?"retrait":"naissance"}">${x.partMontes}% montes</span>
+      <span class="pill ${cher?"retrait":"naissance"}">${echappe(ph("montes", x.partMontes))}</span>
       <span><b>${echappe(x.cle)}</b>
-        <span class="mini">${x.n} jeton(s) suivis · ${x.montes} monte(s) de +20% ou plus ·
-          ${x.effondres} effondre(s) · moyenne ${x.moyenne>=0?"+":""}${x.moyenne}%</span>
-        ${cher ? '<span class="faire" style="color:var(--loss)">un jeton ecarte sur quatre est monte : '
-                 + 'ce refus coute plus qu\'il ne protege</span>' : ''}
+        <span class="mini">${echappe(ph("auditDetail", x.n, x.montes, x.effondres,
+          (x.moyenne>=0?"+":"")+x.moyenne))}</span>
+        ${cher ? '<span class="faire" style="color:var(--loss)">' + ph("auditCher") + '</span>' : ''}
       </span>
     </div>`;
   }).join("");
@@ -2211,6 +2469,7 @@ function peintAlertes(){
   if(!carte) return;
   carte.hidden = !l.length;
   $("alerteN").textContent = l.length;
+  majPastilleOnglet(l.length);
   if(!l.length) return;
   const rang = { haute:0, moyenne:1, basse:2 };
   l.slice().sort((a,b)=>(rang[a.gravite]||9)-(rang[b.gravite]||9));
@@ -2229,30 +2488,27 @@ function peintServices(){
   const l = (VUE && VUE.services) || [];
   $("srvN").textContent = VUE ? l.filter(s=>s.essais).length + "/" + l.length : "—";
   const f = $("fermN");
-  if(f) f.textContent = VUE ? (VUE.trades + " · seuil " + VUE.seuil
-    + (VUE.seuil !== VUE.seuilDepart ? " (etait " + VUE.seuilDepart + ")" : "")) : "—";
+  if(f) f.textContent = VUE ? ph("fermN", VUE.trades, VUE.seuil, VUE.seuilDepart) : "—";
   /* Le nombre d'agents est ecrit depuis le roster, jamais en dur : il change.
      Et la phrase suit la langue choisie — elle etait recopiee ici en francais,
      donc elle repassait en francais a chaque rafraichissement, par-dessus la
      bascule. C'est le genre de defaut qui ne se voit qu'apres coup : la page
      s'ouvre en anglais et se retraduit toute seule deux secondes plus tard. */
   const st = $("soustitre");
-  if(st && VUE) st.textContent = (VUE.roster||[]).length + " " + (LANGUE === "fr"
-    ? "agents · vrais jetons Robinhood Chain · ils s'organisent et apprennent de leurs trades"
-    : "agents · real Robinhood Chain tokens · they organise themselves and learn from their trades");
+  if(st && VUE) st.textContent = ph("sousTitre", (VUE.roster||[]).length);
   if(!VUE){ $("services").innerHTML = '<div class="empty">' + tr("vServeur") + '</div>'; return; }
   let html = l.map(s=>{
     const jamais = !s.essais;
     const ko = s.essais && s.reussites < s.essais;
     return `<div class="srv">
       <span class="nm">${echappe(s.nom)}<em>${echappe(s.quoi)}</em></span>
-      <span class="n ${ko?"ko":""}">${jamais ? "pas encore" : s.reussites+"/"+s.essais}</span>
-    </div>` + (s.dernierEchec ? `<div class="mini" style="color:var(--loss);margin:-2px 0 4px 0">dernier echec : ${echappe(s.dernierEchec)}</div>` : "");
+      <span class="n ${ko?"ko":""}">${jamais ? echappe(ph("pasEncore")) : s.reussites+"/"+s.essais}</span>
+    </div>` + (s.dernierEchec ? `<div class="mini" style="color:var(--loss);margin:-2px 0 4px 0">${echappe(ph("dernierEchec", s.dernierEchec))}</div>` : "");
   }).join("");
   const hs = (VUE && VUE.horsService) || {};
   const cles = Object.keys(hs);
   if(cles.length){
-    html += '<div class="horsservice"><b>Essayes, et inutilisables ici :</b><br>'
+    html += '<div class="horsservice"><b>' + ph("horsService") + '</b><br>'
           + cles.map(k=>echappe(hs[k])).join("<br>") + '</div>';
   }
   $("services").innerHTML = html;
@@ -2275,18 +2531,16 @@ function peintAppris(){
       const teinte = x.nonLue ? "var(--ink-dim)" : (bon?"var(--gain)":"var(--loss)");
       bloc.push('<div class="leçon">'
         + '<span class="quoi">'+echappe(x.quoi)
-        + (x.nonLue ? ' <i style="opacity:.7;font-style:normal">— lecture ratee, pas le jeton</i>' : '')
+        + (x.nonLue ? ' <i style="opacity:.7;font-style:normal">' + ph("ratee") + '</i>' : '')
         + '</span>'
         + '<span class="eff" style="color:'+teinte+'">'
         + (bon?"+":"")+x.moyenne.toFixed(1)+'%</span>'
-        + '<span class="n">'+nombreObs(x.n)+' obs · confiance '+Math.round(confiance(x.n)*100)+'%</span>'
+        + '<span class="n">'+ph("obsConfiance", nombreObs(x.n), Math.round(confiance(x.n)*100))+'</span>'
         + '</div>');
     }
   }
   if(!bloc.length){
-    $("appris").innerHTML = '<div class="empty">Rien encore. Chaque position fermee apprend quelque chose '
-      + 'a CHACUN des six agents — sur ce qu\'il regarde, lui. En dessous de deux observations sur une '
-      + 'meme case, rien ne s\'affiche : deux coups de chance ne font pas une regle.</div>';
+    $("appris").innerHTML = '<div class="empty">' + ph("apprisVide") + '</div>';
     return;
   }
   $("appris").innerHTML = bloc.join("");
@@ -2324,7 +2578,7 @@ function dessineCourbe(){
      gagne, alors qu'on ne sait simplement pas. */
   if(!spark){
     x.fillStyle = "rgba(11,27,54,.35)"; x.font = "11px system-ui, sans-serif";
-    x.fillText("pas encore de donnee", 6, h/2+4);
+    x.fillText(ph("pasDeDonnee"), 6, h/2+4);
     return;
   }
   const lo = Math.min(...spark), hi = Math.max(...spark), rng = (hi-lo)||1;
@@ -2356,12 +2610,12 @@ function dessineCourbe(){
 async function demande(manuel){
   if(demande._enCours) return;
   demande._enCours = true;
-  if(manuel) dis("Demande au serveur…");
+  if(manuel) dis(ph("demandeEnCours"));
   try{
     const r = await fetch(SERVEUR + "/ai/colonie", { cache:"no-store" });
     if(!r.ok) throw new Error("HTTP " + r.status);
     const v = await r.json();
-    if(!v || typeof v.tresor !== "number") throw new Error("reponse illisible");
+    if(!v || typeof v.tresor !== "number") throw new Error(ph("illisible"));
     VUE = v; RECU = Date.now(); ERREUR_RESEAU = null;
     if(!shownBal) shownBal = v.tresor;
     /* La structure d'abord : si un agent est ne ou a ete retire, le village
@@ -2388,8 +2642,7 @@ async function demande(manuel){
      * n'avait rien, elle n'affiche rien. */
     ERREUR_RESEAU = String((e && e.message) || e).slice(0, 120);
     pastille(); majPouls();
-    dis("Le serveur n'a pas repondu (" + ERREUR_RESEAU + "). Rien n'est invente pour combler : "
-      + (VUE ? "ce qui est affiche date de la derniere reponse." : "l'ecran reste vide."), true);
+    dis(ph("pasRepondu", ERREUR_RESEAU, !!VUE), true);
   }finally{ demande._enCours = false; }
 }
 
@@ -2406,19 +2659,17 @@ function pastille(){
        francais a cote de panneaux anglais, exactement la ou l'oeil se pose
        en premier quand quelque chose ne va pas. Elles suivent la langue,
        comme le reste. */
-    el.textContent = ERREUR_RESEAU
-      ? (LANGUE === "fr" ? "● serveur injoignable" : "● server unreachable")
-      : (LANGUE === "fr" ? "● en attente du serveur" : "● waiting for the server");
+    el.textContent = ph(ERREUR_RESEAU ? "enPanne" : "enAttente");
     el.className = "chip data mort"; return;
   }
   const src = VUE.maj || VUE.dernierTour || 0;
-  if(!src){ el.textContent = "● serveur demarre, aucun tour termine"; el.className = "chip data stale"; return; }
+  if(!src){ el.textContent = ph("demarre"); el.className = "chip data stale"; return; }
   const age = Date.now() - RECU + (RECU - src);
   const d = new Date(src);
   const hh = String(d.getHours()).padStart(2,"0"), mm = String(d.getMinutes()).padStart(2,"0");
   const n = (VUE.candidats || []).length;
-  el.textContent = "● " + n + " tokens · serveur a " + hh + ":" + mm + " (" + ilYA(Math.max(0, age)) + ")"
-    + (VUE.erreur ? " · lecture en echec" : "");
+  el.textContent = ph("serveurA", n, hh, mm, ilYA(Math.max(0, age)))
+    + (VUE.erreur ? ph("lectureKo") : "");
   el.className = "chip data" + ((age > 15*60*1000 || VUE.erreur) ? " stale" : "");
 }
 function dis(msg, alerte){
@@ -2431,10 +2682,9 @@ function dis(msg, alerte){
   }, 8000);
 }
 function phraseFond(){
-  if(!VUE) return "En attente du serveur — rien n'est affiche tant que rien n'est lu.";
-  if(VUE.erreur) return "Le serveur tourne mais sa derniere lecture a echoue : " + VUE.erreur;
-  return "La colonie tourne sur le serveur, en continu 🚶 · " + VUE.positions.length
-       + " position(s) ouverte(s) · tout le monde voit le meme etat";
+  if(!VUE) return ph("vide");
+  if(VUE.erreur) return ph("fondErreur", VUE.erreur);
+  return ph("fondVivant", VUE.positions.length);
 }
 function majPouls(){
   const p = $("pouls"), tx = $("poulsTx");
@@ -2511,6 +2761,7 @@ function loop(now){
  * reecrite n'est plus ce que la colonie a dit.
  */
 const FR = {
+  oLive:"Direct", oColonie:"La colonie", oPreuve:"Les preuves",
   tAlertes:"Ce dont la colonie a besoin", tCourbe:"Trésorerie dans le temps",
   tPositions:"Positions ouvertes", vPositions:"Aucune position ouverte.",
   tBanque:"Banquier", vServeur:"En attente du serveur…",
@@ -2535,8 +2786,8 @@ const FR = {
 /* Pour les textes ecrits par le script — ceux qui ne peuvent pas porter un
    `data-t` parce qu'ils sont fabriques a la volee. */
 function tr(k){ return (LANGUE === "fr" && FR[k] !== undefined) ? FR[k] : (EN[k] !== undefined ? EN[k] : k); }
-const CLE_LANGUE = "swogeAiLangue";
-let LANGUE = "en";
+/* `CLE_LANGUE` et `LANGUE` sont declares plus haut, avant `PHRASES` : `ph()`
+   les lit, et il est appele des l'evaluation du script. */
 /* L'anglais du HTML est releve UNE FOIS au demarrage : c'est lui la source,
    et le recopier dans la table le condamnerait a diverger. */
 const EN = {};
@@ -2577,8 +2828,10 @@ function poseLangue(l){
  * La cle a change de nom : les visiteurs d'hier ont un pli enregistre sous
  * l'ancienne, et l'honorer leur aurait laisse la page telle qu'avant. Une
  * fois ce nouveau depart pris, leurs propres choix sont a nouveau gardes. */
-const PANNEAUX_OUVERTS = [];
-const CLE_PANNEAUX = "swogeAiPanneaux2";
+/* Un panneau ouvert par groupe, choisi comme celui qu'on vient chercher : un
+   onglet dont les quatre titres sont replies se lit comme un onglet vide. */
+const PANNEAUX_OUVERTS = ["positions", "agents", "audit"];
+const CLE_PANNEAUX = "swogeAiPanneaux3";
 
 function litPlis(){
   try{
@@ -2630,6 +2883,38 @@ document.addEventListener("keydown", function(ev){
   basculePanneau(h.parentElement);
 });
 poseLesPlis();
+
+/* ---- LES TROIS ONGLETS ----
+ * L'onglet choisi est garde d'une visite a l'autre, comme les plis : quelqu'un
+ * qui vient pour l'audit des vetos ne veut pas le rouvrir chaque fois. Une
+ * valeur enregistree qui ne correspond a aucun groupe — un onglet supprime
+ * depuis — retombe sur le premier plutot que de laisser la colonne vide. */
+const CLE_ONGLET = "swogeAiOnglet";
+function poseOnglet(k){
+  const grps = document.querySelectorAll(".grp[data-grp]");
+  const noms = [].map.call(grps, g => g.dataset.grp);
+  if(noms.indexOf(k) < 0) k = noms[0];
+  grps.forEach(g => { g.hidden = g.dataset.grp !== k; });
+  document.querySelectorAll(".onglet[data-grp]").forEach(b => {
+    b.setAttribute("aria-selected", b.dataset.grp === k ? "true" : "false");
+  });
+  try{ localStorage.setItem(CLE_ONGLET, k); }catch(e){}
+}
+(function(){
+  document.querySelectorAll(".onglet[data-grp]").forEach(b => {
+    b.addEventListener("click", () => poseOnglet(b.dataset.grp));
+  });
+  let k = null;
+  try{ k = localStorage.getItem(CLE_ONGLET); }catch(e){}
+  poseOnglet(k || "live");
+})();
+/* La pastille s'allume sur l'onglet qui PORTE la demande — pas sur celui
+   qu'on regarde. Sans elle, une alerte haute reste invisible pour qui laisse
+   la page sur « Live », c'est-a-dire tout le monde. */
+function majPastilleOnglet(n){
+  const b = document.querySelector('.onglet[data-grp="preuve"]');
+  if(b) b.classList.toggle("demande", n > 0);
+}
 
 /* Le compte a rebours d'une position et l'age de la pastille bougent avec le
    temps, pas avec les images : une seconde suffit. */

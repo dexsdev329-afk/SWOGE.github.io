@@ -3187,7 +3187,7 @@ function cxChargePrivy(){
     if(window.SwogePrivy){ try{ SwogePrivy.init(PRIVY_APP_ID); }catch(e){} return res(); }
     if(cxPrivyCharge) return res();
     const sc = document.createElement("script");
-    sc.src = "privy-swoge.js?v=2b2002d4";
+    sc.src = "privy-swoge.js?v=c662549f";
     sc.onload = () => { cxPrivyCharge = true; try{ SwogePrivy.init(PRIVY_APP_ID); }catch(e){} res(); };
     sc.onerror = () => rej(new Error("load failed"));
     document.head.appendChild(sc);

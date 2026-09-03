@@ -68,7 +68,7 @@
      A savoir : cela ne sauve pas la page DEJA en cache chez quelqu'un, qui ne
      contient pas ces lignes. Ce garde-fou vaut a partir de celle-ci. -->
 <script>
-var MARQUE_PAGE = '4f6086e7';
+var MARQUE_PAGE = '206a6882';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -3688,7 +3688,7 @@ function chargePrivy(){
     if(window.SwogePrivy){ try{ SwogePrivy.init(PRIVY_APP_ID); }catch(e){} privyCharge=true; return res(); }
     if(privyCharge) return res();
     var s=document.createElement('script');
-    s.src='privy-swoge.js?v=2b2002d4';
+    s.src='privy-swoge.js?v=c662549f';
     s.onload=function(){ privyCharge=true; try{ SwogePrivy.init(PRIVY_APP_ID); }catch(e){} res(); };
     s.onerror=function(){ rej(new Error('load failed')); };
     document.head.appendChild(s);

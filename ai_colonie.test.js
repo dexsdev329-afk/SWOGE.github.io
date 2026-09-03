@@ -64,17 +64,17 @@ function vueFausse(o) {
       { sym: 'PEPO', pool: '0xpool1', tag: 'buy', txt: '+$21.00  ·  +42.0%', cls: 'up',
         t: now - 60000, par: 'closer' },
       { sym: 'DUMP', pool: '0xpool2', tag: 'cut',
-        txt: '-$8.50  ·  -17.0%  ·  coupe : la piscine est passee de $40000 a $9000',
+        txt: '-$8.50  ·  -17.0%  ·  cut: the pool went from $40000 to $9000',
         cls: 'dn', t: now - 300000, par: 'sentinelle' },
       /* Une ouverture : elle est deja listee dans « positions ouvertes », avec
          plus de detail. Le fil ne doit pas la repeter. */
-      { sym: 'NOVA', pool: '0xpool3', tag: 'open', txt: 'OUVERT · $35.00 · part', cls: 'n',
+      { sym: 'NOVA', pool: '0xpool3', tag: 'open', txt: 'OPENED · $35.00 · part', cls: 'n',
         t: now - 400000 },
     ],
     positions: [
       { sym: 'NOVA', adr: ADR_NOVA, pool: '0xpool3', minutes: 4, score: 71, ouverteDepuis: 300000,
         tenueMin: 20, latent: 6.4, gainLatent: 2.24, mise: 35, methode: 'part',
-        regime: 'autour du depart', raisonMise: 'methode part en regime « autour du depart »',
+        regime: 'around the start', raisonMise: 'part method, « around the start » regime',
         origine: 'profils', mcAchat: 310000, prolonge: 1, prixVu: now - 30000, dexVu: true,
         /* Elle est sortie par paliers : 70 % vendus en route, 30 % courent
            encore, et le plus haut vu est ce que l'arret suiveur surveille. */
@@ -85,7 +85,7 @@ function vueFausse(o) {
          et la page doit l'ECRIRE au lieu d'afficher 0 %. */
       { sym: 'MUET', adr: ADR_MUET, pool: '0xpool4', minutes: 9, score: 63, ouverteDepuis: 60000,
         tenueMin: 20, latent: null, gainLatent: null, mise: 30, methode: 'part',
-        regime: 'autour du depart', origine: 'pools', mcAchat: 45000, prolonge: 0,
+        regime: 'around the start', origine: 'pools', mcAchat: 45000, prolonge: 0,
         prixVu: now - 40 * 60000, liens: [], dexVu: false },
     ],
     candidats: o.candidats || [
@@ -102,41 +102,41 @@ function vueFausse(o) {
        * disent qu'on achete. Seule la tentative de sortie le trahit. */
       { sym: 'MIEL', addr: '0xa7', pool: '0xpoolA', minutes: 7, liq: 31000, mc: 260000, prix: 0.006,
         ch_m5: 14, score: 74, base: 74, adj: 0, quiRefuse: 'cobaye', origine: 'pools', appels: 6,
-        refus: 'la sortie est bloquee : 3/3 detenteurs ne peuvent pas envoyer le jeton vers la piscine',
+        refus: 'the exit is blocked: 3/3 holders cannot send the token to the pool',
         acheteurs: 31, partDuPlusGros: 9, tradesVus: true,
         porteurs: 210, top: 4.1, chaineVue: true, montantsLus: true, personne: false,
         transferts: 940, goplusSait: true,
         epreuve: { teste: true, essais: 3, refus: 3, passe: false,
-                   raison: 'le transfert rend false' } },
+                   raison: 'the transfer returns false' } },
       { sym: 'PIEGE', addr: '0xa2', pool: '0xpool5', minutes: 6, liq: 9000, mc: 80000, prix: 0.001,
         ch_m5: 2, score: 0, base: 12, adj: 0, refus: 'honeypot', quiRefuse: 'warden', origine: 'pools', appels: 1,
         acheteurs: null, partDuPlusGros: null, tradesVus: false,
         porteurs: 4, top: 91, chaineVue: true, montantsLus: true, personne: false,
         transferts: 12, goplusSait: true },
       { sym: 'BALEINE', addr: '0xa3', pool: '0xpool6', minutes: 3, liq: 6000, mc: 40000, prix: 0.002,
-        ch_m5: 1, score: 22, base: 22, adj: 0, refus: 'un porteur tient 88% du circulant', quiRefuse: 'whale', origine: 'pools', appels: 2,
+        ch_m5: 1, score: 22, base: 22, adj: 0, refus: 'one holder holds 88% of the float', quiRefuse: 'whale', origine: 'pools', appels: 2,
         acheteurs: null, partDuPlusGros: null, tradesVus: false,
         porteurs: 3, top: 88, chaineVue: true, montantsLus: true, personne: false,
         transferts: 30, goplusSait: false },
       { sym: 'VIDE', addr: '0xa4', pool: '0xpool7', minutes: 2, liq: 4200, mc: 20000, prix: 0.0005,
-        ch_m5: 0, score: 20, base: 20, adj: 0, refus: '31 adresses ont touche le jeton, aucune ne le garde', quiRefuse: 'whale', origine: 'boosts', appels: 2,
+        ch_m5: 0, score: 20, base: 20, adj: 0, refus: '31 addresses touched the token, none of them holds it', quiRefuse: 'whale', origine: 'boosts', appels: 2,
         acheteurs: null, partDuPlusGros: null, tradesVus: false,
         porteurs: 0, top: null, chaineVue: true, montantsLus: true, personne: true,
         transferts: 60, goplusSait: false },
       { sym: 'FAIBLE', addr: '0xa5', pool: '0xpool8', minutes: 8, liq: 5000, mc: 30000, prix: 0.003,
-        ch_m5: -2, score: 41, base: 41, adj: 0, refus: 'note trop basse', quiRefuse: 'oracle', origine: 'pools', appels: 4,
+        ch_m5: -2, score: 41, base: 41, adj: 0, refus: 'score too low', quiRefuse: 'oracle', origine: 'pools', appels: 4,
         acheteurs: 5, partDuPlusGros: 30, tradesVus: true,
         porteurs: 22, top: 12, chaineVue: true, montantsLus: true, personne: false,
         transferts: 90, goplusSait: true },
       /* La chaine n'a pas repondu pour celui-ci : la page doit ecrire « non
          lue », pas un zero qui se lirait comme un fait. */
       { sym: 'INCONNU', addr: '0xa6', pool: '0xpool9', minutes: 5, liq: 7000, mc: 50000, prix: 0.001,
-        ch_m5: 3, score: 38, base: 38, adj: 0, refus: 'note trop basse', quiRefuse: 'oracle', origine: 'pools', appels: 3,
+        ch_m5: 3, score: 38, base: 38, adj: 0, refus: 'score too low', quiRefuse: 'oracle', origine: 'pools', appels: 3,
         acheteurs: null, partDuPlusGros: null, tradesVus: false,
         porteurs: null, top: null, chaineVue: false, montantsLus: false, personne: false,
         transferts: null, goplusSait: false,
         /* Le noeud n'a pas repondu : « pas testable » n'est pas « propre ». */
-        epreuve: { teste: false, raison: 'le noeud n\'a pas repondu (rpc 429)' } },
+        epreuve: { teste: false, raison: 'the node did not answer (rpc 429)' } },
     ],
     compteurs: { scout: 240, wardenBloque: 31, wardenOk: 209, whaleBloque: 44, whaleOk: 165,
                  whisper: 165, oracle: 165, closer: 11 },
@@ -146,10 +146,10 @@ function vueFausse(o) {
          LECTURE RATEE (GoPlus s'est tu), pas un trait du jeton, et elle a bien
          rendu. Sur le serveur c'etait « code inconnu, 488 obs, +20,0 % » en
          tete de sa fiche, peint en vert. */
-      warden:  { obs: 9, lecons: [{ quoi: 'code inconnu', n: 9, moyenne: 7.4, nonLue: true },
-                                  { quoi: 'aucune taxe', n: 5, moyenne: -2.2 }] },
+      warden:  { obs: 9, lecons: [{ quoi: 'code unknown', n: 9, moyenne: 7.4, nonLue: true },
+                                  { quoi: 'no tax', n: 5, moyenne: -2.2 }] },
       whale:   { obs: 9, lecons: [{ quoi: 'top <5%', n: 7, moyenne: 8.3 }] },
-      whisper: { obs: 9, lecons: [{ quoi: 'acheteurs devant', n: 6, moyenne: 5.5 }] },
+      whisper: { obs: 9, lecons: [{ quoi: 'buyers ahead', n: 6, moyenne: 5.5 }] },
       oracle:  { obs: 9, lecons: [{ quoi: 'mc 50-500k', n: 8, moyenne: 3.9 }] },
       closer:  { obs: 14, lecons: [{ quoi: '20 min', n: 14, moyenne: 2.7 }] },
     },
@@ -159,80 +159,80 @@ function vueFausse(o) {
      * dessiner HUIT maisons sans qu'aucun nombre ne soit ecrit dedans. */
     roster: o.roster || [
       { key: 'scout', nom: 'Scout', emoji: '🛰️', couleur: '#3d7bd6', role: 'source', ordre: 0,
-        mission: 'Ratisse trois flux', traits: ['age', 'liq', 'origine'], cout: 0, vus: 0, bloques: 0 },
+        mission: 'Sweeps three feeds', traits: ['age', 'liq', 'origine'], cout: 0, vus: 0, bloques: 0 },
       { key: 'whale', nom: 'Whale-Watch', emoji: '🐋', couleur: '#e8552d', role: 'garde', ordre: 1,
-        mission: 'Solde les transferts', traits: ['top', 'det', 'brule'], cout: 1, vus: 240, bloques: 190 },
+        mission: 'Adds up transfers in the blocks', traits: ['top', 'det', 'brule'], cout: 1, vus: 240, bloques: 190 },
       { key: 'warden', nom: 'Warden', emoji: '🛡️', couleur: '#9b6cf0', role: 'garde', ordre: 2,
-        mission: 'Controle le contrat', traits: ['taxe', 'code', 'pouv'], cout: 1, vus: 50, bloques: 3 },
+        mission: 'Checks the contract', traits: ['taxe', 'code', 'pouv'], cout: 1, vus: 50, bloques: 3 },
       { key: 'whisper', nom: 'Whisper', emoji: '📡', couleur: '#1fb7a8', role: 'garde', ordre: 3,
-        mission: 'Lit les trades', traits: ['press', 'flux'], cout: 1, vus: 47, bloques: 6 },
+        mission: 'Reads trades one by one', traits: ['press', 'flux'], cout: 1, vus: 47, bloques: 6 },
       { key: 'whale-topage', nom: 'Whale · age', emoji: '🔎', couleur: '#e8552d', role: 'specialiste',
         ordre: 90, parent: 'whale', ne: now - 3600000,
-        mission: 'Recoupe « top 15-30% » par age', traits: ['top×age'], cout: 1, vus: 0, bloques: 0 },
+        mission: 'Splits « top 15-30% » by age', traits: ['top×age'], cout: 1, vus: 0, bloques: 0 },
       { key: 'oracle', nom: 'Oracle', emoji: '🔮', couleur: '#f2b21e', role: 'note', ordre: 4,
-        mission: 'Note et tranche', traits: ['mc', 'elan', 'vola'], cout: 2, vus: 41, bloques: 12 },
+        mission: 'Scores and decides', traits: ['mc', 'elan', 'vola'], cout: 2, vus: 41, bloques: 12 },
       /* ---- LE COBAYE ----
        * « Un bot dans le village avant le gros achat. » Il vient apres
        * l'Oracle : son epreuve coute des appels et ne sert que sur un jeton
        * qui a deja tout passe. */
-      { key: 'cobaye', nom: 'Cobaye', emoji: '🐹', couleur: '#c9a227', role: 'epreuve', ordre: 5,
-        mission: 'Tente la sortie', traits: ['sortie'], cout: 1, vus: 29, bloques: 4 },
-      { key: 'banquier', nom: 'Banquier', emoji: '🏦', couleur: '#5ad1a0', role: 'banque', ordre: 6,
-        mission: 'Choisit la mise', traits: ['methode'], cout: 0, vus: 0, bloques: 0 },
+      { key: 'cobaye', nom: 'Test Subject', emoji: '🐹', couleur: '#c9a227', role: 'epreuve', ordre: 5,
+        mission: 'Simulates the sale on chain', traits: ['sortie'], cout: 1, vus: 29, bloques: 4 },
+      { key: 'banquier', nom: 'Banker', emoji: '🏦', couleur: '#5ad1a0', role: 'banque', ordre: 6,
+        mission: 'Sizes the stake', traits: ['methode'], cout: 0, vus: 0, bloques: 0 },
       { key: 'closer', nom: 'Closer', emoji: '💰', couleur: '#e83e8c', role: 'execution', ordre: 7,
-        mission: 'Ouvre et ferme', traits: ['tenue'], cout: 0, vus: 0, bloques: 0 },
+        mission: 'Opens and closes at the real price', traits: ['tenue'], cout: 0, vus: 0, bloques: 0 },
     ],
     ordreRevu: now - 600000,
     journalStructure: o.journal || [
       { t: now - 3600000, quoi: 'naissance',
-        txt: 'Whale · age nait : « top 15-30% » est vue 20 fois avec un ecart type de 42 points — cette case ne predit rien',
+        txt: 'Whale · age is born: « top 15-30% » was seen 20 times with a standard deviation of 42 points — that bucket predicts nothing',
         chiffres: [{ parent: 'whale', obs: 20, ecartType: 42 }] },
       { t: now - 600000, quoi: 'ordre',
-        txt: 'Nouvel ordre des gardes : whale → warden → whisper (avant : warden → whale → whisper)',
+        txt: 'New guard order: whale → warden → whisper (before: warden → whale → whisper)',
         chiffres: [{ agent: 'whale', refus: '79%', appels: 1, vus: 240 }] },
     ],
     banque: o.banque || {
-      methode: 'part', appris: true, regime: 'autour du depart', serie: 2, pic: 1210.4,
+      methode: 'part', appris: true, regime: 'around the start', serie: 2, pic: 1210.4,
       engage: 65, partMax: 0.08, expoMax: 0.30, plancher: 100, miseMin: 10, arret: o.arret || null,
       prochaine: o.arret ? null
-        : { mise: 35.6, methode: 'part', regime: 'autour du depart', part: 3,
-            raison: 'methode part en regime « autour du depart »' },
+        : { mise: 35.6, methode: 'part', regime: 'around the start', part: 3,
+            raison: 'part method, « around the start » regime' },
       releve: [
-        { methode: 'part', par: [{ regime: 'autour du depart', n: 12, moyenne: 4.8 }] },
-        { methode: 'fixe', par: [{ regime: 'autour du depart', n: 9, moyenne: -2.1 }] },
+        { methode: 'part', par: [{ regime: 'around the start', n: 12, moyenne: 4.8 }] },
+        { methode: 'fixe', par: [{ regime: 'around the start', n: 9, moyenne: -2.1 }] },
       ],
     },
     surveillance: o.surveillance || [
       { addr: '0xaa', sym: 'PRESQUE', vu: 3, note: 48, meilleure: 52, dernier: now - 900000,
-        verdict: 'note trop basse', liq: 12000 },
+        verdict: 'score too low', liq: 12000 },
       { addr: '0xbb', sym: 'PATIENT', vu: 2, note: 40, meilleure: 44, dernier: now - 300000,
-        verdict: 'note trop basse', liq: 7000 },
+        verdict: 'score too low', liq: 7000 },
     ],
     connus: 148, bannis: 37,
-    evites: [{ sym: 'DEJAVU', pourquoi: 'deja juge il y a 4 min, rien n\'a bouge' }],
+    evites: [{ sym: 'DEJAVU', pourquoi: 'already judged 4 min ago, nothing has moved' }],
     services: [
-      { cle: 'pools', nom: 'GeckoTerminal · nouveaux pools', quoi: 'age, liquidite, achats', cout: 0,
+      { cle: 'pools', nom: 'GeckoTerminal · new pools', quoi: 'age, liquidity, cap, buys and sells', cout: 0,
         essais: 36, reussites: 36, dernier: now, dernierEchec: null },
-      { cle: 'profils', nom: 'DexScreener · profils recents', quoi: 'des jetons dont la fiche est remplie',
+      { cle: 'profils', nom: 'DexScreener · recent profiles', quoi: 'new tokens whose profile someone filled in',
         cout: 0, essais: 12, reussites: 12, dernier: now, dernierEchec: null },
-      { cle: 'boosts', nom: 'DexScreener · jetons pousses', quoi: 'des jetons dont la mise en avant est payee',
+      { cle: 'boosts', nom: 'DexScreener · boosted tokens', quoi: 'tokens someone paid to promote',
         cout: 0, essais: 12, reussites: 12, dernier: now, dernierEchec: null },
-      { cle: 'chaine', nom: 'Chaine 4663 · les blocs eux-memes', quoi: 'qui detient quoi', cout: 1,
+      { cle: 'chaine', nom: 'Chain 4663 · official node', quoi: 'who holds what, by adding up transfers', cout: 1,
         essais: 120, reussites: 111, dernier: now, dernierEchec: '429' },
-      { cle: 'goplus', nom: 'GoPlus · securite du contrat', quoi: 'honeypot, taxes, pouvoirs', cout: 1,
+      { cle: 'goplus', nom: 'GoPlus · contract safety', quoi: 'honeypot, taxes, owner powers', cout: 1,
         essais: 120, reussites: 120, dernier: now, dernierEchec: null },
-      { cle: 'trades', nom: 'GeckoTerminal · les trades un par un', quoi: 'quels portefeuilles achetent',
+      { cle: 'trades', nom: 'GeckoTerminal · trades one by one', quoi: 'which wallets are buying, and for how much',
         cout: 1, essais: 24, reussites: 24, dernier: now, dernierEchec: null },
-      { cle: 'dex', nom: 'DexScreener · second avis', quoi: 'un deuxieme prix', cout: 1,
+      { cle: 'dex', nom: 'DexScreener · second opinion', quoi: 'a second price, the other pools, the socials', cout: 1,
         essais: 60, reussites: 60, dernier: now, dernierEchec: null },
-      { cle: 'ohlcv', nom: 'GeckoTerminal · chandelles', quoi: 'la volatilite observee', cout: 1,
+      { cle: 'ohlcv', nom: 'GeckoTerminal · candles', quoi: 'the volatility actually observed', cout: 1,
         essais: 20, reussites: 20, dernier: now, dernierEchec: null },
     ],
     horsService: {
-      gmgn: 'GMGN — 403 Cloudflare, y compris sur ethereum : c\'est une protection anti-robot, '
-          + 'pas une absence de la chaine 4663.',
-      blockscout: 'Blockscout robinhood — challenge Cloudflare sur l\'API comme sur les pages.',
-      honeypotis: 'honeypot.is — ne connait pas la chaine 4663.',
+      gmgn: 'GMGN — 403 Cloudflare, on ethereum too: that is anti-bot protection, not an absence '
+          + 'of chain 4663.',
+      blockscout: 'Blockscout robinhood — Cloudflare challenge on the API as on the pages.',
+      honeypotis: 'honeypot.is — does not know chain 4663.',
     },
     seuil: o.seuil || 55, seuilDepart: 55, ageMax: 360,
     sociauxExiges: o.sociauxExiges === undefined ? ['site', 'twitter', 'telegram'] : o.sociauxExiges,
@@ -244,32 +244,32 @@ function vueFausse(o) {
     horizons: [5, 15, 30, 60, 120], horizonRef: 30, jalons: 914,
     traits: [
       { trait: 'liq', obs: 210, valeurs: 4, separation: 2.4, ecartValeurs: 51.2,
-        meilleure: { quoi: 'liq>100k', moyenne: 21.4, n: 38 },
-        pire: { quoi: 'liq<1k', moyenne: -29.8, n: 61 } },
+        meilleure: { quoi: 'pool >$100k', moyenne: 21.4, n: 38 },
+        pire: { quoi: 'pool <$1k', moyenne: -29.8, n: 61 } },
       { trait: 'top', obs: 198, valeurs: 5, separation: 1.9, ecartValeurs: 44.0,
         meilleure: { quoi: 'top <5%', moyenne: 15.2, n: 44 },
         pire: { quoi: 'top >50%', moyenne: -28.8, n: 72 } },
       /* Celui-la ne separe rien : toutes ses valeurs rendent la meme chose. */
       { trait: 'vola', obs: 120, valeurs: 4, separation: 0.08, ecartValeurs: 1.4,
-        meilleure: { quoi: 'calme', moyenne: 2.1, n: 30 },
-        pire: { quoi: 'vola >12%', moyenne: 0.7, n: 34 } },
+        meilleure: { quoi: 'calm', moyenne: 2.1, n: 30 },
+        pire: { quoi: 'volatility >12%', moyenne: 0.7, n: 34 } },
     ],
     audit: o.audit === undefined ? [
       /* Un veto qui coute : un jeton ecarte sur trois est monte. */
-      { cle: 'oracle · note trop basse', n: 96, moyenne: -4.2, montes: 31, effondres: 22, partMontes: 32 },
+      { cle: 'oracle · score too low', n: 96, moyenne: -4.2, montes: 31, effondres: 22, partMontes: 32 },
       /* Un veto qui protege. */
-      { cle: 'whale · un porteur tient 90% du circulant', n: 140, moyenne: -38.5,
+      { cle: 'whale · one holder holds 90% of the float', n: 140, moyenne: -38.5,
         montes: 7, effondres: 96, partMontes: 5 },
     ] : o.audit,
     conseiller: o.conseiller || { actif: false, modele: 'claude-haiku-4-5-20251001',
                                   poids: 8, parTour: 3, rendus: 0 },
     alertes: o.alertes === undefined ? [
-      { gravite: 'haute', quoi: 'Les noeuds de la chaine refusent 34 % des lectures',
-        pourquoi: '41 refus sur 120 appels. Chaque refus rend « inconnu » un jeton qu\'on aurait pu juger.',
-        quoiFaire: 'Un acces RPC dedie a la chaine 4663 leverait la limite.' },
-      { gravite: 'moyenne', quoi: 'Le Conseiller est eteint : aucune cle Anthropic',
-        pourquoi: 'Les agents jugent sur des regles et sur ce qu\'ils ont mesure.',
-        quoiFaire: 'Poser ANTHROPIC_API_KEY dans les variables Railway. Une seule cle suffit.' },
+      { gravite: 'haute', quoi: 'The chain nodes are refusing 34% of reads',
+        pourquoi: '41 refusals over 120 calls. Every refusal turns a token we could have judged into « unknown ».',
+        quoiFaire: 'A dedicated RPC for chain 4663 would lift the limit.' },
+      { gravite: 'moyenne', quoi: 'The Advisor is off: no Anthropic key',
+        pourquoi: 'The agents judge on rules and on what they measured.',
+        quoiFaire: 'Set ANTHROPIC_API_KEY in the Railway variables. One key is enough.' },
     ] : o.alertes,
   };
 }
@@ -377,7 +377,7 @@ async function maisons() {
       [...document.querySelectorAll('#agents .nm')].map((x) => x.textContent.replace(/\s+/g, ' ').trim()));
     console.log('   ' + JSON.stringify(noms));
     ok(noms.some((n) => /Whale · age/.test(n)), 'le specialiste ne de la colonie a sa maison');
-    ok(noms.some((n) => /issu de whale/.test(n)), 'et il dit de qui il descend');
+    ok(noms.some((n) => /from whale/.test(n)), 'et il dit de qui il descend');
 
     /* Les maisons sont posees sur un anneau : aucune ne doit sortir du cadre,
        quel que soit le nombre d agents. */
@@ -512,9 +512,9 @@ async function contrat() {
   const pos = await page.evaluate(() =>
     [...document.querySelectorAll('#positions .posbloc')].map((x) => x.textContent.replace(/\s+/g, ' ').trim()));
   console.log('   ' + pos[0]);
-  ok(/\$35\.00 mise/.test(pos[0]), 'la mise reellement engagee est affichee ($35.00)');
+  ok(/\$35\.00 staked/.test(pos[0]), 'la mise reellement engagee est affichee ($35.00)');
   ok(/part/.test(pos[0]), 'avec la methode qui l a decidee');
-  ok(/vu par profils/.test(pos[0]), 'et le flux qui a trouve le jeton');
+  ok(/spotted by profils/.test(pos[0]), 'et le flux qui a trouve le jeton');
 
   /* ---- CE QUI A DEJA ETE PRIS, ET CE QUI COURT ENCORE ----
    * La position ne sort plus d un bloc : elle vend par paliers et laisse le
@@ -522,13 +522,13 @@ async function contrat() {
    * 70 % de son gain se lit comme une petite affaire — et le latent affiche
    * porterait sur une mise qu on n a plus en jeu. */
   console.log('   ' + pos[0].slice(0, 200));
-  ok(/70 % vendu/.test(pos[0]),
+  ok(/70% sold/.test(pos[0]),
      'la part deja vendue en route est ecrite (70 %)');
-  ok(/\+\$12\.40 encaisse/.test(pos[0]),
+  ok(/\+\$12\.40 banked/.test(pos[0]),
      'avec ce qu elle a rapporte, qui est deja dans la tresorerie');
-  ok(/30 % court encore/.test(pos[0]),
+  ok(/30% still running/.test(pos[0]),
      'et ce qui reste en jeu : c est cette part-la que le latent chiffre');
-  ok(/plus haut vu \+62\.5 %/.test(pos[0]),
+  ok(/peak seen \+62\.5%/.test(pos[0]),
      'le plus haut atteint est affiche : c est lui que l arret suiveur surveille, donc lui '
      + 'qui expliquera une fermeture qu on n aurait pas comprise');
   await page.context().close();
@@ -543,20 +543,20 @@ async function banquierEcran() {
     const { page, boum } = await ouvre(nav, port, {});
     const v = await lit(page);
     console.log('   ' + v.banqMethode + ' · ' + v.banque.slice(0, 110));
-    ok(/part/.test(v.banqMethode) && /apprise/.test(v.banqMethode),
+    ok(/part/.test(v.banqMethode) && /learned/.test(v.banqMethode),
        'sa methode est affichee, et le fait qu il l ait APPRISE (« ' + v.banqMethode + ' »)');
-    ok(/autour du depart/.test(v.banque), 'le regime de caisse aussi');
-    ok(/2 gagnantes/.test(v.banque), 'et la serie en cours');
+    ok(/around the start/.test(v.banque), 'le regime de caisse aussi');
+    ok(/2 wins in a row/.test(v.banque), 'et la serie en cours');
     ok(/\$65\.00/.test(v.banque), 'ce qui est engage maintenant');
     ok(/\$35\.60/.test(v.banque), 'et ce qu il poserait sur le prochain jeton');
 
     /* ---- LES BORNES SONT AFFICHEES ----
      * Une page qui montre une methode d apprentissage sans montrer ses
      * garde-fous laisse croire qu il n y en a pas. */
-    ok(/8% par jeton/.test(v.banque.replace(/\s/g, ' ')) || /8%/.test(v.banque),
+    ok(/8% per token/.test(v.banque.replace(/\s/g, ' ')) || /8%/.test(v.banque),
        'les bornes qu il ne peut pas franchir sont ecrites : ' + (v.banque.match(/Bornes[^]{0,90}/) || [''])[0]);
-      ok(/plancher/.test(v.banque), 'y compris le plancher sous lequel il arrete d ouvrir');
-    ok(/Presence exigee/.test(v.banque) && /telegram/.test(v.banque),
+      ok(/floor/.test(v.banque), 'y compris le plancher sous lequel il arrete d ouvrir');
+    ok(/Presence required/.test(v.banque) && /telegram/.test(v.banque),
        'et la presence exigee d un projet est affichee : « '
        + (v.banque.match(/Presence exigee[^B]*/) || [''])[0].trim() + ' »');
 
@@ -569,12 +569,12 @@ async function banquierEcran() {
   console.log('\n-- et quand il arrete d ouvrir, il le dit --');
   {
     const { page, boum } = await ouvre(nav, port,
-      { vue: vueFausse({ arret: 'caisse sous le plancher de $100 : on arrete d\'ouvrir' }) });
+      { vue: vueFausse({ arret: 'treasury below the $100 floor: we stop opening' }) });
     const v = await lit(page);
     console.log('   ' + (v.banque.match(/⛔[^]{0,70}/) || [''])[0]);
     ok(/plancher/.test(v.banque),
        'l arret est affiche avec sa raison, pas comme une panne');
-    ok(!/Prochaine mise/.test(v.banque),
+    ok(!/Next stake/.test(v.banque),
        'et aucune « prochaine mise » n est proposee : il n y en a pas');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.context().close();
@@ -591,9 +591,9 @@ async function panneaux() {
   console.log('   ' + v.survN + ' · ' + v.surveillance.slice(0, 90));
   ok(/PRESQUE/.test(v.surveillance) && /PATIENT/.test(v.surveillance),
      'les jetons gardes a l oeil sont listes');
-  ok(/3 examens/.test(v.surveillance),
+  ok(/3 looks/.test(v.surveillance),
      'avec le nombre de fois ou ils ont ete examines — c est le chiffre qui montre qu on ne les rejuge pas en boucle');
-  ok(/37 bannis/.test(v.survN),
+  ok(/37 banned/.test(v.survN),
      'et les bannis sont comptes a part : ils ne reviendront jamais (' + v.survN + ')');
 
   console.log('\n-- ou elle a regarde, et ce qu elle n a pas encore juge --');
@@ -602,10 +602,10 @@ async function panneaux() {
      'la repartition par age est affichee : sans ce compte, « elle regarde partout » est une phrase');
   ok(!/1-6 h/.test(v.flowcount), 'et une bande ou elle n a rien vu n est pas listee comme si elle l avait vue');
   console.log('   ' + (v.surveillance.match(/\d+ sortie[^—]*/) || ['(rien)'])[0]);
-  ok(/1 sortie\(s\) en attente/.test(v.surveillance) && /MONTE a \+42%/.test(v.surveillance),
+  ok(/1 exit\(s\) awaiting/.test(v.surveillance) && /MONTE at \+42%/.test(v.surveillance),
      'les gains pris mais pas encore juges sont montres : une question ouverte s affiche, sinon la '
      + 'lecon a l air de sortir de nulle part quand elle arrive');
-  ok(/ce que garder aurait donne/.test(v.surveillance), 'avec ce qu on attend pour trancher');
+  ok(/what holding would have given/.test(v.surveillance), 'avec ce qu on attend pour trancher');
 
   console.log('\n-- ce que la colonie a change a elle-meme --');
   console.log('   ' + v.structure.slice(0, 150));
@@ -617,14 +617,14 @@ async function panneaux() {
      'et le changement d ordre porte les taux de refus mesures');
 
   console.log('\n-- ce qui est lu, et ce qui ne peut pas l etre --');
-  ok(/GeckoTerminal · nouveaux pools/.test(v.services) && /les trades un par un/.test(v.services),
+  ok(/GeckoTerminal · new pools/.test(v.services) && /trades one by one/.test(v.services),
      'les services sont listes avec ce que chacun apporte');
   ok(/111\/120/.test(v.services), 'avec leur releve reel (111/120 pour la chaine)');
-  ok(/dernier echec : 429/.test(v.services),
+  ok(/last failure: 429/.test(v.services),
      'et le dernier echec en clair quand il y en a un');
   ok(/GMGN/.test(v.services) && /Cloudflare/.test(v.services),
      'GMGN est NOMME avec la raison mesuree, plutot que passe sous silence');
-  ok(/y compris sur ethereum/.test(v.services),
+  ok(/on ethereum too/.test(v.services),
      'et la raison distingue « protection anti-robot » de « ne connait pas la chaine 4663 »');
   ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
   await page.context().close();
@@ -648,10 +648,10 @@ async function ficheDeLaPosition() {
    * Un +40 % depuis une capitalisation de vingt mille et un +40 % depuis deux
    * millions ne sont pas le meme evenement, et ne se reproduisent pas de la
    * meme facon. Sans elle, le chiffre de gain ne se compare a rien. */
-  ok(/achete a \$310k de cap/.test(pos[0]),
+  ok(/bought at \$310k cap/.test(pos[0]),
      'la capitalisation AU MOMENT DE L ACHAT est affichee (310k)');
-  ok(/achete a \$45k de cap/.test(pos[1]), 'sur chaque position, pas seulement la premiere');
-  ok(/prolongee 1×/.test(pos[0]), 'et le fait que le Promoteur l ait gardee une fois de plus');
+  ok(/bought at \$45k cap/.test(pos[1]), 'sur chaque position, pas seulement la premiere');
+  ok(/extended 1×/.test(pos[0]), 'et le fait que le Promoteur l ait gardee une fois de plus');
 
   console.log('   ' + JSON.stringify(v.liens));
   /* ---- UN LIEN QU'ON SAIT MORT NE S'OFFRE PAS ----
@@ -659,7 +659,7 @@ async function ficheDeLaPosition() {
    * douze a deux minutes : le lien ouvrait une page vide et rien ne
    * prevenait. GeckoTerminal est la source d'ou vient le pool — sa page
    * existe forcement. */
-  const chart = v.liens.filter((l) => /graphique/.test(l));
+  const chart = v.liens.filter((l) => /chart/.test(l));
   ok(chart.length === 2, 'chaque position porte un lien vers son graphique');
   ok(/geckoterminal\.com\/robinhood\/pools\/0xpool3/.test(chart[0]),
      'et il pointe vers la source d ou vient le pool, donc une page qui existe : '
@@ -698,15 +698,15 @@ async function filSansDoublon() {
   const v = await lit(page);
   console.log('   ' + JSON.stringify(v.feed));
   ok(v.feed.length === 2, 'seules les positions FERMEES y figurent (' + v.feed.length + ')');
-  ok(!v.feed.some((f) => /OUVERT/.test(f)),
+  ok(!v.feed.some((f) => /OPENED/.test(f)),
      'l ouverture de $NOVA n y est plus : elle est deja listee juste au-dessus, avec plus de detail');
-  ok(v.feed.some((f) => /GAIN/.test(f)) && v.feed.some((f) => /PERTE/.test(f)),
+  ok(v.feed.some((f) => /GAIN/.test(f)) && v.feed.some((f) => /LOSS/.test(f)),
      'et les resultats, eux, ne sont visibles nulle part ailleurs');
   /* Une coupe de la Sentinelle doit se distinguer d'une fermeture au terme,
      sinon son travail est invisible — donc invérifiable. */
-  ok(v.feed.some((f) => /par sentinelle/.test(f)),
+  ok(v.feed.some((f) => /by sentinelle/.test(f)),
      'une coupe precoce dit qui l a decidee : « ' + (v.feed.find((f) => /sentinelle/.test(f)) || '') + ' »');
-  ok(/seuil 55/.test(v.fermN), 'et l en-tete porte le seuil d entree du moment (' + v.fermN + ')');
+  ok(/threshold 55/.test(v.fermN), 'et l en-tete porte le seuil d entree du moment (' + v.fermN + ')');
   ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
   await page.context().close();
 }
@@ -722,10 +722,10 @@ async function panneauAlertes() {
     console.log('   ' + v.alerteN + ' · ' + v.alertes.slice(0, 120));
     ok(!v.alerteCachee, 'la carte apparait quand il y a quelque chose a demander');
     ok(v.alerteN === '2', 'les deux alertes sont comptees');
-    ok(/34 % des lectures/.test(v.alertes),
+    ok(/34% of reads/.test(v.alertes),
        'chacune porte le CHIFFRE qui la justifie : une demande sans son chiffre ne peut pas '
        + 'etre refusee intelligemment');
-    ok(/acces RPC dedie/.test(v.alertes) && /ANTHROPIC_API_KEY/.test(v.alertes),
+    ok(/dedicated RPC/.test(v.alertes) && /ANTHROPIC_API_KEY/.test(v.alertes),
        'et ce qu il faudrait faire, precisement');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.context().close();
@@ -955,19 +955,19 @@ async function auditDesVetos() {
   const { page, boum } = await ouvre(nav, port, {});
   const v = await lit(page);
   console.log('   ' + v.auditN);
-  ok(/218 suivis/.test(v.auditN) && /34 en cours/.test(v.auditN),
+  ok(/218 followed/.test(v.auditN) && /34 running/.test(v.auditN),
      'le compte des jetons resuivis est affiche (' + v.auditN + ')');
-  ok(/un porteur tient 90%/.test(v.audit) && /note trop basse/.test(v.audit),
+  ok(/one holder holds 90%/.test(v.audit) && /score too low/.test(v.audit),
      'chaque raison de refus a sa ligne');
-  ok(/140 jeton\(s\) suivis/.test(v.audit) && /96 effondre\(s\)/.test(v.audit),
+  ok(/140 token\(s\) followed/.test(v.audit) && /96 collapsed/.test(v.audit),
      'avec ce que les ecartes ont VRAIMENT fait : ' + (v.audit.match(/140[^·]*·[^·]*/) || [''])[0]);
 
   /* ---- LE CHIFFRE QUI COMPTE ----
    * Pas la moyenne : la part de ceux qui sont MONTES malgre le refus. Une
    * moyenne negative peut cacher un sur cinq qui a fait dix fois. */
-  ok(/32% montes/.test(v.audit) && /5% montes/.test(v.audit),
+  ok(/32% went up/.test(v.audit) && /5% went up/.test(v.audit),
      'la part des ecartes qui sont montes est en tete de chaque ligne');
-  ok(/ce refus coute plus qu'il ne protege/.test(v.audit),
+  ok(/costs more than it protects/.test(v.audit),
      'et un veto dont un jeton ecarte sur quatre est monte est SIGNALE comme un cout');
   const cout = await page.evaluate(() =>
     [...document.querySelectorAll('#audit .pill')].map((p) => p.textContent.trim() + ':' + p.className));
@@ -979,15 +979,15 @@ async function auditDesVetos() {
 
   console.log('\n-- et quel trait separe vraiment --');
   console.log('   ' + v.traitsN);
-  ok(/3 traits/.test(v.traitsN) && /914 relev/.test(v.traitsN),
+  ok(/3 traits/.test(v.traitsN) && /914 readings/.test(v.traitsN),
      'le nombre de traits classes et de relevés est affiche (' + v.traitsN + ')');
-  ok(/liq>100k \+21\.4%/.test(v.traits) && /liq<1k -29\.8%/.test(v.traits),
+  ok(/pool >\$100k \+21\.4%/.test(v.traits) && /pool <\$1k -29\.8%/.test(v.traits),
      'chaque trait montre sa meilleure et sa pire valeur, avec leurs effectifs');
   ok(v.traits.indexOf('liq') < v.traits.indexOf('vola'),
      'et le classement met en tete celui qui separe : liq avant vola');
-  ok(/relu a 5, 15, 30, 60, 120 minutes/.test(v.traits),
+  ok(/re-read at 5, 15, 30, 60, 120 minutes/.test(v.traits),
      'la page dit a quelles echeances chaque jeton est relu');
-  ok(/ne separe rien, et dilue/.test(v.traits),
+  ok(/separates nothing, and dilutes/.test(v.traits),
      'et explique pourquoi le bas de liste compte : un trait qui ne separe rien dilue les autres');
 
   const b = await ouvre(nav, port, { vue: vueFausse({ audit: [] }) });
@@ -1036,11 +1036,11 @@ async function auditDesVetos() {
        l'oeil se pose quand quelque chose ne va pas. */
     ok(v.pouls === 'OFFLINE', 'le pouls le dit, dans la langue de la page (' + v.pouls + ')');
     ok(/mort/.test(v.stampCls), 'la pastille est en rouge et dit qu elle n a rien (« ' + v.stamp + ' »)');
-    ok(/serveur/i.test(v.tag), 'et la page l ECRIT en toutes lettres : « ' + v.tag.slice(0, 90) + ' »');
-    ok(/invente/i.test(v.tag), 'en disant qu elle n invente rien pour combler');
-    ok(v.positions.length === 0 && /attente du serveur/i.test(v.positionsTxt),
+    ok(/server/i.test(v.tag), 'et la page l ECRIT en toutes lettres : « ' + v.tag.slice(0, 90) + ' »');
+    ok(/invented/i.test(v.tag), 'en disant qu elle n invente rien pour combler');
+    ok(v.positions.length === 0 && /waiting for the server/i.test(v.positionsTxt),
        'aucune position n est affichee');
-    ok(!/\$/.test(v.appris) && /Rien encore/.test(v.appris), 'et aucune lecon n est tiree de rien');
+    ok(!/\$/.test(v.appris) && /Nothing yet/.test(v.appris), 'et aucune lecon n est tiree de rien');
     ok(appels.autres.length === 0,
        'la page n a appele AUCUN service de donnees elle-meme : le serveur les lit pour tout le monde');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
@@ -1073,13 +1073,13 @@ async function auditDesVetos() {
      * chiffre, un tour manque et un jeton sorti des flux depuis une heure se
      * ressemblent, alors qu'ils ne veulent pas dire la meme chose. */
     console.log('   ' + v.positions[1]);
-    ok(/dernier prix il y a 40min/.test(v.positions[1]),
+    ok(/last price 40min ago/.test(v.positions[1]),
        'celle dont le prix est perime dit depuis QUAND (' + v.positions[1] + ')');
     ok(!/\+0\.0%/.test(v.positions[1]),
        'et surtout pas « +0,0 % », qui ferait passer un prix d entree pour une cotation');
     ok(v.feed.length === 2 && /PEPO/.test(v.feed[0]), 'le fil des trades vient du serveur aussi');
     ok(/LIVE/.test(v.pouls), 'le pouls est vert : le serveur a fini un tour recemment');
-    ok(/serveur a \d\d:\d\d/.test(v.stamp), 'et la pastille porte l heure du SERVEUR (« ' + v.stamp + ' »)');
+    ok(/server at \d\d:\d\d/.test(v.stamp), 'et la pastille porte l heure du SERVEUR (« ' + v.stamp + ' »)');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.context().close();
   }
@@ -1102,19 +1102,19 @@ async function auditDesVetos() {
        'la page dessine exactement autant d agents que le serveur en declare (' + v.agents.length + ')');
     const compteurs = v.agents.map((a) => a[0]).join(' | ');
     console.log('   ' + compteurs);
-    ok(/240 tokens vus/.test(compteurs), 'le Scout porte le compte du SERVEUR (240 tokens vus)');
+    ok(/240 tokens seen/.test(compteurs), 'le Scout porte le compte du SERVEUR (240 tokens vus)');
     /* Un garde dit ce qu'il bloque ET ce que ses donnees coutent : c'est de ces
        deux chiffres que sort son rang dans la file, donc ils doivent etre
        lisibles par la personne qui regarde. */
-    ok(/190 bloques sur 240 vus \(79%\)/.test(compteurs),
+    ok(/190 blocked out of 240 seen \(79%\)/.test(compteurs),
        'chaque garde porte son taux de refus mesure (190/240 = 79 % pour le Whale)');
-    ok(/1 appel/.test(compteurs),
+    ok(/1 call/.test(compteurs),
        'et ce que ses donnees coutent en appels — les deux chiffres qui decident de son rang');
-    ok(/ne 60min plus tot/.test(compteurs) && /ne refuse jamais/.test(compteurs),
+    ok(/born 60min ago/.test(compteurs) && /never refuses/.test(compteurs),
        'un specialiste dit son age et qu il ne refuse jamais : il affine, il ne garde pas');
-    ok(/mises posees/.test(compteurs) && /methode part \(apprise\)/.test(compteurs),
+    ok(/stakes sized/.test(compteurs) && /method part \(learned\)/.test(compteurs),
        'le Banquier dit combien de mises il a posees, et avec quelle methode');
-    ok(/tenue 20 min \(apprise\)/.test(compteurs),
+    ok(/hold 20 min \(learned\)/.test(compteurs),
        'et le Closer dit que sa tenue est APPRISE, pas celle par defaut');
 
     const lecons = v.agents.map((a) => a[1]);
@@ -1125,14 +1125,14 @@ async function auditDesVetos() {
      * la faute que ce fichier traque. Ce qui compte : qui a appris le DIT avec
      * son nombre d'observations, et qui n'a rien appris le dit aussi. */
     const avecLecon = lecons.filter((l) => /\(\d+ obs\)/.test(l));
-    const sansLecon = lecons.filter((l) => /rien appris|pas encore/.test(l));
+    const sansLecon = lecons.filter((l) => /learned nothing yet|no clear trend/.test(l));
     ok(avecLecon.length >= 5,
        avecLecon.length + ' agents publient leur meilleure lecon avec son nombre d observations');
     ok(avecLecon.length + sansLecon.length === lecons.length,
        'et les autres disent qu ils n ont rien appris — aucun n affiche une lecon sans compte');
     ok(sansLecon.length > 0,
        'un agent ne il y a une heure n a rien appris, et il l ecrit plutot que de faire semblant');
-    ok(/confiance/.test(v.appris), 'et le detail publie la confiance qui va avec le nombre d observations');
+    ok(/confidence/.test(v.appris), 'et le detail publie la confiance qui va avec le nombre d observations');
 
     /* ---- UNE LECTURE RATEE N'EST PAS UNE LECON SUR LE JETON ----
      * Le releve du serveur montrait, en tete du Warden : « code inconnu,
@@ -1143,14 +1143,14 @@ async function auditDesVetos() {
      * Le serveur ne leur donne plus de points. L'ecran, lui, doit cesser de
      * les presenter comme un bon signe — sinon la correction est invisible la
      * ou elle se lit. */
-    const wardenDit = lecons.find((l) => /code inconnu|aucune taxe/.test(l)) || '';
+    const wardenDit = lecons.find((l) => /code unknown|no tax/.test(l)) || '';
     console.log('   Warden : ' + wardenDit);
-    ok(/aucune taxe/.test(wardenDit),
+    ok(/no tax/.test(wardenDit),
        'la fiche du Warden met en titre sa lecon REELLE, pas sa lecture ratee — meme si celle-ci '
        + 'est mieux observee et mieux notee (« ' + wardenDit + ' »)');
-    ok(/lecture ratee/.test(v.appris),
+    ok(/failed read/.test(v.appris),
        'et dans le detail, la case non lue est NOMMEE comme telle : « lecture ratee, pas le jeton »');
-    ok(!/var\(--gain\)[^<]*code inconnu/.test(v.apprisHtml || ''),
+    ok(!/var\(--gain\)[^<]*code unknown/.test(v.apprisHtml || ''),
        'elle n est pas peinte en vert : la couleur se lit avant le mot');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.context().close();
@@ -1246,15 +1246,15 @@ async function auditDesVetos() {
     const m = await page.evaluate(() => {
       const cas = [
         { r: 'honeypot', q: 'warden', attendu: 'warden' },
-        { r: 'taxe vente 42%', q: 'warden', attendu: 'warden' },
-        { r: 'un porteur tient 88% du circulant', q: 'whale', attendu: 'whale' },
-        { r: 'un seul portefeuille fait 92% du volume', q: 'whisper', attendu: 'whisper' },
-        { r: 'note trop basse', q: 'oracle', attendu: 'oracle' },
+        { r: 'sell tax 42%', q: 'warden', attendu: 'warden' },
+        { r: 'one holder holds 88% of the float', q: 'whale', attendu: 'whale' },
+        { r: 'a single wallet makes 92% of the volume', q: 'whisper', attendu: 'whisper' },
+        { r: 'score too low', q: 'oracle', attendu: 'oracle' },
         /* Sans la cle — une reponse ancienne — la phrase doit encore suffire. */
         { r: 'honeypot', q: null, attendu: 'warden' },
-        { r: '31 adresses ont touche le jeton, aucune ne le garde', q: null, attendu: 'whale' },
-        { r: 'un seul portefeuille fait 92% du volume', q: null, attendu: 'whisper' },
-        { r: 'note trop basse', q: null, attendu: 'oracle' },
+        { r: '31 addresses touched the token, none of them holds it', q: null, attendu: 'whale' },
+        { r: 'a single wallet makes 92% of the volume', q: null, attendu: 'whisper' },
+        { r: 'score too low', q: null, attendu: 'oracle' },
         { r: null, q: null, attendu: null },
       ];
       return cas.map((c) => {
@@ -1401,7 +1401,7 @@ async function auditDesVetos() {
           }
         }
         for (const x of document.querySelectorAll('#flow .meta .ok'))
-          if (/sortie/.test(x.textContent)) out.titre = x.getAttribute('title');
+          if (/exit/.test(x.textContent)) out.titre = x.getAttribute('title');
         return out;
       });
       Object.assign(l, r.metas);
@@ -1410,17 +1410,17 @@ async function auditDesVetos() {
       if (l.NOVA && l.INCONNU && miel && titre) break;
     }
     console.log('   ' + JSON.stringify(l));
-    ok(/sortie 3\/3/.test(l.NOVA || ''),
+    ok(/exit 3\/3/.test(l.NOVA || ''),
        'un jeton dont la sortie a ete testee porte ses CHIFFRES, pas une coche : « '
        + (l.NOVA || '') + ' »');
-    ok(/sortie non testable/.test(l.INCONNU || ''),
+    ok(/exit not testable/.test(l.INCONNU || ''),
        'et quand le noeud n a pas repondu, c est ecrit — une epreuve qu on n a pas pu jouer '
        + 'n est pas une epreuve reussie : « ' + (l.INCONNU || '') + ' »');
 
     /* La limite de l'epreuve est portee par la page elle-meme, au survol : ce
        qui est simule, c'est le transfert, pas l'echange complet. */
     console.log('   au survol : ' + titre);
-    ok(!!titre && /pas l.echange complet/.test(titre),
+    ok(!!titre && /not the full swap/.test(titre),
        'et ce que l epreuve NE prouve pas est ecrit la ou on la lit');
 
     /* Et le piege s'arrete CHEZ LE COBAYE : c'est le seul agent qui pouvait le
@@ -1461,12 +1461,12 @@ async function auditDesVetos() {
     }
     console.log('   ' + JSON.stringify(vu));
     const tous = Object.values(vu || {}).join(' | ');
-    ok(/chaine non lue/.test(tous) || Object.keys(vu || {}).length < 6,
+    ok(/chain not read/.test(tous) || Object.keys(vu || {}).length < 6,
        'un jeton dont la chaine n a pas repondu porte « chaine non lue »');
     /* Le zero doit etre un nombre entier, pas la fin d un autre : « 210
        porteurs » contient « 0 porteurs », et l essai passait ou ratait selon
        les chiffres du banc plutot que selon ce que la page ecrit. */
-    ok(!/(?:^|\D)0 porteurs/.test(tous) || /VIDE/.test(Object.keys(vu || {}).join()),
+    ok(!/(?:^|\D)0 holders/.test(tous) || /VIDE/.test(Object.keys(vu || {}).join()),
        'et « 0 porteurs » n est ecrit que quand c est ce que la chaine a dit');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.context().close();
@@ -1491,7 +1491,7 @@ async function auditDesVetos() {
     ];
     for (const [a1, a2, quoi] of promesses)
       ok(a1.test(v.foot) && a2.test(v.foot), 'en anglais, elle dit que ' + quoi);
-    ok(!/onglet est ferme, rien ne tourne/i.test(v.foot) && !/garde sur cet appareil/i.test(v.foot),
+    ok(!/stops when you close the tab/i.test(v.foot) && !/kept on (?:the|this) device/i.test(v.foot),
        'et elle ne promet plus le contraire, qui etait vrai de l ancienne version');
 
     const fr = await page.evaluate(() => {
@@ -1552,12 +1552,12 @@ async function auditDesVetos() {
        etat complet — mais SA derniere lecture de la chaine a echoue. Sans
        cela, l'ecran montrerait des chiffres immobiles avec un pouls vert. */
     const { page, boum } = await ouvre(nav, port,
-      { vue: vueFausse({ erreur: 'aucun jeton neuf assez liquide' }) });
+      { vue: vueFausse({ erreur: 'no new token liquid enough' }) });
     const v = await lit(page);
     console.log('   ' + JSON.stringify({ stamp: v.stamp, tag: v.tag.slice(0, 70) }));
-    ok(/lecture en echec/.test(v.stamp), 'la pastille porte l echec du serveur');
+    ok(/read failed/.test(v.stamp), 'la pastille porte l echec du serveur');
     ok(/stale/.test(v.stampCls), 'et passe en perime');
-    ok(/aucun jeton neuf assez liquide/.test(v.tag),
+    ok(/no new token liquid enough/.test(v.tag),
        'la raison du serveur est reprise mot pour mot, pas resumee en « erreur »');
     ok(/1,1[78]/.test(v.bal),
        'la tresorerie deja lue reste affichee : elle est vraie, elle est juste datee (' + v.bal + ')');

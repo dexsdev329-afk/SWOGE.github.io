@@ -105,7 +105,7 @@ video{ max-width:100%; }
 
 <!-- Sans icone declaree, l onglet retombe sur le favicon du site — celui du
      blackjack — et SWOGE Bet s ouvrait sous le mauvais logo. -->
-<title>SWOGE Bet — sports betting in $SWOGE</title>
+<title>SWOGE Bet — sports betting in $SWOGEBET</title>
 
 <!-- ==================== REFERENCEMENT ET PARTAGE ====================
      Bloc identique sur toutes les pages, pose juste apres le titre.
@@ -129,16 +129,16 @@ video{ max-width:100%; }
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="SWOGE WORLD">
 <meta property="og:locale" content="en_US">
-<meta property="og:title" content="SWOGE Bet — sports betting in $SWOGE">
-<meta property="og:description" content="SWOGE Bet — back a football result with $SWOGE. Odds copied straight from the book, stake up to 100,000, paid out as soon as the match is settled.">
+<meta property="og:title" content="SWOGE Bet — sports betting in $SWOGEBET">
+<meta property="og:description" content="SWOGE Bet — back a football result with $SWOGEBET. Odds copied straight from the book, stake up to 100,000, paid out as soon as the match is settled.">
 <meta property="og:url" content="https://swoleeswoge.dog/swogebet.html">
 <meta property="og:image" content="https://swoleeswoge.dog/img/site/partage_bet.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@SwoleDogeSwoge">
-<meta name="twitter:title" content="SWOGE Bet — sports betting in $SWOGE">
-<meta name="twitter:description" content="SWOGE Bet — back a football result with $SWOGE. Odds copied straight from the book, stake up to 100,000, paid out as soon as the match is settled.">
+<meta name="twitter:title" content="SWOGE Bet — sports betting in $SWOGEBET">
+<meta name="twitter:description" content="SWOGE Bet — back a football result with $SWOGEBET. Odds copied straight from the book, stake up to 100,000, paid out as soon as the match is settled.">
 <meta name="twitter:image" content="https://swoleeswoge.dog/img/site/partage_bet.jpg">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="/img/site/icone-32.png">
@@ -146,15 +146,19 @@ video{ max-width:100%; }
 <link rel="manifest" href="/site.webmanifest">
 <meta name="theme-color" content="#1B5FE0">
 
-<meta name="description" content="SWOGE Bet — back a football result with $SWOGE. Odds copied straight from the book, stake up to 100,000, paid out as soon as the match is settled.">
+<meta name="description" content="SWOGE Bet — back a football result with $SWOGEBET. Odds copied straight from the book, stake up to 100,000, paid out as soon as the match is settled.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <!-- La bulle de staking. Chargee tot et SANS defer : elle enveloppe WebSocket
      pour ecouter ce qui passe deja, et doit donc etre en place avant que la page
      n ouvre sa connexion. -->
-<script src="stakebubble.js?v=8587907e"></script>
+<script src="stakebubble.js?v=338bbfa2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+<!-- `swogebuy.js` pose un bloc « Buy $SWOGE » sous le champ de depot. Ici le
+     depot est en $SWOGEBET : ce bloc ferait acheter le mauvais jeton au
+     mauvais endroit. Sa propre garde (`window.__swogeBuy`) le tient a l ecart. -->
+<script>window.__swogeBuy=true;</script>
 <script src="swogebuy.js?v=9d7c39e5"></script>
 <script src="https://sad.adsgram.ai/js/sad.min.js" async></script>
 <style>
@@ -2359,7 +2363,7 @@ main{ min-width:0; }
     <div class="sw-ch"><span class="ic">&#127942;</span><span><small>WINNINGS PAID</small><b data-n="rendus">&mdash;</b></span></div>
   </div>
   <nav class="sb-ancre">
-    <span class="chip"><span class="statusdot off" id="dot"></span><b id="bal">&mdash;</b> $SWOGE</span>
+    <span class="chip"><span class="statusdot off" id="dot"></span><b id="bal">&mdash;</b> $SWOGEBET</span>
   </nav>
   <!-- ---- LA RANGEE DE CONNEXION ENTRE DANS L EN-TETE ----
        Elle vivait sous la barre, et se collait en haut a droite au-dessus de
@@ -2541,7 +2545,8 @@ main{ min-width:0; }
   <div class="wrap c4wrap">
     <h1 class="c4-titre">SWOGE <span>BET</span></h1>
     <p class="c4-sous">Real fixtures, real odds &mdash; <b>copied straight from the book</b>
-      and locked in the moment you place your bet. Up to <b>100,000 $SWOGE</b> a slip.</p>
+      and locked in the moment you place your bet. Up to <b>100,000 $SWOGEBET</b> a slip.
+      Bets are played in <b>$SWOGEBET</b> only: deposit it in the bet vault, and winnings come back to it.</p>
 
 
     <div class="sb-wrap">
@@ -2604,7 +2609,7 @@ main{ min-width:0; }
 
           <div id="sbVueSlip">
           <div class="sb-jambes" id="sbJambes"></div>
-          <label class="sb-lb" for="sbMise">Stake ($SWOGE)</label>
+          <label class="sb-lb" for="sbMise">Stake ($SWOGEBET)</label>
           <input class="sb-mise" id="sbMise" type="number" inputmode="numeric" min="0" step="100" value="1000">
           <div class="sb-rapide" id="sbRapide"></div>
           <div class="sb-retour"><span>Returns</span><b id="sbRetour">&mdash;</b></div>
@@ -2676,8 +2681,9 @@ main{ min-width:0; }
            — 440 x 392, muet, 430 Ko — et son affiche est sa premiere image,
            donc le passage de l une a l autre ne se voit pas.
            Le bouton ne porte pas sa propre logique : il ouvre la rangee
-           « Deposit » du menu, la ou vit le bloc d achat de `swogebuy.js`, et
-           deplie ce bloc. Un seul chemin, comme « VIEW REWARDS ». -->
+           « Deposit » du menu — le panneau qui depose du $SWOGEBET dans le
+           coffre des paris, et qui dit ou en acheter quand on n en a pas.
+           Un seul chemin, comme « VIEW REWARDS ». -->
       <article class="uni">
         <video class="film" data-film="media/premier_pari.mp4"
                poster="img/site/premier_pari_poster.webp"
@@ -2731,7 +2737,8 @@ main{ min-width:0; }
   <div class="box" id="box-dep">
     <div class="pscroll">
     <div class="ptitle pt-deposit">Deposit</div>
-    <div class="note2">In your wallet: <b id="depSwoge">…</b> $SWOGE · <b id="depEth">…</b> ETH (RH)</div>
+    <div class="note2">In your wallet: <b id="depSwoge">…</b> $SWOGEBET · <b id="depEth">…</b> ETH (RH)</div>
+    <div class="note2" id="depOu">No $SWOGEBET yet? <a class="vif" href="https://dexscreener.com/robinhood/0xc12943975def537dace9d62d4762a8250501924e" target="_blank" rel="noopener">Buy it on DexScreener &#8599;</a> — this vault takes $SWOGEBET only.</div>
     <label>Amount</label>
     <input id="depAmt" inputmode="decimal" placeholder="e.g. 100" value="100">
     <div class="pcts">
@@ -2744,7 +2751,7 @@ main{ min-width:0; }
   <div class="box" id="box-wd">
     <div class="pscroll">
     <div class="ptitle pt-withdraw">Withdraw</div>
-    <div class="note2">Game balance: <b id="wdBal">…</b> $SWOGE · min <b id="wdMin">50</b></div>
+    <div class="note2">Bet balance: <b id="wdBal">…</b> $SWOGEBET · min <b id="wdMin">50</b></div>
     <label>Amount</label>
     <input id="wdAmt" inputmode="decimal" placeholder="e.g. 50">
     <div class="pcts">
@@ -2894,6 +2901,13 @@ main{ min-width:0; }
 
   var CHAIN={ id:4663, hex:"0x1237", name:"Robinhood Chain", rpc:"https://rpc.mainnet.chain.robinhood.com", scan:"https://robinhoodchain.blockscout.com", sym:"ETH" };
   var TOKEN="0x8a166Fb41Cd659a0a43396272FF73973Ce29F817", VAULT="", MIN_WITHDRAW="50";
+  /* ---- LE COFFRE DES PARIS, EN $SWOGEBET ----
+     « Qu on puisse jouer aux paris qu avec du SWOGEBET. » Cette page ne
+     depose, ne mise et ne retire que sur CE coffre-la (SwogeBetVault) : le
+     solde $SWOGE du casino n est plus jamais touche par un pari. Le serveur
+     donne l adresse dans `hello` ; tant qu elle est vide, le coffre n est
+     pas deploye et la page le dit au lieu d envoyer des jetons nulle part. */
+  var BET_TOKEN="0xc0aed547862fba5d7d9fbf3cb14204cd756c8bea", BET_VAULT="", BET_MIN_WITHDRAW="50", betBalance=0;
   var ERC20_ABI=["function approve(address,uint256) returns (bool)","function allowance(address,address) view returns (uint256)","function balanceOf(address) view returns (uint256)","function transfer(address,uint256) returns (bool)"];
   var VAULT_ABI=["function deposit(uint256)","function withdraw(uint256 cumulative,uint256 deadline,uint8 v,bytes32 r,bytes32 s)"];
   var provider=null, signer=null;
@@ -2912,7 +2926,11 @@ main{ min-width:0; }
 
   function toast(t){ var e=$("toast"); e.textContent=t; e.classList.add("show"); clearTimeout(e._t); e._t=setTimeout(function(){e.classList.remove("show");},2200); }
   function fmtBal(b){ b=parseFloat(b||0); return b>=1e9?(b/1e9).toFixed(2)+"B":b>=1e6?(b/1e6).toFixed(2)+"M":b>=1000?(b/1000).toFixed(1)+"k":b.toFixed(2); }
-  function setBalance(b){ balance=parseFloat(b||0); balEl.textContent=fmtBal(balance); }
+  /* Le compteur du haut montre le solde des PARIS. Le solde $SWOGE reste lu
+     pour le staking et les missions, mais il ne s affiche plus la ou l on
+     mise : un joueur qui lit 5 000 $SWOGE en haut croirait pouvoir les jouer. */
+  function setBalance(b){ balance=parseFloat(b||0); }
+  function setBetBalance(b){ betBalance=parseFloat(b||0); balEl.textContent=fmtBal(betBalance); }
   function setDot(on){ dot.className="statusdot "+(on?"on":"off"); }
   function showFair(f){ if(f&&f.serverSeedHash) fairEl.innerHTML="Provably fair · seed hash <b>"+String(f.serverSeedHash).slice(0,16)+"…</b> · nonce <b>"+f.nonce+"</b>"; }
 
@@ -3651,7 +3669,7 @@ main{ min-width:0; }
        + (p.id ? '<div class="sb-pid" data-id="'+sbEchappe(p.id)+'" title="Bet reference — tap to copy">'
                  +sbEchappe(p.id)+'</div>' : '')
        + lignes
-       + '<div class="sb-pf"><span>'+sbFmt(p.mise)+' $SWOGE</span>'
+       + '<div class="sb-pf"><span>'+sbFmt(p.mise)+' '+(p.jeton==='swogebet'?'$SWOGEBET':'$SWOGE')+'</span>'
        + '<span>'+(p.regle&&p.gagne ? 'won <b>'+sbFmt(p.rapport)+'</b>'
                   : p.regle&&p.gagne===null ? 'refunded <b>'+sbFmt(p.mise)+'</b>'
                   : p.regle ? 'lost'
@@ -3853,7 +3871,7 @@ main{ min-width:0; }
     if(!SB.panier.length) return;
     var v=Math.floor(Number($("sbMise").value)||0);
     var r=v>0 ? Math.floor(v*sbCote()) : 0;
-    $("sbRetour").textContent = r>0 ? sbFmt(r)+" $SWOGE" : "—";
+    $("sbRetour").textContent = r>0 ? sbFmt(r)+" $SWOGEBET" : "—";
     sbPeintTete();
     var trop=v>SB.max, peu=v<SB.min, gros=r>SB.gainMax;
     $("sbGo").disabled = trop || peu || gros || SB.busy;
@@ -3940,7 +3958,7 @@ main{ min-width:0; }
       if(m.type==="hello"){ sbDemande(); loginNonce=m.loginNonce; /* Le jeton de session evite de resigner : on le presente des que le nonce est connu. Le serveur repond soit par 'auth' — connecte, sans SDK ni signature — soit par 'resumeFailed'. */
         var reprise=false;
         (function(){ var j=null; try{ j=localStorage.getItem("swogeSession"); }catch(e){} if(j){ reprise=true; send({type:"resume", token:j, tgId:(typeof TG_ID!=="undefined"?TG_ID:null)}); } })();
-        if(m.vault)VAULT=m.vault; if(m.token)TOKEN=m.token; if(m.minWithdraw)MIN_WITHDRAW=m.minWithdraw; showFair({serverSeedHash:m.serverSeedHash,nonce:0});
+        if(m.vault)VAULT=m.vault; if(m.token)TOKEN=m.token; if(m.minWithdraw)MIN_WITHDRAW=m.minWithdraw; BET_VAULT=m.betVault||""; if(m.betToken)BET_TOKEN=m.betToken; if(m.betMinWithdraw)BET_MIN_WITHDRAW=String(m.betMinWithdraw); showFair({serverSeedHash:m.serverSeedHash,nonce:0});
         /* le nonce n'arrive qu'ici : on relance la session sauvegardee maintenant —
            mais seulement s'il n'y avait PAS de jeton a reprendre : sinon la
            signature partait EN MEME TEMPS que la reprise silencieuse, et le
@@ -3949,7 +3967,7 @@ main{ min-width:0; }
            rate, elle, appelle deja `doLogin()` depuis 'resumeFailed'. */
         if(myAddr && !reprise) doLogin(); }
       if(m.type==="resumeFailed"){ /* jeton perime ou revoque : on l oublie et on repart du chemin long */ try{ localStorage.removeItem("swogeSession"); }catch(e){} if(typeof autoReconnect==="function") autoReconnect(); else if(myAddr) doLogin(); return; }
-      else if(m.type==="auth"){ authed=true; myAddr=m.address; sbDemande(); if(m.session){ try{ localStorage.setItem("swogeSession",m.session); }catch(e){} } setBalance(m.balance); showPlay(); if(m.fairness) showFair(m.fairness);
+      else if(m.type==="auth"){ authed=true; myAddr=m.address; sbDemande(); if(m.session){ try{ localStorage.setItem("swogeSession",m.session); }catch(e){} } setBalance(m.balance); setBetBalance(m.betBalance); showPlay(); if(m.fairness) showFair(m.fairness);
         /* Il y avait ici trois demandes de duel recopiees d'une page de jeu :
            `send({type:"duelLobby", jeu:JEU})`. Or SWOGE Bet n'a pas de duel et
            ne definit pas JEU — la ligne levait donc une ReferenceError A CHAQUE
@@ -3958,7 +3976,8 @@ main{ min-width:0; }
            message de bienvenue. Rien ne le disait, la page avait juste l'air
            incomplete. */
         sbDemande(); if(m.stake) setStakeInfo(m.stake); if(m.quests) renderQuests(m.quests); if(m.bonus) renderBonus(m.bonus); if(m.welcomeGranted>0) toast("🎁 Welcome! +"+m.welcomeGranted+" $SWOGE to try"); }
-      else if(m.type==="balance"||m.type==="deposit"){ setBalance(m.balance); if(m.type==="deposit") toast("💰 Deposit credited"); }
+      else if(m.type==="balance"||m.type==="deposit"){ setBalance(m.balance); }
+      else if(m.type==="betBalance"||m.type==="betDeposit"){ setBetBalance(m.betBalance); if(m.type==="betDeposit") toast("💰 $SWOGEBET deposit credited"); }
       else if(m.type==="parisListe"){
         SB.sports=m.sports||[]; SB.matchs=m.matchs||[]; SB.mien=m.mesParis||[];
         SB.reprises=m.reprises||SB.reprises||{};
@@ -3974,18 +3993,21 @@ main{ min-width:0; }
         sbRend();
       }
       else if(m.type==="pariPose"){
-        if(m.balance!=null) setBalance(m.balance);
+        if(m.balance!=null) setBalance(m.balance); if(m.betBalance!=null) setBetBalance(m.betBalance);
         SB.matchs=m.matchs||SB.matchs; SB.mien=m.mesParis||SB.mien;
         /* Le pari est parti : le bulletin se vide, et le panneau bascule sur
            « My bets ». Le ticket qu'on vient d'envoyer reapparait la ou on
            l'a construit, au lieu de disparaitre sans laisser d'adresse. */
         SB.busy=false; SB.panier=[]; SB.masque=false; SB.replie=false;
         sbVue('mine'); sbRend(); sbMontre();
-        toast("✅ Bet placed · returns "+sbFmt(m.pari.rapport)+" $SWOGE");
+        toast("✅ Bet placed · returns "+sbFmt(m.pari.rapport)+" $SWOGEBET");
       }
-      else if(m.type==="need_deposit"){ setBalance(m.balance); busy=false; toast("Not enough $SWOGE — deposit in the Pusher"); }
+      else if(m.type==="need_deposit"){ setBalance(m.balance); busy=false; toast("Not enough $SWOGEBET — deposit some in the bet vault"); }
       else if(m.type==="error"){ busy=false; SB.busy=false; sbRecalc(); toast(m.error||"error"); }
-      else if(m.type==="voucher"){ setBalance(m.balance); submitWithdraw(m.voucher); }
+      /* Le bon dit QUEL coffre le paie : celui des paris (`coffre:"bet"`) ou
+         celui du $SWOGE. L adresse voyage avec lui, pour qu on n encaisse
+         jamais un bon sur le mauvais contrat. */
+      else if(m.type==="voucher"){ if(m.coffre==="bet") setBetBalance(m.betBalance); else setBalance(m.balance); submitWithdraw(Object.assign({vault:m.vault}, m.voucher)); }
       else if(m.type==="stakeInfo"){ setStakeInfo(m); }
       else if(m.type==="stakeUnstaked"){ setStakeInfo(m); toast("Unstaked "+fmtBig(m.returned)+" $SWOGE"+(parseFloat(m.penalty)>0?" (−"+fmtBig(m.penalty)+" penalty)":"")); }
       else if(m.type==="quests"){ renderQuests(m.quests); }
@@ -4071,7 +4093,7 @@ main{ min-width:0; }
     if(!authed){ toast("connect your wallet first"); doConnect(); return; }
     showBox(name);
     if(name==="dep") loadWalletBalances();
-    else if(name==="wd"){ $("wdBal").textContent=fmtBig(balance); $("wdMin").textContent=MIN_WITHDRAW; }
+    else if(name==="wd"){ $("wdBal").textContent=fmtBig(betBalance); $("wdMin").textContent=BET_MIN_WITHDRAW; }
     else if(name==="wallet") openAccount();
     else if(name==="stake"){ send({type:"stakeInfo"}); renderStake(); }
     else if(name==="quests"){ send({type:"quests"}); send({type:"bonusState"}); }
@@ -4126,25 +4148,26 @@ main{ min-width:0; }
   }
   async function needSigner(){ return await assureSigner(); }
   async function doDeposit(){
-    if(!(await needSigner())) return; if(!VAULT){ toast("server has no vault set"); return; }
+    if(!(await needSigner())) return; if(!BET_VAULT){ toast("the $SWOGEBET vault is not deployed yet"); return; }
     var s=($("depAmt").value||"").replace(",",".").trim(), amt;
     try{ amt=ethers.utils.parseUnits(s,18); }catch(e){ return toast("bad amount"); }
     if(amt.lte(0)) return toast("enter an amount");
     try{
-      var token=new ethers.Contract(TOKEN,ERC20_ABI,signer), vault=new ethers.Contract(VAULT,VAULT_ABI,signer);
-      var allow=await token.allowance(myAddr,VAULT);
-      if(allow.lt(amt)){ toast("approve $SWOGE…"); var ta=await token.approve(VAULT,ethers.constants.MaxUint256); await ta.wait(); }
+      var token=new ethers.Contract(BET_TOKEN,ERC20_ABI,signer), vault=new ethers.Contract(BET_VAULT,VAULT_ABI,signer);
+      var allow=await token.allowance(myAddr,BET_VAULT);
+      if(allow.lt(amt)){ toast("approve $SWOGEBET…"); var ta=await token.approve(BET_VAULT,ethers.constants.MaxUint256); await ta.wait(); }
       toast("depositing…"); var tx=await vault.deposit(amt); await tx.wait(); toast("✅ deposited — credits incoming"); closePanel();
     }catch(e){ toast("deposit: "+String(e.reason||e.message||e).slice(0,80)); }
   }
   function requestWithdraw(){
     var s=($("wdAmt").value||"").replace(",",".").trim();
-    if(!s||parseFloat(s)<parseFloat(MIN_WITHDRAW)) return toast("min "+MIN_WITHDRAW+" $SWOGE");
-    send({type:"withdraw",amount:s}); toast("requesting voucher…");
+    if(!BET_VAULT) return toast("the $SWOGEBET vault is not deployed yet");
+    if(!s||parseFloat(s)<parseFloat(BET_MIN_WITHDRAW)) return toast("min "+BET_MIN_WITHDRAW+" $SWOGEBET");
+    send({type:"betWithdraw",amount:s}); toast("requesting voucher…");
   }
   async function submitWithdraw(v){
     if(!(await needSigner())) return;
-    try{ var vault=new ethers.Contract(v.vault||VAULT,VAULT_ABI,signer); toast("confirm withdrawal…"); var tx=await vault.withdraw(v.cumulative,v.deadline,v.v,v.r,v.s); await tx.wait(); toast("✅ paid out to your wallet"); closePanel(); }
+    try{ var vault=new ethers.Contract(v.vault||BET_VAULT||VAULT,VAULT_ABI,signer); toast("confirm withdrawal…"); var tx=await vault.withdraw(v.cumulative,v.deadline,v.v,v.r,v.s); await tx.wait(); toast("✅ paid out to your wallet"); closePanel(); }
     catch(e){ toast("withdraw: "+String(e.reason||e.message||e).slice(0,80)); }
   }
   function openAccount(){
@@ -4173,23 +4196,27 @@ main{ min-width:0; }
   async function loadWalletBalances(){
     var lec=lecteurChaine(); if(!lec||!myAddr) return; var e="—", sw="—";
     try{ var b=await lec.getBalance(myAddr); e=(+ethers.utils.formatEther(b)).toFixed(5); }catch(x){}
-    try{ var t=new ethers.Contract(TOKEN,ERC20_ABI,lec), bb=await t.balanceOf(myAddr); walletSwoge=+ethers.utils.formatUnits(bb,18); sw=fmtBig(walletSwoge); }catch(x){}
+    var sb="—";
+    try{ var t=new ethers.Contract(TOKEN,ERC20_ABI,lec), bb=await t.balanceOf(myAddr); sw=fmtBig(+ethers.utils.formatUnits(bb,18)); }catch(x){}
+    /* Ce que le panneau de depot montre, c est le $SWOGEBET : c est lui qu on depose ici. */
+    try{ var tb=new ethers.Contract(BET_TOKEN,ERC20_ABI,lec), bbb=await tb.balanceOf(myAddr); walletSwoge=+ethers.utils.formatUnits(bbb,18); sb=fmtBig(walletSwoge); }catch(x){}
     ["acEth","depEth"].forEach(function(id){ var el=$(id); if(el) el.textContent=e; });
-    ["acSwoge","depSwoge"].forEach(function(id){ var el=$(id); if(el) el.textContent=sw; });
+    var ac=$("acSwoge"); if(ac) ac.textContent=sw;
+    var ds=$("depSwoge"); if(ds) ds.textContent=sb;
   }
   document.addEventListener("click",function(e){
     var t=e.target&&e.target.closest?e.target.closest(".pct"):null; if(!t) return;
     var pct=parseInt(t.getAttribute("data-pct"))||0; if(!pct) return;
     if(t.classList.contains("dpct")){
-      if(!(walletSwoge>0)){ toast("no $SWOGE in your wallet"); try{ loadWalletBalances(); }catch(x){} return; }
+      if(!(walletSwoge>0)){ toast("no $SWOGEBET in your wallet"); try{ loadWalletBalances(); }catch(x){} return; }
       $("depAmt").value=String(Math.floor(walletSwoge*pct/100*10000)/10000);
     } else if(t.classList.contains("spct")){
       if(!(balance>0)){ toast("no $SWOGE balance"); return; }
       $("stAmt").value=String(Math.floor(balance*pct/100*10000)/10000);
 
     } else if(t.classList.contains("wpct")){
-      if(!(balance>0)){ toast("no $SWOGE balance"); return; }
-      $("wdAmt").value=String(Math.floor(balance*pct/100*10000)/10000);
+      if(!(betBalance>0)){ toast("no $SWOGEBET balance"); return; }
+      $("wdAmt").value=String(Math.floor(betBalance*pct/100*10000)/10000);
     }
   });
   var stStaked=0,stPending=0,stAprBps=10000,stSyncMs=0,stLocked=0,stUnlocked=0,stNextUnlock=null,stPenaltyBps=5000,stLockDays=365;
@@ -4542,22 +4569,18 @@ function renderBonus(b){ if(!b) return; bonusData=b;
     bouton.remove();
   }
   /* ---- « BUY NOW » PASSE PAR LA RANGEE « DEPOSIT » DU MENU ----
-     Le bloc d achat de `swogebuy.js` vit dans le panneau de depot, replie
-     sous le formulaire. Le bouton de la carte clique la rangee du menu — le
-     meme chemin que le menu, avec le meme refus poli quand on n est pas
-     connecte — puis deplie le bloc d achat si le panneau s est ouvert, parce
-     que c est pour lui qu on est venu. Il ne connait ni la boite ni le
-     formulaire : si `swogebuy.js` change sa tete, ce bouton n a rien a
-     savoir de plus que son identifiant. */
+     Le panneau de depot est celui du coffre des paris : il lit le $SWOGEBET
+     du portefeuille, le depose, et dit ou en acheter quand il n y en a pas.
+     Le bouton de la carte clique la rangee du menu — le meme chemin que le
+     menu, avec le meme refus poli quand on n est pas connecte. Il ne connait
+     ni la boite ni le formulaire : si le panneau change de tete, ce bouton
+     n a rien a savoir de plus que son identifiant. */
   var achat = document.getElementById("sbAcheter");
   var depot = document.querySelector('#menu a[data-panel="dep"]');
   if(achat && depot){
     achat.addEventListener("click", function(e){
       e.preventDefault();
       depot.click();
-      var tete = document.getElementById("swbTete"), corps = document.getElementById("swbCorps");
-      var boite = document.getElementById("box-dep");
-      if(tete && corps && boite && boite.classList.contains("show") && corps.classList.contains("plie")) tete.click();
     });
   } else if(achat){
     achat.remove();

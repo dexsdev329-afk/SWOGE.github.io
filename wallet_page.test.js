@@ -34,8 +34,12 @@ const JETONS_ECRITS = ((/var JETONS = \[([\s\S]*?)\n\];/.exec(SRC_PAGE) || ['', 
                        .match(/\{ cle:'/g) || []).length;
 const IDS_PONT = [...((/var CHAINES_PONT = \[([\s\S]*?)\n\];/.exec(SRC_PAGE) || ['', ''])[1])
                    .matchAll(/\bid:(\d+)/g)].map((m) => Number(m[1]));
-/* moins un : Ethereum est deja ecrit a la main, sous le nom `ethL1`. */
-const JETONS_ATTENDUS = JETONS_ECRITS + IDS_PONT.length - 1;
+/* moins un : Ethereum est deja ecrit a la main, sous le nom `ethL1`.
+   Et moins le SOL natif, releve dans la page lui aussi : il est dans la table
+   pour etre PAYE sur Solana, pas envoye — ce portefeuille ne sait pas encore
+   envoyer depuis Solana, et la liste du Send ne le propose donc pas. */
+const SOL_ECRIT = (/solNatif:true/.test(SRC_PAGE)) ? 1 : 0;
+const JETONS_ATTENDUS = JETONS_ECRITS + IDS_PONT.length - 1 - SOL_ECRIT;
 
 let n = 0, rates = 0;
 const ok = (c, m) => { n++; if (c) console.log('  ok   ' + m); else { rates++; console.log('  RATE ' + m); } };
@@ -4308,13 +4312,55 @@ function servir(q, r, f, type) {
     const arrivees = await page.evaluate(() =>
       [...document.querySelectorAll('#poChL [data-ch]')].map((b) => b.dataset.ch));
     console.log('   arrivees : ' + JSON.stringify(arrivees));
-    /* ---- SOLANA EST UNE ARRIVEE, PAS UN DEPART ----
-     * On ne sait pas y signer : la proposer comme chaine de depart serait
-     * une impasse, et l y trouver comme arrivee est exactement ce qu on veut. */
+    /* ---- SOLANA EST UNE ARRIVEE, ET UN DEPART ----
+     * « Dans From je peux choisir Solana, le jeton Solana ou mon memecoin
+     *   Solana a vendre, et de l autre cote ca met Solana dans To. »
+     * Elle etait interdite au depart tant qu on ne savait pas y signer. On y
+     * signe par le compte courriel et Jupiter fait la route : le depart la
+     * propose, et une fois choisie, l arrivee ne propose plus qu elle — cette
+     * page ne ponte pas depuis Solana. */
     ok(arrivees.indexOf('792703809') >= 0,
        'Solana est proposee A L ARRIVEE (' + arrivees.length + ' chaines)');
-    ok(listeCh.indexOf('792703809') < 0,
-       'et JAMAIS au depart : on ne sait pas y signer, ce serait une impasse');
+    ok(listeCh.indexOf('792703809') >= 0,
+       'et AU DEPART aussi : on y paie par Jupiter, signe par le compte courriel');
+    await page.evaluate(() => document.getElementById('poChFermer').click());
+    await page.waitForTimeout(300);
+    await page.click('#swChaineB');
+    await page.waitForTimeout(400);
+    await page.evaluate(() => {
+      const b = [...document.querySelectorAll('#poChL [data-ch]')].find((x) => /Solana/.test(x.textContent));
+      b.click(); });
+    await page.waitForTimeout(600);
+    const depuisSol = await page.evaluate(() => ({
+      de: document.getElementById('swDe').value,
+      deNom: document.getElementById('swChaineNom').textContent,
+      versNom: document.getElementById('swVersChNom').textContent,
+      route: document.getElementById('swRoute').textContent,
+      etiq: document.getElementById('swDeL').textContent,
+    }));
+    console.log('   depart Solana : ' + JSON.stringify(depuisSol));
+    ok(depuisSol.de === 'sol' && depuisSol.deNom === 'Solana',
+       'Solana choisie au depart : la piece qui paie devient le SOL (' + depuisSol.de + ')');
+    ok(depuisSol.versNom === 'Solana',
+       'et l arrivee est posee sur Solana toute seule : un echange Solana reste sur Solana');
+    ok(/on Solana/.test(depuisSol.etiq), 'l etiquette dit d ou l on paie (« ' + depuisSol.etiq + ' »)');
+    await page.click('#swVersChB');
+    await page.waitForTimeout(400);
+    const arriveesSol = await page.evaluate(() =>
+      [...document.querySelectorAll('#poChL [data-ch]')].map((b) => b.dataset.ch));
+    ok(arriveesSol.length === 1 && arriveesSol[0] === '792703809',
+       'et la liste d en face ne propose plus que Solana (' + JSON.stringify(arriveesSol) + ')');
+    await page.evaluate(() => document.getElementById('poChFermer').click());
+    await page.waitForTimeout(300);
+    /* On revient au cas ordinaire pour la suite : payer avec son ETH (RH). */
+    await page.click('#swChaineB');
+    await page.waitForTimeout(400);
+    await page.evaluate(() => {
+      const b = [...document.querySelectorAll('#poChL [data-ch]')].find((x) => /Robinhood/.test(x.textContent));
+      b.click(); });
+    await page.waitForTimeout(600);
+    await page.click('#swVersChB');
+    await page.waitForTimeout(400);
 
     await page.evaluate(() => {
       const b = [...document.querySelectorAll('#poChL [data-ch]')].find((x) => /Solana/.test(x.textContent));
@@ -4533,9 +4579,16 @@ function servir(q, r, f, type) {
     const dg2 = liste.filter((x) => /^d8453-/.test(x.cle))[0];
     ok(!!dg2 && /Base/.test(dg2.ch),
        'chaque ligne d ailleurs porte sa chaine en clair (« ' + (dg2 || {}).ch + ' »)');
-    ok(!liste.some((x) => /^d792703809-/.test(x.cle)),
-       'et rien de Solana : cette page ne sait pas y signer, proposer d y payer serait '
-       + 'promettre un geste qui echouerait apres coup');
+    /* Un memecoin Solana detenu est dans la liste qui paie, LUI AUSSI : on
+       le revend sur Solana par Jupiter, signe par le compte courriel. Et il
+       porte sa chaine en clair, comme les lignes de Base. */
+    const sol2 = liste.filter((x) => /^d792703809-/.test(x.cle))[0];
+    ok(!sol2 || /Solana/.test(sol2.ch),
+       sol2 ? 'et le jeton Solana detenu y est aussi, avec sa chaine (« ' + sol2.ch + ' ») : '
+              + 'on le revend sur Solana, par Jupiter'
+            : 'aucun memecoin Solana detenu a cet instant : la liste n en invente pas');
+    ok(liste.some((x) => x.cle === 'sol'),
+       'et le SOL lui-meme est dans la liste qui paie : c est la piece de Solana');
 
     /* ---- ON CHOISIT LE JETON. LA CHAINE SUIT. ---- */
     await page.evaluate(() => {
@@ -5396,8 +5449,16 @@ function servir(q, r, f, type) {
                     mcAchat: 21000, mcMaintenant: 29500, veilleT: Date.now() - 20000,
                     score: 86, liens: [], pool: POOL,
                     logo: 'https://dd.dexscreener.com/ds-data/tokens/robinhood/pepe2.png' }],
-                  signaux: [{ k: 'vente', sym: 'WOOF', r: -12.4, t: Date.now() - 600000,
-                              adr: '0x2222222222222222222222222222222222222222' }] };
+                  /* Du plus recent au plus ancien, comme le serveur les sert : la
+                     vente de MOON, une vente orpheline, puis l'achat de MOON. */
+                  signaux: [{ k: 'vente', sym: 'MOON', r: 24.5, gain: 9.8, t: Date.now() - 2400000,
+                              adr: '0x3333333333333333333333333333333333333333',
+                              comment: 'Duration reached' },
+                            { k: 'vente', sym: 'WOOF', r: -12.4, t: Date.now() - 600000,
+                              adr: '0x2222222222222222222222222222222222222222' },
+                            { k: 'achat', sym: 'MOON', score: 71, mise: 40, mc: 8000,
+                              t: Date.now() - 3600000,
+                              adr: '0x3333333333333333333333333333333333333333' }] };
     const page = await nav.newPage({ viewport: { width: 430, height: 1000 } });
     const boum = [];
     page.on('pageerror', (e) => boum.push(String(e).slice(0, 160)));
@@ -5472,7 +5533,25 @@ function servir(q, r, f, type) {
       conseil: /not advice/i.test(document.getElementById('ecSignaux').textContent),
     }));
     console.log('   ' + JSON.stringify(v));
-    ok(v.n === 2, 'les positions ouvertes ET les signaux passes sont listes (' + v.n + ')');
+    /* ---- L ACHAT ET SA VENTE FONT UNE SEULE LIGNE ----
+     * « "bought 13 hours" et rien d autre » : la vente etait sur une autre
+     * ligne, sous un autre libelle. Trois signaux, deux operations : la
+     * position ouverte, l operation MOON complete, et la vente orpheline. */
+    ok(v.n === 3, 'les positions ouvertes ET les operations passees sont listees (' + v.n + ')');
+    const moon = await page.evaluate(() => {
+      const l = [...document.querySelectorAll('#sgListe .sg')]
+        .find((x) => /MOON/.test((x.querySelector('.sg-tx b') || {}).textContent || ''));
+      if (!l) return null;
+      return { sous: (l.querySelector('.sg-tx small') || {}).textContent || '',
+               r: (l.querySelector('.sg-r') || {}).textContent || '',
+               etq: (l.querySelector('.sg-etq') || {}).textContent || '' };
+    });
+    console.log('   MOON : ' + JSON.stringify(moon));
+    ok(!!moon && /bought (60 min|1 h) ago/.test(moon.sous) && /sold after 20 min/.test(moon.sous),
+       'la ligne dit quand on est entre ET combien de temps on a tenu (« ' + (moon || {}).sous + ' »)');
+    ok(!!moon && /Duration reached/.test(moon.sous), 'et pourquoi on est sorti');
+    ok(!!moon && /\+24\.5%/.test(moon.r) && moon.etq === 'sold',
+       'avec le rendement de l operation, sur la ligne de l achat et non trois lignes plus haut');
     ok(/21,000/.test(v.sous) && /29,500/.test(v.sous),
        'la capitalisation d ACHAT et celle du MOMENT sont montrees ensemble — c est leur '
        + 'ecart qui dit quelque chose (« ' + v.sous + ' »)');
@@ -5515,8 +5594,8 @@ function servir(q, r, f, type) {
       };
     });
     console.log('   ' + JSON.stringify(lg));
-    ok(lg.n === 2 && lg.aEstLien === 'A',
-       'chaque signal porte une pastille, et elle est un lien');
+    ok(lg.n === 3 && lg.aEstLien === 'A',
+       'chaque ligne porte une pastille, et elle est un lien (' + lg.n + ' lignes)');
     ok(/dexscreener\.com/.test(lg.href) && /aaaabbbb/.test(lg.href),
        'qui mene a DexScreener, sur la PAIRE du jeton concerne (« ' + lg.href + ' »)');
     ok(lg.cible === '_blank' && /noopener/.test(lg.rel),

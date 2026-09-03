@@ -7878,6 +7878,25 @@
       'justify-content:center;box-shadow:0 8px 24px rgba(11,27,54,0.18);' +
       'transition:transform .15s,border-color .15s;}' +
       '.swdb:hover{transform:translateY(-2px);border-color:#FFC53D;}' +
+      /* ---- ET LE PORTEFEUILLE, JUSTE AU-DESSUS ----
+       * « Rajoute un bouton rond en plus qui ouvre le wallet, comme ca on y a
+       *   acces tout le temps sur toutes les pages. »
+       * Le meme rond que « VS », pose A SA GAUCHE, sur la meme ligne : meme
+       * taille, meme marge, meme calcul avec la barre du bas. A sa gauche et
+       * non au-dessus : la bande du bas est deja celle de « VS », que les
+       * tiroirs et les panneaux savent eviter ; un rond plus haut recouvrait
+       * une rangee du tiroir de profil, et le clic partait vers le
+       * portefeuille au lieu d ouvrir la rangee. C est un LIEN, pas un bouton
+       * a logique : il mene a la page du portefeuille, ou vivent les deux
+       * coffres. Il ne se pose pas sur cette page-la — un bouton qui mene a
+       * l endroit ou l on est deja est une invitation a ne pas bouger. */
+      '.swwb{position:fixed;right:calc(16px + 56px + 12px);bottom:calc(var(--swbb-h,0px) + 16px);' +
+      'z-index:99998;width:56px;height:56px;border-radius:50%;cursor:pointer;' +
+      'border:1px solid rgba(27,95,224,.55);text-decoration:none;' +
+      'background:linear-gradient(180deg,rgba(244,247,252,.96),rgba(255,255,255,.98));' +
+      'font-size:24px;line-height:1;display:flex;align-items:center;justify-content:center;' +
+      'box-shadow:0 8px 24px rgba(11,27,54,0.18);transition:transform .15s,border-color .15s;}' +
+      '.swwb:hover{transform:translateY(-2px);border-color:#FFC53D;}' +
       '.swdb .swdn{position:absolute;top:-3px;right:-3px;min-width:20px;height:20px;padding:0 5px;' +
       'border-radius:999px;display:flex;align-items:center;justify-content:center;' +
       'font-family:inherit;font-size:11px;font-weight:900;color:#07101F;background:#16D97F;' +
@@ -7948,8 +7967,24 @@
       'font-size:11px;line-height:1.6;color:#5F6E88;}' +
       '.swdp .pied a{color:#1B5FE0;text-decoration:none;}' +
       '@media (max-width:520px){.swdb{width:48px;height:48px;font-size:20px;right:12px;' +
+      'bottom:calc(var(--swbb-h,0px) + 12px);}' +
+      '.swwb{width:48px;height:48px;font-size:21px;right:calc(12px + 48px + 10px);' +
       'bottom:calc(var(--swbb-h,0px) + 12px);}}';
     document.head.appendChild(c);
+  }
+
+  /* Le rond du portefeuille, au-dessus de « VS ». Voir la note du style. */
+  var walletBtn = null;
+  function walletMonte() {
+    if (walletBtn || !document.body) return;
+    if (/swoge_wallet\.html$/i.test(String(location.pathname || ''))) return;
+    walletBtn = document.createElement('a');
+    walletBtn.className = 'swwb';
+    walletBtn.href = 'swoge_wallet.html';
+    walletBtn.title = 'Open your wallet';
+    walletBtn.setAttribute('aria-label', 'Open your wallet');
+    walletBtn.innerHTML = '\uD83D\uDC5B';
+    document.body.appendChild(walletBtn);
   }
 
   function duelsMonte() {
@@ -7963,6 +7998,7 @@
     duelsBtn.innerHTML = 'VS';
     duelsBtn.addEventListener('click', function () { duelsBascule(); });
     document.body.appendChild(duelsBtn);
+    walletMonte();
     /* Elle reste visible meme quand personne n'attend. Une bulle qui
        n'apparait qu'en cas de table ouverte, personne ne sait qu'elle
        existe — et personne n'ouvre donc de table. */

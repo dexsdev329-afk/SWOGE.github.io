@@ -68,7 +68,7 @@
      A savoir : cela ne sauve pas la page DEJA en cache chez quelqu'un, qui ne
      contient pas ces lignes. Ce garde-fou vaut a partir de celle-ci. -->
 <script>
-var MARQUE_PAGE = '2d1243ab';
+var MARQUE_PAGE = '35f6c740';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -425,6 +425,10 @@ body{
   background:var(--carte); border:1px solid var(--bord); border-radius:var(--rayon);
   padding:16px; margin-bottom:8px;
 }
+.wl-onglets{display:flex;gap:6px;margin:0 0 10px}
+.wl-onglets button{flex:1;padding:9px 6px;border-radius:11px;border:1px solid rgba(11,27,54,.12);
+  background:rgba(11,27,54,.04);color:#5F6E88;font:800 12px/1.2 inherit;font-family:inherit;cursor:pointer}
+.wl-onglets button.on{background:#fff;color:#0B1B36;border-color:#1B5FE0;box-shadow:0 1px 2px rgba(11,27,54,.06)}
 .wl-total{ text-align:left }
 .wl-total small{ display:block; font:700 11px/1 'Archivo',sans-serif; color:var(--doux);
   letter-spacing:1px; margin-bottom:8px }
@@ -2229,8 +2233,18 @@ a.sg-logo:focus-visible{ outline:2px solid var(--accent); outline-offset:2px }
       <h1>Casino</h1>
     </div>
     <div class="wl-corps">
+      <!-- ---- DEUX SOLDES, DEUX COFFRES ----
+           « SWOGE est pour les jeux casino et SWOGEBET pour les paris, donc on
+           a deux soldes differents. » Le $SWOGE va au coffre du casino ; le
+           $SWOGEBET au coffre des paris (SwogeBetVault). L ecran est le meme,
+           on choisit lequel des deux il regarde — depot, retrait, bon en
+           attente suivent. -->
+      <div class="wl-onglets" id="caOnglets">
+        <button type="button" class="on" data-coffre="swoge">&#127920; Casino &middot; $SWOGE</button>
+        <button type="button" data-coffre="bet">&#9917; Bets &middot; $SWOGEBET</button>
+      </div>
       <div class="wl-carte wl-total">
-        <small>IN THE GAME VAULT</small>
+        <small id="caTitre">IN THE GAME VAULT</small>
         <b id="caSolde">—</b>
         <div class="sous" id="caEtat">Not connected</div>
       </div>
@@ -2264,8 +2278,9 @@ a.sg-logo:focus-visible{ outline:2px solid var(--accent); outline-offset:2px }
         <div class="wl-rang"><span>In your wallet</span><b id="caDepSolde">—</b></div>
       </div>
       <button class="wl-b" id="caDeposer" type="button">Deposit to play</button>
-      <p class="wl-note">Moves $SWOGE from <b>this wallet</b> into your game balance. It stays
-        yours — you can pull it back out whenever you like.</p>
+      <p class="wl-note">Moves <b class="caJeton">$SWOGE</b> from <b>this wallet</b> into your
+        <span class="caQuoi">casino</span> balance. It stays yours — you can pull it back out
+        whenever you like.</p>
 
       <div class="wl-titre">WITHDRAW</div>
       <div class="wl-carte">
@@ -2866,7 +2881,17 @@ var JETONS = [
   { cle:'swoge',    sym:'SWOGE',     nom:'Swole Doge',   adr:SWOGE,    dec:18,
     logo:'img/wallet/tok_swoge.webp' },
   { cle:'swogebet', sym:'SWOGEBET',  nom:'Swogebet',     adr:SWOGEBET, dec:18,
-    logo:'img/wallet/tok_swogebet.webp' }
+    logo:'img/wallet/tok_swogebet.webp' },
+  /* ---- LE SOL, POUR PAYER SUR SOLANA ----
+   * « Dans From je peux choisir Solana, le jeton Solana ou mon memecoin
+   *   Solana a vendre, et de l autre cote ca met Solana dans To. »
+   * Le SOL n etait qu une ligne a part (« My tokens »), pas un jeton de la
+   * table : on ne pouvait donc pas le CHOISIR pour payer. Le voici, avec le
+   * mint du SOL enveloppe — c est celui que Jupiter attend — et une marque
+   * `solNatif` : son solde se lit par `getBalance`, pas par un compte SPL,
+   * et la ligne des jetons continue de le montrer une seule fois. */
+  { cle:'sol', sym:'SOL', nom:'Solana', adr:'So11111111111111111111111111111111111111112', dec:9,
+    logo:'img/wallet/ch/solana.webp', natif:true, solNatif:true, chaine:792703809 }
 ];
 function J(cle){ for(var i=0;i<JETONS.length;i++) if(JETONS[i].cle===cle) return JETONS[i]; return null; }
 
@@ -3414,8 +3439,30 @@ var CASINO = {
   solde: null,               // en $SWOGE, ou null = INCONNU (jamais zero)
   vault: null, jeton: null, minRetrait: null,
   bonEnAttente: null,        // un retrait autorise mais pas encaisse
+  /* Le coffre des PARIS, en $SWOGEBET : meme forme, autre contrat, autre
+     solde. `coffre` dit lequel des deux l'ecran regarde. */
+  betSolde: null, betVault: null, betJeton: null, betMinRetrait: null, betBonEnAttente: null,
+  coffre: 'swoge',
   nonce: null, note: '',
 };
+/* Ce que l'ecran regarde, sous une seule forme : solde, coffre, jeton,
+   minimum, bon en attente et libelle — pour que chaque geste lise la meme
+   chose au meme endroit au lieu de tester `coffre` partout. */
+function caCoffre(){
+  var bet = CASINO.coffre === 'bet';
+  return {
+    bet: bet, sym: bet ? '$SWOGEBET' : '$SWOGE', cle: bet ? 'swogebet' : 'swoge',
+    solde: bet ? CASINO.betSolde : CASINO.solde,
+    vault: bet ? CASINO.betVault : CASINO.vault,
+    jetonAdr: bet ? SWOGEBET : SWOGE,
+    minRetrait: bet ? CASINO.betMinRetrait : CASINO.minRetrait,
+    bon: bet ? CASINO.betBonEnAttente : CASINO.bonEnAttente,
+    quoi: bet ? 'bets' : 'casino',
+    retrait: bet ? 'betWithdraw' : 'withdraw',
+    attente: bet ? 'betWithdrawPending' : 'withdrawPending',
+    resigne: bet ? 'betWithdrawVoucher' : 'withdrawVoucher',
+  };
+}
 
 function casinoJeton(){ try{ return localStorage.getItem('swogeSession') || null; }catch(e){ return null; } }
 function casinoGardeJeton(t){ try{ if(t) localStorage.setItem('swogeSession', t); }catch(e){} }
@@ -3471,6 +3518,13 @@ function casinoOuvre(surPret){
       CASINO.jeton = m.token || null;
       CASINO.minRetrait = (m.minWithdraw !== undefined && m.minWithdraw !== null)
         ? Number(m.minWithdraw) : null;
+      /* Le coffre des paris, meme verification. `null` tant qu'il n'est pas
+         deploye : l'onglet le dit, au lieu d'envoyer des jetons nulle part. */
+      var vb = m.betVault ? String(m.betVault).toLowerCase() : null;
+      CASINO.betVault = (vb && ethers.utils.isAddress(vb)) ? vb : null;
+      CASINO.betJeton = m.betToken || null;
+      CASINO.betMinRetrait = (m.betMinWithdraw !== undefined && m.betMinWithdraw !== null)
+        ? Number(m.betMinWithdraw) : null;
       /* Le jeton d'abord : il evite d'ouvrir le portefeuille. */
       var t = casinoJeton();
       if(t) casinoEnvoie({ type:'resume', token:t });
@@ -3493,18 +3547,26 @@ function casinoOuvre(surPret){
       CASINO.etat = 'pret'; CASINO.note='';
       if(m.session) casinoGardeJeton(m.session);
       if(m.balance !== undefined) CASINO.solde = parseFloat(m.balance);
+      if(m.betBalance !== undefined) CASINO.betSolde = parseFloat(m.betBalance);
       peintCasino(); peintAccueil();
-      /* Y a-t-il un bon non encaisse ? Cette route ne signe rien. */
+      /* Y a-t-il un bon non encaisse, sur l'un ou l'autre coffre ? Ces routes
+         ne signent rien. */
       casinoEnvoie({ type:'withdrawPending' });
+      casinoEnvoie({ type:'betWithdrawPending' });
       if(surPret) surPret();
       return;
     }
     if(m.type === 'balance' && m.balance !== undefined){
       CASINO.solde = parseFloat(m.balance); peintCasino(); peintAccueil(); return;
     }
+    if(m.type === 'betBalance' || m.type === 'betDeposit'){
+      if(m.betBalance !== undefined) CASINO.betSolde = parseFloat(m.betBalance);
+      peintCasino(); peintAccueil(); return;
+    }
     if(m.type === 'bonAttente'){
       var v = parseFloat(m.montant || '0');
-      CASINO.bonEnAttente = v > 0 ? v : null;
+      if(m.coffre === 'bet') CASINO.betBonEnAttente = v > 0 ? v : null;
+      else CASINO.bonEnAttente = v > 0 ? v : null;
       peintCasino(); return;
     }
     if(m.type === 'voucher'){ encaisseBon(m); return; }
@@ -3516,6 +3578,9 @@ function casinoOuvre(surPret){
        ou il passe, c'est ce qui garde le chiffre frais sans rien demander. */
     if(m.balance !== undefined && m.balance !== null){
       CASINO.solde = parseFloat(m.balance); peintCasino(); peintAccueil();
+    }
+    if(m.betBalance !== undefined && m.betBalance !== null){
+      CASINO.betSolde = parseFloat(m.betBalance); peintCasino(); peintAccueil();
     }
   };
   ws.onclose = function(){
@@ -3940,7 +4005,8 @@ async function rafraichit(discret){
        Et Solana n'a pas de fournisseur facon Ethereum : son solde se demande
        autrement, mais il se range au meme endroit. */
     var pr = j.chaine ? lecPont(chaineDuPont(j.chaine)) : lec();
-    var lu = (j.chaine === SOL_CHAINE) ? soldeSpl(j.adr, j.dec)
+    var lu = j.solNatif ? soldeSolNatifBN()
+           : (j.chaine === SOL_CHAINE) ? soldeSpl(j.adr, j.dec)
            : j.natif ? pr.getBalance(qui)
            : erc(j.adr, false, pr).balanceOf(qui);
     return borne(lu, 12000, 'balance')
@@ -4213,6 +4279,7 @@ function peintAccueil(){
      *   - et ce solde vaut zero.
      * Il reste dans les listes de l'echange : c'est justement la qu'on va pour
      * en acheter. */
+    if(j.solNatif) continue;   /* `ligneSolana` le montre deja, avec son solde */
     if(j.perso && s !== null && s !== undefined && s.isZero()){ caches++; continue; }
     /* ---- LES SEPT CHAINES DU PONT NE TIENNENT PAS SEPT LIGNES VIDES ----
      * Elles existent pour qu'un solde parti par le pont se retrouve. Tant
@@ -4449,9 +4516,24 @@ function peintCasino(){
   /* ---- INCONNU N'EST PAS ZERO ----
      Tant que le serveur n'a pas repondu, on ne montre pas « 0 » : sur un
      solde, ce chiffre-la se lit comme « tu n'as plus rien ». */
-  var aff = (pret && CASINO.solde !== null) ? nombre(ethers.utils.parseUnits(String(CASINO.solde),18),18) : '—';
-  var el = $('caSolde'); if(el) el.textContent = aff + (aff === '—' ? '' : ' $SWOGE');
-  var ac = $('acCasinoVal'); if(ac) ac.textContent = aff;
+  var C = caCoffre();
+  var f = function(v){ return (pret && v !== null && v !== undefined) ? nombre(ethers.utils.parseUnits(String(v),18),18) : '—'; };
+  var aff = f(C.solde);
+  var el = $('caSolde'); if(el) el.textContent = aff + (aff === '—' ? '' : ' ' + C.sym);
+  var ti = $('caTitre'); if(ti) ti.textContent = C.bet ? 'IN THE BET VAULT' : 'IN THE GAME VAULT';
+  /* La ligne du compte porte LES DEUX : un joueur qui a du $SWOGEBET et lit
+     seulement son $SWOGE croirait le reste perdu. */
+  var ac = $('acCasinoVal');
+  if(ac){
+    var affBet = f(CASINO.betSolde);
+    ac.textContent = aff + (affBet === '—' && aff === '—' ? '' : ' $SWOGE · ' + affBet + ' $SWOGEBET');
+  }
+  var sous = $('acCasinoSous'); if(sous) sous.textContent = 'Casino in $SWOGE · bets in $SWOGEBET';
+  [].forEach.call(document.querySelectorAll('#caOnglets button'), function(b){
+    b.classList.toggle('on', b.getAttribute('data-coffre') === CASINO.coffre);
+  });
+  [].forEach.call(document.querySelectorAll('.caJeton'), function(e){ e.textContent = C.sym; });
+  [].forEach.call(document.querySelectorAll('.caQuoi'), function(e){ e.textContent = C.quoi; });
 
   var etat = $('caEtat');
   if(etat) etat.textContent = !moi ? 'Not connected'
@@ -4463,22 +4545,37 @@ function peintCasino(){
   if(pied) pied.textContent = !moi ? '—'
     : CASINO.etat === 'refuse' ? 'unknown' : (pret ? 'tap to open' : 'tap to open');
 
-  var sw = soldes.swoge;
+  var sw = soldes[C.cle];
   var ds = $('caDepSolde');
-  if(ds) ds.textContent = (sw === null || sw === undefined) ? '—' : nombre(sw,18) + ' $SWOGE';
+  if(ds) ds.textContent = (sw === null || sw === undefined) ? '—' : nombre(sw,18) + ' ' + C.sym;
   var mn = $('caRetMin');
-  if(mn) mn.textContent = CASINO.minRetrait === null ? '—' : ddNombre(CASINO.minRetrait) + ' $SWOGE';
+  if(mn) mn.textContent = C.minRetrait === null ? '—' : ddNombre(C.minRetrait) + ' ' + C.sym;
 
   var bb = $('caBonBloc');
   if(bb){
-    bb.hidden = !CASINO.bonEnAttente;
-    if(CASINO.bonEnAttente) $('caBonMontant').textContent = ddNombre(CASINO.bonEnAttente) + ' $SWOGE';
+    bb.hidden = !C.bon;
+    if(C.bon) $('caBonMontant').textContent = ddNombre(C.bon) + ' ' + C.sym;
   }
   var d = $('caDeposer'), r = $('caRetirer');
   if(d) d.disabled = !moi;
   if(r) r.disabled = !pret;
+  /* Le coffre des paris n'est pas encore deploye : on le dit a la place du
+     solde, plutot que de laisser un bouton qui enverrait des jetons nulle part. */
+  if(C.bet && pret && !CASINO.betVault && !CASINO.note && etat)
+    etat.textContent = 'The $SWOGEBET vault is not deployed yet — bets cannot be funded for now.';
 }
 function ddNombre(n){ return (Number(n)||0).toLocaleString('en-US',{maximumFractionDigits:2}); }
+/* Choisir le coffre. Les champs se vident : un montant tape pour l'un n'a
+   aucune raison de valoir pour l'autre. */
+document.addEventListener('click', function(ev){
+  var b = ev.target.closest && ev.target.closest('#caOnglets button');
+  if(!b) return;
+  CASINO.coffre = b.getAttribute('data-coffre') === 'bet' ? 'bet' : 'swoge';
+  var d = $('caDepMontant'), r = $('caRetMontant');
+  if(d) d.value = ''; if(r) r.value = '';
+  caNote('');
+  peintCasino();
+});
 
 /* ---- LE DEPOT ----
  * Deux transactions la premiere fois : autoriser le coffre, puis deposer.
@@ -4487,28 +4584,30 @@ function ddNombre(n){ return (Number(n)||0).toLocaleString('en-US',{maximumFract
  * ferait payer deux fois le gaz a chaque fois. */
 $('caDeposer').addEventListener('click', async function(){
   if(!moi) return ouvreConnexion();
-  if(!CASINO.vault) { caNote('No usable vault address from the game server — deposits are off.', 'grave'); return; }
+  var C = caCoffre();
+  if(!C.vault) { caNote(C.bet ? 'The $SWOGEBET vault is not deployed yet — bet deposits are off.'
+                            : 'No usable vault address from the game server — deposits are off.', 'grave'); return; }
   var t = ($('caDepMontant').value||'').trim().replace(',','.');
   if(!(parseFloat(t) > 0)) return toast('Enter an amount');
   var wei; try{ wei = ethers.utils.parseUnits(t, 18); }catch(e){ return toast('Amount not understood'); }
-  if(soldes.swoge && wei.gt(soldes.swoge)) return toast('More $SWOGE than you hold');
+  if(soldes[C.cle] && wei.gt(soldes[C.cle])) return toast('More ' + C.sym + ' than you hold');
 
   var b = this; b.disabled = true; var lib = b.textContent;
   try{
     await assureChaine();
-    var jeton = erc(SWOGE, true);
-    var coffre = new ethers.Contract(CASINO.vault, VAULT_ABI, signer);
-    var acc = await borne(jeton.allowance(moi, CASINO.vault), 12000, 'allowance');
+    var jeton = erc(C.jetonAdr, true);
+    var coffre = new ethers.Contract(C.vault, VAULT_ABI, signer);
+    var acc = await borne(jeton.allowance(moi, C.vault), 12000, 'allowance');
     if(acc.lt(wei)){
       b.textContent = 'Approve in your wallet…';
-      caNote('Approve $SWOGE for the vault — asked once, not on every deposit.');
-      var ta = await jeton.approve(CASINO.vault, ethers.constants.MaxUint256);
+      caNote('Approve ' + C.sym + ' for the vault — asked once, not on every deposit.');
+      var ta = await jeton.approve(C.vault, ethers.constants.MaxUint256);
       await ta.wait();
     }
     b.textContent = 'Confirm the deposit…';
     caNote('Depositing…');
     var tx = await coffre.deposit(wei);
-    journalAjoute({ h:tx.hash, k:'depot', cle:'swoge', montant:wei.toString() });
+    journalAjoute({ h:tx.hash, k:'depot', cle:C.cle, montant:wei.toString() });
     caNote('Sent — waiting for the chain…');
     await tx.wait();
     /* Le serveur crediteur regarde la chaine : le solde du jeu suit avec un
@@ -4516,23 +4615,24 @@ $('caDeposer').addEventListener('click', async function(){
     caNote('Deposited. Your game balance updates as soon as the server sees it.');
     $('caDepMontant').value='';
     rafraichit();
-    setTimeout(function(){ casinoEnvoie({ type:'balance' }); }, 3000);
+    setTimeout(function(){ casinoEnvoie({ type: C.bet ? 'betBalance' : 'balance' }); }, 3000);
   }catch(e){ caNote(pourquoiRefus(e), 'grave'); }
   b.textContent = lib; b.disabled = false;
 });
 
 MAX_DU_CHAMP.caDepMontant = function(){
-  var s = soldes.swoge;
-  if(s === null || s === undefined) return toast('Your $SWOGE balance has not been read yet — it is unknown, not zero.');
-  if(s.isZero()) return toast('No $SWOGE in this wallet to deposit.');
+  var C = caCoffre(), s = soldes[C.cle];
+  if(s === null || s === undefined) return toast('Your ' + C.sym + ' balance has not been read yet — it is unknown, not zero.');
+  if(s.isZero()) return toast('No ' + C.sym + ' in this wallet to deposit.');
   $('caDepMontant').value = ethers.utils.formatUnits(s, 18);
   DERNIER_MAX.caDepMontant = $('caDepMontant').value;
   majMontant('caDepMontant');
 };
 $('caDepMax').addEventListener('click', function(){ MAX_DU_CHAMP.caDepMontant(); });
 MAX_DU_CHAMP.caRetMontant = function(){
-  if(CASINO.solde === null) return toast('Your game balance is unknown right now.');
-  $('caRetMontant').value = String(CASINO.solde);
+  var C = caCoffre();
+  if(C.solde === null || C.solde === undefined) return toast('Your ' + C.quoi + ' balance is unknown right now.');
+  $('caRetMontant').value = String(C.solde);
   DERNIER_MAX.caRetMontant = $('caRetMontant').value;
   majMontant('caRetMontant');
 };
@@ -4547,12 +4647,14 @@ $('caRetirer').addEventListener('click', function(){
   var t = ($('caRetMontant').value||'').trim().replace(',','.');
   var v = parseFloat(t);
   if(!(v > 0)) return toast('Enter an amount');
-  if(CASINO.minRetrait !== null && v < CASINO.minRetrait)
-    return caNote('Minimum withdrawal is ' + ddNombre(CASINO.minRetrait) + ' $SWOGE.', 'alerte');
-  if(CASINO.solde !== null && v > CASINO.solde)
-    return caNote('More than your game balance.', 'alerte');
+  var C = caCoffre();
+  if(C.bet && !CASINO.betVault) return caNote('The $SWOGEBET vault is not deployed yet.', 'grave');
+  if(C.minRetrait !== null && v < C.minRetrait)
+    return caNote('Minimum withdrawal is ' + ddNombre(C.minRetrait) + ' ' + C.sym + '.', 'alerte');
+  if(C.solde !== null && C.solde !== undefined && v > C.solde)
+    return caNote('More than your ' + C.quoi + ' balance.', 'alerte');
   caNote('Asking the server for a voucher…');
-  if(!casinoEnvoie({ type:'withdraw', amount: t }))
+  if(!casinoEnvoie({ type: C.retrait, amount: t }))
     caNote('Not connected to the game server — try again in a moment.', 'grave');
 });
 
@@ -4560,9 +4662,14 @@ $('caRetirer').addEventListener('click', function(){
 async function encaisseBon(m){
   var v = m.voucher || m;
   if(!v) return;
+  /* Le bon dit quel coffre le paie ; on bascule l'ecran dessus, pour que ce
+     qui s'affiche soit ce qui se passe. */
+  var bet = m.coffre === 'bet';
+  CASINO.coffre = bet ? 'bet' : 'swoge';
   if(m.balance !== undefined) CASINO.solde = parseFloat(m.balance);
+  if(m.betBalance !== undefined) CASINO.betSolde = parseFloat(m.betBalance);
   var vr = m.vault ? String(m.vault).toLowerCase() : null;
-  var adresseCoffre = (vr && ethers.utils.isAddress(vr)) ? vr : CASINO.vault;
+  var adresseCoffre = (vr && ethers.utils.isAddress(vr)) ? vr : (bet ? CASINO.betVault : CASINO.vault);
   peintCasino();
   if(!adresseCoffre){
     caNote('No usable vault address — the withdrawal is still yours, claim it once the server '
@@ -4574,27 +4681,27 @@ async function encaisseBon(m){
     caNote('Confirm the withdrawal in your wallet…');
     var coffre = new ethers.Contract(adresseCoffre, VAULT_ABI, signer);
     var tx = await coffre.withdraw(v.cumulative, v.deadline, v.v, v.r, v.s);
-    journalAjoute({ h:tx.hash, k:'retrait', cle:'swoge' });
+    journalAjoute({ h:tx.hash, k:'retrait', cle: bet ? 'swogebet' : 'swoge' });
     caNote('Sent — waiting for the chain…');
     await tx.wait();
     caNote('Paid to your wallet.');
-    CASINO.bonEnAttente = null;
+    if(bet) CASINO.betBonEnAttente = null; else CASINO.bonEnAttente = null;
     $('caRetMontant').value='';
     peintCasino(); rafraichit();
-    casinoEnvoie({ type:'withdrawPending' });
+    casinoEnvoie({ type: bet ? 'betWithdrawPending' : 'withdrawPending' });
   }catch(e){
     /* ---- LE MOMENT OU LE JOUEUR CROIT AVOIR PERDU ----
        Son solde de jeu vient de tomber et sa transaction a echoue. Le bon
        est cumulatif : le contrat paiera l'ecart au prochain encaissement.
        On le DIT, et on laisse le bouton. */
     caNote(pourquoiRefus(e) + ' — nothing is lost: the voucher is still yours and can be claimed below.', 'grave');
-    casinoEnvoie({ type:'withdrawPending' });
+    casinoEnvoie({ type: bet ? 'betWithdrawPending' : 'withdrawPending' });
   }
 }
 
 $('caBonClaim').addEventListener('click', function(){
   caNote('Asking the server to re-sign your voucher…');
-  if(!casinoEnvoie({ type:'withdrawVoucher' }))
+  if(!casinoEnvoie({ type: caCoffre().resigne }))
     caNote('Not connected to the game server — try again in a moment.', 'grave');
 });
 
@@ -5178,7 +5285,12 @@ function remplitChoix(sel, exclure){
     if(exclure && JETONS[i].cle===exclure) continue;
     var ch = JETONS[i].chaine;
     if(ch && ch !== CHAINE.id && !envoi && !paie) continue;
-    if(paie && ch === SOL_CHAINE) continue;
+    /* Le cote qui paie porte aussi Solana : le SOL et les memecoins qu on y
+       detient. Un jeton Solana choisi la force l arrivee sur Solana (voir le
+       `change` de `swDe`) : Jupiter n echange que d un cote a l autre de la
+       meme chaine, et cette page n y signe rien d autre. L envoi, lui, ne
+       propose pas le SOL : on ne sait pas encore l envoyer d ici. */
+    if(envoi && JETONS[i].solNatif) continue;
     var nomJ = JETONS[i].sym+' — '+JETONS[i].nom;
     h+='<option value="'+JETONS[i].cle+'">'+nomJ+'</option>';
   }
@@ -6899,6 +7011,13 @@ function sgQuand(t){
   if(s < 5400) return Math.round(s / 60) + ' min ago';
   return Math.round(s / 3600) + ' h ago';
 }
+/* Combien de temps une position a ete tenue, entre son achat et sa vente. */
+function sgDuree(ms){
+  var s = Math.max(0, ms / 1000);
+  if(s < 90) return Math.round(s) + 's';
+  if(s < 5400) return Math.round(s / 60) + ' min';
+  return (Math.round(s / 360) / 10) + ' h';
+}
 
 async function chargeSignaux(){
   var l = $('sgListe'), e = $('sgEtat');
@@ -6933,12 +7052,42 @@ function peintSignaux(){
   });
   var vus = {};
   (v.positions || []).forEach(function(p){ vus[String(p.adr).toLowerCase()] = 1; });
-  (v.signaux || []).forEach(function(g){
-    if(g.k === 'achat' && vus[String(g.adr).toLowerCase()]) return;   /* deja en haut */
-    lignes.push({ ouvert:false, sym:g.sym, adr:g.adr, r:(g.k === 'vente' ? g.r : null),
-                  mcA:g.mc, mcM:null, t:g.t, score:g.score, k:g.k, liens:g.liens,
-                  pool:g.pool, logo:g.logo });
+  /* ---- UN ACHAT ET SA VENTE FONT UNE SEULE LIGNE ----
+   * « Dans les signaux il y a pas mal de lignes dont on ne sait pas quand
+   *   elles ont ete fermees : "bought 13 hours" et rien d'autre. »
+   * Le serveur envoie deux signaux par operation — l'achat, puis la vente —
+   * et la liste les posait sur deux lignes, a des heures differentes. La
+   * ligne « bought » ne portait donc jamais son resultat : il etait trois
+   * lignes plus haut, sous un autre libelle. On les apparie ici : chaque
+   * vente rejoint l'achat du meme jeton qui l'attendait, et la ligne dit
+   * quand on est entre, combien de temps on a tenu, et pourquoi on est sorti.
+   * Une vente sans achat dans la fenetre reste seule ; un achat sans vente
+   * qui n'est plus une position ouverte le dit aussi, plutot que de se lire
+   * comme une position vivante. */
+  var sigs = (v.signaux || []).slice().reverse();     /* du plus ancien au plus recent */
+  var attend = {}, apparies = [];
+  sigs.forEach(function(g){
+    var a = String(g.adr || '').toLowerCase();
+    if(g.k === 'achat'){
+      if(vus[a]) return;                                /* deja en haut, vivante */
+      var l = { ouvert:false, sym:g.sym, adr:g.adr, r:null, mcA:g.mc, mcM:null, t:g.t, tAchat:g.t,
+                score:g.score, k:'achat', liens:g.liens, pool:g.pool, logo:g.logo, mise:g.mise };
+      apparies.push(l); attend[a] = l;
+      return;
+    }
+    var l0 = attend[a];
+    if(l0){
+      l0.k = 'vente'; l0.r = g.r; l0.gain = g.gain; l0.tVente = g.t; l0.t = g.t;
+      l0.comment = g.comment; l0.logo = l0.logo || g.logo;
+      delete attend[a];
+      return;
+    }
+    apparies.push({ ouvert:false, sym:g.sym, adr:g.adr, r:g.r, gain:g.gain, mcA:g.mc, mcM:null,
+                    t:g.t, tVente:g.t, k:'vente', liens:g.liens, pool:g.pool, logo:g.logo,
+                    comment:g.comment });
   });
+  apparies.reverse();
+  lignes = lignes.concat(apparies);
 
   if(!lignes.length){
     l.innerHTML = '<div class="wl-vide"><span class="g">&#128225;</span>'
@@ -6954,7 +7103,20 @@ function peintSignaux(){
     if(x.mcM > 0 && x.mcA > 0) sousTitre.push('MC ' + sgDollars(x.mcA) + ' → ' + sgDollars(x.mcM));
     else if(mc) sousTitre.push('MC ' + mc);
     if(x.score) sousTitre.push('score ' + x.score);
-    if(x.t) sousTitre.push(sgQuand(x.t));
+    if(x.ouvert){ if(x.t) sousTitre.push(sgQuand(x.t)); }
+    else {
+      if(x.tAchat) sousTitre.push('bought ' + sgQuand(x.tAchat));
+      if(x.tVente){
+        sousTitre.push(x.tAchat ? 'sold after ' + sgDuree(x.tVente - x.tAchat) : 'sold ' + sgQuand(x.tVente));
+        if(x.comment) sousTitre.push(String(x.comment));
+      } else if(x.tAchat && Date.now() - x.tAchat > 3 * 3600e3){
+        /* Plus une position, et aucune vente dans la fenetre : la colonie l'a
+           rendue sans signal, avant que la vente sans resultat n'existe. */
+        sousTitre.push('no exit recorded');
+      }
+    }
+    var etiquette = x.ouvert ? 'open'
+      : (x.k === 'vente' ? ((x.r === null || x.r === undefined) && x.comment ? 'closed' : 'sold') : 'bought');
     return '<div class="sg" data-i="' + i + '">'
       + '<div class="sg-h">'
       +   sgLogo(x)
@@ -6962,8 +7124,7 @@ function peintSignaux(){
       +     '<small>' + ech(sousTitre.join(' · ')) + '</small></span>'
       +   (pc ? '<span class="sg-r ' + cls + '">' + pc
                  + '<small>' + (x.ouvert ? 'live' : 'closed') + '</small></span>' : '')
-      +   '<span class="sg-etq ' + (x.ouvert ? 'sg-open' : 'sg-shut') + '">'
-      +     (x.ouvert ? 'open' : (x.k === 'vente' ? 'sold' : 'bought')) + '</span>'
+      +   '<span class="sg-etq ' + (x.ouvert ? 'sg-open' : 'sg-shut') + '">' + etiquette + '</span>'
       + '</div>'
       + '<div class="sg-corps">'
       +   '<div class="sg-adr">' + ech(x.adr || '') + '</div>'
@@ -7192,6 +7353,20 @@ $('enPartir').addEventListener('click', function(){
  * On ne declenche pas `change` ici : ce serait rappeler le `change` qui nous
  * a appeles. `valPick` ecrit la valeur, `peintPick` remet le miroir d'accord
  * avec elle, et `majSwap` fait le reste. */
+/* ---- PARTIR DE SOLANA, C EST ARRIVER SUR SOLANA ----
+ * Jupiter echange d un mint a un autre sur la meme chaine ; cette page ne
+ * sait pas ponter DEPUIS Solana. Des que le depart est Solana, l arrivee y
+ * est posee aussi, et le mint d en face est pre-rempli avec le SOL quand on
+ * vend un memecoin — c est le geste le plus courant, et un champ vide se
+ * lisait comme « rien a recevoir ». */
+function accordeVersSolana(){
+  if(!swChaine().svm) return;
+  swVersChaineId = SOL_CHAINE;
+  var j = J($('swDe').value), a = $('swVersAdr');
+  if(a && !a.value && j && j.chaine === SOL_CHAINE && !j.solNatif) a.value = SOL_NATIF;
+  if(a && j && j.solNatif && a.value === SOL_NATIF) a.value = '';
+}
+
 function accordeSwDe(){
   var sel = $('swDe'); if(!sel || !sel.options.length) return false;
   var j = J(sel.value);
@@ -7276,6 +7451,7 @@ $('swDe').addEventListener('change', function(){
   var ch = (j && j.chaine) || CHAINE.id;
   if(ch !== swChaineId){
     swChaineId = ch;
+    accordeVersSolana();
     gardeSwChaine();
     videSwap();
     $('swNote').textContent = '';
@@ -7357,6 +7533,122 @@ function videSwap(){
   ['swRecu','swImpact','swMini'].forEach(function(id){
     var e = $(id); if(e) e.textContent = '—';
   });
+}
+
+/* ==================== SOLANA VERS SOLANA ====================
+ *
+ * Le devis vient de Jupiter, l execution aussi, et la signature du compte
+ * courriel (voir « Echanger sur Solana », plus haut). Ce que cette page ne
+ * fait toujours pas : ponter depuis Solana. D ou l arrivee forcee.
+ * ============================================================ */
+var SOL_DEVIS = null;
+async function devisSolana(){
+  var mien = ++devisJeton;
+  var jd = J($('swDe').value), note = $('swNote');
+  note.className = 'wl-note';
+  $('swRoute').textContent = 'Jupiter — on Solana';
+  var m = ($('swMontant').value || '').trim().replace(',', '.');
+  var versMint = swMonnaieVers();
+  SOL_DEVIS = null;
+  if(!jd || jd.chaine !== SOL_CHAINE){ videSwap(); return; }
+  if(!versMint){ videSwap(); note.textContent = 'Paste the mint of the Solana token you want to receive.'; return; }
+  if(!adresseJetonValide(versMint, CHAINE_SOL)){ videSwap(); note.textContent = 'That does not look like a Solana mint yet.'; return; }
+  if(versMint === jd.adr){ videSwap(); note.textContent = 'Pick two different tokens.'; return; }
+  if(!(parseFloat(m) > 0)){ videSwap(); note.textContent = ''; return; }
+  if(!moi){ videSwap(); note.textContent = 'Sign in first — the swap pays into your own address.'; return; }
+  if(!solAdr){
+    videSwap(); note.className = 'wl-note grave';
+    note.textContent = 'You have no Solana address yet — create it on the Account screen first. '
+      + 'Paying on Solana needs the email account: a browser extension manages its own Solana wallet.';
+    return;
+  }
+  try{
+    var brut = ethers.utils.parseUnits(m, jd.dec);
+    var jv = await solJeton(versMint);
+    var d = await jupDevis(jd.adr, versMint, brut.toString(), Math.round(TOLERANCE * 100));
+    if(mien !== devisJeton) return;
+    SOL_DEVIS = { devis:d, versMint:versMint, dec:jv.dec, sym:jv.sym, brut:brut.toString() };
+    $('swRecu').textContent = nombre(ethers.BigNumber.from(d.outAmount), jv.dec) + ' ' + jv.sym;
+    $('swMini').textContent = nombre(ethers.BigNumber.from(d.otherAmountThreshold || d.outAmount), jv.dec) + ' ' + jv.sym;
+    var imp = parseFloat(d.priceImpactPct);
+    $('swImpact').textContent = isFinite(imp) ? (imp * 100).toFixed(2) + ' %' : '—';
+    note.textContent = 'Swapped on Solana through Jupiter, paid from your Solana address. The route is '
+      + 'rebuilt right before you sign, so what you sign is the price of that second.';
+  }catch(e){
+    if(mien !== devisJeton) return;
+    videSwap(); note.className = 'wl-note grave';
+    note.textContent = (e && e.message) || 'No quote.';
+  }
+}
+
+async function echangeSolana(b){
+  var jd = J($('swDe').value), note = $('swNote');
+  var dis = function(t){ note.className = 'wl-note'; note.textContent = t; };
+  if(!jd || jd.chaine !== SOL_CHAINE) return;
+  if(!solAdr) return toast('Create your Solana address on the Account screen first');
+  var versMint = swMonnaieVers();
+  if(!versMint || !adresseJetonValide(versMint, CHAINE_SOL)) return toast('Paste the Solana token you want to receive');
+  var t = ($('swMontant').value || '').trim().replace(',', '.');
+  if(!(parseFloat(t) > 0)) return toast('Enter an amount');
+  var brut;
+  try{ brut = ethers.utils.parseUnits(t, jd.dec); }
+  catch(e){ return toast('That amount is not a number this wallet can read'); }
+  var solde = soldes[jd.cle];
+  if(solde && brut.gt(solde)) return toast('That is more ' + jd.sym + ' than you hold');
+  b.disabled = true;
+  try{
+    /* ---- ON NE SIGNE PAS UN DEVIS PERIME ----
+       Meme regle que sur la Robinhood Chain, plus pressante ici : le
+       blockhash meurt en une minute. Devis, transaction, signature : les
+       trois a la suite, sans reprendre ce qui etait a l ecran. */
+    dis('Checking the price right now…');
+    var jv = await solJeton(versMint);
+    var d = await jupDevis(jd.adr, versMint, brut.toString(), Math.round(TOLERANCE * 100));
+    $('swRecu').textContent = nombre(ethers.BigNumber.from(d.outAmount), jv.dec) + ' ' + jv.sym;
+    $('swMini').textContent = nombre(ethers.BigNumber.from(d.otherAmountThreshold || d.outAmount), jv.dec) + ' ' + jv.sym;
+    dis('Building the transaction…');
+    var txB64 = await jupTransaction(d, solAdr);
+    dis('Confirm the swap in your wallet…');
+    var sig = await solSigneEtEnvoie(txB64);
+    journalAjoute({ h:sig, k:'echange', cle:jd.cle, montant:brut.toString(), cleV:'sol:' + versMint,
+                    sur:SOL_CHAINE });
+    suitSignatureSolana(sig);
+    dis('Sent on Solana — ' + sig.slice(0, 10) + '… Balances refresh in a moment.');
+    $('swMontant').value = ''; videSwap();
+    setTimeout(function(){ try{ rafraichit(); }catch(e){} }, 5000);
+  }catch(e){
+    note.className = 'wl-note grave';
+    note.textContent = (typeof pourquoiRefus === 'function') ? pourquoiRefus(e) : ((e && e.message) || String(e));
+  }
+  b.disabled = false;
+}
+
+/* Le recu d une transaction Solana ne se lit pas par un fournisseur Ethereum :
+   on demande son statut au noeud Solana, quelques fois, et on ecrit ce qu il
+   dit. Sans reponse au bout de deux minutes, l entree reste « en attente »
+   plutot que de recevoir un etat invente. */
+function suitSignatureSolana(sig){
+  var essais = 0;
+  (function tour(){
+    if(essais++ > 12) return;
+    solRpc('getSignatureStatuses', [[sig], { searchTransactionHistory:true }]).then(function(r){
+      var st = r && r.value && r.value[0];
+      if(!st){ setTimeout(tour, 10000); return; }
+      if(st.err){ journalEtat(sig, 'rate'); return; }
+      if(st.confirmationStatus === 'confirmed' || st.confirmationStatus === 'finalized'){ journalEtat(sig, 'ok'); return; }
+      setTimeout(tour, 10000);
+    })['catch'](function(){ setTimeout(tour, 10000); });
+  })();
+}
+
+/* Le solde du SOL natif, dans la forme que `soldes` attend : un BigNumber
+   en lamports, ou une erreur quand on ne sait pas — jamais zero. */
+async function soldeSolNatifBN(){
+  if(!solAdr) throw new Error('no solana address');
+  var r = await solRpc('getBalance', [solAdr]);
+  var v = r && r.value;
+  if(v === undefined || v === null) throw new Error('vide');
+  return ethers.BigNumber.from(String(v));
 }
 
 /* ---- LE DEVIS QUAND ON PAIE D'AILLEURS ----
@@ -7465,7 +7757,11 @@ function peintSortie(){
   var c = swVersChaine();
   if(c.id === CHAINE.id){ e.hidden = true; return; }
   e.hidden = false;
-  if(c.svm){
+  if(c.svm && swChaine().svm){
+    e.className = 'wl-note';
+    e.textContent = 'Solana to Solana, through Jupiter, from your Solana address — and you can sell it '
+      + 'back the same way, by picking it on the paying side.';
+  } else if(c.svm){
     e.className = 'wl-note grave';
     e.textContent = 'One way. This wallet can receive on Solana and show you the balance, but it '
       + 'cannot sign there yet — so it cannot sell this back or send it anywhere. To get out you '
@@ -7493,6 +7789,7 @@ function peintSwChaine(){
 }
 
 async function devis(){
+  if(swChaine().svm) return devisSolana();
   if(swDistant()) return devisDistant();
   var de=$('swDe').value, vers=$('swVers').value;
   var m=($('swMontant').value||'').trim().replace(',','.');
@@ -7962,6 +8259,7 @@ async function achatDistant(b){
 $('swPartir').addEventListener('click', async function(){
   if(!moi) return ouvreConnexion();
   if(ethersManquant()) return;
+  if(swChaine().svm) return echangeSolana(this);
   if(swDistant()) return achatDistant(this);
 
   var de = $('swDe').value, vers = $('swVers').value;
@@ -8746,6 +9044,7 @@ function chaineDuJeton(j){ return chaineDuPont((j && j.chaine) || CHAINE.id); }
    pour retrouver le symbole et les decimales d'une trace vieille de plusieurs
    jours ; ces cles sont donc gravees et ne changent plus. */
 function cleDeChaine(id){
+  if(id === SOL_CHAINE) return 'sol';
   if(id === CHAINE.id) return 'eth';
   if(id === L1.id)     return 'ethL1';
   return 'ch' + id;
@@ -8955,7 +9254,11 @@ function peintChoixChaine(){
   var c = $('poChL'); if(!c) return;
   /* L'arrivee d'un achat peut etre Solana ; un bout de pont, non — on ne
      sait pas y signer, et proposer un depart de la-bas serait une impasse. */
-  var l = (boutChoisi === 'swapVers') ? chainesArrivee() : toutesChaines();
+  /* Le depart d un echange porte Solana : on y paie par Jupiter, signe par
+     le compte courriel. Et quand on part de Solana, on n arrive QUE sur
+     Solana — la liste d en face ne propose donc qu elle. */
+  var l = (boutChoisi === 'swapVers') ? (swChaine().svm ? [CHAINE_SOL] : chainesArrivee())
+        : (boutChoisi === 'swap') ? chainesArrivee() : toutesChaines();
   var courant = (boutChoisi === 'swap')     ? swChaineId
               : (boutChoisi === 'swapVers') ? swVersChaineId
               : (boutChoisi === 'de')       ? pontDeId : pontVersId;
@@ -8969,8 +9272,10 @@ function peintChoixChaine(){
   }
   c.innerHTML = h;
   if(boutChoisi === 'swapVers'){
-    $('poChTitre').textContent = 'Pick the chain to receive on. This wallet can only SELL back '
-      + 'from the eight EVM chains — on Solana it can receive and show, nothing more.';
+    $('poChTitre').textContent = swChaine().svm
+      ? 'Paying from Solana: a swap stays on Solana. Pick the token you want by pasting its mint.'
+      : 'Pick the chain to receive on. Paying from an EVM chain, the relayer bridges and swaps; '
+      + 'to sell a Solana token back, pick Solana on the paying side.';
     var t2 = $('poVoile').querySelector('h2');
     if(t2) t2.textContent = 'Receive on';
     return;
@@ -8978,8 +9283,8 @@ function peintChoixChaine(){
   $('poChTitre').textContent = (boutChoisi === 'vers')
     ? 'Pick the chain to send them to.'
     : (boutChoisi === 'swap')
-      ? 'Pick the chain you are paying from. Anywhere but here, the relayer bridges'
-        + ' and swaps in one transaction.'
+      ? 'Pick the chain you are paying from. On an EVM chain the relayer bridges and swaps in '
+        + 'one transaction; on Solana the swap stays on Solana, through Jupiter.'
       : 'Pick the chain your funds are on.';
   var t = $('poVoile').querySelector('h2');
   if(t) t.textContent = (boutChoisi === 'swap') ? 'Pay from'
@@ -9002,8 +9307,10 @@ if($('poVoile')) $('poVoile').addEventListener('click', function(ev){
          le JETON CHOISI qu'il faut recaler, et seulement s'il ne vit pas la
          ou l'on vient de dire qu'on paie. */
       accordeSwDe();
+      accordeVersSolana();
     } else {
       if(id === swVersChaineId) return;
+      if(swChaine().svm && id !== SOL_CHAINE) return toast('Paying from Solana, the swap stays on Solana');
       swVersChaineId = id;
       /* Le contrat colle appartenait a l'ancienne chaine : le garder ferait
          demander un jeton qui n'existe pas la ou l'on va. */
@@ -9371,9 +9678,12 @@ try{
   var _sc = parseInt(localStorage.getItem('swogeSwapChaine'), 10);
   /* Le DEPART doit etre une chaine ou l'on sait signer : Solana gardee la
      par une version precedente bloquerait l'ecran sur une impasse. */
-  if(_sc && chaineDuPont(_sc).id === _sc && !chaineDuPont(_sc).svm) swChaineId = _sc;
+  if(_sc && chaineDuPont(_sc).id === _sc) swChaineId = _sc;
   var _sv = parseInt(localStorage.getItem('swogeSwapVers'), 10);
   if(_sv && chaineDuPont(_sv).id === _sv) swVersChaineId = _sv;
+  /* Partir de Solana, c est arriver sur Solana — meme relu d une visite
+     precedente. */
+  if(chaineDuPont(swChaineId).svm) swVersChaineId = SOL_CHAINE;
 }catch(e){}
 peintSwChaine();
 if($('poPartir')) $('poPartir').addEventListener('click', partPont);

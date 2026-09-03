@@ -68,7 +68,7 @@
      A savoir : cela ne sauve pas la page DEJA en cache chez quelqu'un, qui ne
      contient pas ces lignes. Ce garde-fou vaut a partir de celle-ci. -->
 <script>
-var MARQUE_PAGE = '206a6882';
+var MARQUE_PAGE = '2d1243ab';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -1174,8 +1174,15 @@ body{
 .sg-h:hover{ background:var(--fond) }
 .sg-logo{ width:34px; height:34px; border-radius:50%; flex:none; background:var(--bord);
   display:grid; place-items:center; font:700 13px/1 'Inter',system-ui,sans-serif;
-  color:var(--doux); overflow:hidden }
-.sg-logo img{ width:100%; height:100%; object-fit:cover }
+  color:var(--doux); overflow:hidden; position:relative; text-decoration:none }
+/* L'image RECOUVRE le monogramme au lieu de se poser sous lui : les deux sont
+   dans la pastille, et c'est ce qui permet a l'image de se retirer toute seule
+   quand le fichier a disparu — les trois lettres sont deja dessous. */
+.sg-logo img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
+  background:var(--bord) }
+a.sg-logo{ cursor:pointer }
+a.sg-logo:hover{ box-shadow:0 0 0 2px var(--accent) }
+a.sg-logo:focus-visible{ outline:2px solid var(--accent); outline-offset:2px }
 .sg-tx{ flex:1 1 auto; min-width:0 }
 .sg-tx b{ display:block; font:700 14px/1.2 'Inter',system-ui,sans-serif; color:var(--texte) }
 .sg-tx small{ display:block; margin-top:3px; font-size:11.5px; color:var(--doux) }
@@ -6846,6 +6853,45 @@ function sgDollars(n){
   if(!(n > 0)) return null;
   return '$' + Math.round(n).toLocaleString('en-US');
 }
+/* ---- OU MENE LE LOGO ----
+ * « Si on clique dessus, ca ouvre une nouvelle page vers DexScreener et la
+ *   crypto concernee. »
+ *
+ * Deux adresses, et le choix compte : la page d'une PAIRE n'existe que si on
+ * connait son pool, et un pool qu'on n'a pas donnerait « token not found » au
+ * bout d'un lien qu'on a soi-meme propose — pire qu'une absence de lien. La
+ * recherche par adresse de contrat, elle, existe toujours et mene au meme
+ * endroit quand DexScreener connait le jeton. On prend donc la paire quand on
+ * l'a, la recherche sinon. */
+function sgLien(x){
+  if(x && x.pool && /^[0-9a-zA-Z]{20,60}$/.test(String(x.pool)))
+    return 'https://dexscreener.com/robinhood/' + encodeURIComponent(x.pool);
+  if(x && /^0x[0-9a-fA-F]{40}$/.test(String(x.adr || '')))
+    return 'https://dexscreener.com/search?q=' + encodeURIComponent(x.adr);
+  return null;
+}
+/* ---- LE LOGO, OU LES TROIS LETTRES ----
+ * Le logo vient du serveur, qui l'a lu chez GeckoTerminal ou DexScreener en
+ * meme temps que le prix. Quand il n'y en a pas — et sur un jeton de sept
+ * minutes c'est le cas courant — on garde le monogramme : il ne pretend rien,
+ * la ou un cadre vide se lirait comme une image qui n'a pas charge.
+ * `onerror` compte autant : une adresse peut etre valide et le fichier avoir
+ * disparu depuis. L'image se retire alors elle-meme et laisse voir les trois
+ * lettres qui sont dessous. */
+function sgLogo(x){
+  var mono = ech(String(x.sym || '?').slice(0, 3));
+  var img = x.logo && /^https:\/\//i.test(String(x.logo))
+    ? '<img src="' + ech(x.logo) + '" alt="" loading="lazy" '
+      + 'onerror="this.remove()">'
+    : '';
+  var url = sgLien(x);
+  if(!url) return '<span class="sg-logo">' + mono + img + '</span>';
+  /* `rel` n'est pas decoratif : `noopener` empeche la page ouverte d'atteindre
+     celle-ci, et c'est un portefeuille. */
+  return '<a class="sg-logo" href="' + ech(url) + '" target="_blank" rel="noopener noreferrer" '
+       + 'title="See $' + ech(x.sym || '') + ' on DexScreener" '
+       + 'aria-label="See $' + ech(x.sym || '') + ' on DexScreener">' + mono + img + '</a>';
+}
 function sgQuand(t){
   if(!t) return '';
   var s = Math.max(0, (Date.now() - t) / 1000);
@@ -6883,14 +6929,15 @@ function peintSignaux(){
   (v.positions || []).forEach(function(p){
     lignes.push({ ouvert:true, sym:p.sym, adr:p.adr, r:p.latent,
                   mcA:p.mcAchat, mcM:p.mcMaintenant, t:p.veilleT || 0,
-                  score:p.score, liens:p.liens });
+                  score:p.score, liens:p.liens, pool:p.pool, logo:p.logo });
   });
   var vus = {};
   (v.positions || []).forEach(function(p){ vus[String(p.adr).toLowerCase()] = 1; });
   (v.signaux || []).forEach(function(g){
     if(g.k === 'achat' && vus[String(g.adr).toLowerCase()]) return;   /* deja en haut */
     lignes.push({ ouvert:false, sym:g.sym, adr:g.adr, r:(g.k === 'vente' ? g.r : null),
-                  mcA:g.mc, mcM:null, t:g.t, score:g.score, k:g.k, liens:g.liens });
+                  mcA:g.mc, mcM:null, t:g.t, score:g.score, k:g.k, liens:g.liens,
+                  pool:g.pool, logo:g.logo });
   });
 
   if(!lignes.length){
@@ -6910,7 +6957,7 @@ function peintSignaux(){
     if(x.t) sousTitre.push(sgQuand(x.t));
     return '<div class="sg" data-i="' + i + '">'
       + '<div class="sg-h">'
-      +   '<span class="sg-logo">' + ech(String(x.sym || '?').slice(0, 3)) + '</span>'
+      +   sgLogo(x)
       +   '<span class="sg-tx"><b>$' + ech(x.sym || '') + '</b>'
       +     '<small>' + ech(sousTitre.join(' · ')) + '</small></span>'
       +   (pc ? '<span class="sg-r ' + cls + '">' + pc
@@ -6938,6 +6985,11 @@ function peintSignaux(){
 document.addEventListener('click', function(ev){
   var h = ev.target.closest && ev.target.closest('#sgListe .sg-h');
   if(!h) return;
+  /* ---- SAUF SUR LE LOGO ----
+   * Il est maintenant un lien. Sans cette sortie, le meme clic ouvrirait
+   * DexScreener ET replierait la ligne derriere : on revient sur un
+   * portefeuille qui a bouge tout seul, et rien ne dit pourquoi. */
+  if(ev.target.closest('a')) return;
   h.parentElement.classList.toggle('ouvert');
 });
 

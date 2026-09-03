@@ -5388,9 +5388,14 @@ function servir(q, r, f, type) {
     console.log('\n-- les signaux de la colonie --');
     const MOI = '0x00000000000000000000000000000000000a11ce';
     const TOK = '0x1111111111111111111111111111111111111111';
+    /* La position porte un logo ET son pool ; le signal passe n'a ni l'un ni
+       l'autre. Les deux cas comptent : un jeton de sept minutes n'a souvent
+       aucune image, et c'est le cas ou l'ecran doit rester honnete. */
+    const POOL = '0xaaaabbbbccccddddeeeeffff0000111122223333';
     const VUE = { trades: 12, positions: [{ sym: 'PEPE2', adr: TOK, latent: 34.7,
                     mcAchat: 21000, mcMaintenant: 29500, veilleT: Date.now() - 20000,
-                    score: 86, liens: [] }],
+                    score: 86, liens: [], pool: POOL,
+                    logo: 'https://dd.dexscreener.com/ds-data/tokens/robinhood/pepe2.png' }],
                   signaux: [{ k: 'vente', sym: 'WOOF', r: -12.4, t: Date.now() - 600000,
                               adr: '0x2222222222222222222222222222222222222222' }] };
     const page = await nav.newPage({ viewport: { width: 430, height: 1000 } });
@@ -5464,6 +5469,73 @@ function servir(q, r, f, type) {
     ok(v.partsVues === false,
        'les parts d achat ne se voient PAS avant d avoir ouvert la ligne : un bouton pose a '
        + 'cote d un chiffre vert se lit comme une machine a sous');
+
+    /* ==================================================================
+     * LE LOGO, ET OU IL MENE
+     *
+     * « Ce serait bien que dans les signaux du portefeuille tu affiches le
+     *   logo de la crypto ; si on clique dessus ca ouvre une nouvelle page
+     *   vers DexScreener et la crypto concernee. »
+     *
+     * Trois choses se mesurent ici, et la troisieme est celle qu'on aurait
+     * ratee : le logo est bien l'image du jeton ; le lien mene a DexScreener
+     * dans un nouvel onglet ; et le clic dessus n'OUVRE PAS la ligne au
+     * passage — le meme geste ferait alors deux choses, dont une que
+     * personne n'a demandee.
+     * ================================================================== */
+    const lg = await page.evaluate(() => {
+      const l = document.querySelectorAll('#sgListe .sg-logo');
+      const a = l[0], b = l[1];
+      const img = a.querySelector('img');
+      return {
+        n: l.length,
+        aEstLien: a.tagName, href: a.getAttribute('href') || '',
+        cible: a.getAttribute('target') || '', rel: a.getAttribute('rel') || '',
+        src: img ? img.getAttribute('src') : null,
+        /* Le monogramme est TOUJOURS la, sous l'image : c'est lui qui reste
+           quand le fichier a disparu. */
+        mono: a.textContent.trim(),
+        /* Le second signal n'a ni logo ni pool : il ne doit pas porter
+           d'image, mais il garde un lien — la recherche par adresse existe
+           toujours. */
+        bImg: !!b.querySelector('img'), bHref: b.getAttribute('href') || '',
+      };
+    });
+    console.log('   ' + JSON.stringify(lg));
+    ok(lg.n === 2 && lg.aEstLien === 'A',
+       'chaque signal porte une pastille, et elle est un lien');
+    ok(/dexscreener\.com/.test(lg.href) && /aaaabbbb/.test(lg.href),
+       'qui mene a DexScreener, sur la PAIRE du jeton concerne (« ' + lg.href + ' »)');
+    ok(lg.cible === '_blank' && /noopener/.test(lg.rel),
+       'dans un nouvel onglet, et sans donner la main sur le portefeuille a la page ouverte');
+    ok(/dd\.dexscreener\.com/.test(lg.src || ''),
+       'l image est celle que le serveur a LUE, pas une devinee depuis l adresse');
+    ok(/^PEP/.test(lg.mono),
+       'et les trois lettres restent dessous : quand le fichier a disparu, il reste quelque '
+       + 'chose plutot qu un rond vide');
+    ok(lg.bImg === false && /dexscreener\.com\/search/.test(lg.bHref),
+       'un jeton sans logo n en invente pas un, et son lien passe par la recherche — la page '
+       + 'd une paire qu on ne connait pas dirait « token not found »');
+
+    /* ---- ET LE CLIC SUR LE LOGO NE REPLIE RIEN ----
+     * La ligne s'ouvre au toucher de son en-tete, et le logo est dedans. Sans
+     * la sortie posee dans le gestionnaire, le meme clic ouvrirait DexScreener
+     * ET replierait la ligne derriere : on revient sur un portefeuille qui a
+     * bouge tout seul. */
+    const avant = await page.evaluate(() =>
+      document.querySelector('#sgListe .sg').classList.contains('ouvert'));
+    await page.evaluate(() => {
+      const a = document.querySelector('#sgListe .sg-logo');
+      /* On empeche la navigation : ce qu'on mesure est l'etat de la ligne,
+         pas la page de DexScreener. */
+      a.addEventListener('click', (e) => e.preventDefault(), { once: true });
+      a.click();
+    });
+    await page.waitForTimeout(200);
+    const apresLogo = await page.evaluate(() =>
+      document.querySelector('#sgListe .sg').classList.contains('ouvert'));
+    ok(avant === apresLogo,
+       'un clic sur le logo laisse la ligne dans l etat ou elle etait (' + apresLogo + ')');
 
     await page.evaluate(() => document.querySelector('#sgListe .sg-h').click());
     await page.waitForTimeout(300);

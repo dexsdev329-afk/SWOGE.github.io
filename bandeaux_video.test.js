@@ -364,9 +364,32 @@ function pistes(fichier) {
                  x: Math.round(r.x), w: Math.round(r.width) };
       }));
     eq(cartes.length, 4, 'la colonne de droite porte les quatre rectangles');
-    eq(cartes.map((c) => c.t).join(' / '), 'CASINO / SWOGE WORLD / ARCADE / REWARDS',
-       'ce sont ceux des autres pages, « SPORTS » remplace par le MONDE : proposer'
-       + ' la page ou l on se trouve deja serait inviter a ne pas bouger');
+    /* ---- ET LA PREMIERE VEND LE PREMIER PARI ----
+     * DEMANDE : « a gauche de SWOGE WORLD, une image "buy SWOGEBET for your
+     * first bet" ». Sur une page de paris, la carte du casino renvoyait vers
+     * le hall qu on venait de quitter ; celle-ci dit ou prendre le jeton sans
+     * lequel aucune cote ne se joue. */
+    eq(cartes.map((c) => c.t).join(' / '), 'BUY $SWOGEBET / SWOGE WORLD / ARCADE / REWARDS',
+       'ceux des autres pages, « SPORTS » remplace par le MONDE, et « CASINO » par'
+       + ' l achat du jeton : proposer la page ou l on se trouve deja serait inviter'
+       + ' a ne pas bouger, et proposer le casino a qui vient parier aussi');
+    const premiere = await p.evaluate(() => {
+      const v = document.querySelector('.sb-univers .uni:first-child video.film');
+      return v ? { film: v.getAttribute('data-film'), poster: v.getAttribute('poster'),
+                   muet: v.muted, boucle: v.loop, pre: v.getAttribute('preload') } : null;
+    });
+    ok(!!premiere && premiere.film === 'media/premier_pari.mp4', `la carte porte le film livre : ${premiere && premiere.film}`);
+    ok(!!premiere && fs.existsSync(path.join(SITE, premiere.film)) && fs.existsSync(path.join(SITE, premiere.poster || 'x')),
+       `le film et son affiche (${premiere && premiere.poster}) sont sur le disque`);
+    ok(!!premiere && fs.statSync(path.join(SITE, premiere.film)).size < 600 * 1024,
+       'et le film est ramene au poids des trois autres, pas les 5,8 Mo livres'
+       + ` (${Math.round(fs.statSync(path.join(SITE, premiere.film)).size / 1024)} Ko)`);
+    /* La propriete vivante de `preload` ne dit rien : la carte est a l ecran,
+       donc l observateur l a deja reclamee. C est la DECLARATION qu on lit,
+       comme pour la banniere du haut. */
+    ok(!!premiere && premiere.muet && premiere.boucle
+       && /data-film="media\/premier_pari\.mp4"[\s\S]{0,200}preload="none"/.test(bruteBet),
+       'muet, en boucle, et declare `preload="none"` : rien ne part avant que le script ne le decide — comme les trois autres');
     ok(cartes.every((c) => c.x > 900),
        `elles sont bien A DROITE (x = ${cartes[0].x})`);
     ok(cartes.every((c) => c.w > 200),
@@ -387,7 +410,8 @@ function pistes(fichier) {
            `« ${c.t} » mene a ${c.href}, qui existe`);
         ok(c.vif, `et « ${c.lib} » est vivant`);
       } else {
-        ok(c.t === 'REWARDS', `« ${c.t} » est le seul bouton sans adresse`);
+        ok(c.t === 'REWARDS' || c.t === 'BUY $SWOGEBET',
+           `« ${c.t} » est un des deux boutons sans adresse : chacun ouvre un panneau de la page`);
       }
     }
     /* ---- « VIEW REWARDS » FAIT EXACTEMENT CE QUE FAIT LA RANGEE DU MENU ----
@@ -423,6 +447,20 @@ function pistes(fichier) {
     ok(parLaCarte.voile || parLaCarte.porte,
        'et il se passe quelque chose : sans compte, le panneau demande d abord'
        + ' de se connecter — comme la rangee du menu');
+    await remets();
+    /* ---- ET « BUY NOW » PASSE PAR LA RANGEE « DEPOSIT », DE LA MEME FACON ---- */
+    await p.evaluate(() => document.querySelector('#menu a[data-panel="dep"]').click());
+    await p.waitForTimeout(500);
+    const depotParLeMenu = await etat();
+    await remets();
+    await p.click('#sbAcheter');
+    await p.waitForTimeout(500);
+    const depotParLaCarte = await etat();
+    ok(JSON.stringify(depotParLeMenu) === JSON.stringify(depotParLaCarte),
+       `« BUY NOW » aboutit au meme etat que la rangee « Deposit » du menu :`
+       + ` ${JSON.stringify(depotParLaCarte)}`);
+    ok(depotParLaCarte.voile || depotParLaCarte.porte,
+       'et la aussi il se passe quelque chose : sans compte, on demande d abord de se connecter');
     await remets();
 
     /* Aucun des quatre films n a de source dans le fichier : quatre cartes,

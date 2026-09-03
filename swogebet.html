@@ -2666,13 +2666,25 @@ main{ min-width:0; }
          quetes qui existe deja sur cette page — par SON lien d origine, pas
          par un second chemin vers la meme boite. -->
     <section class="univers sb-univers">
+      <!-- ---- LA PREMIERE CARTE VEND LE PREMIER PARI, PAS LE CASINO ----
+           DEMANDE : « sur la page sport betting il y a une video a gauche de
+           SWOGE WORLD : une image "buy SWOGEBET for your first bet" ».
+           Un joueur qui lit des cotes sans jeton ne peut rien parier : la
+           carte a cote du MONDE lui dit ou en prendre, plutot que de le
+           renvoyer au casino qu il a deja quitte pour venir ici. Le film livre
+           (1008 x 896, 5,8 Mo, avec son) est ramene au format des trois autres
+           — 440 x 392, muet, 430 Ko — et son affiche est sa premiere image,
+           donc le passage de l une a l autre ne se voit pas.
+           Le bouton ne porte pas sa propre logique : il ouvre la rangee
+           « Deposit » du menu, la ou vit le bloc d achat de `swogebuy.js`, et
+           deplie ce bloc. Un seul chemin, comme « VIEW REWARDS ». -->
       <article class="uni">
-        <video class="film" data-film="media/doge_casino.mp4"
-               poster="img/site/doge_casino_poster.webp"
+        <video class="film" data-film="media/premier_pari.mp4"
+               poster="img/site/premier_pari_poster.webp"
                muted loop playsinline preload="none" disablepictureinpicture
                aria-hidden="true"></video><div class="voile"></div>
-        <div class="dit"><b>CASINO</b><i>Spin. Bet. Win.</i>
-          <a class="sw-b vif" href="games.html">EXPLORE</a></div>
+        <div class="dit"><b>BUY $SWOGEBET</b><i>For your first bet.</i>
+          <button class="sw-b vif" id="sbAcheter">BUY NOW</button></div>
       </article>
       <article class="uni">
         <!-- `monde.mp4` fait neuf cent soixante pixels de large et un
@@ -4528,6 +4540,27 @@ function renderBonus(b){ if(!b) return; bonusData=b;
     /* Le panneau n existe pas sur cette page : on retire le bouton plutot que
        de laisser un rectangle qui ne repond pas. */
     bouton.remove();
+  }
+  /* ---- « BUY NOW » PASSE PAR LA RANGEE « DEPOSIT » DU MENU ----
+     Le bloc d achat de `swogebuy.js` vit dans le panneau de depot, replie
+     sous le formulaire. Le bouton de la carte clique la rangee du menu — le
+     meme chemin que le menu, avec le meme refus poli quand on n est pas
+     connecte — puis deplie le bloc d achat si le panneau s est ouvert, parce
+     que c est pour lui qu on est venu. Il ne connait ni la boite ni le
+     formulaire : si `swogebuy.js` change sa tete, ce bouton n a rien a
+     savoir de plus que son identifiant. */
+  var achat = document.getElementById("sbAcheter");
+  var depot = document.querySelector('#menu a[data-panel="dep"]');
+  if(achat && depot){
+    achat.addEventListener("click", function(e){
+      e.preventDefault();
+      depot.click();
+      var tete = document.getElementById("swbTete"), corps = document.getElementById("swbCorps");
+      var boite = document.getElementById("box-dep");
+      if(tete && corps && boite && boite.classList.contains("show") && corps.classList.contains("plie")) tete.click();
+    });
+  } else if(achat){
+    achat.remove();
   }
 })();
 </script>

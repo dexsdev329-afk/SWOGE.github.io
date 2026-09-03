@@ -212,6 +212,10 @@
     g.id = 'swpe-css';
     g.textContent =
       '.swcon,.swpb,' +
+      /* Les deux bulles du bas aussi : le rond du portefeuille est un
+         `button`, et sur l accueil il restait sourd au doigt — le panneau
+         ne s ouvrait que par un clic de script, donc jamais pour un joueur. */
+      '.swwb,.swdb,' +
       '.swcon-ov button,.swcon-ov input,.swcon-ov a,' +
       '.swpov button,.swpov a,.swpov input,.swpov select,.swpov textarea' +
       '{pointer-events:auto;}' +

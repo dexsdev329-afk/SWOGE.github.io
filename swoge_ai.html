@@ -515,8 +515,16 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .sw-cote{position:sticky; top:74px; width:100%; display:flex; flex-direction:column; gap:12px; justify-self:end}
 .sw-nav{background:#FFFFFF;border:1px solid #E1E9F6;border-radius:14px;
   padding:8px; box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05)}
+/* ---- PAS DE SOULIGNAGE ----
+ * L'accueil pose `a{color:inherit;text-decoration:none}` une fois pour toute
+ * la page ; cette page-ci ne l'avait pas, donc chaque lien retombait sur le
+ * trait par defaut du navigateur — d'ou six entrees de menu soulignees alors
+ * qu'elles ne le sont nulle part ailleurs. On pose la meme regle, au meme
+ * endroit dans la cascade : sur les liens de la coquille partagee. Les liens
+ * de CONTENU, eux, gardent leur propre style. */
+.sw-haut a, .sw-nav a, .sw-reseaux a, .gx-menu a{ text-decoration:none }
 .sw-nav a{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:10px;
-  font:600 13.5px/1 'Inter',system-ui,sans-serif;color:#0B1B36}
+  font:600 13.5px/1 'Inter',system-ui,sans-serif;color:#0B1B36;text-decoration:none}
 .sw-nav a .ic{width:20px;text-align:center;font-size:15px;opacity:.75}
 .sw-nav a:hover{background:#EEF3FB}
 .sw-nav a.on{background:#EAF1FF;color:#1B5FE0}

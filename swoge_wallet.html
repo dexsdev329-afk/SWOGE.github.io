@@ -940,6 +940,15 @@ body{
 .wl-casino .fl{ flex:0 0 auto; color:var(--doux); font-size:12px }
 
 .wl-note{ font:400 12px/1.5 'Archivo',sans-serif; color:var(--doux); margin:8px 0 0 }
+
+/* ---- LE CADRE DU MOTEUR ----
+   Il n'a PAS de hauteur fixe : le banc renvoie la sienne et on la pose ici.
+   Une hauteur fixe donnerait un cadre qui defile dans une page qui defile,
+   et le doigt ne saurait plus lequel des deux il pousse. La valeur de depart
+   n'est qu'un plancher, le temps que la premiere mesure arrive. */
+.wl-banc{ margin-top:16px }
+.wl-banc iframe{ display:block; width:100%; min-height:460px; border:0;
+  border-radius:16px; background:#F4F7FD; color-scheme:light }
 .wl-note.alerte{ color:var(--or) }
 .wl-note.grave{ color:var(--rouge) }
 
@@ -1042,6 +1051,40 @@ body{
 .wl-mono{ font:400 12px/1.5 'Space Mono',monospace; word-break:break-all; color:var(--doux) }
 /* La barre de ce qui a deja brule. Elle vient de `burn.html` ; sa largeur est
    posee en JavaScript depuis une lecture de chaine, jamais en dur. */
+/* ---- LES SIGNAUX ----
+   Une ligne se lit d'un coup d'oeil : le jeton, ce que la colonie en a fait,
+   et le chiffre qui compte. L'achat n'apparait qu'une fois la ligne ouverte —
+   c'est un geste de plus, et c'est voulu. */
+.sg{ border:1px solid var(--bord); border-radius:14px; background:var(--carte);
+  margin-bottom:9px; overflow:hidden }
+.sg-h{ display:flex; align-items:center; gap:11px; padding:12px 13px; cursor:pointer;
+  user-select:none }
+.sg-h:hover{ background:var(--fond) }
+.sg-logo{ width:34px; height:34px; border-radius:50%; flex:none; background:var(--bord);
+  display:grid; place-items:center; font:700 13px/1 'Inter',system-ui,sans-serif;
+  color:var(--doux); overflow:hidden }
+.sg-logo img{ width:100%; height:100%; object-fit:cover }
+.sg-tx{ flex:1 1 auto; min-width:0 }
+.sg-tx b{ display:block; font:700 14px/1.2 'Inter',system-ui,sans-serif; color:var(--texte) }
+.sg-tx small{ display:block; margin-top:3px; font-size:11.5px; color:var(--doux) }
+.sg-r{ flex:none; text-align:right; font:700 14px/1.2 'Inter',system-ui,sans-serif }
+.sg-r small{ display:block; margin-top:3px; font-size:10.5px; font-weight:600;
+  letter-spacing:.06em; text-transform:uppercase; color:var(--doux) }
+.sg-up{ color:var(--vert) } .sg-dn{ color:var(--rouge) }
+.sg-etq{ font:700 9.5px/1 'Inter',system-ui,sans-serif; letter-spacing:.08em;
+  text-transform:uppercase; padding:3px 7px; border-radius:999px; flex:none }
+.sg-open{ background:#E8F6EE; color:#127A45 } .sg-shut{ background:var(--bord); color:var(--doux) }
+.sg-corps{ padding:0 13px 13px; border-top:1px solid var(--bord) }
+.sg[hidden]{ display:none }
+.sg:not(.ouvert) .sg-corps{ display:none }
+.sg-adr{ font:400 11px/1.5 'Space Mono',monospace; word-break:break-all; color:var(--doux);
+  margin:10px 0 4px }
+.sg-parts{ display:flex; gap:7px; margin-top:9px }
+.sg-parts button{ flex:1 1 0; padding:10px 4px; border-radius:10px; border:1px solid var(--bord);
+  background:var(--carte); color:var(--texte); font:700 12px/1 'Inter',system-ui,sans-serif;
+  cursor:pointer }
+.sg-parts button:hover{ border-color:var(--accent); color:var(--accent) }
+
 .wl-barre{ height:8px; border-radius:999px; background:var(--bord); overflow:hidden; margin-top:9px }
 .wl-barre span{ display:block; height:100%; width:0; border-radius:999px;
   background:linear-gradient(90deg,#F97316,#EF4444); transition:width .4s }
@@ -1431,6 +1474,12 @@ body{
                et l'alimenter demandait de recopier une adresse a la main dans
                un autre portefeuille. Ici, le portefeuille signe deja. -->
           <button type="button" data-va="ecBanc"><span class="bulle">&#128202;</span><span class="t">Bench</span></button>
+          <!-- ---- LES SIGNAUX ----
+               Ce que la colonie vient d'acheter ou de vendre. Un JOURNAL, pas
+               un conseil : elle joue du papier, donc elle n'engage rien et ne
+               peut pas se tromper a la place de quelqu'un. Ceux qui le lisent,
+               eux, ont de l'argent reel. -->
+          <button type="button" data-va="ecSignaux"><span class="bulle">&#128225;</span><span class="t">Signals</span></button>
         </div>
         <button type="button" class="wl-fleche d" id="acFlecheD" hidden
                 data-fl="&#8250;" aria-label="More actions"></button>
@@ -1617,6 +1666,32 @@ body{
     </div>
   </section>
 
+  <!-- ============ LES SIGNAUX ============
+       « On voit les cryptos que la colonie a tradees mais on n'est pas oblige
+         d'acheter — on voit les signaux et on peut acheter en direct
+         facilement. »
+
+       D'ou la forme : une LISTE qui se lit, et l'achat qui ne s'ouvre que si
+       on touche la ligne. Un bouton « BUY » pose a cote d'un chiffre vert se
+       lit comme une machine a sous ; demander un geste de plus est toute la
+       difference entre montrer et pousser.
+
+       Et l'achat ne redescend PAS un second moteur : il pre-remplit l'ecran
+       d'echange qui existe deja. Deux chemins d'achat finiraient par ne plus
+       coter pareil. -->
+  <section class="wl-ecran" id="ecSignaux">
+    <div class="wl-tete">
+      <h1>Signals</h1>
+    </div>
+    <div class="wl-corps">
+      <p class="wl-note"><b>SWOGE AI trades on paper.</b> It risks nothing, so it cannot be
+        wrong on your behalf &mdash; this is a log of what it did, not advice. Anything you buy
+        here is your own money and your own decision.</p>
+      <div class="wl-rang"><span>Colony</span><b id="sgEtat">&mdash;</b></div>
+      <div id="sgListe"><div class="wl-vide"><span class="g">&#128225;</span>Reading the colony&hellip;</div></div>
+    </div>
+  </section>
+
   <!-- ============ LE BANC ============
        « Rajoute le wallet bench dans le wallet SWOGE. Ca cree un wallet master
          ou on envoie de l'ETH RH ; avant, on choisit nos options. »
@@ -1637,7 +1712,13 @@ body{
        que l'argent part chez personne. Ici, la signature est deja a portee.
 
        Le master et les options sont ensuite RELUS par le banc au chargement :
-       meme origine, meme stockage local, rien ne transite par un serveur. -->
+       meme origine, meme stockage local, rien ne transite par un serveur.
+
+       DEPUIS : « une seule page, plus de banc a part — oui ». Le moteur n'a
+       pas bouge d'un octet, et c'est le but ; c'est la PAGE qui vient ici,
+       chargee dans un cadre au bas de cet ecran, sans sa barre ni son titre.
+       PLAY et STOP sont donc dans le portefeuille, sans qu'il existe une
+       seconde copie du code qui signe. -->
   <section class="wl-ecran" id="ecBanc">
     <div class="wl-tete">
       <h1>Volume bench</h1>
@@ -1653,8 +1734,8 @@ body{
            mais rien ne le DISAIT en haut, la ou on cherche le bouton.
            On le dit maintenant en premier, et les trois etapes sont
            numerotees pour qu'on voie tout de suite ou l'on en est. -->
-      <p class="wl-note"><b>This is the setup. &#9654; PLAY and &#9632; STOP live on the bench
-        itself</b> — the last button below opens it, carrying everything you set here.</p>
+      <p class="wl-note"><b>This is the setup. &#9654; PLAY and &#9632; STOP appear at the bottom
+        of this screen</b> once step 4 loads the engine — you no longer leave the wallet.</p>
       <p class="wl-note">It spins up hidden wallets that buy a token and pass the funds around,
         making real on-chain volume. Every hop pays real gas and slippage, so the ETH (RH)
         drains steadily. Press STOP on the bench and everything comes back to the master.</p>
@@ -1730,10 +1811,45 @@ body{
       <button class="wl-b" id="bcFinance" type="button" hidden>Fund the master</button>
       <p class="wl-note" id="bcNote"></p>
 
-      <button class="wl-b" id="bcOuvre" type="button">4 &middot; Open the bench &mdash; &#9654; PLAY is there</button>
-      <p class="wl-note">The bench runs the ring itself — one engine, not two, because two copies
-        of code that moves money end up disagreeing. It picks up the master wallet and these
-        options on its own when it opens.</p>
+      <button class="wl-b" id="bcOuvre" type="button">4 &middot; Load the engine &mdash; &#9654; PLAY appears below</button>
+      <p class="wl-note" id="bcOuvreNote">One engine, not two: two copies of code that moves money end
+        up disagreeing. This is that same engine, running inside this screen instead of another
+        tab. It picks up the master wallet and the options above on its own.</p>
+
+      <!-- ==================== LE MOTEUR, DANS L'ECRAN ====================
+           DEMANDE : « une seule page, plus de banc a part — oui ».
+           Et avant elle : « je ne vois pas de bouton play et stop », parce
+           qu'ils vivaient dans un autre onglet.
+
+           Ce qui est fait, et ce qui ne l'est PAS :
+
+           On ne RECOPIE pas le moteur ici. Ce sont deux mille deux cents
+           lignes qui signent des transactions, balaient les fonds au STOP et
+           tiennent les cles des portefeuilles caches. Deux copies d'un code
+           pareil divergent — c'est deja ecrit trois lignes plus haut, et ce
+           n'est pas une formule : la copie qui recoit la correction et celle
+           qui ne la recoit pas perdent de l'argent reel.
+
+           On CHARGE la page du banc dans cet ecran. Meme origine, meme
+           appareil, meme `localStorage` : le plan et les cles passent par la
+           ou ils passaient deja, rien de neuf ne transite. Le banc, lui,
+           enleve sa barre du haut, son titre et son pied de page quand il se
+           voit dans un cadre (`?dans=wallet`), et renvoie sa hauteur pour
+           qu'on ne se retrouve pas a faire defiler dans un cadre qui defile
+           lui-meme — sur telephone, c'est la premiere chose qui casse.
+
+           Il ne se charge qu'au clic. Toujours present, il ferait payer a
+           chaque ouverture du portefeuille — sur telephone, en donnees
+           mobiles — une page de trois mille cinq cents lignes que la
+           plupart des visites n'ouvriront jamais. -->
+      <div class="wl-banc" id="bcCadreBoite" hidden>
+        <div class="wl-rang" style="padding:0 0 8px">
+          <span>The engine</span>
+          <button class="wl-b vide" id="bcOnglet" type="button"
+                  style="width:auto;padding:6px 12px;font-size:12px">Open in a tab</button>
+        </div>
+        <iframe id="bcCadre" title="Volume bench engine" loading="lazy"></iframe>
+      </div>
     </div>
   </section>
 
@@ -3360,6 +3476,7 @@ function va(id){
   if(id==='ecEnvoyer')  majEnvoyer();
   if(id==='ecBruler')   majBruler();
   if(id==='ecBanc')     majBanc();
+  if(id==='ecSignaux')  chargeSignaux();
   if(id==='ecPont')     majPont();
   /* ---- LA SOCKET NE VIT QUE SUR CET ECRAN ----
      Une page de portefeuille n'a pas a tenir une liaison ouverte pour
@@ -6109,14 +6226,234 @@ if($('bcCopier')) $('bcCopier').addEventListener('click', async function(){
   if(await copieTexte(bcMaster.adr)) toast('Master address copied');
 });
 
-if($('bcOuvre')) $('bcOuvre').addEventListener('click', function(){
+/* ==================== LE MOTEUR DANS L'ECRAN ====================
+ *
+ * Le bouton 4 ne quitte plus la page : il charge le banc dans le cadre, en
+ * lui deposant d'abord le plan (mode, nombre, jeton) par `localStorage`,
+ * comme avant. Le banc lit ce plan une fois puis l'efface — donc le plan doit
+ * etre ecrit AVANT que le cadre parte chercher la page, jamais apres.
+ *
+ * Trois choses valent d'etre dites :
+ *
+ *   — un rechargement ne le remet pas tout seul. Le banc tient des cles et
+ *     peut etre en train de tourner ; le remonter sans qu'on l'ait demande
+ *     pourrait relancer un moteur qu'on venait d'arreter. On repart du
+ *     bouton, a chaque fois.
+ *
+ *   — la hauteur vient du banc lui-meme, par `postMessage`, et on ne lit ce
+ *     message que s'il vient de NOTRE origine et de NOTRE cadre. La page est
+ *     ouverte a tous ; sans ces deux controles, n'importe quel autre cadre
+ *     pourrait dicter la mise en page de l'ecran.
+ *
+ *   — « Open in a tab » reste. Un cadre peut etre bloque par une extension,
+ *     et un moteur qui deplace de l'argent ne doit pas dependre d'un seul
+ *     chemin pour etre atteint : sans cette porte, un STOP deviendrait
+ *     inatteignable. */
+var BANC_SRC = 'swoge_bench.html';
+
+function bancMonte(){
+  var boite = $('bcCadreBoite'), cadre = $('bcCadre');
+  if(!boite || !cadre) return false;
   bancEcritPlan();
-  /* Un bloqueur de fenetres rend `null`, et le bouton semblait alors mort :
-     on partait en se disant que la page etait cassee. S'il refuse, on y va
-     dans cet onglet-ci plutot que de ne rien faire. */
+  boite.hidden = false;
+  if(!cadre.getAttribute('src')) cadre.setAttribute('src', BANC_SRC + '?dans=wallet');
+  var n = $('bcOuvreNote');
+  if(n) n.textContent = 'The engine is below. PLAY and STOP are its own buttons — this screen '
+    + 'does not sign anything for it.';
+  try{ boite.scrollIntoView({ behavior:'smooth', block:'start' }); }catch(e){}
+  return true;
+}
+
+if($('bcOuvre')) $('bcOuvre').addEventListener('click', function(){
+  /* Si le cadre est refuse par le navigateur, on ne laisse pas le bouton
+     paraitre mort : on retombe sur l'ancien chemin, l'onglet. */
+  if(bancMonte()) return;
+  bancEcritPlan();
   var w = null;
-  try{ w = window.open('swoge_bench.html', '_blank', 'noopener'); }catch(e){}
-  if(!w){ location.href = 'swoge_bench.html'; }
+  try{ w = window.open(BANC_SRC, '_blank', 'noopener'); }catch(e){}
+  if(!w){ location.href = BANC_SRC; }
+});
+
+if($('bcOnglet')) $('bcOnglet').addEventListener('click', function(){
+  bancEcritPlan();
+  var w = null;
+  try{ w = window.open(BANC_SRC, '_blank', 'noopener'); }catch(e){}
+  if(!w){ location.href = BANC_SRC; }
+});
+
+window.addEventListener('message', function(ev){
+  if(ev.origin !== location.origin) return;
+  var cadre = $('bcCadre');
+  if(!cadre || !ev.source || ev.source !== cadre.contentWindow) return;
+  var d = ev.data;
+  if(!d || d.swogeBanc !== 'hauteur') return;
+  var h = parseInt(d.h, 10);
+  if(!isFinite(h) || h < 200 || h > 40000) return;
+  cadre.style.height = h + 'px';
+});
+
+/* ==================== LES SIGNAUX ====================
+ *
+ * Ce que la colonie vient d'acheter ou de vendre, lu sur le meme serveur que
+ * la page SWOGE AI. Trois partis pris, et chacun repond a la meme question —
+ * montrer sans pousser :
+ *
+ *   — la mise en garde est en HAUT et dans chaque message, pas en pied de
+ *     page. La colonie joue du papier ; ceux qui lisent ont de l'argent reel.
+ *
+ *   — l'achat ne s'ouvre qu'en touchant la ligne. Un bouton pose a cote d'un
+ *     chiffre vert se lit comme une machine a sous.
+ *
+ *   — et il ne SIGNE rien ici : il pre-remplit l'ecran d'echange, qui a deja
+ *     la cotation, la revue avant signature et le calcul de l'impact. Un
+ *     second chemin d'achat finirait par ne plus coter comme le premier.
+ */
+var SIGNAUX_URL = 'https://web-production-220a3.up.railway.app/ai/colonie';
+var SIGNAUX = null, SIGNAUX_T = 0;
+
+function sgPct(x){
+  if(x === null || x === undefined || !isFinite(x)) return null;
+  return (x > 0 ? '+' : '') + (Math.round(x * 10) / 10) + '%';
+}
+function sgDollars(n){
+  if(!(n > 0)) return null;
+  return '$' + Math.round(n).toLocaleString('en-US');
+}
+function sgQuand(t){
+  if(!t) return '';
+  var s = Math.max(0, (Date.now() - t) / 1000);
+  if(s < 90) return Math.round(s) + 's ago';
+  if(s < 5400) return Math.round(s / 60) + ' min ago';
+  return Math.round(s / 3600) + ' h ago';
+}
+
+async function chargeSignaux(){
+  var l = $('sgListe'), e = $('sgEtat');
+  if(!l) return;
+  if(SIGNAUX && Date.now() - SIGNAUX_T < 20000){ peintSignaux(); return; }
+  try{
+    var r = await borne(fetch(SIGNAUX_URL, { cache:'no-store' }).then(function(x){
+      if(!x.ok) throw new Error(String(x.status)); return x.json(); }), 12000, 'colonie');
+    SIGNAUX = r; SIGNAUX_T = Date.now();
+    peintSignaux();
+  }catch(x){
+    /* Pas de valeur de repli : une liste inventee ferait acheter sur du vide. */
+    if(e) e.textContent = 'unreachable';
+    l.innerHTML = '<div class="wl-vide"><span class="g">&#128225;</span>'
+      + 'The colony did not answer. Nothing is shown rather than something made up.</div>';
+  }
+}
+
+function peintSignaux(){
+  var l = $('sgListe'), e = $('sgEtat');
+  var v = SIGNAUX;
+  if(!l || !v) return;
+  if(e) e.textContent = (v.trades || 0) + ' trades · ' + (v.positions || []).length + ' open';
+
+  /* Les positions OUVERTES d'abord : ce sont les seules qui bougent encore.
+     Puis les signaux passes, du plus recent au plus ancien. */
+  var lignes = [];
+  (v.positions || []).forEach(function(p){
+    lignes.push({ ouvert:true, sym:p.sym, adr:p.adr, r:p.latent,
+                  mcA:p.mcAchat, mcM:p.mcMaintenant, t:p.veilleT || 0,
+                  score:p.score, liens:p.liens });
+  });
+  var vus = {};
+  (v.positions || []).forEach(function(p){ vus[String(p.adr).toLowerCase()] = 1; });
+  (v.signaux || []).forEach(function(g){
+    if(g.k === 'achat' && vus[String(g.adr).toLowerCase()]) return;   /* deja en haut */
+    lignes.push({ ouvert:false, sym:g.sym, adr:g.adr, r:(g.k === 'vente' ? g.r : null),
+                  mcA:g.mc, mcM:null, t:g.t, score:g.score, k:g.k, liens:g.liens });
+  });
+
+  if(!lignes.length){
+    l.innerHTML = '<div class="wl-vide"><span class="g">&#128225;</span>'
+      + 'No trade yet. The colony shows nothing until it has done something.</div>';
+    return;
+  }
+
+  l.innerHTML = lignes.slice(0, 40).map(function(x, i){
+    var pc = sgPct(x.r);
+    var cls = (x.r > 0) ? 'sg-up' : (x.r < 0 ? 'sg-dn' : '');
+    var mc = sgDollars(x.mcM) || sgDollars(x.mcA);
+    var sousTitre = [];
+    if(x.mcM > 0 && x.mcA > 0) sousTitre.push('MC ' + sgDollars(x.mcA) + ' → ' + sgDollars(x.mcM));
+    else if(mc) sousTitre.push('MC ' + mc);
+    if(x.score) sousTitre.push('score ' + x.score);
+    if(x.t) sousTitre.push(sgQuand(x.t));
+    return '<div class="sg" data-i="' + i + '">'
+      + '<div class="sg-h">'
+      +   '<span class="sg-logo">' + ech(String(x.sym || '?').slice(0, 3)) + '</span>'
+      +   '<span class="sg-tx"><b>$' + ech(x.sym || '') + '</b>'
+      +     '<small>' + ech(sousTitre.join(' · ')) + '</small></span>'
+      +   (pc ? '<span class="sg-r ' + cls + '">' + pc
+                 + '<small>' + (x.ouvert ? 'live' : 'closed') + '</small></span>' : '')
+      +   '<span class="sg-etq ' + (x.ouvert ? 'sg-open' : 'sg-shut') + '">'
+      +     (x.ouvert ? 'open' : (x.k === 'vente' ? 'sold' : 'bought')) + '</span>'
+      + '</div>'
+      + '<div class="sg-corps">'
+      +   '<div class="sg-adr">' + ech(x.adr || '') + '</div>'
+      +   '<p class="wl-note" style="margin:0">Buying uses <b>your</b> money on the live market. '
+      +     'The colony only traded this on paper.</p>'
+      +   '<div class="sg-parts" data-adr="' + ech(x.adr || '') + '" data-sym="'
+      +     ech(x.sym || '') + '">'
+      +     '<button type="button" data-part="10">10%</button>'
+      +     '<button type="button" data-part="30">30%</button>'
+      +     '<button type="button" data-part="50">50%</button>'
+      +     '<button type="button" data-part="100">MAX</button>'
+      +   '</div>'
+      + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+/* Une ligne s'ouvre au toucher. Rien ne s'achete a ce moment-la. */
+document.addEventListener('click', function(ev){
+  var h = ev.target.closest && ev.target.closest('#sgListe .sg-h');
+  if(!h) return;
+  h.parentElement.classList.toggle('ouvert');
+});
+
+/* ---- ET L'ACHAT PASSE PAR L'ECHANGE ----
+ * On ne signe rien ici. On amene le joueur sur l'ecran qui sait coter, montrer
+ * l'impact et faire relire avant de signer — avec le jeton et la part deja
+ * poses. Il lui reste le dernier geste, et c'est le sien. */
+document.addEventListener('click', async function(ev){
+  var b = ev.target.closest && ev.target.closest('#sgListe .sg-parts button');
+  if(!b) return;
+  var boite = b.parentElement;
+  var adr = boite.getAttribute('data-adr') || '';
+  var part = parseInt(b.getAttribute('data-part'), 10) || 10;
+  if(!/^0x[0-9a-fA-F]{40}$/.test(adr)) return toast('That signal carries no usable address');
+  if(!moi) return ouvreConnexion();
+
+  b.disabled = true;
+  try{
+    /* Le jeton doit exister dans la liste pour etre cote et signe. On le lit
+       sur la chaine plutot que de croire le signal sur parole : le symbole
+       vient d'un service, le contrat vient du contrat. */
+    var j = J(persoCle(adr));
+    if(!j){
+      var t = await borne(chercheJeton(adr), 15000, 'jeton');
+      if(!t) { b.disabled = false; return toast('That contract does not answer like a token here'); }
+      j = ajouteJeton(t);
+    }
+    swChaineId = CHAINE.id;
+    swVersChaineId = CHAINE.id;
+    if($('swVersAdr')) $('swVersAdr').value = '';
+    gardeSwChaine();
+    remplitChoix($('swDe')); remplitChoix($('swVers'));
+    valPick($('swDe'), 'eth');
+    valPick($('swVers'), j.cle);
+    videSwap();
+    va('ecSwap');
+    /* La part se pose par le meme curseur que le reste de l'ecran : MAX y
+       garde deja de quoi payer le reseau, ce qu'une multiplication a la main
+       aurait oublie. */
+    await poseParCurseur('swMontant', part);
+    majSwap();
+  }catch(e){ toast(pourquoiRefus(e)); }
+  b.disabled = false;
 });
 
 /* ==================== BRULER ====================

@@ -346,6 +346,40 @@ footer{margin-top:34px;border-top:1px solid var(--line);padding-top:14px;font-fa
 .simplehint b{color:var(--gold)}
 body.simple .adv{display:none}
 body.simple .simplehint{display:block}
+
+/* ==================== ENCASTRE DANS LE PORTEFEUILLE ====================
+ *
+ * `swoge_wallet.html` charge cette page dans un cadre, meme origine, sur son
+ * ecran « Volume bench ». La DEMANDE etait « une seule page, plus de banc a
+ * part » — et le point de depart etait « je ne vois pas de bouton play et
+ * stop », parce qu'ils vivaient dans un autre onglet.
+ *
+ * Ce qui part ici est ce que le portefeuille porte DEJA autour du cadre : sa
+ * barre du haut, sa colonne de cartes, son pied de page, son titre. Les
+ * garder ferait deux barres, deux titres, deux pieds.
+ *
+ * Ce qui RESTE : le panneau One-Click en entier — PLAY et STOP compris — la
+ * pastille RPC, et la colonne de droite (le jeton, les totaux, la liste des
+ * portefeuilles avec leurs soldes). C'est la seule chose qui dit ce que le
+ * moteur est en train de faire.
+ *
+ * Rien n'est RETIRE du DOM : le moteur lit les contrats Uniswap, le jeton et
+ * les reglages d'execution dans la grille avancee. La cacher est le maximum
+ * possible ; la supprimer casserait One-Click et l'Anneau — c'est deja ecrit
+ * plus haut pour la bascule Simple / Advanced, et ca vaut ici aussi. */
+body.encastre header.sw-haut,
+body.encastre aside.sw-lat,
+body.encastre .masthead > div:first-child,
+body.encastre .bn-barre,
+body.encastre .wrap > footer,
+body.encastre .grid > div:first-child,
+body.encastre .simplehint{display:none}
+body.encastre{background:transparent}
+body.encastre .sw-corps{display:block}
+body.encastre main{padding:0}
+body.encastre .wrap{max-width:none;padding:0;margin:0}
+body.encastre .masthead{margin:0 0 10px;justify-content:flex-end}
+body.encastre .grid{display:block}
 /* one-click only: hide the mode toggle and the whole advanced grid (kept in the
    DOM, display:none, so One-Click can still read the DEX/token/exec inputs) */
 /* grille avancee rouverte : la bascule Simple / Advanced reprend la main */
@@ -752,6 +786,52 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .sw-corps > main{ min-width:0 }
 </style>
 <body>
+<script>
+/* ---- LE CADRE DU PORTEFEUILLE ----
+ * `swoge_wallet.html` charge cette page avec `?dans=wallet`. Deux choses ici,
+ * et rien d'autre :
+ *
+ *   1. poser `body.encastre` AVANT le premier dessin. Le faire plus bas
+ *      montrerait une demi-seconde la barre du haut et le titre du banc a
+ *      l'interieur du portefeuille, puis les ferait disparaitre — on croirait
+ *      la page en train de casser.
+ *
+ *   2. dire au portefeuille la hauteur reelle du contenu. Un cadre a une
+ *      hauteur fixe, et le panneau grandit (les portefeuilles caches
+ *      apparaissent un par un pendant que ca tourne). Sans ca, on se
+ *      retrouve a faire defiler DANS un cadre qui defile lui-meme dans la
+ *      page : le geste ne sait plus qui il pilote, et sur telephone c'est
+ *      la premiere chose qui se casse.
+ *
+ * On ne parle qu'a `parent`, et seulement pour une hauteur. Aucune cle,
+ * aucune adresse, aucun montant ne passe par la : le portefeuille et le banc
+ * partagent deja le meme `localStorage` puisque c'est la meme origine. */
+(function(){
+  "use strict";
+  var dedans = false;
+  try{ dedans = new URLSearchParams(location.search).get("dans") === "wallet"; }catch(e){}
+  if(!dedans) return;
+  document.documentElement.classList.add("encastre-html");
+  function pose(){ document.body.classList.add("encastre"); }
+  if(document.body) pose(); else document.addEventListener("DOMContentLoaded", pose);
+
+  var dernier = 0;
+  function dis(){
+    var h = 0;
+    try{ h = Math.ceil(document.documentElement.scrollHeight); }catch(e){ return; }
+    if(!(h > 0) || Math.abs(h - dernier) < 8) return;
+    dernier = h;
+    try{ parent.postMessage({ swogeBanc:"hauteur", h:h }, location.origin); }catch(e){}
+  }
+  function suit(){
+    dis();
+    try{ new ResizeObserver(dis).observe(document.body); }catch(e){}
+    setInterval(dis, 1200);
+  }
+  if(document.body) suit(); else document.addEventListener("DOMContentLoaded", suit);
+  window.addEventListener("load", dis);
+})();
+</script>
 <header class="sw-haut">
   <a class="sw-marque" href="nexus.html" id="gxMonde">
     <span class="sw-patte">🐾</span>

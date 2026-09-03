@@ -4861,10 +4861,11 @@ function servir(q, r, f, type) {
        icones sous le doigt de quelqu'un qui vise le meme bouton chaque jour
        est un vrai defaut. */
     ok(JSON.stringify(rang.gestes) === JSON.stringify(
-         ['ecEnvoyer', 'ecRecevoir', 'ecSwap', 'ecPont', 'ecBruler', 'ecBanc']),
-       'la rangee porte les six gestes, dans l ordre, Burn puis Bench a la suite ('
+         ['ecEnvoyer', 'ecRecevoir', 'ecSwap', 'ecPont', 'ecBruler', 'ecBanc', 'ecSignaux']),
+       'la rangee porte les sept gestes, dans l ordre — chaque nouveau vient A LA SUITE, jamais '
+       + 'au milieu : quelqu un qui vise le meme bouton chaque jour ne doit pas le voir glisser ('
        + rang.gestes.join(', ') + ')');
-    ok(rang.deborde, 'et elle deborde : six libelles ne tiennent pas dans la largeur de quatre');
+    ok(rang.deborde, 'et elle deborde : sept libelles ne tiennent pas dans la largeur de quatre');
     ok(rang.gCache && !rang.dCache,
        'au repos, seule la fleche de DROITE se voit : il n y a rien a gauche, et une fleche qui '
        + 'ne fait rien apprend a ne plus la toucher');
@@ -5361,6 +5362,134 @@ function servir(q, r, f, type) {
     ok(e.etat === 'reussi',
        'l entree passe a « reussi » (« ' + e.etat + ' ») — elle restait « en attente » pour '
        + 'toujours alors que la transaction avait abouti');
+    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
+    await page.close();
+  }
+
+  /* ==========================================================================
+   * LES SIGNAUX : MONTRER SANS POUSSER
+   *
+   * « On voit les cryptos que la colonie a tradees mais on n'est pas oblige
+   *   d'acheter — on voit les signaux et on peut acheter en direct
+   *   facilement. »
+   *
+   * Les deux moities de cette phrase se contredisent si on les traite mal, et
+   * c'est ce que cet essai tient :
+   *
+   *   — « pas oblige » : les parts d'achat ne se voient PAS tant qu'on n'a pas
+   *     ouvert la ligne, et la page dit que la colonie joue du papier. Un
+   *     bouton d'achat pose a cote d'un chiffre vert est une machine a sous.
+   *
+   *   — « facilement » : un geste suffit ensuite, et il amene sur l'ecran
+   *     d'echange DEJA rempli — pas sur un second moteur d'achat qui finirait
+   *     par ne plus coter comme le premier.
+   * ====================================================================== */
+  {
+    console.log('\n-- les signaux de la colonie --');
+    const MOI = '0x00000000000000000000000000000000000a11ce';
+    const TOK = '0x1111111111111111111111111111111111111111';
+    const VUE = { trades: 12, positions: [{ sym: 'PEPE2', adr: TOK, latent: 34.7,
+                    mcAchat: 21000, mcMaintenant: 29500, veilleT: Date.now() - 20000,
+                    score: 86, liens: [] }],
+                  signaux: [{ k: 'vente', sym: 'WOOF', r: -12.4, t: Date.now() - 600000,
+                              adr: '0x2222222222222222222222222222222222222222' }] };
+    const page = await nav.newPage({ viewport: { width: 430, height: 1000 } });
+    const boum = [];
+    page.on('pageerror', (e) => boum.push(String(e).slice(0, 160)));
+    await page.addInitScript((moi) => {
+      try { localStorage.setItem('swogeAuth', 'wallet'); } catch (e) {}
+      window.ethereum = { isMetaMask: true,
+        request: async (a) => {
+          if (a.method === 'eth_accounts' || a.method === 'eth_requestAccounts') return [moi];
+          if (a.method === 'eth_chainId') return '0x1237';
+          if (a.method === 'net_version') return '4663';
+          return null;
+        }, on: () => {}, removeListener: () => {} };
+    }, MOI);
+    const enMot = (v) => '0x' + BigInt(v).toString(16).padStart(64, '0');
+    await page.route(/^https?:\/\/(?!127\.0\.0\.1)/, (r) => {
+      if (/ai\/colonie/.test(r.request().url()))
+        return r.fulfill({ contentType: 'application/json', body: JSON.stringify(VUE) });
+      if (r.request().method() !== 'POST') return r.abort();
+      let q = {}; try { q = JSON.parse(r.request().postData() || '{}'); } catch (e) {}
+      const un = (m) => {
+        if (m.method === 'eth_chainId') return '0x1237';
+        if (m.method === 'net_version') return '4663';
+        if (m.method === 'eth_blockNumber') return '0x2f7ce78';
+        if (m.method === 'eth_getLogs') return [];
+        if (m.method === 'eth_gasPrice') return enMot(134102000n);
+        if (m.method === 'eth_getBalance') return enMot(500000000000000000n);
+        if (m.method === 'eth_call') {
+          const d = (m.params && m.params[0] && m.params[0].data) || '';
+          if (d.startsWith('0x313ce567')) return enMot(18n);
+          if (d.startsWith('0x95d89b41') || d.startsWith('0x06fdde03')) {
+            const t = 'PEPE2', h = Buffer.from(t).toString('hex');
+            return '0x' + (32).toString(16).padStart(64, '0')
+                 + t.length.toString(16).padStart(64, '0') + h.padEnd(64, '0');
+          }
+          if (d.startsWith('0x18160ddd')) return enMot(1000000000000000000000000n);
+          if (d.startsWith('0x70a08231')) return enMot(1234000000000000000000n);
+          return enMot(0n);
+        }
+        return null;
+      };
+      const f = (m) => ({ jsonrpc: '2.0', id: m.id, result: un(m) });
+      return r.fulfill({ contentType: 'application/json',
+                         body: JSON.stringify(Array.isArray(q) ? q.map(f) : f(q)) });
+    });
+    await page.route('**/ethers*.umd.min.js', (r) => r.fulfill({
+      contentType: 'text/javascript', body: fs.readFileSync(ETHERS, 'utf8') }));
+    await page.goto('http://127.0.0.1:' + port + '/swoge_wallet.html',
+                    { waitUntil: 'domcontentloaded' });
+    await page.waitForTimeout(2600);
+    await page.evaluate(() => document.querySelector('[data-va="ecSignaux"]').click());
+    await page.waitForTimeout(2200);
+
+    const v = await page.evaluate(() => ({
+      n: document.querySelectorAll('#sgListe .sg').length,
+      sous: (document.querySelector('#sgListe .sg .sg-tx small') || {}).textContent || '',
+      r: (document.querySelector('#sgListe .sg .sg-r') || {}).textContent || '',
+      partsVues: document.querySelector('#sgListe .sg-parts').offsetParent !== null,
+      papier: /paper/i.test(document.getElementById('ecSignaux').textContent),
+      conseil: /not advice/i.test(document.getElementById('ecSignaux').textContent),
+    }));
+    console.log('   ' + JSON.stringify(v));
+    ok(v.n === 2, 'les positions ouvertes ET les signaux passes sont listes (' + v.n + ')');
+    ok(/21,000/.test(v.sous) && /29,500/.test(v.sous),
+       'la capitalisation d ACHAT et celle du MOMENT sont montrees ensemble — c est leur '
+       + 'ecart qui dit quelque chose (« ' + v.sous + ' »)');
+    ok(/\+34\.7%/.test(v.r), 'avec le gain latent (« ' + v.r.replace(/\s+/g, ' ') + ' »)');
+    ok(v.papier && v.conseil,
+       'et la page DIT que la colonie joue du papier, et que ce n est pas un conseil');
+    ok(v.partsVues === false,
+       'les parts d achat ne se voient PAS avant d avoir ouvert la ligne : un bouton pose a '
+       + 'cote d un chiffre vert se lit comme une machine a sous');
+
+    await page.evaluate(() => document.querySelector('#sgListe .sg-h').click());
+    await page.waitForTimeout(300);
+    ok(await page.evaluate(() =>
+         document.querySelector('#sgListe .sg-parts').offsetParent !== null),
+       'un geste les ouvre — « pas oblige » ne doit pas vouloir dire « difficile »');
+
+    await page.evaluate(() => [...document.querySelectorAll('#sgListe .sg-parts button')]
+      .find((b) => b.textContent === '30%').click());
+    await page.waitForTimeout(2500);
+    const ap = await page.evaluate(() => ({
+      ecran: [...document.querySelectorAll('.wl-ecran')]
+        .filter((e) => getComputedStyle(e).display !== 'none').map((e) => e.id)[0],
+      de: document.getElementById('swDe').value,
+      vers: document.getElementById('swVers').value,
+      montant: document.getElementById('swMontant').value,
+    }));
+    console.log('   apres 30% : ' + JSON.stringify(ap));
+    ok(ap.ecran === 'ecSwap',
+       'l achat amene sur l ECHANGE, pas sur un second moteur : celui-la sait deja coter, '
+       + 'montrer l impact et faire relire avant de signer');
+    ok(ap.de === 'eth' && /1111111111/.test(ap.vers),
+       'avec le jeton du signal en arrivee et l ether au depart');
+    ok(parseFloat(ap.montant) > 0.14 && parseFloat(ap.montant) < 0.16,
+       '30 % du solde sont deja poses (' + ap.montant + ' sur 0.5) — il reste le dernier '
+       + 'geste, et il est au joueur');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.close();
   }

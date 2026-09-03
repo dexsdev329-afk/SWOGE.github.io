@@ -237,6 +237,132 @@ const JETON = '0x1111111111111111111111111111111111111111';
   ok(boum2.length === 0, 'aucune erreur dans le banc'
      + (boum2[0] ? ' (' + boum2[0].slice(0, 120) + ')' : ''));
 
+  /* ---- 3. LE MOTEUR DANS L'ECRAN ----
+   *
+   * DEMANDE : « une seule page, plus de banc a part — oui ». Et avant elle,
+   * la vraie plainte : « je ne vois pas de bouton play et stop ».
+   *
+   * Ce qui est verifie ici est exactement ce qui rendrait la reponse fausse :
+   *
+   *   — que PLAY et STOP soient VISIBLES sans quitter le portefeuille. Les
+   *     avoir dans le DOM ne suffit pas : ils y etaient deja, dans un autre
+   *     onglet, et c'est precisement le probleme signale.
+   *
+   *   — que le moteur ne se charge PAS tant qu'on ne l'a pas demande. Une
+   *     page de trois mille cinq cents lignes montee a chaque ouverture du
+   *     portefeuille se paie en donnees mobiles sur un telephone, pour des
+   *     visites qui n'ouvriront jamais le banc.
+   *
+   *   — qu'il n'y ait toujours qu'UN moteur. Si le portefeuille avait gagne
+   *     sa propre copie de PLAY, on aurait deux codes qui signent, et l'un
+   *     des deux deriverait en silence.
+   *
+   *   — que le cadre prenne la hauteur de son contenu. Sinon on fait defiler
+   *     dans un cadre qui defile lui-meme : sur telephone le doigt ne sait
+   *     plus lequel il pousse, et on n'atteint plus STOP. */
+  console.log('\n-- le moteur vit dans l ecran du portefeuille --');
+  await pb.close();
+
+  await pg.evaluate(() => document.querySelector('[data-va="ecBanc"]').click());
+  await pg.waitForTimeout(300);
+
+  const avant = await pg.evaluate(() => {
+    const b = document.getElementById('bcCadreBoite'), c = document.getElementById('bcCadre');
+    return { boite: !!b, hidden: b ? b.hidden : null, src: c ? c.getAttribute('src') : null };
+  });
+  ok(avant.boite, 'l ecran porte un emplacement pour le moteur');
+  ok(avant.hidden === true && avant.src === null,
+     'mais rien n est charge avant qu on le demande : un telephone ne paie pas trois mille cinq '
+     + 'cents lignes pour une visite qui n ouvrira pas le banc');
+
+  const JETON2 = '0x2222222222222222222222222222222222222222';
+  await pg.evaluate((j) => {
+    document.getElementById('bcMode').value = 'tx';
+    document.getElementById('bcN').value = '9';
+    document.getElementById('bcTok').value = j;
+  }, JETON2);
+
+  const ongletsAvant = ctx.pages().length;
+  await pg.click('#bcOuvre');
+  await pg.waitForTimeout(600);
+  ok(ctx.pages().length === ongletsAvant, 'le bouton n ouvre plus d onglet : on reste dans le portefeuille');
+
+  const apresClic = await pg.evaluate(() => {
+    const c = document.getElementById('bcCadre');
+    return { hidden: document.getElementById('bcCadreBoite').hidden, src: c.getAttribute('src') };
+  });
+  ok(apresClic.hidden === false, 'le cadre apparait');
+  ok(/swoge_bench\.html\?dans=wallet/.test(apresClic.src || ''),
+     'et il charge la page du banc en mode encastre (' + apresClic.src + ')');
+
+  /* On attend que le banc soit vraiment monte : `frame.waitForSelector` sur
+     un bouton du moteur, pas une temporisation en aveugle. */
+  await pg.waitForTimeout(2600);
+  const cadres = pg.frames().filter((f) => /dans=wallet/.test(f.url()));
+  ok(cadres.length === 1, 'le portefeuille tient exactement un cadre de banc (' + cadres.length + ')');
+
+  if (cadres.length === 1) {
+    const fr = cadres[0];
+    try { await fr.waitForSelector('#ocPlay', { state: 'visible', timeout: 8000 }); } catch (e) {}
+
+    const dedans = await fr.evaluate(() => {
+      const vu = (id) => {
+        const e = document.getElementById(id);
+        if (!e) return null;
+        const r = e.getBoundingClientRect();
+        return getComputedStyle(e).display !== 'none' && r.width > 0 && r.height > 0;
+      };
+      const cache = (sel) => {
+        const e = document.querySelector(sel);
+        return !e || getComputedStyle(e).display === 'none';
+      };
+      return {
+        encastre: document.body.classList.contains('encastre'),
+        play: vu('ocPlay'), stop: vu('ocStop'),
+        oc: vu('oneClick'),
+        rangs: !!document.getElementById('rows'),
+        barre: cache('header.sw-haut'), cote: cache('aside.sw-lat'),
+        pied: cache('.wrap > footer'),
+        mode: (document.getElementById('ocMode') || {}).value,
+        n: (document.getElementById('ocN') || {}).value,
+        tok: (document.getElementById('tok') || {}).value,
+        haut: Math.ceil(document.documentElement.scrollHeight),
+      };
+    });
+    ok(dedans.encastre, 'le banc se sait dans un cadre');
+    ok(dedans.play === true && dedans.stop === true,
+       'PLAY et STOP sont VISIBLES sans quitter le portefeuille — c est toute la demande');
+    ok(dedans.oc === true, 'le panneau One-Click entier est la, pas seulement ses deux boutons');
+    ok(dedans.rangs, 'et la liste des portefeuilles avec leurs soldes : sans elle, on ne voit pas ce que le moteur fait');
+    ok(dedans.barre && dedans.cote && dedans.pied,
+       'le banc a retire SA barre du haut, SA colonne et SON pied : le portefeuille porte deja les siens');
+    ok(dedans.mode === 'tx' && dedans.n === '9' && (dedans.tok || '').toLowerCase() === JETON2,
+       'et les reglages faits juste au-dessus sont arrives dans le moteur ('
+       + dedans.mode + ' · ' + dedans.n + ' · ' + String(dedans.tok).slice(0, 8) + '…)');
+
+    const h = await pg.evaluate(() => {
+      const c = document.getElementById('bcCadre');
+      return parseInt(c.style.height, 10) || 0;
+    });
+    ok(h > 300, 'le cadre a pris la hauteur de son contenu (' + h + 'px) — on ne fait pas '
+       + 'defiler dans un cadre qui defile');
+    ok(Math.abs(h - dedans.haut) < 60,
+       'et c est bien LA hauteur du banc, pas un chiffre choisi au hasard (' + dedans.haut + 'px)');
+  }
+
+  ok(await pg.evaluate(() => {
+    const b = document.getElementById('bcOnglet');
+    return !!b && b.offsetParent !== null;
+  }), 'la porte de secours reste : un cadre peut etre bloque, et STOP ne doit jamais devenir inatteignable');
+
+  /* UN seul moteur : le portefeuille ne doit pas avoir gagne sa propre copie
+     de PLAY dans son propre document. */
+  ok(await pg.evaluate(() => !document.querySelector('#ocPlay')),
+     'le portefeuille lui-meme n a PAS de copie de PLAY : il n y a toujours qu un seul code qui signe');
+
+  ok(boum.length === 0, 'toujours aucune erreur dans le portefeuille'
+     + (boum[0] ? ' (' + boum[0].slice(0, 120) + ')' : ''));
+
   await ctx.close();
   await nav.close();
   srv.close();

@@ -65,7 +65,7 @@ canvas{ touch-action:none; }
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-<script src="stakebubble.js?v=338bbfa2"></script>
+<script src="stakebubble.js?v=0eb987bb"></script>
 <!-- ---- LE COMPTE DE JEU, DANS LE MONDE AUSSI ----
      Le tiroir se construit a partir du `#menu` de la page, et cette page n'en
      avait pas : « My Wallet » n'y etait qu'un lien vers une autre page.
@@ -74,9 +74,9 @@ canvas{ touch-action:none; }
      dollars a cote du solde. `ethers` vient avec : c'est lui qui signe les
      retraits et les envois. -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
-<script src="swogecompte.js?v=f1d89c7a"></script>
+<script src="swogecompte.js?v=2e1921ce"></script>
 <script src="swogebuy.js?v=9d7c39e5"></script>
-<script src="swogeprofil.js?v=2bff1154" defer></script>
+<script src="swogeprofil.js?v=aa21d613" defer></script>
 
 <style>
 html,body{ height:100%; margin:0; background:#0A1128; overscroll-behavior:none; }
@@ -2669,14 +2669,12 @@ body{ background:url('img/a77f9f5ed053.jpg') center center/cover no-repeat fixed
        aussi : `swogecompte.js` ne pose le sien que s'il n'en trouve aucun —
        celui-ci lui tient donc lieu de liste, et doit dire vrai. -->
   <div class="menu" id="menu">
-    <a href="#" data-panel="wallet">👛 My Wallet</a>
     <a href="#" data-panel="stake">🔒 Staking</a>
     <a href="#" data-panel="dep">💰 Deposit</a>
     <a href="#" data-panel="wd">🏧 Withdraw</a>
     <a href="#" data-panel="quests">🎯 Daily Quests</a>
     <div class="msep"></div>
     <a href="games.html">🎮 Other games</a>
-    <a href="swoge_wallet.html">🪙 SWOGE Wallet</a>
     <a href="index.html">🏠 Home</a>
   </div>
 </header>

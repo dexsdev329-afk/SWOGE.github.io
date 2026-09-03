@@ -99,6 +99,10 @@
        * Meme critere que `duTiroir`, pour que les deux listes repondent
        * pareil a la meme question. */
       if(n.hidden || (n.style && n.style.display === "none")) return null;
+      /* Plus de rangee « Wallet » ici : le portefeuille s ouvre par le rond
+         en bas de page, sur toutes les pages. Meme tri que le tiroir. */
+      if(n.getAttribute("data-panel") === "wallet" || n.id === "mnWallet"
+         || /swoge_wallet\.html/i.test(n.getAttribute("href") || "")) return null;
       var c = coupe(n.textContent);
       return { ic:c.ic, mot:c.mot, href: n.getAttribute("href")||"#", vers:n };
     }).filter(Boolean);

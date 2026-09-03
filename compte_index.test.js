@@ -208,13 +208,19 @@ function chargeLeCatalogue() {
      'et leur declaration : c est elle que le menu du profil reflete, plutot que'
      + ' d ecrire sa propre liste');
 
-  /* ---- LE PROFIL, PUIS « MY WALLET », AU VRAI POINTEUR ---- */
+  /* ---- LE PROFIL, PUIS « DEPOSIT », AU VRAI POINTEUR ----
+     C etait « My Wallet » ; cette rangee a quitte le menu du profil — le
+     portefeuille s ouvre par le rond en bas de page — et le defaut qu on
+     mesure ici (partir vers le Coin Pusher au lieu d ouvrir sur place) vaut
+     pour toutes les rangees de compte. */
   await p.click('#gxProfil');
   await p.waitForTimeout(700);
   const rangees = await p.evaluate(() =>
     [...document.querySelectorAll('#gxMenu a')].map((a) => a.textContent.trim()));
   ok(rangees.length > 3, `le menu du profil montre ${rangees.length} rangees`);
-  const iw = rangees.findIndex((t) => /wallet/i.test(t));
+  ok(!rangees.some((t) => /wallet/i.test(t)),
+     'et aucune rangee « Wallet » : le portefeuille a son rond en bas de page');
+  const iw = rangees.findIndex((t) => /deposit/i.test(t));
   ok(iw >= 0, `dont « ${rangees[iw] || '—'} »`);
 
   const avant = p.url();

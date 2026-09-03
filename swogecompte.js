@@ -1150,19 +1150,19 @@
     m.className = 'menu'; m.id = 'menu';
     m.style.display = 'none';
     var ici = (location.pathname.split('/').pop() || '').toLowerCase();
+    /* ---- PLUS DE RANGEE « WALLET » DANS LE MENU DU PROFIL ----
+       « Il y a withdraw, deposit, my wallet… faudrait le retirer de toutes les
+       pages : on est cense l'ouvrir depuis le petit bouton rond en bas. »
+       Le portefeuille a son rond en bas a droite de chaque page ; deux
+       rangees de plus ici ne faisaient que le repeter. Le panneau
+       `box-wallet` existe toujours pour qui l'ouvre autrement. */
     m.innerHTML =
-      '<a href="#" data-panel="wallet">👛 My Wallet</a>' +
       '<a href="#" data-panel="stake">🔒 Staking</a>' +
       '<a href="#" data-panel="dep">💰 Deposit</a>' +
       '<a href="#" data-panel="wd">🏧 Withdraw</a>' +
       '<a href="#" data-panel="quests">🎯 Daily Quests</a>' +
       '<div class="msep"></div>' +
       (ici === 'games.html' ? '' : '<a href="games.html">🎮 Other games</a>') +
-      /* Le portefeuille est une DESTINATION, pas un panneau : il vit dans le
-         second paquet, avec le hall et l'accueil. Le panneau « My Wallet »
-         plus haut montre le solde ; celui-ci ouvre la page ou l'on envoie,
-         echange et recoit. */
-      (ici === 'swoge_wallet.html' ? '' : '<a href="swoge_wallet.html">🪙 SWOGE Wallet</a>') +
       '<a href="index.html">🏠 Home</a>';
     (document.body || document.documentElement).appendChild(m);
     m.addEventListener('click', function (e) {

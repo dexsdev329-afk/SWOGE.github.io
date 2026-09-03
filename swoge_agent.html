@@ -111,10 +111,10 @@ canvas{ touch-action:none; }
      panneaux (portefeuille avec envoi, depot, retrait, staking, quetes),
      `swogeprofil.js` peint le tiroir derriere l'avatar, `swogebuy.js` pose
      l'estimation en dollars a cote du solde. Meme quatuor que l'accueil. -->
-<script src="stakebubble.js?v=338bbfa2"></script>
-<script src="swogecompte.js?v=f1d89c7a"></script>
+<script src="stakebubble.js?v=0eb987bb"></script>
+<script src="swogecompte.js?v=2e1921ce"></script>
 <script src="swogebuy.js?v=9d7c39e5"></script>
-<script src="swogeprofil.js?v=2bff1154" defer></script>
+<script src="swogeprofil.js?v=aa21d613" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@walletconnect/ethereum-provider@2.13.3/dist/index.umd.js"></script>
 <style>
 /* ---- LA PAGE PASSE AU CLAIR ----
@@ -356,14 +356,12 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
        aussi : `swogecompte.js` ne pose le sien que s'il n'en trouve aucun —
        celui-ci lui tient donc lieu de liste, et doit dire vrai. -->
   <div class="menu" id="menu">
-    <a href="#" data-panel="wallet">👛 My Wallet</a>
     <a href="#" data-panel="stake">🔒 Staking</a>
     <a href="#" data-panel="dep">💰 Deposit</a>
     <a href="#" data-panel="wd">🏧 Withdraw</a>
     <a href="#" data-panel="quests">🎯 Daily Quests</a>
     <div class="msep"></div>
     <a href="games.html">🎮 Other games</a>
-    <a href="swoge_wallet.html">🪙 SWOGE Wallet</a>
     <a href="index.html">🏠 Home</a>
   </div>
 </header>

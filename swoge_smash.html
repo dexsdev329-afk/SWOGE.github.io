@@ -142,8 +142,8 @@ video{ max-width:100%; }
 <!-- La bulle de staking. Chargee tot et SANS defer : elle enveloppe WebSocket
      pour ecouter ce qui passe deja, et doit donc etre en place avant que la page
      n ouvre sa connexion. -->
-<script src="stakebubble.js?v=338bbfa2"></script>
-<script src="swogeprofil.js?v=2bff1154" defer></script>
+<script src="stakebubble.js?v=0eb987bb"></script>
+<script src="swogeprofil.js?v=aa21d613" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <script src="swogebuy.js?v=9d7c39e5"></script>
 <style>
@@ -819,14 +819,12 @@ html::before{
   <button class="menubtn" id="menuBtn" aria-label="Menu" hidden aria-hidden="true" tabindex="-1">☰</button>
   <div class="menu" id="menu">
     <a href="#" id="mnSignIn">✉️ Sign in</a>
-    <a href="#" data-panel="wallet">👛 My Wallet</a>
     <a href="#" data-panel="stake">🔒 Staking</a>
     <a href="#" data-panel="dep">💰 Deposit</a>
     <a href="#" data-panel="wd">🏧 Withdraw</a>
     <a href="#" data-panel="quests">🎯 Daily Quests</a>
     <div class="msep"></div>
     <a href="games.html">🎮 Other games</a>
-    <a href="swoge_wallet.html">🪙 SWOGE Wallet</a>
     <a href="swoge_pusher_live.html">🎡 Pusher</a>
     <a href="index.html">🏠 Home</a>
     <div class="msep"></div>

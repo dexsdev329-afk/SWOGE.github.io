@@ -138,13 +138,13 @@ video{ max-width:100%; }
 <!-- La bulle de staking. Chargee tot et SANS defer : elle enveloppe WebSocket
      pour ecouter ce qui passe deja, et doit donc etre en place avant que la page
      n ouvre sa connexion. -->
-<script src="stakebubble.js?v=338bbfa2"></script>
+<script src="stakebubble.js?v=0eb987bb"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <script src="swogebuy.js?v=9d7c39e5"></script>
 <!-- Le menu du profil : il LIT le `#menu` cache plus bas et le redessine
      en clair dans `#gxMenu`. Versionne comme les autres scripts partages. -->
-<script src="swogeprofil.js?v=2bff1154" defer></script>
+<script src="swogeprofil.js?v=aa21d613" defer></script>
 <style>
   /* `--panelbg` (la photo de fond des panneaux de compte) est retiree : les
      quatre panneaux sont blancs desormais, plus personne ne la lisait. */
@@ -816,7 +816,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
      script lit. Seule « Close » est masquee : elle fermait CE menu-la, qui
      ne s'ouvre plus (une rangee que la page cache reste cachee). -->
 <div class="pmenu" id="menu" hidden>
-  <a id="mnWallet">👛 My Wallet</a>
+  <a id="mnWallet" style="display:none" hidden>👛 My Wallet</a>
   <a id="mnStake">🔒 Staking</a>
   <a id="mnDeposit">💰 Deposit</a>
   <a id="mnWithdraw">🏧 Withdraw</a>
@@ -825,7 +825,6 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   <a id="mnGames">🎮 Other games</a>
   <a href="swoge_staking.html">🔒 Staking page</a>
   <a href="index.html">🏠 Home</a>
-  <a href="swoge_wallet.html">🪙 SWOGE Wallet</a>
   <div class="msep"></div>
   <a id="mnSound">🔊 Sound: ON</a>
   <a id="mnClose" style="display:none">✕ Close</a>

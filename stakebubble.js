@@ -3449,11 +3449,9 @@
    */
   var AILLEURS = [
     ['games.html', '\uD83C\uDFAE Other games'],
-    /* Le portefeuille etait une page qu'on ne trouvait QUE depuis le hall des
-       jeux, dans la rangee « Utility », derriere une vignette. Depuis une
-       table, aucun chemin n'y menait — alors que c'est de la, en pleine
-       partie, qu'on veut aller voir son solde ou envoyer ses gains. */
-    ['swoge_wallet.html', '\uD83E\uDE99 SWOGE Wallet'],
+    /* Le portefeuille n'est plus une rangee d'ici : il a son rond en bas a
+       droite de chaque page (`walletMonte`), et une rangee de plus ne
+       faisait que le repeter. */
     ['index.html', '\uD83C\uDFE0 Home'],
   ];
   /* ---- LE COMPTE, SUR UNE PAGE QUI N'EN A PAS ----
@@ -3483,7 +3481,6 @@
      portefeuille sur place. La page vivante gere les cinq memes ancres
      (#wallet, #staking, #deposit, #withdraw, #quests), verifie. */
   var COMPTE_AILLEURS = [
-    ['swoge_pusher_live.html#wallet',   '👛 My Wallet'],
     ['swoge_pusher_live.html#staking',  '🔒 Staking'],
     ['swoge_pusher_live.html#deposit',  '💰 Deposit'],
     ['swoge_pusher_live.html#withdraw', '🏧 Withdraw'],
@@ -3552,6 +3549,21 @@
     return [compte, ailleurs, reglages];
   }
 
+  /* ---- LE PORTEFEUILLE N'EST PLUS UNE RANGEE DU TIROIR ----
+   *
+   * « Il y a withdraw, deposit, my wallet… faudrait le retirer de toutes les
+   *   pages : on est cense l'ouvrir depuis le petit bouton rond en bas. »
+   *
+   * Les pages ont perdu ces rangees dans leur propre `#menu`, mais le tiroir
+   * les ecarte AUSSI : une coquille qui garde la sienne (le Coin Pusher et la
+   * roue tiennent leur rangee pour son gestionnaire) ne doit pas la faire
+   * remonter ici. Le rond en bas a droite est le seul chemin, partout. */
+  function rangeePortefeuille(el) {
+    if (!el) return false;
+    if ((el.getAttribute && el.getAttribute('data-panel')) === 'wallet') return true;
+    if (el.id === 'mnWallet') return true;
+    return /swoge_wallet\.html/i.test(String((el.getAttribute && el.getAttribute('href')) || ''));
+  }
   function miroirPaquets() {
     /* TROIS FORMES DE MENU, pas deux.
      *
@@ -3567,7 +3579,7 @@
       var paquets = [[]];
       [].forEach.call(menu.children, function (el) {
         if (el.classList && el.classList.contains('msep')) { paquets.push([]); return; }
-        if (el.tagName === 'A' && el.id !== 'mnClose') paquets[paquets.length - 1].push(el);
+        if (el.tagName === 'A' && el.id !== 'mnClose' && !rangeePortefeuille(el)) paquets[paquets.length - 1].push(el);
       });
       paquets = paquets.filter(function (p) { return p.length; });
       if (paquets.length > 1) return paquets;
@@ -3581,7 +3593,7 @@
        paquets[0] pour « Account ». Un tableau a un seul element ferait donc
        apparaitre « Other games » sous le titre « Account ». */
     if (!boite) return [SECOURS_COMPTE(), SECOURS_AILLEURS()];
-    return trieParContenu([].slice.call(boite.querySelectorAll('button')));
+    return trieParContenu([].slice.call(boite.querySelectorAll('button')).filter(function (b) { return !rangeePortefeuille(b); }));
   }
   function miroirGroupe(t, titre, liste) {
     if (!liste || !liste.length) return;
@@ -7897,6 +7909,24 @@
       'font-size:24px;line-height:1;display:flex;align-items:center;justify-content:center;' +
       'box-shadow:0 8px 24px rgba(11,27,54,0.18);transition:transform .15s,border-color .15s;}' +
       '.swwb:hover{transform:translateY(-2px);border-color:#FFC53D;}' +
+      /* ---- LE PORTEFEUILLE S'OUVRE PAR-DESSUS LA PAGE ----
+       * « Le bouton a cote de VS ne devait pas faire une redirection au
+       *   wallet mais l'ouvrir en grand ecran sur la page, sans la quitter
+       *   ni changer d'URL. » Un voile plein ecran porte la page du
+       *   portefeuille dans un cadre de notre propre domaine ; la partie en
+       *   cours, la socket, le defilement restent derriere, intacts. */
+      '.swwo{position:fixed;inset:0;z-index:100000;background:#F4F7FC;display:none;}' +
+      '.swwo.on{display:block;}' +
+      '.swwo iframe{position:absolute;inset:0;width:100%;height:100%;border:0;display:block;background:#fff;z-index:1;}' +
+      /* `pointer-events:auto` en force : certaines pages eteignent les
+         evenements de leurs boutons sous un voile, et la croix heritait de
+         cette regle — le cadre recevait le clic a sa place. */
+      '.swwo-x{position:absolute;top:calc(10px + env(safe-area-inset-top,0px));right:10px;z-index:2;pointer-events:auto!important;' +
+      'width:40px;height:40px;border-radius:50%;cursor:pointer;font-size:20px;line-height:1;' +
+      'border:1px solid rgba(27,95,224,.45);background:rgba(255,255,255,.96);color:#0B1B36;' +
+      'display:flex;align-items:center;justify-content:center;box-shadow:0 6px 18px rgba(11,27,54,.18);}' +
+      '.swwo-x:hover{border-color:#FFC53D;}' +
+      'html.swwo-on,html.swwo-on body{overflow:hidden!important;}' +
       '.swdb .swdn{position:absolute;top:-3px;right:-3px;min-width:20px;height:20px;padding:0 5px;' +
       'border-radius:999px;display:flex;align-items:center;justify-content:center;' +
       'font-family:inherit;font-size:11px;font-weight:900;color:#07101F;background:#16D97F;' +
@@ -7973,23 +8003,78 @@
     document.head.appendChild(c);
   }
 
-  /* Le rond du portefeuille, au-dessus de « VS ». Voir la note du style. */
-  var walletBtn = null;
+  /* ---- DANS UN CADRE, PAS DE BULLES ----
+     La page du portefeuille s'ouvre dans un cadre par-dessus la page ou l'on
+     joue. Si elle montait ses propres bulles la-dedans, on verrait deux
+     « VS » a l'ecran, l'une sur l'autre — et un rond de portefeuille qui
+     ouvrirait un portefeuille dans le portefeuille. */
+  function enCadre() {
+    try { return window.top !== window.self; } catch (e) { return true; }
+  }
+
+  /* Le rond du portefeuille, a gauche de « VS ». Voir la note du style. */
+  var walletBtn = null, walletVoile = null, walletCadre = null, walletOuvert = false;
   function walletMonte() {
     if (walletBtn || !document.body) return;
     if (/swoge_wallet\.html$/i.test(String(location.pathname || ''))) return;
-    walletBtn = document.createElement('a');
+    if (enCadre()) return;
+    walletBtn = document.createElement('button');
     walletBtn.className = 'swwb';
-    walletBtn.href = 'swoge_wallet.html';
+    walletBtn.type = 'button';
     walletBtn.title = 'Open your wallet';
     walletBtn.setAttribute('aria-label', 'Open your wallet');
+    walletBtn.setAttribute('aria-expanded', 'false');
     walletBtn.innerHTML = '\uD83D\uDC5B';
+    walletBtn.addEventListener('click', function () { walletBascule(); });
     document.body.appendChild(walletBtn);
+  }
+  /* Le voile et son cadre ne sont fabriques qu'au premier clic : charger la
+     page du portefeuille — sa bibliotheque de chaine, ses lectures de solde —
+     sur chaque page du site pour un bouton que la plupart n'ouvrent pas
+     serait payer a chaque visite ce que l'on n'utilise qu'une fois. Une fois
+     ouvert, le cadre RESTE : refermer puis rouvrir ne recharge rien, les
+     soldes deja lus sont encore la. */
+  function walletVoileMonte() {
+    if (walletVoile) return walletVoile;
+    walletVoile = document.createElement('div');
+    walletVoile.className = 'swwo';
+    walletVoile.setAttribute('role', 'dialog');
+    walletVoile.setAttribute('aria-label', 'Your wallet');
+    var x = document.createElement('button');
+    x.type = 'button'; x.className = 'swwo-x';
+    x.title = 'Close the wallet'; x.setAttribute('aria-label', 'Close the wallet');
+    x.innerHTML = '\u2715';
+    x.addEventListener('click', function () { walletBascule(false); });
+    walletCadre = document.createElement('iframe');
+    walletCadre.title = 'SWOGE Wallet';
+    walletCadre.setAttribute('allow', 'clipboard-write; clipboard-read; camera');
+    walletVoile.appendChild(walletCadre);
+    walletVoile.appendChild(x);
+    document.body.appendChild(walletVoile);
+    document.addEventListener('keydown', function (e) {
+      if (walletOuvert && (e.key === 'Escape' || e.key === 'Esc')) walletBascule(false);
+    });
+    return walletVoile;
+  }
+  function walletBascule(v) {
+    if (!walletBtn) return;
+    walletOuvert = v === undefined ? !walletOuvert : !!v;
+    var voile = walletVoileMonte();
+    /* L'adresse du cadre n'est posee qu'a l'ouverture, et une seule fois. */
+    if (walletOuvert && !walletCadre.getAttribute('src')) walletCadre.src = 'swoge_wallet.html';
+    voile.classList.toggle('on', walletOuvert);
+    document.documentElement.classList.toggle('swwo-on', walletOuvert);
+    walletBtn.setAttribute('aria-expanded', walletOuvert ? 'true' : 'false');
+    /* Le clavier reste a la page hote : c'est elle qui ecoute Echap. Donner
+       le foyer au cadre l'emmenerait dans le portefeuille, et Echap n'y
+       fermerait plus rien. */
+    if (!walletOuvert) { try { walletBtn.focus(); } catch (e) {} }
   }
 
   function duelsMonte() {
     if (duelsBtn) return true;
     if (!document.body) return false;
+    if (enCadre()) return false;
     duelsStyle();
     duelsBtn = document.createElement('button');
     duelsBtn.className = 'swdb';

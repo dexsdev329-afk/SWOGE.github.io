@@ -389,15 +389,20 @@ const mesure = (racines) => {
      serait un second chemin vers le meme argent. */
   await p.evaluate(() => {
     window.__vu = null;
-    document.querySelector('#menu a[data-panel="wallet"]')
-      .addEventListener('click', () => { window.__vu = 'wallet'; });
+    document.querySelector('#menu a[data-panel="dep"]')
+      .addEventListener('click', () => { window.__vu = 'dep'; });
   });
   const rang = await p.evaluate(() =>
-    [...document.querySelectorAll('#gxMenu a')].findIndex((a) => /Wallet/.test(a.textContent)) + 1);
-  ok(rang > 0, 'la rangee « My Wallet » est dans le menu');
+    [...document.querySelectorAll('#gxMenu a')].findIndex((a) => /Deposit/.test(a.textContent)) + 1);
+  ok(rang > 0, 'la rangee « Deposit » est dans le menu');
+  /* ---- ET PLUS AUCUNE RANGEE « WALLET » ----
+     « Faudrait le retirer de toutes les pages : on est cense l ouvrir depuis
+     le petit bouton rond en bas. » Le rond `.swwb` est le seul chemin. */
+  ok(!ouvert.rangees.some((t) => /wallet/i.test(t)),
+     'et aucune rangee « Wallet » : le portefeuille s ouvre par le rond en bas de page');
   await p.click(`#gxMenu a:nth-of-type(${rang})`);
   await p.waitForTimeout(300);
-  eq(await p.evaluate(() => window.__vu), 'wallet',
+  eq(await p.evaluate(() => window.__vu), 'dep',
      'un vrai clic dessus appelle SON lien d origine — et non un second chemin');
   ok(await p.evaluate(() => document.getElementById('gxMenu').hidden),
      'et le menu se referme derriere le clic');

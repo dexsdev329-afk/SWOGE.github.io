@@ -141,10 +141,10 @@ video{ max-width:100%; }
 <!-- La bulle de staking. Chargee tot et SANS defer : elle enveloppe WebSocket
      pour ecouter ce qui passe deja, et doit donc etre en place avant que la page
      n ouvre sa connexion. -->
-<script src="stakebubble.js?v=338bbfa2"></script>
+<script src="stakebubble.js?v=0eb987bb"></script>
 <!-- Le menu du profil (#gxMenu). Il lit les entrees du tiroir de
      stakebubble, ou a defaut le #menu cache de cette page. -->
-<script src="swogeprofil.js?v=2bff1154" defer></script>
+<script src="swogeprofil.js?v=aa21d613" defer></script>
 <!-- Le mode entrainement. Charge AVANT le script du jeu : il remplace le
      constructeur WebSocket pour retenir la socket, et une page qui aurait deja
      ouvert la sienne ne serait plus joignable. -->
@@ -1262,14 +1262,12 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   <button class="menubtn" id="menuBtn" aria-label="Menu" hidden aria-hidden="true" tabindex="-1">☰</button>
   <div class="menu" id="menu">
     <a href="#" id="mnSignIn">✉️ Sign in</a>
-    <a href="#" data-panel="wallet">👛 My Wallet</a>
     <a href="#" data-panel="stake">🔒 Staking</a>
     <a href="#" data-panel="dep">💰 Deposit</a>
     <a href="#" data-panel="wd">🏧 Withdraw</a>
     <a href="#" data-panel="quests">🎯 Daily Quests</a>
     <div class="msep"></div>
     <a href="games.html">🎮 Other games</a>
-    <a href="swoge_wallet.html">🪙 SWOGE Wallet</a>
     <a href="index.html">🏠 Home</a>
     <div class="msep"></div>
     <a href="#" id="soundItem">🔊 Sound: on</a>

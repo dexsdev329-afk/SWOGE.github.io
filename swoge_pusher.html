@@ -78,7 +78,7 @@ canvas{ touch-action:none; }
 <!-- La bulle de staking. Chargee tot et SANS defer : elle enveloppe WebSocket
      pour ecouter ce qui passe deja, et doit donc etre en place avant que la page
      n ouvre sa connexion. -->
-<script src="stakebubble.js?v=338bbfa2"></script>
+<script src="stakebubble.js?v=0eb987bb"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <script src="swogebuy.js?v=9d7c39e5"></script>
@@ -262,7 +262,8 @@ canvas{ touch-action:none; }
 <div id="modal" class="hud">
   <div class="box" id="menuBox" style="display:none">
     <h3>☰ Menu</h3>
-    <button class="btn" id="mnWallet" style="width:100%;margin-bottom:8px">👛 My Wallet</button>
+    <!-- « My Wallet » a quitte le menu du profil : le portefeuille s ouvre par le rond en bas de page. Le bouton reste pour son gestionnaire, cache. -->
+    <button class="btn" id="mnWallet" style="display:none" hidden>👛 My Wallet</button>
     <button class="btn" id="mnStake" style="width:100%;margin-bottom:8px">🔒 Staking</button>
     <button class="btn" id="mnDeposit" style="width:100%;margin-bottom:8px">💰 Deposit</button>
     <button class="btn" id="mnWithdraw" style="width:100%;margin-bottom:8px">🏧 Withdraw</button>

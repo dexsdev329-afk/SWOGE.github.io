@@ -153,7 +153,7 @@ video{ max-width:100%; }
 <!-- La bulle de staking. Chargee tot et SANS defer : elle enveloppe WebSocket
      pour ecouter ce qui passe deja, et doit donc etre en place avant que la page
      n ouvre sa connexion. -->
-<script src="stakebubble.js?v=338bbfa2"></script>
+<script src="stakebubble.js?v=0eb987bb"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <!-- `swogebuy.js` pose un bloc « Buy $SWOGE » sous le champ de depot. Ici le
      depot est en $SWOGEBET : ce bloc ferait acheter le mauvais jeton au
@@ -2402,14 +2402,12 @@ main{ min-width:0; }
   <button class="menubtn vif" id="menuBtn" aria-label="Menu" hidden aria-hidden="true" tabindex="-1">&#9776;</button>
   <div class="menu" id="menu">
     <a href="#" id="mnSignIn">✉️ Sign in</a>
-    <a href="#" data-panel="wallet">👛 My Wallet</a>
     <a href="#" data-panel="stake">🔒 Staking</a>
     <a href="#" data-panel="dep">💰 Deposit</a>
     <a href="#" data-panel="wd">🏧 Withdraw</a>
     <a href="#" data-panel="quests">🎯 Daily Quests</a>
     <div class="msep"></div>
     <a href="games.html">🎮 Other games</a>
-    <a href="swoge_wallet.html">🪙 SWOGE Wallet</a>
     <a href="index.html">🏠 Home</a>
     <div class="msep"></div>
     <a href="#" id="soundItem">🔊 Sound: on</a>
@@ -4475,7 +4473,7 @@ function renderBonus(b){ if(!b) return; bonusData=b;
      ne garde que ce qui la concerne : le bouton, la boite vide, et le style.
      Le marqueur de cache est celui de `version.json` : sans lui, un navigateur
      garderait l ancien menu apres la prochaine correction. -->
-<script src="swogeprofil.js?v=2bff1154" defer></script>
+<script src="swogeprofil.js?v=aa21d613" defer></script>
 <!-- ==================== LE BANDEAU NE TOURNE QUE S IL EST VU ==================== -->
 <script>
 (function(){

@@ -5411,10 +5411,23 @@ function servir(q, r, f, type) {
           return null;
         }, on: () => {}, removeListener: () => {} };
     }, MOI);
+    /* Un PNG de 1x1, transparent : le plus petit fichier qui charge vraiment. */
+    const PIXEL = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9'
+      + 'awAAAABJRU5ErkJggg==', 'base64');
     const enMot = (v) => '0x' + BigInt(v).toString(16).padStart(64, '0');
     await page.route(/^https?:\/\/(?!127\.0\.0\.1)/, (r) => {
       if (/ai\/colonie/.test(r.request().url()))
         return r.fulfill({ contentType: 'application/json', body: JSON.stringify(VUE) });
+      /* ---- L'IMAGE DOIT REELLEMENT ARRIVER ----
+       * Tout ce qui n'est pas notre serveur est coupe ici. Le logo l'etait
+       * donc aussi — et la page fait exactement ce qu'elle doit faire d'une
+       * image qui ne charge pas : elle la retire pour laisser voir les trois
+       * lettres. L'essai mesurait alors son propre coupe-circuit, pas la
+       * page. On sert un vrai pixel : le comportement de repli, lui, est
+       * mesure juste apres, sur une adresse qu'on coupe expres. */
+      if (/dd\.dexscreener\.com/.test(r.request().url()))
+        return r.fulfill({ contentType: 'image/png', body: PIXEL });
       if (r.request().method() !== 'POST') return r.abort();
       let q = {}; try { q = JSON.parse(r.request().postData() || '{}'); } catch (e) {}
       const un = (m) => {
@@ -5510,6 +5523,23 @@ function servir(q, r, f, type) {
        'dans un nouvel onglet, et sans donner la main sur le portefeuille a la page ouverte');
     ok(/dd\.dexscreener\.com/.test(lg.src || ''),
        'l image est celle que le serveur a LUE, pas une devinee depuis l adresse');
+
+    /* ---- ET UNE IMAGE MORTE NE LAISSE PAS UN ROND VIDE ----
+     * Une adresse peut etre valide et le fichier avoir disparu depuis. On
+     * pose une adresse qui ne repondra pas : l'image doit se retirer d'elle
+     * meme et laisser voir les trois lettres qui sont dessous. C'est le seul
+     * cas ou l'ecran pourrait mentir en silence — un cadre vide se lit comme
+     * une image qui charge encore. */
+    const casse = await page.evaluate(() => {
+      const a = document.querySelector('#sgListe .sg-logo');
+      const img = a.querySelector('img');
+      img.src = 'https://dd.dexscreener.com/ce-fichier-nexiste-plus.png';
+      return new Promise((res) => setTimeout(() => res({
+        img: !!a.querySelector('img'), mono: a.textContent.trim() }), 600));
+    });
+    console.log('   image morte : ' + JSON.stringify(casse));
+    ok(casse.img === false && /^PEP/.test(casse.mono),
+       'une image qui ne charge pas se retire, et les trois lettres reapparaissent');
     ok(/^PEP/.test(lg.mono),
        'et les trois lettres restent dessous : quand le fichier a disparu, il reste quelque '
        + 'chose plutot qu un rond vide');

@@ -13,7 +13,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
-var MARQUE_PAGE = 'fa48a0a1';
+var MARQUE_PAGE = '9b34944d';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -1445,8 +1445,13 @@ const PHRASES = {
                       + e + ' collapsed · average ' + moy + '%',
                  (n, m, e, moy) => n + ' jeton(s) suivis · ' + m + ' monte(s) de +20% ou plus · '
                       + e + ' effondre(s) · moyenne ' + moy + '%'],
-  auditCher:    ['one rejected token in four went up: this refusal costs more than it protects',
-                 'un jeton ecarte sur quatre est monte : ce refus coute plus qu\'il ne protege'],
+  /* Le chiffre etait ECRIT DANS LA PHRASE : « un sur quatre », sur une ligne
+     qui en mesurait deux sur trois. La phrase disait donc le contraire de la
+     ligne au-dessus d'elle, et c'est la phrase qu'on lit. Elle porte la mesure
+     maintenant — c'est elle qui juge la regle, pas un ordre de grandeur. */
+  auditCher:    [(p) => p + '% of what this rule set aside went up: it costs more than it protects',
+                 (p) => p + ' % de ce que cette regle a ecarte est monte : elle coute plus '
+                          + 'qu\'elle ne protege'],
   pasEncore:    ['not yet', 'pas encore'],
   dernierEchec: [(e) => 'last failure: ' + e, (e) => 'dernier echec : ' + e],
   horsService:  ['Tried, and unusable here:', 'Essayes, et inutilisables ici :'],
@@ -2453,7 +2458,7 @@ function peintAudit(){
       <span><b>${echappe(x.cle)}</b>
         <span class="mini">${echappe(ph("auditDetail", x.n, x.montes, x.effondres,
           (x.moyenne>=0?"+":"")+x.moyenne))}</span>
-        ${cher ? '<span class="faire" style="color:var(--loss)">' + ph("auditCher") + '</span>' : ''}
+        ${cher ? '<span class="faire" style="color:var(--loss)">' + ph("auditCher", x.partMontes) + '</span>' : ''}
       </span>
     </div>`;
   }).join("");

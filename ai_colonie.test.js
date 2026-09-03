@@ -1020,8 +1020,14 @@ async function auditDesVetos() {
    * moyenne negative peut cacher un sur cinq qui a fait dix fois. */
   ok(/32% went up/.test(v.audit) && /5% went up/.test(v.audit),
      'la part des ecartes qui sont montes est en tete de chaque ligne');
-  ok(/costs more than it protects/.test(v.audit),
-     'et un veto dont un jeton ecarte sur quatre est monte est SIGNALE comme un cout');
+  /* Et la phrase porte LA MESURE, pas un ordre de grandeur : elle disait
+     « un sur quatre » sur des lignes qui en mesuraient deux sur trois — donc
+     le contraire du chiffre juste au-dessus d'elle. */
+  ok(/32% of what this rule set aside went up/.test(v.audit)
+     && /costs more than it protects/.test(v.audit),
+     'un veto dont les ecartes montent est SIGNALE comme un cout, avec sa part reelle');
+  ok(!/5% of what this rule set aside went up/.test(v.audit),
+     'et celui qui protege ne porte pas la phrase : 5 % de montees n est pas un cout');
   const cout = await page.evaluate(() =>
     [...document.querySelectorAll('#audit .pill')].map((p) => p.textContent.trim() + ':' + p.className));
   console.log('   ' + JSON.stringify(cout));

@@ -5533,7 +5533,10 @@ function servir(q, r, f, type) {
     const casse = await page.evaluate(() => {
       const a = document.querySelector('#sgListe .sg-logo');
       const img = a.querySelector('img');
-      img.src = 'https://dd.dexscreener.com/ce-fichier-nexiste-plus.png';
+      /* Une adresse que la route de l'essai COUPE — pas une du domaine qu'elle
+         sert, sinon le pixel repond et l'image charge tres bien. C'est ce qui
+         faisait rater cet essai : il mesurait sa propre plomberie. */
+      img.src = 'https://exemple.invalide/ce-fichier-nexiste-plus.png';
       return new Promise((res) => setTimeout(() => res({
         img: !!a.querySelector('img'), mono: a.textContent.trim() }), 600));
     });

@@ -378,7 +378,13 @@ body.encastre{background:transparent}
 body.encastre .sw-corps{display:block}
 body.encastre main{padding:0}
 body.encastre .wrap{max-width:none;padding:0;margin:0}
-body.encastre .masthead{margin:0 0 10px;justify-content:flex-end}
+/* Le bandeau ne garde que la pastille RPC — la seule chose qui dise si la
+   chaine repond. Elle sortait par la droite du cadre (« RPC not reachea ») :
+   `flex-end` la poussait dehors sans jamais la laisser retrecir. */
+body.encastre .masthead{margin:0 0 10px;justify-content:flex-start;padding-bottom:10px}
+body.encastre .rpcstat{min-width:0;flex:1 1 auto}
+body.encastre .rpcstat span:last-child{min-width:0;overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap}
 body.encastre .grid{display:block}
 
 /* ---- ET TOUT SON PROPRE FORMULAIRE ----
@@ -415,7 +421,18 @@ body.encastre #ocSend,
 body.encastre #ocBackup,
 body.encastre #ocSecours,
 body.encastre .quicktok,
-body.encastre #tokQuickInfo{display:none}
+body.encastre #tokQuickInfo,
+/* ---- LA MISE EN GARDE EST DITE UNE FOIS, PAS TROIS ----
+   Le bandeau rouge du haut, la note rouge sous les boutons et la mise en garde
+   de l'etape 4 disaient tous « fonds reels, chaine vivante ». Trois fois la
+   meme phrase ne previent pas mieux : on cesse de la lire. Celle qui reste est
+   celle des boutons — collee a ce qui depense. Le bandeau part d'ici ; il est
+   toujours la sur la page ouverte seule, ou il est le seul avertissement. */
+body.encastre #banner,
+/* Et l'explication du champ « montant par echange » : trois lignes pour dire
+   qu'un petit montant fait plus de transactions, sous un champ qui s'appelle
+   « amount per trade » dans un mode qui s'appelle « Transactions ». */
+body.encastre .ocopt i{display:none}
 /* Les libelles de section de One-Click : ils titrent des champs qui viennent
    de partir. Un titre sans son champ est pire qu'aucun des deux.
    `!important` parce qu'ils portent `style="display:block"` dans le HTML, et
@@ -429,10 +446,43 @@ body.encastre #oneClick .pad > .btnrow{display:none !important}
 body.encastre #oneClick .pad > #ocRun{display:flex !important}
 body.encastre .panel#oneClick{border:0;margin:0}
 body.encastre #oneClick .pad{padding:0}
-/* PLAY et STOP sont le sujet de l'ecran : ils prennent la largeur et la
-   hauteur d'un doigt, au lieu d'etre deux vignettes au milieu d'un formulaire. */
-body.encastre #ocPlay,body.encastre #ocStop{flex:1 1 0;min-height:56px}
-body.encastre #ocPlay img,body.encastre #ocStop img{height:26px}
+/* ---- PLAY ET STOP PRENNENT LE STYLE DU PORTEFEUILLE ----
+ *
+ * DEMANDE : « on n'a utilise 0 personnalisation d'UI dans wallet SWOGE, retire
+ * tes UI et fais les boutons dans le meme style que le wallet ».
+ *
+ * Les deux plaques peintes en or sur bleu nuit sont l'habillage du BANC. Elles
+ * sont justes sur sa page ; posees dans le portefeuille, elles etaient les
+ * seuls objets de tout l'ecran a ne pas venir de son dessin — deux vignettes
+ * d'arcade au milieu de boutons plats.
+ *
+ * Ce sont les memes mesures que `.wl-b` : 15 px de fond, 14 px de rayon, du
+ * 800 en Archivo, le degrade de l'accent pour l'action et un contour rouge
+ * pour l'arret. Les images restent dans le DOM — un script les remplace par du
+ * texte a certains moments et les retirer le ferait echouer — elles ne sont
+ * simplement plus dessinees ici.
+ *
+ * Les couleurs passent par deux variables plutot que d'etre ecrites deux fois :
+ * elles changent avec la tenue, plus bas, et un bouton qui reste bleu dans un
+ * portefeuille violet se voit autant qu'une plaque doree. */
+body.encastre{ --bt1:#1B5FE0; --bt2:#1447B8 }
+body.encastre #ocRun{ gap:10px }
+body.encastre #ocPlay,body.encastre #ocStop{
+  flex:1 1 0; min-height:52px; padding:15px !important; border-radius:14px;
+  border:0 !important; background:linear-gradient(160deg,var(--bt1),var(--bt2)) !important;
+  color:#fff; font:800 14px/1 'Archivo',system-ui,sans-serif; letter-spacing:.4px;
+  line-height:1; transition:opacity .12s;
+}
+body.encastre #ocPlay img,body.encastre #ocStop img{ display:none }
+body.encastre #ocPlay::after{ content:'START' }
+body.encastre #ocStop::after{ content:'STOP' }
+body.encastre #ocStop{
+  background:none !important; border:1px solid rgba(224,68,62,.45) !important; color:#E0443E;
+}
+body.encastre #ocPlay:disabled,body.encastre #ocStop:disabled{
+  opacity:.45; filter:none; cursor:default;
+}
+body.encastre #ocPlay:active,body.encastre #ocStop:active{ transform:none }
 
 /* ==================== ET SI LE PORTEFEUILLE EST EN TENUE SOMBRE ====================
  *
@@ -470,6 +520,8 @@ html.nuit body.encastre .ocopt input{
   background:#15131C; border-color:#2A2635; color:#EDEAF3;
 }
 html.nuit body.encastre .keyline{ background:#1D1A26 }
+html.nuit body.encastre{ --bt1:#8B5CF6; --bt2:#6D28D9 }
+html.nuit body.encastre #ocStop{ border-color:rgba(255,107,102,.45) !important; color:#FF6B66 }
 /* `html` peint son propre fond clair, et il ressortait en bandes entre les
    sections — c'est lui qu'on voyait, pas la page. Transparent, c'est le fond
    du cadre, donc celui du portefeuille, qui passe : une seule surface au lieu
@@ -3685,7 +3737,7 @@ $("#tokQuick").addEventListener("keydown", e => { if(e.key==="Enter") $("#loadTo
      ferait chercher des champs qui ne sont plus a l'ecran. */
   var encadre = document.body.classList.contains("encastre");
   if(dit.length) turboSay(encadre
-    ? "Set in your wallet: " + dit.join(" · ") + ". Change it in the steps above; this panel only runs it."
+    ? "Set in your wallet: " + dit.join(" · ") + "."
     : "Carried over from your wallet: " + dit.join(" · ") + ". Change anything here — this page keeps what you set from now on.");
 })();
 

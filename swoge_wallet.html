@@ -1031,12 +1031,15 @@ body{
   border-radius:5px; padding:3px 5px; margin-left:6px; vertical-align:1px;
 }
 .wl-tuile-c .q{ display:block; margin-top:5px; font:400 12px/1.5 'Archivo',sans-serif; color:var(--doux) }
-/* La pastille du nombre : meme forme que « DEFAULT », couleur de l'accent —
-   c'est le seul chiffre de la tuile, et c'est celui qu'on compare. */
+/* La pastille du nombre : le seul chiffre de la tuile, et c'est celui qu'on
+   compare. Le mot « wallets » est parti — repete quatre fois sous un titre
+   d'etape qui dit deja de quoi il s'agit, il ne portait rien. La pastille est
+   ronde et fixe pour que les quatre chiffres s'alignent a l'oeil. */
 .wl-tuile-c b em.n{
-  font:800 9px/1 'Space Mono',monospace; font-style:normal; letter-spacing:.4px;
-  color:var(--accent); border:1px solid var(--accent); border-radius:5px;
-  padding:3px 5px; margin-left:4px; vertical-align:1px;
+  display:inline-block; min-width:24px; text-align:center;
+  font:800 10px/1 'Space Mono',monospace; font-style:normal; letter-spacing:.2px;
+  color:var(--accent); border:1px solid var(--accent); border-radius:999px;
+  padding:4px 6px; margin-left:5px; vertical-align:1px;
 }
 .wl-tuile input:checked + .wl-tuile-c{ border-color:var(--accent); background:var(--carte) }
 .wl-tuile input:checked + .wl-tuile-c b{ color:var(--accent) }
@@ -1888,54 +1891,51 @@ body{
           </select>
           <input id="bcN" class="wl-cache" tabindex="-1" aria-hidden="true" value="12" readonly>
           <div class="wl-tuiles" role="radiogroup" aria-label="What are you maximising?">
-            <!-- ---- LE NOMBRE EST UNE PASTILLE, PAS UN PARAGRAPHE ----
-                 Il etait en fin de tuile, dans deux lignes de prose. Quatre
-                 tuiles de trois lignes, c'est deux ecrans de telephone avant
-                 d'atteindre l'etape 2. La pastille le met la ou l'oeil compare
-                 — sur la meme ligne que le nom — et la raison tient derriere le
-                 tiret, en une phrase. -->
+            <!-- ---- UNE LIGNE PAR TUILE ----
+                 DEMANDE : « retire encore un max d'ecriture, ca prend trop de
+                 place ». Chaque tuile portait deux a trois lignes : ce qu'elle
+                 fait, PUIS pourquoi ce nombre de portefeuilles. Le pourquoi est
+                 vrai et il ne sert qu'une fois — on choisit un mode, on ne
+                 relit pas le raisonnement a chaque visite. Il reste dans le
+                 code, la ou on le corrigera ; a l'ecran il ne reste que ce
+                 qu'on compare : le nom, le nombre, et ce que la machine fait.
+                 Seule « Transactions » garde trois mots de plus, parce qu'ils
+                 disent qu'elle coute plus cher — ca, ca change le choix. -->
             <label class="wl-tuile">
               <input type="radio" name="bcmode" value="organique" checked>
               <span class="wl-tuile-c">
-                <b>Organic <i>default</i> <em class="n">12 wallets</em></b>
-                <span class="q">Buys on one wallet, sells on another, around a ring &mdash; enough
-                  addresses that no two keep pairing up.</span>
+                <b>Organic <i>default</i> <em class="n">12</em></b>
+                <span class="q">Buys on one wallet, sells on another, around a ring.</span>
               </span>
             </label>
             <label class="wl-tuile">
               <input type="radio" name="bcmode" value="volume">
               <span class="wl-tuile-c">
-                <b>Volume <em class="n">4 wallets</em></b>
-                <span class="q">Trades the largest amount the pool will take, every hop. More
-                  wallets would only cut the same money into smaller trades.</span>
+                <b>Volume <em class="n">4</em></b>
+                <span class="q">The biggest trade the pool will take, every hop.</span>
               </span>
             </label>
             <label class="wl-tuile">
               <input type="radio" name="bcmode" value="tx">
               <span class="wl-tuile-c">
-                <b>Transactions <em class="n">20 wallets</em></b>
-                <span class="q">Many tiny trades instead of a few large ones, spread so the count
-                  does not come from one address. Gas makes this the priciest mode.</span>
+                <b>Transactions <em class="n">20</em></b>
+                <span class="q">Many tiny trades. Gas makes it the priciest.</span>
               </span>
             </label>
             <label class="wl-tuile">
               <input type="radio" name="bcmode" value="holders">
               <span class="wl-tuile-c">
-                <b>Holders <em class="n">8 wallets</em></b>
-                <span class="q">One wallet buys a bag and hands a slice to each new address. The
-                  ring only feeds it; the holders are brand-new keys.</span>
+                <b>Holders <em class="n">8</em></b>
+                <span class="q">One wallet buys, then hands a slice to each new address.</span>
               </span>
             </label>
           </div>
-          <!-- ---- LE JETON, REPLIE ----
-               $SWOGE dans dix-neuf cas sur vingt. Laisser le champ ouvert
-               faisait poser la question a tout le monde pour la reponse d'un
-               seul. -->
+          <!-- $SWOGE dans dix-neuf cas sur vingt : le champ est replie. -->
           <details class="wl-repli">
-            <summary>Run it on another token</summary>
+            <summary>Another token</summary>
             <div class="wl-champ" style="margin:8px 0 0">
-              <label for="bcTok">ROBINHOOD-CHAIN CONTRACT &mdash; leave empty for $SWOGE</label>
-              <input id="bcTok" placeholder="0x…" autocomplete="off" spellcheck="false">
+              <input id="bcTok" placeholder="0x… Robinhood-Chain contract"
+                     autocomplete="off" spellcheck="false">
             </div>
           </details>
         </div>
@@ -1959,10 +1959,8 @@ body{
             <button class="wl-b vide" id="bcCopier" type="button" style="margin-top:8px">Copy address</button>
           </div>
           <div class="wl-rang" id="bcSoldeRang" hidden><span>Its balance</span><b id="bcSolde">&mdash;</b></div>
-          <button class="wl-b" id="bcCreer" type="button">Create the master wallet</button>
-          <p class="wl-note" id="bcNoteCle">Its private key is saved on this device and offered as a
-            file the moment it is created &mdash; a browser can refuse the file, and a device can be
-            wiped, so it is both.</p>
+          <button class="wl-b" id="bcCreer" type="button">Create it</button>
+          <p class="wl-note" id="bcNoteCle">Its key is saved here and downloaded as a file.</p>
         </div>
       </details>
 
@@ -1985,9 +1983,8 @@ body{
             <span class="pc">0 %</span>
           </div>
           <div class="wl-rang"><span>Your balance</span><b id="bcMien">&mdash;</b></div>
-          <button class="wl-b" id="bcFinance" type="button">Fund the master</button>
-          <p class="wl-note" id="bcNote">Every hop pays real gas and slippage, so this drains
-            steadily. STOP sweeps whatever is left back to the master.</p>
+          <button class="wl-b" id="bcFinance" type="button">Send</button>
+          <p class="wl-note" id="bcNote">Gas and slippage drain it. STOP sweeps the rest back.</p>
         </div>
       </details>
 
@@ -1999,11 +1996,12 @@ body{
           <b class="wl-pas-v" id="bcVu4">&mdash;</b>
         </summary>
         <div class="wl-pas-c">
-          <button class="wl-b" id="bcOuvre" type="button">&#9654; Start the engine</button>
-          <p class="wl-note" id="bcOuvreNote">PLAY and STOP appear right below, in the wallet.
-            One engine, not two: two copies of code that moves money end up disagreeing.</p>
-          <p class="wl-note grave">Manufacturing trading volume can be market manipulation and may
-            break laws or platform rules. Only run it where you are authorised to.</p>
+          <button class="wl-b" id="bcOuvre" type="button">Load the engine</button>
+          <!-- La mise en garde reste, courte. Elle est aussi repetee dans le
+               moteur, juste au-dessus de START — c'est-a-dire au moment ou elle
+               sert. Ici elle previent avant qu'on charge quoi que ce soit. -->
+          <p class="wl-note grave">Faking volume can be market manipulation. Only where you are
+            allowed to.</p>
         </div>
       </details>
 
@@ -6372,10 +6370,13 @@ function bancPoseMode(v, parLutilisateur){
   /* On n'avance que si c'est l'utilisateur qui vient de choisir : sinon la
      repeinture d'ouverture d'ecran sauterait l'etape 1 sans qu'il l'ait vue. */
   if(parLutilisateur) bancPas(bcMaster ? 'bcPas3' : 'bcPas2');
+  bancEtatBouton();
 }
 Array.prototype.forEach.call(document.querySelectorAll('input[name="bcmode"]'), function(r){
   r.addEventListener('change', function(){ if(r.checked) bancPoseMode(r.value, true); });
 });
+/* Le jeton compte autant que le mode dans le plan que le moteur a lu. */
+if($('bcTok')) $('bcTok').addEventListener('input', function(){ bancEtatBouton(); });
 
 async function majBanc(){
   var m = bancLitFilet();
@@ -6534,15 +6535,62 @@ function bancMonte(){
   if(!boite || !cadre) return false;
   bancEcritPlan();
   boite.hidden = false;
-  if(!cadre.getAttribute('src')){
+  var cle = bancPlanCle();
+  if(cadre.getAttribute('data-plan') !== cle){
+    /* On ne coupe JAMAIS un anneau qui tourne : recharger la page tuerait la
+       boucle au milieu d'un echange, avec des fonds repartis sur les
+       portefeuilles caches et personne pour les balayer. */
+    if(cadre.getAttribute('src') && bancTourne()){ bancEtatBouton(); return true; }
     var nuit = document.documentElement.getAttribute('data-theme') === 'sombre';
-    cadre.setAttribute('src', BANC_SRC + '?dans=wallet' + (nuit ? '&tenue=sombre' : ''));
+    cadre.setAttribute('data-plan', cle);
+    /* Le compteur force le rechargement quand seule l'adresse ne change pas :
+       sans lui, reposer le meme `src` ne relit pas le plan. */
+    cadre.setAttribute('src', BANC_SRC + '?dans=wallet' + (nuit ? '&tenue=sombre' : '')
+      + '&n=' + Date.now());
   }
-  var n = $('bcOuvreNote');
-  if(n) n.textContent = 'The engine is below. PLAY and STOP are its own buttons — this screen '
-    + 'does not sign anything for it.';
+  bancEtatBouton();
   try{ boite.scrollIntoView({ behavior:'smooth', block:'start' }); }catch(e){}
   return true;
+}
+
+/* ---- LE BOUTON DIT CE QU'IL FERA, PAS UN PARAGRAPHE SOUS LUI ----
+ *
+ * Une phrase de moins a l'ecran, et elle est la ou l'on regarde. Mais surtout
+ * elle repare un piege : le moteur lit le plan UNE fois, au chargement. Un
+ * bouton simplement grise apres coup aurait laisse changer le mode au-dessus
+ * sans que le moteur en sache rien — on aurait lance « Transactions » en
+ * croyant lancer « Volume », avec de l'argent reel.
+ *
+ * Trois etats, donc, et le troisieme est le seul qui compte :
+ *   — rien de charge      : « Load the engine »
+ *   — charge, rien change : « Engine loaded » et rien a faire
+ *   — charge, mode change : « Apply — reloads the engine », actif
+ *
+ * Et si l'anneau TOURNE, on ne recharge pas : recharger la page tuerait la
+ * boucle au milieu d'un echange, avec des fonds repartis sur les
+ * portefeuilles caches. On le lit dans le cadre — meme origine — a l'etat du
+ * bouton STOP, qui n'est actif que pendant la marche. */
+function bancTourne(){
+  try{
+    var d = ($('bcCadre') || {}).contentDocument;
+    var st = d && d.getElementById('ocStop');
+    return !!(st && !st.disabled);
+  }catch(e){ return false; }
+}
+function bancEtatBouton(){
+  var b = $('bcOuvre'), cadre = $('bcCadre');
+  if(!b || !cadre) return;
+  if(!cadre.getAttribute('src')){
+    b.textContent = 'Load the engine'; b.disabled = false; return;
+  }
+  var change = cadre.getAttribute('data-plan') !== bancPlanCle();
+  if(!change){ b.textContent = 'Engine loaded — START is below'; b.disabled = true; return; }
+  if(bancTourne()){ b.textContent = 'Stop the engine to change this'; b.disabled = true; return; }
+  b.textContent = 'Apply — reloads the engine'; b.disabled = false;
+}
+function bancPlanCle(){
+  return bancMode() + '|' + (($('bcN') || {}).value || '') + '|'
+       + ((($('bcTok') || {}).value || '').trim().toLowerCase());
 }
 
 if($('bcOuvre')) $('bcOuvre').addEventListener('click', function(){

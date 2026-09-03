@@ -158,10 +158,10 @@ const JETON = '0x1111111111111111111111111111111111111111';
      + 'ne serait qu une facon de le cacher');
   const dits = await pg.evaluate(() => [...document.querySelectorAll('.wl-tuile-c .n')]
     .map((e) => e.textContent.trim()));
-  ok(dits.length === 4 && dits.every((t) => /^\d+ wallets$/.test(t)),
-     'et chaque tuile ECRIT son chiffre : ce nombre change ce que la machine fait et ce qu elle '
-     + 'coute, on cesse de le demander, on ne le cache pas');
-
+  ok(dits.length === 4 && dits.every((t) => /^\d+$/.test(t)),
+     'et chaque tuile ECRIT son chiffre : ce nombre change ce que la machine fait et ce'
+     + ' qu elle coute. On cesse de le demander, on ne le cache pas — mais le mot « wallets »'
+     + ' repete quatre fois sous un titre qui le dit deja, lui, est parti');
   await pg.evaluate((jeton) => {
     document.querySelector('input[name="bcmode"][value="volume"]').click();
     document.getElementById('bcTok').value = jeton;
@@ -393,11 +393,39 @@ const JETON = '0x1111111111111111111111111111111111111111';
     console.log('   il dit : ' + dit.trim().slice(0, 110));
     ok(!/change anything here/i.test(dit),
        'il n invite pas a changer ici des reglages qu il vient de cacher');
-    ok(/steps above/i.test(dit),
-       'il renvoie aux etapes du portefeuille, la ou ces reglages sont vraiment (« '
+    ok(/set in your wallet/i.test(dit),
+       'il dit d ou viennent ses reglages, en une ligne (« '
        + dit.trim().slice(0, 80) + ' »)');
     ok(dedans.play === true && dedans.stop === true,
        'PLAY et STOP sont VISIBLES sans quitter le portefeuille — c est toute la demande');
+    /* ---- ET ILS SONT DESSINES COMME LE PORTEFEUILLE ----
+     * DEMANDE : « on n a utilise 0 personnalisation d UI dans wallet SWOGE,
+     * retire tes UI et fais les boutons dans le meme style que le wallet ».
+     * Les deux plaques peintes en or sur bleu nuit sont l habillage du BANC.
+     * Justes sur sa page ; posees dans le portefeuille, elles etaient les
+     * seuls objets de tout l ecran a ne pas venir de son dessin. */
+    const dessin = await fr.evaluate(() => {
+      const p = document.getElementById('ocPlay'), s = document.getElementById('ocStop');
+      const cp = getComputedStyle(p), img = p.querySelector('img');
+      return {
+        image: img ? getComputedStyle(img).display !== 'none' : false,
+        apres: getComputedStyle(p, '::after').content,
+        apresStop: getComputedStyle(s, '::after').content,
+        rayon: cp.borderRadius, fond: cp.backgroundImage,
+        police: cp.fontFamily, poids: cp.fontWeight,
+      };
+    });
+    console.log('   PLAY : ' + JSON.stringify(dessin));
+    ok(dessin.image === false,
+       'la plaque peinte du banc n est plus dessinee dans le portefeuille');
+    ok(/START/.test(dessin.apres) && /STOP/.test(dessin.apresStop),
+       'les boutons portent leur nom en toutes lettres (' + dessin.apres + ' · '
+       + dessin.apresStop + ')');
+    ok(dessin.rayon === '14px' && /Archivo/.test(dessin.police) && dessin.poids === '800',
+       'et ils reprennent les mesures de `.wl-b` : 14 px de rayon, Archivo 800 ('
+       + dessin.rayon + ' · ' + dessin.police + ' ' + dessin.poids + ')');
+    ok(/gradient/.test(dessin.fond),
+       'avec le degrade de l accent, comme tous les boutons pleins du portefeuille');
     ok(dedans.oc === true, 'le panneau One-Click entier est la, pas seulement ses deux boutons');
     ok(dedans.rangs, 'et la liste des portefeuilles avec leurs soldes : sans elle, on ne voit pas ce que le moteur fait');
     ok(dedans.barre && dedans.cote && dedans.pied,

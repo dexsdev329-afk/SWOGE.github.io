@@ -44,6 +44,13 @@
   var CLE = null;         /* la cle privee, en memoire seulement, sur geste */
   var dit = '';           /* un mot de reponse, sous les boutons */
   var occupe = false;
+  /* ---- « PAS CONNECTE » EST UN ETAT, PAS UNE ERREUR A JETER ----
+   * La socket s'ouvre AVANT l'authentification : la premiere demande part donc
+   * sans session et le serveur repond « login required ». La premiere version
+   * ne lisait cette reponse que pendant une action en cours — un visiteur
+   * arrivait donc sur une carte « Trade with the colony » figee sur « Reading
+   * your mirror… », pour toujours. Vu sur le serveur en ligne, pas devine. */
+  var connecte = false;
 
   function style() {
     if (document.getElementById('mir-css')) return;
@@ -126,6 +133,14 @@
     style();
     var h = '';
 
+    if (!ETAT && !connecte) {
+      hote.innerHTML = '<div class="mir">'
+        + '<p>Follow SWOGE AI <b>with your own wallet</b>: fund a mirror address with ETH (RH), press '
+        + 'Play, and the colony buys and sells in it at the same moment it does in its own book.</p>'
+        + '<p class="mir-note">Sign in with the button at the top of the page to set one up.</p>'
+        + '</div>';
+      return;
+    }
     if (!ETAT) {
       hote.innerHTML = '<div class="mir"><p class="mir-note">Reading your mirror…</p></div>';
       return;
@@ -294,7 +309,7 @@
   if (window.swogeFil) {
     window.swogeFil.ecoute(function (m) {
       if (!m || !m.type) return;
-      if (m.type === 'auth') { reclame(); return; }
+      if (m.type === 'auth') { connecte = true; reclame(); return; }
       if (m.type === 'miroirEtat') { ETAT = m; occupe = false; peint(); return; }
       if (m.type === 'miroirCle') {
         CLE = m.cle;
@@ -309,6 +324,12 @@
              + ((m.rates || []).length ? ', ' + m.rates.length + ' could not be sold' : '') + '.')
           : 'Stopped — dry run, so nothing was sold and nothing was swept.';
         peint(); return;
+      }
+      /* Le serveur dit qu'il faut une session : ce n'est pas un refus de
+         l'action en cours, c'est l'etat de la page. On revient a l'invitation
+         plutot que de laisser la carte figee sur « Reading your mirror… ». */
+      if (m.type === 'error' && /login required/i.test(m.error || '')) {
+        connecte = false; ETAT = null; occupe = false; dit = ''; peint(); return;
       }
       if (m.type === 'error' && occupe) { occupe = false; dit = m.error || 'Refused.'; peint(); return; }
     });

@@ -111,10 +111,29 @@
    * profil repondait « Not connected. » a chaque enregistrement jusqu'a ce que
    * le joueur pense a recharger la page.
    */
+  /* ---- ET `#bal` N'EST PAS UNE PREUVE DE SOCKET ----
+   *
+   * Signale, video a l'appui : sur SWOGE AI, le code e-mail est accepte, le
+   * dialogue affiche « Signed in. Reloading… », la page se recharge — et l'on
+   * revient sur « CONNECT WALLET », solde a « — ». La session etait bonne :
+   * remise a la main dans le navigateur, elle ne connectait toujours pas.
+   *
+   * La raison est ici. Une page qui porte un `#bal` etait reputee tenir sa
+   * propre socket, donc celle-ci s'abstenait. Or SWOGE AI porte bien un solde
+   * — sa carte « YOUR BALANCE » — et n'ouvre AUCUNE socket : elle n'a ni
+   * `swogecompte.js` ni panneaux de compte. Personne ne se connectait donc
+   * jamais, et rien ne le disait : le jeton restait range, valable, inutilise.
+   *
+   * Une page qui tient vraiment sa socket le DECLARE maintenant, avant de
+   * charger ce fichier. Le `#bal` reste un indice de repli pour les pages qui
+   * n'ont pas encore ete marquees, mais il ne peut plus mentir tout seul. */
   var pageSocketPropre = null;
   var socketSeul = null;
   function connecteSeul() {
-    if (pageSocketPropre === null) pageSocketPropre = !!document.getElementById('bal');
+    if (pageSocketPropre === null) {
+      pageSocketPropre = (window.SWOGE_SOCKET === 'propre')
+        || (window.SWOGE_SOCKET !== 'aucune' && !!document.getElementById('bal'));
+    }
     if (pageSocketPropre) return;                    // la page a deja sa socket
     /* Une seule socket autonome a la fois : deux reconnexions declenchees
        ensemble (la fermeture et le retour d'onglet) en ouvriraient deux, et la
@@ -537,6 +556,26 @@
    * que de faire voyager quelqu'un qui voulait juste deposer. */
   window.swogeConnexion = { ouvre: ouvreConnexion, ferme: fermeConnexion };
 
+  /* ---- « SUIS-JE CONNECTE ? », POSEE PARTOUT, REPONDUE NULLE PART ----
+   *
+   * Quatre fichiers posent cette question — le menu du profil, la page SWOGE
+   * AI, le bulletin des paris, la barre de l'accueil — et un seul y repondait :
+   * `swogecx.js`, que seules deux pages chargent. Ailleurs, `swogeConnecte`
+   * n'existait pas, et le code qui l'interroge prend l'absence pour un « non ».
+   * Consequence sur SWOGE AI : une fois entre, « CONNECT WALLET » et « SIGN UP
+   * — EMAIL » restaient affiches a cote de son propre solde, ce qui se lit
+   * comme une connexion ratee — c'est le defaut signale.
+   *
+   * La reponse vit ici parce que c'est ici que vivent la session et la socket.
+   * On ne remplace pas celle de `swogecx.js` quand elle est deja la : deux
+   * definitions qui repondent pareil ne valent pas la peine qu'on choisisse. */
+  if (typeof window.swogeConnecte !== 'function') {
+    window.swogeConnecte = function () {
+      if (etat.socket && etat.socket.readyState === 1) return true;
+      return !!jetonRange();
+    };
+  }
+
   /* ==================== LE FIL, POUR LES PAGES QUI N EN OUVRENT PAS ====================
    *
    * L accueil et le hall n ont pas de socket a eux : ils n en avaient pas
@@ -666,6 +705,24 @@
      la barre (« 1.28M » et non 1284500). On garde donc le nombre. */
   var SOLDE = null;
   function poseSolde(v) {
+    /* ---- SI LA PAGE A DEJA SON SOLDE, ON ECRIT DEDANS ----
+     *
+     * Sinon on en fabrique un SECOND portant le meme identifiant `bal` — deux
+     * elements pour un identifiant, ce qui n'est pas du HTML valable — et la
+     * carte de la page, celle que le joueur regarde, reste a « — » pour
+     * toujours pendant que la pastille du coin affiche le vrai chiffre.
+     * Mesure sur SWOGE AI apres une connexion reussie : deux `#bal`, l'un a
+     * « — », l'autre a « 4.2k ». */
+    if (!soldeSeul) {
+      var sien = document.getElementById('bal');
+      if (sien && !sien.closest('.swbal')) {
+        /* On se donne le meme point d'accroche que la pastille qu'on aurait
+           construite : le reste de la fonction ecrit dans `#bal` par ce
+           conteneur, et rien d'autre ne change. */
+        soldeSeul = sien.parentNode || sien;
+        if (!soldeSeul.querySelector('#bal')) soldeSeul = sien;
+      }
+    }
     if (!soldeSeul) {
       var barre = document.querySelector('nav');
       if (!barre) return;
@@ -698,7 +755,12 @@
     var n = parseFloat(v || 0);
     SOLDE = isNaN(n) ? SOLDE : n;
     if (profOuvert) peintChiffres();
-    soldeSeul.querySelector('#bal').textContent =
+    /* La cible est le `#bal` du conteneur — ou le conteneur lui-meme quand on a
+       adopte celui de la page. Chercher a l'aveugle jetterait ici, et une
+       exception dans le chemin du solde coupe tout ce qui suit. */
+    var cible = (soldeSeul.id === 'bal') ? soldeSeul : soldeSeul.querySelector('#bal');
+    if (!cible) return;
+    cible.textContent =
       n >= 1e9 ? (n / 1e9).toFixed(2) + 'B' : n >= 1e6 ? (n / 1e6).toFixed(2) + 'M'
       : n >= 1000 ? (n / 1000).toFixed(1) + 'k' : n.toFixed(2);
     rend(); rendGens(); profBtnVisible(true);

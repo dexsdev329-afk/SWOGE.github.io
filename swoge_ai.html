@@ -13,7 +13,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
-var MARQUE_PAGE = '9d873c24';
+var MARQUE_PAGE = '111bff66';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -40,7 +40,16 @@ var MARQUE_PAGE = '9d873c24';
      panneaux du menu. Les recopier a la main ici ferait une quatrieme
      version a tenir d'accord — et le jour ou la connexion change, elle ne
      changerait que d'un cote. -->
-<script src="stakebubble.js?v=2b08e6a4"></script>
+<!-- ---- CETTE PAGE N'OUVRE AUCUNE SOCKET, ET ELLE LE DIT ----
+     `stakebubble.js` en tient une pour les pages qui n'en ont pas. Il decidait
+     qu'une page avait la sienne des qu'elle portait un `#bal` — et celle-ci en
+     porte un, sa carte « YOUR BALANCE », sans avoir de socket pour autant. Il
+     s'abstenait donc, personne ne se connectait, et une session parfaitement
+     valable restait rangee sans servir : on se reconnectait en boucle sur un
+     ecran qui affichait toujours « CONNECT WALLET ». Le marqueur doit etre pose
+     AVANT le fichier : il est lu au premier passage. -->
+<script>window.SWOGE_SOCKET = 'aucune';</script>
+<script src="stakebubble.js?v=74960e20"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <script src="swogebuy.js?v=9d7c39e5"></script>
 <style>

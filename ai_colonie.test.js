@@ -297,7 +297,8 @@ async function ouvre(nav, port, opts) {
                        body: JSON.stringify(opts.vue || vueFausse(opts.vueOpts)) });
   });
 
-  await page.goto('http://127.0.0.1:' + port + '/' + PAGE, { waitUntil: 'domcontentloaded' });
+  await page.goto('http://127.0.0.1:' + port + '/' + PAGE + (opts.urlSuffixe || ''),
+                  { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(600);
   return { page, ctx, boum, appels };
 }
@@ -1545,6 +1546,63 @@ async function auditDesVetos() {
   /* ======================================================================
    * 7. CE QUE LA PAGE PROMET, ET CE QU ELLE NE PEUT PLUS FAIRE
    * ==================================================================== */
+  console.log('\n-- une session valable connecte VRAIMENT la page --');
+  {
+    /* ---- LE DEFAUT, FILME : « je me connecte et ca ne se connecte pas » ----
+     * Le code e-mail etait accepte, le dialogue affichait « Signed in.
+     * Reloading… », la page se rechargeait — et revenait sur « CONNECT
+     * WALLET », solde a « — ». La session etait bonne : remise a la main, elle
+     * ne changeait rien. Trois causes, toutes ici :
+     *   1. `stakebubble.js` tenait cette page pour proprietaire de sa socket
+     *      parce qu'elle porte un `#bal` ; il s'abstenait donc de se connecter,
+     *      et le jeton restait range sans servir ;
+     *   2. une fois connecte, il fabriquait un SECOND element `#bal` — deux
+     *      elements pour un identifiant — si bien que la carte de la page
+     *      restait a « — » pendant que sa pastille affichait le vrai chiffre ;
+     *   3. `swogeConnecte()` n'existait pas sur cette page (il vit dans
+     *      `swogecx.js`, qu'elle ne charge pas), donc les deux boutons de
+     *      connexion ne se cachaient jamais.
+     * On mesure les trois d'un coup, avec un faux serveur de jeu. */
+    const WSS = require('ws').Server;
+    const jeu = new WSS({ port: 0 });
+    await new Promise((r) => jeu.on('listening', r));
+    const recus = [];
+    jeu.on('connection', (c) => {
+      c.send(JSON.stringify({ type: 'hello', loginNonce: 'abc', chainId: 4663 }));
+      c.on('message', (d) => {
+        let m; try { m = JSON.parse(d); } catch (e) { return; }
+        recus.push(m.type);
+        if (m.type === 'resume')
+          c.send(JSON.stringify({ type: 'auth', address: '0x' + '11'.repeat(20),
+                                  balance: '4242', session: 'jeton', resumed: true }));
+      });
+    });
+    const ctx = await nav.newContext({ viewport: { width: 1280, height: 900 } });
+    await ctx.addInitScript(() => {
+      try { localStorage.setItem('swogeSession', 'jeton-valable'); } catch (e) {}
+    });
+    const { page, boum } = await ouvre(nav, port, { ctx,
+      urlSuffixe: '?server=ws://127.0.0.1:' + jeu.address().port });
+    await page.waitForTimeout(3500);
+    const v = await page.evaluate(() => ({
+      boutons: ['connectBtn', 'emailBtn'].map((id) => {
+        const b = document.getElementById(id); return b ? b.offsetParent !== null : null; }),
+      bals: [...document.querySelectorAll('[id=bal]')].map((e) => (e.textContent || '').trim()),
+      connecte: typeof window.swogeConnecte === 'function' ? window.swogeConnecte() : 'absent',
+    }));
+    ok(recus.indexOf('resume') >= 0,
+       'la page REPREND sa session au chargement — sans ca, un jeton valable ne sert a rien');
+    ok(v.bals.length === 1,
+       'un seul element porte l identifiant `bal` (' + v.bals.length + ') : deux, et la carte de la page reste a « — »');
+    ok(v.bals[0] === '4.2k', 'et il porte le solde rendu par le serveur (' + v.bals[0] + ')');
+    ok(v.connecte === true, '`swogeConnecte()` existe et repond oui (' + v.connecte + ')');
+    ok(v.boutons[0] === false && v.boutons[1] === false,
+       'donc « CONNECT WALLET » et « SIGN UP — EMAIL » s effacent : les laisser a cote de son'
+       + ' propre solde se lit comme une connexion ratee');
+    ok(boum.length === 0, 'aucune erreur de page' + (boum.length ? ' — ' + boum[0] : ''));
+    await page.close(); await ctx.close(); jeu.close();
+  }
+
   console.log('\n-- la porte de connexion s ouvre DEVANT, pas sous le pied de page --');
   {
     /* ---- LE DEFAUT : ELLE S OUVRAIT SANS SES STYLES ----

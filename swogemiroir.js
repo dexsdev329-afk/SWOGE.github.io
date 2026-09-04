@@ -370,7 +370,13 @@
         + 'OPEN IN YOUR MIRROR</h3>';
       h += ETAT.ouvertes.map(function (o) {
         return '<div class="mir-pos"><b>$' + esc(o.sym || court(o.adr)) + '</b> '
-          + '<i>' + nb(o.entree) + ' ETH in · ' + heure(o.t) + (o.simule ? ' · dry run' : '') + '</i></div>';
+          + '<i>' + nb(o.entree) + ' ETH in · ' + heure(o.t) + (o.simule ? ' · dry run' : '')
+          /* Les tranches deja vendues, comme la colonie les montre : « 70% sold ·
+             banked · 30% still running ». */
+          + (o.reste !== undefined && o.reste < 0.999
+              ? ' · ' + Math.round((1 - o.reste) * 100) + '% sold' + (o.banked ? ' · ' + nb(o.banked) + ' ETH banked' : '')
+                + ' · ' + Math.round(o.reste * 100) + '% still running' : '')
+          + '</i></div>';
       }).join('');
     }
 

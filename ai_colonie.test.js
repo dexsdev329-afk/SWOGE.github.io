@@ -1545,6 +1545,46 @@ async function auditDesVetos() {
   /* ======================================================================
    * 7. CE QUE LA PAGE PROMET, ET CE QU ELLE NE PEUT PLUS FAIRE
    * ==================================================================== */
+  console.log('\n-- la porte de connexion s ouvre DEVANT, pas sous le pied de page --');
+  {
+    /* ---- LE DEFAUT : ELLE S OUVRAIT SANS SES STYLES ----
+     * « Connect wallet et sign up email ne fonctionnent pas en haut a droite. »
+     * Ils fonctionnaient : la porte se construisait et recevait sa classe
+     * `on`. Mais sa feuille de style n etait posee que par la fonction qui
+     * FABRIQUE le bouton « Sign in » de la barre, laquelle sort tout de suite
+     * quand la page a deja sa propre rangee de connexion — le cas ici. Sans
+     * feuille, `.swcon-ov` n est plus ni fixe ni au-dessus, et `.on` ne veut
+     * plus dire `display:flex` : mesure, un bloc de 1280x138 tout en bas du
+     * document. Elle s ouvrait donc pour de vrai, hors de l ecran.
+     * On mesure ce qui a manque : la position, la hauteur et le plan. */
+    const { page, boum } = await ouvre(nav, port, {});
+    await page.click('#emailBtn');
+    await page.waitForTimeout(400);
+    const d = await page.evaluate(() => {
+      const o = document.querySelector('.swcon-ov');
+      if (!o) return null;
+      const cs = getComputedStyle(o), r = o.getBoundingClientRect();
+      const m = o.querySelector('.mail'), e = o.querySelector('.em');
+      return { display: cs.display, position: cs.position, z: cs.zIndex,
+               haut: Math.round(r.height), large: Math.round(r.width),
+               ecran: [innerWidth, innerHeight],
+               champDeplie: m ? getComputedStyle(m).display !== 'none' : null,
+               foyer: document.activeElement === e };
+    });
+    ok(d, 'la porte existe dans la page');
+    ok(d.display === 'flex', 'elle s ouvre en `flex` — donc sa feuille de style est bien posee ('
+       + d.display + ')');
+    ok(d.position === 'fixed', 'et elle est FIXE : sans ca elle se range en bas du document ('
+       + d.position + ')');
+    ok(Number(d.z) > 1000000, 'au-dessus de tout ce que la page empile (z-index ' + d.z + ')');
+    ok(d.haut >= d.ecran[1] - 2 && d.large >= d.ecran[0] - 2,
+       'et elle couvre l ecran (' + d.large + 'x' + d.haut + ' pour ' + d.ecran.join('x') + ')');
+    ok(d.champDeplie, 'le bouton « SIGN UP — EMAIL » deplie le champ e-mail, sans second clic');
+    ok(d.foyer, 'et y pose le curseur : le bouton fait ce que son nom promet');
+    ok(boum.length === 0, 'aucune erreur de page' + (boum.length ? ' — ' + boum[0] : ''));
+    await page.close();
+  }
+
   console.log('\n-- ce que la page promet en toutes lettres --');
   {
     const { page, boum } = await ouvre(nav, port, {});

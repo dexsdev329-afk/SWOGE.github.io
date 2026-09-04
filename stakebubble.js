@@ -455,6 +455,21 @@
 
   function dialogue() {
     if (conBoite) return conBoite;
+    /* ---- LA FEUILLE APPARTIENT A LA PORTE, PAS AU BOUTON ----
+     *
+     * Elle n'etait posee que par `poseConnexion()`, qui FABRIQUE le bouton
+     * « Sign in » de la barre — et qui sort tout de suite quand la page a deja
+     * sa propre rangee de connexion (`#bal` present). Sur ces pages-la, la
+     * porte se construisait donc sans un seul de ses styles : pas de
+     * `position:fixed`, pas de `z-index`, et `.on` qui ne veut plus dire
+     * `display:flex`. Elle s'ouvrait pour de vrai — en bloc ordinaire, cent
+     * trente-huit pixels de haut, tout en bas du document, sous le pied de
+     * page. Signale comme « connect wallet et sign up email ne font rien » sur
+     * SWOGE AI : ils faisaient quelque chose, hors de l'ecran.
+     *
+     * Mesure : `.swcon-ov` rendue en `display:block`, `z-index:auto`,
+     * 1280x138 au lieu de 1280x900. */
+    styleConnexion();
     conBoite = document.createElement('div');
     conBoite.className = 'swcon-ov';
     conBoite.innerHTML =

@@ -334,6 +334,7 @@
          seulement 0,004 ETH ? », dont la reponse est « parce que la colonie a
          mis la meme proportion, a cette note-la ». */
       + '<div class="mir-l"><span>Per order</span><b>the Banker\'s own share, '
+      + (ETAT.ordreMin ? 'at least ' + esc(ETAT.ordreMin) + ' ETH, ' : '')
       + 'up to ' + esc(ETAT.ordreMax) + ' ETH</b></div>';
 
     if (!ETAT.actif) {

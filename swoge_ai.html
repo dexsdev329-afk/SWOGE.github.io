@@ -13,7 +13,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
-var MARQUE_PAGE = '8efd4fd5';
+var MARQUE_PAGE = '1311a0bf';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -1321,6 +1321,10 @@ const PHRASES = {
   enAttente:    ['● waiting for the server', '● en attente du serveur'],
   demarre:      ['● server started, no turn finished yet', '● serveur demarre, aucun tour termine'],
   lectureKo:    [' · read failed', ' · lecture en echec'],
+  enPause:      ['⏸ paused by the team — last known state, nothing moves',
+                 '⏸ en pause par l\'equipe — dernier etat connu, rien ne bouge'],
+  fondPause:    ['SWOGE AI is paused for now: no new trade, no open position. The board shows the last state it left.',
+                 'SWOGE AI est en pause pour le moment : aucun nouveau trade, aucune position ouverte. Le tableau montre le dernier etat laisse.'],
   serveurA:     [(n, hh, mm, age) => '● ' + n + ' tokens · server at ' + hh + ':' + mm + ' (' + age + ')',
                  (n, hh, mm, age) => '● ' + n + ' tokens · serveur a ' + hh + ':' + mm + ' (' + age + ')'],
   fondErreur:   [(e) => 'The server is running but its last read failed: ' + e,
@@ -2685,6 +2689,7 @@ function pastille(){
     el.textContent = ph(ERREUR_RESEAU ? "enPanne" : "enAttente");
     el.className = "chip data mort"; return;
   }
+  if(VUE.pause){ el.textContent = ph("enPause"); el.className = "chip data stale"; return; }
   const src = VUE.maj || VUE.dernierTour || 0;
   if(!src){ el.textContent = ph("demarre"); el.className = "chip data stale"; return; }
   const age = Date.now() - RECU + (RECU - src);
@@ -2706,6 +2711,7 @@ function dis(msg, alerte){
 }
 function phraseFond(){
   if(!VUE) return ph("vide");
+  if(VUE.pause) return ph("fondPause");
   if(VUE.erreur) return ph("fondErreur", VUE.erreur);
   return ph("fondVivant", VUE.positions.length);
 }
@@ -2715,9 +2721,11 @@ function majPouls(){
      reussi a le joindre. Les deux se ressemblent a l'ecran et ne veulent pas
      dire la meme chose. */
   const src = VUE ? (VUE.dernierTour || 0) : 0;
-  const vivant = src && (Date.now() - RECU + (RECU - src)) < 15*60*1000 && !ERREUR_RESEAU;
+  const pause = !!(VUE && VUE.pause);
+  const vivant = !pause && src && (Date.now() - RECU + (RECU - src)) < 15*60*1000 && !ERREUR_RESEAU;
   p.classList.toggle("off", !vivant);
   tx.textContent = vivant ? "LIVE"
+    : pause ? (LANGUE === "fr" ? "EN PAUSE" : "PAUSED")
     : (VUE ? (LANGUE === "fr" ? "PERIME" : "STALE")
            : (LANGUE === "fr" ? "HORS LIGNE" : "OFFLINE"));
 }

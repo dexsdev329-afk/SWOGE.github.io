@@ -1603,6 +1603,64 @@ async function auditDesVetos() {
     await page.close(); await ctx.close(); jeu.close();
   }
 
+  console.log('\n-- le miroir vaut quelque chose, et c est ecrit a cote du papier --');
+  {
+    /* « En haut a gauche il y a le solde de la demo ; a droite ca serait bien
+       d avoir le nombre en DOLLARS de mon miroir. » Les deux chiffres ne
+       mesurent pas la meme chose — une caisse de papier partie de 1 000, et de
+       l ETH reel — donc ils portent des mots differents, pas seulement des
+       places differentes. */
+    const WSS = require('ws').Server;
+    const httpJeu = require('http').createServer((q, r) => {
+      if (q.url.split('?')[0] === '/relay/prix') {
+        r.writeHead(200, { 'content-type': 'application/json', 'access-control-allow-origin': '*' });
+        return r.end(JSON.stringify({ dollarsEnvoi: '2455.73' }));
+      }
+      r.writeHead(404); r.end();
+    });
+    await new Promise((r) => httpJeu.listen(0, r));
+    const jeu = new WSS({ server: httpJeu });
+    jeu.on('connection', (c) => {
+      c.send(JSON.stringify({ type: 'hello', loginNonce: 'a', chainId: 4663 }));
+      c.on('message', (d) => {
+        let m; try { m = JSON.parse(d); } catch (e) { return; }
+        if (m.type === 'resume')
+          c.send(JSON.stringify({ type: 'auth', address: '0x' + '11'.repeat(20), balance: '0', session: 'j' }));
+        if (m.type === 'miroirEtat')
+          c.send(JSON.stringify({ type: 'miroirEtat', pret: true, execute: false, existe: true, actif: false,
+            adresse: '0x' + 'ab'.repeat(20), solde: '0.05', min: '0.002', max: '0.5', part: 0.1,
+            ordreMax: '0.05', gaz: '0.0015', places: 25,
+            ouvertes: [{ adr: '0x' + 'aa'.repeat(20), sym: 'T', entree: '0.004', t: Date.now(), simule: true }],
+            journal: [] }));
+      });
+    });
+    const ctx = await nav.newContext({ viewport: { width: 1280, height: 900 } });
+    await ctx.addInitScript(() => { try { localStorage.setItem('swogeSession', 'j'); } catch (e) {} });
+    const { page, boum } = await ouvre(nav, port, { ctx,
+      urlSuffixe: '?server=ws://127.0.0.1:' + httpJeu.address().port });
+    await page.waitForTimeout(4000);
+    const v = await page.evaluate(() => {
+      const b = document.querySelector('.mir-val');
+      const p = document.querySelector('header.bar .treasury:not(.mir-val)');
+      return { visible: b ? !b.hidden : null,
+               usd: b ? (b.querySelector('#mirUsd') || {}).textContent : null,
+               eth: b ? (b.querySelector('#mirEth') || {}).textContent : null,
+               mot: b ? (b.querySelector('.lbl') || {}).textContent : null,
+               motPapier: p ? (p.querySelector('.lbl') || {}).textContent : null,
+               aDroite: (b && p) ? b.getBoundingClientRect().left > p.getBoundingClientRect().left : null };
+    });
+    ok(v.visible, 'la valeur du miroir s affiche dans la tablette');
+    ok(v.usd === '$122.79', '0,05 ETH a 2 455,73 $ font ' + v.usd + ' — le chiffre, pas une approximation vague');
+    ok(v.aDroite, 'a DROITE du papier, qui reste ou il est');
+    ok(/mirror/i.test(v.mot) && /paper/i.test(v.motPapier || ''),
+       'et les deux portent des mots differents (« ' + v.mot + ' » contre « ' + v.motPapier + ' ») :'
+       + ' une caisse de papier et de l argent reel ne doivent pas se ressembler');
+    ok(/not counted/i.test(v.eth || ''),
+       'la ligne dit ce qu elle NE compte PAS : « ' + v.eth + ' »');
+    ok(boum.length === 0, 'aucune erreur de page' + (boum.length ? ' — ' + boum[0] : ''));
+    await page.close(); await ctx.close(); jeu.close(); httpJeu.close();
+  }
+
   console.log('\n-- la porte de connexion s ouvre DEVANT, pas sous le pied de page --');
   {
     /* ---- LE DEFAUT : ELLE S OUVRAIT SANS SES STYLES ----

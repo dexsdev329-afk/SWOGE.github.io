@@ -120,6 +120,93 @@
     return isFinite(n) ? n.toLocaleString('en-US', { maximumFractionDigits: 6 }) : '—';
   };
 
+  /* ==================== CE QUE LE MIROIR VAUT, EN HAUT A DROITE ====================
+   *
+   * DEMANDE : « en haut a gauche il y a le solde en temps reel de la demo ;
+   * quand je cree un master wallet je vois bien ma balance, mais en haut a
+   * droite ca serait bien d'avoir le nombre en DOLLARS dans la tablette, qui
+   * monte et descend en temps reel — et laisser celui de la demo a gauche. »
+   *
+   * Les deux chiffres ne mesurent pas la meme chose et ne doivent pas se
+   * ressembler : a gauche une tresorerie de PAPIER qui part de 1 000 et ne
+   * doit rien a personne ; a droite de l'ETH reel, celui du joueur. On les
+   * separe donc par le mot, pas seulement par la place — « YOUR MIRROR »
+   * contre « PAPER · REAL PRICES ».
+   *
+   * ---- ET IL DIT CE QU'IL NE COMPTE PAS ----
+   *
+   * C'est l'ETH du portefeuille. Ce que le miroir tient en jetons a un instant
+   * donne n'y est pas : le chiffrer demanderait un devis par position, et un
+   * total qui melange du mesure et de l'estime sans le dire est un total qu'on
+   * ne peut plus lire. Quand des positions sont ouvertes, la ligne le dit. */
+  var ETH_USD = null, ETH_QUAND = 0, ETH_EN_VOL = false;
+  var ETH_TTL = 3 * 60 * 1000;
+  var boiteVal = null;
+
+  function baseServeur() {
+    try {
+      var q = new URLSearchParams(location.search).get('server');
+      if (q) return q.replace(/^ws/, 'http').replace(/\/+$/, '');
+    } catch (e) {}
+    return 'https://web-production-220a3.up.railway.app';
+  }
+  function prixEth() {
+    if (ETH_USD !== null && Date.now() - ETH_QUAND < ETH_TTL) return Promise.resolve(ETH_USD);
+    if (ETH_EN_VOL) return Promise.resolve(ETH_USD);
+    ETH_EN_VOL = true;
+    return fetch(baseServeur() + '/relay/prix?de=eth&montant=1')
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (j) {
+        ETH_EN_VOL = false;
+        var d = j && parseFloat(j.dollarsEnvoi);
+        if (d > 0) { ETH_USD = d; ETH_QUAND = Date.now(); }
+        return ETH_USD;
+      })
+      .catch(function () { ETH_EN_VOL = false; return ETH_USD; });
+  }
+  function enDollars(v) {
+    if (!(v >= 0)) return '';
+    if (v >= 1000) return '$' + v.toLocaleString('en-US', { maximumFractionDigits: 0 });
+    if (v >= 1) return '$' + v.toFixed(2);
+    return '$' + v.toFixed(4);
+  }
+  /* La tablette porte deja la tresorerie de papier ; on pose la notre a cote,
+     dans le meme habit, et on ne la montre QUE s'il y a un miroir. */
+  function poseValeur() {
+    if (boiteVal) return boiteVal;
+    var barre = document.querySelector('header.bar');
+    var papier = barre && barre.querySelector('.treasury');
+    if (!barre || !papier) return null;
+    boiteVal = document.createElement('div');
+    boiteVal.className = 'treasury mir-val';
+    boiteVal.hidden = true;
+    boiteVal.innerHTML = '<span class="lbl">Your mirror</span>'
+      + '<span class="val" id="mirUsd">—</span>'
+      + '<span class="delta" id="mirEth"></span>';
+    var c = document.createElement('style');
+    c.textContent = '.mir-val .val{color:var(--gain,#12A150)}'
+      + '.mir-val .delta{color:var(--ink-dim,#6B7C99)}'
+      + '@media (max-width:820px){.mir-val .val{font-size:20px}}';
+    document.head.appendChild(c);
+    papier.parentNode.insertBefore(boiteVal, papier.nextSibling);
+    return boiteVal;
+  }
+  function majValeur() {
+    var b = poseValeur(); if (!b) return;
+    if (!ETAT || !ETAT.existe || ETAT.solde === null || ETAT.solde === undefined) { b.hidden = true; return; }
+    var eth = parseFloat(ETAT.solde);
+    if (!(eth >= 0)) { b.hidden = true; return; }
+    var ouv = (ETAT.ouvertes || []).length;
+    b.querySelector('#mirEth').textContent = nb(eth) + ' ETH (RH)'
+      + (ouv ? ' · ' + ouv + ' open, not counted' : '');
+    b.hidden = false;
+    prixEth().then(function (p) {
+      var v = b.querySelector('#mirUsd');
+      if (!(p > 0)) { v.textContent = nb(eth) + ' ETH'; return; }
+      v.textContent = enDollars(eth * p);
+    });
+  }
+
   function envoie(o) {
     if (!window.swogeFil || !window.swogeFil.pret()) { dit = 'Not connected to the game server.'; peint(); return false; }
     window.swogeFil.envoie(o);
@@ -310,7 +397,7 @@
     window.swogeFil.ecoute(function (m) {
       if (!m || !m.type) return;
       if (m.type === 'auth') { connecte = true; reclame(); return; }
-      if (m.type === 'miroirEtat') { ETAT = m; occupe = false; peint(); return; }
+      if (m.type === 'miroirEtat') { ETAT = m; occupe = false; peint(); majValeur(); return; }
       if (m.type === 'miroirCle') {
         CLE = m.cle;
         dit = m.neuf ? 'Wallet created — save this key now, it is the only copy you control.' : '';
@@ -336,6 +423,7 @@
   }
 
   peint();
+  majValeur();
   reclame();
   /* Le solde du portefeuille bouge sans qu'on fasse rien — un depot arrive, un
      ordre passe. On le redemande, doucement. */

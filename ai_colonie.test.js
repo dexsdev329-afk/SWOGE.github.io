@@ -939,9 +939,18 @@ async function panneauAlertes() {
       [...document.querySelectorAll('.card[data-pan]')].filter((x) => x.closest('.grp')).length);
     ok(dansUnGroupe === p.pans.length,
        'les ' + p.pans.length + ' panneaux sont tous dans un groupe : ranger n est pas retirer');
-    ok(p.ouvertsParGroupe.every((n) => n === 1),
-       'et chaque groupe s ouvre sur UN panneau deja deplie : un onglet dont tout est replie se '
-       + 'lit comme un onglet vide (' + p.ouvertsParGroupe.join('/') + ')');
+    /* ---- AU MOINS UN, ET NON EXACTEMENT UN ----
+     * La regle exigeait UN seul panneau deplie par groupe. Sa raison, ecrite
+     * ici, n a jamais porte que sur le zero : « un onglet dont tout est replie
+     * se lit comme un onglet vide ». Le groupe « Live » en porte deux depuis
+     * que le miroir existe — les positions, qui RACONTENT, et le miroir, qui
+     * PROPOSE quelque chose au lecteur. Une carte qui demande un geste et qui
+     * s ouvre repliee est une carte que personne ne voit ; deux cartes ouvertes
+     * ne sont pas le defaut que ce rangement a corrige, qui etait treize titres
+     * identiques a la file. */
+    ok(p.ouvertsParGroupe.every((n) => n >= 1),
+       'et chaque groupe s ouvre sur au moins un panneau deja deplie : un onglet dont tout est '
+       + 'replie se lit comme un onglet vide (' + p.ouvertsParGroupe.join('/') + ')');
     ok(p.pans[p.pans.length - 1] === 'alertes',
        'et « ce dont la colonie a besoin » est le dernier bloc de la colonne');
     ok(p.avecCompteur >= 3 && p.compteursVus === p.avecCompteur,

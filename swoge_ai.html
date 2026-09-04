@@ -13,7 +13,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
-var MARQUE_PAGE = '1311a0bf';
+var MARQUE_PAGE = 'c065b7a0';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -942,6 +942,15 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       </nav>
 
       <div class="grp" data-grp="live">
+        <!-- ---- SUIVRE LA COLONIE AVEC SON PROPRE ARGENT ----
+             En tete du groupe « Live » parce que c'est la seule carte qui
+             DEMANDE quelque chose au lecteur ; les autres racontent. Son
+             contenu est pose par `swogemiroir.js`, qui parle au serveur par la
+             socket que `stakebubble.js` tient deja. -->
+        <div class="card" data-pan="miroir">
+          <h2><span data-t="tMiroir">Trade with the colony</span> <span class="count">your wallet</span></h2>
+          <div id="gxMiroir"></div>
+        </div>
         <div class="card" data-pan="positions">
           <h2><span data-t="tPositions">Open positions</span> <span class="count" id="poscount">0</span></h2>
           <div id="positions"><div class="empty" data-t="vPositions">No open position.</div></div>
@@ -1048,6 +1057,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 </div>
 
 <script src="swogeprofil.js?v=aa21d613" defer></script>
+<script src="swogemiroir.js?v=815570bd" defer></script>
 
 <!-- La carte « YOUR BALANCE » recopie #bal, jamais l'inverse. -->
 <script>
@@ -2861,8 +2871,13 @@ function poseLangue(l){
  * fois ce nouveau depart pris, leurs propres choix sont a nouveau gardes. */
 /* Un panneau ouvert par groupe, choisi comme celui qu'on vient chercher : un
    onglet dont les quatre titres sont replies se lit comme un onglet vide. */
-const PANNEAUX_OUVERTS = ["positions", "agents", "audit"];
-const CLE_PANNEAUX = "swogeAiPanneaux3";
+/* Le miroir part OUVERT, comme les positions : c'est la seule carte qui demande
+   quelque chose au lecteur, et une carte repliee ne se lit pas — elle se
+   devine. Les autres racontent, celle-la propose. */
+const PANNEAUX_OUVERTS = ["miroir", "positions", "agents", "audit"];
+/* La cle change avec la liste : sans ca, un visiteur d'hier garde son etat
+   d'hier, ou le miroir n'existait pas — donc replie, donc invisible. */
+const CLE_PANNEAUX = "swogeAiPanneaux4";
 
 function litPlis(){
   try{

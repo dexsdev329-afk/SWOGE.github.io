@@ -147,6 +147,10 @@
       h += '<p>A <b>mirror wallet</b> is an address of your own. You fund it with ETH (RH), you press '
         + 'Play, and SWOGE AI buys and sells in it at the same moment it does in its own book. '
         + 'Press Stop and it sells everything and sends the ETH back to your account wallet.</p>'
+        + '<p class="mir-note">Each order is sized by the colony\'s <b>Banker</b>: it commits the same '
+        + 'share of your balance as it does of its own, so its score scale, its caps and its '
+        + 'drawdown regime apply to your wallet too. A gas reserve is never spent — it is what pays '
+        + 'to <b>sell</b>.</p>'
         + '<div class="mir-garde"><b>Read this before you create one.</b> To trade while your tab is '
         + 'closed, this server holds the wallet\'s private key. If this server is ever compromised, '
         + 'that wallet can be emptied. Two things are true at the same time: keep only what you accept '
@@ -167,8 +171,13 @@
       + '<div class="mir-l"><span>Status</span><b>'
       + (ETAT.actif ? (ETAT.execute ? 'following · real orders' : 'following · dry run') : 'stopped')
       + '</b></div>'
-      + '<div class="mir-l"><span>Per order</span><b>' + esc(String(Math.round(ETAT.part * 100)))
-      + '% of what is free, up to ' + esc(ETAT.ordreMax) + ' ETH</b></div>';
+      /* La taille d'un ordre n'est pas un reglage de cette page : c'est le
+         Banquier de la colonie qui la decide, et le miroir engage la meme PART
+         de sa caisse que lui de la sienne. Le dire evite la question « pourquoi
+         seulement 0,004 ETH ? », dont la reponse est « parce que la colonie a
+         mis la meme proportion, a cette note-la ». */
+      + '<div class="mir-l"><span>Per order</span><b>the Banker\'s own share, '
+      + 'up to ' + esc(ETAT.ordreMax) + ' ETH</b></div>';
 
     if (!ETAT.actif) {
       h += '<p class="mir-note" style="margin-top:9px">Send ETH (RH) to the address above — at least '

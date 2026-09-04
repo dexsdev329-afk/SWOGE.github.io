@@ -251,7 +251,10 @@
     var enEth = signe + nb(Math.abs(eth)) + ' ETH';
     pr.innerHTML = '<span id="mir-profit-v">' + enEth + '</span>';
     b.querySelector('#mir-wr').textContent = bl.trades ? Math.round(bl.gagnantes / bl.trades * 100) + '%' : '—';
-    b.querySelector('#mir-trades').textContent = String(bl.trades || 0);
+    /* Une position partie sans que le miroir vende (cle utilisee ailleurs, stop
+       rate) est comptee a part : son resultat est inconnu, pas invente. */
+    b.querySelector('#mir-trades').innerHTML = String(bl.trades || 0)
+      + (bl.horsMiroir ? '<small>+' + bl.horsMiroir + ' closed outside</small>' : '');
     b.querySelector('#mir-best').textContent = bl.meilleur > 0 ? Number(bl.meilleur).toFixed(2) + '×' : '—';
     b.querySelector('#mir-open').textContent = String(bl.ouvertes !== undefined ? bl.ouvertes : (ETAT.ouvertes || []).length);
     b.hidden = false;

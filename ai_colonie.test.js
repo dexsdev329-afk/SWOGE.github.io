@@ -1676,7 +1676,28 @@ async function auditDesVetos() {
        '0,0031 ETH a 2 455,73 $ font +$7.61, avec l ETH en dessous (« ' + bar.profit + ' »)');
     ok(bar.wr === '58%' && bar.trades === '12' && bar.best === '2.40×' && bar.open === '1',
        'taux 58 % · 12 trades · meilleur 2.40× · 1 ouvert');
-    ok(bar.etiquettes.every((x) => /mirror/i.test(x)), 'et chaque etiquette dit « mirror »');
+    ok(/mirror/i.test(bar.etiquettes[0]) && bar.etiquettes.length === 5, 'et la premiere etiquette dit « mirror »');
+    /* « La ligne des stats du miroir déborde. » Sur un telephone, aucune case
+       ne doit laisser sortir son chiffre ni son etiquette, et le profit
+       negatif ne doit pas se couper apres le signe. */
+    await page.setViewportSize({ width: 390, height: 800 });
+    await page.evaluate(() => { const b = document.getElementById('mir-profit'); if (b) { b.className = 'dn'; } });
+    await page.waitForTimeout(300);
+    const tel = await page.evaluate(() => {
+      const out = [];
+      for (const bar of [document.getElementById('bandeau'), document.getElementById('bandeauMiroir')]) {
+        for (const it of bar.querySelectorAll('.b-item')) {
+          const b = it.querySelector('b'), i = it.querySelector('i');
+          out.push({ bar: bar.id, lbl: i.textContent, deborde: (b.scrollWidth > it.clientWidth + 1) || (i.scrollWidth > it.clientWidth + 1),
+                     lignesValeur: Math.round((b.querySelector('.v') || b).getBoundingClientRect().height / parseFloat(getComputedStyle(b).fontSize) * 10) / 10 });
+        }
+      }
+      return out;
+    });
+    console.log('   390px : ' + JSON.stringify(tel));
+    ok(tel.every((x) => !x.deborde), 'a 390 px, aucune case des deux barres ne deborde');
+    ok(tel.filter((x) => x.bar === 'bandeauMiroir').every((x) => x.lignesValeur < 1.6), 'et chaque chiffre du miroir tient sur une ligne (le profit ne se coupe pas apres le signe)');
+    await page.setViewportSize({ width: 1280, height: 900 });
     ok(boum.length === 0, 'aucune erreur de page' + (boum.length ? ' — ' + boum[0] : ''));
     await page.close(); await ctx.close(); jeu.close(); httpJeu.close();
   }

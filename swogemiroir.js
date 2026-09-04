@@ -226,16 +226,30 @@
     boiteBilan.id = 'bandeauMiroir';
     boiteBilan.hidden = true;
     boiteBilan.innerHTML =
+        /* « La ligne des stats du miroir déborde. » Quinze caracteres en
+           capitales espacees ne tiennent pas dans une case de 70 px : « mirror »
+           n est dit qu une fois, sur le profit, et la couleur fait le reste. */
         '<div class="b-item b-gros"><b id="mir-profit">—</b><i>Mirror profit</i></div>'
-      + '<div class="b-item"><b id="mir-wr">—</b><i>Mirror win rate</i></div>'
-      + '<div class="b-item"><b id="mir-trades">0</b><i>Mirror trades</i></div>'
-      + '<div class="b-item"><b id="mir-best">—</b><i>Mirror best</i></div>'
-      + '<div class="b-item b-pos"><b id="mir-open">0</b><i>Mirror open</i></div>';
+      + '<div class="b-item"><b id="mir-wr">—</b><i>Win rate</i></div>'
+      + '<div class="b-item"><b id="mir-trades">0</b><i>Trades</i></div>'
+      + '<div class="b-item"><b id="mir-best">—</b><i>Best</i></div>'
+      + '<div class="b-item b-pos"><b id="mir-open">0</b><i>Open</i></div>';
     var c = document.createElement('style');
     c.textContent = '.mir-bandeau{border-top:1px solid var(--line,#E3E8F1)}'
-      + '.mir-bandeau .b-item b{color:var(--gain,#12A150)}'
+      /* Rien ne sort de sa case : le chiffre ne se coupe pas (un « - » est un
+         point de coupure pour le navigateur — on ecrit le signe moins, U+2212),
+         et une case ne deborde pas sur sa voisine. */
+      + '.mir-bandeau .b-item{overflow:hidden;min-width:0}'
+      + '.mir-bandeau .b-item b{color:var(--gain,#12A150);white-space:nowrap;max-width:100%}'
+      + '.mir-bandeau .b-item b .v{display:block;overflow:hidden;text-overflow:ellipsis}'
       + '.mir-bandeau .b-item b.dn{color:var(--perte,#D6455D)}'
-      + '.mir-bandeau .b-item b small{display:block;font-size:10px;font-weight:500;color:var(--ink-dim,#6B7C99)}';
+      + '.mir-bandeau .b-item b small{display:block;font-size:10px;font-weight:500;color:var(--ink-dim,#6B7C99);overflow:hidden;text-overflow:ellipsis}'
+      + '.mir-bandeau .b-item i{overflow:hidden;text-overflow:ellipsis;max-width:100%}'
+      /* La seule etiquette a deux mots peut passer sur deux lignes, et sa case
+         est un peu plus large : c est LE chiffre de la barre. */
+      + '.mir-bandeau .b-gros{flex:1.35 1 0}.mir-bandeau .b-gros i{white-space:normal;line-height:1.15;text-align:center}'
+      + '@media (max-width:560px){.mir-bandeau .b-item b{font-size:14px}.mir-bandeau .b-gros b{font-size:16px}'
+      + '.mir-bandeau .b-item b small{font-size:9px}.mir-bandeau .b-item i{font-size:8.5px;letter-spacing:.6px}}';
     document.head.appendChild(c);
     papier.parentNode.insertBefore(boiteBilan, papier.nextSibling);
     return boiteBilan;
@@ -247,9 +261,9 @@
     var eth = parseFloat(bl.profitEth) || 0;
     var pr = b.querySelector('#mir-profit');
     pr.className = eth < 0 ? 'dn' : '';
-    var signe = eth < 0 ? '-' : '+';
+    var signe = eth < 0 ? '\u2212' : '+';           /* le signe moins, pas un trait d union : il ne coupe pas la ligne */
     var enEth = signe + nb(Math.abs(eth)) + ' ETH';
-    pr.innerHTML = '<span id="mir-profit-v">' + enEth + '</span>';
+    pr.innerHTML = '<span id="mir-profit-v" class="v">' + enEth + '</span>';
     b.querySelector('#mir-wr').textContent = bl.trades ? Math.round(bl.gagnantes / bl.trades * 100) + '%' : '—';
     /* Une position partie sans que le miroir vende (cle utilisee ailleurs, stop
        rate) est comptee a part : son resultat est inconnu, pas invente. */
@@ -261,7 +275,7 @@
     prixEth().then(function (p) {
       if (!(p > 0)) return;
       var v = b.querySelector('#mir-profit-v');
-      if (v) v.innerHTML = signe + enDollars(Math.abs(eth) * p) + '<small>' + enEth + '</small>';
+      if (v) { v.textContent = signe + enDollars(Math.abs(eth) * p); v.insertAdjacentHTML('afterend', '<small>' + enEth + '</small>'); }
     });
   }
 

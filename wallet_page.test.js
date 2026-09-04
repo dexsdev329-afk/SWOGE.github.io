@@ -5510,8 +5510,12 @@ function servir(q, r, f, type) {
                     logo: 'https://dd.dexscreener.com/ds-data/tokens/robinhood/pepe2.png' }],
                   /* Du plus recent au plus ancien, comme le serveur les sert : la
                      vente de MOON, une vente orpheline, puis l'achat de MOON. */
+                  /* La vente porte la capitalisation DU MOMENT de la vente, lue par
+                     le serveur a l instant, et rappelle celle de l achat : « il vend a
+                     15K ce qu il a achete a 10K et dit +1 % » ne se repere qu ainsi. */
                   signaux: [{ k: 'vente', sym: 'MOON', r: 24.5, gain: 9.8, t: Date.now() - 2400000,
                               adr: '0x3333333333333333333333333333333333333333',
+                              mc: 12500, mcAchat: 8000, prixSrc: 'DexScreener', prixAge: 3,
                               comment: 'Duration reached' },
                             { k: 'vente', sym: 'WOOF', r: -12.4, t: Date.now() - 600000,
                               adr: '0x2222222222222222222222222222222222222222' },
@@ -5609,6 +5613,9 @@ function servir(q, r, f, type) {
     ok(!!moon && /bought (60 min|1 h) ago/.test(moon.sous) && /sold after 20 min/.test(moon.sous),
        'la ligne dit quand on est entre ET combien de temps on a tenu (« ' + (moon || {}).sous + ' »)');
     ok(!!moon && /Duration reached/.test(moon.sous), 'et pourquoi on est sorti');
+    ok(!!moon && /MC \$8,000 → \$12,500/.test(moon.sous),
+       'et la capitalisation de l achat ET celle de la vente, lue au moment de vendre (« '
+       + (moon || {}).sous + ' »)');
     ok(!!moon && /\+24\.5%/.test(moon.r) && moon.etq === 'sold',
        'avec le rendement de l operation, sur la ligne de l achat et non trois lignes plus haut');
     ok(/21,000/.test(v.sous) && /29,500/.test(v.sous),

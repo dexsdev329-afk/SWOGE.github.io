@@ -68,7 +68,7 @@
      A savoir : cela ne sauve pas la page DEJA en cache chez quelqu'un, qui ne
      contient pas ces lignes. Ce garde-fou vaut a partir de celle-ci. -->
 <script>
-var MARQUE_PAGE = '8313d222';
+var MARQUE_PAGE = '88dae1d9';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -7125,10 +7125,15 @@ function peintSignaux(){
     if(l0){
       l0.k = 'vente'; l0.r = g.r; l0.gain = g.gain; l0.tVente = g.t; l0.t = g.t;
       l0.comment = g.comment; l0.logo = l0.logo || g.logo;
+      /* La capitalisation AU MOMENT DE LA VENTE, lue a l instant par le serveur :
+         la ligne dit alors « MC 10k → 15k », le chemin fait, pas seulement le depart. */
+      if(g.mc > 0) l0.mcM = g.mc;
+      if(!(l0.mcA > 0) && g.mcAchat > 0) l0.mcA = g.mcAchat;
       delete attend[a];
       return;
     }
-    apparies.push({ ouvert:false, sym:g.sym, adr:g.adr, r:g.r, gain:g.gain, mcA:g.mc, mcM:null,
+    apparies.push({ ouvert:false, sym:g.sym, adr:g.adr, r:g.r, gain:g.gain,
+                    mcA:(g.mcAchat > 0 ? g.mcAchat : null), mcM:(g.mc > 0 ? g.mc : null),
                     t:g.t, tVente:g.t, k:'vente', liens:g.liens, pool:g.pool, logo:g.logo,
                     comment:g.comment });
   });

@@ -33,7 +33,26 @@ Deux corrections à faire avant de refabriquer, dans cet ordre :
 En attendant, une correction de contenu se fait **aux deux endroits** : dans
 `en.html` / `fr.html` (pour la fabrication future) et à la main dans
 `../whitepaper.html` (pour la page en ligne). C'est ce qui a été fait pour
-« ETH » → « ETH (RH) ».
+« ETH » → « ETH (RH) », puis pour la **v1.1** (4 septembre 2026).
+
+## v1.1 — ce qui a été reporté à la main, et où
+
+Quatre fichiers portent le même contenu et ont été mis à jour ensemble :
+`../whitepaper.html` (la page en ligne), `artifact.html` (la version hébergée),
+`en.html` et `fr.html` (les sources). Les ancres diffèrent : préfixées
+(`en-s41`) dans les deux premiers, nues (`s41`) dans les deux sources — c'est
+`build.py` qui préfixe.
+
+Ce qui a changé : l'en-tête (version, date, chapô, encadré « ce qui change en
+v1.1 »), la section **02** (diagramme, règle du satellite, tableau des
+composants), les frais **11** (marge du livre sportif, retrait du coffre des
+paris), les contrats **32** (coffre des paris, jeton $SWOGEBET), le résumé
+d'une page, le pied de page, et trois sections neuves en **Partie XII** :
+**41** paris sportifs et $SWOGEBET, **42** le SWOGE Wallet, **43** SWOGE AI.
+
+Vérifications faites après coup, à refaire à la prochaine passe : aucune ancre
+morte, aucun identifiant en double, balises `section`/`div`/`table` équilibrées,
+et 44 sections par langue dans les quatre fichiers.
 
 ## Modifier le document
 

@@ -307,18 +307,24 @@ footer{
   <h4>XI · Annexes</h4>
   <a href="#s39"><b>39</b>Tous les flux</a>
   <a href="#s40"><b>40</b>Audit critique</a>
+  <h4>XII · Depuis la v1.0</h4>
+  <a href="#s41"><b>41</b>Paris sportifs &amp; $SWOGEBET</a>
+  <a href="#s42"><b>42</b>Le SWOGE Wallet</a>
+  <a href="#s43"><b>43</b>SWOGE AI</a>
   <a href="#resume">Résumé d'une page</a>
 </nav>
 
 <main>
 
 <header class="top">
-  <p class="kicker">White paper · v1.0 · 14 août 2026</p>
+  <p class="kicker">White paper · v1.1 · 4 septembre 2026</p>
   <h1>Swole Doge<br><em>Protocol</em></h1>
   <p class="standfirst">
-    Une plateforme de jeu Web3 en production sur Robinhood Chain : treize jeux à
-    équité vérifiable, un launchpad déployé, un système de staking, de parrainage
-    et de niveaux, et un jeton dont chaque retrait retire de l'offre.
+    Une plateforme de jeu Web3 en production sur Robinhood Chain : vingt jeux à
+    équité vérifiable, un livre de paris sportifs joué en $SWOGEBET, un portefeuille
+    dont le joueur détient les clés, un launchpad déployé, un système de staking, de
+    parrainage et de niveaux, une colonie d'agents IA qui apprend en public, et un
+    jeton dont chaque retrait retire de l'offre.
     Ce document décrit le fonctionnement réel, de bout en bout.
   </p>
   <div class="meta">
@@ -331,7 +337,7 @@ footer{
   <div class="legend">
     <div><span class="chip ok">Confirmé</span>
       <span>Vérifié dans le code déployé ou lu directement sur la chaîne. Le chiffre
-      donné est le chiffre en production au 14 août 2026.</span></div>
+      donné est le chiffre en production au 4 septembre 2026.</span></div>
     <div><span class="chip pro">Proposé</span>
       <span>Modèle argumenté, non implémenté. C'est une recommandation, pas une
       fonctionnalité. Elle engage une décision, pas un calendrier.</span></div>
@@ -345,6 +351,20 @@ footer{
     paramètres de configuration actuels, modifiables, et non des engagements. Rien
     ici ne constitue un conseil en investissement, et l'acquisition de $SWOGE
     comporte un risque de perte totale.
+  </div>
+
+  <div class="note">
+    <strong>Ce qui change en v1.1.</strong> Quatre choses sont entrées en production
+    après le 14 août, et elles changent la forme du protocole, pas seulement sa liste
+    de fonctionnalités : un <strong>livre de paris sportifs</strong> joué dans un
+    second jeton, <strong>$SWOGEBET</strong>, avec son propre coffre on-chain ; un
+    <strong>portefeuille dont le joueur détient les clés</strong>, accessible depuis
+    chaque page ; une <strong>colonie d'agents IA</strong> qui trade de l'argent papier
+    en public ; et la règle qui gouverne tout cela — <strong>chaque jeton satellite
+    ouvre son pool en $SWOGE</strong>. Ils sont décrits en <a href="#s41">41</a>,
+    <a href="#s42">42</a> et <a href="#s43">43</a>, et repris dans
+    <a href="#s2">02</a>, <a href="#s11">11</a> et <a href="#s32">32</a>.
+    Tout le reste de ce document est inchangé et tient toujours.
   </div>
 </header>
 
@@ -418,8 +438,10 @@ rien d'autre à recommander. Cette fenêtre est courte et ne se rouvre pas.
 <section id="s2">
 <h2><span class="num">02</span> L'écosystème</h2>
 <p>
-Sept composants, dont cinq sont en production. Les flèches indiquent où circule la
-valeur, pas seulement où l'on clique.
+Dix composants, dont huit sont en production. Les flèches indiquent où circule la
+valeur, pas seulement où l'on clique. $SWOGE est dessous tout le reste : les jeux se
+jouent avec lui, les jetons satellites s'achètent avec lui, et leur liquidité est
+faite de lui.
 </p>
 
 <div class="flow"><pre>
@@ -437,7 +459,7 @@ valeur, pas seulement où l'on clique.
         │      ┌───────────┼───────────┐      │
         │      ▼           ▼           ▼      │
         │   <b>JEUX</b>      <b>DUELS</b>     <b>STAKING</b>   │
-        │  <i>13 titres</i>  <i>1v1 · rake</i>  <i>verrouillé</i>│
+        │  <i>20 titres</i>  <i>1v1 · rake</i>  <i>verrouillé</i>│
         │      │           │           │      │
         │      └─────┬─────┘           │      │
         │            ▼                 │      │
@@ -453,8 +475,52 @@ valeur, pas seulement où l'on clique.
                   <b>RETRAIT</b>  ──── 1 % ────▶ <b>BURN</b> ◀┘
                      │                    <i>0x…dEaD</i>
                      ▼
-              <b>PORTEFEUILLE DU JOUEUR</b>
+              <b>SWOGE WALLET</b>  <i>clés au joueur · envoyer, recevoir, swap, bridge</i>
 </pre></div>
+
+<h3>La règle du satellite</h3>
+<p>
+Un second jeton est entré en production en septembre : <strong>$SWOGEBET</strong>, le
+jeton avec lequel se jouent les paris. Ce n'est pas un projet à part, et la raison tient
+dans une règle que chaque satellite à venir suivra.
+</p>
+<div class="flow"><pre>
+   <b>ETH (RH)</b>
+      │  <i>l'acheteur paie avec ce qu'il a…</i>
+      ▼
+   <b>$SWOGE</b> ─────────────────────────────────▶ <b>détenu, staké, joué</b>
+      │
+      │  <i>…et le seul pool qui cote le satellite est apparié à $SWOGE</i>
+      ▼
+   <b>$SWOGEBET/$SWOGE</b>  <i>Uniswap · la liquidité EST du $SWOGE</i>
+      │
+      ▼
+   <b>$SWOGEBET</b> ──▶ <b>COFFRE PARIS</b> ──▶ <b>SOLDE PARIS</b> ──▶ <b>LIVRE SPORTIF</b>
+                     <i>on-chain</i>        <i>hors chaîne</i>       <i>vrais matchs</i>
+                                                             │
+                          <i>les gains reviennent en $SWOGEBET</i> ◀┘
+</pre></div>
+<p>
+Il n'existe aucun marché $SWOGEBET/ETH, et il n'en existera pas. Acheter le satellite
+achète d'abord du $SWOGE, son prix est écrit en $SWOGE, et la liquidité qui l'adosse est
+du $SWOGE verrouillé dans le pool. Trois conséquences, et c'est tout l'intérêt :
+</p>
+<ul>
+  <li>chaque utilisateur qu'un satellite amène est un acheteur de $SWOGE avant d'être
+      autre chose ;</li>
+  <li>chaque pool de satellite sort du $SWOGE de la circulation et le retient en
+      liquidité ;</li>
+  <li>la capitalisation du satellite est cotée en $SWOGE : elle monte avec lui et ne peut
+      pas s'en découpler.</li>
+</ul>
+<p>
+L'intention est de répéter ce schéma : une utilité, une équipe, un pool apparié en
+$SWOGE. Le livre sportif est le premier. Un produit de trading autour de
+<a href="#s43">SWOGE AI</a> est le second évident. Chacun ajoute du volume qui doit
+passer par $SWOGE pour exister — une demande bien plus durable que l'attention.
+</p>
+
+
 
 <div class="wrap"><table>
   <thead><tr><th>Composant</th><th>Rôle</th><th>État</th></tr></thead>
@@ -462,11 +528,16 @@ valeur, pas seulement où l'on clique.
     <tr><td><strong>$SWOGE</strong></td><td>Unité de compte, mise, staking, frais</td><td><span class="chip ok">Confirmé</span></td></tr>
     <tr><td><strong>Coffre</strong></td><td>Contrat qui reçoit les dépôts et paie les retraits sur bon signé</td><td><span class="chip ok">Confirmé</span></td></tr>
     <tr><td><strong>Solde de jeu</strong></td><td>Registre hors chaîne, adossé au coffre — permet des manches instantanées et gratuites en gas</td><td><span class="chip ok">Confirmé</span></td></tr>
-    <tr><td><strong>Jeux</strong></td><td>13 titres, avantage de la maison de 3 %</td><td><span class="chip ok">Confirmé</span></td></tr>
+    <tr><td><strong>Jeux</strong></td><td>20 titres, avantage de la maison de 3 %</td><td><span class="chip ok">Confirmé</span></td></tr>
     <tr><td><strong>Duels 1v1</strong></td><td>Joueur contre joueur, rake de 5 %</td><td><span class="chip ok">Confirmé</span></td></tr>
     <tr><td><strong>Staking</strong></td><td>Verrouillage rémunéré, plafonné à 20 % de l'offre</td><td><span class="chip ok">Confirmé</span></td></tr>
     <tr><td><strong>Launchpad</strong></td><td>Création de jetons, courbe de liaison ou pool Uniswap immédiat</td><td><span class="chip ok">Confirmé</span></td></tr>
     <tr><td><strong>Burn</strong></td><td>1 % de chaque retrait, envoyé à l'adresse morte</td><td><span class="chip ok">Confirmé</span></td></tr>
+    <tr><td><strong>$SWOGEBET</strong></td><td>Le jeton des paris. Acheté uniquement avec du $SWOGE, coté en $SWOGE — voir <a href="#s41">41</a></td><td><span class="chip ok">Confirmé</span></td></tr>
+    <tr><td><strong>Coffre des paris</strong></td><td>Second coffre, même modèle que le premier, ne contenant que du $SWOGEBET</td><td><span class="chip ok">Confirmé</span></td></tr>
+    <tr><td><strong>Livre sportif</strong></td><td>Vrais matchs, simples et combinés jusqu'à 8 jambes, joués en $SWOGEBET</td><td><span class="chip ok">Confirmé</span></td></tr>
+    <tr><td><strong>SWOGE Wallet</strong></td><td>Portefeuille dont le joueur détient les clés : envoyer, recevoir, swap, bridge, acheter — voir <a href="#s42">42</a></td><td><span class="chip ok">Confirmé</span></td></tr>
+    <tr><td><strong>SWOGE AI</strong></td><td>Colonie de 13 agents qui trade de l'argent papier en public — voir <a href="#s43">43</a></td><td><span class="chip ok">Confirmé</span></td></tr>
     <tr><td><strong>Tournois</strong></td><td>Compétition à élimination, cagnotte</td><td><span class="chip def">À définir</span></td></tr>
     <tr><td><strong>Place de marché</strong></td><td>Échange d'objets cosmétiques</td><td><span class="chip def">À définir</span></td></tr>
   </tbody>
@@ -953,6 +1024,8 @@ doit surveiller les paires de comptes qui ne jouent qu'entre elles.
     <tr><td>Rake 1v1 et poker</td><td class="n">5,00 %</td><td>Le pot</td><td>Revenu</td><td><span class="chip ok">Confirmé</span></td></tr>
     <tr><td>Prélèvement Three Card</td><td class="n">13,50 %</td><td>Les gains</td><td>Revenu</td><td><span class="chip ok">Confirmé</span></td></tr>
     <tr><td>Rake du jackpot</td><td class="n">3,00 %</td><td>Les mises du Coin Pusher</td><td>Cagnotte progressive, rendue aux joueurs</td><td><span class="chip ok">Confirmé</span></td></tr>
+    <tr><td><strong>Marge du livre sportif</strong></td><td class="n">10,00 %</td><td>Le livre de chaque rencontre, plancher 4 %</td><td>Revenu, en $SWOGEBET</td><td><span class="chip ok">Confirmé</span></td></tr>
+    <tr><td>Frais de retrait du coffre des paris</td><td class="n">1,00 %</td><td>Le brut retiré en $SWOGEBET</td><td>Reste dans le coffre des paris</td><td><span class="chip ok">Confirmé</span></td></tr>
     <tr><td><strong>Frais de retrait</strong></td><td class="n">1,00 %</td><td>Le brut retiré</td><td><strong>Brûlé intégralement</strong></td><td><span class="chip ok">Confirmé</span></td></tr>
     <tr><td>Protocole launchpad</td><td class="n">1,00 %</td><td>Chaque achat et vente sur la courbe</td><td>Trésorerie SWOGE</td><td><span class="chip ok">Confirmé</span></td></tr>
     <tr><td>Création de jeton</td><td class="n">0</td><td>—</td><td>—</td><td><span class="chip ok">Confirmé</span> — gratuit aujourd'hui, paramétrable</td></tr>
@@ -1733,6 +1806,14 @@ lus sur la chaîne ou dans le code.</em></p>
       <td>Reçoit les dépôts, paie sur bon signé, suit le cumul retiré par adresse</td>
       <td><strong>Élevé</strong> : détient les fonds des joueurs. La clé de signature est le point unique de défaillance</td>
       <td><span class="chip ok">Déployé</span> · audit <span class="chip def">à définir</span></td></tr>
+    <tr><td><strong>Coffre des paris</strong><br><code>0x3E70D3…Ce398</code></td>
+      <td>Second coffre, $SWOGEBET uniquement. Même modèle que le coffre de jeu : événements <code>Deposit</code>, bons signés cumulatifs, cumul retiré par adresse. Son domaine EIP-712 est <code>SwogeBetVault</code> : un bon signé pour un coffre ne vaut rien chez l'autre, et c'est le contrat qui le vérifie, pas nous</td>
+      <td><strong>Élevé</strong> : détient les fonds des parieurs. Même point unique de défaillance que le coffre de jeu, la clé de signature</td>
+      <td><span class="chip ok">Déployé</span> · vérifié sur Blockscout · audit <span class="chip def">à définir</span></td></tr>
+    <tr><td><strong>Jeton $SWOGEBET</strong><br><code>0xc0aed5…c8bea</code></td>
+      <td>ERC-20, le jeton des paris. Son seul marché est le pool $SWOGEBET/$SWOGE</td>
+      <td>Faible en tant que jeton ; son prix dépend de $SWOGE par construction</td>
+      <td><span class="chip ok">Déployé</span></td></tr>
     <tr><td><strong>SwogeFun V2</strong><br><code>0x4De26D…a426d</code></td>
       <td>Création de jetons, courbe, graduation, pool Uniswap, frais, récompenses aux porteurs</td>
       <td><strong>Élevé</strong> : détient la liquidité de graduation et les positions</td>
@@ -2193,19 +2274,182 @@ produit et changent tout à la thèse d'investissement.</p>
 </table></div>
 </section>
 
+<!-- ═══════════════════════════════════════════ XII -->
+<p class="part">Partie XII · En production depuis la v1.0</p>
+
+<section id="s41">
+<h2><span class="num">41</span> Les paris sportifs et $SWOGEBET</h2>
+<p>
+SWOGE BET est un livre de paris sportifs, en production sur le site. De vrais matchs, des
+cotes calculées par un modèle et <strong>figées à l'instant où le ticket est posé</strong>,
+des simples et des combinés jusqu'à huit jambes. Il se joue en <strong>$SWOGEBET</strong>,
+et en rien d'autre.
+</p>
+
+<h3>Pourquoi un second jeton plutôt qu'un usage de plus pour $SWOGE</h3>
+<p>
+La réponse honnête est que ce n'est pas une seconde économie : c'est une seconde
+<em>porte</em> vers la même. Un jeton satellite donne à un produit son marché, ses
+porteurs et son histoire sans découper le protocole — grâce à la règle du pool énoncée en
+<a href="#s2">section 02</a> : <strong>$SWOGEBET est apparié à $SWOGE et à rien
+d'autre</strong>. L'acheter achète d'abord du $SWOGE, même quand on paie en ETH. Son prix
+est écrit en $SWOGE. Sa liquidité est du $SWOGE, verrouillé dans le pool.
+</p>
+<p>
+Le livre sportif ne peut donc pas grandir sans que $SWOGE grandisse avec lui, et un
+parieur ne peut pas entrer sans devenir acheteur de $SWOGE en chemin. C'est cette
+propriété qui rend le modèle digne d'être répété pour l'utilité suivante, et qui explique
+qu'il soit posé comme une règle plutôt que laissé à une décision à chaque fois.
+</p>
+
+<h3>Le coffre des paris</h3>
+<p>
+Les paris sont financés par un second coffre on-chain, déployé le 3 septembre 2026 à
+l'adresse <code>0x3E70D325DbcA349e37B2030a2aAcD6147B3Ce398</code> et vérifié sur
+Blockscout. C'est le même modèle de contrat que le coffre de jeu, délibérément : un
+événement <code>Deposit</code> que le serveur surveille, et des retraits payés contre un
+<strong>bon EIP-712 cumulatif</strong> que le joueur encaisse lui-même. Deux choses
+méritent d'être dites clairement.
+</p>
+<ul>
+  <li><strong>Les deux soldes ne se mélangent jamais.</strong> Un joueur a un solde casino
+      en $SWOGE et un solde de paris en $SWOGEBET, côte à côte, chacun avec son coffre,
+      son dépôt, son retrait et son minimum. Un pari ne peut pas se payer en $SWOGE, et le
+      moteur le refuse dans ces termes.</li>
+  <li><strong>Chaque ticket porte sa monnaie.</strong> Les tickets posés avant l'existence
+      du coffre des paris ont été misés en $SWOGE : ils sont réglés en $SWOGE, gains comme
+      remboursements. Rien n'a été réinterprété après coup.</li>
+</ul>
+<p>
+Le domaine EIP-712 du bon est <code>SwogeBetVault</code>, pas
+<code>SwogePusherVault</code>. Un bon signé pour un coffre ne se vérifie pas chez l'autre,
+et c'est le contrat qui l'impose.
+</p>
+
+<h3>Paramètres en production</h3>
+<div class="wrap"><table>
+  <thead><tr><th>Paramètre</th><th class="n">Valeur</th><th>Note</th></tr></thead>
+  <tbody>
+    <tr><td>Monnaie</td><td class="n">$SWOGEBET</td><td>Exclusivement — voir ci-dessus</td></tr>
+    <tr><td>Mise minimale</td><td class="n">100</td><td>Par ticket</td></tr>
+    <tr><td>Jambes par combiné</td><td class="n">≤ 8</td><td>Toutes doivent passer</td></tr>
+    <tr><td>Gain plafonné</td><td class="n">5 000 000</td><td>Par ticket, quelles que soient les cotes</td></tr>
+    <tr><td>Engagement max par rencontre</td><td class="n">2 000 000</td><td>Au-delà, le livre cesse de prendre des paris sur ce match</td></tr>
+    <tr><td>Marge du livre</td><td class="n">10 %</td><td>Par défaut, avec un plancher de 4 % et un plancher par issue pour que le favori ne soit jamais au prix juste</td></tr>
+    <tr><td>Retrait minimal</td><td class="n">50</td><td>Depuis le coffre des paris</td></tr>
+  </tbody>
+</table></div>
+<div class="note">
+<strong>Le vrai risque ici, c'est la bankroll, et il n'est pas celui des joueurs.</strong>
+Les tickets ouverts sont une dette que le coffre doit pouvoir payer s'ils passent tous.
+Le panneau du propriétaire montre désormais, pour le coffre des paris en particulier : ce
+qu'il contient on-chain, ce qu'il doit (soldes des parieurs plus bons signés non
+encaissés), combien de tickets sont ouverts, par combien de parieurs, et ce qu'ils
+paieraient au pire. Il passe au rouge quand le coffre ne couvre plus ce qu'il doit, et à
+l'orange quand il couvre les soldes mais pas tous les tickets ouverts gagnants. La bonne
+réponse à l'orange est d'alimenter la bankroll, jamais de refuser un paiement.
+</div>
+</section>
+
+<section id="s42">
+<h2><span class="num">42</span> Le SWOGE Wallet</h2>
+<p>
+La section <a href="#s4">04</a> décrit le portefeuille embarqué qu'un joueur obtient en
+s'inscrivant par e-mail. Ce qui est entré en production en septembre, c'est
+l'<strong>écran</strong> autour : une page de portefeuille dont le joueur détient les
+clés, accessible depuis un bouton rond en bas à droite de chaque page du site.
+</p>
+<div class="wrap"><table>
+  <thead><tr><th>Ce qu'il fait</th><th>Comment</th><th>État</th></tr></thead>
+  <tbody>
+    <tr><td>Détenir et lire les soldes</td><td>ETH (RH), $SWOGE, $SWOGEBET et tout jeton ajouté par le joueur, lus sur la chaîne</td><td><span class="chip ok">Confirmé</span></td></tr>
+    <tr><td>Envoyer</td><td>Vers n'importe quelle adresse, avec une feuille de revue qui montre le montant, le jeton, l'adresse entière et ce qu'il restera après</td><td><span class="chip ok">Confirmé</span></td></tr>
+    <tr><td>Recevoir</td><td>Adresse et QR code</td><td><span class="chip ok">Confirmé</span></td></tr>
+    <tr><td>Échanger</td><td>Route Uniswap sur Robinhood Chain ; Solana vers Solana par Jupiter pour ceux qui arrivent de là</td><td><span class="chip ok">Confirmé</span></td></tr>
+    <tr><td>Faire le pont</td><td>Relay : une adresse de dépôt sur la chaîne où le joueur a déjà des fonds, livrée à sa propre adresse</td><td><span class="chip ok">Confirmé</span></td></tr>
+    <tr><td>Acheter du $SWOGE</td><td>Sur place, avec l'impact de prix réel affiché avant de signer plutôt qu'une tolérance fixe</td><td><span class="chip ok">Confirmé</span></td></tr>
+    <tr><td>Déplacer l'argent du jeu</td><td>Deux onglets — <em>Casino · $SWOGE</em> et <em>Paris · $SWOGEBET</em> — chacun avec son coffre, son dépôt et son retrait</td><td><span class="chip ok">Confirmé</span></td></tr>
+    <tr><td>Lire les signaux de SWOGE AI</td><td>Les achats et ventes de la colonie, appariés pour qu'un signal dise ce qu'il est devenu</td><td><span class="chip ok">Confirmé</span></td></tr>
+  </tbody>
+</table></div>
+<p>
+Le bouton rond ne change pas de page. Il ouvre le portefeuille dans un panneau par-dessus
+la page où l'on est, pour qu'un joueur puisse regarder un solde ou se recharger en pleine
+partie sans perdre sa table, sa socket ni sa place dans une manche en cours — et le même
+bouton le range.
+</p>
+</section>
+
+<section id="s43">
+<h2><span class="num">43</span> SWOGE AI</h2>
+<p>
+SWOGE AI est une colonie de <strong>13 agents</strong> qui surveille chaque jeton lancé
+sur Robinhood Chain, le juge, achète ce qui passe et vend selon ses propres règles. Elle
+trade de l'<strong>argent papier</strong> — une trésorerie partie de 1 000 unités, qui
+n'a de créance sur les fonds de personne — et elle le fait <strong>en public</strong> :
+chaque achat, chaque vente, chaque refus et chaque résultat sont sur la page SWOGE AI et
+dans le canal Telegram, pertes comprises.
+</p>
+
+<h3>Comment un jeton se fait acheter</h3>
+<p>
+Chaque agent possède une question et n'y répond qu'elle. Scout balaie les flux et jette ce
+qui est déjà vide. Warden lit le contrat : piège, taxes, pouvoirs du propriétaire.
+Whale-Watch lit les porteurs. Whisper lit la pression d'achat. Oracle lit le marché. Un
+refus à n'importe quelle étape arrête le pipeline, si bien que les services des agents
+suivants ne sont jamais payés. Ce qui survit est acheté ; Sentinel surveille alors la
+position, Extender décide si une gagnante court plus longtemps, et Closer la ferme.
+</p>
+
+<h3>Ce qui en fait une colonie et non un script</h3>
+<p>
+Chaque agent garde la mémoire de ce que ses propres jugements valaient et corrige ses
+seuils à partir de résultats mesurés, pas d'opinions. Les jetons que la colonie a
+<em>refusés</em> sont notés eux aussi — ils sont suivis comme des ombres, et un refus qui
+écarte surtout des gagnants se voit comme tel dans l'audit. C'est la partie que la plupart
+des bots sautent, et c'est elle qui rend l'apprentissage honnête : un système qui ne
+mesure que ses propres achats apprend que ses achats étaient bons.
+</p>
+<div class="note">
+<strong>Mesuré, et corrigé au grand jour.</strong> Deux défauts trouvés le 4 septembre
+méritent d'être consignés, parce qu'ils sont de ceux qu'une lecture honnête de ses propres
+données produit. La coupe de sécurité à −35 % n'était vérifiée qu'une fois par tour, toutes
+les 150 secondes, alors qu'une piscine se vide en une sur cette chaîne : les positions se
+fermaient à −60 jusqu'à −92 %. Et les jetons qui s'effondraient n'étaient jamais notés —
+leur piscine devient muette, aucun flux ne les cote, ils quittaient donc simplement
+l'échantillon, et les leçons ne s'apprenaient que sur les survivants. Les deux sont
+corrigés : la veille de 45 secondes applique désormais la coupe, et un jeton que le marché
+connaissait et ne cote plus est noté pour l'effondrement qu'il a été.
+</div>
+
+<h3>Où cela mène</h3>
+<p>
+Quand les agents auront assez d'historique mesuré pour trader de l'argent réel, le produit
+s'ouvrira aux utilisateurs, et il suivra la même règle que le livre sportif : un jeton
+satellite, <strong>$SWOGEAI</strong>, apparié à $SWOGE et à rien d'autre, nécessaire pour
+faire tourner le bot avec ses propres fonds. <span class="chip pro">Proposé</span> — la
+colonie tourne aujourd'hui, le jeton n'existe pas, et aucune date n'est engagée.
+</p>
+</section>
+
 <section id="resume">
 <h2>Résumé d'une page</h2>
 <div class="card">
 <h4>Ce qu'est SWOGE</h4>
 <p>Une plateforme de jeu Web3 en production sur Robinhood Chain, dont le jeton $SWOGE
-(Swole Doge, offre fixe de 1 000 000 000) est l'unité de mise, le support de staking et
-l'objet d'un burn continu.</p>
+(Swole Doge, offre fixe de 1 000 000 000) est l'unité de mise, le support de staking,
+l'objet d'un burn continu — et la monnaie avec laquelle chaque jeton satellite s'achète et
+se cote.</p>
 
 <h4>Ce qui tourne aujourd'hui</h4>
-<p>Treize jeux à équité vérifiable, dont quatre en joueur contre joueur. Un coffre
-on-chain avec dépôts et retraits sur bon signé cumulatif. Un système de staking plafonné.
-Cent niveaux gagnés au volume misé. Un classement mensuel doté d'une part du revenu. Un
-parrainage à vie. Un launchpad déployé, SwogeFun V2, avec 23 jetons déjà lancés.</p>
+<p>Vingt jeux à équité vérifiable, dont plusieurs en joueur contre joueur. Un livre de
+paris sur de vrais matchs, joué en $SWOGEBET depuis un second coffre on-chain. Deux
+coffres avec dépôts et retraits sur bon signé cumulatif. Un portefeuille dont le joueur
+détient les clés — envoyer, recevoir, échanger, faire le pont, acheter — accessible depuis
+chaque page. Un système de staking plafonné. Cent niveaux gagnés au volume misé. Un
+classement mensuel doté d'une part du revenu. Un parrainage à vie. Un launchpad déployé,
+SwogeFun V2. Et SWOGE AI, une colonie de 13 agents qui trade de l'argent papier en public
+pendant qu'elle apprend.</p>
 
 <h4>Comment il gagne de l'argent</h4>
 <p>3 % d'avantage mathématique sur les jeux contre la banque, 5 % de rake sur les duels,
@@ -2241,15 +2485,17 @@ est temporel, et il se referme.</p>
 
 <footer>
   <p>
-    SWOGE — Swole Doge Protocol · White paper v1.0 · 14 août 2026<br>
+    SWOGE — Swole Doge Protocol · White paper v1.1 · 4 septembre 2026<br>
     Jeton <code>0x8a166Fb41Cd659a0a43396272FF73973Ce29F817</code> ·
     Coffre <code>0x5593c8141303D14999Df7aa03dd3d3a6d4335fAb</code> ·
     Launchpad <code>0x4De26D120A4fF2d7c1875E6C7D611262b9cA426d</code><br>
+    $SWOGEBET <code>0xc0aed547862fba5d7d9fbf3cb14204cd756c8bea</code> ·
+    Coffre des paris <code>0x3E70D325DbcA349e37B2030a2aAcD6147B3Ce398</code><br>
     Robinhood Chain · identifiant 4663 · explorateur robinhoodchain.blockscout.com
   </p>
   <p>
     Les chiffres marqués « confirmé » ont été lus dans le code déployé ou directement sur
-    la chaîne le 14 août 2026. Les paramètres économiques sont modifiables et ne
+    la chaîne le 4 septembre 2026. Les paramètres économiques sont modifiables et ne
     constituent pas des engagements. Ce document ne promet aucun rendement, ne constitue
     pas un conseil en investissement ni un avis juridique. L'acquisition de $SWOGE
     comporte un risque de perte totale.

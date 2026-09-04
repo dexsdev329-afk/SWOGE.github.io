@@ -68,7 +68,7 @@
      A savoir : cela ne sauve pas la page DEJA en cache chez quelqu'un, qui ne
      contient pas ces lignes. Ce garde-fou vaut a partir de celle-ci. -->
 <script>
-var MARQUE_PAGE = 'ed2b96a8';
+var MARQUE_PAGE = '8313d222';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -7017,9 +7017,13 @@ function sgDollars(n){
  * recherche par adresse de contrat, elle, existe toujours et mene au meme
  * endroit quand DexScreener connait le jeton. On prend donc la paire quand on
  * l'a, la recherche sinon. */
+/* Le pool peut faire soixante-six caracteres : les paires Uniswap V4 de
+   Robinhood Chain ont un identifiant de trente-deux octets, pas une adresse.
+   La borne a soixante les rejetait toutes, et chaque signal partait vers la
+   page de recherche au lieu de la paire. */
 function sgLien(x){
-  if(x && x.pool && /^[0-9a-zA-Z]{20,60}$/.test(String(x.pool)))
-    return 'https://dexscreener.com/robinhood/' + encodeURIComponent(x.pool);
+  if(x && x.pool && /^0x(?:[0-9a-fA-F]{40}|[0-9a-fA-F]{64})$/.test(String(x.pool)))
+    return 'https://dexscreener.com/robinhood/' + String(x.pool).toLowerCase();
   if(x && /^0x[0-9a-fA-F]{40}$/.test(String(x.adr || '')))
     return 'https://dexscreener.com/search?q=' + encodeURIComponent(x.adr);
   return null;

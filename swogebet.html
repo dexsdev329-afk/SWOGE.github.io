@@ -2364,6 +2364,15 @@ main{ min-width:0; }
   </div>
   <nav class="sb-ancre">
     <span class="chip"><span class="statusdot off" id="dot"></span><b id="bal">&mdash;</b> $SWOGEBET</span>
+    <!-- ---- CE QUE CE SOLDE VAUT ----
+         Un solde a sept chiffres ne dit rien a qui arrive : « 100 291 000 »
+         peut etre une fortune ou trois centimes. La pastille voisine le
+         chiffre en dollars, au prix de la piscine, et elle reste CACHEE tant
+         qu'on n'a pas de prix — un « $0.00 » par defaut de lecture serait pire
+         que rien. Elle porte « ≈ » parce que c'en est une : le prix bouge, et
+         vendre ce montant le ferait bouger lui-meme. -->
+    <span class="chip swusd" id="betUsd" hidden
+          title="Roughly what your bet balance is worth, at the pool price"></span>
   </nav>
   <!-- ---- LA RANGEE DE CONNEXION ENTRE DANS L EN-TETE ----
        Elle vivait sous la barre, et se collait en haut a droite au-dessus de
@@ -2928,7 +2937,71 @@ main{ min-width:0; }
      pour le staking et les missions, mais il ne s affiche plus la ou l on
      mise : un joueur qui lit 5 000 $SWOGE en haut croirait pouvoir les jouer. */
   function setBalance(b){ balance=parseFloat(b||0); }
-  function setBetBalance(b){ betBalance=parseFloat(b||0); balEl.textContent=fmtBal(betBalance); }
+  function setBetBalance(b){ betBalance=parseFloat(b||0); balEl.textContent=fmtBal(betBalance); majUsdBet(); }
+
+  /* ==================== CE QUE LE SOLDE VAUT, EN DOLLARS ====================
+   *
+   * DEMANDE : « en haut a droite il y a le solde de $SWOGEBET du jeu, rajoute
+   * combien ca vaut en dollars ».
+   *
+   * ---- ON NE REUTILISE PAS LA PASTILLE DE `swogebuy.js` ----
+   *
+   * Elle existe et fait exactement ca — sur le solde $SWOGE. Son taux vient de
+   * la piscine $SWOGE/ETH et du prix de l'ETH : applique a un solde de
+   * $SWOGEBET, il donnerait un chiffre faux, et faux d'un facteur qui n'a
+   * aucune raison d'etre petit. Cette page desactive d'ailleurs ce fichier.
+   *
+   * ---- LE PRIX VIENT DE LA SEULE PISCINE QUI COTE CE JETON ----
+   *
+   * DexScreener publie `priceUsd` pour la paire $SWOGEBET/$SWOGE — c'est la
+   * meme source que la page du portefeuille et que la colonie, et c'est la
+   * seule piscine ou ce jeton s'echange. Un appel, garde cinq minutes : le
+   * prix d'un jeton a six mille dollars de liquidite ne merite pas un appel
+   * par changement de solde.
+   *
+   * ---- ET RIEN PLUTOT QU'UN CHIFFRE INVENTE ----
+   *
+   * Sans prix, la pastille reste cachee. Un « $0.00 » affiche par defaut de
+   * lecture se lit comme « ton solde ne vaut rien », ce qui est une autre
+   * information — et fausse. */
+  var USD_TAUX = null, USD_QUAND = 0, USD_EN_VOL = false;
+  var USD_TTL = 5 * 60 * 1000;
+  function prixUsdBet(){
+    if(USD_TAUX !== null && Date.now() - USD_QUAND < USD_TTL) return Promise.resolve(USD_TAUX);
+    if(USD_EN_VOL) return Promise.resolve(USD_TAUX);
+    USD_EN_VOL = true;
+    return fetch("https://api.dexscreener.com/latest/dex/tokens/" + BET_TOKEN)
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(j){
+        var p = (j && j.pairs || []).filter(function(x){
+          return String(x.chainId||"").toLowerCase() === "robinhood" && parseFloat(x.priceUsd) > 0;
+        });
+        /* La piscine la plus profonde : c'est celle dont le prix veut dire
+           quelque chose si un jour il y en a deux. */
+        p.sort(function(a,b){ return ((b.liquidity||{}).usd||0) - ((a.liquidity||{}).usd||0); });
+        USD_EN_VOL = false;
+        if(!p.length) return USD_TAUX;
+        USD_TAUX = parseFloat(p[0].priceUsd); USD_QUAND = Date.now();
+        return USD_TAUX;
+      })
+      .catch(function(){ USD_EN_VOL = false; return USD_TAUX; });
+  }
+  function sommeUsd(v){
+    if(!(v >= 0)) return "";
+    if(v >= 1000) return "$" + (v/1000).toFixed(1) + "k";
+    if(v >= 1) return "$" + v.toFixed(2);
+    if(v > 0) return "$" + v.toFixed(4);
+    return "$0.00";
+  }
+  function majUsdBet(){
+    var el = document.getElementById("betUsd"); if(!el) return;
+    if(!(betBalance > 0)){ el.hidden = true; return; }
+    prixUsdBet().then(function(t){
+      if(!(t > 0)){ el.hidden = true; return; }
+      el.textContent = "≈ " + sommeUsd(betBalance * t);
+      el.hidden = false;
+    });
+  }
   function setDot(on){ dot.className="statusdot "+(on?"on":"off"); }
   function showFair(f){ if(f&&f.serverSeedHash) fairEl.innerHTML="Provably fair · seed hash <b>"+String(f.serverSeedHash).slice(0,16)+"…</b> · nonce <b>"+f.nonce+"</b>"; }
 

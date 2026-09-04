@@ -139,7 +139,7 @@
    * donne n'y est pas : le chiffrer demanderait un devis par position, et un
    * total qui melange du mesure et de l'estime sans le dire est un total qu'on
    * ne peut plus lire. Quand des positions sont ouvertes, la ligne le dit. */
-  var ETH_USD = null, ETH_QUAND = 0, ETH_EN_VOL = false;
+  var ETH_USD = null, ETH_QUAND = 0, ETH_PROMESSE = null;
   var ETH_TTL = 3 * 60 * 1000;
   var boiteVal = null;
 
@@ -152,17 +152,20 @@
   }
   function prixEth() {
     if (ETH_USD !== null && Date.now() - ETH_QUAND < ETH_TTL) return Promise.resolve(ETH_USD);
-    if (ETH_EN_VOL) return Promise.resolve(ETH_USD);
-    ETH_EN_VOL = true;
-    return fetch(baseServeur() + '/relay/prix?de=eth&montant=1')
+    /* Une seule lecture en vol, PARTAGEE : le second demandeur (la barre du
+       bilan, juste apres la valeur) attend la meme reponse au lieu de recevoir
+       « rien » et de rester en ETH. */
+    if (ETH_PROMESSE) return ETH_PROMESSE;
+    ETH_PROMESSE = fetch(baseServeur() + '/relay/prix?de=eth&montant=1')
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (j) {
-        ETH_EN_VOL = false;
+        ETH_PROMESSE = null;
         var d = j && parseFloat(j.dollarsEnvoi);
         if (d > 0) { ETH_USD = d; ETH_QUAND = Date.now(); }
         return ETH_USD;
       })
-      .catch(function () { ETH_EN_VOL = false; return ETH_USD; });
+      .catch(function () { ETH_PROMESSE = null; return ETH_USD; });
+    return ETH_PROMESSE;
   }
   function enDollars(v) {
     if (!(v >= 0)) return '';
@@ -204,6 +207,58 @@
       var v = b.querySelector('#mirUsd');
       if (!(p > 0)) { v.textContent = nb(eth) + ' ETH'; return; }
       v.textContent = enDollars(eth * p);
+    });
+  }
+
+  /* ---- LA DEUXIEME BARRE, PERSONNELLE ----
+   * « L'utilisateur voit bien son solde, mais il faudrait une deuxieme barre
+   *   en plus, pour lui : profit, taux de gain, trades, meilleur, ouvert. »
+   * Le meme habit que la barre du papier, juste dessous, et chaque etiquette
+   * dit « mirror » : deux barres identiques sans mot pour les distinguer se
+   * liraient l'une pour l'autre. Elle n'existe que s'il y a un miroir. */
+  var boiteBilan = null;
+  function poseBilan() {
+    if (boiteBilan) return boiteBilan;
+    var papier = document.getElementById('bandeau');
+    if (!papier) return null;
+    boiteBilan = document.createElement('div');
+    boiteBilan.className = 'bandeau mir-bandeau';
+    boiteBilan.id = 'bandeauMiroir';
+    boiteBilan.hidden = true;
+    boiteBilan.innerHTML =
+        '<div class="b-item b-gros"><b id="mir-profit">—</b><i>Mirror profit</i></div>'
+      + '<div class="b-item"><b id="mir-wr">—</b><i>Mirror win rate</i></div>'
+      + '<div class="b-item"><b id="mir-trades">0</b><i>Mirror trades</i></div>'
+      + '<div class="b-item"><b id="mir-best">—</b><i>Mirror best</i></div>'
+      + '<div class="b-item b-pos"><b id="mir-open">0</b><i>Mirror open</i></div>';
+    var c = document.createElement('style');
+    c.textContent = '.mir-bandeau{border-top:1px solid var(--line,#E3E8F1)}'
+      + '.mir-bandeau .b-item b{color:var(--gain,#12A150)}'
+      + '.mir-bandeau .b-item b.dn{color:var(--perte,#D6455D)}'
+      + '.mir-bandeau .b-item b small{display:block;font-size:10px;font-weight:500;color:var(--ink-dim,#6B7C99)}';
+    document.head.appendChild(c);
+    papier.parentNode.insertBefore(boiteBilan, papier.nextSibling);
+    return boiteBilan;
+  }
+  function majBilan() {
+    var b = poseBilan(); if (!b) return;
+    if (!ETAT || !ETAT.existe) { b.hidden = true; return; }
+    var bl = ETAT.bilan || { trades: 0, gagnantes: 0, profitEth: '0', meilleur: 0, ouvertes: 0 };
+    var eth = parseFloat(bl.profitEth) || 0;
+    var pr = b.querySelector('#mir-profit');
+    pr.className = eth < 0 ? 'dn' : '';
+    var signe = eth < 0 ? '-' : '+';
+    var enEth = signe + nb(Math.abs(eth)) + ' ETH';
+    pr.innerHTML = '<span id="mir-profit-v">' + enEth + '</span>';
+    b.querySelector('#mir-wr').textContent = bl.trades ? Math.round(bl.gagnantes / bl.trades * 100) + '%' : '—';
+    b.querySelector('#mir-trades').textContent = String(bl.trades || 0);
+    b.querySelector('#mir-best').textContent = bl.meilleur > 0 ? Number(bl.meilleur).toFixed(2) + '×' : '—';
+    b.querySelector('#mir-open').textContent = String(bl.ouvertes !== undefined ? bl.ouvertes : (ETAT.ouvertes || []).length);
+    b.hidden = false;
+    prixEth().then(function (p) {
+      if (!(p > 0)) return;
+      var v = b.querySelector('#mir-profit-v');
+      if (v) v.innerHTML = signe + enDollars(Math.abs(eth) * p) + '<small>' + enEth + '</small>';
     });
   }
 
@@ -397,7 +452,7 @@
     window.swogeFil.ecoute(function (m) {
       if (!m || !m.type) return;
       if (m.type === 'auth') { connecte = true; reclame(); return; }
-      if (m.type === 'miroirEtat') { ETAT = m; occupe = false; peint(); majValeur(); return; }
+      if (m.type === 'miroirEtat') { ETAT = m; occupe = false; peint(); majValeur(); majBilan(); return; }
       if (m.type === 'miroirCle') {
         CLE = m.cle;
         dit = m.neuf ? 'Wallet created — save this key now, it is the only copy you control.' : '';

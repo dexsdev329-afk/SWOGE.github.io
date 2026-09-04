@@ -1631,6 +1631,7 @@ async function auditDesVetos() {
             adresse: '0x' + 'ab'.repeat(20), solde: '0.05', min: '0.002', max: '0.5', part: 0.1,
             ordreMax: '0.05', gaz: '0.0015', places: 25,
             ouvertes: [{ adr: '0x' + 'aa'.repeat(20), sym: 'T', entree: '0.004', t: Date.now(), simule: true }],
+            bilan: { trades: 12, gagnantes: 7, profitEth: '0.0031', meilleur: 2.4, ouvertes: 1, simule: true },
             journal: [] }));
       });
     });
@@ -1657,6 +1658,25 @@ async function auditDesVetos() {
        + ' une caisse de papier et de l argent reel ne doivent pas se ressembler');
     ok(/not counted/i.test(v.eth || ''),
        'la ligne dit ce qu elle NE compte PAS : « ' + v.eth + ' »');
+    /* « Une deuxieme barre en plus, pour lui : profit, taux de gain, trades,
+       meilleur, ouvert. » Sous celle du papier, dans le meme habit, et chaque
+       etiquette dit « mirror ». */
+    const bar = await page.evaluate(() => {
+      const b = document.getElementById('bandeauMiroir');
+      const p = document.getElementById('bandeau');
+      if (!b) return null;
+      const t = (id) => (document.getElementById(id) || {}).textContent || '';
+      return { visible: !b.hidden, sous: b.getBoundingClientRect().top >= p.getBoundingClientRect().bottom - 1,
+               profit: t('mir-profit'), wr: t('mir-wr'), trades: t('mir-trades'), best: t('mir-best'), open: t('mir-open'),
+               etiquettes: [...b.querySelectorAll('i')].map((x) => x.textContent) };
+    });
+    console.log('   barre : ' + JSON.stringify(bar));
+    ok(!!bar && bar.visible && bar.sous, 'la barre personnelle est la, sous celle du papier');
+    ok(bar.profit.indexOf('+$7.61') === 0 && /0\.0031 ETH/.test(bar.profit),
+       '0,0031 ETH a 2 455,73 $ font +$7.61, avec l ETH en dessous (« ' + bar.profit + ' »)');
+    ok(bar.wr === '58%' && bar.trades === '12' && bar.best === '2.40×' && bar.open === '1',
+       'taux 58 % · 12 trades · meilleur 2.40× · 1 ouvert');
+    ok(bar.etiquettes.every((x) => /mirror/i.test(x)), 'et chaque etiquette dit « mirror »');
     ok(boum.length === 0, 'aucune erreur de page' + (boum.length ? ' — ' + boum[0] : ''));
     await page.close(); await ctx.close(); jeu.close(); httpJeu.close();
   }

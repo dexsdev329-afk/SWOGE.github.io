@@ -484,12 +484,32 @@
     });
     return conBoite;
   }
-  function ouvreConnexion() {
+  /* ---- « SIGN UP — EMAIL » DOIT OUVRIR L'E-MAIL, PAS UN MENU ----
+   *
+   * Signale : « quand je suis sur SWOGE AI, sign up email ne fonctionne pas en
+   * haut a droite ». Le bouton marchait — il ouvrait la porte — mais la porte
+   * s'ouvre sur DEUX choix, et il fallait cliquer « Continue with email » une
+   * seconde fois avant de voir le moindre champ. Quelqu'un qui presse un bouton
+   * marque « SIGN UP — EMAIL » et tombe sur « Connect wallet / Continue with
+   * email » en conclut, a juste titre, que son bouton n'a rien fait.
+   *
+   * La porte prend donc ce qu'on vient y faire : `ouvre('email')` deplie le
+   * bloc et pose le curseur dans le champ. Sans argument, elle s'ouvre comme
+   * avant — c'est ce que veulent « Connect wallet » et « Sign in ». */
+  function ouvreConnexion(par) {
     /* Le tiroir du profil se referme : le laisser ouvert mettrait un fond
        floute entre le joueur et le formulaire qu'il doit remplir. */
     var d = document.querySelector('.swpov.on');
     if (d) d.classList.remove('on');
-    dialogue().classList.add('on');
+    var b = dialogue();
+    b.classList.add('on');
+    if (par === 'email') {
+      var m = b.querySelector('.mail'), e = b.querySelector('.em');
+      if (m) m.style.display = '';
+      /* Le foyer apres le rendu : pose dans le meme tour, il se perd quand le
+         calque passe de `display:none` a `flex`. */
+      if (e) setTimeout(function () { try { e.focus(); } catch (x) {} }, 30);
+    }
   }
   function fermeConnexion() { if (conBoite) conBoite.classList.remove('on'); }
   /* ---- LA PORTE, OUVERTE AUX AUTRES FICHIERS ----

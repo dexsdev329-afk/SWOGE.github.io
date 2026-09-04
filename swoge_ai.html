@@ -13,7 +13,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
-var MARQUE_PAGE = '307dc144';
+var MARQUE_PAGE = '0f28abc6';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -40,7 +40,7 @@ var MARQUE_PAGE = '307dc144';
      panneaux du menu. Les recopier a la main ici ferait une quatrieme
      version a tenir d'accord — et le jour ou la connexion change, elle ne
      changerait que d'un cote. -->
-<script src="stakebubble.js?v=c531f64c"></script>
+<script src="stakebubble.js?v=68591e0b"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <script src="swogebuy.js?v=9d7c39e5"></script>
 <style>
@@ -2986,7 +2986,12 @@ setInterval(function(){ if(document.visibilityState !== "hidden"){ peintPosition
   function ouvre(ev){
     if(ev) ev.preventDefault();
     if(window.swogeConnexion && typeof window.swogeConnexion.ouvre === "function"){
-      window.swogeConnexion.ouvre();
+      /* Le bouton dit ce qu'il ouvre : « SIGN UP — EMAIL » deplie le champ
+         e-mail, les deux autres ouvrent la porte sur ses deux choix. Sans ca,
+         presser « SIGN UP — EMAIL » menait a un menu ou il fallait re-choisir
+         l'e-mail — et le bouton passait pour mort. */
+      var quoi = (ev && ev.currentTarget && ev.currentTarget.id === "emailBtn") ? "email" : null;
+      window.swogeConnexion.ouvre(quoi);
       return;
     }
     /* Sans le fichier partage, on le DIT plutot que de ne rien faire : un

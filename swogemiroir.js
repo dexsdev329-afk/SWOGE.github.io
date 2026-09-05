@@ -367,6 +367,9 @@
           ? '<button class="mir-b stop" data-m="stop"' + (occupe ? ' disabled' : '') + '>Stop &amp; sell everything</button>'
           : '<button class="mir-b" data-m="play"' + (occupe || ETAT.places === 0 ? ' disabled' : '') + '>Play</button>')
       + '<button class="mir-b vide" data-m="cle">Show my private key</button>'
+      /* « Rajoute un bouton reset log : ca prend beaucoup de place. » Il
+         n efface que le journal ; le bilan et les positions ne bougent pas. */
+      + (ETAT.journal && ETAT.journal.length > 1 ? '<button class="mir-b vide" data-m="efface">Clear log</button>' : '')
       + '</div>';
 
     if (CLE) {
@@ -452,6 +455,10 @@
       envoie({ type: 'miroirCree' }); return;
     }
     if (m === 'cle') { envoie({ type: 'miroirCle' }); return; }
+    if (m === 'efface') {
+      if (!confirm('Clear the log? Positions, trades and the balance are not affected.')) return;
+      envoie({ type: 'miroirEffaceJournal' }); return;
+    }
     if (m === 'play') {
       occupe = true; dit = 'Starting…'; peint();
       envoie({ type: 'miroirPlay' }); return;

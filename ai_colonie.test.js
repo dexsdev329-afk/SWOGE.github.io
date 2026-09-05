@@ -1620,19 +1620,23 @@ async function auditDesVetos() {
     });
     await new Promise((r) => httpJeu.listen(0, r));
     const jeu = new WSS({ server: httpJeu });
+    const recus = [];
     jeu.on('connection', (c) => {
       c.send(JSON.stringify({ type: 'hello', loginNonce: 'a', chainId: 4663 }));
       c.on('message', (d) => {
         let m; try { m = JSON.parse(d); } catch (e) { return; }
         if (m.type === 'resume')
           c.send(JSON.stringify({ type: 'auth', address: '0x' + '11'.repeat(20), balance: '0', session: 'j' }));
-        if (m.type === 'miroirEtat')
+        if (m.type === 'miroirEffaceJournal') recus.push(m.type);
+        if (m.type === 'miroirEtat' || m.type === 'miroirEffaceJournal')
           c.send(JSON.stringify({ type: 'miroirEtat', pret: true, execute: false, existe: true, actif: false,
             adresse: '0x' + 'ab'.repeat(20), solde: '0.05', min: '0.002', max: '0.5', part: 0.1,
             ordreMax: '0.05', gaz: '0.0015', places: 25,
             ouvertes: [{ adr: '0x' + 'aa'.repeat(20), sym: 'T', entree: '0.004', t: Date.now(), simule: true }],
             bilan: { trades: 12, gagnantes: 7, profitEth: '0.0031', meilleur: 2.4, ouvertes: 1, simule: true },
-            journal: [] }));
+            journal: m.type === 'miroirEffaceJournal'
+              ? [{ t: Date.now(), txt: 'Log cleared (3 lines). Positions, trades and the balance are untouched.' }]
+              : [{ t: Date.now(), txt: 'Bought T' }, { t: Date.now(), txt: 'Sold T' }, { t: Date.now(), txt: 'Play' }] }));
       });
     });
     const ctx = await nav.newContext({ viewport: { width: 1280, height: 900 } });
@@ -1698,6 +1702,30 @@ async function auditDesVetos() {
     ok(tel.every((x) => !x.deborde), 'a 390 px, aucune case des deux barres ne deborde');
     ok(tel.filter((x) => x.bar === 'bandeauMiroir').every((x) => x.lignesValeur < 1.6), 'et chaque chiffre du miroir tient sur une ligne (le profit ne se coupe pas apres le signe)');
     await page.setViewportSize({ width: 1280, height: 900 });
+    /* « Rajoute un bouton reset log. » A cote de Stop et de la cle ; il
+       demande confirmation, envoie au serveur, et le journal revient vide. */
+    page.once('dialog', (d) => d.accept());
+    const boutons = await page.evaluate(() => [...document.querySelectorAll('#gxMiroir .mir-row .mir-b')].map((b) => b.textContent.trim()));
+    ok(boutons.indexOf('Clear log') >= 0 && boutons.indexOf('Show my private key') >= 0,
+       'un bouton « Clear log » a cote de la cle : ' + JSON.stringify(boutons));
+    await page.evaluate(() => document.querySelector('#gxMiroir .mir-b[data-m="efface"]').click());
+    await page.waitForTimeout(800);
+    ok(recus.indexOf('miroirEffaceJournal') >= 0, 'le clic, confirme, envoie miroirEffaceJournal au serveur');
+    const journal = await page.evaluate(() => [...document.querySelectorAll('#gxMiroir .mir-j')].map((j) => j.textContent));
+    ok(journal.length === 1 && /Log cleared/.test(journal[0]), 'et le journal ne montre plus que la ligne qui le dit : ' + JSON.stringify(journal));
+    /* « Les maisons et les chiens, plus gros. » Sur un telephone : deux
+       colonnes dans un monde de 600, la scene a la hauteur du village. */
+    await page.setViewportSize({ width: 390, height: 800 });
+    await page.waitForTimeout(500);
+    const vil = await page.evaluate(() => ({ W, RANGEE, H, hauteur: document.getElementById('village').getBoundingClientRect().height,
+                                             largeur: document.getElementById('village').getBoundingClientRect().width }));
+    console.log('   390px : ' + JSON.stringify(vil));
+    ok(vil.RANGEE === 2 && vil.W === 600, 'a 390 px le village se replie en deux colonnes dans un monde de 600 (echelle ' + Math.round(vil.largeur / vil.W * 100) / 100 + ' au lieu de 0.39)');
+    ok(Math.abs(vil.hauteur - vil.largeur / vil.W * vil.H) < 3, 'et la scene a exactement la hauteur du village a cette echelle (' + Math.round(vil.hauteur) + ' px)');
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.waitForTimeout(400);
+    const large = await page.evaluate(() => ({ W, RANGEE }));
+    ok(large.RANGEE === 3 && large.W === 1000, 'et revient a trois colonnes sur un ecran large');
     ok(boum.length === 0, 'aucune erreur de page' + (boum.length ? ' — ' + boum[0] : ''));
     await page.close(); await ctx.close(); jeu.close(); httpJeu.close();
   }

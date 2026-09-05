@@ -13,7 +13,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
-var MARQUE_PAGE = '55969dd6';
+var MARQUE_PAGE = 'c50e8a50';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -1066,7 +1066,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 </div>
 
 <script src="swogeprofil.js?v=aa21d613" defer></script>
-<script src="swogemiroir.js?v=6f3b7c4d" defer></script>
+<script src="swogemiroir.js?v=1b5efbd6" defer></script>
 
 <!-- La carte « YOUR BALANCE » recopie #bal, jamais l'inverse. -->
 <script>
@@ -1129,8 +1129,31 @@ const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
 /* La largeur du monde est fixe ; sa HAUTEUR suit le nombre de rangees. Fixee
    a 760 quoi qu'il arrive, elle laissait un tiers d'herbe vide sous un village
    de deux rangees — de la place perdue sur un ecran ou tout compte. */
-const W = 1000;
+/* ==========================================================================
+ * LE VILLAGE EN GRAND SUR UN TELEPHONE
+ *
+ * « Les animations avec les maisons et les chiens, fais-les plus gros, on
+ *   ne voit rien, c'est tout petit. »
+ *
+ * Le monde faisait 1000 de large pour trois colonnes ; sur un ecran de
+ * 390 px il etait reduit a 0,39 : une maison de 84 faisait 33 px. Sur un
+ * ecran etroit le monde se replie en DEUX colonnes, dans un cadre de 600 :
+ * l'echelle passe a 0,65, tout est 1,7 fois plus grand, et la scene prend
+ * la hauteur qu'il faut pour montrer le village entier au lieu de le
+ * comprimer dans 52 % de l'ecran. Sur un ecran large, rien ne change. */
+let W = 1000;
 let H = 606;
+let ETROIT = false, ROSTER_COURANT = null;
+function modeEtroit(){
+  const st = document.getElementById('village');
+  const l = st && st.parentElement ? st.parentElement.getBoundingClientRect().width : window.innerWidth;
+  return (l || window.innerWidth) < 620;
+}
+function poseLeMonde(){
+  ETROIT = modeEtroit();
+  if (ETROIT) { W = 600;  RANGEE = 2; COL_X = [165, 435];      PAS_Y = 176; }
+  else        { W = 1000; RANGEE = 3; COL_X = [196, 500, 804]; PAS_Y = 208; }
+}
 const cv = document.getElementById("village"), ctx = cv.getContext("2d");
 let dpr = Math.min(2, window.devicePixelRatio || 1);
 function fit(){
@@ -1138,7 +1161,13 @@ function fit(){
   dpr = Math.min(2, window.devicePixelRatio || 1);
   cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
 }
-window.addEventListener("resize", fit); fit();
+/* Un changement de largeur qui fait passer d'un mode a l'autre rebatit le
+   village ; sinon on ne fait que retailler la toile. */
+window.addEventListener("resize", function(){
+  if (modeEtroit() !== ETROIT && typeof batitVillage === 'function') batitVillage(ROSTER_COURANT);
+  else fit();
+});
+fit();
 
 /* ==========================================================================
  * LE VILLAGE SE CONSTRUIT DEPUIS LE ROSTER DU SERVEUR
@@ -1173,9 +1202,9 @@ window.addEventListener("resize", fit); fit();
    et cinq de front donnaient un monde tres large, donc reduit a une bande
    mince une fois mis a l'echelle, avec de l'herbe vide au-dessus et en
    dessous. Trois colonnes et plus de rangees remplissent le cadre. */
-const RANGEE = 3;                  /* maisons par rangee avant de repartir */
-const COL_X = [196, 500, 804];
-const PAS_Y = 208;                 /* de quoi loger l'etiquette, la maison, le chien */
+let RANGEE = 3;                    /* maisons par rangee avant de repartir — deux sur un telephone */
+let COL_X = [196, 500, 804];
+let PAS_Y = 208;                   /* de quoi loger l'etiquette, la maison, le chien */
 let ligneY = [190, 398];           /* recalcule : autant de rangees qu'il en faut */
 let TREASURY = {x:834, y:398};     /* recalcule a chaque fois qu'on batit */
 let ENTREE = {x:34, y:190};        /* la ou les jetons entrent dans le village */
@@ -1230,6 +1259,8 @@ const ROSTER_AMORCE = [
    qui se passe. */
 const RANG = { source:0, garde:1, specialiste:2, note:3, epreuve:4, banque:5, execution:6 };
 function batitVillage(roster){
+  ROSTER_COURANT = roster;
+  poseLeMonde();
   const l = (roster && roster.length ? roster : ROSTER_AMORCE).slice();
   l.sort((a,b)=>{
     const ra = RANG[a.role] === undefined ? 9 : RANG[a.role];
@@ -1249,6 +1280,15 @@ function batitVillage(roster){
   const p0 = AGENTS.length ? AGENTS[0].house : placeChaine(0);
   ENTREE = { x: 26, y: p0.y };
   idx = {}; AGENTS.forEach((a,i)=>idx[a.key]=i);
+  /* Sur un telephone, la scene prend la hauteur du monde a l'echelle de la
+     largeur : le village entier, en grand. Ailleurs, la feuille de style
+     decide. */
+  const st = cv.parentElement;
+  if (st) {
+    if (ETROIT) st.style.height = Math.round(st.getBoundingClientRect().width / W * H) + 'px';
+    else st.style.height = '';
+  }
+  fit();
 }
 batitVillage(null);
 

@@ -406,6 +406,13 @@
         : ETAT.ouvertes.map(lignePosition).join('');
     }
 
+    /* Ce qui est reste entre deux jambes d un pont : c est au joueur, dans son
+       portefeuille, et le miroir le ramene en ETH a chaque tour. */
+    if (ETAT.transit && ETAT.transit.length) {
+      h += '<p class="mir-note">In transit: ' + ETAT.transit.map(function (t) { return nb(t.montant) + ' ' + esc(t.sym); }).join(', ')
+        + ' — a bridge leg failed; they sit in your wallet and the mirror brings them back to ETH every turn.</p>';
+    }
+
     if (ETAT.journal && ETAT.journal.length) {
       h += '<h3 style="margin:14px 0 4px;font-size:12px;letter-spacing:.5px;color:#8DA0C4">LOG</h3>';
       h += ETAT.journal.map(function (j) {
@@ -434,6 +441,9 @@
   function lignePosition(o) {
     return '<div class="mir-pos"><div class="mir-q"><b>$' + esc(o.sym || court(o.adr)) + '</b> '
       + '<i>' + nb(o.entree) + ' ETH in · ' + heure(o.t) + (o.simule ? ' · dry run' : '')
+      /* Une position prise par un pont (ETH -> NVDA -> jeton) le dit : deux
+         jambes a la vente aussi, le double de gaz. */
+      + (o.via ? ' · via ' + esc(o.via) : '')
       /* Les tranches deja vendues, comme la colonie les montre : « 70% sold ·
          banked · 30% still running ». */
       + (o.reste !== undefined && o.reste < 0.999

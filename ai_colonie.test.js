@@ -1651,7 +1651,8 @@ async function auditDesVetos() {
           c.send(JSON.stringify({ type: 'miroirEtat', pret: true, execute: false, existe: true, actif: actifFaux, proprietaire: true,
             adresse: '0x' + 'ab'.repeat(20), solde: '0.05', min: '0.002', max: '0.5', part: 0.1,
             ordreMax: '0.05', gaz: '0.0015', places: 25,
-            ouvertes: venduFaux ? [] : [{ adr: '0x' + 'aa'.repeat(20), sym: 'T', entree: '0.004', t: Date.now(), simule: true }],
+            ouvertes: venduFaux ? [] : [{ adr: '0x' + 'aa'.repeat(20), sym: 'T', entree: '0.004', t: Date.now(), simule: true, via: 'NVDA' }],
+            transit: venduFaux ? [] : [{ sym: 'NVDA', adr: '0x' + 'd0'.repeat(20), montant: '0.02', t: Date.now() }],
             bilan: remisFaux ? { trades: 0, gagnantes: 0, profitEth: '0.000000', meilleur: 0, ouvertes: 1, simule: false }
                             : { trades: 12, gagnantes: 7, profitEth: '0.0031', meilleur: 2.4, ouvertes: 1, simule: true },
             journal: m.type === 'miroirEffaceJournal'
@@ -1750,8 +1751,12 @@ async function auditDesVetos() {
                vends: b ? { texte: b.textContent.trim(), adr: b.getAttribute('data-adr') } : null,
                acheteDesactive: achete ? achete.disabled : null,
                note: c ? (c.querySelector('.mir-note') || {}).textContent : null,
-               renvoi: (document.querySelector('#gxMiroir .mir-note') || {}).textContent };
+               renvoi: (document.querySelector('#gxMiroir .mir-note') || {}).textContent,
+               ligne: c && c.querySelector('.mir-pos') ? c.querySelector('.mir-pos').textContent : null,
+               transit: [...document.querySelectorAll('#gxMiroir .mir-note')].map((x) => x.textContent).find((x) => /In transit/.test(x)) || null };
     });
+    ok(/via NVDA/.test(carte.ligne || ''), 'une position prise par un pont le dit sur sa ligne : « ' + (carte.ligne || '').replace(/\s+/g, ' ').trim().slice(0, 80) + ' »');
+    ok(/In transit: 0\.02 NVDA/.test(carte.transit || '') && /every turn/.test(carte.transit || ''), 'et ce qui est reste entre deux jambes est dit, avec le montant : « ' + (carte.transit || '').slice(0, 90) + '… »');
     console.log('   ' + JSON.stringify(carte).slice(0, 400));
     ok(carte.existe && carte.dansLive && carte.apres, 'la carte est dans « Live », juste apres les positions de papier de la colonie');
     ok(/mirror/i.test(carte.titre || '') && carte.compte === '1', 'elle dit « mirror » dans son titre et compte la position ouverte (' + carte.compte + ')');

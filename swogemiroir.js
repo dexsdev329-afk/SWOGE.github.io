@@ -39,6 +39,10 @@
 
   var hote = document.getElementById('gxMiroir');
   if (!hote) return;
+  /* La seconde carte : les positions du joueur, avec les deux gestes. Elle
+     peut manquer sur une page plus ancienne ; le miroir marche sans elle. */
+  var hote2 = document.getElementById('gxMiroirPositions');
+  var compte2 = document.getElementById('mirPosN');
 
   var ETAT = null;        /* le dernier etat rendu par le serveur */
   var CLE = null;         /* la cle privee, en memoire seulement, sur geste */
@@ -101,7 +105,14 @@
       '.mir-j{font-size:11.5px;color:var(--ink-dim,#6B7C99);padding:5px 0;line-height:1.5;' +
         'overflow-wrap:anywhere}' +
       '.mir-j time{color:var(--ink-faint,#93A2BC);margin-right:6px}' +
-      '.mir-dit{margin-top:9px;font-size:12px;color:var(--warn,#C77700);min-height:1em}';
+      '.mir-dit{margin-top:9px;font-size:12px;color:var(--warn,#C77700);min-height:1em}' +
+      '.mir-pos{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}' +
+      '.mir-pos .mir-q{flex:1 1 200px;min-width:0}' +
+      '.mir-mini{min-height:30px;padding:5px 11px;font-size:11.5px;border-radius:8px}' +
+      '.mir-ouvre{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px}' +
+      '.mir-in{flex:1 1 220px;min-width:0;min-height:38px;padding:8px 10px;border-radius:9px;' +
+        'border:1px solid var(--line,#E1E9F6);background:#fff;color:var(--ink,#0A1F44);' +
+        'font:inherit;font-family:ui-monospace,monospace;font-size:12px}';
     document.head.appendChild(c);
   }
 
@@ -290,6 +301,7 @@
    * contredire, et ca oblige a decider ce qui se voit dans CHAQUE cas. */
   function peint() {
     style();
+    peintPositions();
     var h = '';
 
     if (!ETAT && !connecte) {
@@ -385,16 +397,9 @@
     if (ETAT.ouvertes && ETAT.ouvertes.length) {
       h += '<h3 style="margin:14px 0 4px;font-size:12px;letter-spacing:.5px;color:#8DA0C4">'
         + 'OPEN IN YOUR MIRROR</h3>';
-      h += ETAT.ouvertes.map(function (o) {
-        return '<div class="mir-pos"><b>$' + esc(o.sym || court(o.adr)) + '</b> '
-          + '<i>' + nb(o.entree) + ' ETH in · ' + heure(o.t) + (o.simule ? ' · dry run' : '')
-          /* Les tranches deja vendues, comme la colonie les montre : « 70% sold ·
-             banked · 30% still running ». */
-          + (o.reste !== undefined && o.reste < 0.999
-              ? ' · ' + Math.round((1 - o.reste) * 100) + '% sold' + (o.banked ? ' · ' + nb(o.banked) + ' ETH banked' : '')
-                + ' · ' + Math.round(o.reste * 100) + '% still running' : '')
-          + '</i></div>';
-      }).join('');
+      h += hote2
+        ? '<p class="mir-note">' + ETAT.ouvertes.length + ' open — see <b>Your mirror · open positions</b>, next to the colony\'s, to sell one now.</p>'
+        : ETAT.ouvertes.map(lignePosition).join('');
     }
 
     if (ETAT.journal && ETAT.journal.length) {
@@ -414,6 +419,63 @@
     d.className = 'mir-dit';
     d.textContent = dit;
     (hote.querySelector('.mir') || hote).appendChild(d);
+    /* Le meme mot sous la seconde carte : un geste fait la-bas y lit sa reponse. */
+    if (hote2) { var d2 = d.cloneNode(true); (hote2.querySelector('.mir') || hote2).appendChild(d2); }
+  }
+
+  /* ---- UNE POSITION, ET LE GESTE POUR LA FERMER ----
+   * « Rajoute un bouton sell maintenant. » Le bouton vend TOUT ce qui reste
+   * de la position, par la meme route et le meme devis que la colonie ; il
+   * demande confirmation, parce qu'en reel c'est de l'argent qui part. */
+  function lignePosition(o) {
+    return '<div class="mir-pos"><div class="mir-q"><b>$' + esc(o.sym || court(o.adr)) + '</b> '
+      + '<i>' + nb(o.entree) + ' ETH in · ' + heure(o.t) + (o.simule ? ' · dry run' : '')
+      /* Les tranches deja vendues, comme la colonie les montre : « 70% sold ·
+         banked · 30% still running ». */
+      + (o.reste !== undefined && o.reste < 0.999
+          ? ' · ' + Math.round((1 - o.reste) * 100) + '% sold' + (o.banked ? ' · ' + nb(o.banked) + ' ETH banked' : '')
+            + ' · ' + Math.round(o.reste * 100) + '% still running' : '')
+      + '</i></div>'
+      + '<button class="mir-b stop mir-mini" data-m="vends" data-adr="' + esc(o.adr) + '" data-sym="' + esc(o.sym || '') + '"'
+      + (occupe ? ' disabled' : '') + '>Sell now</button></div>';
+  }
+
+  /* ---- LA SECONDE CARTE : SES POSITIONS, ET LES DEUX GESTES ----
+   * « Une colonne apres Direct pour voir les positions ouvertes du miroir
+   *   et pouvoir les fermer et les ouvrir. » A cote des positions de papier
+   *   de la colonie : ce que le JOUEUR tient, en ETH reel, et rien d'autre. */
+  function peintPositions() {
+    if (!hote2) return;
+    var ouv = (ETAT && ETAT.existe && ETAT.ouvertes) ? ETAT.ouvertes : [];
+    if (compte2) compte2.textContent = (ETAT && ETAT.existe) ? String(ouv.length) : '\u2014';
+    if (!ETAT || !connecte) {
+      hote2.innerHTML = '<div class="mir"><p class="mir-note">Sign in and create a mirror wallet to see your positions here.</p></div>';
+      return;
+    }
+    if (!ETAT.pret) { hote2.innerHTML = '<div class="mir"><p class="mir-note">The mirror is off on this server.</p></div>'; return; }
+    if (!ETAT.existe) {
+      hote2.innerHTML = '<div class="mir"><p class="mir-note">No mirror wallet yet — create one in <b>Trade with the colony</b>, above.</p></div>';
+      return;
+    }
+    var h = '';
+    h += ouv.length ? ouv.map(lignePosition).join('')
+                    : '<p class="mir-note">Nothing open in your mirror right now.</p>';
+    /* Ouvrir a la main : une adresse de jeton, et la meme taille d'ordre que
+       le Banquier donnerait — le miroir n'a pas de reglage de mise a part. Il
+       ne trade que s'il tourne : un miroir arrete a sa cle au repos. */
+    var peut = !!ETAT.actif && !occupe;
+    h += '<div class="mir-ouvre">'
+      + '<input class="mir-in" id="mirAdr" type="text" autocomplete="off" spellcheck="false" placeholder="Token address 0x\u2026" ' + (peut ? '' : 'disabled') + '>'
+      + '<button class="mir-b" data-m="ouvre"' + (peut ? '' : ' disabled') + '>Buy now</button></div>'
+      + '<p class="mir-note" style="margin-top:6px">'
+      + (ETAT.actif
+          ? 'Buys the token on Uniswap with the same order size the Banker would use'
+            + (ETAT.ordreMin ? ' (at least ' + esc(ETAT.ordreMin) + ' ETH' + (ETAT.ordreMax ? ', up to ' + esc(ETAT.ordreMax) + ' ETH' : '') + ')' : '')
+            + ', after the same round-trip check: a pool that lets you in but not out is skipped.'
+            + (ETAT.execute ? '' : ' Dry run: nothing is sent on-chain.')
+          : 'Press <b>Play</b> in the card above first: the mirror only trades while it is running.')
+      + '</p>';
+    hote2.innerHTML = '<div class="mir">' + h + '</div>';
   }
 
   function copie(txt, quoi) {
@@ -424,11 +486,28 @@
     peint();
   }
 
-  hote.addEventListener('click', function (ev) {
+  function surClic(ev) {
     var b = ev.target.closest && ev.target.closest('[data-m]');
     if (!b) return;
     var m = b.getAttribute('data-m');
     dit = '';
+
+    if (m === 'vends') {
+      var adr = b.getAttribute('data-adr') || '', sym = b.getAttribute('data-sym') || court(adr);
+      if (!confirm('Sell everything you still hold of $' + sym + ' now, at the current Uniswap price?'
+          + (ETAT && ETAT.execute ? ' This sends a real transaction.' : ' Dry run: nothing is sent on-chain.'))) return;
+      occupe = true; dit = 'Selling $' + sym + '\u2026'; peint();
+      envoie({ type: 'miroirVends', adr: adr }); return;
+    }
+    if (m === 'ouvre') {
+      var champ = hote2 && hote2.querySelector('#mirAdr');
+      var a = String((champ && champ.value) || '').trim();
+      if (!/^0x[0-9a-fA-F]{40}$/.test(a)) { dit = 'Paste the token\'s contract address (0x, 40 hex characters).'; peint(); return; }
+      if (!confirm('Buy this token now with the Banker\'s order size?'
+          + (ETAT && ETAT.execute ? ' This sends a real transaction.' : ' Dry run: nothing is sent on-chain.'))) return;
+      occupe = true; dit = 'Buying\u2026'; peint();
+      envoie({ type: 'miroirOuvre', adr: a }); return;
+    }
 
     if (m === 'copieAdr') return copie(ETAT.adresse, 'Address');
     if (m === 'copieCle') return copie(CLE || '', 'Private key');
@@ -469,7 +548,9 @@
       peint();
       envoie({ type: 'miroirStop' }); return;
     }
-  });
+  }
+  hote.addEventListener('click', surClic);
+  if (hote2) hote2.addEventListener('click', surClic);
 
   /* ---- LE FIL ----
    * On redemande l'etat a chaque authentification : une reconnexion ne doit pas
@@ -489,6 +570,13 @@
         dit = m.neuf ? 'Wallet created — save this key now, it is the only copy you control.' : '';
         occupe = false; peint(); return;
       }
+      if (m.type === 'miroirVends') {
+        occupe = false;
+        dit = 'Sold $' + (m.sym || court(m.adr)) + (m.sortie ? ' for ' + nb(m.sortie) + ' ETH' : '')
+          + (m.poussiere ? ' — kept: selling would cost more gas than it returns' : '') + '.';
+        peint(); return;
+      }
+      if (m.type === 'miroirOuvre') { occupe = false; dit = 'Bought $' + (m.sym || court(m.adr)) + '.'; peint(); return; }
       if (m.type === 'miroirStop') {
         occupe = false;
         dit = m.execute

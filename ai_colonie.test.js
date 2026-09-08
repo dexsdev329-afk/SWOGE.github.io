@@ -1621,6 +1621,9 @@ async function auditDesVetos() {
     await new Promise((r) => httpJeu.listen(0, r));
     const jeu = new WSS({ server: httpJeu });
     const recus = [];
+    /* Le faux serveur tient deux etats : le miroir tourne apres Play, et la
+       position part apres « Sell now ». */
+    let actifFaux = false, venduFaux = false;
     jeu.on('connection', (c) => {
       c.send(JSON.stringify({ type: 'hello', loginNonce: 'a', chainId: 4663 }));
       c.on('message', (d) => {
@@ -1628,11 +1631,14 @@ async function auditDesVetos() {
         if (m.type === 'resume')
           c.send(JSON.stringify({ type: 'auth', address: '0x' + '11'.repeat(20), balance: '0', session: 'j' }));
         if (m.type === 'miroirEffaceJournal') recus.push(m.type);
-        if (m.type === 'miroirEtat' || m.type === 'miroirEffaceJournal')
-          c.send(JSON.stringify({ type: 'miroirEtat', pret: true, execute: false, existe: true, actif: false,
+        if (m.type === 'miroirPlay') actifFaux = true;
+        if (m.type === 'miroirVends') { recus.push('miroirVends:' + m.adr); venduFaux = true; c.send(JSON.stringify({ type: 'miroirVends', adr: m.adr, sym: 'T', sortie: '0.0041' })); }
+        if (m.type === 'miroirOuvre') { recus.push('miroirOuvre:' + m.adr); c.send(JSON.stringify({ type: 'miroirOuvre', adr: m.adr, sym: 'NEW' })); }
+        if (m.type === 'miroirEtat' || m.type === 'miroirEffaceJournal' || m.type === 'miroirPlay' || m.type === 'miroirVends' || m.type === 'miroirOuvre')
+          c.send(JSON.stringify({ type: 'miroirEtat', pret: true, execute: false, existe: true, actif: actifFaux,
             adresse: '0x' + 'ab'.repeat(20), solde: '0.05', min: '0.002', max: '0.5', part: 0.1,
             ordreMax: '0.05', gaz: '0.0015', places: 25,
-            ouvertes: [{ adr: '0x' + 'aa'.repeat(20), sym: 'T', entree: '0.004', t: Date.now(), simule: true }],
+            ouvertes: venduFaux ? [] : [{ adr: '0x' + 'aa'.repeat(20), sym: 'T', entree: '0.004', t: Date.now(), simule: true }],
             bilan: { trades: 12, gagnantes: 7, profitEth: '0.0031', meilleur: 2.4, ouvertes: 1, simule: true },
             journal: m.type === 'miroirEffaceJournal'
               ? [{ t: Date.now(), txt: 'Log cleared (3 lines). Positions, trades and the balance are untouched.' }]
@@ -1713,6 +1719,59 @@ async function auditDesVetos() {
     ok(recus.indexOf('miroirEffaceJournal') >= 0, 'le clic, confirme, envoie miroirEffaceJournal au serveur');
     const journal = await page.evaluate(() => [...document.querySelectorAll('#gxMiroir .mir-j')].map((j) => j.textContent));
     ok(journal.length === 1 && /Log cleared/.test(journal[0]), 'et le journal ne montre plus que la ligne qui le dit : ' + JSON.stringify(journal));
+    /* « Rajoute un bouton sell maintenant, et une colonne apres Direct pour
+       voir les positions ouvertes du miroir et pouvoir les fermer et les
+       ouvrir. » Une carte a cote des positions de papier, un bouton par
+       position, un champ pour en ouvrir une. */
+    console.log('\n-- les positions du miroir ont leur carte, avec Sell now et Buy now --');
+    const carte = await page.evaluate(() => {
+      const c = document.querySelector('.card[data-pan="miroirPositions"]');
+      const p = document.querySelector('.card[data-pan="positions"]');
+      const live = document.querySelector('.grp[data-grp="live"]');
+      const b = c && c.querySelector('[data-m="vends"]');
+      const achete = c && c.querySelector('[data-m="ouvre"]');
+      return { existe: !!c, dansLive: !!(c && live && live.contains(c)),
+               apres: !!(c && p && (p.compareDocumentPosition(c) & Node.DOCUMENT_POSITION_FOLLOWING)),
+               titre: c ? c.querySelector('h2 span').textContent : null, compte: (document.getElementById('mirPosN') || {}).textContent,
+               vends: b ? { texte: b.textContent.trim(), adr: b.getAttribute('data-adr') } : null,
+               acheteDesactive: achete ? achete.disabled : null,
+               note: c ? (c.querySelector('.mir-note') || {}).textContent : null,
+               renvoi: (document.querySelector('#gxMiroir .mir-note') || {}).textContent };
+    });
+    console.log('   ' + JSON.stringify(carte).slice(0, 400));
+    ok(carte.existe && carte.dansLive && carte.apres, 'la carte est dans « Live », juste apres les positions de papier de la colonie');
+    ok(/mirror/i.test(carte.titre || '') && carte.compte === '1', 'elle dit « mirror » dans son titre et compte la position ouverte (' + carte.compte + ')');
+    ok(!!carte.vends && carte.vends.texte === 'Sell now' && carte.vends.adr === '0x' + 'aa'.repeat(20),
+       'chaque position porte un bouton « Sell now » qui connait son jeton');
+    ok(carte.acheteDesactive === true && /Press Play/.test(carte.note || ''),
+       'miroir arrete : « Buy now » est eteint, et la note dit d appuyer sur Play d abord');
+    /* Vendre maintenant : confirmation, message au serveur, et la carte se vide. */
+    page.once('dialog', (d) => d.accept());
+    await page.evaluate(() => document.querySelector('.card[data-pan="miroirPositions"] [data-m="vends"]').click());
+    await page.waitForTimeout(800);
+    ok(recus.indexOf('miroirVends:' + '0x' + 'aa'.repeat(20)) >= 0, 'le clic, confirme, envoie miroirVends avec l adresse du jeton');
+    const apresVente = await page.evaluate(() => ({
+      compte: (document.getElementById('mirPosN') || {}).textContent,
+      boutons: document.querySelectorAll('.card[data-pan="miroirPositions"] [data-m="vends"]').length,
+      dit: [...document.querySelectorAll('.mir-dit')].map((x) => x.textContent) }));
+    ok(apresVente.compte === '0' && apresVente.boutons === 0, 'la position vendue disparait de la carte, le compte passe a 0');
+    ok(apresVente.dit.some((x) => /Sold \$T for 0\.0041 ETH/.test(x)), 'et la reponse du serveur se lit sous la carte : ' + JSON.stringify(apresVente.dit));
+    /* Ouvrir a la main : Play d abord, puis une adresse, puis « Buy now ». */
+    await page.evaluate(() => document.querySelector('#gxMiroir [data-m="play"]').click());
+    await page.waitForTimeout(800);
+    const enMarche = await page.evaluate(() => ({ actif: !document.querySelector('.card[data-pan="miroirPositions"] [data-m="ouvre"]').disabled,
+                                                  champ: !!document.getElementById('mirAdr') }));
+    ok(enMarche.actif && enMarche.champ, 'apres Play, « Buy now » et le champ d adresse s allument');
+    await page.evaluate(() => { document.getElementById('mirAdr').value = 'pas une adresse'; document.querySelector('.card[data-pan="miroirPositions"] [data-m="ouvre"]').click(); });
+    await page.waitForTimeout(300);
+    const refus = await page.evaluate(() => [...document.querySelectorAll('.mir-dit')].map((x) => x.textContent));
+    ok(refus.some((x) => /contract address/.test(x)) && !recus.some((x) => /miroirOuvre/.test(x)), 'une adresse mal formee est refusee sur place, sans rien envoyer');
+    page.once('dialog', (d) => d.accept());
+    await page.evaluate(() => { document.getElementById('mirAdr').value = '0x' + 'bb'.repeat(20); document.querySelector('.card[data-pan="miroirPositions"] [data-m="ouvre"]').click(); });
+    await page.waitForTimeout(800);
+    ok(recus.indexOf('miroirOuvre:' + '0x' + 'bb'.repeat(20)) >= 0, 'une bonne adresse, confirmee, envoie miroirOuvre au serveur');
+    const apresAchat = await page.evaluate(() => [...document.querySelectorAll('.mir-dit')].map((x) => x.textContent));
+    ok(apresAchat.some((x) => /Bought \$NEW/.test(x)), 'et la reponse se lit : ' + JSON.stringify(apresAchat));
     /* « Les maisons et les chiens, plus gros. » Sur un telephone : deux
        colonnes dans un monde de 600, la scene a la hauteur du village. */
     await page.setViewportSize({ width: 390, height: 800 });

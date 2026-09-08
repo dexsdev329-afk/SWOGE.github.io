@@ -13,7 +13,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
-var MARQUE_PAGE = 'c50e8a50';
+var MARQUE_PAGE = 'eccf1c8a';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -964,6 +964,17 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
           <h2><span data-t="tPositions">Open positions</span> <span class="count" id="poscount">0</span></h2>
           <div id="positions"><div class="empty" data-t="vPositions">No open position.</div></div>
         </div>
+        <!-- ---- LES POSITIONS DU MIROIR, A COTE DE CELLES DU PAPIER ----
+             « Rajoute un bouton sell maintenant, et une colonne apres Direct
+               pour voir les positions ouvertes du miroir et pouvoir les fermer
+               et les ouvrir. »
+             La carte d'a cote raconte ce que la colonie tient de papier ; celle-ci
+             montre ce que LE JOUEUR tient d'ETH reel, et lui donne les deux gestes.
+             Son contenu est pose par `swogemiroir.js`, comme la carte du miroir. -->
+        <div class="card" data-pan="miroirPositions">
+          <h2><span data-t="tMirPos">Your mirror · open positions</span> <span class="count" id="mirPosN">—</span></h2>
+          <div id="gxMiroirPositions"><div class="empty" data-t="vMirPos">Sign in and create a mirror wallet to see your positions here.</div></div>
+        </div>
         <div class="card" data-pan="pipeline">
           <h2><span data-t="tPipe">Tokens in flight</span> <span class="count" id="flowcount">0 tokens</span></h2>
           <div class="flow" id="flow"><div class="empty" data-t="vPipe">Waiting for new tokens…</div></div>
@@ -1066,7 +1077,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 </div>
 
 <script src="swogeprofil.js?v=aa21d613" defer></script>
-<script src="swogemiroir.js?v=1b5efbd6" defer></script>
+<script src="swogemiroir.js?v=ae857c52" defer></script>
 
 <!-- La carte « YOUR BALANCE » recopie #bal, jamais l'inverse. -->
 <script>
@@ -2854,6 +2865,7 @@ const FR = {
   oLive:"Direct", oColonie:"La colonie", oPreuve:"Les preuves",
   tAlertes:"Ce dont la colonie a besoin", tCourbe:"Trésorerie dans le temps",
   tPositions:"Positions ouvertes", vPositions:"Aucune position ouverte.",
+  tMirPos:"Votre miroir · positions ouvertes", vMirPos:"Connectez-vous et créez un portefeuille miroir pour voir vos positions ici.",
   tBanque:"Banquier", vServeur:"En attente du serveur…",
   tSurv:"Surveillance", vSurv:"Rien sous surveillance pour l'instant.",
   tPipe:"Jetons en vol", vPipe:"En attente de nouveaux jetons…",
@@ -2923,7 +2935,7 @@ function poseLangue(l){
 /* Le miroir part OUVERT, comme les positions : c'est la seule carte qui demande
    quelque chose au lecteur, et une carte repliee ne se lit pas — elle se
    devine. Les autres racontent, celle-la propose. */
-const PANNEAUX_OUVERTS = ["miroir", "positions", "agents", "audit"];
+const PANNEAUX_OUVERTS = ["miroir", "positions", "miroirPositions", "agents", "audit"];
 /* La cle change avec la liste : sans ca, un visiteur d'hier garde son etat
    d'hier, ou le miroir n'existait pas — donc replie, donc invisible. */
 const CLE_PANNEAUX = "swogeAiPanneaux4";

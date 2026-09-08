@@ -13,7 +13,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
-var MARQUE_PAGE = '41999316';
+var MARQUE_PAGE = '22621dc9';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -1531,6 +1531,12 @@ const PHRASES = {
      qui en mesurait deux sur trois. La phrase disait donc le contraire de la
      ligne au-dessus d'elle, et c'est la phrase qu'on lit. Elle porte la mesure
      maintenant — c'est elle qui juge la regle, pas un ordre de grandeur. */
+  /* Ce que la STRATEGIE aurait fait de ces jetons — echelle, arret suiveur,
+     coupe, rejoues sur les jalons — a cote du brut. C'est ce chiffre-la qui
+     dit si une regle coute : la colonie ne tient pas un jeton a trente
+     minutes, elle encaisse en route. */
+  auditStrat:   [(n, r) => 'replayed with the ladder and the trailing stop on ' + n + ' of them: ' + r + '% on average',
+                 (n, r) => 'rejoue avec l\'echelle et l\'arret suiveur sur ' + n + ' d\'entre eux : ' + r + ' % en moyenne'],
   auditCher:    [(p) => p + '% of what this rule set aside went up: it costs more than it protects',
                  (p) => p + ' % de ce que cette regle a ecarte est monte : elle coute plus '
                           + 'qu\'elle ne protege'],
@@ -2548,6 +2554,7 @@ function peintAudit(){
       <span><b>${echappe(x.cle)}</b>
         <span class="mini">${echappe(ph("auditDetail", x.n, x.montes, x.effondres,
           (x.moyenne>=0?"+":"")+x.moyenne))}</span>
+        ${x.nStrat >= 3 && x.strat !== null ? '<span class="mini">' + echappe(ph("auditStrat", x.nStrat, (x.strat >= 0 ? "+" : "") + x.strat)) + '</span>' : ''}
         ${cher ? '<span class="faire" style="color:var(--loss)">' + ph("auditCher", x.partMontes) + '</span>' : ''}
       </span>
     </div>`;

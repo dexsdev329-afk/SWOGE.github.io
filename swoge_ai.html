@@ -13,7 +13,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
-var MARQUE_PAGE = '22621dc9';
+var MARQUE_PAGE = 'e737dd62';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -1077,7 +1077,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 </div>
 
 <script src="swogeprofil.js?v=aa21d613" defer></script>
-<script src="swogemiroir.js?v=a9f9ce89" defer></script>
+<script src="swogemiroir.js?v=96d7899f" defer></script>
 
 <!-- La carte « YOUR BALANCE » recopie #bal, jamais l'inverse. -->
 <script>
@@ -1465,6 +1465,19 @@ const PHRASES = {
   miseMot:      [' staked · ', ' mise · '],
   vuPar:        [(o) => ' · spotted by ' + o, (o) => ' · vu par ' + o],
   prolongee:    [(n) => ' · extended ' + n + '×', (n) => ' · prolongee ' + n + '×'],
+  /* La main du proprietaire : la position est tenue, la colonie ne la coupe pas. */
+  tenuMain:     [(h) => 'held by hand until ' + h + ' · no cut, no trailing stop until then',
+                 (h) => 'tenue a la main jusqu\'a ' + h + ' · ni coupe ni arret suiveur d\'ici la'],
+  tenir:        ['Hold 30 min', 'Tenir 30 min'],
+  tenirLong:    ['Hold 2 h', 'Tenir 2 h'],
+  fermerPapier: ['Close now', 'Fermer maintenant'],
+  /* L'audit : la ligne de reference, et le verdict qui s'y rapporte. */
+  auditRef:     ['what the colony bought or kept — the yardstick the rules are measured against',
+                 'ce que la colonie a achete ou garde — l\'etalon auquel les regles se mesurent'],
+  auditProtege: [(p, r) => p + '% went up against ' + r + '% for what was bought: this rule protects',
+                 (p, r) => p + ' % sont montes contre ' + r + ' % pour ce qu\'on a achete : cette regle protege'],
+  auditPareil:  [(p, r) => p + '% went up, about the same as the ' + r + '% of what was bought: neither cost nor protection yet — the replay will tell',
+                 (p, r) => p + ' % sont montes, a peu pres comme les ' + r + ' % de ce qu\'on a achete : ni cout ni protection pour l\'instant — le rejeu dira'],
   graphique:    ['chart ↗', 'graphique ↗'],
   pasDex:       ['not on DexScreener yet', 'pas encore sur DexScreener'],
   reseauxNonLus:['socials not read', 'reseaux non lus'],
@@ -2311,6 +2324,7 @@ document.addEventListener("click", function(e){
   copieTexte(b.getAttribute("data-copie"), b);
 });
 
+window.peintPositions = peintPositions;
 function peintPositions(){
   const pos = vPositions();
   $("poscount").textContent = VUE ? pos.length : "—";
@@ -2365,8 +2379,21 @@ function peintPositions(){
        c'est lui qui explique une fermeture qu'on n'aurait pas comprise. */
     const haut = (p.hautR !== null && p.hautR !== undefined && p.hautR > 0)
       ? `<span class="mini">${echappe(ph("plusHaut", p.hautR.toFixed(1)))}</span>` : '';
+    /* ---- TENUE A LA MAIN, ET LES DEUX GESTES DU PROPRIETAIRE ----
+       « Prolonger la position papier pour qu'elle ne se ferme pas ; et si on
+         ferme avec le miroir, que le papier ferme aussi. » Le badge est pour
+         tout le monde ; les boutons n'existent que si le serveur a dit que ce
+         portefeuille a la main (voir `swogemiroir.js`). */
+    const tenu = (p.tenuParMain && p.tenuParMain.jusqua)
+      ? `<span class="mini" style="color:var(--warn,#C77700)">${echappe(ph("tenuMain", new Date(p.tenuParMain.jusqua).toTimeString().slice(0,5)))}</span>` : '';
+    const main = (window.__swogeProprietaire && p.adr)
+      ? `<div class="mir-row pos-main">
+          <button type="button" class="mir-b vide mir-mini" data-tiens="${echappe(p.adr)}" data-min="30">${echappe(ph("tenir"))}</button>
+          <button type="button" class="mir-b vide mir-mini" data-tiens="${echappe(p.adr)}" data-min="120">${echappe(ph("tenirLong"))}</button>
+          <button type="button" class="mir-b stop mir-mini" data-ferme-papier="${echappe(p.adr)}" data-sym="${echappe(p.sym||'')}">${echappe(ph("fermerPapier"))}</button>
+        </div>` : '';
     const mise = p.mise === undefined ? '' :
-      `<span class="mini"><b>$${Number(p.mise).toFixed(2)}</b>${echappe(ph("miseMot"))}${echappe(p.methode||"?")}${mc}${p.origine?echappe(ph("vuPar", p.origine)):""}${p.prolonge?echappe(ph("prolongee", p.prolonge)):""}${p.tenueRaison?" · "+echappe(p.tenueRaison):""}</span>` + parts + haut;
+      `<span class="mini"><b>$${Number(p.mise).toFixed(2)}</b>${echappe(ph("miseMot"))}${echappe(p.methode||"?")}${mc}${p.origine?echappe(ph("vuPar", p.origine)):""}${p.prolonge?echappe(ph("prolongee", p.prolonge)):""}${p.tenueRaison?" · "+echappe(p.tenueRaison):""}</span>` + parts + haut + tenu + main;
     /* Le lien vers le graphique, et les reseaux quand il y en a. On ne fabrique
        jamais un lien social : s'il n'y en a pas, on le DIT — un jeton sans
        aucune presence est une information, pas un manque d'affichage. */
@@ -2544,18 +2571,28 @@ function peintAudit(){
     ? ph("auditN", o.jugees, o.enAttente) + (o.relues ? " · " + ph("auditRelues", o.relues) : "")
     : "—";
   if(!l.length) return;
+  /* ---- LE VERDICT SE RAPPORTE A CE QU'ON A ACHETE ----
+     « 36 % montes · achete ou retenu · cette regle coute plus qu'elle ne
+       protege » : la ligne de reference etait jugee comme une regle, et
+       chaque regle etait jugee contre un chiffre fixe (25 %) alors que ce
+       qu'on ACHETE monte a 36 %. Une regle qui ecarte des jetons montant a
+       38 % n'ecarte pas mieux que le lot : elle ne coute ni ne protege. */
+  const ref = l.find(x=>x.cle === "achete ou retenu");
+  const refP = ref ? ref.partMontes : null;
   $("audit").innerHTML = l.map(x=>{
-    /* Le chiffre qui compte n'est pas la moyenne : c'est la part de ceux qui
-       sont MONTES malgre le refus. Une moyenne negative peut cacher un sur
-       cinq qui a fait dix fois. */
-    const cher = x.partMontes >= 25;
+    const estRef = x === ref;
+    const cher = !estRef && (refP === null ? x.partMontes >= 25 : x.partMontes >= refP + 10);
+    const protege = !estRef && refP !== null && x.partMontes <= refP - 15;
     return `<div class="evt">
       <span class="pill ${cher?"retrait":"naissance"}">${echappe(ph("montes", x.partMontes))}</span>
       <span><b>${echappe(x.cle)}</b>
         <span class="mini">${echappe(ph("auditDetail", x.n, x.montes, x.effondres,
           (x.moyenne>=0?"+":"")+x.moyenne))}</span>
         ${x.nStrat >= 3 && x.strat !== null ? '<span class="mini">' + echappe(ph("auditStrat", x.nStrat, (x.strat >= 0 ? "+" : "") + x.strat)) + '</span>' : ''}
+        ${estRef ? '<span class="faire">' + echappe(ph("auditRef")) + '</span>' : ''}
         ${cher ? '<span class="faire" style="color:var(--loss)">' + ph("auditCher", x.partMontes) + '</span>' : ''}
+        ${protege ? '<span class="faire" style="color:var(--gain)">' + echappe(ph("auditProtege", x.partMontes, refP)) + '</span>' : ''}
+        ${!estRef && !cher && !protege && refP !== null ? '<span class="mini">' + echappe(ph("auditPareil", x.partMontes, refP)) + '</span>' : ''}
       </span>
     </div>`;
   }).join("");

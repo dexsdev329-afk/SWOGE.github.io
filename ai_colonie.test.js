@@ -79,6 +79,7 @@ function vueFausse(o) {
         /* Elle est sortie par paliers : 70 % vendus en route, 30 % courent
            encore, et le plus haut vu est ce que l'arret suiveur surveille. */
         reste: 0.3, encaisse: 12.4, paliers: 2, hautR: 62.5,
+        tenuParMain: { jusqua: now + 25 * 60000, par: 'owner' },
         liens: [{ type: 'twitter', url: 'https://x.com/nova' },
                 { type: 'site', url: 'https://nova.example' }] },
       /* Une position dont le prix n'a pas ete relu : le serveur envoie `null`,
@@ -1135,6 +1136,9 @@ async function auditDesVetos() {
     ok(v.pos === '2' && v.positions.length === 2, 'les deux positions ouvertes sont affichees');
     ok(/NOVA/.test(v.positions[0]) && /\+6\.4%/.test(v.positions[0]),
        'avec leur valeur latente calculee par le serveur (' + v.positions[0] + ')');
+    /* Le badge est dans la carte, pas dans la ligne de tete que `lit` releve. */
+    const carteNova = await page.evaluate(() => (document.getElementById('positions') || {}).textContent || '');
+    ok(/held by hand until \d\d:\d\d/.test(carteNova), 'une position tenue a la main le dit, avec l heure (' + (carteNova.match(/held by hand[^·]*/) || [''])[0] + ')');
     /* Le serveur a envoye `latent: null` : il n'a pas relu de prix. La page ne
        doit pas en faire un 0 %, qui se lirait comme « ca ne bouge pas ». */
     /* ---- « PRIX NON RELU » NE DISAIT PAS ASSEZ ----
@@ -1633,10 +1637,12 @@ async function auditDesVetos() {
         if (m.type === 'miroirEffaceJournal') recus.push(m.type);
         if (m.type === 'miroirPlay') actifFaux = true;
         if (m.type === 'miroirRemetStats') { recus.push(m.type); remisFaux = true; c.send(JSON.stringify({ type: 'miroirRemetStats', effaces: 12 })); }
+        if (m.type === 'colonieTiens') { recus.push('colonieTiens:' + m.adr + ':' + m.minutes); c.send(JSON.stringify({ type: 'colonieAction', geste: 'colonieTiens', ok: true, adr: m.adr, sym: 'NOVA', minutes: m.minutes })); }
+        if (m.type === 'colonieFerme') { recus.push('colonieFerme:' + m.adr); c.send(JSON.stringify({ type: 'colonieAction', geste: 'colonieFerme', ok: true, adr: m.adr, sym: 'NOVA', prix: 0.0042 })); }
         if (m.type === 'miroirVends') { recus.push('miroirVends:' + m.adr); venduFaux = true; c.send(JSON.stringify({ type: 'miroirVends', adr: m.adr, sym: 'T', sortie: '0.0041' })); }
         if (m.type === 'miroirOuvre') { recus.push('miroirOuvre:' + m.adr); c.send(JSON.stringify({ type: 'miroirOuvre', adr: m.adr, sym: 'NEW' })); }
         if (m.type === 'miroirEtat' || m.type === 'miroirEffaceJournal' || m.type === 'miroirPlay' || m.type === 'miroirVends' || m.type === 'miroirOuvre' || m.type === 'miroirRemetStats')
-          c.send(JSON.stringify({ type: 'miroirEtat', pret: true, execute: false, existe: true, actif: actifFaux,
+          c.send(JSON.stringify({ type: 'miroirEtat', pret: true, execute: false, existe: true, actif: actifFaux, proprietaire: true,
             adresse: '0x' + 'ab'.repeat(20), solde: '0.05', min: '0.002', max: '0.5', part: 0.1,
             ordreMax: '0.05', gaz: '0.0015', places: 25,
             ouvertes: venduFaux ? [] : [{ adr: '0x' + 'aa'.repeat(20), sym: 'T', entree: '0.004', t: Date.now(), simule: true }],
@@ -1787,6 +1793,33 @@ async function auditDesVetos() {
     ok(barre0.trades === '0' && barre0.wr === '\u2014' && barre0.best === '\u2014' && barre0.open === '1',
        'la barre repart de zero — et la position ouverte y est toujours (' + JSON.stringify(barre0) + ')');
     ok(barre0.dit.some((x) => /12 trade/.test(x)), 'et la reponse dit combien de trades ont ete effaces');
+    /* « Prolonger la position papier pour qu'elle ne se ferme pas ; et si on
+       ferme avec le miroir, que le papier ferme aussi. » Le serveur a dit que
+       ce portefeuille a la main : la carte des positions de la colonie porte
+       les gestes, et ils partent au serveur. */
+    console.log('\n-- la main du proprietaire sur les positions de papier --');
+    const gestes = await page.evaluate(() => {
+      const pos = document.querySelector('#positions .pos');
+      return { proprietaire: window.__swogeProprietaire === true,
+               tiens: [...document.querySelectorAll('#positions [data-tiens]')].map((b) => b.textContent.trim() + '/' + b.getAttribute('data-min')),
+               ferme: [...document.querySelectorAll('#positions [data-ferme-papier]')].map((b) => b.getAttribute('data-ferme-papier')),
+               texte: pos ? pos.textContent.replace(/\s+/g, ' ') : '' };
+    });
+    console.log('   ' + JSON.stringify(gestes).slice(0, 300));
+    ok(gestes.proprietaire && gestes.tiens.length === 4 && gestes.tiens[0] === 'Hold 30 min/30' && gestes.tiens[1] === 'Hold 2 h/120',
+       'chaque position porte « Hold 30 min » et « Hold 2 h » quand le serveur a donne la main');
+    ok(gestes.ferme.length === 2 && gestes.ferme[0] === ADR_NOVA, 'et « Close now », qui connait son jeton');
+    await page.evaluate(() => document.querySelector('#positions [data-tiens][data-min="30"]').click());
+    await page.waitForTimeout(800);
+    ok(recus.indexOf('colonieTiens:' + ADR_NOVA + ':30') >= 0, 'le clic envoie colonieTiens avec le jeton et la duree');
+    const ditTenu = await page.evaluate(() => [...document.querySelectorAll('.mir-dit')].map((x) => x.textContent));
+    ok(ditTenu.some((x) => /Held \$NOVA for 30 min/.test(x)), 'et la reponse se lit : ' + JSON.stringify(ditTenu));
+    page.once('dialog', (d) => d.accept());
+    await page.evaluate(() => document.querySelector('#positions [data-ferme-papier]').click());
+    await page.waitForTimeout(800);
+    ok(recus.indexOf('colonieFerme:' + ADR_NOVA) >= 0, 'fermer, confirme, envoie colonieFerme');
+    const ditFerme = await page.evaluate(() => [...document.querySelectorAll('.mir-dit')].map((x) => x.textContent));
+    ok(ditFerme.some((x) => /Closed \$NOVA on the paper book/.test(x) && /every mirror/.test(x)), 'et la reponse dit que les miroirs suivent');
     /* « Les maisons et les chiens, plus gros. » Sur un telephone : deux
        colonnes dans un monde de 600, la scene a la hauteur du village. */
     await page.setViewportSize({ width: 390, height: 800 });

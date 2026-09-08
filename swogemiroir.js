@@ -559,6 +559,25 @@
     }
   }
   hote.addEventListener('click', surClic);
+  /* ---- LA MAIN DU PROPRIETAIRE SUR LES POSITIONS DE PAPIER ----
+   * « Prolonger la position papier pour qu'elle ne se ferme pas ; et si on
+   *   ferme avec le miroir, que le papier ferme aussi. » Les boutons sont
+   * dessines par la page dans sa carte des positions, quand le serveur a dit
+   * que ce portefeuille a la main ; c'est ici qu'ils parlent au serveur. */
+  document.addEventListener('click', function (ev) {
+    var b = ev.target.closest && ev.target.closest('[data-tiens],[data-ferme-papier]');
+    if (!b) return;
+    dit = '';
+    if (b.hasAttribute('data-tiens')) {
+      var mn = parseInt(b.getAttribute('data-min') || '30', 10) || 30;
+      occupe = true; dit = 'Holding\u2026'; peint();
+      envoie({ type: 'colonieTiens', adr: b.getAttribute('data-tiens'), minutes: mn }); return;
+    }
+    var sym = b.getAttribute('data-sym') || court(b.getAttribute('data-ferme-papier'));
+    if (!confirm('Close $' + sym + ' on the colony\'s paper book now, at the current price? Every mirror that holds it will sell too.')) return;
+    occupe = true; dit = 'Closing\u2026'; peint();
+    envoie({ type: 'colonieFerme', adr: b.getAttribute('data-ferme-papier') });
+  });
   if (hote2) hote2.addEventListener('click', surClic);
 
   /* ---- LE FIL ----
@@ -573,7 +592,22 @@
     window.swogeFil.ecoute(function (m) {
       if (!m || !m.type) return;
       if (m.type === 'auth') { connecte = true; reclame(); return; }
-      if (m.type === 'miroirEtat') { ETAT = m; occupe = false; peint(); majValeur(); majBilan(); return; }
+      if (m.type === 'miroirEtat') {
+        ETAT = m; occupe = false; peint(); majValeur(); majBilan();
+        /* La page des positions de la colonie montre ses boutons au
+           proprietaire : on le lui dit, et on la fait repeindre. */
+        var avant = !!window.__swogeProprietaire;
+        window.__swogeProprietaire = !!m.proprietaire;
+        if (avant !== window.__swogeProprietaire && typeof window.peintPositions === 'function') { try { window.peintPositions(); } catch (e) {} }
+        return;
+      }
+      if (m.type === 'colonieAction') {
+        occupe = false;
+        dit = m.geste === 'colonieTiens'
+          ? 'Held $' + (m.sym || court(m.adr)) + ' for ' + m.minutes + ' min — the colony will not cut it before then; your mirror follows the paper.'
+          : 'Closed $' + (m.sym || court(m.adr)) + ' on the paper book — every mirror that held it sells too.';
+        peint(); return;
+      }
       if (m.type === 'miroirCle') {
         CLE = m.cle;
         dit = m.neuf ? 'Wallet created — save this key now, it is the only copy you control.' : '';

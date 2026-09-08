@@ -406,8 +406,11 @@ function pistes(fichier) {
         /* On coupe le `?` AUSSI : la carte de l arcade mene a
            `nexus.html?salle=arcade`, et chercher ce nom-la sur le disque
            declarait la page absente alors qu elle est bien la. */
-        ok(!!c.href && fs.existsSync(path.join(SITE, c.href.split(/[?#]/)[0])),
-           `« ${c.t} » mene a ${c.href}, qui existe`);
+        /* Un lien vers l exterieur (la paire sur DexScreener) n a rien a
+           prouver sur le disque : c est une adresse, pas une page du site. */
+        const externe = /^https?:\/\//.test(c.href || '');
+        ok(!!c.href && (externe || fs.existsSync(path.join(SITE, c.href.split(/[?#]/)[0]))),
+           `« ${c.t} » mene a ${c.href}, qui ${externe ? 'est une adresse exterieure' : 'existe'}`);
         ok(c.vif, `et « ${c.lib} » est vivant`);
       } else {
         ok(c.t === 'REWARDS' || c.t === 'BUY $SWOGEBET',
@@ -448,19 +451,23 @@ function pistes(fichier) {
        'et il se passe quelque chose : sans compte, le panneau demande d abord'
        + ' de se connecter — comme la rangee du menu');
     await remets();
-    /* ---- ET « BUY NOW » PASSE PAR LA RANGEE « DEPOSIT », DE LA MEME FACON ---- */
-    await p.evaluate(() => document.querySelector('#menu a[data-panel="dep"]').click());
-    await p.waitForTimeout(500);
-    const depotParLeMenu = await etat();
-    await remets();
-    await p.click('#sbAcheter');
-    await p.waitForTimeout(500);
-    const depotParLaCarte = await etat();
-    ok(JSON.stringify(depotParLeMenu) === JSON.stringify(depotParLaCarte),
-       `« BUY NOW » aboutit au meme etat que la rangee « Deposit » du menu :`
-       + ` ${JSON.stringify(depotParLaCarte)}`);
-    ok(depotParLaCarte.voile || depotParLaCarte.porte,
-       'et la aussi il se passe quelque chose : sans compte, on demande d abord de se connecter');
+    /* ---- ET « BUY NOW » EST UN LIEN VERS LA PAIRE, PAS UN PANNEAU ----
+       « Mets ce lien de redirection, n ouvre pas de panneau de depot, pas
+         besoin. » */
+    const achat = await p.evaluate(() => {
+      const a = document.getElementById('sbAcheter');
+      return a ? { tag: a.tagName, href: a.getAttribute('href'), cible: a.getAttribute('target'), rel: a.getAttribute('rel'), texte: a.textContent.trim() } : null;
+    });
+    ok(!!achat && achat.tag === 'A' && achat.href === 'https://dexscreener.com/robinhood/0xc12943975def537daCe9D62D4762a8250501924E',
+       `« BUY NOW » est un lien vers la paire $SWOGEBET sur DexScreener : ${achat && achat.href}`);
+    ok(achat && achat.cible === '_blank' && /noopener/.test(achat.rel || '') && achat.texte === 'BUY NOW',
+       'dans un nouvel onglet, sans laisser la page ouverte derriere, et il dit toujours « BUY NOW »');
+    /* Un clic n ouvre aucun panneau : on l intercepte pour ne pas quitter la page, et on regarde l etat. */
+    await p.evaluate(() => { const a = document.getElementById('sbAcheter'); a.addEventListener('click', (e) => e.preventDefault(), { once: true }); a.click(); });
+    await p.waitForTimeout(400);
+    const apresClic = await etat();
+    ok(!apresClic.voile && !apresClic.porte, 'et le clic n ouvre ni voile ni panneau de depot : ' + JSON.stringify(apresClic));
+    ok(!/depot\.click\(\)/.test(bruteBet), 'plus aucun script ne renvoie ce bouton vers le panneau de depot');
     await remets();
 
     /* Aucun des quatre films n a de source dans le fichier : quatre cartes,

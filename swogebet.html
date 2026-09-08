@@ -2575,7 +2575,10 @@ main{ min-width:0; }
              marque, correctement cadree, et elle s efface des que le film
              demarre — mieux qu une boite vide pendant le chargement. A
              remplacer par une vraie premiere image quand on en aura une. -->
-        <video class="sb-film" id="sbFilm" src="media/bet_telephone.mp4"
+        <!-- Le film large (912 x 600, deux megaoctets), pas la prise de telephone
+             (1040 x 864, huit megaoctets) : c est la banniere que le banc attend,
+             et quatre fois moins a charger pour venir lire des cotes. -->
+        <video class="sb-film" id="sbFilm" src="media/bet.mp4"
                poster="img/site/bet_poster2.webp"
                muted loop playsinline preload="none" disablepictureinpicture
                aria-label="SWOGE Betting"></video>
@@ -2687,17 +2690,17 @@ main{ min-width:0; }
            (1008 x 896, 5,8 Mo, avec son) est ramene au format des trois autres
            — 440 x 392, muet, 430 Ko — et son affiche est sa premiere image,
            donc le passage de l une a l autre ne se voit pas.
-           Le bouton ne porte pas sa propre logique : il ouvre la rangee
-           « Deposit » du menu — le panneau qui depose du $SWOGEBET dans le
-           coffre des paris, et qui dit ou en acheter quand on n en a pas.
-           Un seul chemin, comme « VIEW REWARDS ». -->
+           « BUY NOW » : mets ce lien de redirection, n ouvre pas de panneau de
+           depot, pas besoin. » Le bouton est donc un LIEN vers la paire
+           $SWOGEBET sur DexScreener, dans un nouvel onglet — le panneau de
+           depot reste dans le menu pour qui en a deja. -->
       <article class="uni">
         <video class="film" data-film="media/premier_pari.mp4"
                poster="img/site/premier_pari_poster.webp"
                muted loop playsinline preload="none" disablepictureinpicture
                aria-hidden="true"></video><div class="voile"></div>
         <div class="dit"><b>BUY $SWOGEBET</b><i>For your first bet.</i>
-          <button class="sw-b vif" id="sbAcheter">BUY NOW</button></div>
+          <a class="sw-b vif" id="sbAcheter" href="https://dexscreener.com/robinhood/0xc12943975def537daCe9D62D4762a8250501924E" target="_blank" rel="noopener">BUY NOW</a></div>
       </article>
       <article class="uni">
         <!-- `monde.mp4` fait neuf cent soixante pixels de large et un
@@ -4639,23 +4642,11 @@ function renderBonus(b){ if(!b) return; bonusData=b;
        de laisser un rectangle qui ne repond pas. */
     bouton.remove();
   }
-  /* ---- « BUY NOW » PASSE PAR LA RANGEE « DEPOSIT » DU MENU ----
-     Le panneau de depot est celui du coffre des paris : il lit le $SWOGEBET
-     du portefeuille, le depose, et dit ou en acheter quand il n y en a pas.
-     Le bouton de la carte clique la rangee du menu — le meme chemin que le
-     menu, avec le meme refus poli quand on n est pas connecte. Il ne connait
-     ni la boite ni le formulaire : si le panneau change de tete, ce bouton
-     n a rien a savoir de plus que son identifiant. */
-  var achat = document.getElementById("sbAcheter");
-  var depot = document.querySelector('#menu a[data-panel="dep"]');
-  if(achat && depot){
-    achat.addEventListener("click", function(e){
-      e.preventDefault();
-      depot.click();
-    });
-  } else if(achat){
-    achat.remove();
-  }
+  /* ---- « BUY NOW » EST UN LIEN, PAS UN PANNEAU ----
+     « Mets ce lien de redirection, n ouvre pas de panneau de depot, pas
+       besoin. » Le bouton de la carte porte l adresse de la paire $SWOGEBET
+     sur DexScreener et s ouvre dans un nouvel onglet ; aucun script ne
+     l intercepte. */
 })();
 </script>
 </body>

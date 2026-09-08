@@ -382,6 +382,10 @@
       /* « Rajoute un bouton reset log : ca prend beaucoup de place. » Il
          n efface que le journal ; le bilan et les positions ne bougent pas. */
       + (ETAT.journal && ETAT.journal.length > 1 ? '<button class="mir-b vide" data-m="efface">Clear log</button>' : '')
+      /* « Un bouton pour remettre les stats du miroir a zero, si des
+         personnes veulent. » Seulement quand il y a quelque chose a
+         remettre ; il efface la barre, jamais une position. */
+      + (ETAT.bilan && ETAT.bilan.trades > 0 ? '<button class="mir-b vide" data-m="remet">Reset stats</button>' : '')
       + '</div>';
 
     if (CLE) {
@@ -534,6 +538,11 @@
       envoie({ type: 'miroirCree' }); return;
     }
     if (m === 'cle') { envoie({ type: 'miroirCle' }); return; }
+    if (m === 'remet') {
+      var bl = ETAT.bilan || {};
+      if (!confirm('Reset your mirror stats? The ' + (bl.trades || 0) + ' recorded trade(s) leave the bar — profit, win rate, best all start again from zero. Open positions, the log and your balance are not touched.')) return;
+      envoie({ type: 'miroirRemetStats' }); return;
+    }
     if (m === 'efface') {
       if (!confirm('Clear the log? Positions, trades and the balance are not affected.')) return;
       envoie({ type: 'miroirEffaceJournal' }); return;
@@ -576,6 +585,7 @@
           + (m.poussiere ? ' — kept: selling would cost more gas than it returns' : '') + '.';
         peint(); return;
       }
+      if (m.type === 'miroirRemetStats') { dit = 'Stats reset — ' + (m.effaces || 0) + ' trade(s) cleared.'; peint(); return; }
       if (m.type === 'miroirOuvre') { occupe = false; dit = 'Bought $' + (m.sym || court(m.adr)) + '.'; peint(); return; }
       if (m.type === 'miroirStop') {
         occupe = false;

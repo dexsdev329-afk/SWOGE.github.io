@@ -1623,7 +1623,7 @@ async function auditDesVetos() {
     const recus = [];
     /* Le faux serveur tient deux etats : le miroir tourne apres Play, et la
        position part apres « Sell now ». */
-    let actifFaux = false, venduFaux = false;
+    let actifFaux = false, venduFaux = false, remisFaux = false;
     jeu.on('connection', (c) => {
       c.send(JSON.stringify({ type: 'hello', loginNonce: 'a', chainId: 4663 }));
       c.on('message', (d) => {
@@ -1632,14 +1632,16 @@ async function auditDesVetos() {
           c.send(JSON.stringify({ type: 'auth', address: '0x' + '11'.repeat(20), balance: '0', session: 'j' }));
         if (m.type === 'miroirEffaceJournal') recus.push(m.type);
         if (m.type === 'miroirPlay') actifFaux = true;
+        if (m.type === 'miroirRemetStats') { recus.push(m.type); remisFaux = true; c.send(JSON.stringify({ type: 'miroirRemetStats', effaces: 12 })); }
         if (m.type === 'miroirVends') { recus.push('miroirVends:' + m.adr); venduFaux = true; c.send(JSON.stringify({ type: 'miroirVends', adr: m.adr, sym: 'T', sortie: '0.0041' })); }
         if (m.type === 'miroirOuvre') { recus.push('miroirOuvre:' + m.adr); c.send(JSON.stringify({ type: 'miroirOuvre', adr: m.adr, sym: 'NEW' })); }
-        if (m.type === 'miroirEtat' || m.type === 'miroirEffaceJournal' || m.type === 'miroirPlay' || m.type === 'miroirVends' || m.type === 'miroirOuvre')
+        if (m.type === 'miroirEtat' || m.type === 'miroirEffaceJournal' || m.type === 'miroirPlay' || m.type === 'miroirVends' || m.type === 'miroirOuvre' || m.type === 'miroirRemetStats')
           c.send(JSON.stringify({ type: 'miroirEtat', pret: true, execute: false, existe: true, actif: actifFaux,
             adresse: '0x' + 'ab'.repeat(20), solde: '0.05', min: '0.002', max: '0.5', part: 0.1,
             ordreMax: '0.05', gaz: '0.0015', places: 25,
             ouvertes: venduFaux ? [] : [{ adr: '0x' + 'aa'.repeat(20), sym: 'T', entree: '0.004', t: Date.now(), simule: true }],
-            bilan: { trades: 12, gagnantes: 7, profitEth: '0.0031', meilleur: 2.4, ouvertes: 1, simule: true },
+            bilan: remisFaux ? { trades: 0, gagnantes: 0, profitEth: '0.000000', meilleur: 0, ouvertes: 1, simule: false }
+                            : { trades: 12, gagnantes: 7, profitEth: '0.0031', meilleur: 2.4, ouvertes: 1, simule: true },
             journal: m.type === 'miroirEffaceJournal'
               ? [{ t: Date.now(), txt: 'Log cleared (3 lines). Positions, trades and the balance are untouched.' }]
               : [{ t: Date.now(), txt: 'Bought T' }, { t: Date.now(), txt: 'Sold T' }, { t: Date.now(), txt: 'Play' }] }));
@@ -1772,6 +1774,19 @@ async function auditDesVetos() {
     ok(recus.indexOf('miroirOuvre:' + '0x' + 'bb'.repeat(20)) >= 0, 'une bonne adresse, confirmee, envoie miroirOuvre au serveur');
     const apresAchat = await page.evaluate(() => [...document.querySelectorAll('.mir-dit')].map((x) => x.textContent));
     ok(apresAchat.some((x) => /Bought \$NEW/.test(x)), 'et la reponse se lit : ' + JSON.stringify(apresAchat));
+    /* « Un bouton pour remettre les stats du miroir a zero. » A cote de Clear
+       log ; il demande confirmation, et la barre repart de zero. */
+    console.log('\n-- la barre du miroir se remet a zero sur un bouton --');
+    const b2 = await page.evaluate(() => [...document.querySelectorAll('#gxMiroir .mir-row .mir-b')].map((b) => b.textContent.trim()));
+    ok(b2.indexOf('Reset stats') >= 0, 'un bouton « Reset stats » a cote de « Clear log » : ' + JSON.stringify(b2));
+    page.once('dialog', (d) => d.accept());
+    await page.evaluate(() => document.querySelector('#gxMiroir .mir-b[data-m="remet"]').click());
+    await page.waitForTimeout(800);
+    ok(recus.indexOf('miroirRemetStats') >= 0, 'le clic, confirme, envoie miroirRemetStats au serveur');
+    const barre0 = await page.evaluate(() => { const t = (id) => (document.getElementById(id) || {}).textContent || ''; return { trades: t('mir-trades'), wr: t('mir-wr'), best: t('mir-best'), open: t('mir-open'), dit: [...document.querySelectorAll('.mir-dit')].map((x) => x.textContent) }; });
+    ok(barre0.trades === '0' && barre0.wr === '\u2014' && barre0.best === '\u2014' && barre0.open === '1',
+       'la barre repart de zero — et la position ouverte y est toujours (' + JSON.stringify(barre0) + ')');
+    ok(barre0.dit.some((x) => /12 trade/.test(x)), 'et la reponse dit combien de trades ont ete effaces');
     /* « Les maisons et les chiens, plus gros. » Sur un telephone : deux
        colonnes dans un monde de 600, la scene a la hauteur du village. */
     await page.setViewportSize({ width: 390, height: 800 });

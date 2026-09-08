@@ -13,7 +13,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
-var MARQUE_PAGE = 'e737dd62';
+var MARQUE_PAGE = '9eeb4378';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -1448,6 +1448,15 @@ const PHRASES = {
                       + 'vers ' + viaFr(via) + '. C\'est le transfert qui est simule, pas l\'echange complet.'],
   sortieBloqueeAide:[(r, n, via) => r + ' of ' + n + ' holder(s) cannot send the token to the ' + (via || 'pool') + '.',
                  (r, n, via) => r + ' detenteur(s) sur ' + n + ' ne peuvent pas envoyer le jeton vers ' + viaFr(via) + '.'],
+  /* L'aller-retour : le Cobaye demande aussi au quoteur du miroir ce que
+     rendrait la vente immediate — l'echange entier, celui-la. Le chiffre
+     est le pourcentage de la sonde qui reviendrait. */
+  sortieRetour: [(p) => 'round trip ' + p + '%', (p) => 'aller-retour ' + p + ' %'],
+  sortieRetourAide:[(p, min, ver) => 'The quoter also priced the full round trip: selling straight back would return ' + p + '% of the stake'
+                      + (ver ? ' on Uniswap ' + ver : '') + ' (' + min + '% needed).',
+                 (p, min, ver) => 'Le quoteur a aussi chiffre l\'aller-retour complet : revendre aussitot rendrait ' + p + ' % de la mise'
+                      + (ver ? ' sur Uniswap ' + ver : '') + ' (' + min + ' % exiges).'],
+  sortieRetourBloquee:[(p) => 'lets you in, not out · ' + p + '% back', (p) => 'laisse entrer, pas sortir · ' + p + ' % de retour'],
 
   /* --- les positions --- */
   pasFerme:     ['No closed position yet. The open ones are just above.',
@@ -1749,9 +1758,15 @@ function resout(b){
    * epreuve reussie. */
   if(A.role === "epreuve" && t.epreuve){
     const e = t.epreuve;
+    /* Quand seul l'aller-retour a repondu (pool V4 sans teneur), c'est lui
+       qui monte, avec son pourcentage. */
+    const rt = e.retour && e.retour.pct !== undefined ? e.retour : null;
     spawnFloat(AGENTS[b.i].house.x, AGENTS[b.i].house.y+6,
-      e.teste ? ph("sortieOk", e.essais-e.refus, e.essais) : ph("sortieNonTestable"),
-      e.teste ? "up" : "n");
+      !e.teste ? ph("sortieNonTestable")
+      : !e.passe && rt && rt.pct < rt.min ? ph("sortieRetourBloquee", rt.pct)
+      : e.essais ? ph("sortieOk", e.essais-e.refus, e.essais)
+      : ph("sortieRetour", rt ? rt.pct : 0),
+      e.teste && e.passe ? "up" : "n");
   }
   if(A.role === "banque"){
     /* Le Banquier ne dit pas oui : il dit COMBIEN. La mise affichee est celle
@@ -2221,10 +2236,18 @@ function peintFlux(){
      * n'a pas repondu, on ecrit « non testable » plutot que rien : une
      * epreuve qu'on n'a pas pu jouer n'est pas une epreuve reussie. */
     const e = t.epreuve;
+    /* Et l'aller-retour, quand le miroir l'a chiffre : a cote du transfert
+       quand les deux ont repondu, seul quand le transfert n'etait pas
+       testable (pool V4 sans teneur). Une piscine qui laisse entrer et pas
+       sortir est dite avec son pourcentage, comme dans le journal du miroir. */
+    const rt = e && e.retour && e.retour.pct !== undefined ? e.retour : null;
+    const rtTxt = rt ? ph("sortieRetour", rt.pct) : "";
+    const rtAide = rt ? " " + ph("sortieRetourAide", rt.pct, rt.min, rt.ver) : "";
     const sortie = !e ? ""
       : !e.teste ? ` · <span class="muet" title="${echappe(e.raison||"")}">${echappe(ph("sortieNonTestable"))}</span>`
-      : e.passe ? ` · <span class="ok" title="${echappe(ph("sortieAide", e.essais - e.refus, e.essais, e.via))}">${echappe(ph("sortieOk", e.essais - e.refus, e.essais))}</span>`
-      : ` · <span class="rej" title="${echappe(ph("sortieBloqueeAide", e.refus, e.essais, e.via))}">${echappe(ph("sortieBloquee", e.refus, e.essais))}</span>`;
+      : e.passe ? ` · <span class="ok" title="${echappe((e.essais ? ph("sortieAide", e.essais - e.refus, e.essais, e.via) : "") + rtAide)}">${echappe((e.essais ? ph("sortieOk", e.essais - e.refus, e.essais) + (rt ? " · " : "") : "") + rtTxt)}</span>`
+      : rt && rt.pct < rt.min ? ` · <span class="rej" title="${echappe(ph("sortieRetourAide", rt.pct, rt.min, rt.ver))}">${echappe(ph("sortieRetourBloquee", rt.pct))}</span>`
+      : ` · <span class="rej" title="${echappe(ph("sortieBloqueeAide", e.refus, e.essais, e.via) + rtAide)}">${echappe(ph("sortieBloquee", e.refus, e.essais))}</span>`;
     return `<div class="tok">
       <span class="sym">$${echappe(t.sym)}</span>
       <span class="badge rh">RH</span>

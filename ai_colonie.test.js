@@ -97,7 +97,9 @@ function vueFausse(o) {
         transferts: 812, goplusSait: false,
         /* Le Cobaye a demande au contrat, pour trois vrais detenteurs, ce
            qu'il ferait d'un envoi vers la piscine : trois fois oui. */
-        epreuve: { teste: true, essais: 3, refus: 0, passe: true } },
+        epreuve: { teste: true, essais: 3, refus: 0, passe: true,
+                   /* et le quoteur du miroir a chiffre l'aller-retour : 98,2 % reviennent */
+                   retour: { pct: 98.2, min: 60, ver: 'v4', pool: '0xpool1' } } },
       /* ---- LE PIEGE QUE PERSONNE D'AUTRE NE VOIT ----
        * GoPlus le dit propre, la chaine le dit bien reparti, les compteurs
        * disent qu'on achete. Seule la tentative de sortie le trahit. */
@@ -1488,6 +1490,8 @@ async function auditDesVetos() {
     ok(/exit 3\/3/.test(l.NOVA || ''),
        'un jeton dont la sortie a ete testee porte ses CHIFFRES, pas une coche : « '
        + (l.NOVA || '') + ' »');
+    ok(/exit 3\/3 · round trip 98\.2%/.test(l.NOVA || ''),
+       'et l aller-retour chiffre par le quoteur du miroir est ecrit a cote, en pourcentage : « ' + (l.NOVA || '') + ' »');
     ok(/exit not testable/.test(l.INCONNU || ''),
        'et quand le noeud n a pas repondu, c est ecrit — une epreuve qu on n a pas pu jouer '
        + 'n est pas une epreuve reussie : « ' + (l.INCONNU || '') + ' »');
@@ -1497,6 +1501,8 @@ async function auditDesVetos() {
     console.log('   au survol : ' + titre);
     ok(!!titre && /not the full swap/.test(titre),
        'et ce que l epreuve NE prouve pas est ecrit la ou on la lit');
+    ok(!!titre && /full round trip: selling straight back would return 98\.2% of the stake on Uniswap v4 \(60% needed\)/.test(titre),
+       'et l aller-retour, lui, EST l echange entier : le survol le dit, avec le seuil');
 
     /* Et le piege s'arrete CHEZ LE COBAYE : c'est le seul agent qui pouvait le
        voir, puisque tous les autres l'avaient laisse passer. */

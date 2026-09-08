@@ -13,7 +13,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
-var MARQUE_PAGE = '65a1bc29';
+var MARQUE_PAGE = '677bbd58';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -1565,6 +1565,14 @@ const PHRASES = {
   pasEncore:    ['not yet', 'pas encore'],
   dernierEchec: [(e) => 'last failure: ' + e, (e) => 'dernier echec : ' + e],
   horsService:  ['Tried, and unusable here:', 'Essayes, et inutilisables ici :'],
+  /* Les ponts du miroir : les monnaies de cotation qu'il sait franchir, et ce
+     qu'il en a mesure. C'est ce qui explique qu'une paire cotee en USDG soit
+     achetable et une paire cotee en GLD non. */
+  ponts:        ['Bridges the mirror can cross:', 'Ponts que le miroir sait franchir :'],
+  pontOk:       [(sym, liq, ver) => sym + ' ✓ ' + liq + ' of ETH liquidity (Uniswap ' + ver + ')', (sym, liq, ver) => sym + ' ✓ ' + liq + ' de liquidite ETH (Uniswap ' + ver + ')'],
+  pontKo:       [(sym, r) => sym + ' ✕ ' + r, (sym, r) => sym + ' ✕ ' + r],
+  pontAttend:   [(sym) => sym + ' · not measured yet', (sym) => sym + ' · pas encore mesure'],
+  pontsVide:    ['none — ETH pairs only', 'aucun — paires ETH seulement'],
   fermN:        [(t, s, dep) => t + ' · threshold ' + s + (s !== dep ? ' (was ' + dep + ')' : ''),
                  (t, s, dep) => t + ' · seuil ' + s + (s !== dep ? ' (etait ' + dep + ')' : '')],
   sousTitre:    [(n) => n + ' agents · real Robinhood Chain tokens · they organise themselves and '
@@ -2674,6 +2682,16 @@ function peintServices(){
   if(cles.length){
     html += '<div class="horsservice"><b>' + ph("horsService") + '</b><br>'
           + cles.map(k=>echappe(hs[k])).join("<br>") + '</div>';
+  }
+  const po = VUE && VUE.ponts;
+  if(po){
+    const vus = po.vus || [];
+    const lignes = po.liste.length ? po.liste.map(sym=>{
+      const v = vus.find(x=>x.sym && x.sym.toUpperCase() === sym);
+      if(!v) return echappe(ph("pontAttend", sym));
+      return v.ok ? echappe(ph("pontOk", sym, fmtMC(v.liq), v.ver)) : echappe(ph("pontKo", sym, v.raison || ""));
+    }) : [echappe(ph("pontsVide"))];
+    html += '<div class="horsservice" id="ponts"><b>' + ph("ponts") + '</b><br>' + lignes.join("<br>") + '</div>';
   }
   $("services").innerHTML = html;
 }

@@ -231,6 +231,7 @@ function vueFausse(o) {
       { cle: 'ohlcv', nom: 'GeckoTerminal · candles', quoi: 'the volatility actually observed', cout: 1,
         essais: 20, reussites: 20, dernier: now, dernierEchec: null },
     ],
+    ponts: { liste: ['USDG', 'NVDA'], vus: [{ adr: '0x' + 'd0'.repeat(20), sym: 'NVDA', ok: true, liq: 1184565, ver: 'v3', raison: null, t: now }] },
     horsService: {
       gmgn: 'GMGN — 403 Cloudflare, on ethereum too: that is anti-bot protection, not an absence '
           + 'of chain 4663.',
@@ -626,6 +627,8 @@ async function panneaux() {
   ok(/111\/120/.test(v.services), 'avec leur releve reel (111/120 pour la chaine)');
   ok(/last failure: 429/.test(v.services),
      'et le dernier echec en clair quand il y en a un');
+  ok(/Bridges the mirror can cross:\s*USDG · not measured yet\s*NVDA ✓ \$1\.2M of ETH liquidity \(Uniswap v3\)/.test(v.services),
+     'et les ponts du miroir, avec ce qui est mesure et ce qui ne l est pas encore : « ' + (v.services.match(/Bridges[^G]*/) || [''])[0].slice(0, 90) + ' »');
   ok(/GMGN/.test(v.services) && /Cloudflare/.test(v.services),
      'GMGN est NOMME avec la raison mesuree, plutot que passe sous silence');
   ok(/on ethereum too/.test(v.services),

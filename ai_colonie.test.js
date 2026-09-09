@@ -1669,7 +1669,9 @@ async function auditDesVetos() {
           c.send(JSON.stringify({ type: 'miroirEtat', pret: true, execute: false, existe: true, actif: actifFaux, proprietaire: true,
             adresse: '0x' + 'ab'.repeat(20), solde: '0.05', min: '0.002', max: '0.5', part: 0.1,
             ordreMax: '0.05', gaz: '0.0015', places: 25,
-            ouvertes: venduFaux ? [] : [{ adr: '0x' + 'aa'.repeat(20), sym: 'T', entree: '0.004', t: Date.now(), simule: true, via: 'NVDA' }],
+            ouvertes: venduFaux ? [] : [{ adr: ADR_NOVA, sym: 'T', entree: '0.004', t: Date.now(), simule: true, via: 'NVDA',
+              /* Ce que le quoteur donnerait pour tout ce qu on tient, et depuis quand. */
+              cout: '0.004', valeur: '0.0052', gain: '0.0012', gainPct: 30, valeurT: Date.now() }],
             transit: venduFaux ? [] : [{ sym: 'NVDA', adr: '0x' + 'd0'.repeat(20), montant: '0.02', t: Date.now() }],
             bilan: remisFaux ? { trades: 0, gagnantes: 0, profitEth: '0.000000', meilleur: 0, ouvertes: 1, simule: false }
                             : { trades: 12, gagnantes: 7, profitEth: '0.0031', meilleur: 2.4, ouvertes: 1, simule: true },
@@ -1778,15 +1780,24 @@ async function auditDesVetos() {
     console.log('   ' + JSON.stringify(carte).slice(0, 400));
     ok(carte.existe && carte.dansLive && carte.apres, 'la carte est dans « Live », juste apres les positions de papier de la colonie');
     ok(/mirror/i.test(carte.titre || '') && carte.compte === '1', 'elle dit « mirror » dans son titre et compte la position ouverte (' + carte.compte + ')');
-    ok(!!carte.vends && carte.vends.texte === 'Sell now' && carte.vends.adr === '0x' + 'aa'.repeat(20),
+    ok(!!carte.vends && carte.vends.texte === 'Sell now' && carte.vends.adr === ADR_NOVA,
        'chaque position porte un bouton « Sell now » qui connait son jeton');
+    /* ---- LE BENEFICE ET LA CAPITALISATION, EN DIRECT ----
+     * « Sur les positions du miroir, il faudrait voir le market cap et le
+     * benefice en direct. » Le benefice vient du QUOTEUR — ce que « Sell now »
+     * rendrait — et la capitalisation est celle que la colonie a deja lue pour
+     * ce meme jeton, pour que les deux cartes ne se contredisent pas. */
+    ok(/\+30\.0%/.test(carte.ligne || '') && /\+0\.0012 ETH/.test(carte.ligne || ''),
+       'la ligne porte le benefice en direct, en pourcentage et en ETH : « ' + (carte.ligne || '').replace(/\s+/g, ' ').trim().slice(0, 130) + ' »');
+    ok(/\$330k cap \(bought at \$310k\)/.test(carte.ligne || ''),
+       'et la capitalisation du moment, prise chez la colonie, la meme que sur la carte du papier');
     ok(carte.acheteDesactive === true && /Press Play/.test(carte.note || ''),
        'miroir arrete : « Buy now » est eteint, et la note dit d appuyer sur Play d abord');
     /* Vendre maintenant : confirmation, message au serveur, et la carte se vide. */
     page.once('dialog', (d) => d.accept());
     await page.evaluate(() => document.querySelector('.card[data-pan="miroirPositions"] [data-m="vends"]').click());
     await page.waitForTimeout(800);
-    ok(recus.indexOf('miroirVends:' + '0x' + 'aa'.repeat(20)) >= 0, 'le clic, confirme, envoie miroirVends avec l adresse du jeton');
+    ok(recus.indexOf('miroirVends:' + ADR_NOVA) >= 0, 'le clic, confirme, envoie miroirVends avec l adresse du jeton');
     const apresVente = await page.evaluate(() => ({
       compte: (document.getElementById('mirPosN') || {}).textContent,
       boutons: document.querySelectorAll('.card[data-pan="miroirPositions"] [data-m="vends"]').length,

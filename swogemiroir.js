@@ -444,6 +444,27 @@
       /* Une position prise par un pont (ETH -> NVDA -> jeton) le dit : deux
          jambes a la vente aussi, le double de gaz. */
       + (o.via ? ' · via ' + esc(o.via) : '')
+      /* ---- CE QU'ELLE VAUT, ET CE QU'ELLE RAPPORTE, EN DIRECT ----
+       * « Il faudrait voir le market cap et le benefice en direct. » Le
+       * benefice n'est PAS le prix affiche multiplie par la quantite : c'est ce
+       * que le quoteur donnerait pour tout ce qu'on tient, sur la route ou le
+       * miroir vendra — donc ce que « Sell now » rendrait. Il porte l'heure de
+       * sa lecture ; sans lecture, on ecrit qu'on n'a pas lu. */
+      + (o.gainPct === null || o.gainPct === undefined
+          ? ' · <i style="opacity:.65">value not read yet</i>'
+          : ' · <b style="color:' + (o.gainPct >= 0 ? 'var(--gain,#12B76A)' : 'var(--loss,#F04438)') + '">'
+            + (o.gainPct >= 0 ? '+' : '') + o.gainPct.toFixed(1) + '%</b>'
+            + ' (' + (Number(o.gain) >= 0 ? '+' : '') + nb(o.gain) + ' ETH)'
+            + (o.valeurT ? ' · ' + heure(o.valeurT) : ''))
+      /* Et la capitalisation, prise chez la colonie : le meme chiffre pour tout
+         le monde. Elle manque quand le papier ne tient plus ce jeton. */
+      + (function () {
+          var f = window.__swogeCap && window.__swogeCap(o.adr);
+          if (!f || !f.maintenant) return '';
+          var m = window.__swogeFmtMC || function (x) { return '$' + x; };
+          return ' · ' + esc(m(f.maintenant)) + ' cap'
+               + (f.achat ? ' (bought at ' + esc(m(f.achat)) + ')' : '');
+        })()
       /* Les tranches deja vendues, comme la colonie les montre : « 70% sold ·
          banked · 30% still running ». */
       + (o.reste !== undefined && o.reste < 0.999

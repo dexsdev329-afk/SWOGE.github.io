@@ -13,7 +13,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
-var MARQUE_PAGE = 'fce11e60';
+var MARQUE_PAGE = 'dcd0f4fb';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -1077,7 +1077,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 </div>
 
 <script src="swogeprofil.js?v=aa21d613" defer></script>
-<script src="swogemiroir.js?v=3d751d9a" defer></script>
+<script src="swogemiroir.js?v=a3ff4405" defer></script>
 
 <!-- La carte « YOUR BALANCE » recopie #bal, jamais l'inverse. -->
 <script>
@@ -2811,6 +2811,20 @@ async function demande(manuel){
     const v = await r.json();
     if(!v || typeof v.tresor !== "number") throw new Error(ph("illisible"));
     VUE = v; RECU = Date.now(); ERREUR_RESEAU = null;
+    /* ---- LA CAPITALISATION, POUR LA CARTE DU MIROIR ----
+       « Sur les positions du miroir, il faudrait voir le market cap. » Le
+       miroir tient les memes jetons que le papier ; la colonie a deja lu
+       leur capitalisation, et depuis le 9 septembre elle va avec le prix
+       qui sert au pourcentage. On la partage plutot que de la relire —
+       deux lectures du meme chiffre finissent toujours par diverger.
+       Rend `null` pour un jeton que le papier ne tient pas : le miroir en
+       tient parfois que la colonie a deja vendus. */
+    window.__swogeCap = function(adr){
+      const a = String(adr || '').toLowerCase();
+      const p = (VUE.positions || []).find(x => String(x.adr || '').toLowerCase() === a);
+      return p ? { achat: p.mcAchat, maintenant: p.mcMaintenant } : null;
+    };
+    window.__swogeFmtMC = fmtMC;
     if(!shownBal) shownBal = v.tresor;
     /* La structure d'abord : si un agent est ne ou a ete retire, le village
        change de forme avant qu'un seul jeton n'y entre. */

@@ -76,6 +76,10 @@ function vueFausse(o) {
         tenueMin: 20, latent: 6.4, gainLatent: 2.24, mise: 35, methode: 'part',
         regime: 'around the start', raisonMise: 'part method, « around the start » regime',
         origine: 'profils', mcAchat: 310000, prolonge: 1, prixVu: now - 30000, dexVu: true,
+        /* La capitalisation du MOMENT va avec le latent : +6,4 % sur 310k font
+           330k. Et ce que la source annonce pour ce meme prix, quand elle dit
+           autre chose — mesure le 9 septembre : 21 % d ecart sur $PHUB. */
+        mcMaintenant: 329840, mcSource: 396000,
         /* Elle est sortie par paliers : 70 % vendus en route, 30 % courent
            encore, et le plus haut vu est ce que l'arret suiveur surveille. */
         reste: 0.3, encaisse: 12.4, paliers: 2, hautR: 62.5,
@@ -658,6 +662,17 @@ async function ficheDeLaPosition() {
   ok(/bought at \$310k cap/.test(pos[0]),
      'la capitalisation AU MOMENT DE L ACHAT est affichee (310k)');
   ok(/bought at \$45k cap/.test(pos[1]), 'sur chaque position, pas seulement la premiere');
+  /* ---- ET CELLE DU MOMENT, QUI VA AVEC LE LATENT ----
+   * « L affichage du market cap n est pas assez precis, le decalage. » Les
+   * deux capitalisations venaient de deux sources : leur ecart ne valait pas
+   * le pourcentage affiche a cote. Celle du moment se calcule desormais sur le
+   * meme prix que le latent — +6,4 % sur 310k font bien 330k. */
+  ok(/\$330k cap now/.test(pos[0]),
+     'la capitalisation du MOMENT est affichee, et elle vaut le latent : « ' + pos[0].slice(0, 120) + ' »');
+  ok(/the source says \$396k/.test(pos[0]),
+     'et quand la source annonce autre chose pour ce meme prix, son chiffre est rendu a cote, pas a la place');
+  ok(!/cap now/.test(pos[1]) && !/the source says/.test(pos[1]),
+     'une position sans lecture du moment n en invente pas une');
   ok(/extended 1×/.test(pos[0]), 'et le fait que le Promoteur l ait gardee une fois de plus');
 
   console.log('   ' + JSON.stringify(v.liens));

@@ -13,7 +13,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
-var MARQUE_PAGE = '677bbd58';
+var MARQUE_PAGE = 'fce11e60';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -1467,6 +1467,12 @@ const PHRASES = {
   copie:        ['copied ✓', 'copie ✓'],
   selectionnez: ['select it', 'selectionnez'],
   acheteA:      [(mc) => ' · bought at ' + mc + ' cap', (mc) => ' · achete a ' + mc + ' de cap.'],
+  /* La capitalisation du MOMENT, calculee sur le meme prix que le latent :
+     les deux se contredisaient de vingt pour cent quand elles venaient de
+     deux sources. Et ce que la source annonce, quand elle dit autre chose
+     pour ce meme prix — jamais a la place, toujours a cote. */
+  capNow:       [(mc) => ' · ' + mc + ' cap now', (mc) => ' · ' + mc + ' de cap. maintenant'],
+  capSource:    [(mc) => ' · the source says ' + mc, (mc) => ' · la source dit ' + mc],
   vendu:        [(p) => p + '% sold', (p) => p + ' % vendu'],
   encaisse:     [(m) => ' · ' + m + ' banked', (m) => ' · ' + m + ' encaisse'],
   courtEncore:  [(p) => ' · ' + p + '% still running', (p) => ' · ' + p + ' % court encore'],
@@ -2395,8 +2401,14 @@ function peintPositions(){
        +40 % ne veut rien dire : quarante pour cent depuis une capitalisation de
        vingt mille et depuis une de deux millions ne sont pas le meme evenement,
        et ne se reproduisent pas de la meme facon. */
+    /* Et celle du MOMENT a cote : c'est ce qu'on compare a l'ecran d'en face.
+       Elle se calcule sur le meme prix que le latent, donc l'ecart entre les
+       deux capitalisations EST le latent — ce qui n'etait pas vrai tant que
+       l'une venait de GeckoTerminal et l'autre de DexScreener. */
     const mc = (p.mcAchat === null || p.mcAchat === undefined)
-      ? '' : echappe(ph("acheteA", fmtMC(p.mcAchat)));
+      ? '' : ((p.mcMaintenant ? echappe(ph("capNow", fmtMC(p.mcMaintenant))) : '')
+              + echappe(ph("acheteA", fmtMC(p.mcAchat)))
+              + (p.mcSource ? echappe(ph("capSource", fmtMC(p.mcSource))) : ''));
     /* ---- CE QUI A DEJA ETE PRIS, ET CE QUI COURT ENCORE ----
      * La position ne sort plus d'un bloc : elle vend par paliers et laisse le
      * reste courir. Sans ces deux chiffres, une position a +8 % qui a deja

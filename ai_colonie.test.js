@@ -236,6 +236,13 @@ function vueFausse(o) {
         essais: 20, reussites: 20, dernier: now, dernierEchec: null },
     ],
     ponts: { liste: ['USDG', 'NVDA'], vus: [{ adr: '0x' + 'd0'.repeat(20), sym: 'NVDA', ok: true, liq: 1184565, ver: 'v3', raison: null, t: now }] },
+    /* Les jeux de regles qui rejouent les memes ombres sans en trader aucune. */
+    bancs: o.bancs || [
+      { cle: 'en vigueur', quoi: 'the rules actually trading today', n: 240, moyenne: -4.2, partGagnantes: 31, meilleur: 88 },
+      { cle: 'paliers hauts', quoi: 'rungs at +50% and +150%, trailing stop 100 pts, cut at -20%', n: 240, moyenne: 12.6, partGagnantes: 26, meilleur: 410 },
+      { cle: 'laisser courir', quoi: 'no rungs at all, trailing stop 100 pts, cut at -15%', n: 240, moyenne: 8.1, partGagnantes: 22, meilleur: 512 },
+      { cle: 'scalp + moon bag', quoi: 'today rungs and trailing stop, but 20% of the position is never sold and rides to the end', n: 240, moyenne: 3.4, partGagnantes: 34, meilleur: 190 },
+    ],
     horsService: {
       gmgn: 'GMGN — 403 Cloudflare, on ethereum too: that is anti-bot protection, not an absence '
           + 'of chain 4663.',
@@ -1469,6 +1476,52 @@ async function auditDesVetos() {
    * lirait comme une garantie de pouvoir vendre — ce que cette epreuve n'est
    * pas, puisqu'elle simule le transfert et non l'echange entier.
    * ==================================================================== */
+  /* ======================================================================
+   * LES JEUX DE REGLES QUI COURENT SANS TRADER
+   *
+   * « Faire mesurer par la colonie elle-meme ce que donneraient deux ou trois
+   * jeux de regles concurrents. » Seize trades mesures a la main ne decident
+   * de rien. La carte montre la comparaison, dit lequel trade aujourd hui, et
+   * se tait tant qu il y a trop peu de rejeux.
+   * ==================================================================== */
+  console.log('\n-- les jeux de regles, cote a cote, et aucun ne trade --');
+  {
+    const { page, boum } = await ouvre(nav, port, {});
+    await page.waitForTimeout(1200);
+    const b = await page.evaluate(() => {
+      const c = document.querySelector('.card[data-pan="bancs"]');
+      return { existe: !!c, compte: (document.getElementById('bancsN') || {}).textContent,
+               txt: c ? c.textContent.replace(/\s+/g, ' ').trim() : '' };
+    });
+    console.log('   ' + b.txt.slice(0, 240));
+    ok(b.existe && /240 tokens replayed/.test(b.compte || ''), 'la carte existe et compte les rejeux : ' + b.compte);
+    ok(/en vigueur/.test(b.txt) && /trading today/.test(b.txt),
+       'celui qui trade aujourd hui est NOMME comme tel : les autres ne decident rien');
+    ok(/-4\.2%/.test(b.txt) && /\+12\.6%/.test(b.txt) && /\+8\.1%/.test(b.txt) && /\+3\.4%/.test(b.txt),
+       'chaque jeu porte ce qu il aurait rendu en moyenne');
+    ok(/scalp \+ moon bag/.test(b.txt) && /20% of the position is never sold/.test(b.txt),
+       'et le moon bag est decrit pour ce qu il est : une part que rien ne vend');
+    ok(/240 tokens · 31% of them ended up/.test(b.txt),
+       'avec le nombre de jetons rejoues et la part qui finit en hausse');
+    ok(/✓/.test(b.txt), 'et le meilleur est marque, au-dela de cent rejeux');
+    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
+    await page.context().close();
+  }
+
+  console.log('\n-- trop peu de rejeux : la carte le dit au lieu de classer --');
+  {
+    const { page } = await ouvre(nav, port, { vueOpts: { bancs: [
+      { cle: 'en vigueur', quoi: 'x', n: 12, moyenne: -2, partGagnantes: 30, meilleur: 10 },
+      { cle: 'paliers hauts', quoi: 'y', n: 12, moyenne: 40, partGagnantes: 25, meilleur: 90 }] } });
+    await page.waitForTimeout(1200);
+    const t = await page.evaluate(() => (document.querySelector('.card[data-pan="bancs"]') || {}).textContent || '');
+    const plat = t.replace(/\s+/g, ' ');
+    ok(/a difference on a handful of tokens is luck, not a result/.test(plat),
+       'sous cent rejeux, la carte refuse de designer un gagnant : « ' + plat.trim().slice(-95) + ' »');
+    ok(!/✓/.test(plat), 'et aucun n est marque gagnant');
+    await page.context().close();
+  }
+
   console.log('\n-- l epreuve de sortie, a l ecran --');
   {
     const { page, boum } = await ouvre(nav, port, {});

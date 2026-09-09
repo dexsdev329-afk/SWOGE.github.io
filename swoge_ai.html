@@ -13,7 +13,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
-var MARQUE_PAGE = '7e21081a';
+var MARQUE_PAGE = 'fdad489e';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -1025,6 +1025,14 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
           <h2><span data-t="tAudit">What happens to the rejected ones</span> <span class="count" id="auditN">—</span></h2>
           <div id="audit"><div class="empty" data-t="vAudit">Nothing yet. Every token analysed — bought or rejected — is followed to its deadline and priced again. That is what tells us whether a veto really protects, or mostly turns away winners.</div></div>
         </div>
+        <!-- ---- LES JEUX DE REGLES QUI COURENT SANS TRADER ----
+             « Faire mesurer par la colonie elle-meme ce que donneraient deux ou
+             trois jeux de regles concurrents. » Seize trades mesures a la main
+             ne decident de rien ; chaque ombre qui s'en va les rejoue tous. -->
+        <div class="card" data-pan="bancs">
+          <h2><span data-t="tBancs">Rule sets running side by side</span> <span class="count" id="bancsN">—</span></h2>
+          <div id="bancs"><div class="empty" data-t="vBancs">Nothing yet. Every token followed to its deadline is replayed through several exit rules at once — none of them trades, they only count. The one that trades today is marked.</div></div>
+        </div>
         <div class="card" data-pan="services">
           <h2><span data-t="tServices">What is being read</span> <span class="count" id="srvN">—</span></h2>
           <div id="services"><div class="empty" data-t="vServeur">Waiting for the server…</div></div>
@@ -1570,6 +1578,14 @@ const PHRASES = {
                           + 'qu\'elle ne protege'],
   pasEncore:    ['not yet', 'pas encore'],
   dernierEchec: [(e) => 'last failure: ' + e, (e) => 'dernier echec : ' + e],
+  tBancs:       ['Rule sets running side by side', 'Jeux de regles qui courent en parallele'],
+  vBancs:       ['Nothing yet. Every token followed to its deadline is replayed through several exit rules at once — none of them trades, they only count. The one that trades today is marked.',
+                 'Rien encore. Chaque jeton suivi jusqu a son echeance est rejoue a travers plusieurs jeux de sorties a la fois — aucun ne trade, ils comptent. Celui qui trade aujourd hui est marque.'],
+  bancsN:       [(n) => n + ' tokens replayed', (n) => n + ' jetons rejoues'],
+  bancEnCours:  ['trading today', 'trade aujourd hui'],
+  bancDetail:   [(n, g) => n + ' tokens · ' + g + '% of them ended up', (n, g) => n + ' jetons · ' + g + ' % finissent en hausse'],
+  bancAssez:    ['Too few replays to separate them yet — a difference on a handful of tokens is luck, not a result.',
+                 'Trop peu de rejeux pour les separer — un ecart sur une poignee de jetons est de la chance, pas un resultat.'],
   horsService:  ['Tried, and unusable here:', 'Essayes, et inutilisables ici :'],
   /* Les ponts du miroir : les monnaies de cotation qu'il sait franchir, et ce
      qu'il en a mesure. C'est ce qui explique qu'une paire cotee en USDG soit
@@ -2607,6 +2623,33 @@ function peintTraits(){
  * Un veto dont les refuses s'effondrent est une protection. Un veto dont les
  * refuses montent est un cout — et il faut pouvoir le lire d'un coup d'oeil,
  * pas le deduire. */
+/* ---- CE QUE CHAQUE JEU DE REGLES AURAIT RENDU ----
+   Ils rejouent les MEMES jalons, donc la comparaison est propre : rien ne les
+   distingue que leurs sorties. Aucun ne trade — le seul qui decide est celui
+   qui porte « trade aujourd hui ». Sous cent rejeux on le DIT plutot que de
+   laisser lire un classement qui n'en est pas un. */
+const BANCS_ASSEZ = 100;
+function peintBancs(){
+  const l = (VUE && VUE.bancs) || [];
+  const n = l.reduce((a,x)=>Math.max(a, x.n||0), 0);
+  $("bancsN").textContent = VUE ? ph("bancsN", n) : "—";
+  if(!l.length || !n) return;
+  const best = Math.max(...l.filter(x=>x.n).map(x=>x.moyenne));
+  $("bancs").innerHTML = l.map(x=>{
+    if(!x.n) return '<div class="evt"><span class="pill">—</span><span><b>'+echappe(x.cle)+'</b>'
+      + '<span class="mini">'+echappe(x.quoi)+'</span></span></div>';
+    const gagne = n >= BANCS_ASSEZ && x.moyenne === best;
+    return '<div class="evt">'
+      + '<span class="pill '+(x.moyenne>=0?"naissance":"retrait")+'">'+(x.moyenne>=0?"+":"")+echappe(x.moyenne)+'%</span>'
+      + '<span><b>'+echappe(x.cle)+'</b>'
+      + (x.cle === "en vigueur" ? ' <span class="mini" style="color:var(--warn,#C77700)">'+echappe(ph("bancEnCours"))+'</span>' : '')
+      + (gagne ? ' <span class="mini" style="color:var(--gain,#12B76A)">\u2713</span>' : '')
+      + '<span class="mini">'+echappe(x.quoi)+'</span>'
+      + '<span class="mini">'+echappe(ph("bancDetail", x.n, x.partGagnantes))+'</span></span></div>';
+  }).join("")
+    + (n < BANCS_ASSEZ ? '<div class="mini" style="padding:6px 0 0">'+echappe(ph("bancAssez"))+'</div>' : '');
+}
+
 function peintAudit(){
   const l = (VUE && VUE.audit) || [];
   const o = (VUE && VUE.ombres) || { enAttente:0, jugees:0 };
@@ -2832,7 +2875,7 @@ async function demande(manuel){
     verseCandidats();
     peintStats(); peintPositions(); peintAppris(); peintFluxTrades();
     peintFlux(); peintBanque(); peintSurveillance(); peintStructure(); peintServices();
-    peintAlertes(); peintAudit(); peintTraits();
+    peintAlertes(); peintAudit(); peintBancs(); peintTraits();
     dessineCourbe(); pastille(); majPouls();
     /* ---- LE SERVEUR PEUT REPONDRE PARFAITEMENT ET N'AVOIR RIEN LU ----
      * Sa vue porte alors `erreur`, et les chiffres qu'elle contient sont
@@ -3046,7 +3089,7 @@ function poseLangue(l){
 /* Le miroir part OUVERT, comme les positions : c'est la seule carte qui demande
    quelque chose au lecteur, et une carte repliee ne se lit pas — elle se
    devine. Les autres racontent, celle-la propose. */
-const PANNEAUX_OUVERTS = ["miroir", "positions", "miroirPositions", "agents", "audit"];
+const PANNEAUX_OUVERTS = ["miroir", "positions", "miroirPositions", "agents", "audit", "bancs"];
 /* La cle change avec la liste : sans ca, un visiteur d'hier garde son etat
    d'hier, ou le miroir n'existait pas — donc replie, donc invisible. */
 const CLE_PANNEAUX = "swogeAiPanneaux4";
@@ -3201,7 +3244,7 @@ setInterval(function(){ if(document.visibilityState !== "hidden"){ peintPosition
 poseLesBots();
 peintAgents(); peintStats(); peintPositions(); peintAppris(); peintFluxTrades();
 peintPicks(); peintFlux(); peintBanque(); peintSurveillance(); peintStructure(); peintServices();
-peintAlertes(); peintAudit(); peintTraits();
+peintAlertes(); peintAudit(); peintBancs(); peintTraits();
 dessineCourbe(); pastille(); majPouls();
 $("stagetag").textContent = phraseFond();
 requestAnimationFrame(loop);

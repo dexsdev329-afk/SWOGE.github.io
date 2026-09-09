@@ -362,9 +362,24 @@
          de sa caisse que lui de la sienne. Le dire evite la question « pourquoi
          seulement 0,004 ETH ? », dont la reponse est « parce que la colonie a
          mis la meme proportion, a cette note-la ». */
+      /* ---- ET LE PLANCHER, EN DOLLARS ----
+       * « Il y a des personnes qui n'ont pas les moyens de mettre 1000 $, donc
+       *   elles tradent trop petit. La mise minimum, ce serait 15 $. »
+       * Le plancher est en dollars parce que le gaz l'est : une mise de deux
+       * dollars ne peut pas survivre a un aller-retour. On l'ecrit en dollars,
+       * avec sa valeur en ETH a cote — c'est en ETH que la caisse est tenue. */
       + '<div class="mir-l"><span>Per order</span><b>the Banker\'s own share, '
-      + (ETAT.ordreMin ? 'at least ' + esc(ETAT.ordreMin) + ' ETH, ' : '')
-      + 'up to ' + esc(ETAT.ordreMax) + ' ETH</b></div>';
+      + (ETAT.ordreMin
+          ? 'at least ' + (ETAT.ordreMinUsd && ETAT.coursEth
+              ? '$' + esc(ETAT.ordreMinUsd) + ' (' + esc(nb(ETAT.ordreMin)) + ' ETH)'
+              : esc(ETAT.ordreMin) + ' ETH') + ', '
+          : '')
+      + 'up to ' + esc(ETAT.ordreMax) + ' ETH</b></div>'
+      + (ETAT.ordreMinUsd && ETAT.coursEth
+          ? '<p class="mir-note">A small wallet plays the $' + esc(ETAT.ordreMinUsd)
+            + ' floor rather than a share too small to survive the gas on both sides. '
+            + 'It then holds fewer positions at once. A large wallet never meets this floor.</p>'
+          : '');
 
     if (!ETAT.actif) {
       h += '<p class="mir-note" style="margin-top:9px">Send ETH (RH) to the address above — at least '

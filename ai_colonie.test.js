@@ -1668,7 +1668,7 @@ async function auditDesVetos() {
         if (m.type === 'miroirEtat' || m.type === 'miroirEffaceJournal' || m.type === 'miroirPlay' || m.type === 'miroirVends' || m.type === 'miroirOuvre' || m.type === 'miroirRemetStats')
           c.send(JSON.stringify({ type: 'miroirEtat', pret: true, execute: false, existe: true, actif: actifFaux, proprietaire: true,
             adresse: '0x' + 'ab'.repeat(20), solde: '0.05', min: '0.002', max: '0.5', part: 0.1,
-            ordreMax: '0.05', gaz: '0.0015', places: 25,
+            ordreMax: '0.05', gaz: '0.0015', places: 25, ordreMin: '0.006', ordreMinUsd: 15, coursEth: 2500,
             ouvertes: venduFaux ? [] : [{ adr: ADR_NOVA, sym: 'T', entree: '0.004', t: Date.now(), simule: true, via: 'NVDA',
               /* Ce que le quoteur donnerait pour tout ce qu on tient, et depuis quand. */
               cout: '0.004', valeur: '0.0052', gain: '0.0012', gainPct: 30, valeurT: Date.now() }],
@@ -1746,6 +1746,17 @@ async function auditDesVetos() {
     /* « Rajoute un bouton reset log. » A cote de Stop et de la cle ; il
        demande confirmation, envoie au serveur, et le journal revient vide. */
     page.once('dialog', (d) => d.accept());
+    /* ---- LE PLANCHER D UN ORDRE, EN DOLLARS ----
+     * « Il y a des personnes qui n ont pas les moyens de mettre 1000 $, donc
+     * elles tradent trop petit. La mise minimum, ce serait 15 $. » Le gaz se
+     * paie en dollars : une mise de deux dollars ne survit pas a un
+     * aller-retour. La carte doit le dire, et dire ce que ca coute. */
+    const reglages = await page.evaluate(() => (document.querySelector('#gxMiroir') || {}).textContent || '');
+    ok(/at least \$15 \(0\.006 ETH\)/.test(reglages),
+       'la carte annonce le plancher en dollars, avec sa valeur en ETH a cote');
+    ok(/A small wallet plays the \$15 floor/.test(reglages) && /holds fewer positions at once/.test(reglages)
+       && /A large wallet never meets this floor/.test(reglages),
+       'et elle dit a qui ca s applique, et ce que ca coute : moins de positions a la fois');
     const boutons = await page.evaluate(() => [...document.querySelectorAll('#gxMiroir .mir-row .mir-b')].map((b) => b.textContent.trim()));
     ok(boutons.indexOf('Clear log') >= 0 && boutons.indexOf('Show my private key') >= 0,
        'un bouton « Clear log » a cote de la cle : ' + JSON.stringify(boutons));

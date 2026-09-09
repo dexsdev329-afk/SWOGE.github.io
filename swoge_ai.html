@@ -13,7 +13,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
-var MARQUE_PAGE = 'fdad489e';
+var MARQUE_PAGE = '6cfd9392';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -1025,6 +1025,14 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
           <h2><span data-t="tAudit">What happens to the rejected ones</span> <span class="count" id="auditN">—</span></h2>
           <div id="audit"><div class="empty" data-t="vAudit">Nothing yet. Every token analysed — bought or rejected — is followed to its deadline and priced again. That is what tells us whether a veto really protects, or mostly turns away winners.</div></div>
         </div>
+        <!-- ---- CE QUE LE MIROIR A VRAIMENT TOUCHE ----
+             Le papier ne signe rien : il ne peut connaitre ni le gaz ni le
+             glissement. Celui qui les paie les dit, et l'ecart des deux est le
+             cout reel d'un aller-retour. -->
+        <div class="card" data-pan="reel">
+          <h2><span data-t="tReel">What a mirror actually got</span> <span class="count" id="reelN">—</span></h2>
+          <div id="reel"><div class="empty" data-t="vReel">Nothing yet. The paper never signs anything, so it cannot know the gas or the slippage. Every real close on a mirror is reported here, next to what the paper counted for the same token.</div></div>
+        </div>
         <!-- ---- LES JEUX DE REGLES QUI COURENT SANS TRADER ----
              « Faire mesurer par la colonie elle-meme ce que donneraient deux ou
              trois jeux de regles concurrents. » Seize trades mesures a la main
@@ -1578,6 +1586,17 @@ const PHRASES = {
                           + 'qu\'elle ne protege'],
   pasEncore:    ['not yet', 'pas encore'],
   dernierEchec: [(e) => 'last failure: ' + e, (e) => 'dernier echec : ' + e],
+  /* Ce que le miroir a VRAIMENT touche, a cote de ce que le papier a compte.
+     C'est la seule mesure du circuit qui vienne d'un portefeuille. */
+  tReel:        ['What a mirror actually got', 'Ce que le miroir a vraiment touche'],
+  vReel:        ['Nothing yet. The paper never signs anything, so it cannot know the gas or the slippage. Every real close on a mirror is reported here, next to what the paper counted for the same token.',
+                 'Rien encore. Le papier ne signe rien : il ne peut connaitre ni le gaz ni le glissement. Chaque fermeture reelle d un miroir est rapportee ici, a cote de ce que le papier a compte pour le meme jeton.'],
+  reelN:        [(n) => n + ' real closes', (n) => n + ' fermetures reelles'],
+  reelEcart:    [(e, n) => 'The paper counts ' + e + ' points more than the wallet gets, on average over ' + n + ' closes. That gap is the real cost of a round trip on this chain.',
+                 (e, n) => 'Le papier compte ' + e + ' points de plus que ce que le portefeuille touche, en moyenne sur ' + n + ' fermetures. Cet ecart EST le cout reel d un aller-retour sur cette chaine.'],
+  reelGliss:    [(g) => 'fill ' + g + '% off the quote, on average', (g) => 'prix obtenu a ' + g + ' % du devis, en moyenne'],
+  reelLigne:    [(p) => 'the paper counted ' + p, (p) => 'le papier comptait ' + p],
+  reelAssez:    ['Too few real closes to read the gap yet.', 'Trop peu de fermetures reelles pour lire l ecart.'],
   tBancs:       ['Rule sets running side by side', 'Jeux de regles qui courent en parallele'],
   vBancs:       ['Nothing yet. Every token followed to its deadline is replayed through several exit rules at once — none of them trades, they only count. The one that trades today is marked.',
                  'Rien encore. Chaque jeton suivi jusqu a son echeance est rejoue a travers plusieurs jeux de sorties a la fois — aucun ne trade, ils comptent. Celui qui trade aujourd hui est marque.'],
@@ -2623,6 +2642,34 @@ function peintTraits(){
  * Un veto dont les refuses s'effondrent est une protection. Un veto dont les
  * refuses montent est un cout — et il faut pouvoir le lire d'un coup d'oeil,
  * pas le deduire. */
+/* ---- LE COUT REEL, MESURE SUR UN PORTEFEUILLE ----
+   Le papier compte des prix ; le miroir compte ce que le solde a fait. L'ecart
+   des deux est le seul chiffre honnete sur ce que coute un aller-retour ici.
+   Sous cinq fermetures on le dit plutot que d'afficher une moyenne d'une. */
+const REEL_ASSEZ = 5;
+function peintReel(){
+  const R = (VUE && VUE.reel) || { n:0 };
+  $("reelN").textContent = VUE ? ph("reelN", R.n || 0) : "—";
+  if(!R.n) return;
+  let h = "";
+  if(R.ecart !== null && R.nEcart >= REEL_ASSEZ)
+    h += '<div class="evt"><span class="pill retrait">' + echappe(R.ecart) + ' pts</span>'
+       + '<span><b>' + echappe(ph("reelEcart", R.ecart, R.nEcart)) + '</b>'
+       + (R.glissement !== null ? '<span class="mini">' + echappe(ph("reelGliss", R.glissement)) + '</span>' : '')
+       + '</span></div>';
+  else h += '<div class="mini" style="padding:2px 0 6px">' + echappe(ph("reelAssez")) + '</div>';
+  h += (R.lignes || []).map(x =>
+    '<div class="evt"><span class="pill ' + (x.r >= 0 ? "naissance" : "retrait") + '">'
+    + (x.r >= 0 ? "+" : "") + echappe(x.r) + '%</span>'
+    + '<span><b>$' + echappe(x.sym || "?") + '</b>'
+    + (x.papier !== null && x.papier !== undefined
+        ? '<span class="mini">' + echappe(ph("reelLigne", (x.papier >= 0 ? "+" : "") + x.papier + "%")) + '</span>' : '')
+    + (x.glissement !== null && x.glissement !== undefined
+        ? '<span class="mini">' + echappe(ph("reelGliss", x.glissement)) + '</span>' : '')
+    + '</span></div>').join("");
+  $("reel").innerHTML = h;
+}
+
 /* ---- CE QUE CHAQUE JEU DE REGLES AURAIT RENDU ----
    Ils rejouent les MEMES jalons, donc la comparaison est propre : rien ne les
    distingue que leurs sorties. Aucun ne trade — le seul qui decide est celui
@@ -2875,7 +2922,50 @@ async function demande(manuel){
     verseCandidats();
     peintStats(); peintPositions(); peintAppris(); peintFluxTrades();
     peintFlux(); peintBanque(); peintSurveillance(); peintStructure(); peintServices();
-    peintAlertes(); peintAudit(); peintBancs(); peintTraits();
+    peintAlertes(); peintAudit(); peintReel(); peintBancs(); peintTraits();
+
+/* ==========================================================================
+ * LA MOLETTE AU-DESSUS DU VILLAGE
+ *
+ * « Je n'arrive pas à descendre sur PC, sur Direct : quand je scrolle, ça se
+ *   bloque. »
+ *
+ * Mesuré au navigateur, en 1440x900 : souris posée sur le village, trente crans
+ * de molette ne bougent RIEN — ni le panneau, ni la page. Sur cet écran seul le
+ * panneau de droite défile ; le village est en `overflow:hidden` et la page
+ * elle-même tient dans la fenêtre. Or le village occupe un tiers de la largeur,
+ * et c'est là qu'on pose la souris. Le geste le plus naturel de l'écran ne
+ * faisait donc rien du tout.
+ *
+ * Une molette qui ne trouve rien à faire sous elle va au panneau. On ne touche
+ * pas au cas où quelque chose PEUT défiler sous le curseur — un menu, une carte
+ * à son propre ascenseur — sinon on volerait son geste à l'utilisateur. Et si
+ * la page entière défile (la mise en page du téléphone), on ne s'en mêle pas :
+ * le navigateur fait déjà ce qu'il faut.
+ * ======================================================================== */
+(function(){
+  const panneau = document.querySelector(".panel");
+  if(!panneau) return;
+  function peutDefiler(el, dy){
+    for(let n = el; n && n !== document.body; n = n.parentElement){
+      const s = getComputedStyle(n);
+      if(!/(auto|scroll)/.test(s.overflowY)) continue;
+      if(n.scrollHeight <= n.clientHeight + 1) continue;
+      if(dy > 0 && n.scrollTop < n.scrollHeight - n.clientHeight - 1) return true;
+      if(dy < 0 && n.scrollTop > 1) return true;
+    }
+    return false;
+  }
+  addEventListener("wheel", function(e){
+    if(e.ctrlKey) return;                                   /* un zoom, pas un defilement */
+    if(document.body.scrollHeight > window.innerHeight + 2) return;  /* la page defile deja : c'est l'ecran du telephone */
+    if(panneau.contains(e.target)) return;                  /* la molette est deja au bon endroit */
+    if(peutDefiler(e.target, e.deltaY)) return;             /* quelque chose sous le curseur peut encore defiler */
+    if(panneau.scrollHeight <= panneau.clientHeight + 1) return;
+    panneau.scrollTop += e.deltaY;
+    e.preventDefault();
+  }, { passive: false });
+})();
     dessineCourbe(); pastille(); majPouls();
     /* ---- LE SERVEUR PEUT REPONDRE PARFAITEMENT ET N'AVOIR RIEN LU ----
      * Sa vue porte alors `erreur`, et les chiffres qu'elle contient sont
@@ -3089,7 +3179,7 @@ function poseLangue(l){
 /* Le miroir part OUVERT, comme les positions : c'est la seule carte qui demande
    quelque chose au lecteur, et une carte repliee ne se lit pas — elle se
    devine. Les autres racontent, celle-la propose. */
-const PANNEAUX_OUVERTS = ["miroir", "positions", "miroirPositions", "agents", "audit", "bancs"];
+const PANNEAUX_OUVERTS = ["miroir", "positions", "miroirPositions", "agents", "audit", "reel", "bancs"];
 /* La cle change avec la liste : sans ca, un visiteur d'hier garde son etat
    d'hier, ou le miroir n'existait pas — donc replie, donc invisible. */
 const CLE_PANNEAUX = "swogeAiPanneaux4";
@@ -3244,7 +3334,7 @@ setInterval(function(){ if(document.visibilityState !== "hidden"){ peintPosition
 poseLesBots();
 peintAgents(); peintStats(); peintPositions(); peintAppris(); peintFluxTrades();
 peintPicks(); peintFlux(); peintBanque(); peintSurveillance(); peintStructure(); peintServices();
-peintAlertes(); peintAudit(); peintBancs(); peintTraits();
+peintAlertes(); peintAudit(); peintReel(); peintBancs(); peintTraits();
 dessineCourbe(); pastille(); majPouls();
 $("stagetag").textContent = phraseFond();
 requestAnimationFrame(loop);

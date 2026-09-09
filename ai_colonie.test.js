@@ -236,6 +236,11 @@ function vueFausse(o) {
         essais: 20, reussites: 20, dernier: now, dernierEchec: null },
     ],
     ponts: { liste: ['USDG', 'NVDA'], vus: [{ adr: '0x' + 'd0'.repeat(20), sym: 'NVDA', ok: true, liq: 1184565, ver: 'v3', raison: null, t: now }] },
+    /* Ce que le miroir a vraiment touche, a cote de ce que le papier a compte. */
+    reel: o.reel || { n: 9, moyenne: -6.4, ecart: 12.8, nEcart: 7, glissement: -1.6, lignes: [
+      { sym: 'JACOB', adr: '0x1', r: -4.2, papier: 39.9, glissement: -1.8, pont: false, t: now },
+      { sym: 'DFC', adr: '0x2', r: 51.1, papier: 58.0, glissement: -0.6, pont: false, t: now },
+    ] },
     /* Les jeux de regles qui rejouent les memes ombres sans en trader aucune. */
     bancs: o.bancs || [
       { cle: 'en vigueur', quoi: 'the rules actually trading today', n: 240, moyenne: -4.2, partGagnantes: 31, meilleur: 88 },
@@ -1484,6 +1489,93 @@ async function auditDesVetos() {
    * de rien. La carte montre la comparaison, dit lequel trade aujourd hui, et
    * se tait tant qu il y a trop peu de rejeux.
    * ==================================================================== */
+  /* ======================================================================
+   * CE QUE LE MIROIR A VRAIMENT TOUCHE
+   *
+   * « Le papier apprend sur des prix. Le miroir connait ce qu un achat a coute
+   * gaz compris et ce qu une vente a rendu net de gaz. C est tout l ecart
+   * entre +119 % affiches et -45 $. » L ecart des deux doit se LIRE.
+   * ==================================================================== */
+  /* ======================================================================
+   * LA MOLETTE AU-DESSUS DU VILLAGE
+   *
+   * « Je n arrive pas a descendre sur PC, sur Direct : quand je scrolle, ca se
+   * bloque. » Mesure au navigateur : souris posee sur le village, trente crans
+   * de molette ne bougeaient RIEN. Le village occupe un tiers de la largeur,
+   * et c est la qu on pose la souris.
+   * ==================================================================== */
+  console.log('\n-- la molette au-dessus du village descend le panneau --');
+  {
+    const ctx = await nav.newContext({ viewport: { width: 1440, height: 900 } });
+    const { page, boum } = await ouvre(nav, port, { ctx });
+    await page.waitForTimeout(1500);
+    const av = await page.evaluate(() => {
+      const p = document.querySelector('.panel'); p.scrollTop = 0;
+      const s = document.querySelector('.stage').getBoundingClientRect();
+      return { max: Math.round(p.scrollHeight - p.clientHeight),
+               x: Math.round(s.left + s.width / 2), y: Math.round(s.top + s.height / 2),
+               pageDefile: document.body.scrollHeight > window.innerHeight + 2 };
+    });
+    ok(av.max > 50 && !av.pageDefile,
+       'sur cet ecran, seul le panneau defile (' + av.max + ' px a parcourir) et la page tient dans la fenetre');
+    await page.mouse.move(av.x, av.y);
+    for (let i = 0; i < 30; i++) await page.mouse.wheel(0, 200);
+    await page.waitForTimeout(400);
+    const ap = await page.evaluate(() => Math.round(document.querySelector('.panel').scrollTop));
+    console.log('   souris sur le village · panneau descendu de ' + ap + ' px sur ' + av.max);
+    ok(ap >= av.max - 2, 'trente crans au-dessus du village descendent le panneau jusqu au bout (' + ap + '/' + av.max + ')');
+    /* Et on ne vole pas le geste a ce qui peut encore defiler tout seul. */
+    const menuOk = await page.evaluate(() => {
+      const p = document.querySelector('.panel');
+      p.scrollTop = 0;
+      const avant = p.scrollTop;
+      /* un evenement au-dessus du panneau lui-meme : le navigateur s en charge,
+         notre relais ne doit pas s ajouter par-dessus */
+      const e = new WheelEvent('wheel', { deltaY: 200, bubbles: true, cancelable: true });
+      p.dispatchEvent(e);
+      return { defaultPrevented: e.defaultPrevented, scrollTop: p.scrollTop === avant };
+    });
+    ok(!menuOk.defaultPrevented, 'et une molette DANS le panneau n est pas interceptee : le navigateur la traite deja');
+    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
+    await ctx.close();
+  }
+
+  console.log('\n-- le cout reel, mesure sur un portefeuille, a cote du papier --');
+  {
+    const { page, boum } = await ouvre(nav, port, {});
+    await page.waitForTimeout(1200);
+    const r = await page.evaluate(() => {
+      const c = document.querySelector('.card[data-pan="reel"]');
+      return { existe: !!c, compte: (document.getElementById('reelN') || {}).textContent,
+               txt: c ? c.textContent.replace(/\s+/g, ' ').trim() : '' };
+    });
+    console.log('   ' + r.txt.slice(0, 230));
+    ok(r.existe && /9 real closes/.test(r.compte || ''), 'la carte existe et compte les fermetures reelles : ' + r.compte);
+    ok(/The paper counts 12\.8 points more than the wallet gets/.test(r.txt),
+       'elle dit l ecart entre ce que le papier compte et ce que le portefeuille touche');
+    ok(/That gap is the real cost of a round trip on this chain/.test(r.txt),
+       'et ce que cet ecart EST : le cout reel d un aller-retour, mesure au lieu d estime');
+    ok(/fill -1\.6% off the quote/.test(r.txt), 'avec le glissement moyen entre le devis et le prix obtenu');
+    ok(/\$JACOB/.test(r.txt) && /the paper counted \+39\.9%/.test(r.txt),
+       'et chaque fermeture porte les deux chiffres cote a cote : « ' + (r.txt.match(/\$JACOB[^$]*/) || [''])[0].slice(0, 70) + ' »');
+    ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
+    await page.context().close();
+  }
+
+  console.log('\n-- trop peu de fermetures reelles : la carte ne moyenne pas une seule --');
+  {
+    const { page } = await ouvre(nav, port, { vueOpts: { reel: { n: 2, moyenne: -3, ecart: 40, nEcart: 2, glissement: null,
+      lignes: [{ sym: 'A', adr: '0x1', r: -3, papier: 37, glissement: null, pont: false, t: Date.now() }] } } });
+    await page.waitForTimeout(1200);
+    const t = await page.evaluate(() => (document.querySelector('.card[data-pan="reel"]') || {}).textContent || '');
+    const plat = t.replace(/\s+/g, ' ');
+    ok(/Too few real closes to read the gap yet/.test(plat),
+       'sous cinq fermetures, l ecart n est pas annonce : « ' + plat.trim().slice(0, 80) + ' »');
+    ok(!/points more than the wallet gets/.test(plat), 'et la moyenne n est pas affichee');
+    ok(/\$A/.test(plat), 'mais les fermetures, elles, sont bien la : ce sont des faits');
+    await page.context().close();
+  }
+
   console.log('\n-- les jeux de regles, cote a cote, et aucun ne trade --');
   {
     const { page, boum } = await ouvre(nav, port, {});

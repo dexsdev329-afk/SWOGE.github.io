@@ -243,10 +243,19 @@ function vueFausse(o) {
     ] },
     /* Les jeux de regles qui rejouent les memes ombres sans en trader aucune. */
     bancs: o.bancs || [
-      { cle: 'en vigueur', quoi: 'the rules actually trading today', n: 240, moyenne: -4.2, partGagnantes: 31, meilleur: 88 },
-      { cle: 'paliers hauts', quoi: 'rungs at +50% and +150%, trailing stop 100 pts, cut at -20%', n: 240, moyenne: 12.6, partGagnantes: 26, meilleur: 410 },
-      { cle: 'laisser courir', quoi: 'no rungs at all, trailing stop 100 pts, cut at -15%', n: 240, moyenne: 8.1, partGagnantes: 22, meilleur: 512 },
-      { cle: 'scalp + moon bag', quoi: 'today rungs and trailing stop, but 20% of the position is never sold and rides to the end', n: 240, moyenne: 3.4, partGagnantes: 34, meilleur: 190 },
+      /* Le lot ET la separation : ce sont deux populations, et seule celle des
+         achetes decide d'un changement de sortie. Le classement est ici
+         VOLONTAIREMENT inverse entre les deux colonnes — « paliers hauts » mene
+         le lot, « en vigueur » mene les achetes — pour verifier que la carte
+         designe bien sur la bonne. */
+      { cle: 'en vigueur', quoi: 'the rules actually trading today', n: 240, moyenne: -4.2, partGagnantes: 31, meilleur: 88,
+        retenus: { n: 118, moyenne: 9.3, partGagnantes: 44 }, ecartes: { n: 122, moyenne: -17.2, partGagnantes: 18 } },
+      { cle: 'paliers hauts', quoi: 'rungs at +50% and +150%, trailing stop 100 pts, cut at -20%', n: 240, moyenne: 12.6, partGagnantes: 26, meilleur: 410,
+        retenus: { n: 118, moyenne: 2.1, partGagnantes: 21 }, ecartes: { n: 122, moyenne: 22.8, partGagnantes: 30 } },
+      { cle: 'laisser courir', quoi: 'no rungs at all, trailing stop 100 pts, cut at -15%', n: 240, moyenne: 8.1, partGagnantes: 22, meilleur: 512,
+        retenus: { n: 118, moyenne: -3.5, partGagnantes: 19 }, ecartes: { n: 122, moyenne: 19.4, partGagnantes: 25 } },
+      { cle: 'scalp + moon bag', quoi: 'today rungs and trailing stop, but 20% of the position is never sold and rides to the end', n: 240, moyenne: 3.4, partGagnantes: 34, meilleur: 190,
+        retenus: { n: 118, moyenne: 6.7, partGagnantes: 39 }, ecartes: { n: 122, moyenne: 0.2, partGagnantes: 29 } },
     ],
     horsService: {
       gmgn: 'GMGN — 403 Cloudflare, on ethereum too: that is anti-bot protection, not an absence '
@@ -1587,15 +1596,30 @@ async function auditDesVetos() {
     });
     console.log('   ' + b.txt.slice(0, 240));
     ok(b.existe && /240 tokens replayed/.test(b.compte || ''), 'la carte existe et compte les rejeux : ' + b.compte);
+    ok(/118 of them bought/.test(b.compte || ''),
+       'et dit combien, dans le lot, on aurait reellement achetes : ' + b.compte);
     ok(/en vigueur/.test(b.txt) && /trading today/.test(b.txt),
        'celui qui trade aujourd hui est NOMME comme tel : les autres ne decident rien');
-    ok(/-4\.2%/.test(b.txt) && /\+12\.6%/.test(b.txt) && /\+8\.1%/.test(b.txt) && /\+3\.4%/.test(b.txt),
-       'chaque jeu porte ce qu il aurait rendu en moyenne');
+    /* La pastille porte le chiffre des ACHETES, pas celui du lot : +9.3 et non
+       -4.2 pour « en vigueur », +2.1 et non +12.6 pour « paliers hauts ». */
+    ok(/\+9\.3%/.test(b.txt) && /\+2\.1%/.test(b.txt) && /-3\.5%/.test(b.txt) && /\+6\.7%/.test(b.txt),
+       'chaque jeu porte en tete ce qu il aurait rendu SUR CE QU ON ACHETE');
+    ok(!/-4\.2%/.test(b.txt) && !/\+12\.6%/.test(b.txt),
+       'et jamais la moyenne du lot en tete : elle melange 39 refuses sur 40');
     ok(/scalp \+ moon bag/.test(b.txt) && /20% of the position is never sold/.test(b.txt),
        'et le moon bag est decrit pour ce qu il est : une part que rien ne vend');
-    ok(/240 tokens · 31% of them ended up/.test(b.txt),
-       'avec le nombre de jetons rejoues et la part qui finit en hausse');
-    ok(/✓/.test(b.txt), 'et le meilleur est marque, au-dela de cent rejeux');
+    ok(/on the 118 we would have bought: 44% ended up/.test(b.txt),
+       'le detail dit sur quoi porte le chiffre, et la part qui finit en hausse');
+    ok(/122 set aside: -17\.2%/.test(b.txt),
+       'les ecartes restent affiches, mais a part : ils repondent a une autre question');
+    ok(/✓/.test(b.txt), 'et le meilleur est marque, au-dela de cent rejeux sur les achetes');
+    /* Le coeur du scenario : le lot dit « paliers hauts » (+12.6 contre -4.2),
+       les achetes disent « en vigueur » (+9.3 contre +2.1). C'est le second qui
+       doit porter la marque. */
+    ok(/en vigueur[^]*?✓/.test(b.txt) && !/paliers hauts[^]*?✓[^]*?laisser courir/.test(b.txt),
+       'et c est le gagnant SUR LES ACHETES qui est marque, pas celui du lot');
+    ok(/The figure that decides is the one on what we would have BOUGHT/.test(b.txt),
+       'la carte dit laquelle des deux colonnes decide, et pourquoi l autre ne decide pas');
     ok(boum.length === 0, 'aucune exception' + (boum.length ? ' : ' + boum[0] : ''));
     await page.context().close();
   }
@@ -1611,6 +1635,28 @@ async function auditDesVetos() {
     ok(/a difference on a handful of tokens is luck, not a result/.test(plat),
        'sous cent rejeux, la carte refuse de designer un gagnant : « ' + plat.trim().slice(-95) + ' »');
     ok(!/✓/.test(plat), 'et aucun n est marque gagnant');
+    await page.context().close();
+  }
+
+  console.log('\n-- le lot est gros, les achetes non : c est le second qui commande --');
+  {
+    /* Huit cents rejeux au total suffiraient largement a designer un gagnant si
+       la carte comptait le lot. Elle ne le compte pas : neuf jetons achetes ne
+       decident de rien, et elle doit le dire au lieu de classer. */
+    const { page } = await ouvre(nav, port, { vueOpts: { bancs: [
+      { cle: 'en vigueur', quoi: 'x', n: 800, moyenne: -9.7, partGagnantes: 20, meilleur: 114,
+        retenus: { n: 9, moyenne: 4, partGagnantes: 44 }, ecartes: { n: 791, moyenne: -9.9, partGagnantes: 19 } },
+      { cle: 'laisser courir', quoi: 'y', n: 800, moyenne: -2.9, partGagnantes: 17, meilleur: 790,
+        retenus: { n: 9, moyenne: 31, partGagnantes: 33 }, ecartes: { n: 791, moyenne: -3.3, partGagnantes: 17 } }] } });
+    await page.waitForTimeout(1200);
+    const t = await page.evaluate(() => (document.querySelector('.card[data-pan="bancs"]') || {}).textContent || '');
+    const plat = t.replace(/\s+/g, ' ');
+    ok(/9 of them bought/.test(plat), 'la carte compte les achetes a part du lot : « ' + plat.trim().slice(0, 70) + ' »');
+    ok(/on what we would have bought to separate them yet/.test(plat),
+       'et sous cent ACHETES elle refuse de classer, meme avec huit cents rejeux au total');
+    ok(!/✓/.test(plat), 'aucun gagnant marque : le lot ne rachete pas le manque d achetes');
+    ok(/\+31%/.test(plat) && !/-2\.9%/.test(plat),
+       'la tete reste le chiffre des achetes, meme quand il ne decide pas encore');
     await page.context().close();
   }
 

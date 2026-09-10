@@ -13,7 +13,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
-var MARQUE_PAGE = '6cfd9392';
+var MARQUE_PAGE = '3d176ce3';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -1603,8 +1603,17 @@ const PHRASES = {
   bancsN:       [(n) => n + ' tokens replayed', (n) => n + ' jetons rejoues'],
   bancEnCours:  ['trading today', 'trade aujourd hui'],
   bancDetail:   [(n, g) => n + ' tokens · ' + g + '% of them ended up', (n, g) => n + ' jetons · ' + g + ' % finissent en hausse'],
-  bancAssez:    ['Too few replays to separate them yet — a difference on a handful of tokens is luck, not a result.',
-                 'Trop peu de rejeux pour les separer — un ecart sur une poignee de jetons est de la chance, pas un resultat.'],
+  bancsRetenus: [(n) => n + ' of them bought', (n) => 'dont ' + n + ' achetes'],
+  bancRetenus:  [(n, g) => 'on the ' + n + ' we would have bought: ' + g + '% ended up',
+                 (n, g) => 'sur les ' + n + ' qu on aurait achetes : ' + g + ' % finissent en hausse'],
+  bancEcartes:  [(n, m) => n + ' set aside: ' + (m >= 0 ? '+' : '') + m + '%',
+                 (n, m) => n + ' ecartes : ' + (m >= 0 ? '+' : '') + m + ' %'],
+  bancPasSepare:['not split yet between bought and set aside',
+                 'pas encore separe entre achetes et ecartes'],
+  bancDecide:   ['The figure that decides is the one on what we would have BOUGHT. What the filters set aside is another population entirely — 4% of it goes up, against 36% of what is bought — and an exit tuned on rubbish is tuned on rubbish. The comparison itself is sound in both columns: every rule replays the same milestones of the same token, so nothing separates them but the exit.',
+                 'Le chiffre qui decide est celui sur ce qu on aurait ACHETE. Ce que les filtres ecartent est une autre population — 4 % y montent, contre 36 % de ce qu on achete — et une sortie reglee sur du rebut est reglee sur du rebut. La comparaison, elle, vaut dans les deux colonnes : chaque jeu rejoue les memes jalons du meme jeton, donc rien ne les separe que la sortie.'],
+  bancAssez:    ['Too few replays on what we would have bought to separate them yet — a difference on a handful of tokens is luck, not a result.',
+                 'Trop peu de rejeux sur ce qu on aurait achete pour les separer — un ecart sur une poignee de jetons est de la chance, pas un resultat.'],
   horsService:  ['Tried, and unusable here:', 'Essayes, et inutilisables ici :'],
   /* Les ponts du miroir : les monnaies de cotation qu'il sait franchir, et ce
      qu'il en a mesure. C'est ce qui explique qu'une paire cotee en USDG soit
@@ -2676,25 +2685,46 @@ function peintReel(){
    qui porte « trade aujourd hui ». Sous cent rejeux on le DIT plutot que de
    laisser lire un classement qui n'en est pas un. */
 const BANCS_ASSEZ = 100;
+/* ---- ET LA COLONNE QUI DECIDE N'EST PAS CELLE DU LOT ----
+ * Une ombre est posee sur CHAQUE jeton examine, et on en refuse trente-neuf
+ * sur quarante. La moyenne de tout le banc est donc celle du memecoin moyen de
+ * la chaine, pas celle de nos trades. Ce qui commande un changement de sortie
+ * est le sous-compte « ce qu'on aurait achete » — l'autre repond a une autre
+ * question, et il reste affiche pour elle seule. */
 function peintBancs(){
   const l = (VUE && VUE.bancs) || [];
   const n = l.reduce((a,x)=>Math.max(a, x.n||0), 0);
-  $("bancsN").textContent = VUE ? ph("bancsN", n) : "—";
+  const nR = l.reduce((a,x)=>Math.max(a, (x.retenus && x.retenus.n) || 0), 0);
+  $("bancsN").textContent = VUE ? ph("bancsN", n) + (nR ? " \u00b7 " + ph("bancsRetenus", nR) : "") : "—";
   if(!l.length || !n) return;
-  const best = Math.max(...l.filter(x=>x.n).map(x=>x.moyenne));
+  /* Le gagnant se designe sur les achetes quand ce compte existe, jamais sur le
+     lot : c'est tout l'objet de la separation. */
+  const avecR = l.filter(x=>x.retenus && x.retenus.n);
+  const best = avecR.length ? Math.max(...avecR.map(x=>x.retenus.moyenne))
+                            : Math.max(...l.filter(x=>x.n).map(x=>x.moyenne));
+  const assez = avecR.length ? nR >= BANCS_ASSEZ : n >= BANCS_ASSEZ;
   $("bancs").innerHTML = l.map(x=>{
     if(!x.n) return '<div class="evt"><span class="pill">—</span><span><b>'+echappe(x.cle)+'</b>'
       + '<span class="mini">'+echappe(x.quoi)+'</span></span></div>';
-    const gagne = n >= BANCS_ASSEZ && x.moyenne === best;
+    /* La pastille porte le chiffre qui decide, pas celui du lot. */
+    const tete = x.retenus ? x.retenus.moyenne : x.moyenne;
+    const gagne = assez && (x.retenus ? x.retenus.moyenne : x.moyenne) === best
+                  && (avecR.length ? !!x.retenus : true);
     return '<div class="evt">'
-      + '<span class="pill '+(x.moyenne>=0?"naissance":"retrait")+'">'+(x.moyenne>=0?"+":"")+echappe(x.moyenne)+'%</span>'
+      + '<span class="pill '+(tete>=0?"naissance":"retrait")+'">'+(tete>=0?"+":"")+echappe(tete)+'%</span>'
       + '<span><b>'+echappe(x.cle)+'</b>'
       + (x.cle === "en vigueur" ? ' <span class="mini" style="color:var(--warn,#C77700)">'+echappe(ph("bancEnCours"))+'</span>' : '')
       + (gagne ? ' <span class="mini" style="color:var(--gain,#12B76A)">\u2713</span>' : '')
       + '<span class="mini">'+echappe(x.quoi)+'</span>'
-      + '<span class="mini">'+echappe(ph("bancDetail", x.n, x.partGagnantes))+'</span></span></div>';
+      + '<span class="mini">'
+        + echappe(x.retenus ? ph("bancRetenus", x.retenus.n, x.retenus.partGagnantes)
+                            : ph("bancDetail", x.n, x.partGagnantes))
+        + (x.ecartes ? " \u00b7 " + echappe(ph("bancEcartes", x.ecartes.n, x.ecartes.moyenne))
+                     : (x.retenus ? "" : " \u00b7 " + echappe(ph("bancPasSepare"))))
+      + '</span></span></div>';
   }).join("")
-    + (n < BANCS_ASSEZ ? '<div class="mini" style="padding:6px 0 0">'+echappe(ph("bancAssez"))+'</div>' : '');
+    + '<div class="mini" style="padding:6px 0 0">'
+      + echappe(assez ? ph("bancDecide") : ph("bancAssez")) + '</div>';
 }
 
 function peintAudit(){

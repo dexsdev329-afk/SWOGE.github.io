@@ -3581,10 +3581,13 @@
      que « My Wallet » emmenait sur l'ancien Coin Pusher au lieu d'ouvrir le
      portefeuille sur place. La page vivante gere les cinq memes ancres
      (#wallet, #staking, #deposit, #withdraw, #quests), verifie. */
+  /* ---- UNE SEULE RANGEE DE REPLI ----
+     « Staking », « Deposit » et « Withdraw » y etaient aussi. Elles doublaient
+     le portefeuille (`swoge_wallet.html`, joint a chaque page par la barre du
+     bas), qui fait les trois : sur l'accueil, le tiroir proposait un depot
+     sur le Coin Pusher a cote d'un portefeuille qui depose deja. Ne reste
+     que ce que le portefeuille n'a pas. */
   var COMPTE_AILLEURS = [
-    ['swoge_pusher_live.html#staking',  '🔒 Staking'],
-    ['swoge_pusher_live.html#deposit',  '💰 Deposit'],
-    ['swoge_pusher_live.html#withdraw', '🏧 Withdraw'],
     ['swoge_pusher_live.html#quests',   '🎯 Daily Quests'],
   ];
   function SECOURS_COMPTE() {

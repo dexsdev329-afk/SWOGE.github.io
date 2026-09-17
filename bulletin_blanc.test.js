@@ -382,19 +382,26 @@ const mesure = (racines) => {
     [...document.querySelectorAll('#menu > a')].map((a) => a.textContent.trim().replace(/\s+/g, '')));
   eq(ouvert.rangees.map((x) => x.replace(/\s+/g, '')).join('|'), attendues.join('|'),
      'ses rangees sont LUES dans le `#menu` de la page, pas recopiees');
-  ok(attendues.length >= 8, `il y en a ${attendues.length}, et aucune n a ete « choisie »`);
+  /* Cinq et non huit : « Sign in », « Staking », « Deposit » et « Withdraw »
+     ont quitte le menu le jour ou le portefeuille les a toutes prises. Ce qui
+     compte ici n a pas change — le menu montre TOUT ce que la page declare,
+     et n en choisit aucune. */
+  ok(attendues.length >= 5, `il y en a ${attendues.length}, et aucune n a ete « choisie »`);
+  ok(!attendues.some((t) => /SignIn|Staking|Deposit|Withdraw/i.test(t)),
+     'et ni « Sign in », ni « Staking », ni « Deposit », ni « Withdraw » : le portefeuille fait les quatre');
 
   /* ---- ET UNE RANGEE APPELLE SON LIEN D'ORIGINE ----
      C'est son gestionnaire qui sait ouvrir le panneau. Le refaire dans le menu
-     serait un second chemin vers le meme argent. */
+     serait un second chemin vers le meme panneau. « Daily Quests » est la
+     rangee a panneau qui reste. */
   await p.evaluate(() => {
     window.__vu = null;
-    document.querySelector('#menu a[data-panel="dep"]')
+    document.querySelector('#menu a[data-panel="quests"]')
       .addEventListener('click', () => { window.__vu = 'dep'; });
   });
   const rang = await p.evaluate(() =>
-    [...document.querySelectorAll('#gxMenu a')].findIndex((a) => /Deposit/.test(a.textContent)) + 1);
-  ok(rang > 0, 'la rangee « Deposit » est dans le menu');
+    [...document.querySelectorAll('#gxMenu a')].findIndex((a) => /Daily Quests/.test(a.textContent)) + 1);
+  ok(rang > 0, 'la rangee « Daily Quests » est dans le menu');
   /* ---- ET PLUS AUCUNE RANGEE « WALLET » ----
      « Faudrait le retirer de toutes les pages : on est cense l ouvrir depuis
      le petit bouton rond en bas. » Le rond `.swwb` est le seul chemin. */
@@ -434,7 +441,9 @@ const mesure = (racines) => {
   ok(!deux.hamburger,
      'le hamburger ne se voit PLUS : il ouvrait la meme liste que le profil, et'
      + ' deux boutons cote a cote vers le meme contenu, c est « c est marque en double »');
-  ok(deux.menuPageExiste && deux.rangeesPage >= 8,
+  /* Cinq rangees et non huit : « Sign in », « Staking », « Deposit » et
+     « Withdraw » sont parties au portefeuille. La declaration reste. */
+  ok(deux.menuPageExiste && deux.rangeesPage >= 5,
      `mais son \`#menu\` reste dans la page, avec ses ${deux.rangeesPage} rangees :`
      + ' c est la DECLARATION que le menu du profil lit');
   ok(!deux.menuPage, 'et il ne se dessine pas — sinon on lirait la liste deux fois');

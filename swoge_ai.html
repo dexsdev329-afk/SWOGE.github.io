@@ -13,7 +13,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
-var MARQUE_PAGE = '774c86ac';
+var MARQUE_PAGE = '144c4878';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -773,12 +773,14 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   <!-- Le hamburger reste declare mais ne se voit plus : c'est le profil qui
        ouvre la meme liste. Meme note que sur les autres pages converties. -->
   <button class="menubtn" id="menuBtn" aria-label="Menu" hidden aria-hidden="true" tabindex="-1">&#9776;</button>
+  <!-- ---- QUATRE RANGEES DE MOINS ----
+       « Sign in », « Staking », « Deposit » et « Withdraw » doublaient le
+       portefeuille : depuis `swoge_wallet.html`, joint a chaque page par la
+       barre du bas, on se connecte, on depose, on retire et on mise en jeu.
+       Ne restent que « My Wallet », qui y mene, et ce que le portefeuille
+       n a pas. -->
   <div class="menu" id="menu">
-    <a href="#" id="mnSignIn">&#9993;&#65039; Sign in</a>
     <a href="#" data-panel="wallet">&#128091; My Wallet</a>
-    <a href="#" data-panel="stake">&#128274; Staking</a>
-    <a href="#" data-panel="dep">&#128176; Deposit</a>
-    <a href="#" data-panel="wd">&#127974; Withdraw</a>
     <a href="#" data-panel="quests">&#127919; Daily Quests</a>
     <div class="msep"></div>
     <a href="games.html">&#127918; Other games</a>
@@ -1123,7 +1125,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
      ecran qui affichait toujours « CONNECT WALLET ». Le marqueur doit etre pose
      AVANT le fichier : il est lu au premier passage. -->
 <script>window.SWOGE_SOCKET = 'aucune';</script>
-<script src="stakebubble.min.js?v=73131156"></script>
+<script src="stakebubble.min.js?v=c324151c"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <script src="swogebuy.js?v=9d7c39e5"></script>
 

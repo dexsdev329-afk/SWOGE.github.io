@@ -153,7 +153,7 @@ video{ max-width:100%; }
 <!-- La bulle de staking. Chargee tot et SANS defer : elle enveloppe WebSocket
      pour ecouter ce qui passe deja, et doit donc etre en place avant que la page
      n ouvre sa connexion. -->
-<script src="stakebubble.min.js?v=73131156"></script>
+<script src="stakebubble.min.js?v=c324151c"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <!-- `swogebuy.js` pose un bloc « Buy $SWOGE » sous le champ de depot. Ici le
      depot est en $SWOGEBET : ce bloc ferait acheter le mauvais jeton au
@@ -1185,6 +1185,15 @@ html{ background-color:#0b0906;
 /* Le compte des paris. En opacite il tombait a 2,4:1 sur l'onglet au repos. */
 .sb-onglets i{ font-style:normal; font-size:.72rem; color:var(--gold); }
 .sb-onglets button.on i{ color:#fff; opacity:.85; }
+/* Les trois cases de « My bets » : plus petites que les onglets, elles
+   trient, elles ne changent pas de vue. Meme paire actif/repos. */
+.sb-cases{ display:flex; gap:6px; margin:0 0 10px; }
+.sb-cases button{ flex:1; min-height:28px; border-radius:8px; cursor:pointer; font:inherit;
+  font-size:.72rem; font-weight:600; color:var(--muted);
+  background:var(--ink); border:1px solid var(--line); }
+.sb-cases button.on{ color:#fff; border-color:var(--gold); background:var(--gold); }
+.sb-cases i{ font-style:normal; font-size:.68rem; color:var(--gold); }
+.sb-cases button.on i{ color:#fff; opacity:.85; }
 .sb-ovl.replie .sb-corps{ display:none; }
 /* Le × vide le bulletin. Il ne le FERME pas : un bulletin qu'on cache en
    gardant ses selections est un piege — on revient dessus dix minutes plus
@@ -1296,6 +1305,9 @@ body.sb-dock main{ padding-bottom:150px; }
    celle qu'elle surcharge se lit comme un etat de plus. */
 .sb-mienListe:empty::after{ content:"No bets yet. Pick an odd to open a slip.";
   display:block; text-align:center; font-size:.78rem; color:var(--muted); padding:18px 6px; }
+.sb-mienListe[data-vide="attente"]:empty::after{ content:"No running bets. Pick an odd to open a slip."; }
+.sb-mienListe[data-vide="gagne"]:empty::after{ content:"No won bets yet."; }
+.sb-mienListe[data-vide="perdu"]:empty::after{ content:"No lost bets. Keep it that way."; }
 @media (max-width:430px){ .sb-m{ padding:10px; } .sb-eq span{ font-size:.9rem; } }
 
 /* ------------------------------------------------- le plateau du morpion */
@@ -2409,11 +2421,15 @@ main{ min-width:0; }
        musique ont leurs deux pastilles fixes en bas a gauche, et la
        navigation vit dans la colonne de gauche. -->
   <button class="menubtn vif" id="menuBtn" aria-label="Menu" hidden aria-hidden="true" tabindex="-1">&#9776;</button>
+  <!-- ---- QUATRE RANGEES DE MOINS ----
+       « Sign in », « Staking », « Deposit » et « Withdraw » doublaient le
+       portefeuille : depuis `swoge_wallet.html`, joint a chaque page par la
+       barre du bas, on se connecte, on depose, on retire et on mise en jeu.
+       Deux portes vers le meme geste finissent par ne plus se ressembler,
+       et le joueur qui voyait encore « Sign in » une fois entre par le
+       portefeuille se demandait s il l etait. Ne restent que les rangees
+       que le portefeuille n a pas. -->
   <div class="menu" id="menu">
-    <a href="#" id="mnSignIn">✉️ Sign in</a>
-    <a href="#" data-panel="stake">🔒 Staking</a>
-    <a href="#" data-panel="dep">💰 Deposit</a>
-    <a href="#" data-panel="wd">🏧 Withdraw</a>
     <a href="#" data-panel="quests">🎯 Daily Quests</a>
     <div class="msep"></div>
     <a href="games.html">🎮 Other games</a>
@@ -2628,6 +2644,17 @@ main{ min-width:0; }
           </div>
 
           <div id="sbVueMine" hidden>
+            <!-- TROIS CASES, ET NON UNE LISTE. Tout etait dans une seule
+                 colonne, les paris en cours en tete puis les regles par
+                 date : pour retrouver ce qu on avait gagne il fallait
+                 descendre parmi les perdus. Chaque case porte son compte ;
+                 un pari rembourse se range avec les perdus, parce que c est
+                 la qu on le cherche quand un match est annule. -->
+            <div class="sb-cases" id="sbCases" role="tablist">
+              <button type="button" class="on" data-etat="attente" role="tab">Running <i></i></button>
+              <button type="button" data-etat="gagne" role="tab">Won <i></i></button>
+              <button type="button" data-etat="perdu" role="tab">Lost <i></i></button>
+            </div>
             <div class="sb-mienListe" id="sbMien"></div>
           </div>
         </div>
@@ -3693,9 +3720,17 @@ main{ min-width:0; }
    * Elle ignorait aussi SB_NOM2 : un pari de tennis s'affichait « Home » alors
    * qu'il n'y a pas de domicile sur un court neutre.
    */
+  /* La case ouverte de « My bets » : en cours par defaut, c est ce qu on
+     vient voir apres avoir mise. */
+  SB.caseMien = SB.caseMien || "attente";
+  function sbCaseDe(p){
+    return !p.regle ? "attente" : (p.gagne ? "gagne" : "perdu");   // rembourse : avec les perdus
+  }
   function sbPeintMien(){
-    var z=$("sbMien"), h="", i, k, ouverts=0;
+    var z=$("sbMien"), h="", i, k, ouverts=0, comptes={attente:0,gagne:0,perdu:0};
     var liste=(SB.mien||[]).slice();
+    for(i=0;i<liste.length;i++){ comptes[sbCaseDe(liste[i])]++; if(!liste[i].regle) ouverts++; }
+    liste=liste.filter(function(p){ return sbCaseDe(p)===SB.caseMien; });
     /* Les paris EN COURS d'abord : c'est ce qu'on vient voir. L'historique
        suit, du plus recent au plus ancien. */
     liste.sort(function(x,y){ return (x.regle?1:0)-(y.regle?1:0) || (y.t||0)-(x.t||0); });
@@ -3704,7 +3739,6 @@ main{ min-width:0; }
       var p=liste[i];
       var etat = !p.regle ? "running" : (p.gagne===null?"refunded":(p.gagne?"won":"lost"));
       var cls  = !p.regle ? "attente" : (p.gagne===null?"rendu":(p.gagne?"gagne":"perdu"));
-      if(!p.regle) ouverts++;
 
       /* jambes : le combine les porte, le simple retombe sur ses deux champs */
       var jbs = (p.jambes && p.jambes.length) ? p.jambes : [{match:p.match, choix:p.choix, cote:p.cote}];
@@ -3751,6 +3785,23 @@ main{ min-width:0; }
        + '</div>';
     }
     z.innerHTML=h;
+    z.setAttribute("data-vide", SB.caseMien);
+    var cases=$("sbCases");
+    if(cases){
+      var cb=cases.querySelectorAll("button"), c2;
+      for(c2=0;c2<cb.length;c2++){
+        var et=cb[c2].getAttribute("data-etat");
+        cb[c2].classList.toggle("on", et===SB.caseMien);
+        cb[c2].querySelector("i").textContent = comptes[et] ? "("+comptes[et]+")" : "";
+      }
+      if(!cases.dataset.ecoute){
+        cases.dataset.ecoute="1";
+        cases.addEventListener("click",function(ev){
+          var b=ev.target.closest && ev.target.closest("button[data-etat]"); if(!b) return;
+          SB.caseMien=b.getAttribute("data-etat"); sbPeintMien();
+        });
+      }
+    }
     /* L'ecouteur est pose UNE fois sur le conteneur, pas sur chaque
        reference : la liste se redessine a chaque rafraichissement, et des
        ecouteurs poses sur les elements s'accumuleraient a chaque passage. */

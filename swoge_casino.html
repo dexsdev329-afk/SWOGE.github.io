@@ -142,7 +142,7 @@ video{ max-width:100%; }
 <!-- La bulle de staking. Chargee tot et SANS defer : elle enveloppe WebSocket
      pour ecouter ce qui passe deja, et doit donc etre en place avant que la page
      n ouvre sa connexion. -->
-<script src="stakebubble.min.js?v=73131156"></script>
+<script src="stakebubble.min.js?v=c324151c"></script>
 <script src="swogeprofil.js?v=aa21d613" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <script src="swogebuy.js?v=9d7c39e5"></script>
@@ -1473,11 +1473,15 @@ html::before{
   <!-- Le hamburger reste, mais ne se voit plus : c est desormais le profil
        qui ouvre la meme liste. Meme note que `swoge_blackjack.html`. -->
   <button class="menubtn" id="menuBtn" aria-label="Menu" hidden aria-hidden="true" tabindex="-1">☰</button>
+  <!-- ---- QUATRE RANGEES DE MOINS ----
+       « Sign in », « Staking », « Deposit » et « Withdraw » doublaient le
+       portefeuille : depuis `swoge_wallet.html`, joint a chaque page par la
+       barre du bas, on se connecte, on depose, on retire et on mise en jeu.
+       Deux portes vers le meme geste finissent par ne plus se ressembler,
+       et le joueur qui voyait encore « Sign in » une fois entre par le
+       portefeuille se demandait s il l etait. Ne restent que les rangees
+       que le portefeuille n a pas. -->
   <div class="menu" id="menu">
-    <a href="#" id="mnSignIn">✉️ Sign in</a>
-    <a href="#" data-panel="stake">🔒 Staking</a>
-    <a href="#" data-panel="dep">💰 Deposit</a>
-    <a href="#" data-panel="wd">🏧 Withdraw</a>
     <a href="#" data-panel="quests">🎯 Daily Quests</a>
     <div class="msep"></div>
     <a href="games.html">🎮 Other games</a>

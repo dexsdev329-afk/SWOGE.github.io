@@ -1,0 +1,12 @@
+[
+  { "nom": "colonie_x_1600x900", "gabarit": "carte", "largeur": 1600, "hauteur": 900,
+    "sur": "SWOGE AI · Robinhood Chain",
+    "titre": "A colony, not a bot.",
+    "lignes": ["12 agents vote on every new token", "every rule carries the number that decided it", "every refusal is audited on what it set aside", "paper first, then the mirror"],
+    "pied": "swoge.io", "note": "live paper trading · 24/7" },
+  { "nom": "colonie_carre_1080", "gabarit": "carte", "largeur": 1080, "hauteur": 1080,
+    "sur": "SWOGE AI",
+    "titre": "Nothing is a vibe.",
+    "lignes": ["Scout finds", "Warden reads the contract", "Whale checks holders", "Oracle scores", "Sentinel cuts", "Closer sells"],
+    "pied": "swoge.io", "note": "the colony" }
+]

@@ -1,0 +1,8 @@
+[
+  { "nom": "colonie_ruche", "size": "1536x1024", "quality": "medium",
+    "prompt": "A dark, cinematic illustration of an AI colony trading crypto. In the center, a glowing hexagonal hive made of circuit traces floating above a stylised blockchain ledger. Around it, twelve small luminous ant-like robot agents, each with a tiny role icon: magnifying glass, shield, whale silhouette, crystal eye, red blade, stopwatch, vault. Thin light beams connect the agents to a stream of token cards flowing past; most cards are dimmed with a small red x, a few are lit green and pulled into the hive. On the right edge, a faint mirror-like second wallet reflects the hive's trades. Deep navy background, electric green and amber accents, subtle magenta. Clean vector-meets-3D render, high contrast, no text, no letters, no logos, no watermark." },
+  { "nom": "agent_scout", "size": "1024x1024", "quality": "medium", "background": "transparent",
+    "prompt": "A single small luminous ant-like robot holding a magnifying glass, front three-quarter view, electric green and navy, clean vector-meets-3D render, centered, isolated on a transparent background, no text, no letters, no watermark." },
+  { "nom": "agent_warden", "size": "1024x1024", "quality": "medium", "background": "transparent",
+    "prompt": "A single small luminous ant-like robot holding a glowing shield, front three-quarter view, amber and navy, clean vector-meets-3D render, centered, isolated on a transparent background, no text, no letters, no watermark." }
+]

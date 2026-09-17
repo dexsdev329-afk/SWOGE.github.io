@@ -6944,8 +6944,14 @@
      * comme un batiment casse ; celui-la se lit comme un batiment a venir.
      * Le jour ou la planche de la salle arrive, `bientot` disparait et
      * `SALLES_DU_HALL` gagne une ligne — comme l'arcade et le cinema. */
+    /* ---- A 1040 ET NON 832 ----
+       A 832 et 500 de large, la boutique commencait a 582 : le portail de
+       l arene, a 630 avec ses 210 de large, finit a 735 et descend jusqu a
+       -500, la ou la boutique montait a -675. Les cerisiers passaient sur le
+       portail. A 1040 elle commence a 790, cinquante-cinq unites apres le
+       portail, et finit a 1290, loin du bord de la carte (1792). */
     { cle: 'manga', src: 'img/nexus/tiles/obj_manga_maison.webp',
-      x: CENTRE.x + 832, y: CENTRE.y - 352, larg: 500, haut: 323,
+      x: CENTRE.x + 1040, y: CENTRE.y - 352, larg: 500, haut: 323,
       rayon: 150, nom: 'SWOGE Manga', bientot: true },
     /* ---- SWOGE SERIES, PLEIN SUD ET AU LARGE ----
      * Les huit directions du premier anneau sont prises : nord les portails,
@@ -6971,7 +6977,7 @@
      * `bientot`, comme le manga : la salle existe en planche, elle n'est pas
      * encore branchee. */
     { cle: 'series', src: 'img/nexus/tiles/obj_series_maison.webp',
-      x: CENTRE.x, y: CENTRE.y + 912, larg: 430, haut: 393,
+      x: CENTRE.x, y: CENTRE.y + 912, larg: 430, haut: 384,
       rayon: 150, nom: 'SWOGE Series', bientot: true },
     /* ---- LA TROISIEME PORTE, ET ELLE N'EST PAS JUMELLE ----
      *

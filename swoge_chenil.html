@@ -599,6 +599,18 @@ html,body{ background:#EEF3FB; color:#0B1B36; }
 .ch-c img{ position:absolute; left:-2%; top:-2%; width:104%; height:104%;
   object-fit:contain; display:block; z-index:1;
   transition:transform .16s ease, opacity .16s ease; }
+/* ---- SUR TELEPHONE, LE SYMBOLE DEBORDE DE SA CASE ----
+   L ouverture du cadre a un rapport de 2,65 : a 380 px de large, une case
+   fait 50 x 33 et un symbole carre tient dans 33 px. On le laisse deborder
+   en hauteur, centre sur sa case. A 150 % (essaye d abord) les rangees se
+   marchaient dessus et la grille ne se lisait plus ; a 125 % le chevauchement
+   fait un huitieme de rangee, ce que les vraies machines font aussi — les
+   cases n ont pas de fond, seuls les dessins se voient. Mesure a 400 px :
+   33 -> 41 px par symbole, et rien ne sort de la fenetre du cadre. */
+@media (max-width:620px){
+  .ch-c img{ left:-12.5%; top:-12.5%; width:125%; height:125%; }
+  .ch-c.tourne{ overflow:visible; }
+}
 .ch-c.pose img{ animation:chPose .28s cubic-bezier(.2,1.5,.4,1); }
 /* ---- LE MULTIPLICATEUR DU WILD ----
    Le Wild occupe une case et non une colonne : son multiplicateur se pose
@@ -1428,7 +1440,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 
     <div class="ch-tete">
       <div class="ch-mise"><small>BET</small><span id="chMise">—</span></div>
-      <img class="ch-logo" src="img/chenil/sym_collier.webp" alt="SWOGE Kennel">
+      <img class="ch-logo" src="img/chenil/sym_collier.webp?v=2" alt="SWOGE Kennel">
       <div class="ch-gain" id="chGain"></div>
     </div>
 
@@ -2057,7 +2069,10 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
      vingt $SWOGE de plus que ce qui sera reellement debite. Sur le bouton
      qui declenche le paiement, on ecrit le chiffre entier. */
   function chExact(n){ return (Number(n)||0).toLocaleString("en-US"); }
-  function chImg(s){ return "img/chenil/"+CH_FICHIER[s]+".webp"; }
+  /* `?v=2` : les onze planches ont ete recadrees le 18 septembre 2026 (les
+     lettres n occupaient que 36 a 57 % de leur carre, BONUS et WILD 90 %) ;
+     sans la question, les navigateurs gardent les anciennes. */
+  function chImg(s){ return "img/chenil/"+CH_FICHIER[s]+".webp?v=2"; }
   /* Le nom du fichier n'est pas le nom du symbole : le serveur parle de `j` et
      de `crane`, le dossier contient `sym_j.webp`. Une table plutot qu'une
      concatenation — le jour ou une image est renommee, ca se voit ici et pas

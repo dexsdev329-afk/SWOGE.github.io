@@ -36,10 +36,12 @@ Une centaine de fichiers `*.test.js`, Playwright pour les pages. Ceux qui
 comptent pour le panneau de la colonie :
 
 ```bash
-NODE_PATH=<scratchpad>/pw/node_modules:/home/user/swoge-pusher-server.github.io/node_modules \
-  node ai_colonie.test.js
+node ai_colonie.test.js          # NODE_PATH est posé par le crochet de démarrage (.claude/hooks)
 node cache_marqueur.test.js
 ```
+
+Ou, depuis le dépôt du serveur, `./verifie.sh` lance les cinq suites des deux
+dépôts avec un verdict par ligne.
 
 **Aucun commit sans code de sortie vert.** Un essai qui clignote a une cause :
 la chercher, ne jamais l'affaiblir pour le faire passer. Quand un essai

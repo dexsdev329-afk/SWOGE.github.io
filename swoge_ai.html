@@ -13,7 +13,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
-var MARQUE_PAGE = '3d176ce3';
+var MARQUE_PAGE = '546ae568';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -40,18 +40,11 @@ var MARQUE_PAGE = '3d176ce3';
      panneaux du menu. Les recopier a la main ici ferait une quatrieme
      version a tenir d'accord — et le jour ou la connexion change, elle ne
      changerait que d'un cote. -->
-<!-- ---- CETTE PAGE N'OUVRE AUCUNE SOCKET, ET ELLE LE DIT ----
-     `stakebubble.js` en tient une pour les pages qui n'en ont pas. Il decidait
-     qu'une page avait la sienne des qu'elle portait un `#bal` — et celle-ci en
-     porte un, sa carte « YOUR BALANCE », sans avoir de socket pour autant. Il
-     s'abstenait donc, personne ne se connectait, et une session parfaitement
-     valable restait rangee sans servir : on se reconnectait en boucle sur un
-     ecran qui affichait toujours « CONNECT WALLET ». Le marqueur doit etre pose
-     AVANT le fichier : il est lu au premier passage. -->
-<script>window.SWOGE_SOCKET = 'aucune';</script>
-<script src="stakebubble.js?v=74960e20"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
-<script src="swogebuy.js?v=9d7c39e5"></script>
+<!-- Les scripts partages (stakebubble, ethers, swogebuy) sont charges en BAS de
+     la page, juste avant le script de la colonie : voir la note la-bas. Rien
+     ici ne s'en sert avant. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <style>
   /* SWOGE AI — un seul monde assume : village au soleil, HUD en verre sombre.
      Chaque couleur est posee en clair, pour que la page tienne sur n'importe
@@ -1110,6 +1103,29 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
   new MutationObserver(copie).observe(source, { childList:true, characterData:true, subtree:true });
 })();
 </script>
+
+<!-- ---- LES SCRIPTS PARTAGES, EN BAS ET NON EN TETE ----
+     Mesure Lighthouse du 17 septembre, mobile, sur cette page : les trois
+     fichiers ci-dessous (stakebubble 448 Ko non minifie, ethers, swogebuy)
+     etaient en tete de page, synchrones, et bloquaient le rendu 3,3 s ; premier
+     rendu a 4,9 s, plus grand element a 6,4 s. Rien dans le balisage ne les
+     utilise avant le script de la colonie : ils viennent donc juste avant lui,
+     dans le meme ordre, toujours synchrones — `stakebubble.js` enveloppe
+     `WebSocket` et doit tourner avant tout code qui en ouvre une, et les
+     scripts `defer` plus haut ne s'executent qu'apres ceux-ci.
+
+     ---- CETTE PAGE N'OUVRE AUCUNE SOCKET, ET ELLE LE DIT ----
+     `stakebubble.js` en tient une pour les pages qui n'en ont pas. Il decidait
+     qu'une page avait la sienne des qu'elle portait un `#bal` — et celle-ci en
+     porte un, sa carte « YOUR BALANCE », sans avoir de socket pour autant. Il
+     s'abstenait donc, personne ne se connectait, et une session parfaitement
+     valable restait rangee sans servir : on se reconnectait en boucle sur un
+     ecran qui affichait toujours « CONNECT WALLET ». Le marqueur doit etre pose
+     AVANT le fichier : il est lu au premier passage. -->
+<script>window.SWOGE_SOCKET = 'aucune';</script>
+<script src="stakebubble.js?v=74960e20"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+<script src="swogebuy.js?v=9d7c39e5"></script>
 
 <script>
 "use strict";

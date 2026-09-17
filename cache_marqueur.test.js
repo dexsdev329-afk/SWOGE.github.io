@@ -81,7 +81,11 @@ for (const p of pages) {
      qu'un navigateur ne doit pas servir perime — il decide sur quelles
      chaines le portefeuille sait signer. Sans le tiret dans cette classe,
      il passait sous le nez de tout cet essai. */
-  for (const m of src.matchAll(/([A-Za-z0-9_-]+\.js)\?v=([0-9a-z]+)/g)) {
+  /* Et le point aussi : `stakebubble.min.js`, le jumeau minifie, est le
+     fichier que trente pages chargent — sans le point dans cette classe, il
+     etait lu comme « min.js », et l essai cherchait un fichier qui n existe
+     pas. */
+  for (const m of src.matchAll(/([A-Za-z0-9_.-]+\.js)\?v=([0-9a-z]+)/g)) {
     trouves.push({ page: p, script: m[1], marque: m[2] });
   }
   const mp = RE_PAGE.exec(src);

@@ -30,6 +30,15 @@ L'essai **échoue et donne la valeur exacte à écrire** — dans la page ET dan
 `version.json`. Le lancer après toute modification d'un de ces fichiers, avant
 de pousser.
 
+## Le jumeau minifié — la deuxième erreur invisible
+
+`stakebubble.js` est le source, avec ses commentaires (42 % du fichier, et
+c'est voulu). Les pages chargent `stakebubble.min.js`, généré par
+`node outils/minifie.js` (terser, dans `~/.swoge-pw`, posé par le crochet).
+Éditer le source sans relancer le générateur laisse trente pages servir un
+jumeau périmé : `node minifie.test.js` échoue et donne la commande. Le jumeau
+porte son propre marqueur de cache comme tout script versionné.
+
 ## Les essais
 
 Une centaine de fichiers `*.test.js`, Playwright pour les pages. Ceux qui

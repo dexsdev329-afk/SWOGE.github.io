@@ -175,8 +175,8 @@
   {
    "cle": "arcade_maison",
    "fichier": "img/nexus/tiles/obj_arcade_maison.webp",
-   "l": 634,
-   "h": 412,
+   "l": 1024,
+   "h": 690,
    "cadres": 1
   },
   {
@@ -252,8 +252,8 @@
   {
    "cle": "cinema_maison",
    "fichier": "img/nexus/tiles/obj_cinema_maison.webp",
-   "l": 590,
-   "h": 409,
+   "l": 986,
+   "h": 832,
    "cadres": 1
   },
   {
@@ -329,8 +329,8 @@
   {
    "cle": "grange",
    "fichier": "img/nexus/tiles/obj_grange.webp",
-   "l": 622,
-   "h": 494,
+   "l": 1024,
+   "h": 890,
    "cadres": 1
   },
   {
@@ -350,8 +350,8 @@
   {
    "cle": "manga_maison",
    "fichier": "img/nexus/tiles/obj_manga_maison.webp",
-   "l": 640,
-   "h": 427,
+   "l": 1024,
+   "h": 661,
    "cadres": 1
   },
   {
@@ -469,8 +469,8 @@
   {
    "cle": "series_maison",
    "fichier": "img/nexus/tiles/obj_series_maison.webp",
-   "l": 544,
-   "h": 427,
+   "l": 973,
+   "h": 889,
    "cadres": 1
   },
   {

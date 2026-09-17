@@ -6780,8 +6780,16 @@
      ce que fait un cours d'eau, et c'est ce qui donne un bord au lieu d'une
      arete. */
   TUILES.eauBas.src = 'img/nexus/tiles/ground_eau_bas.webp';
-  TUILES.herbe.src = 'img/nexus/tiles/ground_grass.webp';
-  TUILES.chemin.src = 'img/nexus/tiles/ground_path.webp';
+  /* ---- LE SOL DU NEXUS A SES PROPRES TEXTURES ----
+     `ground_grass` et `ground_path` restent au catalogue de l'editeur : les
+     cartes des joueurs les posent, et changer leur dessin aurait change
+     toutes ces cartes en silence. La place, elle, prend deux textures
+     peintes (1254 x 1254, trois cases sur trois comme avant). Ni le prefixe
+     `ground_` — le catalogue les proposerait — ni `nexus_` — c'est la
+     signature des familles de decor seme, et l'essai du decor compterait
+     chaque case de sol comme une touffe poussee dans une facade. */
+  TUILES.herbe.src = 'img/nexus/tiles/place_herbe.webp';
+  TUILES.chemin.src = 'img/nexus/tiles/place_dalles.webp';
   /* La terre battue de l'enclos. Un troisieme sol, et pas un chemin teinte :
      c'est ce qui dit ou l'enclos COMMENCE, avant meme qu'on voie la barriere. */
   TUILES.ferme.src = 'img/nexus/tiles/ground_ferme.webp';
@@ -6882,7 +6890,7 @@
     /* La grange se pose SUR le bord haut de l'enclos : c'est le fond de la
        cour, et la barriere passe derriere elle. */
     { cle: 'petworld', src: 'img/nexus/tiles/obj_grange.webp',
-      x: CENTRE.x + 832, y: CENTRE.y + 352, larg: 420, haut: 334,
+      x: CENTRE.x + 832, y: CENTRE.y + 352, larg: 500, haut: 435,
       rayon: 150, nom: 'Petworld' },
     { cle: 'petworldEnseigne', src: 'img/nexus/tiles/obj_petworld_sign.webp',
       x: CENTRE.x + 400, y: CENTRE.y + 700, larg: 140, haut: 209 },
@@ -6906,10 +6914,10 @@
     /* Le BATIMENT, et non plus la borne isolee. Une borne posee dans l'herbe
        se lisait comme un objet oublie ; une maison aux portes ouvertes dit
        qu'on peut entrer. `larg`/`haut` recopient le rapport de la planche
-       decoupee (634 x 412) — deux nombres ronds l'auraient ecrasee, et une
+       decoupee (1024 x 690 depuis la planche 2,5D) — deux nombres ronds l'auraient ecrasee, et une
        image etiree ne leve aucune erreur. */
     { cle: 'arcade', src: 'img/nexus/tiles/obj_arcade_maison.webp',
-      x: CENTRE.x - 832, y: CENTRE.y + 352, larg: 420, haut: 273,
+      x: CENTRE.x - 832, y: CENTRE.y + 352, larg: 500, haut: 337,
       rayon: 150, nom: 'the Arcade' },
     /* ---- LE CINEMA, AU NORD-OUEST ----
      * Le dernier coin libre de la place : le nord a ses deux portails, l'est
@@ -6917,7 +6925,7 @@
      * sud-est la ferme. `larg`/`haut` recopient le rapport de la planche
      * decoupee (590 x 409). */
     { cle: 'cinema', src: 'img/nexus/tiles/obj_cinema_maison.webp',
-      x: CENTRE.x - 832, y: CENTRE.y - 352, larg: 420, haut: 291,
+      x: CENTRE.x - 832, y: CENTRE.y - 352, larg: 500, haut: 422,
       rayon: 150, nom: 'the Cinema' },
     /* ---- LA MAISON MANGA, AU NORD-EST ----
      * Le dernier coin de la place. Les huit autres directions sont prises :
@@ -6937,7 +6945,7 @@
      * Le jour ou la planche de la salle arrive, `bientot` disparait et
      * `SALLES_DU_HALL` gagne une ligne — comme l'arcade et le cinema. */
     { cle: 'manga', src: 'img/nexus/tiles/obj_manga_maison.webp',
-      x: CENTRE.x + 832, y: CENTRE.y - 352, larg: 420, haut: 280,
+      x: CENTRE.x + 832, y: CENTRE.y - 352, larg: 500, haut: 323,
       rayon: 150, nom: 'SWOGE Manga', bientot: true },
     /* ---- SWOGE SERIES, PLEIN SUD ET AU LARGE ----
      * Les huit directions du premier anneau sont prises : nord les portails,
@@ -6963,7 +6971,7 @@
      * `bientot`, comme le manga : la salle existe en planche, elle n'est pas
      * encore branchee. */
     { cle: 'series', src: 'img/nexus/tiles/obj_series_maison.webp',
-      x: CENTRE.x, y: CENTRE.y + 912, larg: 360, haut: 283,
+      x: CENTRE.x, y: CENTRE.y + 912, larg: 430, haut: 393,
       rayon: 150, nom: 'SWOGE Series', bientot: true },
     /* ---- LA TROISIEME PORTE, ET ELLE N'EST PAS JUMELLE ----
      *

@@ -76,7 +76,16 @@ function famillesDeclarees() {
 
 /* Ce que la page peint : on releve la destination de chaque planche de decor,
    plus les tuiles de sol, qui nous diront ou passent les chemins. */
-const espionne = () => `(() => {
+/* La planche du chemin se lit dans la page, comme les familles de decor :
+   c'est `TUILES.chemin` qui la nomme, et le jour ou la place change de dallage
+   l'essai doit suivre sans qu'on y pense. */
+function cheminDeclare() {
+  const src = fs.readFileSync(path.join(SITE, 'nexus.js'), 'utf8');
+  const m = src.match(/TUILES\.chemin\.src = '([^']+)'/);
+  return path.basename(m[1]);
+}
+
+const espionne = (chemin = cheminDeclare()) => `(() => {
   const C = CanvasRenderingContext2D.prototype;
   if (C.__espionDec) return;
   C.__espionDec = true;
@@ -109,7 +118,7 @@ const espionne = () => `(() => {
     }
     /* Les cases de CHEMIN, relevees par leur planche : c'est la page qui sait
        ou elle en pose, et le refaire ici serait refaire son calcul. */
-    if (/ground_path\\.webp/.test(u) && n >= 5) {
+    if (u.indexOf('${chemin}') >= 0 && n >= 5) {
       window.__solX[Math.round(arguments[d]) + ',' + Math.round(arguments[d + 1])] = 1;
     }
     return di.apply(this, arguments);

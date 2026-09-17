@@ -495,6 +495,13 @@
    "cadres": 1
   },
   {
+   "cle": "tv_maison",
+   "fichier": "img/nexus/tiles/obj_tv_maison.webp",
+   "l": 765,
+   "h": 806,
+   "cadres": 1
+  },
+  {
    "cle": "vault_door",
    "fichier": "img/nexus/tiles/obj_vault_door.webp",
    "l": 624,

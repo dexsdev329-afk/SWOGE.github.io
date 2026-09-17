@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>SWOGE TV</title>
+<!-- ==========================================================================
+     LE LECTEUR DE SWOGE TV
+     Une page pour UNE chaine, ouverte dans le cadre de la salle du Nexus
+     (`nexus.html`, salle `tv`) : `tv.html?c=<identifiant>`. La liste des
+     chaines est `tv_chaines.json`, relevee depuis le depot public iptv-org
+     (https://github.com/iptv-org/iptv) : des flux gratuits en clair, en HLS.
+     Le 18 septembre 2026, 1 536 flux https ont ete sondes depuis le serveur ;
+     425 repondaient 200 avec l en-tete CORS sur le manifeste, la variante ET
+     le premier segment — les trois que hls.js demande depuis une page. Ce
+     sont eux, moins les pays hors de notre public, qui sont dans la liste.
+     Un flux peut mourir du jour au lendemain : la page le dit et propose de
+     changer de chaine, elle n insiste pas.
+     Safari lit le HLS nativement ; les autres passent par hls.js.
+     ====================================================================== -->
+<style>
+  :root{ --nuit:#0B1B36; --bleu:#1B5FE0; --or:#F4C542; }
+  html,body{ margin:0; height:100%; background:#000; color:#fff;
+    font:14px/1.4 'Inter',system-ui,sans-serif; overflow:hidden; }
+  #cadre{ position:absolute; inset:0; display:flex; flex-direction:column; }
+  video{ flex:1; width:100%; height:100%; background:#000; object-fit:contain; }
+  #bande{ display:flex; align-items:center; gap:10px; padding:8px 12px;
+    background:linear-gradient(180deg,rgba(11,27,54,.0),rgba(11,27,54,.92)); position:absolute; left:0; right:0; bottom:0; }
+  #bande img{ width:34px; height:34px; object-fit:contain; border-radius:6px; background:rgba(255,255,255,.08); }
+  #bande b{ font-size:14px; }
+  #bande i{ font-style:normal; font-size:11px; color:rgba(255,255,255,.7); }
+  #live{ margin-left:auto; font-size:10px; font-weight:800; letter-spacing:1.2px; padding:3px 8px;
+    border-radius:999px; background:#E0443E; color:#fff; }
+  #dit{ position:absolute; inset:0; display:none; align-items:center; justify-content:center;
+    text-align:center; padding:24px; background:rgba(11,27,54,.85); }
+  #dit.on{ display:flex; }
+  #dit p{ max-width:420px; margin:0; color:rgba(255,255,255,.85); }
+  #dit b{ display:block; font-size:16px; margin-bottom:6px; color:var(--or); }
+</style>
+</head>
+<body>
+<div id="cadre">
+  <video id="v" autoplay playsinline controls></video>
+  <div id="bande" hidden><img id="logo" alt="" hidden><span><b id="nom"></b><br><i id="sous"></i></span><span id="live">LIVE</span></div>
+  <div id="dit"><p><b id="ditT">Loading the channel&hellip;</b><span id="ditM"></span></p></div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/hls.js/1.5.13/hls.min.js"></script>
+<script>
+(function () {
+  'use strict';
+  var $ = function (i) { return document.getElementById(i); };
+  var v = $('v'), dit = $('dit');
+  function montre(t, m) { $('ditT').textContent = t; $('ditM').textContent = m || ''; dit.classList.add('on'); }
+  function cache() { dit.classList.remove('on'); }
+  var id = '';
+  try { id = new URLSearchParams(location.search).get('c') || ''; } catch (e) {}
+  if (!id) { montre('No channel picked.', 'Walk up to the screen in SWOGE TV and choose one.'); return; }
+
+  fetch('tv_chaines.json', { cache: 'no-cache' })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      var ch = (d.chaines || []).filter(function (c) { return c.id === id; })[0];
+      if (!ch) { montre('Unknown channel.', 'It may have left the list. Pick another one.'); return; }
+      $('nom').textContent = (ch.drapeau ? ch.drapeau + ' ' : '') + ch.nom;
+      $('sous').textContent = ch.rubrique + ' · free-to-air, via iptv-org';
+      if (ch.logo) { $('logo').src = ch.logo; $('logo').hidden = false;
+                     $('logo').onerror = function () { $('logo').hidden = true; }; }
+      $('bande').hidden = false;
+      joue(ch.url);
+    })
+    .catch(function () { montre('Channel list unavailable.', 'Try again in a moment.'); });
+
+  /* ---- LE FLUX, ET CE QU ON DIT QUAND IL NE VIENT PAS ----
+     Un flux gratuit tombe sans prevenir. On le dit en une phrase et on
+     invite a changer de chaine : pas de reessai en boucle, qui ferait
+     tourner un cercle sur un ecran noir sans jamais rien dire. */
+  function joue(url) {
+    montre('Tuning in…', '');
+    var pasVenu = setTimeout(function () {
+      montre('This channel is not answering.', 'Free streams come and go — pick another one on the screen.');
+    }, 20000);
+    v.addEventListener('playing', function () { clearTimeout(pasVenu); cache(); });
+    if (window.Hls && Hls.isSupported()) {
+      var h = new Hls({ maxBufferLength: 20 });
+      h.on(Hls.Events.ERROR, function (e, data) {
+        if (!data.fatal) return;
+        clearTimeout(pasVenu);
+        montre('This channel is not answering.', 'Free streams come and go — pick another one on the screen.');
+        try { h.destroy(); } catch (x) {}
+      });
+      h.loadSource(url); h.attachMedia(v);
+      v.play().catch(function () {});
+    } else if (v.canPlayType('application/vnd.apple.mpegurl')) {
+      v.src = url; v.play().catch(function () {});
+      v.addEventListener('error', function () {
+        clearTimeout(pasVenu);
+        montre('This channel is not answering.', 'Free streams come and go — pick another one on the screen.');
+      });
+    } else {
+      montre('This browser cannot play live streams.', '');
+    }
+  }
+})();
+</script>
+</body>
+</html>

@@ -2676,7 +2676,7 @@
    * on entre maintenant dans le batiment, et le jeu est a une borne PRECISE
    * dedans. Le hall n'a plus a le savoir. */
   var SALLES_DU_HALL = { coffre: entreCoffre, arcade: entreSalleArcade,
-                         cinema: entreSalleCinema };
+                         cinema: entreSalleCinema, tv: entreSalleTV };
   /* ---- ET PAR QUOI L'ON RESSORT, DE N'IMPORTE QUELLE SALLE ----
    *
    * La table du dessus est celle du HALL : les portes de la place. Celle-ci
@@ -2691,7 +2691,7 @@
    * salle dont on ne ressort pas.
    */
   var SORTIES = { coffre: sortCoffre, arcade: sortSalleArcade,
-                  cinema: sortSalleCinema, tour: sortSalleTour };
+                  cinema: sortSalleCinema, tv: sortSalleTV, tour: sortSalleTour };
 
   /* ================== LA BORNE D'ARCADE ==================
    *
@@ -2805,6 +2805,12 @@
     if (!elArcVoile || !elArcJeu) return;
     arcOuvert = true;
     if (elArcTitre) elArcTitre.innerHTML = cfg.titre || '';
+    /* La petite marque au-dessus du titre de la banniere. Elle disait
+       « SWOGE FLIX » en dur : dans la salle de la tele, la banniere d une
+       chaine d info portait la marque du cinema. Chaque ecran nomme la sienne ;
+       sans rien dire, c est le cinema, comme avant. */
+    var marque = document.querySelector('.nxarc-marque i');
+    if (marque) marque.textContent = cfg.marque || 'FLIX';
     SOUS_ECRAN = cfg.sous || '';
     CAT_RUBRIQUES = cfg.rubriques || [];
     /* ================ CE QUI EST DE NOUS, ET CE QUI NE L'EST PAS ================
@@ -7013,6 +7019,14 @@
        borne seule est trop petite pour se voir depuis la fontaine. */
     { cle: 'arcadeEnseigne', src: 'img/nexus/tiles/obj_arcade_enseigne.webp',
       x: CENTRE.x - 470, y: CENTRE.y + 660, larg: 96, haut: 264 },
+    /* ---- SWOGE TV, A GAUCHE DU CINEMA ----
+       Les deux salles a ecran cote a cote. A 1350 et 430 de large, le studio
+       va de -1565 a -1135 ; le cinema commence a -1082, cinquante-trois
+       unites plus loin. Le bord de la carte est a -1792, la lisiere s arrete
+       a -1682 : le studio n y entre pas. */
+    { cle: 'tv', src: 'img/nexus/tiles/obj_tv_maison.webp',
+      x: CENTRE.x - 1350, y: CENTRE.y - 352, larg: 430, haut: 453,
+      rayon: 150, nom: 'SWOGE TV' },
     /* ---- LA MACHINE A COUPS DE POING ----
      *
      * Du DECOR, et rien d'autre : pas de rayon, donc rien ne s'ouvre en
@@ -7595,6 +7609,63 @@
   };
   SALLE_CINE.img = new Image(); SALLE_CINE.img.src = SALLE_CINE.src;
 
+  /* ================== SWOGE TV : LA TELE EN DIRECT ==================
+   *
+   * « Un batiment special : on entre, il y a une piece avec un ecran plat,
+   * quand on s approche on peut choisir la chaine. » Les chaines viennent du
+   * depot public iptv-org (https://github.com/iptv-org/iptv) : des flux
+   * gratuits en clair, en HLS. Le 18 septembre 2026, 1 536 flux https ont
+   * ete sondes depuis le serveur ; 425 repondaient 200 avec l en-tete CORS
+   * sur le manifeste, la variante ET le premier segment — ce que hls.js
+   * demande depuis une page. La liste (`tv_chaines.json`) en garde 285,
+   * pays francophones en entier, les autres a quelques chaines par rubrique.
+   *
+   * La salle reprend le plan du cinema — meme dessin, meme allee, meme
+   * portail — et n en change que l ecran et le nom : une deuxieme piece
+   * dessinee aurait ete une deuxieme geometrie a tenir a jour pour la meme
+   * chose, un ecran au fond et une allee pour y aller. Le panneau est celui
+   * des seances : une chaine est une seance a une seule version, « Live »,
+   * dont l adresse est `tv.html?c=<id>` — la page qui lit le flux. */
+  var SALLE_TV = {
+    img: null, src: SALLE_CINE.src,
+    w: SALLE_CINE.w, h: SALLE_CINE.h,
+    nom: 'SWOGE TV',
+    rubrique: 'tv',
+    fond: 'img/nexus/tiles/ecran_tv.webp',
+    x0: SALLE_CINE.x0, x1: SALLE_CINE.x1, y0: SALLE_CINE.y0, y1: SALLE_CINE.y1,
+    ecran: SALLE_CINE.ecran,
+    portail: SALLE_CINE.portail,
+    bornes: [
+      { x: 1600 * 0.495, y: 1600 * 0.340, r: 84, nom: 'SWOGE TV' },
+    ],
+  };
+  SALLE_TV.img = SALLE_CINE.img;
+
+  /* Les chaines, rangees par rubrique dans l ordre ou l on regarde la tele :
+     l info d abord, la musique et le tout-venant a la fin. Une liste qui ne
+     vient pas laisse la borne « bientot » — rien de casse, rien de vide. */
+  var TV_RUBRIQUES = [];
+  var TV_ORDRE = ['News', 'Sports', 'Movies & Series', 'Entertainment', 'Kids',
+                  'Documentary', 'Lifestyle', 'Music', 'General'];
+  function chargeLesChaines() {
+    var f = (typeof fetch === 'function') ? fetch('tv_chaines.json', { cache: 'no-cache' }) : null;
+    if (!f) return;
+    f.then(function (r) { return r.json(); }).then(function (d) {
+      var par = {};
+      (d && d.chaines || []).forEach(function (c) {
+        if (!c || !c.id || !c.nom || !c.url) return;
+        var k = c.rubrique || 'General';
+        if (!par[k]) par[k] = { cle: 'tv', nom: k, films: [] };
+        par[k].films.push({ titre: (c.drapeau ? c.drapeau + ' ' : '') + c.nom, affiche: c.logo || '',
+                            versions: [{ nom: 'Live', src: 'tv.html?c=' + encodeURIComponent(c.id) }] });
+      });
+      var ordre = TV_ORDRE.filter(function (k) { return par[k]; })
+        .concat(Object.keys(par).filter(function (k) { return TV_ORDRE.indexOf(k) < 0; }));
+      TV_RUBRIQUES = ordre.map(function (k) { return par[k]; });
+    }).catch(function () { TV_RUBRIQUES = []; });
+  }
+  chargeLesChaines();
+
   /* ================== SWOGE TOWER : CINQ ETAGES ==================
    *
    * ---- UNE SALLE, CINQ PLANCHES, ET NON CINQ SALLES ----
@@ -7853,7 +7924,7 @@
    * montre le monde — sans une erreur nulle part.
    *
    * C'est la table qui repond maintenant. Une troisieme piece est une ligne. */
-  var SALLES = { coffre: SALLE, arcade: SALLE_ARC, cinema: SALLE_CINE, tour: SALLE_TOUR };
+  var SALLES = { coffre: SALLE, arcade: SALLE_ARC, cinema: SALLE_CINE, tv: SALLE_TV, tour: SALLE_TOUR };
   /* Le fond d'attente est charge PAR LA TABLE, pas par la salle qui le
      declare : une deuxieme salle a ecran aurait sinon oublie sa propre ligne
      de chargement, et son fond serait reste une adresse que personne ne
@@ -11815,6 +11886,8 @@
   }
   function entreSalleCinema() { entreSalle('cinema'); }
   function sortSalleCinema() { sortSalle('cinema'); }
+  function entreSalleTV() { entreSalle('tv'); }
+  function sortSalleTV() { sortSalle('tv'); }
 
   function entreSalleArcade() {
     entreSalle('arcade');
@@ -11940,6 +12013,21 @@
              { pret: 'walk up to browse tonight&rsquo;s shows',
                bientot: 'nothing showing yet &middot; come back soon',
                rien: 'Walk down the aisle &middot; the EXIT takes you home' });
+  }
+  /* La tele : meme pas que le cinema, avec la liste des chaines a la place
+     des seances. Le panneau ne charge RIEN tant qu on n a pas choisi. */
+  function pasSalleTV(surPortail, dt) {
+    SALLE_TV.bornes[0].jeu = TV_RUBRIQUES.length ? 'tv' : null;
+    pasSalle(SALLE_TV, surPortail, dt,
+             function () {
+               if (arcOuvert || !TV_RUBRIQUES.length) return;
+               ouvreEcran({ titre: '&#128250; SWOGE TV', marque: 'TV',
+                            sous: 'Pick a channel &middot; free-to-air live TV, nothing loads until you do',
+                            rubriques: TV_RUBRIQUES });
+             },
+             { pret: 'walk up to pick a channel',
+               bientot: 'no channel list yet &middot; come back soon',
+               rien: 'Walk up to the screen &middot; the EXIT takes you home' });
   }
 
   /* ================== LE DECOR SEME DU NEXUS ==================
@@ -14914,6 +15002,7 @@
 
       if (SCENE === 'arcade') { pasSalleArcade(surPortail, dt); return; }
       if (SCENE === 'cinema') { pasSalleCinema(surPortail, dt); return; }
+      if (SCENE === 'tv') { pasSalleTV(surPortail, dt); return; }
       if (SCENE === 'tour') { pasSalleTour(dt); return; }
 
       /* Les coffres : on marche dessus, le menu s'ouvre. On ne le REFERME pas

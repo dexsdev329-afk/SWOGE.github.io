@@ -259,29 +259,29 @@
   {
    "cle": "cloture_coin",
    "fichier": "img/nexus/tiles/obj_cloture_coin.webp",
-   "l": 143,
-   "h": 150,
+   "l": 286,
+   "h": 300,
    "cadres": 1
   },
   {
    "cle": "cloture_h",
    "fichier": "img/nexus/tiles/obj_cloture_h.webp",
-   "l": 131,
-   "h": 129,
+   "l": 264,
+   "h": 260,
    "cadres": 1
   },
   {
    "cle": "cloture_porte",
    "fichier": "img/nexus/tiles/obj_cloture_porte.webp",
-   "l": 195,
-   "h": 137,
+   "l": 390,
+   "h": 274,
    "cadres": 1
   },
   {
    "cle": "cloture_v",
    "fichier": "img/nexus/tiles/obj_cloture_v.webp",
-   "l": 73,
-   "h": 170,
+   "l": 146,
+   "h": 340,
    "cadres": 1
   },
   {

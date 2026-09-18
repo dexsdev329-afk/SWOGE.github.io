@@ -108,6 +108,14 @@ const servirLeSite = async () => {
     const s = net.createServer(); s.listen(0, () => { const q = s.address().port; s.close(() => r(q)); });
   });
   process.env.PORT = String(port);
+  /* ---- LE MOTEUR, POUR CREDITER LE COFFRE DES PARIS ----
+   * Les paris se jouent en $SWOGEBET depuis le 3 septembre 2026 : sans solde
+   * au coffre, le serveur repond « not enough $SWOGEBET », et l essai ne
+   * mesurerait jamais un pari ACCEPTE. On attrape le moteur au passage, comme
+   * `paris_accueil.test.js`, et on credite apres la connexion. */
+  const { Game } = require(path.join(SERVEUR, 'game'));
+  let moteur = null; const _p0 = Game.prototype._p;
+  Game.prototype._p = function (a) { moteur = this; return _p0.call(this, a); };
   require(path.join(SERVEUR, 'server'));
   const ethers = require(path.join(SERVEUR, 'node_modules', 'ethers'));
   await new Promise((r) => setTimeout(r, 1400));
@@ -156,6 +164,12 @@ const servirLeSite = async () => {
   await p.evaluate(([m, sg]) => window.__s[0].send(JSON.stringify({ type: 'login', message: m, signature: sg })), [msg, sig]);
   await p.waitForTimeout(1800);
   ok(true, 'un compte est connecte : ' + w.address.slice(0, 10));
+  {
+    const cfg = require(path.join(SERVEUR, 'config'));
+    const q = moteur._p(w.address);
+    q.hasDeposited = true;
+    q.betBalance = ethers.utils.parseUnits('50000000', cfg.DECIMALS);
+  }
 
   console.log('\n-- a l arrivee : un bloc par tournoi, un seul ouvert --');
   /* ---- LA LECTURE PASSE PAR UNE FONCTION COMPILEE, ET RAMENE UNE CHAINE ----
@@ -193,18 +207,26 @@ const servirLeSite = async () => {
   ok(v.tournois.every((t) => /\d\d:\d\d/.test(t.quand)),
      'et le prochain coup d envoi, lisible sans ouvrir : '
      + v.tournois.map((t) => t.quand).join(' / '));
-  eq(v.tournois.filter((t) => t.ouvert).length, 1, 'un seul est ouvert a l arrivee');
-  ok(v.tournois[0].ouvert, 'et c est celui qui ferme le plus tot');
-  eq(v.tournois[0].annonce, 'true', 'il le DIT : un lecteur d ecran l annonce deplie');
-  eq(v.tournois[1].annonce, 'false', 'et les autres se disent replies');
+  /* ---- RIEN N EST DEPLIE A L ARRIVEE, PAS MEME LE PREMIER ----
+     Cet essai exigeait le contraire : le tournoi le plus proche ouvert d
+     office. La page a change depuis, sur demande du proprietaire (« spain
+     la liga laisse la fermee ... sinon c est super long l interface ») :
+     La Liga seule fait une page tres longue. L intention de l essai — la
+     page ne deroule pas tout, on choisit SON tournoi — tient toujours ;
+     c est le point de depart qui a change. */
+  eq(v.tournois.filter((t) => t.ouvert).length, 0, 'aucun n est ouvert a l arrivee : on choisit son tournoi');
+  eq(v.tournois[0].annonce, 'false', 'et chacun le DIT : un lecteur d ecran les annonce replies');
+  eq(v.lignes, 0, 'donc aucune rencontre a l ecran avant d avoir choisi — la page ne deroule plus tout, c est toute la demande');
 
-  const auCatalogue = cat.matchs.filter((m) => m.sport === 'foot').length;
-  ok(v.lignes < auCatalogue,
-     v.lignes + ' rencontres a l ecran sur ' + auCatalogue + ' au catalogue :'
-     + ' la page ne deroule plus tout — c est toute la demande');
-  eq(v.lignes, v.tournois[0].nb, 'et ce sont exactement celles du tournoi ouvert');
+  console.log('\n-- on ouvre le premier, au vrai pointeur --');
+  await p.click('.sb-t:nth-of-type(1) .sb-t-tete');
+  await p.waitForTimeout(500);
+  const v1 = await dit();
+  ok(v1.tournois[0].ouvert, 'le premier s ouvre : celui qui ferme le plus tot');
+  eq(v1.tournois[0].annonce, 'true', 'et il le dit deplie');
+  eq(v1.lignes, v1.tournois[0].nb, 'ses rencontres, et seulement les siennes, sont a l ecran');
 
-  console.log('\n-- on en ouvre un second, au vrai pointeur --');
+  console.log('\n-- puis un second --');
   await p.click('.sb-t:nth-of-type(2) .sb-t-tete');
   await p.waitForTimeout(500);
   const v2 = await dit();
@@ -249,9 +271,21 @@ const servirLeSite = async () => {
   const v5 = await dit();
   eq(v5.tournois.length, 1, 'le tennis n a qu un tournoi');
   eq(v5.tournois[0].nom, 'ATP \u00b7 Cincinnati', 'et c est le sien');
-  ok(v5.tournois[0].ouvert,
-     'ouvert a la premiere venue : un sport qui s ouvre sur un titre replie'
-     + ' donne l impression qu il n y a rien');
+  /* ---- REPLIE, LUI AUSSI ----
+     Cet essai voulait le tournoi seul ouvert d office : « un sport qui s ouvre
+     sur un titre replie donne l impression qu il n y a rien ». Depuis que rien
+     ne s ouvre d office (demande du proprietaire, voir plus haut), ce qu on
+     garde de l intention, c est que le titre replie ne laisse PAS croire au
+     vide : il dit combien de rencontres et a quelle heure, et un clic suffit. */
+  ok(!v5.tournois[0].ouvert, 'replie comme les autres : rien ne s ouvre d office');
+  ok(v5.tournois[0].nb >= 1 && /\d\d:\d\d/.test(v5.tournois[0].quand),
+     'mais son titre dit combien et quand, donc pas « rien » : '
+     + v5.tournois[0].nb + ' a ' + v5.tournois[0].quand);
+  await p.click('.sb-t:nth-of-type(1) .sb-t-tete');
+  await p.waitForTimeout(500);
+  const v5b = await dit();
+  ok(v5b.tournois[0].ouvert && v5b.lignes === v5b.tournois[0].nb,
+     'et un clic montre ses rencontres, toutes : ' + v5b.lignes + '/' + v5b.tournois[0].nb);
 
   console.log('\n-- « My bets » arrive REPLIE, et la croix ferme --');
   /* ---- CE QUI ETAIT SIGNALE ----
@@ -273,10 +307,11 @@ const servirLeSite = async () => {
   await p.waitForTimeout(300);
   await p.click('#sbGo');
   await p.waitForTimeout(2500);
-  ok(await p.evaluate(() => document.querySelectorAll('#sbMien .sb-p').length > 0
-                          || document.querySelectorAll('#sbVueMine .sb-p').length > 0
-                          || !!document.querySelector('#sbNbMien')),
-     'un pari est en cours');
+  /* Le serveur doit l avoir ACCEPTE : l ancienne verification se contentait
+     de l existence du compteur, qui est toujours la — elle ne pouvait pas
+     echouer, et le panneau vide d apres la rechargement restait inexplique. */
+  ok(await p.evaluate(() => (window.__s[0].__m || []).some((m) => m.type === 'pariPose')),
+     'un pari est en cours : le serveur l a accepte');
 
   /* On revient sur la page comme un joueur qui rouvre l onglet. */
   await p.reload({ waitUntil: 'domcontentloaded' });
@@ -297,7 +332,11 @@ const servirLeSite = async () => {
      'la croix le ferme pour de bon — elle ne faisait que vider le bulletin,'
      + ' et le panneau restait a l ecran');
 
-  /* Et il revient des qu on clique une cote : la croix ne le condamne pas. */
+  /* Et il revient des qu on clique une cote : la croix ne le condamne pas.
+     La page vient d etre rechargee : tout est replie a nouveau (rien ne s
+     ouvre d office), on deplie donc le premier tournoi avant de cliquer. */
+  await p.click('.sb-t:nth-of-type(1) .sb-t-tete');
+  await p.waitForTimeout(500);
   await p.click('.sb-t:nth-of-type(1) .sb-m .sb-cotes button');
   await p.waitForTimeout(600);
   const revenu = JSON.parse(await p.evaluate(() => JSON.stringify({

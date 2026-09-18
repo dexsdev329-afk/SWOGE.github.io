@@ -73,6 +73,9 @@ const servirLeSite = async () => {
      rangee, jamais le premier. */
   const LONG_A = 'Borussia Monchengladbach';
   const LONG_B = 'Real Racing Club de Santander';
+  /* Les equipes d essai ont une force : cotes.js refuse de coter une equipe
+     qu il ne connait pas (« un chiffre invente »), et c est la bonne regle. */
+  [['Alpha', 1530], ['Beta', 1470], [LONG_A, 1510], [LONG_B, 1490]].forEach((x) => cotes.poseNote('foot', x[0], x[1]));
   const cat = {
     sports: [{ cle: 'foot', nom: 'Football', actif: true }],
     matchs: [{
@@ -98,6 +101,14 @@ const servirLeSite = async () => {
     const s = net.createServer(); s.listen(0, () => { const q = s.address().port; s.close(() => r(q)); });
   });
   process.env.PORT = String(port);
+  /* ---- LE MOTEUR, POUR CREDITER LE COFFRE DES PARIS ----
+   * Les paris se jouent en $SWOGEBET depuis le 3 septembre 2026 : sans solde
+   * au coffre, le serveur repond « not enough $SWOGEBET », et l essai ne
+   * mesurerait jamais un pari ACCEPTE. On attrape le moteur au passage, comme
+   * `paris_accueil.test.js`, et on credite apres la connexion. */
+  const { Game } = require(path.join(SERVEUR, 'game'));
+  let moteur = null; const _p0 = Game.prototype._p;
+  Game.prototype._p = function (a) { moteur = this; return _p0.call(this, a); };
   require(path.join(SERVEUR, 'server'));
   const ethers = require(path.join(SERVEUR, 'node_modules', 'ethers'));
   await new Promise((r) => setTimeout(r, 1400));
@@ -146,6 +157,12 @@ const servirLeSite = async () => {
   await p.evaluate(([m, sg]) => window.__s[0].send(JSON.stringify({ type: 'login', message: m, signature: sg })), [msg, sig]);
   await p.waitForTimeout(1800);
   ok(true, 'un compte est connecte : ' + w.address.slice(0, 10));
+  {
+    const cfg = require(path.join(SERVEUR, 'config'));
+    const q = moteur._p(w.address);
+    q.hasDeposited = true;
+    q.betBalance = ethers.utils.parseUnits('50000000', cfg.DECIMALS);
+  }
 
   console.log('\n-- la rencontre arrive, avec ses six marches --');
   await p.waitForTimeout(1200);

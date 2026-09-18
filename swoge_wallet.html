@@ -68,7 +68,7 @@
      A savoir : cela ne sauve pas la page DEJA en cache chez quelqu'un, qui ne
      contient pas ces lignes. Ce garde-fou vaut a partir de celle-ci. -->
 <script>
-var MARQUE_PAGE = '88dae1d9';
+var MARQUE_PAGE = '594b1d33';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -5318,9 +5318,9 @@ function remplitChoix(sel, exclure){
     /* Le cote qui paie porte aussi Solana : le SOL et les memecoins qu on y
        detient. Un jeton Solana choisi la force l arrivee sur Solana (voir le
        `change` de `swDe`) : Jupiter n echange que d un cote a l autre de la
-       meme chaine, et cette page n y signe rien d autre. L envoi, lui, ne
-       propose pas le SOL : on ne sait pas encore l envoyer d ici. */
-    if(envoi && JETONS[i].solNatif) continue;
+       meme chaine. L envoi propose le SOL depuis le 18 septembre 2026 :
+       `envoieSolana` construit la transaction ici, et la meme signature que
+       l echange Jupiter la signe. */
     var nomJ = JETONS[i].sym+' — '+JETONS[i].nom;
     h+='<option value="'+JETONS[i].cle+'">'+nomJ+'</option>';
   }
@@ -5793,9 +5793,10 @@ function majEnvoyer(){
   var ns = $('enSolNote');
   if(ns){
     ns.hidden = !solAdr;
-    if(solAdr) ns.textContent = 'Your SOL is not in this list. This screen signs on the eight EVM '
-      + 'chains, which share one address; Solana uses another curve and this wallet cannot build '
-      + 'a transaction there yet. You can receive SOL — the address is on the Account screen.';
+    if(solAdr) ns.textContent = 'SOL and the classic Solana tokens you hold can be sent from here, '
+      + 'paid from your Solana address (fee \u2248 0.000005 SOL, plus about 0.002 SOL once if the '
+      + 'recipient has never held that token). Tokens on the newer Token-2022 program are not '
+      + 'supported yet — the wallet will say so before anything is signed.';
   }
   majRevue();
   litFrais();
@@ -5815,6 +5816,18 @@ $('enJeton').addEventListener('change', majEnvoyer);
  * Et si le prix du gaz ne se lit pas, on n'invente pas de reserve : on
  * le dit et on ne remplit rien. Deviner ici, c'est vider un solde. */
 async function calculeMax(cle, unitesGaz){
+  /* Solana : pas de gaz a estimer. Le SOL natif garde 0,001 SOL — deux cents
+     signatures — pour que le compte puisse encore payer ; un jeton SPL part
+     en entier, le SOL du compte paie la signature. */
+  var jSol = J(cle);
+  if(jSol && chaineDuJeton(jSol).svm){
+    var sSol = soldes[cle];
+    if(sSol === null || sSol === undefined) return { erreur:'That balance has not been read yet — it is unknown, not zero.' };
+    if(!jSol.solNatif) return { montant:sSol };
+    var garde = ethers.BigNumber.from('1000000');
+    if(sSol.lte(garde)) return { erreur:'Not enough SOL to send anything and still pay the fee.' };
+    return { montant:sSol.sub(garde), reserve:garde.mul(ethers.BigNumber.from(10).pow(9)), sym:'SOL' };
+  }
   var j = J(cle), s = soldes[cle];
   if(s === null || s === undefined)
     return { erreur:'Your balance has not been read yet — reload it first. It is unknown, not zero.' };
@@ -6083,6 +6096,11 @@ function accrocheMontant(id){
 
 async function litFrais(){
   var j = J($('enJeton').value) || JETONS[0], c = chaineDuJeton(j);
+  /* Solana : un prix fixe par signature, 5 000 lamports, pas de marche du
+     gaz a lire. Le loyer d un compte de jeton neuf (~0,002 SOL) n est du que
+     si le destinataire n en a pas : on le dit au moment de signer, quand on
+     sait a qui l on envoie. */
+  if(c.svm){ $('enFrais').textContent = '\u2248 0.000005 SOL'; return; }
   try{
     var g = await borne(lecPont(c).getGasPrice(), 9000, 'gasPrice');
     var u = ethers.BigNumber.from(21000 * (j.natif ? 1 : 3));
@@ -6357,6 +6375,7 @@ async function envoieMaintenant(j, dest, wei, geste){
      journal changent — les recopier dans une seconde fonction ferait deux
      chemins a corriger le jour ou l'attente change. */
   var brule = geste === 'brule';
+  if(!brule && chaineDuJeton(j).svm) return envoieSolana(j, dest, wei);
   var b = $(brule ? 'brPartir' : 'enPartir'), note = $(brule ? 'brNote' : 'enNote');
   b.disabled = true;
   note.className = 'wl-note';
@@ -6996,6 +7015,104 @@ async function solSigneEtEnvoie(txB64){
   return sig;
 }
 
+/* ==================== ENVOYER DEPUIS SOLANA ====================
+ *
+ * « On peut recevoir et voir un jeton Solana, pas l envoyer ni le revendre
+ * d ici : un joueur qui a recu du SOL est coince. » La revente existait deja
+ * (Jupiter, `echangeSolana`) ; l envoi, non. Il manquait la construction de
+ * la transaction, que Jupiter faisait pour nous : la voici, avec le moteur
+ * deja depose dans le depot (`solana-web3.min.js`), et la meme signature.
+ *
+ * Deux gestes, rien d autre :
+ *   - le SOL : un `SystemProgram.transfer` ;
+ *   - un jeton SPL classique : le transfert du programme Token, et avant lui,
+ *     si le destinataire n a pas encore de compte pour ce jeton, la creation
+ *     de ce compte (instruction « idempotente » du programme des comptes
+ *     associes, donnee = [1]) — c est le loyer d environ 0,002 SOL, paye
+ *     une fois par l envoyeur.
+ *
+ * Ce qu on REFUSE, et qu on dit avant de signer : un jeton du programme
+ * Token-2022. Ses comptes se derivent autrement et ses extensions (frais de
+ * transfert, gel) changent ce qu un transfert fait vraiment ; le construire
+ * « comme un classique » signerait une transaction qui echoue au mieux, et
+ * qui paie un frais qu on n a pas montre au pire. Le programme proprietaire
+ * du mint est lu sur la chaine, pas suppose.
+ *
+ * Le blockhash meurt en une minute : on ne le prend qu au moment de partir,
+ * apres toutes les lectures, comme pour l echange. */
+var SOL_PROG_TOKEN = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
+var SOL_PROG_ATA   = 'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL';
+var SOL_FRAIS      = 5000;              /* lamports par signature */
+async function envoieSolana(j, dest, brut){
+  var b = $('enPartir'), note = $('enNote');
+  var dis = function(t, grave){ note.className = grave ? 'wl-note grave' : 'wl-note'; note.textContent = t; };
+  if(!solAdr) return dis('You have no Solana address yet — create it on the Account screen first.', true);
+  if(!adresseJetonValide(dest, CHAINE_SOL)) return dis('That is not a Solana address.', true);
+  b.disabled = true;
+  try{
+    dis('Preparing the transaction…');
+    var w3 = await chargeSolW3();
+    var de = new w3.PublicKey(solAdr), a = new w3.PublicKey(dest);
+    var ixs = [], loyer = false;
+    if(j.solNatif){
+      var solde = await soldeSolNatifBN();
+      if(solde.lt(brut.add(SOL_FRAIS)))
+        throw new Error('Not enough SOL: the amount plus the 0.000005 SOL fee is more than you hold.');
+      ixs.push(w3.SystemProgram.transfer({ fromPubkey:de, toPubkey:a, lamports:BigInt(brut.toString()) }));
+    } else {
+      var infoMint = await solRpc('getAccountInfo', [j.adr, { encoding:'base64' }]);
+      var prog = infoMint && infoMint.value && infoMint.value.owner;
+      if(!prog) throw new Error('This token was not found on Solana. Nothing was sent.');
+      if(prog !== SOL_PROG_TOKEN)
+        throw new Error('This token lives on the Token-2022 program, which this wallet cannot send yet. '
+                      + 'Nothing was signed — you can still swap it through Jupiter.');
+      var TOKEN = new w3.PublicKey(SOL_PROG_TOKEN), ATA = new w3.PublicKey(SOL_PROG_ATA), mint = new w3.PublicKey(j.adr);
+      var compteDe = function(o){ return w3.PublicKey.findProgramAddressSync([o.toBuffer(), TOKEN.toBuffer(), mint.toBuffer()], ATA)[0]; };
+      var src = compteDe(de), dst = compteDe(a);
+      var infoDst = await solRpc('getAccountInfo', [dst.toBase58(), { encoding:'base64' }]);
+      if(!infoDst || !infoDst.value){
+        loyer = true;
+        ixs.push(new w3.TransactionInstruction({ programId:ATA, keys:[
+          { pubkey:de,   isSigner:true,  isWritable:true },
+          { pubkey:dst,  isSigner:false, isWritable:true },
+          { pubkey:a,    isSigner:false, isWritable:false },
+          { pubkey:mint, isSigner:false, isWritable:false },
+          { pubkey:w3.SystemProgram.programId, isSigner:false, isWritable:false },
+          { pubkey:TOKEN, isSigner:false, isWritable:false } ], data:Buffer.from([1]) }));
+      }
+      /* Transfer (instruction 3) : montant en u64 petit-boutien. */
+      var be = ethers.utils.arrayify(ethers.utils.zeroPad(ethers.utils.hexlify(brut), 8));
+      var data = Buffer.alloc(9); data[0] = 3;
+      for(var k = 0; k < 8; k++) data[1 + k] = be[7 - k];
+      ixs.push(new w3.TransactionInstruction({ programId:TOKEN, keys:[
+        { pubkey:src, isSigner:false, isWritable:true },
+        { pubkey:dst, isSigner:false, isWritable:true },
+        { pubkey:de,  isSigner:true,  isWritable:false } ], data:data }));
+      var lamports = await soldeSolNatifBN();
+      var besoin = SOL_FRAIS + (loyer ? 2039280 : 0);
+      if(lamports.lt(besoin))
+        throw new Error('Your Solana address needs about ' + (besoin / 1e9).toFixed(6) + ' SOL to pay '
+                      + (loyer ? 'the fee and the recipient’s new token account.' : 'the fee.'));
+    }
+    var bh = await solRpc('getLatestBlockhash', [{ commitment:'finalized' }]);
+    if(!bh || !bh.value || !bh.value.blockhash) throw new Error('Solana gave no recent blockhash. Nothing was sent.');
+    var msg = new w3.TransactionMessage({ payerKey:de, recentBlockhash:bh.value.blockhash, instructions:ixs }).compileToV0Message();
+    var tx = new w3.VersionedTransaction(msg);
+    dis(loyer ? 'Confirm in your wallet — this also opens the recipient’s token account (≈ 0.002 SOL, once)…'
+              : 'Confirm in your wallet…');
+    var sig = await solSigneEtEnvoie(Buffer.from(tx.serialize()).toString('base64'));
+    journalAjoute({ h:sig, k:'envoi', cle:j.cle, montant:brut.toString(), vers:dest, sur:SOL_CHAINE, deNom:'Solana' });
+    suitSignatureSolana(sig);
+    note.className = 'wl-note';
+    note.innerHTML = 'Sent on Solana. <a href="' + CHAINE_SOL.scan + '/tx/' + sig + '" target="_blank" rel="noopener"'
+      + ' style="color:var(--accent2)">View transaction</a> — balances refresh in a moment.';
+    $('enMontant').value = '';
+    setTimeout(function(){ try{ rafraichit(); }catch(e){} }, 5000);
+  }catch(err){
+    dis((typeof pourquoiRefus === 'function') ? pourquoiRefus(err) : ((err && err.message) || String(err)), true);
+  }
+  b.disabled = false;
+}
 var SIGNAUX_URL = 'https://web-production-220a3.up.railway.app/ai/colonie';
 var SIGNAUX = null, SIGNAUX_T = 0;
 
@@ -7356,7 +7473,9 @@ $('enPartir').addEventListener('click', function(){
   var j=J($('enJeton').value);
   var dest=$('enDest').value.trim();
   var m=$('enMontant').value.trim().replace(',','.');
-  if(!ethers.utils.isAddress(dest)) return toast('That address is not valid');
+  /* Une adresse Solana est du base58, pas du 0x : on la juge sur la chaine
+     du jeton choisi, sinon tout envoi Solana serait refuse a la porte. */
+  if(!adresseJetonValide(dest, chaineDuJeton(j))) return toast('That address is not valid');
   if(!(parseFloat(m)>0)) return toast('Enter an amount');
   var wei;
   try{ wei = ethers.utils.parseUnits(m, j.dec); }catch(e){ return toast('Amount not understood'); }

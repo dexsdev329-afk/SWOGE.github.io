@@ -35,11 +35,9 @@ const JETONS_ECRITS = ((/var JETONS = \[([\s\S]*?)\n\];/.exec(SRC_PAGE) || ['', 
 const IDS_PONT = [...((/var CHAINES_PONT = \[([\s\S]*?)\n\];/.exec(SRC_PAGE) || ['', ''])[1])
                    .matchAll(/\bid:(\d+)/g)].map((m) => Number(m[1]));
 /* moins un : Ethereum est deja ecrit a la main, sous le nom `ethL1`.
-   Et moins le SOL natif, releve dans la page lui aussi : il est dans la table
-   pour etre PAYE sur Solana, pas envoye — ce portefeuille ne sait pas encore
-   envoyer depuis Solana, et la liste du Send ne le propose donc pas. */
-const SOL_ECRIT = (/solNatif:true/.test(SRC_PAGE)) ? 1 : 0;
-const JETONS_ATTENDUS = JETONS_ECRITS + IDS_PONT.length - 1 - SOL_ECRIT;
+   Le SOL natif compte : depuis le 18 septembre 2026 le Send le propose, la
+   page sait construire et signer un envoi sur Solana (`envoieSolana`). */
+const JETONS_ATTENDUS = JETONS_ECRITS + IDS_PONT.length - 1;
 
 let n = 0, rates = 0;
 const ok = (c, m) => { n++; if (c) console.log('  ok   ' + m); else { rates++; console.log('  RATE ' + m); } };

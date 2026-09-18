@@ -12720,7 +12720,15 @@
     h:     { src: 'img/nexus/tiles/obj_cloture_h.webp',     larg: 112, haut: 110 },
     v:     { src: 'img/nexus/tiles/obj_cloture_v.webp',     larg: 62,  haut: 145 },
     coin:  { src: 'img/nexus/tiles/obj_cloture_coin.webp',  larg: 122, haut: 128 },
-    porte: { src: 'img/nexus/tiles/obj_cloture_porte.webp', larg: 166, haut: 117 },
+    /* ---- LA PORTE FAIT LA LARGEUR DE L OUVERTURE, ET PORTE DES DEMI-POTEAUX ----
+       A 166 pour une ouverture de 176, ses poteaux tombaient a cote des
+       demi-poteaux ou les deux courses s arretent : un poteau double de
+       chaque cote de la porte, vu au rendu du 18 septembre 2026. La piece est
+       construite comme la lisse de face — un demi-poteau centre sur chaque
+       bord — et dessinee a 176 : chaque demi complete celui de la course.
+       108 de haut, la hauteur des lisses (110 / CL_RH), pour que les traverses
+       du battant tombent a la meme ligne que les lisses voisines. */
+    porte: { src: 'img/nexus/tiles/obj_cloture_porte.webp', larg: 176, haut: 108 },
   };
   /* Les rapports des dessins. Une piece de barriere se dessine a la taille du
      PAS, pas a une taille choisie : un pas plus grand que la piece laisse un

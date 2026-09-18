@@ -51,7 +51,16 @@
   'use strict';
   var $ = function (i) { return document.getElementById(i); };
   var v = $('v'), dit = $('dit');
-  function montre(t, m) { $('ditT').textContent = t; $('ditM').textContent = m || ''; dit.classList.add('on'); }
+  /* ---- LA PAGE DIT AU NEXUS CE QUI S EST PASSE ----
+     « joue » quand l image arrive, « rate » quand le flux ne repond pas :
+     c est ce qui permet au panneau de mettre en avant les chaines qui se
+     lancent vraiment, et de marquer celles qui sont tombees. Meme origine
+     seulement : le panneau verifie d ou vient le message. */
+  function ditAuParent(etat) { try { if (window.parent !== window) window.parent.postMessage({ swogeTv: etat, id: id }, location.origin); } catch (e) {} }
+  function montre(t, m) {
+    $('ditT').textContent = t; $('ditM').textContent = m || ''; dit.classList.add('on');
+    if (/not answering|not found|Unknown channel|cannot play/.test(t)) ditAuParent('rate');
+  }
   function cache() { dit.classList.remove('on'); }
   var id = '';
   try { id = new URLSearchParams(location.search).get('c') || ''; } catch (e) {}
@@ -80,7 +89,7 @@
     var pasVenu = setTimeout(function () {
       montre('This channel is not answering.', 'Free streams come and go — pick another one on the screen.');
     }, 20000);
-    v.addEventListener('playing', function () { clearTimeout(pasVenu); cache(); });
+    v.addEventListener('playing', function () { clearTimeout(pasVenu); cache(); ditAuParent('joue'); });
     if (window.Hls && Hls.isSupported()) {
       var h = new Hls({ maxBufferLength: 20 });
       h.on(Hls.Events.ERROR, function (e, data) {

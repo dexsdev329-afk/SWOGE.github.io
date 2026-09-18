@@ -7652,6 +7652,8 @@
     if (!f) return;
     f.then(function (r) { return r.json(); }).then(function (d) {
       var par = {};
+      TV_CHAINES = (d && d.chaines || []).filter(function (c) { return c && c.id && c.nom && c.url; });
+      if (tvOuvert) tvPeint();
       (d && d.chaines || []).forEach(function (c) {
         if (!c || !c.id || !c.nom || !c.url) return;
         var k = c.rubrique || 'General';
@@ -7665,6 +7667,235 @@
     }).catch(function () { TV_RUBRIQUES = []; });
   }
   chargeLesChaines();
+
+  /* ================== LE PANNEAU DE SWOGE TV ==================
+   *
+   * Il empruntait le panneau des seances : une banniere, des affiches au
+   * format film, et une seule facon de trouver une chaine — faire defiler.
+   * Deux cent quatre-vingt-cinq chaines ne se parcourent pas, elles se
+   * cherchent. Le panneau a donc :
+   *   - une recherche (nom, pays, rubrique, sans accents ni majuscules) ;
+   *   - des filtres par rubrique et par pays ;
+   *   - en tete, ce que le joueur regarde (« Continue watching »), ce qu il
+   *     regarde le plus (« Most watched ») et, la premiere fois, une
+   *     selection qui se lance bien (« Start here » : les flux 1080p des
+   *     pays francophones d abord) ;
+   *   - un point vert sur les chaines qui ONT joue sur cet appareil, gris
+   *     sur celles qui sont tombees — c est `tv.html` qui le dit, par un
+   *     message, apres avoir vraiment vu l image.
+   * L historique vit dans `localStorage` de cet appareil. Un classement
+   * global demanderait un compteur cote serveur : pas ici, pas encore.
+   */
+  var TV_CHAINES = [];
+  var TV_PAYS_ORDRE = ['FR', 'BE', 'CH', 'CA', 'US', 'DE', 'ES', 'IT', 'JP'];
+  var tvOuvert = false, tvFiltre = { genre: '', pays: '', q: '' }, tvEnCours = null;
+  var elTv = document.getElementById('nxTvVoile');
+  function tvHisto() { try { return JSON.parse(localStorage.getItem('swogeTvHisto') || '{}') || {}; } catch (e) { return {}; } }
+  function tvNote(id, f) {
+    var h = tvHisto(); var e = h[id] || { vues: 0, ok: 0, ko: 0, t: 0 }; f(e); h[id] = e;
+    try { localStorage.setItem('swogeTvHisto', JSON.stringify(h)); } catch (x) {}
+  }
+  function tvPlat(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
+  function tvChaine(id) { for (var i = 0; i < TV_CHAINES.length; i++) if (TV_CHAINES[i].id === id) return TV_CHAINES[i]; return null; }
+
+  function tvCarte(c, h) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'nxtv-c' + (tvEnCours && tvEnCours.id === c.id ? ' on' : ''); b.setAttribute('data-id', c.id);
+    var t = document.createElement('span'); t.className = 'nxtv-tuile';
+    if (c.logo) {
+      var im = document.createElement('img'); im.alt = ''; im.loading = 'lazy'; im.src = c.logo;
+      im.addEventListener('error', function () { if (im.parentNode) { im.parentNode.removeChild(im); t.insertAdjacentHTML('afterbegin', '<span class="ini">' + tvInitiales(c.nom) + '</span>'); } });
+      t.appendChild(im);
+    } else t.innerHTML = '<span class="ini">' + tvInitiales(c.nom) + '</span>';
+    var e = h[c.id];
+    if (e && e.ok > 0 && e.ok >= e.ko) t.insertAdjacentHTML('beforeend', '<span class="ok" title="Played on this device"></span>');
+    else if (e && e.ko > e.ok) t.insertAdjacentHTML('beforeend', '<span class="ko" title="Did not answer last time"></span>');
+    if (/^(1080|720)/.test(c.q || '')) t.insertAdjacentHTML('beforeend', '<span class="q">' + (c.q.indexOf('1080') === 0 ? 'HD' : '720p') + '</span>');
+    b.appendChild(t);
+    var n = document.createElement('b'); n.textContent = c.nom; b.appendChild(n);
+    var s = document.createElement('i'); s.textContent = (c.drapeau ? c.drapeau + ' ' : '') + c.rubrique + (e && e.vues ? ' · ' + e.vues + '×' : ''); b.appendChild(s);
+    return b;
+  }
+  function tvInitiales(nom) {
+    var m = String(nom || '').replace(/[^A-Za-z0-9 ]/g, ' ').split(/\s+/).filter(Boolean);
+    return ((m[0] || '?').charAt(0) + (m[1] ? m[1].charAt(0) : '')).toUpperCase();
+  }
+  function tvRangee(titre, sous, liste, grille) {
+    var r = document.createElement('section'); r.className = 'nxtv-rang';
+    r.innerHTML = '<div class="nxtv-rang-tete"><h3></h3><span></span></div>';
+    r.querySelector('h3').textContent = titre; r.querySelector('span').textContent = sous || '';
+    var g = document.createElement('div'); g.className = 'nxtv-rangee' + (grille ? ' grille' : '');
+    var h = tvHisto();
+    liste.forEach(function (c) { g.appendChild(tvCarte(c, h)); });
+    r.appendChild(g);
+    if (!grille) {
+      /* Deux fleches au survol, sur bureau : la rangee n a pas de barre. */
+      ['g', 'd'].forEach(function (k) {
+        var f = document.createElement('button'); f.type = 'button'; f.className = 'nxtv-fl ' + k; f.setAttribute('aria-label', k === 'g' ? 'Scroll left' : 'Scroll right');
+        f.textContent = k === 'g' ? '‹' : '›';
+        f.addEventListener('click', function (ev) { ev.stopPropagation(); g.scrollBy({ left: (k === 'g' ? -1 : 1) * g.clientWidth * 0.85, behavior: 'smooth' }); });
+        r.appendChild(f);
+      });
+    }
+    return r;
+  }
+  function tvPeintFiltres() {
+    var z = document.getElementById('nxTvFiltres'); if (!z) return;
+    z.innerHTML = '';
+    var genres = [], pays = [];
+    TV_CHAINES.forEach(function (c) { if (genres.indexOf(c.rubrique) < 0) genres.push(c.rubrique); if (pays.indexOf(c.pays) < 0) pays.push(c.pays); });
+    genres.sort(function (a, b) { return TV_ORDRE.indexOf(a) - TV_ORDRE.indexOf(b); });
+    pays.sort(function (a, b) { return TV_PAYS_ORDRE.indexOf(a) - TV_PAYS_ORDRE.indexOf(b); });
+    var tout = document.createElement('button'); tout.type = 'button'; tout.textContent = 'All'; tout.className = (!tvFiltre.genre && !tvFiltre.pays) ? 'on' : '';
+    tout.addEventListener('click', function () { tvFiltre.genre = ''; tvFiltre.pays = ''; tvPeint(); });
+    z.appendChild(tout);
+    genres.forEach(function (g) {
+      var b = document.createElement('button'); b.type = 'button'; b.textContent = g; b.className = tvFiltre.genre === g ? 'on' : '';
+      b.addEventListener('click', function () { tvFiltre.genre = (tvFiltre.genre === g) ? '' : g; tvPeint(); }); z.appendChild(b);
+    });
+    var sep = document.createElement('span'); sep.className = 'sep'; z.appendChild(sep);
+    pays.forEach(function (p) {
+      var c = null; for (var i = 0; i < TV_CHAINES.length; i++) if (TV_CHAINES[i].pays === p) { c = TV_CHAINES[i]; break; }
+      var b = document.createElement('button'); b.type = 'button'; b.textContent = (c && c.drapeau ? c.drapeau + ' ' : '') + p; b.className = tvFiltre.pays === p ? 'on' : '';
+      b.addEventListener('click', function () { tvFiltre.pays = (tvFiltre.pays === p) ? '' : p; tvPeint(); }); z.appendChild(b);
+    });
+  }
+  function tvPeint() {
+    var corps = document.getElementById('nxTvCorps'); if (!corps) return;
+    tvPeintFiltres();
+    corps.innerHTML = '';
+    var h = tvHisto();
+    var liste = TV_CHAINES.filter(function (c) {
+      if (tvFiltre.genre && c.rubrique !== tvFiltre.genre) return false;
+      if (tvFiltre.pays && c.pays !== tvFiltre.pays) return false;
+      return true;
+    });
+    var q = tvPlat(tvFiltre.q).trim();
+    if (q) {
+      var res = liste.filter(function (c) { return tvPlat(c.nom + ' ' + c.pays + ' ' + c.rubrique).indexOf(q) >= 0; });
+      if (!res.length) { corps.innerHTML = '<div class="nxtv-vide">No channel matches “' + tvEchappe(tvFiltre.q) + '”. Try a country or a category.</div>'; return; }
+      corps.appendChild(tvRangee('Results', res.length + ' channel' + (res.length > 1 ? 's' : ''), res, true));
+      return;
+    }
+    /* Un filtre de rubrique ou de pays : une grille, pas des rangees. */
+    if (tvFiltre.genre || tvFiltre.pays) {
+      if (!liste.length) { corps.innerHTML = '<div class="nxtv-vide">Nothing here yet.</div>'; return; }
+      corps.appendChild(tvRangee((tvFiltre.genre || 'All') + (tvFiltre.pays ? ' · ' + tvFiltre.pays : ''), liste.length + ' channels', liste, true));
+      return;
+    }
+    /* En tete : ce qu on regarde, ce qu on regarde le plus, ou une selection pour commencer. */
+    var vues = liste.filter(function (c) { return h[c.id] && h[c.id].vues > 0; });
+    var recents = vues.slice().sort(function (a, b) { return (h[b.id].t || 0) - (h[a.id].t || 0); }).slice(0, 12);
+    var top = vues.slice().sort(function (a, b) { return h[b.id].vues - h[a.id].vues; }).slice(0, 12);
+    if (recents.length) corps.appendChild(tvRangee('Continue watching', 'on this device', recents));
+    if (top.length >= 3) corps.appendChild(tvRangee('Most watched', 'on this device', top));
+    if (!recents.length) {
+      var franco = function (c) { return ['FR', 'BE', 'CH', 'CA'].indexOf(c.pays) >= 0; };
+      var depart = liste.filter(function (c) { return /^1080/.test(c.q || ''); })
+        .sort(function (a, b) { return (franco(a) ? 0 : 1) - (franco(b) ? 0 : 1) || TV_ORDRE.indexOf(a.rubrique) - TV_ORDRE.indexOf(b.rubrique); }).slice(0, 14);
+      if (depart.length) corps.appendChild(tvRangee('Start here', 'HD streams, French-speaking first', depart));
+    }
+    var joue = liste.filter(function (c) { return h[c.id] && h[c.id].ok > 0 && h[c.id].ok >= h[c.id].ko && !(h[c.id].vues > 0); });
+    TV_ORDRE.concat(liste.map(function (c) { return c.rubrique; }).filter(function (g, i, a) { return TV_ORDRE.indexOf(g) < 0 && a.indexOf(g) === i; }))
+      .forEach(function (g) {
+        var l = liste.filter(function (c) { return c.rubrique === g; });
+        if (!l.length) return;
+        /* Dans chaque rubrique, ce qui a joue passe devant, puis la HD. */
+        l.sort(function (a, b) {
+          var ea = h[a.id] || {}, eb = h[b.id] || {};
+          var ja = ea.ok > 0 && ea.ok >= ea.ko ? 1 : 0, jb = eb.ok > 0 && eb.ok >= eb.ko ? 1 : 0;
+          if (ja !== jb) return jb - ja;
+          var ha = /^1080/.test(a.q || '') ? 1 : 0, hb = /^1080/.test(b.q || '') ? 1 : 0;
+          return hb - ha;
+        });
+        corps.appendChild(tvRangee(g, l.length + ' channels', l));
+      });
+  }
+  function tvEchappe(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function tvLance(id) {
+    var c = tvChaine(id); if (!c) return;
+    tvEnCours = c;
+    tvNote(id, function (e) { e.vues++; e.t = Date.now(); });
+    var lect = document.getElementById('nxTvLecteur'), cadre = document.getElementById('nxTvCadre');
+    if (!lect || !cadre) return;
+    var logo = document.getElementById('nxTvLogo');
+    if (logo) { logo.hidden = !c.logo; if (c.logo) { logo.src = c.logo; logo.onerror = function () { logo.hidden = true; }; } }
+    document.getElementById('nxTvNom').textContent = (c.drapeau ? c.drapeau + ' ' : '') + c.nom;
+    document.getElementById('nxTvSous').textContent = c.rubrique + ' · free-to-air via iptv-org' + (c.q ? ' · ' + c.q : '');
+    var url = 'tv.html?c=' + encodeURIComponent(c.id);
+    document.getElementById('nxTvOnglet').href = url;
+    cadre.src = url;
+    lect.hidden = false;
+    var corps = document.getElementById('nxTvCorps');
+    if (corps) corps.querySelectorAll('.nxtv-c').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-id') === id); });
+    if (lect.scrollIntoView) lect.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  }
+  function tvArrete() {
+    tvEnCours = null;
+    var lect = document.getElementById('nxTvLecteur'), cadre = document.getElementById('nxTvCadre');
+    if (cadre) cadre.src = 'about:blank';
+    if (lect) lect.hidden = true;
+    var corps = document.getElementById('nxTvCorps');
+    if (corps) corps.querySelectorAll('.nxtv-c.on').forEach(function (b) { b.classList.remove('on'); });
+  }
+  function ouvreTv() {
+    if (!elTv) return;
+    tvOuvert = true;
+    tvFiltre = { genre: '', pays: '', q: '' };
+    var ch = document.getElementById('nxTvCherche'); if (ch) ch.value = '';
+    tvPeint();
+    elTv.classList.add('on');
+    gelLeHall(true);
+    musiqueArcade(false);
+    if (ch && window.matchMedia && matchMedia('(hover:hover)').matches) setTimeout(function () { try { ch.focus(); } catch (e) {} }, 150);
+  }
+  function fermeTv(parLaMain) {
+    tvOuvert = false;
+    tvArrete();
+    /* Meme regle que l arcade : la borne sous nos pieds ne rouvre pas le
+       panneau a l image suivante. */
+    var SF = parLaMain ? salleCourante() : null;
+    if (SF && SF.bornes) {
+      for (var i = 0; i < SF.bornes.length; i++) {
+        var b = SF.bornes[i];
+        var dx = joueur.x - b.x, dy = joueur.y - b.y;
+        if (dx * dx + dy * dy < b.r * b.r) { borneFermee = b; break; }
+      }
+    }
+    if (elTv) elTv.classList.remove('on');
+    gelLeHall(false);
+  }
+  if (elTv) {
+    elTv.addEventListener('click', function (e) {
+      if (e.target === elTv) { fermeTv(true); return; }
+      var c = e.target.closest ? e.target.closest('.nxtv-c') : null;
+      if (c) { tvLance(c.getAttribute('data-id')); return; }
+    });
+    var x = document.getElementById('nxTvX'); if (x) x.addEventListener('click', function () { fermeTv(true); });
+    var st = document.getElementById('nxTvStop'); if (st) st.addEventListener('click', tvArrete);
+    var ch = document.getElementById('nxTvCherche');
+    if (ch) {
+      var minuteur = null;
+      ch.addEventListener('input', function () { clearTimeout(minuteur); var v = ch.value; minuteur = setTimeout(function () { tvFiltre.q = v; tvPeint(); }, 120); });
+      /* Le clavier du hall ne doit pas marcher pendant qu on tape. */
+      ch.addEventListener('keydown', function (ev) { ev.stopPropagation(); if (ev.key === 'Escape') { ch.value = ''; tvFiltre.q = ''; tvPeint(); } });
+      ch.addEventListener('keyup', function (ev) { ev.stopPropagation(); });
+    }
+    document.addEventListener('keydown', function (ev) { if (tvOuvert && ev.key === 'Escape' && document.activeElement !== ch) fermeTv(true); });
+    /* Ce que le lecteur rapporte : joue, ou tombe. Meme origine seulement. */
+    window.addEventListener('message', function (ev) {
+      if (ev.origin !== location.origin || !ev.data || !ev.data.swogeTv || !ev.data.id) return;
+      var etat = ev.data.swogeTv, id = String(ev.data.id);
+      tvNote(id, function (e) { if (etat === 'joue') e.ok++; else if (etat === 'rate') e.ko++; });
+      var corps = document.getElementById('nxTvCorps');
+      if (corps) corps.querySelectorAll('.nxtv-c[data-id]').forEach(function (b) {
+        if (b.getAttribute('data-id') !== id) return;
+        var t = b.querySelector('.nxtv-tuile'); if (!t) return;
+        var v = t.querySelector('.ok, .ko'); if (v) v.remove();
+        t.insertAdjacentHTML('beforeend', etat === 'joue' ? '<span class="ok" title="Played on this device"></span>' : '<span class="ko" title="Did not answer last time"></span>');
+      });
+    });
+  }
 
   /* ================== SWOGE TOWER : CINQ ETAGES ==================
    *
@@ -12017,14 +12248,9 @@
   /* La tele : meme pas que le cinema, avec la liste des chaines a la place
      des seances. Le panneau ne charge RIEN tant qu on n a pas choisi. */
   function pasSalleTV(surPortail, dt) {
-    SALLE_TV.bornes[0].jeu = TV_RUBRIQUES.length ? 'tv' : null;
+    SALLE_TV.bornes[0].jeu = TV_CHAINES.length ? 'tv' : null;
     pasSalle(SALLE_TV, surPortail, dt,
-             function () {
-               if (arcOuvert || !TV_RUBRIQUES.length) return;
-               ouvreEcran({ titre: '&#128250; SWOGE TV', marque: 'TV',
-                            sous: 'Pick a channel &middot; free-to-air live TV, nothing loads until you do',
-                            rubriques: TV_RUBRIQUES });
-             },
+             function () { if (!tvOuvert && !arcOuvert && TV_CHAINES.length) ouvreTv(); },
              { pret: 'walk up to pick a channel',
                bientot: 'no channel list yet &middot; come back soon',
                rien: 'Walk up to the screen &middot; the EXIT takes you home' });

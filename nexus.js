@@ -6827,7 +6827,10 @@
      * l'arrondi a l'echelle du rendu. Celles-ci retombent juste. */
     { cle: 'fontaine', src: 'img/nexus/tiles/obj_fontaine.webp',
       x: CENTRE.x, y: CENTRE.y, larg: 340, haut: 544, collision: 108, cadres: 4,
-      recale: [0, 2.35, 4.71, 7.06] },
+      /* Plus de recalage : la planche du 18 septembre 2026 porte quatre fois
+         le meme dessin, seule la lumiere pulse. L ancien recalage compensait
+         une derive du generateur d une image a l autre. */
+      recale: [0, 0, 0, 0] },
     /* ---- DEUX PORTES AU NORD, ET C'EST UN CHOIX ----
      *
      * La porte violette etait seule au bout du chemin : on marchait dedans

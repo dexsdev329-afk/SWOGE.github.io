@@ -31,7 +31,7 @@
  *
  * 5. UNE PORTE NON INSCRITE NE FAIT RIEN, SANS RIEN DIRE. C'est la faute
  *    que la table `PANNEAUX` existe pour empecher. On relit la source : tout
- *    lieu qui a un rayon et n'a ni adresse, ni monde, ni « bientot » doit
+ *    lieu qui a un rayon et n'a ni adresse, ni monde, ni donjon, ni « bientot » doit
  *    etre dans la table.
  *
  * 6. LA TOUCHE QUI RESTE ENFONCEE. Les boutons du telephone posent un
@@ -92,7 +92,7 @@ function litSource() {
                  larg: Number(val('larg')), haut: Number(val('haut')),
                  rayon: val('rayon') ? Number(val('rayon')) : 0,
                  cadres: val('cadres') ? Number(val('cadres')) : 1,
-                 href: !!val('href'), monde: !!val('monde'), bientot: !!val('bientot') });
+                 href: !!val('href'), monde: !!val('monde'), donjon: !!val('donjon'), bientot: !!val('bientot') });
   }
   /* ---- DEUX TABLES, UNE SEULE REGLE ----
    * Un lieu du hall qui ne mene nulle part ailleurs doit etre inscrit QUELQUE
@@ -129,7 +129,11 @@ function litSource() {
   /* Plus aucune exception : le coffre etait teste a la main avant la table,
      il est maintenant inscrit dans `SALLES_DU_HALL` comme l'arcade. */
   const HORS_TABLE = [];
-  const orphelines = S.lieux.filter((l) => l.rayon && !l.href && !l.monde && !l.bientot
+  /* `donjon` compte comme `monde` : la porte de l Arene n ouvre ni page ni
+     panneau, elle dit au serveur qu on entre (`arenePorte`), et le serveur
+     ouvre la salle instanciee. Une porte qui mene quelque part n est pas
+     muette, quel que soit le mot qui le dit. */
+  const orphelines = S.lieux.filter((l) => l.rayon && !l.href && !l.monde && !l.donjon && !l.bientot
                                    && HORS_TABLE.indexOf(l.cle) < 0
                                    && S.panneaux.indexOf(l.cle) < 0);
   ok(orphelines.length === 0,

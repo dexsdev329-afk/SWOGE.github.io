@@ -69,6 +69,15 @@ const servirLeSite = async () => {
   /* AUCUN de ces noms ne figure dans games.html. C'est ce qui fait la preuve :
      s'ils apparaissent a l'ecran, ils viennent du serveur et de nulle part
      ailleurs. */
+  /* ---- LES EQUIPES D ESSAI ONT UNE FORCE ----
+     `cotes.js` refuse de coter deux equipes qu il ne connait pas : « sans
+     force, une cote fabriquee serait un chiffre invente ». C est la bonne
+     regle, et l essai la respecte : il pose les forces de ses equipes
+     inventees avant de demander leurs marches, comme l etalonnage le fait
+     pour les vraies. */
+  [['foot', 'Zorglub FC', 1560], ['foot', 'Kryptonia', 1440], ['tennis', 'Vercingetorix V.', 1520],
+   ['tennis', 'Ambiorix A.', 1480], ['foot', 'Atlantide', 1500], ['foot', 'Lemurie', 1500]]
+    .forEach((x) => cotes.poseNote(x[0], x[1], x[2]));
   const cat = {
     sports: [{ cle: 'foot', nom: 'Football', actif: true },
              { cle: 'tennis', nom: 'Tennis', actif: true }],
@@ -253,43 +262,18 @@ const servirLeSite = async () => {
     await ctx2.close();
   }
 
-  console.log('\n-- la barre du bas --');
-  /* ---- TROIS CHOSES, ET LA PREMIERE EST FONCTIONNELLE ----
-   * Elle vient de `stakebubble.js`, partage par dix-sept pages sombres. Ses
-   * quatre touches ne repondaient pas : QUATRIEME fois que le meme piege se
-   * referme — `a[href], button{pointer-events:none}` rend toute cette page
-   * inerte par defaut, et elles en faisaient partie. Dessin, libelle,
-   * gestionnaire : tout sauf l effet.
-   * On la POSE ici telle que le script la produit — une `.swbb` avec ses
-   * boutons — pour verifier l habillage que la page lui applique. */
-  const barre = await p.evaluate(() => {
-    const b = document.createElement('div'); b.className = 'swbb';
-    for (const m of ['Play', 'Bets', 'Chests', 'Profile']) {
-      const q = document.createElement('button'); q.textContent = m; b.appendChild(q);
-    }
-    document.body.appendChild(b);
-    const st = getComputedStyle(b), bt = getComputedStyle(b.firstChild);
-    const clair = (c) => { const v = (c.match(/\d+/g) || []).map(Number);
-      return v.length >= 3 ? (v[0] + v[1] + v[2]) / 3 : null; };
-    return { fond: clair(st.backgroundColor), texte: clair(bt.color),
-             vivante: bt.pointerEvents, doigt: bt.cursor };
-  });
-  eq(barre.vivante, 'auto',
-     'ses touches repondent au doigt : elles etaient inertes comme tout le reste'
-     + ' de cette page, et c est la quatrieme fois que ce piege se referme');
-  eq(barre.doigt, 'pointer', 'et le curseur le promet');
-  ok(barre.fond > 200 && barre.texte < 160,
-     `elle est blanche comme la page (${Math.round(barre.fond)} sur `
-     + `${Math.round(barre.texte)}) — son fond existait pour une page noire`);
-  /* ---- ET ELLE NE SERT QUE SUR TELEPHONE ----
-   * Sur un ecran large la colonne de gauche est LA, en permanence, avec les
-   * memes destinations : la barre y double une navigation deja visible et
-   * mange trente pixels en bas. */
-  const parLargeur = await p.evaluate(() => {
-    const b = document.querySelector('.swbb');
-    return getComputedStyle(b).display;
-  });
-  eq(parLargeur, 'none', 'a mille quatre cents pixels, elle ne s affiche pas');
+  /* ---- LA BARRE DU BAS N EXISTE PLUS ----
+   * `stakebubble.js` posait une `.swbb` a quatre touches sur les pages
+   * sombres ; depuis le 3 septembre 2026 (paris en $SWOGEBET, portefeuille
+   * sur chaque page) elle est remplacee par le rond du portefeuille, et le
+   * script ne fabrique plus aucune `.swbb`. Verifier l habillage d une
+   * barre qu on pose soi-meme dans la page mesurait un fantome : la page ne
+   * la stylait plus parce qu elle n existait plus. Ce qu on garde de l
+   * intention — « ce qui se touche repond au doigt » — est mesure plus haut
+   * sur les vraies cartes et plus bas sur la version telephone. */
+  console.log('\n-- la barre du bas : retiree avec le portefeuille sur chaque page --');
+  ok(!/className\s*=\s*'swbb'/.test(fs.readFileSync(path.join(SITE, 'stakebubble.js'), 'utf8')),
+     'stakebubble.js ne fabrique plus de barre .swbb : le rond du portefeuille la remplace');
   {
     const ctx3 = await ctx.browser().newContext({ viewport: { width: 390, height: 844 } });
     const p3 = await ctx3.newPage();

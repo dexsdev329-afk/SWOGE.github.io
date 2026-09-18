@@ -79,6 +79,13 @@ const servirLeSite = async () => {
     ['foot', 'Italy · Serie A', 'Italy', 'IT', ['Inter', 'Milan'], 52],
     ['tennis', 'ATP · Cincinnati', 'United States', 'US', ['Blockx A.', 'Navone M.'], 12],
   ];
+  /* ---- LES EQUIPES D ESSAI ONT UNE FORCE ----
+     `cotes.js` refuse de coter deux equipes qu il ne connait pas : « sans
+     force, une cote fabriquee serait un chiffre invente ». C est la bonne
+     regle, et l essai la respecte : il pose les forces de ses equipes
+     inventees avant de demander leurs marches, comme l etalonnage le fait
+     pour les vraies. */
+  RENCONTRES.forEach((x) => { cotes.poseNote(x[0], x[4][0], 1530); cotes.poseNote(x[0], x[4][1], 1470); });
   const cat = {
     sports: [{ cle: 'foot', nom: 'Football', actif: true },
              { cle: 'tennis', nom: 'Tennis', actif: true }],

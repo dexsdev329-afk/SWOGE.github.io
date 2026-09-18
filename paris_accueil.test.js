@@ -116,6 +116,13 @@ function chargeLeCatalogue() {
     ['foot', 'England \u00b7 Premier League', 'England', 'GB', ['Arsenal', 'Chelsea'], 9],
     ['tennis', 'ATP \u00b7 Cincinnati', 'United States', 'US', ['Blockx A.', 'Navone M.'], 12],
   ];
+  /* ---- LES EQUIPES D ESSAI ONT UNE FORCE ----
+     `cotes.js` refuse de coter deux equipes qu il ne connait pas : « sans
+     force, une cote fabriquee serait un chiffre invente ». C est la bonne
+     regle, et l essai la respecte : il pose les forces de ses equipes
+     inventees avant de demander leurs marches, comme l etalonnage le fait
+     pour les vraies. */
+  RENCONTRES.forEach((x) => { cotes.poseNote(x[0], x[4][0], 1530); cotes.poseNote(x[0], x[4][1], 1470); });
   fs.writeFileSync(require('path').join(VOL, 'paris_catalogue.json'), JSON.stringify({
     sports: [{ cle: 'foot', nom: 'Football', actif: true },
              { cle: 'tennis', nom: 'Tennis', actif: true }],
@@ -192,6 +199,10 @@ function chargeLeCatalogue() {
   const q = moteur._p(w.address);
   q.hasDeposited = true;
   q.balance = WEI(50000000);
+  /* Les paris se jouent en $SWOGEBET depuis le 3 septembre 2026 : un solde
+     casino ne suffit plus, le serveur repond « not enough $SWOGEBET ». On
+     credite le coffre des paris, comme un depot l aurait fait. */
+  q.betBalance = WEI(50000000);
   moteur.acheteSkin(w.address, TEMOIN);              // offert — devient actif
   moteur._markWager(q, WEI(VOLUME), 'plinko');       // ce volume-la est au temoin
   moteur.acheteSkin(w.address, HEROS);               // paye — devient actif a son tour

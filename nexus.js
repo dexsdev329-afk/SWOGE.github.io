@@ -7686,9 +7686,27 @@
    *   - un point vert sur les chaines qui ONT joue sur cet appareil, gris
    *     sur celles qui sont tombees — c est `tv.html` qui le dit, par un
    *     message, apres avoir vraiment vu l image.
-   * L historique vit dans `localStorage` de cet appareil. Un classement
-   * global demanderait un compteur cote serveur : pas ici, pas encore.
+   * L historique de CE joueur vit dans `localStorage` de son appareil. Le
+   * classement de TOUS (« Most watched by players ») vient du serveur,
+   * `/tv/vues` : un compteur par chaine, incremente quand le lecteur a vu
+   * l image, rien par joueur. Sans reponse du serveur, la rangee n est
+   * simplement pas la.
    */
+  var TV_VUES_TOUS = null;
+  function tvServeur() {
+    try { var q = new URLSearchParams(location.search).get('server'); if (q) return String(q).replace(/^ws/, 'http'); } catch (e) {}
+    return 'https://web-production-220a3.up.railway.app';
+  }
+  function tvLitVuesTous() {
+    if (typeof fetch !== 'function') return;
+    fetch(tvServeur() + '/tv/vues', { cache: 'no-store' }).then(function (r) { return r.json(); })
+      .then(function (d) { TV_VUES_TOUS = (d && d.vues) || null; if (tvOuvert) tvPeint(); })
+      .catch(function () { TV_VUES_TOUS = null; });
+  }
+  function tvCompteVue(id) {
+    if (typeof fetch !== 'function') return;
+    try { fetch(tvServeur() + '/tv/vues', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: id }) }).catch(function () {}); } catch (e) {}
+  }
   var TV_CHAINES = [];
   var TV_PAYS_ORDRE = ['FR', 'BE', 'CH', 'CA', 'US', 'DE', 'ES', 'IT', 'JP'];
   var tvOuvert = false, tvFiltre = { genre: '', pays: '', q: '' }, tvEnCours = null;
@@ -7791,7 +7809,14 @@
     var recents = vues.slice().sort(function (a, b) { return (h[b.id].t || 0) - (h[a.id].t || 0); }).slice(0, 12);
     var top = vues.slice().sort(function (a, b) { return h[b.id].vues - h[a.id].vues; }).slice(0, 12);
     if (recents.length) corps.appendChild(tvRangee('Continue watching', 'on this device', recents));
-    if (top.length >= 3) corps.appendChild(tvRangee('Most watched', 'on this device', top));
+    /* Le classement commun d abord, quand le serveur l a donne : trois
+       chaines au moins, sinon un « plus regarde » a une seule ligne ment. */
+    if (TV_VUES_TOUS) {
+      var tous = liste.filter(function (c) { return TV_VUES_TOUS[c.id] > 0; })
+        .sort(function (a, b) { return TV_VUES_TOUS[b.id] - TV_VUES_TOUS[a.id]; }).slice(0, 14);
+      if (tous.length >= 3) corps.appendChild(tvRangee('Most watched', 'by SWOGE players', tous));
+    }
+    if (top.length >= 3) corps.appendChild(tvRangee('Your most watched', 'on this device', top));
     if (!recents.length) {
       var franco = function (c) { return ['FR', 'BE', 'CH', 'CA'].indexOf(c.pays) >= 0; };
       var depart = liste.filter(function (c) { return /^1080/.test(c.q || ''); })
@@ -7847,6 +7872,7 @@
     tvFiltre = { genre: '', pays: '', q: '' };
     var ch = document.getElementById('nxTvCherche'); if (ch) ch.value = '';
     tvPeint();
+    tvLitVuesTous();
     elTv.classList.add('on');
     gelLeHall(true);
     musiqueArcade(false);
@@ -7890,6 +7916,7 @@
       if (ev.origin !== location.origin || !ev.data || !ev.data.swogeTv || !ev.data.id) return;
       var etat = ev.data.swogeTv, id = String(ev.data.id);
       tvNote(id, function (e) { if (etat === 'joue') e.ok++; else if (etat === 'rate') e.ko++; });
+      if (etat === 'joue') tvCompteVue(id);
       var corps = document.getElementById('nxTvCorps');
       if (corps) corps.querySelectorAll('.nxtv-c[data-id]').forEach(function (b) {
         if (b.getAttribute('data-id') !== id) return;

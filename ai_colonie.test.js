@@ -886,6 +886,10 @@ async function panneauAlertes() {
    * VISIBLES et une d'elles emmene vraiment quelque part. Compter les balises
    * n'aurait rien vu — c'etait deja le cas quand le menu etait invisible. */
   console.log('\n-- le menu de gauche se voit a toutes les largeurs --');
+  /* Le menu de l'accueil fait foi : c'est lui, le menu du site. */
+  const ATTENDU = [...fs.readFileSync(path.join(SITE, 'index.html'), 'utf8')
+                     .matchAll(/<a href="([^"]+)"[^>]*><span class="ic">/g)].map((m) => m[1]);
+  ok(ATTENDU.length >= 6, `le menu de l accueil porte ${ATTENDU.length} entrees`);
   for (const large of [1920, 1280, 900, 390]) {
     const ctx = await nav.newContext({ viewport: { width: large, height: 900 } });
     const page = await ctx.newPage();
@@ -905,10 +909,17 @@ async function panneauAlertes() {
         deborde: document.documentElement.scrollWidth > window.innerWidth + 1,
       };
     });
-    ok(v.vus === 6,
-       large + 'px : les six entrees se voient (' + v.vus + '/6)');
-    ok(v.liens.join(',') === 'index.html,games.html,swogebet.html,swoge_wallet.html,'
-         + 'swoge_ai.html,whitepaper.html',
+    /* ---- LA LISTE N'EST PLUS RECOPIEE ICI ----
+     * Elle l'etait, et le jour ou le site a gagne deux entrees — les deux
+     * colonies perpetuelles — cet essai a declare perime le menu de cette
+     * page alors que c'etait la LISTE ECRITE ICI qui l'etait. Son intention
+     * n'a jamais ete « six entrees, celles-la » : c'est « le menu de cette
+     * page est celui du site, pas une navigation qu'elle s'invente ». On le
+     * releve donc dans `index.html`, et il n'y a plus qu'un endroit ou une
+     * entree s'ajoute. */
+    ok(v.vus === ATTENDU.length,
+       large + 'px : les ' + ATTENDU.length + ' entrees se voient (' + v.vus + '/' + ATTENDU.length + ')');
+    ok(v.liens.join(',') === ATTENDU.join(','),
        large + 'px : et ce sont celles de l accueil, dans le meme ordre');
     ok(!v.deborde, large + 'px : et rien ne deborde sur le cote');
     /* Visible ne suffit pas : un lien qu'on ne peut pas atteindre est un lien

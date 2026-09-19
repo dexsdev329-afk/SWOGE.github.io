@@ -85,7 +85,13 @@ for (const p of pages) {
      fichier que trente pages chargent — sans le point dans cette classe, il
      etait lu comme « min.js », et l essai cherchait un fichier qui n existe
      pas. */
-  for (const m of src.matchAll(/([A-Za-z0-9_.-]+\.js)\?v=([0-9a-z]+)/g)) {
+  /* ---- ET LA FEUILLE DE STYLE AUSSI ----
+     `perp.css` est partagee par les deux pages perpetuelles. Un fichier que
+     le navigateur garde est un fichier qui peut etre servi perime — le
+     langage n'y change rien. Une correction de style invisible pendant des
+     semaines est exactement le defaut que cet essai existe pour empecher,
+     et elle passait sous son nez tant qu'il ne relevait que `.js`. */
+  for (const m of src.matchAll(/([A-Za-z0-9_.-]+\.(?:js|css))\?v=([0-9a-z]+)/g)) {
     trouves.push({ page: p, script: m[1], marque: m[2] });
   }
   const mp = RE_PAGE.exec(src);
@@ -99,7 +105,7 @@ ok(pages.length > 5, `${pages.length} pages relues`);
    relecture ci-dessus cesse de trouver quoi que ce soit. */
 ok(trouves.length >= 20, `${trouves.length} marqueurs de cache trouves`);
 const scripts = [...new Set(trouves.map((t) => t.script))].sort();
-ok(scripts.length >= 2, `sur ${scripts.length} scripts : ${scripts.join(', ')}`);
+ok(scripts.length >= 2, `sur ${scripts.length} fichiers versionnes : ${scripts.join(', ')}`);
 
 console.log('\n-- chaque marqueur est l empreinte de son fichier --');
 for (const s of scripts) {

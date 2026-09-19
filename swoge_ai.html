@@ -13,7 +13,7 @@
  * une fois par session pour savoir si le serveur en a une plus recente.
  * Sans ca, un joueur garde des semaines une version corrigee depuis
  * longtemps — et ici, cela voudrait dire un agent qui a cesse d'apprendre. */
-var MARQUE_PAGE = '144c4878';
+var MARQUE_PAGE = '4836d84c';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -173,7 +173,29 @@ var MARQUE_PAGE = '144c4878';
   /* Le village prenait 60 % de la largeur pour une animation, et laissait 40 %
      a tout ce qui se lit. La colonne de droite gagne de la place : c'est elle
      qu'on vient regarder, et le canvas se redimensionne tout seul. */
-  .main{height:calc(100dvh - 67px); display:grid; grid-template-columns:1.25fr 1fr; min-height:0}
+  /* ---- LA RANGEE NE DOIT PAS DEPASSER SON CONTENEUR ----
+   *
+   * « Sur PC, dans Direct, on ne voit pas tout quand on descend en scrollant. »
+   * Mesure au navigateur, 19 septembre 2026, ecran 1440x900 : le panneau de
+   * droite mesure 1004 px de haut dans une rangee de 570, son bas tombe a
+   * 1277 px alors que la fenetre s'arrete a 900 — 377 px hors d'atteinte, et
+   * 477 px sur un ecran de 800. La page entiere, elle, ne defile pas : son
+   * document fait exactement la hauteur de la fenetre.
+   *
+   * La cause n'est pas le defilement, c'est la grille. Sans `grid-template-rows`,
+   * la rangee vaut `auto` : elle prend la hauteur de son CONTENU (1004 px) et
+   * sort de la boite de 570 que la tablette lui donne. `.tab-ecran` est en
+   * `overflow:hidden`, donc ce qui depasse est COUPE — et rien ne le signale.
+   * `min-height:0` sur le panneau n'y pouvait rien : il empeche la taille
+   * minimale automatique de pousser, pas une rangee `auto` de s'etirer.
+   *
+   * `minmax(0, 1fr)` borne la rangee a la hauteur disponible. Le panneau
+   * retombe dedans et reprend son propre ascenseur (`overflow-y:auto`), qui
+   * existait depuis le debut et ne servait a rien puisque le panneau n'etait
+   * jamais trop grand pour lui-meme. La molette posee sur le village lui est
+   * deja renvoyee, plus bas dans ce fichier. */
+  .main{height:calc(100dvh - 67px); display:grid; grid-template-columns:1.25fr 1fr;
+        grid-template-rows:minmax(0, 1fr); min-height:0}
   /* L'herbe du village : le canvas la repeint, mais la couleur de repli
      doit etre celle du monde et non un carre noir pendant le premier trait. */
   .stage{position:relative; min-height:0; overflow:hidden; background:#5aa838}
@@ -424,7 +446,9 @@ var MARQUE_PAGE = '144c4878';
   @media (max-width:880px){
     body{overflow:auto}
     .app{height:auto;min-height:100dvh;overflow:visible}
-    .main{grid-template-columns:1fr;height:auto}
+    /* Sur telephone les deux colonnes s'empilent et c'est la PAGE qui defile :
+       la rangee bornee n'a plus lieu d'etre, elle ecraserait le panneau. */
+    .main{grid-template-columns:1fr;grid-template-rows:auto;height:auto}
     .stage{height:52vh;min-height:320px}
     .panel{border-left:none;border-top:1px solid var(--line)}
     .treasury .val{font-size:22px}

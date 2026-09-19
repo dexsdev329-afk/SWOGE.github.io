@@ -11,7 +11,7 @@
  * Meme garde que `swoge_ai.html` : sans elle, un joueur garde des semaines
  * une version corrigee depuis longtemps, et ici cela voudrait dire une
  * colonie qui a l'air arretee alors qu'elle tourne. */
-var MARQUE_PAGE = '8f3fc7c7';
+var MARQUE_PAGE = 'b676b636';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -215,6 +215,15 @@ var MARQUE_PAGE = '8f3fc7c7';
           <p class="sur" id="ppAppris">&nbsp;</p>
           <p class="sur" id="ppJournal">&nbsp;</p>
         </section>
+
+        <!-- La soupape de famine. Sans elle la colonie ne prend rien, et sans
+             rien de pris l'audit ne peut JAMAIS conclure : elle doit se voir,
+             et se juger. -->
+        <section class="pp-carte">
+          <h2 id="ppTSoupape">Famine valve</h2>
+          <p class="sur" id="ppSoupapeDit">&nbsp;</p>
+          <div id="ppSoupape"></div>
+        </section>
       </div>
 
       <div>
@@ -251,5 +260,5 @@ var MARQUE_PAGE = '8f3fc7c7';
 <!-- La page ne lui dit que les marches suivis ; lequel est ouvert vient de
      `?m=`, et le serveur corrige la liste des la premiere reponse. -->
 <script>window.PERP_MARCHES = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "DOGEUSDT"];</script>
-<script src="perp.js?v=e0ecbaf2"></script>
+<script src="perp.js?v=7858b504"></script>
 </html>

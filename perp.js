@@ -112,6 +112,19 @@ var PP_PHRASES = {
   apprisDit: function(k){ return "\u201cLearned\u201d is the colony's memory of that market, across every judged shadow — far more than the closed trades beside it. Below " + k + " observations it says nothing at all."; },
   apprisDitFr: function(k){ return "\u00ab Appris \u00bb est ce que la colonie a retenu du marche, sur toutes les ombres jugees \u2014 bien plus nombreuses que les trades fermes a cote. En dessous de " + k + " observations, elle ne dit rien."; },
   une: ["One colony · all markets", "Une colonie · tous les marches"],
+  soupape: ["Famine valve", "Soupape de famine"],
+  soupapeDit: function(t, d, n){
+    return "When nothing passes the bar for " + t + " turns in a row, the colony takes the best candidate safety still allows — otherwise it can never build the reference every rule is judged against. "
+      + (n ? n + " taken that way so far." : "Never used so far.")
+      + (d ? " Currently " + d + " turn(s) without taking anything." : ""); },
+  soupapeDitFr: function(t, d, n){
+    return "Quand rien ne passe la barre pendant " + t + " tours d'affilee, la colonie prend le meilleur candidat que la securite laisse passer \u2014 sinon elle ne peut jamais construire la reference contre laquelle chaque regle est jugee. "
+      + (n ? n + " prise(s) ainsi jusqu'ici." : "Jamais utilisee jusqu'ici.")
+      + (d ? " Actuellement " + d + " tour(s) sans rien prendre." : ""); },
+  soupapePasComparable: ["Not comparable yet: both groups need enough closed trades before the valve can be judged.",
+                         "Pas encore comparable : les deux groupes ont besoin d'assez de trades fermes avant de juger la soupape."],
+  parLaSoupape: ["Taken by the valve", "Prises par la soupape"],
+  parLaColonie: ["Taken normally", "Prises normalement"],
   journalVide: ["Nothing yet. The colony takes a turn every few minutes.",
                 "Rien encore. La colonie joue un tour toutes les quelques minutes."],
   ombres: function(a, j){ return a + " shadows waiting, " + j + " judged"; },
@@ -334,6 +347,22 @@ function ppParMarche(v){
   /* Ce que le journal brut porte. Ce n'est pas une decoration : sans lui on
      ne sait pas si la question « comment gagne-t-on sur la duree » a
      seulement de quoi etre posee. */
+  /* La soupape : sans elle la colonie ne prend rien, et sans rien de pris
+     l audit ne peut jamais conclure. Elle doit donc se voir. */
+  var sp = v.soupape;
+  if(sp){
+    $$("ppSoupapeDit").textContent = pphF("soupapeDit", sp.tours, sp.disette, sp.prises);
+    var lg = [[pph("parLaSoupape"), sp.soupape], [pph("parLaColonie"), sp.colonie]];
+    $$("ppSoupape").innerHTML = '<table class="pp-tab"><tr><th></th><th>' + ppEch(pph("fermes"))
+      + "</th><th>" + ppEch(pph("part")) + "</th><th>" + ppEch(pph("net")) + "</th></tr>"
+      + lg.map(function(x){
+          return "<tr><td>" + ppEch(x[0]) + "</td><td class='num'>" + (x[1].n || "—")
+            + "</td><td class='num'>" + (x[1].n ? x[1].partGagnantes + "%" : "—")
+            + "</td><td class='num " + (x[1].moyenne > 0 ? "pp-vert" : x[1].moyenne < 0 ? "pp-rouge" : "") + "'>"
+            + (x[1].n ? ppPct(x[1].moyenne) : "—") + "</td></tr>";
+        }).join("") + "</table>"
+      + (sp.comparable ? "" : '<p class="sur">' + ppEch(pph("soupapePasComparable")) + "</p>");
+  }
   var j = v.journal;
   $$("ppJournal").textContent = (j && j.jours)
     ? pphF("journalDit", j.jours, Math.max(0.1, Math.round(j.octets / 104857.6) / 10))
@@ -415,7 +444,7 @@ function ppStatique(){
   [["ppLProfit","profit"],["ppLTresor","tresor"],["ppLTaux","taux"],["ppLTrades","trades"],
    ["ppLMeilleur","meilleur"],["ppLOuvertes","ouvertes"],["ppLFin","financement"],
    ["ppTPos","positions"],["ppTCarnet","carnet"],["ppTAgents","agents"],
-   ["ppTAudit","audit"],["ppTMarches","marches"],["ppTFlux","journal"]].forEach(function(p){
+   ["ppTAudit","audit"],["ppTMarches","marches"],["ppTSoupape","soupape"],["ppTFlux","journal"]].forEach(function(p){
     var e = $$(p[0]); if(e) e.textContent = pph(p[1]);
   });
   $$("ppAgentsSous").textContent = pph("agentsSous");

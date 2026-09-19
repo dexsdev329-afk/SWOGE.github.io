@@ -62,6 +62,9 @@ function vueFausse(o) {
     ],
     /* Ce que chaque marche a rendu : la repartition que les cinq colonies
        separees donnaient gratuitement. */
+    soupape: o.soupape === undefined ? { soupape: { n: 4, moyenne: -0.82, partGagnantes: 25 },
+      colonie: { n: 30, moyenne: 0.41, partGagnantes: 57 }, tours: 12, comparable: false,
+      disette: 3, prises: 4 } : o.soupape,
     parMarche: o.parMarche || [
       { sym: 'BTCUSDT', nom: 'BTC', n: 18, gagnantes: 11, partGagnantes: 61, gain: 40.2,
         financement: -0.21, appris: { n: 220, moyenne: 0.42 }, obs: 220 },
@@ -207,6 +210,17 @@ const txt = (page, sel) => page.$eval(sel, (e) => (e.textContent || '').trim()).
     const jl = await txt(page, '#ppJournal');
     ok(/12 day/.test(jl) && /5\.2 MB/.test(jl), 'la page dit ce que le journal brut porte : ' + jl.slice(0, 60) + '…');
     ok(/cannot be un-summed/i.test(jl), 'et pourquoi il existe a cote des compteurs');
+    /* ---- LA SOUPAPE DOIT SE VOIR, ET SE JUGER ----
+     * Sans elle la colonie ne prend rien ; sans rien de pris, l audit ne peut
+     * jamais conclure. Une soupape invisible est une soupape qu on oublie. */
+    const sd = await txt(page, '#ppSoupapeDit');
+    ok(/12 turns/.test(sd), 'la page dit au bout de combien de tours elle s ouvre : ' + sd.slice(0, 50) + '…');
+    ok(/reference every rule is judged against/i.test(sd), 'et POURQUOI elle existe');
+    ok(/4 taken that way/.test(sd) && /3 turn/.test(sd), 'combien de prises, et la disette en cours');
+    const sl = await page.$$eval('#ppSoupape tr', (tr) => tr.slice(1).map((r) => r.cells[1].textContent.trim()));
+    ok(sl.join(',') === '4,30', 'les deux groupes sont cote a cote avec leur effectif : ' + sl.join(' / '));
+    ok(/Not comparable yet/i.test(await txt(page, '#ppSoupape')),
+       'et rien n est conclu tant que les deux n ont pas assez de trades');
     await page.close();
   }
 

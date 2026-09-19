@@ -11,7 +11,7 @@
  * Meme garde que `swoge_ai.html` : sans elle, un joueur garde des semaines
  * une version corrigee depuis longtemps, et ici cela voudrait dire une
  * colonie qui a l'air arretee alors qu'elle tourne. */
-var MARQUE_PAGE = 'd8fc1cf3';
+var MARQUE_PAGE = 'cde16073';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -37,7 +37,7 @@ var MARQUE_PAGE = 'd8fc1cf3';
      l'habillage deux fois garantit qu'un jour l'une aura une correction que
      l'autre n'aura pas. Versionnee, comme tout fichier que le navigateur
      garde. -->
-<link rel="stylesheet" href="perp.css?v=6c1e7694">
+<link rel="stylesheet" href="perp.css?v=f4fe4fc2">
 <style>
   body{margin:0; background:#F6F9FF; color:#0A1F44;
        font-family:'Outfit',system-ui,-apple-system,sans-serif}
@@ -133,8 +133,11 @@ var MARQUE_PAGE = 'd8fc1cf3';
       <a href="swogebet.html"><span class="ic">&#9917;</span>Sports</a>
       <a href="swoge_wallet.html"><span class="ic">&#129433;</span>Wallet</a>
       <a href="swoge_ai.html"><span class="ic">&#129302;</span>SWOGE AI</a>
-      <a href="swoge_perp_btc.html" class="on"><span class="ic">&#8383;</span>AI Perp · BTC</a>
-      <a href="swoge_perp_eth.html"><span class="ic">&#926;</span>AI Perp · ETH</a>
+      <a href="swoge_perp_btc.html" class="on"><span class="ic">&#8383;</span>AI Perp &middot; BTC</a>
+      <a href="swoge_perp_eth.html"><span class="ic">&#926;</span>AI Perp &middot; ETH</a>
+      <a href="swoge_perp_sol.html"><span class="ic">&#9678;</span>AI Perp &middot; SOL</a>
+      <a href="swoge_perp_xrp.html"><span class="ic">&#10005;</span>AI Perp &middot; XRP</a>
+      <a href="swoge_perp_doge.html"><span class="ic">&#208;</span>AI Perp &middot; DOGE</a>
       <a href="whitepaper.html"><span class="ic">&#128220;</span>Docs</a>
     </nav>
     <div class="sw-reseaux">
@@ -162,6 +165,9 @@ var MARQUE_PAGE = 'd8fc1cf3';
         <div class="pp-bascule">
           <a href="swoge_perp_btc.html" class="on">BTC</a>
           <a href="swoge_perp_eth.html">ETH</a>
+          <a href="swoge_perp_sol.html">SOL</a>
+          <a href="swoge_perp_xrp.html">XRP</a>
+          <a href="swoge_perp_doge.html">DOGE</a>
         </div>
         <span class="pp-puce papier" id="ppPapier">&nbsp;</span>
         <span class="pp-puce" id="ppStamp">&#9679;</span>
@@ -204,6 +210,16 @@ var MARQUE_PAGE = 'd8fc1cf3';
           <div id="ppAudit"></div>
           <p class="sur" id="ppHorizons">&nbsp;</p>
         </section>
+
+        <!-- L'audit commun aux marches. Il vient APRES celui de ce marche-ci :
+             on lit d'abord ce que cette colonie a vu elle-meme, puis ce que
+             les autres en disent. -->
+        <section class="pp-carte">
+          <h2 id="ppTCommun">The same rules, across all markets</h2>
+          <p class="sur" id="ppCommunSous">&nbsp;</p>
+          <div id="ppCommun"></div>
+          <p class="sur" id="ppBorne">&nbsp;</p>
+        </section>
       </div>
 
       <div>
@@ -239,5 +255,5 @@ var MARQUE_PAGE = 'd8fc1cf3';
 
 <!-- Le peintre des deux colonies : la page ne lui dit que son symbole. -->
 <script>window.PERP_SYM = 'BTCUSDT';</script>
-<script src="perp.js?v=95db3f41"></script>
+<script src="perp.js?v=602fb739"></script>
 </html>

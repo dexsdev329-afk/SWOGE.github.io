@@ -80,6 +80,23 @@ var PP_PHRASES = {
   vManqueFr: function(k){ return "encore " + k; },
   auditVide: ["No rule has been observed enough times yet.", "Aucune regle n'a encore assez d'observations."],
   journal: ["What just happened", "Ce qui vient de se passer"],
+  commun: ["The same rules, across all markets", "Les memes regles, sur tous les marches"],
+  communSous: function(n, ref, m){
+    if(!ref) return "Each market judges its own rules, but twelve observations is a fragile verdict. Pooled across " + m + " markets, the same rule gets several times the sample for the same elapsed time. Nothing is comparable yet: too little has been taken.";
+    return "Each market judges its own rules, but twelve observations is a fragile verdict. Pooled across " + m + " markets, a rule is judged against what the colonies actually take (" + ref + "% winners over " + n + " observations).";
+  },
+  communSousFr: function(n, ref, m){
+    if(!ref) return "Chaque marche juge ses propres regles, mais douze observations font un verdict fragile. Mis en commun sur " + m + " marches, une regle recoit plusieurs fois l'echantillon pour le meme temps ecoule. Rien n'est encore comparable : trop peu a ete pris.";
+    return "Chaque marche juge ses propres regles, mais douze observations font un verdict fragile. Mis en commun sur " + m + " marches, une regle se juge contre ce que les colonies prennent vraiment (" + ref + " % de gagnantes sur " + n + " observations).";
+  },
+  communVide: ["No rule has been observed enough times on any market yet.",
+               "Aucune regle n'a encore assez d'observations, sur aucun marche."],
+  repartition: ["Per market", "Par marche"],
+  vDiverge: ["markets disagree", "marches en desaccord"],
+  divergeDit: function(e, m){ return "spread of " + e + " points across " + m + " markets — pooling them would give a number that is right about nothing"; },
+  divergeDitFr: function(e, m){ return e + " points d'ecart sur " + m + " marches — les additionner donnerait un chiffre juste sur rien"; },
+  borne: function(p){ return "Above " + p + " points of spread between markets, the pooled verdict is withheld. That bound was set with no measurement behind it — the colonies were born the same day — so the spread is printed on every line, to be read back against."; },
+  borneFr: function(p){ return "Au-dela de " + p + " points d'ecart entre marches, le verdict commun est retenu. Cette borne a ete posee sans aucune mesure — les colonies sont nees le meme jour — donc l'ecart est ecrit sur chaque ligne, pour qu'on puisse la relire contre des chiffres."; },
   journalVide: ["Nothing yet. The colony takes a turn every few minutes.",
                 "Rien encore. La colonie joue un tour toutes les quelques minutes."],
   ombres: function(a, j){ return a + " shadows waiting, " + j + " judged"; },
@@ -268,6 +285,49 @@ function ppAudit(v){
   c.innerHTML = h + "</table>";
 }
 
+/* ---- L AUDIT COMMUN ----
+ * La repartition par marche part AVEC le total, jamais apres : c'est elle qui
+ * dit si on avait le droit d'additionner. Une ligne dont les marches
+ * divergent ne conclut pas — elle montre l'ecart. */
+function ppCommun(v){
+  var c = v.commun || {};
+  var ref = c.reference;
+  $$("ppCommunSous").textContent = pphF("communSous", ref ? ref.n : 0, ref ? ref.partGagnantes : null,
+                                        (c.symboles || []).length);
+  $$("ppBorne").textContent = pphF("borne", c.divergePoints);
+  var t = $$("ppCommun");
+  var l = c.audit || [];
+  if(!l.length){ t.innerHTML = '<div class="pp-vide">' + ppEch(pph("communVide")) + "</div>"; return; }
+  var h = '<table class="pp-tab"><tr><th>' + ppEch(pph("regle")) + "</th><th>" + ppEch(pph("obs"))
+        + "</th><th>" + ppEch(pph("part")) + "</th><th>" + ppEch(pph("verdict")) + "</th><th>"
+        + ppEch(pph("repartition")) + "</th></tr>";
+  l.forEach(function(x){
+    var w = x.verdict || { verdict:"unknown" };
+    var cls = w.verdict === "protects" ? "bon"
+            : w.verdict === "costs" ? "mauvais"
+            : w.verdict === "diverge" ? "diverge" : "attente";
+    var mot = w.verdict === "protects" ? pph("vProtege")
+            : w.verdict === "costs" ? pph("vCoute")
+            : w.verdict === "diverge" ? pph("vDiverge")
+            : w.verdict === "same" ? pph("vPareil")
+            : pph("vAttente") + (w.manque ? " · " + pphF("vManque", w.manque) : "");
+    var titre = w.verdict === "diverge" ? pphF("divergeDit", w.ecart, w.marches) : "";
+    /* Chaque marche avec son effectif : une regle vue mille fois sur BTC et
+       trois fois sur DOGE ne doit pas se lire comme « vue partout ». */
+    var parts = Object.keys(x.marches || {}).map(function(k){
+      var m = x.marches[k];
+      return '<span class="pp-m"><b>' + ppEch(k.replace(/USDT$/, "")) + "</b> "
+        + (m.partGagnantes == null ? "—" : m.partGagnantes + "%") + " <i>" + m.n + "</i></span>";
+    }).join("");
+    h += "<tr><td>" + ppEch(x.cle) + "</td><td class='num'>" + x.n + "</td><td class='num'>"
+       + x.partGagnantes + "%</td><td><span class='pp-verdict " + cls + "'"
+       + (titre ? " title='" + ppEch(titre) + "'" : "") + ">" + ppEch(mot) + "</span>"
+       + (x.ecart === null || x.ecart === undefined ? "" : "<small class='pp-ecart'>" + x.ecart + "pt</small>")
+       + "</td><td>" + parts + "</td></tr>";
+  });
+  t.innerHTML = h + "</table>";
+}
+
 function ppFlux(v){
   var c = $$("ppFlux");
   if(!v.flux || !v.flux.length){ c.innerHTML = '<div class="pp-vide">' + ppEch(pph("journalVide")) + "</div>"; return; }
@@ -279,7 +339,7 @@ function ppFlux(v){
 
 function ppPeint(v){
   PP_MIN = v.minObs || PP_MIN;
-  ppTete(v); ppBande(v); ppPositions(v); ppCarnet(v); ppAgents(v); ppAudit(v); ppFlux(v);
+  ppTete(v); ppBande(v); ppPositions(v); ppCarnet(v); ppAgents(v); ppAudit(v); ppCommun(v); ppFlux(v);
   $$("ppOmbres").textContent = pphF("ombres", v.ombres.enAttente, v.ombres.jugees);
   $$("ppHorizons").textContent = pphF("horizons", v.horizons, v.horizonRef);
 }
@@ -318,7 +378,7 @@ function ppStatique(){
   [["ppLProfit","profit"],["ppLTresor","tresor"],["ppLTaux","taux"],["ppLTrades","trades"],
    ["ppLMeilleur","meilleur"],["ppLOuvertes","ouvertes"],["ppLFin","financement"],
    ["ppTPos","positions"],["ppTCarnet","carnet"],["ppTAgents","agents"],
-   ["ppTAudit","audit"],["ppTFlux","journal"]].forEach(function(p){
+   ["ppTAudit","audit"],["ppTCommun","commun"],["ppTFlux","journal"]].forEach(function(p){
     var e = $$(p[0]); if(e) e.textContent = pph(p[1]);
   });
   $$("ppAgentsSous").textContent = pph("agentsSous");

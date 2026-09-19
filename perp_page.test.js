@@ -74,6 +74,26 @@ function vueFausse(o) {
       { cle: 'couloir · too far from the band', verdict: 'unknown', n: 12, manque: 48 },
       { cle: 'pris', verdict: 'same', n: 120, partGagnantes: 43, reference: 43 },
     ],
+    /* L audit commun aux marches, comme `auditCommunVue()` le rend. */
+    commun: o.commun || { symboles: ['BTCUSDT','ETHUSDT','SOLUSDT','XRPUSDT','DOGEUSDT'],
+      reference: { n: 300, partGagnantes: 45 }, divergePoints: 20, divergeMinObs: 6,
+      audit: [
+        { cle: 'Funding · too expensive', n: 340, moyenne: -0.2, gagnantes: 71, perdantes: 269,
+          partGagnantes: 21, ecart: 4, marchesCompares: 3,
+          marches: { BTCUSDT: { n: 140, gagnantes: 28, partGagnantes: 20 },
+                     ETHUSDT: { n: 120, gagnantes: 26, partGagnantes: 22 },
+                     DOGEUSDT: { n: 80, gagnantes: 17, partGagnantes: 21 } },
+          verdict: { verdict: 'protects', n: 340, partGagnantes: 21, reference: 45, ecart: 4, marches: 3 } },
+        { cle: 'Range · too far', n: 200, moyenne: 0.3, gagnantes: 90, perdantes: 110,
+          partGagnantes: 45, ecart: 50, marchesCompares: 2,
+          marches: { BTCUSDT: { n: 100, gagnantes: 20, partGagnantes: 20 },
+                     DOGEUSDT: { n: 100, gagnantes: 70, partGagnantes: 70 } },
+          verdict: { verdict: 'diverge', n: 200, partGagnantes: 45, ecart: 50, marches: 2 } },
+        { cle: 'Session · dead hour', n: 7, moyenne: 0, gagnantes: 3, perdantes: 4,
+          partGagnantes: 42, ecart: null, marchesCompares: 1,
+          marches: { BTCUSDT: { n: 7, gagnantes: 3, partGagnantes: 42 } },
+          verdict: { verdict: 'unknown', n: 7, manque: 5 } },
+      ] },
     ombres: { enAttente: 37, jugees: 1284 },
     horizons: [15, 60, 240, 720, 1440], horizonRef: 240, minObs: 60,
     gagne: 1.5, perd: -1.5, seuil: 1.1,
@@ -125,6 +145,18 @@ const txt = (page, sel) => page.$eval(sel, (e) => (e.textContent || '').trim()).
     /* Deux colonies separees : un seul echange chacune, pas la vue globale
        ni celle de l'autre marche. */
     ok(a.vus.length === 1 && b.vus.length === 1, 'un seul echange a l ouverture, de chaque cote');
+    /* Les marches suivis sont ceux du moteur : une page par marche, et le
+       basculeur les porte tous. Recopier la liste ici, c'est garantir qu'un
+       jour il y aura un marche sans page, ou une page sans marche. */
+    const MOTEUR = fs.readFileSync('/home/user/swoge-pusher-server.github.io/ai_perp.js', 'utf8')
+      .match(/PERP_SYMBOLES \|\| '([^']+)'/)[1].split(',').map((x) => x.trim().replace(/USDT$/, ''));
+    const onglets = await a.page.$$eval('.pp-bascule a', (e) => e.map((x) => x.textContent.trim()));
+    ok(onglets.join(',') === MOTEUR.join(','),
+       MOTEUR.length + ' marches suivis, ' + onglets.length + ' onglets : ' + onglets.join(', '));
+    for (const m of MOTEUR) {
+      ok(fs.existsSync(path.join(SITE, 'swoge_perp_' + m.toLowerCase() + '.html')),
+         m + ' a sa page');
+    }
     ok(/BTC/.test(await txt(a.page, '#ppSym')) && /ETH/.test(await txt(b.page, '#ppSym')),
        'chacune porte le nom de son marche en titre');
     const bascule = await b.page.$eval('.pp-bascule a.on', (e) => e.textContent.trim());
@@ -299,6 +331,62 @@ const txt = (page, sel) => page.$eval(sel, (e) => (e.textContent || '').trim()).
     ok(roles.join(',') === 'scout,guard', 'les roles sont traduits : ' + roles.join(', '));
     { const o = await txt(page, "#ppOmbres"); ok(/37 shadows waiting, 1284 judged/.test(o), "les ombres en attente et jugees : " + o); }
     { const h = await txt(page, '#ppHorizons'); ok(/15, 60, 240, 720, 1440/.test(h), 'les horizons de jugement sont ecrits : ' + h); }
+    await page.close();
+  }
+
+  console.log('\n-- l audit commun aux marches, et ce qu il refuse d additionner --');
+  {
+    const { page } = await ouvre(nav, port, 'swoge_perp_btc.html');
+    const l = await page.$$eval('#ppCommun tr', (tr) => tr.slice(1).map((r) => ({
+      cle: r.cells[0].textContent.trim(), n: r.cells[1].textContent.trim(),
+      verdict: r.cells[3].textContent.trim(), cls: r.cells[3].firstElementChild.className,
+      titre: r.cells[3].firstElementChild.getAttribute('title') || '',
+      parts: [...r.cells[4].querySelectorAll('.pp-m')].map((m) => m.textContent.trim()),
+    })));
+    ok(l.length === 3, 'les regles communes sont listees : ' + l.length);
+    const f = l.find((x) => /Funding/.test(x.cle));
+    ok(f && f.n === '340', 'une regle est jugee sur la somme des marches (' + (f && f.n) + '), pas sur un seul');
+    ok(f && /protects/.test(f.verdict), 'et son verdict porte sur cet echantillon-la');
+    /* ---- CE QU ON N A PAS LE DROIT D ADDITIONNER ----
+     * 20 % sur BTC, 70 % sur DOGE : le total ferait 45 %, un chiffre juste
+     * sur rien. La ligne doit le DIRE au lieu de conclure. */
+    const d = l.find((x) => /Range/.test(x.cle));
+    ok(d && /disagree/i.test(d.verdict), 'marches en desaccord : aucun verdict commun (« ' + (d && d.verdict) + ' »)');
+    ok(d && d.cls.includes('diverge'), 'et ce n est ni un bon ni un mauvais verdict : c est l absence de verdict');
+    ok(d && /50pt/.test(d.verdict), 'l ecart constate est ecrit sur la ligne : ' + (d && d.verdict));
+    ok(d && /right about nothing/i.test(d.titre), 'et la ligne dit pourquoi on n additionne pas');
+    /* ---- LA REPARTITION PART AVEC LE TOTAL ----
+     * Une regle vue 140 fois sur BTC et 7 fois sur DOGE ne doit pas se lire
+     * « vue partout » : chaque marche porte son effectif. */
+    ok(f && f.parts.length === 3, 'chaque ligne montre sa repartition par marche : ' + (f && f.parts.join(' | ')));
+    ok(f && f.parts.every((x) => /\d+%/.test(x) && /\d+$/.test(x)),
+       'avec, pour chacun, sa part ET son effectif');
+    ok(f && f.parts.some((x) => /^BTC /.test(x)) && f.parts.some((x) => /^DOGE /.test(x)),
+       'les marches sont nommes sans leur suffixe USDT');
+    /* Sous le minimum, aucun verdict commun non plus. */
+    const j = l.find((x) => /Session/.test(x.cle));
+    ok(j && /not yet/.test(j.verdict) && /5 more/.test(j.verdict),
+       'sous le minimum, aucun verdict commun : ' + (j && j.verdict));
+    /* ---- LA BORNE EST POSEE SANS MESURE, ET LA PAGE LE DIT ----
+     * Une borne qu'on ne peut pas relire contre des chiffres se deplace au
+     * feeling. Celle-ci s'annonce comme non mesuree, et l'ecart est ecrit sur
+     * chaque ligne pour qu'on puisse la juger. */
+    const b = await txt(page, '#ppBorne');
+    ok(/20 points/.test(b), 'la borne de divergence est ecrite : ' + b.slice(0, 40) + '…');
+    ok(/no measurement behind it/i.test(b), 'et la page dit qu aucune mesure ne la soutient');
+    const sous = await txt(page, '#ppCommunSous');
+    ok(/5 markets/.test(sous), 'la carte dit sur combien de marches elle porte');
+    ok(/45% winners over 300/.test(sous), 'et nomme la reference commune avec son echantillon');
+    await page.close();
+  }
+
+  console.log('\n-- rien de pris sur aucun marche : pas de reference commune --');
+  {
+    const { page } = await ouvre(nav, port, 'swoge_perp_btc.html', { vue: { commun: {
+      symboles: ['BTCUSDT','ETHUSDT'], reference: null, divergePoints: 20, divergeMinObs: 6, audit: [] } } });
+    const sous = await txt(page, '#ppCommunSous');
+    ok(/Nothing is comparable yet/i.test(sous), 'la carte le dit au lieu de comparer contre rien');
+    ok(/no rule has been observed/i.test(await txt(page, '#ppCommun')), 'et le tableau est vide, pas faux');
     await page.close();
   }
 

@@ -418,6 +418,17 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .pp-verdict.bon{background:#E7F6EE; color:#0F8A4F}
 .pp-verdict.mauvais{background:#FDECEC; color:#B3261E}
 .pp-verdict.attente{background:#F3F5F9; color:#8A99B5}
+/* Les marches en desaccord ne sont ni un bon ni un mauvais verdict : c'est
+   l'absence de verdict, et elle doit se voir comme telle. */
+.pp-verdict.diverge{background:#FFF1E0; color:#A35A00}
+.pp-ecart{display:inline-block; margin-left:6px; font:700 9.5px/1 'JetBrains Mono',ui-monospace,monospace;
+  color:#8A99B5}
+/* La repartition par marche : un effectif a cote de chaque part, sinon une
+   regle vue mille fois sur BTC et trois fois sur DOGE se lit « vue partout ». */
+.pp-m{display:inline-flex; align-items:baseline; gap:4px; margin:1px 5px 1px 0;
+  font:600 10.5px/1.5 'Outfit',system-ui,sans-serif; color:#33456B; white-space:nowrap}
+.pp-m b{font:800 9.5px/1 'Inter',system-ui,sans-serif; letter-spacing:.4px; color:#1B5FE0}
+.pp-m i{font-style:normal; font:600 9px/1 'JetBrains Mono',ui-monospace,monospace; color:#A3B0C8}
 
 /* ---- LE JOURNAL ---- */
 .pp-flux{margin:0; padding:0; list-style:none; max-height:320px; overflow-y:auto; scrollbar-width:thin}

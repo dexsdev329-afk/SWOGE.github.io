@@ -348,15 +348,13 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .pp-puce.vieux{background:#FDECEC; color:#B3261E; border-color:#F6C9C6}
 .pp-tete .pp-droite{margin-left:auto; display:flex; gap:8px; align-items:center; flex-wrap:wrap}
 
-/* ---- LE BASCULEUR BTC / ETH ----
-   Les deux colonies sont separees, mais on les compare du regard : le lien
-   vers l'autre est en haut, pas dans le menu de gauche. */
-.pp-bascule{display:flex; gap:4px; background:#F3F7FF; border:1px solid #E1E9F6;
-  border-radius:11px; padding:3px}
-.pp-bascule a{padding:7px 13px; border-radius:9px; text-decoration:none;
-  font:800 12px/1 'Outfit',system-ui,sans-serif; color:#6B7C99}
-.pp-bascule a.on{background:#1B5FE0; color:#fff}
-.pp-bascule a:not(.on):hover{background:#EAF1FF; color:#1B5FE0}
+/* ---- UNE COLONIE, TOUS LES MARCHES ----
+   Il y a eu un basculeur de marche en haut de page, du temps ou chaque marche
+   avait sa colonie. Il n'y en a plus qu'une : il ne reste rien a basculer, et
+   la puce le dit plutot que de laisser croire a un choix. */
+.pp-puce.une{background:#EEF7F1; color:#0F8A4F; border-color:#CCE8D9}
+/* L'effectif d'une case apprise, a cote de son esperance. */
+.pp-n{font-style:normal; font:600 9px/1 'JetBrains Mono',ui-monospace,monospace; color:#A3B0C8}
 
 /* ---- LA BANDE DE CHIFFRES ----
    Ce pour quoi on ouvre la page : elle est en haut, pleine largeur, et on ne

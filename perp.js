@@ -2,11 +2,21 @@
 /* ==========================================================================
  * LES DEUX COLONIES PERPETUELLES — LE PEINTRE
  *
- * Un seul fichier pour BTC et ETH : la page declare `window.PERP_SYM`, et
- * tout le reste est identique. Le moteur est `ai_perp.js` cote serveur, un
- * etat par symbole, et la page lit `GET /ai/perp/<SYM>` — elle ne decide
- * rien, ne signe rien, ne garde aucune cle. C'est du PAPIER au prix reel, et
- * la page le dit en haut, pas en bas.
+ * ---- UNE COLONIE, TOUS LES MARCHES ----
+ * Il y a eu une page par marche, puis une page pour cinq colonies. Il n y a
+ * plus qu une colonie : une tresorerie, une memoire, un audit, qui lisent les
+ * cinq marches a chaque tour et prennent le meilleur. « Il faudrait une
+ * colonie pour tous les perps » — c est le bon sens d un bureau de trading,
+ * et ca corrige ce que le decoupage cachait : cinq memoires nourries chacune
+ * d un cinquieme des observations n apprennent rien.
+ *
+ * Ce que le decoupage faisait bien — savoir sur quel marche la colonie gagne
+ * — ne doit pas etre perdu : la page RESTITUE la repartition par marche, et
+ * le marche est devenu un trait que la memoire apprend.
+ *
+ * Le moteur est `ai_perp.js` cote serveur, et la page lit `GET /ai/perp` —
+ * elle ne decide rien, ne signe rien, ne garde aucune cle. C est du PAPIER au
+ * prix reel, et la page le dit en haut, pas en bas.
  *
  * ---- CE QUI EST INTERDIT ICI ----
  * Une carte qui montre un chiffre dit sur combien d'observations il porte, et
@@ -27,8 +37,11 @@ function ppServeur(){
   return "https://web-production-220a3.up.railway.app";
 }
 var PP_SERVEUR = ppServeur();
-var PP_SYM = String(window.PERP_SYM || "BTCUSDT").toUpperCase();
-var PP_NOM = PP_SYM.replace(/USDT$/, "");
+/* Les marches suivis : poses par la page, corriges par le serveur des la
+   premiere reponse. Ils ne servent plus a choisir quoi demander — il n y a
+   qu une vue — mais a les nommer avant qu elle arrive. */
+var PP_MARCHES = (window.PERP_MARCHES || []).map(function(x){ return String(x).toUpperCase(); });
+function ppNom(sym){ return String(sym || "").replace(/USDT$/, ""); }
 
 /* ---- LES PHRASES, EN DEUX LANGUES ----
  * Jamais en dur dans le peintre : le jour ou une phrase change, elle change
@@ -37,11 +50,11 @@ var PP_NOM = PP_SYM.replace(/USDT$/, "");
  * de refus, le journal) : ils arrivent avec leurs chiffres dedans, et les
  * retraduire ici les inventerait. */
 var PP_PHRASES = {
-  sousTitre: ["Eight agents read the live perpetual market, take paper positions and learn from what actually worked",
-              "Huit agents lisent le marche perpetuel en direct, prennent des positions papier et apprennent de ce qui a marche"],
+  sousTitre: ["One colony, one treasury. Eight agents read every perpetual market each turn, take the best paper position they can find, and learn from what actually worked",
+              "Une colonie, une tresorerie. Huit agents lisent tous les marches perpetuels a chaque tour, prennent la meilleure position papier qu'ils trouvent, et apprennent de ce qui a marche"],
   papier: ["Paper · real prices", "Papier · prix reels"],
-  avis: ["<b>Nothing is signed here.</b> No key, no order, no exchange account. The colony reads public Bitget market data, takes positions on paper at the real price, and is judged on what those positions actually did — funding cost included. This page shows; it decides nothing.",
-         "<b>Rien n'est signe ici.</b> Aucune cle, aucun ordre, aucun compte d'echange. La colonie lit les donnees publiques de Bitget, prend des positions sur le papier au prix reel, et se juge sur ce que ces positions ont vraiment fait — cout de financement compris. La page montre ; elle ne decide rien."],
+  avis: ["<b>Nothing is signed here.</b> No key, no order, no exchange account. The colony reads public Bitget market data on every market it follows, takes positions on paper at the real price, and is judged on what those positions actually did — funding cost included. This page shows; it decides nothing.",
+         "<b>Rien n'est signe ici.</b> Aucune cle, aucun ordre, aucun compte d'echange. La colonie lit les donnees publiques de Bitget sur chacun des marches qu'elle suit, prend des positions sur le papier au prix reel, et se juge sur ce que ces positions ont vraiment fait — cout de financement compris. La page montre ; elle ne decide rien."],
   profit: ["Profit", "Profit"],
   tresor: ["Paper treasury", "Tresorerie papier"],
   taux: ["Win rate", "Taux de gain"],
@@ -80,23 +93,17 @@ var PP_PHRASES = {
   vManqueFr: function(k){ return "encore " + k; },
   auditVide: ["No rule has been observed enough times yet.", "Aucune regle n'a encore assez d'observations."],
   journal: ["What just happened", "Ce qui vient de se passer"],
-  commun: ["The same rules, across all markets", "Les memes regles, sur tous les marches"],
-  communSous: function(n, ref, m){
-    if(!ref) return "Each market judges its own rules, but twelve observations is a fragile verdict. Pooled across " + m + " markets, the same rule gets several times the sample for the same elapsed time. Nothing is comparable yet: too little has been taken.";
-    return "Each market judges its own rules, but twelve observations is a fragile verdict. Pooled across " + m + " markets, a rule is judged against what the colonies actually take (" + ref + "% winners over " + n + " observations).";
-  },
-  communSousFr: function(n, ref, m){
-    if(!ref) return "Chaque marche juge ses propres regles, mais douze observations font un verdict fragile. Mis en commun sur " + m + " marches, une regle recoit plusieurs fois l'echantillon pour le meme temps ecoule. Rien n'est encore comparable : trop peu a ete pris.";
-    return "Chaque marche juge ses propres regles, mais douze observations font un verdict fragile. Mis en commun sur " + m + " marches, une regle se juge contre ce que les colonies prennent vraiment (" + ref + " % de gagnantes sur " + n + " observations).";
-  },
-  communVide: ["No rule has been observed enough times on any market yet.",
-               "Aucune regle n'a encore assez d'observations, sur aucun marche."],
-  repartition: ["Per market", "Par marche"],
-  vDiverge: ["markets disagree", "marches en desaccord"],
-  divergeDit: function(e, m){ return "spread of " + e + " points across " + m + " markets — pooling them would give a number that is right about nothing"; },
-  divergeDitFr: function(e, m){ return e + " points d'ecart sur " + m + " marches — les additionner donnerait un chiffre juste sur rien"; },
-  borne: function(p){ return "Above " + p + " points of spread between markets, the pooled verdict is withheld. That bound was set with no measurement behind it — the colonies were born the same day — so the spread is printed on every line, to be read back against."; },
-  borneFr: function(p){ return "Au-dela de " + p + " points d'ecart entre marches, le verdict commun est retenu. Cette borne a ete posee sans aucune mesure — les colonies sont nees le meme jour — donc l'ecart est ecrit sur chaque ligne, pour qu'on puisse la relire contre des chiffres."; },
+  marches: ["What each market gave back", "Ce que chaque marche a rendu"],
+  marchesSous: ["One colony reads all of them each turn and takes the best score, wherever it is. This is the breakdown the five separate colonies used to give for free — and the only thing they did better.",
+                "Une seule colonie les lit tous a chaque tour et prend le meilleur score, ou qu'il soit. C'est la repartition que les cinq colonies separees donnaient gratuitement — et la seule chose qu'elles faisaient mieux."],
+  marchesVide: ["No market has been read yet.", "Aucun marche n'a encore ete lu."],
+  marche: ["Market", "Marche"],
+  fermes: ["Closed", "Fermes"],
+  rapporte: ["Made", "Rapporte"],
+  appris: ["Learned", "Appris"],
+  apprisDit: function(k){ return "\u201cLearned\u201d is the colony's memory of that market, across every judged shadow — far more than the closed trades beside it. Below " + k + " observations it says nothing at all."; },
+  apprisDitFr: function(k){ return "\u00ab Appris \u00bb est ce que la colonie a retenu du marche, sur toutes les ombres jugees \u2014 bien plus nombreuses que les trades fermes a cote. En dessous de " + k + " observations, elle ne dit rien."; },
+  une: ["One colony · all markets", "Une colonie · tous les marches"],
   journalVide: ["Nothing yet. The colony takes a turn every few minutes.",
                 "Rien encore. La colonie joue un tour toutes les quelques minutes."],
   ombres: function(a, j){ return a + " shadows waiting, " + j + " judged"; },
@@ -106,7 +113,8 @@ var PP_PHRASES = {
   horizons: function(l, r){ return "Shadows are judged at " + l.join(", ") + " minutes; " + r + " minutes is the reference."; },
   horizonsFr: function(l, r){ return "Les ombres sont jugees a " + l.join(", ") + " minutes ; " + r + " minutes fait reference."; }
 };
-var PP_MIN = 60;
+var PP_MIN = 12;
+var PP_PROFIL = 8;
 var PP_LANGUE = (function(){
   try{ return localStorage.getItem("swogeLangue") === "fr" ? "fr" : "en"; }catch(e){ return "en"; }
 })();
@@ -168,7 +176,10 @@ function $$(id){ return document.getElementById(id); }
  * ======================================================================== */
 
 function ppTete(v){
-  $$("ppSym").textContent = PP_NOM + " · PERPETUAL";
+  /* Le titre nomme les marches lus, pas un seul : il n y a qu une colonie, et
+     elle les regarde tous a chaque tour. */
+  if(v.marches && v.marches.length){ PP_MARCHES = v.marches.slice(); }
+  $$("ppSym").textContent = PP_MARCHES.map(ppNom).join(" · ") || "PERPETUAL";
   var st = $$("ppStamp");
   /* Un etat vieux de plus de vingt minutes se DIT : sans ca, une page figee
      depuis une heure se lit comme un marche calme. */
@@ -190,7 +201,7 @@ function ppBande(v){
   $$("ppTaux").textContent = (assez && v.partGagnantes != null) ? v.partGagnantes + "%" : "—";
   $$("ppTauxSur").textContent = v.trades ? (assez ? "on " + v.trades : "need " + (20 - v.trades) + " more") : "";
   $$("ppTrades").textContent = v.trades || 0;
-  $$("ppMeilleur").textContent = v.meilleur ? ppPct(v.meilleur.r) : "—";
+  $$("ppMeilleur").textContent = (typeof v.meilleur === "number" && v.meilleur) ? ppPct(v.meilleur) : "—";
   $$("ppOuvertes").textContent = v.positions.length;
   var f = v.financement || { n:0, total:0 };
   $$("ppFin").textContent = f.n ? ppPct(f.total, 2) : "—";
@@ -201,11 +212,15 @@ function ppBande(v){
 function ppPositions(v){
   var c = $$("ppPos");
   if(!v.positions.length){ c.innerHTML = '<div class="pp-vide">' + ppEch(pph("posVide")) + "</div>"; return; }
-  var h = '<table class="pp-tab"><tr><th>' + ppEch(pph("sens")) + "</th><th>" + ppEch(pph("entree"))
+  /* Le marche EN PREMIER : avec une seule colonie sur cinq marches, « LONG a
+     64210 » ne dit plus de quoi on parle. */
+  var h = '<table class="pp-tab"><tr><th>' + ppEch(pph("marche")) + "</th><th>" + ppEch(pph("sens"))
+        + "</th><th>" + ppEch(pph("entree"))
         + "</th><th>" + ppEch(pph("stop")) + "</th><th>" + ppEch(pph("cible")) + "</th><th>"
         + ppEch(pph("mise")) + "</th><th>" + ppEch(pph("score")) + "</th><th>" + ppEch(pph("depuis")) + "</th></tr>";
   v.positions.forEach(function(p){
-    h += "<tr><td><span class='pp-sens " + (p.sens > 0 ? "long'>LONG" : "short'>SHORT") + "</span></td>"
+    h += "<tr><td><b>" + ppEch(p.nom || ppNom(p.sym)) + "</b></td>"
+       + "<td><span class='pp-sens " + (p.sens > 0 ? "long'>LONG" : "short'>SHORT") + "</span></td>"
        + "<td class='num'>" + ppPrix(p.prix0) + "</td><td class='num'>" + ppPrix(p.stop) + "</td>"
        + "<td class='num'>" + ppPrix(p.cible) + "</td><td class='num'>" + ppArgent(p.mise) + "</td>"
        + "<td class='num'>" + (p.score == null ? "—" : p.score.toFixed(2)) + "</td>"
@@ -217,11 +232,13 @@ function ppPositions(v){
 function ppCarnet(v){
   var c = $$("ppCarnet");
   if(!v.carnet.length){ c.innerHTML = '<div class="pp-vide">' + ppEch(pph("carnetVide")) + "</div>"; return; }
-  var h = '<table class="pp-tab"><tr><th>' + ppEch(pph("sens")) + "</th><th>" + ppEch(pph("entree"))
+  var h = '<table class="pp-tab"><tr><th>' + ppEch(pph("marche")) + "</th><th>" + ppEch(pph("sens"))
+        + "</th><th>" + ppEch(pph("entree"))
         + "</th><th>" + ppEch(pph("brut")) + "</th><th>" + ppEch(pph("fin")) + "</th><th>"
         + ppEch(pph("net")) + "</th><th>" + ppEch(pph("duree")) + "</th><th>" + ppEch(pph("pourquoi")) + "</th></tr>";
   v.carnet.slice(0, 20).forEach(function(t){
-    h += "<tr><td><span class='pp-sens " + (t.sens > 0 ? "long'>LONG" : "short'>SHORT") + "</span></td>"
+    h += "<tr><td><b>" + ppEch(ppNom(t.sym)) + "</b></td>"
+       + "<td><span class='pp-sens " + (t.sens > 0 ? "long'>LONG" : "short'>SHORT") + "</span></td>"
        + "<td class='num'>" + ppPrix(t.prix0) + "</td>"
        + "<td class='num'>" + ppPct(t.brut) + "</td>"
        /* Le financement est montre A PART du mouvement du prix : c'est la
@@ -285,45 +302,37 @@ function ppAudit(v){
   c.innerHTML = h + "</table>";
 }
 
-/* ---- L AUDIT COMMUN ----
- * La repartition par marche part AVEC le total, jamais apres : c'est elle qui
- * dit si on avait le droit d'additionner. Une ligne dont les marches
- * divergent ne conclut pas — elle montre l'ecart. */
-function ppCommun(v){
-  var c = v.commun || {};
-  var ref = c.reference;
-  $$("ppCommunSous").textContent = pphF("communSous", ref ? ref.n : 0, ref ? ref.partGagnantes : null,
-                                        (c.symboles || []).length);
-  $$("ppBorne").textContent = pphF("borne", c.divergePoints);
-  var t = $$("ppCommun");
-  var l = c.audit || [];
-  if(!l.length){ t.innerHTML = '<div class="pp-vide">' + ppEch(pph("communVide")) + "</div>"; return; }
-  var h = '<table class="pp-tab"><tr><th>' + ppEch(pph("regle")) + "</th><th>" + ppEch(pph("obs"))
-        + "</th><th>" + ppEch(pph("part")) + "</th><th>" + ppEch(pph("verdict")) + "</th><th>"
-        + ppEch(pph("repartition")) + "</th></tr>";
-  l.forEach(function(x){
-    var w = x.verdict || { verdict:"unknown" };
-    var cls = w.verdict === "protects" ? "bon"
-            : w.verdict === "costs" ? "mauvais"
-            : w.verdict === "diverge" ? "diverge" : "attente";
-    var mot = w.verdict === "protects" ? pph("vProtege")
-            : w.verdict === "costs" ? pph("vCoute")
-            : w.verdict === "diverge" ? pph("vDiverge")
-            : w.verdict === "same" ? pph("vPareil")
-            : pph("vAttente") + (w.manque ? " · " + pphF("vManque", w.manque) : "");
-    var titre = w.verdict === "diverge" ? pphF("divergeDit", w.ecart, w.marches) : "";
-    /* Chaque marche avec son effectif : une regle vue mille fois sur BTC et
-       trois fois sur DOGE ne doit pas se lire comme « vue partout ». */
-    var parts = Object.keys(x.marches || {}).map(function(k){
-      var m = x.marches[k];
-      return '<span class="pp-m"><b>' + ppEch(k.replace(/USDT$/, "")) + "</b> "
-        + (m.partGagnantes == null ? "—" : m.partGagnantes + "%") + " <i>" + m.n + "</i></span>";
-    }).join("");
-    h += "<tr><td>" + ppEch(x.cle) + "</td><td class='num'>" + x.n + "</td><td class='num'>"
-       + x.partGagnantes + "%</td><td><span class='pp-verdict " + cls + "'"
-       + (titre ? " title='" + ppEch(titre) + "'" : "") + ">" + ppEch(mot) + "</span>"
-       + (x.ecart === null || x.ecart === undefined ? "" : "<small class='pp-ecart'>" + x.ecart + "pt</small>")
-       + "</td><td>" + parts + "</td></tr>";
+/* ---- CE QUE CHAQUE MARCHE A RENDU ----
+ * Le decoupage en cinq colonies donnait cette repartition gratuitement. Une
+ * colonie unique doit la RENDRE, sinon on perd la seule chose que le
+ * decoupage faisait bien : savoir sur quel marche la colonie gagne.
+ *
+ * Deux colonnes, et elles ne disent pas la meme chose : « fermes » porte sur
+ * les trades reellement clotures, « appris » sur toutes les ombres jugees —
+ * bien plus nombreuses. Chacune avec son effectif, parce qu un marche vu
+ * trois fois ne se compare pas a un marche vu cent fois. */
+function ppParMarche(v){
+  var t = $$("ppMarches");
+  var l = v.parMarche || [];
+  if(!l.length){ t.innerHTML = '<div class="pp-vide">' + ppEch(pph("marchesVide")) + "</div>"; return; }
+  var h = '<table class="pp-tab"><tr><th>' + ppEch(pph("marche")) + "</th><th>" + ppEch(pph("fermes"))
+        + "</th><th>" + ppEch(pph("part")) + "</th><th>" + ppEch(pph("rapporte")) + "</th><th>"
+        + ppEch(pph("fin")) + "</th><th>" + ppEch(pph("appris")) + "</th></tr>";
+  l.forEach(function(m){
+    /* Aucun trade ferme : des tirets, jamais des zeros. « 0 % de gagnantes »
+       se lit comme un marche qui perd tout ; ici on n a rien vu du tout. */
+    h += "<tr><td><b>" + ppEch(m.nom) + "</b></td>"
+       + "<td class='num'>" + (m.n || "—") + "</td>"
+       + "<td class='num'>" + (m.n ? m.partGagnantes + "%" : "—") + "</td>"
+       + "<td class='num " + (m.gain > 0 ? "pp-vert" : m.gain < 0 ? "pp-rouge" : "") + "'>"
+       + (m.n ? ppSigne(m.gain) : "—") + "</td>"
+       + "<td class='num " + (m.financement < 0 ? "pp-rouge" : "") + "'>"
+       + (m.n ? ppPct(m.financement, 2) : "—") + "</td>"
+       + "<td class='num'>" + (m.appris
+            ? "<b>" + ppPct(m.appris.moyenne, 2) + "</b> <i class='pp-n'>" + m.appris.n + "</i>"
+            : "<span class='pp-verdict attente'>" + ppEch(pph("vAttente"))
+              + (m.obs ? " · " + m.obs + "/" + PP_PROFIL : "") + "</span>")
+       + "</td></tr>";
   });
   t.innerHTML = h + "</table>";
 }
@@ -339,7 +348,9 @@ function ppFlux(v){
 
 function ppPeint(v){
   PP_MIN = v.minObs || PP_MIN;
-  ppTete(v); ppBande(v); ppPositions(v); ppCarnet(v); ppAgents(v); ppAudit(v); ppCommun(v); ppFlux(v);
+  PP_PROFIL = v.profilMinObs || PP_PROFIL;
+
+  ppTete(v); ppBande(v); ppPositions(v); ppCarnet(v); ppAgents(v); ppAudit(v); ppParMarche(v); ppFlux(v);
   $$("ppOmbres").textContent = pphF("ombres", v.ombres.enAttente, v.ombres.jugees);
   $$("ppHorizons").textContent = pphF("horizons", v.horizons, v.horizonRef);
 }
@@ -349,7 +360,7 @@ function ppPeint(v){
  * minutes. On ne demande pas plus vite que ca ne change. */
 var PP_DERNIERE = null;
 function ppDemande(){
-  fetch(PP_SERVEUR + "/ai/perp/" + PP_SYM, { cache:"no-store" })
+  fetch(PP_SERVEUR + "/ai/perp", { cache:"no-store" })
     .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
     .then(function(v){
       if(v && v.erreur){ $$("ppStamp").textContent = "● " + v.erreur; return; }
@@ -378,15 +389,19 @@ function ppStatique(){
   [["ppLProfit","profit"],["ppLTresor","tresor"],["ppLTaux","taux"],["ppLTrades","trades"],
    ["ppLMeilleur","meilleur"],["ppLOuvertes","ouvertes"],["ppLFin","financement"],
    ["ppTPos","positions"],["ppTCarnet","carnet"],["ppTAgents","agents"],
-   ["ppTAudit","audit"],["ppTCommun","commun"],["ppTFlux","journal"]].forEach(function(p){
+   ["ppTAudit","audit"],["ppTMarches","marches"],["ppTFlux","journal"]].forEach(function(p){
     var e = $$(p[0]); if(e) e.textContent = pph(p[1]);
   });
   $$("ppAgentsSous").textContent = pph("agentsSous");
+  $$("ppMarchesSous").textContent = pph("marchesSous");
+  $$("ppAppris").textContent = pphF("apprisDit", PP_PROFIL);
+  $$("ppUne").textContent = pph("une");
 }
 
 document.addEventListener("DOMContentLoaded", function(){
   ppStatique();
+  $$("ppSym").textContent = PP_MARCHES.map(ppNom).join(" · ") || "PERPETUAL";
   $$("ppLangue").addEventListener("click", ppLangue);
   ppDemande();
-  setInterval(ppDemande, 30000);
+  setInterval(function(){ ppDemande(); }, 30000);
 });

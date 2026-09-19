@@ -2,16 +2,16 @@
 <html lang="en">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>SWOGE AI Perp &mdash; ETH &mdash; the AI colony that trades perpetuals on paper</title>
-<meta name="description" content="Eight agents read the live ETH perpetual market, take paper positions at the real price, pay the funding cost, and are judged on what those positions actually did. No key, no order, nothing signed.">
-<link rel="canonical" href="https://swoleeswoge.dog/swoge_perp_eth.html">
+<title>SWOGE AI Perp &mdash; the AI colony that trades perpetuals on paper</title>
+<meta name="description" content="Eight agents read the live BTC, ETH, SOL, XRP and DOGE perpetual markets, take paper positions at the real price, pay the funding cost, and are judged on what those positions actually did. No key, no order, nothing signed.">
+<link rel="canonical" href="https://swoleeswoge.dog/swoge_perp.html">
 
 <script>
 /* ---- LA PAGE SE REMPLACE ELLE-MEME QUAND ELLE CHANGE ----
  * Meme garde que `swoge_ai.html` : sans elle, un joueur garde des semaines
  * une version corrigee depuis longtemps, et ici cela voudrait dire une
  * colonie qui a l'air arretee alors qu'elle tourne. */
-var MARQUE_PAGE = 'b2c80def';
+var MARQUE_PAGE = '62e623aa';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -37,7 +37,7 @@ var MARQUE_PAGE = 'b2c80def';
      l'habillage deux fois garantit qu'un jour l'une aura une correction que
      l'autre n'aura pas. Versionnee, comme tout fichier que le navigateur
      garde. -->
-<link rel="stylesheet" href="perp.css?v=f4fe4fc2">
+<link rel="stylesheet" href="perp.css?v=f9d6f5b6">
 <style>
   body{margin:0; background:#F6F9FF; color:#0A1F44;
        font-family:'Outfit',system-ui,-apple-system,sans-serif}
@@ -133,11 +133,7 @@ var MARQUE_PAGE = 'b2c80def';
       <a href="swogebet.html"><span class="ic">&#9917;</span>Sports</a>
       <a href="swoge_wallet.html"><span class="ic">&#129433;</span>Wallet</a>
       <a href="swoge_ai.html"><span class="ic">&#129302;</span>SWOGE AI</a>
-      <a href="swoge_perp_btc.html"><span class="ic">&#8383;</span>AI Perp &middot; BTC</a>
-      <a href="swoge_perp_eth.html" class="on"><span class="ic">&#926;</span>AI Perp &middot; ETH</a>
-      <a href="swoge_perp_sol.html"><span class="ic">&#9678;</span>AI Perp &middot; SOL</a>
-      <a href="swoge_perp_xrp.html"><span class="ic">&#10005;</span>AI Perp &middot; XRP</a>
-      <a href="swoge_perp_doge.html"><span class="ic">&#208;</span>AI Perp &middot; DOGE</a>
+      <a href="swoge_perp.html" class="on"><span class="ic">&#128200;</span>AI Perp</a>
       <a href="whitepaper.html"><span class="ic">&#128220;</span>Docs</a>
     </nav>
     <div class="sw-reseaux">
@@ -154,21 +150,15 @@ var MARQUE_PAGE = 'b2c80def';
   <div class="pp-wrap">
 
     <div class="pp-tete">
-      <div class="pp-logo">&#926;</div>
+      <div class="pp-logo">&#128200;</div>
       <div>
-        <h1 id="ppSym">ETH &middot; PERPETUAL</h1>
+        <h1 id="ppSym">BTC &middot; PERPETUAL</h1>
         <p id="ppSous">&nbsp;</p>
       </div>
       <div class="pp-droite">
         <!-- Les deux colonies sont separees, mais on les compare du regard :
              le lien vers l'autre est ici, pas dans le menu. -->
-        <div class="pp-bascule">
-          <a href="swoge_perp_btc.html">BTC</a>
-          <a href="swoge_perp_eth.html" class="on">ETH</a>
-          <a href="swoge_perp_sol.html">SOL</a>
-          <a href="swoge_perp_xrp.html">XRP</a>
-          <a href="swoge_perp_doge.html">DOGE</a>
-        </div>
+        <span class="pp-puce une" id="ppUne">&nbsp;</span>
         <span class="pp-puce papier" id="ppPapier">&nbsp;</span>
         <span class="pp-puce" id="ppStamp">&#9679;</span>
         <button class="pp-puce" id="ppLangue" type="button" title="Fran&ccedil;ais / English">&#127468;&#127463;</button>
@@ -214,11 +204,15 @@ var MARQUE_PAGE = 'b2c80def';
         <!-- L'audit commun aux marches. Il vient APRES celui de ce marche-ci :
              on lit d'abord ce que cette colonie a vu elle-meme, puis ce que
              les autres en disent. -->
+        <!-- Ce que chaque marche a rendu. C'est la repartition que les cinq
+             colonies separees donnaient gratuitement : une colonie unique
+             doit la RENDRE, sinon on perd la seule chose qu'elles faisaient
+             mieux. -->
         <section class="pp-carte">
-          <h2 id="ppTCommun">The same rules, across all markets</h2>
-          <p class="sur" id="ppCommunSous">&nbsp;</p>
-          <div id="ppCommun"></div>
-          <p class="sur" id="ppBorne">&nbsp;</p>
+          <h2 id="ppTMarches">What each market gave back</h2>
+          <p class="sur" id="ppMarchesSous">&nbsp;</p>
+          <div id="ppMarches"></div>
+          <p class="sur" id="ppAppris">&nbsp;</p>
         </section>
       </div>
 
@@ -253,7 +247,8 @@ var MARQUE_PAGE = 'b2c80def';
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <script src="swogebuy.js?v=9d7c39e5"></script>
 
-<!-- Le peintre des deux colonies : la page ne lui dit que son symbole. -->
-<script>window.PERP_SYM = 'ETHUSDT';</script>
-<script src="perp.js?v=602fb739"></script>
+<!-- La page ne lui dit que les marches suivis ; lequel est ouvert vient de
+     `?m=`, et le serveur corrige la liste des la premiere reponse. -->
+<script>window.PERP_MARCHES = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT", "DOGEUSDT"];</script>
+<script src="perp.js?v=21788a53"></script>
 </html>

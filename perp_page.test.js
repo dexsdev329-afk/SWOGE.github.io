@@ -1,10 +1,10 @@
 /* ============================================================================
  * LES DEUX PAGES PERPETUELLES : ELLES MONTRENT, ELLES NE DECIDENT RIEN
  *
- * BTC et ETH sont deux colonies separees (`ai_perp.js`, un etat par symbole)
- * et deux pages, mais UN seul peintre : `perp.js`. C'est voulu — recopier
- * mille lignes deux fois garantit qu'un jour l'une aura une correction que
- * l'autre n'aura pas. Ce que cet essai mesure tient en quatre phrases :
+ * Les marches sont des colonies separees (`ai_perp.js`, un etat par symbole)
+ * mais UNE seule page : cinq entrees de menu pour cinq ecrans identiques a un
+ * symbole pres annoncaient cinq destinations la ou il n'y a qu'un tableau de
+ * bord. Ce que cet essai mesure tient en quatre phrases :
  *
  *   - chaque page demande SON symbole, et rien d'autre ;
  *   - un chiffre n'est montre que si l'echantillon le porte — le taux de gain
@@ -40,65 +40,60 @@ function vueFausse(o) {
   o = o || {};
   const now = Date.now();
   return {
-    sym: o.sym || 'BTCUSDT', tours: 412, maj: o.maj === undefined ? now - 40000 : o.maj,
+    tours: 412, maj: o.maj === undefined ? now - 40000 : o.maj,
     depuis: now - 3 * 86400000, erreur: null,
+    marches: o.marches || ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'XRPUSDT', 'DOGEUSDT'],
     tresor: 1063.2, depart: 1000, profit: 63.2,
     trades: o.trades === undefined ? 34 : o.trades,
-    meilleur: { r: 2.41 },
+    meilleur: 2.41,
     partGagnantes: o.partGagnantes === undefined ? 56 : o.partGagnantes,
     financement: { n: 34, total: -0.412, moyenne: -0.012 },
     positions: o.positions || [
-      { sens: 1, prix0: 64210.5, stop: 63100.2, cible: 66020.9, mise: 106.3, score: 1.84, depuis: now - 95 * 60000 },
-      { sens: -1, prix0: 64890.1, stop: 65720.4, cible: 63400.0, mise: 98.1, score: 1.12, depuis: now - 12 * 60000 },
+      { sym: 'DOGEUSDT', nom: 'DOGE', sens: 1, prix0: 0.2134, stop: 0.2011, cible: 0.2290,
+        mise: 106.3, score: 1.84, depuis: now - 95 * 60000 },
     ],
     carnet: o.carnet || [
-      { sens: 1, prix0: 63100, prix: 64400, r: 1.83, brut: 2.06, financement: -0.23, gain: 19.4,
-        minutes: 310, pourquoi: 'target', t: now - 3600000 },
-      { sens: -1, prix0: 65200, prix: 65900, r: -1.21, brut: -1.07, financement: -0.14, gain: -12.1,
-        minutes: 88, pourquoi: 'stop', t: now - 7200000 },
+      { sym: 'BTCUSDT', sens: 1, prix0: 63100, prix: 64400, r: 1.83, brut: 2.06, financement: -0.23,
+        gain: 19.4, minutes: 310, pourquoi: 'target', t: now - 3600000 },
+      { sym: 'SOLUSDT', sens: -1, prix0: 152.2, prix: 154.1, r: -1.21, brut: -1.07, financement: -0.14,
+        gain: -12.1, minutes: 88, pourquoi: 'stop', t: now - 7200000 },
+    ],
+    /* Ce que chaque marche a rendu : la repartition que les cinq colonies
+       separees donnaient gratuitement. */
+    parMarche: o.parMarche || [
+      { sym: 'BTCUSDT', nom: 'BTC', n: 18, gagnantes: 11, partGagnantes: 61, gain: 40.2,
+        financement: -0.21, appris: { n: 220, moyenne: 0.42 }, obs: 220 },
+      { sym: 'DOGEUSDT', nom: 'DOGE', n: 9, gagnantes: 3, partGagnantes: 33, gain: -12.5,
+        financement: -0.18, appris: { n: 140, moyenne: -0.31 }, obs: 140 },
+      { sym: 'SOLUSDT', nom: 'SOL', n: 7, gagnantes: 4, partGagnantes: 57, gain: 35.5,
+        financement: -0.02, appris: null, obs: 5 },
+      { sym: 'XRPUSDT', nom: 'XRP', n: 0, gagnantes: 0, partGagnantes: null, gain: 0,
+        financement: 0, appris: null, obs: 0 },
+      { sym: 'ETHUSDT', nom: 'ETH', n: 0, gagnantes: 0, partGagnantes: null, gain: 0,
+        financement: 0, appris: null, obs: 0 },
     ],
     agents: [
       { key: 'tendance', nom: 'Trend', emoji: '📈', role: 'scout', quoi: 'reads the slope', traits: ['tend'] },
-      { key: 'financement', nom: 'Funding', emoji: '💸', role: 'garde', quoi: 'what holding costs', traits: ['fin'] },
+      { key: 'banquier', nom: 'Banker', emoji: '🏦', role: 'garde', quoi: 'how much goes in', traits: ['marche'] },
     ],
     audit: o.audit || [
-      { cle: 'garde · funding too expensive', n: 140, moyenne: -0.21, gagnantes: 28, perdantes: 112, partGagnantes: 20 },
-      { cle: 'regime · chop', n: 95, moyenne: 0.02, gagnantes: 47, perdantes: 48, partGagnantes: 49 },
-      { cle: 'couloir · too far from the band', n: 12, moyenne: 0.4, gagnantes: 8, perdantes: 4, partGagnantes: 66 },
+      { cle: 'Funding · too expensive', n: 140, moyenne: -0.21, gagnantes: 28, perdantes: 112, partGagnantes: 20 },
+      { cle: 'Regime · chop', n: 95, moyenne: 0.02, gagnantes: 47, perdantes: 48, partGagnantes: 49 },
+      { cle: 'Range · too far from the band', n: 12, moyenne: 0.4, gagnantes: 8, perdantes: 4, partGagnantes: 66 },
       { cle: 'pris', n: 120, moyenne: 0.3, gagnantes: 52, perdantes: 68, partGagnantes: 43 },
     ],
     reference: o.reference === undefined ? { n: 120, partGagnantes: 43 } : o.reference,
     verdicts: o.verdicts || [
-      { cle: 'garde · funding too expensive', verdict: 'protects', n: 140, partGagnantes: 20, reference: 43 },
-      { cle: 'regime · chop', verdict: 'costs', n: 95, partGagnantes: 49, reference: 43 },
-      { cle: 'couloir · too far from the band', verdict: 'unknown', n: 12, manque: 48 },
+      { cle: 'Funding · too expensive', verdict: 'protects', n: 140, partGagnantes: 20, reference: 43 },
+      { cle: 'Regime · chop', verdict: 'costs', n: 95, partGagnantes: 49, reference: 43 },
+      { cle: 'Range · too far from the band', verdict: 'unknown', n: 12, manque: 48 },
       { cle: 'pris', verdict: 'same', n: 120, partGagnantes: 43, reference: 43 },
     ],
-    /* L audit commun aux marches, comme `auditCommunVue()` le rend. */
-    commun: o.commun || { symboles: ['BTCUSDT','ETHUSDT','SOLUSDT','XRPUSDT','DOGEUSDT'],
-      reference: { n: 300, partGagnantes: 45 }, divergePoints: 20, divergeMinObs: 6,
-      audit: [
-        { cle: 'Funding · too expensive', n: 340, moyenne: -0.2, gagnantes: 71, perdantes: 269,
-          partGagnantes: 21, ecart: 4, marchesCompares: 3,
-          marches: { BTCUSDT: { n: 140, gagnantes: 28, partGagnantes: 20 },
-                     ETHUSDT: { n: 120, gagnantes: 26, partGagnantes: 22 },
-                     DOGEUSDT: { n: 80, gagnantes: 17, partGagnantes: 21 } },
-          verdict: { verdict: 'protects', n: 340, partGagnantes: 21, reference: 45, ecart: 4, marches: 3 } },
-        { cle: 'Range · too far', n: 200, moyenne: 0.3, gagnantes: 90, perdantes: 110,
-          partGagnantes: 45, ecart: 50, marchesCompares: 2,
-          marches: { BTCUSDT: { n: 100, gagnantes: 20, partGagnantes: 20 },
-                     DOGEUSDT: { n: 100, gagnantes: 70, partGagnantes: 70 } },
-          verdict: { verdict: 'diverge', n: 200, partGagnantes: 45, ecart: 50, marches: 2 } },
-        { cle: 'Session · dead hour', n: 7, moyenne: 0, gagnantes: 3, perdantes: 4,
-          partGagnantes: 42, ecart: null, marchesCompares: 1,
-          marches: { BTCUSDT: { n: 7, gagnantes: 3, partGagnantes: 42 } },
-          verdict: { verdict: 'unknown', n: 7, manque: 5 } },
-      ] },
     ombres: { enAttente: 37, jugees: 1284 },
-    horizons: [15, 60, 240, 720, 1440], horizonRef: 240, minObs: 60,
+    horizons: [15, 60, 240, 720, 1440], horizonRef: 240, minObs: 60, profilMinObs: 8,
     gagne: 1.5, perd: -1.5, seuil: 1.1,
-    flux: [{ t: now - 120000, quoi: 'LONG at 64210.5', score: 1.84 },
-           { t: now - 900000, quoi: 'CLOSED 1.83% · target' }],
+    flux: [{ t: now - 120000, quoi: 'LONG DOGE at 0.2134', score: 1.84 },
+           { t: now - 900000, quoi: 'CLOSED BTC 1.83% · target' }],
     compteurs: { ouvertures: 61, fermetures: 34 },
     papier: true, source: 'Bitget public market data',
   };
@@ -109,12 +104,11 @@ async function ouvre(nav, port, page_, o) {
   const page = await nav.newPage();
   const vus = [];
   await page.route(/vitrine\.json/, (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{}' }));
-  await page.route(/\/ai\/perp\//, (r) => {
+  await page.route(/\/ai\/perp/, (r) => {
     vus.push(r.request().url());
     if (o.horsLigne) return r.abort();
-    const sym = r.request().url().split('/').pop();
     return r.fulfill({ status: 200, contentType: 'application/json',
-                       body: JSON.stringify(vueFausse(Object.assign({ sym }, o.vue || {}))) });
+                       body: JSON.stringify(vueFausse(o.vue || {})) });
   });
   await page.goto(`http://127.0.0.1:${port}/${page_}`, { waitUntil: 'domcontentloaded' });
   await page.waitForTimeout(450);
@@ -136,37 +130,79 @@ const txt = (page, sel) => page.$eval(sel, (e) => (e.textContent || '').trim()).
   const port = srv.address().port;
   const nav = await chromium.launch();
 
-  console.log('\n-- les deux pages existent et demandent chacune SON marche --');
+  console.log('\n-- une colonie, tous les marches --');
   {
-    const a = await ouvre(nav, port, 'swoge_perp_btc.html');
-    const b = await ouvre(nav, port, 'swoge_perp_eth.html');
-    ok(a.vus.length && a.vus.every((u) => /BTCUSDT$/.test(u)), 'la page BTC ne demande que BTCUSDT');
-    ok(b.vus.length && b.vus.every((u) => /ETHUSDT$/.test(u)), 'la page ETH ne demande que ETHUSDT');
-    /* Deux colonies separees : un seul echange chacune, pas la vue globale
-       ni celle de l'autre marche. */
-    ok(a.vus.length === 1 && b.vus.length === 1, 'un seul echange a l ouverture, de chaque cote');
-    /* Les marches suivis sont ceux du moteur : une page par marche, et le
-       basculeur les porte tous. Recopier la liste ici, c'est garantir qu'un
-       jour il y aura un marche sans page, ou une page sans marche. */
-    const MOTEUR = fs.readFileSync('/home/user/swoge-pusher-server.github.io/ai_perp.js', 'utf8')
-      .match(/PERP_SYMBOLES \|\| '([^']+)'/)[1].split(',').map((x) => x.trim().replace(/USDT$/, ''));
-    const onglets = await a.page.$$eval('.pp-bascule a', (e) => e.map((x) => x.textContent.trim()));
-    ok(onglets.join(',') === MOTEUR.join(','),
-       MOTEUR.length + ' marches suivis, ' + onglets.length + ' onglets : ' + onglets.join(', '));
-    for (const m of MOTEUR) {
-      ok(fs.existsSync(path.join(SITE, 'swoge_perp_' + m.toLowerCase() + '.html')),
-         m + ' a sa page');
-    }
-    ok(/BTC/.test(await txt(a.page, '#ppSym')) && /ETH/.test(await txt(b.page, '#ppSym')),
-       'chacune porte le nom de son marche en titre');
-    const bascule = await b.page.$eval('.pp-bascule a.on', (e) => e.textContent.trim());
-    ok(bascule === 'ETH', 'le basculeur marque la page ou l on est : ' + bascule);
-    await a.page.close(); await b.page.close();
+    /* ---- POURQUOI UNE SEULE ----
+     * Il y a eu une page par marche, puis une page pour cinq colonies. Il n y
+     * a plus qu une colonie : cinq memoires nourries chacune d un cinquieme
+     * des observations n apprennent rien, et cinq tresoreries de mille
+     * dollars prennent cinq petites positions la ou une seule en prend une
+     * vraie. */
+    const MOTEUR = fs.readFileSync('/home/user/swoge-pusher-server.github.io/ai_perp.js', 'utf8');
+    const SYMS = MOTEUR.match(/PERP_SYMBOLES \|\| '([^']+)'/)[1].split(',').map((x) => x.trim().replace(/USDT$/, ''));
+    ok(!fs.readdirSync(SITE).some((f) => /^swoge_perp_.+\.html$/.test(f)),
+       'il n y a plus une page par marche');
+    const { page, vus } = await ouvre(nav, port, 'swoge_perp.html');
+    ok(vus.length === 1 && /\/ai\/perp$/.test(vus[0]),
+       'un seul echange, et pas par marche : ' + vus[0].replace(/^.*\/ai/, '/ai'));
+    /* Le titre nomme les marches lus : avec une colonie sur cinq marches, un
+       titre qui en nomme un seul ferait croire qu elle ne voit que lui. */
+    const titre = await txt(page, '#ppSym');
+    ok(SYMS.every((m) => titre.includes(m)), 'le titre nomme les marches lus : ' + titre);
+    ok(!(await page.$('.pp-bascule')), 'et il n y a plus rien a basculer');
+    ok(/One colony/i.test(await txt(page, '#ppUne')), 'la puce dit qu il n y en a qu une');
+    /* Une position ne dit plus rien sans son marche : « LONG a 0,21 », c est
+       quel instrument ? */
+    const pos = await page.$$eval('#ppPos tr', (tr) => tr.slice(1).map((r) => r.cells[0].textContent.trim()));
+    ok(pos[0] === 'DOGE', 'chaque position porte son marche, en premiere colonne : ' + pos.join(', '));
+    const car = await page.$$eval('#ppCarnet tr', (tr) => tr.slice(1).map((r) => r.cells[0].textContent.trim()));
+    ok(car.join(',') === 'BTC,SOL', 'chaque trade ferme aussi : ' + car.join(', '));
+    ok(/DOGE/.test(await page.$eval('.pp-flux li', (e) => e.textContent)),
+       'et le journal nomme le marche de ce qui vient de se passer');
+    await page.close();
+  }
+
+  console.log('\n-- ce que chaque marche a rendu --');
+  {
+    /* Le decoupage en cinq colonies donnait cette repartition gratuitement :
+       c est la seule chose qu il faisait mieux, et elle ne doit pas se perdre. */
+    const { page } = await ouvre(nav, port, 'swoge_perp.html');
+    const l = await page.$$eval('#ppMarches tr', (tr) => tr.slice(1).map((r) => ({
+      nom: r.cells[0].textContent.trim(), n: r.cells[1].textContent.trim(),
+      part: r.cells[2].textContent.trim(), gain: r.cells[3].textContent.trim(),
+      cls: r.cells[3].className, appris: r.cells[5].textContent.trim(),
+    })));
+    ok(l.length === 5, 'les cinq marches sont listes : ' + l.map((x) => x.nom).join(', '));
+    const btc = l.find((x) => x.nom === 'BTC');
+    ok(btc && btc.n === '18' && btc.part === '61%', 'chacun avec ses trades fermes et sa part de gagnantes');
+    ok(btc && btc.gain === '+$40.20' && btc.cls.includes('pp-vert'), 'et ce qu il a rapporte : ' + (btc && btc.gain));
+    const doge = l.find((x) => x.nom === 'DOGE');
+    ok(doge && doge.cls.includes('pp-rouge'), 'un marche qui perd ne se lit pas comme un marche qui gagne');
+    /* ---- « APPRIS » N EST PAS « FERME » ----
+     * L un porte sur les trades reellement clotures, l autre sur toutes les
+     * ombres jugees — bien plus nombreuses. Les confondre ferait lire 220
+     * observations comme 18 trades. */
+    ok(btc && /220/.test(btc.appris) && /0\.42/.test(btc.appris),
+       'ce que la colonie a appris du marche porte son propre effectif : ' + (btc && btc.appris));
+    ok(/Learned. is the colony's memory/i.test(await txt(page, '#ppAppris')),
+       'et la page dit que ce n est pas la meme chose que les trades fermes');
+    /* Sous le minimum, la case ne dit rien — et elle dit combien il manque. */
+    const sol = l.find((x) => x.nom === 'SOL');
+    ok(sol && /not yet/.test(sol.appris) && /5\/8/.test(sol.appris),
+       'sous huit observations, rien d appris : ' + (sol && sol.appris));
+    /* ---- AUCUN TRADE N EST PAS ZERO ----
+     * « 0 % de gagnantes » se lit comme un marche qui perd tout ; ici on n a
+     * rien vu du tout. */
+    const xrp = l.find((x) => x.nom === 'XRP');
+    ok(xrp && xrp.n === '—' && xrp.part === '—' && xrp.gain === '—',
+       'un marche sans trade affiche des tirets, pas des zeros : ' + JSON.stringify(xrp && xrp.part));
+    ok(!!xrp, 'mais il est LISTE : une ligne absente se lirait comme un marche qu on ne suit pas');
+    await page.close();
   }
 
   console.log('\n-- rien n est signe, et la page le dit EN HAUT --');
   {
-    const { page } = await ouvre(nav, port, 'swoge_perp_btc.html');
+    const { page } = await ouvre(nav, port, 'swoge_perp.html');
     const avis = await txt(page, '#ppAvis');
     ok(/nothing is signed/i.test(avis), 'l avertissement est ecrit en toutes lettres');
     ok(/no key|no order/i.test(avis), 'et nomme ce qui n existe pas ici : ' + avis.slice(0, 60) + '…');
@@ -189,11 +225,11 @@ const txt = (page, sel) => page.$eval(sel, (e) => (e.textContent || '').trim()).
 
   console.log('\n-- les chiffres qu on vient voir --');
   {
-    const { page } = await ouvre(nav, port, 'swoge_perp_btc.html');
+    const { page } = await ouvre(nav, port, 'swoge_perp.html');
     ok(await txt(page, '#ppProfit') === '+$63.20', 'le profit, signe');
     ok(await txt(page, "#ppTresor") === "$1,063.20", 'la tresorerie papier');
     ok(await txt(page, '#ppTrades') === '34', 'les trades fermes');
-    ok(await txt(page, '#ppOuvertes') === '2', 'les positions ouvertes');
+    ok(await txt(page, '#ppOuvertes') === '1', 'les positions ouvertes — une seule, pour toute la colonie');
     ok(/2\.41%/.test(await txt(page, '#ppMeilleur')), 'le meilleur trade');
     /* ---- LE FINANCEMENT A SA PROPRE CASE ----
      * Toutes les huit heures, un cote paie l autre. C'est la ligne qu'on
@@ -211,12 +247,12 @@ const txt = (page, sel) => page.$eval(sel, (e) => (e.textContent || '').trim()).
     /* Quinze trades a 60 %, c'est neuf trades. Un ecart sur une poignee de
        trades est de la chance, pas un resultat : la case reste vide et dit
        combien il en manque. */
-    const { page } = await ouvre(nav, port, 'swoge_perp_btc.html',
+    const { page } = await ouvre(nav, port, 'swoge_perp.html',
                                 { vue: { trades: 12, partGagnantes: 66 } });
     ok(await txt(page, '#ppTaux') === '—', 'sous vingt trades, le taux de gain n est pas affiche');
     ok(/need 8 more/.test(await txt(page, '#ppTauxSur')), 'et la page dit combien il en manque');
     await page.close();
-    const b = await ouvre(nav, port, 'swoge_perp_btc.html');
+    const b = await ouvre(nav, port, 'swoge_perp.html');
     ok(await txt(b.page, '#ppTaux') === '56%', 'a trente-quatre trades, il s affiche');
     ok(/on 34/.test(await txt(b.page, '#ppTauxSur')), 'avec son echantillon a cote');
     await b.page.close();
@@ -224,7 +260,7 @@ const txt = (page, sel) => page.$eval(sel, (e) => (e.textContent || '').trim()).
 
   console.log('\n-- l audit : une regle sans assez d observations n a pas de verdict --');
   {
-    const { page } = await ouvre(nav, port, 'swoge_perp_btc.html');
+    const { page } = await ouvre(nav, port, 'swoge_perp.html');
     const lignes = await page.$$eval('#ppAudit tr', (tr) => tr.slice(1).map((r) => ({
       cle: r.cells[0].textContent.trim(), n: r.cells[1].textContent.trim(),
       part: r.cells[2].textContent.trim(), verdict: r.cells[3].textContent.trim(),
@@ -232,7 +268,7 @@ const txt = (page, sel) => page.$eval(sel, (e) => (e.textContent || '').trim()).
     })));
     ok(lignes.length === 3, 'trois regles listees — « pris » est la reference, pas une regle : ' + lignes.length);
     ok(!lignes.some((l) => l.cle === 'pris'), 'et elle ne s affiche donc pas comme une ligne de refus');
-    const prot = lignes.find((l) => /funding too expensive/.test(l.cle));
+    const prot = lignes.find((l) => /Funding/.test(l.cle));
     ok(prot && /protects/.test(prot.verdict), 'un refus qui a moins bien marche que ce qu on prend : « protege »');
     const cout = lignes.find((l) => /chop/.test(l.cle));
     ok(cout && /costs/.test(cout.verdict) && cout.cls.includes('mauvais'),
@@ -251,7 +287,7 @@ const txt = (page, sel) => page.$eval(sel, (e) => (e.textContent || '').trim()).
 
   console.log('\n-- rien de pris encore : la page ne compare pas contre du vide --');
   {
-    const { page } = await ouvre(nav, port, 'swoge_perp_btc.html',
+    const { page } = await ouvre(nav, port, 'swoge_perp.html',
                                 { vue: { reference: null } });
     const sous = await txt(page, '#ppAuditSous');
     ok(/Nothing is comparable yet/i.test(sous), 'elle le dit au lieu de comparer contre rien : ' + sous.slice(0, 50) + '…');
@@ -261,12 +297,12 @@ const txt = (page, sel) => page.$eval(sel, (e) => (e.textContent || '').trim()).
 
   console.log('\n-- les positions et le carnet --');
   {
-    const { page } = await ouvre(nav, port, 'swoge_perp_btc.html');
-    const pos = await page.$$eval('#ppPos tr', (tr) => tr.slice(1).map((r) => r.cells[0].textContent.trim()));
-    ok(pos.join(',') === 'LONG,SHORT', 'les deux sens sont lisibles d un coup d oeil : ' + pos.join(', '));
+    const { page } = await ouvre(nav, port, 'swoge_perp.html');
+    const pos = await page.$$eval('#ppPos tr', (tr) => tr.slice(1).map((r) => r.cells[1].textContent.trim()));
+    ok(pos.join(',') === 'LONG', 'le sens reste lisible d un coup d oeil, a cote du marche : ' + pos.join(', '));
     const car = await page.$$eval('#ppCarnet tr', (tr) => tr.slice(1).map((r) => ({
-      brut: r.cells[2].textContent.trim(), fin: r.cells[3].textContent.trim(),
-      net: r.cells[4].textContent.trim(), cls: r.cells[4].className,
+      brut: r.cells[3].textContent.trim(), fin: r.cells[4].textContent.trim(),
+      net: r.cells[5].textContent.trim(), cls: r.cells[5].className,
     })));
     ok(car.length === 2, 'deux trades fermes');
     ok(car[0].brut === '+2.06%' && car[0].fin === '-0.23%' && car[0].net === '+1.83%',
@@ -277,7 +313,7 @@ const txt = (page, sel) => page.$eval(sel, (e) => (e.textContent || '').trim()).
 
   console.log('\n-- le serveur ne repond pas --');
   {
-    const { page } = await ouvre(nav, port, 'swoge_perp_btc.html', { horsLigne: true });
+    const { page } = await ouvre(nav, port, 'swoge_perp.html', { horsLigne: true });
     /* « $1,000 » se lirait comme une tresorerie a son point de depart : une
        colonie qui tourne et n a rien gagne. Ce n est pas ce qui se passe — on
        ne sait rien. Les deux se ressemblent a l ecran. */
@@ -290,7 +326,7 @@ const txt = (page, sel) => page.$eval(sel, (e) => (e.textContent || '').trim()).
   console.log('\n-- un etat vieux se DIT --');
   {
     /* Une page figee depuis une heure se lit comme un marche calme. */
-    const { page } = await ouvre(nav, port, 'swoge_perp_btc.html',
+    const { page } = await ouvre(nav, port, 'swoge_perp.html',
                                 { vue: { maj: Date.now() - 75 * 60000 } });
     const st = await txt(page, '#ppStamp');
     ok(/stale/i.test(st), 'l etat perime est nomme : ' + st);
@@ -300,11 +336,11 @@ const txt = (page, sel) => page.$eval(sel, (e) => (e.textContent || '').trim()).
 
   console.log('\n-- les deux langues --');
   {
-    const { page } = await ouvre(nav, port, 'swoge_perp_btc.html');
+    const { page } = await ouvre(nav, port, 'swoge_perp.html');
     ok(/perpetual market/i.test(await txt(page, '#ppSous')), 'la page ouvre en anglais, comme le reste du site');
     await page.click('#ppLangue');
     await page.waitForTimeout(120);
-    ok(/marche perpetuel/i.test(await txt(page, '#ppSous')), 'le drapeau bascule en francais');
+    ok(/marches perpetuels/i.test(await txt(page, '#ppSous')), 'le drapeau bascule en francais');
     ok(/Rien n'est signe/i.test(await txt(page, '#ppAvis')), 'et l avertissement aussi');
     const sous = await txt(page, '#ppAuditSous');
     ok(/43 % de gagnantes/.test(sous), 'la phrase francaise a sa propre forme, espace comprise : ' + sous.slice(0, 40) + '…');
@@ -312,15 +348,15 @@ const txt = (page, sel) => page.$eval(sel, (e) => (e.textContent || '').trim()).
        arrivent avec leurs chiffres dedans, les retraduire ici les
        inventerait. */
     const cle = await page.$eval('#ppAudit tr:nth-child(2) td', (e) => e.textContent.trim());
-    ok(/funding too expensive/.test(cle), 'les mots du serveur ne sont pas retraduits : ' + cle);
+    ok(/too expensive/.test(cle), 'les mots du serveur ne sont pas retraduits : ' + cle);
     await page.close();
   }
 
   console.log('\n-- les agents, et ce qu ils regardent --');
   {
-    const { page } = await ouvre(nav, port, 'swoge_perp_btc.html');
+    const { page } = await ouvre(nav, port, 'swoge_perp.html');
     const ags = await page.$$eval('.pp-ag b', (e) => e.map((x) => x.textContent.trim()));
-    ok(ags.join(',') === 'Trend,Funding', 'les agents viennent du serveur, pas de la page : ' + ags.join(', '));
+    ok(ags.join(',') === 'Trend,Banker', 'les agents viennent du serveur, pas de la page : ' + ags.join(', '));
     ok(/not the token colony/i.test(await txt(page, '#ppAgentsSous')),
        'et la page dit que ce ne sont PAS ceux de la colonie de jetons');
     /* ---- LE ROLE EST UNE CLE, PAS UN MOT A MONTRER ----
@@ -334,79 +370,29 @@ const txt = (page, sel) => page.$eval(sel, (e) => (e.textContent || '').trim()).
     await page.close();
   }
 
-  console.log('\n-- l audit commun aux marches, et ce qu il refuse d additionner --');
-  {
-    const { page } = await ouvre(nav, port, 'swoge_perp_btc.html');
-    const l = await page.$$eval('#ppCommun tr', (tr) => tr.slice(1).map((r) => ({
-      cle: r.cells[0].textContent.trim(), n: r.cells[1].textContent.trim(),
-      verdict: r.cells[3].textContent.trim(), cls: r.cells[3].firstElementChild.className,
-      titre: r.cells[3].firstElementChild.getAttribute('title') || '',
-      parts: [...r.cells[4].querySelectorAll('.pp-m')].map((m) => m.textContent.trim()),
-    })));
-    ok(l.length === 3, 'les regles communes sont listees : ' + l.length);
-    const f = l.find((x) => /Funding/.test(x.cle));
-    ok(f && f.n === '340', 'une regle est jugee sur la somme des marches (' + (f && f.n) + '), pas sur un seul');
-    ok(f && /protects/.test(f.verdict), 'et son verdict porte sur cet echantillon-la');
-    /* ---- CE QU ON N A PAS LE DROIT D ADDITIONNER ----
-     * 20 % sur BTC, 70 % sur DOGE : le total ferait 45 %, un chiffre juste
-     * sur rien. La ligne doit le DIRE au lieu de conclure. */
-    const d = l.find((x) => /Range/.test(x.cle));
-    ok(d && /disagree/i.test(d.verdict), 'marches en desaccord : aucun verdict commun (« ' + (d && d.verdict) + ' »)');
-    ok(d && d.cls.includes('diverge'), 'et ce n est ni un bon ni un mauvais verdict : c est l absence de verdict');
-    ok(d && /50pt/.test(d.verdict), 'l ecart constate est ecrit sur la ligne : ' + (d && d.verdict));
-    ok(d && /right about nothing/i.test(d.titre), 'et la ligne dit pourquoi on n additionne pas');
-    /* ---- LA REPARTITION PART AVEC LE TOTAL ----
-     * Une regle vue 140 fois sur BTC et 7 fois sur DOGE ne doit pas se lire
-     * « vue partout » : chaque marche porte son effectif. */
-    ok(f && f.parts.length === 3, 'chaque ligne montre sa repartition par marche : ' + (f && f.parts.join(' | ')));
-    ok(f && f.parts.every((x) => /\d+%/.test(x) && /\d+$/.test(x)),
-       'avec, pour chacun, sa part ET son effectif');
-    ok(f && f.parts.some((x) => /^BTC /.test(x)) && f.parts.some((x) => /^DOGE /.test(x)),
-       'les marches sont nommes sans leur suffixe USDT');
-    /* Sous le minimum, aucun verdict commun non plus. */
-    const j = l.find((x) => /Session/.test(x.cle));
-    ok(j && /not yet/.test(j.verdict) && /5 more/.test(j.verdict),
-       'sous le minimum, aucun verdict commun : ' + (j && j.verdict));
-    /* ---- LA BORNE EST POSEE SANS MESURE, ET LA PAGE LE DIT ----
-     * Une borne qu'on ne peut pas relire contre des chiffres se deplace au
-     * feeling. Celle-ci s'annonce comme non mesuree, et l'ecart est ecrit sur
-     * chaque ligne pour qu'on puisse la juger. */
-    const b = await txt(page, '#ppBorne');
-    ok(/20 points/.test(b), 'la borne de divergence est ecrite : ' + b.slice(0, 40) + '…');
-    ok(/no measurement behind it/i.test(b), 'et la page dit qu aucune mesure ne la soutient');
-    const sous = await txt(page, '#ppCommunSous');
-    ok(/5 markets/.test(sous), 'la carte dit sur combien de marches elle porte');
-    ok(/45% winners over 300/.test(sous), 'et nomme la reference commune avec son echantillon');
-    await page.close();
-  }
-
-  console.log('\n-- rien de pris sur aucun marche : pas de reference commune --');
-  {
-    const { page } = await ouvre(nav, port, 'swoge_perp_btc.html', { vue: { commun: {
-      symboles: ['BTCUSDT','ETHUSDT'], reference: null, divergePoints: 20, divergeMinObs: 6, audit: [] } } });
-    const sous = await txt(page, '#ppCommunSous');
-    ok(/Nothing is comparable yet/i.test(sous), 'la carte le dit au lieu de comparer contre rien');
-    ok(/no rule has been observed/i.test(await txt(page, '#ppCommun')), 'et le tableau est vide, pas faux');
-    await page.close();
-  }
-
   console.log('\n-- le journal --');
   {
-    const { page } = await ouvre(nav, port, 'swoge_perp_btc.html');
+    const { page } = await ouvre(nav, port, 'swoge_perp.html');
     const l = await page.$$eval('.pp-flux li', (e) => e.map((x) => x.textContent.trim()));
-    ok(l.length === 2 && /LONG at 64210.5/.test(l[0]), 'le fil montre ce qui vient de se passer');
+    ok(l.length === 2 && /LONG DOGE at 0.2134/.test(l[0]), 'le fil montre ce qui vient de se passer, marche compris');
     await page.close();
   }
 
-  console.log('\n-- le menu de gauche mene aux deux colonies --');
+  console.log('\n-- le menu de gauche : UNE entree, pas cinq --');
   {
-    const { page } = await ouvre(nav, port, 'swoge_perp_btc.html');
+    const { page } = await ouvre(nav, port, 'swoge_perp.html');
     const liens = await page.$$eval('.sw-nav a', (e) => e.map((x) => x.getAttribute('href')));
-    ok(liens.includes('swoge_perp_btc.html') && liens.includes('swoge_perp_eth.html'),
-       'les deux pages sont dans la navigation du site');
-    ok(liens.includes('swoge_ai.html'), 'a cote de la colonie de jetons, dont elles sont la suite');
-    ok(await page.$eval('.sw-nav a.on', (e) => e.getAttribute('href')) === 'swoge_perp_btc.html',
+    const perp = liens.filter((h) => /swoge_perp/.test(h));
+    ok(perp.length === 1 && perp[0] === 'swoge_perp.html',
+       'une seule entree pour tous les marches : ' + perp.join(', '));
+    ok(liens.includes('swoge_ai.html'), 'a cote de la colonie de jetons, dont elle est la suite');
+    ok(await page.$eval('.sw-nav a.on', (e) => e.getAttribute('href')) === 'swoge_perp.html',
        'et la page courante est marquee');
+    /* Le menu du site fait foi partout : une entree qui n existe que sur
+       certaines pages envoie les autres dans le vide. */
+    const ailleurs = fs.readFileSync(path.join(SITE, 'index.html'), 'utf8');
+    ok((ailleurs.match(/swoge_perp/g) || []).length === 1,
+       'et l accueil ne porte qu elle aussi');
     await page.close();
   }
 

@@ -49,8 +49,10 @@ function vueFausse(o) {
     partGagnantes: o.partGagnantes === undefined ? 56 : o.partGagnantes,
     financement: { n: 34, total: -0.412, moyenne: -0.012 },
     positions: o.positions || [
-      { sym: 'DOGEUSDT', nom: 'DOGE', sens: 1, prix0: 0.2134, stop: 0.2011, cible: 0.2290,
-        mise: 106.3, score: 1.84, depuis: now - 95 * 60000 },
+      { sym: 'DOGEUSDT', nom: 'DOGE', sens: 1, prix0: 0.2134, prix: 0.2201, prixVu: now - 40000,
+        stop: 0.2011, cible: 0.2290, mise: 106.3, levier: 1,
+        brut: 3.14, financement: -0.11, net: 3.03, gain: 3.22,
+        score: 1.84, depuis: now - 95 * 60000 },
     ],
     carnet: o.carnet || [
       { sym: 'BTCUSDT', sens: 1, prix0: 63100, prix: 64400, r: 1.83, brut: 2.06, financement: -0.23,
@@ -91,6 +93,7 @@ function vueFausse(o) {
     ],
     ombres: { enAttente: 37, jugees: 1284 },
     horizons: [15, 60, 240, 720, 1440], horizonRef: 240, minObs: 60, profilMinObs: 8,
+    journal: o.journal === undefined ? { actif: true, jours: 12, octets: 5452595, garde: 180 } : o.journal,
     gagne: 1.5, perd: -1.5, seuil: 1.1,
     flux: [{ t: now - 120000, quoi: 'LONG DOGE at 0.2134', score: 1.84 },
            { t: now - 900000, quoi: 'CLOSED BTC 1.83% · target' }],
@@ -197,6 +200,13 @@ const txt = (page, sel) => page.$eval(sel, (e) => (e.textContent || '').trim()).
     ok(xrp && xrp.n === '—' && xrp.part === '—' && xrp.gain === '—',
        'un marche sans trade affiche des tirets, pas des zeros : ' + JSON.stringify(xrp && xrp.part));
     ok(!!xrp, 'mais il est LISTE : une ligne absente se lirait comme un marche qu on ne suit pas');
+    /* ---- CE QUE LE JOURNAL BRUT PORTE ----
+     * Un compteur ne se desadditionne pas : la page dit combien de jours de
+     * lignes brutes existent, parce que c est ce qui decide si la question
+     * « comment gagne-t-on sur la duree » a seulement de quoi etre posee. */
+    const jl = await txt(page, '#ppJournal');
+    ok(/12 day/.test(jl) && /5\.2 MB/.test(jl), 'la page dit ce que le journal brut porte : ' + jl.slice(0, 60) + '…');
+    ok(/cannot be un-summed/i.test(jl), 'et pourquoi il existe a cote des compteurs');
     await page.close();
   }
 
@@ -300,6 +310,16 @@ const txt = (page, sel) => page.$eval(sel, (e) => (e.textContent || '').trim()).
     const { page } = await ouvre(nav, port, 'swoge_perp.html');
     const pos = await page.$$eval('#ppPos tr', (tr) => tr.slice(1).map((r) => r.cells[1].textContent.trim()));
     ok(pos.join(',') === 'LONG', 'le sens reste lisible d un coup d oeil, a cote du marche : ' + pos.join(', '));
+    /* ---- LE PRIX MAINTENANT, ET CE QUE LA POSITION VAUT ----
+     * Le tableau ne montrait que l entree, le stop et la cible : trois
+     * chiffres figes a l ouverture. C est pourtant la seule chose qu on vient
+     * voir sur une position ouverte. */
+    const live = await page.$$eval('#ppPos tr', (tr) => tr.slice(1).map((r) => ({
+      now: r.cells[3].textContent.trim(), pnl: r.cells[4].textContent.trim(), cls: r.cells[4].className })));
+    ok(/0\.2201/.test(live[0].now), 'le prix actuel est affiche a cote de l entree : ' + live[0].now);
+    ok(/\+\$3\.22/.test(live[0].pnl), 'et ce que la position vaut en dollars : ' + live[0].pnl);
+    ok(/\+3\.03%/.test(live[0].pnl), 'avec son pourcentage, financement deja paye compris');
+    ok(live[0].cls.includes('pp-vert'), 'un gain latent ne se lit pas comme une perte');
     const car = await page.$$eval('#ppCarnet tr', (tr) => tr.slice(1).map((r) => ({
       brut: r.cells[3].textContent.trim(), fin: r.cells[4].textContent.trim(),
       net: r.cells[5].textContent.trim(), cls: r.cells[5].className,

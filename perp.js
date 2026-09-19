@@ -67,6 +67,8 @@ var PP_PHRASES = {
   posVide: ["No position open right now.", "Aucune position ouverte pour le moment."],
   sens: ["Side", "Sens"], entree: ["Entry", "Entree"], stop: ["Stop", "Stop"],
   cible: ["Target", "Cible"], mise: ["Size", "Mise"], score: ["Score", "Score"],
+  maintenant: ["Now", "Maintenant"],
+  latent: ["Open P&L", "Gain latent"],
   depuis: ["Held", "Tenue"],
   carnet: ["Last closed trades", "Derniers trades fermes"],
   carnetVide: ["Nothing closed yet — the colony has not finished a trade on this market.",
@@ -97,6 +99,12 @@ var PP_PHRASES = {
   marchesSous: ["One colony reads all of them each turn and takes the best score, wherever it is. This is the breakdown the five separate colonies used to give for free — and the only thing they did better.",
                 "Une seule colonie les lit tous a chaque tour et prend le meilleur score, ou qu'il soit. C'est la repartition que les cinq colonies separees donnaient gratuitement — et la seule chose qu'elles faisaient mieux."],
   marchesVide: ["No market has been read yet.", "Aucun marche n'a encore ete lu."],
+  journalDit: function(j, mo){ return "Every turn is also written raw to disk — " + j + " day(s), " + mo
+    + " MB — so questions nobody thought to ask yet can still be answered later. Counters cannot be un-summed."; },
+  journalDitFr: function(j, mo){ return "Chaque tour est aussi ecrit brut sur le disque \u2014 " + j + " jour(s), " + mo
+    + " Mo \u2014 pour que les questions qu'on n'a pas encore posees aient une reponse plus tard. Un compteur ne se desadditionne pas."; },
+  journalVideDit: ["The raw journal is empty: nothing has been written yet.",
+                   "Le journal brut est vide : rien n'a encore ete ecrit."],
   marche: ["Market", "Marche"],
   fermes: ["Closed", "Fermes"],
   rapporte: ["Made", "Rapporte"],
@@ -212,18 +220,29 @@ function ppBande(v){
 function ppPositions(v){
   var c = $$("ppPos");
   if(!v.positions.length){ c.innerHTML = '<div class="pp-vide">' + ppEch(pph("posVide")) + "</div>"; return; }
-  /* Le marche EN PREMIER : avec une seule colonie sur cinq marches, « LONG a
-     64210 » ne dit plus de quoi on parle. */
+  /* ---- LE PRIX MAINTENANT, ET CE QUE LA POSITION VAUT ----
+   * Le tableau ne montrait que l entree, le stop et la cible : trois chiffres
+   * figes au moment de l ouverture. « On ne voit pas le prix actuel ni
+   * combien on gagne » — c est pourtant la seule chose qu on vient voir sur
+   * une position ouverte. Le marche est en premiere colonne : avec une
+   * colonie sur cinq marches, « SHORT a 81 214 » ne dit pas de quoi on parle. */
   var h = '<table class="pp-tab"><tr><th>' + ppEch(pph("marche")) + "</th><th>" + ppEch(pph("sens"))
-        + "</th><th>" + ppEch(pph("entree"))
-        + "</th><th>" + ppEch(pph("stop")) + "</th><th>" + ppEch(pph("cible")) + "</th><th>"
-        + ppEch(pph("mise")) + "</th><th>" + ppEch(pph("score")) + "</th><th>" + ppEch(pph("depuis")) + "</th></tr>";
+        + "</th><th>" + ppEch(pph("entree")) + "</th><th>" + ppEch(pph("maintenant"))
+        + "</th><th>" + ppEch(pph("latent")) + "</th><th>"
+        + ppEch(pph("stop")) + "</th><th>" + ppEch(pph("cible")) + "</th><th>"
+        + ppEch(pph("mise")) + "</th><th>" + ppEch(pph("depuis")) + "</th></tr>";
   v.positions.forEach(function(p){
+    /* Le gain latent porte le financement deja paye : sans lui, le chiffre
+       affiche serait plus flatteur que celui qu on encaissera. */
+    var cls = p.net > 0 ? "pp-vert" : p.net < 0 ? "pp-rouge" : "";
     h += "<tr><td><b>" + ppEch(p.nom || ppNom(p.sym)) + "</b></td>"
        + "<td><span class='pp-sens " + (p.sens > 0 ? "long'>LONG" : "short'>SHORT") + "</span></td>"
-       + "<td class='num'>" + ppPrix(p.prix0) + "</td><td class='num'>" + ppPrix(p.stop) + "</td>"
+       + "<td class='num'>" + ppPrix(p.prix0) + "</td>"
+       + "<td class='num'><b>" + (p.prix == null ? "—" : ppPrix(p.prix)) + "</b></td>"
+       + "<td class='num " + cls + "'>" + (p.net == null ? "—"
+            : "<b>" + ppSigne(p.gain) + "</b> <i class='pp-n'>" + ppPct(p.net) + "</i>") + "</td>"
+       + "<td class='num'>" + ppPrix(p.stop) + "</td>"
        + "<td class='num'>" + ppPrix(p.cible) + "</td><td class='num'>" + ppArgent(p.mise) + "</td>"
-       + "<td class='num'>" + (p.score == null ? "—" : p.score.toFixed(2)) + "</td>"
        + "<td class='num'>" + ppDuree((Date.now() - p.depuis) / 60000) + "</td></tr>";
   });
   c.innerHTML = h + "</table>";
@@ -312,6 +331,13 @@ function ppAudit(v){
  * bien plus nombreuses. Chacune avec son effectif, parce qu un marche vu
  * trois fois ne se compare pas a un marche vu cent fois. */
 function ppParMarche(v){
+  /* Ce que le journal brut porte. Ce n'est pas une decoration : sans lui on
+     ne sait pas si la question « comment gagne-t-on sur la duree » a
+     seulement de quoi etre posee. */
+  var j = v.journal;
+  $$("ppJournal").textContent = (j && j.jours)
+    ? pphF("journalDit", j.jours, Math.max(0.1, Math.round(j.octets / 104857.6) / 10))
+    : pph("journalVideDit");
   var t = $$("ppMarches");
   var l = v.parMarche || [];
   if(!l.length){ t.innerHTML = '<div class="pp-vide">' + ppEch(pph("marchesVide")) + "</div>"; return; }

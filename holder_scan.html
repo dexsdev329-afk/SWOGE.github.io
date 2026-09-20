@@ -99,6 +99,27 @@ video{ max-width:100%; }
 </style>
 
 <title>Holder Scan · Robinhood Chain</title>
+<style>
+  /* Les cases mesurees : une ligne par case, l'effectif TOUJOURS a cote du
+     chiffre. Sans lui, « -43,7 % » se lit pareil qu'il porte sur six lectures
+     ou sur six cents. */
+  #mesureCases{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+  .mc-l{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:11px;
+        background:#F7FAFF;border:1px solid #E6EDF9}
+  .mc-q{flex:1 1 auto;min-width:0;font:600 13px/1.35 'Outfit',system-ui,sans-serif;color:#22324e}
+  .mc-q b{display:block;font:700 10px/1.3 'Inter',system-ui,sans-serif;letter-spacing:.6px;
+          text-transform:uppercase;color:#8A99B5}
+  .mc-v{flex:0 0 auto;font:800 15px/1 'Outfit',system-ui,sans-serif;font-variant-numeric:tabular-nums}
+  .mc-n{flex:0 0 auto;font:600 10px/1 'JetBrains Mono',ui-monospace,monospace;color:#A3B0C8}
+  .mc-up{color:#0F8A4F} .mc-dn{color:#B3261E}
+  /* Un fait de contrat n'a pas besoin d'une moyenne : il vaut pour lui-meme. */
+  #mesureFaits{display:flex;flex-wrap:wrap;gap:7px;margin:4px 0 2px}
+  .mf{display:inline-flex;align-items:center;gap:7px;padding:7px 11px;border-radius:999px;
+      background:#FDECEC;border:1px solid #F6C9C6;color:#B3261E;
+      font:700 12px/1 'Outfit',system-ui,sans-serif}
+  .mf i{font-style:normal;font:600 9.5px/1 'JetBrains Mono',ui-monospace,monospace;opacity:.7}
+  .mc-rien{padding:14px 2px;color:#8A99B5;font:500 13px/1.5 'Outfit',system-ui,sans-serif}
+</style>
 
 <!-- ==================== REFERENCEMENT ET PARTAGE ====================
      Bloc identique sur toutes les pages, pose juste apres le titre.
@@ -713,6 +734,24 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     <span class="ct" id="tCt"></span>
   </div>
 
+  <!-- ==================== CE QUE LA COLONIE A MESURE ====================
+       La seule question que tout le monde se pose avant d'acheter : « celui-la,
+       c'est un piege ? ». Personne ne cherche un casino ; tout le monde cherche
+       ca. C'est la porte par ou peut entrer quelqu'un qui n'a jamais entendu
+       parler de SWOGE — donc elle est publique, sans portefeuille, sans compte.
+
+       Ce bloc ne rend JAMAIS un verdict et ne dit ni « sur » ni « rug ». Il
+       rend des CASES et ce qu'elles ont rendu, avec leur effectif. Une case
+       sous le minimum d'observations ne sort pas du tout : un chiffre sur six
+       lectures se lirait avec la meme autorite qu'un chiffre sur six cents. -->
+  <div class="section" id="secMesure" style="display:none">
+    <h2>What SWOGE AI has measured</h2>
+    <p class="cap" id="mesureCap"></p>
+    <div id="mesureFaits"></div>
+    <div id="mesureCases"></div>
+    <p class="cap" id="mesurePied"></p>
+  </div>
+
   <div class="health" id="health"></div>
 
   <div class="verdict" id="verdict">
@@ -906,6 +945,77 @@ async function fetchPaged(path, maxPages, onBatch){
 $("#run").onclick = scan;
 $("#addr").addEventListener("keydown", e => { if(e.key === "Enter") scan(); });
 
+/* ==================== CE QUE LA COLONIE A MESURE ====================
+ * Lance EN PARALLELE de la lecture des detenteurs : les deux ne dependent pas
+ * l'une de l'autre, et faire attendre l'une pour l'autre doublerait le temps
+ * avant le premier chiffre a l'ecran.
+ *
+ * Elle ne rend jamais un verdict. Elle rend des cases et ce qu'elles ont
+ * rendu, avec leur effectif — c'est au lecteur de conclure. Et quand la
+ * colonie ne sait rien de ce jeton, elle le DIT : une section vide qui
+ * ressemblerait a « rien a signaler » serait pire que pas de section.
+ */
+/* Le serveur de la colonie. La barre du site en a un, mais il vit dans sa
+   fonction anonyme et n'est pas visible d'ici — et c'est tres bien : deux
+   blocs qui se partagent des noms par accident finissent par se marcher
+   dessus. On en pose donc un ici, avec la meme regle qu'ailleurs. */
+function serveurColonie(){
+  try{ const q = new URLSearchParams(location.search).get("server");
+       if(q) return String(q).replace(/^ws/,"http"); }catch(e){}
+  return "https://web-production-220a3.up.railway.app";
+}
+
+async function mesure(token){
+  const sec = $("#secMesure");
+  sec.style.display = "none";
+  let r = null;
+  try{
+    const q = await fetch(serveurColonie() + "/scan/" + token, { cache:"no-store" });
+    r = await q.json();
+    if(!q.ok || r.erreur) throw new Error(r.erreur || ("HTTP " + q.status));
+  }catch(e){ return; }        /* le scan des detenteurs se suffit a lui-meme */
+
+  const ech = (x) => String(x==null?"":x).replace(/[&<>"']/g, c => (
+    {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+
+  /* ---- LE LANCEUR ----
+   * La mesure la plus forte du tableau, et la moins connue : plus un
+   * deployeur a deja lance, plus ses jetons perdent. */
+  const l = r.lanceur;
+  const tete = [];
+  if(l && l.lancements >= 2)
+    tete.push("This launcher has shipped " + l.lancements + " tokens before.");
+  const m = r.mesureSur || {};
+  $("#mesureCap").textContent =
+    (tete.length ? tete.join(" ") + " " : "")
+    + "Cells the colony has measured on this kind of token — not an opinion, and never a buy signal. "
+    + "A cell with fewer than " + (m.minObs||8) + " observations is not shown at all.";
+
+  /* Les faits du contrat : ils n'ont pas besoin d'une moyenne. */
+  $("#mesureFaits").innerHTML = (r.faits||[]).map(f =>
+    '<span class="mf">' + ech(f.quoi) + ' <i>' + ech(f.source) + '</i></span>').join("");
+
+  const cases = r.cases || [];
+  if(!cases.length){
+    $("#mesureCases").innerHTML = '<div class="mc-rien">The colony has not measured enough on '
+      + 'tokens like this one yet. Nothing shown rather than something invented.</div>';
+  }else{
+    $("#mesureCases").innerHTML = cases.slice(0, 12).map(c => {
+      const cl = c.moyenne > 0 ? "mc-up" : c.moyenne < 0 ? "mc-dn" : "";
+      const sg = c.moyenne > 0 ? "+" : "";
+      return '<div class="mc-l"><span class="mc-q"><b>' + ech(c.trait) + '</b>' + ech(c.case) + '</span>'
+        + '<span class="mc-v ' + cl + '">' + sg + c.moyenne + '%</span>'
+        + '<span class="mc-n">n=' + c.n + '</span></div>';
+    }).join("");
+  }
+  /* Sur quoi tout ca repose. Sans cette ligne, le reste n'est qu'un avis. */
+  $("#mesurePied").textContent = m.observations
+    ? "Measured over " + m.observations.toLocaleString("en-US") + " judged observations, "
+      + m.tours.toLocaleString("en-US") + " turns, at " + m.echeance + " minutes. Averages are raw price moves, not what a strategy would have made."
+    : "";
+  sec.style.display = "block";
+}
+
 async function scan(){
   const raw = $("#addr").value.trim();
   const m = raw.match(/0x[0-9a-fA-F]{40}/);
@@ -913,6 +1023,9 @@ async function scan(){
   const token = m[0].toLowerCase();
   $("#run").disabled = true;
   ["#tokenhead","#health","#verdict","#inspect","#track","#secConc","#secHolders","#method"].forEach(id=>$(id).style.display="none");
+  $("#secMesure").style.display = "none";
+  /* Sans `await` : elle s'affiche quand elle arrive, elle ne retarde rien. */
+  mesure(token);
   $("#icard").style.display="none";
 
   try{

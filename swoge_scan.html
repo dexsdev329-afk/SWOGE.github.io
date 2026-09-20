@@ -1,0 +1,1697 @@
+<!DOCTYPE html>
+<html lang="en">
+<!-- Cette page n avait ni doctype ni balise `html` : elle s affichait donc en
+     mode QUIRKS, ou le navigateur imite les fautes des annees 90, et elle ne
+     pouvait declarer aucune langue. Mesure faite avant de la changer : au
+     passage en mode standard, aucun de ses 139 elements ne bouge, ni a 390 ni
+     a 1280 — seule la hauteur de `body` se remet a celle de son contenu. -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>
+/* ================== CORRECTIFS COMMUNS ==================
+ * Bloc identique sur les vingt-cinq pages. Il se pose juste apres le viewport
+ * pour qu'aucune feuille de style de la page ne puisse le prendre de vitesse.
+ *
+ * LE DOUBLE-TAP NE ZOOME PLUS. Deux appuis rapproches sur un bouton — tirer,
+ * tirer ; miser, miser — etaient lus comme un double-tap, et la page grossissait.
+ * On jouait le coup suivant a moitie hors de l'ecran et il fallait pincer pour
+ * revenir. `manipulation` supprime CE geste, et lui seul : le pincement pour
+ * zoomer reste possible, ce qui n'aurait pas ete le cas avec un
+ * `user-scalable=no` dans le viewport — la solution courante, qui prive aussi
+ * les gens qui zooment pour lire. Les 300 ms d'attente avant que le clic parte
+ * disparaissent avec, en prime.
+ *
+ * LA SURFACE DE JEU, elle, ne doit rien laisser passer : un doigt qui glisse
+ * sur un plateau ne doit pas faire defiler la page derriere.
+ *
+ * LES CIBLES : le bouton menu tombait a 38x38 sur telephone, sous les 44 px
+ * recommandes — et c'est le seul chemin vers le depot, le retrait et le compte.
+ * ========================================================= */
+html{ -webkit-text-size-adjust:100%; }
+
+/* ---- ON RELEVE LE NOIR, PARTOUT ----
+ *
+ * Les tables etaient presque entierement noires : 80 % des pixels du casino
+ * sous le seuil du visible, 96 % au Coin Pusher, contre 58 % au hall. A cote
+ * du hall, chaque jeu paraissait eteint.
+ *
+ * Le calque est en `screen`, pas en voile blanc, et la difference est tout :
+ *
+ *   screen(a, g) = 255 - (255 - a)(255 - g) / 255
+ *
+ * Le NOIR monte a la valeur du calque, le BLANC ne bouge pas d'un cran. Les
+ * plaques peintes, les jetons et les cartes gardent donc exactement leur
+ * eclat — seuls les creux se remplissent. Un voile blanc a 5 %, lui, aurait
+ * laiteuse les cartes en meme temps.
+ *
+ * `filter: brightness()` est ecarte pour deux raisons : il MULTIPLIE, donc le
+ * noir reste noir — or c'est justement le noir qu'on veut relever — et un
+ * filtre fait de son element le repere de tout descendant en position fixe,
+ * ce qui nous a deja coute un cadre de palier de deux cents pixels sur le Spin.
+ *
+ * `pointer-events:none` : le calque couvre tout l'ecran, il ne doit rien
+ * intercepter. Verifie par un vrai clic sur la bulle de profil, avec et sans.
+ *
+ * Une seule valeur a regler ici, et elle vaut pour les vingt-six pages. */
+html::after{ content:""; position:fixed; inset:0; pointer-events:none;
+  z-index:2147483000; background:#12121a; mix-blend-mode:screen; }
+button, a, input, select, textarea, label, summary,
+[role="button"], [onclick],
+.card, .chipbtn, .btn, .tile, .sbet, .qclaim, .abtn, .pct, .chip, .sday{
+  touch-action:manipulation;
+}
+canvas{ touch-action:none; }
+
+/* ---- UNE VIDEO NE PEUT PLUS ETRE PLUS LARGE QUE SA PLACE ----
+ *
+ * Signale, capture a l appui : sur telephone, l en-tete de SWOGE BET et la
+ * rangee de navigation s affichent a 59 % de la largeur de l ecran, tout
+ * ratatines, pendant que la banniere et les cartes en dessous occupent bien
+ * toute la largeur. Deux echelles sur la meme page.
+ *
+ * Ce n est pas l en-tete qui a retreci : c est TOUTE LA PAGE qui a ete
+ * degonflee. Quand un element deborde en largeur, iOS ne coupe pas et ne
+ * replie pas — il reduit l echelle de la page entiere pour faire tenir le
+ * document. L en-tete, lui, fait 100 % de la FENETRE (390 px) et non du
+ * document (772 px) : degonfle du meme coup, il n occupe plus que la moitie
+ * de l ecran. Le contenu large, lui, remplit l ecran. C est exactement ce que
+ * montre la capture, et la page porte deja ce constat ailleurs :
+ * « le telephone dezoomait toute la page pour la faire tenir ».
+ *
+ * Ce qui debordait : la banniere video. `<video width="912" height="600">` —
+ * ces attributs sont des indices de presentation, c est-a-dire une largeur de
+ * 912 px si la regle d auteur qui dit `width:100%` ne s applique pas, ou si le
+ * moteur recalcule la largeur depuis `aspect-ratio` quand `max-height` mord.
+ * Mesure, la regle neutralisee : document a 772 px pour une fenetre de 390, et
+ * un en-tete qui occuperait 51 % de l ecran.
+ *
+ * Chaque `<img>` du site etait deja borne — `img{max-width:100%}`. Aucune des
+ * vingt et une pages qui portent une `<video>` ne le faisait pour elle. Le
+ * garde manquait pour un seul type de balise, et c est celui qu on a mis en
+ * pleine largeur en haut de trois pages.
+ *
+ * Pose ici, dans le bloc commun, et pas dans la regle de chaque banniere : ce
+ * n est pas une decision de mise en page, c est un plancher. Une banniere qui
+ * veut deborder devra le dire, et personne ne le veut. */
+video{ max-width:100%; }
+.menubtn{ min-width:44px; min-height:44px; }
+</style>
+
+<title>Is this token a scam? · SWOGE Scan — Robinhood Chain</title>
+<style>
+  /* Les cases mesurees : une ligne par case, l'effectif TOUJOURS a cote du
+     chiffre. Sans lui, « -43,7 % » se lit pareil qu'il porte sur six lectures
+     ou sur six cents. */
+  #mesureCases{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+  .mc-l{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:11px;
+        background:#F7FAFF;border:1px solid #E6EDF9}
+  .mc-q{flex:1 1 auto;min-width:0;font:600 13px/1.35 'Outfit',system-ui,sans-serif;color:#22324e}
+  .mc-q b{display:block;font:700 10px/1.3 'Inter',system-ui,sans-serif;letter-spacing:.6px;
+          text-transform:uppercase;color:#8A99B5}
+  .mc-v{flex:0 0 auto;font:800 15px/1 'Outfit',system-ui,sans-serif;font-variant-numeric:tabular-nums}
+  .mc-n{flex:0 0 auto;font:600 10px/1 'JetBrains Mono',ui-monospace,monospace;color:#A3B0C8}
+  .mc-up{color:#0F8A4F} .mc-dn{color:#B3261E}
+  /* Un fait de contrat n'a pas besoin d'une moyenne : il vaut pour lui-meme. */
+  #mesureFaits{display:flex;flex-wrap:wrap;gap:7px;margin:4px 0 2px}
+  .mf{display:inline-flex;align-items:center;gap:7px;padding:7px 11px;border-radius:999px;
+      background:#FDECEC;border:1px solid #F6C9C6;color:#B3261E;
+      font:700 12px/1 'Outfit',system-ui,sans-serif}
+  .mf i{font-style:normal;font:600 9.5px/1 'JetBrains Mono',ui-monospace,monospace;opacity:.7}
+  .mc-rien{padding:14px 2px;color:#8A99B5;font:500 13px/1.5 'Outfit',system-ui,sans-serif}
+  .mc-part{display:flex;align-items:center;gap:12px;margin-top:12px;flex-wrap:wrap}
+  #mcCarte{border:0;border-radius:11px;padding:11px 16px;cursor:pointer;background:#1B5FE0;color:#fff;
+           font:800 13px/1 'Outfit',system-ui,sans-serif}
+  #mcCarte:hover{background:#1750c4}
+  #mcCarte:disabled{opacity:.55;cursor:default}
+  .mc-dit{font:600 12px/1.4 'Outfit',system-ui,sans-serif;color:#6B7C99}
+</style>
+
+<!-- ==================== REFERENCEMENT ET PARTAGE ====================
+     Bloc identique sur toutes les pages, pose juste apres le titre.
+
+     L ICONE. Vingt-trois pages sur vingt-huit n en avaient aucune, et les cinq
+     qui en portaient une pointaient vers trois fichiers differents — dont un
+     qui n existe pas. C est la premiere chose qu on cherche pour retrouver un
+     onglet, et Google la montre a cote du resultat.
+
+     LE PARTAGE. Aucune page ne portait de balise Open Graph : un lien colle
+     dans Telegram, sur X ou dans Discord n affichait ni titre, ni resume, ni
+     image — juste l adresse nue. Pour un projet qui vit dans Telegram, c est
+     le lien lui-meme qui faisait le travail de vitrine, et il ne le faisait
+     pas.
+
+     L ADRESSE CANONIQUE dit au moteur quelle est LA page, quand la meme est
+     atteignable avec un `?game=`, un `#` ou un `www`. Sans elle, les deux
+     versions se font concurrence et aucune ne gagne.
+     ================================================================= -->
+<link rel="canonical" href="https://swoleeswoge.dog/swoge_scan.html">
+<meta name="description" content="Paste any Robinhood Chain token and see what SWOGE AI has actually measured on tokens like it — the launcher's record, the age and cap cell, the liquidity, and what the contract can still do. Every number comes with how many observations it rests on. No wallet, no signup, no verdict.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="SWOGE WORLD">
+<meta property="og:locale" content="en_US">
+<meta property="og:title" content="Is this token a scam? · SWOGE Scan">
+<meta property="og:description" content="Paste any Robinhood Chain token and see what SWOGE AI has actually measured on tokens like it — the launcher's record, the age and cap cell, the liquidity, and what the contract can still do. Every number comes with how many observations it rests on. No wallet, no signup, no verdict.">
+<meta property="og:url" content="https://swoleeswoge.dog/swoge_scan.html">
+<meta property="og:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@SwoleDogeSwoge">
+<meta name="twitter:title" content="Is this token a scam? · SWOGE Scan">
+<meta name="twitter:description" content="Paste any Robinhood Chain token and see what SWOGE AI has actually measured on tokens like it — the launcher's record, the age and cap cell, the liquidity, and what the contract can still do. Every number comes with how many observations it rests on. No wallet, no signup, no verdict.">
+<meta name="twitter:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/site/icone-32.png">
+<link rel="apple-touch-icon" href="/img/site/icone-180.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta name="theme-color" content="#1B5FE0">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+<style>
+/* ---- LA PALETTE PASSE AU CLAIR ----
+ * Les noms de variables ne changent pas — seule leur VALEUR bascule, pour que
+ * les couleurs posees en ligne par le script (`style="color:var(--serpent)"`,
+ * `style="background:var(--believer)"`) suivent sans qu on touche au JS.
+ * `--paper` etait #EAF2FF, un texte clair pose sur un fond noir : sur un fond
+ * clair il aurait disparu, il devient donc l encre marine #0B1B36.
+ * `--believer` / `--serpent` / `--neutral` / `--pool` retrouvent le vert, le
+ * rouge, l ambre et le bleu que les fonds teintes de cette feuille
+ * (`rgba(95,209,160,.14)`, `rgba(232,120,92,.14)`…) supposaient depuis le
+ * debut, assombris juste ce qu il faut pour rester lisibles sur du blanc. */
+:root{
+  --void:#EEF3FB; --void2:#FFFFFF; --panel:#FFFFFF; --panel2:#E1E9F6; --line:#E1E9F6;
+  --paper:#0B1B36; --dim:#6B7C99; --believer:#12805A; --serpent:#C0392B; --neutral:#96650F; --pool:#1B5FE0;
+  --gold:#1B5FE0; --goldlite:#EAF1FF; --cream:#0A1F44; --r:3px;
+}
+*{box-sizing:border-box}
+/* ---- LE FOND DE PAGE, EN TROIS COUCHES, TOUTES TRAITEES ----
+ * Cette page posait le noir a TROIS endroits : `body{background:var(--void)}`,
+ * un `body::after` (photo de grain en `luminosity`) et un `body::before`
+ * (deux halos or). Deux pseudo-elements de meme specificite se REMPLACENT au
+ * lieu de s additionner : n en neutraliser qu un rend la main a l autre et la
+ * page reste sombre. Les deux sont donc SUPPRIMES, pas surcharges — le grain
+ * en `luminosity` grisait le blanc, les halos or n avaient plus de fond noir
+ * ou se lire. Le fond est ecrit en dur ici, comme sur les pages deja passees
+ * au clair, pour qu aucune valeur de variable ne puisse le reprendre. */
+html,body{margin:0;padding:0;overflow-x:hidden;max-width:100%;background:#EEF3FB;color:#0B1B36}
+body{font-family:'Archivo',system-ui,sans-serif;font-size:14px;line-height:1.55}
+.wrap{position:relative;z-index:2}
+/* `container-type:inline-size` : les `vw` du titre mesuraient la fenetre
+   entiere, pas la colonne retrecie par les deux cotes — voir `8cqi` plus bas. */
+.wrap{max-width:1080px;margin:0 auto;padding:32px 20px 90px;container-type:inline-size}
+.mono{font-family:'Space Mono',monospace}
+
+/* header */
+.top{border-bottom:1px solid var(--line);padding-bottom:20px;margin-bottom:24px}
+.kick{font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--dim)}
+h1{font-family:'Anton',sans-serif;font-size:clamp(30px,8cqi,40px);letter-spacing:.01em;text-transform:uppercase;margin:6px 0 0}
+h1 em{font-style:normal;color:var(--gold)}
+.sub{color:var(--dim);font-size:13px;margin-top:6px;max-width:560px}
+
+/* input */
+.bar{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
+.bar input{flex:1;min-width:0;width:100%;background:var(--panel);color:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:11px 13px;font-family:'Space Mono',monospace;font-size:12.5px}
+.bar input:focus{outline:2px solid var(--believer);outline-offset:1px}
+button{font-family:'Anton',sans-serif;font-size:16px;letter-spacing:.04em;text-transform:uppercase;background:var(--gold);color:#FFFFFF;border:0;border-radius:var(--r);padding:12px 24px;cursor:pointer}
+button:hover{transform:scale(1.03);filter:brightness(1.06)}
+button:disabled{opacity:.5;cursor:not-allowed}
+button.ghost{background:transparent;color:var(--dim);border:1px solid var(--line)}
+button.ghost:hover{color:var(--paper);border-color:var(--believer);filter:none}
+
+.state{margin-top:14px;font-family:'Space Mono',monospace;font-size:11.5px;color:var(--dim);min-height:16px}
+.state.err{color:var(--serpent)}
+.spin{display:inline-block;width:9px;height:9px;border:1.5px solid var(--line);border-top-color:var(--believer);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-1px;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* token id */
+.tokenhead{display:none;align-items:baseline;gap:14px;flex-wrap:wrap;margin-top:26px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.tokenhead .nm{font-family:'Anton',sans-serif;font-size:22px;font-weight:600}
+.tokenhead .sy{font-family:'Space Mono',monospace;color:var(--believer);font-size:13px}
+.tokenhead .ct{font-family:'Space Mono',monospace;color:var(--dim);font-size:11px;word-break:break-all}
+
+/* verdict band — the signature element */
+.health{display:none;margin-top:24px;border-radius:var(--r);padding:18px 20px;border:1px solid var(--line)}
+.health.green{background:rgba(95,209,160,.08);border-color:rgba(95,209,160,.4);border-left:4px solid var(--believer)}
+.health.orange{background:rgba(199,161,94,.08);border-color:rgba(199,161,94,.4);border-left:4px solid var(--neutral)}
+.health.red{background:rgba(232,120,92,.08);border-color:rgba(232,120,92,.4);border-left:4px solid var(--serpent)}
+.health .grade{font-family:'Anton',sans-serif;font-size:24px;text-transform:uppercase;letter-spacing:.02em;display:flex;align-items:center;gap:12px}
+.health .grade .badge{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;padding:4px 10px;border-radius:20px;font-weight:600}
+.health.green .badge{background:var(--believer);color:#FFFFFF}
+.health.orange .badge{background:var(--neutral);color:#FFFFFF}
+.health.red .badge{background:var(--serpent);color:#FFFFFF}
+.health .line{font-size:13.5px;color:var(--paper);margin-top:10px;line-height:1.6}
+.health .factors{display:flex;gap:18px;flex-wrap:wrap;margin-top:12px;font-family:'Space Mono',monospace;font-size:11px;color:var(--dim)}
+.health .factors b{color:var(--paper)}
+.health .factors .ok{color:var(--believer)} .health .factors .bad{color:var(--serpent)} .health .factors .mid{color:var(--neutral)}
+.verdict{display:none;margin-top:26px}
+.vlabel{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-bottom:7px}
+.vlabelsub{text-transform:none;letter-spacing:0;color:var(--believer)}
+.vbar{height:46px;border-radius:var(--r);overflow:hidden;display:flex;border:1px solid var(--line)}
+.vseg{display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-size:12px;font-weight:600;color:#FFFFFF;transition:flex-basis .6s cubic-bezier(.2,.7,.2,1);min-width:0;overflow:hidden;white-space:nowrap}
+.vseg.b{background:var(--believer)}
+.vseg.s{background:var(--serpent);color:#FFFFFF}
+.vseg.n{background:var(--neutral);color:#FFFFFF}
+.vlegend{display:flex;gap:22px;flex-wrap:wrap;margin-top:12px;font-family:'Space Mono',monospace;font-size:11.5px;color:var(--dim)}
+.vlegend b{color:var(--paper);font-weight:600}
+/* Le top 10 a rejoint la legende, separe des trois classes par un filet : il
+   ne decrit pas une classe de portefeuille, il decrit la FORME du tableau. */
+.vlegend .vsep{border-left:1px solid var(--line);padding-left:22px}
+
+/* ---- LES SECTIONS QUI SE REPLIENT ----
+ * Quatre panneaux — la liste complete, l analyse d une adresse, la tendance,
+ * la methode — sont utiles mais ne sont jamais ce qu on vient chercher en
+ * arrivant. Depliees d office, elles poussaient le verdict hors de l ecran.
+ * `<details>` plutot qu un basculement en JS : c est le navigateur qui gere
+ * l ouverture, le clavier et la recherche dans la page, et une section repliee
+ * reste trouvable au Ctrl+F. Un panneau qu on code soi-meme perd les trois. */
+.pli{display:none;margin-top:22px;border:1px solid var(--line);border-radius:var(--r);
+  background:var(--panel);padding:0 16px}
+.pli[open]{padding-bottom:16px}
+.pli>summary{list-style:none;cursor:pointer;padding:14px 0;display:flex;align-items:baseline;
+  gap:12px;flex-wrap:wrap;font-family:'Space Mono',monospace;font-size:11px;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--paper);font-weight:500}
+.pli>summary::-webkit-details-marker{display:none}
+.pli>summary::after{content:"+";margin-left:auto;font-size:15px;color:var(--dim);
+  font-family:inherit;letter-spacing:0}
+.pli[open]>summary::after{content:"\2212"}
+.pli>summary:hover{color:var(--gold)}
+.pli>summary:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+/* La question a laquelle la section repond, en clair : un titre en capitales
+   espacees dit de quoi ca parle, pas ce qu on y trouvera. */
+.pli-q{font-family:inherit;font-size:11px;letter-spacing:0;text-transform:none;
+  color:var(--dim);font-weight:400}
+.pli[open]>summary{border-bottom:1px solid var(--line);margin-bottom:14px}
+/* Les titres internes de ces panneaux faisaient doublon avec leur resume. */
+.pli>h2,.pli>h3{display:none}
+.dotb{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:0}
+
+/* stat strip */
+.stat{background:var(--panel);padding:15px 16px}
+.stat .n{font-family:'Space Mono',monospace;font-size:23px;font-weight:600;letter-spacing:-.02em}
+.stat .k{font-family:'Space Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-top:3px}
+.stat .n.b{color:var(--believer)} .stat .n.s{color:var(--serpent)}
+
+/* concentration */
+.section{display:none;margin-top:34px}
+.section h2{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin:0 0 4px;font-weight:500}
+.section .cap{color:var(--dim);font-size:12px;margin:0 0 16px}
+
+/* holder rows */
+.holder{display:grid;grid-template-columns:26px 1fr auto;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
+.rank{font-family:'Space Mono',monospace;font-size:11px;color:var(--dim);text-align:right}
+.hmain{min-width:0}
+.haddr{font-family:'Space Mono',monospace;font-size:12.5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.haddr a{color:var(--paper);text-decoration:none;border-bottom:1px solid transparent}
+.haddr a:hover{border-bottom-color:var(--believer)}
+.chip{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.08em;text-transform:uppercase;padding:2px 6px;border-radius:2px;white-space:nowrap}
+.chip.b{background:rgba(95,209,160,.14);color:var(--believer)}
+.chip.s{background:rgba(232,120,92,.14);color:var(--serpent)}
+.chip.n{background:rgba(199,161,94,.14);color:var(--neutral)}
+.chip.p{background:rgba(91,141,217,.16);color:var(--pool)}
+.htrack{height:5px;background:var(--panel2);border-radius:3px;margin-top:6px;overflow:hidden}
+.hfill{height:100%;border-radius:3px}
+.hpct{font-family:'Space Mono',monospace;font-size:13px;font-weight:600;text-align:right;white-space:nowrap}
+.hbal{font-family:'Space Mono',monospace;font-size:10.5px;color:var(--dim);text-align:right;margin-top:2px}
+.flow{font-family:'Space Mono',monospace;font-size:10px;color:var(--dim);margin-top:3px}
+.flow .out{color:var(--serpent)} .flow .in{color:var(--believer)}
+
+.note{font-family:'Space Mono',monospace;font-size:10.5px;color:var(--dim);line-height:1.7;margin-top:10px}
+.filters{display:none;gap:8px;flex-wrap:wrap;margin-top:26px;align-items:center}
+.filters .lbl{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-right:2px}
+.fbtn{font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.04em;text-transform:none;background:var(--panel);color:var(--dim);border:1px solid var(--line);border-radius:20px;padding:6px 13px;cursor:pointer;font-weight:500}
+.fbtn:hover{color:var(--paper);filter:none;border-color:var(--dim)}
+.fbtn.on{background:var(--believer);color:#FFFFFF;border-color:var(--believer);font-weight:600}
+.fbtn.on.s{background:var(--serpent);color:#FFFFFF;border-color:var(--serpent)}
+.fbtn.on.n{background:var(--neutral);color:#FFFFFF;border-color:var(--neutral)}
+.fbtn.on.p{background:var(--pool);color:#FFFFFF;border-color:var(--pool)}
+.srch{flex:1;min-width:120px;background:var(--panel);color:var(--paper);border:1px solid var(--line);border-radius:20px;padding:6px 13px;font-family:'Space Mono',monospace;font-size:11px}
+.srch:focus{outline:1px solid var(--believer)}
+.copybar{display:none;gap:8px;flex-wrap:wrap;align-items:center;margin-top:14px}
+.copybar button{background:transparent;color:var(--believer);border:1px solid rgba(95,209,160,.4);border-radius:var(--r);padding:8px 14px;font-family:'Space Mono',monospace;font-size:10.5px}
+.copybar button:hover{background:rgba(95,209,160,.1);filter:none}
+.copybar .hint{font-family:'Space Mono',monospace;font-size:10.5px;color:var(--dim)}
+.age{font-family:'Space Mono',monospace;font-size:10px;color:var(--neutral);white-space:nowrap}
+.more{margin-top:16px;text-align:center}
+.more button{background:transparent;color:var(--dim);border:1px solid var(--line);border-radius:var(--r);padding:10px 22px}
+.more button:hover{color:var(--paper);border-color:var(--believer)}
+.count{font-family:'Space Mono',monospace;font-size:10.5px;color:var(--dim);text-align:center;margin-top:8px}
+.inspect{display:none;margin-top:34px}
+.ibar{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.ibar input{flex:1;min-width:0;background:var(--panel);color:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;font-family:'Space Mono',monospace;font-size:12px}
+.ibar input:focus{outline:2px solid var(--believer);outline-offset:1px}
+.icard{display:none;margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px 20px}
+.icard.b{border-left:4px solid var(--believer)} .icard.s{border-left:4px solid var(--serpent)}
+.icard.n{border-left:4px solid var(--neutral)} .icard.p{border-left:4px solid var(--pool)} .icard.x{border-left:4px solid var(--line)}
+.iverdict{font-family:'Anton',sans-serif;font-size:26px;text-transform:uppercase;letter-spacing:.02em;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.iverdict .badge{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;padding:4px 11px;border-radius:20px;font-weight:600}
+.icard.b .badge{background:var(--believer);color:#FFFFFF} .icard.s .badge{background:var(--serpent);color:#FFFFFF}
+.icard.n .badge{background:var(--neutral);color:#FFFFFF} .icard.p .badge{background:var(--pool);color:#FFFFFF}
+.icard.x .badge{background:var(--line);color:var(--paper)}
+.iline{font-size:13.5px;color:var(--paper);margin-top:10px;line-height:1.6}
+.igrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-top:16px}
+.icell{background:#F5F8FD;border:1px solid var(--line);border-radius:var(--r);padding:11px 13px}
+.icell .k{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.icell .v{font-family:'Space Mono',monospace;font-size:15px;font-weight:600;margin-top:3px;word-break:break-all}
+.ilink{font-family:'Space Mono',monospace;font-size:11px;margin-top:14px}
+.ilink a{color:var(--believer);text-decoration:none;border-bottom:1px solid rgba(95,209,160,.35)}
+.mom{display:none;margin-top:34px}
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+@media(max-width:640px){.mgrid{grid-template-columns:1fr}}
+.mcard{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:15px 16px}
+.mcard .lbl{font-family:'Space Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.mcard .val{font-family:'Space Mono',monospace;font-size:20px;font-weight:600;margin-top:4px}
+.mbar{height:8px;border-radius:4px;overflow:hidden;display:flex;margin-top:10px;background:var(--panel2)}
+.mbar .buy{background:var(--believer)} .mbar .sell{background:var(--serpent)}
+.mnote{font-family:'Space Mono',monospace;font-size:11px;color:var(--dim);margin-top:10px;line-height:1.6}
+.track{display:none;margin-top:34px}
+.trow{display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-family:'Space Mono',monospace;font-size:12px}
+.trow .d{color:var(--dim)}
+.trow .delta{text-align:right;font-weight:600}
+.trow .delta.up{color:var(--believer)} .trow .delta.down{color:var(--serpent)} .trow .delta.flat{color:var(--dim)}
+.tempty{font-family:'Space Mono',monospace;font-size:11.5px;color:var(--dim);margin-top:10px;line-height:1.7}
+.method{display:none;margin-top:40px;border-top:1px solid var(--line);padding-top:16px}
+.method h3{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin:0 0 8px}
+.method p{color:var(--dim);font-size:12px;margin:0 0 8px;max-width:640px}
+.method b{color:var(--paper)}
+footer{margin-top:44px;font-family:'Space Mono',monospace;font-size:10px;color:var(--dim);line-height:1.8;border-top:1px solid var(--line);padding-top:14px}
+
+/* ── mobile ── */
+@media(max-width:560px){
+  .wrap{padding:20px 14px 70px}
+  .igrid{grid-template-columns:1fr 1fr}
+  .holder{grid-template-columns:22px 1fr auto;gap:9px}
+  .haddr{font-size:11.5px}
+  .hpct{font-size:12px}
+  .trow{grid-template-columns:1fr;gap:4px;text-align:left}
+  .trow .delta{text-align:left}
+  .health{padding:15px 15px}
+  .health .grade{font-size:20px}
+  .iverdict{font-size:22px}
+  .filters{gap:6px}
+  .fbtn{padding:5px 10px;font-size:10px}
+  .copybar{gap:6px}
+  .copybar button{width:100%}
+  /* ---- CETTE REGLE FRAPPAIT LE MAUVAIS TITRE ----
+   * Elle grossissait TOUS les h2 a vingt-sept pixels sur telephone, avec un
+   * `!important`. Or cette page n'a qu'un seul h2 — l'etiquette en capitales
+   * espacees de la section Concentration, calee a onze pixels — et le grand
+   * titre du hero est un h1. Le seul effet de la regle etait donc de casser
+   * l'etiquette qu'elle n'avait aucune raison de toucher : trois lignes de
+   * capitales geantes au milieu de la page. Elle vient d'un gabarit partage
+   * ou un h2 est un titre de section ; ici, non. */
+  .bar{flex-direction:column}
+  .bar button{width:100%}
+  .ibar{flex-direction:column}
+  .ibar button{width:100%}
+}
+@media(max-width:380px){
+  .igrid{grid-template-columns:1fr}
+}
+
+/* hero scanner avec fond gym + doge */
+.top{position:relative;border-radius:10px;overflow:hidden;padding:34px 30px;margin-bottom:6px;
+  background:linear-gradient(90deg,rgba(7,11,20,.92) 0%,rgba(7,11,20,.75) 45%,rgba(7,11,20,.30) 100%),url('img/c6973b275593.jpg');
+  background-size:cover;background-position:center right;border:1px solid var(--line)}
+.top .kick,.top h1,.top .sub,.top .bar,.top .state{position:relative;z-index:2}
+.top .sub{max-width:440px}
+.scandoge{position:absolute;right:-10px;bottom:-10px;width:230px;opacity:.9;z-index:1;
+  -webkit-mask-image:linear-gradient(to left,#000 55%,transparent);mask-image:linear-gradient(to left,#000 55%,transparent);
+  pointer-events:none;border-radius:10px}
+@media(max-width:640px){.scandoge{display:none} .top{padding:24px 20px}}
+/* séparateur EKG */
+.ekg{height:60px;margin:30px 0 4px;background:url('img/96df36ce665c.jpg') center/contain no-repeat;opacity:.7}
+
+/* ---- LA BANNIERE RESTE SOMBRE, SON TEXTE RESTE CLAIR ----
+ * `.top` est une photo sous un voile noir : c est la SURFACE de la page, pas
+ * sa navigation, elle garde donc son habillage. Mais son texte heritait de
+ * `--paper`, qui vient de passer au marine — il serait devenu marine sur
+ * noir. On le repose ici en clair, explicitement. */
+.top .kick,.top .sub{color:rgba(255,255,255,.74)}
+.top h1{color:#FFFFFF}
+.top h1 em{color:#FFC53D}
+.top .state{color:rgba(255,255,255,.74)}
+.top .state.err{color:#FF9C8C}
+.top .bar input{background:#FFFFFF;color:#0B1B36;border-color:#FFFFFF}
+.top .spin{border-color:rgba(255,255,255,.35);border-top-color:#FFC53D}
+
+/* ==================== LA NOUVELLE BARRE, BLANCHE ====================
+   DEMANDE : « tous se qu on viens de faire a blackjack html et spin html » —
+   meme barre que `games.html`, `index.html`, `swogebet.html`,
+   `swoge_blackjack.html` et `swoge_spin.html` : marque, chiffres du serveur,
+   solde, connexion, avatar. Seule la BARRE, les panneaux de compte et le
+   fond de page passent au blanc — le tapis et les cartes gardent leur
+   propre habillage or-sur-noir, qui est celui de la TABLE et non de la
+   navigation. Couleurs ECRITES ICI, comme sur les quatre autres pages. */
+.sw-haut{
+  display:flex; align-items:center; gap:14px; padding:10px 16px;
+  background:#FFFFFF; border-bottom:1px solid #E1E9F6;
+  position:sticky; top:0; z-index:30;
+}
+.sw-marque{display:flex; align-items:center; gap:9px; flex:0 0 auto}
+nav.sb-ancre{display:flex;align-items:center;gap:12px;
+  background:none;backdrop-filter:none;padding:0;border-bottom:none;
+  position:static;z-index:auto;}
+.sw-patte{
+  width:34px;height:34px;border-radius:10px;background:#EAF1FF;
+  display:grid;place-items:center;font-size:19px;
+}
+.sw-marque b{display:block;font:800 17px/1 'Inter',system-ui,sans-serif;letter-spacing:.4px;color:#1B5FE0}
+.sw-marque i{display:block;font:700 9.5px/1.4 'Inter',system-ui,sans-serif;font-style:normal;
+  letter-spacing:2.6px;color:#6B7C99}
+.sw-chiffres{
+  flex:1 1 auto; min-width:0; display:flex; gap:8px; overflow-x:auto;
+  padding:8px 10px; background:#EEF3FB; border:1px solid #E1E9F6;
+  border-radius:12px; scrollbar-width:none;
+}
+.sw-chiffres::-webkit-scrollbar{display:none}
+/* La bande de stats ne pouvait pas se cacher : le script d'echec pose
+   `bloc.hidden = true`, mais `.sw-chiffres{display:flex}` est une regle
+   d'AUTEUR et l'emporte sur le `[hidden]{display:none}` du navigateur.
+   Quand le fetch de /vitrine.json echouait, la bande restait donc a
+   l'ecran avec ses quatre tirets — l'allure d'un compteur en direct sans
+   compteur derriere. Une ligne, et l'intention du script tient. */
+.sw-chiffres[hidden]{display:none}
+.sw-ch{display:flex;align-items:center;gap:8px;padding:0 12px;flex:0 0 auto}
+.sw-ch+.sw-ch{border-left:1px solid #E1E9F6}
+.sw-ch .ic{width:26px;height:26px;border-radius:8px;background:#EAF1FF;
+  display:grid;place-items:center;font-size:13px}
+.sw-ch small{display:block;font:700 9px/1 'Inter',system-ui,sans-serif;letter-spacing:.9px;color:#6B7C99}
+.sw-ch b{display:block;font:800 14px/1.3 'Inter',system-ui,sans-serif;color:#0A1F44}
+.sb-ancre .chip{font:800 12px/1 'Inter',system-ui,sans-serif;color:#0A1F44;
+  border:1px solid #E1E9F6;border-radius:999px;padding:9px 13px;background:#FFFFFF;
+  box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05);white-space:nowrap}
+.sb-ancre .chip b{color:#0A1F44}
+.sw-b{
+  padding:10px 16px;border-radius:10px;cursor:pointer;border:none;
+  font:700 12.5px/1 'Inter',system-ui,sans-serif;letter-spacing:.3px;white-space:nowrap;
+}
+.sw-b-plein{background:#1B5FE0;color:#fff}
+.sw-b-plein:hover{background:#1750c4}
+.sw-b-vide{background:#FFFFFF;color:#1B5FE0;border:1.5px solid #1B5FE0}
+.sw-b-vide:hover{background:#EAF1FF}
+.connrow{ position:static !important; flex:0 0 auto;
+  flex-direction:row !important; flex-wrap:nowrap !important;
+  justify-content:flex-start !important; gap:8px; padding:0 !important; }
+.connrow .sw-b{ margin:0 !important; }
+.sw-avatar{
+  width:38px;height:38px;border-radius:11px;border:1px solid #E1E9F6;
+  background:#EEF3FB;display:grid;place-items:center;font-size:16px;flex:0 0 auto;cursor:pointer;
+}
+.gx-menu{position:absolute;top:60px;right:14px;z-index:70;width:236px;
+  background:#FFFFFF;border:1px solid #E1E9F6;border-radius:14px;
+  box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05);padding:6px;display:flex;flex-direction:column;gap:1px}
+.gx-menu[hidden]{display:none}
+.gx-menu a{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:9px;
+  font:700 12px/1 'Inter',system-ui,sans-serif;color:#0B1B36;text-decoration:none}
+.gx-menu a:hover{background:#EAF1FF;color:#1B5FE0}
+.gx-menu .gx-sep{height:1px;background:#E1E9F6;margin:5px 2px}
+.gx-menu .gx-g{padding:9px 10px 4px;font:800 9px/1 'Inter',system-ui,sans-serif;
+  letter-spacing:1.1px;text-transform:uppercase;color:#6B7C99}
+.gx-menu .gx-g:first-child{padding-top:4px}
+.gx-menu{max-height:min(74vh,560px);overflow-y:auto;scrollbar-width:thin}
+.gx-menu a i{font-style:normal;font-size:14px;width:18px;text-align:center;flex:0 0 auto}
+@media(max-width:520px){ .gx-menu{right:8px;left:8px;width:auto} }
+@media (max-width:620px){
+  .sw-haut{ flex-wrap:wrap; row-gap:8px; }
+  .sw-marque{ order:1 }
+  /* ---- LA RANGEE DE PASTILLES DOIT POUVOIR SE REPLIER ----
+     `stakebubble.js` ajoute DEUX pastilles a cette rangee quand la connexion
+     s'etablit — le rendement en jeu et le nombre de joueurs — soit une seconde
+     ou deux apres l'ouverture. Mesure faite : la rangee passe de 54 a 243 px.
+     En `flex:0 0 auto` elle ne pouvait ni retrecir ni se replier : elle
+     poussait donc la ligne, le document devenait plus large que l'ecran, et
+     le telephone dezoomait toute la page pour la faire tenir — c'est l'en-tete
+     coupe en pleine largeur, deux secondes apres le chargement.
+     Elle peut desormais retrecir ET passer a la ligne. A noter : le garde-fou
+     de `stakebubble.js` ne pouvait pas s'en charger, il ne se retire que s'il
+     mesure un debordement du DOCUMENT — or ici l'en-tete l'absorbait en
+     grandissant en hauteur, sans jamais rien faire deborder. */
+  nav.sb-ancre{ order:2; flex:0 1 auto; min-width:0; margin-left:auto;
+                flex-wrap:wrap; justify-content:flex-end; row-gap:6px }
+  .menubtn, #gxProfil{ order:3 }
+  /* ---- ET ELLE PEUT SE REPLIER QUAND LA LIGNE N EST PLUS ASSEZ LARGE ----
+     Les deux boutons portent `white-space:nowrap` : la paire fait 332 px que
+     rien ne peut retrecir. Sur un ecran de 320 (un iPhone en zoom d affichage,
+     un iPhone SE) il ne reste que 288 px : la rangee debordait, le telephone
+     elargissait la fenetre de mise en page a 348, et TOUTE la page se decalait
+     de 28 px — en-tete coupe a gauche, contenu sous le bord droit.
+     `wrap` ne fait rien tant que la place existe : de 350 a 620 px la rangee
+     reste sur une ligne comme avant. Le `nowrap` de la regle du dessus visait
+     une mise en page en COLONNE ; ici la direction est deja forcee en `row`,
+     donc replier ne la ramene pas. */
+  .connrow{ order:4; flex:1 1 100% !important; justify-content:center !important;
+            flex-wrap:wrap !important }
+  /* ---- ET AVANT DE SE REPLIER, ELLE SE RESSERRE ----
+     Se replier repare le decalage mais coute une rangee d en-tete. A 360 px —
+     la moitie des telephones Android — il ne manquait que quatre pixels : dix
+     de moins de chaque cote des deux boutons les rendent, et la paire reste
+     sur sa ligne comme avant. Sous 340 il n y a plus rien a gratter, et c est
+     `wrap` qui prend le relais. */
+  @media (max-width:400px){
+    .connrow .sw-b{ padding-left:11px !important; padding-right:11px !important }
+  }
+  .sw-chiffres{ order:5; flex:1 1 100% }
+}
+
+/* ==================== LES DEUX COTES DE LA TABLE ====================
+   Meme grille que `swoge_blackjack.html` : les deux colonnes ne mesurent pas
+   la meme chose (208 px de navigation contre 300 px d affiches), une grille a
+   trois colonnes garde donc la colonne du milieu au centre EXACT de l ecran,
+   quelle que soit la largeur de ce qu on pose a cote. */
+.sw-corps{display:grid; grid-template-columns:minmax(208px,1fr) auto minmax(208px,1fr);
+  align-items:start; gap:14px; padding:14px; max-width:1680px; margin:0 auto}
+.sw-corps main{min-width:0}
+.sw-cote{position:sticky; top:74px; width:100%; display:flex; flex-direction:column; gap:12px; justify-self:end}
+.sw-nav{background:#FFFFFF;border:1px solid #E1E9F6;border-radius:14px;
+  padding:8px; box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05)}
+.sw-nav a{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:10px;
+  font:600 13.5px/1 'Inter',system-ui,sans-serif;color:#0B1B36}
+.sw-nav a .ic{width:20px;text-align:center;font-size:15px;opacity:.75}
+.sw-nav a:hover{background:#EEF3FB}
+.sw-nav a.on{background:#EAF1FF;color:#1B5FE0}
+.sw-nav a.on .ic{opacity:1}
+.sw-reseaux{display:flex;gap:8px;justify-content:center;padding-top:4px}
+.sw-reseaux a{width:34px;height:34px;border-radius:10px;background:#FFFFFF;border:1px solid #E1E9F6;
+  display:grid;place-items:center;font-size:14px;color:#6B7C99}
+.sw-reseaux a:hover{color:#1B5FE0;border-color:#1B5FE0}
+.uni{position:relative;border-radius:14px;overflow:hidden;min-height:258px;
+  display:flex;flex-direction:column;justify-content:flex-end;background:#0A1F44;
+  box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05)}
+.uni img,.uni .film{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  object-position:center top;border:0;background:#0A1F44}
+@media (prefers-reduced-motion:reduce){ .uni .film{display:none} }
+.uni .voile{position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(8,24,58,0) 34%,rgba(8,24,58,.88) 74%,rgba(8,24,58,.97) 100%)}
+.uni .dit{position:relative;padding:14px;text-align:center}
+.uni b{display:block;font:900 20px/1 'Inter',system-ui,sans-serif;color:#fff;letter-spacing:.4px}
+.uni i{display:block;font-style:normal;font:600 11px/1.4 'Inter',system-ui,sans-serif;
+  color:rgba(255,255,255,.76);margin:5px 0 11px}
+.uni .sw-b{width:100%;background:rgba(255,255,255,.94);color:#0A1F44;
+  display:block;text-align:center;border-radius:10px}
+.sw-lat{width:300px; position:sticky; top:74px; display:flex; flex-direction:column; gap:14px; justify-self:start}
+.sw-lat .carte{background:#FFFFFF;border:1px solid #E1E9F6;border-radius:14px;
+  box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05); overflow:hidden}
+.sw-solde{display:flex;align-items:center;gap:12px;padding:14px 16px}
+.sw-solde .ic{flex:0 0 auto;width:38px;height:38px;border-radius:11px;background:#EAF1FF;
+  display:grid;place-items:center;font-size:17px}
+.sw-solde .tx{min-width:0}
+.sw-solde .tx small{display:block;font:800 9.5px/1 'Inter',system-ui,sans-serif;
+  letter-spacing:1.1px;color:#6B7C99}
+.sw-solde .tx b{display:block;margin-top:4px;font:800 17px/1 'Inter',system-ui,sans-serif;
+  color:#0A1F44;font-variant-numeric:tabular-nums}
+.sw-lat .salon{position:relative;display:block;min-height:172px;overflow:hidden;background:#0A1F44}
+.sw-lat .salon img,.sw-lat .salon .film{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  object-position:34% 8%;border:0;background:#0A1F44}
+@media (prefers-reduced-motion:reduce){ .sw-lat .salon .film{display:none} }
+.sw-lat .salon .voile{position:absolute;inset:auto 0 0 0;height:58%;
+  background:linear-gradient(180deg,rgba(6,16,40,0) 0%,rgba(6,16,40,.86) 78%,rgba(6,16,40,.95) 100%)}
+.sw-lat .salon .dit{position:absolute;left:16px;right:16px;bottom:14px;
+  font:800 12px/1 'Inter',system-ui,sans-serif;letter-spacing:1.4px;color:#fff}
+.sw-lat .salon:hover img,.sw-lat .salon:hover .film{transform:scale(1.03)}
+.sw-lat .salon img,.sw-lat .salon .film{transition:transform .2s}
+@media (max-width:1360px){
+  .sw-cote, .sw-lat{ display:none }
+  .sw-corps{ padding:0; display:block; max-width:none }
+}
+/* ---- LA COLONNE DE GAUCHE NE GONFLE PLUS (memes deux colonnes de bord que
+   `swoge_poker.html`) ----
+ * BUG MESURE : `minmax(208px,1fr)` sur les deux colonnes de bord absorbe TOUT
+ * l'espace libre que la colonne du milieu (`auto`, calee sur le contenu du
+ * jeu) ne reclame pas — a 1920px, `.sw-cote` faisait 594px de large au lieu
+ * des ~208px voulus (documentes plus haut : « 208 px de navigation »). Des
+ * colonnes de bord FIXES, et la colonne du milieu absorbe le reste (sans
+ * effet sous 1360px : la regle juste au-dessus y cache deja `.sw-cote`). */
+.sw-corps{ grid-template-columns:230px minmax(0,1fr) 300px; }
+.sw-cote{ width:auto; max-width:230px; }
+/* `swoge_casino.html` pose un `a{color:inherit;text-decoration:none}` general
+   en tete de feuille ; cette page-ci n en a pas, et les liens de la barre et
+   des deux cotes arrivaient donc soulignes en bleu de navigateur. On repose la
+   meme remise a zero, mais BORNEE au decor : les liens du contenu (`.haddr a`,
+   `.ilink a`) gardent leur propre habillage. */
+.sw-haut a, .sw-cote a, .sw-lat a{ color:inherit; text-decoration:none; }
+</style>
+
+<!-- LA BARRE BLANCHE remplace l ancienne rangee de liens (logo, « Bench »,
+     « back to site ») : meme barre que `swoge_casino.html`, recopiee telle
+     quelle. Ce qui n a PAS ete recopie ne l a pas ete faute de matiere reelle :
+     cette page ne suit aucun solde (`#bal` n existe pas ici), ne sait pas
+     connecter de portefeuille et n a ni tiroir de compte ni `#menu` — la puce
+     de solde, les deux boutons de connexion, l avatar `#gxProfil`, `#gxMenu`
+     et `swogeprofil.js` n auraient rien eu a afficher. Les quatre chiffres de
+     la vitrine restent : ils viennent du vrai `/vitrine.json` et se cachent
+     seuls quand la requete echoue. -->
+<header class="sw-haut">
+  <a class="sw-marque" href="nexus.html" id="gxMonde">
+    <span class="sw-patte">&#128062;</span>
+    <span><b>SWOGE</b><i>WORLD</i></span>
+  </a>
+  <div class="sw-chiffres" id="gxChiffres" hidden>
+    <div class="sw-ch"><span class="ic">&#128100;</span><span><small>PLAYERS</small><b data-n="joueurs">&mdash;</b></span></div>
+    <div class="sw-ch"><span class="ic">&#127922;</span><span><small>CASINO VOLUME</small><b data-n="volume">&mdash;</b></span></div>
+    <div class="sw-ch"><span class="ic">&#127918;</span><span><small>ROUNDS PLAYED</small><b data-n="manches">&mdash;</b></span></div>
+    <div class="sw-ch"><span class="ic">&#127942;</span><span><small>WINNINGS PAID</small><b data-n="rendus">&mdash;</b></span></div>
+  </div>
+</header>
+
+<!-- Les quatre chiffres de la vitrine, lus sur le serveur — meme script que
+     `swoge_blackjack.html` et `swoge_spin.html`. -->
+<script>
+(function(){
+  "use strict";
+  var bloc = document.getElementById("gxChiffres");
+  if(!bloc) return;
+  function serveur(){
+    try{ var q=new URLSearchParams(location.search).get("server"); if(q)
+      return String(q).replace(/^ws/,"http"); }catch(e){}
+    return "https://web-production-220a3.up.railway.app";
+  }
+  function court(n){
+    n = Number(n) || 0;
+    var t = function(v, s){ return (Math.floor(v*10)/10).toFixed(1).replace(/\.0$/,"") + s; };
+    if(n >= 1e9) return t(n/1e9, "B");
+    if(n >= 1e6) return t(n/1e6, "M");
+    if(n >= 1e3) return t(n/1e3, "k");
+    return String(Math.floor(n));
+  }
+  fetch(serveur()+"/vitrine.json", { cache:"no-store" })
+    .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function(j){
+      [].forEach.call(bloc.querySelectorAll("b[data-n]"), function(b){
+        var v = j[b.getAttribute("data-n")];
+        b.textContent = (typeof v === "number" && isFinite(v)) ? court(v) : "\u2014";
+      });
+      bloc.hidden = false;
+    })
+    ['catch'](function(){ bloc.hidden = true; });
+})();
+</script>
+
+<div class="sw-corps">
+
+  <aside class="sw-cote">
+    <nav class="sw-nav">
+      <a href="index.html"><span class="ic">&#127968;</span>Home</a>
+      <a href="games.html"><span class="ic">&#127920;</span>Casino</a>
+      <a href="swogebet.html"><span class="ic">&#9917;</span>Sports</a>
+      <a href="swoge_bench.html"><span class="ic">&#127947;</span>Bench</a>
+      <a href="swoge_wallet.html"><span class="ic">&#129433;</span>Wallet</a>
+      <a href="swoge_ai.html"><span class="ic">&#129302;</span>SWOGE AI</a>
+      <a href="swoge_perp.html"><span class="ic">&#128200;</span>AI Perp</a>
+      <a href="whitepaper.html"><span class="ic">&#128220;</span>Docs</a>
+    </nav>
+    <div class="sw-reseaux">
+      <a href="https://x.com/SwoleDogeSwoge" target="_blank" rel="noopener"
+         title="X — @SwoleDogeSwoge">&#120143;</a>
+      <a href="https://t.me/swoleswoge" target="_blank" rel="noopener"
+         title="Telegram — t.me/swoleswoge">&#9992;</a>
+      <a href="https://dexscreener.com/robinhood/0x2dc0fb72d9284228046cc95910eeaabebfe48456"
+         target="_blank" rel="noopener" title="Dexscreener — $SWOGE chart">&#128200;</a>
+    </div>
+    <article class="uni">
+      <video class="film" src="media/monde_carte.mp4" poster="img/site/monde_carte_poster.webp"
+             muted autoplay loop playsinline disablepictureinpicture
+             aria-hidden="true"></video><div class="voile"></div>
+      <div class="dit"><b>SWOGE WORLD</b><i>Meet. Explore. Own.</i>
+        <a class="sw-b" href="nexus.html">ENTER</a></div>
+    </article>
+  </aside>
+
+<main>
+<div class="wrap">
+  <div class="top">
+    <div class="kick">Robinhood Chain · free, no wallet</div>
+    <h1>Is this token <em>a scam</em>?</h1>
+    <!-- ---- CE QUE LA PAGE PROMET, ET CE QU'ELLE NE PROMET PAS ----
+         Elle ne dit jamais oui ou non : elle rend ce qu'on a mesure sur des
+         jetons comme celui-la, avec l'effectif a cote de chaque chiffre, et
+         le lecteur conclut. Promettre un verdict serait plus vendeur et
+         faux — et le premier jeton qui dement la page la tue. -->
+    <p class="sub">Paste any Robinhood Chain token. You get what our AI has <b>measured</b> on tokens like it —
+      the launcher's record, the age and cap cell, the liquidity, what the contract can still do, and who holds the chart.
+      Every number comes with how many observations it rests on. <b>We never tell you to buy.</b></p>
+    <div class="bar">
+      <input id="addr" value="0x8a166Fb41Cd659a0a43396272FF73973Ce29F817" placeholder="Token contract address 0x…" spellcheck="false">
+      <button id="run">Scan</button>
+    </div>
+    <div class="state" id="state"></div>
+    <img class="scandoge" src="img/3c02eff6fbc8.jpg" alt="">
+  </div>
+
+  <div class="tokenhead" id="tokenhead">
+    <span class="nm" id="tName">—</span>
+    <span class="sy" id="tSym"></span>
+    <span class="ct" id="tCt"></span>
+  </div>
+
+  <!-- ==================== CE QUE LA COLONIE A MESURE ====================
+       La seule question que tout le monde se pose avant d'acheter : « celui-la,
+       c'est un piege ? ». Personne ne cherche un casino ; tout le monde cherche
+       ca. C'est la porte par ou peut entrer quelqu'un qui n'a jamais entendu
+       parler de SWOGE — donc elle est publique, sans portefeuille, sans compte.
+
+       Ce bloc ne rend JAMAIS un verdict et ne dit ni « sur » ni « rug ». Il
+       rend des CASES et ce qu'elles ont rendu, avec leur effectif. Une case
+       sous le minimum d'observations ne sort pas du tout : un chiffre sur six
+       lectures se lirait avec la meme autorite qu'un chiffre sur six cents. -->
+  <div class="section" id="secMesure" style="display:none">
+    <h2>What SWOGE AI has measured</h2>
+    <p class="cap" id="mesureCap"></p>
+    <div id="mesureFaits"></div>
+    <div id="mesureCases"></div>
+    <p class="cap" id="mesurePied"></p>
+    <!-- La carte : c'est elle qui voyage. Un scan qu'on ne peut pas montrer
+         ne sort jamais de l'onglet ou il a ete fait. -->
+    <div class="mc-part">
+      <button id="mcCarte" type="button">&#128247; Share this card</button>
+      <span class="mc-dit" id="mcDit"></span>
+    </div>
+  </div>
+
+  <div class="health" id="health"></div>
+
+  <div class="verdict" id="verdict">
+    <div class="vlabel">Distribution by number of wallets</div>
+    <div class="vbar" id="vbar"></div>
+    <div class="vlabel" style="margin-top:16px">Distribution by supply weight <span class="vlabelsub">— what actually matters for the chart</span></div>
+    <div class="vbar" id="vbar2"></div>
+    <div class="vlegend" id="vlegend"></div>
+  </div>
+
+  <div class="section" id="secConc">
+    <h2>Concentration — who holds the chart</h2>
+    <p class="cap" id="concCap"></p>
+    <div id="concList"></div>
+  </div>
+
+  <details class="inspect pli" id="inspect">
+    <summary>Analyze a wallet<span class="pli-q">is this address holding, or has it sold?</span></summary>
+    <p class="cap" style="color:var(--dim);font-size:12px;margin:0">Paste an address to see, on this token, whether it holds or has sold.</p>
+    <div class="ibar">
+      <input id="inspAddr" placeholder="0x… address to check" spellcheck="false">
+      <button id="inspBtn">Check</button>
+    </div>
+    <div class="icard" id="icard"></div>
+  </details>
+
+  <details class="track pli" id="track">
+    <summary>Trend<span class="pli-q">how the base has moved since your previous scans</span></summary>
+    <p class="cap" style="color:var(--dim);font-size:12px;margin:0 0 12px">Every scan is saved locally. The base strengthens if believer share rises scan after scan.</p>
+    <div id="trackList"></div>
+    <div class="tempty" id="trackEmpty"></div>
+  </details>
+
+  <details class="section pli" id="secHolders">
+    <summary>All holders<span class="pli-q">the full list, filterable and searchable</span></summary>
+    <p class="cap">Every wallet classified by its history. Filter by type or search an address.</p>
+    <div class="filters" id="filters">
+      <span class="lbl">Show</span>
+      <button class="fbtn on" data-f="all">all</button>
+      <button class="fbtn" data-f="b">believers</button>
+      <button class="fbtn" data-f="s">serpents</button>
+      <button class="fbtn" data-f="n">neutral</button>
+      <button class="fbtn" data-f="infra">contracts</button>
+      <input class="srch" id="srch" placeholder="search 0x…" spellcheck="false">
+    </div>
+    <div class="copybar" id="copybar">
+      <button id="copyList">Copy filtered list</button>
+      <button id="copyCsv">Copy as CSV (address + %)</button>
+      <span class="hint" id="copyHint"></span>
+    </div>
+    <div id="holderList"></div>
+    <div class="more" id="moreWrap"><button id="moreBtn">Voir plus</button></div>
+    <div class="count" id="hCount"></div>
+  </details>
+
+  <details class="method pli" id="method">
+    <summary>Method<span class="pli-q">how believer and serpent are calculated</span></summary>
+    <p><b>Believer</b> — a wallet that <b>still holds tokens</b> and has held for <b>more than 2 days</b>. It stuck around through time, even if it sold a little along the way. Conviction is measured by staying, not by never touching the sell button.</p>
+    <p><b>Serpent</b> — a wallet that <b>sold and no longer holds</b>, or one that sold while <b>arriving less than 2 days ago</b>. A quick in-and-out, not a believer.</p>
+    <p><b>Neutral</b> — holds a bag but arrived too recently to count as a believer yet, or moved tokens between wallets without selling to the pool.</p>
+    <p>This is an automatic on-chain read: it sees flows, not intentions. A “serpent” may have simply rebalanced, a “believer” may just be inactive. Read it as a signal, not a verdict.</p>
+  </details>
+
+  <footer id="foot"></footer>
+</div>
+</main>
+
+  <!-- LA COLONNE DE DROITE, sans la carte « YOUR BALANCE » : cette page ne
+       suit pas de solde, il n y a pas de `#bal` a recopier — une carte de
+       solde y afficherait un chiffre invente. Restent les deux affiches, qui
+       pointent vers des pages reelles. -->
+  <aside class="sw-lat">
+    <a class="carte salon" href="swoge_blackjack.html">
+      <img src="img/site/jeu_blackjack.webp" alt="" loading="lazy">
+      <span class="voile"></span>
+      <span class="dit">GOLD TABLE &nbsp;&rarr;</span>
+    </a>
+    <a class="carte salon" href="swogebet.html">
+      <video class="film" src="media/doge_sport.mp4" poster="img/site/doge_sport_poster.webp"
+             muted autoplay loop playsinline disablepictureinpicture
+             aria-label="SWOGE Sports"></video>
+      <span class="voile"></span>
+      <span class="dit">SWOGE SPORTS &mdash; BET NOW &nbsp;&rarr;</span>
+    </a>
+  </aside>
+
+</div>
+
+<script>
+const API = "https://robinhoodchain.blockscout.com/api/v2";
+const API1 = "https://robinhoodchain.blockscout.com/api";   // l'ancienne API, qui pagine gros
+const DEAD = new Set([
+  "0x0000000000000000000000000000000000000000",
+  "0x000000000000000000000000000000000000dead"
+].map(x=>x.toLowerCase()));
+const $ = s => document.querySelector(s);
+let ALL_ROWS = [], SUPPLY = 0n, DEC = 18, SYM = "TOKEN", FILTER = "all", SHOWN = 25;
+let FLOW = {}, POOLSET = new Set(), INFRASET = new Set(), TOKEN_ADDR = "";
+
+const short = a => a.slice(0,8) + "…" + a.slice(-6);
+function fmtBig(v, dec, prec=2){
+  let n; try{ n = BigInt(v); }catch{ return "0"; }
+  const base = 10n ** BigInt(dec);
+  const whole = n / base;
+  const w = whole.toString();
+  // format compact : K / M / B
+  const num = Number(whole);
+  if(num >= 1e9) return (num/1e9).toFixed(prec)+"B";
+  if(num >= 1e6) return (num/1e6).toFixed(prec)+"M";
+  if(num >= 1e3) return (num/1e3).toFixed(prec)+"K";
+  const frac = (n % base).toString().padStart(dec,"0").slice(0,prec);
+  return `${w}.${frac}`;
+}
+
+async function api(path, tries=2){
+  for(let attempt=0; attempt<=tries; attempt++){
+    try{
+      const ctrl = new AbortController();
+      const timer = setTimeout(()=>ctrl.abort(), 12000);   // 12s max par requête
+      const r = await fetch(API + path, {headers:{accept:"application/json"}, signal:ctrl.signal});
+      clearTimeout(timer);
+      if(!r.ok) throw new Error(`HTTP ${r.status}`);
+      return await r.json();
+    }catch(e){
+      if(attempt === tries) throw e;
+      await new Promise(res=>setTimeout(res, 400*(attempt+1)));   // petit backoff puis on réessaie
+    }
+  }
+}
+
+function setState(msg, err=false, spin=false){
+  const el = $("#state");
+  el.className = "state" + (err?" err":"");
+  el.innerHTML = (spin?'<span class="spin"></span>':"") + msg;
+}
+
+/*
+ * Les transferts en UNE requête au lieu de trente.
+ *
+ * L'API v2 rend cinquante éléments par page et son curseur est séquentiel :
+ * pour mille transferts il faut vingt allers-retours, l'un APRÈS l'autre,
+ * parce qu'on ne connaît le curseur de la page suivante qu'une fois la
+ * précédente arrivée. À quatre secondes la page, le scan durait plus d'une
+ * minute — et l'explorateur limite le débit, donc enchaîner les requêtes le
+ * fâche en plus de le ralentir.
+ *
+ * La v1 du même explorateur accepte un `offset` de mille et rend tout d'un
+ * coup. On la préfère, et on garde la v2 en repli : si l'explorateur retire
+ * un jour la v1, le scanner ralentit au lieu de tomber.
+ *
+ * Les détenteurs, eux, restent en v2 : la v1 ne dit pas si une adresse est un
+ * contrat, et c'est exactement ce qui sert à reconnaître un pool.
+ */
+async function fetchTransfersFast(token, max = 1000){
+  const ctrl = new AbortController();
+  const timer = setTimeout(()=>ctrl.abort(), 15000);
+  try{
+    const url = `${API1}?module=account&action=tokentx&contractaddress=${token}`
+              + `&page=1&offset=${max}&sort=desc`;
+    const r = await fetch(url, {headers:{accept:"application/json"}, signal:ctrl.signal});
+    if(!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d = await r.json();
+    if(!Array.isArray(d.result)) throw new Error(d.message || "v1 indisponible");
+    /* On remet la forme de la v2 ici et nulle part ailleurs : tout le reste du
+       fichier ne connaît qu'elle, et deux formes de transfert qui circulent
+       finiraient par diverger. */
+    return d.result.map(x => ({
+      from: {hash: x.from}, to: {hash: x.to},
+      total: {value: x.value},
+      timestamp: new Date(Number(x.timeStamp) * 1000).toISOString(),
+    }));
+  } finally { clearTimeout(timer); }
+}
+
+/* pagination générique Blockscout v2 */
+async function fetchPaged(path, maxPages, onBatch){
+  let params = null, page = 0, all = [];
+  while(page < maxPages){
+    const q = params ? "?" + new URLSearchParams(params).toString() : "";
+    const data = await api(path + q);
+    const items = data.items || [];
+    all.push(...items);
+    if(onBatch) onBatch(all.length, page+1);
+    if(!data.next_page_params) break;
+    params = data.next_page_params;
+    page++;
+  }
+  return all;
+}
+
+$("#run").onclick = scan;
+$("#addr").addEventListener("keydown", e => { if(e.key === "Enter") scan(); });
+
+/* ==================== UN LIEN QUI PORTE LE JETON ====================
+ * `swoge_scan.html?t=0x…` ouvre directement ce jeton. Sans ca, partager un
+ * scan revient a dire « va sur cette page et recolle l'adresse » — personne
+ * ne le fait, et la carte partagee ne mene nulle part.
+ *
+ * L'adresse est aussi ECRITE dans la barre quand on scanne : ce qu'on
+ * regarde a toujours une adresse a copier, sans avoir a y penser.
+ */
+(function(){
+  try{
+    const t = new URLSearchParams(location.search).get("t") || location.hash.replace(/^#/, "");
+    const m = String(t || "").match(/0x[0-9a-fA-F]{40}/);
+    if(m){ $("#addr").value = m[0]; scan(); }
+  }catch(e){}
+})();
+
+/* ==================== CE QUE LA COLONIE A MESURE ====================
+ * Lance EN PARALLELE de la lecture des detenteurs : les deux ne dependent pas
+ * l'une de l'autre, et faire attendre l'une pour l'autre doublerait le temps
+ * avant le premier chiffre a l'ecran.
+ *
+ * Elle ne rend jamais un verdict. Elle rend des cases et ce qu'elles ont
+ * rendu, avec leur effectif — c'est au lecteur de conclure. Et quand la
+ * colonie ne sait rien de ce jeton, elle le DIT : une section vide qui
+ * ressemblerait a « rien a signaler » serait pire que pas de section.
+ */
+/* Le serveur de la colonie. La barre du site en a un, mais il vit dans sa
+   fonction anonyme et n'est pas visible d'ici — et c'est tres bien : deux
+   blocs qui se partagent des noms par accident finissent par se marcher
+   dessus. On en pose donc un ici, avec la meme regle qu'ailleurs. */
+function serveurColonie(){
+  try{ const q = new URLSearchParams(location.search).get("server");
+       if(q) return String(q).replace(/^ws/,"http"); }catch(e){}
+  return "https://web-production-220a3.up.railway.app";
+}
+
+/* ==================== LA CARTE QUI VOYAGE ====================
+ * Un scan qu'on ne peut pas montrer ne sort jamais de l'onglet ou il a ete
+ * fait. La carte est dessinee ICI, dans un canvas : aucun appel au serveur,
+ * donc aucune image a stocker, aucune route a proteger, et elle marche meme
+ * si le serveur ne repond plus.
+ *
+ * 1200x630 : c'est le format que X, Telegram et Discord attendent. Une image
+ * a un autre rapport est recadree par eux, et c'est toujours le chiffre qui
+ * saute.
+ *
+ * Ce qu'elle porte, et rien d'autre : le jeton, les cases avec LEUR EFFECTIF,
+ * et la ligne qui dit sur combien d'observations tout repose. Une carte qui
+ * montrerait « -43,7 % » sans son `n` serait plus jolie et malhonnete.
+ */
+let MESURE_DERNIERE = null;
+
+function carteDessine(){
+  const d = MESURE_DERNIERE;
+  if(!d) return null;
+  const L = 1200, H = 630, R = 2;              /* R : on dessine en double pour l'ecran retine */
+  const c = document.createElement("canvas");
+  c.width = L * R; c.height = H * R;
+  const g = c.getContext("2d");
+  g.scale(R, R);
+  const P = (t, x, y, f, col, al) => { g.font = f; g.fillStyle = col; g.textAlign = al || "left"; g.fillText(t, x, y); };
+
+  g.fillStyle = "#0A1F44"; g.fillRect(0, 0, L, H);
+  g.fillStyle = "#12305F"; g.fillRect(0, 0, L, 108);
+
+  const j = d.jeton || {};
+  P("SWOGE SCAN", 56, 52, "800 20px Outfit, system-ui, sans-serif", "#7FB0FF");
+  P("What our AI has measured", 56, 82, "600 16px Outfit, system-ui, sans-serif", "#A8C4EE");
+  P(("$" + (j.sym || "TOKEN")).slice(0, 18), L - 56, 62, "800 34px Outfit, system-ui, sans-serif", "#FFFFFF", "right");
+  P(String(j.adr || "").slice(0, 10) + "…" + String(j.adr || "").slice(-6), L - 56, 88,
+    "600 14px 'JetBrains Mono', ui-monospace, monospace", "#7FB0FF", "right");
+
+  /* Les faits de contrat d'abord : ils ne dependent d'aucune moyenne. */
+  let y = 152;
+  for(const f of (d.faits || []).slice(0, 2)){
+    g.fillStyle = "#3A1418"; g.fillRect(56, y - 24, L - 112, 38);
+    P("!  " + f.quoi, 74, y + 2, "700 18px Outfit, system-ui, sans-serif", "#FF9A94");
+    P(f.source, L - 74, y + 2, "600 13px 'JetBrains Mono', ui-monospace, monospace", "#B8746F", "right");
+    y += 48;
+  }
+
+  const cases = (d.cases || []).slice(0, 5);
+  if(!cases.length){
+    P("Not enough measured on tokens like this one yet.", 56, y + 28,
+      "600 22px Outfit, system-ui, sans-serif", "#8FA6C9");
+  }
+  for(const x of cases){
+    const pos = x.moyenne > 0;
+    P(String(x.case).slice(0, 44), 56, y + 8, "700 22px Outfit, system-ui, sans-serif", "#E8F0FF");
+    P(String(x.trait).toUpperCase(), 56, y - 14, "700 12px Inter, system-ui, sans-serif", "#6C86B2");
+    P((pos ? "+" : "") + x.moyenne + "%", L - 150, y + 8, "800 30px Outfit, system-ui, sans-serif",
+      pos ? "#5BD99A" : "#FF7B72", "right");
+    /* L'effectif, TOUJOURS. Sans lui le chiffre ment. */
+    P("n=" + x.n, L - 56, y + 8, "600 15px 'JetBrains Mono', ui-monospace, monospace", "#6C86B2", "right");
+    y += 58;
+  }
+
+  const m = d.mesureSur || {};
+  g.fillStyle = "#12305F"; g.fillRect(0, H - 72, L, 72);
+  P(m.observations
+      ? "Measured over " + Number(m.observations).toLocaleString("en-US") + " judged observations · never a buy signal"
+      : "Never a buy signal",
+    56, H - 28, "600 17px Outfit, system-ui, sans-serif", "#A8C4EE");
+  P("swoleeswoge.dog/swoge_scan.html", L - 56, H - 28,
+    "700 17px Outfit, system-ui, sans-serif", "#7FB0FF", "right");
+  return c;
+}
+
+async function cartePartage(){
+  const b = $("#mcCarte"), dit = $("#mcDit");
+  const c = carteDessine();
+  if(!c) return;
+  b.disabled = true;
+  const png = await new Promise(r => c.toBlob(r, "image/png"));
+  const nom = "swoge-scan-" + String((MESURE_DERNIERE.jeton || {}).sym || "token").toLowerCase() + ".png";
+  /* Le presse-papier quand le navigateur le permet — c'est le geste le plus
+     court pour aller coller dans un message. Sinon un telechargement, qui
+     marche partout. On ne suppose jamais que la premiere voie existe. */
+  try{
+    if(navigator.clipboard && window.ClipboardItem){
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": png })]);
+      dit.textContent = "Card copied — paste it anywhere.";
+      b.disabled = false; return;
+    }
+  }catch(e){ /* refus de permission, contexte non securise : on telecharge */ }
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(png); a.download = nom; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  dit.textContent = "Card saved as " + nom;
+  b.disabled = false;
+}
+
+async function mesure(token){
+  const sec = $("#secMesure");
+  sec.style.display = "none";
+  let r = null;
+  try{
+    const q = await fetch(serveurColonie() + "/scan/" + token, { cache:"no-store" });
+    r = await q.json();
+    if(!q.ok || r.erreur) throw new Error(r.erreur || ("HTTP " + q.status));
+  }catch(e){ return; }        /* le scan des detenteurs se suffit a lui-meme */
+  MESURE_DERNIERE = r;
+
+  const ech = (x) => String(x==null?"":x).replace(/[&<>"']/g, c => (
+    {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
+
+  /* ---- LE LANCEUR ----
+   * La mesure la plus forte du tableau, et la moins connue : plus un
+   * deployeur a deja lance, plus ses jetons perdent. */
+  const l = r.lanceur;
+  const tete = [];
+  if(l && l.lancements >= 2)
+    tete.push("This launcher has shipped " + l.lancements + " tokens before.");
+  const m = r.mesureSur || {};
+  $("#mesureCap").textContent =
+    (tete.length ? tete.join(" ") + " " : "")
+    + "Cells the colony has measured on this kind of token — not an opinion, and never a buy signal. "
+    + "A cell with fewer than " + (m.minObs||8) + " observations is not shown at all.";
+
+  /* Les faits du contrat : ils n'ont pas besoin d'une moyenne. */
+  $("#mesureFaits").innerHTML = (r.faits||[]).map(f =>
+    '<span class="mf">' + ech(f.quoi) + ' <i>' + ech(f.source) + '</i></span>').join("");
+
+  const cases = r.cases || [];
+  if(!cases.length){
+    $("#mesureCases").innerHTML = '<div class="mc-rien">The colony has not measured enough on '
+      + 'tokens like this one yet. Nothing shown rather than something invented.</div>';
+  }else{
+    $("#mesureCases").innerHTML = cases.slice(0, 12).map(c => {
+      const cl = c.moyenne > 0 ? "mc-up" : c.moyenne < 0 ? "mc-dn" : "";
+      const sg = c.moyenne > 0 ? "+" : "";
+      return '<div class="mc-l"><span class="mc-q"><b>' + ech(c.trait) + '</b>' + ech(c.case) + '</span>'
+        + '<span class="mc-v ' + cl + '">' + sg + c.moyenne + '%</span>'
+        + '<span class="mc-n">n=' + c.n + '</span></div>';
+    }).join("");
+  }
+  /* Sur quoi tout ca repose. Sans cette ligne, le reste n'est qu'un avis. */
+  $("#mesurePied").textContent = m.observations
+    ? "Measured over " + m.observations.toLocaleString("en-US") + " judged observations, "
+      + m.tours.toLocaleString("en-US") + " turns, at " + m.echeance + " minutes. Averages are raw price moves, not what a strategy would have made."
+    : "";
+  $("#mcDit").textContent = "";
+  sec.style.display = "block";
+}
+document.addEventListener("DOMContentLoaded", () => {
+  const b = document.getElementById("mcCarte");
+  if(b) b.addEventListener("click", cartePartage);
+});
+
+async function scan(){
+  const raw = $("#addr").value.trim();
+  const m = raw.match(/0x[0-9a-fA-F]{40}/);
+  if(!m) return setState("Paste a valid 0x… contract address", true);
+  const token = m[0].toLowerCase();
+  $("#run").disabled = true;
+  ["#tokenhead","#health","#verdict","#inspect","#track","#secConc","#secHolders","#method"].forEach(id=>$(id).style.display="none");
+  $("#secMesure").style.display = "none";
+  /* Sans `await` : elle s'affiche quand elle arrive, elle ne retarde rien. */
+  mesure(token);
+  /* `replaceState` et non `pushState` : scanner trois jetons ne doit pas
+     obliger a appuyer trois fois sur « retour » pour quitter la page. */
+  try{ history.replaceState(null, "", "?t=" + token); }catch(e){}
+  $("#icard").style.display="none";
+
+  try{
+    /* 1. métadonnées du token */
+    setState("reading token…", false, true);
+    let info;
+    try{ info = await api(`/tokens/${token}`); }
+    catch(e){ throw new Error("Token not found on Robinhood Chain — check the contract address (not the pool)"); }
+    const dec = parseInt(info.decimals || "18");
+    const sym = info.symbol || "TOKEN";
+    const supply = BigInt(info.total_supply || "0");
+    $("#tName").textContent = info.name || "Token inconnu";
+    $("#tSym").textContent = "$" + sym;
+    $("#tCt").textContent = token;
+    $("#tokenhead").style.display = "flex";
+
+    /* 2+3. détenteurs ET transferts EN PARALLÈLE — c'est ça qui accélère.
+       Au lieu d'attendre les 500 holders puis les 2000 transferts en série,
+       on lance les deux en même temps. */
+    setState("reading holders and transfers…", false, true);
+    let hDone=0, tDone=0;
+    const tick = () => setState(`holders ${hDone} · transfers ${tDone}…`, false, true);
+    const [holders, transfers] = await Promise.all([
+      fetchPaged(`/tokens/${token}/holders`, 10, n => { hDone=n; tick(); }),
+      fetchTransfersFast(token, 1000)
+        .then(list => { tDone = list.length; tick(); return list; })
+        .catch(() => fetchPaged(`/tokens/${token}/transfers`, 30, n => { tDone=n; tick(); }))
+    ]);
+
+    /* 4. flux par adresse : in / out, et out spécifiquement vers un pool */
+    // on identifie les pools comme les adresses qui reçoivent ET renvoient beaucoup,
+    // approché ici par : toute adresse marquée contrat dans les holders, + heuristique
+    const flow = {};   // addr -> {in, out, firstIn(ms), lastOut(ms)}
+    const touch = a => { const k=a.toLowerCase(); if(!flow[k]) flow[k]={in:0n,out:0n,firstIn:null,lastOut:null}; return flow[k]; };
+    for(const t of transfers){
+      const from = (t.from?.hash||"").toLowerCase();
+      const to   = (t.to?.hash||"").toLowerCase();
+      let val = 0n; try{ val = BigInt(t.total?.value || t.value || "0"); }catch{}
+      const ts = Date.parse(t.timestamp || 0) || null;
+      if(from){ const f=touch(from); f.out += val; if(ts && (!f.lastOut || ts>f.lastOut)) f.lastOut=ts; }
+      if(to){ const f=touch(to); f.in += val; if(ts && (!f.firstIn || ts<f.firstIn)) f.firstIn=ts; }
+    }
+
+    /* 5. repérer le(s) pool(s) de façon fiable :
+       un pool DEX est la contrepartie de presque tous les échanges — il apparaît
+       dans une grande part des transferts. Un staking/vesting/multisig/détenteur
+       normal n'y participe que ponctuellement. On compte la participation. */
+    const partCount = {};   // addr -> nombre de transferts où l'adresse est impliquée
+    for(const t of transfers){
+      const from = (t.from?.hash||"").toLowerCase();
+      const to   = (t.to?.hash||"").toLowerCase();
+      if(from) partCount[from] = (partCount[from]||0) + 1;
+      if(to)   partCount[to]   = (partCount[to]||0) + 1;
+    }
+    const totalTransfers = transfers.length || 1;
+    // le pool principal = le(s) contrat(s) qui participe(nt) au plus de transferts
+    const poolSet = new Set();
+    for(const h of holders){
+      const a = (h.address?.hash||"").toLowerCase();
+      if(DEAD.has(a)) continue;
+      const share = (partCount[a]||0) / totalTransfers;
+      const f = flow[a];
+      const balanced = f && f.in > 0n && f.out > 0n
+        && Number(f.in < f.out ? f.in : f.out) / Number(f.in > f.out ? f.in : f.out) >= 0.15;
+      if(h.address?.is_contract && share >= 0.12 && balanced) poolSet.add(a);
+    }
+    if(poolSet.size === 0){
+      let top=null;
+      for(const h of holders){
+        const a=(h.address?.hash||"").toLowerCase();
+        if(DEAD.has(a) || !h.address?.is_contract) continue;
+        const share=(partCount[a]||0)/totalTransfers;
+        if(share >= 0.15 && (!top || share > top.share)) top={a,share};
+      }
+      if(top) poolSet.add(top.a);
+    }
+    // infrastructure = contrat qui SE COMPORTE comme tel : forte participation aux
+    // transferts (routeur, manager, agrégateur). Un contrat ordinaire — smart-wallet,
+    // compte AA — qui achète/garde/vend comme un particulier reste un vrai holder.
+    const infraSet = new Set();
+    for(const h of holders){
+      const a = (h.address?.hash||"").toLowerCase();
+      if(DEAD.has(a) || poolSet.has(a)) continue;
+      if(!h.address?.is_contract) continue;
+      const share = (partCount[a]||0) / totalTransfers;
+      // seuil élevé : seul un contrat très actif dans le flux est de l'infra
+      if(share >= 0.06) infraSet.add(a);
+    }
+
+    /* 6. classer chaque détenteur.
+       Un holder retail peut être un EOA OU un smart-wallet (contrat) ordinaire.
+       On n'exclut que : burn, le pool, et les contrats à comportement d'infra. */
+    let believers=0, serpents=0, neutrals=0, pools=0, burns=0, infra=0;
+    let balB=0n, balS=0n, balN=0n, balBurn=0n, balPoolReal=0n, balInfra=0n;
+    const rows = holders.map(h => {
+      const a = (h.address?.hash||"").toLowerCase();
+      const bal = BigInt(h.value||"0");
+      const f = flow[a] || {in:0n,out:0n};
+      const isContract = !!h.address?.is_contract;
+      const name = h.address?.name || h.address?.ens_domain_name || null;
+      // âge de détention (jours depuis le premier flux entrant)
+      const days = f.firstIn ? Math.floor((Date.now()-f.firstIn)/86400000) : null;
+      const holdsNow = bal > 0n;
+      const oldEnough = days != null && days >= 2;   // tient depuis +2 jours
+      let cls;
+      if(DEAD.has(a)) cls = "burn";                 // burn explicite
+      else if(poolSet.has(a)) cls = "pool";         // pool DEX principal
+      else if(infraSet.has(a)) cls = "infra";       // contrat à comportement d'infrastructure
+      // believer = détient encore ET tient depuis +2 jours (même s'il a vendu un peu)
+      else if(holdsNow && (oldEnough || f.out === 0n)) cls = "b";
+      // serpent = a vendu et soit ne détient plus, soit trop récent pour croire
+      else if(f.out > 0n && (!holdsNow || !oldEnough)) cls = "s";
+      // reste : détient mais récent et n'a rien vendu → neutre (pas encore believer)
+      else if(holdsNow) cls = "n";
+      else cls = "s";                               // ne détient rien et a bougé → sorti
+      if(cls==="b"){ believers++; balB+=bal; }
+      else if(cls==="s"){ serpents++; balS+=bal; }
+      else if(cls==="pool"){ pools++; balPoolReal+=bal; }
+      else if(cls==="burn"){ burns++; balBurn+=bal; }
+      else if(cls==="infra"){ infra++; balInfra+=bal; }
+      else { neutrals++; balN+=bal; }
+      let sold = 0;
+      if(f.in > 0n) sold = Number(f.out * 1000n / (f.in>0n?f.in:1n)) / 10;
+      return {addr:a, bal, cls, isContract, name, in:f.in, out:f.out, sold, days, firstIn:f.firstIn, dec, sym};
+    });
+
+    /* 6b. momentum : flux vers/depuis le pool sur 24h et 48h (via timestamps) */
+    const now = Date.now();
+    const win = (hrs) => {
+      const since = now - hrs*3600*1000;
+      let buy=0n, sell=0n, nBuy=0, nSell=0;
+      for(const t of transfers){
+        const ts = Date.parse(t.timestamp || t.block?.timestamp || 0);
+        if(!ts || ts < since) continue;
+        const from=(t.from?.hash||"").toLowerCase(), to=(t.to?.hash||"").toLowerCase();
+        let v=0n; try{ v=BigInt(t.total?.value||t.value||"0"); }catch{}
+        if(poolSet.has(from)){ buy+=v; nBuy++; }        // sort du pool = achat
+        else if(poolSet.has(to)){ sell+=v; nSell++; }   // entre au pool = vente
+      }
+      return {buy, sell, nBuy, nSell};
+    };
+    const mom24 = win(24);
+    const hasTs = transfers.some(t => t.timestamp);
+
+    /* 7. verdict — deux lectures : par nombre de wallets ET par poids en supply */
+    const realHolders = believers + serpents + neutrals;
+    // parts en nombre de wallets
+    const pctB = realHolders ? Math.round(believers/realHolders*100) : 0;
+    const pctS = realHolders ? Math.round(serpents/realHolders*100) : 0;
+    const pctN = Math.max(0, 100 - pctB - pctS);
+    // parts en supply (exactes, BigInt → basis points)
+    const balP = balPoolReal + balBurn + balInfra;   // pool + burn + contrats infra = hors mains retail actives
+    const bp = (part) => supply>0n ? Number(part * 1000000n / supply) / 10000 : 0;  // % à 4 décimales
+    const supB = bp(balB), supS = bp(balS), supN = bp(balN), supPool = bp(balP);
+    const supHeld = supB + supS + supN;   // hors pool/burn
+    const supplyShares = {balB, balS, balN, balP, supB, supS, supN, supPool, supHeld};
+
+    /* La concentration se calcule AVANT le verdict : depuis qu'elle a rejoint
+       la legende, c'est lui qui la porte. Elle etait dite trois fois — facteur
+       de sante, chapeau de section, note sous la liste — et une page qui repete
+       trois fois le meme pourcentage donne l'impression d'en avoir trois. */
+    const top10r = rows.filter(r=>r.cls!=="pool" && r.cls!=="burn" && r.cls!=="infra").slice(0,10);
+    let sum10=0n; for(const r of top10r) sum10+=r.bal;
+    const pct10 = supply>0n ? Number(sum10*10000n/supply)/100 : 0;
+    renderVerdict(pctB, pctS, pctN, believers, serpents, neutrals, supplyShares);
+    renderHealth(supplyShares, mom24, pct10, hasTs);
+    saveSnapshot(token, {at:now, supB:supplyShares.supB, supS:supplyShares.supS, supPool:supplyShares.supPool, believers, serpents, holders:realHolders});
+    renderTracking(token);
+    renderConcentration(rows, supply, dec, sym, poolSet);
+    ALL_ROWS = rows; SUPPLY = supply; DEC = dec; SYM = sym; FILTER = "all"; SHOWN = 25;
+    FLOW = flow; POOLSET = poolSet; INFRASET = infraSet; TOKEN_ADDR = token;
+    $("#filters").style.display = "flex";
+    $("#inspect").style.display = "block";
+    applyFilter();
+
+    $("#method").style.display = "block";
+    $("#foot").innerHTML = `Data: Blockscout Robinhood Chain · ${holders.length} holders · ${transfers.length} transferts analysés · read ${new Date().toLocaleString()}.<br>Believer/serpent classification = a flow heuristic, not a judgment. Always verify on the explorer before acting on it.`;
+    setState(`done · ${realHolders} holders classified, ${transfers.length} transfers`);
+  }catch(e){
+    const msg = String(e.message || e);
+    if(msg.includes("Failed to fetch") || msg.includes("NetworkError")){
+      setState("The browser is blocking API access (CORS or local file). Open the page via http://localhost — e.g. python -m http.server 8000 in the folder — then retry.", true);
+    } else {
+      setState("Failed · " + msg, true);
+    }
+  }finally{
+    $("#run").disabled = false;
+  }
+}
+
+function renderVerdict(pctB, pctS, pctN, nb, ns, nn, sh){
+  // barre 1 : répartition par NOMBRE de wallets
+  $("#vbar").innerHTML =
+    `<div class="vseg b" style="flex-basis:${pctB}%">${pctB>=8?pctB+"%":""}</div>`
+  + `<div class="vseg s" style="flex-basis:${pctS}%">${pctS>=8?pctS+"%":""}</div>`
+  + `<div class="vseg n" style="flex-basis:${pctN}%">${pctN>=8?pctN+"%":""}</div>`;
+  // barre 2 : répartition par POIDS en supply (hors pool) — normalisée sur le circulant
+  const circ = sh.supHeld || 1;
+  const wB = sh.supB/circ*100, wS = sh.supS/circ*100, wN = sh.supN/circ*100;
+  $("#vbar2").innerHTML =
+    `<div class="vseg b" style="flex-basis:${wB}%">${wB>=8?wB.toFixed(0)+"%":""}</div>`
+  + `<div class="vseg s" style="flex-basis:${wS}%">${wS>=8?wS.toFixed(0)+"%":""}</div>`
+  + `<div class="vseg n" style="flex-basis:${wN}%">${wN>=8?wN.toFixed(0)+"%":""}</div>`;
+  $("#vlegend").innerHTML =
+    `<span><span class="dotb" style="background:var(--believer)"></span><b>${nb}</b> believers · <b>${sh.supB.toFixed(2)}%</b> of supply</span>`
+  + `<span><span class="dotb" style="background:var(--serpent)"></span><b>${ns}</b> serpents · <b>${sh.supS.toFixed(2)}%</b> of supply</span>`
+  + `<span><span class="dotb" style="background:var(--neutral)"></span><b>${nn}</b> neutral · <b>${sh.supN.toFixed(2)}%</b></span>`
+  + `<span><span class="dotb" style="background:var(--pool)"></span>pool / burn · <b>${sh.supPool.toFixed(2)}%</b></span>`
+  ;
+  /* PAS de top 10 ici : les trois facteurs de sante, juste au-dessus, le disent
+     DEJA et avec une appreciation (coche ou tilde). Le repeter nu dans la
+     legende aurait remplace une repetition par une autre — l'affaire etait
+     qu'il soit dit UNE fois, a l'endroit ou il est juge. */
+  $("#verdict").style.display = "block";
+}
+
+function renderConcentration(rows, supply, dec, sym, poolSet){
+  // top holders excluding pool/burn, share of supply
+  const real = rows.filter(r => r.cls !== "pool" && r.cls !== "burn" && r.cls !== "infra");
+  const top10 = real.slice(0,10);
+  let sum10 = 0n; for(const r of top10) sum10 += r.bal;
+  const pct10 = supply>0n ? Number(sum10*10000n/supply)/100 : 0;
+  const poolBal = rows.filter(r=>poolSet.has(r.addr)).reduce((s,r)=>s+r.bal,0n);
+  const pctPool = supply>0n ? Number(poolBal*10000n/supply)/100 : 0;
+
+  /* Le chapeau DECRIT la liste, il ne redit pas son chiffre : le pourcentage du
+     top 10 est deja dans les facteurs de sante, et la part du pool dans la
+     legende du verdict. Une legende de section qui recopie deux nombres deja
+     lus plus haut fait croire au lecteur qu'il en decouvre deux nouveaux. */
+  $("#concCap").innerHTML = `The ten largest wallets, liquidity and burns excluded. `
+    + `Each bar is that wallet's share of total supply.`;
+  $("#concList").innerHTML = top10.map((r,i)=>{
+    const pct = supply>0n ? Number(r.bal*100000n/supply)/1000 : 0;
+    const w = Math.min(100, pct * (100/(Number(top10[0]? (supply>0n?Number(top10[0].bal*100000n/supply)/1000:1):1)||1)));
+    const col = r.cls==="b"?"var(--believer)":r.cls==="s"?"var(--serpent)":"var(--neutral)";
+    return `<div class="holder">
+      <div class="rank">${i+1}</div>
+      <div class="hmain">
+        <div class="haddr"><a href="https://robinhoodchain.blockscout.com/address/${r.addr}" target="_blank" rel="noopener">${short(r.addr)}</a>${chip(r.cls)}</div>
+        <div class="htrack"><div class="hfill" style="width:${w}%;background:${col}"></div></div>
+      </div>
+      <div><div class="hpct">${pct.toFixed(2)}%</div><div class="hbal">${fmtBig(r.bal.toString(),dec)} ${sym}</div></div>
+    </div>`;
+  }).join("");
+  $("#secConc").style.display = "block";
+}
+
+function chip(cls){
+  if(cls==="b") return `<span class="chip b">believer</span>`;
+  if(cls==="s") return `<span class="chip s">serpent</span>`;
+  if(cls==="pool") return `<span class="chip p">liquidity</span>`;
+  if(cls==="burn") return `<span class="chip p">burn</span>`;
+  if(cls==="infra") return `<span class="chip p">contract</span>`;
+  return `<span class="chip n">neutral</span>`;
+}
+
+function filteredRows(){
+  const q = ($("#srch")?.value||"").trim().toLowerCase();
+  return ALL_ROWS.filter(r => {
+    if(FILTER === "infra"){ if(r.cls!=="infra" && r.cls!=="pool" && r.cls!=="burn") return false; }
+    else if(FILTER !== "all" && r.cls !== FILTER) return false;
+    if(q && !r.addr.includes(q)) return false;
+    return true;
+  });
+}
+function ageTxt(days){
+  if(days==null) return "";
+  if(days===0) return "holding since today";
+  if(days===1) return "holding for 1 day";
+  return `holding for ${days} days`;
+}
+function applyFilter(){
+  const rows = filteredRows();
+  const slice = rows.slice(0, SHOWN);
+  $("#holderList").innerHTML = slice.map((r,i)=>{
+    const pct = SUPPLY>0n ? Number(r.bal*100000n/SUPPLY)/1000 : 0;
+    const age = (r.cls==="b" && r.days!=null) ? `<span class="age">${ageTxt(r.days)}</span>` : "";
+    const flowTxt = (r.cls==="pool"||r.cls==="burn"||r.cls==="infra") ? "" :
+      `<div class="flow">in <span class="in">${fmtBig(r.in.toString(),DEC)}</span> · out <span class="out">${fmtBig(r.out.toString(),DEC)}</span>`
+      + (r.days!=null ? ` · <span class="age">${ageTxt(r.days)}</span>` : "") + `</div>`;
+    return `<div class="holder">
+      <div class="rank">${i+1}</div>
+      <div class="hmain">
+        <div class="haddr"><a href="https://robinhoodchain.blockscout.com/address/${r.addr}" target="_blank" rel="noopener">${short(r.addr)}</a>${chip(r.cls)}${r.name?`<span class="chip n">${r.name.slice(0,20)}</span>`:(r.isContract&&r.cls!=="pool"&&r.cls!=="infra"?'<span class="chip n">contract</span>':'')}${age}</div>
+        ${flowTxt}
+      </div>
+      <div><div class="hpct">${pct.toFixed(2)}%</div><div class="hbal">${fmtBig(r.bal.toString(),DEC)} ${SYM}</div></div>
+    </div>`;
+  }).join("");
+  const remaining = rows.length - slice.length;
+  $("#moreWrap").style.display = remaining > 0 ? "block" : "none";
+  $("#moreBtn").textContent = `Show more (${remaining} left)`;
+  $("#hCount").textContent = `${slice.length} shown of ${rows.length}` + (FILTER!=="all"?` · filter: ${FILTER}`:"") + ` · ${ALL_ROWS.length} total`;
+  $("#copybar").style.display = rows.length ? "flex" : "none";
+  $("#copyHint").textContent = `copies the ${rows.length} filtered ${FILTER==="all"?"":FILTER+" "}wallets`;
+  $("#secHolders").style.display = "block";
+}
+$("#moreBtn")?.addEventListener("click", () => { SHOWN += 50; applyFilter(); });
+
+function copyText(txt, label){
+  navigator.clipboard.writeText(txt).then(()=>{
+    $("#copyHint").textContent = label;
+    setTimeout(()=>applyFilter(), 1600);
+  }).catch(()=>{ $("#copyHint").textContent = "copy blocked by the browser"; });
+}
+$("#copyList")?.addEventListener("click", () => {
+  const rows = filteredRows();
+  const lines = rows.map(r => {
+    const pct = SUPPLY>0n ? Number(r.bal*1000000n/SUPPLY)/10000 : 0;
+    const age = r.days!=null ? ` — ${ageTxt(r.days)}` : "";
+    return `${r.addr}  ${pct.toFixed(3)}%${age}`;
+  });
+  copyText(lines.join("\n"), `${rows.length} wallets copied (address + % + age)`);
+});
+$("#copyCsv")?.addEventListener("click", () => {
+  const rows = filteredRows();
+  const head = "address,category,percent_supply,days_holding,received,sent";
+  const lines = rows.map(r => {
+    const pct = SUPPLY>0n ? Number(r.bal*1000000n/SUPPLY)/10000 : 0;
+    const cat = r.cls==="b"?"believer":r.cls==="s"?"serpent":r.cls==="n"?"neutral":"pool";
+    return `${r.addr},${cat},${pct.toFixed(4)},${r.days??""},${fmtBig(r.in.toString(),DEC)},${fmtBig(r.out.toString(),DEC)}`;
+  });
+  copyText([head,...lines].join("\n"), `${rows.length} wallets copied as CSV`);
+});
+document.addEventListener("click", e => {
+  const f = e.target.closest("[data-f]");
+  if(!f) return;
+  FILTER = f.dataset.f; SHOWN = 25;
+  document.querySelectorAll(".fbtn").forEach(b=>b.className="fbtn");
+  f.className = "fbtn on" + (FILTER==="s"?" s":FILTER==="n"?" n":FILTER==="pool"?" p":"");
+  applyFilter();
+});
+document.addEventListener("input", e => {
+  if(e.target.id === "srch"){ SHOWN = 25; applyFilter(); }
+});
+
+/* ── score de santé : combine mains stables, momentum, concentration ── */
+function renderHealth(sh, mom24, pct10, hasTs){
+  const circ = sh.supHeld || 1;
+  const believerWeight = sh.supB / circ * 100;   // % du circulant tenu par des believers
+  // momentum net : achats vs ventes en volume, 24h
+  const buy = Number(mom24.buy), sell = Number(mom24.sell);
+  const flowNet = (buy+sell) > 0 ? (buy - sell)/(buy + sell) : 0;   // -1..+1
+
+  // trois facteurs, chacun ok/mid/bad
+  const fHold = believerWeight >= 55 ? 2 : believerWeight >= 35 ? 1 : 0;
+  const fMom  = !hasTs ? 1 : flowNet > 0.15 ? 2 : flowNet > -0.15 ? 1 : 0;
+  const fConc = pct10 < 40 ? 2 : pct10 < 60 ? 1 : 0;
+  const score = fHold + fMom + fConc;   // 0..6
+
+  let grade, badge, cls, line;
+  if(score >= 5){ grade="Solid base"; badge="green light"; cls="green";
+    line="Most of the circulating supply is held by hands that haven't sold, recent flow leans toward buying, and concentration stays manageable. A favorable window to push attention."; }
+  else if(score >= 3){ grade="Decent base, caution"; badge="amber light"; cls="orange";
+    line="The base holds on some fronts but not all. Launching a campaign can work, but one of the factors below is fragile — wait for it to strengthen, or size small."; }
+  else{ grade="Fragile base"; badge="red light"; cls="red";
+    line="Too much supply already in selling hands, or flow and concentration are unfavorable. Bringing attention now risks feeding exits rather than building a base."; }
+
+  const fac = (v,label,detail) => `<span><b class="${v===2?'ok':v===1?'mid':'bad'}">${v===2?'✓':v===1?'~':'✕'}</b> ${label} — <b>${detail}</b></span>`;
+  $("#health").className = "health " + cls;
+  $("#health").innerHTML =
+    `<div class="grade">${grade}<span class="badge">${badge}</span></div>`
+  + `<div class="line">${line}</div>`
+  + `<div class="factors">`
+  + fac(fHold, "stable hands", `${believerWeight.toFixed(0)}% of circulating`)
+  + fac(fMom, "24h flow", hasTs ? (flowNet>0?`+${(flowNet*100).toFixed(0)}% net buying`:`${(flowNet*100).toFixed(0)}% net selling`) : "timestamps unavailable")
+  + fac(fConc, "top-10 concentration", `${pct10.toFixed(0)}% of supply`)
+  + `</div>`;
+  $("#health").style.display = "block";
+}
+
+/* ── suivi dans le temps : snapshots locaux ── */
+const SNAP_KEY = t => `holderscan_hist_${t.toLowerCase()}`;
+function loadSnaps(t){ try{ return JSON.parse(localStorage.getItem(SNAP_KEY(t))||"[]"); }catch{ return []; } }
+function saveSnapshot(t, snap){
+  try{
+    const hist = loadSnaps(t);
+    // un snapshot par heure max, pour ne pas polluer
+    const last = hist[hist.length-1];
+    if(last && snap.at - last.at < 3600*1000){ hist[hist.length-1] = snap; }
+    else hist.push(snap);
+    localStorage.setItem(SNAP_KEY(t), JSON.stringify(hist.slice(-30)));
+  }catch{}
+}
+function renderTracking(t){
+  const hist = loadSnaps(t);
+  if(hist.length < 2){
+    $("#trackEmpty").textContent = hist.length===1
+      ? "First scan saved. Come back in a few hours or days: believer trend will appear here."
+      : "Tracking needs local storage. If nothing saves, open the page via http://localhost.";
+    $("#trackList").innerHTML = "";
+    $("#track").style.display = "block"; return;
+  }
+  const fmtD = ts => new Date(ts).toLocaleString([], {day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
+  const rows = hist.slice().reverse().map((s,idx,arr) => {
+    const prev = arr[idx+1];
+    let delta="", cls="flat";
+    if(prev){
+      const d = s.supB - prev.supB;
+      cls = d > 0.2 ? "up" : d < -0.2 ? "down" : "flat";
+      delta = (d>=0?"+":"") + d.toFixed(2) + "% believers";
+    } else delta = "starting point";
+    return `<div class="trow">
+      <span class="d">${fmtD(s.at)}</span>
+      <span>believers <b style="color:var(--paper)">${s.supB.toFixed(2)}%</b> · serpents ${s.supS.toFixed(2)}% · ${s.holders} holders</span>
+      <span class="delta ${cls}">${delta}</span>
+    </div>`;
+  }).join("");
+  $("#trackList").innerHTML = rows;
+  const first = hist[0], last = hist[hist.length-1];
+  const trend = last.supB - first.supB;
+  $("#trackEmpty").innerHTML = trend > 0.5
+    ? `<span style="color:var(--believer)">Since your first scan, believer share gained ${trend.toFixed(2)}% of supply — the base is strengthening.</span>`
+    : trend < -0.5
+    ? `<span style="color:var(--serpent)">Since your first scan, believer share lost ${Math.abs(trend).toFixed(2)}% — the base is eroding.</span>`
+    : "Stable base between scans — no clear strengthening or erosion.";
+  $("#track").style.display = "block";
+}
+
+/* ── inspecteur d'un wallet unique ── */
+async function inspectWallet(){
+  const card = $("#icard");
+  const raw = $("#inspAddr").value.trim();
+  const m = raw.match(/0x[0-9a-fA-F]{40}/);
+  if(!m){ card.className="icard x"; card.style.display="block"; card.innerHTML=`<div class="iverdict">Invalid address</div><div class="iline">Paste a full 0x… address.</div>`; return; }
+  if(!TOKEN_ADDR){ card.className="icard x"; card.style.display="block"; card.innerHTML=`<div class="iline">Run a token scan first.</div>`; return; }
+  const a = m[0].toLowerCase();
+  card.className="icard x"; card.style.display="block";
+  card.innerHTML=`<div class="iline"><span class="spin"></span> reading wallet…</div>`;
+
+  try{
+    // est-ce un contrat ? (infrastructure, pas un holder retail)
+    let isContract=false, cName=null;
+    try{
+      const info = await api(`/addresses/${a}`);
+      isContract = !!info.is_contract;
+      cName = info.name || info.ens_domain_name || null;
+    }catch(e){}
+
+    // current token balance (direct read)
+    let bal = 0n;
+    try{
+      const info = await api(`/addresses/${a}/token-balances`);
+      const hit = (Array.isArray(info)?info:[]).find(x => (x.token?.address||x.token?.address_hash||"").toLowerCase() === TOKEN_ADDR);
+      if(hit) bal = BigInt(hit.value||"0");
+    }catch(e){}
+
+    // lire TOUT l'historique une seule fois et compter chaque opération
+    const tr = await fetchPaged(`/addresses/${a}/token-transfers?token=${TOKEN_ADDR}`, 15);
+    let totalIn=0n, totalOut=0n;            // tous flux entrants / sortants
+    let boughtPool=0n, soldPool=0n;         // spécifiquement via le pool
+    let nBuy=0, nSell=0, nInOther=0, nOutOther=0;
+    let firstTs=null, lastTs=null;
+    for(const t of tr){
+      const from=(t.from?.hash||"").toLowerCase(), to=(t.to?.hash||"").toLowerCase();
+      let v=0n; try{ v=BigInt(t.total?.value||t.value||"0"); }catch{}
+      const ts = Date.parse(t.timestamp||0)||null;
+      if(ts){ if(!firstTs||ts<firstTs) firstTs=ts; if(!lastTs||ts>lastTs) lastTs=ts; }
+      if(to===a){                            // entrée
+        totalIn+=v;
+        if(POOLSET.has(from)){ boughtPool+=v; nBuy++; } else nInOther++;
+      }
+      if(from===a){                          // sortie
+        totalOut+=v;
+        if(POOLSET.has(to)){ soldPool+=v; nSell++; } else nOutOther++;
+      }
+    }
+    const net = totalIn - totalOut;          // position nette en tokens
+    const held = bal;
+    // un contrat n'est "infra" que s'il a été détecté comme tel au scan (pool/infra).
+    // un smart-wallet ordinaire reste un vrai holder.
+    const isInfra = POOLSET.has(a) || INFRASET.has(a);
+
+    // classification (mêmes règles que le scan)
+    const daysHeldNow = firstTs ? Math.floor((Date.now()-firstTs)/86400000) : null;
+    const oldEnough = daysHeldNow != null && daysHeldNow >= 2;
+    let cls, verdict, badge, line;
+    if(DEAD.has(a)){ cls="p"; verdict="Burn address"; badge="burn"; line="A burn address. Tokens sent here are permanently removed from supply."; }
+    else if(POOLSET.has(a)){ cls="p"; verdict="Liquidity pool"; badge="liquidity"; line="The liquidity pool, not a holder. Its moves are the market's buys and sells, not a personal position."; }
+    else if(isInfra){ cls="p"; verdict="Contract"; badge=cName?cName.slice(0,22):"infrastructure"; line=`This is an infrastructure contract${cName?` (${cName})`:""} — a router, manager or aggregator, not a retail holder. It's not a believer or a serpent.`; }
+    // believer = détient encore ET tient depuis +2 jours (même s'il a vendu un peu)
+    else if(held>0n && (oldEnough || nSell===0)){
+      cls="b"; verdict="Believer"; badge = nSell>0 ? `held ${daysHeldNow}d` : "never sold";
+      line = nSell>0
+        ? `Bought ${nBuy} time${nBuy!==1?"s":""}, sold ${nSell}, but has held for ${daysHeldNow} days and still holds a bag. A believer through time.`
+        : `Bought ${nBuy||nInOther} time${(nBuy||nInOther)!==1?"s":""}, never sold${daysHeldNow!=null?`, holding for ${daysHeldNow} day${daysHeldNow!==1?"s":""}`:""}. Diamond paws.`;
+    }
+    // serpent = a vendu et soit ne détient plus, soit trop récent
+    else if(nSell>0){
+      cls="s"; verdict="Serpent"; badge=`${nSell} sell${nSell>1?"s":""}`;
+      line = held>0n
+        ? `Bought ${nBuy} time${nBuy!==1?"s":""}, sold ${nSell} — and only arrived ${daysHeldNow!=null?`${daysHeldNow} day${daysHeldNow!==1?"s":""} ago`:"recently"}. Too soon to call it conviction.`
+        : `Bought ${nBuy} time${nBuy!==1?"s":""}, sold ${nSell} time${nSell>1?"s":""}, and fully exited.`;
+    }
+    else if(totalOut>0n){ cls="n"; verdict="Neutral"; badge="transferred"; line=`Moved tokens ${nOutOther} time${nOutOther!==1?"s":""} without touching the pool — transfers, not sales.`; }
+    else if(held>0n){ cls="n"; verdict="Neutral"; badge="too recent"; line=`Holds a bag but only arrived ${daysHeldNow!=null?`${daysHeldNow} day${daysHeldNow!==1?"s":""} ago`:"recently"} — not yet old enough to count as a believer.`; }
+    else { cls="x"; verdict="No position"; badge="empty"; line="No balance and no history on this token (or outside the analyzed window)."; }
+
+    const pctSupply = SUPPLY>0n && held>0n ? Number(held*1000000n/SUPPLY)/10000 : 0;
+    const daysHeld = firstTs ? Math.floor((Date.now()-firstTs)/86400000) : null;
+
+    // seulement les faits clairs : ce qu'il détient, combien d'achats/ventes, position nette
+    card.className="icard "+cls;
+    card.innerHTML =
+      `<div class="iverdict">${verdict}<span class="badge">${badge}</span></div>`
+    + `<div class="iline">${line}</div>`
+    + `<div class="igrid">`
+    + `<div class="icell"><div class="k">holds now</div><div class="v">${fmtBig(held.toString(),DEC)} ${SYM}</div></div>`
+    + `<div class="icell"><div class="k">share of supply</div><div class="v">${pctSupply.toFixed(3)}%</div></div>`
+    + `<div class="icell"><div class="k">bought</div><div class="v" style="color:var(--believer)">${nBuy}× · ${fmtBig(boughtPool.toString(),DEC)}</div></div>`
+    + `<div class="icell"><div class="k">sold</div><div class="v" style="color:var(--serpent)">${nSell}× · ${fmtBig(soldPool.toString(),DEC)}</div></div>`
+    + (daysHeld!=null ? `<div class="icell"><div class="k">holding for</div><div class="v">${daysHeld} day${daysHeld!==1?"s":""}</div></div>` : "")
+    + (nInOther||nOutOther ? `<div class="icell"><div class="k">non-pool transfers</div><div class="v">${nInOther+nOutOther}</div></div>` : "")
+    + `</div>`
+    + `<div class="note" style="margin-top:12px">"Bought" and "sold" count swaps with the pool. Amounts are token quantities — profit in ETH (RH) or dollars is not shown, since the transfer log records how many tokens moved, not the price at each swap.</div>`
+    + `<div class="ilink"><a href="https://robinhoodchain.blockscout.com/address/${a}?tab=token_transfers" target="_blank" rel="noopener">view all ${tr.length} transfers on the explorer ↗</a></div>`;
+  }catch(e){
+    card.className="icard x";
+    card.innerHTML=`<div class="iverdict">Failed</div><div class="iline">${String(e.message||e).slice(0,140)}</div>`;
+  }
+}
+$("#inspBtn").addEventListener("click", inspectWallet);
+$("#inspAddr").addEventListener("keydown", e => { if(e.key==="Enter") inspectWallet(); });
+
+// pas de scan auto : l'utilisateur peut changer l'adresse avant de lancer
+setState("Prefilled with $SWOGE. Change it for another token, then click Scan.");
+$("#addr").focus();
+$("#addr").select();
+</script>

@@ -97,7 +97,7 @@ function vueFausse(o) {
     ombres: { enAttente: 37, jugees: 1284 },
     horizons: [15, 60, 240, 720, 1440], horizonRef: 240, minObs: 60, profilMinObs: 8,
     journal: o.journal === undefined ? { actif: true, jours: 12, octets: 5452595, garde: 180 } : o.journal,
-    gagne: 1.5, perd: -1.5, seuil: 1.1,
+    gagne: 1.5, perd: -1.5, seuil: 1.1, positionsMax: 3, fondMur: 8,
     flux: [{ t: now - 120000, quoi: 'LONG DOGE at 0.2134', score: 1.84 },
            { t: now - 900000, quoi: 'CLOSED BTC 1.83% · target' }],
     compteurs: { ouvertures: 61, fermetures: 34 },
@@ -253,7 +253,10 @@ const txt = (page, sel) => page.$eval(sel, (e) => (e.textContent || '').trim()).
     ok(await txt(page, '#ppProfit') === '+$63.20', 'le profit, signe');
     ok(await txt(page, "#ppTresor") === "$1,063.20", 'la tresorerie papier');
     ok(await txt(page, '#ppTrades') === '34', 'les trades fermes');
-    ok(await txt(page, '#ppOuvertes') === '1', 'les positions ouvertes — une seule, pour toute la colonie');
+    /* « 1 » ne dit pas si la colonie est pleine ou s il lui reste de la
+       place : le plafond existe parce que la mise est une part de la
+       tresorerie, et trois positions font trois dixiemes d exposition. */
+    ok(await txt(page, '#ppOuvertes') === '1 / 3', 'les positions ouvertes, et combien la colonie en tient au plus');
     ok(/2\.41%/.test(await txt(page, '#ppMeilleur')), 'le meilleur trade');
     /* ---- LE FINANCEMENT A SA PROPRE CASE ----
      * Toutes les huit heures, un cote paie l autre. C'est la ligne qu'on

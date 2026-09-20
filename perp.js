@@ -223,7 +223,10 @@ function ppBande(v){
   $$("ppTauxSur").textContent = v.trades ? (assez ? "on " + v.trades : "need " + (20 - v.trades) + " more") : "";
   $$("ppTrades").textContent = v.trades || 0;
   $$("ppMeilleur").textContent = (typeof v.meilleur === "number" && v.meilleur) ? ppPct(v.meilleur) : "—";
-  $$("ppOuvertes").textContent = v.positions.length;
+  /* « 2 » ne dit pas si la colonie est pleine ou si elle a de la place. Le
+     plafond existe parce que la mise est une part de la tresorerie : trois
+     positions font trois dixiemes d exposition. */
+  $$("ppOuvertes").textContent = v.positions.length + (v.positionsMax ? " / " + v.positionsMax : "");
   var f = v.financement || { n:0, total:0 };
   $$("ppFin").textContent = f.n ? ppPct(f.total, 2) : "—";
   $$("ppFin").className = f.total < 0 ? "pp-rouge" : f.total > 0 ? "pp-vert" : "";

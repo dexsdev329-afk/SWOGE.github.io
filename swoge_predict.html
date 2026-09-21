@@ -804,7 +804,7 @@ table.pr-h td:first-child,table.pr-h th:first-child{text-align:left}
     </div>
 
     <div class="pr-tete">
-      <div class="pr-t"><div class="k">Market</div><div class="v"><select id="prMarche" style="background:none;border:0;color:var(--paper);font-family:inherit;font-size:20px"><option>BTC</option><option>ETH</option><option>SOL</option></select></div></div>
+      <div class="pr-t"><div class="k">Market</div><div class="v"><select id="prMarche" style="background:none;border:0;color:var(--paper);font-family:inherit;font-size:20px"><option>BNB</option><option>CAKE</option></select></div></div>
       <div class="pr-t"><div class="k">Round</div><div class="v" id="prRound">—</div></div>
       <div class="pr-t"><div class="k">Time left</div><div class="v" id="prTimer">—</div></div>
       <div class="pr-t"><div class="k">Price</div><div class="v" id="prPrix">—</div></div>
@@ -857,7 +857,7 @@ table.pr-h td:first-child,table.pr-h th:first-child{text-align:left}
     <div class="pr-carte">
       <h3>Backtest on real candles</h3>
       <p class="pr-note" style="margin-top:0">Replays real historical candles as UP/DOWN rounds and reports the <b>true</b> accuracy and what the martingale would have done.</p>
-      <div class="pr-boutons"><button class="go" id="prBt">Run backtest (BTC, 5m)</button></div>
+      <div class="pr-boutons"><button class="go" id="prBt">Run backtest (BNB, 5m)</button></div>
       <div class="pr-stats" id="prBtOut" style="margin-top:10px"></div>
     </div>
   </div>
@@ -905,7 +905,7 @@ document.addEventListener("DOMContentLoaded", function(){
   var HL = "https://api.hyperliquid.xyz";
 
   var etat = {
-    coin: "BTC", prix: null, ouvreRound: null, round: 1000,
+    coin: "BNB", prix: null, ouvreRound: null, round: 1000,
     finRound: 0, duree: 60000, candles: {}, pred: null,
     bank: new E.BankrollManager(1000), mart: null, risk: null, bot: false, histo: [],
     live: false, dernier: 0,
@@ -1070,7 +1070,7 @@ document.addEventListener("DOMContentLoaded", function(){
   }, 250);
 
   /* ---- LES GESTES ---- */
-  $("prMarche").addEventListener("change", function(e){ etat.coin=e.target.value; etat.ouvreRound=etat.prix; rafraichitCandles(); });
+  $("prMarche").addEventListener("change", function(e){ etat.coin=e.target.value; etat.ouvreRound=etat.prix; $("prBt").textContent="Run backtest ("+etat.coin+", 5m)"; rafraichitCandles(); });
   $("prGo").addEventListener("click", function(){ etat.auto=true; demarrePaper(); });
   $("prStop").addEventListener("click", function(){ etat.auto=false; etat.bot=false; clearTimeout(etat.reprise); etat.reprise=null; $("prRisque").textContent="Paper bot stopped — click Start to resume auto."; });
   $("prReset").addEventListener("click", function(){
@@ -1081,9 +1081,10 @@ document.addEventListener("DOMContentLoaded", function(){
   });
   $("prBt").addEventListener("click", function(){
     $("prBtOut").innerHTML='<div class="pr-s"><div class="v">Running…</div></div>';
-    chargeCandles("BTC","5m").then(function(){ return chargeCandles("BTC","5m"); }).then(function(){
+    var pièce=etat.coin;   /* le backtest porte sur le marché choisi, comme le live */
+    chargeCandles(pièce,"5m").then(function(){ return chargeCandles(pièce,"5m"); }).then(function(){
       var now=Date.now();
-      return fetch(HL+"/info",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({type:"candleSnapshot",req:{coin:"BTC",interval:"5m",startTime:now-5000*300000,endTime:now}})}).then(function(r){return r.json();});
+      return fetch(HL+"/info",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({type:"candleSnapshot",req:{coin:pièce,interval:"5m",startTime:now-5000*300000,endTime:now}})}).then(function(r){return r.json();});
     }).then(function(a){
       var candles=(a||[]).map(function(c){return {o:+c.o,c:+c.c,h:+c.h,l:+c.l,v:+c.v};});
       var c=cfg();

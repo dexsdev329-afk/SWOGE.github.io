@@ -37,7 +37,7 @@ var T={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'ap
     window.__sub=[];
     class FWS{ constructor(u){this.url=u;this.readyState=0;var self=this;
       setTimeout(function(){ self.readyState=1; if(self.onopen)self.onopen();
-        var k=0; self._it=setInterval(function(){ k++; if(self.onmessage) self.onmessage({data:JSON.stringify({channel:'allMids',data:{mids:{BTC:String(81000+k*3),ETH:'3100',SOL:'180'}}})}); },40);
+        var k=0; self._it=setInterval(function(){ k++; if(self.onmessage) self.onmessage({data:JSON.stringify({channel:'allMids',data:{mids:{BNB:String(790+(k%5)),CAKE:'2.53',BTC:String(81000+k*3),ETH:'3100',SOL:'180'}}})}); },40);
       },10); }
       send(s){ window.__sub.push(s); } close(){ this.readyState=3; clearInterval(this._it); if(this.onclose)this.onclose(); } }
     window.WebSocket=FWS;
@@ -50,10 +50,14 @@ var T={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'ap
     await page.waitForFunction(function(){return /Live/.test(document.getElementById('prLiveTxt').textContent);},null,{timeout:5000});
     ok(/Live/.test(await page.textContent('#prLiveTxt')),'le premier tick passe le statut a Live');
     await page.waitForFunction(function(){return /\d/.test(document.getElementById('prPrix').textContent);},null,{timeout:5000});
-    ok(/\$8[01]/.test(await page.textContent('#prPrix')),'le prix live s affiche ['+(await page.textContent('#prPrix'))+']');
+    ok(/\$79[0-4]/.test(await page.textContent('#prPrix')),'le prix live BNB (le marche PancakeSwap) s affiche ['+(await page.textContent('#prPrix'))+']');
     /* Un seul abonnement global (allMids). */
     var sub=await page.evaluate(function(){return window.__sub||[];});
     ok(sub.some(function(x){return /allMids/.test(x);}),'un seul abonnement WS global (allMids)');
+    /* PancakeSwap Prediction, c est le marche BNB (et CAKE), pas BTC/ETH/SOL. */
+    var marches=await page.$$eval('#prMarche option',function(o){return o.map(function(x){return x.textContent;});});
+    ok(marches.join(',')==='BNB,CAKE','le marche est celui de PancakeSwap : BNB et CAKE ['+marches.join(',')+']');
+    ok((await page.$eval('#prMarche',function(s){return s.value;}))==='BNB','et il ouvre sur BNB par defaut');
   }
 
   console.log('-- 2. une prediction avec ses raisons --');

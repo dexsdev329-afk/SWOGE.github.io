@@ -98,7 +98,7 @@ video{ max-width:100%; }
 .menubtn{ min-width:44px; min-height:44px; }
 </style>
 
-<title>Who is behind this domain? · SWOGE OSINT</title>
+<title>SWOGE Studio · AI images and video, paid in $SWOGE</title>
 <style>
   /* Les cases mesurees : une ligne par case, l'effectif TOUJOURS a cote du
      chiffre. Sans lui, « -43,7 % » se lit pareil qu'il porte sur six lectures
@@ -145,21 +145,21 @@ video{ max-width:100%; }
      atteignable avec un `?game=`, un `#` ou un `www`. Sans elle, les deux
      versions se font concurrence et aucune ne gagne.
      ================================================================= -->
-<link rel="canonical" href="https://swoleeswoge.dog/swoge_osint.html">
-<meta name="description" content="Free OSINT on a domain or an IP. Type a domain and see what it publishes about itself: DNS, registry, certificate logs, and the professional contacts the organisation prints on its own pages — each line with the URL it came from. Domains only: this tool cannot be searched by a person’s name, e-mail or phone.">
+<link rel="canonical" href="https://swoleeswoge.dog/swoge_studio.html">
+<meta name="description" content="SWOGE Studio: generate images and videos and pay per generation in $SWOGE. Images from OpenAI, video from Grok Imagine, prompts from Claude — one place, more models added over time. In preparation.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="SWOGE WORLD">
 <meta property="og:locale" content="en_US">
-<meta property="og:title" content="Who is behind this domain? · SWOGE OSINT">
-<meta property="og:description" content="Free OSINT on a domain or an IP. Type a domain and see what it publishes about itself: DNS, registry, certificate logs, and the professional contacts the organisation prints on its own pages — each line with the URL it came from. Domains only: this tool cannot be searched by a person’s name, e-mail or phone.">
-<meta property="og:url" content="https://swoleeswoge.dog/swoge_osint.html">
+<meta property="og:title" content="SWOGE Studio · AI images and video, paid in $SWOGE">
+<meta property="og:description" content="SWOGE Studio: generate images and videos and pay per generation in $SWOGE. Images from OpenAI, video from Grok Imagine, prompts from Claude — one place, more models added over time. In preparation.">
+<meta property="og:url" content="https://swoleeswoge.dog/swoge_studio.html">
 <meta property="og:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@SwoleDogeSwoge">
-<meta name="twitter:title" content="Who is behind this domain? · SWOGE OSINT">
-<meta name="twitter:description" content="Free OSINT on a domain or an IP. Type a domain and see what it publishes about itself: DNS, registry, certificate logs, and the professional contacts the organisation prints on its own pages — each line with the URL it came from. Domains only: this tool cannot be searched by a person’s name, e-mail or phone.">
+<meta name="twitter:title" content="SWOGE Studio · AI images and video, paid in $SWOGE">
+<meta name="twitter:description" content="SWOGE Studio: generate images and videos and pay per generation in $SWOGE. Images from OpenAI, video from Grok Imagine, prompts from Claude — one place, more models added over time. In preparation.">
 <meta name="twitter:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="/img/site/icone-32.png">
@@ -701,8 +701,8 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       <a href="swoge_wallet.html"><span class="ic">&#129433;</span>Wallet</a>
       <a href="swoge_ai.html"><span class="ic">&#129302;</span>SWOGE AI</a>
       <a href="swoge_perp.html"><span class="ic">&#128200;</span>AI Perp</a>
-      <a href="swoge_osint.html" class="on"><span class="ic">&#128269;</span>OSINT</a>
-      <a href="swoge_studio.html"><span class="ic">&#127912;</span>Studio</a>
+      <a href="swoge_osint.html"><span class="ic">&#128269;</span>OSINT</a>
+      <a href="swoge_studio.html" class="on"><span class="ic">&#127912;</span>Studio</a>
       <a href="whitepaper.html"><span class="ic">&#128220;</span>Docs</a>
     </nav>
     <div class="sw-reseaux">
@@ -722,248 +722,141 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     </article>
   </aside>
 
-
 <main>
 <div class="wrap">
 
 <style>
 /* ---- CE QUI EST PROPRE A CETTE PAGE ----
- * Le reste — la palette, la nav, les correctifs communs — vient du meme bloc
- * que les vingt-six autres pages, recopie en tete. */
+ * Le reste — palette, nav, correctifs communs — vient du bloc partage
+ * recopie en tete. */
 
-/* La ligne qui doit etre lue AVANT de taper quoi que ce soit. */
-.garde{margin-top:12px;border-left:3px solid var(--pool);background:var(--goldlite);
-  padding:10px 13px;font-size:12.5px;color:var(--paper);border-radius:0 var(--r) var(--r) 0}
-.garde b{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--pool)}
+.enprep{margin-top:14px;border-left:3px solid var(--neutral);background:rgba(150,101,15,.06);
+  padding:12px 15px;border-radius:0 var(--r) var(--r) 0}
+.enprep b{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--neutral)}
 
-/* Les calques : infrastructure / organisation / contacts. Eteindre un calque
-   l eteint PARTOUT — dans le graphe et dans les listes — sinon « masquer »
-   ne voudrait rien dire. */
-.calques{display:flex;gap:8px;flex-wrap:wrap;margin:22px 0 0}
-.calque{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--panel);
-  border-radius:var(--r);padding:7px 11px;cursor:pointer;font-family:'Space Mono',monospace;font-size:11px;
-  letter-spacing:.06em;text-transform:uppercase;color:var(--dim);user-select:none}
-.calque[aria-pressed="true"]{color:var(--paper);border-color:var(--pool);background:var(--goldlite)}
-.calque .pastille{width:9px;height:9px;border-radius:50%;background:var(--dim)}
-.calque[data-c="infrastructure"][aria-pressed="true"] .pastille{background:var(--pool)}
-.calque[data-c="organization"][aria-pressed="true"] .pastille{background:var(--neutral)}
-.calque[data-c="contacts"][aria-pressed="true"] .pastille{background:var(--believer)}
+/* Le choix du genre : image, video, texte. Trois grosses cartes, pas un
+   menu deroulant — c est le premier geste, il doit sauter aux yeux. */
+.genres{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:20px}
+.genre{border:1px solid var(--line);background:var(--panel);border-radius:var(--r);padding:16px;
+  cursor:pointer;text-align:left;transition:border-color .12s}
+.genre[aria-pressed="true"]{border-color:var(--pool);background:var(--goldlite)}
+.genre .ic{font-size:22px}
+.genre .t{font-family:'Anton',sans-serif;font-size:17px;text-transform:uppercase;margin-top:6px}
+.genre .p{font-family:'Space Mono',monospace;font-size:12px;color:var(--believer);margin-top:4px}
+.genre .f{font-size:11px;color:var(--dim);margin-top:6px}
+.genre .att{display:inline-block;margin-top:8px;font-family:'Space Mono',monospace;font-size:9.5px;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--neutral);border:1px solid var(--neutral);
+  border-radius:2px;padding:1px 6px}
 
-section.bloc{margin-top:26px;border-top:1px solid var(--line);padding-top:18px}
-section.bloc>h2{font-family:'Anton',sans-serif;font-size:17px;letter-spacing:.03em;text-transform:uppercase;margin:0 0 4px}
-section.bloc>.hint{color:var(--dim);font-size:12px;margin:0 0 12px;max-width:640px}
+/* L atelier : la zone de travail, facon composeur. */
+.atelier{margin-top:22px;border:1px solid var(--line);background:var(--panel);border-radius:var(--r);padding:16px}
+.atelier label{display:block;font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--dim);margin:0 0 6px}
+.atelier textarea{width:100%;min-height:88px;resize:vertical;background:var(--void2);color:var(--paper);
+  border:1px solid var(--line);border-radius:var(--r);padding:11px 13px;font-family:inherit;font-size:14px}
+.atelier textarea:focus{outline:2px solid var(--believer);outline-offset:1px}
+.depose{margin-top:14px;border:1.5px dashed var(--line);border-radius:var(--r);padding:20px;text-align:center;
+  color:var(--dim);font-size:13px;cursor:pointer}
+.depose:hover{border-color:var(--pool);color:var(--paper)}
+.reglages{display:flex;gap:18px;flex-wrap:wrap;margin-top:14px}
+.reglages .champ{flex:1;min-width:130px}
+.reglages select{width:100%;background:var(--void2);color:var(--paper);border:1px solid var(--line);
+  border-radius:var(--r);padding:9px 11px;font-family:'Space Mono',monospace;font-size:12.5px}
 
-.grille{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
-.cell{border:1px solid var(--line);background:var(--panel);border-radius:var(--r);padding:10px 12px;min-width:0}
-.cell .k{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
-.cell .v{font-family:'Space Mono',monospace;font-size:12.5px;margin-top:4px;word-break:break-word}
+/* Le pied de l atelier : le prix, le wallet, le bouton. Le prix est en
+   $SWOGE et il est GROS : c est l argument de la page. */
+.pied{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:18px;
+  border-top:1px solid var(--line);padding-top:16px}
+.prix{font-family:'Anton',sans-serif;font-size:26px;color:var(--pool);line-height:1}
+.prix small{font-family:'Space Mono',monospace;font-size:11px;color:var(--dim);letter-spacing:.06em;
+  text-transform:uppercase;display:block;margin-bottom:2px}
+.pied .droite{margin-left:auto;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+button.wallet{font-family:'Space Mono',monospace;font-size:12px;text-transform:uppercase;letter-spacing:.04em;
+  background:transparent;color:var(--dim);border:1px solid var(--line);border-radius:var(--r);padding:11px 16px;cursor:pointer}
+button.wallet:hover{border-color:var(--pool);color:var(--paper)}
+button.generer{font-family:'Anton',sans-serif;font-size:17px;letter-spacing:.04em;text-transform:uppercase;
+  background:var(--gold);color:#fff;border:0;border-radius:var(--r);padding:13px 26px;cursor:pointer}
+button.generer:disabled{opacity:.55;cursor:not-allowed}
 
-/* Les etiquettes. Elles portent tout le sens de la page : d ou vient un fait
-   et ce qu il vaut. Elles ne sont donc jamais decoratives. */
-.tag{display:inline-block;font-family:'Space Mono',monospace;font-size:9.5px;letter-spacing:.09em;
-  text-transform:uppercase;padding:2px 6px;border-radius:2px;border:1px solid;white-space:nowrap}
-.tag.ok{color:var(--believer);border-color:var(--believer);background:rgba(18,128,90,.07)}
-.tag.no{color:var(--neutral);border-color:var(--neutral);background:rgba(150,101,15,.07)}
-.tag.h{color:var(--believer);border-color:var(--believer)}
-.tag.m{color:var(--neutral);border-color:var(--neutral)}
-.tag.l{color:var(--dim);border-color:var(--line)}
-.tag.own{color:var(--serpent);border-color:var(--serpent);background:rgba(192,57,43,.07)}
-.tag.assoc{color:var(--dim);border-color:var(--line)}
+/* Le flux de paiement, montre en cinq pas : c est ce qui rassure, et c est
+   ce que la page fera vraiment quand elle sera branchee. */
+.flux{margin-top:26px;border-top:1px solid var(--line);padding-top:18px}
+.flux ol{list-style:none;padding:0;margin:12px 0 0;counter-reset:f}
+.flux li{counter-increment:f;position:relative;padding:8px 0 8px 40px;font-size:13px;color:var(--paper)}
+.flux li::before{content:counter(f);position:absolute;left:0;top:6px;width:26px;height:26px;border-radius:50%;
+  background:var(--goldlite);color:var(--pool);font-family:'Anton',sans-serif;font-size:14px;
+  display:flex;align-items:center;justify-content:center}
+.flux li b{color:var(--paper)} .flux li span{color:var(--dim)}
 
-table.liste{width:100%;border-collapse:collapse;font-size:12.5px}
-table.liste th{text-align:left;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.12em;
-  text-transform:uppercase;color:var(--dim);font-weight:400;padding:0 10px 7px 0;border-bottom:1px solid var(--line)}
-table.liste td{padding:9px 10px 9px 0;border-bottom:1px solid var(--line);vertical-align:top;word-break:break-word}
-table.liste td.val{font-family:'Space Mono',monospace}
-table.liste a{color:var(--pool)}
-.pourquoi{color:var(--dim);font-size:11px;margin-top:3px}
-
-/* ---- LES FICHES DE PERSONNES ----
- * Elles ne ressemblent a RIEN d autre sur la page, et c est voulu : une
- * personne au milieu d un releve d infrastructure doit se voir comme une
- * exception, pas se fondre dans les machines. Bordure pleine, fond creme,
- * liseré a gauche. Le meme choix est repris dans le graphe. */
-.gens{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
-.qui{border:1px solid var(--neutral);border-left:4px solid var(--neutral);background:#FFFBF2;
-  border-radius:var(--r);padding:12px 14px}
-.qui .nom{font-family:'Anton',sans-serif;font-size:18px;letter-spacing:.02em}
-.qui .fonction{font-size:12.5px;color:var(--paper);margin-top:2px}
-.qui .meta{margin-top:9px;display:flex;gap:6px;flex-wrap:wrap}
-.qui .src{margin-top:9px;font-size:11px}
-.qui .extrait{margin-top:8px;font-family:'Space Mono',monospace;font-size:10.5px;color:var(--dim);
-  border-left:2px solid var(--line);padding-left:8px}
-
-/* Le graphe. SVG, aucune bibliotheque : trente noeuds ne justifient pas
-   180 Ko de moteur physique, et une page qui charge un CDN tiers pour
-   dessiner quinze traits contredit ce qu elle raconte sur les sources. */
-.toile{margin-top:12px;border:1px solid var(--line);background:var(--panel);border-radius:var(--r);overflow:hidden}
-.toile svg{display:block;width:100%;height:auto;touch-action:manipulation}
-.toile .arete{stroke:#C7D4E8;stroke-width:1}
-.toile .arete.h{stroke:#9FBEE6}
-.toile .arete.l{stroke-dasharray:3 3;stroke:#D8E2F0}
-.legende{display:flex;gap:14px;flex-wrap:wrap;padding:9px 12px;border-top:1px solid var(--line);
-  font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim)}
-.legende span{display:inline-flex;align-items:center;gap:6px}
-.legende i{width:10px;height:10px;display:inline-block;border-radius:50%}
-
-/* Ce que l outil ne fait pas. Ce bloc n est pas un avertissement juridique
-   colle en bas : c est la moitie de ce que la page promet, donc il est
-   montre avec le reste, pas replie. */
 .bords{border:1px solid var(--line);background:var(--panel);border-radius:var(--r);padding:14px 16px;margin-top:12px}
-.bords li{margin:0 0 7px;font-size:12.5px}
-.bords li:last-child{margin-bottom:0}
-
-/* ---- LES CONSTATS : le croisement, pas la liste ----
- * C est ce qu on vient chercher, donc c est en haut et ca ne ressemble a
- * rien d autre. La gravite se lit a la couleur du lisere, pas seulement au
- * mot : un coup d oeil doit suffire. */
-.constat{border:1px solid var(--line);border-left:4px solid var(--dim);background:var(--panel);
-  border-radius:var(--r);padding:12px 14px;margin-bottom:10px}
-.constat.g-haute{border-left-color:var(--serpent);background:rgba(192,57,43,.04)}
-.constat.g-moyenne{border-left-color:var(--neutral);background:rgba(150,101,15,.04)}
-.constat.g-basse{border-left-color:var(--pool)}
-.constat.g-info{border-left-color:var(--dim)}
-.constat .dit{font-size:13px;color:var(--paper)}
-.constat .grav{font-family:'Space Mono',monospace;font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;
-  padding:1px 6px;border-radius:2px;border:1px solid currentColor;margin-right:8px;vertical-align:1px}
-.constat.g-haute .grav{color:var(--serpent)} .constat.g-moyenne .grav{color:var(--neutral)}
-.constat.g-basse .grav{color:var(--pool)} .constat.g-info .grav{color:var(--dim)}
-.constat .piece{font-family:'Space Mono',monospace;font-size:10.5px;color:var(--dim);margin-top:6px;
-  border-left:2px solid var(--line);padding-left:8px}
-
-/* Une contradiction se montre, elle ne se tranche pas : les deux versions,
-   la mieux etayee en tete, et la note qui dit qu on n a rien choisi. */
-.conflit{border:1px dashed var(--serpent);border-radius:var(--r);padding:12px 14px;margin-bottom:10px;
-  background:rgba(192,57,43,.03)}
-.conflit .quoi{font-family:'Space Mono',monospace;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--serpent)}
-.conflit .v{font-family:'Space Mono',monospace;font-size:12px;margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;align-items:baseline}
-.conflit .note{font-size:11.5px;color:var(--dim);margin-top:8px;font-style:italic}
-
-/* La barre d actions : formats d export et bascule passive. */
-.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;align-items:center}
-.actions a.tele,.actions button.bascule{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.04em;
-  text-transform:uppercase;border:1px solid var(--line);background:var(--panel);color:var(--dim);
-  border-radius:var(--r);padding:7px 12px;cursor:pointer;text-decoration:none}
-.actions a.tele:hover,.actions button.bascule:hover{border-color:var(--pool);color:var(--paper)}
-.actions button.bascule[aria-pressed="true"]{border-color:var(--pool);color:var(--pool);background:var(--goldlite)}
-.trace{font-family:'Space Mono',monospace;font-size:10.5px;color:var(--dim);margin-left:auto}
-.trace.actif{color:var(--neutral)}
-
-/* Un fait dans la table. Une valeur contestee se signale, on ne la cache pas. */
-tr.conteste td{background:rgba(192,57,43,.04)}
+.bords li{margin:0 0 7px;font-size:12.5px} .bords li:last-child{margin-bottom:0}
+.apercu{margin-top:16px;border:1px solid var(--line);border-radius:var(--r);min-height:120px;
+  display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:13px;background:var(--void2)}
 </style>
 
   <div class="top">
-    <div class="kick">OSINT · public sources only · free, no account</div>
-    <h1>What can you learn about <em>this</em>?</h1>
-    <!-- Le sous-titre dit ce qu on lit ET ce qu on refuse, dans cet ordre :
-         un outil qui n annonce que ce qu il trouve laisse croire qu il trouve tout. -->
+    <div class="kick">SWOGE Studio · pay per generation in $SWOGE</div>
+    <h1>Make an image or a <em>video</em>, pay in $SWOGE</h1>
     <div class="sub">
-      Paste a domain, an IP, a website or an on-chain address and it fans out across public
-      sources — DNS, registry, certificate logs, the site's own pages, launchpad records.
-      An e-mail, a username or a phone number is checked as a <b>selector</b>: what is publicly
-      known about it, never expanded into a person. Every line carries the source it came from.
+      One place for the models: images from OpenAI, video from Grok Imagine, and Claude to turn a
+      rough idea into a strong prompt. You pick, you pay per generation in $SWOGE, you download.
+      More models get added over time — the page reads the catalogue, so new ones just appear.
     </div>
 
-    <div class="bar">
-      <input id="q" type="text" spellcheck="false" autocapitalize="off" autocorrect="off"
-             placeholder="example.com · 8.8.8.8 · name@company.com · 0x… · username"
-             aria-label="Domain, IP, website, on-chain address, or a selector to check">
-      <button id="go">Investigate</button>
+    <!-- L honnetete d abord : rien ne genere encore. -->
+    <div class="enprep">
+      <b>In preparation</b><br>
+      The interface is here so you can see the shape. Generation is not live yet — the provider keys
+      and the $SWOGE payment address are still being set up. Nothing charges your wallet on this page today.
     </div>
-
-    <!-- La garde, avant le premier essai et non apres la deception. -->
-    <div class="garde">
-      <b>Machines and accounts, not people.</b><br>
-      You start from a domain, an IP, a website or an on-chain address. A person's name is not a
-      starting point — with lawful sources a name search returns nothing, and what makes it work
-      elsewhere (data brokers, leaked databases) is exactly what this tool does not query. A person
-      appears below only when an organisation published them on its own page.
-    </div>
-
-    <div class="actions">
-      <button class="bascule" id="passif" aria-pressed="false"
-        title="Passive mode reads third-party indexes only. The target never sees your requests.">Passive only</button>
-      <a class="tele" id="teleJson" href="#" hidden>JSON</a>
-      <a class="tele" id="teleCsv" href="#" hidden>CSV</a>
-      <a class="tele" id="telePdf" href="#" hidden>PDF</a>
-      <span class="trace" id="trace"></span>
-    </div>
-
-    <p class="sub" style="margin-top:12px;font-size:12px">
-      Checking a token instead? <a href="swoge_scan.html" style="color:var(--pool)">SWOGE Scan</a>
-      reads what our AI has measured on tokens like it — same rule, every number with its sample size.</p>
-
-    <div class="state" id="state"></div>
   </div>
 
-  <div id="out" hidden>
+  <!-- LE CHOIX DU GENRE, peint depuis le catalogue du serveur. -->
+  <div class="genres" id="genres" role="group" aria-label="What to make"></div>
 
-    <!-- LES CALQUES. « Privacy by design » n est pas une phrase : c est ce
-         bouton, qui retire un calque du graphe ET des faits d un clic. -->
-    <div class="calques" role="group" aria-label="Layers">
-      <button class="calque" data-c="infrastructure" aria-pressed="true"><i class="pastille"></i>Infrastructure</button>
-      <button class="calque" data-c="organization" aria-pressed="true"><i class="pastille"></i>Organization</button>
-      <button class="calque" data-c="contacts" aria-pressed="true"><i class="pastille"></i>Contacts</button>
-      <button class="calque" data-c="chain" aria-pressed="true"><i class="pastille"></i>Chain</button>
-    </div>
+  <div class="atelier" id="atelier" hidden>
+    <label for="prompt" id="lblPrompt">Prompt</label>
+    <textarea id="prompt" placeholder="Describe what you want…"></textarea>
 
-    <section class="bloc" id="sConstats">
-      <h2>Findings</h2>
-      <p class="hint">What crossing the facts says — a single fact is rarely a result, the crossing is.
-        Each finding carries its pieces and their sources. Nothing here is a verdict.</p>
-      <div id="constatsBox"></div>
-    </section>
+    <div class="depose" id="depose" hidden>Drop an image, or click to choose — for image-to-video</div>
 
-    <section class="bloc" id="sConflits" hidden>
-      <h2>Sources disagree</h2>
-      <p class="hint">Two sources gave different answers on the same point. Both are shown, best-supported
-        first — nothing was picked for you. The one that is wrong is often the finding.</p>
-      <div id="conflitsBox"></div>
-    </section>
+    <div class="reglages" id="reglages"></div>
 
-    <section class="bloc" id="sGraphe">
-      <h2>Graph</h2>
-      <p class="hint">Each line is a documented relation with a source behind it, not a conclusion.
-        Hover a line to read its source. People are drawn apart from machines on purpose.</p>
-      <div class="toile" id="tuile">
-        <svg id="gr" viewBox="0 0 960 560" role="img" aria-label="Relations graph"></svg>
-        <div class="legende">
-          <span><i style="background:#1B5FE0"></i>Infrastructure</span>
-          <span><i style="background:#96650F"></i>Organization</span>
-          <span><i style="background:#12805A"></i>Contact</span>
-          <span><i style="background:#7A3E9D"></i>Chain</span>
-          <span><i style="background:#96650F;border-radius:2px"></i>Person</span>
-          <span><i style="background:#D8E2F0"></i>Dashed = not verified</span>
-        </div>
+    <div class="pied">
+      <div class="prix"><small>Price</small><span id="prix">—</span></div>
+      <div class="droite">
+        <button class="wallet" id="wallet">Connect wallet</button>
+        <button class="generer" id="generer" disabled>Generate</button>
       </div>
-    </section>
+    </div>
 
-    <section class="bloc" id="sFaits">
-      <h2>Facts</h2>
-      <p class="hint">Every statement a source made, its confidence and score, and where it came from.
-        A disputed value is flagged, not hidden. Filter with the layers above.</p>
-      <div id="faitsBox"></div>
-    </section>
-
-    <section class="bloc" id="sSources">
-      <h2>Sources reached</h2>
-      <p class="hint">Every connector this investigation ran, how long it took, and what it returned —
-        including the ones that timed out or refused us. This is the monitoring, in the open.</p>
-      <div id="sourcesBox"></div>
-    </section>
-
-    <section class="bloc">
-      <h2>What was not done</h2>
-      <p class="hint">Connectors left off for want of a key, connectors skipped in passive mode,
-        and the limits — all part of the result.</p>
-      <div id="offBox"></div>
-      <div class="bords"><ul id="bordsBox"></ul></div>
-    </section>
-
-  </div>
+    <div class="apercu" id="apercu">Your result will appear here, ready to download.</div>
   </div>
 
+  <section class="flux">
+    <h2 style="font-family:'Anton',sans-serif;font-size:17px;text-transform:uppercase;margin:0">How paying in $SWOGE will work</h2>
+    <p class="sub" style="font-size:12px;margin-top:4px">The flow is designed so a generation is credited only after the chain confirms the payment — never on the browser's word.</p>
+    <ol>
+      <li><b>Connect your wallet.</b> <span>Read-only until you approve a payment.</span></li>
+      <li><b>Pay the price shown, in $SWOGE.</b> <span>To the studio address, from your connected wallet.</span></li>
+      <li><b>The server reads the transaction on-chain.</b> <span>Right recipient, right token, right amount, enough confirmations — checked, never taken on trust.</span></li>
+      <li><b>The generation is credited once — and only once.</b> <span>Each transaction hash is single-use, so a payment can't be replayed for a second result.</span></li>
+      <li><b>Download, and keep the record.</b> <span>Every generation and its transaction stay in your history.</span></li>
+    </ol>
+  </section>
+
+  <section class="flux">
+    <h2 style="font-family:'Anton',sans-serif;font-size:17px;text-transform:uppercase;margin:0">What this page will not do</h2>
+    <div class="bords"><ul>
+      <li>No API key ever reaches your browser — every provider call is made server-side.</li>
+      <li>A generation is credited only after the payment is confirmed on-chain, never on the browser's claim.</li>
+      <li>A transaction hash is used once: no double-spend, no replay for a second generation.</li>
+      <li>A payment to the wrong address, in the wrong token, or for too little is refused — the amount is compared in base units, not floating point.</li>
+      <li>Nothing charges your wallet while the studio is in preparation.</li>
+    </ul></div>
+  </section>
+
+  </div>
   <!-- LA COLONNE DE DROITE, sans la carte « YOUR BALANCE » : cette page ne
        suit pas de solde, il n y a pas de `#bal` a recopier — une carte de
        solde y afficherait un chiffre invente. Restent les deux affiches, qui
@@ -987,260 +880,110 @@ tr.conteste td{background:rgba(192,57,43,.04)}
 
 <script>
 "use strict";
-/* ==================== SWOGE OSINT — LA PAGE ====================
- * Elle ne mesure rien : tout vient de /osint/v2, ou les gardes vivent. Ici
- * on MONTRE, et la seule chose que la page garantit, c est de ne jamais
- * montrer plus que ce que le serveur a envoye — pas de fait reconstitue,
- * pas de « probablement ».
+/* ==================== SWOGE STUDIO — LA PAGE ====================
+ * Elle lit le CATALOGUE du serveur et se peint : les modeles, leurs prix,
+ * leur etat. Ajouter un modele cote serveur le fait apparaitre ici sans
+ * qu on touche a cette page — c est le « systeme extensible » demande.
  *
- * Le serveur rend des FAITS : un triplet sujet-predicat-objet avec sa
- * source, son score, et s il est conteste. La page range ces faits en
- * quatre choses : les CONSTATS (le croisement), les CONTRADICTIONS (on ne
- * tranche pas), le GRAPHE (derive des faits) et la table des faits. Aucune
- * de ces vues ne connait les sources : elles lisent la meme forme. */
-function serveurOsint(){
+ * RIEN ne genere et rien ne paie : le studio est en preparation. Le bouton
+ * Generer explique ou on en est plutot que d echouer. Aucune cle ne vit
+ * ici : quand le studio ouvrira, c est le serveur qui appellera les
+ * fournisseurs, et c est le serveur qui verifiera le paiement on-chain. */
+function serveur(){
   try{ const q = new URLSearchParams(location.search).get("server");
        if(q) return String(q).replace(/^ws/,"http"); }catch(e){}
   return "https://web-production-220a3.up.railway.app";
 }
 const $ = s => document.querySelector(s);
-let RAPPORT = null, PASSIF = false;
-/* Les quatre calques, tous allumes au depart. */
-const CALQUES = { infrastructure:true, organization:true, contacts:true, chain:true };
-
 function ech(s){ return String(s==null?"":s).replace(/[&<>"']/g, c =>
-  ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c])); }
-function etat(msg, err, spin){
-  const el = $("#state"); el.className = "state" + (err?" err":"");
-  el.innerHTML = (spin?'<span class="spin"></span>':"") + ech(msg);
-}
-function tagConf(niveau, score, pourquoi){
-  const c = niveau==="HIGH"?"h":niveau==="MEDIUM"?"m":"l";
-  return '<span class="tag '+c+'" title="'+ech(pourquoi||"")+'">'+ech(niveau)+' '+(score||"")+'</span>';
-}
-function lien(url, texte){
-  if(!url) return "";
-  if(!/^https?:\/\//.test(url)) return '<span class="pourquoi">'+ech(texte||url)+'</span>';
-  return '<a href="'+ech(url)+'" target="_blank" rel="noopener nofollow">'+ech(texte||url)+' ↗</a>';
-}
+  ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])); }
+function nombre(n){ return Number(n||0).toLocaleString("en-US"); }
 
-/* ==================== L ENQUETE ==================== */
-async function enquete(){
-  const brut = $("#q").value.trim();
-  if(!brut){ etat("Type a target."); return; }
-  $("#go").disabled = true;
-  for(const id of ["teleJson","teleCsv","telePdf"]) $("#"+id).hidden = true;
-  etat("Fanning out across public sources…", false, true);
+let CAT = null, CHOISI = null, OUVERT = false;
+
+async function charge(){
   try{
-    const p = PASSIF ? "?passif=1" : "";
-    const r = await fetch(serveurOsint()+"/osint/v2/"+encodeURIComponent(brut)+p, { cache:"no-store" });
-    const j = await r.json();
-    if(!r.ok || j.erreur) throw new Error(j.erreur || ("HTTP "+r.status));
-    RAPPORT = j;
-    try{ history.replaceState(null,"",location.pathname+"?q="+encodeURIComponent(j.cible.type+":"+j.cible.valeur)); }catch(e){}
-    /* Les liens d export pointent la MEME enquete, servie autrement : le
-       serveur la sert du cache, le site vise ne repaie rien. */
-    const base = serveurOsint()+"/osint/v2/"+encodeURIComponent(j.cible.valeur)+p;
-    $("#teleJson").href = base;                         $("#teleJson").hidden = false;
-    $("#teleCsv").href  = serveurOsint()+"/osint/v2/"+encodeURIComponent(j.cible.valeur)+".csv"+p; $("#teleCsv").hidden = false;
-    $("#telePdf").href  = serveurOsint()+"/osint/v2/"+encodeURIComponent(j.cible.valeur)+".pdf"+p; $("#telePdf").hidden = false;
-    peins();
-    const nc = j.constats.length, nf = j.faits.length;
-    etat(j.cible.type+" "+j.cible.valeur+"  ·  "+nf+" fact"+(nf===1?"":"s")+"  ·  "
-       + nc+" finding"+(nc===1?"":"s")+"  ·  "+(j.ms/1000).toFixed(1)+"s"
-       + (j.doublonsFondus?("  ·  "+j.doublonsFondus+" duplicate"+(j.doublonsFondus===1?"":"s")+" merged"):""));
+    const r = await fetch(serveur()+"/studio/catalogue", { cache:"no-store" });
+    CAT = await r.json();
   }catch(e){
-    $("#out").hidden = true;
-    etat(String(e.message||e).slice(0,300), true);
-  }finally{ $("#go").disabled = false; }
-}
-
-/* ==================== LE PEINTRE ====================
- * Un seul peintre : rallumer un calque ne redemande rien, le rapport est
- * deja la. */
-function peins(){
-  const j = RAPPORT; if(!j) return;
-  $("#out").hidden = false;
-
-  /* -- la trace : cette enquete a-t-elle ete vue par la cible -- */
-  const tr = $("#trace");
-  tr.textContent = j.passif ? "passive · the target was never touched"
-                            : "active · the target saw our requests";
-  tr.className = "trace" + (j.passif ? "" : " actif");
-
-  /* -- les constats, en tete, tries par gravite (le serveur les trie) -- */
-  const gClasse = { HIGH:"g-haute", MEDIUM:"g-moyenne", LOW:"g-basse", NOTE:"g-info" };
-  $("#constatsBox").innerHTML = (j.constats||[]).length
-    ? j.constats.map(c =>
-        '<div class="constat '+(gClasse[c.etiquette]||"g-info")+'">'
-        + '<span class="grav">'+ech(c.etiquette||"NOTE")+'</span>'
-        + '<span class="dit">'+ech(c.dit)+'</span>'
-        + c.pieces.map(p => '<div class="piece">'+ech(p.predicat)+': '+ech(p.valeur)
-            +'  — '+(p.sources||[]).map(ech).join(", ")+'</div>').join("")
-        + '</div>').join("")
-    : '<p class="hint">Nothing crossed. That is a result, not an absence of work — read the facts below.</p>';
-
-  /* -- les contradictions : montrees, jamais tranchees -- */
-  const conflits = j.contradictions||[];
-  $("#sConflits").hidden = !conflits.length;
-  $("#conflitsBox").innerHTML = conflits.map(k =>
-    '<div class="conflit"><div class="quoi">'+ech(k.sujet.valeur)+' — '+ech(k.predicat)+'</div>'
-    + k.versions.map(v => '<div class="v"><b>'+ech(v.valeur)+'</b>'+tagConf(v.confiance,v.score)
-        +' <span class="pourquoi">'+(v.sources||[]).map(ech).join(", ")+'</span></div>').join("")
-    + '<div class="note">'+ech(k.note)+'</div></div>').join("");
-
-  /* -- les faits, filtres par calque -- */
-  peinsFaits();
-
-  /* -- les sources reached : le journal, qui EST le monitoring -- */
-  $("#sourcesBox").innerHTML = '<table class="liste"><thead><tr><th>Connector</th><th>On</th>'
-    + '<th>Result</th><th>Facts</th><th>ms</th></tr></thead><tbody>'
-    + (j.journal||[]).map(l =>
-        '<tr><td class="val">'+ech(l.c)+'</td><td class="val">'+ech(l.e)+'</td>'
-        + '<td>'+(l.etat==="erreur"?('<span style="color:var(--serpent)">'+ech(l.message||"error")+'</span>')
-                 : l.etat==="cache"?'cached' : l.etat==="budget"?'budget reached' : 'ok')+'</td>'
-        + '<td class="val">'+(l.faits||0)+'</td><td class="val">'+(l.ms||0)+'</td></tr>').join("")
-    + '</tbody></table>';
-
-  /* -- ce qui est eteint ou ecarte, et les limites -- */
-  const off = [
-    ...(j.connecteursEteints||[]).map(e => '<div class="cell"><div class="k">off</div><div class="v">'
-        +ech(e.nom)+' — '+ech(e.pourquoi)+(e.cout?' ('+ech(e.cout)+')':"")+'</div></div>'),
-    ...(j.connecteursEcartes||[]).map(e => '<div class="cell"><div class="k">skipped</div><div class="v">'
-        +ech(e.nom)+' — '+ech(e.pourquoi)+'</div></div>'),
-  ];
-  $("#offBox").innerHTML = off.length ? '<div class="grille" style="margin-bottom:12px">'+off.join("")+'</div>' : "";
-  $("#bordsBox").innerHTML = (j.limites||[]).map(l => "<li>"+ech(l)+"</li>").join("");
-
-  calques();
-  graphe();
-}
-
-/* Les faits en table, ranges par sujet, filtres par calque. Un fait dont
-   le sujet ET l objet sont eteints par les calques disparait ; on ne montre
-   pas une arete a moitie. */
-const CALQUE_TYPE = { domaine:"infrastructure", ip:"infrastructure", reseau:"infrastructure", url:"infrastructure",
-  organisation:"organization", personne:"contacts", email:"contacts", telephone:"contacts", pseudo:"contacts",
-  adresse:"chain", jeton:"chain" };
-function visible(e){ return CALQUES[CALQUE_TYPE[e.type] || "infrastructure"]; }
-
-function peinsFaits(){
-  const faits = (RAPPORT.faits||[]).filter(f => visible(f.sujet) && (!f.objet || visible(f.objet)));
-  $("#faitsBox").innerHTML = faits.length
-    ? '<table class="liste"><thead><tr><th>Subject</th><th>Says</th><th>Value</th>'
-      + '<th>Confidence</th><th>Source</th></tr></thead><tbody>'
-      + faits.map(f =>
-          '<tr'+(f.conteste?' class="conteste"':"")+'>'
-          + '<td class="val">'+ech(f.sujet.valeur)+'</td>'
-          + '<td>'+ech(f.predicat)+(f.conteste?' <span class="tag no">disputed</span>':"")+'</td>'
-          + '<td class="val">'+ech(f.objet?f.objet.valeur:f.valeur)+'</td>'
-          + '<td>'+tagConf(f.confiance,f.score,f.pourquoi)+'</td>'
-          + '<td>'+(f.sources||[]).map(sc => lien(sc, sc.replace(/^https?:\/\//,"").slice(0,40))).join("<br>")+'</td>'
-          + '</tr>').join("")
-      + '</tbody></table>'
-    : '<p class="hint">No facts in the layers you have left on.</p>';
-}
-
-function calques(){
-  document.querySelectorAll(".calque").forEach(b =>
-    b.setAttribute("aria-pressed", CALQUES[b.getAttribute("data-c")] ? "true" : "false"));
-}
-
-/* ==================== LE GRAPHE ====================
- * Quatre colonnes fixes : contacts et organisation a gauche, la cible au
- * centre, l infrastructure a droite, la chaine en bas. Une disposition FIXE
- * se relit d un scan a l autre. Aucune bibliotheque : une page qui explique
- * d ou vient chaque octet ne va pas charger un moteur de graphe chez un
- * tiers. */
-const COULEUR = { domaine:"#1B5FE0", ip:"#1B5FE0", url:"#1B5FE0", reseau:"#5B8DE8",
-  organisation:"#96650F", personne:"#96650F",
-  email:"#12805A", telephone:"#12805A", pseudo:"#12805A",
-  adresse:"#7A3E9D", jeton:"#7A3E9D" };
-const SOUS_MAX = 12;
-
-function graphe(){
-  const g = RAPPORT && RAPPORT.graphe;
-  const svg = $("#gr");
-  if(!g){ svg.innerHTML=""; return; }
-  let vus = 0;
-  const noeuds = g.noeuds.filter(nd => {
-    if(!CALQUES[nd.filtre]) return false;
-    if(nd.type==="jeton"||nd.type==="sousdomaine"){ vus++; return vus<=SOUS_MAX; }
-    return true;
-  });
-  const ids = new Set(noeuds.map(nd => nd.id));
-  const aretes = g.aretes.filter(a => ids.has(a.de) && ids.has(a.vers));
-
-  const gauche = noeuds.filter(nd => nd.filtre==="contacts" || nd.filtre==="organization");
-  const centre = noeuds.filter(nd => nd.cible);
-  const bas    = noeuds.filter(nd => nd.filtre==="chain" && !nd.cible);
-  const droite = noeuds.filter(nd => !gauche.includes(nd) && !centre.includes(nd) && !bas.includes(nd));
-
-  const L = 960;
-  const H = Math.max(320, 60 + Math.max(gauche.length, droite.length, 1)*42 + (bas.length?70:0));
-  svg.setAttribute("viewBox","0 0 "+L+" "+H);
-  const pos = {};
-  const col = (liste,x,ancre) => liste.forEach((nd,i) =>
-    pos[nd.id] = { x, y:(H-(bas.length?60:0))/(liste.length+1)*(i+1), ancre, n:nd });
-  col(gauche, 190, "end"); col(centre, L/2, "middle"); col(droite, L-190, "start");
-  bas.forEach((nd,i) => pos[nd.id] = { x:(L/(bas.length+1))*(i+1), y:H-30, ancre:"middle", n:nd });
-
-  const esc = t => String(t==null?"":t).replace(/[&<>"']/g, c =>
-    ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
-  let out = "";
-  for(const a of aretes){
-    const p = pos[a.de], q = pos[a.vers]; if(!p||!q) continue;
-    const cl = "arete " + (a.confiance==="HIGH"?"h":a.confiance==="LOW"?"l":"");
-    out += '<line class="'+cl+'" x1="'+p.x+'" y1="'+p.y.toFixed(1)+'" x2="'+q.x+'" y2="'+q.y.toFixed(1)+'">'
-         + '<title>'+esc(a.relation+"  —  "+a.confiance+"\n"+(a.source||""))+'</title></line>';
+    /* Le serveur muet ne doit pas laisser une page vide : on montre au moins
+       ce qui EST prevu, avec les prix, en repli. */
+    CAT = { ouvert:false, modeles:[
+      { id:"image-openai", genre:"image", nom:"Image", fournisseur:"OpenAI", prixSwoge:5000, actif:false, entree:"prompt", resolutions:["1024x1024","1536x1024","1024x1536"] },
+      { id:"video-grok", genre:"video", nom:"Video", fournisseur:"Grok Imagine", prixSwoge:25000, actif:false, entree:"image_ou_prompt", durees:[6,10], resolutions:["720p","1080p"] },
+      { id:"texte-claude", genre:"texte", nom:"Text", fournisseur:"Claude", prixSwoge:500, actif:false, entree:"prompt" },
+    ] };
   }
-  for(const id in pos){
-    const { x, y, ancre, n } = pos[id];
-    const c = COULEUR[n.type] || "#6B7C99";
-    const titre = esc(n.type.toUpperCase()+"  "+n.nom
-      + (n.attributs&&n.attributs.length ? "\n"+n.attributs.map(a=>a.quoi+": "+a.valeur).join("\n") : ""));
-    if(n.humain){
-      out += '<g><title>'+titre+'</title>'
-           + '<rect x="'+(x-9)+'" y="'+(y-9).toFixed(1)+'" width="18" height="18" rx="3" fill="#FFFBF2" stroke="'+c+'" stroke-width="2.5"></rect>'
-           + '<circle cx="'+x+'" cy="'+(y-2.5).toFixed(1)+'" r="2.8" fill="'+c+'"></circle>'
-           + '<path d="M'+(x-5)+' '+(y+6.5).toFixed(1)+' a5 5 0 0 1 10 0" fill="'+c+'"></path></g>';
-    } else if(n.cible){
-      out += '<g><title>'+titre+'</title><circle cx="'+x+'" cy="'+y.toFixed(1)+'" r="11" fill="'+c+'"></circle>'
-           + '<circle cx="'+x+'" cy="'+y.toFixed(1)+'" r="16" fill="none" stroke="'+c+'" stroke-opacity=".3"></circle></g>';
-    } else {
-      out += '<g><title>'+titre+'</title><circle cx="'+x+'" cy="'+y.toFixed(1)+'" r="6" fill="'+c
-           + (n.verifie===false?'" fill-opacity=".45':"")+'"></circle></g>';
-    }
-    const dx = ancre==="end"?-16:ancre==="start"?16:0;
-    const dy = ancre==="middle"?26:4;
-    const etiq = n.nom.length>30 ? n.nom.slice(0,29)+"…" : n.nom;
-    out += '<text x="'+(x+dx)+'" y="'+(y+dy).toFixed(1)+'" text-anchor="'+ancre
-         + '" font-family="\'Space Mono\',monospace" font-size="11" fill="#0B1B36">'+esc(etiq)+'</text>';
-  }
-  svg.innerHTML = out;
+  OUVERT = !!CAT.ouvert;
+  peintGenres();
 }
 
-/* ==================== LES GESTES ==================== */
-$("#go").addEventListener("click", enquete);
-$("#q").addEventListener("keydown", e => { if(e.key==="Enter") enquete(); });
-$("#passif").addEventListener("click", () => {
-  PASSIF = !PASSIF;
-  $("#passif").setAttribute("aria-pressed", PASSIF?"true":"false");
-  if(RAPPORT) enquete();          /* le mode change ce qu on interroge : on refait */
+const ICONE = { image:"🖼️", video:"🎬", texte:"✍️" };
+function peintGenres(){
+  $("#genres").innerHTML = CAT.modeles.map(m =>
+    '<button class="genre" data-id="'+ech(m.id)+'" aria-pressed="false">'
+    + '<div class="ic">'+(ICONE[m.genre]||"✨")+'</div>'
+    + '<div class="t">'+ech(m.nom||m.genre)+'</div>'
+    + '<div class="p">'+nombre(m.prixSwoge)+' $SWOGE</div>'
+    + '<div class="f">'+ech(m.fournisseur)+'</div>'
+    + (m.actif ? "" : '<div class="att">'+ech(m.enAttente ? "in preparation" : "soon")+'</div>')
+    + '</button>').join("");
+  document.querySelectorAll(".genre").forEach(b =>
+    b.addEventListener("click", () => choisir(b.getAttribute("data-id"))));
+}
+
+function choisir(id){
+  CHOISI = CAT.modeles.find(m => m.id === id);
+  if(!CHOISI) return;
+  document.querySelectorAll(".genre").forEach(b =>
+    b.setAttribute("aria-pressed", b.getAttribute("data-id")===id ? "true" : "false"));
+  $("#atelier").hidden = false;
+
+  const estVideo = CHOISI.genre === "video";
+  const estTexte = CHOISI.genre === "texte";
+  $("#lblPrompt").textContent = estTexte ? "Your rough idea" : "Prompt";
+  $("#prompt").placeholder = estVideo ? "Describe the motion, or leave blank if you upload an image…"
+    : estTexte ? "A few words — Claude turns them into a strong prompt…"
+    : "Describe the image you want…";
+  /* L upload n apparait que pour l image->video : ailleurs il n a pas de sens. */
+  $("#depose").hidden = !(estVideo && /image/.test(CHOISI.entree||""));
+
+  /* Les reglages viennent du modele : duree pour la video, resolution pour
+     l image et la video. Le serveur les declare, la page les affiche. */
+  const champs = [];
+  if(CHOISI.durees) champs.push(sel("Duration", CHOISI.durees.map(d => d+"s")));
+  if(CHOISI.resolutions) champs.push(sel("Resolution", CHOISI.resolutions));
+  $("#reglages").innerHTML = champs.join("");
+
+  $("#prix").textContent = nombre(CHOISI.prixSwoge)+" $SWOGE";
+  majGenerer();
+}
+function sel(nom, options){
+  return '<div class="champ"><label>'+ech(nom)+'</label><select>'
+    + options.map(o => '<option>'+ech(o)+'</option>').join("") + '</select></div>';
+}
+
+/* Le bouton Generer dit OU on en est : en preparation, il l explique ; plus
+   tard, il exigera le wallet puis le paiement. Il n echoue jamais en
+   silence. */
+function majGenerer(){
+  const b = $("#generer");
+  if(!OUVERT){ b.disabled = true; b.textContent = "In preparation"; return; }
+  b.disabled = false; b.textContent = "Pay "+nombre(CHOISI?CHOISI.prixSwoge:0)+" $SWOGE & generate";
+}
+
+$("#wallet").addEventListener("click", () => {
+  /* Quand le studio ouvrira, ce bouton demandera le wallet (lecture seule
+     jusqu au paiement). Aujourd hui il dit franchement l etat. */
+  $("#wallet").textContent = OUVERT ? "Wallet — coming with launch" : "In preparation";
 });
-document.querySelectorAll(".calque").forEach(b => b.addEventListener("click", () => {
-  const c = b.getAttribute("data-c");
-  CALQUES[c] = !CALQUES[c];
-  calques(); peinsFaits(); graphe();
-}));
+$("#generer").addEventListener("click", () => {
+  $("#apercu").textContent = "Studio is in preparation — generation is not live yet. "
+    + "Come back once the models and $SWOGE payment are switched on.";
+});
 
-/* Un lien partage porte sa cible : ?q=domaine:acme.io se lance tout seul. */
-(function(){
-  let q = "";
-  try{ q = new URLSearchParams(location.search).get("q") || ""; }catch(e){}
-  if(q){ $("#q").value = q.replace(/^[a-z]+:/,""); enquete(); }
-  else { etat("Paste a domain, an IP, a website or an on-chain address — yours, or one you were asked to check."); $("#q").focus(); }
-})();
+charge();
 </script>
+
 </body>
 </html>

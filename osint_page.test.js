@@ -8,8 +8,8 @@
  * graphe (derive des faits), la table des faits. Cet essai reecrit l ancien
  * sur son intention, pas sur ses champs :
  *
- *   1. La page dit ce qu elle fait ET ce qu elle refuse, avant qu on tape.
- *   2. Un nom est renvoye ; un domaine, un email passent.
+ *   1. La page dit ce qu elle fait ET comment elle traite un nom, avant qu on tape.
+ *   2. Un nom rend des candidats publics SEPARES ; un domaine, un email passent aussi.
  *   3. Les constats sont en tete, avec leurs pieces et leur gravite.
  *   4. Une personne se dessine autrement qu une machine, dans le graphe.
  *   5. Eteindre un calque l eteint PARTOUT : faits ET graphe.
@@ -65,25 +65,51 @@ const T = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', 
   console.log('\n-- 1. la page dit ce qu elle fait, et ce qu elle refuse --');
   {
     const html = fs.readFileSync(path.join(SITE, 'swoge_osint.html'), 'utf8');
-    ok(/name="description"[^>]*cannot be searched by a person/i.test(html), 'la description refuse la recherche par personne');
+    ok(/name="description"[^>]*separate public candidates/i.test(html), 'la description dit qu un nom rend des candidats separes');
     ok(/<title>[^<]*SWOGE OSINT<\/title>/i.test(html), 'le titre porte OSINT');
     const page = await ouvre('');
     const garde = await page.textContent('.garde');
-    ok(/not a starting point|not people/i.test(garde), 'la garde est posee avant qu on tape');
-    ok(/data brokers|leaked databases/i.test(garde), 'et elle dit POURQUOI un nom ne marche pas');
+    ok(/candidates|never a confirmed identity/i.test(garde), 'la garde est posee avant qu on tape');
+    ok(/same name is not the same person|leaked database/i.test(garde), 'et elle dit COMMENT un nom est traite : rien n est fusionne');
     const champs = await page.$$eval('input', (e) => e.length);
     eq(champs, 1, 'un seul champ de saisie');
     await page.close();
   }
 
-  console.log('\n-- 2. un nom est renvoye, un domaine et un email passent --');
+  console.log('\n-- 2. un nom rend des candidats SEPARES, jamais fusionnes --');
   {
-    const page = await ouvre('', { code: 400, reponse: { erreur: 'A person’s name is not a starting point. Start from a domain, an IP, a website or an on-chain address.' } });
-    await page.fill('#q', 'Jean Dupont');
+    /* Deux personnes portent « Ada Lovelace » : une entite Wikidata, un
+       compte GitHub. Le rapport les garde DISTINCTES — deux lignes PUBLIC
+       CANDIDATE de valeurs differentes — et chacune est marquee LOW / non
+       verifiee. Porter le meme nom n est pas etre la meme personne, et la
+       page le montre sans jamais les fondre. */
+    const CANDIDATS = {
+      cible: { type: 'personne', valeur: 'Ada Lovelace' }, ms: 140, passif: false, doublonsFondus: 0,
+      constats: [], contradictions: [], journal: [{ c: 'wikidata', e: 'Ada Lovelace', etat: 'ok', faits: 2, ms: 90 }],
+      connecteursEteints: [], connecteursEcartes: [],
+      limites: ['A person’s name returns SEPARATE public candidates (Wikidata, GitHub) — never a confirmed identity. Same name is not the same person, and nothing is merged.'],
+      faits: [
+        { sujet: { type: 'personne', valeur: 'Ada Lovelace' }, predicat: 'PUBLIC CANDIDATE',
+          objet: { type: 'candidat', valeur: 'Ada Lovelace — Q7259' }, confiance: 'LOW', score: 12, verifie: false,
+          conteste: false, sources: ['https://www.wikidata.org/wiki/Q7259'], pourquoi: 'Same name is not the same person — unverified.' },
+        { sujet: { type: 'candidat', valeur: 'Ada Lovelace — Q7259' }, predicat: 'DESCRIBED AS',
+          valeur: 'English mathematician, 1815–1852', confiance: 'LOW', score: 12, verifie: false, conteste: false,
+          sources: ['https://www.wikidata.org/wiki/Q7259'] },
+        { sujet: { type: 'personne', valeur: 'Ada Lovelace' }, predicat: 'PUBLIC CANDIDATE',
+          objet: { type: 'candidat', valeur: '@ada (GitHub)' }, confiance: 'LOW', score: 12, verifie: false,
+          conteste: false, sources: ['https://github.com/ada'], pourquoi: 'Same name is not the same person — unverified.' },
+      ],
+    };
+    const page = await ouvre('', { reponse: CANDIDATS });
+    await page.fill('#q', 'Ada Lovelace');
     await page.click('#go');
-    await page.waitForTimeout(200);
-    ok(/starting point/i.test(await page.textContent('#state')), 'le nom est refuse, avec la raison');
-    eq(await page.isHidden('#out'), true, 'et aucun rapport n est montre');
+    await page.waitForSelector('#out:not([hidden])');
+    ok(/personne/i.test(await page.textContent('#state')), 'le nom est accepte, pas refuse');
+    const rows = await page.$$eval('#faitsBox tbody tr', (tr) => tr.map((x) => x.textContent));
+    const cands = rows.filter((l) => /PUBLIC CANDIDATE/.test(l));
+    eq(cands.length, 2, 'deux candidats, un par source');
+    ok(/Q7259/.test(cands.join('|')) && /@ada/.test(cands.join('|')), 'et ils restent distincts : Wikidata ET GitHub, jamais fondus');
+    ok(cands.every((l) => /LOW/.test(l)), 'chaque candidat est marque LOW');
     await page.close();
   }
 
@@ -171,7 +197,7 @@ const T = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', 
     ok(/dns|rdap|certificats|pages/i.test(src), 'le journal des connecteurs est montre');
     const bords = await page.$$eval('#bordsBox li', (e) => e.map((x) => x.textContent));
     ok(bords.length >= 5, 'les limites sont listees [' + bords.length + ']');
-    ok(bords.some((b) => /cannot be searched by a person/i.test(b)), 'on ne cherche pas par personne');
+    ok(bords.some((b) => /separate public candidates/i.test(b)), 'un nom rend des candidats separes, jamais une identite');
     ok(bords.some((b) => /No password|secret/i.test(b)), 'aucun secret');
     /* Les connecteurs eteints faute de cle sont montres, pas tus. */
     const off = await page.textContent('#offBox');
@@ -1273,7 +1299,7 @@ const RELEVE = {
  "passif": false,
  "budgetAtteint": false,
  "limites": [
-  "Seeds are domains, IPs, websites and on-chain addresses. This tool cannot be searched by a person’s name.",
+  "A person’s name returns SEPARATE public candidates (Wikidata, GitHub) — never a confirmed identity. Same name is not the same person, and nothing is merged.",
   "E-mail addresses, usernames and phone numbers are selectors: closed questions about them, never an expansion into a person.",
   "No leaked or private database is queried. No login, paywall or anti-bot protection is bypassed. robots.txt is obeyed.",
   "No password, hash or secret is ever fetched, stored or shown — breach checks report presence and data categories only.",

@@ -146,12 +146,12 @@ video{ max-width:100%; }
      versions se font concurrence et aucune ne gagne.
      ================================================================= -->
 <link rel="canonical" href="https://swoleeswoge.dog/swoge_osint.html">
-<meta name="description" content="Free OSINT on a domain or an IP. Type a domain and see what it publishes about itself: DNS, registry, certificate logs, and the professional contacts the organisation prints on its own pages — each line with the URL it came from. Domains only: this tool cannot be searched by a person’s name, e-mail or phone.">
+<meta name="description" content="Free OSINT on a domain, IP, e-mail, on-chain address — or a name. A name returns SEPARATE public candidates (Wikidata, GitHub), never a confirmed identity: same name is not the same person, and nothing is merged. Every fact carries the URL it came from.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="SWOGE WORLD">
 <meta property="og:locale" content="en_US">
 <meta property="og:title" content="Who is behind this domain? · SWOGE OSINT">
-<meta property="og:description" content="Free OSINT on a domain or an IP. Type a domain and see what it publishes about itself: DNS, registry, certificate logs, and the professional contacts the organisation prints on its own pages — each line with the URL it came from. Domains only: this tool cannot be searched by a person’s name, e-mail or phone.">
+<meta property="og:description" content="Free OSINT on a domain, IP, e-mail, on-chain address — or a name. A name returns SEPARATE public candidates (Wikidata, GitHub), never a confirmed identity: same name is not the same person, and nothing is merged. Every fact carries the URL it came from.">
 <meta property="og:url" content="https://swoleeswoge.dog/swoge_osint.html">
 <meta property="og:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
 <meta property="og:image:width" content="1200">
@@ -159,7 +159,7 @@ video{ max-width:100%; }
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@SwoleDogeSwoge">
 <meta name="twitter:title" content="Who is behind this domain? · SWOGE OSINT">
-<meta name="twitter:description" content="Free OSINT on a domain or an IP. Type a domain and see what it publishes about itself: DNS, registry, certificate logs, and the professional contacts the organisation prints on its own pages — each line with the URL it came from. Domains only: this tool cannot be searched by a person’s name, e-mail or phone.">
+<meta name="twitter:description" content="Free OSINT on a domain, IP, e-mail, on-chain address — or a name. A name returns SEPARATE public candidates (Wikidata, GitHub), never a confirmed identity: same name is not the same person, and nothing is merged. Every fact carries the URL it came from.">
 <meta name="twitter:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="/img/site/icone-32.png">
@@ -869,18 +869,18 @@ tr.conteste td{background:rgba(192,57,43,.04)}
 
     <div class="bar">
       <input id="q" type="text" spellcheck="false" autocapitalize="off" autocorrect="off"
-             placeholder="example.com · 8.8.8.8 · name@company.com · 0x… · username"
+             placeholder="example.com · 8.8.8.8 · name@company.com · 0x… · Ada Lovelace · AS15169 · CVE-2021-44228"
              aria-label="Domain, IP, website, on-chain address, or a selector to check">
       <button id="go">Investigate</button>
     </div>
 
     <!-- La garde, avant le premier essai et non apres la deception. -->
     <div class="garde">
-      <b>Machines and accounts, not people.</b><br>
-      You start from a domain, an IP, a website or an on-chain address. A person's name is not a
-      starting point — with lawful sources a name search returns nothing, and what makes it work
-      elsewhere (data brokers, leaked databases) is exactly what this tool does not query. A person
-      appears below only when an organisation published them on its own page.
+      <b>Public candidates, never a confirmed identity.</b><br>
+      You start from a domain, an IP, a website, an on-chain address — or a person's name. A name is
+      honest, not magic: it returns SEPARATE public candidates (a Wikidata entity, a GitHub account),
+      each kept apart and marked unverified. Same name is not the same person, and nothing is merged.
+      No leaked database is queried, and no password or secret is ever shown.
     </div>
 
     <div class="actions">
@@ -1122,7 +1122,8 @@ function peins(){
    le sujet ET l objet sont eteints par les calques disparait ; on ne montre
    pas une arete a moitie. */
 const CALQUE_TYPE = { domaine:"infrastructure", ip:"infrastructure", reseau:"infrastructure", url:"infrastructure",
-  organisation:"organization", personne:"contacts", email:"contacts", telephone:"contacts", pseudo:"contacts",
+  vulnerabilite:"infrastructure",
+  organisation:"organization", personne:"contacts", candidat:"contacts", email:"contacts", telephone:"contacts", pseudo:"contacts",
   adresse:"chain", jeton:"chain" };
 function visible(e){ return CALQUES[CALQUE_TYPE[e.type] || "infrastructure"]; }
 
@@ -1154,8 +1155,8 @@ function calques(){
  * se relit d un scan a l autre. Aucune bibliotheque : une page qui explique
  * d ou vient chaque octet ne va pas charger un moteur de graphe chez un
  * tiers. */
-const COULEUR = { domaine:"#1B5FE0", ip:"#1B5FE0", url:"#1B5FE0", reseau:"#5B8DE8",
-  organisation:"#96650F", personne:"#96650F",
+const COULEUR = { domaine:"#1B5FE0", ip:"#1B5FE0", url:"#1B5FE0", reseau:"#5B8DE8", vulnerabilite:"#B23B3B",
+  organisation:"#96650F", personne:"#96650F", candidat:"#96650F",
   email:"#12805A", telephone:"#12805A", pseudo:"#12805A",
   adresse:"#7A3E9D", jeton:"#7A3E9D" };
 const SOUS_MAX = 12;

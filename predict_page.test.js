@@ -45,6 +45,15 @@ var T={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'ap
     courbe: [1000,1010,1000,1010,1020,1030], note:'Paper only, shared, server-side.'
   };
   await page.route(/\/predict\/etat/, function(r){ r.fulfill({status:200,contentType:'application/json',body:JSON.stringify(predictEtat)}); });
+  /* Étage 1 PancakeSwap : les vrais rounds + côtes, la porte EV (papier). */
+  var pancakeEtat = {
+    marche:'BNB', paper:true, roundSec:300, fee:0.03, mise:0.01, gaz:0.0006, marge:0.05, enPause:false, maj:Date.now(),
+    round:{ epoch:517724, bull:0.1, bear:0.5, total:0.6, coteBull:5.4, coteBear:1.16,
+            decision:{ side:'BULL', cote:5.4, ev:1.9, prob:55, wouldBet:true, raison:'EV +190% at 5.40x' } },
+    banque:{ depart:1, solde:1.05, pl:0.05, roi:5, unite:'BNB', wins:3, losses:2, skips:7, mises:5, winRate:60 },
+    dernier:[], note:'Paper only.'
+  };
+  await page.route(/\/predict\/pancake/, function(r){ r.fulfill({status:200,contentType:'application/json',body:JSON.stringify(pancakeEtat)}); });
   /* Faux WS allMids. */
   await page.addInitScript(function(){
     window.__sub=[];
@@ -125,6 +134,18 @@ var T={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'ap
     ok(/paper/i.test(body) && /no real money|nothing signs|no order/i.test(body),'papier, aucun ordre');
     var src=fs.readFileSync(path.join(SITE,'swoge_predict.html'),'utf8')+fs.readFileSync(path.join(SITE,'predict_moteur.js'),'utf8');
     ok(!/guaranteed|sure win|privateKey|sendTransaction|signTransaction/i.test(src),'aucun « garanti », aucune signature, aucune cle');
+  }
+
+  console.log('-- 6. étage 1 PancakeSwap : vrais rounds, côtes, porte EV (papier) --');
+  {
+    await page.waitForFunction(function(){ return /517724/.test(document.getElementById('pkLigne').textContent||''); },null,{timeout:8000});
+    var ligne=await page.textContent('#pkLigne');
+    ok(/Round #517724/.test(ligne),'le vrai round PancakeSwap est montré [#517724]');
+    ok(/5\.40x/.test(ligne) && /1\.16x/.test(ligne),'les deux côtes BULL/BEAR sont là');
+    ok(/WOULD BET BULL/i.test(ligne),'et la décision EV : on miserait BULL sur la grosse côte');
+    var bank=await page.textContent('#pkBank');
+    ok(/Skipped/i.test(bank) && /7/.test(bank),'le compteur de SAUTS (côtes pourries) est montré');
+    ok(/BNB/.test(bank),'la caisse est en BNB');
   }
 
   await nav.close(); await new Promise(function(s){srv.close(s);});

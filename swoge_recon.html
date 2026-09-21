@@ -1,0 +1,1258 @@
+<!DOCTYPE html>
+<html lang="en">
+<!-- Cette page n avait ni doctype ni balise `html` : elle s affichait donc en
+     mode QUIRKS, ou le navigateur imite les fautes des annees 90, et elle ne
+     pouvait declarer aucune langue. Mesure faite avant de la changer : au
+     passage en mode standard, aucun de ses 139 elements ne bouge, ni a 390 ni
+     a 1280 — seule la hauteur de `body` se remet a celle de son contenu. -->
+
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>
+/* ================== CORRECTIFS COMMUNS ==================
+ * Bloc identique sur les vingt-cinq pages. Il se pose juste apres le viewport
+ * pour qu'aucune feuille de style de la page ne puisse le prendre de vitesse.
+ *
+ * LE DOUBLE-TAP NE ZOOME PLUS. Deux appuis rapproches sur un bouton — tirer,
+ * tirer ; miser, miser — etaient lus comme un double-tap, et la page grossissait.
+ * On jouait le coup suivant a moitie hors de l'ecran et il fallait pincer pour
+ * revenir. `manipulation` supprime CE geste, et lui seul : le pincement pour
+ * zoomer reste possible, ce qui n'aurait pas ete le cas avec un
+ * `user-scalable=no` dans le viewport — la solution courante, qui prive aussi
+ * les gens qui zooment pour lire. Les 300 ms d'attente avant que le clic parte
+ * disparaissent avec, en prime.
+ *
+ * LA SURFACE DE JEU, elle, ne doit rien laisser passer : un doigt qui glisse
+ * sur un plateau ne doit pas faire defiler la page derriere.
+ *
+ * LES CIBLES : le bouton menu tombait a 38x38 sur telephone, sous les 44 px
+ * recommandes — et c'est le seul chemin vers le depot, le retrait et le compte.
+ * ========================================================= */
+html{ -webkit-text-size-adjust:100%; }
+
+/* ---- ON RELEVE LE NOIR, PARTOUT ----
+ *
+ * Les tables etaient presque entierement noires : 80 % des pixels du casino
+ * sous le seuil du visible, 96 % au Coin Pusher, contre 58 % au hall. A cote
+ * du hall, chaque jeu paraissait eteint.
+ *
+ * Le calque est en `screen`, pas en voile blanc, et la difference est tout :
+ *
+ *   screen(a, g) = 255 - (255 - a)(255 - g) / 255
+ *
+ * Le NOIR monte a la valeur du calque, le BLANC ne bouge pas d'un cran. Les
+ * plaques peintes, les jetons et les cartes gardent donc exactement leur
+ * eclat — seuls les creux se remplissent. Un voile blanc a 5 %, lui, aurait
+ * laiteuse les cartes en meme temps.
+ *
+ * `filter: brightness()` est ecarte pour deux raisons : il MULTIPLIE, donc le
+ * noir reste noir — or c'est justement le noir qu'on veut relever — et un
+ * filtre fait de son element le repere de tout descendant en position fixe,
+ * ce qui nous a deja coute un cadre de palier de deux cents pixels sur le Spin.
+ *
+ * `pointer-events:none` : le calque couvre tout l'ecran, il ne doit rien
+ * intercepter. Verifie par un vrai clic sur la bulle de profil, avec et sans.
+ *
+ * Une seule valeur a regler ici, et elle vaut pour les vingt-six pages. */
+html::after{ content:""; position:fixed; inset:0; pointer-events:none;
+  z-index:2147483000; background:#12121a; mix-blend-mode:screen; }
+button, a, input, select, textarea, label, summary,
+[role="button"], [onclick],
+.card, .chipbtn, .btn, .tile, .sbet, .qclaim, .abtn, .pct, .chip, .sday{
+  touch-action:manipulation;
+}
+canvas{ touch-action:none; }
+
+/* ---- UNE VIDEO NE PEUT PLUS ETRE PLUS LARGE QUE SA PLACE ----
+ *
+ * Signale, capture a l appui : sur telephone, l en-tete de SWOGE BET et la
+ * rangee de navigation s affichent a 59 % de la largeur de l ecran, tout
+ * ratatines, pendant que la banniere et les cartes en dessous occupent bien
+ * toute la largeur. Deux echelles sur la meme page.
+ *
+ * Ce n est pas l en-tete qui a retreci : c est TOUTE LA PAGE qui a ete
+ * degonflee. Quand un element deborde en largeur, iOS ne coupe pas et ne
+ * replie pas — il reduit l echelle de la page entiere pour faire tenir le
+ * document. L en-tete, lui, fait 100 % de la FENETRE (390 px) et non du
+ * document (772 px) : degonfle du meme coup, il n occupe plus que la moitie
+ * de l ecran. Le contenu large, lui, remplit l ecran. C est exactement ce que
+ * montre la capture, et la page porte deja ce constat ailleurs :
+ * « le telephone dezoomait toute la page pour la faire tenir ».
+ *
+ * Ce qui debordait : la banniere video. `<video width="912" height="600">` —
+ * ces attributs sont des indices de presentation, c est-a-dire une largeur de
+ * 912 px si la regle d auteur qui dit `width:100%` ne s applique pas, ou si le
+ * moteur recalcule la largeur depuis `aspect-ratio` quand `max-height` mord.
+ * Mesure, la regle neutralisee : document a 772 px pour une fenetre de 390, et
+ * un en-tete qui occuperait 51 % de l ecran.
+ *
+ * Chaque `<img>` du site etait deja borne — `img{max-width:100%}`. Aucune des
+ * vingt et une pages qui portent une `<video>` ne le faisait pour elle. Le
+ * garde manquait pour un seul type de balise, et c est celui qu on a mis en
+ * pleine largeur en haut de trois pages.
+ *
+ * Pose ici, dans le bloc commun, et pas dans la regle de chaque banniere : ce
+ * n est pas une decision de mise en page, c est un plancher. Une banniere qui
+ * veut deborder devra le dire, et personne ne le veut. */
+video{ max-width:100%; }
+.menubtn{ min-width:44px; min-height:44px; }
+</style>
+
+<title>Who is behind this domain? · SWOGE Recon</title>
+<style>
+  /* Les cases mesurees : une ligne par case, l'effectif TOUJOURS a cote du
+     chiffre. Sans lui, « -43,7 % » se lit pareil qu'il porte sur six lectures
+     ou sur six cents. */
+  #mesureCases{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+  .mc-l{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:11px;
+        background:#F7FAFF;border:1px solid #E6EDF9}
+  .mc-q{flex:1 1 auto;min-width:0;font:600 13px/1.35 'Outfit',system-ui,sans-serif;color:#22324e}
+  .mc-q b{display:block;font:700 10px/1.3 'Inter',system-ui,sans-serif;letter-spacing:.6px;
+          text-transform:uppercase;color:#8A99B5}
+  .mc-v{flex:0 0 auto;font:800 15px/1 'Outfit',system-ui,sans-serif;font-variant-numeric:tabular-nums}
+  .mc-n{flex:0 0 auto;font:600 10px/1 'JetBrains Mono',ui-monospace,monospace;color:#A3B0C8}
+  .mc-up{color:#0F8A4F} .mc-dn{color:#B3261E}
+  /* Un fait de contrat n'a pas besoin d'une moyenne : il vaut pour lui-meme. */
+  #mesureFaits{display:flex;flex-wrap:wrap;gap:7px;margin:4px 0 2px}
+  .mf{display:inline-flex;align-items:center;gap:7px;padding:7px 11px;border-radius:999px;
+      background:#FDECEC;border:1px solid #F6C9C6;color:#B3261E;
+      font:700 12px/1 'Outfit',system-ui,sans-serif}
+  .mf i{font-style:normal;font:600 9.5px/1 'JetBrains Mono',ui-monospace,monospace;opacity:.7}
+  .mc-rien{padding:14px 2px;color:#8A99B5;font:500 13px/1.5 'Outfit',system-ui,sans-serif}
+  .mc-part{display:flex;align-items:center;gap:12px;margin-top:12px;flex-wrap:wrap}
+  #mcCarte{border:0;border-radius:11px;padding:11px 16px;cursor:pointer;background:#1B5FE0;color:#fff;
+           font:800 13px/1 'Outfit',system-ui,sans-serif}
+  #mcCarte:hover{background:#1750c4}
+  #mcCarte:disabled{opacity:.55;cursor:default}
+  .mc-dit{font:600 12px/1.4 'Outfit',system-ui,sans-serif;color:#6B7C99}
+</style>
+
+<!-- ==================== REFERENCEMENT ET PARTAGE ====================
+     Bloc identique sur toutes les pages, pose juste apres le titre.
+
+     L ICONE. Vingt-trois pages sur vingt-huit n en avaient aucune, et les cinq
+     qui en portaient une pointaient vers trois fichiers differents — dont un
+     qui n existe pas. C est la premiere chose qu on cherche pour retrouver un
+     onglet, et Google la montre a cote du resultat.
+
+     LE PARTAGE. Aucune page ne portait de balise Open Graph : un lien colle
+     dans Telegram, sur X ou dans Discord n affichait ni titre, ni resume, ni
+     image — juste l adresse nue. Pour un projet qui vit dans Telegram, c est
+     le lien lui-meme qui faisait le travail de vitrine, et il ne le faisait
+     pas.
+
+     L ADRESSE CANONIQUE dit au moteur quelle est LA page, quand la meme est
+     atteignable avec un `?game=`, un `#` ou un `www`. Sans elle, les deux
+     versions se font concurrence et aucune ne gagne.
+     ================================================================= -->
+<link rel="canonical" href="https://swoleeswoge.dog/swoge_recon.html">
+<meta name="description" content="Type a domain and see what it publishes about itself: DNS, registry, certificate logs, and the professional contacts the organisation prints on its own pages — each line with the URL it came from. Domains only: this tool cannot be searched by a person’s name, e-mail or phone.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="SWOGE WORLD">
+<meta property="og:locale" content="en_US">
+<meta property="og:title" content="Who is behind this domain? · SWOGE Recon">
+<meta property="og:description" content="Type a domain and see what it publishes about itself: DNS, registry, certificate logs, and the professional contacts the organisation prints on its own pages — each line with the URL it came from. Domains only: this tool cannot be searched by a person’s name, e-mail or phone.">
+<meta property="og:url" content="https://swoleeswoge.dog/swoge_recon.html">
+<meta property="og:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:site" content="@SwoleDogeSwoge">
+<meta name="twitter:title" content="Who is behind this domain? · SWOGE Recon">
+<meta name="twitter:description" content="Type a domain and see what it publishes about itself: DNS, registry, certificate logs, and the professional contacts the organisation prints on its own pages — each line with the URL it came from. Domains only: this tool cannot be searched by a person’s name, e-mail or phone.">
+<meta name="twitter:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/img/site/icone-32.png">
+<link rel="apple-touch-icon" href="/img/site/icone-180.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta name="theme-color" content="#1B5FE0">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+<style>
+/* ---- LA PALETTE PASSE AU CLAIR ----
+ * Les noms de variables ne changent pas — seule leur VALEUR bascule, pour que
+ * les couleurs posees en ligne par le script (`style="color:var(--serpent)"`,
+ * `style="background:var(--believer)"`) suivent sans qu on touche au JS.
+ * `--paper` etait #EAF2FF, un texte clair pose sur un fond noir : sur un fond
+ * clair il aurait disparu, il devient donc l encre marine #0B1B36.
+ * `--believer` / `--serpent` / `--neutral` / `--pool` retrouvent le vert, le
+ * rouge, l ambre et le bleu que les fonds teintes de cette feuille
+ * (`rgba(95,209,160,.14)`, `rgba(232,120,92,.14)`…) supposaient depuis le
+ * debut, assombris juste ce qu il faut pour rester lisibles sur du blanc. */
+:root{
+  --void:#EEF3FB; --void2:#FFFFFF; --panel:#FFFFFF; --panel2:#E1E9F6; --line:#E1E9F6;
+  --paper:#0B1B36; --dim:#6B7C99; --believer:#12805A; --serpent:#C0392B; --neutral:#96650F; --pool:#1B5FE0;
+  --gold:#1B5FE0; --goldlite:#EAF1FF; --cream:#0A1F44; --r:3px;
+}
+*{box-sizing:border-box}
+/* ---- LE FOND DE PAGE, EN TROIS COUCHES, TOUTES TRAITEES ----
+ * Cette page posait le noir a TROIS endroits : `body{background:var(--void)}`,
+ * un `body::after` (photo de grain en `luminosity`) et un `body::before`
+ * (deux halos or). Deux pseudo-elements de meme specificite se REMPLACENT au
+ * lieu de s additionner : n en neutraliser qu un rend la main a l autre et la
+ * page reste sombre. Les deux sont donc SUPPRIMES, pas surcharges — le grain
+ * en `luminosity` grisait le blanc, les halos or n avaient plus de fond noir
+ * ou se lire. Le fond est ecrit en dur ici, comme sur les pages deja passees
+ * au clair, pour qu aucune valeur de variable ne puisse le reprendre. */
+html,body{margin:0;padding:0;overflow-x:hidden;max-width:100%;background:#EEF3FB;color:#0B1B36}
+body{font-family:'Archivo',system-ui,sans-serif;font-size:14px;line-height:1.55}
+.wrap{position:relative;z-index:2}
+/* `container-type:inline-size` : les `vw` du titre mesuraient la fenetre
+   entiere, pas la colonne retrecie par les deux cotes — voir `8cqi` plus bas. */
+.wrap{max-width:1080px;margin:0 auto;padding:32px 20px 90px;container-type:inline-size}
+.mono{font-family:'Space Mono',monospace}
+
+/* header */
+.top{border-bottom:1px solid var(--line);padding-bottom:20px;margin-bottom:24px}
+.kick{font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--dim)}
+h1{font-family:'Anton',sans-serif;font-size:clamp(30px,8cqi,40px);letter-spacing:.01em;text-transform:uppercase;margin:6px 0 0}
+h1 em{font-style:normal;color:var(--gold)}
+.sub{color:var(--dim);font-size:13px;margin-top:6px;max-width:560px}
+
+/* input */
+.bar{display:flex;gap:10px;flex-wrap:wrap;margin-top:20px}
+.bar input{flex:1;min-width:0;width:100%;background:var(--panel);color:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:11px 13px;font-family:'Space Mono',monospace;font-size:12.5px}
+.bar input:focus{outline:2px solid var(--believer);outline-offset:1px}
+button{font-family:'Anton',sans-serif;font-size:16px;letter-spacing:.04em;text-transform:uppercase;background:var(--gold);color:#FFFFFF;border:0;border-radius:var(--r);padding:12px 24px;cursor:pointer}
+button:hover{transform:scale(1.03);filter:brightness(1.06)}
+button:disabled{opacity:.5;cursor:not-allowed}
+button.ghost{background:transparent;color:var(--dim);border:1px solid var(--line)}
+button.ghost:hover{color:var(--paper);border-color:var(--believer);filter:none}
+
+.state{margin-top:14px;font-family:'Space Mono',monospace;font-size:11.5px;color:var(--dim);min-height:16px}
+.state.err{color:var(--serpent)}
+.spin{display:inline-block;width:9px;height:9px;border:1.5px solid var(--line);border-top-color:var(--believer);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-1px;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* token id */
+.tokenhead{display:none;align-items:baseline;gap:14px;flex-wrap:wrap;margin-top:26px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.tokenhead .nm{font-family:'Anton',sans-serif;font-size:22px;font-weight:600}
+.tokenhead .sy{font-family:'Space Mono',monospace;color:var(--believer);font-size:13px}
+.tokenhead .ct{font-family:'Space Mono',monospace;color:var(--dim);font-size:11px;word-break:break-all}
+
+/* verdict band — the signature element */
+.health{display:none;margin-top:24px;border-radius:var(--r);padding:18px 20px;border:1px solid var(--line)}
+.health.green{background:rgba(95,209,160,.08);border-color:rgba(95,209,160,.4);border-left:4px solid var(--believer)}
+.health.orange{background:rgba(199,161,94,.08);border-color:rgba(199,161,94,.4);border-left:4px solid var(--neutral)}
+.health.red{background:rgba(232,120,92,.08);border-color:rgba(232,120,92,.4);border-left:4px solid var(--serpent)}
+.health .grade{font-family:'Anton',sans-serif;font-size:24px;text-transform:uppercase;letter-spacing:.02em;display:flex;align-items:center;gap:12px}
+.health .grade .badge{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.12em;text-transform:uppercase;padding:4px 10px;border-radius:20px;font-weight:600}
+.health.green .badge{background:var(--believer);color:#FFFFFF}
+.health.orange .badge{background:var(--neutral);color:#FFFFFF}
+.health.red .badge{background:var(--serpent);color:#FFFFFF}
+.health .line{font-size:13.5px;color:var(--paper);margin-top:10px;line-height:1.6}
+.health .factors{display:flex;gap:18px;flex-wrap:wrap;margin-top:12px;font-family:'Space Mono',monospace;font-size:11px;color:var(--dim)}
+.health .factors b{color:var(--paper)}
+.health .factors .ok{color:var(--believer)} .health .factors .bad{color:var(--serpent)} .health .factors .mid{color:var(--neutral)}
+.verdict{display:none;margin-top:26px}
+.vlabel{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-bottom:7px}
+.vlabelsub{text-transform:none;letter-spacing:0;color:var(--believer)}
+.vbar{height:46px;border-radius:var(--r);overflow:hidden;display:flex;border:1px solid var(--line)}
+.vseg{display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-size:12px;font-weight:600;color:#FFFFFF;transition:flex-basis .6s cubic-bezier(.2,.7,.2,1);min-width:0;overflow:hidden;white-space:nowrap}
+.vseg.b{background:var(--believer)}
+.vseg.s{background:var(--serpent);color:#FFFFFF}
+.vseg.n{background:var(--neutral);color:#FFFFFF}
+.vlegend{display:flex;gap:22px;flex-wrap:wrap;margin-top:12px;font-family:'Space Mono',monospace;font-size:11.5px;color:var(--dim)}
+.vlegend b{color:var(--paper);font-weight:600}
+/* Le top 10 a rejoint la legende, separe des trois classes par un filet : il
+   ne decrit pas une classe de portefeuille, il decrit la FORME du tableau. */
+.vlegend .vsep{border-left:1px solid var(--line);padding-left:22px}
+
+/* ---- LES SECTIONS QUI SE REPLIENT ----
+ * Quatre panneaux — la liste complete, l analyse d une adresse, la tendance,
+ * la methode — sont utiles mais ne sont jamais ce qu on vient chercher en
+ * arrivant. Depliees d office, elles poussaient le verdict hors de l ecran.
+ * `<details>` plutot qu un basculement en JS : c est le navigateur qui gere
+ * l ouverture, le clavier et la recherche dans la page, et une section repliee
+ * reste trouvable au Ctrl+F. Un panneau qu on code soi-meme perd les trois. */
+.pli{display:none;margin-top:22px;border:1px solid var(--line);border-radius:var(--r);
+  background:var(--panel);padding:0 16px}
+.pli[open]{padding-bottom:16px}
+.pli>summary{list-style:none;cursor:pointer;padding:14px 0;display:flex;align-items:baseline;
+  gap:12px;flex-wrap:wrap;font-family:'Space Mono',monospace;font-size:11px;
+  letter-spacing:.16em;text-transform:uppercase;color:var(--paper);font-weight:500}
+.pli>summary::-webkit-details-marker{display:none}
+.pli>summary::after{content:"+";margin-left:auto;font-size:15px;color:var(--dim);
+  font-family:inherit;letter-spacing:0}
+.pli[open]>summary::after{content:"\2212"}
+.pli>summary:hover{color:var(--gold)}
+.pli>summary:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+/* La question a laquelle la section repond, en clair : un titre en capitales
+   espacees dit de quoi ca parle, pas ce qu on y trouvera. */
+.pli-q{font-family:inherit;font-size:11px;letter-spacing:0;text-transform:none;
+  color:var(--dim);font-weight:400}
+.pli[open]>summary{border-bottom:1px solid var(--line);margin-bottom:14px}
+/* Les titres internes de ces panneaux faisaient doublon avec leur resume. */
+.pli>h2,.pli>h3{display:none}
+.dotb{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;vertical-align:0}
+
+/* stat strip */
+.stat{background:var(--panel);padding:15px 16px}
+.stat .n{font-family:'Space Mono',monospace;font-size:23px;font-weight:600;letter-spacing:-.02em}
+.stat .k{font-family:'Space Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-top:3px}
+.stat .n.b{color:var(--believer)} .stat .n.s{color:var(--serpent)}
+
+/* concentration */
+.section{display:none;margin-top:34px}
+.section h2{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin:0 0 4px;font-weight:500}
+.section .cap{color:var(--dim);font-size:12px;margin:0 0 16px}
+
+/* holder rows */
+.holder{display:grid;grid-template-columns:26px 1fr auto;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line)}
+.rank{font-family:'Space Mono',monospace;font-size:11px;color:var(--dim);text-align:right}
+.hmain{min-width:0}
+.haddr{font-family:'Space Mono',monospace;font-size:12.5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.haddr a{color:var(--paper);text-decoration:none;border-bottom:1px solid transparent}
+.haddr a:hover{border-bottom-color:var(--believer)}
+.chip{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.08em;text-transform:uppercase;padding:2px 6px;border-radius:2px;white-space:nowrap}
+.chip.b{background:rgba(95,209,160,.14);color:var(--believer)}
+.chip.s{background:rgba(232,120,92,.14);color:var(--serpent)}
+.chip.n{background:rgba(199,161,94,.14);color:var(--neutral)}
+.chip.p{background:rgba(91,141,217,.16);color:var(--pool)}
+.htrack{height:5px;background:var(--panel2);border-radius:3px;margin-top:6px;overflow:hidden}
+.hfill{height:100%;border-radius:3px}
+.hpct{font-family:'Space Mono',monospace;font-size:13px;font-weight:600;text-align:right;white-space:nowrap}
+.hbal{font-family:'Space Mono',monospace;font-size:10.5px;color:var(--dim);text-align:right;margin-top:2px}
+.flow{font-family:'Space Mono',monospace;font-size:10px;color:var(--dim);margin-top:3px}
+.flow .out{color:var(--serpent)} .flow .in{color:var(--believer)}
+
+.note{font-family:'Space Mono',monospace;font-size:10.5px;color:var(--dim);line-height:1.7;margin-top:10px}
+.filters{display:none;gap:8px;flex-wrap:wrap;margin-top:26px;align-items:center}
+.filters .lbl{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);margin-right:2px}
+.fbtn{font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.04em;text-transform:none;background:var(--panel);color:var(--dim);border:1px solid var(--line);border-radius:20px;padding:6px 13px;cursor:pointer;font-weight:500}
+.fbtn:hover{color:var(--paper);filter:none;border-color:var(--dim)}
+.fbtn.on{background:var(--believer);color:#FFFFFF;border-color:var(--believer);font-weight:600}
+.fbtn.on.s{background:var(--serpent);color:#FFFFFF;border-color:var(--serpent)}
+.fbtn.on.n{background:var(--neutral);color:#FFFFFF;border-color:var(--neutral)}
+.fbtn.on.p{background:var(--pool);color:#FFFFFF;border-color:var(--pool)}
+.srch{flex:1;min-width:120px;background:var(--panel);color:var(--paper);border:1px solid var(--line);border-radius:20px;padding:6px 13px;font-family:'Space Mono',monospace;font-size:11px}
+.srch:focus{outline:1px solid var(--believer)}
+.copybar{display:none;gap:8px;flex-wrap:wrap;align-items:center;margin-top:14px}
+.copybar button{background:transparent;color:var(--believer);border:1px solid rgba(95,209,160,.4);border-radius:var(--r);padding:8px 14px;font-family:'Space Mono',monospace;font-size:10.5px}
+.copybar button:hover{background:rgba(95,209,160,.1);filter:none}
+.copybar .hint{font-family:'Space Mono',monospace;font-size:10.5px;color:var(--dim)}
+.age{font-family:'Space Mono',monospace;font-size:10px;color:var(--neutral);white-space:nowrap}
+.more{margin-top:16px;text-align:center}
+.more button{background:transparent;color:var(--dim);border:1px solid var(--line);border-radius:var(--r);padding:10px 22px}
+.more button:hover{color:var(--paper);border-color:var(--believer)}
+.count{font-family:'Space Mono',monospace;font-size:10.5px;color:var(--dim);text-align:center;margin-top:8px}
+.inspect{display:none;margin-top:34px}
+.ibar{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.ibar input{flex:1;min-width:0;background:var(--panel);color:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;font-family:'Space Mono',monospace;font-size:12px}
+.ibar input:focus{outline:2px solid var(--believer);outline-offset:1px}
+.icard{display:none;margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px 20px}
+.icard.b{border-left:4px solid var(--believer)} .icard.s{border-left:4px solid var(--serpent)}
+.icard.n{border-left:4px solid var(--neutral)} .icard.p{border-left:4px solid var(--pool)} .icard.x{border-left:4px solid var(--line)}
+.iverdict{font-family:'Anton',sans-serif;font-size:26px;text-transform:uppercase;letter-spacing:.02em;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.iverdict .badge{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;padding:4px 11px;border-radius:20px;font-weight:600}
+.icard.b .badge{background:var(--believer);color:#FFFFFF} .icard.s .badge{background:var(--serpent);color:#FFFFFF}
+.icard.n .badge{background:var(--neutral);color:#FFFFFF} .icard.p .badge{background:var(--pool);color:#FFFFFF}
+.icard.x .badge{background:var(--line);color:var(--paper)}
+.iline{font-size:13.5px;color:var(--paper);margin-top:10px;line-height:1.6}
+.igrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-top:16px}
+.icell{background:#F5F8FD;border:1px solid var(--line);border-radius:var(--r);padding:11px 13px}
+.icell .k{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.icell .v{font-family:'Space Mono',monospace;font-size:15px;font-weight:600;margin-top:3px;word-break:break-all}
+.ilink{font-family:'Space Mono',monospace;font-size:11px;margin-top:14px}
+.ilink a{color:var(--believer);text-decoration:none;border-bottom:1px solid rgba(95,209,160,.35)}
+.mom{display:none;margin-top:34px}
+.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+@media(max-width:640px){.mgrid{grid-template-columns:1fr}}
+.mcard{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:15px 16px}
+.mcard .lbl{font-family:'Space Mono',monospace;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--dim)}
+.mcard .val{font-family:'Space Mono',monospace;font-size:20px;font-weight:600;margin-top:4px}
+.mbar{height:8px;border-radius:4px;overflow:hidden;display:flex;margin-top:10px;background:var(--panel2)}
+.mbar .buy{background:var(--believer)} .mbar .sell{background:var(--serpent)}
+.mnote{font-family:'Space Mono',monospace;font-size:11px;color:var(--dim);margin-top:10px;line-height:1.6}
+.track{display:none;margin-top:34px}
+.trow{display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);font-family:'Space Mono',monospace;font-size:12px}
+.trow .d{color:var(--dim)}
+.trow .delta{text-align:right;font-weight:600}
+.trow .delta.up{color:var(--believer)} .trow .delta.down{color:var(--serpent)} .trow .delta.flat{color:var(--dim)}
+.tempty{font-family:'Space Mono',monospace;font-size:11.5px;color:var(--dim);margin-top:10px;line-height:1.7}
+.method{display:none;margin-top:40px;border-top:1px solid var(--line);padding-top:16px}
+.method h3{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);margin:0 0 8px}
+.method p{color:var(--dim);font-size:12px;margin:0 0 8px;max-width:640px}
+.method b{color:var(--paper)}
+footer{margin-top:44px;font-family:'Space Mono',monospace;font-size:10px;color:var(--dim);line-height:1.8;border-top:1px solid var(--line);padding-top:14px}
+
+/* ── mobile ── */
+@media(max-width:560px){
+  .wrap{padding:20px 14px 70px}
+  .igrid{grid-template-columns:1fr 1fr}
+  .holder{grid-template-columns:22px 1fr auto;gap:9px}
+  .haddr{font-size:11.5px}
+  .hpct{font-size:12px}
+  .trow{grid-template-columns:1fr;gap:4px;text-align:left}
+  .trow .delta{text-align:left}
+  .health{padding:15px 15px}
+  .health .grade{font-size:20px}
+  .iverdict{font-size:22px}
+  .filters{gap:6px}
+  .fbtn{padding:5px 10px;font-size:10px}
+  .copybar{gap:6px}
+  .copybar button{width:100%}
+  /* ---- CETTE REGLE FRAPPAIT LE MAUVAIS TITRE ----
+   * Elle grossissait TOUS les h2 a vingt-sept pixels sur telephone, avec un
+   * `!important`. Or cette page n'a qu'un seul h2 — l'etiquette en capitales
+   * espacees de la section Concentration, calee a onze pixels — et le grand
+   * titre du hero est un h1. Le seul effet de la regle etait donc de casser
+   * l'etiquette qu'elle n'avait aucune raison de toucher : trois lignes de
+   * capitales geantes au milieu de la page. Elle vient d'un gabarit partage
+   * ou un h2 est un titre de section ; ici, non. */
+  .bar{flex-direction:column}
+  .bar button{width:100%}
+  .ibar{flex-direction:column}
+  .ibar button{width:100%}
+}
+@media(max-width:380px){
+  .igrid{grid-template-columns:1fr}
+}
+
+/* hero scanner avec fond gym + doge */
+.top{position:relative;border-radius:10px;overflow:hidden;padding:34px 30px;margin-bottom:6px;
+  background:linear-gradient(90deg,rgba(7,11,20,.92) 0%,rgba(7,11,20,.75) 45%,rgba(7,11,20,.30) 100%),url('img/c6973b275593.jpg');
+  background-size:cover;background-position:center right;border:1px solid var(--line)}
+.top .kick,.top h1,.top .sub,.top .bar,.top .state{position:relative;z-index:2}
+.top .sub{max-width:440px}
+.scandoge{position:absolute;right:-10px;bottom:-10px;width:230px;opacity:.9;z-index:1;
+  -webkit-mask-image:linear-gradient(to left,#000 55%,transparent);mask-image:linear-gradient(to left,#000 55%,transparent);
+  pointer-events:none;border-radius:10px}
+@media(max-width:640px){.scandoge{display:none} .top{padding:24px 20px}}
+/* séparateur EKG */
+.ekg{height:60px;margin:30px 0 4px;background:url('img/96df36ce665c.jpg') center/contain no-repeat;opacity:.7}
+
+/* ---- LA BANNIERE RESTE SOMBRE, SON TEXTE RESTE CLAIR ----
+ * `.top` est une photo sous un voile noir : c est la SURFACE de la page, pas
+ * sa navigation, elle garde donc son habillage. Mais son texte heritait de
+ * `--paper`, qui vient de passer au marine — il serait devenu marine sur
+ * noir. On le repose ici en clair, explicitement. */
+.top .kick,.top .sub{color:rgba(255,255,255,.74)}
+.top h1{color:#FFFFFF}
+.top h1 em{color:#FFC53D}
+.top .state{color:rgba(255,255,255,.74)}
+.top .state.err{color:#FF9C8C}
+.top .bar input{background:#FFFFFF;color:#0B1B36;border-color:#FFFFFF}
+.top .spin{border-color:rgba(255,255,255,.35);border-top-color:#FFC53D}
+
+/* ==================== LA NOUVELLE BARRE, BLANCHE ====================
+   DEMANDE : « tous se qu on viens de faire a blackjack html et spin html » —
+   meme barre que `games.html`, `index.html`, `swogebet.html`,
+   `swoge_blackjack.html` et `swoge_spin.html` : marque, chiffres du serveur,
+   solde, connexion, avatar. Seule la BARRE, les panneaux de compte et le
+   fond de page passent au blanc — le tapis et les cartes gardent leur
+   propre habillage or-sur-noir, qui est celui de la TABLE et non de la
+   navigation. Couleurs ECRITES ICI, comme sur les quatre autres pages. */
+.sw-haut{
+  display:flex; align-items:center; gap:14px; padding:10px 16px;
+  background:#FFFFFF; border-bottom:1px solid #E1E9F6;
+  position:sticky; top:0; z-index:30;
+}
+.sw-marque{display:flex; align-items:center; gap:9px; flex:0 0 auto}
+nav.sb-ancre{display:flex;align-items:center;gap:12px;
+  background:none;backdrop-filter:none;padding:0;border-bottom:none;
+  position:static;z-index:auto;}
+.sw-patte{
+  width:34px;height:34px;border-radius:10px;background:#EAF1FF;
+  display:grid;place-items:center;font-size:19px;
+}
+.sw-marque b{display:block;font:800 17px/1 'Inter',system-ui,sans-serif;letter-spacing:.4px;color:#1B5FE0}
+.sw-marque i{display:block;font:700 9.5px/1.4 'Inter',system-ui,sans-serif;font-style:normal;
+  letter-spacing:2.6px;color:#6B7C99}
+.sw-chiffres{
+  flex:1 1 auto; min-width:0; display:flex; gap:8px; overflow-x:auto;
+  padding:8px 10px; background:#EEF3FB; border:1px solid #E1E9F6;
+  border-radius:12px; scrollbar-width:none;
+}
+.sw-chiffres::-webkit-scrollbar{display:none}
+/* La bande de stats ne pouvait pas se cacher : le script d'echec pose
+   `bloc.hidden = true`, mais `.sw-chiffres{display:flex}` est une regle
+   d'AUTEUR et l'emporte sur le `[hidden]{display:none}` du navigateur.
+   Quand le fetch de /vitrine.json echouait, la bande restait donc a
+   l'ecran avec ses quatre tirets — l'allure d'un compteur en direct sans
+   compteur derriere. Une ligne, et l'intention du script tient. */
+.sw-chiffres[hidden]{display:none}
+.sw-ch{display:flex;align-items:center;gap:8px;padding:0 12px;flex:0 0 auto}
+.sw-ch+.sw-ch{border-left:1px solid #E1E9F6}
+.sw-ch .ic{width:26px;height:26px;border-radius:8px;background:#EAF1FF;
+  display:grid;place-items:center;font-size:13px}
+.sw-ch small{display:block;font:700 9px/1 'Inter',system-ui,sans-serif;letter-spacing:.9px;color:#6B7C99}
+.sw-ch b{display:block;font:800 14px/1.3 'Inter',system-ui,sans-serif;color:#0A1F44}
+.sb-ancre .chip{font:800 12px/1 'Inter',system-ui,sans-serif;color:#0A1F44;
+  border:1px solid #E1E9F6;border-radius:999px;padding:9px 13px;background:#FFFFFF;
+  box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05);white-space:nowrap}
+.sb-ancre .chip b{color:#0A1F44}
+.sw-b{
+  padding:10px 16px;border-radius:10px;cursor:pointer;border:none;
+  font:700 12.5px/1 'Inter',system-ui,sans-serif;letter-spacing:.3px;white-space:nowrap;
+}
+.sw-b-plein{background:#1B5FE0;color:#fff}
+.sw-b-plein:hover{background:#1750c4}
+.sw-b-vide{background:#FFFFFF;color:#1B5FE0;border:1.5px solid #1B5FE0}
+.sw-b-vide:hover{background:#EAF1FF}
+.connrow{ position:static !important; flex:0 0 auto;
+  flex-direction:row !important; flex-wrap:nowrap !important;
+  justify-content:flex-start !important; gap:8px; padding:0 !important; }
+.connrow .sw-b{ margin:0 !important; }
+.sw-avatar{
+  width:38px;height:38px;border-radius:11px;border:1px solid #E1E9F6;
+  background:#EEF3FB;display:grid;place-items:center;font-size:16px;flex:0 0 auto;cursor:pointer;
+}
+.gx-menu{position:absolute;top:60px;right:14px;z-index:70;width:236px;
+  background:#FFFFFF;border:1px solid #E1E9F6;border-radius:14px;
+  box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05);padding:6px;display:flex;flex-direction:column;gap:1px}
+.gx-menu[hidden]{display:none}
+.gx-menu a{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:9px;
+  font:700 12px/1 'Inter',system-ui,sans-serif;color:#0B1B36;text-decoration:none}
+.gx-menu a:hover{background:#EAF1FF;color:#1B5FE0}
+.gx-menu .gx-sep{height:1px;background:#E1E9F6;margin:5px 2px}
+.gx-menu .gx-g{padding:9px 10px 4px;font:800 9px/1 'Inter',system-ui,sans-serif;
+  letter-spacing:1.1px;text-transform:uppercase;color:#6B7C99}
+.gx-menu .gx-g:first-child{padding-top:4px}
+.gx-menu{max-height:min(74vh,560px);overflow-y:auto;scrollbar-width:thin}
+.gx-menu a i{font-style:normal;font-size:14px;width:18px;text-align:center;flex:0 0 auto}
+@media(max-width:520px){ .gx-menu{right:8px;left:8px;width:auto} }
+@media (max-width:620px){
+  .sw-haut{ flex-wrap:wrap; row-gap:8px; }
+  .sw-marque{ order:1 }
+  /* ---- LA RANGEE DE PASTILLES DOIT POUVOIR SE REPLIER ----
+     `stakebubble.js` ajoute DEUX pastilles a cette rangee quand la connexion
+     s'etablit — le rendement en jeu et le nombre de joueurs — soit une seconde
+     ou deux apres l'ouverture. Mesure faite : la rangee passe de 54 a 243 px.
+     En `flex:0 0 auto` elle ne pouvait ni retrecir ni se replier : elle
+     poussait donc la ligne, le document devenait plus large que l'ecran, et
+     le telephone dezoomait toute la page pour la faire tenir — c'est l'en-tete
+     coupe en pleine largeur, deux secondes apres le chargement.
+     Elle peut desormais retrecir ET passer a la ligne. A noter : le garde-fou
+     de `stakebubble.js` ne pouvait pas s'en charger, il ne se retire que s'il
+     mesure un debordement du DOCUMENT — or ici l'en-tete l'absorbait en
+     grandissant en hauteur, sans jamais rien faire deborder. */
+  nav.sb-ancre{ order:2; flex:0 1 auto; min-width:0; margin-left:auto;
+                flex-wrap:wrap; justify-content:flex-end; row-gap:6px }
+  .menubtn, #gxProfil{ order:3 }
+  /* ---- ET ELLE PEUT SE REPLIER QUAND LA LIGNE N EST PLUS ASSEZ LARGE ----
+     Les deux boutons portent `white-space:nowrap` : la paire fait 332 px que
+     rien ne peut retrecir. Sur un ecran de 320 (un iPhone en zoom d affichage,
+     un iPhone SE) il ne reste que 288 px : la rangee debordait, le telephone
+     elargissait la fenetre de mise en page a 348, et TOUTE la page se decalait
+     de 28 px — en-tete coupe a gauche, contenu sous le bord droit.
+     `wrap` ne fait rien tant que la place existe : de 350 a 620 px la rangee
+     reste sur une ligne comme avant. Le `nowrap` de la regle du dessus visait
+     une mise en page en COLONNE ; ici la direction est deja forcee en `row`,
+     donc replier ne la ramene pas. */
+  .connrow{ order:4; flex:1 1 100% !important; justify-content:center !important;
+            flex-wrap:wrap !important }
+  /* ---- ET AVANT DE SE REPLIER, ELLE SE RESSERRE ----
+     Se replier repare le decalage mais coute une rangee d en-tete. A 360 px —
+     la moitie des telephones Android — il ne manquait que quatre pixels : dix
+     de moins de chaque cote des deux boutons les rendent, et la paire reste
+     sur sa ligne comme avant. Sous 340 il n y a plus rien a gratter, et c est
+     `wrap` qui prend le relais. */
+  @media (max-width:400px){
+    .connrow .sw-b{ padding-left:11px !important; padding-right:11px !important }
+  }
+  .sw-chiffres{ order:5; flex:1 1 100% }
+}
+
+/* ==================== LES DEUX COTES DE LA TABLE ====================
+   Meme grille que `swoge_blackjack.html` : les deux colonnes ne mesurent pas
+   la meme chose (208 px de navigation contre 300 px d affiches), une grille a
+   trois colonnes garde donc la colonne du milieu au centre EXACT de l ecran,
+   quelle que soit la largeur de ce qu on pose a cote. */
+.sw-corps{display:grid; grid-template-columns:minmax(208px,1fr) auto minmax(208px,1fr);
+  align-items:start; gap:14px; padding:14px; max-width:1680px; margin:0 auto}
+.sw-corps main{min-width:0}
+.sw-cote{position:sticky; top:74px; width:100%; display:flex; flex-direction:column; gap:12px; justify-self:end}
+.sw-nav{background:#FFFFFF;border:1px solid #E1E9F6;border-radius:14px;
+  padding:8px; box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05)}
+.sw-nav a{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:10px;
+  font:600 13.5px/1 'Inter',system-ui,sans-serif;color:#0B1B36}
+.sw-nav a .ic{width:20px;text-align:center;font-size:15px;opacity:.75}
+.sw-nav a:hover{background:#EEF3FB}
+.sw-nav a.on{background:#EAF1FF;color:#1B5FE0}
+.sw-nav a.on .ic{opacity:1}
+.sw-reseaux{display:flex;gap:8px;justify-content:center;padding-top:4px}
+.sw-reseaux a{width:34px;height:34px;border-radius:10px;background:#FFFFFF;border:1px solid #E1E9F6;
+  display:grid;place-items:center;font-size:14px;color:#6B7C99}
+.sw-reseaux a:hover{color:#1B5FE0;border-color:#1B5FE0}
+.uni{position:relative;border-radius:14px;overflow:hidden;min-height:258px;
+  display:flex;flex-direction:column;justify-content:flex-end;background:#0A1F44;
+  box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05)}
+.uni img,.uni .film{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  object-position:center top;border:0;background:#0A1F44}
+@media (prefers-reduced-motion:reduce){ .uni .film{display:none} }
+.uni .voile{position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(8,24,58,0) 34%,rgba(8,24,58,.88) 74%,rgba(8,24,58,.97) 100%)}
+.uni .dit{position:relative;padding:14px;text-align:center}
+.uni b{display:block;font:900 20px/1 'Inter',system-ui,sans-serif;color:#fff;letter-spacing:.4px}
+.uni i{display:block;font-style:normal;font:600 11px/1.4 'Inter',system-ui,sans-serif;
+  color:rgba(255,255,255,.76);margin:5px 0 11px}
+.uni .sw-b{width:100%;background:rgba(255,255,255,.94);color:#0A1F44;
+  display:block;text-align:center;border-radius:10px}
+.sw-lat{width:300px; position:sticky; top:74px; display:flex; flex-direction:column; gap:14px; justify-self:start}
+.sw-lat .carte{background:#FFFFFF;border:1px solid #E1E9F6;border-radius:14px;
+  box-shadow:0 1px 2px rgba(11,27,54,.06), 0 8px 24px rgba(11,27,54,.05); overflow:hidden}
+.sw-solde{display:flex;align-items:center;gap:12px;padding:14px 16px}
+.sw-solde .ic{flex:0 0 auto;width:38px;height:38px;border-radius:11px;background:#EAF1FF;
+  display:grid;place-items:center;font-size:17px}
+.sw-solde .tx{min-width:0}
+.sw-solde .tx small{display:block;font:800 9.5px/1 'Inter',system-ui,sans-serif;
+  letter-spacing:1.1px;color:#6B7C99}
+.sw-solde .tx b{display:block;margin-top:4px;font:800 17px/1 'Inter',system-ui,sans-serif;
+  color:#0A1F44;font-variant-numeric:tabular-nums}
+.sw-lat .salon{position:relative;display:block;min-height:172px;overflow:hidden;background:#0A1F44}
+.sw-lat .salon img,.sw-lat .salon .film{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  object-position:34% 8%;border:0;background:#0A1F44}
+@media (prefers-reduced-motion:reduce){ .sw-lat .salon .film{display:none} }
+.sw-lat .salon .voile{position:absolute;inset:auto 0 0 0;height:58%;
+  background:linear-gradient(180deg,rgba(6,16,40,0) 0%,rgba(6,16,40,.86) 78%,rgba(6,16,40,.95) 100%)}
+.sw-lat .salon .dit{position:absolute;left:16px;right:16px;bottom:14px;
+  font:800 12px/1 'Inter',system-ui,sans-serif;letter-spacing:1.4px;color:#fff}
+.sw-lat .salon:hover img,.sw-lat .salon:hover .film{transform:scale(1.03)}
+.sw-lat .salon img,.sw-lat .salon .film{transition:transform .2s}
+@media (max-width:1360px){
+  .sw-cote, .sw-lat{ display:none }
+  .sw-corps{ padding:0; display:block; max-width:none }
+}
+/* ---- LA COLONNE DE GAUCHE NE GONFLE PLUS (memes deux colonnes de bord que
+   `swoge_poker.html`) ----
+ * BUG MESURE : `minmax(208px,1fr)` sur les deux colonnes de bord absorbe TOUT
+ * l'espace libre que la colonne du milieu (`auto`, calee sur le contenu du
+ * jeu) ne reclame pas — a 1920px, `.sw-cote` faisait 594px de large au lieu
+ * des ~208px voulus (documentes plus haut : « 208 px de navigation »). Des
+ * colonnes de bord FIXES, et la colonne du milieu absorbe le reste (sans
+ * effet sous 1360px : la regle juste au-dessus y cache deja `.sw-cote`). */
+.sw-corps{ grid-template-columns:230px minmax(0,1fr) 300px; }
+.sw-cote{ width:auto; max-width:230px; }
+/* `swoge_casino.html` pose un `a{color:inherit;text-decoration:none}` general
+   en tete de feuille ; cette page-ci n en a pas, et les liens de la barre et
+   des deux cotes arrivaient donc soulignes en bleu de navigateur. On repose la
+   meme remise a zero, mais BORNEE au decor : les liens du contenu (`.haddr a`,
+   `.ilink a`) gardent leur propre habillage. */
+.sw-haut a, .sw-cote a, .sw-lat a{ color:inherit; text-decoration:none; }
+</style>
+
+<!-- LA BARRE BLANCHE remplace l ancienne rangee de liens (logo, « Bench »,
+     « back to site ») : meme barre que `swoge_casino.html`, recopiee telle
+     quelle. Ce qui n a PAS ete recopie ne l a pas ete faute de matiere reelle :
+     cette page ne suit aucun solde (`#bal` n existe pas ici), ne sait pas
+     connecter de portefeuille et n a ni tiroir de compte ni `#menu` — la puce
+     de solde, les deux boutons de connexion, l avatar `#gxProfil`, `#gxMenu`
+     et `swogeprofil.js` n auraient rien eu a afficher. Les quatre chiffres de
+     la vitrine restent : ils viennent du vrai `/vitrine.json` et se cachent
+     seuls quand la requete echoue. -->
+<header class="sw-haut">
+  <a class="sw-marque" href="nexus.html" id="gxMonde">
+    <span class="sw-patte">&#128062;</span>
+    <span><b>SWOGE</b><i>WORLD</i></span>
+  </a>
+  <div class="sw-chiffres" id="gxChiffres" hidden>
+    <div class="sw-ch"><span class="ic">&#128100;</span><span><small>PLAYERS</small><b data-n="joueurs">&mdash;</b></span></div>
+    <div class="sw-ch"><span class="ic">&#127922;</span><span><small>CASINO VOLUME</small><b data-n="volume">&mdash;</b></span></div>
+    <div class="sw-ch"><span class="ic">&#127918;</span><span><small>ROUNDS PLAYED</small><b data-n="manches">&mdash;</b></span></div>
+    <div class="sw-ch"><span class="ic">&#127942;</span><span><small>WINNINGS PAID</small><b data-n="rendus">&mdash;</b></span></div>
+  </div>
+</header>
+
+<!-- Les quatre chiffres de la vitrine, lus sur le serveur — meme script que
+     `swoge_blackjack.html` et `swoge_spin.html`. -->
+<script>
+(function(){
+  "use strict";
+  var bloc = document.getElementById("gxChiffres");
+  if(!bloc) return;
+  function serveur(){
+    try{ var q=new URLSearchParams(location.search).get("server"); if(q)
+      return String(q).replace(/^ws/,"http"); }catch(e){}
+    return "https://web-production-220a3.up.railway.app";
+  }
+  function court(n){
+    n = Number(n) || 0;
+    var t = function(v, s){ return (Math.floor(v*10)/10).toFixed(1).replace(/\.0$/,"") + s; };
+    if(n >= 1e9) return t(n/1e9, "B");
+    if(n >= 1e6) return t(n/1e6, "M");
+    if(n >= 1e3) return t(n/1e3, "k");
+    return String(Math.floor(n));
+  }
+  fetch(serveur()+"/vitrine.json", { cache:"no-store" })
+    .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function(j){
+      [].forEach.call(bloc.querySelectorAll("b[data-n]"), function(b){
+        var v = j[b.getAttribute("data-n")];
+        b.textContent = (typeof v === "number" && isFinite(v)) ? court(v) : "\u2014";
+      });
+      bloc.hidden = false;
+    })
+    ['catch'](function(){ bloc.hidden = true; });
+})();
+</script>
+
+<div class="sw-corps">
+
+  <aside class="sw-cote">
+    <nav class="sw-nav">
+      <a href="index.html"><span class="ic">&#127968;</span>Home</a>
+      <a href="games.html"><span class="ic">&#127920;</span>Casino</a>
+      <a href="swogebet.html"><span class="ic">&#9917;</span>Sports</a>
+      <a href="swoge_bench.html"><span class="ic">&#127947;</span>Bench</a>
+      <a href="swoge_wallet.html"><span class="ic">&#129433;</span>Wallet</a>
+      <a href="swoge_ai.html"><span class="ic">&#129302;</span>SWOGE AI</a>
+      <a href="swoge_perp.html"><span class="ic">&#128200;</span>AI Perp</a>
+      <a href="whitepaper.html"><span class="ic">&#128220;</span>Docs</a>
+    </nav>
+    <div class="sw-reseaux">
+      <a href="https://x.com/SwoleDogeSwoge" target="_blank" rel="noopener"
+         title="X — @SwoleDogeSwoge">&#120143;</a>
+      <a href="https://t.me/swoleswoge" target="_blank" rel="noopener"
+         title="Telegram — t.me/swoleswoge">&#9992;</a>
+      <a href="https://dexscreener.com/robinhood/0x2dc0fb72d9284228046cc95910eeaabebfe48456"
+         target="_blank" rel="noopener" title="Dexscreener — $SWOGE chart">&#128200;</a>
+    </div>
+    <article class="uni">
+      <video class="film" src="media/monde_carte.mp4" poster="img/site/monde_carte_poster.webp"
+             muted autoplay loop playsinline disablepictureinpicture
+             aria-hidden="true"></video><div class="voile"></div>
+      <div class="dit"><b>SWOGE WORLD</b><i>Meet. Explore. Own.</i>
+        <a class="sw-b" href="nexus.html">ENTER</a></div>
+    </article>
+  </aside>
+
+
+<main>
+<div class="wrap">
+
+<style>
+/* ---- CE QUI EST PROPRE A CETTE PAGE ----
+ * Le reste — la palette, la nav, les correctifs communs — vient du meme bloc
+ * que les vingt-six autres pages, recopie en tete. */
+
+/* La ligne qui doit etre lue AVANT de taper quoi que ce soit. */
+.garde{margin-top:12px;border-left:3px solid var(--pool);background:var(--goldlite);
+  padding:10px 13px;font-size:12.5px;color:var(--paper);border-radius:0 var(--r) var(--r) 0}
+.garde b{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--pool)}
+
+/* Les calques : infrastructure / organisation / contacts. Eteindre un calque
+   l eteint PARTOUT — dans le graphe et dans les listes — sinon « masquer »
+   ne voudrait rien dire. */
+.calques{display:flex;gap:8px;flex-wrap:wrap;margin:22px 0 0}
+.calque{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--panel);
+  border-radius:var(--r);padding:7px 11px;cursor:pointer;font-family:'Space Mono',monospace;font-size:11px;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--dim);user-select:none}
+.calque[aria-pressed="true"]{color:var(--paper);border-color:var(--pool);background:var(--goldlite)}
+.calque .pastille{width:9px;height:9px;border-radius:50%;background:var(--dim)}
+.calque[data-c="infrastructure"][aria-pressed="true"] .pastille{background:var(--pool)}
+.calque[data-c="organization"][aria-pressed="true"] .pastille{background:var(--neutral)}
+.calque[data-c="contacts"][aria-pressed="true"] .pastille{background:var(--believer)}
+
+section.bloc{margin-top:26px;border-top:1px solid var(--line);padding-top:18px}
+section.bloc>h2{font-family:'Anton',sans-serif;font-size:17px;letter-spacing:.03em;text-transform:uppercase;margin:0 0 4px}
+section.bloc>.hint{color:var(--dim);font-size:12px;margin:0 0 12px;max-width:640px}
+
+.grille{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
+.cell{border:1px solid var(--line);background:var(--panel);border-radius:var(--r);padding:10px 12px;min-width:0}
+.cell .k{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.cell .v{font-family:'Space Mono',monospace;font-size:12.5px;margin-top:4px;word-break:break-word}
+
+/* Les etiquettes. Elles portent tout le sens de la page : d ou vient un fait
+   et ce qu il vaut. Elles ne sont donc jamais decoratives. */
+.tag{display:inline-block;font-family:'Space Mono',monospace;font-size:9.5px;letter-spacing:.09em;
+  text-transform:uppercase;padding:2px 6px;border-radius:2px;border:1px solid;white-space:nowrap}
+.tag.ok{color:var(--believer);border-color:var(--believer);background:rgba(18,128,90,.07)}
+.tag.no{color:var(--neutral);border-color:var(--neutral);background:rgba(150,101,15,.07)}
+.tag.h{color:var(--believer);border-color:var(--believer)}
+.tag.m{color:var(--neutral);border-color:var(--neutral)}
+.tag.l{color:var(--dim);border-color:var(--line)}
+.tag.own{color:var(--serpent);border-color:var(--serpent);background:rgba(192,57,43,.07)}
+.tag.assoc{color:var(--dim);border-color:var(--line)}
+
+table.liste{width:100%;border-collapse:collapse;font-size:12.5px}
+table.liste th{text-align:left;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--dim);font-weight:400;padding:0 10px 7px 0;border-bottom:1px solid var(--line)}
+table.liste td{padding:9px 10px 9px 0;border-bottom:1px solid var(--line);vertical-align:top;word-break:break-word}
+table.liste td.val{font-family:'Space Mono',monospace}
+table.liste a{color:var(--pool)}
+.pourquoi{color:var(--dim);font-size:11px;margin-top:3px}
+
+/* ---- LES FICHES DE PERSONNES ----
+ * Elles ne ressemblent a RIEN d autre sur la page, et c est voulu : une
+ * personne au milieu d un releve d infrastructure doit se voir comme une
+ * exception, pas se fondre dans les machines. Bordure pleine, fond creme,
+ * liseré a gauche. Le meme choix est repris dans le graphe. */
+.gens{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.qui{border:1px solid var(--neutral);border-left:4px solid var(--neutral);background:#FFFBF2;
+  border-radius:var(--r);padding:12px 14px}
+.qui .nom{font-family:'Anton',sans-serif;font-size:18px;letter-spacing:.02em}
+.qui .fonction{font-size:12.5px;color:var(--paper);margin-top:2px}
+.qui .meta{margin-top:9px;display:flex;gap:6px;flex-wrap:wrap}
+.qui .src{margin-top:9px;font-size:11px}
+.qui .extrait{margin-top:8px;font-family:'Space Mono',monospace;font-size:10.5px;color:var(--dim);
+  border-left:2px solid var(--line);padding-left:8px}
+
+/* Le graphe. SVG, aucune bibliotheque : trente noeuds ne justifient pas
+   180 Ko de moteur physique, et une page qui charge un CDN tiers pour
+   dessiner quinze traits contredit ce qu elle raconte sur les sources. */
+.toile{margin-top:12px;border:1px solid var(--line);background:var(--panel);border-radius:var(--r);overflow:hidden}
+.toile svg{display:block;width:100%;height:auto;touch-action:manipulation}
+.toile .arete{stroke:#C7D4E8;stroke-width:1}
+.toile .arete.h{stroke:#9FBEE6}
+.toile .arete.l{stroke-dasharray:3 3;stroke:#D8E2F0}
+.legende{display:flex;gap:14px;flex-wrap:wrap;padding:9px 12px;border-top:1px solid var(--line);
+  font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--dim)}
+.legende span{display:inline-flex;align-items:center;gap:6px}
+.legende i{width:10px;height:10px;display:inline-block;border-radius:50%}
+
+/* Ce que l outil ne fait pas. Ce bloc n est pas un avertissement juridique
+   colle en bas : c est la moitie de ce que la page promet, donc il est
+   montre avec le reste, pas replie. */
+.bords{border:1px solid var(--line);background:var(--panel);border-radius:var(--r);padding:14px 16px;margin-top:12px}
+.bords li{margin:0 0 7px;font-size:12.5px}
+.bords li:last-child{margin-bottom:0}
+</style>
+
+  <div class="top">
+    <div class="kick">Public sources only · free, no account</div>
+    <h1>Who is behind <em>this domain</em>?</h1>
+    <!-- ---- CE QUE LA PAGE PROMET, ET CE QU ELLE REFUSE ----
+         Le sous-titre dit les deux, dans cet ordre. Un outil qui n annonce
+         que ce qu il trouve laisse croire qu il trouve tout. -->
+    <div class="sub">
+      Infrastructure and published contacts for a domain — DNS, registry, certificates,
+      and whatever the organisation prints on its own pages. Every line carries the URL
+      it came from.
+    </div>
+
+    <div class="bar">
+      <input id="dom" type="text" spellcheck="false" autocapitalize="off" autocorrect="off"
+             placeholder="example.com" aria-label="Domain name">
+      <button id="go">Report</button>
+    </div>
+
+    <!-- La garde, avant le premier essai et non apres la deception. -->
+    <div class="garde">
+      <b>Domains, not people.</b><br>
+      This tool takes a domain name. It cannot be searched by a person’s name, e-mail address,
+      phone number or handle — there is no such field, and no such request reaches the server.
+      A person appears below only when their employer published them on its own page.
+    </div>
+
+    <p class="sub" style="margin-top:10px;font-size:12px">
+      Checking a token instead of a website? <a href="swoge_scan.html" style="color:var(--pool)">SWOGE Scan</a>
+      reads what our AI has measured on tokens like it — same rule, every number with its sample size.</p>
+
+    <div class="state" id="state"></div>
+  </div>
+
+  <div id="out" hidden>
+
+    <!-- LES CALQUES. « Privacy by design » n est pas une phrase : c est ce
+         bouton, qui retire les personnes du graphe ET des listes d un clic. -->
+    <div class="calques" role="group" aria-label="Layers">
+      <button class="calque" data-c="infrastructure" aria-pressed="true"><i class="pastille"></i>Infrastructure</button>
+      <button class="calque" data-c="organization" aria-pressed="true"><i class="pastille"></i>Organization</button>
+      <button class="calque" data-c="contacts" aria-pressed="true"><i class="pastille"></i>Professional contacts</button>
+    </div>
+
+    <section class="bloc" id="sOrg" data-calque="organization">
+      <h2>Organization</h2>
+      <p class="hint">What the registry or the site itself says the domain belongs to.</p>
+      <div id="orgBox"></div>
+    </section>
+
+    <section class="bloc" id="sInfra" data-calque="infrastructure">
+      <h2>Infrastructure</h2>
+      <p class="hint">Published by design: the domain answers this to every visitor on earth.</p>
+      <div class="grille" id="infraBox"></div>
+      <div id="subBox"></div>
+    </section>
+
+    <section class="bloc" id="sContacts" data-calque="contacts">
+      <h2>Published contacts</h2>
+      <p class="hint">Only addresses the organisation printed on its own pages. Nothing is guessed,
+        and consumer mailboxes (gmail, outlook, proton…) are dropped before they are ever stored.</p>
+      <div id="contactsBox"></div>
+    </section>
+
+    <section class="bloc" id="sGens" data-calque="contacts">
+      <h2>People named by the organisation</h2>
+      <p class="hint">A name is shown only where it was printed next to a role on the organisation’s
+        own contact, team or legal page. Being named is not owning.</p>
+      <div class="gens" id="gensBox"></div>
+    </section>
+
+    <section class="bloc" id="sGraphe">
+      <h2>Graph</h2>
+      <p class="hint">Each line is a documented relation with a source behind it, not a conclusion.
+        Hover a line to read its source. People are drawn apart from machines on purpose.</p>
+      <div class="toile" id="tuile">
+        <svg id="gr" viewBox="0 0 960 560" role="img" aria-label="Relations graph"></svg>
+        <div class="legende">
+          <span><i style="background:#1B5FE0"></i>Domain / infrastructure</span>
+          <span><i style="background:#96650F"></i>Organization</span>
+          <span><i style="background:#12805A"></i>Contact</span>
+          <span><i style="background:#96650F;border-radius:2px"></i>Person</span>
+          <span><i style="background:#D8E2F0"></i>Dashed = not verified</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="bloc" id="sSources">
+      <h2>Sources</h2>
+      <p class="hint">Every request this report made, and what came back. Three hosts only:
+        the domain itself, the registry, and the public certificate log.</p>
+      <div id="sourcesBox"></div>
+    </section>
+
+    <section class="bloc">
+      <h2>What this tool does not do</h2>
+      <p class="hint">The limits are part of the result.</p>
+      <div class="bords"><ul id="bordsBox"></ul></div>
+    </section>
+
+  </div>
+
+  <!-- LA COLONNE DE DROITE, sans la carte « YOUR BALANCE » : cette page ne
+       suit pas de solde, il n y a pas de `#bal` a recopier — une carte de
+       solde y afficherait un chiffre invente. Restent les deux affiches, qui
+       pointent vers des pages reelles. -->
+  <aside class="sw-lat">
+    <a class="carte salon" href="swoge_blackjack.html">
+      <img src="img/site/jeu_blackjack.webp" alt="" loading="lazy">
+      <span class="voile"></span>
+      <span class="dit">GOLD TABLE &nbsp;&rarr;</span>
+    </a>
+    <a class="carte salon" href="swogebet.html">
+      <video class="film" src="media/doge_sport.mp4" poster="img/site/doge_sport_poster.webp"
+             muted autoplay loop playsinline disablepictureinpicture
+             aria-label="SWOGE Sports"></video>
+      <span class="voile"></span>
+      <span class="dit">SWOGE SPORTS &mdash; BET NOW &nbsp;&rarr;</span>
+    </a>
+  </aside>
+
+</div>
+
+<script>
+"use strict";
+/* ==================== SWOGE RECON — LA PAGE ====================
+ * Elle ne mesure rien : tout vient de /recon, ou les gardes vivent. Ici on
+ * MONTRE, et la seule chose que la page doit garantir, c est de ne jamais
+ * montrer plus que ce que le serveur a envoye — pas de champ reconstitue,
+ * pas d adresse recomposee a l affichage, pas de « probablement ».
+ *
+ * La page porte son propre `serveurRecon()` : le petit script de la vitrine,
+ * en tete, a deja un `serveur()` enferme dans sa fonction anonyme, invisible
+ * d ici. Deux blocs qui se partagent un nom par accident finissent par se
+ * marcher dessus — on en pose donc un, nomme. */
+function serveurRecon(){
+  try{ const q = new URLSearchParams(location.search).get("server");
+       if(q) return String(q).replace(/^ws/,"http"); }catch(e){}
+  return "https://web-production-220a3.up.railway.app";
+}
+
+const $ = s => document.querySelector(s);
+let RAPPORT = null;
+/* Les trois calques, tous allumes au depart. */
+const CALQUES = { infrastructure:true, organization:true, contacts:true };
+
+function ech(s){
+  return String(s == null ? "" : s).replace(/[&<>"']/g, c =>
+    ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+}
+function etat(msg, err, spin){
+  const el = $("#state");
+  el.className = "state" + (err ? " err" : "");
+  el.innerHTML = (spin ? '<span class="spin"></span>' : "") + ech(msg);
+}
+/* Une confiance ne s affiche jamais seule : elle part avec sa raison, en
+   infobulle, parce qu un mot comme MEDIUM ne veut rien dire sans elle. */
+function tagConf(niveau, pourquoi){
+  const c = niveau === "HIGH" ? "h" : niveau === "MEDIUM" ? "m" : "l";
+  return '<span class="tag ' + c + '" title="' + ech(pourquoi || "") + '">' + ech(niveau) + '</span>';
+}
+function tagSrc(verifie){
+  return verifie
+    ? '<span class="tag ok" title="We fetched this URL ourselves and the value is literally in the body we received.">SOURCE VERIFIED</span>'
+    : '<span class="tag no" title="Reported by a third-party public index; we did not confirm it against the domain itself.">SOURCE NOT VERIFIED</span>';
+}
+function lien(url, texte){
+  return '<a href="' + ech(url) + '" target="_blank" rel="noopener nofollow">' + ech(texte || url) + ' ↗</a>';
+}
+
+/* ==================== LE RELEVE ==================== */
+async function releve(){
+  const brut = $("#dom").value.trim();
+  if(!brut){ etat("Type a domain name.", true); return; }
+  /* La page refuse ce que le serveur refuserait, mais SANS le devancer : le
+     message est le meme des deux cotes, et c est le serveur qui tranche. */
+  if(brut.includes("@")){ etat("That looks like an e-mail address. This tool takes a domain — try the part after the @.", true); return; }
+  $("#go").disabled = true;
+  etat("Reading public sources…", false, true);
+  try{
+    const r = await fetch(serveurRecon() + "/recon/" + encodeURIComponent(brut), { cache:"no-store" });
+    const j = await r.json();
+    if(!r.ok || j.erreur) throw new Error(j.erreur || ("HTTP " + r.status));
+    RAPPORT = j;
+    try{ history.replaceState(null, "", location.pathname + "?d=" + encodeURIComponent(j.domaine)); }catch(e){}
+    peins();
+    const nc = j.contacts.length, ng = j.personnes.length;
+    etat(j.domaine + " · " + j.sources.length + " sources read in " + (j.ms/1000).toFixed(1) + "s · "
+       + nc + " published contact" + (nc===1?"":"s") + " · " + ng + " person" + (ng===1?"":"s") + " named");
+  }catch(e){
+    $("#out").hidden = true;
+    etat(String(e.message || e).slice(0,180), true);
+  }finally{
+    $("#go").disabled = false;
+  }
+}
+
+/* ==================== LE PEINTRE ====================
+ * Un seul peintre pour tout : rallumer un calque ne redemande rien au
+ * serveur — le releve est deja la, on le remontre autrement. */
+function peins(){
+  const j = RAPPORT;
+  if(!j) return;
+  $("#out").hidden = false;
+
+  /* -- l organisation -- */
+  if(j.organisation){
+    const o = j.organisation;
+    $("#orgBox").innerHTML =
+      '<div class="cell"><div class="k">name</div><div class="v">' + ech(o.nom) + '</div>'
+      + '<div class="meta" style="margin-top:8px">' + tagSrc(o.verifie) + " " + tagConf(o.confiance, o.pourquoi) + '</div>'
+      + '<div class="pourquoi">' + ech(o.pourquoi) + '</div>'
+      + '<div class="src" style="margin-top:6px;font-size:11px">' + lien(o.source, "source") + '</div></div>';
+  } else {
+    $("#orgBox").innerHTML = '<div class="cell"><div class="k">name</div><div class="v">—</div>'
+      + '<div class="pourquoi">No public act names an organisation for this domain.</div></div>';
+  }
+
+  /* -- l infrastructure -- */
+  const d = j.infra.dns, rd = j.infra.rdap, ct = j.infra.certs;
+  const cell = (k, v, note) => v == null || v === "" || (Array.isArray(v) && !v.length) ? "" :
+    '<div class="cell"><div class="k">' + ech(k) + '</div><div class="v">'
+    + (Array.isArray(v) ? v.map(ech).join("<br>") : ech(v)) + '</div>'
+    + (note ? '<div class="pourquoi">' + ech(note) + '</div>' : "") + '</div>';
+  let inf = "";
+  inf += cell("IPv4", d.a);
+  inf += cell("IPv6", d.aaaa);
+  for(const n of j.infra.reseaux.filter(x => x.trouve))
+    inf += cell("network of " + n.ip, [n.reseau || n.asn || "—", n.operateur || "", n.pays || ""].filter(Boolean));
+  inf += cell("mail exchangers", d.mx.map(m => m.prio + " " + m.hote));
+  inf += cell("mail hosted by", d.hebergeurMail);
+  inf += cell("name servers", d.ns);
+  inf += cell("SPF", d.spf);
+  inf += cell("DMARC", d.dmarc, d.dmarc ? null : "No DMARC record: nothing stops a third party from forging mail from this domain.");
+  inf += cell("registrar", rd.registraire);
+  inf += cell("registered", rd.cree);
+  inf += cell("expires", rd.expire);
+  inf += cell("registry status", rd.etats);
+  /* Le titulaire masque est une INFORMATION, pas un vide. */
+  inf += '<div class="cell"><div class="k">registrant</div><div class="v">'
+       + (rd.titulaire ? ech(rd.titulaire) : "redacted")
+       + '</div><div class="pourquoi">'
+       + (rd.titulaire ? "Published in clear by the registry."
+                       : "The registry withholds it, as it does for most domains since the GDPR. Absence of a name is not a hidden name.")
+       + '</div></div>';
+  inf += cell("certificates issued by", ct.emetteurs ? ct.emetteurs.map(e => e.nom + " (" + e.n + ")") : null);
+  $("#infraBox").innerHTML = inf || '<div class="cell"><div class="v">—</div></div>';
+
+  /* Les sous-domaines : une liste, pas des cases — il y en a parfois deux
+     cents, et ils viennent d un journal tiers, donc NOT VERIFIED. */
+  if(ct.sousDomaines && ct.sousDomaines.length){
+    $("#subBox").innerHTML = '<div style="margin-top:12px">'
+      + '<div class="k" style="font-family:\'Space Mono\',monospace;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)">'
+      + "subdomains seen in certificate logs · " + ct.total + " " + tagSrc(false) + '</div>'
+      + '<div class="v mono" style="font-size:12px;margin-top:6px;line-height:1.9">'
+      + ct.sousDomaines.map(s => '<span style="display:inline-block;border:1px solid var(--line);background:var(--panel);border-radius:2px;padding:1px 6px;margin:0 5px 5px 0">' + ech(s) + '</span>').join("")
+      + '</div><div class="pourquoi">A certificate was issued for these names. It does not mean a machine answers there today.</div></div>';
+  } else $("#subBox").innerHTML = "";
+
+  /* -- les contacts publies -- */
+  if(j.contacts.length){
+    $("#contactsBox").innerHTML = '<table class="liste"><thead><tr>'
+      + '<th>Contact</th><th>Kind</th><th>Source</th><th>Confidence</th><th>Found</th>'
+      + '</tr></thead><tbody>'
+      + j.contacts.map(c =>
+          '<tr><td class="val">' + ech(c.valeur) + '<div class="pourquoi">' + ech(c.extrait) + '</div></td>'
+          + '<td>' + (c.nominatif ? "named mailbox" : c.type === "phone" ? "business phone" : c.type === "page" ? "reporting page" : "role mailbox") + '</td>'
+          + '<td>' + lien(c.source, (new URL(c.source)).pathname) + '<br>' + tagSrc(c.verifie) + '</td>'
+          + '<td>' + tagConf(c.confiance, c.pourquoi) + '<div class="pourquoi">' + ech(c.pourquoi) + '</div></td>'
+          + '<td class="val">' + ech(c.vu) + '</td></tr>').join("")
+      + '</tbody></table>';
+  } else {
+    $("#contactsBox").innerHTML = '<p class="hint">This domain publishes no contact we can read on its own pages.</p>';
+  }
+
+  /* -- les personnes -- */
+  if(j.personnes.length){
+    $("#gensBox").innerHTML = j.personnes.map(p =>
+      '<div class="qui"><div class="nom">' + ech(p.complet) + '</div>'
+      + '<div class="fonction">' + ech(p.fonction) + '</div>'
+      + (p.mail ? '<div class="fonction mono" style="font-size:12px;margin-top:4px">' + ech(p.mail) + '</div>' : "")
+      /* Le profil professionnel, quand l organisation l a imprime a cote du
+         nom. Jamais un compte social : le serveur n en releve pas. */
+      + (p.profil ? '<div class="src" style="margin-top:4px">' + lien(p.profil, "public professional profile") + '</div>' : "")
+      + '<div class="meta">'
+      + '<span class="tag ' + (p.lien === "DOMAIN OWNER" ? "own" : "assoc") + '" title="' + ech(p.preuve) + '">' + ech(p.lien) + '</span>'
+      + tagSrc(p.verifie) + tagConf(p.confiance, p.pourquoi) + '</div>'
+      + '<div class="extrait">' + ech(p.extrait) + '</div>'
+      + '<div class="src">' + lien(p.source, "where this was printed") + '</div></div>').join("");
+  } else {
+    $("#gensBox").innerHTML = '<p class="hint">Nobody is named with a role on this domain’s own pages. '
+      + 'That is a common and perfectly ordinary result — it is not a sign that someone is hiding.</p>';
+  }
+
+  /* -- les sources -- */
+  $("#sourcesBox").innerHTML = '<table class="liste"><thead><tr><th>URL</th><th>Result</th></tr></thead><tbody>'
+    + j.sources.map(s =>
+        '<tr><td class="val">' + lien(s.url) + '</td><td class="val">'
+        + (s.refus ? ech(s.code) + " — the site refused us, and we did not try again"
+          : s.ok ? ech(s.code || 200) : ech(s.code || "no answer"))
+        + '</td></tr>').join("")
+    + (j.pages || []).filter(p => p.saute).map(p =>
+        '<tr><td class="val">' + ech(p.chemin) + '</td><td class="val">' + ech(p.saute) + '</td></tr>').join("")
+    + '</tbody></table>';
+
+  $("#bordsBox").innerHTML = j.limites.map(l => "<li>" + ech(l) + "</li>").join("");
+
+  calques();
+  graphe();
+}
+
+/* Les calques eteignent les sections ET les noeuds. Un bouton « masquer »
+   qui ne masquerait qu une moitie serait pire que pas de bouton. */
+function calques(){
+  document.querySelectorAll("[data-calque]").forEach(s => {
+    s.hidden = !CALQUES[s.getAttribute("data-calque")];
+  });
+  document.querySelectorAll(".calque").forEach(b => {
+    b.setAttribute("aria-pressed", CALQUES[b.getAttribute("data-c")] ? "true" : "false");
+  });
+}
+
+/* ==================== LE GRAPHE ====================
+ * Trois colonnes, pas de moteur physique : les gens a gauche, le domaine au
+ * centre, les machines a droite. Une disposition FIXE se relit d un scan a
+ * l autre — un nuage qui se replace au hasard a chaque chargement oblige a
+ * tout relire. Et elle place les personnes loin des machines, ce qui est
+ * exactement ce qu on veut montrer.
+ *
+ * Aucune bibliotheque : quinze traits ne justifient pas un CDN, et une page
+ * qui explique d ou vient chaque octet ne va pas en charger chez un tiers. */
+const COULEUR = { domaine:"#1B5FE0", ip:"#1B5FE0", reseau:"#5B8DE8", mx:"#5B8DE8",
+                  sousdomaine:"#9FBEE6", certificat:"#9FBEE6",
+                  organisation:"#96650F", personne:"#96650F",
+                  email:"#12805A", telephone:"#12805A", lien:"#12805A" };
+const SOUS_MAX_GRAPHE = 10;
+
+function graphe(){
+  const g = RAPPORT && RAPPORT.graphe;
+  const svg = $("#gr");
+  if(!g){ svg.innerHTML = ""; return; }
+
+  /* Ce qu on dessine : les calques allumes, et au plus dix sous-domaines —
+     au-dela le graphe devient un oursin illisible, et la liste complete est
+     juste au-dessus. */
+  let vus = 0;
+  const noeuds = g.noeuds.filter(n => {
+    if(!CALQUES[n.filtre]) return false;
+    if(n.type === "sousdomaine"){ vus++; return vus <= SOUS_MAX_GRAPHE; }
+    return true;
+  });
+  const ids = new Set(noeuds.map(n => n.id));
+  const aretes = g.aretes.filter(a => ids.has(a.de) && ids.has(a.vers));
+
+  const gauche = noeuds.filter(n => n.type === "personne" || n.type === "organisation");
+  const centre = noeuds.filter(n => n.type === "domaine");
+  const droite = noeuds.filter(n => !gauche.includes(n) && !centre.includes(n));
+
+  const H = Math.max(320, 60 + Math.max(gauche.length, droite.length, 1) * 42);
+  const L = 960;
+  svg.setAttribute("viewBox", "0 0 " + L + " " + H);
+
+  const pos = {};
+  const range = (liste, x, ancre) => liste.forEach((n, i) => {
+    pos[n.id] = { x, y: (H / (liste.length + 1)) * (i + 1), ancre, n };
+  });
+  range(gauche, 190, "end");
+  range(centre, L / 2, "middle");
+  range(droite, L - 190, "start");
+
+  const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c =>
+    ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+  let out = "";
+
+  /* Les traits d abord : ils passent SOUS les noeuds. */
+  for(const a of aretes){
+    const p = pos[a.de], q = pos[a.vers];
+    if(!p || !q) continue;
+    const cl = "arete " + (a.confiance === "HIGH" ? "h" : a.confiance === "LOW" ? "l" : "");
+    out += '<line class="' + cl + '" x1="' + p.x + '" y1="' + p.y + '" x2="' + q.x + '" y2="' + q.y + '">'
+         + '<title>' + esc(a.relation + "  —  " + a.confiance + "\n" + a.source) + '</title></line>';
+  }
+
+  for(const id in pos){
+    const { x, y, ancre, n } = pos[id];
+    const c = COULEUR[n.type] || "#6B7C99";
+    const titre = esc(n.type.toUpperCase() + "  " + n.nom
+      + (n.fonction ? "\n" + n.fonction : "")
+      + (n.profil ? "\n" + n.profil : "")
+      + (n.lien ? "\n" + n.lien : "")
+      + (n.confiance ? "\n" + n.confiance : "")
+      + (n.source ? "\n" + n.source : ""));
+    if(n.type === "personne"){
+      /* Une personne n est pas un point. Rectangle plein, contour epais,
+         creme : elle doit se distinguer d un coup d oeil de toute machine
+         du graphe, meme imprimee en noir et blanc. */
+      out += '<g><title>' + titre + '</title>'
+           + '<rect x="' + (x - 9) + '" y="' + (y - 9) + '" width="18" height="18" rx="3" '
+           + 'fill="#FFFBF2" stroke="' + c + '" stroke-width="2.5"></rect>'
+           + '<circle cx="' + x + '" cy="' + (y - 2.5) + '" r="2.8" fill="' + c + '"></circle>'
+           + '<path d="M' + (x - 5) + ' ' + (y + 6.5) + ' a5 5 0 0 1 10 0" fill="' + c + '"></path>'
+           + '</g>';
+    } else if(n.type === "domaine"){
+      out += '<g><title>' + titre + '</title>'
+           + '<circle cx="' + x + '" cy="' + y + '" r="11" fill="' + c + '"></circle>'
+           + '<circle cx="' + x + '" cy="' + y + '" r="16" fill="none" stroke="' + c + '" stroke-opacity=".3"></circle></g>';
+    } else {
+      out += '<g><title>' + titre + '</title>'
+           + '<circle cx="' + x + '" cy="' + y + '" r="6" fill="' + c
+           + (n.verifie === false ? '" fill-opacity=".45' : "") + '"></circle></g>';
+    }
+    const dx = ancre === "end" ? -16 : ancre === "start" ? 16 : 0;
+    const dy = ancre === "middle" ? 30 : 4;
+    const etiq = n.nom.length > 30 ? n.nom.slice(0, 29) + "…" : n.nom;
+    out += '<text x="' + (x + dx) + '" y="' + (y + dy) + '" text-anchor="' + ancre
+         + '" font-family="\'Space Mono\',monospace" font-size="11" fill="#0B1B36">' + esc(etiq) + '</text>';
+    if(n.type === "personne" && n.fonction){
+      out += '<text x="' + (x + dx) + '" y="' + (y + dy + 13) + '" text-anchor="' + ancre
+           + '" font-family="\'Space Mono\',monospace" font-size="9.5" fill="#6B7C99">'
+           + esc(n.fonction.length > 34 ? n.fonction.slice(0, 33) + "…" : n.fonction) + '</text>';
+    }
+  }
+  svg.innerHTML = out;
+}
+
+/* ==================== LES GESTES ==================== */
+$("#go").addEventListener("click", releve);
+$("#dom").addEventListener("keydown", e => { if(e.key === "Enter") releve(); });
+document.querySelectorAll(".calque").forEach(b => b.addEventListener("click", () => {
+  const c = b.getAttribute("data-c");
+  CALQUES[c] = !CALQUES[c];
+  calques();
+  graphe();
+}));
+
+/* Un lien partage porte son domaine : ?d=example.com se lance tout seul. */
+(function(){
+  let d = "";
+  try{ d = new URLSearchParams(location.search).get("d") || ""; }catch(e){}
+  if(d){ $("#dom").value = d; releve(); }
+  else { etat("Type a domain — yours, or one you were asked to check."); $("#dom").focus(); }
+})();
+</script>
+</body>
+</html>

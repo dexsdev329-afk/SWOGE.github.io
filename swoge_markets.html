@@ -98,7 +98,7 @@ video{ max-width:100%; }
 .menubtn{ min-width:44px; min-height:44px; }
 </style>
 
-<title>SWOGE Studio · AI images and video, paid in $SWOGE</title>
+<title>SWOGE Markets · live perpetual futures</title>
 <style>
   /* Les cases mesurees : une ligne par case, l'effectif TOUJOURS a cote du
      chiffre. Sans lui, « -43,7 % » se lit pareil qu'il porte sur six lectures
@@ -145,21 +145,21 @@ video{ max-width:100%; }
      atteignable avec un `?game=`, un `#` ou un `www`. Sans elle, les deux
      versions se font concurrence et aucune ne gagne.
      ================================================================= -->
-<link rel="canonical" href="https://swoleeswoge.dog/swoge_studio.html">
-<meta name="description" content="SWOGE Studio: generate images and videos and pay per generation in $SWOGE. Images from OpenAI, video from Grok Imagine, prompts from Claude — one place, more models added over time. In preparation.">
+<link rel="canonical" href="https://swoleeswoge.dog/swoge_markets.html">
+<meta name="description" content="SWOGE Markets: live perpetual futures streamed over WebSocket — real prices, mark and index, funding, 24h volume, open interest, order book and trades. Hundreds of perps, searchable and sortable. Market data only, separate from paper trading.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="SWOGE WORLD">
 <meta property="og:locale" content="en_US">
-<meta property="og:title" content="SWOGE Studio · AI images and video, paid in $SWOGE">
-<meta property="og:description" content="SWOGE Studio: generate images and videos and pay per generation in $SWOGE. Images from OpenAI, video from Grok Imagine, prompts from Claude — one place, more models added over time. In preparation.">
-<meta property="og:url" content="https://swoleeswoge.dog/swoge_studio.html">
+<meta property="og:title" content="SWOGE Markets · live perpetual futures">
+<meta property="og:description" content="SWOGE Markets: live perpetual futures streamed over WebSocket — real prices, mark and index, funding, 24h volume, open interest, order book and trades. Hundreds of perps, searchable and sortable. Market data only, separate from paper trading.">
+<meta property="og:url" content="https://swoleeswoge.dog/swoge_markets.html">
 <meta property="og:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@SwoleDogeSwoge">
-<meta name="twitter:title" content="SWOGE Studio · AI images and video, paid in $SWOGE">
-<meta name="twitter:description" content="SWOGE Studio: generate images and videos and pay per generation in $SWOGE. Images from OpenAI, video from Grok Imagine, prompts from Claude — one place, more models added over time. In preparation.">
+<meta name="twitter:title" content="SWOGE Markets · live perpetual futures">
+<meta name="twitter:description" content="SWOGE Markets: live perpetual futures streamed over WebSocket — real prices, mark and index, funding, 24h volume, open interest, order book and trades. Hundreds of perps, searchable and sortable. Market data only, separate from paper trading.">
 <meta name="twitter:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="/img/site/icone-32.png">
@@ -701,7 +701,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       <a href="swoge_wallet.html"><span class="ic">&#129433;</span>Wallet</a>
       <a href="swoge_ai.html"><span class="ic">&#129302;</span>SWOGE AI</a>
       <a href="swoge_perp.html"><span class="ic">&#128200;</span>AI Perp</a>
-      <a href="swoge_markets.html"><span class="ic">&#128202;</span>Markets</a>
+      <a href="swoge_markets.html" class="on"><span class="ic">&#128202;</span>Markets</a>
       <a href="swoge_osint.html"><span class="ic">&#128269;</span>OSINT</a>
       <a href="swoge_studio.html" class="on"><span class="ic">&#127912;</span>Studio</a>
       <a href="whitepaper.html"><span class="ic">&#128220;</span>Docs</a>
@@ -722,143 +722,106 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
         <a class="sw-b" href="nexus.html">ENTER</a></div>
     </article>
   </aside>
-
 <main>
 <div class="wrap">
-
 <style>
-/* ---- CE QUI EST PROPRE A CETTE PAGE ----
- * Le reste — palette, nav, correctifs communs — vient du bloc partage
- * recopie en tete. */
+/* ---- SWOGE MARKETS — propre a cette page ---- */
+.mk-tete{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.mk-tete h1{margin:0}
+.mk-live{display:inline-flex;align-items:center;gap:7px;font-family:'Space Mono',monospace;font-size:11px;
+  letter-spacing:.08em;text-transform:uppercase;border:1px solid var(--line);border-radius:var(--r);padding:6px 11px;color:var(--dim)}
+.mk-live .pt{width:8px;height:8px;border-radius:50%;background:var(--dim)}
+.mk-live.live{color:var(--believer);border-color:var(--believer)} .mk-live.live .pt{background:var(--believer);animation:mkp 1.4s infinite}
+.mk-live.reco{color:var(--neutral);border-color:var(--neutral)} .mk-live.reco .pt{background:var(--neutral)}
+.mk-live.off{color:var(--serpent);border-color:var(--serpent)} .mk-live.off .pt{background:var(--serpent)}
+@keyframes mkp{0%,100%{opacity:1}50%{opacity:.3}}
 
-.enprep{margin-top:14px;border-left:3px solid var(--neutral);background:rgba(150,101,15,.06);
-  padding:12px 15px;border-radius:0 var(--r) var(--r) 0}
-.enprep b{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--neutral)}
+.mk-grille{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:16px;margin-top:20px}
+@media(max-width:820px){.mk-grille{grid-template-columns:1fr}}
+.mk-carte{border:1px solid var(--line);background:var(--panel);border-radius:var(--r);overflow:hidden}
 
-/* Le choix du genre : image, video, texte. Trois grosses cartes, pas un
-   menu deroulant — c est le premier geste, il doit sauter aux yeux. */
-.genres{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:20px}
-.genre{border:1px solid var(--line);background:var(--panel);border-radius:var(--r);padding:16px;
-  cursor:pointer;text-align:left;transition:border-color .12s}
-.genre[aria-pressed="true"]{border-color:var(--pool);background:var(--goldlite)}
-.genre .ic{font-size:22px}
-.genre .t{font-family:'Anton',sans-serif;font-size:17px;text-transform:uppercase;margin-top:6px}
-.genre .p{font-family:'Space Mono',monospace;font-size:12px;color:var(--believer);margin-top:4px}
-.genre .f{font-size:11px;color:var(--dim);margin-top:6px}
-.genre .att{display:inline-block;margin-top:8px;font-family:'Space Mono',monospace;font-size:9.5px;
-  letter-spacing:.08em;text-transform:uppercase;color:var(--neutral);border:1px solid var(--neutral);
-  border-radius:2px;padding:1px 6px}
-
-/* L atelier : la zone de travail, facon composeur. */
-.atelier{margin-top:22px;border:1px solid var(--line);background:var(--panel);border-radius:var(--r);padding:16px}
-.atelier label{display:block;font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.1em;
-  text-transform:uppercase;color:var(--dim);margin:0 0 6px}
-.atelier textarea{width:100%;min-height:88px;resize:vertical;background:var(--void2);color:var(--paper);
-  border:1px solid var(--line);border-radius:var(--r);padding:11px 13px;font-family:inherit;font-size:14px}
-.atelier textarea:focus{outline:2px solid var(--believer);outline-offset:1px}
-.depose{margin-top:14px;border:1.5px dashed var(--line);border-radius:var(--r);padding:20px;text-align:center;
-  color:var(--dim);font-size:13px;cursor:pointer}
-.depose:hover{border-color:var(--pool);color:var(--paper)}
-.reglages{display:flex;gap:18px;flex-wrap:wrap;margin-top:14px}
-.reglages .champ{flex:1;min-width:130px}
-.reglages select{width:100%;background:var(--void2);color:var(--paper);border:1px solid var(--line);
+.mk-barre{display:flex;gap:8px;flex-wrap:wrap;padding:12px;border-bottom:1px solid var(--line)}
+.mk-barre input{flex:1;min-width:120px;background:var(--void2);color:var(--paper);border:1px solid var(--line);
   border-radius:var(--r);padding:9px 11px;font-family:'Space Mono',monospace;font-size:12.5px}
+.mk-barre select,.mk-barre button{background:var(--void2);color:var(--dim);border:1px solid var(--line);border-radius:var(--r);
+  padding:9px 10px;font-family:'Space Mono',monospace;font-size:11.5px;cursor:pointer}
+.mk-barre button.on{color:var(--pool);border-color:var(--pool);background:var(--goldlite)}
 
-/* Le pied de l atelier : le prix, le wallet, le bouton. Le prix est en
-   $SWOGE et il est GROS : c est l argument de la page. */
-.pied{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:18px;
-  border-top:1px solid var(--line);padding-top:16px}
-.prix{font-family:'Anton',sans-serif;font-size:26px;color:var(--pool);line-height:1}
-.prix small{font-family:'Space Mono',monospace;font-size:11px;color:var(--dim);letter-spacing:.06em;
-  text-transform:uppercase;display:block;margin-bottom:2px}
-.pied .droite{margin-left:auto;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-#moyen{background:var(--void2);color:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:10px 11px;font-family:'Space Mono',monospace;font-size:12px}
-button.wallet{font-family:'Space Mono',monospace;font-size:12px;text-transform:uppercase;letter-spacing:.04em;
-  background:transparent;color:var(--dim);border:1px solid var(--line);border-radius:var(--r);padding:11px 16px;cursor:pointer}
-button.wallet:hover{border-color:var(--pool);color:var(--paper)}
-button.generer{font-family:'Anton',sans-serif;font-size:17px;letter-spacing:.04em;text-transform:uppercase;
-  background:var(--gold);color:#fff;border:0;border-radius:var(--r);padding:13px 26px;cursor:pointer}
-button.generer:disabled{opacity:.55;cursor:not-allowed}
+.mk-tab{width:100%;border-collapse:collapse;font-size:12.5px}
+.mk-tab th{position:sticky;top:0;background:var(--panel);text-align:right;font-family:'Space Mono',monospace;font-size:10px;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--dim);font-weight:400;padding:8px 10px;cursor:pointer;border-bottom:1px solid var(--line);white-space:nowrap}
+.mk-tab th:first-child,.mk-tab td:first-child{text-align:left}
+.mk-tab th.tri{color:var(--pool)}
+.mk-liste{max-height:560px;overflow:auto}
+.mk-tab td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:right;font-family:'Space Mono',monospace;white-space:nowrap}
+.mk-tab tr{cursor:pointer} .mk-tab tr:hover td{background:var(--goldlite)}
+.mk-tab tr.sel td{background:var(--goldlite);box-shadow:inset 2px 0 0 var(--pool)}
+.mk-sym{font-family:'Anton',sans-serif;font-size:14px;letter-spacing:.02em}
+.mk-ex{font-family:'Space Mono',monospace;font-size:9px;color:var(--dim);text-transform:uppercase;margin-left:6px}
+.mk-tag{font-size:8.5px;border:1px solid var(--line);border-radius:2px;padding:0 4px;color:var(--dim);margin-left:5px}
+.mk-etoile{cursor:pointer;color:var(--line)} .mk-etoile.on{color:var(--neutral)}
+.pos{color:var(--believer)} .neg{color:var(--serpent)}
 
-/* Le flux de paiement, montre en cinq pas : c est ce qui rassure, et c est
-   ce que la page fera vraiment quand elle sera branchee. */
-.flux{margin-top:26px;border-top:1px solid var(--line);padding-top:18px}
-.flux ol{list-style:none;padding:0;margin:12px 0 0;counter-reset:f}
-.flux li{counter-increment:f;position:relative;padding:8px 0 8px 40px;font-size:13px;color:var(--paper)}
-.flux li::before{content:counter(f);position:absolute;left:0;top:6px;width:26px;height:26px;border-radius:50%;
-  background:var(--goldlite);color:var(--pool);font-family:'Anton',sans-serif;font-size:14px;
-  display:flex;align-items:center;justify-content:center}
-.flux li b{color:var(--paper)} .flux li span{color:var(--dim)}
-
-.bords{border:1px solid var(--line);background:var(--panel);border-radius:var(--r);padding:14px 16px;margin-top:12px}
-.bords li{margin:0 0 7px;font-size:12.5px} .bords li:last-child{margin-bottom:0}
-.apercu{margin-top:16px;border:1px solid var(--line);border-radius:var(--r);min-height:120px;
-  display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:13px;background:var(--void2)}
+.mk-det{padding:16px}
+.mk-det .prix{font-family:'Anton',sans-serif;font-size:34px;line-height:1}
+.mk-det .prix small{font-family:'Space Mono',monospace;font-size:13px;color:var(--dim);letter-spacing:.04em}
+.mk-chiffres{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin-top:16px}
+.mk-c{border:1px solid var(--line);border-radius:var(--r);padding:8px 10px}
+.mk-c .k{font-family:'Space Mono',monospace;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim)}
+.mk-c .v{font-family:'Space Mono',monospace;font-size:13px;margin-top:3px}
+.mk-deux{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}
+@media(max-width:520px){.mk-deux{grid-template-columns:1fr}}
+.mk-deux h3{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--dim);margin:0 0 6px}
+.mk-book div,.mk-trades div{display:flex;justify-content:space-between;font-family:'Space Mono',monospace;font-size:11px;padding:1px 0}
+.mk-note{font-size:11.5px;color:var(--dim);margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+.mk-note a{color:var(--pool)}
 </style>
 
   <div class="top">
-    <div class="kick">SWOGE Studio · pay per generation in $SWOGE</div>
-    <h1>Make an image or a <em>video</em>, pay in $SWOGE</h1>
-    <div class="sub">
-      One place for every model: images from OpenAI, video from Grok Imagine, answers with sources like
-      Perplexity, and Claude for prompts and chat. You pick, you pay per generation in $SWOGE or ETH, you download.
-      More models get added over time — the page reads the catalogue, so new ones just appear.
+    <div class="kick">SWOGE Markets · live perpetuals · real data</div>
+    <div class="mk-tete">
+      <h1>Live <em>perpetuals</em></h1>
+      <span class="mk-live" id="mkLive"><span class="pt"></span><span id="mkLiveTxt">Connecting…</span></span>
     </div>
-
-    <!-- L honnetete d abord : rien ne genere encore. -->
-    <div class="enprep">
-      <b>In preparation</b><br>
-      The interface is here so you can see the shape. Generation is not live yet — the provider keys
-      and the $SWOGE payment address are still being set up. Nothing charges your wallet on this page today.
+    <div class="sub">
+      Real market data, streamed over WebSocket — not polled, not simulated. Prices, mark and index,
+      funding, 24h volume and open interest, order book and recent trades. This is <b>market data only</b>:
+      it is separate from the SWOGE AI <a href="swoge_perp.html" style="color:var(--pool)">paper-trading colony</a>,
+      and nothing here signs or places an order.
     </div>
   </div>
 
-  <!-- LE CHOIX DU GENRE, peint depuis le catalogue du serveur. -->
-  <div class="genres" id="genres" role="group" aria-label="What to make"></div>
-
-  <div class="atelier" id="atelier" hidden>
-    <label for="prompt" id="lblPrompt">Prompt</label>
-    <textarea id="prompt" placeholder="Describe what you want…"></textarea>
-
-    <div class="depose" id="depose" hidden>Drop an image, or click to choose — for image-to-video</div>
-
-    <div class="reglages" id="reglages"></div>
-
-    <div class="pied">
-      <div class="prix"><small>Price</small><span id="prix">—</span>
-        <small style="margin-top:4px;text-transform:none;letter-spacing:0">follows the live $SWOGE rate — locked in a quote when you pay</small></div>
-      <div class="droite">
-        <select id="moyen" title="Pay in $SWOGE or ETH" aria-label="Payment currency"></select>
-        <button class="wallet" id="wallet">Connect wallet</button>
-        <button class="generer" id="generer" disabled>Generate</button>
+  <div class="mk-grille">
+    <!-- LE SELECTEUR DE MARCHE -->
+    <div class="mk-carte">
+      <div class="mk-barre">
+        <input id="mkQ" type="text" placeholder="Search markets… (BTC, ETH, SOL…)" aria-label="Search markets" spellcheck="false">
+        <button id="mkFav" title="Favorites only">⭐</button>
+        <select id="mkQuote" title="Contract"><option value="ALL">All</option><option value="USD">USD</option><option value="USDT">USDT</option></select>
+        <select id="mkExch" title="Exchange"><option value="ALL">All venues</option></select>
+      </div>
+      <div class="mk-liste">
+        <table class="mk-tab">
+          <thead><tr>
+            <th data-tri="symbole">Symbol</th>
+            <th data-tri="last">Price</th>
+            <th data-tri="variation24h">24h</th>
+            <th data-tri="volume24h" class="tri">Volume</th>
+            <th data-tri="fundingRate">Funding</th>
+            <th data-tri="openInterest">OI</th>
+          </tr></thead>
+          <tbody id="mkRows"><tr><td colspan="6" style="text-align:center;color:var(--dim);padding:30px">Connecting…</td></tr></tbody>
+        </table>
       </div>
     </div>
 
-    <div class="apercu" id="apercu">Your result will appear here, ready to download.</div>
+    <!-- LE DETAIL DU MARCHE CHOISI -->
+    <div class="mk-carte mk-det" id="mkDet">
+      <div style="color:var(--dim);text-align:center;padding:40px 0">Pick a market on the left.</div>
+    </div>
   </div>
 
-  <section class="flux">
-    <h2 style="font-family:'Anton',sans-serif;font-size:17px;text-transform:uppercase;margin:0">How paying will work</h2>
-    <p class="sub" style="font-size:12px;margin-top:4px">The flow is designed so a generation is credited only after the chain confirms the payment — never on the browser's word.</p>
-    <ol>
-      <li><b>Connect your wallet.</b> <span>Read-only until you approve a payment.</span></li>
-      <li><b>Pay the price shown — in $SWOGE or ETH.</b> <span>The price is anchored in USD and converted to the currency you pick at the live rate, locked in a quote. To the studio address, from your connected wallet.</span></li>
-      <li><b>The server reads the transaction on-chain.</b> <span>Right recipient, right token, right amount, enough confirmations — checked, never taken on trust.</span></li>
-      <li><b>The generation is credited once — and only once.</b> <span>Each transaction hash is single-use, so a payment can't be replayed for a second result.</span></li>
-      <li><b>Download, and keep the record.</b> <span>Every generation and its transaction stay in your history.</span></li>
-    </ol>
-  </section>
-
-  <section class="flux">
-    <h2 style="font-family:'Anton',sans-serif;font-size:17px;text-transform:uppercase;margin:0">What this page will not do</h2>
-    <div class="bords"><ul>
-      <li>No API key ever reaches your browser — every provider call is made server-side.</li>
-      <li>A generation is credited only after the payment is confirmed on-chain, never on the browser's claim.</li>
-      <li>A transaction hash is used once: no double-spend, no replay for a second generation.</li>
-      <li>A payment to the wrong address, in the wrong token, or for too little is refused. Native ETH and a token payment are never confused, and the amount is compared in base units (wei), not floating point.</li>
-      <li>Nothing charges your wallet while the studio is in preparation.</li>
-    </ul></div>
-  </section>
+  <div class="mk-note" id="mkNote"></div>
 
   </div>
   <!-- LA COLONNE DE DROITE, sans la carte « YOUR BALANCE » : cette page ne
@@ -881,133 +844,141 @@ button.generer:disabled{opacity:.55;cursor:not-allowed}
   </aside>
 
 </div>
-
-<script>
+<script src="perp_live.js?v=edb147c4" defer></script>
+<script defer>
 "use strict";
-/* ==================== SWOGE STUDIO — LA PAGE ====================
- * Elle lit le CATALOGUE du serveur et se peint : les modeles, leurs prix,
- * leur etat. Ajouter un modele cote serveur le fait apparaitre ici sans
- * qu on touche a cette page — c est le « systeme extensible » demande.
- *
- * RIEN ne genere et rien ne paie : le studio est en preparation. Le bouton
- * Generer explique ou on en est plutot que d echouer. Aucune cle ne vit
- * ici : quand le studio ouvrira, c est le serveur qui appellera les
- * fournisseurs, et c est le serveur qui verifiera le paiement on-chain. */
-function serveur(){
-  try{ const q = new URLSearchParams(location.search).get("server");
-       if(q) return String(q).replace(/^ws/,"http"); }catch(e){}
-  return "https://web-production-220a3.up.railway.app";
-}
-const $ = s => document.querySelector(s);
-function ech(s){ return String(s==null?"":s).replace(/[&<>"']/g, c =>
-  ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])); }
-function nombre(n){ return Number(n||0).toLocaleString("en-US"); }
+/* ==================== SWOGE MARKETS — LE RENDU ====================
+ * Le moteur (perp_live.js) porte les donnees ; ce script ne fait que PEINDRE,
+ * et seulement ce qui a change. Tout tick passe par le store, qui regroupe
+ * les notifications sur un cadre d animation : mille ticks -> un rendu. */
+document.addEventListener("DOMContentLoaded", function(){
+  if(!window.SwogeMarkets){ return; }
+  var S = window.SwogeMarkets;
+  function serveur(){ try{ var q=new URLSearchParams(location.search).get("server"); if(q) return String(q).replace(/^ws/,"http"); }catch(e){} return "https://web-production-220a3.up.railway.app"; }
+  var store = new S.MarketStore();
+  var mm = new S.MarketManager(store, { serveur: serveur() });
+  var $ = function(id){ return document.getElementById(id); };
+  var etat = { recherche:"", quote:"ALL", exchange:"ALL", tri:"volume24h", sens:"desc", favorisSeuls:false };
 
-let CAT = null, CHOISI = null, OUVERT = false, MOYEN = "swoge";
+  function fmtPrix(v){ if(v==null) return "—"; if(v>=1000) return v.toLocaleString("en-US",{maximumFractionDigits:1});
+    if(v>=1) return v.toFixed(2); return v.toPrecision(4); }
+  function fmtGros(v){ if(v==null) return "—"; if(v>=1e9) return "$"+(v/1e9).toFixed(2)+"B"; if(v>=1e6) return "$"+(v/1e6).toFixed(1)+"M"; if(v>=1e3) return "$"+(v/1e3).toFixed(0)+"K"; return "$"+v.toFixed(0); }
+  function fmtPct(v){ if(v==null) return "—"; return (v>=0?"+":"")+v.toFixed(2)+"%"; }
+  function fmtFund(v){ if(v==null) return "—"; return (v>=0?"+":"")+(v*100).toFixed(4)+"%"; }
+  function ech(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
 
-/* Le prix montre : le $SWOGE est INDICATIF — il suit le cours, et le montant
-   exact est verrouille dans un devis au moment de payer. Quand le cours n est
-   pas connu, on montre l ancre en USD plutot qu un chiffre en $SWOGE qu on ne
-   tiendrait pas. Ca repond directement au fait que le cours du $SWOGE bouge. */
-function prixTexte(m){
-  /* En ETH, le montant depend du cours de l ETH : on montre l ancre en USD,
-     le montant exact est verrouille dans le devis au paiement. En $SWOGE, on
-     garde le montant indicatif quand on le connait. */
-  if(MOYEN==="eth") return (m.prixUsd!=null ? "$"+Number(m.prixUsd).toFixed(2) : "—")+" in ETH";
-  if(m.prixSwoge != null) return "~"+nombre(m.prixSwoge)+" $SWOGE";
-  if(m.prixUsd != null) return "$"+Number(m.prixUsd).toFixed(2)+" in $SWOGE";
-  return "—";
-}
+  /* ---- LE STATUT LIVE ---- */
+  store.on("statut", function(){
+    var vivants = Object.keys(store.statut).filter(function(e){ return store.statut[e]==="live"; });
+    var reco = Object.keys(store.statut).filter(function(e){ return store.statut[e]==="reconnecting"; });
+    var el = $("mkLive"), txt = $("mkLiveTxt");
+    if(vivants.length){ el.className="mk-live live"; txt.textContent="Live · "+vivants.join(", "); }
+    else if(reco.length){ el.className="mk-live reco"; txt.textContent="Reconnecting…"; }
+    else { el.className="mk-live off"; txt.textContent="Offline"; }
+  });
 
-async function charge(){
-  try{
-    const r = await fetch(serveur()+"/studio/catalogue", { cache:"no-store" });
-    CAT = await r.json();
-  }catch(e){
-    /* Le serveur muet ne doit pas laisser une page vide : on montre au moins
-       ce qui EST prevu, avec les prix, en repli. */
-    CAT = { ouvert:false, modeles:[
-      { id:"image-openai", genre:"image", nom:"Image", fournisseur:"OpenAI", prixUsd:0.10, prixSwoge:null, prixIndicatif:true, actif:false, entree:"prompt", resolutions:["1024x1024","1536x1024","1024x1536"] },
-      { id:"video-grok", genre:"video", nom:"Video", fournisseur:"Grok Imagine", prixUsd:0.50, prixSwoge:null, prixIndicatif:true, actif:false, entree:"image_ou_prompt", durees:[6,10], resolutions:["720p","1080p"] },
-      { id:"texte-claude", genre:"texte", nom:"Text", fournisseur:"Claude", prixUsd:0.01, prixSwoge:null, prixIndicatif:true, actif:false, entree:"prompt" },
-      { id:"reponse-perplexity", genre:"reponse", nom:"Answer", fournisseur:"Perplexity", prixUsd:0.02, prixSwoge:null, prixIndicatif:true, actif:false, entree:"question" },
-      { id:"chat-claude", genre:"texte", nom:"Chat", fournisseur:"Claude", prixUsd:0.02, prixSwoge:null, prixIndicatif:true, actif:false, entree:"prompt" },
-    ], moyens:[ {id:"swoge",nom:"$SWOGE",genre:"erc20"}, {id:"eth",nom:"ETH",genre:"native"} ] };
+  /* ---- LA LISTE (selecteur) ---- */
+  var rafListe=null;
+  function peintListe(){
+    if(rafListe) return; rafListe=requestAnimationFrame(function(){ rafListe=null;
+      var arr = mm.liste(etat).slice(0, 300);   /* borne d affichage : la recherche descend plus bas */
+      var sel = mm.affiche;
+      var h = arr.map(function(m){
+        var fav = mm.favoris.has(m.symbole);
+        var v = m.variation24h;
+        return '<tr data-cle="'+ech(m.symbole)+'"'+(m.symbole===sel?' class="sel"':'')+'>'
+          + '<td><span class="mk-etoile'+(fav?' on':'')+'" data-fav="'+ech(m.symbole)+'">★</span> '
+          + '<span class="mk-sym">'+ech(m.base)+'</span><span class="mk-tag">'+ech(m.quote)+'</span><span class="mk-ex">'+ech(m.exchange)+'</span></td>'
+          + '<td>'+fmtPrix(m.last)+'</td>'
+          + '<td class="'+(v>=0?'pos':'neg')+'">'+fmtPct(v)+'</td>'
+          + '<td>'+fmtGros(m.volume24h)+'</td>'
+          + '<td class="'+(m.fundingRate>=0?'pos':'neg')+'">'+fmtFund(m.fundingRate)+'</td>'
+          + '<td>'+fmtGros(m.openInterest)+'</td></tr>';
+      }).join("");
+      $("mkRows").innerHTML = h || '<tr><td colspan="6" style="text-align:center;color:var(--dim);padding:30px">No market matches.</td></tr>';
+    });
   }
-  OUVERT = !!CAT.ouvert;
-  const selMoy = document.getElementById("moyen");
-  const moyens = (CAT.moyens && CAT.moyens.length) ? CAT.moyens : [{id:"swoge",nom:"$SWOGE"},{id:"eth",nom:"ETH"}];
-  selMoy.innerHTML = moyens.map(m => '<option value="'+m.id+'">'+ech(m.nom)+'</option>').join("");
-  MOYEN = moyens[0].id;
-  selMoy.addEventListener("change", () => { MOYEN = selMoy.value; if(CHOISI){ $("#prix").textContent = prixTexte(CHOISI); majGenerer(); } });
-  peintGenres();
-}
+  store.on("liste", peintListe);
+  store.on("marches", function(){ remplitExchanges(); peintListe(); });
 
-const ICONE = { image:"🖼️", video:"🎬", texte:"✍️" };
-function peintGenres(){
-  $("#genres").innerHTML = CAT.modeles.map(m =>
-    '<button class="genre" data-id="'+ech(m.id)+'" aria-pressed="false">'
-    + '<div class="ic">'+(ICONE[m.genre]||"✨")+'</div>'
-    + '<div class="t">'+ech(m.nom||m.genre)+'</div>'
-    + '<div class="p">'+prixTexte(m)+'</div>'
-    + '<div class="f">'+ech(m.fournisseur)+'</div>'
-    + (m.actif ? "" : '<div class="att">'+ech(m.enAttente ? "in preparation" : "soon")+'</div>')
-    + '</button>').join("");
-  document.querySelectorAll(".genre").forEach(b =>
-    b.addEventListener("click", () => choisir(b.getAttribute("data-id"))));
-}
+  function remplitExchanges(){
+    var ex = {}; store.marches.forEach(function(m){ ex[m.exchange]=1; });
+    var sel=$("mkExch"), cour=sel.value;
+    sel.innerHTML='<option value="ALL">All venues</option>'+Object.keys(ex).map(function(e){return '<option>'+ech(e)+'</option>';}).join("");
+    sel.value=cour;
+  }
 
-function choisir(id){
-  CHOISI = CAT.modeles.find(m => m.id === id);
-  if(!CHOISI) return;
-  document.querySelectorAll(".genre").forEach(b =>
-    b.setAttribute("aria-pressed", b.getAttribute("data-id")===id ? "true" : "false"));
-  $("#atelier").hidden = false;
+  /* ---- LE DETAIL ---- */
+  var abonneDetail=null;
+  function peintDetail(){
+    var cle = mm.affiche; if(!cle){ return; }
+    var m = store.marches.get(cle); if(!m) return;
+    var d = store.detail.get(cle) || {};
+    var v = m.variation24h;
+    var book = d.book || {bids:[],asks:[]};
+    var trades = d.trades || [];
+    $("mkDet").innerHTML =
+      '<div><span class="mk-sym" style="font-size:20px">'+ech(m.base)+'</span><span class="mk-tag">'+ech(m.quote)+' PERP</span><span class="mk-ex">'+ech(m.exchange)+'</span></div>'
+      + '<div class="prix" style="margin-top:8px">'+fmtPrix(m.last)+' <small class="'+(v>=0?'pos':'neg')+'">'+fmtPct(v)+'</small></div>'
+      + '<div class="mk-chiffres">'
+      + cc("Mark", fmtPrix(m.markPrice)) + cc("Index", fmtPrix(m.indexPrice))
+      + cc("Funding", fmtFund(m.fundingRate)) + cc("24h volume", fmtGros(m.volume24h))
+      + cc("Open interest", fmtGros(m.openInterest)) + cc("Bid / Ask", fmtPrix(m.bid)+" / "+fmtPrix(m.ask))
+      + '</div>'
+      + '<div class="mk-deux">'
+      + '<div><h3>Order book</h3><div class="mk-book">'
+      + book.asks.slice(0,8).reverse().map(function(x){return '<div><span class="neg">'+fmtPrix(x[0])+'</span><span>'+x[1].toFixed(3)+'</span></div>';}).join("")
+      + book.bids.slice(0,8).map(function(x){return '<div><span class="pos">'+fmtPrix(x[0])+'</span><span>'+x[1].toFixed(3)+'</span></div>';}).join("")
+      + (book.bids.length?'':'<div style="color:var(--dim)">waiting for book…</div>') + '</div></div>'
+      + '<div><h3>Recent trades</h3><div class="mk-trades">'
+      + (trades.length ? trades.slice(0,12).map(function(t){return '<div><span class="'+(t.cote==="B"?'pos':'neg')+'">'+fmtPrix(t.px)+'</span><span>'+t.sz.toFixed(3)+'</span></div>';}).join("") : '<div style="color:var(--dim)">waiting for trades…</div>')
+      + '</div></div></div>'
+      + '<div class="mk-note">Real-time from '+ech(m.exchange)+' over WebSocket. Market data only — no order is placed here.</div>';
+  }
+  function cc(k,v){ return '<div class="mk-c"><div class="k">'+k+'</div><div class="v">'+v+'</div></div>'; }
+  function choisit(cle){
+    if(abonneDetail) abonneDetail();
+    mm.selectionne(cle);
+    abonneDetail = store.on("detail:"+cle, peintDetail);
+    var tick = store.on("ticker:"+cle, peintDetail);
+    peintDetail(); peintListe();
+  }
 
-  const estVideo = CHOISI.genre === "video";
-  const estTexte = CHOISI.genre === "texte";
-  $("#lblPrompt").textContent = CHOISI.genre==="reponse" ? "Your question" : estTexte ? "Your rough idea" : "Prompt";
-  $("#prompt").placeholder = estVideo ? "Describe the motion, or leave blank if you upload an image…"
-    : estTexte ? "A few words — Claude turns them into a strong prompt…"
-    : "Describe the image you want…";
-  /* L upload n apparait que pour l image->video : ailleurs il n a pas de sens. */
-  $("#depose").hidden = !(estVideo && /image/.test(CHOISI.entree||""));
+  /* ---- LES GESTES ---- */
+  var deb=null;
+  $("mkQ").addEventListener("input", function(e){ clearTimeout(deb); var val=e.target.value;
+    deb=setTimeout(function(){ etat.recherche=val.trim(); peintListe(); }, 180); });   /* debounce recherche */
+  $("mkFav").addEventListener("click", function(){ etat.favorisSeuls=!etat.favorisSeuls; $("mkFav").className=etat.favorisSeuls?"on":""; peintListe(); });
+  $("mkQuote").addEventListener("change", function(e){ etat.quote=e.target.value; peintListe(); });
+  $("mkExch").addEventListener("change", function(e){ etat.exchange=e.target.value; peintListe(); });
+  document.querySelectorAll(".mk-tab th[data-tri]").forEach(function(th){ th.addEventListener("click", function(){
+    var t=th.getAttribute("data-tri");
+    if(etat.tri===t) etat.sens=(etat.sens==="desc"?"asc":"desc"); else { etat.tri=t; etat.sens=(t==="symbole"?"asc":"desc"); }
+    document.querySelectorAll(".mk-tab th").forEach(function(x){x.classList.remove("tri");}); th.classList.add("tri");
+    peintListe();
+  });});
+  $("mkRows").addEventListener("click", function(e){
+    var f=e.target.closest("[data-fav]"); if(f){ e.stopPropagation(); mm.favori(f.getAttribute("data-fav")); return; }
+    var tr=e.target.closest("tr[data-cle]"); if(tr) choisit(tr.getAttribute("data-cle"));
+  });
 
-  /* Les reglages viennent du modele : duree pour la video, resolution pour
-     l image et la video. Le serveur les declare, la page les affiche. */
-  const champs = [];
-  if(CHOISI.durees) champs.push(sel("Duration", CHOISI.durees.map(d => d+"s")));
-  if(CHOISI.resolutions) champs.push(sel("Resolution", CHOISI.resolutions));
-  $("#reglages").innerHTML = champs.join("");
-
-  $("#prix").textContent = prixTexte(CHOISI);
-  majGenerer();
-}
-function sel(nom, options){
-  return '<div class="champ"><label>'+ech(nom)+'</label><select>'
-    + options.map(o => '<option>'+ech(o)+'</option>').join("") + '</select></div>';
-}
-
-/* Le bouton Generer dit OU on en est : en preparation, il l explique ; plus
-   tard, il exigera le wallet puis le paiement. Il n echoue jamais en
-   silence. */
-function majGenerer(){
-  const b = $("#generer");
-  if(!OUVERT){ b.disabled = true; b.textContent = "In preparation"; return; }
-  b.disabled = false; b.textContent = "Pay "+(CHOISI?prixTexte(CHOISI):"")+" & generate";
-}
-
-$("#wallet").addEventListener("click", () => {
-  /* Quand le studio ouvrira, ce bouton demandera le wallet (lecture seule
-     jusqu au paiement). Aujourd hui il dit franchement l etat. */
-  $("#wallet").textContent = OUVERT ? "Wallet — coming with launch" : "In preparation";
+  /* ---- LE DEMARRAGE : interface d abord, donnees ensuite ---- */
+  $("mkNote").innerHTML = "Discovering markets…";
+  mm.charge().then(function(v){
+    $("mkNote").innerHTML = "Discovered "+store.marches.size+" perpetual markets across "
+      + (v.exchanges||[]).map(function(e){return ech(e.nom)+(e.ok?" ("+e.marches+")":" — unreachable from our server");}).join(", ")
+      + '. Live prices stream over WebSocket directly from the exchange.';
+    remplitExchanges(); peintListe();
+    mm.demarre();                                  /* ouvre le WS : les prix se mettent a ticker */
+    /* Choix par defaut : le plus gros volume, ou ?m=BTC */
+    var voulu=null; try{ voulu=new URLSearchParams(location.search).get("m"); }catch(e){}
+    var cle = voulu ? (voulu.toUpperCase()+"/USD:PERP") : (mm.liste({tri:"volume24h"})[0]||{}).symbole;
+    if(cle && store.marches.has(cle)) choisit(cle);
+  })["catch"](function(err){
+    $("mkNote").innerHTML = "Could not reach the market discovery service. "+ech(String(err&&err.message||err));
+    $("mkLive").className="mk-live off"; $("mkLiveTxt").textContent="Offline";
+  });
 });
-$("#generer").addEventListener("click", () => {
-  $("#apercu").textContent = "Studio is in preparation — generation is not live yet. "
-    + "Come back once the models and $SWOGE payment are switched on.";
-});
-
-charge();
 </script>
 
 </body>

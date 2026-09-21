@@ -28,9 +28,11 @@ const CAT = { ouvert:false, jeton:'0x8a166fb41cd659a0a43396272ff73973ce29f817', 
     resolutions:['1024x1024','1536x1024'], actif:false, enAttente:'provider key not set (OPENAI_API_KEY)' },
   { id:'video-grok', genre:'video', nom:'Video', fournisseur:'xAI Grok Imagine', prixSwoge:25000,
     entree:'image_ou_prompt', durees:[6,10], resolutions:['720p','1080p'], actif:false, enAttente:'provider key not set (GROK_API_KEY)' },
-  { id:'texte-claude', genre:'texte', nom:'Text', fournisseur:'Anthropic Claude', prixSwoge:500, entree:'prompt',
+  { id:'texte-claude', genre:'texte', nom:'Text', fournisseur:'Anthropic Claude', prixUsd:0.01, prixSwoge:500, prixIndicatif:true, entree:'prompt',
     actif:false, enAttente:'provider key not set (ANTHROPIC_API_KEY)' },
-] };
+  { id:'reponse-perplexity', genre:'reponse', nom:'Answer', fournisseur:'Perplexity', prixUsd:0.02, prixSwoge:1000, prixIndicatif:true, entree:'question',
+    actif:false, enAttente:'provider key not set (PERPLEXITY_API_KEY)' },
+], moyens:[ {id:'swoge',nom:'$SWOGE',genre:'erc20'}, {id:'eth',nom:'ETH',genre:'native'} ] };
 
 (async () => {
   if (!chromium) { console.log('playwright absent : essai ignore'); return; }
@@ -68,14 +70,14 @@ const CAT = { ouvert:false, jeton:'0x8a166fb41cd659a0a43396272ff73973ce29f817', 
   {
     const page = await ouvre();
     const genres = await page.$$eval('.genre', (e) => e.map((x) => x.textContent));
-    eq(genres.length, 3, 'trois modeles peints depuis le catalogue');
+    eq(genres.length, 4, 'les modeles du catalogue sont peints (image, video, text, answer)');
     ok(genres.some((g) => /Image/.test(g) && /5,000/.test(g)), 'l image, avec son prix en $SWOGE');
     ok(genres.some((g) => /Video/.test(g) && /25,000/.test(g)), 'la video, plus chere');
     /* Un modele ajoute au catalogue apparait sans toucher la page. */
     const plus = JSON.parse(JSON.stringify(CAT));
     plus.modeles.push({ id:'audio-x', genre:'image', nom:'Audio', fournisseur:'Later', prixSwoge:3000, actif:false, enAttente:'soon' });
     const p2 = await ouvre(plus);
-    eq((await p2.$$('.genre')).length, 4, 'un modele ajoute cote serveur apparait, page inchangee');
+    eq((await p2.$$('.genre')).length, 5, 'un modele ajoute cote serveur apparait, page inchangee');
     await page.close(); await p2.close();
   }
 
@@ -115,6 +117,23 @@ const CAT = { ouvert:false, jeton:'0x8a166fb41cd659a0a43396272ff73973ce29f817', 
     await page.close();
   }
 
+  console.log('\n-- 4bis. Answer (facon Perplexity) et le choix de la monnaie --');
+  {
+    const page = await ouvre();
+    const genres = await page.$$eval('.genre', (e) => e.map((x) => x.textContent));
+    ok(genres.some((g) => /Answer/.test(g)), 'la carte Answer (recherche + reponse sourcee) est la');
+    /* Le choix de la monnaie : $SWOGE ou ETH. */
+    await page.click('.genre[data-id="image-openai"]');
+    const moyens = await page.$$eval('#moyen option', (o) => o.map((x) => x.textContent));
+    ok(moyens.some((m) => /SWOGE/.test(m)) && moyens.some((m) => /ETH/.test(m)), 'on peut payer en $SWOGE ou en ETH');
+    /* Passer a l ETH change l affichage du prix vers l ancre USD. */
+    const avant = await page.textContent('#prix');
+    await page.selectOption('#moyen', 'eth');
+    const apres = await page.textContent('#prix');
+    ok(avant !== apres && /ETH/i.test(apres), 'choisir ETH met a jour le prix affiche [' + apres.trim() + ']');
+    await page.close();
+  }
+
   console.log('\n-- 5. le flux de paiement et les garanties sont montres --');
   {
     const page = await ouvre();
@@ -124,6 +143,8 @@ const CAT = { ouvert:false, jeton:'0x8a166fb41cd659a0a43396272ff73973ce29f817', 
     ok(/single-use|used once|double-spend/i.test(t), 'un hash sert une fois : pas de double depense');
     ok(/No API key ever reaches your browser/i.test(t), 'aucune cle ne touche le navigateur');
     ok(/base units/i.test(t), 'le montant se compare en unites de base');
+    ok(/\$SWOGE or ETH/i.test(t), 'on peut payer en $SWOGE ou en ETH');
+    ok(/Native ETH and a token payment are never confused/i.test(t), 'natif et jeton ne sont jamais confondus');
     ok(/follows the live \$SWOGE rate|locked in a quote/i.test(t),
        'le prix suit le cours du $SWOGE et se verrouille au paiement');
     await page.close();

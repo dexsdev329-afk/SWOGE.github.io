@@ -771,6 +771,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .prix small{font-family:'Space Mono',monospace;font-size:11px;color:var(--dim);letter-spacing:.06em;
   text-transform:uppercase;display:block;margin-bottom:2px}
 .pied .droite{margin-left:auto;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+#moyen{background:var(--void2);color:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:10px 11px;font-family:'Space Mono',monospace;font-size:12px}
 button.wallet{font-family:'Space Mono',monospace;font-size:12px;text-transform:uppercase;letter-spacing:.04em;
   background:transparent;color:var(--dim);border:1px solid var(--line);border-radius:var(--r);padding:11px 16px;cursor:pointer}
 button.wallet:hover{border-color:var(--pool);color:var(--paper)}
@@ -798,8 +799,8 @@ button.generer:disabled{opacity:.55;cursor:not-allowed}
     <div class="kick">SWOGE Studio · pay per generation in $SWOGE</div>
     <h1>Make an image or a <em>video</em>, pay in $SWOGE</h1>
     <div class="sub">
-      One place for the models: images from OpenAI, video from Grok Imagine, and Claude to turn a
-      rough idea into a strong prompt. You pick, you pay per generation in $SWOGE, you download.
+      One place for every model: images from OpenAI, video from Grok Imagine, answers with sources like
+      Perplexity, and Claude for prompts and chat. You pick, you pay per generation in $SWOGE or ETH, you download.
       More models get added over time — the page reads the catalogue, so new ones just appear.
     </div>
 
@@ -826,6 +827,7 @@ button.generer:disabled{opacity:.55;cursor:not-allowed}
       <div class="prix"><small>Price</small><span id="prix">—</span>
         <small style="margin-top:4px;text-transform:none;letter-spacing:0">follows the live $SWOGE rate — locked in a quote when you pay</small></div>
       <div class="droite">
+        <select id="moyen" title="Pay in $SWOGE or ETH" aria-label="Payment currency"></select>
         <button class="wallet" id="wallet">Connect wallet</button>
         <button class="generer" id="generer" disabled>Generate</button>
       </div>
@@ -835,11 +837,11 @@ button.generer:disabled{opacity:.55;cursor:not-allowed}
   </div>
 
   <section class="flux">
-    <h2 style="font-family:'Anton',sans-serif;font-size:17px;text-transform:uppercase;margin:0">How paying in $SWOGE will work</h2>
+    <h2 style="font-family:'Anton',sans-serif;font-size:17px;text-transform:uppercase;margin:0">How paying will work</h2>
     <p class="sub" style="font-size:12px;margin-top:4px">The flow is designed so a generation is credited only after the chain confirms the payment — never on the browser's word.</p>
     <ol>
       <li><b>Connect your wallet.</b> <span>Read-only until you approve a payment.</span></li>
-      <li><b>Pay the price shown, in $SWOGE.</b> <span>To the studio address, from your connected wallet.</span></li>
+      <li><b>Pay the price shown — in $SWOGE or ETH.</b> <span>The price is anchored in USD and converted to the currency you pick at the live rate, locked in a quote. To the studio address, from your connected wallet.</span></li>
       <li><b>The server reads the transaction on-chain.</b> <span>Right recipient, right token, right amount, enough confirmations — checked, never taken on trust.</span></li>
       <li><b>The generation is credited once — and only once.</b> <span>Each transaction hash is single-use, so a payment can't be replayed for a second result.</span></li>
       <li><b>Download, and keep the record.</b> <span>Every generation and its transaction stay in your history.</span></li>
@@ -852,7 +854,7 @@ button.generer:disabled{opacity:.55;cursor:not-allowed}
       <li>No API key ever reaches your browser — every provider call is made server-side.</li>
       <li>A generation is credited only after the payment is confirmed on-chain, never on the browser's claim.</li>
       <li>A transaction hash is used once: no double-spend, no replay for a second generation.</li>
-      <li>A payment to the wrong address, in the wrong token, or for too little is refused — the amount is compared in base units, not floating point.</li>
+      <li>A payment to the wrong address, in the wrong token, or for too little is refused. Native ETH and a token payment are never confused, and the amount is compared in base units (wei), not floating point.</li>
       <li>Nothing charges your wallet while the studio is in preparation.</li>
     </ul></div>
   </section>
@@ -900,13 +902,17 @@ function ech(s){ return String(s==null?"":s).replace(/[&<>"']/g, c =>
   ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])); }
 function nombre(n){ return Number(n||0).toLocaleString("en-US"); }
 
-let CAT = null, CHOISI = null, OUVERT = false;
+let CAT = null, CHOISI = null, OUVERT = false, MOYEN = "swoge";
 
 /* Le prix montre : le $SWOGE est INDICATIF — il suit le cours, et le montant
    exact est verrouille dans un devis au moment de payer. Quand le cours n est
    pas connu, on montre l ancre en USD plutot qu un chiffre en $SWOGE qu on ne
    tiendrait pas. Ca repond directement au fait que le cours du $SWOGE bouge. */
 function prixTexte(m){
+  /* En ETH, le montant depend du cours de l ETH : on montre l ancre en USD,
+     le montant exact est verrouille dans le devis au paiement. En $SWOGE, on
+     garde le montant indicatif quand on le connait. */
+  if(MOYEN==="eth") return (m.prixUsd!=null ? "$"+Number(m.prixUsd).toFixed(2) : "—")+" in ETH";
   if(m.prixSwoge != null) return "~"+nombre(m.prixSwoge)+" $SWOGE";
   if(m.prixUsd != null) return "$"+Number(m.prixUsd).toFixed(2)+" in $SWOGE";
   return "—";
@@ -923,9 +929,16 @@ async function charge(){
       { id:"image-openai", genre:"image", nom:"Image", fournisseur:"OpenAI", prixUsd:0.10, prixSwoge:null, prixIndicatif:true, actif:false, entree:"prompt", resolutions:["1024x1024","1536x1024","1024x1536"] },
       { id:"video-grok", genre:"video", nom:"Video", fournisseur:"Grok Imagine", prixUsd:0.50, prixSwoge:null, prixIndicatif:true, actif:false, entree:"image_ou_prompt", durees:[6,10], resolutions:["720p","1080p"] },
       { id:"texte-claude", genre:"texte", nom:"Text", fournisseur:"Claude", prixUsd:0.01, prixSwoge:null, prixIndicatif:true, actif:false, entree:"prompt" },
-    ] };
+      { id:"reponse-perplexity", genre:"reponse", nom:"Answer", fournisseur:"Perplexity", prixUsd:0.02, prixSwoge:null, prixIndicatif:true, actif:false, entree:"question" },
+      { id:"chat-claude", genre:"texte", nom:"Chat", fournisseur:"Claude", prixUsd:0.02, prixSwoge:null, prixIndicatif:true, actif:false, entree:"prompt" },
+    ], moyens:[ {id:"swoge",nom:"$SWOGE",genre:"erc20"}, {id:"eth",nom:"ETH",genre:"native"} ] };
   }
   OUVERT = !!CAT.ouvert;
+  const selMoy = document.getElementById("moyen");
+  const moyens = (CAT.moyens && CAT.moyens.length) ? CAT.moyens : [{id:"swoge",nom:"$SWOGE"},{id:"eth",nom:"ETH"}];
+  selMoy.innerHTML = moyens.map(m => '<option value="'+m.id+'">'+ech(m.nom)+'</option>').join("");
+  MOYEN = moyens[0].id;
+  selMoy.addEventListener("change", () => { MOYEN = selMoy.value; if(CHOISI){ $("#prix").textContent = prixTexte(CHOISI); majGenerer(); } });
   peintGenres();
 }
 
@@ -952,7 +965,7 @@ function choisir(id){
 
   const estVideo = CHOISI.genre === "video";
   const estTexte = CHOISI.genre === "texte";
-  $("#lblPrompt").textContent = estTexte ? "Your rough idea" : "Prompt";
+  $("#lblPrompt").textContent = CHOISI.genre==="reponse" ? "Your question" : estTexte ? "Your rough idea" : "Prompt";
   $("#prompt").placeholder = estVideo ? "Describe the motion, or leave blank if you upload an image…"
     : estTexte ? "A few words — Claude turns them into a strong prompt…"
     : "Describe the image you want…";

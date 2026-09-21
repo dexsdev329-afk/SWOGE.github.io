@@ -98,7 +98,7 @@ video{ max-width:100%; }
 .menubtn{ min-width:44px; min-height:44px; }
 </style>
 
-<title>Who is behind this domain? · SWOGE Recon</title>
+<title>Who is behind this domain? · SWOGE OSINT</title>
 <style>
   /* Les cases mesurees : une ligne par case, l'effectif TOUJOURS a cote du
      chiffre. Sans lui, « -43,7 % » se lit pareil qu'il porte sur six lectures
@@ -145,21 +145,21 @@ video{ max-width:100%; }
      atteignable avec un `?game=`, un `#` ou un `www`. Sans elle, les deux
      versions se font concurrence et aucune ne gagne.
      ================================================================= -->
-<link rel="canonical" href="https://swoleeswoge.dog/swoge_recon.html">
-<meta name="description" content="Type a domain and see what it publishes about itself: DNS, registry, certificate logs, and the professional contacts the organisation prints on its own pages — each line with the URL it came from. Domains only: this tool cannot be searched by a person’s name, e-mail or phone.">
+<link rel="canonical" href="https://swoleeswoge.dog/swoge_osint.html">
+<meta name="description" content="Free OSINT on a domain or an IP. Type a domain and see what it publishes about itself: DNS, registry, certificate logs, and the professional contacts the organisation prints on its own pages — each line with the URL it came from. Domains only: this tool cannot be searched by a person’s name, e-mail or phone.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="SWOGE WORLD">
 <meta property="og:locale" content="en_US">
-<meta property="og:title" content="Who is behind this domain? · SWOGE Recon">
-<meta property="og:description" content="Type a domain and see what it publishes about itself: DNS, registry, certificate logs, and the professional contacts the organisation prints on its own pages — each line with the URL it came from. Domains only: this tool cannot be searched by a person’s name, e-mail or phone.">
-<meta property="og:url" content="https://swoleeswoge.dog/swoge_recon.html">
+<meta property="og:title" content="Who is behind this domain? · SWOGE OSINT">
+<meta property="og:description" content="Free OSINT on a domain or an IP. Type a domain and see what it publishes about itself: DNS, registry, certificate logs, and the professional contacts the organisation prints on its own pages — each line with the URL it came from. Domains only: this tool cannot be searched by a person’s name, e-mail or phone.">
+<meta property="og:url" content="https://swoleeswoge.dog/swoge_osint.html">
 <meta property="og:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@SwoleDogeSwoge">
-<meta name="twitter:title" content="Who is behind this domain? · SWOGE Recon">
-<meta name="twitter:description" content="Type a domain and see what it publishes about itself: DNS, registry, certificate logs, and the professional contacts the organisation prints on its own pages — each line with the URL it came from. Domains only: this tool cannot be searched by a person’s name, e-mail or phone.">
+<meta name="twitter:title" content="Who is behind this domain? · SWOGE OSINT">
+<meta name="twitter:description" content="Free OSINT on a domain or an IP. Type a domain and see what it publishes about itself: DNS, registry, certificate logs, and the professional contacts the organisation prints on its own pages — each line with the URL it came from. Domains only: this tool cannot be searched by a person’s name, e-mail or phone.">
 <meta name="twitter:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="/img/site/icone-32.png">
@@ -701,6 +701,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       <a href="swoge_wallet.html"><span class="ic">&#129433;</span>Wallet</a>
       <a href="swoge_ai.html"><span class="ic">&#129302;</span>SWOGE AI</a>
       <a href="swoge_perp.html"><span class="ic">&#128200;</span>AI Perp</a>
+      <a href="swoge_osint.html" class="on"><span class="ic">&#128269;</span>OSINT</a>
       <a href="whitepaper.html"><span class="ic">&#128220;</span>Docs</a>
     </nav>
     <div class="sw-reseaux">
@@ -813,7 +814,7 @@ table.liste a{color:var(--pool)}
 </style>
 
   <div class="top">
-    <div class="kick">Public sources only · free, no account</div>
+    <div class="kick">OSINT · public sources only · free, no account</div>
     <h1>Who is behind <em>this domain</em>?</h1>
     <!-- ---- CE QUE LA PAGE PROMET, ET CE QU ELLE REFUSE ----
          Le sous-titre dit les deux, dans cet ordre. Un outil qui n annonce
@@ -936,17 +937,17 @@ table.liste a{color:var(--pool)}
 
 <script>
 "use strict";
-/* ==================== SWOGE RECON — LA PAGE ====================
- * Elle ne mesure rien : tout vient de /recon, ou les gardes vivent. Ici on
+/* ==================== SWOGE OSINT — LA PAGE ====================
+ * Elle ne mesure rien : tout vient de /osint, ou les gardes vivent. Ici on
  * MONTRE, et la seule chose que la page doit garantir, c est de ne jamais
  * montrer plus que ce que le serveur a envoye — pas de champ reconstitue,
  * pas d adresse recomposee a l affichage, pas de « probablement ».
  *
- * La page porte son propre `serveurRecon()` : le petit script de la vitrine,
+ * La page porte son propre `serveurOsint()` : le petit script de la vitrine,
  * en tete, a deja un `serveur()` enferme dans sa fonction anonyme, invisible
  * d ici. Deux blocs qui se partagent un nom par accident finissent par se
  * marcher dessus — on en pose donc un, nomme. */
-function serveurRecon(){
+function serveurOsint(){
   try{ const q = new URLSearchParams(location.search).get("server");
        if(q) return String(q).replace(/^ws/,"http"); }catch(e){}
   return "https://web-production-220a3.up.railway.app";
@@ -1008,7 +1009,7 @@ async function releve(){
   $("#go").disabled = true;
   etat("Reading public sources…", false, true);
   try{
-    const r = await fetch(serveurRecon() + "/recon/" + encodeURIComponent(brut), { cache:"no-store" });
+    const r = await fetch(serveurOsint() + "/osint/" + encodeURIComponent(brut), { cache:"no-store" });
     const j = await r.json();
     if(!r.ok || j.erreur) throw new Error(j.erreur || ("HTTP " + r.status));
     RAPPORT = j;

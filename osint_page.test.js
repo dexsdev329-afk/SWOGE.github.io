@@ -1,8 +1,8 @@
 'use strict';
 /* ============================================================================
- * SWOGE RECON : LA PAGE MONTRE D OU VIENT CHAQUE LIGNE, ET CE QU ELLE REFUSE
+ * SWOGE OSINT : LA PAGE MONTRE D OU VIENT CHAQUE LIGNE, ET CE QU ELLE REFUSE
  *
- * Le module serveur (`recon.js`, dans l autre depot) porte les gardes. La
+ * Le module serveur (`osint.js`, dans l autre depot) porte les gardes. La
  * page, elle, a deux devoirs et ils se mesurent ici :
  *
  *   1. NE JAMAIS MONTRER PLUS QUE CE QUE LE SERVEUR A ENVOYE. Pas de champ
@@ -17,7 +17,7 @@
  * qu on eteint d un clic. C est mesure, pas espere.
  *
  * Le releve d essai n est pas invente : il est la SORTIE REELLE de
- * `recon.js` contre un faux internet (voir `recon.test.js`, bloc 9). Si la
+ * `osint.js` contre un faux internet (voir `osint.test.js`, bloc 9). Si la
  * forme du releve change cote serveur sans que la page suive, les essais qui
  * lisent ces champs tombent ici.
  * ==========================================================================*/
@@ -50,24 +50,24 @@ const T = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', 
   const port = srv.address().port;
   const nav = await chromium.launch();
 
-  /* Chaque appel a /recon est note : la page ne doit parler QU A cette route,
+  /* Chaque appel a /osint est note : la page ne doit parler QU A cette route,
      et n envoyer que ce qu on a tape. */
   const APPELS = [];
   const ouvre = async (chemin, o) => {
     const page = await nav.newPage({ viewport: { width: 1200, height: 1000 } });
     await page.route(/vitrine\.json/, (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{}' }));
-    await page.route(/\/recon\//, (r) => {
+    await page.route(/\/osint\//, (r) => {
       APPELS.push(r.request().url());
       const rep = (o && o.reponse) || RELEVE;
       r.fulfill({ status: (o && o.code) || 200, contentType: 'application/json', body: JSON.stringify(rep) });
     });
-    await page.goto('http://127.0.0.1:' + port + '/swoge_recon.html' + (chemin || ''), { waitUntil: 'domcontentloaded' });
+    await page.goto('http://127.0.0.1:' + port + '/swoge_osint.html' + (chemin || ''), { waitUntil: 'domcontentloaded' });
     return page;
   };
 
   console.log('\n-- 1. la page dit ce qu elle fait, et ce qu elle ne fait pas --');
   {
-    const html = fs.readFileSync(path.join(SITE, 'swoge_recon.html'), 'utf8');
+    const html = fs.readFileSync(path.join(SITE, 'swoge_osint.html'), 'utf8');
     ok(/<title>[^<]*domain[^<]*<\/title>/i.test(html), 'le titre parle de domaine, pas d une personne');
     ok(/name="description"[^>]*cannot be searched by a person/i.test(html),
        'et la description le dit des les resultats de recherche');
@@ -111,7 +111,7 @@ const T = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', 
     await page.click('#go');
     await page.waitForSelector('#out:not([hidden])');
     eq(APPELS.length, 1, 'un seul appel');
-    ok(APPELS[0].endsWith('/recon/acme.io'), 'a /recon, avec ce qu on a tape et rien d autre');
+    ok(APPELS[0].endsWith('/osint/acme.io'), 'a /osint, avec ce qu on a tape et rien d autre');
 
     const org = await page.textContent('#orgBox');
     ok(org.includes('Acme'), 'l organisation est nommee');
@@ -222,7 +222,7 @@ const T = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', 
 
     /* Pas de bibliotheque tierce : une page qui explique d ou vient chaque
        octet ne va pas charger un moteur de graphe chez un inconnu. */
-    const html = fs.readFileSync(path.join(SITE, 'swoge_recon.html'), 'utf8');
+    const html = fs.readFileSync(path.join(SITE, 'swoge_osint.html'), 'utf8');
     const externes = (html.match(/<script[^>]+src=["']https?:\/\/(?!fonts\.)/gi) || []);
     eq(externes.length, 0, 'aucun script tiers n est charge pour dessiner quinze traits');
   }
@@ -282,8 +282,8 @@ const T = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', 
     await p.fill('#dom', 'acme.io');
     await p.click('#go');
     await p.waitForSelector('#out:not([hidden])');
-    await p.unroute(/\/recon\//);
-    await p.route(/\/recon\//, (r) => r.fulfill({ status: 429, contentType: 'application/json',
+    await p.unroute(/\/osint\//);
+    await p.route(/\/osint\//, (r) => r.fulfill({ status: 429, contentType: 'application/json',
       body: JSON.stringify({ erreur: 'too many domain reports, wait a minute' }) }));
     await p.fill('#dom', 'autre.io');
     await p.click('#go');
@@ -300,7 +300,7 @@ const T = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', 
 })().catch((e) => { console.error('ESSAI CASSE :', e); process.exit(1); });
 
 /* ---- LE RELEVE D ESSAI ----
- * Sortie reelle de `recon.js` contre le faux internet de `recon.test.js`
+ * Sortie reelle de `osint.js` contre le faux internet de `osint.test.js`
  * (bloc 9), recopiee telle quelle. Elle n est pas ecrite a la main : un
  * releve invente finirait par decrire une forme que le serveur n envoie
  * plus, et les essais passeraient sur une page cassee. */

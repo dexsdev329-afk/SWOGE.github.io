@@ -124,6 +124,8 @@ const CAT = { ouvert:false, jeton:'0x8a166fb41cd659a0a43396272ff73973ce29f817', 
     ok(/single-use|used once|double-spend/i.test(t), 'un hash sert une fois : pas de double depense');
     ok(/No API key ever reaches your browser/i.test(t), 'aucune cle ne touche le navigateur');
     ok(/base units/i.test(t), 'le montant se compare en unites de base');
+    ok(/follows the live \$SWOGE rate|locked in a quote/i.test(t),
+       'le prix suit le cours du $SWOGE et se verrouille au paiement');
     await page.close();
   }
 

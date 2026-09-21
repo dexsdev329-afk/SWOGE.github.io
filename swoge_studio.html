@@ -823,7 +823,8 @@ button.generer:disabled{opacity:.55;cursor:not-allowed}
     <div class="reglages" id="reglages"></div>
 
     <div class="pied">
-      <div class="prix"><small>Price</small><span id="prix">—</span></div>
+      <div class="prix"><small>Price</small><span id="prix">—</span>
+        <small style="margin-top:4px;text-transform:none;letter-spacing:0">follows the live $SWOGE rate — locked in a quote when you pay</small></div>
       <div class="droite">
         <button class="wallet" id="wallet">Connect wallet</button>
         <button class="generer" id="generer" disabled>Generate</button>
@@ -901,6 +902,16 @@ function nombre(n){ return Number(n||0).toLocaleString("en-US"); }
 
 let CAT = null, CHOISI = null, OUVERT = false;
 
+/* Le prix montre : le $SWOGE est INDICATIF — il suit le cours, et le montant
+   exact est verrouille dans un devis au moment de payer. Quand le cours n est
+   pas connu, on montre l ancre en USD plutot qu un chiffre en $SWOGE qu on ne
+   tiendrait pas. Ca repond directement au fait que le cours du $SWOGE bouge. */
+function prixTexte(m){
+  if(m.prixSwoge != null) return "~"+nombre(m.prixSwoge)+" $SWOGE";
+  if(m.prixUsd != null) return "$"+Number(m.prixUsd).toFixed(2)+" in $SWOGE";
+  return "—";
+}
+
 async function charge(){
   try{
     const r = await fetch(serveur()+"/studio/catalogue", { cache:"no-store" });
@@ -909,9 +920,9 @@ async function charge(){
     /* Le serveur muet ne doit pas laisser une page vide : on montre au moins
        ce qui EST prevu, avec les prix, en repli. */
     CAT = { ouvert:false, modeles:[
-      { id:"image-openai", genre:"image", nom:"Image", fournisseur:"OpenAI", prixSwoge:5000, actif:false, entree:"prompt", resolutions:["1024x1024","1536x1024","1024x1536"] },
-      { id:"video-grok", genre:"video", nom:"Video", fournisseur:"Grok Imagine", prixSwoge:25000, actif:false, entree:"image_ou_prompt", durees:[6,10], resolutions:["720p","1080p"] },
-      { id:"texte-claude", genre:"texte", nom:"Text", fournisseur:"Claude", prixSwoge:500, actif:false, entree:"prompt" },
+      { id:"image-openai", genre:"image", nom:"Image", fournisseur:"OpenAI", prixUsd:0.10, prixSwoge:null, prixIndicatif:true, actif:false, entree:"prompt", resolutions:["1024x1024","1536x1024","1024x1536"] },
+      { id:"video-grok", genre:"video", nom:"Video", fournisseur:"Grok Imagine", prixUsd:0.50, prixSwoge:null, prixIndicatif:true, actif:false, entree:"image_ou_prompt", durees:[6,10], resolutions:["720p","1080p"] },
+      { id:"texte-claude", genre:"texte", nom:"Text", fournisseur:"Claude", prixUsd:0.01, prixSwoge:null, prixIndicatif:true, actif:false, entree:"prompt" },
     ] };
   }
   OUVERT = !!CAT.ouvert;
@@ -924,7 +935,7 @@ function peintGenres(){
     '<button class="genre" data-id="'+ech(m.id)+'" aria-pressed="false">'
     + '<div class="ic">'+(ICONE[m.genre]||"✨")+'</div>'
     + '<div class="t">'+ech(m.nom||m.genre)+'</div>'
-    + '<div class="p">'+nombre(m.prixSwoge)+' $SWOGE</div>'
+    + '<div class="p">'+prixTexte(m)+'</div>'
     + '<div class="f">'+ech(m.fournisseur)+'</div>'
     + (m.actif ? "" : '<div class="att">'+ech(m.enAttente ? "in preparation" : "soon")+'</div>')
     + '</button>').join("");
@@ -955,7 +966,7 @@ function choisir(id){
   if(CHOISI.resolutions) champs.push(sel("Resolution", CHOISI.resolutions));
   $("#reglages").innerHTML = champs.join("");
 
-  $("#prix").textContent = nombre(CHOISI.prixSwoge)+" $SWOGE";
+  $("#prix").textContent = prixTexte(CHOISI);
   majGenerer();
 }
 function sel(nom, options){
@@ -969,7 +980,7 @@ function sel(nom, options){
 function majGenerer(){
   const b = $("#generer");
   if(!OUVERT){ b.disabled = true; b.textContent = "In preparation"; return; }
-  b.disabled = false; b.textContent = "Pay "+nombre(CHOISI?CHOISI.prixSwoge:0)+" $SWOGE & generate";
+  b.disabled = false; b.textContent = "Pay "+(CHOISI?prixTexte(CHOISI):"")+" & generate";
 }
 
 $("#wallet").addEventListener("click", () => {

@@ -1,25 +1,25 @@
 'use strict';
 /* ============================================================================
- * SWOGE OSINT : LA PAGE MONTRE D OU VIENT CHAQUE LIGNE, ET CE QU ELLE REFUSE
+ * SWOGE OSINT — LA PAGE v2 MONTRE LES FAITS, LE CROISEMENT, ET SES BORDS
  *
- * Le module serveur (`osint.js`, dans l autre depot) porte les gardes. La
- * page, elle, a deux devoirs et ils se mesurent ici :
+ * La page v1 lisait une forme par source (organisation, infra, contacts...).
+ * La v2 lit des FAITS — un triplet avec sa source — et en tire quatre vues :
+ * les constats (le croisement), les contradictions (jamais tranchees), le
+ * graphe (derive des faits), la table des faits. Cet essai reecrit l ancien
+ * sur son intention, pas sur ses champs :
  *
- *   1. NE JAMAIS MONTRER PLUS QUE CE QUE LE SERVEUR A ENVOYE. Pas de champ
- *      reconstitue a l affichage, pas d adresse recomposee, pas de
- *      « probablement ». Chaque fait garde son URL et son niveau.
- *   2. DIRE SES BORDS AVANT QU ON TAPE, pas apres la deception. Un outil qui
- *      n annonce que ce qu il trouve laisse croire qu il trouve tout.
+ *   1. La page dit ce qu elle fait ET ce qu elle refuse, avant qu on tape.
+ *   2. Un nom est renvoye ; un domaine, un email passent.
+ *   3. Les constats sont en tete, avec leurs pieces et leur gravite.
+ *   4. Une personne se dessine autrement qu une machine, dans le graphe.
+ *   5. Eteindre un calque l eteint PARTOUT : faits ET graphe.
+ *   6. Les exports pointent la meme enquete, jamais une seconde requete.
+ *   7. La trace passif/actif est montree : la recherche a-t-elle ete vue.
+ *   8. Un refus du serveur ne laisse pas un vieux rapport a l ecran.
  *
- * Et le point ou une page de ce genre derape en silence : une personne
- * dessinee comme une machine. Un nom dans un graphe d infrastructure doit se
- * voir comme une exception — forme differente, couleur differente, calque
- * qu on eteint d un clic. C est mesure, pas espere.
- *
- * Le releve d essai n est pas invente : il est la SORTIE REELLE de
- * `osint.js` contre un faux internet (voir `osint.test.js`, bloc 9). Si la
- * forme du releve change cote serveur sans que la page suive, les essais qui
- * lisent ces champs tombent ici.
+ * Le rapport d essai est la SORTIE REELLE du noyau v2 contre un faux
+ * internet (voir la generation dans le commit). Un rapport invente finirait
+ * par decrire une forme que le serveur n envoie plus.
  * ==========================================================================*/
 const fs = require('fs');
 const path = require('path');
@@ -33,8 +33,7 @@ let n = 0, rates = 0;
 const ok = (c, m) => { n++; if (c) console.log('  ok   ' + m); else { rates++; console.log('  RATE ' + m); } };
 const eq = (a, b, m) => ok(a === b, m + ' [' + JSON.stringify(a) + ']');
 const T = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json',
-            '.jpg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.ico': 'image/x-icon',
-            '.mp4': 'video/mp4' };
+            '.jpg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.ico': 'image/x-icon', '.mp4': 'video/mp4' };
 
 (async () => {
   if (!chromium) { console.log('playwright absent : essai ignore'); return; }
@@ -50,13 +49,11 @@ const T = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', 
   const port = srv.address().port;
   const nav = await chromium.launch();
 
-  /* Chaque appel a /osint est note : la page ne doit parler QU A cette route,
-     et n envoyer que ce qu on a tape. */
   const APPELS = [];
   const ouvre = async (chemin, o) => {
     const page = await nav.newPage({ viewport: { width: 1200, height: 1000 } });
     await page.route(/vitrine\.json/, (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{}' }));
-    await page.route(/\/osint\//, (r) => {
+    await page.route(/\/osint\/v2\//, (r) => {
       APPELS.push(r.request().url());
       const rep = (o && o.reponse) || RELEVE;
       r.fulfill({ status: (o && o.code) || 200, contentType: 'application/json', body: JSON.stringify(rep) });
@@ -65,230 +62,145 @@ const T = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', 
     return page;
   };
 
-  console.log('\n-- 1. la page dit ce qu elle fait, et ce qu elle ne fait pas --');
+  console.log('\n-- 1. la page dit ce qu elle fait, et ce qu elle refuse --');
   {
     const html = fs.readFileSync(path.join(SITE, 'swoge_osint.html'), 'utf8');
-    ok(/<title>[^<]*domain[^<]*<\/title>/i.test(html), 'le titre parle de domaine, pas d une personne');
-    ok(/name="description"[^>]*cannot be searched by a person/i.test(html),
-       'et la description le dit des les resultats de recherche');
-
+    ok(/name="description"[^>]*cannot be searched by a person/i.test(html), 'la description refuse la recherche par personne');
+    ok(/<title>[^<]*SWOGE OSINT<\/title>/i.test(html), 'le titre porte OSINT');
     const page = await ouvre('');
-    /* La garde est lue AVANT le premier essai : elle est dans la page au
-       chargement, pas affichee apres un refus. */
     const garde = await page.textContent('.garde');
-    ok(/cannot be searched/i.test(garde), 'la garde est posee avant qu on tape quoi que ce soit');
-    ok(/name|e-mail|phone|handle/i.test(garde), 'et elle nomme ce qui n entre pas');
-
-    /* UN seul champ, et il demande un domaine. Un deuxieme champ « nom » ou
-       « email » serait la porte qu on a passe tout ce travail a fermer. */
-    const champs = await page.$$eval('input, textarea, select',
-      (e) => e.map((x) => (x.getAttribute('aria-label') || x.placeholder || x.name || x.type)));
-    eq(champs.length, 1, 'la page n a QU UN champ de saisie');
-    ok(/domain/i.test(champs[0]), 'et il demande un domaine [' + champs[0] + ']');
+    ok(/not a starting point|not people/i.test(garde), 'la garde est posee avant qu on tape');
+    ok(/data brokers|leaked databases/i.test(garde), 'et elle dit POURQUOI un nom ne marche pas');
+    const champs = await page.$$eval('input', (e) => e.length);
+    eq(champs, 1, 'un seul champ de saisie');
     await page.close();
   }
 
-  console.log('\n-- 2. une adresse mail collee est renvoyee vers son domaine --');
+  console.log('\n-- 2. un nom est renvoye, un domaine et un email passent --');
   {
-    const page = await ouvre('');
-    APPELS.length = 0;
-    await page.fill('#dom', 'jean.dupont@acme.io');
+    const page = await ouvre('', { code: 400, reponse: { erreur: 'A person’s name is not a starting point. Start from a domain, an IP, a website or an on-chain address.' } });
+    await page.fill('#q', 'Jean Dupont');
     await page.click('#go');
-    await page.waitForTimeout(150);
-    const s = await page.textContent('#state');
-    ok(/e-mail/i.test(s) && /domain/i.test(s), 'la page explique, elle ne se contente pas de refuser [' + s.slice(0, 70) + ']');
-    eq(APPELS.length, 0, 'et RIEN n est parti au serveur : l adresse ne quitte pas le navigateur');
-    eq(await page.isHidden('#out'), true, 'aucun releve n est montre');
+    await page.waitForTimeout(200);
+    ok(/starting point/i.test(await page.textContent('#state')), 'le nom est refuse, avec la raison');
+    eq(await page.isHidden('#out'), true, 'et aucun rapport n est montre');
     await page.close();
   }
 
-  console.log('\n-- 3. un releve complet se peint --');
+  console.log('\n-- 3. un rapport complet se peint, les constats en tete --');
   let page = null;
   {
     page = await ouvre('');
     APPELS.length = 0;
-    await page.fill('#dom', 'acme.io');
+    await page.fill('#q', 'acme.io');
     await page.click('#go');
     await page.waitForSelector('#out:not([hidden])');
     eq(APPELS.length, 1, 'un seul appel');
-    ok(APPELS[0].endsWith('/osint/acme.io'), 'a /osint, avec ce qu on a tape et rien d autre');
+    ok(APPELS[0].includes('/osint/v2/acme.io'), 'a /osint/v2, avec ce qu on a tape');
 
-    const org = await page.textContent('#orgBox');
-    ok(org.includes('Acme'), 'l organisation est nommee');
-    ok(org.includes('LOW'), 'avec son niveau');
-    ok(/brand name, not a legal entity/i.test(org), 'et la raison de ce niveau, en clair');
-
-    const infra = await page.textContent('#infraBox');
-    ok(infra.includes('8.8.8.8'), 'l adresse IP');
-    ok(infra.includes('Google LLC'), 'le reseau qui la porte');
-    ok(infra.includes('aspmx.l.google.com'), 'les serveurs de courrier');
-    ok(infra.includes('Registrar SAS'), 'le registraire');
-    ok(infra.includes('2014-03-02'), 'la date de creation');
-
-    /* Le point le plus facile a bacler : un titulaire masque affiche comme
-       un vide se lit « pas cherche ». */
-    ok(/redacted/i.test(infra), 'le titulaire masque est montre comme masque');
-    ok(/Absence of a name is not a hidden name/i.test(infra), 'et la page dit ce que ce masque veut dire');
-
-    const subs = await page.textContent('#subBox');
-    ok(subs.includes('staging.acme.io') && subs.includes('vpn.acme.io'), 'les sous-domaines certifies');
-    ok(subs.includes('SOURCE NOT VERIFIED'), 'marques NOT VERIFIED : un certificat n est pas une machine qui repond');
-    ok(/does not mean a machine answers there today/i.test(subs), 'et la page explique la difference');
+    const constats = await page.$$eval('#constatsBox .constat', (e) => e.map((x) => x.textContent));
+    ok(constats.length >= 2, 'les constats sont peints [' + constats.length + ']');
+    ok(constats.some((c) => /HIGH/.test(c) && /DMARC/i.test(c)), 'MX sans DMARC est en tete, en HIGH');
+    ok(constats.some((c) => /Being named is not owning/i.test(c)), 'et le rappel : etre nomme n est pas posseder');
+    /* La gravite se lit a la classe, pas seulement au mot. */
+    const haute = await page.$$eval('#constatsBox .constat.g-haute', (e) => e.length);
+    ok(haute >= 1, 'la gravite haute a sa couleur [' + haute + ']');
+    /* Chaque constat porte ses pieces. */
+    ok(await page.$('#constatsBox .piece'), 'et chaque constat montre ses pieces');
   }
 
-  console.log('\n-- 4. chaque contact part avec sa source, son niveau, sa date --');
+  console.log('\n-- 4. les faits, avec source, score, et le conteste signale --');
   {
-    const lignes = await page.$$eval('#contactsBox tbody tr', (tr) => tr.map((x) => x.textContent));
-    ok(lignes.length >= 5, 'les contacts publies sont listes [' + lignes.length + ']');
-    ok(lignes.some((l) => l.includes('security@acme.io') && l.includes('HIGH')), 'le security.txt vaut HIGH');
-    ok(lignes.some((l) => l.includes('hello@acme.io') && l.includes('LOW')), 'l accueil vaut LOW');
-    ok(lignes.some((l) => l.includes('+33145678900') && /business phone/i.test(l)), 'le telephone est un telephone d entreprise');
-    ok(lignes.some((l) => /named mailbox/i.test(l)), 'une adresse nominative se signale comme telle');
-    ok(lignes.some((l) => /role mailbox/i.test(l)), 'une boite de role aussi');
-    ok(!lignes.some((l) => l.includes('gmail')), 'aucune adresse chez un fournisseur grand public');
-
-    const liens = await page.$$eval('#contactsBox a', (a) => a.map((x) => x.href));
-    ok(liens.length >= 5, 'chaque ligne porte le lien de sa source [' + liens.length + ']');
-    ok(liens.every((h) => h.startsWith('https://acme.io')), 'et ces liens pointent la ou le fait a ete lu');
-    const badges = await page.$$eval('#contactsBox .tag.ok', (e) => e.length);
-    ok(badges >= 5, 'et chacune porte SOURCE VERIFIED [' + badges + ']');
+    const lignes = await page.$$eval('#faitsBox tbody tr', (tr) => tr.map((x) => x.textContent));
+    ok(lignes.length >= 10, 'les faits sont en table [' + lignes.length + ']');
+    ok(lignes.some((l) => /DMARC/i.test(l) && /HIGH/.test(l)), 'un fait porte son predicat et sa confiance');
+    const liens = await page.$$eval('#faitsBox a', (a) => a.map((x) => x.href));
+    ok(liens.length > 0 && liens.some((h) => h.includes('acme.io') || h.includes('rdap')), 'et ses sources sont des liens');
+    /* Le score doit apparaitre a cote de la confiance. */
+    ok(lignes.some((l) => /HIGH\s*\d/.test(l.replace(/\s+/g, ' '))), 'le score numerique accompagne le niveau');
   }
 
-  console.log('\n-- 5. une personne n est pas montree comme une machine --');
-  {
-    const fiches = await page.$$eval('#gensBox .qui', (e) => e.map((x) => x.textContent));
-    eq(fiches.length, 2, 'les deux personnes nommees par le site ont une fiche');
-
-    const marc = fiches.find((f) => f.includes('Marc Lefevre'));
-    ok(marc.includes('Directeur de la publication'), 'sa fonction, telle qu ecrite sur la page');
-    ok(marc.includes('DOMAIN OWNER'), 'et lui SEUL est dit proprietaire : les mentions legales le declarent');
-
-    const jane = fiches.find((f) => f.includes('Jane Doe'));
-    ok(jane.includes('PUBLICLY ASSOCIATED WITH DOMAIN'), 'Jane est associee au domaine');
-    ok(!jane.includes('DOMAIN OWNER'), 'et JAMAIS presentee comme proprietaire');
-    ok(jane.includes('MEDIUM'), 'son niveau est MEDIUM');
-    ok(jane.includes('jane.doe@acme.io'), 'son adresse professionnelle, celle que le site a imprimee');
-    /* Les comptes imprimes a cote de son nom. Chacun est un lien, chacun
-       porte en infobulle ce qu il veut dire — et le compte social dit qu il
-       ne devient pas le sien parce qu il est imprime la. */
-    const cptes = await page.$$eval('#gensBox .qui',
-      (e) => e.map((x) => ({ nom: x.querySelector('.nom').textContent,
-        liens: [...x.querySelectorAll('a[target]')].map((a) => a.href),
-        titres: [...x.querySelectorAll('a.tag')].map((a) => a.title) })));
-    const cj = cptes.find((x) => x.nom === 'Jane Doe');
-    ok(cj.liens.includes('https://www.linkedin.com/in/jane-doe'), 'son annuaire professionnel');
-    ok(cj.liens.includes('https://x.com/janedoe'), 'et son compte X, publie a cote');
-    ok(cj.titres.some((t) => /professional profile/i.test(t)), 'l un se dit profil professionnel');
-    ok(cj.titres.some((t) => /does not make it this person/i.test(t)),
-       'l autre dit qu etre imprime la n en fait pas le sien');
-    const cm = cptes.find((x) => x.nom === 'Marc Lefevre');
-    eq(cm.titres.length, 0, 'Marc n en a aucun : la page n en invente pas');
-
-    /* L infobulle du lien porte la preuve — ou son absence. */
-    const preuve = await page.$eval('#gensBox .tag.assoc', (e) => e.getAttribute('title'));
-    ok(/does not establish ownership/i.test(preuve), 'et l etiquette dit qu elle n etablit pas la propriete');
-
-    /* Le mot « owner » n apparait nulle part pour quelqu un qui ne l est pas.
-       On ne compte pas les occurrences a l aveugle — il y en a trois, et
-       toutes parlent de Marc : sa fiche, son noeud, son arete. On verifie
-       QUI elles designent. */
-    const porteurs = await page.$$eval('#gensBox .qui',
-      (e) => e.filter((x) => x.textContent.includes('DOMAIN OWNER'))
-              .map((x) => x.querySelector('.nom').textContent));
-    eq(porteurs.join(','), 'Marc Lefevre', 'une seule fiche porte OWNER, et c est celle du directeur de publication');
-    const aretesOwner = await page.$eval('#gr',
-      (s) => [...s.querySelectorAll('line title')].filter((t) => t.textContent.includes('DOMAIN OWNER')).length);
-    eq(aretesOwner, 1, 'et une seule arete du graphe le dit');
-  }
-
-  console.log('\n-- 6. le graphe : les gens sont dessines a part --');
+  console.log('\n-- 5. une personne n est pas dessinee comme une machine --');
   {
     const g = await page.$eval('#gr', (s) => ({
       rects: s.querySelectorAll('rect').length,
       cercles: s.querySelectorAll('circle').length,
-      traits: s.querySelectorAll('line').length,
       titres: [...s.querySelectorAll('line title')].map((t) => t.textContent),
     }));
-    ok(g.traits > 8, 'le graphe a de quoi etre lu [' + g.traits + ' traits]');
     eq(g.rects, 2, 'deux rectangles : les deux personnes, et elles seules');
-    ok(g.cercles > 8, 'les machines sont des cercles [' + g.cercles + ']');
-    /* Une source n est pas forcement une URL : « DNS A/AAAA record » en est
-       une, et meilleure qu un lien — c est ce que le domaine repond au monde
-       entier. Ce qui compte, c est qu aucune arete n en soit depourvue. */
-    ok(g.titres.every((t) => /https?:\/\//.test(t) || /DNS [A-Z/]+ record/.test(t)),
-       'CHAQUE trait porte la source qui le documente : une URL, ou l enregistrement DNS');
-    ok(g.titres.some((t) => /DNS A\/AAAA record/.test(t)), 'dont les resolutions, qui n ont pas d URL');
+    ok(g.cercles > 4, 'les machines sont des cercles [' + g.cercles + ']');
+    ok(g.titres.every((t) => /https?:\/\/|DNS|registry|launchpad|record/i.test(t)),
+       'chaque arete porte sa source');
     ok(g.titres.some((t) => /PUBLICLY ASSOCIATED WITH DOMAIN/.test(t)), 'et la relation exacte, pas une conclusion');
-
-    /* Pas de bibliotheque tierce : une page qui explique d ou vient chaque
-       octet ne va pas charger un moteur de graphe chez un inconnu. */
     const html = fs.readFileSync(path.join(SITE, 'swoge_osint.html'), 'utf8');
     const externes = (html.match(/<script[^>]+src=["']https?:\/\/(?!fonts\.)/gi) || []);
-    eq(externes.length, 0, 'aucun script tiers n est charge pour dessiner quinze traits');
+    eq(externes.length, 0, 'aucun script tiers pour dessiner le graphe');
   }
 
-  console.log('\n-- 7. eteindre un calque l eteint PARTOUT --');
+  console.log('\n-- 6. eteindre un calque l eteint PARTOUT --');
   {
-    /* Un bouton « masquer » qui ne masque qu une moitie est pire que pas de
-       bouton : il donne le sentiment d avoir retire ce qui est encore la. */
+    const avantF = await page.$$eval('#faitsBox tbody tr', (e) => e.length);
+    const avantR = await page.$eval('#gr', (s) => s.querySelectorAll('rect').length);
     await page.click('.calque[data-c="contacts"]');
-    await page.waitForTimeout(80);
-    eq(await page.isHidden('#sGens'), true, 'les fiches de personnes disparaissent');
-    eq(await page.isHidden('#sContacts'), true, 'les contacts aussi');
-    const rects = await page.$eval('#gr', (s) => s.querySelectorAll('rect').length);
-    eq(rects, 0, 'et AUCUNE personne ne reste dans le graphe');
-    const restants = await page.$eval('#gr', (s) => s.querySelectorAll('circle').length);
-    ok(restants > 4, 'les machines, elles, restent [' + restants + ']');
+    await page.waitForTimeout(120);
+    const apresF = await page.$$eval('#faitsBox tbody tr', (e) => e.length);
+    const apresR = await page.$eval('#gr', (s) => s.querySelectorAll('rect').length);
+    ok(apresF < avantF, 'eteindre les contacts retire des faits [' + avantF + ' -> ' + apresF + ']');
+    eq(apresR, 0, 'et AUCUNE personne ne reste dans le graphe');
+    await page.click('.calque[data-c="contacts"]');
+    await page.waitForTimeout(120);
+    eq(await page.$eval('#gr', (s) => s.querySelectorAll('rect').length), 2, 'rallumer les remet');
+    eq(APPELS.length, 1, 'et rien n a ete redemande : le rapport etait deja la');
+  }
 
-    await page.click('.calque[data-c="contacts"]');
-    await page.waitForTimeout(80);
-    eq(await page.isHidden('#sGens'), false, 'rallumer les remet');
-    eq(await page.$eval('#gr', (s) => s.querySelectorAll('rect').length), 2, 'dans le graphe aussi');
-    eq(APPELS.length, 1, 'et rien n a ete redemande au serveur : le releve etait deja la');
+  console.log('\n-- 7. la trace, et les exports qui ne relancent rien --');
+  {
+    const tr = await page.textContent('#trace');
+    ok(/active|passive/i.test(tr), 'la trace dit si la cible nous a vus [' + tr.trim() + ']');
+    const csv = await page.getAttribute('#teleCsv', 'href');
+    const pdf = await page.getAttribute('#telePdf', 'href');
+    ok(csv.includes('/osint/v2/') && csv.includes('.csv'), 'le lien CSV pointe la meme enquete');
+    ok(pdf.includes('.pdf'), 'le lien PDF aussi');
+    ok(!(await page.isHidden('#teleCsv')), 'et les boutons d export sont montres');
+    eq(APPELS.length, 1, 'preparer les exports n a pas relance l enquete');
   }
 
   console.log('\n-- 8. les sources et les bords sont montres avec le reste --');
   {
     const src = await page.textContent('#sourcesBox');
-    ok(src.includes('rdap.org') && src.includes('crt.sh') && src.includes('acme.io'),
-       'les trois hotes interroges sont listes');
-    ok(/the site refused us, and we did not try again/i.test(src),
-       'la page qui nous a refuses le dit, et dit qu on n a pas insiste');
-    ok(/disallowed by robots\.txt/i.test(src), 'et celle que robots.txt interdit dit pourquoi elle est absente');
-
+    ok(/dns|rdap|certificats|pages/i.test(src), 'le journal des connecteurs est montre');
     const bords = await page.$$eval('#bordsBox li', (e) => e.map((x) => x.textContent));
-    ok(bords.length >= 6, 'les limites sont listees [' + bords.length + ']');
-    ok(bords.some((b) => /never guessed|guessed/i.test(b)), 'aucune adresse devinee');
-    ok(bords.some((b) => /leaked or private database/i.test(b)), 'aucune base fuitee');
-    ok(bords.some((b) => /anti-bot/i.test(b)), 'aucun contournement');
-    ok(bords.some((b) => /cannot look up someone/i.test(b)),
-       'et aucun pistage par pseudo : on ne peut pas chercher les comptes de quelqu un');
-    ok(!(await page.isHidden('#bordsBox')), 'et ce bloc n est pas replie : il fait partie du resultat');
+    ok(bords.length >= 5, 'les limites sont listees [' + bords.length + ']');
+    ok(bords.some((b) => /cannot be searched by a person/i.test(b)), 'on ne cherche pas par personne');
+    ok(bords.some((b) => /No password|secret/i.test(b)), 'aucun secret');
+    /* Les connecteurs eteints faute de cle sont montres, pas tus. */
+    const off = await page.textContent('#offBox');
+    ok(/HIBP|key|off/i.test(off), 'et les connecteurs eteints se disent eteints');
     await page.close();
   }
 
-  console.log('\n-- 9. un lien partage porte son domaine --');
+  console.log('\n-- 9. un lien partage porte sa cible --');
   {
-    const p = await ouvre('?d=acme.io');
+    const p = await ouvre('?q=domaine:acme.io');
     await p.waitForSelector('#out:not([hidden])');
-    eq(await p.inputValue('#dom'), 'acme.io', 'le champ est rempli');
-    ok((await p.textContent('#state')).includes('acme.io'), 'et le releve part tout seul');
+    eq(await p.inputValue('#q'), 'acme.io', 'le champ est rempli, sans le prefixe de type');
+    ok((await p.textContent('#state')).includes('acme.io'), 'et l enquete part toute seule');
     await p.close();
   }
 
-  console.log('\n-- 10. un refus du serveur ne laisse pas un vieux releve a l ecran --');
+  console.log('\n-- 10. un refus du serveur ne laisse pas un vieux rapport --');
   {
     const p = await ouvre('');
-    await p.fill('#dom', 'acme.io');
+    await p.fill('#q', 'acme.io');
     await p.click('#go');
     await p.waitForSelector('#out:not([hidden])');
-    await p.unroute(/\/osint\//);
-    await p.route(/\/osint\//, (r) => r.fulfill({ status: 429, contentType: 'application/json',
-      body: JSON.stringify({ erreur: 'too many domain reports, wait a minute' }) }));
-    await p.fill('#dom', 'autre.io');
+    await p.unroute(/\/osint\/v2\//);
+    await p.route(/\/osint\/v2\//, (r) => r.fulfill({ status: 429, contentType: 'application/json',
+      body: JSON.stringify({ erreur: 'too many reports, wait a minute' }) }));
+    await p.fill('#q', 'autre.io');
     await p.click('#go');
-    await p.waitForTimeout(200);
-    eq(await p.isHidden('#out'), true, 'le releve precedent est retire — il ne parle pas du domaine demande');
+    await p.waitForTimeout(250);
+    eq(await p.isHidden('#out'), true, 'le rapport precedent est retire');
     ok((await p.textContent('#state')).includes('too many'), 'et la raison est montree telle quelle');
     await p.close();
   }
@@ -299,458 +211,1239 @@ const T = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', 
   process.exit(rates ? 1 : 0);
 })().catch((e) => { console.error('ESSAI CASSE :', e); process.exit(1); });
 
-/* ---- LE RELEVE D ESSAI ----
- * Sortie reelle de `osint.js` contre le faux internet de `osint.test.js`
- * (bloc 9), recopiee telle quelle. Elle n est pas ecrite a la main : un
- * releve invente finirait par decrire une forme que le serveur n envoie
- * plus, et les essais passeraient sur une page cassee. */
+/* ---- LE RAPPORT D ESSAI ----
+ * Sortie reelle du noyau v2 contre un faux internet. Recopiee, pas inventee. */
+
 const RELEVE = {
- "domaine": "acme.io",
+ "cible": {
+  "type": "domaine",
+  "valeur": "acme.io"
+ },
  "date": "2026-09-21",
- "ms": 812,
- "joignable": true,
- "organisation": {
-  "nom": "Acme — build things",
-  "source": "https://acme.io/",
-  "verifie": true,
-  "confiance": "LOW",
-  "pourquoi": "taken from the site’s own title, which is a brand name, not a legal entity",
-  "vu": "2026-09-21"
- },
- "infra": {
-  "dns": {
-   "a": [
-    "8.8.8.8"
-   ],
-   "aaaa": [],
-   "mx": [
-    {
-     "hote": "aspmx.l.google.com",
-     "prio": 1
-    }
-   ],
-   "ns": [
-    "ns1.registrar.net"
-   ],
-   "txt": [
-    "v=spf1 include:_spf.google.com ~all"
-   ],
-   "spf": "v=spf1 include:_spf.google.com ~all",
-   "dmarc": "v=DMARC1; p=reject",
-   "hebergeurMail": "google.com"
-  },
-  "rdap": {
-   "source": "https://rdap.org/domain/acme.io",
-   "trouve": true,
-   "registraire": "Registrar SAS",
-   "cree": "2014-03-02",
-   "expire": "2027-03-02",
-   "modifie": null,
-   "etats": [
-    "client transfer prohibited"
-   ],
-   "serveursNoms": [],
-   "titulaire": null,
-   "titulaireMasque": true
-  },
-  "certs": {
-   "source": "https://crt.sh/?q=%25.acme.io&output=json",
-   "trouve": true,
-   "sousDomaines": [
-    "staging.acme.io",
-    "vpn.acme.io",
-    "www.acme.io"
-   ],
-   "total": 3,
-   "emetteurs": [
-    {
-     "nom": "Let's Encrypt",
-     "n": 2
-    },
-    {
-     "nom": "DigiCert Inc",
-     "n": 1
-    }
-   ]
-  },
-  "reseaux": [
-   {
-    "ip": "8.8.8.8",
-    "trouve": true,
-    "source": "https://rdap.org/ip/8.8.8.8",
-    "reseau": "GOGL",
-    "plage": "8.8.8.0 – 8.8.8.255",
-    "pays": "US",
-    "operateur": "Google LLC",
-    "asn": null
-   }
-  ],
-  "titulaireMasque": true
- },
- "securityTxt": {
-  "source": "https://acme.io/.well-known/security.txt",
-  "contacts": [
-   "mailto:security@acme.io"
-  ],
-  "politique": null,
-  "expire": "2027-01-01T00:00:00Z",
-  "langues": null
- },
- "contacts": [
+ "ms": 1840,
+ "faits": [
   {
-   "type": "email",
-   "valeur": "hello@acme.io",
-   "nominatif": false,
-   "source": "https://acme.io/",
+   "empreinte": "681706e04f366331",
+   "sujet": {
+    "type": "domaine",
+    "valeur": "acme.io"
+   },
+   "predicat": "RESOLVES TO",
+   "objet": {
+    "type": "ip",
+    "valeur": "8.8.8.8"
+   },
+   "valeur": null,
+   "connecteur": "dns",
+   "sources": [
+    "DNS answer for acme.io"
+   ],
    "vu": "2026-09-21",
    "verifie": true,
-   "confiance": "LOW",
-   "pourquoi": "found on the site, but not on a page meant for contact",
-   "extrait": "Acme — build things hello@acme.io Tom Clark, Chief Executive Officer"
+   "confiance": "HIGH",
+   "pourquoi": "the domain answers this to every resolver on earth",
+   "extrait": null,
+   "score": 88
   },
   {
-   "type": "email",
-   "valeur": "security@acme.io",
-   "nominatif": false,
-   "source": "https://acme.io/.well-known/security.txt",
+   "empreinte": "610dd94285882ec7",
+   "sujet": {
+    "type": "domaine",
+    "valeur": "acme.io"
+   },
+   "predicat": "MAIL HANDLED BY",
+   "objet": {
+    "type": "domaine",
+    "valeur": "aspmx.l.google.com"
+   },
+   "valeur": null,
+   "connecteur": "dns",
+   "sources": [
+    "DNS answer for acme.io"
+   ],
+   "vu": "2026-09-21",
+   "verifie": true,
+   "confiance": "HIGH",
+   "pourquoi": null,
+   "extrait": null,
+   "score": 88
+  },
+  {
+   "empreinte": "c2eb649f90139779",
+   "sujet": {
+    "type": "domaine",
+    "valeur": "acme.io"
+   },
+   "predicat": "MAIL HOSTED BY",
+   "objet": null,
+   "valeur": "google.com",
+   "connecteur": "dns",
+   "sources": [
+    "DNS answer for acme.io"
+   ],
+   "vu": "2026-09-21",
+   "verifie": true,
+   "confiance": "HIGH",
+   "pourquoi": null,
+   "extrait": null,
+   "score": 88
+  },
+  {
+   "empreinte": "069047fd64b8a204",
+   "sujet": {
+    "type": "domaine",
+    "valeur": "acme.io"
+   },
+   "predicat": "NAME SERVER",
+   "objet": null,
+   "valeur": "ns1.registrar.net",
+   "connecteur": "dns",
+   "sources": [
+    "DNS answer for acme.io"
+   ],
+   "vu": "2026-09-21",
+   "verifie": true,
+   "confiance": "HIGH",
+   "pourquoi": null,
+   "extrait": null,
+   "score": 88
+  },
+  {
+   "empreinte": "bc315c8c890ce466",
+   "sujet": {
+    "type": "domaine",
+    "valeur": "acme.io"
+   },
+   "predicat": "DMARC",
+   "objet": null,
+   "valeur": "none published",
+   "connecteur": "dns",
+   "sources": [
+    "DNS answer for acme.io"
+   ],
+   "vu": "2026-09-21",
+   "verifie": true,
+   "confiance": "HIGH",
+   "pourquoi": "no DMARC record: nothing stops a third party forging mail from this domain",
+   "extrait": null,
+   "score": 88
+  },
+  {
+   "empreinte": "70a0cf57bf60449d",
+   "sujet": {
+    "type": "domaine",
+    "valeur": "acme.io"
+   },
+   "predicat": "PUBLISHES CONTACT",
+   "objet": {
+    "type": "email",
+    "valeur": "security@acme.io"
+   },
+   "valeur": null,
+   "connecteur": "pages",
+   "sources": [
+    "https://acme.io/.well-known/security.txt"
+   ],
    "vu": "2026-09-21",
    "verifie": true,
    "confiance": "HIGH",
    "pourquoi": "published in the domain’s security.txt (RFC 9116)",
-   "extrait": "mailto:security@acme.io"
+   "extrait": null,
+   "score": 88
+  },
+  {
+   "empreinte": "b2374ef0f36632c7",
+   "sujet": {
+    "type": "domaine",
+    "valeur": "acme.io"
+   },
+   "predicat": "PUBLISHES CONTACT",
+   "objet": {
+    "type": "email",
+    "valeur": "presse@acme.io"
+   },
+   "valeur": null,
+   "connecteur": "pages",
+   "sources": [
+    "https://acme.io/mentions-legales"
+   ],
+   "vu": "2026-09-21",
+   "verifie": true,
+   "confiance": "HIGH",
+   "pourquoi": "published on the organisation’s own legal notice",
+   "extrait": "Directeur de la publication : Marc Lefevre presse@acme.io",
+   "score": 88
+  },
+  {
+   "empreinte": "e0ee897a5732c56a",
+   "sujet": {
+    "type": "personne",
+    "valeur": "Marc Lefevre"
+   },
+   "predicat": "DOMAIN OWNER",
+   "objet": {
+    "type": "domaine",
+    "valeur": "acme.io"
+   },
+   "valeur": null,
+   "connecteur": "pages",
+   "sources": [
+    "https://acme.io/mentions-legales"
+   ],
+   "vu": "2026-09-21",
+   "verifie": true,
+   "confiance": "HIGH",
+   "pourquoi": "named as publisher on the legal notice of this domain",
+   "extrait": "Directeur de la publication : Marc Lefevre presse@acme.io",
+   "score": 88
+  },
+  {
+   "empreinte": "bd6530689dc513a4",
+   "sujet": {
+    "type": "personne",
+    "valeur": "Marc Lefevre"
+   },
+   "predicat": "ROLE IS",
+   "objet": null,
+   "valeur": "Directeur de la publication",
+   "connecteur": "pages",
+   "sources": [
+    "https://acme.io/mentions-legales"
+   ],
+   "vu": "2026-09-21",
+   "verifie": true,
+   "confiance": "HIGH",
+   "pourquoi": null,
+   "extrait": null,
+   "score": 88
+  },
+  {
+   "empreinte": "df6f4ed90ece873c",
+   "sujet": {
+    "type": "domaine",
+    "valeur": "staging.acme.io"
+   },
+   "predicat": "MAIL HANDLED BY",
+   "objet": {
+    "type": "domaine",
+    "valeur": "aspmx.l.google.com"
+   },
+   "valeur": null,
+   "connecteur": "dns",
+   "sources": [
+    "DNS answer for staging.acme.io"
+   ],
+   "vu": "2026-09-21",
+   "verifie": true,
+   "confiance": "HIGH",
+   "pourquoi": null,
+   "extrait": null,
+   "score": 88
+  },
+  {
+   "empreinte": "f18a1b5adc86f18d",
+   "sujet": {
+    "type": "domaine",
+    "valeur": "staging.acme.io"
+   },
+   "predicat": "MAIL HOSTED BY",
+   "objet": null,
+   "valeur": "google.com",
+   "connecteur": "dns",
+   "sources": [
+    "DNS answer for staging.acme.io"
+   ],
+   "vu": "2026-09-21",
+   "verifie": true,
+   "confiance": "HIGH",
+   "pourquoi": null,
+   "extrait": null,
+   "score": 88
+  },
+  {
+   "empreinte": "8e10a7ca09b34c3e",
+   "sujet": {
+    "type": "domaine",
+    "valeur": "staging.acme.io"
+   },
+   "predicat": "NAME SERVER",
+   "objet": null,
+   "valeur": "ns1.registrar.net",
+   "connecteur": "dns",
+   "sources": [
+    "DNS answer for staging.acme.io"
+   ],
+   "vu": "2026-09-21",
+   "verifie": true,
+   "confiance": "HIGH",
+   "pourquoi": null,
+   "extrait": null,
+   "score": 88
+  },
+  {
+   "empreinte": "9abdddbbda481839",
+   "sujet": {
+    "type": "domaine",
+    "valeur": "staging.acme.io"
+   },
+   "predicat": "DMARC",
+   "objet": null,
+   "valeur": "none published",
+   "connecteur": "dns",
+   "sources": [
+    "DNS answer for staging.acme.io"
+   ],
+   "vu": "2026-09-21",
+   "verifie": true,
+   "confiance": "HIGH",
+   "pourquoi": "no DMARC record: nothing stops a third party forging mail from this domain",
+   "extrait": null,
+   "score": 88
+  },
+  {
+   "empreinte": "3876713d3cc3d0a2",
+   "sujet": {
+    "type": "domaine",
+    "valeur": "aspmx.l.google.com"
+   },
+   "predicat": "MAIL HANDLED BY",
+   "objet": {
+    "type": "domaine",
+    "valeur": "aspmx.l.google.com"
+   },
+   "valeur": null,
+   "connecteur": "dns",
+   "sources": [
+    "DNS answer for aspmx.l.google.com"
+   ],
+   "vu": "2026-09-21",
+   "verifie": true,
+   "confiance": "HIGH",
+   "pourquoi": null,
+   "extrait": null,
+   "score": 88
+  },
+  {
+   "empreinte": "1cc0bfb1f13fe55a",
+   "sujet": {
+    "type": "domaine",
+    "valeur": "aspmx.l.google.com"
+   },
+   "predicat": "MAIL HOSTED BY",
+   "objet": null,
+   "valeur": "google.com",
+   "connecteur": "dns",
+   "sources": [
+    "DNS answer for aspmx.l.google.com"
+   ],
+   "vu": "2026-09-21",
+   "verifie": true,
+   "confiance": "HIGH",
+   "pourquoi": null,
+   "extrait": null,
+   "score": 88
+  },
+  {
+   "empreinte": "4689a1671c5a1ac5",
+   "sujet": {
+    "type": "domaine",
+    "valeur": "aspmx.l.google.com"
+   },
+   "predicat": "NAME SERVER",
+   "objet": null,
+   "valeur": "ns1.registrar.net",
+   "connecteur": "dns",
+   "sources": [
+    "DNS answer for aspmx.l.google.com"
+   ],
+   "vu": "2026-09-21",
+   "verifie": true,
+   "confiance": "HIGH",
+   "pourquoi": null,
+   "extrait": null,
+   "score": 88
+  },
+  {
+   "empreinte": "7cdbb5265f790b7c",
+   "sujet": {
+    "type": "domaine",
+    "valeur": "aspmx.l.google.com"
+   },
+   "predicat": "DMARC",
+   "objet": null,
+   "valeur": "none published",
+   "connecteur": "dns",
+   "sources": [
+    "DNS answer for aspmx.l.google.com"
+   ],
+   "vu": "2026-09-21",
+   "verifie": true,
+   "confiance": "HIGH",
+   "pourquoi": "no DMARC record: nothing stops a third party forging mail from this domain",
+   "extrait": null,
+   "score": 88
+  },
+  {
+   "empreinte": "bf6e9d479549aeb5",
+   "sujet": {
+    "type": "domaine",
+    "valeur": "acme.io"
+   },
+   "predicat": "REGISTRAR IS",
+   "objet": null,
+   "valeur": "Registrar SAS",
+   "connecteur": "rdap",
+   "sources": [
+    "https://rdap.org/domain/acme.io"
+   ],
+   "vu": "2026-09-21",
+   "verifie": false,
+   "confiance": "HIGH",
+   "pourquoi": null,
+   "extrait": null,
+   "score": 80
+  },
+  {
+   "empreinte": "7d6161f1ffa9d930",
+   "sujet": {
+    "type": "domaine",
+    "valeur": "acme.io"
+   },
+   "predicat": "REGISTERED ON",
+   "objet": null,
+   "valeur": "2014-03-02",
+   "connecteur": "rdap",
+   "sources": [
+    "https://rdap.org/domain/acme.io"
+   ],
+   "vu": "2026-09-21",
+   "verifie": false,
+   "confiance": "HIGH",
+   "pourquoi": null,
+   "extrait": null,
+   "score": 80
+  },
+  {
+   "empreinte": "3f5358819f44faf3",
+   "sujet": {
+    "type": "domaine",
+    "valeur": "acme.io"
+   },
+   "predicat": "EXPIRES ON",
+   "objet": null,
+   "valeur": "2027-03-02",
+   "connecteur": "rdap",
+   "sources": [
+    "https://rdap.org/domain/acme.io"
+   ],
+   "vu": "2026-09-21",
+   "verifie": false,
+   "confiance": "HIGH",
+   "pourquoi": null,
+   "extrait": null,
+   "score": 80
+  },
+  {
+   "empreinte": "942bd35171f31d52",
+   "sujet": {
+    "type": "domaine",
+    "valeur": "acme.io"
+   },
+   "predicat": "REGISTRY STATUS",
+   "objet": null,
+   "valeur": "client transfer prohibited",
+   "connecteur": "rdap",
+   "sources": [
+    "https://rdap.org/domain/acme.io"
+   ],
+   "vu": "2026-09-21",
+   "verifie": false,
+   "confiance": "HIGH",
+   "pourquoi": null,
+   "extrait": null,
+   "score": 80
+  },
+  {
+   "empreinte": "139896b989e377f3",
+   "sujet": {
+    "type": "domaine",
+    "valeur": "acme.io"
+   },
+   "predicat": "REGISTRANT IS",
+   "objet": null,
+   "valeur": "redacted by the registry",
+   "connecteur": "rdap",
+   "sources": [
+    "https://rdap.org/domain/acme.io"
+   ],
+   "vu": "2026-09-21",
+   "verifie": false,
+   "confiance": "HIGH",
+   "pourquoi": "withheld since the GDPR for most domains. Absence of a name is not a hidden name.",
+   "extrait": null,
+   "score": 80
+  },
+  {
+   "empreinte": "661303164a7a6bd7",
+   "sujet": {
+    "type": "domaine",
+    "valeur": "acme.io"
+   },
+   "predicat": "CERTIFIED BY",
+   "objet": null,
+   "valeur": "Let's Encrypt (1)",
+   "connecteur": "certificats",
+   "sources": [
+    "https://crt.sh/?q=%25.acme.io&output=json"
+   ],
+   "vu": "2026-09-21",
+   "verifie": false,
+   "confiance": "HIGH",
+   "pourquoi": null,
+   "extrait": null,
+   "score": 80
+  },
+  {
+   "empreinte": "1900eb7037c15df8",
+   "sujet": {
+    "type": "ip",
+    "valeur": "8.8.8.8"
+   },
+   "predicat": "ANNOUNCED IN",
+   "objet": {
+    "type": "reseau",
+    "valeur": "GOGL"
+   },
+   "valeur": null,
+   "connecteur": "reseau",
+   "sources": [
+    "https://rdap.org/ip/8.8.8.8"
+   ],
+   "vu": "2026-09-21",
+   "verifie": false,
+   "confiance": "HIGH",
+   "pourquoi": null,
+   "extrait": null,
+   "score": 80
+  },
+  {
+   "empreinte": "d7677456043fb901",
+   "sujet": {
+    "type": "ip",
+    "valeur": "8.8.8.8"
+   },
+   "predicat": "OPERATED BY",
+   "objet": null,
+   "valeur": "Google LLC",
+   "connecteur": "reseau",
+   "sources": [
+    "https://rdap.org/ip/8.8.8.8"
+   ],
+   "vu": "2026-09-21",
+   "verifie": false,
+   "confiance": "HIGH",
+   "pourquoi": null,
+   "extrait": null,
+   "score": 80
+  },
+  {
+   "empreinte": "9f851daea99f1e60",
+   "sujet": {
+    "type": "domaine",
+    "valeur": "acme.io"
+   },
+   "predicat": "WEB ARCHIVE",
+   "objet": null,
+   "valeur": "2 archived pages, from 2015 to 2020",
+   "connecteur": "archive",
+   "sources": [
+    "https://web.archive.org/web/*/acme.io"
+   ],
+   "vu": "2026-09-21",
+   "verifie": true,
+   "confiance": "MEDIUM",
+   "pourquoi": "a public archive of what this domain showed the world over time",
+   "extrait": null,
+   "score": 63
+  },
+  {
+   "empreinte": "48da6f64413ed6f1",
+   "sujet": {
+    "type": "personne",
+    "valeur": "Marc Lefevre"
+   },
+   "predicat": "PROFESSIONAL EMAIL",
+   "objet": {
+    "type": "email",
+    "valeur": "presse@acme.io"
+   },
+   "valeur": null,
+   "connecteur": "pages",
+   "sources": [
+    "https://acme.io/mentions-legales"
+   ],
+   "vu": "2026-09-21",
+   "verifie": true,
+   "confiance": "MEDIUM",
+   "pourquoi": "name, role and address printed within the same window on the page",
+   "extrait": null,
+   "score": 63
+  },
+  {
+   "empreinte": "9672cbd4e7bb20a6",
+   "sujet": {
+    "type": "domaine",
+    "valeur": "acme.io"
+   },
+   "predicat": "PUBLISHES CONTACT",
+   "objet": {
+    "type": "email",
+    "valeur": "contact@acme.io"
+   },
+   "valeur": null,
+   "connecteur": "pages",
+   "sources": [
+    "https://acme.io/contact"
+   ],
+   "vu": "2026-09-21",
+   "verifie": true,
+   "confiance": "MEDIUM",
+   "pourquoi": "published on the organisation’s own contact page",
+   "extrait": "mailto: contact@acme.io",
+   "score": 63
+  },
+  {
+   "empreinte": "0c13e29520f2a0fc",
+   "sujet": {
+    "type": "domaine",
+    "valeur": "acme.io"
+   },
+   "predicat": "PUBLISHES CONTACT",
+   "objet": {
+    "type": "email",
+    "valeur": "jane.doe@acme.io"
+   },
+   "valeur": null,
+   "connecteur": "pages",
+   "sources": [
+    "https://acme.io/contact"
+   ],
+   "vu": "2026-09-21",
+   "verifie": true,
+   "confiance": "MEDIUM",
+   "pourquoi": "published on the organisation’s own contact page",
+   "extrait": "nous ecrire Jane Doe, Chief Technology Officer — jane.doe@acme.io X",
+   "score": 63
+  },
+  {
+   "empreinte": "106e281e9b90789e",
+   "sujet": {
+    "type": "personne",
+    "valeur": "Jane Doe"
+   },
+   "predicat": "PUBLICLY ASSOCIATED WITH DOMAIN",
+   "objet": {
+    "type": "domaine",
+    "valeur": "acme.io"
+   },
+   "valeur": null,
+   "connecteur": "pages",
+   "sources": [
+    "https://acme.io/contact"
+   ],
+   "vu": "2026-09-21",
+   "verifie": true,
+   "confiance": "MEDIUM",
+   "pourquoi": "the organisation published this person on one of its own pages; this does not establish ownership",
+   "extrait": "nous ecrire Jane Doe, Chief Technology Officer — jane.doe@acme.io X",
+   "score": 63
+  },
+  {
+   "empreinte": "042b1717b2d3181a",
+   "sujet": {
+    "type": "personne",
+    "valeur": "Jane Doe"
+   },
+   "predicat": "ROLE IS",
+   "objet": null,
+   "valeur": "Chief Technology Officer",
+   "connecteur": "pages",
+   "sources": [
+    "https://acme.io/contact"
+   ],
+   "vu": "2026-09-21",
+   "verifie": true,
+   "confiance": "MEDIUM",
+   "pourquoi": null,
+   "extrait": null,
+   "score": 63
+  },
+  {
+   "empreinte": "eb5e63bd0960c0ff",
+   "sujet": {
+    "type": "personne",
+    "valeur": "Jane Doe"
+   },
+   "predicat": "PROFESSIONAL EMAIL",
+   "objet": {
+    "type": "email",
+    "valeur": "jane.doe@acme.io"
+   },
+   "valeur": null,
+   "connecteur": "pages",
+   "sources": [
+    "https://acme.io/contact"
+   ],
+   "vu": "2026-09-21",
+   "verifie": true,
+   "confiance": "MEDIUM",
+   "pourquoi": "name, role and address printed within the same window on the page",
+   "extrait": null,
+   "score": 63
+  },
+  {
+   "empreinte": "2e330e4b0c295436",
+   "sujet": {
+    "type": "personne",
+    "valeur": "Jane Doe"
+   },
+   "predicat": "PUBLIC ACCOUNT",
+   "objet": null,
+   "valeur": "https://x.com/janedoe",
+   "connecteur": "pages",
+   "sources": [
+    "https://acme.io/contact"
+   ],
+   "vu": "2026-09-21",
+   "verifie": true,
+   "confiance": "MEDIUM",
+   "pourquoi": "printed on this page next to this name; being printed here does not make it theirs",
+   "extrait": null,
+   "score": 63
+  },
+  {
+   "empreinte": "3784a39e77ef6c85",
+   "sujet": {
+    "type": "ip",
+    "valeur": "8.8.8.8"
+   },
+   "predicat": "COUNTRY IS",
+   "objet": null,
+   "valeur": "US",
+   "connecteur": "reseau",
+   "sources": [
+    "https://rdap.org/ip/8.8.8.8"
+   ],
+   "vu": "2026-09-21",
+   "verifie": false,
+   "confiance": "MEDIUM",
+   "pourquoi": null,
+   "extrait": null,
+   "score": 55
+  },
+  {
+   "empreinte": "2ff246433e5495fc",
+   "sujet": {
+    "type": "domaine",
+    "valeur": "acme.io"
+   },
+   "predicat": "PUBLISHES CONTACT",
+   "objet": {
+    "type": "email",
+    "valeur": "hello@acme.io"
+   },
+   "valeur": null,
+   "connecteur": "pages",
+   "sources": [
+    "https://acme.io/"
+   ],
+   "vu": "2026-09-21",
+   "verifie": true,
+   "confiance": "LOW",
+   "pourquoi": "found on the site, but not on a page meant for contact",
+   "extrait": "Acme — build things hello@acme.io",
+   "score": 38
+  },
+  {
+   "empreinte": "a7556e16f2914154",
+   "sujet": {
+    "type": "domaine",
+    "valeur": "acme.io"
+   },
+   "predicat": "CERTIFICATE ISSUED FOR",
+   "objet": {
+    "type": "domaine",
+    "valeur": "staging.acme.io"
+   },
+   "valeur": null,
+   "connecteur": "certificats",
+   "sources": [
+    "https://crt.sh/?q=%25.acme.io&output=json"
+   ],
+   "vu": "2026-09-21",
+   "verifie": false,
+   "confiance": "LOW",
+   "pourquoi": "from a public certificate log, not confirmed against the host itself",
+   "extrait": null,
+   "score": 30
+  },
+  {
+   "empreinte": "1d3d03d47f83eaa2",
+   "sujet": {
+    "type": "domaine",
+    "valeur": "acme.io"
+   },
+   "predicat": "CERTIFICATE ISSUED FOR",
+   "objet": {
+    "type": "domaine",
+    "valeur": "acme.io"
+   },
+   "valeur": null,
+   "connecteur": "certificats",
+   "sources": [
+    "https://crt.sh/?q=%25.acme.io&output=json"
+   ],
+   "vu": "2026-09-21",
+   "verifie": false,
+   "confiance": "LOW",
+   "pourquoi": "from a public certificate log, not confirmed against the host itself",
+   "extrait": null,
+   "score": 30
+  }
+ ],
+ "contradictions": [],
+ "doublonsFondus": 0,
+ "entites": [
+  {
+   "type": "domaine",
+   "valeur": "acme.io",
+   "profondeur": 0
+  },
+  {
+   "type": "domaine",
+   "valeur": "staging.acme.io",
+   "profondeur": 1
+  },
+  {
+   "type": "ip",
+   "valeur": "8.8.8.8",
+   "profondeur": 1
+  },
+  {
+   "type": "domaine",
+   "valeur": "aspmx.l.google.com",
+   "profondeur": 1
+  },
+  {
+   "type": "email",
+   "valeur": "hello@acme.io",
+   "profondeur": 1
+  },
+  {
+   "type": "email",
+   "valeur": "security@acme.io",
+   "profondeur": 1
   },
   {
    "type": "email",
    "valeur": "presse@acme.io",
-   "nominatif": false,
-   "source": "https://acme.io/mentions-legales",
-   "vu": "2026-09-21",
-   "verifie": true,
-   "confiance": "HIGH",
-   "pourquoi": "published on the organisation’s own legal notice",
-   "extrait": "Directeur de la publication : Marc Lefevre presse@acme.io 01 45 67 89 00"
+   "profondeur": 1
   },
   {
-   "type": "phone",
-   "valeur": "+33145678900",
-   "nominatif": false,
-   "source": "https://acme.io/mentions-legales",
-   "vu": "2026-09-21",
-   "verifie": true,
-   "confiance": "HIGH",
-   "pourquoi": "published on the organisation’s own legal notice",
-   "extrait": "tel: +33145678900"
+   "type": "personne",
+   "valeur": "Marc Lefevre",
+   "profondeur": 1
   },
   {
    "type": "email",
    "valeur": "contact@acme.io",
-   "nominatif": false,
-   "source": "https://acme.io/contact",
-   "vu": "2026-09-21",
-   "verifie": true,
-   "confiance": "MEDIUM",
-   "pourquoi": "published on the organisation’s own contact page",
-   "extrait": "mailto: contact@acme.io"
+   "profondeur": 1
   },
   {
    "type": "email",
    "valeur": "jane.doe@acme.io",
-   "nominatif": true,
-   "source": "https://acme.io/contact",
-   "vu": "2026-09-21",
-   "verifie": true,
-   "confiance": "MEDIUM",
-   "pourquoi": "published on the organisation’s own contact page",
-   "extrait": "nous ecrire Jane Doe, Chief Technology Officer — jane.doe@acme.io LinkedIn X ecrivez-nous sur […]"
-  }
- ],
- "personnes": [
-  {
-   "prenom": "Marc",
-   "nom": "Lefevre",
-   "complet": "Marc Lefevre",
-   "fonction": "Directeur de la publication",
-   "mail": "presse@acme.io",
-   "profils": [],
-   "extrait": "Directeur de la publication : Marc Lefevre presse@acme.io 01 45 67 89 00",
-   "source": "https://acme.io/mentions-legales",
-   "vu": "2026-09-21",
-   "verifie": true,
-   "confiance": "HIGH",
-   "pourquoi": "published on the organisation’s own legal notice",
-   "lien": "DOMAIN OWNER",
-   "preuve": "named as publisher on the legal notice of this domain"
+   "profondeur": 1
   },
   {
-   "prenom": "Jane",
-   "nom": "Doe",
-   "complet": "Jane Doe",
-   "fonction": "Chief Technology Officer",
-   "mail": "jane.doe@acme.io",
-   "profils": [
+   "type": "personne",
+   "valeur": "Jane Doe",
+   "profondeur": 1
+  },
+  {
+   "type": "reseau",
+   "valeur": "GOGL",
+   "profondeur": 2
+  }
+ ],
+ "journal": [
+  {
+   "c": "archive",
+   "e": "domaine:acme.io",
+   "etat": "ok",
+   "ms": 5,
+   "attenteHote": 0,
+   "faits": 1
+  },
+  {
+   "c": "rdap",
+   "e": "domaine:acme.io",
+   "etat": "ok",
+   "ms": 5,
+   "attenteHote": 0,
+   "faits": 5
+  },
+  {
+   "c": "certificats",
+   "e": "domaine:acme.io",
+   "etat": "ok",
+   "ms": 5,
+   "attenteHote": 0,
+   "faits": 3
+  },
+  {
+   "c": "dns",
+   "e": "domaine:acme.io",
+   "etat": "ok",
+   "ms": 5,
+   "attenteHote": 0,
+   "faits": 5
+  },
+  {
+   "c": "pages",
+   "e": "domaine:acme.io",
+   "etat": "ok",
+   "ms": 11,
+   "attenteHote": 0,
+   "faits": 12
+  },
+  {
+   "c": "dns",
+   "e": "domaine:staging.acme.io",
+   "etat": "ok",
+   "ms": 1,
+   "attenteHote": 0,
+   "faits": 4
+  },
+  {
+   "c": "dns",
+   "e": "domaine:aspmx.l.google.com",
+   "etat": "ok",
+   "ms": 0,
+   "attenteHote": 0,
+   "faits": 4
+  },
+  {
+   "c": "pages",
+   "e": "domaine:staging.acme.io",
+   "etat": "ok",
+   "ms": 0,
+   "attenteHote": 0,
+   "faits": 0
+  },
+  {
+   "c": "rdap",
+   "e": "domaine:staging.acme.io",
+   "etat": "ok",
+   "ms": 1992,
+   "attenteHote": 1989,
+   "faits": 0
+  },
+  {
+   "c": "pages",
+   "e": "domaine:aspmx.l.google.com",
+   "etat": "ok",
+   "ms": 0,
+   "attenteHote": 0,
+   "faits": 0
+  },
+  {
+   "c": "archive",
+   "e": "domaine:staging.acme.io",
+   "etat": "ok",
+   "ms": 3990,
+   "attenteHote": 3988,
+   "faits": 0
+  },
+  {
+   "c": "reseau",
+   "e": "ip:8.8.8.8",
+   "etat": "ok",
+   "ms": 3991,
+   "attenteHote": 3988,
+   "faits": 3
+  },
+  {
+   "c": "certificats",
+   "e": "domaine:staging.acme.io",
+   "etat": "ok",
+   "ms": 4989,
+   "attenteHote": 4988,
+   "faits": 0
+  },
+  {
+   "c": "rdap",
+   "e": "domaine:aspmx.l.google.com",
+   "etat": "ok",
+   "ms": 5989,
+   "attenteHote": 5988,
+   "faits": 0
+  },
+  {
+   "c": "archive",
+   "e": "domaine:aspmx.l.google.com",
+   "etat": "ok",
+   "ms": 5999,
+   "attenteHote": 5997,
+   "faits": 0
+  },
+  {
+   "c": "certificats",
+   "e": "domaine:aspmx.l.google.com",
+   "etat": "ok",
+   "ms": 9989,
+   "attenteHote": 9988,
+   "faits": 0
+  }
+ ],
+ "connecteursEteints": [
+  {
+   "nom": "shodan",
+   "pourquoi": "needs SHODAN_API_KEY",
+   "cout": "key required (free tier available)"
+  },
+  {
+   "nom": "abuseipdb",
+   "pourquoi": "needs ABUSEIPDB_API_KEY",
+   "cout": "key required (free tier available)"
+  },
+  {
+   "nom": "fuites",
+   "pourquoi": "needs HIBP_API_KEY",
+   "cout": "~$4/month, key required"
+  }
+ ],
+ "connecteursEcartes": [],
+ "constats": [
+  {
+   "regle": "mail-usurpable",
+   "gravite": "haute",
+   "etiquette": "HIGH",
+   "dit": "This domain receives mail but publishes no DMARC policy. Anyone can send mail in its name and receiving servers have nothing to check it against.",
+   "pieces": [
     {
-     "url": "https://www.linkedin.com/in/jane-doe",
-     "genre": "pro"
-    },
-    {
-     "url": "https://x.com/janedoe",
-     "genre": "social"
+     "predicat": "DMARC",
+     "valeur": "none published",
+     "sources": [
+      "DNS answer for acme.io"
+     ]
     }
-   ],
-   "extrait": "nous ecrire Jane Doe, Chief Technology Officer — jane.doe@acme.io LinkedIn X ecrivez-nous sur […]",
-   "source": "https://acme.io/contact",
-   "vu": "2026-09-21",
-   "verifie": true,
-   "confiance": "MEDIUM",
-   "pourquoi": "name, role and address printed together in the same block",
-   "lien": "PUBLICLY ASSOCIATED WITH DOMAIN",
-   "preuve": "the organisation published this person on one of its own pages; this does not establish ownership"
+   ]
+  },
+  {
+   "regle": "adresse-nominative-publiee",
+   "gravite": "basse",
+   "etiquette": "LOW",
+   "dit": "1 named mailbox is published on this organisation’s own pages. That is their choice to make, and worth knowing if you are the one who published them.",
+   "pieces": [
+    {
+     "predicat": "PUBLISHES CONTACT",
+     "valeur": "jane.doe@acme.io",
+     "sources": [
+      "https://acme.io/contact"
+     ]
+    }
+   ]
+  },
+  {
+   "regle": "nomme-nest-pas-proprietaire",
+   "gravite": "info",
+   "etiquette": "NOTE",
+   "dit": "1 person is named by this organisation on its own pages. Being named is not owning: only a registry entry in clear or a legal notice establishes that, and neither is present here.",
+   "pieces": [
+    {
+     "predicat": "PUBLICLY ASSOCIATED WITH DOMAIN",
+     "valeur": "acme.io",
+     "sources": [
+      "https://acme.io/contact"
+     ]
+    }
+   ]
   }
  ],
- "pages": [
-  {
-   "chemin": "/",
-   "role": "autre",
-   "code": 200,
-   "octets": 95
-  },
-  {
-   "chemin": "/.well-known/security.txt",
-   "role": "securite",
-   "code": 200,
-   "octets": 63
-  },
-  {
-   "chemin": "/mentions-legales",
-   "role": "legal",
-   "code": 200,
-   "octets": 115
-  },
-  {
-   "chemin": "/contact",
-   "role": "contact",
-   "code": 200,
-   "octets": 250
-  },
-  {
-   "chemin": "/about",
-   "role": "equipe",
-   "code": 404,
-   "refus": false,
-   "erreur": null
-  },
-  {
-   "chemin": "/about-us",
-   "role": "equipe",
-   "code": 404,
-   "refus": false,
-   "erreur": null
-  },
-  {
-   "chemin": "/a-propos",
-   "role": "equipe",
-   "saute": "disallowed by robots.txt"
-  },
-  {
-   "chemin": "/team",
-   "role": "equipe",
-   "code": 403,
-   "refus": true,
-   "erreur": null
-  },
-  {
-   "chemin": "/equipe",
-   "role": "equipe",
-   "code": 404,
-   "refus": false,
-   "erreur": null
-  }
- ],
- "sources": [
-  {
-   "url": "https://rdap.org/domain/acme.io",
-   "ok": true,
-   "role": "rdap"
-  },
-  {
-   "url": "https://crt.sh/?q=%25.acme.io&output=json",
-   "ok": true,
-   "role": "certs"
-  },
-  {
-   "url": "https://acme.io/",
-   "code": 200,
-   "ok": true,
-   "refus": false,
-   "ms": 0,
-   "role": "autre"
-  },
-  {
-   "url": "https://acme.io/.well-known/security.txt",
-   "code": 200,
-   "ok": true,
-   "refus": false,
-   "ms": 0,
-   "role": "securite"
-  },
-  {
-   "url": "https://acme.io/mentions-legales",
-   "code": 200,
-   "ok": true,
-   "refus": false,
-   "ms": 0,
-   "role": "legal"
-  },
-  {
-   "url": "https://acme.io/contact",
-   "code": 200,
-   "ok": true,
-   "refus": false,
-   "ms": 0,
-   "role": "contact"
-  },
-  {
-   "url": "https://acme.io/about",
-   "code": 404,
-   "ok": false,
-   "refus": false,
-   "ms": 0,
-   "role": "equipe"
-  },
-  {
-   "url": "https://acme.io/about-us",
-   "code": 404,
-   "ok": false,
-   "refus": false,
-   "ms": 0,
-   "role": "equipe"
-  },
-  {
-   "url": "https://acme.io/team",
-   "code": 403,
-   "ok": false,
-   "refus": true,
-   "ms": 0,
-   "role": "equipe"
-  },
-  {
-   "url": "https://acme.io/equipe",
-   "code": 404,
-   "ok": false,
-   "refus": false,
-   "ms": 0,
-   "role": "equipe"
-  }
- ],
- "robots": {
-  "lu": true,
-  "interdits": [
-   "/a-propos"
-  ]
- },
+ "passif": false,
+ "budgetAtteint": false,
  "limites": [
-  "Entry point is a domain or an IP. This tool cannot be searched by a person’s name, e-mail, phone or handle.",
-  "E-mail addresses are only read where the organisation printed them. None is ever guessed or built from a name.",
-  "Consumer mailbox providers (gmail, outlook, proton…) are dropped at extraction: a personal address is never collected.",
-  "Accounts are only read where the organisation printed them next to a person’s name. This tool cannot look up someone’s accounts from a name or a handle — there is no way to search it by a person.",
-  "Sources are public by design: DNS, the domain registry (RDAP), certificate transparency logs, and the domain’s own pages.",
-  "No leaked or private database is ever queried. No login, paywall or anti-bot protection is ever bypassed.",
-  "robots.txt is obeyed, the crawler identifies itself, and a 401/403/429 is recorded as a refusal — never retried in disguise.",
-  "A person is shown as PUBLICLY ASSOCIATED WITH DOMAIN unless a public act names them as owner."
+  "Seeds are domains, IPs, websites and on-chain addresses. This tool cannot be searched by a person’s name.",
+  "E-mail addresses, usernames and phone numbers are selectors: closed questions about them, never an expansion into a person.",
+  "No leaked or private database is queried. No login, paywall or anti-bot protection is bypassed. robots.txt is obeyed.",
+  "No password, hash or secret is ever fetched, stored or shown — breach checks report presence and data categories only.",
+  "Being named on a page is not owning a domain. Sources that disagree are both shown; nothing is picked for you.",
+  "Every number carries how many observations it rests on. A past record is a measurement, not a prediction."
  ],
  "graphe": {
   "noeuds": [
    {
-    "id": "domain:acme.io",
+    "id": "domaine:acme.io",
     "type": "domaine",
     "nom": "acme.io",
     "filtre": "infrastructure",
-    "humain": false
+    "humain": false,
+    "attributs": [
+     {
+      "quoi": "MAIL HOSTED BY",
+      "valeur": "google.com",
+      "confiance": "HIGH",
+      "sources": [
+       "DNS answer for acme.io"
+      ],
+      "conteste": false
+     },
+     {
+      "quoi": "NAME SERVER",
+      "valeur": "ns1.registrar.net",
+      "confiance": "HIGH",
+      "sources": [
+       "DNS answer for acme.io"
+      ],
+      "conteste": false
+     },
+     {
+      "quoi": "DMARC",
+      "valeur": "none published",
+      "confiance": "HIGH",
+      "sources": [
+       "DNS answer for acme.io"
+      ],
+      "conteste": false
+     },
+     {
+      "quoi": "REGISTRAR IS",
+      "valeur": "Registrar SAS",
+      "confiance": "HIGH",
+      "sources": [
+       "https://rdap.org/domain/acme.io"
+      ],
+      "conteste": false
+     },
+     {
+      "quoi": "REGISTERED ON",
+      "valeur": "2014-03-02",
+      "confiance": "HIGH",
+      "sources": [
+       "https://rdap.org/domain/acme.io"
+      ],
+      "conteste": false
+     },
+     {
+      "quoi": "EXPIRES ON",
+      "valeur": "2027-03-02",
+      "confiance": "HIGH",
+      "sources": [
+       "https://rdap.org/domain/acme.io"
+      ],
+      "conteste": false
+     },
+     {
+      "quoi": "REGISTRY STATUS",
+      "valeur": "client transfer prohibited",
+      "confiance": "HIGH",
+      "sources": [
+       "https://rdap.org/domain/acme.io"
+      ],
+      "conteste": false
+     },
+     {
+      "quoi": "REGISTRANT IS",
+      "valeur": "redacted by the registry",
+      "confiance": "HIGH",
+      "sources": [
+       "https://rdap.org/domain/acme.io"
+      ],
+      "conteste": false
+     },
+     {
+      "quoi": "CERTIFIED BY",
+      "valeur": "Let's Encrypt (1)",
+      "confiance": "HIGH",
+      "sources": [
+       "https://crt.sh/?q=%25.acme.io&output=json"
+      ],
+      "conteste": false
+     },
+     {
+      "quoi": "WEB ARCHIVE",
+      "valeur": "2 archived pages, from 2015 to 2020",
+      "confiance": "MEDIUM",
+      "sources": [
+       "https://web.archive.org/web/*/acme.io"
+      ],
+      "conteste": false
+     }
+    ],
+    "cible": true
    },
    {
     "id": "ip:8.8.8.8",
     "type": "ip",
     "nom": "8.8.8.8",
     "filtre": "infrastructure",
-    "humain": false
-   },
-   {
-    "id": "net:GOGL",
-    "type": "reseau",
-    "nom": "GOGL",
-    "filtre": "infrastructure",
     "humain": false,
-    "pays": "US",
-    "operateur": "Google LLC",
-    "plage": "8.8.8.0 – 8.8.8.255"
+    "attributs": [
+     {
+      "quoi": "OPERATED BY",
+      "valeur": "Google LLC",
+      "confiance": "HIGH",
+      "sources": [
+       "https://rdap.org/ip/8.8.8.8"
+      ],
+      "conteste": false
+     },
+     {
+      "quoi": "COUNTRY IS",
+      "valeur": "US",
+      "confiance": "MEDIUM",
+      "sources": [
+       "https://rdap.org/ip/8.8.8.8"
+      ],
+      "conteste": false
+     }
+    ]
    },
    {
-    "id": "mx:aspmx.l.google.com",
-    "type": "mx",
+    "id": "domaine:aspmx.l.google.com",
+    "type": "domaine",
     "nom": "aspmx.l.google.com",
     "filtre": "infrastructure",
     "humain": false,
-    "prio": 1
-   },
-   {
-    "id": "sub:staging.acme.io",
-    "type": "sousdomaine",
-    "nom": "staging.acme.io",
-    "filtre": "infrastructure",
-    "humain": false,
-    "verifie": false
-   },
-   {
-    "id": "sub:vpn.acme.io",
-    "type": "sousdomaine",
-    "nom": "vpn.acme.io",
-    "filtre": "infrastructure",
-    "humain": false,
-    "verifie": false
-   },
-   {
-    "id": "sub:www.acme.io",
-    "type": "sousdomaine",
-    "nom": "www.acme.io",
-    "filtre": "infrastructure",
-    "humain": false,
-    "verifie": false
-   },
-   {
-    "id": "ca:Let's Encrypt",
-    "type": "certificat",
-    "nom": "Let's Encrypt",
-    "filtre": "infrastructure",
-    "humain": false,
-    "n": 2
-   },
-   {
-    "id": "ca:DigiCert Inc",
-    "type": "certificat",
-    "nom": "DigiCert Inc",
-    "filtre": "infrastructure",
-    "humain": false,
-    "n": 1
-   },
-   {
-    "id": "org:Acme — build things",
-    "type": "organisation",
-    "nom": "Acme — build things",
-    "filtre": "organization",
-    "humain": false,
-    "confiance": "LOW",
-    "source": "https://acme.io/"
-   },
-   {
-    "id": "email:hello@acme.io",
-    "type": "email",
-    "nom": "hello@acme.io",
-    "filtre": "contacts",
-    "humain": false,
-    "nominatif": false,
-    "confiance": "LOW",
-    "verifie": true,
-    "source": "https://acme.io/"
+    "attributs": [
+     {
+      "quoi": "MAIL HOSTED BY",
+      "valeur": "google.com",
+      "confiance": "HIGH",
+      "sources": [
+       "DNS answer for aspmx.l.google.com"
+      ],
+      "conteste": false
+     },
+     {
+      "quoi": "NAME SERVER",
+      "valeur": "ns1.registrar.net",
+      "confiance": "HIGH",
+      "sources": [
+       "DNS answer for aspmx.l.google.com"
+      ],
+      "conteste": false
+     },
+     {
+      "quoi": "DMARC",
+      "valeur": "none published",
+      "confiance": "HIGH",
+      "sources": [
+       "DNS answer for aspmx.l.google.com"
+      ],
+      "conteste": false
+     }
+    ]
    },
    {
     "id": "email:security@acme.io",
@@ -758,10 +1451,7 @@ const RELEVE = {
     "nom": "security@acme.io",
     "filtre": "contacts",
     "humain": false,
-    "nominatif": false,
-    "confiance": "HIGH",
-    "verifie": true,
-    "source": "https://acme.io/.well-known/security.txt"
+    "attributs": []
    },
    {
     "id": "email:presse@acme.io",
@@ -769,21 +1459,69 @@ const RELEVE = {
     "nom": "presse@acme.io",
     "filtre": "contacts",
     "humain": false,
-    "nominatif": false,
-    "confiance": "HIGH",
-    "verifie": true,
-    "source": "https://acme.io/mentions-legales"
+    "attributs": []
    },
    {
-    "id": "phone:+33145678900",
-    "type": "telephone",
-    "nom": "+33145678900",
+    "id": "personne:Marc Lefevre",
+    "type": "personne",
+    "nom": "Marc Lefevre",
     "filtre": "contacts",
+    "humain": true,
+    "attributs": [
+     {
+      "quoi": "ROLE IS",
+      "valeur": "Directeur de la publication",
+      "confiance": "HIGH",
+      "sources": [
+       "https://acme.io/mentions-legales"
+      ],
+      "conteste": false
+     }
+    ]
+   },
+   {
+    "id": "domaine:staging.acme.io",
+    "type": "domaine",
+    "nom": "staging.acme.io",
+    "filtre": "infrastructure",
     "humain": false,
-    "nominatif": false,
-    "confiance": "HIGH",
-    "verifie": true,
-    "source": "https://acme.io/mentions-legales"
+    "attributs": [
+     {
+      "quoi": "MAIL HOSTED BY",
+      "valeur": "google.com",
+      "confiance": "HIGH",
+      "sources": [
+       "DNS answer for staging.acme.io"
+      ],
+      "conteste": false
+     },
+     {
+      "quoi": "NAME SERVER",
+      "valeur": "ns1.registrar.net",
+      "confiance": "HIGH",
+      "sources": [
+       "DNS answer for staging.acme.io"
+      ],
+      "conteste": false
+     },
+     {
+      "quoi": "DMARC",
+      "valeur": "none published",
+      "confiance": "HIGH",
+      "sources": [
+       "DNS answer for staging.acme.io"
+      ],
+      "conteste": false
+     }
+    ]
+   },
+   {
+    "id": "reseau:GOGL",
+    "type": "reseau",
+    "nom": "GOGL",
+    "filtre": "infrastructure",
+    "humain": false,
+    "attributs": []
    },
    {
     "id": "email:contact@acme.io",
@@ -791,10 +1529,7 @@ const RELEVE = {
     "nom": "contact@acme.io",
     "filtre": "contacts",
     "humain": false,
-    "nominatif": false,
-    "confiance": "MEDIUM",
-    "verifie": true,
-    "source": "https://acme.io/contact"
+    "attributs": []
    },
    {
     "id": "email:jane.doe@acme.io",
@@ -802,188 +1537,243 @@ const RELEVE = {
     "nom": "jane.doe@acme.io",
     "filtre": "contacts",
     "humain": false,
-    "nominatif": true,
-    "confiance": "MEDIUM",
-    "verifie": true,
-    "source": "https://acme.io/contact"
+    "attributs": []
    },
    {
-    "id": "person:Marc Lefevre",
-    "type": "personne",
-    "nom": "Marc Lefevre",
-    "filtre": "contacts",
-    "humain": true,
-    "fonction": "Directeur de la publication",
-    "profils": [],
-    "confiance": "HIGH",
-    "source": "https://acme.io/mentions-legales",
-    "lien": "DOMAIN OWNER",
-    "preuve": "named as publisher on the legal notice of this domain",
-    "verifie": true
-   },
-   {
-    "id": "person:Jane Doe",
+    "id": "personne:Jane Doe",
     "type": "personne",
     "nom": "Jane Doe",
     "filtre": "contacts",
     "humain": true,
-    "fonction": "Chief Technology Officer",
-    "profils": [
+    "attributs": [
      {
-      "url": "https://www.linkedin.com/in/jane-doe",
-      "genre": "pro"
+      "quoi": "ROLE IS",
+      "valeur": "Chief Technology Officer",
+      "confiance": "MEDIUM",
+      "sources": [
+       "https://acme.io/contact"
+      ],
+      "conteste": false
      },
      {
-      "url": "https://x.com/janedoe",
-      "genre": "social"
+      "quoi": "PUBLIC ACCOUNT",
+      "valeur": "https://x.com/janedoe",
+      "confiance": "MEDIUM",
+      "sources": [
+       "https://acme.io/contact"
+      ],
+      "conteste": false
      }
-    ],
-    "confiance": "MEDIUM",
-    "source": "https://acme.io/contact",
-    "lien": "PUBLICLY ASSOCIATED WITH DOMAIN",
-    "preuve": "the organisation published this person on one of its own pages; this does not establish ownership",
-    "verifie": true
+    ]
+   },
+   {
+    "id": "email:hello@acme.io",
+    "type": "email",
+    "nom": "hello@acme.io",
+    "filtre": "contacts",
+    "humain": false,
+    "attributs": []
    }
   ],
   "aretes": [
    {
-    "de": "domain:acme.io",
+    "de": "domaine:acme.io",
     "vers": "ip:8.8.8.8",
     "relation": "RESOLVES TO",
-    "source": "DNS A/AAAA record",
-    "confiance": "HIGH"
+    "source": "DNS answer for acme.io",
+    "sources": [
+     "DNS answer for acme.io"
+    ],
+    "confiance": "HIGH",
+    "score": 88,
+    "conteste": false
+   },
+   {
+    "de": "domaine:acme.io",
+    "vers": "domaine:aspmx.l.google.com",
+    "relation": "MAIL HANDLED BY",
+    "source": "DNS answer for acme.io",
+    "sources": [
+     "DNS answer for acme.io"
+    ],
+    "confiance": "HIGH",
+    "score": 88,
+    "conteste": false
+   },
+   {
+    "de": "domaine:acme.io",
+    "vers": "email:security@acme.io",
+    "relation": "PUBLISHES CONTACT",
+    "source": "https://acme.io/.well-known/security.txt",
+    "sources": [
+     "https://acme.io/.well-known/security.txt"
+    ],
+    "confiance": "HIGH",
+    "score": 88,
+    "conteste": false
+   },
+   {
+    "de": "domaine:acme.io",
+    "vers": "email:presse@acme.io",
+    "relation": "PUBLISHES CONTACT",
+    "source": "https://acme.io/mentions-legales",
+    "sources": [
+     "https://acme.io/mentions-legales"
+    ],
+    "confiance": "HIGH",
+    "score": 88,
+    "conteste": false
+   },
+   {
+    "de": "personne:Marc Lefevre",
+    "vers": "domaine:acme.io",
+    "relation": "DOMAIN OWNER",
+    "source": "https://acme.io/mentions-legales",
+    "sources": [
+     "https://acme.io/mentions-legales"
+    ],
+    "confiance": "HIGH",
+    "score": 88,
+    "conteste": false
+   },
+   {
+    "de": "domaine:staging.acme.io",
+    "vers": "domaine:aspmx.l.google.com",
+    "relation": "MAIL HANDLED BY",
+    "source": "DNS answer for staging.acme.io",
+    "sources": [
+     "DNS answer for staging.acme.io"
+    ],
+    "confiance": "HIGH",
+    "score": 88,
+    "conteste": false
+   },
+   {
+    "de": "domaine:aspmx.l.google.com",
+    "vers": "domaine:aspmx.l.google.com",
+    "relation": "MAIL HANDLED BY",
+    "source": "DNS answer for aspmx.l.google.com",
+    "sources": [
+     "DNS answer for aspmx.l.google.com"
+    ],
+    "confiance": "HIGH",
+    "score": 88,
+    "conteste": false
    },
    {
     "de": "ip:8.8.8.8",
-    "vers": "net:GOGL",
+    "vers": "reseau:GOGL",
     "relation": "ANNOUNCED IN",
     "source": "https://rdap.org/ip/8.8.8.8",
-    "confiance": "HIGH"
+    "sources": [
+     "https://rdap.org/ip/8.8.8.8"
+    ],
+    "confiance": "HIGH",
+    "score": 80,
+    "conteste": false
    },
    {
-    "de": "domain:acme.io",
-    "vers": "mx:aspmx.l.google.com",
-    "relation": "MAIL HANDLED BY",
-    "source": "DNS MX record",
-    "confiance": "HIGH"
-   },
-   {
-    "de": "domain:acme.io",
-    "vers": "sub:staging.acme.io",
-    "relation": "CERTIFICATE ISSUED FOR",
-    "source": "https://crt.sh/?q=%25.acme.io&output=json",
-    "confiance": "LOW"
-   },
-   {
-    "de": "domain:acme.io",
-    "vers": "sub:vpn.acme.io",
-    "relation": "CERTIFICATE ISSUED FOR",
-    "source": "https://crt.sh/?q=%25.acme.io&output=json",
-    "confiance": "LOW"
-   },
-   {
-    "de": "domain:acme.io",
-    "vers": "sub:www.acme.io",
-    "relation": "CERTIFICATE ISSUED FOR",
-    "source": "https://crt.sh/?q=%25.acme.io&output=json",
-    "confiance": "LOW"
-   },
-   {
-    "de": "domain:acme.io",
-    "vers": "ca:Let's Encrypt",
-    "relation": "CERTIFIED BY",
-    "source": "https://crt.sh/?q=%25.acme.io&output=json",
-    "confiance": "HIGH"
-   },
-   {
-    "de": "domain:acme.io",
-    "vers": "ca:DigiCert Inc",
-    "relation": "CERTIFIED BY",
-    "source": "https://crt.sh/?q=%25.acme.io&output=json",
-    "confiance": "HIGH"
-   },
-   {
-    "de": "org:Acme — build things",
-    "vers": "domain:acme.io",
-    "relation": "PUBLICLY ASSOCIATED WITH DOMAIN",
-    "source": "https://acme.io/",
-    "confiance": "LOW"
-   },
-   {
-    "de": "domain:acme.io",
-    "vers": "email:hello@acme.io",
-    "relation": "PUBLISHED ON THIS DOMAIN",
-    "source": "https://acme.io/",
-    "confiance": "LOW"
-   },
-   {
-    "de": "domain:acme.io",
-    "vers": "email:security@acme.io",
-    "relation": "PUBLISHED ON THIS DOMAIN",
-    "source": "https://acme.io/.well-known/security.txt",
-    "confiance": "HIGH"
-   },
-   {
-    "de": "domain:acme.io",
+    "de": "personne:Marc Lefevre",
     "vers": "email:presse@acme.io",
-    "relation": "PUBLISHED ON THIS DOMAIN",
+    "relation": "PROFESSIONAL EMAIL",
     "source": "https://acme.io/mentions-legales",
-    "confiance": "HIGH"
+    "sources": [
+     "https://acme.io/mentions-legales"
+    ],
+    "confiance": "MEDIUM",
+    "score": 63,
+    "conteste": false
    },
    {
-    "de": "domain:acme.io",
-    "vers": "phone:+33145678900",
-    "relation": "PUBLISHED ON THIS DOMAIN",
-    "source": "https://acme.io/mentions-legales",
-    "confiance": "HIGH"
-   },
-   {
-    "de": "domain:acme.io",
+    "de": "domaine:acme.io",
     "vers": "email:contact@acme.io",
-    "relation": "PUBLISHED ON THIS DOMAIN",
+    "relation": "PUBLISHES CONTACT",
     "source": "https://acme.io/contact",
-    "confiance": "MEDIUM"
+    "sources": [
+     "https://acme.io/contact"
+    ],
+    "confiance": "MEDIUM",
+    "score": 63,
+    "conteste": false
    },
    {
-    "de": "domain:acme.io",
+    "de": "domaine:acme.io",
     "vers": "email:jane.doe@acme.io",
-    "relation": "PUBLISHED ON THIS DOMAIN",
+    "relation": "PUBLISHES CONTACT",
     "source": "https://acme.io/contact",
-    "confiance": "MEDIUM"
+    "sources": [
+     "https://acme.io/contact"
+    ],
+    "confiance": "MEDIUM",
+    "score": 63,
+    "conteste": false
    },
    {
-    "de": "person:Marc Lefevre",
-    "vers": "domain:acme.io",
-    "relation": "DOMAIN OWNER",
-    "source": "https://acme.io/mentions-legales",
-    "confiance": "HIGH"
-   },
-   {
-    "de": "person:Marc Lefevre",
-    "vers": "email:presse@acme.io",
-    "relation": "PROFESSIONAL EMAIL",
-    "source": "https://acme.io/mentions-legales",
-    "confiance": "MEDIUM"
-   },
-   {
-    "de": "person:Jane Doe",
-    "vers": "domain:acme.io",
+    "de": "personne:Jane Doe",
+    "vers": "domaine:acme.io",
     "relation": "PUBLICLY ASSOCIATED WITH DOMAIN",
     "source": "https://acme.io/contact",
-    "confiance": "MEDIUM"
+    "sources": [
+     "https://acme.io/contact"
+    ],
+    "confiance": "MEDIUM",
+    "score": 63,
+    "conteste": false
    },
    {
-    "de": "person:Jane Doe",
+    "de": "personne:Jane Doe",
     "vers": "email:jane.doe@acme.io",
     "relation": "PROFESSIONAL EMAIL",
     "source": "https://acme.io/contact",
-    "confiance": "MEDIUM"
+    "sources": [
+     "https://acme.io/contact"
+    ],
+    "confiance": "MEDIUM",
+    "score": 63,
+    "conteste": false
+   },
+   {
+    "de": "domaine:acme.io",
+    "vers": "email:hello@acme.io",
+    "relation": "PUBLISHES CONTACT",
+    "source": "https://acme.io/",
+    "sources": [
+     "https://acme.io/"
+    ],
+    "confiance": "LOW",
+    "score": 38,
+    "conteste": false
+   },
+   {
+    "de": "domaine:acme.io",
+    "vers": "domaine:staging.acme.io",
+    "relation": "CERTIFICATE ISSUED FOR",
+    "source": "https://crt.sh/?q=%25.acme.io&output=json",
+    "sources": [
+     "https://crt.sh/?q=%25.acme.io&output=json"
+    ],
+    "confiance": "LOW",
+    "score": 30,
+    "conteste": false
+   },
+   {
+    "de": "domaine:acme.io",
+    "vers": "domaine:acme.io",
+    "relation": "CERTIFICATE ISSUED FOR",
+    "source": "https://crt.sh/?q=%25.acme.io&output=json",
+    "sources": [
+     "https://crt.sh/?q=%25.acme.io&output=json"
+    ],
+    "confiance": "LOW",
+    "score": 30,
+    "conteste": false
    }
   ],
   "filtres": [
    "infrastructure",
    "organization",
-   "contacts"
+   "contacts",
+   "chain"
   ]
  }
 };

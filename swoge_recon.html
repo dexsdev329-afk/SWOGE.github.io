@@ -981,6 +981,23 @@ function lien(url, texte){
   return '<a href="' + ech(url) + '" target="_blank" rel="noopener nofollow">' + ech(texte || url) + ' ↗</a>';
 }
 
+/* Les comptes publies a cote d un nom. L etiquette dit CE QU ON A VU — un
+   compte imprime sur cette page a cote de ce nom — et rien de plus. Le
+   serveur ne part jamais d un pseudo pour aller chercher quelqu un : il n y
+   a pas d entree par une personne, donc pas de pistage a travers les
+   plateformes. */
+function comptes(liste){
+  if(!liste || !liste.length) return "";
+  const hote = (u) => { try{ return new URL(u).hostname.replace(/^www\./, ""); }catch(e){ return u; } };
+  return '<div class="meta" style="margin-top:8px">' + liste.map(x =>
+    '<a class="tag ' + (x.genre === "pro" ? "m" : "l") + '" style="text-decoration:none" '
+    + 'href="' + ech(x.url) + '" target="_blank" rel="noopener nofollow" title="'
+    + ech(x.genre === "pro"
+        ? "Public professional profile, published on this page next to this name."
+        : "Public account, published on this page next to this name. Being printed here does not make it this person\u2019s \u2014 read the source.")
+    + '\n' + ech(x.url) + '">' + ech(hote(x.url)) + ' \u2197</a>').join(" ") + '</div>';
+}
+
 /* ==================== LE RELEVE ==================== */
 async function releve(){
   const brut = $("#dom").value.trim();
@@ -1092,9 +1109,10 @@ function peins(){
       '<div class="qui"><div class="nom">' + ech(p.complet) + '</div>'
       + '<div class="fonction">' + ech(p.fonction) + '</div>'
       + (p.mail ? '<div class="fonction mono" style="font-size:12px;margin-top:4px">' + ech(p.mail) + '</div>' : "")
-      /* Le profil professionnel, quand l organisation l a imprime a cote du
-         nom. Jamais un compte social : le serveur n en releve pas. */
-      + (p.profil ? '<div class="src" style="margin-top:4px">' + lien(p.profil, "public professional profile") + '</div>' : "")
+      /* Les comptes que l organisation a imprimes a cote du nom. Un annuaire
+         professionnel et un compte social ne se disent pas du meme mot :
+         les melanger sous « professionnel » serait faux pour la moitie. */
+      + comptes(p.profils)
       + '<div class="meta">'
       + '<span class="tag ' + (p.lien === "DOMAIN OWNER" ? "own" : "assoc") + '" title="' + ech(p.preuve) + '">' + ech(p.lien) + '</span>'
       + tagSrc(p.verifie) + tagConf(p.confiance, p.pourquoi) + '</div>'
@@ -1199,7 +1217,7 @@ function graphe(){
     const c = COULEUR[n.type] || "#6B7C99";
     const titre = esc(n.type.toUpperCase() + "  " + n.nom
       + (n.fonction ? "\n" + n.fonction : "")
-      + (n.profil ? "\n" + n.profil : "")
+      + ((n.profils || []).length ? "\n" + n.profils.map((x) => x.url).join("\n") : "")
       + (n.lien ? "\n" + n.lien : "")
       + (n.confiance ? "\n" + n.confiance : "")
       + (n.source ? "\n" + n.source : ""));

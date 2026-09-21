@@ -168,10 +168,21 @@ const T = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', 
     ok(!jane.includes('DOMAIN OWNER'), 'et JAMAIS presentee comme proprietaire');
     ok(jane.includes('MEDIUM'), 'son niveau est MEDIUM');
     ok(jane.includes('jane.doe@acme.io'), 'son adresse professionnelle, celle que le site a imprimee');
-    ok(jane.includes('public professional profile'), 'et son profil professionnel, imprime a cote de son nom');
-    const profils = await page.$$eval('#gensBox a[href*="linkedin"]', (a) => a.map((x) => x.href));
-    eq(profils.join(','), 'https://www.linkedin.com/in/jane-doe', 'un seul profil, et il est sur la bonne fiche');
-    ok(!marc.includes('public professional profile'), 'Marc n en a pas : la page n en invente pas un');
+    /* Les comptes imprimes a cote de son nom. Chacun est un lien, chacun
+       porte en infobulle ce qu il veut dire — et le compte social dit qu il
+       ne devient pas le sien parce qu il est imprime la. */
+    const cptes = await page.$$eval('#gensBox .qui',
+      (e) => e.map((x) => ({ nom: x.querySelector('.nom').textContent,
+        liens: [...x.querySelectorAll('a[target]')].map((a) => a.href),
+        titres: [...x.querySelectorAll('a.tag')].map((a) => a.title) })));
+    const cj = cptes.find((x) => x.nom === 'Jane Doe');
+    ok(cj.liens.includes('https://www.linkedin.com/in/jane-doe'), 'son annuaire professionnel');
+    ok(cj.liens.includes('https://x.com/janedoe'), 'et son compte X, publie a cote');
+    ok(cj.titres.some((t) => /professional profile/i.test(t)), 'l un se dit profil professionnel');
+    ok(cj.titres.some((t) => /does not make it this person/i.test(t)),
+       'l autre dit qu etre imprime la n en fait pas le sien');
+    const cm = cptes.find((x) => x.nom === 'Marc Lefevre');
+    eq(cm.titres.length, 0, 'Marc n en a aucun : la page n en invente pas');
 
     /* L infobulle du lien porte la preuve — ou son absence. */
     const preuve = await page.$eval('#gensBox .tag.assoc', (e) => e.getAttribute('title'));
@@ -250,6 +261,8 @@ const T = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', 
     ok(bords.some((b) => /never guessed|guessed/i.test(b)), 'aucune adresse devinee');
     ok(bords.some((b) => /leaked or private database/i.test(b)), 'aucune base fuitee');
     ok(bords.some((b) => /anti-bot/i.test(b)), 'aucun contournement');
+    ok(bords.some((b) => /cannot look up someone/i.test(b)),
+       'et aucun pistage par pseudo : on ne peut pas chercher les comptes de quelqu un');
     ok(!(await page.isHidden('#bordsBox')), 'et ce bloc n est pas replie : il fait partie du resultat');
     await page.close();
   }
@@ -448,7 +461,7 @@ const RELEVE = {
    "verifie": true,
    "confiance": "MEDIUM",
    "pourquoi": "published on the organisation’s own contact page",
-   "extrait": "nous ecrire Jane Doe, Chief Technology Officer — jane.doe@acme.io LinkedIn ecrivez-nous sur […]"
+   "extrait": "nous ecrire Jane Doe, Chief Technology Officer — jane.doe@acme.io LinkedIn X ecrivez-nous sur […]"
   }
  ],
  "personnes": [
@@ -458,7 +471,7 @@ const RELEVE = {
    "complet": "Marc Lefevre",
    "fonction": "Directeur de la publication",
    "mail": "presse@acme.io",
-   "profil": null,
+   "profils": [],
    "extrait": "Directeur de la publication : Marc Lefevre presse@acme.io 01 45 67 89 00",
    "source": "https://acme.io/mentions-legales",
    "vu": "2026-09-21",
@@ -474,8 +487,17 @@ const RELEVE = {
    "complet": "Jane Doe",
    "fonction": "Chief Technology Officer",
    "mail": "jane.doe@acme.io",
-   "profil": "https://www.linkedin.com/in/jane-doe",
-   "extrait": "nous ecrire Jane Doe, Chief Technology Officer — jane.doe@acme.io LinkedIn ecrivez-nous sur […]",
+   "profils": [
+    {
+     "url": "https://www.linkedin.com/in/jane-doe",
+     "genre": "pro"
+    },
+    {
+     "url": "https://x.com/janedoe",
+     "genre": "social"
+    }
+   ],
+   "extrait": "nous ecrire Jane Doe, Chief Technology Officer — jane.doe@acme.io LinkedIn X ecrivez-nous sur […]",
    "source": "https://acme.io/contact",
    "vu": "2026-09-21",
    "verifie": true,
@@ -508,7 +530,7 @@ const RELEVE = {
    "chemin": "/contact",
    "role": "contact",
    "code": 200,
-   "octets": 212
+   "octets": 250
   },
   {
    "chemin": "/about",
@@ -630,6 +652,7 @@ const RELEVE = {
   "Entry point is a domain or an IP. This tool cannot be searched by a person’s name, e-mail, phone or handle.",
   "E-mail addresses are only read where the organisation printed them. None is ever guessed or built from a name.",
   "Consumer mailbox providers (gmail, outlook, proton…) are dropped at extraction: a personal address is never collected.",
+  "Accounts are only read where the organisation printed them next to a person’s name. This tool cannot look up someone’s accounts from a name or a handle — there is no way to search it by a person.",
   "Sources are public by design: DNS, the domain registry (RDAP), certificate transparency logs, and the domain’s own pages.",
   "No leaked or private database is ever queried. No login, paywall or anti-bot protection is ever bypassed.",
   "robots.txt is obeyed, the crawler identifies itself, and a 401/403/429 is recorded as a refusal — never retried in disguise.",
@@ -791,7 +814,7 @@ const RELEVE = {
     "filtre": "contacts",
     "humain": true,
     "fonction": "Directeur de la publication",
-    "profil": null,
+    "profils": [],
     "confiance": "HIGH",
     "source": "https://acme.io/mentions-legales",
     "lien": "DOMAIN OWNER",
@@ -805,7 +828,16 @@ const RELEVE = {
     "filtre": "contacts",
     "humain": true,
     "fonction": "Chief Technology Officer",
-    "profil": "https://www.linkedin.com/in/jane-doe",
+    "profils": [
+     {
+      "url": "https://www.linkedin.com/in/jane-doe",
+      "genre": "pro"
+     },
+     {
+      "url": "https://x.com/janedoe",
+      "genre": "social"
+     }
+    ],
     "confiance": "MEDIUM",
     "source": "https://acme.io/contact",
     "lien": "PUBLICLY ASSOCIATED WITH DOMAIN",

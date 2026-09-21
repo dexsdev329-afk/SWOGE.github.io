@@ -861,11 +861,16 @@ document.addEventListener("DOMContentLoaded", function(){
   var $ = function(id){ return document.getElementById(id); };
   var etat = { recherche:"", quote:"ALL", exchange:"ALL", tri:"volume24h", sens:"desc", favorisSeuls:false };
 
-  function fmtPrix(v){ if(v==null) return "—"; if(v>=1000) return v.toLocaleString("en-US",{maximumFractionDigits:1});
+  /* Un chiffre absent, c est « — », JAMAIS « NaN ». Le garde `==null` ne
+     suffisait pas : un NaN (donnee pas encore arrivee, division ratee) passait
+     et s affichait « NaN » dans la case. On exige un nombre FINI. */
+  function fini(v){ return typeof v==="number" && isFinite(v); }
+  function fmtPrix(v){ if(!fini(v)) return "—"; if(v>=1000) return v.toLocaleString("en-US",{maximumFractionDigits:1});
     if(v>=1) return v.toFixed(2); return v.toPrecision(4); }
-  function fmtGros(v){ if(v==null) return "—"; if(v>=1e9) return "$"+(v/1e9).toFixed(2)+"B"; if(v>=1e6) return "$"+(v/1e6).toFixed(1)+"M"; if(v>=1e3) return "$"+(v/1e3).toFixed(0)+"K"; return "$"+v.toFixed(0); }
-  function fmtPct(v){ if(v==null) return "—"; return (v>=0?"+":"")+v.toFixed(2)+"%"; }
-  function fmtFund(v){ if(v==null) return "—"; return (v>=0?"+":"")+(v*100).toFixed(4)+"%"; }
+  function fmtGros(v){ if(!fini(v)) return "—"; if(v>=1e9) return "$"+(v/1e9).toFixed(2)+"B"; if(v>=1e6) return "$"+(v/1e6).toFixed(1)+"M"; if(v>=1e3) return "$"+(v/1e3).toFixed(0)+"K"; return "$"+v.toFixed(0); }
+  function fmtPct(v){ if(!fini(v)) return "—"; return (v>=0?"+":"")+v.toFixed(2)+"%"; }
+  function fmtFund(v){ if(!fini(v)) return "—"; return (v>=0?"+":"")+(v*100).toFixed(4)+"%"; }
+  function fmtQte(v){ return fini(v) ? v.toFixed(3) : "—"; }
   function ech(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
 
   /* ---- LE STATUT LIVE ---- */
@@ -928,11 +933,11 @@ document.addEventListener("DOMContentLoaded", function(){
       + '</div>'
       + '<div class="mk-deux">'
       + '<div><h3>Order book</h3><div class="mk-book">'
-      + book.asks.slice(0,8).reverse().map(function(x){return '<div><span class="neg">'+fmtPrix(x[0])+'</span><span>'+x[1].toFixed(3)+'</span></div>';}).join("")
-      + book.bids.slice(0,8).map(function(x){return '<div><span class="pos">'+fmtPrix(x[0])+'</span><span>'+x[1].toFixed(3)+'</span></div>';}).join("")
+      + book.asks.slice(0,8).reverse().map(function(x){return '<div><span class="neg">'+fmtPrix(x[0])+'</span><span>'+fmtQte(x[1])+'</span></div>';}).join("")
+      + book.bids.slice(0,8).map(function(x){return '<div><span class="pos">'+fmtPrix(x[0])+'</span><span>'+fmtQte(x[1])+'</span></div>';}).join("")
       + (book.bids.length?'':'<div style="color:var(--dim)">waiting for book…</div>') + '</div></div>'
       + '<div><h3>Recent trades</h3><div class="mk-trades">'
-      + (trades.length ? trades.slice(0,12).map(function(t){return '<div><span class="'+(t.cote==="B"?'pos':'neg')+'">'+fmtPrix(t.px)+'</span><span>'+t.sz.toFixed(3)+'</span></div>';}).join("") : '<div style="color:var(--dim)">waiting for trades…</div>')
+      + (trades.length ? trades.slice(0,12).map(function(t){return '<div><span class="'+(t.cote==="B"?'pos':'neg')+'">'+fmtPrix(t.px)+'</span><span>'+fmtQte(t.sz)+'</span></div>';}).join("") : '<div style="color:var(--dim)">waiting for trades…</div>')
       + '</div></div></div>'
       + '<div class="mk-note">Real-time from '+ech(m.exchange)+' over WebSocket. Market data only — no order is placed here.</div>';
   }
@@ -966,9 +971,14 @@ document.addEventListener("DOMContentLoaded", function(){
   /* ---- LE DEMARRAGE : interface d abord, donnees ensuite ---- */
   $("mkNote").innerHTML = "Discovering markets…";
   mm.charge().then(function(v){
-    $("mkNote").innerHTML = "Discovered "+store.marches.size+" perpetual markets across "
-      + (v.exchanges||[]).map(function(e){return ech(e.nom)+(e.ok?" ("+e.marches+")":" — unreachable from our server");}).join(", ")
-      + '. Live prices stream over WebSocket directly from the exchange.';
+    /* On ne montre QUE ce qui marche : les places que notre serveur peut
+       atteindre. Une place géo-bloquée est laissée de côté, pas affichée en
+       « unreachable » — ça ne servait à rien de lister ce qui ne rend rien. */
+    var vivantes = (v.exchanges||[]).filter(function(e){ return e.ok && e.marches>0; });
+    $("mkNote").innerHTML = store.marches.size
+      ? "Live from " + vivantes.map(function(e){ return ech(e.nom)+" ("+e.marches+")"; }).join(", ")
+        + " — " + store.marches.size + " perpetual markets. Prices stream over WebSocket straight from the exchange to your browser."
+      : "No market venue is reachable from here right now.";
     remplitExchanges(); peintListe();
     mm.demarre();                                  /* ouvre le WS : les prix se mettent a ticker */
     /* Choix par defaut : le plus gros volume, ou ?m=BTC */

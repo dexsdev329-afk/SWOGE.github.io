@@ -71,8 +71,14 @@ var T={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'ap
     ok(up<=68 && up>=32,'la probabilite reste bridee loin de 0/100 ['+up+']');
   }
 
-  console.log('-- 3. le paper bot joue et met a jour la bankroll --');
+  console.log('-- 3. le paper bot tourne en AUTO, sans clic, et met a jour la bankroll --');
   {
+    /* « met le en auto tout le temps » : le papier doit deja tourner au
+       chargement, sans qu on ait touche a Start. La prediction est prete
+       (bloc 2), le prix arrive (bloc 1) : le bot s est arme tout seul. */
+    await page.waitForFunction(function(){ return /Next bet|Waiting for enough|Auto-restarting|stopped/i.test(document.getElementById('prRisque').textContent||''); },null,{timeout:8000});
+    ok(/Next bet/i.test(await page.textContent('#prRisque')),'au chargement, le bot mise deja tout seul (aucun clic)');
+    /* Et le bouton relance une session neuve. */
     await page.fill('#cfgBet','10'); await page.check('#cfgMart');
     await page.click('#prGo');
     ok(/Next bet|paused/i.test(await page.textContent('#prRisque')),'le bot annonce sa prochaine mise papier');

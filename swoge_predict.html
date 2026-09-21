@@ -799,7 +799,8 @@ table.pr-h td:first-child,table.pr-h th:first-child{text-align:left}
       Short-term price direction is close to random. The probability below is a heuristic, not a real
       win-chance — the backtest on real data shows accuracy near 50%. The martingale option is a very
       high-risk staking method that <b>ruins a bankroll over ~50/50 outcomes</b>; the visualizer shows it.
-      Everything here is paper. Nothing signs or places a trade.
+      Everything here is paper and runs automatically and continuously — when a run hits a risk limit it
+      says so and restarts a fresh bankroll. Nothing ever signs or places a trade. Press Stop to halt it.
     </div>
 
     <div class="pr-tete">
@@ -840,7 +841,7 @@ table.pr-h td:first-child,table.pr-h th:first-child{text-align:left}
       </div>
       <label style="display:flex;gap:7px;align-items:center;margin-top:10px;font-size:12.5px"><input type="checkbox" id="cfgMart"> Use martingale (high risk)</label>
       <div class="pr-boutons">
-        <button class="go" id="prGo">▶ Start paper bot</button>
+        <button class="go" id="prGo">▶ Restart (fresh bankroll)</button>
         <button class="stop" id="prStop">■ Stop</button>
         <button class="stop" id="prReset">Reset</button>
       </div>
@@ -908,6 +909,9 @@ document.addEventListener("DOMContentLoaded", function(){
     finRound: 0, duree: 60000, candles: {}, pred: null,
     bank: new E.BankrollManager(1000), mart: null, risk: null, bot: false, histo: [],
     live: false, dernier: 0,
+    /* `auto` : le papier tourne tout seul, en continu, et repart d une caisse
+       neuve quand une limite l arrete — jusqu a ce que l on clique Stop. */
+    auto: true, reprise: null,
   };
   function cfg(){ return {
     bank: Math.max(1, +$("cfgBank").value||1000), bet: Math.max(0.01, +$("cfgBet").value||10),
@@ -954,6 +958,7 @@ document.addEventListener("DOMContentLoaded", function(){
     var multi=moteur.multiHorizons({ "1m":etat.candles["1m"]||[], "5m":etat.candles["5m"]||[], "15m":etat.candles["15m"]||[], "1h":etat.candles["1h"]||[] });
     etat.pred=multi["5m"]&&multi["5m"].assez?multi["5m"]:moteur.evalue(etat.candles["5m"]||[]);
     majPred(multi);
+    armeSiPret();
   }
   function majPred(multi){
     var p=etat.pred; if(!p) return;
@@ -968,6 +973,7 @@ document.addEventListener("DOMContentLoaded", function(){
   function majPrix(){
     $("prPrix").textContent="$"+fmt(etat.prix);
     if(etat.ouvreRound){ var ch=(etat.prix-etat.ouvreRound)/etat.ouvreRound*100; var e=$("prChange"); e.textContent=(ch>=0?"+":"")+ch.toFixed(2)+"%"; e.className="v "+(ch>=0?"pos":"neg"); }
+    armeSiPret();
   }
 
   /* ---- LE MOTEUR DE ROUNDS (papier, sur prix reel) ----
@@ -978,15 +984,45 @@ document.addEventListener("DOMContentLoaded", function(){
     $("prRound").textContent="#"+etat.round;
     if(etat.bot && etat.prix){ pariePaper(); }
   }
+  /* Lancer (ou relancer) une session papier : caisse neuve, moteurs neufs,
+     le bot est armé. Sert au démarrage automatique, au bouton, et à la reprise
+     après un arrêt. */
+  function demarrePaper(){
+    clearTimeout(etat.reprise); etat.reprise=null;
+    var c=cfg();
+    etat.bank=new E.BankrollManager(c.bank); etat.mart=null; etat.risk=null; etat.bot=true;
+    majBank();
+    if(etat.prix){ if(!etat.ouvreRound){ etat.ouvreRound=etat.prix; etat.finRound=Date.now()+etat.duree; } pariePaper(); }
+  }
+  /* Une limite (caisse vide, plafond de pertes, perte du jour) arrête la
+     session. En mode auto, on le DIT et on repart d une caisse neuve après une
+     pause — « tout le temps » sans cacher que la stratégie vient d exploser. */
+  function arretePaper(raison){
+    etat.bot=false; etat.parie=null;
+    var base='<b style="color:var(--serpent)">&#9888; '+raison+'</b> — paper run stopped.';
+    if(etat.auto){
+      $("prRisque").innerHTML=base+' Auto-restarting a fresh paper run…';
+      clearTimeout(etat.reprise);
+      etat.reprise=setTimeout(function(){ if(etat.auto) demarrePaper(); }, 4000);
+    } else { $("prRisque").innerHTML=base; }
+  }
+  /* Dès que prix ET prédiction sont prêts, on ouvre le premier round tout seul
+     — sinon le papier auto attendrait la fin d un round de 60 s pour miser. */
+  function armeSiPret(){
+    if(etat.bot && !etat.parie && !etat.ouvreRound && etat.prix && etat.pred && etat.pred.assez){ nouveauRound(); }
+  }
   function pariePaper(){
     var c=cfg();
     if(!etat.mart){ etat.mart=new E.MartingaleEngine({initial:c.bet,mult:c.mult,maxBet:c.maxBet,maxPertes:c.pertes}); }
     if(!etat.risk){ etat.risk=new E.RiskManager({maxRisquePct:100,maxBet:c.maxBet,perteJourMax:c.jour}); }
+    /* Pas encore assez de bougies : on saute CE round sans arrêter le bot. Le
+       suivant réessaiera — un manque de données n est pas une ruine. */
+    if(!etat.pred || !etat.pred.assez){ $("prRisque").textContent="Waiting for enough candles to predict…"; return; }
     var mise = c.mart ? etat.mart.prochaine(etat.bank.solde) : Math.min(c.bet, etat.bank.solde);
     var aut=etat.risk.autorise(mise, etat.bank);
-    if(!aut.ok || mise<=0 || !etat.pred || !etat.pred.assez){ $("prRisque").innerHTML='<b style="color:var(--serpent)">⚠ '+(aut.raison||"paused")+'</b> — bot stopped generating bets.'; etat.bot=false; return; }
+    if(!aut.ok || mise<=0){ arretePaper(aut.raison||"bankroll or risk limit reached"); return; }
     etat.parie={ sens:etat.pred.sens, mise:mise, prob:etat.pred.prob, ouvre:etat.ouvreRound };
-    $("prRisque").innerHTML="Next bet: <b>$"+fmt(mise)+"</b> on <b>"+etat.pred.sens+"</b> (martingale "+(c.mart?"on":"off")+")";
+    $("prRisque").innerHTML="Next bet: <b>$"+fmt(mise)+"</b> on <b>"+etat.pred.sens+"</b> (martingale "+(c.mart?"on":"off")+") &middot; auto";
   }
   function resoudRound(){
     if(etat.parie && etat.prix){
@@ -1035,9 +1071,14 @@ document.addEventListener("DOMContentLoaded", function(){
 
   /* ---- LES GESTES ---- */
   $("prMarche").addEventListener("change", function(e){ etat.coin=e.target.value; etat.ouvreRound=etat.prix; rafraichitCandles(); });
-  $("prGo").addEventListener("click", function(){ var c=cfg(); etat.bank=new E.BankrollManager(c.bank); etat.mart=null; etat.risk=null; etat.bot=true; majBank(); if(etat.prix) pariePaper(); });
-  $("prStop").addEventListener("click", function(){ etat.bot=false; $("prRisque").textContent="Paper bot stopped."; });
-  $("prReset").addEventListener("click", function(){ etat.bot=false; etat.histo=[]; etat.bank=new E.BankrollManager(cfg().bank); etat.mart=null; etat.risk=null; majBank(); majHisto(); $("prHisto").innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--dim);padding:20px">No rounds yet.</td></tr>'; });
+  $("prGo").addEventListener("click", function(){ etat.auto=true; demarrePaper(); });
+  $("prStop").addEventListener("click", function(){ etat.auto=false; etat.bot=false; clearTimeout(etat.reprise); etat.reprise=null; $("prRisque").textContent="Paper bot stopped — click Start to resume auto."; });
+  $("prReset").addEventListener("click", function(){
+    clearTimeout(etat.reprise); etat.reprise=null; etat.histo=[];
+    $("prHisto").innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--dim);padding:20px">No rounds yet.</td></tr>';
+    if(etat.auto){ demarrePaper(); }
+    else { etat.bot=false; etat.bank=new E.BankrollManager(cfg().bank); etat.mart=null; etat.risk=null; majBank(); }
+  });
   $("prBt").addEventListener("click", function(){
     $("prBtOut").innerHTML='<div class="pr-s"><div class="v">Running…</div></div>';
     chargeCandles("BTC","5m").then(function(){ return chargeCandles("BTC","5m"); }).then(function(){
@@ -1064,6 +1105,10 @@ document.addEventListener("DOMContentLoaded", function(){
   rafraichitCandles();
   setInterval(rafraichitCandles, 20000);          /* les bougies, moins souvent que le prix */
   nouveauRound();
+  /* Le papier tourne tout seul, tout de suite : le bot est armé au chargement
+     et `armeSiPret` ouvre le premier round dès que prix et prédiction sont là.
+     Aucun clic à faire — Stop l arrête, Start le relance. Toujours papier. */
+  demarrePaper();
 });
 </script>
 

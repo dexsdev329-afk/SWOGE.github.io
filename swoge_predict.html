@@ -799,8 +799,8 @@ table.pr-h td:first-child,table.pr-h th:first-child{text-align:left}
       Short-term price direction is close to random. The probability below is a heuristic, not a real
       win-chance — the backtest on real data shows accuracy near 50%. The martingale option is a very
       high-risk staking method that <b>ruins a bankroll over ~50/50 outcomes</b>; the visualizer shows it.
-      Everything here is paper and runs automatically and continuously — when a run hits a risk limit it
-      says so and restarts a fresh bankroll. Nothing ever signs or places a trade. Press Stop to halt it.
+      Everything here is paper. The predictor is live and on at all times and the paper bot never stops —
+      when a run hits a risk limit it says so and restarts a fresh bankroll. Nothing ever signs or places a trade.
     </div>
 
     <div class="pr-tete">
@@ -841,9 +841,8 @@ table.pr-h td:first-child,table.pr-h th:first-child{text-align:left}
       </div>
       <label style="display:flex;gap:7px;align-items:center;margin-top:10px;font-size:12.5px"><input type="checkbox" id="cfgMart"> Use martingale (high risk)</label>
       <div class="pr-boutons">
-        <button class="go" id="prGo">▶ Restart (fresh bankroll)</button>
-        <button class="stop" id="prStop">■ Stop</button>
-        <button class="stop" id="prReset">Reset</button>
+        <span id="prOnAir" style="display:inline-flex;align-items:center;gap:7px;font:700 12px/1 'Space Mono',monospace;letter-spacing:.04em;color:var(--believer);text-transform:uppercase"><span style="width:8px;height:8px;border-radius:50%;background:var(--believer);animation:prp 1.4s infinite"></span>Live &middot; always on</span>
+        <button class="stop" id="prReset">Reset (fresh bankroll)</button>
       </div>
       <div id="prRisque" class="pr-note"></div>
     </div>
@@ -1071,13 +1070,13 @@ document.addEventListener("DOMContentLoaded", function(){
 
   /* ---- LES GESTES ---- */
   $("prMarche").addEventListener("change", function(e){ etat.coin=e.target.value; etat.ouvreRound=etat.prix; $("prBt").textContent="Run backtest ("+etat.coin+", 5m)"; rafraichitCandles(); });
-  $("prGo").addEventListener("click", function(){ etat.auto=true; demarrePaper(); });
-  $("prStop").addEventListener("click", function(){ etat.auto=false; etat.bot=false; clearTimeout(etat.reprise); etat.reprise=null; $("prRisque").textContent="Paper bot stopped — click Start to resume auto."; });
+  /* Pas de Start, pas de Stop : le prédicteur est LIVE en permanence et le
+     papier tourne sans interruption. Reset repart d'une caisse neuve — et
+     continue de tourner, il n'arrête jamais. */
   $("prReset").addEventListener("click", function(){
     clearTimeout(etat.reprise); etat.reprise=null; etat.histo=[];
     $("prHisto").innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--dim);padding:20px">No rounds yet.</td></tr>';
-    if(etat.auto){ demarrePaper(); }
-    else { etat.bot=false; etat.bank=new E.BankrollManager(cfg().bank); etat.mart=null; etat.risk=null; majBank(); }
+    demarrePaper();
   });
   $("prBt").addEventListener("click", function(){
     $("prBtOut").innerHTML='<div class="pr-s"><div class="v">Running…</div></div>';

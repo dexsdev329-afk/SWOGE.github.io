@@ -75,17 +75,16 @@ var T={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'ap
     ok(up<=68 && up>=32,'la probabilite reste bridee loin de 0/100 ['+up+']');
   }
 
-  console.log('-- 3. le paper bot tourne en AUTO, sans clic, et met a jour la bankroll --');
+  console.log('-- 3. LIVE tout le temps : aucun bouton Start/Stop, le papier tourne seul --');
   {
-    /* « met le en auto tout le temps » : le papier doit deja tourner au
-       chargement, sans qu on ait touche a Start. La prediction est prete
-       (bloc 2), le prix arrive (bloc 1) : le bot s est arme tout seul. */
-    await page.waitForFunction(function(){ return /Next bet|Waiting for enough|Auto-restarting|stopped/i.test(document.getElementById('prRisque').textContent||''); },null,{timeout:8000});
+    /* « faut pas mettre de bouton start ; met le en mode live on tout le
+       temps » : pas de Start, pas de Stop — le papier est armé au chargement
+       et mise tout seul. La prédiction est prête (bloc 2), le prix arrive
+       (bloc 1). */
+    ok(!(await page.$('#prGo')) && !(await page.$('#prStop')),'aucun bouton Start ni Stop');
+    ok(!!(await page.$('#prOnAir')),'un indicateur « LIVE — always on » est montré');
+    await page.waitForFunction(function(){ return /Next bet|Waiting for enough|Auto-restarting/i.test(document.getElementById('prRisque').textContent||''); },null,{timeout:8000});
     ok(/Next bet/i.test(await page.textContent('#prRisque')),'au chargement, le bot mise deja tout seul (aucun clic)');
-    /* Et le bouton relance une session neuve. */
-    await page.fill('#cfgBet','10'); await page.check('#cfgMart');
-    await page.click('#prGo');
-    ok(/Next bet|paused/i.test(await page.textContent('#prRisque')),'le bot annonce sa prochaine mise papier');
     /* On raccourcit le round en forcant la resolution : on attend qu un round
        se resolve (bankroll bouge ou histo se remplit) — le timer est de 60s,
        donc on pousse le prix et on declenche via l horloge interne en

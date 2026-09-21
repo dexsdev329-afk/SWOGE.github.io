@@ -799,8 +799,8 @@ table.pr-h td:first-child,table.pr-h th:first-child{text-align:left}
       Short-term price direction is close to random. The probability below is a heuristic, not a real
       win-chance — the backtest on real data shows accuracy near 50%. The martingale option is a very
       high-risk staking method that <b>ruins a bankroll over ~50/50 outcomes</b>; the visualizer shows it.
-      Everything here is paper. The predictor is live and on at all times and the paper bot never stops —
-      when a run hits a risk limit it says so and restarts a fresh bankroll. Nothing ever signs or places a trade.
+      Everything here is paper. One bot plays BNB on the server, non-stop, and its record — win/loss and the
+      bank's P/L — accumulates and is shared with everyone, like SWOGE AI's colony. Nothing ever signs or places a trade.
     </div>
 
     <div class="pr-tete">
@@ -825,12 +825,16 @@ table.pr-h td:first-child,table.pr-h th:first-child{text-align:left}
 
   <div class="pr-grille">
     <div class="pr-carte">
-      <h3>Bankroll (paper)</h3>
+      <h3><span id="prOnAir" style="display:inline-flex;align-items:center;gap:6px;vertical-align:middle"><span style="width:8px;height:8px;border-radius:50%;background:var(--believer);animation:prp 1.4s infinite"></span></span> Shared record · runs on the server, like SWOGE AI</h3>
+      <p class="pr-note" style="margin-top:0">One paper bot plays <b>BNB</b> on the server, non-stop. Win/loss and the bank's P/L <b>accumulate here for everyone</b> — this is not per-visitor and it does not reset on reload. Paper only, nothing signs.</p>
+      <div class="pr-note" id="prLigne" style="margin:8px 0">Loading the shared record…</div>
       <div class="pr-stats" id="prBank"></div>
       <svg id="prCourbe" viewBox="0 0 300 70" style="width:100%;height:70px;margin-top:10px;border:1px solid var(--line);border-radius:var(--r)"></svg>
+      <div class="pr-note" id="prMeta" style="margin-top:8px;font-size:11px;color:var(--dim)"></div>
     </div>
     <div class="pr-carte">
-      <h3>Paper bot & staking</h3>
+      <h3>Staking settings (for the backtest)</h3>
+      <p class="pr-note" style="margin-top:0">These feed the what-if backtest below — they do <b>not</b> change the shared server bot.</p>
       <div class="pr-champs">
         <div><label>Initial bankroll</label><input id="cfgBank" type="number" value="1000"></div>
         <div><label>Initial bet</label><input id="cfgBet" type="number" value="10"></div>
@@ -840,17 +844,12 @@ table.pr-h td:first-child,table.pr-h th:first-child{text-align:left}
         <div><label>Max losses in a row</label><input id="cfgPertes" type="number" value="5"></div>
       </div>
       <label style="display:flex;gap:7px;align-items:center;margin-top:10px;font-size:12.5px"><input type="checkbox" id="cfgMart"> Use martingale (high risk)</label>
-      <div class="pr-boutons">
-        <span id="prOnAir" style="display:inline-flex;align-items:center;gap:7px;font:700 12px/1 'Space Mono',monospace;letter-spacing:.04em;color:var(--believer);text-transform:uppercase"><span style="width:8px;height:8px;border-radius:50%;background:var(--believer);animation:prp 1.4s infinite"></span>Live &middot; always on</span>
-        <button class="stop" id="prReset">Reset (fresh bankroll)</button>
-      </div>
-      <div id="prRisque" class="pr-note"></div>
     </div>
   </div>
 
   <div class="pr-grille">
     <div class="pr-carte">
-      <h3>History</h3>
+      <h3>History · shared server rounds</h3>
       <div style="max-height:240px;overflow:auto"><table class="pr-h"><thead><tr><th>Round</th><th>Pred</th><th>Prob</th><th>Bet</th><th>Result</th><th>P/L</th><th>Bankroll</th></tr></thead><tbody id="prHisto"><tr><td colspan="7" style="text-align:center;color:var(--dim);padding:20px">No rounds yet.</td></tr></tbody></table></div>
     </div>
     <div class="pr-carte">
@@ -904,13 +903,8 @@ document.addEventListener("DOMContentLoaded", function(){
   var HL = "https://api.hyperliquid.xyz";
 
   var etat = {
-    coin: "BNB", prix: null, ouvreRound: null, round: 1000,
-    finRound: 0, duree: 60000, candles: {}, pred: null,
-    bank: new E.BankrollManager(1000), mart: null, risk: null, bot: false, histo: [],
-    live: false, dernier: 0,
-    /* `auto` : le papier tourne tout seul, en continu, et repart d une caisse
-       neuve quand une limite l arrete — jusqu a ce que l on clique Stop. */
-    auto: true, reprise: null,
+    coin: "BNB", prix: null, ouvreRound: null, candles: {}, pred: null,
+    live: false, dernier: 0, serverRound: null,
   };
   function cfg(){ return {
     bank: Math.max(1, +$("cfgBank").value||1000), bet: Math.max(0.01, +$("cfgBet").value||10),
@@ -957,7 +951,6 @@ document.addEventListener("DOMContentLoaded", function(){
     var multi=moteur.multiHorizons({ "1m":etat.candles["1m"]||[], "5m":etat.candles["5m"]||[], "15m":etat.candles["15m"]||[], "1h":etat.candles["1h"]||[] });
     etat.pred=multi["5m"]&&multi["5m"].assez?multi["5m"]:moteur.evalue(etat.candles["5m"]||[]);
     majPred(multi);
-    armeSiPret();
   }
   function majPred(multi){
     var p=etat.pred; if(!p) return;
@@ -971,113 +964,66 @@ document.addEventListener("DOMContentLoaded", function(){
   }
   function majPrix(){
     $("prPrix").textContent="$"+fmt(etat.prix);
-    if(etat.ouvreRound){ var ch=(etat.prix-etat.ouvreRound)/etat.ouvreRound*100; var e=$("prChange"); e.textContent=(ch>=0?"+":"")+ch.toFixed(2)+"%"; e.className="v "+(ch>=0?"pos":"neg"); }
-    armeSiPret();
+    /* Le « Change » du round se lit contre l ouverture du round SERVEUR, et
+       seulement quand le marché affiché est celui que le serveur joue (BNB). */
+    if(etat.ouvreRound && releve && etat.coin===releve.coin){ var ch=(etat.prix-etat.ouvreRound)/etat.ouvreRound*100; var e=$("prChange"); e.textContent=(ch>=0?"+":"")+ch.toFixed(2)+"%"; e.className="v "+(ch>=0?"pos":"neg"); }
   }
 
-  /* ---- LE MOTEUR DE ROUNDS (papier, sur prix reel) ----
-   * Un round de 60 s : prix a l ouverture vs prix a la fermeture, tranche par
-   * le mouvement REEL. Le pari est papier. */
-  function nouveauRound(){
-    etat.round++; etat.ouvreRound=etat.prix; etat.finRound=Date.now()+etat.duree; etat.parie=null;
-    $("prRound").textContent="#"+etat.round;
-    if(etat.bot && etat.prix){ pariePaper(); }
+  /* ---- LE RELEVE PARTAGE : lu sur le serveur, comme la colonie ----
+   * Le pari NE tourne PAS ici : un seul bot BNB tourne sur le serveur, en
+   * continu, et son releve (win / raté, gains / pertes de la banque) persiste
+   * et se sert a tout le monde. La page ne fait que le MONTRER — c est le meme
+   * modele que /ai/colonie. Tout est papier. */
+  function serveurP(){ try{ var q=new URLSearchParams(location.search).get("server"); if(q) return String(q).replace(/^ws/,"http"); }catch(e){} return "https://web-production-220a3.up.railway.app"; }
+  var releve=null;
+  function chargeReleve(){
+    fetch(serveurP()+"/predict/etat",{cache:"no-store"}).then(function(r){return r.json();}).then(function(j){ releve=j; peintReleve(); })
+    ["catch"](function(){ if(!releve){ $("prLigne").textContent="Shared record unavailable — retrying…"; } });
   }
-  /* Lancer (ou relancer) une session papier : caisse neuve, moteurs neufs,
-     le bot est armé. Sert au démarrage automatique, au bouton, et à la reprise
-     après un arrêt. */
-  function demarrePaper(){
-    clearTimeout(etat.reprise); etat.reprise=null;
-    var c=cfg();
-    etat.bank=new E.BankrollManager(c.bank); etat.mart=null; etat.risk=null; etat.bot=true;
-    majBank();
-    if(etat.prix){ if(!etat.ouvreRound){ etat.ouvreRound=etat.prix; etat.finRound=Date.now()+etat.duree; } pariePaper(); }
-  }
-  /* Une limite (caisse vide, plafond de pertes, perte du jour) arrête la
-     session. En mode auto, on le DIT et on repart d une caisse neuve après une
-     pause — « tout le temps » sans cacher que la stratégie vient d exploser. */
-  function arretePaper(raison){
-    etat.bot=false; etat.parie=null;
-    var base='<b style="color:var(--serpent)">&#9888; '+raison+'</b> — paper run stopped.';
-    if(etat.auto){
-      $("prRisque").innerHTML=base+' Auto-restarting a fresh paper run…';
-      clearTimeout(etat.reprise);
-      etat.reprise=setTimeout(function(){ if(etat.auto) demarrePaper(); }, 4000);
-    } else { $("prRisque").innerHTML=base; }
-  }
-  /* Dès que prix ET prédiction sont prêts, on ouvre le premier round tout seul
-     — sinon le papier auto attendrait la fin d un round de 60 s pour miser. */
-  function armeSiPret(){
-    if(etat.bot && !etat.parie && !etat.ouvreRound && etat.prix && etat.pred && etat.pred.assez){ nouveauRound(); }
-  }
-  function pariePaper(){
-    var c=cfg();
-    if(!etat.mart){ etat.mart=new E.MartingaleEngine({initial:c.bet,mult:c.mult,maxBet:c.maxBet,maxPertes:c.pertes}); }
-    if(!etat.risk){ etat.risk=new E.RiskManager({maxRisquePct:100,maxBet:c.maxBet,perteJourMax:c.jour}); }
-    /* Pas encore assez de bougies : on saute CE round sans arrêter le bot. Le
-       suivant réessaiera — un manque de données n est pas une ruine. */
-    if(!etat.pred || !etat.pred.assez){ $("prRisque").textContent="Waiting for enough candles to predict…"; return; }
-    var mise = c.mart ? etat.mart.prochaine(etat.bank.solde) : Math.min(c.bet, etat.bank.solde);
-    var aut=etat.risk.autorise(mise, etat.bank);
-    if(!aut.ok || mise<=0){ arretePaper(aut.raison||"bankroll or risk limit reached"); return; }
-    etat.parie={ sens:etat.pred.sens, mise:mise, prob:etat.pred.prob, ouvre:etat.ouvreRound };
-    $("prRisque").innerHTML="Next bet: <b>$"+fmt(mise)+"</b> on <b>"+etat.pred.sens+"</b> (martingale "+(c.mart?"on":"off")+") &middot; auto";
-  }
-  function resoudRound(){
-    if(etat.parie && etat.prix){
-      var monte=etat.prix>etat.parie.ouvre;
-      var gagne=(etat.parie.sens==="UP")===monte;
-      var pl=gagne?etat.parie.mise:-etat.parie.mise;
-      etat.bank.applique(pl,etat.parie); if(etat.risk) etat.risk.noteResultat(pl); if(etat.mart&&cfg().mart) etat.mart.resultat(gagne);
-      etat.histo.unshift({ round:etat.round, sens:etat.parie.sens, prob:etat.parie.prob, mise:etat.parie.mise, gagne:gagne, pl:pl, solde:etat.bank.solde });
-      if(etat.histo.length>200) etat.histo.pop();
-      majBank(); majHisto();
-    }
-    nouveauRound();
-  }
-
-  function majBank(){
-    var s=etat.bank.stats();
+  function peintReleve(){
+    var j=releve; if(!j) return;
+    var s=j.banque||{};
     $("prBank").innerHTML=[
       ["Bankroll","$"+fmt(s.solde)],["P/L",(s.pl>=0?"+":"")+"$"+fmt(s.pl),s.pl>=0?"pos":"neg"],
-      ["ROI",(s.roi>=0?"+":"")+s.roi.toFixed(2)+"%",s.roi>=0?"pos":"neg"],["Win rate",s.winRate.toFixed(1)+"%"],
-      ["Trades",s.trades],["Streak",(s.serie>0?"+":"")+s.serie],
-      ["High","$"+fmt(s.haut)],["Max drawdown","-"+s.drawdownMax.toFixed(1)+"%"],
+      ["ROI",(s.roi>=0?"+":"")+Number(s.roi||0).toFixed(2)+"%",s.roi>=0?"pos":"neg"],["Win rate",Number(s.winRate||0).toFixed(1)+"%"],
+      ["Wins",s.wins||0,"pos"],["Losses",s.losses||0,"neg"],
+      ["Trades",s.trades||0],["Streak",(s.serie>0?"+":"")+(s.serie||0),(s.serie>0?"pos":s.serie<0?"neg":"")],
+      ["High","$"+fmt(s.haut)],["Max drawdown","-"+Number(s.drawdownMax||0).toFixed(1)+"%"],
     ].map(function(x){ return '<div class="pr-s"><div class="k">'+x[0]+'</div><div class="v '+(x[2]||"")+'">'+x[1]+'</div></div>'; }).join("");
-    courbe();
+    courbeReleve(j.courbe||[], (s.depart||1000));
+    if(j.round){ var rd=j.round; etat.serverRound=rd; if(j.coin===etat.coin) etat.ouvreRound=rd.ouvre;
+      $("prLigne").innerHTML="Round <b>#"+rd.n+"</b> · <b class=\""+(rd.sens==="UP"?"pos":"neg")+"\">"+rd.sens+"</b> "+Number(rd.prob).toFixed(1)+"% · paper bet $"+fmt(rd.mise)+" @ $"+fmt(rd.ouvre);
+      $("prRound").textContent="#"+rd.n;
+    } else { etat.serverRound=null; $("prLigne").textContent="Opening the next round…"; }
+    var maj=j.maj?new Date(j.maj):null;
+    $("prMeta").textContent=(j.coin||"BNB")+" · "+(j.roundSec||300)+"s rounds · session "+(j.sessions||1)+(j.martingale?" · martingale":" · flat")+(j.enPause?" · paused":"")+(maj?(" · updated "+maj.toLocaleTimeString()):"");
+    var d=(j.dernier||[]).filter(function(x){return !x.session;});
+    $("prHisto").innerHTML = d.length ? d.slice(0,50).map(function(r){
+      return '<tr><td>#'+r.n+'</td><td class="'+(r.sens==="UP"?"pos":"neg")+'">'+r.sens+'</td><td>'+Number(r.prob).toFixed(0)+'%</td><td>$'+fmt(r.mise)+'</td><td class="'+(r.gagne?"pos":"neg")+'">'+(r.gagne?"WIN":"LOSS")+'</td><td class="'+(r.pl>=0?"pos":"neg")+'">'+(r.pl>=0?"+":"")+"$"+fmt(r.pl)+'</td><td>$'+fmt(r.solde)+'</td></tr>';
+    }).join("") : '<tr><td colspan="7" style="text-align:center;color:var(--dim);padding:20px">No rounds yet — the server is warming up.</td></tr>';
   }
-  function courbe(){
-    var h=etat.bank.histo.slice(-60).map(function(x){return x.solde;}); if(!h.length){ $("prCourbe").innerHTML=""; return; }
+  function courbeReleve(h, depart){
+    if(!h.length){ $("prCourbe").innerHTML=""; return; }
     var mn=Math.min.apply(null,h), mx=Math.max.apply(null,h), r=(mx-mn)||1;
     var pts=h.map(function(v,i){ return (i/(h.length-1||1)*300).toFixed(1)+","+(65-(v-mn)/r*60).toFixed(1); }).join(" ");
-    var der=h[h.length-1]>=etat.bank.depart;
+    var der=h[h.length-1]>=depart;
     $("prCourbe").innerHTML='<polyline points="'+pts+'" fill="none" stroke="'+(der?"#12805A":"#C0392B")+'" stroke-width="1.5"/>';
   }
-  function majHisto(){
-    if(!etat.histo.length){ return; }
-    $("prHisto").innerHTML=etat.histo.slice(0,50).map(function(r){
-      return '<tr><td>#'+r.round+'</td><td class="'+(r.sens==="UP"?"pos":"neg")+'">'+r.sens+'</td><td>'+r.prob.toFixed(0)+'%</td><td>$'+fmt(r.mise)+'</td><td class="'+(r.gagne?"pos":"neg")+'">'+(r.gagne?"WIN":"LOSS")+'</td><td class="'+(r.pl>=0?"pos":"neg")+'">'+(r.pl>=0?"+":"")+"$"+fmt(r.pl)+'</td><td>$'+fmt(r.solde)+'</td></tr>';
-    }).join("");
-  }
 
-  /* ---- LE TIMER ---- */
+  /* ---- LE COMPTE A REBOURS : cale sur la fin du round SERVEUR ---- */
   setInterval(function(){
-    if(!etat.finRound){ return; }
-    var reste=Math.max(0, etat.finRound-Date.now());
-    $("prTimer").textContent="00:"+String(Math.ceil(reste/1000)).padStart(2,"0");
-    if(reste<=0){ resoudRound(); }
-  }, 250);
+    var rd=etat.serverRound; if(!rd||!rd.tFerme){ $("prTimer").textContent="—"; return; }
+    var reste=Math.max(0, rd.tFerme-Date.now());
+    var mm=Math.floor(reste/60000), ss=Math.ceil((reste%60000)/1000); if(ss===60){ss=0;mm++;}
+    $("prTimer").textContent=(mm<10?"0":"")+mm+":"+(ss<10?"0":"")+ss;
+  }, 500);
+  chargeReleve();
+  setInterval(chargeReleve, 12000);   /* le releve partagé, toutes les 12 s */
 
   /* ---- LES GESTES ---- */
-  $("prMarche").addEventListener("change", function(e){ etat.coin=e.target.value; etat.ouvreRound=etat.prix; $("prBt").textContent="Run backtest ("+etat.coin+", 5m)"; rafraichitCandles(); });
-  /* Pas de Start, pas de Stop : le prédicteur est LIVE en permanence et le
-     papier tourne sans interruption. Reset repart d'une caisse neuve — et
-     continue de tourner, il n'arrête jamais. */
-  $("prReset").addEventListener("click", function(){
-    clearTimeout(etat.reprise); etat.reprise=null; etat.histo=[];
-    $("prHisto").innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--dim);padding:20px">No rounds yet.</td></tr>';
-    demarrePaper();
-  });
+  /* Le sélecteur change le marché du prédicteur LIVE (affichage) ; le relevé
+     partagé, lui, joue le BNB sur le serveur, quoi qu on affiche ici. */
+  $("prMarche").addEventListener("change", function(e){ etat.coin=e.target.value; $("prBt").textContent="Run backtest ("+etat.coin+", 5m)"; rafraichitCandles(); });
   $("prBt").addEventListener("click", function(){
     $("prBtOut").innerHTML='<div class="pr-s"><div class="v">Running…</div></div>';
     var pièce=etat.coin;   /* le backtest porte sur le marché choisi, comme le live */
@@ -1099,16 +1045,13 @@ document.addEventListener("DOMContentLoaded", function(){
   });
 
   /* ---- DEMARRAGE : interface d abord, donnees ensuite ---- */
-  majLive(); majBank();
-  $("prRound").textContent="#"+etat.round;
+  majLive();
   ouvreWS();
   rafraichitCandles();
   setInterval(rafraichitCandles, 20000);          /* les bougies, moins souvent que le prix */
-  nouveauRound();
-  /* Le papier tourne tout seul, tout de suite : le bot est armé au chargement
-     et `armeSiPret` ouvre le premier round dès que prix et prédiction sont là.
-     Aucun clic à faire — Stop l arrête, Start le relance. Toujours papier. */
-  demarrePaper();
+  /* Le relevé partagé (banque, win/raté) est lu sur le serveur juste au-dessus
+     (chargeReleve). La page ne fait que le montrer : le pari tourne ailleurs,
+     en continu, pour tout le monde. */
 });
 </script>
 

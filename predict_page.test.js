@@ -32,6 +32,19 @@ var T={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'ap
     var a=[]; var px=80000; for(var i=0;i<80;i++){ px+=((i%3)-1)*5+3; a.push({t:i,T:i,o:px-2,c:px,h:px+3,l:px-4,v:100+i,n:5}); }
     r.fulfill({status:200,contentType:'application/json',body:JSON.stringify(a)});
   });
+  /* Faux relevé partagé du serveur : la page le LIT, elle ne le calcule pas. */
+  var predictEtat = {
+    coin:'BNB', paper:true, roundSec:300, martingale:false, miseInitiale:10, sessions:1,
+    depuis: Date.now()-3600000, maj: Date.now(), enPause:false,
+    round: { n:42, sens:'UP', prob:54.4, confiance:'MEDIUM', mise:10, ouvre:790, tFerme: Date.now()+120000 },
+    banque: { depart:1000, solde:1030, pl:30, roi:3, winRate:55, lossRate:45, trades:20, wins:11, losses:9, serie:2, haut:1040, bas:990, drawdownMax:4.8 },
+    dernier: [
+      { n:42, t:Date.now(), sens:'UP', prob:54, mise:10, ouvre:790, ferme:791, gagne:true, pl:10, solde:1030 },
+      { n:41, t:Date.now()-300000, sens:'DOWN', prob:52, mise:10, ouvre:792, ferme:791, gagne:false, pl:-10, solde:1020 }
+    ],
+    courbe: [1000,1010,1000,1010,1020,1030], note:'Paper only, shared, server-side.'
+  };
+  await page.route(/\/predict\/etat/, function(r){ r.fulfill({status:200,contentType:'application/json',body:JSON.stringify(predictEtat)}); });
   /* Faux WS allMids. */
   await page.addInitScript(function(){
     window.__sub=[];
@@ -75,23 +88,22 @@ var T={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'ap
     ok(up<=68 && up>=32,'la probabilite reste bridee loin de 0/100 ['+up+']');
   }
 
-  console.log('-- 3. LIVE tout le temps : aucun bouton Start/Stop, le papier tourne seul --');
+  console.log('-- 3. le releve PARTAGE (serveur) : win/raté, P/L de la banque, comme SWOGE AI --');
   {
-    /* « faut pas mettre de bouton start ; met le en mode live on tout le
-       temps » : pas de Start, pas de Stop — le papier est armé au chargement
-       et mise tout seul. La prédiction est prête (bloc 2), le prix arrive
-       (bloc 1). */
+    /* « faut tu fasse colle si ça jouais vraiment noter le win raté les perte
+       gain de la banque comme Swoge ai » : le releve ne tourne PAS dans le
+       navigateur — il vient du serveur (/predict/etat) et la page le montre,
+       exactement comme /ai/colonie. Aucun bouton Start/Stop. */
     ok(!(await page.$('#prGo')) && !(await page.$('#prStop')),'aucun bouton Start ni Stop');
-    ok(!!(await page.$('#prOnAir')),'un indicateur « LIVE — always on » est montré');
-    await page.waitForFunction(function(){ return /Next bet|Waiting for enough|Auto-restarting/i.test(document.getElementById('prRisque').textContent||''); },null,{timeout:8000});
-    ok(/Next bet/i.test(await page.textContent('#prRisque')),'au chargement, le bot mise deja tout seul (aucun clic)');
-    /* On raccourcit le round en forcant la resolution : on attend qu un round
-       se resolve (bankroll bouge ou histo se remplit) — le timer est de 60s,
-       donc on pousse le prix et on declenche via l horloge interne en
-       avancant le temps simule n est pas dispo ; on verifie plutot que la
-       mecanique est cablee (mise calculee, garde bankroll). */
-    var mise=await page.evaluate(function(){ return document.getElementById('prRisque').textContent; });
-    ok(/\$/.test(mise),'la mise est chiffree');
+    await page.waitForFunction(function(){ return /\$1,030/.test(document.getElementById('prBank').textContent||''); },null,{timeout:8000});
+    var bank=await page.textContent('#prBank');
+    ok(/Bankroll/.test(bank) && /\$1,030/.test(bank),'la banque PARTAGEE vient du serveur [$1,030]');
+    ok(/Wins/.test(bank) && /Losses/.test(bank),'les win et les raté sont comptés');
+    ok(/Win rate/.test(bank),'et le taux de réussite est là');
+    ok(/like SWOGE AI/i.test(await page.textContent('body')),'la page dit que le relevé est partagé, comme SWOGE AI');
+    var hist=await page.textContent('#prHisto');
+    ok(/WIN/.test(hist) && /LOSS/.test(hist),'l historique montre les rounds gagnés ET ratés du serveur');
+    ok(/Round #42/.test(await page.textContent('#prLigne')),'le round serveur en cours est montré [#42]');
   }
 
   console.log('-- 4. martingale et garde bankroll (logique, via le moteur) --');

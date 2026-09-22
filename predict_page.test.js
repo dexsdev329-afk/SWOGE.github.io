@@ -123,22 +123,15 @@ var T={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'ap
     ok(up<=68 && up>=32,'la probabilite reste bridee loin de 0/100 ['+up+']');
   }
 
-  console.log('-- 3. le releve PARTAGE (serveur) : win/raté, P/L de la banque, comme SWOGE AI --');
+  /* Le simulateur générique « Shared record » (BNB heuristique + martingale) a
+     été RETIRÉ le 22 septembre : il doublait la carte PancakeSwap, qui fait la
+     même chose sur les VRAIS rounds. La page est désormais centrée sur
+     PancakeSwap (bloc 6 papier, bloc 7 portefeuille réel). Aucun bouton
+     Start/Stop du côté du prédicteur en tête. */
   {
-    /* « faut tu fasse colle si ça jouais vraiment noter le win raté les perte
-       gain de la banque comme Swoge ai » : le releve ne tourne PAS dans le
-       navigateur — il vient du serveur (/predict/etat) et la page le montre,
-       exactement comme /ai/colonie. Aucun bouton Start/Stop. */
     ok(!(await page.$('#prGo')) && !(await page.$('#prStop')),'aucun bouton Start ni Stop');
-    await page.waitForFunction(function(){ return /\$1,030/.test(document.getElementById('prBank').textContent||''); },null,{timeout:8000});
-    var bank=await page.textContent('#prBank');
-    ok(/Bankroll/.test(bank) && /\$1,030/.test(bank),'la banque PARTAGEE vient du serveur [$1,030]');
-    ok(/Wins/.test(bank) && /Losses/.test(bank),'les win et les raté sont comptés');
-    ok(/Win rate/.test(bank),'et le taux de réussite est là');
-    ok(/like SWOGE AI/i.test(await page.textContent('body')),'la page dit que le relevé est partagé, comme SWOGE AI');
-    var hist=await page.textContent('#prHisto');
-    ok(/WIN/.test(hist) && /LOSS/.test(hist),'l historique montre les rounds gagnés ET ratés du serveur');
-    ok(/Round #42/.test(await page.textContent('#prLigne')),'le round serveur en cours est montré [#42]');
+    ok(!(await page.$('#prBank')) && !(await page.$('#prHisto')),'l ancien relevé générique (Shared record) a bien été retiré');
+    ok(!/Backtest on real candles/.test(await page.textContent('body')),'et le panneau backtest aussi');
   }
 
   console.log('-- 4. martingale et garde bankroll (logique, via le moteur) --');

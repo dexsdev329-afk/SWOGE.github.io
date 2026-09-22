@@ -146,12 +146,12 @@ video{ max-width:100%; }
      versions se font concurrence et aucune ne gagne.
      ================================================================= -->
 <link rel="canonical" href="https://swoleeswoge.dog/swoge_predict.html">
-<meta name="description" content="SWOGE Predict: a paper simulator for UP/DOWN prediction markets on real market prices. Technical-indicator probability with its reasons, bankroll, martingale visualizer, risk limits and backtest on real candles. Paper only — not a predictive edge, not financial advice.">
+<meta name="description" content="SWOGE Predict: reads the real PancakeSwap Prediction rounds and payout odds on BNB Chain, guesses BULL/BEAR with an EV gate and a martingale, and can connect a real wallet (owner-only, gated). Paper by default — not a predictive edge, not financial advice.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="SWOGE WORLD">
 <meta property="og:locale" content="en_US">
 <meta property="og:title" content="SWOGE Predict · UP/DOWN paper simulator">
-<meta property="og:description" content="SWOGE Predict: a paper simulator for UP/DOWN prediction markets on real market prices. Technical-indicator probability with its reasons, bankroll, martingale visualizer, risk limits and backtest on real candles. Paper only — not a predictive edge, not financial advice.">
+<meta property="og:description" content="SWOGE Predict: reads the real PancakeSwap Prediction rounds and payout odds on BNB Chain, guesses BULL/BEAR with an EV gate and a martingale, and can connect a real wallet (owner-only, gated). Paper by default — not a predictive edge, not financial advice.">
 <meta property="og:url" content="https://swoleeswoge.dog/swoge_predict.html">
 <meta property="og:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
 <meta property="og:image:width" content="1200">
@@ -159,7 +159,7 @@ video{ max-width:100%; }
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@SwoleDogeSwoge">
 <meta name="twitter:title" content="SWOGE Predict · UP/DOWN paper simulator">
-<meta name="twitter:description" content="SWOGE Predict: a paper simulator for UP/DOWN prediction markets on real market prices. Technical-indicator probability with its reasons, bankroll, martingale visualizer, risk limits and backtest on real candles. Paper only — not a predictive edge, not financial advice.">
+<meta name="twitter:description" content="SWOGE Predict: reads the real PancakeSwap Prediction rounds and payout odds on BNB Chain, guesses BULL/BEAR with an EV gate and a martingale, and can connect a real wallet (owner-only, gated). Paper by default — not a predictive edge, not financial advice.">
 <meta name="twitter:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="/img/site/icone-32.png">
@@ -807,10 +807,10 @@ table.pr-h td:first-child,table.pr-h th:first-child{text-align:left}
     <div class="pr-avert">
       <b>Read this first</b><br>
       Short-term price direction is close to random. The probability below is a heuristic, not a real
-      win-chance — the backtest on real data shows accuracy near 50%. The martingale option is a very
-      high-risk staking method that <b>ruins a bankroll over ~50/50 outcomes</b>; the visualizer shows it.
-      Everything here is paper. One bot plays BNB on the server, non-stop, and its record — win/loss and the
-      bank's P/L — accumulates and is shared with everyone, like SWOGE AI's colony. Nothing ever signs or places a trade.
+      win-chance — on real data, accuracy sits near 50%. The <b>martingale</b> is a very high-risk staking
+      method that <b>ruins a bankroll over ~50/50 outcomes</b> — the PancakeSwap card shows its stake and
+      its busts honestly. Everything here is paper until you arm the real wallet (owner-only, gated).
+      Nothing ever signs or places a trade on its own.
     </div>
 
     <div class="pr-tete">
@@ -851,43 +851,6 @@ table.pr-h td:first-child,table.pr-h th:first-child{text-align:left}
   <!-- ÉTAGE 2 : le vrai portefeuille PancakeSwap (swogepancake.js peint ici). -->
   <div class="pr-carte hero" style="margin-top:16px">
     <div id="pkReel"><p class="pr-note" style="margin:0">Loading the real PancakeSwap wallet…</p></div>
-  </div>
-
-  <div class="pr-grille">
-    <div class="pr-carte">
-      <h3><span id="prOnAir" style="display:inline-flex;align-items:center;gap:6px;vertical-align:middle"><span style="width:8px;height:8px;border-radius:50%;background:var(--believer);animation:prp 1.4s infinite"></span></span> Shared record · runs on the server, like SWOGE AI</h3>
-      <p class="pr-note" style="margin-top:0">One paper bot plays <b>BNB</b> on the server, non-stop. Win/loss and the bank's P/L <b>accumulate here for everyone</b> — this is not per-visitor and it does not reset on reload. Paper only, nothing signs.</p>
-      <div class="pr-note" id="prLigne" style="margin:8px 0">Loading the shared record…</div>
-      <div class="pr-stats" id="prBank"></div>
-      <svg id="prCourbe" viewBox="0 0 300 70" style="width:100%;height:70px;margin-top:10px;border:1px solid var(--line);border-radius:var(--r)"></svg>
-      <div class="pr-note" id="prMeta" style="margin-top:8px;font-size:11px;color:var(--dim)"></div>
-    </div>
-    <div class="pr-carte">
-      <h3>Staking settings (for the backtest)</h3>
-      <p class="pr-note" style="margin-top:0">These feed the what-if backtest below — they do <b>not</b> change the shared server bot.</p>
-      <div class="pr-champs">
-        <div><label>Initial bankroll</label><input id="cfgBank" type="number" value="1000"></div>
-        <div><label>Initial bet</label><input id="cfgBet" type="number" value="10"></div>
-        <div><label>Martingale ×</label><input id="cfgMult" type="number" value="2" step="0.1"></div>
-        <div><label>Max bet</label><input id="cfgMax" type="number" value="100"></div>
-        <div><label>Daily loss limit</label><input id="cfgJour" type="number" value="100"></div>
-        <div><label>Max losses in a row</label><input id="cfgPertes" type="number" value="5"></div>
-      </div>
-      <label style="display:flex;gap:7px;align-items:center;margin-top:10px;font-size:12.5px"><input type="checkbox" id="cfgMart"> Use martingale (high risk)</label>
-    </div>
-  </div>
-
-  <div class="pr-grille">
-    <div class="pr-carte">
-      <h3>History · shared server rounds</h3>
-      <div style="max-height:240px;overflow:auto"><table class="pr-h"><thead><tr><th>Round</th><th>Pred</th><th>Prob</th><th>Bet</th><th>Result</th><th>P/L</th><th>Bankroll</th></tr></thead><tbody id="prHisto"><tr><td colspan="7" style="text-align:center;color:var(--dim);padding:20px">No rounds yet.</td></tr></tbody></table></div>
-    </div>
-    <div class="pr-carte">
-      <h3>Backtest on real candles</h3>
-      <p class="pr-note" style="margin-top:0">Replays real historical candles as UP/DOWN rounds and reports the <b>true</b> accuracy and what the martingale would have done.</p>
-      <div class="pr-boutons"><button class="go" id="prBt">Run backtest (BNB, 5m)</button></div>
-      <div class="pr-stats" id="prBtOut" style="margin-top:10px"></div>
-    </div>
   </div>
 
   <div class="pr-note" id="prNote"></div>
@@ -931,12 +894,6 @@ document.addEventListener("DOMContentLoaded", function(){
     coin: "BNB", prix: null, ouvreRound: null, candles: {}, pred: null,
     live: false, dernier: 0, serverRound: null,
   };
-  function cfg(){ return {
-    bank: Math.max(1, +$("cfgBank").value||1000), bet: Math.max(0.01, +$("cfgBet").value||10),
-    mult: Math.max(1, +$("cfgMult").value||2), maxBet: Math.max(1, +$("cfgMax").value||100),
-    jour: Math.max(1, +$("cfgJour").value||100), pertes: Math.max(1, +$("cfgPertes").value||5),
-    mart: $("cfgMart").checked }; }
-
   function fmt(v,d){ if(v==null) return "—"; return Number(v).toLocaleString("en-US",{maximumFractionDigits:d==null?2:d}); }
 
   /* ---- LE PRIX LIVE : un seul WS Hyperliquid (allMids) ---- */
@@ -975,6 +932,8 @@ document.addEventListener("DOMContentLoaded", function(){
     var moteur=new E.PredictionEngine();
     var multi=moteur.multiHorizons({ "1m":etat.candles["1m"]||[], "5m":etat.candles["5m"]||[], "15m":etat.candles["15m"]||[], "1h":etat.candles["1h"]||[] });
     etat.pred=multi["5m"]&&multi["5m"].assez?multi["5m"]:moteur.evalue(etat.candles["5m"]||[]);
+    /* Le « Change » se lit contre l ouverture de la bougie 5 min courante. */
+    var c5=etat.candles["5m"]; etat.ouvreRound=(c5&&c5.length)?c5[c5.length-1].o:null;
     majPred(multi);
   }
   function majPred(multi){
@@ -991,49 +950,12 @@ document.addEventListener("DOMContentLoaded", function(){
     $("prPrix").textContent="$"+fmt(etat.prix);
     /* Le « Change » du round se lit contre l ouverture du round SERVEUR, et
        seulement quand le marché affiché est celui que le serveur joue (BNB). */
-    if(etat.ouvreRound && releve && etat.coin===releve.coin){ var ch=(etat.prix-etat.ouvreRound)/etat.ouvreRound*100; var e=$("prChange"); e.textContent=(ch>=0?"+":"")+ch.toFixed(2)+"%"; e.className="v "+(ch>=0?"pos":"neg"); }
+    if(etat.ouvreRound){ var ch=(etat.prix-etat.ouvreRound)/etat.ouvreRound*100; var e=$("prChange"); e.textContent=(ch>=0?"+":"")+ch.toFixed(2)+"%"; e.className="v "+(ch>=0?"pos":"neg"); }
   }
 
-  /* ---- LE RELEVE PARTAGE : lu sur le serveur, comme la colonie ----
-   * Le pari NE tourne PAS ici : un seul bot BNB tourne sur le serveur, en
-   * continu, et son releve (win / raté, gains / pertes de la banque) persiste
-   * et se sert a tout le monde. La page ne fait que le MONTRER — c est le meme
-   * modele que /ai/colonie. Tout est papier. */
+  /* ---- L'ADRESSE DU SERVEUR ----
+   * Les cartes PancakeSwap (papier et réel) lisent le serveur ici. */
   function serveurP(){ try{ var q=new URLSearchParams(location.search).get("server"); if(q) return String(q).replace(/^ws/,"http"); }catch(e){} return "https://web-production-220a3.up.railway.app"; }
-  var releve=null;
-  function chargeReleve(){
-    fetch(serveurP()+"/predict/etat",{cache:"no-store"}).then(function(r){return r.json();}).then(function(j){ releve=j; peintReleve(); })
-    ["catch"](function(){ if(!releve){ $("prLigne").textContent="Shared record unavailable — retrying…"; } });
-  }
-  function peintReleve(){
-    var j=releve; if(!j) return;
-    var s=j.banque||{};
-    $("prBank").innerHTML=[
-      ["Bankroll","$"+fmt(s.solde)],["P/L",(s.pl>=0?"+":"")+"$"+fmt(s.pl),s.pl>=0?"pos":"neg"],
-      ["ROI",(s.roi>=0?"+":"")+Number(s.roi||0).toFixed(2)+"%",s.roi>=0?"pos":"neg"],["Win rate",Number(s.winRate||0).toFixed(1)+"%"],
-      ["Wins",s.wins||0,"pos"],["Losses",s.losses||0,"neg"],
-      ["Trades",s.trades||0],["Streak",(s.serie>0?"+":"")+(s.serie||0),(s.serie>0?"pos":s.serie<0?"neg":"")],
-      ["High","$"+fmt(s.haut)],["Max drawdown","-"+Number(s.drawdownMax||0).toFixed(1)+"%"],
-    ].map(function(x){ return '<div class="pr-s"><div class="k">'+x[0]+'</div><div class="v '+(x[2]||"")+'">'+x[1]+'</div></div>'; }).join("");
-    courbeReleve(j.courbe||[], (s.depart||1000));
-    if(j.round){ var rd=j.round; etat.serverRound=rd; if(j.coin===etat.coin) etat.ouvreRound=rd.ouvre;
-      $("prLigne").innerHTML="Round <b>#"+rd.n+"</b> · <b class=\""+(rd.sens==="UP"?"pos":"neg")+"\">"+rd.sens+"</b> "+Number(rd.prob).toFixed(1)+"% · paper bet $"+fmt(rd.mise)+" @ $"+fmt(rd.ouvre);
-      $("prRound").textContent="#"+rd.n;
-    } else { etat.serverRound=null; $("prLigne").textContent="Opening the next round…"; }
-    var maj=j.maj?new Date(j.maj):null;
-    $("prMeta").textContent=(j.coin||"BNB")+" · "+(j.roundSec||300)+"s rounds · session "+(j.sessions||1)+(j.martingale?" · martingale":" · flat")+(j.enPause?" · paused":"")+(maj?(" · updated "+maj.toLocaleTimeString()):"");
-    var d=(j.dernier||[]).filter(function(x){return !x.session;});
-    $("prHisto").innerHTML = d.length ? d.slice(0,50).map(function(r){
-      return '<tr><td>#'+r.n+'</td><td class="'+(r.sens==="UP"?"pos":"neg")+'">'+r.sens+'</td><td>'+Number(r.prob).toFixed(0)+'%</td><td>$'+fmt(r.mise)+'</td><td class="'+(r.gagne?"pos":"neg")+'">'+(r.gagne?"WIN":"LOSS")+'</td><td class="'+(r.pl>=0?"pos":"neg")+'">'+(r.pl>=0?"+":"")+"$"+fmt(r.pl)+'</td><td>$'+fmt(r.solde)+'</td></tr>';
-    }).join("") : '<tr><td colspan="7" style="text-align:center;color:var(--dim);padding:20px">No rounds yet — the server is warming up.</td></tr>';
-  }
-  function courbeReleve(h, depart){
-    if(!h.length){ $("prCourbe").innerHTML=""; return; }
-    var mn=Math.min.apply(null,h), mx=Math.max.apply(null,h), r=(mx-mn)||1;
-    var pts=h.map(function(v,i){ return (i/(h.length-1||1)*300).toFixed(1)+","+(65-(v-mn)/r*60).toFixed(1); }).join(" ");
-    var der=h[h.length-1]>=depart;
-    $("prCourbe").innerHTML='<polyline points="'+pts+'" fill="none" stroke="'+(der?"#12805A":"#C0392B")+'" stroke-width="1.5"/>';
-  }
 
   /* ---- LE COMPTE A REBOURS : cale sur la fin du round SERVEUR ---- */
   setInterval(function(){
@@ -1042,9 +964,6 @@ document.addEventListener("DOMContentLoaded", function(){
     var mm=Math.floor(reste/60000), ss=Math.ceil((reste%60000)/1000); if(ss===60){ss=0;mm++;}
     $("prTimer").textContent=(mm<10?"0":"")+mm+":"+(ss<10?"0":"")+ss;
   }, 500);
-  chargeReleve();
-  setInterval(chargeReleve, 12000);   /* le releve partagé, toutes les 12 s */
-
   /* ---- ÉTAGE 1 PANCAKESWAP : les vrais rounds + côtes, lus sur le serveur ---- */
   function chargePancake(){
     fetch(serveurP()+"/predict/pancake",{cache:"no-store"}).then(function(r){return r.json();}).then(peintPancake)["catch"](function(){});
@@ -1053,6 +972,9 @@ document.addEventListener("DOMContentLoaded", function(){
     if(!j) return;
     var b=j.banque||{}, r=j.round||{};
     var mt=j.martingale||null;
+    /* Le bandeau du haut (Round / Time left) se cale sur le VRAI round PancakeSwap. */
+    if(r && r.epoch){ $("prRound").textContent="#"+r.epoch; if(r.lock) etat.serverRound={ tFerme: r.lock*1000 }; }
+    else { $("prRound").textContent="—"; etat.serverRound=null; }
     if(r && r.epoch){
       var cb=r.coteBull!=null?r.coteBull.toFixed(2)+"x":"—", cbe=r.coteBear!=null?r.coteBear.toFixed(2)+"x":"—";
       var dec=r.decision, act;
@@ -1083,37 +1005,17 @@ document.addEventListener("DOMContentLoaded", function(){
   setInterval(chargePancake, 15000);
 
   /* ---- LES GESTES ---- */
-  /* Le sélecteur change le marché du prédicteur LIVE (affichage) ; le relevé
-     partagé, lui, joue le BNB sur le serveur, quoi qu on affiche ici. */
-  $("prMarche").addEventListener("change", function(e){ etat.coin=e.target.value; $("prBt").textContent="Run backtest ("+etat.coin+", 5m)"; rafraichitCandles(); });
-  $("prBt").addEventListener("click", function(){
-    $("prBtOut").innerHTML='<div class="pr-s"><div class="v">Running…</div></div>';
-    var pièce=etat.coin;   /* le backtest porte sur le marché choisi, comme le live */
-    chargeCandles(pièce,"5m").then(function(){ return chargeCandles(pièce,"5m"); }).then(function(){
-      var now=Date.now();
-      return fetch(HL+"/info",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({type:"candleSnapshot",req:{coin:pièce,interval:"5m",startTime:now-5000*300000,endTime:now}})}).then(function(r){return r.json();});
-    }).then(function(a){
-      var candles=(a||[]).map(function(c){return {o:+c.o,c:+c.c,h:+c.h,l:+c.l,v:+c.v};});
-      var c=cfg();
-      var bt=E.backtest(candles,{bankroll:c.bank,miseInitiale:c.bet,mult:c.mart?c.mult:1,maxBet:c.maxBet,maxPertes:c.pertes,fenetre:30});
-      $("prBtOut").innerHTML=[
-        ["Rounds",bt.rounds],["Accuracy",bt.precision.toFixed(1)+"%"],
-        ["Start","$"+fmt(bt.depart)],["End","$"+fmt(bt.fin),bt.fin>=bt.depart?"pos":"neg"],
-        ["ROI",(bt.roi>=0?"+":"")+bt.roi.toFixed(1)+"%",bt.roi>=0?"pos":"neg"],["Max drawdown","-"+bt.drawdownMax.toFixed(1)+"%"],
-        ["Biggest bet","$"+fmt(bt.miseMax)],["Worst losing streak",bt.pireSeriePertes],
-      ].map(function(x){return '<div class="pr-s"><div class="k">'+x[0]+'</div><div class="v '+(x[2]||"")+'">'+x[1]+'</div></div>';}).join("")
-        + '<div class="pr-note" style="grid-column:1/-1">'+bt.note+(bt.ruine?' <b class="neg">The martingale ruined the bankroll.</b>':'')+'</div>';
-    })["catch"](function(){ $("prBtOut").innerHTML='<div class="pr-note neg">Could not load candles for the backtest.</div>'; });
-  });
+  /* Le sélecteur change le marché du prédicteur LIVE (le contexte au-dessus des
+     cartes PancakeSwap). Le vrai jeu, lui, est BNB sur le serveur. */
+  $("prMarche").addEventListener("change", function(e){ etat.coin=e.target.value; rafraichitCandles(); });
 
   /* ---- DEMARRAGE : interface d abord, donnees ensuite ---- */
   majLive();
   ouvreWS();
   rafraichitCandles();
   setInterval(rafraichitCandles, 20000);          /* les bougies, moins souvent que le prix */
-  /* Le relevé partagé (banque, win/raté) est lu sur le serveur juste au-dessus
-     (chargeReleve). La page ne fait que le montrer : le pari tourne ailleurs,
-     en continu, pour tout le monde. */
+  /* Le vrai jeu tourne sur le serveur (PancakeSwap Prediction, papier + réel) ;
+     la page ne fait que le montrer via /predict/pancake et window.swogeFil. */
 });
 </script>
 

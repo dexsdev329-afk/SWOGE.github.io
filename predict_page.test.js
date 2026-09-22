@@ -55,6 +55,31 @@ var T={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'ap
     dernier:[], note:'Paper only.'
   };
   await page.route(/\/predict\/pancake/, function(r){ r.fulfill({status:200,contentType:'application/json',body:JSON.stringify(pancakeEtat)}); });
+  /* Étage 2 (vrais BNB) : on STUB la pile partagée (stakebubble/ethers/swogebuy)
+     par un faux `window.swogeFil` qu'on pilote — swogepancake.js ne dépend que
+     de lui. Le faux joue le serveur : auth, un état propriétaire avec wallet,
+     et les réponses Play/Stop. Aucune vraie socket, aucun vrai BNB. */
+  var pkReelEtat = {
+    type:'pancakeReelEtat', proprietaire:true, aWallet:true, execute:false,
+    adresse:'0x1234567890abcdef1234567890abcdef12345678', actif:false, solde:0.5,
+    marche:'BNB', chaine:'BSC', contrat:'0x18B2', configure:true, minBet:0.001, maxBnb:5,
+    banque:{ solde:0.5, pl:0.03, unite:'BNB', wins:3, losses:2, skips:7, mises:5, winRate:60 },
+    martingale:{ on:true, facteur:2, paliers:6, palier:1, palierMax:3, busts:1, miseCourante:0.02 },
+    enAttente:[], fermees:[], journal:[], note:'dry run'
+  };
+  var stub = 'window.__pkSent=[];window.__pkSubs=[];var E='+JSON.stringify(pkReelEtat)+';'
+    + 'function D(m){window.__pkSubs.forEach(function(f){try{f(m);}catch(e){}});}'
+    + 'window.swogeFil={pret:function(){return true;},ecoute:function(f){window.__pkSubs.push(f);},'
+    + 'envoie:function(o){window.__pkSent.push(o);'
+    + 'if(o.type==="pancakeReelEtat")D(E);'
+    + 'else if(o.type==="pancakeReelPlay"){E=Object.assign({},E,{actif:true});D({type:"pancakeReelPlay",execute:false});D(E);}'
+    + 'else if(o.type==="pancakeReelStop"){E=Object.assign({},E,{actif:false});D({type:"pancakeReelStop",execute:false});D(E);}'
+    + 'else if(o.type==="pancakeReelCle")D({type:"pancakeReelCle",neuf:false,adresse:E.adresse,cle:"0x"+Array(65).join("a")});}};'
+    + 'window.addEventListener("load",function(){D({type:"auth"});});';
+  await page.route(/stakebubble\.min\.js/, function(r){ r.fulfill({status:200,contentType:'application/javascript',body:stub}); });
+  await page.route(/swogebuy\.js/, function(r){ r.fulfill({status:200,contentType:'application/javascript',body:'/* stub */'}); });
+  await page.route(/ethers.*\.umd\.min\.js/, function(r){ r.fulfill({status:200,contentType:'application/javascript',body:'/* stub */'}); });
+  page.on('dialog', function(d){ d.accept(); });
   /* Faux WS allMids. */
   await page.addInitScript(function(){
     window.__sub=[];
@@ -154,6 +179,32 @@ var T={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'ap
     ok(/step 1\/6/.test(mart),'avec le palier courant sur le plafond');
     ok(/busted 1×/.test(mart),'et les busts comptés — elle ne se rattrape pas toujours');
     ok(/not always recover/i.test(mart),'et le fait qu elle ne récupère pas toujours est dit');
+  }
+
+  console.log('-- 7. étage 2 : le vrai portefeuille PancakeSwap (owner, gated) --');
+  {
+    /* Le faux swogeFil émet auth au load → swogepancake demande l état, rend
+       la carte propriétaire avec wallet. */
+    await page.waitForFunction(function(){ return /PancakeSwap wallet/.test((document.getElementById('pkReel')||{}).textContent||''); }, null, { timeout: 8000 });
+    var card = await page.textContent('#pkReel');
+    ok(/Play it for real/.test(card), 'la carte étage 2 est là (owner)');
+    ok(/0x1234.*5678|0x1234…5678/.test(card), 'elle montre l adresse du wallet dédié');
+    ok(/Martingale ×2/.test(card) && /busted 1×/.test(card), 'la martingale et les busts sont montrés');
+    ok(/dry run/i.test(card), 'et le mode dry run est dit (EXECUTE off)');
+    ok(await page.$('[data-pk="play"]'), 'un bouton PLAY est présent');
+    /* Play → envoie pancakeReelPlay, puis la carte passe en PLAYING (Stop). */
+    await page.click('[data-pk="play"]');
+    await page.waitForFunction(function(){ return (window.__pkSent||[]).some(function(o){return o.type==='pancakeReelPlay';}); }, null, { timeout: 4000 });
+    ok(true, 'Play envoie pancakeReelPlay au serveur');
+    await page.waitForFunction(function(){ return !!document.querySelector('[data-pk="stop"]'); }, null, { timeout: 4000 });
+    ok(await page.$('[data-pk="stop"]'), 'et la carte passe en PLAYING (bouton STOP)');
+    /* La clé n est jamais écrite dans la page tant qu on ne la demande pas. */
+    ok(!/0xaaaaaaaa/.test(await page.textContent('#pkReel')), 'aucune clé privée affichée sans geste explicite');
+    /* Non-propriétaire : le serveur le dirait, la page ne montrerait pas les boutons.
+       On vérifie que la source ne stocke aucune clé et exige un geste. */
+    var src = fs.readFileSync(path.join(SITE,'swogepancake.js'),'utf8');
+    ok(!/localStorage\s*\.\s*setItem|sessionStorage\s*\.\s*setItem|sendTransaction|signTransaction|new\s+ethers\.Wallet/i.test(src), 'swogepancake.js ne stocke aucune clé, ne signe rien (le serveur signe)');
+    ok(/pancakeReelPlay/.test(src) && /pancakeReelStop/.test(src) && /pancakeReelCree/.test(src), 'et il parle bien les gestes de l étage 2');
   }
 
   await nav.close(); await new Promise(function(s){srv.close(s);});

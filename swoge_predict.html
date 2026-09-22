@@ -768,6 +768,12 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .pr-carte.hero h3{font-size:18px}
 .pr-mart{border:1px solid var(--line);border-radius:var(--r);padding:8px 11px;margin-top:10px;font-family:'Space Mono',monospace;font-size:11.5px;color:var(--paper)}
 .pr-mart b{color:var(--gold)} .pr-mart .bust{color:var(--serpent)}
+/* L'étage 2 : le portefeuille réel (swogepancake.js peint dans #pkReel). */
+.pr-boutons .stop{background:transparent;color:var(--serpent);border:1px solid var(--serpent)}
+.pk-lien{background:none;border:0;color:var(--pool);font-family:'Space Mono',monospace;font-size:11px;cursor:pointer;text-decoration:underline;padding:8px 4px}
+.pk-cle{border:1px solid var(--neutral);border-radius:var(--r);padding:10px;margin-top:10px}
+.pk-cle-in{width:100%;background:var(--void2);color:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:7px;font-family:'Space Mono',monospace;font-size:11px;word-break:break-all;resize:vertical}
+#pkReel code{font-family:'Space Mono',monospace;font-size:11px;color:var(--neutral)}
 .pr-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .pr-s .k{font-family:'Space Mono',monospace;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
 .pr-s .v{font-family:'Space Mono',monospace;font-size:14px;margin-top:2px}
@@ -839,7 +845,12 @@ table.pr-h td:first-child,table.pr-h th:first-child{text-align:left}
 
   <div class="pr-proto">
     <b>Live execution — protocol adapter</b><br>
-    <span id="prProto">The card above reads the real PancakeSwap Prediction contract on BNB Chain and bets <b>nothing</b> — it only measures whether the odds and the martingale are worth it. Real bets (stage 2) will need a wallet and your explicit go, and are <b>NOT CONNECTED</b> here. No private key is stored in this page.</span>
+    <span id="prProto">The card at the top reads the real PancakeSwap Prediction contract on BNB Chain and bets <b>nothing</b> — it measures whether the odds and the martingale are worth it. To play it for real, use the owner wallet below: it needs a wallet, the <code>EXECUTE</code> flag on the host, and your explicit Play. No private key is stored in this page.</span>
+  </div>
+
+  <!-- ÉTAGE 2 : le vrai portefeuille PancakeSwap (swogepancake.js peint ici). -->
+  <div class="pr-carte hero" style="margin-top:16px">
+    <div id="pkReel"><p class="pr-note" style="margin:0">Loading the real PancakeSwap wallet…</p></div>
   </div>
 
   <div class="pr-grille">
@@ -1105,6 +1116,18 @@ document.addEventListener("DOMContentLoaded", function(){
      en continu, pour tout le monde. */
 });
 </script>
+
+<!-- ---- LES SCRIPTS PARTAGES, EN BAS ----
+     `stakebubble.js` enveloppe WebSocket et tient la socket de session (exposée
+     sous `window.swogeFil`) : il doit tourner AVANT le code qui ouvre la socket
+     de prix (Hyperliquid) plus haut, qui est en `defer` et s'exécute après ces
+     scripts synchrones. Le marqueur `SWOGE_SOCKET='aucune'` lui dit d'ouvrir la
+     socket de jeu pour cette page. Ordre calqué sur swoge_ai.html (connu bon). -->
+<script>window.SWOGE_SOCKET = 'aucune';</script>
+<script src="stakebubble.min.js?v=c324151c"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+<script src="swogebuy.js?v=9d7c39e5"></script>
+<script src="swogepancake.js?v=dd30f4e8" defer></script>
 
 </body>
 </html>

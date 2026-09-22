@@ -763,6 +763,11 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 @media(max-width:760px){.pr-grille{grid-template-columns:1fr}.pr-updown{grid-template-columns:1fr}}
 .pr-carte{border:1px solid var(--line);background:var(--panel);border-radius:var(--r);padding:14px}
 .pr-carte h3{font-family:'Anton',sans-serif;font-size:15px;text-transform:uppercase;margin:0 0 10px}
+/* La carte PancakeSwap est LE sujet de la page : bordure or, un cran plus grosse. */
+.pr-carte.hero{border:2px solid var(--gold);background:linear-gradient(180deg,rgba(212,160,23,.06),transparent)}
+.pr-carte.hero h3{font-size:18px}
+.pr-mart{border:1px solid var(--line);border-radius:var(--r);padding:8px 11px;margin-top:10px;font-family:'Space Mono',monospace;font-size:11.5px;color:var(--paper)}
+.pr-mart b{color:var(--gold)} .pr-mart .bust{color:var(--serpent)}
 .pr-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .pr-s .k{font-family:'Space Mono',monospace;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}
 .pr-s .v{font-family:'Space Mono',monospace;font-size:14px;margin-top:2px}
@@ -822,6 +827,21 @@ table.pr-h td:first-child,table.pr-h th:first-child{text-align:left}
     <div class="pr-raisons" id="prRaisons"></div>
   </div>
 
+  <!-- LE SUJET DE LA PAGE : le vrai jeu PancakeSwap Prediction, en tête. -->
+  <div class="pr-carte hero" style="margin-top:16px">
+    <h3><span id="pkOnAir" style="display:inline-flex;align-items:center;gap:6px;vertical-align:middle"><span style="width:8px;height:8px;border-radius:50%;background:var(--believer);animation:prp 1.4s infinite"></span></span> PancakeSwap Prediction · the real game (paper)</h3>
+    <p class="pr-note" style="margin-top:0">This is the one that matters. It reads the <b>real</b> PancakeSwap Prediction rounds on BNB Chain — the live price, the two pools and their <b>payout odds</b> — and guesses BULL/BEAR. It only <b>would bet</b> when the odds make it positive-EV; when the payout is poor it <b>skips</b>. A <b>martingale</b> sizes the stake so a win can claw back the losing streak. Paper only, nothing signs — this measures whether the strategy survives before a real wallet plays it (stage 2).</p>
+    <div class="pr-note" id="pkLigne" style="margin:8px 0">Loading the live round…</div>
+    <div class="pr-stats" id="pkBank"></div>
+    <div class="pr-mart" id="pkMart" style="display:none"></div>
+    <div class="pr-note" id="pkMeta" style="margin-top:8px;font-size:11px;color:var(--dim)"></div>
+  </div>
+
+  <div class="pr-proto">
+    <b>Live execution — protocol adapter</b><br>
+    <span id="prProto">The card above reads the real PancakeSwap Prediction contract on BNB Chain and bets <b>nothing</b> — it only measures whether the odds and the martingale are worth it. Real bets (stage 2) will need a wallet and your explicit go, and are <b>NOT CONNECTED</b> here. No private key is stored in this page.</span>
+  </div>
+
   <div class="pr-grille">
     <div class="pr-carte">
       <h3><span id="prOnAir" style="display:inline-flex;align-items:center;gap:6px;vertical-align:middle"><span style="width:8px;height:8px;border-radius:50%;background:var(--believer);animation:prp 1.4s infinite"></span></span> Shared record · runs on the server, like SWOGE AI</h3>
@@ -857,19 +877,6 @@ table.pr-h td:first-child,table.pr-h th:first-child{text-align:left}
       <div class="pr-boutons"><button class="go" id="prBt">Run backtest (BNB, 5m)</button></div>
       <div class="pr-stats" id="prBtOut" style="margin-top:10px"></div>
     </div>
-  </div>
-
-  <div class="pr-carte" style="margin-top:16px">
-    <h3><span id="pkOnAir" style="display:inline-flex;align-items:center;gap:6px;vertical-align:middle"><span style="width:8px;height:8px;border-radius:50%;background:var(--believer);animation:prp 1.4s infinite"></span></span> PancakeSwap Prediction · real rounds (paper)</h3>
-    <p class="pr-note" style="margin-top:0">Reads the <b>real</b> PancakeSwap Prediction rounds on BNB Chain — the live price, the two pools and their <b>payout odds</b> — and the predictor guesses BULL/BEAR. It only <b>would bet</b> when the odds make it positive-EV; when the payout is poor it <b>skips</b>. Paper only, no wallet, nothing signs. This is <b>stage 1</b>; connecting a wallet to play for real is stage 2.</p>
-    <div class="pr-note" id="pkLigne" style="margin:8px 0">Loading the live round…</div>
-    <div class="pr-stats" id="pkBank"></div>
-    <div class="pr-note" id="pkMeta" style="margin-top:8px;font-size:11px;color:var(--dim)"></div>
-  </div>
-
-  <div class="pr-proto">
-    <b>Live execution — protocol adapter</b><br>
-    <span id="prProto">Stage 1 above reads the real PancakeSwap Prediction contract on BNB Chain and bets <b>nothing</b> — it only measures whether the odds are worth it. Real bets (stage 2) will need a wallet and your explicit go, and are <b>NOT CONNECTED</b> here. No private key is stored in this page.</span>
   </div>
 
   <div class="pr-note" id="prNote"></div>
@@ -1034,11 +1041,14 @@ document.addEventListener("DOMContentLoaded", function(){
   function peintPancake(j){
     if(!j) return;
     var b=j.banque||{}, r=j.round||{};
+    var mt=j.martingale||null;
     if(r && r.epoch){
       var cb=r.coteBull!=null?r.coteBull.toFixed(2)+"x":"—", cbe=r.coteBear!=null?r.coteBear.toFixed(2)+"x":"—";
       var dec=r.decision, act;
-      if(dec) act = dec.wouldBet ? ('<b class="pos">WOULD BET '+dec.side+'</b> · '+dec.raison) : ('<b class="neg">SKIP</b> · '+dec.raison);
-      else act = 'waiting for the betting window…';
+      if(dec){
+        var mise = dec.mise!=null ? (' at <b>'+fmt(dec.mise,4)+' BNB</b>') : '';
+        act = dec.wouldBet ? ('<b class="pos">WOULD BET '+dec.side+'</b>'+mise+' · '+dec.raison) : ('<b class="neg">SKIP</b> · '+dec.raison);
+      } else act = 'waiting for the betting window…';
       $("pkLigne").innerHTML = "Round <b>#"+r.epoch+"</b> · BULL <b>"+cb+"</b> / BEAR <b>"+cbe+"</b> · pool "+(r.total!=null?Number(r.total).toFixed(3):"—")+" BNB<br>"+act;
     } else { $("pkLigne").textContent = j.enPause ? "Stage 1 is off on the server (set PREDICT_PANCAKE=1)." : "Reading the live round…"; }
     $("pkBank").innerHTML=[
@@ -1046,8 +1056,17 @@ document.addEventListener("DOMContentLoaded", function(){
       ["ROI",(b.roi>=0?"+":"")+Number(b.roi||0).toFixed(1)+"%",b.roi>=0?"pos":"neg"],["Win rate",Number(b.winRate||0).toFixed(1)+"%"],
       ["Bets",b.mises||0],["Wins",b.wins||0,"pos"],["Losses",b.losses||0,"neg"],["Skipped · bad odds",b.skips||0],
     ].map(function(x){ return '<div class="pr-s"><div class="k">'+x[0]+'</div><div class="v '+(x[2]||"")+'">'+x[1]+'</div></div>'; }).join("");
+    /* La martingale, en toutes lettres : mise du moment, palier, et les busts —
+       la vérité que le joueur doit voir (elle ne se rattrape pas toujours). */
+    if(mt && mt.on){
+      var bust = mt.busts>0 ? (' · <span class="bust">busted '+mt.busts+'×</span>') : '';
+      $("pkMart").style.display="";
+      $("pkMart").innerHTML = "Martingale ×"+mt.facteur+" · next stake <b>"+fmt(mt.miseCourante,4)+" BNB</b> · step "+mt.palier+"/"+mt.paliers+" (max reached "+mt.palierMax+")"+bust
+        +'<br><span style="color:var(--dim)">A win resets to the base stake; past step '+mt.paliers+' the ladder busts back to base — it does <b>not</b> always recover.</span>';
+    } else if(mt){ $("pkMart").style.display=""; $("pkMart").innerHTML='<span style="color:var(--dim)">Martingale off — flat stake.</span>'; }
+    else { $("pkMart").style.display="none"; }
     var maj=j.maj?new Date(j.maj):null;
-    $("pkMeta").textContent = (j.marche||"BNB")+" · 5 min rounds · fee "+Math.round((j.fee||0.03)*100)+"% · stake "+j.mise+" BNB · paper"+(j.enPause?" · off":"")+(maj?(" · updated "+maj.toLocaleTimeString()):"");
+    $("pkMeta").textContent = (j.marche||"BNB")+" · 5 min rounds · fee "+Math.round((j.fee||0.03)*100)+"% · base stake "+j.mise+" BNB · paper"+(j.enPause?" · off":"")+(maj?(" · updated "+maj.toLocaleTimeString()):"");
   }
   chargePancake();
   setInterval(chargePancake, 15000);

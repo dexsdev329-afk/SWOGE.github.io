@@ -49,8 +49,9 @@ var T={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'ap
   var pancakeEtat = {
     marche:'BNB', paper:true, roundSec:300, fee:0.03, mise:0.01, gaz:0.0006, marge:0.05, enPause:false, maj:Date.now(),
     round:{ epoch:517724, bull:0.1, bear:0.5, total:0.6, coteBull:5.4, coteBear:1.16,
-            decision:{ side:'BULL', cote:5.4, ev:1.9, prob:55, wouldBet:true, raison:'EV +190% at 5.40x' } },
+            decision:{ side:'BULL', cote:5.4, ev:1.9, prob:55, mise:0.02, wouldBet:true, raison:'EV +190% at 5.40x' } },
     banque:{ depart:1, solde:1.05, pl:0.05, roi:5, unite:'BNB', wins:3, losses:2, skips:7, mises:5, winRate:60 },
+    martingale:{ on:true, facteur:2, paliers:6, palier:1, palierMax:3, busts:1, miseCourante:0.02 },
     dernier:[], note:'Paper only.'
   };
   await page.route(/\/predict\/pancake/, function(r){ r.fulfill({status:200,contentType:'application/json',body:JSON.stringify(pancakeEtat)}); });
@@ -143,9 +144,16 @@ var T={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'ap
     ok(/Round #517724/.test(ligne),'le vrai round PancakeSwap est montré [#517724]');
     ok(/5\.40x/.test(ligne) && /1\.16x/.test(ligne),'les deux côtes BULL/BEAR sont là');
     ok(/WOULD BET BULL/i.test(ligne),'et la décision EV : on miserait BULL sur la grosse côte');
+    ok(/0\.02 BNB/.test(ligne),'la mise du moment (martingale) est montrée dans la décision');
     var bank=await page.textContent('#pkBank');
     ok(/Skipped/i.test(bank) && /7/.test(bank),'le compteur de SAUTS (côtes pourries) est montré');
     ok(/BNB/.test(bank),'la caisse est en BNB');
+    /* La martingale en toutes lettres, busts compris : la vérité au joueur. */
+    var mart=await page.textContent('#pkMart');
+    ok(/Martingale ×2/.test(mart),'la martingale est affichée (facteur)');
+    ok(/step 1\/6/.test(mart),'avec le palier courant sur le plafond');
+    ok(/busted 1×/.test(mart),'et les busts comptés — elle ne se rattrape pas toujours');
+    ok(/not always recover/i.test(mart),'et le fait qu elle ne récupère pas toujours est dit');
   }
 
   await nav.close(); await new Promise(function(s){srv.close(s);});

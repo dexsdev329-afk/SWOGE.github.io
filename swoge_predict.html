@@ -977,7 +977,8 @@ document.addEventListener("DOMContentLoaded", function(){
     if(r && r.epoch){
       var cb=r.coteBull!=null?r.coteBull.toFixed(2)+"x":"—", cbe=r.coteBear!=null?r.coteBear.toFixed(2)+"x":"—";
       var dec=r.decision, act;
-      if(dec){
+      if(j.parie===false){ act = '<b class="neg">BETTING OFF</b> · observing the real rounds & odds — measured coin flip, no bet placed'; }
+      else if(dec){
         var mise = dec.mise!=null ? (' at <b>'+fmt(dec.mise,4)+' BNB</b>') : '';
         act = dec.wouldBet ? ('<b class="pos">WOULD BET '+dec.side+'</b>'+mise+' · '+dec.raison) : ('<b class="neg">SKIP</b> · '+dec.raison);
       } else act = 'waiting for the betting window…';

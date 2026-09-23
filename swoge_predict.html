@@ -999,7 +999,7 @@ document.addEventListener("DOMContentLoaded", function(){
     } else if(mt){ $("pkMart").style.display=""; $("pkMart").innerHTML='<span style="color:var(--dim)">Martingale off — flat stake.</span>'; }
     else { $("pkMart").style.display="none"; }
     var maj=j.maj?new Date(j.maj):null;
-    $("pkMeta").textContent = (j.marche||"BNB")+" · 5 min rounds · fee "+Math.round((j.fee||0.03)*100)+"% · base stake "+j.mise+" BNB · paper"+(j.enPause?" · off":"")+(maj?(" · updated "+maj.toLocaleTimeString()):"");
+    $("pkMeta").textContent = (j.marche||"BNB")+" · 5 min rounds · fee "+Math.round((j.fee||0.03)*100)+"% · base stake "+j.mise+" BNB · paper"+(j.inverse?" · INVERSE (bets the opposite side)":"")+(j.enPause?" · off":"")+(maj?(" · updated "+maj.toLocaleTimeString()):"");
   }
   chargePancake();
   setInterval(chargePancake, 15000);

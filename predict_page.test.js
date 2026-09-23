@@ -200,6 +200,30 @@ var T={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'ap
     ok(/pancakeReelPlay/.test(src) && /pancakeReelStop/.test(src) && /pancakeReelCree/.test(src), 'et il parle bien les gestes de l étage 2');
   }
 
+  console.log('-- 8. paris éteints (parie=false) : pas de « next stake », martingale gelée --');
+  {
+    /* Le propriétaire a relevé la contradiction : la carte disait BETTING OFF
+       tout en montrant « next stake 0.32 BNB · step 5/6 » — comme si elle
+       jouait encore. Quand les paris sont éteints, la martingale doit être
+       montrée GELÉE, sans prochaine mise. */
+    var pancakeOff = Object.assign({}, pancakeEtat, {
+      parie:false,
+      round: Object.assign({}, pancakeEtat.round, { decision:null }),
+      martingale:{ on:true, facteur:2, paliers:6, palier:5, palierMax:5, busts:0, miseCourante:0.32 },
+    });
+    await page.route(/\/predict\/pancake/, function(r){ r.fulfill({status:200,contentType:'application/json',body:JSON.stringify(pancakeOff)}); });
+    await page.reload({ waitUntil:'domcontentloaded' });
+    await page.waitForFunction(function(){ return /BETTING OFF/i.test((document.getElementById('pkLigne')||{}).textContent||''); }, null, { timeout:8000 });
+    var ligneOff=await page.textContent('#pkLigne');
+    ok(/BETTING OFF/i.test(ligneOff),'la ligne dit BETTING OFF quand parie=false');
+    var martOff=await page.textContent('#pkMart');
+    ok(/Martingale ×2/.test(martOff),'la martingale reste décrite (facteur, palier)');
+    ok(!/next stake/i.test(martOff),'mais AUCUNE « next stake » : rien n est misé quand les paris sont éteints');
+    ok(/pause|frozen|betting is OFF/i.test(martOff),'elle est montrée gelée / en pause');
+    var metaOff=await page.textContent('#pkMeta');
+    ok(!/bets the opposite side/i.test(metaOff),'et le méta ne dit plus « bets the opposite side » quand on ne parie pas');
+  }
+
   await nav.close(); await new Promise(function(s){srv.close(s);});
   console.log('\nVERIFICATIONS : '+n+(rates?'  —  RATES : '+rates+'/'+n:'  —  tout passe'));
   process.exit(rates?1:0);

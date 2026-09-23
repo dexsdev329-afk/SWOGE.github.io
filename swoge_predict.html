@@ -994,12 +994,20 @@ document.addEventListener("DOMContentLoaded", function(){
     if(mt && mt.on){
       var bust = mt.busts>0 ? (' · <span class="bust">busted '+mt.busts+'×</span>') : '';
       $("pkMart").style.display="";
-      $("pkMart").innerHTML = "Martingale ×"+mt.facteur+" · next stake <b>"+fmt(mt.miseCourante,4)+" BNB</b> · step "+mt.palier+"/"+mt.paliers+" (max reached "+mt.palierMax+")"+bust
-        +'<br><span style="color:var(--dim)">A win resets to the base stake; past step '+mt.paliers+' the ladder busts back to base — it does <b>not</b> always recover.</span>';
+      if(j.parie===false){
+        /* Paris éteints : le palier est GELÉ, il n y a pas de « prochaine mise ».
+           Afficher « next stake » ferait croire qu on joue encore — c est la
+           contradiction que le propriétaire a relevée. */
+        $("pkMart").innerHTML = "Martingale ×"+mt.facteur+" · <b class=\"neg\">paused — betting is OFF</b> · frozen at step "+mt.palier+"/"+mt.paliers+" (max reached "+mt.palierMax+")"+bust
+          +'<br><span style="color:var(--dim)">No stake is placed while betting is off. Were it on: a win resets to the base stake, and past step '+mt.paliers+' the ladder busts back to base — it does <b>not</b> always recover.</span>';
+      } else {
+        $("pkMart").innerHTML = "Martingale ×"+mt.facteur+" · next stake <b>"+fmt(mt.miseCourante,4)+" BNB</b> · step "+mt.palier+"/"+mt.paliers+" (max reached "+mt.palierMax+")"+bust
+          +'<br><span style="color:var(--dim)">A win resets to the base stake; past step '+mt.paliers+' the ladder busts back to base — it does <b>not</b> always recover.</span>';
+      }
     } else if(mt){ $("pkMart").style.display=""; $("pkMart").innerHTML='<span style="color:var(--dim)">Martingale off — flat stake.</span>'; }
     else { $("pkMart").style.display="none"; }
     var maj=j.maj?new Date(j.maj):null;
-    $("pkMeta").textContent = (j.marche||"BNB")+" · 5 min rounds · fee "+Math.round((j.fee||0.03)*100)+"% · base stake "+j.mise+" BNB · paper"+(j.inverse?" · INVERSE (bets the opposite side)":"")+(j.enPause?" · off":"")+(maj?(" · updated "+maj.toLocaleTimeString()):"");
+    $("pkMeta").textContent = (j.marche||"BNB")+" · 5 min rounds · fee "+Math.round((j.fee||0.03)*100)+"% · base stake "+j.mise+" BNB · paper"+(j.inverse?(j.parie===false?" · INVERSE mode (set, not betting)":" · INVERSE (bets the opposite side)"):"")+(j.enPause?" · off":"")+(maj?(" · updated "+maj.toLocaleTimeString()):"");
   }
   chargePancake();
   setInterval(chargePancake, 15000);

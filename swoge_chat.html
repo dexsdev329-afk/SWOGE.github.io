@@ -98,34 +98,7 @@ video{ max-width:100%; }
 .menubtn{ min-width:44px; min-height:44px; }
 </style>
 
-<title>SWOGE Studio · AI images and video, paid in $SWOGE</title>
-<style>
-  /* Les cases mesurees : une ligne par case, l'effectif TOUJOURS a cote du
-     chiffre. Sans lui, « -43,7 % » se lit pareil qu'il porte sur six lectures
-     ou sur six cents. */
-  #mesureCases{display:flex;flex-direction:column;gap:6px;margin-top:10px}
-  .mc-l{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:11px;
-        background:#F7FAFF;border:1px solid #E6EDF9}
-  .mc-q{flex:1 1 auto;min-width:0;font:600 13px/1.35 'Outfit',system-ui,sans-serif;color:#22324e}
-  .mc-q b{display:block;font:700 10px/1.3 'Inter',system-ui,sans-serif;letter-spacing:.6px;
-          text-transform:uppercase;color:#8A99B5}
-  .mc-v{flex:0 0 auto;font:800 15px/1 'Outfit',system-ui,sans-serif;font-variant-numeric:tabular-nums}
-  .mc-n{flex:0 0 auto;font:600 10px/1 'JetBrains Mono',ui-monospace,monospace;color:#A3B0C8}
-  .mc-up{color:#0F8A4F} .mc-dn{color:#B3261E}
-  /* Un fait de contrat n'a pas besoin d'une moyenne : il vaut pour lui-meme. */
-  #mesureFaits{display:flex;flex-wrap:wrap;gap:7px;margin:4px 0 2px}
-  .mf{display:inline-flex;align-items:center;gap:7px;padding:7px 11px;border-radius:999px;
-      background:#FDECEC;border:1px solid #F6C9C6;color:#B3261E;
-      font:700 12px/1 'Outfit',system-ui,sans-serif}
-  .mf i{font-style:normal;font:600 9.5px/1 'JetBrains Mono',ui-monospace,monospace;opacity:.7}
-  .mc-rien{padding:14px 2px;color:#8A99B5;font:500 13px/1.5 'Outfit',system-ui,sans-serif}
-  .mc-part{display:flex;align-items:center;gap:12px;margin-top:12px;flex-wrap:wrap}
-  #mcCarte{border:0;border-radius:11px;padding:11px 16px;cursor:pointer;background:#1B5FE0;color:#fff;
-           font:800 13px/1 'Outfit',system-ui,sans-serif}
-  #mcCarte:hover{background:#1750c4}
-  #mcCarte:disabled{opacity:.55;cursor:default}
-  .mc-dit{font:600 12px/1.4 'Outfit',system-ui,sans-serif;color:#6B7C99}
-</style>
+<title>SWOGE AI Chat · Claude models, pay per question in $SWOGE</title>
 
 <!-- ==================== REFERENCEMENT ET PARTAGE ====================
      Bloc identique sur toutes les pages, pose juste apres le titre.
@@ -145,21 +118,21 @@ video{ max-width:100%; }
      atteignable avec un `?game=`, un `#` ou un `www`. Sans elle, les deux
      versions se font concurrence et aucune ne gagne.
      ================================================================= -->
-<link rel="canonical" href="https://swoleeswoge.dog/swoge_studio.html">
-<meta name="description" content="SWOGE Studio: generate images and videos and pay per generation in $SWOGE. Images from OpenAI, video from Grok Imagine, prompts from Claude — one place, more models added over time. In preparation.">
+<link rel="canonical" href="https://swoleeswoge.dog/swoge_chat.html">
+<meta name="description" content="SWOGE AI Chat: ask Claude Opus, Fable, Sonnet or Haiku, with live web search and cited sources. No subscription — each answer is billed from your $SWOGE balance at the actual cost shown.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="SWOGE WORLD">
 <meta property="og:locale" content="en_US">
-<meta property="og:title" content="SWOGE Studio · AI images and video, paid in $SWOGE">
-<meta property="og:description" content="SWOGE Studio: generate images and videos and pay per generation in $SWOGE. Images from OpenAI, video from Grok Imagine, prompts from Claude — one place, more models added over time. In preparation.">
-<meta property="og:url" content="https://swoleeswoge.dog/swoge_studio.html">
+<meta property="og:title" content="SWOGE AI Chat · Claude models, pay per question in $SWOGE">
+<meta property="og:description" content="SWOGE AI Chat: ask Claude Opus, Fable, Sonnet or Haiku, with live web search and cited sources. No subscription — each answer is billed from your $SWOGE balance at the actual cost shown.">
+<meta property="og:url" content="https://swoleeswoge.dog/swoge_chat.html">
 <meta property="og:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:site" content="@SwoleDogeSwoge">
-<meta name="twitter:title" content="SWOGE Studio · AI images and video, paid in $SWOGE">
-<meta name="twitter:description" content="SWOGE Studio: generate images and videos and pay per generation in $SWOGE. Images from OpenAI, video from Grok Imagine, prompts from Claude — one place, more models added over time. In preparation.">
+<meta name="twitter:title" content="SWOGE AI Chat · Claude models, pay per question in $SWOGE">
+<meta name="twitter:description" content="SWOGE AI Chat: ask Claude Opus, Fable, Sonnet or Haiku, with live web search and cited sources. No subscription — each answer is billed from your $SWOGE balance at the actual cost shown.">
 <meta name="twitter:image" content="https://swoleeswoge.dog/img/site/partage.jpg">
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="/img/site/icone-32.png">
@@ -635,15 +608,11 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
 .sw-haut a, .sw-cote a, .sw-lat a{ color:inherit; text-decoration:none; }
 </style>
 
-<!-- LA BARRE BLANCHE remplace l ancienne rangee de liens (logo, « Bench »,
-     « back to site ») : meme barre que `swoge_casino.html`, recopiee telle
-     quelle. Ce qui n a PAS ete recopie ne l a pas ete faute de matiere reelle :
-     cette page ne suit aucun solde (`#bal` n existe pas ici), ne sait pas
-     connecter de portefeuille et n a ni tiroir de compte ni `#menu` — la puce
-     de solde, les deux boutons de connexion, l avatar `#gxProfil`, `#gxMenu`
-     et `swogeprofil.js` n auraient rien eu a afficher. Les quatre chiffres de
-     la vitrine restent : ils viennent du vrai `/vitrine.json` et se cachent
-     seuls quand la requete echoue. -->
+<!-- LA BARRE BLANCHE, recopiee de `swoge_studio.html`. Ici la page CONNECTE
+     un portefeuille : `stakebubble.js` (en bas) pose ses boutons dans cette
+     barre et range le jeton de session dans `localStorage.swogeSession`, que le
+     chat envoie en `Authorization: Bearer`. Le serveur en tire l'adresse ; la
+     page ne choisit jamais qui est debite. -->
 <header class="sw-haut">
   <a class="sw-marque" href="nexus.html" id="gxMonde">
     <span class="sw-patte">&#128062;</span>
@@ -702,7 +671,7 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
       <a href="swoge_perp.html"><span class="ic">&#128200;</span>AI Perp</a>
       <a href="swoge_predict.html"><span class="ic">&#128302;</span>Predict</a>
       <a href="swoge_osint.html"><span class="ic">&#128269;</span>OSINT</a>
-      <a href="swoge_studio.html" class="on"><span class="ic">&#127912;</span>Studio</a>
+      <a href="swoge_studio.html" class="on" aria-current="page"><span class="ic">&#127912;</span>Studio</a>
       <a href="whitepaper.html"><span class="ic">&#128220;</span>Docs</a>
     </nav>
     <div class="sw-reseaux">
@@ -722,153 +691,474 @@ nav.sb-ancre{display:flex;align-items:center;gap:12px;
     </article>
   </aside>
 
-<main>
-<div class="wrap">
 
+<main class="chat-main">
 <style>
-/* ---- CE QUI EST PROPRE A CETTE PAGE ----
- * Le reste — palette, nav, correctifs communs — vient du bloc partage
- * recopie en tete. */
+/* ==================== SWOGE AI CHAT — ce qui est propre a cette page ====================
+ * La palette, la nav et les correctifs communs viennent du bloc partage
+ * recopie de `swoge_studio.html`. Ici : l'interface facon ChatGPT / Claude —
+ * un composeur centre, des suggestions, un choix de modele en feuille, la
+ * recherche web facon Perplexity, et le cout de chaque reponse affiche. */
+.chat-main{min-width:0}
+.chat{max-width:780px;margin:0 auto;padding:18px 16px 0;display:flex;flex-direction:column;min-height:calc(100vh - 150px)}
+.chat-tete{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.chat-tete .titre{font-family:'Anton',sans-serif;font-size:20px;text-transform:uppercase;letter-spacing:.02em}
+.chat-tete .titre em{font-style:normal;color:var(--pool)}
+.chat-tete .droite{margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pastille{font-family:'Space Mono',monospace;font-size:11.5px;border:1px solid var(--line);background:var(--panel);
+  border-radius:999px;padding:6px 12px;color:var(--paper);white-space:nowrap}
+.pastille b{color:var(--pool)}
+.btn-fin{font-family:'Space Mono',monospace;font-size:11.5px;background:var(--panel);border:1px solid var(--line);
+  border-radius:999px;padding:6px 12px;cursor:pointer;color:var(--paper)}
+.btn-fin:hover{border-color:var(--pool)}
+.etat{margin-top:12px;border-left:3px solid var(--neutral);background:rgba(150,101,15,.06);padding:10px 14px;
+  border-radius:0 var(--r) var(--r) 0;font-size:13px}
+.etat[hidden]{display:none}
 
-.vers-chat{position:relative;z-index:2;display:inline-flex;align-items:center;gap:8px;margin-top:16px;
-  padding:10px 16px;border-radius:999px;background:#FFC53D;color:#231a06;text-decoration:none;
-  font:800 13px/1.2 'Archivo',sans-serif;max-width:100%}
-.vers-chat:hover{background:#FFD470}
-.enprep{margin-top:14px;border-left:3px solid var(--neutral);background:rgba(150,101,15,.06);
-  padding:12px 15px;border-radius:0 var(--r) var(--r) 0}
-.enprep b{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--neutral)}
+/* ---- l'accueil vide : la question, puis les suggestions ---- */
+.accueil{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:26px 0}
+.accueil h1{font-family:'Archivo',sans-serif;font-weight:800;font-size:clamp(24px,5vw,34px);margin:0 0 6px;text-transform:none}
+.accueil p{color:var(--dim);font-size:13.5px;margin:0 0 18px;max-width:520px}
+/* `display:flex` l'emporte sur l'attribut `hidden` : sans cette ligne,
+   l'accueil restait affiche au-dessus de la premiere reponse. */
+.accueil[hidden]{display:none}
+.suggestions{display:flex;flex-direction:column;gap:6px;width:100%;max-width:520px}
+.suggestion{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:transparent;border:0;
+  border-radius:10px;padding:11px 12px;font-size:15px;color:var(--paper);cursor:pointer;font-family:inherit;text-transform:none;letter-spacing:0}
+.suggestion:hover{background:var(--panel)}
+.suggestion .ic{font-size:18px;width:24px;text-align:center}
 
-/* Le choix du genre : image, video, texte. Trois grosses cartes, pas un
-   menu deroulant — c est le premier geste, il doit sauter aux yeux. */
-.genres{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:20px}
-.genre{border:1px solid var(--line);background:var(--panel);border-radius:var(--r);padding:16px;
-  cursor:pointer;text-align:left;transition:border-color .12s}
-.genre[aria-pressed="true"]{border-color:var(--pool);background:var(--goldlite)}
-.genre .ic{font-size:22px}
-.genre .t{font-family:'Anton',sans-serif;font-size:17px;text-transform:uppercase;margin-top:6px}
-.genre .p{font-family:'Space Mono',monospace;font-size:12px;color:var(--believer);margin-top:4px}
-.genre .f{font-size:11px;color:var(--dim);margin-top:6px}
-.genre .att{display:inline-block;margin-top:8px;font-family:'Space Mono',monospace;font-size:9.5px;
-  letter-spacing:.08em;text-transform:uppercase;color:var(--neutral);border:1px solid var(--neutral);
-  border-radius:2px;padding:1px 6px}
+/* ---- le fil des messages ---- */
+.fil{flex:1;display:flex;flex-direction:column;gap:18px;padding:18px 0 8px}
+.fil[hidden]{display:none}
+.msg{max-width:100%;min-width:0}
+.msg.moi{align-self:flex-end;max-width:85%;background:var(--panel2);border-radius:18px;padding:10px 15px;
+  font-size:14.5px;white-space:pre-wrap;overflow-wrap:anywhere}
+.msg.ia{align-self:stretch;font-size:14.5px;line-height:1.6;overflow-wrap:anywhere}
+.msg.ia .corps>*:first-child{margin-top:0}
+.msg.ia .corps p{margin:0 0 10px}
+.msg.ia .corps h3,.msg.ia .corps h4{font-family:'Archivo',sans-serif;font-weight:800;margin:14px 0 6px;text-transform:none}
+.msg.ia .corps ul,.msg.ia .corps ol{margin:0 0 10px;padding-left:22px}
+.msg.ia .corps a{color:var(--pool)}
+.msg.ia .corps code{font-family:'Space Mono',monospace;font-size:12.5px;background:var(--panel2);padding:1px 5px;border-radius:4px}
+.msg.ia .corps pre{background:#0B1B36;color:#E8EEF8;border-radius:10px;padding:12px 14px;overflow-x:auto;max-width:100%;margin:0 0 10px}
+.msg.ia .corps pre code{background:transparent;padding:0;color:inherit;font-size:12.5px}
+.msg .etape{font-family:'Space Mono',monospace;font-size:12px;color:var(--dim);display:flex;align-items:center;gap:8px}
+.msg .etape::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--pool);animation:clig 1.1s infinite}
+@keyframes clig{50%{opacity:.25}}
+.sources{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.source{font-family:'Space Mono',monospace;font-size:11px;border:1px solid var(--line);background:var(--panel);
+  border-radius:999px;padding:4px 10px;color:var(--paper);text-decoration:none;max-width:100%;overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap}
+.source:hover{border-color:var(--pool)}
+.meta{font-family:'Space Mono',monospace;font-size:10.5px;color:var(--dim);margin-top:8px}
+.msg.err .corps{color:var(--serpent)}
 
-/* L atelier : la zone de travail, facon composeur. */
-.atelier{margin-top:22px;border:1px solid var(--line);background:var(--panel);border-radius:var(--r);padding:16px}
-.atelier label{display:block;font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:.1em;
-  text-transform:uppercase;color:var(--dim);margin:0 0 6px}
-.atelier textarea{width:100%;min-height:88px;resize:vertical;background:var(--void2);color:var(--paper);
-  border:1px solid var(--line);border-radius:var(--r);padding:11px 13px;font-family:inherit;font-size:14px}
-.atelier textarea:focus{outline:2px solid var(--believer);outline-offset:1px}
-.depose{margin-top:14px;border:1.5px dashed var(--line);border-radius:var(--r);padding:20px;text-align:center;
-  color:var(--dim);font-size:13px;cursor:pointer}
-.depose:hover{border-color:var(--pool);color:var(--paper)}
-.reglages{display:flex;gap:18px;flex-wrap:wrap;margin-top:14px}
-.reglages .champ{flex:1;min-width:130px}
-.reglages select{width:100%;background:var(--void2);color:var(--paper);border:1px solid var(--line);
-  border-radius:var(--r);padding:9px 11px;font-family:'Space Mono',monospace;font-size:12.5px}
+/* ---- le composeur, en bas, facon ChatGPT ---- */
+.compose{position:sticky;bottom:0;background:linear-gradient(to top,var(--void) 70%,transparent);padding:10px 0 14px}
+.boite{background:var(--panel);border:1px solid var(--line);border-radius:26px;padding:10px 12px 8px;
+  box-shadow:0 2px 14px rgba(11,27,54,.06)}
+.boite textarea{width:100%;border:0;resize:none;background:transparent;font-family:inherit;font-size:15px;
+  color:var(--paper);min-height:26px;max-height:200px;padding:4px 6px;outline:none;line-height:1.45}
+.outils{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px}
+.outil{display:inline-flex;align-items:center;gap:6px;background:transparent;border:1px solid var(--line);
+  border-radius:999px;padding:6px 11px;font-size:12.5px;cursor:pointer;color:var(--paper);font-family:inherit;max-width:100%}
+.outil:hover{border-color:var(--pool)}
+.outil[aria-pressed="true"]{background:var(--goldlite);border-color:var(--pool);color:var(--pool)}
+.outils .envoi{margin-left:auto;width:38px;height:38px;border-radius:50%;border:0;background:var(--pool);color:#fff;
+  font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex:0 0 38px}
+.outils .envoi:disabled{opacity:.35;cursor:not-allowed}
+.prixq{font-family:'Space Mono',monospace;font-size:10.5px;color:var(--dim);text-align:center;margin-top:6px}
 
-/* Le pied de l atelier : le prix, le wallet, le bouton. Le prix est en
-   $SWOGE et il est GROS : c est l argument de la page. */
-.pied{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:18px;
-  border-top:1px solid var(--line);padding-top:16px}
-.prix{font-family:'Anton',sans-serif;font-size:26px;color:var(--pool);line-height:1}
-.prix small{font-family:'Space Mono',monospace;font-size:11px;color:var(--dim);letter-spacing:.06em;
-  text-transform:uppercase;display:block;margin-bottom:2px}
-.pied .droite{margin-left:auto;display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-#moyen{background:var(--void2);color:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:10px 11px;font-family:'Space Mono',monospace;font-size:12px}
-button.wallet{font-family:'Space Mono',monospace;font-size:12px;text-transform:uppercase;letter-spacing:.04em;
-  background:transparent;color:var(--dim);border:1px solid var(--line);border-radius:var(--r);padding:11px 16px;cursor:pointer}
-button.wallet:hover{border-color:var(--pool);color:var(--paper)}
-button.generer{font-family:'Anton',sans-serif;font-size:17px;letter-spacing:.04em;text-transform:uppercase;
-  background:var(--gold);color:#fff;border:0;border-radius:var(--r);padding:13px 26px;cursor:pointer}
-button.generer:disabled{opacity:.55;cursor:not-allowed}
+/* ---- la feuille de choix du modele, facon Claude ---- */
+.voile-feuille{position:fixed;inset:0;background:rgba(11,27,54,.35);z-index:60;display:flex;align-items:flex-end;justify-content:center}
+.voile-feuille[hidden]{display:none}
+.feuille{background:var(--panel);width:100%;max-width:520px;border-radius:20px 20px 0 0;padding:16px 16px 20px;
+  max-height:86vh;overflow:auto}
+.feuille .haut{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.feuille .haut b{font-family:'Archivo',sans-serif;font-weight:800;font-size:17px}
+.feuille .fermer{background:var(--panel2);border:0;border-radius:50%;width:34px;height:34px;font-size:16px;cursor:pointer;color:var(--paper);padding:0;line-height:34px;text-align:center}
+/* Les boutons du decor partage sont en capitales : pas ceux de la feuille. */
+.modele,.effort,.feuille .fermer{text-transform:none;letter-spacing:0}
+.modele{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:transparent;border:0;
+  border-bottom:1px solid var(--line);padding:13px 6px;cursor:pointer;font-family:inherit;color:var(--paper)}
+.modele:last-child{border-bottom:0}
+/* Le zoom de survol du decor partage (`button:hover{transform:scale(1.03)}`)
+   deborde sur une rangee pleine largeur : ici, le survol colore seulement. */
+.modele:hover,.suggestion:hover,.histo button:hover{transform:none;filter:none}
+.modele:hover{background:var(--panel2)}
+.modele > span:nth-child(2){flex:1 1 auto;min-width:0}
+.modele .nom{font-size:16px;font-weight:700}
+.modele .desc{font-size:12.5px;color:var(--dim);margin-top:2px}
+.modele .prix{margin-left:auto;font-family:'Space Mono',monospace;font-size:10.5px;color:var(--dim);text-align:right;white-space:nowrap}
+.modele .coche{flex:0 0 18px;width:18px;color:var(--pool);font-weight:800}
+.efforts{display:flex;gap:6px;margin-top:14px;align-items:center;flex-wrap:wrap}
+.efforts .lbl{font-size:13px;font-weight:700;margin-right:6px}
+.effort{border:1px solid var(--line);background:transparent;border-radius:999px;padding:6px 12px;font-size:12.5px;cursor:pointer;font-family:inherit;color:var(--paper)}
+.effort[aria-pressed="true"]{background:var(--goldlite);border-color:var(--pool);color:var(--pool)}
+.efforts[hidden]{display:none}
 
-/* Le flux de paiement, montre en cinq pas : c est ce qui rassure, et c est
-   ce que la page fera vraiment quand elle sera branchee. */
-.flux{margin-top:26px;border-top:1px solid var(--line);padding-top:18px}
-.flux ol{list-style:none;padding:0;margin:12px 0 0;counter-reset:f}
-.flux li{counter-increment:f;position:relative;padding:8px 0 8px 40px;font-size:13px;color:var(--paper)}
-.flux li::before{content:counter(f);position:absolute;left:0;top:6px;width:26px;height:26px;border-radius:50%;
-  background:var(--goldlite);color:var(--pool);font-family:'Anton',sans-serif;font-size:14px;
-  display:flex;align-items:center;justify-content:center}
-.flux li b{color:var(--paper)} .flux li span{color:var(--dim)}
-
-.bords{border:1px solid var(--line);background:var(--panel);border-radius:var(--r);padding:14px 16px;margin-top:12px}
-.bords li{margin:0 0 7px;font-size:12.5px} .bords li:last-child{margin-bottom:0}
-.apercu{margin-top:16px;border:1px solid var(--line);border-radius:var(--r);min-height:120px;
-  display:flex;align-items:center;justify-content:center;color:var(--dim);font-size:13px;background:var(--void2)}
+/* ---- l'historique local, en tiroir ---- */
+.histo{margin-top:10px;border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:8px}
+.histo[hidden]{display:none}
+.histo button{display:block;width:100%;text-align:left;background:transparent;border:0;padding:8px 10px;border-radius:8px;
+  font-size:13px;cursor:pointer;color:var(--paper);font-family:inherit;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.histo button:hover{background:var(--panel2)}
+.histo .vide{font-size:12.5px;color:var(--dim);padding:8px 10px}
 </style>
 
-  <div class="top">
-    <div class="kick">SWOGE Studio · pay per generation in $SWOGE</div>
-    <h1>Make an image or a <em>video</em>, pay in $SWOGE</h1>
-    <div class="sub">
-      One place for every model: images from OpenAI, video from Grok Imagine, answers with sources like
-      Perplexity, and Claude for prompts and chat. You pick, you pay per generation in $SWOGE or ETH, you download.
-      More models get added over time — the page reads the catalogue, so new ones just appear.
-    </div>
-
-    <!-- Le chat, lui, est une page a part (`swoge_chat.html`) : il a sa propre
-         facturation a la question, et ne partage pas l etat « en preparation »
-         de la generation d images et de video. -->
-    <a class="vers-chat" href="swoge_chat.html">&#128172; Open SWOGE AI Chat &mdash; Claude, with web sources &rarr;</a>
-
-    <!-- L honnetete d abord : rien ne genere encore. -->
-    <div class="enprep">
-      <b>In preparation</b><br>
-      The interface is here so you can see the shape. Generation is not live yet — the provider keys
-      and the $SWOGE payment address are still being set up. Nothing charges your wallet on this page today.
+<div class="chat">
+  <div class="chat-tete">
+    <div class="titre">SWOGE <em>AI</em> Chat</div>
+    <div class="droite">
+      <span class="pastille" id="solde" title="Your SWOGE gaming balance">Balance <b>—</b></span>
+      <button class="btn-fin" id="histoBtn" type="button" aria-expanded="false">&#128172; Chats</button>
+      <button class="btn-fin" id="nouveau" type="button">&#10133; New chat</button>
     </div>
   </div>
+  <div class="histo" id="histo" hidden></div>
+  <div class="etat" id="etat" hidden></div>
 
-  <!-- LE CHOIX DU GENRE, peint depuis le catalogue du serveur. -->
-  <div class="genres" id="genres" role="group" aria-label="What to make"></div>
+  <section class="accueil" id="accueil">
+    <h1>What can I help with?</h1>
+    <p>Ask any top AI model — Claude Opus 5.5, Fable 5.1, Sonnet 5, Haiku 4.5 — and search the live web with sources.
+       You pay per question in $SWOGE, only for what the answer actually used.</p>
+    <div class="suggestions" id="suggestions">
+      <button class="suggestion" type="button" data-sugg="web"><span class="ic">&#127760;</span>Search the web</button>
+      <button class="suggestion" type="button" data-sugg="ecrire"><span class="ic">&#9998;&#65039;</span>Write or edit</button>
+      <button class="suggestion" type="button" data-sugg="expliquer"><span class="ic">&#128161;</span>Explain something simply</button>
+      <button class="suggestion" type="button" data-sugg="code"><span class="ic">&#128187;</span>Help me with code</button>
+    </div>
+  </section>
 
-  <div class="atelier" id="atelier" hidden>
-    <label for="prompt" id="lblPrompt">Prompt</label>
-    <textarea id="prompt" placeholder="Describe what you want…"></textarea>
+  <section class="fil" id="fil" hidden aria-live="polite"></section>
 
-    <div class="depose" id="depose" hidden>Drop an image, or click to choose — for image-to-video</div>
-
-    <div class="reglages" id="reglages"></div>
-
-    <div class="pied">
-      <div class="prix"><small>Price</small><span id="prix">—</span>
-        <small style="margin-top:4px;text-transform:none;letter-spacing:0">follows the live $SWOGE rate — locked in a quote when you pay</small></div>
-      <div class="droite">
-        <select id="moyen" title="Pay in $SWOGE or ETH" aria-label="Payment currency"></select>
-        <button class="wallet" id="wallet">Connect wallet</button>
-        <button class="generer" id="generer" disabled>Generate</button>
+  <div class="compose">
+    <div class="boite">
+      <textarea id="question" rows="1" placeholder="Ask SWOGE AI" aria-label="Your question"></textarea>
+      <div class="outils">
+        <button class="outil" id="modeleBtn" type="button" aria-haspopup="dialog">&#10024; <span id="modeleNom">Opus 5.5</span> &#9662;</button>
+        <button class="outil" id="web" type="button" aria-pressed="false" title="Search the web and cite sources">&#127760; Search</button>
+        <button class="envoi" id="envoyer" type="button" disabled aria-label="Send">&#8593;</button>
       </div>
     </div>
-
-    <div class="apercu" id="apercu">Your result will appear here, ready to download.</div>
+    <div class="prixq" id="prixq">Loading models…</div>
   </div>
+</div>
 
-  <section class="flux">
-    <h2 style="font-family:'Anton',sans-serif;font-size:17px;text-transform:uppercase;margin:0">How paying will work</h2>
-    <p class="sub" style="font-size:12px;margin-top:4px">The flow is designed so a generation is credited only after the chain confirms the payment — never on the browser's word.</p>
-    <ol>
-      <li><b>Connect your wallet.</b> <span>Read-only until you approve a payment.</span></li>
-      <li><b>Pay the price shown — in $SWOGE or ETH.</b> <span>The price is anchored in USD and converted to the currency you pick at the live rate, locked in a quote. To the studio address, from your connected wallet.</span></li>
-      <li><b>The server reads the transaction on-chain.</b> <span>Right recipient, right token, right amount, enough confirmations — checked, never taken on trust.</span></li>
-      <li><b>The generation is credited once — and only once.</b> <span>Each transaction hash is single-use, so a payment can't be replayed for a second result.</span></li>
-      <li><b>Download, and keep the record.</b> <span>Every generation and its transaction stay in your history.</span></li>
-    </ol>
-  </section>
-
-  <section class="flux">
-    <h2 style="font-family:'Anton',sans-serif;font-size:17px;text-transform:uppercase;margin:0">What this page will not do</h2>
-    <div class="bords"><ul>
-      <li>No API key ever reaches your browser — every provider call is made server-side.</li>
-      <li>A generation is credited only after the payment is confirmed on-chain, never on the browser's claim.</li>
-      <li>A transaction hash is used once: no double-spend, no replay for a second generation.</li>
-      <li>A payment to the wrong address, in the wrong token, or for too little is refused. Native ETH and a token payment are never confused, and the amount is compared in base units (wei), not floating point.</li>
-      <li>Nothing charges your wallet while the studio is in preparation.</li>
-    </ul></div>
-  </section>
-
+<div class="voile-feuille" id="feuille" hidden role="dialog" aria-modal="true" aria-label="Select a model">
+  <div class="feuille">
+    <div class="haut"><b>Select a model</b><button class="fermer" id="fermerFeuille" type="button" aria-label="Close">&#10005;</button></div>
+    <div id="modeles"></div>
+    <div class="efforts" id="efforts" hidden>
+      <span class="lbl">Effort</span>
+      <button class="effort" type="button" data-effort="low" aria-pressed="false">Low</button>
+      <button class="effort" type="button" data-effort="medium" aria-pressed="false">Medium</button>
+      <button class="effort" type="button" data-effort="high" aria-pressed="false">High</button>
+    </div>
   </div>
+</div>
+
+<script>
+/* ==================== SWOGE AI CHAT — la page ====================
+ * La page MONTRE et TRANSPORTE ; elle ne decide rien. Le prix, le debit et
+ * le remboursement sont calcules par le serveur (`/studio/chat`), qui ne
+ * debite QUE l'adresse de la session. Aucune cle de fournisseur ne touche ce
+ * navigateur. L'historique des conversations reste dans CE navigateur
+ * (`localStorage`), jamais envoye ailleurs que dans la question elle-meme. */
+(function(){
+  "use strict";
+  function serveur(){
+    try { var q = new URLSearchParams(location.search).get("server"); if (q) return String(q).replace(/^ws/, "http").replace(/\/$/, ""); } catch (e) {}
+    return "https://web-production-220a3.up.railway.app";
+  }
+  var $ = function(id){ return document.getElementById(id); };
+  var TXT = {
+    signin: "Sign in with your wallet (top right) to start chatting.",
+    ferme: "AI Chat is warming up.",
+    reflexion: "Thinking…",
+    recherche: "Searching the web…",
+    erreurReseau: "Connection lost — you were not charged for an unfinished answer.",
+    vide: "No saved chats yet.",
+    refus: "The model declined to answer this request."
+  };
+  var SUGG = {
+    web: { texte: "", web: true, place: "Search the web for…" },
+    ecrire: { texte: "Help me write ", web: false },
+    expliquer: { texte: "Explain simply: ", web: false },
+    code: { texte: "Help me with this code:\n", web: false }
+  };
+  function lisLocal(k, d){ try { var v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } }
+  function ecrisLocal(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  function jeton(){ try { return localStorage.getItem("swogeSession"); } catch (e) { return null; } }
+  function nombre(x){ var n = Number(x); if (!isFinite(n)) return "—"; return n >= 1000 ? Math.round(n).toLocaleString("en-US") : n.toLocaleString("en-US", { maximumFractionDigits: 2 }); }
+
+  var etat = {
+    cat: null, modele: lisLocal("swogeChatModele", null), effort: lisLocal("swogeChatEffort", null),
+    web: false, occupe: false, conv: null, convs: lisLocal("swogeChats", [])
+  };
+
+  /* ---- le rendu Markdown, SUR : tout est echappe AVANT d'etre mis en forme ----
+     Le texte vient d'un modele : il ne doit jamais pouvoir injecter de HTML. */
+  function echappe(s){ return String(s).replace(/[&<>"']/g, function(c){ return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]; }); }
+  function enLigne(s){
+    return s.replace(/`([^`]+)`/g, "<code>$1</code>")
+      .replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>")
+      .replace(/(^|[^*])\*([^*\n]+)\*/g, "$1<i>$2</i>")
+      .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener nofollow">$1</a>');
+  }
+  function markdown(src){
+    var morceaux = String(src || "").split(/```/);
+    var html = "";
+    for (var i = 0; i < morceaux.length; i++) {
+      if (i % 2 === 1) {                         /* un bloc de code */
+        var code = morceaux[i].replace(/^[a-zA-Z0-9_+-]*\n/, "");
+        html += "<pre><code>" + echappe(code.replace(/\n$/, "")) + "</code></pre>";
+        continue;
+      }
+      var lignes = echappe(morceaux[i]).split("\n"), liste = null, para = [];
+      var fermePara = function(){ if (para.length) { html += "<p>" + enLigne(para.join("<br>")) + "</p>"; para = []; } };
+      var fermeListe = function(){ if (liste) { html += "</" + liste + ">"; liste = null; } };
+      for (var j = 0; j < lignes.length; j++) {
+        var l = lignes[j], m;
+        if (!l.trim()) { fermePara(); fermeListe(); continue; }
+        if ((m = l.match(/^(#{1,4})\s+(.*)$/))) { fermePara(); fermeListe(); html += (m[1].length <= 2 ? "<h3>" : "<h4>") + enLigne(m[2]) + (m[1].length <= 2 ? "</h3>" : "</h4>"); continue; }
+        if ((m = l.match(/^\s*[-*•]\s+(.*)$/))) { fermePara(); if (liste !== "ul") { fermeListe(); html += "<ul>"; liste = "ul"; } html += "<li>" + enLigne(m[1]) + "</li>"; continue; }
+        if ((m = l.match(/^\s*\d+[.)]\s+(.*)$/))) { fermePara(); if (liste !== "ol") { fermeListe(); html += "<ol>"; liste = "ol"; } html += "<li>" + enLigne(m[1]) + "</li>"; continue; }
+        fermeListe(); para.push(l);
+      }
+      fermePara(); fermeListe();
+    }
+    return html;
+  }
+
+  function dit(t){ var e = $("etat"); e.textContent = t || ""; e.hidden = !t; }
+  function modeleCourant(){
+    var c = etat.cat; if (!c) return null;
+    return c.modeles.filter(function(m){ return m.id === etat.modele; })[0] || c.modeles.filter(function(m){ return m.id === c.defaut; })[0] || c.modeles[0];
+  }
+  function peintPrix(){
+    var m = modeleCourant();
+    $("modeleNom").textContent = m ? m.nom : "Model";
+    $("web").hidden = !(m && m.recherche);
+    if (!m) return;
+    $("prixq").textContent = m.nom + " · ~" + nombre(m.typiqueSwoge) + " $SWOGE per question (max " + nombre(m.maxSwoge) + ") · you pay only what the answer uses";
+  }
+  function peintBoutons(){ $("envoyer").disabled = etat.occupe || !$("question").value.trim(); }
+
+  /* ---- la feuille des modeles ---- */
+  function peintFeuille(){
+    var c = etat.cat, box = $("modeles"); box.innerHTML = "";
+    if (!c) return;
+    c.modeles.forEach(function(m){
+      var b = document.createElement("button");
+      b.type = "button"; b.className = "modele"; b.setAttribute("data-modele", m.id);
+      b.innerHTML = '<span class="coche">' + (m.id === (modeleCourant() || {}).id ? "&#10003;" : "") + '</span>'
+        + '<span><div class="nom">' + echappe(m.nom) + '</div><div class="desc">' + echappe(m.note) + '</div></span>'
+        + '<span class="prix">~' + nombre(m.typiqueSwoge) + ' $SWOGE<br>per question</span>';
+      b.addEventListener("click", function(){ etat.modele = m.id; ecrisLocal("swogeChatModele", m.id); peintFeuille(); peintPrix(); });
+      box.appendChild(b);
+    });
+    var mc = modeleCourant();
+    $("efforts").hidden = !(mc && mc.effort);
+    Array.prototype.forEach.call(document.querySelectorAll(".effort"), function(b){
+      b.setAttribute("aria-pressed", String(b.getAttribute("data-effort") === (etat.effort || "medium")));
+    });
+  }
+  function ouvreFeuille(){ peintFeuille(); $("feuille").hidden = false; }
+  function fermeFeuille(){ $("feuille").hidden = true; }
+
+  /* ---- le fil ---- */
+  function ajouteMsg(role, texte){
+    $("accueil").hidden = true; $("fil").hidden = false;
+    var d = document.createElement("div");
+    d.className = "msg " + (role === "user" ? "moi" : "ia");
+    if (role === "user") d.textContent = texte;
+    else d.innerHTML = '<div class="corps"></div>';
+    $("fil").appendChild(d);
+    d.scrollIntoView({ block: "end" });
+    return d;
+  }
+  function peintConv(){
+    $("fil").innerHTML = "";
+    var c = etat.conv;
+    if (!c || !c.messages.length) { $("fil").hidden = true; $("accueil").hidden = false; return; }
+    c.messages.forEach(function(m){
+      var d = ajouteMsg(m.role, m.content);
+      if (m.role === "assistant") {
+        d.querySelector(".corps").innerHTML = markdown(m.content);
+        if (m.sources && m.sources.length) d.appendChild(sourcesEl(m.sources));
+        if (m.meta) { var mt = document.createElement("div"); mt.className = "meta"; mt.textContent = m.meta; d.appendChild(mt); }
+      }
+    });
+  }
+  function sourcesEl(sources){
+    var s = document.createElement("div"); s.className = "sources";
+    sources.forEach(function(x, i){
+      var a = document.createElement("a"); a.className = "source"; a.href = x.url; a.target = "_blank"; a.rel = "noopener nofollow";
+      var hote = x.url; try { hote = new URL(x.url).hostname.replace(/^www\./, ""); } catch (e) {}
+      a.textContent = (i + 1) + " · " + (x.titre || hote); a.title = hote;
+      s.appendChild(a);
+    });
+    return s;
+  }
+  function nouvelleConv(){
+    etat.conv = { id: String(Date.now()), titre: "", messages: [] };
+    peintConv(); $("question").focus();
+  }
+  function sauveConv(){
+    var c = etat.conv; if (!c || !c.messages.length) return;
+    c.titre = c.titre || c.messages[0].content.slice(0, 60);
+    etat.convs = [c].concat(etat.convs.filter(function(x){ return x.id !== c.id; })).slice(0, 20);
+    ecrisLocal("swogeChats", etat.convs);
+  }
+  function peintHisto(){
+    var h = $("histo"); h.innerHTML = "";
+    if (!etat.convs.length) { h.innerHTML = '<div class="vide">' + TXT.vide + '</div>'; return; }
+    etat.convs.forEach(function(c){
+      var b = document.createElement("button"); b.type = "button"; b.textContent = c.titre || "Chat";
+      b.addEventListener("click", function(){ etat.conv = JSON.parse(JSON.stringify(c)); peintConv(); basculeHisto(false); });
+      h.appendChild(b);
+    });
+  }
+  function basculeHisto(ouvre){
+    var h = $("histo"); var o = typeof ouvre === "boolean" ? ouvre : h.hidden;
+    if (o) peintHisto(); h.hidden = !o; $("histoBtn").setAttribute("aria-expanded", String(o));
+  }
+
+  /* ---- le solde ---- */
+  function chargeSolde(){
+    var j = jeton();
+    if (!j) { $("solde").innerHTML = "Balance <b>sign in</b>"; return; }
+    fetch(serveur() + "/studio/chat/solde", { headers: { authorization: "Bearer " + j }, cache: "no-store" })
+      .then(function(r){ return r.json(); })
+      .then(function(d){ if (d && d.ok) $("solde").innerHTML = "Balance <b>" + nombre(d.solde) + " $SWOGE</b>"; else $("solde").innerHTML = "Balance <b>sign in</b>"; })
+      ["catch"](function(){});
+  }
+
+  /* ---- envoyer : un flux SSE lu a la main (EventSource ne sait pas POSTer) ---- */
+  function envoyer(){
+    var q = $("question").value.trim();
+    if (!q || etat.occupe) return;
+    var j = jeton();
+    if (!j) { dit(TXT.signin); return; }
+    if (!etat.cat || !etat.cat.ouvert) { dit((etat.cat && etat.cat.note) || TXT.ferme); return; }
+    if (!etat.conv) nouvelleConv();
+    var m = modeleCourant();
+    etat.conv.messages.push({ role: "user", content: q });
+    ajouteMsg("user", q);
+    $("question").value = ""; dimensionne();
+    etat.occupe = true; peintBoutons(); dit("");
+    var d = ajouteMsg("assistant", ""), corps = d.querySelector(".corps"), texte = "";
+    var etape = document.createElement("div"); etape.className = "etape"; etape.textContent = TXT.reflexion; d.insertBefore(etape, corps);
+    var historique = etat.conv.messages.map(function(x){ return { role: x.role, content: x.content }; });
+    var fini = false;
+    function termine(){ etat.occupe = false; peintBoutons(); if (etape.parentNode) etape.remove(); }
+    fetch(serveur() + "/studio/chat", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: "Bearer " + j },
+      body: JSON.stringify({ modele: m.id, messages: historique, recherche: etat.web && m.recherche, effort: m.effort ? (etat.effort || "medium") : undefined })
+    }).then(function(rep){
+      if (!rep.ok || !rep.body) {
+        return rep.json().then(function(e){ throw { code: rep.status, raison: e && e.raison }; }, function(){ throw { code: rep.status }; });
+      }
+      var lecteur = rep.body.getReader(), dec = new TextDecoder(), tampon = "";
+      function evenement(type, data){
+        if (type === "texte") { if (etape.parentNode) etape.remove(); texte += data.t; corps.innerHTML = markdown(texte); }
+        else if (type === "etape") { etape.textContent = data.quoi === "recherche" ? TXT.recherche : TXT.reflexion; if (!etape.parentNode) d.insertBefore(etape, corps); }
+        else if (type === "fin") {
+          fini = true;
+          texte = data.texte || texte;
+          if (!texte && data.stop === "refusal") texte = TXT.refus;
+          corps.innerHTML = markdown(texte);
+          if (data.sources && data.sources.length) d.appendChild(sourcesEl(data.sources));
+          var meta = m.nom + " · " + nombre(data.factureSwoge) + " $SWOGE" + (data.usage && data.usage.recherches ? " · " + data.usage.recherches + " web search" + (data.usage.recherches > 1 ? "es" : "") : "");
+          var mt = document.createElement("div"); mt.className = "meta"; mt.textContent = meta; d.appendChild(mt);
+          etat.conv.messages.push({ role: "assistant", content: texte, sources: data.sources || [], meta: meta });
+          sauveConv();
+          if (data.solde) $("solde").innerHTML = "Balance <b>" + nombre(data.solde) + " $SWOGE</b>";
+        } else if (type === "erreur") {
+          fini = true; throw data;
+        }
+      }
+      function lit(){
+        return lecteur.read().then(function(r){
+          if (r.done) return;
+          tampon += dec.decode(r.value, { stream: true });
+          var blocs = tampon.split("\n\n"); tampon = blocs.pop();
+          blocs.forEach(function(b){
+            var t = (b.match(/^event: (.+)$/m) || [])[1], x = (b.match(/^data: (.+)$/m) || [])[1];
+            if (t && x) { try { evenement(t, JSON.parse(x)); } catch (e) { if (e && (e.code || e.raison)) throw e; } }
+          });
+          return lit();
+        });
+      }
+      return lit();
+    }).then(function(){
+      if (!fini) throw { raison: TXT.erreurReseau };
+      termine();
+    })["catch"](function(e){
+      termine();
+      /* La question n'a pas ete servie : elle ne reste pas dans l'historique envoye. */
+      etat.conv.messages.pop();
+      d.classList.add("err");
+      var raison = (e && e.raison) || TXT.erreurReseau;
+      if (e && e.code === 402) raison += " — top up your balance in the Wallet (needs ~" + nombre(e.requisSwoge) + " $SWOGE for this model).";
+      if (e && e.code === 401) raison = TXT.signin;
+      corps.textContent = raison;
+    });
+  }
+
+  function dimensionne(){ var t = $("question"); t.style.height = "auto"; t.style.height = Math.min(200, t.scrollHeight) + "px"; peintBoutons(); }
+
+  /* ---- les gestes ---- */
+  $("question").addEventListener("input", dimensionne);
+  $("question").addEventListener("keydown", function(e){ if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); envoyer(); } });
+  $("envoyer").addEventListener("click", envoyer);
+  $("modeleBtn").addEventListener("click", ouvreFeuille);
+  $("fermerFeuille").addEventListener("click", fermeFeuille);
+  $("feuille").addEventListener("click", function(e){ if (e.target === $("feuille")) fermeFeuille(); });
+  $("web").addEventListener("click", function(){ etat.web = !etat.web; $("web").setAttribute("aria-pressed", String(etat.web)); });
+  $("nouveau").addEventListener("click", function(){ nouvelleConv(); basculeHisto(false); });
+  $("histoBtn").addEventListener("click", function(){ basculeHisto(); });
+  Array.prototype.forEach.call(document.querySelectorAll(".effort"), function(b){
+    b.addEventListener("click", function(){ etat.effort = b.getAttribute("data-effort"); ecrisLocal("swogeChatEffort", etat.effort); peintFeuille(); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll(".suggestion"), function(b){
+    b.addEventListener("click", function(){
+      var s = SUGG[b.getAttribute("data-sugg")]; if (!s) return;
+      if (s.web) { etat.web = true; $("web").setAttribute("aria-pressed", "true"); }
+      var t = $("question"); t.value = s.texte; if (s.place) t.placeholder = s.place; t.focus(); dimensionne();
+    });
+  });
+
+  /* ---- demarrage : le catalogue d'abord, le solde ensuite ---- */
+  if (!jeton()) dit(TXT.signin);
+  fetch(serveur() + "/studio/chat/catalogue", { cache: "no-store" })
+    .then(function(r){ return r.json(); })
+    .then(function(c){
+      etat.cat = c;
+      if (!c.ouvert) dit(c.note || TXT.ferme);
+      peintPrix(); peintBoutons();
+    })["catch"](function(){ $("prixq").textContent = TXT.ferme; });
+  chargeSolde();
+  nouvelleConv();
+
+  /* La connexion se fait APRES le chargement (bouton de `stakebubble.js`) :
+     le jeton apparait alors dans `localStorage`, dans CET onglet — l'evenement
+     `storage` ne le signalerait pas. On le guette, et le solde suit. */
+  var dernierJeton = jeton();
+  setInterval(function(){
+    var j = jeton();
+    if (j === dernierJeton) return;
+    dernierJeton = j;
+    if (j && $("etat").textContent === TXT.signin) dit("");
+    chargeSolde();
+  }, 2000);
+})();
+</script>
+</main>
+
   <!-- LA COLONNE DE DROITE, sans la carte « YOUR BALANCE » : cette page ne
        suit pas de solde, il n y a pas de `#bal` a recopier — une carte de
        solde y afficherait un chiffre invente. Restent les deux affiches, qui
@@ -890,133 +1180,14 @@ button.generer:disabled{opacity:.55;cursor:not-allowed}
 
 </div>
 
-<script>
-"use strict";
-/* ==================== SWOGE STUDIO — LA PAGE ====================
- * Elle lit le CATALOGUE du serveur et se peint : les modeles, leurs prix,
- * leur etat. Ajouter un modele cote serveur le fait apparaitre ici sans
- * qu on touche a cette page — c est le « systeme extensible » demande.
- *
- * RIEN ne genere et rien ne paie : le studio est en preparation. Le bouton
- * Generer explique ou on en est plutot que d echouer. Aucune cle ne vit
- * ici : quand le studio ouvrira, c est le serveur qui appellera les
- * fournisseurs, et c est le serveur qui verifiera le paiement on-chain. */
-function serveur(){
-  try{ const q = new URLSearchParams(location.search).get("server");
-       if(q) return String(q).replace(/^ws/,"http"); }catch(e){}
-  return "https://web-production-220a3.up.railway.app";
-}
-const $ = s => document.querySelector(s);
-function ech(s){ return String(s==null?"":s).replace(/[&<>"']/g, c =>
-  ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c])); }
-function nombre(n){ return Number(n||0).toLocaleString("en-US"); }
-
-let CAT = null, CHOISI = null, OUVERT = false, MOYEN = "swoge";
-
-/* Le prix montre : le $SWOGE est INDICATIF — il suit le cours, et le montant
-   exact est verrouille dans un devis au moment de payer. Quand le cours n est
-   pas connu, on montre l ancre en USD plutot qu un chiffre en $SWOGE qu on ne
-   tiendrait pas. Ca repond directement au fait que le cours du $SWOGE bouge. */
-function prixTexte(m){
-  /* En ETH, le montant depend du cours de l ETH : on montre l ancre en USD,
-     le montant exact est verrouille dans le devis au paiement. En $SWOGE, on
-     garde le montant indicatif quand on le connait. */
-  if(MOYEN==="eth") return (m.prixUsd!=null ? "$"+Number(m.prixUsd).toFixed(2) : "—")+" in ETH";
-  if(m.prixSwoge != null) return "~"+nombre(m.prixSwoge)+" $SWOGE";
-  if(m.prixUsd != null) return "$"+Number(m.prixUsd).toFixed(2)+" in $SWOGE";
-  return "—";
-}
-
-async function charge(){
-  try{
-    const r = await fetch(serveur()+"/studio/catalogue", { cache:"no-store" });
-    CAT = await r.json();
-  }catch(e){
-    /* Le serveur muet ne doit pas laisser une page vide : on montre au moins
-       ce qui EST prevu, avec les prix, en repli. */
-    CAT = { ouvert:false, modeles:[
-      { id:"image-openai", genre:"image", nom:"Image", fournisseur:"OpenAI", prixUsd:0.10, prixSwoge:null, prixIndicatif:true, actif:false, entree:"prompt", resolutions:["1024x1024","1536x1024","1024x1536"] },
-      { id:"video-grok", genre:"video", nom:"Video", fournisseur:"Grok Imagine", prixUsd:0.50, prixSwoge:null, prixIndicatif:true, actif:false, entree:"image_ou_prompt", durees:[6,10], resolutions:["720p","1080p"] },
-      { id:"texte-claude", genre:"texte", nom:"Text", fournisseur:"Claude", prixUsd:0.01, prixSwoge:null, prixIndicatif:true, actif:false, entree:"prompt" },
-      { id:"reponse-perplexity", genre:"reponse", nom:"Answer", fournisseur:"Perplexity", prixUsd:0.02, prixSwoge:null, prixIndicatif:true, actif:false, entree:"question" },
-      { id:"chat-claude", genre:"texte", nom:"Chat", fournisseur:"Claude", prixUsd:0.02, prixSwoge:null, prixIndicatif:true, actif:false, entree:"prompt" },
-    ], moyens:[ {id:"swoge",nom:"$SWOGE",genre:"erc20"}, {id:"eth",nom:"ETH",genre:"native"} ] };
-  }
-  OUVERT = !!CAT.ouvert;
-  const selMoy = document.getElementById("moyen");
-  const moyens = (CAT.moyens && CAT.moyens.length) ? CAT.moyens : [{id:"swoge",nom:"$SWOGE"},{id:"eth",nom:"ETH"}];
-  selMoy.innerHTML = moyens.map(m => '<option value="'+m.id+'">'+ech(m.nom)+'</option>').join("");
-  MOYEN = moyens[0].id;
-  selMoy.addEventListener("change", () => { MOYEN = selMoy.value; if(CHOISI){ $("#prix").textContent = prixTexte(CHOISI); majGenerer(); } });
-  peintGenres();
-}
-
-const ICONE = { image:"🖼️", video:"🎬", texte:"✍️" };
-function peintGenres(){
-  $("#genres").innerHTML = CAT.modeles.map(m =>
-    '<button class="genre" data-id="'+ech(m.id)+'" aria-pressed="false">'
-    + '<div class="ic">'+(ICONE[m.genre]||"✨")+'</div>'
-    + '<div class="t">'+ech(m.nom||m.genre)+'</div>'
-    + '<div class="p">'+prixTexte(m)+'</div>'
-    + '<div class="f">'+ech(m.fournisseur)+'</div>'
-    + (m.actif ? "" : '<div class="att">'+ech(m.enAttente ? "in preparation" : "soon")+'</div>')
-    + '</button>').join("");
-  document.querySelectorAll(".genre").forEach(b =>
-    b.addEventListener("click", () => choisir(b.getAttribute("data-id"))));
-}
-
-function choisir(id){
-  CHOISI = CAT.modeles.find(m => m.id === id);
-  if(!CHOISI) return;
-  document.querySelectorAll(".genre").forEach(b =>
-    b.setAttribute("aria-pressed", b.getAttribute("data-id")===id ? "true" : "false"));
-  $("#atelier").hidden = false;
-
-  const estVideo = CHOISI.genre === "video";
-  const estTexte = CHOISI.genre === "texte";
-  $("#lblPrompt").textContent = CHOISI.genre==="reponse" ? "Your question" : estTexte ? "Your rough idea" : "Prompt";
-  $("#prompt").placeholder = estVideo ? "Describe the motion, or leave blank if you upload an image…"
-    : estTexte ? "A few words — Claude turns them into a strong prompt…"
-    : "Describe the image you want…";
-  /* L upload n apparait que pour l image->video : ailleurs il n a pas de sens. */
-  $("#depose").hidden = !(estVideo && /image/.test(CHOISI.entree||""));
-
-  /* Les reglages viennent du modele : duree pour la video, resolution pour
-     l image et la video. Le serveur les declare, la page les affiche. */
-  const champs = [];
-  if(CHOISI.durees) champs.push(sel("Duration", CHOISI.durees.map(d => d+"s")));
-  if(CHOISI.resolutions) champs.push(sel("Resolution", CHOISI.resolutions));
-  $("#reglages").innerHTML = champs.join("");
-
-  $("#prix").textContent = prixTexte(CHOISI);
-  majGenerer();
-}
-function sel(nom, options){
-  return '<div class="champ"><label>'+ech(nom)+'</label><select>'
-    + options.map(o => '<option>'+ech(o)+'</option>').join("") + '</select></div>';
-}
-
-/* Le bouton Generer dit OU on en est : en preparation, il l explique ; plus
-   tard, il exigera le wallet puis le paiement. Il n echoue jamais en
-   silence. */
-function majGenerer(){
-  const b = $("#generer");
-  if(!OUVERT){ b.disabled = true; b.textContent = "In preparation"; return; }
-  b.disabled = false; b.textContent = "Pay "+(CHOISI?prixTexte(CHOISI):"")+" & generate";
-}
-
-$("#wallet").addEventListener("click", () => {
-  /* Quand le studio ouvrira, ce bouton demandera le wallet (lecture seule
-     jusqu au paiement). Aujourd hui il dit franchement l etat. */
-  $("#wallet").textContent = OUVERT ? "Wallet — coming with launch" : "In preparation";
-});
-$("#generer").addEventListener("click", () => {
-  $("#apercu").textContent = "Studio is in preparation — generation is not live yet. "
-    + "Come back once the models and $SWOGE payment are switched on.";
-});
-
-charge();
-</script>
+<!-- ---- LES SCRIPTS PARTAGES, EN BAS ----
+     `stakebubble.js` porte la connexion par portefeuille ; `SWOGE_SOCKET='aucune'`
+     lui dit que cette page n'a pas de socket a elle et qu'il ouvre celle de
+     jeu (c'est par elle qu'arrive le jeton de session). Meme ordre que
+     `swoge_predict.html`. -->
+<script>window.SWOGE_SOCKET = 'aucune';</script>
+<script src="stakebubble.min.js?v=c324151c"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 
 </body>
 </html>

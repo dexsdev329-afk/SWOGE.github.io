@@ -38,7 +38,7 @@
  * Meme garde que `swoge_ai.html` : sans elle, un joueur garde des semaines
  * une version corrigee depuis longtemps, et ici cela voudrait dire une
  * colonie qui a l'air arretee alors qu'elle tourne. */
-var MARQUE_PAGE = 'f4fed0a2';
+var MARQUE_PAGE = '38ef1bdd';
 (function(){
   try{
     if(!window.fetch || !window.sessionStorage) return;
@@ -286,6 +286,32 @@ var MARQUE_PAGE = 'f4fed0a2';
 <script src="stakebubble.min.js?v=c324151c"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
 <script src="swogebuy.js?v=9d7c39e5"></script>
+
+<!-- ---- LES DEUX BOUTONS DE LA BARRE, ENFIN BRANCHES ----
+     « CONNECT WALLET » et « SIGN UP — EMAIL » etaient peints et que rien ne
+     nommait : un clic ne faisait rien (`cablage.test.js` le signalait). Ils
+     ouvrent le formulaire de `stakebubble.js`, le meme que partout — meme
+     branchement que `swoge_ai.html` — et s'effacent une fois entre. -->
+<script>
+(function(){
+  "use strict";
+  var $ = function(id){ return document.getElementById(id); };
+  function ouvre(ev){
+    if (ev) ev.preventDefault();
+    if (window.swogeConnexion && typeof window.swogeConnexion.ouvre === "function")
+      window.swogeConnexion.ouvre(ev && ev.currentTarget && ev.currentTarget.id === "emailBtn" ? "email" : null);
+  }
+  ["connectBtn", "emailBtn"].forEach(function(id){ var b = $(id); if (b) b.addEventListener("click", ouvre); });
+  var essais = 0, t = setInterval(function(){
+    essais++;
+    if (typeof window.swogeConnecte === "function" && window.swogeConnecte()) {
+      var r = $("connRow"); if (r) r.style.display = "none";
+      clearInterval(t);
+    }
+    if (essais > 30) clearInterval(t);
+  }, 500);
+})();
+</script>
 
 <!-- La page ne lui dit que les marches suivis ; lequel est ouvert vient de
      `?m=`, et le serveur corrige la liste des la premiere reponse. -->
